@@ -1,0 +1,20 @@
+# Catalogue vivant (@gimac/app-catalogue)
+
+Écran de démonstration `/catalogue` du DS-GIMAC-01 (§12.2), hors production : chaque composant de `@gimac/design-system` est affiché un à un, avec sa fiche et son aperçu, en thème clair ou sombre. Il n'est pas embarqué dans l'image de production.
+
+```
+npm run dev:catalogue      # depuis frontend/, http://localhost:4203
+```
+
+- `src/apercus/<Composant>.tsx` : un aperçu par composant ; ajouter le fichier suffit à l'afficher.
+- `src/fondations/` : couverture, couleurs, typographie, espacements, logo, motif, pictogrammes.
+- `src/plan.ts` : inventaire des composants du système publié (groupe, dimensions, fiche).
+- `src/fabriques/` : données fictives de développement (« Établissement de paiement A », « Banque B »).
+
+Navigation : liste à gauche, boutons Précédent et Suivant, Alt + flèche haut ou bas ; l'adresse porte le composant affiché (`#/Button`).
+
+## Journal des mises à jour
+
+| Date | Commit | Modification |
+|---|---|---|
+| 2026-09-28 | — | Création du catalogue vivant |

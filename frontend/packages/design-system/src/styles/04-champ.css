@@ -1,0 +1,27 @@
+/* Field */
+.gm-field { display: flex; flex-direction: column; gap: var(--gm-space-1); }
+.gm-field-label { font-weight: 600; color: var(--gm-color-text-primary); }
+.gm-field-required { color: var(--gm-color-status-crit-fg); margin-left: 2px; }
+.gm-field-help { font-size: 12px; line-height: 18px; color: var(--gm-color-text-muted); }
+.gm-field-error { display: flex; align-items: center; gap: var(--gm-space-1); font-size: 12px; line-height: 18px; color: var(--gm-color-status-crit-fg); }
+.gm-input { height: var(--gm-size-control-md); padding: 0 var(--gm-space-3); border: var(--gm-border-1) solid var(--gm-color-border-strong); border-radius: var(--gm-radius); background: var(--gm-color-surface); color: var(--gm-color-text-primary); font: inherit; width: 100%; transition: border-color var(--gm-motion-fast) var(--gm-motion-ease); }
+.gm-input:focus { outline: none; border: var(--gm-border-2) solid var(--gm-color-action); padding: 0 calc(var(--gm-space-3) - 1px); }
+.gm-input.gm-mono { font-size: 13px; }
+.gm-input[aria-invalid="true"] { border-color: var(--gm-color-status-crit-fg); }
+.gm-input[disabled], .gm-input[readonly] { background: var(--gm-color-surface-sunken); color: var(--gm-color-text-muted); }
+textarea.gm-input { height: auto; min-height: calc(22px * 3 + 16px); padding: var(--gm-space-2) var(--gm-space-3); resize: vertical; }
+.gm-input-wrap { position: relative; display: flex; align-items: center; }
+.gm-input-suffix { position: absolute; right: var(--gm-space-3); color: var(--gm-color-text-secondary); pointer-events: none; }
+.gm-input-wrap .gm-input { padding-right: var(--gm-space-7); }
+select.gm-input { appearance: none; padding-right: var(--gm-space-6); background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%); background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%; background-size: 5px 5px; background-repeat: no-repeat; }
+.gm-check { display: inline-flex; align-items: center; gap: var(--gm-space-2); cursor: pointer; }
+.gm-check input { appearance: none; margin: 0; width: 18px; height: 18px; border: var(--gm-border-1) solid var(--gm-color-border-strong); border-radius: var(--gm-radius); background: var(--gm-color-surface); display: grid; place-content: center; flex: none; }
+.gm-check input[type="radio"] { border-radius: 50%; }
+.gm-check input:checked { background: var(--gm-color-action); border-color: var(--gm-color-action); }
+.gm-check input[type="checkbox"]:checked::before { content: ""; width: 10px; height: 6px; border-left: 2px solid var(--gm-color-text-inverse); border-bottom: 2px solid var(--gm-color-text-inverse); transform: translateY(-1px) rotate(-45deg); }
+.gm-check input[type="radio"]:checked::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--gm-color-text-inverse); }
+.gm-switch { display: inline-flex; align-items: center; gap: var(--gm-space-2); cursor: pointer; }
+.gm-switch input { appearance: none; margin: 0; width: 36px; height: 20px; border: var(--gm-border-1) solid var(--gm-color-border-strong); border-radius: var(--gm-radius); background: var(--gm-color-surface); position: relative; flex: none; transition: background-color var(--gm-motion-fast) var(--gm-motion-ease); }
+.gm-switch input::before { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; background: var(--gm-color-text-secondary); transition: transform var(--gm-motion-fast) var(--gm-motion-ease); }
+.gm-switch input:checked { background: var(--gm-color-action); border-color: var(--gm-color-action); }
+.gm-switch input:checked::before { background: var(--gm-color-text-inverse); transform: translateX(16px); }

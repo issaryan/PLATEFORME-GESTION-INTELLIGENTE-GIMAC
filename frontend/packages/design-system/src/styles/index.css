@@ -1,0 +1,25 @@
+/*
+ * Styles du catalogue GIMAC DES (DS-GIMAC-01), repris à l'identique du système de conception
+ * publié, dans le même ordre de cascade. Les polices sont auto-hébergées (fonts.css) :
+ * la plateforme n'a aucun accès à Internet.
+ */
+@import "../jetons/fonts.css";
+@import "../jetons/tokens.css";
+@import "./00-base.css";
+@import "./01-icone.css";
+@import "./02-bouton.css";
+@import "./03-lien.css";
+@import "./04-champ.css";
+@import "./05-badges.css";
+@import "./06-affichage.css";
+@import "./07-navigation.css";
+@import "./08-retours.css";
+@import "./09-tableau.css";
+@import "./10-etats-et-empreintes.css";
+@import "./11-enveloppe.css";
+@import "./12-saisie-avancee.css";
+@import "./13-affichages-derives.css";
+@import "./14-domaine.css";
+@import "./15-dialogues.css";
+@import "./16-vues-de-donnees.css";
+@import "./17-crud.css";

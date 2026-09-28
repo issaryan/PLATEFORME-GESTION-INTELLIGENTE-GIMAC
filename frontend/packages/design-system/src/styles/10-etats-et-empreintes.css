@@ -1,0 +1,9 @@
+/* StateMachineBar, CorrelationIdChip, Hash */
+.gm-states { display: flex; gap: 0; list-style: none; margin: 0; padding: 0; border: var(--gm-border-1) solid var(--gm-color-border); }
+.gm-states li { flex: 1; padding: var(--gm-space-1) var(--gm-space-3); font-size: 12px; line-height: 18px; text-align: center; color: var(--gm-color-text-muted); border-right: var(--gm-border-1) solid var(--gm-color-border); background: var(--gm-color-surface); }
+.gm-states li:last-child { border-right: 0; }
+.gm-states .gm-state-done { color: var(--gm-color-text-secondary); background: var(--gm-color-surface-sunken); }
+.gm-states .gm-state-current { color: var(--gm-color-text-inverse); background: var(--gm-color-action); font-weight: 600; }
+.gm-states .gm-state-next { color: var(--gm-color-action); }
+.gm-chip { display: inline-flex; align-items: center; gap: var(--gm-space-1); height: var(--gm-size-badge); padding: 0 var(--gm-space-2); border: var(--gm-border-1) solid var(--gm-color-border); background: var(--gm-color-surface-sunken); font-family: var(--font-mono); font-size: 13px; }
+.gm-chip button { all: unset; cursor: pointer; display: inline-flex; color: var(--gm-color-action); }

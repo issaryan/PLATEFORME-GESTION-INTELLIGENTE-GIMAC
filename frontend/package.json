@@ -2,13 +2,19 @@
   "name": "@gimac/frontend",
   "private": true,
   "description": "Couches de présentation de la plateforme DES du GIMAC (D-46, D-51)",
-  "workspaces": ["packages/*", "apps/*"],
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "dev:departement": "npm run dev -w @gimac/app-departement",
     "dev:portail": "npm run dev -w @gimac/app-portail",
-    "dev:console": "npm run dev -w @gimac/app-console"
+    "dev:console": "npm run dev -w @gimac/app-console",
+    "dev:catalogue": "npm run dev -w @gimac/app-catalogue"
   },
-  "engines": { "node": ">=22" }
+  "engines": {
+    "node": ">=22"
+  }
 }

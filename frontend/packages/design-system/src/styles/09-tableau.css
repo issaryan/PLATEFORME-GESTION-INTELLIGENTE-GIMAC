@@ -1,0 +1,15 @@
+/* DataTable */
+.gm-table-wrap { border: var(--gm-border-1) solid var(--gm-color-border); background: var(--gm-color-surface); overflow: auto; }
+.gm-table { width: 100%; border-collapse: collapse; }
+.gm-table th { background: var(--gm-color-action); color: var(--gm-color-text-inverse); text-align: left; font-weight: 600; padding: 0 var(--gm-space-3); height: var(--gm-size-row); white-space: nowrap; }
+.gm-table th button { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: var(--gm-space-1); }
+.gm-table td { padding: 0 var(--gm-space-3); height: var(--gm-size-row); border-top: var(--gm-border-1) solid var(--gm-color-border); vertical-align: middle; }
+.gm-table tbody tr:nth-child(even) td { background: var(--gm-color-surface-sunken); }
+.gm-table tbody tr:hover td { background: var(--gm-color-action-subtle); }
+.gm-table tbody tr[aria-selected="true"] td { background: var(--gm-color-surface-selected); }
+.gm-table .gm-num, .gm-table th.gm-num { text-align: right; }
+.gm-table-compact td, .gm-table-compact th { height: var(--gm-size-row-compact); }
+.gm-table-live td { animation: gm-live var(--gm-motion-live) var(--gm-motion-ease) 1; }
+@keyframes gm-live { from { background-color: var(--gm-color-action-subtle); } to { background-color: transparent; } }
+.gm-table-toolbar { display: flex; align-items: center; gap: var(--gm-space-2); padding: var(--gm-space-2) var(--gm-space-3); border-bottom: var(--gm-border-1) solid var(--gm-color-border); font-size: 12px; line-height: 18px; color: var(--gm-color-text-secondary); }
+.gm-table-toolbar .gm-grow { flex: 1; }

@@ -1,0 +1,10 @@
+/* ---------- CRUD universel, SplitButton */
+.gm-split { display: inline-flex; position: relative; }
+.gm-split-arrow { width: 32px; min-width: 32px; padding: 0; border-left-color: rgba(255, 255, 255, 0.3); }
+.gm-split-menu { position: absolute; top: calc(100% + 2px); right: 0; z-index: 20; }
+.gm-resource { display: flex; flex-direction: column; gap: var(--gm-space-4); position: relative; }
+.gm-resource-embedded { gap: var(--gm-space-3); }
+.gm-resource-head { display: flex; align-items: center; justify-content: space-between; gap: var(--gm-space-4); }
+.gm-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--gm-space-4) var(--gm-space-5); }
+.gm-form-wide { grid-column: 1 / -1; }
+.gm-form-actions { display: flex; align-items: center; gap: var(--gm-space-2); padding-top: var(--gm-space-4); border-top: var(--gm-border-1) solid var(--gm-color-border); }

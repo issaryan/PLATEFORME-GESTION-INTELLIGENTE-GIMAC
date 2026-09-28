@@ -1,0 +1,18 @@
+/* ---------- Affichages dérivés */
+.gm-ring { display: flex; flex-direction: column; align-items: center; gap: var(--gm-space-1); text-align: center; }
+.gm-ring-track { fill: none; stroke: var(--gm-grey-200); stroke-width: 6; }
+[data-theme="dark"] .gm-ring-track { stroke: var(--gm-dark-500); }
+.gm-ring-value { fill: none; stroke: var(--gm-color-action); stroke-width: 6; }
+.gm-ring-text { fill: var(--gm-color-text-primary); font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.gm-ring-label { font-size: 12px; line-height: 18px; color: var(--gm-color-text-secondary); display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.gm-cov { display: grid; grid-template-columns: 200px 1fr 120px; gap: var(--gm-space-3); align-items: center; }
+.gm-cov-label { font-weight: 600; }
+.gm-cov-bar { display: flex; gap: 2px; height: 12px; }
+.gm-cov-seg { flex: 1; background: var(--gm-grey-200); }
+[data-theme="dark"] .gm-cov-seg { background: var(--gm-dark-500); }
+.gm-cov-1 { background: var(--gm-blue-300); }
+.gm-cov-2 { background: var(--gm-blue-500); }
+.gm-cov-3 { background: var(--gm-blue-700); }
+.gm-cov-4 { background: var(--gm-color-status-ok-fg); }
+.gm-cov-text { font-size: 12px; line-height: 18px; color: var(--gm-color-text-secondary); }
+.gm-late { color: var(--gm-color-status-crit-fg); font-weight: 600; }

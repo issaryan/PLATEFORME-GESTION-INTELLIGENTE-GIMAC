@@ -1,0 +1,19 @@
+/* Tabs, Stepper, Pagination, Breadcrumb */
+.gm-tabs { display: flex; gap: var(--gm-space-5); border-bottom: var(--gm-border-1) solid var(--gm-color-border); }
+.gm-tab { all: unset; cursor: pointer; padding: var(--gm-space-2) 0 calc(var(--gm-space-2) - 2px); border-bottom: var(--gm-border-2) solid transparent; color: var(--gm-color-text-secondary); font-weight: 600; margin-bottom: -1px; }
+.gm-tab:hover { color: var(--gm-color-text-primary); }
+.gm-tab[aria-selected="true"] { color: var(--gm-color-action); border-bottom-color: var(--gm-color-action); }
+.gm-tab:focus-visible { outline: var(--gm-border-2) solid var(--gm-color-focus); outline-offset: 2px; }
+.gm-stepper { display: flex; gap: var(--gm-space-4); list-style: none; margin: 0; padding: 0; }
+.gm-step { display: flex; align-items: center; gap: var(--gm-space-2); color: var(--gm-color-text-secondary); }
+.gm-step-num { width: 24px; height: 24px; border: var(--gm-border-1) solid var(--gm-color-border-strong); display: grid; place-content: center; font-size: 12px; font-weight: 600; background: var(--gm-color-surface); }
+.gm-step-done .gm-step-num { background: var(--gm-color-status-ok-fg); border-color: var(--gm-color-status-ok-fg); color: var(--gm-color-text-inverse); }
+.gm-step-current { color: var(--gm-color-text-primary); font-weight: 600; }
+.gm-step-current .gm-step-num { background: var(--gm-color-action); border-color: var(--gm-color-action); color: var(--gm-color-text-inverse); }
+.gm-step-error .gm-step-num { border-color: var(--gm-color-status-crit-fg); color: var(--gm-color-status-crit-fg); }
+.gm-step + .gm-step::before { content: ""; width: 24px; height: 1px; background: var(--gm-color-border); margin-right: var(--gm-space-2); }
+.gm-pagination { display: flex; align-items: center; gap: var(--gm-space-4); font-size: 12px; line-height: 18px; color: var(--gm-color-text-secondary); }
+.gm-pagination select { height: var(--gm-size-control-sm); }
+.gm-breadcrumb { display: flex; align-items: center; gap: var(--gm-space-2); list-style: none; margin: 0; padding: 0; font-size: 12px; line-height: 18px; }
+.gm-breadcrumb li + li::before { content: "/"; color: var(--gm-color-text-muted); margin-right: var(--gm-space-2); }
+.gm-breadcrumb [aria-current] { color: var(--gm-color-text-primary); }

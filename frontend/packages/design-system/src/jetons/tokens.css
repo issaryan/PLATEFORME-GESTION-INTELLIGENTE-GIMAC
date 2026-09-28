@@ -1,0 +1,174 @@
+/*
+ * Jetons de conception GIMAC DES, générés par scripts/generer-jetons.mjs depuis tokens.json.
+ * Ne pas modifier à la main. Source : DS-GIMAC-01 v1.0, sections 3 à 5.
+ * Le mode sombre redéfinit la couche sémantique et la palette de données, rien d'autre ;
+ * il est activé par data-theme="dark" sur la racine (ou sur un conteneur).
+ */
+:root {
+  --gm-blue-900: #0f3d70;
+  --gm-blue-700: #15569e;
+  --gm-blue-600: #006eb7;
+  --gm-blue-500: #1f80c9;
+  --gm-blue-300: #7fb3e6;
+  --gm-blue-100: #d6e6f7;
+  --gm-blue-50: #eaf0f7;
+  --gm-green-700: #0b6938;
+  --gm-green-600: #1e7f4b;
+  --gm-green-300: #6fcf97;
+  --gm-green-50: #e6f2ea;
+  --gm-ochre-700: #8a5a14;
+  --gm-ochre-300: #f2c14e;
+  --gm-ochre-50: #f8f0e0;
+  --gm-earth-700: #7a3e1d;
+  --gm-earth-100: #f1e4da;
+  --gm-red-700: #9e2626;
+  --gm-red-300: #f08a8a;
+  --gm-red-50: #f9e5e5;
+  --gm-grey-900: #14161a;
+  --gm-grey-700: #5c6268;
+  --gm-grey-600: #6b7280;
+  --gm-grey-400: #b4b9c0;
+  --gm-grey-300: #d5d8dc;
+  --gm-grey-200: #e7e9ec;
+  --gm-grey-100: #f5f6f8;
+  --gm-white: #ffffff;
+  --gm-dark-900: #24272c;
+  --gm-dark-800: #2d3138;
+  --gm-dark-700: #383d45;
+  --gm-dark-500: #545a64;
+  --gm-dark-200: #b6bcc5;
+  --gm-dark-50: #eef0f3;
+  --gm-color-bg-page: var(--gm-grey-100);
+  --gm-color-surface: var(--gm-white);
+  --gm-color-surface-raised: var(--gm-white);
+  --gm-color-surface-sunken: var(--gm-blue-50);
+  --gm-color-surface-selected: var(--gm-blue-100);
+  --gm-color-border: var(--gm-grey-300);
+  --gm-color-border-strong: var(--gm-grey-400);
+  --gm-color-text-primary: var(--gm-grey-900);
+  --gm-color-text-secondary: var(--gm-grey-700);
+  --gm-color-text-muted: var(--gm-grey-600);
+  --gm-color-text-inverse: var(--gm-white);
+  --gm-color-action: var(--gm-blue-700);
+  --gm-color-action-hover: var(--gm-blue-900);
+  --gm-color-action-subtle: var(--gm-blue-50);
+  --gm-color-focus: var(--gm-blue-600);
+  --gm-color-status-ok-fg: var(--gm-green-700);
+  --gm-color-status-ok-bg: var(--gm-green-50);
+  --gm-color-status-warn-fg: var(--gm-ochre-700);
+  --gm-color-status-warn-bg: var(--gm-ochre-50);
+  --gm-color-status-crit-fg: var(--gm-red-700);
+  --gm-color-status-crit-bg: var(--gm-red-50);
+  --gm-color-status-info-fg: var(--gm-blue-700);
+  --gm-color-status-neutral-fg: var(--gm-grey-700);
+  --gm-color-brand-accent: var(--gm-earth-700);
+  --gm-color-brand-pattern: var(--gm-earth-100);
+  --gm-color-overlay: rgba(20, 22, 26, 0.45);
+  --gm-data-1: #15569e;
+  --gm-data-2: #0b6938;
+  --gm-data-3: #3e9b36;
+  --gm-data-4: #8a5a14;
+  --gm-data-5: #1f80c9;
+  --gm-data-6: #9e6a15;
+  --gm-data-7: #5c6268;
+  --gm-data-8: #7a3e1d;
+  /* spacing */
+  --gm-space-1: 4px;
+  --gm-space-2: 8px;
+  --gm-space-3: 12px;
+  --gm-space-4: 16px;
+  --gm-space-5: 24px;
+  --gm-space-6: 32px;
+  --gm-space-7: 48px;
+  --gm-space-8: 64px;
+  /* radius */
+  --gm-radius: 0px;
+  --gm-radius-avatar: 50%;
+  /* border */
+  --gm-border-1: 1px;
+  --gm-border-2: 2px;
+  --gm-border-4: 4px;
+  /* duration */
+  --gm-motion-fast: 120ms;
+  --gm-motion-base: 200ms;
+  --gm-motion-slow: 320ms;
+  --gm-motion-live: 1200ms;
+  --gm-motion-ease: cubic-bezier(0.2, 0, 0, 1);
+  /* breakpoint */
+  --gm-bp-sm: 640px;
+  --gm-bp-md: 1024px;
+  --gm-bp-lg: 1280px;
+  --gm-bp-xl: 1600px;
+  --gm-bp-wall: 2560px;
+  /* size */
+  --gm-size-control-sm: 32px;
+  --gm-size-control-md: 40px;
+  --gm-size-control-lg: 48px;
+  --gm-size-badge: 24px;
+  --gm-size-row: 44px;
+  --gm-size-row-compact: 36px;
+  --gm-size-topbar: 56px;
+  --gm-size-sidenav: 264px;
+  --gm-size-drawer: 480px;
+  --gm-size-dialog: 560px;
+  --gm-size-icon-sm: 16px;
+  --gm-size-icon-md: 20px;
+  --gm-size-icon-lg: 24px;
+  /* familles typographiques */
+  --font-heading: "Ubuntu", system-ui, "Segoe UI", sans-serif;
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+
+[data-theme="dark"] {
+  --gm-color-bg-page: var(--gm-dark-900);
+  --gm-color-surface: var(--gm-dark-800);
+  --gm-color-surface-raised: var(--gm-dark-700);
+  --gm-color-surface-sunken: var(--gm-dark-700);
+  --gm-color-surface-selected: #2f4f78;
+  --gm-color-border: var(--gm-dark-500);
+  --gm-color-border-strong: #7a818c;
+  --gm-color-text-primary: var(--gm-dark-50);
+  --gm-color-text-secondary: var(--gm-dark-200);
+  --gm-color-text-muted: #98a0aa;
+  --gm-color-text-inverse: var(--gm-grey-900);
+  --gm-color-action: var(--gm-blue-300);
+  --gm-color-action-hover: #a9cdf0;
+  --gm-color-action-subtle: #2a4467;
+  --gm-color-focus: var(--gm-blue-300);
+  --gm-color-status-ok-fg: var(--gm-green-300);
+  --gm-color-status-ok-bg: #1e4a34;
+  --gm-color-status-warn-fg: var(--gm-ochre-300);
+  --gm-color-status-warn-bg: #4a3a18;
+  --gm-color-status-crit-fg: var(--gm-red-300);
+  --gm-color-status-crit-bg: #4f2727;
+  --gm-color-status-info-fg: var(--gm-blue-300);
+  --gm-color-status-neutral-fg: var(--gm-dark-200);
+  --gm-color-brand-accent: #d0966e;
+  --gm-color-brand-pattern: var(--gm-dark-700);
+  --gm-color-overlay: rgba(20, 22, 26, 0.45);
+  --gm-data-1: #4f93d6;
+  --gm-data-2: #2a9257;
+  --gm-data-3: #7cc05a;
+  --gm-data-4: #b8882b;
+  --gm-data-5: #5db4ea;
+  --gm-data-6: #d9a64a;
+  --gm-data-7: #b6bcc5;
+  --gm-data-8: #d0966e;
+}
+
+/* Échelle typographique (14 rôles) */
+.gm-type-display { font-family: var(--font-heading); font-size: 28px; line-height: 36px; font-weight: 700; }
+.gm-type-h1 { font-family: var(--font-heading); font-size: 22px; line-height: 30px; font-weight: 700; }
+.gm-type-h2 { font-family: var(--font-heading); font-size: 18px; line-height: 26px; font-weight: 500; }
+.gm-type-h3 { font-family: var(--font-heading); font-size: 16px; line-height: 24px; font-weight: 500; }
+.gm-type-body { font-family: var(--font-sans); font-size: 14px; line-height: 22px; font-weight: 400; }
+.gm-type-body-strong { font-family: var(--font-sans); font-size: 14px; line-height: 22px; font-weight: 600; }
+.gm-type-small { font-family: var(--font-sans); font-size: 12px; line-height: 18px; font-weight: 400; }
+.gm-type-small-strong { font-family: var(--font-sans); font-size: 12px; line-height: 18px; font-weight: 600; }
+.gm-type-micro { font-family: var(--font-sans); font-size: 11px; line-height: 16px; font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase; }
+.gm-type-stat { font-family: var(--font-sans); font-size: 32px; line-height: 40px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.gm-type-stat-wall { font-family: var(--font-sans); font-size: 56px; line-height: 64px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.gm-type-number { font-family: var(--font-sans); font-size: 14px; line-height: 22px; font-weight: 400; font-variant-numeric: tabular-nums; }
+.gm-type-button { font-family: var(--font-sans); font-size: 14px; line-height: 20px; font-weight: 600; }
+.gm-type-mono { font-family: var(--font-mono); font-size: 13px; line-height: 20px; font-weight: 400; font-variant-ligatures: none; }

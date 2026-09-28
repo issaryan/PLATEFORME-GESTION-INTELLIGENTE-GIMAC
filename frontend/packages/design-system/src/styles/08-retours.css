@@ -1,0 +1,12 @@
+/* Banner, InlineAlert, Toast */
+.gm-banner { display: flex; align-items: center; gap: var(--gm-space-3); padding: var(--gm-space-2) var(--gm-space-4); border-left: var(--gm-border-4) solid; }
+.gm-banner-info { background: var(--gm-color-action-subtle); border-color: var(--gm-color-status-info-fg); color: var(--gm-color-text-primary); }
+.gm-banner-info .gm-icon { color: var(--gm-color-status-info-fg); }
+.gm-banner-warn { background: var(--gm-color-status-warn-bg); border-color: var(--gm-color-status-warn-fg); color: var(--gm-color-text-primary); }
+.gm-banner-warn .gm-icon { color: var(--gm-color-status-warn-fg); }
+.gm-banner-crit { background: var(--gm-color-status-crit-bg); border-color: var(--gm-color-status-crit-fg); color: var(--gm-color-text-primary); }
+.gm-banner-crit .gm-icon { color: var(--gm-color-status-crit-fg); }
+.gm-banner-text { flex: 1; }
+.gm-banner-title { font-weight: 600; }
+.gm-inline { display: flex; gap: var(--gm-space-2); padding: var(--gm-space-3); border: var(--gm-border-1) solid var(--gm-color-border); }
+.gm-toast { display: flex; align-items: center; gap: var(--gm-space-3); padding: var(--gm-space-3) var(--gm-space-4); background: var(--gm-color-surface-raised); border: var(--gm-border-1) solid var(--gm-color-border); min-width: 320px; }

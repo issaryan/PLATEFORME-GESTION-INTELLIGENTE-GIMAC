@@ -37,3 +37,4 @@ Enveloppe commune IHM-01, bibliothèque de composants IHM-02, navigation élagu�
 |---|---|---|
 | 2026-09-28 | b20a049 | Création : trois applications `create-vite`, paquet `@gimac/theme`, Dockerfile, configuration nginx |
 | 2026-09-28 | — | Ajout de ce README et des README des applications |
+| 2026-09-28 | — | Paquet `@gimac/design-system` (portage React du DS-GIMAC-01, 87 composants) et catalogue vivant `apps/catalogue` (port 4203) |

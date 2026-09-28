@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="128" viewBox="0 0 256 128" aria-hidden="true">
+  <defs>
+    <pattern id="trame" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M16 0 L32 16 L16 32 L0 16 Z" fill="none" stroke="#7A3E1D" stroke-opacity="0.08" stroke-width="1"></path>
+      <path d="M0 8 L8 0 M24 32 L32 24 M0 24 L8 32 M24 0 L32 8" fill="none" stroke="#7A3E1D" stroke-opacity="0.08" stroke-width="1"></path>
+    </pattern>
+  </defs>
+  <rect width="256" height="128" fill="#F1E4DA"></rect>
+  <rect width="256" height="128" fill="url(#trame)"></rect>
+</svg>

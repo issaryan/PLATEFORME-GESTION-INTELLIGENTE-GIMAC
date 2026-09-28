@@ -1,0 +1,3 @@
+/* Link */
+.gm-link { color: var(--gm-color-action); text-decoration: none; }
+.gm-link:hover, .gm-link:focus-visible { text-decoration: underline; color: var(--gm-color-action-hover); }

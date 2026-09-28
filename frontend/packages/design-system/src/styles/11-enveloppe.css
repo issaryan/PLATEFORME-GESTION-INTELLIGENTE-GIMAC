@@ -1,0 +1,19 @@
+/* AppShell */
+.gm-topbar { display: flex; align-items: center; gap: var(--gm-space-4); height: var(--gm-size-topbar); padding: 0 var(--gm-space-4); background: var(--gm-color-surface); border-bottom: var(--gm-border-1) solid var(--gm-color-border); }
+.gm-topbar-layer { font-size: 11px; line-height: 16px; font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase; color: var(--gm-color-text-secondary); }
+.gm-topbar-clock { font-variant-numeric: tabular-nums; color: var(--gm-color-text-secondary); }
+.gm-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.gm-dot-ok { background: var(--gm-color-status-ok-fg); }
+.gm-dot-off { background: var(--gm-color-text-muted); }
+.gm-envband { height: 28px; display: flex; align-items: center; justify-content: center; font-size: 11px; line-height: 16px; letter-spacing: 0.04em; font-weight: 500; }
+.gm-envband-prod { background: var(--gm-color-action); color: var(--gm-color-text-inverse); }
+.gm-envband-recette { background: var(--gm-color-status-warn-bg); color: var(--gm-color-status-warn-fg); }
+.gm-envband-integration { background: var(--gm-color-surface-sunken); color: var(--gm-color-text-secondary); }
+.gm-sidenav { width: var(--gm-size-sidenav); background: var(--gm-color-surface); border-right: var(--gm-border-1) solid var(--gm-color-border); display: flex; flex-direction: column; }
+.gm-sidenav ul { list-style: none; margin: 0; padding: var(--gm-space-2) 0; }
+.gm-sidenav a { display: flex; align-items: center; gap: var(--gm-space-3); padding: 0 var(--gm-space-4); height: var(--gm-size-control-md); color: var(--gm-color-text-primary); text-decoration: none; border-left: var(--gm-border-4) solid transparent; }
+.gm-sidenav a:hover { background: var(--gm-color-action-subtle); }
+.gm-sidenav a[aria-current="page"] { border-left-color: var(--gm-color-action); background: var(--gm-color-action-subtle); color: var(--gm-color-action); font-weight: 600; }
+.gm-sidenav-group { padding: var(--gm-space-3) var(--gm-space-4) var(--gm-space-1); font-size: 11px; line-height: 16px; letter-spacing: 0.04em; text-transform: uppercase; font-weight: 500; color: var(--gm-color-text-muted); }
+.gm-sidenav-foot { margin-top: auto; padding: var(--gm-space-3) var(--gm-space-4); font-size: 12px; line-height: 18px; color: var(--gm-color-text-muted); border-top: var(--gm-border-1) solid var(--gm-color-border); }
+.gm-heading-display { font-family: var(--font-heading); font-size: 28px; line-height: 36px; font-weight: 700; margin: 0; }

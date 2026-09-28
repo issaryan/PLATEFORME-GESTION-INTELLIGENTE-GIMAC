@@ -1,0 +1,11 @@
+/* Base : les aperçus et les consommateurs posent la page sur bg-page, texte primary, Inter 14 px. */
+.gm-root, .gm-body { background: var(--gm-color-bg-page); color: var(--gm-color-text-primary); font-family: var(--font-sans); font-size: 14px; line-height: 22px; }
+.gm-root *, .gm-root *::before, .gm-root *::after { box-sizing: border-box; }
+.gm-root :focus-visible { outline: var(--gm-border-2) solid var(--gm-color-focus); outline-offset: 2px; }
+.gm-num { font-variant-numeric: tabular-nums; }
+.gm-mono { font-family: var(--font-mono); font-size: 13px; line-height: 20px; font-variant-ligatures: none; }
+.gm-row { display: flex; gap: var(--gm-space-2); align-items: center; flex-wrap: wrap; }
+.gm-col { display: flex; flex-direction: column; gap: var(--gm-space-4); }
+.gm-pad { padding: var(--gm-space-4); }
+.gm-pattern { background-color: var(--gm-color-brand-pattern); background-image: repeating-linear-gradient(45deg, transparent 0 15px, rgba(122, 62, 29, 0.08) 15px 16px), repeating-linear-gradient(-45deg, transparent 0 15px, rgba(122, 62, 29, 0.08) 15px 16px); background-size: 32px 32px; }
+@media (prefers-reduced-motion: reduce) { .gm-root * { transition-duration: 0ms !important; animation: none !important; } }

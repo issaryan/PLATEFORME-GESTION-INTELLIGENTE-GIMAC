@@ -1,0 +1,14 @@
+/* Couverture du système de conception, reprise à l'identique de la carte « Cover ». */
+.cat-cover { position: relative; height: 288px; width: 960px; overflow: hidden; background: var(--gm-color-bg-page); color: var(--gm-color-text-primary); font-family: var(--font-sans); }
+.cat-cover .art { position: absolute; top: 0; left: 480px; width: 480px; height: 288px; overflow: hidden; }
+.cat-cover .art svg { display: block; width: 480px; height: 288px; }
+.cat-cover .action { fill: var(--gm-color-action); }
+.cat-cover .logo { fill: var(--gm-blue-600); }
+.cat-cover .ok { fill: var(--gm-green-700); }
+.cat-cover .earth { fill: var(--gm-color-brand-accent); }
+.cat-cover .sunken { fill: var(--gm-color-surface-sunken); }
+.cat-cover .trame { fill: none; stroke: var(--gm-color-brand-accent); stroke-opacity: 0.35; stroke-width: 1; }
+.cat-cover .words { position: absolute; left: 32px; bottom: 32px; max-width: 440px; }
+.cat-cover .name { margin: 0; font-family: var(--font-heading); font-size: 96px; line-height: .9; font-weight: 700; letter-spacing: -.01em; color: var(--gm-color-text-primary); }
+.cat-cover .name span { display: block; font-size: 40px; line-height: 1; font-weight: 500; color: var(--gm-color-action); margin-top: 8px; }
+.cat-cover .tag { margin: 12px 0 0 2px; font-size: 14px; line-height: 20px; color: var(--gm-color-text-secondary); }

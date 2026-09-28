@@ -1,0 +1,25 @@
+{
+  "name": "@gimac/app-catalogue",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Catalogue vivant du système de conception GIMAC DES (écran /catalogue, hors production)",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "tsc -b",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@gimac/design-system": "1.0.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@vitejs/plugin-react": "^6.1.1",
+    "typescript": "~6.0.2",
+    "vite": "^8.3.0"
+  }
+}
