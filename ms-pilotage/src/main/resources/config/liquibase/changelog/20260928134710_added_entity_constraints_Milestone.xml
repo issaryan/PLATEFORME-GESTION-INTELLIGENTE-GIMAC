@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+    <!--
+        Added the constraints for entity Milestone.
+    -->
+    <changeSet id="20260928134710-2" author="jhipster">
+
+        <addForeignKeyConstraint baseColumnNames="project_id"
+                                 baseTableName="milestone"
+                                 constraintName="fk_milestone__project_id"
+                                 referencedColumnNames="id"
+                                 referencedTableName="project"
+                                 />
+
+        <addForeignKeyConstraint baseColumnNames="milestone_id"
+                                 baseTableName="rel_milestone__predecessors"
+                                 constraintName="fk_rel_milestone__predecessors__milestone_id"
+                                 referencedColumnNames="id"
+                                 referencedTableName="milestone"
+                                 />
+
+        <addForeignKeyConstraint baseColumnNames="predecessors_id"
+                                 baseTableName="rel_milestone__predecessors"
+                                 constraintName="fk_rel_milestone__predecessors__predecessors_id"
+                                 referencedColumnNames="id"
+                                 referencedTableName="milestone"
+                                 />
+    </changeSet>
+</databaseChangeLog>

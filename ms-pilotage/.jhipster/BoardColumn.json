@@ -1,0 +1,63 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134210"
+  },
+  "applications": ["pilotage"],
+  "clientRootFolder": "pilotage",
+  "databaseType": "sql",
+  "documentation": "Colonne d'un tableau (objet-valeur BoardColumn du CC, persisté en entité\\npour porter le verrou de ligne de l'algorithme 6.54).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Code de la colonne, par exemple A_FAIRE, EN_COURS, EN_REVUE, TERMINE.",
+      "fieldName": "code",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "30",
+      "fieldValidateRulesPattern": "^[A-Z_]+$"
+    },
+    {
+      "fieldName": "label",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "100"
+    },
+    {
+      "fieldName": "position",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required", "min"],
+      "fieldValidateRulesMin": "0"
+    },
+    {
+      "documentation": "Limite d'en-cours Lc ; 0 = colonne non bornée (RG-49).",
+      "fieldName": "wipLimit",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required", "min"],
+      "fieldValidateRulesMin": "0"
+    },
+    {
+      "documentation": "Colonne terminale : entrée soumise aux critères d'acceptation.",
+      "fieldName": "terminal",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    }
+  ],
+  "microserviceName": "pilotage",
+  "name": "BoardColumn",
+  "relationships": [
+    {
+      "otherEntityField": "name",
+      "otherEntityName": "board",
+      "relationshipName": "board",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

@@ -1,0 +1,123 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134710"
+  },
+  "applications": ["pilotage"],
+  "clientRootFolder": "pilotage",
+  "databaseType": "sql",
+  "documentation": "Jalon d'un projet, estimé par trois durées (formule 6.61).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "label",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "255"
+    },
+    {
+      "documentation": "Durée optimiste o.",
+      "fieldName": "optimistic",
+      "fieldType": "Duration",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Durée la plus probable m.",
+      "fieldName": "mostLikely",
+      "fieldType": "Duration",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Durée pessimiste p (o <= m <= p).",
+      "fieldName": "pessimistic",
+      "fieldType": "Duration",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Durée espérée t = (o + 4m + p) / 6, ou durée réelle si le jalon est atteint.",
+      "fieldName": "expectedDuration",
+      "fieldType": "Duration"
+    },
+    {
+      "documentation": "Variance ((p - o) / 6)^2 en jours carrés ; nulle si le jalon est atteint.",
+      "fieldName": "variance",
+      "fieldType": "BigDecimal",
+      "fieldValidateRules": ["min"],
+      "fieldValidateRulesMin": "0"
+    },
+    {
+      "fieldName": "earliestStart",
+      "fieldType": "LocalDate"
+    },
+    {
+      "fieldName": "latestStart",
+      "fieldType": "LocalDate"
+    },
+    {
+      "fieldName": "totalFloat",
+      "fieldType": "Duration"
+    },
+    {
+      "fieldName": "freeFloat",
+      "fieldType": "Duration"
+    },
+    {
+      "documentation": "Marge totale nulle à une demi-journée près.",
+      "fieldName": "critical",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "state",
+      "fieldType": "MilestoneState",
+      "fieldTypeDocumentation": "État d'un jalon. Écart CC corrigé : le CC type l'état en String ; une\\nénumération est retenue pour porter le visa tripartite de RG-46.",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "PREVU,EN_ATTENTE_VISA,ATTEINT"
+    },
+    {
+      "documentation": "Durée réelle, qui remplace l'estimation une fois le jalon atteint.",
+      "fieldName": "actualDuration",
+      "fieldType": "Duration"
+    },
+    {
+      "fieldName": "reachedAt",
+      "fieldType": "Instant"
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "pilotage",
+  "name": "Milestone",
+  "pagination": "pagination",
+  "relationships": [
+    {
+      "otherEntityField": "title",
+      "otherEntityName": "project",
+      "relationshipName": "project",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    },
+    {
+      "documentation": "Dépendances du graphe des jalons, acyclique (tri de Kahn).",
+      "otherEntityField": "label",
+      "otherEntityName": "milestone",
+      "otherEntityRelationshipName": "successors",
+      "relationshipName": "predecessors",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-many"
+    },
+    {
+      "otherEntityField": "label",
+      "otherEntityName": "milestone",
+      "otherEntityRelationshipName": "predecessors",
+      "relationshipName": "successors",
+      "relationshipSide": "right",
+      "relationshipType": "many-to-many"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

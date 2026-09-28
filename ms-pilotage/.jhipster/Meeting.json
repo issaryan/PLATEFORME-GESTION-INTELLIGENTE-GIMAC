@@ -1,0 +1,65 @@
+{
+  "annotations": {
+    "changelogDate": "20260928135210"
+  },
+  "applications": ["pilotage"],
+  "clientRootFolder": "pilotage",
+  "databaseType": "sql",
+  "documentation": "Réunion d'une instance de gouvernance (comité de pilotage hebdomadaire,\\nrevue mensuelle des risques, comité de mise en service, revue post-incident).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Instance, par exemple « comité de pilotage du DES ».",
+      "fieldName": "instance",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "150"
+    },
+    {
+      "fieldName": "scheduledAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "heldAt",
+      "fieldType": "Instant"
+    },
+    {
+      "documentation": "Ordre du jour : liste JSON des points, dont « suivi des décisions ».",
+      "fieldName": "agenda",
+      "fieldType": "TextBlob"
+    },
+    {
+      "documentation": "Compte rendu (procès-verbal WORM 10 ans, RG-47) : identifiant dans MS-DOCUMENT.",
+      "fieldName": "minutesRef",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "SHA256 du compte rendu déposé.",
+      "fieldName": "minutesDigest",
+      "fieldType": "String",
+      "fieldValidateRules": ["minlength", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "64",
+      "fieldValidateRulesMinlength": "64",
+      "fieldValidateRulesPattern": "^[0-9a-f]{64}$"
+    },
+    {
+      "fieldName": "state",
+      "fieldType": "MeetingState",
+      "fieldTypeDocumentation": "Cycle de vie d'une réunion (algorithme 6.55).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "PLANIFIEE,TENUE,CR_DEPOSE"
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "pilotage",
+  "name": "Meeting",
+  "pagination": "pagination",
+  "relationships": [],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

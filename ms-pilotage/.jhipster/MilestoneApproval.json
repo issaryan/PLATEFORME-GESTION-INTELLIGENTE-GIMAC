@@ -1,0 +1,54 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134810"
+  },
+  "applications": ["pilotage"],
+  "clientRootFolder": "pilotage",
+  "databaseType": "sql",
+  "documentation": "Visa de franchissement d'un jalon (RG-46) : un visa par autorité (Projets,\\nSécurité, DES) ; le jalon ne passe ATTEINT qu'avec les trois.",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "authority",
+      "fieldType": "ApprovalAuthority",
+      "fieldTypeDocumentation": "Autorité signataire du visa tripartite de franchissement de jalon (RG-46).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "PROJETS,SECURITE,DES"
+    },
+    {
+      "documentation": "Signataire du visa (MS-IAM).",
+      "fieldName": "approverId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "approvedAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "comment",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "1000"
+    }
+  ],
+  "microserviceName": "pilotage",
+  "name": "MilestoneApproval",
+  "relationships": [
+    {
+      "otherEntityField": "label",
+      "otherEntityName": "milestone",
+      "relationshipName": "milestone",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

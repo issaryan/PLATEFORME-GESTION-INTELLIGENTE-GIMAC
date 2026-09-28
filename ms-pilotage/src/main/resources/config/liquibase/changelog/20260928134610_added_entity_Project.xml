@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+
+    <!--
+        Added the entity Project.
+    -->
+    <changeSet id="20260928134610-1" author="jhipster">
+        <createTable tableName="project" remarks="Projet structurant du groupement, ordonnancé par PERT/CPM (algorithme 6.52).">
+            <column name="id" type="${uuidType}">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="title" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="scope" type="varchar(2000)">
+                <constraints nullable="true" />
+            </column>
+            <column name="owner_id" type="${uuidType}" remarks="Responsable du projet (MS-IAM).">
+                <constraints nullable="false" />
+            </column>
+            <column name="budget" type="decimal(21,2)">
+                <constraints nullable="true" />
+            </column>
+            <column name="progress" type="integer" remarks="Avancement pondéré par les durées espérées des jalons atteints, en %.">
+                <constraints nullable="false" />
+            </column>
+            <column name="start_date" type="date" remarks="Date de début D0. Écart CC corrigé : entrée de l&apos;algorithme 6.52 absente du diagramme de classes.">
+                <constraints nullable="false" />
+            </column>
+            <column name="target_date" type="date" remarks="Date cible Dc.">
+                <constraints nullable="false" />
+            </column>
+            <column name="expected_duration_days" type="decimal(21,2)" remarks="Durée espérée du projet T, en jours ouvrés (sortie de l&apos;algorithme 6.52).">
+                <constraints nullable="true" />
+            </column>
+            <column name="on_time_probability" type="decimal(21,2)" remarks="Probabilité Pr(T &lt;= Dc), entre 0 et 1 (formule 6.63).">
+                <constraints nullable="true" />
+            </column>
+            <column name="critical_path" type="${clobType}" remarks="Chemin critique : liste JSON ordonnée des identifiants de jalons.">
+                <constraints nullable="true" />
+            </column>
+            <column name="scheduled_at" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <!-- jhipster-needle-liquibase-add-column - JHipster will add columns here -->
+        </createTable>
+        <dropDefaultValue tableName="project" columnName="scheduled_at" columnDataType="${datetimeType}"/>
+    </changeSet>
+
+    <changeSet id="20260928134610-1-relations" author="jhipster">
+
+        <createTable tableName="rel_project__dependencies">
+            <column name="dependencies_id" type="${uuidType}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="project_id" type="${uuidType}">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addPrimaryKey columnNames="project_id, dependencies_id" tableName="rel_project__dependencies"/>
+    </changeSet>
+
+    <!-- jhipster-needle-liquibase-add-changeset - JHipster will add changesets here -->
+
+    <!--
+        Load sample data generated with Faker.js
+        - This data can be easily edited using a CSV editor (or even MS Excel) and
+          is located in the 'src/main/resources/config/liquibase/fake-data' directory
+        - By default this data is applied when running with the JHipster 'dev' profile.
+          This can be customized by adding or removing 'faker' in the 'spring.liquibase.contexts'
+          Spring Boot configuration key.
+    -->
+    <changeSet id="20260928134610-1-data" author="jhipster" context="faker">
+        <loadData
+                  file="config/liquibase/fake-data/project.csv"
+                  separator=";"
+                  tableName="project"
+                  usePreparedStatements="true">
+            <column name="id" type="${uuidType}"/>
+            <column name="title" type="string"/>
+            <column name="scope" type="string"/>
+            <column name="owner_id" type="${uuidType}"/>
+            <column name="budget" type="numeric"/>
+            <column name="progress" type="numeric"/>
+            <column name="start_date" type="date"/>
+            <column name="target_date" type="date"/>
+            <column name="expected_duration_days" type="numeric"/>
+            <column name="on_time_probability" type="numeric"/>
+            <column name="critical_path" type="clob"/>
+            <column name="scheduled_at" type="date"/>
+            <!-- jhipster-needle-liquibase-add-loadcolumn - JHipster (and/or extensions) can add load columns here -->
+        </loadData>
+    </changeSet>
+</databaseChangeLog>

@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+
+    <!--
+        Added the entity Meeting.
+    -->
+    <changeSet id="20260928135210-1" author="jhipster">
+        <createTable tableName="meeting" remarks="Réunion d&apos;une instance de gouvernance (comité de pilotage hebdomadaire,\nrevue mensuelle des risques, comité de mise en service, revue post-incident).">
+            <column name="id" type="${uuidType}">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="instance" type="varchar(150)" remarks="Instance, par exemple « comité de pilotage du DES ».">
+                <constraints nullable="false" />
+            </column>
+            <column name="scheduled_at" type="${datetimeType}">
+                <constraints nullable="false" />
+            </column>
+            <column name="held_at" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="agenda" type="${clobType}" remarks="Ordre du jour : liste JSON des points, dont « suivi des décisions ».">
+                <constraints nullable="true" />
+            </column>
+            <column name="minutes_ref" type="${uuidType}" remarks="Compte rendu (procès-verbal WORM 10 ans, RG-47) : identifiant dans MS-DOCUMENT.">
+                <constraints nullable="true" />
+            </column>
+            <column name="minutes_digest" type="varchar(64)" remarks="SHA256 du compte rendu déposé.">
+                <constraints nullable="true" />
+            </column>
+            <column name="state" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <!-- jhipster-needle-liquibase-add-column - JHipster will add columns here -->
+        </createTable>
+        <dropDefaultValue tableName="meeting" columnName="scheduled_at" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="meeting" columnName="held_at" columnDataType="${datetimeType}"/>
+    </changeSet>
+
+    <!-- jhipster-needle-liquibase-add-changeset - JHipster will add changesets here -->
+
+    <!--
+        Load sample data generated with Faker.js
+        - This data can be easily edited using a CSV editor (or even MS Excel) and
+          is located in the 'src/main/resources/config/liquibase/fake-data' directory
+        - By default this data is applied when running with the JHipster 'dev' profile.
+          This can be customized by adding or removing 'faker' in the 'spring.liquibase.contexts'
+          Spring Boot configuration key.
+    -->
+    <changeSet id="20260928135210-1-data" author="jhipster" context="faker">
+        <loadData
+                  file="config/liquibase/fake-data/meeting.csv"
+                  separator=";"
+                  tableName="meeting"
+                  usePreparedStatements="true">
+            <column name="id" type="${uuidType}"/>
+            <column name="instance" type="string"/>
+            <column name="scheduled_at" type="date"/>
+            <column name="held_at" type="date"/>
+            <column name="agenda" type="clob"/>
+            <column name="minutes_ref" type="${uuidType}"/>
+            <column name="minutes_digest" type="string"/>
+            <column name="state" type="string"/>
+            <!-- jhipster-needle-liquibase-add-loadcolumn - JHipster (and/or extensions) can add load columns here -->
+        </loadData>
+    </changeSet>
+</databaseChangeLog>

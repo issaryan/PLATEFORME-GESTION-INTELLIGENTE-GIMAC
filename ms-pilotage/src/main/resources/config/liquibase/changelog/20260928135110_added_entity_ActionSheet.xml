@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+
+    <!--
+        Added the entity ActionSheet.
+    -->
+    <changeSet id="20260928135110-1" author="jhipster">
+        <createTable tableName="action_sheet" remarks="Fiche d&apos;action conduite selon le cycle PDCA. Ses actions concrètes sont des\ntâches nominatives d&apos;origine FICHE_ACTION.">
+            <column name="id" type="${uuidType}">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="origin_kind" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="origin_reference" type="varchar(100)" remarks="Référence de l&apos;origine, par exemple RSK-2026-011 ou un code d&apos;indicateur.">
+                <constraints nullable="true" />
+            </column>
+            <column name="origin_service" type="varchar(50)">
+                <constraints nullable="true" />
+            </column>
+            <column name="phase" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="objective" type="varchar(2000)">
+                <constraints nullable="false" />
+            </column>
+            <column name="cause_analysis" type="varchar(4000)" remarks="Analyse des causes consignée en phase PLANIFIER.">
+                <constraints nullable="true" />
+            </column>
+            <column name="target_score" type="decimal(21,2)" remarks="Objectif Rcible ; par défaut &lt; 10 (borne haute de la zone modérée).">
+                <constraints nullable="true" />
+            </column>
+            <column name="owner_id" type="${uuidType}" remarks="Responsable : propriétaire du risque (MS-IAM).">
+                <constraints nullable="false" />
+            </column>
+            <column name="due_date" type="date">
+                <constraints nullable="false" />
+            </column>
+            <column name="observation_end_date" type="date" remarks="Fin de la période d&apos;observation de la phase VERIFIER (30 jours par défaut).">
+                <constraints nullable="true" />
+            </column>
+            <column name="result" type="varchar(4000)">
+                <constraints nullable="true" />
+            </column>
+            <column name="cycle" type="integer" remarks="Numéro du cycle PDCA, à partir de 1.">
+                <constraints nullable="false" />
+            </column>
+            <column name="procedure_document_ref" type="${uuidType}" remarks="Procédure pérennisée en phase AGIR : identifiant du document (MS-DOCUMENT).">
+                <constraints nullable="true" />
+            </column>
+            <column name="closed_at" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="risk_id" type="${uuidType}">
+                <constraints nullable="true" />
+            </column>
+            <!-- jhipster-needle-liquibase-add-column - JHipster will add columns here -->
+        </createTable>
+        <dropDefaultValue tableName="action_sheet" columnName="closed_at" columnDataType="${datetimeType}"/>
+    </changeSet>
+
+    <!-- jhipster-needle-liquibase-add-changeset - JHipster will add changesets here -->
+
+    <!--
+        Load sample data generated with Faker.js
+        - This data can be easily edited using a CSV editor (or even MS Excel) and
+          is located in the 'src/main/resources/config/liquibase/fake-data' directory
+        - By default this data is applied when running with the JHipster 'dev' profile.
+          This can be customized by adding or removing 'faker' in the 'spring.liquibase.contexts'
+          Spring Boot configuration key.
+    -->
+    <changeSet id="20260928135110-1-data" author="jhipster" context="faker">
+        <loadData
+                  file="config/liquibase/fake-data/action_sheet.csv"
+                  separator=";"
+                  tableName="action_sheet"
+                  usePreparedStatements="true">
+            <column name="id" type="${uuidType}"/>
+            <column name="origin_kind" type="string"/>
+            <column name="origin_reference" type="string"/>
+            <column name="origin_service" type="string"/>
+            <column name="phase" type="string"/>
+            <column name="objective" type="string"/>
+            <column name="cause_analysis" type="string"/>
+            <column name="target_score" type="numeric"/>
+            <column name="owner_id" type="${uuidType}"/>
+            <column name="due_date" type="date"/>
+            <column name="observation_end_date" type="date"/>
+            <column name="result" type="string"/>
+            <column name="cycle" type="numeric"/>
+            <column name="procedure_document_ref" type="${uuidType}"/>
+            <column name="closed_at" type="date"/>
+            <!-- jhipster-needle-liquibase-add-loadcolumn - JHipster (and/or extensions) can add load columns here -->
+        </loadData>
+    </changeSet>
+</databaseChangeLog>

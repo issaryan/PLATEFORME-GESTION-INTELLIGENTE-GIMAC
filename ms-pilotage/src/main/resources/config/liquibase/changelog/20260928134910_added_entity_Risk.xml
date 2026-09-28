@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+
+    <!--
+        Added the entity Risk.
+    -->
+    <changeSet id="20260928134910-1" author="jhipster">
+        <createTable tableName="risk" remarks="Risque coté sur la matrice 5x5 (algorithme 6.53).">
+            <column name="id" type="${uuidType}">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="scope" type="varchar(255)" remarks="Périmètre : projet ou actif du département.">
+                <constraints nullable="false" />
+            </column>
+            <column name="description" type="varchar(2000)">
+                <constraints nullable="false" />
+            </column>
+            <column name="probability" type="integer" remarks="Probabilité P, de 1 à 5.">
+                <constraints nullable="false" />
+            </column>
+            <column name="impact" type="integer" remarks="Impact I, de 1 à 5.">
+                <constraints nullable="false" />
+            </column>
+            <column name="controls" type="${clobType}" remarks="Contrôles en place : liste JSON {libellé, poids wk, efficacité ek}.">
+                <constraints nullable="true" />
+            </column>
+            <column name="control_coefficient" type="decimal(21,2)" remarks="Coefficient de maîtrise c, plafonné à 0,9 (formule 6.64).">
+                <constraints nullable="false" />
+            </column>
+            <column name="gross_score" type="integer" remarks="Risque brut Rb = P x I, de 1 à 25.">
+                <constraints nullable="false" />
+            </column>
+            <column name="residual_score" type="decimal(21,2)" remarks="Risque résiduel Rr = Rb x (1 - c).">
+                <constraints nullable="false" />
+            </column>
+            <column name="zone" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="owner_id" type="${uuidType}" remarks="Propriétaire du risque (MS-IAM).">
+                <constraints nullable="false" />
+            </column>
+            <column name="mitigation_plan" type="varchar(4000)">
+                <constraints nullable="true" />
+            </column>
+            <column name="reviewed_at" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="project_id" type="${uuidType}">
+                <constraints nullable="true" />
+            </column>
+            <!-- jhipster-needle-liquibase-add-column - JHipster will add columns here -->
+        </createTable>
+        <dropDefaultValue tableName="risk" columnName="reviewed_at" columnDataType="${datetimeType}"/>
+    </changeSet>
+
+    <!-- jhipster-needle-liquibase-add-changeset - JHipster will add changesets here -->
+
+    <!--
+        Load sample data generated with Faker.js
+        - This data can be easily edited using a CSV editor (or even MS Excel) and
+          is located in the 'src/main/resources/config/liquibase/fake-data' directory
+        - By default this data is applied when running with the JHipster 'dev' profile.
+          This can be customized by adding or removing 'faker' in the 'spring.liquibase.contexts'
+          Spring Boot configuration key.
+    -->
+    <changeSet id="20260928134910-1-data" author="jhipster" context="faker">
+        <loadData
+                  file="config/liquibase/fake-data/risk.csv"
+                  separator=";"
+                  tableName="risk"
+                  usePreparedStatements="true">
+            <column name="id" type="${uuidType}"/>
+            <column name="scope" type="string"/>
+            <column name="description" type="string"/>
+            <column name="probability" type="numeric"/>
+            <column name="impact" type="numeric"/>
+            <column name="controls" type="clob"/>
+            <column name="control_coefficient" type="numeric"/>
+            <column name="gross_score" type="numeric"/>
+            <column name="residual_score" type="numeric"/>
+            <column name="zone" type="string"/>
+            <column name="owner_id" type="${uuidType}"/>
+            <column name="mitigation_plan" type="string"/>
+            <column name="reviewed_at" type="date"/>
+            <!-- jhipster-needle-liquibase-add-loadcolumn - JHipster (and/or extensions) can add load columns here -->
+        </loadData>
+    </changeSet>
+</databaseChangeLog>

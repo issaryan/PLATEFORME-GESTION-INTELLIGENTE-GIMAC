@@ -1,0 +1,108 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134610"
+  },
+  "applications": ["pilotage"],
+  "clientRootFolder": "pilotage",
+  "databaseType": "sql",
+  "documentation": "Projet structurant du groupement, ordonnancé par PERT/CPM (algorithme 6.52).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "title",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "255"
+    },
+    {
+      "fieldName": "scope",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "2000"
+    },
+    {
+      "documentation": "Responsable du projet (MS-IAM).",
+      "fieldName": "ownerId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "budget",
+      "fieldType": "BigDecimal",
+      "fieldValidateRules": ["min"],
+      "fieldValidateRulesMin": "0"
+    },
+    {
+      "documentation": "Avancement pondéré par les durées espérées des jalons atteints, en %.",
+      "fieldName": "progress",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required", "min", "max"],
+      "fieldValidateRulesMax": "100",
+      "fieldValidateRulesMin": "0"
+    },
+    {
+      "documentation": "Date de début D0. Écart CC corrigé : entrée de l'algorithme 6.52 absente du diagramme de classes.",
+      "fieldName": "startDate",
+      "fieldType": "LocalDate",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Date cible Dc.",
+      "fieldName": "targetDate",
+      "fieldType": "LocalDate",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Durée espérée du projet T, en jours ouvrés (sortie de l'algorithme 6.52).",
+      "fieldName": "expectedDurationDays",
+      "fieldType": "BigDecimal",
+      "fieldValidateRules": ["min"],
+      "fieldValidateRulesMin": "0"
+    },
+    {
+      "documentation": "Probabilité Pr(T <= Dc), entre 0 et 1 (formule 6.63).",
+      "fieldName": "onTimeProbability",
+      "fieldType": "BigDecimal",
+      "fieldValidateRules": ["min", "max"],
+      "fieldValidateRulesMax": "1",
+      "fieldValidateRulesMin": "0"
+    },
+    {
+      "documentation": "Chemin critique : liste JSON ordonnée des identifiants de jalons.",
+      "fieldName": "criticalPath",
+      "fieldType": "TextBlob"
+    },
+    {
+      "fieldName": "scheduledAt",
+      "fieldType": "Instant"
+    }
+  ],
+  "microserviceName": "pilotage",
+  "name": "Project",
+  "pagination": "pagination",
+  "relationships": [
+    {
+      "documentation": "Dépendances entre projets structurants.",
+      "otherEntityField": "title",
+      "otherEntityName": "project",
+      "otherEntityRelationshipName": "dependents",
+      "relationshipName": "dependencies",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-many"
+    },
+    {
+      "otherEntityField": "title",
+      "otherEntityName": "project",
+      "otherEntityRelationshipName": "dependencies",
+      "relationshipName": "dependents",
+      "relationshipSide": "right",
+      "relationshipType": "many-to-many"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

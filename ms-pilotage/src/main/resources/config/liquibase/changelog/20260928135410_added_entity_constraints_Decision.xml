@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+    <!--
+        Added the constraints for entity Decision.
+    -->
+    <changeSet id="20260928135410-2" author="jhipster">
+
+        <addForeignKeyConstraint baseColumnNames="task_id"
+                                 baseTableName="decision"
+                                 constraintName="fk_decision__task_id"
+                                 referencedColumnNames="id"
+                                 referencedTableName="task"
+                                 />
+
+        <addForeignKeyConstraint baseColumnNames="meeting_id"
+                                 baseTableName="decision"
+                                 constraintName="fk_decision__meeting_id"
+                                 referencedColumnNames="id"
+                                 referencedTableName="meeting"
+                                 />
+
+        <addForeignKeyConstraint baseColumnNames="rectifies_id"
+                                 baseTableName="decision"
+                                 constraintName="fk_decision__rectifies_id"
+                                 referencedColumnNames="id"
+                                 referencedTableName="decision"
+                                 />
+    </changeSet>
+</databaseChangeLog>

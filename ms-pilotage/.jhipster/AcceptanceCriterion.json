@@ -1,0 +1,57 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134410"
+  },
+  "applications": ["pilotage"],
+  "clientRootFolder": "pilotage",
+  "databaseType": "sql",
+  "documentation": "Critère d'acceptation d'une tâche ; au moins un par tâche (CC §6.1.12.1).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "label",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "500"
+    },
+    {
+      "fieldName": "satisfied",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Une pièce justificative en GED est exigée pour satisfaire ce critère.",
+      "fieldName": "evidenceRequired",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Pièce justificative : identifiant du document dans MS-DOCUMENT.",
+      "fieldName": "evidenceRef",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "satisfiedAt",
+      "fieldType": "Instant"
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "pilotage",
+  "name": "AcceptanceCriterion",
+  "relationships": [
+    {
+      "otherEntityField": "title",
+      "otherEntityName": "task",
+      "relationshipName": "task",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

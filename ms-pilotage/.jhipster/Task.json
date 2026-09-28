@@ -1,0 +1,114 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134310"
+  },
+  "applications": ["pilotage"],
+  "clientRootFolder": "pilotage",
+  "databaseType": "sql",
+  "documentation": "Tâche nominative à responsable unique (RG-20). Son origine est une\\nréférence typée ; pour une origine externe (ticket, opération, indicateur),\\nseule la référence est conservée (BNF-04).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "title",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "255"
+    },
+    {
+      "documentation": "Responsable unique : identifiant du collaborateur (MS-IAM).",
+      "fieldName": "assigneeId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "dueDate",
+      "fieldType": "LocalDate",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "originKind",
+      "fieldType": "OriginKind",
+      "fieldTypeDocumentation": "Origine typée d'une tâche ou d'une fiche d'action (CC §6.1.12.3).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "TICKET,OPERATION,DECISION,FICHE_ACTION,RISQUE,INDICATEUR,INTERNE"
+    },
+    {
+      "documentation": "Référence de l'origine, par exemple TCK-000318 ou l'identifiant d'une décision.",
+      "fieldName": "originReference",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "100"
+    },
+    {
+      "documentation": "Service source de l'origine, par exemple MS-INCIDENT.",
+      "fieldName": "originService",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "50"
+    },
+    {
+      "fieldName": "startedAt",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "completedAt",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "state",
+      "fieldType": "TaskState",
+      "fieldTypeDocumentation": "État d'une tâche (algorithme 6.54).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "OUVERTE,EN_COURS,BLOQUEE,TERMINEE,ANNULEE"
+    },
+    {
+      "documentation": "Niveau de relance atteint, de 0 à 4 (formule 6.67).",
+      "fieldName": "reminderLevel",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required", "min", "max"],
+      "fieldValidateRulesMax": "4",
+      "fieldValidateRulesMin": "0"
+    },
+    {
+      "documentation": "Clôture proposée au responsable sur événement d'origine, jamais déplacée d'office.",
+      "fieldName": "closureProposedAt",
+      "fieldType": "Instant"
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "pilotage",
+  "name": "Task",
+  "pagination": "pagination",
+  "relationships": [
+    {
+      "otherEntityField": "name",
+      "otherEntityName": "board",
+      "relationshipName": "board",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    },
+    {
+      "otherEntityField": "code",
+      "otherEntityName": "boardColumn",
+      "relationshipName": "boardColumn",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    },
+    {
+      "documentation": "Fiche d'action dont la tâche est une action concrète (origine FICHE_ACTION).",
+      "otherEntityField": "objective",
+      "otherEntityName": "actionSheet",
+      "relationshipName": "actionSheet",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

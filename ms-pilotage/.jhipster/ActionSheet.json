@@ -1,0 +1,117 @@
+{
+  "annotations": {
+    "changelogDate": "20260928135110"
+  },
+  "applications": ["pilotage"],
+  "clientRootFolder": "pilotage",
+  "databaseType": "sql",
+  "documentation": "Fiche d'action conduite selon le cycle PDCA. Ses actions concrètes sont des\\ntâches nominatives d'origine FICHE_ACTION.",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "originKind",
+      "fieldType": "OriginKind",
+      "fieldTypeDocumentation": "Origine typée d'une tâche ou d'une fiche d'action (CC §6.1.12.3).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "TICKET,OPERATION,DECISION,FICHE_ACTION,RISQUE,INDICATEUR,INTERNE"
+    },
+    {
+      "documentation": "Référence de l'origine, par exemple RSK-2026-011 ou un code d'indicateur.",
+      "fieldName": "originReference",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "100"
+    },
+    {
+      "fieldName": "originService",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "50"
+    },
+    {
+      "fieldName": "phase",
+      "fieldType": "PdcaPhase",
+      "fieldTypeDocumentation": "Phase d'une fiche d'action selon le cycle PDCA (algorithme 6.53).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "PLANIFIER,REALISER,VERIFIER,AGIR,CLOSE"
+    },
+    {
+      "fieldName": "objective",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "2000"
+    },
+    {
+      "documentation": "Analyse des causes consignée en phase PLANIFIER.",
+      "fieldName": "causeAnalysis",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "4000"
+    },
+    {
+      "documentation": "Objectif Rcible ; par défaut < 10 (borne haute de la zone modérée).",
+      "fieldName": "targetScore",
+      "fieldType": "BigDecimal",
+      "fieldValidateRules": ["min", "max"],
+      "fieldValidateRulesMax": "25",
+      "fieldValidateRulesMin": "0"
+    },
+    {
+      "documentation": "Responsable : propriétaire du risque (MS-IAM).",
+      "fieldName": "ownerId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "dueDate",
+      "fieldType": "LocalDate",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Fin de la période d'observation de la phase VERIFIER (30 jours par défaut).",
+      "fieldName": "observationEndDate",
+      "fieldType": "LocalDate"
+    },
+    {
+      "fieldName": "result",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "4000"
+    },
+    {
+      "documentation": "Numéro du cycle PDCA, à partir de 1.",
+      "fieldName": "cycle",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required", "min"],
+      "fieldValidateRulesMin": "1"
+    },
+    {
+      "documentation": "Procédure pérennisée en phase AGIR : identifiant du document (MS-DOCUMENT).",
+      "fieldName": "procedureDocumentRef",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "closedAt",
+      "fieldType": "Instant"
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "pilotage",
+  "name": "ActionSheet",
+  "pagination": "pagination",
+  "relationships": [
+    {
+      "otherEntityField": "scope",
+      "otherEntityName": "risk",
+      "relationshipName": "risk",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

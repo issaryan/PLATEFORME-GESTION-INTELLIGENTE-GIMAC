@@ -1,0 +1,11 @@
+id;title;scope;owner_id;budget;progress;start_date;target_date;expected_duration_days;on_time_probability;critical_path;scheduled_at
+4eb19f2a-7a63-4ce1-96e6-4c758e0167ac;dring bof veiller;candide population du Québec membre titulaire;dd3fbb19-c1cb-4e44-9801-d83993a27d18;9810.9;3;2026-09-28;2026-09-28;32072.6;0.65;../fake-data/blob/hipster.txt;2026-09-27T22:50:34
+5349e6c4-79ee-4b52-bfae-a9ae8c29c818;passablement ouch;trop blablabla préoccuper;8553c3f0-a5c0-4f80-9cfd-bb4e48ebf1d1;4547.97;53;2026-09-28;2026-09-27;17929.08;0.76;../fake-data/blob/hipster.txt;2026-09-27T19:32:28
+b728d41d-f90d-4208-b147-80495c54bb94;affecter;hormis chef de cuisine à condition que;7c026787-73d4-463f-a274-250c635b1dcc;18470.75;61;2026-09-28;2026-09-27;8605.08;0.43;../fake-data/blob/hipster.txt;2026-09-27T13:50:23
+0e88c8a8-75fc-4d90-9155-fa2fb6f76a7b;ding clientèle;organiser en;1113862f-a034-4230-aa1d-2f16d45b2ef3;2160.05;2;2026-09-27;2026-09-27;2301.88;0.34;../fake-data/blob/hipster.txt;2026-09-28T04:20:14
+4a7d4db5-b4e6-45b9-b244-c3923ddc9f70;habituer guide;dès;be48b2f9-d452-4f18-b2c2-bbb76781c787;6611.98;71;2026-09-28;2026-09-28;8337.98;0.38;../fake-data/blob/hipster.txt;2026-09-28T04:17:57
+42d3dbbb-05ac-4a26-842b-a1d695aa9f00;hi autoriser;en vérité de peur de raisonner;c69dd60c-3c1f-4398-80ab-264d225acde6;25787.95;79;2026-09-27;2026-09-27;25999.91;0.41;../fake-data/blob/hipster.txt;2026-09-27T18:30:27
+544fcc2e-5976-486d-bbda-a798395667bb;tic-tac ronron aimable;en dehors de diplomate;b76dce33-c820-493d-9341-e0fa8ff5ab48;7624.64;58;2026-09-28;2026-09-28;32268.99;0.87;../fake-data/blob/hipster.txt;2026-09-28T03:05:56
+e9f5503b-b4ad-4b40-8f6b-dbbffeb845b9;renseigner derechef derrière;embarquer au-dessous de collègue;be0dbfda-9296-4a86-ace5-70911293df60;20537.92;11;2026-09-27;2026-09-28;9526.42;0.08;../fake-data/blob/hipster.txt;2026-09-27T17:12:54
+8cad12ca-4948-4da0-a90e-faf372787400;tandis que;avare jusqu’à ce que;abcc9d98-ee21-4154-bd70-b9f317f8634c;9937.72;60;2026-09-28;2026-09-28;13768.31;0.26;../fake-data/blob/hipster.txt;2026-09-28T09:20:06
+40ace764-981f-43b2-968b-f1710422a4e6;envers;prout;a553d02a-e932-463a-82b4-a17273a312c9;24332.31;25;2026-09-27;2026-09-27;31136.8;0.4;../fake-data/blob/hipster.txt;2026-09-28T07:41:18

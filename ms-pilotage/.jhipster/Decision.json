@@ -1,0 +1,89 @@
+{
+  "annotations": {
+    "changelogDate": "20260928135410"
+  },
+  "applications": ["pilotage"],
+  "clientRootFolder": "pilotage",
+  "databaseType": "sql",
+  "documentation": "Décision de réunion saisie de façon structurée (D-27) : texte, porteur\\nunique, échéance, critères. Elle engendre exactement une tâche (RG-51) et\\nn'est plus modifiable après le dépôt du compte rendu.",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "text",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "2000"
+    },
+    {
+      "documentation": "Porteur unique de la décision (MS-IAM), responsable de la tâche.",
+      "fieldName": "ownerId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "dueDate",
+      "fieldType": "LocalDate",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Critères d'acceptation de la tâche : liste JSON, au moins un.",
+      "fieldName": "acceptanceCriteria",
+      "fieldType": "TextBlob",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "state",
+      "fieldType": "DecisionState",
+      "fieldTypeDocumentation": "État d'une décision de réunion. Écart CC corrigé : le CC ne type pas ce\\ncycle ; l'algorithme 6.55 (étapes 2 et 3) distingue la décision saisie, la\\ndécision renvoyée au secrétaire de séance et la décision convertie en tâche.",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "SAISIE,RENVOYEE,CONVERTIE"
+    },
+    {
+      "documentation": "Motif du renvoi au secrétaire (porteur inactif, absent ou échéance invalide).",
+      "fieldName": "returnReason",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "500"
+    },
+    {
+      "fieldName": "convertedAt",
+      "fieldType": "Instant"
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "pilotage",
+  "name": "Decision",
+  "pagination": "pagination",
+  "relationships": [
+    {
+      "documentation": "Tâche engendrée par la décision (une et une seule, algorithme 6.55).",
+      "otherEntityField": "title",
+      "otherEntityName": "task",
+      "relationshipName": "task",
+      "relationshipSide": "left",
+      "relationshipType": "one-to-one"
+    },
+    {
+      "otherEntityField": "instance",
+      "otherEntityName": "meeting",
+      "relationshipName": "meeting",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    },
+    {
+      "documentation": "Décision rectifiée par une décision ultérieure (le compte rendu est scellé).",
+      "otherEntityField": "text",
+      "otherEntityName": "decision",
+      "relationshipName": "rectifies",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

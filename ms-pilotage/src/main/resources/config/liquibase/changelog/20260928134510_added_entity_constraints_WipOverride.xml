@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+    <!--
+        Added the constraints for entity WipOverride.
+    -->
+    <changeSet id="20260928134510-2" author="jhipster">
+
+        <addForeignKeyConstraint baseColumnNames="board_column_id"
+                                 baseTableName="wip_override"
+                                 constraintName="fk_wip_override__board_column_id"
+                                 referencedColumnNames="id"
+                                 referencedTableName="board_column"
+                                 />
+
+        <addForeignKeyConstraint baseColumnNames="task_id"
+                                 baseTableName="wip_override"
+                                 constraintName="fk_wip_override__task_id"
+                                 referencedColumnNames="id"
+                                 referencedTableName="task"
+                                 />
+    </changeSet>
+</databaseChangeLog>

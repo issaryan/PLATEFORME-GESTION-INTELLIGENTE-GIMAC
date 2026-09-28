@@ -1,0 +1,92 @@
+{
+  "annotations": {
+    "changelogDate": "20260928135010"
+  },
+  "applications": ["pilotage"],
+  "clientRootFolder": "pilotage",
+  "databaseType": "sql",
+  "documentation": "Cotation datée d'un risque (algorithme 6.53, étape 2), historisée sans\\nécrasement. Écart CC corrigé : l'historique est implicite dans le CC.",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "probability",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required", "min", "max"],
+      "fieldValidateRulesMax": "5",
+      "fieldValidateRulesMin": "1"
+    },
+    {
+      "fieldName": "impact",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required", "min", "max"],
+      "fieldValidateRulesMax": "5",
+      "fieldValidateRulesMin": "1"
+    },
+    {
+      "fieldName": "controlCoefficient",
+      "fieldType": "BigDecimal",
+      "fieldValidateRules": ["required", "min", "max"],
+      "fieldValidateRulesMax": "0.9",
+      "fieldValidateRulesMin": "0"
+    },
+    {
+      "fieldName": "grossScore",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required", "min", "max"],
+      "fieldValidateRulesMax": "25",
+      "fieldValidateRulesMin": "1"
+    },
+    {
+      "fieldName": "residualScore",
+      "fieldType": "BigDecimal",
+      "fieldValidateRules": ["required", "min", "max"],
+      "fieldValidateRulesMax": "25",
+      "fieldValidateRulesMin": "0"
+    },
+    {
+      "fieldName": "previousZone",
+      "fieldType": "RiskZone",
+      "fieldTypeDocumentation": "Zone de la matrice 5x5, sur le risque résiduel (formule 6.65).",
+      "fieldValues": "FAIBLE,MODERE,ELEVE,CRITIQUE"
+    },
+    {
+      "fieldName": "zone",
+      "fieldType": "RiskZone",
+      "fieldTypeDocumentation": "Zone de la matrice 5x5, sur le risque résiduel (formule 6.65).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "FAIBLE,MODERE,ELEVE,CRITIQUE"
+    },
+    {
+      "documentation": "Auteur de la cotation (MS-IAM).",
+      "fieldName": "assessorId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "assessedAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "pilotage",
+  "name": "RiskAssessment",
+  "pagination": "pagination",
+  "readOnly": true,
+  "relationships": [
+    {
+      "otherEntityField": "scope",
+      "otherEntityName": "risk",
+      "relationshipName": "risk",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

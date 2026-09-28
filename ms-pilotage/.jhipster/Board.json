@@ -1,0 +1,42 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134110"
+  },
+  "applications": ["pilotage"],
+  "clientRootFolder": "pilotage",
+  "databaseType": "sql",
+  "documentation": "Tableau Kanban d'un service ou pôle du DES (exploitation, supervision,\\nhomologation, conformité).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Code du service ou pôle propriétaire, par exemple HOMOLOGATION.",
+      "fieldName": "serviceCode",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "30",
+      "fieldValidateRulesPattern": "^[A-Z_]+$"
+    },
+    {
+      "fieldName": "name",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "150"
+    },
+    {
+      "documentation": "Version incrémentée à chaque déplacement (algorithme 6.54, étape 5).",
+      "fieldName": "version",
+      "fieldType": "Long",
+      "fieldValidateRules": ["required", "min"],
+      "fieldValidateRulesMin": "0"
+    }
+  ],
+  "microserviceName": "pilotage",
+  "name": "Board",
+  "relationships": [],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

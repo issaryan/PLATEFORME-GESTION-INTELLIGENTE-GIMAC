@@ -1,0 +1,44 @@
+{
+  "annotations": {
+    "changelogDate": "20260928135310"
+  },
+  "applications": ["pilotage"],
+  "clientRootFolder": "pilotage",
+  "databaseType": "sql",
+  "documentation": "Convocation et présence d'un participant. Écart CC corrigé : les attributs\\nparticipants (List<UUID>) et attendance (Map<UUID, Boolean>) du CC sont\\nnormalisés en une entité.",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Participant convoqué (MS-IAM).",
+      "fieldName": "participantId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "present",
+      "fieldType": "Boolean"
+    },
+    {
+      "fieldName": "recordedAt",
+      "fieldType": "Instant"
+    }
+  ],
+  "microserviceName": "pilotage",
+  "name": "MeetingAttendance",
+  "relationships": [
+    {
+      "otherEntityField": "instance",
+      "otherEntityName": "meeting",
+      "relationshipName": "meeting",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}
