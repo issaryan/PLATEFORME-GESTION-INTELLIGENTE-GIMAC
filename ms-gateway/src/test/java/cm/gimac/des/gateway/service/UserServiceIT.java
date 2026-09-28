@@ -1,0 +1,167 @@
+package cm.gimac.des.gateway.service;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import cm.gimac.des.gateway.IntegrationTest;
+import cm.gimac.des.gateway.config.Constants;
+import cm.gimac.des.gateway.domain.User;
+import cm.gimac.des.gateway.repository.UserRepository;
+import cm.gimac.des.gateway.security.AuthoritiesConstants;
+import cm.gimac.des.gateway.service.dto.AdminUserDTO;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
+import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
+import org.springframework.security.oauth2.core.user.OAuth2User;
+
+/**
+ * Integration tests for {@link UserService}.
+ */
+@IntegrationTest
+class UserServiceIT {
+
+    private static final String DEFAULT_LOGIN = "johndoe_service";
+
+    private static final String DEFAULT_USERNAME = "TEST";
+
+    private static final String DEFAULT_EMAIL = "johndoe_service@localhost";
+
+    private static final String DEFAULT_FIRSTNAME = "john";
+
+    private static final String DEFAULT_LASTNAME = "doe";
+
+    private static final String DEFAULT_IMAGEURL = "http://placehold.it/50x50";
+
+    private static final String DEFAULT_LANGKEY = "dummy";
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private UserService userService;
+
+    private User user;
+
+    private Map<String, Object> userDetails;
+
+    private Long numberOfUsers;
+
+    @BeforeEach
+    void init() {
+        numberOfUsers = userRepository.count().block();
+        user = new User();
+        user.setLogin(DEFAULT_LOGIN);
+        user.setActivated(true);
+        user.setEmail(DEFAULT_EMAIL);
+        user.setFirstName(DEFAULT_FIRSTNAME);
+        user.setLastName(DEFAULT_LASTNAME);
+        user.setImageUrl(DEFAULT_IMAGEURL);
+        user.setLangKey(DEFAULT_LANGKEY);
+        user.setCreatedBy(Constants.SYSTEM);
+
+        userDetails = new HashMap<>();
+        userDetails.put("sub", DEFAULT_LOGIN);
+        userDetails.put("email", DEFAULT_EMAIL);
+        userDetails.put("given_name", DEFAULT_FIRSTNAME);
+        userDetails.put("family_name", DEFAULT_LASTNAME);
+        userDetails.put("picture", DEFAULT_IMAGEURL);
+    }
+
+    @AfterEach
+    void cleanupAndCheck() {
+        // The synced user gets the `sub` or the lower-cased `preferred_username` of the token as login.
+        for (String login : List.of(DEFAULT_LOGIN, DEFAULT_USERNAME.toLowerCase())) {
+            userRepository.findOneByLogin(login).flatMap(userRepository::delete).block();
+        }
+        assertThat(userRepository.count().block()).isEqualTo(numberOfUsers);
+        numberOfUsers = null;
+    }
+
+    @Test
+    void testDefaultUserDetails() {
+        OAuth2AuthenticationToken authentication = createMockOAuth2AuthenticationToken(userDetails);
+        AdminUserDTO userDTO = userService.getUserFromAuthentication(authentication).block();
+
+        assertThat(userDTO.getLogin()).isEqualTo(DEFAULT_LOGIN);
+        assertThat(userDTO.getFirstName()).isEqualTo(DEFAULT_FIRSTNAME);
+        assertThat(userDTO.getLastName()).isEqualTo(DEFAULT_LASTNAME);
+        assertThat(userDTO.getEmail()).isEqualTo(DEFAULT_EMAIL);
+        assertThat(userDTO.isActivated()).isTrue();
+        assertThat(userDTO.getLangKey()).isEqualTo(Constants.DEFAULT_LANGUAGE);
+        assertThat(userDTO.getImageUrl()).isEqualTo(DEFAULT_IMAGEURL);
+        assertThat(userDTO.getAuthorities()).contains(AuthoritiesConstants.ANONYMOUS);
+    }
+
+    @Test
+    void testUserDetailsWithUsername() {
+        userDetails.put("preferred_username", DEFAULT_USERNAME);
+
+        OAuth2AuthenticationToken authentication = createMockOAuth2AuthenticationToken(userDetails);
+        AdminUserDTO userDTO = userService.getUserFromAuthentication(authentication).block();
+
+        assertThat(userDTO.getLogin()).isEqualTo("test");
+    }
+
+    @Test
+    void testUserDetailsWithLangKey() {
+        userDetails.put("langKey", DEFAULT_LANGKEY);
+        userDetails.put("locale", "en-US");
+
+        OAuth2AuthenticationToken authentication = createMockOAuth2AuthenticationToken(userDetails);
+        AdminUserDTO userDTO = userService.getUserFromAuthentication(authentication).block();
+
+        assertThat(userDTO.getLangKey()).isEqualTo(DEFAULT_LANGKEY);
+    }
+
+    @Test
+    void testUserDetailsWithLocale() {
+        userDetails.put("locale", "it-IT");
+
+        OAuth2AuthenticationToken authentication = createMockOAuth2AuthenticationToken(userDetails);
+        AdminUserDTO userDTO = userService.getUserFromAuthentication(authentication).block();
+
+        assertThat(userDTO.getLangKey()).isEqualTo("it");
+    }
+
+    @Test
+    void testUserDetailsWithUSLocaleUnderscore() {
+        userDetails.put("locale", "en_US");
+
+        OAuth2AuthenticationToken authentication = createMockOAuth2AuthenticationToken(userDetails);
+        AdminUserDTO userDTO = userService.getUserFromAuthentication(authentication).block();
+
+        assertThat(userDTO.getLangKey()).isEqualTo("en");
+    }
+
+    @Test
+    void testUserDetailsWithUSLocaleDash() {
+        userDetails.put("locale", "en-US");
+
+        OAuth2AuthenticationToken authentication = createMockOAuth2AuthenticationToken(userDetails);
+        AdminUserDTO userDTO = userService.getUserFromAuthentication(authentication).block();
+
+        assertThat(userDTO.getLangKey()).isEqualTo("en");
+    }
+
+    private OAuth2AuthenticationToken createMockOAuth2AuthenticationToken(Map<String, Object> userDetails) {
+        Collection<GrantedAuthority> authorities = List.of(new SimpleGrantedAuthority(AuthoritiesConstants.ANONYMOUS));
+        UsernamePasswordAuthenticationToken usernamePasswordAuthenticationToken = new UsernamePasswordAuthenticationToken(
+            "anonymous",
+            "anonymous",
+            authorities
+        );
+        usernamePasswordAuthenticationToken.setDetails(userDetails);
+        OAuth2User user = new DefaultOAuth2User(authorities, userDetails, "sub");
+
+        return new OAuth2AuthenticationToken(user, authorities, "oidc");
+    }
+}

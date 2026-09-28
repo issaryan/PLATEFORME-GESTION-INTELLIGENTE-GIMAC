@@ -1,0 +1,64 @@
+{
+  "annotations": {
+    "changelogDate": "20231222195034"
+  },
+  "applications": ["gateway"],
+  "databaseType": "sql",
+  "documentation": "Route exposée par une couche vers un seul service cible (CC §6.1.1.3, GW-03).\\nLes permissions requises servent à réduire la portée du jeton interne (RFC 8693).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "documentation": "Motif de chemin, par exemple /api/participants/**.",
+      "fieldName": "path",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "255"
+    },
+    {
+      "documentation": "Service cible, par exemple ms-participant.",
+      "fieldName": "targetService",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "100"
+    },
+    {
+      "documentation": "Permissions requises, séparées par des virgules.",
+      "fieldName": "requiredPermissions",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "1024"
+    },
+    {
+      "documentation": "Quota propre à la route ; il prime sur celui de la couche.",
+      "fieldName": "rateLimitPerMinute",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["min"],
+      "fieldValidateRulesMin": "1"
+    },
+    {
+      "documentation": "Active l'inspection WAF et le masquage des numéros de carte sur le corps.",
+      "fieldName": "inspectBody",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "active",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    }
+  ],
+  "name": "Route",
+  "pagination": "pagination",
+  "relationships": [
+    {
+      "otherEntityField": "name",
+      "otherEntityName": "presentationLayer",
+      "relationshipName": "layer",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

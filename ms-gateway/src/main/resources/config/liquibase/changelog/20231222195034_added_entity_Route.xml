@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+
+    <!--
+        Added the entity Route.
+    -->
+    <changeSet id="20231222195034-1" author="jhipster">
+        <createTable tableName="route" remarks="Route exposée par une couche vers un seul service cible (CC §6.1.1.3, GW-03).\nLes permissions requises servent à réduire la portée du jeton interne (RFC 8693).">
+            <column name="id" type="bigint" autoIncrement="true" startWith="1500">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="path" type="varchar(255)" remarks="Motif de chemin, par exemple /api/participants/**.">
+                <constraints nullable="false" />
+            </column>
+            <column name="target_service" type="varchar(100)" remarks="Service cible, par exemple ms-participant.">
+                <constraints nullable="false" />
+            </column>
+            <column name="required_permissions" type="varchar(1024)" remarks="Permissions requises, séparées par des virgules.">
+                <constraints nullable="false" />
+            </column>
+            <column name="rate_limit_per_minute" type="integer" remarks="Quota propre à la route ; il prime sur celui de la couche.">
+                <constraints nullable="true" />
+            </column>
+            <column name="inspect_body" type="boolean" remarks="Active l&apos;inspection WAF et le masquage des numéros de carte sur le corps.">
+                <constraints nullable="false" />
+            </column>
+            <column name="active" type="boolean">
+                <constraints nullable="false" />
+            </column>
+            <column name="layer_id" type="bigint">
+                <constraints nullable="false" />
+            </column>
+            <!-- jhipster-needle-liquibase-add-column - JHipster will add columns here -->
+        </createTable>
+    </changeSet>
+
+    <!-- jhipster-needle-liquibase-add-changeset - JHipster will add changesets here -->
+
+    <!--
+        Load sample data generated with Faker.js
+        - This data can be easily edited using a CSV editor (or even MS Excel) and
+          is located in the 'src/main/resources/config/liquibase/fake-data' directory
+        - By default this data is applied when running with the JHipster 'dev' profile.
+          This can be customized by adding or removing 'faker' in the 'spring.liquibase.contexts'
+          Spring Boot configuration key.
+    -->
+    <changeSet id="20231222195034-1-data" author="jhipster" context="faker">
+        <loadData
+                  file="../fake-data/route.csv"
+                  relativeToChangelogFile="true"
+                  separator=";"
+                  tableName="route"
+                  usePreparedStatements="true">
+            <column name="id" type="numeric"/>
+            <column name="path" type="string"/>
+            <column name="target_service" type="string"/>
+            <column name="required_permissions" type="string"/>
+            <column name="rate_limit_per_minute" type="numeric"/>
+            <column name="inspect_body" type="boolean"/>
+            <column name="active" type="boolean"/>
+            <column name="layer_id" type="numeric"/>
+            <!-- jhipster-needle-liquibase-add-loadcolumn - JHipster (and/or extensions) can add load columns here -->
+        </loadData>
+    </changeSet>
+</databaseChangeLog>

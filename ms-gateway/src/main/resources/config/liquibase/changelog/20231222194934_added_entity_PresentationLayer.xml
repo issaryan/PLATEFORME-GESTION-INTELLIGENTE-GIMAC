@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+
+    <!--
+        Added the entity PresentationLayer.
+    -->
+    <changeSet id="20231222194934-1" author="jhipster">
+        <createTable tableName="presentation_layer" remarks="Couche de présentation connue de la passerelle (CC §6.1.1.3).\nTrois enregistrements attendus : département, portail, console.">
+            <column name="id" type="bigint" autoIncrement="true" startWith="1500">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="name" type="varchar(50)" remarks="Code unique de la couche : DEPARTEMENT, PORTAIL ou CONSOLE.">
+                <constraints nullable="false" unique="true" uniqueConstraintName="ux_presentation_layer__name" />
+            </column>
+            <column name="zone" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="authentication_requirement" type="varchar(255)" remarks="Exigence d&apos;authentification, par exemple &quot;OIDC+FIDO2+mTLS&quot;.">
+                <constraints nullable="false" />
+            </column>
+            <column name="bff_prefix" type="varchar(100)" remarks="Préfixe des routes BFF de la couche, par exemple /bff/des.">
+                <constraints nullable="false" unique="true" uniqueConstraintName="ux_presentation_layer__bff_prefix" />
+            </column>
+            <column name="default_rate_limit_per_minute" type="integer" remarks="Quota par défaut en requêtes par minute : 500, 100 ou 1000 (algorithme 6.1).">
+                <constraints nullable="false" />
+            </column>
+            <!-- jhipster-needle-liquibase-add-column - JHipster will add columns here -->
+        </createTable>
+    </changeSet>
+
+    <!-- jhipster-needle-liquibase-add-changeset - JHipster will add changesets here -->
+
+    <!--
+        Load sample data generated with Faker.js
+        - This data can be easily edited using a CSV editor (or even MS Excel) and
+          is located in the 'src/main/resources/config/liquibase/fake-data' directory
+        - By default this data is applied when running with the JHipster 'dev' profile.
+          This can be customized by adding or removing 'faker' in the 'spring.liquibase.contexts'
+          Spring Boot configuration key.
+    -->
+    <changeSet id="20231222194934-1-data" author="jhipster" context="faker">
+        <loadData
+                  file="../fake-data/presentation_layer.csv"
+                  relativeToChangelogFile="true"
+                  separator=";"
+                  tableName="presentation_layer"
+                  usePreparedStatements="true">
+            <column name="id" type="numeric"/>
+            <column name="name" type="string"/>
+            <column name="zone" type="string"/>
+            <column name="authentication_requirement" type="string"/>
+            <column name="bff_prefix" type="string"/>
+            <column name="default_rate_limit_per_minute" type="numeric"/>
+            <!-- jhipster-needle-liquibase-add-loadcolumn - JHipster (and/or extensions) can add load columns here -->
+        </loadData>
+    </changeSet>
+</databaseChangeLog>

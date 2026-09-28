@@ -1,0 +1,32 @@
+{
+  "generator-jhipster": {
+    "applicationType": "gateway",
+    "authenticationType": "oauth2",
+    "baseName": "gateway",
+    "buildTool": "maven",
+    "cacheProvider": "no",
+    "creationTimestamp": 1703274514559,
+    "databaseType": "sql",
+    "devDatabaseType": "postgresql",
+    "enableSwaggerCodegen": false,
+    "enableTranslation": true,
+    "entities": ["PresentationLayer", "Route"],
+    "jhipsterVersion": "9.4.0",
+    "jwtSecretKey": "ZTc0NmIwMThmMGNhOWI1YzZhOTk3NTZjYWNjMWE1MzIyNmUyZjRlOTM5MGM2ODhkMmNiM2JlNTlkMGY2ZDg3NTNmZjcxYTI5MzI0MmQzMjY1Mzc2ZGIyZTliMDZmMWI2ZTY1NTY1Zjc1NmI0YzQ5YjAzNDNlYzI2ZjVkMDA4YTA=",
+    "languages": ["fr", "en"],
+    "lastLiquibaseTimestamp": 1703274634000,
+    "messageBroker": "kafka",
+    "monorepository": true,
+    "nativeLanguage": "fr",
+    "packageName": "cm.gimac.des.gateway",
+    "prodDatabaseType": "postgresql",
+    "reactive": true,
+    "searchEngine": "no",
+    "serverPort": "8080",
+    "serviceDiscoveryType": "no",
+    "skipClient": true,
+    "skipCommitHook": true,
+    "skipUserManagement": true,
+    "testFrameworks": []
+  }
+}
