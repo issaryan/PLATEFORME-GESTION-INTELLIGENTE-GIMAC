@@ -10,8 +10,11 @@
  * Périmètre de la génération :
  *   - Squelette Spring Cloud Gateway réactif, fédéré en OIDC (Keycloak) avec
  *     session côté serveur et cookie HttpOnly : c'est le modèle BFF (RG-58).
- *   - Frontal React de l'application du département (BF-26), en français et
- *     en anglais (BNF-18).
+ *   - Serveur seul (skipClient) : aucun frontal n'est hébergé par la passerelle.
+ *     Les trois couches de présentation (département, portail, console) sont
+ *     des applications distinctes. Elles sont servies sous la même origine par
+ *     les mandataires inverses et n'appellent que les préfixes BFF de la passerelle.
+ *   - Messages et erreurs serveur en français et en anglais (BNF-18).
  *   - Deux entités administrables depuis la console : PresentationLayer et Route
  *     (récit GW-03).
  *
@@ -41,8 +44,7 @@ application {
     messageBroker kafka
     searchEngine no
     buildTool maven
-    clientFramework react
-    clientTheme none
+    skipClient true
     enableTranslation true
     nativeLanguage fr
     languages [fr, en]
