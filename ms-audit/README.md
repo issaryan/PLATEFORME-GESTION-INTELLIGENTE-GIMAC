@@ -23,6 +23,18 @@ Squelette généré en JHipster 9.4.0, version cible. Code JHipster brut : domai
 - Avec toute la plateforme : `infra/docker-compose/gimac-dev.sh demarrer` à la racine du dépôt.
 - Image de conteneur (Jib, sans Dockerfile, D-48) : `./mvnw -ntp -Pprod verify jib:dockerBuild`.
 
+## Code repris du projet afriland (D-52)
+
+Copié et adapté (paquet `cm.gimac.des.audit`) ; chaque bean est inactif tant que sa propriété ne vaut pas `true`.
+
+| Classe | Origine dans afriland | Propriété d'activation |
+|---|---|---|
+| `config/DecodeurJwtInterne` | `audit-service/src/main/java/com/afriland/audit/config/DecodeurJwtInterne.java` | sans bean à activer |
+| `config/KafkaErrorHandlingConfiguration` | `audit-service/src/main/java/com/afriland/audit/config/KafkaErrorHandlingConfiguration.java` | `gimac.kafka.rebut.actif` |
+| `adapter/outbound/HsmSignatureAdapter` | `audit-service/src/main/java/com/afriland/audit/adapter/outbound/HsmSignatureAdapter.java` | `gimac.audit.signature.actif` |
+| `domain/JsonCanonicalizer` | `audit-service/src/main/java/com/afriland/audit/domain/JsonCanonicalizer.java` | sans bean à activer |
+| `infrastructure/logging/PiiMaskingLogConverter` | `notifications-service/src/main/java/com/afriland/notifications/infrastructure/logging/PiiMaskingLogConverter.java` | sans bean à activer |
+
 ## Journal des mises à jour
 
 | Date | Commit | Modification |
@@ -30,6 +42,7 @@ Squelette généré en JHipster 9.4.0, version cible. Code JHipster brut : domai
 | 2026-09-28 | 401e417 | Génération JHipster 9.4.0 du squelette depuis le JDL ; compilation Maven vérifiée. |
 | 2026-09-28 | 9f2250a, c0b91ee | Intégration à `infra/docker-compose` et `infra/kubernetes` générés par JHipster ; cache Valkey (D-25). |
 | 2026-09-28 | — | Ajout de cette section. |
+| 2026-09-28 | — | Reprise de 5 classes du projet afriland (D-52) ; compilation vérifiée. |
 <!-- GIMAC:FIN -->
 
 # audit

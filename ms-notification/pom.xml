@@ -323,6 +323,21 @@
             <artifactId>testcontainers</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- Reprise afriland : canaux SMS (numéros E.164) et envoi poussé par WebSocket. -->
+        <dependency>
+            <groupId>com.googlecode.libphonenumber</groupId>
+            <artifactId>libphonenumber</artifactId>
+            <version>9.0.32</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-websocket</artifactId>
+        </dependency>
+        <!-- Client HTTP WebClient de l'adaptateur SMS (l'application reste servlet). -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+        </dependency>
     </dependencies>
 
     <build>

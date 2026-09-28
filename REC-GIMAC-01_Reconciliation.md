@@ -8,7 +8,7 @@
 | Établi par | KOAGNE ISSA RYAN, Ingénieur en Informatique et Systèmes d'information |
 | Statut | Référentiel d'implémentation. Décisions D-01 à D-31, y compris les propositions [P], **acceptées par KOAGNE ISSA RYAN le 28/09/2026** ; validation formelle du Product Owner (chef du DES) attendue en revue d'itération |
 | Rôle | Base unique à partir de laquelle le code est écrit ; prime sur les quatre documents pour les points qu'elle tranche |
-| Révision | **v1.1 (28/09/2026)** : ajout des décisions D-32 à D-46 (§4.4), complétées par D-47 à D-51, pour réconcilier **CP-GIMAC-01 v2.0**, qui remplace CP v1.0, et fixer l'infrastructure et le frontend ; aucune disposition de la v1.0 n'est retirée |
+| Révision | **v1.1 (28/09/2026)** : ajout des décisions D-32 à D-46 (§4.4), complétées par D-47 à D-52, pour réconcilier **CP-GIMAC-01 v2.0**, qui remplace CP v1.0, et fixer l'infrastructure et le frontend ; aucune disposition de la v1.0 n'est retirée |
 
 **Légende des décisions**
 - **[R]** : réconciliation déduite des documents eux-mêmes, par application de la règle de préséance (§0).
@@ -428,6 +428,11 @@ Décisions ajoutées le 28/09/2026 à la réception du carnet de produit v2.0 (3
   - **Configuration nginx** : politique de sécurité du contenu stricte (`default-src 'self'`, `frame-ancestors 'none'`), `nosniff`, `no-referrer`, `index.html` jamais mis en cache ; `/api`, `/oauth2` et `/login` relayés vers MS-GATEWAY (BFF, RG-58), avec une résolution DNS différée pour que la couche démarre même sans passerelle.
   - **Docker Compose** : services `frontend-departement`, `frontend-portail` et `frontend-console` dans `docker-compose.gimac.yml`, ports 4200, 4201 et 4202 réglables par `.env`.
   - **Kubernetes** : `infra/kubernetes-gimac/frontend.yaml`, deux répliques par couche, profil `restricted`, segment `presentation` qui ne reçoit que le contrôleur d'entrée et ne joint que la passerelle ; l'étiquette `gimac.cm/zone` rappelle la zone d'origine (DMZ pour le portail, applicative pour l'application du département, administration pour la console).
+- **D-52 [P] Reprise de code du projet afriland.** Le code du projet afriland (plateforme documentaire de KOAGNE ISSA RYAN, réalisée à titre personnel, même socle JHipster 8.11, Java 21, Kafka) est réutilisable librement ; la reprise est décidée le 28/09/2026 pour accélérer le sprint 0 et les premières itérations.
+  - **Règles de reprise** : paquets renommés en `cm.gimac.des.<service>`, références à afriland retirées, et tout bean repris conditionné par une propriété `gimac.*.actif` à `false` par défaut ; le récit qui l'utilise l'active et le teste. Le code repris est un point de départ soumis à la revue et à la définition de fini du §6, jamais une livraison.
+  - **Repris** : passerelle (jeton fantôme et introspection, jeton interne RS256, clés, mTLS sortant, limitation de débit sur Valkey, publication des décisions, propriétés typées) ; dans chaque service, validation du jeton interne, rejeu et file de rebut Kafka, masquage des numéros de carte et données personnelles dans les journaux ; MS-NOTIFICATION (ports et adaptateurs courriel et SMS, résilience, modèles Thymeleaf, WebSocket) ; MS-DOCUMENT (corrélation, fusion PDF) ; MS-AUDIT (JSON canonique RFC 8785, adaptateur de signature).
+  - **Non repris** : le service Merkle d'afriland (CRUD sans RFC 9162), les adaptateurs MinIO et OpenTimestamps (contraires à D-50 et à l'horodatage RFC 3161), les composants liés aux entités métier d'afriland (quotas, journaux de requêtes, traces d'audit, règles de masquage). Le relais d'outbox est repris dans la bibliothèque partagée de SOC-05.
+  - **Écarts à combler avant activation** : le jeton interne doit porter la revendication `cnf` / `x5t#S256` (RFC 8705, GW-05) ; les routes propres à afriland codées dans le filtre du jeton fantôme sont remplacées par les routes déclarées de GIMAC (GW-19) ; le masquage des journaux est complété par le contrôle de Luhn (6+4, RG-52).
 
 ---
 

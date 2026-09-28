@@ -23,6 +23,23 @@ Squelette généré en JHipster 9.4.0, version cible. Code JHipster brut : domai
 - Avec toute la plateforme : `infra/docker-compose/gimac-dev.sh demarrer` à la racine du dépôt.
 - Image de conteneur (Jib, sans Dockerfile, D-48) : `./mvnw -ntp -Pprod verify jib:dockerBuild`.
 
+## Code repris du projet afriland (D-52)
+
+Copié et adapté (paquet `cm.gimac.des.gateway`) ; chaque bean est inactif tant que sa propriété ne vaut pas `true`.
+
+| Classe | Origine dans afriland | Propriété d'activation |
+|---|---|---|
+| `security/PhantomTokenAuthenticationFilter` | `api-gateway/src/main/java/com/afriland/gateway/security/PhantomTokenAuthenticationFilter.java` | `gimac.securite.jeton-fantome.actif` |
+| `security/EmetteurJwtInterne` | `api-gateway/src/main/java/com/afriland/gateway/security/EmetteurJwtInterne.java` | `gimac.securite.jeton-fantome.actif` |
+| `security/KeycloakIntrospectionClient` | `api-gateway/src/main/java/com/afriland/gateway/security/KeycloakIntrospectionClient.java` | `gimac.securite.jeton-fantome.actif` |
+| `security/RsaKeyConfig` | `api-gateway/src/main/java/com/afriland/gateway/security/RsaKeyConfig.java` | `gimac.securite.jeton-fantome.actif` |
+| `security/RsaKeyLoader` | `api-gateway/src/main/java/com/afriland/gateway/security/RsaKeyLoader.java` | sans bean à activer |
+| `config/GatewayMtlsCustomizer` | `api-gateway/src/main/java/com/afriland/gateway/config/GatewayMtlsCustomizer.java` | `gimac.securite.mtls.actif` |
+| `ratelimit/TokenBucketRateLimiter` | `api-gateway/src/main/java/com/afriland/gateway/ratelimit/TokenBucketRateLimiter.java` | `gimac.passerelle.limitation-debit.actif` |
+| `audit/GatewayAuditEventPublisher` | `api-gateway/src/main/java/com/afriland/gateway/audit/GatewayAuditEventPublisher.java` | `gimac.passerelle.journal-decisions.actif` |
+| `config/ApplicationProperties` | `api-gateway/src/main/java/com/afriland/gateway/config/ApplicationProperties.java` | sans bean à activer |
+| `infrastructure/logging/PiiMaskingLogConverter` | `notifications-service/src/main/java/com/afriland/notifications/infrastructure/logging/PiiMaskingLogConverter.java` | sans bean à activer |
+
 ## Journal des mises à jour
 
 | Date | Commit | Modification |
@@ -30,6 +47,7 @@ Squelette généré en JHipster 9.4.0, version cible. Code JHipster brut : domai
 | 2026-09-28 | ed4c1d5 | Génération JHipster 9.4.0 du squelette depuis le JDL ; compilation Maven vérifiée. |
 | 2026-09-28 | 9f2250a, c0b91ee | Intégration à `infra/docker-compose` et `infra/kubernetes` générés par JHipster ; cache Valkey (D-25). |
 | 2026-09-28 | — | Ajout de cette section. |
+| 2026-09-28 | — | Reprise de 10 classes du projet afriland (D-52) ; compilation vérifiée. |
 <!-- GIMAC:FIN -->
 
 # gateway

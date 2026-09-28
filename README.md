@@ -10,7 +10,7 @@ Plateforme du Département Exploitation et Supervision (DES) du GIMAC, groupemen
 | `CA-GIMAC-01_v1.1` | Cahier d'analyse : acteurs, cas d'utilisation, règles de gestion RG |
 | `CC-GIMAC-01_v1.1` | Cahier de conception : 14 microservices, événements, algorithmes, thème |
 | `CP-GIMAC-01_v2.0` | Carnet de produit : 313 récits, 17 épopées, feuille de route S0 à S12 |
-| `REC-GIMAC-01_Reconciliation.md` | **Référentiel d'implémentation** : décisions D-01 à D-51, prime sur les quatre cahiers pour les points qu'il tranche |
+| `REC-GIMAC-01_Reconciliation.md` | **Référentiel d'implémentation** : décisions D-01 à D-52, prime sur les quatre cahiers pour les points qu'il tranche |
 
 ## Organisation du dépôt
 
@@ -52,6 +52,7 @@ Les secrets locaux sont générés dans `infra/docker-compose/.env`, jamais vers
 - Environnement local vérifié : infrastructure, trois couches de présentation et Ceph RGW avec verrouillage d'objets en mode conformité.
 - Déclarations Kubernetes validées, non déployées faute de grappe.
 - Trois couches React initialisées et conteneurisées.
+- 64 classes reprises du projet afriland (D-52) : jeton fantôme et mTLS de la passerelle, validation du jeton interne, file de rebut Kafka, masquage des journaux dans tous les services, canaux de notification, fusion PDF, JSON canonique. Inactives par défaut ; chaque récit les active.
 - Prochaine étape : sprint 0 du carnet (gabarit hexagonal SOC-01, chaîne de livraison SOC-02, contrôles QUA-01, QUA-02, QUA-09, QUA-10).
 
 ## Journal des mises à jour
@@ -67,3 +68,4 @@ Les secrets locaux sont générés dans `infra/docker-compose/.env`, jamais vers
 | 2026-09-28 | 7dcca58 | Ceph RGW remplace MinIO (D-50) |
 | 2026-09-28 | b20a049 | Frontend React : trois couches générées par create-vite et conteneurisées (D-51) |
 | 2026-09-28 | — | README du projet et README de chaque dossier |
+| 2026-09-28 | — | Reprise de code du projet afriland dans les 14 services (D-52) |

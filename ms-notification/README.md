@@ -23,6 +23,26 @@ Squelette généré en JHipster 8.11.0 ; régénération en 9.4.0 prévue lors d
 - Avec toute la plateforme : `infra/docker-compose/gimac-dev.sh demarrer` à la racine du dépôt.
 - Image de conteneur (Jib, sans Dockerfile, D-48) : `./mvnw -ntp -Pprod verify jib:dockerBuild`.
 
+## Code repris du projet afriland (D-52)
+
+Copié et adapté (paquet `cm.gimac.des.notification`) ; chaque bean est inactif tant que sa propriété ne vaut pas `true`.
+
+| Classe | Origine dans afriland | Propriété d'activation |
+|---|---|---|
+| `config/DecodeurJwtInterne` | `audit-service/src/main/java/com/afriland/audit/config/DecodeurJwtInterne.java` | sans bean à activer |
+| `config/KafkaErrorHandlingConfiguration` | `audit-service/src/main/java/com/afriland/audit/config/KafkaErrorHandlingConfiguration.java` | `gimac.kafka.rebut.actif` |
+| `infrastructure/adapter/out/port/EmailGatewayPort` | `notifications-service/src/main/java/com/afriland/notifications/infrastructure/adapter/out/port/EmailGatewayPort.java` | sans bean à activer |
+| `infrastructure/adapter/out/port/SmsGatewayPort` | `notifications-service/src/main/java/com/afriland/notifications/infrastructure/adapter/out/port/SmsGatewayPort.java` | sans bean à activer |
+| `infrastructure/adapter/out/SmtpEmailAdapter` | `notifications-service/src/main/java/com/afriland/notifications/infrastructure/adapter/out/SmtpEmailAdapter.java` | `gimac.notification.courriel.actif` |
+| `infrastructure/adapter/out/SmsGatewayAdapter` | `notifications-service/src/main/java/com/afriland/notifications/infrastructure/adapter/out/SmsGatewayAdapter.java` | `gimac.notification.sms.actif` |
+| `infrastructure/adapter/out/StubSmsAdapter` | `notifications-service/src/main/java/com/afriland/notifications/infrastructure/adapter/out/StubSmsAdapter.java` | `gimac.notification.sms-simule.actif` |
+| `domain/NonRetryableException` | `notifications-service/src/main/java/com/afriland/notifications/domain/NonRetryableException.java` | sans bean à activer |
+| `infrastructure/resilience/DlqProducer` | `notifications-service/src/main/java/com/afriland/notifications/infrastructure/resilience/DlqProducer.java` | `gimac.notification.resilience.actif` |
+| `infrastructure/resilience/RetryStrategyConfig` | `notifications-service/src/main/java/com/afriland/notifications/infrastructure/resilience/RetryStrategyConfig.java` | `gimac.notification.resilience.actif` |
+| `infrastructure/templating/ThymeleafDatabaseConfig` | `notifications-service/src/main/java/com/afriland/notifications/infrastructure/templating/ThymeleafDatabaseConfig.java` | `gimac.notification.modeles.actif` |
+| `config/WebSocketConfig` | `notifications-service/src/main/java/com/afriland/notifications/config/WebSocketConfig.java` | `gimac.notification.websocket.actif` |
+| `infrastructure/logging/PiiMaskingLogConverter` | `notifications-service/src/main/java/com/afriland/notifications/infrastructure/logging/PiiMaskingLogConverter.java` | sans bean à activer |
+
 ## Journal des mises à jour
 
 | Date | Commit | Modification |
@@ -30,6 +50,7 @@ Squelette généré en JHipster 8.11.0 ; régénération en 9.4.0 prévue lors d
 | 2026-09-28 | 5eb68e0 | Génération JHipster 8.11.0 du squelette depuis le JDL ; compilation Maven vérifiée. |
 | 2026-09-28 | 9f2250a, c0b91ee | Intégration à `infra/docker-compose` et `infra/kubernetes` générés par JHipster ; cache Valkey (D-25). |
 | 2026-09-28 | — | Ajout de cette section. |
+| 2026-09-28 | — | Reprise de 13 classes du projet afriland (D-52) ; compilation vérifiée. |
 <!-- GIMAC:FIN -->
 
 # notification
