@@ -1,0 +1,45 @@
+{
+  "annotations": {
+    "changelogDate": "20231204035758"
+  },
+  "applications": ["audit"],
+  "clientRootFolder": "audit",
+  "databaseType": "sql",
+  "documentation": "Preuve de cohérence entre deux racines successives, calculée au\\nscellement et conservée (algorithme 6.14).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "firstSize",
+      "fieldType": "Long",
+      "fieldValidateRules": ["required", "min"],
+      "fieldValidateRulesMin": "0"
+    },
+    {
+      "fieldName": "secondSize",
+      "fieldType": "Long",
+      "fieldValidateRules": ["required", "min"],
+      "fieldValidateRulesMin": "0"
+    },
+    {
+      "documentation": "Liste JSON des empreintes de la preuve, en hexadécimal.",
+      "fieldName": "proofHashes",
+      "fieldType": "TextBlob",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "computedAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    }
+  ],
+  "microserviceName": "audit",
+  "name": "ConsistencyProof",
+  "readOnly": true,
+  "relationships": [],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

@@ -1,0 +1,41 @@
+{
+  "generator-jhipster": {
+    "applicationType": "microservice",
+    "authenticationType": "oauth2",
+    "baseName": "audit",
+    "buildTool": "maven",
+    "cacheProvider": "no",
+    "creationTimestamp": 1701661978853,
+    "databaseType": "sql",
+    "devDatabaseType": "postgresql",
+    "enableHibernateCache": false,
+    "enableSwaggerCodegen": false,
+    "enableTranslation": true,
+    "entities": [
+      "AuditEvent",
+      "DeduplicationEntry",
+      "MerkleNode",
+      "PeriodRoot",
+      "ConsistencyProof",
+      "InclusionProof",
+      "VerificationRecord"
+    ],
+    "jhipsterVersion": "9.4.0",
+    "jwtSecretKey": "ZDZlZTI3ZTQzYzljMDcwNzVjYzYzODRjN2M4ZTc5NjNjMjdlNmRkNzQzNjBkMjAzODMyZWRkZTQ0NWM3MGVkZDY2ODQwMDg3OWE3ZmJjZjZhNWFmNmIwODAyMjE2OTEyZmVkMTMxNmFmMWExMjVlMGRjMTU4MzgzYzM4YWU4MGI=",
+    "languages": ["fr", "en"],
+    "lastLiquibaseTimestamp": 1701662398000,
+    "messageBroker": "kafka",
+    "monorepository": true,
+    "nativeLanguage": "fr",
+    "packageName": "cm.gimac.des.audit",
+    "prodDatabaseType": "postgresql",
+    "reactive": false,
+    "searchEngine": "no",
+    "serverPort": "8082",
+    "serviceDiscoveryType": "no",
+    "skipClient": true,
+    "skipCommitHook": true,
+    "skipUserManagement": true,
+    "testFrameworks": []
+  }
+}

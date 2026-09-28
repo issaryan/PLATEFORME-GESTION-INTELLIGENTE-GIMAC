@@ -1,0 +1,75 @@
+{
+  "annotations": {
+    "changelogDate": "20231204035958"
+  },
+  "applications": ["audit"],
+  "clientRootFolder": "audit",
+  "databaseType": "sql",
+  "documentation": "Procès-verbal de vérification par l'auditeur (niveau AUDIT_SECURITE, D-31).\\nIl devient lui-même un événement d'audit.",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "verifierId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "verifiedAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "expectedRoot",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "minlength", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "64",
+      "fieldValidateRulesMinlength": "64",
+      "fieldValidateRulesPattern": "^[0-9a-f]{64}$"
+    },
+    {
+      "fieldName": "recomputedRoot",
+      "fieldType": "String",
+      "fieldValidateRules": ["minlength", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "64",
+      "fieldValidateRulesMinlength": "64",
+      "fieldValidateRulesPattern": "^[0-9a-f]{64}$"
+    },
+    {
+      "fieldName": "tokenValid",
+      "fieldType": "Boolean"
+    },
+    {
+      "fieldName": "result",
+      "fieldType": "VerificationResult",
+      "fieldTypeDocumentation": "Résultat d'une vérification conduite par l'auditeur (algorithme 6.16).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "EN_ATTENTE,CONFORME,DIVERGENT"
+    },
+    {
+      "fieldName": "comment",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "1000"
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "audit",
+  "name": "VerificationRecord",
+  "pagination": "pagination",
+  "readOnly": true,
+  "relationships": [
+    {
+      "otherEntityName": "inclusionProof",
+      "relationshipName": "proof",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

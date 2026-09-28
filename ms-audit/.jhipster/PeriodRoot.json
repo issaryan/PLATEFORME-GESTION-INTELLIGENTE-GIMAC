@@ -1,0 +1,109 @@
+{
+  "annotations": {
+    "changelogDate": "20231204035658"
+  },
+  "applications": ["audit"],
+  "clientRootFolder": "audit",
+  "databaseType": "sql",
+  "documentation": "Racine de période : scellement quotidien, horodaté (RFC 3161) et publié\\nhors de la plateforme (RG-08). Le jeton d'horodatage y est intégré.",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Période scellée, au format AAAA-MM-JJ.",
+      "fieldName": "period",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "unique", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "10",
+      "fieldValidateRulesPattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    },
+    {
+      "fieldName": "treeSize",
+      "fieldType": "Long",
+      "fieldValidateRules": ["required", "min"],
+      "fieldValidateRulesMin": "0"
+    },
+    {
+      "fieldName": "rootHash",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "minlength", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "64",
+      "fieldValidateRulesMinlength": "64",
+      "fieldValidateRulesPattern": "^[0-9a-f]{64}$"
+    },
+    {
+      "fieldName": "sealedAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "state",
+      "fieldType": "PeriodRootState",
+      "fieldTypeDocumentation": "Cycle de vie d'une racine de période (algorithme 6.15).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "OUVERTE,SCELLEE,HORODATEE,PUBLIEE"
+    },
+    {
+      "documentation": "Jeton RFC 3161 encodé en DER.",
+      "fieldName": "timestampToken",
+      "fieldType": "Blob"
+    },
+    {
+      "fieldName": "timestampSerialNumber",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "100"
+    },
+    {
+      "fieldName": "timestampGenTime",
+      "fieldType": "Instant"
+    },
+    {
+      "documentation": "SHA256(racine || taille || période), soumis à l'autorité d'horodatage.",
+      "fieldName": "timestampImprint",
+      "fieldType": "String",
+      "fieldValidateRules": ["minlength", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "64",
+      "fieldValidateRulesMinlength": "64",
+      "fieldValidateRulesPattern": "^[0-9a-f]{64}$"
+    },
+    {
+      "documentation": "Référence rendue par le dépôt de publication des racines.",
+      "fieldName": "publicationReference",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "255"
+    },
+    {
+      "fieldName": "publishedAt",
+      "fieldType": "Instant"
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "audit",
+  "name": "PeriodRoot",
+  "pagination": "pagination",
+  "readOnly": true,
+  "relationships": [
+    {
+      "documentation": "Chaque racine référence la précédente (cohérence entre périodes).",
+      "otherEntityField": "period",
+      "otherEntityName": "periodRoot",
+      "relationshipName": "previousRoot",
+      "relationshipSide": "left",
+      "relationshipType": "one-to-one"
+    },
+    {
+      "documentation": "Preuve de cohérence avec la racine précédente, calculée au scellement.",
+      "otherEntityName": "consistencyProof",
+      "relationshipName": "consistencyWithPrevious",
+      "relationshipSide": "left",
+      "relationshipType": "one-to-one"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

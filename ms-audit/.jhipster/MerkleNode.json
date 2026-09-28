@@ -1,0 +1,43 @@
+{
+  "annotations": {
+    "changelogDate": "20231204035558"
+  },
+  "applications": ["audit"],
+  "clientRootFolder": "audit",
+  "databaseType": "sql",
+  "documentation": "Nœud de l'arbre, persisté par niveau et position (niveau 0 = feuille).\\nNœud interne : SHA256(0x01 || gauche || droite).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "level",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required", "min", "max"],
+      "fieldValidateRulesMax": "64",
+      "fieldValidateRulesMin": "0"
+    },
+    {
+      "fieldName": "position",
+      "fieldType": "Long",
+      "fieldValidateRules": ["required", "min"],
+      "fieldValidateRulesMin": "0"
+    },
+    {
+      "fieldName": "hash",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "minlength", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "64",
+      "fieldValidateRulesMinlength": "64",
+      "fieldValidateRulesPattern": "^[0-9a-f]{64}$"
+    }
+  ],
+  "microserviceName": "audit",
+  "name": "MerkleNode",
+  "readOnly": true,
+  "relationships": [],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

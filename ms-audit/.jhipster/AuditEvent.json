@@ -1,0 +1,94 @@
+{
+  "annotations": {
+    "changelogDate": "20231204035358"
+  },
+  "applications": ["audit"],
+  "clientRootFolder": "audit",
+  "databaseType": "sql",
+  "documentation": "Événement d'audit : feuille de l'arbre de Merkle (CC §6.1.3.3).\\nL'index est strictement croissant et sans trou ; il est attribué dans la\\ntransaction d'inscription, et non par une séquence de la base.",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Index de la feuille dans l'arbre, à partir de 0.",
+      "fieldName": "logIndex",
+      "fieldType": "Long",
+      "fieldValidateRules": ["required", "unique", "min"],
+      "fieldValidateRulesMin": "0"
+    },
+    {
+      "documentation": "Identifiant CloudEvents de l'enveloppe reçue.",
+      "fieldName": "eventId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required", "unique"]
+    },
+    {
+      "documentation": "Horodatage d'occurrence, fourni par le producteur.",
+      "fieldName": "occurredAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Horodatage d'inscription dans le registre.",
+      "fieldName": "recordedAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "actorId",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "100"
+    },
+    {
+      "fieldName": "actionType",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "100"
+    },
+    {
+      "documentation": "Domaine producteur, par exemple homologation.",
+      "fieldName": "domain",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "50"
+    },
+    {
+      "documentation": "Sujet du bus, par exemple homologation.operation-closed.v1.",
+      "fieldName": "subject",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "150"
+    },
+    {
+      "fieldName": "correlationId",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Enveloppe CloudEvents canonique (clés triées, RFC 8259), sans numéro de carte en clair.",
+      "fieldName": "payload",
+      "fieldType": "TextBlob",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "SHA256(0x00 || forme canonique).",
+      "fieldName": "leafHash",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "minlength", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "64",
+      "fieldValidateRulesMinlength": "64",
+      "fieldValidateRulesPattern": "^[0-9a-f]{64}$"
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "audit",
+  "name": "AuditEvent",
+  "pagination": "pagination",
+  "readOnly": true,
+  "relationships": [],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

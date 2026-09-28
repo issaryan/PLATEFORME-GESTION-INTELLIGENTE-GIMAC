@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+    <!--
+        Added the constraints for entity PeriodRoot.
+    -->
+    <changeSet id="20231204035658-2" author="jhipster">
+
+        <addForeignKeyConstraint baseColumnNames="previous_root_id"
+                                 baseTableName="period_root"
+                                 constraintName="fk_period_root__previous_root_id"
+                                 referencedColumnNames="id"
+                                 referencedTableName="period_root"
+                                 />
+
+        <addForeignKeyConstraint baseColumnNames="consistency_with_previous_id"
+                                 baseTableName="period_root"
+                                 constraintName="fk_period_root__consistency_with_previous_id"
+                                 referencedColumnNames="id"
+                                 referencedTableName="consistency_proof"
+                                 />
+    </changeSet>
+</databaseChangeLog>
