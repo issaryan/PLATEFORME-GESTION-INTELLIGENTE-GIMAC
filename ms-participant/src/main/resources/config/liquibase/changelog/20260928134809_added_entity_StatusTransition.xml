@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+
+    <!--
+        Added the entity StatusTransition.
+    -->
+    <changeSet id="20260928134809-1" author="jhipster">
+        <createTable tableName="status_transition" remarks="Transition de statut proposée puis approuvée ou rejetée (maker-checker,\nalgorithme 6.25). Historique immuable.">
+            <column name="id" type="${uuidType}">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="from_status" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="to_status" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="reason" type="varchar(1000)">
+                <constraints nullable="false" />
+            </column>
+            <column name="requester_id" type="${uuidType}">
+                <constraints nullable="false" />
+            </column>
+            <column name="requested_at" type="${datetimeType}">
+                <constraints nullable="false" />
+            </column>
+            <column name="automatic_transition" type="boolean" remarks="Vrai pour la bascule automatique en A_REGULARISER à J-0 (D-13), sans approbateur.">
+                <constraints nullable="false" />
+            </column>
+            <column name="required_approvals" type="integer" remarks="1 en règle générale ; 2 pour la levée de suspension (DG et Risques, RG-14).">
+                <constraints nullable="false" />
+            </column>
+            <column name="approver_id" type="${uuidType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="second_approver_id" type="${uuidType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="second_approved_at" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="decided_at" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="state" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="rejection_reason" type="varchar(500)">
+                <constraints nullable="true" />
+            </column>
+            <column name="evidence_document_id" type="${uuidType}" remarks="Pièce de décision hors plateforme dans MS-DOCUMENT (exigée pour SUSPENDU).">
+                <constraints nullable="true" />
+            </column>
+            <column name="institution_id" type="${uuidType}">
+                <constraints nullable="false" />
+            </column>
+            <!-- jhipster-needle-liquibase-add-column - JHipster will add columns here -->
+        </createTable>
+        <dropDefaultValue tableName="status_transition" columnName="requested_at" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="status_transition" columnName="second_approved_at" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="status_transition" columnName="decided_at" columnDataType="${datetimeType}"/>
+    </changeSet>
+
+    <!-- jhipster-needle-liquibase-add-changeset - JHipster will add changesets here -->
+
+    <!--
+        Load sample data generated with Faker.js
+        - This data can be easily edited using a CSV editor (or even MS Excel) and
+          is located in the 'src/main/resources/config/liquibase/fake-data' directory
+        - By default this data is applied when running with the JHipster 'dev' profile.
+          This can be customized by adding or removing 'faker' in the 'spring.liquibase.contexts'
+          Spring Boot configuration key.
+    -->
+    <changeSet id="20260928134809-1-data" author="jhipster" context="faker">
+        <loadData
+                  file="config/liquibase/fake-data/status_transition.csv"
+                  separator=";"
+                  tableName="status_transition"
+                  usePreparedStatements="true">
+            <column name="id" type="${uuidType}"/>
+            <column name="from_status" type="string"/>
+            <column name="to_status" type="string"/>
+            <column name="reason" type="string"/>
+            <column name="requester_id" type="${uuidType}"/>
+            <column name="requested_at" type="date"/>
+            <column name="automatic_transition" type="boolean"/>
+            <column name="required_approvals" type="numeric"/>
+            <column name="approver_id" type="${uuidType}"/>
+            <column name="second_approver_id" type="${uuidType}"/>
+            <column name="second_approved_at" type="date"/>
+            <column name="decided_at" type="date"/>
+            <column name="state" type="string"/>
+            <column name="rejection_reason" type="string"/>
+            <column name="evidence_document_id" type="${uuidType}"/>
+            <column name="institution_id" type="${uuidType}"/>
+            <!-- jhipster-needle-liquibase-add-loadcolumn - JHipster (and/or extensions) can add load columns here -->
+        </loadData>
+    </changeSet>
+</databaseChangeLog>

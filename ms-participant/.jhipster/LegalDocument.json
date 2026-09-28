@@ -1,0 +1,103 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134409"
+  },
+  "applications": ["participant"],
+  "clientRootFolder": "participant",
+  "databaseType": "sql",
+  "documentation": "Pièce légale (agrément, arrêté, attestation) déposée dans MS-DOCUMENT ;\\nson dépôt arme quatre échéances (algorithme 6.26).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "type",
+      "fieldType": "LegalDocumentType",
+      "fieldTypeDocumentation": "Types de pièces légales ; le rapport de cybersécurité R-2024/01 vient du CA (UC-REF-03).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "AGREMENT,ARRETE,ATTESTATION,RAPPORT_CYBERSECURITE"
+    },
+    {
+      "fieldName": "reference",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "100"
+    },
+    {
+      "documentation": "Autorité émettrice, par exemple COBAC ou MinFi.",
+      "fieldName": "issuingAuthority",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "100"
+    },
+    {
+      "fieldName": "issuedOn",
+      "fieldType": "LocalDate",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "expiresOn",
+      "fieldType": "LocalDate",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Référence du document dans MS-DOCUMENT.",
+      "fieldName": "documentId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "documentVersion",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["min"],
+      "fieldValidateRulesMin": "1"
+    },
+    {
+      "documentation": "Empreinte SHA-256 confirmée par document.document-sealed.v1.",
+      "fieldName": "digest",
+      "fieldType": "String",
+      "fieldValidateRules": ["minlength", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "64",
+      "fieldValidateRulesMinlength": "64",
+      "fieldValidateRulesPattern": "^[0-9a-f]{64}$"
+    },
+    {
+      "fieldName": "sealed",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "state",
+      "fieldType": "LegalDocumentState",
+      "fieldTypeDocumentation": "État d'une pièce légale (PAR-05 : valide, expirée, remplacée).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "EN_ATTENTE_SCELLEMENT,VALIDE,EXPIRANT,EXPIREE,REMPLACEE"
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "participant",
+  "name": "LegalDocument",
+  "pagination": "pagination",
+  "relationships": [
+    {
+      "documentation": "Pièce remplacée lors d'un renouvellement (algorithme 6.26, étape 5).",
+      "otherEntityField": "reference",
+      "otherEntityName": "legalDocument",
+      "relationshipName": "previousDocument",
+      "relationshipSide": "left",
+      "relationshipType": "one-to-one"
+    },
+    {
+      "otherEntityField": "participantCode",
+      "otherEntityName": "institution",
+      "relationshipName": "institution",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

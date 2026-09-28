@@ -1,0 +1,73 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134609"
+  },
+  "applications": ["participant"],
+  "clientRootFolder": "participant",
+  "databaseType": "sql",
+  "documentation": "Journal des interactions, en ajout seul (PAR-10).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "nature",
+      "fieldType": "InteractionNature",
+      "fieldTypeDocumentation": "Nature d'une interaction consignée au journal.",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "COURRIER,REUNION,APPEL,MISE_EN_DEMEURE,CHANGEMENT_STATUT,CONFORMITE_RECALCULEE,SIGNALEMENT_NON_CONFORMITE,TICKET,LIAISON,AUTRE"
+    },
+    {
+      "fieldName": "summary",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "500"
+    },
+    {
+      "fieldName": "occurredAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "authorId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Référence de l'objet : ticket, liaison, réunion ou pièce, par exemple PIE-2026-118.",
+      "fieldName": "reference",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "100"
+    },
+    {
+      "documentation": "Identifiant de remise d'un signalement (algorithme 6.29).",
+      "fieldName": "notificationId",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Identifiant CloudEvents, pour une interaction reçue par événement (idempotence).",
+      "fieldName": "sourceEventId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["unique"]
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "participant",
+  "name": "Interaction",
+  "pagination": "pagination",
+  "relationships": [
+    {
+      "otherEntityField": "participantCode",
+      "otherEntityName": "institution",
+      "relationshipName": "institution",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

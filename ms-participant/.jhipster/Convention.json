@@ -1,0 +1,68 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134109"
+  },
+  "applications": ["participant"],
+  "clientRootFolder": "participant",
+  "databaseType": "sql",
+  "documentation": "Convention (adhésion, service, délégation, parrainage) ; la pièce est\\ndéposée dans MS-DOCUMENT, seules sa référence et son empreinte sont conservées.",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "type",
+      "fieldType": "ConventionType",
+      "fieldTypeDocumentation": "Types de convention ; PARRAINAGE pour un participant indirect (RG-12).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "ADHESION,SERVICE,DELEGATION,PARRAINAGE"
+    },
+    {
+      "fieldName": "reference",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "unique", "maxlength"],
+      "fieldValidateRulesMaxlength": "50"
+    },
+    {
+      "fieldName": "signedOn",
+      "fieldType": "LocalDate",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "expiresOn",
+      "fieldType": "LocalDate"
+    },
+    {
+      "documentation": "Référence du document dans MS-DOCUMENT (documentRef du CC).",
+      "fieldName": "documentId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "documentSha256",
+      "fieldType": "String",
+      "fieldValidateRules": ["minlength", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "64",
+      "fieldValidateRulesMinlength": "64",
+      "fieldValidateRulesPattern": "^[0-9a-f]{64}$"
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "participant",
+  "name": "Convention",
+  "pagination": "pagination",
+  "relationships": [
+    {
+      "otherEntityField": "participantCode",
+      "otherEntityName": "institution",
+      "relationshipName": "institution",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

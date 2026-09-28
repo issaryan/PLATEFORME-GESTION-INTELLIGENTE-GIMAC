@@ -1,0 +1,110 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134309"
+  },
+  "applications": ["participant"],
+  "clientRootFolder": "participant",
+  "databaseType": "sql",
+  "documentation": "Correspondant d'une institution, par fonction (UC-REF-04). Les mises à jour\\nproposées depuis le portail restent en attente jusqu'à validation par le DES (PAR-04, PAR-11).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "fullName",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "255"
+    },
+    {
+      "documentation": "Fonction (function du CC, mot réservé).",
+      "fieldName": "duty",
+      "fieldType": "CorrespondentFunction",
+      "fieldTypeDocumentation": "Fonction d'un correspondant (UC-REF-04).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "DIRECTION,MONETIQUE,EXPLOITATION_24_7,SECURITE"
+    },
+    {
+      "documentation": "Canaux déclarés, séparés par des virgules, par exemple messagerie,téléphone.",
+      "fieldName": "channels",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "255"
+    },
+    {
+      "fieldName": "email",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "255"
+    },
+    {
+      "fieldName": "phone",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "30"
+    },
+    {
+      "documentation": "Référence de la clé publique déposée, pour vérifier les pièces signées.",
+      "fieldName": "publicKeyRef",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "255"
+    },
+    {
+      "fieldName": "reachability",
+      "fieldType": "Reachability",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "NON_VERIFIE,JOIGNABLE,INJOIGNABLE"
+    },
+    {
+      "fieldName": "lastReachabilityCheckAt",
+      "fieldType": "Instant"
+    },
+    {
+      "documentation": "Contact d'astreinte 24/7 (RG-70 : au moins deux par participant).",
+      "fieldName": "onCall247",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Compte du portail (identifiant dans MS-IAM), s'il existe.",
+      "fieldName": "userId",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "active",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "proposedBy",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "validatedBy",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "validatedAt",
+      "fieldType": "Instant"
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "participant",
+  "name": "Correspondent",
+  "pagination": "pagination",
+  "relationships": [
+    {
+      "otherEntityField": "participantCode",
+      "otherEntityName": "institution",
+      "relationshipName": "institution",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

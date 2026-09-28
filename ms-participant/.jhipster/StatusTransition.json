@@ -1,0 +1,110 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134809"
+  },
+  "applications": ["participant"],
+  "clientRootFolder": "participant",
+  "databaseType": "sql",
+  "documentation": "Transition de statut proposée puis approuvée ou rejetée (maker-checker,\\nalgorithme 6.25). Historique immuable.",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "fromStatus",
+      "fieldType": "InstitutionStatus",
+      "fieldTypeDocumentation": "Cycle de vie institutionnel (REC D-08). Les états du CA (HOMOLOGATION,\\nSURVEILLANCE, SUSPENSION, RÉSILIÉ) sont caducs.",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "CANDIDAT,EN_HOMOLOGATION,ACTIF,A_REGULARISER,SUSPENDU,RETIRE"
+    },
+    {
+      "fieldName": "toStatus",
+      "fieldType": "InstitutionStatus",
+      "fieldTypeDocumentation": "Cycle de vie institutionnel (REC D-08). Les états du CA (HOMOLOGATION,\\nSURVEILLANCE, SUSPENSION, RÉSILIÉ) sont caducs.",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "CANDIDAT,EN_HOMOLOGATION,ACTIF,A_REGULARISER,SUSPENDU,RETIRE"
+    },
+    {
+      "fieldName": "reason",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "1000"
+    },
+    {
+      "fieldName": "requesterId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "requestedAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Vrai pour la bascule automatique en A_REGULARISER à J-0 (D-13), sans approbateur.",
+      "fieldName": "automaticTransition",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "1 en règle générale ; 2 pour la levée de suspension (DG et Risques, RG-14).",
+      "fieldName": "requiredApprovals",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required", "min", "max"],
+      "fieldValidateRulesMax": "2",
+      "fieldValidateRulesMin": "1"
+    },
+    {
+      "fieldName": "approverId",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "secondApproverId",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "secondApprovedAt",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "decidedAt",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "state",
+      "fieldType": "TransitionState",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "PROPOSEE,APPROUVEE,REJETEE"
+    },
+    {
+      "fieldName": "rejectionReason",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "500"
+    },
+    {
+      "documentation": "Pièce de décision hors plateforme dans MS-DOCUMENT (exigée pour SUSPENDU).",
+      "fieldName": "evidenceDocumentId",
+      "fieldType": "UUID"
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "participant",
+  "name": "StatusTransition",
+  "pagination": "pagination",
+  "readOnly": true,
+  "relationships": [
+    {
+      "otherEntityField": "participantCode",
+      "otherEntityName": "institution",
+      "relationshipName": "institution",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

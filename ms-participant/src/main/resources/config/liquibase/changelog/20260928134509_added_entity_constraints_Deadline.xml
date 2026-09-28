@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+    <!--
+        Added the constraints for entity Deadline.
+    -->
+    <changeSet id="20260928134509-2" author="jhipster">
+
+        <addForeignKeyConstraint baseColumnNames="institution_id"
+                                 baseTableName="deadline"
+                                 constraintName="fk_deadline__institution_id"
+                                 referencedColumnNames="id"
+                                 referencedTableName="institution"
+                                 />
+
+        <addForeignKeyConstraint baseColumnNames="legal_document_id"
+                                 baseTableName="deadline"
+                                 constraintName="fk_deadline__legal_document_id"
+                                 referencedColumnNames="id"
+                                 referencedTableName="legal_document"
+                                 />
+
+        <addForeignKeyConstraint baseColumnNames="convention_id"
+                                 baseTableName="deadline"
+                                 constraintName="fk_deadline__convention_id"
+                                 referencedColumnNames="id"
+                                 referencedTableName="convention"
+                                 />
+    </changeSet>
+</databaseChangeLog>

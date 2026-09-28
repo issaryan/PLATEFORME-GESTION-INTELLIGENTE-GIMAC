@@ -1,0 +1,158 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134009"
+  },
+  "applications": ["participant"],
+  "clientRootFolder": "participant",
+  "databaseType": "sql",
+  "documentation": "Fiche institutionnelle (BF-07). Le statut ne change que par une\\ntransition approuvée (StatusTransition) ; aucune donnée de routage.",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "name",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "255"
+    },
+    {
+      "fieldName": "acronym",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "50"
+    },
+    {
+      "documentation": "Code participant GIMAC, par exemple EP-A-017.",
+      "fieldName": "participantCode",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "unique", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "20",
+      "fieldValidateRulesPattern": "^[A-Z0-9-]+$"
+    },
+    {
+      "documentation": "Code d'identification ISO 9362 (BIC), s'il existe (BF-07).",
+      "fieldName": "identificationCode",
+      "fieldType": "String",
+      "fieldValidateRules": ["unique", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "11",
+      "fieldValidateRulesPattern": "^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$"
+    },
+    {
+      "documentation": "Code banque BEAC, unique (RG-10).",
+      "fieldName": "beacBankCode",
+      "fieldType": "String",
+      "fieldValidateRules": ["unique", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "10",
+      "fieldValidateRulesPattern": "^[A-Z0-9]+$"
+    },
+    {
+      "documentation": "Pays CEMAC, code ISO 3166-1 alpha-2.",
+      "fieldName": "country",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "2",
+      "fieldValidateRulesPattern": "^(CM|CF|CG|GA|GQ|TD)$"
+    },
+    {
+      "fieldName": "category",
+      "fieldType": "InstitutionCategory",
+      "fieldTypeDocumentation": "Catégories d'établissement (PAR-01, CA §3.4.2).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "BANQUE,MICROFINANCE,ETABLISSEMENT_PAIEMENT,EMETTEUR_MONNAIE_ELECTRONIQUE,TRESOR_PUBLIC"
+    },
+    {
+      "fieldName": "membershipMode",
+      "fieldType": "MembershipMode",
+      "fieldTypeDocumentation": "Mode d'adhésion : direct (compte de règlement BEAC) ou indirect (banque marraine).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "DIRECT,INDIRECT"
+    },
+    {
+      "documentation": "Référence du compte de règlement à la BEAC, obligatoire en adhésion directe (RG-11).",
+      "fieldName": "settlementAccountRef",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "50"
+    },
+    {
+      "documentation": "Référence du compte de cantonnement, en adhésion indirecte (RG-12).",
+      "fieldName": "ringFencedAccountRef",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "50"
+    },
+    {
+      "fieldName": "joinedOn",
+      "fieldType": "LocalDate"
+    },
+    {
+      "fieldName": "status",
+      "fieldType": "InstitutionStatus",
+      "fieldTypeDocumentation": "Cycle de vie institutionnel (REC D-08). Les états du CA (HOMOLOGATION,\\nSURVEILLANCE, SUSPENSION, RÉSILIÉ) sont caducs.",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "CANDIDAT,EN_HOMOLOGATION,ACTIF,A_REGULARISER,SUSPENDU,RETIRE"
+    },
+    {
+      "fieldName": "complianceState",
+      "fieldType": "ComplianceState",
+      "fieldTypeDocumentation": "État de conformité documentaire (algorithme 6.27).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "CONFORME,A_REGULARISER,NON_CONFORME"
+    },
+    {
+      "documentation": "Réception de certification.attestation-issued.v1 (prérequis de ACTIF).",
+      "fieldName": "attestationIssuedAt",
+      "fieldType": "Instant"
+    },
+    {
+      "documentation": "Réception de certification.go-live-authorized.v1 (RG-13).",
+      "fieldName": "goLiveAuthorizedAt",
+      "fieldType": "Instant"
+    },
+    {
+      "documentation": "Liaisons ouvertes dans MS-HOMOLOGATION, connues par événement (prérequis de RETIRE).",
+      "fieldName": "openLinkCount",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required", "min"],
+      "fieldValidateRulesMin": "0"
+    },
+    {
+      "documentation": "Suspens ouverts dans MS-RAPPROCHEMENT, connus par événement (prérequis de RETIRE).",
+      "fieldName": "openSuspenseCount",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required", "min"],
+      "fieldValidateRulesMin": "0"
+    },
+    {
+      "fieldName": "createdAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "participant",
+  "name": "Institution",
+  "pagination": "pagination",
+  "relationships": [
+    {
+      "documentation": "Banque de règlement et banque marraine : institutions du même registre.",
+      "otherEntityField": "participantCode",
+      "otherEntityName": "institution",
+      "relationshipName": "settlementBank",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one"
+    },
+    {
+      "otherEntityField": "participantCode",
+      "otherEntityName": "institution",
+      "relationshipName": "sponsorBank",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

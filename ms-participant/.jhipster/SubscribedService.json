@@ -1,0 +1,55 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134209"
+  },
+  "applications": ["participant"],
+  "clientRootFolder": "participant",
+  "databaseType": "sql",
+  "documentation": "Service souscrit, publié vers MS-HOMOLOGATION (périmètre contractualisé).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Code du service, par exemple TRANSFERT_COMPTE_A_COMPTE.",
+      "fieldName": "serviceCode",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "50",
+      "fieldValidateRulesPattern": "^[A-Z0-9_]+$"
+    },
+    {
+      "fieldName": "subscribedOn",
+      "fieldType": "LocalDate",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "terminatedOn",
+      "fieldType": "LocalDate"
+    },
+    {
+      "fieldName": "state",
+      "fieldType": "SubscriptionState",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "ACTIF,RESILIE"
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "participant",
+  "name": "SubscribedService",
+  "pagination": "pagination",
+  "relationships": [
+    {
+      "otherEntityField": "participantCode",
+      "otherEntityName": "institution",
+      "relationshipName": "institution",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

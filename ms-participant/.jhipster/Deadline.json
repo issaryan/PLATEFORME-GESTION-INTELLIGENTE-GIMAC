@@ -1,0 +1,89 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134509"
+  },
+  "applications": ["participant"],
+  "clientRootFolder": "participant",
+  "databaseType": "sql",
+  "documentation": "Échéance armée sur une pièce légale ou une convention (J-90, J-60, J-30,\\nJ-0) ; à J-60 et J-30, notification signée avec accusé de réception (RG-69).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "threshold",
+      "fieldType": "DeadlineThreshold",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "J_90,J_60,J_30,J_0"
+    },
+    {
+      "fieldName": "dueOn",
+      "fieldType": "LocalDate",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "state",
+      "fieldType": "DeadlineState",
+      "fieldTypeDocumentation": "État d'une échéance armée (algorithme 6.26).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "ARMEE,DECLENCHEE,OBSOLETE"
+    },
+    {
+      "fieldName": "triggeredAction",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "255"
+    },
+    {
+      "fieldName": "triggeredAt",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "acknowledgementRequired",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Identifiant de la notification dans MS-NOTIFICATION.",
+      "fieldName": "notificationId",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "acknowledgedAt",
+      "fieldType": "Instant"
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "participant",
+  "name": "Deadline",
+  "pagination": "pagination",
+  "readOnly": true,
+  "relationships": [
+    {
+      "otherEntityField": "participantCode",
+      "otherEntityName": "institution",
+      "relationshipName": "institution",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    },
+    {
+      "otherEntityField": "reference",
+      "otherEntityName": "legalDocument",
+      "relationshipName": "legalDocument",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one"
+    },
+    {
+      "otherEntityField": "reference",
+      "otherEntityName": "convention",
+      "relationshipName": "convention",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

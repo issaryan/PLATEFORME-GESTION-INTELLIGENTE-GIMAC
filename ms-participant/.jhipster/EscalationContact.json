@@ -1,0 +1,72 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134709"
+  },
+  "applications": ["participant"],
+  "clientRootFolder": "participant",
+  "databaseType": "sql",
+  "documentation": "Contact de l'annuaire d'escalade, par sévérité (S1 à S4) et rang, lu par\\nMS-NOTIFICATION et MS-INCIDENT. Délai par défaut : 15 min (D-14).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Sévérité de 1 (S1) à 4 (S4).",
+      "fieldName": "severity",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required", "min", "max"],
+      "fieldValidateRulesMax": "4",
+      "fieldValidateRulesMin": "1"
+    },
+    {
+      "fieldName": "escalationRank",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required", "min"],
+      "fieldValidateRulesMin": "1"
+    },
+    {
+      "documentation": "Délai d'acquittement (ISO 8601), PT15M par défaut.",
+      "fieldName": "ackDelay",
+      "fieldType": "Duration",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "active",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "participant",
+  "name": "EscalationContact",
+  "pagination": "pagination",
+  "relationships": [
+    {
+      "otherEntityField": "participantCode",
+      "otherEntityName": "institution",
+      "relationshipName": "institution",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    },
+    {
+      "otherEntityField": "fullName",
+      "otherEntityName": "correspondent",
+      "relationshipName": "correspondent",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    },
+    {
+      "otherEntityField": "fullName",
+      "otherEntityName": "correspondent",
+      "relationshipName": "deputy",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}
