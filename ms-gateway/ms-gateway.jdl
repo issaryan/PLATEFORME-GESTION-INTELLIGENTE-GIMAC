@@ -1,0 +1,107 @@
+/*
+ * MS-GATEWAY : passerelle d'accès et frontière d'entrée
+ *
+ * Projet   : Plateforme de suivi des activités du DES, GIMAC
+ * Sources  : CC-GIMAC-01 v1.1 §5.2.2, §6.1.1 ; CP-GIMAC-01 v1.0 §4.1 ;
+ *            REC-GIMAC-01 (D-02, D-17, D-24, D-25)
+ * Besoins  : BF-26, BF-27, BF-28, BF-29 ; BNF-01, BNF-02, BNF-12, BNF-16, BNF-17
+ * Cible    : JHipster 9.4.0, itération 1
+ *
+ * Périmètre de la génération :
+ *   - Squelette Spring Cloud Gateway réactif, fédéré en OIDC (Keycloak) avec
+ *     session côté serveur et cookie HttpOnly : c'est le modèle BFF (RG-58).
+ *   - Frontal React de l'application du département (BF-26), en français et
+ *     en anglais (BNF-18).
+ *   - Deux entités administrables depuis la console : PresentationLayer et Route
+ *     (récit GW-03).
+ *
+ * Écrit à la main après la génération, car non généré par JHipster :
+ *   - le refactoring en architecture hexagonale (ports et adaptateurs, D-02) ;
+ *   - la chaîne de filtres (débit, WAF, masquage, échange de jeton, routage mTLS) ;
+ *   - l'outbox des décisions d'accès vers MS-AUDIT ;
+ *   - le canal poussé (BF-29) ;
+ *   - la liste de révocation dans Valkey.
+ * Les objets éphémères du CC ne sont pas persistés et n'apparaissent donc pas
+ * ici : GatewayRequest, InternalToken, Revocation, PushSubscription, AccessPolicy.
+ */
+
+application {
+  config {
+    baseName gateway
+    applicationType gateway
+    packageName cm.gimac.des.gateway
+    serverPort 8080
+    reactive true
+    authenticationType oauth2
+    serviceDiscoveryType no
+    databaseType sql
+    prodDatabaseType postgresql
+    devDatabaseType postgresql
+    cacheProvider no
+    messageBroker kafka
+    searchEngine no
+    buildTool maven
+    clientFramework react
+    clientTheme none
+    enableTranslation true
+    nativeLanguage fr
+    languages [fr, en]
+    testFrameworks []
+    enableSwaggerCodegen false
+    skipUserManagement true
+  }
+  entities PresentationLayer, Route
+}
+
+/** Zone réseau d'origine d'une requête (REC D-24), et non zone de déploiement. */
+enum NetworkZone {
+  DEPARTEMENT,
+  DMZ,
+  ADMINISTRATION
+}
+
+/**
+ * Couche de présentation connue de la passerelle (CC §6.1.1.3).
+ * Trois enregistrements attendus : département, portail, console.
+ */
+entity PresentationLayer {
+  /** Code unique de la couche : DEPARTEMENT, PORTAIL ou CONSOLE. */
+  name String required unique maxlength(50)
+  zone NetworkZone required
+  /** Exigence d'authentification, par exemple "OIDC+FIDO2+mTLS". */
+  authenticationRequirement String required maxlength(255)
+  /** Préfixe des routes BFF de la couche, par exemple /bff/des. */
+  bffPrefix String required unique maxlength(100) pattern(/^\/[a-z0-9\/-]*$/)
+  /** Quota par défaut en requêtes par minute : 500, 100 ou 1000 (algorithme 6.1). */
+  defaultRateLimitPerMinute Integer required min(1)
+}
+
+/**
+ * Route exposée par une couche vers un seul service cible (CC §6.1.1.3, GW-03).
+ * Les permissions requises servent à réduire la portée du jeton interne (RFC 8693).
+ */
+entity Route {
+  /** Motif de chemin, par exemple /api/participants/**. */
+  path String required maxlength(255)
+  /** Service cible, par exemple ms-participant. */
+  targetService String required maxlength(100)
+  /** Permissions requises, séparées par des virgules. */
+  requiredPermissions String required maxlength(1024)
+  /** Quota propre à la route ; il prime sur celui de la couche. */
+  rateLimitPerMinute Integer min(1)
+  /** Active l'inspection WAF et le masquage des numéros de carte sur le corps. */
+  inspectBody Boolean required
+  active Boolean required
+}
+
+relationship ManyToOne {
+  Route{layer(name) required} to PresentationLayer
+}
+
+dto * with mapstruct
+service * with serviceClass
+/*
+ * JHipster 9.4.0 affiche l'avertissement « paginate deprecated », mais sa grammaire
+ * n'accepte pas encore le mot-clé « pagination » : l'avertissement est à ignorer.
+ */
+paginate Route with pagination
