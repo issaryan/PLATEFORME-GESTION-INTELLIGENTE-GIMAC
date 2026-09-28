@@ -1,0 +1,40 @@
+{
+  "generator-jhipster": {
+    "applicationType": "microservice",
+    "authenticationType": "oauth2",
+    "baseName": "document",
+    "buildTool": "maven",
+    "cacheProvider": "redis",
+    "databaseType": "sql",
+    "devDatabaseType": "postgresql",
+    "enableHibernateCache": false,
+    "enableSwaggerCodegen": false,
+    "enableTranslation": true,
+    "entities": [
+      "DocumentTypePolicy",
+      "DocumentLineage",
+      "Document",
+      "Consultation",
+      "PurgeRequest",
+      "IntegrityCheck",
+      "IntegrityMismatch"
+    ],
+    "jhipsterVersion": "8.11.0",
+    "jwtSecretKey": "ZWY5MjJmYjM5Zjk4MmIwMmZkZDI2YjFlN2ExZjExMmI2OGQwNGFmMTE2MDQxOTkyYWQ1YTlmMTk1Mjg2OTZkNjRlM2FiMjNmYTg3MjgzOWVkNDEyMjBiMDZmNjFjMTY2ODg2OWEwOTJiNzExM2Y5MTM5NzEwMzU0ODNhYjcxNDE=",
+    "languages": ["fr", "en"],
+    "lastLiquibaseTimestamp": 1790603163000,
+    "messageBroker": "kafka",
+    "monorepository": true,
+    "nativeLanguage": "fr",
+    "packageName": "cm.gimac.des.document",
+    "prodDatabaseType": "postgresql",
+    "reactive": false,
+    "searchEngine": "no",
+    "serverPort": "8083",
+    "serviceDiscoveryType": "no",
+    "skipClient": true,
+    "skipCommitHook": true,
+    "skipUserManagement": true,
+    "testFrameworks": []
+  }
+}

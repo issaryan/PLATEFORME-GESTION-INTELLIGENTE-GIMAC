@@ -1,0 +1,11 @@
+id;document_type;policy_version;retention_period;retention_mode;masking_rule;restricted_access;pdfa_required;allowed_media_types;max_size_bytes;allowed_callers;effective_from;active
+f093183d-da85-4c50-8787-c170e66a5d43;RAPPORT_PERIODIQUE;13063;"P5982M4D";CONFORMITE;REJET;false;false;blême près quoique;17113;grâce à à force de extra;2026-09-28T12:25:25;false
+e58ab778-7d08-46fa-97cd-a46513c0c531;RAPPORT_PERIODIQUE;6550;"P";CONFORMITE;MASQUAGE;false;true;probablement;32067;solliciter jusque;2026-09-28T03:47:39;false
+597f6a89-06cf-45b4-88f9-55780371f6a8;RAPPORT_PERIODIQUE;20494;"P96290M217433D";CONFORMITE;MASQUAGE;true;true;pschitt en guise de quand;30940;jaillir tard à demi;2026-09-28T03:20:47;false
+aedb246b-8f79-4bec-a069-c33a8cc596c9;PROCES_VERBAL;982;"P";GOUVERNANCE;REJET;false;false;main-d’œuvre;27154;beaucoup;2026-09-28T01:28:28;true
+eaa6cd51-adff-477c-8040-a0807631ca97;PREUVE_HOMOLOGATION;7076;"P204637M68423D";CONFORMITE;MASQUAGE;true;true;porte-parole envers;31221;tant que ouch;2026-09-28T01:50:47;true
+d06afcf6-2532-4966-ac5f-4c2bc627642d;RAPPORT_POST_INCIDENT;12413;"P14202Y92M930D";CONFORMITE;MASQUAGE;true;false;totalement;19442;collègue;2026-09-28T08:51:56;false
+80a898e3-6515-47b6-a2c3-fcbc51309933;ENREGISTREMENT_CONFERENCE;9089;"P153Y5719M";GOUVERNANCE;MASQUAGE;false;true;lorsque;22672;à partir de;2026-09-27T14:00:53;true
+7e5ce907-9748-4860-87d9-7bff33c5b4ed;ETAT_IMPORTE;30084;"P1Y82823M";CONFORMITE;MASQUAGE;false;false;rose personnel depuis;24060;assurément police;2026-09-28T09:30:51;false
+ee549151-e231-4e38-bd75-088f8ad03240;RAPPORT_PERIODIQUE;27013;"P138Y6M16439D";CONFORMITE;REJET;true;false;en dehors de;13097;électorat;2026-09-27T22:18:27;true
+219f525c-2d15-403f-8ad1-b971a9786f1a;ATTESTATION_REGULARISATION;26741;"P89M";GOUVERNANCE;MASQUAGE;false;true;coucher camarade à peine;29727;vis-à-vie de;2026-09-27T14:09:49;true

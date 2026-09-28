@@ -1,0 +1,58 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134503"
+  },
+  "applications": ["document"],
+  "clientRootFolder": "document",
+  "databaseType": "sql",
+  "documentation": "Contrôle d'intégrité nocturne par échantillonnage (algorithme 6.20, DOC-05).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "startedAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "finishedAt",
+      "fieldType": "Instant"
+    },
+    {
+      "documentation": "Taille d'échantillon : 200 par défaut.",
+      "fieldName": "sampleSize",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required", "min"],
+      "fieldValidateRulesMin": "1"
+    },
+    {
+      "fieldName": "mismatches",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required", "min"],
+      "fieldValidateRulesMin": "0"
+    },
+    {
+      "fieldName": "unreadable",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required", "min"],
+      "fieldValidateRulesMin": "0"
+    },
+    {
+      "fieldName": "result",
+      "fieldType": "IntegrityResult",
+      "fieldTypeDocumentation": "Résultat d'un contrôle d'intégrité (algorithme 6.20 ; écart CC corrigé : String typé).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "EN_COURS,CONFORME,DIVERGENT"
+    }
+  ],
+  "microserviceName": "document",
+  "name": "IntegrityCheck",
+  "pagination": "pagination",
+  "readOnly": true,
+  "relationships": [],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

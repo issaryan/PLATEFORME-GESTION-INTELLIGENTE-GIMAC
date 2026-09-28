@@ -1,0 +1,73 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134403"
+  },
+  "applications": ["document"],
+  "clientRootFolder": "document",
+  "databaseType": "sql",
+  "documentation": "Demande de purge à l'échéance, à quatre yeux (DOC-06) : demandeur et\\napprobateur distincts ; impossible sous verrou actif ou conservation légale.",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "requesterId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "reason",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "1000"
+    },
+    {
+      "fieldName": "requestedAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "approverId",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "approvedAt",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "state",
+      "fieldType": "PurgeState",
+      "fieldTypeDocumentation": "État d'une demande de purge à quatre yeux (écart CC corrigé : String typé).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "DEMANDEE,APPROUVEE,REJETEE,EXECUTEE"
+    },
+    {
+      "fieldName": "rejectionReason",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "500"
+    },
+    {
+      "fieldName": "executedAt",
+      "fieldType": "Instant"
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "document",
+  "name": "PurgeRequest",
+  "pagination": "pagination",
+  "relationships": [
+    {
+      "otherEntityField": "title",
+      "otherEntityName": "document",
+      "relationshipName": "document",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

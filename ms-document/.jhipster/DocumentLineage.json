@@ -1,0 +1,75 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134103"
+  },
+  "applications": ["document"],
+  "clientRootFolder": "document",
+  "databaseType": "sql",
+  "documentation": "Lignée : versions successives d'une même pièce logique (algorithme 6.18).\\nLa version courante est résolue par currentVersion et currentDocument.",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "type",
+      "fieldType": "DocumentType",
+      "fieldTypeDocumentation": "Types de pièces du tableau 6.18 du CC, complétés par le justificatif\\nd'absence, type restreint (REC D-29, RG-74).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "RAPPORT_DE_QUART,ATTESTATION,ARCHIVE_DE_CRISE,PIECE_LEGALE,PREUVE_HOMOLOGATION,PROCES_VERBAL,RAPPORT_PERIODIQUE,ETAT_IMPORTE,JUSTIFICATIF_ABSENCE,RAPPORT_CIRCONSTANCIE,RAPPORT_POST_INCIDENT,ATTESTATION_REGULARISATION,CONVENTION,EXPORT_CONTROLE,ENREGISTREMENT_CONFERENCE",
+      "fieldValuesJavadocs": {
+        "ATTESTATION_REGULARISATION": "Attestation de régularisation d'un suspens (MS-RAPPROCHEMENT, RG-45).",
+        "CONVENTION": "Convention d'adhésion ou de parrainage (MS-PARTICIPANT, RG-12).",
+        "ENREGISTREMENT_CONFERENCE": "Segment d'enregistrement de conférence, avec consentement (MS-COLLABORATION, RG-55).",
+        "EXPORT_CONTROLE": "Export contrôlé d'agrégats (MS-REPORTING, REP-08).",
+        "RAPPORT_CIRCONSTANCIE": "Rapport circonstancié d'un incident S1 ou S2 (MS-INCIDENT, D-10).",
+        "RAPPORT_POST_INCIDENT": "Rapport post-incident signé d'une cellule de crise (MS-INCIDENT, D-14, RG-42)."
+      }
+    },
+    {
+      "documentation": "Service propriétaire, par exemple MS-MONITORING ; vide pour un dépôt utilisateur.",
+      "fieldName": "ownerService",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "50"
+    },
+    {
+      "documentation": "Utilisateur propriétaire, pour un dépôt depuis une couche de présentation.",
+      "fieldName": "ownerId",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Institution concernée (MS-PARTICIPANT), pour le cloisonnement RLS.",
+      "fieldName": "institutionId",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "currentVersion",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required", "min"],
+      "fieldValidateRulesMin": "0"
+    },
+    {
+      "fieldName": "createdAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "document",
+  "name": "DocumentLineage",
+  "pagination": "pagination",
+  "readOnly": true,
+  "relationships": [
+    {
+      "documentation": "Version courante de la lignée (résolution déterministe, algorithme 6.18).",
+      "otherEntityName": "document",
+      "relationshipName": "currentDocument",
+      "relationshipSide": "left",
+      "relationshipType": "one-to-one"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

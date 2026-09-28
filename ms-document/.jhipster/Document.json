@@ -1,0 +1,242 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134203"
+  },
+  "applications": ["document"],
+  "clientRootFolder": "document",
+  "databaseType": "sql",
+  "documentation": "Version d'une pièce : un objet distinct du dépôt WORM, avec sa propre\\nempreinte et son propre verrou (RG-04, RG-05, RG-16). Les objets-valeurs du\\nCC (RetentionPolicy, RetentionLock, ScanResult, MaskingVerdict) y sont aplatis.",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "type",
+      "fieldType": "DocumentType",
+      "fieldTypeDocumentation": "Types de pièces du tableau 6.18 du CC, complétés par le justificatif\\nd'absence, type restreint (REC D-29, RG-74).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "RAPPORT_DE_QUART,ATTESTATION,ARCHIVE_DE_CRISE,PIECE_LEGALE,PREUVE_HOMOLOGATION,PROCES_VERBAL,RAPPORT_PERIODIQUE,ETAT_IMPORTE,JUSTIFICATIF_ABSENCE,RAPPORT_CIRCONSTANCIE,RAPPORT_POST_INCIDENT,ATTESTATION_REGULARISATION,CONVENTION,EXPORT_CONTROLE,ENREGISTREMENT_CONFERENCE",
+      "fieldValuesJavadocs": {
+        "ATTESTATION_REGULARISATION": "Attestation de régularisation d'un suspens (MS-RAPPROCHEMENT, RG-45).",
+        "CONVENTION": "Convention d'adhésion ou de parrainage (MS-PARTICIPANT, RG-12).",
+        "ENREGISTREMENT_CONFERENCE": "Segment d'enregistrement de conférence, avec consentement (MS-COLLABORATION, RG-55).",
+        "EXPORT_CONTROLE": "Export contrôlé d'agrégats (MS-REPORTING, REP-08).",
+        "RAPPORT_CIRCONSTANCIE": "Rapport circonstancié d'un incident S1 ou S2 (MS-INCIDENT, D-10).",
+        "RAPPORT_POST_INCIDENT": "Rapport post-incident signé d'une cellule de crise (MS-INCIDENT, D-14, RG-42)."
+      }
+    },
+    {
+      "fieldName": "title",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "255"
+    },
+    {
+      "documentation": "Numéro de version dans la lignée, à partir de 1 ; (lignée, version) unique.",
+      "fieldName": "version",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required", "min"],
+      "fieldValidateRulesMin": "1"
+    },
+    {
+      "documentation": "Déposant : utilisateur, ou identifiant technique du service appelant.",
+      "fieldName": "authorId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Service appelant pour un dépôt interne, par exemple MS-CERTIFICATION.",
+      "fieldName": "callerService",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "50"
+    },
+    {
+      "documentation": "Institution propriétaire (MS-PARTICIPANT) ; vide pour une pièce interne.",
+      "fieldName": "institutionId",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "visibility",
+      "fieldType": "DocumentVisibility",
+      "fieldTypeDocumentation": "Périmètre de visibilité d'une pièce. RESTREINT : seuls le déposant, les\\nlecteurs désignés et les porteurs de la permission RH y accèdent (D-29).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "TOUTES_INSTITUTIONS,UNE_INSTITUTION,UN_SERVICE,RESTREINT"
+    },
+    {
+      "documentation": "Service du DES propriétaire, pour la visibilité UN_SERVICE.",
+      "fieldName": "ownerUnit",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "100"
+    },
+    {
+      "documentation": "Lecteurs désignés d'une pièce RESTREINT (valideur...), UUID séparés par des virgules (D-29).",
+      "fieldName": "restrictedReaderIds",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "1000"
+    },
+    {
+      "fieldName": "depositedAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "SHA-256 du contenu déposé (après masquage éventuel) ; absent tant que la pièce n'est pas scellée.",
+      "fieldName": "sha256",
+      "fieldType": "String",
+      "fieldValidateRules": ["minlength", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "64",
+      "fieldValidateRulesMinlength": "64",
+      "fieldValidateRulesPattern": "^[0-9a-f]{64}$"
+    },
+    {
+      "fieldName": "sizeBytes",
+      "fieldType": "Long",
+      "fieldValidateRules": ["min"],
+      "fieldValidateRulesMin": "0"
+    },
+    {
+      "fieldName": "mediaType",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "100"
+    },
+    {
+      "documentation": "Clé d'objet propre à la version : type/lignée/vN ; absente avant le dépôt.",
+      "fieldName": "objectKey",
+      "fieldType": "String",
+      "fieldValidateRules": ["unique", "maxlength"],
+      "fieldValidateRulesMaxlength": "255"
+    },
+    {
+      "fieldName": "state",
+      "fieldType": "DocumentState",
+      "fieldTypeDocumentation": "Cycle de vie d'une version de pièce (algorithmes 6.17 et 6.18).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "RECU,EN_QUARANTAINE,REJETE,SCELLE,REMPLACE,PURGE"
+    },
+    {
+      "documentation": "Politique appliquée au dépôt, copiée du catalogue : durée ISO 8601.",
+      "fieldName": "retentionPeriod",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "20",
+      "fieldValidateRulesPattern": "^P([0-9]+Y)?([0-9]+M)?([0-9]+D)?$"
+    },
+    {
+      "fieldName": "retentionMode",
+      "fieldType": "RetentionMode",
+      "fieldTypeDocumentation": "Mode du verrou de rétention du dépôt objet ; CONFORMITE par défaut.",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "CONFORMITE,GOUVERNANCE"
+    },
+    {
+      "documentation": "Conservation légale (litige, inspection) : suspend l'échéance sans limite.",
+      "fieldName": "legalHold",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Échéance du verrou relue sur le dépôt objet (lockOf).",
+      "fieldName": "retainUntil",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "lockedAt",
+      "fieldType": "Instant"
+    },
+    {
+      "documentation": "Verdict antiviral : vrai si sain.",
+      "fieldName": "scanClean",
+      "fieldType": "Boolean"
+    },
+    {
+      "documentation": "Nom de la signature détectée : jamais renvoyé au déposant.",
+      "fieldName": "scanSignatureName",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "255"
+    },
+    {
+      "fieldName": "scanEngineVersion",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "100"
+    },
+    {
+      "fieldName": "scannedAt",
+      "fieldType": "Instant"
+    },
+    {
+      "documentation": "Verdict de masquage : séquences candidates de 13 à 19 chiffres.",
+      "fieldName": "maskingCandidates",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["min"],
+      "fieldValidateRulesMin": "0"
+    },
+    {
+      "fieldName": "maskingLuhnValid",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["min"],
+      "fieldValidateRulesMin": "0"
+    },
+    {
+      "fieldName": "maskingMasked",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["min"],
+      "fieldValidateRulesMin": "0"
+    },
+    {
+      "fieldName": "maskingRejected",
+      "fieldType": "Boolean"
+    },
+    {
+      "documentation": "Déclaration PDF/A-3 vérifiée, pour une pièce générée.",
+      "fieldName": "pdfaCompliant",
+      "fieldType": "Boolean"
+    },
+    {
+      "documentation": "Motif de rejet, sans détail sur la signature détectée.",
+      "fieldName": "rejectionReason",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "500"
+    },
+    {
+      "fieldName": "sealedAt",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "purgedAt",
+      "fieldType": "Instant"
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "document",
+  "name": "Document",
+  "pagination": "pagination",
+  "readOnly": true,
+  "relationships": [
+    {
+      "otherEntityName": "documentLineage",
+      "relationshipName": "lineage",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    },
+    {
+      "documentation": "Entrée du catalogue appliquée au dépôt.",
+      "otherEntityName": "documentTypePolicy",
+      "relationshipName": "policy",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

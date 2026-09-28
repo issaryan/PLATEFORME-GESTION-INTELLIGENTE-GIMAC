@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+
+    <!--
+        Added the entity Document.
+    -->
+    <changeSet id="20260928134203-1" author="jhipster">
+        <createTable tableName="document" remarks="Version d&apos;une pièce : un objet distinct du dépôt WORM, avec sa propre\nempreinte et son propre verrou (RG-04, RG-05, RG-16). Les objets-valeurs du\nCC (RetentionPolicy, RetentionLock, ScanResult, MaskingVerdict) y sont aplatis.">
+            <column name="id" type="${uuidType}">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="type" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="title" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="version" type="integer" remarks="Numéro de version dans la lignée, à partir de 1 ; (lignée, version) unique.">
+                <constraints nullable="false" />
+            </column>
+            <column name="author_id" type="${uuidType}" remarks="Déposant : utilisateur, ou identifiant technique du service appelant.">
+                <constraints nullable="false" />
+            </column>
+            <column name="caller_service" type="varchar(50)" remarks="Service appelant pour un dépôt interne, par exemple MS-CERTIFICATION.">
+                <constraints nullable="true" />
+            </column>
+            <column name="institution_id" type="${uuidType}" remarks="Institution propriétaire (MS-PARTICIPANT) ; vide pour une pièce interne.">
+                <constraints nullable="true" />
+            </column>
+            <column name="visibility" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="owner_unit" type="varchar(100)" remarks="Service du DES propriétaire, pour la visibilité UN_SERVICE.">
+                <constraints nullable="true" />
+            </column>
+            <column name="restricted_reader_ids" type="varchar(1000)" remarks="Lecteurs désignés d&apos;une pièce RESTREINT (valideur...), UUID séparés par des virgules (D-29).">
+                <constraints nullable="true" />
+            </column>
+            <column name="deposited_at" type="${datetimeType}">
+                <constraints nullable="false" />
+            </column>
+            <column name="sha_256" type="varchar(64)" remarks="SHA-256 du contenu déposé (après masquage éventuel) ; absent tant que la pièce n&apos;est pas scellée.">
+                <constraints nullable="true" />
+            </column>
+            <column name="size_bytes" type="bigint">
+                <constraints nullable="true" />
+            </column>
+            <column name="media_type" type="varchar(100)">
+                <constraints nullable="false" />
+            </column>
+            <column name="object_key" type="varchar(255)" remarks="Clé d&apos;objet propre à la version : type/lignée/vN ; absente avant le dépôt.">
+                <constraints nullable="true" unique="true" uniqueConstraintName="ux_document__object_key" />
+            </column>
+            <column name="state" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="retention_period" type="varchar(20)" remarks="Politique appliquée au dépôt, copiée du catalogue : durée ISO 8601.">
+                <constraints nullable="false" />
+            </column>
+            <column name="retention_mode" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="legal_hold" type="boolean" remarks="Conservation légale (litige, inspection) : suspend l&apos;échéance sans limite.">
+                <constraints nullable="false" />
+            </column>
+            <column name="retain_until" type="${datetimeType}" remarks="Échéance du verrou relue sur le dépôt objet (lockOf).">
+                <constraints nullable="true" />
+            </column>
+            <column name="locked_at" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="scan_clean" type="boolean" remarks="Verdict antiviral : vrai si sain.">
+                <constraints nullable="true" />
+            </column>
+            <column name="scan_signature_name" type="varchar(255)" remarks="Nom de la signature détectée : jamais renvoyé au déposant.">
+                <constraints nullable="true" />
+            </column>
+            <column name="scan_engine_version" type="varchar(100)">
+                <constraints nullable="true" />
+            </column>
+            <column name="scanned_at" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="masking_candidates" type="integer" remarks="Verdict de masquage : séquences candidates de 13 à 19 chiffres.">
+                <constraints nullable="true" />
+            </column>
+            <column name="masking_luhn_valid" type="integer">
+                <constraints nullable="true" />
+            </column>
+            <column name="masking_masked" type="integer">
+                <constraints nullable="true" />
+            </column>
+            <column name="masking_rejected" type="boolean">
+                <constraints nullable="true" />
+            </column>
+            <column name="pdfa_compliant" type="boolean" remarks="Déclaration PDF/A-3 vérifiée, pour une pièce générée.">
+                <constraints nullable="true" />
+            </column>
+            <column name="rejection_reason" type="varchar(500)" remarks="Motif de rejet, sans détail sur la signature détectée.">
+                <constraints nullable="true" />
+            </column>
+            <column name="sealed_at" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="purged_at" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="lineage_id" type="${uuidType}">
+                <constraints nullable="false" />
+            </column>
+            <column name="policy_id" type="${uuidType}">
+                <constraints nullable="false" />
+            </column>
+            <!-- jhipster-needle-liquibase-add-column - JHipster will add columns here -->
+        </createTable>
+        <dropDefaultValue tableName="document" columnName="deposited_at" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="document" columnName="retain_until" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="document" columnName="locked_at" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="document" columnName="scanned_at" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="document" columnName="sealed_at" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="document" columnName="purged_at" columnDataType="${datetimeType}"/>
+    </changeSet>
+
+    <!-- jhipster-needle-liquibase-add-changeset - JHipster will add changesets here -->
+
+    <!--
+        Load sample data generated with Faker.js
+        - This data can be easily edited using a CSV editor (or even MS Excel) and
+          is located in the 'src/main/resources/config/liquibase/fake-data' directory
+        - By default this data is applied when running with the JHipster 'dev' profile.
+          This can be customized by adding or removing 'faker' in the 'spring.liquibase.contexts'
+          Spring Boot configuration key.
+    -->
+    <changeSet id="20260928134203-1-data" author="jhipster" context="faker">
+        <loadData
+                  file="config/liquibase/fake-data/document.csv"
+                  separator=";"
+                  tableName="document"
+                  usePreparedStatements="true">
+            <column name="id" type="${uuidType}"/>
+            <column name="type" type="string"/>
+            <column name="title" type="string"/>
+            <column name="version" type="numeric"/>
+            <column name="author_id" type="${uuidType}"/>
+            <column name="caller_service" type="string"/>
+            <column name="institution_id" type="${uuidType}"/>
+            <column name="visibility" type="string"/>
+            <column name="owner_unit" type="string"/>
+            <column name="restricted_reader_ids" type="string"/>
+            <column name="deposited_at" type="date"/>
+            <column name="sha_256" type="string"/>
+            <column name="size_bytes" type="numeric"/>
+            <column name="media_type" type="string"/>
+            <column name="object_key" type="string"/>
+            <column name="state" type="string"/>
+            <column name="retention_period" type="string"/>
+            <column name="retention_mode" type="string"/>
+            <column name="legal_hold" type="boolean"/>
+            <column name="retain_until" type="date"/>
+            <column name="locked_at" type="date"/>
+            <column name="scan_clean" type="boolean"/>
+            <column name="scan_signature_name" type="string"/>
+            <column name="scan_engine_version" type="string"/>
+            <column name="scanned_at" type="date"/>
+            <column name="masking_candidates" type="numeric"/>
+            <column name="masking_luhn_valid" type="numeric"/>
+            <column name="masking_masked" type="numeric"/>
+            <column name="masking_rejected" type="boolean"/>
+            <column name="pdfa_compliant" type="boolean"/>
+            <column name="rejection_reason" type="string"/>
+            <column name="sealed_at" type="date"/>
+            <column name="purged_at" type="date"/>
+            <column name="lineage_id" type="${uuidType}"/>
+            <column name="policy_id" type="${uuidType}"/>
+            <!-- jhipster-needle-liquibase-add-loadcolumn - JHipster (and/or extensions) can add load columns here -->
+        </loadData>
+    </changeSet>
+</databaseChangeLog>

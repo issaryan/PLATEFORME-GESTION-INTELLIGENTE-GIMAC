@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+    <!--
+        Added the constraints for entity IntegrityMismatch.
+    -->
+    <changeSet id="20260928134603-2" author="jhipster">
+
+        <addForeignKeyConstraint baseColumnNames="integrity_check_id"
+                                 baseTableName="integrity_mismatch"
+                                 constraintName="fk_integrity_mismatch__integrity_check_id"
+                                 referencedColumnNames="id"
+                                 referencedTableName="integrity_check"
+                                 />
+
+        <addForeignKeyConstraint baseColumnNames="document_id"
+                                 baseTableName="integrity_mismatch"
+                                 constraintName="fk_integrity_mismatch__document_id"
+                                 referencedColumnNames="id"
+                                 referencedTableName="document"
+                                 />
+    </changeSet>
+</databaseChangeLog>

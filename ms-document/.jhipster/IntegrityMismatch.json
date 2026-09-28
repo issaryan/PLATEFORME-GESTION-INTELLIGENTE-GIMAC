@@ -1,0 +1,74 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134603"
+  },
+  "applications": ["document"],
+  "clientRootFolder": "document",
+  "databaseType": "sql",
+  "documentation": "Anomalie consignée par un contrôle d'intégrité, avec les deux empreintes.",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "kind",
+      "fieldType": "MismatchKind",
+      "fieldTypeDocumentation": "Nature d'une anomalie relevée par le contrôle d'intégrité.",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "EMPREINTE_DIVERGENTE,OBJET_ILLISIBLE,VERROU_INVALIDE"
+    },
+    {
+      "fieldName": "objectKey",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "255"
+    },
+    {
+      "fieldName": "expectedSha256",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "minlength", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "64",
+      "fieldValidateRulesMinlength": "64",
+      "fieldValidateRulesPattern": "^[0-9a-f]{64}$"
+    },
+    {
+      "documentation": "Empreinte recalculée ; absente pour un objet illisible.",
+      "fieldName": "actualSha256",
+      "fieldType": "String",
+      "fieldValidateRules": ["minlength", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "64",
+      "fieldValidateRulesMinlength": "64",
+      "fieldValidateRulesPattern": "^[0-9a-f]{64}$"
+    },
+    {
+      "fieldName": "detectedAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    }
+  ],
+  "microserviceName": "document",
+  "name": "IntegrityMismatch",
+  "pagination": "pagination",
+  "readOnly": true,
+  "relationships": [
+    {
+      "otherEntityName": "integrityCheck",
+      "relationshipName": "integrityCheck",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    },
+    {
+      "otherEntityField": "title",
+      "otherEntityName": "document",
+      "relationshipName": "document",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

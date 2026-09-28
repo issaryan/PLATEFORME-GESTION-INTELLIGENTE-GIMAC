@@ -1,0 +1,108 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134003"
+  },
+  "applications": ["document"],
+  "clientRootFolder": "document",
+  "databaseType": "sql",
+  "documentation": "Catalogue versionné des types de pièces (DOC-02) : origine admise, règle de\\nmasquage, rétention et contraintes d'admission (tableau 6.18 du CC).\\nValeurs initiales : 10 ans en conformité, sauf ETAT_IMPORTE (5 ans) ;\\nJUSTIFICATIF_ABSENCE : restreint, durée proposée de 5 ans en conformité,\\nà confirmer par le RSSI (D-29).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "documentType",
+      "fieldType": "DocumentType",
+      "fieldTypeDocumentation": "Types de pièces du tableau 6.18 du CC, complétés par le justificatif\\nd'absence, type restreint (REC D-29, RG-74).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "RAPPORT_DE_QUART,ATTESTATION,ARCHIVE_DE_CRISE,PIECE_LEGALE,PREUVE_HOMOLOGATION,PROCES_VERBAL,RAPPORT_PERIODIQUE,ETAT_IMPORTE,JUSTIFICATIF_ABSENCE,RAPPORT_CIRCONSTANCIE,RAPPORT_POST_INCIDENT,ATTESTATION_REGULARISATION,CONVENTION,EXPORT_CONTROLE,ENREGISTREMENT_CONFERENCE",
+      "fieldValuesJavadocs": {
+        "ATTESTATION_REGULARISATION": "Attestation de régularisation d'un suspens (MS-RAPPROCHEMENT, RG-45).",
+        "CONVENTION": "Convention d'adhésion ou de parrainage (MS-PARTICIPANT, RG-12).",
+        "ENREGISTREMENT_CONFERENCE": "Segment d'enregistrement de conférence, avec consentement (MS-COLLABORATION, RG-55).",
+        "EXPORT_CONTROLE": "Export contrôlé d'agrégats (MS-REPORTING, REP-08).",
+        "RAPPORT_CIRCONSTANCIE": "Rapport circonstancié d'un incident S1 ou S2 (MS-INCIDENT, D-10).",
+        "RAPPORT_POST_INCIDENT": "Rapport post-incident signé d'une cellule de crise (MS-INCIDENT, D-14, RG-42)."
+      }
+    },
+    {
+      "documentation": "Version du catalogue ; le couple (type, version) est unique.",
+      "fieldName": "policyVersion",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required", "min"],
+      "fieldValidateRulesMin": "1"
+    },
+    {
+      "documentation": "Durée de rétention au format ISO 8601, par exemple P10Y.",
+      "fieldName": "retentionPeriod",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "20",
+      "fieldValidateRulesPattern": "^P([0-9]+Y)?([0-9]+M)?([0-9]+D)?$"
+    },
+    {
+      "fieldName": "retentionMode",
+      "fieldType": "RetentionMode",
+      "fieldTypeDocumentation": "Mode du verrou de rétention du dépôt objet ; CONFORMITE par défaut.",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "CONFORMITE,GOUVERNANCE"
+    },
+    {
+      "fieldName": "maskingRule",
+      "fieldType": "MaskingRule",
+      "fieldTypeDocumentation": "Règle appliquée à un numéro de carte plausible (tableau 6.18).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "REJET,MASQUAGE"
+    },
+    {
+      "documentation": "Vrai pour un type à accès restreint (justificatif d'absence, D-29).",
+      "fieldName": "restrictedAccess",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Vrai si la déclaration PDF/A-3 est exigée (pièces générées, ISO 19005-3).",
+      "fieldName": "pdfaRequired",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Types de média admis, séparés par des virgules.",
+      "fieldName": "allowedMediaTypes",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "500"
+    },
+    {
+      "fieldName": "maxSizeBytes",
+      "fieldType": "Long",
+      "fieldValidateRules": ["required", "min"],
+      "fieldValidateRulesMin": "1"
+    },
+    {
+      "documentation": "Services appelants autorisés (liste mTLS), séparés par des virgules ; vide pour un dépôt utilisateur seul.",
+      "fieldName": "allowedCallers",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "500"
+    },
+    {
+      "fieldName": "effectiveFrom",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "active",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "document",
+  "name": "DocumentTypePolicy",
+  "relationships": [],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

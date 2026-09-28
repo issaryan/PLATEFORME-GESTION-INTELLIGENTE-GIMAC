@@ -1,0 +1,78 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134303"
+  },
+  "applications": ["document"],
+  "clientRootFolder": "document",
+  "databaseType": "sql",
+  "documentation": "Journal de consultation en insertion seule (RG-06, algorithme 6.19) :\\ninscrit avant toute restitution, y compris les refus.",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "userId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Institution du sujet, pour un représentant d'un participant.",
+      "fieldName": "institutionId",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "action",
+      "fieldType": "ConsultationAction",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "LECTURE,TELECHARGEMENT,LISTE_DES_VERSIONS"
+    },
+    {
+      "fieldName": "channel",
+      "fieldType": "ConsultationChannel",
+      "fieldTypeDocumentation": "Canal de la consultation : origine de la requête (NetworkZone, REC D-24),\\nou appel d'un service interne sous mTLS.",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "PORTAIL_DMZ,DEPARTEMENT,ADMINISTRATION,SERVICE_INTERNE"
+    },
+    {
+      "fieldName": "consultedAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "correlationId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Faux pour une consultation refusée, journalisée et publiée elle aussi.",
+      "fieldName": "granted",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "refusalReason",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "255"
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "document",
+  "name": "Consultation",
+  "pagination": "pagination",
+  "readOnly": true,
+  "relationships": [
+    {
+      "otherEntityField": "title",
+      "otherEntityName": "document",
+      "relationshipName": "document",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

@@ -1,0 +1,5 @@
+org.springframework.test.context.ContextCustomizerFactory = \
+    cm.gimac.des.document.config.\
+    SqlTestContainersSpringContextCustomizerFactory,cm.gimac.des.document.\
+    config.RedisTestContainersSpringContextCustomizerFactory,cm.gimac.des.\
+    document.config.KafkaTestContainersSpringContextCustomizerFactory

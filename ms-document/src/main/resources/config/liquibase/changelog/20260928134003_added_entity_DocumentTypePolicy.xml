@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+
+    <!--
+        Added the entity DocumentTypePolicy.
+    -->
+    <changeSet id="20260928134003-1" author="jhipster">
+        <createTable tableName="document_type_policy" remarks="Catalogue versionné des types de pièces (DOC-02) : origine admise, règle de\nmasquage, rétention et contraintes d&apos;admission (tableau 6.18 du CC).\nValeurs initiales : 10 ans en conformité, sauf ETAT_IMPORTE (5 ans) ;\nJUSTIFICATIF_ABSENCE : restreint, durée proposée de 5 ans en conformité,\nà confirmer par le RSSI (D-29).">
+            <column name="id" type="${uuidType}">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="document_type" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="policy_version" type="integer" remarks="Version du catalogue ; le couple (type, version) est unique.">
+                <constraints nullable="false" />
+            </column>
+            <column name="retention_period" type="varchar(20)" remarks="Durée de rétention au format ISO 8601, par exemple P10Y.">
+                <constraints nullable="false" />
+            </column>
+            <column name="retention_mode" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="masking_rule" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="restricted_access" type="boolean" remarks="Vrai pour un type à accès restreint (justificatif d&apos;absence, D-29).">
+                <constraints nullable="false" />
+            </column>
+            <column name="pdfa_required" type="boolean" remarks="Vrai si la déclaration PDF/A-3 est exigée (pièces générées, ISO 19005-3).">
+                <constraints nullable="false" />
+            </column>
+            <column name="allowed_media_types" type="varchar(500)" remarks="Types de média admis, séparés par des virgules.">
+                <constraints nullable="false" />
+            </column>
+            <column name="max_size_bytes" type="bigint">
+                <constraints nullable="false" />
+            </column>
+            <column name="allowed_callers" type="varchar(500)" remarks="Services appelants autorisés (liste mTLS), séparés par des virgules ; vide pour un dépôt utilisateur seul.">
+                <constraints nullable="true" />
+            </column>
+            <column name="effective_from" type="${datetimeType}">
+                <constraints nullable="false" />
+            </column>
+            <column name="active" type="boolean">
+                <constraints nullable="false" />
+            </column>
+            <!-- jhipster-needle-liquibase-add-column - JHipster will add columns here -->
+        </createTable>
+        <dropDefaultValue tableName="document_type_policy" columnName="effective_from" columnDataType="${datetimeType}"/>
+    </changeSet>
+
+    <!-- jhipster-needle-liquibase-add-changeset - JHipster will add changesets here -->
+
+    <!--
+        Load sample data generated with Faker.js
+        - This data can be easily edited using a CSV editor (or even MS Excel) and
+          is located in the 'src/main/resources/config/liquibase/fake-data' directory
+        - By default this data is applied when running with the JHipster 'dev' profile.
+          This can be customized by adding or removing 'faker' in the 'spring.liquibase.contexts'
+          Spring Boot configuration key.
+    -->
+    <changeSet id="20260928134003-1-data" author="jhipster" context="faker">
+        <loadData
+                  file="config/liquibase/fake-data/document_type_policy.csv"
+                  separator=";"
+                  tableName="document_type_policy"
+                  usePreparedStatements="true">
+            <column name="id" type="${uuidType}"/>
+            <column name="document_type" type="string"/>
+            <column name="policy_version" type="numeric"/>
+            <column name="retention_period" type="string"/>
+            <column name="retention_mode" type="string"/>
+            <column name="masking_rule" type="string"/>
+            <column name="restricted_access" type="boolean"/>
+            <column name="pdfa_required" type="boolean"/>
+            <column name="allowed_media_types" type="string"/>
+            <column name="max_size_bytes" type="numeric"/>
+            <column name="allowed_callers" type="string"/>
+            <column name="effective_from" type="date"/>
+            <column name="active" type="boolean"/>
+            <!-- jhipster-needle-liquibase-add-loadcolumn - JHipster (and/or extensions) can add load columns here -->
+        </loadData>
+    </changeSet>
+</databaseChangeLog>
