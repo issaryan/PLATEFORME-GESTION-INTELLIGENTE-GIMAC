@@ -1,0 +1,54 @@
+[
+  {
+    "id": "mem-MEMORY-m-moire-du-projet-gimac--plate-0",
+    "key": "m-moire-du-projet-gimac-plateforme-des-",
+    "content": "- [Vue d'ensemble du projet](gimac-projet-vue-ensemble.md) — chaîne documentaire, préséance REC > CCT > CA > CC > CP, 14 microservices, invariants non négociables\n- [État du dépôt au 28/09/2026](gimac-etat-depot-2026-09-28.md) — 11 services JHipster 8.11 commités, socle non généré, secrets de dev JHipster à neutraliser\n- [Consigne commit et push](gimac-consigne-commit-push.md) — commiter et pousser à chaque implémentation, jeton hors dépôt, aucune référence à Claude ou Anthropic",
+    "summary": "Mémoire du projet GIMAC (plateforme DES)",
+    "namespace": "core",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/home/ryan/.claude/projects/-home-ryan-Bureau-PLATEFORME-GESTION-INTELLIGENTE-GIMAC/memory/MEMORY.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1790606043202
+  },
+  {
+    "id": "mem-gimac-consigne-commit-push-----0",
+    "key": "-",
+    "content": "name: gimac-consigne-commit-push\ndescription: Consigne de l'utilisateur, commiter et pousser à chaque implémentation sur son compte GitHub issaryan\nmetadata:\n  type: feedback\n---\n\nAprès chaque implémentation, commiter puis pousser sur origin/main (https://github.com/issaryan/PLATEFORME-GESTION-INTELLIGENTE-GIMAC), sous l'identité git issaryan, sans redemander l'autorisation. L'authentification passe par le helper `credential.helper store` configuré en local sur le dépôt ; le jeton est dans `~/.…",
+    "summary": "---",
+    "namespace": "gimac-consigne-commit-push",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/home/ryan/.claude/projects/-home-ryan-Bureau-PLATEFORME-GESTION-INTELLIGENTE-GIMAC/memory/gimac-consigne-commit-push.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1790606043202
+  },
+  {
+    "id": "mem-gimac-etat-depot-2026-09-28-----0",
+    "key": "-",
+    "content": "name: gimac-etat-depot-2026-09-28\ndescription: État du dépôt au 28/09/2026 après le commit et le push des 11 services générés par JHipster\nmetadata:\n  type: project\n---\n\nAu 28/09/2026, après le push de 4bade16 sur origin/main :\n\n- 14 JDL commités (ports 8080 à 8093, `cm.gimac.des.<service>`). MS-IAM seul marqué « validé ».\n- JHipster mis à jour en 9.4.0 (install nvm, `/usr/local/bin/jhipster` 8.11 subsiste mais est masqué). Socle gateway, iam, audit générés en 9.4.0 et poussés (5d9144c). 11 ser…",
+    "summary": "---",
+    "namespace": "gimac-etat-depot-2026-09-28",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/home/ryan/.claude/projects/-home-ryan-Bureau-PLATEFORME-GESTION-INTELLIGENTE-GIMAC/memory/gimac-etat-depot-2026-09-28.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1790606043202
+  },
+  {
+    "id": "mem-gimac-projet-vue-ensemble-----0",
+    "key": "-",
+    "content": "name: gimac-projet-vue-ensemble\ndescription: \"Ce qu'est la plateforme DES du GIMAC, sa chaîne documentaire, la règle de préséance et les invariants non négociables\"\nmetadata:\n  node_type: memory\n  type: project\n  originSessionId: c237439e-f141-4545-aa1f-02e5846f7913\n  modified: 2026-09-28T13:49:18.228Z\n---\n\nPlateforme de suivi des activités du Département Exploitation et Supervision (DES) du GIMAC (switch monétique régional CEMAC, Yaoundé). Outil de suivi non intrusif : la plateforme **lit, réf…",
+    "summary": "---",
+    "namespace": "gimac-projet-vue-ensemble",
+    "type": "semantic",
+    "metadata": {
+      "sourceFile": "/home/ryan/.claude/projects/-home-ryan-Bureau-PLATEFORME-GESTION-INTELLIGENTE-GIMAC/memory/gimac-projet-vue-ensemble.md",
+      "bootstrapped": true
+    },
+    "createdAt": 1790606043203
+  }
+]

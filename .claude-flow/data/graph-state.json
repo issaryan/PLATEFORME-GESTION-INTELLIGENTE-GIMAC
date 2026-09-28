@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "updatedAt": 1790606043205,
+  "nodeCount": 4,
+  "nodes": {
+    "mem-MEMORY-m-moire-du-projet-gimac--plate-0": {
+      "id": "mem-MEMORY-m-moire-du-projet-gimac--plate-0",
+      "category": "core",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1790606043202
+    },
+    "mem-gimac-consigne-commit-push-----0": {
+      "id": "mem-gimac-consigne-commit-push-----0",
+      "category": "gimac-consigne-commit-push",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1790606043202
+    },
+    "mem-gimac-etat-depot-2026-09-28-----0": {
+      "id": "mem-gimac-etat-depot-2026-09-28-----0",
+      "category": "gimac-etat-depot-2026-09-28",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1790606043202
+    },
+    "mem-gimac-projet-vue-ensemble-----0": {
+      "id": "mem-gimac-projet-vue-ensemble-----0",
+      "category": "gimac-projet-vue-ensemble",
+      "confidence": 0.5,
+      "accessCount": 0,
+      "createdAt": 1790606043203
+    }
+  },
+  "edges": [],
+  "pageRanks": {
+    "mem-MEMORY-m-moire-du-projet-gimac--plate-0": 0.25,
+    "mem-gimac-consigne-commit-push-----0": 0.25,
+    "mem-gimac-etat-depot-2026-09-28-----0": 0.25,
+    "mem-gimac-projet-vue-ensemble-----0": 0.25
+  }
+}
