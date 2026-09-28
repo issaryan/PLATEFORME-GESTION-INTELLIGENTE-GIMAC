@@ -1,0 +1,29 @@
+{
+  "generator-jhipster": {
+    "appsFolders": [
+      "ms-gateway",
+      "ms-iam",
+      "ms-audit",
+      "ms-document",
+      "ms-notification",
+      "ms-participant",
+      "ms-homologation",
+      "ms-certification",
+      "ms-incident",
+      "ms-monitoring",
+      "ms-rapprochement",
+      "ms-pilotage",
+      "ms-reporting",
+      "ms-collaboration"
+    ],
+    "clusteredDbApps": [],
+    "deploymentApplicationType": "microservice",
+    "deploymentType": "docker-compose",
+    "directoryPath": "../../",
+    "dockerPushCommand": "docker push",
+    "dockerRepositoryName": "",
+    "jwtSecretKey": "MjY2MGQ1ZTNkNTRhODk2N2FjY2E2YzFjOTQzMTBmNDk5OGJiZGQ4MjEwNjJmNjBkMzJlNGFkNmI0OGZmZGFmOTk2ZTUzYWZmZGVmMDE5NmFlNTk0MmM4NGE4MjFkY2FiN2YzOQ==",
+    "monitoring": "prometheus",
+    "serviceDiscoveryType": "no"
+  }
+}

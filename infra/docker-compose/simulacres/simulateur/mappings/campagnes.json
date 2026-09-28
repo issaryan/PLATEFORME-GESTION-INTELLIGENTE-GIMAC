@@ -1,0 +1,76 @@
+{
+  "mappings": [
+    {
+      "name": "Liste des campagnes d'une liaison (lecture seule, D-16)",
+      "request": {
+        "method": "GET",
+        "urlPathPattern": "/api/v1/liaisons/([A-Z0-9-]+)/campagnes"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "bodyFileName": "campagnes.json"
+      }
+    },
+    {
+      "name": "Résultats d'une campagne, tels que fournis par le simulateur (RG-29, RG-30)",
+      "request": {
+        "method": "GET",
+        "urlPathPattern": "/api/v1/campagnes/([A-Z0-9-]+)/resultats"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "bodyFileName": "resultats.json"
+      }
+    },
+    {
+      "name": "Écriture POST refusée : la plateforme ne modifie jamais le simulateur",
+      "priority": 1,
+      "request": {
+        "method": "POST",
+        "urlPattern": "/.*"
+      },
+      "response": {
+        "status": 405
+      }
+    },
+    {
+      "name": "Écriture PUT refusée : la plateforme ne modifie jamais le simulateur",
+      "priority": 1,
+      "request": {
+        "method": "PUT",
+        "urlPattern": "/.*"
+      },
+      "response": {
+        "status": 405
+      }
+    },
+    {
+      "name": "Écriture PATCH refusée : la plateforme ne modifie jamais le simulateur",
+      "priority": 1,
+      "request": {
+        "method": "PATCH",
+        "urlPattern": "/.*"
+      },
+      "response": {
+        "status": 405
+      }
+    },
+    {
+      "name": "Écriture DELETE refusée : la plateforme ne modifie jamais le simulateur",
+      "priority": 1,
+      "request": {
+        "method": "DELETE",
+        "urlPattern": "/.*"
+      },
+      "response": {
+        "status": 405
+      }
+    }
+  ]
+}

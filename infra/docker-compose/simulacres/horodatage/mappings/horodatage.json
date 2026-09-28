@@ -1,0 +1,9 @@
+{
+  "mappings": [
+    {
+      "name": "Point RFC 3161 : accepte les requêtes mais ne signe pas (jeton de test à fournir par SOC-12)",
+      "request": { "method": "POST", "url": "/tsa", "headers": { "Content-Type": { "equalTo": "application/timestamp-query" } } },
+      "response": { "status": 503, "headers": { "Retry-After": "30" }, "body": "Autorité d'horodatage simulée : signature non disponible en DEV" }
+    }
+  ]
+}

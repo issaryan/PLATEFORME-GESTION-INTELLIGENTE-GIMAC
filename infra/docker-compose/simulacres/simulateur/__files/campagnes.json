@@ -1,0 +1,4 @@
+[
+  { "campagne": "CMP-2026-0142", "liaison": "LIA-INST-0042-01", "scenario": "TRONC-COMMUN", "versionScenario": "4.2", "etat": "TERMINEE", "fin": "2026-09-25T16:40:00Z" },
+  { "campagne": "CMP-2026-0143", "liaison": "LIA-INST-0042-01", "scenario": "RETRAIT-DAB", "versionScenario": "2.1", "etat": "EN_COURS", "fin": null }
+]

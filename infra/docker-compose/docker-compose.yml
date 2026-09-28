@@ -1,0 +1,666 @@
+services:
+  gateway:
+    image: gateway
+    environment:
+      - _JAVA_OPTIONS=-Xmx512m -Xms256m
+      - SPRING_PROFILES_ACTIVE=prod,api-docs,secret-samples
+      - MANAGEMENT_PROMETHEUS_METRICS_EXPORT_ENABLED=true
+      - SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_OIDC_ISSUER_URI=http://keycloak:9080/realms/jhipster
+      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_ID=web_app
+      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_SECRET=web_app
+      - SPRING_R2DBC_URL=r2dbc:postgresql://gateway-postgresql:5432/gateway
+      - SPRING_R2DBC_USERNAME=gateway
+      - SPRING_R2DBC_PASSWORD=
+      - SPRING_LIQUIBASE_URL=jdbc:postgresql://gateway-postgresql:5432/gateway
+      - SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS=kafka:9092
+    ports:
+      - 8080:8080
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8080; printf \"GET /management/health HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n\" >&3; grep -q \"\\\"status\\\":\\\"UP\\\"\" <&3'"
+      interval: 5s
+      timeout: 5s
+      retries: 40
+    depends_on:
+      gateway-postgresql:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+  gateway-postgresql:
+    image: postgres:18.6
+    environment:
+      - POSTGRES_USER=gateway
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U $${POSTGRES_USER}
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  iam:
+    image: iam
+    environment:
+      - _JAVA_OPTIONS=-Xmx512m -Xms256m
+      - SPRING_PROFILES_ACTIVE=prod,api-docs,secret-samples
+      - MANAGEMENT_PROMETHEUS_METRICS_EXPORT_ENABLED=true
+      - SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_OIDC_ISSUER_URI=http://keycloak:9080/realms/jhipster
+      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_ID=internal
+      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_SECRET=internal
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://iam-postgresql:5432/iam
+      - SPRING_DATASOURCE_USERNAME=iam
+      - SPRING_DATASOURCE_PASSWORD=
+      - SPRING_LIQUIBASE_URL=jdbc:postgresql://iam-postgresql:5432/iam
+      - JHIPSTER_CACHE_REDIS_SERVER=redis://iam-redis:6379
+      - JHIPSTER_CACHE_REDIS_CLUSTER=false
+      - SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS=kafka:9092
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8081; printf \"GET /management/health HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n\" >&3; grep -q \"\\\"status\\\":\\\"UP\\\"\" <&3'"
+      interval: 5s
+      timeout: 5s
+      retries: 40
+    depends_on:
+      iam-postgresql:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+  iam-postgresql:
+    image: postgres:18.6
+    environment:
+      - POSTGRES_USER=iam
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U $${POSTGRES_USER}
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  iam-redis:
+    image: redis:8.10.1
+
+  audit:
+    image: audit
+    environment:
+      - _JAVA_OPTIONS=-Xmx512m -Xms256m
+      - SPRING_PROFILES_ACTIVE=prod,api-docs,secret-samples
+      - MANAGEMENT_PROMETHEUS_METRICS_EXPORT_ENABLED=true
+      - SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_OIDC_ISSUER_URI=http://keycloak:9080/realms/jhipster
+      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_ID=internal
+      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_SECRET=internal
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://audit-postgresql:5432/audit
+      - SPRING_DATASOURCE_USERNAME=audit
+      - SPRING_DATASOURCE_PASSWORD=
+      - SPRING_LIQUIBASE_URL=jdbc:postgresql://audit-postgresql:5432/audit
+      - SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS=kafka:9092
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8082; printf \"GET /management/health HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n\" >&3; grep -q \"\\\"status\\\":\\\"UP\\\"\" <&3'"
+      interval: 5s
+      timeout: 5s
+      retries: 40
+    depends_on:
+      audit-postgresql:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+  audit-postgresql:
+    image: postgres:18.6
+    environment:
+      - POSTGRES_USER=audit
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U $${POSTGRES_USER}
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  document:
+    image: document
+    environment:
+      - _JAVA_OPTIONS=-Xmx512m -Xms256m
+      - SPRING_PROFILES_ACTIVE=prod,api-docs
+      - MANAGEMENT_PROMETHEUS_METRICS_EXPORT_ENABLED=true
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://document-postgresql:5432/document
+      - SPRING_LIQUIBASE_URL=jdbc:postgresql://document-postgresql:5432/document
+      - JHIPSTER_CACHE_REDIS_SERVER=redis://document-redis:6379
+      - JHIPSTER_CACHE_REDIS_CLUSTER=false
+      - SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_OIDC_ISSUER_URI=http://keycloak:9080/realms/jhipster
+      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_ID=internal
+      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_SECRET=internal
+      - SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS=kafka:9092
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - -f
+        - http://localhost:8083/management/health
+      interval: 5s
+      timeout: 5s
+      retries: 40
+    depends_on:
+      document-postgresql:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+  document-postgresql:
+    image: postgres:17.4
+    environment:
+      - POSTGRES_USER=document
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U $${POSTGRES_USER}
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  document-redis:
+    image: redis:8.0.0
+
+  notification:
+    image: notification
+    environment:
+      - _JAVA_OPTIONS=-Xmx512m -Xms256m
+      - SPRING_PROFILES_ACTIVE=prod,api-docs
+      - MANAGEMENT_PROMETHEUS_METRICS_EXPORT_ENABLED=true
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://notification-postgresql:5432/notification
+      - SPRING_LIQUIBASE_URL=jdbc:postgresql://notification-postgresql:5432/notification
+      - JHIPSTER_CACHE_REDIS_SERVER=redis://notification-redis:6379
+      - JHIPSTER_CACHE_REDIS_CLUSTER=false
+      - SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_OIDC_ISSUER_URI=http://keycloak:9080/realms/jhipster
+      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_ID=internal
+      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_SECRET=internal
+      - SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS=kafka:9092
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - -f
+        - http://localhost:8084/management/health
+      interval: 5s
+      timeout: 5s
+      retries: 40
+    depends_on:
+      notification-postgresql:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+  notification-postgresql:
+    image: postgres:17.4
+    environment:
+      - POSTGRES_USER=notification
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U $${POSTGRES_USER}
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  notification-redis:
+    image: redis:8.0.0
+
+  participant:
+    image: participant
+    environment:
+      - _JAVA_OPTIONS=-Xmx512m -Xms256m
+      - SPRING_PROFILES_ACTIVE=prod,api-docs
+      - MANAGEMENT_PROMETHEUS_METRICS_EXPORT_ENABLED=true
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://participant-postgresql:5432/participant
+      - SPRING_LIQUIBASE_URL=jdbc:postgresql://participant-postgresql:5432/participant
+      - JHIPSTER_CACHE_REDIS_SERVER=redis://participant-redis:6379
+      - JHIPSTER_CACHE_REDIS_CLUSTER=false
+      - SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_OIDC_ISSUER_URI=http://keycloak:9080/realms/jhipster
+      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_ID=internal
+      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_SECRET=internal
+      - SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS=kafka:9092
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - -f
+        - http://localhost:8085/management/health
+      interval: 5s
+      timeout: 5s
+      retries: 40
+    depends_on:
+      participant-postgresql:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+  participant-postgresql:
+    image: postgres:17.4
+    environment:
+      - POSTGRES_USER=participant
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U $${POSTGRES_USER}
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  participant-redis:
+    image: redis:8.0.0
+
+  homologation:
+    image: homologation
+    environment:
+      - _JAVA_OPTIONS=-Xmx512m -Xms256m
+      - SPRING_PROFILES_ACTIVE=prod,api-docs
+      - MANAGEMENT_PROMETHEUS_METRICS_EXPORT_ENABLED=true
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://homologation-postgresql:5432/homologation
+      - SPRING_LIQUIBASE_URL=jdbc:postgresql://homologation-postgresql:5432/homologation
+      - JHIPSTER_CACHE_REDIS_SERVER=redis://homologation-redis:6379
+      - JHIPSTER_CACHE_REDIS_CLUSTER=false
+      - SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_OIDC_ISSUER_URI=http://keycloak:9080/realms/jhipster
+      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_ID=internal
+      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_SECRET=internal
+      - SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS=kafka:9092
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - -f
+        - http://localhost:8086/management/health
+      interval: 5s
+      timeout: 5s
+      retries: 40
+    depends_on:
+      homologation-postgresql:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+  homologation-postgresql:
+    image: postgres:17.4
+    environment:
+      - POSTGRES_USER=homologation
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U $${POSTGRES_USER}
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  homologation-redis:
+    image: redis:8.0.0
+
+  certification:
+    image: certification
+    environment:
+      - _JAVA_OPTIONS=-Xmx512m -Xms256m
+      - SPRING_PROFILES_ACTIVE=prod,api-docs
+      - MANAGEMENT_PROMETHEUS_METRICS_EXPORT_ENABLED=true
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://certification-postgresql:5432/certification
+      - SPRING_LIQUIBASE_URL=jdbc:postgresql://certification-postgresql:5432/certification
+      - JHIPSTER_CACHE_REDIS_SERVER=redis://certification-redis:6379
+      - JHIPSTER_CACHE_REDIS_CLUSTER=false
+      - SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_OIDC_ISSUER_URI=http://keycloak:9080/realms/jhipster
+      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_ID=internal
+      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_SECRET=internal
+      - SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS=kafka:9092
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - -f
+        - http://localhost:8087/management/health
+      interval: 5s
+      timeout: 5s
+      retries: 40
+    depends_on:
+      certification-postgresql:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+  certification-postgresql:
+    image: postgres:17.4
+    environment:
+      - POSTGRES_USER=certification
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U $${POSTGRES_USER}
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  certification-redis:
+    image: redis:8.0.0
+
+  incident:
+    image: incident
+    environment:
+      - _JAVA_OPTIONS=-Xmx512m -Xms256m
+      - SPRING_PROFILES_ACTIVE=prod,api-docs
+      - MANAGEMENT_PROMETHEUS_METRICS_EXPORT_ENABLED=true
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://incident-postgresql:5432/incident
+      - SPRING_LIQUIBASE_URL=jdbc:postgresql://incident-postgresql:5432/incident
+      - JHIPSTER_CACHE_REDIS_SERVER=redis://incident-redis:6379
+      - JHIPSTER_CACHE_REDIS_CLUSTER=false
+      - SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_OIDC_ISSUER_URI=http://keycloak:9080/realms/jhipster
+      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_ID=internal
+      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_SECRET=internal
+      - SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS=kafka:9092
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - -f
+        - http://localhost:8088/management/health
+      interval: 5s
+      timeout: 5s
+      retries: 40
+    depends_on:
+      incident-postgresql:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+  incident-postgresql:
+    image: postgres:17.4
+    environment:
+      - POSTGRES_USER=incident
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U $${POSTGRES_USER}
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  incident-redis:
+    image: redis:8.0.0
+
+  monitoring:
+    image: monitoring
+    environment:
+      - _JAVA_OPTIONS=-Xmx512m -Xms256m
+      - SPRING_PROFILES_ACTIVE=prod,api-docs
+      - MANAGEMENT_PROMETHEUS_METRICS_EXPORT_ENABLED=true
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://monitoring-postgresql:5432/monitoring
+      - SPRING_LIQUIBASE_URL=jdbc:postgresql://monitoring-postgresql:5432/monitoring
+      - JHIPSTER_CACHE_REDIS_SERVER=redis://monitoring-redis:6379
+      - JHIPSTER_CACHE_REDIS_CLUSTER=false
+      - SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_OIDC_ISSUER_URI=http://keycloak:9080/realms/jhipster
+      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_ID=internal
+      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_SECRET=internal
+      - SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS=kafka:9092
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - -f
+        - http://localhost:8089/management/health
+      interval: 5s
+      timeout: 5s
+      retries: 40
+    depends_on:
+      monitoring-postgresql:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+  monitoring-postgresql:
+    image: postgres:17.4
+    environment:
+      - POSTGRES_USER=monitoring
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U $${POSTGRES_USER}
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  monitoring-redis:
+    image: redis:8.0.0
+
+  rapprochement:
+    image: rapprochement
+    environment:
+      - _JAVA_OPTIONS=-Xmx512m -Xms256m
+      - SPRING_PROFILES_ACTIVE=prod,api-docs
+      - MANAGEMENT_PROMETHEUS_METRICS_EXPORT_ENABLED=true
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://rapprochement-postgresql:5432/rapprochement
+      - SPRING_LIQUIBASE_URL=jdbc:postgresql://rapprochement-postgresql:5432/rapprochement
+      - JHIPSTER_CACHE_REDIS_SERVER=redis://rapprochement-redis:6379
+      - JHIPSTER_CACHE_REDIS_CLUSTER=false
+      - SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_OIDC_ISSUER_URI=http://keycloak:9080/realms/jhipster
+      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_ID=internal
+      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_SECRET=internal
+      - SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS=kafka:9092
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - -f
+        - http://localhost:8090/management/health
+      interval: 5s
+      timeout: 5s
+      retries: 40
+    depends_on:
+      rapprochement-postgresql:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+  rapprochement-postgresql:
+    image: postgres:17.4
+    environment:
+      - POSTGRES_USER=rapprochement
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U $${POSTGRES_USER}
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  rapprochement-redis:
+    image: redis:8.0.0
+
+  pilotage:
+    image: pilotage
+    environment:
+      - _JAVA_OPTIONS=-Xmx512m -Xms256m
+      - SPRING_PROFILES_ACTIVE=prod,api-docs
+      - MANAGEMENT_PROMETHEUS_METRICS_EXPORT_ENABLED=true
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://pilotage-postgresql:5432/pilotage
+      - SPRING_LIQUIBASE_URL=jdbc:postgresql://pilotage-postgresql:5432/pilotage
+      - JHIPSTER_CACHE_REDIS_SERVER=redis://pilotage-redis:6379
+      - JHIPSTER_CACHE_REDIS_CLUSTER=false
+      - SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_OIDC_ISSUER_URI=http://keycloak:9080/realms/jhipster
+      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_ID=internal
+      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_SECRET=internal
+      - SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS=kafka:9092
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - -f
+        - http://localhost:8091/management/health
+      interval: 5s
+      timeout: 5s
+      retries: 40
+    depends_on:
+      pilotage-postgresql:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+  pilotage-postgresql:
+    image: postgres:17.4
+    environment:
+      - POSTGRES_USER=pilotage
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U $${POSTGRES_USER}
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  pilotage-redis:
+    image: redis:8.0.0
+
+  reporting:
+    image: reporting
+    environment:
+      - _JAVA_OPTIONS=-Xmx512m -Xms256m
+      - SPRING_PROFILES_ACTIVE=prod,api-docs
+      - MANAGEMENT_PROMETHEUS_METRICS_EXPORT_ENABLED=true
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://reporting-postgresql:5432/reporting
+      - SPRING_LIQUIBASE_URL=jdbc:postgresql://reporting-postgresql:5432/reporting
+      - JHIPSTER_CACHE_REDIS_SERVER=redis://reporting-redis:6379
+      - JHIPSTER_CACHE_REDIS_CLUSTER=false
+      - SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_OIDC_ISSUER_URI=http://keycloak:9080/realms/jhipster
+      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_ID=internal
+      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_SECRET=internal
+      - SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS=kafka:9092
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - -f
+        - http://localhost:8092/management/health
+      interval: 5s
+      timeout: 5s
+      retries: 40
+    depends_on:
+      reporting-postgresql:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+  reporting-postgresql:
+    image: postgres:17.4
+    environment:
+      - POSTGRES_USER=reporting
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U $${POSTGRES_USER}
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  reporting-redis:
+    image: redis:8.0.0
+
+  collaboration:
+    image: collaboration
+    environment:
+      - _JAVA_OPTIONS=-Xmx512m -Xms256m
+      - SPRING_PROFILES_ACTIVE=prod,api-docs
+      - MANAGEMENT_PROMETHEUS_METRICS_EXPORT_ENABLED=true
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://collaboration-postgresql:5432/collaboration
+      - SPRING_LIQUIBASE_URL=jdbc:postgresql://collaboration-postgresql:5432/collaboration
+      - JHIPSTER_CACHE_REDIS_SERVER=redis://collaboration-redis:6379
+      - JHIPSTER_CACHE_REDIS_CLUSTER=false
+      - SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_OIDC_ISSUER_URI=http://keycloak:9080/realms/jhipster
+      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_ID=internal
+      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_SECRET=internal
+      - SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS=kafka:9092
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - -f
+        - http://localhost:8093/management/health
+      interval: 5s
+      timeout: 5s
+      retries: 40
+    depends_on:
+      collaboration-postgresql:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+  collaboration-postgresql:
+    image: postgres:17.4
+    environment:
+      - POSTGRES_USER=collaboration
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U $${POSTGRES_USER}
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  collaboration-redis:
+    image: redis:8.0.0
+
+  kafka:
+    image: apache/kafka-native:4.3.1
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://localhost:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      #ports:
+      # - 9092:9092 # Uncomment to make Kafka available externally
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.7.4-0
+    command: "start-dev --import-realm"
+    volumes:
+      - ./realm-config:/opt/keycloak/data/import
+      - ./realm-config/keycloak-health-check.sh:/opt/keycloak/health-check.sh
+    environment:
+      - KC_DB=dev-file
+      - KC_BOOTSTRAP_ADMIN_USERNAME=admin
+      - KC_BOOTSTRAP_ADMIN_PASSWORD=admin
+      - KC_FEATURES=scripts
+      - KC_HTTP_PORT=9080
+      - KC_HTTPS_PORT=9443
+      - KC_HEALTH_ENABLED=true
+      - KC_HTTP_MANAGEMENT_PORT=9990
+    ports:
+      - 9080:9080
+      - 9443:9443
+    healthcheck:
+      test: "bash /opt/keycloak/health-check.sh"
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  prometheus:
+    image: prom/prometheus:v3.14.0
+    volumes:
+      - ./prometheus-conf/:/etc/prometheus/
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+    ports:
+      - 9090:9090
+  alertmanager:
+    image: prom/alertmanager:v0.34.1
+    ports:
+      - 9093:9093
+    volumes:
+      - ./alertmanager-conf/:/etc/alertmanager/
+    command:
+      - "--config.file=/etc/alertmanager/config.yml"
+      - "--storage.path=/alertmanager"
+
+  grafana:
+    image: grafana/grafana:13.2.2
+    ports:
+      - 3000:3000
+    volumes:
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+
+volumes:
+  prometheus_data: {}
+  grafana_data: {}

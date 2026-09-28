@@ -1,0 +1,4 @@
+[
+  { "campagne": "CMP-2026-0142", "execution": 1, "cas": "TC-001", "verdict": "SUCCES", "executeLe": "2026-09-25T15:02:11Z", "referenceTrace": "TRC-8F21A0" },
+  { "campagne": "CMP-2026-0142", "execution": 1, "cas": "TC-002", "verdict": "ECHEC", "executeLe": "2026-09-25T15:04:37Z", "referenceTrace": "TRC-8F21A1" }
+]

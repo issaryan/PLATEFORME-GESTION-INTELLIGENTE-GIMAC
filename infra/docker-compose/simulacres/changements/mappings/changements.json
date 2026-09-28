@@ -1,0 +1,16 @@
+{
+  "mappings": [
+    {
+      "name": "Lecture d'une demande de changement (RG-34 : le comité décide, la plateforme référence)",
+      "request": { "method": "GET", "urlPathPattern": "/api/v1/changements/(CHG-[0-9]+)" },
+      "response": { "status": 200, "headers": { "Content-Type": "application/json" },
+        "body": "{ \"reference\": \"{{request.path.[3]}}\", \"objet\": \"Mise en service de la liaison LIA-INST-0042-01\", \"etat\": \"APPROUVE\", \"comite\": \"CAB-2026-38\", \"decideLe\": \"2026-09-24T10:00:00Z\" }" }
+    },
+    {
+      "name": "Référence inconnue",
+      "priority": 10,
+      "request": { "method": "GET", "urlPathPattern": "/api/v1/changements/.*" },
+      "response": { "status": 404 }
+    }
+  ]
+}

@@ -8,7 +8,7 @@
 | Établi par | KOAGNE ISSA RYAN, Ingénieur en Informatique et Systèmes d'information |
 | Statut | Référentiel d'implémentation. Décisions D-01 à D-31, y compris les propositions [P], **acceptées par KOAGNE ISSA RYAN le 28/09/2026** ; validation formelle du Product Owner (chef du DES) attendue en revue d'itération |
 | Rôle | Base unique à partir de laquelle le code est écrit ; prime sur les quatre documents pour les points qu'elle tranche |
-| Révision | **v1.1 (28/09/2026)** : ajout des décisions D-32 à D-46 (§4.4) pour réconcilier **CP-GIMAC-01 v2.0**, qui remplace CP v1.0, et fixer l'infrastructure et le frontend ; aucune disposition de la v1.0 n'est retirée |
+| Révision | **v1.1 (28/09/2026)** : ajout des décisions D-32 à D-46 (§4.4), complétées par D-47 et D-48, pour réconcilier **CP-GIMAC-01 v2.0**, qui remplace CP v1.0, et fixer l'infrastructure et le frontend ; aucune disposition de la v1.0 n'est retirée |
 
 **Légende des décisions**
 - **[R]** : réconciliation déduite des documents eux-mêmes, par application de la règle de préséance (§0).
@@ -397,6 +397,17 @@ Décisions ajoutées le 28/09/2026 à la réception du carnet de produit v2.0 (3
 
   - JHipster reste configuré sans client (`skipClient`) : aucun frontal n'est généré dans les microservices.
   - Les dépendances npm sont servies par un registre interne en INT, QUAL et PROD, conformément à BNF-08 et BNF-09.
+
+- **D-47 [P] Distribution de MinIO.** L'éditeur de MinIO ne publie plus d'image de conteneur officielle ; le code reste sous licence AGPL-3.0.
+  - En DEV, l'image communautaire `pgsty/minio`, reconstruite depuis les sources, est utilisée avec une version épinglée.
+  - À partir d'INT, l'image est construite depuis les sources étiquetées de MinIO par la chaîne de livraison (SOC-02), signée et déposée dans le registre interne ; aucune image tierce non reconstruite n'entre en recette.
+  - Le port de stockage objet reste le protocole S3 avec verrouillage d'objets : un remplacement de MinIO (par exemple Ceph RGW) ne modifierait que la configuration, jamais le code des services. Le choix est réexaminé avec la Production Informatique avant la mise en production.
+- **D-48 [R] Configuration de déploiement générée par JHipster.** Pour rester cohérente avec les services, la configuration de déploiement n'est pas écrite à la main ; elle précise D-45 sans la retirer :
+  - **Docker Compose** : `infra/docker-compose/docker-compose.yml` est produit par `jhipster docker-compose` à partir de `infra/docker-compose/.yo-rc.json` (14 services, une base PostgreSQL et un cache par service, Kafka, Keycloak, Prometheus, Alertmanager, Grafana). Il n'est jamais modifié à la main : on le régénère.
+  - **Éléments propres au projet** : ils sont ajoutés dans `infra/docker-compose/docker-compose.gimac.yml`, fusionné au lancement par `gimac-dev.sh` : Valkey à la place de Redis (D-25), registre des schémas, MinIO WORM, OpenBao, OPA, simulacres des tiers, messagerie de test, collecteur OpenTelemetry, Loki et Tempo, et suppression des mots de passe d'administration par défaut (D-44).
+  - **Images des services** : construites par Jib selon la configuration JHipster de chaque service (`./mvnw -Pprod verify jib:dockerBuild`) ; aucun Dockerfile n'est écrit à la main.
+  - **Kubernetes** : les déclarations de `infra/k8s` sont produites par `jhipster kubernetes` ; les politiques réseau par zone, le profil de sécurité des pods et le contrôle d'admission de D-45 y sont ajoutés comme compléments Kustomize, sans modifier les fichiers générés.
+  - Un générateur JHipster qui réécrit des métadonnées de service (par exemple la version dans `.yo-rc.json`) sans régénérer le code voit ces modifications annulées.
 
 ---
 

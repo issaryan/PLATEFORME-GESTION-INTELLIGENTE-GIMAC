@@ -1,0 +1,164 @@
+# Complément propre au projet GIMAC, fusionné avec docker-compose.yml.
+#
+# docker-compose.yml est produit par « jhipster docker-compose » (configuration
+# dans .yo-rc.json) et ne doit pas être modifié à la main : on le régénère.
+# Ce fichier ajoute seulement ce que JHipster ne génère pas (D-45, SOC-13) et
+# surcharge ce que le référentiel impose (D-25 : Valkey, D-44 : aucun secret par défaut).
+#
+# Lancement : ./gimac-dev.sh demarrer   (fusionne les deux fichiers)
+# Secrets : fichier .env local, créé par gimac-dev.sh, jamais versionné (BNF-07).
+
+x-valkey: &valkey
+  # D-25 : Valkey remplace Redis, dont la licence n'est plus libre.
+  image: valkey/valkey:9.0.6-alpine
+
+x-sante: &sante
+  interval: 5s
+  timeout: 5s
+  retries: 30
+  start_period: 10s
+
+services:
+  # ------------------------------------------------ Surcharges des services générés
+  iam-redis: *valkey
+  document-redis: *valkey
+  notification-redis: *valkey
+  participant-redis: *valkey
+  homologation-redis: *valkey
+  certification-redis: *valkey
+  incident-redis: *valkey
+  monitoring-redis: *valkey
+  rapprochement-redis: *valkey
+  pilotage-redis: *valkey
+  reporting-redis: *valkey
+  collaboration-redis: *valkey
+
+  keycloak:
+    environment:
+      - KC_BOOTSTRAP_ADMIN_USERNAME=gimac-admin
+      - KC_BOOTSTRAP_ADMIN_PASSWORD=${GIMAC_KEYCLOAK_ADMIN_PASSWORD:?à définir dans .env}
+
+  grafana:
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GIMAC_GRAFANA_ADMIN_PASSWORD:?à définir dans .env}
+      - GF_ANALYTICS_REPORTING_ENABLED=false
+      - GF_ANALYTICS_CHECK_FOR_UPDATES=false
+    volumes:
+      - ./observabilite/grafana/provisioning:/etc/grafana/provisioning:ro
+
+  # ------------------------------------------------ Registre des schémas (SOC-03, D-37)
+  registre-schemas:
+    image: apicurio/apicurio-registry:3.3.3
+    environment:
+      APICURIO_STORAGE_KIND: sql
+      APICURIO_STORAGE_SQL_KIND: h2
+    ports:
+      - 127.0.0.1:8880:8080
+
+  # ------------------------------------------------ Dépôt objet WORM (SOC-10, RG-04, RG-16)
+  minio:
+    # Image communautaire reconstruite depuis les sources de MinIO (AGPL-3.0) :
+    # l'éditeur ne publie plus d'image officielle (D-47).
+    image: pgsty/minio:RELEASE.2026-08-04T00-00-00Z
+    command: ['server', '/data', '--console-address', ':9001']
+    environment:
+      MINIO_ROOT_USER: gimac-admin
+      MINIO_ROOT_PASSWORD: ${GIMAC_MINIO_ROOT_PASSWORD:?à définir dans .env}
+    volumes:
+      - minio_data:/data
+    ports:
+      - 127.0.0.1:9000:9000
+      - 127.0.0.1:9001:9001
+    healthcheck:
+      test: ['CMD', 'curl', '-fsS', 'http://localhost:9000/minio/health/ready']
+      <<: *sante
+
+  minio-init:
+    image: pgsty/mc:RELEASE.2026-09-16T00-00-00Z
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      GIMAC_MINIO_ROOT_PASSWORD: ${GIMAC_MINIO_ROOT_PASSWORD}
+    volumes:
+      - ./minio/init-compartiments.sh:/init-compartiments.sh:ro
+    entrypoint: ['/bin/sh', '/init-compartiments.sh']
+    restart: 'no'
+
+  # ------------------------------------------------ Coffre de clés (SOC-06, D-44)
+  openbao:
+    image: openbao/openbao:2.7.0
+    command: ['server', '-dev', '-dev-listen-address=0.0.0.0:8200']
+    environment:
+      BAO_DEV_ROOT_TOKEN_ID: ${GIMAC_OPENBAO_TOKEN:?à définir dans .env}
+    cap_add: [IPC_LOCK]
+    ports:
+      - 127.0.0.1:8200:8200
+
+  # ------------------------------------------------ Politiques d'accès (IAM-19, RG-24)
+  opa:
+    image: openpolicyagent/opa:1.21.0-static
+    command: ['run', '--server', '--addr=0.0.0.0:8181', '--ignore=*_test.rego', '/politiques']
+    volumes:
+      - ./opa/politiques:/politiques:ro
+    ports:
+      - 127.0.0.1:8181:8181
+
+  # ------------------------------------------------ Simulacres des applications tierces (SOC-13)
+  simulateur-certification:
+    image: wiremock/wiremock:3.13.2-alpine
+    command: ['--global-response-templating', '--disable-banner']
+    volumes:
+      - ./simulacres/simulateur:/home/wiremock:ro
+    ports:
+      - 127.0.0.1:8190:8080
+
+  gestion-changements:
+    image: wiremock/wiremock:3.13.2-alpine
+    command: ['--global-response-templating', '--disable-banner']
+    volumes:
+      - ./simulacres/changements:/home/wiremock:ro
+    ports:
+      - 127.0.0.1:8191:8080
+
+  autorite-horodatage:
+    image: wiremock/wiremock:3.13.2-alpine
+    command: ['--disable-banner']
+    volumes:
+      - ./simulacres/horodatage:/home/wiremock:ro
+    ports:
+      - 127.0.0.1:8192:8080
+
+  messagerie:
+    image: axllent/mailpit:v1.31.3
+    ports:
+      - 127.0.0.1:1025:1025
+      - 127.0.0.1:8025:8025
+
+  # ------------------------------------------------ Traces et journaux (SOC-08)
+  # Les métriques restent collectées par le Prometheus généré par JHipster.
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.161.0
+    command: ['--config=/etc/otelcol/config.yaml']
+    volumes:
+      - ./observabilite/otel-collector.yaml:/etc/otelcol/config.yaml:ro
+    ports:
+      - 127.0.0.1:4317:4317
+      - 127.0.0.1:4318:4318
+
+  loki:
+    image: grafana/loki:3.7.8
+    command: ['-config.file=/etc/loki/local-config.yaml']
+    ports:
+      - 127.0.0.1:3100:3100
+
+  tempo:
+    image: grafana/tempo:2.10.8
+    command: ['-config.file=/etc/tempo.yaml']
+    volumes:
+      - ./observabilite/tempo.yaml:/etc/tempo.yaml:ro
+    ports:
+      - 127.0.0.1:3200:3200
+
+volumes:
+  minio_data: {}
