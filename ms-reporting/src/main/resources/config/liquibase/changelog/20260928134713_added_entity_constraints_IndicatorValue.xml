@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+    <!--
+        Added the constraints for entity IndicatorValue.
+    -->
+    <changeSet id="20260928134713-2" author="jhipster">
+
+        <addForeignKeyConstraint baseColumnNames="definition_id"
+                                 baseTableName="indicator_value"
+                                 constraintName="fk_indicator_value__definition_id"
+                                 referencedColumnNames="id"
+                                 referencedTableName="indicator_definition"
+                                 />
+
+        <addForeignKeyConstraint baseColumnNames="statement_id"
+                                 baseTableName="indicator_value"
+                                 constraintName="fk_indicator_value__statement_id"
+                                 referencedColumnNames="id"
+                                 referencedTableName="imported_statement"
+                                 />
+    </changeSet>
+</databaseChangeLog>

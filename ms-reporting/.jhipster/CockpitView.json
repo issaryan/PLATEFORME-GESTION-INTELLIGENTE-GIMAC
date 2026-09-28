@@ -1,0 +1,56 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134813"
+  },
+  "applications": ["reporting"],
+  "clientRootFolder": "reporting",
+  "databaseType": "sql",
+  "documentation": "Cockpit ou vue par service (cockpit DG, cockpit DES, vues par service).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Code, par exemple COCKPIT-DG, COCKPIT-DES.",
+      "fieldName": "code",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "unique", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "50",
+      "fieldValidateRulesPattern": "^[A-Z0-9-]+$"
+    },
+    {
+      "fieldName": "label",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "255"
+    },
+    {
+      "fieldName": "audience",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "255"
+    },
+    {
+      "documentation": "Intervalle de rafraîchissement, 60 s par défaut.",
+      "fieldName": "refreshInterval",
+      "fieldType": "Duration",
+      "fieldValidateRules": ["required"]
+    }
+  ],
+  "microserviceName": "reporting",
+  "name": "CockpitView",
+  "relationships": [
+    {
+      "otherEntityField": "code",
+      "otherEntityName": "indicatorDefinition",
+      "otherEntityRelationshipName": "cockpits",
+      "relationshipName": "indicators",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-many"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

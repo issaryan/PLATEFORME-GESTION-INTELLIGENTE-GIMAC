@@ -1,0 +1,54 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134313"
+  },
+  "applications": ["reporting"],
+  "clientRootFolder": "reporting",
+  "databaseType": "sql",
+  "documentation": "Membre d'une dimension conforme, par exemple une institution rattachée à son pays.",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "kind",
+      "fieldType": "DimensionKind",
+      "fieldTypeDocumentation": "Dimension conforme du magasin (temps, institution, service du DES, sévérité).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "TEMPS,INSTITUTION,SERVICE,SEVERITE"
+    },
+    {
+      "fieldName": "key",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "100"
+    },
+    {
+      "fieldName": "label",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "255"
+    },
+    {
+      "fieldName": "parentKey",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "100"
+    },
+    {
+      "fieldName": "updatedAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "reporting",
+  "name": "Dimension",
+  "pagination": "pagination",
+  "readOnly": true,
+  "relationships": [],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

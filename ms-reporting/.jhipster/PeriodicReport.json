@@ -1,0 +1,101 @@
+{
+  "annotations": {
+    "changelogDate": "20260928135013"
+  },
+  "applications": ["reporting"],
+  "clientRootFolder": "reporting",
+  "databaseType": "sql",
+  "documentation": "Rapport périodique engendré à partir d'indicateurs figés, rendu en\\nPDF/A-3, signé (PAdES) puis déposé en WORM (algorithme 6.59).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "serviceCode",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "30",
+      "fieldValidateRulesPattern": "^[A-Z_]+$"
+    },
+    {
+      "fieldName": "periodicity",
+      "fieldType": "Periodicity",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "HEBDOMADAIRE,MENSUEL"
+    },
+    {
+      "fieldName": "period",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "10",
+      "fieldValidateRulesPattern": "^[0-9]{4}(-[0-9]{2}|-W[0-9]{2})$"
+    },
+    {
+      "documentation": "Numéro de version : une génération manuelle ajoute une version, jamais un remplacement.",
+      "fieldName": "reportVersion",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required", "min"],
+      "fieldValidateRulesMin": "1"
+    },
+    {
+      "fieldName": "manual",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Indicateurs figés : liste JSON des identifiants IndicatorValue.",
+      "fieldName": "frozenIndicators",
+      "fieldType": "TextBlob",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "SHA256 du document rendu.",
+      "fieldName": "contentDigest",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "minlength", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "64",
+      "fieldValidateRulesMinlength": "64",
+      "fieldValidateRulesPattern": "^[0-9a-f]{64}$"
+    },
+    {
+      "fieldName": "generatedAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Signataire désigné, responsable du service (MS-IAM).",
+      "fieldName": "signerId",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "signedAt",
+      "fieldType": "Instant"
+    },
+    {
+      "documentation": "Document signé : identifiant dans MS-DOCUMENT.",
+      "fieldName": "documentRef",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "notifiedAt",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "state",
+      "fieldType": "ReportState",
+      "fieldTypeDocumentation": "Cycle de vie d'un rapport périodique (algorithme 6.59).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "GENERE,SIGNE,DEPOSE,NOTIFIE"
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "reporting",
+  "name": "PeriodicReport",
+  "pagination": "pagination",
+  "readOnly": true,
+  "relationships": [],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

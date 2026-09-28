@@ -1,0 +1,106 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134713"
+  },
+  "applications": ["reporting"],
+  "clientRootFolder": "reporting",
+  "databaseType": "sql",
+  "documentation": "Valeur calculée d'un indicateur pour une période et une clé de dimension,\\nhistorisée (IndicatorRepositoryPort.series). Les cockpits lisent la\\ndernière valeur matérialisée.",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Période, par exemple 2026-08 ou 2026-W35.",
+      "fieldName": "period",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "10",
+      "fieldValidateRulesPattern": "^[0-9]{4}(-[0-9]{2}|-W[0-9]{2}|-[0-9]{2}-[0-9]{2})?$"
+    },
+    {
+      "fieldName": "timeKey",
+      "fieldType": "LocalDate"
+    },
+    {
+      "documentation": "Institution (MS-PARTICIPANT).",
+      "fieldName": "institutionId",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "serviceCode",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "30",
+      "fieldValidateRulesPattern": "^[A-Z_]+$"
+    },
+    {
+      "fieldName": "severity",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "20"
+    },
+    {
+      "fieldName": "value",
+      "fieldType": "BigDecimal"
+    },
+    {
+      "documentation": "Dénominateur nul : valeur précédente conservée avec le marqueur « sans donnée ».",
+      "fieldName": "noData",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "thresholdState",
+      "fieldType": "ThresholdState",
+      "fieldTypeDocumentation": "État de seuil d'un indicateur (algorithme 6.58, étape 5).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "NORMAL,ALERTE,CRITIQUE"
+    },
+    {
+      "fieldName": "previousThresholdState",
+      "fieldType": "ThresholdState",
+      "fieldTypeDocumentation": "État de seuil d'un indicateur (algorithme 6.58, étape 5).",
+      "fieldValues": "NORMAL,ALERTE,CRITIQUE"
+    },
+    {
+      "fieldName": "trend",
+      "fieldType": "Trend",
+      "fieldTypeDocumentation": "Tendance par rapport à la fenêtre précédente (formule 6.72).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "HAUSSE,STABLE,BAISSE"
+    },
+    {
+      "fieldName": "computedAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "reporting",
+  "name": "IndicatorValue",
+  "pagination": "pagination",
+  "readOnly": true,
+  "relationships": [
+    {
+      "otherEntityField": "code",
+      "otherEntityName": "indicatorDefinition",
+      "relationshipName": "definition",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    },
+    {
+      "documentation": "État déclaré dont provient une valeur ETAT_IMPORTE (empreinte et date citées au rapport).",
+      "otherEntityField": "digest",
+      "otherEntityName": "importedStatement",
+      "relationshipName": "statement",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

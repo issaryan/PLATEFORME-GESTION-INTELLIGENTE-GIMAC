@@ -1,0 +1,108 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134913"
+  },
+  "applications": ["reporting"],
+  "clientRootFolder": "reporting",
+  "databaseType": "sql",
+  "documentation": "État déclaré par fichier : agrégats périodiques par participant, distinct\\nde son homologue de MS-RAPPROCHEMENT. Versionné sans écrasement ; le\\nrésultat du contrôle de masquage (MaskingCheckResult du CC) est aplati.",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "source",
+      "fieldType": "StatementSource",
+      "fieldTypeDocumentation": "Déclarant d'un état importé (algorithme 6.57).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "COMMUTATEUR,PARTICIPANT"
+    },
+    {
+      "documentation": "Institution (MS-PARTICIPANT).",
+      "fieldName": "institutionId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Période déclarée, par exemple 2026-08.",
+      "fieldName": "period",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "10",
+      "fieldValidateRulesPattern": "^[0-9]{4}(-[0-9]{2}|-W[0-9]{2}|-[0-9]{2}-[0-9]{2})?$"
+    },
+    {
+      "fieldName": "importedAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Déposant (MS-IAM).",
+      "fieldName": "importerId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "SHA256 du fichier : clé d'idempotence.",
+      "fieldName": "digest",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "unique", "minlength", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "64",
+      "fieldValidateRulesMinlength": "64",
+      "fieldValidateRulesPattern": "^[0-9a-f]{64}$"
+    },
+    {
+      "fieldName": "maskingPassed",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "rejectedRows",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required", "min"],
+      "fieldValidateRulesMin": "0"
+    },
+    {
+      "fieldName": "maskingCheckedAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "rowCount",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required", "min"],
+      "fieldValidateRulesMin": "0"
+    },
+    {
+      "documentation": "Original scellé : identifiant du document dans MS-DOCUMENT.",
+      "fieldName": "documentRef",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Version courante pour le triplet (source, institution, période).",
+      "fieldName": "currentVersion",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "reporting",
+  "name": "ImportedStatement",
+  "pagination": "pagination",
+  "readOnly": true,
+  "relationships": [
+    {
+      "documentation": "Version qui remplace cet état (versionnage sans écrasement).",
+      "otherEntityField": "digest",
+      "otherEntityName": "importedStatement",
+      "relationshipName": "supersededBy",
+      "relationshipSide": "left",
+      "relationshipType": "one-to-one"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

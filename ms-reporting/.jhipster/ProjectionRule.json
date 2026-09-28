@@ -1,0 +1,59 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134513"
+  },
+  "applications": ["reporting"],
+  "clientRootFolder": "reporting",
+  "databaseType": "sql",
+  "documentation": "Règle de projection d'un sujet en fait (table R de l'algorithme 6.56) :\\ndomaine cible, mesures à extraire et champs alimentant les dimensions.\\nUn sujet sans règle est acquitté sans traitement.",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Sujet du bus, par exemple incident.incident-resolved.v1.",
+      "fieldName": "subject",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "unique", "maxlength"],
+      "fieldValidateRulesMaxlength": "150"
+    },
+    {
+      "fieldName": "domain",
+      "fieldType": "FactDomain",
+      "fieldTypeDocumentation": "Domaine d'une table de faits du schéma en étoile. Écart CC corrigé : le CC\\ntype le domaine en String ; les six domaines consommés (D-19) et les états\\ndéclarés sont énumérés.",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "INCIDENT,MONITORING,HOMOLOGATION,CERTIFICATION,RAPPROCHEMENT,PILOTAGE,ETAT_DECLARE"
+    },
+    {
+      "documentation": "Extraction des mesures : JSON (compteur, durée entre deux instants, montant agrégé).",
+      "fieldName": "measureMapping",
+      "fieldType": "TextBlob",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Correspondance des champs de la charge utile vers les dimensions : JSON.",
+      "fieldName": "dimensionMapping",
+      "fieldType": "TextBlob",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Codes des indicateurs auxquels le sujet contribue, séparés par des virgules.",
+      "fieldName": "indicatorCodes",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "1000"
+    },
+    {
+      "fieldName": "active",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    }
+  ],
+  "microserviceName": "reporting",
+  "name": "ProjectionRule",
+  "relationships": [],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

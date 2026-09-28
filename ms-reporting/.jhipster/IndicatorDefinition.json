@@ -1,0 +1,106 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134613"
+  },
+  "applications": ["reporting"],
+  "clientRootFolder": "reporting",
+  "databaseType": "sql",
+  "documentation": "Définition d'un indicateur (code, source, unité, fenêtre, seuil à deux\\nniveaux). Écart CC corrigé : l'entité Indicator du CC mêle définition et\\nvaleur ; elle est scindée en IndicatorDefinition et IndicatorValue, ce qui\\névite aussi « Indicator », mot réservé SQL signalé par JHipster.",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Code, par exemple EXP-MTTR-S2, RES-DISPO-DECL.",
+      "fieldName": "code",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "unique", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "50",
+      "fieldValidateRulesPattern": "^[A-Z0-9-]+$"
+    },
+    {
+      "fieldName": "label",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "255"
+    },
+    {
+      "fieldName": "source",
+      "fieldType": "IndicatorSource",
+      "fieldTypeDocumentation": "Source d'un indicateur : événements, états déclarés, ou combinaison des deux.",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "EVENEMENT,ETAT_IMPORTE,DERIVE"
+    },
+    {
+      "fieldName": "unit",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "20"
+    },
+    {
+      "documentation": "Fenêtre W, par exemple 30 jours.",
+      "fieldName": "window",
+      "fieldType": "Duration",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Nombre K de segments du tampon circulaire (K = W / S).",
+      "fieldName": "segmentCount",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required", "min", "max"],
+      "fieldValidateRulesMax": "1000",
+      "fieldValidateRulesMin": "1"
+    },
+    {
+      "documentation": "Pas S d'un segment.",
+      "fieldName": "segmentLength",
+      "fieldType": "Duration",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Seuil d'alerte (objet-valeur Threshold du CC).",
+      "fieldName": "warningThreshold",
+      "fieldType": "BigDecimal"
+    },
+    {
+      "documentation": "Seuil critique.",
+      "fieldName": "criticalThreshold",
+      "fieldType": "BigDecimal"
+    },
+    {
+      "documentation": "Sens de lecture : une valeur plus élevée est plus défavorable.",
+      "fieldName": "higherIsWorse",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Audience : rôles ou services destinataires, séparés par des virgules.",
+      "fieldName": "audience",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "500"
+    },
+    {
+      "fieldName": "active",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "reporting",
+  "name": "IndicatorDefinition",
+  "relationships": [
+    {
+      "otherEntityField": "code",
+      "otherEntityName": "cockpitView",
+      "otherEntityRelationshipName": "indicators",
+      "relationshipName": "cockpits",
+      "relationshipSide": "right",
+      "relationshipType": "many-to-many"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

@@ -1,0 +1,79 @@
+{
+  "annotations": {
+    "changelogDate": "20260928135213"
+  },
+  "applications": ["reporting"],
+  "clientRootFolder": "reporting",
+  "databaseType": "sql",
+  "documentation": "Exportation contrôlée d'agrégats (reporting.export-requested.v1) : plafonnée,\\nfiligranée, déposée en GED. Écart CC corrigé : la trace de l'exportation\\nn'est pas modélisée dans le CC.",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Demandeur, responsable ou auditeur (MS-IAM).",
+      "fieldName": "requesterId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "requestedAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Codes des indicateurs exportés, séparés par des virgules.",
+      "fieldName": "indicatorCodes",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "2000"
+    },
+    {
+      "fieldName": "period",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "10"
+    },
+    {
+      "documentation": "Filtres de dimensions appliqués : JSON.",
+      "fieldName": "dimensionFilter",
+      "fieldType": "TextBlob"
+    },
+    {
+      "fieldName": "rowCount",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required", "min"],
+      "fieldValidateRulesMin": "0"
+    },
+    {
+      "documentation": "Filigrane : identité du demandeur et horodatage.",
+      "fieldName": "watermark",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "255"
+    },
+    {
+      "fieldName": "contentDigest",
+      "fieldType": "String",
+      "fieldValidateRules": ["minlength", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "64",
+      "fieldValidateRulesMinlength": "64",
+      "fieldValidateRulesPattern": "^[0-9a-f]{64}$"
+    },
+    {
+      "documentation": "Fichier exporté : identifiant dans MS-DOCUMENT.",
+      "fieldName": "documentRef",
+      "fieldType": "UUID"
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "reporting",
+  "name": "DataExport",
+  "pagination": "pagination",
+  "readOnly": true,
+  "relationships": [],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

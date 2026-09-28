@@ -1,0 +1,93 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134213"
+  },
+  "applications": ["reporting"],
+  "clientRootFolder": "reporting",
+  "databaseType": "sql",
+  "documentation": "Fait mesurable du magasin. La clé de dimension (objet-valeur DimensionKey\\ndu CC) est aplatie ; timeKey = date(e.time), jamais la date de réception.\\nAucun texte libre ni donnée de carte (RG-48, BNF-16).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "domain",
+      "fieldType": "FactDomain",
+      "fieldTypeDocumentation": "Domaine d'une table de faits du schéma en étoile. Écart CC corrigé : le CC\\ntype le domaine en String ; les six domaines consommés (D-19) et les états\\ndéclarés sont énumérés.",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "INCIDENT,MONITORING,HOMOLOGATION,CERTIFICATION,RAPPROCHEMENT,PILOTAGE,ETAT_DECLARE"
+    },
+    {
+      "fieldName": "timeKey",
+      "fieldType": "LocalDate",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Institution (MS-PARTICIPANT).",
+      "fieldName": "institutionId",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Service du DES : EXPLOITATION, SUPERVISION, HOMOLOGATION, CONFORMITE.",
+      "fieldName": "serviceCode",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "30",
+      "fieldValidateRulesPattern": "^[A-Z_]+$"
+    },
+    {
+      "documentation": "Sévérité ou urgence, par exemple S2.",
+      "fieldName": "severity",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "20"
+    },
+    {
+      "documentation": "Mesures : objet JSON {nom: valeur décimale}, par exemple {\"resolus\": 1}.",
+      "fieldName": "measures",
+      "fieldType": "TextBlob",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Identifiant CloudEvents de l'événement source, pour un fait événementiel.",
+      "fieldName": "sourceEventId",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "recordedAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Fait déclaré remplacé par une version ultérieure de l'état (jamais supprimé).",
+      "fieldName": "superseded",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Agrégat quotidien issu de la compaction au-delà de 90 jours.",
+      "fieldName": "compacted",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "reporting",
+  "name": "Fact",
+  "pagination": "pagination",
+  "readOnly": true,
+  "relationships": [
+    {
+      "documentation": "État déclaré dont provient un fait de domaine ETAT_DECLARE.",
+      "otherEntityField": "digest",
+      "otherEntityName": "importedStatement",
+      "relationshipName": "statement",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

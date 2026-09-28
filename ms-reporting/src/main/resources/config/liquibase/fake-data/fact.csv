@@ -1,0 +1,11 @@
+id;domain;time_key;institution_id;service_code;severity;measures;source_event_id;recorded_at;superseded;compacted
+d5f20b14-ed1e-46a8-bf71-7a79e589f576;INCIDENT;2026-09-28;a03d31d6-7e6c-47df-9615-4cbaa9eb15f8;"NP";aïe amorphe;../fake-data/blob/hipster.txt;d643c9c5-5079-4a11-b4e9-47fa2816044b;2026-09-27T16:55:10;true;false
+5d01a932-b6df-4acf-88c9-132070215550;MONITORING;2026-09-27;1d78584d-cac4-4099-bf93-af587c020b25;"TADX";lunatique;../fake-data/blob/hipster.txt;9b0ea011-a48c-499e-8698-56fb8f35aa36;2026-09-28T12:16:14;true;false
+cd2c4930-8836-4ade-9a8d-45bdef176263;CERTIFICATION;2026-09-27;e3c6ea8a-a219-491d-aa1d-9327cd71930a;"KOBCWW";vers;../fake-data/blob/hipster.txt;04393db2-9116-4c62-a8f4-800bcb3ef6f1;2026-09-28T09:02:57;false;false
+8b637d8c-6f2a-43c9-83d2-6a2017045b5d;INCIDENT;2026-09-27;aaf5f1c8-7bc3-4567-b4a0-e4ff6767add8;"BXHZ";personnel éliminer a;../fake-data/blob/hipster.txt;11490ef7-621e-4439-b694-6ab0e9968c03;2026-09-27T20:47:18;true;false
+27097e9a-0535-4b2b-8eaf-131c3e65d891;RAPPROCHEMENT;2026-09-27;c2871d4d-2a4f-4585-b258-b15539db7b4a;"Q";en face de;../fake-data/blob/hipster.txt;061ad866-1d46-4ebd-b332-77f12d2f2765;2026-09-28T08:48:56;true;false
+a6145288-d710-4a40-8f0d-d6fd1fbcd118;INCIDENT;2026-09-28;6aa0beb8-797c-4191-aca9-56d28a941b24;"L_KF";toc membre titulaire;../fake-data/blob/hipster.txt;6614fc34-a8ad-481d-86f3-b9381d2d03f8;2026-09-27T20:39:17;false;true
+c347990f-eff9-41de-856a-b56770f6a974;MONITORING;2026-09-27;46968705-cbf2-4daf-beaa-2919c87499c5;"CO";membre à vie magnifi;../fake-data/blob/hipster.txt;a54264e7-ebbe-4764-96c2-ec285eb41e71;2026-09-27T21:57:56;true;false
+e78b2d9d-6e21-44df-896b-bc14e1f81308;RAPPROCHEMENT;2026-09-28;a91b9b9b-e22b-4106-b410-75ae72b2e7d3;"JBV";atchoum commis;../fake-data/blob/hipster.txt;f9193ca4-149e-4cd8-877e-bbe848289a08;2026-09-28T13:09:00;true;false
+9967f01b-1ec4-47f3-91b0-6c1d9b563ad6;MONITORING;2026-09-27;73c8a343-970c-4d5a-afab-373585c00525;"A";depuis;../fake-data/blob/hipster.txt;d6a6f9ec-3c47-45e8-9245-86e939d3dfb4;2026-09-28T00:15:32;true;true
+2f7a201b-9f78-4e3b-b334-00cdc3b0637a;INCIDENT;2026-09-27;bfdb36f2-4e7d-457e-9ef6-110783525e20;"BOJVLK";adepte commis près;../fake-data/blob/hipster.txt;fcf6c1e2-9258-4468-a15c-c553442e9171;2026-09-28T02:37:41;false;false

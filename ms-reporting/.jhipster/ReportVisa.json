@@ -1,0 +1,47 @@
+{
+  "annotations": {
+    "changelogDate": "20260928135113"
+  },
+  "applications": ["reporting"],
+  "clientRootFolder": "reporting",
+  "databaseType": "sql",
+  "documentation": "Visa du responsable sur un rapport. Écart CC corrigé : le CC le dit\\n« enregistré comme événement distinct » sans le modéliser ; il n'altère\\npas le document signé.",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Responsable qui vise (MS-IAM).",
+      "fieldName": "approverId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "approvedAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "comment",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "1000"
+    }
+  ],
+  "microserviceName": "reporting",
+  "name": "ReportVisa",
+  "pagination": "pagination",
+  "relationships": [
+    {
+      "otherEntityName": "periodicReport",
+      "relationshipName": "report",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}
