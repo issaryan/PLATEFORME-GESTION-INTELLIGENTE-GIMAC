@@ -1,0 +1,132 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134403"
+  },
+  "applications": ["homologation"],
+  "clientRootFolder": "homologation",
+  "databaseType": "sql",
+  "documentation": "Opération instanciée d'une liaison (algorithme 6.30), close par la règle des\\nquatre éléments (D-09, RG-32, algorithme 6.31) : responsable, preuve WORM\\n(documentId + empreinte), horodatage RFC 3161, validateur distinct du\\nresponsable. Une clôture est immuable (RG-33).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Identifiant lisible, par exemple OPE-2026-0312.",
+      "fieldName": "operationCode",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "unique", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "20",
+      "fieldValidateRulesPattern": "^OPE-[0-9]{4}-[0-9]{4,}$"
+    },
+    {
+      "fieldName": "state",
+      "fieldType": "OperationState",
+      "fieldTypeDocumentation": "Automate de l'opération (REC D-08) : HORS_PERIMETRE (algorithme 6.30) et\\nARCHIVEE (algorithme 6.34) complètent les six états du CC.",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "VERROUILLEE,ELIGIBLE,EN_COURS,EN_VALIDATION,CLOSE,EN_ARBITRAGE,HORS_PERIMETRE,ARCHIVEE"
+    },
+    {
+      "documentation": "Élément 1 : responsable (collaborateur MS-IAM ou représentant du participant).",
+      "fieldName": "ownerId",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Élément 2 : preuve scellée dans MS-DOCUMENT. Écart CC corrigé : pour une\\nopération d'essai, la référence de trace ne remplace pas la preuve WORM ;\\nl'archive probante qui la contient est déposée et scellée (UC-HOM-03, D-09).",
+      "fieldName": "evidenceDocumentId",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "evidenceDigest",
+      "fieldType": "String",
+      "fieldValidateRules": ["minlength", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "64",
+      "fieldValidateRulesMinlength": "64",
+      "fieldValidateRulesPattern": "^[0-9a-f]{64}$"
+    },
+    {
+      "fieldName": "evidenceSealedAt",
+      "fieldType": "Instant"
+    },
+    {
+      "documentation": "Rétention WORM constatée, au moins 10 ans (D-11).",
+      "fieldName": "evidenceRetention",
+      "fieldType": "Duration"
+    },
+    {
+      "documentation": "Confirmation reçue par document.document-sealed.v1.",
+      "fieldName": "evidenceSealConfirmed",
+      "fieldType": "Boolean"
+    },
+    {
+      "documentation": "Référence de trace du simulateur, pour une opération d'essai (RG-30).",
+      "fieldName": "evidenceTraceRef",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "100"
+    },
+    {
+      "documentation": "Élément 3 : jeton RFC 3161 encodé en DER, sur SHA256(o.id || hp || r).",
+      "fieldName": "timestampToken",
+      "fieldType": "Blob"
+    },
+    {
+      "fieldName": "timestampImprint",
+      "fieldType": "String",
+      "fieldValidateRules": ["minlength", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "64",
+      "fieldValidateRulesMinlength": "64",
+      "fieldValidateRulesPattern": "^[0-9a-f]{64}$"
+    },
+    {
+      "fieldName": "timestampGenTime",
+      "fieldType": "Instant"
+    },
+    {
+      "documentation": "Élément 4 : validateur habilité, distinct du responsable.",
+      "fieldName": "validatorId",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "validatedAt",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "closedAt",
+      "fieldType": "Instant"
+    },
+    {
+      "documentation": "Motif d'arbitrage, de réouverture (référentiel modifié, quitus refusé) ou de verrouillage.",
+      "fieldName": "stateReason",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "1000"
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "homologation",
+  "name": "Operation",
+  "pagination": "pagination",
+  "readOnly": true,
+  "relationships": [
+    {
+      "otherEntityField": "liaisonCode",
+      "otherEntityName": "liaison",
+      "relationshipName": "liaison",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    },
+    {
+      "otherEntityField": "code",
+      "otherEntityName": "referenceOperation",
+      "relationshipName": "reference",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

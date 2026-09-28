@@ -1,0 +1,11 @@
+id;project_type;version;effective_from;published;author_id;approver_id;published_at;diff_summary
+de5068b3-3455-4030-99c4-913f38d93f05;PAIEMENT_MOBILE;"BTH-36.1658";2026-09-28;false;e91e0a98-bbdf-40a1-b052-d2baed108b0f;f2c6c39e-3f3c-4a08-ada6-ca498fc2be1b;2026-09-28T12:35:03;../fake-data/blob/hipster.txt
+3cfe898b-4fc3-4f60-a237-8226998fdea2;DELEGATAIRE;"RK-38899.97";2026-09-28;false;da8256bc-7eb1-4483-b811-7707d88675e1;85c39f8b-cfb6-41ca-b945-f4f6e636a147;2026-09-27T15:55:23;../fake-data/blob/hipster.txt
+959b429a-ab9e-4667-b288-5acff16c75e1;DELEGATAIRE;"ETC-37036.95803";2026-09-28;true;a8923deb-1839-44b0-bc5f-5bf67e5ca2d5;cb6e3b07-5c99-4aa9-98a0-e451e2716d0c;2026-09-28T07:45:52;../fake-data/blob/hipster.txt
+0ce5c624-8a87-43d2-8842-e05e8e5df496;CARTE_INTERBANCAIRE;"KIH-114.276976";2026-09-27;false;71a15723-e3fb-4955-9089-86241fc2eeb3;f0df32f8-34d2-41e8-bde8-c9b74e1540c0;2026-09-27T22:11:41;../fake-data/blob/hipster.txt
+c2db33bf-1d6b-4d54-a734-965177f498bc;DELEGATAIRE;"OHN-403.68";2026-09-27;false;29027eff-8c93-4aa9-8d73-18a513731393;c910ec1a-8fd7-4ae6-a942-c08c0508f013;2026-09-28T07:57:55;../fake-data/blob/hipster.txt
+b7837caa-dc2f-4f7d-9b7e-6119f6299780;CARTE_INTERBANCAIRE;"IJ-2782.0";2026-09-28;true;8c78e2ea-b8b9-4dca-a27e-e35af8fcc6fd;4837f1fd-8b24-474a-9964-7ec64bee4dd1;2026-09-27T14:19:49;../fake-data/blob/hipster.txt
+cbb53508-a9ae-4826-8512-4ca5f5db6b49;CARTE_INTERBANCAIRE;"XHUU-8807.28169";2026-09-28;true;1ac7e3be-2692-4426-9868-8bc3a4f0d72b;7f6fb7a3-86d1-43d4-a0bd-2276798028e4;2026-09-27T15:22:52;../fake-data/blob/hipster.txt
+1a61bd8b-d0f5-4f2c-809d-e2567d9fecf9;CARTE_INTERBANCAIRE;"DVNZ-122.027";2026-09-27;true;92a31b5f-01da-4ae8-934b-2b439a84f4f9;df0b8d38-807a-4b57-a113-97eee051f04e;2026-09-28T06:30:44;../fake-data/blob/hipster.txt
+57ec3478-3b0c-401a-bb1e-5b683d8a57e0;DELEGATAIRE;"YSFO-423.7";2026-09-27;true;4b84d446-d403-435d-88b4-f2d992ae92cd;ffa13423-2f8a-4e27-b293-2ced8fd6acde;2026-09-28T05:10:33;../fake-data/blob/hipster.txt
+a5eb3ef9-14e9-47ab-b110-78122b5a4fb5;DELEGATAIRE;"VBKH-211.7038";2026-09-27;true;def8a08e-3ebd-4c09-9d68-1bee31e5eb77;8db5d0de-9e59-4f45-850c-34909d1b8a13;2026-09-28T09:45:05;../fake-data/blob/hipster.txt

@@ -1,0 +1,111 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134103"
+  },
+  "applications": ["homologation"],
+  "clientRootFolder": "homologation",
+  "databaseType": "sql",
+  "documentation": "Opération de référence : nœud du graphe (CC §6.1.7.3). Le code est unique\\ndans une version ; un nœud de branche porte un service ; un nœud d'essai\\nporte un identifiant de scénario unique dans la version (algorithme 6.34).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "code",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "20",
+      "fieldValidateRulesPattern": "^[A-Z0-9]+-[0-9]{2,3}$"
+    },
+    {
+      "fieldName": "label",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "255"
+    },
+    {
+      "documentation": "« TRONC_COMMUN » pour le tronc commun, sinon code de la branche métier.",
+      "fieldName": "branch",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "50",
+      "fieldValidateRulesPattern": "^[A-Z0-9_]+$"
+    },
+    {
+      "fieldName": "phase",
+      "fieldType": "OperationPhase",
+      "fieldTypeDocumentation": "Phase d'une opération de référence. Écart CC corrigé : chaîne libre dans le\\nCC, typée ici car les algorithmes 6.33 et 6.34 traitent à part la phase\\n« mise en service ».",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "PARAMETRAGE,ECHANGE_CERTIFICATS,ESSAIS,RECETTE,MISE_EN_SERVICE"
+    },
+    {
+      "fieldName": "owner",
+      "fieldType": "ResponsibleParty",
+      "fieldTypeDocumentation": "Partie à qui incombe une opération. Écart CC corrigé : chaîne libre dans le\\nCC, typée d'après son texte (groupement, participant, les deux).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "GROUPEMENT,PARTICIPANT,LES_DEUX"
+    },
+    {
+      "fieldName": "expectedEvidence",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "255"
+    },
+    {
+      "documentation": "Service contribué (code tenu par MS-PARTICIPANT) ; vide pour le tronc commun.",
+      "fieldName": "serviceCode",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "80",
+      "fieldValidateRulesPattern": "^[A-Z0-9_]+$"
+    },
+    {
+      "documentation": "Identifiant du scénario dans le simulateur, pour une opération d'essai.",
+      "fieldName": "scenarioRef",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "50"
+    },
+    {
+      "documentation": "Appartenance au chemin critique (UC-HOM-01 étape 5, RG-28). Écart CC\\ncorrigé : absente du diagramme de classes du CC.",
+      "fieldName": "criticalPath",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "homologation",
+  "name": "ReferenceOperation",
+  "pagination": "pagination",
+  "relationships": [
+    {
+      "otherEntityField": "version",
+      "otherEntityName": "referenceCatalog",
+      "relationshipName": "catalog",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    },
+    {
+      "documentation": "Arcs du graphe : prédécesseurs d'une opération de référence, dans la même version (RG-26, RG-27).",
+      "otherEntityField": "code",
+      "otherEntityName": "referenceOperation",
+      "otherEntityRelationshipName": "successors",
+      "relationshipName": "predecessors",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-many"
+    },
+    {
+      "otherEntityField": "code",
+      "otherEntityName": "referenceOperation",
+      "otherEntityRelationshipName": "predecessors",
+      "relationshipName": "successors",
+      "relationshipSide": "right",
+      "relationshipType": "many-to-many"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

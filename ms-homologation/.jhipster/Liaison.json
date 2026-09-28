@@ -1,0 +1,94 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134203"
+  },
+  "applications": ["homologation"],
+  "clientRootFolder": "homologation",
+  "databaseType": "sql",
+  "documentation": "Liaison d'une institution pour un type de projet (CC §6.1.7.1). Elle fige la\\nversion du référentiel en vigueur à son ouverture. Ouverte à la suite de\\nparticipant.status-changed.v1 vers EN_HOMOLOGATION (D-18).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Identifiant lisible, par exemple LIA-2026-017.",
+      "fieldName": "liaisonCode",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "unique", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "20",
+      "fieldValidateRulesPattern": "^LIA-[0-9]{4}-[0-9]{3,}$"
+    },
+    {
+      "documentation": "Institution tenue par MS-PARTICIPANT (référence, BNF-04).",
+      "fieldName": "institutionId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "projectType",
+      "fieldType": "ProjectType",
+      "fieldTypeDocumentation": "Type de projet de raccordement (CC §6.1.7.3).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "CARTE_INTERBANCAIRE,PAIEMENT_MOBILE,DELEGATAIRE"
+    },
+    {
+      "fieldName": "openedOn",
+      "fieldType": "LocalDate",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Chef de projet de la liaison (collaborateur de MS-IAM).",
+      "fieldName": "projectLeadId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "state",
+      "fieldType": "LiaisonState",
+      "fieldTypeDocumentation": "Automate de la liaison (REC D-08).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "OUVERTE,EN_ESSAIS,PRETE_CERTIFICATION,CERTIFIEE,EN_SERVICE,GELEE"
+    },
+    {
+      "documentation": "Référence de la campagne dans le simulateur (κL de l'algorithme 6.32).\\nÉcart CC corrigé : absente de la classe Liaison, requise par l'algorithme.",
+      "fieldName": "campaignRef",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "100"
+    },
+    {
+      "fieldName": "readyForCertificationAt",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "commissionedOn",
+      "fieldType": "LocalDate"
+    },
+    {
+      "documentation": "Motif du gel (HOM-10) ou du retour en homologation (HOM-11).",
+      "fieldName": "stateReason",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "1000"
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "homologation",
+  "name": "Liaison",
+  "pagination": "pagination",
+  "relationships": [
+    {
+      "documentation": "Version du référentiel figée sur la liaison (migrée seulement par l'algorithme 6.34).",
+      "otherEntityField": "version",
+      "otherEntityName": "referenceCatalog",
+      "relationshipName": "catalog",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

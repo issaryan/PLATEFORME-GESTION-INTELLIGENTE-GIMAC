@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+
+    <!--
+        Added the entity Operation.
+    -->
+    <changeSet id="20260928134403-1" author="jhipster">
+        <createTable tableName="operation" remarks="Opération instanciée d&apos;une liaison (algorithme 6.30), close par la règle des\nquatre éléments (D-09, RG-32, algorithme 6.31) : responsable, preuve WORM\n(documentId + empreinte), horodatage RFC 3161, validateur distinct du\nresponsable. Une clôture est immuable (RG-33).">
+            <column name="id" type="${uuidType}">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="operation_code" type="varchar(20)" remarks="Identifiant lisible, par exemple OPE-2026-0312.">
+                <constraints nullable="false" unique="true" uniqueConstraintName="ux_operation__operation_code" />
+            </column>
+            <column name="state" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="owner_id" type="${uuidType}" remarks="Élément 1 : responsable (collaborateur MS-IAM ou représentant du participant).">
+                <constraints nullable="true" />
+            </column>
+            <column name="evidence_document_id" type="${uuidType}" remarks="Élément 2 : preuve scellée dans MS-DOCUMENT. Écart CC corrigé : pour une\nopération d&apos;essai, la référence de trace ne remplace pas la preuve WORM ;\nl&apos;archive probante qui la contient est déposée et scellée (UC-HOM-03, D-09).">
+                <constraints nullable="true" />
+            </column>
+            <column name="evidence_digest" type="varchar(64)">
+                <constraints nullable="true" />
+            </column>
+            <column name="evidence_sealed_at" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="evidence_retention" type="bigint" remarks="Rétention WORM constatée, au moins 10 ans (D-11).">
+                <constraints nullable="true" />
+            </column>
+            <column name="evidence_seal_confirmed" type="boolean" remarks="Confirmation reçue par document.document-sealed.v1.">
+                <constraints nullable="true" />
+            </column>
+            <column name="evidence_trace_ref" type="varchar(100)" remarks="Référence de trace du simulateur, pour une opération d&apos;essai (RG-30).">
+                <constraints nullable="true" />
+            </column>
+            <column name="timestamp_token" type="${blobType}" remarks="Élément 3 : jeton RFC 3161 encodé en DER, sur SHA256(o.id || hp || r).">
+                <constraints nullable="true" />
+            </column>
+            <column name="timestamp_token_content_type" type="varchar(255)">
+                <constraints nullable="true" />
+            </column>
+            <column name="timestamp_imprint" type="varchar(64)">
+                <constraints nullable="true" />
+            </column>
+            <column name="timestamp_gen_time" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="validator_id" type="${uuidType}" remarks="Élément 4 : validateur habilité, distinct du responsable.">
+                <constraints nullable="true" />
+            </column>
+            <column name="validated_at" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="closed_at" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="state_reason" type="varchar(1000)" remarks="Motif d&apos;arbitrage, de réouverture (référentiel modifié, quitus refusé) ou de verrouillage.">
+                <constraints nullable="true" />
+            </column>
+            <column name="liaison_id" type="${uuidType}">
+                <constraints nullable="false" />
+            </column>
+            <column name="reference_id" type="${uuidType}">
+                <constraints nullable="false" />
+            </column>
+            <!-- jhipster-needle-liquibase-add-column - JHipster will add columns here -->
+        </createTable>
+        <dropDefaultValue tableName="operation" columnName="evidence_sealed_at" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="operation" columnName="timestamp_gen_time" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="operation" columnName="validated_at" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="operation" columnName="closed_at" columnDataType="${datetimeType}"/>
+    </changeSet>
+
+    <!-- jhipster-needle-liquibase-add-changeset - JHipster will add changesets here -->
+
+    <!--
+        Load sample data generated with Faker.js
+        - This data can be easily edited using a CSV editor (or even MS Excel) and
+          is located in the 'src/main/resources/config/liquibase/fake-data' directory
+        - By default this data is applied when running with the JHipster 'dev' profile.
+          This can be customized by adding or removing 'faker' in the 'spring.liquibase.contexts'
+          Spring Boot configuration key.
+    -->
+    <changeSet id="20260928134403-1-data" author="jhipster" context="faker">
+        <loadData
+                  file="config/liquibase/fake-data/operation.csv"
+                  separator=";"
+                  tableName="operation"
+                  usePreparedStatements="true">
+            <column name="id" type="${uuidType}"/>
+            <column name="operation_code" type="string"/>
+            <column name="state" type="string"/>
+            <column name="owner_id" type="${uuidType}"/>
+            <column name="evidence_document_id" type="${uuidType}"/>
+            <column name="evidence_digest" type="string"/>
+            <column name="evidence_sealed_at" type="date"/>
+            <column name="evidence_retention" type="numeric"/>
+            <column name="evidence_seal_confirmed" type="boolean"/>
+            <column name="evidence_trace_ref" type="string"/>
+            <column name="timestamp_token" type="blob"/>
+            <column name="timestamp_token_content_type" type="string"/>
+            <column name="timestamp_imprint" type="string"/>
+            <column name="timestamp_gen_time" type="date"/>
+            <column name="validator_id" type="${uuidType}"/>
+            <column name="validated_at" type="date"/>
+            <column name="closed_at" type="date"/>
+            <column name="state_reason" type="string"/>
+            <column name="liaison_id" type="${uuidType}"/>
+            <column name="reference_id" type="${uuidType}"/>
+            <!-- jhipster-needle-liquibase-add-loadcolumn - JHipster (and/or extensions) can add load columns here -->
+        </loadData>
+    </changeSet>
+</databaseChangeLog>

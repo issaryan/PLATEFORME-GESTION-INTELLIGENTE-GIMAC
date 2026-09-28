@@ -1,0 +1,70 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134703"
+  },
+  "applications": ["homologation"],
+  "clientRootFolder": "homologation",
+  "databaseType": "sql",
+  "documentation": "Couvertures d'un service (algorithme 6.33) : γ (certification) et µ (mise en\\nservice), entre 0 et 1. Seules les opérations closes selon la règle des\\nquatre éléments comptent ; aucune pondération manuelle. Seuil d'aptitude\\nτseuil = 1, non paramétrable (D-18).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "serviceCode",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "80",
+      "fieldValidateRulesPattern": "^[A-Z0-9_]+$"
+    },
+    {
+      "fieldName": "certificationRate",
+      "fieldType": "BigDecimal",
+      "fieldValidateRules": ["required", "min", "max"],
+      "fieldValidateRulesMax": "1",
+      "fieldValidateRulesMin": "0"
+    },
+    {
+      "fieldName": "commissioningRate",
+      "fieldType": "BigDecimal",
+      "fieldValidateRules": ["required", "min", "max"],
+      "fieldValidateRulesMax": "1",
+      "fieldValidateRulesMin": "0"
+    },
+    {
+      "fieldName": "requiredCount",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required", "min"],
+      "fieldValidateRulesMin": "0"
+    },
+    {
+      "fieldName": "closedCount",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required", "min"],
+      "fieldValidateRulesMin": "0"
+    },
+    {
+      "fieldName": "computedAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "homologation",
+  "name": "Coverage",
+  "readOnly": true,
+  "relationships": [
+    {
+      "otherEntityField": "liaisonCode",
+      "otherEntityName": "liaison",
+      "relationshipName": "liaison",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

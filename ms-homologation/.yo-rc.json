@@ -1,0 +1,43 @@
+{
+  "generator-jhipster": {
+    "applicationType": "microservice",
+    "authenticationType": "oauth2",
+    "baseName": "homologation",
+    "buildTool": "maven",
+    "cacheProvider": "redis",
+    "databaseType": "sql",
+    "devDatabaseType": "postgresql",
+    "enableHibernateCache": false,
+    "enableSwaggerCodegen": false,
+    "enableTranslation": true,
+    "entities": [
+      "ReferenceCatalog",
+      "ReferenceOperation",
+      "Liaison",
+      "ContractedScope",
+      "Operation",
+      "TestScenario",
+      "CampaignSync",
+      "Coverage",
+      "QrVerification",
+      "DeduplicationEntry"
+    ],
+    "jhipsterVersion": "8.11.0",
+    "jwtSecretKey": "ZThmZDhjZDk2ODRiNzY5ZGU1ODUxYjI0ZTEwNTk3YThhNjgzOGYxMzgxMjZjZWY0MzBmOGRkNGExMzdhZjA1MTlhZjFiMzA4MjczZWM1YzQxZjVhY2E4NzNmZTcwZjgwNzE0NzFlYzBlM2YzNzI4OTVjNjBkOTlmOWEwMjViNzY=",
+    "languages": ["fr", "en"],
+    "lastLiquibaseTimestamp": 1790603343000,
+    "messageBroker": "kafka",
+    "monorepository": true,
+    "nativeLanguage": "fr",
+    "packageName": "cm.gimac.des.homologation",
+    "prodDatabaseType": "postgresql",
+    "reactive": false,
+    "searchEngine": "no",
+    "serverPort": "8086",
+    "serviceDiscoveryType": "no",
+    "skipClient": true,
+    "skipCommitHook": true,
+    "skipUserManagement": true,
+    "testFrameworks": []
+  }
+}

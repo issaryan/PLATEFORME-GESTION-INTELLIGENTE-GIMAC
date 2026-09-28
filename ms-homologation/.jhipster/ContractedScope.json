@@ -1,0 +1,56 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134303"
+  },
+  "applications": ["homologation"],
+  "clientRootFolder": "homologation",
+  "databaseType": "sql",
+  "documentation": "Service du périmètre contractualisé, dérivé de participant.service-subscribed.v1.\\nUn service hors périmètre ne peut être certifié (RG-72). Unicité\\n(liaison, serviceCode) posée par migration Liquibase.",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "serviceCode",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "80",
+      "fieldValidateRulesPattern": "^[A-Z0-9_]+$"
+    },
+    {
+      "fieldName": "included",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "progress",
+      "fieldType": "ScopeProgress",
+      "fieldTypeDocumentation": "Avancement d'un service du périmètre contractualisé (algorithme 6.33, étape 4).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "NON_DEMARRE,EN_ESSAI,CERTIFIE,EN_SERVICE"
+    },
+    {
+      "fieldName": "updatedAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "homologation",
+  "name": "ContractedScope",
+  "readOnly": true,
+  "relationships": [
+    {
+      "otherEntityField": "liaisonCode",
+      "otherEntityName": "liaison",
+      "relationshipName": "liaison",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

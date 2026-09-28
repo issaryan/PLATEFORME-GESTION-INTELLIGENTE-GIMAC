@@ -1,0 +1,65 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134003"
+  },
+  "applications": ["homologation"],
+  "clientRootFolder": "homologation",
+  "databaseType": "sql",
+  "documentation": "Version du référentiel d'opérations d'un type de projet : graphe orienté\\nacyclique (RG-26). Une version publiée est figée ; sa publication exige un\\napprobateur distinct de l'auteur (algorithme 6.34, maker-checker).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "projectType",
+      "fieldType": "ProjectType",
+      "fieldTypeDocumentation": "Type de projet de raccordement (CC §6.1.7.3).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "CARTE_INTERBANCAIRE,PAIEMENT_MOBILE,DELEGATAIRE"
+    },
+    {
+      "documentation": "Libellé de version, par exemple PM-2.1 ; unique tous types confondus.",
+      "fieldName": "version",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "unique", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "20",
+      "fieldValidateRulesPattern": "^[A-Z]{2,4}-[0-9]+\\.[0-9]+$"
+    },
+    {
+      "fieldName": "effectiveFrom",
+      "fieldType": "LocalDate",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "published",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "authorId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "approverId",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "publishedAt",
+      "fieldType": "Instant"
+    },
+    {
+      "documentation": "Différentiel avec la version précédente (JSON : conservés, ajoutés, retirés, modifiés).",
+      "fieldName": "diffSummary",
+      "fieldType": "TextBlob"
+    }
+  ],
+  "microserviceName": "homologation",
+  "name": "ReferenceCatalog",
+  "pagination": "pagination",
+  "relationships": [],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}
