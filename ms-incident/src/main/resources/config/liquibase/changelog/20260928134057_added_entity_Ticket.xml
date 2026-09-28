@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+
+    <!--
+        Added the entity Ticket.
+    -->
+    <changeSet id="20260928134057-1" author="jhipster">
+        <createTable tableName="ticket" remarks="Ticket : toute sollicitation adressée au DES (CC §6.1.9.3).\nL&apos;état ne change que par l&apos;automate (algorithme 6.39), sous contrôle de version.">
+            <column name="id" type="${uuidType}">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="ticket_number" type="varchar(20)" remarks="Numéro lisible, par exemple TCK-000318 (number du CC, renommé : mot réservé SQL).">
+                <constraints nullable="false" unique="true" uniqueConstraintName="ux_ticket__ticket_number" />
+            </column>
+            <column name="type" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="subject" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="description" type="${clobType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="origin" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="origin_ref" type="varchar(100)" remarks="Identifiant de l&apos;objet d&apos;origine (alerte, suspens, notification, divergence).">
+                <constraints nullable="true" />
+            </column>
+            <column name="requester_id" type="${uuidType}" remarks="Demandeur (collaborateur ou correspondant, MS-IAM).">
+                <constraints nullable="false" />
+            </column>
+            <column name="institution_id" type="${uuidType}" remarks="Institution concernée (MS-PARTICIPANT) ; filtre RLS du portail (RG-59).">
+                <constraints nullable="true" />
+            </column>
+            <column name="link_id" type="varchar(50)" remarks="Liaison supervisée concernée (MS-MONITORING), par exemple LIA-2026-017.">
+                <constraints nullable="true" />
+            </column>
+            <column name="alert_id" type="${uuidType}" remarks="Alerte d&apos;origine (MS-MONITORING), pour le lien bidirectionnel alerte-ticket.">
+                <constraints nullable="true" />
+            </column>
+            <column name="priority" type="integer" remarks="Priorité 1 à 5, exigée pour qualifier un ticket qui n&apos;est pas un incident.">
+                <constraints nullable="true" />
+            </column>
+            <column name="state" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="assignee_id" type="${uuidType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="opened_at" type="${datetimeType}">
+                <constraints nullable="false" />
+            </column>
+            <column name="resolved_at" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="resolver_id" type="${uuidType}" remarks="Auteur de la résolution : le valideur de clôture doit en être distinct (6.43).">
+                <constraints nullable="true" />
+            </column>
+            <column name="closed_at" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="closed_by" type="${uuidType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="version" type="bigint" remarks="Version pour le verrouillage optimiste de l&apos;automate.">
+                <constraints nullable="false" />
+            </column>
+            <column name="related_ticket_id" type="${uuidType}">
+                <constraints nullable="true" />
+            </column>
+            <!-- jhipster-needle-liquibase-add-column - JHipster will add columns here -->
+        </createTable>
+        <dropDefaultValue tableName="ticket" columnName="opened_at" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="ticket" columnName="resolved_at" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="ticket" columnName="closed_at" columnDataType="${datetimeType}"/>
+    </changeSet>
+
+    <!-- jhipster-needle-liquibase-add-changeset - JHipster will add changesets here -->
+
+    <!--
+        Load sample data generated with Faker.js
+        - This data can be easily edited using a CSV editor (or even MS Excel) and
+          is located in the 'src/main/resources/config/liquibase/fake-data' directory
+        - By default this data is applied when running with the JHipster 'dev' profile.
+          This can be customized by adding or removing 'faker' in the 'spring.liquibase.contexts'
+          Spring Boot configuration key.
+    -->
+    <changeSet id="20260928134057-1-data" author="jhipster" context="faker">
+        <loadData
+                  file="config/liquibase/fake-data/ticket.csv"
+                  separator=";"
+                  tableName="ticket"
+                  usePreparedStatements="true">
+            <column name="id" type="${uuidType}"/>
+            <column name="ticket_number" type="string"/>
+            <column name="type" type="string"/>
+            <column name="subject" type="string"/>
+            <column name="description" type="clob"/>
+            <column name="origin" type="string"/>
+            <column name="origin_ref" type="string"/>
+            <column name="requester_id" type="${uuidType}"/>
+            <column name="institution_id" type="${uuidType}"/>
+            <column name="link_id" type="string"/>
+            <column name="alert_id" type="${uuidType}"/>
+            <column name="priority" type="numeric"/>
+            <column name="state" type="string"/>
+            <column name="assignee_id" type="${uuidType}"/>
+            <column name="opened_at" type="date"/>
+            <column name="resolved_at" type="date"/>
+            <column name="resolver_id" type="${uuidType}"/>
+            <column name="closed_at" type="date"/>
+            <column name="closed_by" type="${uuidType}"/>
+            <column name="version" type="numeric"/>
+            <!-- jhipster-needle-liquibase-add-loadcolumn - JHipster (and/or extensions) can add load columns here -->
+        </loadData>
+    </changeSet>
+</databaseChangeLog>

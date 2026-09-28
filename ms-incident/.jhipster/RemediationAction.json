@@ -1,0 +1,85 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134757"
+  },
+  "applications": ["incident"],
+  "clientRootFolder": "incident",
+  "databaseType": "sql",
+  "documentation": "Action de remédiation demandée à MS-PILOTAGE (incident.remediation-requested.v1),\\ndont l'état suit les événements de tâche (écart CC complété : entité exigée\\npar le critère « remédiation » de l'algorithme 6.43).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "kind",
+      "fieldType": "RemediationKind",
+      "fieldTypeDocumentation": "Nature d'une action de remédiation (algorithme 6.43, critère « remédiation »).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "CORRECTIVE,PREVENTIVE"
+    },
+    {
+      "fieldName": "description",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "2000"
+    },
+    {
+      "documentation": "Porteur nominatif de la tâche.",
+      "fieldName": "ownerId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "dueDate",
+      "fieldType": "LocalDate",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "requestedAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Référence de la tâche rendue par MS-PILOTAGE, par exemple TSK-2026-0712.",
+      "fieldName": "taskRef",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "50"
+    },
+    {
+      "fieldName": "state",
+      "fieldType": "RemediationState",
+      "fieldTypeDocumentation": "État de la tâche de MS-PILOTAGE qui porte l'action, reporté depuis ses événements.",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "DEMANDEE,EN_COURS,ACHEVEE,ANNULEE"
+    },
+    {
+      "fieldName": "completedAt",
+      "fieldType": "Instant"
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "incident",
+  "name": "RemediationAction",
+  "pagination": "pagination",
+  "relationships": [
+    {
+      "otherEntityName": "incident",
+      "relationshipName": "incident",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    },
+    {
+      "documentation": "Décision de crise à l'origine de l'action, le cas échéant.",
+      "otherEntityName": "crisisDecision",
+      "relationshipName": "crisisDecision",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

@@ -1,0 +1,60 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134557"
+  },
+  "applications": ["incident"],
+  "clientRootFolder": "incident",
+  "databaseType": "sql",
+  "documentation": "Gel d'engagement en attente de tiers (RG-37) : motivé et appuyé d'une pièce ;\\nun seul gel ouvert par ticket à un instant donné.",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "reason",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "500"
+    },
+    {
+      "fieldName": "thirdParty",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "255"
+    },
+    {
+      "fieldName": "startedAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "endedAt",
+      "fieldType": "Instant"
+    },
+    {
+      "documentation": "Pièce justificative déposée dans MS-DOCUMENT.",
+      "fieldName": "proofRef",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "100"
+    }
+  ],
+  "microserviceName": "incident",
+  "name": "EngagementFreeze",
+  "pagination": "pagination",
+  "readOnly": true,
+  "relationships": [
+    {
+      "otherEntityField": "ticketNumber",
+      "otherEntityName": "ticket",
+      "relationshipName": "ticket",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

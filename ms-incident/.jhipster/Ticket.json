@@ -1,0 +1,142 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134057"
+  },
+  "applications": ["incident"],
+  "clientRootFolder": "incident",
+  "databaseType": "sql",
+  "documentation": "Ticket : toute sollicitation adressée au DES (CC §6.1.9.3).\\nL'état ne change que par l'automate (algorithme 6.39), sous contrôle de version.",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Numéro lisible, par exemple TCK-000318 (number du CC, renommé : mot réservé SQL).",
+      "fieldName": "ticketNumber",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "unique", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "20",
+      "fieldValidateRulesPattern": "^TCK-[0-9]{6,}$"
+    },
+    {
+      "fieldName": "type",
+      "fieldType": "TicketType",
+      "fieldTypeDocumentation": "Nature d'un ticket (CC §6.1.9.1).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "DEMANDE,INCIDENT,INTERVENTION,ACCES_ASTREINTE,ANOMALIE"
+    },
+    {
+      "fieldName": "subject",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "255"
+    },
+    {
+      "fieldName": "description",
+      "fieldType": "TextBlob"
+    },
+    {
+      "fieldName": "origin",
+      "fieldType": "TicketOrigin",
+      "fieldTypeDocumentation": "Origine d'un ticket (écart CC complété : l'origine n'était qu'une chaîne libre).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "APPLICATION_DES,PORTAIL,ALERTE_MONITORING,ESCALADE_EPUISEE,SUSPENS_CONTESTE,DIVERGENCE_INTEGRITE"
+    },
+    {
+      "documentation": "Identifiant de l'objet d'origine (alerte, suspens, notification, divergence).",
+      "fieldName": "originRef",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "100"
+    },
+    {
+      "documentation": "Demandeur (collaborateur ou correspondant, MS-IAM).",
+      "fieldName": "requesterId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Institution concernée (MS-PARTICIPANT) ; filtre RLS du portail (RG-59).",
+      "fieldName": "institutionId",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Liaison supervisée concernée (MS-MONITORING), par exemple LIA-2026-017.",
+      "fieldName": "linkId",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "50"
+    },
+    {
+      "documentation": "Alerte d'origine (MS-MONITORING), pour le lien bidirectionnel alerte-ticket.",
+      "fieldName": "alertId",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Priorité 1 à 5, exigée pour qualifier un ticket qui n'est pas un incident.",
+      "fieldName": "priority",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["min", "max"],
+      "fieldValidateRulesMax": "5",
+      "fieldValidateRulesMin": "1"
+    },
+    {
+      "fieldName": "state",
+      "fieldType": "TicketState",
+      "fieldTypeDocumentation": "Automate des tickets (REC D-08) : OUVERT → QUALIFIE → EN_COURS ⇄\\nEN_ATTENTE_TIERS → RESOLU → CLOS, avec REOUVERT. Pas de CLOS sans RESOLU,\\nhors fermeture d'un doublon depuis OUVERT (RG-36, algorithme 6.39).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "OUVERT,QUALIFIE,EN_COURS,EN_ATTENTE_TIERS,RESOLU,CLOS,REOUVERT"
+    },
+    {
+      "fieldName": "assigneeId",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "openedAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "resolvedAt",
+      "fieldType": "Instant"
+    },
+    {
+      "documentation": "Auteur de la résolution : le valideur de clôture doit en être distinct (6.43).",
+      "fieldName": "resolverId",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "closedAt",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "closedBy",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Version pour le verrouillage optimiste de l'automate.",
+      "fieldName": "version",
+      "fieldType": "Long",
+      "fieldValidateRules": ["required", "min"],
+      "fieldValidateRulesMin": "0"
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "incident",
+  "name": "Ticket",
+  "pagination": "pagination",
+  "relationships": [
+    {
+      "documentation": "Ticket lié : anomalie d'escalade épuisée, réouverture au-delà de trente jours.",
+      "otherEntityField": "ticketNumber",
+      "otherEntityName": "ticket",
+      "relationshipName": "relatedTicket",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

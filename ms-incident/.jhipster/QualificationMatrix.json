@@ -1,0 +1,49 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134257"
+  },
+  "applications": ["incident"],
+  "clientRootFolder": "incident",
+  "databaseType": "sql",
+  "documentation": "Matrice de qualification impact × urgence, versionnée (objet-valeur du CC,\\npersisté car paramétrable). Une version déjà appliquée n'est jamais modifiée.",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Version, par exemple MQ-2026.1.",
+      "fieldName": "matrixVersion",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "unique", "maxlength"],
+      "fieldValidateRulesMaxlength": "20"
+    },
+    {
+      "documentation": "Tableau JSON 5×5 des sévérités, indexé [impact][urgence].",
+      "fieldName": "cells",
+      "fieldType": "TextBlob",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Liste JSON des règles du marqueur réglementaire (seuil Dreg...).",
+      "fieldName": "regulatoryRules",
+      "fieldType": "TextBlob"
+    },
+    {
+      "fieldName": "effectiveFrom",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "active",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    }
+  ],
+  "microserviceName": "incident",
+  "name": "QualificationMatrix",
+  "relationships": [],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

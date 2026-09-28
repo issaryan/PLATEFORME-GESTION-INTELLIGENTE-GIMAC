@@ -1,0 +1,231 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134157"
+  },
+  "applications": ["incident"],
+  "clientRootFolder": "incident",
+  "databaseType": "sql",
+  "documentation": "Incident : qualification d'un ticket de type INCIDENT (matrice 5×5),\\ncritères de clôture (D-09) et rapport circonstancié (D-10).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "impact",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required", "min", "max"],
+      "fieldValidateRulesMax": "5",
+      "fieldValidateRulesMin": "1"
+    },
+    {
+      "fieldName": "urgency",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required", "min", "max"],
+      "fieldValidateRulesMax": "5",
+      "fieldValidateRulesMin": "1"
+    },
+    {
+      "documentation": "Score impact × urgence.",
+      "fieldName": "score",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required", "min", "max"],
+      "fieldValidateRulesMax": "25",
+      "fieldValidateRulesMin": "1"
+    },
+    {
+      "fieldName": "severity",
+      "fieldType": "Severity",
+      "fieldTypeDocumentation": "Sévérité d'un incident, de S1 (critique) à S4 (mineure).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "S1,S2,S3,S4"
+    },
+    {
+      "documentation": "Incident de sécurité : ajoute le RSSI au niveau N3 d'escalade.",
+      "fieldName": "securityIncident",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "dataCompromiseSuspected",
+      "fieldType": "Boolean"
+    },
+    {
+      "documentation": "Marqueur réglementaire « à déclarer » (formule 6.42) ; jamais retiré sans visa conformité.",
+      "fieldName": "regulatoryFlag",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "qualifiedAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "qualifiedBy",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Critère 1 : cause racine, rattachée à la taxonomie.",
+      "fieldName": "rootCause",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "4000"
+    },
+    {
+      "fieldName": "rootCauseCategory",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "100"
+    },
+    {
+      "documentation": "Pièce du tiers exigée pour une cause externe (MS-DOCUMENT).",
+      "fieldName": "rootCauseProofRef",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "100"
+    },
+    {
+      "documentation": "Critère 2 : plan de remédiation ; les actions sont dans RemediationAction.",
+      "fieldName": "remediationPlan",
+      "fieldType": "TextBlob"
+    },
+    {
+      "documentation": "Critère 3 : test de résolution prouvé, postérieur à la résolution.",
+      "fieldName": "resolutionTest",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "4000"
+    },
+    {
+      "fieldName": "resolutionTestPassed",
+      "fieldType": "Boolean"
+    },
+    {
+      "fieldName": "resolutionTestAuthorId",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "resolutionTestAt",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "resolutionTestProofRef",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "100"
+    },
+    {
+      "documentation": "Critère 4 : capitalisation (retour d'expérience), exigée pour S1 et S2.",
+      "fieldName": "lessonsLearnedRef",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "100"
+    },
+    {
+      "documentation": "Mention « sans objet » justifiée, admise pour S3 et S4 seulement.",
+      "fieldName": "lessonsLearnedWaiver",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "1000"
+    },
+    {
+      "documentation": "Rapport circonstancié : exigible au plus tard 5 min après la résolution pour S1 et S2 (D-10).",
+      "fieldName": "reportDueAt",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "reportGeneratedAt",
+      "fieldType": "Instant"
+    },
+    {
+      "documentation": "Référence du rapport déposé dans MS-DOCUMENT.",
+      "fieldName": "reportRef",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "100"
+    },
+    {
+      "fieldName": "reportDigest",
+      "fieldType": "String",
+      "fieldValidateRules": ["minlength", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "64",
+      "fieldValidateRulesMinlength": "64",
+      "fieldValidateRulesPattern": "^[0-9a-f]{64}$"
+    },
+    {
+      "documentation": "Visa du responsable conformité, exigé si le marqueur est positionné.",
+      "fieldName": "complianceVisaBy",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "complianceVisaAt",
+      "fieldType": "Instant"
+    },
+    {
+      "documentation": "Validation des quatre critères : fin de mesure du MTTR (D-09).",
+      "fieldName": "criteriaValidatedAt",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "validatorId",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Durée brute, de l'ouverture à la résolution, toujours publiée.",
+      "fieldName": "rawDuration",
+      "fieldType": "Duration"
+    },
+    {
+      "documentation": "Somme des gels d'attente de tiers.",
+      "fieldName": "frozenDuration",
+      "fieldType": "Duration"
+    },
+    {
+      "documentation": "Délai imputable (durée brute moins les gels), gelé à la clôture (D-09).",
+      "fieldName": "imputableDelay",
+      "fieldType": "Duration"
+    },
+    {
+      "documentation": "MTTR réel : de l'ouverture à la validation des critères, sans déduire les gels (D-09).",
+      "fieldName": "mttr",
+      "fieldType": "Duration"
+    },
+    {
+      "fieldName": "takeChargeMet",
+      "fieldType": "Boolean"
+    },
+    {
+      "fieldName": "restorationMet",
+      "fieldType": "Boolean"
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "incident",
+  "name": "Incident",
+  "pagination": "pagination",
+  "relationships": [
+    {
+      "documentation": "Un incident précise un ticket de type INCIDENT.",
+      "otherEntityField": "ticketNumber",
+      "otherEntityName": "ticket",
+      "relationshipName": "ticket",
+      "relationshipSide": "left",
+      "relationshipType": "one-to-one",
+      "relationshipValidateRules": "required"
+    },
+    {
+      "documentation": "Version de matrice figée à la qualification.",
+      "otherEntityField": "matrixVersion",
+      "otherEntityName": "qualificationMatrix",
+      "relationshipName": "matrix",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

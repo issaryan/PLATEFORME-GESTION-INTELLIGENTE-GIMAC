@@ -1,0 +1,87 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134457"
+  },
+  "applications": ["incident"],
+  "clientRootFolder": "incident",
+  "databaseType": "sql",
+  "documentation": "Transition de l'automate : ligne en ajout seul, chaînée par empreinte\\n(RG-38, formule 6.40 : h0 = SHA-256(id du ticket), hn = SHA-256(hn-1 || JCS(τn))).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Rang dans la chronologie du ticket, à partir de 1.",
+      "fieldName": "chainIndex",
+      "fieldType": "Long",
+      "fieldValidateRules": ["required", "min"],
+      "fieldValidateRulesMin": "1"
+    },
+    {
+      "documentation": "Vide pour la transition de création.",
+      "fieldName": "fromState",
+      "fieldType": "TicketState",
+      "fieldTypeDocumentation": "Automate des tickets (REC D-08) : OUVERT → QUALIFIE → EN_COURS ⇄\\nEN_ATTENTE_TIERS → RESOLU → CLOS, avec REOUVERT. Pas de CLOS sans RESOLU,\\nhors fermeture d'un doublon depuis OUVERT (RG-36, algorithme 6.39).",
+      "fieldValues": "OUVERT,QUALIFIE,EN_COURS,EN_ATTENTE_TIERS,RESOLU,CLOS,REOUVERT"
+    },
+    {
+      "fieldName": "toState",
+      "fieldType": "TicketState",
+      "fieldTypeDocumentation": "Automate des tickets (REC D-08) : OUVERT → QUALIFIE → EN_COURS ⇄\\nEN_ATTENTE_TIERS → RESOLU → CLOS, avec REOUVERT. Pas de CLOS sans RESOLU,\\nhors fermeture d'un doublon depuis OUVERT (RG-36, algorithme 6.39).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "OUVERT,QUALIFIE,EN_COURS,EN_ATTENTE_TIERS,RESOLU,CLOS,REOUVERT"
+    },
+    {
+      "fieldName": "actorId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "occurredAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Justificatif exigé pour la mise en attente, la résolution sans suite et la réouverture.",
+      "fieldName": "justification",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "2000"
+    },
+    {
+      "fieldName": "previousHash",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "minlength", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "64",
+      "fieldValidateRulesMinlength": "64",
+      "fieldValidateRulesPattern": "^[0-9a-f]{64}$"
+    },
+    {
+      "fieldName": "hash",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "unique", "minlength", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "64",
+      "fieldValidateRulesMinlength": "64",
+      "fieldValidateRulesPattern": "^[0-9a-f]{64}$"
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "incident",
+  "name": "Transition",
+  "pagination": "pagination",
+  "readOnly": true,
+  "relationships": [
+    {
+      "otherEntityField": "ticketNumber",
+      "otherEntityName": "ticket",
+      "relationshipName": "ticket",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

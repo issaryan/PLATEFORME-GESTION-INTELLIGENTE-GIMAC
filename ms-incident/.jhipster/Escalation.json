@@ -1,0 +1,74 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134657"
+  },
+  "applications": ["incident"],
+  "clientRootFolder": "incident",
+  "databaseType": "sql",
+  "documentation": "Escalade déclenchée (algorithme 6.41) : un palier n'est franchi qu'une fois,\\nunicité (ticket, portée, niveau) posée en base.",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "scope",
+      "fieldType": "EscalationScope",
+      "fieldTypeDocumentation": "Escalade interne (MS-IAM) ou vers le contact de l'institution (MS-PARTICIPANT).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "INTERNE,EXTERNE"
+    },
+    {
+      "documentation": "Niveau N1 à N4.",
+      "fieldName": "level",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required", "min", "max"],
+      "fieldValidateRulesMax": "4",
+      "fieldValidateRulesMin": "1"
+    },
+    {
+      "documentation": "Destinataire interne (MS-IAM), après substitution du délégué actif.",
+      "fieldName": "targetUserId",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Contact d'escalade de l'institution (MS-PARTICIPANT).",
+      "fieldName": "targetContactId",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "triggeredAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "reason",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "500"
+    },
+    {
+      "documentation": "Délai imputable au moment du franchissement.",
+      "fieldName": "imputableDelay",
+      "fieldType": "Duration"
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "incident",
+  "name": "Escalation",
+  "pagination": "pagination",
+  "readOnly": true,
+  "relationships": [
+    {
+      "otherEntityField": "ticketNumber",
+      "otherEntityName": "ticket",
+      "relationshipName": "ticket",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

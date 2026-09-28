@@ -1,0 +1,146 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134957"
+  },
+  "applications": ["incident"],
+  "clientRootFolder": "incident",
+  "databaseType": "sql",
+  "documentation": "Cellule de crise (D-14, algorithme 6.42). Elle ne passe CLOSE que sur\\nrapport post-incident signé, rédigé au plus tard 5 jours ouvrés après la\\nrésolution (RG-42), et ARCHIVEE lorsque l'archive scellée par\\nMS-COLLABORATION est référencée. Critères d'activation non débrayables (RG-40).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Référence lisible, par exemple CRI-2026-009.",
+      "fieldName": "reference",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "unique", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "20",
+      "fieldValidateRulesPattern": "^CRI-[0-9]{4}-[0-9]{3,}$"
+    },
+    {
+      "fieldName": "level",
+      "fieldType": "Severity",
+      "fieldTypeDocumentation": "Sévérité d'un incident, de S1 (critique) à S4 (mineure).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "S1,S2,S3,S4"
+    },
+    {
+      "fieldName": "state",
+      "fieldType": "CrisisState",
+      "fieldTypeDocumentation": "Cellule de crise (REC D-08, D-14).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "CONVOQUEE,CONSTITUEE,CLOSE,ARCHIVEE"
+    },
+    {
+      "documentation": "Vrai pour une ouverture automatique à la qualification S1.",
+      "fieldName": "automaticActivation",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Motif de la décision du chef du DES pour un incident S2 ou un événement grave.",
+      "fieldName": "activationReason",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "1000"
+    },
+    {
+      "fieldName": "convenedBy",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "convenedAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Échéance de quorum (convocation + 15 min), déclenchant la suppléance.",
+      "fieldName": "quorumDeadline",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Seuil du quorum pondéré : 4 par défaut (D-14).",
+      "fieldName": "quorumThreshold",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required", "min"],
+      "fieldValidateRulesMin": "1"
+    },
+    {
+      "fieldName": "constitutedAt",
+      "fieldType": "Instant"
+    },
+    {
+      "documentation": "Salon de crise ouvert par MS-COLLABORATION, par exemple SAL-CRISE-2026-009.",
+      "fieldName": "roomRef",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "50"
+    },
+    {
+      "documentation": "Rapport post-incident : échéance à 5 jours ouvrés de la résolution (RG-42).",
+      "fieldName": "postIncidentReportDueAt",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "postIncidentReportRef",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "100"
+    },
+    {
+      "fieldName": "postIncidentReportDigest",
+      "fieldType": "String",
+      "fieldValidateRules": ["minlength", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "64",
+      "fieldValidateRulesMinlength": "64",
+      "fieldValidateRulesPattern": "^[0-9a-f]{64}$"
+    },
+    {
+      "fieldName": "postIncidentReportSignedBy",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "postIncidentReportSignedAt",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "closedBy",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "closedAt",
+      "fieldType": "Instant"
+    },
+    {
+      "documentation": "Archive des échanges scellée par MS-COLLABORATION.",
+      "fieldName": "archiveRef",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "100"
+    },
+    {
+      "fieldName": "archivedAt",
+      "fieldType": "Instant"
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "incident",
+  "name": "CrisisCell",
+  "pagination": "pagination",
+  "relationships": [
+    {
+      "documentation": "Une seule cellule active par incident.",
+      "otherEntityName": "incident",
+      "relationshipName": "incident",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

@@ -1,0 +1,56 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134357"
+  },
+  "applications": ["incident"],
+  "clientRootFolder": "incident",
+  "databaseType": "sql",
+  "documentation": "Engagement de service par sévérité (tableau 6.42, valeurs paramétrables).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "severity",
+      "fieldType": "Severity",
+      "fieldTypeDocumentation": "Sévérité d'un incident, de S1 (critique) à S4 (mineure).",
+      "fieldValidateRules": ["required", "unique"],
+      "fieldValues": "S1,S2,S3,S4"
+    },
+    {
+      "fieldName": "takeCharge",
+      "fieldType": "Duration",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "restoration",
+      "fieldType": "Duration",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Paliers d'escalade, liste JSON : durées absolues ISO-8601 pour S1,\\nfractions du délai de rétablissement pour S2 à S4.",
+      "fieldName": "escalationSteps",
+      "fieldType": "TextBlob",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "crisisActivation",
+      "fieldType": "CrisisActivation",
+      "fieldTypeDocumentation": "Déclenchement de la cellule de crise par sévérité (tableau 6.42).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "AUTOMATIQUE,SUR_DECISION,NON"
+    },
+    {
+      "documentation": "Période d'observation après résolution (24 h pour S1 et S2, algorithme 6.43).",
+      "fieldName": "observationPeriod",
+      "fieldType": "Duration"
+    }
+  ],
+  "microserviceName": "incident",
+  "name": "ServiceCommitment",
+  "relationships": [],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

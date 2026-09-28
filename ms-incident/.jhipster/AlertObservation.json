@@ -1,0 +1,50 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134857"
+  },
+  "applications": ["incident"],
+  "clientRootFolder": "incident",
+  "databaseType": "sql",
+  "documentation": "Alerte reçue sur un objet (monitoring.alert-raised.v1), projetée pour\\nvérifier la période d'observation du test de résolution (algorithme 6.43).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "alertId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required", "unique"]
+    },
+    {
+      "fieldName": "linkId",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "50"
+    },
+    {
+      "fieldName": "institutionId",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Gravité proposée par MS-MONITORING (MINEURE, MAJEURE, CRITIQUE).",
+      "fieldName": "alertSeverity",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "20"
+    },
+    {
+      "fieldName": "raisedAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    }
+  ],
+  "microserviceName": "incident",
+  "name": "AlertObservation",
+  "pagination": "pagination",
+  "readOnly": true,
+  "relationships": [],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

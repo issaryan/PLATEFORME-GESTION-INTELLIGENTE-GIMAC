@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+
+    <!--
+        Added the entity CrisisCell.
+    -->
+    <changeSet id="20260928134957-1" author="jhipster">
+        <createTable tableName="crisis_cell" remarks="Cellule de crise (D-14, algorithme 6.42). Elle ne passe CLOSE que sur\nrapport post-incident signé, rédigé au plus tard 5 jours ouvrés après la\nrésolution (RG-42), et ARCHIVEE lorsque l&apos;archive scellée par\nMS-COLLABORATION est référencée. Critères d&apos;activation non débrayables (RG-40).">
+            <column name="id" type="${uuidType}">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="reference" type="varchar(20)" remarks="Référence lisible, par exemple CRI-2026-009.">
+                <constraints nullable="false" unique="true" uniqueConstraintName="ux_crisis_cell__reference" />
+            </column>
+            <column name="level" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="state" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="automatic_activation" type="boolean" remarks="Vrai pour une ouverture automatique à la qualification S1.">
+                <constraints nullable="false" />
+            </column>
+            <column name="activation_reason" type="varchar(1000)" remarks="Motif de la décision du chef du DES pour un incident S2 ou un événement grave.">
+                <constraints nullable="true" />
+            </column>
+            <column name="convened_by" type="${uuidType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="convened_at" type="${datetimeType}">
+                <constraints nullable="false" />
+            </column>
+            <column name="quorum_deadline" type="${datetimeType}" remarks="Échéance de quorum (convocation + 15 min), déclenchant la suppléance.">
+                <constraints nullable="false" />
+            </column>
+            <column name="quorum_threshold" type="integer" remarks="Seuil du quorum pondéré : 4 par défaut (D-14).">
+                <constraints nullable="false" />
+            </column>
+            <column name="constituted_at" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="room_ref" type="varchar(50)" remarks="Salon de crise ouvert par MS-COLLABORATION, par exemple SAL-CRISE-2026-009.">
+                <constraints nullable="true" />
+            </column>
+            <column name="post_incident_report_due_at" type="${datetimeType}" remarks="Rapport post-incident : échéance à 5 jours ouvrés de la résolution (RG-42).">
+                <constraints nullable="true" />
+            </column>
+            <column name="post_incident_report_ref" type="varchar(100)">
+                <constraints nullable="true" />
+            </column>
+            <column name="post_incident_report_digest" type="varchar(64)">
+                <constraints nullable="true" />
+            </column>
+            <column name="post_incident_report_signed_by" type="${uuidType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="post_incident_report_signed_at" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="closed_by" type="${uuidType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="closed_at" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="archive_ref" type="varchar(100)" remarks="Archive des échanges scellée par MS-COLLABORATION.">
+                <constraints nullable="true" />
+            </column>
+            <column name="archived_at" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="incident_id" type="${uuidType}">
+                <constraints nullable="false" />
+            </column>
+            <!-- jhipster-needle-liquibase-add-column - JHipster will add columns here -->
+        </createTable>
+        <dropDefaultValue tableName="crisis_cell" columnName="convened_at" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="crisis_cell" columnName="quorum_deadline" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="crisis_cell" columnName="constituted_at" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="crisis_cell" columnName="post_incident_report_due_at" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="crisis_cell" columnName="post_incident_report_signed_at" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="crisis_cell" columnName="closed_at" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="crisis_cell" columnName="archived_at" columnDataType="${datetimeType}"/>
+    </changeSet>
+
+    <!-- jhipster-needle-liquibase-add-changeset - JHipster will add changesets here -->
+
+    <!--
+        Load sample data generated with Faker.js
+        - This data can be easily edited using a CSV editor (or even MS Excel) and
+          is located in the 'src/main/resources/config/liquibase/fake-data' directory
+        - By default this data is applied when running with the JHipster 'dev' profile.
+          This can be customized by adding or removing 'faker' in the 'spring.liquibase.contexts'
+          Spring Boot configuration key.
+    -->
+    <changeSet id="20260928134957-1-data" author="jhipster" context="faker">
+        <loadData
+                  file="config/liquibase/fake-data/crisis_cell.csv"
+                  separator=";"
+                  tableName="crisis_cell"
+                  usePreparedStatements="true">
+            <column name="id" type="${uuidType}"/>
+            <column name="reference" type="string"/>
+            <column name="level" type="string"/>
+            <column name="state" type="string"/>
+            <column name="automatic_activation" type="boolean"/>
+            <column name="activation_reason" type="string"/>
+            <column name="convened_by" type="${uuidType}"/>
+            <column name="convened_at" type="date"/>
+            <column name="quorum_deadline" type="date"/>
+            <column name="quorum_threshold" type="numeric"/>
+            <column name="constituted_at" type="date"/>
+            <column name="room_ref" type="string"/>
+            <column name="post_incident_report_due_at" type="date"/>
+            <column name="post_incident_report_ref" type="string"/>
+            <column name="post_incident_report_digest" type="string"/>
+            <column name="post_incident_report_signed_by" type="${uuidType}"/>
+            <column name="post_incident_report_signed_at" type="date"/>
+            <column name="closed_by" type="${uuidType}"/>
+            <column name="closed_at" type="date"/>
+            <column name="archive_ref" type="string"/>
+            <column name="archived_at" type="date"/>
+            <column name="incident_id" type="${uuidType}"/>
+            <!-- jhipster-needle-liquibase-add-loadcolumn - JHipster (and/or extensions) can add load columns here -->
+        </loadData>
+    </changeSet>
+</databaseChangeLog>

@@ -1,0 +1,65 @@
+{
+  "annotations": {
+    "changelogDate": "20260928135057"
+  },
+  "applications": ["incident"],
+  "clientRootFolder": "incident",
+  "databaseType": "sql",
+  "documentation": "Membre de la cellule, de droit ou suppléant (algorithme 6.42, étapes 1 et 4).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "userId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Rôle de droit, par exemple « chef du DES ».",
+      "fieldName": "role",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "100"
+    },
+    {
+      "documentation": "Poids dans le quorum : 2 pour la Direction Générale et le chef du DES, 1 sinon.",
+      "fieldName": "weight",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required", "min"],
+      "fieldValidateRulesMin": "0"
+    },
+    {
+      "documentation": "Titulaire remplacé, pour un suppléant.",
+      "fieldName": "substituteFor",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "convenedAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Présence effective ; l'acquittement de la convocation ne vaut pas présence.",
+      "fieldName": "joinedAt",
+      "fieldType": "Instant"
+    }
+  ],
+  "microserviceName": "incident",
+  "name": "CrisisMember",
+  "readOnly": true,
+  "relationships": [
+    {
+      "otherEntityField": "reference",
+      "otherEntityName": "crisisCell",
+      "relationshipName": "cell",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+
+    <!--
+        Added the entity Incident.
+    -->
+    <changeSet id="20260928134157-1" author="jhipster">
+        <createTable tableName="incident" remarks="Incident : qualification d&apos;un ticket de type INCIDENT (matrice 5×5),\ncritères de clôture (D-09) et rapport circonstancié (D-10).">
+            <column name="id" type="${uuidType}">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="impact" type="integer">
+                <constraints nullable="false" />
+            </column>
+            <column name="urgency" type="integer">
+                <constraints nullable="false" />
+            </column>
+            <column name="score" type="integer" remarks="Score impact × urgence.">
+                <constraints nullable="false" />
+            </column>
+            <column name="severity" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="security_incident" type="boolean" remarks="Incident de sécurité : ajoute le RSSI au niveau N3 d&apos;escalade.">
+                <constraints nullable="false" />
+            </column>
+            <column name="data_compromise_suspected" type="boolean">
+                <constraints nullable="true" />
+            </column>
+            <column name="regulatory_flag" type="boolean" remarks="Marqueur réglementaire « à déclarer » (formule 6.42) ; jamais retiré sans visa conformité.">
+                <constraints nullable="false" />
+            </column>
+            <column name="qualified_at" type="${datetimeType}">
+                <constraints nullable="false" />
+            </column>
+            <column name="qualified_by" type="${uuidType}">
+                <constraints nullable="false" />
+            </column>
+            <column name="root_cause" type="varchar(4000)" remarks="Critère 1 : cause racine, rattachée à la taxonomie.">
+                <constraints nullable="true" />
+            </column>
+            <column name="root_cause_category" type="varchar(100)">
+                <constraints nullable="true" />
+            </column>
+            <column name="root_cause_proof_ref" type="varchar(100)" remarks="Pièce du tiers exigée pour une cause externe (MS-DOCUMENT).">
+                <constraints nullable="true" />
+            </column>
+            <column name="remediation_plan" type="${clobType}" remarks="Critère 2 : plan de remédiation ; les actions sont dans RemediationAction.">
+                <constraints nullable="true" />
+            </column>
+            <column name="resolution_test" type="varchar(4000)" remarks="Critère 3 : test de résolution prouvé, postérieur à la résolution.">
+                <constraints nullable="true" />
+            </column>
+            <column name="resolution_test_passed" type="boolean">
+                <constraints nullable="true" />
+            </column>
+            <column name="resolution_test_author_id" type="${uuidType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="resolution_test_at" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="resolution_test_proof_ref" type="varchar(100)">
+                <constraints nullable="true" />
+            </column>
+            <column name="lessons_learned_ref" type="varchar(100)" remarks="Critère 4 : capitalisation (retour d&apos;expérience), exigée pour S1 et S2.">
+                <constraints nullable="true" />
+            </column>
+            <column name="lessons_learned_waiver" type="varchar(1000)" remarks="Mention « sans objet » justifiée, admise pour S3 et S4 seulement.">
+                <constraints nullable="true" />
+            </column>
+            <column name="report_due_at" type="${datetimeType}" remarks="Rapport circonstancié : exigible au plus tard 5 min après la résolution pour S1 et S2 (D-10).">
+                <constraints nullable="true" />
+            </column>
+            <column name="report_generated_at" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="report_ref" type="varchar(100)" remarks="Référence du rapport déposé dans MS-DOCUMENT.">
+                <constraints nullable="true" />
+            </column>
+            <column name="report_digest" type="varchar(64)">
+                <constraints nullable="true" />
+            </column>
+            <column name="compliance_visa_by" type="${uuidType}" remarks="Visa du responsable conformité, exigé si le marqueur est positionné.">
+                <constraints nullable="true" />
+            </column>
+            <column name="compliance_visa_at" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="criteria_validated_at" type="${datetimeType}" remarks="Validation des quatre critères : fin de mesure du MTTR (D-09).">
+                <constraints nullable="true" />
+            </column>
+            <column name="validator_id" type="${uuidType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="raw_duration" type="bigint" remarks="Durée brute, de l&apos;ouverture à la résolution, toujours publiée.">
+                <constraints nullable="true" />
+            </column>
+            <column name="frozen_duration" type="bigint" remarks="Somme des gels d&apos;attente de tiers.">
+                <constraints nullable="true" />
+            </column>
+            <column name="imputable_delay" type="bigint" remarks="Délai imputable (durée brute moins les gels), gelé à la clôture (D-09).">
+                <constraints nullable="true" />
+            </column>
+            <column name="mttr" type="bigint" remarks="MTTR réel : de l&apos;ouverture à la validation des critères, sans déduire les gels (D-09).">
+                <constraints nullable="true" />
+            </column>
+            <column name="take_charge_met" type="boolean">
+                <constraints nullable="true" />
+            </column>
+            <column name="restoration_met" type="boolean">
+                <constraints nullable="true" />
+            </column>
+            <column name="ticket_id" type="${uuidType}">
+                <constraints nullable="false" unique="true" uniqueConstraintName="ux_incident__ticket_id" />
+            </column>
+            <column name="matrix_id" type="${uuidType}">
+                <constraints nullable="false" />
+            </column>
+            <!-- jhipster-needle-liquibase-add-column - JHipster will add columns here -->
+        </createTable>
+        <dropDefaultValue tableName="incident" columnName="qualified_at" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="incident" columnName="resolution_test_at" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="incident" columnName="report_due_at" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="incident" columnName="report_generated_at" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="incident" columnName="compliance_visa_at" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="incident" columnName="criteria_validated_at" columnDataType="${datetimeType}"/>
+    </changeSet>
+
+    <!-- jhipster-needle-liquibase-add-changeset - JHipster will add changesets here -->
+
+    <!--
+        Load sample data generated with Faker.js
+        - This data can be easily edited using a CSV editor (or even MS Excel) and
+          is located in the 'src/main/resources/config/liquibase/fake-data' directory
+        - By default this data is applied when running with the JHipster 'dev' profile.
+          This can be customized by adding or removing 'faker' in the 'spring.liquibase.contexts'
+          Spring Boot configuration key.
+    -->
+    <changeSet id="20260928134157-1-data" author="jhipster" context="faker">
+        <loadData
+                  file="config/liquibase/fake-data/incident.csv"
+                  separator=";"
+                  tableName="incident"
+                  usePreparedStatements="true">
+            <column name="id" type="${uuidType}"/>
+            <column name="impact" type="numeric"/>
+            <column name="urgency" type="numeric"/>
+            <column name="score" type="numeric"/>
+            <column name="severity" type="string"/>
+            <column name="security_incident" type="boolean"/>
+            <column name="data_compromise_suspected" type="boolean"/>
+            <column name="regulatory_flag" type="boolean"/>
+            <column name="qualified_at" type="date"/>
+            <column name="qualified_by" type="${uuidType}"/>
+            <column name="root_cause" type="string"/>
+            <column name="root_cause_category" type="string"/>
+            <column name="root_cause_proof_ref" type="string"/>
+            <column name="remediation_plan" type="clob"/>
+            <column name="resolution_test" type="string"/>
+            <column name="resolution_test_passed" type="boolean"/>
+            <column name="resolution_test_author_id" type="${uuidType}"/>
+            <column name="resolution_test_at" type="date"/>
+            <column name="resolution_test_proof_ref" type="string"/>
+            <column name="lessons_learned_ref" type="string"/>
+            <column name="lessons_learned_waiver" type="string"/>
+            <column name="report_due_at" type="date"/>
+            <column name="report_generated_at" type="date"/>
+            <column name="report_ref" type="string"/>
+            <column name="report_digest" type="string"/>
+            <column name="compliance_visa_by" type="${uuidType}"/>
+            <column name="compliance_visa_at" type="date"/>
+            <column name="criteria_validated_at" type="date"/>
+            <column name="validator_id" type="${uuidType}"/>
+            <column name="raw_duration" type="numeric"/>
+            <column name="frozen_duration" type="numeric"/>
+            <column name="imputable_delay" type="numeric"/>
+            <column name="mttr" type="numeric"/>
+            <column name="take_charge_met" type="boolean"/>
+            <column name="restoration_met" type="boolean"/>
+            <column name="ticket_id" type="${uuidType}"/>
+            <column name="matrix_id" type="${uuidType}"/>
+            <!-- jhipster-needle-liquibase-add-loadcolumn - JHipster (and/or extensions) can add load columns here -->
+        </loadData>
+    </changeSet>
+</databaseChangeLog>
