@@ -52,9 +52,9 @@ public class GatewayMtlsCustomizer {
 
     public GatewayMtlsCustomizer(
             @Value("${client.ssl.key-store:classpath:config/tls/keystore.p12}") @NonNull Resource keyStoreResource,
-            @Value("${client.ssl.key-store-password:password}") @NonNull String keyStorePassword,
+            @Value("${client.ssl.key-store-password}") @NonNull String keyStorePassword,
             @Value("${client.ssl.trust-store:classpath:config/tls/keystore.p12}") @NonNull Resource trustStoreResource,
-            @Value("${client.ssl.trust-store-password:password}") @NonNull String trustStorePassword,
+            @Value("${client.ssl.trust-store-password}") @NonNull String trustStorePassword,
             @NonNull MeterRegistry meterRegistry) { // Injecté, mais non stocké en attribut de classe
 
         this.keyStoreResource = Objects.requireNonNull(keyStoreResource, "Le KeyStore ne peut pas être nul");
@@ -115,10 +115,10 @@ public class GatewayMtlsCustomizer {
                 SslContext sslContext = SslContextBuilder.forClient()
                         .keyManager(keyManagerFactory)
                         .trustManager(trustManagerFactory)
-                        .protocols("TLSv1.2", "TLSv1.3")
+                        .protocols("TLSv1.3") // RG-25 : TLS 1.3 seul
                         .build();
 
-                log.info("Sécurité Zero Trust : mTLS (TLSv1.2, TLSv1.3) configuré pour le routage interne.");
+                log.info("Sécurité Zero Trust : mTLS (TLSv1.3) configuré pour le routage interne.");
 
                 return httpClient.secure(sslContextSpec -> Objects
                         .requireNonNull(sslContextSpec, "sslContextSpec ne peut pas être nul").sslContext(sslContext));

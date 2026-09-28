@@ -32,6 +32,19 @@ Copié et adapté (paquet `cm.gimac.des.iam`) ; chaque bean est inactif tant que
 | `config/DecodeurJwtInterne` | `audit-service/src/main/java/com/afriland/audit/config/DecodeurJwtInterne.java` | sans bean à activer |
 | `config/KafkaErrorHandlingConfiguration` | `audit-service/src/main/java/com/afriland/audit/config/KafkaErrorHandlingConfiguration.java` | `gimac.kafka.rebut.actif` |
 | `infrastructure/logging/PiiMaskingLogConverter` | `notifications-service/src/main/java/com/afriland/notifications/infrastructure/logging/PiiMaskingLogConverter.java` | sans bean à activer |
+| `adapter/outbound/port/KeycloakAdminPort` | `utilisateurs-service/src/main/java/com/afriland/users/adapter/outbound/port/KeycloakAdminPort.java` | sans bean à activer |
+| `adapter/outbound/port/GroupeAgenceKc` | `utilisateurs-service/src/main/java/com/afriland/users/adapter/outbound/port/GroupeAgenceKc.java` | sans bean à activer |
+| `adapter/outbound/port/IdentityProviderInfo` | `utilisateurs-service/src/main/java/com/afriland/users/adapter/outbound/port/IdentityProviderInfo.java` | sans bean à activer |
+| `adapter/outbound/port/ProfilKeycloak` | `utilisateurs-service/src/main/java/com/afriland/users/adapter/outbound/port/ProfilKeycloak.java` | sans bean à activer |
+| `adapter/outbound/port/SessionInfo` | `utilisateurs-service/src/main/java/com/afriland/users/adapter/outbound/port/SessionInfo.java` | sans bean à activer |
+| `adapter/outbound/port/UtilisateurRealm` | `utilisateurs-service/src/main/java/com/afriland/users/adapter/outbound/port/UtilisateurRealm.java` | sans bean à activer |
+| `adapter/outbound/keycloak/KeycloakAdminAdapter` | `utilisateurs-service/src/main/java/com/afriland/users/adapter/outbound/keycloak/KeycloakAdminAdapter.java` | `gimac.iam.keycloak-admin.actif` |
+| `config/KeycloakConfig` | `utilisateurs-service/src/main/java/com/afriland/users/config/KeycloakConfig.java` | `gimac.iam.keycloak-admin.actif` |
+| `config/KeycloakProperties` | `utilisateurs-service/src/main/java/com/afriland/users/config/KeycloakProperties.java` | sans bean à activer |
+| `config/KeycloakClientRegistrationConfig` | `utilisateurs-service/src/main/java/com/afriland/users/config/KeycloakClientRegistrationConfig.java` | `gimac.iam.keycloak-admin.actif` |
+| `adapter/outbound/securite/ServiceTokenProvider` | `administration-service/src/main/java/com/afriland/admin/adapter/outbound/cognitive/ServiceTokenProvider.java` | `gimac.securite.jeton-service.actif` |
+
+Écarts comblés (D-53) : `ValidateurLiaisonCertificat` et option du décodeur exigeant la liaison au certificat (RFC 8705) ; masquage des journaux limité aux numéros vérifiant Luhn, en 6+4 (RG-52).
 
 ## Journal des mises à jour
 
@@ -41,6 +54,7 @@ Copié et adapté (paquet `cm.gimac.des.iam`) ; chaque bean est inactif tant que
 | 2026-09-28 | 9f2250a, c0b91ee | Intégration à `infra/docker-compose` et `infra/kubernetes` générés par JHipster ; cache Valkey (D-25). |
 | 2026-09-28 | — | Ajout de cette section. |
 | 2026-09-28 | — | Reprise de 3 classes du projet afriland (D-52) ; compilation vérifiée. |
+| 2026-09-28 | — | Écarts comblés (liaison au certificat, masquage Luhn 6+4) et 11 classes reprises d'afriland : GroupeAgenceKc, IdentityProviderInfo, KeycloakAdminAdapter, KeycloakAdminPort, KeycloakClientRegistrationConfig, KeycloakConfig, KeycloakProperties, ProfilKeycloak, ServiceTokenProvider, SessionInfo, UtilisateurRealm (D-53). |
 <!-- GIMAC:FIN -->
 
 # iam

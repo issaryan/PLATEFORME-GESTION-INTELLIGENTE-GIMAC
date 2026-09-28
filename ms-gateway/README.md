@@ -40,6 +40,8 @@ Copié et adapté (paquet `cm.gimac.des.gateway`) ; chaque bean est inactif tant
 | `config/ApplicationProperties` | `api-gateway/src/main/java/com/afriland/gateway/config/ApplicationProperties.java` | sans bean à activer |
 | `infrastructure/logging/PiiMaskingLogConverter` | `notifications-service/src/main/java/com/afriland/notifications/infrastructure/logging/PiiMaskingLogConverter.java` | sans bean à activer |
 
+Écarts comblés (D-53) : jeton interne lié au certificat mTLS de la passerelle (`cnf.x5t#S256`, `CertificatMtlsPasserelle`, `EmpreinteCertificat`) ; point JWKS repris (`web/rest/JwksController`) ; mTLS TLS 1.3 seul et mots de passe du magasin sans valeur par défaut ; route propre à afriland retirée et chemins exemptés de jeton ancrés (`CHEMINS_TECHNIQUES`) ; masquage des journaux limité aux numéros vérifiant Luhn, en 6+4. Tests : `LiaisonCertificatPasserelleTest`.
+
 ## Journal des mises à jour
 
 | Date | Commit | Modification |
@@ -48,6 +50,7 @@ Copié et adapté (paquet `cm.gimac.des.gateway`) ; chaque bean est inactif tant
 | 2026-09-28 | 9f2250a, c0b91ee | Intégration à `infra/docker-compose` et `infra/kubernetes` générés par JHipster ; cache Valkey (D-25). |
 | 2026-09-28 | — | Ajout de cette section. |
 | 2026-09-28 | — | Reprise de 10 classes du projet afriland (D-52) ; compilation vérifiée. |
+| 2026-09-28 | — | Écarts comblés : liaison du jeton au certificat, JWKS, TLS 1.3, chemins exemptés ancrés, masquage Luhn 6+4 (D-53). |
 <!-- GIMAC:FIN -->
 
 # gateway

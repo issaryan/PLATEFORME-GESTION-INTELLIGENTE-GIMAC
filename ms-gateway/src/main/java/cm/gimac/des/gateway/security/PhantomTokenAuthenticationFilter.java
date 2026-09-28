@@ -41,6 +41,16 @@ import java.util.UUID;
 @Component
 public class PhantomTokenAuthenticationFilter implements GlobalFilter, Ordered {
 
+    /**
+     * Chemins techniques exemptés de jeton, ancrés en début de chemin (GW-19).
+     * L'expression reprise d'afriland n'était pas ancrée : tout chemin contenant
+     * « /management » ou « /docs » (par exemple /api/docs-legaux) passait sans
+     * authentification.
+     */
+    static final java.util.regex.Pattern CHEMINS_TECHNIQUES = java.util.regex.Pattern.compile(
+        "^(/services/[a-z]+)?/(v3/api-docs|management/health|management/info|management/prometheus|swagger-ui)(/.*)?$"
+    );
+
     private static final Logger log = LoggerFactory.getLogger(PhantomTokenAuthenticationFilter.class);
     private static final String BEARER_PREFIX = "Bearer ";
     private static final String TENANT_HEADER = "X-Tenant-Id";
@@ -62,17 +72,7 @@ public class PhantomTokenAuthenticationFilter implements GlobalFilter, Ordered {
 
         // Tracabilite transverse
         String path = request.getURI().getPath();
-        if (path.matches(".*(/v3/api-docs|/actuator|/management|/swagger-ui|/openapi\\.json|/docs|/redoc).*")
-                || "/api/internal/jwks".equals(path)
-                // LA SONDE DU SECOND FACTEUR PASSE SANS JETON, par necessite : la page de
-                // connexion demande s'il faut un code AVANT d'etre authentifiee. Keycloak
-                // repondant « Invalid user credentials » aussi bien pour un mot de passe
-                // faux que pour un code manquant, l'ecran ne peut pas trancher seul.
-                //
-                // Ce que la sonde divulgue est reduit au minimum : un booleen, et un login
-                // inconnu rend `false` comme un compte sans second facteur — elle ne sert
-                // donc pas a enumerer les comptes.
-                || "/api/v1/utilisateurs/keycloak/second-facteur".equals(path)) {
+        if (CHEMINS_TECHNIQUES.matcher(path).matches() || "/api/internal/jwks".equals(path)) {
             return chain.filter(exchange);
         }
 

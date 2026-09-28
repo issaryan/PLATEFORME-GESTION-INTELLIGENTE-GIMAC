@@ -42,6 +42,9 @@ Copié et adapté (paquet `cm.gimac.des.notification`) ; chaque bean est inactif
 | `infrastructure/templating/ThymeleafDatabaseConfig` | `notifications-service/src/main/java/com/afriland/notifications/infrastructure/templating/ThymeleafDatabaseConfig.java` | `gimac.notification.modeles.actif` |
 | `config/WebSocketConfig` | `notifications-service/src/main/java/com/afriland/notifications/config/WebSocketConfig.java` | `gimac.notification.websocket.actif` |
 | `infrastructure/logging/PiiMaskingLogConverter` | `notifications-service/src/main/java/com/afriland/notifications/infrastructure/logging/PiiMaskingLogConverter.java` | sans bean à activer |
+| `adapter/outbound/securite/ServiceTokenProvider` | `administration-service/src/main/java/com/afriland/admin/adapter/outbound/cognitive/ServiceTokenProvider.java` | `gimac.securite.jeton-service.actif` |
+
+Écarts comblés (D-53) : `ValidateurLiaisonCertificat` et option du décodeur exigeant la liaison au certificat (RFC 8705) ; masquage des journaux limité aux numéros vérifiant Luhn, en 6+4 (RG-52).
 
 ## Journal des mises à jour
 
@@ -51,6 +54,7 @@ Copié et adapté (paquet `cm.gimac.des.notification`) ; chaque bean est inactif
 | 2026-09-28 | 9f2250a, c0b91ee | Intégration à `infra/docker-compose` et `infra/kubernetes` générés par JHipster ; cache Valkey (D-25). |
 | 2026-09-28 | — | Ajout de cette section. |
 | 2026-09-28 | — | Reprise de 13 classes du projet afriland (D-52) ; compilation vérifiée. |
+| 2026-09-28 | — | Écarts comblés (liaison au certificat, masquage Luhn 6+4) et 1 classes reprises d'afriland : ServiceTokenProvider (D-53). |
 <!-- GIMAC:FIN -->
 
 # notification

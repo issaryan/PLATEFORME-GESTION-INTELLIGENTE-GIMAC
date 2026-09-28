@@ -8,7 +8,7 @@
 | Établi par | KOAGNE ISSA RYAN, Ingénieur en Informatique et Systèmes d'information |
 | Statut | Référentiel d'implémentation. Décisions D-01 à D-31, y compris les propositions [P], **acceptées par KOAGNE ISSA RYAN le 28/09/2026** ; validation formelle du Product Owner (chef du DES) attendue en revue d'itération |
 | Rôle | Base unique à partir de laquelle le code est écrit ; prime sur les quatre documents pour les points qu'elle tranche |
-| Révision | **v1.1 (28/09/2026)** : ajout des décisions D-32 à D-46 (§4.4), complétées par D-47 à D-52, pour réconcilier **CP-GIMAC-01 v2.0**, qui remplace CP v1.0, et fixer l'infrastructure et le frontend ; aucune disposition de la v1.0 n'est retirée |
+| Révision | **v1.1 (28/09/2026)** : ajout des décisions D-32 à D-46 (§4.4), complétées par D-47 à D-53, pour réconcilier **CP-GIMAC-01 v2.0**, qui remplace CP v1.0, et fixer l'infrastructure et le frontend ; aucune disposition de la v1.0 n'est retirée |
 
 **Légende des décisions**
 - **[R]** : réconciliation déduite des documents eux-mêmes, par application de la règle de préséance (§0).
@@ -433,6 +433,12 @@ Décisions ajoutées le 28/09/2026 à la réception du carnet de produit v2.0 (3
   - **Repris** : passerelle (jeton fantôme et introspection, jeton interne RS256, clés, mTLS sortant, limitation de débit sur Valkey, publication des décisions, propriétés typées) ; dans chaque service, validation du jeton interne, rejeu et file de rebut Kafka, masquage des numéros de carte et données personnelles dans les journaux ; MS-NOTIFICATION (ports et adaptateurs courriel et SMS, résilience, modèles Thymeleaf, WebSocket) ; MS-DOCUMENT (corrélation, fusion PDF) ; MS-AUDIT (JSON canonique RFC 8785, adaptateur de signature).
   - **Non repris** : le service Merkle d'afriland (CRUD sans RFC 9162), les adaptateurs MinIO et OpenTimestamps (contraires à D-50 et à l'horodatage RFC 3161), les composants liés aux entités métier d'afriland (quotas, journaux de requêtes, traces d'audit, règles de masquage). Le relais d'outbox est repris dans la bibliothèque partagée de SOC-05.
   - **Écarts à combler avant activation** : le jeton interne doit porter la revendication `cnf` / `x5t#S256` (RFC 8705, GW-05) ; les routes propres à afriland codées dans le filtre du jeton fantôme sont remplacées par les routes déclarées de GIMAC (GW-19) ; le masquage des journaux est complété par le contrôle de Luhn (6+4, RG-52).
+- **D-53 [R] Écarts du code repris comblés, second inventaire d'afriland.** Complète D-52 sans la retirer :
+  - **Liaison au certificat (RFC 8705, RG-25, GW-05)** : la passerelle pose dans chaque jeton interne `cnf.x5t#S256`, empreinte SHA-256 en base64url de son certificat client mTLS ; chaque service vérifie, dès que le mTLS est actif, que cette empreinte est celle du certificat présenté sur la connexion. Un jeton intercepté ne peut pas être rejoué par un autre appelant. Le mTLS sortant de la passerelle est limité à TLS 1.3, et les mots de passe de ses magasins n'ont plus de valeur par défaut (D-44).
+  - **Routes** : la route propre à afriland est retirée du filtre du jeton fantôme ; l'expression des chemins exemptés de jeton, reprise non ancrée (un chemin contenant « /management » ou « /docs » passait sans authentification), est ancrée sur les seuls chemins techniques. Le point JWKS de la passerelle est repris.
+  - **Masquage des journaux (RG-52, PCI-DSS 3.4)** : seule une suite de 13 à 19 chiffres vérifiant la formule de Luhn est masquée, en 6+4 ; les identifiants et horodatages restent lisibles.
+  - **Second inventaire** : repris en plus l'administration Keycloak (MS-IAM : sessions, révocation globale, activation, actions requises, fédération ; IAM-03, IAM-07, IAM-13, IAM-15), le fournisseur de jeton de service par `client_credentials` (13 services, IAM-16) et l'exception de transition interdite (7 services à automate d'état).
+  - **Non repris** : les adaptateurs d'événements du commutateur (dont un adaptateur « GIMAC ») lisent des échecs de transactions ISO 8583 avec numéro de carte masqué, contraires à la non-intrusion et à l'absence de donnée de carte (D-27, RG-30) ; le moteur de règles, l'import Excel, les sagas et l'extraction de texte des PDF sont propres au crédit d'afriland ; la supervision Docker et Prometheus d'administration n'a pas d'usage dans le périmètre.
 
 ---
 

@@ -11,6 +11,8 @@ import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import java.time.Duration;
+import java.util.Map;
+import org.springframework.beans.factory.ObjectProvider;
 import java.util.Date;
 import org.springframework.stereotype.Component;
 
@@ -60,8 +62,13 @@ public class EmetteurJwtInterne {
      *                       stable entre instances et entre redemarrages
      * @throws JOSEException si la cle ne porte pas de partie privee
      */
-    public EmetteurJwtInterne(RSAKey internalRsaKey) throws JOSEException {
+    /** Certificat mTLS de la passerelle, absent tant que {@code gimac.securite.mtls.actif} est faux. */
+    private final ObjectProvider<CertificatMtlsPasserelle> certificatMtls;
+
+    public EmetteurJwtInterne(RSAKey internalRsaKey, ObjectProvider<CertificatMtlsPasserelle> certificatMtls)
+        throws JOSEException {
         this.cle = internalRsaKey;
+        this.certificatMtls = certificatMtls;
         // Le signataire est derive une fois : le reconstruire a chaque jeton
         // couterait une reconstruction de cle privee par requete, sans benefice.
         this.signataire = new RSASSASigner(internalRsaKey);
@@ -78,11 +85,17 @@ public class EmetteurJwtInterne {
      */
     public String emettre(JWTClaimsSet.Builder claims) throws JOSEException {
         long maintenant = System.currentTimeMillis();
-        JWTClaimsSet jeu = claims
+        JWTClaimsSet.Builder jeuPartiel = claims
             .issuer(ISSUER)
             .issueTime(new Date(maintenant))
-            .expirationTime(new Date(maintenant + DUREE_DE_VIE.toMillis()))
-            .build();
+            .expirationTime(new Date(maintenant + DUREE_DE_VIE.toMillis()));
+        // Liaison au certificat (RFC 8705 §3.1, GW-05) : le jeton n'est recevable
+        // que présenté sur une connexion mTLS authentifiée par ce certificat.
+        CertificatMtlsPasserelle certificat = certificatMtls.getIfAvailable();
+        if (certificat != null) {
+            jeuPartiel.claim("cnf", Map.of("x5t#S256", certificat.empreinte()));
+        }
+        JWTClaimsSet jeu = jeuPartiel.build();
 
         JWSHeader entete = new JWSHeader.Builder(JWSAlgorithm.RS256)
             .keyID(cle.getKeyID())

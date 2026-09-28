@@ -16,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.env.Environment;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -95,7 +96,30 @@ final class DecodeurJwtInterne {
         int connexionMs,
         int lectureMs
     ) {
-        OAuth2TokenValidator<Jwt> validateurIssuer = JwtValidators.createDefaultWithIssuer(ISSUER_PASSERELLE);
+        return construire(environnement, jwksUri, cheminCa, secretHs256, repliDemande, connexionMs, lectureMs, false);
+    }
+
+    /**
+     * @param liaisonCertificatExigee vrai dès que le mTLS est actif
+     *        ({@code gimac.securite.mtls.actif}) : le jeton doit alors porter
+     *        {@code cnf.x5t#S256} égal à l'empreinte du certificat client (RFC 8705).
+     */
+    static JwtDecoder construire(
+        Environment environnement,
+        String jwksUri,
+        String cheminCa,
+        String secretHs256,
+        boolean repliDemande,
+        int connexionMs,
+        int lectureMs,
+        boolean liaisonCertificatExigee
+    ) {
+        OAuth2TokenValidator<Jwt> validateurIssuer = liaisonCertificatExigee
+            ? new DelegatingOAuth2TokenValidator<>(
+                JwtValidators.createDefaultWithIssuer(ISSUER_PASSERELLE),
+                new ValidateurLiaisonCertificat()
+            )
+            : JwtValidators.createDefaultWithIssuer(ISSUER_PASSERELLE);
 
         // Le garde-fou tient au PROFIL, pas a une propriete : une variable
         // d'environnement oubliee dans un manifeste reinstallerait sinon la

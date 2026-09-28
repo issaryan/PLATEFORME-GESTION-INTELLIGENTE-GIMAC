@@ -330,6 +330,12 @@
             <groupId>tools.jackson.module</groupId>
             <artifactId>jackson-module-jaxb-annotations</artifactId>
         </dependency>
+        <!-- Administration Keycloak reprise d'afriland : sessions, comptes, actions requises (IAM-03, IAM-07, IAM-13, IAM-15). -->
+        <dependency>
+            <groupId>org.keycloak</groupId>
+            <artifactId>keycloak-admin-client</artifactId>
+            <version>26.0.12</version>
+        </dependency>
     </dependencies>
 
     <build>
