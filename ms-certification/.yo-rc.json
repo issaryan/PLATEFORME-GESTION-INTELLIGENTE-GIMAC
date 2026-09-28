@@ -1,0 +1,41 @@
+{
+  "generator-jhipster": {
+    "applicationType": "microservice",
+    "authenticationType": "oauth2",
+    "baseName": "certification",
+    "buildTool": "maven",
+    "cacheProvider": "redis",
+    "databaseType": "sql",
+    "devDatabaseType": "postgresql",
+    "enableHibernateCache": false,
+    "enableSwaggerCodegen": false,
+    "enableTranslation": true,
+    "entities": [
+      "CommissioningFile",
+      "Quitus",
+      "ChangeRecord",
+      "CertificationAttestation",
+      "EvidenceItem",
+      "CoverageSnapshot",
+      "ClosedOperationSnapshot",
+      "DeduplicationEntry"
+    ],
+    "jhipsterVersion": "8.11.0",
+    "jwtSecretKey": "Y2FjMTE2MzJkMzllZWUxYjQxMzRiYjZlZjRkZjg1YzdlYzk0MjNjYjkzYjU0NzU5MDQ1NTRmZmNiNTllNDY3MTUwYmM1YjJmYjQ0ZGM0ZGU0OTI2Yjg1NDMwY2ViNTAxOWZmZWU2Y2RiNGVhN2I4MTI3MWE1ZTAxNzM2ZGUxMmY=",
+    "languages": ["fr", "en"],
+    "lastLiquibaseTimestamp": 1790603237000,
+    "messageBroker": "kafka",
+    "monorepository": true,
+    "nativeLanguage": "fr",
+    "packageName": "cm.gimac.des.certification",
+    "prodDatabaseType": "postgresql",
+    "reactive": false,
+    "searchEngine": "no",
+    "serverPort": "8087",
+    "serviceDiscoveryType": "no",
+    "skipClient": true,
+    "skipCommitHook": true,
+    "skipUserManagement": true,
+    "testFrameworks": []
+  }
+}

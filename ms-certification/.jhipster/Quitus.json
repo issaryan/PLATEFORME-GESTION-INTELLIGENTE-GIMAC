@@ -1,0 +1,130 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134117"
+  },
+  "applications": ["certification"],
+  "clientRootFolder": "certification",
+  "databaseType": "sql",
+  "documentation": "Quitus : décision motivée, signée, horodatée et scellée (algorithme 6.35).\\nÉcart CC corrigé (D-22 prime) : la signature personnelle n'est pas calculée\\ndans le coffre de clés ; c'est l'assertion WebAuthn produite par\\nl'authentificateur FIDO2 du signataire sur le défi δq, vérifiée par MS-IAM.\\nLa clé reste sur l'authentificateur ; signerCertRef devient l'identifiant de\\nla clé d'accès enregistrée.",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "type",
+      "fieldType": "QuitusType",
+      "fieldTypeDocumentation": "Les quatre quitus, chacun par un rôle distinct (RG-73).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "TECHNIQUE,SECURITE,CONFORMITE,DIRECTION_GENERALE"
+    },
+    {
+      "fieldName": "status",
+      "fieldType": "QuitusStatus",
+      "fieldTypeDocumentation": "État d'un quitus. Un quitus encore attendu quand le dossier passe\\nEN_CORRECTION est suspendu par l'état du dossier, sans état propre (CC).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "ATTENDU,SIGNE,CADUC"
+    },
+    {
+      "fieldName": "decision",
+      "fieldType": "QuitusDecision",
+      "fieldValues": "FAVORABLE,DEFAVORABLE"
+    },
+    {
+      "documentation": "Signataire (collaborateur MS-IAM), distinct pour chacun des quatre quitus (RG-73).",
+      "fieldName": "signerId",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Motif, obligatoire à la signature.",
+      "fieldName": "reason",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "2000"
+    },
+    {
+      "documentation": "β du socle signé ; un quitus favorable reste valable tant que β est inchangé.",
+      "fieldName": "basisDigest",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "minlength", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "64",
+      "fieldValidateRulesMinlength": "64",
+      "fieldValidateRulesPattern": "^[0-9a-f]{64}$"
+    },
+    {
+      "documentation": "δq : empreinte de la décision canonique, présentée comme défi WebAuthn.",
+      "fieldName": "decisionDigest",
+      "fieldType": "String",
+      "fieldValidateRules": ["minlength", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "64",
+      "fieldValidateRulesMinlength": "64",
+      "fieldValidateRulesPattern": "^[0-9a-f]{64}$"
+    },
+    {
+      "documentation": "Identifiant de la clé d'accès WebAuthn (base64url).",
+      "fieldName": "credentialId",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "1024"
+    },
+    {
+      "documentation": "Données de l'authentificateur de l'assertion, brutes.",
+      "fieldName": "authenticatorData",
+      "fieldType": "Blob"
+    },
+    {
+      "documentation": "clientDataJSON de l'assertion, contenant le défi.",
+      "fieldName": "clientDataJson",
+      "fieldType": "TextBlob"
+    },
+    {
+      "documentation": "Signature de l'assertion (σq).",
+      "fieldName": "signature",
+      "fieldType": "Blob"
+    },
+    {
+      "documentation": "Compteur de signature, strictement croissant.",
+      "fieldName": "signCount",
+      "fieldType": "Long",
+      "fieldValidateRules": ["min"],
+      "fieldValidateRulesMin": "0"
+    },
+    {
+      "documentation": "Jeton RFC 3161 sur SHA256(δq || σq), encodé en DER.",
+      "fieldName": "timestampToken",
+      "fieldType": "Blob"
+    },
+    {
+      "fieldName": "signedAt",
+      "fieldType": "Instant"
+    },
+    {
+      "documentation": "Échéance de signature, pour les relances de l'ordonnanceur.",
+      "fieldName": "dueAt",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "invalidatedAt",
+      "fieldType": "Instant"
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "certification",
+  "name": "Quitus",
+  "pagination": "pagination",
+  "readOnly": true,
+  "relationships": [
+    {
+      "otherEntityField": "fileCode",
+      "otherEntityName": "commissioningFile",
+      "otherEntityRelationshipName": "quitus",
+      "relationshipName": "file",
+      "relationshipSide": "right",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

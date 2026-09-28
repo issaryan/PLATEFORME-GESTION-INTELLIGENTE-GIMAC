@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+
+    <!--
+        Added the entity ChangeRecord.
+    -->
+    <changeSet id="20260928134217-1" author="jhipster">
+        <createTable tableName="change_record" remarks="Fiche de changement lue, jamais écrite (RG-34) : l&apos;ingénieur d&apos;homologation\nen saisit la référence ; l&apos;état est relu en mTLS dans le dispositif de\ngestion des changements, à nouveau au-delà de 15 min (algorithme 6.36).">
+            <column name="id" type="${uuidType}">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="external_ref" type="varchar(50)" remarks="Référence dans le dispositif, par exemple CHG-2026-0412.">
+                <constraints nullable="false" unique="true" uniqueConstraintName="ux_change_record__external_ref" />
+            </column>
+            <column name="approval" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="approved_at" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="window_start" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="window_end" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="read_at" type="${datetimeType}">
+                <constraints nullable="false" />
+            </column>
+            <column name="content_digest" type="varchar(64)">
+                <constraints nullable="false" />
+            </column>
+            <column name="referenced_by" type="${uuidType}" remarks="Auteur de la saisie de la référence (collaborateur MS-IAM).">
+                <constraints nullable="false" />
+            </column>
+            <!-- jhipster-needle-liquibase-add-column - JHipster will add columns here -->
+        </createTable>
+        <dropDefaultValue tableName="change_record" columnName="approved_at" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="change_record" columnName="window_start" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="change_record" columnName="window_end" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="change_record" columnName="read_at" columnDataType="${datetimeType}"/>
+    </changeSet>
+
+    <!-- jhipster-needle-liquibase-add-changeset - JHipster will add changesets here -->
+
+    <!--
+        Load sample data generated with Faker.js
+        - This data can be easily edited using a CSV editor (or even MS Excel) and
+          is located in the 'src/main/resources/config/liquibase/fake-data' directory
+        - By default this data is applied when running with the JHipster 'dev' profile.
+          This can be customized by adding or removing 'faker' in the 'spring.liquibase.contexts'
+          Spring Boot configuration key.
+    -->
+    <changeSet id="20260928134217-1-data" author="jhipster" context="faker">
+        <loadData
+                  file="config/liquibase/fake-data/change_record.csv"
+                  separator=";"
+                  tableName="change_record"
+                  usePreparedStatements="true">
+            <column name="id" type="${uuidType}"/>
+            <column name="external_ref" type="string"/>
+            <column name="approval" type="string"/>
+            <column name="approved_at" type="date"/>
+            <column name="window_start" type="date"/>
+            <column name="window_end" type="date"/>
+            <column name="read_at" type="date"/>
+            <column name="content_digest" type="string"/>
+            <column name="referenced_by" type="${uuidType}"/>
+            <!-- jhipster-needle-liquibase-add-loadcolumn - JHipster (and/or extensions) can add load columns here -->
+        </loadData>
+    </changeSet>
+</databaseChangeLog>

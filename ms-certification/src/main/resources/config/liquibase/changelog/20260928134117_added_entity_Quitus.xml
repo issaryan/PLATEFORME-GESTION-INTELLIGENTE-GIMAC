@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+
+    <!--
+        Added the entity Quitus.
+    -->
+    <changeSet id="20260928134117-1" author="jhipster">
+        <createTable tableName="quitus" remarks="Quitus : décision motivée, signée, horodatée et scellée (algorithme 6.35).\nÉcart CC corrigé (D-22 prime) : la signature personnelle n&apos;est pas calculée\ndans le coffre de clés ; c&apos;est l&apos;assertion WebAuthn produite par\nl&apos;authentificateur FIDO2 du signataire sur le défi δq, vérifiée par MS-IAM.\nLa clé reste sur l&apos;authentificateur ; signerCertRef devient l&apos;identifiant de\nla clé d&apos;accès enregistrée.">
+            <column name="id" type="${uuidType}">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="type" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="status" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="decision" type="varchar(255)">
+                <constraints nullable="true" />
+            </column>
+            <column name="signer_id" type="${uuidType}" remarks="Signataire (collaborateur MS-IAM), distinct pour chacun des quatre quitus (RG-73).">
+                <constraints nullable="true" />
+            </column>
+            <column name="reason" type="varchar(2000)" remarks="Motif, obligatoire à la signature.">
+                <constraints nullable="true" />
+            </column>
+            <column name="basis_digest" type="varchar(64)" remarks="β du socle signé ; un quitus favorable reste valable tant que β est inchangé.">
+                <constraints nullable="false" />
+            </column>
+            <column name="decision_digest" type="varchar(64)" remarks="δq : empreinte de la décision canonique, présentée comme défi WebAuthn.">
+                <constraints nullable="true" />
+            </column>
+            <column name="credential_id" type="varchar(1024)" remarks="Identifiant de la clé d&apos;accès WebAuthn (base64url).">
+                <constraints nullable="true" />
+            </column>
+            <column name="authenticator_data" type="${blobType}" remarks="Données de l&apos;authentificateur de l&apos;assertion, brutes.">
+                <constraints nullable="true" />
+            </column>
+            <column name="authenticator_data_content_type" type="varchar(255)">
+                <constraints nullable="true" />
+            </column>
+            <column name="client_data_json" type="${clobType}" remarks="clientDataJSON de l&apos;assertion, contenant le défi.">
+                <constraints nullable="true" />
+            </column>
+            <column name="signature" type="${blobType}" remarks="Signature de l&apos;assertion (σq).">
+                <constraints nullable="true" />
+            </column>
+            <column name="signature_content_type" type="varchar(255)">
+                <constraints nullable="true" />
+            </column>
+            <column name="sign_count" type="bigint" remarks="Compteur de signature, strictement croissant.">
+                <constraints nullable="true" />
+            </column>
+            <column name="timestamp_token" type="${blobType}" remarks="Jeton RFC 3161 sur SHA256(δq || σq), encodé en DER.">
+                <constraints nullable="true" />
+            </column>
+            <column name="timestamp_token_content_type" type="varchar(255)">
+                <constraints nullable="true" />
+            </column>
+            <column name="signed_at" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="due_at" type="${datetimeType}" remarks="Échéance de signature, pour les relances de l&apos;ordonnanceur.">
+                <constraints nullable="true" />
+            </column>
+            <column name="invalidated_at" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="file_id" type="${uuidType}">
+                <constraints nullable="false" />
+            </column>
+            <!-- jhipster-needle-liquibase-add-column - JHipster will add columns here -->
+        </createTable>
+        <dropDefaultValue tableName="quitus" columnName="signed_at" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="quitus" columnName="due_at" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="quitus" columnName="invalidated_at" columnDataType="${datetimeType}"/>
+    </changeSet>
+
+    <!-- jhipster-needle-liquibase-add-changeset - JHipster will add changesets here -->
+
+    <!--
+        Load sample data generated with Faker.js
+        - This data can be easily edited using a CSV editor (or even MS Excel) and
+          is located in the 'src/main/resources/config/liquibase/fake-data' directory
+        - By default this data is applied when running with the JHipster 'dev' profile.
+          This can be customized by adding or removing 'faker' in the 'spring.liquibase.contexts'
+          Spring Boot configuration key.
+    -->
+    <changeSet id="20260928134117-1-data" author="jhipster" context="faker">
+        <loadData
+                  file="config/liquibase/fake-data/quitus.csv"
+                  separator=";"
+                  tableName="quitus"
+                  usePreparedStatements="true">
+            <column name="id" type="${uuidType}"/>
+            <column name="type" type="string"/>
+            <column name="status" type="string"/>
+            <column name="decision" type="string"/>
+            <column name="signer_id" type="${uuidType}"/>
+            <column name="reason" type="string"/>
+            <column name="basis_digest" type="string"/>
+            <column name="decision_digest" type="string"/>
+            <column name="credential_id" type="string"/>
+            <column name="authenticator_data" type="blob"/>
+            <column name="authenticator_data_content_type" type="string"/>
+            <column name="client_data_json" type="clob"/>
+            <column name="signature" type="blob"/>
+            <column name="signature_content_type" type="string"/>
+            <column name="sign_count" type="numeric"/>
+            <column name="timestamp_token" type="blob"/>
+            <column name="timestamp_token_content_type" type="string"/>
+            <column name="signed_at" type="date"/>
+            <column name="due_at" type="date"/>
+            <column name="invalidated_at" type="date"/>
+            <column name="file_id" type="${uuidType}"/>
+            <!-- jhipster-needle-liquibase-add-loadcolumn - JHipster (and/or extensions) can add load columns here -->
+        </loadData>
+    </changeSet>
+</databaseChangeLog>

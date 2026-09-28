@@ -1,0 +1,149 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134017"
+  },
+  "applications": ["certification"],
+  "clientRootFolder": "certification",
+  "databaseType": "sql",
+  "documentation": "Dossier de mise en service d'une liaison, ouvert à la réception de\\nhomologation.liaison-ready-for-certification.v1. Transitions autorisées :\\nOUVERT vers QUITUS_EN_COURS ; QUITUS_EN_COURS vers EN_CORRECTION ou CERTIFIE ;\\nEN_CORRECTION vers QUITUS_EN_COURS ; CERTIFIE vers MISE_EN_SERVICE_AUTORISEE\\n(terminal). Un seul dossier par liaison.",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Identifiant lisible, par exemple DMS-2026-0009.",
+      "fieldName": "fileCode",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "unique", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "20",
+      "fieldValidateRulesPattern": "^DMS-[0-9]{4}-[0-9]{4,}$"
+    },
+    {
+      "documentation": "Liaison tenue par MS-HOMOLOGATION (référence, BNF-04).",
+      "fieldName": "liaisonId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required", "unique"]
+    },
+    {
+      "documentation": "Institution tenue par MS-PARTICIPANT (référence, BNF-04).",
+      "fieldName": "institutionId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Chef de projet de la liaison, exclu des signataires (algorithme 6.35, étape 3).",
+      "fieldName": "projectLeadId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "state",
+      "fieldType": "FileState",
+      "fieldTypeDocumentation": "Automate du dossier de mise en service (REC D-08, CC §6.1.8.1).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "OUVERT,QUITUS_EN_COURS,EN_CORRECTION,CERTIFIE,MISE_EN_SERVICE_AUTORISEE"
+    },
+    {
+      "documentation": "β = SHA256(JCS(socle d'évaluation)), RFC 8785.",
+      "fieldName": "basisDigest",
+      "fieldType": "String",
+      "fieldValidateRules": ["minlength", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "64",
+      "fieldValidateRulesMinlength": "64",
+      "fieldValidateRulesPattern": "^[0-9a-f]{64}$"
+    },
+    {
+      "documentation": "Jeton RFC 3161 du socle, encodé en DER (algorithme 6.37).",
+      "fieldName": "basisTimestampToken",
+      "fieldType": "Blob"
+    },
+    {
+      "fieldName": "basisSealedAt",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "openedAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Motif du dernier retour en homologation.",
+      "fieldName": "correctionReason",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "1000"
+    },
+    {
+      "documentation": "Empreinte du manifeste MF (algorithme 6.36, étape 5).",
+      "fieldName": "manifestDigest",
+      "fieldType": "String",
+      "fieldValidateRules": ["minlength", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "64",
+      "fieldValidateRulesMinlength": "64",
+      "fieldValidateRulesPattern": "^[0-9a-f]{64}$"
+    },
+    {
+      "documentation": "Jeton RFC 3161 du manifeste, encodé en DER.",
+      "fieldName": "timestampToken",
+      "fieldType": "Blob"
+    },
+    {
+      "fieldName": "sealedAt",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "goLiveAuthorizedAt",
+      "fieldType": "Instant"
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "certification",
+  "name": "CommissioningFile",
+  "pagination": "pagination",
+  "readOnly": true,
+  "relationships": [
+    {
+      "documentation": "Fiche de changement lue, au plus une par dossier.",
+      "otherEntityField": "externalRef",
+      "otherEntityName": "changeRecord",
+      "relationshipName": "changeRecord",
+      "relationshipSide": "left",
+      "relationshipType": "one-to-one"
+    },
+    {
+      "documentation": "Attestation émise, au plus une par dossier.",
+      "otherEntityField": "attestationNumber",
+      "otherEntityName": "certificationAttestation",
+      "relationshipName": "attestation",
+      "relationshipSide": "left",
+      "relationshipType": "one-to-one"
+    },
+    {
+      "documentation": "Procès-verbal de mise en service, parmi les pièces du dossier (condition C6).",
+      "otherEntityName": "evidenceItem",
+      "relationshipName": "commissioningReport",
+      "relationshipSide": "left",
+      "relationshipType": "one-to-one"
+    },
+    {
+      "documentation": "Les quatre quitus du dossier, un par type (RG-73).",
+      "otherEntityName": "quitus",
+      "otherEntityRelationshipName": "file",
+      "relationshipName": "quitus",
+      "relationshipSide": "left",
+      "relationshipType": "one-to-many"
+    },
+    {
+      "documentation": "Pièces du dossier, avec leurs empreintes.",
+      "otherEntityName": "evidenceItem",
+      "otherEntityRelationshipName": "file",
+      "relationshipName": "pieces",
+      "relationshipSide": "left",
+      "relationshipType": "one-to-many"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}
