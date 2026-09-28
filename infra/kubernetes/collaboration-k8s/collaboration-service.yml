@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: collaboration
+  namespace: gimac-des
+  labels:
+    app: collaboration
+spec:
+  selector:
+    app: collaboration
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8093

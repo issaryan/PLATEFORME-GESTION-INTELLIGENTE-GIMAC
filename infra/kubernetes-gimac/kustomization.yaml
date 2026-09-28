@@ -1,0 +1,143 @@
+# Complément propre au projet GIMAC du dossier généré par « jhipster kubernetes »
+# (../kubernetes, jamais modifié à la main : on le régénère). Décisions D-45, D-48, D-49.
+#
+#   ./creer-secrets.sh          crée les secrets absents (mots de passe aléatoires)
+#   kubectl apply -k .          applique les déclarations générées et ce complément
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../kubernetes
+  - valkey.yaml
+  - politiques-reseau.yaml
+  - kyverno-images-signees.yaml
+
+patches:
+  # Profil de sécurité des pods (D-49) : baseline imposé, restricted signalé.
+  - target:
+      kind: Namespace
+      name: gimac-des
+    patch: |-
+      - op: add
+        path: /metadata/labels
+        value:
+          pod-security.kubernetes.io/enforce: baseline
+          pod-security.kubernetes.io/audit: restricted
+          pod-security.kubernetes.io/warn: restricted
+
+  # Secrets générés par JHipster retirés : aucun secret dans le dépôt (BNF-07, D-44).
+  # Ils sont créés au déploiement par creer-secrets.sh, puis par OpenBao (SOC-06).
+  - path: retrait-secrets-generes.yaml
+
+  # Segments de la zone applicative et de la DMZ (CC 5.6.1), portés par les pods.
+  - target:
+      kind: Deployment
+      name: ^(gateway)$
+    patch: |-
+      - op: add
+        path: /spec/template/metadata/labels/gimac.cm~1segment
+        value: dmz
+  - target:
+      kind: Deployment
+      name: ^(iam|audit|document|notification)$
+    patch: |-
+      - op: add
+        path: /spec/template/metadata/labels/gimac.cm~1segment
+        value: socle
+  - target:
+      kind: Deployment
+      name: ^(participant|homologation|certification)$
+    patch: |-
+      - op: add
+        path: /spec/template/metadata/labels/gimac.cm~1segment
+        value: referentiels
+  - target:
+      kind: Deployment
+      name: ^(incident|monitoring|rapprochement)$
+    patch: |-
+      - op: add
+        path: /spec/template/metadata/labels/gimac.cm~1segment
+        value: exploitation
+  - target:
+      kind: Deployment
+      name: ^(pilotage|reporting|collaboration)$
+    patch: |-
+      - op: add
+        path: /spec/template/metadata/labels/gimac.cm~1segment
+        value: pilotage
+  - target:
+      kind: Deployment
+      name: ^(.*-postgresql|jhipster-kafka)$
+    patch: |-
+      - op: add
+        path: /spec/template/metadata/labels/gimac.cm~1segment
+        value: persistance
+  - target:
+      kind: StatefulSet
+      name: ^keycloak$
+    patch: |-
+      - op: add
+        path: /spec/template/metadata/labels/gimac.cm~1segment
+        value: identite
+  - target:
+      kind: Deployment
+      name: ^jhipster-(grafana|prometheus-operator)$
+    patch: |-
+      - op: add
+        path: /spec/template/metadata/labels/gimac.cm~1segment
+        value: supervision
+
+  # Cache partagé Valkey (D-25, SOC-11) pour les services configurés avec un cache.
+  - target:
+      kind: Deployment
+      name: ^(iam|document|notification|participant|homologation|certification|incident|monitoring|rapprochement|pilotage|reporting|collaboration)$
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: JHIPSTER_CACHE_REDIS_SERVER
+          value: redis://valkey.gimac-des.svc.cluster.local:6379
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: JHIPSTER_CACHE_REDIS_CLUSTER
+          value: "false"
+
+  # Corrections de conformité au schéma Kubernetes des déclarations générées
+  # (rejetées par le serveur d'API sinon) : valeurs d'environnement en chaînes,
+  # arguments de Keycloak en liste.
+  - target:
+      kind: Deployment
+      name: ^jhipster-kafka$
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/env/0/value
+        value: "1"
+      - op: replace
+        path: /spec/template/spec/containers/0/env/7/value
+        value: "0"
+      - op: replace
+        path: /spec/template/spec/containers/0/env/8/value
+        value: "1"
+  - target:
+      kind: StatefulSet
+      name: ^keycloak$
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/args
+        value: ['start', '--import-realm']
+
+  # Job d'import du tableau de bord Grafana : segment de supervision.
+  - target:
+      kind: Job
+      name: ^jhipster-grafana-dashboard$
+    patch: |-
+      - op: add
+        path: /spec/template/metadata/labels
+        value:
+          gimac.cm/segment: supervision
+
+# Version épinglée de l'image des conteneurs d'initialisation générés (busybox:latest).
+images:
+  - name: busybox
+    newTag: 1.38.0

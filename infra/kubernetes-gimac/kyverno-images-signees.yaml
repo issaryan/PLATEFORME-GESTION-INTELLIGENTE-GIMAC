@@ -1,0 +1,27 @@
+# Contrôle d'admission des images des services (D-45, SOC-02 scénario 3).
+# Mode Audit tant que la chaîne ne signe pas encore les images ; passer en Enforce
+# dès la mise en service de la signature par SOC-02. La clé publique cosign est
+# lue dans le secret kyverno/cle-signature-images, créé par l'exploitant.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: gimac-images-signees
+spec:
+  webhookTimeoutSeconds: 30
+  rules:
+    - name: verifier-signature-images-des
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+              namespaces: [gimac-des]
+      verifyImages:
+        - imageReferences:
+            - 'registre.gimac.local/des/*'
+          failureAction: Audit
+          attestors:
+            - entries:
+                - keys:
+                    secret:
+                      name: cle-signature-images
+                      namespace: kyverno

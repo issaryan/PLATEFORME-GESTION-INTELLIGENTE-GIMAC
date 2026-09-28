@@ -1,0 +1,51 @@
+apiVersion: skaffold/v1
+kind: Config
+build:
+  artifacts:
+    - image: registre.gimac.local/des/gateway
+      context: ../../ms-gateway
+      jib: {}
+    - image: registre.gimac.local/des/iam
+      context: ../../ms-iam
+      jib: {}
+    - image: registre.gimac.local/des/audit
+      context: ../../ms-audit
+      jib: {}
+    - image: registre.gimac.local/des/document
+      context: ../../ms-document
+      jib: {}
+    - image: registre.gimac.local/des/notification
+      context: ../../ms-notification
+      jib: {}
+    - image: registre.gimac.local/des/participant
+      context: ../../ms-participant
+      jib: {}
+    - image: registre.gimac.local/des/homologation
+      context: ../../ms-homologation
+      jib: {}
+    - image: registre.gimac.local/des/certification
+      context: ../../ms-certification
+      jib: {}
+    - image: registre.gimac.local/des/incident
+      context: ../../ms-incident
+      jib: {}
+    - image: registre.gimac.local/des/monitoring
+      context: ../../ms-monitoring
+      jib: {}
+    - image: registre.gimac.local/des/rapprochement
+      context: ../../ms-rapprochement
+      jib: {}
+    - image: registre.gimac.local/des/pilotage
+      context: ../../ms-pilotage
+      jib: {}
+    - image: registre.gimac.local/des/reporting
+      context: ../../ms-reporting
+      jib: {}
+    - image: registre.gimac.local/des/collaboration
+      context: ../../ms-collaboration
+      jib: {}
+  tagPolicy:
+    envTemplate:
+      template: "{{.IMAGE_NAME}}:latest"
+deploy:
+  kustomize: {}

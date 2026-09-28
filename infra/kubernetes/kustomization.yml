@@ -1,0 +1,79 @@
+commonLabels:
+  app.kubernetes.io/genereted-by: JHipster
+
+namespace: gimac-des
+
+resources:
+  - namespace.yml
+  # Individual apps
+  - gateway-k8s/gateway-deployment.yml
+  - gateway-k8s/gateway-service.yml
+  - gateway-k8s/gateway-postgresql.yml
+  - gateway-k8s/gateway-ingress.yml
+  - gateway-k8s/gateway-prometheus-sm.yml
+  - iam-k8s/iam-deployment.yml
+  - iam-k8s/iam-service.yml
+  - iam-k8s/iam-postgresql.yml
+  - iam-k8s/iam-prometheus-sm.yml
+  - audit-k8s/audit-deployment.yml
+  - audit-k8s/audit-service.yml
+  - audit-k8s/audit-postgresql.yml
+  - audit-k8s/audit-prometheus-sm.yml
+  - document-k8s/document-deployment.yml
+  - document-k8s/document-service.yml
+  - document-k8s/document-postgresql.yml
+  - document-k8s/document-prometheus-sm.yml
+  - notification-k8s/notification-deployment.yml
+  - notification-k8s/notification-service.yml
+  - notification-k8s/notification-postgresql.yml
+  - notification-k8s/notification-prometheus-sm.yml
+  - participant-k8s/participant-deployment.yml
+  - participant-k8s/participant-service.yml
+  - participant-k8s/participant-postgresql.yml
+  - participant-k8s/participant-prometheus-sm.yml
+  - homologation-k8s/homologation-deployment.yml
+  - homologation-k8s/homologation-service.yml
+  - homologation-k8s/homologation-postgresql.yml
+  - homologation-k8s/homologation-prometheus-sm.yml
+  - certification-k8s/certification-deployment.yml
+  - certification-k8s/certification-service.yml
+  - certification-k8s/certification-postgresql.yml
+  - certification-k8s/certification-prometheus-sm.yml
+  - incident-k8s/incident-deployment.yml
+  - incident-k8s/incident-service.yml
+  - incident-k8s/incident-postgresql.yml
+  - incident-k8s/incident-prometheus-sm.yml
+  - monitoring-k8s/monitoring-deployment.yml
+  - monitoring-k8s/monitoring-service.yml
+  - monitoring-k8s/monitoring-postgresql.yml
+  - monitoring-k8s/monitoring-prometheus-sm.yml
+  - rapprochement-k8s/rapprochement-deployment.yml
+  - rapprochement-k8s/rapprochement-service.yml
+  - rapprochement-k8s/rapprochement-postgresql.yml
+  - rapprochement-k8s/rapprochement-prometheus-sm.yml
+  - pilotage-k8s/pilotage-deployment.yml
+  - pilotage-k8s/pilotage-service.yml
+  - pilotage-k8s/pilotage-postgresql.yml
+  - pilotage-k8s/pilotage-prometheus-sm.yml
+  - reporting-k8s/reporting-deployment.yml
+  - reporting-k8s/reporting-service.yml
+  - reporting-k8s/reporting-postgresql.yml
+  - reporting-k8s/reporting-prometheus-sm.yml
+  - collaboration-k8s/collaboration-deployment.yml
+  - collaboration-k8s/collaboration-service.yml
+  - collaboration-k8s/collaboration-postgresql.yml
+  - collaboration-k8s/collaboration-prometheus-sm.yml
+  # keycloak
+  - keycloak-k8s/keycloak-configmap.yml
+  - keycloak-k8s/keycloak-postgresql.yml
+  - keycloak-k8s/keycloak.yml
+  # messagebroker
+  - messagebroker-k8s/kafka.yml
+  # monitoring prometheus
+  - monitoring-k8s/jhipster-prometheus-cr.yml
+  - monitoring-k8s/jhipster-prometheus-crd.yml
+  - monitoring-k8s/jhipster-grafana.yml
+  - monitoring-k8s/jhipster-grafana-dashboard.yml
+# service discovery eureka/consul
+
+patchesJson6902:

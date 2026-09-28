@@ -1,0 +1,37 @@
+{
+  "generator-jhipster": {
+    "appsFolders": [
+      "ms-gateway",
+      "ms-iam",
+      "ms-audit",
+      "ms-document",
+      "ms-notification",
+      "ms-participant",
+      "ms-homologation",
+      "ms-certification",
+      "ms-incident",
+      "ms-monitoring",
+      "ms-rapprochement",
+      "ms-pilotage",
+      "ms-reporting",
+      "ms-collaboration"
+    ],
+    "clusteredDbApps": [],
+    "dbRandomPassword": "1e6ced4c44cde57c2368dc12b8d7ee3e99c058b0797928f1b65d6bed5b5b",
+    "deploymentApplicationType": "microservice",
+    "deploymentType": "kubernetes",
+    "directoryPath": "../../",
+    "dockerPushCommand": "docker push",
+    "dockerRepositoryName": "registre.gimac.local/des",
+    "ingressDomain": "des.gimac.local",
+    "ingressType": "nginx",
+    "istio": false,
+    "jwtSecretKey": "NjEwOTg4MTY2NzUyNTFiY2RjZTNiOGM0ODdhMjVjMTYxYzc3NjBjZWY2ODBmZWI5MmU3OWQ4NDhkNmJlY2NkYWRmYzM4NGU5YWVkN2M2OGZmZWFmMTQ1YzhiNjk0ZDFjN2UzMQ==",
+    "kubernetesNamespace": "gimac-des",
+    "kubernetesServiceType": "Ingress",
+    "kubernetesStorageClassName": "",
+    "kubernetesUseDynamicStorage": true,
+    "monitoring": "prometheus",
+    "serviceDiscoveryType": "no"
+  }
+}

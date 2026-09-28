@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: participant
+  namespace: gimac-des
+  labels:
+    app: participant
+spec:
+  selector:
+    app: participant
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8085

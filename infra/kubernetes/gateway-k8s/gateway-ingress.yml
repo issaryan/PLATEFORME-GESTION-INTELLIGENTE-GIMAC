@@ -1,0 +1,119 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: gateway
+  namespace: gimac-des
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: gateway.gimac-des.des.gimac.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: gateway
+                port:
+                  name: http
+          - path: /services/iam/
+            pathType: Prefix
+            backend:
+              service:
+                name: iam
+                port:
+                  name: http
+          - path: /services/audit/
+            pathType: Prefix
+            backend:
+              service:
+                name: audit
+                port:
+                  name: http
+          - path: /services/document/
+            pathType: Prefix
+            backend:
+              service:
+                name: document
+                port:
+                  name: http
+          - path: /services/notification/
+            pathType: Prefix
+            backend:
+              service:
+                name: notification
+                port:
+                  name: http
+          - path: /services/participant/
+            pathType: Prefix
+            backend:
+              service:
+                name: participant
+                port:
+                  name: http
+          - path: /services/homologation/
+            pathType: Prefix
+            backend:
+              service:
+                name: homologation
+                port:
+                  name: http
+          - path: /services/certification/
+            pathType: Prefix
+            backend:
+              service:
+                name: certification
+                port:
+                  name: http
+          - path: /services/incident/
+            pathType: Prefix
+            backend:
+              service:
+                name: incident
+                port:
+                  name: http
+          - path: /services/monitoring/
+            pathType: Prefix
+            backend:
+              service:
+                name: monitoring
+                port:
+                  name: http
+          - path: /services/rapprochement/
+            pathType: Prefix
+            backend:
+              service:
+                name: rapprochement
+                port:
+                  name: http
+          - path: /services/pilotage/
+            pathType: Prefix
+            backend:
+              service:
+                name: pilotage
+                port:
+                  name: http
+          - path: /services/reporting/
+            pathType: Prefix
+            backend:
+              service:
+                name: reporting
+                port:
+                  name: http
+          - path: /services/collaboration/
+            pathType: Prefix
+            backend:
+              service:
+                name: collaboration
+                port:
+                  name: http
+    - host: keycloak.gimac-des.des.gimac.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: keycloak
+                port:
+                  number: 9080

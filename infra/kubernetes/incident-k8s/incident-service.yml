@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: incident
+  namespace: gimac-des
+  labels:
+    app: incident
+spec:
+  selector:
+    app: incident
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8088

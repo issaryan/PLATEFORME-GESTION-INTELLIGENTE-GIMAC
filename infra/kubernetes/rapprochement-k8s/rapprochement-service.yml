@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: rapprochement
+  namespace: gimac-des
+  labels:
+    app: rapprochement
+spec:
+  selector:
+    app: rapprochement
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8090

@@ -1,0 +1,14 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: iam-app
+  namespace: gimac-des
+  labels:
+    team: gimac-des
+spec:
+  selector:
+    matchLabels:
+      app: iam
+  endpoints:
+    - port: web
+      path: /prometheusMetrics

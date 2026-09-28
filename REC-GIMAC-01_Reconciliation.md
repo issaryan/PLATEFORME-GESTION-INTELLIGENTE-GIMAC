@@ -8,7 +8,7 @@
 | Établi par | KOAGNE ISSA RYAN, Ingénieur en Informatique et Systèmes d'information |
 | Statut | Référentiel d'implémentation. Décisions D-01 à D-31, y compris les propositions [P], **acceptées par KOAGNE ISSA RYAN le 28/09/2026** ; validation formelle du Product Owner (chef du DES) attendue en revue d'itération |
 | Rôle | Base unique à partir de laquelle le code est écrit ; prime sur les quatre documents pour les points qu'elle tranche |
-| Révision | **v1.1 (28/09/2026)** : ajout des décisions D-32 à D-46 (§4.4), complétées par D-47 et D-48, pour réconcilier **CP-GIMAC-01 v2.0**, qui remplace CP v1.0, et fixer l'infrastructure et le frontend ; aucune disposition de la v1.0 n'est retirée |
+| Révision | **v1.1 (28/09/2026)** : ajout des décisions D-32 à D-46 (§4.4), complétées par D-47 à D-49, pour réconcilier **CP-GIMAC-01 v2.0**, qui remplace CP v1.0, et fixer l'infrastructure et le frontend ; aucune disposition de la v1.0 n'est retirée |
 
 **Légende des décisions**
 - **[R]** : réconciliation déduite des documents eux-mêmes, par application de la règle de préséance (§0).
@@ -408,6 +408,13 @@ Décisions ajoutées le 28/09/2026 à la réception du carnet de produit v2.0 (3
   - **Images des services** : construites par Jib selon la configuration JHipster de chaque service (`./mvnw -Pprod verify jib:dockerBuild`) ; aucun Dockerfile n'est écrit à la main.
   - **Kubernetes** : les déclarations de `infra/k8s` sont produites par `jhipster kubernetes` ; les politiques réseau par zone, le profil de sécurité des pods et le contrôle d'admission de D-45 y sont ajoutés comme compléments Kustomize, sans modifier les fichiers générés.
   - Un générateur JHipster qui réécrit des métadonnées de service (par exemple la version dans `.yo-rc.json`) sans régénérer le code voit ces modifications annulées.
+- **D-49 [R] Déclarations Kubernetes générées et complément du projet.** Elles précisent D-45 et D-48 sans les retirer :
+  - **Espace de noms** : `jhipster kubernetes` génère un espace de noms unique, `gimac-des`, et des adresses de service internes à cet espace. Les segments de D-45 (DMZ, socle, référentiels, exploitation, pilotage) sont donc portés par l'étiquette `gimac.cm/segment` des pods plutôt que par des espaces de noms distincts ; la séparation physique des zones (DMZ, administration, persistance) reste assurée par le réseau et les nœuds (CC 5.6.1).
+  - **Complément** : `infra/kubernetes-gimac` (Kustomize) s'appuie sur `infra/kubernetes` sans le modifier. Il ajoute la politique de refus par défaut et la matrice des flux par segment, un cache Valkey partagé (SOC-11), le profil de sécurité des pods, le contrôle Kyverno des signatures d'images, l'épinglage des images non versionnées, et corrige les défauts de schéma du rendu généré (valeurs d'environnement numériques de Kafka, arguments de Keycloak).
+  - **Secrets** : les Secrets générés par JHipster (mots de passe des bases et de Grafana) sont retirés par le complément. Leurs valeurs, présentes dans `infra/kubernetes`, sont déclarées compromises (D-44). Les secrets sont créés au déploiement par `creer-secrets.sh`, puis délivrés par OpenBao à partir d'INT (SOC-06).
+  - **Profil de sécurité des pods** : `baseline` est imposé ; `restricted` est audité et signalé jusqu'au durcissement des pods générés (SOC-07), puis imposé.
+  - **Signature des images** : la politique Kyverno est en mode Audit jusqu'à la signature des images par la chaîne (SOC-02), puis en mode Enforce.
+  - **Persistance** : les bases PostgreSQL et Kafka générées dans la grappe servent l'environnement INT. En QUAL et PROD, la zone de persistance reste hors de la grappe (CC 5.6.1) : un complément dédié remplacera ces déploiements par des services externes (SOC-04, SOC-07).
 
 ---
 

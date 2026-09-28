@@ -1,0 +1,222 @@
+# Refus par défaut et matrice des flux autorisés par segment (CC 5.6.1, D-45, D-49, RG-24, RG-60).
+# Segments : dmz (passerelle), socle, referentiels, exploitation, pilotage (zone applicative),
+# persistance, identite (Keycloak), supervision (Prometheus, Grafana).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: refus-par-defaut
+  namespace: gimac-des
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: resolution-dns
+  namespace: gimac-des
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+---
+# Seule la passerelle reçoit le trafic du contrôleur d'entrée (RG-60).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: entree-passerelle
+  namespace: gimac-des
+spec:
+  podSelector:
+    matchLabels:
+      gimac.cm/segment: dmz
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+      ports:
+        - { protocol: TCP, port: 8080 }
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+      ports:
+        - { protocol: TCP, port: 8080 }
+---
+# Services métier : appelés par la passerelle, entre eux, et observés par Prometheus.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: entree-services-metier
+  namespace: gimac-des
+spec:
+  podSelector:
+    matchExpressions:
+      - { key: gimac.cm/segment, operator: In, values: [socle, referentiels, exploitation, pilotage] }
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchExpressions:
+              - { key: gimac.cm/segment, operator: In, values: [dmz, socle, referentiels, exploitation, pilotage] }
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+      ports:
+        - { protocol: TCP, port: 8081, endPort: 8093 }
+---
+# Sorties de la passerelle et des services : services métier, persistance,
+# fournisseur d'identité par le contrôleur d'entrée (émetteur des jetons).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: sortie-applicatif
+  namespace: gimac-des
+spec:
+  podSelector:
+    matchExpressions:
+      - { key: gimac.cm/segment, operator: In, values: [dmz, socle, referentiels, exploitation, pilotage] }
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - podSelector:
+            matchExpressions:
+              - { key: gimac.cm/segment, operator: In, values: [socle, referentiels, exploitation, pilotage] }
+      ports:
+        - { protocol: TCP, port: 8081, endPort: 8093 }
+    - to:
+        - podSelector:
+            matchLabels:
+              gimac.cm/segment: persistance
+      ports:
+        - { protocol: TCP, port: 5432 }
+        - { protocol: TCP, port: 9092 }
+        - { protocol: TCP, port: 6379 }
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+      ports:
+        - { protocol: TCP, port: 80 }
+        - { protocol: TCP, port: 443 }
+---
+# Persistance : aucun accès direct hors des services habilités (CC 5.6.1, zone de persistance).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: entree-persistance
+  namespace: gimac-des
+spec:
+  podSelector:
+    matchLabels:
+      gimac.cm/segment: persistance
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchExpressions:
+              - { key: gimac.cm/segment, operator: In, values: [dmz, socle, referentiels, exploitation, pilotage, identite] }
+      ports:
+        - { protocol: TCP, port: 5432 }
+        - { protocol: TCP, port: 9092 }
+        - { protocol: TCP, port: 6379 }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: identite
+  namespace: gimac-des
+spec:
+  podSelector:
+    matchLabels:
+      gimac.cm/segment: identite
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+      ports:
+        - { protocol: TCP, port: 8080 }
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: keycloak-postgresql
+      ports:
+        - { protocol: TCP, port: 5432 }
+---
+# Supervision : Prometheus lit les métriques ; Grafana lit Prometheus ; l'opérateur joint l'API Kubernetes.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: supervision
+  namespace: gimac-des
+spec:
+  podSelector:
+    matchExpressions:
+      - { key: gimac.cm/segment, operator: In, values: [supervision] }
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+        - podSelector:
+            matchLabels:
+              gimac.cm/segment: supervision
+      ports:
+        - { protocol: TCP, port: 3000 }
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+      ports:
+        - { protocol: TCP, port: 9090 }
+    - to:
+        - podSelector:
+            matchLabels:
+              gimac.cm/segment: supervision
+      ports:
+        - { protocol: TCP, port: 3000 }
+    - ports:
+        - { protocol: TCP, port: 443 }
+        - { protocol: TCP, port: 6443 }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: prometheus
+  namespace: gimac-des
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: prometheus
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              gimac.cm/segment: supervision
+      ports:
+        - { protocol: TCP, port: 9090 }
+  egress:
+    - to:
+        - podSelector:
+            matchExpressions:
+              - { key: gimac.cm/segment, operator: In, values: [dmz, socle, referentiels, exploitation, pilotage] }
+      ports:
+        - { protocol: TCP, port: 8080, endPort: 8093 }
