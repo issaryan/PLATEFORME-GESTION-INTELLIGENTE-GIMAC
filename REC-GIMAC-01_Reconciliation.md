@@ -8,6 +8,7 @@
 | Établi par | KOAGNE ISSA RYAN, Ingénieur en Informatique et Systèmes d'information |
 | Statut | Référentiel d'implémentation. Décisions D-01 à D-31, y compris les propositions [P], **acceptées par KOAGNE ISSA RYAN le 28/09/2026** ; validation formelle du Product Owner (chef du DES) attendue en revue d'itération |
 | Rôle | Base unique à partir de laquelle le code est écrit ; prime sur les quatre documents pour les points qu'elle tranche |
+| Révision | **v1.1 (28/09/2026)** : ajout des décisions D-32 à D-46 (§4.4) pour réconcilier **CP-GIMAC-01 v2.0**, qui remplace CP v1.0, et fixer l'infrastructure et le frontend ; aucune disposition de la v1.0 n'est retirée |
 
 **Légende des décisions**
 - **[R]** : réconciliation déduite des documents eux-mêmes, par application de la règle de préséance (§0).
@@ -25,6 +26,7 @@ Quand deux documents divergent, la source qui fait foi dépend de la nature de l
 | Acteurs, cas d'utilisation (UC), règles de gestion (RG) | **CA v1.1**, seule source des numéros RG |
 | Découpage en services, technologies, états, événements, algorithmes, valeurs de paramètres | **CC v1.1** |
 | Priorités (MoSCoW), estimations, ordonnancement | **CP v1.0**, sauf sa colonne RG, déclarée nulle (D-04) |
+| Priorités, estimations, ordonnancement, à compter de la révision v1.1 | **CP v2.0**, dans les mêmes limites (D-32, D-33) |
 | Tout point tranché ci-dessous | **REC-GIMAC-01** |
 
 ---
@@ -273,6 +275,129 @@ Colonne « Livraison » : It = itération de la première phase (semaines 3 à 1
   | `INST-0043` | Banque B (`BNK-B`) |
   | `TCK-000318` | Incident S1, cellule `CRI-2026-009`, salon `SAL-CRISE-2026-009` |
 
+### 4.4 Réconciliation avec CP-GIMAC-01 v2.0, infrastructure et frontend (révision v1.1)
+
+Décisions ajoutées le 28/09/2026 à la réception du carnet de produit v2.0 (313 récits, 85 features, 17 épopées, 1575 points). Elles complètent les décisions D-01 à D-31, qui restent toutes en vigueur.
+
+- **D-32 [R] Carnet de référence.** CP-GIMAC-01 v2.0 remplace CP v1.0 pour les priorités, les estimations et l'ordonnancement.
+  - Toutes les dispositions de la présente note qui visent CP v1.0 (D-04, D-07, §7) s'appliquent à la v2.0 dans les mêmes termes.
+  - Les récits transverses TRV-xx de la v1.0 sont repris par les épopées SOC, IHM et QUA de la v2.0 ; les identifiants de la v2.0 font foi dans le code, les commits et les procès-verbaux.
+- **D-33 [R] Règles de gestion dans CP v2.0.** Le carnet v2.0 ne numérote plus les RG et renvoie aux « RG du domaine N ». D-04 s'applique : le rattachement exact se lit au §5, et le CA reste la seule source des numéros RG.
+- **D-34 [R] Périodicité de la revue des accès.** La revue est **au moins trimestrielle** (RG-66, CA ; CCT : « revues trimestrielles des habilitations »).
+  - La mention « au moins semestrielle » de IAM-10, IAM-18 et de l'annexe B du CP (BNF-03) est caduque.
+  - La périodicité est un paramètre dont la valeur maximale est de 3 mois ; une valeur plus courte est admise.
+- **D-35 [R] Signature des quitus.** D-22 s'applique : aucune clé personnelle n'est détenue par la plateforme. La formule « signée par le coffre de clés en mon nom » de CER-02 à CER-05 est interprétée en deux actes distincts :
+  1. **Signature personnelle** : le signataire produit une assertion WebAuthn dont le défi est l'empreinte SHA-256 de la décision canonique (liaison, empreinte du socle d'évaluation, décision, motif, signataire, instant). L'assertion complète (identifiant de l'authentificateur, données d'authentification, données client, signature) est conservée avec la décision et vérifiée par MS-IAM (`verifyAssertion`). Elle seule engage la responsabilité du signataire.
+  2. **Cachet de la plateforme** : la clé de signature de la plateforme, conservée dans le coffre, contresigne l'ensemble (décision et assertion), puis l'autorité d'horodatage RFC 3161 horodate le cachet. Le cachet atteste l'intégrité, jamais le consentement.
+  - Le coffre ne signe jamais au nom d'une personne.
+- **D-36 [R] Élévation ponctuelle.** D-20 est maintenue : le carnet v2.0 ne décrit que la suppléance de 72 h (IAM-06), mais l'élévation ponctuelle de 60 min reste exigée par RG-01 et UC-SOC-01.
+  - IAM-06 couvre les deux types de `Delegation` ; ses critères d'acceptation sont complétés par un scénario `ELEVATION_JIT` : demande par l'agent, approbation par un superviseur, durée plafonnée à 60 min, renouvellement uniquement par une nouvelle demande.
+  - Les événements `iam.delegation-granted.v1` et `iam.delegation-ended.v1` du CP sont adoptés (le CC ne nomme pas ces faits) ; leur charge utile porte le type de délégation.
+  - IAM-06 est réestimé lors de l'affinage du sprint concerné.
+- **D-37 [R] Nommage des événements du carnet v2.0.** D-19 est maintenue. Le carnet v2.0 cite environ 140 sujets absents du CC. Ils sont traités ainsi :
+  1. **Même fait, autre nom** : le nom du CC fait foi. Correspondances établies :
+
+     | Nom du CP v2.0 | Nom retenu (CC) |
+     |---|---|
+     | `gateway.decision-recorded.v1` | `gateway.access-decided.v1` |
+     | `iam.role-assignment-changed.v1` | `iam.role-granted.v1` et `iam.role-revoked.v1` |
+     | `participant.institution-status-changed.v1` | `participant.status-changed.v1` |
+     | `document.consulted.v1` | `document.document-consulted.v1` |
+     | `document.integrity-violated.v1` | `document.integrity-alert.v1` |
+     | `document.document-quarantined.v1` | `document.quarantined.v1` |
+     | `homologation.referential-published.v1` | `homologation.catalog-published.v1` |
+     | `homologation.coverage-changed.v1` | `homologation.coverage-updated.v1` |
+     | `incident.ticket-status-changed.v1` | `incident.ticket-transitioned.v1` |
+     | `incident.ticket-escalated.v1` | `incident.incident-escalated.v1` |
+     | `incident.crisis-quorum-reached.v1` | `incident.crisis-constituted.v1` |
+     | `collaboration.room-created.v1` | `collaboration.room-opened.v1` |
+     | `rapprochement.suspense-opened.v1` | `rapprochement.suspens-opened.v1` |
+     | `rapprochement.suspense-closed.v1` | `rapprochement.suspens-closed.v1` |
+     | `rapprochement.suspense-status-changed.v1` | `rapprochement.suspens-assigned.v1` et `rapprochement.suspens-contested.v1` pour ces deux transitions |
+     | `rapprochement.statement-rejected.v1` | `rapprochement.import-rejected.v1` |
+     | `rapprochement.reconciliation-completed.v1` | `rapprochement.completed.v1` |
+     | `reporting.report-generated.v1` | `reporting.report-published.v1` |
+     | `reporting.declared-statement-imported.v1` | `reporting.statement-imported.v1` |
+     | `pilotage.action-plan-phase-changed.v1` | `pilotage.action-sheet-changed.v1` |
+
+  2. **Fait nouveau** : le sujet du CP est adopté s'il respecte le format `domaine.agrégat-événement.v1`, en reprenant le nom d'agrégat du CC (par exemple `rapprochement.suspens-…` et non `suspense-…`, `pilotage.action-sheet-…` et non `action-plan-…`).
+  3. **Source unique** : le registre des schémas (SOC-03) est initialisé selon ces deux règles et devient la liste de référence des sujets ; tout sujet absent du registre est refusé à la publication.
+  4. MS-AUDIT consomme tous les sujets, y compris les ajouts (D-19).
+- **D-38 [R] Reprise du simulateur (complément à D-16).** L'interrogation planifiée reste le mécanisme obligatoire. Le scénario 2 de HOM-13 (reprise sur notification) est admis comme **accélérateur facultatif** :
+  - le point de réception n'accepte que des connexions mTLS du simulateur et ne retient que l'identifiant de campagne ;
+  - il déclenche une lecture ciblée de la campagne ; le contenu de la notification n'est jamais pris pour un résultat ;
+  - il est désactivé par défaut et activé par configuration quand le simulateur sait émettre ces notifications.
+  - La non-intrusion est préservée : la plateforme reçoit et lit, elle n'écrit jamais dans le simulateur.
+- **D-39 [R] Entités de MS-GATEWAY.** Les entités du carnet v2.0 sont réparties selon leur nature :
+
+  | Nature | Entités |
+  |---|---|
+  | Configuration persistée (schéma PostgreSQL du service) | `Route`, `PresentationLayer`, `ApiVersion`, `ContextPolicy`, `RateLimitQuota`, `MaskingRule`, `InspectionRule`, `SecurityHeaderPolicy` |
+  | Événement publié par l'outbox, sans table métier | `GatewayDecision`, publiée sous `gateway.access-decided.v1` ; le journal des décisions est celui de MS-AUDIT |
+  | État volatil dans le cache Valkey | `InternalToken`, `Revocation` (projection de `iam.session-revoked.v1`), `PushSubscription` et curseurs du canal poussé, compteurs de débit |
+  | État d'exécution Resilience4j | `CircuitBreaker` ; ses seuils sont portés par `Route` ou `ApiVersion` |
+  | Attribut du jeton, non une entité | `CertificateBinding` : revendication `cnf` / `x5t#S256` du jeton interne (RFC 8705) |
+
+  - `ms-gateway.jdl` est complété par les huit entités persistées avant le premier sprint de l'épopée GW.
+- **D-40 [R] Charge des sprints.** Le plan nivelé du CP v2.0 (15 sprints à 110 points) est la base d'engagement de l'équipe. La feuille de route S0 à S12 fixe l'ordre des dépendances.
+  - Un sprint de la feuille de route dont la charge dépasse la vélocité (S1 247, S2 308, S4 236 points) est réparti selon le plan nivelé, sans changer l'ordre des dépendances.
+  - Un récit de 13 points est découpé avant son sprint (§7, maintenu).
+- **D-41 [R] Seuil de couverture.** Les deux seuils s'appliquent et sont bloquants :
+  - **80 % des branches du domaine** (BNF-15, contractuel) ;
+  - **80 % des lignes des couches domaine et application** (QUA-01).
+  - Le code généré et la configuration sont exclus par une liste revue, publiée dans le rapport de couverture.
+- **D-42 [P] Forge et chaîne de livraison.** GitLab CE auto-hébergé (D-25) reste la forge cible des environnements INT, QUAL et PROD.
+  - Pendant la phase DEV, hors site et sans aucune donnée réelle, le dépôt privé GitHub `issaryan/PLATEFORME-GESTION-INTELLIGENTE-GIMAC` sert de forge de développement.
+  - La chaîne est écrite en scripts portables (`scripts/ci/`), appelés par GitHub Actions pendant la phase DEV puis par GitLab CI ; la bascule se fait par miroir du dépôt lors de SOC-14.
+  - Aucun secret, aucune donnée réelle et aucune donnée de carte ne transitent par GitHub.
+- **D-43 [R] Version de JHipster.** La version cible est **9.4.0**, celle qu'annoncent les JDL.
+  - Le socle (MS-GATEWAY, MS-IAM, MS-AUDIT) est déjà généré en 9.4.0.
+  - Les onze autres services, générés en 8.11.0, sont régénérés en 9.4.0 au moment de leur passage au gabarit hexagonal (SOC-01), avant leur premier sprint. Aucune version mixte n'entre en recette.
+- **D-44 [R] Secrets de développement versionnés.** Les secrets par défaut générés par JHipster (clé `jwtSecretKey`, secrets clients du realm Keycloak de développement, mot de passe du magasin TLS de développement) figurent dans l'historique du dépôt privé.
+  - Ils sont **déclarés compromis** et ne sont jamais réutilisés dans un autre environnement.
+  - Ils sont remplacés par une injection à l'exécution : fichier `.env` non versionné en DEV, coffre OpenBao à partir d'INT (SOC-06).
+  - L'historique n'est pas réécrit : ces valeurs n'ont jamais protégé de donnée réelle, et la réécriture casserait la traçabilité des commits. La ligne de base du contrôle de secrets (QUA-09) les liste comme constats historiques connus.
+  - Tout jeton d'accès à la forge divulgué hors d'un coffre est révoqué par son titulaire.
+- **D-45 [P] Infrastructure.**
+  - **DEV (D-24, SOC-13)** : une description Docker Compose dans `infra/dev`, démarrée par une seule commande, avec vérification préalable des prérequis. Elle comprend :
+
+    | Rôle | Composant (code source ouvert, utilisable hors ligne) |
+    |---|---|
+    | Base relationnelle | PostgreSQL 16, une base et un rôle par service |
+    | Bus d'événements | Kafka en mode KRaft |
+    | Registre des schémas | Apicurio Registry (Apache-2.0) |
+    | Cache | Valkey |
+    | Dépôt objet WORM | MinIO avec verrouillage d'objets |
+    | Coffre | OpenBao |
+    | Fournisseur d'identité | Keycloak |
+    | Politiques d'accès | Open Policy Agent |
+    | Simulacres des tiers | WireMock pour le simulateur de certification, la gestion des changements et l'autorité d'horodatage ; Mailpit pour la messagerie |
+    | Observabilité (profil facultatif) | OpenTelemetry Collector, Prometheus, Grafana, Loki, Tempo |
+
+  - **INT, QUAL et PROD (SOC-07)** : déclarations Kubernetes versionnées dans `infra/k8s` (Kustomize), avec :
+    - un espace de noms par segment du CC 5.6.1 : `gimac-dmz`, puis `gimac-socle`, `gimac-referentiels`, `gimac-exploitation`, `gimac-pilotage` pour la zone applicative, et `gimac-admin` pour la zone d'administration ;
+    - une politique réseau de refus par défaut, entrant et sortant, dans chaque espace de noms, puis une matrice de flux autorisés explicite ;
+    - le profil de sécurité des pods `restricted` (conteneurs non root, sans privilège) ;
+    - un contrôle d'admission Kyverno (Apache-2.0) qui exige des images signées.
+  - La zone de persistance reste hors de la grappe, sur des machines dédiées, comme le prévoit le CC 5.6.1.
+  - La zone d'exploitation ne porte aucun composant de la plateforme : elle ne contient que les postes clients.
+- **D-46 [P] Frontend.** Les trois couches de présentation (§1, D7) partagent un seul espace de travail `frontend/` :
+
+  | Élément | Choix |
+  |---|---|
+  | Organisation | Espaces de travail npm : applications `departement`, `portail`, `console` ; paquets partagés `theme` (jetons du CC 6.2), `ui` (bibliothèque de composants, IHM-02), `shell` (enveloppe commune, IHM-01), `i18n` |
+  | Langage et outillage | React 18.3, TypeScript en mode strict, Vite |
+  | État serveur | TanStack Query, sans persistance dans le navigateur |
+  | Langues | i18next, catalogues fr et en complets (BNF-17) |
+  | Composants | Bibliothèque propre, sur primitives accessibles Radix UI lorsque nécessaire ; pictogrammes linéaires Lucide ; police auto-hébergée Inter avec chiffres à chasse fixe |
+  | Thème | Palette, typographie et grille du CC 6.2 exprimées en jetons CSS ; angles droits, bordures de 1 px, aucune ombre ni dégradé ; mode sombre du CC 6.2.2 |
+  | Tests | Vitest et Testing Library, axe-core pour WCAG 2.2 AA, Playwright pour les parcours et la non-régression visuelle, catalogue Storybook (IHM-02, IHM-18) |
+  | Authentification | Modèle BFF de MS-GATEWAY : cookie de session `HttpOnly`, `Secure`, `SameSite=Strict` ; aucun jeton ni donnée métier dans le navigateur (RG-58) ; verrouillage à 15 min d'inactivité (RG-56) |
+  | Déploiement | Fichiers statiques servis par un conteneur nginx non privilégié, un par couche, dans la zone de la couche |
+
+  - JHipster reste configuré sans client (`skipClient`) : aucun frontal n'est généré dans les microservices.
+  - Les dépendances npm sont servies par un registre interne en INT, QUAL et PROD, conformément à BNF-08 et BNF-09.
+
 ---
 
 ## 5. Règles de gestion par microservice
@@ -377,6 +502,9 @@ Numéros du CA, D-04 appliqué. Les règles ⟂ sont transverses : chaque servic
 5. Contrat OpenAPI 3.0 publié et test de contrat ; au moins 80 % de couverture des branches du domaine.
 6. mTLS entrant et sortant, conteneur non root, aucun secret dans le dépôt, aucun numéro de carte en clair.
 7. Messages et erreurs en français et en anglais ; sondes de santé et métriques exposées.
+8. Double seuil de couverture bloquant : 80 % des branches du domaine et 80 % des lignes des couches domaine et application (D-41).
+9. Règles d'architecture vérifiées dans la chaîne (SOC-18) : dépendances entre couches, aucun montant en virgule flottante, suffixes de nommage.
+10. Événements déclarés au registre des schémas sous le nom retenu par D-37.
 
 ---
 
@@ -414,9 +542,20 @@ Numéros du CA, D-04 appliqué. Les règles ⟂ sont transverses : chaque servic
 - Corriger « afin de que » et « 1 récits ».
 - Renuméroter le chapitre 5 (sous-sections 5.0.x).
 
+**CP v2.0 (à reporter en v2.1)**
+- Remplacer « au moins semestrielle » par « au moins trimestrielle » (IAM-10, IAM-18, annexe B), selon D-34.
+- Reformuler la signature des quitus (CER-02 à CER-05, §3.6) selon D-35 : assertion WebAuthn personnelle puis cachet de la plateforme.
+- Ajouter le scénario `ELEVATION_JIT` à IAM-06 (D-36).
+- Appliquer la table de correspondance des sujets d'événements (D-37).
+- Qualifier le scénario 2 de HOM-13 d'accélérateur facultatif (D-38).
+- Ajouter les correspondances RG explicites du §5 aux fiches des récits (D-33).
+- Remplacer « 80 % des lignes » par le double seuil de D-41 (QUA-01).
+
 **Tous les documents**
 - Désignation des auteurs : « Ingénieur en Informatique et Systèmes d'information ».
 
 ---
 
 *Prochaine étape : plan d'implémentation de l'itération 1 (socle : MS-GATEWAY, MS-IAM, MS-AUDIT, TRV-01 à TRV-07 et TRV-09), établi sur la base du présent référentiel.*
+
+*Révision v1.1 : prochaine étape, sprint 0 du CP v2.0 (SOC-01, SOC-02, SOC-07, SOC-13, SOC-15, SOC-18, QUA-01, QUA-02, QUA-08, QUA-09, QUA-10), puis infrastructure (D-45) et frontend (D-46).*
