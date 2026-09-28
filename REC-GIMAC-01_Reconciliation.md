@@ -6,7 +6,7 @@
 | Référence | REC-GIMAC-01 v1.0 (28/09/2026) |
 | Documents réconciliés | CCT-GIMAC-01 v1.1, CA-GIMAC-01 v1.1, CC-GIMAC-01 v1.1, CP-GIMAC-01 v1.0 |
 | Établi par | KOAGNE ISSA RYAN, Ingénieur en Informatique et Systèmes d'information |
-| Statut | Référentiel d'implémentation, à valider par le Product Owner (chef du DES) |
+| Statut | Référentiel d'implémentation. Décisions D-01 à D-30, y compris les propositions [P], **acceptées par KOAGNE ISSA RYAN le 28/09/2026** ; validation formelle du Product Owner (chef du DES) attendue en revue d'itération |
 | Rôle | Base unique à partir de laquelle le code est écrit ; prime sur les quatre documents pour les points qu'elle tranche |
 
 **Légende des décisions**
