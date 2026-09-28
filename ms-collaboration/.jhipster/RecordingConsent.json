@@ -1,0 +1,47 @@
+{
+  "annotations": {
+    "changelogDate": "20260928135020"
+  },
+  "applications": ["collaboration"],
+  "clientRootFolder": "collaboration",
+  "databaseType": "sql",
+  "documentation": "Consentement explicite d'un participant à l'enregistrement (RG-55).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Participant (MS-IAM).",
+      "fieldName": "userId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "granted",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "decidedAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    }
+  ],
+  "microserviceName": "collaboration",
+  "name": "RecordingConsent",
+  "readOnly": true,
+  "relationships": [
+    {
+      "otherEntityField": "sfuRoom",
+      "otherEntityName": "conference",
+      "relationshipName": "conference",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

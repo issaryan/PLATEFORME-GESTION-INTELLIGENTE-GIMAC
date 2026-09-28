@@ -1,0 +1,85 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134620"
+  },
+  "applications": ["collaboration"],
+  "clientRootFolder": "collaboration",
+  "databaseType": "sql",
+  "documentation": "Métadonnées d'un message chiffré. Écart CC corrigé : l'entité Message du CC\\nporte le chiffré ; conformément à D-28, le chiffré reste dans Matrix Synapse\\net seule la référence de l'événement est conservée (renommage en\\nMessageMetadata, qui évite aussi toute confusion avec Message de Spring).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Identifiant de l'événement dans Matrix Synapse.",
+      "fieldName": "matrixEventId",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "unique", "maxlength"],
+      "fieldValidateRulesMaxlength": "255"
+    },
+    {
+      "documentation": "Auteur (MS-IAM).",
+      "fieldName": "authorId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "terminalId",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "100"
+    },
+    {
+      "fieldName": "sentAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Identifiant de la session de groupe utilisée.",
+      "fieldName": "sessionId",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "255"
+    },
+    {
+      "documentation": "Indice de cliquet du message dans la chaîne.",
+      "fieldName": "ratchetIndex",
+      "fieldType": "Long",
+      "fieldValidateRules": ["min"],
+      "fieldValidateRulesMin": "0"
+    },
+    {
+      "documentation": "Taille du chiffré, en octets.",
+      "fieldName": "ciphertextSize",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["min"],
+      "fieldValidateRulesMin": "0"
+    },
+    {
+      "documentation": "Pièces jointes : identifiants de documents (MS-DOCUMENT), séparés par des virgules.",
+      "fieldName": "attachmentRefs",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "2000"
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "collaboration",
+  "name": "MessageMetadata",
+  "pagination": "pagination",
+  "readOnly": true,
+  "relationships": [
+    {
+      "otherEntityField": "code",
+      "otherEntityName": "room",
+      "relationshipName": "room",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

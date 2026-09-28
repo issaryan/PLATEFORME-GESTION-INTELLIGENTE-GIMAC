@@ -1,0 +1,72 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134820"
+  },
+  "applications": ["collaboration"],
+  "clientRootFolder": "collaboration",
+  "databaseType": "sql",
+  "documentation": "Conférence audio et vidéo sur le SFU local, SFrame obligatoire (RG-54).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Nom de la salle LiveKit, par exemple SFU-C-0142.",
+      "fieldName": "sfuRoom",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "unique", "maxlength"],
+      "fieldValidateRulesMaxlength": "100"
+    },
+    {
+      "fieldName": "startedAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "endedAt",
+      "fieldType": "Instant"
+    },
+    {
+      "documentation": "Sur-chiffrement SFrame exigé (toujours vrai).",
+      "fieldName": "sframeRequired",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "screenShare",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Enregistrement actif, seulement avec le consentement de chaque présent (RG-55).",
+      "fieldName": "recording",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Époque courante des clés médias.",
+      "fieldName": "keyEpoch",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required", "min"],
+      "fieldValidateRulesMin": "0"
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "collaboration",
+  "name": "Conference",
+  "pagination": "pagination",
+  "relationships": [
+    {
+      "otherEntityField": "code",
+      "otherEntityName": "room",
+      "relationshipName": "room",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+
+    <!--
+        Added the entity Room.
+    -->
+    <changeSet id="20260928134320-1" author="jhipster">
+        <createTable tableName="room" remarks="Salon chiffré de bout en bout, obligatoirement (RG-22). Le rattachement\n(AttachmentRef du CC) est aplati ; il détermine les membres.">
+            <column name="id" type="${uuidType}">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="code" type="varchar(50)" remarks="Code lisible, par exemple SAL-CRISE-2026-009 (D-30).">
+                <constraints nullable="false" unique="true" uniqueConstraintName="ux_room__code" />
+            </column>
+            <column name="type" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="attachment_kind" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="attachment_reference" type="varchar(100)" remarks="Référence du rattachement : vacation, pôle, ticket ou cellule de crise.">
+                <constraints nullable="false" />
+            </column>
+            <column name="attachment_service" type="varchar(50)" remarks="Service source du rattachement, par exemple MS-INCIDENT.">
+                <constraints nullable="false" />
+            </column>
+            <column name="ticket_reference" type="varchar(50)" remarks="Ticket lié (MS-INCIDENT), pour un salon de crise ou d&apos;incident, par exemple TCK-000318.">
+                <constraints nullable="true" />
+            </column>
+            <column name="matrix_room_id" type="varchar(255)" remarks="Identifiant du salon dans Matrix Synapse.">
+                <constraints nullable="false" unique="true" uniqueConstraintName="ux_room__matrix_room_id" />
+            </column>
+            <column name="encryption" type="varchar(50)" remarks="Politique de chiffrement, toujours « bout en bout obligatoire ».">
+                <constraints nullable="false" />
+            </column>
+            <column name="created_at" type="${datetimeType}">
+                <constraints nullable="false" />
+            </column>
+            <column name="state" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="retention" type="bigint" remarks="Rétention copiée de la politique du type à la création.">
+                <constraints nullable="false" />
+            </column>
+            <column name="group_session_epoch" type="integer" remarks="Époque de la session de groupe, incrémentée à chaque rotation (algorithme 6.60).">
+                <constraints nullable="false" />
+            </column>
+            <column name="frozen_at" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="archived_at" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="purge_after" type="${datetimeType}" remarks="Échéance de purge des messages chiffrés, calculée selon la politique.">
+                <constraints nullable="true" />
+            </column>
+            <!-- jhipster-needle-liquibase-add-column - JHipster will add columns here -->
+        </createTable>
+        <dropDefaultValue tableName="room" columnName="created_at" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="room" columnName="frozen_at" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="room" columnName="archived_at" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="room" columnName="purge_after" columnDataType="${datetimeType}"/>
+    </changeSet>
+
+    <!-- jhipster-needle-liquibase-add-changeset - JHipster will add changesets here -->
+
+    <!--
+        Load sample data generated with Faker.js
+        - This data can be easily edited using a CSV editor (or even MS Excel) and
+          is located in the 'src/main/resources/config/liquibase/fake-data' directory
+        - By default this data is applied when running with the JHipster 'dev' profile.
+          This can be customized by adding or removing 'faker' in the 'spring.liquibase.contexts'
+          Spring Boot configuration key.
+    -->
+    <changeSet id="20260928134320-1-data" author="jhipster" context="faker">
+        <loadData
+                  file="config/liquibase/fake-data/room.csv"
+                  separator=";"
+                  tableName="room"
+                  usePreparedStatements="true">
+            <column name="id" type="${uuidType}"/>
+            <column name="code" type="string"/>
+            <column name="type" type="string"/>
+            <column name="attachment_kind" type="string"/>
+            <column name="attachment_reference" type="string"/>
+            <column name="attachment_service" type="string"/>
+            <column name="ticket_reference" type="string"/>
+            <column name="matrix_room_id" type="string"/>
+            <column name="encryption" type="string"/>
+            <column name="created_at" type="date"/>
+            <column name="state" type="string"/>
+            <column name="retention" type="numeric"/>
+            <column name="group_session_epoch" type="numeric"/>
+            <column name="frozen_at" type="date"/>
+            <column name="archived_at" type="date"/>
+            <column name="purge_after" type="date"/>
+            <!-- jhipster-needle-liquibase-add-loadcolumn - JHipster (and/or extensions) can add load columns here -->
+        </loadData>
+    </changeSet>
+</databaseChangeLog>

@@ -1,0 +1,116 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134320"
+  },
+  "applications": ["collaboration"],
+  "clientRootFolder": "collaboration",
+  "databaseType": "sql",
+  "documentation": "Salon chiffré de bout en bout, obligatoirement (RG-22). Le rattachement\\n(AttachmentRef du CC) est aplati ; il détermine les membres.",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Code lisible, par exemple SAL-CRISE-2026-009 (D-30).",
+      "fieldName": "code",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "unique", "maxlength"],
+      "fieldValidateRulesMaxlength": "50"
+    },
+    {
+      "fieldName": "type",
+      "fieldType": "RoomType",
+      "fieldTypeDocumentation": "Type de salon (CC tableau 6.66).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "QUART,THEME,INCIDENT,CRISE"
+    },
+    {
+      "fieldName": "attachmentKind",
+      "fieldType": "AttachmentKind",
+      "fieldTypeDocumentation": "Nature du rattachement d'un salon (objet-valeur AttachmentRef du CC).\\nÉcart CC corrigé : le CC type la nature en String.",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "VACATION,THEME,TICKET,CELLULE_CRISE"
+    },
+    {
+      "documentation": "Référence du rattachement : vacation, pôle, ticket ou cellule de crise.",
+      "fieldName": "attachmentReference",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "100"
+    },
+    {
+      "documentation": "Service source du rattachement, par exemple MS-INCIDENT.",
+      "fieldName": "attachmentService",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "50"
+    },
+    {
+      "documentation": "Ticket lié (MS-INCIDENT), pour un salon de crise ou d'incident, par exemple TCK-000318.",
+      "fieldName": "ticketReference",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "50"
+    },
+    {
+      "documentation": "Identifiant du salon dans Matrix Synapse.",
+      "fieldName": "matrixRoomId",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "unique", "maxlength"],
+      "fieldValidateRulesMaxlength": "255"
+    },
+    {
+      "documentation": "Politique de chiffrement, toujours « bout en bout obligatoire ».",
+      "fieldName": "encryption",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "50"
+    },
+    {
+      "fieldName": "createdAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "state",
+      "fieldType": "RoomState",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "ACTIF,GELE,ARCHIVE,PURGE"
+    },
+    {
+      "documentation": "Rétention copiée de la politique du type à la création.",
+      "fieldName": "retention",
+      "fieldType": "Duration",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Époque de la session de groupe, incrémentée à chaque rotation (algorithme 6.60).",
+      "fieldName": "groupSessionEpoch",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required", "min"],
+      "fieldValidateRulesMin": "0"
+    },
+    {
+      "fieldName": "frozenAt",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "archivedAt",
+      "fieldType": "Instant"
+    },
+    {
+      "documentation": "Échéance de purge des messages chiffrés, calculée selon la politique.",
+      "fieldName": "purgeAfter",
+      "fieldType": "Instant"
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "collaboration",
+  "name": "Room",
+  "pagination": "pagination",
+  "relationships": [],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

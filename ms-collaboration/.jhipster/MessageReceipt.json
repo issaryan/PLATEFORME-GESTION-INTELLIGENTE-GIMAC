@@ -1,0 +1,50 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134720"
+  },
+  "applications": ["collaboration"],
+  "clientRootFolder": "collaboration",
+  "databaseType": "sql",
+  "documentation": "Accusé de réception (remis, lu), métadonnée visible du serveur.",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Membre destinataire (MS-IAM).",
+      "fieldName": "userId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "kind",
+      "fieldType": "ReceiptKind",
+      "fieldTypeDocumentation": "Accusé de réception d'un message (objet-valeur Receipt du CC).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "REMIS,LU"
+    },
+    {
+      "fieldName": "receivedAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    }
+  ],
+  "microserviceName": "collaboration",
+  "name": "MessageReceipt",
+  "pagination": "pagination",
+  "readOnly": true,
+  "relationships": [
+    {
+      "otherEntityField": "matrixEventId",
+      "otherEntityName": "messageMetadata",
+      "relationshipName": "message",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

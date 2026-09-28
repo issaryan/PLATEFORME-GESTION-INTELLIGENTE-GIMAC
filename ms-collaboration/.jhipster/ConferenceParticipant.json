@@ -1,0 +1,53 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134920"
+  },
+  "applications": ["collaboration"],
+  "clientRootFolder": "collaboration",
+  "databaseType": "sql",
+  "documentation": "Entrée et sortie d'un participant. Écart CC corrigé : l'attribut\\nparticipants (List<UUID>) du CC est normalisé pour la chronologie de l'archive.",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Participant (MS-IAM).",
+      "fieldName": "userId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "terminalId",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "100"
+    },
+    {
+      "fieldName": "joinedAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "leftAt",
+      "fieldType": "Instant"
+    }
+  ],
+  "microserviceName": "collaboration",
+  "name": "ConferenceParticipant",
+  "pagination": "pagination",
+  "readOnly": true,
+  "relationships": [
+    {
+      "otherEntityField": "sfuRoom",
+      "otherEntityName": "conference",
+      "relationshipName": "conference",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

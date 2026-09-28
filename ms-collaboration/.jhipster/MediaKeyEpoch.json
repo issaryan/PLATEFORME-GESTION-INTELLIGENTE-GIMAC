@@ -1,0 +1,50 @@
+{
+  "annotations": {
+    "changelogDate": "20260928135220"
+  },
+  "applications": ["collaboration"],
+  "clientRootFolder": "collaboration",
+  "databaseType": "sql",
+  "documentation": "Changement d'époque des clés médias, consigné sans aucune clé (algorithme 6.61).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "epoch",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required", "min"],
+      "fieldValidateRulesMin": "0"
+    },
+    {
+      "fieldName": "reason",
+      "fieldType": "MediaKeyRotationReason",
+      "fieldTypeDocumentation": "Motif d'un changement d'époque des clés médias (algorithme 6.61).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "OUVERTURE,ENTREE_PARTICIPANT,SORTIE_PARTICIPANT"
+    },
+    {
+      "fieldName": "rotatedAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    }
+  ],
+  "microserviceName": "collaboration",
+  "name": "MediaKeyEpoch",
+  "pagination": "pagination",
+  "readOnly": true,
+  "relationships": [
+    {
+      "otherEntityField": "sfuRoom",
+      "otherEntityName": "conference",
+      "relationshipName": "conference",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

@@ -1,0 +1,114 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134520"
+  },
+  "applications": ["collaboration"],
+  "clientRootFolder": "collaboration",
+  "databaseType": "sql",
+  "documentation": "Terminal enrôlé et son état de vérification (signature croisée par la clé\\nmaîtresse). Seules les parties publiques sont connues ; le lot de pré-clés\\nà usage unique est détenu par le serveur de clés de Matrix Synapse.",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Propriétaire (MS-IAM), ou compte technique du terminal d'archivage.",
+      "fieldName": "userId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Identifiant du terminal (device Matrix), par exemple TRM-7A21.",
+      "fieldName": "terminalId",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "unique", "maxlength"],
+      "fieldValidateRulesMaxlength": "100"
+    },
+    {
+      "documentation": "Clé d'identité publique Ed25519.",
+      "fieldName": "identityKey",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "minlength", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "64",
+      "fieldValidateRulesMinlength": "64",
+      "fieldValidateRulesPattern": "^[0-9a-f]{64}$"
+    },
+    {
+      "documentation": "Clé d'accord publique X25519.",
+      "fieldName": "agreementKey",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "minlength", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "64",
+      "fieldValidateRulesMinlength": "64",
+      "fieldValidateRulesPattern": "^[0-9a-f]{64}$"
+    },
+    {
+      "documentation": "Pré-clé signée publique.",
+      "fieldName": "signedPreKey",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "minlength", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "64",
+      "fieldValidateRulesMinlength": "64",
+      "fieldValidateRulesPattern": "^[0-9a-f]{64}$"
+    },
+    {
+      "documentation": "Signature Ed25519 de la pré-clé signée par la clé d'identité (64 octets).",
+      "fieldName": "signedPreKeySignature",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "minlength", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "128",
+      "fieldValidateRulesMinlength": "128",
+      "fieldValidateRulesPattern": "^[0-9a-f]{128}$"
+    },
+    {
+      "documentation": "Nombre de pré-clés à usage unique encore disponibles.",
+      "fieldName": "oneTimePreKeys",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required", "min"],
+      "fieldValidateRulesMin": "0"
+    },
+    {
+      "documentation": "Signature croisée par la clé maîtresse de l'utilisateur (64 octets).",
+      "fieldName": "crossSignature",
+      "fieldType": "String",
+      "fieldValidateRules": ["minlength", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "128",
+      "fieldValidateRulesMinlength": "128",
+      "fieldValidateRulesPattern": "^[0-9a-f]{128}$"
+    },
+    {
+      "fieldName": "state",
+      "fieldType": "VerificationState",
+      "fieldTypeDocumentation": "État de vérification d'un terminal : seul VERIFIE reçoit des clés.",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "NON_VERIFIE,VERIFIE,REVOQUE"
+    },
+    {
+      "documentation": "Terminal d'archivage déclaré du service (D-28), clés privées dans le coffre.",
+      "fieldName": "archiveTerminal",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "registeredAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "verifiedAt",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "revokedAt",
+      "fieldType": "Instant"
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "collaboration",
+  "name": "VerifiedTerminal",
+  "pagination": "pagination",
+  "relationships": [],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

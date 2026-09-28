@@ -1,0 +1,67 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134420"
+  },
+  "applications": ["collaboration"],
+  "clientRootFolder": "collaboration",
+  "databaseType": "sql",
+  "documentation": "Membre d'un salon, tiré du rattachement et non d'une liste libre. Le suivi\\nd'acquittement de l'invitation trace l'escalade vers le suppléant après\\n10 min (RG-75) ; la temporisation elle-même relève de MS-NOTIFICATION (D-14).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Collaborateur (MS-IAM), ou compte technique du terminal d'archivage.",
+      "fieldName": "userId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "role",
+      "fieldType": "MemberRole",
+      "fieldTypeDocumentation": "Rôle d'un membre ; ARCHIVAGE est réservé au terminal d'archivage déclaré (D-28).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "ANIMATEUR,MEMBRE,OBSERVATEUR,ARCHIVAGE"
+    },
+    {
+      "fieldName": "invitedAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "acknowledgedAt",
+      "fieldType": "Instant"
+    },
+    {
+      "documentation": "Membre suppléé : titulaire non acquitté remplacé par ce membre (RG-75).",
+      "fieldName": "replacesUserId",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "joinedAt",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "leftAt",
+      "fieldType": "Instant"
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "collaboration",
+  "name": "RoomMember",
+  "pagination": "pagination",
+  "relationships": [
+    {
+      "otherEntityField": "code",
+      "otherEntityName": "room",
+      "relationshipName": "room",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

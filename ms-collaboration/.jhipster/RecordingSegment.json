@@ -1,0 +1,54 @@
+{
+  "annotations": {
+    "changelogDate": "20260928135120"
+  },
+  "applications": ["collaboration"],
+  "clientRootFolder": "collaboration",
+  "databaseType": "sql",
+  "documentation": "Segment enregistré, avec la liste des consentements qui l'autorisent.\\nÉcart CC corrigé : le segment est cité (§6.1.14.1, algorithme 6.61) sans\\nêtre modélisé.",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "startedAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "endedAt",
+      "fieldType": "Instant"
+    },
+    {
+      "documentation": "Identifiant de l'enregistrement (egress LiveKit).",
+      "fieldName": "egressReference",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "255"
+    },
+    {
+      "documentation": "Participants consentants : identifiants (MS-IAM), séparés par des virgules.",
+      "fieldName": "consentingUserIds",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "4000"
+    }
+  ],
+  "microserviceName": "collaboration",
+  "name": "RecordingSegment",
+  "readOnly": true,
+  "relationships": [
+    {
+      "otherEntityField": "sfuRoom",
+      "otherEntityName": "conference",
+      "relationshipName": "conference",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

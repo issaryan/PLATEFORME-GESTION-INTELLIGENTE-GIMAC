@@ -1,0 +1,60 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134220"
+  },
+  "applications": ["collaboration"],
+  "clientRootFolder": "collaboration",
+  "databaseType": "sql",
+  "documentation": "Politique de rétention paramétrée par type de salon (D-11). Valeurs par\\ndéfaut du CC (tableau 6.66) : QUART 180 jours ; THEME 1 an ; INCIDENT 1 an\\naprès clôture du ticket ; CRISE 90 jours après scellement, archive 10 ans.",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "roomType",
+      "fieldType": "RoomType",
+      "fieldTypeDocumentation": "Type de salon (CC tableau 6.66).",
+      "fieldValidateRules": ["required", "unique"],
+      "fieldValues": "QUART,THEME,INCIDENT,CRISE"
+    },
+    {
+      "documentation": "Durée de conservation des messages chiffrés sur le serveur de messagerie.",
+      "fieldName": "messageRetention",
+      "fieldType": "Duration",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "anchor",
+      "fieldType": "RetentionAnchor",
+      "fieldTypeDocumentation": "Point de départ du délai de rétention des messages d'un type de salon.",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "ENVOI_MESSAGE,CLOTURE_RATTACHEMENT,SCELLEMENT_ARCHIVE"
+    },
+    {
+      "documentation": "Archivage par le terminal d'archivage (D-28 : salons de crise et salons liés à un ticket).",
+      "fieldName": "archived",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Rétention de l'archive en années ; 10 ans au moins pour une archive de crise (D-11, RG-53).",
+      "fieldName": "archiveRetentionYears",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["min", "max"],
+      "fieldValidateRulesMax": "99",
+      "fieldValidateRulesMin": "1"
+    },
+    {
+      "fieldName": "updatedAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    }
+  ],
+  "microserviceName": "collaboration",
+  "name": "RoomRetentionPolicy",
+  "relationships": [],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}
