@@ -3,7 +3,8 @@
 # docker-compose.yml est produit par « jhipster docker-compose » (configuration
 # dans .yo-rc.json) et ne doit pas être modifié à la main : on le régénère.
 # Ce fichier ajoute seulement ce que JHipster ne génère pas (D-45, SOC-13) et
-# surcharge ce que le référentiel impose (D-25 : Valkey, D-44 : aucun secret par défaut).
+# surcharge ce que le référentiel impose (D-25 : Valkey, D-44 : aucun secret par défaut,
+# D-50 : Ceph RGW comme dépôt objet WORM).
 #
 # Lancement : ./gimac-dev.sh demarrer   (fusionne les deux fichiers)
 # Secrets : fichier .env local, créé par gimac-dev.sh, jamais versionné (BNF-07).
@@ -78,33 +79,36 @@ services:
     ports:
       - 127.0.0.1:8880:8080
 
-  # ------------------------------------------------ Dépôt objet WORM (SOC-10, RG-04, RG-16)
-  minio:
-    # Image communautaire reconstruite depuis les sources de MinIO (AGPL-3.0) :
-    # l'éditeur ne publie plus d'image officielle (D-47).
-    image: pgsty/minio:RELEASE.2026-08-04T00-00-00Z
-    command: ['server', '/data', '--console-address', ':9001']
+  # ------------------------------------------------ Dépôt objet WORM (SOC-10, RG-04, RG-16, D-50)
+  # Ceph RGW (passerelle S3 de Ceph, verrouillage d'objets en mode conformité),
+  # en mono-nœud de développement sur l'image officielle de Ceph.
+  stockage-objet:
+    image: quay.io/ceph/ceph:v20.2.4
+    entrypoint: ['/ceph-mononoeud.sh']
     environment:
-      MINIO_ROOT_USER: gimac-admin
-      MINIO_ROOT_PASSWORD: ${GIMAC_MINIO_ROOT_PASSWORD:?à définir dans .env}
+      GIMAC_S3_CLE_ACCES: ${GIMAC_S3_CLE_ACCES:?à définir dans .env}
+      GIMAC_S3_CLE_SECRETE: ${GIMAC_S3_CLE_SECRETE:?à définir dans .env}
     volumes:
-      - minio_data:/data
+      - ./stockage-objet/ceph-mononoeud.sh:/ceph-mononoeud.sh:ro
+      - stockage_objet_data:/var/lib/ceph
     ports:
-      - 127.0.0.1:9000:9000
-      - 127.0.0.1:9001:9001
+      - 127.0.0.1:${GIMAC_PORT_S3:-7480}:7480
     healthcheck:
-      test: ['CMD', 'curl', '-fsS', 'http://localhost:9000/minio/health/ready']
+      test: ['CMD', 'curl', '-fsS', 'http://127.0.0.1:7480']
       <<: *sante
+      start_period: 60s
 
-  minio-init:
-    image: pgsty/mc:RELEASE.2026-09-16T00-00-00Z
+  stockage-objet-init:
+    image: amazon/aws-cli:2.37.5
     depends_on:
-      minio:
+      stockage-objet:
         condition: service_healthy
     environment:
-      GIMAC_MINIO_ROOT_PASSWORD: ${GIMAC_MINIO_ROOT_PASSWORD}
+      AWS_ACCESS_KEY_ID: ${GIMAC_S3_CLE_ACCES}
+      AWS_SECRET_ACCESS_KEY: ${GIMAC_S3_CLE_SECRETE}
+      AWS_DEFAULT_REGION: us-east-1
     volumes:
-      - ./minio/init-compartiments.sh:/init-compartiments.sh:ro
+      - ./stockage-objet/init-compartiments.sh:/init-compartiments.sh:ro
     entrypoint: ['/bin/sh', '/init-compartiments.sh']
     restart: 'no'
 
@@ -184,4 +188,4 @@ services:
       - 127.0.0.1:3200:3200
 
 volumes:
-  minio_data: {}
+  stockage_objet_data: {}

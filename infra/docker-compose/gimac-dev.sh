@@ -46,18 +46,15 @@ Choisissez d'autres ports dans .env (variables GIMAC_PORT_*, voir docker-compose
 }
 
 # Secrets locaux générés aléatoirement, jamais versionnés (BNF-07, D-44).
+# Une variable absente d'un .env existant y est ajoutée ; les valeurs présentes sont conservées.
 preparer_env() {
-  local fichier="$ICI/.env"
-  [ -f "$fichier" ] && return
+  local fichier="$ICI/.env" variable
   umask 077
-  {
-    echo "# Secrets locaux de développement, générés par gimac-dev.sh. Ne pas versionner."
-    for variable in GIMAC_KEYCLOAK_ADMIN_PASSWORD GIMAC_GRAFANA_ADMIN_PASSWORD \
-                    GIMAC_MINIO_ROOT_PASSWORD GIMAC_OPENBAO_TOKEN; do
-      echo "$variable=$(openssl rand -hex 24)"
-    done
-  } > "$fichier"
-  echo "Fichier .env créé avec des secrets aléatoires."
+  [ -f "$fichier" ] || echo "# Secrets locaux de développement, générés par gimac-dev.sh. Ne pas versionner." > "$fichier"
+  for variable in GIMAC_KEYCLOAK_ADMIN_PASSWORD GIMAC_GRAFANA_ADMIN_PASSWORD GIMAC_OPENBAO_TOKEN \
+                  GIMAC_S3_CLE_ACCES GIMAC_S3_CLE_SECRETE; do
+    grep -q "^$variable=" "$fichier" || { echo "$variable=$(openssl rand -hex 20)" >> "$fichier"; echo "Secret ajouté à .env : $variable"; }
+  done
 }
 
 images_manquantes() {

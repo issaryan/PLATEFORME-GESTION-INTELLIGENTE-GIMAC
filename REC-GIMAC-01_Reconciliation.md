@@ -8,7 +8,7 @@
 | Établi par | KOAGNE ISSA RYAN, Ingénieur en Informatique et Systèmes d'information |
 | Statut | Référentiel d'implémentation. Décisions D-01 à D-31, y compris les propositions [P], **acceptées par KOAGNE ISSA RYAN le 28/09/2026** ; validation formelle du Product Owner (chef du DES) attendue en revue d'itération |
 | Rôle | Base unique à partir de laquelle le code est écrit ; prime sur les quatre documents pour les points qu'elle tranche |
-| Révision | **v1.1 (28/09/2026)** : ajout des décisions D-32 à D-46 (§4.4), complétées par D-47 à D-49, pour réconcilier **CP-GIMAC-01 v2.0**, qui remplace CP v1.0, et fixer l'infrastructure et le frontend ; aucune disposition de la v1.0 n'est retirée |
+| Révision | **v1.1 (28/09/2026)** : ajout des décisions D-32 à D-46 (§4.4), complétées par D-47 à D-50, pour réconcilier **CP-GIMAC-01 v2.0**, qui remplace CP v1.0, et fixer l'infrastructure et le frontend ; aucune disposition de la v1.0 n'est retirée |
 
 **Légende des décisions**
 - **[R]** : réconciliation déduite des documents eux-mêmes, par application de la règle de préséance (§0).
@@ -415,6 +415,12 @@ Décisions ajoutées le 28/09/2026 à la réception du carnet de produit v2.0 (3
   - **Profil de sécurité des pods** : `baseline` est imposé ; `restricted` est audité et signalé jusqu'au durcissement des pods générés (SOC-07), puis imposé.
   - **Signature des images** : la politique Kyverno est en mode Audit jusqu'à la signature des images par la chaîne (SOC-02), puis en mode Enforce.
   - **Persistance** : les bases PostgreSQL et Kafka générées dans la grappe servent l'environnement INT. En QUAL et PROD, la zone de persistance reste hors de la grappe (CC 5.6.1) : un complément dédié remplacera ces déploiements par des services externes (SOC-04, SOC-07).
+- **D-50 [P] Dépôt objet WORM : Ceph RGW remplace MinIO.** Cette décision remplace D-47 et la ligne « Dépôt objet WORM » de D-45, qui restent consignées pour l'historique ; la mention de MinIO au §1 se lit désormais « stockage objet S3 avec verrouillage d'objets ».
+  - **Motif** : MinIO n'a plus de distribution officielle maintenue (D-47). Parmi les solutions libres, Garage n'implémente pas le verrouillage d'objets S3 ; SeaweedFS l'accepte mais n'appliquait pas le mode conformité à la suppression (anomalies seaweedfs#8350 et #11333, corrigées récemment et encore jeunes). **Ceph RGW** (LGPL, fondation Linux) applique les modes gouvernance et conformité, la version d'objets, la rétention par défaut et la conservation légale ; son WORM a été évalué conforme aux exigences d'archivage électronique SEC 17a-4(f), FINRA 4511(c) et CFTC 1.31, et il offre la réplication entre sites (multisite) exigée par le site de secours.
+  - **Vérifié en DEV le 28/09/2026** : compartiment créé avec verrouillage, rétention COMPLIANCE par défaut, suppression d'une version verrouillée refusée même avec contournement de gouvernance, raccourcissement de rétention refusé, données conservées après redémarrage.
+  - **DEV** : Ceph mono-nœud (moniteur, gestionnaire, un OSD BlueStore sur fichier, passerelle RGW) dans un seul conteneur de l'image officielle `quay.io/ceph/ceph`, amorcé par `infra/docker-compose/stockage-objet/ceph-mononoeud.sh`. Réplication 1 et authentification interne désactivée : configuration interdite hors DEV. Rétention par défaut GOUVERNANCE d'un jour pour garder le poste nettoyable.
+  - **INT, QUAL, PROD** : grappe Ceph de la zone de persistance, déployée avec la Production Informatique (au moins trois nœuds, réplication 3, multisite vers le site de secours), rétention COMPLIANCE de 10 ans (D-11).
+  - **Clients** : les services n'utilisent que le protocole S3 (SDK AWS ou compatible) ; l'initialisation des compartiments utilise l'AWS CLI. Aucun client propre à un éditeur n'est admis.
 
 ---
 
