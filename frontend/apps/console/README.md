@@ -1,32 +1,24 @@
-# React + TypeScript + Vite
+# Console d'administration et d'audit
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Couche de présentation `@gimac/app-console` (D-46, CC 6.3.1).
 
-Currently, two official plugins are available:
+| Élément | Valeur |
+|---|---|
+| Public | administrateurs, RSSI et auditeurs |
+| Zone réseau | zone d'administration hors bande (D-17) |
+| Authentification | certificat client, facteur FIDO2 et sessions courtes |
+| Port de développement | 4202 |
+| Image | `frontend-console` (`docker build --build-arg APPLICATION=console` dans `frontend/`) |
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Généré par `create-vite` (gabarit `react-ts`). La page de démonstration de Vite est remplacée par une page d'accueil provisoire en français, sur les jetons de `@gimac/theme`, en attendant l'enveloppe commune (IHM-01).
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```
+npm run dev:console      # depuis frontend/
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+## Journal des mises à jour
+
+| Date | Commit | Modification |
+|---|---|---|
+| 2026-09-28 | b20a049 | Génération `create-vite`, page d'accueil provisoire, thème, relais /api vers la passerelle |
+| 2026-09-28 | — | Remplacement du README du gabarit Vite par ce README |

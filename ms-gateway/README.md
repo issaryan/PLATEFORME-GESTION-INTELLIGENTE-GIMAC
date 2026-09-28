@@ -1,3 +1,37 @@
+<!-- GIMAC:DEBUT : section du projet, tenue à jour à chaque modification ; la documentation JHipster suit. -->
+# MS-GATEWAY : plateforme DES du GIMAC
+
+Passerelle d'accès et frontière d'entrée : point d'entrée unique des trois couches, authentification déléguée, jeton interne lié au certificat (RFC 8705), routes déclarées, limitation de débit, masquage des numéros de carte, BFF.
+
+| Élément | Valeur |
+|---|---|
+| Domaine d'analyse (CA) | D7 |
+| Épopée du carnet (CP v2.0) | GW |
+| Port | 8080 |
+| Paquet Java | `cm.gimac.des.gateway` |
+| Entités du JDL (2) | PresentationLayer, Route |
+| Règles de gestion (REC-GIMAC-01 §5) | RG-56, RG-58, RG-60, RG-61 |
+| Modèle | `ms-gateway.jdl` |
+
+## État
+
+Squelette généré en JHipster 9.4.0, version cible. Code JHipster brut : domaine JPA, DTO MapStruct, services, ressources REST, changelogs Liquibase, messages fr et en. L'architecture hexagonale, l'outbox, l'inbox et les algorithmes du CC restent à écrire (SOC-01, SOC-05).
+
+## Lancer
+
+- Service seul, en développement : `./mvnw` (dépendances : `docker compose -f src/main/docker/services.yml up -d`).
+- Avec toute la plateforme : `infra/docker-compose/gimac-dev.sh demarrer` à la racine du dépôt.
+- Image de conteneur (Jib, sans Dockerfile, D-48) : `./mvnw -ntp -Pprod verify jib:dockerBuild`.
+
+## Journal des mises à jour
+
+| Date | Commit | Modification |
+|---|---|---|
+| 2026-09-28 | ed4c1d5 | Génération JHipster 9.4.0 du squelette depuis le JDL ; compilation Maven vérifiée. |
+| 2026-09-28 | 9f2250a, c0b91ee | Intégration à `infra/docker-compose` et `infra/kubernetes` générés par JHipster ; cache Valkey (D-25). |
+| 2026-09-28 | — | Ajout de cette section. |
+<!-- GIMAC:FIN -->
+
 # gateway
 
 This application was generated using JHipster 9.4.0, you can find documentation and help at [https://www.jhipster.tech/documentation-archive/v9.4.0](https://www.jhipster.tech/documentation-archive/v9.4.0).

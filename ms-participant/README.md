@@ -1,3 +1,37 @@
+<!-- GIMAC:DEBUT : section du projet, tenue à jour à chaque modification ; la documentation JHipster suit. -->
+# MS-PARTICIPANT : plateforme DES du GIMAC
+
+Référentiel des institutions membres : conventions, services souscrits, correspondants, pièces légales et échéances, annuaire d'escalade, cycle de vie.
+
+| Élément | Valeur |
+|---|---|
+| Domaine d'analyse (CA) | D2 |
+| Épopée du carnet (CP v2.0) | PAR |
+| Port | 8085 |
+| Paquet Java | `cm.gimac.des.participant` |
+| Entités du JDL (9) | Institution, Convention, SubscribedService, Correspondent, LegalDocument, Deadline, Interaction, EscalationContact, StatusTransition |
+| Règles de gestion (REC-GIMAC-01 §5) | RG-10 à RG-14, RG-68, RG-69, RG-70 |
+| Modèle | `ms-participant.jdl` |
+
+## État
+
+Squelette généré en JHipster 8.11.0 ; régénération en 9.4.0 prévue lors du passage au gabarit hexagonal (D-43). Code JHipster brut : domaine JPA, DTO MapStruct, services, ressources REST, changelogs Liquibase, messages fr et en. L'architecture hexagonale, l'outbox, l'inbox et les algorithmes du CC restent à écrire (SOC-01, SOC-05).
+
+## Lancer
+
+- Service seul, en développement : `./mvnw` (dépendances : `docker compose -f src/main/docker/services.yml up -d`).
+- Avec toute la plateforme : `infra/docker-compose/gimac-dev.sh demarrer` à la racine du dépôt.
+- Image de conteneur (Jib, sans Dockerfile, D-48) : `./mvnw -ntp -Pprod verify jib:dockerBuild`.
+
+## Journal des mises à jour
+
+| Date | Commit | Modification |
+|---|---|---|
+| 2026-09-28 | e9d11b1 | Génération JHipster 8.11.0 du squelette depuis le JDL ; compilation Maven vérifiée. |
+| 2026-09-28 | 9f2250a, c0b91ee | Intégration à `infra/docker-compose` et `infra/kubernetes` générés par JHipster ; cache Valkey (D-25). |
+| 2026-09-28 | — | Ajout de cette section. |
+<!-- GIMAC:FIN -->
+
 # participant
 
 This application was generated using JHipster 8.11.0, you can find documentation and help at [https://www.jhipster.tech/documentation-archive/v8.11.0](https://www.jhipster.tech/documentation-archive/v8.11.0).

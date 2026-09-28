@@ -1,3 +1,37 @@
+<!-- GIMAC:DEBUT : section du projet, tenue à jour à chaque modification ; la documentation JHipster suit. -->
+# MS-DOCUMENT : plateforme DES du GIMAC
+
+Gestion documentaire probante : dépôt WORM (Ceph RGW, D-50), empreinte SHA-256, conservation légale, journal de consultation.
+
+| Élément | Valeur |
+|---|---|
+| Domaine d'analyse (CA) | D1 |
+| Épopée du carnet (CP v2.0) | DOC |
+| Port | 8083 |
+| Paquet Java | `cm.gimac.des.document` |
+| Entités du JDL (7) | DocumentTypePolicy, DocumentLineage, Document, Consultation, PurgeRequest, IntegrityCheck, IntegrityMismatch |
+| Règles de gestion (REC-GIMAC-01 §5) | RG-04, RG-05, RG-06, RG-16 |
+| Modèle | `ms-document.jdl` |
+
+## État
+
+Squelette généré en JHipster 8.11.0 ; régénération en 9.4.0 prévue lors du passage au gabarit hexagonal (D-43). Code JHipster brut : domaine JPA, DTO MapStruct, services, ressources REST, changelogs Liquibase, messages fr et en. L'architecture hexagonale, l'outbox, l'inbox et les algorithmes du CC restent à écrire (SOC-01, SOC-05).
+
+## Lancer
+
+- Service seul, en développement : `./mvnw` (dépendances : `docker compose -f src/main/docker/services.yml up -d`).
+- Avec toute la plateforme : `infra/docker-compose/gimac-dev.sh demarrer` à la racine du dépôt.
+- Image de conteneur (Jib, sans Dockerfile, D-48) : `./mvnw -ntp -Pprod verify jib:dockerBuild`.
+
+## Journal des mises à jour
+
+| Date | Commit | Modification |
+|---|---|---|
+| 2026-09-28 | 6c7eb44 | Génération JHipster 8.11.0 du squelette depuis le JDL ; compilation Maven vérifiée. |
+| 2026-09-28 | 9f2250a, c0b91ee | Intégration à `infra/docker-compose` et `infra/kubernetes` générés par JHipster ; cache Valkey (D-25). |
+| 2026-09-28 | — | Ajout de cette section. |
+<!-- GIMAC:FIN -->
+
 # document
 
 This application was generated using JHipster 8.11.0, you can find documentation and help at [https://www.jhipster.tech/documentation-archive/v8.11.0](https://www.jhipster.tech/documentation-archive/v8.11.0).

@@ -1,3 +1,37 @@
+<!-- GIMAC:DEBUT : section du projet, tenue à jour à chaque modification ; la documentation JHipster suit. -->
+# MS-AUDIT : plateforme DES du GIMAC
+
+Registre d'audit infalsifiable : arbre de Merkle RFC 9162, preuves d'inclusion et de cohérence, racines de période horodatées et publiées.
+
+| Élément | Valeur |
+|---|---|
+| Domaine d'analyse (CA) | D1 |
+| Épopée du carnet (CP v2.0) | AUD |
+| Port | 8082 |
+| Paquet Java | `cm.gimac.des.audit` |
+| Entités du JDL (7) | AuditEvent, DeduplicationEntry, MerkleNode, PeriodRoot, ConsistencyProof, InclusionProof, VerificationRecord |
+| Règles de gestion (REC-GIMAC-01 §5) | RG-07, RG-08, RG-09 |
+| Modèle | `ms-audit.jdl` |
+
+## État
+
+Squelette généré en JHipster 9.4.0, version cible. Code JHipster brut : domaine JPA, DTO MapStruct, services, ressources REST, changelogs Liquibase, messages fr et en. L'architecture hexagonale, l'outbox, l'inbox et les algorithmes du CC restent à écrire (SOC-01, SOC-05).
+
+## Lancer
+
+- Service seul, en développement : `./mvnw` (dépendances : `docker compose -f src/main/docker/services.yml up -d`).
+- Avec toute la plateforme : `infra/docker-compose/gimac-dev.sh demarrer` à la racine du dépôt.
+- Image de conteneur (Jib, sans Dockerfile, D-48) : `./mvnw -ntp -Pprod verify jib:dockerBuild`.
+
+## Journal des mises à jour
+
+| Date | Commit | Modification |
+|---|---|---|
+| 2026-09-28 | 401e417 | Génération JHipster 9.4.0 du squelette depuis le JDL ; compilation Maven vérifiée. |
+| 2026-09-28 | 9f2250a, c0b91ee | Intégration à `infra/docker-compose` et `infra/kubernetes` générés par JHipster ; cache Valkey (D-25). |
+| 2026-09-28 | — | Ajout de cette section. |
+<!-- GIMAC:FIN -->
+
 # audit
 
 This application was generated using JHipster 9.4.0, you can find documentation and help at [https://www.jhipster.tech/documentation-archive/v9.4.0](https://www.jhipster.tech/documentation-archive/v9.4.0).

@@ -1,3 +1,37 @@
+<!-- GIMAC:DEBUT : section du projet, tenue à jour à chaque modification ; la documentation JHipster suit. -->
+# MS-IAM : plateforme DES du GIMAC
+
+Identités, rôles à cinq niveaux (D-31), délégations (élévation 60 min et suppléance 72 h, D-20, D-36), authentification forte FIDO2, revue trimestrielle des accès.
+
+| Élément | Valeur |
+|---|---|
+| Domaine d'analyse (CA) | D1 |
+| Épopée du carnet (CP v2.0) | IAM |
+| Port | 8081 |
+| Paquet Java | `cm.gimac.des.iam` |
+| Entités du JDL (10) | Collaborator, Role, Permission, RoleGrant, Delegation, UserSession, Assignment, Availability, AccessReview, AccessReviewDecision |
+| Règles de gestion (REC-GIMAC-01 §5) | RG-01, RG-02, RG-57, RG-65, RG-66, RG-67, RG-74 |
+| Modèle | `ms-iam.jdl` |
+
+## État
+
+Squelette généré en JHipster 9.4.0, version cible. Code JHipster brut : domaine JPA, DTO MapStruct, services, ressources REST, changelogs Liquibase, messages fr et en. L'architecture hexagonale, l'outbox, l'inbox et les algorithmes du CC restent à écrire (SOC-01, SOC-05).
+
+## Lancer
+
+- Service seul, en développement : `./mvnw` (dépendances : `docker compose -f src/main/docker/services.yml up -d`).
+- Avec toute la plateforme : `infra/docker-compose/gimac-dev.sh demarrer` à la racine du dépôt.
+- Image de conteneur (Jib, sans Dockerfile, D-48) : `./mvnw -ntp -Pprod verify jib:dockerBuild`.
+
+## Journal des mises à jour
+
+| Date | Commit | Modification |
+|---|---|---|
+| 2026-09-28 | c1b7131 | Génération JHipster 9.4.0 du squelette depuis le JDL ; compilation Maven vérifiée. |
+| 2026-09-28 | 9f2250a, c0b91ee | Intégration à `infra/docker-compose` et `infra/kubernetes` générés par JHipster ; cache Valkey (D-25). |
+| 2026-09-28 | — | Ajout de cette section. |
+<!-- GIMAC:FIN -->
+
 # iam
 
 This application was generated using JHipster 9.4.0, you can find documentation and help at [https://www.jhipster.tech/documentation-archive/v9.4.0](https://www.jhipster.tech/documentation-archive/v9.4.0).

@@ -1,3 +1,37 @@
+<!-- GIMAC:DEBUT : section du projet, tenue à jour à chaque modification ; la documentation JHipster suit. -->
+# MS-PILOTAGE : plateforme DES du GIMAC
+
+Pilotage : tableaux Kanban, projets et jalons, risques, fiches d'action, comités et décisions converties en tâches (D-27).
+
+| Élément | Valeur |
+|---|---|
+| Domaine d'analyse (CA) | D5 |
+| Épopée du carnet (CP v2.0) | PIL |
+| Port | 8091 |
+| Paquet Java | `cm.gimac.des.pilotage` |
+| Entités du JDL (17) | Board, BoardColumn, Task, AcceptanceCriterion, WipOverride, Project, Milestone, MilestoneApproval, Risk, RiskAssessment, ActionSheet, Meeting, MeetingAttendance, Decision, CollaboratorProjection, AbsenceProjection, ProcessedEvent |
+| Règles de gestion (REC-GIMAC-01 §5) | RG-20, RG-46, RG-47, RG-49, RG-50, RG-51 |
+| Modèle | `ms-pilotage.jdl` |
+
+## État
+
+Squelette généré en JHipster 8.11.0 ; régénération en 9.4.0 prévue lors du passage au gabarit hexagonal (D-43). Code JHipster brut : domaine JPA, DTO MapStruct, services, ressources REST, changelogs Liquibase, messages fr et en. L'architecture hexagonale, l'outbox, l'inbox et les algorithmes du CC restent à écrire (SOC-01, SOC-05).
+
+## Lancer
+
+- Service seul, en développement : `./mvnw` (dépendances : `docker compose -f src/main/docker/services.yml up -d`).
+- Avec toute la plateforme : `infra/docker-compose/gimac-dev.sh demarrer` à la racine du dépôt.
+- Image de conteneur (Jib, sans Dockerfile, D-48) : `./mvnw -ntp -Pprod verify jib:dockerBuild`.
+
+## Journal des mises à jour
+
+| Date | Commit | Modification |
+|---|---|---|
+| 2026-09-28 | ae9f579 | Génération JHipster 8.11.0 du squelette depuis le JDL ; compilation Maven vérifiée. |
+| 2026-09-28 | 9f2250a, c0b91ee | Intégration à `infra/docker-compose` et `infra/kubernetes` générés par JHipster ; cache Valkey (D-25). |
+| 2026-09-28 | — | Ajout de cette section. |
+<!-- GIMAC:FIN -->
+
 # pilotage
 
 This application was generated using JHipster 8.11.0, you can find documentation and help at [https://www.jhipster.tech/documentation-archive/v8.11.0](https://www.jhipster.tech/documentation-archive/v8.11.0).
