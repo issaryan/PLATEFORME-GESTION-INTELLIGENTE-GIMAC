@@ -70,6 +70,54 @@ services:
     volumes:
       - ./observabilite/grafana/provisioning:/etc/grafana/provisioning:ro
 
+  # ------------------------------------------------ Couches de présentation (D-46, D-51)
+  # Images construites depuis ../../frontend (Dockerfile commun, argument APPLICATION),
+  # servies par nginx sans privilège ; /api, /oauth2 et /login relayés vers la passerelle (BFF).
+  frontend-departement:
+    # Application du département
+    image: frontend-departement
+    build:
+      context: ../../frontend
+      args:
+        APPLICATION: departement
+    environment:
+      GIMAC_PASSERELLE: http://gateway:8080
+    ports:
+      - 127.0.0.1:${GIMAC_PORT_FRONTEND_DEPARTEMENT:-4200}:8080
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:8080/sante']
+      <<: *sante
+
+  frontend-portail:
+    # Portail des participants (DMZ)
+    image: frontend-portail
+    build:
+      context: ../../frontend
+      args:
+        APPLICATION: portail
+    environment:
+      GIMAC_PASSERELLE: http://gateway:8080
+    ports:
+      - 127.0.0.1:${GIMAC_PORT_FRONTEND_PORTAIL:-4201}:8080
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:8080/sante']
+      <<: *sante
+
+  frontend-console:
+    # Console d'administration et d'audit (hors bande)
+    image: frontend-console
+    build:
+      context: ../../frontend
+      args:
+        APPLICATION: console
+    environment:
+      GIMAC_PASSERELLE: http://gateway:8080
+    ports:
+      - 127.0.0.1:${GIMAC_PORT_FRONTEND_CONSOLE:-4202}:8080
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:8080/sante']
+      <<: *sante
+
   # ------------------------------------------------ Registre des schémas (SOC-03, D-37)
   registre-schemas:
     image: apicurio/apicurio-registry:3.3.3

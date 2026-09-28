@@ -1,0 +1,48 @@
+/* Mise en page de la page d'accueil provisoire, sur les jetons de @gimac/theme. */
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.barre-superieure {
+  display: flex;
+  gap: calc(var(--gimac-grille) * 2);
+  align-items: center;
+  padding: var(--gimac-grille) calc(var(--gimac-grille) * 3);
+  background: var(--gimac-blanc);
+  border-bottom: var(--gimac-bordure);
+}
+
+.marque {
+  font-weight: 700;
+  color: var(--gimac-bleu-institutionnel);
+}
+
+.nom-couche {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--gimac-gris-structure);
+}
+
+.contenu {
+  flex: 1;
+  padding: calc(var(--gimac-grille) * 4) calc(var(--gimac-grille) * 3);
+}
+
+.contenu h1 {
+  margin-top: 0;
+  font-size: var(--gimac-titre-1);
+  color: var(--gimac-bleu-institutionnel);
+}
+
+.public {
+  color: var(--gimac-gris-structure);
+}
+
+.pied {
+  padding: var(--gimac-grille) calc(var(--gimac-grille) * 3);
+  border-top: var(--gimac-bordure);
+  color: var(--gimac-gris-structure);
+  font-size: 10pt;
+}

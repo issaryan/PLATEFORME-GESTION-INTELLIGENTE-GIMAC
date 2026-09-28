@@ -1,0 +1,7 @@
+{
+  "name": "@gimac/theme",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Jetons de conception du thème de la plateforme (CC-GIMAC-01 §6.2)",
+  "exports": { "./jetons.css": "./jetons.css" }
+}

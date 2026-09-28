@@ -8,7 +8,7 @@
 | Établi par | KOAGNE ISSA RYAN, Ingénieur en Informatique et Systèmes d'information |
 | Statut | Référentiel d'implémentation. Décisions D-01 à D-31, y compris les propositions [P], **acceptées par KOAGNE ISSA RYAN le 28/09/2026** ; validation formelle du Product Owner (chef du DES) attendue en revue d'itération |
 | Rôle | Base unique à partir de laquelle le code est écrit ; prime sur les quatre documents pour les points qu'elle tranche |
-| Révision | **v1.1 (28/09/2026)** : ajout des décisions D-32 à D-46 (§4.4), complétées par D-47 à D-50, pour réconcilier **CP-GIMAC-01 v2.0**, qui remplace CP v1.0, et fixer l'infrastructure et le frontend ; aucune disposition de la v1.0 n'est retirée |
+| Révision | **v1.1 (28/09/2026)** : ajout des décisions D-32 à D-46 (§4.4), complétées par D-47 à D-51, pour réconcilier **CP-GIMAC-01 v2.0**, qui remplace CP v1.0, et fixer l'infrastructure et le frontend ; aucune disposition de la v1.0 n'est retirée |
 
 **Légende des décisions**
 - **[R]** : réconciliation déduite des documents eux-mêmes, par application de la règle de préséance (§0).
@@ -421,6 +421,13 @@ Décisions ajoutées le 28/09/2026 à la réception du carnet de produit v2.0 (3
   - **DEV** : Ceph mono-nœud (moniteur, gestionnaire, un OSD BlueStore sur fichier, passerelle RGW) dans un seul conteneur de l'image officielle `quay.io/ceph/ceph`, amorcé par `infra/docker-compose/stockage-objet/ceph-mononoeud.sh`. Réplication 1 et authentification interne désactivée : configuration interdite hors DEV. Rétention par défaut GOUVERNANCE d'un jour pour garder le poste nettoyable.
   - **INT, QUAL, PROD** : grappe Ceph de la zone de persistance, déployée avec la Production Informatique (au moins trois nœuds, réplication 3, multisite vers le site de secours), rétention COMPLIANCE de 10 ans (D-11).
   - **Clients** : les services n'utilisent que le protocole S3 (SDK AWS ou compatible) ; l'initialisation des compartiments utilise l'AWS CLI. Aucun client propre à un éditeur n'est admis.
+- **D-51 [P] Initialisation et conteneurisation du frontend.** Précise D-46 sans la retirer :
+  - **Génération** : les trois applications sont produites par le générateur officiel `create-vite` (gabarit `react-ts`), puis rattachées à l'espace de travail npm `frontend/` avec le paquet `@gimac/theme` (jetons du CC 6.2).
+  - **Version de React** : **React 19.2**, celle du gabarit officiel et la ligne maintenue, remplace React 18.3 de D-46 et la mention « React 18 » du §1, qui restent consignées pour l'historique. Le projet n'utilise pas les composants serveur React : les failles propres à ce mécanisme ne le concernent pas.
+  - **Image** : un Dockerfile commun (`frontend/Dockerfile`, argument `APPLICATION`) construit chaque couche avec Node 22 puis la sert par `nginx-unprivileged` sur le port 8080, sous un utilisateur non root, compatible avec un système de fichiers en lecture seule. C'est le seul fichier de conteneur écrit à la main : ni JHipster ni `docker init` ne couvrent un frontend séparé (D-48).
+  - **Configuration nginx** : politique de sécurité du contenu stricte (`default-src 'self'`, `frame-ancestors 'none'`), `nosniff`, `no-referrer`, `index.html` jamais mis en cache ; `/api`, `/oauth2` et `/login` relayés vers MS-GATEWAY (BFF, RG-58), avec une résolution DNS différée pour que la couche démarre même sans passerelle.
+  - **Docker Compose** : services `frontend-departement`, `frontend-portail` et `frontend-console` dans `docker-compose.gimac.yml`, ports 4200, 4201 et 4202 réglables par `.env`.
+  - **Kubernetes** : `infra/kubernetes-gimac/frontend.yaml`, deux répliques par couche, profil `restricted`, segment `presentation` qui ne reçoit que le contrôleur d'entrée et ne joint que la passerelle ; l'étiquette `gimac.cm/zone` rappelle la zone d'origine (DMZ pour le portail, applicative pour l'application du département, administration pour la console).
 
 ---
 

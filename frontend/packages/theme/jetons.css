@@ -1,0 +1,58 @@
+/*
+ * Jetons de conception de la plateforme DES du GIMAC (CC-GIMAC-01 §6.2, IHM-02).
+ * Palette réduite, angles droits, bordures de 1 px, aucune ombre ni dégradé.
+ * Une teinte de statut n'est jamais portée seule : toujours doublée d'un texte ou d'un pictogramme.
+ */
+:root {
+  --gimac-bleu-institutionnel: rgb(21 86 158);
+  --gimac-gris-structure: rgb(92 98 104);
+  --gimac-fond-page: rgb(245 246 248);
+  --gimac-fond-cartouche: rgb(234 240 247);
+  --gimac-texte-principal: rgb(20 22 26);
+  --gimac-statut-nominal: rgb(34 110 72);
+  --gimac-statut-surveiller: rgb(158 106 21);
+  --gimac-statut-critique: rgb(158 38 38);
+  --gimac-blanc: rgb(255 255 255);
+
+  /* Typographie : base 14 pt, titres 24, 18 et 16 pt ; chiffres à chasse fixe. */
+  --gimac-police: 'Inter', system-ui, sans-serif;
+  --gimac-taille-base: 14pt;
+  --gimac-titre-1: 24pt;
+  --gimac-titre-2: 18pt;
+  --gimac-titre-3: 16pt;
+
+  /* Grille de 8 pixels. */
+  --gimac-grille: 8px;
+  --gimac-bordure: 1px solid var(--gimac-gris-structure);
+  --gimac-hauteur-bouton: 40px;
+  --gimac-rayon: 0;
+}
+
+/* Mode sombre (CC §6.2.2) : inversion des fonds, teintes de statut conservées. */
+:root[data-theme='sombre'] {
+  --gimac-fond-page: rgb(24 26 30);
+  --gimac-fond-cartouche: rgb(36 39 45);
+  --gimac-texte-principal: rgb(236 238 241);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  border-radius: var(--gimac-rayon);
+  box-shadow: none;
+}
+
+body {
+  margin: 0;
+  font-family: var(--gimac-police);
+  font-size: var(--gimac-taille-base);
+  font-variant-numeric: tabular-nums;
+  color: var(--gimac-texte-principal);
+  background: var(--gimac-fond-page);
+}
+
+:focus-visible {
+  outline: 2px solid var(--gimac-bleu-institutionnel);
+  outline-offset: 2px;
+}

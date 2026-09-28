@@ -9,6 +9,7 @@ kind: Kustomization
 resources:
   - ../kubernetes
   - valkey.yaml
+  - frontend.yaml
   - politiques-reseau.yaml
   - kyverno-images-signees.yaml
 

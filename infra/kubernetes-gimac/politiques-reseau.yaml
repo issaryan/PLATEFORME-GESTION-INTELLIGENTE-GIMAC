@@ -54,6 +54,12 @@ spec:
               app.kubernetes.io/name: prometheus
       ports:
         - { protocol: TCP, port: 8080 }
+    - from:
+        - podSelector:
+            matchLabels:
+              gimac.cm/segment: presentation
+      ports:
+        - { protocol: TCP, port: 8080 }
 ---
 # Services métier : appelés par la passerelle, entre eux, et observés par Prometheus.
 apiVersion: networking.k8s.io/v1
@@ -220,3 +226,29 @@ spec:
               - { key: gimac.cm/segment, operator: In, values: [dmz, socle, referentiels, exploitation, pilotage] }
       ports:
         - { protocol: TCP, port: 8080, endPort: 8093 }
+---
+# Couches de présentation : reçues du contrôleur d'entrée, ne joignent que la passerelle (BFF).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: presentation
+  namespace: gimac-des
+spec:
+  podSelector:
+    matchLabels:
+      gimac.cm/segment: presentation
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+      ports:
+        - { protocol: TCP, port: 8080 }
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              gimac.cm/segment: dmz
+      ports:
+        - { protocol: TCP, port: 8080 }

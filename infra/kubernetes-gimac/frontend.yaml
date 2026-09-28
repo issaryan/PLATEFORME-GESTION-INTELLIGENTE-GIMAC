@@ -1,0 +1,267 @@
+# Couches de présentation (D-46, D-51) : nginx sans privilège, conforme au profil restricted.
+# Zone réseau d'origine (CC 5.6.1, D-24) : portail en DMZ, application du département en zone
+# applicative, console en zone d'administration hors bande. Seule la passerelle est jointe.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-departement
+  namespace: gimac-des
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: frontend-departement
+  template:
+    metadata:
+      labels:
+        app: frontend-departement
+        gimac.cm/segment: presentation
+        gimac.cm/zone: applicative
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: frontend-departement
+          image: registre.gimac.local/des/frontend-departement:0.1.0
+          env:
+            - name: GIMAC_PASSERELLE
+              value: http://gateway.gimac-des.svc.cluster.local:8080
+            - name: GIMAC_RESOLVEUR
+              value: kube-dns.kube-system.svc.cluster.local
+          ports:
+            - name: http
+              containerPort: 8080
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ['ALL']
+          resources:
+            requests: { cpu: 50m, memory: 32Mi }
+            limits: { cpu: 250m, memory: 128Mi }
+          readinessProbe:
+            httpGet: { path: /sante, port: http }
+          livenessProbe:
+            httpGet: { path: /sante, port: http }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+            - { name: cache, mountPath: /var/cache/nginx }
+            - { name: conf, mountPath: /etc/nginx/conf.d }
+      volumes:
+        - { name: tmp, emptyDir: {} }
+        - { name: cache, emptyDir: {} }
+        - { name: conf, emptyDir: {} }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-departement
+  namespace: gimac-des
+spec:
+  selector:
+    app: frontend-departement
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: frontend-departement
+  namespace: gimac-des
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: departement.des.gimac.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend-departement
+                port:
+                  name: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-portail
+  namespace: gimac-des
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: frontend-portail
+  template:
+    metadata:
+      labels:
+        app: frontend-portail
+        gimac.cm/segment: presentation
+        gimac.cm/zone: dmz
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: frontend-portail
+          image: registre.gimac.local/des/frontend-portail:0.1.0
+          env:
+            - name: GIMAC_PASSERELLE
+              value: http://gateway.gimac-des.svc.cluster.local:8080
+            - name: GIMAC_RESOLVEUR
+              value: kube-dns.kube-system.svc.cluster.local
+          ports:
+            - name: http
+              containerPort: 8080
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ['ALL']
+          resources:
+            requests: { cpu: 50m, memory: 32Mi }
+            limits: { cpu: 250m, memory: 128Mi }
+          readinessProbe:
+            httpGet: { path: /sante, port: http }
+          livenessProbe:
+            httpGet: { path: /sante, port: http }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+            - { name: cache, mountPath: /var/cache/nginx }
+            - { name: conf, mountPath: /etc/nginx/conf.d }
+      volumes:
+        - { name: tmp, emptyDir: {} }
+        - { name: cache, emptyDir: {} }
+        - { name: conf, emptyDir: {} }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-portail
+  namespace: gimac-des
+spec:
+  selector:
+    app: frontend-portail
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: frontend-portail
+  namespace: gimac-des
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: portail.des.gimac.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend-portail
+                port:
+                  name: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-console
+  namespace: gimac-des
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: frontend-console
+  template:
+    metadata:
+      labels:
+        app: frontend-console
+        gimac.cm/segment: presentation
+        gimac.cm/zone: administration
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: frontend-console
+          image: registre.gimac.local/des/frontend-console:0.1.0
+          env:
+            - name: GIMAC_PASSERELLE
+              value: http://gateway.gimac-des.svc.cluster.local:8080
+            - name: GIMAC_RESOLVEUR
+              value: kube-dns.kube-system.svc.cluster.local
+          ports:
+            - name: http
+              containerPort: 8080
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ['ALL']
+          resources:
+            requests: { cpu: 50m, memory: 32Mi }
+            limits: { cpu: 250m, memory: 128Mi }
+          readinessProbe:
+            httpGet: { path: /sante, port: http }
+          livenessProbe:
+            httpGet: { path: /sante, port: http }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+            - { name: cache, mountPath: /var/cache/nginx }
+            - { name: conf, mountPath: /etc/nginx/conf.d }
+      volumes:
+        - { name: tmp, emptyDir: {} }
+        - { name: cache, emptyDir: {} }
+        - { name: conf, emptyDir: {} }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-console
+  namespace: gimac-des
+spec:
+  selector:
+    app: frontend-console
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: frontend-console
+  namespace: gimac-des
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: console.des.gimac.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend-console
+                port:
+                  name: http
