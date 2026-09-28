@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+    <!--
+        Added the constraints for entity AccessReviewDecision.
+    -->
+    <changeSet id="20231217215407-2" author="jhipster">
+
+        <addForeignKeyConstraint baseColumnNames="review_id"
+                                 baseTableName="access_review_decision"
+                                 constraintName="fk_access_review_decision__review_id"
+                                 referencedColumnNames="id"
+                                 referencedTableName="access_review"
+                                 />
+
+        <addForeignKeyConstraint baseColumnNames="collaborator_id"
+                                 baseTableName="access_review_decision"
+                                 constraintName="fk_access_review_decision__collaborator_id"
+                                 referencedColumnNames="id"
+                                 referencedTableName="collaborator"
+                                 />
+    </changeSet>
+</databaseChangeLog>

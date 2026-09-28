@@ -1,0 +1,52 @@
+{
+  "annotations": {
+    "changelogDate": "20231217215107"
+  },
+  "applications": ["iam"],
+  "clientRootFolder": "iam",
+  "databaseType": "sql",
+  "documentation": "Rattachement à un service : historique immuable (RG-67, IAM-08).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "department",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "100"
+    },
+    {
+      "fieldName": "unit",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "100"
+    },
+    {
+      "fieldName": "startsAt",
+      "fieldType": "LocalDate",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "endsAt",
+      "fieldType": "LocalDate"
+    }
+  ],
+  "microserviceName": "iam",
+  "name": "Assignment",
+  "pagination": "pagination",
+  "relationships": [
+    {
+      "otherEntityField": "federatedId",
+      "otherEntityName": "collaborator",
+      "relationshipName": "collaborator",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

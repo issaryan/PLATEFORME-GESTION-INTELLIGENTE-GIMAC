@@ -1,0 +1,72 @@
+{
+  "annotations": {
+    "changelogDate": "20231217215007"
+  },
+  "applications": ["iam"],
+  "clientRootFolder": "iam",
+  "databaseType": "sql",
+  "documentation": "Session liée au certificat client (RFC 8705), révocable (IAM-03, GW-05).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Empreinte SHA-256 du certificat client, encodée en base64url.",
+      "fieldName": "certificateThumbprint",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "64"
+    },
+    {
+      "documentation": "Méthodes d'authentification (amr), séparées par des virgules.",
+      "fieldName": "authMethods",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "255"
+    },
+    {
+      "fieldName": "issuedAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "expiresAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "state",
+      "fieldType": "SessionState",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "ACTIVE,EXPIRED,REVOKED"
+    },
+    {
+      "fieldName": "revokedAt",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "revocationReason",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "255"
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "iam",
+  "name": "UserSession",
+  "pagination": "pagination",
+  "relationships": [
+    {
+      "otherEntityField": "federatedId",
+      "otherEntityName": "collaborator",
+      "relationshipName": "collaborator",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

@@ -1,0 +1,74 @@
+{
+  "annotations": {
+    "changelogDate": "20231217214807"
+  },
+  "applications": ["iam"],
+  "clientRootFolder": "iam",
+  "databaseType": "sql",
+  "documentation": "Octroi d'un rôle à un collaborateur, avec approbation à quatre yeux\\n(IAM-04, RG-02 : le demandeur et l'approbateur sont distincts).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "state",
+      "fieldType": "GrantState",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "PROPOSE,APPROUVE,REVOQUE"
+    },
+    {
+      "fieldName": "requestedBy",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "requestedAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "approvedBy",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "approvedAt",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "revokedAt",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "revocationReason",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "500"
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "iam",
+  "name": "RoleGrant",
+  "pagination": "pagination",
+  "relationships": [
+    {
+      "otherEntityField": "federatedId",
+      "otherEntityName": "collaborator",
+      "relationshipName": "collaborator",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    },
+    {
+      "otherEntityField": "code",
+      "otherEntityName": "role",
+      "relationshipName": "role",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

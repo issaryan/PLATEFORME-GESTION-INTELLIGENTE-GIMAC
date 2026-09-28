@@ -1,0 +1,54 @@
+{
+  "annotations": {
+    "changelogDate": "20231217215307"
+  },
+  "applications": ["iam"],
+  "clientRootFolder": "iam",
+  "databaseType": "sql",
+  "documentation": "Campagne trimestrielle de réexamen des accès, scellée à la clôture (RG-66, IAM-10).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "period",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "unique", "maxlength"],
+      "fieldValidateRulesMaxlength": "20"
+    },
+    {
+      "fieldName": "state",
+      "fieldType": "ReviewState",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "OUVERTE,CLOSE"
+    },
+    {
+      "fieldName": "openedAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "approverId",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "closedAt",
+      "fieldType": "Instant"
+    },
+    {
+      "documentation": "Empreinte SHA-256 du réexamen scellé, en hexadécimal.",
+      "fieldName": "digest",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "64"
+    }
+  ],
+  "microserviceName": "iam",
+  "name": "AccessReview",
+  "pagination": "pagination",
+  "relationships": [],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

@@ -1,0 +1,56 @@
+{
+  "annotations": {
+    "changelogDate": "20231217214707"
+  },
+  "applications": ["iam"],
+  "clientRootFolder": "iam",
+  "databaseType": "sql",
+  "documentation": "Permission unitaire, ventilée par microservice (matrice des permissions, UC-SOC-05).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "code",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "unique", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "80",
+      "fieldValidateRulesPattern": "^[A-Z0-9_]+$"
+    },
+    {
+      "fieldName": "resource",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "100"
+    },
+    {
+      "fieldName": "action",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "50"
+    },
+    {
+      "documentation": "Microservice ou domaine cible, par exemple ms-monitoring.",
+      "fieldName": "targetDomain",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "100"
+    }
+  ],
+  "microserviceName": "iam",
+  "name": "Permission",
+  "relationships": [
+    {
+      "otherEntityField": "code",
+      "otherEntityName": "role",
+      "otherEntityRelationshipName": "permissions",
+      "relationshipName": "roles",
+      "relationshipSide": "right",
+      "relationshipType": "many-to-many"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

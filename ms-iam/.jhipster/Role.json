@@ -1,0 +1,71 @@
+{
+  "annotations": {
+    "changelogDate": "20231217214607"
+  },
+  "applications": ["iam"],
+  "clientRootFolder": "iam",
+  "databaseType": "sql",
+  "documentation": "Rôle applicatif, composé de permissions (CC §6.1.2.1).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "code",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "unique", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "80",
+      "fieldValidateRulesPattern": "^[A-Z0-9_]+$"
+    },
+    {
+      "fieldName": "label",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "255"
+    },
+    {
+      "fieldName": "level",
+      "fieldType": "HabilitationLevel",
+      "fieldTypeDocumentation": "Niveaux d'habilitation du CCT (BF-02), du moins au plus privilégié.\\nDécision D-31 (REC-GIMAC-01) : l'échelle du CCT prévaut ; les catégories du\\nCC §6.1.2.1 (administrateur, responsable, opérateur...) deviennent des rôles.",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "CONSULTATION,EXECUTION,APPROBATION,ADMINISTRATION_METIER,AUDIT_SECURITE"
+    },
+    {
+      "fieldName": "family",
+      "fieldType": "RoleFamily",
+      "fieldTypeDocumentation": "Famille de rôles : interne au groupement, ou portail des participants (D-21).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "INTERNE,PORTAIL"
+    },
+    {
+      "fieldName": "visibilityScope",
+      "fieldType": "VisibilityScope",
+      "fieldTypeDocumentation": "Périmètre de visibilité projeté jusqu'aux politiques de lignes (RLS).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "TOUTES_INSTITUTIONS,UNE_INSTITUTION,UN_SERVICE"
+    },
+    {
+      "documentation": "Groupe de l'annuaire traduit en ce rôle, s'il existe.",
+      "fieldName": "directoryGroup",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "255"
+    }
+  ],
+  "microserviceName": "iam",
+  "name": "Role",
+  "relationships": [
+    {
+      "otherEntityField": "code",
+      "otherEntityName": "permission",
+      "otherEntityRelationshipName": "roles",
+      "relationshipName": "permissions",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-many"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

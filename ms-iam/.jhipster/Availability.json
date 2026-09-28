@@ -1,0 +1,73 @@
+{
+  "annotations": {
+    "changelogDate": "20231217215207"
+  },
+  "applications": ["iam"],
+  "clientRootFolder": "iam",
+  "databaseType": "sql",
+  "documentation": "Congé ou absence déclaré puis validé (BF-ADMIN, RG-74, IAM-09).\\nLe justificatif est stocké dans MS-DOCUMENT, à accès restreint (D-29).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "type",
+      "fieldType": "AvailabilityType",
+      "fieldTypeDocumentation": "Le justificatif est une pièce jointe, pas un type de disponibilité (écart CC corrigé).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "CONGE,ABSENCE"
+    },
+    {
+      "fieldName": "startsAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "endsAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "reason",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "500"
+    },
+    {
+      "fieldName": "justificationDocumentId",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "validationState",
+      "fieldType": "ValidationState",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "DECLAREE,VALIDEE,REFUSEE,ANNULEE"
+    },
+    {
+      "fieldName": "validatorId",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "validatedAt",
+      "fieldType": "Instant"
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "iam",
+  "name": "Availability",
+  "pagination": "pagination",
+  "relationships": [
+    {
+      "otherEntityField": "federatedId",
+      "otherEntityName": "collaborator",
+      "relationshipName": "collaborator",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

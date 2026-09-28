@@ -1,0 +1,77 @@
+{
+  "annotations": {
+    "changelogDate": "20231217214907"
+  },
+  "applications": ["iam"],
+  "clientRootFolder": "iam",
+  "databaseType": "sql",
+  "documentation": "Délégation temporaire d'un niveau supérieur (D-20, RG-01, IAM-06).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "type",
+      "fieldType": "DelegationType",
+      "fieldTypeDocumentation": "Deux sortes de délégation (D-20) : 60 min au plus, ou 72 h au plus.",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "ELEVATION_JIT,SUPPLEANCE"
+    },
+    {
+      "fieldName": "reason",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "500"
+    },
+    {
+      "fieldName": "delegatedLevel",
+      "fieldType": "HabilitationLevel",
+      "fieldTypeDocumentation": "Niveaux d'habilitation du CCT (BF-02), du moins au plus privilégié.\\nDécision D-31 (REC-GIMAC-01) : l'échelle du CCT prévaut ; les catégories du\\nCC §6.1.2.1 (administrateur, responsable, opérateur...) deviennent des rôles.",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "CONSULTATION,EXECUTION,APPROBATION,ADMINISTRATION_METIER,AUDIT_SECURITE"
+    },
+    {
+      "fieldName": "requesterId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "approverId",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "startsAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "endsAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "state",
+      "fieldType": "DelegationState",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "REQUESTED,APPROVED,ACTIVE,EXPIRED,REVOKED"
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "iam",
+  "name": "Delegation",
+  "pagination": "pagination",
+  "relationships": [
+    {
+      "otherEntityField": "federatedId",
+      "otherEntityName": "collaborator",
+      "relationshipName": "collaborator",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

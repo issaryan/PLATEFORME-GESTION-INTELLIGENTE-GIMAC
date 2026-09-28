@@ -1,0 +1,89 @@
+{
+  "annotations": {
+    "changelogDate": "20231217214507"
+  },
+  "applications": ["iam"],
+  "clientRootFolder": "iam",
+  "databaseType": "sql",
+  "documentation": "Collaborateur projeté depuis l'IdP et l'annuaire (User du CC, renommé pour\\néviter l'entité User intégrée à JHipster). Aucun mot de passe (RG-65).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Identifiant fédéré issu de l'IdP (claim sub).",
+      "fieldName": "federatedId",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "unique", "maxlength"],
+      "fieldValidateRulesMaxlength": "255"
+    },
+    {
+      "documentation": "Identifiant de l'annuaire (objectGUID), pour détecter les suppressions.",
+      "fieldName": "directoryId",
+      "fieldType": "String",
+      "fieldValidateRules": ["unique", "maxlength"],
+      "fieldValidateRulesMaxlength": "255"
+    },
+    {
+      "fieldName": "displayName",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "255"
+    },
+    {
+      "fieldName": "email",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "255"
+    },
+    {
+      "fieldName": "status",
+      "fieldType": "CollaboratorStatus",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "ACTIVE,LOCKED,SUSPENDED,REVOKED"
+    },
+    {
+      "documentation": "Plus haut niveau permanent, déduit des rôles approuvés.",
+      "fieldName": "level",
+      "fieldType": "HabilitationLevel",
+      "fieldTypeDocumentation": "Niveaux d'habilitation du CCT (BF-02), du moins au plus privilégié.\\nDécision D-31 (REC-GIMAC-01) : l'échelle du CCT prévaut ; les catégories du\\nCC §6.1.2.1 (administrateur, responsable, opérateur...) deviennent des rôles.",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "CONSULTATION,EXECUTION,APPROBATION,ADMINISTRATION_METIER,AUDIT_SECURITE"
+    },
+    {
+      "documentation": "Institution de rattachement, pour les correspondants du portail (D-21).",
+      "fieldName": "institutionId",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "language",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "5"
+    },
+    {
+      "fieldName": "failedAttempts",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required", "min"],
+      "fieldValidateRulesMin": "0"
+    },
+    {
+      "fieldName": "lastLoginAt",
+      "fieldType": "Instant"
+    },
+    {
+      "documentation": "Curseur de synchronisation (uSNChanged) de la dernière mise à jour.",
+      "fieldName": "directoryCursor",
+      "fieldType": "Long"
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "iam",
+  "name": "Collaborator",
+  "pagination": "pagination",
+  "relationships": [],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}
