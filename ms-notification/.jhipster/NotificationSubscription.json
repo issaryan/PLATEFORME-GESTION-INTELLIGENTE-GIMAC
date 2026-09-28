@@ -1,0 +1,78 @@
+{
+  "annotations": {
+    "changelogDate": "20260928135354"
+  },
+  "applications": ["notification"],
+  "clientRootFolder": "notification",
+  "databaseType": "sql",
+  "documentation": "Abonnement : associe un type de notification à une règle de destinataires\\n(Subscription du CC, renommé car le nom est réservé par JHipster).\\nLes destinataires nominatifs ne sont jamais stockés ici. Règles versionnées (NOT-02).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Type de notification, par exemple incident.escalated.",
+      "fieldName": "notificationType",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "150"
+    },
+    {
+      "fieldName": "ruleType",
+      "fieldType": "RuleType",
+      "fieldTypeDocumentation": "Règle de résolution des destinataires d'un abonnement (algorithme 6.21).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "ROLE,INSTITUTION,SERVICE_DES,OBJET"
+    },
+    {
+      "documentation": "Valeur de la règle : code de rôle, identifiant d'institution, service du DES ou type d'objet.",
+      "fieldName": "ruleValue",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "150"
+    },
+    {
+      "fieldName": "minimumUrgency",
+      "fieldType": "UrgencyLevel",
+      "fieldTypeDocumentation": "Quatre niveaux ordonnés, fixés par l'émetteur et jamais abaissés (RG-62).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "INFORMATION,AVERTISSEMENT,URGENT,CRITIQUE"
+    },
+    {
+      "documentation": "Pour une règle par rôle d'opérateur : restreindre aux personnes en vacation ou d'astreinte.",
+      "fieldName": "onDutyOnly",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "active",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "ruleVersion",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required", "min"],
+      "fieldValidateRulesMin": "1"
+    },
+    {
+      "fieldName": "updatedBy",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "updatedAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "notification",
+  "name": "NotificationSubscription",
+  "pagination": "pagination",
+  "relationships": [],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

@@ -1,0 +1,42 @@
+{
+  "generator-jhipster": {
+    "applicationType": "microservice",
+    "authenticationType": "oauth2",
+    "baseName": "notification",
+    "buildTool": "maven",
+    "cacheProvider": "redis",
+    "databaseType": "sql",
+    "devDatabaseType": "postgresql",
+    "enableHibernateCache": false,
+    "enableSwaggerCodegen": false,
+    "enableTranslation": true,
+    "entities": [
+      "NotificationSubscription",
+      "ChannelPreference",
+      "MessageTemplate",
+      "AcknowledgementPolicy",
+      "Notification",
+      "NotificationRecipient",
+      "DeliveryTrace",
+      "Escalation",
+      "ConsolidationWindow"
+    ],
+    "jhipsterVersion": "8.11.0",
+    "jwtSecretKey": "MDg2NmI2ZTMwNmUyZTRhM2JkNjE2NzhlZmM4MzM0MTdlN2UyOTM2YjI2NGNmMGY4ODU0NjdkODE2MjkwM2EzNDUyOGE1NTExYzZlNDI1YTUxZWJmNDNkMGEzYTcyODVhYzY1MmZlNjExOTkxNDQ2YzdkZmY1MDU3MzUxNzlmOTk=",
+    "languages": ["fr", "en"],
+    "lastLiquibaseTimestamp": 1790604114000,
+    "messageBroker": "kafka",
+    "monorepository": true,
+    "nativeLanguage": "fr",
+    "packageName": "cm.gimac.des.notification",
+    "prodDatabaseType": "postgresql",
+    "reactive": false,
+    "searchEngine": "no",
+    "serverPort": "8084",
+    "serviceDiscoveryType": "no",
+    "skipClient": true,
+    "skipCommitHook": true,
+    "skipUserManagement": true,
+    "testFrameworks": []
+  }
+}

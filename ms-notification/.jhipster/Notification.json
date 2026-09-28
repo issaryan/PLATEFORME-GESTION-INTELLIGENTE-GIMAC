@@ -1,0 +1,160 @@
+{
+  "annotations": {
+    "changelogDate": "20260928135754"
+  },
+  "applications": ["notification"],
+  "clientRootFolder": "notification",
+  "databaseType": "sql",
+  "documentation": "Notification demandée par un service (bus ou port synchrone), ou synthèse\\nd'une fenêtre de consolidation (RG-62 : niveau d'urgence obligatoire).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "notificationType",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "150"
+    },
+    {
+      "fieldName": "urgency",
+      "fieldType": "UrgencyLevel",
+      "fieldTypeDocumentation": "Quatre niveaux ordonnés, fixés par l'émetteur et jamais abaissés (RG-62).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "INFORMATION,AVERTISSEMENT,URGENT,CRITIQUE"
+    },
+    {
+      "documentation": "Titre affiché dans la plateforme ; jamais transmis sur un canal externe (RG-64).",
+      "fieldName": "subject",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "255"
+    },
+    {
+      "fieldName": "objectType",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "100"
+    },
+    {
+      "fieldName": "objectId",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "100"
+    },
+    {
+      "documentation": "Variables du gabarit, en JSON (objet clé-valeur).",
+      "fieldName": "variables",
+      "fieldType": "TextBlob"
+    },
+    {
+      "documentation": "Institution concernée (MS-PARTICIPANT), qui borne les règles par institution.",
+      "fieldName": "institutionId",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Identifiant CloudEvents de la demande : clé d'idempotence (RG-15, RG-35).",
+      "fieldName": "sourceEventId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["unique"]
+    },
+    {
+      "documentation": "Service émetteur, par exemple MS-INCIDENT.",
+      "fieldName": "sourceService",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "50"
+    },
+    {
+      "documentation": "Vrai pour une demande reçue par le port synchrone d'urgence S1.",
+      "fieldName": "urgentPort",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "correlationId",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Clé de regroupement (type:objet) pour la consolidation.",
+      "fieldName": "groupKey",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "255"
+    },
+    {
+      "fieldName": "requestedAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "ackDeadline",
+      "fieldType": "Instant"
+    },
+    {
+      "documentation": "Niveau d'escalade courant, de 0 au maximum de la politique.",
+      "fieldName": "escalationLevel",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required", "min"],
+      "fieldValidateRulesMin": "0"
+    },
+    {
+      "fieldName": "state",
+      "fieldType": "NotificationState",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "RECUE,CONSOLIDEE,EN_REMISE,REMISE,ACQUITTEE,ESCALADEE,REBUT"
+    },
+    {
+      "fieldName": "acknowledgedBy",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "acknowledgedAt",
+      "fieldType": "Instant"
+    },
+    {
+      "documentation": "Vrai pour une synthèse de consolidation.",
+      "fieldName": "summary",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Nombre d'occurrences regroupées, pour une synthèse.",
+      "fieldName": "occurrenceCount",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["min"],
+      "fieldValidateRulesMin": "0"
+    },
+    {
+      "documentation": "Signature détachée (JWS) de la plateforme, pour une escalade S1 ou S2 (RG-71).",
+      "fieldName": "signature",
+      "fieldType": "TextBlob"
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "notification",
+  "name": "Notification",
+  "pagination": "pagination",
+  "readOnly": true,
+  "relationships": [
+    {
+      "documentation": "Fenêtre à laquelle une notification retenue est rattachée.",
+      "otherEntityField": "groupKey",
+      "otherEntityName": "consolidationWindow",
+      "relationshipName": "consolidationWindow",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one"
+    },
+    {
+      "otherEntityName": "consolidationWindow",
+      "otherEntityRelationshipName": "summaryNotification",
+      "relationshipName": "summarizedWindow",
+      "relationshipSide": "right",
+      "relationshipType": "one-to-one"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

@@ -1,0 +1,11 @@
+id;notification_type;urgency;ack_delay;max_escalation_level;active
+d0efaa16-5bf9-4d4e-9737-fe853fab32e5;à l'entour de;URGENT;11420;5;false
+b402f909-ce03-4a7b-a99d-fa59b36a9b11;présidence fonctionnaire;URGENT;11409;5;false
+0c9b3f7c-8122-49b8-a91f-7bb93d492c64;malgré au cas où;CRITIQUE;2705;3;false
+e2610530-eed0-4b67-bc11-c78489aacb39;électorat patientèle par rapport à;INFORMATION;30398;5;true
+7c25a0fc-39e6-4b7f-b86b-4acff94c96fb;corps enseignant crac;CRITIQUE;6786;2;true
+04d19523-ad3c-43e0-9989-d863ee90b564;amorcer;INFORMATION;23385;2;true
+476de14f-e499-4554-809c-9d264187fbc8;de peur que sale;INFORMATION;30606;4;true
+8ec935f1-a413-492b-a2e2-7d1cbced9dd5;spécialiste ah;AVERTISSEMENT;5462;4;false
+99cdfca8-1e40-4ac2-bc92-dbd00c5765e6;que rectorat en guise de;URGENT;8168;4;true
+99dbb58f-2e0b-4664-aa56-0c9be28e4eaf;si sombre;URGENT;16823;1;false

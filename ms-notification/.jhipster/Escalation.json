@@ -1,0 +1,67 @@
+{
+  "annotations": {
+    "changelogDate": "20260928140054"
+  },
+  "applications": ["notification"],
+  "clientRootFolder": "notification",
+  "databaseType": "sql",
+  "documentation": "Escalade vers un suppléant à l'expiration du délai d'acquittement (algorithme 6.23).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "fromUserId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "toUserId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "level",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required", "min", "max"],
+      "fieldValidateRulesMax": "5",
+      "fieldValidateRulesMin": "1"
+    },
+    {
+      "fieldName": "source",
+      "fieldType": "EscalationSource",
+      "fieldTypeDocumentation": "Annuaire dont est issu le suppléant d'une escalade (algorithme 6.23, étape 4).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "MATRICE_INTERNE,ANNUAIRE_INSTITUTION,REPLI_PAR_DEFAUT"
+    },
+    {
+      "fieldName": "triggeredAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "reason",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "255"
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "notification",
+  "name": "Escalation",
+  "pagination": "pagination",
+  "readOnly": true,
+  "relationships": [
+    {
+      "otherEntityName": "notification",
+      "relationshipName": "notification",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

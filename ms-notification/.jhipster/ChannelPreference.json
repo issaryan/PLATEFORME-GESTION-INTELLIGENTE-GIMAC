@@ -1,0 +1,56 @@
+{
+  "annotations": {
+    "changelogDate": "20260928135454"
+  },
+  "applications": ["notification"],
+  "clientRootFolder": "notification",
+  "databaseType": "sql",
+  "documentation": "Préférence de canal externe d'un utilisateur (RG-63) : niveau minimal et\\nplage horaire. URGENT et CRITIQUE ignorent la plage horaire ; le couple\\n(utilisateur, canal) est unique.",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "userId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "MESSAGERIE ou SMS seulement : les autres canaux ne sont pas débrayables.",
+      "fieldName": "channel",
+      "fieldType": "Channel",
+      "fieldTypeDocumentation": "Canaux de remise ; PLATEFORME et POUSSE ne sont pas débrayables. SMS : extension.",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "PLATEFORME,POUSSE,MESSAGERIE,SMS"
+    },
+    {
+      "fieldName": "minimumUrgency",
+      "fieldType": "UrgencyLevel",
+      "fieldTypeDocumentation": "Quatre niveaux ordonnés, fixés par l'émetteur et jamais abaissés (RG-62).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "INFORMATION,AVERTISSEMENT,URGENT,CRITIQUE"
+    },
+    {
+      "fieldName": "windowStart",
+      "fieldType": "LocalTime"
+    },
+    {
+      "fieldName": "windowEnd",
+      "fieldType": "LocalTime"
+    },
+    {
+      "fieldName": "enabled",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "notification",
+  "name": "ChannelPreference",
+  "pagination": "pagination",
+  "relationships": [],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

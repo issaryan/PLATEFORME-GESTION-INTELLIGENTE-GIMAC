@@ -1,0 +1,71 @@
+{
+  "annotations": {
+    "changelogDate": "20260928140154"
+  },
+  "applications": ["notification"],
+  "clientRootFolder": "notification",
+  "databaseType": "sql",
+  "documentation": "Fenêtre de consolidation anti-tempête d'une clé de regroupement (algorithme 6.24).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "groupKey",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "255"
+    },
+    {
+      "fieldName": "opensAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "closesAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Durée courante de la fenêtre : 5 min, doublée jusqu'à 30 min.",
+      "fieldName": "windowDuration",
+      "fieldType": "Duration",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "memberCount",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required", "min"],
+      "fieldValidateRulesMin": "0"
+    },
+    {
+      "fieldName": "closed",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Clôture anticipée par l'arrivée d'une occurrence urgente ou critique.",
+      "fieldName": "closedEarly",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    }
+  ],
+  "microserviceName": "notification",
+  "name": "ConsolidationWindow",
+  "pagination": "pagination",
+  "readOnly": true,
+  "relationships": [
+    {
+      "documentation": "Synthèse remise à la fermeture de la fenêtre.",
+      "otherEntityName": "notification",
+      "otherEntityRelationshipName": "summarizedWindow",
+      "relationshipName": "summaryNotification",
+      "relationshipSide": "left",
+      "relationshipType": "one-to-one"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

@@ -1,0 +1,89 @@
+{
+  "annotations": {
+    "changelogDate": "20260928135954"
+  },
+  "applications": ["notification"],
+  "clientRootFolder": "notification",
+  "databaseType": "sql",
+  "documentation": "Trace de remise par couple (destinataire, canal) (RG-62, algorithme 6.22).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "userId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "channel",
+      "fieldType": "Channel",
+      "fieldTypeDocumentation": "Canaux de remise ; PLATEFORME et POUSSE ne sont pas débrayables. SMS : extension.",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "PLATEFORME,POUSSE,MESSAGERIE,SMS"
+    },
+    {
+      "fieldName": "state",
+      "fieldType": "DeliveryState",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "EN_ATTENTE,REMISE,ECHOUEE,ACQUITTEE"
+    },
+    {
+      "fieldName": "attempts",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required", "min", "max"],
+      "fieldValidateRulesMax": "6",
+      "fieldValidateRulesMin": "0"
+    },
+    {
+      "fieldName": "nextAttemptAt",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "lastError",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "500"
+    },
+    {
+      "documentation": "Identifiant rendu par le canal (message, publication).",
+      "fieldName": "providerMessageId",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "255"
+    },
+    {
+      "fieldName": "deliveredAt",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "acknowledgedAt",
+      "fieldType": "Instant"
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "notification",
+  "name": "DeliveryTrace",
+  "pagination": "pagination",
+  "readOnly": true,
+  "relationships": [
+    {
+      "otherEntityName": "notification",
+      "relationshipName": "notification",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    },
+    {
+      "documentation": "Gabarit utilisé pour la remise.",
+      "otherEntityName": "messageTemplate",
+      "relationshipName": "template",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

@@ -1,0 +1,65 @@
+{
+  "annotations": {
+    "changelogDate": "20260928135554"
+  },
+  "applications": ["notification"],
+  "clientRootFolder": "notification",
+  "databaseType": "sql",
+  "documentation": "Gabarit par type de notification, canal et langue (BNF-18). Pour MESSAGERIE\\net SMS, le gabarit est obligatoirement minimal (RG-64) : type, niveau,\\nidentifiant de notification et invitation à se connecter.",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "notificationType",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "150"
+    },
+    {
+      "fieldName": "channel",
+      "fieldType": "Channel",
+      "fieldTypeDocumentation": "Canaux de remise ; PLATEFORME et POUSSE ne sont pas débrayables. SMS : extension.",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "PLATEFORME,POUSSE,MESSAGERIE,SMS"
+    },
+    {
+      "fieldName": "language",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "5",
+      "fieldValidateRulesPattern": "^(fr|en)$"
+    },
+    {
+      "fieldName": "subjectPattern",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "255"
+    },
+    {
+      "fieldName": "bodyPattern",
+      "fieldType": "TextBlob",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Variables nommées admises, séparées par des virgules.",
+      "fieldName": "variables",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "500"
+    },
+    {
+      "fieldName": "minimal",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    }
+  ],
+  "microserviceName": "notification",
+  "name": "MessageTemplate",
+  "pagination": "pagination",
+  "relationships": [],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

@@ -1,0 +1,11 @@
+id;notification_type;channel;language;subject_pattern;body_pattern;variables;minimal
+0dc0d4f4-ebca-4951-b252-0ebaea6509b8;touriste glouglou;POUSSE;"en";sans que;../fake-data/blob/hipster.txt;d’autant que badaboum où;true
+997246dd-3060-45ac-8b24-86621c165fa6;ressentir;SMS;"fr";avancer;../fake-data/blob/hipster.txt;à travers incorporer conseil municipal;true
+bc859bee-262f-47d8-9166-0b18def94dd2;fade;SMS;"fr";selon rendre;../fake-data/blob/hipster.txt;miam prévaloir;false
+309fdc27-f269-40b9-9dbb-17be0660400a;terriblement;POUSSE;"en";personnel;../fake-data/blob/hipster.txt;nonobstant assez avant de;true
+eaed97eb-8611-4e91-b6b5-258f26ccc442;coac coac;PLATEFORME;"en";membre à vie membre à vie perfectionner;../fake-data/blob/hipster.txt;vivace auparavant séculaire;false
+6ca8fa30-82bc-4fc0-94b3-57bebd246471;membre de l’équipe devant incliner;MESSAGERIE;"fr";fixer;../fake-data/blob/hipster.txt;après;true
+f5425677-0b0e-40a7-b190-78059904e6d4;badaboum hystérique;MESSAGERIE;"fr";insolite inscrire;../fake-data/blob/hipster.txt;rectangulaire;false
+6c825dc4-63ab-4d5a-8be6-d18745f7d73b;avant sympathique;SMS;"en";désagréable du fait que chut;../fake-data/blob/hipster.txt;vlan infime;true
+e06365dd-85a3-489d-a610-7bf7e9a322d4;à l'exception de;SMS;"en";badaboum approcher;../fake-data/blob/hipster.txt;saluer;false
+245a8376-bef7-47d9-970b-1d9219082859;avant que du moment que;MESSAGERIE;"fr";marron tchou tchouu;../fake-data/blob/hipster.txt;téméraire;true

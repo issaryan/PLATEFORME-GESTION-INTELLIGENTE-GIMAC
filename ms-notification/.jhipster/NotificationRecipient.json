@@ -1,0 +1,82 @@
+{
+  "annotations": {
+    "changelogDate": "20260928135854"
+  },
+  "applications": ["notification"],
+  "clientRootFolder": "notification",
+  "databaseType": "sql",
+  "documentation": "Destinataire résolu à l'instant de la demande (objet-valeur Recipient du\\nCC, persisté par l'algorithme 6.21) ; porte l'état « lu » du centre de notifications.",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "userId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Institution du destinataire, s'il est correspondant d'un participant.",
+      "fieldName": "institutionId",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "resolvedBy",
+      "fieldType": "RuleType",
+      "fieldTypeDocumentation": "Règle de résolution des destinataires d'un abonnement (algorithme 6.21).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "ROLE,INSTITUTION,SERVICE_DES,OBJET"
+    },
+    {
+      "documentation": "Canaux retenus, séparés par des virgules, par exemple PLATEFORME,POUSSE,MESSAGERIE.",
+      "fieldName": "channels",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "100"
+    },
+    {
+      "documentation": "Vrai pour un suppléant atteint par escalade.",
+      "fieldName": "escalated",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "resolvedAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "readAt",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "acknowledgedAt",
+      "fieldType": "Instant"
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "notification",
+  "name": "NotificationRecipient",
+  "pagination": "pagination",
+  "readOnly": true,
+  "relationships": [
+    {
+      "otherEntityName": "notification",
+      "relationshipName": "notification",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    },
+    {
+      "documentation": "Abonnement qui a sélectionné le destinataire ; vide pour un suppléant.",
+      "otherEntityName": "notificationSubscription",
+      "relationshipName": "sourceSubscription",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

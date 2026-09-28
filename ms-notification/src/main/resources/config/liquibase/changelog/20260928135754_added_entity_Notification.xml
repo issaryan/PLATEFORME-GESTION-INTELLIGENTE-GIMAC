@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+
+    <!--
+        Added the entity Notification.
+    -->
+    <changeSet id="20260928135754-1" author="jhipster">
+        <createTable tableName="notification" remarks="Notification demandée par un service (bus ou port synchrone), ou synthèse\nd&apos;une fenêtre de consolidation (RG-62 : niveau d&apos;urgence obligatoire).">
+            <column name="id" type="${uuidType}">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="notification_type" type="varchar(150)">
+                <constraints nullable="false" />
+            </column>
+            <column name="urgency" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="subject" type="varchar(255)" remarks="Titre affiché dans la plateforme ; jamais transmis sur un canal externe (RG-64).">
+                <constraints nullable="false" />
+            </column>
+            <column name="object_type" type="varchar(100)">
+                <constraints nullable="true" />
+            </column>
+            <column name="object_id" type="varchar(100)">
+                <constraints nullable="true" />
+            </column>
+            <column name="variables" type="${clobType}" remarks="Variables du gabarit, en JSON (objet clé-valeur).">
+                <constraints nullable="true" />
+            </column>
+            <column name="institution_id" type="${uuidType}" remarks="Institution concernée (MS-PARTICIPANT), qui borne les règles par institution.">
+                <constraints nullable="true" />
+            </column>
+            <column name="source_event_id" type="${uuidType}" remarks="Identifiant CloudEvents de la demande : clé d&apos;idempotence (RG-15, RG-35).">
+                <constraints nullable="true" unique="true" uniqueConstraintName="ux_notification__source_event_id" />
+            </column>
+            <column name="source_service" type="varchar(50)" remarks="Service émetteur, par exemple MS-INCIDENT.">
+                <constraints nullable="false" />
+            </column>
+            <column name="urgent_port" type="boolean" remarks="Vrai pour une demande reçue par le port synchrone d&apos;urgence S1.">
+                <constraints nullable="false" />
+            </column>
+            <column name="correlation_id" type="${uuidType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="group_key" type="varchar(255)" remarks="Clé de regroupement (type:objet) pour la consolidation.">
+                <constraints nullable="true" />
+            </column>
+            <column name="requested_at" type="${datetimeType}">
+                <constraints nullable="false" />
+            </column>
+            <column name="ack_deadline" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="escalation_level" type="integer" remarks="Niveau d&apos;escalade courant, de 0 au maximum de la politique.">
+                <constraints nullable="false" />
+            </column>
+            <column name="state" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="acknowledged_by" type="${uuidType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="acknowledged_at" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="summary" type="boolean" remarks="Vrai pour une synthèse de consolidation.">
+                <constraints nullable="false" />
+            </column>
+            <column name="occurrence_count" type="integer" remarks="Nombre d&apos;occurrences regroupées, pour une synthèse.">
+                <constraints nullable="true" />
+            </column>
+            <column name="signature" type="${clobType}" remarks="Signature détachée (JWS) de la plateforme, pour une escalade S1 ou S2 (RG-71).">
+                <constraints nullable="true" />
+            </column>
+            <column name="consolidation_window_id" type="${uuidType}">
+                <constraints nullable="true" />
+            </column>
+            <!-- jhipster-needle-liquibase-add-column - JHipster will add columns here -->
+        </createTable>
+        <dropDefaultValue tableName="notification" columnName="requested_at" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="notification" columnName="ack_deadline" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="notification" columnName="acknowledged_at" columnDataType="${datetimeType}"/>
+    </changeSet>
+
+    <!-- jhipster-needle-liquibase-add-changeset - JHipster will add changesets here -->
+
+    <!--
+        Load sample data generated with Faker.js
+        - This data can be easily edited using a CSV editor (or even MS Excel) and
+          is located in the 'src/main/resources/config/liquibase/fake-data' directory
+        - By default this data is applied when running with the JHipster 'dev' profile.
+          This can be customized by adding or removing 'faker' in the 'spring.liquibase.contexts'
+          Spring Boot configuration key.
+    -->
+    <changeSet id="20260928135754-1-data" author="jhipster" context="faker">
+        <loadData
+                  file="config/liquibase/fake-data/notification.csv"
+                  separator=";"
+                  tableName="notification"
+                  usePreparedStatements="true">
+            <column name="id" type="${uuidType}"/>
+            <column name="notification_type" type="string"/>
+            <column name="urgency" type="string"/>
+            <column name="subject" type="string"/>
+            <column name="object_type" type="string"/>
+            <column name="object_id" type="string"/>
+            <column name="variables" type="clob"/>
+            <column name="institution_id" type="${uuidType}"/>
+            <column name="source_event_id" type="${uuidType}"/>
+            <column name="source_service" type="string"/>
+            <column name="urgent_port" type="boolean"/>
+            <column name="correlation_id" type="${uuidType}"/>
+            <column name="group_key" type="string"/>
+            <column name="requested_at" type="date"/>
+            <column name="ack_deadline" type="date"/>
+            <column name="escalation_level" type="numeric"/>
+            <column name="state" type="string"/>
+            <column name="acknowledged_by" type="${uuidType}"/>
+            <column name="acknowledged_at" type="date"/>
+            <column name="summary" type="boolean"/>
+            <column name="occurrence_count" type="numeric"/>
+            <column name="signature" type="clob"/>
+            <!-- jhipster-needle-liquibase-add-loadcolumn - JHipster (and/or extensions) can add load columns here -->
+        </loadData>
+    </changeSet>
+</databaseChangeLog>
