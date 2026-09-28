@@ -1,0 +1,176 @@
+# =============================================================================
+# .gitignore racine : plateforme de suivi des activités du DES (GIMAC)
+#
+# Couvre l'ensemble du dépôt : 14 microservices JHipster (Java 21, Maven),
+# frontaux React et TypeScript, infra (Docker Compose, Kubernetes, k6),
+# documentation (LaTeX, PlantUML).
+# Chaque service généré par JHipster ajoute en plus son propre .gitignore.
+#
+# Règle de sécurité (BNF-07, REC-GIMAC-01) : aucun secret, aucune clé,
+# aucun certificat privé et aucune donnée réelle dans le dépôt.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Secrets, clés et certificats (BNF-07, D-22)
+# -----------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.env.local
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.truststore
+*.crt
+*.csr
+*.der
+*.srl
+secrets/
+**/secrets/*
+!**/secrets/README.md
+*-secret.yml
+*-secret.yaml
+*.secret.yml
+*.secret.yaml
+**/k8s/**/sealed-secrets-private*
+vault-token
+.vault-token
+openbao-token
+id_rsa*
+id_ed25519*
+
+# -----------------------------------------------------------------------------
+# Données réelles et exports (BNF-16 : aucune donnée de carte)
+# -----------------------------------------------------------------------------
+/data/
+/dumps/
+*.dump
+*.sql.gz
+*.backup
+/exports/
+
+# -----------------------------------------------------------------------------
+# Java, Maven, Gradle
+# -----------------------------------------------------------------------------
+target/
+!.mvn/wrapper/maven-wrapper.jar
+build/
+.gradle/
+out/
+*.class
+*.log
+hs_err_pid*
+replay_pid*
+.flattened-pom.xml
+dependency-reduced-pom.xml
+
+# -----------------------------------------------------------------------------
+# Node.js, frontaux React et TypeScript
+# -----------------------------------------------------------------------------
+node_modules/
+.npm/
+.pnpm-store/
+.yarn/*
+!.yarn/releases
+!.yarn/plugins
+dist/
+coverage/
+.nyc_output/
+.eslintcache
+.stylelintcache
+*.tsbuildinfo
+.parcel-cache/
+.vite/
+.cache/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# -----------------------------------------------------------------------------
+# Tests et qualité (rapports régénérés à chaque exécution)
+# -----------------------------------------------------------------------------
+test-results/
+playwright-report/
+cypress/videos/
+cypress/screenshots/
+jacoco*.exec
+.scannerwork/
+dependency-check-report.*
+trivy-report*
+
+# -----------------------------------------------------------------------------
+# Infra : Docker, Kubernetes, Helm, k6
+# -----------------------------------------------------------------------------
+docker-compose.override.yml
+*.tar.gz
+*.oci.tar
+infra/**/volumes/
+infra/**/.data/
+kubeconfig
+*.kubeconfig
+infra/**/charts/*.tgz
+infra/k6/results/
+infra/k6/**/*.json.gz
+k6-summary*.json
+
+# -----------------------------------------------------------------------------
+# Documentation : LaTeX et PlantUML (sources versionnées, fichiers produits exclus)
+# -----------------------------------------------------------------------------
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.lof
+*.lot
+*.out
+*.run.xml
+*.synctex.gz
+*.toc
+*.xdv
+*.nav
+*.snm
+*.vrb
+_minted*/
+plantuml/out/
+
+# -----------------------------------------------------------------------------
+# IDE et éditeurs
+# -----------------------------------------------------------------------------
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+.project
+.classpath
+.settings/
+.factorypath
+.sts4-cache/
+*.swp
+*.swo
+*~
+
+# -----------------------------------------------------------------------------
+# Systèmes d'exploitation
+# -----------------------------------------------------------------------------
+.DS_Store
+._*
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# -----------------------------------------------------------------------------
+# Outils locaux (sessions Claude Code, fichiers temporaires)
+# -----------------------------------------------------------------------------
+.claude/settings.local.json
+/tmp/
+*.tmp
+*.bak
