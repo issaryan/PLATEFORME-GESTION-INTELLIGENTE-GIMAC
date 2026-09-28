@@ -1,0 +1,307 @@
+/*
+ * MS-IAM : habilitations, annuaire et fédération d'identité
+ *
+ * Projet   : Plateforme de suivi des activités du DES, GIMAC
+ * Sources  : CC-GIMAC-01 v1.1 §6.1.2 ; CA-GIMAC-01 v1.1 UC-SOC-01, UC-SOC-05 ;
+ *            CP-GIMAC-01 v1.0 §4.2 ; REC-GIMAC-01 (D-02, D-20, D-21, D-29, RG-74)
+ * Besoins  : BF-01, BF-02, BF-03, BF-ADMIN ; BNF-01, BNF-03, BNF-16
+ * Règles   : RG-01, RG-02, RG-57, RG-65, RG-66, RG-67, RG-74
+ * Cible    : JHipster 9.4.0, itération 1 (IAM-06, IAM-08, IAM-09 et IAM-12 en itération 2)
+ *
+ * Rôle : point de décision de politique (NIST SP 800-207). Le service ne détient
+ * aucun mot de passe (RG-65) : l'authentification est déléguée à l'IdP, et MS-IAM
+ * ne fait que projeter les identités fédérées puis y ajouter ce que l'annuaire
+ * ignore (rôles, niveau, affectations, disponibilités).
+ *
+ * Écrit à la main après la génération, car non généré par JHipster :
+ *   - le refactoring hexagonal et les ports du CC §6.1.2.3 ;
+ *   - le port d'introspection gRPC sous mTLS, appelé par MS-GATEWAY ;
+ *   - la synchronisation LDAPS différentielle (algorithme 6.7) ;
+ *   - la cérémonie WebAuthn et la liaison du jeton au certificat (RFC 8705) ;
+ *   - le moteur de politiques (OPA), la liste de révocation dans Valkey ;
+ *   - l'outbox transactionnelle et les événements iam.*.v1 ;
+ *   - les règles d'approbation à quatre yeux et de bornage des délégations.
+ */
+
+application {
+  config {
+    baseName iam
+    applicationType microservice
+    packageName cm.gimac.des.iam
+    serverPort 8081
+    reactive false
+    authenticationType oauth2
+    serviceDiscoveryType no
+    databaseType sql
+    prodDatabaseType postgresql
+    devDatabaseType postgresql
+    /* Valkey en exploitation (REC D-25), compatible avec le protocole Redis. */
+    cacheProvider redis
+    enableHibernateCache false
+    messageBroker kafka
+    searchEngine no
+    buildTool maven
+    skipClient true
+    skipUserManagement true
+    enableTranslation true
+    nativeLanguage fr
+    languages [fr, en]
+    testFrameworks []
+    enableSwaggerCodegen false
+  }
+  entities Collaborator, Role, Permission, RoleGrant, Delegation, UserSession, Assignment, Availability, AccessReview, AccessReviewDecision
+}
+
+/* ---------------------------------------------------------------------------
+ * Énumérations
+ * ------------------------------------------------------------------------- */
+
+enum CollaboratorStatus {
+  ACTIVE,
+  LOCKED,
+  SUSPENDED,
+  REVOKED
+}
+
+/**
+ * Niveaux d'habilitation du CCT (BF-02), du moins au plus privilégié.
+ * Décision D-31 (REC-GIMAC-01) : l'échelle du CCT prévaut ; les catégories du
+ * CC §6.1.2.1 (administrateur, responsable, opérateur...) deviennent des rôles.
+ */
+enum HabilitationLevel {
+  CONSULTATION,
+  EXECUTION,
+  APPROBATION,
+  ADMINISTRATION_METIER,
+  AUDIT_SECURITE
+}
+
+/** Famille de rôles : interne au groupement, ou portail des participants (D-21). */
+enum RoleFamily {
+  INTERNE,
+  PORTAIL
+}
+
+/** Périmètre de visibilité projeté jusqu'aux politiques de lignes (RLS). */
+enum VisibilityScope {
+  TOUTES_INSTITUTIONS,
+  UNE_INSTITUTION,
+  UN_SERVICE
+}
+
+enum GrantState {
+  PROPOSE,
+  APPROUVE,
+  REVOQUE
+}
+
+/** Deux sortes de délégation (D-20) : 60 min au plus, ou 72 h au plus. */
+enum DelegationType {
+  ELEVATION_JIT,
+  SUPPLEANCE
+}
+
+enum DelegationState {
+  REQUESTED,
+  APPROVED,
+  ACTIVE,
+  EXPIRED,
+  REVOKED
+}
+
+enum SessionState {
+  ACTIVE,
+  EXPIRED,
+  REVOKED
+}
+
+/** Le justificatif est une pièce jointe, pas un type de disponibilité (écart CC corrigé). */
+enum AvailabilityType {
+  CONGE,
+  ABSENCE
+}
+
+enum ValidationState {
+  DECLAREE,
+  VALIDEE,
+  REFUSEE,
+  ANNULEE
+}
+
+enum ReviewState {
+  OUVERTE,
+  CLOSE
+}
+
+enum ReviewDecision {
+  MAINTENU,
+  REDUIT,
+  REVOQUE
+}
+
+/* ---------------------------------------------------------------------------
+ * Entités
+ * ------------------------------------------------------------------------- */
+
+/**
+ * Collaborateur projeté depuis l'IdP et l'annuaire (User du CC, renommé pour
+ * éviter l'entité User intégrée à JHipster). Aucun mot de passe (RG-65).
+ */
+entity Collaborator {
+  id UUID
+  /** Identifiant fédéré issu de l'IdP (claim sub). */
+  federatedId String required unique maxlength(255)
+  /** Identifiant de l'annuaire (objectGUID), pour détecter les suppressions. */
+  directoryId String unique maxlength(255)
+  displayName String required maxlength(255)
+  email String maxlength(255)
+  status CollaboratorStatus required
+  /** Plus haut niveau permanent, déduit des rôles approuvés. */
+  level HabilitationLevel required
+  /** Institution de rattachement, pour les correspondants du portail (D-21). */
+  institutionId UUID
+  language String required maxlength(5)
+  failedAttempts Integer required min(0)
+  lastLoginAt Instant
+  /** Curseur de synchronisation (uSNChanged) de la dernière mise à jour. */
+  directoryCursor Long
+}
+
+/** Rôle applicatif, composé de permissions (CC §6.1.2.1). */
+entity Role {
+  id UUID
+  code String required unique maxlength(80) pattern(/^[A-Z0-9_]+$/)
+  label String required maxlength(255)
+  level HabilitationLevel required
+  family RoleFamily required
+  visibilityScope VisibilityScope required
+  /** Groupe de l'annuaire traduit en ce rôle, s'il existe. */
+  directoryGroup String maxlength(255)
+}
+
+/** Permission unitaire, ventilée par microservice (matrice des permissions, UC-SOC-05). */
+entity Permission {
+  id UUID
+  code String required unique maxlength(80) pattern(/^[A-Z0-9_]+$/)
+  resource String required maxlength(100)
+  action String required maxlength(50)
+  /** Microservice ou domaine cible, par exemple ms-monitoring. */
+  targetDomain String required maxlength(100)
+}
+
+/**
+ * Octroi d'un rôle à un collaborateur, avec approbation à quatre yeux
+ * (IAM-04, RG-02 : le demandeur et l'approbateur sont distincts).
+ */
+entity RoleGrant {
+  id UUID
+  state GrantState required
+  requestedBy UUID required
+  requestedAt Instant required
+  approvedBy UUID
+  approvedAt Instant
+  revokedAt Instant
+  revocationReason String maxlength(500)
+}
+
+/** Délégation temporaire d'un niveau supérieur (D-20, RG-01, IAM-06). */
+entity Delegation {
+  id UUID
+  type DelegationType required
+  reason String required maxlength(500)
+  delegatedLevel HabilitationLevel required
+  requesterId UUID required
+  approverId UUID
+  startsAt Instant required
+  endsAt Instant required
+  state DelegationState required
+}
+
+/** Session liée au certificat client (RFC 8705), révocable (IAM-03, GW-05). */
+entity UserSession {
+  id UUID
+  /** Empreinte SHA-256 du certificat client, encodée en base64url. */
+  certificateThumbprint String required maxlength(64)
+  /** Méthodes d'authentification (amr), séparées par des virgules. */
+  authMethods String required maxlength(255)
+  issuedAt Instant required
+  expiresAt Instant required
+  state SessionState required
+  revokedAt Instant
+  revocationReason String maxlength(255)
+}
+
+/** Rattachement à un service : historique immuable (RG-67, IAM-08). */
+entity Assignment {
+  id UUID
+  department String required maxlength(100)
+  unit String required maxlength(100)
+  startsAt LocalDate required
+  endsAt LocalDate
+}
+
+/**
+ * Congé ou absence déclaré puis validé (BF-ADMIN, RG-74, IAM-09).
+ * Le justificatif est stocké dans MS-DOCUMENT, à accès restreint (D-29).
+ */
+entity Availability {
+  id UUID
+  type AvailabilityType required
+  startsAt Instant required
+  endsAt Instant required
+  reason String maxlength(500)
+  justificationDocumentId UUID
+  validationState ValidationState required
+  validatorId UUID
+  validatedAt Instant
+}
+
+/** Campagne trimestrielle de réexamen des accès, scellée à la clôture (RG-66, IAM-10). */
+entity AccessReview {
+  id UUID
+  period String required unique maxlength(20)
+  state ReviewState required
+  openedAt Instant required
+  approverId UUID
+  closedAt Instant
+  /** Empreinte SHA-256 du réexamen scellé, en hexadécimal. */
+  digest String maxlength(64)
+}
+
+/** Décision de réexamen pour un collaborateur. */
+entity AccessReviewDecision {
+  id UUID
+  decision ReviewDecision required
+  comment String maxlength(500)
+  decidedBy UUID required
+  decidedAt Instant required
+}
+
+/* ---------------------------------------------------------------------------
+ * Relations
+ * ------------------------------------------------------------------------- */
+
+relationship ManyToMany {
+  Role{permissions(code)} to Permission{roles(code)}
+}
+
+relationship ManyToOne {
+  RoleGrant{collaborator(federatedId) required} to Collaborator
+  RoleGrant{role(code) required} to Role
+  Delegation{collaborator(federatedId) required} to Collaborator
+  UserSession{collaborator(federatedId) required} to Collaborator
+  Assignment{collaborator(federatedId) required} to Collaborator
+  Availability{collaborator(federatedId) required} to Collaborator
+  AccessReviewDecision{review(period) required} to AccessReview
+  AccessReviewDecision{collaborator(federatedId) required} to Collaborator
+}
+
+/* ---------------------------------------------------------------------------
+ * Options
+ * ------------------------------------------------------------------------- */
+
+dto * with mapstruct
+service * with serviceClass
+/* L'avertissement « paginate deprecated » de JHipster 9.4.0 est à ignorer. */
+paginate Collaborator, RoleGrant, Delegation, UserSession, Assignment, Availability, AccessReview, AccessReviewDecision with pagination
+filter Collaborator, RoleGrant, Delegation, UserSession, Availability

@@ -6,7 +6,7 @@
 | Référence | REC-GIMAC-01 v1.0 (28/09/2026) |
 | Documents réconciliés | CCT-GIMAC-01 v1.1, CA-GIMAC-01 v1.1, CC-GIMAC-01 v1.1, CP-GIMAC-01 v1.0 |
 | Établi par | KOAGNE ISSA RYAN, Ingénieur en Informatique et Systèmes d'information |
-| Statut | Référentiel d'implémentation. Décisions D-01 à D-30, y compris les propositions [P], **acceptées par KOAGNE ISSA RYAN le 28/09/2026** ; validation formelle du Product Owner (chef du DES) attendue en revue d'itération |
+| Statut | Référentiel d'implémentation. Décisions D-01 à D-31, y compris les propositions [P], **acceptées par KOAGNE ISSA RYAN le 28/09/2026** ; validation formelle du Product Owner (chef du DES) attendue en revue d'itération |
 | Rôle | Base unique à partir de laquelle le code est écrit ; prime sur les quatre documents pour les points qu'elle tranche |
 
 **Légende des décisions**
@@ -212,6 +212,10 @@ Colonne « Livraison » : It = itération de la première phase (semaines 3 à 1
 - **D-21 [P] Habilitations des correspondants externes.**
   - Les correspondants des institutions reçoivent une famille de rôles `PORTAIL`, limitée aux niveaux 1 (consultation) et 2 (dépôt et création), et restreinte par RLS à leur institution (RG-59).
   - Ils n'accèdent jamais aux niveaux 3 à 5.
+- **D-31 [R] Échelle des niveaux d'habilitation.** Le CCT (BF-02) et le CC (§6.1.2.1) numérotent les cinq niveaux dans des sens opposés.
+  - **L'échelle du CCT fait foi**, car elle est contractuelle. Du moins au plus privilégié : 1 Consultation, 2 Exécution et création, 3 Approbation, 4 Administration métier, 5 Audit et sécurité. Énumération `HabilitationLevel` : `CONSULTATION, EXECUTION, APPROBATION, ADMINISTRATION_METIER, AUDIT_SECURITE`.
+  - Les catégories du CC (administrateur de la plateforme, responsable, opérateur de supervision, ingénieur d'homologation, lecteur ou auditeur) deviennent des **rôles**, chacun rattaché à un niveau de l'échelle.
+  - Décision acceptée le 28/09/2026 avec le JDL de MS-IAM.
 
 ### 4.3 Technique et exploitation
 
@@ -398,7 +402,7 @@ Numéros du CA, D-04 appliqué. Les règles ⟂ sont transverses : chaque servic
 **CC**
 - Remplacer 2TUP par cycle en V et Scrum (§4.1).
 - Supprimer « anciennement CCT-GIMAC-02 ».
-- Appliquer D-15, D-16, D-17, D-19, D-22 et D-25.
+- Appliquer D-15, D-16, D-17, D-19, D-22, D-25 et D-31.
 - Aligner les diagrammes d'objets sur D-30.
 - Traduire « List of Figures / Tables ».
 - Compléter les 13 maquettes.
