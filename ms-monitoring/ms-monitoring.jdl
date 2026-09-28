@@ -1,0 +1,479 @@
+/*
+ * MS-MONITORING : supervision des liaisons, alertes, astreintes et quarts
+ *
+ * Projet   : Plateforme de suivi des activités du DES, GIMAC
+ * Sources  : CC-GIMAC-01 v1.1 §6.1.10 (algorithmes 6.44 à 6.47) ;
+ *            CA-GIMAC-01 v1.1 UC-EXP-02, UC-EXP-05 ; CP-GIMAC-01 v1.0 §4.10 ;
+ *            REC-GIMAC-01 (D-06, D-11, D-12, D-14, D-15, D-19, D-22, D-23, D-26, RG-74)
+ * Besoins  : BF-17, BF-ADMIN (consommation des disponibilités) ; BNF-06, BNF-11, BNF-16
+ * Règles   : RG-17, RG-18 ; RG-74 (disponibilité validée, produite par MS-IAM) ;
+ *            transverses RG-15, RG-35 (idempotence), RG-39 (RFC 3161)
+ * Cible    : JHipster 9.4.0, itération 2 (MON-01 à MON-09)
+ *
+ * Principe : outil de la salle de supervision, strictement non intrusif. Le
+ * service reçoit passivement les alertes et mesures agrégées (D-23) sur un
+ * point d'entrée en réception seule ; il ne pilote, n'interroge ni ne commande
+ * aucun système de production et ne conserve aucune donnée de transaction.
+ * Il ne qualifie pas les incidents (MS-INCIDENT) et ne remet aucun message
+ * (MS-NOTIFICATION). La main courante de quart est en ajout seul et chaînée ;
+ * le rapport de quart est signé par le sortant et l'entrant, visé par le chef
+ * de quart (RG-17, D-12), puis scellé en WORM pour 10 ans (RG-18, D-11).
+ *
+ * Les références vers les autres services (institution, opérateur, ticket,
+ * pièce de MS-DOCUMENT) sont des identifiants simples, jamais des relations
+ * JDL (BNF-04).
+ *
+ * Écrit à la main après la génération, car non généré par JHipster :
+ *   - le refactoring hexagonal et les ports du CC §6.1.10.3 :
+ *     MonitoringRepositoryPort, IntegerProgramSolverPort (D-15),
+ *     InternalDirectoryPort, UrgentNotificationPort, DocumentStorePort,
+ *     TimestampAuthorityPort, OutboxRepositoryPort, EventPublisherPort ;
+ *   - l'AlertReceiverAdapter : point d'entrée en réception seule, joint par
+ *     MS-GATEWAY en mTLS, schémas en liste blanche, rejet de tout champ hors
+ *     schéma (D-23, BNF-16) ;
+ *   - la corrélation et la déduplication des alertes (empreinte
+ *     SHA-256(source || liaison || règle), fenêtres de 30 et 10 min),
+ *     l'acquittement temporisé à 5, 15 ou 60 min selon la gravité et la
+ *     demande de ticket (algorithme 6.44, D-14) ;
+ *   - la grille d'astreinte par programmation linéaire en nombres entiers
+ *     (algorithme 6.45) : port IntegerProgramSolver et adaptateur Google
+ *     OR-Tools (CP-SAT ou SCIP), limite de 300 s, écart d'optimalité (D-15) ;
+ *   - la relève de quart : assertions WebAuthn chaînées (H1, H2, H3), empreinte
+ *     finale, PDF/A-3, jeton RFC 3161, dépôt WORM (algorithme 6.46, D-12) ;
+ *   - l'évaluation des seuils avec hystérésis et confirmation (algorithme 6.47) ;
+ *   - le consommateur Kafka idempotent et sa table de déduplication (RG-15,
+ *     RG-35) : iam.availability-validated.v1 (alimente la grille, RG-74),
+ *     incident.ticket-opened.v1, incident.ticket-closed.v1,
+ *     notification.delivery-failed.v1, notification.unresolved.v1, événements
+ *     de suspens de MS-RAPPROCHEMENT et alertes internes des services ;
+ *   - l'outbox transactionnelle (D-26) et les événements monitoring.alert-raised.v1,
+ *     monitoring.alert-acknowledged.v1, monitoring.alert-resolved.v1,
+ *     monitoring.notification-requested.v1, monitoring.oncall-published.v1,
+ *     monitoring.shift-report-sealed.v1 ;
+ *   - l'ordonnanceur : fenêtres de mesure, échéances d'acquittement, fins de
+ *     vacation, relance à 30 min sans contresignature ;
+ *   - la protection en base (Liquibase) des tables en ajout seul : déclencheur
+ *     rejetant toute mise à jour ou suppression de la main courante, des
+ *     signatures et d'un rapport scellé.
+ *
+ * Convention : toute empreinte SHA-256 est stockée en hexadécimal minuscule
+ * (64 caractères). Les durées sont au format ISO-8601 (type Duration).
+ */
+
+application {
+  config {
+    baseName monitoring
+    applicationType microservice
+    packageName cm.gimac.des.monitoring
+    serverPort 8089
+    reactive false
+    authenticationType oauth2
+    serviceDiscoveryType no
+    databaseType sql
+    prodDatabaseType postgresql
+    devDatabaseType postgresql
+    /* Valkey en exploitation (REC D-25) : alertes ouvertes par empreinte, compétences lues dans MS-IAM. */
+    cacheProvider redis
+    enableHibernateCache false
+    messageBroker kafka
+    searchEngine no
+    buildTool maven
+    skipClient true
+    skipUserManagement true
+    enableTranslation true
+    nativeLanguage fr
+    languages [fr, en]
+    testFrameworks []
+    enableSwaggerCodegen false
+  }
+  entities SupervisedLink, Threshold, MeasureWindow, AlertSource, AlertSeverityPolicy, Alert, OperatorUnavailability, OnCallRoster, OnCallAssignment, Shift, ShiftLogEntry, ShiftReport, ReportSignature
+}
+
+/* ---------------------------------------------------------------------------
+ * Énumérations
+ * ------------------------------------------------------------------------- */
+
+/** Liaison d'une institution ou plateforme du groupement (écart CC : chaîne libre typée). */
+enum LinkScope {
+  INSTITUTION,
+  PLATEFORME
+}
+
+/** État d'une liaison supervisée (algorithme 6.47). */
+enum LinkState {
+  NOMINALE,
+  DEGRADEE,
+  CRITIQUE,
+  INJOIGNABLE,
+  MAINTENANCE
+}
+
+/** Sens défavorable d'un indicateur : d = +1 (latence) ou d = -1 (taux de succès). */
+enum MeasureDirection {
+  HAUSSE_DEFAVORABLE,
+  BAISSE_DEFAVORABLE
+}
+
+/** Gravité d'une alerte (tableau 6.48). */
+enum AlertSeverity {
+  MINEURE,
+  MAJEURE,
+  CRITIQUE
+}
+
+enum AlertState {
+  OUVERTE,
+  ACQUITTEE,
+  RESOLUE
+}
+
+/** Exigence de ticket à l'acquittement (tableau 6.48). */
+enum TicketPolicy {
+  OBLIGATOIRE,
+  A_APPRECIATION,
+  FACULTATIF
+}
+
+/** Niveau de la demande de notification adressée à MS-NOTIFICATION. */
+enum NotificationLevel {
+  CRITIQUE,
+  URGENT,
+  AVERTISSEMENT
+}
+
+/** Cycle d'une révision de grille (écart CC : chaîne libre typée). */
+enum RosterState {
+  GENEREE,
+  VALIDEE,
+  PUBLIEE,
+  REMPLACEE
+}
+
+/** Issue de la résolution par le solveur en nombres entiers (D-15). */
+enum SolverStatus {
+  OPTIMALE,
+  REALISABLE,
+  IRREALISABLE,
+  SANS_SOLUTION_DANS_LE_DELAI
+}
+
+/** Plages de vacation : matin 06h-14h, après-midi 14h-22h, nuit 22h-06h. */
+enum ShiftSlot {
+  MATIN,
+  APRES_MIDI,
+  NUIT
+}
+
+/** Nature d'une entrée de main courante de quart (écart CC : chaîne libre typée). */
+enum ShiftLogNature {
+  EVENEMENT,
+  ALERTE,
+  ACQUITTEMENT_HORS_DELAI,
+  INTERVENTION,
+  RETABLISSEMENT,
+  MAINTENANCE,
+  CONSIGNE,
+  RESERVE_ENTRANT,
+  CORRECTION
+}
+
+/** Relève de quart (algorithme 6.46, D-12). */
+enum ReportState {
+  BROUILLON,
+  SIGNE_SORTANT,
+  CONTRESIGNE,
+  VISE,
+  SCELLE
+}
+
+/** Rôle du signataire : sortant, entrant, puis visa du chef de quart (RG-17, D-12). */
+enum SignatureRole {
+  SORTANT,
+  ENTRANT,
+  VISA_CHEF_DE_QUART
+}
+
+/* ---------------------------------------------------------------------------
+ * Entités
+ * ------------------------------------------------------------------------- */
+
+/** Liaison d'institution ou plateforme du groupement supervisée (CC §6.1.10.3). */
+entity SupervisedLink {
+  id UUID
+  /** Identifiant lisible du CC, par exemple LIA-2026-017. */
+  code String required unique maxlength(50)
+  label String required maxlength(255)
+  scope LinkScope required
+  /** Institution (MS-PARTICIPANT), pour une liaison de portée INSTITUTION. */
+  institutionId UUID
+  /** Type, par exemple « liaison de paiement mobile » ou « commutateur ». */
+  type String required maxlength(100)
+  state LinkState required
+  stateSince Instant required
+  lastMeasureAt Instant
+  /** Période de mesure attendue ; au-delà de 3 périodes sans mesure : INJOIGNABLE. */
+  measurePeriod Duration required
+  /** Fenêtre de maintenance déclarée par le chef de quart (algorithme 6.47, étape 1). */
+  maintenanceFrom Instant
+  maintenanceUntil Instant
+}
+
+/** Seuil par indicateur, avec hystérésis et confirmation (objet-valeur du CC, persisté). */
+entity Threshold {
+  id UUID
+  /** Indicateur, par exemple « latence p95 (ms) ». */
+  indicator String required maxlength(100)
+  warning BigDecimal required
+  critical BigDecimal required
+  hysteresis BigDecimal required min(0)
+  direction MeasureDirection required
+  /** Nombre k de fenêtres de confirmation. */
+  debounce Integer required min(1)
+}
+
+/**
+ * Fenêtre de mesures agrégées reçue des sources (aucune donnée de transaction).
+ * Début et fin renommés : start et end sont réservés en SQL.
+ */
+entity MeasureWindow {
+  id UUID
+  windowStart Instant required
+  windowEnd Instant required
+  /** Valeurs agrégées, objet JSON indicateur → valeur. */
+  measureValues TextBlob required
+  receivedAt Instant required
+}
+
+/**
+ * Source émettrice enregistrée (pile d'observabilité, système de production),
+ * avec son certificat et son schéma en liste blanche (D-23 ; écart CC complété).
+ */
+entity AlertSource {
+  id UUID
+  code String required unique maxlength(50)
+  label String required maxlength(255)
+  /** Empreinte SHA-256 du certificat client mTLS. */
+  certificateThumbprint String required minlength(64) maxlength(64) pattern(/^[0-9a-f]{64}$/)
+  /** Schéma JSON du message, champs admis en liste blanche. */
+  allowedSchema TextBlob required
+  active Boolean required
+}
+
+/**
+ * Temporisations et exigences par gravité (tableau 6.48 ; D-14 : acquittement
+ * en 5, 15 ou 60 min par défaut, paramétrable).
+ */
+entity AlertSeverityPolicy {
+  id UUID
+  severity AlertSeverity required unique
+  ackDelay Duration required
+  notificationLevel NotificationLevel required
+  /** Vrai : port synchrone de MS-NOTIFICATION (gravité critique) ; faux : événement. */
+  urgentChannel Boolean required
+  ticketPolicy TicketPolicy required
+}
+
+/**
+ * Alerte corrélée et dédupliquée (algorithme 6.44). La gravité n'entre pas
+ * dans l'empreinte ; une alerte symptôme pointe vers sa racine.
+ */
+entity Alert {
+  id UUID
+  /** Référence lisible, par exemple ALR-2026-04417. */
+  reference String required unique maxlength(30)
+  /** Code de la source, ou « évaluation des seuils » pour une alerte interne. */
+  source String required maxlength(100)
+  rule String required maxlength(255)
+  /** SHA256(source || liaison || règle). */
+  fingerprint String required minlength(64) maxlength(64) pattern(/^[0-9a-f]{64}$/)
+  severity AlertSeverity required
+  state AlertState required
+  firstSeenAt Instant required
+  lastSeenAt Instant required
+  occurrences Integer required min(1)
+  /** Échéance d'acquittement, pour une alerte racine. */
+  ackDeadline Instant
+  /** Marquée hors délai par processOverdue. */
+  overdue Boolean required
+  acknowledgedBy UUID
+  acknowledgedAt Instant
+  ticketRequested Boolean
+  ackComment String maxlength(1000)
+  /** Ticket ouvert par MS-INCIDENT (incident.ticket-opened.v1). */
+  ticketId UUID
+  resolvedAt Instant
+}
+
+/**
+ * Indisponibilité validée d'un opérateur, projetée depuis
+ * iam.availability-validated.v1 (RG-74) ; ensemble U de l'algorithme 6.45.
+ */
+entity OperatorUnavailability {
+  id UUID
+  /** Identifiant de la disponibilité dans MS-IAM (clé d'idempotence). */
+  availabilityId UUID required unique
+  operatorId UUID required
+  startsAt Instant required
+  endsAt Instant required
+  validatedAt Instant required
+  /** Annulation reçue de MS-IAM : l'indisponibilité ne compte plus. */
+  cancelled Boolean required
+}
+
+/**
+ * Grille d'astreinte hebdomadaire, une ligne par révision (algorithme 6.45).
+ * Unicité (semaine, révision) posée en base.
+ */
+entity OnCallRoster {
+  id UUID
+  /** Semaine ISO, par exemple 2026-S39. */
+  isoWeek String required maxlength(8) pattern(/^[0-9]{4}-S[0-9]{2}$/)
+  revision Integer required min(1)
+  state RosterState required
+  solverStatus SolverStatus required
+  objectiveValue BigDecimal
+  /** Écart d'optimalité en pourcentage (par exemple 0,8). */
+  gap BigDecimal min(0)
+  solveDuration Duration
+  /** Plages non couvertes et contraintes saturées qui l'expliquent, en JSON. */
+  uncoveredSlots TextBlob
+  generatedAt Instant required
+  generatedBy UUID required
+  validatedBy UUID
+  validatedAt Instant
+  publishedAt Instant
+}
+
+/** Affectation d'un opérateur à une plage et un niveau (1 en salle, 2 en astreinte). */
+entity OnCallAssignment {
+  id UUID
+  /** Jour de la plage (day du CC, renommé : mot réservé SQL). */
+  dutyDate LocalDate required
+  slot ShiftSlot required
+  level Integer required min(1) max(2)
+  operatorId UUID required
+  shiftLead Boolean required
+}
+
+/** Vacation instanciée depuis la grille publiée. */
+entity Shift {
+  id UUID
+  /** Référence lisible, par exemple VAC-2026-0927-N. */
+  reference String required unique maxlength(30)
+  /** Date de la vacation (date du CC, renommé : mot réservé SQL). */
+  shiftDate LocalDate required
+  slot ShiftSlot required
+  /** Opérateurs de la vacation : UUID séparés par des virgules. */
+  operatorIds String required maxlength(1000)
+  shiftLeadId UUID required
+  startsAt Instant required
+  endsAt Instant required
+}
+
+/**
+ * Entrée de main courante de quart : ajout seul, chaînée par empreinte ;
+ * une correction est une nouvelle entrée qui cite la précédente.
+ */
+entity ShiftLogEntry {
+  id UUID
+  chainIndex Long required min(1)
+  occurredAt Instant required
+  authorId UUID required
+  nature ShiftLogNature required
+  text String required maxlength(4000)
+  /** Référence d'alerte, de ticket ou de liaison. */
+  reference String maxlength(100)
+  previousHash String required minlength(64) maxlength(64) pattern(/^[0-9a-f]{64}$/)
+  hash String required unique minlength(64) maxlength(64) pattern(/^[0-9a-f]{64}$/)
+}
+
+/**
+ * Rapport de quart (algorithme 6.46). Jamais modifié une fois scellé : une
+ * correction produit une nouvelle version visée par le chef de quart.
+ */
+entity ShiftReport {
+  id UUID
+  /** Référence lisible, par exemple RQ-2026-0927-N. */
+  reference String required unique maxlength(30)
+  /** Forme canonique J (JCS, RFC 8785) du contenu figé. */
+  content TextBlob required
+  /** Consignes annotées par l'opérateur sortant. */
+  instructions TextBlob
+  state ReportState required
+  /** Tête de chaîne de la main courante reprise dans le rapport. */
+  logHeadHash String minlength(64) maxlength(64) pattern(/^[0-9a-f]{64}$/)
+  /** H1 = SHA-256(J), défi de la signature sortante. */
+  contentHash String required minlength(64) maxlength(64) pattern(/^[0-9a-f]{64}$/)
+  /** Hf = SHA-256(J || σs || σe || σc). */
+  digest String minlength(64) maxlength(64) pattern(/^[0-9a-f]{64}$/)
+  /** D : empreinte du PDF/A-3 déposé. */
+  documentDigest String minlength(64) maxlength(64) pattern(/^[0-9a-f]{64}$/)
+  /** Jeton RFC 3161 encodé en DER. */
+  timestampToken Blob
+  timestampSerialNumber String maxlength(100)
+  /** Référence du document déposé dans MS-DOCUMENT, par exemple DOC-2026-11902. */
+  documentRef String maxlength(100)
+  /** Transfert de responsabilité de la salle : instant de la contresignature. */
+  responsibilityTransferredAt Instant
+  sealedAt Instant
+}
+
+/** Signature WebAuthn d'un rapport de quart, liée aux précédentes (D-12). */
+entity ReportSignature {
+  id UUID
+  role SignatureRole required
+  signerId UUID required
+  /** Défi signé : H1, H2 ou H3. */
+  challenge String required minlength(64) maxlength(64) pattern(/^[0-9a-f]{64}$/)
+  /** Assertion WebAuthn (authenticatorData, clientDataJSON, signature), en JSON. */
+  assertion TextBlob required
+  signedAt Instant required
+  /** Réserves de l'entrant, citées sans altérer J. */
+  reservations String maxlength(2000)
+}
+
+/* ---------------------------------------------------------------------------
+ * Relations
+ * ------------------------------------------------------------------------- */
+
+relationship OneToOne {
+  /** Un rapport par vacation. */
+  ShiftReport{shift(reference) required} to Shift
+  /** Nouvelle version d'un rapport scellé, remplaçant la précédente. */
+  ShiftReport{supersedes(reference)} to ShiftReport
+}
+
+relationship ManyToOne {
+  /** Plateforme dont dépend la liaison, utilisée par la corrélation. */
+  SupervisedLink{parentPlatform(code)} to SupervisedLink
+  Threshold{link(code) required} to SupervisedLink
+  MeasureWindow{link(code) required} to SupervisedLink
+  Alert{link(code) required} to SupervisedLink
+  /** Alerte racine dont celle-ci est un symptôme. */
+  Alert{correlationRoot(reference)} to Alert
+  /** Révision précédente de la même semaine. */
+  OnCallRoster{previousRevision(isoWeek)} to OnCallRoster
+  OnCallAssignment{roster(isoWeek) required} to OnCallRoster
+  Shift{roster(isoWeek) required} to OnCallRoster
+  ShiftLogEntry{shift(reference) required} to Shift
+  /** Entrée corrigée, citée par une entrée de correction. */
+  ShiftLogEntry{corrects} to ShiftLogEntry
+  ReportSignature{report(reference) required} to ShiftReport
+}
+
+/* ---------------------------------------------------------------------------
+ * Options
+ * ------------------------------------------------------------------------- */
+
+dto * with mapstruct
+service * with serviceClass
+/*
+ * Écrits uniquement par la réception des alertes, les algorithmes 6.44 à 6.47
+ * et le consommateur d'événements ; acquittement, validation de grille et
+ * signatures passent par des commandes écrites à la main.
+ * ShiftLogEntry et ReportSignature sont en ajout seul.
+ */
+readOnly MeasureWindow, Alert, OperatorUnavailability, OnCallRoster, OnCallAssignment, Shift, ShiftLogEntry, ShiftReport, ReportSignature
+/* L'avertissement « paginate deprecated » de JHipster 9.4.0 est à ignorer. */
+paginate SupervisedLink, MeasureWindow, Alert, OperatorUnavailability, OnCallRoster, OnCallAssignment, Shift, ShiftLogEntry, ShiftReport with pagination
+filter SupervisedLink, MeasureWindow, Alert, OperatorUnavailability, OnCallAssignment, Shift, ShiftLogEntry, ShiftReport

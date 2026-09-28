@@ -1,0 +1,537 @@
+/*
+ * MS-PILOTAGE : tableaux Kanban, tâches, projets, risques et instances de décision
+ *
+ * Projet   : Plateforme de suivi des activités du DES, GIMAC
+ * Sources  : CC-GIMAC-01 v1.1 §6.1.12 (algorithmes 6.52 à 6.55) ;
+ *            CA-GIMAC-01 v1.1 UC-PIL-01 à UC-PIL-04 ; CP-GIMAC-01 v1.0 épopées PIL-E1 à PIL-E3 ;
+ *            REC-GIMAC-01 (D-02, D-19, D-26, D-27, D-30)
+ * Besoins  : BF-20, BF-21, BF-22 ; BNF-04, BNF-06, BNF-16
+ * Règles   : RG-20, RG-46, RG-47, RG-49, RG-50, RG-51 ; transverses RG-15, RG-35
+ * Cible    : JHipster 9.4.0, vague 3 (REC §2 : BF-20, BF-21 et BF-22 en V3, D-07)
+ *
+ * Principe : le service organise le travail et le cycle décisionnel du DES,
+ * mais ne calcule aucun indicateur (MS-REPORTING les compte à partir des
+ * événements pilotage.*.v1). Il ne duplique pas l'état d'un ticket ou d'une
+ * opération : une tâche en garde la référence typée et consomme ses événements
+ * de clôture, sans jamais agir sur le service qui la porte. Aucune donnée de
+ * carte, aucun accès à la production. Les décisions sont saisies de façon
+ * structurée (porteur, échéance, critères) puis converties en tâches de façon
+ * atomique : aucun traitement du langage naturel, aucune composante d'IA (D-27).
+ *
+ * Écrit à la main après la génération, car non généré par JHipster :
+ *   - le refactoring hexagonal et les ports du CC §6.1.12.3 (BoardUseCase,
+ *     ProjectSchedulingUseCase, RiskUseCase, MeetingUseCase, OriginEventPort,
+ *     DeadlineWatchUseCase ; DirectoryProjectionPort, DocumentStorePort...) ;
+ *   - l'ordonnancement PERT/CPM : loi bêta, tri de Kahn, passes avant et
+ *     arrière, marges, chemin critique et probabilité Pr(T <= Dc) (algorithme 6.52) ;
+ *   - la cotation 5x5, le coefficient de maîtrise plafonné à 0,9 et la conduite
+ *     PDCA des fiches d'action (algorithme 6.53, RG-50) ;
+ *   - le contrôle atomique des limites d'en-cours par verrou de ligne sur la
+ *     colonne et la dérogation motivée bornée à 72 h (algorithme 6.54, RG-49) ;
+ *   - la conversion idempotente décision -> tâche, la veille des échéances à
+ *     06h30 et le taux d'exécution par instance (algorithme 6.55, RG-51) ;
+ *   - le visa tripartite Projets, Sécurité, DES avant franchissement d'un jalon (RG-46) ;
+ *   - le dépôt du compte rendu en PDF/A-3 dans MS-DOCUMENT sous le type
+ *     procès-verbal, WORM 10 ans (RG-47, D-11), seul appel synchrone (mTLS) ;
+ *   - le consommateur Kafka idempotent (RG-15, RG-35) de incident.*,
+ *     homologation.operation-closed.v1, reporting.threshold-crossed.v1,
+ *     iam.user-changed.v1 et iam.availability-validated.v1 ;
+ *   - l'outbox transactionnelle (D-26) et les sujets pilotage.task-assigned.v1,
+ *     pilotage.task-moved.v1, pilotage.task-completed.v1, pilotage.task-overdue.v1,
+ *     pilotage.decision-recorded.v1, pilotage.risk-updated.v1,
+ *     pilotage.action-sheet-changed.v1, pilotage.project-scheduled.v1 et
+ *     pilotage.notification-requested.v1.
+ *
+ * Références vers d'autres microservices (BNF-04) : identifiants UUID ou codes
+ * commentés, jamais de relation JDL (collaborateurs de MS-IAM, tickets de
+ * MS-INCIDENT, opérations de MS-HOMOLOGATION, documents de MS-DOCUMENT).
+ *
+ * Convention : toute empreinte SHA-256 est stockée en hexadécimal minuscule
+ * (64 caractères).
+ */
+
+application {
+  config {
+    baseName pilotage
+    applicationType microservice
+    packageName cm.gimac.des.pilotage
+    serverPort 8091
+    reactive false
+    authenticationType oauth2
+    serviceDiscoveryType no
+    databaseType sql
+    prodDatabaseType postgresql
+    devDatabaseType postgresql
+    /*
+     * Valkey en exploitation (REC D-25), compatible avec le protocole Redis :
+     * lecture fréquente des tableaux et de la projection de l'annuaire.
+     */
+    cacheProvider redis
+    enableHibernateCache false
+    messageBroker kafka
+    searchEngine no
+    buildTool maven
+    skipClient true
+    skipUserManagement true
+    enableTranslation true
+    nativeLanguage fr
+    languages [fr, en]
+    testFrameworks []
+    enableSwaggerCodegen false
+  }
+  entities Board, BoardColumn, Task, AcceptanceCriterion, WipOverride, Project, Milestone, MilestoneApproval, Risk, RiskAssessment, ActionSheet, Meeting, MeetingAttendance, Decision, CollaboratorProjection, AbsenceProjection, ProcessedEvent
+}
+
+/* ---------------------------------------------------------------------------
+ * Énumérations
+ * ------------------------------------------------------------------------- */
+
+/** Origine typée d'une tâche ou d'une fiche d'action (CC §6.1.12.3). */
+enum OriginKind {
+  TICKET,
+  OPERATION,
+  DECISION,
+  FICHE_ACTION,
+  RISQUE,
+  INDICATEUR,
+  INTERNE
+}
+
+/** État d'une tâche (algorithme 6.54). */
+enum TaskState {
+  OUVERTE,
+  EN_COURS,
+  BLOQUEE,
+  TERMINEE,
+  ANNULEE
+}
+
+/** Phase d'une fiche d'action selon le cycle PDCA (algorithme 6.53). */
+enum PdcaPhase {
+  PLANIFIER,
+  REALISER,
+  VERIFIER,
+  AGIR,
+  CLOSE
+}
+
+/** Zone de la matrice 5x5, sur le risque résiduel (formule 6.65). */
+enum RiskZone {
+  FAIBLE,
+  MODERE,
+  ELEVE,
+  CRITIQUE
+}
+
+/** Cycle de vie d'une réunion (algorithme 6.55). */
+enum MeetingState {
+  PLANIFIEE,
+  TENUE,
+  CR_DEPOSE
+}
+
+/**
+ * État d'un jalon. Écart CC corrigé : le CC type l'état en String ; une
+ * énumération est retenue pour porter le visa tripartite de RG-46.
+ */
+enum MilestoneState {
+  PREVU,
+  EN_ATTENTE_VISA,
+  ATTEINT
+}
+
+/** Autorité signataire du visa tripartite de franchissement de jalon (RG-46). */
+enum ApprovalAuthority {
+  PROJETS,
+  SECURITE,
+  DES
+}
+
+/**
+ * État d'une décision de réunion. Écart CC corrigé : le CC ne type pas ce
+ * cycle ; l'algorithme 6.55 (étapes 2 et 3) distingue la décision saisie, la
+ * décision renvoyée au secrétaire de séance et la décision convertie en tâche.
+ */
+enum DecisionState {
+  SAISIE,
+  RENVOYEE,
+  CONVERTIE
+}
+
+/* ---------------------------------------------------------------------------
+ * Entités : tableaux et tâches (BF-20)
+ * ------------------------------------------------------------------------- */
+
+/**
+ * Tableau Kanban d'un service ou pôle du DES (exploitation, supervision,
+ * homologation, conformité).
+ */
+entity Board {
+  id UUID
+  /** Code du service ou pôle propriétaire, par exemple HOMOLOGATION. */
+  serviceCode String required maxlength(30) pattern(/^[A-Z_]+$/)
+  name String required maxlength(150)
+  /** Version incrémentée à chaque déplacement (algorithme 6.54, étape 5). */
+  version Long required min(0)
+}
+
+/**
+ * Colonne d'un tableau (objet-valeur BoardColumn du CC, persisté en entité
+ * pour porter le verrou de ligne de l'algorithme 6.54).
+ */
+entity BoardColumn {
+  id UUID
+  /** Code de la colonne, par exemple A_FAIRE, EN_COURS, EN_REVUE, TERMINE. */
+  code String required maxlength(30) pattern(/^[A-Z_]+$/)
+  label String required maxlength(100)
+  position Integer required min(0)
+  /** Limite d'en-cours Lc ; 0 = colonne non bornée (RG-49). */
+  wipLimit Integer required min(0)
+  /** Colonne terminale : entrée soumise aux critères d'acceptation. */
+  terminal Boolean required
+}
+
+/**
+ * Tâche nominative à responsable unique (RG-20). Son origine est une
+ * référence typée ; pour une origine externe (ticket, opération, indicateur),
+ * seule la référence est conservée (BNF-04).
+ */
+entity Task {
+  id UUID
+  title String required maxlength(255)
+  /** Responsable unique : identifiant du collaborateur (MS-IAM). */
+  assigneeId UUID required
+  dueDate LocalDate required
+  originKind OriginKind required
+  /** Référence de l'origine, par exemple TCK-000318 ou l'identifiant d'une décision. */
+  originReference String maxlength(100)
+  /** Service source de l'origine, par exemple MS-INCIDENT. */
+  originService String maxlength(50)
+  startedAt Instant
+  completedAt Instant
+  state TaskState required
+  /** Niveau de relance atteint, de 0 à 4 (formule 6.67). */
+  reminderLevel Integer required min(0) max(4)
+  /** Clôture proposée au responsable sur événement d'origine, jamais déplacée d'office. */
+  closureProposedAt Instant
+}
+
+/** Critère d'acceptation d'une tâche ; au moins un par tâche (CC §6.1.12.1). */
+entity AcceptanceCriterion {
+  id UUID
+  label String required maxlength(500)
+  satisfied Boolean required
+  /** Une pièce justificative en GED est exigée pour satisfaire ce critère. */
+  evidenceRequired Boolean required
+  /** Pièce justificative : identifiant du document dans MS-DOCUMENT. */
+  evidenceRef UUID
+  satisfiedAt Instant
+}
+
+/**
+ * Dérogation motivée à la limite d'en-cours (algorithme 6.54, étape 4) :
+ * approbateur distinct du demandeur, expiration au plus 72 h après l'octroi,
+ * une seule dérogation active par colonne.
+ */
+entity WipOverride {
+  id UUID
+  /** Demandeur (MS-IAM). */
+  requesterId UUID required
+  /** Approbateur, responsable ou chef du pôle, distinct du demandeur (MS-IAM). */
+  approverId UUID required
+  reason String required maxlength(500)
+  grantedAt Instant required
+  expiresAt Instant required
+  /** Avis d'expiration émis par la veille quotidienne (étape 6). */
+  expiryNotifiedAt Instant
+}
+
+/* ---------------------------------------------------------------------------
+ * Entités : projets et jalons (BF-21)
+ * ------------------------------------------------------------------------- */
+
+/** Projet structurant du groupement, ordonnancé par PERT/CPM (algorithme 6.52). */
+entity Project {
+  id UUID
+  title String required maxlength(255)
+  scope String maxlength(2000)
+  /** Responsable du projet (MS-IAM). */
+  ownerId UUID required
+  budget BigDecimal min(0)
+  /** Avancement pondéré par les durées espérées des jalons atteints, en %. */
+  progress Integer required min(0) max(100)
+  /** Date de début D0. Écart CC corrigé : entrée de l'algorithme 6.52 absente du diagramme de classes. */
+  startDate LocalDate required
+  /** Date cible Dc. */
+  targetDate LocalDate required
+  /** Durée espérée du projet T, en jours ouvrés (sortie de l'algorithme 6.52). */
+  expectedDurationDays BigDecimal min(0)
+  /** Probabilité Pr(T <= Dc), entre 0 et 1 (formule 6.63). */
+  onTimeProbability BigDecimal min(0) max(1)
+  /** Chemin critique : liste JSON ordonnée des identifiants de jalons. */
+  criticalPath TextBlob
+  scheduledAt Instant
+}
+
+/** Jalon d'un projet, estimé par trois durées (formule 6.61). */
+entity Milestone {
+  id UUID
+  label String required maxlength(255)
+  /** Durée optimiste o. */
+  optimistic Duration required
+  /** Durée la plus probable m. */
+  mostLikely Duration required
+  /** Durée pessimiste p (o <= m <= p). */
+  pessimistic Duration required
+  /** Durée espérée t = (o + 4m + p) / 6, ou durée réelle si le jalon est atteint. */
+  expectedDuration Duration
+  /** Variance ((p - o) / 6)^2 en jours carrés ; nulle si le jalon est atteint. */
+  variance BigDecimal min(0)
+  earliestStart LocalDate
+  latestStart LocalDate
+  totalFloat Duration
+  freeFloat Duration
+  /** Marge totale nulle à une demi-journée près. */
+  critical Boolean required
+  state MilestoneState required
+  /** Durée réelle, qui remplace l'estimation une fois le jalon atteint. */
+  actualDuration Duration
+  reachedAt Instant
+}
+
+/**
+ * Visa de franchissement d'un jalon (RG-46) : un visa par autorité (Projets,
+ * Sécurité, DES) ; le jalon ne passe ATTEINT qu'avec les trois.
+ */
+entity MilestoneApproval {
+  id UUID
+  authority ApprovalAuthority required
+  /** Signataire du visa (MS-IAM). */
+  approverId UUID required
+  approvedAt Instant required
+  comment String maxlength(1000)
+}
+
+/* ---------------------------------------------------------------------------
+ * Entités : risques et fiches d'action PDCA (BF-21)
+ * ------------------------------------------------------------------------- */
+
+/** Risque coté sur la matrice 5x5 (algorithme 6.53). */
+entity Risk {
+  id UUID
+  /** Périmètre : projet ou actif du département. */
+  scope String required maxlength(255)
+  description String required maxlength(2000)
+  /** Probabilité P, de 1 à 5. */
+  probability Integer required min(1) max(5)
+  /** Impact I, de 1 à 5. */
+  impact Integer required min(1) max(5)
+  /** Contrôles en place : liste JSON {libellé, poids wk, efficacité ek}. */
+  controls TextBlob
+  /** Coefficient de maîtrise c, plafonné à 0,9 (formule 6.64). */
+  controlCoefficient BigDecimal required min(0) max(0.9)
+  /** Risque brut Rb = P x I, de 1 à 25. */
+  grossScore Integer required min(1) max(25)
+  /** Risque résiduel Rr = Rb x (1 - c). */
+  residualScore BigDecimal required min(0) max(25)
+  zone RiskZone required
+  /** Propriétaire du risque (MS-IAM). */
+  ownerId UUID required
+  mitigationPlan String maxlength(4000)
+  reviewedAt Instant
+}
+
+/**
+ * Cotation datée d'un risque (algorithme 6.53, étape 2), historisée sans
+ * écrasement. Écart CC corrigé : l'historique est implicite dans le CC.
+ */
+entity RiskAssessment {
+  id UUID
+  probability Integer required min(1) max(5)
+  impact Integer required min(1) max(5)
+  controlCoefficient BigDecimal required min(0) max(0.9)
+  grossScore Integer required min(1) max(25)
+  residualScore BigDecimal required min(0) max(25)
+  previousZone RiskZone
+  zone RiskZone required
+  /** Auteur de la cotation (MS-IAM). */
+  assessorId UUID required
+  assessedAt Instant required
+}
+
+/**
+ * Fiche d'action conduite selon le cycle PDCA. Ses actions concrètes sont des
+ * tâches nominatives d'origine FICHE_ACTION.
+ */
+entity ActionSheet {
+  id UUID
+  originKind OriginKind required
+  /** Référence de l'origine, par exemple RSK-2026-011 ou un code d'indicateur. */
+  originReference String maxlength(100)
+  originService String maxlength(50)
+  phase PdcaPhase required
+  objective String required maxlength(2000)
+  /** Analyse des causes consignée en phase PLANIFIER. */
+  causeAnalysis String maxlength(4000)
+  /** Objectif Rcible ; par défaut < 10 (borne haute de la zone modérée). */
+  targetScore BigDecimal min(0) max(25)
+  /** Responsable : propriétaire du risque (MS-IAM). */
+  ownerId UUID required
+  dueDate LocalDate required
+  /** Fin de la période d'observation de la phase VERIFIER (30 jours par défaut). */
+  observationEndDate LocalDate
+  result String maxlength(4000)
+  /** Numéro du cycle PDCA, à partir de 1. */
+  cycle Integer required min(1)
+  /** Procédure pérennisée en phase AGIR : identifiant du document (MS-DOCUMENT). */
+  procedureDocumentRef UUID
+  closedAt Instant
+}
+
+/* ---------------------------------------------------------------------------
+ * Entités : réunions et décisions (BF-22)
+ * ------------------------------------------------------------------------- */
+
+/**
+ * Réunion d'une instance de gouvernance (comité de pilotage hebdomadaire,
+ * revue mensuelle des risques, comité de mise en service, revue post-incident).
+ */
+entity Meeting {
+  id UUID
+  /** Instance, par exemple « comité de pilotage du DES ». */
+  instance String required maxlength(150)
+  scheduledAt Instant required
+  heldAt Instant
+  /** Ordre du jour : liste JSON des points, dont « suivi des décisions ». */
+  agenda TextBlob
+  /** Compte rendu (procès-verbal WORM 10 ans, RG-47) : identifiant dans MS-DOCUMENT. */
+  minutesRef UUID
+  /** SHA256 du compte rendu déposé. */
+  minutesDigest String minlength(64) maxlength(64) pattern(/^[0-9a-f]{64}$/)
+  state MeetingState required
+}
+
+/**
+ * Convocation et présence d'un participant. Écart CC corrigé : les attributs
+ * participants (List<UUID>) et attendance (Map<UUID, Boolean>) du CC sont
+ * normalisés en une entité.
+ */
+entity MeetingAttendance {
+  id UUID
+  /** Participant convoqué (MS-IAM). */
+  participantId UUID required
+  present Boolean
+  recordedAt Instant
+}
+
+/**
+ * Décision de réunion saisie de façon structurée (D-27) : texte, porteur
+ * unique, échéance, critères. Elle engendre exactement une tâche (RG-51) et
+ * n'est plus modifiable après le dépôt du compte rendu.
+ */
+entity Decision {
+  id UUID
+  text String required maxlength(2000)
+  /** Porteur unique de la décision (MS-IAM), responsable de la tâche. */
+  ownerId UUID required
+  dueDate LocalDate required
+  /** Critères d'acceptation de la tâche : liste JSON, au moins un. */
+  acceptanceCriteria TextBlob required
+  state DecisionState required
+  /** Motif du renvoi au secrétaire (porteur inactif, absent ou échéance invalide). */
+  returnReason String maxlength(500)
+  convertedAt Instant
+}
+
+/* ---------------------------------------------------------------------------
+ * Entités : projection locale et idempotence
+ * ------------------------------------------------------------------------- */
+
+/**
+ * Projection locale de l'annuaire (iam.user-changed.v1), lue sans appel
+ * synchrone à MS-IAM pour vérifier qu'un responsable est actif.
+ */
+entity CollaboratorProjection {
+  id UUID
+  /** Identifiant du collaborateur dans MS-IAM. */
+  collaboratorId UUID required unique
+  displayName String required maxlength(255)
+  active Boolean required
+  /** Service ou pôle d'affectation, pour choisir le tableau d'une décision. */
+  serviceCode String maxlength(30)
+  updatedAt Instant required
+}
+
+/**
+ * Absence validée (iam.availability-validated.v1), pour vérifier qu'un
+ * responsable est disponible à l'échéance (algorithme 6.55, étape 2).
+ */
+entity AbsenceProjection {
+  id UUID
+  /** Identifiant de la disponibilité dans MS-IAM. */
+  availabilityId UUID required unique
+  /** Identifiant du collaborateur dans MS-IAM. */
+  collaboratorId UUID required
+  startsAt Instant required
+  endsAt Instant required
+  updatedAt Instant required
+}
+
+/** Événement traité : clé unique = identifiant CloudEvents (RG-15, RG-35). */
+entity ProcessedEvent {
+  id UUID
+  eventId UUID required unique
+  subject String required maxlength(150)
+  processedAt Instant required
+}
+
+/* ---------------------------------------------------------------------------
+ * Relations (internes au service uniquement, BNF-04)
+ * ------------------------------------------------------------------------- */
+
+relationship OneToOne {
+  /** Tâche engendrée par la décision (une et une seule, algorithme 6.55). */
+  Decision{task(title)} to Task
+}
+
+relationship ManyToOne {
+  BoardColumn{board(name) required} to Board
+  Task{board(name) required} to Board
+  Task{boardColumn(code) required} to BoardColumn
+  /** Fiche d'action dont la tâche est une action concrète (origine FICHE_ACTION). */
+  Task{actionSheet(objective)} to ActionSheet
+  AcceptanceCriterion{task(title) required} to Task
+  WipOverride{boardColumn(code) required} to BoardColumn
+  WipOverride{task(title) required} to Task
+  Milestone{project(title) required} to Project
+  MilestoneApproval{milestone(label) required} to Milestone
+  Risk{project(title)} to Project
+  RiskAssessment{risk(scope) required} to Risk
+  ActionSheet{risk(scope)} to Risk
+  MeetingAttendance{meeting(instance) required} to Meeting
+  Decision{meeting(instance) required} to Meeting
+  /** Décision rectifiée par une décision ultérieure (le compte rendu est scellé). */
+  Decision{rectifies(text)} to Decision
+}
+
+relationship ManyToMany {
+  /** Dépendances du graphe des jalons, acyclique (tri de Kahn). */
+  Milestone{predecessors(label)} to Milestone{successors(label)}
+  /** Dépendances entre projets structurants. */
+  Project{dependencies(title)} to Project{dependents(title)}
+}
+
+/* ---------------------------------------------------------------------------
+ * Options
+ * ------------------------------------------------------------------------- */
+
+dto * with mapstruct
+service * with serviceClass
+/*
+ * Écrits uniquement par les algorithmes et le consommateur d'événements :
+ * historique des cotations, projection de l'annuaire, événements traités.
+ */
+readOnly RiskAssessment, CollaboratorProjection, AbsenceProjection, ProcessedEvent
+/* L'avertissement « paginate deprecated » de JHipster 9.4.0 est à ignorer. */
+paginate Task, WipOverride, Project, Milestone, Risk, RiskAssessment, ActionSheet, Meeting, Decision, CollaboratorProjection, AbsenceProjection, ProcessedEvent with pagination
+filter Task, AcceptanceCriterion, WipOverride, Milestone, Risk, RiskAssessment, ActionSheet, Meeting, Decision, CollaboratorProjection, AbsenceProjection

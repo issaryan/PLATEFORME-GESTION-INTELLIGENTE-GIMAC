@@ -1,0 +1,448 @@
+/*
+ * MS-PARTICIPANT : registre des institutions membres, conformité et escalade
+ *
+ * Projet   : Plateforme de suivi des activités du DES, GIMAC
+ * Sources  : CC-GIMAC-01 v1.1 §6.1.6 (algorithmes 6.25 à 6.29) ;
+ *            CA-GIMAC-01 v1.1 UC-REF-01 à UC-REF-04, UC-PRE-03 ; CP-GIMAC-01 v1.0 §4.6 ;
+ *            REC-GIMAC-01 (D-08, D-11, D-13, D-14, D-18, D-19, D-21, D-26, D-30, D-31)
+ * Besoins  : BF-07, BF-08, BF-27 (lecture par le portail) ; BNF-03, BNF-04, BNF-16
+ * Règles   : RG-10, RG-11, RG-12, RG-13, RG-14, RG-68, RG-69, RG-70
+ *            (transverses : RG-03, RG-15, RG-35, RG-59)
+ * Cible    : JHipster 9.4.0, itération 2 (PAR-11 en itération 4, PAR-10 en vague 2)
+ *
+ * Principe : clé pivot des autres domaines, qui ne détiennent de l'institution
+ * que son identifiant. Aucune donnée de routage monétique (ni BIN, ni table ni
+ * code de routage), aucune clé, aucune donnée de carte. La plateforme signale,
+ * trace, mais ne suspend rien techniquement (D-13, PAR-08) : la suspension est
+ * décidée et exécutée hors plateforme, puis attestée par une transition
+ * approuvée. Les pièces sont déposées dans MS-DOCUMENT : seules la référence
+ * et l'empreinte sont conservées ici.
+ *
+ * Automate (D-08) : CANDIDAT, EN_HOMOLOGATION, ACTIF, A_REGULARISER, SUSPENDU,
+ * RETIRE ; relation δ de l'algorithme 6.25. Toute transition est proposée
+ * (maker) puis approuvée par une personne distincte (checker), sauf la bascule
+ * automatique en A_REGULARISER à J-0 sans régularisation (D-13). Le passage en
+ * SUSPENDU reste une décision humaine à double contrôle ; la levée de
+ * suspension exige la double signature DG et Risques (RG-14).
+ *
+ * Écrit à la main après la génération, car non généré par JHipster :
+ *   - le refactoring hexagonal et les ports du CC §6.1.6.3 :
+ *     InstitutionRepositoryPort, DocumentStorePort, NotificationPort,
+ *     OutboxRepositoryPort, EventPublisherPort ; ports primaires
+ *     InstitutionQueryPort et EscalationDirectoryPort ;
+ *   - les adaptateurs : RegistryRestAdapter, LifecycleRestAdapter (proposition,
+ *     approbation, rejet), PortalSelfServiceAdapter (périmètre de la seule
+ *     institution du correspondant, D-21), InternalQueryEndpointAdapter (gRPC
+ *     sous mTLS : fiche, services souscrits, annuaire d'escalade, lus par
+ *     MS-HOMOLOGATION, MS-INCIDENT, MS-NOTIFICATION, MS-REPORTING),
+ *     DeadlineSchedulerAdapter (balayage quotidien), DocumentServiceClientAdapter,
+ *     NotificationClientAdapter (port synchrone d'urgence S1 de
+ *     MS-NOTIFICATION, ouvert à MS-PARTICIPANT par D-19) ;
+ *   - le consommateur Kafka idempotent (RG-15, RG-35, table de déduplication) :
+ *     document.document-sealed.v1 (empreinte confirmée d'une pièce),
+ *     certification.attestation-issued.v1 et certification.go-live-authorized.v1
+ *     (prérequis de ACTIF, RG-13), rapprochement.suspens-opened.v1 et
+ *     rapprochement.suspens-closed.v1 (prérequis de RETIRE), et les sujets
+ *     d'ouverture et de clôture de liaison de MS-HOMOLOGATION (à nommer, voir
+ *     écarts) ;
+ *   - les algorithmes 6.25 (automate et maker-checker, une seule proposition
+ *     en attente par institution, approbateur au niveau APPROBATION ou plus,
+ *     D-31), 6.26 (veille J-90, J-60, J-30, J-0 ; J-60 et J-30 signées avec
+ *     accusé de réception, RG-69), 6.27 (état de conformité), 6.28 (outbox) et
+ *     6.29 (signalement de non-conformité, sans aucune action sur la production) ;
+ *   - les contrôles : unicité du code banque BEAC (RG-10), compte de règlement
+ *     obligatoire pour un participant direct (RG-11), convention de parrainage
+ *     et compte de cantonnement pour un participant indirect, banque marraine
+ *     ACTIF (RG-12), au moins deux contacts d'astreinte 24/7 joignables (RG-70) ;
+ *   - l'outbox transactionnelle (D-26), clé de partition = identifiant
+ *     d'institution, et les sujets : participant.status-changed.v1,
+ *     participant.transition-rejected.v1, participant.document-expiring.v1,
+ *     participant.compliance-changed.v1 (consommé par MS-HOMOLOGATION pour le
+ *     gel des ouvertures de liaisons, RG-68), participant.service-subscribed.v1,
+ *     participant.interaction-recorded.v1, participant.notification-requested.v1,
+ *     participant.institution-registered.v1, et un événement
+ *     participant.<agrégat>-<événement>.v1 par autre mutation (D-26) ;
+ *   - la protection en base (Liquibase) : politiques de lignes (RLS) par
+ *     institution (RG-03, RG-59) ; journal des interactions et historique des
+ *     transitions en insertion seule ; index sur (state, due_on) des échéances ;
+ *     index unique partiel : une seule transition PROPOSEE par institution.
+ *
+ * Jeu de test (D-30) : INST-0042 (établissement de paiement A), INST-0043
+ * (banque B, BNK-B) ; USR-0011 propose, USR-0007 approuve.
+ */
+
+application {
+  config {
+    baseName participant
+    applicationType microservice
+    packageName cm.gimac.des.participant
+    serverPort 8085
+    reactive false
+    authenticationType oauth2
+    serviceDiscoveryType no
+    databaseType sql
+    prodDatabaseType postgresql
+    devDatabaseType postgresql
+    /*
+     * Valkey en exploitation (REC D-25), compatible avec le protocole Redis :
+     * cache de la fiche et de l'annuaire d'escalade, lus de façon synchrone
+     * par quatre services.
+     */
+    cacheProvider redis
+    enableHibernateCache false
+    messageBroker kafka
+    searchEngine no
+    buildTool maven
+    skipClient true
+    skipUserManagement true
+    enableTranslation true
+    nativeLanguage fr
+    languages [fr, en]
+    testFrameworks []
+    enableSwaggerCodegen false
+  }
+  entities Institution, Convention, SubscribedService, Correspondent, LegalDocument, Deadline, Interaction, EscalationContact, StatusTransition
+}
+
+/* ---------------------------------------------------------------------------
+ * Énumérations
+ * ------------------------------------------------------------------------- */
+
+/**
+ * Cycle de vie institutionnel (REC D-08). Les états du CA (HOMOLOGATION,
+ * SURVEILLANCE, SUSPENSION, RÉSILIÉ) sont caducs.
+ */
+enum InstitutionStatus {
+  CANDIDAT,
+  EN_HOMOLOGATION,
+  ACTIF,
+  A_REGULARISER,
+  SUSPENDU,
+  RETIRE
+}
+
+/** État de conformité documentaire (algorithme 6.27). */
+enum ComplianceState {
+  CONFORME,
+  A_REGULARISER,
+  NON_CONFORME
+}
+
+enum TransitionState {
+  PROPOSEE,
+  APPROUVEE,
+  REJETEE
+}
+
+enum DeadlineThreshold {
+  J_90,
+  J_60,
+  J_30,
+  J_0
+}
+
+/** État d'une échéance armée (algorithme 6.26). */
+enum DeadlineState {
+  ARMEE,
+  DECLENCHEE,
+  OBSOLETE
+}
+
+/** Types de pièces légales ; le rapport de cybersécurité R-2024/01 vient du CA (UC-REF-03). */
+enum LegalDocumentType {
+  AGREMENT,
+  ARRETE,
+  ATTESTATION,
+  RAPPORT_CYBERSECURITE
+}
+
+/** État d'une pièce légale (PAR-05 : valide, expirée, remplacée). */
+enum LegalDocumentState {
+  EN_ATTENTE_SCELLEMENT,
+  VALIDE,
+  EXPIRANT,
+  EXPIREE,
+  REMPLACEE
+}
+
+/** Catégories d'établissement (PAR-01, CA §3.4.2). */
+enum InstitutionCategory {
+  BANQUE,
+  MICROFINANCE,
+  ETABLISSEMENT_PAIEMENT,
+  EMETTEUR_MONNAIE_ELECTRONIQUE,
+  TRESOR_PUBLIC
+}
+
+/** Mode d'adhésion : direct (compte de règlement BEAC) ou indirect (banque marraine). */
+enum MembershipMode {
+  DIRECT,
+  INDIRECT
+}
+
+/** Types de convention ; PARRAINAGE pour un participant indirect (RG-12). */
+enum ConventionType {
+  ADHESION,
+  SERVICE,
+  DELEGATION,
+  PARRAINAGE
+}
+
+enum SubscriptionState {
+  ACTIF,
+  RESILIE
+}
+
+/** Fonction d'un correspondant (UC-REF-04). */
+enum CorrespondentFunction {
+  DIRECTION,
+  MONETIQUE,
+  EXPLOITATION_24_7,
+  SECURITE
+}
+
+enum Reachability {
+  NON_VERIFIE,
+  JOIGNABLE,
+  INJOIGNABLE
+}
+
+/** Nature d'une interaction consignée au journal. */
+enum InteractionNature {
+  COURRIER,
+  REUNION,
+  APPEL,
+  MISE_EN_DEMEURE,
+  CHANGEMENT_STATUT,
+  CONFORMITE_RECALCULEE,
+  SIGNALEMENT_NON_CONFORMITE,
+  TICKET,
+  LIAISON,
+  AUTRE
+}
+
+/* ---------------------------------------------------------------------------
+ * Entités
+ * ------------------------------------------------------------------------- */
+
+/**
+ * Fiche institutionnelle (BF-07). Le statut ne change que par une
+ * transition approuvée (StatusTransition) ; aucune donnée de routage.
+ */
+entity Institution {
+  id UUID
+  name String required maxlength(255)
+  acronym String maxlength(50)
+  /** Code participant GIMAC, par exemple EP-A-017. */
+  participantCode String required unique maxlength(20) pattern(/^[A-Z0-9-]+$/)
+  /** Code d'identification ISO 9362 (BIC), s'il existe (BF-07). */
+  identificationCode String unique maxlength(11) pattern(/^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$/)
+  /** Code banque BEAC, unique (RG-10). */
+  beacBankCode String unique maxlength(10) pattern(/^[A-Z0-9]+$/)
+  /** Pays CEMAC, code ISO 3166-1 alpha-2. */
+  country String required maxlength(2) pattern(/^(CM|CF|CG|GA|GQ|TD)$/)
+  category InstitutionCategory required
+  membershipMode MembershipMode required
+  /** Référence du compte de règlement à la BEAC, obligatoire en adhésion directe (RG-11). */
+  settlementAccountRef String maxlength(50)
+  /** Référence du compte de cantonnement, en adhésion indirecte (RG-12). */
+  ringFencedAccountRef String maxlength(50)
+  joinedOn LocalDate
+  status InstitutionStatus required
+  complianceState ComplianceState required
+  /** Réception de certification.attestation-issued.v1 (prérequis de ACTIF). */
+  attestationIssuedAt Instant
+  /** Réception de certification.go-live-authorized.v1 (RG-13). */
+  goLiveAuthorizedAt Instant
+  /** Liaisons ouvertes dans MS-HOMOLOGATION, connues par événement (prérequis de RETIRE). */
+  openLinkCount Integer required min(0)
+  /** Suspens ouverts dans MS-RAPPROCHEMENT, connus par événement (prérequis de RETIRE). */
+  openSuspenseCount Integer required min(0)
+  createdAt Instant required
+}
+
+/**
+ * Convention (adhésion, service, délégation, parrainage) ; la pièce est
+ * déposée dans MS-DOCUMENT, seules sa référence et son empreinte sont conservées.
+ */
+entity Convention {
+  id UUID
+  type ConventionType required
+  reference String required unique maxlength(50)
+  signedOn LocalDate required
+  expiresOn LocalDate
+  /** Référence du document dans MS-DOCUMENT (documentRef du CC). */
+  documentId UUID required
+  documentSha256 String minlength(64) maxlength(64) pattern(/^[0-9a-f]{64}$/)
+}
+
+/** Service souscrit, publié vers MS-HOMOLOGATION (périmètre contractualisé). */
+entity SubscribedService {
+  id UUID
+  /** Code du service, par exemple TRANSFERT_COMPTE_A_COMPTE. */
+  serviceCode String required maxlength(50) pattern(/^[A-Z0-9_]+$/)
+  subscribedOn LocalDate required
+  terminatedOn LocalDate
+  state SubscriptionState required
+}
+
+/**
+ * Correspondant d'une institution, par fonction (UC-REF-04). Les mises à jour
+ * proposées depuis le portail restent en attente jusqu'à validation par le DES (PAR-04, PAR-11).
+ */
+entity Correspondent {
+  id UUID
+  fullName String required maxlength(255)
+  /** Fonction (function du CC, mot réservé). */
+  duty CorrespondentFunction required
+  /** Canaux déclarés, séparés par des virgules, par exemple messagerie,téléphone. */
+  channels String required maxlength(255)
+  email String maxlength(255)
+  phone String maxlength(30)
+  /** Référence de la clé publique déposée, pour vérifier les pièces signées. */
+  publicKeyRef String maxlength(255)
+  reachability Reachability required
+  lastReachabilityCheckAt Instant
+  /** Contact d'astreinte 24/7 (RG-70 : au moins deux par participant). */
+  onCall247 Boolean required
+  /** Compte du portail (identifiant dans MS-IAM), s'il existe. */
+  userId UUID
+  active Boolean required
+  proposedBy UUID
+  validatedBy UUID
+  validatedAt Instant
+}
+
+/**
+ * Pièce légale (agrément, arrêté, attestation) déposée dans MS-DOCUMENT ;
+ * son dépôt arme quatre échéances (algorithme 6.26).
+ */
+entity LegalDocument {
+  id UUID
+  type LegalDocumentType required
+  reference String required maxlength(100)
+  /** Autorité émettrice, par exemple COBAC ou MinFi. */
+  issuingAuthority String maxlength(100)
+  issuedOn LocalDate required
+  expiresOn LocalDate required
+  /** Référence du document dans MS-DOCUMENT. */
+  documentId UUID required
+  documentVersion Integer min(1)
+  /** Empreinte SHA-256 confirmée par document.document-sealed.v1. */
+  digest String minlength(64) maxlength(64) pattern(/^[0-9a-f]{64}$/)
+  sealed Boolean required
+  state LegalDocumentState required
+}
+
+/**
+ * Échéance armée sur une pièce légale ou une convention (J-90, J-60, J-30,
+ * J-0) ; à J-60 et J-30, notification signée avec accusé de réception (RG-69).
+ */
+entity Deadline {
+  id UUID
+  threshold DeadlineThreshold required
+  dueOn LocalDate required
+  state DeadlineState required
+  triggeredAction String maxlength(255)
+  triggeredAt Instant
+  acknowledgementRequired Boolean required
+  /** Identifiant de la notification dans MS-NOTIFICATION. */
+  notificationId UUID
+  acknowledgedAt Instant
+}
+
+/** Journal des interactions, en ajout seul (PAR-10). */
+entity Interaction {
+  id UUID
+  nature InteractionNature required
+  summary String required maxlength(500)
+  occurredAt Instant required
+  authorId UUID required
+  /** Référence de l'objet : ticket, liaison, réunion ou pièce, par exemple PIE-2026-118. */
+  reference String maxlength(100)
+  /** Identifiant de remise d'un signalement (algorithme 6.29). */
+  notificationId UUID
+  /** Identifiant CloudEvents, pour une interaction reçue par événement (idempotence). */
+  sourceEventId UUID unique
+}
+
+/**
+ * Contact de l'annuaire d'escalade, par sévérité (S1 à S4) et rang, lu par
+ * MS-NOTIFICATION et MS-INCIDENT. Délai par défaut : 15 min (D-14).
+ */
+entity EscalationContact {
+  id UUID
+  /** Sévérité de 1 (S1) à 4 (S4). */
+  severity Integer required min(1) max(4)
+  escalationRank Integer required min(1)
+  /** Délai d'acquittement (ISO 8601), PT15M par défaut. */
+  ackDelay Duration required
+  active Boolean required
+}
+
+/**
+ * Transition de statut proposée puis approuvée ou rejetée (maker-checker,
+ * algorithme 6.25). Historique immuable.
+ */
+entity StatusTransition {
+  id UUID
+  fromStatus InstitutionStatus required
+  toStatus InstitutionStatus required
+  reason String required maxlength(1000)
+  requesterId UUID required
+  requestedAt Instant required
+  /** Vrai pour la bascule automatique en A_REGULARISER à J-0 (D-13), sans approbateur. */
+  automaticTransition Boolean required
+  /** 1 en règle générale ; 2 pour la levée de suspension (DG et Risques, RG-14). */
+  requiredApprovals Integer required min(1) max(2)
+  approverId UUID
+  secondApproverId UUID
+  secondApprovedAt Instant
+  decidedAt Instant
+  state TransitionState required
+  rejectionReason String maxlength(500)
+  /** Pièce de décision hors plateforme dans MS-DOCUMENT (exigée pour SUSPENDU). */
+  evidenceDocumentId UUID
+}
+
+/* ---------------------------------------------------------------------------
+ * Relations
+ * ------------------------------------------------------------------------- */
+
+relationship OneToOne {
+  /** Pièce remplacée lors d'un renouvellement (algorithme 6.26, étape 5). */
+  LegalDocument{previousDocument(reference)} to LegalDocument
+}
+
+relationship ManyToOne {
+  /** Banque de règlement et banque marraine : institutions du même registre. */
+  Institution{settlementBank(participantCode)} to Institution
+  Institution{sponsorBank(participantCode)} to Institution
+  Convention{institution(participantCode) required} to Institution
+  SubscribedService{institution(participantCode) required} to Institution
+  Correspondent{institution(participantCode) required} to Institution
+  LegalDocument{institution(participantCode) required} to Institution
+  Deadline{institution(participantCode) required} to Institution
+  Deadline{legalDocument(reference)} to LegalDocument
+  Deadline{convention(reference)} to Convention
+  Interaction{institution(participantCode) required} to Institution
+  EscalationContact{institution(participantCode) required} to Institution
+  EscalationContact{correspondent(fullName) required} to Correspondent
+  EscalationContact{deputy(fullName)} to Correspondent
+  StatusTransition{institution(participantCode) required} to Institution
+}
+
+/* ---------------------------------------------------------------------------
+ * Options
+ * ------------------------------------------------------------------------- */
+
+dto * with mapstruct
+service * with serviceClass
+/*
+ * Écrits seulement par la veille (6.26) et par LifecycleRestAdapter (6.25),
+ * qui applique le maker-checker.
+ */
+readOnly Deadline, StatusTransition
+/* L'avertissement « paginate deprecated » de JHipster 9.4.0 est à ignorer. */
+paginate Institution, Convention, SubscribedService, Correspondent, LegalDocument, Deadline, Interaction, EscalationContact, StatusTransition with pagination
+filter Institution, Convention, SubscribedService, Correspondent, LegalDocument, Deadline, Interaction, EscalationContact, StatusTransition

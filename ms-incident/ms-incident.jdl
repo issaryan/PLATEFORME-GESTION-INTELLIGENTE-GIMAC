@@ -1,0 +1,522 @@
+/*
+ * MS-INCIDENT : tickets, incidents, escalade et cellule de crise
+ *
+ * Projet   : Plateforme de suivi des activités du DES, GIMAC
+ * Sources  : CC-GIMAC-01 v1.1 §6.1.9 (algorithmes 6.39 à 6.43) ;
+ *            CA-GIMAC-01 v1.1 UC-EXP-01, UC-EXP-03, UC-COL-01 ; CP-GIMAC-01 v1.0 §4.9 ;
+ *            REC-GIMAC-01 (D-07, D-08, D-09, D-10, D-11, D-14, D-19, D-26, D-30)
+ * Besoins  : BF-15, BF-16, BF-18 (cellule), BF-27 (tickets du portail) ;
+ *            BNF-03, BNF-06, BNF-16
+ * Règles   : RG-36, RG-37, RG-38, RG-40, RG-41, RG-42 ;
+ *            transverses RG-15, RG-35 (idempotence), RG-03, RG-59 (RLS), RG-39 (RFC 3161)
+ * Cible    : JHipster 9.4.0, vague 2 (INC-01 à INC-13, D-07)
+ *
+ * Principe : le service tient le cycle de vie de toute sollicitation adressée
+ * au DES et conduit la cellule de crise ; il n'agit jamais sur la production
+ * monétique, ne remet aucun message (MS-NOTIFICATION), n'héberge ni salon ni
+ * conférence (MS-COLLABORATION) et ne gère pas les tâches (MS-PILOTAGE).
+ * L'état d'un ticket ne change que par l'automate (algorithme 6.39) : la
+ * chronologie des transitions est en ajout seul et chaînée par empreinte
+ * (RG-38), de même que la main courante de crise (RG-41).
+ *
+ * Les références vers les autres services (institution, liaison, alerte,
+ * collaborateur, pièce de MS-DOCUMENT, tâche de MS-PILOTAGE, salon) sont des
+ * identifiants simples, jamais des relations JDL (BNF-04).
+ *
+ * Écrit à la main après la génération, car non généré par JHipster :
+ *   - le refactoring hexagonal et les ports du CC §6.1.9.3 : TicketRepositoryPort,
+ *     InternalDirectoryPort, InstitutionContactPort, UrgentNotificationPort,
+ *     DocumentStorePort, TimestampAuthorityPort, OutboxRepositoryPort,
+ *     EventPublisherPort, et leurs adaptateurs (IamDirectoryClientAdapter,
+ *     ParticipantContactClientAdapter, UrgentNotificationClientAdapter,
+ *     DocumentStoreClientAdapter, TimestampAuthorityAdapter...) ;
+ *   - les commandes REST métier (move, qualify, close, convene, join, record,
+ *     closeCell) qui remplacent l'écriture directe des entités en lecture seule ;
+ *   - l'automate d'états et ses gardes, le chaînage SHA-256 des transitions sur
+ *     la forme canonique JCS (RFC 8785), le verrouillage optimiste (algorithme 6.39) ;
+ *   - la qualification 5×5 et le calcul du délai imputable avec gels (6.40) ;
+ *   - l'escalade temporisée par l'ordonnanceur, chaque minute (6.41) ;
+ *   - la convocation, le quorum pondéré (seuil 4), la suppléance à 15 min, la
+ *     main courante chaînée et la clôture de la cellule de crise (6.42, D-14) ;
+ *   - le contrôle des quatre critères de clôture d'un incident (6.43, D-09),
+ *     le rapport circonstancié en PDF/A-3 horodaté RFC 3161, produit en moins
+ *     de 5 min pour S1 et S2 (D-10), et le rapport post-incident (RG-42) ;
+ *   - le consommateur Kafka idempotent et sa table de déduplication (RG-15,
+ *     RG-35) : monitoring.alert-acknowledged.v1, monitoring.alert-raised.v1,
+ *     notification.escalation-exhausted.v1, notification.acknowledged.v1,
+ *     rapprochement.suspens-contested.v1, événements de salon et d'archive de
+ *     crise de MS-COLLABORATION, événements de tâche de MS-PILOTAGE
+ *     (pilotage.task-completed.v1), divergences d'intégrité de MS-AUDIT et
+ *     de MS-DOCUMENT ;
+ *   - l'outbox transactionnelle (D-26) et les événements incident.ticket-opened.v1,
+ *     incident.ticket-transitioned.v1, incident.incident-qualified.v1,
+ *     incident.incident-escalated.v1, incident.incident-resolved.v1,
+ *     incident.ticket-closed.v1, incident.notification-requested.v1,
+ *     incident.remediation-requested.v1, incident.crisis-opened.v1,
+ *     incident.crisis-constituted.v1, incident.crisis-closed.v1 ;
+ *   - les politiques de lignes (RLS) : un correspondant ne voit que les tickets
+ *     de son institution (RG-59) ;
+ *   - la protection en base (Liquibase) des tables en ajout seul : déclencheur
+ *     rejetant toute mise à jour ou suppression des transitions et de la main
+ *     courante de crise.
+ *
+ * Convention : toute empreinte SHA-256 est stockée en hexadécimal minuscule
+ * (64 caractères). Les durées sont au format ISO-8601 (type Duration).
+ */
+
+application {
+  config {
+    baseName incident
+    applicationType microservice
+    packageName cm.gimac.des.incident
+    serverPort 8088
+    reactive false
+    authenticationType oauth2
+    serviceDiscoveryType no
+    databaseType sql
+    prodDatabaseType postgresql
+    devDatabaseType postgresql
+    /* Valkey en exploitation (REC D-25) : cache des lectures de MS-IAM et de MS-PARTICIPANT. */
+    cacheProvider redis
+    enableHibernateCache false
+    messageBroker kafka
+    searchEngine no
+    buildTool maven
+    skipClient true
+    skipUserManagement true
+    enableTranslation true
+    nativeLanguage fr
+    languages [fr, en]
+    testFrameworks []
+    enableSwaggerCodegen false
+  }
+  entities Ticket, Incident, QualificationMatrix, ServiceCommitment, Transition, EngagementFreeze, Escalation, RemediationAction, AlertObservation, CrisisCell, CrisisMember, CrisisDecision, CrisisLogEntry
+}
+
+/* ---------------------------------------------------------------------------
+ * Énumérations
+ * ------------------------------------------------------------------------- */
+
+/** Nature d'un ticket (CC §6.1.9.1). */
+enum TicketType {
+  DEMANDE,
+  INCIDENT,
+  INTERVENTION,
+  ACCES_ASTREINTE,
+  ANOMALIE
+}
+
+/**
+ * Automate des tickets (REC D-08) : OUVERT → QUALIFIE → EN_COURS ⇄
+ * EN_ATTENTE_TIERS → RESOLU → CLOS, avec REOUVERT. Pas de CLOS sans RESOLU,
+ * hors fermeture d'un doublon depuis OUVERT (RG-36, algorithme 6.39).
+ */
+enum TicketState {
+  OUVERT,
+  QUALIFIE,
+  EN_COURS,
+  EN_ATTENTE_TIERS,
+  RESOLU,
+  CLOS,
+  REOUVERT
+}
+
+/** Sévérité d'un incident, de S1 (critique) à S4 (mineure). */
+enum Severity {
+  S1,
+  S2,
+  S3,
+  S4
+}
+
+/** Origine d'un ticket (écart CC complété : l'origine n'était qu'une chaîne libre). */
+enum TicketOrigin {
+  APPLICATION_DES,
+  PORTAIL,
+  ALERTE_MONITORING,
+  ESCALADE_EPUISEE,
+  SUSPENS_CONTESTE,
+  DIVERGENCE_INTEGRITE
+}
+
+/** Déclenchement de la cellule de crise par sévérité (tableau 6.42). */
+enum CrisisActivation {
+  AUTOMATIQUE,
+  SUR_DECISION,
+  NON
+}
+
+/** Escalade interne (MS-IAM) ou vers le contact de l'institution (MS-PARTICIPANT). */
+enum EscalationScope {
+  INTERNE,
+  EXTERNE
+}
+
+/** Nature d'une action de remédiation (algorithme 6.43, critère « remédiation »). */
+enum RemediationKind {
+  CORRECTIVE,
+  PREVENTIVE
+}
+
+/** État de la tâche de MS-PILOTAGE qui porte l'action, reporté depuis ses événements. */
+enum RemediationState {
+  DEMANDEE,
+  EN_COURS,
+  ACHEVEE,
+  ANNULEE
+}
+
+/** Cellule de crise (REC D-08, D-14). */
+enum CrisisState {
+  CONVOQUEE,
+  CONSTITUEE,
+  CLOSE,
+  ARCHIVEE
+}
+
+/** Nature d'une entrée de main courante de crise (écart CC : chaîne libre typée). */
+enum CrisisLogNature {
+  PRESENCE,
+  HYPOTHESE,
+  DIRECTIVE,
+  DECISION,
+  MESURE_CONSERVATOIRE,
+  ANOMALIE_CONVOCATION,
+  RETOUR_GESTION_COURANTE
+}
+
+/* ---------------------------------------------------------------------------
+ * Entités
+ * ------------------------------------------------------------------------- */
+
+/**
+ * Ticket : toute sollicitation adressée au DES (CC §6.1.9.3).
+ * L'état ne change que par l'automate (algorithme 6.39), sous contrôle de version.
+ */
+entity Ticket {
+  id UUID
+  /** Numéro lisible, par exemple TCK-000318 (number du CC, renommé : mot réservé SQL). */
+  ticketNumber String required unique maxlength(20) pattern(/^TCK-[0-9]{6,}$/)
+  type TicketType required
+  subject String required maxlength(255)
+  description TextBlob
+  origin TicketOrigin required
+  /** Identifiant de l'objet d'origine (alerte, suspens, notification, divergence). */
+  originRef String maxlength(100)
+  /** Demandeur (collaborateur ou correspondant, MS-IAM). */
+  requesterId UUID required
+  /** Institution concernée (MS-PARTICIPANT) ; filtre RLS du portail (RG-59). */
+  institutionId UUID
+  /** Liaison supervisée concernée (MS-MONITORING), par exemple LIA-2026-017. */
+  linkId String maxlength(50)
+  /** Alerte d'origine (MS-MONITORING), pour le lien bidirectionnel alerte-ticket. */
+  alertId UUID
+  /** Priorité 1 à 5, exigée pour qualifier un ticket qui n'est pas un incident. */
+  priority Integer min(1) max(5)
+  state TicketState required
+  assigneeId UUID
+  openedAt Instant required
+  resolvedAt Instant
+  /** Auteur de la résolution : le valideur de clôture doit en être distinct (6.43). */
+  resolverId UUID
+  closedAt Instant
+  closedBy UUID
+  /** Version pour le verrouillage optimiste de l'automate. */
+  version Long required min(0)
+}
+
+/**
+ * Incident : qualification d'un ticket de type INCIDENT (matrice 5×5),
+ * critères de clôture (D-09) et rapport circonstancié (D-10).
+ */
+entity Incident {
+  id UUID
+  impact Integer required min(1) max(5)
+  urgency Integer required min(1) max(5)
+  /** Score impact × urgence. */
+  score Integer required min(1) max(25)
+  severity Severity required
+  /** Incident de sécurité : ajoute le RSSI au niveau N3 d'escalade. */
+  securityIncident Boolean required
+  dataCompromiseSuspected Boolean
+  /** Marqueur réglementaire « à déclarer » (formule 6.42) ; jamais retiré sans visa conformité. */
+  regulatoryFlag Boolean required
+  qualifiedAt Instant required
+  qualifiedBy UUID required
+  /** Critère 1 : cause racine, rattachée à la taxonomie. */
+  rootCause String maxlength(4000)
+  rootCauseCategory String maxlength(100)
+  /** Pièce du tiers exigée pour une cause externe (MS-DOCUMENT). */
+  rootCauseProofRef String maxlength(100)
+  /** Critère 2 : plan de remédiation ; les actions sont dans RemediationAction. */
+  remediationPlan TextBlob
+  /** Critère 3 : test de résolution prouvé, postérieur à la résolution. */
+  resolutionTest String maxlength(4000)
+  resolutionTestPassed Boolean
+  resolutionTestAuthorId UUID
+  resolutionTestAt Instant
+  resolutionTestProofRef String maxlength(100)
+  /** Critère 4 : capitalisation (retour d'expérience), exigée pour S1 et S2. */
+  lessonsLearnedRef String maxlength(100)
+  /** Mention « sans objet » justifiée, admise pour S3 et S4 seulement. */
+  lessonsLearnedWaiver String maxlength(1000)
+  /** Rapport circonstancié : exigible au plus tard 5 min après la résolution pour S1 et S2 (D-10). */
+  reportDueAt Instant
+  reportGeneratedAt Instant
+  /** Référence du rapport déposé dans MS-DOCUMENT. */
+  reportRef String maxlength(100)
+  reportDigest String minlength(64) maxlength(64) pattern(/^[0-9a-f]{64}$/)
+  /** Visa du responsable conformité, exigé si le marqueur est positionné. */
+  complianceVisaBy UUID
+  complianceVisaAt Instant
+  /** Validation des quatre critères : fin de mesure du MTTR (D-09). */
+  criteriaValidatedAt Instant
+  validatorId UUID
+  /** Durée brute, de l'ouverture à la résolution, toujours publiée. */
+  rawDuration Duration
+  /** Somme des gels d'attente de tiers. */
+  frozenDuration Duration
+  /** Délai imputable (durée brute moins les gels), gelé à la clôture (D-09). */
+  imputableDelay Duration
+  /** MTTR réel : de l'ouverture à la validation des critères, sans déduire les gels (D-09). */
+  mttr Duration
+  takeChargeMet Boolean
+  restorationMet Boolean
+}
+
+/**
+ * Matrice de qualification impact × urgence, versionnée (objet-valeur du CC,
+ * persisté car paramétrable). Une version déjà appliquée n'est jamais modifiée.
+ */
+entity QualificationMatrix {
+  id UUID
+  /** Version, par exemple MQ-2026.1. */
+  matrixVersion String required unique maxlength(20)
+  /** Tableau JSON 5×5 des sévérités, indexé [impact][urgence]. */
+  cells TextBlob required
+  /** Liste JSON des règles du marqueur réglementaire (seuil Dreg...). */
+  regulatoryRules TextBlob
+  effectiveFrom Instant required
+  active Boolean required
+}
+
+/** Engagement de service par sévérité (tableau 6.42, valeurs paramétrables). */
+entity ServiceCommitment {
+  id UUID
+  severity Severity required unique
+  takeCharge Duration required
+  restoration Duration required
+  /**
+   * Paliers d'escalade, liste JSON : durées absolues ISO-8601 pour S1,
+   * fractions du délai de rétablissement pour S2 à S4.
+   */
+  escalationSteps TextBlob required
+  crisisActivation CrisisActivation required
+  /** Période d'observation après résolution (24 h pour S1 et S2, algorithme 6.43). */
+  observationPeriod Duration
+}
+
+/**
+ * Transition de l'automate : ligne en ajout seul, chaînée par empreinte
+ * (RG-38, formule 6.40 : h0 = SHA-256(id du ticket), hn = SHA-256(hn-1 || JCS(τn))).
+ */
+entity Transition {
+  id UUID
+  /** Rang dans la chronologie du ticket, à partir de 1. */
+  chainIndex Long required min(1)
+  /** Vide pour la transition de création. */
+  fromState TicketState
+  toState TicketState required
+  actorId UUID required
+  occurredAt Instant required
+  /** Justificatif exigé pour la mise en attente, la résolution sans suite et la réouverture. */
+  justification String maxlength(2000)
+  previousHash String required minlength(64) maxlength(64) pattern(/^[0-9a-f]{64}$/)
+  hash String required unique minlength(64) maxlength(64) pattern(/^[0-9a-f]{64}$/)
+}
+
+/**
+ * Gel d'engagement en attente de tiers (RG-37) : motivé et appuyé d'une pièce ;
+ * un seul gel ouvert par ticket à un instant donné.
+ */
+entity EngagementFreeze {
+  id UUID
+  reason String required maxlength(500)
+  thirdParty String required maxlength(255)
+  startedAt Instant required
+  endedAt Instant
+  /** Pièce justificative déposée dans MS-DOCUMENT. */
+  proofRef String required maxlength(100)
+}
+
+/**
+ * Escalade déclenchée (algorithme 6.41) : un palier n'est franchi qu'une fois,
+ * unicité (ticket, portée, niveau) posée en base.
+ */
+entity Escalation {
+  id UUID
+  scope EscalationScope required
+  /** Niveau N1 à N4. */
+  level Integer required min(1) max(4)
+  /** Destinataire interne (MS-IAM), après substitution du délégué actif. */
+  targetUserId UUID
+  /** Contact d'escalade de l'institution (MS-PARTICIPANT). */
+  targetContactId UUID
+  triggeredAt Instant required
+  reason String required maxlength(500)
+  /** Délai imputable au moment du franchissement. */
+  imputableDelay Duration
+}
+
+/**
+ * Action de remédiation demandée à MS-PILOTAGE (incident.remediation-requested.v1),
+ * dont l'état suit les événements de tâche (écart CC complété : entité exigée
+ * par le critère « remédiation » de l'algorithme 6.43).
+ */
+entity RemediationAction {
+  id UUID
+  kind RemediationKind required
+  description String required maxlength(2000)
+  /** Porteur nominatif de la tâche. */
+  ownerId UUID required
+  dueDate LocalDate required
+  requestedAt Instant required
+  /** Référence de la tâche rendue par MS-PILOTAGE, par exemple TSK-2026-0712. */
+  taskRef String maxlength(50)
+  state RemediationState required
+  completedAt Instant
+}
+
+/**
+ * Alerte reçue sur un objet (monitoring.alert-raised.v1), projetée pour
+ * vérifier la période d'observation du test de résolution (algorithme 6.43).
+ */
+entity AlertObservation {
+  id UUID
+  alertId UUID required unique
+  linkId String maxlength(50)
+  institutionId UUID
+  /** Gravité proposée par MS-MONITORING (MINEURE, MAJEURE, CRITIQUE). */
+  alertSeverity String required maxlength(20)
+  raisedAt Instant required
+}
+
+/**
+ * Cellule de crise (D-14, algorithme 6.42). Elle ne passe CLOSE que sur
+ * rapport post-incident signé, rédigé au plus tard 5 jours ouvrés après la
+ * résolution (RG-42), et ARCHIVEE lorsque l'archive scellée par
+ * MS-COLLABORATION est référencée. Critères d'activation non débrayables (RG-40).
+ */
+entity CrisisCell {
+  id UUID
+  /** Référence lisible, par exemple CRI-2026-009. */
+  reference String required unique maxlength(20) pattern(/^CRI-[0-9]{4}-[0-9]{3,}$/)
+  level Severity required
+  state CrisisState required
+  /** Vrai pour une ouverture automatique à la qualification S1. */
+  automaticActivation Boolean required
+  /** Motif de la décision du chef du DES pour un incident S2 ou un événement grave. */
+  activationReason String maxlength(1000)
+  convenedBy UUID
+  convenedAt Instant required
+  /** Échéance de quorum (convocation + 15 min), déclenchant la suppléance. */
+  quorumDeadline Instant required
+  /** Seuil du quorum pondéré : 4 par défaut (D-14). */
+  quorumThreshold Integer required min(1)
+  constitutedAt Instant
+  /** Salon de crise ouvert par MS-COLLABORATION, par exemple SAL-CRISE-2026-009. */
+  roomRef String maxlength(50)
+  /** Rapport post-incident : échéance à 5 jours ouvrés de la résolution (RG-42). */
+  postIncidentReportDueAt Instant
+  postIncidentReportRef String maxlength(100)
+  postIncidentReportDigest String minlength(64) maxlength(64) pattern(/^[0-9a-f]{64}$/)
+  postIncidentReportSignedBy UUID
+  postIncidentReportSignedAt Instant
+  closedBy UUID
+  closedAt Instant
+  /** Archive des échanges scellée par MS-COLLABORATION. */
+  archiveRef String maxlength(100)
+  archivedAt Instant
+}
+
+/** Membre de la cellule, de droit ou suppléant (algorithme 6.42, étapes 1 et 4). */
+entity CrisisMember {
+  id UUID
+  userId UUID required
+  /** Rôle de droit, par exemple « chef du DES ». */
+  role String required maxlength(100)
+  /** Poids dans le quorum : 2 pour la Direction Générale et le chef du DES, 1 sinon. */
+  weight Integer required min(0)
+  /** Titulaire remplacé, pour un suppléant. */
+  substituteFor UUID
+  convenedAt Instant required
+  /** Présence effective ; l'acquittement de la convocation ne vaut pas présence. */
+  joinedAt Instant
+}
+
+/** Décision de la cellule ; une décision portant une action devient une tâche. */
+entity CrisisDecision {
+  id UUID
+  statement String required maxlength(2000)
+  decidedBy UUID required
+  decidedAt Instant required
+  /** Référence de tâche rendue par MS-PILOTAGE. */
+  taskRef String maxlength(50)
+}
+
+/** Entrée de main courante de crise : ajout seul, chaînage des empreintes (RG-41). */
+entity CrisisLogEntry {
+  id UUID
+  chainIndex Long required min(1)
+  occurredAt Instant required
+  authorId UUID required
+  nature CrisisLogNature required
+  text String required maxlength(4000)
+  /** Référence citée (décision, tâche, pièce, alerte). */
+  reference String maxlength(100)
+  previousHash String required minlength(64) maxlength(64) pattern(/^[0-9a-f]{64}$/)
+  hash String required unique minlength(64) maxlength(64) pattern(/^[0-9a-f]{64}$/)
+}
+
+/* ---------------------------------------------------------------------------
+ * Relations
+ * ------------------------------------------------------------------------- */
+
+relationship OneToOne {
+  /** Un incident précise un ticket de type INCIDENT. */
+  Incident{ticket(ticketNumber) required} to Ticket
+}
+
+relationship ManyToOne {
+  /** Ticket lié : anomalie d'escalade épuisée, réouverture au-delà de trente jours. */
+  Ticket{relatedTicket(ticketNumber)} to Ticket
+  /** Version de matrice figée à la qualification. */
+  Incident{matrix(matrixVersion) required} to QualificationMatrix
+  Transition{ticket(ticketNumber) required} to Ticket
+  EngagementFreeze{ticket(ticketNumber) required} to Ticket
+  Escalation{ticket(ticketNumber) required} to Ticket
+  RemediationAction{incident required} to Incident
+  /** Décision de crise à l'origine de l'action, le cas échéant. */
+  RemediationAction{crisisDecision} to CrisisDecision
+  /** Une seule cellule active par incident. */
+  CrisisCell{incident required} to Incident
+  CrisisMember{cell(reference) required} to CrisisCell
+  CrisisDecision{cell(reference) required} to CrisisCell
+  CrisisLogEntry{cell(reference) required} to CrisisCell
+}
+
+/* ---------------------------------------------------------------------------
+ * Options
+ * ------------------------------------------------------------------------- */
+
+dto * with mapstruct
+service * with serviceClass
+/*
+ * Écrits uniquement par l'automate, les algorithmes et le consommateur
+ * d'événements ; les commandes métier sont écrites à la main.
+ * Transition (RG-38) et CrisisLogEntry (RG-41) sont en ajout seul.
+ */
+readOnly Transition, EngagementFreeze, Escalation, AlertObservation, CrisisMember, CrisisDecision, CrisisLogEntry
+/* L'avertissement « paginate deprecated » de JHipster 9.4.0 est à ignorer. */
+paginate Ticket, Incident, Transition, EngagementFreeze, Escalation, RemediationAction, AlertObservation, CrisisCell, CrisisLogEntry with pagination
+filter Ticket, Incident, Transition, Escalation, RemediationAction, CrisisCell, CrisisLogEntry

@@ -1,0 +1,393 @@
+/*
+ * MS-DOCUMENT : gestion électronique des documents probants (GED WORM)
+ *
+ * Projet   : Plateforme de suivi des activités du DES, GIMAC
+ * Sources  : CC-GIMAC-01 v1.1 §6.1.4 (algorithmes 6.17 à 6.20, tableau 6.18) ;
+ *            CA-GIMAC-01 v1.1 UC-SOC-02, UC-PRE-03 ; CP-GIMAC-01 v1.0 §4.4 ;
+ *            REC-GIMAC-01 (D-11, D-19, D-24, D-26, D-29, D-30, D-31, RG-74)
+ * Besoins  : BF-04, BF-14 ; BNF-03, BNF-04, BNF-05, BNF-16
+ * Règles   : RG-04, RG-05, RG-06, RG-16, RG-74 (justificatif à accès restreint)
+ * Cible    : JHipster 9.4.0, itération 2 (DOC-05 et DOC-08 en itération 4, DOC-06 en vague 2)
+ *
+ * Principe : chaque version est un objet distinct du dépôt objet WORM, sous
+ * verrou de rétention en mode conformité (10 ans par défaut, D-11) ; rien
+ * n'est jamais écrasé. Le service ne produit, ne signe ni n'interprète aucune
+ * pièce ; il ne détient aucune donnée de carte (rejet ou masquage 6+4 au dépôt).
+ * Les autres services ne conservent que la référence de document
+ * (identifiant, lignée, version, empreinte), jamais le contenu.
+ *
+ * Les métadonnées de document et de lignée, le journal de consultation et les
+ * contrôles d'intégrité sont en lecture seule côté REST (readOnly) : ils ne
+ * sont écrits que par la chaîne de dépôt (6.17), le versionnage (6.18), la
+ * restitution contrôlée (6.19) et le contrôle d'intégrité (6.20).
+ *
+ * Écrit à la main après la génération, car non généré par JHipster :
+ *   - le refactoring hexagonal et les ports du CC §6.1.4.3 : AntivirusScanPort,
+ *     ObjectStorePort, DocumentRepositoryPort, ConsultationJournalPort,
+ *     OutboxRepositoryPort, EventPublisherPort ;
+ *   - les adaptateurs : DocumentRestAdapter (dépôt et téléchargement en flux,
+ *     multipart), InternalDepositAdapter (dépôt et lecture synchrones sous
+ *     mTLS, liste des services appelants autorisés), PurgeProcedureAdapter
+ *     (console d'administration), IntegritySchedulerAdapter ;
+ *     AntivirusScanAdapter (ClamAV, D-25), ObjectStoreWormAdapter (MinIO,
+ *     verrou de rétention en mode conformité, écriture refusée sur clé existante) ;
+ *   - la chaîne de contrôle au dépôt (algorithme 6.17) : antivirus en flux,
+ *     contrôle de masquage par la formule de Luhn (13 à 19 chiffres), SHA-256,
+ *     classification, vérification de la déclaration PDF/A-3 ;
+ *   - le versionnage sans écrasement (6.18) : verrou de lignée
+ *     SELECT ... FOR UPDATE, contrainte d'unicité (lignée, version) ;
+ *   - la restitution contrôlée (6.19) : décision d'accès, journal inscrit avant
+ *     la remise, restitution en flux avec l'empreinte attendue en en-tête ;
+ *     accès restreint aux justificatifs d'absence (demandeur, valideur, RH : D-29) ;
+ *   - la vérification d'intégrité nocturne par échantillon stratifié de 200
+ *     documents (6.20), comparaison en temps constant, appel du port
+ *     synchrone d'urgence de MS-NOTIFICATION en cas de divergence (D-19) ;
+ *   - la purge à quatre yeux (demandeur et approbateur distincts), qui ne
+ *     supprime que l'objet, jamais les métadonnées ni le journal ;
+ *   - l'outbox transactionnelle (D-26) et les événements document.*.v1 :
+ *     document.document-sealed.v1, document.document-consulted.v1,
+ *     document.quarantined.v1, document.integrity-checked.v1,
+ *     document.integrity-alert.v1, document.purge-requested.v1,
+ *     document.purge-approved.v1, document.document-purged.v1 ;
+ *   - la protection en base (Liquibase) : politiques de lignes (RLS) par
+ *     institution (RG-03, RG-59), rôle SQL en insertion seule sur le journal de
+ *     consultation et sur les contrôles d'intégrité, déclencheur refusant toute
+ *     mise à jour des colonnes figées d'un document scellé (empreinte, clé,
+ *     taille, version) ; contrainte d'unicité (lineage_id, version).
+ *
+ * Convention : toute empreinte SHA-256 est stockée en hexadécimal minuscule
+ * (64 caractères). Les listes sont des chaînes séparées par des virgules.
+ */
+
+application {
+  config {
+    baseName document
+    applicationType microservice
+    packageName cm.gimac.des.document
+    serverPort 8083
+    reactive false
+    authenticationType oauth2
+    serviceDiscoveryType no
+    databaseType sql
+    prodDatabaseType postgresql
+    devDatabaseType postgresql
+    /*
+     * Valkey en exploitation (REC D-25), compatible avec le protocole Redis :
+     * cache du catalogue des types de pièces, lu à chaque dépôt et à chaque
+     * décision d'accès. Aucun cache sur les métadonnées de document.
+     */
+    cacheProvider redis
+    enableHibernateCache false
+    messageBroker kafka
+    searchEngine no
+    buildTool maven
+    skipClient true
+    skipUserManagement true
+    enableTranslation true
+    nativeLanguage fr
+    languages [fr, en]
+    testFrameworks []
+    enableSwaggerCodegen false
+  }
+  entities DocumentTypePolicy, DocumentLineage, Document, Consultation, PurgeRequest, IntegrityCheck, IntegrityMismatch
+}
+
+/* ---------------------------------------------------------------------------
+ * Énumérations
+ * ------------------------------------------------------------------------- */
+
+/**
+ * Types de pièces du tableau 6.18 du CC, complétés par le justificatif
+ * d'absence, type restreint (REC D-29, RG-74).
+ */
+enum DocumentType {
+  RAPPORT_DE_QUART,
+  ATTESTATION,
+  ARCHIVE_DE_CRISE,
+  PIECE_LEGALE,
+  PREUVE_HOMOLOGATION,
+  PROCES_VERBAL,
+  RAPPORT_PERIODIQUE,
+  ETAT_IMPORTE,
+  JUSTIFICATIF_ABSENCE,
+  /* Types ajoutés à la relecture d'ensemble : pièces déposées par les autres services. */
+  /** Rapport circonstancié d'un incident S1 ou S2 (MS-INCIDENT, D-10). */
+  RAPPORT_CIRCONSTANCIE,
+  /** Rapport post-incident signé d'une cellule de crise (MS-INCIDENT, D-14, RG-42). */
+  RAPPORT_POST_INCIDENT,
+  /** Attestation de régularisation d'un suspens (MS-RAPPROCHEMENT, RG-45). */
+  ATTESTATION_REGULARISATION,
+  /** Convention d'adhésion ou de parrainage (MS-PARTICIPANT, RG-12). */
+  CONVENTION,
+  /** Export contrôlé d'agrégats (MS-REPORTING, REP-08). */
+  EXPORT_CONTROLE,
+  /** Segment d'enregistrement de conférence, avec consentement (MS-COLLABORATION, RG-55). */
+  ENREGISTREMENT_CONFERENCE
+}
+
+/** Cycle de vie d'une version de pièce (algorithmes 6.17 et 6.18). */
+enum DocumentState {
+  RECU,
+  EN_QUARANTAINE,
+  REJETE,
+  SCELLE,
+  REMPLACE,
+  PURGE
+}
+
+/** Mode du verrou de rétention du dépôt objet ; CONFORMITE par défaut. */
+enum RetentionMode {
+  CONFORMITE,
+  GOUVERNANCE
+}
+
+/** Règle appliquée à un numéro de carte plausible (tableau 6.18). */
+enum MaskingRule {
+  REJET,
+  MASQUAGE
+}
+
+/**
+ * Périmètre de visibilité d'une pièce. RESTREINT : seuls le déposant, les
+ * lecteurs désignés et les porteurs de la permission RH y accèdent (D-29).
+ */
+enum DocumentVisibility {
+  TOUTES_INSTITUTIONS,
+  UNE_INSTITUTION,
+  UN_SERVICE,
+  RESTREINT
+}
+
+enum ConsultationAction {
+  LECTURE,
+  TELECHARGEMENT,
+  LISTE_DES_VERSIONS
+}
+
+/**
+ * Canal de la consultation : origine de la requête (NetworkZone, REC D-24),
+ * ou appel d'un service interne sous mTLS.
+ */
+enum ConsultationChannel {
+  PORTAIL_DMZ,
+  DEPARTEMENT,
+  ADMINISTRATION,
+  SERVICE_INTERNE
+}
+
+/** État d'une demande de purge à quatre yeux (écart CC corrigé : String typé). */
+enum PurgeState {
+  DEMANDEE,
+  APPROUVEE,
+  REJETEE,
+  EXECUTEE
+}
+
+/** Résultat d'un contrôle d'intégrité (algorithme 6.20 ; écart CC corrigé : String typé). */
+enum IntegrityResult {
+  EN_COURS,
+  CONFORME,
+  DIVERGENT
+}
+
+/** Nature d'une anomalie relevée par le contrôle d'intégrité. */
+enum MismatchKind {
+  EMPREINTE_DIVERGENTE,
+  OBJET_ILLISIBLE,
+  VERROU_INVALIDE
+}
+
+/* ---------------------------------------------------------------------------
+ * Entités
+ * ------------------------------------------------------------------------- */
+
+/**
+ * Catalogue versionné des types de pièces (DOC-02) : origine admise, règle de
+ * masquage, rétention et contraintes d'admission (tableau 6.18 du CC).
+ * Valeurs initiales : 10 ans en conformité, sauf ETAT_IMPORTE (5 ans) ;
+ * JUSTIFICATIF_ABSENCE : restreint, durée proposée de 5 ans en conformité,
+ * à confirmer par le RSSI (D-29).
+ */
+entity DocumentTypePolicy {
+  id UUID
+  documentType DocumentType required
+  /** Version du catalogue ; le couple (type, version) est unique. */
+  policyVersion Integer required min(1)
+  /** Durée de rétention au format ISO 8601, par exemple P10Y. */
+  retentionPeriod String required maxlength(20) pattern(/^P([0-9]+Y)?([0-9]+M)?([0-9]+D)?$/)
+  retentionMode RetentionMode required
+  maskingRule MaskingRule required
+  /** Vrai pour un type à accès restreint (justificatif d'absence, D-29). */
+  restrictedAccess Boolean required
+  /** Vrai si la déclaration PDF/A-3 est exigée (pièces générées, ISO 19005-3). */
+  pdfaRequired Boolean required
+  /** Types de média admis, séparés par des virgules. */
+  allowedMediaTypes String required maxlength(500)
+  maxSizeBytes Long required min(1)
+  /** Services appelants autorisés (liste mTLS), séparés par des virgules ; vide pour un dépôt utilisateur seul. */
+  allowedCallers String maxlength(500)
+  effectiveFrom Instant required
+  active Boolean required
+}
+
+/**
+ * Lignée : versions successives d'une même pièce logique (algorithme 6.18).
+ * La version courante est résolue par currentVersion et currentDocument.
+ */
+entity DocumentLineage {
+  id UUID
+  type DocumentType required
+  /** Service propriétaire, par exemple MS-MONITORING ; vide pour un dépôt utilisateur. */
+  ownerService String maxlength(50)
+  /** Utilisateur propriétaire, pour un dépôt depuis une couche de présentation. */
+  ownerId UUID
+  /** Institution concernée (MS-PARTICIPANT), pour le cloisonnement RLS. */
+  institutionId UUID
+  currentVersion Integer required min(0)
+  createdAt Instant required
+}
+
+/**
+ * Version d'une pièce : un objet distinct du dépôt WORM, avec sa propre
+ * empreinte et son propre verrou (RG-04, RG-05, RG-16). Les objets-valeurs du
+ * CC (RetentionPolicy, RetentionLock, ScanResult, MaskingVerdict) y sont aplatis.
+ */
+entity Document {
+  id UUID
+  type DocumentType required
+  title String required maxlength(255)
+  /** Numéro de version dans la lignée, à partir de 1 ; (lignée, version) unique. */
+  version Integer required min(1)
+  /** Déposant : utilisateur, ou identifiant technique du service appelant. */
+  authorId UUID required
+  /** Service appelant pour un dépôt interne, par exemple MS-CERTIFICATION. */
+  callerService String maxlength(50)
+  /** Institution propriétaire (MS-PARTICIPANT) ; vide pour une pièce interne. */
+  institutionId UUID
+  visibility DocumentVisibility required
+  /** Service du DES propriétaire, pour la visibilité UN_SERVICE. */
+  ownerUnit String maxlength(100)
+  /** Lecteurs désignés d'une pièce RESTREINT (valideur...), UUID séparés par des virgules (D-29). */
+  restrictedReaderIds String maxlength(1000)
+  depositedAt Instant required
+  /** SHA-256 du contenu déposé (après masquage éventuel) ; absent tant que la pièce n'est pas scellée. */
+  sha256 String minlength(64) maxlength(64) pattern(/^[0-9a-f]{64}$/)
+  sizeBytes Long min(0)
+  mediaType String required maxlength(100)
+  /** Clé d'objet propre à la version : type/lignée/vN ; absente avant le dépôt. */
+  objectKey String unique maxlength(255)
+  state DocumentState required
+  /** Politique appliquée au dépôt, copiée du catalogue : durée ISO 8601. */
+  retentionPeriod String required maxlength(20) pattern(/^P([0-9]+Y)?([0-9]+M)?([0-9]+D)?$/)
+  retentionMode RetentionMode required
+  /** Conservation légale (litige, inspection) : suspend l'échéance sans limite. */
+  legalHold Boolean required
+  /** Échéance du verrou relue sur le dépôt objet (lockOf). */
+  retainUntil Instant
+  lockedAt Instant
+  /** Verdict antiviral : vrai si sain. */
+  scanClean Boolean
+  /** Nom de la signature détectée : jamais renvoyé au déposant. */
+  scanSignatureName String maxlength(255)
+  scanEngineVersion String maxlength(100)
+  scannedAt Instant
+  /** Verdict de masquage : séquences candidates de 13 à 19 chiffres. */
+  maskingCandidates Integer min(0)
+  maskingLuhnValid Integer min(0)
+  maskingMasked Integer min(0)
+  maskingRejected Boolean
+  /** Déclaration PDF/A-3 vérifiée, pour une pièce générée. */
+  pdfaCompliant Boolean
+  /** Motif de rejet, sans détail sur la signature détectée. */
+  rejectionReason String maxlength(500)
+  sealedAt Instant
+  purgedAt Instant
+}
+
+/**
+ * Journal de consultation en insertion seule (RG-06, algorithme 6.19) :
+ * inscrit avant toute restitution, y compris les refus.
+ */
+entity Consultation {
+  id UUID
+  userId UUID required
+  /** Institution du sujet, pour un représentant d'un participant. */
+  institutionId UUID
+  action ConsultationAction required
+  channel ConsultationChannel required
+  consultedAt Instant required
+  correlationId UUID required
+  /** Faux pour une consultation refusée, journalisée et publiée elle aussi. */
+  granted Boolean required
+  refusalReason String maxlength(255)
+}
+
+/**
+ * Demande de purge à l'échéance, à quatre yeux (DOC-06) : demandeur et
+ * approbateur distincts ; impossible sous verrou actif ou conservation légale.
+ */
+entity PurgeRequest {
+  id UUID
+  requesterId UUID required
+  reason String required maxlength(1000)
+  requestedAt Instant required
+  approverId UUID
+  approvedAt Instant
+  state PurgeState required
+  rejectionReason String maxlength(500)
+  executedAt Instant
+}
+
+/** Contrôle d'intégrité nocturne par échantillonnage (algorithme 6.20, DOC-05). */
+entity IntegrityCheck {
+  id UUID
+  startedAt Instant required
+  finishedAt Instant
+  /** Taille d'échantillon : 200 par défaut. */
+  sampleSize Integer required min(1)
+  mismatches Integer required min(0)
+  unreadable Integer required min(0)
+  result IntegrityResult required
+}
+
+/** Anomalie consignée par un contrôle d'intégrité, avec les deux empreintes. */
+entity IntegrityMismatch {
+  id UUID
+  kind MismatchKind required
+  objectKey String required maxlength(255)
+  expectedSha256 String required minlength(64) maxlength(64) pattern(/^[0-9a-f]{64}$/)
+  /** Empreinte recalculée ; absente pour un objet illisible. */
+  actualSha256 String minlength(64) maxlength(64) pattern(/^[0-9a-f]{64}$/)
+  detectedAt Instant required
+}
+
+/* ---------------------------------------------------------------------------
+ * Relations
+ * ------------------------------------------------------------------------- */
+
+relationship OneToOne {
+  /** Version courante de la lignée (résolution déterministe, algorithme 6.18). */
+  DocumentLineage{currentDocument} to Document
+}
+
+relationship ManyToOne {
+  Document{lineage required} to DocumentLineage
+  /** Entrée du catalogue appliquée au dépôt. */
+  Document{policy required} to DocumentTypePolicy
+  Consultation{document(title) required} to Document
+  PurgeRequest{document(title) required} to Document
+  IntegrityMismatch{integrityCheck required} to IntegrityCheck
+  IntegrityMismatch{document(title) required} to Document
+}
+
+/* ---------------------------------------------------------------------------
+ * Options
+ * ------------------------------------------------------------------------- */
+
+dto * with mapstruct
+service * with serviceClass
+/* Écrits seulement par les algorithmes 6.17 à 6.20 (adaptateurs dédiés). */
+readOnly DocumentLineage, Document, Consultation, IntegrityCheck, IntegrityMismatch
+/* L'avertissement « paginate deprecated » de JHipster 9.4.0 est à ignorer. */
+paginate DocumentLineage, Document, Consultation, PurgeRequest, IntegrityCheck, IntegrityMismatch with pagination
+filter DocumentTypePolicy, DocumentLineage, Document, Consultation, PurgeRequest

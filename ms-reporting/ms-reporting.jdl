@@ -1,0 +1,420 @@
+/*
+ * MS-REPORTING : magasin décisionnel, indicateurs, cockpits et rapports périodiques
+ *
+ * Projet   : Plateforme de suivi des activités du DES, GIMAC
+ * Sources  : CC-GIMAC-01 v1.1 §6.1.13 (algorithmes 6.56 à 6.59) ;
+ *            CA-GIMAC-01 v1.1 UC-PIL-01 ; CP-GIMAC-01 v1.0 épopées REP-E1 à REP-E3 ;
+ *            REC-GIMAC-01 (D-11, D-19, D-22, D-26, D-27)
+ * Besoins  : BF-23 ; BNF-04, BNF-06, BNF-16, BNF-18
+ * Règles   : RG-21, RG-48 ; transverses RG-15, RG-35, RG-39
+ * Cible    : JHipster 9.4.0, itération 3 (rapport mensuel en vague 3, REC §2)
+ *
+ * Principe : le magasin est un espace d'agrégats en schéma en étoile, étanche
+ * à la production (RG-48). Il n'est alimenté que de deux façons, sans aucune
+ * ressaisie (RG-21) :
+ *   1. la projection idempotente des événements des six domaines consommés
+ *      (incident.*, monitoring.*, homologation.*, certification.*,
+ *      rapprochement.*, pilotage.*), D-19 ;
+ *   2. les états déclarés par fichier (volumes, taux d'acceptation,
+ *      disponibilité déclarée), masqués, empreints et versionnés sans écrasement.
+ * Aucune transaction monétique, aucun numéro de carte, aucune référence
+ * d'autorisation, aucun texte libre : seulement des mesures et des clés de
+ * dimension. Les tâches, projets et risques de MS-PILOTAGE ne sont que
+ * comptés (références par UUID, BNF-04).
+ *
+ * Écrit à la main après la génération, car non généré par JHipster :
+ *   - le refactoring hexagonal et les ports du CC §6.1.13.3 (EventProjectionPort,
+ *     StatementImportUseCase, CockpitQueryUseCase, PeriodicReportUseCase,
+ *     ExportUseCase ; WarehouseRepositoryPort, CardDataMaskingPort,
+ *     ReportSignerPort, ParticipantReaderPort...) ;
+ *   - le consommateur Kafka idempotent des six domaines : contrôle préalable,
+ *     puis contrainte d'unicité de ProcessedEvent dans la transaction du fait,
+ *     acquittement après validation (algorithme 6.56, RG-15, RG-35) ;
+ *   - l'import d'un état déclaré : recevabilité, contrôle de Luhn, SHA-256,
+ *     idempotence par empreinte, dépôt de l'original en GED, versionnage
+ *     sans écrasement (algorithme 6.57) ;
+ *   - les fenêtres glissantes à tampon circulaire (K segments), tenues en
+ *     mémoire et dans Valkey, les seuils avec hystérésis de 5 % et la
+ *     tendance à epsilon = 0,05 (algorithme 6.58) ;
+ *   - la compaction des faits événementiels en agrégats quotidiens au-delà de
+ *     90 jours et la conservation des états déclarés 5 ans ;
+ *   - la génération des rapports (lundi 06h00, premier jour ouvré du mois),
+ *     le rendu PDF/A-3, la signature PAdES par la clé non exportable du
+ *     service dans le coffre (D-22) et le dépôt WORM dans MS-DOCUMENT
+ *     (algorithme 6.59) ;
+ *   - l'exportation contrôlée : plafond de lignes, filigrane, dépôt en GED ;
+ *   - l'outbox transactionnelle (D-26) et les sujets
+ *     reporting.statement-imported.v1, reporting.threshold-crossed.v1,
+ *     reporting.report-published.v1 et reporting.export-requested.v1 ;
+ *   - la poussée des franchissements de seuil par le canal poussé de MS-GATEWAY.
+ *
+ * Convention : toute empreinte SHA-256 est stockée en hexadécimal minuscule
+ * (64 caractères).
+ */
+
+application {
+  config {
+    baseName reporting
+    applicationType microservice
+    packageName cm.gimac.des.reporting
+    serverPort 8092
+    reactive false
+    authenticationType oauth2
+    serviceDiscoveryType no
+    databaseType sql
+    prodDatabaseType postgresql
+    devDatabaseType postgresql
+    /*
+     * Valkey en exploitation (REC D-25), compatible avec le protocole Redis :
+     * valeurs matérialisées lues par les cockpits (rafraîchissement 60 s),
+     * dimension institution mise en cache, tampons des fenêtres glissantes.
+     */
+    cacheProvider redis
+    enableHibernateCache false
+    messageBroker kafka
+    searchEngine no
+    buildTool maven
+    skipClient true
+    skipUserManagement true
+    enableTranslation true
+    nativeLanguage fr
+    languages [fr, en]
+    testFrameworks []
+    enableSwaggerCodegen false
+  }
+  entities Fact, Dimension, ProcessedEvent, ProjectionRule, IndicatorDefinition, IndicatorValue, CockpitView, ImportedStatement, PeriodicReport, ReportVisa, DataExport
+}
+
+/* ---------------------------------------------------------------------------
+ * Énumérations
+ * ------------------------------------------------------------------------- */
+
+/** Source d'un indicateur : événements, états déclarés, ou combinaison des deux. */
+enum IndicatorSource {
+  EVENEMENT,
+  ETAT_IMPORTE,
+  DERIVE
+}
+
+/** État de seuil d'un indicateur (algorithme 6.58, étape 5). */
+enum ThresholdState {
+  NORMAL,
+  ALERTE,
+  CRITIQUE
+}
+
+/** Tendance par rapport à la fenêtre précédente (formule 6.72). */
+enum Trend {
+  HAUSSE,
+  STABLE,
+  BAISSE
+}
+
+enum Periodicity {
+  HEBDOMADAIRE,
+  MENSUEL
+}
+
+/** Cycle de vie d'un rapport périodique (algorithme 6.59). */
+enum ReportState {
+  GENERE,
+  SIGNE,
+  DEPOSE,
+  NOTIFIE
+}
+
+/**
+ * Domaine d'une table de faits du schéma en étoile. Écart CC corrigé : le CC
+ * type le domaine en String ; les six domaines consommés (D-19) et les états
+ * déclarés sont énumérés.
+ */
+enum FactDomain {
+  INCIDENT,
+  MONITORING,
+  HOMOLOGATION,
+  CERTIFICATION,
+  RAPPROCHEMENT,
+  PILOTAGE,
+  ETAT_DECLARE
+}
+
+/** Dimension conforme du magasin (temps, institution, service du DES, sévérité). */
+enum DimensionKind {
+  TEMPS,
+  INSTITUTION,
+  SERVICE,
+  SEVERITE
+}
+
+/** Déclarant d'un état importé (algorithme 6.57). */
+enum StatementSource {
+  COMMUTATEUR,
+  PARTICIPANT
+}
+
+/* ---------------------------------------------------------------------------
+ * Entités : magasin décisionnel en étoile
+ * ------------------------------------------------------------------------- */
+
+/**
+ * Fait mesurable du magasin. La clé de dimension (objet-valeur DimensionKey
+ * du CC) est aplatie ; timeKey = date(e.time), jamais la date de réception.
+ * Aucun texte libre ni donnée de carte (RG-48, BNF-16).
+ */
+entity Fact {
+  id UUID
+  domain FactDomain required
+  timeKey LocalDate required
+  /** Institution (MS-PARTICIPANT). */
+  institutionId UUID
+  /** Service du DES : EXPLOITATION, SUPERVISION, HOMOLOGATION, CONFORMITE. */
+  serviceCode String maxlength(30) pattern(/^[A-Z_]+$/)
+  /** Sévérité ou urgence, par exemple S2. */
+  severity String maxlength(20)
+  /** Mesures : objet JSON {nom: valeur décimale}, par exemple {"resolus": 1}. */
+  measures TextBlob required
+  /** Identifiant CloudEvents de l'événement source, pour un fait événementiel. */
+  sourceEventId UUID
+  recordedAt Instant required
+  /** Fait déclaré remplacé par une version ultérieure de l'état (jamais supprimé). */
+  superseded Boolean required
+  /** Agrégat quotidien issu de la compaction au-delà de 90 jours. */
+  compacted Boolean required
+}
+
+/** Membre d'une dimension conforme, par exemple une institution rattachée à son pays. */
+entity Dimension {
+  id UUID
+  kind DimensionKind required
+  key String required maxlength(100)
+  label String required maxlength(255)
+  parentKey String maxlength(100)
+  updatedAt Instant required
+}
+
+/** Événement traité : clé unique = identifiant CloudEvents (algorithme 6.56, RG-15, RG-35). */
+entity ProcessedEvent {
+  id UUID
+  eventId UUID required unique
+  subject String required maxlength(150)
+  processedAt Instant required
+}
+
+/**
+ * Règle de projection d'un sujet en fait (table R de l'algorithme 6.56) :
+ * domaine cible, mesures à extraire et champs alimentant les dimensions.
+ * Un sujet sans règle est acquitté sans traitement.
+ */
+entity ProjectionRule {
+  id UUID
+  /** Sujet du bus, par exemple incident.incident-resolved.v1. */
+  subject String required unique maxlength(150)
+  domain FactDomain required
+  /** Extraction des mesures : JSON (compteur, durée entre deux instants, montant agrégé). */
+  measureMapping TextBlob required
+  /** Correspondance des champs de la charge utile vers les dimensions : JSON. */
+  dimensionMapping TextBlob required
+  /** Codes des indicateurs auxquels le sujet contribue, séparés par des virgules. */
+  indicatorCodes String maxlength(1000)
+  active Boolean required
+}
+
+/* ---------------------------------------------------------------------------
+ * Entités : indicateurs et cockpits
+ * ------------------------------------------------------------------------- */
+
+/**
+ * Définition d'un indicateur (code, source, unité, fenêtre, seuil à deux
+ * niveaux). Écart CC corrigé : l'entité Indicator du CC mêle définition et
+ * valeur ; elle est scindée en IndicatorDefinition et IndicatorValue, ce qui
+ * évite aussi « Indicator », mot réservé SQL signalé par JHipster.
+ */
+entity IndicatorDefinition {
+  id UUID
+  /** Code, par exemple EXP-MTTR-S2, RES-DISPO-DECL. */
+  code String required unique maxlength(50) pattern(/^[A-Z0-9-]+$/)
+  label String required maxlength(255)
+  source IndicatorSource required
+  unit String required maxlength(20)
+  /** Fenêtre W, par exemple 30 jours. */
+  window Duration required
+  /** Nombre K de segments du tampon circulaire (K = W / S). */
+  segmentCount Integer required min(1) max(1000)
+  /** Pas S d'un segment. */
+  segmentLength Duration required
+  /** Seuil d'alerte (objet-valeur Threshold du CC). */
+  warningThreshold BigDecimal
+  /** Seuil critique. */
+  criticalThreshold BigDecimal
+  /** Sens de lecture : une valeur plus élevée est plus défavorable. */
+  higherIsWorse Boolean required
+  /** Audience : rôles ou services destinataires, séparés par des virgules. */
+  audience String maxlength(500)
+  active Boolean required
+}
+
+/**
+ * Valeur calculée d'un indicateur pour une période et une clé de dimension,
+ * historisée (IndicatorRepositoryPort.series). Les cockpits lisent la
+ * dernière valeur matérialisée.
+ */
+entity IndicatorValue {
+  id UUID
+  /** Période, par exemple 2026-08 ou 2026-W35. */
+  period String required maxlength(10) pattern(/^[0-9]{4}(-[0-9]{2}|-W[0-9]{2}|-[0-9]{2}-[0-9]{2})?$/)
+  timeKey LocalDate
+  /** Institution (MS-PARTICIPANT). */
+  institutionId UUID
+  serviceCode String maxlength(30) pattern(/^[A-Z_]+$/)
+  severity String maxlength(20)
+  value BigDecimal
+  /** Dénominateur nul : valeur précédente conservée avec le marqueur « sans donnée ». */
+  noData Boolean required
+  thresholdState ThresholdState required
+  previousThresholdState ThresholdState
+  trend Trend required
+  computedAt Instant required
+}
+
+/** Cockpit ou vue par service (cockpit DG, cockpit DES, vues par service). */
+entity CockpitView {
+  id UUID
+  /** Code, par exemple COCKPIT-DG, COCKPIT-DES. */
+  code String required unique maxlength(50) pattern(/^[A-Z0-9-]+$/)
+  label String required maxlength(255)
+  audience String required maxlength(255)
+  /** Intervalle de rafraîchissement, 60 s par défaut. */
+  refreshInterval Duration required
+}
+
+/* ---------------------------------------------------------------------------
+ * Entités : états déclarés, rapports et exportations
+ * ------------------------------------------------------------------------- */
+
+/**
+ * État déclaré par fichier : agrégats périodiques par participant, distinct
+ * de son homologue de MS-RAPPROCHEMENT. Versionné sans écrasement ; le
+ * résultat du contrôle de masquage (MaskingCheckResult du CC) est aplati.
+ */
+entity ImportedStatement {
+  id UUID
+  source StatementSource required
+  /** Institution (MS-PARTICIPANT). */
+  institutionId UUID required
+  /** Période déclarée, par exemple 2026-08. */
+  period String required maxlength(10) pattern(/^[0-9]{4}(-[0-9]{2}|-W[0-9]{2}|-[0-9]{2}-[0-9]{2})?$/)
+  importedAt Instant required
+  /** Déposant (MS-IAM). */
+  importerId UUID required
+  /** SHA256 du fichier : clé d'idempotence. */
+  digest String required unique minlength(64) maxlength(64) pattern(/^[0-9a-f]{64}$/)
+  maskingPassed Boolean required
+  rejectedRows Integer required min(0)
+  maskingCheckedAt Instant required
+  rowCount Integer required min(0)
+  /** Original scellé : identifiant du document dans MS-DOCUMENT. */
+  documentRef UUID required
+  /** Version courante pour le triplet (source, institution, période). */
+  currentVersion Boolean required
+}
+
+/**
+ * Rapport périodique engendré à partir d'indicateurs figés, rendu en
+ * PDF/A-3, signé (PAdES) puis déposé en WORM (algorithme 6.59).
+ */
+entity PeriodicReport {
+  id UUID
+  serviceCode String required maxlength(30) pattern(/^[A-Z_]+$/)
+  periodicity Periodicity required
+  period String required maxlength(10) pattern(/^[0-9]{4}(-[0-9]{2}|-W[0-9]{2})$/)
+  /** Numéro de version : une génération manuelle ajoute une version, jamais un remplacement. */
+  reportVersion Integer required min(1)
+  manual Boolean required
+  /** Indicateurs figés : liste JSON des identifiants IndicatorValue. */
+  frozenIndicators TextBlob required
+  /** SHA256 du document rendu. */
+  contentDigest String required minlength(64) maxlength(64) pattern(/^[0-9a-f]{64}$/)
+  generatedAt Instant required
+  /** Signataire désigné, responsable du service (MS-IAM). */
+  signerId UUID
+  signedAt Instant
+  /** Document signé : identifiant dans MS-DOCUMENT. */
+  documentRef UUID
+  notifiedAt Instant
+  state ReportState required
+}
+
+/**
+ * Visa du responsable sur un rapport. Écart CC corrigé : le CC le dit
+ * « enregistré comme événement distinct » sans le modéliser ; il n'altère
+ * pas le document signé.
+ */
+entity ReportVisa {
+  id UUID
+  /** Responsable qui vise (MS-IAM). */
+  approverId UUID required
+  approvedAt Instant required
+  comment String maxlength(1000)
+}
+
+/**
+ * Exportation contrôlée d'agrégats (reporting.export-requested.v1) : plafonnée,
+ * filigranée, déposée en GED. Écart CC corrigé : la trace de l'exportation
+ * n'est pas modélisée dans le CC.
+ */
+entity DataExport {
+  id UUID
+  /** Demandeur, responsable ou auditeur (MS-IAM). */
+  requesterId UUID required
+  requestedAt Instant required
+  /** Codes des indicateurs exportés, séparés par des virgules. */
+  indicatorCodes String required maxlength(2000)
+  period String required maxlength(10)
+  /** Filtres de dimensions appliqués : JSON. */
+  dimensionFilter TextBlob
+  rowCount Integer required min(0)
+  /** Filigrane : identité du demandeur et horodatage. */
+  watermark String required maxlength(255)
+  contentDigest String minlength(64) maxlength(64) pattern(/^[0-9a-f]{64}$/)
+  /** Fichier exporté : identifiant dans MS-DOCUMENT. */
+  documentRef UUID
+}
+
+/* ---------------------------------------------------------------------------
+ * Relations (internes au service uniquement, BNF-04)
+ * ------------------------------------------------------------------------- */
+
+relationship OneToOne {
+  /** Version qui remplace cet état (versionnage sans écrasement). */
+  ImportedStatement{supersededBy(digest)} to ImportedStatement
+}
+
+relationship ManyToOne {
+  /** État déclaré dont provient un fait de domaine ETAT_DECLARE. */
+  Fact{statement(digest)} to ImportedStatement
+  IndicatorValue{definition(code) required} to IndicatorDefinition
+  /** État déclaré dont provient une valeur ETAT_IMPORTE (empreinte et date citées au rapport). */
+  IndicatorValue{statement(digest)} to ImportedStatement
+  ReportVisa{report required} to PeriodicReport
+}
+
+relationship ManyToMany {
+  CockpitView{indicators(code)} to IndicatorDefinition{cockpits(code)}
+}
+
+/* ---------------------------------------------------------------------------
+ * Options
+ * ------------------------------------------------------------------------- */
+
+dto * with mapstruct
+service * with serviceClass
+/*
+ * Écrits uniquement par la projection des événements, l'import, le calcul des
+ * indicateurs, la génération des rapports et l'exportation (adaptateurs
+ * écrits à la main) : faits, dimensions, événements traités, valeurs,
+ * états importés, rapports signés, exportations.
+ */
+readOnly Fact, Dimension, ProcessedEvent, IndicatorValue, ImportedStatement, PeriodicReport, DataExport
+/* L'avertissement « paginate deprecated » de JHipster 9.4.0 est à ignorer. */
+paginate Fact, Dimension, ProcessedEvent, IndicatorValue, ImportedStatement, PeriodicReport, ReportVisa, DataExport with pagination
+filter Fact, Dimension, IndicatorDefinition, IndicatorValue, ImportedStatement, PeriodicReport, DataExport

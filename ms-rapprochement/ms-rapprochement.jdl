@@ -1,0 +1,357 @@
+/*
+ * MS-RAPPROCHEMENT : rapprochement des états et suivi des suspens
+ *
+ * Projet   : Plateforme de suivi des activités du DES, GIMAC
+ * Sources  : CC-GIMAC-01 v1.1 §6.1.11 (algorithmes 6.48 à 6.51) ;
+ *            CA-GIMAC-01 v1.1 UC-EXP-04, UC-PRE-03 ; CP-GIMAC-01 v1.0 §4.11 ;
+ *            REC-GIMAC-01 (D-07, D-08, D-11, D-19, D-23, D-26)
+ * Besoins  : BF-19, BF-27 (suspens du portail) ; BNF-03, BNF-06, BNF-16
+ * Règles   : RG-43, RG-44, RG-45 ;
+ *            transverses RG-15, RG-35 (idempotence), RG-03, RG-59 (RLS)
+ * Cible    : JHipster 9.4.0, vague 2 (RAP-01 à RAP-08, D-07)
+ *
+ * Principe : rapprochement de suivi, non comptable. Les données n'entrent que
+ * par dépôt contrôlé de fichiers (D-23) : état du commutateur, état du
+ * participant et, en extension, état du système de règlement. Le service
+ * n'interprète pas les opérations (RG-43), ne modifie aucune ligne, n'apure
+ * rien, ne réinjecte aucune contre-passation et n'émet aucun message vers la
+ * production (RG-45). Montant et typologie d'un suspens sont figés à
+ * l'ouverture ; toute transition est tracée (RG-44) ; seule une attestation
+ * déposée dans MS-DOCUMENT et validée par un second acteur clôt un suspens.
+ *
+ * L'institution est une « référence » portée par MS-PARTICIPANT : identifiant
+ * simple, jamais une relation JDL (BNF-04) ; de même pour le déposant, le
+ * responsable, les pièces de MS-DOCUMENT et le ticket de litige.
+ *
+ * Écrit à la main après la génération, car non généré par JHipster :
+ *   - le refactoring hexagonal et les ports du CC §6.1.11.3 :
+ *     StatementRepositoryPort, ReconciliationRepositoryPort,
+ *     SuspensRepositoryPort, CardDataMaskingPort, DocumentStorePort,
+ *     ParticipantReaderPort, OutboxRepositoryPort, EventPublisherPort, et le
+ *     port primaire ParticipantSuspensQueryPort du portail ;
+ *   - le StatementUploadRestAdapter (dépôt multipart, limite de taille) et
+ *     l'import contrôlé : contrat de dépôt, masquage 6+4 par la formule de
+ *     Luhn (PanMaskingCheckAdapter), empreinte SHA-256, idempotence par
+ *     empreinte, dépôt de l'original dans MS-DOCUMENT (algorithme 6.48) ;
+ *   - le rapprochement par tri-fusion sur la clé pivot, avec tolérance
+ *     d'horodatage et extension à trois voies (algorithme 6.49) ;
+ *   - la typologie des écarts, l'ouverture et l'affectation des suspens à
+ *     J+5 ouvré (algorithme 6.50) ;
+ *   - le cycle de vie d'un suspens, la double intervention pour la clôture et
+ *     le vieillissement quotidien J+1, J+5, J+30 (algorithme 6.51) ;
+ *   - l'outbox transactionnelle (D-26) et les événements
+ *     rapprochement.statement-imported.v1, rapprochement.import-rejected.v1,
+ *     rapprochement.completed.v1, rapprochement.suspens-opened.v1,
+ *     rapprochement.suspens-assigned.v1, rapprochement.suspens-contested.v1,
+ *     rapprochement.suspens-closed.v1, rapprochement.notification-requested.v1
+ *     (D-19 pour suspens-contested et import-rejected) ;
+ *   - la table de déduplication des consommateurs idempotents (RG-15, RG-35) ;
+ *   - les politiques de lignes (RLS) : un correspondant ne voit que les suspens
+ *     de son institution (RG-59), filtre repris du jeton interne réduit ;
+ *   - la purge des lignes d'état après 400 jours, l'original restant en WORM ;
+ *   - la protection en base (Liquibase) : déclencheur rejetant la mise à jour
+ *     des lignes d'état, des montants et de la typologie d'un suspens, et de
+ *     la trace des transitions.
+ *
+ * Convention : toute empreinte SHA-256 est stockée en hexadécimal minuscule
+ * (64 caractères). Les montants sont en unité monétaire entière.
+ */
+
+application {
+  config {
+    baseName rapprochement
+    applicationType microservice
+    packageName cm.gimac.des.rapprochement
+    serverPort 8090
+    reactive false
+    authenticationType oauth2
+    serviceDiscoveryType no
+    databaseType sql
+    prodDatabaseType postgresql
+    devDatabaseType postgresql
+    /* Valkey en exploitation (REC D-25) : fiche institution et interlocuteur règlement mis en cache pour la journée (algorithme 6.50). */
+    cacheProvider redis
+    enableHibernateCache false
+    messageBroker kafka
+    searchEngine no
+    buildTool maven
+    skipClient true
+    skipUserManagement true
+    enableTranslation true
+    nativeLanguage fr
+    languages [fr, en]
+    testFrameworks []
+    enableSwaggerCodegen false
+  }
+  entities DepositContract, ImportedStatement, StatementLine, Reconciliation, Suspens, SuspensTransition, ConciliationEntry, RegularizationAttestation, AgingRule, AgingNotice
+}
+
+/* ---------------------------------------------------------------------------
+ * Énumérations
+ * ------------------------------------------------------------------------- */
+
+/** Source d'un état déposé ; SYSTEME_REGLEMENT en extension à trois voies. */
+enum StatementSource {
+  COMMUTATEUR,
+  PARTICIPANT,
+  SYSTEME_REGLEMENT
+}
+
+/** Format fixé par le contrat de dépôt : RFC 4180 ou RFC 8259. */
+enum StatementFormat {
+  CSV,
+  JSON
+}
+
+enum ReconciliationState {
+  EN_ATTENTE_ETATS,
+  EN_COURS,
+  RAPPROCHE,
+  RAPPROCHE_AVEC_ECARTS,
+  CLOS
+}
+
+/** Typologie des écarts (algorithme 6.49). */
+enum DiscrepancyType {
+  ABSENT_COMMUTATEUR,
+  ABSENT_PARTICIPANT,
+  ABSENT_REGLEMENT,
+  MONTANT_DIFFERENT,
+  STATUT_DIFFERENT,
+  DOUBLON
+}
+
+/** Automate d'un suspens (REC D-08). Seule la validation d'une attestation conduit à CLOS. */
+enum SuspensState {
+  OUVERT,
+  AFFECTE,
+  EN_CONCILIATION,
+  CONTESTE,
+  REGULARISATION_DECLAREE,
+  CLOS
+}
+
+/** Nature de l'attestation : régularisation, ou non-écart pour une erreur d'ouverture (6.51, étape 4). */
+enum AttestationKind {
+  REGULARISATION,
+  NON_ECART
+}
+
+/** Urgence d'une règle de vieillissement (écart CC : chaîne libre typée). */
+enum AgingUrgency {
+  NORMALE,
+  ELEVEE
+}
+
+/* ---------------------------------------------------------------------------
+ * Entités
+ * ------------------------------------------------------------------------- */
+
+/**
+ * Contrat de dépôt d'une source : format, colonnes, taille, tolérance
+ * d'horodatage (écart CC complété : paramètres cités par 6.48 et 6.49).
+ */
+entity DepositContract {
+  id UUID
+  source StatementSource required
+  /** Vide : contrat par défaut de la source ; sinon propre à une institution. */
+  institutionId UUID
+  format StatementFormat required
+  /** Colonnes obligatoires, séparées par des virgules. */
+  requiredColumns String required maxlength(1000)
+  encoding String required maxlength(20)
+  /** Séparateur pour le format CSV. */
+  separator String maxlength(1)
+  maxSizeBytes Long required min(1)
+  /** Tolérance τ d'horodatage : 120 s par défaut. */
+  timestampTolerance Duration required
+  active Boolean required
+}
+
+/**
+ * État importé, porté localement (CC §6.1.11.1). Idempotence par empreinte ;
+ * aucun fichier ayant échoué au masquage n'est persisté.
+ */
+entity ImportedStatement {
+  id UUID
+  /** Référence lisible, par exemple ETA-2026-0913-C. */
+  reference String required unique maxlength(30)
+  source StatementSource required
+  institutionId UUID required
+  businessDate LocalDate required
+  importedAt Instant required
+  importerId UUID required
+  format StatementFormat required
+  /** SHA256(F) du fichier déposé. */
+  digest String required unique minlength(64) maxlength(64) pattern(/^[0-9a-f]{64}$/)
+  /** Résultat du contrôle de masquage (MaskingCheckResult du CC, aplati). */
+  maskingPassed Boolean required
+  maskingRejectedLines Integer required min(0)
+  maskingCheckedAt Instant required
+  lineCount Integer required min(0)
+  /** Fichier original déposé dans MS-DOCUMENT (WORM). */
+  documentRef UUID required
+  /** Fin de conservation des lignes en base (400 jours). */
+  linesRetainedUntil LocalDate required
+}
+
+/**
+ * Ligne normalisée d'un état (objet-valeur du CC, persisté pour 400 jours).
+ * La clé pivot (PivotKey) est aplatie ; aucune donnée de compte.
+ */
+entity StatementLine {
+  id UUID
+  lineNumber Integer required min(1)
+  transactionRef String required maxlength(64)
+  authorizationRef String maxlength(64)
+  /** Horodatage de l'opération (timestamp du CC, renommé : mot réservé SQL). */
+  operationAt Instant required
+  amount BigDecimal required
+  participantCode String required maxlength(20)
+  /** Statut tel que déclaré par la source, non interprété (RG-43). */
+  lineStatus String maxlength(30)
+  currency String required minlength(3) maxlength(3) pattern(/^[A-Z]{3}$/)
+}
+
+/** Rapprochement d'une journée pour une institution ; unicité (journée, institution) posée en base. */
+entity Reconciliation {
+  id UUID
+  /** Référence lisible, par exemple RAP-2026-0913-0042. */
+  reference String required unique maxlength(30)
+  businessDate LocalDate required
+  institutionId UUID required
+  state ReconciliationState required
+  /** Tolérance appliquée, conservée pour le déterminisme. */
+  timestampTolerance Duration
+  matchedCount Integer min(0)
+  discrepancyCount Integer min(0)
+  /** Nombre d'écarts par typologie, objet JSON. */
+  discrepancyCountsByType TextBlob
+  startedAt Instant
+  completedAt Instant
+  closedBy UUID
+  closedAt Instant
+}
+
+/**
+ * Dossier de suspens : un par écart (algorithme 6.50). Montants, typologie
+ * et clé pivot sont immuables (RG-44) ; idempotence par (rapprochement, pivot, typologie).
+ */
+entity Suspens {
+  id UUID
+  /** Référence lisible SUS-<année>-<jjjj>-<séquence>, par exemple SUS-2026-0913-001. */
+  reference String required unique maxlength(30) pattern(/^SUS-[0-9]{4}-[0-9]{4}-[0-9]{3,}$/)
+  institutionId UUID required
+  type DiscrepancyType required
+  pivotTransactionRef String required maxlength(64)
+  pivotAuthorizationRef String maxlength(64)
+  pivotOperationAt Instant required
+  pivotAmount BigDecimal
+  pivotParticipantCode String required maxlength(20)
+  /** Montant côté commutateur, vide si absent. */
+  amountSwitch BigDecimal
+  /** Montant côté participant, vide si absent. */
+  amountParticipant BigDecimal
+  state SuspensState required
+  /** Responsable de régularisation (interlocuteur règlement ou responsable compensation). */
+  assigneeId UUID
+  /** Échéance : J+5 ouvré par défaut. */
+  dueDate LocalDate
+  openedAt Instant required
+  /** Ticket de litige ouvert par MS-INCIDENT sur contestation. */
+  disputeTicketId UUID
+  closedAt Instant
+}
+
+/** Trace de chaque transition d'un suspens, en ajout seul (RG-44 ; écart CC complété). */
+entity SuspensTransition {
+  id UUID
+  fromState SuspensState
+  toState SuspensState required
+  actorId UUID required
+  occurredAt Instant required
+  justification String required maxlength(2000)
+}
+
+/** Entrée de conciliation entre le groupement et le participant (objet-valeur du CC, persisté). */
+entity ConciliationEntry {
+  id UUID
+  authorId UUID required
+  /** Horodatage (at du CC, renommé : mot réservé SQL). */
+  recordedAt Instant required
+  text String required maxlength(4000)
+  /** Pièce éventuelle déposée dans MS-DOCUMENT. */
+  documentRef UUID
+}
+
+/**
+ * Attestation de régularisation : pièce déposée dans MS-DOCUMENT, validée par
+ * un second acteur distinct du déposant (RG-45, algorithme 6.51).
+ */
+entity RegularizationAttestation {
+  id UUID
+  kind AttestationKind required
+  documentRef UUID required
+  documentDigest String required minlength(64) maxlength(64) pattern(/^[0-9a-f]{64}$/)
+  depositorId UUID required
+  depositedAt Instant required
+  validatorId UUID
+  validatedAt Instant
+}
+
+/** Règle de vieillissement : J+1, J+5, J+30 (algorithme 6.51, valeurs paramétrables). */
+entity AgingRule {
+  id UUID
+  thresholdDays Integer required unique min(1)
+  urgency AgingUrgency required
+  /** Rôle destinataire, par exemple « responsable compensation ». */
+  recipientRole String required maxlength(100)
+  acknowledgementRequired Boolean required
+  /** Vrai : la règle s'applique aussi dès le dépassement de l'échéance. */
+  triggeredByDueDate Boolean required
+}
+
+/** Application d'une règle à un suspens, mémorisée pour n'avoir lieu qu'une fois. */
+entity AgingNotice {
+  id UUID
+  appliedAt Instant required
+  ageInDays Integer required min(0)
+}
+
+/* ---------------------------------------------------------------------------
+ * Relations
+ * ------------------------------------------------------------------------- */
+
+relationship OneToOne {
+  /** Un suspens est clos par au plus une attestation validée. */
+  RegularizationAttestation{suspens(reference) required} to Suspens
+}
+
+relationship ManyToOne {
+  StatementLine{statement(reference) required} to ImportedStatement
+  /** États confrontés : deux, ou trois en extension. */
+  Reconciliation{switchStatement(reference)} to ImportedStatement
+  Reconciliation{participantStatement(reference)} to ImportedStatement
+  Reconciliation{settlementStatement(reference)} to ImportedStatement
+  Suspens{reconciliation(reference) required} to Reconciliation
+  SuspensTransition{suspens(reference) required} to Suspens
+  ConciliationEntry{suspens(reference) required} to Suspens
+  AgingNotice{suspens(reference) required} to Suspens
+  AgingNotice{rule(thresholdDays) required} to AgingRule
+}
+
+/* ---------------------------------------------------------------------------
+ * Options
+ * ------------------------------------------------------------------------- */
+
+dto * with mapstruct
+service * with serviceClass
+/*
+ * Écrits uniquement par l'import contrôlé, les algorithmes 6.48 à 6.51 et
+ * les commandes métier écrites à la main (affectation, conciliation,
+ * contestation, déclaration, validation) : aucune édition directe (RG-44).
+ */
+readOnly ImportedStatement, StatementLine, Reconciliation, Suspens, SuspensTransition, ConciliationEntry, RegularizationAttestation, AgingNotice
+/* L'avertissement « paginate deprecated » de JHipster 9.4.0 est à ignorer. */
+paginate ImportedStatement, StatementLine, Reconciliation, Suspens, SuspensTransition, ConciliationEntry, AgingNotice with pagination
+filter ImportedStatement, StatementLine, Reconciliation, Suspens, SuspensTransition

@@ -1,0 +1,456 @@
+/*
+ * MS-COLLABORATION : salons chiffrés, terminaux vérifiés, conférences locales et archives de crise
+ *
+ * Projet   : Plateforme de suivi des activités du DES, GIMAC
+ * Sources  : CC-GIMAC-01 v1.1 §6.1.14 (algorithmes 6.60 à 6.63) ;
+ *            CA-GIMAC-01 v1.1 UC-COL-01 à UC-COL-04 ; CP-GIMAC-01 v1.0 épopées COL-E1 à COL-E3 ;
+ *            REC-GIMAC-01 (D-11, D-14, D-19, D-22, D-26, D-28, D-30)
+ * Besoins  : BF-18 (salon de crise), BF-24, BF-25 ; BNF-02, BNF-04, BNF-08, BNF-09, BNF-16
+ * Règles   : RG-22, RG-23, RG-52, RG-53, RG-54, RG-55, RG-75 ; transverses RG-15, RG-35, RG-39
+ * Cible    : JHipster 9.4.0, vague 3 (REC §2 : BF-24 et BF-25 en V3, BF-18 en V2 et V3)
+ *
+ * Principe : le serveur ne voit jamais le clair (RG-22, D-28). Matrix Synapse
+ * (messagerie fédérée sur site, fédération fermée hors des deux sites) détient
+ * les messages chiffrés et les clés publiques de chiffrement ; LiveKit (SFU
+ * local, traversée coturn) achemine les médias sur-chiffrés en SFrame (RG-54).
+ * Aucun relais cloud public (RG-23). Le service ne stocke que des métadonnées
+ * et des références : salons, rattachements, membres, états de vérification
+ * des terminaux, métadonnées et accusés de message, conférences, époques de
+ * clés médias (sans aucune clé), consentements et archives scellées.
+ *
+ * Le service ne porte pas la logique de crise (qualification, quorum de 4,
+ * main courante), qui appartient à MS-INCIDENT, ni la remise multicanale et
+ * l'escalade temporisée, qui appartiennent à MS-NOTIFICATION (D-14).
+ *
+ * Écrit à la main après la génération, car non généré par JHipster :
+ *   - le refactoring hexagonal et les ports du CC §6.1.14.3 (RoomUseCase,
+ *     TerminalUseCase, ConferenceUseCase, CrisisRoomUseCase, OriginEventPort,
+ *     RetentionUseCase ; FederatedMessagingPort, ConferenceServerPort,
+ *     ArchiveDecryptorPort, TimestampAuthorityPort...) ;
+ *   - les adaptateurs Matrix Synapse (création de salon, invitations, export
+ *     des messages chiffrés, accusés) et LiveKit (salles, jetons de salle à
+ *     courte durée, politique SFrame obligatoire, enregistrements) ;
+ *   - le refus de relayer un partage de clé vers un terminal non vérifié ou
+ *     révoqué ; la rotation des clés de groupe (algorithme 6.60, exécuté par
+ *     le module cryptographique des terminaux) ;
+ *   - la consignation des époques de clés médias (algorithme 6.61) ;
+ *   - l'ouverture idempotente du salon de crise sur incident.crisis-opened.v1
+ *     (D-14), le port synchrone mTLS de l'algorithme 6.62 restant ouvert à
+ *     MS-INCIDENT seul, avec la même idempotence par cellule ;
+ *   - le terminal d'archivage déclaré, membre visible du salon, clés privées
+ *     dans le coffre (OpenBao), admis dans les salons de crise et les salons
+ *     liés à un ticket (D-28) ; la constitution de l'archive : export,
+ *     déchiffrement, masquage de Luhn 6+4 (RG-52), chaînage des entrées,
+ *     PDF/A-3, horodatage RFC 3161 (RG-39), dépôt WORM 10 ans dans
+ *     MS-DOCUMENT (RG-53, D-11), effacement des clés (algorithme 6.63) ;
+ *   - la tâche quotidienne de rétention : purge selon la politique du type
+ *     de salon (D-11) ;
+ *   - le consommateur Kafka idempotent (RG-15, RG-35) de incident.crisis-*,
+ *     monitoring.* (vacations), iam.session-revoked.v1 et iam.user-changed.v1 ;
+ *   - l'outbox transactionnelle (D-26) et les sujets collaboration.room-opened.v1,
+ *     collaboration.crisis-room-opened.v1, collaboration.conference-ended.v1,
+ *     collaboration.crisis-archive-sealed.v1, collaboration.terminal-verified.v1
+ *     et collaboration.notification-requested.v1 ; aucune charge utile ne
+ *     contient de contenu de message.
+ *
+ * Références vers d'autres microservices (BNF-04) : identifiants UUID ou codes
+ * commentés (collaborateurs de MS-IAM, cellules et tickets de MS-INCIDENT,
+ * vacations de MS-MONITORING, documents de MS-DOCUMENT).
+ *
+ * Convention : toute empreinte SHA-256 et toute clé publique de 32 octets sont
+ * stockées en hexadécimal minuscule (64 caractères).
+ */
+
+application {
+  config {
+    baseName collaboration
+    applicationType microservice
+    packageName cm.gimac.des.collaboration
+    serverPort 8093
+    reactive false
+    authenticationType oauth2
+    serviceDiscoveryType no
+    databaseType sql
+    prodDatabaseType postgresql
+    devDatabaseType postgresql
+    /*
+     * Valkey en exploitation (REC D-25), compatible avec le protocole Redis :
+     * états de vérification des terminaux et membres actifs, consultés à
+     * chaque relais de partage de clé.
+     */
+    cacheProvider redis
+    enableHibernateCache false
+    messageBroker kafka
+    searchEngine no
+    buildTool maven
+    skipClient true
+    skipUserManagement true
+    enableTranslation true
+    nativeLanguage fr
+    languages [fr, en]
+    testFrameworks []
+    enableSwaggerCodegen false
+  }
+  entities RoomRetentionPolicy, Room, RoomMember, VerifiedTerminal, MessageMetadata, MessageReceipt, Conference, ConferenceParticipant, RecordingConsent, RecordingSegment, MediaKeyEpoch, RoomArchive, ProcessedEvent
+}
+
+/* ---------------------------------------------------------------------------
+ * Énumérations
+ * ------------------------------------------------------------------------- */
+
+/** Type de salon (CC tableau 6.66). */
+enum RoomType {
+  QUART,
+  THEME,
+  INCIDENT,
+  CRISE
+}
+
+enum RoomState {
+  ACTIF,
+  GELE,
+  ARCHIVE,
+  PURGE
+}
+
+/** Rôle d'un membre ; ARCHIVAGE est réservé au terminal d'archivage déclaré (D-28). */
+enum MemberRole {
+  ANIMATEUR,
+  MEMBRE,
+  OBSERVATEUR,
+  ARCHIVAGE
+}
+
+/** État de vérification d'un terminal : seul VERIFIE reçoit des clés. */
+enum VerificationState {
+  NON_VERIFIE,
+  VERIFIE,
+  REVOQUE
+}
+
+/**
+ * Nature du rattachement d'un salon (objet-valeur AttachmentRef du CC).
+ * Écart CC corrigé : le CC type la nature en String.
+ */
+enum AttachmentKind {
+  VACATION,
+  THEME,
+  TICKET,
+  CELLULE_CRISE
+}
+
+/** Accusé de réception d'un message (objet-valeur Receipt du CC). */
+enum ReceiptKind {
+  REMIS,
+  LU
+}
+
+/** Motif d'un changement d'époque des clés médias (algorithme 6.61). */
+enum MediaKeyRotationReason {
+  OUVERTURE,
+  ENTREE_PARTICIPANT,
+  SORTIE_PARTICIPANT
+}
+
+/** Point de départ du délai de rétention des messages d'un type de salon. */
+enum RetentionAnchor {
+  ENVOI_MESSAGE,
+  CLOTURE_RATTACHEMENT,
+  SCELLEMENT_ARCHIVE
+}
+
+/**
+ * État de l'archive. Écart CC corrigé : l'algorithme 6.63 (étape 5) laisse
+ * l'archive « en attente » si l'autorité d'horodatage est indisponible.
+ */
+enum ArchiveState {
+  EN_CONSTITUTION,
+  EN_ATTENTE_HORODATAGE,
+  SCELLEE
+}
+
+/* ---------------------------------------------------------------------------
+ * Entités : salons et membres
+ * ------------------------------------------------------------------------- */
+
+/**
+ * Politique de rétention paramétrée par type de salon (D-11). Valeurs par
+ * défaut du CC (tableau 6.66) : QUART 180 jours ; THEME 1 an ; INCIDENT 1 an
+ * après clôture du ticket ; CRISE 90 jours après scellement, archive 10 ans.
+ */
+entity RoomRetentionPolicy {
+  id UUID
+  roomType RoomType required unique
+  /** Durée de conservation des messages chiffrés sur le serveur de messagerie. */
+  messageRetention Duration required
+  anchor RetentionAnchor required
+  /** Archivage par le terminal d'archivage (D-28 : salons de crise et salons liés à un ticket). */
+  archived Boolean required
+  /** Rétention de l'archive en années ; 10 ans au moins pour une archive de crise (D-11, RG-53). */
+  archiveRetentionYears Integer min(1) max(99)
+  updatedAt Instant required
+}
+
+/**
+ * Salon chiffré de bout en bout, obligatoirement (RG-22). Le rattachement
+ * (AttachmentRef du CC) est aplati ; il détermine les membres.
+ */
+entity Room {
+  id UUID
+  /** Code lisible, par exemple SAL-CRISE-2026-009 (D-30). */
+  code String required unique maxlength(50)
+  type RoomType required
+  attachmentKind AttachmentKind required
+  /** Référence du rattachement : vacation, pôle, ticket ou cellule de crise. */
+  attachmentReference String required maxlength(100)
+  /** Service source du rattachement, par exemple MS-INCIDENT. */
+  attachmentService String required maxlength(50)
+  /** Ticket lié (MS-INCIDENT), pour un salon de crise ou d'incident, par exemple TCK-000318. */
+  ticketReference String maxlength(50)
+  /** Identifiant du salon dans Matrix Synapse. */
+  matrixRoomId String required unique maxlength(255)
+  /** Politique de chiffrement, toujours « bout en bout obligatoire ». */
+  encryption String required maxlength(50)
+  createdAt Instant required
+  state RoomState required
+  /** Rétention copiée de la politique du type à la création. */
+  retention Duration required
+  /** Époque de la session de groupe, incrémentée à chaque rotation (algorithme 6.60). */
+  groupSessionEpoch Integer required min(0)
+  frozenAt Instant
+  archivedAt Instant
+  /** Échéance de purge des messages chiffrés, calculée selon la politique. */
+  purgeAfter Instant
+}
+
+/**
+ * Membre d'un salon, tiré du rattachement et non d'une liste libre. Le suivi
+ * d'acquittement de l'invitation trace l'escalade vers le suppléant après
+ * 10 min (RG-75) ; la temporisation elle-même relève de MS-NOTIFICATION (D-14).
+ */
+entity RoomMember {
+  id UUID
+  /** Collaborateur (MS-IAM), ou compte technique du terminal d'archivage. */
+  userId UUID required
+  role MemberRole required
+  invitedAt Instant required
+  acknowledgedAt Instant
+  /** Membre suppléé : titulaire non acquitté remplacé par ce membre (RG-75). */
+  replacesUserId UUID
+  joinedAt Instant
+  leftAt Instant
+}
+
+/**
+ * Terminal enrôlé et son état de vérification (signature croisée par la clé
+ * maîtresse). Seules les parties publiques sont connues ; le lot de pré-clés
+ * à usage unique est détenu par le serveur de clés de Matrix Synapse.
+ */
+entity VerifiedTerminal {
+  id UUID
+  /** Propriétaire (MS-IAM), ou compte technique du terminal d'archivage. */
+  userId UUID required
+  /** Identifiant du terminal (device Matrix), par exemple TRM-7A21. */
+  terminalId String required unique maxlength(100)
+  /** Clé d'identité publique Ed25519. */
+  identityKey String required minlength(64) maxlength(64) pattern(/^[0-9a-f]{64}$/)
+  /** Clé d'accord publique X25519. */
+  agreementKey String required minlength(64) maxlength(64) pattern(/^[0-9a-f]{64}$/)
+  /** Pré-clé signée publique. */
+  signedPreKey String required minlength(64) maxlength(64) pattern(/^[0-9a-f]{64}$/)
+  /** Signature Ed25519 de la pré-clé signée par la clé d'identité (64 octets). */
+  signedPreKeySignature String required minlength(128) maxlength(128) pattern(/^[0-9a-f]{128}$/)
+  /** Nombre de pré-clés à usage unique encore disponibles. */
+  oneTimePreKeys Integer required min(0)
+  /** Signature croisée par la clé maîtresse de l'utilisateur (64 octets). */
+  crossSignature String minlength(128) maxlength(128) pattern(/^[0-9a-f]{128}$/)
+  state VerificationState required
+  /** Terminal d'archivage déclaré du service (D-28), clés privées dans le coffre. */
+  archiveTerminal Boolean required
+  registeredAt Instant required
+  verifiedAt Instant
+  revokedAt Instant
+}
+
+/* ---------------------------------------------------------------------------
+ * Entités : métadonnées des messages
+ * ------------------------------------------------------------------------- */
+
+/**
+ * Métadonnées d'un message chiffré. Écart CC corrigé : l'entité Message du CC
+ * porte le chiffré ; conformément à D-28, le chiffré reste dans Matrix Synapse
+ * et seule la référence de l'événement est conservée (renommage en
+ * MessageMetadata, qui évite aussi toute confusion avec Message de Spring).
+ */
+entity MessageMetadata {
+  id UUID
+  /** Identifiant de l'événement dans Matrix Synapse. */
+  matrixEventId String required unique maxlength(255)
+  /** Auteur (MS-IAM). */
+  authorId UUID required
+  terminalId String required maxlength(100)
+  sentAt Instant required
+  /** Identifiant de la session de groupe utilisée. */
+  sessionId String maxlength(255)
+  /** Indice de cliquet du message dans la chaîne. */
+  ratchetIndex Long min(0)
+  /** Taille du chiffré, en octets. */
+  ciphertextSize Integer min(0)
+  /** Pièces jointes : identifiants de documents (MS-DOCUMENT), séparés par des virgules. */
+  attachmentRefs String maxlength(2000)
+}
+
+/** Accusé de réception (remis, lu), métadonnée visible du serveur. */
+entity MessageReceipt {
+  id UUID
+  /** Membre destinataire (MS-IAM). */
+  userId UUID required
+  kind ReceiptKind required
+  receivedAt Instant required
+}
+
+/* ---------------------------------------------------------------------------
+ * Entités : conférences
+ * ------------------------------------------------------------------------- */
+
+/** Conférence audio et vidéo sur le SFU local, SFrame obligatoire (RG-54). */
+entity Conference {
+  id UUID
+  /** Nom de la salle LiveKit, par exemple SFU-C-0142. */
+  sfuRoom String required unique maxlength(100)
+  startedAt Instant required
+  endedAt Instant
+  /** Sur-chiffrement SFrame exigé (toujours vrai). */
+  sframeRequired Boolean required
+  screenShare Boolean required
+  /** Enregistrement actif, seulement avec le consentement de chaque présent (RG-55). */
+  recording Boolean required
+  /** Époque courante des clés médias. */
+  keyEpoch Integer required min(0)
+}
+
+/**
+ * Entrée et sortie d'un participant. Écart CC corrigé : l'attribut
+ * participants (List<UUID>) du CC est normalisé pour la chronologie de l'archive.
+ */
+entity ConferenceParticipant {
+  id UUID
+  /** Participant (MS-IAM). */
+  userId UUID required
+  terminalId String required maxlength(100)
+  joinedAt Instant required
+  leftAt Instant
+}
+
+/** Consentement explicite d'un participant à l'enregistrement (RG-55). */
+entity RecordingConsent {
+  id UUID
+  /** Participant (MS-IAM). */
+  userId UUID required
+  granted Boolean required
+  decidedAt Instant required
+}
+
+/**
+ * Segment enregistré, avec la liste des consentements qui l'autorisent.
+ * Écart CC corrigé : le segment est cité (§6.1.14.1, algorithme 6.61) sans
+ * être modélisé.
+ */
+entity RecordingSegment {
+  id UUID
+  startedAt Instant required
+  endedAt Instant
+  /** Identifiant de l'enregistrement (egress LiveKit). */
+  egressReference String required maxlength(255)
+  /** Participants consentants : identifiants (MS-IAM), séparés par des virgules. */
+  consentingUserIds String required maxlength(4000)
+}
+
+/** Changement d'époque des clés médias, consigné sans aucune clé (algorithme 6.61). */
+entity MediaKeyEpoch {
+  id UUID
+  epoch Integer required min(0)
+  reason MediaKeyRotationReason required
+  rotatedAt Instant required
+}
+
+/* ---------------------------------------------------------------------------
+ * Entités : archives et idempotence
+ * ------------------------------------------------------------------------- */
+
+/**
+ * Archive scellée d'un salon (algorithme 6.63) : PDF/A-3 horodaté RFC 3161,
+ * déposé en WORM 10 ans dans MS-DOCUMENT (RG-53, D-11). Écart CC corrigé :
+ * CrisisArchive devient RoomArchive, D-28 étendant l'archivage aux salons
+ * liés à un ticket.
+ */
+entity RoomArchive {
+  id UUID
+  /** Cellule de crise (MS-INCIDENT), par exemple CRI-2026-009 ; vide pour un salon d'incident. */
+  crisisCellReference String maxlength(50)
+  /** Ticket lié (MS-INCIDENT). */
+  ticketReference String maxlength(50)
+  messageCount Integer required min(0)
+  /** Messages que le terminal d'archivage n'a pu déchiffrer, consignés comme tels. */
+  undecryptableCount Integer required min(0)
+  /** Suites de chiffres masquées en 6+4 (RG-52). */
+  maskedSequences Integer required min(0)
+  /** Tête de chaîne hM des entrées, portée au manifeste (formule 6.78). */
+  chainHead String minlength(64) maxlength(64) pattern(/^[0-9a-f]{64}$/)
+  /** H = SHA256(document). */
+  contentDigest String minlength(64) maxlength(64) pattern(/^[0-9a-f]{64}$/)
+  /** Jeton RFC 3161 encodé en DER. */
+  timestampToken Blob
+  /** Archive déposée : identifiant du document dans MS-DOCUMENT. */
+  documentRef UUID
+  /** Rétention de l'archive, en années ; 10 pour une archive de crise. */
+  retentionYears Integer required min(1) max(99)
+  state ArchiveState required
+  startedAt Instant required
+  sealedAt Instant
+}
+
+/** Événement traité : clé unique = identifiant CloudEvents (RG-15, RG-35). */
+entity ProcessedEvent {
+  id UUID
+  eventId UUID required unique
+  subject String required maxlength(150)
+  processedAt Instant required
+}
+
+/* ---------------------------------------------------------------------------
+ * Relations (internes au service uniquement, BNF-04)
+ * ------------------------------------------------------------------------- */
+
+relationship OneToOne {
+  /** Une archive au plus par salon (idempotence de l'algorithme 6.63). */
+  RoomArchive{room(code) required} to Room
+}
+
+relationship ManyToOne {
+  RoomMember{room(code) required} to Room
+  MessageMetadata{room(code) required} to Room
+  MessageReceipt{message(matrixEventId) required} to MessageMetadata
+  Conference{room(code) required} to Room
+  ConferenceParticipant{conference(sfuRoom) required} to Conference
+  RecordingConsent{conference(sfuRoom) required} to Conference
+  RecordingSegment{conference(sfuRoom) required} to Conference
+  MediaKeyEpoch{conference(sfuRoom) required} to Conference
+}
+
+/* ---------------------------------------------------------------------------
+ * Options
+ * ------------------------------------------------------------------------- */
+
+dto * with mapstruct
+service * with serviceClass
+/*
+ * Écrits uniquement par les adaptateurs Synapse et LiveKit, les algorithmes
+ * 6.61 à 6.63 et le consommateur d'événements : métadonnées et accusés,
+ * participations, consentements (recueillis par un port dédié, jamais par
+ * CRUD), segments, époques de clés, archives scellées, événements traités.
+ */
+readOnly MessageMetadata, MessageReceipt, ConferenceParticipant, RecordingConsent, RecordingSegment, MediaKeyEpoch, RoomArchive, ProcessedEvent
+/* L'avertissement « paginate deprecated » de JHipster 9.4.0 est à ignorer. */
+paginate Room, RoomMember, VerifiedTerminal, MessageMetadata, MessageReceipt, Conference, ConferenceParticipant, MediaKeyEpoch, RoomArchive, ProcessedEvent with pagination
+filter Room, RoomMember, VerifiedTerminal, MessageMetadata, Conference, RoomArchive

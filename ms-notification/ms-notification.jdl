@@ -1,0 +1,365 @@
+/*
+ * MS-NOTIFICATION : notifications multicanal, acquittement et escalade
+ *
+ * Projet   : Plateforme de suivi des activités du DES, GIMAC
+ * Sources  : CC-GIMAC-01 v1.1 §6.1.5 (algorithmes 6.21 à 6.24, tableau 6.23) ;
+ *            CA-GIMAC-01 v1.1 UC-SOC-04, UC-REF-04, UC-PRE-05 ; CP-GIMAC-01 v1.0 §4.5 ;
+ *            REC-GIMAC-01 (D-05, D-14, D-19, D-24, D-26, D-30, RG-75)
+ * Besoins  : BF-05, BF-16 (escalade), BF-29 (canal poussé, via MS-GATEWAY) ;
+ *            BNF-06, BNF-10, BNF-16, BNF-18
+ * Règles   : RG-62, RG-63, RG-64, RG-71, RG-75
+ * Cible    : JHipster 9.4.0, itération 2 (NOT-05, passerelle SMS, en vague 2)
+ *
+ * Principe : point de passage unique de ce qui doit être porté à la
+ * connaissance d'une personne. Le service ne décide de rien : il résout les
+ * destinataires à l'instant de la demande (jamais stockés dans un abonnement),
+ * applique préférences et niveau d'urgence, remet, trace, réessaie, exige
+ * l'acquittement (urgent, critique) et escalade. Aucune donnée sensible ne
+ * quitte la plateforme : courriel et SMS ne portent qu'un message minimal
+ * renvoyant vers la plateforme (RG-64).
+ *
+ * Notifications, destinataires, traces de remise, escalades et fenêtres de
+ * consolidation sont en lecture seule côté REST (readOnly) : ils ne sont
+ * écrits que par le consommateur, le port synchrone et l'ordonnanceur.
+ * La lecture et l'acquittement passent par NotificationRestAdapter (écrit à la
+ * main), restreint à l'utilisateur authentifié.
+ *
+ * Écrit à la main après la génération, car non généré par JHipster :
+ *   - le refactoring hexagonal et les ports du CC §6.1.5.3 :
+ *     NotificationRepositoryPort, InternalDirectoryPort, InstitutionContactPort,
+ *     PushChannelPort, MailChannelPort, SmsChannelPort, OutboxRepositoryPort,
+ *     EventPublisherPort, et OnCallRosterPort (lecture synchrone de la grille
+ *     d'astreinte dans MS-MONITORING, voir l'écart ci-dessous) ;
+ *   - EventBusConsumerAdapter : consommateur Kafka idempotent du seul motif
+ *     *.notification-requested.v1 (D-19 ; RG-15, RG-35 par l'unicité de
+ *     sourceEventId) ;
+ *   - UrgentNotificationAdapter : port synchrone d'urgence S1 sous mTLS, liste
+ *     des appelants autorisés MS-INCIDENT, MS-AUDIT, MS-DOCUMENT,
+ *     MS-MONITORING et MS-PARTICIPANT (D-19) ; il retourne les traces initiales ;
+ *   - NotificationRestAdapter : centre de notifications (boîte de réception
+ *     paginée de l'utilisateur, lu), acquittement explicite ;
+ *   - les adaptateurs pilotés : IamDirectoryClientAdapter et
+ *     ParticipantContactClientAdapter (gRPC, cache Valkey à durée courte),
+ *     PushChannelAdapter (notification.push-requested.v1 vers MS-GATEWAY, sans
+ *     corps), MailGatewayAdapter (TLS, adresse lue à la remise et non
+ *     conservée), SmsGatewayAdapter facultatif, absent par défaut (NOT-05) ;
+ *   - les algorithmes 6.21 (résolution des destinataires et des canaux),
+ *     6.22 (remise multicanal, retard exponentiel 30 s, 6 tentatives, plafond
+ *     15 min, gigue), 6.23 (acquittement et escalade : 10 min critique, 30 min
+ *     urgent, puis délai divisé par deux, 3 niveaux, D-14, RG-75) et 6.24
+ *     (consolidation : fenêtre de 5 min doublée jusqu'à 30 min, seuil de 3) ;
+ *   - la vérification au chargement que tout gabarit MESSAGERIE ou SMS est
+ *     minimal (RG-64) et la signature des escalades S1 et S2 (RG-71) par la
+ *     clé de la plateforme (D-22) ;
+ *   - l'outbox transactionnelle (D-26) et les événements :
+ *     notification.push-requested.v1, notification.delivered.v1,
+ *     notification.delivery-failed.v1 (rebut, consommé par MS-MONITORING),
+ *     notification.acknowledged.v1, notification.escalated.v1,
+ *     notification.escalation-exhausted.v1 (consommé par MS-INCIDENT),
+ *     notification.consolidated.v1, notification.unresolved.v1 ;
+ *   - la protection en base (Liquibase) : unicité de source_event_id, de
+ *     (user_id, channel) pour les préférences, de (notification_type, channel,
+ *     language) pour les gabarits ; index sur (state, next_attempt_at) et
+ *     (state, ack_deadline) pour l'ordonnanceur.
+ *
+ * Écart tranché (CC / REC) : le CC fait lire la grille d'astreinte « par
+ * l'événement de grille publié » de MS-MONITORING, alors que D-19 limite la
+ * consommation de MS-NOTIFICATION à *.notification-requested.v1. D-19
+ * prévaut : l'astreinte est lue de façon synchrone (OnCallRosterPort, avec
+ * cache), comme les annuaires de MS-IAM et de MS-PARTICIPANT ; aucune
+ * projection locale n'est tenue.
+ *
+ * Jeu de test (D-30) : l'opérateur USR-0042 escalade vers le chef de quart
+ * USR-0008 (le diagramme d'objets du CC, figure 6.15, indique à tort USR-0007,
+ * qui est le chef du DES) ; incident TCK-000318.
+ */
+
+application {
+  config {
+    baseName notification
+    applicationType microservice
+    packageName cm.gimac.des.notification
+    serverPort 8084
+    reactive false
+    authenticationType oauth2
+    serviceDiscoveryType no
+    databaseType sql
+    prodDatabaseType postgresql
+    devDatabaseType postgresql
+    /*
+     * Valkey en exploitation (REC D-25), compatible avec le protocole Redis :
+     * cache à durée courte des annuaires lus dans MS-IAM et MS-PARTICIPANT
+     * (cacheTtl du CC), de la grille d'astreinte et des gabarits.
+     */
+    cacheProvider redis
+    enableHibernateCache false
+    messageBroker kafka
+    searchEngine no
+    buildTool maven
+    skipClient true
+    skipUserManagement true
+    enableTranslation true
+    nativeLanguage fr
+    languages [fr, en]
+    testFrameworks []
+    enableSwaggerCodegen false
+  }
+  entities NotificationSubscription, ChannelPreference, MessageTemplate, AcknowledgementPolicy, Notification, NotificationRecipient, DeliveryTrace, Escalation, ConsolidationWindow
+}
+
+/* ---------------------------------------------------------------------------
+ * Énumérations
+ * ------------------------------------------------------------------------- */
+
+/** Quatre niveaux ordonnés, fixés par l'émetteur et jamais abaissés (RG-62). */
+enum UrgencyLevel {
+  INFORMATION,
+  AVERTISSEMENT,
+  URGENT,
+  CRITIQUE
+}
+
+/** Canaux de remise ; PLATEFORME et POUSSE ne sont pas débrayables. SMS : extension. */
+enum Channel {
+  PLATEFORME,
+  POUSSE,
+  MESSAGERIE,
+  SMS
+}
+
+enum DeliveryState {
+  EN_ATTENTE,
+  REMISE,
+  ECHOUEE,
+  ACQUITTEE
+}
+
+enum NotificationState {
+  RECUE,
+  CONSOLIDEE,
+  EN_REMISE,
+  REMISE,
+  ACQUITTEE,
+  ESCALADEE,
+  REBUT
+}
+
+/** Règle de résolution des destinataires d'un abonnement (algorithme 6.21). */
+enum RuleType {
+  ROLE,
+  INSTITUTION,
+  SERVICE_DES,
+  OBJET
+}
+
+/** Annuaire dont est issu le suppléant d'une escalade (algorithme 6.23, étape 4). */
+enum EscalationSource {
+  MATRICE_INTERNE,
+  ANNUAIRE_INSTITUTION,
+  REPLI_PAR_DEFAUT
+}
+
+/* ---------------------------------------------------------------------------
+ * Entités
+ * ------------------------------------------------------------------------- */
+
+/**
+ * Abonnement : associe un type de notification à une règle de destinataires
+ * (Subscription du CC, renommé car le nom est réservé par JHipster).
+ * Les destinataires nominatifs ne sont jamais stockés ici. Règles versionnées (NOT-02).
+ */
+entity NotificationSubscription {
+  id UUID
+  /** Type de notification, par exemple incident.escalated. */
+  notificationType String required maxlength(150)
+  ruleType RuleType required
+  /** Valeur de la règle : code de rôle, identifiant d'institution, service du DES ou type d'objet. */
+  ruleValue String required maxlength(150)
+  minimumUrgency UrgencyLevel required
+  /** Pour une règle par rôle d'opérateur : restreindre aux personnes en vacation ou d'astreinte. */
+  onDutyOnly Boolean required
+  active Boolean required
+  ruleVersion Integer required min(1)
+  updatedBy UUID required
+  updatedAt Instant required
+}
+
+/**
+ * Préférence de canal externe d'un utilisateur (RG-63) : niveau minimal et
+ * plage horaire. URGENT et CRITIQUE ignorent la plage horaire ; le couple
+ * (utilisateur, canal) est unique.
+ */
+entity ChannelPreference {
+  id UUID
+  userId UUID required
+  /** MESSAGERIE ou SMS seulement : les autres canaux ne sont pas débrayables. */
+  channel Channel required
+  minimumUrgency UrgencyLevel required
+  windowStart LocalTime
+  windowEnd LocalTime
+  enabled Boolean required
+}
+
+/**
+ * Gabarit par type de notification, canal et langue (BNF-18). Pour MESSAGERIE
+ * et SMS, le gabarit est obligatoirement minimal (RG-64) : type, niveau,
+ * identifiant de notification et invitation à se connecter.
+ */
+entity MessageTemplate {
+  id UUID
+  notificationType String required maxlength(150)
+  channel Channel required
+  language String required maxlength(5) pattern(/^(fr|en)$/)
+  subjectPattern String required maxlength(255)
+  bodyPattern TextBlob required
+  /** Variables nommées admises, séparées par des virgules. */
+  variables String maxlength(500)
+  minimal Boolean required
+}
+
+/**
+ * Délai d'acquittement et profondeur d'escalade, paramétrables par type
+ * (D-14) : CRITIQUE 10 min, URGENT 30 min, 3 niveaux (valeurs par défaut du CC).
+ * Un type vide désigne la règle par défaut du niveau.
+ */
+entity AcknowledgementPolicy {
+  id UUID
+  notificationType String maxlength(150)
+  urgency UrgencyLevel required
+  /** Délai d'acquittement initial (ISO 8601), par exemple PT10M. */
+  ackDelay Duration required
+  maxEscalationLevel Integer required min(1) max(5)
+  active Boolean required
+}
+
+/**
+ * Notification demandée par un service (bus ou port synchrone), ou synthèse
+ * d'une fenêtre de consolidation (RG-62 : niveau d'urgence obligatoire).
+ */
+entity Notification {
+  id UUID
+  notificationType String required maxlength(150)
+  urgency UrgencyLevel required
+  /** Titre affiché dans la plateforme ; jamais transmis sur un canal externe (RG-64). */
+  subject String required maxlength(255)
+  objectType String maxlength(100)
+  objectId String maxlength(100)
+  /** Variables du gabarit, en JSON (objet clé-valeur). */
+  variables TextBlob
+  /** Institution concernée (MS-PARTICIPANT), qui borne les règles par institution. */
+  institutionId UUID
+  /** Identifiant CloudEvents de la demande : clé d'idempotence (RG-15, RG-35). */
+  sourceEventId UUID unique
+  /** Service émetteur, par exemple MS-INCIDENT. */
+  sourceService String required maxlength(50)
+  /** Vrai pour une demande reçue par le port synchrone d'urgence S1. */
+  urgentPort Boolean required
+  correlationId UUID
+  /** Clé de regroupement (type:objet) pour la consolidation. */
+  groupKey String maxlength(255)
+  requestedAt Instant required
+  ackDeadline Instant
+  /** Niveau d'escalade courant, de 0 au maximum de la politique. */
+  escalationLevel Integer required min(0)
+  state NotificationState required
+  acknowledgedBy UUID
+  acknowledgedAt Instant
+  /** Vrai pour une synthèse de consolidation. */
+  summary Boolean required
+  /** Nombre d'occurrences regroupées, pour une synthèse. */
+  occurrenceCount Integer min(0)
+  /** Signature détachée (JWS) de la plateforme, pour une escalade S1 ou S2 (RG-71). */
+  signature TextBlob
+}
+
+/**
+ * Destinataire résolu à l'instant de la demande (objet-valeur Recipient du
+ * CC, persisté par l'algorithme 6.21) ; porte l'état « lu » du centre de notifications.
+ */
+entity NotificationRecipient {
+  id UUID
+  userId UUID required
+  /** Institution du destinataire, s'il est correspondant d'un participant. */
+  institutionId UUID
+  resolvedBy RuleType required
+  /** Canaux retenus, séparés par des virgules, par exemple PLATEFORME,POUSSE,MESSAGERIE. */
+  channels String required maxlength(100)
+  /** Vrai pour un suppléant atteint par escalade. */
+  escalated Boolean required
+  resolvedAt Instant required
+  readAt Instant
+  acknowledgedAt Instant
+}
+
+/** Trace de remise par couple (destinataire, canal) (RG-62, algorithme 6.22). */
+entity DeliveryTrace {
+  id UUID
+  userId UUID required
+  channel Channel required
+  state DeliveryState required
+  attempts Integer required min(0) max(6)
+  nextAttemptAt Instant
+  lastError String maxlength(500)
+  /** Identifiant rendu par le canal (message, publication). */
+  providerMessageId String maxlength(255)
+  deliveredAt Instant
+  acknowledgedAt Instant
+}
+
+/** Escalade vers un suppléant à l'expiration du délai d'acquittement (algorithme 6.23). */
+entity Escalation {
+  id UUID
+  fromUserId UUID required
+  toUserId UUID required
+  level Integer required min(1) max(5)
+  source EscalationSource required
+  triggeredAt Instant required
+  reason String required maxlength(255)
+}
+
+/** Fenêtre de consolidation anti-tempête d'une clé de regroupement (algorithme 6.24). */
+entity ConsolidationWindow {
+  id UUID
+  groupKey String required maxlength(255)
+  opensAt Instant required
+  closesAt Instant required
+  /** Durée courante de la fenêtre : 5 min, doublée jusqu'à 30 min. */
+  windowDuration Duration required
+  memberCount Integer required min(0)
+  closed Boolean required
+  /** Clôture anticipée par l'arrivée d'une occurrence urgente ou critique. */
+  closedEarly Boolean required
+}
+
+/* ---------------------------------------------------------------------------
+ * Relations
+ * ------------------------------------------------------------------------- */
+
+relationship OneToOne {
+  /** Synthèse remise à la fermeture de la fenêtre. */
+  ConsolidationWindow{summaryNotification} to Notification
+}
+
+relationship ManyToOne {
+  NotificationRecipient{notification required} to Notification
+  DeliveryTrace{notification required} to Notification
+  Escalation{notification required} to Notification
+  /** Fenêtre à laquelle une notification retenue est rattachée. */
+  Notification{consolidationWindow(groupKey)} to ConsolidationWindow
+  /** Gabarit utilisé pour la remise. */
+  DeliveryTrace{template} to MessageTemplate
+  /** Abonnement qui a sélectionné le destinataire ; vide pour un suppléant. */
+  NotificationRecipient{sourceSubscription} to NotificationSubscription
+}
+
+/* ---------------------------------------------------------------------------
+ * Options
+ * ------------------------------------------------------------------------- */
+
+dto * with mapstruct
+service * with serviceClass
+/* Écrits seulement par le consommateur, le port synchrone et l'ordonnanceur. */
+readOnly Notification, NotificationRecipient, DeliveryTrace, Escalation, ConsolidationWindow
+/* L'avertissement « paginate deprecated » de JHipster 9.4.0 est à ignorer. */
+paginate NotificationSubscription, ChannelPreference, MessageTemplate, Notification, NotificationRecipient, DeliveryTrace, Escalation, ConsolidationWindow with pagination
+filter NotificationSubscription, ChannelPreference, Notification, NotificationRecipient, DeliveryTrace, Escalation
