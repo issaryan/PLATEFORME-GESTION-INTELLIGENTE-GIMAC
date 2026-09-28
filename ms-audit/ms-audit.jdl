@@ -1,0 +1,224 @@
+/*
+ * MS-AUDIT : registre d'audit inaltérable et arbre de Merkle
+ *
+ * Projet   : Plateforme de suivi des activités du DES, GIMAC
+ * Sources  : CC-GIMAC-01 v1.1 §6.1.3 (algorithmes 6.12 à 6.16) ;
+ *            CA-GIMAC-01 v1.1 UC-SOC-03 ; CP-GIMAC-01 v1.0 §4.3 ;
+ *            REC-GIMAC-01 (D-11, D-19, D-26)
+ * Besoins  : BF-06, BF-28 (lecture depuis la console) ; BNF-05, BNF-16
+ * Règles   : RG-07, RG-08, RG-09, RG-15, RG-35, RG-39
+ * Cible    : JHipster 9.4.0, itération 1 (AUD-05 en itération 3, AUD-06 et AUD-08 en itération 4)
+ *
+ * Principe : registre en ajout seul. Le service ne modifie ni ne supprime
+ * jamais une entrée ; rétention légale de 10 ans (D-11). Seuls les événements
+ * à effet y entrent : ce n'est pas le journal technique de la plateforme.
+ *
+ * Toutes les entités sont en lecture seule côté REST (readOnly) : les écritures
+ * viennent uniquement du bus, de l'ordonnanceur de scellement et du
+ * procès-verbal de vérification de l'auditeur (adaptateur dédié).
+ *
+ * Écrit à la main après la génération, car non généré par JHipster :
+ *   - le refactoring hexagonal et les ports du CC §6.1.3.3 ;
+ *   - le consommateur Kafka de tous les sujets *.v1, idempotent (RG-15, RG-35) ;
+ *   - l'arbre de Merkle RFC 9162 : feuille SHA256(0x00||d), nœud
+ *     SHA256(0x01||g||d), frontière incrémentale, preuves (algorithmes 6.12 à 6.14) ;
+ *   - le scellement quotidien à minuit, l'horodatage RFC 3161 et la publication
+ *     en écriture seule dans le dépôt des racines (algorithme 6.15) ;
+ *   - la vérification par l'auditeur et l'alerte RSSI en cas de divergence (6.16) ;
+ *   - la protection en base (Liquibase) : rôle SQL en insertion seule et
+ *     déclencheur rejetant toute mise à jour ou suppression ;
+ *   - l'outbox et les événements audit.root-published.v1 et
+ *     audit.verification-recorded.v1.
+ *
+ * Convention : toute empreinte SHA-256 est stockée en hexadécimal minuscule
+ * (64 caractères).
+ */
+
+application {
+  config {
+    baseName audit
+    applicationType microservice
+    packageName cm.gimac.des.audit
+    serverPort 8082
+    reactive false
+    authenticationType oauth2
+    serviceDiscoveryType no
+    databaseType sql
+    prodDatabaseType postgresql
+    devDatabaseType postgresql
+    /* Registre en ajout seul : pas de cache applicatif. */
+    cacheProvider no
+    enableHibernateCache false
+    messageBroker kafka
+    searchEngine no
+    buildTool maven
+    skipClient true
+    skipUserManagement true
+    enableTranslation true
+    nativeLanguage fr
+    languages [fr, en]
+    testFrameworks []
+    enableSwaggerCodegen false
+  }
+  entities AuditEvent, DeduplicationEntry, MerkleNode, PeriodRoot, ConsistencyProof, InclusionProof, VerificationRecord
+}
+
+/* ---------------------------------------------------------------------------
+ * Énumérations
+ * ------------------------------------------------------------------------- */
+
+/** Cycle de vie d'une racine de période (algorithme 6.15). */
+enum PeriodRootState {
+  OUVERTE,
+  SCELLEE,
+  HORODATEE,
+  PUBLIEE
+}
+
+/** Résultat d'une vérification conduite par l'auditeur (algorithme 6.16). */
+enum VerificationResult {
+  EN_ATTENTE,
+  CONFORME,
+  DIVERGENT
+}
+
+/* ---------------------------------------------------------------------------
+ * Entités
+ * ------------------------------------------------------------------------- */
+
+/**
+ * Événement d'audit : feuille de l'arbre de Merkle (CC §6.1.3.3).
+ * L'index est strictement croissant et sans trou ; il est attribué dans la
+ * transaction d'inscription, et non par une séquence de la base.
+ */
+entity AuditEvent {
+  id UUID
+  /** Index de la feuille dans l'arbre, à partir de 0. */
+  logIndex Long required unique min(0)
+  /** Identifiant CloudEvents de l'enveloppe reçue. */
+  eventId UUID required unique
+  /** Horodatage d'occurrence, fourni par le producteur. */
+  occurredAt Instant required
+  /** Horodatage d'inscription dans le registre. */
+  recordedAt Instant required
+  actorId String required maxlength(100)
+  actionType String required maxlength(100)
+  /** Domaine producteur, par exemple homologation. */
+  domain String required maxlength(50)
+  /** Sujet du bus, par exemple homologation.operation-closed.v1. */
+  subject String required maxlength(150)
+  correlationId UUID
+  /** Enveloppe CloudEvents canonique (clés triées, RFC 8259), sans numéro de carte en clair. */
+  payload TextBlob required
+  /** SHA256(0x00 || forme canonique). */
+  leafHash String required minlength(64) maxlength(64) pattern(/^[0-9a-f]{64}$/)
+}
+
+/** Entrée de déduplication : clé unique = identifiant CloudEvents (RG-15, RG-35). */
+entity DeduplicationEntry {
+  id UUID
+  eventId UUID required unique
+  auditIndex Long required min(0)
+  recordedAt Instant required
+}
+
+/**
+ * Nœud de l'arbre, persisté par niveau et position (niveau 0 = feuille).
+ * Nœud interne : SHA256(0x01 || gauche || droite).
+ */
+entity MerkleNode {
+  id UUID
+  level Integer required min(0) max(64)
+  position Long required min(0)
+  hash String required minlength(64) maxlength(64) pattern(/^[0-9a-f]{64}$/)
+}
+
+/**
+ * Racine de période : scellement quotidien, horodaté (RFC 3161) et publié
+ * hors de la plateforme (RG-08). Le jeton d'horodatage y est intégré.
+ */
+entity PeriodRoot {
+  id UUID
+  /** Période scellée, au format AAAA-MM-JJ. */
+  period String required unique maxlength(10) pattern(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)
+  treeSize Long required min(0)
+  rootHash String required minlength(64) maxlength(64) pattern(/^[0-9a-f]{64}$/)
+  sealedAt Instant required
+  state PeriodRootState required
+  /** Jeton RFC 3161 encodé en DER. */
+  timestampToken Blob
+  timestampSerialNumber String maxlength(100)
+  timestampGenTime Instant
+  /** SHA256(racine || taille || période), soumis à l'autorité d'horodatage. */
+  timestampImprint String minlength(64) maxlength(64) pattern(/^[0-9a-f]{64}$/)
+  /** Référence rendue par le dépôt de publication des racines. */
+  publicationReference String maxlength(255)
+  publishedAt Instant
+}
+
+/**
+ * Preuve de cohérence entre deux racines successives, calculée au
+ * scellement et conservée (algorithme 6.14).
+ */
+entity ConsistencyProof {
+  id UUID
+  firstSize Long required min(0)
+  secondSize Long required min(0)
+  /** Liste JSON des empreintes de la preuve, en hexadécimal. */
+  proofHashes TextBlob required
+  computedAt Instant required
+}
+
+/** Preuve d'inclusion d'une feuille dans un arbre de taille donnée (algorithme 6.13, RG-09). */
+entity InclusionProof {
+  id UUID
+  eventIndex Long required min(0)
+  treeSize Long required min(1)
+  /** Chemin d'audit : liste JSON des empreintes sœurs, du bas vers le haut. */
+  auditPath TextBlob required
+  rootHash String required minlength(64) maxlength(64) pattern(/^[0-9a-f]{64}$/)
+  generatedAt Instant required
+}
+
+/**
+ * Procès-verbal de vérification par l'auditeur (niveau AUDIT_SECURITE, D-31).
+ * Il devient lui-même un événement d'audit.
+ */
+entity VerificationRecord {
+  id UUID
+  verifierId UUID required
+  verifiedAt Instant required
+  expectedRoot String required minlength(64) maxlength(64) pattern(/^[0-9a-f]{64}$/)
+  recomputedRoot String minlength(64) maxlength(64) pattern(/^[0-9a-f]{64}$/)
+  tokenValid Boolean
+  result VerificationResult required
+  comment String maxlength(1000)
+}
+
+/* ---------------------------------------------------------------------------
+ * Relations
+ * ------------------------------------------------------------------------- */
+
+relationship OneToOne {
+  /** Chaque racine référence la précédente (cohérence entre périodes). */
+  PeriodRoot{previousRoot(period)} to PeriodRoot
+  /** Preuve de cohérence avec la racine précédente, calculée au scellement. */
+  PeriodRoot{consistencyWithPrevious} to ConsistencyProof
+}
+
+relationship ManyToOne {
+  InclusionProof{periodRoot(period) required} to PeriodRoot
+  VerificationRecord{proof required} to InclusionProof
+}
+
+/* ---------------------------------------------------------------------------
+ * Options
+ * ------------------------------------------------------------------------- */
+
+dto * with mapstruct
+service * with serviceClass
+/* Aucune écriture exposée en REST : registre en ajout seul. */
+readOnly AuditEvent, DeduplicationEntry, MerkleNode, PeriodRoot, ConsistencyProof, InclusionProof, VerificationRecord
+/* L'avertissement « paginate deprecated » de JHipster 9.4.0 est à ignorer. */
+paginate AuditEvent, PeriodRoot, InclusionProof, VerificationRecord with pagination
+filter AuditEvent, PeriodRoot, VerificationRecord
