@@ -33,12 +33,35 @@ services:
   reporting-redis: *valkey
   collaboration-redis: *valkey
 
+  # Ports de l'hôte réglables dans .env (!override remplace la liste générée),
+  # pour cohabiter avec d'autres projets du poste. Défauts : ports de JHipster.
+  gateway:
+    ports: !override
+      - ${GIMAC_PORT_GATEWAY:-8080}:8080
+
   keycloak:
+    ports: !override
+      - ${GIMAC_PORT_KEYCLOAK:-9080}:9080
+      - ${GIMAC_PORT_KEYCLOAK_TLS:-9443}:9443
+    # Le démarrage de Keycloak dépasse les 100 s tolérées par la configuration générée.
+    healthcheck:
+      start_period: 120s
+      retries: 60
     environment:
       - KC_BOOTSTRAP_ADMIN_USERNAME=gimac-admin
       - KC_BOOTSTRAP_ADMIN_PASSWORD=${GIMAC_KEYCLOAK_ADMIN_PASSWORD:?à définir dans .env}
 
+  prometheus:
+    ports: !override
+      - 127.0.0.1:${GIMAC_PORT_PROMETHEUS:-9090}:9090
+
+  alertmanager:
+    ports: !override
+      - 127.0.0.1:${GIMAC_PORT_ALERTMANAGER:-9093}:9093
+
   grafana:
+    ports: !override
+      - 127.0.0.1:${GIMAC_PORT_GRAFANA:-3000}:3000
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=${GIMAC_GRAFANA_ADMIN_PASSWORD:?à définir dans .env}
       - GF_ANALYTICS_REPORTING_ENABLED=false
@@ -150,7 +173,7 @@ services:
     image: grafana/loki:3.7.8
     command: ['-config.file=/etc/loki/local-config.yaml']
     ports:
-      - 127.0.0.1:3100:3100
+      - 127.0.0.1:${GIMAC_PORT_LOKI:-3100}:3100
 
   tempo:
     image: grafana/tempo:2.10.8

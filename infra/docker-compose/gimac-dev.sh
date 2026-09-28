@@ -13,7 +13,7 @@ ICI="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RACINE="$(cd "$ICI/../.." && pwd)"
 SERVICES=(gateway iam audit document notification participant homologation
           certification incident monitoring rapprochement pilotage reporting collaboration)
-compose() { docker compose --project-name gimac -f "$ICI/docker-compose.yml" -f "$ICI/docker-compose.gimac.yml" "$@"; }
+compose() { docker compose --project-name gimac-des -f "$ICI/docker-compose.yml" -f "$ICI/docker-compose.gimac.yml" "$@"; }
 echec() { echo "ERREUR : $*" >&2; exit 1; }
 
 verifier() {
@@ -24,6 +24,25 @@ verifier() {
   local memoire_ko; memoire_ko=$(awk '/MemTotal/ {print $2}' /proc/meminfo 2>/dev/null || echo 0)
   [ "$memoire_ko" -ge 12000000 ] || echo "ATTENTION : moins de 12 Go de mémoire ; préférez « demarrer --socle »." >&2
   echo "Prérequis satisfaits."
+}
+
+# Ports de l'hôte publiés par les services visés ; un port pris est signalé
+# avec la variable de .env qui permet de le déplacer.
+verifier_ports() {
+  local occupes
+  occupes=$(compose config --format json "$@" | python3 -c '
+import json, subprocess, sys
+config = json.load(sys.stdin)
+cibles = sys.argv[1:] or list(config["services"])
+for nom in cibles:
+    for port in config["services"][nom].get("ports", []):
+        hote = port.get("published")
+        if hote and subprocess.run(["ss", "-ltnH", f"sport = :{hote}"], capture_output=True, text=True).stdout.strip():
+            print(f"  {hote} (service {nom})")
+' "$@")
+  [ -z "$occupes" ] || echec "ports déjà utilisés sur ce poste :
+$occupes
+Choisissez d'autres ports dans .env (variables GIMAC_PORT_*, voir docker-compose.gimac.yml)."
 }
 
 # Secrets locaux générés aléatoirement, jamais versionnés (BNF-07, D-44).
@@ -64,6 +83,7 @@ demarrer() {
     local manquantes; manquantes=$(images_manquantes)
     [ -z "$manquantes" ] || echec "images absentes : $(echo $manquantes). Lancez « ./gimac-dev.sh images » ou « demarrer --socle »."
   fi
+  verifier_ports "${cibles[@]}"
   # Aucun composant partiellement démarré n'est laissé en place en cas d'échec.
   if ! compose up -d --wait "${cibles[@]}"; then
     echo "Échec du démarrage : arrêt des conteneurs lancés." >&2
