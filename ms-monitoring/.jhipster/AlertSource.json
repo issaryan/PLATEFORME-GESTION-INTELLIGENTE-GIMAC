@@ -1,0 +1,53 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134402"
+  },
+  "applications": ["monitoring"],
+  "clientRootFolder": "monitoring",
+  "databaseType": "sql",
+  "documentation": "Source émettrice enregistrée (pile d'observabilité, système de production),\\navec son certificat et son schéma en liste blanche (D-23 ; écart CC complété).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "code",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "unique", "maxlength"],
+      "fieldValidateRulesMaxlength": "50"
+    },
+    {
+      "fieldName": "label",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "255"
+    },
+    {
+      "documentation": "Empreinte SHA-256 du certificat client mTLS.",
+      "fieldName": "certificateThumbprint",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "minlength", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "64",
+      "fieldValidateRulesMinlength": "64",
+      "fieldValidateRulesPattern": "^[0-9a-f]{64}$"
+    },
+    {
+      "documentation": "Schéma JSON du message, champs admis en liste blanche.",
+      "fieldName": "allowedSchema",
+      "fieldType": "TextBlob",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "active",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    }
+  ],
+  "microserviceName": "monitoring",
+  "name": "AlertSource",
+  "relationships": [],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

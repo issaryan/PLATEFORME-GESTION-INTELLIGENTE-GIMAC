@@ -1,0 +1,102 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134802"
+  },
+  "applications": ["monitoring"],
+  "clientRootFolder": "monitoring",
+  "databaseType": "sql",
+  "documentation": "Grille d'astreinte hebdomadaire, une ligne par révision (algorithme 6.45).\\nUnicité (semaine, révision) posée en base.",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Semaine ISO, par exemple 2026-S39.",
+      "fieldName": "isoWeek",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "8",
+      "fieldValidateRulesPattern": "^[0-9]{4}-S[0-9]{2}$"
+    },
+    {
+      "fieldName": "revision",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required", "min"],
+      "fieldValidateRulesMin": "1"
+    },
+    {
+      "fieldName": "state",
+      "fieldType": "RosterState",
+      "fieldTypeDocumentation": "Cycle d'une révision de grille (écart CC : chaîne libre typée).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "GENEREE,VALIDEE,PUBLIEE,REMPLACEE"
+    },
+    {
+      "fieldName": "solverStatus",
+      "fieldType": "SolverStatus",
+      "fieldTypeDocumentation": "Issue de la résolution par le solveur en nombres entiers (D-15).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "OPTIMALE,REALISABLE,IRREALISABLE,SANS_SOLUTION_DANS_LE_DELAI"
+    },
+    {
+      "fieldName": "objectiveValue",
+      "fieldType": "BigDecimal"
+    },
+    {
+      "documentation": "Écart d'optimalité en pourcentage (par exemple 0,8).",
+      "fieldName": "gap",
+      "fieldType": "BigDecimal",
+      "fieldValidateRules": ["min"],
+      "fieldValidateRulesMin": "0"
+    },
+    {
+      "fieldName": "solveDuration",
+      "fieldType": "Duration"
+    },
+    {
+      "documentation": "Plages non couvertes et contraintes saturées qui l'expliquent, en JSON.",
+      "fieldName": "uncoveredSlots",
+      "fieldType": "TextBlob"
+    },
+    {
+      "fieldName": "generatedAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "generatedBy",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "validatedBy",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "validatedAt",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "publishedAt",
+      "fieldType": "Instant"
+    }
+  ],
+  "microserviceName": "monitoring",
+  "name": "OnCallRoster",
+  "pagination": "pagination",
+  "readOnly": true,
+  "relationships": [
+    {
+      "documentation": "Révision précédente de la même semaine.",
+      "otherEntityField": "isoWeek",
+      "otherEntityName": "onCallRoster",
+      "relationshipName": "previousRevision",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

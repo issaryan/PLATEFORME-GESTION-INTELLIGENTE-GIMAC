@@ -1,0 +1,53 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134502"
+  },
+  "applications": ["monitoring"],
+  "clientRootFolder": "monitoring",
+  "databaseType": "sql",
+  "documentation": "Temporisations et exigences par gravité (tableau 6.48 ; D-14 : acquittement\\nen 5, 15 ou 60 min par défaut, paramétrable).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "severity",
+      "fieldType": "AlertSeverity",
+      "fieldTypeDocumentation": "Gravité d'une alerte (tableau 6.48).",
+      "fieldValidateRules": ["required", "unique"],
+      "fieldValues": "MINEURE,MAJEURE,CRITIQUE"
+    },
+    {
+      "fieldName": "ackDelay",
+      "fieldType": "Duration",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "notificationLevel",
+      "fieldType": "NotificationLevel",
+      "fieldTypeDocumentation": "Niveau de la demande de notification adressée à MS-NOTIFICATION.",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "CRITIQUE,URGENT,AVERTISSEMENT"
+    },
+    {
+      "documentation": "Vrai : port synchrone de MS-NOTIFICATION (gravité critique) ; faux : événement.",
+      "fieldName": "urgentChannel",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "ticketPolicy",
+      "fieldType": "TicketPolicy",
+      "fieldTypeDocumentation": "Exigence de ticket à l'acquittement (tableau 6.48).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "OBLIGATOIRE,A_APPRECIATION,FACULTATIF"
+    }
+  ],
+  "microserviceName": "monitoring",
+  "name": "AlertSeverityPolicy",
+  "relationships": [],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

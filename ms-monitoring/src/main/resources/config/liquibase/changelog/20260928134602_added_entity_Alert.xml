@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+
+    <!--
+        Added the entity Alert.
+    -->
+    <changeSet id="20260928134602-1" author="jhipster">
+        <createTable tableName="alert" remarks="Alerte corrélée et dédupliquée (algorithme 6.44). La gravité n&apos;entre pas\ndans l&apos;empreinte ; une alerte symptôme pointe vers sa racine.">
+            <column name="id" type="${uuidType}">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="reference" type="varchar(30)" remarks="Référence lisible, par exemple ALR-2026-04417.">
+                <constraints nullable="false" unique="true" uniqueConstraintName="ux_alert__reference" />
+            </column>
+            <column name="source" type="varchar(100)" remarks="Code de la source, ou « évaluation des seuils » pour une alerte interne.">
+                <constraints nullable="false" />
+            </column>
+            <column name="rule" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="fingerprint" type="varchar(64)" remarks="SHA256(source || liaison || règle).">
+                <constraints nullable="false" />
+            </column>
+            <column name="severity" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="state" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="first_seen_at" type="${datetimeType}">
+                <constraints nullable="false" />
+            </column>
+            <column name="last_seen_at" type="${datetimeType}">
+                <constraints nullable="false" />
+            </column>
+            <column name="occurrences" type="integer">
+                <constraints nullable="false" />
+            </column>
+            <column name="ack_deadline" type="${datetimeType}" remarks="Échéance d&apos;acquittement, pour une alerte racine.">
+                <constraints nullable="true" />
+            </column>
+            <column name="overdue" type="boolean" remarks="Marquée hors délai par processOverdue.">
+                <constraints nullable="false" />
+            </column>
+            <column name="acknowledged_by" type="${uuidType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="acknowledged_at" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="ticket_requested" type="boolean">
+                <constraints nullable="true" />
+            </column>
+            <column name="ack_comment" type="varchar(1000)">
+                <constraints nullable="true" />
+            </column>
+            <column name="ticket_id" type="${uuidType}" remarks="Ticket ouvert par MS-INCIDENT (incident.ticket-opened.v1).">
+                <constraints nullable="true" />
+            </column>
+            <column name="resolved_at" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="link_id" type="${uuidType}">
+                <constraints nullable="false" />
+            </column>
+            <column name="correlation_root_id" type="${uuidType}">
+                <constraints nullable="true" />
+            </column>
+            <!-- jhipster-needle-liquibase-add-column - JHipster will add columns here -->
+        </createTable>
+        <dropDefaultValue tableName="alert" columnName="first_seen_at" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="alert" columnName="last_seen_at" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="alert" columnName="ack_deadline" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="alert" columnName="acknowledged_at" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="alert" columnName="resolved_at" columnDataType="${datetimeType}"/>
+    </changeSet>
+
+    <!-- jhipster-needle-liquibase-add-changeset - JHipster will add changesets here -->
+
+    <!--
+        Load sample data generated with Faker.js
+        - This data can be easily edited using a CSV editor (or even MS Excel) and
+          is located in the 'src/main/resources/config/liquibase/fake-data' directory
+        - By default this data is applied when running with the JHipster 'dev' profile.
+          This can be customized by adding or removing 'faker' in the 'spring.liquibase.contexts'
+          Spring Boot configuration key.
+    -->
+    <changeSet id="20260928134602-1-data" author="jhipster" context="faker">
+        <loadData
+                  file="config/liquibase/fake-data/alert.csv"
+                  separator=";"
+                  tableName="alert"
+                  usePreparedStatements="true">
+            <column name="id" type="${uuidType}"/>
+            <column name="reference" type="string"/>
+            <column name="source" type="string"/>
+            <column name="rule" type="string"/>
+            <column name="fingerprint" type="string"/>
+            <column name="severity" type="string"/>
+            <column name="state" type="string"/>
+            <column name="first_seen_at" type="date"/>
+            <column name="last_seen_at" type="date"/>
+            <column name="occurrences" type="numeric"/>
+            <column name="ack_deadline" type="date"/>
+            <column name="overdue" type="boolean"/>
+            <column name="acknowledged_by" type="${uuidType}"/>
+            <column name="acknowledged_at" type="date"/>
+            <column name="ticket_requested" type="boolean"/>
+            <column name="ack_comment" type="string"/>
+            <column name="ticket_id" type="${uuidType}"/>
+            <column name="resolved_at" type="date"/>
+            <column name="link_id" type="${uuidType}"/>
+            <!-- jhipster-needle-liquibase-add-loadcolumn - JHipster (and/or extensions) can add load columns here -->
+        </loadData>
+    </changeSet>
+</databaseChangeLog>

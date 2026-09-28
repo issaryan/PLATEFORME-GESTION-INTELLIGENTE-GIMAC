@@ -1,0 +1,75 @@
+{
+  "annotations": {
+    "changelogDate": "20260928135002"
+  },
+  "applications": ["monitoring"],
+  "clientRootFolder": "monitoring",
+  "databaseType": "sql",
+  "documentation": "Vacation instanciée depuis la grille publiée.",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Référence lisible, par exemple VAC-2026-0927-N.",
+      "fieldName": "reference",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "unique", "maxlength"],
+      "fieldValidateRulesMaxlength": "30"
+    },
+    {
+      "documentation": "Date de la vacation (date du CC, renommé : mot réservé SQL).",
+      "fieldName": "shiftDate",
+      "fieldType": "LocalDate",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "slot",
+      "fieldType": "ShiftSlot",
+      "fieldTypeDocumentation": "Plages de vacation : matin 06h-14h, après-midi 14h-22h, nuit 22h-06h.",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "MATIN,APRES_MIDI,NUIT"
+    },
+    {
+      "documentation": "Opérateurs de la vacation : UUID séparés par des virgules.",
+      "fieldName": "operatorIds",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "1000"
+    },
+    {
+      "fieldName": "shiftLeadId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "startsAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "endsAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "monitoring",
+  "name": "Shift",
+  "pagination": "pagination",
+  "readOnly": true,
+  "relationships": [
+    {
+      "otherEntityField": "isoWeek",
+      "otherEntityName": "onCallRoster",
+      "relationshipName": "roster",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

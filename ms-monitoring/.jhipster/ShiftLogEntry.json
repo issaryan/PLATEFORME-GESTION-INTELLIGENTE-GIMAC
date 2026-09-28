@@ -1,0 +1,92 @@
+{
+  "annotations": {
+    "changelogDate": "20260928135102"
+  },
+  "applications": ["monitoring"],
+  "clientRootFolder": "monitoring",
+  "databaseType": "sql",
+  "documentation": "Entrée de main courante de quart : ajout seul, chaînée par empreinte ;\\nune correction est une nouvelle entrée qui cite la précédente.",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "chainIndex",
+      "fieldType": "Long",
+      "fieldValidateRules": ["required", "min"],
+      "fieldValidateRulesMin": "1"
+    },
+    {
+      "fieldName": "occurredAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "authorId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "nature",
+      "fieldType": "ShiftLogNature",
+      "fieldTypeDocumentation": "Nature d'une entrée de main courante de quart (écart CC : chaîne libre typée).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "EVENEMENT,ALERTE,ACQUITTEMENT_HORS_DELAI,INTERVENTION,RETABLISSEMENT,MAINTENANCE,CONSIGNE,RESERVE_ENTRANT,CORRECTION"
+    },
+    {
+      "fieldName": "text",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "4000"
+    },
+    {
+      "documentation": "Référence d'alerte, de ticket ou de liaison.",
+      "fieldName": "reference",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "100"
+    },
+    {
+      "fieldName": "previousHash",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "minlength", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "64",
+      "fieldValidateRulesMinlength": "64",
+      "fieldValidateRulesPattern": "^[0-9a-f]{64}$"
+    },
+    {
+      "fieldName": "hash",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "unique", "minlength", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "64",
+      "fieldValidateRulesMinlength": "64",
+      "fieldValidateRulesPattern": "^[0-9a-f]{64}$"
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "monitoring",
+  "name": "ShiftLogEntry",
+  "pagination": "pagination",
+  "readOnly": true,
+  "relationships": [
+    {
+      "otherEntityField": "reference",
+      "otherEntityName": "shift",
+      "relationshipName": "shift",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    },
+    {
+      "documentation": "Entrée corrigée, citée par une entrée de correction.",
+      "otherEntityName": "shiftLogEntry",
+      "relationshipName": "corrects",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

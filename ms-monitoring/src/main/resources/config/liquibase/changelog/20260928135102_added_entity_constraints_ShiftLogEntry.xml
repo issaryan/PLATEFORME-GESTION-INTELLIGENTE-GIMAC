@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+    <!--
+        Added the constraints for entity ShiftLogEntry.
+    -->
+    <changeSet id="20260928135102-2" author="jhipster">
+
+        <addForeignKeyConstraint baseColumnNames="shift_id"
+                                 baseTableName="shift_log_entry"
+                                 constraintName="fk_shift_log_entry__shift_id"
+                                 referencedColumnNames="id"
+                                 referencedTableName="shift"
+                                 />
+
+        <addForeignKeyConstraint baseColumnNames="corrects_id"
+                                 baseTableName="shift_log_entry"
+                                 constraintName="fk_shift_log_entry__corrects_id"
+                                 referencedColumnNames="id"
+                                 referencedTableName="shift_log_entry"
+                                 />
+    </changeSet>
+</databaseChangeLog>

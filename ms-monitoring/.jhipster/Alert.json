@@ -1,0 +1,137 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134602"
+  },
+  "applications": ["monitoring"],
+  "clientRootFolder": "monitoring",
+  "databaseType": "sql",
+  "documentation": "Alerte corrélée et dédupliquée (algorithme 6.44). La gravité n'entre pas\\ndans l'empreinte ; une alerte symptôme pointe vers sa racine.",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Référence lisible, par exemple ALR-2026-04417.",
+      "fieldName": "reference",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "unique", "maxlength"],
+      "fieldValidateRulesMaxlength": "30"
+    },
+    {
+      "documentation": "Code de la source, ou « évaluation des seuils » pour une alerte interne.",
+      "fieldName": "source",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "100"
+    },
+    {
+      "fieldName": "rule",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "255"
+    },
+    {
+      "documentation": "SHA256(source || liaison || règle).",
+      "fieldName": "fingerprint",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "minlength", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "64",
+      "fieldValidateRulesMinlength": "64",
+      "fieldValidateRulesPattern": "^[0-9a-f]{64}$"
+    },
+    {
+      "fieldName": "severity",
+      "fieldType": "AlertSeverity",
+      "fieldTypeDocumentation": "Gravité d'une alerte (tableau 6.48).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "MINEURE,MAJEURE,CRITIQUE"
+    },
+    {
+      "fieldName": "state",
+      "fieldType": "AlertState",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "OUVERTE,ACQUITTEE,RESOLUE"
+    },
+    {
+      "fieldName": "firstSeenAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "lastSeenAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "occurrences",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required", "min"],
+      "fieldValidateRulesMin": "1"
+    },
+    {
+      "documentation": "Échéance d'acquittement, pour une alerte racine.",
+      "fieldName": "ackDeadline",
+      "fieldType": "Instant"
+    },
+    {
+      "documentation": "Marquée hors délai par processOverdue.",
+      "fieldName": "overdue",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "acknowledgedBy",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "acknowledgedAt",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "ticketRequested",
+      "fieldType": "Boolean"
+    },
+    {
+      "fieldName": "ackComment",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "1000"
+    },
+    {
+      "documentation": "Ticket ouvert par MS-INCIDENT (incident.ticket-opened.v1).",
+      "fieldName": "ticketId",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "resolvedAt",
+      "fieldType": "Instant"
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "monitoring",
+  "name": "Alert",
+  "pagination": "pagination",
+  "readOnly": true,
+  "relationships": [
+    {
+      "otherEntityField": "code",
+      "otherEntityName": "supervisedLink",
+      "relationshipName": "link",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    },
+    {
+      "documentation": "Alerte racine dont celle-ci est un symptôme.",
+      "otherEntityField": "reference",
+      "otherEntityName": "alert",
+      "relationshipName": "correlationRoot",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

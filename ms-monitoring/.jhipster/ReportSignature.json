@@ -1,0 +1,70 @@
+{
+  "annotations": {
+    "changelogDate": "20260928135302"
+  },
+  "applications": ["monitoring"],
+  "clientRootFolder": "monitoring",
+  "databaseType": "sql",
+  "documentation": "Signature WebAuthn d'un rapport de quart, liée aux précédentes (D-12).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "role",
+      "fieldType": "SignatureRole",
+      "fieldTypeDocumentation": "Rôle du signataire : sortant, entrant, puis visa du chef de quart (RG-17, D-12).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "SORTANT,ENTRANT,VISA_CHEF_DE_QUART"
+    },
+    {
+      "fieldName": "signerId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Défi signé : H1, H2 ou H3.",
+      "fieldName": "challenge",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "minlength", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "64",
+      "fieldValidateRulesMinlength": "64",
+      "fieldValidateRulesPattern": "^[0-9a-f]{64}$"
+    },
+    {
+      "documentation": "Assertion WebAuthn (authenticatorData, clientDataJSON, signature), en JSON.",
+      "fieldName": "assertion",
+      "fieldType": "TextBlob",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "signedAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Réserves de l'entrant, citées sans altérer J.",
+      "fieldName": "reservations",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "2000"
+    }
+  ],
+  "microserviceName": "monitoring",
+  "name": "ReportSignature",
+  "readOnly": true,
+  "relationships": [
+    {
+      "otherEntityField": "reference",
+      "otherEntityName": "shiftReport",
+      "relationshipName": "report",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

@@ -1,0 +1,67 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134202"
+  },
+  "applications": ["monitoring"],
+  "clientRootFolder": "monitoring",
+  "databaseType": "sql",
+  "documentation": "Seuil par indicateur, avec hystérésis et confirmation (objet-valeur du CC, persisté).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Indicateur, par exemple « latence p95 (ms) ».",
+      "fieldName": "indicator",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "100"
+    },
+    {
+      "fieldName": "warning",
+      "fieldType": "BigDecimal",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "critical",
+      "fieldType": "BigDecimal",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "hysteresis",
+      "fieldType": "BigDecimal",
+      "fieldValidateRules": ["required", "min"],
+      "fieldValidateRulesMin": "0"
+    },
+    {
+      "fieldName": "direction",
+      "fieldType": "MeasureDirection",
+      "fieldTypeDocumentation": "Sens défavorable d'un indicateur : d = +1 (latence) ou d = -1 (taux de succès).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "HAUSSE_DEFAVORABLE,BAISSE_DEFAVORABLE"
+    },
+    {
+      "documentation": "Nombre k de fenêtres de confirmation.",
+      "fieldName": "debounce",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required", "min"],
+      "fieldValidateRulesMin": "1"
+    }
+  ],
+  "microserviceName": "monitoring",
+  "name": "Threshold",
+  "relationships": [
+    {
+      "otherEntityField": "code",
+      "otherEntityName": "supervisedLink",
+      "relationshipName": "link",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

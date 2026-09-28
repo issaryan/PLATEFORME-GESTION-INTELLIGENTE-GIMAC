@@ -1,0 +1,63 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134902"
+  },
+  "applications": ["monitoring"],
+  "clientRootFolder": "monitoring",
+  "databaseType": "sql",
+  "documentation": "Affectation d'un opérateur à une plage et un niveau (1 en salle, 2 en astreinte).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Jour de la plage (day du CC, renommé : mot réservé SQL).",
+      "fieldName": "dutyDate",
+      "fieldType": "LocalDate",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "slot",
+      "fieldType": "ShiftSlot",
+      "fieldTypeDocumentation": "Plages de vacation : matin 06h-14h, après-midi 14h-22h, nuit 22h-06h.",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "MATIN,APRES_MIDI,NUIT"
+    },
+    {
+      "fieldName": "level",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required", "min", "max"],
+      "fieldValidateRulesMax": "2",
+      "fieldValidateRulesMin": "1"
+    },
+    {
+      "fieldName": "operatorId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "shiftLead",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "monitoring",
+  "name": "OnCallAssignment",
+  "pagination": "pagination",
+  "readOnly": true,
+  "relationships": [
+    {
+      "otherEntityField": "isoWeek",
+      "otherEntityName": "onCallRoster",
+      "relationshipName": "roster",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

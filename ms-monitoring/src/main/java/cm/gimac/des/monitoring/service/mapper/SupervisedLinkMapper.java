@@ -1,0 +1,20 @@
+package cm.gimac.des.monitoring.service.mapper;
+
+import cm.gimac.des.monitoring.domain.SupervisedLink;
+import cm.gimac.des.monitoring.service.dto.SupervisedLinkDTO;
+import org.mapstruct.*;
+
+/**
+ * Mapper for the entity {@link SupervisedLink} and its DTO {@link SupervisedLinkDTO}.
+ */
+@Mapper(componentModel = "spring")
+public interface SupervisedLinkMapper extends EntityMapper<SupervisedLinkDTO, SupervisedLink> {
+    @Mapping(target = "parentPlatform", source = "parentPlatform", qualifiedByName = "supervisedLinkCode")
+    SupervisedLinkDTO toDto(SupervisedLink s);
+
+    @Named("supervisedLinkCode")
+    @BeanMapping(ignoreByDefault = true)
+    @Mapping(target = "id", source = "id")
+    @Mapping(target = "code", source = "code")
+    SupervisedLinkDTO toDtoSupervisedLinkCode(SupervisedLink supervisedLink);
+}

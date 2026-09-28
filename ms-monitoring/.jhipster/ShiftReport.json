@@ -1,0 +1,130 @@
+{
+  "annotations": {
+    "changelogDate": "20260928135202"
+  },
+  "applications": ["monitoring"],
+  "clientRootFolder": "monitoring",
+  "databaseType": "sql",
+  "documentation": "Rapport de quart (algorithme 6.46). Jamais modifié une fois scellé : une\\ncorrection produit une nouvelle version visée par le chef de quart.",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Référence lisible, par exemple RQ-2026-0927-N.",
+      "fieldName": "reference",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "unique", "maxlength"],
+      "fieldValidateRulesMaxlength": "30"
+    },
+    {
+      "documentation": "Forme canonique J (JCS, RFC 8785) du contenu figé.",
+      "fieldName": "content",
+      "fieldType": "TextBlob",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Consignes annotées par l'opérateur sortant.",
+      "fieldName": "instructions",
+      "fieldType": "TextBlob"
+    },
+    {
+      "fieldName": "state",
+      "fieldType": "ReportState",
+      "fieldTypeDocumentation": "Relève de quart (algorithme 6.46, D-12).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "BROUILLON,SIGNE_SORTANT,CONTRESIGNE,VISE,SCELLE"
+    },
+    {
+      "documentation": "Tête de chaîne de la main courante reprise dans le rapport.",
+      "fieldName": "logHeadHash",
+      "fieldType": "String",
+      "fieldValidateRules": ["minlength", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "64",
+      "fieldValidateRulesMinlength": "64",
+      "fieldValidateRulesPattern": "^[0-9a-f]{64}$"
+    },
+    {
+      "documentation": "H1 = SHA-256(J), défi de la signature sortante.",
+      "fieldName": "contentHash",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "minlength", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "64",
+      "fieldValidateRulesMinlength": "64",
+      "fieldValidateRulesPattern": "^[0-9a-f]{64}$"
+    },
+    {
+      "documentation": "Hf = SHA-256(J || σs || σe || σc).",
+      "fieldName": "digest",
+      "fieldType": "String",
+      "fieldValidateRules": ["minlength", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "64",
+      "fieldValidateRulesMinlength": "64",
+      "fieldValidateRulesPattern": "^[0-9a-f]{64}$"
+    },
+    {
+      "documentation": "D : empreinte du PDF/A-3 déposé.",
+      "fieldName": "documentDigest",
+      "fieldType": "String",
+      "fieldValidateRules": ["minlength", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "64",
+      "fieldValidateRulesMinlength": "64",
+      "fieldValidateRulesPattern": "^[0-9a-f]{64}$"
+    },
+    {
+      "documentation": "Jeton RFC 3161 encodé en DER.",
+      "fieldName": "timestampToken",
+      "fieldType": "Blob"
+    },
+    {
+      "fieldName": "timestampSerialNumber",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "100"
+    },
+    {
+      "documentation": "Référence du document déposé dans MS-DOCUMENT, par exemple DOC-2026-11902.",
+      "fieldName": "documentRef",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "100"
+    },
+    {
+      "documentation": "Transfert de responsabilité de la salle : instant de la contresignature.",
+      "fieldName": "responsibilityTransferredAt",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "sealedAt",
+      "fieldType": "Instant"
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "monitoring",
+  "name": "ShiftReport",
+  "pagination": "pagination",
+  "readOnly": true,
+  "relationships": [
+    {
+      "documentation": "Un rapport par vacation.",
+      "otherEntityField": "reference",
+      "otherEntityName": "shift",
+      "relationshipName": "shift",
+      "relationshipSide": "left",
+      "relationshipType": "one-to-one",
+      "relationshipValidateRules": "required"
+    },
+    {
+      "documentation": "Nouvelle version d'un rapport scellé, remplaçant la précédente.",
+      "otherEntityField": "reference",
+      "otherEntityName": "shiftReport",
+      "relationshipName": "supersedes",
+      "relationshipSide": "left",
+      "relationshipType": "one-to-one"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

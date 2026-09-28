@@ -1,0 +1,95 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134102"
+  },
+  "applications": ["monitoring"],
+  "clientRootFolder": "monitoring",
+  "databaseType": "sql",
+  "documentation": "Liaison d'institution ou plateforme du groupement supervisée (CC §6.1.10.3).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Identifiant lisible du CC, par exemple LIA-2026-017.",
+      "fieldName": "code",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "unique", "maxlength"],
+      "fieldValidateRulesMaxlength": "50"
+    },
+    {
+      "fieldName": "label",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "255"
+    },
+    {
+      "fieldName": "scope",
+      "fieldType": "LinkScope",
+      "fieldTypeDocumentation": "Liaison d'une institution ou plateforme du groupement (écart CC : chaîne libre typée).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "INSTITUTION,PLATEFORME"
+    },
+    {
+      "documentation": "Institution (MS-PARTICIPANT), pour une liaison de portée INSTITUTION.",
+      "fieldName": "institutionId",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Type, par exemple « liaison de paiement mobile » ou « commutateur ».",
+      "fieldName": "type",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "100"
+    },
+    {
+      "fieldName": "state",
+      "fieldType": "LinkState",
+      "fieldTypeDocumentation": "État d'une liaison supervisée (algorithme 6.47).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "NOMINALE,DEGRADEE,CRITIQUE,INJOIGNABLE,MAINTENANCE"
+    },
+    {
+      "fieldName": "stateSince",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "lastMeasureAt",
+      "fieldType": "Instant"
+    },
+    {
+      "documentation": "Période de mesure attendue ; au-delà de 3 périodes sans mesure : INJOIGNABLE.",
+      "fieldName": "measurePeriod",
+      "fieldType": "Duration",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Fenêtre de maintenance déclarée par le chef de quart (algorithme 6.47, étape 1).",
+      "fieldName": "maintenanceFrom",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "maintenanceUntil",
+      "fieldType": "Instant"
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "monitoring",
+  "name": "SupervisedLink",
+  "pagination": "pagination",
+  "relationships": [
+    {
+      "documentation": "Plateforme dont dépend la liaison, utilisée par la corrélation.",
+      "otherEntityField": "code",
+      "otherEntityName": "supervisedLink",
+      "relationshipName": "parentPlatform",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}
