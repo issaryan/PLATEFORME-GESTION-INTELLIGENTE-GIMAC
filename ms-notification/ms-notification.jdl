@@ -337,7 +337,7 @@ entity ConsolidationWindow {
 
 relationship OneToOne {
   /** Synthèse remise à la fermeture de la fenêtre. */
-  ConsolidationWindow{summaryNotification} to Notification
+  ConsolidationWindow{summaryNotification} to Notification{summarizedWindow}
 }
 
 relationship ManyToOne {
