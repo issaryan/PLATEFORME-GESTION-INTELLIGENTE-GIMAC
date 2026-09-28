@@ -1,0 +1,70 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134818"
+  },
+  "applications": ["rapprochement"],
+  "clientRootFolder": "rapprochement",
+  "databaseType": "sql",
+  "documentation": "Attestation de régularisation : pièce déposée dans MS-DOCUMENT, validée par\\nun second acteur distinct du déposant (RG-45, algorithme 6.51).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "kind",
+      "fieldType": "AttestationKind",
+      "fieldTypeDocumentation": "Nature de l'attestation : régularisation, ou non-écart pour une erreur d'ouverture (6.51, étape 4).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "REGULARISATION,NON_ECART"
+    },
+    {
+      "fieldName": "documentRef",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "documentDigest",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "minlength", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "64",
+      "fieldValidateRulesMinlength": "64",
+      "fieldValidateRulesPattern": "^[0-9a-f]{64}$"
+    },
+    {
+      "fieldName": "depositorId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "depositedAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "validatorId",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "validatedAt",
+      "fieldType": "Instant"
+    }
+  ],
+  "microserviceName": "rapprochement",
+  "name": "RegularizationAttestation",
+  "readOnly": true,
+  "relationships": [
+    {
+      "documentation": "Un suspens est clos par au plus une attestation validée.",
+      "otherEntityField": "reference",
+      "otherEntityName": "suspens",
+      "relationshipName": "suspens",
+      "relationshipSide": "left",
+      "relationshipType": "one-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

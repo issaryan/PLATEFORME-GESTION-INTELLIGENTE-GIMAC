@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+    <!--
+        Added the constraints for entity StatementLine.
+    -->
+    <changeSet id="20260928134318-2" author="jhipster">
+
+        <addForeignKeyConstraint baseColumnNames="statement_id"
+                                 baseTableName="statement_line"
+                                 constraintName="fk_statement_line__statement_id"
+                                 referencedColumnNames="id"
+                                 referencedTableName="imported_statement"
+                                 />
+    </changeSet>
+</databaseChangeLog>

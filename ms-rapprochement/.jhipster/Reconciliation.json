@@ -1,0 +1,108 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134418"
+  },
+  "applications": ["rapprochement"],
+  "clientRootFolder": "rapprochement",
+  "databaseType": "sql",
+  "documentation": "Rapprochement d'une journée pour une institution ; unicité (journée, institution) posée en base.",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Référence lisible, par exemple RAP-2026-0913-0042.",
+      "fieldName": "reference",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "unique", "maxlength"],
+      "fieldValidateRulesMaxlength": "30"
+    },
+    {
+      "fieldName": "businessDate",
+      "fieldType": "LocalDate",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "institutionId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "state",
+      "fieldType": "ReconciliationState",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "EN_ATTENTE_ETATS,EN_COURS,RAPPROCHE,RAPPROCHE_AVEC_ECARTS,CLOS"
+    },
+    {
+      "documentation": "Tolérance appliquée, conservée pour le déterminisme.",
+      "fieldName": "timestampTolerance",
+      "fieldType": "Duration"
+    },
+    {
+      "fieldName": "matchedCount",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["min"],
+      "fieldValidateRulesMin": "0"
+    },
+    {
+      "fieldName": "discrepancyCount",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["min"],
+      "fieldValidateRulesMin": "0"
+    },
+    {
+      "documentation": "Nombre d'écarts par typologie, objet JSON.",
+      "fieldName": "discrepancyCountsByType",
+      "fieldType": "TextBlob"
+    },
+    {
+      "fieldName": "startedAt",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "completedAt",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "closedBy",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "closedAt",
+      "fieldType": "Instant"
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "rapprochement",
+  "name": "Reconciliation",
+  "pagination": "pagination",
+  "readOnly": true,
+  "relationships": [
+    {
+      "documentation": "États confrontés : deux, ou trois en extension.",
+      "otherEntityField": "reference",
+      "otherEntityName": "importedStatement",
+      "relationshipName": "switchStatement",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one"
+    },
+    {
+      "otherEntityField": "reference",
+      "otherEntityName": "importedStatement",
+      "relationshipName": "participantStatement",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one"
+    },
+    {
+      "otherEntityField": "reference",
+      "otherEntityName": "importedStatement",
+      "relationshipName": "settlementStatement",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

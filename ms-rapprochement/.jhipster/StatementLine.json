@@ -1,0 +1,83 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134318"
+  },
+  "applications": ["rapprochement"],
+  "clientRootFolder": "rapprochement",
+  "databaseType": "sql",
+  "documentation": "Ligne normalisée d'un état (objet-valeur du CC, persisté pour 400 jours).\\nLa clé pivot (PivotKey) est aplatie ; aucune donnée de compte.",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "lineNumber",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required", "min"],
+      "fieldValidateRulesMin": "1"
+    },
+    {
+      "fieldName": "transactionRef",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "64"
+    },
+    {
+      "fieldName": "authorizationRef",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "64"
+    },
+    {
+      "documentation": "Horodatage de l'opération (timestamp du CC, renommé : mot réservé SQL).",
+      "fieldName": "operationAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "amount",
+      "fieldType": "BigDecimal",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "participantCode",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "20"
+    },
+    {
+      "documentation": "Statut tel que déclaré par la source, non interprété (RG-43).",
+      "fieldName": "lineStatus",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "30"
+    },
+    {
+      "fieldName": "currency",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "minlength", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "3",
+      "fieldValidateRulesMinlength": "3",
+      "fieldValidateRulesPattern": "^[A-Z]{3}$"
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "rapprochement",
+  "name": "StatementLine",
+  "pagination": "pagination",
+  "readOnly": true,
+  "relationships": [
+    {
+      "otherEntityField": "reference",
+      "otherEntityName": "importedStatement",
+      "relationshipName": "statement",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

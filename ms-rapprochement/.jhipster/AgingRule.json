@@ -1,0 +1,52 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134918"
+  },
+  "applications": ["rapprochement"],
+  "clientRootFolder": "rapprochement",
+  "databaseType": "sql",
+  "documentation": "Règle de vieillissement : J+1, J+5, J+30 (algorithme 6.51, valeurs paramétrables).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "thresholdDays",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required", "unique", "min"],
+      "fieldValidateRulesMin": "1"
+    },
+    {
+      "fieldName": "urgency",
+      "fieldType": "AgingUrgency",
+      "fieldTypeDocumentation": "Urgence d'une règle de vieillissement (écart CC : chaîne libre typée).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "NORMALE,ELEVEE"
+    },
+    {
+      "documentation": "Rôle destinataire, par exemple « responsable compensation ».",
+      "fieldName": "recipientRole",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "100"
+    },
+    {
+      "fieldName": "acknowledgementRequired",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Vrai : la règle s'applique aussi dès le dépassement de l'échéance.",
+      "fieldName": "triggeredByDueDate",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    }
+  ],
+  "microserviceName": "rapprochement",
+  "name": "AgingRule",
+  "relationships": [],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

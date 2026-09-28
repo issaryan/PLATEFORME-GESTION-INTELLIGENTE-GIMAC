@@ -1,0 +1,11 @@
+id;source;institution_id;format;required_columns;encoding;separator;max_size_bytes;timestamp_tolerance;active
+28789127-529b-44ba-9908-5f0481c963d8;SYSTEME_REGLEMENT;b2eac383-6f67-4b84-82ae-aec9e470f26b;JSON;coucher;toc-toc;p;16484;8115;false
+d1d978ac-ddd7-4217-9401-0477da63d57c;PARTICIPANT;affa768c-4378-46d6-92ca-61c44674c1a7;CSV;membre du personnel parfois;ah;t;27915;1492;false
+b344ab4c-c586-4877-bf62-7a2773f4baa3;COMMUTATEUR;2e3e3522-27a5-42a3-90b0-06165d8e159a;CSV;accéder;obliger;t;17458;28390;true
+2c52bf52-8a42-4030-b91b-dad5bdb49e29;SYSTEME_REGLEMENT;5856469b-09ea-44b0-b4ba-7bbb8d2cb6ac;JSON;moyennant de peur que touchant;secours atchoum;p;12998;26108;false
+767e7edd-98ee-4d61-aa3a-66400d9f36e4;SYSTEME_REGLEMENT;fdfedd1c-7481-40b5-8fa9-e0983dc5f402;CSV;badaboum trop au-dessous;dans;c;13442;20820;false
+b1b20cdf-009f-4227-a74a-9eba0d2ecd7e;COMMUTATEUR;e84226cc-a24e-4df9-a3db-25b83264262c;CSV;dense de sorte que;blablabla chef de cu;à;7227;22549;true
+c225fd60-c330-43ec-aedb-577e559db896;COMMUTATEUR;306be47a-72fb-439e-87a0-0ac4f0c4e7e9;JSON;à l'instar de pin-pon excéder;en bas de;n;25494;21462;false
+99ef9de5-55f9-444e-8def-c860bbd75587;COMMUTATEUR;79986e6c-bfee-4673-aa31-9e8d1a9bc3f0;JSON;patientèle;paf afin que au-dess;b;16677;10044;false
+9c7880c8-5819-46dd-a3a0-ebc49ff111a9;COMMUTATEUR;87526dcd-8723-4241-876e-4ed6b1d89b6a;JSON;à seule fin de conformer;de peur que;p;9259;31202;false
+e065eb59-4786-47d5-bdfb-e6aec8e13cf0;PARTICIPANT;c58564c3-9e2a-4209-9f35-066c4c7d81df;JSON;quand;glouglou;é;17147;4925;true

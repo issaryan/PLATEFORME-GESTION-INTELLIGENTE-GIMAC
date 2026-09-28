@@ -1,0 +1,54 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134718"
+  },
+  "applications": ["rapprochement"],
+  "clientRootFolder": "rapprochement",
+  "databaseType": "sql",
+  "documentation": "Entrée de conciliation entre le groupement et le participant (objet-valeur du CC, persisté).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "authorId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Horodatage (at du CC, renommé : mot réservé SQL).",
+      "fieldName": "recordedAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "text",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "4000"
+    },
+    {
+      "documentation": "Pièce éventuelle déposée dans MS-DOCUMENT.",
+      "fieldName": "documentRef",
+      "fieldType": "UUID"
+    }
+  ],
+  "microserviceName": "rapprochement",
+  "name": "ConciliationEntry",
+  "pagination": "pagination",
+  "readOnly": true,
+  "relationships": [
+    {
+      "otherEntityField": "reference",
+      "otherEntityName": "suspens",
+      "relationshipName": "suspens",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

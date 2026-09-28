@@ -1,0 +1,109 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134218"
+  },
+  "applications": ["rapprochement"],
+  "clientRootFolder": "rapprochement",
+  "databaseType": "sql",
+  "documentation": "État importé, porté localement (CC §6.1.11.1). Idempotence par empreinte ;\\naucun fichier ayant échoué au masquage n'est persisté.",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Référence lisible, par exemple ETA-2026-0913-C.",
+      "fieldName": "reference",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "unique", "maxlength"],
+      "fieldValidateRulesMaxlength": "30"
+    },
+    {
+      "fieldName": "source",
+      "fieldType": "StatementSource",
+      "fieldTypeDocumentation": "Source d'un état déposé ; SYSTEME_REGLEMENT en extension à trois voies.",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "COMMUTATEUR,PARTICIPANT,SYSTEME_REGLEMENT"
+    },
+    {
+      "fieldName": "institutionId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "businessDate",
+      "fieldType": "LocalDate",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "importedAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "importerId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "format",
+      "fieldType": "StatementFormat",
+      "fieldTypeDocumentation": "Format fixé par le contrat de dépôt : RFC 4180 ou RFC 8259.",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "CSV,JSON"
+    },
+    {
+      "documentation": "SHA256(F) du fichier déposé.",
+      "fieldName": "digest",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "unique", "minlength", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "64",
+      "fieldValidateRulesMinlength": "64",
+      "fieldValidateRulesPattern": "^[0-9a-f]{64}$"
+    },
+    {
+      "documentation": "Résultat du contrôle de masquage (MaskingCheckResult du CC, aplati).",
+      "fieldName": "maskingPassed",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "maskingRejectedLines",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required", "min"],
+      "fieldValidateRulesMin": "0"
+    },
+    {
+      "fieldName": "maskingCheckedAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "lineCount",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required", "min"],
+      "fieldValidateRulesMin": "0"
+    },
+    {
+      "documentation": "Fichier original déposé dans MS-DOCUMENT (WORM).",
+      "fieldName": "documentRef",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Fin de conservation des lignes en base (400 jours).",
+      "fieldName": "linesRetainedUntil",
+      "fieldType": "LocalDate",
+      "fieldValidateRules": ["required"]
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "rapprochement",
+  "name": "ImportedStatement",
+  "pagination": "pagination",
+  "readOnly": true,
+  "relationships": [],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

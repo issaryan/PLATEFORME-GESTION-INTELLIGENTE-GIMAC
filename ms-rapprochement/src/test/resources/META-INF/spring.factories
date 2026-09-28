@@ -1,0 +1,5 @@
+org.springframework.test.context.ContextCustomizerFactory = \
+    cm.gimac.des.rapprochement.config.\
+    SqlTestContainersSpringContextCustomizerFactory,cm.gimac.des.rapprochement.\
+    config.RedisTestContainersSpringContextCustomizerFactory,cm.gimac.des.\
+    rapprochement.config.KafkaTestContainersSpringContextCustomizerFactory

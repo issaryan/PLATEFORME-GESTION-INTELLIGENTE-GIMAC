@@ -1,0 +1,43 @@
+{
+  "generator-jhipster": {
+    "applicationType": "microservice",
+    "authenticationType": "oauth2",
+    "baseName": "rapprochement",
+    "buildTool": "maven",
+    "cacheProvider": "redis",
+    "databaseType": "sql",
+    "devDatabaseType": "postgresql",
+    "enableHibernateCache": false,
+    "enableSwaggerCodegen": false,
+    "enableTranslation": true,
+    "entities": [
+      "DepositContract",
+      "ImportedStatement",
+      "StatementLine",
+      "Reconciliation",
+      "Suspens",
+      "SuspensTransition",
+      "ConciliationEntry",
+      "RegularizationAttestation",
+      "AgingRule",
+      "AgingNotice"
+    ],
+    "jhipsterVersion": "8.11.0",
+    "jwtSecretKey": "OWE0YzliMzZmZWY0NTg0NDIwYmU3YmFiMTg0YWEyZjRmMTUwOTUwNjExMjZjMDMyNjA3NGY2MjkxNjAwNTdmYjBmMTM4YTdjOWRlMTE0ODdiNjgwMjgwMzg5MTI4NTgzZTAyZGUzY2M3Y2Y5NjdkMzFiYjAwYTBjM2I0YmFiMzg=",
+    "languages": ["fr", "en"],
+    "lastLiquibaseTimestamp": 1790603418000,
+    "messageBroker": "kafka",
+    "monorepository": true,
+    "nativeLanguage": "fr",
+    "packageName": "cm.gimac.des.rapprochement",
+    "prodDatabaseType": "postgresql",
+    "reactive": false,
+    "searchEngine": "no",
+    "serverPort": "8090",
+    "serviceDiscoveryType": "no",
+    "skipClient": true,
+    "skipCommitHook": true,
+    "skipUserManagement": true,
+    "testFrameworks": []
+  }
+}

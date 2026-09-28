@@ -1,0 +1,77 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134118"
+  },
+  "applications": ["rapprochement"],
+  "clientRootFolder": "rapprochement",
+  "databaseType": "sql",
+  "documentation": "Contrat de dépôt d'une source : format, colonnes, taille, tolérance\\nd'horodatage (écart CC complété : paramètres cités par 6.48 et 6.49).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "source",
+      "fieldType": "StatementSource",
+      "fieldTypeDocumentation": "Source d'un état déposé ; SYSTEME_REGLEMENT en extension à trois voies.",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "COMMUTATEUR,PARTICIPANT,SYSTEME_REGLEMENT"
+    },
+    {
+      "documentation": "Vide : contrat par défaut de la source ; sinon propre à une institution.",
+      "fieldName": "institutionId",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "format",
+      "fieldType": "StatementFormat",
+      "fieldTypeDocumentation": "Format fixé par le contrat de dépôt : RFC 4180 ou RFC 8259.",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "CSV,JSON"
+    },
+    {
+      "documentation": "Colonnes obligatoires, séparées par des virgules.",
+      "fieldName": "requiredColumns",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "1000"
+    },
+    {
+      "fieldName": "encoding",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "20"
+    },
+    {
+      "documentation": "Séparateur pour le format CSV.",
+      "fieldName": "separator",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "1"
+    },
+    {
+      "fieldName": "maxSizeBytes",
+      "fieldType": "Long",
+      "fieldValidateRules": ["required", "min"],
+      "fieldValidateRulesMin": "1"
+    },
+    {
+      "documentation": "Tolérance τ d'horodatage : 120 s par défaut.",
+      "fieldName": "timestampTolerance",
+      "fieldType": "Duration",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "active",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    }
+  ],
+  "microserviceName": "rapprochement",
+  "name": "DepositContract",
+  "relationships": [],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+
+    <!--
+        Added the entity Suspens.
+    -->
+    <changeSet id="20260928134518-1" author="jhipster">
+        <createTable tableName="suspens" remarks="Dossier de suspens : un par écart (algorithme 6.50). Montants, typologie\net clé pivot sont immuables (RG-44) ; idempotence par (rapprochement, pivot, typologie).">
+            <column name="id" type="${uuidType}">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="reference" type="varchar(30)" remarks="Référence lisible SUS-&lt;année&gt;-&lt;jjjj&gt;-&lt;séquence&gt;, par exemple SUS-2026-0913-001.">
+                <constraints nullable="false" unique="true" uniqueConstraintName="ux_suspens__reference" />
+            </column>
+            <column name="institution_id" type="${uuidType}">
+                <constraints nullable="false" />
+            </column>
+            <column name="type" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="pivot_transaction_ref" type="varchar(64)">
+                <constraints nullable="false" />
+            </column>
+            <column name="pivot_authorization_ref" type="varchar(64)">
+                <constraints nullable="true" />
+            </column>
+            <column name="pivot_operation_at" type="${datetimeType}">
+                <constraints nullable="false" />
+            </column>
+            <column name="pivot_amount" type="decimal(21,2)">
+                <constraints nullable="true" />
+            </column>
+            <column name="pivot_participant_code" type="varchar(20)">
+                <constraints nullable="false" />
+            </column>
+            <column name="amount_switch" type="decimal(21,2)" remarks="Montant côté commutateur, vide si absent.">
+                <constraints nullable="true" />
+            </column>
+            <column name="amount_participant" type="decimal(21,2)" remarks="Montant côté participant, vide si absent.">
+                <constraints nullable="true" />
+            </column>
+            <column name="state" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="assignee_id" type="${uuidType}" remarks="Responsable de régularisation (interlocuteur règlement ou responsable compensation).">
+                <constraints nullable="true" />
+            </column>
+            <column name="due_date" type="date" remarks="Échéance : J+5 ouvré par défaut.">
+                <constraints nullable="true" />
+            </column>
+            <column name="opened_at" type="${datetimeType}">
+                <constraints nullable="false" />
+            </column>
+            <column name="dispute_ticket_id" type="${uuidType}" remarks="Ticket de litige ouvert par MS-INCIDENT sur contestation.">
+                <constraints nullable="true" />
+            </column>
+            <column name="closed_at" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="reconciliation_id" type="${uuidType}">
+                <constraints nullable="false" />
+            </column>
+            <!-- jhipster-needle-liquibase-add-column - JHipster will add columns here -->
+        </createTable>
+        <dropDefaultValue tableName="suspens" columnName="pivot_operation_at" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="suspens" columnName="opened_at" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="suspens" columnName="closed_at" columnDataType="${datetimeType}"/>
+    </changeSet>
+
+    <!-- jhipster-needle-liquibase-add-changeset - JHipster will add changesets here -->
+
+    <!--
+        Load sample data generated with Faker.js
+        - This data can be easily edited using a CSV editor (or even MS Excel) and
+          is located in the 'src/main/resources/config/liquibase/fake-data' directory
+        - By default this data is applied when running with the JHipster 'dev' profile.
+          This can be customized by adding or removing 'faker' in the 'spring.liquibase.contexts'
+          Spring Boot configuration key.
+    -->
+    <changeSet id="20260928134518-1-data" author="jhipster" context="faker">
+        <loadData
+                  file="config/liquibase/fake-data/suspens.csv"
+                  separator=";"
+                  tableName="suspens"
+                  usePreparedStatements="true">
+            <column name="id" type="${uuidType}"/>
+            <column name="reference" type="string"/>
+            <column name="institution_id" type="${uuidType}"/>
+            <column name="type" type="string"/>
+            <column name="pivot_transaction_ref" type="string"/>
+            <column name="pivot_authorization_ref" type="string"/>
+            <column name="pivot_operation_at" type="date"/>
+            <column name="pivot_amount" type="numeric"/>
+            <column name="pivot_participant_code" type="string"/>
+            <column name="amount_switch" type="numeric"/>
+            <column name="amount_participant" type="numeric"/>
+            <column name="state" type="string"/>
+            <column name="assignee_id" type="${uuidType}"/>
+            <column name="due_date" type="date"/>
+            <column name="opened_at" type="date"/>
+            <column name="dispute_ticket_id" type="${uuidType}"/>
+            <column name="closed_at" type="date"/>
+            <column name="reconciliation_id" type="${uuidType}"/>
+            <!-- jhipster-needle-liquibase-add-loadcolumn - JHipster (and/or extensions) can add load columns here -->
+        </loadData>
+    </changeSet>
+</databaseChangeLog>

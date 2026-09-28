@@ -1,0 +1,62 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134618"
+  },
+  "applications": ["rapprochement"],
+  "clientRootFolder": "rapprochement",
+  "databaseType": "sql",
+  "documentation": "Trace de chaque transition d'un suspens, en ajout seul (RG-44 ; écart CC complété).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "fromState",
+      "fieldType": "SuspensState",
+      "fieldTypeDocumentation": "Automate d'un suspens (REC D-08). Seule la validation d'une attestation conduit à CLOS.",
+      "fieldValues": "OUVERT,AFFECTE,EN_CONCILIATION,CONTESTE,REGULARISATION_DECLAREE,CLOS"
+    },
+    {
+      "fieldName": "toState",
+      "fieldType": "SuspensState",
+      "fieldTypeDocumentation": "Automate d'un suspens (REC D-08). Seule la validation d'une attestation conduit à CLOS.",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "OUVERT,AFFECTE,EN_CONCILIATION,CONTESTE,REGULARISATION_DECLAREE,CLOS"
+    },
+    {
+      "fieldName": "actorId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "occurredAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "justification",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "2000"
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "rapprochement",
+  "name": "SuspensTransition",
+  "pagination": "pagination",
+  "readOnly": true,
+  "relationships": [
+    {
+      "otherEntityField": "reference",
+      "otherEntityName": "suspens",
+      "relationshipName": "suspens",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

@@ -1,0 +1,121 @@
+{
+  "annotations": {
+    "changelogDate": "20260928134518"
+  },
+  "applications": ["rapprochement"],
+  "clientRootFolder": "rapprochement",
+  "databaseType": "sql",
+  "documentation": "Dossier de suspens : un par écart (algorithme 6.50). Montants, typologie\\net clé pivot sont immuables (RG-44) ; idempotence par (rapprochement, pivot, typologie).",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Référence lisible SUS-<année>-<jjjj>-<séquence>, par exemple SUS-2026-0913-001.",
+      "fieldName": "reference",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "unique", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "30",
+      "fieldValidateRulesPattern": "^SUS-[0-9]{4}-[0-9]{4}-[0-9]{3,}$"
+    },
+    {
+      "fieldName": "institutionId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "type",
+      "fieldType": "DiscrepancyType",
+      "fieldTypeDocumentation": "Typologie des écarts (algorithme 6.49).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "ABSENT_COMMUTATEUR,ABSENT_PARTICIPANT,ABSENT_REGLEMENT,MONTANT_DIFFERENT,STATUT_DIFFERENT,DOUBLON"
+    },
+    {
+      "fieldName": "pivotTransactionRef",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "64"
+    },
+    {
+      "fieldName": "pivotAuthorizationRef",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "64"
+    },
+    {
+      "fieldName": "pivotOperationAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "pivotAmount",
+      "fieldType": "BigDecimal"
+    },
+    {
+      "fieldName": "pivotParticipantCode",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "20"
+    },
+    {
+      "documentation": "Montant côté commutateur, vide si absent.",
+      "fieldName": "amountSwitch",
+      "fieldType": "BigDecimal"
+    },
+    {
+      "documentation": "Montant côté participant, vide si absent.",
+      "fieldName": "amountParticipant",
+      "fieldType": "BigDecimal"
+    },
+    {
+      "fieldName": "state",
+      "fieldType": "SuspensState",
+      "fieldTypeDocumentation": "Automate d'un suspens (REC D-08). Seule la validation d'une attestation conduit à CLOS.",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "OUVERT,AFFECTE,EN_CONCILIATION,CONTESTE,REGULARISATION_DECLAREE,CLOS"
+    },
+    {
+      "documentation": "Responsable de régularisation (interlocuteur règlement ou responsable compensation).",
+      "fieldName": "assigneeId",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Échéance : J+5 ouvré par défaut.",
+      "fieldName": "dueDate",
+      "fieldType": "LocalDate"
+    },
+    {
+      "fieldName": "openedAt",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Ticket de litige ouvert par MS-INCIDENT sur contestation.",
+      "fieldName": "disputeTicketId",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "closedAt",
+      "fieldType": "Instant"
+    }
+  ],
+  "jpaMetamodelFiltering": true,
+  "microserviceName": "rapprochement",
+  "name": "Suspens",
+  "pagination": "pagination",
+  "readOnly": true,
+  "relationships": [
+    {
+      "otherEntityField": "reference",
+      "otherEntityName": "reconciliation",
+      "relationshipName": "reconciliation",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}
