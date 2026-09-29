@@ -12,3 +12,20 @@ spec:
           env:
             - name: SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_OIDC_ISSUER_URI
               value: http://keycloak.gimac-des.des.gimac.local/realms/gimac
+            # Dépôt WORM (D-50) : passerelle Ceph RGW de la zone de persistance et clés d'accès,
+            # fournies par l'exploitant (Secret gimac-stockage-objet, voir creer-secrets.sh).
+            - name: GIMAC_S3_POINT_ACCES
+              valueFrom:
+                secretKeyRef:
+                  name: gimac-stockage-objet
+                  key: point-acces
+            - name: GIMAC_S3_CLE_ACCES
+              valueFrom:
+                secretKeyRef:
+                  name: gimac-stockage-objet
+                  key: cle-acces
+            - name: GIMAC_S3_CLE_SECRETE
+              valueFrom:
+                secretKeyRef:
+                  name: gimac-stockage-objet
+                  key: cle-secrete
