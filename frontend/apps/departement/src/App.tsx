@@ -1,11 +1,17 @@
-import { lazy, Suspense, useMemo } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Navigate, Route, Routes } from 'react-router'
 import { Skeleton } from '@gimac/design-system'
-import { Enveloppe, PageConnexion } from '@gimac/socle'
+import { CONNEXION, Enveloppe, GardeSession, PageConnexion, SessionProvider, configureHttp, type EtatCanal, type Session } from '@gimac/socle'
 import { Fournisseurs, NAVIGATION_DES, creerClientRequetes, servicesHttp, servicesSimules } from '@gimac/lot1'
 
-// Application du département (couche « des ») : routes du lot 1 (DS-GIMAC-01 §10.1). Les services sont
-// simulés tant que la passerelle n'expose pas les routes /bff du lot (VITE_SERVICES=http pour les réels).
+// Application du département (couche « des ») : routes du lot 1 (DS-GIMAC-01 §10.1). Services réels par
+// la passerelle (VITE_SERVICES=http) ou simulés pour le développement des écrans.
+// D-61 : la session (matrice des rôles du jeton obtenu par authentification à deux facteurs) est lue
+// sur /api/session ; sans second facteur, aucun écran n'est servi. Chaque acteur voit son tableau de
+// bord et les seules actions que ses permissions ouvrent ; la passerelle et les services refont le contrôle.
+const TableauDeBordPage = lazy(() => import('@gimac/lot1/pages/des/TableauDeBordPage'))
+const InstitutionsPage = lazy(() => import('@gimac/lot1/pages/des/InstitutionsPage'))
+const InstitutionPage = lazy(() => import('@gimac/lot1/pages/des/InstitutionPage'))
 const LiaisonsPage = lazy(() => import('@gimac/lot1/pages/des/LiaisonsPage'))
 const LiaisonPage = lazy(() => import('@gimac/lot1/pages/des/LiaisonPage'))
 const ClotureOperationPage = lazy(() => import('@gimac/lot1/pages/des/ClotureOperationPage'))
@@ -13,38 +19,78 @@ const DossierMiseEnServicePage = lazy(() => import('@gimac/lot1/pages/des/Dossie
 const ReferentielsOperationsPage = lazy(() => import('@gimac/lot1/pages/des/ReferentielsOperationsPage'))
 
 const REELS = import.meta.env.VITE_SERVICES === 'http'
-// Permissions du profil de démonstration (ingénieur d'homologation et chef du DES) ; en réel, lues du jeton.
-const PERMISSIONS_DEMO = ['HOM_LIAISON_LIST', 'HOM_LIAISON_READ', 'HOM_LIAISON_OPEN', 'HOM_LIAISON_UNFREEZE', 'HOM_DASHBOARD_READ', 'HOM_REFERENTIEL_READ',
-  'HOM_REFERENTIEL_EDIT', 'HOM_REFERENTIEL_PUBLISH', 'HOM_REFERENTIEL_MIGRATE', 'HOM_OPERATION_ASSIGN', 'HOM_EVIDENCE_SUBMIT', 'HOM_OPERATION_VALIDATE',
-  'HOM_OPERATION_REOPEN', 'HOM_GRID_EDIT', 'HOM_SCENARIO_QUALIFY', 'HOM_EVIDENCE_FILE_EXPORT', 'CER_DOSSIER_READ', 'CER_DOSSIER_VERIFY',
-  'CER_CHANGE_RECORD_LINK', 'CER_GOLIVE_REPORT_SUBMIT', 'CER_ATTESTATION_ISSUE', 'CER_QUITUS_SECURITE_SIGN', 'CER_REGISTER_READ', 'CER_REGISTER_EXPORT']
+const VERSION = import.meta.env.VITE_VERSION ?? '0.1.0'
+
+// Session de démonstration (services simulés seulement) : profil choisi par VITE_PROFIL_DEMO.
+const PROFILS_DEMO: Record<string, string[]> = {
+  ROLE_CHEF_DDRM: ['PAR_INSTITUTION_READ', 'PAR_INSTITUTION_CREATE', 'PAR_INSTITUTION_EDIT', 'PAR_ADHESION_INSTRUCT', 'PAR_TRANSITION_REQUEST', 'PAR_TRANSITION_APPROVE'],
+  ROLE_CHARGE_DDRM: ['PAR_INSTITUTION_READ', 'PAR_INSTITUTION_CREATE', 'PAR_INSTITUTION_EDIT', 'PAR_ADHESION_INSTRUCT', 'PAR_TRANSITION_REQUEST'],
+  ROLE_INGENIEUR_HOMOLOGATION: ['PAR_INSTITUTION_READ', 'HOM_LIAISON_LIST', 'HOM_LIAISON_READ', 'HOM_LIAISON_OPEN', 'HOM_DASHBOARD_READ', 'HOM_REFERENTIEL_READ',
+    'HOM_REFERENTIEL_EDIT', 'HOM_REFERENTIEL_PUBLISH', 'HOM_OPERATION_ASSIGN', 'HOM_EVIDENCE_SUBMIT', 'HOM_OPERATION_VALIDATE', 'HOM_OPERATION_REOPEN',
+    'HOM_GRID_EDIT', 'HOM_SCENARIO_QUALIFY', 'HOM_EVIDENCE_FILE_EXPORT', 'CER_DOSSIER_READ', 'CER_DOSSIER_VERIFY', 'CER_GOLIVE_REPORT_SUBMIT', 'CER_ATTESTATION_ISSUE'],
+}
+function sessionDemo(): Session {
+  const role = import.meta.env.VITE_PROFIL_DEMO && PROFILS_DEMO[import.meta.env.VITE_PROFIL_DEMO] ? import.meta.env.VITE_PROFIL_DEMO : 'ROLE_CHEF_DDRM'
+  return { sujet: 'demo', nom: 'Démonstration', identifiant: 'demo', roles: [role], permissions: PROFILS_DEMO[role], institutionId: '', acr: '2', doubleFacteur: true }
+}
+
+function Pages({ session, etatCanal, correlationId }: { session: Session; etatCanal: EtatCanal | undefined; correlationId?: string }) {
+  return (
+    <Enveloppe
+      couche="des"
+      navigation={NAVIGATION_DES}
+      permissions={session.permissions}
+      utilisateur={session.nom}
+      etatCanal={etatCanal}
+      version={VERSION}
+      correlationId={correlationId}
+    >
+      <Suspense fallback={<Skeleton height={32} />}>
+        <Routes>
+          <Route path="tableau-de-bord" element={<TableauDeBordPage />} />
+          <Route path="institutions" element={<InstitutionsPage />} />
+          <Route path="institutions/:id" element={<InstitutionPage />} />
+          <Route path="liaisons" element={<LiaisonsPage />} />
+          <Route path="liaisons/:id" element={<LiaisonPage />} />
+          <Route path="liaisons/:id/operations/:op/cloture" element={<ClotureOperationPage />} />
+          <Route path="liaisons/:id/mise-en-service" element={<DossierMiseEnServicePage />} />
+          <Route path="referentiels/operations" element={<ReferentielsOperationsPage />} />
+          <Route path="*" element={<Navigate to="/des/tableau-de-bord" replace />} />
+        </Routes>
+      </Suspense>
+    </Enveloppe>
+  )
+}
+
+function AvecSession({ children }: { children: (s: Session) => ReactNode }) {
+  if (!REELS) {
+    const s = sessionDemo()
+    return <SessionProvider session={s}>{children(s)}</SessionProvider>
+  }
+  return <GardeSession>{children}</GardeSession>
+}
 
 export default function App() {
   const services = useMemo(() => (REELS ? servicesHttp('des') : servicesSimules()), [])
-  const client = useMemo(creerClientRequetes, [])
+  const client = useMemo(() => creerClientRequetes(), [])
+  const [correlationId, setCorrelationId] = useState<string | undefined>()
+  useEffect(() => {
+    // Session expirée : retour à la connexion (Keycloak exige de nouveau le second facteur).
+    configureHttp({
+      onCorrelation: setCorrelationId,
+      onUnauthorized: async () => {
+        if (REELS) window.location.assign(CONNEXION)
+        return false
+      },
+    })
+  }, [])
   return (
     <Fournisseurs couche="des" services={services} canal={REELS} clientRequetes={client}>
       {(etatCanal) => (
         <Routes>
           <Route path="/connexion" element={<PageConnexion couche="des" />} />
-          <Route
-            path="/des/*"
-            element={
-              <Enveloppe couche="des" navigation={NAVIGATION_DES} permissions={PERMISSIONS_DEMO} utilisateur="Ingénieur d'homologation" etatCanal={etatCanal}>
-                <Suspense fallback={<Skeleton height={32} />}>
-                  <Routes>
-                    <Route path="liaisons" element={<LiaisonsPage />} />
-                    <Route path="liaisons/:id" element={<LiaisonPage />} />
-                    <Route path="liaisons/:id/operations/:op/cloture" element={<ClotureOperationPage />} />
-                    <Route path="liaisons/:id/mise-en-service" element={<DossierMiseEnServicePage />} />
-                    <Route path="referentiels/operations" element={<ReferentielsOperationsPage />} />
-                    <Route path="*" element={<Navigate to="/des/liaisons" replace />} />
-                  </Routes>
-                </Suspense>
-              </Enveloppe>
-            }
-          />
-          <Route path="*" element={<Navigate to="/des/liaisons" replace />} />
+          <Route path="/des/*" element={<AvecSession>{(s) => <Pages session={s} etatCanal={etatCanal} correlationId={correlationId} />}</AvecSession>} />
+          <Route path="*" element={<Navigate to="/des/tableau-de-bord" replace />} />
         </Routes>
       )}
     </Fournisseurs>

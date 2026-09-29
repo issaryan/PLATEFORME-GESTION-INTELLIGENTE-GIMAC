@@ -80,3 +80,4 @@ Les secrets locaux sont générés dans `infra/docker-compose/.env`, jamais vers
 | 2026-09-29 | — | Socle vérifié de bout en bout : tests des 14 services, plateforme complète, `tester-socle.sh` (D-54) |
 | 2026-09-29 | — | Lot 1, Phase 0 : régénération de MS-HOMOLOGATION et MS-CERTIFICATION depuis le plan, domaine Keycloak gimac, OPA et routes /bff, messagerie, jeton de service (D-55) |
 | 2026-09-29 | — | Arbitrages de la certification d'après le CR de cadrage (D-56 à D-60) ; MS-PARTICIPANT régénéré en 9.4.0 et tranche DDRM (étapes 1 et 2) ; définition de fini des tests et double facteur (D-61) |
+| 2026-09-29 | — | Sécurité (profils par fonction, double facteur, OPA, `/api/session`) ; frontend de la tranche DDRM : tableau de bord par acteur, registre et dossier numérique des institutions, pied de page GIMAC, seuils de couverture |

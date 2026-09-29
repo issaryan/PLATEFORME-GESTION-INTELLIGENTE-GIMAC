@@ -448,6 +448,13 @@ const fr = {
   "topbar.replier": "Replier la navigation",
   "topbar.tempsReel": "Temps réel",
   "topbar.utilisateur": "Utilisateur",
+  "pied.groupement": "Groupement Interbancaire Monétique de l'Afrique Centrale",
+  "pied.plateforme": "Plateforme de suivi des activités du DES",
+  "pied.plateformeVersion": "Plateforme de suivi des activités du DES, version {version}",
+  "pied.classification": "Usage interne, confidentiel",
+  "pied.documentation": "Documentation",
+  "pied.derniereRequete": "Dernière requête",
+  "pied.droits": "© {annee} GIMAC",
 } as const
 
 export type CleLibelle = keyof typeof fr
@@ -898,7 +905,14 @@ const en: Record<CleLibelle, string> = {
   "topbar.recherche": "Global search (Ctrl+K)",
   "topbar.replier": "Collapse navigation",
   "topbar.tempsReel": "Real time",
-  "topbar.utilisateur": "User",
+  "topbar.utilisateur": "User",  "pied.groupement": "Central African Interbank Electronic Payment Group",
+  "pied.plateforme": "DES activity tracking platform",
+  "pied.plateformeVersion": "DES activity tracking platform, version {version}",
+  "pied.classification": "Internal use, confidential",
+  "pied.documentation": "Documentation",
+  "pied.derniereRequete": "Last request",
+  "pied.droits": "© {annee} GIMAC",
+
 }
 
 const es: Record<CleLibelle, string> = {
@@ -1347,7 +1361,14 @@ const es: Record<CleLibelle, string> = {
   "topbar.recherche": "Búsqueda global (Ctrl+K)",
   "topbar.replier": "Contraer la navegación",
   "topbar.tempsReel": "Tiempo real",
-  "topbar.utilisateur": "Usuario",
+  "topbar.utilisateur": "Usuario",  "pied.groupement": "Agrupación Interbancaria Monética de África Central",
+  "pied.plateforme": "Plataforma de seguimiento de las actividades del DES",
+  "pied.plateformeVersion": "Plataforma de seguimiento de las actividades del DES, versión {version}",
+  "pied.classification": "Uso interno, confidencial",
+  "pied.documentation": "Documentación",
+  "pied.derniereRequete": "Última solicitud",
+  "pied.droits": "© {annee} GIMAC",
+
 }
 
 export const LIBELLES: Record<'fr' | 'en' | 'es', Record<CleLibelle, string>> = { fr, en, es }

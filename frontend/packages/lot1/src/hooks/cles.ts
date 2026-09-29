@@ -1,7 +1,12 @@
 import type { ListQuery } from '../modele/commun'
+import type { FiltreInstitutions } from '../modele/participant'
 
 // Clés de requête du lot 1 : [sujet, ressource, identifiant, sous-ressource].
 export const cles = {
+  participant: ['participant'] as const,
+  institutions: (f?: FiltreInstitutions) => ['participant', 'institutions', ...(f ? [f] : [])] as const,
+  institution: (id: string, sous?: string) => ['participant', 'institution', id, ...(sous ? [sous] : [])] as const,
+  indicateursDdrm: () => ['participant', 'indicateurs'] as const,
   homologation: ['homologation'] as const,
   certification: ['certification'] as const,
   referentiels: () => ['homologation', 'referentiels'] as const,

@@ -1,5 +1,5 @@
 // Socle d'interface du lot 1 (PI-GIMAC-01 F0).
-export { P, type Couche } from './http/prefixes'
+export { P, SESSION, CONNEXION, type Couche } from './http/prefixes'
 export { ApiError, estApiError, type Problem } from './http/errors'
 export { http, configureHttp, reprDigestToHex, type RequestOptions, type HttpHooks, type CsrfConfig } from './http/client'
 export { openLiveChannel, type LiveTopic, type LiveEvent, type EtatCanal } from './live/live'
@@ -11,3 +11,4 @@ export { Enveloppe, type EnveloppeProps, type EntreeNavigation, type GroupeNavig
 export { Preferences } from './enveloppe/Preferences'
 export { usePreferences, langueInitiale, lirePreference, CLE_THEME, CLE_LANGUE } from './enveloppe/usePreferences'
 export { PageConnexion, type PageConnexionProps } from './connexion/PageConnexion'
+export { SessionProvider, GardeSession, useSession, usePermissions, aPermission, chargerSession, type Session } from './session/session'

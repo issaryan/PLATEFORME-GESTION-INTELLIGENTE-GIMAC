@@ -5,6 +5,14 @@ export const P = {
   desCertification: '/bff/des/certification',
   portailHomologation: '/bff/portail/homologation',
   portailCertification: '/bff/portail/certification',
+  desParticipant: '/bff/des/participant',
+  desDocument: '/bff/des/document',
+  portailParticipant: '/bff/portail/participant',
 } as const
+
+/** Session de la passerelle : matrice des rôles et niveau d'assurance (D-61). */
+export const SESSION = '/api/session'
+/** Connexion par la passerelle (OIDC, Keycloak exige le second facteur). */
+export const CONNEXION = '/oauth2/authorization/oidc'
 
 export type Couche = 'des' | 'portail'

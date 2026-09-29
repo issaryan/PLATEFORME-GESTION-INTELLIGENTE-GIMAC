@@ -1,7 +1,7 @@
 import { useEffect, useState, type MouseEvent, type ReactNode } from 'react'
 import { useLocation, useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
-import { Banner, SideNav, TopBar, type IconName } from '@gimac/design-system'
+import { Banner, Footer, SideNav, TopBar, type IconName } from '@gimac/design-system'
 import logoBleu from '@gimac/design-system/assets/logo/gimac-bleu.png'
 import logoBlanc from '@gimac/design-system/assets/logo/gimac-blanc.png'
 import type { Couche } from '../http/prefixes'
@@ -21,6 +21,10 @@ export type EnveloppeProps = {
   institution?: string
   fil?: { label: string; href?: string }[]
   etatCanal?: EtatCanal
+  /** Pied de page GIMAC (§6.3) : version de la plateforme, documentation, dernière corrélation. */
+  version?: string
+  documentation?: string
+  correlationId?: string
   children: ReactNode
 }
 
@@ -29,7 +33,8 @@ function heureLocale() {
 }
 
 // Enveloppe applicative commune (DS-GIMAC-01 §6) : barre supérieure, navigation latérale, bandeau de
-// perte du canal poussé, préférences d'affichage. Composée uniquement de composants du catalogue.
+// perte du canal poussé, préférences d'affichage, pied de page GIMAC. Composée uniquement de
+// composants du catalogue.
 export function Enveloppe(p: EnveloppeProps) {
   const { t } = useTranslation()
   const { theme } = usePreferences()
@@ -76,7 +81,7 @@ export function Enveloppe(p: EnveloppeProps) {
   }
 
   return (
-    <div className="gm-root" style={{ minHeight: '100vh' }} onClick={intercepter}>
+    <div className="gm-root" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }} onClick={intercepter}>
       <TopBar
         layer={p.couche}
         logo={theme === 'dark' ? logoBlanc : logoBleu}
@@ -94,10 +99,11 @@ export function Enveloppe(p: EnveloppeProps) {
         </div>
       ) : null}
       {p.etatCanal === 'lost' ? <Banner level="info">{t('live.perdu')}</Banner> : null}
-      <div style={{ display: 'flex', alignItems: 'stretch' }}>
+      <div style={{ display: 'flex', alignItems: 'stretch', flex: 1 }}>
         {etroit ? null : <SideNav current={courante?.cle ?? ''} groups={groupes} height={hauteur} />}
         <main style={{ flex: 1, minWidth: 0, padding: etroit ? 'var(--gm-space-4)' : 'var(--gm-space-5) var(--gm-space-6)' }}>{p.children}</main>
       </div>
+      <Footer version={p.version} documentation={p.documentation} correlationId={p.correlationId} />
       {etroit && navOuverte ? (
         // Tiroir de navigation : voile du catalogue (gm-overlay) et SideNav, fermeture par le voile ou Échap.
         <div className="gm-overlay" style={{ justifyContent: 'flex-start', alignItems: 'stretch', top: 'var(--gm-size-topbar)', padding: 0 }} onClick={(e) => e.target === e.currentTarget && setNavOuverte(false)} onKeyDown={(e) => e.key === 'Escape' && setNavOuverte(false)}>

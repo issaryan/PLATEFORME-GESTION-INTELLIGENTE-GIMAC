@@ -10,6 +10,10 @@ import type {
   Telechargement, TypeDemande,
 } from '../modele/certification'
 import type { PortailCertification, PortailLiaison, PortailOperation } from '../modele/portail'
+import type {
+  Candidature, ConditionsAdhesion, DossierInstitution, FiltreInstitutions, IndicateursDdrm, Institution, PieceAdhesion, Prerequis,
+  StatutInstitution, TransitionStatut,
+} from '../modele/participant'
 
 // Ports de l'interface du lot 1 : le seul contrat entre les écrans et les données. Les composants et
 // les pages n'appellent jamais un service directement ; les hooks de données appellent le port injecté
@@ -102,12 +106,31 @@ export interface ServicePortail {
   telechargerAttestation(certificationId: string): Promise<Telechargement>
 }
 
+/** Registre des institutions et étapes 1 et 2 du parcours (MS-PARTICIPANT, D-57). */
+export interface ServiceParticipant {
+  listerInstitutions(f: FiltreInstitutions): Promise<Page<Institution>>
+  indicateurs(): Promise<IndicateursDdrm>
+  dossier(id: string): Promise<DossierInstitution>
+  prerequis(id: string, etat: StatutInstitution): Promise<Prerequis[]>
+  enregistrer(c: Candidature): Promise<Institution>
+  modifier(id: string, c: Candidature): Promise<Institution>
+  definirConditions(id: string, c: ConditionsAdhesion): Promise<Institution>
+  /** Dépose la pièce dans MS-DOCUMENT puis rattache sa référence et son empreinte au dossier. */
+  deposerPiece(id: string, code: string, fichier: File): Promise<PieceAdhesion>
+  validerPiece(id: string, code: string): Promise<PieceAdhesion>
+  rejeterPiece(id: string, code: string, motif: string): Promise<PieceAdhesion>
+  proposerTransition(id: string, vers: StatutInstitution, motif: string, pieceDecisionId?: string): Promise<TransitionStatut>
+  approuverTransition(id: string, transitionId: string, assertion: Assertion): Promise<TransitionStatut>
+  rejeterTransition(id: string, transitionId: string, motif: string): Promise<TransitionStatut>
+}
+
 export interface ServiceReauthentification {
   /** Lève ReauthCancelled si l'utilisateur annule ; aucune requête d'effet n'est alors envoyée. */
   assertion(purpose: SignPurpose): Promise<Assertion>
 }
 
 export interface Services {
+  participant: ServiceParticipant
   homologation: ServiceHomologation
   certification: ServiceCertification
   portail: ServicePortail

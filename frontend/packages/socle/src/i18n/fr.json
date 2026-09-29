@@ -26,5 +26,9 @@
   "connexion.heure": "Heure locale et heure UTC",
   "shell.theme": "Thème",
   "shell.theme.clair": "Clair",
-  "shell.theme.sombre.court": "Sombre"
+  "shell.theme.sombre.court": "Sombre",
+  "session.seConnecter": "Se connecter",
+  "session.expiree": "Votre session a expiré ou n'est pas ouverte. Connectez-vous pour continuer.",
+  "session.erreur": "La session n'a pas pu être chargée.",
+  "session.doubleFacteurRequis": "L'accès exige une authentification à deux facteurs. Reconnectez-vous avec votre mot de passe puis votre code à usage unique."
 }

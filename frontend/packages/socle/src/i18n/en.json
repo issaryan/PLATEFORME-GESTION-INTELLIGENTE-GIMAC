@@ -26,5 +26,9 @@
   "connexion.heure": "Local time and UTC time",
   "shell.theme": "Theme",
   "shell.theme.clair": "Light",
-  "shell.theme.sombre.court": "Dark"
+  "shell.theme.sombre.court": "Dark",
+  "session.seConnecter": "Sign in",
+  "session.expiree": "Your session has expired or is not open. Sign in to continue.",
+  "session.erreur": "The session could not be loaded.",
+  "session.doubleFacteurRequis": "Access requires two-factor authentication. Sign in again with your password and one-time code."
 }

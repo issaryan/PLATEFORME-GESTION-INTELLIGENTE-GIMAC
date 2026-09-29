@@ -13,7 +13,8 @@
     "dev:portail": "npm run dev -w @gimac/app-portail",
     "dev:console": "npm run dev -w @gimac/app-console",
     "dev:catalogue": "npm run dev -w @gimac/app-catalogue",
-    "test": "npm run test --workspaces --if-present"
+    "test": "npm run test --workspaces --if-present",
+    "couverture": "npm run couverture --workspaces --if-present"
   },
   "engines": {
     "node": ">=22"

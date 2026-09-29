@@ -14,7 +14,7 @@ const PERMISSIONS_DEMO = ['HOM_PORTAL_READ', 'HOM_PORTAL_SUBMIT', 'CER_PORTAL_RE
 
 export default function App() {
   const services = useMemo(() => (REELS ? servicesHttp('portail') : servicesSimules()), [])
-  const client = useMemo(creerClientRequetes, [])
+  const client = useMemo(() => creerClientRequetes(), [])
   return (
     <Fournisseurs couche="portail" services={services} canal={REELS} clientRequetes={client}>
       {(etatCanal) => (

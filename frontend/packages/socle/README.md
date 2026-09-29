@@ -11,12 +11,14 @@ Socle d'interface commun aux trois couches (PI-GIMAC-01, fragment F0). Aucun éc
 | `src/requete/` | `QueryBoundary` et `EtatsRequete` : les quatre états (chargement, vide, erreur avec corrélation et réessai, nominal) |
 | `src/i18n/` | Catalogues **français, anglais, espagnol** (langues de la zone CEMAC), fusion avec ceux des lots |
 | `src/enveloppe/` | Enveloppe commune (barre supérieure, navigation latérale filtrée par permissions, bandeau de perte du canal), préférences d'affichage (thème, langue) |
+| `src/session/` | Session de la passerelle (`/api/session`) : matrice des rôles et niveau d'assurance ; `GardeSession` refuse l'accès sans second facteur (D-61) ; `useSession`, `usePermissions`, `aPermission` |
 | `src/connexion/` | Écran de connexion TRA-01 : mosaïque tissée prolongeant la couverture du système de conception, sans aucun champ de saisie |
 
 Tout le rendu vient de `@gimac/design-system` ; le mode sombre et le mode clair découlent des jetons.
 
 ```
-npm run test -w @gimac/socle   # client HTTP (F0 §B), catalogues FR/EN/ES
+npm run test -w @gimac/socle   # client HTTP (F0 §B), session, catalogues FR/EN/ES
+npm run couverture -w @gimac/socle   # 80 % bloquants (D-61)
 npm run lint -w @gimac/socle
 ```
 
@@ -25,3 +27,4 @@ npm run lint -w @gimac/socle
 | Date | Commit | Modification |
 |---|---|---|
 | 2026-09-29 | — | Création : client HTTP corrigé après revue du F0, canal poussé, FIDO2, quatre états, i18n FR/EN/ES, enveloppe, connexion |
+| 2026-09-29 | — | Session et garde à double facteur (D-61), préfixes du registre et de la gestion documentaire, pied de page GIMAC dans l'enveloppe ; 24 tests, couverture au-dessus de 80 % |

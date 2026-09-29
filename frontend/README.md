@@ -10,7 +10,7 @@ Espace de travail npm des trois couches de présentation de la plateforme (D-46,
 | `packages/theme` | `@gimac/theme` | Jetons du thème (CC 6.2) | — | — |
 | `packages/design-system` | `@gimac/design-system` | Système de conception DS-GIMAC-01 (jetons, styles, 87 composants React) | — | — |
 | `packages/socle` | `@gimac/socle` | Socle d'interface F0 : client passerelle, canal poussé, FIDO2, i18n, enveloppe, connexion | — | — |
-| `packages/lot1` | `@gimac/lot1` | Lot 1 : ports, services, hooks, écrans DES-08 à DES-12 et POR-03 | — | — |
+| `packages/lot1` | `@gimac/lot1` | Lot 1 et certification : ports, services, hooks, tableau de bord par acteur, registre des institutions (DDRM), écrans DES-08 à DES-12 et POR-03 | — | — |
 | `apps/catalogue` | `@gimac/app-catalogue` | Catalogue vivant, hors production | Poste de développement | 4203 |
 
 Pile : React 19.2, TypeScript 6, Vite 8, oxlint, générés par `create-vite` (gabarit `react-ts`).
@@ -22,6 +22,8 @@ npm install                   # à la racine de frontend/
 npm run dev:departement       # ou dev:portail, dev:console ; /api relayé vers localhost:8080
 npm run build                 # les trois couches
 npm run lint
+npm test                      # tests de tous les paquets
+npm run couverture            # tests avec seuils de couverture (D-61)
 docker build --build-arg APPLICATION=portail -t frontend-portail .
 ```
 
@@ -44,3 +46,4 @@ Enveloppe commune IHM-01, bibliothèque de composants IHM-02, navigation élagu�
 | 2026-09-28 | 6eca1ce | Paquet `@gimac/design-system` (portage React du DS-GIMAC-01, 87 composants) et catalogue vivant `apps/catalogue` (port 4203) |
 | 2026-09-29 | — | Système de conception terminé : ThemeProvider, reset.css, contrôle des valeurs en dur, tests (48 unitaires, 174 audits axe), corrections de DiffView, GanttView et DecisionToTaskRow |
 | 2026-09-29 | — | Lot 1 : paquets `@gimac/socle` (F0) et `@gimac/lot1` (ports, services HTTP et simulés, hooks, écrans DES-08 à DES-12 et POR-03) ; connexion TRA-01 ; i18n FR, EN, ES ; relais `/bff` dans Vite et nginx |
+| 2026-09-29 | — | Tranche DDRM : session à double facteur et matrice des rôles, tableau de bord par acteur, registre des institutions, pied de page GIMAC ; seuils de couverture Vitest (D-61) |

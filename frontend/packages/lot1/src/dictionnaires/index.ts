@@ -14,3 +14,11 @@ export const etatQuitus = dictionnaire('quitus.etat', { ATTENDU: 'info', SIGNE_F
 export const etatDossier = dictionnaire('dossier.etat', { OUVERT: 'info', AUTORISE: 'ok', MIS_EN_SERVICE: 'ok', COMPLET: 'ok', ATTESTE: 'ok' })
 export const etatAttestation = dictionnaire('attestation.etat', { EN_VIGUEUR: 'ok', SUSPENDUE: 'warn', REVOQUEE: 'crit', REMPLACEE: 'neutral' })
 export const etatScellement = dictionnaire('scellement.etat', { EN_ATTENTE: 'warn', SCELLE: 'ok', REJETE: 'crit' })
+
+// Registre des institutions (D-57) : cycle de vie, pièces d'adhésion, propositions de transition.
+export const etatInstitution = dictionnaire('institution.statut', {
+  CANDIDAT: 'info', ADHERENT: 'ok', EN_HOMOLOGATION: 'info', ACTIF: 'ok', A_REGULARISER: 'warn', SUSPENDU: 'crit', RETIRE: 'neutral', CLOS_SANS_SUITE: 'neutral',
+})
+export const etatPiece = dictionnaire('piece.etat', { ATTENDUE: 'neutral', RECUE: 'warn', VALIDEE: 'ok', REJETEE: 'crit' })
+export const etatTransition = dictionnaire('transition.etat', { PROPOSEE: 'warn', APPROUVEE: 'ok', REJETEE: 'crit' })
+export const conformite = dictionnaire('conformite', { CONFORME: 'ok', A_REGULARISER: 'warn', NON_CONFORME: 'crit' })
