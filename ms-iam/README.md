@@ -104,6 +104,7 @@ Copié et adapté (paquet `cm.gimac.des.iam`) ; chaque bean est inactif tant que
 | 2026-09-29 | — | Masquage des journaux activé (logback, `%maskedMsg`) ; 101 tests unitaires et 375 tests d'intégration réussis, image Jib construite ; `KeycloakProperties` déplacée dans l'adaptateur (test d'architecture) ; `List.of` (contrôle de modernité) (D-54). |
 | 2026-09-29 | — | Permissions métier (HOM_*, CER_*, INTERNAL_*) acceptées comme autorités, en plus de ROLE_* (D-55). |
 | 2026-09-29 | — | Administration des comptes et de l'authentification depuis la plateforme (D-62) : annuaire Keycloak, premier accès, « Mon compte », politique de sécurité, messagerie, profils, journal ; réauthentification forte FIDO2 (IAM-07). 170 tests unitaires et de sécurité, 396 d'intégration et de recette réussis ; seuils JaCoCo atteints. |
+| 2026-09-29 | — | Ports sortants `application/port/out` versionnés : la règle `out/` du `.gitignore` généré par JHipster les ignorait, le dépôt distant ne compilait pas ; exception `!src/**/out/` ajoutée et port `Annuaire` reconstitué d'après `KeycloakAnnuaire` et `AnnuaireEnMemoire` |
 <!-- GIMAC:FIN -->
 
 # iam

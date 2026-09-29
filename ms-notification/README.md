@@ -56,6 +56,7 @@ Copié et adapté (paquet `cm.gimac.des.notification`) ; chaque bean est inactif
 | 2026-09-28 | — | Reprise de 13 classes du projet afriland (D-52) ; compilation vérifiée. |
 | 2026-09-28 | — | Écarts comblés (liaison au certificat, masquage Luhn 6+4) et 1 classes reprises d'afriland : ServiceTokenProvider (D-53). |
 | 2026-09-29 | — | Masquage des journaux activé (logback, `%maskedMsg`) ; 89 tests unitaires et 343 tests d'intégration réussis, image Jib construite (D-54). |
+| 2026-09-29 | — | Ports sortants `application/port/out` versionnés : la règle `out/` du `.gitignore` généré par JHipster les ignorait, le dépôt distant ne compilait pas ; exception `!src/**/out/` ajoutée ; adaptateurs `infrastructure/adapter/out` (SMTP, SMS) enfin versionnés |
 <!-- GIMAC:FIN -->
 
 # notification

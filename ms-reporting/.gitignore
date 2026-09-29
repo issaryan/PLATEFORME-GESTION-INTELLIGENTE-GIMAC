@@ -57,6 +57,9 @@ local.properties
 *.orig
 classes/
 out/
+# Les ports sortants de l'architecture hexagonale (application/port/out) sont du code source :
+# la règle out/ de JHipster (sortie d'IntelliJ) ne doit pas les ignorer.
+!src/**/out/
 
 ######################
 # Visual Studio Code

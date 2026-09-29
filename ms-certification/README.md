@@ -38,6 +38,7 @@ Certification et mise en service : circuit des quatre quitus, impartialité des 
 | 2026-09-28 | — | Écarts comblés (liaison au certificat, masquage Luhn 6+4) et 2 classes reprises d'afriland : ServiceTokenProvider, TransitionInterditeException (D-53). |
 | 2026-09-29 | — | Masquage des journaux activé (logback, `%maskedMsg`) ; 88 tests unitaires et 275 tests d'intégration réussis, image Jib construite (D-54). |
 | 2026-09-29 | — | Lot 1, Phase 0 : régénération depuis le JDL du plan en JHipster 9.4.0, corrections Liquibase (jsonb, unicités, index, immuabilité), messagerie (outbox, relais, consommateur idempotent, rebut `.dlq`), jeton de service, sécurité du portail, arborescence hexagonale (D-55). |
+| 2026-09-29 | — | Ports sortants `application/port/out` versionnés : la règle `out/` du `.gitignore` généré par JHipster les ignorait, le dépôt distant ne compilait pas ; exception `!src/**/out/` ajoutée |
 <!-- GIMAC:FIN -->
 
 # certification

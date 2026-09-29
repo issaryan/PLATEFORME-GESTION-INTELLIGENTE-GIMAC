@@ -87,6 +87,7 @@ Copié et adapté (paquet `cm.gimac.des.document`) ; chaque bean est inactif tan
 | 2026-09-28 | — | Écarts comblés (liaison au certificat, masquage Luhn 6+4) et 1 classes reprises d'afriland : ServiceTokenProvider (D-53). |
 | 2026-09-29 | — | Masquage des journaux activé (logback, `%maskedMsg`) ; 78 tests unitaires et 355 tests d'intégration réussis, image Jib construite ; test généré `DocumentTypePolicyResourceIT` corrigé (valeur de rétention) (D-54). |
 | 2026-09-29 | — | Tranche DDRM : `POST /api/v1/documents` (dépôt WORM par le port `StockageObjet`, adaptateurs S3 et mémoire, empreinte SHA-256 serveur, refus des numéros de carte BNF-16, table `depot_document` en insertion seule) et `GET /api/v1/interne/documents/{id}/empreinte` ; sécurité D-61 (double facteur, permissions en majuscules, `/api/**` généré réservé à `ROLE_ADMIN`) ; 182 tests unitaires et 369 tests d'intégration réussis ; seuils JaCoCo (unitaire 80 %, global au niveau mesuré) ; Testcontainers 1.21.4 (Docker 29). |
+| 2026-09-29 | — | Ports sortants `application/port/out` versionnés : la règle `out/` du `.gitignore` généré par JHipster les ignorait, le dépôt distant ne compilait pas ; exception `!src/**/out/` ajoutée et ports `StockageObjet`, `ExtracteurTexte` reconstitués d'après leurs adaptateurs |
 <!-- GIMAC:FIN -->
 
 # document

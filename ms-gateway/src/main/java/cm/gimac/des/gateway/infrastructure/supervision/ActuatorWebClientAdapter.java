@@ -18,7 +18,7 @@ import cm.gimac.des.gateway.domain.supervision.port.SondeService;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -179,7 +179,10 @@ public class ActuatorWebClientAdapter implements SondeService {
     @Override
     public Mono<Void> modifierNiveau(ServiceCible service, String logger, String niveau) {
         String url = adresse(service, "/loggers/" + UriUtils.encodePathSegment(logger, StandardCharsets.UTF_8));
-        return requete(HttpMethod.POST, url, Collections.singletonMap("configuredLevel", niveau))
+        // Niveau nul admis : Actuator rétablit alors le niveau hérité (Map.of refuserait null).
+        Map<String, String> corps = new HashMap<>();
+        corps.put("configuredLevel", niveau);
+        return requete(HttpMethod.POST, url, corps)
             .flatMap(spec -> spec.retrieve().toBodilessEntity())
             .then();
     }
