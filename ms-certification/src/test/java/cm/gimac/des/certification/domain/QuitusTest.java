@@ -1,7 +1,8 @@
 package cm.gimac.des.certification.domain;
 
-import static cm.gimac.des.certification.domain.CommissioningFileTestSamples.*;
+import static cm.gimac.des.certification.domain.CertificationCircuitTestSamples.*;
 import static cm.gimac.des.certification.domain.QuitusTestSamples.*;
+import static cm.gimac.des.certification.domain.SignedDecisionTestSamples.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import cm.gimac.des.certification.web.rest.TestUtil;
@@ -24,14 +25,28 @@ class QuitusTest {
     }
 
     @Test
-    void fileTest() {
+    void circuitTest() {
         Quitus quitus = getQuitusRandomSampleGenerator();
-        CommissioningFile commissioningFileBack = getCommissioningFileRandomSampleGenerator();
+        CertificationCircuit certificationCircuitBack = getCertificationCircuitRandomSampleGenerator();
 
-        quitus.setFile(commissioningFileBack);
-        assertThat(quitus.getFile()).isEqualTo(commissioningFileBack);
+        quitus.setCircuit(certificationCircuitBack);
+        assertThat(quitus.getCircuit()).isEqualTo(certificationCircuitBack);
 
-        quitus.file(null);
-        assertThat(quitus.getFile()).isNull();
+        quitus.circuit(null);
+        assertThat(quitus.getCircuit()).isNull();
+    }
+
+    @Test
+    void signedDecisionTest() {
+        Quitus quitus = getQuitusRandomSampleGenerator();
+        SignedDecision signedDecisionBack = getSignedDecisionRandomSampleGenerator();
+
+        quitus.setSignedDecision(signedDecisionBack);
+        assertThat(quitus.getSignedDecision()).isEqualTo(signedDecisionBack);
+        assertThat(signedDecisionBack.getQuitus()).isEqualTo(quitus);
+
+        quitus.signedDecision(null);
+        assertThat(quitus.getSignedDecision()).isNull();
+        assertThat(signedDecisionBack.getQuitus()).isNull();
     }
 }

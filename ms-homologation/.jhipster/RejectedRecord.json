@@ -1,0 +1,50 @@
+{
+  "annotations": {
+    "changelogDate": "20231207143815"
+  },
+  "applications": ["homologation"],
+  "clientRootFolder": "homologation",
+  "databaseType": "sql",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "source",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "60"
+    },
+    {
+      "fieldName": "chargeUtile",
+      "fieldType": "TextBlob"
+    },
+    {
+      "fieldName": "empreinte",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "64"
+    },
+    {
+      "fieldName": "motif",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "500"
+    },
+    {
+      "fieldName": "dateRejet",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "relance",
+      "fieldType": "Boolean"
+    }
+  ],
+  "microserviceName": "homologation",
+  "name": "RejectedRecord",
+  "relationships": [],
+  "searchEngine": "no",
+  "service": "serviceImpl"
+}

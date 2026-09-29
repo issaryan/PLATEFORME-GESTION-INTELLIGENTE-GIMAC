@@ -1,13 +1,12 @@
 package cm.gimac.des.certification.security;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -24,6 +23,9 @@ public final class SecurityUtils {
 
     public static final String CLAIMS_NAMESPACE = "https://www.jhipster.tech/";
 
+    /** Permission métier : majuscules, chiffres et tirets bas (par exemple HOM_LIAISON_OPEN). */
+    private static final java.util.regex.Pattern PERMISSION = java.util.regex.Pattern.compile("^[A-Z][A-Z0-9]*(_[A-Z0-9]+)+$");
+
     private SecurityUtils() {}
 
     /**
@@ -37,14 +39,15 @@ public final class SecurityUtils {
     }
 
     private static String extractPrincipal(Authentication authentication) {
-        if (authentication == null) {
+        // AnonymousAuthenticationToken has a String principal that would fall through below
+        if (authentication == null || authentication instanceof AnonymousAuthenticationToken) {
             return null;
         } else if (authentication.getPrincipal() instanceof UserDetails springSecurityUser) {
             return springSecurityUser.getUsername();
-        } else if (authentication instanceof JwtAuthenticationToken) {
-            return (String) ((JwtAuthenticationToken) authentication).getToken().getClaims().get("preferred_username");
-        } else if (authentication.getPrincipal() instanceof DefaultOidcUser) {
-            Map<String, Object> attributes = ((DefaultOidcUser) authentication.getPrincipal()).getAttributes();
+        } else if (authentication instanceof JwtAuthenticationToken jwtToken) {
+            return (String) jwtToken.getToken().getClaims().get("preferred_username");
+        } else if (authentication.getPrincipal() instanceof DefaultOidcUser oidcUser) {
+            Map<String, Object> attributes = oidcUser.getAttributes();
             if (attributes.containsKey("preferred_username")) {
                 return (String) attributes.get("preferred_username");
             }
@@ -72,9 +75,7 @@ public final class SecurityUtils {
      */
     public static boolean hasCurrentUserAnyOfAuthorities(String... authorities) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        return (
-            authentication != null && getAuthorities(authentication).anyMatch(authority -> Arrays.asList(authorities).contains(authority))
-        );
+        return authentication != null && getAuthorities(authentication).anyMatch(authority -> List.of(authorities).contains(authority));
     }
 
     /**
@@ -98,9 +99,10 @@ public final class SecurityUtils {
     }
 
     private static Stream<String> getAuthorities(Authentication authentication) {
-        Collection<? extends GrantedAuthority> authorities = authentication instanceof JwtAuthenticationToken
-            ? extractAuthorityFromClaims(((JwtAuthenticationToken) authentication).getToken().getClaims())
-            : authentication.getAuthorities();
+        Collection<? extends GrantedAuthority> authorities =
+            authentication instanceof JwtAuthenticationToken jwtToken
+                ? extractAuthorityFromClaims(jwtToken.getToken().getClaims())
+                : authentication.getAuthorities();
         return authorities.stream().map(GrantedAuthority::getAuthority);
     }
 
@@ -117,6 +119,12 @@ public final class SecurityUtils {
     }
 
     private static List<GrantedAuthority> mapRolesToGrantedAuthorities(Collection<String> roles) {
-        return roles.stream().filter(role -> role.startsWith("ROLE_")).map(SimpleGrantedAuthority::new).collect(Collectors.toList());
+        return roles
+            .stream()
+            // Rôles ROLE_* et permissions métier (HOM_*, CER_*, INTERNAL_*... : PI-GIMAC-01 §0.6) ;
+            // les rôles techniques de Keycloak, en minuscules, sont écartés.
+            .filter(role -> role.startsWith("ROLE_") || PERMISSION.matcher(role).matches())
+            .<GrantedAuthority>map(SimpleGrantedAuthority::new)
+            .toList();
     }
 }

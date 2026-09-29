@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+
+    <!--
+        Added the entity Liaison.
+    -->
+    <changeSet id="20231207142515-1" author="jhipster">
+        <createTable tableName="liaison">
+            <column name="id" type="${uuidType}">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="type_projet" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="institution_id" type="${uuidType}">
+                <constraints nullable="false" />
+            </column>
+            <column name="institution_nom" type="varchar(200)">
+                <constraints nullable="true" />
+            </column>
+            <column name="etat" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="chef_de_projet_id" type="${uuidType}">
+                <constraints nullable="false" />
+            </column>
+            <column name="banque_partenaire_id" type="${uuidType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="date_ouverture" type="${datetimeType}">
+                <constraints nullable="false" />
+            </column>
+            <column name="motif_etat" type="varchar(500)">
+                <constraints nullable="true" />
+            </column>
+            <column name="cycle_aptitude" type="integer">
+                <constraints nullable="false" />
+            </column>
+            <column name="ordre_instanciation" type="${clobType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="etat_avant_gel" type="${clobType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="version_id" type="${uuidType}">
+                <constraints nullable="false" />
+            </column>
+            <!-- jhipster-needle-liquibase-add-column - JHipster will add columns here -->
+        </createTable>
+        <dropDefaultValue tableName="liaison" columnName="date_ouverture" columnDataType="${datetimeType}"/>
+    </changeSet>
+
+    <!-- jhipster-needle-liquibase-add-changeset - JHipster will add changesets here -->
+</databaseChangeLog>

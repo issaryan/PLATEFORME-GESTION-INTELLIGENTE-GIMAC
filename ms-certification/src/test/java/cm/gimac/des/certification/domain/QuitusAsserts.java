@@ -47,35 +47,10 @@ public class QuitusAsserts {
     public static void assertQuitusUpdatableFieldsEquals(Quitus expected, Quitus actual) {
         assertThat(actual)
             .as("Verify Quitus relevant properties")
-            .satisfies(a -> assertThat(a.getType()).as("check type").isEqualTo(expected.getType()))
-            .satisfies(a -> assertThat(a.getStatus()).as("check status").isEqualTo(expected.getStatus()))
-            .satisfies(a -> assertThat(a.getDecision()).as("check decision").isEqualTo(expected.getDecision()))
-            .satisfies(a -> assertThat(a.getSignerId()).as("check signerId").isEqualTo(expected.getSignerId()))
-            .satisfies(a -> assertThat(a.getReason()).as("check reason").isEqualTo(expected.getReason()))
-            .satisfies(a -> assertThat(a.getBasisDigest()).as("check basisDigest").isEqualTo(expected.getBasisDigest()))
-            .satisfies(a -> assertThat(a.getDecisionDigest()).as("check decisionDigest").isEqualTo(expected.getDecisionDigest()))
-            .satisfies(a -> assertThat(a.getCredentialId()).as("check credentialId").isEqualTo(expected.getCredentialId()))
-            .satisfies(a -> assertThat(a.getAuthenticatorData()).as("check authenticatorData").isEqualTo(expected.getAuthenticatorData()))
-            .satisfies(a ->
-                assertThat(a.getAuthenticatorDataContentType())
-                    .as("check authenticatorData contenty type")
-                    .isEqualTo(expected.getAuthenticatorDataContentType())
-            )
-            .satisfies(a -> assertThat(a.getClientDataJson()).as("check clientDataJson").isEqualTo(expected.getClientDataJson()))
-            .satisfies(a -> assertThat(a.getSignature()).as("check signature").isEqualTo(expected.getSignature()))
-            .satisfies(a ->
-                assertThat(a.getSignatureContentType()).as("check signature contenty type").isEqualTo(expected.getSignatureContentType())
-            )
-            .satisfies(a -> assertThat(a.getSignCount()).as("check signCount").isEqualTo(expected.getSignCount()))
-            .satisfies(a -> assertThat(a.getTimestampToken()).as("check timestampToken").isEqualTo(expected.getTimestampToken()))
-            .satisfies(a ->
-                assertThat(a.getTimestampTokenContentType())
-                    .as("check timestampToken contenty type")
-                    .isEqualTo(expected.getTimestampTokenContentType())
-            )
-            .satisfies(a -> assertThat(a.getSignedAt()).as("check signedAt").isEqualTo(expected.getSignedAt()))
-            .satisfies(a -> assertThat(a.getDueAt()).as("check dueAt").isEqualTo(expected.getDueAt()))
-            .satisfies(a -> assertThat(a.getInvalidatedAt()).as("check invalidatedAt").isEqualTo(expected.getInvalidatedAt()));
+            .satisfies(a -> assertThat(a.getNature()).as("check nature").isEqualTo(expected.getNature()))
+            .satisfies(a -> assertThat(a.getEtat()).as("check etat").isEqualTo(expected.getEtat()))
+            .satisfies(a -> assertThat(a.getDateAttendu()).as("check dateAttendu").isEqualTo(expected.getDateAttendu()))
+            .satisfies(a -> assertThat(a.getMotifCaducite()).as("check motifCaducite").isEqualTo(expected.getMotifCaducite()));
     }
 
     /**
@@ -87,6 +62,6 @@ public class QuitusAsserts {
     public static void assertQuitusUpdatableRelationshipsEquals(Quitus expected, Quitus actual) {
         assertThat(actual)
             .as("Verify Quitus relationships")
-            .satisfies(a -> assertThat(a.getFile()).as("check file").isEqualTo(expected.getFile()));
+            .satisfies(a -> assertThat(a.getCircuit()).as("check circuit").isEqualTo(expected.getCircuit()));
     }
 }

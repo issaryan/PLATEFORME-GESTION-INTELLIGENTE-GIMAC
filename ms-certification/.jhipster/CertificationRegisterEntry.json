@@ -1,0 +1,65 @@
+{
+  "annotations": {
+    "changelogDate": "20231212201146"
+  },
+  "applications": ["certification"],
+  "clientRootFolder": "certification",
+  "databaseType": "sql",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "numeroAttestation",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "30"
+    },
+    {
+      "fieldName": "institutionId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "typeProjet",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "30"
+    },
+    {
+      "fieldName": "services",
+      "fieldType": "TextBlob"
+    },
+    {
+      "fieldName": "dateEmission",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "echeanceRenouvellement",
+      "fieldType": "LocalDate"
+    },
+    {
+      "fieldName": "etat",
+      "fieldType": "EtatAttestation",
+      "fieldValues": "EN_VIGUEUR,SUSPENDUE,REVOQUEE,REMPLACEE"
+    },
+    {
+      "fieldName": "precedenteId",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "dernierSeuilNotifie",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "30"
+    }
+  ],
+  "microserviceName": "certification",
+  "name": "CertificationRegisterEntry",
+  "pagination": "pagination",
+  "relationships": [],
+  "searchEngine": "no",
+  "service": "serviceImpl"
+}

@@ -1,426 +1,94 @@
 /*
- * MS-HOMOLOGATION : suivi de l'homologation des participants, preuves et couvertures
+ * MS-HOMOLOGATION : modèle de données du lot 1, module de gestion de la certification.
  *
- * Projet   : Plateforme de suivi des activités du DES, GIMAC
- * Sources  : CC-GIMAC-01 v1.1 §5.1.2 et §6.1.7 (algorithmes 6.30 à 6.34) ;
- *            CA-GIMAC-01 v1.1 UC-HOM-01, UC-HOM-02, UC-HOM-03, UC-PRE-03 ;
- *            CP-GIMAC-01 v1.0 §4.7 (HOM-01 à HOM-11) ;
- *            REC-GIMAC-01 (D-08, D-09, D-11, D-13, D-16, D-18, D-19, D-26, D-31)
- * Besoins  : BF-09, BF-10, BF-11, BF-12, BF-14, BF-27 (lecture depuis le portail) ;
- *            BNF-03, BNF-04, BNF-06, BNF-16
- * Règles   : RG-26, RG-27, RG-28, RG-29, RG-30, RG-31, RG-32, RG-33, RG-72 ;
- *            transverses RG-03, RG-15, RG-35, RG-39, RG-59 ; RG-68 appliquée à l'ouverture
- * Cible    : JHipster 9.4.0, itération 3 (HOM-01 à HOM-04 : BF-09, BF-11) ;
- *            itération 4 (HOM-05 à HOM-11 : BF-10, BF-12, BF-14, BF-27)
- *
- * Principe : le service tient le suivi de l'évaluation (ISO/IEC 17065, CC §5.1),
- * jamais la décision : les quitus, la fiche de changement et le dossier de mise
- * en service appartiennent à MS-CERTIFICATION. Il ne décode aucun message
- * ISO 8583 ni ISO 20022, ne génère aucun jeu d'essai, ne calcule aucun verdict
- * et ne détient aucune clé. Aucune donnée de carte, aucune trame : seule la
- * référence de trace du simulateur est reprise (RG-30, BNF-16).
- * Les institutions (MS-PARTICIPANT), les pièces (MS-DOCUMENT) et les
- * collaborateurs (MS-IAM) sont référencés par identifiant, sans relation
- * inter-services (BNF-04).
- *
- * Entités en lecture seule côté REST (readOnly) : elles ne sont écrites que par
- * les algorithmes 6.30 à 6.34, par le consommateur d'événements ou par les
- * commandes métier écrites à la main (désignation du responsable, rattachement
- * de preuve, validation), jamais par un CRUD générique qui contournerait
- * l'automate des opérations ou la règle des quatre éléments.
- *
- * Écrit à la main après la génération, car non généré par JHipster :
- *   - le refactoring hexagonal et les ports du CC §6.1.7.3 (LiaisonManagementUseCase,
- *     ReferenceCatalogUseCase, OperationClosureUseCase, SimulatorReplayUseCase,
- *     CoverageQueryPort ; LiaisonRepositoryPort, CatalogRepositoryPort,
- *     SimulatorReadPort, DocumentStorePort, TimestampPort, ParticipantQueryPort,
- *     OutboxRepositoryPort, EventPublisherPort) et leurs adaptateurs ;
- *   - l'instanciation du parcours par tri topologique de Kahn (algorithme 6.30) ;
- *   - la clôture par la règle des quatre éléments (algorithme 6.31, D-09) :
- *     sealInfo auprès de MS-DOCUMENT (rétention WORM >= 10 ans, D-11), jeton
- *     RFC 3161 sur SHA256(o.id || hp || r), validateur distinct du responsable ;
- *   - la reprise idempotente des résultats du simulateur (algorithme 6.32) :
- *     lecture seule, par interrogation planifiée sous mTLS (D-16 ; la
- *     notification d'achèvement entrante n'est pas retenue en phase 1),
- *     disjoncteur à délai croissant (1, 2, 4 min, plafond 30 min), alerte vers
- *     MS-MONITORING au-delà de trois échecs ; aucun résultat recalculé ni saisi (RG-29) ;
- *   - le calcul des couvertures et la détection de l'aptitude (algorithme 6.33) :
- *     aptitude si γ = 1 pour chaque service inclus et tronc commun clos,
- *     τseuil = 1 non paramétrable (D-18, RG-13) ; ancêtres mis en cache par
- *     version de référentiel (Valkey) ;
- *   - le contrôle de cohérence et la migration du référentiel (algorithme 6.34),
- *     approbation en maker-checker ;
- *   - l'outbox transactionnelle (D-26) et les producteurs Kafka :
- *     homologation.operation-closed.v1, homologation.coverage-updated.v1,
- *     homologation.liaison-ready-for-certification.v1,
- *     homologation.catalog-published.v1, homologation.notification-requested.v1 ;
- *   - les consommateurs Kafka idempotents (RG-15, RG-35) :
- *     participant.service-subscribed.v1 (périmètre), participant.status-changed.v1
- *     (ouverture sur EN_HOMOLOGATION selon D-18, gel de la liaison, refus
- *     d'ouverture en A_REGULARISER selon D-13 et RG-68),
- *     document.document-sealed.v1 (confirmation de scellement d'une preuve),
- *     certification.quitus-signed.v1 (retour en homologation sur refus),
- *     certification.attestation-issued.v1 (déverrouillage de la mise en service) ;
- *   - les politiques de lignes par institution pour le portail (RG-03, RG-59).
- *
- * Convention : toute empreinte SHA-256 est stockée en hexadécimal minuscule
- * (64 caractères).
+ * Source   : PI-GIMAC-01 v1.0 §0.2 (JDL de référence du lot), qui remplace le JDL
+ *            antérieur établi d'après CC-GIMAC-01 v1.1 (REC-GIMAC-01 D-55).
+ * Adapté   : nom de base, paquet et port du dépôt (le dépôt fait foi, PI §0.1) ;
+ *            JHipster 9.4.0 (D-43) ; Cucumber pour les tests Gherkin (PI, schéma) ;
+ *            identifiants UUID (le plan les suppose partout : chemins, événements, références).
+ * Correspondances avec le plan : docs/lot1/correspondance.md
  */
-
 application {
   config {
     baseName homologation
     applicationType microservice
     packageName cm.gimac.des.homologation
     serverPort 8086
-    reactive false
     authenticationType oauth2
-    serviceDiscoveryType no
     databaseType sql
     prodDatabaseType postgresql
     devDatabaseType postgresql
-    /* Valkey (REC D-25) : ancêtres par version de référentiel (algorithme 6.33)
-       et réponses de MS-PARTICIPANT ; pas de cache Hibernate. */
-    cacheProvider redis
-    enableHibernateCache false
     messageBroker kafka
-    searchEngine no
+    cacheProvider no
+    enableHibernateCache false
+    serviceDiscoveryType no
     buildTool maven
     skipClient true
-    skipUserManagement true
-    enableTranslation true
     nativeLanguage fr
     languages [fr, en]
-    testFrameworks []
-    enableSwaggerCodegen false
+    testFrameworks [cucumber]
+    jhipsterVersion "9.4.0"
   }
-  entities ReferenceCatalog, ReferenceOperation, Liaison, ContractedScope, Operation, TestScenario, CampaignSync, Coverage, QrVerification, DeduplicationEntry
+  entities *
 }
 
-/* ---------------------------------------------------------------------------
- * Énumérations
- * ------------------------------------------------------------------------- */
+enum TypeProjet { CARTE_INTERBANCAIRE, PAIEMENT_MOBILE, DELEGATAIRE }
+enum EtatVersionReferentiel { BROUILLON, PUBLIEE, RETIREE }
+enum Segment { TRONC_COMMUN_AMONT, BRANCHE, TRONC_COMMUN_AVAL }
+enum Partie { DES, PARTICIPANT }
+enum NatureCouverture { CERTIFICATION, MISE_EN_SERVICE, AUCUNE }
+enum EtatLiaison { OUVERTE, EN_HOMOLOGATION, GELEE, APTE_CERTIFICATION, MISE_EN_SERVICE_AUTORISEE, CERTIFIEE, CLOSE }
+enum EtatScopeItem { A_ENGAGER, EN_COURS, COUVERT, HORS_PERIMETRE }
+enum EtatOperation { VERROUILLEE, ELIGIBLE, PREUVE_DEPOSEE, VALIDEE_HORODATAGE_EN_ATTENTE, CLOSE, ROUVERTE, HORS_PERIMETRE }
+enum Verdict { FAVORABLE, DEFAVORABLE, NON_EXECUTE }
+enum QualificationScenario { A_QUALIFIER, A_DECLARER_AU_REFERENTIEL, HORS_PARCOURS }
+enum EtatDisjoncteur { FERME, OUVERT, DEMI_OUVERT }
+enum EtatMigration { SIMULEE, APPROUVEE, EN_COURS, TERMINEE, INTERROMPUE }
 
-/** Type de projet de raccordement (CC §6.1.7.3). */
-enum ProjectType {
-  CARTE_INTERBANCAIRE,
-  PAIEMENT_MOBILE,
-  DELEGATAIRE
-}
+entity ReferentialVersion { id UUID, typeProjet TypeProjet required, numero Integer required, libelle String required maxlength(200),
+  etat EtatVersionReferentiel required, dateCreation Instant required, datePublication Instant,
+  ordreTopologique TextBlob, versionSourceId UUID }
+entity ReferenceOperation { id UUID, code String required maxlength(40), libelle String required maxlength(200), phase String required maxlength(60),
+  segment Segment required, partie Partie required, serviceCode String maxlength(40), natureCouverture NatureCouverture required,
+  preuveAttendue TextBlob, idScenario String maxlength(80), predecesseurs TextBlob, fonctionResponsable String maxlength(60), grille TextBlob }
+entity Liaison { id UUID, typeProjet TypeProjet required, institutionId UUID required, institutionNom String maxlength(200), etat EtatLiaison required,
+  chefDeProjetId UUID required, banquePartenaireId UUID, dateOuverture Instant required, motifEtat String maxlength(500),
+  cycleAptitude Integer required, ordreInstanciation TextBlob, etatAvantGel TextBlob }
+entity ContractualScope { id UUID, dateDerivation Instant required, sourceEventId String maxlength(80) }
+entity ScopeItem { id UUID, serviceCode String required maxlength(40), serviceLibelle String maxlength(200), etat EtatScopeItem required }
+entity OperationInstance { id UUID, code String required maxlength(40), libelle String maxlength(200), segment Segment, partie Partie,
+  serviceCode String maxlength(40), etat EtatOperation required, degreEntrant Integer required, echeance LocalDate, dateEtat Instant, grilleReponses TextBlob }
+entity Assignment { id UUID, responsableId UUID required, responsableNom String maxlength(200), partie Partie required, motif String maxlength(500),
+  dateAttribution Instant required, actif Boolean required }
+entity EvidenceReference { id UUID, documentRef String required maxlength(120), empreinte String required maxlength(64), version Integer required,
+  typePiece String required maxlength(60), deposantId UUID required, dateDepot Instant required, scelle Boolean required, valide Boolean }
+entity ClosureRecord { id UUID, validateurId UUID required, dateValidation Instant required, empreinteCloture String required maxlength(64),
+  jetonHorodatage TextBlob, dateHorodatage Instant, actif Boolean required, motifReouverture String maxlength(500), dateReouverture Instant }
+entity CampaignResult { id UUID, campagneId String required maxlength(80), executionId String required maxlength(80), idScenario String required maxlength(80),
+  verdict Verdict required, dateExecution Instant required, versionScenario String maxlength(40), referenceTrace String maxlength(120),
+  empreinteReponse String required maxlength(64), dateReprise Instant required }
+entity UnmatchedScenario { id UUID, idScenario String required maxlength(80), campagneId String maxlength(80), qualification QualificationScenario required,
+  motif String maxlength(500), dateDetection Instant required }
+entity Coverage { id UUID, serviceCode String required maxlength(40), nature NatureCouverture required, numerateur Integer, denominateur Integer,
+  taux BigDecimal, calculable Boolean required, motifNonCalculable String maxlength(200), dateCalcul Instant required }
+entity EvaluationBase { id UUID, empreinte String required maxlength(64), cycle Integer required, dateCalcul Instant required, composition TextBlob }
+entity EvidenceFileExport { id UUID, manifeste TextBlob, empreinteManifeste String maxlength(64), documentRef String maxlength(120), dateExport Instant,
+  demandeurId UUID, socleEmpreinte String maxlength(64), etat String maxlength(30) }
+entity ReplayCursor { id UUID, campagneId String maxlength(80), liaisonId UUID, position String maxlength(120), dateDernierSucces Instant,
+  echecsConsecutifs Integer, etatDisjoncteur EtatDisjoncteur }
+entity RejectedRecord { id UUID, source String maxlength(60), chargeUtile TextBlob, empreinte String maxlength(64), motif String maxlength(500),
+  dateRejet Instant, relance Boolean }
+entity ReferentialMigration { id UUID, versionSourceId UUID, versionCibleId UUID, etat EtatMigration, rapport TextBlob, dateDemande Instant,
+  decideurId UUID, liaisonsRetenues TextBlob }
+entity DeadlineNotification { id UUID, operationId UUID required, seuil String required maxlength(30), dateEnvoi Instant required }
 
-/** Automate de la liaison (REC D-08). */
-enum LiaisonState {
-  OUVERTE,
-  EN_ESSAIS,
-  PRETE_CERTIFICATION,
-  CERTIFIEE,
-  EN_SERVICE,
-  GELEE
-}
-
-/**
- * Automate de l'opération (REC D-08) : HORS_PERIMETRE (algorithme 6.30) et
- * ARCHIVEE (algorithme 6.34) complètent les six états du CC.
- */
-enum OperationState {
-  VERROUILLEE,
-  ELIGIBLE,
-  EN_COURS,
-  EN_VALIDATION,
-  CLOSE,
-  EN_ARBITRAGE,
-  HORS_PERIMETRE,
-  ARCHIVEE
-}
-
-/**
- * Phase d'une opération de référence. Écart CC corrigé : chaîne libre dans le
- * CC, typée ici car les algorithmes 6.33 et 6.34 traitent à part la phase
- * « mise en service ».
- */
-enum OperationPhase {
-  PARAMETRAGE,
-  ECHANGE_CERTIFICATS,
-  ESSAIS,
-  RECETTE,
-  MISE_EN_SERVICE
-}
-
-/**
- * Partie à qui incombe une opération. Écart CC corrigé : chaîne libre dans le
- * CC, typée d'après son texte (groupement, participant, les deux).
- */
-enum ResponsibleParty {
-  GROUPEMENT,
-  PARTICIPANT,
-  LES_DEUX
-}
-
-/** Avancement d'un service du périmètre contractualisé (algorithme 6.33, étape 4). */
-enum ScopeProgress {
-  NON_DEMARRE,
-  EN_ESSAI,
-  CERTIFIE,
-  EN_SERVICE
-}
-
-/** Résultat restitué par le simulateur, repris tel quel (RG-29). */
-enum ScenarioOutcome {
-  SUCCES,
-  ECHEC,
-  NON_EXECUTE
-}
-
-/** Rapprochement d'un scénario repris avec le référentiel (algorithme 6.32, étape 3 ; RG-31). */
-enum ScenarioMatch {
-  RAPPROCHE,
-  EN_ATTENTE_RAPPROCHEMENT
-}
-
-/** Forme du code QR marchand vérifié. Écart CC corrigé : chaîne libre typée. */
-enum QrForm {
-  STATIQUE,
-  DYNAMIQUE
-}
-
-/* ---------------------------------------------------------------------------
- * Entités
- * ------------------------------------------------------------------------- */
-
-/**
- * Version du référentiel d'opérations d'un type de projet : graphe orienté
- * acyclique (RG-26). Une version publiée est figée ; sa publication exige un
- * approbateur distinct de l'auteur (algorithme 6.34, maker-checker).
- */
-entity ReferenceCatalog {
-  id UUID
-  projectType ProjectType required
-  /** Libellé de version, par exemple PM-2.1 ; unique tous types confondus. */
-  version String required unique maxlength(20) pattern(/^[A-Z]{2,4}-[0-9]+\.[0-9]+$/)
-  effectiveFrom LocalDate required
-  published Boolean required
-  authorId UUID required
-  approverId UUID
-  publishedAt Instant
-  /** Différentiel avec la version précédente (JSON : conservés, ajoutés, retirés, modifiés). */
-  diffSummary TextBlob
-}
-
-/**
- * Opération de référence : nœud du graphe (CC §6.1.7.3). Le code est unique
- * dans une version ; un nœud de branche porte un service ; un nœud d'essai
- * porte un identifiant de scénario unique dans la version (algorithme 6.34).
- */
-entity ReferenceOperation {
-  id UUID
-  code String required maxlength(20) pattern(/^[A-Z0-9]+-[0-9]{2,3}$/)
-  label String required maxlength(255)
-  /** « TRONC_COMMUN » pour le tronc commun, sinon code de la branche métier. */
-  branch String required maxlength(50) pattern(/^[A-Z0-9_]+$/)
-  phase OperationPhase required
-  owner ResponsibleParty required
-  expectedEvidence String required maxlength(255)
-  /** Service contribué (code tenu par MS-PARTICIPANT) ; vide pour le tronc commun. */
-  serviceCode String maxlength(80) pattern(/^[A-Z0-9_]+$/)
-  /** Identifiant du scénario dans le simulateur, pour une opération d'essai. */
-  scenarioRef String maxlength(50)
-  /**
-   * Appartenance au chemin critique (UC-HOM-01 étape 5, RG-28). Écart CC
-   * corrigé : absente du diagramme de classes du CC.
-   */
-  criticalPath Boolean required
-}
-
-/**
- * Liaison d'une institution pour un type de projet (CC §6.1.7.1). Elle fige la
- * version du référentiel en vigueur à son ouverture. Ouverte à la suite de
- * participant.status-changed.v1 vers EN_HOMOLOGATION (D-18).
- */
-entity Liaison {
-  id UUID
-  /** Identifiant lisible, par exemple LIA-2026-017. */
-  liaisonCode String required unique maxlength(20) pattern(/^LIA-[0-9]{4}-[0-9]{3,}$/)
-  /** Institution tenue par MS-PARTICIPANT (référence, BNF-04). */
-  institutionId UUID required
-  projectType ProjectType required
-  openedOn LocalDate required
-  /** Chef de projet de la liaison (collaborateur de MS-IAM). */
-  projectLeadId UUID required
-  state LiaisonState required
-  /**
-   * Référence de la campagne dans le simulateur (κL de l'algorithme 6.32).
-   * Écart CC corrigé : absente de la classe Liaison, requise par l'algorithme.
-   */
-  campaignRef String maxlength(100)
-  readyForCertificationAt Instant
-  commissionedOn LocalDate
-  /** Motif du gel (HOM-10) ou du retour en homologation (HOM-11). */
-  stateReason String maxlength(1000)
-}
-
-/**
- * Service du périmètre contractualisé, dérivé de participant.service-subscribed.v1.
- * Un service hors périmètre ne peut être certifié (RG-72). Unicité
- * (liaison, serviceCode) posée par migration Liquibase.
- */
-entity ContractedScope {
-  id UUID
-  serviceCode String required maxlength(80) pattern(/^[A-Z0-9_]+$/)
-  included Boolean required
-  progress ScopeProgress required
-  updatedAt Instant required
-}
-
-/**
- * Opération instanciée d'une liaison (algorithme 6.30), close par la règle des
- * quatre éléments (D-09, RG-32, algorithme 6.31) : responsable, preuve WORM
- * (documentId + empreinte), horodatage RFC 3161, validateur distinct du
- * responsable. Une clôture est immuable (RG-33).
- */
-entity Operation {
-  id UUID
-  /** Identifiant lisible, par exemple OPE-2026-0312. */
-  operationCode String required unique maxlength(20) pattern(/^OPE-[0-9]{4}-[0-9]{4,}$/)
-  state OperationState required
-  /** Élément 1 : responsable (collaborateur MS-IAM ou représentant du participant). */
-  ownerId UUID
-  /**
-   * Élément 2 : preuve scellée dans MS-DOCUMENT. Écart CC corrigé : pour une
-   * opération d'essai, la référence de trace ne remplace pas la preuve WORM ;
-   * l'archive probante qui la contient est déposée et scellée (UC-HOM-03, D-09).
-   */
-  evidenceDocumentId UUID
-  evidenceDigest String minlength(64) maxlength(64) pattern(/^[0-9a-f]{64}$/)
-  evidenceSealedAt Instant
-  /** Rétention WORM constatée, au moins 10 ans (D-11). */
-  evidenceRetention Duration
-  /** Confirmation reçue par document.document-sealed.v1. */
-  evidenceSealConfirmed Boolean
-  /** Référence de trace du simulateur, pour une opération d'essai (RG-30). */
-  evidenceTraceRef String maxlength(100)
-  /** Élément 3 : jeton RFC 3161 encodé en DER, sur SHA256(o.id || hp || r). */
-  timestampToken Blob
-  timestampImprint String minlength(64) maxlength(64) pattern(/^[0-9a-f]{64}$/)
-  timestampGenTime Instant
-  /** Élément 4 : validateur habilité, distinct du responsable. */
-  validatorId UUID
-  validatedAt Instant
-  closedAt Instant
-  /** Motif d'arbitrage, de réouverture (référentiel modifié, quitus refusé) ou de verrouillage. */
-  stateReason String maxlength(1000)
-}
-
-/**
- * Résultat de scénario repris du simulateur (algorithme 6.32), jamais recalculé
- * ni saisi à la main (RG-29). Idempotence par (simulatorScenarioId, executedAt),
- * clé unique posée par migration Liquibase.
- */
-entity TestScenario {
-  id UUID
-  simulatorScenarioId String required maxlength(50)
-  outcome ScenarioOutcome required
-  /** Motif restitué par le simulateur. */
-  reason String maxlength(1000)
-  executedAt Instant required
-  /** Référence de trace dans le simulateur, sans copie de la trace (RG-30). */
-  traceRef String required maxlength(100)
-  replayedAt Instant required
-  match ScenarioMatch required
-}
-
-/**
- * Curseur de reprise d'une campagne (tlast de l'algorithme 6.32) et état de la
- * lecture planifiée du simulateur (D-16). Écart CC corrigé : le CC ne modélise
- * pas ce curseur, pourtant persisté dans la transaction du dernier scénario.
- */
-entity CampaignSync {
-  id UUID
-  /** Plus grand horodatage d'exécution déjà repris. */
-  cursor Instant
-  lastPolledAt Instant
-  lastSuccessAt Instant
-  consecutiveFailures Integer required min(0)
-  /** Fin d'ouverture du disjoncteur en cas d'indisponibilité. */
-  circuitOpenUntil Instant
-}
-
-/**
- * Couvertures d'un service (algorithme 6.33) : γ (certification) et µ (mise en
- * service), entre 0 et 1. Seules les opérations closes selon la règle des
- * quatre éléments comptent ; aucune pondération manuelle. Seuil d'aptitude
- * τseuil = 1, non paramétrable (D-18).
- */
-entity Coverage {
-  id UUID
-  serviceCode String required maxlength(80) pattern(/^[A-Z0-9_]+$/)
-  certificationRate BigDecimal required min(0) max(1)
-  commissioningRate BigDecimal required min(0) max(1)
-  requiredCount Integer required min(0)
-  closedCount Integer required min(0)
-  computedAt Instant required
-}
-
-/**
- * Vérification du code QR marchand, rattachée à une opération de la branche
- * paiement mobile (HOM-08). Le service n'en génère ni n'en décode aucun.
- */
-entity QrVerification {
-  id UUID
-  form QrForm required
-  /** Résultat constaté par l'ingénieur d'homologation. */
-  outcome ScenarioOutcome required
-  verifiedOn LocalDate required
-  verifierId UUID required
-  evidenceDocumentId UUID required
-  evidenceDigest String required minlength(64) maxlength(64) pattern(/^[0-9a-f]{64}$/)
-  evidenceSealedAt Instant
-}
-
-/** Entrée de déduplication des événements consommés (RG-15, RG-35). */
-entity DeduplicationEntry {
-  id UUID
-  eventId UUID required unique
-  subject String required maxlength(150)
-  processedAt Instant required
-}
-
-/* ---------------------------------------------------------------------------
- * Relations
- * ------------------------------------------------------------------------- */
-
-relationship OneToOne {
-  /** Curseur de reprise propre à chaque liaison. */
-  CampaignSync{liaison(liaisonCode) required} to Liaison
-}
-
-relationship ManyToOne {
-  ReferenceOperation{catalog(version) required} to ReferenceCatalog
-  /** Version du référentiel figée sur la liaison (migrée seulement par l'algorithme 6.34). */
-  Liaison{catalog(version) required} to ReferenceCatalog
-  ContractedScope{liaison(liaisonCode) required} to Liaison
-  Operation{liaison(liaisonCode) required} to Liaison
-  Operation{reference(code) required} to ReferenceOperation
-  TestScenario{liaison(liaisonCode) required} to Liaison
-  /** Vide tant que le scénario est en attente de rapprochement (RG-31). */
-  TestScenario{operation(operationCode)} to Operation
-  Coverage{liaison(liaisonCode) required} to Liaison
-  QrVerification{liaison(liaisonCode) required} to Liaison
-  QrVerification{operation(operationCode) required} to Operation
-}
-
-relationship ManyToMany {
-  /** Arcs du graphe : prédécesseurs d'une opération de référence, dans la même version (RG-26, RG-27). */
-  ReferenceOperation{predecessors(code)} to ReferenceOperation{successors(code)}
-}
-
-/* ---------------------------------------------------------------------------
- * Options
- * ------------------------------------------------------------------------- */
-
+relationship ManyToOne { ReferenceOperation{version required} to ReferentialVersion, Liaison{version required} to ReferentialVersion,
+  ScopeItem{scope required} to ContractualScope, OperationInstance{liaison required} to Liaison,
+  OperationInstance{referenceOperation required} to ReferenceOperation, Assignment{operation required} to OperationInstance,
+  EvidenceReference{operation required} to OperationInstance, ClosureRecord{operation required} to OperationInstance,
+  CampaignResult{liaison required} to Liaison, CampaignResult{operation} to OperationInstance, UnmatchedScenario{liaison required} to Liaison,
+  Coverage{liaison required} to Liaison, EvaluationBase{liaison required} to Liaison, EvidenceFileExport{liaison required} to Liaison }
+relationship OneToOne { ContractualScope{liaison required} to Liaison }
 dto * with mapstruct
-service * with serviceClass
-/* Écrites par algorithmes, événements ou commandes métier dédiées uniquement (RG-29, RG-32, RG-33). */
-readOnly ContractedScope, Operation, TestScenario, CampaignSync, Coverage, DeduplicationEntry
-/* L'avertissement « paginate deprecated » de JHipster 9.4.0 est à ignorer. */
-paginate ReferenceCatalog, ReferenceOperation, Liaison, Operation, TestScenario, QrVerification with pagination
-filter ReferenceOperation, Liaison, ContractedScope, Operation, TestScenario, Coverage, QrVerification
+service * with serviceImpl
+paginate Liaison, OperationInstance, CampaignResult, UnmatchedScenario with pagination

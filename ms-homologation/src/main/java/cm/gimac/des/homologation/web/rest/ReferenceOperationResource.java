@@ -1,9 +1,7 @@
 package cm.gimac.des.homologation.web.rest;
 
 import cm.gimac.des.homologation.repository.ReferenceOperationRepository;
-import cm.gimac.des.homologation.service.ReferenceOperationQueryService;
 import cm.gimac.des.homologation.service.ReferenceOperationService;
-import cm.gimac.des.homologation.service.criteria.ReferenceOperationCriteria;
 import cm.gimac.des.homologation.service.dto.ReferenceOperationDTO;
 import cm.gimac.des.homologation.web.rest.errors.BadRequestAlertException;
 import jakarta.validation.Valid;
@@ -17,14 +15,9 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import tech.jhipster.web.util.HeaderUtil;
-import tech.jhipster.web.util.PaginationUtil;
 import tech.jhipster.web.util.ResponseUtil;
 
 /**
@@ -38,30 +31,26 @@ public class ReferenceOperationResource {
 
     private static final String ENTITY_NAME = "homologationReferenceOperation";
 
-    @Value("${jhipster.clientApp.name}")
+    @Value("${jhipster.clientApp.name:homologation}")
     private String applicationName;
 
     private final ReferenceOperationService referenceOperationService;
 
     private final ReferenceOperationRepository referenceOperationRepository;
 
-    private final ReferenceOperationQueryService referenceOperationQueryService;
-
     public ReferenceOperationResource(
         ReferenceOperationService referenceOperationService,
-        ReferenceOperationRepository referenceOperationRepository,
-        ReferenceOperationQueryService referenceOperationQueryService
+        ReferenceOperationRepository referenceOperationRepository
     ) {
         this.referenceOperationService = referenceOperationService;
         this.referenceOperationRepository = referenceOperationRepository;
-        this.referenceOperationQueryService = referenceOperationQueryService;
     }
 
     /**
      * {@code POST  /reference-operations} : Create a new referenceOperation.
      *
      * @param referenceOperationDTO the referenceOperationDTO to create.
-     * @return the {@link ResponseEntity} with status {@code 201 (Created)} and with body the new referenceOperationDTO, or with status {@code 400 (Bad Request)} if the referenceOperation has already an ID.
+     * @return the {@link ResponseEntity} with status {@code 201 (Created)} and with body the new referenceOperationDTO, or with status {@code 400 (Bad Request)} if the referenceOperation already has an ID.
      * @throws URISyntaxException if the Location URI syntax is incorrect.
      */
     @PostMapping("")
@@ -126,7 +115,7 @@ public class ReferenceOperationResource {
         @PathVariable(value = "id", required = false) final UUID id,
         @NotNull @RequestBody ReferenceOperationDTO referenceOperationDTO
     ) throws URISyntaxException {
-        LOG.debug("REST request to partial update ReferenceOperation partially : {}, {}", id, referenceOperationDTO);
+        LOG.debug("REST request to partially update ReferenceOperation : {}, {}", id, referenceOperationDTO);
         if (referenceOperationDTO.getId() == null) {
             throw new BadRequestAlertException("Invalid id", ENTITY_NAME, "idnull");
         }
@@ -147,34 +136,14 @@ public class ReferenceOperationResource {
     }
 
     /**
-     * {@code GET  /reference-operations} : get all the referenceOperations.
+     * {@code GET  /reference-operations} : get all the Reference Operations.
      *
-     * @param pageable the pagination information.
-     * @param criteria the criteria which the requested entities should match.
-     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of referenceOperations in body.
+     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of Reference Operations in body.
      */
     @GetMapping("")
-    public ResponseEntity<List<ReferenceOperationDTO>> getAllReferenceOperations(
-        ReferenceOperationCriteria criteria,
-        @org.springdoc.core.annotations.ParameterObject Pageable pageable
-    ) {
-        LOG.debug("REST request to get ReferenceOperations by criteria: {}", criteria);
-
-        Page<ReferenceOperationDTO> page = referenceOperationQueryService.findByCriteria(criteria, pageable);
-        HttpHeaders headers = PaginationUtil.generatePaginationHttpHeaders(ServletUriComponentsBuilder.fromCurrentRequest(), page);
-        return ResponseEntity.ok().headers(headers).body(page.getContent());
-    }
-
-    /**
-     * {@code GET  /reference-operations/count} : count all the referenceOperations.
-     *
-     * @param criteria the criteria which the requested entities should match.
-     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the count in body.
-     */
-    @GetMapping("/count")
-    public ResponseEntity<Long> countReferenceOperations(ReferenceOperationCriteria criteria) {
-        LOG.debug("REST request to count ReferenceOperations by criteria: {}", criteria);
-        return ResponseEntity.ok().body(referenceOperationQueryService.countByCriteria(criteria));
+    public List<ReferenceOperationDTO> getAllReferenceOperations() {
+        LOG.debug("REST request to get all ReferenceOperations");
+        return referenceOperationService.findAll();
     }
 
     /**

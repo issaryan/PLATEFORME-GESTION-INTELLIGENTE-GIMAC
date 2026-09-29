@@ -1,0 +1,54 @@
+{
+  "annotations": {
+    "changelogDate": "20231212200246"
+  },
+  "applications": ["certification"],
+  "clientRootFolder": "certification",
+  "databaseType": "sql",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "liaisonId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "institutionId",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "cycle",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "socleEmpreinte",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "64"
+    },
+    {
+      "fieldName": "etat",
+      "fieldType": "EtatCircuit",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "OUVERT,INTERROMPU,ACHEVE"
+    },
+    {
+      "fieldName": "dateOuverture",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "dateFin",
+      "fieldType": "Instant"
+    }
+  ],
+  "microserviceName": "certification",
+  "name": "CertificationCircuit",
+  "relationships": [],
+  "searchEngine": "no",
+  "service": "serviceImpl"
+}

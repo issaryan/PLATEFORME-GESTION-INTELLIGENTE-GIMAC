@@ -57,7 +57,8 @@ preparer_env() {
   umask 077
   [ -f "$fichier" ] || echo "# Secrets locaux de développement, générés par gimac-dev.sh. Ne pas versionner." > "$fichier"
   for variable in GIMAC_KEYCLOAK_ADMIN_PASSWORD GIMAC_GRAFANA_ADMIN_PASSWORD GIMAC_OPENBAO_TOKEN \
-                  GIMAC_S3_CLE_ACCES GIMAC_S3_CLE_SECRETE; do
+                  GIMAC_S3_CLE_ACCES GIMAC_S3_CLE_SECRETE GIMAC_MOT_DE_PASSE_TEST GIMAC_SECRET_TESTER_CLI \
+                  GIMAC_SECRET_HOMOLOGATION_SERVICE GIMAC_SECRET_CERTIFICATION_SERVICE; do
     grep -q "^$variable=" "$fichier" || { echo "$variable=$(openssl rand -hex 20)" >> "$fichier"; echo "Secret ajouté à .env : $variable"; }
   done
 }

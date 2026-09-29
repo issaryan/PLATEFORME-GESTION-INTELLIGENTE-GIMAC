@@ -1,371 +1,76 @@
 /*
- * MS-CERTIFICATION : quatre quitus, dossier de mise en service et attestation
+ * MS-CERTIFICATION : modèle de données du lot 1, module de gestion de la certification.
  *
- * Projet   : Plateforme de suivi des activités du DES, GIMAC
- * Sources  : CC-GIMAC-01 v1.1 §5.1.3, §5.1.4 et §6.1.8 (algorithmes 6.35 à 6.38) ;
- *            CA-GIMAC-01 v1.1 UC-HOM-04 ; CP-GIMAC-01 v1.0 §4.8 (CER-01 à CER-08) ;
- *            REC-GIMAC-01 (D-08, D-11, D-18, D-19, D-22, D-26, D-31)
- * Besoins  : BF-13, BF-04 (dépôt WORM de l'attestation), BF-27 (lecture depuis
- *            le portail) ; BNF-02, BNF-04, BNF-05, BNF-16
- * Règles   : RG-34, RG-73 ; transverses RG-15, RG-35, RG-24, RG-25, RG-39, RG-59 ;
- *            RG-13 appliquée en aval par MS-PARTICIPANT sur go-live-authorized
- * Cible    : JHipster 9.4.0, itération 4 (CER-01 à CER-08)
- *
- * Principe : organe de décision, séparé du suivi de l'évaluation (ISO/IEC 17065,
- * clauses 4.2, 7.5 et 7.6 ; CC §5.1). Le service ne suit aucune opération, ne
- * calcule aucune couverture, ne lit pas le simulateur et ne tient aucun graphe :
- * il ne détient qu'une projection des événements de MS-HOMOLOGATION. Il ne crée,
- * ne modifie ni n'approuve aucune fiche de changement : le comité des
- * changements seul décide, la plateforme référence (RG-34). Il n'agit jamais sur
- * le commutateur et ne détient aucune clé monétique (D-22).
- * Liaisons (MS-HOMOLOGATION), institutions (MS-PARTICIPANT), pièces
- * (MS-DOCUMENT) et signataires (MS-IAM) sont référencés par identifiant, sans
- * relation inter-services (BNF-04). Persistance immuable, 10 ans (D-11).
- *
- * Toutes les entités sont en lecture seule côté REST (readOnly) : les écritures
- * viennent du consommateur d'événements, des algorithmes 6.35 à 6.38 et des
- * commandes métier écrites à la main (défi et décision de quitus, référence de
- * la fiche de changement, rattachement du procès-verbal), jamais d'un CRUD
- * générique qui contournerait l'automate du dossier.
- *
- * Écrit à la main après la génération, car non généré par JHipster :
- *   - le refactoring hexagonal et les ports du CC §6.1.8.3 (CommissioningFileUseCase,
- *     QuitusCircuitUseCase, ChangeRecordUseCase, AttestationUseCase ;
- *     CommissioningRepositoryPort, ChangeManagementReadPort, StepUpAuthPort,
- *     SignaturePort, TimestampPort, AttestationComposerPort, DocumentStorePort,
- *     ParticipantQueryPort, OutboxRepositoryPort, EventPublisherPort) et leurs
- *     adaptateurs ;
- *   - le circuit des quatre quitus (algorithme 6.35) : ordre T, puis S et C en
- *     parallèle, puis D ; quatre signataires distincts, chacun du rôle attendu
- *     (RG-73), étrangers à l'évaluation ; motif obligatoire ; défi WebAuthn égal
- *     à δq = SHA256(JCS(F.id, type, d, m, β, u, t)), à usage unique, 2 min
- *     (conservé dans Valkey) ;
- *   - la signature personnelle de quitus par réauthentification WebAuthn
- *     vérifiée par MS-IAM : la clé reste sur l'authentificateur (D-22) ;
- *   - le contrôle de complétude C1 à C6 et l'autorisation (algorithme 6.36),
- *     relecture de la fiche au-delà de 15 min ;
- *   - le scellement RFC 3161 du socle, des quitus et du manifeste (algorithme
- *     6.37) : canonicalisation RFC 8785, nonce, vérification du jeton
- *     (RFC 5816), réessais, alerte MS-MONITORING au-delà de trois échecs ;
- *   - l'attestation PDF/A-3 (ISO 19005-3) signée PAdES B-LTA avec la clé de
- *     cachet de la plateforme conservée dans le coffre (algorithme 6.38) ;
- *   - la lecture seule, en mTLS, du dispositif de gestion des changements
- *     (ChangeManagementReaderAdapter, disjoncteur) ;
- *   - l'outbox transactionnelle (D-26) et les producteurs Kafka :
- *     certification.quitus-signed.v1, certification.attestation-issued.v1,
- *     certification.go-live-authorized.v1, certification.notification-requested.v1 ;
- *   - les consommateurs Kafka idempotents (RG-15, RG-35) :
- *     homologation.liaison-ready-for-certification.v1 (ouverture du dossier),
- *     homologation.coverage-updated.v1, homologation.operation-closed.v1
- *     (projection du socle), document.document-sealed.v1 (confirmation de
- *     scellement), participant.status-changed.v1 (dossier EN_CORRECTION sur
- *     suspension ou retrait).
- *
- * Convention : toute empreinte SHA-256 est stockée en hexadécimal minuscule
- * (64 caractères).
+ * Source   : PI-GIMAC-01 v1.0 §0.2 (JDL de référence du lot), qui remplace le JDL
+ *            antérieur établi d'après CC-GIMAC-01 v1.1 (REC-GIMAC-01 D-55).
+ * Adapté   : nom de base, paquet et port du dépôt (le dépôt fait foi, PI §0.1) ;
+ *            JHipster 9.4.0 (D-43) ; Cucumber pour les tests Gherkin (PI, schéma) ;
+ *            identifiants UUID (le plan les suppose partout : chemins, événements, références).
+ * Correspondances avec le plan : docs/lot1/correspondance.md
  */
-
 application {
   config {
     baseName certification
     applicationType microservice
     packageName cm.gimac.des.certification
     serverPort 8087
-    reactive false
     authenticationType oauth2
-    serviceDiscoveryType no
     databaseType sql
     prodDatabaseType postgresql
     devDatabaseType postgresql
-    /* Valkey (REC D-25) : défis WebAuthn à usage unique de 2 min (algorithme 6.35) ;
-       pas de cache Hibernate sur des décisions immuables. */
-    cacheProvider redis
-    enableHibernateCache false
     messageBroker kafka
-    searchEngine no
+    cacheProvider no
+    enableHibernateCache false
+    serviceDiscoveryType no
     buildTool maven
     skipClient true
-    skipUserManagement true
-    enableTranslation true
     nativeLanguage fr
     languages [fr, en]
-    testFrameworks []
-    enableSwaggerCodegen false
+    testFrameworks [cucumber]
+    jhipsterVersion "9.4.0"
   }
-  entities CommissioningFile, Quitus, ChangeRecord, CertificationAttestation, EvidenceItem, CoverageSnapshot, ClosedOperationSnapshot, DeduplicationEntry
+  entities *
 }
 
-/* ---------------------------------------------------------------------------
- * Énumérations
- * ------------------------------------------------------------------------- */
+enum NatureQuitus { TECHNIQUE, SECURITE, CONFORMITE, DIRECTION_GENERALE }
+enum EtatQuitus { ATTENDU, SIGNE_FAVORABLE, SIGNE_DEFAVORABLE, CADUC, ANNULE, NON_REQUIS }
+enum EtatCircuit { OUVERT, INTERROMPU, ACHEVE }
+enum EtatDossier { OUVERT, AUTORISE, MIS_EN_SERVICE, COMPLET, ATTESTE }
+enum ConditionCode { COUVERTURE_CERTIFICATION, COUVERTURE_MISE_EN_SERVICE, QUATRE_QUITUS, FICHE_CHANGEMENT_APPROUVEE, PROCES_VERBAL, EMPREINTES_VERIFIEES }
+enum EtatAttestation { EN_VIGUEUR, SUSPENDUE, REVOQUEE, REMPLACEE }
+enum EtatScellement { EN_ATTENTE, SCELLE, REJETE }
+enum TypeDemandeStatut { REVOCATION, SUSPENSION, LEVEE }
 
-/** Automate du dossier de mise en service (REC D-08, CC §6.1.8.1). */
-enum FileState {
-  OUVERT,
-  QUITUS_EN_COURS,
-  EN_CORRECTION,
-  CERTIFIE,
-  MISE_EN_SERVICE_AUTORISEE
-}
+entity CertificationCircuit { id UUID, liaisonId UUID required, institutionId UUID, cycle Integer required, socleEmpreinte String required maxlength(64),
+  etat EtatCircuit required, dateOuverture Instant, dateFin Instant }
+entity Quitus { id UUID, nature NatureQuitus required, etat EtatQuitus required, dateAttendu Instant, motifCaducite String maxlength(500) }
+entity SignedDecision { id UUID, decisionFavorable Boolean required, motif String required maxlength(1000), signataireId UUID required,
+  signataireRole String maxlength(60), dateSignature Instant required, socleEmpreinte String required maxlength(64),
+  empreinteDecision String required maxlength(64), signature TextBlob required, operationsDesignees TextBlob, servicesDesignes TextBlob,
+  referenceAudit String maxlength(120) }
+entity GoLiveDossier { id UUID, liaisonId UUID required, institutionId UUID, etat EtatDossier required, dateOuverture Instant, dateAutorisation Instant,
+  dateMiseEnService Instant, dateCompletude Instant, etatScellement EtatScellement, referenceFicheChangement String maxlength(120) }
+entity CompletenessCondition { id UUID, code ConditionCode required, satisfaite Boolean required, source String maxlength(60), detail String maxlength(500),
+  dateVerification Instant }
+entity ChangeRecordSnapshot { id UUID, reference String required maxlength(120), etatApprobation String required maxlength(40), fenetreDebut Instant,
+  fenetreFin Instant, dateLecture Instant required, empreinteReponse String maxlength(64) }
+entity GoLiveReport { id UUID, documentRef String required maxlength(120), empreinte String required maxlength(64), heureBascule Instant required,
+  dansFenetre Boolean required, deposantId UUID, dateDepot Instant, regularise Boolean }
+entity TimestampToken { id UUID, objetType String required maxlength(20), objetId UUID required, empreinte String required maxlength(64),
+  nonce String required maxlength(64), jeton TextBlob required, dateJeton Instant required, verifie Boolean required, autoriteChaine String maxlength(500) }
+entity Attestation { id UUID, numero String required unique maxlength(30), institutionId UUID, typeProjet String maxlength(30), servicesCertifies TextBlob,
+  dateEmission Instant, socleEmpreinte String maxlength(64), documentRef String maxlength(120), empreinteDocument String maxlength(64),
+  etat EtatAttestation, referenceAudit String maxlength(120) }
+entity CertificationRegisterEntry { id UUID, numeroAttestation String required maxlength(30), institutionId UUID required, typeProjet String maxlength(30),
+  services TextBlob, dateEmission Instant, echeanceRenouvellement LocalDate, etat EtatAttestation, precedenteId UUID, dernierSeuilNotifie String maxlength(30) }
+entity AttestationStatusDecision { id UUID, typeDemande TypeDemandeStatut required, motif String required maxlength(1000), pieceRef String maxlength(120),
+  demandeurId UUID required, approbateurId UUID, dateDemande Instant required, dateApprobation Instant, etat String maxlength(30),
+  avisDocumentRef String maxlength(120), conditionLevee String maxlength(500) }
 
-/** Les quatre quitus, chacun par un rôle distinct (RG-73). */
-enum QuitusType {
-  TECHNIQUE,
-  SECURITE,
-  CONFORMITE,
-  DIRECTION_GENERALE
-}
-
-/**
- * État d'un quitus. Un quitus encore attendu quand le dossier passe
- * EN_CORRECTION est suspendu par l'état du dossier, sans état propre (CC).
- */
-enum QuitusStatus {
-  ATTENDU,
-  SIGNE,
-  CADUC
-}
-
-enum QuitusDecision {
-  FAVORABLE,
-  DEFAVORABLE
-}
-
-/** État d'approbation lu dans le dispositif de gestion des changements (RG-34). */
-enum ChangeApproval {
-  SOUMISE,
-  APPROUVEE,
-  REJETEE,
-  IMPLEMENTEE,
-  ANNULEE
-}
-
-/**
- * Nature d'une pièce du dossier. Écart CC corrigé : chaîne libre dans le CC,
- * typée car l'algorithme 6.36 (C3, C6) doit reconnaître l'attestation et le
- * procès-verbal.
- */
-enum EvidenceKind {
-  SOCLE_EVALUATION,
-  DECISION_QUITUS,
-  ATTESTATION,
-  FICHE_CHANGEMENT,
-  PROCES_VERBAL_MISE_EN_SERVICE,
-  MANIFESTE,
-  AUTRE
-}
-
-/* ---------------------------------------------------------------------------
- * Entités
- * ------------------------------------------------------------------------- */
-
-/**
- * Dossier de mise en service d'une liaison, ouvert à la réception de
- * homologation.liaison-ready-for-certification.v1. Transitions autorisées :
- * OUVERT vers QUITUS_EN_COURS ; QUITUS_EN_COURS vers EN_CORRECTION ou CERTIFIE ;
- * EN_CORRECTION vers QUITUS_EN_COURS ; CERTIFIE vers MISE_EN_SERVICE_AUTORISEE
- * (terminal). Un seul dossier par liaison.
- */
-entity CommissioningFile {
-  id UUID
-  /** Identifiant lisible, par exemple DMS-2026-0009. */
-  fileCode String required unique maxlength(20) pattern(/^DMS-[0-9]{4}-[0-9]{4,}$/)
-  /** Liaison tenue par MS-HOMOLOGATION (référence, BNF-04). */
-  liaisonId UUID required unique
-  /** Institution tenue par MS-PARTICIPANT (référence, BNF-04). */
-  institutionId UUID required
-  /** Chef de projet de la liaison, exclu des signataires (algorithme 6.35, étape 3). */
-  projectLeadId UUID required
-  state FileState required
-  /** β = SHA256(JCS(socle d'évaluation)), RFC 8785. */
-  basisDigest String minlength(64) maxlength(64) pattern(/^[0-9a-f]{64}$/)
-  /** Jeton RFC 3161 du socle, encodé en DER (algorithme 6.37). */
-  basisTimestampToken Blob
-  basisSealedAt Instant
-  openedAt Instant required
-  /** Motif du dernier retour en homologation. */
-  correctionReason String maxlength(1000)
-  /** Empreinte du manifeste MF (algorithme 6.36, étape 5). */
-  manifestDigest String minlength(64) maxlength(64) pattern(/^[0-9a-f]{64}$/)
-  /** Jeton RFC 3161 du manifeste, encodé en DER. */
-  timestampToken Blob
-  sealedAt Instant
-  goLiveAuthorizedAt Instant
-}
-
-/**
- * Quitus : décision motivée, signée, horodatée et scellée (algorithme 6.35).
- * Écart CC corrigé (D-22 prime) : la signature personnelle n'est pas calculée
- * dans le coffre de clés ; c'est l'assertion WebAuthn produite par
- * l'authentificateur FIDO2 du signataire sur le défi δq, vérifiée par MS-IAM.
- * La clé reste sur l'authentificateur ; signerCertRef devient l'identifiant de
- * la clé d'accès enregistrée.
- */
-entity Quitus {
-  id UUID
-  type QuitusType required
-  status QuitusStatus required
-  decision QuitusDecision
-  /** Signataire (collaborateur MS-IAM), distinct pour chacun des quatre quitus (RG-73). */
-  signerId UUID
-  /** Motif, obligatoire à la signature. */
-  reason String maxlength(2000)
-  /** β du socle signé ; un quitus favorable reste valable tant que β est inchangé. */
-  basisDigest String required minlength(64) maxlength(64) pattern(/^[0-9a-f]{64}$/)
-  /** δq : empreinte de la décision canonique, présentée comme défi WebAuthn. */
-  decisionDigest String minlength(64) maxlength(64) pattern(/^[0-9a-f]{64}$/)
-  /** Identifiant de la clé d'accès WebAuthn (base64url). */
-  credentialId String maxlength(1024)
-  /** Données de l'authentificateur de l'assertion, brutes. */
-  authenticatorData Blob
-  /** clientDataJSON de l'assertion, contenant le défi. */
-  clientDataJson TextBlob
-  /** Signature de l'assertion (σq). */
-  signature Blob
-  /** Compteur de signature, strictement croissant. */
-  signCount Long min(0)
-  /** Jeton RFC 3161 sur SHA256(δq || σq), encodé en DER. */
-  timestampToken Blob
-  signedAt Instant
-  /** Échéance de signature, pour les relances de l'ordonnanceur. */
-  dueAt Instant
-  invalidatedAt Instant
-}
-
-/**
- * Fiche de changement lue, jamais écrite (RG-34) : l'ingénieur d'homologation
- * en saisit la référence ; l'état est relu en mTLS dans le dispositif de
- * gestion des changements, à nouveau au-delà de 15 min (algorithme 6.36).
- */
-entity ChangeRecord {
-  id UUID
-  /** Référence dans le dispositif, par exemple CHG-2026-0412. */
-  externalRef String required unique maxlength(50)
-  approval ChangeApproval required
-  approvedAt Instant
-  windowStart Instant
-  windowEnd Instant
-  readAt Instant required
-  contentDigest String required minlength(64) maxlength(64) pattern(/^[0-9a-f]{64}$/)
-  /** Auteur de la saisie de la référence (collaborateur MS-IAM). */
-  referencedBy UUID required
-}
-
-/**
- * Attestation de certification PDF/A-3 signée PAdES B-LTA avec la clé de cachet
- * de la plateforme, déposée en WORM dans MS-DOCUMENT (algorithme 6.38).
- */
-entity CertificationAttestation {
-  id UUID
-  /** Numéro d'attestation, par exemple ATT-CERT-2026-0009. */
-  attestationNumber String required unique maxlength(30) pattern(/^ATT-CERT-[0-9]{4}-[0-9]{4,}$/)
-  /** Pièce dans MS-DOCUMENT (référence, BNF-04). */
-  documentId UUID required unique
-  pdfDigest String required minlength(64) maxlength(64) pattern(/^[0-9a-f]{64}$/)
-  /** Niveau de signature, PAdES B-LTA. */
-  signatureLevel String required maxlength(20)
-  /** Pièces jointes embarquées : liste JSON (nom, type de média, relation, empreinte). */
-  attachments TextBlob required
-  issuedAt Instant required
-  /** Confirmation reçue par document.document-sealed.v1 (condition C3). */
-  sealConfirmed Boolean required
-}
-
-/**
- * Pièce du dossier, référencée par identifiant et empreinte ; l'empreinte est
- * recontrôlée contre MS-DOCUMENT avant autorisation (algorithme 6.36, étape 4).
- */
-entity EvidenceItem {
-  id UUID
-  documentId UUID required
-  kind EvidenceKind required
-  digest String required minlength(64) maxlength(64) pattern(/^[0-9a-f]{64}$/)
-  sealedAt Instant
-  /** Confirmation reçue par document.document-sealed.v1. */
-  sealConfirmed Boolean required
-  lastVerifiedAt Instant
-  attachedBy UUID required
-  attachedAt Instant required
-}
-
-/**
- * Projection de la dernière couverture reçue par service (algorithme 6.36,
- * étape 1), depuis homologation.liaison-ready-for-certification.v1 et
- * homologation.coverage-updated.v1 ; un événement plus ancien est ignoré.
- * Clé fonctionnelle (liaisonId, serviceCode), unicité posée par Liquibase.
- */
-entity CoverageSnapshot {
-  id UUID
-  /** Liaison tenue par MS-HOMOLOGATION (référence, BNF-04). */
-  liaisonId UUID required
-  serviceCode String required maxlength(80) pattern(/^[A-Z0-9_]+$/)
-  included Boolean required
-  certificationRate BigDecimal required min(0) max(1)
-  commissioningRate BigDecimal required min(0) max(1)
-  sourceEventId UUID required
-  /** Date de calcul portée par l'événement, pour ignorer un événement plus ancien. */
-  computedAt Instant required
-  receivedAt Instant required
-}
-
-/**
- * Projection d'une opération close, depuis homologation.operation-closed.v1 :
- * elle entre dans le socle d'évaluation β et permet d'exclure des signataires
- * les responsables d'opérations (algorithme 6.35, étape 3). Écart CC corrigé :
- * projection décrite au CC §6.1.8.1 sans classe dédiée.
- */
-entity ClosedOperationSnapshot {
-  id UUID
-  liaisonId UUID required
-  /** Opération tenue par MS-HOMOLOGATION (référence, BNF-04). */
-  operationId UUID required unique
-  operationCode String required maxlength(20)
-  referenceCode String required maxlength(20)
-  serviceCode String maxlength(80)
-  ownerId UUID required
-  validatorId UUID required
-  evidenceDocumentId UUID required
-  evidenceDigest String required minlength(64) maxlength(64) pattern(/^[0-9a-f]{64}$/)
-  closedAt Instant required
-  sourceEventId UUID required
-}
-
-/** Entrée de déduplication des événements consommés (RG-15, RG-35). */
-entity DeduplicationEntry {
-  id UUID
-  eventId UUID required unique
-  subject String required maxlength(150)
-  processedAt Instant required
-}
-
-/* ---------------------------------------------------------------------------
- * Relations
- * ------------------------------------------------------------------------- */
-
-relationship OneToOne {
-  /** Fiche de changement lue, au plus une par dossier. */
-  CommissioningFile{changeRecord(externalRef)} to ChangeRecord
-  /** Attestation émise, au plus une par dossier. */
-  CommissioningFile{attestation(attestationNumber)} to CertificationAttestation
-  /** Procès-verbal de mise en service, parmi les pièces du dossier (condition C6). */
-  CommissioningFile{commissioningReport} to EvidenceItem
-}
-
-relationship OneToMany {
-  /** Les quatre quitus du dossier, un par type (RG-73). */
-  CommissioningFile{quitus} to Quitus{file(fileCode) required}
-  /** Pièces du dossier, avec leurs empreintes. */
-  CommissioningFile{pieces} to EvidenceItem{file(fileCode) required}
-}
-
-/* ---------------------------------------------------------------------------
- * Options
- * ------------------------------------------------------------------------- */
-
+relationship ManyToOne { Quitus{circuit required} to CertificationCircuit, CompletenessCondition{dossier required} to GoLiveDossier,
+  ChangeRecordSnapshot{dossier required} to GoLiveDossier, AttestationStatusDecision{attestation required} to Attestation }
+relationship OneToOne { SignedDecision{quitus required} to Quitus, GoLiveDossier{circuit required} to CertificationCircuit,
+  GoLiveReport{dossier required} to GoLiveDossier, Attestation{dossier required} to GoLiveDossier }
 dto * with mapstruct
-service * with serviceClass
-/* Aucune écriture générique exposée en REST : automate, signatures et projections (RG-34, RG-73). */
-readOnly CommissioningFile, Quitus, ChangeRecord, CertificationAttestation, EvidenceItem, CoverageSnapshot, ClosedOperationSnapshot, DeduplicationEntry
-/* L'avertissement « paginate deprecated » de JHipster 9.4.0 est à ignorer. */
-paginate CommissioningFile, Quitus, EvidenceItem, CoverageSnapshot, ClosedOperationSnapshot with pagination
-filter CommissioningFile, Quitus, ChangeRecord, EvidenceItem, CoverageSnapshot, ClosedOperationSnapshot
+service * with serviceImpl
+paginate CertificationRegisterEntry, Attestation with pagination

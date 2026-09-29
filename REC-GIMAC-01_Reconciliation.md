@@ -8,7 +8,7 @@
 | Établi par | KOAGNE ISSA RYAN, Ingénieur en Informatique et Systèmes d'information |
 | Statut | Référentiel d'implémentation. Décisions D-01 à D-31, y compris les propositions [P], **acceptées par KOAGNE ISSA RYAN le 28/09/2026** ; validation formelle du Product Owner (chef du DES) attendue en revue d'itération |
 | Rôle | Base unique à partir de laquelle le code est écrit ; prime sur les quatre documents pour les points qu'elle tranche |
-| Révision | **v1.1 (28/09/2026)** : ajout des décisions D-32 à D-46 (§4.4), complétées par D-47 à D-54, pour réconcilier **CP-GIMAC-01 v2.0**, qui remplace CP v1.0, et fixer l'infrastructure et le frontend ; aucune disposition de la v1.0 n'est retirée |
+| Révision | **v1.1 (28/09/2026)** : ajout des décisions D-32 à D-46 (§4.4), complétées par D-47 à D-55, pour réconcilier **CP-GIMAC-01 v2.0**, qui remplace CP v1.0, et fixer l'infrastructure et le frontend ; aucune disposition de la v1.0 n'est retirée |
 
 **Légende des décisions**
 - **[R]** : réconciliation déduite des documents eux-mêmes, par application de la règle de préséance (§0).
@@ -449,6 +449,13 @@ Décisions ajoutées le 28/09/2026 à la réception du carnet de produit v2.0 (3
     - tests d'intégration générés en conflit avec des champs uniques (auto-références, valeurs « modifiées » contenues dans la valeur par défaut, lien un-pour-un) : corrigés dans 9 classes de test.
   - **Activé** : masquage des journaux (numéros de carte vérifiant Luhn en 6+4, jetons, téléphones, courriels) dans les 14 services. **Restent inactifs** jusqu'à leurs récits : jeton fantôme et liaison au certificat (GW-04, GW-05, SOC-09), mTLS, administration Keycloak (IAM-03), jeton de service (IAM-16), file de rebut Kafka (aucun consommateur `@KafkaListener` encore).
   - **Passerelle** : la dépendance Redis réactive reprise d'afriland active une sonde de santé Redis ; la passerelle reçoit son Valkey (Docker Compose) ou le Valkey partagé (Kubernetes).
+- **D-55 [R] Lot 1, Phase 0 : alignement du socle sur le plan PI-GIMAC-01 v1.0.** Le plan d'implémentation du lot 1 (module de gestion de la certification : MS-HOMOLOGATION, MS-CERTIFICATION, écrans DES-08 à DES-12 et POR-03) est le sprint backlog exécutable du lot ; il est versé dans `docs/lot1` avec le système de conception DS-GIMAC-01. Arbitrages :
+  - **Modèle de données** : les JDL du plan (§0.2) remplacent ceux de MS-HOMOLOGATION et MS-CERTIFICATION établis d'après CC-GIMAC-01, qui ne portaient que du CRUD généré ; les deux services sont régénérés en JHipster 9.4.0 (D-43), sans cache, avec Cucumber. Paquets, noms de base et ports restent ceux du dépôt (le dépôt fait foi, PI §0.1).
+  - **Tableau de correspondance** : `docs/lot1/correspondance.md` relie le plan au dépôt ; le plan n'est pas réécrit.
+  - **Identifiants** : toutes les entités des deux services ont un identifiant UUID (`id UUID` ajouté au JDL), comme le suppose le plan pour ses chemins, ses événements et les références entre services.
+  - **Sécurité** : domaine Keycloak `gimac` (permissions du lot, six profils, sept utilisateurs de test, claim `institution_id`, clients `tester-cli` et de service, secrets en variables d'environnement), dérivé par script du realm généré ; la passerelle et les services acceptent comme autorités les permissions en majuscules, en plus des rôles `ROLE_*` ; la passerelle soumet les routes `/bff/**` à OPA (filtre `OpaAuthorize`) et renvoie 401 sans jeton ; la politique du plan est corrigée pour exiger l'institution sur le portail.
+  - **Messagerie** : outbox transactionnelle, relais CloudEvents, consommateur idempotent et file de rebut `.dlq` (rejeux 1 s, 5 s, 25 s) actifs dans les deux services.
+  - **Écarts assumés** : `lb://` remplacé par les adresses directes (D-54) ; React 19 (D-51) ; signature des quitus selon D-35 ; noms d'événements tranchés récit par récit selon D-37 et consignés dans le tableau de correspondance.
 
 ---
 

@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+
+    <!--
+        Added the entity AttestationStatusDecision.
+    -->
+    <changeSet id="20231212201246-1" author="jhipster">
+        <createTable tableName="attestation_status_decision">
+            <column name="id" type="${uuidType}">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="type_demande" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="motif" type="varchar(1000)">
+                <constraints nullable="false" />
+            </column>
+            <column name="piece_ref" type="varchar(120)">
+                <constraints nullable="true" />
+            </column>
+            <column name="demandeur_id" type="${uuidType}">
+                <constraints nullable="false" />
+            </column>
+            <column name="approbateur_id" type="${uuidType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="date_demande" type="${datetimeType}">
+                <constraints nullable="false" />
+            </column>
+            <column name="date_approbation" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="etat" type="varchar(30)">
+                <constraints nullable="true" />
+            </column>
+            <column name="avis_document_ref" type="varchar(120)">
+                <constraints nullable="true" />
+            </column>
+            <column name="condition_levee" type="varchar(500)">
+                <constraints nullable="true" />
+            </column>
+            <column name="attestation_id" type="${uuidType}">
+                <constraints nullable="false" />
+            </column>
+            <!-- jhipster-needle-liquibase-add-column - JHipster will add columns here -->
+        </createTable>
+        <dropDefaultValue tableName="attestation_status_decision" columnName="date_demande" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="attestation_status_decision" columnName="date_approbation" columnDataType="${datetimeType}"/>
+    </changeSet>
+
+    <!-- jhipster-needle-liquibase-add-changeset - JHipster will add changesets here -->
+</databaseChangeLog>

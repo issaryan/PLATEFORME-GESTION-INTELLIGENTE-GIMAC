@@ -48,14 +48,19 @@ public class ReferenceOperationAsserts {
         assertThat(actual)
             .as("Verify ReferenceOperation relevant properties")
             .satisfies(a -> assertThat(a.getCode()).as("check code").isEqualTo(expected.getCode()))
-            .satisfies(a -> assertThat(a.getLabel()).as("check label").isEqualTo(expected.getLabel()))
-            .satisfies(a -> assertThat(a.getBranch()).as("check branch").isEqualTo(expected.getBranch()))
+            .satisfies(a -> assertThat(a.getLibelle()).as("check libelle").isEqualTo(expected.getLibelle()))
             .satisfies(a -> assertThat(a.getPhase()).as("check phase").isEqualTo(expected.getPhase()))
-            .satisfies(a -> assertThat(a.getOwner()).as("check owner").isEqualTo(expected.getOwner()))
-            .satisfies(a -> assertThat(a.getExpectedEvidence()).as("check expectedEvidence").isEqualTo(expected.getExpectedEvidence()))
+            .satisfies(a -> assertThat(a.getSegment()).as("check segment").isEqualTo(expected.getSegment()))
+            .satisfies(a -> assertThat(a.getPartie()).as("check partie").isEqualTo(expected.getPartie()))
             .satisfies(a -> assertThat(a.getServiceCode()).as("check serviceCode").isEqualTo(expected.getServiceCode()))
-            .satisfies(a -> assertThat(a.getScenarioRef()).as("check scenarioRef").isEqualTo(expected.getScenarioRef()))
-            .satisfies(a -> assertThat(a.getCriticalPath()).as("check criticalPath").isEqualTo(expected.getCriticalPath()));
+            .satisfies(a -> assertThat(a.getNatureCouverture()).as("check natureCouverture").isEqualTo(expected.getNatureCouverture()))
+            .satisfies(a -> assertThat(a.getPreuveAttendue()).as("check preuveAttendue").isEqualTo(expected.getPreuveAttendue()))
+            .satisfies(a -> assertThat(a.getIdScenario()).as("check idScenario").isEqualTo(expected.getIdScenario()))
+            .satisfies(a -> assertThat(a.getPredecesseurs()).as("check predecesseurs").isEqualTo(expected.getPredecesseurs()))
+            .satisfies(a ->
+                assertThat(a.getFonctionResponsable()).as("check fonctionResponsable").isEqualTo(expected.getFonctionResponsable())
+            )
+            .satisfies(a -> assertThat(a.getGrille()).as("check grille").isEqualTo(expected.getGrille()));
     }
 
     /**
@@ -67,8 +72,6 @@ public class ReferenceOperationAsserts {
     public static void assertReferenceOperationUpdatableRelationshipsEquals(ReferenceOperation expected, ReferenceOperation actual) {
         assertThat(actual)
             .as("Verify ReferenceOperation relationships")
-            .satisfies(a -> assertThat(a.getCatalog()).as("check catalog").isEqualTo(expected.getCatalog()))
-            .satisfies(a -> assertThat(a.getPredecessors()).as("check predecessors").isEqualTo(expected.getPredecessors()))
-            .satisfies(a -> assertThat(a.getSuccessors()).as("check successors").isEqualTo(expected.getSuccessors()));
+            .satisfies(a -> assertThat(a.getVersion()).as("check version").isEqualTo(expected.getVersion()));
     }
 }

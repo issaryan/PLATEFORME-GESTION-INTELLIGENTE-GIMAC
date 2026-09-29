@@ -1,21 +1,23 @@
 package cm.gimac.des.certification.web.rest;
 
-import cm.gimac.des.certification.service.QuitusQueryService;
+import cm.gimac.des.certification.repository.QuitusRepository;
 import cm.gimac.des.certification.service.QuitusService;
-import cm.gimac.des.certification.service.criteria.QuitusCriteria;
 import cm.gimac.des.certification.service.dto.QuitusDTO;
+import cm.gimac.des.certification.web.rest.errors.BadRequestAlertException;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.http.HttpHeaders;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
-import tech.jhipster.web.util.PaginationUtil;
+import tech.jhipster.web.util.HeaderUtil;
 import tech.jhipster.web.util.ResponseUtil;
 
 /**
@@ -27,44 +29,122 @@ public class QuitusResource {
 
     private static final Logger LOG = LoggerFactory.getLogger(QuitusResource.class);
 
+    private static final String ENTITY_NAME = "certificationQuitus";
+
+    @Value("${jhipster.clientApp.name:certification}")
+    private String applicationName;
+
     private final QuitusService quitusService;
 
-    private final QuitusQueryService quitusQueryService;
+    private final QuitusRepository quitusRepository;
 
-    public QuitusResource(QuitusService quitusService, QuitusQueryService quitusQueryService) {
+    public QuitusResource(QuitusService quitusService, QuitusRepository quitusRepository) {
         this.quitusService = quitusService;
-        this.quitusQueryService = quitusQueryService;
+        this.quitusRepository = quitusRepository;
     }
 
     /**
-     * {@code GET  /quituses} : get all the quituses.
+     * {@code POST  /quituses} : Create a new quitus.
      *
-     * @param pageable the pagination information.
-     * @param criteria the criteria which the requested entities should match.
-     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of quituses in body.
+     * @param quitusDTO the quitusDTO to create.
+     * @return the {@link ResponseEntity} with status {@code 201 (Created)} and with body the new quitusDTO, or with status {@code 400 (Bad Request)} if the quitus already has an ID.
+     * @throws URISyntaxException if the Location URI syntax is incorrect.
+     */
+    @PostMapping("")
+    public ResponseEntity<QuitusDTO> createQuitus(@Valid @RequestBody QuitusDTO quitusDTO) throws URISyntaxException {
+        LOG.debug("REST request to save Quitus : {}", quitusDTO);
+        if (quitusDTO.getId() != null) {
+            throw new BadRequestAlertException("A new quitus cannot already have an ID", ENTITY_NAME, "idexists");
+        }
+        quitusDTO = quitusService.save(quitusDTO);
+        return ResponseEntity.created(new URI("/api/quituses/" + quitusDTO.getId()))
+            .headers(HeaderUtil.createEntityCreationAlert(applicationName, true, ENTITY_NAME, quitusDTO.getId().toString()))
+            .body(quitusDTO);
+    }
+
+    /**
+     * {@code PUT  /quituses/:id} : Updates an existing quitus.
+     *
+     * @param id the id of the quitusDTO to save.
+     * @param quitusDTO the quitusDTO to update.
+     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and with body the updated quitusDTO,
+     * or with status {@code 400 (Bad Request)} if the quitusDTO is not valid,
+     * or with status {@code 500 (Internal Server Error)} if the quitusDTO couldn't be updated.
+     * @throws URISyntaxException if the Location URI syntax is incorrect.
+     */
+    @PutMapping("/{id}")
+    public ResponseEntity<QuitusDTO> updateQuitus(
+        @PathVariable(value = "id", required = false) final UUID id,
+        @Valid @RequestBody QuitusDTO quitusDTO
+    ) throws URISyntaxException {
+        LOG.debug("REST request to update Quitus : {}, {}", id, quitusDTO);
+        if (quitusDTO.getId() == null) {
+            throw new BadRequestAlertException("Invalid id", ENTITY_NAME, "idnull");
+        }
+        if (!Objects.equals(id, quitusDTO.getId())) {
+            throw new BadRequestAlertException("Invalid ID", ENTITY_NAME, "idinvalid");
+        }
+
+        if (!quitusRepository.existsById(id)) {
+            throw new BadRequestAlertException("Entity not found", ENTITY_NAME, "idnotfound");
+        }
+
+        quitusDTO = quitusService.update(quitusDTO);
+        return ResponseEntity.ok()
+            .headers(HeaderUtil.createEntityUpdateAlert(applicationName, true, ENTITY_NAME, quitusDTO.getId().toString()))
+            .body(quitusDTO);
+    }
+
+    /**
+     * {@code PATCH  /quituses/:id} : Partial updates given fields of an existing quitus, field will ignore if it is null
+     *
+     * @param id the id of the quitusDTO to save.
+     * @param quitusDTO the quitusDTO to update.
+     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and with body the updated quitusDTO,
+     * or with status {@code 400 (Bad Request)} if the quitusDTO is not valid,
+     * or with status {@code 404 (Not Found)} if the quitusDTO is not found,
+     * or with status {@code 500 (Internal Server Error)} if the quitusDTO couldn't be updated.
+     * @throws URISyntaxException if the Location URI syntax is incorrect.
+     */
+    @PatchMapping(value = "/{id}", consumes = { "application/json", "application/merge-patch+json" })
+    public ResponseEntity<QuitusDTO> partialUpdateQuitus(
+        @PathVariable(value = "id", required = false) final UUID id,
+        @NotNull @RequestBody QuitusDTO quitusDTO
+    ) throws URISyntaxException {
+        LOG.debug("REST request to partially update Quitus : {}, {}", id, quitusDTO);
+        if (quitusDTO.getId() == null) {
+            throw new BadRequestAlertException("Invalid id", ENTITY_NAME, "idnull");
+        }
+        if (!Objects.equals(id, quitusDTO.getId())) {
+            throw new BadRequestAlertException("Invalid ID", ENTITY_NAME, "idinvalid");
+        }
+
+        if (!quitusRepository.existsById(id)) {
+            throw new BadRequestAlertException("Entity not found", ENTITY_NAME, "idnotfound");
+        }
+
+        Optional<QuitusDTO> result = quitusService.partialUpdate(quitusDTO);
+
+        return ResponseUtil.wrapOrNotFound(
+            result,
+            HeaderUtil.createEntityUpdateAlert(applicationName, true, ENTITY_NAME, quitusDTO.getId().toString())
+        );
+    }
+
+    /**
+     * {@code GET  /quituses} : get all the Quituses.
+     *
+     * @param filter the filter of the request.
+     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of Quituses in body.
      */
     @GetMapping("")
-    public ResponseEntity<List<QuitusDTO>> getAllQuituses(
-        QuitusCriteria criteria,
-        @org.springdoc.core.annotations.ParameterObject Pageable pageable
-    ) {
-        LOG.debug("REST request to get Quituses by criteria: {}", criteria);
-
-        Page<QuitusDTO> page = quitusQueryService.findByCriteria(criteria, pageable);
-        HttpHeaders headers = PaginationUtil.generatePaginationHttpHeaders(ServletUriComponentsBuilder.fromCurrentRequest(), page);
-        return ResponseEntity.ok().headers(headers).body(page.getContent());
-    }
-
-    /**
-     * {@code GET  /quituses/count} : count all the quituses.
-     *
-     * @param criteria the criteria which the requested entities should match.
-     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the count in body.
-     */
-    @GetMapping("/count")
-    public ResponseEntity<Long> countQuituses(QuitusCriteria criteria) {
-        LOG.debug("REST request to count Quituses by criteria: {}", criteria);
-        return ResponseEntity.ok().body(quitusQueryService.countByCriteria(criteria));
+    public List<QuitusDTO> getAllQuituses(@RequestParam(name = "filter", required = false) String filter) {
+        if ("signeddecision-is-null".equals(filter)) {
+            LOG.debug("REST request to get all Quituss where signedDecision is null");
+            return quitusService.findAllWhereSignedDecisionIsNull();
+        }
+        LOG.debug("REST request to get all Quituses");
+        return quitusService.findAll();
     }
 
     /**
@@ -78,5 +158,20 @@ public class QuitusResource {
         LOG.debug("REST request to get Quitus : {}", id);
         Optional<QuitusDTO> quitusDTO = quitusService.findOne(id);
         return ResponseUtil.wrapOrNotFound(quitusDTO);
+    }
+
+    /**
+     * {@code DELETE  /quituses/:id} : delete the "id" quitus.
+     *
+     * @param id the id of the quitusDTO to delete.
+     * @return the {@link ResponseEntity} with status {@code 204 (NO_CONTENT)}.
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteQuitus(@PathVariable("id") UUID id) {
+        LOG.debug("REST request to delete Quitus : {}", id);
+        quitusService.delete(id);
+        return ResponseEntity.noContent()
+            .headers(HeaderUtil.createEntityDeletionAlert(applicationName, true, ENTITY_NAME, id.toString()))
+            .build();
     }
 }

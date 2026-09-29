@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+
+    <!--
+        Added the entity EvidenceReference.
+    -->
+    <changeSet id="20231207143015-1" author="jhipster">
+        <createTable tableName="evidence_reference">
+            <column name="id" type="${uuidType}">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="document_ref" type="varchar(120)">
+                <constraints nullable="false" />
+            </column>
+            <column name="empreinte" type="varchar(64)">
+                <constraints nullable="false" />
+            </column>
+            <column name="version" type="integer">
+                <constraints nullable="false" />
+            </column>
+            <column name="type_piece" type="varchar(60)">
+                <constraints nullable="false" />
+            </column>
+            <column name="deposant_id" type="${uuidType}">
+                <constraints nullable="false" />
+            </column>
+            <column name="date_depot" type="${datetimeType}">
+                <constraints nullable="false" />
+            </column>
+            <column name="scelle" type="boolean">
+                <constraints nullable="false" />
+            </column>
+            <column name="valide" type="boolean">
+                <constraints nullable="true" />
+            </column>
+            <column name="operation_id" type="${uuidType}">
+                <constraints nullable="false" />
+            </column>
+            <!-- jhipster-needle-liquibase-add-column - JHipster will add columns here -->
+        </createTable>
+        <dropDefaultValue tableName="evidence_reference" columnName="date_depot" columnDataType="${datetimeType}"/>
+    </changeSet>
+
+    <!-- jhipster-needle-liquibase-add-changeset - JHipster will add changesets here -->
+</databaseChangeLog>

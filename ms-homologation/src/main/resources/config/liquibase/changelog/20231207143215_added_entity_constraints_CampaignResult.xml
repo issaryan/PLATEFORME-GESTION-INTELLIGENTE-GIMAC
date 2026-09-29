@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+    <!--
+        Added the constraints for entity CampaignResult.
+    -->
+    <changeSet id="20231207143215-2" author="jhipster">
+
+        <addForeignKeyConstraint baseColumnNames="liaison_id"
+                                 baseTableName="campaign_result"
+                                 constraintName="fk_campaign_result__liaison_id"
+                                 referencedColumnNames="id"
+                                 referencedTableName="liaison"
+                                 />
+
+        <addForeignKeyConstraint baseColumnNames="operation_id"
+                                 baseTableName="campaign_result"
+                                 constraintName="fk_campaign_result__operation_id"
+                                 referencedColumnNames="id"
+                                 referencedTableName="operation_instance"
+                                 />
+    </changeSet>
+</databaseChangeLog>

@@ -1,0 +1,70 @@
+{
+  "annotations": {
+    "changelogDate": "20231212200546"
+  },
+  "applications": ["certification"],
+  "clientRootFolder": "certification",
+  "databaseType": "sql",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "liaisonId",
+      "fieldType": "UUID",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "institutionId",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "etat",
+      "fieldType": "EtatDossier",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "OUVERT,AUTORISE,MIS_EN_SERVICE,COMPLET,ATTESTE"
+    },
+    {
+      "fieldName": "dateOuverture",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "dateAutorisation",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "dateMiseEnService",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "dateCompletude",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "etatScellement",
+      "fieldType": "EtatScellement",
+      "fieldValues": "EN_ATTENTE,SCELLE,REJETE"
+    },
+    {
+      "fieldName": "referenceFicheChangement",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "120"
+    }
+  ],
+  "microserviceName": "certification",
+  "name": "GoLiveDossier",
+  "relationships": [
+    {
+      "otherEntityName": "certificationCircuit",
+      "relationshipName": "circuit",
+      "relationshipSide": "left",
+      "relationshipType": "one-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceImpl"
+}

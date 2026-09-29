@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+
+    <!--
+        Added the entity Attestation.
+    -->
+    <changeSet id="20231212201046-1" author="jhipster">
+        <createTable tableName="attestation">
+            <column name="id" type="${uuidType}">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="numero" type="varchar(30)">
+                <constraints nullable="false" unique="true" uniqueConstraintName="ux_attestation__numero" />
+            </column>
+            <column name="institution_id" type="${uuidType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="type_projet" type="varchar(30)">
+                <constraints nullable="true" />
+            </column>
+            <column name="services_certifies" type="${clobType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="date_emission" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="socle_empreinte" type="varchar(64)">
+                <constraints nullable="true" />
+            </column>
+            <column name="document_ref" type="varchar(120)">
+                <constraints nullable="true" />
+            </column>
+            <column name="empreinte_document" type="varchar(64)">
+                <constraints nullable="true" />
+            </column>
+            <column name="etat" type="varchar(255)">
+                <constraints nullable="true" />
+            </column>
+            <column name="reference_audit" type="varchar(120)">
+                <constraints nullable="true" />
+            </column>
+            <column name="dossier_id" type="${uuidType}">
+                <constraints nullable="false" unique="true" uniqueConstraintName="ux_attestation__dossier_id" />
+            </column>
+            <!-- jhipster-needle-liquibase-add-column - JHipster will add columns here -->
+        </createTable>
+        <dropDefaultValue tableName="attestation" columnName="date_emission" columnDataType="${datetimeType}"/>
+    </changeSet>
+
+    <!-- jhipster-needle-liquibase-add-changeset - JHipster will add changesets here -->
+</databaseChangeLog>

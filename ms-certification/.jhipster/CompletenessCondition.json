@@ -1,0 +1,55 @@
+{
+  "annotations": {
+    "changelogDate": "20231212200646"
+  },
+  "applications": ["certification"],
+  "clientRootFolder": "certification",
+  "databaseType": "sql",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "code",
+      "fieldType": "ConditionCode",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "COUVERTURE_CERTIFICATION,COUVERTURE_MISE_EN_SERVICE,QUATRE_QUITUS,FICHE_CHANGEMENT_APPROUVEE,PROCES_VERBAL,EMPREINTES_VERIFIEES"
+    },
+    {
+      "fieldName": "satisfaite",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "source",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "60"
+    },
+    {
+      "fieldName": "detail",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "500"
+    },
+    {
+      "fieldName": "dateVerification",
+      "fieldType": "Instant"
+    }
+  ],
+  "microserviceName": "certification",
+  "name": "CompletenessCondition",
+  "relationships": [
+    {
+      "otherEntityName": "goLiveDossier",
+      "relationshipName": "dossier",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceImpl"
+}

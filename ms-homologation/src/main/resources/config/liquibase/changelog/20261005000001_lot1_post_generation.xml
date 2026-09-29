@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- PI-GIMAC-01 §0.3 et §0.4 : corrections après génération JHipster (jsonb, unicités métier,
+     index de lecture, immuabilité) et tables de messagerie (outbox, déduplication). -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- 1. Colonnes JSON : TEXT vers jsonb (interrogeables, indexables) -->
+    <changeSet id="lot1-jsonb" author="lot1">
+        <sql>
+             ALTER TABLE referential_version ALTER COLUMN ordre_topologique TYPE jsonb USING ordre_topologique::jsonb;
+             ALTER TABLE reference_operation ALTER COLUMN predecesseurs TYPE jsonb USING predecesseurs::jsonb;
+             ALTER TABLE reference_operation ALTER COLUMN preuve_attendue TYPE jsonb USING preuve_attendue::jsonb;
+             ALTER TABLE reference_operation ALTER COLUMN grille TYPE jsonb USING grille::jsonb;
+             ALTER TABLE liaison ALTER COLUMN ordre_instanciation TYPE jsonb USING ordre_instanciation::jsonb;
+             ALTER TABLE liaison ALTER COLUMN etat_avant_gel TYPE jsonb USING etat_avant_gel::jsonb;
+             ALTER TABLE operation_instance ALTER COLUMN grille_reponses TYPE jsonb USING grille_reponses::jsonb;
+             ALTER TABLE evaluation_base ALTER COLUMN composition TYPE jsonb USING composition::jsonb;
+             ALTER TABLE evidence_file_export ALTER COLUMN manifeste TYPE jsonb USING manifeste::jsonb;
+             ALTER TABLE referential_migration ALTER COLUMN rapport TYPE jsonb USING rapport::jsonb;
+             ALTER TABLE referential_migration ALTER COLUMN liaisons_retenues TYPE jsonb USING liaisons_retenues::jsonb;
+        </sql>
+    </changeSet>
+
+    <!-- 2. Unicités métier -->
+    <changeSet id="lot1-unicites" author="lot1">
+        <addUniqueConstraint tableName="referential_version" columnNames="type_projet, numero" constraintName="uk_version_type_numero"/>
+        <addUniqueConstraint tableName="reference_operation" columnNames="version_id, code" constraintName="uk_refop_version_code"/>
+        <addUniqueConstraint tableName="operation_instance" columnNames="liaison_id, code" constraintName="uk_opinst_liaison_code"/>
+        <addUniqueConstraint tableName="campaign_result" columnNames="liaison_id, campagne_id, execution_id" constraintName="uk_result_campagne_execution"/>
+        <addUniqueConstraint tableName="coverage" columnNames="liaison_id, service_code, nature" constraintName="uk_coverage_service_nature"/>
+        <addUniqueConstraint tableName="deadline_notification" columnNames="operation_id, seuil" constraintName="uk_deadline_operation_seuil"/>
+        <sql>CREATE UNIQUE INDEX uk_liaison_active ON liaison (institution_id, type_projet) WHERE etat NOT IN ('CLOSE');</sql>
+    </changeSet>
+
+    <!-- 3. Index de lecture (tableau de bord, graphe, reprise) -->
+    <changeSet id="lot1-index" author="lot1">
+        <createIndex tableName="operation_instance" indexName="idx_opinst_liaison_etat"><column name="liaison_id"/><column name="etat"/></createIndex>
+        <createIndex tableName="operation_instance" indexName="idx_opinst_echeance"><column name="echeance"/></createIndex>
+        <createIndex tableName="campaign_result" indexName="idx_result_scenario"><column name="liaison_id"/><column name="id_scenario"/><column name="date_execution"/></createIndex>
+        <createIndex tableName="assignment" indexName="idx_assignment_actif"><column name="operation_id"/><column name="actif"/></createIndex>
+        <sql>CREATE INDEX idx_refop_predecesseurs ON reference_operation USING gin (predecesseurs);</sql>
+    </changeSet>
+
+    <!-- 4. Immuabilité des versions publiées (défense en profondeur) -->
+    <changeSet id="lot1-immuabilite" author="lot1">
+        <sql splitStatements="false">
+            CREATE OR REPLACE FUNCTION refuse_update_published() RETURNS trigger AS $$
+            BEGIN IF OLD.etat = 'PUBLIEE' AND NEW.etat = 'PUBLIEE' THEN
+              RAISE EXCEPTION 'version publiee immuable (%)', OLD.id; END IF; RETURN NEW; END; $$ LANGUAGE plpgsql;
+            CREATE TRIGGER trg_version_immuable BEFORE UPDATE ON referential_version
+              FOR EACH ROW EXECUTE FUNCTION refuse_update_published();
+        </sql>
+    </changeSet>
+
+    <!-- Tables de messagerie (PI §0.4) : outbox transactionnelle et consommateur idempotent -->
+    <changeSet id="lot1-messagerie" author="lot1">
+        <createTable tableName="outbox_event">
+            <column name="id" type="uuid"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="aggregate_type" type="varchar(60)"><constraints nullable="false"/></column>
+            <column name="aggregate_id" type="varchar(80)"><constraints nullable="false"/></column>
+            <column name="event_type" type="varchar(120)"><constraints nullable="false"/></column>
+            <column name="payload" type="jsonb"><constraints nullable="false"/></column>
+            <column name="created_at" type="timestamptz"><constraints nullable="false"/></column>
+            <column name="status" type="varchar(16)"><constraints nullable="false"/></column>
+            <column name="sent_at" type="timestamptz"/>
+            <column name="attempts" type="integer" defaultValueNumeric="0"><constraints nullable="false"/></column>
+            <column name="correlation_id" type="varchar(80)"/>
+            <column name="institution_id" type="varchar(80)"/>
+        </createTable>
+        <sql>CREATE INDEX idx_outbox_pending ON outbox_event (created_at) WHERE status = 'PENDING';</sql>
+        <createTable tableName="processed_event">
+            <column name="id" type="uuid"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="event_id" type="varchar(80)"><constraints nullable="false"/></column>
+            <column name="consumer_group" type="varchar(120)"><constraints nullable="false"/></column>
+            <column name="processed_at" type="timestamptz"><constraints nullable="false"/></column>
+        </createTable>
+        <addUniqueConstraint tableName="processed_event" columnNames="event_id, consumer_group" constraintName="uk_processed_event_group"/>
+    </changeSet>
+
+</databaseChangeLog>

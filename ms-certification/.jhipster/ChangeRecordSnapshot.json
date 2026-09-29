@@ -1,0 +1,59 @@
+{
+  "annotations": {
+    "changelogDate": "20231212200746"
+  },
+  "applications": ["certification"],
+  "clientRootFolder": "certification",
+  "databaseType": "sql",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "reference",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "120"
+    },
+    {
+      "fieldName": "etatApprobation",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "40"
+    },
+    {
+      "fieldName": "fenetreDebut",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "fenetreFin",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "dateLecture",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "empreinteReponse",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "64"
+    }
+  ],
+  "microserviceName": "certification",
+  "name": "ChangeRecordSnapshot",
+  "relationships": [
+    {
+      "otherEntityName": "goLiveDossier",
+      "relationshipName": "dossier",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceImpl"
+}

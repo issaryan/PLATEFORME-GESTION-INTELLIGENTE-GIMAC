@@ -4,6 +4,8 @@ import cm.gimac.des.homologation.domain.Coverage;
 import cm.gimac.des.homologation.domain.Liaison;
 import cm.gimac.des.homologation.service.dto.CoverageDTO;
 import cm.gimac.des.homologation.service.dto.LiaisonDTO;
+import java.util.Objects;
+import java.util.UUID;
 import org.mapstruct.*;
 
 /**
@@ -11,12 +13,15 @@ import org.mapstruct.*;
  */
 @Mapper(componentModel = "spring")
 public interface CoverageMapper extends EntityMapper<CoverageDTO, Coverage> {
-    @Mapping(target = "liaison", source = "liaison", qualifiedByName = "liaisonLiaisonCode")
+    @Mapping(target = "liaison", source = "liaison", qualifiedByName = "liaisonId")
     CoverageDTO toDto(Coverage s);
 
-    @Named("liaisonLiaisonCode")
+    @Named("liaisonId")
     @BeanMapping(ignoreByDefault = true)
     @Mapping(target = "id", source = "id")
-    @Mapping(target = "liaisonCode", source = "liaisonCode")
-    LiaisonDTO toDtoLiaisonLiaisonCode(Liaison liaison);
+    LiaisonDTO toDtoLiaisonId(Liaison liaison);
+
+    default String map(UUID value) {
+        return Objects.toString(value, null);
+    }
 }

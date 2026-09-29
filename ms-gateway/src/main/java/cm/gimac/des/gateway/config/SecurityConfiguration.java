@@ -114,6 +114,8 @@ public class SecurityConfiguration {
                     .pathMatchers("/services/*/management/health/readiness").permitAll()
                     .pathMatchers("/services/*/v3/api-docs").hasAuthority(AuthoritiesConstants.ADMIN)
                     .pathMatchers("/services/**").authenticated()
+                    // Couches de présentation du lot 1 (PI-GIMAC-01 §0.6) : authentification exigée, puis OPA.
+                    .pathMatchers("/bff/**").authenticated()
                     .pathMatchers("/v3/api-docs/**").hasAuthority(AuthoritiesConstants.ADMIN)
                     .pathMatchers("/management/health").permitAll()
                     .pathMatchers("/management/health/**").permitAll()
@@ -131,7 +133,7 @@ public class SecurityConfiguration {
     private DelegatingServerAuthenticationEntryPoint authenticationEntryPoint() {
         DelegatingServerAuthenticationEntryPoint entryPoint = new DelegatingServerAuthenticationEntryPoint(
             new DelegatingServerAuthenticationEntryPoint.DelegateEntry(
-                pathMatchers("/api/**"),
+                pathMatchers("/api/**", "/bff/**"),
                 new HttpStatusServerEntryPoint(HttpStatus.UNAUTHORIZED)
             )
         );

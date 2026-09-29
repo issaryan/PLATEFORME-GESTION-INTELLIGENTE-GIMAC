@@ -1,11 +1,10 @@
 {
   "annotations": {
-    "changelogDate": "20260928134203"
+    "changelogDate": "20231207142515"
   },
   "applications": ["homologation"],
   "clientRootFolder": "homologation",
   "databaseType": "sql",
-  "documentation": "Liaison d'une institution pour un type de projet (CC §6.1.7.1). Elle fige la\\nversion du référentiel en vigueur à son ouverture. Ouverte à la suite de\\nparticipant.status-changed.v1 vers EN_HOMOLOGATION (D-18).",
   "dto": "mapstruct",
   "fields": [
     {
@@ -13,82 +12,74 @@
       "fieldType": "UUID"
     },
     {
-      "documentation": "Identifiant lisible, par exemple LIA-2026-017.",
-      "fieldName": "liaisonCode",
-      "fieldType": "String",
-      "fieldValidateRules": ["required", "unique", "maxlength", "pattern"],
-      "fieldValidateRulesMaxlength": "20",
-      "fieldValidateRulesPattern": "^LIA-[0-9]{4}-[0-9]{3,}$"
+      "fieldName": "typeProjet",
+      "fieldType": "TypeProjet",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "CARTE_INTERBANCAIRE,PAIEMENT_MOBILE,DELEGATAIRE"
     },
     {
-      "documentation": "Institution tenue par MS-PARTICIPANT (référence, BNF-04).",
       "fieldName": "institutionId",
       "fieldType": "UUID",
       "fieldValidateRules": ["required"]
     },
     {
-      "fieldName": "projectType",
-      "fieldType": "ProjectType",
-      "fieldTypeDocumentation": "Type de projet de raccordement (CC §6.1.7.3).",
+      "fieldName": "institutionNom",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "200"
+    },
+    {
+      "fieldName": "etat",
+      "fieldType": "EtatLiaison",
       "fieldValidateRules": ["required"],
-      "fieldValues": "CARTE_INTERBANCAIRE,PAIEMENT_MOBILE,DELEGATAIRE"
+      "fieldValues": "OUVERTE,EN_HOMOLOGATION,GELEE,APTE_CERTIFICATION,MISE_EN_SERVICE_AUTORISEE,CERTIFIEE,CLOSE"
     },
     {
-      "fieldName": "openedOn",
-      "fieldType": "LocalDate",
-      "fieldValidateRules": ["required"]
-    },
-    {
-      "documentation": "Chef de projet de la liaison (collaborateur de MS-IAM).",
-      "fieldName": "projectLeadId",
+      "fieldName": "chefDeProjetId",
       "fieldType": "UUID",
       "fieldValidateRules": ["required"]
     },
     {
-      "fieldName": "state",
-      "fieldType": "LiaisonState",
-      "fieldTypeDocumentation": "Automate de la liaison (REC D-08).",
-      "fieldValidateRules": ["required"],
-      "fieldValues": "OUVERTE,EN_ESSAIS,PRETE_CERTIFICATION,CERTIFIEE,EN_SERVICE,GELEE"
+      "fieldName": "banquePartenaireId",
+      "fieldType": "UUID"
     },
     {
-      "documentation": "Référence de la campagne dans le simulateur (κL de l'algorithme 6.32).\\nÉcart CC corrigé : absente de la classe Liaison, requise par l'algorithme.",
-      "fieldName": "campaignRef",
+      "fieldName": "dateOuverture",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "motifEtat",
       "fieldType": "String",
       "fieldValidateRules": ["maxlength"],
-      "fieldValidateRulesMaxlength": "100"
+      "fieldValidateRulesMaxlength": "500"
     },
     {
-      "fieldName": "readyForCertificationAt",
-      "fieldType": "Instant"
+      "fieldName": "cycleAptitude",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required"]
     },
     {
-      "fieldName": "commissionedOn",
-      "fieldType": "LocalDate"
+      "fieldName": "ordreInstanciation",
+      "fieldType": "TextBlob"
     },
     {
-      "documentation": "Motif du gel (HOM-10) ou du retour en homologation (HOM-11).",
-      "fieldName": "stateReason",
-      "fieldType": "String",
-      "fieldValidateRules": ["maxlength"],
-      "fieldValidateRulesMaxlength": "1000"
+      "fieldName": "etatAvantGel",
+      "fieldType": "TextBlob"
     }
   ],
-  "jpaMetamodelFiltering": true,
   "microserviceName": "homologation",
   "name": "Liaison",
   "pagination": "pagination",
   "relationships": [
     {
-      "documentation": "Version du référentiel figée sur la liaison (migrée seulement par l'algorithme 6.34).",
-      "otherEntityField": "version",
-      "otherEntityName": "referenceCatalog",
-      "relationshipName": "catalog",
+      "otherEntityName": "referentialVersion",
+      "relationshipName": "version",
       "relationshipSide": "left",
       "relationshipType": "many-to-one",
       "relationshipValidateRules": "required"
     }
   ],
   "searchEngine": "no",
-  "service": "serviceClass"
+  "service": "serviceImpl"
 }

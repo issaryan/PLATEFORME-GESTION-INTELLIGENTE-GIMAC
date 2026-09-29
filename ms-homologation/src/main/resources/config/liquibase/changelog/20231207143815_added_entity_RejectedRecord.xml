@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+
+    <!--
+        Added the entity RejectedRecord.
+    -->
+    <changeSet id="20231207143815-1" author="jhipster">
+        <createTable tableName="rejected_record">
+            <column name="id" type="${uuidType}">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="source" type="varchar(60)">
+                <constraints nullable="true" />
+            </column>
+            <column name="charge_utile" type="${clobType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="empreinte" type="varchar(64)">
+                <constraints nullable="true" />
+            </column>
+            <column name="motif" type="varchar(500)">
+                <constraints nullable="true" />
+            </column>
+            <column name="date_rejet" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="relance" type="boolean">
+                <constraints nullable="true" />
+            </column>
+            <!-- jhipster-needle-liquibase-add-column - JHipster will add columns here -->
+        </createTable>
+        <dropDefaultValue tableName="rejected_record" columnName="date_rejet" columnDataType="${datetimeType}"/>
+    </changeSet>
+
+    <!-- jhipster-needle-liquibase-add-changeset - JHipster will add changesets here -->
+</databaseChangeLog>

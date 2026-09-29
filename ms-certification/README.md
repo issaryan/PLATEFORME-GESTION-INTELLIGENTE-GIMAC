@@ -1,41 +1,31 @@
 <!-- GIMAC:DEBUT : section du projet, tenue à jour à chaque modification ; la documentation JHipster suit. -->
 # MS-CERTIFICATION : plateforme DES du GIMAC
 
-Dossier de mise en service et quatre quitus signés (WebAuthn puis cachet, D-35), attestation de certification.
+Certification et mise en service : circuit des quatre quitus, impartialité des signataires, dossier de mise en service, fiche de changement lue sans écriture, scellement et horodatage, attestation PDF/A-3 signée, registre et révocation.
 
 | Élément | Valeur |
 |---|---|
-| Domaine d'analyse (CA) | D3 |
-| Épopée du carnet (CP v2.0) | CER |
+| Lot | Lot 1, module de gestion de la certification (PI-GIMAC-01 v1.0, `docs/lot1`) |
+| Récits | CER-01 à CER-15 |
 | Port | 8087 |
 | Paquet Java | `cm.gimac.des.certification` |
-| Entités du JDL (8) | CommissioningFile, Quitus, ChangeRecord, CertificationAttestation, EvidenceItem, CoverageSnapshot, ClosedOperationSnapshot, DeduplicationEntry |
+| Modèle | `ms-certification.jdl` (JDL du plan, §0.2) ; JHipster 9.4.0 ; Cucumber |
+| Entités (11) | CertificationCircuit, Quitus, SignedDecision, GoLiveDossier, CompletenessCondition, ChangeRecordSnapshot, GoLiveReport, TimestampToken, Attestation, CertificationRegisterEntry, AttestationStatusDecision |
 | Règles de gestion (REC-GIMAC-01 §5) | RG-34, RG-73 |
-| Modèle | `ms-certification.jdl` |
+| Correspondances avec le plan | `docs/lot1/correspondance.md` |
 
-## État
+## Architecture (PI §0.8)
 
-Squelette généré en JHipster 8.11.0 ; régénération en 9.4.0 prévue lors du passage au gabarit hexagonal (D-43). Code JHipster brut : domaine JPA, DTO MapStruct, services, ressources REST, changelogs Liquibase, messages fr et en. L'architecture hexagonale, l'outbox, l'inbox et les algorithmes du CC restent à écrire (SOC-01, SOC-05).
+- `domain/` : entités JPA générées, `domain/service` (services de domaine purs), `domain/event` (charges utiles).
+- `application/` : ports entrants et sortants, cas d'utilisation transactionnels.
+- `infrastructure/` : outbox et relais CloudEvents, consommateur idempotent, adaptateurs réels et de substitution (`gimac.adapters.*`), jeton de service, contexte de corrélation.
+- `web/rest/` : ressources générées (`/api/<entités>`) et ressources du lot (`/api/v1/...`, exposées par la passerelle sous `/bff/des/certification` et `/bff/portail/certification`).
+- Test d'architecture : couches `application` et `infrastructure`, services de domaine sans Spring.
 
 ## Lancer
 
-- Service seul, en développement : `./mvnw` (dépendances : `docker compose -f src/main/docker/services.yml up -d`).
-- Avec toute la plateforme : `infra/docker-compose/gimac-dev.sh demarrer` à la racine du dépôt.
-- Image de conteneur (Jib, sans Dockerfile, D-48) : `./mvnw -ntp -Pprod verify jib:dockerBuild`.
-
-## Code repris du projet afriland (D-52)
-
-Copié et adapté (paquet `cm.gimac.des.certification`) ; chaque bean est inactif tant que sa propriété ne vaut pas `true`.
-
-| Classe | Origine dans afriland | Propriété d'activation |
-|---|---|---|
-| `config/DecodeurJwtInterne` | `audit-service/src/main/java/com/afriland/audit/config/DecodeurJwtInterne.java` | sans bean à activer |
-| `config/KafkaErrorHandlingConfiguration` | `audit-service/src/main/java/com/afriland/audit/config/KafkaErrorHandlingConfiguration.java` | `gimac.kafka.rebut.actif` |
-| `infrastructure/logging/PiiMaskingLogConverter` | `notifications-service/src/main/java/com/afriland/notifications/infrastructure/logging/PiiMaskingLogConverter.java` | sans bean à activer |
-| `adapter/outbound/securite/ServiceTokenProvider` | `administration-service/src/main/java/com/afriland/admin/adapter/outbound/cognitive/ServiceTokenProvider.java` | `gimac.securite.jeton-service.actif` |
-| `domain/exception/TransitionInterditeException` | `dossiers-service/src/main/java/com/afriland/dossiers/domain/exception/TransitionInterditeException.java` | sans bean à activer |
-
-Écarts comblés (D-53) : `ValidateurLiaisonCertificat` et option du décodeur exigeant la liaison au certificat (RFC 8705) ; masquage des journaux limité aux numéros vérifiant Luhn, en 6+4 (RG-52).
+- Avec la plateforme : `infra/docker-compose/gimac-dev.sh demarrer`, puis `infra/docker-compose/scripts/verifier-phase0.sh`.
+- Image (Jib) : `./mvnw -ntp -Pprod verify jib:dockerBuild`.
 
 ## Journal des mises à jour
 
@@ -47,11 +37,12 @@ Copié et adapté (paquet `cm.gimac.des.certification`) ; chaque bean est inacti
 | 2026-09-28 | — | Reprise de 3 classes du projet afriland (D-52) ; compilation vérifiée. |
 | 2026-09-28 | — | Écarts comblés (liaison au certificat, masquage Luhn 6+4) et 2 classes reprises d'afriland : ServiceTokenProvider, TransitionInterditeException (D-53). |
 | 2026-09-29 | — | Masquage des journaux activé (logback, `%maskedMsg`) ; 88 tests unitaires et 275 tests d'intégration réussis, image Jib construite (D-54). |
+| 2026-09-29 | — | Lot 1, Phase 0 : régénération depuis le JDL du plan en JHipster 9.4.0, corrections Liquibase (jsonb, unicités, index, immuabilité), messagerie (outbox, relais, consommateur idempotent, rebut `.dlq`), jeton de service, sécurité du portail, arborescence hexagonale (D-55). |
 <!-- GIMAC:FIN -->
 
 # certification
 
-This application was generated using JHipster 8.11.0, you can find documentation and help at [https://www.jhipster.tech/documentation-archive/v8.11.0](https://www.jhipster.tech/documentation-archive/v8.11.0).
+This application was generated using JHipster 9.4.0, you can find documentation and help at [https://www.jhipster.tech/documentation-archive/v9.4.0](https://www.jhipster.tech/documentation-archive/v9.4.0).
 
 This is a "microservice" application intended to be part of a microservice architecture, please refer to the [Doing microservices with JHipster][] page of the documentation for more information.
 
@@ -74,7 +65,7 @@ In the project root, JHipster generates configuration files for tools like git, 
 
 To start your application in the dev profile, run:
 
-```
+```bash
 ./mvnw
 ```
 
@@ -86,7 +77,7 @@ Congratulations! You've selected an excellent way to secure your JHipster applic
 
 To log in to your app, you'll need to have [Keycloak](https://keycloak.org) up and running. The JHipster Team has created a Docker container for you that has the default users and roles. Start Keycloak using the following command.
 
-```
+```bash
 docker compose -f src/main/docker/keycloak.yml up
 ```
 
@@ -118,19 +109,7 @@ When using Kubernetes, importing should be done using init-containers (with a vo
 
 ### Okta
 
-If you'd like to use Okta instead of Keycloak, it's pretty quick using the [Okta CLI](https://cli.okta.com/). After you've installed it, run:
-
-```shell
-okta register
-```
-
-Then, in your JHipster app's directory, run `okta apps create` and select **JHipster**. This will set up an Okta app for you, create `ROLE_ADMIN` and `ROLE_USER` groups, create a `.okta.env` file with your Okta settings, and configure a `groups` claim in your ID token.
-
-Run `source .okta.env` and start your app with Maven or Gradle. You should be able to sign in with the credentials you registered with.
-
-If you're on Windows, you should install [WSL](https://docs.microsoft.com/en-us/windows/wsl/install-win10) so the `source` command will work.
-
-If you'd like to configure things manually through the Okta developer console, see the instructions below.
+If you'd like to use Okta instead of Keycloak, it's pretty quick.
 
 First, you'll need to create a free developer account at <https://developer.okta.com/signup/>. After doing so, you'll get your own Okta domain, that has a name like `https://dev-123456.okta.com`.
 
@@ -154,7 +133,7 @@ security:
 
 Create an OIDC App in Okta to get a `{clientId}` and `{clientSecret}`. To do this, log in to your Okta Developer account and navigate to **Applications** > **Add Application**. Click **Web** and click the **Next** button. Give the app a name you’ll remember, specify `http://localhost:8080` as a Base URI, and `http://localhost:8080/login/oauth2/code/oidc` as a Login Redirect URI. Click **Done**, then Edit and add `http://localhost:8080` as a Logout redirect URI. Copy and paste the client ID and secret into your `application.yml` file.
 
-Create a `ROLE_ADMIN` and `ROLE_USER` group and add users into them. Modify e2e tests to use this account when running integration tests. You'll need to change credentials in `src/test/javascript/e2e/account/account.spec.ts` and `src/test/javascript/e2e/admin/administration.spec.ts`.
+Create a `ROLE_ADMIN` and `ROLE_USER` group and add users into them. Modify e2e tests to use this account when running integration tests.
 
 Navigate to **API** > **Authorization Servers**, click the **Authorization Servers** tab and edit the default one. Click the **Claims** tab and **Add Claim**. Name it "groups", and include it in the ID Token. Set the value type to "Groups" and set the filter to be a Regex of `.*`.
 
@@ -164,7 +143,7 @@ After making these changes, you should be good to go! If you have any issues, pl
 
 If you'd like to use [Auth0](https://auth0.com/) instead of Keycloak, follow the configuration steps below:
 
-- Create a free developer account at <https://auth0.com/signup>. After successful sign-up, your account will be associated with a unique domain like `dev-xxx.us.auth0.com`
+- Create a free developer account at [Sign Up - Auth0](https://auth0.com/signup). After successful sign-up, your account will be associated with a unique domain like `dev-xxx.us.auth0.com`
 - Create a new application of type `Regular Web Applications`. Switch to the `Settings` tab, and configure your application settings like:
   - Allowed Callback URLs: `http://localhost:8080/login/oauth2/code/oidc`
   - Allowed Logout URLs: `http://localhost:8080/`
@@ -226,13 +205,13 @@ jhipster:
 
 To build the final jar and optimize the certification application for production, run:
 
-```
+```bash
 ./mvnw -Pprod clean verify
 ```
 
 To ensure everything worked, run:
 
-```
+```bash
 java -jar target/*.jar
 ```
 
@@ -242,7 +221,7 @@ Refer to [Using JHipster in production][] for more details.
 
 To package your application as a war in order to deploy it to an application server, run:
 
-```
+```bash
 ./mvnw -Pprod,war clean verify
 ```
 
@@ -250,7 +229,7 @@ To package your application as a war in order to deploy it to an application ser
 
 JHipster Control Center can help you manage and control your application(s). You can start a local control center server (accessible on http://localhost:7419) with:
 
-```
+```bash
 docker compose -f src/main/docker/jhipster-control-center.yml up
 ```
 
@@ -260,7 +239,7 @@ docker compose -f src/main/docker/jhipster-control-center.yml up
 
 To launch your application's tests, run:
 
-```
+```bash
 ./mvnw verify
 ```
 
@@ -270,7 +249,7 @@ To launch your application's tests, run:
 
 Sonar is used to analyse code quality. You can start a local Sonar server (accessible on http://localhost:9001) with:
 
-```
+```bash
 docker compose -f src/main/docker/sonar.yml up -d
 ```
 
@@ -280,19 +259,19 @@ You can run a Sonar analysis with using the [sonar-scanner](https://docs.sonarqu
 
 Then, run a Sonar analysis:
 
-```
+```bash
 ./mvnw -Pprod clean verify sonar:sonar -Dsonar.login=admin -Dsonar.password=admin
 ```
 
 If you need to re-run the Sonar phase, please be sure to specify at least the `initialize` phase since Sonar properties are loaded from the sonar-project.properties file.
 
-```
+```bash
 ./mvnw initialize sonar:sonar -Dsonar.login=admin -Dsonar.password=admin
 ```
 
 Additionally, Instead of passing `sonar.password` and `sonar.login` as CLI arguments, these parameters can be configured from [sonar-project.properties](sonar-project.properties) as shown below:
 
-```
+```bash
 sonar.login=admin
 sonar.password=admin
 ```
@@ -305,17 +284,17 @@ JHipster generates a number of Docker Compose configuration files in the [src/ma
 
 For example, to start required services in Docker containers, run:
 
-```
+```bash
 docker compose -f src/main/docker/services.yml up -d
 ```
 
 To stop and remove the containers, run:
 
-```
+```bash
 docker compose -f src/main/docker/services.yml down
 ```
 
-[Spring Docker Compose Integration](https://docs.spring.io/spring-boot/reference/features/dev-services.html) is enabled by default. It's possible to disable it in application.yml:
+[Spring Docker Compose Integration](https://docs.spring.io/spring-boot/reference/features/dev-services.html) is enabled by default. It's possible to disable it in `application.yml`:
 
 ```yaml
 spring:
@@ -328,36 +307,38 @@ spring:
 You can also fully dockerize your application and all the services that it depends on.
 To achieve this, first build a Docker image of your app by running:
 
-```sh
+```bash
 npm run java:docker
 ```
 
-Or build a arm64 Docker image when using an arm64 processor os like MacOS with M1 processor family running:
+Or build an arm64 Docker image when using an arm64 processor OS, i.e., Apple Silicon chips (M*), running:
 
-```sh
+```bash
 npm run java:docker:arm64
 ```
 
 Then run:
 
-```sh
+```bash
 docker compose -f src/main/docker/app.yml up -d
 ```
 
-For more information refer to [Using Docker and Docker-Compose][], this page also contains information on the Docker Compose sub-generator (`jhipster docker-compose`), which is able to generate Docker configurations for one or several JHipster applications.
+For more information refer to [Docker and Docker-Compose](https://www.jhipster.tech/documentation-archive/v9.4.0/docker-compose/), this page also contains information on the Docker Compose sub-generator (`jhipster docker-compose`), which is able to generate Docker configurations for one or several JHipster applications.
 
 ## Continuous Integration (optional)
 
-To configure CI for your project, run the ci-cd sub-generator (`jhipster ci-cd`), this will let you generate configuration files for a number of Continuous Integration systems. Consult the [Setting up Continuous Integration][] page for more information.
+To configure CI for your project, run the ci-cd sub-generator (`jhipster ci-cd`), this will let you generate configuration files for a number of Continuous Integration systems. Consult the [Setting up Continuous Integration](https://www.jhipster.tech/documentation-archive/v9.4.0/setting-up-ci/) page for more information.
 
-[JHipster Homepage and latest documentation]: https://www.jhipster.tech
-[JHipster 8.11.0 archive]: https://www.jhipster.tech/documentation-archive/v8.11.0
-[Doing microservices with JHipster]: https://www.jhipster.tech/documentation-archive/v8.11.0/microservices-architecture/
-[Using JHipster in development]: https://www.jhipster.tech/documentation-archive/v8.11.0/development/
-[Using Docker and Docker-Compose]: https://www.jhipster.tech/documentation-archive/v8.11.0/docker-compose
-[Using JHipster in production]: https://www.jhipster.tech/documentation-archive/v8.11.0/production/
-[Running tests page]: https://www.jhipster.tech/documentation-archive/v8.11.0/running-tests/
-[Code quality page]: https://www.jhipster.tech/documentation-archive/v8.11.0/code-quality/
-[Setting up Continuous Integration]: https://www.jhipster.tech/documentation-archive/v8.11.0/setting-up-ci/
-[Node.js]: https://nodejs.org/
-[NPM]: https://www.npmjs.com/
+## References
+
+- [JHipster Homepage and latest documentation](https://www.jhipster.tech/)
+- [JHipster 9.4.0 archive](https://www.jhipster.tech/documentation-archive/v9.4.0)
+- [Doing microservices with JHipster](https://www.jhipster.tech/documentation-archive/v9.4.0/microservices-architecture/)
+- [Using JHipster in development](https://www.jhipster.tech/documentation-archive/v9.4.0/development/)
+- [Using Docker and Docker-Compose](https://www.jhipster.tech/documentation-archive/v9.4.0/docker-compose)
+- [Using JHipster in production](https://www.jhipster.tech/documentation-archive/v9.4.0/production/)
+- [Running tests page](https://www.jhipster.tech/documentation-archive/v9.4.0/running-tests/)
+- [Code quality page](https://www.jhipster.tech/documentation-archive/v9.4.0/code-quality/)
+- [Setting up Continuous Integration](https://www.jhipster.tech/documentation-archive/v9.4.0/setting-up-ci/)
+- [Node.js](https://nodejs.org/)
+- [NPM](https://www.npmjs.com/)

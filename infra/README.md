@@ -18,3 +18,4 @@ Principe (D-48) : ce que JHipster sait générer est régénéré, jamais édit�
 | 2026-09-28 | 7dcca58 | Ceph RGW remplace MinIO |
 | 2026-09-28 | b20a049 | Couches de présentation dans Docker Compose et Kubernetes |
 | 2026-09-28 | — | Ajout de ce README |
+| 2026-09-29 | — | Lot 1 : `infra/keycloak` (domaine gimac) et `infra/kafka` (sujets du lot) |

@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+
+    <!--
+        Added the entity SignedDecision.
+    -->
+    <changeSet id="20231212200446-1" author="jhipster">
+        <createTable tableName="signed_decision">
+            <column name="id" type="${uuidType}">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="decision_favorable" type="boolean">
+                <constraints nullable="false" />
+            </column>
+            <column name="motif" type="varchar(1000)">
+                <constraints nullable="false" />
+            </column>
+            <column name="signataire_id" type="${uuidType}">
+                <constraints nullable="false" />
+            </column>
+            <column name="signataire_role" type="varchar(60)">
+                <constraints nullable="true" />
+            </column>
+            <column name="date_signature" type="${datetimeType}">
+                <constraints nullable="false" />
+            </column>
+            <column name="socle_empreinte" type="varchar(64)">
+                <constraints nullable="false" />
+            </column>
+            <column name="empreinte_decision" type="varchar(64)">
+                <constraints nullable="false" />
+            </column>
+            <column name="signature" type="${clobType}">
+                <constraints nullable="false" />
+            </column>
+            <column name="operations_designees" type="${clobType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="services_designes" type="${clobType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="reference_audit" type="varchar(120)">
+                <constraints nullable="true" />
+            </column>
+            <column name="quitus_id" type="${uuidType}">
+                <constraints nullable="false" unique="true" uniqueConstraintName="ux_signed_decision__quitus_id" />
+            </column>
+            <!-- jhipster-needle-liquibase-add-column - JHipster will add columns here -->
+        </createTable>
+        <dropDefaultValue tableName="signed_decision" columnName="date_signature" columnDataType="${datetimeType}"/>
+    </changeSet>
+
+    <!-- jhipster-needle-liquibase-add-changeset - JHipster will add changesets here -->
+</databaseChangeLog>

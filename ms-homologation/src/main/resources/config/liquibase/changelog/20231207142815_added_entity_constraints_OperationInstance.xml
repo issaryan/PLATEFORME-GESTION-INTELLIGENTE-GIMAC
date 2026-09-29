@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+    <!--
+        Added the constraints for entity OperationInstance.
+    -->
+    <changeSet id="20231207142815-2" author="jhipster">
+
+        <addForeignKeyConstraint baseColumnNames="liaison_id"
+                                 baseTableName="operation_instance"
+                                 constraintName="fk_operation_instance__liaison_id"
+                                 referencedColumnNames="id"
+                                 referencedTableName="liaison"
+                                 />
+
+        <addForeignKeyConstraint baseColumnNames="reference_operation_id"
+                                 baseTableName="operation_instance"
+                                 constraintName="fk_operation_instance__reference_operation_id"
+                                 referencedColumnNames="id"
+                                 referencedTableName="reference_operation"
+                                 />
+    </changeSet>
+</databaseChangeLog>

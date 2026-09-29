@@ -1,66 +1,56 @@
 package cm.gimac.des.homologation.service.dto;
 
-import cm.gimac.des.homologation.domain.enumeration.LiaisonState;
-import cm.gimac.des.homologation.domain.enumeration.ProjectType;
-import io.swagger.v3.oas.annotations.media.Schema;
+import cm.gimac.des.homologation.domain.enumeration.EtatLiaison;
+import cm.gimac.des.homologation.domain.enumeration.TypeProjet;
+import jakarta.persistence.Lob;
 import jakarta.validation.constraints.*;
 import java.io.Serializable;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.util.Objects;
 import java.util.UUID;
 
 /**
  * A DTO for the {@link cm.gimac.des.homologation.domain.Liaison} entity.
  */
-@Schema(
-    description = "Liaison d'une institution pour un type de projet (CC §6.1.7.1). Elle fige la\nversion du référentiel en vigueur à son ouverture. Ouverte à la suite de\nparticipant.status-changed.v1 vers EN_HOMOLOGATION (D-18)."
-)
 @SuppressWarnings("common-java:DuplicatedBlocks")
 public class LiaisonDTO implements Serializable {
 
     private UUID id;
 
     @NotNull
-    @Size(max = 20)
-    @Pattern(regexp = "^LIA-[0-9]{4}-[0-9]{3,}$")
-    @Schema(description = "Identifiant lisible, par exemple LIA-2026-017.", requiredMode = Schema.RequiredMode.REQUIRED)
-    private String liaisonCode;
+    private TypeProjet typeProjet;
 
     @NotNull
-    @Schema(description = "Institution tenue par MS-PARTICIPANT (référence, BNF-04).", requiredMode = Schema.RequiredMode.REQUIRED)
     private UUID institutionId;
 
-    @NotNull
-    private ProjectType projectType;
+    @Size(max = 200)
+    private String institutionNom;
 
     @NotNull
-    private LocalDate openedOn;
+    private EtatLiaison etat;
 
     @NotNull
-    @Schema(description = "Chef de projet de la liaison (collaborateur de MS-IAM).", requiredMode = Schema.RequiredMode.REQUIRED)
-    private UUID projectLeadId;
+    private UUID chefDeProjetId;
+
+    private UUID banquePartenaireId;
 
     @NotNull
-    private LiaisonState state;
+    private Instant dateOuverture;
 
-    @Size(max = 100)
-    @Schema(
-        description = "Référence de la campagne dans le simulateur (κL de l'algorithme 6.32).\nÉcart CC corrigé : absente de la classe Liaison, requise par l'algorithme."
-    )
-    private String campaignRef;
-
-    private Instant readyForCertificationAt;
-
-    private LocalDate commissionedOn;
-
-    @Size(max = 1000)
-    @Schema(description = "Motif du gel (HOM-10) ou du retour en homologation (HOM-11).")
-    private String stateReason;
+    @Size(max = 500)
+    private String motifEtat;
 
     @NotNull
-    @Schema(description = "Version du référentiel figée sur la liaison (migrée seulement par l'algorithme 6.34).")
-    private ReferenceCatalogDTO catalog;
+    private Integer cycleAptitude;
+
+    @Lob
+    private String ordreInstanciation;
+
+    @Lob
+    private String etatAvantGel;
+
+    @NotNull
+    private ReferentialVersionDTO version;
 
     public UUID getId() {
         return id;
@@ -70,12 +60,12 @@ public class LiaisonDTO implements Serializable {
         this.id = id;
     }
 
-    public String getLiaisonCode() {
-        return liaisonCode;
+    public TypeProjet getTypeProjet() {
+        return typeProjet;
     }
 
-    public void setLiaisonCode(String liaisonCode) {
-        this.liaisonCode = liaisonCode;
+    public void setTypeProjet(TypeProjet typeProjet) {
+        this.typeProjet = typeProjet;
     }
 
     public UUID getInstitutionId() {
@@ -86,76 +76,84 @@ public class LiaisonDTO implements Serializable {
         this.institutionId = institutionId;
     }
 
-    public ProjectType getProjectType() {
-        return projectType;
+    public String getInstitutionNom() {
+        return institutionNom;
     }
 
-    public void setProjectType(ProjectType projectType) {
-        this.projectType = projectType;
+    public void setInstitutionNom(String institutionNom) {
+        this.institutionNom = institutionNom;
     }
 
-    public LocalDate getOpenedOn() {
-        return openedOn;
+    public EtatLiaison getEtat() {
+        return etat;
     }
 
-    public void setOpenedOn(LocalDate openedOn) {
-        this.openedOn = openedOn;
+    public void setEtat(EtatLiaison etat) {
+        this.etat = etat;
     }
 
-    public UUID getProjectLeadId() {
-        return projectLeadId;
+    public UUID getChefDeProjetId() {
+        return chefDeProjetId;
     }
 
-    public void setProjectLeadId(UUID projectLeadId) {
-        this.projectLeadId = projectLeadId;
+    public void setChefDeProjetId(UUID chefDeProjetId) {
+        this.chefDeProjetId = chefDeProjetId;
     }
 
-    public LiaisonState getState() {
-        return state;
+    public UUID getBanquePartenaireId() {
+        return banquePartenaireId;
     }
 
-    public void setState(LiaisonState state) {
-        this.state = state;
+    public void setBanquePartenaireId(UUID banquePartenaireId) {
+        this.banquePartenaireId = banquePartenaireId;
     }
 
-    public String getCampaignRef() {
-        return campaignRef;
+    public Instant getDateOuverture() {
+        return dateOuverture;
     }
 
-    public void setCampaignRef(String campaignRef) {
-        this.campaignRef = campaignRef;
+    public void setDateOuverture(Instant dateOuverture) {
+        this.dateOuverture = dateOuverture;
     }
 
-    public Instant getReadyForCertificationAt() {
-        return readyForCertificationAt;
+    public String getMotifEtat() {
+        return motifEtat;
     }
 
-    public void setReadyForCertificationAt(Instant readyForCertificationAt) {
-        this.readyForCertificationAt = readyForCertificationAt;
+    public void setMotifEtat(String motifEtat) {
+        this.motifEtat = motifEtat;
     }
 
-    public LocalDate getCommissionedOn() {
-        return commissionedOn;
+    public Integer getCycleAptitude() {
+        return cycleAptitude;
     }
 
-    public void setCommissionedOn(LocalDate commissionedOn) {
-        this.commissionedOn = commissionedOn;
+    public void setCycleAptitude(Integer cycleAptitude) {
+        this.cycleAptitude = cycleAptitude;
     }
 
-    public String getStateReason() {
-        return stateReason;
+    public String getOrdreInstanciation() {
+        return ordreInstanciation;
     }
 
-    public void setStateReason(String stateReason) {
-        this.stateReason = stateReason;
+    public void setOrdreInstanciation(String ordreInstanciation) {
+        this.ordreInstanciation = ordreInstanciation;
     }
 
-    public ReferenceCatalogDTO getCatalog() {
-        return catalog;
+    public String getEtatAvantGel() {
+        return etatAvantGel;
     }
 
-    public void setCatalog(ReferenceCatalogDTO catalog) {
-        this.catalog = catalog;
+    public void setEtatAvantGel(String etatAvantGel) {
+        this.etatAvantGel = etatAvantGel;
+    }
+
+    public ReferentialVersionDTO getVersion() {
+        return version;
+    }
+
+    public void setVersion(ReferentialVersionDTO version) {
+        this.version = version;
     }
 
     @Override
@@ -184,17 +182,18 @@ public class LiaisonDTO implements Serializable {
     public String toString() {
         return "LiaisonDTO{" +
             "id='" + getId() + "'" +
-            ", liaisonCode='" + getLiaisonCode() + "'" +
+            ", typeProjet='" + getTypeProjet() + "'" +
             ", institutionId='" + getInstitutionId() + "'" +
-            ", projectType='" + getProjectType() + "'" +
-            ", openedOn='" + getOpenedOn() + "'" +
-            ", projectLeadId='" + getProjectLeadId() + "'" +
-            ", state='" + getState() + "'" +
-            ", campaignRef='" + getCampaignRef() + "'" +
-            ", readyForCertificationAt='" + getReadyForCertificationAt() + "'" +
-            ", commissionedOn='" + getCommissionedOn() + "'" +
-            ", stateReason='" + getStateReason() + "'" +
-            ", catalog=" + getCatalog() +
+            ", institutionNom='" + getInstitutionNom() + "'" +
+            ", etat='" + getEtat() + "'" +
+            ", chefDeProjetId='" + getChefDeProjetId() + "'" +
+            ", banquePartenaireId='" + getBanquePartenaireId() + "'" +
+            ", dateOuverture='" + getDateOuverture() + "'" +
+            ", motifEtat='" + getMotifEtat() + "'" +
+            ", cycleAptitude=" + getCycleAptitude() +
+            ", ordreInstanciation='" + getOrdreInstanciation() + "'" +
+            ", etatAvantGel='" + getEtatAvantGel() + "'" +
+            ", version=" + getVersion() +
             "}";
     }
 }

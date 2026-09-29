@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+
+    <!--
+        Added the entity ClosureRecord.
+    -->
+    <changeSet id="20231207143115-1" author="jhipster">
+        <createTable tableName="closure_record">
+            <column name="id" type="${uuidType}">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="validateur_id" type="${uuidType}">
+                <constraints nullable="false" />
+            </column>
+            <column name="date_validation" type="${datetimeType}">
+                <constraints nullable="false" />
+            </column>
+            <column name="empreinte_cloture" type="varchar(64)">
+                <constraints nullable="false" />
+            </column>
+            <column name="jeton_horodatage" type="${clobType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="date_horodatage" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="actif" type="boolean">
+                <constraints nullable="false" />
+            </column>
+            <column name="motif_reouverture" type="varchar(500)">
+                <constraints nullable="true" />
+            </column>
+            <column name="date_reouverture" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="operation_id" type="${uuidType}">
+                <constraints nullable="false" />
+            </column>
+            <!-- jhipster-needle-liquibase-add-column - JHipster will add columns here -->
+        </createTable>
+        <dropDefaultValue tableName="closure_record" columnName="date_validation" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="closure_record" columnName="date_horodatage" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="closure_record" columnName="date_reouverture" columnDataType="${datetimeType}"/>
+    </changeSet>
+
+    <!-- jhipster-needle-liquibase-add-changeset - JHipster will add changesets here -->
+</databaseChangeLog>

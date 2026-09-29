@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+
+    <!--
+        Added the entity GoLiveDossier.
+    -->
+    <changeSet id="20231212200546-1" author="jhipster">
+        <createTable tableName="go_live_dossier">
+            <column name="id" type="${uuidType}">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="liaison_id" type="${uuidType}">
+                <constraints nullable="false" />
+            </column>
+            <column name="institution_id" type="${uuidType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="etat" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="date_ouverture" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="date_autorisation" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="date_mise_en_service" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="date_completude" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="etat_scellement" type="varchar(255)">
+                <constraints nullable="true" />
+            </column>
+            <column name="reference_fiche_changement" type="varchar(120)">
+                <constraints nullable="true" />
+            </column>
+            <column name="circuit_id" type="${uuidType}">
+                <constraints nullable="false" unique="true" uniqueConstraintName="ux_go_live_dossier__circuit_id" />
+            </column>
+            <!-- jhipster-needle-liquibase-add-column - JHipster will add columns here -->
+        </createTable>
+        <dropDefaultValue tableName="go_live_dossier" columnName="date_ouverture" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="go_live_dossier" columnName="date_autorisation" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="go_live_dossier" columnName="date_mise_en_service" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="go_live_dossier" columnName="date_completude" columnDataType="${datetimeType}"/>
+    </changeSet>
+
+    <!-- jhipster-needle-liquibase-add-changeset - JHipster will add changesets here -->
+</databaseChangeLog>

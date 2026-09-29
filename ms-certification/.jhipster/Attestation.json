@@ -1,0 +1,82 @@
+{
+  "annotations": {
+    "changelogDate": "20231212201046"
+  },
+  "applications": ["certification"],
+  "clientRootFolder": "certification",
+  "databaseType": "sql",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "numero",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "unique", "maxlength"],
+      "fieldValidateRulesMaxlength": "30"
+    },
+    {
+      "fieldName": "institutionId",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "typeProjet",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "30"
+    },
+    {
+      "fieldName": "servicesCertifies",
+      "fieldType": "TextBlob"
+    },
+    {
+      "fieldName": "dateEmission",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "socleEmpreinte",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "64"
+    },
+    {
+      "fieldName": "documentRef",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "120"
+    },
+    {
+      "fieldName": "empreinteDocument",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "64"
+    },
+    {
+      "fieldName": "etat",
+      "fieldType": "EtatAttestation",
+      "fieldValues": "EN_VIGUEUR,SUSPENDUE,REVOQUEE,REMPLACEE"
+    },
+    {
+      "fieldName": "referenceAudit",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "120"
+    }
+  ],
+  "microserviceName": "certification",
+  "name": "Attestation",
+  "pagination": "pagination",
+  "relationships": [
+    {
+      "otherEntityName": "goLiveDossier",
+      "relationshipName": "dossier",
+      "relationshipSide": "left",
+      "relationshipType": "one-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceImpl"
+}

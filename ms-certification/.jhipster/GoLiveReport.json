@@ -1,0 +1,62 @@
+{
+  "annotations": {
+    "changelogDate": "20231212200846"
+  },
+  "applications": ["certification"],
+  "clientRootFolder": "certification",
+  "databaseType": "sql",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "documentRef",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "120"
+    },
+    {
+      "fieldName": "empreinte",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "64"
+    },
+    {
+      "fieldName": "heureBascule",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "dansFenetre",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "deposantId",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "dateDepot",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "regularise",
+      "fieldType": "Boolean"
+    }
+  ],
+  "microserviceName": "certification",
+  "name": "GoLiveReport",
+  "relationships": [
+    {
+      "otherEntityName": "goLiveDossier",
+      "relationshipName": "dossier",
+      "relationshipSide": "left",
+      "relationshipType": "one-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceImpl"
+}

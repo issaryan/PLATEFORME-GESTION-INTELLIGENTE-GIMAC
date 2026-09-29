@@ -1,24 +1,24 @@
 package cm.gimac.des.homologation.domain;
 
+import cm.gimac.des.homologation.domain.enumeration.NatureCouverture;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
+import java.io.Serial;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
 /**
- * Couvertures d'un service (algorithme 6.33) : γ (certification) et µ (mise en
- * service), entre 0 et 1. Seules les opérations closes selon la règle des
- * quatre éléments comptent ; aucune pondération manuelle. Seuil d'aptitude
- * τseuil = 1, non paramétrable (D-18).
+ * A Coverage.
  */
 @Entity
 @Table(name = "coverage")
 @SuppressWarnings("common-java:DuplicatedBlocks")
 public class Coverage implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = 1L;
 
     @Id
@@ -27,40 +27,39 @@ public class Coverage implements Serializable {
     private UUID id;
 
     @NotNull
-    @Size(max = 80)
-    @Pattern(regexp = "^[A-Z0-9_]+$")
-    @Column(name = "service_code", length = 80, nullable = false)
+    @Size(max = 40)
+    @Column(name = "service_code", length = 40, nullable = false)
     private String serviceCode;
 
     @NotNull
-    @DecimalMin(value = "0")
-    @DecimalMax(value = "1")
-    @Column(name = "certification_rate", precision = 21, scale = 2, nullable = false)
-    private BigDecimal certificationRate;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "nature", nullable = false)
+    private NatureCouverture nature;
+
+    @Column(name = "numerateur")
+    private Integer numerateur;
+
+    @Column(name = "denominateur")
+    private Integer denominateur;
+
+    @Column(name = "taux", precision = 21, scale = 2)
+    private BigDecimal taux;
 
     @NotNull
-    @DecimalMin(value = "0")
-    @DecimalMax(value = "1")
-    @Column(name = "commissioning_rate", precision = 21, scale = 2, nullable = false)
-    private BigDecimal commissioningRate;
+    @Column(name = "calculable", nullable = false)
+    private Boolean calculable;
+
+    @Size(max = 200)
+    @Column(name = "motif_non_calculable", length = 200)
+    private String motifNonCalculable;
 
     @NotNull
-    @Min(value = 0)
-    @Column(name = "required_count", nullable = false)
-    private Integer requiredCount;
-
-    @NotNull
-    @Min(value = 0)
-    @Column(name = "closed_count", nullable = false)
-    private Integer closedCount;
-
-    @NotNull
-    @Column(name = "computed_at", nullable = false)
-    private Instant computedAt;
+    @Column(name = "date_calcul", nullable = false)
+    private Instant dateCalcul;
 
     @ManyToOne(optional = false)
     @NotNull
-    @JsonIgnoreProperties(value = { "catalog", "campaignSync" }, allowSetters = true)
+    @JsonIgnoreProperties(value = { "version", "contractualScope" }, allowSetters = true)
     private Liaison liaison;
 
     // jhipster-needle-entity-add-field - JHipster will add fields here
@@ -91,69 +90,95 @@ public class Coverage implements Serializable {
         this.serviceCode = serviceCode;
     }
 
-    public BigDecimal getCertificationRate() {
-        return this.certificationRate;
+    public NatureCouverture getNature() {
+        return this.nature;
     }
 
-    public Coverage certificationRate(BigDecimal certificationRate) {
-        this.setCertificationRate(certificationRate);
+    public Coverage nature(NatureCouverture nature) {
+        this.setNature(nature);
         return this;
     }
 
-    public void setCertificationRate(BigDecimal certificationRate) {
-        this.certificationRate = certificationRate;
+    public void setNature(NatureCouverture nature) {
+        this.nature = nature;
     }
 
-    public BigDecimal getCommissioningRate() {
-        return this.commissioningRate;
+    public Integer getNumerateur() {
+        return this.numerateur;
     }
 
-    public Coverage commissioningRate(BigDecimal commissioningRate) {
-        this.setCommissioningRate(commissioningRate);
+    public Coverage numerateur(Integer numerateur) {
+        this.setNumerateur(numerateur);
         return this;
     }
 
-    public void setCommissioningRate(BigDecimal commissioningRate) {
-        this.commissioningRate = commissioningRate;
+    public void setNumerateur(Integer numerateur) {
+        this.numerateur = numerateur;
     }
 
-    public Integer getRequiredCount() {
-        return this.requiredCount;
+    public Integer getDenominateur() {
+        return this.denominateur;
     }
 
-    public Coverage requiredCount(Integer requiredCount) {
-        this.setRequiredCount(requiredCount);
+    public Coverage denominateur(Integer denominateur) {
+        this.setDenominateur(denominateur);
         return this;
     }
 
-    public void setRequiredCount(Integer requiredCount) {
-        this.requiredCount = requiredCount;
+    public void setDenominateur(Integer denominateur) {
+        this.denominateur = denominateur;
     }
 
-    public Integer getClosedCount() {
-        return this.closedCount;
+    public BigDecimal getTaux() {
+        return this.taux;
     }
 
-    public Coverage closedCount(Integer closedCount) {
-        this.setClosedCount(closedCount);
+    public Coverage taux(BigDecimal taux) {
+        this.setTaux(taux);
         return this;
     }
 
-    public void setClosedCount(Integer closedCount) {
-        this.closedCount = closedCount;
+    public void setTaux(BigDecimal taux) {
+        this.taux = taux;
     }
 
-    public Instant getComputedAt() {
-        return this.computedAt;
+    public Boolean getCalculable() {
+        return this.calculable;
     }
 
-    public Coverage computedAt(Instant computedAt) {
-        this.setComputedAt(computedAt);
+    public Coverage calculable(Boolean calculable) {
+        this.setCalculable(calculable);
         return this;
     }
 
-    public void setComputedAt(Instant computedAt) {
-        this.computedAt = computedAt;
+    public void setCalculable(Boolean calculable) {
+        this.calculable = calculable;
+    }
+
+    public String getMotifNonCalculable() {
+        return this.motifNonCalculable;
+    }
+
+    public Coverage motifNonCalculable(String motifNonCalculable) {
+        this.setMotifNonCalculable(motifNonCalculable);
+        return this;
+    }
+
+    public void setMotifNonCalculable(String motifNonCalculable) {
+        this.motifNonCalculable = motifNonCalculable;
+    }
+
+    public Instant getDateCalcul() {
+        return this.dateCalcul;
+    }
+
+    public Coverage dateCalcul(Instant dateCalcul) {
+        this.setDateCalcul(dateCalcul);
+        return this;
+    }
+
+    public void setDateCalcul(Instant dateCalcul) {
+        this.dateCalcul = dateCalcul;
     }
 
     public Liaison getLiaison() {
@@ -194,11 +219,13 @@ public class Coverage implements Serializable {
         return "Coverage{" +
             "id=" + getId() +
             ", serviceCode='" + getServiceCode() + "'" +
-            ", certificationRate=" + getCertificationRate() +
-            ", commissioningRate=" + getCommissioningRate() +
-            ", requiredCount=" + getRequiredCount() +
-            ", closedCount=" + getClosedCount() +
-            ", computedAt='" + getComputedAt() + "'" +
+            ", nature='" + getNature() + "'" +
+            ", numerateur=" + getNumerateur() +
+            ", denominateur=" + getDenominateur() +
+            ", taux=" + getTaux() +
+            ", calculable='" + getCalculable() + "'" +
+            ", motifNonCalculable='" + getMotifNonCalculable() + "'" +
+            ", dateCalcul='" + getDateCalcul() + "'" +
             "}";
     }
 }

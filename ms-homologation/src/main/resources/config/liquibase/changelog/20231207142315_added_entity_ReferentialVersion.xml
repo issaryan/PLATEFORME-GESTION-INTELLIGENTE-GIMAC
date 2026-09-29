@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+
+    <!--
+        Added the entity ReferentialVersion.
+    -->
+    <changeSet id="20231207142315-1" author="jhipster">
+        <createTable tableName="referential_version">
+            <column name="id" type="${uuidType}">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="type_projet" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="numero" type="integer">
+                <constraints nullable="false" />
+            </column>
+            <column name="libelle" type="varchar(200)">
+                <constraints nullable="false" />
+            </column>
+            <column name="etat" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="date_creation" type="${datetimeType}">
+                <constraints nullable="false" />
+            </column>
+            <column name="date_publication" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="ordre_topologique" type="${clobType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="version_source_id" type="${uuidType}">
+                <constraints nullable="true" />
+            </column>
+            <!-- jhipster-needle-liquibase-add-column - JHipster will add columns here -->
+        </createTable>
+        <dropDefaultValue tableName="referential_version" columnName="date_creation" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="referential_version" columnName="date_publication" columnDataType="${datetimeType}"/>
+    </changeSet>
+
+    <!-- jhipster-needle-liquibase-add-changeset - JHipster will add changesets here -->
+</databaseChangeLog>

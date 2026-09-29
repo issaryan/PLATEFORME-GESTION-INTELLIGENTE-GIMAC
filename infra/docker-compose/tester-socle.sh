@@ -11,8 +11,8 @@ CURL="docker run --rm --network $RESEAU curlimages/curl:8.22.0 -s"
 AWS="docker run --rm --network $RESEAU -e AWS_ACCESS_KEY_ID=$GIMAC_S3_CLE_ACCES -e AWS_SECRET_ACCESS_KEY=$GIMAC_S3_CLE_SECRETE -e AWS_DEFAULT_REGION=us-east-1 amazon/aws-cli:2.37.5 --endpoint-url http://stockage-objet:7480"
 SERVICES=(gateway iam audit document notification participant homologation certification incident monitoring rapprochement pilotage reporting collaboration)
 echecs=0
-verifier() { # libellé, commande (vrai = OK)
-  if eval "$2" >/dev/null 2>&1; then echo "OK     $1"; else echo "ÉCHEC  $1"; echecs=$((echecs + 1)); fi
+verifier() { # libellé, commande (vrai = OK) ; une seconde tentative absorbe un aléa réseau passager
+  if eval "$2" >/dev/null 2>&1 || { sleep 3; eval "$2" >/dev/null 2>&1; }; then echo "OK     $1"; else echo "ÉCHEC  $1"; echecs=$((echecs + 1)); fi
 }
 
 echo "== Conteneurs"
@@ -28,7 +28,7 @@ done
 verifier "compartiments WORM initialisés" "compose logs stockage-objet-init | grep -q 'Compartiments WORM prêts'"
 
 echo "== Sécurité et routage"
-JETON=$($CURL -X POST http://keycloak:9080/realms/jhipster/protocol/openid-connect/token \
+JETON=$($CURL -X POST http://keycloak:9080/realms/gimac/protocol/openid-connect/token \
   -d grant_type=client_credentials -d client_id=internal -d client_secret=internal -d scope=openid | sed -n 's/.*"access_token":"\([^"]*\)".*/\1/p')
 verifier "jeton Keycloak obtenu (client_credentials, portée openid pour userinfo)" "[ -n \"$JETON\" ]"
 # Sans jeton, la passerelle BFF redirige vers la connexion Keycloak (302) ; aucune donnée n'est servie.
@@ -49,7 +49,8 @@ echo "== Simulacres et présentation"
 verifier "simulateur en lecture seule (GET 200)" "[ \"\$($CURL -o /dev/null -w '%{http_code}' http://simulateur-certification:8080/api/v1/liaisons/LIA-1/campagnes)\" = 200 ]"
 verifier "simulateur refuse l'écriture (405)" "[ \"\$($CURL -o /dev/null -w '%{http_code}' -X POST http://simulateur-certification:8080/api/v1/campagnes/X/resultats)\" = 405 ]"
 for f in departement portail console; do
-  verifier "couche $f servie avec CSP" "$CURL -D - http://frontend-$f:8080/ | grep -qi content-security-policy"
+  # En-têtes seuls (-o /dev/null) : avec pipefail, grep -q couperait curl en pleine écriture du corps.
+  verifier "couche $f servie avec CSP" "$CURL -o /dev/null -D - http://frontend-$f:8080/ | grep -qi content-security-policy"
 done
 CIBLES_ACTIVES=$($CURL 'http://prometheus:9090/api/v1/query?query=count(up==1)' | python3 -c 'import json,sys; r=json.load(sys.stdin)["data"]["result"]; print(r[0]["value"][1] if r else 0)')
 verifier "Prometheus collecte les 14 services ($CIBLES_ACTIVES cibles actives)" "[ ${CIBLES_ACTIVES:-0} -ge 14 ]"

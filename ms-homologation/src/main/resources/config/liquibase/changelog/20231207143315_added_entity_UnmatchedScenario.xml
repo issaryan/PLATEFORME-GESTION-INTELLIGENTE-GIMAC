@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+
+    <!--
+        Added the entity UnmatchedScenario.
+    -->
+    <changeSet id="20231207143315-1" author="jhipster">
+        <createTable tableName="unmatched_scenario">
+            <column name="id" type="${uuidType}">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="id_scenario" type="varchar(80)">
+                <constraints nullable="false" />
+            </column>
+            <column name="campagne_id" type="varchar(80)">
+                <constraints nullable="true" />
+            </column>
+            <column name="qualification" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="motif" type="varchar(500)">
+                <constraints nullable="true" />
+            </column>
+            <column name="date_detection" type="${datetimeType}">
+                <constraints nullable="false" />
+            </column>
+            <column name="liaison_id" type="${uuidType}">
+                <constraints nullable="false" />
+            </column>
+            <!-- jhipster-needle-liquibase-add-column - JHipster will add columns here -->
+        </createTable>
+        <dropDefaultValue tableName="unmatched_scenario" columnName="date_detection" columnDataType="${datetimeType}"/>
+    </changeSet>
+
+    <!-- jhipster-needle-liquibase-add-changeset - JHipster will add changesets here -->
+</databaseChangeLog>

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+
+    <!--
+        Added the entity ChangeRecordSnapshot.
+    -->
+    <changeSet id="20231212200746-1" author="jhipster">
+        <createTable tableName="change_record_snapshot">
+            <column name="id" type="${uuidType}">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="reference" type="varchar(120)">
+                <constraints nullable="false" />
+            </column>
+            <column name="etat_approbation" type="varchar(40)">
+                <constraints nullable="false" />
+            </column>
+            <column name="fenetre_debut" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="fenetre_fin" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="date_lecture" type="${datetimeType}">
+                <constraints nullable="false" />
+            </column>
+            <column name="empreinte_reponse" type="varchar(64)">
+                <constraints nullable="true" />
+            </column>
+            <column name="dossier_id" type="${uuidType}">
+                <constraints nullable="false" />
+            </column>
+            <!-- jhipster-needle-liquibase-add-column - JHipster will add columns here -->
+        </createTable>
+        <dropDefaultValue tableName="change_record_snapshot" columnName="fenetre_debut" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="change_record_snapshot" columnName="fenetre_fin" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="change_record_snapshot" columnName="date_lecture" columnDataType="${datetimeType}"/>
+    </changeSet>
+
+    <!-- jhipster-needle-liquibase-add-changeset - JHipster will add changesets here -->
+</databaseChangeLog>

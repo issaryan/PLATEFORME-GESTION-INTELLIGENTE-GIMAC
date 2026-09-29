@@ -1,0 +1,87 @@
+{
+  "annotations": {
+    "changelogDate": "20231207142815"
+  },
+  "applications": ["homologation"],
+  "clientRootFolder": "homologation",
+  "databaseType": "sql",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "code",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "40"
+    },
+    {
+      "fieldName": "libelle",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "200"
+    },
+    {
+      "fieldName": "segment",
+      "fieldType": "Segment",
+      "fieldValues": "TRONC_COMMUN_AMONT,BRANCHE,TRONC_COMMUN_AVAL"
+    },
+    {
+      "fieldName": "partie",
+      "fieldType": "Partie",
+      "fieldValues": "DES,PARTICIPANT"
+    },
+    {
+      "fieldName": "serviceCode",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "40"
+    },
+    {
+      "fieldName": "etat",
+      "fieldType": "EtatOperation",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "VERROUILLEE,ELIGIBLE,PREUVE_DEPOSEE,VALIDEE_HORODATAGE_EN_ATTENTE,CLOSE,ROUVERTE,HORS_PERIMETRE"
+    },
+    {
+      "fieldName": "degreEntrant",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "echeance",
+      "fieldType": "LocalDate"
+    },
+    {
+      "fieldName": "dateEtat",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "grilleReponses",
+      "fieldType": "TextBlob"
+    }
+  ],
+  "microserviceName": "homologation",
+  "name": "OperationInstance",
+  "pagination": "pagination",
+  "relationships": [
+    {
+      "otherEntityName": "liaison",
+      "relationshipName": "liaison",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    },
+    {
+      "otherEntityName": "referenceOperation",
+      "relationshipName": "referenceOperation",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceImpl"
+}

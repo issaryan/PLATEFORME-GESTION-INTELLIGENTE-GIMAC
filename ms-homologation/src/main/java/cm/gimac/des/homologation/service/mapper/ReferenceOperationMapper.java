@@ -1,11 +1,11 @@
 package cm.gimac.des.homologation.service.mapper;
 
-import cm.gimac.des.homologation.domain.ReferenceCatalog;
 import cm.gimac.des.homologation.domain.ReferenceOperation;
-import cm.gimac.des.homologation.service.dto.ReferenceCatalogDTO;
+import cm.gimac.des.homologation.domain.ReferentialVersion;
 import cm.gimac.des.homologation.service.dto.ReferenceOperationDTO;
-import java.util.Set;
-import java.util.stream.Collectors;
+import cm.gimac.des.homologation.service.dto.ReferentialVersionDTO;
+import java.util.Objects;
+import java.util.UUID;
 import org.mapstruct.*;
 
 /**
@@ -13,30 +13,15 @@ import org.mapstruct.*;
  */
 @Mapper(componentModel = "spring")
 public interface ReferenceOperationMapper extends EntityMapper<ReferenceOperationDTO, ReferenceOperation> {
-    @Mapping(target = "catalog", source = "catalog", qualifiedByName = "referenceCatalogVersion")
-    @Mapping(target = "predecessors", source = "predecessors", qualifiedByName = "referenceOperationCodeSet")
-    @Mapping(target = "successors", source = "successors", qualifiedByName = "referenceOperationCodeSet")
+    @Mapping(target = "version", source = "version", qualifiedByName = "referentialVersionId")
     ReferenceOperationDTO toDto(ReferenceOperation s);
 
-    @Mapping(target = "removePredecessors", ignore = true)
-    @Mapping(target = "successors", ignore = true)
-    @Mapping(target = "removeSuccessors", ignore = true)
-    ReferenceOperation toEntity(ReferenceOperationDTO referenceOperationDTO);
-
-    @Named("referenceCatalogVersion")
+    @Named("referentialVersionId")
     @BeanMapping(ignoreByDefault = true)
     @Mapping(target = "id", source = "id")
-    @Mapping(target = "version", source = "version")
-    ReferenceCatalogDTO toDtoReferenceCatalogVersion(ReferenceCatalog referenceCatalog);
+    ReferentialVersionDTO toDtoReferentialVersionId(ReferentialVersion referentialVersion);
 
-    @Named("referenceOperationCode")
-    @BeanMapping(ignoreByDefault = true)
-    @Mapping(target = "id", source = "id")
-    @Mapping(target = "code", source = "code")
-    ReferenceOperationDTO toDtoReferenceOperationCode(ReferenceOperation referenceOperation);
-
-    @Named("referenceOperationCodeSet")
-    default Set<ReferenceOperationDTO> toDtoReferenceOperationCodeSet(Set<ReferenceOperation> referenceOperation) {
-        return referenceOperation.stream().map(this::toDtoReferenceOperationCode).collect(Collectors.toSet());
+    default String map(UUID value) {
+        return Objects.toString(value, null);
     }
 }

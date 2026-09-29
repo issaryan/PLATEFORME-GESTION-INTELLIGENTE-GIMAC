@@ -130,6 +130,36 @@ spring:
             # Routes déclarées vers les 13 microservices (GW-19) : JHipster ne les génère pas
             # sans découverte de services, et la résolution lb:// n'y fonctionne pas.
             # Adresses : propriétés gimac.services.* (localhost en DEV, nom du service en prod).
+            # Couches de présentation du lot 1 (PI-GIMAC-01 §0.6) : OPA d'abord, sur le chemin
+            # d'origine, puis réécriture vers l'API v1 du service. TokenRelay est un filtre par défaut.
+            - id: des-homologation
+              uri: ${gimac.services.homologation}
+              predicates:
+                - Path=/bff/des/homologation/**
+              filters:
+                - OpaAuthorize
+                - RewritePath=/bff/des/homologation/(?<p>.*), /api/v1/${p}
+            - id: portail-homologation
+              uri: ${gimac.services.homologation}
+              predicates:
+                - Path=/bff/portail/homologation/**
+              filters:
+                - OpaAuthorize
+                - RewritePath=/bff/portail/homologation/(?<p>.*), /api/v1/portail/${p}
+            - id: des-certification
+              uri: ${gimac.services.certification}
+              predicates:
+                - Path=/bff/des/certification/**
+              filters:
+                - OpaAuthorize
+                - RewritePath=/bff/des/certification/(?<p>.*), /api/v1/${p}
+            - id: portail-certification
+              uri: ${gimac.services.certification}
+              predicates:
+                - Path=/bff/portail/certification/**
+              filters:
+                - OpaAuthorize
+                - RewritePath=/bff/portail/certification/(?<p>.*), /api/v1/portail/${p}
             - id: iam_route
               uri: ${gimac.services.iam}
               predicates:
@@ -318,6 +348,8 @@ jhipster:
 
 # Adresses des microservices joints par la passerelle (GW-19) ; surchargées en prod.
 gimac:
+  opa:
+    url: http://localhost:8181
   services:
     iam: http://localhost:8081
     audit: http://localhost:8082

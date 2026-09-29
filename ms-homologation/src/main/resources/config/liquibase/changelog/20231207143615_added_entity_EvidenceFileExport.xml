@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+
+    <!--
+        Added the entity EvidenceFileExport.
+    -->
+    <changeSet id="20231207143615-1" author="jhipster">
+        <createTable tableName="evidence_file_export">
+            <column name="id" type="${uuidType}">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="manifeste" type="${clobType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="empreinte_manifeste" type="varchar(64)">
+                <constraints nullable="true" />
+            </column>
+            <column name="document_ref" type="varchar(120)">
+                <constraints nullable="true" />
+            </column>
+            <column name="date_export" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="demandeur_id" type="${uuidType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="socle_empreinte" type="varchar(64)">
+                <constraints nullable="true" />
+            </column>
+            <column name="etat" type="varchar(30)">
+                <constraints nullable="true" />
+            </column>
+            <column name="liaison_id" type="${uuidType}">
+                <constraints nullable="false" />
+            </column>
+            <!-- jhipster-needle-liquibase-add-column - JHipster will add columns here -->
+        </createTable>
+        <dropDefaultValue tableName="evidence_file_export" columnName="date_export" columnDataType="${datetimeType}"/>
+    </changeSet>
+
+    <!-- jhipster-needle-liquibase-add-changeset - JHipster will add changesets here -->
+</databaseChangeLog>

@@ -18,7 +18,7 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 /**
  * This class allows you to run unit and integration tests without an IdP.
  */
-@TestConfiguration
+@TestConfiguration(proxyBeanMethods = false)
 public class TestSecurityConfiguration {
 
     @Bean

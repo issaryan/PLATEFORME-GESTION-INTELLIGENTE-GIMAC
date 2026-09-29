@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+
+    <!--
+        Added the entity ReplayCursor.
+    -->
+    <changeSet id="20231207143715-1" author="jhipster">
+        <createTable tableName="replay_cursor">
+            <column name="id" type="${uuidType}">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="campagne_id" type="varchar(80)">
+                <constraints nullable="true" />
+            </column>
+            <column name="liaison_id" type="${uuidType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="position" type="varchar(120)">
+                <constraints nullable="true" />
+            </column>
+            <column name="date_dernier_succes" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="echecs_consecutifs" type="integer">
+                <constraints nullable="true" />
+            </column>
+            <column name="etat_disjoncteur" type="varchar(255)">
+                <constraints nullable="true" />
+            </column>
+            <!-- jhipster-needle-liquibase-add-column - JHipster will add columns here -->
+        </createTable>
+        <dropDefaultValue tableName="replay_cursor" columnName="date_dernier_succes" columnDataType="${datetimeType}"/>
+    </changeSet>
+
+    <!-- jhipster-needle-liquibase-add-changeset - JHipster will add changesets here -->
+</databaseChangeLog>

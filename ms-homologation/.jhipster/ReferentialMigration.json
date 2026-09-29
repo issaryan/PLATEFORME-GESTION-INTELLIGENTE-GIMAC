@@ -1,0 +1,49 @@
+{
+  "annotations": {
+    "changelogDate": "20231207143915"
+  },
+  "applications": ["homologation"],
+  "clientRootFolder": "homologation",
+  "databaseType": "sql",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "versionSourceId",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "versionCibleId",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "etat",
+      "fieldType": "EtatMigration",
+      "fieldValues": "SIMULEE,APPROUVEE,EN_COURS,TERMINEE,INTERROMPUE"
+    },
+    {
+      "fieldName": "rapport",
+      "fieldType": "TextBlob"
+    },
+    {
+      "fieldName": "dateDemande",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "decideurId",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "liaisonsRetenues",
+      "fieldType": "TextBlob"
+    }
+  ],
+  "microserviceName": "homologation",
+  "name": "ReferentialMigration",
+  "relationships": [],
+  "searchEngine": "no",
+  "service": "serviceImpl"
+}

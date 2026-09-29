@@ -12,18 +12,27 @@
     <property name="timeType" value="time(6)" dbms="postgresql"/>
 
     <include file="config/liquibase/changelog/00000000000000_initial_schema.xml" relativeToChangelogFile="false"/>
-    <include file="config/liquibase/changelog/20260928134017_added_entity_CommissioningFile.xml" relativeToChangelogFile="false"/>
-    <include file="config/liquibase/changelog/20260928134117_added_entity_Quitus.xml" relativeToChangelogFile="false"/>
-    <include file="config/liquibase/changelog/20260928134217_added_entity_ChangeRecord.xml" relativeToChangelogFile="false"/>
-    <include file="config/liquibase/changelog/20260928134317_added_entity_CertificationAttestation.xml" relativeToChangelogFile="false"/>
-    <include file="config/liquibase/changelog/20260928134417_added_entity_EvidenceItem.xml" relativeToChangelogFile="false"/>
-    <include file="config/liquibase/changelog/20260928134517_added_entity_CoverageSnapshot.xml" relativeToChangelogFile="false"/>
-    <include file="config/liquibase/changelog/20260928134617_added_entity_ClosedOperationSnapshot.xml" relativeToChangelogFile="false"/>
-    <include file="config/liquibase/changelog/20260928134717_added_entity_DeduplicationEntry.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20231212200246_added_entity_CertificationCircuit.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20231212200346_added_entity_Quitus.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20231212200446_added_entity_SignedDecision.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20231212200546_added_entity_GoLiveDossier.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20231212200646_added_entity_CompletenessCondition.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20231212200746_added_entity_ChangeRecordSnapshot.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20231212200846_added_entity_GoLiveReport.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20231212200946_added_entity_TimestampToken.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20231212201046_added_entity_Attestation.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20231212201146_added_entity_CertificationRegisterEntry.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20231212201246_added_entity_AttestationStatusDecision.xml" relativeToChangelogFile="false"/>
     <!-- jhipster-needle-liquibase-add-changelog - JHipster will add liquibase changelogs here -->
-    <include file="config/liquibase/changelog/20260928134017_added_entity_constraints_CommissioningFile.xml" relativeToChangelogFile="false"/>
-    <include file="config/liquibase/changelog/20260928134117_added_entity_constraints_Quitus.xml" relativeToChangelogFile="false"/>
-    <include file="config/liquibase/changelog/20260928134417_added_entity_constraints_EvidenceItem.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20231212200346_added_entity_constraints_Quitus.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20231212200446_added_entity_constraints_SignedDecision.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20231212200546_added_entity_constraints_GoLiveDossier.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20231212200646_added_entity_constraints_CompletenessCondition.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20231212200746_added_entity_constraints_ChangeRecordSnapshot.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20231212200846_added_entity_constraints_GoLiveReport.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20231212201046_added_entity_constraints_Attestation.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20231212201246_added_entity_constraints_AttestationStatusDecision.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261005000001_lot1_post_generation.xml" relativeToChangelogFile="false"/>
     <!-- jhipster-needle-liquibase-add-constraints-changelog - JHipster will add liquibase constraints changelogs here -->
     <!-- jhipster-needle-liquibase-add-incremental-changelog - JHipster will add incremental liquibase changelogs here -->
 </databaseChangeLog>

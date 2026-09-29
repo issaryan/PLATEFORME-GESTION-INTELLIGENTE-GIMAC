@@ -1,8 +1,8 @@
 package cm.gimac.des.homologation.domain;
 
-import static cm.gimac.des.homologation.domain.CampaignSyncTestSamples.*;
+import static cm.gimac.des.homologation.domain.ContractualScopeTestSamples.*;
 import static cm.gimac.des.homologation.domain.LiaisonTestSamples.*;
-import static cm.gimac.des.homologation.domain.ReferenceCatalogTestSamples.*;
+import static cm.gimac.des.homologation.domain.ReferentialVersionTestSamples.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import cm.gimac.des.homologation.web.rest.TestUtil;
@@ -25,28 +25,28 @@ class LiaisonTest {
     }
 
     @Test
-    void catalogTest() {
+    void versionTest() {
         Liaison liaison = getLiaisonRandomSampleGenerator();
-        ReferenceCatalog referenceCatalogBack = getReferenceCatalogRandomSampleGenerator();
+        ReferentialVersion referentialVersionBack = getReferentialVersionRandomSampleGenerator();
 
-        liaison.setCatalog(referenceCatalogBack);
-        assertThat(liaison.getCatalog()).isEqualTo(referenceCatalogBack);
+        liaison.setVersion(referentialVersionBack);
+        assertThat(liaison.getVersion()).isEqualTo(referentialVersionBack);
 
-        liaison.catalog(null);
-        assertThat(liaison.getCatalog()).isNull();
+        liaison.version(null);
+        assertThat(liaison.getVersion()).isNull();
     }
 
     @Test
-    void campaignSyncTest() {
+    void contractualScopeTest() {
         Liaison liaison = getLiaisonRandomSampleGenerator();
-        CampaignSync campaignSyncBack = getCampaignSyncRandomSampleGenerator();
+        ContractualScope contractualScopeBack = getContractualScopeRandomSampleGenerator();
 
-        liaison.setCampaignSync(campaignSyncBack);
-        assertThat(liaison.getCampaignSync()).isEqualTo(campaignSyncBack);
-        assertThat(campaignSyncBack.getLiaison()).isEqualTo(liaison);
+        liaison.setContractualScope(contractualScopeBack);
+        assertThat(liaison.getContractualScope()).isEqualTo(contractualScopeBack);
+        assertThat(contractualScopeBack.getLiaison()).isEqualTo(liaison);
 
-        liaison.campaignSync(null);
-        assertThat(liaison.getCampaignSync()).isNull();
-        assertThat(campaignSyncBack.getLiaison()).isNull();
+        liaison.contractualScope(null);
+        assertThat(liaison.getContractualScope()).isNull();
+        assertThat(contractualScopeBack.getLiaison()).isNull();
     }
 }

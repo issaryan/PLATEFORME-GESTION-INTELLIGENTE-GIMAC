@@ -255,22 +255,20 @@ services:
     image: homologation
     environment:
       - _JAVA_OPTIONS=-Xmx512m -Xms256m
-      - SPRING_PROFILES_ACTIVE=prod,api-docs
+      - SPRING_PROFILES_ACTIVE=prod,api-docs,secret-samples
       - MANAGEMENT_PROMETHEUS_METRICS_EXPORT_ENABLED=true
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://homologation-postgresql:5432/homologation
-      - SPRING_LIQUIBASE_URL=jdbc:postgresql://homologation-postgresql:5432/homologation
-      - JHIPSTER_CACHE_REDIS_SERVER=redis://homologation-redis:6379
-      - JHIPSTER_CACHE_REDIS_CLUSTER=false
       - SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_OIDC_ISSUER_URI=http://keycloak:9080/realms/jhipster
       - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_ID=internal
       - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_SECRET=internal
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://homologation-postgresql:5432/homologation
+      - SPRING_DATASOURCE_USERNAME=homologation
+      - SPRING_DATASOURCE_PASSWORD=
+      - SPRING_LIQUIBASE_URL=jdbc:postgresql://homologation-postgresql:5432/homologation
       - SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS=kafka:9092
     healthcheck:
       test:
-        - CMD
-        - curl
-        - -f
-        - http://localhost:8086/management/health
+        - CMD-SHELL
+        - "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8086; printf \"GET /management/health HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n\" >&3; grep -q \"\\\"status\\\":\\\"UP\\\"\" <&3'"
       interval: 5s
       timeout: 5s
       retries: 40
@@ -280,7 +278,7 @@ services:
       keycloak:
         condition: service_healthy
   homologation-postgresql:
-    image: postgres:17.4
+    image: postgres:18.6
     environment:
       - POSTGRES_USER=homologation
       - POSTGRES_HOST_AUTH_METHOD=trust
@@ -291,29 +289,25 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
-  homologation-redis:
-    image: redis:8.0.0
 
   certification:
     image: certification
     environment:
       - _JAVA_OPTIONS=-Xmx512m -Xms256m
-      - SPRING_PROFILES_ACTIVE=prod,api-docs
+      - SPRING_PROFILES_ACTIVE=prod,api-docs,secret-samples
       - MANAGEMENT_PROMETHEUS_METRICS_EXPORT_ENABLED=true
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://certification-postgresql:5432/certification
-      - SPRING_LIQUIBASE_URL=jdbc:postgresql://certification-postgresql:5432/certification
-      - JHIPSTER_CACHE_REDIS_SERVER=redis://certification-redis:6379
-      - JHIPSTER_CACHE_REDIS_CLUSTER=false
       - SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_OIDC_ISSUER_URI=http://keycloak:9080/realms/jhipster
       - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_ID=internal
       - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_SECRET=internal
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://certification-postgresql:5432/certification
+      - SPRING_DATASOURCE_USERNAME=certification
+      - SPRING_DATASOURCE_PASSWORD=
+      - SPRING_LIQUIBASE_URL=jdbc:postgresql://certification-postgresql:5432/certification
       - SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS=kafka:9092
     healthcheck:
       test:
-        - CMD
-        - curl
-        - -f
-        - http://localhost:8087/management/health
+        - CMD-SHELL
+        - "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8087; printf \"GET /management/health HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n\" >&3; grep -q \"\\\"status\\\":\\\"UP\\\"\" <&3'"
       interval: 5s
       timeout: 5s
       retries: 40
@@ -323,7 +317,7 @@ services:
       keycloak:
         condition: service_healthy
   certification-postgresql:
-    image: postgres:17.4
+    image: postgres:18.6
     environment:
       - POSTGRES_USER=certification
       - POSTGRES_HOST_AUTH_METHOD=trust
@@ -334,8 +328,6 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
-  certification-redis:
-    image: redis:8.0.0
 
   incident:
     image: incident

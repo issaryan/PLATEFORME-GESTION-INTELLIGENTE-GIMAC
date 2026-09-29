@@ -103,6 +103,8 @@ jhipster:
 
 # Adresses des microservices en prod (Docker Compose, Kubernetes) : nom du service (GW-19).
 gimac:
+  opa:
+    url: http://opa:8181
   services:
     iam: http://iam:8081
     audit: http://audit:8082

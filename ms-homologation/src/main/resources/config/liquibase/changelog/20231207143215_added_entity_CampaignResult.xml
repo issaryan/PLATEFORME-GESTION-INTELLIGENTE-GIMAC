@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+
+    <!--
+        Added the entity CampaignResult.
+    -->
+    <changeSet id="20231207143215-1" author="jhipster">
+        <createTable tableName="campaign_result">
+            <column name="id" type="${uuidType}">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="campagne_id" type="varchar(80)">
+                <constraints nullable="false" />
+            </column>
+            <column name="execution_id" type="varchar(80)">
+                <constraints nullable="false" />
+            </column>
+            <column name="id_scenario" type="varchar(80)">
+                <constraints nullable="false" />
+            </column>
+            <column name="verdict" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="date_execution" type="${datetimeType}">
+                <constraints nullable="false" />
+            </column>
+            <column name="version_scenario" type="varchar(40)">
+                <constraints nullable="true" />
+            </column>
+            <column name="reference_trace" type="varchar(120)">
+                <constraints nullable="true" />
+            </column>
+            <column name="empreinte_reponse" type="varchar(64)">
+                <constraints nullable="false" />
+            </column>
+            <column name="date_reprise" type="${datetimeType}">
+                <constraints nullable="false" />
+            </column>
+            <column name="liaison_id" type="${uuidType}">
+                <constraints nullable="false" />
+            </column>
+            <column name="operation_id" type="${uuidType}">
+                <constraints nullable="true" />
+            </column>
+            <!-- jhipster-needle-liquibase-add-column - JHipster will add columns here -->
+        </createTable>
+        <dropDefaultValue tableName="campaign_result" columnName="date_execution" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="campaign_result" columnName="date_reprise" columnDataType="${datetimeType}"/>
+    </changeSet>
+
+    <!-- jhipster-needle-liquibase-add-changeset - JHipster will add changesets here -->
+</databaseChangeLog>

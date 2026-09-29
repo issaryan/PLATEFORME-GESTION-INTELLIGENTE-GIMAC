@@ -52,6 +52,7 @@ Copié et adapté (paquet `cm.gimac.des.gateway`) ; chaque bean est inactif tant
 | 2026-09-28 | — | Reprise de 10 classes du projet afriland (D-52) ; compilation vérifiée. |
 | 2026-09-28 | — | Écarts comblés : liaison du jeton au certificat, JWKS, TLS 1.3, chemins exemptés ancrés, masquage Luhn 6+4 (D-53). |
 | 2026-09-29 | — | Masquage des journaux activé (logback, `%maskedMsg`) ; 40 tests unitaires et 74 tests d'intégration réussis, image Jib construite ; 13 routes déclarées vers `gimac.services.<service>` (la résolution `lb://` générée ne fonctionne pas sans découverte) ; Valkey pour la sonde Redis ; `List.of` (contrôle de modernité) (D-54). |
+| 2026-09-29 | — | Lot 1 : routes `/bff/des` et `/bff/portail` vers l'homologation et la certification, filtre `OpaAuthorize`, 401 sans jeton sur `/bff/**`, permissions acceptées comme autorités (D-55). |
 <!-- GIMAC:FIN -->
 
 # gateway

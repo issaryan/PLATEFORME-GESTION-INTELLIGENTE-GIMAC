@@ -47,20 +47,21 @@ public class LiaisonAsserts {
     public static void assertLiaisonUpdatableFieldsEquals(Liaison expected, Liaison actual) {
         assertThat(actual)
             .as("Verify Liaison relevant properties")
-            .satisfies(a -> assertThat(a.getLiaisonCode()).as("check liaisonCode").isEqualTo(expected.getLiaisonCode()))
+            .satisfies(a -> assertThat(a.getTypeProjet()).as("check typeProjet").isEqualTo(expected.getTypeProjet()))
             .satisfies(a -> assertThat(a.getInstitutionId()).as("check institutionId").isEqualTo(expected.getInstitutionId()))
-            .satisfies(a -> assertThat(a.getProjectType()).as("check projectType").isEqualTo(expected.getProjectType()))
-            .satisfies(a -> assertThat(a.getOpenedOn()).as("check openedOn").isEqualTo(expected.getOpenedOn()))
-            .satisfies(a -> assertThat(a.getProjectLeadId()).as("check projectLeadId").isEqualTo(expected.getProjectLeadId()))
-            .satisfies(a -> assertThat(a.getState()).as("check state").isEqualTo(expected.getState()))
-            .satisfies(a -> assertThat(a.getCampaignRef()).as("check campaignRef").isEqualTo(expected.getCampaignRef()))
+            .satisfies(a -> assertThat(a.getInstitutionNom()).as("check institutionNom").isEqualTo(expected.getInstitutionNom()))
+            .satisfies(a -> assertThat(a.getEtat()).as("check etat").isEqualTo(expected.getEtat()))
+            .satisfies(a -> assertThat(a.getChefDeProjetId()).as("check chefDeProjetId").isEqualTo(expected.getChefDeProjetId()))
             .satisfies(a ->
-                assertThat(a.getReadyForCertificationAt())
-                    .as("check readyForCertificationAt")
-                    .isEqualTo(expected.getReadyForCertificationAt())
+                assertThat(a.getBanquePartenaireId()).as("check banquePartenaireId").isEqualTo(expected.getBanquePartenaireId())
             )
-            .satisfies(a -> assertThat(a.getCommissionedOn()).as("check commissionedOn").isEqualTo(expected.getCommissionedOn()))
-            .satisfies(a -> assertThat(a.getStateReason()).as("check stateReason").isEqualTo(expected.getStateReason()));
+            .satisfies(a -> assertThat(a.getDateOuverture()).as("check dateOuverture").isEqualTo(expected.getDateOuverture()))
+            .satisfies(a -> assertThat(a.getMotifEtat()).as("check motifEtat").isEqualTo(expected.getMotifEtat()))
+            .satisfies(a -> assertThat(a.getCycleAptitude()).as("check cycleAptitude").isEqualTo(expected.getCycleAptitude()))
+            .satisfies(a ->
+                assertThat(a.getOrdreInstanciation()).as("check ordreInstanciation").isEqualTo(expected.getOrdreInstanciation())
+            )
+            .satisfies(a -> assertThat(a.getEtatAvantGel()).as("check etatAvantGel").isEqualTo(expected.getEtatAvantGel()));
     }
 
     /**
@@ -72,6 +73,6 @@ public class LiaisonAsserts {
     public static void assertLiaisonUpdatableRelationshipsEquals(Liaison expected, Liaison actual) {
         assertThat(actual)
             .as("Verify Liaison relationships")
-            .satisfies(a -> assertThat(a.getCatalog()).as("check catalog").isEqualTo(expected.getCatalog()));
+            .satisfies(a -> assertThat(a.getVersion()).as("check version").isEqualTo(expected.getVersion()));
     }
 }

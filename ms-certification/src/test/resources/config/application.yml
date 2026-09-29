@@ -10,37 +10,20 @@
 # ===================================================================
 # Standard Spring Boot properties.
 # Full reference is available at:
-# http://docs.spring.io/spring-boot/docs/current/reference/html/common-application-properties.html
+# https://docs.spring.io/spring-boot/appendix/application-properties/index.html
 # ===================================================================
 
 spring:
   application:
     name: certification
   cloud:
-    function:
-      definition: kafkaConsumer;kafkaProducer
-    stream:
-      kafka:
-        binder:
-          replicationFactor: 1
-          auto-create-topics: true
-      bindings:
-        binding-out-0:
-          content-type: text/plain
-          group: certification
-        kafkaConsumer-in-0:
-          destination: sse-topic
-          content-type: text/plain
-          group: certification
-        kafkaProducer-out-0:
-          content-type: text/plain
-          group: certification
   # Replace by 'prod, faker' to add the faker context and have sample data loaded in production
   liquibase:
     contexts: test
   jackson:
-    serialization:
-      write-durations-as-timestamps: false
+    datatype:
+      datetime:
+        write-durations-as-timestamps: false
   mail:
     host: localhost
   main:
@@ -80,8 +63,6 @@ server:
 # Full reference is available at: https://www.jhipster.tech/common-application-properties/
 # ===================================================================
 jhipster:
-  clientApp:
-    name: 'certificationApp'
   mail:
     from: certification@localhost.com
     base-url: http://127.0.0.1:8080

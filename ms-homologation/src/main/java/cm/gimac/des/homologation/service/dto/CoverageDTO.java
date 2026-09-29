@@ -1,6 +1,6 @@
 package cm.gimac.des.homologation.service.dto;
 
-import io.swagger.v3.oas.annotations.media.Schema;
+import cm.gimac.des.homologation.domain.enumeration.NatureCouverture;
 import jakarta.validation.constraints.*;
 import java.io.Serializable;
 import java.math.BigDecimal;
@@ -11,39 +11,32 @@ import java.util.UUID;
 /**
  * A DTO for the {@link cm.gimac.des.homologation.domain.Coverage} entity.
  */
-@Schema(
-    description = "Couvertures d'un service (algorithme 6.33) : γ (certification) et µ (mise en\nservice), entre 0 et 1. Seules les opérations closes selon la règle des\nquatre éléments comptent ; aucune pondération manuelle. Seuil d'aptitude\nτseuil = 1, non paramétrable (D-18)."
-)
 @SuppressWarnings("common-java:DuplicatedBlocks")
 public class CoverageDTO implements Serializable {
 
     private UUID id;
 
     @NotNull
-    @Size(max = 80)
-    @Pattern(regexp = "^[A-Z0-9_]+$")
+    @Size(max = 40)
     private String serviceCode;
 
     @NotNull
-    @DecimalMin(value = "0")
-    @DecimalMax(value = "1")
-    private BigDecimal certificationRate;
+    private NatureCouverture nature;
+
+    private Integer numerateur;
+
+    private Integer denominateur;
+
+    private BigDecimal taux;
 
     @NotNull
-    @DecimalMin(value = "0")
-    @DecimalMax(value = "1")
-    private BigDecimal commissioningRate;
+    private Boolean calculable;
+
+    @Size(max = 200)
+    private String motifNonCalculable;
 
     @NotNull
-    @Min(value = 0)
-    private Integer requiredCount;
-
-    @NotNull
-    @Min(value = 0)
-    private Integer closedCount;
-
-    @NotNull
-    private Instant computedAt;
+    private Instant dateCalcul;
 
     @NotNull
     private LiaisonDTO liaison;
@@ -64,44 +57,60 @@ public class CoverageDTO implements Serializable {
         this.serviceCode = serviceCode;
     }
 
-    public BigDecimal getCertificationRate() {
-        return certificationRate;
+    public NatureCouverture getNature() {
+        return nature;
     }
 
-    public void setCertificationRate(BigDecimal certificationRate) {
-        this.certificationRate = certificationRate;
+    public void setNature(NatureCouverture nature) {
+        this.nature = nature;
     }
 
-    public BigDecimal getCommissioningRate() {
-        return commissioningRate;
+    public Integer getNumerateur() {
+        return numerateur;
     }
 
-    public void setCommissioningRate(BigDecimal commissioningRate) {
-        this.commissioningRate = commissioningRate;
+    public void setNumerateur(Integer numerateur) {
+        this.numerateur = numerateur;
     }
 
-    public Integer getRequiredCount() {
-        return requiredCount;
+    public Integer getDenominateur() {
+        return denominateur;
     }
 
-    public void setRequiredCount(Integer requiredCount) {
-        this.requiredCount = requiredCount;
+    public void setDenominateur(Integer denominateur) {
+        this.denominateur = denominateur;
     }
 
-    public Integer getClosedCount() {
-        return closedCount;
+    public BigDecimal getTaux() {
+        return taux;
     }
 
-    public void setClosedCount(Integer closedCount) {
-        this.closedCount = closedCount;
+    public void setTaux(BigDecimal taux) {
+        this.taux = taux;
     }
 
-    public Instant getComputedAt() {
-        return computedAt;
+    public Boolean getCalculable() {
+        return calculable;
     }
 
-    public void setComputedAt(Instant computedAt) {
-        this.computedAt = computedAt;
+    public void setCalculable(Boolean calculable) {
+        this.calculable = calculable;
+    }
+
+    public String getMotifNonCalculable() {
+        return motifNonCalculable;
+    }
+
+    public void setMotifNonCalculable(String motifNonCalculable) {
+        this.motifNonCalculable = motifNonCalculable;
+    }
+
+    public Instant getDateCalcul() {
+        return dateCalcul;
+    }
+
+    public void setDateCalcul(Instant dateCalcul) {
+        this.dateCalcul = dateCalcul;
     }
 
     public LiaisonDTO getLiaison() {
@@ -139,11 +148,13 @@ public class CoverageDTO implements Serializable {
         return "CoverageDTO{" +
             "id='" + getId() + "'" +
             ", serviceCode='" + getServiceCode() + "'" +
-            ", certificationRate=" + getCertificationRate() +
-            ", commissioningRate=" + getCommissioningRate() +
-            ", requiredCount=" + getRequiredCount() +
-            ", closedCount=" + getClosedCount() +
-            ", computedAt='" + getComputedAt() + "'" +
+            ", nature='" + getNature() + "'" +
+            ", numerateur=" + getNumerateur() +
+            ", denominateur=" + getDenominateur() +
+            ", taux=" + getTaux() +
+            ", calculable='" + getCalculable() + "'" +
+            ", motifNonCalculable='" + getMotifNonCalculable() + "'" +
+            ", dateCalcul='" + getDateCalcul() + "'" +
             ", liaison=" + getLiaison() +
             "}";
     }

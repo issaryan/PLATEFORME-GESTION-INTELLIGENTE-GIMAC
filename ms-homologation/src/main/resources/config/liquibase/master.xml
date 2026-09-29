@@ -12,25 +12,39 @@
     <property name="timeType" value="time(6)" dbms="postgresql"/>
 
     <include file="config/liquibase/changelog/00000000000000_initial_schema.xml" relativeToChangelogFile="false"/>
-    <include file="config/liquibase/changelog/20260928134003_added_entity_ReferenceCatalog.xml" relativeToChangelogFile="false"/>
-    <include file="config/liquibase/changelog/20260928134103_added_entity_ReferenceOperation.xml" relativeToChangelogFile="false"/>
-    <include file="config/liquibase/changelog/20260928134203_added_entity_Liaison.xml" relativeToChangelogFile="false"/>
-    <include file="config/liquibase/changelog/20260928134303_added_entity_ContractedScope.xml" relativeToChangelogFile="false"/>
-    <include file="config/liquibase/changelog/20260928134403_added_entity_Operation.xml" relativeToChangelogFile="false"/>
-    <include file="config/liquibase/changelog/20260928134503_added_entity_TestScenario.xml" relativeToChangelogFile="false"/>
-    <include file="config/liquibase/changelog/20260928134603_added_entity_CampaignSync.xml" relativeToChangelogFile="false"/>
-    <include file="config/liquibase/changelog/20260928134703_added_entity_Coverage.xml" relativeToChangelogFile="false"/>
-    <include file="config/liquibase/changelog/20260928134803_added_entity_QrVerification.xml" relativeToChangelogFile="false"/>
-    <include file="config/liquibase/changelog/20260928134903_added_entity_DeduplicationEntry.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20231207142315_added_entity_ReferentialVersion.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20231207142415_added_entity_ReferenceOperation.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20231207142515_added_entity_Liaison.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20231207142615_added_entity_ContractualScope.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20231207142715_added_entity_ScopeItem.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20231207142815_added_entity_OperationInstance.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20231207142915_added_entity_Assignment.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20231207143015_added_entity_EvidenceReference.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20231207143115_added_entity_ClosureRecord.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20231207143215_added_entity_CampaignResult.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20231207143315_added_entity_UnmatchedScenario.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20231207143415_added_entity_Coverage.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20231207143515_added_entity_EvaluationBase.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20231207143615_added_entity_EvidenceFileExport.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20231207143715_added_entity_ReplayCursor.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20231207143815_added_entity_RejectedRecord.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20231207143915_added_entity_ReferentialMigration.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20231207144015_added_entity_DeadlineNotification.xml" relativeToChangelogFile="false"/>
     <!-- jhipster-needle-liquibase-add-changelog - JHipster will add liquibase changelogs here -->
-    <include file="config/liquibase/changelog/20260928134103_added_entity_constraints_ReferenceOperation.xml" relativeToChangelogFile="false"/>
-    <include file="config/liquibase/changelog/20260928134203_added_entity_constraints_Liaison.xml" relativeToChangelogFile="false"/>
-    <include file="config/liquibase/changelog/20260928134303_added_entity_constraints_ContractedScope.xml" relativeToChangelogFile="false"/>
-    <include file="config/liquibase/changelog/20260928134403_added_entity_constraints_Operation.xml" relativeToChangelogFile="false"/>
-    <include file="config/liquibase/changelog/20260928134503_added_entity_constraints_TestScenario.xml" relativeToChangelogFile="false"/>
-    <include file="config/liquibase/changelog/20260928134603_added_entity_constraints_CampaignSync.xml" relativeToChangelogFile="false"/>
-    <include file="config/liquibase/changelog/20260928134703_added_entity_constraints_Coverage.xml" relativeToChangelogFile="false"/>
-    <include file="config/liquibase/changelog/20260928134803_added_entity_constraints_QrVerification.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20231207142415_added_entity_constraints_ReferenceOperation.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20231207142515_added_entity_constraints_Liaison.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20231207142615_added_entity_constraints_ContractualScope.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20231207142715_added_entity_constraints_ScopeItem.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20231207142815_added_entity_constraints_OperationInstance.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20231207142915_added_entity_constraints_Assignment.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20231207143015_added_entity_constraints_EvidenceReference.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20231207143115_added_entity_constraints_ClosureRecord.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20231207143215_added_entity_constraints_CampaignResult.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20231207143315_added_entity_constraints_UnmatchedScenario.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20231207143415_added_entity_constraints_Coverage.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20231207143515_added_entity_constraints_EvaluationBase.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20231207143615_added_entity_constraints_EvidenceFileExport.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261005000001_lot1_post_generation.xml" relativeToChangelogFile="false"/>
     <!-- jhipster-needle-liquibase-add-constraints-changelog - JHipster will add liquibase constraints changelogs here -->
     <!-- jhipster-needle-liquibase-add-incremental-changelog - JHipster will add incremental liquibase changelogs here -->
 </databaseChangeLog>

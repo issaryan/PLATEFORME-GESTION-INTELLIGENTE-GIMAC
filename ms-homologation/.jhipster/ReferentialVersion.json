@@ -1,0 +1,60 @@
+{
+  "annotations": {
+    "changelogDate": "20231207142315"
+  },
+  "applications": ["homologation"],
+  "clientRootFolder": "homologation",
+  "databaseType": "sql",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "typeProjet",
+      "fieldType": "TypeProjet",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "CARTE_INTERBANCAIRE,PAIEMENT_MOBILE,DELEGATAIRE"
+    },
+    {
+      "fieldName": "numero",
+      "fieldType": "Integer",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "libelle",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "200"
+    },
+    {
+      "fieldName": "etat",
+      "fieldType": "EtatVersionReferentiel",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "BROUILLON,PUBLIEE,RETIREE"
+    },
+    {
+      "fieldName": "dateCreation",
+      "fieldType": "Instant",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "datePublication",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "ordreTopologique",
+      "fieldType": "TextBlob"
+    },
+    {
+      "fieldName": "versionSourceId",
+      "fieldType": "UUID"
+    }
+  ],
+  "microserviceName": "homologation",
+  "name": "ReferentialVersion",
+  "relationships": [],
+  "searchEngine": "no",
+  "service": "serviceImpl"
+}

@@ -1,28 +1,24 @@
 package cm.gimac.des.certification.domain;
 
-import cm.gimac.des.certification.domain.enumeration.QuitusDecision;
-import cm.gimac.des.certification.domain.enumeration.QuitusStatus;
-import cm.gimac.des.certification.domain.enumeration.QuitusType;
+import cm.gimac.des.certification.domain.enumeration.EtatQuitus;
+import cm.gimac.des.certification.domain.enumeration.NatureQuitus;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
+import java.io.Serial;
 import java.io.Serializable;
 import java.time.Instant;
 import java.util.UUID;
 
 /**
- * Quitus : décision motivée, signée, horodatée et scellée (algorithme 6.35).
- * Écart CC corrigé (D-22 prime) : la signature personnelle n'est pas calculée
- * dans le coffre de clés ; c'est l'assertion WebAuthn produite par
- * l'authentificateur FIDO2 du signataire sur le défi δq, vérifiée par MS-IAM.
- * La clé reste sur l'authentificateur ; signerCertRef devient l'identifiant de
- * la clé d'accès enregistrée.
+ * A Quitus.
  */
 @Entity
 @Table(name = "quitus")
 @SuppressWarnings("common-java:DuplicatedBlocks")
 public class Quitus implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = 1L;
 
     @Id
@@ -32,115 +28,29 @@ public class Quitus implements Serializable {
 
     @NotNull
     @Enumerated(EnumType.STRING)
-    @Column(name = "type", nullable = false)
-    private QuitusType type;
+    @Column(name = "nature", nullable = false)
+    private NatureQuitus nature;
 
     @NotNull
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
-    private QuitusStatus status;
+    @Column(name = "etat", nullable = false)
+    private EtatQuitus etat;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "decision")
-    private QuitusDecision decision;
+    @Column(name = "date_attendu")
+    private Instant dateAttendu;
 
-    /**
-     * Signataire (collaborateur MS-IAM), distinct pour chacun des quatre quitus (RG-73).
-     */
-    @Column(name = "signer_id")
-    private UUID signerId;
-
-    /**
-     * Motif, obligatoire à la signature.
-     */
-    @Size(max = 2000)
-    @Column(name = "reason", length = 2000)
-    private String reason;
-
-    /**
-     * β du socle signé ; un quitus favorable reste valable tant que β est inchangé.
-     */
-    @NotNull
-    @Size(min = 64, max = 64)
-    @Pattern(regexp = "^[0-9a-f]{64}$")
-    @Column(name = "basis_digest", length = 64, nullable = false)
-    private String basisDigest;
-
-    /**
-     * δq : empreinte de la décision canonique, présentée comme défi WebAuthn.
-     */
-    @Size(min = 64, max = 64)
-    @Pattern(regexp = "^[0-9a-f]{64}$")
-    @Column(name = "decision_digest", length = 64)
-    private String decisionDigest;
-
-    /**
-     * Identifiant de la clé d'accès WebAuthn (base64url).
-     */
-    @Size(max = 1024)
-    @Column(name = "credential_id", length = 1024)
-    private String credentialId;
-
-    /**
-     * Données de l'authentificateur de l'assertion, brutes.
-     */
-    @Lob
-    @Column(name = "authenticator_data")
-    private byte[] authenticatorData;
-
-    @Column(name = "authenticator_data_content_type")
-    private String authenticatorDataContentType;
-
-    /**
-     * clientDataJSON de l'assertion, contenant le défi.
-     */
-    @Lob
-    @Column(name = "client_data_json")
-    private String clientDataJson;
-
-    /**
-     * Signature de l'assertion (σq).
-     */
-    @Lob
-    @Column(name = "signature")
-    private byte[] signature;
-
-    @Column(name = "signature_content_type")
-    private String signatureContentType;
-
-    /**
-     * Compteur de signature, strictement croissant.
-     */
-    @Min(value = 0L)
-    @Column(name = "sign_count")
-    private Long signCount;
-
-    /**
-     * Jeton RFC 3161 sur SHA256(δq || σq), encodé en DER.
-     */
-    @Lob
-    @Column(name = "timestamp_token")
-    private byte[] timestampToken;
-
-    @Column(name = "timestamp_token_content_type")
-    private String timestampTokenContentType;
-
-    @Column(name = "signed_at")
-    private Instant signedAt;
-
-    /**
-     * Échéance de signature, pour les relances de l'ordonnanceur.
-     */
-    @Column(name = "due_at")
-    private Instant dueAt;
-
-    @Column(name = "invalidated_at")
-    private Instant invalidatedAt;
+    @Size(max = 500)
+    @Column(name = "motif_caducite", length = 500)
+    private String motifCaducite;
 
     @ManyToOne(optional = false)
     @NotNull
-    @JsonIgnoreProperties(value = { "changeRecord", "attestation", "commissioningReport", "quituses", "pieces" }, allowSetters = true)
-    private CommissioningFile file;
+    @JsonIgnoreProperties(value = { "goLiveDossier" }, allowSetters = true)
+    private CertificationCircuit circuit;
+
+    @JsonIgnoreProperties(value = { "quitus" }, allowSetters = true)
+    @OneToOne(fetch = FetchType.LAZY, mappedBy = "quitus")
+    private SignedDecision signedDecision;
 
     // jhipster-needle-entity-add-field - JHipster will add fields here
 
@@ -157,263 +67,87 @@ public class Quitus implements Serializable {
         this.id = id;
     }
 
-    public QuitusType getType() {
-        return this.type;
+    public NatureQuitus getNature() {
+        return this.nature;
     }
 
-    public Quitus type(QuitusType type) {
-        this.setType(type);
+    public Quitus nature(NatureQuitus nature) {
+        this.setNature(nature);
         return this;
     }
 
-    public void setType(QuitusType type) {
-        this.type = type;
+    public void setNature(NatureQuitus nature) {
+        this.nature = nature;
     }
 
-    public QuitusStatus getStatus() {
-        return this.status;
+    public EtatQuitus getEtat() {
+        return this.etat;
     }
 
-    public Quitus status(QuitusStatus status) {
-        this.setStatus(status);
+    public Quitus etat(EtatQuitus etat) {
+        this.setEtat(etat);
         return this;
     }
 
-    public void setStatus(QuitusStatus status) {
-        this.status = status;
+    public void setEtat(EtatQuitus etat) {
+        this.etat = etat;
     }
 
-    public QuitusDecision getDecision() {
-        return this.decision;
+    public Instant getDateAttendu() {
+        return this.dateAttendu;
     }
 
-    public Quitus decision(QuitusDecision decision) {
-        this.setDecision(decision);
+    public Quitus dateAttendu(Instant dateAttendu) {
+        this.setDateAttendu(dateAttendu);
         return this;
     }
 
-    public void setDecision(QuitusDecision decision) {
-        this.decision = decision;
+    public void setDateAttendu(Instant dateAttendu) {
+        this.dateAttendu = dateAttendu;
     }
 
-    public UUID getSignerId() {
-        return this.signerId;
+    public String getMotifCaducite() {
+        return this.motifCaducite;
     }
 
-    public Quitus signerId(UUID signerId) {
-        this.setSignerId(signerId);
+    public Quitus motifCaducite(String motifCaducite) {
+        this.setMotifCaducite(motifCaducite);
         return this;
     }
 
-    public void setSignerId(UUID signerId) {
-        this.signerId = signerId;
+    public void setMotifCaducite(String motifCaducite) {
+        this.motifCaducite = motifCaducite;
     }
 
-    public String getReason() {
-        return this.reason;
+    public CertificationCircuit getCircuit() {
+        return this.circuit;
     }
 
-    public Quitus reason(String reason) {
-        this.setReason(reason);
+    public void setCircuit(CertificationCircuit certificationCircuit) {
+        this.circuit = certificationCircuit;
+    }
+
+    public Quitus circuit(CertificationCircuit certificationCircuit) {
+        this.setCircuit(certificationCircuit);
         return this;
     }
 
-    public void setReason(String reason) {
-        this.reason = reason;
+    public SignedDecision getSignedDecision() {
+        return this.signedDecision;
     }
 
-    public String getBasisDigest() {
-        return this.basisDigest;
+    public void setSignedDecision(SignedDecision signedDecision) {
+        if (this.signedDecision != null) {
+            this.signedDecision.setQuitus(null);
+        }
+        if (signedDecision != null) {
+            signedDecision.setQuitus(this);
+        }
+        this.signedDecision = signedDecision;
     }
 
-    public Quitus basisDigest(String basisDigest) {
-        this.setBasisDigest(basisDigest);
-        return this;
-    }
-
-    public void setBasisDigest(String basisDigest) {
-        this.basisDigest = basisDigest;
-    }
-
-    public String getDecisionDigest() {
-        return this.decisionDigest;
-    }
-
-    public Quitus decisionDigest(String decisionDigest) {
-        this.setDecisionDigest(decisionDigest);
-        return this;
-    }
-
-    public void setDecisionDigest(String decisionDigest) {
-        this.decisionDigest = decisionDigest;
-    }
-
-    public String getCredentialId() {
-        return this.credentialId;
-    }
-
-    public Quitus credentialId(String credentialId) {
-        this.setCredentialId(credentialId);
-        return this;
-    }
-
-    public void setCredentialId(String credentialId) {
-        this.credentialId = credentialId;
-    }
-
-    public byte[] getAuthenticatorData() {
-        return this.authenticatorData;
-    }
-
-    public Quitus authenticatorData(byte[] authenticatorData) {
-        this.setAuthenticatorData(authenticatorData);
-        return this;
-    }
-
-    public void setAuthenticatorData(byte[] authenticatorData) {
-        this.authenticatorData = authenticatorData;
-    }
-
-    public String getAuthenticatorDataContentType() {
-        return this.authenticatorDataContentType;
-    }
-
-    public Quitus authenticatorDataContentType(String authenticatorDataContentType) {
-        this.authenticatorDataContentType = authenticatorDataContentType;
-        return this;
-    }
-
-    public void setAuthenticatorDataContentType(String authenticatorDataContentType) {
-        this.authenticatorDataContentType = authenticatorDataContentType;
-    }
-
-    public String getClientDataJson() {
-        return this.clientDataJson;
-    }
-
-    public Quitus clientDataJson(String clientDataJson) {
-        this.setClientDataJson(clientDataJson);
-        return this;
-    }
-
-    public void setClientDataJson(String clientDataJson) {
-        this.clientDataJson = clientDataJson;
-    }
-
-    public byte[] getSignature() {
-        return this.signature;
-    }
-
-    public Quitus signature(byte[] signature) {
-        this.setSignature(signature);
-        return this;
-    }
-
-    public void setSignature(byte[] signature) {
-        this.signature = signature;
-    }
-
-    public String getSignatureContentType() {
-        return this.signatureContentType;
-    }
-
-    public Quitus signatureContentType(String signatureContentType) {
-        this.signatureContentType = signatureContentType;
-        return this;
-    }
-
-    public void setSignatureContentType(String signatureContentType) {
-        this.signatureContentType = signatureContentType;
-    }
-
-    public Long getSignCount() {
-        return this.signCount;
-    }
-
-    public Quitus signCount(Long signCount) {
-        this.setSignCount(signCount);
-        return this;
-    }
-
-    public void setSignCount(Long signCount) {
-        this.signCount = signCount;
-    }
-
-    public byte[] getTimestampToken() {
-        return this.timestampToken;
-    }
-
-    public Quitus timestampToken(byte[] timestampToken) {
-        this.setTimestampToken(timestampToken);
-        return this;
-    }
-
-    public void setTimestampToken(byte[] timestampToken) {
-        this.timestampToken = timestampToken;
-    }
-
-    public String getTimestampTokenContentType() {
-        return this.timestampTokenContentType;
-    }
-
-    public Quitus timestampTokenContentType(String timestampTokenContentType) {
-        this.timestampTokenContentType = timestampTokenContentType;
-        return this;
-    }
-
-    public void setTimestampTokenContentType(String timestampTokenContentType) {
-        this.timestampTokenContentType = timestampTokenContentType;
-    }
-
-    public Instant getSignedAt() {
-        return this.signedAt;
-    }
-
-    public Quitus signedAt(Instant signedAt) {
-        this.setSignedAt(signedAt);
-        return this;
-    }
-
-    public void setSignedAt(Instant signedAt) {
-        this.signedAt = signedAt;
-    }
-
-    public Instant getDueAt() {
-        return this.dueAt;
-    }
-
-    public Quitus dueAt(Instant dueAt) {
-        this.setDueAt(dueAt);
-        return this;
-    }
-
-    public void setDueAt(Instant dueAt) {
-        this.dueAt = dueAt;
-    }
-
-    public Instant getInvalidatedAt() {
-        return this.invalidatedAt;
-    }
-
-    public Quitus invalidatedAt(Instant invalidatedAt) {
-        this.setInvalidatedAt(invalidatedAt);
-        return this;
-    }
-
-    public void setInvalidatedAt(Instant invalidatedAt) {
-        this.invalidatedAt = invalidatedAt;
-    }
-
-    public CommissioningFile getFile() {
-        return this.file;
-    }
-
-    public void setFile(CommissioningFile commissioningFile) {
-        this.file = commissioningFile;
-    }
-
-    public Quitus file(CommissioningFile commissioningFile) {
-        this.setFile(commissioningFile);
+    public Quitus signedDecision(SignedDecision signedDecision) {
+        this.setSignedDecision(signedDecision);
         return this;
     }
 
@@ -441,25 +175,10 @@ public class Quitus implements Serializable {
     public String toString() {
         return "Quitus{" +
             "id=" + getId() +
-            ", type='" + getType() + "'" +
-            ", status='" + getStatus() + "'" +
-            ", decision='" + getDecision() + "'" +
-            ", signerId='" + getSignerId() + "'" +
-            ", reason='" + getReason() + "'" +
-            ", basisDigest='" + getBasisDigest() + "'" +
-            ", decisionDigest='" + getDecisionDigest() + "'" +
-            ", credentialId='" + getCredentialId() + "'" +
-            ", authenticatorData='" + getAuthenticatorData() + "'" +
-            ", authenticatorDataContentType='" + getAuthenticatorDataContentType() + "'" +
-            ", clientDataJson='" + getClientDataJson() + "'" +
-            ", signature='" + getSignature() + "'" +
-            ", signatureContentType='" + getSignatureContentType() + "'" +
-            ", signCount=" + getSignCount() +
-            ", timestampToken='" + getTimestampToken() + "'" +
-            ", timestampTokenContentType='" + getTimestampTokenContentType() + "'" +
-            ", signedAt='" + getSignedAt() + "'" +
-            ", dueAt='" + getDueAt() + "'" +
-            ", invalidatedAt='" + getInvalidatedAt() + "'" +
+            ", nature='" + getNature() + "'" +
+            ", etat='" + getEtat() + "'" +
+            ", dateAttendu='" + getDateAttendu() + "'" +
+            ", motifCaducite='" + getMotifCaducite() + "'" +
             "}";
     }
 }

@@ -1,9 +1,11 @@
 package cm.gimac.des.certification.service.mapper;
 
-import cm.gimac.des.certification.domain.CommissioningFile;
+import cm.gimac.des.certification.domain.CertificationCircuit;
 import cm.gimac.des.certification.domain.Quitus;
-import cm.gimac.des.certification.service.dto.CommissioningFileDTO;
+import cm.gimac.des.certification.service.dto.CertificationCircuitDTO;
 import cm.gimac.des.certification.service.dto.QuitusDTO;
+import java.util.Objects;
+import java.util.UUID;
 import org.mapstruct.*;
 
 /**
@@ -11,12 +13,15 @@ import org.mapstruct.*;
  */
 @Mapper(componentModel = "spring")
 public interface QuitusMapper extends EntityMapper<QuitusDTO, Quitus> {
-    @Mapping(target = "file", source = "file", qualifiedByName = "commissioningFileFileCode")
+    @Mapping(target = "circuit", source = "circuit", qualifiedByName = "certificationCircuitId")
     QuitusDTO toDto(Quitus s);
 
-    @Named("commissioningFileFileCode")
+    @Named("certificationCircuitId")
     @BeanMapping(ignoreByDefault = true)
     @Mapping(target = "id", source = "id")
-    @Mapping(target = "fileCode", source = "fileCode")
-    CommissioningFileDTO toDtoCommissioningFileFileCode(CommissioningFile commissioningFile);
+    CertificationCircuitDTO toDtoCertificationCircuitId(CertificationCircuit certificationCircuit);
+
+    default String map(UUID value) {
+        return Objects.toString(value, null);
+    }
 }

@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- PI-GIMAC-01 §0.3 et §0.4 : corrections après génération JHipster (jsonb, unicités métier,
+     index de lecture, immuabilité) et tables de messagerie (outbox, déduplication). -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- 1. Colonnes JSON : TEXT vers jsonb -->
+    <changeSet id="lot1-jsonb" author="lot1">
+        <sql>
+             ALTER TABLE signed_decision ALTER COLUMN operations_designees TYPE jsonb USING operations_designees::jsonb;
+             ALTER TABLE signed_decision ALTER COLUMN services_designes TYPE jsonb USING services_designes::jsonb;
+             ALTER TABLE attestation ALTER COLUMN services_certifies TYPE jsonb USING services_certifies::jsonb;
+             ALTER TABLE certification_register_entry ALTER COLUMN services TYPE jsonb USING services::jsonb;
+        </sql>
+    </changeSet>
+
+    <!-- 2. Unicités métier et numérotation des attestations -->
+    <changeSet id="lot1-unicites" author="lot1">
+        <addUniqueConstraint tableName="quitus" columnNames="circuit_id, nature" constraintName="uk_quitus_circuit_nature"/>
+        <addUniqueConstraint tableName="certification_circuit" columnNames="liaison_id, cycle" constraintName="uk_circuit_liaison_cycle"/>
+        <addUniqueConstraint tableName="timestamp_token" columnNames="objet_type, objet_id" constraintName="uk_timestamp_objet"/>
+        <createSequence sequenceName="attestation_numero_seq" startValue="1" incrementBy="1"/>
+    </changeSet>
+
+    <!-- 3. Immuabilité des décisions signées (défense en profondeur) -->
+    <changeSet id="lot1-immuabilite" author="lot1">
+        <sql splitStatements="false">
+            CREATE OR REPLACE FUNCTION refuse_update_signed_decision() RETURNS trigger AS $$
+            BEGIN RAISE EXCEPTION 'decision signee immuable (%)', OLD.id; END; $$ LANGUAGE plpgsql;
+            CREATE TRIGGER trg_signed_decision_immuable BEFORE UPDATE ON signed_decision
+              FOR EACH ROW EXECUTE FUNCTION refuse_update_signed_decision();
+        </sql>
+    </changeSet>
+
+    <!-- Tables de messagerie (PI §0.4) : outbox transactionnelle et consommateur idempotent -->
+    <changeSet id="lot1-messagerie" author="lot1">
+        <createTable tableName="outbox_event">
+            <column name="id" type="uuid"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="aggregate_type" type="varchar(60)"><constraints nullable="false"/></column>
+            <column name="aggregate_id" type="varchar(80)"><constraints nullable="false"/></column>
+            <column name="event_type" type="varchar(120)"><constraints nullable="false"/></column>
+            <column name="payload" type="jsonb"><constraints nullable="false"/></column>
+            <column name="created_at" type="timestamptz"><constraints nullable="false"/></column>
+            <column name="status" type="varchar(16)"><constraints nullable="false"/></column>
+            <column name="sent_at" type="timestamptz"/>
+            <column name="attempts" type="integer" defaultValueNumeric="0"><constraints nullable="false"/></column>
+            <column name="correlation_id" type="varchar(80)"/>
+            <column name="institution_id" type="varchar(80)"/>
+        </createTable>
+        <sql>CREATE INDEX idx_outbox_pending ON outbox_event (created_at) WHERE status = 'PENDING';</sql>
+        <createTable tableName="processed_event">
+            <column name="id" type="uuid"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="event_id" type="varchar(80)"><constraints nullable="false"/></column>
+            <column name="consumer_group" type="varchar(120)"><constraints nullable="false"/></column>
+            <column name="processed_at" type="timestamptz"><constraints nullable="false"/></column>
+        </createTable>
+        <addUniqueConstraint tableName="processed_event" columnNames="event_id, consumer_group" constraintName="uk_processed_event_group"/>
+    </changeSet>
+
+</databaseChangeLog>

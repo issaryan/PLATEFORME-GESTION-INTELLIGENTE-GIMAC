@@ -1,25 +1,26 @@
 package cm.gimac.des.homologation.domain;
 
-import cm.gimac.des.homologation.domain.enumeration.LiaisonState;
-import cm.gimac.des.homologation.domain.enumeration.ProjectType;
+import cm.gimac.des.homologation.domain.enumeration.EtatLiaison;
+import cm.gimac.des.homologation.domain.enumeration.TypeProjet;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import jakarta.validation.constraints.*;
+import java.io.Serial;
 import java.io.Serializable;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.util.UUID;
 
 /**
- * Liaison d'une institution pour un type de projet (CC §6.1.7.1). Elle fige la
- * version du référentiel en vigueur à son ouverture. Ouverte à la suite de
- * participant.status-changed.v1 vers EN_HOMOLOGATION (D-18).
+ * A Liaison.
  */
 @Entity
 @Table(name = "liaison")
 @SuppressWarnings("common-java:DuplicatedBlocks")
 public class Liaison implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = 1L;
 
     @Id
@@ -27,74 +28,58 @@ public class Liaison implements Serializable {
     @Column(name = "id")
     private UUID id;
 
-    /**
-     * Identifiant lisible, par exemple LIA-2026-017.
-     */
     @NotNull
-    @Size(max = 20)
-    @Pattern(regexp = "^LIA-[0-9]{4}-[0-9]{3,}$")
-    @Column(name = "liaison_code", length = 20, nullable = false, unique = true)
-    private String liaisonCode;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "type_projet", nullable = false)
+    private TypeProjet typeProjet;
 
-    /**
-     * Institution tenue par MS-PARTICIPANT (référence, BNF-04).
-     */
     @NotNull
     @Column(name = "institution_id", nullable = false)
     private UUID institutionId;
 
-    @NotNull
-    @Enumerated(EnumType.STRING)
-    @Column(name = "project_type", nullable = false)
-    private ProjectType projectType;
-
-    @NotNull
-    @Column(name = "opened_on", nullable = false)
-    private LocalDate openedOn;
-
-    /**
-     * Chef de projet de la liaison (collaborateur de MS-IAM).
-     */
-    @NotNull
-    @Column(name = "project_lead_id", nullable = false)
-    private UUID projectLeadId;
+    @Size(max = 200)
+    @Column(name = "institution_nom", length = 200)
+    private String institutionNom;
 
     @NotNull
     @Enumerated(EnumType.STRING)
-    @Column(name = "state", nullable = false)
-    private LiaisonState state;
+    @Column(name = "etat", nullable = false)
+    private EtatLiaison etat;
 
-    /**
-     * Référence de la campagne dans le simulateur (κL de l'algorithme 6.32).
-     * Écart CC corrigé : absente de la classe Liaison, requise par l'algorithme.
-     */
-    @Size(max = 100)
-    @Column(name = "campaign_ref", length = 100)
-    private String campaignRef;
+    @NotNull
+    @Column(name = "chef_de_projet_id", nullable = false)
+    private UUID chefDeProjetId;
 
-    @Column(name = "ready_for_certification_at")
-    private Instant readyForCertificationAt;
+    @Column(name = "banque_partenaire_id")
+    private UUID banquePartenaireId;
 
-    @Column(name = "commissioned_on")
-    private LocalDate commissionedOn;
+    @NotNull
+    @Column(name = "date_ouverture", nullable = false)
+    private Instant dateOuverture;
 
-    /**
-     * Motif du gel (HOM-10) ou du retour en homologation (HOM-11).
-     */
-    @Size(max = 1000)
-    @Column(name = "state_reason", length = 1000)
-    private String stateReason;
+    @Size(max = 500)
+    @Column(name = "motif_etat", length = 500)
+    private String motifEtat;
 
-    /**
-     * Version du référentiel figée sur la liaison (migrée seulement par l'algorithme 6.34).
-     */
+    @NotNull
+    @Column(name = "cycle_aptitude", nullable = false)
+    private Integer cycleAptitude;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "ordre_instanciation", columnDefinition = "jsonb")
+    private String ordreInstanciation;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "etat_avant_gel", columnDefinition = "jsonb")
+    private String etatAvantGel;
+
     @ManyToOne(optional = false)
     @NotNull
-    private ReferenceCatalog catalog;
+    private ReferentialVersion version;
 
     @JsonIgnoreProperties(value = { "liaison" }, allowSetters = true)
     @OneToOne(fetch = FetchType.LAZY, mappedBy = "liaison")
-    private CampaignSync campaignSync;
+    private ContractualScope contractualScope;
 
     // jhipster-needle-entity-add-field - JHipster will add fields here
 
@@ -111,17 +96,17 @@ public class Liaison implements Serializable {
         this.id = id;
     }
 
-    public String getLiaisonCode() {
-        return this.liaisonCode;
+    public TypeProjet getTypeProjet() {
+        return this.typeProjet;
     }
 
-    public Liaison liaisonCode(String liaisonCode) {
-        this.setLiaisonCode(liaisonCode);
+    public Liaison typeProjet(TypeProjet typeProjet) {
+        this.setTypeProjet(typeProjet);
         return this;
     }
 
-    public void setLiaisonCode(String liaisonCode) {
-        this.liaisonCode = liaisonCode;
+    public void setTypeProjet(TypeProjet typeProjet) {
+        this.typeProjet = typeProjet;
     }
 
     public UUID getInstitutionId() {
@@ -137,139 +122,152 @@ public class Liaison implements Serializable {
         this.institutionId = institutionId;
     }
 
-    public ProjectType getProjectType() {
-        return this.projectType;
+    public String getInstitutionNom() {
+        return this.institutionNom;
     }
 
-    public Liaison projectType(ProjectType projectType) {
-        this.setProjectType(projectType);
+    public Liaison institutionNom(String institutionNom) {
+        this.setInstitutionNom(institutionNom);
         return this;
     }
 
-    public void setProjectType(ProjectType projectType) {
-        this.projectType = projectType;
+    public void setInstitutionNom(String institutionNom) {
+        this.institutionNom = institutionNom;
     }
 
-    public LocalDate getOpenedOn() {
-        return this.openedOn;
+    public EtatLiaison getEtat() {
+        return this.etat;
     }
 
-    public Liaison openedOn(LocalDate openedOn) {
-        this.setOpenedOn(openedOn);
+    public Liaison etat(EtatLiaison etat) {
+        this.setEtat(etat);
         return this;
     }
 
-    public void setOpenedOn(LocalDate openedOn) {
-        this.openedOn = openedOn;
+    public void setEtat(EtatLiaison etat) {
+        this.etat = etat;
     }
 
-    public UUID getProjectLeadId() {
-        return this.projectLeadId;
+    public UUID getChefDeProjetId() {
+        return this.chefDeProjetId;
     }
 
-    public Liaison projectLeadId(UUID projectLeadId) {
-        this.setProjectLeadId(projectLeadId);
+    public Liaison chefDeProjetId(UUID chefDeProjetId) {
+        this.setChefDeProjetId(chefDeProjetId);
         return this;
     }
 
-    public void setProjectLeadId(UUID projectLeadId) {
-        this.projectLeadId = projectLeadId;
+    public void setChefDeProjetId(UUID chefDeProjetId) {
+        this.chefDeProjetId = chefDeProjetId;
     }
 
-    public LiaisonState getState() {
-        return this.state;
+    public UUID getBanquePartenaireId() {
+        return this.banquePartenaireId;
     }
 
-    public Liaison state(LiaisonState state) {
-        this.setState(state);
+    public Liaison banquePartenaireId(UUID banquePartenaireId) {
+        this.setBanquePartenaireId(banquePartenaireId);
         return this;
     }
 
-    public void setState(LiaisonState state) {
-        this.state = state;
+    public void setBanquePartenaireId(UUID banquePartenaireId) {
+        this.banquePartenaireId = banquePartenaireId;
     }
 
-    public String getCampaignRef() {
-        return this.campaignRef;
+    public Instant getDateOuverture() {
+        return this.dateOuverture;
     }
 
-    public Liaison campaignRef(String campaignRef) {
-        this.setCampaignRef(campaignRef);
+    public Liaison dateOuverture(Instant dateOuverture) {
+        this.setDateOuverture(dateOuverture);
         return this;
     }
 
-    public void setCampaignRef(String campaignRef) {
-        this.campaignRef = campaignRef;
+    public void setDateOuverture(Instant dateOuverture) {
+        this.dateOuverture = dateOuverture;
     }
 
-    public Instant getReadyForCertificationAt() {
-        return this.readyForCertificationAt;
+    public String getMotifEtat() {
+        return this.motifEtat;
     }
 
-    public Liaison readyForCertificationAt(Instant readyForCertificationAt) {
-        this.setReadyForCertificationAt(readyForCertificationAt);
+    public Liaison motifEtat(String motifEtat) {
+        this.setMotifEtat(motifEtat);
         return this;
     }
 
-    public void setReadyForCertificationAt(Instant readyForCertificationAt) {
-        this.readyForCertificationAt = readyForCertificationAt;
+    public void setMotifEtat(String motifEtat) {
+        this.motifEtat = motifEtat;
     }
 
-    public LocalDate getCommissionedOn() {
-        return this.commissionedOn;
+    public Integer getCycleAptitude() {
+        return this.cycleAptitude;
     }
 
-    public Liaison commissionedOn(LocalDate commissionedOn) {
-        this.setCommissionedOn(commissionedOn);
+    public Liaison cycleAptitude(Integer cycleAptitude) {
+        this.setCycleAptitude(cycleAptitude);
         return this;
     }
 
-    public void setCommissionedOn(LocalDate commissionedOn) {
-        this.commissionedOn = commissionedOn;
+    public void setCycleAptitude(Integer cycleAptitude) {
+        this.cycleAptitude = cycleAptitude;
     }
 
-    public String getStateReason() {
-        return this.stateReason;
+    public String getOrdreInstanciation() {
+        return this.ordreInstanciation;
     }
 
-    public Liaison stateReason(String stateReason) {
-        this.setStateReason(stateReason);
+    public Liaison ordreInstanciation(String ordreInstanciation) {
+        this.setOrdreInstanciation(ordreInstanciation);
         return this;
     }
 
-    public void setStateReason(String stateReason) {
-        this.stateReason = stateReason;
+    public void setOrdreInstanciation(String ordreInstanciation) {
+        this.ordreInstanciation = ordreInstanciation;
     }
 
-    public ReferenceCatalog getCatalog() {
-        return this.catalog;
+    public String getEtatAvantGel() {
+        return this.etatAvantGel;
     }
 
-    public void setCatalog(ReferenceCatalog referenceCatalog) {
-        this.catalog = referenceCatalog;
-    }
-
-    public Liaison catalog(ReferenceCatalog referenceCatalog) {
-        this.setCatalog(referenceCatalog);
+    public Liaison etatAvantGel(String etatAvantGel) {
+        this.setEtatAvantGel(etatAvantGel);
         return this;
     }
 
-    public CampaignSync getCampaignSync() {
-        return this.campaignSync;
+    public void setEtatAvantGel(String etatAvantGel) {
+        this.etatAvantGel = etatAvantGel;
     }
 
-    public void setCampaignSync(CampaignSync campaignSync) {
-        if (this.campaignSync != null) {
-            this.campaignSync.setLiaison(null);
+    public ReferentialVersion getVersion() {
+        return this.version;
+    }
+
+    public void setVersion(ReferentialVersion referentialVersion) {
+        this.version = referentialVersion;
+    }
+
+    public Liaison version(ReferentialVersion referentialVersion) {
+        this.setVersion(referentialVersion);
+        return this;
+    }
+
+    public ContractualScope getContractualScope() {
+        return this.contractualScope;
+    }
+
+    public void setContractualScope(ContractualScope contractualScope) {
+        if (this.contractualScope != null) {
+            this.contractualScope.setLiaison(null);
         }
-        if (campaignSync != null) {
-            campaignSync.setLiaison(this);
+        if (contractualScope != null) {
+            contractualScope.setLiaison(this);
         }
-        this.campaignSync = campaignSync;
+        this.contractualScope = contractualScope;
     }
 
-    public Liaison campaignSync(CampaignSync campaignSync) {
-        this.setCampaignSync(campaignSync);
+    public Liaison contractualScope(ContractualScope contractualScope) {
+        this.setContractualScope(contractualScope);
         return this;
     }
 
@@ -297,16 +295,17 @@ public class Liaison implements Serializable {
     public String toString() {
         return "Liaison{" +
             "id=" + getId() +
-            ", liaisonCode='" + getLiaisonCode() + "'" +
+            ", typeProjet='" + getTypeProjet() + "'" +
             ", institutionId='" + getInstitutionId() + "'" +
-            ", projectType='" + getProjectType() + "'" +
-            ", openedOn='" + getOpenedOn() + "'" +
-            ", projectLeadId='" + getProjectLeadId() + "'" +
-            ", state='" + getState() + "'" +
-            ", campaignRef='" + getCampaignRef() + "'" +
-            ", readyForCertificationAt='" + getReadyForCertificationAt() + "'" +
-            ", commissionedOn='" + getCommissionedOn() + "'" +
-            ", stateReason='" + getStateReason() + "'" +
+            ", institutionNom='" + getInstitutionNom() + "'" +
+            ", etat='" + getEtat() + "'" +
+            ", chefDeProjetId='" + getChefDeProjetId() + "'" +
+            ", banquePartenaireId='" + getBanquePartenaireId() + "'" +
+            ", dateOuverture='" + getDateOuverture() + "'" +
+            ", motifEtat='" + getMotifEtat() + "'" +
+            ", cycleAptitude=" + getCycleAptitude() +
+            ", ordreInstanciation='" + getOrdreInstanciation() + "'" +
+            ", etatAvantGel='" + getEtatAvantGel() + "'" +
             "}";
     }
 }

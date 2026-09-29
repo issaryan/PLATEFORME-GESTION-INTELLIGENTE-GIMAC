@@ -1,77 +1,63 @@
 package cm.gimac.des.homologation.service.dto;
 
-import cm.gimac.des.homologation.domain.enumeration.OperationPhase;
-import cm.gimac.des.homologation.domain.enumeration.ResponsibleParty;
-import io.swagger.v3.oas.annotations.media.Schema;
+import cm.gimac.des.homologation.domain.enumeration.NatureCouverture;
+import cm.gimac.des.homologation.domain.enumeration.Partie;
+import cm.gimac.des.homologation.domain.enumeration.Segment;
+import jakarta.persistence.Lob;
 import jakarta.validation.constraints.*;
 import java.io.Serializable;
-import java.util.HashSet;
 import java.util.Objects;
-import java.util.Set;
 import java.util.UUID;
 
 /**
  * A DTO for the {@link cm.gimac.des.homologation.domain.ReferenceOperation} entity.
  */
-@Schema(
-    description = "Opération de référence : nœud du graphe (CC §6.1.7.3). Le code est unique\ndans une version ; un nœud de branche porte un service ; un nœud d'essai\nporte un identifiant de scénario unique dans la version (algorithme 6.34)."
-)
 @SuppressWarnings("common-java:DuplicatedBlocks")
 public class ReferenceOperationDTO implements Serializable {
 
     private UUID id;
 
     @NotNull
-    @Size(max = 20)
-    @Pattern(regexp = "^[A-Z0-9]+-[0-9]{2,3}$")
+    @Size(max = 40)
     private String code;
 
     @NotNull
-    @Size(max = 255)
-    private String label;
+    @Size(max = 200)
+    private String libelle;
 
     @NotNull
-    @Size(max = 50)
-    @Pattern(regexp = "^[A-Z0-9_]+$")
-    @Schema(
-        description = "« TRONC_COMMUN » pour le tronc commun, sinon code de la branche métier.",
-        requiredMode = Schema.RequiredMode.REQUIRED
-    )
-    private String branch;
+    @Size(max = 60)
+    private String phase;
 
     @NotNull
-    private OperationPhase phase;
+    private Segment segment;
 
     @NotNull
-    private ResponsibleParty owner;
+    private Partie partie;
 
-    @NotNull
-    @Size(max = 255)
-    private String expectedEvidence;
-
-    @Size(max = 80)
-    @Pattern(regexp = "^[A-Z0-9_]+$")
-    @Schema(description = "Service contribué (code tenu par MS-PARTICIPANT) ; vide pour le tronc commun.")
+    @Size(max = 40)
     private String serviceCode;
 
-    @Size(max = 50)
-    @Schema(description = "Identifiant du scénario dans le simulateur, pour une opération d'essai.")
-    private String scenarioRef;
+    @NotNull
+    private NatureCouverture natureCouverture;
+
+    @Lob
+    private String preuveAttendue;
+
+    @Size(max = 80)
+    private String idScenario;
+
+    @Lob
+    private String predecesseurs;
+
+    @Size(max = 60)
+    private String fonctionResponsable;
+
+    @Lob
+    private String grille;
 
     @NotNull
-    @Schema(
-        description = "Appartenance au chemin critique (UC-HOM-01 étape 5, RG-28). Écart CC\ncorrigé : absente du diagramme de classes du CC.",
-        requiredMode = Schema.RequiredMode.REQUIRED
-    )
-    private Boolean criticalPath;
-
-    @NotNull
-    private ReferenceCatalogDTO catalog;
-
-    @Schema(description = "Arcs du graphe : prédécesseurs d'une opération de référence, dans la même version (RG-26, RG-27).")
-    private Set<ReferenceOperationDTO> predecessors = new HashSet<>();
-
-    private Set<ReferenceOperationDTO> successors = new HashSet<>();
+    private ReferentialVersionDTO version;
 
     public UUID getId() {
         return id;
@@ -89,44 +75,36 @@ public class ReferenceOperationDTO implements Serializable {
         this.code = code;
     }
 
-    public String getLabel() {
-        return label;
+    public String getLibelle() {
+        return libelle;
     }
 
-    public void setLabel(String label) {
-        this.label = label;
+    public void setLibelle(String libelle) {
+        this.libelle = libelle;
     }
 
-    public String getBranch() {
-        return branch;
-    }
-
-    public void setBranch(String branch) {
-        this.branch = branch;
-    }
-
-    public OperationPhase getPhase() {
+    public String getPhase() {
         return phase;
     }
 
-    public void setPhase(OperationPhase phase) {
+    public void setPhase(String phase) {
         this.phase = phase;
     }
 
-    public ResponsibleParty getOwner() {
-        return owner;
+    public Segment getSegment() {
+        return segment;
     }
 
-    public void setOwner(ResponsibleParty owner) {
-        this.owner = owner;
+    public void setSegment(Segment segment) {
+        this.segment = segment;
     }
 
-    public String getExpectedEvidence() {
-        return expectedEvidence;
+    public Partie getPartie() {
+        return partie;
     }
 
-    public void setExpectedEvidence(String expectedEvidence) {
-        this.expectedEvidence = expectedEvidence;
+    public void setPartie(Partie partie) {
+        this.partie = partie;
     }
 
     public String getServiceCode() {
@@ -137,44 +115,60 @@ public class ReferenceOperationDTO implements Serializable {
         this.serviceCode = serviceCode;
     }
 
-    public String getScenarioRef() {
-        return scenarioRef;
+    public NatureCouverture getNatureCouverture() {
+        return natureCouverture;
     }
 
-    public void setScenarioRef(String scenarioRef) {
-        this.scenarioRef = scenarioRef;
+    public void setNatureCouverture(NatureCouverture natureCouverture) {
+        this.natureCouverture = natureCouverture;
     }
 
-    public Boolean getCriticalPath() {
-        return criticalPath;
+    public String getPreuveAttendue() {
+        return preuveAttendue;
     }
 
-    public void setCriticalPath(Boolean criticalPath) {
-        this.criticalPath = criticalPath;
+    public void setPreuveAttendue(String preuveAttendue) {
+        this.preuveAttendue = preuveAttendue;
     }
 
-    public ReferenceCatalogDTO getCatalog() {
-        return catalog;
+    public String getIdScenario() {
+        return idScenario;
     }
 
-    public void setCatalog(ReferenceCatalogDTO catalog) {
-        this.catalog = catalog;
+    public void setIdScenario(String idScenario) {
+        this.idScenario = idScenario;
     }
 
-    public Set<ReferenceOperationDTO> getPredecessors() {
-        return predecessors;
+    public String getPredecesseurs() {
+        return predecesseurs;
     }
 
-    public void setPredecessors(Set<ReferenceOperationDTO> predecessors) {
-        this.predecessors = predecessors;
+    public void setPredecesseurs(String predecesseurs) {
+        this.predecesseurs = predecesseurs;
     }
 
-    public Set<ReferenceOperationDTO> getSuccessors() {
-        return successors;
+    public String getFonctionResponsable() {
+        return fonctionResponsable;
     }
 
-    public void setSuccessors(Set<ReferenceOperationDTO> successors) {
-        this.successors = successors;
+    public void setFonctionResponsable(String fonctionResponsable) {
+        this.fonctionResponsable = fonctionResponsable;
+    }
+
+    public String getGrille() {
+        return grille;
+    }
+
+    public void setGrille(String grille) {
+        this.grille = grille;
+    }
+
+    public ReferentialVersionDTO getVersion() {
+        return version;
+    }
+
+    public void setVersion(ReferentialVersionDTO version) {
+        this.version = version;
     }
 
     @Override
@@ -204,17 +198,18 @@ public class ReferenceOperationDTO implements Serializable {
         return "ReferenceOperationDTO{" +
             "id='" + getId() + "'" +
             ", code='" + getCode() + "'" +
-            ", label='" + getLabel() + "'" +
-            ", branch='" + getBranch() + "'" +
+            ", libelle='" + getLibelle() + "'" +
             ", phase='" + getPhase() + "'" +
-            ", owner='" + getOwner() + "'" +
-            ", expectedEvidence='" + getExpectedEvidence() + "'" +
+            ", segment='" + getSegment() + "'" +
+            ", partie='" + getPartie() + "'" +
             ", serviceCode='" + getServiceCode() + "'" +
-            ", scenarioRef='" + getScenarioRef() + "'" +
-            ", criticalPath='" + getCriticalPath() + "'" +
-            ", catalog=" + getCatalog() +
-            ", predecessors=" + getPredecessors() +
-            ", successors=" + getSuccessors() +
+            ", natureCouverture='" + getNatureCouverture() + "'" +
+            ", preuveAttendue='" + getPreuveAttendue() + "'" +
+            ", idScenario='" + getIdScenario() + "'" +
+            ", predecesseurs='" + getPredecesseurs() + "'" +
+            ", fonctionResponsable='" + getFonctionResponsable() + "'" +
+            ", grille='" + getGrille() + "'" +
+            ", version=" + getVersion() +
             "}";
     }
 }

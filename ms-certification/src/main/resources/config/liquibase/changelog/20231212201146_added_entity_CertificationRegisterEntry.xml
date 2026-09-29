@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+
+    <!--
+        Added the entity CertificationRegisterEntry.
+    -->
+    <changeSet id="20231212201146-1" author="jhipster">
+        <createTable tableName="certification_register_entry">
+            <column name="id" type="${uuidType}">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="numero_attestation" type="varchar(30)">
+                <constraints nullable="false" />
+            </column>
+            <column name="institution_id" type="${uuidType}">
+                <constraints nullable="false" />
+            </column>
+            <column name="type_projet" type="varchar(30)">
+                <constraints nullable="true" />
+            </column>
+            <column name="services" type="${clobType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="date_emission" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="echeance_renouvellement" type="date">
+                <constraints nullable="true" />
+            </column>
+            <column name="etat" type="varchar(255)">
+                <constraints nullable="true" />
+            </column>
+            <column name="precedente_id" type="${uuidType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="dernier_seuil_notifie" type="varchar(30)">
+                <constraints nullable="true" />
+            </column>
+            <!-- jhipster-needle-liquibase-add-column - JHipster will add columns here -->
+        </createTable>
+        <dropDefaultValue tableName="certification_register_entry" columnName="date_emission" columnDataType="${datetimeType}"/>
+    </changeSet>
+
+    <!-- jhipster-needle-liquibase-add-changeset - JHipster will add changesets here -->
+</databaseChangeLog>

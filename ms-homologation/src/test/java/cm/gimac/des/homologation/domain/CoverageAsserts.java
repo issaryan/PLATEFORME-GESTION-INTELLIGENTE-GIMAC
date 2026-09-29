@@ -49,21 +49,15 @@ public class CoverageAsserts {
         assertThat(actual)
             .as("Verify Coverage relevant properties")
             .satisfies(a -> assertThat(a.getServiceCode()).as("check serviceCode").isEqualTo(expected.getServiceCode()))
+            .satisfies(a -> assertThat(a.getNature()).as("check nature").isEqualTo(expected.getNature()))
+            .satisfies(a -> assertThat(a.getNumerateur()).as("check numerateur").isEqualTo(expected.getNumerateur()))
+            .satisfies(a -> assertThat(a.getDenominateur()).as("check denominateur").isEqualTo(expected.getDenominateur()))
+            .satisfies(a -> assertThat(a.getTaux()).as("check taux").usingComparator(bigDecimalCompareTo).isEqualTo(expected.getTaux()))
+            .satisfies(a -> assertThat(a.getCalculable()).as("check calculable").isEqualTo(expected.getCalculable()))
             .satisfies(a ->
-                assertThat(a.getCertificationRate())
-                    .as("check certificationRate")
-                    .usingComparator(bigDecimalCompareTo)
-                    .isEqualTo(expected.getCertificationRate())
+                assertThat(a.getMotifNonCalculable()).as("check motifNonCalculable").isEqualTo(expected.getMotifNonCalculable())
             )
-            .satisfies(a ->
-                assertThat(a.getCommissioningRate())
-                    .as("check commissioningRate")
-                    .usingComparator(bigDecimalCompareTo)
-                    .isEqualTo(expected.getCommissioningRate())
-            )
-            .satisfies(a -> assertThat(a.getRequiredCount()).as("check requiredCount").isEqualTo(expected.getRequiredCount()))
-            .satisfies(a -> assertThat(a.getClosedCount()).as("check closedCount").isEqualTo(expected.getClosedCount()))
-            .satisfies(a -> assertThat(a.getComputedAt()).as("check computedAt").isEqualTo(expected.getComputedAt()));
+            .satisfies(a -> assertThat(a.getDateCalcul()).as("check dateCalcul").isEqualTo(expected.getDateCalcul()));
     }
 
     /**

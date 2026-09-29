@@ -1,9 +1,7 @@
 package cm.gimac.des.homologation.web.rest;
 
 import cm.gimac.des.homologation.repository.LiaisonRepository;
-import cm.gimac.des.homologation.service.LiaisonQueryService;
 import cm.gimac.des.homologation.service.LiaisonService;
-import cm.gimac.des.homologation.service.criteria.LiaisonCriteria;
 import cm.gimac.des.homologation.service.dto.LiaisonDTO;
 import cm.gimac.des.homologation.web.rest.errors.BadRequestAlertException;
 import jakarta.validation.Valid;
@@ -20,6 +18,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
@@ -38,26 +37,23 @@ public class LiaisonResource {
 
     private static final String ENTITY_NAME = "homologationLiaison";
 
-    @Value("${jhipster.clientApp.name}")
+    @Value("${jhipster.clientApp.name:homologation}")
     private String applicationName;
 
     private final LiaisonService liaisonService;
 
     private final LiaisonRepository liaisonRepository;
 
-    private final LiaisonQueryService liaisonQueryService;
-
-    public LiaisonResource(LiaisonService liaisonService, LiaisonRepository liaisonRepository, LiaisonQueryService liaisonQueryService) {
+    public LiaisonResource(LiaisonService liaisonService, LiaisonRepository liaisonRepository) {
         this.liaisonService = liaisonService;
         this.liaisonRepository = liaisonRepository;
-        this.liaisonQueryService = liaisonQueryService;
     }
 
     /**
      * {@code POST  /liaisons} : Create a new liaison.
      *
      * @param liaisonDTO the liaisonDTO to create.
-     * @return the {@link ResponseEntity} with status {@code 201 (Created)} and with body the new liaisonDTO, or with status {@code 400 (Bad Request)} if the liaison has already an ID.
+     * @return the {@link ResponseEntity} with status {@code 201 (Created)} and with body the new liaisonDTO, or with status {@code 400 (Bad Request)} if the liaison already has an ID.
      * @throws URISyntaxException if the Location URI syntax is incorrect.
      */
     @PostMapping("")
@@ -121,7 +117,7 @@ public class LiaisonResource {
         @PathVariable(value = "id", required = false) final UUID id,
         @NotNull @RequestBody LiaisonDTO liaisonDTO
     ) throws URISyntaxException {
-        LOG.debug("REST request to partial update Liaison partially : {}, {}", id, liaisonDTO);
+        LOG.debug("REST request to partially update Liaison : {}, {}", id, liaisonDTO);
         if (liaisonDTO.getId() == null) {
             throw new BadRequestAlertException("Invalid id", ENTITY_NAME, "idnull");
         }
@@ -142,34 +138,25 @@ public class LiaisonResource {
     }
 
     /**
-     * {@code GET  /liaisons} : get all the liaisons.
+     * {@code GET  /liaisons} : get all the Liaisons.
      *
      * @param pageable the pagination information.
-     * @param criteria the criteria which the requested entities should match.
-     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of liaisons in body.
+     * @param filter the filter of the request.
+     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of Liaisons in body.
      */
     @GetMapping("")
     public ResponseEntity<List<LiaisonDTO>> getAllLiaisons(
-        LiaisonCriteria criteria,
-        @org.springdoc.core.annotations.ParameterObject Pageable pageable
+        @org.springdoc.core.annotations.ParameterObject Pageable pageable,
+        @RequestParam(name = "filter", required = false) String filter
     ) {
-        LOG.debug("REST request to get Liaisons by criteria: {}", criteria);
-
-        Page<LiaisonDTO> page = liaisonQueryService.findByCriteria(criteria, pageable);
+        if ("contractualscope-is-null".equals(filter)) {
+            LOG.debug("REST request to get all Liaisons where contractualScope is null");
+            return new ResponseEntity<>(liaisonService.findAllWhereContractualScopeIsNull(), HttpStatus.OK);
+        }
+        LOG.debug("REST request to get a page of Liaisons");
+        Page<LiaisonDTO> page = liaisonService.findAll(pageable);
         HttpHeaders headers = PaginationUtil.generatePaginationHttpHeaders(ServletUriComponentsBuilder.fromCurrentRequest(), page);
         return ResponseEntity.ok().headers(headers).body(page.getContent());
-    }
-
-    /**
-     * {@code GET  /liaisons/count} : count all the liaisons.
-     *
-     * @param criteria the criteria which the requested entities should match.
-     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the count in body.
-     */
-    @GetMapping("/count")
-    public ResponseEntity<Long> countLiaisons(LiaisonCriteria criteria) {
-        LOG.debug("REST request to count Liaisons by criteria: {}", criteria);
-        return ResponseEntity.ok().body(liaisonQueryService.countByCriteria(criteria));
     }
 
     /**

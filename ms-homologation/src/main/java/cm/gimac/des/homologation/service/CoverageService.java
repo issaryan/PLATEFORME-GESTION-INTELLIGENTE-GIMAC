@@ -1,110 +1,57 @@
 package cm.gimac.des.homologation.service;
 
-import cm.gimac.des.homologation.domain.Coverage;
-import cm.gimac.des.homologation.repository.CoverageRepository;
 import cm.gimac.des.homologation.service.dto.CoverageDTO;
-import cm.gimac.des.homologation.service.mapper.CoverageMapper;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Service Implementation for managing {@link cm.gimac.des.homologation.domain.Coverage}.
+ * Service Interface for managing {@link cm.gimac.des.homologation.domain.Coverage}.
  */
-@Service
-@Transactional
-public class CoverageService {
-
-    private static final Logger LOG = LoggerFactory.getLogger(CoverageService.class);
-
-    private final CoverageRepository coverageRepository;
-
-    private final CoverageMapper coverageMapper;
-
-    public CoverageService(CoverageRepository coverageRepository, CoverageMapper coverageMapper) {
-        this.coverageRepository = coverageRepository;
-        this.coverageMapper = coverageMapper;
-    }
-
+public interface CoverageService {
     /**
      * Save a coverage.
      *
      * @param coverageDTO the entity to save.
      * @return the persisted entity.
      */
-    public CoverageDTO save(CoverageDTO coverageDTO) {
-        LOG.debug("Request to save Coverage : {}", coverageDTO);
-        Coverage coverage = coverageMapper.toEntity(coverageDTO);
-        coverage = coverageRepository.save(coverage);
-        return coverageMapper.toDto(coverage);
-    }
+    CoverageDTO save(CoverageDTO coverageDTO);
 
     /**
-     * Update a coverage.
+     * Updates a coverage.
      *
-     * @param coverageDTO the entity to save.
+     * @param coverageDTO the entity to update.
      * @return the persisted entity.
      */
-    public CoverageDTO update(CoverageDTO coverageDTO) {
-        LOG.debug("Request to update Coverage : {}", coverageDTO);
-        Coverage coverage = coverageMapper.toEntity(coverageDTO);
-        coverage = coverageRepository.save(coverage);
-        return coverageMapper.toDto(coverage);
-    }
+    CoverageDTO update(CoverageDTO coverageDTO);
 
     /**
-     * Partially update a coverage.
+     * Partially updates a coverage.
      *
      * @param coverageDTO the entity to update partially.
      * @return the persisted entity.
      */
-    public Optional<CoverageDTO> partialUpdate(CoverageDTO coverageDTO) {
-        LOG.debug("Request to partially update Coverage : {}", coverageDTO);
-
-        return coverageRepository
-            .findById(coverageDTO.getId())
-            .map(existingCoverage -> {
-                coverageMapper.partialUpdate(existingCoverage, coverageDTO);
-
-                return existingCoverage;
-            })
-            .map(coverageRepository::save)
-            .map(coverageMapper::toDto);
-    }
+    Optional<CoverageDTO> partialUpdate(CoverageDTO coverageDTO);
 
     /**
-     * Get all the coverages with eager load of many-to-many relationships.
+     * Get all the coverages.
      *
      * @return the list of entities.
      */
-    public Page<CoverageDTO> findAllWithEagerRelationships(Pageable pageable) {
-        return coverageRepository.findAllWithEagerRelationships(pageable).map(coverageMapper::toDto);
-    }
+    List<CoverageDTO> findAll();
 
     /**
-     * Get one coverage by id.
+     * Get the "id" coverage.
      *
      * @param id the id of the entity.
      * @return the entity.
      */
-    @Transactional(readOnly = true)
-    public Optional<CoverageDTO> findOne(UUID id) {
-        LOG.debug("Request to get Coverage : {}", id);
-        return coverageRepository.findOneWithEagerRelationships(id).map(coverageMapper::toDto);
-    }
+    Optional<CoverageDTO> findOne(UUID id);
 
     /**
-     * Delete the coverage by id.
+     * Delete the "id" coverage.
      *
      * @param id the id of the entity.
      */
-    public void delete(UUID id) {
-        LOG.debug("Request to delete Coverage : {}", id);
-        coverageRepository.deleteById(id);
-    }
+    void delete(UUID id);
 }
