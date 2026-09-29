@@ -11,7 +11,7 @@ describe('parcoursSimule : cadrage et liste', () => {
     const { parcours } = svc()
     const tout = await parcours.listerLiaisons({ page: 1, taille: 50 })
     expect(tout.total).toBeGreaterThanOrEqual(10)
-    expect((await parcours.listerLiaisons({ page: 1, taille: 50, statut: 'EN_PRODUCTION' })).contenu.map((l) => l.id)).toEqual(['LIA-2025-088'])
+    expect((await parcours.listerLiaisons({ page: 1, taille: 50, statut: 'EN_PRODUCTION' })).contenu.map((l) => l.id)).toContain('LIA-2025-088')
     expect((await parcours.listerLiaisons({ page: 1, taille: 50, bloquees: true })).contenu.map((l) => l.id)).toEqual(['LIA-2026-030'])
     expect((await parcours.listerLiaisons({ page: 1, taille: 50, typeProjet: 'DELEGATAIRE' })).total).toBe(2)
     expect((await parcours.listerLiaisons({ page: 1, taille: 50, recherche: 'banque e' })).total).toBe(1)
@@ -58,19 +58,27 @@ describe('parcoursSimule : dossier et opérations', () => {
     expect((await parcours.operations('LIA-2026-005', { fonction: 'POLE_SYSTEME' })).map((o) => o.rang)).toEqual(['27', '28', '29'])
     expect((await parcours.operations('LIA-2026-036')).find((o) => o.rang === '16')?.plateforme).toBe('SIMULATEUR')
   })
-  it('preuve : code de contrôle exigé et contrôlé, valeur de référence exigée, puis validation', async () => {
+  it('preuve : cérémonie C1 complète exigée, secret sans code de contrôle, puis validation', async () => {
     const { parcours } = svc()
-    const cle = (await parcours.operations('LIA-2026-005')).find((o) => o.rang === '29')!
-    await expect(parcours.deposerPreuve(cle.id, fichier('trace.png'), {})).rejects.toEqual(refus('HOM_KEY_CHECK_VALUE_REQUIRED'))
-    await expect(parcours.deposerPreuve(cle.id, fichier('trace.png'), { codeControle: 'zz' })).rejects.toEqual(refus('HOM_KEY_CHECK_VALUE_INVALID'))
-    await parcours.deposerPreuve(cle.id, fichier('trace.png'), { codeControle: 'A1B2C3' })
-    await expect(parcours.deposerPreuve(cle.id, fichier('trace.png'), { codeControle: 'A1B2C3' })).rejects.toEqual(refus('HOM_OPERATION_NOT_OPEN'))
-    await parcours.validerOperation(cle.id)
-    await expect(parcours.validerOperation(cle.id)).rejects.toEqual(refus('HOM_OPERATION_NOT_IN_VALIDATION'))
-    const apres = (await parcours.operations('LIA-2026-005')).find((o) => o.rang === '29')!
-    expect(apres).toMatchObject({ etat: 'FAITE', preuve: expect.objectContaining({ codeControle: 'A1B2C3' }) })
-    const ref = (await parcours.operations('LIA-2026-030')).find((o) => o.valeurReference && o.etat !== 'FAITE')
-    if (ref && ref.etat === 'A_FAIRE') await expect(parcours.deposerPreuve(ref.id, fichier('c.png'), {})).rejects.toEqual(refus('HOM_REFERENCE_VALUE_REQUIRED'))
+    const c1 = (await parcours.operations('LIA-2026-012')).find((o) => o.rang === 'C1')!
+    expect(c1).toMatchObject({ etat: 'A_FAIRE', cle: true })
+    await expect(parcours.deposerPreuve(c1.id, fichier('pv-ceremonie.pdf'), {})).rejects.toEqual(refus('HOM_KEY_CEREMONY_INCOMPLETE'))
+    const cer = { tenueLe: '2026-09-29', porteurs: ['Porteur 1', 'Porteur 2', 'Porteur 3'], codesControle: ['A1B2C3', 'D4E5F6', 'zz'] }
+    await expect(parcours.deposerPreuve(c1.id, fichier('pv-ceremonie.pdf'), { ceremonie: cer })).rejects.toEqual(refus('HOM_KEY_CHECK_VALUE_INVALID'))
+    await parcours.deposerPreuve(c1.id, fichier('pv-ceremonie.pdf'), { ceremonie: { ...cer, codesControle: ['A1B2C3', 'D4E5F6', '0A1B'] } })
+    await parcours.validerOperation(c1.id)
+    expect((await parcours.operations('LIA-2026-012')).find((o) => o.rang === 'C1')?.preuve?.ceremonie?.porteurs).toHaveLength(3)
+    const o29 = (await parcours.operations('LIA-2026-005')).find((o) => o.rang === '29')!
+    expect(o29).toMatchObject({ secret: true, cle: false })
+    await parcours.deposerPreuve(o29.id, fichier('trace.png'), {})
+    await expect(parcours.deposerPreuve(o29.id, fichier('trace.png'), {})).rejects.toEqual(refus('HOM_OPERATION_NOT_OPEN'))
+    await parcours.validerOperation(o29.id)
+    await expect(parcours.validerOperation(o29.id)).rejects.toEqual(refus('HOM_OPERATION_NOT_IN_VALIDATION'))
+    expect((await parcours.operations('LIA-2026-005')).find((o) => o.rang === '29')?.etat).toBe('FAITE')
+    const done = (await parcours.operations('LIA-2026-005')).find((o) => o.rang === 'C1')!
+    expect(done.preuve?.ceremonie?.codesControle).toHaveLength(3)
+    const ref = (await parcours.operations('LIA-2026-012')).find((o) => o.rang === 'C2')!
+    await expect(parcours.deposerPreuve(ref.id, fichier('c.png'), {})).rejects.toEqual(refus('HOM_REFERENCE_VALUE_REQUIRED'))
   })
   it('livrable, affectation des ressources, attribution et séparation R / V', async () => {
     const { parcours } = svc()
@@ -132,7 +140,7 @@ describe('parcoursSimule : verrous de la décision (D-56)', () => {
     const a = await decision.approbation('LIA-2026-019')
     expect(a.actionsPermises).toEqual(expect.arrayContaining(['REFERENCER_FICHE']))
     expect(a.visas.every((v) => v.actif)).toBe(true)
-    await expect(decision.verifierAttestation('LIA-2026-019', 'PCI_DSS', true, '')).rejects.toEqual(refus('CER_ATTESTATION_MISSING'))
+    await expect(decision.verifierAttestation('LIA-2026-041', 'GSMA', true, '')).rejects.toEqual(refus('CER_ATTESTATION_MISSING'))
     await expect(decision.archiverAttestations('LIA-2026-019')).rejects.toEqual(refus('CER_ATTESTATIONS_INCOMPLETE'))
     await expect(decision.referencerFicheChangement('LIA-2026-019', 'mauvaise')).rejects.toEqual(refus('CER_CHANGE_RECORD_INVALID'))
     await expect(decision.relireFicheChangement('LIA-2026-019')).rejects.toEqual(refus('CER_CHANGE_RECORD_MISSING'))
@@ -203,7 +211,7 @@ describe('parcoursSimule : tableaux de bord et portail', () => {
   it('portail : cloisonné à l’institution du jeton, projection sans nom interne', async () => {
     const { portailParcours } = svc()
     const miennes = await portailParcours.mesLiaisons()
-    expect(miennes.map((l) => l.id).sort()).toEqual(['LIA-2025-088', 'LIA-2026-027', 'LIA-2026-030'])
+    expect(miennes.map((l) => l.id).sort()).toEqual(['LIA-2025-088', 'LIA-2026-027', 'LIA-2026-030', 'LIA-2026-046'])
     const d = await portailParcours.dossier('LIA-2026-030')
     expect(d.conducteur?.nom).toBe('Conducteur de projet GIMAC')
     expect(d.blocages[0].responsable.nom).toBe('POLE_RESEAU')

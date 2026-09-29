@@ -5,12 +5,18 @@ import { CONNEXION, Enveloppe, GardeSession, PageConnexion, PageDeconnexion, Ses
 import { CompteProvider, GardePremierAcces, MonComptePage, monCompteHttp, monCompteSimule } from '@gimac/compte'
 import { Fournisseurs, NAVIGATION_PORTAIL, PROFILS, creerClientRequetes, servicesHttp, servicesSimules } from '@gimac/lot1'
 
-// Portail des participants (couche « portail ») : POR-03 du lot 1 (DS-GIMAC-01 §10.2). Toutes les données
+// Portail des participants (couche « portail ») : POR-03 du lot 1 (DS-GIMAC-01 §10.2), tableau de bord du
+// participant et gestes qui lui incombent (qualité Externe, CR §3.4, D-56 à D-59). Toutes les données
 // sont cloisonnées à l'institution du jeton par la passerelle et les services.
 // D-61, D-62 : session lue sur /api/session (second facteur exigé), premier accès avant tout écran,
 // « Mon compte » et déconnexion dans l'espace personnel de l'enveloppe.
+const TableauDeBordPage = lazy(() => import('@gimac/lot1/pages/portail/parcours/TableauDeBordPage'))
 const MaLiaisonPage = lazy(() => import('@gimac/lot1/pages/portail/MaLiaisonPage'))
 const DepotPreuvePage = lazy(() => import('@gimac/lot1/pages/portail/DepotPreuvePage'))
+const CoordonneesPage = lazy(() => import('@gimac/lot1/pages/portail/parcours/CoordonneesPage'))
+const ProcesVerbalPage = lazy(() => import('@gimac/lot1/pages/portail/parcours/ProcesVerbalPage'))
+const AttestationsPage = lazy(() => import('@gimac/lot1/pages/portail/parcours/AttestationsPage'))
+const FicheSuiviPage = lazy(() => import('@gimac/lot1/pages/portail/parcours/FicheSuiviPage'))
 
 const REELS = import.meta.env.VITE_SERVICES === 'http'
 const VERSION = import.meta.env.VITE_VERSION ?? '0.1.0'
@@ -41,10 +47,15 @@ function Pages({ session, etatCanal, correlationId }: { session: Session; etatCa
               ) : (
                 <>
                   <Route path="mon-compte" element={<MonComptePage />} />
+                  <Route path="tableau-de-bord" element={<TableauDeBordPage />} />
                   <Route path="liaisons" element={<MaLiaisonPage />} />
                   <Route path="liaisons/:id" element={<MaLiaisonPage />} />
-                  <Route path="liaisons/:id/operations/:op/preuve" element={<DepotPreuvePage />} />
-                  <Route path="*" element={<Navigate to="/portail/liaisons" replace />} />
+                  <Route path="liaisons/:id/coordonnees" element={<CoordonneesPage />} />
+                  <Route path="liaisons/:id/livrables/:op" element={<DepotPreuvePage />} />
+                  <Route path="liaisons/:id/proces-verbal" element={<ProcesVerbalPage />} />
+                  <Route path="liaisons/:id/attestations" element={<AttestationsPage />} />
+                  <Route path="liaisons/:id/fiche-suivi" element={<FicheSuiviPage />} />
+                  <Route path="*" element={<Navigate to="/portail/tableau-de-bord" replace />} />
                 </>
               )}
             </Routes>
@@ -80,7 +91,7 @@ export default function App() {
           <Routes>
             <Route path="/connexion" element={<PageConnexion couche="portail" />} />
             <Route path="/portail/*" element={<AvecSession>{(s) => <Pages session={s} etatCanal={etatCanal} correlationId={correlationId} />}</AvecSession>} />
-            <Route path="*" element={<Navigate to="/portail/liaisons" replace />} />
+            <Route path="*" element={<Navigate to="/portail/tableau-de-bord" replace />} />
           </Routes>
         </CompteProvider>
       )}

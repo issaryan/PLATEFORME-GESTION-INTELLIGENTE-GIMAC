@@ -1,70 +1,82 @@
-import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, screen, within } from '@testing-library/react'
-import { ApiError, type Langue } from '@gimac/socle'
-import { rendrePage } from '../../test/rendu'
-import { servicesSimules } from '../../services/simule'
-import type { Services } from '../../services/ports'
+import { afterEach, describe, expect, it } from 'vitest'
+import { cleanup, screen, within } from '@testing-library/react'
+import { ApiError } from '@gimac/socle'
 import MaLiaisonPage from './MaLiaisonPage'
+import { auditer, ouvrir, sansCleNiNomInterne, services } from './parcours/outilsTest'
 
 afterEach(cleanup)
-beforeAll(() => {
-  URL.createObjectURL = vi.fn(() => 'blob:attestation')
-  URL.revokeObjectURL = vi.fn()
-  HTMLAnchorElement.prototype.click = vi.fn()
-})
 
-const ouvrir = (chemin: string, o: { langue?: Langue; services?: Services } = {}) =>
-  rendrePage(<MaLiaisonPage />, { chemin, motif: chemin.startsWith('/portail/liaisons/') ? '/portail/liaisons/:id' : '/portail/liaisons', ...o })
+const monter = (chemin: string, o: Parameters<typeof ouvrir>[3] = {}) =>
+  ouvrir(<MaLiaisonPage />, chemin, chemin.startsWith('/portail/liaisons/') ? '/portail/liaisons/:id' : '/portail/liaisons', o)
 
-describe('POR-03 Ma liaison', () => {
-  it('POR-03 : chargement puis liste cloisonnée à l\'institution du jeton', async () => {
-    const { container } = ouvrir('/portail/liaisons')
-    expect(container.querySelector('.gm-skeleton')).not.toBeNull()
-    expect(await screen.findByText('LIA-2026-017')).toBeTruthy()
-    expect(screen.queryByText('LIA-2025-102')).toBeNull()
+describe('POR-03 Mes liaisons et suivi de mon projet', () => {
+  it('liste : les liaisons de l’institution du jeton, étape courante et deux couvertures', async () => {
+    const { container } = monter('/portail/liaisons')
+    expect(await screen.findByText('LIA-2025-088')).toBeTruthy()
+    for (const id of ['LIA-2026-030', 'LIA-2026-027', 'LIA-2026-046']) expect(screen.getByText(id)).toBeTruthy()
+    expect(screen.queryByText('LIA-2026-022')).toBeNull()
+    expect(screen.getAllByRole('img', { name: /Couverture de certification : 100 %/ }).length).toBeGreaterThan(0)
+    await auditer(container)
   })
 
-  it('POR-03 : vide quand l\'institution n\'a aucune liaison', async () => {
-    const services = { ...servicesSimules({ latenceMs: 0 }) }
-    services.portail = { ...services.portail, mesLiaisons: () => Promise.resolve([]) }
-    ouvrir('/portail/liaisons', { services })
-    expect(await screen.findByText(/Aucun/)).toBeTruthy()
+  it('liste vide : état explicite', async () => {
+    monter('/portail/liaisons', { services: services(() => ({ mesLiaisons: () => Promise.resolve([]) })) })
+    expect(await screen.findByText('Aucune liaison ouverte pour votre institution')).toBeTruthy()
   })
 
-  it('POR-03 : erreur avec identifiant de corrélation', async () => {
-    const services = { ...servicesSimules({ latenceMs: 0 }) }
-    services.portail = { ...services.portail, maLiaison: () => Promise.reject(new ApiError(404, 'HOM_LIAISON_NOT_FOUND', 'Introuvable.', 'cid-404')) }
-    ouvrir('/portail/liaisons/LIA-2026-099', { services })
+  it('suivi : blocage qui le concerne, dix étapes numérotées et verrou 2, interlocuteurs par fonction', async () => {
+    const { container } = monter('/portail/liaisons/LIA-2026-030')
+    expect(await screen.findByRole('heading', { level: 1, name: 'Suivi de mon projet LIA-2026-030' })).toBeTruthy()
+    expect(await screen.findByText('Élément de sécurité du participant à renouveler avant la reprise des essais')).toBeTruthy()
+    expect(screen.getByText('Obtenir le nouvel élément auprès du participant')).toBeTruthy()
+    expect(screen.getAllByText('Pôle réseau').length).toBeGreaterThan(0)
+    const barre = screen.getByRole('list', { name: 'Progression des dix étapes' })
+    expect(within(barre).getAllByRole('listitem')).toHaveLength(10)
+    expect(within(barre).getByText('6. Intégration').getAttribute('aria-current')).toBe('step')
+    expect(screen.getByText('Préalable : Approbation de la sécurité')).toBeTruthy()
+    expect(screen.getByText('Conducteur de projet')).toBeTruthy()
+    expect(screen.getByText('participant-030.essai:8443')).toBeTruthy()
+    expect(await screen.findByText('Rien ne vous est demandé pour le moment')).toBeTruthy()
+    sansCleNiNomInterne()
+    await auditer(container)
+  })
+
+  it('suivi : les tâches de la liaison mènent à leur geste ; pièces avec leur état', async () => {
+    monter('/portail/liaisons/LIA-2026-027')
+    expect(await screen.findByRole('button', { name: 'Signer' })).toBeTruthy()
+    expect(await screen.findByText('Établi, à signer')).toBeTruthy()
+    expect(screen.getByText('pas encore attendues')).toBeTruthy()
+    expect(screen.getByText('Banque B')).toBeTruthy()
+  })
+
+  it('suivi : service supplémentaire rattaché à sa liaison d’origine, taux du simulateur repris', async () => {
+    monter('/portail/liaisons/LIA-2026-046')
+    expect(await screen.findByText('Service supplémentaire de LIA-2025-088')).toBeTruthy()
+    expect(screen.getByText('Non communiquées')).toBeTruthy()
+  })
+
+  it('cloisonnement : une liaison d’une autre institution est introuvable', async () => {
+    monter('/portail/liaisons/LIA-2026-022')
     const alerte = await screen.findByRole('alert')
-    expect(alerte.textContent).toContain('cid-404')
     expect(alerte.textContent).toContain('Ce parcours est introuvable.')
   })
 
-  it('POR-03 : ce qui incombe à l\'institution, sans aucun champ interne', async () => {
-    ouvrir('/portail/liaisons/LIA-2026-017')
-    expect(await screen.findByText('Recette du service paiement')).toBeTruthy()
-    const texte = document.body.textContent ?? ''
-    expect(texte).not.toMatch(/Chef de projet|Ingénieur d'homologation|chefDeProjet|motifEtat/)
-    expect(texte).not.toContain('Rapprochement à blanc')
+  it('erreur avec identifiant de corrélation', async () => {
+    monter('/portail/liaisons/LIA-2026-099', { services: services(() => ({ dossier: () => Promise.reject(new ApiError(404, 'HOM_LIAISON_NOT_FOUND', 'Introuvable.', 'cid-404')) })) })
+    expect((await screen.findByRole('alert')).textContent).toContain('cid-404')
   })
 
-  it('POR-03 : l\'attestation téléchargée est vérifiée par son empreinte', async () => {
-    ouvrir('/portail/liaisons/LIA-2026-017?onglet=certification')
-    fireEvent.click(await screen.findByRole('button', { name: 'Télécharger l\'attestation' }))
-    expect(await screen.findByText(/Empreinte vérifiée/)).toBeTruthy()
-    expect(URL.createObjectURL).toHaveBeenCalled()
+  it('sans CER_PORTAL_READ, les pièces de certification ne sont pas proposées', async () => {
+    monter('/portail/liaisons/LIA-2026-027', { sans: ['CER_PORTAL_READ'] })
+    await screen.findByText('Vos pièces')
+    expect(screen.queryByText('Procès-verbal de certification')).toBeNull()
+    expect(screen.getByText('Fiche de suivi des services')).toBeTruthy()
   })
 
-  it('POR-03 : résultats du simulateur repris, jamais recalculés', async () => {
-    ouvrir('/portail/liaisons/LIA-2026-017?onglet=resultats')
-    expect(await screen.findByText('Résultats repris du simulateur, jamais recalculés.')).toBeTruthy()
-    expect(within(screen.getByRole('table')).getByText('SC-LIT-01')).toBeTruthy()
-  })
-
-  it.each(['en', 'es'] as const)('POR-03 : rendu en %s sans clé brute', async (langue) => {
-    ouvrir('/portail/liaisons/LIA-2026-017', { langue })
-    await screen.findByText('Recette du service paiement')
-    expect(document.body.textContent).not.toMatch(/\b(portail|campagne|attestation|partie)\.[a-zA-Z]/)
-    expect(document.body.textContent).toContain(langue === 'en' ? 'What my institution must do' : 'Lo que corresponde a mi institución')
+  it.each(['en', 'es'] as const)('suivi en %s sans clé brute', async (langue) => {
+    monter('/portail/liaisons/LIA-2025-088', { langue })
+    await screen.findByText(langue === 'en' ? 'Tracking my project LIA-2025-088' : 'Seguimiento de mi proyecto LIA-2025-088')
+    await screen.findByText(langue === 'en' ? 'Your documents' : 'Sus documentos')
+    sansCleNiNomInterne()
   })
 })

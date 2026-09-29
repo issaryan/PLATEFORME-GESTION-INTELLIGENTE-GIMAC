@@ -1,4 +1,4 @@
-import type { Fonction, OuvertureLiaison, TypeAttestation } from '../modele/parcours'
+import type { Ceremonie, Fonction, OuvertureLiaison, TypeAttestation } from '../modele/parcours'
 import type { Assertion, FiltreLiaisons } from '../services/ports'
 import { useEffet, useLecture } from './base'
 import { cles } from './cles'
@@ -36,8 +36,8 @@ export const useDeposerLivrable = () =>
 export const useAttribuer = () =>
   useEffet((s, v: { operationId: string; qualite: 'R' | 'C' | 'V' | 'I' | 'E'; personneId: string; motif: string }) => s.parcours.attribuer(v.operationId, v.qualite, v.personneId, v.motif), P)
 export const useDeposerPreuveParcours = () =>
-  useEffet((s, v: { operationId: string; fichier: File; valeurReference?: string; codeControle?: string }) =>
-    s.parcours.deposerPreuve(v.operationId, v.fichier, { valeurReference: v.valeurReference, codeControle: v.codeControle }), P)
+  useEffet((s, v: { operationId: string; fichier: File; valeurReference?: string; codeControle?: string; ceremonie?: Ceremonie }) =>
+    s.parcours.deposerPreuve(v.operationId, v.fichier, { valeurReference: v.valeurReference, codeControle: v.codeControle, ceremonie: v.ceremonie }), P)
 export const useValiderOperationParcours = () => useEffet((s, v: { operationId: string; assertion?: Assertion }) => s.parcours.validerOperation(v.operationId, v.assertion), P)
 export const useDeclarerBlocage = () =>
   useEffet((s, v: { liaisonId: string; motif: string; prochaineAction: string; responsableId: string; echeanceLevee: string }) =>

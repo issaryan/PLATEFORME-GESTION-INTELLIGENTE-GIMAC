@@ -7,13 +7,17 @@ import type { Dossier } from '../../modele/certification'
 import { useDossierDeLiaison, useHistoriqueDossier } from '../../hooks/certification'
 import { dossierDescriptor } from '../../ressources/dossier'
 import { useDescripteurDS } from '../../ressources/descripteur'
-import { OngletAttestation, OngletCircuit, OngletCompletude, OngletFiche, OngletHorodatages, OngletProcesVerbal, OngletRegistre } from './dossier/onglets'
+import { OngletAttestation, OngletCompletude, OngletFiche, OngletHorodatages, OngletProcesVerbal, OngletRegistre } from './dossier/onglets'
+import { ResumeDecision } from './parcours/decision/ResumeDecision'
 
-// DES-11 Dossier de mise en service (gabarit G3, CER-01 à CER-15) : composition de ResourceDetail et des
+// DES-11 Dossier de mise en service (gabarit G3, CER-08 à CER-15) : composition de ResourceDetail et des
 // onglets ; aucune règle ni aucun appel ici, les hooks de données portent tout accès aux services.
+// Modèle hybride (D-56) : le circuit des quatre quitus disparaît ; l'onglet « Décision » résume le
+// procès-verbal de certification et l'approbation de la sécurité et conduit au dossier de la liaison, où
+// ils se signent. Une ancienne adresse ?onglet=circuit ouvre cet onglet.
 
 const RENDUS: Record<string, (d: Dossier) => ReactNode> = {
-  circuit: (d) => <OngletCircuit dossier={d} />,
+  decision: (d) => <ResumeDecision liaisonId={d.liaisonId} />,
   completude: (d) => <OngletCompletude dossier={d} />,
   fiche: (d) => <OngletFiche dossier={d} />,
   procesVerbal: (d) => <OngletProcesVerbal dossier={d} />,
@@ -22,16 +26,28 @@ const RENDUS: Record<string, (d: Dossier) => ReactNode> = {
   registre: () => <OngletRegistre />,
 }
 
-function FicheDossier({ dossier, onglet }: { dossier: Dossier; onglet?: string }) {
+/** Onglets du descripteur : « circuit » (quatre quitus) devient « decision » (D-56). */
+const ongletDe = (cle: string | null) => (cle === 'circuit' ? 'decision' : cle ?? undefined)
+
+function FicheDossier({ dossier }: { dossier: Dossier }) {
+  const [recherche, setRecherche] = useSearchParams()
   const base = useDescripteurDS(dossierDescriptor)
-  const descripteur = useMemo(() => ({ ...base, tabs: base.tabs?.map((o) => ({ ...o, render: RENDUS[o.key] })) }), [base])
+  const { t } = useTranslation()
+  const descripteur = useMemo(
+    () => ({
+      ...base,
+      tabs: base.tabs?.map((o) => (o.key === 'circuit' ? { key: 'decision', label: t('decision.onglet'), render: RENDUS.decision } : { ...o, render: RENDUS[o.key] })),
+    }),
+    [base, t],
+  )
   const historique = useHistoriqueDossier(dossier.id)
   return (
     <ResourceDetail
       descriptor={descripteur}
       row={dossier}
       mode="page"
-      tab={onglet}
+      tab={ongletDe(recherche.get('onglet'))}
+      onTabChange={(k) => setRecherche(k === 'detail' ? {} : { onglet: k }, { replace: true })}
       timeline={historique.data ?? []}
       onAction={(a, row) => a.run?.({ row: row ?? dossier, descriptor: descripteur })}
     />
@@ -41,7 +57,6 @@ function FicheDossier({ dossier, onglet }: { dossier: Dossier; onglet?: string }
 export default function DossierMiseEnServicePage() {
   const { t } = useTranslation()
   const { id = '' } = useParams()
-  const [recherche] = useSearchParams()
   const q = useDossierDeLiaison(id)
   return (
     <EtatsRequete
@@ -51,7 +66,7 @@ export default function DossierMiseEnServicePage() {
       errorTitle={t('commun.erreur.titre')}
       retryLabel={t('commun.reessayer')}
     >
-      {(d) => (d ? <FicheDossier dossier={d} onglet={recherche.get('onglet') ?? undefined} /> : <EmptyState title={t('dossier.aucun', { liaison: id })} />)}
+      {(d) => (d ? <FicheDossier dossier={d} /> : <EmptyState title={t('dossier.aucun', { liaison: id })} />)}
     </EtatsRequete>
   )
 }

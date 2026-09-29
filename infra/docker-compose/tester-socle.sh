@@ -33,9 +33,19 @@ JETON=$($CURL -X POST http://keycloak:9080/realms/gimac/protocol/openid-connect/
 verifier "jeton Keycloak obtenu (client_credentials, portée openid pour userinfo)" "[ -n \"$JETON\" ]"
 # Sans jeton, la passerelle BFF redirige vers la connexion Keycloak (302) ; aucune donnée n'est servie.
 verifier "API refusée sans jeton (302 vers Keycloak)" "$CURL -o /dev/null -w '%{http_code} %{redirect_url}' http://gateway:8080/services/iam/api/collaborators | grep -q '^302 .*oauth2/authorization'"
-for cible in iam:collaborators participant:institutions incident:tickets audit:audit-events; do
+for cible in incident:tickets audit:audit-events; do
   s=${cible%%:*}; r=${cible##*:}
   verifier "API $s atteinte via la passerelle avec jeton (GET /api/$r = 200)" "[ \"\$($CURL -o /dev/null -w '%{http_code}' -H 'Authorization: Bearer $JETON' http://gateway:8080/services/$s/api/$r)\" = 200 ]"
+done
+# D-62 : dans MS-IAM et MS-PARTICIPANT, le CRUD généré (/api/**) est réservé à l'administration.
+# Refus attendu pour un jeton sans ROLE_ADMIN ; accès avec le compte de service gateway-supervision,
+# qui le porte (lecture des points d'administration par la passerelle).
+JETON_ADMIN=$($CURL -X POST http://keycloak:9080/realms/gimac/protocol/openid-connect/token \
+  -d grant_type=client_credentials -d client_id=gateway-supervision -d "client_secret=${GIMAC_SECRET_GATEWAY_SUPERVISION}" | sed -n 's/.*"access_token":"\([^"]*\)".*/\1/p')
+for cible in iam:collaborators participant:institutions; do
+  s=${cible%%:*}; r=${cible##*:}
+  verifier "CRUD $s refusé sans ROLE_ADMIN (GET /api/$r = 403)" "[ \"\$($CURL -o /dev/null -w '%{http_code}' -H 'Authorization: Bearer $JETON' http://gateway:8080/services/$s/api/$r)\" = 403 ]"
+  verifier "CRUD $s servi avec ROLE_ADMIN (GET /api/$r = 200)" "[ \"\$($CURL -o /dev/null -w '%{http_code}' -H 'Authorization: Bearer $JETON_ADMIN' http://gateway:8080/services/$s/api/$r)\" = 200 ]"
 done
 verifier "OPA refuse par défaut" "$CURL -X POST http://opa:8181/v1/data/gimac/autorisation/autorise -d '{\"input\":{}}' | grep -q '\"result\":false'"
 

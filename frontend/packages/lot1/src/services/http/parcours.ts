@@ -77,6 +77,7 @@ const requete = (f: FiltreLiaisons) => ({
   statut: f.statut || undefined,
   etape: f.etape || undefined,
   bloquees: f.bloquees || undefined,
+  sansConducteur: f.sansConducteur || undefined,
 })
 
 /** Dépôt dans MS-DOCUMENT (WORM) puis rattachement par référence et empreinte, revérifiée par le service. */

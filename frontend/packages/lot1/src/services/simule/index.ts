@@ -280,10 +280,11 @@ export function servicesSimules(o: OptionsSimulation = {}): Services {
     telechargerAttestation: () => certification.telechargerAttestation('ATT-2026-0007'),
   }
 
-  const { parcours, decision, portailParcours } = parcoursSimule(attendre, INSTITUTION_PORTAIL)
+  const participant = participantSimule(attendre, refus)
+  const { parcours, decision, portailParcours } = parcoursSimule(attendre, INSTITUTION_PORTAIL, (id) => participant.dossier(id).then((d) => d.institution.nom, () => undefined))
 
   return {
-    participant: participantSimule(attendre, refus),
+    participant,
     parcours,
     decision,
     portailParcours,

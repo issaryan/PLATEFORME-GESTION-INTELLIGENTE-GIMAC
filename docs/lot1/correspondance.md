@@ -62,6 +62,10 @@ L'interface consomme déjà les routes réelles de l'étape 3 (`LiaisonsCadrageR
 | `CER_SECURITY_VERIFY` | RSSI | Vérification et archivage des attestations de sécurité (rang 23) |
 | `CER_PORTAL_SIGN` | correspondant du participant | Signature du procès-verbal par le participant (rang 19) |
 
+Le constat de la couverture (rang 17) relève de `CER_DOSSIER_VERIFY` (SNA). Le conducteur de projet reçoit `HOM_OPERATION_VALIDATE` : il est le validateur (V) de la plupart des opérations ; c'est au service d'interdire que le validateur soit aussi le responsable (`HOM_VALIDATOR_IS_RESPONSIBLE`) et de retirer `VALIDER` des actions permises dans ce cas.
+
+Preuves : une opération `cle` (C1, D3, D12, D27) ne porte que des codes de contrôle ; la cérémonie C1 porte sa date de tenue, les trois porteurs de composantes et leurs trois codes de contrôle (`ceremonie`) ; une opération `secret` (29, M3, M7, M9, D2) ne porte qu'une trace, hors valeurs.
+
 Réutilisées : `CER_QUITUS_TECHNIQUE_SIGN` devient la signature GIMAC du procès-verbal (chef du DES) ; `CER_QUITUS_CONFORMITE_SIGN` et `CER_QUITUS_DG_SIGN` portent les visas optionnels ; `CER_CHANGE_RECORD_LINK` la fiche de changement. Matrice complète : `frontend/packages/lot1/src/permissions.ts`.
 
 ### Champs attendus sur `LiaisonVue`

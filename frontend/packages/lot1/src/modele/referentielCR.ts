@@ -19,6 +19,8 @@ export type OperationReferentiel = {
   grain: GrainPreuve
   /** Opération sur un élément cryptographique : seule la trace et le code de contrôle sont admis. */
   cle?: boolean
+  /** Élément secret non cryptographique (mot de passe, identifiants) : seule la trace, hors valeurs, est admise. */
+  secret?: boolean
   /** Preuve portant une valeur de référence relisible et comparable (point de terminaison, code membre, BIN). */
   valeurReference?: boolean
   /** Opération parmi les plus faciles à omettre, sans symptôme à la bascule (CR §5.5). */
@@ -39,7 +41,7 @@ const op = (
   segment: SegmentParcours,
   porteurs: Fonction[],
   predecesseurs: string[],
-  o: Partial<Pick<OperationReferentiel, 'types' | 'plateforme' | 'grain' | 'cle' | 'valeurReference' | 'oubliSansSymptome' | 'pivot'>> = {},
+  o: Partial<Pick<OperationReferentiel, 'types' | 'plateforme' | 'grain' | 'cle' | 'secret' | 'valeurReference' | 'oubliSansSymptome' | 'pivot'>> = {},
 ): OperationReferentiel => ({ rang, etape, segment, porteurs, predecesseurs, types: o.types ?? TOUS, plateforme: o.plateforme ?? null, grain: o.grain ?? 'OPERATION', ...o })
 
 /** A.2 à A.4 : tronc commun amont, rangs 1 à 26. */
@@ -92,13 +94,13 @@ const M = (rang: string, porteur: Fonction, pred: string[], o: Partial<Operation
 export const BRANCHE_MOBILE: OperationReferentiel[] = [
   M('M1', 'PRODUCTION_MONETIQUE', ['26']),
   M('M2', 'PRODUCTION_MONETIQUE', ['26'], { valeurReference: true }),
-  M('M3', 'PRODUCTION_MONETIQUE', ['M2'], { cle: true }),
+  M('M3', 'PRODUCTION_MONETIQUE', ['M2'], { secret: true }),
   M('M4', 'PRODUCTION_MONETIQUE', ['M2']),
   M('M5', 'PRODUCTION_MONETIQUE', ['M4']),
   M('M6', 'POLE_RESEAU', ['M2']),
-  M('M7', 'PRODUCTION_MONETIQUE', ['M3', 'M5']),
+  M('M7', 'PRODUCTION_MONETIQUE', ['M3', 'M5'], { secret: true }),
   M('M8', 'PRODUCTION_MONETIQUE', ['M5'], { valeurReference: true }),
-  M('M9', 'PRODUCTION_MONETIQUE', ['M8'], { cle: true }),
+  M('M9', 'PRODUCTION_MONETIQUE', ['M8'], { secret: true }),
   M('M10', 'PRODUCTION_MONETIQUE', ['M8']),
   M('M11', 'POLE_RESEAU', ['M6', 'M10']),
   M('M12', 'POLE_RESEAU', ['M11']),
@@ -114,7 +116,7 @@ const D = (rang: string, porteurs: Fonction[], pred: string[], plateforme: Plate
   op(rang, 'MISE_EN_PRODUCTION', 'BRANCHE', porteurs, pred, { types: DELEG, plateforme, ...o })
 export const BRANCHE_DELEGATAIRE: OperationReferentiel[] = [
   D('D1', ['CONDUCTEUR', 'PERSONNALISATEUR'], ['26'], null),
-  D('D2', ['PERSONNALISATEUR', 'RSSI'], ['D1'], null, { cle: true }),
+  D('D2', ['PERSONNALISATEUR', 'RSSI'], ['D1'], null, { secret: true }),
   D('D3', ['RSSI'], ['D2'], null, { cle: true }),
   D('D4', ['POLE_RESEAU'], ['D1'], null),
   D('D5', ['PARTICIPANT'], ['D1'], null),
@@ -153,7 +155,7 @@ export const BRANCHE_DELEGATAIRE: OperationReferentiel[] = [
 export const TRONC_AVAL: OperationReferentiel[] = [
   op('27', 'MISE_EN_PRODUCTION', 'AVAL', ['POLE_SYSTEME'], []),
   op('28', 'MISE_EN_PRODUCTION', 'AVAL', ['POLE_SYSTEME'], ['27'], { oubliSansSymptome: true }),
-  op('29', 'MISE_EN_PRODUCTION', 'AVAL', ['POLE_SYSTEME'], ['27'], { cle: true }),
+  op('29', 'MISE_EN_PRODUCTION', 'AVAL', ['POLE_SYSTEME'], ['27'], { secret: true }),
   op('30', 'MISE_EN_PRODUCTION', 'AVAL', ['PRODUCTION_MONETIQUE', 'PARTICIPANT'], ['28', '29']),
   op('31', 'MISE_EN_PRODUCTION', 'AVAL', ['PRODUCTION_MONETIQUE'], ['30']),
   op('32', 'SUIVI', 'AVAL', ['PARTICIPANT'], ['31']),

@@ -16,7 +16,7 @@ import type {
 } from '../modele/participant'
 import type {
   ApprobationSecurite, Blocage, DossierLiaison, Fonction, FicheSuiviServices, IndicateursPilotage, LiaisonResume, OperationParcours,
-  OuvertureLiaison as OuvertureCadrage, Personne, ProcesVerbalCertification, TableauActeur, TypeAttestation,
+  Ceremonie, OuvertureLiaison as OuvertureCadrage, Personne, ProcesVerbalCertification, TableauActeur, TypeAttestation,
 } from '../modele/parcours'
 
 // Ports de l'interface du lot 1 : le seul contrat entre les écrans et les données. Les composants et
@@ -129,7 +129,7 @@ export interface ServiceParticipant {
 }
 
 /** Filtre des liaisons du parcours (étape 3 : « mes projets » du conducteur). */
-export type FiltreLiaisons = { page: number; taille: number; recherche?: string; statut?: string; typeProjet?: string; etape?: string; mesProjets?: boolean; bloquees?: boolean }
+export type FiltreLiaisons = { page: number; taille: number; recherche?: string; statut?: string; typeProjet?: string; etape?: string; mesProjets?: boolean; bloquees?: boolean; sansConducteur?: boolean }
 
 /**
  * Parcours de la liaison, étapes 3 à 10 (D-56 à D-59) : dossier numérique, étapes à six éléments,
@@ -151,7 +151,7 @@ export interface ServiceParcours {
   deposerLivrable(operationId: string, fichier: File, commentaire: string): Promise<void>
   attribuer(operationId: string, qualite: 'R' | 'C' | 'V' | 'I' | 'E', personneId: string, motif: string): Promise<void>
   // Exécution des opérations (preuve au grain de l'opération en production)
-  deposerPreuve(operationId: string, fichier: File, complement: { valeurReference?: string; codeControle?: string }): Promise<void>
+  deposerPreuve(operationId: string, fichier: File, complement: { valeurReference?: string; codeControle?: string; ceremonie?: Ceremonie }): Promise<void>
   validerOperation(operationId: string, assertion?: Assertion): Promise<void>
   // Blocages datés (CR annexe B)
   declarerBlocage(liaisonId: string, b: { motif: string; prochaineAction: string; responsableId: string; echeanceLevee: string }): Promise<Blocage>

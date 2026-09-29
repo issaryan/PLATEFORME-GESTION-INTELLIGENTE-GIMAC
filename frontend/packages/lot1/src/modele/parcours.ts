@@ -40,7 +40,10 @@ export type Preuve = {
   valeurReference?: { libelle: string; valeur: string }
   /** Code de contrôle d'une clé : jamais la clé elle-même (CR §6.4.3, D-59). */
   codeControle?: string
+  /** Cérémonie de clés (C1, CR §5.4.1) : date de tenue, porteurs des trois composantes et leurs codes de contrôle. */
+  ceremonie?: Ceremonie
 }
+export type Ceremonie = { tenueLe: string; porteurs: string[]; codesControle: string[] }
 
 export type EtatOperationParcours = 'VERROUILLEE' | 'A_FAIRE' | 'EN_COURS' | 'EN_VALIDATION' | 'FAITE' | 'BLOQUEE' | 'SANS_OBJET'
 export type OperationParcours = Permitted & {
@@ -58,6 +61,8 @@ export type OperationParcours = Permitted & {
   faiteLe: string | null
   preuve: Preuve | null
   cle: boolean
+  /** Secret non cryptographique : trace seule, hors valeurs. */
+  secret: boolean
   valeurReference: boolean
   oubliSansSymptome: boolean
   pivot: boolean
@@ -185,6 +190,8 @@ export type DossierLiaison = Permitted & {
   interlocuteursParticipant: { nom: string; fonction: string }[]
   /** Liaison d'origine quand celle-ci ouvre un service supplémentaire (rang 35). */
   liaisonOrigineId: string | null
+  /** Projection du portail : coordonnées techniques d'essai communiquées par le participant (rang 12), relisibles. */
+  coordonneesTechniques?: { adresse: string; port: string; pointsTerminaison: string | null; communiqueesLe: string } | null
 }
 
 export type LiaisonResume = {
@@ -217,6 +224,8 @@ export type TacheActeur = {
   oubliSansSymptome: boolean
   /** Chemin de l'écran où l'action se réalise. */
   lien: string
+  /** Portail : gestes que le participant peut accomplir sur cette tâche, calculés par le service. */
+  actionsPermises?: string[]
 }
 
 /** Pilotage (CR §7.3, vision diapositives 11 et 12) : tous les chiffres viennent du service. */
