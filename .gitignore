@@ -177,3 +177,7 @@ $RECYCLE.BIN/
 
 # Journaux conservés par gimac-dev.sh après un échec de démarrage
 infra/docker-compose/.journaux-echec/
+
+# État local des outils d'assistance (claude-flow, mémoire de session)
+.claude-flow/
+**/.claude-flow/
