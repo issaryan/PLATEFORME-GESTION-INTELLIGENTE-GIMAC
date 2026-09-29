@@ -6,6 +6,7 @@ export type * from './modele/portail'
 export type * from './modele/participant'
 // Noms déjà pris par les modèles de la certification, de l'homologation et du participant : renommés.
 export type { EtapeCode, StatutParcours, SegmentParcours, GrainPreuve, PlateformeExecution, Fonction, Qualite, Personne as PersonneParcours, Raci, Sla, Preuve, EtatOperationParcours, OperationParcours, ElementEtape, EtatEtape, EtapeParcours, EtatServicePerimetre, ServicePerimetre, Blocage, EtatProcesVerbal, Signature, ProcesVerbalCertification, TypeAttestation, Attestation as AttestationParcours, EtatApprobation, Visa, ApprobationSecurite, FicheSuiviServices, DossierLiaison, LiaisonResume, TacheActeur, IndicateursPilotage, TableauActeur, OuvertureLiaison as OuvertureLiaisonParcours } from './modele/parcours'
+export type * as Parcours from './modele/parcours'
 export { ETAPES } from './modele/parcours'
 export { referentielDe, type OperationReferentiel } from './modele/referentielCR'
 export { PERM, PROFILS, PERMISSIONS_NOUVELLES, FONCTION_DU_ROLE, fonctionsDe } from './permissions'

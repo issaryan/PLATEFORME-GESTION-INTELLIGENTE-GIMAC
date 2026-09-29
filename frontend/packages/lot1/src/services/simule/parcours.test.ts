@@ -62,7 +62,9 @@ describe('parcours simulé : liste, intervenants, ouverture et désignation (ét
     expect(l).toMatchObject({ id: 'LIA-2026-060', institutionNom: 'Établissement de paiement A', statut: 'CADREE', etapeCourante: 'CADRAGE', conducteurNom: 'Conducteur de projet 2', bloquee: false })
     const d = await s.parcours.dossier(l.id)
     expect(d.perimetre.map((p) => [p.serviceCode, p.inclus, p.etat])).toEqual([['PAIEMENT_MARCHAND', true, 'NON_DEMARRE'], ['REMITTANCE', true, 'NON_DEMARRE'], ['FACTURE', true, 'NON_DEMARRE'], ['CASH_IN', true, 'NON_DEMARRE']])
-    expect(d.actionsPermises).toEqual(['DECLARER_BLOCAGE', 'DESIGNER_CONDUCTEUR', 'AFFECTER_RESSOURCES'])
+    // Cadrage engagé, non clos (rang 3 à faire) : l'affectation des ressources (rang 6) n'est pas encore offerte.
+    expect(d.actionsPermises).toEqual(['DECLARER_BLOCAGE', 'DESIGNER_CONDUCTEUR'])
+    expect((await s.parcours.operations(l.id)).find((o) => o.rang === '3')?.etat).toBe('A_FAIRE')
     expect((await s.parcours.ouvrirLiaison({ institutionId: 'INST-0017', typeProjet: 'DELEGATAIRE', chefDeProjetId: 'U-COND-1' })).institutionNom).toBe('Banque B')
     expect((await s.parcours.ouvrirLiaison({ institutionId: 'INST-0999', typeProjet: 'DELEGATAIRE', chefDeProjetId: 'U-COND-1' })).institutionNom).toBe('Nouvel adhérent')
     expect((await s.parcours.listerLiaisons({ page: 1, taille: 50 })).total).toBe(13)

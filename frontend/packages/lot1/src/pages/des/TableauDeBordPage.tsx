@@ -8,6 +8,9 @@ import { useLiaisons } from '../../hooks/liaisons'
 import { etatInstitution, etatLiaison } from '../../dictionnaires'
 import { NAVIGATION_DES } from '../../navigation'
 import { mesProjetsParDefaut } from './liaisons/communs'
+import { fonctionsDe } from '../../permissions'
+import { SectionActeur } from './tableau/SectionActeur'
+import { SectionCockpit } from './tableau/SectionCockpit'
 
 // DES-01 Tableau de bord (/des/tableau-de-bord, gabarit G1 ; D-58, D-61) : chaque acteur voit son
 // tableau de bord, composé des seules sections que la matrice des rôles de son jeton ouvre. Les
@@ -148,6 +151,7 @@ export default function TableauDeBordPage() {
   const projets = mesProjetsParDefaut(session?.roles, permissions)
   const pilotage = aPermission(permissions, 'HOM_DASHBOARD_READ')
   const profils = (session?.roles ?? []).filter((r) => r !== 'ROLE_USER')
+  const fonctions = fonctionsDe(session?.roles ?? [])
   const rien = !ddrm && !cadrage && !projets && !pilotage && !lecteurRegistre
   return (
     <div className="gm-col">
@@ -163,6 +167,8 @@ export default function TableauDeBordPage() {
           <LinkList label={t('tableau.homologation.titre')} items={[{ key: 'pilotage', href: '/des/liaisons?onglet=pilotage', label: t('tableau.homologation.pilotage') }]} />
         </PageSection>
       ) : null}
+      {pilotage && fonctions.some((f) => f === 'DG' || f === 'CHEF_DES' || f === 'CHEF_DDRM') ? <SectionCockpit /> : null}
+      {fonctions.length > 0 && aPermission(permissions, 'HOM_LIAISON_LIST') ? <SectionActeur fonctions={fonctions} /> : null}
       <MesAcces permissions={permissions} />
       {rien ? <EmptyState icon="gauge" title={t('tableau.vide.titre')} text={t('tableau.vide.texte')} /> : null}
     </div>

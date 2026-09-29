@@ -20,3 +20,4 @@
 | Date | Commit | Modification |
 |---|---|---|
 | 2026-09-29 | — | Plan, système de conception et tableau de correspondance versés ; Phase 0 |
+| 2026-09-29 | — | `correspondance.md` : contrat attendu par l'interface pour le parcours des étapes 3 à 10 (permissions nouvelles `HOM_STEP_MANAGE`, `CER_PV_ESTABLISH`, `CER_SECURITY_VERIFY`, `CER_PORTAL_SIGN`, champs de `LiaisonVue`, routes prévues) |

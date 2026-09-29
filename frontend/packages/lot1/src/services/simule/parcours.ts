@@ -378,7 +378,7 @@ export function parcoursSimule(attendre: Attendre, institutionPortail: string): 
       // Même règle que la désignation : seul un conducteur de projet habilité conduit la liaison (D-58).
       const cond = PERSONNES.filter((p) => p.fonction === 'CONDUCTEUR').findIndex((p) => p.id === o.chefDeProjetId)
       if (cond < 0) throw refus(422, 'HOM_LEAD_NOT_ELIGIBLE', 'La personne désignée ne détient pas le rôle de conducteur de projet.')
-      const s: Scenario = { id: `LIA-2026-${String(50 + etats.size).padStart(3, '0')}`, institutionId: o.institutionId, institutionNom: o.institutionId === 'INST-0042' ? 'Établissement de paiement A' : o.institutionId === 'INST-0017' ? 'Banque B' : 'Nouvel adhérent', typeProjet: o.typeProjet, banque: null, personnalisateur: null, fintech: false, avancement: '3', statut: 'CADREE', conducteur: cond, debut: 0, cible: null, services: perimetre(o.typeProjet === 'PAIEMENT_MOBILE' ? SERVICES_MOBILE : SERVICES_CARTE, []) }
+      const s: Scenario = { id: `LIA-2026-${String(50 + etats.size).padStart(3, '0')}`, institutionId: o.institutionId, institutionNom: o.institutionId === 'INST-0042' ? 'Établissement de paiement A' : o.institutionId === 'INST-0017' ? 'Banque B' : 'Nouvel adhérent', typeProjet: o.typeProjet, banque: null, personnalisateur: null, fintech: false, avancement: '2', statut: 'CADREE', conducteur: cond, debut: 0, cible: null, services: perimetre(o.typeProjet === 'PAIEMENT_MOBILE' ? SERVICES_MOBILE : SERVICES_CARTE, []) }
       const e = construire(s)
       etats.set(s.id, e)
       return resume(e)
@@ -463,7 +463,7 @@ export function parcoursSimule(attendre: Attendre, institutionPortail: string): 
       const e = trouver(id)
       if (e.s.statut !== 'EN_PRODUCTION') throw refus(409, 'HOM_LIAISON_NOT_IN_PRODUCTION', 'Un service supplémentaire s\'ouvre sur une liaison en production.')
       const base = e.s.typeProjet === 'PAIEMENT_MOBILE' ? SERVICES_MOBILE : SERVICES_CARTE
-      const s: Scenario = { ...e.s, id: `LIA-2026-${String(50 + etats.size).padStart(3, '0')}`, avancement: '3', statut: 'CADREE', conducteur: null, debut: 0, cible: null, services: base.filter((x) => services.includes(x.code)).map((x) => ({ ...x, inclus: true })), origine: id }
+      const s: Scenario = { ...e.s, id: `LIA-2026-${String(50 + etats.size).padStart(3, '0')}`, avancement: '2', statut: 'CADREE', conducteur: null, debut: 0, cible: null, services: base.filter((x) => services.includes(x.code)).map((x) => ({ ...x, inclus: true })), origine: id }
       const n = construire(s)
       etats.set(s.id, n)
       return resume(n)

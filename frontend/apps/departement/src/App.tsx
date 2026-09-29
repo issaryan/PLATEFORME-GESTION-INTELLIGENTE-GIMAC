@@ -19,6 +19,8 @@ const LiaisonsPage = lazy(() => import('@gimac/lot1/pages/des/LiaisonsPage'))
 const LiaisonPage = lazy(() => import('@gimac/lot1/pages/des/LiaisonPage'))
 const ClotureOperationPage = lazy(() => import('@gimac/lot1/pages/des/ClotureOperationPage'))
 const DossierMiseEnServicePage = lazy(() => import('@gimac/lot1/pages/des/DossierMiseEnServicePage'))
+const ParcoursPage = lazy(() => import('@gimac/lot1/pages/des/parcours/ParcoursPage'))
+const DossierLiaisonPage = lazy(() => import('@gimac/lot1/pages/des/parcours/DossierLiaisonPage'))
 const ReferentielsOperationsPage = lazy(() => import('@gimac/lot1/pages/des/ReferentielsOperationsPage'))
 
 const VERSION = import.meta.env.VITE_VERSION ?? '0.1.0'
@@ -54,6 +56,8 @@ function Pages({ session, etatCanal, correlationId }: { session: Session; etatCa
                   <Route path="liaisons/:id" element={<LiaisonPage />} />
                   <Route path="liaisons/:id/operations/:op/cloture" element={<ClotureOperationPage />} />
                   <Route path="liaisons/:id/mise-en-service" element={<DossierMiseEnServicePage />} />
+                  <Route path="parcours" element={<ParcoursPage />} />
+                  <Route path="parcours/:id" element={<DossierLiaisonPage />} />
                   <Route path="referentiels/operations" element={<ReferentielsOperationsPage />} />
                   <Route path="*" element={<Navigate to="/des/tableau-de-bord" replace />} />
                 </>

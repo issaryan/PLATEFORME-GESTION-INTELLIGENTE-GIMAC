@@ -241,6 +241,9 @@ describe('parcours de bout en bout (étapes 3 à 10)', () => {
     const l = await s.parcours.ouvrirLiaison({ institutionId: 'INST-0042', typeProjet: 'PAIEMENT_MOBILE', chefDeProjetId: 'U-COND-1' })
     const id = l.id
     expect(await courante(s, id)).toBe('CADRAGE')
+    // L'ouverture engage le cadrage sans le clore (six éléments, D-59) : le rang 3 est à faire.
+    expect((await op(s, id, '3')).etat).toBe('A_FAIRE')
+    await clore(s, await op(s, id, '3'))
     await clore(s, await op(s, id, '4'))
     expect(await courante(s, id)).toBe('LANCEMENT')
     await s.parcours.affecterRessources(id, [{ fonction: 'SNA', personneId: 'U-SNA-2' }, { fonction: 'POLE_RESEAU', personneId: 'U-RES-1' }])
