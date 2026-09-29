@@ -26,6 +26,24 @@ patches:
           pod-security.kubernetes.io/audit: restricted
           pod-security.kubernetes.io/warn: restricted
 
+  # Domaine « gimac » (D-61, D-62) : émetteur des jetons de tous les services, clients de service,
+  # annuaire réel de MS-IAM, Keycloak à l'image GIMAC (thème et domaine intégrés).
+  - path: domaine-gimac/audit.yaml
+  - path: domaine-gimac/certification.yaml
+  - path: domaine-gimac/collaboration.yaml
+  - path: domaine-gimac/document.yaml
+  - path: domaine-gimac/gateway.yaml
+  - path: domaine-gimac/homologation.yaml
+  - path: domaine-gimac/iam.yaml
+  - path: domaine-gimac/incident.yaml
+  - path: domaine-gimac/monitoring.yaml
+  - path: domaine-gimac/notification.yaml
+  - path: domaine-gimac/participant.yaml
+  - path: domaine-gimac/pilotage.yaml
+  - path: domaine-gimac/rapprochement.yaml
+  - path: domaine-gimac/reporting.yaml
+  - path: domaine-gimac/keycloak.yaml
+
   # Secrets générés par JHipster retirés : aucun secret dans le dépôt (BNF-07, D-44).
   # Ils sont créés au déploiement par creer-secrets.sh, puis par OpenBao (SOC-06).
   - path: retrait-secrets-generes.yaml

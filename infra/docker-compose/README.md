@@ -27,7 +27,8 @@ Environnement de développement de la plateforme en une commande (SOC-13, D-45, 
 - Simulacres : simulateur (8190, lecture seule, écritures refusées), gestion des changements (8191), horodatage (8192), messagerie Mailpit (1025, 8025).
 - OpenTelemetry (4317, 4318), Loki (3100), Tempo (3200).
 - État des serveurs (D-61) : node-exporter (hôte, sans port publié) et, avec `COMPOSE_PROFILES=conteneurs`, cAdvisor (conteneurs) ; jobs `node-exporter` et `cadvisor` (découverte DNS, aucune cible sans le profil) ajoutés à `prometheus-conf/prometheus.yml`, à reporter après une régénération. La passerelle les restitue sur `/api/plateforme/serveurs`.
-- Jeton de service de la supervision de la passerelle : `GIMAC_SECRET_GATEWAY_SUPERVISION` dans `.env` (client Keycloak `gateway-supervision`) ; vide, la supervision fonctionne en mode dégradé.
+- Secrets des clients de service du domaine `gimac`, créés dans `.env` par `gimac-dev.sh` : `GIMAC_SECRET_HOMOLOGATION_SERVICE`, `GIMAC_SECRET_CERTIFICATION_SERVICE`, `GIMAC_SECRET_PARTICIPANT_SERVICE`, `GIMAC_SECRET_IAM_SERVICE` (MS-IAM administre le domaine, D-62), `GIMAC_SECRET_GATEWAY_SUPERVISION` (supervision de la passerelle). Un `.env` existant est complété des variables manquantes.
+- Keycloak monte le thème GIMAC (`infra/keycloak/themes/gimac`) : pages de connexion et courriels d'invitation, reçus dans Mailpit (http://localhost:8025).
 - Couches de présentation : département (4200), portail (4201), console (4202).
 
 ## Commandes
@@ -63,3 +64,4 @@ git checkout -- ../../ms-*/.yo-rc.json   # annule la réécriture de version par
 | 2026-09-29 | — | Lot 1 : domaine Keycloak gimac importé, émetteur gimac pour tous les services, jeton de service des deux services du lot, caches Redis retirés (régénération), `scripts/token.sh` et `scripts/verifier-phase0.sh`, politique OPA du lot (D-55) |
 | 2026-09-29 | — | `scripts/token.sh` : jeton de niveau 2 par autorisation par appareil (double facteur, D-61), niveau 1 sur demande ; politique OPA : second facteur et routes du registre des institutions (18 tests, couverture 100 %) |
 | 2026-09-29 | — | Supervision de la plateforme (D-61) : node-exporter, cAdvisor (profil `conteneurs`), collecte Prometheus correspondante, jeton de service de la passerelle (`GIMAC_SECRET_GATEWAY_SUPERVISION`, facultatif) |
+| 2026-09-29 | — | D-62 : MS-IAM en annuaire réel (client `iam-service`), MS-PARTICIPANT avec son client de service, secrets des clients passés à Keycloak, thème GIMAC monté ; secret de supervision désormais obligatoire ; `docker compose config` vérifié |

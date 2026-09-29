@@ -29,6 +29,11 @@ PERMISSIONS = {
     # Registre des institutions et étapes 1 et 2 du parcours (D-57).
     "PAR": ["INSTITUTION_READ", "INSTITUTION_CREATE", "INSTITUTION_EDIT", "ADHESION_INSTRUCT", "TRANSITION_REQUEST",
             "TRANSITION_APPROVE"],
+    # Administration des comptes et de la plateforme depuis la console (D-62).
+    "IAM": ["ACCOUNT_READ", "ACCOUNT_CREATE", "ACCOUNT_EDIT", "ACCOUNT_ROLES", "ACCOUNT_STATUS", "ACCOUNT_DELETE",
+            "ACCOUNT_SECURITY", "JOURNAL_READ", "PROFILE_EDIT", "ROLE_PRIVILEGED_GRANT"],
+    "PLATFORM": ["SUPERVISION_READ", "CONFIG_READ", "CONFIG_EDIT", "SECURITY_POLICY_READ", "SECURITY_POLICY_EDIT",
+                 "MESSAGING_EDIT"],
     "INTERNAL": ["HOMOLOGATION_READ", "CERTIFICATION_READ", "PARTICIPANT_READ", "DOCUMENT_READ", "IAM_READ"],
 }
 TOUTES = [f"{d}_{p}" for d, ps in PERMISSIONS.items() for p in ps]
@@ -45,7 +50,13 @@ PROFILS = {
     "ROLE_CHEF_DES": LECTURE_DES + ["HOM_REFERENTIEL_MIGRATE", "HOM_LIAISON_UNFREEZE", "HOM_OPERATION_VALIDATE",
         "HOM_DEADLINE_CONFIG", "HOM_EVIDENCE_FILE_EXPORT", "CER_QUITUS_TECHNIQUE_SIGN", "CER_ATTESTATION_ISSUE",
         "CER_REGISTER_EXPORT", "CER_ATTESTATION_STATUS_REQUEST"],
-    "ROLE_RSSI": LECTURE_DES + ["CER_QUITUS_SECURITE_SIGN"],
+    # Super administrateur et RSSI administrent la plateforme depuis la console (D-62) ; seul le
+    # super administrateur attribue un profil privilégié et règle la journalisation des services.
+    "ROLE_SUPER_ADMIN": LECTURE_DES + ["ROLE_ADMIN"] + [f"IAM_{p}" for p in PERMISSIONS["IAM"]]
+        + [f"PLATFORM_{p}" for p in PERMISSIONS["PLATFORM"]],
+    "ROLE_RSSI": LECTURE_DES + ["CER_QUITUS_SECURITE_SIGN"] + [f"IAM_{p}" for p in PERMISSIONS["IAM"] if p != "ROLE_PRIVILEGED_GRANT"]
+        + ["PLATFORM_SUPERVISION_READ", "PLATFORM_CONFIG_READ", "PLATFORM_SECURITY_POLICY_READ", "PLATFORM_SECURITY_POLICY_EDIT",
+           "PLATFORM_MESSAGING_EDIT"],
     "ROLE_CONFORMITE": LECTURE_DES + ["CER_QUITUS_CONFORMITE_SIGN", "CER_CHANGE_RECORD_LINK"],
     "ROLE_DG": LECTURE_DES + ["CER_QUITUS_DG_SIGN", "CER_ATTESTATION_STATUS_APPROVE"],
     "ROLE_CORRESPONDANT": ["HOM_PORTAL_READ", "HOM_PORTAL_SUBMIT", "CER_PORTAL_READ"],
@@ -65,6 +76,7 @@ PROFILS = {
 UTILISATEURS = [
     ("test-ingenieur-homologation", "Ingénieur", "Homologation", "ROLE_INGENIEUR_HOMOLOGATION", None),
     ("test-chef-des", "Chef", "DES", "ROLE_CHEF_DES", None),
+    ("test-super-admin", "Super", "Administrateur", "ROLE_SUPER_ADMIN", None),
     ("test-rssi", "Responsable", "Sécurité", "ROLE_RSSI", None),
     ("test-conformite", "Responsable", "Conformité", "ROLE_CONFORMITE", None),
     ("test-dg", "Direction", "Générale", "ROLE_DG", None),
@@ -82,6 +94,40 @@ SERVICES = {
     "homologation-service": ["INTERNAL_PARTICIPANT_READ", "INTERNAL_DOCUMENT_READ", "INTERNAL_IAM_READ"],
     "certification-service": ["INTERNAL_HOMOLOGATION_READ", "INTERNAL_DOCUMENT_READ", "INTERNAL_IAM_READ"],
     "participant-service": ["INTERNAL_DOCUMENT_READ", "INTERNAL_IAM_READ"],
+    # MS-IAM administre le realm par l'API d'administration (D-62) : rôles de realm-management ci-dessous.
+    "iam-service": [],
+    # Supervision de la passerelle : lecture des points /management des services (ROLE_ADMIN).
+    "gateway-supervision": ["ROLE_ADMIN"],
+}
+ROLES_CLIENT_SERVICES = {
+    "iam-service": {"realm-management": ["manage-users", "view-users", "query-users", "query-groups", "manage-realm",
+                                         "view-realm"]},
+}
+
+# Profil utilisateur déclaratif (Keycloak 26) : les attributs de la plateforme sont déclarés, modifiables
+# par l'administration seulement ; l'utilisateur les renseigne par « Mon compte » (MS-IAM), jamais par Keycloak.
+ADMIN_SEUL = {"view": ["admin"], "edit": ["admin"]}
+PROFIL_UTILISATEUR = {
+    "unmanagedAttributePolicy": "ADMIN_EDIT",
+    "attributes": [
+        {"name": "username", "displayName": "${username}", "permissions": {"view": ["admin", "user"], "edit": ["admin"]},
+         "validations": {"length": {"min": 3, "max": 255}, "username-prohibited-characters": {}, "up-username-not-idn-homograph": {}}},
+        {"name": "email", "displayName": "${email}", "required": {"roles": ["user"]},
+         "permissions": {"view": ["admin", "user"], "edit": ["admin"]}, "validations": {"email": {}, "length": {"max": 255}}},
+        {"name": "firstName", "displayName": "${firstName}", "required": {"roles": ["user"]},
+         "permissions": {"view": ["admin", "user"], "edit": ["admin", "user"]},
+         "validations": {"length": {"max": 255}, "person-name-prohibited-characters": {}}},
+        {"name": "lastName", "displayName": "${lastName}", "required": {"roles": ["user"]},
+         "permissions": {"view": ["admin", "user"], "edit": ["admin", "user"]},
+         "validations": {"length": {"max": 255}, "person-name-prohibited-characters": {}}},
+        {"name": "institution_id", "displayName": "Institution", "permissions": ADMIN_SEUL, "multivalued": False},
+        {"name": "phone_number", "displayName": "Téléphone", "permissions": ADMIN_SEUL, "multivalued": False},
+        {"name": "fonction", "displayName": "Fonction", "permissions": ADMIN_SEUL, "multivalued": False},
+        {"name": "profil_complet", "displayName": "Premier accès terminé", "permissions": ADMIN_SEUL, "multivalued": False},
+        {"name": "langKey", "displayName": "Langue", "permissions": ADMIN_SEUL, "multivalued": False},
+        {"name": "login", "displayName": "Identifiant", "permissions": ADMIN_SEUL, "multivalued": False},
+    ],
+    "groups": [],
 }
 
 # Double facteur (D-61) : niveaux d'assurance du flux navigateur. Niveau 1 : mot de passe ;
@@ -167,8 +213,21 @@ def main():
     realm["id"] = "gimac"
     realm["displayName"] = "Plateforme DES du GIMAC (développement)"
     realm["internationalizationEnabled"] = True
-    realm["supportedLocales"] = ["fr", "en"]
+    realm["supportedLocales"] = ["fr", "en", "es"]
     realm["defaultLocale"] = "fr"
+    # D-62 : pages et courriels du fournisseur d'identité aux couleurs du GIMAC ; aucun compte
+    # ouvert par inscription libre (création par le super administrateur ou le RSSI) ; mot de
+    # passe oublié réinitialisable par courriel ; identifiant non modifiable par l'utilisateur.
+    realm["loginTheme"] = "gimac"
+    realm["emailTheme"] = "gimac"
+    realm["registrationAllowed"] = False
+    realm["resetPasswordAllowed"] = True
+    realm["rememberMe"] = False
+    realm["editUsernameAllowed"] = False
+    realm["loginWithEmailAllowed"] = True
+    # Messagerie de développement (Mailpit du Compose) ; reconfigurable depuis la console.
+    realm["smtpServer"] = {"host": "messagerie", "port": "1025", "from": "des@gimac.test",
+                           "fromDisplayName": "Plateforme DES du GIMAC", "auth": "false", "starttls": "false", "ssl": "false"}
     for r in realm["roles"]["realm"]:
         if r["name"] == "default-roles-jhipster":
             r["name"] = "default-roles-gimac"
@@ -231,6 +290,13 @@ def main():
             # Les empreintes du realm généré (mot de passe connu « admin », « user ») sont remplacées.
             u["credentials"] = [{"type": "password", "value": "${GIMAC_MOT_DE_PASSE_TEST}", "temporary": False}]
     realm["users"] = utilisateurs
+    for u in realm["users"]:
+        client_id = u.get("serviceAccountClientId")
+        if client_id in ROLES_CLIENT_SERVICES:
+            u["clientRoles"] = ROLES_CLIENT_SERVICES[client_id]
+
+    for composant in realm["components"]["org.keycloak.userprofile.UserProfileProvider"]:
+        composant["config"] = {"kc.user.profile.config": [json.dumps(PROFIL_UTILISATEUR, ensure_ascii=False)]}
 
     # Identifiants internes retirés : le realm JHipster est importé dans la même base Keycloak,
     # ses identifiants de rôles, clients et portées y existent déjà. Keycloak les régénère.
@@ -244,7 +310,9 @@ def main():
 
     texte = json.dumps(realm, ensure_ascii=False, indent=2)
     assert "default-roles-jhipster" not in texte
-    assert all(x in texte for x in ('"browserFlow": "navigateur-gimac"', '"minimum.acr.value": "2"', "PAR_TRANSITION_APPROVE"))
+    assert all(x in texte for x in ('"browserFlow": "navigateur-gimac"', '"minimum.acr.value": "2"', "PAR_TRANSITION_APPROVE", "ROLE_SUPER_ADMIN",
+                                          "manage-realm", "unmanagedAttributePolicy",
+                                          '"loginTheme": "gimac"'))
     CIBLE.write_text(texte + "\n", encoding="utf-8")
     print(f"{CIBLE.relative_to(RACINE)} : {len(TOUTES)} permissions, {len(PROFILS)} profils, {len(UTILISATEURS)} utilisateurs de test")
 

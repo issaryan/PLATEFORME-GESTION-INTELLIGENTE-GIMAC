@@ -12,3 +12,13 @@ for base in gateway-postgresql iam-postgresql audit-postgresql document-postgres
   creer "$base" --from-literal=postgresql-password="$(openssl rand -hex 24)"
 done
 creer jhipster-grafana-credentials --from-literal=username=gimac-admin --from-literal=password="$(openssl rand -hex 24)"
+# Domaine « gimac » (D-62) : administrateur d'amorçage de Keycloak et secrets des clients de service.
+creer keycloak-admin --from-literal=password="$(openssl rand -hex 24)"
+creer gimac-clients-keycloak \
+  --from-literal=mot-de-passe-test="$(openssl rand -hex 24)" \
+  --from-literal=tester-cli="$(openssl rand -hex 24)" \
+  --from-literal=homologation-service="$(openssl rand -hex 24)" \
+  --from-literal=certification-service="$(openssl rand -hex 24)" \
+  --from-literal=participant-service="$(openssl rand -hex 24)" \
+  --from-literal=iam-service="$(openssl rand -hex 24)" \
+  --from-literal=gateway-supervision="$(openssl rand -hex 24)"

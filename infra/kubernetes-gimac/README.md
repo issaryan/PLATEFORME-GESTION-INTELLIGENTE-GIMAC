@@ -12,7 +12,8 @@ S'appuie sur `../kubernetes`, généré par JHipster, sans le modifier (D-48, D-
 | `frontend.yaml` | Trois couches de présentation, profil `restricted`, limitées à la passerelle |
 | `kyverno-images-signees.yaml` | Vérification des signatures d'images (Audit, puis Enforce avec SOC-02) |
 | `retrait-secrets-generes.yaml` | Retrait des Secrets générés |
-| `creer-secrets.sh` | Création des secrets au déploiement (puis OpenBao, SOC-06) |
+| `creer-secrets.sh` | Création des secrets au déploiement (puis OpenBao, SOC-06), dont `keycloak-admin` et `gimac-clients-keycloak` (secrets des clients de service) |
+| `domaine-gimac/*.yaml` | Domaine Keycloak `gimac` (D-61, D-62) : émetteur des jetons des 14 services, clients de service (`iam-service`, `participant-service`, `homologation-service`, `certification-service`, `gateway-supervision`), annuaire réel de MS-IAM par l'entrée, Keycloak à l'image GIMAC (thème et domaine intégrés, administrateur d'amorçage lu dans un Secret) |
 
 ## Déployer
 
@@ -21,7 +22,7 @@ S'appuie sur `../kubernetes`, généré par JHipster, sans le modifier (D-48, D-
 kubectl apply -k .
 ```
 
-Prérequis : contrôleur d'entrée NGINX dans l'espace de noms `ingress-nginx`, opérateur Kyverno, images dans `registre.gimac.local/des`.
+Prérequis : contrôleur d'entrée NGINX dans l'espace de noms `ingress-nginx`, opérateur Kyverno, images dans `registre.gimac.local/des`, dont l'image Keycloak construite depuis `infra/keycloak/Dockerfile` (`registre.gimac.local/des/keycloak:26.7.4-gimac`).
 
 ## Vérifier sans grappe
 
@@ -39,3 +40,4 @@ Dernier résultat : 130 objets, 111 valides, 19 ressources personnalisées non v
 | 2026-09-28 | b20a049 | Couches de présentation et segment `presentation` |
 | 2026-09-28 | — | Ajout de ce README |
 | 2026-09-29 | — | Passerelle raccordée au Valkey partagé (sonde Redis, limitation de débit) |
+| 2026-09-29 | — | Domaine `gimac` pour tous les services, clients de service et image Keycloak GIMAC ; administrateur de Keycloak par Secret (D-62) ; `kustomize build` vérifié (130 objets) |

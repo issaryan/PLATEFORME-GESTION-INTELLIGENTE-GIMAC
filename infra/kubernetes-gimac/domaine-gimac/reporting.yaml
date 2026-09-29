@@ -1,0 +1,14 @@
+# Domaine Keycloak « gimac » du lot 1 (D-61, D-62) : émetteur des jetons.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reporting
+  namespace: gimac-des
+spec:
+  template:
+    spec:
+      containers:
+        - name: reporting-app
+          env:
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_OIDC_ISSUER_URI
+              value: http://keycloak.gimac-des.des.gimac.local/realms/gimac

@@ -25,13 +25,9 @@ test_portail_avec_institution if authz.allow with input as {
 	"permissions": ["HOM_PORTAL_READ"], "institution_id": "INST-0042", "authentifie": true, "acr": "2",
 }
 
-test_lecture_des_authentifiee if authz.allow with input as {
-	"method": "GET", "path": "/bff/des/homologation/liaisons", "permissions": [], "authentifie": true, "acr": "2",
-}
+test_lecture_des_authentifiee if authz.allow with input as {"method": "GET", "path": "/bff/des/homologation/liaisons", "permissions": [], "authentifie": true, "acr": "2"}
 
-test_lecture_des_anonyme_refusee if not authz.allow with input as {
-	"method": "GET", "path": "/bff/des/homologation/liaisons", "permissions": [], "authentifie": false,
-}
+test_lecture_des_anonyme_refusee if not authz.allow with input as {"method": "GET", "path": "/bff/des/homologation/liaisons", "permissions": [], "authentifie": false}
 
 # D-61 : second facteur exigé sur toutes les routes /bff.
 test_permission_sans_second_facteur_refusee if not authz.allow with input as {
@@ -44,9 +40,7 @@ test_portail_sans_second_facteur_refuse if not authz.allow with input as {
 	"permissions": ["HOM_PORTAL_READ"], "institution_id": "INST-0042", "authentifie": true,
 }
 
-test_lecture_des_sans_acr_refusee if not authz.allow with input as {
-	"method": "GET", "path": "/bff/des/pilotage/projets", "permissions": [], "authentifie": true, "acr": "",
-}
+test_lecture_des_sans_acr_refusee if not authz.allow with input as {"method": "GET", "path": "/bff/des/pilotage/projets", "permissions": [], "authentifie": true, "acr": ""}
 
 # Registre des institutions (D-57) : chaque route et sa permission.
 routes_participant := [
@@ -85,4 +79,52 @@ test_participant_sans_second_facteur if {
 test_chef_ddrm_ne_cree_pas_sans_permission if not authz.allow with input as {
 	"method": "POST", "path": "/bff/des/participant/institutions/i1/transitions/t1/approbation",
 	"permissions": ["PAR_TRANSITION_REQUEST"], "authentifie": true, "acr": "2",
+}
+
+# D-62 : console d'administration, « Mon compte », routes internes, dépôt de pièces.
+test_console_comptes_avec_permission if authz.allow with input as {"method": "GET", "path": "/bff/console/iam/comptes", "permissions": ["IAM_ACCOUNT_READ"], "authentifie": true, "acr": "2"}
+
+test_console_journal_exige_sa_permission if not authz.allow with input as {"method": "GET", "path": "/bff/console/iam/comptes/journal", "permissions": ["IAM_ACCOUNT_READ"], "authentifie": true, "acr": "2"}
+
+test_console_suppression_exige_sa_permission if not authz.allow with input as {"method": "DELETE", "path": "/bff/console/iam/comptes/c1", "permissions": ["IAM_ACCOUNT_EDIT"], "authentifie": true, "acr": "2"}
+
+test_console_suppression_avec_permission if authz.allow with input as {"method": "DELETE", "path": "/bff/console/iam/comptes/c1", "permissions": ["IAM_ACCOUNT_DELETE"], "authentifie": true, "acr": "2"}
+
+test_console_profils_exige_roles if not authz.allow with input as {"method": "PUT", "path": "/bff/console/iam/comptes/c1/profils", "permissions": ["IAM_ACCOUNT_EDIT"], "authentifie": true, "acr": "2"}
+
+test_console_sans_permission_refusee if not authz.allow with input as {"method": "GET", "path": "/bff/console/iam/comptes", "permissions": [], "authentifie": true, "acr": "2"}
+
+test_console_non_listee_refusee if not authz.allow with input as {"method": "GET", "path": "/bff/console/iam/autre", "permissions": ["IAM_ACCOUNT_READ"], "authentifie": true, "acr": "2"}
+
+test_console_politique_sans_second_facteur_refusee if not authz.allow with input as {
+	"method": "PUT", "path": "/bff/console/iam/configuration/politique-securite", "permissions": ["PLATFORM_SECURITY_POLICY_EDIT"],
+	"authentifie": true, "acr": "1",
+}
+
+test_mon_compte_depuis_le_portail if authz.allow with input as {
+	"method": "POST", "path": "/bff/portail/iam/moi/premiere-configuration", "permissions": [], "institution_id": "",
+	"authentifie": true, "acr": "2",
+}
+
+test_mon_compte_sans_second_facteur_refuse if not authz.allow with input as {"method": "GET", "path": "/bff/des/iam/moi", "permissions": [], "authentifie": true, "acr": "1"}
+
+test_defi_reauthentification if authz.allow with input as {"method": "POST", "path": "/bff/console/iam/reauthentification/defi", "permissions": [], "authentifie": true, "acr": "2"}
+
+test_route_interne_jamais_relayee if not authz.allow with input as {
+	"method": "POST", "path": "/bff/des/iam/interne/reauthentifications/verification",
+	"permissions": ["INTERNAL_IAM_READ"], "authentifie": true, "acr": "2",
+}
+
+test_depot_des_avec_permission if authz.allow with input as {"method": "POST", "path": "/bff/des/document/documents", "permissions": ["PAR_ADHESION_INSTRUCT"], "authentifie": true, "acr": "2"}
+
+test_depot_des_sans_second_facteur if not authz.allow with input as {"method": "POST", "path": "/bff/des/document/documents", "permissions": ["PAR_ADHESION_INSTRUCT"], "authentifie": true, "acr": "1"}
+
+test_depot_portail_exige_institution if not authz.allow with input as {
+	"method": "POST", "path": "/bff/portail/document/documents", "permissions": ["HOM_PORTAL_SUBMIT"], "institution_id": "",
+	"authentifie": true, "acr": "2",
+}
+
+test_depot_portail if authz.allow with input as {
+	"method": "POST", "path": "/bff/portail/document/documents", "permissions": ["HOM_PORTAL_SUBMIT"], "institution_id": "INST-0042",
+	"authentifie": true, "acr": "2",
 }

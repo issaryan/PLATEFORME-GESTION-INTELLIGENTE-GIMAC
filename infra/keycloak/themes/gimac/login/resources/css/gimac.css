@@ -1,0 +1,107 @@
+/*
+ * Charte de la plateforme DES du GIMAC (jetons de @gimac/theme, CC-GIMAC-01 §6.2) appliquée aux
+ * pages du fournisseur d'identité : palette réduite, angles droits, bordures de 1 px, sans ombre.
+ */
+:root {
+  --gimac-bleu-institutionnel: rgb(21 86 158);
+  --gimac-gris-structure: rgb(92 98 104);
+  --gimac-fond-page: rgb(245 246 248);
+  --gimac-fond-cartouche: rgb(234 240 247);
+  --gimac-texte-principal: rgb(20 22 26);
+  --gimac-statut-critique: rgb(158 38 38);
+  --gimac-blanc: rgb(255 255 255);
+
+  --pf-v5-global--FontFamily--text: 'Inter', system-ui, sans-serif;
+  --pf-v5-global--FontFamily--heading: 'Inter', system-ui, sans-serif;
+  --pf-v5-global--primary-color--100: var(--gimac-bleu-institutionnel);
+  --pf-v5-global--primary-color--200: rgb(15 64 118);
+  --pf-v5-global--link--Color: var(--gimac-bleu-institutionnel);
+  --pf-v5-global--link--Color--hover: rgb(15 64 118);
+  --pf-v5-global--danger-color--100: var(--gimac-statut-critique);
+  --pf-v5-global--BorderRadius--sm: 0;
+  --pf-v5-global--BorderRadius--lg: 0;
+  --pf-v5-global--BoxShadow--sm: none;
+  --pf-v5-global--BoxShadow--md: none;
+  --pf-v5-global--BoxShadow--lg: none;
+  --pf-v5-global--BorderColor--100: var(--gimac-gris-structure);
+}
+
+* {
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+body#keycloak-bg,
+.pf-v5-c-login {
+  background: var(--gimac-fond-page) !important;
+  color: var(--gimac-texte-principal);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Bandeau de marque : logo GIMAC et nom de la plateforme. */
+#kc-header,
+#kc-header-wrapper,
+#kc-header-wrapper * {
+  color: var(--gimac-texte-principal) !important;
+}
+
+#kc-header-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: var(--gimac-texte-principal);
+  font-size: 18pt;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+#kc-header-wrapper::before {
+  content: '';
+  display: block;
+  width: 240px;
+  height: 88px;
+  background: url('../img/logo-gimac.png') center / contain no-repeat;
+}
+
+.pf-v5-c-login__main {
+  background: var(--gimac-blanc);
+  border: 1px solid var(--gimac-gris-structure);
+  border-top: 4px solid var(--gimac-bleu-institutionnel);
+}
+
+.pf-v5-c-login__main-header {
+  border-bottom: 1px solid var(--gimac-fond-cartouche);
+}
+
+.pf-v5-c-button.pf-m-primary {
+  background: var(--gimac-bleu-institutionnel);
+  min-height: 40px;
+  font-weight: 600;
+}
+
+.pf-v5-c-button.pf-m-primary:hover,
+.pf-v5-c-button.pf-m-primary:focus {
+  background: rgb(15 64 118);
+}
+
+.pf-v5-c-form-control {
+  --pf-v5-c-form-control--before--BorderColor: var(--gimac-gris-structure);
+  --pf-v5-c-form-control--after--BorderColor: var(--gimac-gris-structure);
+}
+
+:focus-visible {
+  outline: 2px solid var(--gimac-bleu-institutionnel) !important;
+  outline-offset: 2px;
+}
+
+/* Pied de page institutionnel, comme les couches de présentation. */
+#kc-gimac-pied {
+  margin-top: 24px;
+  padding-top: 8px;
+  border-top: 1px solid var(--gimac-fond-cartouche);
+  color: var(--gimac-gris-structure);
+  font-size: 11pt;
+  text-align: center;
+}

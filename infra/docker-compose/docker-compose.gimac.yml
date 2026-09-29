@@ -38,7 +38,17 @@ x-sante: &sante
 
 services:
   # ------------------------------------------------ Surcharges des services générés
-  iam: *application
+  # Annuaire réel (D-62) : MS-IAM administre le domaine gimac par l'API d'administration de
+  # Keycloak avec son compte de service ; vérifie les assertions FIDO2 des couches (IAM-07).
+  iam:
+    <<: *application
+    environment:
+      <<: *emetteur-gimac
+      GIMAC_SERVICE_CLIENT_ID: iam-service
+      GIMAC_SERVICE_CLIENT_SECRET: ${GIMAC_SECRET_IAM_SERVICE:?à définir dans .env}
+      GIMAC_KEYCLOAK_URL: http://keycloak:9080
+      GIMAC_WEBAUTHN_RP_ID: ${GIMAC_WEBAUTHN_RP_ID:-localhost}
+      GIMAC_WEBAUTHN_ORIGINES: ${GIMAC_WEBAUTHN_ORIGINES:-http://localhost:4200,http://localhost:4201,http://localhost:4202}
   audit: *application
   # Dépôt direct de la tranche DDRM : adaptateur S3 réel vers Ceph RGW (D-50), démarré
   # après la création des compartiments WORM (le service vérifie le verrouillage d'objets).
@@ -55,7 +65,12 @@ services:
       stockage-objet-init:
         condition: service_completed_successfully
   notification: *application
-  participant: *application
+  participant:
+    <<: *application
+    environment:
+      <<: *emetteur-gimac
+      GIMAC_SERVICE_CLIENT_ID: participant-service
+      GIMAC_SERVICE_CLIENT_SECRET: ${GIMAC_SECRET_PARTICIPANT_SERVICE:?à définir dans .env}
   homologation:
     <<: *application
     environment:
@@ -112,7 +127,7 @@ services:
       # Keycloak gateway-supervision ; sans secret, supervision en mode dégradé (santé sans
       # détail, configuration et journalisation des services non lues).
       - GIMAC_SUPERVISION_CLIENT_ID=gateway-supervision
-      - GIMAC_SUPERVISION_CLIENT_SECRET=${GIMAC_SECRET_GATEWAY_SUPERVISION:-}
+      - GIMAC_SUPERVISION_CLIENT_SECRET=${GIMAC_SECRET_GATEWAY_SUPERVISION:?à définir dans .env}
     ports: !override
       - ${GIMAC_PORT_GATEWAY:-8080}:8080
 
@@ -122,6 +137,9 @@ services:
       - ./realm-config/jhipster-realm.json:/opt/keycloak/data/import/jhipster-realm.json:ro
       - ../keycloak/gimac-realm.json:/opt/keycloak/data/import/gimac-realm.json:ro
       - ./realm-config/keycloak-health-check.sh:/opt/keycloak/health-check.sh:ro
+      # Thème GIMAC des pages de connexion et des courriels (D-62) ; en Kubernetes, il est
+      # intégré à l'image construite depuis infra/keycloak/Dockerfile.
+      - ../keycloak/themes/gimac:/opt/keycloak/themes/gimac:ro
     ports: !override
       - ${GIMAC_PORT_KEYCLOAK:-9080}:9080
       - ${GIMAC_PORT_KEYCLOAK_TLS:-9443}:9443
@@ -137,6 +155,9 @@ services:
       - GIMAC_SECRET_TESTER_CLI=${GIMAC_SECRET_TESTER_CLI:?à définir dans .env}
       - GIMAC_SECRET_HOMOLOGATION_SERVICE=${GIMAC_SECRET_HOMOLOGATION_SERVICE:?à définir dans .env}
       - GIMAC_SECRET_CERTIFICATION_SERVICE=${GIMAC_SECRET_CERTIFICATION_SERVICE:?à définir dans .env}
+      - GIMAC_SECRET_PARTICIPANT_SERVICE=${GIMAC_SECRET_PARTICIPANT_SERVICE:?à définir dans .env}
+      - GIMAC_SECRET_IAM_SERVICE=${GIMAC_SECRET_IAM_SERVICE:?à définir dans .env}
+      - GIMAC_SECRET_GATEWAY_SUPERVISION=${GIMAC_SECRET_GATEWAY_SUPERVISION:?à définir dans .env}
 
   prometheus:
     ports: !override

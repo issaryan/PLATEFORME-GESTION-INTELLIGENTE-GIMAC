@@ -1,0 +1,68 @@
+# Keycloak de la plateforme (D-62) : image construite depuis infra/keycloak/Dockerfile (thème GIMAC et
+# domaine « gimac » intégrés), administrateur d'amorçage et secrets des clients lus dans des Secrets
+# créés par creer-secrets.sh ; le realm JHipster généré reste importé depuis sa ConfigMap.
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: keycloak
+  namespace: gimac-des
+spec:
+  template:
+    spec:
+      containers:
+        - name: keycloak
+          image: registre.gimac.local/des/keycloak:26.7.4-gimac
+          env:
+            - name: KEYCLOAK_ADMIN
+              $patch: delete
+            - name: KEYCLOAK_ADMIN_PASSWORD
+              $patch: delete
+            - name: KC_BOOTSTRAP_ADMIN_USERNAME
+              value: gimac-admin
+            - name: KC_BOOTSTRAP_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-admin
+                  key: password
+            - name: GIMAC_MOT_DE_PASSE_TEST
+              valueFrom:
+                secretKeyRef:
+                  name: gimac-clients-keycloak
+                  key: mot-de-passe-test
+            - name: GIMAC_SECRET_TESTER_CLI
+              valueFrom:
+                secretKeyRef:
+                  name: gimac-clients-keycloak
+                  key: tester-cli
+            - name: GIMAC_SECRET_HOMOLOGATION_SERVICE
+              valueFrom:
+                secretKeyRef:
+                  name: gimac-clients-keycloak
+                  key: homologation-service
+            - name: GIMAC_SECRET_CERTIFICATION_SERVICE
+              valueFrom:
+                secretKeyRef:
+                  name: gimac-clients-keycloak
+                  key: certification-service
+            - name: GIMAC_SECRET_PARTICIPANT_SERVICE
+              valueFrom:
+                secretKeyRef:
+                  name: gimac-clients-keycloak
+                  key: participant-service
+            - name: GIMAC_SECRET_IAM_SERVICE
+              valueFrom:
+                secretKeyRef:
+                  name: gimac-clients-keycloak
+                  key: iam-service
+            - name: GIMAC_SECRET_GATEWAY_SUPERVISION
+              valueFrom:
+                secretKeyRef:
+                  name: gimac-clients-keycloak
+                  key: gateway-supervision
+          volumeMounts:
+            - name: keycloak-volume
+              mountPath: /opt/keycloak/data/import
+              $patch: delete
+            - name: keycloak-volume
+              mountPath: /opt/keycloak/data/import/jhipster-realm.json
+              subPath: jhipster-realm.json

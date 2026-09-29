@@ -29,13 +29,13 @@
   "oauth2DevicePollingInterval": 5,
   "enabled": true,
   "sslRequired": "external",
-  "registrationAllowed": true,
+  "registrationAllowed": false,
   "registrationEmailAsUsername": false,
   "rememberMe": false,
   "verifyEmail": false,
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,
-  "resetPasswordAllowed": false,
+  "resetPasswordAllowed": true,
   "editUsernameAllowed": false,
   "bruteForceProtected": false,
   "permanentLockout": false,
@@ -341,6 +341,102 @@
         "clientRole": false
       },
       {
+        "name": "IAM_ACCOUNT_READ",
+        "description": "Permission du lot 1",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "IAM_ACCOUNT_CREATE",
+        "description": "Permission du lot 1",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "IAM_ACCOUNT_EDIT",
+        "description": "Permission du lot 1",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "IAM_ACCOUNT_ROLES",
+        "description": "Permission du lot 1",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "IAM_ACCOUNT_STATUS",
+        "description": "Permission du lot 1",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "IAM_ACCOUNT_DELETE",
+        "description": "Permission du lot 1",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "IAM_ACCOUNT_SECURITY",
+        "description": "Permission du lot 1",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "IAM_JOURNAL_READ",
+        "description": "Permission du lot 1",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "IAM_PROFILE_EDIT",
+        "description": "Permission du lot 1",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "IAM_ROLE_PRIVILEGED_GRANT",
+        "description": "Permission du lot 1",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "PLATFORM_SUPERVISION_READ",
+        "description": "Permission du lot 1",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "PLATFORM_CONFIG_READ",
+        "description": "Permission du lot 1",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "PLATFORM_CONFIG_EDIT",
+        "description": "Permission du lot 1",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "PLATFORM_SECURITY_POLICY_READ",
+        "description": "Permission du lot 1",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "PLATFORM_SECURITY_POLICY_EDIT",
+        "description": "Permission du lot 1",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "PLATFORM_MESSAGING_EDIT",
+        "description": "Permission du lot 1",
+        "composite": false,
+        "clientRole": false
+      },
+      {
         "name": "INTERNAL_HOMOLOGATION_READ",
         "description": "Permission du lot 1",
         "composite": false,
@@ -432,6 +528,42 @@
         }
       },
       {
+        "name": "ROLE_SUPER_ADMIN",
+        "description": "Profil du lot 1",
+        "composite": true,
+        "clientRole": false,
+        "composites": {
+          "realm": [
+            "ROLE_USER",
+            "HOM_REFERENTIEL_READ",
+            "HOM_LIAISON_READ",
+            "HOM_LIAISON_LIST",
+            "HOM_DASHBOARD_READ",
+            "CER_CIRCUIT_READ",
+            "CER_DOSSIER_READ",
+            "CER_REGISTER_READ",
+            "PAR_INSTITUTION_READ",
+            "ROLE_ADMIN",
+            "IAM_ACCOUNT_READ",
+            "IAM_ACCOUNT_CREATE",
+            "IAM_ACCOUNT_EDIT",
+            "IAM_ACCOUNT_ROLES",
+            "IAM_ACCOUNT_STATUS",
+            "IAM_ACCOUNT_DELETE",
+            "IAM_ACCOUNT_SECURITY",
+            "IAM_JOURNAL_READ",
+            "IAM_PROFILE_EDIT",
+            "IAM_ROLE_PRIVILEGED_GRANT",
+            "PLATFORM_SUPERVISION_READ",
+            "PLATFORM_CONFIG_READ",
+            "PLATFORM_CONFIG_EDIT",
+            "PLATFORM_SECURITY_POLICY_READ",
+            "PLATFORM_SECURITY_POLICY_EDIT",
+            "PLATFORM_MESSAGING_EDIT"
+          ]
+        }
+      },
+      {
         "name": "ROLE_RSSI",
         "description": "Profil du lot 1",
         "composite": true,
@@ -447,7 +579,21 @@
             "CER_DOSSIER_READ",
             "CER_REGISTER_READ",
             "PAR_INSTITUTION_READ",
-            "CER_QUITUS_SECURITE_SIGN"
+            "CER_QUITUS_SECURITE_SIGN",
+            "IAM_ACCOUNT_READ",
+            "IAM_ACCOUNT_CREATE",
+            "IAM_ACCOUNT_EDIT",
+            "IAM_ACCOUNT_ROLES",
+            "IAM_ACCOUNT_STATUS",
+            "IAM_ACCOUNT_DELETE",
+            "IAM_ACCOUNT_SECURITY",
+            "IAM_JOURNAL_READ",
+            "IAM_PROFILE_EDIT",
+            "PLATFORM_SUPERVISION_READ",
+            "PLATFORM_CONFIG_READ",
+            "PLATFORM_SECURITY_POLICY_READ",
+            "PLATFORM_SECURITY_POLICY_EDIT",
+            "PLATFORM_MESSAGING_EDIT"
           ]
         }
       },
@@ -1130,6 +1276,39 @@
       ]
     },
     {
+      "username": "test-super-admin",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Super",
+      "lastName": "Administrateur",
+      "email": "test-super-admin@gimac.test",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${GIMAC_MOT_DE_PASSE_TEST}",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "default-roles-gimac",
+        "ROLE_SUPER_ADMIN"
+      ],
+      "groups": [
+        "/Users"
+      ],
+      "attributes": {
+        "langKey": [
+          "fr"
+        ],
+        "login": [
+          "test-super-admin"
+        ]
+      },
+      "requiredActions": [
+        "CONFIGURE_TOTP"
+      ]
+    },
+    {
       "username": "test-rssi",
       "enabled": true,
       "emailVerified": true,
@@ -1561,6 +1740,33 @@
         "default-roles-gimac",
         "INTERNAL_DOCUMENT_READ",
         "INTERNAL_IAM_READ"
+      ]
+    },
+    {
+      "username": "service-account-iam-service",
+      "enabled": true,
+      "serviceAccountClientId": "iam-service",
+      "realmRoles": [
+        "default-roles-gimac"
+      ],
+      "clientRoles": {
+        "realm-management": [
+          "manage-users",
+          "view-users",
+          "query-users",
+          "query-groups",
+          "manage-realm",
+          "view-realm"
+        ]
+      }
+    },
+    {
+      "username": "service-account-gateway-supervision",
+      "enabled": true,
+      "serviceAccountClientId": "gateway-supervision",
+      "realmRoles": [
+        "default-roles-gimac",
+        "ROLE_ADMIN"
       ]
     }
   ],
@@ -2189,6 +2395,52 @@
       "optionalClientScopes": [
         "offline_access"
       ]
+    },
+    {
+      "clientId": "iam-service",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${GIMAC_SECRET_IAM_SERVICE}",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "protocol": "openid-connect",
+      "fullScopeAllowed": true,
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "jhipster",
+        "roles",
+        "profile",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "offline_access"
+      ]
+    },
+    {
+      "clientId": "gateway-supervision",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${GIMAC_SECRET_GATEWAY_SUPERVISION}",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "protocol": "openid-connect",
+      "fullScopeAllowed": true,
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "jhipster",
+        "roles",
+        "profile",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "offline_access"
+      ]
     }
   ],
   "clientScopes": [
@@ -2753,7 +3005,15 @@
     "xXSSProtection": "1; mode=block",
     "strictTransportSecurity": "max-age=31536000; includeSubDomains"
   },
-  "smtpServer": {},
+  "smtpServer": {
+    "host": "messagerie",
+    "port": "1025",
+    "from": "des@gimac.test",
+    "fromDisplayName": "Plateforme DES du GIMAC",
+    "auth": "false",
+    "starttls": "false",
+    "ssl": "false"
+  },
   "eventsEnabled": false,
   "eventsListeners": [
     "jboss-logging"
@@ -2867,7 +3127,11 @@
       {
         "providerId": "declarative-user-profile",
         "subComponents": {},
-        "config": {}
+        "config": {
+          "kc.user.profile.config": [
+            "{\"unmanagedAttributePolicy\": \"ADMIN_EDIT\", \"attributes\": [{\"name\": \"username\", \"displayName\": \"${username}\", \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\"]}, \"validations\": {\"length\": {\"min\": 3, \"max\": 255}, \"username-prohibited-characters\": {}, \"up-username-not-idn-homograph\": {}}}, {\"name\": \"email\", \"displayName\": \"${email}\", \"required\": {\"roles\": [\"user\"]}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\"]}, \"validations\": {\"email\": {}, \"length\": {\"max\": 255}}}, {\"name\": \"firstName\", \"displayName\": \"${firstName}\", \"required\": {\"roles\": [\"user\"]}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"validations\": {\"length\": {\"max\": 255}, \"person-name-prohibited-characters\": {}}}, {\"name\": \"lastName\", \"displayName\": \"${lastName}\", \"required\": {\"roles\": [\"user\"]}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"validations\": {\"length\": {\"max\": 255}, \"person-name-prohibited-characters\": {}}}, {\"name\": \"institution_id\", \"displayName\": \"Institution\", \"permissions\": {\"view\": [\"admin\"], \"edit\": [\"admin\"]}, \"multivalued\": false}, {\"name\": \"phone_number\", \"displayName\": \"Téléphone\", \"permissions\": {\"view\": [\"admin\"], \"edit\": [\"admin\"]}, \"multivalued\": false}, {\"name\": \"fonction\", \"displayName\": \"Fonction\", \"permissions\": {\"view\": [\"admin\"], \"edit\": [\"admin\"]}, \"multivalued\": false}, {\"name\": \"profil_complet\", \"displayName\": \"Premier accès terminé\", \"permissions\": {\"view\": [\"admin\"], \"edit\": [\"admin\"]}, \"multivalued\": false}, {\"name\": \"langKey\", \"displayName\": \"Langue\", \"permissions\": {\"view\": [\"admin\"], \"edit\": [\"admin\"]}, \"multivalued\": false}, {\"name\": \"login\", \"displayName\": \"Identifiant\", \"permissions\": {\"view\": [\"admin\"], \"edit\": [\"admin\"]}, \"multivalued\": false}], \"groups\": []}"
+          ]
+        }
       }
     ],
     "org.keycloak.keys.KeyProvider": [
@@ -2909,7 +3173,8 @@
   "internationalizationEnabled": true,
   "supportedLocales": [
     "fr",
-    "en"
+    "en",
+    "es"
   ],
   "authenticationFlows": [
     {
@@ -3683,5 +3948,7 @@
   "clientPolicies": {
     "policies": []
   },
-  "defaultLocale": "fr"
+  "defaultLocale": "fr",
+  "loginTheme": "gimac",
+  "emailTheme": "gimac"
 }

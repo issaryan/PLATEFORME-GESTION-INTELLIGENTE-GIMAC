@@ -1,0 +1,21 @@
+# Domaine Keycloak « gimac » du lot 1 (D-61, D-62) : émetteur des jetons, client de service.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway
+  namespace: gimac-des
+spec:
+  template:
+    spec:
+      containers:
+        - name: gateway-app
+          env:
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_OIDC_ISSUER_URI
+              value: http://keycloak.gimac-des.des.gimac.local/realms/gimac
+            - name: GIMAC_SUPERVISION_CLIENT_ID
+              value: gateway-supervision
+            - name: GIMAC_SUPERVISION_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: gimac-clients-keycloak
+                  key: gateway-supervision
