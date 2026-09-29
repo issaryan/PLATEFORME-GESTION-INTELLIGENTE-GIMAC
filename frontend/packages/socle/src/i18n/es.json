@@ -30,5 +30,14 @@
   "session.seConnecter": "Iniciar sesión",
   "session.expiree": "Su sesión ha caducado o no está abierta. Inicie sesión para continuar.",
   "session.erreur": "No se pudo cargar la sesión.",
-  "session.doubleFacteurRequis": "El acceso requiere una autenticación de dos factores. Vuelva a iniciar sesión con su contraseña y su código de un solo uso."
+  "session.doubleFacteurRequis": "El acceso requiere una autenticación de dos factores. Vuelva a iniciar sesión con su contraseña y su código de un solo uso.",
+  "nav.groupe.espace": "Mi espacio",
+  "nav.monCompte": "Mi cuenta",
+  "nav.deconnexion": "Cerrar sesión",
+  "deconnexion.enCours": "Cerrando sesión…",
+  "reauth.ANNULEE": "Se canceló la solicitud de su llave de seguridad: no se ha registrado nada.",
+  "reauth.REQUISE": "Este acto exige una reautenticación con su llave de seguridad.",
+  "reauth.INVALIDE": "Se rechazó la reautenticación con su llave de seguridad: vuelva a intentarlo.",
+  "reauth.SANS_CLE": "No hay ninguna llave de seguridad registrada en su cuenta. Registre una en «Mi cuenta» y vuelva a intentarlo.",
+  "reauth.versMonCompte": "Registrar una llave en «Mi cuenta»"
 }

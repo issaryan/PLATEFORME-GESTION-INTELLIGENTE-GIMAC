@@ -1,4 +1,6 @@
 # Couches de présentation (D-46, D-51) : nginx sans privilège, conforme au profil restricted.
+# Images construites avec SERVICES=http (services réels de la passerelle, défaut du Dockerfile) ; chaque
+# couche est servie à la racine de son hôte et route /des, /portail ou /console elle-même.
 # Zone réseau d'origine (CC 5.6.1, D-24) : portail en DMZ, application du département en zone
 # applicative, console en zone d'administration hors bande. Seule la passerelle est jointe.
 ---
@@ -76,6 +78,12 @@ kind: Ingress
 metadata:
   name: frontend-departement
   namespace: gimac-des
+  annotations:
+    # Flux SSE (canal poussé /bff/<couche>/live, supervision /api/plateforme/flux) : ni mise en tampon
+    # ni coupure de la connexion longue par le contrôleur d'entrée.
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
 spec:
   ingressClassName: nginx
   rules:
@@ -164,6 +172,12 @@ kind: Ingress
 metadata:
   name: frontend-portail
   namespace: gimac-des
+  annotations:
+    # Flux SSE (canal poussé /bff/<couche>/live, supervision /api/plateforme/flux) : ni mise en tampon
+    # ni coupure de la connexion longue par le contrôleur d'entrée.
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
 spec:
   ingressClassName: nginx
   rules:
@@ -252,6 +266,12 @@ kind: Ingress
 metadata:
   name: frontend-console
   namespace: gimac-des
+  annotations:
+    # Flux SSE (canal poussé /bff/<couche>/live, supervision /api/plateforme/flux) : ni mise en tampon
+    # ni coupure de la connexion longue par le contrôleur d'entrée.
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
 spec:
   ingressClassName: nginx
   rules:

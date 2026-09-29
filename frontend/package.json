@@ -14,9 +14,17 @@
     "dev:console": "npm run dev -w @gimac/app-console",
     "dev:catalogue": "npm run dev -w @gimac/app-catalogue",
     "test": "npm run test --workspaces --if-present",
-    "couverture": "npm run couverture --workspaces --if-present"
+    "couverture": "npm run couverture --workspaces --if-present",
+    "e2e:construire": "node e2e/construire.mjs",
+    "e2e": "npm run e2e:construire && playwright test --config e2e/playwright.config.ts",
+    "e2e:couverture": "node -e \"require('fs').rmSync('e2e/.nyc_output',{recursive:true,force:true})\" && npm run e2e && nyc report --nycrc-path e2e/.nycrc.json"
   },
   "engines": {
     "node": ">=22"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1",
+    "nyc": "18.0.0",
+    "vite-plugin-istanbul": "9.0.1"
   }
 }

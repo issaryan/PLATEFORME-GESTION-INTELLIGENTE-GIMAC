@@ -1,0 +1,10 @@
+{
+  "temp-dir": "e2e/.nyc_output",
+  "report-dir": "e2e/couverture",
+  "reporter": ["text-summary", "text", "html", "lcov"],
+  "check-coverage": true,
+  "statements": 80,
+  "branches": 80,
+  "functions": 80,
+  "lines": 80
+}

@@ -14,6 +14,8 @@ export default defineConfig({
       thresholds: {
         statements: 41, branches: 32, functions: 34, lines: 42,
         'src/enveloppe/Footer/**': { statements: 80, branches: 80, functions: 80, lines: 80 },
+        // Composites et extensions de la console et de « Mon compte » (D-62).
+        '{src/affichage/OneTimeSecret/**,src/saisie/PermissionPicker/**,src/donnees/LiveStatGroup/**,src/saisie/Checkbox/**,src/saisie/CheckboxGroup/**,src/saisie/TextField/**}': { statements: 80, branches: 80, functions: 80, lines: 80 },
       },
     },
   },

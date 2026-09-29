@@ -455,6 +455,15 @@ const fr = {
   "pied.documentation": "Documentation",
   "pied.derniereRequete": "Dernière requête",
   "pied.droits": "© {annee} GIMAC",
+  "secret.copier": "Copier",
+  "secret.copie": "Copié dans le presse-papiers.",
+  "secret.copieImpossible": "Copie impossible : sélectionnez la valeur à la main.",
+  "secret.unique": "Cette valeur n'est affichée qu'une fois : transmettez-la par un canal sûr, elle ne pourra plus être relue.",
+  "direct.connexion": "Connexion au flux…",
+  "direct.connecte": "Temps réel",
+  "direct.perdu": "Flux interrompu, reconnexion en cours",
+  "direct.misAJour": "Mis à jour à {heure}",
+  "permissions.selection": "{n} permission(s) sur {total}",
 } as const
 
 export type CleLibelle = keyof typeof fr
@@ -912,6 +921,15 @@ const en: Record<CleLibelle, string> = {
   "pied.documentation": "Documentation",
   "pied.derniereRequete": "Last request",
   "pied.droits": "© {annee} GIMAC",
+  "secret.copier": "Copy",
+  "secret.copie": "Copied to the clipboard.",
+  "secret.copieImpossible": "Copy failed: select the value manually.",
+  "secret.unique": "This value is shown only once: pass it on through a secure channel, it cannot be read again.",
+  "direct.connexion": "Connecting to the stream…",
+  "direct.connecte": "Real time",
+  "direct.perdu": "Stream interrupted, reconnecting",
+  "direct.misAJour": "Updated at {heure}",
+  "permissions.selection": "{n} of {total} permission(s)",
 
 }
 
@@ -1368,6 +1386,15 @@ const es: Record<CleLibelle, string> = {
   "pied.documentation": "Documentación",
   "pied.derniereRequete": "Última solicitud",
   "pied.droits": "© {annee} GIMAC",
+  "secret.copier": "Copiar",
+  "secret.copie": "Copiado en el portapapeles.",
+  "secret.copieImpossible": "No se pudo copiar: seleccione el valor manualmente.",
+  "secret.unique": "Este valor solo se muestra una vez: transmítalo por un canal seguro, no podrá volver a leerse.",
+  "direct.connexion": "Conectando al flujo…",
+  "direct.connecte": "Tiempo real",
+  "direct.perdu": "Flujo interrumpido, reconectando",
+  "direct.misAJour": "Actualizado a las {heure}",
+  "permissions.selection": "{n} permiso(s) de {total}",
 
 }
 
