@@ -13,6 +13,7 @@ export const ADRESSES = {
   console: 'http://localhost:5202',
   consoleHttp: 'http://localhost:5212',
   departement: 'http://localhost:5200',
+  departementHttp: 'http://localhost:5210',
   portail: 'http://localhost:5201',
 }
 
@@ -27,8 +28,11 @@ export async function recueillirCouverture(page: Page) {
   ecrire(couverture)
 }
 
+/** Profils de démonstration : console (D-62) et application du département (D-57, D-58). */
+export type ProfilDemo = 'ROLE_SUPER_ADMIN' | 'ROLE_RSSI' | 'ROLE_CHEF_DDRM' | 'ROLE_CHARGE_DDRM' | 'ROLE_CHEF_DES' | 'ROLE_INGENIEUR_HOMOLOGATION' | 'ROLE_CONDUCTEUR_PROJET' | 'ROLE_SNA'
+
 /** Démonstration en services simulés : profil (gm.profilDemo) et premier accès (gm.premierAccesDemo). */
-export async function demo(page: Page, o: { profil?: 'ROLE_SUPER_ADMIN' | 'ROLE_RSSI'; premierAcces?: boolean; theme?: 'light' | 'dark' } = {}) {
+export async function demo(page: Page, o: { profil?: ProfilDemo; premierAcces?: boolean; theme?: 'light' | 'dark' } = {}) {
   await page.addInitScript((x) => {
     if (x.profil) localStorage.setItem('gm.profilDemo', x.profil)
     if (x.premierAcces) localStorage.setItem('gm.premierAccesDemo', '1')

@@ -132,7 +132,9 @@ final class InstitutionViews {
         UUID secondApprobateurId,
         Instant decideeLe,
         String motifRejet,
-        UUID pieceDecisionId
+        UUID pieceDecisionId,
+        boolean automatique,
+        UUID institutionId
     ) {
         static TransitionVue de(StatusTransition t) {
             return new TransitionVue(
@@ -148,7 +150,9 @@ final class InstitutionViews {
                 t.getSecondApproverId(),
                 t.getDecidedAt(),
                 t.getRejectionReason(),
-                t.getEvidenceDocumentId()
+                t.getEvidenceDocumentId(),
+                Boolean.TRUE.equals(t.getAutomaticTransition()),
+                t.getInstitution() == null ? null : t.getInstitution().getId()
             );
         }
     }

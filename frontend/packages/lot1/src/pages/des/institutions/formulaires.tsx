@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
-import { Button, Card, FileDropzone, InlineAlert, ResourceForm, type Option, type ResourceDescriptor } from '@gimac/design-system'
+import { ActionBar, Button, Card, FileDropzone, InlineAlert, ResourceForm, type Option, type ResourceDescriptor } from '@gimac/design-system'
 import type { CategorieInstitution, Candidature, ConditionsAdhesion, Institution, ModeAdhesion, PieceAdhesion } from '../../../modele/participant'
 import { useDefinirConditions, useDeposerPiece, useEnregistrerInstitution, useModifierInstitution } from '../../../hooks/participant'
 import { useErreurService } from '../liaisons/communs'
@@ -81,7 +81,7 @@ export function FormulaireConditions({ institution, marraines, onFermer }: { ins
       { name: 'mode', label: t('adhesion.mode'), kind: 'radio', required: true, inForm: true, options: ['DIRECT', 'INDIRECT'].map((v) => ({ value: v, label: t(`institution.mode.${v}`) })) },
       { name: 'compteReglement', label: t('adhesion.compteReglement'), kind: 'mono', inForm: true, help: t('adhesion.compteReglement.aide') },
       { name: 'compteCantonnement', label: t('adhesion.compteCantonnement'), kind: 'mono', inForm: true, help: t('adhesion.compteCantonnement.aide') },
-      { name: 'banqueMarraineId', label: t('adhesion.banqueMarraine'), kind: 'searchSelect', inForm: true, options: marraines, help: t('adhesion.banqueMarraine.aide') },
+      { name: 'banqueMarraineId', label: t('adhesion.banqueMarraine'), kind: 'select', inForm: true, options: marraines, help: t('adhesion.banqueMarraine.aide') },
     ],
   }
   return (
@@ -123,7 +123,7 @@ export function FormulaireDepot({ institutionId, piece, onFermer }: { institutio
     <Card
       title={t('piece.form.depot', { piece: piece.libelle })}
       footer={
-        <div className="gm-row" style={{ justifyContent: 'flex-end' }}>
+        <ActionBar>
           <Button variant="secondary" onClick={onFermer}>{t('commun.annuler')}</Button>
           <Button
             variant="primary"
@@ -135,7 +135,7 @@ export function FormulaireDepot({ institutionId, piece, onFermer }: { institutio
           >
             {t('piece.action.deposer')}
           </Button>
-        </div>
+        </ActionBar>
       }
     >
       <div className="gm-col">

@@ -641,5 +641,47 @@ export const PLAN: EntreePlan[] = [
     "hauteur": 220,
     "largeur": null,
     "description": "Indicateurs en temps réel (supervision de la plateforme, D-61) : StatCard alimentées par un flux SSE, état de la connexion (`connecting`, `live`, `lost`) en StatusBadge annoncé, valeurs dans une zone `aria-live` polie, heure de la dernière mise à jour.\n\n**Le consommateur fournit** `title`, `state`, `items` (propriétés de StatCard et `key`), `updatedAt?`, `level?`.\n\n**Interdits** : masquer la perte du flux ; animer les valeurs."
+  },
+  {
+    "nom": "PageHeader",
+    "groupe": "Enveloppe",
+    "hauteur": 160,
+    "largeur": null,
+    "description": "En-tête d'écran (gabarits G1 à G3, D-63) : surtitre de rubrique en petites capitales, titre unique `h1`, ligne de contexte (accueil, profils en Tag, statut) et actions de page, alignés par la classe `gm-resource-head`.\n\n**Le consommateur fournit** `title`, `overline?`, `meta?`, `actions?` (une action principale au plus).\n\n**Interdits** : plusieurs `h1` dans un écran ; un en-tête composé à la main avec des marges propres."
+  },
+  {
+    "nom": "PageSection",
+    "groupe": "Conteneurs",
+    "hauteur": 220,
+    "largeur": null,
+    "description": "Section titrée d'un tableau de bord ou d'une fiche (D-58, D-63) : région nommée par son titre (`aria-labelledby`), titre `h2` (ou `h3`) et actions sur une ligne, contenu en colonne aux espacements des jetons.\n\n**Le consommateur fournit** `title`, `actions?` (lien « Voir tout »), `level?`, `children`."
+  },
+  {
+    "nom": "StatGrid",
+    "groupe": "Données",
+    "hauteur": 200,
+    "largeur": null,
+    "description": "Grille d'indicateurs d'un tableau de bord par acteur (D-58, D-63) : StatCard de même hauteur, renvoyées à la ligne, dans un groupe nommé. Une carte cliquable ouvre la liste filtrée correspondante. Pour des valeurs poussées en temps réel, LiveStatGroup.\n\n**Le consommateur fournit** `label`, `items` (propriétés de StatCard et `key`).\n\n**Interdits** : calculer un compteur dans l'interface ; les valeurs viennent du service."
+  },
+  {
+    "nom": "LinkList",
+    "groupe": "Navigation",
+    "hauteur": 160,
+    "largeur": 560,
+    "description": "Liste de liens vers des fiches (« Mes dossiers », « Mes projets », raccourcis ; D-63) : un Link par ligne, complément (référence, date) et StatusBadge alignés à droite, liste sans puces nommée ; texte explicite quand elle est vide.\n\n**Le consommateur fournit** `label`, `items` (`key`, `href`, `label`, `meta?`, `status?`, `statusLabel?`), `empty?`.\n\n**Interdits** : un lien qui déclenche une action à effet (c'est un Button)."
+  },
+  {
+    "nom": "ActionBar",
+    "groupe": "Actions",
+    "hauteur": 96,
+    "largeur": null,
+    "description": "Rangée de boutons d'un pied de carte ou de formulaire, ou d'une barre de section (D-63) : alignement `end` (défaut), `between` ou `start` ; groupe nommé quand `label` est fourni.\n\n**Le consommateur fournit** `children` (Button), `align?`, `label?`.\n\n**Interdits** : plus d'un bouton `primary` dans la rangée."
+  },
+  {
+    "nom": "ToastRegion",
+    "groupe": "Retours",
+    "hauteur": 120,
+    "largeur": 560,
+    "description": "Emplacement des retours d'action (Toast) : fixe en bas à droite de la fenêtre, au-dessus du contenu et sous les dialogues ; rien n'est rendu sans retour. L'aperçu montre le Toast qu'il accueille, avec son bouton de fermeture.\n\n**Le consommateur fournit** `children` (un ou plusieurs Toast).\n\n**Interdits** : un retour qui masque une décision à prendre (c'est un dialogue)."
   }
 ]

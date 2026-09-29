@@ -322,7 +322,9 @@ class ParcoursDdrmIT extends AbstractParticipantIT {
         mvc
             .perform(get("/api/v1/institutions/{id}", id).with(chef()))
             .andExpect(jsonPath("$.institution.statut").value("EN_HOMOLOGATION"))
-            .andExpect(jsonPath("$.transitions[0].vers").value("EN_HOMOLOGATION"));
+            .andExpect(jsonPath("$.transitions[0].vers").value("EN_HOMOLOGATION"))
+            .andExpect(jsonPath("$.transitions[0].automatique").value(true))
+            .andExpect(jsonPath("$.transitions[0].institutionId").value(id));
         assertThat(jdbc.queryForList("select event_type from outbox_event where aggregate_id = ? order by created_at", String.class, id)).last().isEqualTo("participant.status-changed.v1");
     }
 }

@@ -5,10 +5,10 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-/** Port sortant : annuaire des collaborateurs du GIMAC (MS-IAM, IAM-04). */
+/** Annuaire des collaborateurs (MS-IAM, IAM-04) : habilitation du conducteur de projet (D-58). */
 public interface CollaboratorDirectoryPort {
     Optional<CollaboratorView> findCollaborator(UUID userId);
 
-    /** Collaborateurs détenteurs d'un profil (par exemple CONDUCTEUR_PROJET). */
+    /** Collaborateurs actifs portant un profil (ROLE_CONDUCTEUR_PROJET pour la désignation). */
     List<CollaboratorView> parProfil(String profil);
 }

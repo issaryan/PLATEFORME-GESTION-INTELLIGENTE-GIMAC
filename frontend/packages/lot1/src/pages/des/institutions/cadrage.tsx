@@ -1,0 +1,103 @@
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useNavigate } from 'react-router'
+import { InlineAlert, LinkList, ResourceForm, type ResourceDescriptor } from '@gimac/design-system'
+import type { TypeProjet } from '../../../modele/commun'
+import type { Liaison } from '../../../modele/homologation'
+import type { Institution } from '../../../modele/participant'
+import { useConducteurs, useLiaisons, useOuvrirLiaison } from '../../../hooks/liaisons'
+import { useInstitutions } from '../../../hooks/participant'
+import { etatLiaison } from '../../../dictionnaires'
+import { typeProjetOptions } from '../../../ressources/liaison'
+import { useErreurService } from '../liaisons/communs'
+
+// Étape 3 du parcours (D-57, D-58) : ouverture d'une liaison en phase de cadrage depuis la fiche d'une
+// institution adhérente ou en homologation, par un chef de département qui détient HOM_LIAISON_OPEN et
+// HOM_PROJECT_DESIGNATE. MS-HOMOLOGATION décide (éligibilité, unicité, habilitation du conducteur,
+// référentiel publié) ; MS-PARTICIPANT fait ensuite passer l'institution en homologation.
+
+/** Statuts de l'institution depuis lesquels l'ouverture est proposée (affichage ; le service revérifie). */
+export const STATUTS_OUVERTURE: Institution['statut'][] = ['ADHERENT', 'EN_HOMOLOGATION']
+
+type Valeurs = { typeProjet: string; chefDeProjetId: string; banquePartenaireId: string }
+const texte = (v: unknown) => (typeof v === 'string' ? v : '')
+
+export function FormulaireCadrage({ institution, onFermer }: { institution: Institution; onFermer: () => void }) {
+  const { t } = useTranslation()
+  const navigate = useNavigate()
+  const conducteurs = useConducteurs()
+  // Banques partenaires possibles : banques du registre déjà admises.
+  const banques = useInstitutions({ page: 1, taille: 100, statut: ['ADHERENT', 'EN_HOMOLOGATION', 'ACTIF'] })
+  const ouvrir = useOuvrirLiaison()
+  const erreur = useErreurService()
+  const [erreurs, setErreurs] = useState<Record<string, string>>({})
+  const descripteur: ResourceDescriptor<Valeurs> = {
+    key: 'cadrage',
+    label: { singular: t('liaison.singulier'), plural: t('liaison.pluriel'), gender: 'f' },
+    idField: 'typeProjet',
+    titleField: 'typeProjet',
+    endpoints: { list: '', get: '', create: '/bff/des/homologation/liaisons' },
+    permissions: { list: 'HOM_LIAISON_LIST', read: 'HOM_LIAISON_READ', create: 'HOM_LIAISON_OPEN' },
+    actions: [],
+    fields: [
+      { name: 'typeProjet', label: t('liaison.typeProjet'), kind: 'radio', required: true, inForm: 'create', options: typeProjetOptions.map((o) => ({ ...o, label: t(o.label) })) },
+      {
+        name: 'chefDeProjetId', label: t('cadrage.conducteur'), kind: 'select', required: true, inForm: 'create', help: t('cadrage.conducteur.aide'),
+        // Le formulaire du catalogue place lui-même l'option vide « Choisir » en tête de liste.
+        options: (conducteurs.data ?? []).map((c) => ({ value: c.id, label: c.nom })),
+      },
+      {
+        name: 'banquePartenaireId', label: t('cadrage.banque'), kind: 'select', inForm: 'create', help: t('cadrage.banque.aide'),
+        options: (banques.data?.contenu ?? []).filter((b) => b.categorie === 'BANQUE' && b.id !== institution.id).map((b) => ({ value: b.id, label: b.nom })),
+      },
+    ],
+  }
+  return (
+    <ResourceForm
+      descriptor={descripteur}
+      mode="create"
+      title={t('cadrage.form.titre', { nom: institution.nom })}
+      submitLabel={t('cadrage.action.ouvrir')}
+      intro={<InlineAlert level="info">{t(`cadrage.form.intro.${institution.statut === 'EN_HOMOLOGATION' ? 'EN_HOMOLOGATION' : 'ADHERENT'}`, { nom: institution.nom })}</InlineAlert>}
+      errors={erreurs}
+      serverError={erreur(ouvrir.error)}
+      onCancel={onFermer}
+      onSubmit={(v) => {
+        const manquants: Record<string, string> = {}
+        if (!texte(v.typeProjet)) manquants.typeProjet = t('cadrage.requis.typeProjet')
+        if (!texte(v.chefDeProjetId)) manquants.chefDeProjetId = t('cadrage.requis.conducteur')
+        setErreurs(manquants)
+        if (Object.keys(manquants).length) return
+        ouvrir.mutate(
+          {
+            institutionId: institution.id,
+            typeProjet: texte(v.typeProjet) as TypeProjet,
+            chefDeProjetId: texte(v.chefDeProjetId),
+            banquePartenaireId: texte(v.banquePartenaireId) || null,
+          },
+          { onSuccess: (l) => void navigate(`/des/liaisons/${(l as Liaison).id}?ouverte=1`) },
+        )
+      }}
+    />
+  )
+}
+
+/** Onglet « Liaisons » de la fiche : liaisons de l'institution (filtre institutionId du service). */
+export function OngletLiaisonsInstitution({ institution }: { institution: Institution }) {
+  const { t } = useTranslation()
+  const liaisons = useLiaisons({ page: 1, taille: 25, filtres: { institutionId: institution.id } })
+  return (
+    <LinkList
+      label={t('institution.liaisons.liste')}
+      empty={liaisons.isPending ? undefined : t('institution.liaisons.aucune')}
+      items={(liaisons.data?.contenu ?? []).map((l) => ({
+        key: l.id,
+        href: `/des/liaisons/${l.id}`,
+        label: `${t(`typeProjet.${l.typeProjet}`)} (${l.id})`,
+        meta: t(`phase.${l.phaseCourante}`, { defaultValue: l.phaseCourante }),
+        status: etatLiaison[l.etat]?.status ?? 'neutral',
+        statusLabel: t(etatLiaison[l.etat]?.label ?? l.etat),
+      }))}
+    />
+  )
+}

@@ -1,58 +1,45 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router'
 import { ResourceForm, type ResourceDescriptor } from '@gimac/design-system'
-import type { TypeProjet } from '../../../modele/commun'
 import type { Liaison, OperationInstance } from '../../../modele/homologation'
-import { useAttribuerOperation, useDesignerChefDeProjet, useOuvrirLiaison } from '../../../hooks/liaisons'
+import { useAttribuerOperation, useDesignerChefDeProjet } from '../../../hooks/liaisons'
 import { useErreurService } from './communs'
 
-// Formulaires du lot composés de ResourceForm : ouverture d'une liaison (HOM-04), désignation du chef de
-// projet, attribution d'une opération (HOM-08). Le service décide ; le formulaire affiche son refus.
+// Formulaires du lot composés de ResourceForm : désignation du conducteur de projet (D-58), attribution
+// d'une opération (HOM-08). L'ouverture d'une liaison se fait depuis la fiche de l'institution
+// (institutions/cadrage.tsx). Le service décide ; le formulaire affiche son refus.
 
 const texte = (v: unknown) => (typeof v === 'string' ? v : '')
 
-export function FormulaireOuverture({ descripteur, onFermer }: { descripteur: ResourceDescriptor<Liaison>; onFermer: () => void }) {
-  const { t } = useTranslation()
-  const navigate = useNavigate()
-  const ouvrir = useOuvrirLiaison()
-  const erreur = useErreurService()
-  return (
-    <ResourceForm
-      descriptor={descripteur}
-      mode="create"
-      title={t('liaison.form.ouvrir')}
-      submitLabel={t('liaison.action.ouvrir')}
-      serverError={erreur(ouvrir.error)}
-      onCancel={onFermer}
-      onSubmit={(v) =>
-        ouvrir.mutate(
-          {
-            institutionId: texte(v.institutionId),
-            typeProjet: texte(v.typeProjet) as TypeProjet,
-            chefDeProjetId: texte(v.chefDeProjetId),
-            banquePartenaireId: texte(v.banquePartenaireId) || null,
-          },
-          { onSuccess: (l) => void navigate(`/des/liaisons/${(l as Liaison).id}`) },
-        )
-      }
-    />
-  )
-}
-
+/** Désignation (ou remplacement motivé) du conducteur de projet d'une liaison (D-58). */
 export function FormulaireChefDeProjet({ descripteur, liaison, onFermer }: { descripteur: ResourceDescriptor<Liaison>; liaison: Liaison; onFermer: () => void }) {
   const { t } = useTranslation()
   const designer = useDesignerChefDeProjet()
   const erreur = useErreurService()
+  const [erreurs, setErreurs] = useState<Record<string, string>>({})
+  const avecMotif: ResourceDescriptor<Liaison> = {
+    ...descripteur,
+    fields: [
+      ...descripteur.fields.filter((f) => f.name === 'chefDeProjetId'),
+      // Le motif accompagne la désignation ; il n'est pas un attribut de la liaison.
+      { name: 'motif' as keyof Liaison & string, label: t('cadrage.motif'), kind: 'textarea', inForm: 'edit', help: t('cadrage.motif.aide') },
+    ],
+  }
   return (
     <ResourceForm
-      descriptor={descripteur}
+      descriptor={avecMotif}
       mode="edit"
       title={t('liaison.form.chef', { institution: liaison.institutionNom })}
       submitLabel={t('liaison.action.designerChef')}
-      initial={{ chefDeProjetId: liaison.chefDeProjetId }}
+      initial={{ chefDeProjetId: liaison.chefDeProjetId, motif: '' }}
+      errors={erreurs}
       serverError={erreur(designer.error)}
       onCancel={onFermer}
-      onSubmit={(v) => designer.mutate({ id: liaison.id, chefDeProjetId: texte(v.chefDeProjetId) }, { onSuccess: onFermer })}
+      onSubmit={(v) => {
+        if (!texte(v.chefDeProjetId)) return setErreurs({ chefDeProjetId: t('cadrage.requis.conducteur') })
+        setErreurs({})
+        designer.mutate({ id: liaison.id, chefDeProjetId: texte(v.chefDeProjetId), motif: texte(v.motif).trim() || undefined }, { onSuccess: onFermer })
+      }}
     />
   )
 }

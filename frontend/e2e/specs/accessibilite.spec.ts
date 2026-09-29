@@ -9,15 +9,16 @@ import { ADRESSES, demo, expect, test } from '../fixtures'
 const axe = createRequire(import.meta.url).resolve('axe-core/axe.min.js')
 const EXCLUS = ['.gm-filter-label']
 
-async function auditer(page: Page) {
+/** Audit de la page entière, ou du seul dialogue ouvert (le contenu recouvert par le voile est hors sujet). */
+async function auditer(page: Page, portee?: string) {
   await page.addScriptTag({ path: axe })
-  const violations = await page.evaluate(async (exclus) => {
+  const violations = await page.evaluate(async ({ exclus, portee }) => {
     const w = window as unknown as { axe: { run: (c: unknown, o: unknown) => Promise<{ violations: { id: string; nodes: { html: string }[] }[] }> } }
-    const r = await w.axe.run({ include: [document], exclude: exclus.map((s: string) => [s]) }, {
+    const r = await w.axe.run({ include: portee ? [[portee]] : [document], exclude: exclus.map((s: string) => [s]) }, {
       runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'] },
     })
     return r.violations.map((v) => `${v.id} : ${v.nodes.slice(0, 3).map((n) => n.html.slice(0, 140)).join(' | ')}`)
-  }, EXCLUS)
+  }, { exclus: EXCLUS, portee })
   expect(violations).toEqual([])
 }
 
@@ -47,6 +48,47 @@ test.describe('Fonctionnalité : accessibilité des écrans D-62', () => {
       }
     })
   }
+
+  // Application du département (D-57, D-58, D-63) : tableaux de bord par acteur, registre et dossier des
+  // institutions, ouverture d'une liaison au cadrage, liaisons et désignation du conducteur.
+  for (const theme of ['light', 'dark'] as const) {
+    test(`Scénario : écrans de l’application du département (thème ${theme})`, async ({ page }) => {
+      await demo(page, { profil: 'ROLE_CHEF_DDRM', theme })
+      for (const [chemin, titre] of [
+        ['/des/tableau-de-bord', 'Tableau de bord'],
+        ['/des/institutions', 'Institutions membres'],
+        ['/des/institutions/INST-0105', 'Mobile Money Sanaga'],
+        ['/des/institutions/INST-0042?onglet=transitions', 'Établissement de paiement A'],
+        ['/des/institutions/INST-0105?formulaire=liaison', 'Ouvrir une liaison (cadrage) pour Mobile Money Sanaga'],
+        ['/des/liaisons', 'Liaisons et parcours'],
+        ['/des/liaisons/LIA-2026-030', 'Établissement de microfinance C'],
+        ['/des/liaisons/LIA-2026-030?formulaire=chef', 'Désigner le conducteur de projet de la liaison de Établissement de microfinance C'],
+      ]) {
+        await test.step(chemin, async () => {
+          await page.goto(`${ADRESSES.departement}${chemin}`)
+          await expect(page.getByRole('heading', { level: 1 })).toHaveText(titre)
+          await page.waitForLoadState('networkidle')
+          await auditer(page)
+        })
+      }
+    })
+  }
+
+  test('Scénario : tableau de bord du conducteur de projet (thème sombre)', async ({ page }) => {
+    await demo(page, { profil: 'ROLE_CONDUCTEUR_PROJET', theme: 'dark' })
+    await page.goto(`${ADRESSES.departement}/des/tableau-de-bord`)
+    await expect(page.getByRole('region', { name: 'Mes projets' }).getByRole('link').first()).toBeVisible()
+    await page.waitForLoadState('networkidle')
+    await auditer(page)
+  })
+
+  test('Scénario : dialogue de confirmation motivée du département', async ({ page }) => {
+    await demo(page, { profil: 'ROLE_CHEF_DDRM', theme: 'light' })
+    await page.goto(`${ADRESSES.departement}/des/institutions/INST-0105`)
+    await page.getByRole('button', { name: 'Proposer la clôture sans suite' }).click()
+    await expect(page.getByRole('alertdialog')).toBeVisible()
+    await auditer(page, '[role="alertdialog"]')
+  })
 
   test('Scénario : dialogues de signature et de confirmation', async ({ page }) => {
     await demo(page, { profil: 'ROLE_SUPER_ADMIN' })

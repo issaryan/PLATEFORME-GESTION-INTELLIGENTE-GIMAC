@@ -26,9 +26,19 @@ export type Liaison = Permitted & {
   chefDeProjetId: string; chefDeProjetNom: string; banquePartenaireId: string | null; banquePartenaireNom: string | null
   dateOuverture: string; motifEtat: string | null; versionId: string; versionNumero: number; phaseCourante: string
   couvertureCertification: CoverageValue; couvertureMiseEnService: CoverageValue; operationsEnRetard: number; etatsParcourus: EtatLiaison[]
+  /** Codes des services du périmètre (TRANSVERSE toujours compris) ; vue LiaisonVue de MS-HOMOLOGATION. */
+  perimetre?: string[]
+  /** Institution, banque partenaire et conducteur de projet de la liaison. */
+  intervenants?: Intervenant[]
 }
 export type LiaisonPilotage = Liaison & { delaiConsomme: number; delaiStandard: number }
 export type OuvertureLiaison = { institutionId: string; typeProjet: TypeProjet; chefDeProjetId: string; banquePartenaireId?: string | null }
+
+/** Rôle d'un intervenant de la liaison au cadrage (étape 3 du parcours, D-57, D-58). */
+export type RoleIntervenant = 'INSTITUTION' | 'BANQUE_PARTENAIRE' | 'CHEF_DE_PROJET'
+export type Intervenant = { role: RoleIntervenant; id: string; nom: string }
+/** Conducteur de projet habilité (titulaire de ROLE_CONDUCTEUR_PROJET), proposé à la désignation. */
+export type Conducteur = { id: string; nom: string }
 
 export type ElementKey = 'responsable' | 'preuve' | 'horodatage' | 'validation'
 export type ElementState = 'REUNI' | 'MANQUANT' | 'EN_ATTENTE'

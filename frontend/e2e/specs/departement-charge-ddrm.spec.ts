@@ -1,0 +1,128 @@
+import { ADRESSES, demo, expect, test } from '../fixtures'
+import { confirmer, naviguer } from './outils'
+
+// Fonctionnalité : le chargé de la DDRM instruit les candidatures (étapes 1 et 2 du parcours, D-57) :
+// prise de contact, dossier d'adhésion pièce par pièce, conditions d'adhésion, proposition au chef de la
+// DDRM. Services simulés ; chaque scénario reste dans la même page (état du serveur fictif en mémoire).
+
+test.describe('Fonctionnalité : instruction des candidatures par le chargé de la DDRM', () => {
+  test.beforeEach(async ({ page }) => {
+    await demo(page, { profil: 'ROLE_CHARGE_DDRM', theme: 'light' })
+  })
+
+  test('Scénario : enregistrer une prise de contact puis compléter la fiche', async ({ page }) => {
+    await test.step('Étant donné le chargé de la DDRM sur son tableau de bord', async () => {
+      await page.goto(`${ADRESSES.departement}/des/tableau-de-bord`)
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText('Tableau de bord')
+      await expect(page.getByText('Chargé de la DDRM', { exact: true })).toBeVisible()
+      await expect(page.getByRole('region', { name: 'Relations avec les membres (DDRM)' }).getByText('Pièces à examiner')).toBeVisible()
+      await expect(page.getByRole('link', { name: 'Fintech Kribi Pay' })).toBeVisible()
+      await expect(page.getByRole('region', { name: 'Cadrage des liaisons' })).toHaveCount(0)
+    })
+    await test.step('Quand il enregistre la prise de contact d’une nouvelle fintech', async () => {
+      await naviguer(page, 'Institutions membres')
+      await page.getByRole('button', { name: 'Enregistrer une prise de contact' }).click()
+      await page.locator('input[name="nom"]').fill('Sahel Paiements')
+      await page.locator('select[name="categorie"]').selectOption('FINTECH')
+      await page.locator('select[name="pays"]').selectOption('TD')
+      await page.locator('input[name="originePriseDeContact"]').fill('Salon des paiements de N’Djamena')
+      await page.locator('textarea[name="projetEnvisage"]').fill('Paiement mobile marchand')
+      await page.getByRole('button', { name: 'Enregistrer une prise de contact' }).click()
+    })
+    await test.step('Alors la fiche du candidat s’ouvre et peut être modifiée', async () => {
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText('Sahel Paiements')
+      await expect(page.getByText('Candidat').first()).toBeVisible()
+      await page.getByRole('button', { name: 'Modifier la fiche' }).click()
+      await page.locator('input[name="sigle"]').fill('SPAY')
+      await page.getByRole('button', { name: 'Modifier la fiche' }).click()
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText('Sahel Paiements')
+    })
+    await test.step('Et « Mes dossiers » regroupe les candidatures qu’il porte', async () => {
+      await naviguer(page, 'Institutions membres')
+      await page.getByRole('tab', { name: 'Mes dossiers' }).click()
+      await expect(page.getByRole('link', { name: 'Sahel Paiements' })).toBeVisible()
+      await page.getByRole('tab', { name: 'Toutes les institutions' }).click()
+      await expect(page.getByRole('link', { name: 'Banque B' })).toBeVisible()
+    })
+  })
+
+  test('Scénario : instruire le dossier d’adhésion pièce par pièce', async ({ page }) => {
+    await page.goto(`${ADRESSES.departement}/des/institutions`)
+    await page.getByRole('link', { name: 'Fintech Kribi Pay' }).click()
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Fintech Kribi Pay')
+    await test.step('Quand il dépose la lettre de demande d’adhésion', async () => {
+      await page.getByRole('tab', { name: 'Dossier d\'adhésion' }).click()
+      await page.getByRole('row', { name: /Lettre de demande d'adhésion/ }).getByRole('button', { name: 'Déposer la pièce' }).click()
+      await expect(page.getByText('Déposer : Lettre de demande d\'adhésion')).toBeVisible()
+      await page.locator('input[type="file"]').setInputFiles({ name: 'demande.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.7 demande') })
+      await page.getByRole('button', { name: 'Déposer la pièce' }).click()
+    })
+    await test.step('Alors la pièce est reçue, puis validée après confirmation', async () => {
+      const ligne = page.getByRole('row', { name: /Lettre de demande d'adhésion/ })
+      await expect(ligne.getByText('Reçue')).toBeVisible()
+      await ligne.getByRole('button', { name: 'Valider la pièce' }).click()
+      await confirmer(page, 'Valider la pièce')
+      await expect(page.getByText('Valider la pièce : effectué.')).toBeVisible()
+      await expect(ligne.getByText('Validée')).toBeVisible()
+      await page.getByRole('status').getByRole('button', { name: 'Fermer' }).click()
+      await ligne.getByRole('cell', { name: 'Lettre de demande d\'adhésion' }).click()
+      const tiroir = page.getByRole('dialog')
+      await expect(tiroir.getByText('Empreinte SHA-256')).toBeVisible()
+      await tiroir.getByRole('button', { name: 'Fermer' }).first().click()
+      await expect(page.getByRole('dialog')).toHaveCount(0)
+    })
+    await test.step('Quand il dépose les statuts puis les rejette, motif à l’appui, depuis le tiroir de la ligne', async () => {
+      const ligne = page.getByRole('row', { name: /Statuts de l'établissement/ })
+      await ligne.getByRole('button', { name: 'Déposer la pièce' }).click()
+      await page.locator('input[type="file"]').setInputFiles({ name: 'statuts.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.7 statuts') })
+      await page.getByRole('button', { name: 'Déposer la pièce' }).click()
+      await expect(ligne.getByText('Reçue')).toBeVisible()
+      await ligne.getByRole('button', { name: 'Plus d\'actions' }).click()
+      await page.getByRole('dialog').getByRole('button', { name: 'Rejeter la pièce' }).click()
+      await confirmer(page, 'Rejeter la pièce', 'Statuts non signés par le conseil d’administration')
+      await expect(ligne.getByText('Rejetée')).toBeVisible()
+    })
+    await test.step('Et les prérequis de l’adhésion restent signalés', async () => {
+      await page.getByRole('tab', { name: 'Prérequis' }).click()
+      await expect(page.getByText(/prérequis manquants avant de proposer l'adhésion/)).toBeVisible()
+    })
+  })
+
+  test('Scénario : définir les conditions d’adhésion puis proposer l’adhésion', async ({ page }) => {
+    await page.goto(`${ADRESSES.departement}/des/institutions?statut=CANDIDAT`)
+    await page.getByRole('link', { name: 'Microfinance du Chari' }).click()
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Microfinance du Chari')
+    await test.step('Quand il définit les conditions d’un candidat', async () => {
+      await page.getByRole('tab', { name: 'Conditions d\'adhésion' }).click()
+      await page.getByRole('button', { name: 'Définir les conditions d\'adhésion' }).click()
+      await page.locator('input[name="codeParticipant"]').fill('mf-chari-01')
+      await page.getByLabel('Adhésion directe').check()
+      await page.locator('input[name="compteReglement"]').fill('BEAC-TD-014')
+      await page.getByRole('button', { name: 'Enregistrer les conditions' }).click()
+    })
+    await test.step('Alors elles sont enregistrées, code en majuscules', async () => {
+      await expect(page.getByText('MF-CHARI-01')).toBeVisible()
+    })
+    await test.step('Quand il propose l’adhésion d’un dossier complet', async () => {
+      await naviguer(page, 'Institutions membres')
+      await page.getByRole('link', { name: 'Banque de Libreville' }).click()
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText('Banque de Libreville')
+      await page.getByRole('button', { name: 'Proposer l\'adhésion' }).click()
+      await expect(page.getByRole('alertdialog').getByText(/soumise au chef de la DDRM/)).toBeVisible()
+      await confirmer(page, 'Proposer l\'adhésion', 'Dossier complet, conditions définies')
+    })
+    await test.step('Alors la proposition attend la décision du chef de la DDRM, sans bouton d’approbation', async () => {
+      await page.getByRole('tab', { name: 'Propositions de statut' }).click()
+      await expect(page.getByRole('cell', { name: 'Dossier complet, conditions définies' })).toBeVisible()
+      await expect(page.getByText('En attente')).toBeVisible()
+      await expect(page.getByRole('button', { name: 'Approuver' })).toHaveCount(0)
+    })
+    await test.step('Et une seconde proposition est refusée par le service', async () => {
+      await page.getByRole('tab', { name: 'Détail' }).click()
+      await page.getByRole('button', { name: 'Proposer la clôture sans suite' }).click()
+      await confirmer(page, 'Proposer la clôture sans suite', 'Abandon du projet')
+      await expect(page.getByRole('alertdialog').getByText('Une proposition est déjà en attente pour cette institution.')).toBeVisible()
+      await page.getByRole('alertdialog').getByRole('button', { name: 'Annuler' }).click()
+    })
+  })
+})

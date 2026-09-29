@@ -1,7 +1,7 @@
 import type { SignPurpose } from '@gimac/socle'
 import type { EvenementChronologie, ListQuery, Option, Page } from '../modele/commun'
 import type {
-  Attribution, CampaignResult, ClotureOperation, ControleResultat, DepotResultat, EtatReprise, ExportPreuves, Graphe, ImpactMigration,
+  Attribution, CampaignResult, ClotureOperation, Conducteur, ControleResultat, DepotResultat, EtatReprise, ExportPreuves, Graphe, ImpactMigration,
   Liaison, LiaisonPilotage, OperationInstance, OuvertureLiaison, PointGrille, PreuveVersion, ReferenceOperation, ReferentielVersion,
   ScenarioInconnu, ServiceCouvert,
 } from '../modele/homologation'
@@ -41,13 +41,18 @@ export interface ServiceHomologation {
   migrerLiaisons(id: string, liaisonsRetenues: string[]): Promise<void>
   historiqueReferentiel(id: string): Promise<EvenementChronologie[]>
 
-  // Liaisons (HOM-04 à HOM-06, HOM-20, HOM-22)
+  // Liaisons (HOM-04 à HOM-06, HOM-20, HOM-22) et cadrage (étape 3 du parcours, D-57, D-58)
+  /** Filtres du service : etat, typeProjet, institutionId, mesProjets ; recherche libre ; pagination. */
   listerLiaisons(q: ListQuery): Promise<Page<Liaison>>
   tableauDeBordLiaisons(q: ListQuery): Promise<Page<LiaisonPilotage>>
   lireLiaison(id: string): Promise<Liaison>
   historiqueLiaison(id: string): Promise<EvenementChronologie[]>
+  /** Ouvre la liaison en phase de cadrage ; MS-PARTICIPANT fait ensuite passer l'institution en homologation. */
   ouvrirLiaison(entree: OuvertureLiaison): Promise<Liaison>
-  designerChefDeProjet(id: string, chefDeProjetId: string): Promise<void>
+  /** Désigne (ou remplace, motif à l'appui) le conducteur de projet ; renvoie la liaison à jour. */
+  designerChefDeProjet(id: string, chefDeProjetId: string, motif?: string): Promise<Liaison>
+  /** Conducteurs de projet habilités (titulaires de ROLE_CONDUCTEUR_PROJET). */
+  conducteurs(): Promise<Conducteur[]>
   degelerLiaison(id: string, motif: string): Promise<void>
   exporterDossierDePreuves(id: string): Promise<void>
   dernierExportPreuves(id: string): Promise<ExportPreuves | null>
@@ -73,8 +78,7 @@ export interface ServiceHomologation {
   qualifierScenario(id: string, qualification: 'A_DECLARER' | 'HORS_PARCOURS', motif: string): Promise<void>
   etatReprise(): Promise<EtatReprise>
 
-  // Recherches pour les champs de formulaire (MS-PARTICIPANT, MS-IAM, relayées par la passerelle)
-  rechercherInstitutions(recherche: string): Promise<Option[]>
+  // Recherche pour les champs de formulaire (MS-IAM, relayée par la passerelle)
   rechercherCollaborateurs(recherche: string): Promise<Option[]>
 }
 

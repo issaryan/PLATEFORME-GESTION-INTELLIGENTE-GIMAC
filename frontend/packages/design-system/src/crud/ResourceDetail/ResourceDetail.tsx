@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import type { TimelineEvent } from '../../lib/types'
 import { IconButton } from '../../actions/IconButton/IconButton'
 import { StatusBadge } from '../../affichage/StatusBadge/StatusBadge'
@@ -28,6 +28,8 @@ export interface ResourceDetailProps<T> {
   traversed?: string[]
   /** false : pas d'onglet Audit. */
   audit?: string[] | false
+  /** Résumé rendu sous l'en-tête, avant la barre d'états (phase, périmètre, intervenants…). */
+  summary?: ReactNode
 }
 
 const aucuneAction = () => {}
@@ -94,6 +96,7 @@ export function ResourceDetail<T extends object>(p: ResourceDetailProps<T>) {
           {acts.length > 3 ? <IconButton variant="ghost" icon="menu" label={t('crud.plusActions')} /> : null}
         </div>
       </header>
+      {p.summary ? p.summary : null}
       {machine ? <div style={{ margin: 'var(--gm-space-4) 0' }}>{machine}</div> : null}
       <Tabs items={tabs} value={tab} onChange={setTab} />
       <div style={{ paddingTop: 'var(--gm-space-4)' }}>{contenu}</div>

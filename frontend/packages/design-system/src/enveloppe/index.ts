@@ -2,3 +2,4 @@
 export * from './TopBar/TopBar'
 export * from './SideNav/SideNav'
 export * from './Footer/Footer'
+export * from './PageHeader/PageHeader'
