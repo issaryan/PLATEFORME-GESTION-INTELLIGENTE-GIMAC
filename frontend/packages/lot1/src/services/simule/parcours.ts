@@ -95,6 +95,9 @@ type Etat = {
   conducteur: Personne | null
 }
 
+/** Geste attendu sur une opération ouverte : livrable pour les pièces de phase et les comptes rendus (rangs 7 à 11). */
+const actionOuverte = (o: { grain: string; rang: string }) => (o.grain === 'PHASE' || ['7', '8', '9', '10', '11'].includes(o.rang) ? 'DEPOSER_LIVRABLE' : 'DEPOSER_PREUVE')
+
 const couv = (n: number, d: number): CoverageValue => ({ taux: d ? Math.round((n / d) * 100) : null, numerateur: n, denominateur: d, calculable: d > 0, motifNonCalculable: d ? undefined : 'aucun service inclus' })
 
 function construire(s: Scenario): Etat {
@@ -140,7 +143,7 @@ function construire(s: Scenario): Etat {
       pivot: Boolean(o.pivot),
       predecesseursNonFaits: fait ? [] : enAttente,
       transitionsPermises: [],
-      actionsPermises: courant ? (o.grain === 'PHASE' || ['7', '8', '9', '10', '11'].includes(o.rang) ? ['DEPOSER_LIVRABLE'] : ['DEPOSER_PREUVE']) : fait ? ['CONSULTER'] : [],
+      actionsPermises: courant ? [actionOuverte(o)] : fait ? ['CONSULTER'] : [],
     }
   })
   const inclus = s.services.filter((x) => x.inclus)
@@ -325,7 +328,7 @@ export function parcoursSimule(attendre: Attendre, institutionPortail: string): 
       x.predecesseursNonFaits = x.predecesseursNonFaits.filter((r) => r !== o.rang)
       if (x.etat === 'VERROUILLEE' && x.predecesseursNonFaits.length === 0) {
         x.etat = 'A_FAIRE'
-        x.actionsPermises = x.grain === 'PHASE' ? ['DEPOSER_LIVRABLE'] : ['DEPOSER_PREUVE']
+        x.actionsPermises = [actionOuverte(x)]
       }
     })
   }
@@ -371,7 +374,7 @@ export function parcoursSimule(attendre: Attendre, institutionPortail: string): 
         throw refus(409, 'HOM_LIAISON_DUPLICATE', 'Une liaison active existe déjà pour cette institution et ce type de projet.')
       }
       const cond = PERSONNES.findIndex((p) => p.id === o.chefDeProjetId)
-      const s: Scenario = { id: `LIA-2026-${String(50 + etats.size).padStart(3, '0')}`, institutionId: o.institutionId, institutionNom: o.institutionId === 'INST-0042' ? 'Établissement de paiement A' : o.institutionId === 'INST-0017' ? 'Banque B' : 'Nouvel adhérent', typeProjet: o.typeProjet, banque: null, personnalisateur: null, fintech: false, avancement: '3', statut: 'CADREE', conducteur: cond >= 0 ? PERSONNES.filter((p) => p.fonction === 'CONDUCTEUR').findIndex((p) => p.id === o.chefDeProjetId) : 0, debut: 0, cible: null, services: perimetre(o.typeProjet === 'PAIEMENT_MOBILE' ? SERVICES_MOBILE : SERVICES_CARTE, []) }
+      const s: Scenario = { id: `LIA-2026-${String(50 + etats.size).padStart(3, '0')}`, institutionId: o.institutionId, institutionNom: o.institutionId === 'INST-0042' ? 'Établissement de paiement A' : o.institutionId === 'INST-0017' ? 'Banque B' : 'Nouvel adhérent', typeProjet: o.typeProjet, banque: null, personnalisateur: null, fintech: false, avancement: '2', statut: 'CADREE', conducteur: cond >= 0 ? PERSONNES.filter((p) => p.fonction === 'CONDUCTEUR').findIndex((p) => p.id === o.chefDeProjetId) : 0, debut: 0, cible: null, services: perimetre(o.typeProjet === 'PAIEMENT_MOBILE' ? SERVICES_MOBILE : SERVICES_CARTE, []) }
       const e = construire(s)
       etats.set(s.id, e)
       return resume(e)
@@ -449,7 +452,7 @@ export function parcoursSimule(attendre: Attendre, institutionPortail: string): 
       const e = trouver(id)
       if (e.s.statut !== 'EN_PRODUCTION') throw refus(409, 'HOM_LIAISON_NOT_IN_PRODUCTION', 'Un service supplémentaire s\'ouvre sur une liaison en production.')
       const base = e.s.typeProjet === 'PAIEMENT_MOBILE' ? SERVICES_MOBILE : SERVICES_CARTE
-      const s: Scenario = { ...e.s, id: `LIA-2026-${String(50 + etats.size).padStart(3, '0')}`, avancement: '3', statut: 'CADREE', conducteur: null, debut: 0, cible: null, services: base.filter((x) => services.includes(x.code)).map((x) => ({ ...x, inclus: true })), origine: id }
+      const s: Scenario = { ...e.s, id: `LIA-2026-${String(50 + etats.size).padStart(3, '0')}`, avancement: '2', statut: 'CADREE', conducteur: null, debut: 0, cible: null, services: base.filter((x) => services.includes(x.code)).map((x) => ({ ...x, inclus: true })), origine: id }
       const n = construire(s)
       etats.set(s.id, n)
       return resume(n)
@@ -628,7 +631,7 @@ export function parcoursSimule(attendre: Attendre, institutionPortail: string): 
       if (!o || o.etat !== 'A_FAIRE') throw refus(409, 'HOM_OPERATION_NOT_OPEN', 'Les coordonnées techniques ne sont pas attendues à cette étape.')
       terminer(e, o, { documentRef: `COORD-${id.slice(-3)}`, nom: 'fiche-coordonnees-techniques', empreinte: hex(c.adresse + c.port), deposeLe: jour(0), deposePar: `Correspondant ${e.s.institutionNom}`, valeurReference: { libelle: 'parcours.valeur.12', valeur: `${c.adresse}:${c.port}` } })
     }),
-    deposerLivrable: (opId, fichier, commentaire) => {
+    deposerLivrable: async (opId, fichier, commentaire) => {
       sienne(opId.split(':')[0])
       return parcours.deposerLivrable(opId, fichier, commentaire)
     },

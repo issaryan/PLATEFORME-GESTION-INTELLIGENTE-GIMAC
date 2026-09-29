@@ -48,3 +48,39 @@ Règle du relevé (PI-GIMAC-01 §0.1) : ce qui existe dans le dépôt fait foi. 
 | React 18 | React 19.2 (D-51) |
 | Quitus « signé par le coffre de clés » | Assertion WebAuthn personnelle, puis cachet de la plateforme horodaté (D-35) |
 | Noms d'événements | Tranchés récit par récit selon D-37 ; les écarts sont ajoutés ici au fil des récits |
+
+## Parcours de la liaison, étapes 3 à 10 : contrat attendu par l'interface (D-56 à D-59)
+
+L'interface consomme déjà les routes réelles de l'étape 3 (`LiaisonsCadrageResource`). Pour les étapes 4 à 10, elle appelle les routes ci-dessous, servies aujourd'hui par l'implémentation simulée (`frontend/packages/lot1/src/services/simule/parcours.ts`) ; la session backend les livre sous ces chemins, ou le port HTTP (`services/http/parcours.ts`) est ajusté.
+
+### Permissions nouvelles
+
+| Permission | Profils | Objet |
+|---|---|---|
+| `HOM_STEP_MANAGE` | chargé et chef DDRM, chef DES, conducteur de projet | Conduite des étapes 4 à 10 : livrables de lancement et d'ateliers, blocages datés, affectation des ressources |
+| `CER_PV_ESTABLISH` | conducteur de projet | Établissement du procès-verbal de certification (rang 18) |
+| `CER_SECURITY_VERIFY` | RSSI | Vérification et archivage des attestations de sécurité (rang 23) |
+| `CER_PORTAL_SIGN` | correspondant du participant | Signature du procès-verbal par le participant (rang 19) |
+
+Réutilisées : `CER_QUITUS_TECHNIQUE_SIGN` devient la signature GIMAC du procès-verbal (chef du DES) ; `CER_QUITUS_CONFORMITE_SIGN` et `CER_QUITUS_DG_SIGN` portent les visas optionnels ; `CER_CHANGE_RECORD_LINK` la fiche de changement. Matrice complète : `frontend/packages/lot1/src/permissions.ts`.
+
+### Champs attendus sur `LiaisonVue`
+
+`statut` (CADREE à CLOSE_SANS_SUITE, D-57), `etapeCourante` (code d'étape du CR), `bloquee`, `prochaineEcheance`, `dateCibleProduction`. En leur absence, l'interface traduit `EtatLiaison` pour l'affichage (`versResume`), sans calcul de règle.
+
+### Routes prévues (préfixe passerelle `/bff/des/homologation`, sauf mention)
+
+| Route | Objet |
+|---|---|
+| `GET /liaisons/{id}/dossier` | Dossier numérique : périmètre service par service, deux couvertures, étapes à six éléments, blocages, interlocuteurs |
+| `GET /liaisons/{id}/parcours/operations?etape=&fonction=` | Opérations du référentiel instanciées, RACI+E, plateforme, grain, SLA, preuves |
+| `PUT /liaisons/{id}/ressources` | Affectation des ressources (rang 6) |
+| `POST /parcours/operations/{id}/livrable` · `/preuves` · `/validation` (FIDO2) · `PUT …/intervenants` | Livrable, preuve (valeur de référence, code de contrôle de clé, jamais de secret), validation, qualités |
+| `POST /liaisons/{id}/blocages` · `POST /blocages/{id}/levee` | Blocages datés |
+| `POST /liaisons/{id}/couverture/constat` | Constat de la couverture (rang 17) |
+| `POST /liaisons/{id}/services-supplementaires` | Nouvelle liaison pour un service supplémentaire (rang 35) |
+| `GET /tableaux-de-bord/acteur?fonctions=` · `GET /tableaux-de-bord/pilotage` · `GET /intervenants?fonction=` | Tableaux de bord par fonction, pilotage (4 compteurs, répartition, délais, 6 questions de l'annexe B) |
+| `GET/POST /liaisons/{id}/fiche-suivi` · `…/remise` · `…/constat` | Fiche de suivi des services et constat de mise en service (rangs 32 et 33) |
+| `/bff/des/certification/liaisons/{id}/proces-verbal` (+ `/signature-gimac`, FIDO2) | Verrou 1 |
+| `/bff/des/certification/liaisons/{id}/approbation-securite` (+ `/dossier`, `/fiche`, `/fiche/lecture`, `/attestations/{type}/verification`, `/archivage`, `/visas/{nature}`) | Verrou 2 |
+| `/bff/portail/homologation/liaisons…`, `/bff/portail/homologation/taches`, `/bff/portail/certification/liaisons/{id}/proces-verbal/signature`, `…/attestations/{type}` | Portail du participant, cloisonné à l'institution du jeton |
