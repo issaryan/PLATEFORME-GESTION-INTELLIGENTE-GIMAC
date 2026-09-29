@@ -40,7 +40,20 @@ services:
   # ------------------------------------------------ Surcharges des services générés
   iam: *application
   audit: *application
-  document: *application
+  # Dépôt direct de la tranche DDRM : adaptateur S3 réel vers Ceph RGW (D-50), démarré
+  # après la création des compartiments WORM (le service vérifie le verrouillage d'objets).
+  document:
+    <<: *application
+    environment:
+      <<: *emetteur-gimac
+      GIMAC_S3_POINT_ACCES: http://stockage-objet:7480
+      GIMAC_S3_CLE_ACCES: ${GIMAC_S3_CLE_ACCES:?à définir dans .env}
+      GIMAC_S3_CLE_SECRETE: ${GIMAC_S3_CLE_SECRETE:?à définir dans .env}
+    depends_on:
+      kafka:
+        condition: service_started
+      stockage-objet-init:
+        condition: service_completed_successfully
   notification: *application
   participant: *application
   homologation:

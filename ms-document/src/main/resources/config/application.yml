@@ -198,6 +198,12 @@ spring:
         size: 2
   thymeleaf:
     mode: HTML
+  servlet:
+    # Dépôt direct (POST /api/v1/documents) : 20 Mo par fichier, contrôlés aussi par le service
+    # (gimac.document.depot.taille-max) ; au-delà, 413 DOC_FILE_TOO_LARGE.
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 21MB
   output:
     ansi:
       console-available: true
@@ -252,6 +258,32 @@ jhipster:
       audience:
         - account
         - api://default
+
+# ===================================================================
+# Propriétés propres à la plateforme DES du GIMAC
+# ===================================================================
+gimac:
+  # Sélection des adaptateurs, un port à la fois (PI §0.8) : real | stub.
+  adapters:
+    # Dépôt objet WORM (D-50) : substitut en mémoire hors production.
+    stockage: stub
+  document:
+    depot:
+      taille-max: 20MB
+  stockage:
+    s3:
+      point-acces: http://localhost:7480
+      region: us-east-1
+      cle-acces: ${GIMAC_S3_CLE_ACCES:}
+      cle-secrete: ${GIMAC_S3_CLE_SECRETE:}
+      compartiment: gimac-documents
+      exiger-verrouillage: false
+  securite:
+    # D-61 : les routes métier exigent un jeton issu d'une authentification à deux facteurs.
+    # Keycloak pose acr selon le niveau d'assurance atteint (LoA 2 : mot de passe et OTP ou FIDO2).
+    double-facteur:
+      exige: true
+      niveaux-acr: 2,3
 
 # jhipster-needle-add-application-yaml-document
 ---

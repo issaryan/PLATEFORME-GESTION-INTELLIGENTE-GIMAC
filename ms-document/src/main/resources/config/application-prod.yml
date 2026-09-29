@@ -103,6 +103,23 @@ jhipster:
       port: 5000
       ring-buffer-size: 512
 # ===================================================================
+# Propriétés propres à la plateforme DES du GIMAC
+# ===================================================================
+gimac:
+  # Production : adaptateurs réels uniquement (PI §0.8).
+  adapters:
+    stockage: real
+  stockage:
+    s3:
+      # Passerelle Ceph RGW de la zone de persistance (D-50) ; clés délivrées par OpenBao (SOC-06).
+      point-acces: ${GIMAC_S3_POINT_ACCES:http://stockage-objet:7480}
+      cle-acces: ${GIMAC_S3_CLE_ACCES}
+      cle-secrete: ${GIMAC_S3_CLE_SECRETE}
+      compartiment: ${GIMAC_S3_COMPARTIMENT:gimac-documents}
+      # Démarrage refusé si le compartiment n'a pas le verrouillage d'objets (RG-04, RG-16).
+      exiger-verrouillage: true
+
+# ===================================================================
 # Application specific properties
 # Add your own application properties here, see the ApplicationProperties class
 # to have type-safe configuration, like in the JHipsterProperties above

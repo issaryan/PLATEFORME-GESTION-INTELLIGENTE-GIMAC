@@ -26,5 +26,7 @@
     <include file="config/liquibase/changelog/20260928134403_added_entity_constraints_PurgeRequest.xml" relativeToChangelogFile="false"/>
     <include file="config/liquibase/changelog/20260928134603_added_entity_constraints_IntegrityMismatch.xml" relativeToChangelogFile="false"/>
     <!-- jhipster-needle-liquibase-add-constraints-changelog - JHipster will add liquibase constraints changelogs here -->
+    <!-- Écrit à la main : dépôt direct de la tranche DDRM. -->
+    <include file="config/liquibase/changelog/20260929120000_added_table_depot_document.xml" relativeToChangelogFile="false"/>
     <!-- jhipster-needle-liquibase-add-incremental-changelog - JHipster will add incremental liquibase changelogs here -->
 </databaseChangeLog>

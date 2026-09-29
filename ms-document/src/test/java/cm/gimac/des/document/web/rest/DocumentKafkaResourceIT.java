@@ -22,13 +22,14 @@ import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.support.GenericMessage;
 import org.springframework.security.test.context.support.WithMockUser;
+import cm.gimac.des.document.security.AuthoritiesConstants;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.util.MimeTypeUtils;
 
 @IntegrationTest
 @AutoConfigureMockMvc
-@WithMockUser
+@WithMockUser(authorities = AuthoritiesConstants.ADMIN)
 @EmbeddedKafka
 @ImportAutoConfiguration(TestChannelBinderConfiguration.class)
 class DocumentKafkaResourceIT {

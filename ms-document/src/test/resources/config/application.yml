@@ -104,6 +104,24 @@ jhipster:
 # ===================================================================
 
 # application:
+gimac:
+  adapters:
+    # Substitut en mémoire du dépôt objet WORM ; l'adaptateur S3 est éprouvé par StockageObjetS3IT.
+    stockage: stub
+  document:
+    depot:
+      taille-max: 20MB
+  stockage:
+    s3:
+      point-acces: http://localhost:7480
+      cle-acces: test
+      cle-secrete: test
+      compartiment: gimac-documents
+      exiger-verrouillage: false
+  securite:
+    double-facteur:
+      exige: true
+      niveaux-acr: 2,3
 management:
   health:
     mail:

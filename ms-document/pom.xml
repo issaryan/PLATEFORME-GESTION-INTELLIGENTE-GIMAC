@@ -37,6 +37,21 @@
         <archunit-junit5.version>1.4.0</archunit-junit5.version>
         <checkstyle.version>10.23.1</checkstyle.version>
         <git-commit-id-maven-plugin.version>9.0.1</git-commit-id-maven-plugin.version>
+        <aws-sdk-s3.version>2.31.78</aws-sdk-s3.version>
+        <!--
+            Testcontainers 1.21.4 au lieu du 1.20.6 géré par Spring Boot 3.4.5 : le 1.20.6 dialogue avec
+            Docker par l'API 1.32, que Docker Engine 29 refuse (API 1.40 au minimum).
+        -->
+        <testcontainers.version>1.21.4</testcontainers.version>
+        <!-- Définition de fini (REC-GIMAC-01, D-61) : couverture minimale. -->
+        <jacoco.seuil>0.80</jacoco.seuil>
+        <!--
+            Seuil global à « verify » : niveau mesuré le 29/09/2026, arrondi à l'inférieur (68,8 % des
+            lignes, 35,7 % des branches), faute de quoi le CRUD généré par JHipster (critères, services,
+            ressources) bloquerait la construction. À relever vers 0.80 à la régénération hexagonale (D-43).
+        -->
+        <jacoco.seuil-global-lignes>0.68</jacoco.seuil-global-lignes>
+        <jacoco.seuil-global-branches>0.35</jacoco.seuil-global-branches>
         <jacoco-maven-plugin.version>0.8.13</jacoco-maven-plugin.version>
         <jhipster-framework.version>8.11.0</jhipster-framework.version>
         <jib-maven-plugin.architecture>amd64</jib-maven-plugin.architecture>
@@ -322,6 +337,21 @@
             <groupId>org.testcontainers</groupId>
             <artifactId>testcontainers</artifactId>
             <scope>test</scope>
+        </dependency>
+        <!--
+            Stockage objet WORM (D-50) : Ceph RGW par le seul protocole S3 (SDK AWS, aucun client
+            propre à un éditeur). Client HTTP synchrone Apache ; le client Netty n'est pas utilisé.
+        -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
+            <version>${aws-sdk-s3.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>software.amazon.awssdk</groupId>
+                    <artifactId>netty-nio-client</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <!-- Reprise afriland : fusion de pièces PDF. -->
         <dependency>
@@ -781,6 +811,115 @@
                             <goals>
                                 <goal>report-integration</goal>
                             </goals>
+                        </execution>
+                        <!--
+                            Définition de fini (REC-GIMAC-01, D-61) : couverture d'au moins 80 %.
+                            1. À chaque « test » (tests unitaires et de sécurité, sans Docker) : chaque
+                               classe écrite pour le dépôt de documents (domaine, cas d'utilisation,
+                               adaptateurs, routes /api/v1, sécurité) est couverte à 80 % en lignes et
+                               en méthodes, et l'ensemble de ces classes à 80 % en branches.
+                            2. À « verify » (poste de développement, Testcontainers) : unitaires et
+                               intégration fusionnés, tout le service en lignes et en branches, au seuil
+                               des propriétés jacoco.seuil-global-* (voir le README pour le niveau mesuré).
+                        -->
+                        <execution>
+                            <id>seuil-unitaire-du-lot</id>
+                            <phase>test</phase>
+                            <goals>
+                                <goal>check</goal>
+                            </goals>
+                            <configuration>
+                                <dataFile>${project.build.directory}/jacoco.exec</dataFile>
+                                <includes>
+                                    <include>cm/gimac/des/document/domain/DocumentException*</include>
+                                    <include>cm/gimac/des/document/domain/service/**</include>
+                                    <include>cm/gimac/des/document/application/**</include>
+                                    <include>cm/gimac/des/document/infrastructure/stockage/**</include>
+                                    <include>cm/gimac/des/document/infrastructure/texte/**</include>
+                                    <include>cm/gimac/des/document/infrastructure/security/**</include>
+                                    <include>cm/gimac/des/document/web/rest/v1/**</include>
+                                    <include>cm/gimac/des/document/web/rest/errors/DocumentExceptionHandler*</include>
+                                </includes>
+                                <rules>
+                                    <rule>
+                                        <element>CLASS</element>
+                                        <excludes>
+                                            <exclude>*.package-info</exclude>
+                                        </excludes>
+                                        <limits>
+                                            <limit>
+                                                <counter>LINE</counter>
+                                                <value>COVEREDRATIO</value>
+                                                <minimum>${jacoco.seuil}</minimum>
+                                            </limit>
+                                            <limit>
+                                                <counter>METHOD</counter>
+                                                <value>COVEREDRATIO</value>
+                                                <minimum>${jacoco.seuil}</minimum>
+                                            </limit>
+                                        </limits>
+                                    </rule>
+                                    <rule>
+                                        <element>BUNDLE</element>
+                                        <limits>
+                                            <limit>
+                                                <counter>BRANCH</counter>
+                                                <value>COVEREDRATIO</value>
+                                                <minimum>${jacoco.seuil}</minimum>
+                                            </limit>
+                                        </limits>
+                                    </rule>
+                                </rules>
+                            </configuration>
+                        </execution>
+                        <execution>
+                            <id>fusion-unitaires-integration</id>
+                            <phase>post-integration-test</phase>
+                            <goals>
+                                <goal>merge</goal>
+                            </goals>
+                            <configuration>
+                                <fileSets>
+                                    <fileSet>
+                                        <directory>${project.build.directory}</directory>
+                                        <includes>
+                                            <include>jacoco.exec</include>
+                                            <include>jacoco-it.exec</include>
+                                        </includes>
+                                    </fileSet>
+                                </fileSets>
+                                <destFile>${project.build.directory}/jacoco-fusion.exec</destFile>
+                            </configuration>
+                        </execution>
+                        <execution>
+                            <id>seuil-global-du-service</id>
+                            <phase>verify</phase>
+                            <goals>
+                                <goal>check</goal>
+                            </goals>
+                            <configuration>
+                                <dataFile>${project.build.directory}/jacoco-fusion.exec</dataFile>
+                                <excludes>
+                                    <exclude>cm/gimac/des/document/DocumentApp*</exclude>
+                                </excludes>
+                                <rules>
+                                    <rule>
+                                        <element>BUNDLE</element>
+                                        <limits>
+                                            <limit>
+                                                <counter>LINE</counter>
+                                                <value>COVEREDRATIO</value>
+                                                <minimum>${jacoco.seuil-global-lignes}</minimum>
+                                            </limit>
+                                            <limit>
+                                                <counter>BRANCH</counter>
+                                                <value>COVEREDRATIO</value>
+                                                <minimum>${jacoco.seuil-global-branches}</minimum>
+                                            </limit>
+                                        </limits>
+                                    </rule>
+                                </rules>
+                            </configuration>
                         </execution>
                     </executions>
                 </plugin>

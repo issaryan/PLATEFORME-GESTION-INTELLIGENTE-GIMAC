@@ -3,6 +3,8 @@ package cm.gimac.des.document.config;
 import static org.springframework.security.config.Customizer.withDefaults;
 import static org.springframework.security.oauth2.core.oidc.StandardClaimNames.PREFERRED_USERNAME;
 
+import cm.gimac.des.document.infrastructure.security.InstitutionClaimPresentAuthorizationManager;
+import cm.gimac.des.document.infrastructure.security.StrongAuthenticationAuthorizationManager;
 import cm.gimac.des.document.security.*;
 import cm.gimac.des.document.security.SecurityUtils;
 import cm.gimac.des.document.security.oauth2.AudienceValidator;
@@ -34,6 +36,13 @@ public class SecurityConfiguration {
     @Value("${spring.security.oauth2.client.provider.oidc.issuer-uri}")
     private String issuerUri;
 
+    /** D-61 : jeton issu d'une authentification à deux facteurs, attestée par le claim acr. */
+    @Value("${gimac.securite.double-facteur.exige:true}")
+    private boolean doubleFacteurExige;
+
+    @Value("${gimac.securite.double-facteur.niveaux-acr:2,3}")
+    private Set<String> niveauxAcr;
+
     public SecurityConfiguration(JHipsterProperties jHipsterProperties) {
         this.jHipsterProperties = jHipsterProperties;
     }
@@ -48,7 +57,14 @@ public class SecurityConfiguration {
                     .requestMatchers(mvc.pattern("/api/authenticate")).permitAll()
                     .requestMatchers(mvc.pattern("/api/auth-info")).permitAll()
                     .requestMatchers(mvc.pattern("/api/admin/**")).hasAuthority(AuthoritiesConstants.ADMIN)
-                    .requestMatchers(mvc.pattern("/api/**")).authenticated()
+                    // Interfaces internes : jeton de service uniquement (PI §0.7).
+                    .requestMatchers(mvc.pattern("/api/v1/interne/**")).hasAuthority("INTERNAL_DOCUMENT_READ")
+                    // Portail des participants : institution obligatoire dans le jeton (RG-59).
+                    .requestMatchers(mvc.pattern("/api/v1/portail/**")).access(new InstitutionClaimPresentAuthorizationManager())
+                    // Routes métier : jeton à deux facteurs (D-61), puis @PreAuthorize route par route.
+                    .requestMatchers(mvc.pattern("/api/v1/**")).access(new StrongAuthenticationAuthorizationManager(doubleFacteurExige, niveauxAcr))
+                    // Ressources générées par JHipster : administration technique uniquement.
+                    .requestMatchers(mvc.pattern("/api/**")).hasAuthority(AuthoritiesConstants.ADMIN)
                     .requestMatchers(mvc.pattern("/v3/api-docs/**")).hasAuthority(AuthoritiesConstants.ADMIN)
                     .requestMatchers(mvc.pattern("/management/health")).permitAll()
                     .requestMatchers(mvc.pattern("/management/health/**")).permitAll()

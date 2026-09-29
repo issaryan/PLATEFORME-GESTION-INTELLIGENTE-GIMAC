@@ -2,6 +2,7 @@ package cm.gimac.des.document.infrastructure.logging;
 
 import ch.qos.logback.classic.pattern.MessageConverter;
 import ch.qos.logback.classic.spi.ILoggingEvent;
+import cm.gimac.des.document.domain.service.ControleNumerosCarte;
 
 import java.util.regex.Pattern;
 
@@ -59,30 +60,15 @@ public class PiiMaskingLogConverter extends MessageConverter {
     /**
      * Masque en 6+4 (six premiers et quatre derniers chiffres visibles, RG-52)
      * une suite de 13 à 19 chiffres vérifiant la formule de Luhn ; toute autre
-     * suite (identifiant, horodatage) est laissée intacte.
+     * suite (identifiant, horodatage) est laissée intacte. Règle commune avec le
+     * contrôle au dépôt (ControleNumerosCarte, BNF-16).
      */
     static String masquerCarte(String chiffres) {
-        if (!luhnValide(chiffres)) {
-            return chiffres;
-        }
-        return chiffres.substring(0, 6) + "*".repeat(chiffres.length() - 10) + chiffres.substring(chiffres.length() - 4);
+        return ControleNumerosCarte.masquer(chiffres);
     }
 
     /** Formule de Luhn (ISO/IEC 7812-1). */
     static boolean luhnValide(String chiffres) {
-        int somme = 0;
-        boolean doubler = false;
-        for (int i = chiffres.length() - 1; i >= 0; i--) {
-            int c = chiffres.charAt(i) - '0';
-            if (doubler) {
-                c *= 2;
-                if (c > 9) {
-                    c -= 9;
-                }
-            }
-            somme += c;
-            doubler = !doubler;
-        }
-        return somme % 10 == 0;
+        return ControleNumerosCarte.luhnValide(chiffres);
     }
 }

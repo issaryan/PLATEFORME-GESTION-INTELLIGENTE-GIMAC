@@ -15,7 +15,44 @@ Gestion documentaire probante : dépôt WORM (Ceph RGW, D-50), empreinte SHA-256
 
 ## État
 
-Squelette généré en JHipster 8.11.0 ; régénération en 9.4.0 prévue lors du passage au gabarit hexagonal (D-43). Code JHipster brut : domaine JPA, DTO MapStruct, services, ressources REST, changelogs Liquibase, messages fr et en. L'architecture hexagonale, l'outbox, l'inbox et les algorithmes du CC restent à écrire (SOC-01, SOC-05).
+Squelette généré en JHipster 8.11.0 ; régénération en 9.4.0 prévue lors du passage au gabarit hexagonal (D-43). Code JHipster brut : domaine JPA, DTO MapStruct, services, ressources REST, changelogs Liquibase, messages fr et en. L'outbox, l'inbox et les algorithmes 6.17 à 6.20 du CC restent à écrire (SOC-01, SOC-05).
+
+Écrit à la main, en arborescence hexagonale (`application`, `domain/service`, `infrastructure`), pour la tranche DDRM déjà livrée (D-60) : le **dépôt direct** d'un fichier et la **lecture de son empreinte** par les autres services.
+
+### Dépôt direct (tranche DDRM)
+
+1. **Admission** : partie `fichier` présente, non vide, 20 Mo au plus (`gimac.document.depot.taille-max`, doublé par `spring.servlet.multipart.max-file-size`) ; `finalite` en code majuscule (ADHESION...) ; `reference` libre (par exemple `<institutionId>/<code>`), 255 caractères au plus ; nom de fichier réduit à son dernier segment ; type MIME normalisé (un contenu commençant par `%PDF-` est traité en PDF quel que soit le type déclaré).
+2. **Contrôle de masquage (BNF-16, RG-52)** : le texte des fichiers texte (text/*, JSON, XML, CSV) et des PDF (PDFBox) est parcouru ; une suite de 13 à 19 chiffres vérifiant Luhn, contiguë ou groupée par quatre, fait refuser le dépôt (422 `DOC_PAN_DETECTED`, avec le nombre d'occurrences, jamais le numéro). Refus plutôt que masquage : réécrire la pièce changerait l'empreinte et altérerait un PDF signé. Un PDF illisible ou chiffré est refusé (422 `DOC_PDF_UNREADABLE`). Les images et documents bureautiques ne sont pas lus (reconnaissance de caractères hors périmètre, chaîne 6.17). La règle de Luhn est commune avec le masquage des journaux (`ControleNumerosCarte`).
+3. **Empreinte SHA-256 calculée par le serveur**, en hexadécimal minuscule.
+4. **Conservation WORM** (D-50) par le port `StockageObjet` : clé `<finalite>/<aaaa>/<mm>/<jj>/<id>`, empreinte en métadonnée `x-amz-meta-sha256`, `Content-MD5` vérifié par la passerelle. Adaptateur choisi par `gimac.adapters.stockage` : `real` (S3 par le SDK AWS vers Ceph RGW, profil prod ; démarrage refusé si le compartiment n'a pas le verrouillage d'objets, `gimac.stockage.s3.exiger-verrouillage`) ou `stub` (mémoire, dev et test). En Docker Compose, le service reçoit `GIMAC_S3_*` et attend la création des compartiments.
+5. **Métadonnées** dans la table `depot_document` (changelog manuel `20260929120000_added_table_depot_document.xml`), en insertion seule : un déclencheur PostgreSQL refuse toute modification et toute suppression (RG-04, RG-16) ; empreinte au format canonique imposée par une contrainte. Table dédiée plutôt que l'entité `Document` du JDL, qui suppose la chaîne complète 6.17 (catalogue des types de pièces, lignée, antivirus) ; ces dépôts y seront repris avec cette chaîne.
+
+### Routes
+
+| Méthode et chemin | Accès | Contrat |
+|---|---|---|
+| `POST /api/v1/documents` (multipart : `fichier`, `finalite`, `reference`) | jeton à deux facteurs et l'une de `PAR_ADHESION_INSTRUCT`, `HOM_EVIDENCE_SUBMIT`, `HOM_PORTAL_SUBMIT`, `DOC_DEPOSIT` | 201 `{ id, sha256, nomFichier, taille, typeMime }` ; 400 `DOC_FILE_MISSING`, `DOC_FILE_EMPTY`, `DOC_FILE_UNREADABLE`, `DOC_PURPOSE_INVALID`, `DOC_REFERENCE_INVALID` ; 403 `DOC_USER_TOKEN_REQUIRED` ; 413 `DOC_FILE_TOO_LARGE` ; 422 `DOC_PAN_DETECTED`, `DOC_PDF_UNREADABLE` ; 503 `DOC_STORAGE_UNAVAILABLE` |
+| `GET /api/v1/interne/documents/{id}/empreinte` | jeton de service, `INTERNAL_DOCUMENT_READ` | 200 `{ sha256 }` ; 404 `DOC_NOT_FOUND` |
+
+Erreurs en ProblemDetail RFC 9457 (`code` DOC_*, `message`, `details`, `correlationId` repris de l'en-tête `X-Correlation-Id` s'il est présent). Exposition prévue par la passerelle : `POST /bff/des/document/documents` ; l'interface interne n'est pas exposée.
+
+### Sécurité (D-61)
+
+- `/api/v1/interne/**` : jeton de service (`INTERNAL_DOCUMENT_READ`) ; `/api/v1/portail/**` : institution obligatoire dans le jeton (RG-59) ; `/api/v1/**` : jeton issu d'une **authentification à deux facteurs** (claim `acr` parmi `gimac.securite.double-facteur.niveaux-acr`, 2 et 3 par défaut), puis `@PreAuthorize` route par route ; `/api/**` généré par JHipster : `ROLE_ADMIN`.
+- `SecurityUtils` accepte comme autorités les rôles `ROLE_*` et les permissions en majuscules (`^[A-Z][A-Z0-9]*(_[A-Z0-9]+)+$`).
+
+## Tests : définition de fini (D-61)
+
+| Type | Où | Commande |
+|---|---|---|
+| Unitaires (empreinte, contrôle de Luhn, validations, cas d'utilisation, adaptateur mémoire, adaptateur S3 avec client simulé, extraction de texte, décisions d'accès, erreurs) | `*Test` | `./mvnw test` |
+| Sécurité (401 sans jeton, 403 sans second facteur, 403 sans permission, accès avec chacune des quatre permissions, interface interne refusée à un utilisateur) | `DocumentResourceSecurityTest` (`@WebMvcTest`, vraie chaîne de filtres) | `./mvnw test` |
+| Intégration (PostgreSQL, Redis, Kafka et passerelle S3 par Testcontainers) | `DepotDocumentIT`, `StockageObjetS3IT` et les `*IT` générés | `./mvnw verify` |
+| Recette (scénario de la DDRM ; le service n'a pas de Cucumber) | `RecetteDepotDocumentIT`, adaptateur S3 réel | `./mvnw verify` |
+
+JaCoCo bloque la construction : à `test`, chaque classe écrite pour le dépôt à 80 % en lignes et en méthodes, l'ensemble à 80 % en branches (`seuil-unitaire-du-lot`) ; à `verify`, tout le service, unitaires et intégration fusionnés, en lignes et en branches (`seuil-global-du-service`, propriétés `jacoco.seuil-global-lignes` et `jacoco.seuil-global-branches`). Mesure du 29/09/2026 : code écrit pour le dépôt couvert à 100 % des lignes et 94,4 % des branches (unitaires et intégration fusionnés) ; tout le service à 68,8 % des lignes et 35,7 % des branches, à cause du CRUD généré (critères, services, ressources). **Le seuil global est donc provisoirement fixé au niveau mesuré, arrondi à l'inférieur (0,68 et 0,35)**, à relever vers 0,80 à la régénération hexagonale (D-43).
+
+Les tests de l'adaptateur réel utilisent une passerelle S3 SeaweedFS (image Docker Hub légère) : ils éprouvent le protocole S3 de l'adaptateur ; le mode conformité de Ceph reste vérifié par `tester-socle.sh` (D-50). Testcontainers est porté à 1.21.4 : la version 1.20.6 gérée par Spring Boot 3.4.5 parle l'API Docker 1.32, refusée par Docker Engine 29.
 
 ## Lancer
 
@@ -49,6 +86,7 @@ Copié et adapté (paquet `cm.gimac.des.document`) ; chaque bean est inactif tan
 | 2026-09-28 | — | Reprise de 6 classes du projet afriland (D-52) ; compilation vérifiée. |
 | 2026-09-28 | — | Écarts comblés (liaison au certificat, masquage Luhn 6+4) et 1 classes reprises d'afriland : ServiceTokenProvider (D-53). |
 | 2026-09-29 | — | Masquage des journaux activé (logback, `%maskedMsg`) ; 78 tests unitaires et 355 tests d'intégration réussis, image Jib construite ; test généré `DocumentTypePolicyResourceIT` corrigé (valeur de rétention) (D-54). |
+| 2026-09-29 | — | Tranche DDRM : `POST /api/v1/documents` (dépôt WORM par le port `StockageObjet`, adaptateurs S3 et mémoire, empreinte SHA-256 serveur, refus des numéros de carte BNF-16, table `depot_document` en insertion seule) et `GET /api/v1/interne/documents/{id}/empreinte` ; sécurité D-61 (double facteur, permissions en majuscules, `/api/**` généré réservé à `ROLE_ADMIN`) ; 182 tests unitaires et 369 tests d'intégration réussis ; seuils JaCoCo (unitaire 80 %, global au niveau mesuré) ; Testcontainers 1.21.4 (Docker 29). |
 <!-- GIMAC:FIN -->
 
 # document
