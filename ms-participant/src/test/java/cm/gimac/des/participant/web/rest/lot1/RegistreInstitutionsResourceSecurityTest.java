@@ -60,10 +60,10 @@ import tech.jhipster.config.JHipsterProperties;
  * filtres : 401 sans jeton ; 403 sans second facteur (acr) ; 403 sans la permission de la route ;
  * accès avec la permission. Exécutés sans Docker (tranche web, cas d'utilisation simulés).
  */
-@WebMvcTest(controllers = InstitutionResource.class)
+@WebMvcTest(controllers = RegistreInstitutionsResource.class)
 @Import({ SecurityConfiguration.class, TestSecurityConfiguration.class, ParticipantExceptionHandler.class })
 @EnableConfigurationProperties(JHipsterProperties.class)
-class InstitutionResourceSecurityTest {
+class RegistreInstitutionsResourceSecurityTest {
 
     static final UUID ID = UUID.randomUUID();
     static final UUID T = UUID.randomUUID();

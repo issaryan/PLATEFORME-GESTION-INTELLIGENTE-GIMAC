@@ -502,7 +502,7 @@ class InstitutionLifecycleServiceTest {
         void approbationAdhesion() {
             rendreAdmissible();
             StatusTransition t = proposition(InstitutionStatus.CANDIDAT, InstitutionStatus.ADHERENT, 1, CHARGE);
-            when(reauth.verifier("assertion", CHEF.id(), "PAR_TRANSITION_APPROVE")).thenReturn(true);
+            when(reauth.verifier("assertion", CHEF.id(), "STATUS_APPROVE")).thenReturn(true);
 
             service.approuverTransition(banque.getId(), t.getId(), CHEF, "assertion");
 

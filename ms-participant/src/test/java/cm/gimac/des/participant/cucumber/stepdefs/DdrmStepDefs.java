@@ -72,6 +72,12 @@ public class DdrmStepDefs extends StepDefs {
         return prefixe + UUID.randomUUID().toString().substring(0, 6).toUpperCase();
     }
 
+    /** Données du scénario effacées après lui (voir AbstractParticipantIT). */
+    @io.cucumber.java.After
+    public void effacer() {
+        AbstractParticipantIT.effacer(jdbc);
+    }
+
     // ------------------------------------------------------------------ PAR-01
 
     @Étantdonné("un agent authentifié à deux facteurs avec le profil {string}")

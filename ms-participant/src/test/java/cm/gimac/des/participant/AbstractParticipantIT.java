@@ -47,6 +47,31 @@ public abstract class AbstractParticipantIT {
     @Autowired
     protected RelaisOutboxDeTest relais;
 
+    /**
+     * Les scénarios de la tranche passent par MockMvc et valident leurs transactions : leurs données
+     * sont effacées après chaque test pour ne pas fausser les tests générés, qui comptent les lignes.
+     */
+    @org.junit.jupiter.api.AfterEach
+    void effacerDonneesDuScenario() {
+        effacer(jdbc);
+    }
+
+    /** La réserve de connexions n'est pas en validation automatique (JHipster) : validation explicite. */
+    public static void effacer(JdbcTemplate jdbc) {
+        jdbc.execute((org.springframework.jdbc.core.ConnectionCallback<Void>) c -> {
+            try (var st = c.createStatement()) {
+                st.execute(
+                    "truncate table interaction, status_transition, adhesion_piece, subscribed_service, convention, correspondent, " +
+                    "escalation_contact, legal_document, deadline, outbox_event, processed_event, institution cascade"
+                );
+            }
+            if (!c.getAutoCommit()) {
+                c.commit();
+            }
+            return null;
+        });
+    }
+
     public static RequestPostProcessor utilisateur(UUID id, String... permissions) {
         return jwt()
             .jwt(j -> j.subject(id.toString()).claim("acr", "2").claim("name", "Agent " + id.toString().substring(0, 8)))

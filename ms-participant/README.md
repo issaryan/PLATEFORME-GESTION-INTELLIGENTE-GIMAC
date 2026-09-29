@@ -71,7 +71,7 @@ Quatre types de tests, conformément aux fiches du carnet de produit, et une cou
 | Type | Où | Commande |
 |---|---|---|
 | Unitaires (domaine, cas d'utilisation, adaptateurs, architecture) | `*Test` | `./mvnw test` |
-| Sécurité (401, 403 sans second facteur, 403 sans permission, accès accordé, sur chaque route) | `InstitutionResourceSecurityTest` | `./mvnw test` |
+| Sécurité (401, 403 sans second facteur, 403 sans permission, accès accordé, sur chaque route) | `RegistreInstitutionsResourceSecurityTest` | `./mvnw test` |
 | Intégration (PostgreSQL, Redis, Kafka par Testcontainers) | `*IT` | `./mvnw verify` |
 | Recette (Gherkin du carnet, `src/test/resources/.../cucumber/ddrm`) | `RecetteGherkinIT` | `./mvnw verify` |
 

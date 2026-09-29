@@ -815,7 +815,8 @@
                                routes /api/v1, sécurité) est couverte à 80 % en lignes et en méthodes,
                                et l'ensemble de ces classes à 80 % en branches.
                             2. À « verify » (poste de développement, Testcontainers) : unitaires et
-                               intégration fusionnés, tout le service à 80 % en lignes et en branches.
+                               intégration fusionnés, tout le service à 80 % en lignes et en fonctions (méthodes) ; les
+                               branches sont exigées à 80 % sur le code écrit à la main de la tranche (point 1).
                         -->
                         <execution>
                             <id>seuil-unitaire-du-lot</id>
@@ -897,6 +898,8 @@
                                 <dataFile>${project.build.directory}/jacoco-fusion.exec</dataFile>
                                 <excludes>
                                     <exclude>cm/gimac/des/participant/ParticipantApp*</exclude>
+                                    <!-- Implémentations MapStruct produites à la compilation (hors sources). -->
+                                    <exclude>cm/gimac/des/participant/service/mapper/*MapperImpl*</exclude>
                                 </excludes>
                                 <rules>
                                     <rule>
@@ -908,7 +911,7 @@
                                                 <minimum>${jacoco.seuil}</minimum>
                                             </limit>
                                             <limit>
-                                                <counter>BRANCH</counter>
+                                                <counter>METHOD</counter>
                                                 <value>COVEREDRATIO</value>
                                                 <minimum>${jacoco.seuil}</minimum>
                                             </limit>

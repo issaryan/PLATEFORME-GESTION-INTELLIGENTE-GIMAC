@@ -41,14 +41,14 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/api/v1/institutions")
-public class InstitutionResource {
+public class RegistreInstitutionsResource {
 
     static final String REAUTH_HEADER = "X-Reauth-Assertion";
 
     private final ManageInstitutionUseCase useCase;
     private final InstitutionRegistryQueries queries;
 
-    public InstitutionResource(ManageInstitutionUseCase useCase, InstitutionRegistryQueries queries) {
+    public RegistreInstitutionsResource(ManageInstitutionUseCase useCase, InstitutionRegistryQueries queries) {
         this.useCase = useCase;
         this.queries = queries;
     }

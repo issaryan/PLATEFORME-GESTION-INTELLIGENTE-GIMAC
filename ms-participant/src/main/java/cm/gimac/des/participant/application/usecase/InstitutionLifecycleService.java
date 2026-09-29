@@ -56,7 +56,8 @@ public class InstitutionLifecycleService implements ManageInstitutionUseCase {
     static final String AGREGAT_INSTITUTION = "institution";
     static final String AGREGAT_PIECE = "adhesion";
     static final String AGREGAT_TRANSITION = "transition";
-    static final String FINALITE_APPROBATION = "PAR_TRANSITION_APPROVE";
+    // Finalité du défi FIDO2 demandé par l'interface (SignDialog, purpose STATUS_APPROVE).
+    static final String FINALITE_APPROBATION = "STATUS_APPROVE";
 
     private final InstitutionRepository institutions;
     private final AdhesionPieceRepository pieces;

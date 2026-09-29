@@ -67,7 +67,7 @@ class InstitutionResourceIT {
     private static final String UPDATED_BEAC_BANK_CODE = "BBBBBBBBBB";
 
     private static final String DEFAULT_COUNTRY = "CF";
-    private static final String UPDATED_COUNTRY = "CFB";
+    private static final String UPDATED_COUNTRY = "GQ";
 
     private static final InstitutionCategory DEFAULT_CATEGORY = InstitutionCategory.BANQUE;
     private static final InstitutionCategory UPDATED_CATEGORY = InstitutionCategory.MICROFINANCE;
@@ -1937,7 +1937,7 @@ class InstitutionResourceIT {
         Institution settlementBank;
         if (TestUtil.findAll(em, Institution.class).isEmpty()) {
             institutionRepository.saveAndFlush(institution);
-            settlementBank = InstitutionResourceIT.createEntity();
+            settlementBank = InstitutionResourceIT.createUpdatedEntity(); // champs uniques distincts de l'entité testée
         } else {
             settlementBank = TestUtil.findAll(em, Institution.class).getFirst();
         }
@@ -1959,7 +1959,7 @@ class InstitutionResourceIT {
         Institution sponsorBank;
         if (TestUtil.findAll(em, Institution.class).isEmpty()) {
             institutionRepository.saveAndFlush(institution);
-            sponsorBank = InstitutionResourceIT.createEntity();
+            sponsorBank = InstitutionResourceIT.createUpdatedEntity(); // champs uniques distincts de l'entité testée
         } else {
             sponsorBank = TestUtil.findAll(em, Institution.class).getFirst();
         }
