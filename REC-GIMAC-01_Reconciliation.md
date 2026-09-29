@@ -457,6 +457,34 @@ Décisions ajoutées le 28/09/2026 à la réception du carnet de produit v2.0 (3
   - **Messagerie** : outbox transactionnelle, relais CloudEvents, consommateur idempotent et file de rebut `.dlq` (rejeux 1 s, 5 s, 25 s) actifs dans les deux services.
   - **Écarts assumés** : `lb://` remplacé par les adresses directes (D-54) ; React 19 (D-51) ; signature des quitus selon D-35 ; noms d'événements tranchés récit par récit selon D-37 et consignés dans le tableau de correspondance.
 
+### 4.5 Arbitrages de la certification d'après le compte rendu de cadrage (révision v1.2, 29/09/2026)
+
+Source ajoutée : **CR-CERT-GIMAC-01 v1.4**, compte rendu d'entretiens et de cadrage de la certification (document amont du CCT, décrit l'existant), et la présentation de vision *Vision_GIMAC_Digitalisation* adressée à la DG. Les deux sont versés à la racine du dépôt. Arbitrages décidés par KOAGNE ISSA RYAN le 29/09/2026.
+
+- **D-56 [R] Décision de mise en production : modèle hybride.** Le CR ne connaît que deux verrous ; le plan PI et le CC prévoient quatre quitus. Retenu :
+  - **Verrou 1, obligatoire : procès-verbal de certification.** Établi par le conducteur de projet (rang 18), il n'est émis que si la couverture de certification du périmètre vaut 100 % (rang 17). Il est signé par le GIMAC et par le participant (rang 19), chaque signature après réauthentification forte (D-35). Il clôt l'étape 8 et fait passer la liaison à `CERTIFIEE`.
+  - **Verrou 2, obligatoire : approbation du changement par la sécurité des SI.** Elle est lue depuis la fiche de changement du dispositif existant, référencée et jamais refaite (CR p.32, D-16, RG-34). La vérification et l'archivage des attestations du participant (rangs 21 à 23 : ISO 27001, PCI DSS ou GSMA selon l'activité, conformité COBAC si fintech) sont tracés. L'approbation fait passer la liaison à `APPROUVEE_SECURITE`, et la mise en production ne peut commencer qu'après.
+  - **Visas optionnels : conformité et Direction Générale.** Ils sont paramétrables par type de projet (désactivés par défaut) et, s'ils sont activés, s'insèrent avant l'approbation de la sécurité avec les mêmes règles de signature, d'immuabilité et de caducité (CER-06, CER-07).
+  - Le « quitus technique du chef du DES » du plan devient la **signature GIMAC du procès-verbal**, portée par le chef du DES ou son délégataire (le CR ne nomme pas le signataire).
+  - Récits touchés : CER-01 à CER-07 sont réécrits selon ce modèle ; CER-08 à CER-15 (dossier de mise en service, procès-verbal de mise en service, scellement, attestation, registre, révocation) sont conservés.
+- **D-57 [R] Début du parcours : le participant, puis la liaison.**
+  - **Étapes 1 et 2 dans MS-PARTICIPANT.** Prise de contact (rang 1) : le candidat est enregistré (`CANDIDAT`, « Prospect » du CR). Adhésion (rang 2) : le dossier administratif est collecté, pièce par pièce, et son complétude constatée ; l'adhésion est prononcée par la DDRM (`ADHERENT`). Un candidat ou un adhérent peut être **clos sans suite** (`CLOS_SANS_SUITE`), avec motif. Ces deux états complètent l'automate de D-08 ; `EN_HOMOLOGATION` est atteint à l'ouverture de la première liaison.
+  - **Étapes 3 à 10 portées par la liaison (MS-HOMOLOGATION).** La liaison s'ouvre au cadrage (rang 3) sur un adhérent. Elle reprend les statuts du CR comme **étape courante** : Cadrée, En intégration, En test, Certifiée, Approuvée sécurité, En production ; plus Suspendue et Close sans suite. L'automate technique du plan (HOM-19) est conservé et projeté sur ces étapes.
+  - Le **dossier numérique** du participant agrège les deux (identification, pilotage, périmètre, progression, blocages, preuves : CR Fig. 7.3). Un service supplémentaire rouvre le parcours au cadrage sur une **nouvelle liaison**, sans repasser par l'adhésion (rang 35).
+- **D-58 [R] Profils et conduite de projet.**
+  - Les profils Keycloak restent **par fonction** : DDRM (chargé et chef de département), chef du DES, Normes et Agréments, production monétique, pôle réseau, pôle système, sécurité des SI, conformité, DG, correspondant de participant.
+  - Un **rôle dédié `CONDUCTEUR_PROJET`** s'y ajoute. Il n'est pas propre à la certification : il habilite à conduire **tout projet** (une liaison de certification, un projet d'évolution de MS-PILOTAGE…). Le conducteur d'un projet donné est **désigné sur ce projet** par les chefs de département (rang 6), parmi les détenteurs de ce rôle ; il ne voit et n'agit en conducteur que sur les projets qui lui sont confiés.
+  - Chaque acteur dispose de **son tableau de bord** et des seules actions que lui confère sa fonction (CR §3.6, vision diapositive 14), avec un périmètre de visibilité (D-21, RG-59).
+- **D-59 [R] Apports structurants du CR intégrés au modèle.**
+  - **Workflow d'étape à six éléments** : responsable unique, actions, livrables, validation, preuve, date de clôture ; une étape n'est close que si les six sont réunis (CR §7.1). Qualités sur une tâche : R, C, V, I, E (CR p.19).
+  - **Plateforme d'exécution** de chaque opération : switch interbancaire, switch délégataire, plateforme de paiement mobile, simulateur (CR p.38, p.54).
+  - **Deux grains de preuve** : une pièce par phase en essai (le document de paramétrage, rang 15), une preuve par opération en production ; l'opération sait lequel elle attend (CR p.43).
+  - **Blocage** : objet daté (motif, depuis le, prochaine action, échéance de levée), et non mention libre (CR annexe B).
+  - **Aucun secret** : ni composante de clé, ni mot de passe ; seulement la trace et le code de contrôle de clé (CR p.34, p.54). Les preuves à valeurs de référence (adresse de point de terminaison, code membre, BIN) sont relisibles et comparables.
+  - **Pilotage** : 4 compteurs (projets actifs, bloqués, tâches en retard, échéances proches), répartition par étape, délai moyen de certification, taux de respect des délais, et les 6 questions de l'annexe B comme critères d'acceptation.
+  - **Référentiel réel** : l'annexe A du CR (rangs 1 à 35, C1 à C10, M1 à M17, D1 à D34) sert de jeu d'initialisation des référentiels. La branche mobile compte les **17** opérations listées ; les mentions « 21 » du CR sont une erreur de comptage.
+- **D-60 [R] Méthode de réalisation : tranches verticales.** Chaque tranche livre, pour une étape du parcours, l'API métier, l'écran branché sur l'API réelle et le tableau de bord de chaque acteur concerné. Première tranche : la DDRM (étapes 1 à 3). Les tests d'intégration (Testcontainers) et les contrôles cURL s'exécutent sur le poste de développement ; l'environnement distant se limite à la compilation, aux tests unitaires et aux tests du frontend.
+
 ---
 
 ## 5. Règles de gestion par microservice
