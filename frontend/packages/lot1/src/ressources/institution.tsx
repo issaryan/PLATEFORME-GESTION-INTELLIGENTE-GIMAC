@@ -1,4 +1,4 @@
-import { Hash, InlineAlert, Link, StatusBadge, type Option } from '@gimac/design-system'
+import { Hash, InlineAlert, Link, StatusBadge, Tag, type Option } from '@gimac/design-system'
 import type { ResourceDescriptorLot1 } from '@gimac/socle'
 import type { Institution, PieceAdhesion, StatutInstitution, TransitionStatut } from '../modele/participant'
 import type { Services } from '../services/ports'
@@ -9,7 +9,13 @@ import { conformite, etatInstitution, etatPiece, etatTransition } from '../dicti
 // des pouvoirs) sont décidées par MS-PARTICIPANT, dont l'interface affiche les refus.
 
 type Traduire = (cle: string, valeurs?: Record<string, unknown>) => string
-export type OptionsInstitution = { t: Traduire }
+export type OptionsInstitution = {
+  t: Traduire
+  /** HOM_LIAISON_OPEN et HOM_PROJECT_DESIGNATE réunies (chef du DES, chef de la DDRM) : ouverture au cadrage. */
+  ouvertureLiaison?: boolean
+}
+/** Statuts depuis lesquels une liaison s'ouvre (étape 3, D-57) ; MS-HOMOLOGATION revérifie. */
+const OUVRABLES: StatutInstitution[] = ['ADHERENT', 'EN_HOMOLOGATION']
 
 const I = '/bff/des/participant/institutions'
 const TERMINAUX: StatutInstitution[] = ['RETIRE', 'CLOS_SANS_SUITE']
@@ -20,7 +26,7 @@ export const categorieOptions: Option[] = [
 ].map((v) => ({ value: v, label: `institution.categorie.${v}` }))
 export const modeOptions: Option[] = ['DIRECT', 'INDIRECT'].map((v) => ({ value: v, label: `institution.mode.${v}` }))
 
-export function creerInstitutionDescriptor({ t }: OptionsInstitution): ResourceDescriptorLot1<Institution, Services> {
+export function creerInstitutionDescriptor({ t, ouvertureLiaison }: OptionsInstitution): ResourceDescriptorLot1<Institution, Services> {
   return {
     key: 'institution',
     label: { singular: 'institution.singulier', plural: 'institution.pluriel', gender: 'f' },
@@ -63,6 +69,13 @@ export function creerInstitutionDescriptor({ t }: OptionsInstitution): ResourceD
         consequences: () => <InlineAlert level="info">{t('institution.adhesion.consequence')}</InlineAlert>,
         run: (ctx) => ctx.services.participant.proposerTransition(ctx.row.id, 'ADHERENT', ctx.motif ?? ''),
       },
+      ...(ouvertureLiaison
+        ? [{
+            key: 'ouvrirLiaison', label: 'cadrage.action.ouvrir', icon: 'route', variant: 'primary' as const, scope: 'row' as const, permission: 'HOM_LIAISON_OPEN', confirm: 'none' as const,
+            isAllowed: (r: Institution) => OUVRABLES.includes(r.statut),
+            run: (ctx: { row: Institution; navigate: (to: string) => void }) => ctx.navigate(`/des/institutions/${ctx.row.id}?formulaire=liaison`),
+          }]
+        : []),
       {
         key: 'modifier', label: 'institution.action.modifier', icon: 'pen-line', scope: 'row', permission: 'PAR_INSTITUTION_EDIT', confirm: 'none',
         isAllowed: (r) => !TERMINAUX.includes(r.statut), run: (ctx) => ctx.openForm('edit'),
@@ -139,6 +152,9 @@ export function creerTransitionDescriptor({ t }: OptionsInstitution): ResourceDe
       { name: 'vers', label: 'transition.vers', kind: 'custom', inList: true, inDetail: true, render: (_v, r) => statut(r.vers) },
       { name: 'motif', label: 'transition.motif', kind: 'text', inList: true, inDetail: true },
       { name: 'etat', label: 'transition.etat', kind: 'status', inList: true, inDetail: true },
+      // Bascule appliquée par MS-PARTICIPANT seul (ouverture d'une liaison, échéance) : ni proposition ni approbation.
+      { name: 'automatique', label: 'transition.mode', kind: 'custom', inList: true, inDetail: true,
+        render: (_v, r) => <Tag>{t(r.automatique ? 'transition.mode.automatique' : 'transition.mode.proposee')}</Tag> },
       { name: 'demandeeLe', label: 'transition.demandeeLe', kind: 'datetime', inList: true, inDetail: true },
       { name: 'decideeLe', label: 'transition.decideeLe', kind: 'datetime', inDetail: true },
       { name: 'motifRejet', label: 'transition.motifRejet', kind: 'text', inDetail: true },

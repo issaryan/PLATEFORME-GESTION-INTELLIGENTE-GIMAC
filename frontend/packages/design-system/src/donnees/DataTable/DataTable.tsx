@@ -13,6 +13,9 @@ import { InlineAlert } from '../../conteneurs/InlineAlert/InlineAlert'
 import { Pagination } from '../../navigation/Pagination/Pagination'
 import { useLibelle } from '../../i18n/LangueProvider'
 
+/** Éléments interactifs d'une ligne : leur clic ne l'ouvre pas. */
+const CONTROLES = 'button, a, input, select, textarea, label'
+
 export type ColumnType = 'text' | 'mono' | 'number' | 'money' | 'date' | 'datetime' | 'status' | 'severity' | 'progress' | 'tags' | 'link' | 'actions' | 'custom'
 
 export type TableRow = object
@@ -107,7 +110,8 @@ export function DataTable<Row extends TableRow = TableRow>(p: DataTableProps<Row
             <tr
               key={key}
               aria-selected={p.selected && p.selected.indexOf(key) >= 0 ? 'true' : undefined}
-              onClick={onRowOpen ? () => onRowOpen(r) : undefined}
+              // Un clic sur un contrôle de la ligne (bouton d'action, lien, case) agit seul, sans ouvrir la ligne.
+              onClick={onRowOpen ? (e) => { if (!(e.target as HTMLElement).closest(CONTROLES)) onRowOpen(r) } : undefined}
               style={onRowOpen ? { cursor: 'pointer' } : undefined}
             >
               {cols.map((c) => (

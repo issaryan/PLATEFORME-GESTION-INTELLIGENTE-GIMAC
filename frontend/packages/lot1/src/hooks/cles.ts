@@ -16,6 +16,7 @@ export const cles = {
   liaison: (id: string, sous?: string) => ['homologation', 'liaison', id, ...(sous ? [sous] : [])] as const,
   operation: (id: string, sous?: string) => ['homologation', 'operation', id, ...(sous ? [sous] : [])] as const,
   reprise: () => ['homologation', 'reprise'] as const,
+  conducteurs: () => ['homologation', 'conducteurs'] as const,
   dossier: (id: string, sous?: string) => ['certification', 'dossier', id, ...(sous ? [sous] : [])] as const,
   dossierLiaison: (liaisonId: string) => ['certification', 'dossier-liaison', liaisonId] as const,
   circuit: (id: string) => ['certification', 'circuit', id] as const,

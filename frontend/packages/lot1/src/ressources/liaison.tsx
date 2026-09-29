@@ -10,7 +10,13 @@ import { taux } from '../adaptateurs/liaison'
 // Les actions n'agissent que par ctx.services ; leur disponibilité reflète actionsPermises du service.
 
 type Traduire = (cle: string, valeurs?: Record<string, unknown>) => string
-export type OptionsLiaison = { t: Traduire; institutions: Option[]; collaborateurs: Option[] }
+export type OptionsLiaison = {
+  t: Traduire
+  /** Conducteurs de projet habilités, proposés à la désignation. */
+  conducteurs: Option[]
+  /** HOM_LIAISON_OPEN et HOM_PROJECT_DESIGNATE réunies : l'ouverture (depuis le registre) est proposée. */
+  ouverture?: boolean
+}
 
 export const typeProjetOptions: Option[] = ['CARTE_INTERBANCAIRE', 'PAIEMENT_MOBILE', 'DELEGATAIRE'].map((v) => ({ value: v, label: `typeProjet.${v}` }))
 
@@ -30,7 +36,7 @@ const anneau = (c: Liaison['couvertureCertification'], label: string): ReactNode
   <ProgressRing label={label} value={taux(c)} size={48} />
 )
 
-export function creerLiaisonDescriptor({ t, institutions, collaborateurs }: OptionsLiaison): ResourceDescriptorLot1<Liaison, Services> {
+export function creerLiaisonDescriptor({ t, conducteurs, ouverture }: OptionsLiaison): ResourceDescriptorLot1<Liaison, Services> {
   return {
     key: 'liaison',
     label: { singular: 'liaison.singulier', plural: 'liaison.pluriel', gender: 'f' },
@@ -39,19 +45,18 @@ export function creerLiaisonDescriptor({ t, institutions, collaborateurs }: Opti
     statusField: 'etat',
     endpoints: { list: '/bff/des/homologation/liaisons', get: '/bff/des/homologation/liaisons/{id}', create: '/bff/des/homologation/liaisons', update: '/bff/des/homologation/liaisons/{id}/chef-de-projet' },
     fields: [
-      { name: 'institutionId', label: 'liaison.institution', kind: 'searchSelect', required: true, options: institutions, inForm: 'create' },
       {
         name: 'institutionNom', label: 'liaison.institution', kind: 'text', inList: true, inDetail: true, sortable: true,
         render: (_v, r) => <Link href={`/des/liaisons/${r.id}`}>{r.institutionNom}</Link>,
       },
       { name: 'id', label: 'liaison.reference', kind: 'mono', inDetail: true },
-      { name: 'typeProjet', label: 'liaison.typeProjet', kind: 'radio', required: true, options: typeProjetOptions, inList: true, inDetail: true, inForm: 'create', filterable: true },
-      { name: 'chefDeProjetId', label: 'liaison.chefDeProjet', kind: 'searchSelect', required: true, options: collaborateurs, inForm: true, help: 'liaison.chefDeProjet.aide' },
+      { name: 'typeProjet', label: 'liaison.typeProjet', kind: 'select', options: typeProjetOptions, inList: true, inDetail: true, filterable: true,
+        render: (_v, r) => t(`typeProjet.${r.typeProjet}`) },
+      { name: 'chefDeProjetId', label: 'liaison.chefDeProjet', kind: 'select', required: true, options: conducteurs, inForm: 'edit', help: 'liaison.chefDeProjet.aide' },
       { name: 'chefDeProjetNom', label: 'liaison.chefDeProjet', kind: 'text', inList: true, inDetail: true },
-      { name: 'banquePartenaireId', label: 'liaison.portage', kind: 'searchSelect', options: institutions, inForm: 'create', help: 'liaison.portage.aide' },
       { name: 'banquePartenaireNom', label: 'liaison.portage', kind: 'text', inDetail: true },
       { name: 'etat', label: 'liaison.etat', kind: 'status', inList: true, inDetail: true, filterable: true },
-      { name: 'phaseCourante', label: 'liaison.phase', kind: 'text', inDetail: true },
+      { name: 'phaseCourante', label: 'liaison.phase', kind: 'text', inList: true, inDetail: true, render: (_v, r) => t(`phase.${r.phaseCourante}`, { defaultValue: r.phaseCourante }) },
       // Liste : taux et ratio en chiffres tabulaires ; fiche : anneau de couverture (le catalogue n'a pas
       // d'anneau compact sans légende pour une cellule de tableau).
       { name: 'couvertureCertification', label: 'couverture.certification', kind: 'custom', inList: true, render: (_v, r) => chiffre(r.couvertureCertification, t) },
@@ -67,9 +72,15 @@ export function creerLiaisonDescriptor({ t, institutions, collaborateurs }: Opti
       { name: 'motifEtat', label: 'liaison.motifEtat', kind: 'text', inDetail: true },
     ],
     actions: [
-      { key: 'ouvrir', label: 'liaison.action.ouvrir', icon: 'plus', variant: 'primary', scope: 'page', permission: 'HOM_LIAISON_OPEN', confirm: 'none', run: (ctx) => ctx.openForm('create') },
+      // Étape 3 (D-57) : une liaison s'ouvre depuis la fiche d'une institution adhérente ou en homologation.
+      ...(ouverture
+        ? [{
+            key: 'ouvrir', label: 'liaison.action.ouvrir', icon: 'plus', variant: 'primary' as const, scope: 'page' as const, permission: 'HOM_LIAISON_OPEN', confirm: 'none' as const,
+            run: (ctx: { navigate: (to: string) => void }) => ctx.navigate('/des/institutions?statut=ADHERENT'),
+          }]
+        : []),
       {
-        key: 'chefDeProjet', label: 'liaison.action.designerChef', icon: 'user', scope: 'row', permission: 'HOM_LIAISON_OPEN', confirm: 'none',
+        key: 'chefDeProjet', label: 'liaison.action.designerChef', icon: 'user', scope: 'row', permission: 'HOM_PROJECT_DESIGNATE', confirm: 'none',
         isAllowed: (r) => r.actionsPermises.includes('DESIGNER_CHEF_DE_PROJET'), run: (ctx) => ctx.openForm('edit'),
       },
       {
@@ -93,7 +104,7 @@ export function creerLiaisonDescriptor({ t, institutions, collaborateurs }: Opti
       },
     ],
     statusDictionary: etatLiaison,
-    permissions: { list: 'HOM_LIAISON_LIST', read: 'HOM_LIAISON_READ', create: 'HOM_LIAISON_OPEN', update: 'HOM_LIAISON_OPEN' },
+    permissions: { list: 'HOM_LIAISON_LIST', read: 'HOM_LIAISON_READ', create: 'HOM_LIAISON_OPEN', update: 'HOM_PROJECT_DESIGNATE' },
     liveTopic: 'homologation',
   }
 }

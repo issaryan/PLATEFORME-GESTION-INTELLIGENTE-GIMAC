@@ -4,12 +4,14 @@ import { Skeleton } from '@gimac/design-system'
 import { CONNEXION, Enveloppe, GardeSession, PageConnexion, PageDeconnexion, SessionProvider, configureHttp, lirePreference, type EtatCanal, type Session } from '@gimac/socle'
 import { CompteProvider, GardePremierAcces, MonComptePage, monCompteHttp, monCompteSimule } from '@gimac/compte'
 import { Fournisseurs, NAVIGATION_DES, creerClientRequetes, servicesHttp, servicesSimules } from '@gimac/lot1'
+import { PROFILS_DEMO, roleDemo, sessionDemo } from './profils'
 
 // Application du département (couche « des ») : routes du lot 1 (DS-GIMAC-01 §10.1). Services réels par
 // la passerelle (VITE_SERVICES=http) ou simulés pour le développement des écrans.
 // D-61 : la session (matrice des rôles du jeton obtenu par authentification à deux facteurs) est lue
 // sur /api/session ; sans second facteur, aucun écran n'est servi. Chaque acteur voit son tableau de
 // bord et les seules actions que ses permissions ouvrent ; la passerelle et les services refont le contrôle.
+// En services simulés, la session est celle d'un profil de démonstration (profils.ts, D-57, D-58).
 const TableauDeBordPage = lazy(() => import('@gimac/lot1/pages/des/TableauDeBordPage'))
 const InstitutionsPage = lazy(() => import('@gimac/lot1/pages/des/InstitutionsPage'))
 const InstitutionPage = lazy(() => import('@gimac/lot1/pages/des/InstitutionPage'))
@@ -19,21 +21,7 @@ const ClotureOperationPage = lazy(() => import('@gimac/lot1/pages/des/ClotureOpe
 const DossierMiseEnServicePage = lazy(() => import('@gimac/lot1/pages/des/DossierMiseEnServicePage'))
 const ReferentielsOperationsPage = lazy(() => import('@gimac/lot1/pages/des/ReferentielsOperationsPage'))
 
-const REELS = import.meta.env.VITE_SERVICES === 'http'
 const VERSION = import.meta.env.VITE_VERSION ?? '0.1.0'
-
-// Session de démonstration (services simulés seulement) : profil choisi par VITE_PROFIL_DEMO.
-const PROFILS_DEMO: Record<string, string[]> = {
-  ROLE_CHEF_DDRM: ['PAR_INSTITUTION_READ', 'PAR_INSTITUTION_CREATE', 'PAR_INSTITUTION_EDIT', 'PAR_ADHESION_INSTRUCT', 'PAR_TRANSITION_REQUEST', 'PAR_TRANSITION_APPROVE'],
-  ROLE_CHARGE_DDRM: ['PAR_INSTITUTION_READ', 'PAR_INSTITUTION_CREATE', 'PAR_INSTITUTION_EDIT', 'PAR_ADHESION_INSTRUCT', 'PAR_TRANSITION_REQUEST'],
-  ROLE_INGENIEUR_HOMOLOGATION: ['PAR_INSTITUTION_READ', 'HOM_LIAISON_LIST', 'HOM_LIAISON_READ', 'HOM_LIAISON_OPEN', 'HOM_DASHBOARD_READ', 'HOM_REFERENTIEL_READ',
-    'HOM_REFERENTIEL_EDIT', 'HOM_REFERENTIEL_PUBLISH', 'HOM_OPERATION_ASSIGN', 'HOM_EVIDENCE_SUBMIT', 'HOM_OPERATION_VALIDATE', 'HOM_OPERATION_REOPEN',
-    'HOM_GRID_EDIT', 'HOM_SCENARIO_QUALIFY', 'HOM_EVIDENCE_FILE_EXPORT', 'CER_DOSSIER_READ', 'CER_DOSSIER_VERIFY', 'CER_GOLIVE_REPORT_SUBMIT', 'CER_ATTESTATION_ISSUE'],
-}
-function sessionDemo(): Session {
-  const role = import.meta.env.VITE_PROFIL_DEMO && PROFILS_DEMO[import.meta.env.VITE_PROFIL_DEMO] ? import.meta.env.VITE_PROFIL_DEMO : 'ROLE_CHEF_DDRM'
-  return { sujet: 'demo', nom: 'Démonstration', identifiant: 'demo', roles: [role], permissions: PROFILS_DEMO[role], institutionId: '', acr: '2', doubleFacteur: true }
-}
 
 // D-62 : après la garde de session, le premier accès (fiche, charte, actions requises) passe avant
 // tout tableau de bord ; « Mon compte » et la déconnexion sont dans l'espace personnel de l'enveloppe.
@@ -78,8 +66,8 @@ function Pages({ session, etatCanal, correlationId }: { session: Session; etatCa
   )
 }
 
-function AvecSession({ children }: { children: (s: Session) => ReactNode }) {
-  if (!REELS) {
+function AvecSession({ reels, children }: { reels: boolean; children: (s: Session) => ReactNode }) {
+  if (!reels) {
     const s = sessionDemo()
     return <SessionProvider session={s}>{children(s)}</SessionProvider>
   }
@@ -87,9 +75,20 @@ function AvecSession({ children }: { children: (s: Session) => ReactNode }) {
 }
 
 export default function App() {
-  const services = useMemo(() => (REELS ? servicesHttp('des') : servicesSimules()), [])
-  // « Mon compte » (D-62) : /bff/des/iam/moi, ou service simulé (gm.premierAccesDemo = 1 : démonstration du premier accès).
-  const compte = useMemo(() => (REELS ? monCompteHttp('des') : monCompteSimule({ premierAcces: lirePreference('gm.premierAccesDemo') === '1' })), [])
+  const reels = import.meta.env.VITE_SERVICES === 'http'
+  const services = useMemo(() => (reels ? servicesHttp('des') : servicesSimules()), [reels])
+  // « Mon compte » (D-62) : /bff/des/iam/moi, ou service simulé au nom du profil de démonstration
+  // (gm.premierAccesDemo = 1 : démonstration du premier accès).
+  const compte = useMemo(() => {
+    if (reels) return monCompteHttp('des')
+    const role = roleDemo()
+    const p = PROFILS_DEMO[role]
+    const [prenom, ...nom] = p.nom.split(' ')
+    return monCompteSimule({
+      premierAcces: lirePreference('gm.premierAccesDemo') === '1',
+      compte: { id: p.sujet, identifiant: p.identifiant, prenom, nom: nom.join(' '), nomAffiche: p.nom, email: `${p.identifiant}@gimac-afr.org`, profils: [role] },
+    })
+  }, [reels])
   const client = useMemo(() => creerClientRequetes(), [])
   const [correlationId, setCorrelationId] = useState<string | undefined>()
   useEffect(() => {
@@ -97,18 +96,18 @@ export default function App() {
     configureHttp({
       onCorrelation: setCorrelationId,
       onUnauthorized: async () => {
-        if (REELS) window.location.assign(CONNEXION)
+        if (reels) window.location.assign(CONNEXION)
         return false
       },
     })
-  }, [])
+  }, [reels])
   return (
-    <Fournisseurs couche="des" services={services} canal={REELS} clientRequetes={client}>
+    <Fournisseurs couche="des" services={services} canal={reels} clientRequetes={client}>
       {(etatCanal) => (
         <CompteProvider service={compte}>
           <Routes>
             <Route path="/connexion" element={<PageConnexion couche="des" />} />
-            <Route path="/des/*" element={<AvecSession>{(s) => <Pages session={s} etatCanal={etatCanal} correlationId={correlationId} />}</AvecSession>} />
+            <Route path="/des/*" element={<AvecSession reels={reels}>{(s) => <Pages session={s} etatCanal={etatCanal} correlationId={correlationId} />}</AvecSession>} />
             <Route path="*" element={<Navigate to="/des/tableau-de-bord" replace />} />
           </Routes>
         </CompteProvider>

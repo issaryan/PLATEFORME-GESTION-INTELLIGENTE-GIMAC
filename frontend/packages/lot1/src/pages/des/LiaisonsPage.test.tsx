@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
+import { cleanup, screen, waitFor } from '@testing-library/react'
 import { ApiError } from '@gimac/socle'
 import LiaisonsPage from './LiaisonsPage'
 import { rendrePage } from '../../test/rendu'
@@ -34,16 +34,6 @@ describe('DES-08 Liaisons et parcours', () => {
     page({ services: avec({ listerLiaisons: async () => { throw new ApiError(503, 'SERVICE_INDISPONIBLE', 'Service indisponible.', 'RQ-2026-0929-7') } }) })
     expect(await screen.findByText('RQ-2026-0929-7')).toBeTruthy()
     expect(screen.getAllByRole('button').some((b) => /R[ée]essayer|Retry|Reintentar/.test(b.textContent ?? ''))).toBe(true)
-  })
-  it('refuse l\'ouverture en double avec le motif et l\'identifiant de corrélation', async () => {
-    const services = avec({
-      ouvrirLiaison: async () => { throw new ApiError(409, 'HOM_LIAISON_DUPLICATE', 'doublon', 'RQ-2026-0929-12') },
-    })
-    const { container } = page({ services, chemin: '/des/liaisons?formulaire=ouvrir' })
-    const form = await waitFor(() => { const f = container.querySelector('form'); if (!f) throw new Error('formulaire absent'); return f })
-    fireEvent.submit(form)
-    expect(await screen.findByText(/déjà ouverte pour cette institution membre/)).toBeTruthy()
-    expect(screen.getByText('RQ-2026-0929-12')).toBeTruthy()
   })
   it('ne propose le dégel que pour la liaison dont le service le permet', async () => {
     page()

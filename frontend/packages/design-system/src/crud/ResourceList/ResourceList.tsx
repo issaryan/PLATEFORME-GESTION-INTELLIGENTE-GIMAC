@@ -88,7 +88,8 @@ export function ResourceList<T extends object>(p: ResourceListProps<T>) {
           return (
             <span className="gm-row" style={{ justifyContent: 'flex-end', flexWrap: 'nowrap' }}>
               {acts.slice(0, 1).map((a) => actionButton(a, r, ctx))}
-              {acts.length > 1 ? <IconButton variant="ghost" size="sm" icon="menu" label={t('crud.plusActions')} /> : null}
+              {/* Les autres actions permises sont dans le tiroir de la ligne, qu'ouvre ce bouton. */}
+              {acts.length > 1 ? <IconButton variant="ghost" size="sm" icon="menu" label={t('crud.plusActions')} onClick={() => (p.onRowOpen ? p.onRowOpen(r) : setOpen(r))} /> : null}
             </span>
           )
         },
@@ -173,7 +174,8 @@ export function ResourceList<T extends object>(p: ResourceListProps<T>) {
               <EmptyState title={t('commun.aucunElement')} text={t('crud.ongletVide')} />
             )
           }
-          actions={rowActions.filter((a) => allowed(a, open, perms)).map((a) => actionButton(a, open, ctx, 'md'))}
+          // Une action lancée depuis le tiroir le referme : sa confirmation ou son effet prend la main.
+          actions={rowActions.filter((a) => allowed(a, open, perms)).map((a) => actionButton(a, open, { run: (x, row) => { setOpen(null); ctx.run(x, row) } }, 'md'))}
         />
       ) : null}
       {dlg ? (

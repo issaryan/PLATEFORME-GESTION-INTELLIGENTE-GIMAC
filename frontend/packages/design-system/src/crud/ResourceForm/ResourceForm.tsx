@@ -37,6 +37,8 @@ export interface ResourceFormProps<T> {
   confirm?: 'none' | 'confirm' | 'sign'
   embedded?: boolean
   title?: string
+  /** Texte d'introduction sous le titre (effets de la soumission, rappel d'une règle du service). */
+  intro?: ReactNode
 }
 
 // Création ou modification : champs inForm, erreurs mappées, étapes, brouillon (§8.3, gabarit G4).
@@ -139,6 +141,7 @@ export function ResourceForm<T extends object>(p: ResourceFormProps<T>) {
       aria-labelledby="gm-form-title"
     >
       {p.embedded ? null : <h1 id="gm-form-title" className="gm-heading-display">{p.title || title}</h1>}
+      {p.intro ? p.intro : null}
       {steps ? (
         <div style={{ margin: 'var(--gm-space-4) 0' }}>
           <Stepper steps={steps.map((st, i) => ({ label: st.label, state: i < step ? 'done' : i === step ? 'current' : 'todo' }))} />

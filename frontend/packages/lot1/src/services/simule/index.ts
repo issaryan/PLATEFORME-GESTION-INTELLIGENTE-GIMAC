@@ -1,6 +1,6 @@
 import { ApiError, ReauthCancelled } from '@gimac/socle'
 import type { ListQuery, Page } from '../../modele/commun'
-import type { ClotureOperation, ElementCloture, Liaison } from '../../modele/homologation'
+import type { ClotureOperation, ElementCloture, Liaison, OuvertureLiaison } from '../../modele/homologation'
 import type { PortailLiaison } from '../../modele/portail'
 import type { ServiceCertification, ServiceHomologation, ServicePortail, Services } from '../ports'
 import * as D from './donnees'
@@ -34,6 +34,8 @@ function pagine<T>(lignes: T[], q: ListQuery, champs: (keyof T)[]): Page<T> {
 
 export function servicesSimules(o: OptionsSimulation = {}): Services {
   const latence = o.latenceMs ?? 350
+  // État propre à chaque instance : les liaisons ouvertes ou modifiées ne fuient pas d'une instance à l'autre.
+  const liaisons: Liaison[] = clone(D.liaisons)
   const attendre = <T>(v: T | (() => T)): Promise<T> =>
     new Promise((res, rej) =>
       window.setTimeout(() => {
@@ -45,12 +47,12 @@ export function servicesSimules(o: OptionsSimulation = {}): Services {
       }, latence),
     )
   const trouverLiaison = (id: string): Liaison => {
-    const l = D.liaisons.find((x) => x.id === id)
+    const l = liaisons.find((x) => x.id === id)
     if (!l) throw refus(404, 'HOM_LIAISON_NOT_FOUND', 'Liaison introuvable.')
     return l
   }
   // État mutable des opérations par liaison, dérivé une fois du jeu de données.
-  const operations = new Map(D.liaisons.map((l) => [l.id, D.operationsDe(l)]))
+  const operations = new Map(liaisons.map((l) => [l.id, D.operationsDe(l)]))
   const toutesOperations = () => [...operations.values()].flat()
   const trouverOperation = (id: string) => {
     const op = toutesOperations().find((x) => x.id === id)
@@ -58,6 +60,48 @@ export function servicesSimules(o: OptionsSimulation = {}): Services {
     return op
   }
   const depots = new Map<string, ClotureOperation['dernierDepot']>()
+  const participant = participantSimule(attendre, refus)
+  let numeroLiaison = 40
+
+  /** « Mes projets » : liaisons dont le conducteur de projet est l'utilisateur de la démonstration. */
+  const listerLiaisons = (q: ListQuery) => {
+    const { mesProjets, ...filtres } = q.filtres ?? {}
+    const lignes = mesProjets ? liaisons.filter((l) => l.chefDeProjetId === D.CONDUCTEUR_DEMO) : liaisons
+    return pagine(lignes, { ...q, filtres }, ['institutionNom', 'id', 'chefDeProjetNom'])
+  }
+  const conducteur = (id: string) => {
+    const c = D.CONDUCTEURS.find((x) => x.id === id)
+    if (!c) throw refus(409, 'HOM_LIAISON_PROJECT_LEAD_NOT_HABILITATED', 'Le collaborateur désigné ne détient pas le profil de conducteur de projet.')
+    return c
+  }
+  /** Ouverture au cadrage (OpenLiaisonService) : éligibilité, unicité, habilitations, référentiel publié. */
+  const ouvrir = (e: OuvertureLiaison): Liaison => {
+    const inst = participant.pont.institution(e.institutionId)
+    if (!inst || (inst.statut !== 'ADHERENT' && inst.statut !== 'EN_HOMOLOGATION')) {
+      throw new ApiError(409, 'HOM_LIAISON_INSTITUTION_NOT_ELIGIBLE', "L'institution n'est ni adhérente ni en homologation.", correlation(), { statut: inst?.statut ?? null })
+    }
+    if (liaisons.some((l) => l.institutionId === e.institutionId && l.typeProjet === e.typeProjet && l.etat !== 'CLOSE')) {
+      throw refus(409, 'HOM_LIAISON_DUPLICATE', 'Une liaison est déjà ouverte pour cette institution et ce type de projet.')
+    }
+    const chef = conducteur(e.chefDeProjetId)
+    const banque = e.banquePartenaireId ? participant.pont.institution(e.banquePartenaireId) : undefined
+    if (e.banquePartenaireId && banque?.categorie !== 'BANQUE') throw refus(409, 'HOM_LIAISON_CARRIER_NOT_BANK', 'Le porteur désigné n\'est pas une banque.')
+    const version = D.referentiels.find((r) => r.typeProjet === e.typeProjet && r.etat === 'PUBLIEE')
+    if (!version) throw refus(409, 'HOM_REFERENTIAL_NONE_PUBLISHED', 'Aucun référentiel publié pour ce type de projet.')
+    const n = String(++numeroLiaison).padStart(3, '0')
+    const base: Liaison = {
+      id: `LIA-2026-${n}`, typeProjet: e.typeProjet, institutionId: inst.id, institutionNom: inst.nom, etat: 'OUVERTE', chefDeProjetId: chef.id, chefDeProjetNom: chef.nom,
+      banquePartenaireId: banque?.id ?? null, banquePartenaireNom: banque?.nom ?? null, dateOuverture: maintenant().slice(0, 10), motifEtat: null,
+      versionId: version.id, versionNumero: version.numero ?? 1, phaseCourante: 'CADRAGE', couvertureCertification: D.cov(0, 3), couvertureMiseEnService: D.cov(0, 2),
+      operationsEnRetard: 0, etatsParcourus: [], transitionsPermises: ['EN_HOMOLOGATION'], actionsPermises: ['DESIGNER_CHEF_DE_PROJET'], perimetre: D.PERIMETRES[e.typeProjet],
+    }
+    const l = { ...base, intervenants: D.intervenantsDe(base) }
+    liaisons.push(l)
+    operations.set(l.id, D.operationsDe(l))
+    // homologation.liaison-opened.v1, consommé de façon asynchrone par MS-PARTICIPANT.
+    window.setTimeout(() => participant.pont.liaisonOuverte(inst.id, l.id), latence)
+    return l
+  }
 
   const homologation: ServiceHomologation = {
     listerReferentiels: () => attendre(D.referentiels),
@@ -75,7 +119,7 @@ export function servicesSimules(o: OptionsSimulation = {}): Services {
       { liaisonId: 'LIA-2026-017', institutionNom: 'Établissement de paiement A', conservees: 3, ajoutees: 1, retirees: 1, modifiees: 0, exclue: false, motifExclusion: null },
       { liaisonId: 'LIA-2025-102', institutionNom: 'Banque B', conservees: 4, ajoutees: 0, retirees: 0, modifiees: 0, exclue: true, motifExclusion: 'circuit de quitus ouvert' },
     ]),
-    liaisonsImpactees: (versionId) => attendre({ total: D.liaisons.filter((l) => l.versionId === versionId && l.etat !== 'CLOSE').length }),
+    liaisonsImpactees: (versionId) => attendre({ total: liaisons.filter((l) => l.versionId === versionId && l.etat !== 'CLOSE').length }),
     creerBrouillon: (e) => attendre(() => {
       const v = { ...D.referentiels[1], id: `REF-${Date.now()}`, libelle: e.libelle, typeProjet: e.typeProjet as Liaison['typeProjet'], dateCreation: maintenant() }
       D.referentiels.push(v)
@@ -99,29 +143,24 @@ export function servicesSimules(o: OptionsSimulation = {}): Services {
     migrerLiaisons: () => attendre(undefined),
     historiqueReferentiel: (id) => attendre([{ event: `Version ${id} créée`, at: '22/09/2026 11:02', actor: 'Ingénieur d\'homologation', correlationId: 'RQ-2026-0922-4' }]),
 
-    listerLiaisons: (q) => attendre(() => pagine(D.liaisons, q, ['institutionNom', 'id', 'chefDeProjetNom'])),
-    tableauDeBordLiaisons: (q) => attendre(() => pagine(D.liaisons.map((l, i) => ({ ...l, delaiConsomme: [34, 61, 48, 5][i] ?? 0, delaiStandard: 60 })), q, ['institutionNom'])),
+    listerLiaisons: (q) => attendre(() => listerLiaisons(q)),
+    tableauDeBordLiaisons: (q) => attendre(() => pagine(liaisons.map((l, i) => ({ ...l, delaiConsomme: [34, 61, 48, 5][i] ?? 0, delaiStandard: 60 })), q, ['institutionNom'])),
     lireLiaison: (id) => attendre(() => trouverLiaison(id)),
     historiqueLiaison: (id) => attendre([
       { event: 'Liaison ouverte', at: '03/03/2026 09:12', actor: 'Chef du DES', correlationId: 'RQ-2026-0303-2' },
       { event: 'Opérations instanciées depuis le référentiel version 3', at: '03/03/2026 09:12', actor: 'Système' },
       ...(id === 'LIA-2026-021' ? [{ event: 'Liaison gelée : institution suspendue', at: '21/09/2026 17:40', actor: 'Système', correlationId: 'RQ-2026-0921-9' }] : []),
     ]),
-    ouvrirLiaison: (e) => attendre(() => {
-      if (D.liaisons.some((l) => l.institutionId === e.institutionId && l.typeProjet === e.typeProjet && l.etat !== 'CLOSE')) {
-        throw refus(409, 'HOM_LIAISON_DUPLICATE', 'Une liaison est déjà ouverte pour cette institution et ce type de projet.')
-      }
-      const inst = D.INSTITUTIONS.find((i) => i.id === e.institutionId) ?? D.INSTITUTIONS[0]
-      const l: Liaison = { ...clone(D.liaisons[3]), id: `LIA-2026-${String(40 + D.liaisons.length).padStart(3, '0')}`, institutionId: inst.id, institutionNom: inst.denomination, typeProjet: e.typeProjet, dateOuverture: maintenant().slice(0, 10) }
-      D.liaisons.push(l)
-      operations.set(l.id, D.operationsDe(l))
-      return l
-    }),
+    ouvrirLiaison: (e) => attendre(() => ouvrir(e)),
     designerChefDeProjet: (id, chef) => attendre(() => {
       const l = trouverLiaison(id)
-      const c = D.COLLABORATEURS.find((x) => x.id === chef)
-      if (c) Object.assign(l, { chefDeProjetId: c.id, chefDeProjetNom: c.nom })
+      if (!l.actionsPermises.includes('DESIGNER_CHEF_DE_PROJET')) throw refus(409, 'HOM_LIAISON_STATE', 'La liaison ne permet plus de désigner son conducteur de projet.')
+      const c = conducteur(chef)
+      Object.assign(l, { chefDeProjetId: c.id, chefDeProjetNom: c.nom })
+      l.intervenants = D.intervenantsDe(l)
+      return l
     }),
+    conducteurs: () => attendre(D.CONDUCTEURS),
     degelerLiaison: (id) => attendre(() => {
       const l = trouverLiaison(id)
       if (!l.actionsPermises.includes('DEGELER')) throw refus(409, 'HOM_LIAISON_NOT_FROZEN', 'La liaison n\'est pas gelée.')
@@ -200,7 +239,6 @@ export function servicesSimules(o: OptionsSimulation = {}): Services {
     qualifierScenario: () => attendre(undefined),
     etatReprise: () => attendre({ etatDisjoncteur: 'FERME' as const, depuis: null }),
 
-    rechercherInstitutions: (r) => attendre(D.INSTITUTIONS.filter((i) => i.denomination.toLowerCase().includes(r.toLowerCase())).map((i) => ({ value: i.id, label: i.denomination, hint: i.code }))),
     rechercherCollaborateurs: (r) => attendre(D.COLLABORATEURS.filter((c) => c.nom.toLowerCase().includes(r.toLowerCase())).map((c) => ({ value: c.id, label: c.nom, hint: `role.${c.role}` }))),
   }
 
@@ -258,9 +296,9 @@ export function servicesSimules(o: OptionsSimulation = {}): Services {
   // Le portail est cloisonné à l'institution du jeton : ici, « Établissement de paiement A ».
   const INSTITUTION_PORTAIL = 'INST-0042'
   const portail: ServicePortail = {
-    mesLiaisons: () => attendre(() => D.liaisons.filter((l) => l.institutionId === INSTITUTION_PORTAIL).map(projectionPortail)),
+    mesLiaisons: () => attendre(() => liaisons.filter((l) => l.institutionId === INSTITUTION_PORTAIL).map(projectionPortail)),
     maLiaison: (id) => attendre(() => {
-      const l = D.liaisons.find((x) => x.id === id && x.institutionId === INSTITUTION_PORTAIL)
+      const l = liaisons.find((x) => x.id === id && x.institutionId === INSTITUTION_PORTAIL)
       if (!l) throw refus(404, 'HOM_LIAISON_NOT_FOUND', 'Ce parcours est introuvable.')
       return projectionPortail(l)
     }),
@@ -280,7 +318,7 @@ export function servicesSimules(o: OptionsSimulation = {}): Services {
   }
 
   return {
-    participant: participantSimule(attendre, refus),
+    participant,
     homologation,
     certification,
     portail,

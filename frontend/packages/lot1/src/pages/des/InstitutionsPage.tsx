@@ -22,7 +22,8 @@ export default function InstitutionsPage() {
   const [requete, setRequete] = useState<FiltreInstitutions>({ page: 1, taille: 25, statut: statutInitial ? [statutInitial] : undefined })
   const filtre = useMemo(() => ({ ...requete, mesDossiers: onglet === 'mesDossiers' }), [requete, onglet])
 
-  const lot = useMemo(() => creerInstitutionDescriptor({ t }), [t])
+  const ouverture = aPermission(permissions, 'HOM_LIAISON_OPEN') && aPermission(permissions, 'HOM_PROJECT_DESIGNATE')
+  const lot = useMemo(() => creerInstitutionDescriptor({ t, ouvertureLiaison: ouverture }), [t, ouverture])
   const definir = useRef(setParams)
   definir.current = setParams
   const pilotes = useMemo(() => ({ openForm: (mode: 'create' | 'edit') => mode === 'create' && definir.current({ formulaire: 'nouvelle' }) }), [])

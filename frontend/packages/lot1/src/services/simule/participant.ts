@@ -35,9 +35,9 @@ const adhesionVide = (): Adhesion => ({
   dateAdhesion: null, prononceePar: null, prononceeLe: null, motifCloture: null, closLe: null,
 })
 
-function nouvelEtat(c: Candidature, statut: StatutInstitution = 'CANDIDAT'): Etat {
+function nouvelEtat(c: Candidature, statut: StatutInstitution = 'CANDIDAT', identifiant?: string): Etat {
   const institution: Institution = {
-    id: id('INS'), nom: c.nom, sigle: c.sigle ?? null, pays: c.pays, categorie: c.categorie, statut, codeParticipant: null,
+    id: identifiant ?? id('INS'), nom: c.nom, sigle: c.sigle ?? null, pays: c.pays, categorie: c.categorie, statut, codeParticipant: null,
     codeIdentification: c.codeIdentification ?? null, codeBanqueBeac: c.codeBanqueBeac ?? null, modeAdhesion: null,
     datePriseDeContact: c.datePriseDeContact ?? maintenant().slice(0, 10), originePriseDeContact: c.originePriseDeContact ?? null,
     projetEnvisage: c.projetEnvisage ?? null, chargeDdrm: { id: 'sim-charge', nom: 'Chargé DDRM' }, conformite: 'A_REGULARISER', creeLe: maintenant(),
@@ -49,13 +49,40 @@ function nouvelEtat(c: Candidature, statut: StatutInstitution = 'CANDIDAT'): Eta
   return { institution, adhesion: adhesionVide(), pieces, transitions: [] }
 }
 
-export function participantSimule(attendre: <T>(v: T | (() => T)) => Promise<T>, refus: (s: number, c: string, m: string) => ApiError): ServiceParticipant {
+/** Transition déjà tranchée, pour l'historique du jeu de données. */
+const historique = (de: StatutInstitution, vers: StatutInstitution, motif: string, le: string, automatique = false): TransitionStatut => ({
+  id: id('TRA'), de, vers, motif, etat: 'APPROUVEE', demandeurId: automatique ? 'systeme' : 'sim-charge', demandeeLe: le, approbationsRequises: automatique ? 0 : 1,
+  approbateurId: automatique ? null : 'sim-chef', secondApprobateurId: null, decideeLe: le, motifRejet: null, pieceDecisionId: null, automatique,
+})
+
+/** Institution admise (et au-delà) : dossier complet, conditions d'adhésion, historique des transitions. */
+function admise(nom: string, identifiant: string, categorie: Institution['categorie'], pays: string, statut: StatutInstitution, code: string, liaison?: string): Etat {
+  const e = nouvelEtat({ nom, pays, categorie }, statut, identifiant)
+  e.pieces.forEach((p) => Object.assign(p, { etat: p.obligatoire ? 'VALIDEE' : 'ATTENDUE', documentId: p.obligatoire ? id('DOC') : null }))
+  Object.assign(e.adhesion, { codeParticipant: code, mode: 'DIRECT', compteReglement: `BEAC-${pays}-${code.slice(-3)}`, dateAdhesion: '2026-02-10', prononceeLe: '2026-02-10T10:00:00Z', prononceePar: 'sim-chef' })
+  Object.assign(e.institution, { codeParticipant: code, modeAdhesion: 'DIRECT', conformite: 'CONFORME' })
+  e.transitions.push(historique('CANDIDAT', 'ADHERENT', 'Dossier complet', '2026-02-10T10:00:00Z'))
+  if (liaison) e.transitions.unshift(historique('ADHERENT', 'EN_HOMOLOGATION', `Ouverture de la liaison ${liaison}`, '2026-03-03T09:12:00Z', true))
+  if (statut === 'ACTIF' || statut === 'SUSPENDU') e.transitions.unshift(historique('EN_HOMOLOGATION', 'ACTIF', 'Attestation de certification émise', '2025-11-02T09:00:00Z'))
+  if (statut === 'SUSPENDU') e.transitions.unshift(historique('ACTIF', 'SUSPENDU', 'Suspension prononcée par la production monétique', '2026-09-21T17:40:00Z'))
+  return e
+}
+
+/** Accès du serveur fictif de MS-HOMOLOGATION à celui de MS-PARTICIPANT (consommation d'événements). */
+export type PontParticipant = {
+  institution(id: string): Institution | undefined
+  /** homologation.liaison-opened.v1 : ADHERENT vers EN_HOMOLOGATION, transition automatique (D-57). */
+  liaisonOuverte(institutionId: string, liaisonId: string): void
+}
+export type ParticipantSimule = ServiceParticipant & { pont: PontParticipant }
+
+export function participantSimule(attendre: <T>(v: T | (() => T)) => Promise<T>, refus: (s: number, c: string, m: string) => ApiError): ParticipantSimule {
   const base: Etat[] = [
     nouvelEtat({ nom: 'Fintech Kribi Pay', pays: 'CM', categorie: 'FINTECH', originePriseDeContact: 'Salon', projetEnvisage: 'Paiement mobile' }),
     nouvelEtat({ nom: 'Banque de Libreville', sigle: 'BDL', pays: 'GA', categorie: 'BANQUE', codeIdentification: 'BDLIGALX' }),
     nouvelEtat({ nom: 'Microfinance du Chari', pays: 'TD', categorie: 'MICROFINANCE' }),
   ]
-  // Un dossier complet, prêt au prononcé, et un adhérent.
+  // Un dossier complet, prêt au prononcé, et un dossier dont une pièce attend l'examen.
   base[1].pieces.forEach((p) => Object.assign(p, { etat: p.obligatoire ? 'VALIDEE' : 'ATTENDUE', documentId: p.obligatoire ? id('DOC') : null }))
   Object.assign(base[1].adhesion, { codeParticipant: 'BQ-BDL-001', mode: 'DIRECT', compteReglement: 'BEAC-GA-001' })
   base[1].institution.codeParticipant = 'BQ-BDL-001'
@@ -63,9 +90,16 @@ export function participantSimule(attendre: <T>(v: T | (() => T)) => Promise<T>,
   base[1].pieces[0].etat = 'VALIDEE'
   base[2].pieces[1].etat = 'RECUE'
   const etats = base
-  const adherent = nouvelEtat({ nom: 'Établissement de paiement A', pays: 'CM', categorie: 'ETABLISSEMENT_PAIEMENT' }, 'ADHERENT')
-  adherent.institution.conformite = 'CONFORME'
-  etats.push(adherent)
+  // Adhérents prêts pour le cadrage (étape 3), puis institutions déjà engagées dans une liaison, sous les
+  // identifiants des liaisons du jeu de données de MS-HOMOLOGATION.
+  etats.push(
+    admise('Mobile Money Sanaga', 'INST-0105', 'EMETTEUR_MONNAIE_ELECTRONIQUE', 'CM', 'ADHERENT', 'EM-MMS-105'),
+    admise('Crédit rural du Woleu', 'INST-0107', 'MICROFINANCE', 'GA', 'ADHERENT', 'MF-CRW-107'),
+    admise('Établissement de paiement A', 'INST-0042', 'ETABLISSEMENT_PAIEMENT', 'CM', 'EN_HOMOLOGATION', 'EP-A-042', 'LIA-2026-017'),
+    admise('Établissement de microfinance C', 'INST-0088', 'MICROFINANCE', 'TD', 'EN_HOMOLOGATION', 'MF-C-088', 'LIA-2026-030'),
+    admise('Banque B', 'INST-0017', 'BANQUE', 'CM', 'ACTIF', 'BQ-B-017', 'LIA-2025-102'),
+    admise('Banque D', 'INST-0061', 'BANQUE', 'CG', 'SUSPENDU', 'BQ-D-061', 'LIA-2026-021'),
+  )
 
   const trouver = (i: string) => {
     const e = etats.find((x) => x.institution.id === i)
@@ -95,7 +129,18 @@ export function participantSimule(attendre: <T>(v: T | (() => T)) => Promise<T>,
     if (e.institution.statut !== 'CANDIDAT') throw refus(409, 'PAR_INSTITUTION_STATUS', "Action possible seulement à l'état CANDIDAT")
   }
 
+  const pont: PontParticipant = {
+    institution: (i) => etats.find((x) => x.institution.id === i)?.institution,
+    liaisonOuverte: (i, liaisonId) => {
+      const e = etats.find((x) => x.institution.id === i)
+      if (!e || e.institution.statut !== 'ADHERENT') return
+      e.transitions.unshift(historique('ADHERENT', 'EN_HOMOLOGATION', `Ouverture de la liaison ${liaisonId}`, maintenant(), true))
+      e.institution.statut = 'EN_HOMOLOGATION'
+    },
+  }
+
   return {
+    pont,
     listerInstitutions: (f: FiltreInstitutions) =>
       attendre(() => {
         const r = (f.recherche ?? '').toLowerCase()

@@ -1,6 +1,6 @@
 import type { CoverageValue } from '../../modele/commun'
 import type {
-  CampaignResult, ElementKey, ElementState, Graphe, Liaison, OperationInstance, OperationNodeData, ReferenceOperation,
+  CampaignResult, ElementKey, ElementState, Graphe, Intervenant, Liaison, OperationInstance, OperationNodeData, ReferenceOperation,
   ReferentielVersion, ScenarioInconnu, ServiceCouvert,
 } from '../../modele/homologation'
 import type { Attestation, Circuit, Condition, Dossier, EntreeRegistre, FicheLue, Horodatage } from '../../modele/certification'
@@ -18,7 +18,29 @@ export const COLLABORATEURS = [
   { id: 'U-101', nom: 'Ingénieur d\'homologation A', role: 'INGENIEUR_HOMOLOGATION' },
   { id: 'U-102', nom: 'Ingénieur d\'homologation B', role: 'INGENIEUR_HOMOLOGATION' },
   { id: 'U-001', nom: 'Chef du DES', role: 'CHEF_DES' },
+  // Conducteurs de projet (ROLE_CONDUCTEUR_PROJET) : seuls désignables à la tête d'une liaison (D-58).
+  { id: 'U-201', nom: 'Aïcha Mahamat Nour', role: 'CONDUCTEUR_PROJET' },
+  { id: 'U-202', nom: 'Brice Ondo Mba', role: 'CONDUCTEUR_PROJET' },
+  { id: 'U-203', nom: 'Estelle Ngo Bassong', role: 'CONDUCTEUR_PROJET' },
 ]
+export const CONDUCTEURS = COLLABORATEURS.filter((c) => c.role === 'CONDUCTEUR_PROJET').map(({ id, nom }) => ({ id, nom }))
+/** Conducteur de projet de la session de démonstration : « Mes projets » filtre sur lui. */
+export const CONDUCTEUR_DEMO = 'U-201'
+
+/** Périmètre de services instancié à l'ouverture, selon le type de projet ; TRANSVERSE toujours compris. */
+export const PERIMETRES: Record<Liaison['typeProjet'], string[]> = {
+  CARTE_INTERBANCAIRE: ['TRANSVERSE', 'RETRAIT', 'PAIEMENT', 'TRANSFERT'],
+  PAIEMENT_MOBILE: ['TRANSVERSE', 'TRANSFERT', 'PAIEMENT'],
+  DELEGATAIRE: ['TRANSVERSE'],
+}
+/** Intervenants de la liaison, tels que LiaisonVue les expose. */
+export function intervenantsDe(l: Pick<Liaison, 'institutionId' | 'institutionNom' | 'banquePartenaireId' | 'banquePartenaireNom' | 'chefDeProjetId' | 'chefDeProjetNom'>): Intervenant[] {
+  return [
+    { role: 'INSTITUTION', id: l.institutionId, nom: l.institutionNom },
+    ...(l.banquePartenaireId ? [{ role: 'BANQUE_PARTENAIRE' as const, id: l.banquePartenaireId, nom: l.banquePartenaireNom ?? '' }] : []),
+    ...(l.chefDeProjetId ? [{ role: 'CHEF_DE_PROJET' as const, id: l.chefDeProjetId, nom: l.chefDeProjetNom }] : []),
+  ]
+}
 
 const hex = (graine: string) => {
   let h = 2166136261
@@ -32,7 +54,7 @@ const hex = (graine: string) => {
 }
 export const empreinte = hex
 
-const cov = (numerateur: number, denominateur: number): CoverageValue => ({
+export const cov = (numerateur: number, denominateur: number): CoverageValue => ({
   taux: denominateur ? Math.round((numerateur / denominateur) * 100) : null, numerateur, denominateur, calculable: denominateur > 0,
   motifNonCalculable: denominateur ? undefined : 'aucun service souscrit',
 })
@@ -68,18 +90,22 @@ export const operationsReferentiel: Record<string, ReferenceOperation[]> = {
 }
 
 // Liaisons (HOM-04)
-const liaison = (id: string, inst: number, typeProjet: Liaison['typeProjet'], etat: Liaison['etat'], parcourus: Liaison['etatsParcourus'], phase: string, cert: [number, number], mes: [number, number], retards: number, actions: string[], motif: string | null = null): Liaison => ({
-  id, typeProjet, institutionId: INSTITUTIONS[inst].id, institutionNom: INSTITUTIONS[inst].denomination, etat,
-  chefDeProjetId: 'U-101', chefDeProjetNom: COLLABORATEURS[0].nom, banquePartenaireId: inst === 0 ? 'INST-0017' : null, banquePartenaireNom: inst === 0 ? 'Banque B' : null,
-  dateOuverture: '03/03/2026', motifEtat: motif, versionId: typeProjet === 'PAIEMENT_MOBILE' ? 'REF-PM-2' : 'REF-CI-3', versionNumero: typeProjet === 'PAIEMENT_MOBILE' ? 2 : 3,
-  phaseCourante: phase, couvertureCertification: cov(...cert), couvertureMiseEnService: cov(...mes), operationsEnRetard: retards, etatsParcourus: parcourus,
-  transitionsPermises: [], actionsPermises: actions,
-})
+
+const liaison = (id: string, inst: number, typeProjet: Liaison['typeProjet'], etat: Liaison['etat'], parcourus: Liaison['etatsParcourus'], phase: string, cert: [number, number], mes: [number, number], retards: number, actions: string[], motif: string | null = null, chef = CONDUCTEURS[0]): Liaison => {
+  const l: Liaison = {
+    id, typeProjet, institutionId: INSTITUTIONS[inst].id, institutionNom: INSTITUTIONS[inst].denomination, etat,
+    chefDeProjetId: chef.id, chefDeProjetNom: chef.nom, banquePartenaireId: inst === 0 ? 'INST-0017' : null, banquePartenaireNom: inst === 0 ? 'Banque B' : null,
+    dateOuverture: '03/03/2026', motifEtat: motif, versionId: typeProjet === 'PAIEMENT_MOBILE' ? 'REF-PM-2' : 'REF-CI-3', versionNumero: typeProjet === 'PAIEMENT_MOBILE' ? 2 : 3,
+    phaseCourante: phase, couvertureCertification: cov(...cert), couvertureMiseEnService: cov(...mes), operationsEnRetard: retards, etatsParcourus: parcourus,
+    transitionsPermises: [], actionsPermises: actions, perimetre: PERIMETRES[typeProjet],
+  }
+  return { ...l, intervenants: intervenantsDe(l) }
+}
 export const liaisons: Liaison[] = [
   liaison('LIA-2026-017', 0, 'CARTE_INTERBANCAIRE', 'EN_HOMOLOGATION', ['OUVERTE'], 'Certification', [3, 5], [1, 4], 1, ['DESIGNER_CHEF_DE_PROJET', 'EXPORTER_PREUVES']),
-  liaison('LIA-2025-102', 1, 'CARTE_INTERBANCAIRE', 'APTE_CERTIFICATION', ['OUVERTE', 'EN_HOMOLOGATION'], 'Mise en service', [5, 5], [4, 4], 0, ['EXPORTER_PREUVES']),
-  liaison('LIA-2026-021', 3, 'CARTE_INTERBANCAIRE', 'GELEE', ['OUVERTE', 'EN_HOMOLOGATION'], 'Certification', [2, 5], [0, 4], 3, ['DEGELER'], 'Institution suspendue par la production monétique'),
-  liaison('LIA-2026-030', 2, 'PAIEMENT_MOBILE', 'OUVERTE', [], 'Raccordement', [0, 3], [0, 2], 0, ['DESIGNER_CHEF_DE_PROJET']),
+  liaison('LIA-2025-102', 1, 'CARTE_INTERBANCAIRE', 'APTE_CERTIFICATION', ['OUVERTE', 'EN_HOMOLOGATION'], 'Mise en service', [5, 5], [4, 4], 0, ['EXPORTER_PREUVES'], null, CONDUCTEURS[1]),
+  liaison('LIA-2026-021', 3, 'CARTE_INTERBANCAIRE', 'GELEE', ['OUVERTE', 'EN_HOMOLOGATION'], 'Certification', [2, 5], [0, 4], 3, ['DEGELER'], 'Institution suspendue par la production monétique', CONDUCTEURS[2]),
+  liaison('LIA-2026-030', 2, 'PAIEMENT_MOBILE', 'OUVERTE', [], 'CADRAGE', [0, 3], [0, 2], 0, ['DESIGNER_CHEF_DE_PROJET']),
 ]
 
 // Opérations et graphe (HOM-07) : couches topologiques fournies par le service.
