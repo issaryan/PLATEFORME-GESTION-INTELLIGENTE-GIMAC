@@ -33,9 +33,14 @@ export const PROFILS_DEMO: Record<string, ProfilDemo> = {
   ROLE_SNA: { identifiant: 'r.biyong', nom: 'Rachel Biyong Mengue', sujet: 'u-sna', permissions: [...LECTURE_DES, 'HOM_EVIDENCE_SUBMIT', 'HOM_OPERATION_VALIDATE'] },
 }
 
-/** Profil demandé (préférence locale, puis variable de construction), chef de la DDRM à défaut. */
-export function roleDemo(demande = lirePreference(CLE_PROFIL_DEMO) ?? import.meta.env.VITE_PROFIL_DEMO): string {
+/** Profil demandé dans l'adresse (?profil=ROLE_…), sinon préférence locale, puis variable de construction ; chef de la DDRM à défaut. */
+export function roleDemo(demande = profilDeLAdresse() ?? lirePreference(CLE_PROFIL_DEMO) ?? import.meta.env.VITE_PROFIL_DEMO): string {
   return demande && PROFILS_DEMO[demande] ? demande : 'ROLE_CHEF_DDRM'
+}
+
+function profilDeLAdresse(): string | null {
+  const demande = typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('profil')
+  return demande && PROFILS_DEMO[demande] ? demande : null
 }
 
 /** Session de démonstration : second facteur réputé fait, matrice des rôles du profil. */

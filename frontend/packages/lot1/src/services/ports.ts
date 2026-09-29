@@ -14,6 +14,10 @@ import type {
   Candidature, ConditionsAdhesion, DossierInstitution, FiltreInstitutions, IndicateursDdrm, Institution, PieceAdhesion, Prerequis,
   StatutInstitution, TransitionStatut,
 } from '../modele/participant'
+import type {
+  ApprobationSecurite, Blocage, DossierLiaison, Fonction, FicheSuiviServices, IndicateursPilotage, LiaisonResume, OperationParcours,
+  OuvertureLiaison as OuvertureCadrage, Personne, ProcesVerbalCertification, TableauActeur, TypeAttestation,
+} from '../modele/parcours'
 
 // Ports de l'interface du lot 1 : le seul contrat entre les écrans et les données. Les composants et
 // les pages n'appellent jamais un service directement ; les hooks de données appellent le port injecté
@@ -128,6 +132,76 @@ export interface ServiceParticipant {
   rejeterTransition(id: string, transitionId: string, motif: string): Promise<TransitionStatut>
 }
 
+/** Filtre des liaisons du parcours (étape 3 : « mes projets » du conducteur). */
+export type FiltreLiaisons = { page: number; taille: number; recherche?: string; statut?: string; typeProjet?: string; etape?: string; mesProjets?: boolean; bloquees?: boolean }
+
+/**
+ * Parcours de la liaison, étapes 3 à 10 (D-56 à D-59) : dossier numérique, étapes à six éléments,
+ * opérations du référentiel de l'annexe A avec leurs preuves, blocages datés, tableaux de bord par acteur.
+ * Étape 3 : routes réelles de MS-HOMOLOGATION (/api/v1/liaisons) ; étapes 4 à 10 : routes à livrer.
+ */
+export interface ServiceParcours {
+  // Étape 3 : cadrage (réel)
+  listerLiaisons(f: FiltreLiaisons): Promise<Page<LiaisonResume>>
+  conducteurs(): Promise<Personne[]>
+  ouvrirLiaison(o: OuvertureCadrage): Promise<LiaisonResume>
+  designerConducteur(liaisonId: string, conducteurId: string, motif: string): Promise<void>
+  // Dossier numérique et progression
+  dossier(liaisonId: string): Promise<DossierLiaison>
+  operations(liaisonId: string, filtre?: { etape?: string; fonction?: Fonction }): Promise<OperationParcours[]>
+  // Étapes 4 et 5 : lancement et ateliers
+  affecterRessources(liaisonId: string, affectations: { fonction: Fonction; personneId: string }[]): Promise<void>
+  /** Clôt une opération à livrable (compte rendu de réunion ou d'atelier, document de paramétrage…). */
+  deposerLivrable(operationId: string, fichier: File, commentaire: string): Promise<void>
+  attribuer(operationId: string, qualite: 'R' | 'C' | 'V' | 'I' | 'E', personneId: string, motif: string): Promise<void>
+  // Exécution des opérations (preuve au grain de l'opération en production)
+  deposerPreuve(operationId: string, fichier: File, complement: { valeurReference?: string; codeControle?: string }): Promise<void>
+  validerOperation(operationId: string, assertion?: Assertion): Promise<void>
+  // Blocages datés (CR annexe B)
+  declarerBlocage(liaisonId: string, b: { motif: string; prochaineAction: string; responsableId: string; echeanceLevee: string }): Promise<Blocage>
+  leverBlocage(blocageId: string, commentaire: string): Promise<void>
+  // Étape 7 : constat de la couverture (rang 17)
+  constaterCouverture(liaisonId: string): Promise<void>
+  // Étape 10 : service supplémentaire (rang 35) : nouvelle liaison, sans repasser par l'adhésion
+  ouvrirServiceSupplementaire(liaisonId: string, services: string[]): Promise<LiaisonResume>
+  // Tableaux de bord
+  tableauActeur(fonctions: Fonction[]): Promise<TableauActeur>
+  pilotage(): Promise<IndicateursPilotage>
+  personnes(fonction: Fonction): Promise<Personne[]>
+}
+
+/** Décision de mise en production, modèle hybride de D-56 : verrou 1, verrou 2, visas optionnels. */
+export interface ServiceDecision {
+  procesVerbal(liaisonId: string): Promise<ProcesVerbalCertification>
+  etablirProcesVerbal(liaisonId: string): Promise<void>
+  signerProcesVerbalGimac(liaisonId: string, assertion: Assertion): Promise<void>
+  approbation(liaisonId: string): Promise<ApprobationSecurite>
+  constituerDossierChangement(liaisonId: string, fichier: File): Promise<void>
+  referencerFicheChangement(liaisonId: string, reference: string): Promise<void>
+  relireFicheChangement(liaisonId: string): Promise<void>
+  verifierAttestation(liaisonId: string, type: TypeAttestation, conforme: boolean, motif: string): Promise<void>
+  archiverAttestations(liaisonId: string): Promise<void>
+  signerVisa(liaisonId: string, nature: 'CONFORMITE' | 'DIRECTION_GENERALE', favorable: boolean, motif: string, assertion: Assertion): Promise<void>
+  ficheSuivi(liaisonId: string): Promise<FicheSuiviServices>
+  remettreFicheSuivi(liaisonId: string): Promise<void>
+  constaterMiseEnService(liaisonId: string): Promise<void>
+}
+
+/** Portail du participant : les tâches qui lui incombent (qualité Externe, CR §3.4). */
+export interface ServicePortailParcours {
+  mesLiaisons(): Promise<LiaisonResume[]>
+  dossier(liaisonId: string): Promise<DossierLiaison>
+  mesTaches(): Promise<TableauActeur>
+  communiquerCoordonnees(liaisonId: string, c: { adresse: string; port: string; pointsTerminaison?: string }): Promise<void>
+  deposerLivrable(operationId: string, fichier: File, commentaire: string): Promise<void>
+  procesVerbal(liaisonId: string): Promise<ProcesVerbalCertification>
+  signerProcesVerbal(liaisonId: string, assertion: Assertion): Promise<void>
+  approbation(liaisonId: string): Promise<ApprobationSecurite>
+  deposerAttestation(liaisonId: string, type: TypeAttestation, fichier: File): Promise<void>
+  ficheSuivi(liaisonId: string): Promise<FicheSuiviServices>
+  renseignerFicheSuivi(liaisonId: string, lignes: { serviceCode: string; ouvert: boolean; commentaire: string | null }[]): Promise<void>
+}
+
 export interface ServiceReauthentification {
   /** Lève ReauthCancelled si l'utilisateur annule ; aucune requête d'effet n'est alors envoyée. */
   assertion(purpose: SignPurpose): Promise<Assertion>
@@ -135,6 +209,9 @@ export interface ServiceReauthentification {
 
 export interface Services {
   participant: ServiceParticipant
+  parcours: ServiceParcours
+  decision: ServiceDecision
+  portailParcours: ServicePortailParcours
   homologation: ServiceHomologation
   certification: ServiceCertification
   portail: ServicePortail
