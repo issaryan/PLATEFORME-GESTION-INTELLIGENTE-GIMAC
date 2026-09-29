@@ -85,6 +85,9 @@ const SCENARIOS: Scenario[] = [
   { id: 'LIA-2026-044', institutionId: 'INST-0017', institutionNom: 'Banque B', typeProjet: 'CARTE_INTERBANCAIRE', banque: null, personnalisateur: null, fintech: false, avancement: '3', statut: 'CADREE', conducteur: null, debut: -3, cible: null, services: [{ code: 'COMMERCE_ELECTRONIQUE', libelle: 'Commerce électronique', inclus: true }], origine: 'LIA-2026-022' },
 ]
 
+/** Action attendue d'une opération ouverte : livrable pour une phase et pour les réunions et ateliers (rangs 7 à 11), preuve sinon. */
+const actionOuverte = (o: { grain: string; rang: string }) => (o.grain === 'PHASE' || ['7', '8', '9', '10', '11'].includes(o.rang) ? 'DEPOSER_LIVRABLE' : 'DEPOSER_PREUVE')
+
 type Etat = {
   s: Scenario
   ops: OperationParcours[]
@@ -140,7 +143,7 @@ function construire(s: Scenario): Etat {
       pivot: Boolean(o.pivot),
       predecesseursNonFaits: fait ? [] : enAttente,
       transitionsPermises: [],
-      actionsPermises: courant ? (o.grain === 'PHASE' || ['7', '8', '9', '10', '11'].includes(o.rang) ? ['DEPOSER_LIVRABLE'] : ['DEPOSER_PREUVE']) : fait ? ['CONSULTER'] : [],
+      actionsPermises: courant ? [actionOuverte(o)] : fait ? ['CONSULTER'] : [],
     }
   })
   const inclus = s.services.filter((x) => x.inclus)
@@ -300,7 +303,8 @@ function tachesDe(etats: Etat[], fonctions: Fonction[]): TacheActeur[] {
 }
 
 export function parcoursSimule(attendre: Attendre, institutionPortail: string): { parcours: ServiceParcours; decision: ServiceDecision; portailParcours: ServicePortailParcours } {
-  const etats = new Map(SCENARIOS.map((s) => [s.id, construire(s)]))
+  // Copie des scénarios : chaque instance a son propre état (le statut d'une liaison ne fuit pas d'une instance à l'autre).
+  const etats = new Map(SCENARIOS.map((s) => [s.id, construire({ ...s })]))
   const tous = () => [...etats.values()]
   const trouver = (id: string) => {
     const e = etats.get(id)
@@ -325,7 +329,7 @@ export function parcoursSimule(attendre: Attendre, institutionPortail: string): 
       x.predecesseursNonFaits = x.predecesseursNonFaits.filter((r) => r !== o.rang)
       if (x.etat === 'VERROUILLEE' && x.predecesseursNonFaits.length === 0) {
         x.etat = 'A_FAIRE'
-        x.actionsPermises = x.grain === 'PHASE' ? ['DEPOSER_LIVRABLE'] : ['DEPOSER_PREUVE']
+        x.actionsPermises = [actionOuverte(x)]
       }
     })
   }
@@ -345,8 +349,9 @@ export function parcoursSimule(attendre: Attendre, institutionPortail: string): 
         ...(peutConduire ? ['DECLARER_BLOCAGE'] : []),
         'DESIGNER_CONDUCTEUR',
         ...(e.s.statut === 'EN_PRODUCTION' ? ['OUVRIR_SERVICE_SUPPLEMENTAIRE'] : []),
-        ...(r.etapeCourante === 'LANCEMENT' ? ['AFFECTER_RESSOURCES'] : []),
-        ...(r.etapeCourante === 'CERTIFICATION' || r.etapeCourante === 'TESTS' ? ['CONSTATER_COUVERTURE'] : []),
+        // Actions offertes seulement si le service les accepterait : rang 6 ouvert, rang 17 ouvert.
+        ...(e.ops.some((o) => o.rang === '6' && o.etat === 'A_FAIRE') ? ['AFFECTER_RESSOURCES'] : []),
+        ...(e.ops.some((o) => o.rang === '17' && (o.etat === 'A_FAIRE' || o.etat === 'EN_COURS')) ? ['CONSTATER_COUVERTURE'] : []),
       ],
     }
   }
@@ -370,8 +375,10 @@ export function parcoursSimule(attendre: Attendre, institutionPortail: string): 
       if (tous().some((e) => e.s.institutionId === o.institutionId && e.s.typeProjet === o.typeProjet && e.s.statut !== 'CLOSE_SANS_SUITE' && e.s.statut !== 'EN_PRODUCTION')) {
         throw refus(409, 'HOM_LIAISON_DUPLICATE', 'Une liaison active existe déjà pour cette institution et ce type de projet.')
       }
-      const cond = PERSONNES.findIndex((p) => p.id === o.chefDeProjetId)
-      const s: Scenario = { id: `LIA-2026-${String(50 + etats.size).padStart(3, '0')}`, institutionId: o.institutionId, institutionNom: o.institutionId === 'INST-0042' ? 'Établissement de paiement A' : o.institutionId === 'INST-0017' ? 'Banque B' : 'Nouvel adhérent', typeProjet: o.typeProjet, banque: null, personnalisateur: null, fintech: false, avancement: '3', statut: 'CADREE', conducteur: cond >= 0 ? PERSONNES.filter((p) => p.fonction === 'CONDUCTEUR').findIndex((p) => p.id === o.chefDeProjetId) : 0, debut: 0, cible: null, services: perimetre(o.typeProjet === 'PAIEMENT_MOBILE' ? SERVICES_MOBILE : SERVICES_CARTE, []) }
+      // Même règle que la désignation : seul un conducteur de projet habilité conduit la liaison (D-58).
+      const cond = PERSONNES.filter((p) => p.fonction === 'CONDUCTEUR').findIndex((p) => p.id === o.chefDeProjetId)
+      if (cond < 0) throw refus(422, 'HOM_LEAD_NOT_ELIGIBLE', 'La personne désignée ne détient pas le rôle de conducteur de projet.')
+      const s: Scenario = { id: `LIA-2026-${String(50 + etats.size).padStart(3, '0')}`, institutionId: o.institutionId, institutionNom: o.institutionId === 'INST-0042' ? 'Établissement de paiement A' : o.institutionId === 'INST-0017' ? 'Banque B' : 'Nouvel adhérent', typeProjet: o.typeProjet, banque: null, personnalisateur: null, fintech: false, avancement: '3', statut: 'CADREE', conducteur: cond, debut: 0, cible: null, services: perimetre(o.typeProjet === 'PAIEMENT_MOBILE' ? SERVICES_MOBILE : SERVICES_CARTE, []) }
       const e = construire(s)
       etats.set(s.id, e)
       return resume(e)
@@ -382,7 +389,8 @@ export function parcoursSimule(attendre: Attendre, institutionPortail: string): 
       const p = PERSONNES.find((x) => x.id === conducteurId && x.fonction === 'CONDUCTEUR')
       if (!p) throw refus(422, 'HOM_LEAD_NOT_ELIGIBLE', 'La personne désignée ne détient pas le rôle de conducteur de projet.')
       e.conducteur = p
-      e.ops.forEach((o) => { if (o.raci.R?.fonction === 'CONDUCTEUR') o.raci.R = p; if (o.raci.V?.fonction === 'CONDUCTEUR') o.raci.V = p })
+      // Sans conducteur, ses places (R des opérations qu'il porte, V des autres) sont vides : la première désignation les pourvoit.
+      e.ops.forEach((o) => { if (o.raci.R === null || o.raci.R.fonction === 'CONDUCTEUR') o.raci.R = p; if (o.raci.V === null || o.raci.V.fonction === 'CONDUCTEUR') o.raci.V = p })
     }),
     dossier: (id) => attendre(() => dossierDe(trouver(id))),
     operations: (id, f) => attendre(() => trouver(id).ops.filter((o) => (!f?.etape || o.etape === f.etape) && (!f?.fonction || o.raci.R?.fonction === f.fonction))),
@@ -396,14 +404,19 @@ export function parcoursSimule(attendre: Attendre, institutionPortail: string): 
     deposerLivrable: (opId, fichier, commentaire) => attendre(() => {
       const { e, o } = operation(opId)
       if (!o.actionsPermises.includes('DEPOSER_LIVRABLE') && !o.actionsPermises.includes('DEPOSER_PREUVE')) throw refus(409, 'HOM_OPERATION_NOT_OPEN', 'Cette opération n\'attend pas de livrable.')
+      // Un livrable ne dispense ni du code de contrôle d'une clé ni de la valeur de référence (D-59) : dépôt de preuve exigé.
+      if (o.cle) throw refus(422, 'HOM_KEY_CHECK_VALUE_REQUIRED', 'Le code de contrôle de la clé est exigé ; aucune valeur de clé n\'est admise.')
+      if (o.valeurReference) throw refus(422, 'HOM_REFERENCE_VALUE_REQUIRED', 'Cette preuve doit porter la valeur de référence relevée.')
       terminer(e, o, { documentRef: `DOC-${opId.replace(':', '-')}`, nom: fichier.name, empreinte: hex(fichier.name + fichier.size + commentaire), deposeLe: jour(0), deposePar: o.raci.R?.nom ?? '' })
     }),
     attribuer: (opId, qualite, personneId) => attendre(() => {
       const { o } = operation(opId)
       const p = PERSONNES.find((x) => x.id === personneId)
       if (!p) throw refus(422, 'HOM_PERSON_UNKNOWN', 'Personne inconnue.')
-      if (qualite === 'R') o.raci.R = p
-      else if (qualite === 'V') {
+      if (qualite === 'R') {
+        if (o.raci.V?.id === p.id) throw refus(409, 'HOM_VALIDATOR_IS_RESPONSIBLE', 'Le validateur doit être distinct du responsable.')
+        o.raci.R = p
+      } else if (qualite === 'V') {
         if (o.raci.R?.id === p.id) throw refus(409, 'HOM_VALIDATOR_IS_RESPONSIBLE', 'Le validateur doit être distinct du responsable.')
         o.raci.V = p
       } else o.raci[qualite] = [...o.raci[qualite], p]
@@ -427,7 +440,8 @@ export function parcoursSimule(attendre: Attendre, institutionPortail: string): 
     declarerBlocage: (id, b) => attendre(() => {
       const e = trouver(id)
       const resp = PERSONNES.find((p) => p.id === b.responsableId) ?? personne('CONDUCTEUR')
-      const blocage: Blocage = { id: `BLQ-${String(100 + e.blocages.length)}`, liaisonId: id, motif: b.motif, depuis: jour(0), prochaineAction: b.prochaineAction, responsable: resp, echeanceLevee: b.echeanceLevee, leveLe: null, etape: etapeCourante(e), transitionsPermises: [], actionsPermises: ['LEVER'] }
+      // Identifiant unique sur toutes les liaisons : la levée retrouve le blocage par son seul identifiant.
+      const blocage: Blocage = { id: `BLQ-${String(100 + tous().reduce((n, x) => n + x.blocages.length, 0))}`, liaisonId: id, motif: b.motif, depuis: jour(0), prochaineAction: b.prochaineAction, responsable: resp, echeanceLevee: b.echeanceLevee, leveLe: null, etape: etapeCourante(e), transitionsPermises: [], actionsPermises: ['LEVER'] }
       e.blocages.push(blocage)
       return blocage
     }),
@@ -457,7 +471,9 @@ export function parcoursSimule(attendre: Attendre, institutionPortail: string): 
     tableauActeur: (fonctions) => attendre((): TableauActeur => {
       const f = (x: Fonction) => fonctions.includes(x)
       const actives = tous().filter((e) => e.s.statut !== 'CLOSE_SANS_SUITE')
-      const taches = tachesDe(actives, fonctions)
+      // Le participant ne voit que les liaisons de son institution : tâches et blocages compris.
+      const visibles = f('PARTICIPANT') ? actives.filter((e) => e.s.institutionId === institutionPortail) : actives
+      const taches = tachesDe(visibles, fonctions)
       const compteurs: TableauActeur['compteurs'] = []
       if (f('CHEF_DDRM')) compteurs.push(compteur('conducteursADesigner', actives.filter((e) => !e.conducteur).length, 'warn', '/des/liaisons?sansConducteur=1'), compteur('liaisonsAmont', aEtape(['CADRAGE', 'LANCEMENT', 'ATELIERS']).length, 'info', '/des/liaisons?etape=ATELIERS'))
       if (f('DDRM') || f('CHEF_DDRM')) compteurs.push(compteur('ateliersATenir', actives.flatMap((e) => e.ops.filter((o) => o.rang === '8' && o.etat === 'A_FAIRE')).length, 'warn'), compteur('perimetresAArreter', actives.flatMap((e) => e.ops.filter((o) => ['3', '4', '5'].includes(o.rang) && o.etat === 'A_FAIRE')).length, 'warn'))
@@ -476,7 +492,7 @@ export function parcoursSimule(attendre: Attendre, institutionPortail: string): 
       }
       compteurs.push(compteur('tachesEnRetard', taches.filter((t) => t.sla === 'DEPASSE').length, 'crit'), compteur('echeancesProches', taches.filter((t) => t.sla === 'ECHEANCE_PROCHE').length, 'warn'))
       const liaisons = (f('PARTICIPANT') ? actives.filter((e) => e.s.institutionId === institutionPortail) : f('CONDUCTEUR') && fonctions.length === 1 ? actives.filter((e) => e.conducteur?.id === personne('CONDUCTEUR', 0).id) : actives).map(resume)
-      return { fonction: fonctions[0] ?? 'DDRM', compteurs, taches: taches.sort((a, b) => (a.echeance ?? '9').localeCompare(b.echeance ?? '9')), liaisons, blocages: actives.flatMap((e) => e.blocages.filter((b) => !b.leveLe)) }
+      return { fonction: fonctions[0] ?? 'DDRM', compteurs, taches: taches.sort((a, b) => (a.echeance ?? '9').localeCompare(b.echeance ?? '9')), liaisons, blocages: visibles.flatMap((e) => e.blocages.filter((b) => !b.leveLe)) }
     }),
     pilotage: () => attendre((): IndicateursPilotage => {
       const actives = tous().filter((e) => e.s.statut !== 'CLOSE_SANS_SUITE')
@@ -569,7 +585,8 @@ export function parcoursSimule(attendre: Attendre, institutionPortail: string): 
       e.approbation = { ...e.approbation, ficheChangement: { ...f, lueLe: jour(0), aRelire: false, etatApprobation: approuvee ? 'APPROUVEE' : f.etatApprobation }, etat: approuvee ? 'APPROUVEE' : e.approbation.etat, approuveeLe: approuvee ? jour(0) : e.approbation.approuveeLe }
       if (approuvee) {
         e.s.statut = 'APPROUVEE_SECURITE'
-        ;['23', '24', '25'].forEach((r) => { const o = e.ops.find((x) => x.rang === r); if (o && o.etat !== 'FAITE') { o.etat = 'A_FAIRE'; terminer(e, o, { documentRef: `SSI-${r}`, nom: `approbation-${r}`, empreinte: hex(`ssi-${id}-${r}`), deposeLe: jour(0), deposePar: personne('RSSI').nom }) } })
+        // L'approbation clôt aussi la fourniture des attestations (rangs 21 et 22), vérifiées et archivées.
+        ;['21', '22', '23', '24', '25'].forEach((r) => { const o = e.ops.find((x) => x.rang === r); if (o && o.etat !== 'FAITE') { o.etat = 'A_FAIRE'; terminer(e, o, { documentRef: `SSI-${r}`, nom: `approbation-${r}`, empreinte: hex(`ssi-${id}-${r}`), deposeLe: jour(0), deposePar: personne('RSSI').nom }) } })
       }
     }),
     verifierAttestation: (id, type, conforme, motif) => attendre(() => {
@@ -628,10 +645,8 @@ export function parcoursSimule(attendre: Attendre, institutionPortail: string): 
       if (!o || o.etat !== 'A_FAIRE') throw refus(409, 'HOM_OPERATION_NOT_OPEN', 'Les coordonnées techniques ne sont pas attendues à cette étape.')
       terminer(e, o, { documentRef: `COORD-${id.slice(-3)}`, nom: 'fiche-coordonnees-techniques', empreinte: hex(c.adresse + c.port), deposeLe: jour(0), deposePar: `Correspondant ${e.s.institutionNom}`, valeurReference: { libelle: 'parcours.valeur.12', valeur: `${c.adresse}:${c.port}` } })
     }),
-    deposerLivrable: (opId, fichier, commentaire) => {
-      sienne(opId.split(':')[0])
-      return parcours.deposerLivrable(opId, fichier, commentaire)
-    },
+    // Refus rendu en promesse rejetée, comme toute réponse du service (et non en exception immédiate).
+    deposerLivrable: (opId, fichier, commentaire) => attendre(() => { sienne(opId.split(':')[0]) }).then(() => parcours.deposerLivrable(opId, fichier, commentaire)),
     procesVerbal: (id) => attendre(() => {
       const e = sienne(id)
       return { ...e.pv, actionsPermises: e.pv.etat === 'ETABLI' || e.pv.etat === 'SIGNE_GIMAC' ? ['SIGNER_PARTICIPANT'] : [] }
@@ -642,7 +657,12 @@ export function parcoursSimule(attendre: Attendre, institutionPortail: string): 
       if (e.pv.etat !== 'ETABLI' && e.pv.etat !== 'SIGNE_GIMAC') throw refus(409, 'CER_PV_NOT_SIGNABLE', 'Le procès-verbal n\'attend pas votre signature.')
       const sig = { signataire: `Représentant de ${e.s.institutionNom}`, fonction: 'PARTICIPANT' as Fonction, signeLe: jour(0), horodatage: new Date().toISOString() }
       e.pv = { ...e.pv, signatureParticipant: sig, etat: e.pv.signatureGimac ? 'SIGNE' : 'SIGNE_PARTICIPANT' }
-      if (e.pv.etat === 'SIGNE') e.s.statut = 'CERTIFIEE'
+      if (e.pv.etat === 'SIGNE') {
+        // Quel que soit l'ordre des signatures, la seconde clôt le rang 19 (pièce pivot, D-56).
+        e.s.statut = 'CERTIFIEE'
+        const o = e.ops.find((x) => x.rang === '19')
+        if (o && o.etat !== 'FAITE') terminer(e, o, { documentRef: `PV-SIG-${id.slice(-3)}`, nom: 'proces-verbal-signe.pdf', empreinte: e.pv.empreinte ?? '', deposeLe: jour(0), deposePar: sig.signataire })
+      }
     }),
     approbation: (id) => attendre(() => {
       const a = sienne(id).approbation
