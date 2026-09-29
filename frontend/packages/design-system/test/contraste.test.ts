@@ -58,8 +58,8 @@ describe('écarts du système publié, conservés à l\'identique et signalés',
   it('StatusBadge info en clair à 4,5:1 au moins', () => {
     expect(contraste('gm-color-status-info-fg', 'gm-color-action-subtle', 'light')).toBeGreaterThanOrEqual(4.5)
   })
-  // En sombre, gm-blue-300 sur #2A4467 donne 4,48:1 : 0,02 sous le seuil du texte courant.
-  it.fails('StatusBadge info en sombre à 4,5:1 au moins (écart connu)', () => {
+  // Corrigé (D-62) : le fond d'action atténué en sombre passe de #2A4467 (4,48:1) à #263E5F (4,9:1).
+  it('StatusBadge info en sombre à 4,5:1 au moins', () => {
     expect(contraste('gm-color-status-info-fg', 'gm-color-action-subtle', 'dark')).toBeGreaterThanOrEqual(4.5)
   })
   it.fails('bordure de champ en clair à 3:1 au moins (écart connu)', () => {

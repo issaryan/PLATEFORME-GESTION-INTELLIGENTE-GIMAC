@@ -26,3 +26,4 @@ npm run dev:departement      # depuis frontend/
 | 2026-09-28 | — | Remplacement du README du gabarit Vite par ce README |
 | 2026-09-29 | — | Routes du lot 1, enveloppe commune, connexion TRA-01, services simulés par défaut (`VITE_SERVICES=http` pour la passerelle), i18n FR, EN, ES, relais `/bff` |
 | 2026-09-29 | — | Garde de session à double facteur, matrice des rôles depuis `/api/session`, tableau de bord par acteur, registre des institutions, pied de page GIMAC (D-58, D-61) |
+| 2026-09-29 | — | D-62 : premier accès (`GardePremierAcces`) avant tout écran, « Mon compte » (`/des/mon-compte`) et déconnexion (`/des/deconnexion`) dans l'espace personnel de l'enveloppe (`@gimac/compte`, `/bff/des/iam/moi`) ; `gm.premierAccesDemo=1` pour la démonstration en services simulés |

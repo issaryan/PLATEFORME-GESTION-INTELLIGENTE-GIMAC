@@ -6,19 +6,22 @@ Socle d'interface commun aux trois couches (PI-GIMAC-01, fragment F0). Aucun éc
 |---|---|
 | `src/http/` | `client.ts`, seul point d'appel réseau vers la passerelle (`/bff/<couche>/<service>`) ; témoin de session HttpOnly envoyé seul, jeton anti-CSRF recopié dans `X-XSRF-TOKEN` sur les méthodes qui modifient, assertion FIDO2 dans `X-Reauth-Assertion` sans rejeu, erreurs normalisées en `ApiError` avec identifiant de corrélation ; `prefixes.ts` (`P`) ; `errors.ts` |
 | `src/live/` | Canal poussé SSE : reprise depuis le dernier événement, invalidation des requêtes du sujet, reconnexion exponentielle plafonnée |
-| `src/reauth/` | Réauthentification FIDO2 (défi MS-IAM, `navigator.credentials.get`) ; `ReauthCancelled` si l'utilisateur annule |
+| `src/reauth/` | Réauthentification FIDO2 (`webauthn.ts` : défi `POST /bff/<couche>/iam/reauthentification/defi` `{purpose}`, `navigator.credentials.get`, en-tête `X-Reauth-Assertion`, finalité `ADMIN_SENSITIVE` des actes d'administration ; `refusReauth` classe 428, `IAM_REAUTH_INVALID`, `IAM_NO_SECURITY_KEY` et l'annulation) ; enrôlement d'une clé (`enrolement.ts` : options de `/moi/cles-securite/defi`, `navigator.credentials.create`, attestation en base64url) ; `ReauthCancelled` si l'utilisateur annule |
 | `src/ressource/` | Types des descripteurs du lot (`ResourceDescriptorLot1`, `ActionContext` portant les services injectés), fabrique `dictionnaire` |
 | `src/requete/` | `QueryBoundary` et `EtatsRequete` : les quatre états (chargement, vide, erreur avec corrélation et réessai, nominal) |
 | `src/i18n/` | Catalogues **français, anglais, espagnol** (langues de la zone CEMAC), fusion avec ceux des lots |
-| `src/enveloppe/` | Enveloppe commune (barre supérieure, navigation latérale filtrée par permissions, bandeau de perte du canal), préférences d'affichage (thème, langue) |
-| `src/session/` | Session de la passerelle (`/api/session`) : matrice des rôles et niveau d'assurance ; `GardeSession` refuse l'accès sans second facteur (D-61) ; `useSession`, `usePermissions`, `aPermission` |
+| `src/enveloppe/` | Enveloppe commune (barre supérieure, navigation latérale filtrée par permissions, bandeau de perte du canal, espace personnel « Mon compte » et « Se déconnecter » avec `espacePersonnel`), préférences d'affichage (thème, langue) |
+| `src/session/` | Session de la passerelle (`/api/session`) : matrice des rôles et niveau d'assurance ; `GardeSession` refuse l'accès sans second facteur (D-61) ; `useSession`, `usePermissions`, `aPermission` ; `deconnecter` (`POST /api/logout` puis fin de session du fournisseur d'identité), `reconnecter` (actions requises) et `PageDeconnexion` (D-62) |
 | `src/connexion/` | Écran de connexion TRA-01 : mosaïque tissée prolongeant la couverture du système de conception, sans aucun champ de saisie |
 
 Tout le rendu vient de `@gimac/design-system` ; le mode sombre et le mode clair découlent des jetons.
 
 ```
-npm run test -w @gimac/socle   # client HTTP (F0 §B), session, catalogues FR/EN/ES
-npm run couverture -w @gimac/socle   # 80 % bloquants (D-61)
+Couches : `des`, `portail`, `console` (`Couche`) ; `prefixeIam(couche)` donne `/bff/<couche>/iam` ; le client HTTP offre `delete`. `LangueComposants` aligne la langue des composants du catalogue sur celle d'i18next.
+
+```
+npm run test -w @gimac/socle   # client HTTP (F0 §B), session, réauthentification et enrôlement, déconnexion, catalogues FR/EN/ES
+npm run couverture -w @gimac/socle   # 80 % bloquants (D-61) sur http, session et reauth
 npm run lint -w @gimac/socle
 ```
 
@@ -28,3 +31,4 @@ npm run lint -w @gimac/socle
 |---|---|---|
 | 2026-09-29 | — | Création : client HTTP corrigé après revue du F0, canal poussé, FIDO2, quatre états, i18n FR/EN/ES, enveloppe, connexion |
 | 2026-09-29 | — | Session et garde à double facteur (D-61), préfixes du registre et de la gestion documentaire, pied de page GIMAC dans l'enveloppe ; 24 tests, couverture au-dessus de 80 % |
+| 2026-09-29 | — | D-62 : couche `console`, préfixe IAM par couche, `http.delete`, finalité `ADMIN_SENSITIVE` et `refusReauth`, enrôlement WebAuthn (`enrolement.ts`), déconnexion et reconnexion par la passerelle, espace personnel de l'enveloppe, `LangueComposants` ; 40 tests, couverture de http, session et reauth au-dessus de 80 % |

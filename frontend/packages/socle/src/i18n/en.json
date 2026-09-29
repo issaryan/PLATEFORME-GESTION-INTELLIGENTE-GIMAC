@@ -30,5 +30,14 @@
   "session.seConnecter": "Sign in",
   "session.expiree": "Your session has expired or is not open. Sign in to continue.",
   "session.erreur": "The session could not be loaded.",
-  "session.doubleFacteurRequis": "Access requires two-factor authentication. Sign in again with your password and one-time code."
+  "session.doubleFacteurRequis": "Access requires two-factor authentication. Sign in again with your password and one-time code.",
+  "nav.groupe.espace": "My space",
+  "nav.monCompte": "My account",
+  "nav.deconnexion": "Sign out",
+  "deconnexion.enCours": "Signing out…",
+  "reauth.ANNULEE": "The security key request was cancelled: nothing has been saved.",
+  "reauth.REQUISE": "This action requires re-authentication with your security key.",
+  "reauth.INVALIDE": "Re-authentication with your security key was rejected: please try again.",
+  "reauth.SANS_CLE": "No security key is enrolled on your account. Enrol one in \"My account\", then try again.",
+  "reauth.versMonCompte": "Enrol a key in \"My account\""
 }

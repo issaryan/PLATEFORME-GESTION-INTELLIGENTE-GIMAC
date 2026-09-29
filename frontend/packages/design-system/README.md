@@ -33,8 +33,21 @@ Chaque composant a été comparé au pixel près, en clair et en sombre, au rend
 | DateField, FileDropzone, SlaClock, DecisionToTaskRow | Rôles ARIA invalides ou barres de progression sans nom (axe) | Rôles et noms accessibles, rendu inchangé |
 | DeviceVerificationCard | L'empreinte passait par la prop réservée `key` | Prop `fingerprint` |
 | Drawer | `useState` après un retour anticipé | Ordre des hooks corrigé |
+| Jeton `gm-color-action-subtle` (sombre) | Texte d'action et badge « information » à 4,48:1 sur ce fond, sous le seuil de 4,5:1 (audit axe du thème sombre, D-62) | `#2A4467` devient `#263E5F` : 4,9:1, écart de teinte imperceptible |
 
-Écarts du système publié conservés à l'identique et signalés par les tests (à trancher au référentiel) : bordure de champ en clair à 1,9:1 au lieu de 3:1 ; badge « information » en sombre à 4,48:1 au lieu de 4,5:1.
+Écarts du système publié conservés à l'identique et signalés par les tests (à trancher au référentiel) : bordure de champ en clair à 1,9:1 au lieu de 3:1 ; étiquette de `FilterBar` (`.gm-filter-label`, texte atténué sur `gm-color-surface-sunken`) à 4,39:1 au lieu de 4,5:1, relevée par l'audit axe de bout en bout de la console (D-62) et seule exclusion de cet audit.
+
+## Composites de la console et de « Mon compte » (D-62)
+
+Assemblages de composants existants, sans nouvelle feuille de style ni valeur en dur, testés (`test/composites-d62.test.tsx`, 80 % bloquants) et présentés au catalogue vivant :
+
+| Composant | Assemblage | Emploi |
+|---|---|---|
+| `OneTimeSecret` | Banner, puce `gm-chip`, Button | Mot de passe provisoire affiché une seule fois, copie annoncée |
+| `PermissionPicker` | un CheckboxGroup par domaine | Composition d'un profil (HOM, CER, PAR, IAM, PLATFORM) |
+| `LiveStatGroup` | StatCard, StatusBadge, zone `aria-live` | Indicateurs alimentés par un flux temps réel, état du flux annoncé |
+
+Extensions rétrocompatibles : `TextField` `type="password"` (secret en écriture seule), `Checkbox` et `CheckboxGroup` `error` (erreur annoncée et reliée par `aria-describedby`), `CheckboxGroup` `disabled` et « Tout sélectionner » calculé sur les seules options du groupe.
 
 ## Commandes
 
@@ -55,3 +68,4 @@ Le catalogue vivant (`apps/catalogue`) affiche chaque composant, un à un, en cl
 | 2026-09-29 | — | ThemeProvider, reset.css, contrôle des valeurs en dur, tests (contrastes, composants, axe) ; corrections de DiffView, GanttView, DecisionToTaskRow et de l'accessibilité |
 | 2026-09-29 | — | Internationalisation FR, EN, ES de tous les composants (`LangueProvider`, français par défaut, rendu inchangé) ; 18 extensions de contrat rétrocompatibles pour le lot 1 (quatre quitus, états parcourus, vérification d'empreinte, motif et zone complémentaire des dialogues, `onFile`, `onMenu`, onglets contrôlés, `onRowOpen`, `onQuery`, sélection dans DagView, anneau compact…) ; feuille adaptative sous 640 px (portail mobile, tableaux en cartes) |
 | 2026-09-29 | — | Composant `Footer` (pied de page GIMAC, §6.3) : groupement, version, classification, documentation, identifiant de corrélation, FR/EN/ES ; seuil de couverture de 80 % sur les nouveaux composants, cliquet sur le catalogue existant (D-61) |
+| 2026-09-29 | — | D-62 : composites `OneTimeSecret`, `PermissionPicker`, `LiveStatGroup` (catalogue vivant, tests, audit axe) ; extensions `TextField` password, erreur de `Checkbox` et `CheckboxGroup`, `CheckboxGroup` désactivé ; libellés FR, EN, ES |

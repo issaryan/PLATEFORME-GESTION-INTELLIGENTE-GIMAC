@@ -620,5 +620,26 @@ export const PLAN: EntreePlan[] = [
     "hauteur": 760,
     "largeur": 1180,
     "description": "Composant universel de liste (gabarit G2) : lit un descripteur de ressource et rien d'autre. Compose le titre et les actions de page (une principale au plus), FilterBar (champs `filterable`), DataTable (champs `inList`, colonne d'actions de ligne selon `isAllowed` et les permissions), Drawer de détail (ResourceDetail en mode tiroir, chronologie, audit), ConfirmDialog ou SignDialog selon `confirm` de l'action, rafraîchissement poussé (`liveTopic`). Quatre états via `state`. Une page « Institutions membres » se réduit à `<ResourceList descriptor={institutionDescriptor} />`.\n\n**Le consommateur fournit** `descriptor`, `rows` et `total` (ou les hooks de données), `state`, `permissions?` (celles du jeton), `defaultQuery?`, `embedded?` (dans un onglet), `fixedFilters?` (par exemple `institutionId`)."
+  },
+  {
+    "nom": "OneTimeSecret",
+    "groupe": "Affichage",
+    "hauteur": 200,
+    "largeur": 560,
+    "description": "Secret affiché une seule fois (mot de passe provisoire d'un compte, D-62), assemblage de Banner (avertissement `warn`), d'une puce `gm-chip` en chasse fixe et d'un Button de copie ; la confirmation de copie est annoncée (`role=status`).\n\n**Le consommateur fournit** `label` (nature du secret), `value`, `warning?` (avertissement propre), `onCopy?` (par défaut, presse-papiers du navigateur).\n\n**Interdits** : réafficher un secret déjà communiqué ; le stocker dans le navigateur."
+  },
+  {
+    "nom": "PermissionPicker",
+    "groupe": "Saisie",
+    "hauteur": 260,
+    "largeur": null,
+    "description": "Composition d'un profil (console, D-62) : un CheckboxGroup par domaine de permissions (HOM, CER, PAR, IAM, PLATFORM), chacun avec « Tout sélectionner » ; un changement conserve les autres domaines. Compteur de la sélection annoncé.\n\n**Le consommateur fournit** `label`, `groups` (clé, libellé, options), `value`, `onChange`, `readOnly?`, `error?`.\n\n**Interdits** : proposer les permissions internes des services (INTERNAL_*)."
+  },
+  {
+    "nom": "LiveStatGroup",
+    "groupe": "Données",
+    "hauteur": 220,
+    "largeur": null,
+    "description": "Indicateurs en temps réel (supervision de la plateforme, D-61) : StatCard alimentées par un flux SSE, état de la connexion (`connecting`, `live`, `lost`) en StatusBadge annoncé, valeurs dans une zone `aria-live` polie, heure de la dernière mise à jour.\n\n**Le consommateur fournit** `title`, `state`, `items` (propriétés de StatCard et `key`), `updatedAt?`, `level?`.\n\n**Interdits** : masquer la perte du flux ; animer les valeurs."
   }
 ]

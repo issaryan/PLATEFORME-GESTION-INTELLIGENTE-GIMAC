@@ -199,8 +199,10 @@ services:
       - ./observabilite/grafana/provisioning:/etc/grafana/provisioning:ro
 
   # ------------------------------------------------ Couches de présentation (D-46, D-51)
-  # Images construites depuis ../../frontend (Dockerfile commun, argument APPLICATION),
-  # servies par nginx sans privilège ; /api, /oauth2 et /login relayés vers la passerelle (BFF).
+  # Images construites depuis ../../frontend (Dockerfile commun, argument APPLICATION ; SERVICES=http :
+  # services réels de la passerelle), servies par nginx sans privilège ; /api, /bff, /oauth2, /login et
+  # /logout relayés vers la passerelle (BFF), flux SSE sans mise en tampon. Chaque couche est servie à la
+  # racine de son port et route elle-même /des, /portail ou /console (et /connexion).
   frontend-departement:
     # Application du département
     image: frontend-departement
@@ -208,6 +210,7 @@ services:
       context: ../../frontend
       args:
         APPLICATION: departement
+        SERVICES: http
     environment:
       GIMAC_PASSERELLE: http://gateway:8080
     ports:
@@ -223,6 +226,7 @@ services:
       context: ../../frontend
       args:
         APPLICATION: portail
+        SERVICES: http
     environment:
       GIMAC_PASSERELLE: http://gateway:8080
     ports:
@@ -238,6 +242,7 @@ services:
       context: ../../frontend
       args:
         APPLICATION: console
+        SERVICES: http
     environment:
       GIMAC_PASSERELLE: http://gateway:8080
     ports:

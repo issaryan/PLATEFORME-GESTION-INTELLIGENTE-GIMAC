@@ -25,6 +25,11 @@ export type EnveloppeProps = {
   version?: string
   documentation?: string
   correlationId?: string
+  /**
+   * Espace personnel (D-62) : racine de la couche (/des, /portail, /console). Ajoute le groupe
+   * « Mon espace » (Mon compte, Se déconnecter), toujours visible, en bas de la navigation.
+   */
+  espacePersonnel?: string
   children: ReactNode
 }
 
@@ -64,11 +69,23 @@ export function Enveloppe(p: EnveloppeProps) {
     }
   }, [])
 
+  const navigation: GroupeNavigation[] = p.espacePersonnel
+    ? [
+        ...p.navigation,
+        {
+          libelleKey: 'nav.groupe.espace',
+          entrees: [
+            { cle: 'monCompte', libelleKey: 'nav.monCompte', icone: 'user', chemin: `${p.espacePersonnel}/mon-compte` },
+            { cle: 'deconnexion', libelleKey: 'nav.deconnexion', icone: 'lock', chemin: `${p.espacePersonnel}/deconnexion` },
+          ],
+        },
+      ]
+    : p.navigation
   const autorisee = (e: EntreeNavigation) => !e.permission || !p.permissions || p.permissions.includes(e.permission)
-  const groupes = p.navigation
+  const groupes = navigation
     .map((g) => ({ label: g.libelleKey ? t(g.libelleKey) : undefined, items: g.entrees.filter(autorisee).map((e) => ({ key: e.cle, label: t(e.libelleKey), icon: e.icone, href: e.chemin })) }))
     .filter((g) => g.items.length > 0)
-  const courante = p.navigation.flatMap((g) => g.entrees).filter((e) => pathname.startsWith(e.chemin)).sort((a, b) => b.chemin.length - a.chemin.length)[0]
+  const courante = navigation.flatMap((g) => g.entrees).filter((e) => pathname.startsWith(e.chemin)).sort((a, b) => b.chemin.length - a.chemin.length)[0]
 
   // Navigation sans rechargement : les liens du catalogue sont interceptés par le routeur.
   const intercepter = (e: MouseEvent<HTMLElement>) => {

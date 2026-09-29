@@ -30,5 +30,14 @@
   "session.seConnecter": "Se connecter",
   "session.expiree": "Votre session a expiré ou n'est pas ouverte. Connectez-vous pour continuer.",
   "session.erreur": "La session n'a pas pu être chargée.",
-  "session.doubleFacteurRequis": "L'accès exige une authentification à deux facteurs. Reconnectez-vous avec votre mot de passe puis votre code à usage unique."
+  "session.doubleFacteurRequis": "L'accès exige une authentification à deux facteurs. Reconnectez-vous avec votre mot de passe puis votre code à usage unique.",
+  "nav.groupe.espace": "Mon espace",
+  "nav.monCompte": "Mon compte",
+  "nav.deconnexion": "Se déconnecter",
+  "deconnexion.enCours": "Déconnexion en cours…",
+  "reauth.ANNULEE": "La demande de votre clé de sécurité a été annulée : rien n'a été enregistré.",
+  "reauth.REQUISE": "Cet acte exige une réauthentification avec votre clé de sécurité.",
+  "reauth.INVALIDE": "La réauthentification avec votre clé de sécurité a été refusée : recommencez.",
+  "reauth.SANS_CLE": "Aucune clé de sécurité n'est enrôlée sur votre compte. Enrôlez-en une dans « Mon compte », puis recommencez.",
+  "reauth.versMonCompte": "Enrôler une clé dans « Mon compte »"
 }

@@ -8,11 +8,19 @@ export const P = {
   desParticipant: '/bff/des/participant',
   desDocument: '/bff/des/document',
   portailParticipant: '/bff/portail/participant',
+  // Administration des comptes et de la configuration de l'authentification (D-62), console seulement.
+  consoleIam: '/bff/console/iam',
 } as const
+
+/** Préfixe de MS-IAM pour une couche : « Mon compte », premier accès et réauthentification (D-62). */
+export const prefixeIam = (couche: Couche) => `/bff/${couche}/iam`
+
+/** Déconnexion de la passerelle : invalide la session et renvoie l'adresse de fin de session du fournisseur d'identité. */
+export const DECONNEXION = '/api/logout'
 
 /** Session de la passerelle : matrice des rôles et niveau d'assurance (D-61). */
 export const SESSION = '/api/session'
 /** Connexion par la passerelle (OIDC, Keycloak exige le second facteur). */
 export const CONNEXION = '/oauth2/authorization/oidc'
 
-export type Couche = 'des' | 'portail'
+export type Couche = 'des' | 'portail' | 'console'

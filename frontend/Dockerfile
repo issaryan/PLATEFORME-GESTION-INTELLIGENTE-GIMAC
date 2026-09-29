@@ -3,26 +3,44 @@
 # des fichiers statiques par nginx sans privilège (port 8080, utilisateur non root).
 #   docker build --build-arg APPLICATION=departement -t frontend-departement .
 # APPLICATION : departement | portail | console
+# SERVICES : http (défaut, passerelle MS-GATEWAY) ; vide pour les services simulés de démonstration.
 # Écrit à la main : aucun générateur (JHipster, docker init) ne couvre ce frontend séparé.
 
+# 1. Manifestes de l'espace de travail npm : chaque package.json (racine, packages/*, apps/*, e2e),
+#    à sa place, sans le code. npm ci n'est rejoué que si un manifeste ou le verrou change, et tout
+#    nouvel espace de travail est pris en compte sans modifier ce fichier.
+FROM node:22.23.3-alpine AS manifestes
+WORKDIR /src
+COPY . .
+RUN mkdir /manifestes \
+ && find . -name package.json -not -path '*/node_modules/*' | tar -cf - -T - | tar -xf - -C /manifestes \
+ && cp package-lock.json /manifestes/
+
+# 2. Dépendances puis construction de la couche demandée.
 FROM node:22.23.3-alpine AS construction
 WORKDIR /src
-COPY package.json package-lock.json ./
-COPY packages/theme/package.json packages/theme/
-COPY apps/departement/package.json apps/departement/
-COPY apps/portail/package.json apps/portail/
-COPY apps/console/package.json apps/console/
-RUN npm ci --no-audit --no-fund
+COPY --from=manifestes /manifestes/ ./
+# Derrière un relais d'entreprise : --build-arg HTTPS_PROXY=… et, si le relais réécrit le TLS,
+# --secret id=ca,src=<autorité de certification> (jamais copiée dans l'image).
+RUN --mount=type=secret,id=ca,required=false \
+    if [ -f /run/secrets/ca ]; then export NODE_EXTRA_CA_CERTS=/run/secrets/ca; fi; \
+    npm ci --no-audit --no-fund
 COPY packages packages
 COPY apps apps
+COPY e2e e2e
 ARG APPLICATION
+ARG SERVICES=http
+ARG VERSION=0.1.0
+ENV VITE_SERVICES=$SERVICES \
+    VITE_VERSION=$VERSION
 RUN test -n "$APPLICATION" && npm run build -w "@gimac/app-$APPLICATION"
 
+# 3. Service des fichiers statiques.
 FROM nginxinc/nginx-unprivileged:1.31.2-alpine
 ARG APPLICATION
 LABEL org.opencontainers.image.title="gimac-frontend-$APPLICATION" \
       org.opencontainers.image.vendor="GIMAC - Département Exploitation et Supervision"
-# Passerelle MS-GATEWAY vers laquelle /api, /oauth2 et /login sont relayés (BFF, RG-58),
+# Passerelle MS-GATEWAY vers laquelle /api, /bff, /oauth2, /login et /logout sont relayés (BFF, RG-58),
 # et résolveur DNS (127.0.0.11 sous Docker ; service DNS de la grappe sous Kubernetes).
 ENV GIMAC_PASSERELLE=http://gateway:8080 \
     GIMAC_RESOLVEUR=127.0.0.11

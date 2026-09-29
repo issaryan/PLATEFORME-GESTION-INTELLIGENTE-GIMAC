@@ -1,12 +1,20 @@
 import { http } from '../http/client'
-import type { Couche } from '../http/prefixes'
+import { estApiError } from '../http/errors'
+import { prefixeIam, type Couche } from '../http/prefixes'
 
-// Réauthentification FIDO2 (IAM-07) : défi obtenu auprès de MS-IAM, assertion sérialisée pour X-Reauth-Assertion.
-export type SignPurpose = 'OPERATION_VALIDATE' | 'QUITUS_SIGN' | 'STATUS_APPROVE'
+// Réauthentification FIDO2 (IAM-07) : défi obtenu auprès de MS-IAM (/bff/<couche>/iam/reauthentification/defi),
+// assertion sérialisée pour l'en-tête X-Reauth-Assertion (base64 d'un JSON challengeId, id, clientDataJSON,
+// authenticatorData, signature, userHandle). ADMIN_SENSITIVE : actes d'administration sensibles (D-62).
+export type SignPurpose = 'OPERATION_VALIDATE' | 'QUITUS_SIGN' | 'STATUS_APPROVE' | 'ADMIN_SENSITIVE'
 type Challenge = { challengeId: string; challenge: string; rpId: string; allowCredentials: string[]; timeoutMs: number }
 
-const b64u = (b: ArrayBuffer) => btoa(String.fromCharCode(...new Uint8Array(b))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
-const fromB64u = (s: string) => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0))
+/** Encodage base64url sans remplissage (WebAuthn). */
+export const b64u = (b: ArrayBuffer | ArrayBufferView): string => {
+  const octets = b instanceof ArrayBuffer ? new Uint8Array(b) : new Uint8Array(b.buffer, b.byteOffset, b.byteLength)
+  return btoa(String.fromCharCode(...octets)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+}
+/** Décodage base64url (avec ou sans remplissage). */
+export const fromB64u = (s: string): Uint8Array<ArrayBuffer> => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0))
 
 /** L'utilisateur a annulé ou laissé expirer la demande de sa clé de sécurité. */
 export class ReauthCancelled extends Error {
@@ -16,8 +24,11 @@ export class ReauthCancelled extends Error {
   }
 }
 
+/** Annulation, délai dépassé ou clé absente : le navigateur lève NotAllowedError (ou AbortError). */
+export const estAnnulation = (e: unknown): boolean => e instanceof DOMException && (e.name === 'NotAllowedError' || e.name === 'AbortError')
+
 export async function getReauthAssertion(layer: Couche, purpose: SignPurpose): Promise<string> {
-  const ch = await http.post<Challenge>(`/bff/${layer}/iam/reauthentification/defi`, { body: { purpose } })
+  const ch = await http.post<Challenge>(`${prefixeIam(layer)}/reauthentification/defi`, { body: { purpose } })
   let cred: Credential | null
   try {
     cred = await navigator.credentials.get({
@@ -30,20 +41,35 @@ export async function getReauthAssertion(layer: Couche, purpose: SignPurpose): P
       },
     })
   } catch (e) {
-    // Annulation, délai dépassé ou clé absente : le navigateur lève NotAllowedError.
-    if (e instanceof DOMException && (e.name === 'NotAllowedError' || e.name === 'AbortError')) throw new ReauthCancelled()
+    if (estAnnulation(e)) throw new ReauthCancelled()
     throw e
   }
-  if (!(cred instanceof PublicKeyCredential)) throw new ReauthCancelled()
-  const r = cred.response as AuthenticatorAssertionResponse
+  if (!cred || !('response' in cred)) throw new ReauthCancelled()
+  const c = cred as PublicKeyCredential
+  const r = c.response as AuthenticatorAssertionResponse
   return btoa(
     JSON.stringify({
       challengeId: ch.challengeId,
-      id: cred.id,
+      id: c.id,
       clientDataJSON: b64u(r.clientDataJSON),
       authenticatorData: b64u(r.authenticatorData),
       signature: b64u(r.signature),
       userHandle: r.userHandle ? b64u(r.userHandle) : null,
     }),
   )
+}
+
+/**
+ * Motif d'un refus lié à la réauthentification forte : annulée par l'utilisateur, exigée (428),
+ * invalide (403 IAM_REAUTH_INVALID), aucune clé enrôlée (409 IAM_NO_SECURITY_KEY, à enrôler dans
+ * « Mon compte ») ; null pour toute autre erreur.
+ */
+export type RefusReauth = 'ANNULEE' | 'REQUISE' | 'INVALIDE' | 'SANS_CLE'
+export function refusReauth(e: unknown): RefusReauth | null {
+  if (e instanceof ReauthCancelled) return 'ANNULEE'
+  if (!estApiError(e)) return null
+  if (e.status === 428 || e.code === 'IAM_REAUTH_REQUIRED') return 'REQUISE'
+  if (e.code === 'IAM_REAUTH_INVALID') return 'INVALIDE'
+  if (e.code === 'IAM_NO_SECURITY_KEY') return 'SANS_CLE'
+  return null
 }

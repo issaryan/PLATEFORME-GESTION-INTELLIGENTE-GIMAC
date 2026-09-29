@@ -1,0 +1,6 @@
+{
+  "name": "@gimac/e2e-scenarios",
+  "private": true,
+  "type": "module",
+  "description": "Marqueur de modules ES des tests de bout en bout (Playwright) ; hors espaces de travail npm, dépendances à la racine de frontend/"
+}

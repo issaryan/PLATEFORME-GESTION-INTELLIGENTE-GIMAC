@@ -1,5 +1,11 @@
 **/node_modules
 **/dist
+**/dist-e2e
+**/dist-e2e-http
+**/coverage
 **/.vite
 **/*.log
 **/.env*
+e2e/resultats
+e2e/.nyc_output
+e2e/couverture
