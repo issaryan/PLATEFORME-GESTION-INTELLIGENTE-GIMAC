@@ -3,6 +3,7 @@ import { cx } from '../../lib/cx'
 import { Icon } from '../../icones/Icon/Icon'
 import type { IconName } from '../../icones/icons'
 import { StatusBadge, type StatusBadgeProps } from '../../affichage/StatusBadge/StatusBadge'
+import { useLibelle } from '../../i18n/LangueProvider'
 
 export interface TreeNode {
   key: string
@@ -32,6 +33,7 @@ interface TreeItemProps {
 }
 
 function TreeItem(p: TreeItemProps) {
+  const t = useLibelle()
   const n = p.node
   const open = p.expanded.indexOf(n.key) >= 0
   const has = n.children && n.children.length
@@ -40,7 +42,7 @@ function TreeItem(p: TreeItemProps) {
     <li role="treeitem" aria-expanded={has ? (open ? 'true' : 'false') : undefined} aria-selected={sel ? 'true' : 'false'} aria-level={p.level}>
       <div className={cx('gm-tree-row', sel && 'gm-tree-sel')} style={{ paddingLeft: 8 + (p.level - 1) * 20 }} tabIndex={sel ? 0 : -1} onClick={() => p.onSelect && p.onSelect(n.key)}>
         {has ? (
-          <button type="button" className="gm-tree-toggle" aria-label={open ? 'Replier' : 'Déplier'} tabIndex={-1} onClick={(e) => { e.stopPropagation(); p.onToggle(n.key) }}>
+          <button type="button" className="gm-tree-toggle" aria-label={open ? t('arbre.replier') : t('arbre.deplier')} tabIndex={-1} onClick={(e) => { e.stopPropagation(); p.onToggle(n.key) }}>
             <Icon name="chevron-right" size={14} className={open ? 'gm-rot90' : undefined} />
           </button>
         ) : (

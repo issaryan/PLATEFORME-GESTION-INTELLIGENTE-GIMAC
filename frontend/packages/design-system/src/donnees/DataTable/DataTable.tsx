@@ -11,6 +11,7 @@ import { Skeleton } from '../../affichage/Skeleton/Skeleton'
 import { EmptyState } from '../../affichage/EmptyState/EmptyState'
 import { InlineAlert } from '../../conteneurs/InlineAlert/InlineAlert'
 import { Pagination } from '../../navigation/Pagination/Pagination'
+import { useLibelle } from '../../i18n/LangueProvider'
 
 export type ColumnType = 'text' | 'mono' | 'number' | 'money' | 'date' | 'datetime' | 'status' | 'severity' | 'progress' | 'tags' | 'link' | 'actions' | 'custom'
 
@@ -65,6 +66,7 @@ function cellule<Row extends TableRow>(c: Column<Row>, r: Row): ReactNode {
 
 // Composant central des listes (§7.6) : quatre états, tri, pagination serveur.
 export function DataTable<Row extends TableRow = TableRow>(p: DataTableProps<Row>) {
+  const t = useLibelle()
   const cols = p.columns || []
   const rows = p.rows || []
   const state = p.state || 'ok'
@@ -80,7 +82,7 @@ export function DataTable<Row extends TableRow = TableRow>(p: DataTableProps<Row
   else if (state === 'empty')
     body = (
       <tbody>
-        <tr><td colSpan={cols.length} style={{ height: 'auto' }}><EmptyState title={p.emptyText || 'Aucun élément'} text={p.emptyHelp} /></td></tr>
+        <tr><td colSpan={cols.length} style={{ height: 'auto' }}><EmptyState title={p.emptyText || t('commun.aucunElement')} text={p.emptyHelp} /></td></tr>
       </tbody>
     )
   else if (state === 'error')
@@ -88,7 +90,7 @@ export function DataTable<Row extends TableRow = TableRow>(p: DataTableProps<Row
       <tbody>
         <tr>
           <td colSpan={cols.length} style={{ height: 'auto', padding: 'var(--gm-space-4)' }}>
-            <InlineAlert level="crit" title="Le chargement a échoué." correlationId={p.error && p.error.correlationId} action={<Button size="sm" icon="refresh" onClick={p.onRetry}>Réessayer</Button>}>
+            <InlineAlert level="crit" title={t('commun.chargementEchoue')} correlationId={p.error && p.error.correlationId} action={<Button size="sm" icon="refresh" onClick={p.onRetry}>{t('commun.reessayer')}</Button>}>
               {p.error && p.error.message}
             </InlineAlert>
           </td>
@@ -109,7 +111,7 @@ export function DataTable<Row extends TableRow = TableRow>(p: DataTableProps<Row
               style={onRowOpen ? { cursor: 'pointer' } : undefined}
             >
               {cols.map((c) => (
-                <td key={c.key} className={cx((c.type === 'number' || c.type === 'money') && 'gm-num', c.type === 'actions' && 'gm-row')}>
+                <td key={c.key} data-label={c.header || undefined} className={cx((c.type === 'number' || c.type === 'money') && 'gm-num', c.type === 'actions' && 'gm-row')}>
                   {cellule(c, r)}
                 </td>
               ))}

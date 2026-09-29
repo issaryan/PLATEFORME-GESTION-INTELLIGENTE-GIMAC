@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Tabs } from '../../navigation/Tabs/Tabs'
+import { useLibelle } from '../../i18n/LangueProvider'
 
 export interface DiffLine {
   ln?: number
@@ -23,6 +24,7 @@ function classe(l: DiffLine): string {
 
 // Comparaison de deux versions, côte à côte ou unifiée, avec légende textuelle (§7.6).
 export function DiffView(p: DiffViewProps) {
+  const t = useLibelle()
   const lines = p.lines || []
   const [mode, setMode] = useState<string>(p.mode || 'split')
   return (
@@ -30,16 +32,16 @@ export function DiffView(p: DiffViewProps) {
       <div className="gm-dag-toolbar">
         <span>
           <strong>{p.leftTitle}</strong>
-          <span className="gm-field-help"> contre </span>
+          <span className="gm-field-help"> {t('diff.contre')} </span>
           <strong>{p.rightTitle}</strong>
         </span>
         <span style={{ flex: 1 }} />
         <span className="gm-row" style={{ gap: 'var(--gm-space-3)', fontSize: 12 }}>
-          <span className="gm-diff-key gm-diff-add">+ ajouté</span>
-          <span className="gm-diff-key gm-diff-del">− retiré</span>
-          <span className="gm-diff-key gm-diff-mod">~ modifié</span>
+          <span className="gm-diff-key gm-diff-add">{t('diff.ajoute')}</span>
+          <span className="gm-diff-key gm-diff-del">{t('diff.retire')}</span>
+          <span className="gm-diff-key gm-diff-mod">{t('diff.modifie')}</span>
         </span>
-        <Tabs items={[{ key: 'split', label: 'Côte à côte' }, { key: 'unified', label: 'Unifié' }]} value={mode} onChange={setMode} />
+        <Tabs items={[{ key: 'split', label: t('diff.coteACote') }, { key: 'unified', label: t('diff.unifie') }]} value={mode} onChange={setMode} />
       </div>
       <table className="gm-diff-table" role="table">
         {mode === 'split' ? (

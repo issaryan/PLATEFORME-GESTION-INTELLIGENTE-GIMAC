@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import { cx } from '../../lib/cx'
 import { Button } from '../../actions/Button/Button'
+import { useLibelle } from '../../i18n/LangueProvider'
 
 export interface Milestone {
   key: string | number
@@ -24,6 +25,7 @@ export interface GanttViewProps {
 
 // Jalons et chemin critique d'un projet (§7.6, DES-24).
 export function GanttView(p: GanttViewProps) {
+  const t = useLibelle()
   const days = p.days || 60
   const start = p.start || '01/09'
   // Échelle : 14 px par jour au plus (valeur publiée) ; réduite, jusqu'à 6 px, pour que la
@@ -50,22 +52,22 @@ export function GanttView(p: GanttViewProps) {
   return (
     <div className="gm-gantt">
       <div className="gm-dag-toolbar">
-        <span className="gm-field-help">{'Du ' + start + ' sur ' + days + ' jours'}</span>
+        <span className="gm-field-help">{t('gantt.periode', { debut: start, jours: days })}</span>
         <span style={{ flex: 1 }} />
         <span className="gm-row" style={{ gap: 'var(--gm-space-3)', fontSize: 12, color: 'var(--gm-color-text-secondary)' }}>
-          <span className="gm-gantt-key gm-gantt-key-bar">jalon planifié</span>
-          <span className="gm-gantt-key gm-gantt-key-done">réalisé</span>
-          <span className="gm-gantt-key gm-gantt-key-crit">chemin critique</span>
-          <span className="gm-gantt-key gm-gantt-key-slack">marge</span>
+          <span className="gm-gantt-key gm-gantt-key-bar">{t('gantt.planifie')}</span>
+          <span className="gm-gantt-key gm-gantt-key-done">{t('gantt.realise')}</span>
+          <span className="gm-gantt-key gm-gantt-key-crit">{t('gantt.critique')}</span>
+          <span className="gm-gantt-key gm-gantt-key-slack">{t('gantt.marge')}</span>
         </span>
-        <Button size="sm" variant="ghost">Vue tableau</Button>
+        <Button size="sm" variant="ghost">{t('commun.vueTableau')}</Button>
       </div>
       <div className="gm-gantt-scroll" ref={scroll}>
-        <table className="gm-gantt-table" role="grid" aria-label="Jalons du projet">
+        <table className="gm-gantt-table" role="grid" aria-label={t('gantt.label')}>
           <thead>
             <tr>
-              <th scope="col" className="gm-gantt-name" ref={noms}>Jalon</th>
-              <th scope="col" className="gm-gantt-name gm-num" ref={tenue}>Tenue</th>
+              <th scope="col" className="gm-gantt-name" ref={noms}>{t('gantt.jalon')}</th>
+              <th scope="col" className="gm-gantt-name gm-num" ref={tenue}>{t('gantt.tenue')}</th>
               <th scope="col" style={{ padding: 0 }}>
                 <div className="gm-gantt-axis" style={{ ...semaine, width: W }}>
                   {(p.weeks || []).map((w, i) => (
@@ -93,7 +95,7 @@ export function GanttView(p: GanttViewProps) {
                       className={cx('gm-gantt-bar', m.critical && 'gm-gantt-bar-crit')}
                       style={{ left: m.start * colW, width: m.duration * colW }}
                       role="img"
-                      aria-label={m.label + ', du jour ' + m.start + ' sur ' + m.duration + ' jours' + (m.critical ? ', chemin critique' : '')}
+                      aria-label={t(m.critical ? 'gantt.barreCritique' : 'gantt.barre', { libelle: m.label, debut: m.start, duree: m.duration })}
                     >
                       {m.done ? <span className="gm-gantt-done" style={{ width: m.done + '%' }} /> : null}
                       <span className="gm-gantt-bar-label">{m.done ? m.done + ' %' : ''}</span>

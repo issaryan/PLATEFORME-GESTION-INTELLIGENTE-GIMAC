@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { cx } from '../../lib/cx'
 import type { ApiError, TimelineEvent } from '../../lib/types'
 import { Button } from '../../actions/Button/Button'
@@ -13,6 +13,7 @@ import { DataTable, type Column } from '../../donnees/DataTable/DataTable'
 import { ResourceDetail } from '../ResourceDetail/ResourceDetail'
 import type { ListQuery, ResourceAction, ResourceDescriptor, ResourceState } from '../descripteur'
 import { actionButton, allowed, champ, optionsOf, renderField, statusOf, type Runner } from '../outils'
+import { useLibelle } from '../../i18n/LangueProvider'
 
 export interface ResourceListProps<T> {
   descriptor: ResourceDescriptor<T>
@@ -34,14 +35,28 @@ export interface ResourceListProps<T> {
   timeline?: TimelineEvent[]
   signHash?: string
   inline?: boolean
+  /** Affiche les actions de page même en mode embarqué (sans titre). */
+  showPageActions?: boolean
+  /** Ouverture d'une ligne ; si fourni, remplace le tiroir interne. */
+  onRowOpen?: (row: T) => void
+  /** Pagination, recherche et tri : état interne conservé, notifié à chaque changement. */
+  onQuery?: (q: ListQuery) => void
+  /** Contenu des onglets du tiroir de détail (onglet, ligne) ; à défaut, rendu par défaut. */
+  drawerRender?: (tab: string, row: T) => ReactNode
 }
 
 // Liste paginée, filtrée, triée, avec actions, tiroir de détail et confirmations (§8.3, gabarit G2).
 export function ResourceList<T extends object>(p: ResourceListProps<T>) {
+  const t = useLibelle()
   const desc = p.descriptor
   const perms = p.permissions
-  const [q] = useState<ListQuery>(Object.assign({ page: 1, pageSize: 25 }, p.defaultQuery || {}))
+  const [q, setQState] = useState<ListQuery>(Object.assign({ page: 1, pageSize: 25 }, p.defaultQuery || {}))
   const [open, setOpen] = useState<T | null>(null)
+  const setQ = (n: Partial<ListQuery>) => {
+    const suivant = Object.assign({}, q, n)
+    setQState(suivant)
+    if (p.onQuery) p.onQuery(suivant)
+  }
   const [dlg, setDlg] = useState<{ action: ResourceAction<T>; row: T | null } | null>(null)
   const fields = desc.fields.filter((f) => f.inList && (!f.permission || !perms || perms.indexOf(f.permission) >= 0))
   const rows = p.rows || []
@@ -61,7 +76,7 @@ export function ResourceList<T extends object>(p: ResourceListProps<T>) {
       width: f.width,
       sortable: f.sortable,
       type: f.kind === 'money' || f.kind === 'number' ? f.kind : undefined,
-      render: (r: T) => renderField(f, champ(r, f.name), r, desc),
+      render: (r: T) => renderField(f, champ(r, f.name), r, desc, t),
     }))
     .concat([
       {
@@ -73,7 +88,7 @@ export function ResourceList<T extends object>(p: ResourceListProps<T>) {
           return (
             <span className="gm-row" style={{ justifyContent: 'flex-end', flexWrap: 'nowrap' }}>
               {acts.slice(0, 1).map((a) => actionButton(a, r, ctx))}
-              {acts.length > 1 ? <IconButton variant="ghost" size="sm" icon="menu" label="Plus d'actions" /> : null}
+              {acts.length > 1 ? <IconButton variant="ghost" size="sm" icon="menu" label={t('crud.plusActions')} /> : null}
             </span>
           )
         },
@@ -94,16 +109,16 @@ export function ResourceList<T extends object>(p: ResourceListProps<T>) {
   const live = p.liveUpdates !== false && !!desc.liveTopic
   return (
     <div className={cx('gm-resource', p.embedded && 'gm-resource-embedded')}>
-      {p.embedded ? null : (
+      {p.embedded && !p.showPageActions ? null : (
         <div className="gm-resource-head">
-          <h1 className="gm-heading-display">{title}</h1>
+          {p.embedded ? <span /> : <h1 className="gm-heading-display">{title}</h1>}
           <div className="gm-row">
             {pageActions.filter((a) => a.variant !== 'primary').slice(0, 2).map((a) => actionButton(a, null, ctx, 'md'))}
             {pageActions.filter((a) => a.variant === 'primary').slice(0, 1).map((a) => actionButton(a, null, ctx, 'md'))}
           </div>
         </div>
       )}
-      <FilterBar filters={filters} query={q.q || ''} active={p.activeFilters || []} favorites={p.favorites} />
+      <FilterBar filters={filters} query={q.q || ''} onQuery={(v) => setQ({ q: v, page: 1 })} active={p.activeFilters || []} favorites={p.favorites} />
       <DataTable
         columns={columns}
         rows={rows}
@@ -113,22 +128,26 @@ export function ResourceList<T extends object>(p: ResourceListProps<T>) {
         pageSize={q.pageSize}
         state={p.state || 'ok'}
         error={p.error}
-        emptyText={'Aucune ' + desc.label.singular + ' ne correspond aux filtres'}
-        emptyHelp="Élargissez la période ou retirez un filtre."
+        emptyText={t(desc.label.gender === 'm' ? 'crud.aucunFiltre.m' : 'crud.aucunFiltre.f', { objet: desc.label.singular })}
+        emptyHelp={t('crud.elargir')}
         density={p.density}
         liveUpdates={live}
-        onRowOpen={(r: T) => setOpen(r)}
+        onRowOpen={(r: T) => (p.onRowOpen ? p.onRowOpen(r) : setOpen(r))}
+        sort={q.sort}
+        onSort={(k) => setQ({ sort: { key: k, dir: q.sort && q.sort.key === k && q.sort.dir === 'asc' ? 'desc' : 'asc' } })}
+        onPage={(n) => setQ({ page: n })}
+        onPageSize={(n) => setQ({ pageSize: n, page: 1 })}
         toolbar={[
-          <span key={1} className="gm-num">{rows.length + ' ' + (rows.length > 1 ? desc.label.plural : desc.label.singular) + ' sur cette page'}</span>,
+          <span key={1} className="gm-num">{t('crud.surPage', { n: rows.length, objets: rows.length > 1 ? desc.label.plural : desc.label.singular })}</span>,
           live ? (
             <span key={2} className="gm-row" style={{ gap: 4 }}>
               <span className="gm-dot gm-dot-ok" />
-              {'mises à jour en temps réel (' + desc.liveTopic + ')'}
+              {t('crud.tempsReel', { sujet: desc.liveTopic || '' })}
             </span>
           ) : null,
           <span key={3} className="gm-grow" />,
           bulk.map((a) => (
-            <Button key={a.key} size="sm" variant="ghost" icon={a.icon} disabled disabledReason="Sélectionnez au moins une ligne">
+            <Button key={a.key} size="sm" variant="ghost" icon={a.icon} disabled disabledReason={t('crud.selection')}>
               {a.label}
             </Button>
           )),
@@ -144,12 +163,14 @@ export function ResourceList<T extends object>(p: ResourceListProps<T>) {
           title={String(champ(open, desc.titleField))}
           onClose={() => setOpen(null)}
           render={(tab) =>
-            tab === 'detail' ? (
+            p.drawerRender ? (
+              p.drawerRender(tab, open)
+            ) : tab === 'detail' ? (
               <ResourceDetail descriptor={desc} row={open} mode="drawer" permissions={perms} onAction={ctx.run} />
             ) : tab === 'chronologie' ? (
               <Timeline events={p.timeline || []} />
             ) : (
-              <EmptyState title="Aucun élément" text="Rien à afficher dans cet onglet pour le moment." />
+              <EmptyState title={t('commun.aucunElement')} text={t('crud.ongletVide')} />
             )
           }
           actions={rowActions.filter((a) => allowed(a, open, perms)).map((a) => actionButton(a, open, ctx, 'md'))}
@@ -176,7 +197,7 @@ export function ResourceList<T extends object>(p: ResourceListProps<T>) {
               dlg.row
                 ? [
                     { key: desc.label.singular, value: String(champ(dlg.row, desc.titleField)) },
-                    { key: 'Référence', value: String(champ(dlg.row, desc.idField)), mono: true },
+                    { key: t('crud.reference'), value: String(champ(dlg.row, desc.idField)), mono: true },
                   ]
                 : undefined
             }

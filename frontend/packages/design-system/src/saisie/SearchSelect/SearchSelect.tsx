@@ -3,6 +3,7 @@ import { FieldWrapper } from '../FieldWrapper/FieldWrapper'
 import { Icon } from '../../icones/Icon/Icon'
 import { useFieldId2 } from '../../lib/useFieldId2'
 import type { BaseProps, Option } from '../../lib/types'
+import { useLibelle } from '../../i18n/LangueProvider'
 
 export interface SearchOption extends Option {
   code: string
@@ -26,6 +27,7 @@ export interface SearchSelectProps extends BaseProps {
 
 // Liste avec recherche (dès 10 options), affichage code + libellé, création interdite (§7.2).
 export function SearchSelect(p: SearchSelectProps) {
+  const t = useLibelle()
   const id = useFieldId2(p)
   const opts = p.options || []
   return (
@@ -54,7 +56,7 @@ export function SearchSelect(p: SearchSelectProps) {
               </li>
             ))
           ) : (
-            <li className="gm-option gm-option-empty">Aucune institution ne correspond. La création n'est pas possible ici.</li>
+            <li className="gm-option gm-option-empty">{t('searchSelect.aucun')}</li>
           )}
         </ul>
       ) : null}

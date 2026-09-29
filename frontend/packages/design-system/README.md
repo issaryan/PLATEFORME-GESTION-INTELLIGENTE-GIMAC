@@ -53,3 +53,4 @@ Le catalogue vivant (`apps/catalogue`) affiche chaque composant, un à un, en cl
 |---|---|---|
 | 2026-09-28 | 6eca1ce | Création : jetons, styles, polices, pictogrammes et portage React des 87 composants du système de conception publié |
 | 2026-09-29 | — | ThemeProvider, reset.css, contrôle des valeurs en dur, tests (contrastes, composants, axe) ; corrections de DiffView, GanttView, DecisionToTaskRow et de l'accessibilité |
+| 2026-09-29 | — | Internationalisation FR, EN, ES de tous les composants (`LangueProvider`, français par défaut, rendu inchangé) ; 18 extensions de contrat rétrocompatibles pour le lot 1 (quatre quitus, états parcourus, vérification d'empreinte, motif et zone complémentaire des dialogues, `onFile`, `onMenu`, onglets contrôlés, `onRowOpen`, `onQuery`, sélection dans DagView, anneau compact…) ; feuille adaptative sous 640 px (portail mobile, tableaux en cartes) |

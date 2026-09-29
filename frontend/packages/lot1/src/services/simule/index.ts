@@ -1,0 +1,290 @@
+import { ApiError, ReauthCancelled } from '@gimac/socle'
+import type { ListQuery, Page } from '../../modele/commun'
+import type { ClotureOperation, ElementCloture, Liaison } from '../../modele/homologation'
+import type { PortailLiaison } from '../../modele/portail'
+import type { ServiceCertification, ServiceHomologation, ServicePortail, Services } from '../ports'
+import * as D from './donnees'
+
+// Implémentation simulée des ports, pour développer les écrans sans la passerelle : un serveur fictif en
+// mémoire, avec latence, identifiants de corrélation et refus normalisés comme ceux des services réels.
+// Les « règles » ici ne sont que celles d'un serveur de substitution ; l'interface n'en porte aucune.
+
+export type OptionsSimulation = { latenceMs?: number; echecs?: boolean }
+
+let compteur = 0
+const correlation = () => `sim-${Date.now().toString(36)}-${(++compteur).toString(36)}`
+const clone = <T>(v: T): T => structuredClone(v)
+const maintenant = () => new Date().toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }).replace(',', '')
+const refus = (status: number, code: string, message: string) => new ApiError(status, code, message, correlation())
+
+function pagine<T>(lignes: T[], q: ListQuery, champs: (keyof T)[]): Page<T> {
+  const r = (q.recherche ?? '').toLowerCase()
+  let l = r ? lignes.filter((x) => champs.some((c) => String(x[c] ?? '').toLowerCase().includes(r))) : lignes
+  Object.entries(q.filtres ?? {}).forEach(([k, v]) => {
+    if (v !== undefined && v !== '') l = l.filter((x) => String((x as Record<string, unknown>)[k]) === String(v))
+  })
+  if (q.tri) {
+    const [cle, sens] = q.tri.split(',')
+    l = [...l].sort((a, b) => String((a as Record<string, unknown>)[cle]).localeCompare(String((b as Record<string, unknown>)[cle]), 'fr', { numeric: true }) * (sens === 'desc' ? -1 : 1))
+  }
+  const debut = (q.page - 1) * q.taille
+  return { contenu: clone(l.slice(debut, debut + q.taille)), total: l.length }
+}
+
+export function servicesSimules(o: OptionsSimulation = {}): Services {
+  const latence = o.latenceMs ?? 350
+  const attendre = <T>(v: T | (() => T)): Promise<T> =>
+    new Promise((res, rej) =>
+      window.setTimeout(() => {
+        try {
+          res(clone(typeof v === 'function' ? (v as () => T)() : v))
+        } catch (e) {
+          rej(e)
+        }
+      }, latence),
+    )
+  const trouverLiaison = (id: string): Liaison => {
+    const l = D.liaisons.find((x) => x.id === id)
+    if (!l) throw refus(404, 'HOM_LIAISON_NOT_FOUND', 'Liaison introuvable.')
+    return l
+  }
+  // État mutable des opérations par liaison, dérivé une fois du jeu de données.
+  const operations = new Map(D.liaisons.map((l) => [l.id, D.operationsDe(l)]))
+  const toutesOperations = () => [...operations.values()].flat()
+  const trouverOperation = (id: string) => {
+    const op = toutesOperations().find((x) => x.id === id)
+    if (!op) throw refus(404, 'HOM_OPERATION_NOT_FOUND', 'Opération introuvable.')
+    return op
+  }
+  const depots = new Map<string, ClotureOperation['dernierDepot']>()
+
+  const homologation: ServiceHomologation = {
+    listerReferentiels: () => attendre(D.referentiels),
+    lireReferentiel: (id) => attendre(() => {
+      const r = D.referentiels.find((x) => x.id === id)
+      if (!r) throw refus(404, 'HOM_REFERENTIAL_NOT_FOUND', 'Version introuvable.')
+      return r
+    }),
+    operationsReferentiel: (id) => attendre(D.operationsReferentiel[id] ?? []),
+    controlerReferentiel: (id) => attendre(() => {
+      const ops = D.operationsReferentiel[id] ?? []
+      return { acyclique: true, ordreTopologique: ops.map((x) => x.code), cycle: [], incoherences: [], manquants: id === 'REF-CI-4' ? [{ code: 'OP-E05', attributs: ['preuveAttendue.grille'] }] : [] }
+    }),
+    simulerMigration: () => attendre([
+      { liaisonId: 'LIA-2026-017', institutionNom: 'Établissement de paiement A', conservees: 3, ajoutees: 1, retirees: 1, modifiees: 0, exclue: false, motifExclusion: null },
+      { liaisonId: 'LIA-2025-102', institutionNom: 'Banque B', conservees: 4, ajoutees: 0, retirees: 0, modifiees: 0, exclue: true, motifExclusion: 'circuit de quitus ouvert' },
+    ]),
+    liaisonsImpactees: (versionId) => attendre({ total: D.liaisons.filter((l) => l.versionId === versionId && l.etat !== 'CLOSE').length }),
+    creerBrouillon: (e) => attendre(() => {
+      const v = { ...D.referentiels[1], id: `REF-${Date.now()}`, libelle: e.libelle, typeProjet: e.typeProjet as Liaison['typeProjet'], dateCreation: maintenant() }
+      D.referentiels.push(v)
+      return v
+    }),
+    deriverBrouillon: (source) => attendre(() => {
+      const s = D.referentiels.find((x) => x.id === source) ?? D.referentiels[0]
+      const v = { ...s, id: `REF-${Date.now()}`, numero: null, etat: 'BROUILLON' as const, libelle: `${s.libelle}, brouillon`, versionSourceId: s.id, datePublication: null, dateCreation: maintenant(), actionsPermises: ['CONTROLER', 'PUBLIER', 'MODIFIER'] }
+      D.referentiels.push(v)
+      D.operationsReferentiel[v.id] = clone(D.operationsReferentiel[s.id] ?? [])
+      return v
+    }),
+    publierReferentiel: (id) => attendre(() => {
+      const v = D.referentiels.find((x) => x.id === id)
+      if (!v || v.etat !== 'BROUILLON') throw refus(409, 'HOM_REFERENTIAL_FROZEN', 'Une version publiée est figée.')
+      v.etat = 'PUBLIEE'
+      v.numero = Math.max(...D.referentiels.filter((x) => x.typeProjet === v.typeProjet).map((x) => x.numero ?? 0)) + 1
+      v.datePublication = maintenant()
+      v.actionsPermises = ['DERIVER', 'CONTROLER']
+    }),
+    migrerLiaisons: () => attendre(undefined),
+    historiqueReferentiel: (id) => attendre([{ event: `Version ${id} créée`, at: '22/09/2026 11:02', actor: 'Ingénieur d\'homologation', correlationId: 'RQ-2026-0922-4' }]),
+
+    listerLiaisons: (q) => attendre(() => pagine(D.liaisons, q, ['institutionNom', 'id', 'chefDeProjetNom'])),
+    tableauDeBordLiaisons: (q) => attendre(() => pagine(D.liaisons.map((l, i) => ({ ...l, delaiConsomme: [34, 61, 48, 5][i] ?? 0, delaiStandard: 60 })), q, ['institutionNom'])),
+    lireLiaison: (id) => attendre(() => trouverLiaison(id)),
+    historiqueLiaison: (id) => attendre([
+      { event: 'Liaison ouverte', at: '03/03/2026 09:12', actor: 'Chef du DES', correlationId: 'RQ-2026-0303-2' },
+      { event: 'Opérations instanciées depuis le référentiel version 3', at: '03/03/2026 09:12', actor: 'Système' },
+      ...(id === 'LIA-2026-021' ? [{ event: 'Liaison gelée : institution suspendue', at: '21/09/2026 17:40', actor: 'Système', correlationId: 'RQ-2026-0921-9' }] : []),
+    ]),
+    ouvrirLiaison: (e) => attendre(() => {
+      if (D.liaisons.some((l) => l.institutionId === e.institutionId && l.typeProjet === e.typeProjet && l.etat !== 'CLOSE')) {
+        throw refus(409, 'HOM_LIAISON_DUPLICATE', 'Une liaison est déjà ouverte pour cette institution et ce type de projet.')
+      }
+      const inst = D.INSTITUTIONS.find((i) => i.id === e.institutionId) ?? D.INSTITUTIONS[0]
+      const l: Liaison = { ...clone(D.liaisons[3]), id: `LIA-2026-${String(40 + D.liaisons.length).padStart(3, '0')}`, institutionId: inst.id, institutionNom: inst.denomination, typeProjet: e.typeProjet, dateOuverture: maintenant().slice(0, 10) }
+      D.liaisons.push(l)
+      operations.set(l.id, D.operationsDe(l))
+      return l
+    }),
+    designerChefDeProjet: (id, chef) => attendre(() => {
+      const l = trouverLiaison(id)
+      const c = D.COLLABORATEURS.find((x) => x.id === chef)
+      if (c) Object.assign(l, { chefDeProjetId: c.id, chefDeProjetNom: c.nom })
+    }),
+    degelerLiaison: (id) => attendre(() => {
+      const l = trouverLiaison(id)
+      if (!l.actionsPermises.includes('DEGELER')) throw refus(409, 'HOM_LIAISON_NOT_FROZEN', 'La liaison n\'est pas gelée.')
+      Object.assign(l, { etat: 'EN_HOMOLOGATION', motifEtat: null, actionsPermises: ['DESIGNER_CHEF_DE_PROJET'] })
+    }),
+    exporterDossierDePreuves: () => attendre(undefined),
+    dernierExportPreuves: (id) => attendre(id === 'LIA-2025-102' ? { id: 'EXP-2026-0019', etat: 'SCELLE', dateExport: '24/09/2026 18:02', empreinteManifeste: D.empreinte('manifeste-102') } : null),
+    grapheLiaison: (id) => attendre(() => {
+      trouverLiaison(id)
+      const g = D.grapheDe(id)
+      const etats = new Map((operations.get(id) ?? []).map((x) => [x.id, x.etat]))
+      return { ...g, noeuds: g.noeuds.map((n) => ({ ...n, etat: etats.get(n.id) ?? n.etat })) }
+    }),
+    couverturesLiaison: (id) => attendre(() => D.couverturesDe(trouverLiaison(id))),
+
+    listerOperations: (liaisonId, f) => attendre(() => (operations.get(liaisonId) ?? []).filter((x) => !f?.enRetard || x.joursDepassement > 0)),
+    lireOperation: (id) => attendre(() => trouverOperation(id)),
+    preuvesOperation: (id) => attendre(() => {
+      const op = trouverOperation(id)
+      return op.etat === 'ELIGIBLE' || op.etat === 'VERROUILLEE' ? [] : [
+        { documentRef: `DOC-2026-${id.slice(-3)}1`, version: 2, typePiece: 'Rapport de tests signé', empreinte: D.empreinte(id + 'v2'), dateDepot: '19/09/2026 11:20', scelle: true, valide: true },
+        { documentRef: `DOC-2026-${id.slice(-3)}0`, version: 1, typePiece: 'Rapport de tests signé', empreinte: D.empreinte(id + 'v1'), dateDepot: '12/09/2026 15:02', scelle: true, valide: false },
+      ]
+    }),
+    attributionsOperation: () => attendre([{ event: 'Responsable désigné : Ingénieur d\'homologation A', at: '03/03/2026 09:15', actor: 'Chef du DES', correlationId: 'RQ-2026-0303-5' }]),
+    grilleOperation: () => attendre([
+      { code: 'G1', libelle: 'Les journaux de tests couvrent tous les scénarios attendus', reponse: 'CONFORME' as const, nonConformiteSignalee: false },
+      { code: 'G2', libelle: 'Les écarts relevés sont justifiés et acceptés', reponse: null, nonConformiteSignalee: false },
+    ]),
+    renseignerGrille: () => attendre(undefined),
+    attribuerOperation: (id, responsableId) => attendre(() => {
+      const op = trouverOperation(id)
+      const c = D.COLLABORATEURS.find((x) => x.id === responsableId)
+      if (c) Object.assign(op, { responsableId: c.id, responsableNom: c.nom })
+    }),
+    rouvrirOperation: (id) => attendre(() => {
+      Object.assign(trouverOperation(id), { etat: 'ROUVERTE', actionsPermises: ['DEPOSER_PREUVE', 'ATTRIBUER'] })
+    }),
+    elementsDeCloture: (id) => attendre((): ClotureOperation => {
+      const op = trouverOperation(id)
+      const depot = depots.get(id) ?? (op.etat === 'PREUVE_DEPOSEE' ? { documentRef: 'DOC-2026-7B12', empreinte: D.empreinte(id + 'v2'), version: 2, scelle: true, controle: { resultat: 'ACCEPTEE' as const } } : null)
+      const clos = op.etat === 'CLOSE' || op.etat === 'VALIDEE_HORODATAGE_EN_ATTENTE'
+      const el = (key: ElementCloture['key'], etat: ElementCloture['etat'], detail?: string, action?: string): ElementCloture => ({ key, etat, detail, actionManquante: etat === 'REUNI' || !action ? undefined : { labelKey: action } })
+      return {
+        id: op.id, liaisonId: op.liaisonId, code: op.code, libelle: op.libelle, etat: op.etat, preuveAttendue: 'Rapport de tests signé',
+        dernierDepot: depot,
+        elements: [
+          el('responsable', op.responsableNom ? 'REUNI' : 'MANQUANT', op.responsableNom ?? undefined, 'operation.action.attribuer'),
+          el('preuve', depot ? 'REUNI' : 'MANQUANT', depot ? `${depot.documentRef}, version ${depot.version}` : undefined, 'cloture.action.deposer'),
+          el('horodatage', clos ? (op.etat === 'CLOSE' ? 'REUNI' : 'EN_ATTENTE') : depot ? 'EN_ATTENTE' : 'MANQUANT', undefined, 'cloture.horodatage.attendu'),
+          el('validation', clos ? 'REUNI' : 'MANQUANT', undefined, 'cloture.action.valider'),
+        ],
+        empreinteAValider: depot ? D.empreinte(id + 'cloture') : null,
+        restrictionValidation: null,
+        transitionsPermises: [],
+        actionsPermises: clos ? [] : depot ? ['DEPOSER_PREUVE', 'VALIDER'] : ['DEPOSER_PREUVE'],
+      }
+    }),
+    deposerPreuve: (id, fichier, typePiece) => attendre(() => {
+      if (/carte|pan/i.test(fichier.name)) throw refus(422, 'HOM_EVIDENCE_REJECTED', 'la pièce contient un numéro de carte non masqué')
+      const op = trouverOperation(id)
+      const r = { documentRef: `DOC-2026-${(Date.now() % 10000).toString(16).toUpperCase()}`, empreinte: D.empreinte(fichier.name + fichier.size + typePiece), version: 1, scelle: true, controle: { resultat: 'ACCEPTEE' as const } }
+      depots.set(id, r)
+      Object.assign(op, { etat: 'PREUVE_DEPOSEE', actionsPermises: ['VALIDER', 'DEPOSER_PREUVE', 'RENSEIGNER_GRILLE'] })
+      return r
+    }),
+    validerOperation: (id, _e, assertion) => attendre(() => {
+      if (!assertion) throw refus(401, 'IAM_REAUTH_REQUIRED', 'Réauthentification exigée.')
+      Object.assign(trouverOperation(id), { etat: 'VALIDEE_HORODATAGE_EN_ATTENTE', actionsPermises: [] })
+      // Horodatage RFC 3161 obtenu de façon asynchrone par le service, comme en recette.
+      window.setTimeout(() => Object.assign(trouverOperation(id), { etat: 'CLOSE', actionsPermises: ['ROUVRIR'] }), 4000)
+    }),
+
+    campagnesLiaison: (liaisonId) => attendre(D.campagnesDe(liaisonId)),
+    scenariosInconnus: (liaisonId) => attendre(D.scenariosInconnusDe(liaisonId)),
+    qualifierScenario: () => attendre(undefined),
+    etatReprise: () => attendre({ etatDisjoncteur: 'FERME' as const, depuis: null }),
+
+    rechercherInstitutions: (r) => attendre(D.INSTITUTIONS.filter((i) => i.denomination.toLowerCase().includes(r.toLowerCase())).map((i) => ({ value: i.id, label: i.denomination, hint: i.code }))),
+    rechercherCollaborateurs: (r) => attendre(D.COLLABORATEURS.filter((c) => c.nom.toLowerCase().includes(r.toLowerCase())).map((c) => ({ value: c.id, label: c.nom, hint: `role.${c.role}` }))),
+  }
+
+  const pdf = (texte: string) => new Blob([texte], { type: 'application/pdf' })
+  const certification: ServiceCertification = {
+    dossierParLiaison: (liaisonId) => attendre(D.dossier.liaisonId === liaisonId ? D.dossier : null),
+    lireDossier: (id) => attendre(() => {
+      if (id !== D.dossier.id) throw refus(404, 'CER_DOSSIER_NOT_FOUND', 'Dossier introuvable.')
+      return D.dossier
+    }),
+    historiqueDossier: () => attendre([{ event: 'Dossier ouvert à la déclaration d\'aptitude', at: '24/09/2026 18:05', actor: 'Système', correlationId: 'RQ-2026-0924-7' }]),
+    circuit: () => attendre(D.circuit),
+    signerQuitus: (_c, nature, decision, assertion) => attendre(() => {
+      if (!assertion) throw refus(401, 'IAM_REAUTH_REQUIRED', 'Réauthentification exigée.')
+      if (decision.socleEmpreinte !== D.circuit.socle.empreinte) throw refus(409, 'CER_SOCLE_PERIME', 'Le socle d\'évaluation a changé : relisez-le avant de signer.')
+      const q = D.circuit.quitus.find((x) => x.nature === nature)
+      if (q) Object.assign(q, { etat: decision.decisionFavorable ? 'SIGNE_FAVORABLE' : 'SIGNE_DEFAVORABLE', dateSignature: maintenant(), dateHorodatage: maintenant(), motif: decision.motif, actionsPermises: [] })
+      if (D.circuit.quitus.filter((x) => x.nature !== 'DIRECTION_GENERALE').every((x) => x.etat === 'SIGNE_FAVORABLE')) {
+        const dg = D.circuit.quitus.find((x) => x.nature === 'DIRECTION_GENERALE')
+        if (dg && dg.etat === 'ATTENDU') dg.actionsPermises = ['SIGNER']
+      }
+    }),
+    conditions: () => attendre(D.conditions),
+    verifierDossier: () => attendre(() => {
+      D.conditions.forEach((c) => (c.dateVerification = c.satisfaite ? maintenant() : c.dateVerification))
+    }),
+    ficheDeChangement: () => attendre(D.fiche),
+    lierFicheDeChangement: (_d, reference) => attendre(() => {
+      Object.assign(D.fiche, { reference, dateLecture: maintenant(), aRelire: false })
+      D.dossier.referenceFicheChangement = reference
+    }),
+    procesVerbal: () => attendre(null),
+    deposerProcesVerbal: () => attendre(undefined),
+    horodatages: () => attendre(D.horodatagesDossier),
+    emettreAttestation: () => attendre(() => {
+      throw refus(409, 'CER_DOSSIER_INCOMPLETE', 'Le dossier n\'est pas complet : deux conditions restent à satisfaire.')
+    }),
+    lireAttestation: (numero) => attendre(() => {
+      const a = D.attestations.find((x) => x.numero === numero)
+      if (!a) throw refus(404, 'CER_ATTESTATION_NOT_FOUND', 'Attestation introuvable.')
+      return a
+    }),
+    telechargerAttestation: (numero) => attendre({ blob: pdf(`Attestation ${numero}`), empreinte: D.attestations.find((x) => x.numero === numero)?.empreinteDocument ?? null }),
+    demanderStatut: () => attendre(undefined),
+    approuverStatut: () => attendre(undefined),
+    registre: (q) => attendre(() => pagine(D.registre, q, ['numero', 'institutionNom'])),
+    exporterRegistre: () => attendre({ blob: new Blob(['numero;institution\n'], { type: 'text/csv' }), empreinte: null }),
+  }
+
+  const projectionPortail = (l: Liaison): PortailLiaison => ({
+    id: l.id, typeProjet: l.typeProjet, etat: l.etat, etatsParcourus: l.etatsParcourus, phaseCourante: l.phaseCourante, versionNumero: l.versionNumero,
+    couvertureCertification: l.couvertureCertification, couvertureMiseEnService: l.couvertureMiseEnService, services: D.couverturesDe(l),
+    graphe: D.grapheDe(l.id), resultats: D.campagnesDe(l.id), transitionsPermises: [], actionsPermises: [],
+  })
+  // Le portail est cloisonné à l'institution du jeton : ici, « Établissement de paiement A ».
+  const INSTITUTION_PORTAIL = 'INST-0042'
+  const portail: ServicePortail = {
+    mesLiaisons: () => attendre(() => D.liaisons.filter((l) => l.institutionId === INSTITUTION_PORTAIL).map(projectionPortail)),
+    maLiaison: (id) => attendre(() => {
+      const l = D.liaisons.find((x) => x.id === id && x.institutionId === INSTITUTION_PORTAIL)
+      if (!l) throw refus(404, 'HOM_LIAISON_NOT_FOUND', 'Ce parcours est introuvable.')
+      return projectionPortail(l)
+    }),
+    aFaire: (liaisonId) => attendre(() => (operations.get(liaisonId) ?? []).filter((x) => x.partie === 'PARTICIPANT' && x.etat !== 'CLOSE').map((x) => ({
+      id: x.id, liaisonId, code: x.code, libelle: x.libelle, etat: x.etat, echeance: x.echeance, joursRestants: x.joursDepassement ? -x.joursDepassement : 12,
+      preuveAttendue: 'Rapport de tests signé', accuse: depots.get(x.id) ? { empreinte: depots.get(x.id)!.empreinte, dateDepot: maintenant() } : null,
+      transitionsPermises: [], actionsPermises: ['DEPOSER_PREUVE'],
+    }))),
+    operationAFaire: (liaisonId, id) => portail.aFaire(liaisonId).then((l) => {
+      const x = l.find((o) => o.id === id)
+      if (!x) throw refus(404, 'HOM_OPERATION_NOT_FOUND', 'Opération introuvable.')
+      return x
+    }),
+    deposerPreuve: (id, fichier, typePiece) => homologation.deposerPreuve(id, fichier, typePiece).then(() => undefined),
+    certifications: () => attendre([{ id: 'CERT-0042', liaisonId: 'LIA-2026-017', etatDossier: 'OUVERT', motifCommunicable: null, attestation: { numero: 'ATT-2026-0007', etat: 'EN_VIGUEUR', empreinteDocument: D.attestations[0].empreinteDocument } }]),
+    telechargerAttestation: () => certification.telechargerAttestation('ATT-2026-0007'),
+  }
+
+  return {
+    homologation,
+    certification,
+    portail,
+    // Clé de sécurité simulée : confirme après un délai ; l'option echecs simule une annulation.
+    reauth: {
+      assertion: () => new Promise((res, rej) => window.setTimeout(() => (o.echecs ? rej(new ReauthCancelled()) : res(btoa('assertion-simulee'))), 900)),
+    },
+  }
+}

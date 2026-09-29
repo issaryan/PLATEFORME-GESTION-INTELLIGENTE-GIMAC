@@ -4,6 +4,7 @@ import type { Status } from '../../lib/types'
 import { IconButton } from '../../actions/IconButton/IconButton'
 import { StatusBadge } from '../../affichage/StatusBadge/StatusBadge'
 import { Tabs } from '../../navigation/Tabs/Tabs'
+import { useLibelle } from '../../i18n/LangueProvider'
 
 export interface ChartSeries {
   name: string
@@ -37,6 +38,7 @@ function niceMax(v: number): number {
 // Carte de graphique : courbe, barres ou jauge ; légende dès deux séries, étiquettes directes,
 // infobulle et vue tableau équivalente (§7.6).
 export function ChartCard(p: ChartCardProps) {
+  const t = useLibelle()
   const [view, setView] = useState<string>('chart')
   const [hov, setHov] = useState<number[] | null>(null)
   const series = p.series || []
@@ -57,7 +59,7 @@ export function ChartCard(p: ChartCardProps) {
     <table className="gm-table gm-table-compact" style={{ border: 'var(--gm-border-1) solid var(--gm-color-border)' }}>
       <thead>
         <tr>
-          <th>{p.xLabel || 'Période'}</th>
+          <th>{p.xLabel || t('graphique.periode')}</th>
           {series.map((s) => (
             <th key={s.name} className="gm-num">{s.name}</th>
           ))}
@@ -79,7 +81,7 @@ export function ChartCard(p: ChartCardProps) {
     p.threshold !== undefined ? (
       <g>
         <line className="gm-chart-threshold" x1={padL} x2={W - padR} y1={ys(p.threshold)} y2={ys(p.threshold)} />
-        <text className="gm-chart-tick" x={W - padR} y={ys(p.threshold) - 4} textAnchor="end">{'seuil ' + fmt(p.threshold) + suffixe}</text>
+        <text className="gm-chart-tick" x={W - padR} y={ys(p.threshold) - 4} textAnchor="end">{t('commun.seuil', { valeur: fmt(p.threshold) + suffixe })}</text>
       </g>
     ) : null
   const grille = ticks.map((t) => (
@@ -93,7 +95,7 @@ export function ChartCard(p: ChartCardProps) {
     const groups = labels.length
     const bw = Math.max(6, (iw / groups - 8) / series.length - 2)
     chart = (
-      <svg className="gm-chart" width={W} height={H} viewBox={'0 0 ' + W + ' ' + H} role="img" aria-label={p.title + '. Vue tableau disponible.'}>
+      <svg className="gm-chart" width={W} height={H} viewBox={'0 0 ' + W + ' ' + H} role="img" aria-label={t('graphique.description', { titre: p.title })}>
         {grille}
         {labels.map((l, i) => {
           const gx = padL + (i * iw) / groups + 4
@@ -146,7 +148,7 @@ export function ChartCard(p: ChartCardProps) {
     )
   } else {
     chart = (
-      <svg className="gm-chart" width={W} height={H} viewBox={'0 0 ' + W + ' ' + H} role="img" aria-label={p.title + '. Vue tableau disponible.'} onMouseLeave={() => setHov(null)}>
+      <svg className="gm-chart" width={W} height={H} viewBox={'0 0 ' + W + ' ' + H} role="img" aria-label={t('graphique.description', { titre: p.title })} onMouseLeave={() => setHov(null)}>
         {grille}
         {labels.map((l, i) => (
           <text key={l} className="gm-chart-tick" x={xs(i)} y={H - 6} textAnchor="middle">{l}</text>
@@ -200,8 +202,8 @@ export function ChartCard(p: ChartCardProps) {
         </div>
         <div className="gm-row">
           {p.status ? <StatusBadge status={p.status} label={p.statusLabel || ''} /> : null}
-          <Tabs items={[{ key: 'chart', label: 'Graphique' }, { key: 'table', label: 'Tableau' }]} value={view} onChange={setView} />
-          <IconButton variant="ghost" size="sm" icon="download" label="Exporter (contrôlé)" />
+          <Tabs items={[{ key: 'chart', label: t('graphique.graphique') }, { key: 'table', label: t('graphique.tableau') }]} value={view} onChange={setView} />
+          <IconButton variant="ghost" size="sm" icon="download" label={t('graphique.exporter')} />
         </div>
       </header>
       <div className="gm-card-body" style={{ position: 'relative' }}>

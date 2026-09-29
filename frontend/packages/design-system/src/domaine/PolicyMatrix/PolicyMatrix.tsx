@@ -1,6 +1,7 @@
 import { cx } from '../../lib/cx'
 import { Icon } from '../../icones/Icon/Icon'
 import { Button } from '../../actions/Button/Button'
+import { useLibelle } from '../../i18n/LangueProvider'
 
 export interface PolicyPermission {
   key: string
@@ -17,12 +18,13 @@ export interface PolicyMatrixProps {
 
 // Matrice rôles × permissions par domaine (§7.7, console CON-01).
 export function PolicyMatrix(p: PolicyMatrixProps) {
+  const t = useLibelle()
   return (
     <div className="gm-table-wrap">
       <table className="gm-table gm-table-compact gm-policy" role="grid">
         <thead>
           <tr>
-            <th scope="col">Permission</th>
+            <th scope="col">{t('politique.permission')}</th>
             {(p.roles || []).map((r) => (
               <th key={r} scope="col" style={{ textAlign: 'center' }}>{r}</th>
             ))}
@@ -40,7 +42,7 @@ export function PolicyMatrix(p: PolicyMatrixProps) {
                 const pend = perm.pending && perm.pending[r]
                 return (
                   <td key={r} style={{ textAlign: 'center' }}>
-                    <span className={cx('gm-policy-cell', v && 'gm-policy-on', pend && 'gm-policy-pending')} role="img" aria-label={(v ? 'accordée' : 'refusée') + (pend ? ", modification en attente d'approbation" : '')}>
+                    <span className={cx('gm-policy-cell', v && 'gm-policy-on', pend && 'gm-policy-pending')} role="img" aria-label={(v ? t('politique.accordee') : t('politique.refusee')) + (pend ? t('politique.enAttente') : '')}>
                       <Icon name={pend ? 'hourglass' : v ? 'square-check' : 'square'} size={18} />
                     </span>
                   </td>
@@ -52,9 +54,9 @@ export function PolicyMatrix(p: PolicyMatrixProps) {
       </table>
       <div className="gm-table-toolbar" style={{ borderTop: 'var(--gm-border-1) solid var(--gm-color-border)', borderBottom: 0 }}>
         <Icon name="hourglass" />
-        {" Modification en attente d'approbation à quatre yeux"}
+        {t('politique.quatreYeux')}
         <span className="gm-grow" />
-        <Button size="sm" variant="primary" icon="pen-line">Approuver les modifications</Button>
+        <Button size="sm" variant="primary" icon="pen-line">{t('politique.approuver')}</Button>
       </div>
     </div>
   )

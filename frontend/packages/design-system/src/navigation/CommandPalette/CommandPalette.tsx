@@ -3,8 +3,9 @@ import type { Status } from '../../lib/types'
 import { Icon } from '../../icones/Icon/Icon'
 import type { IconName } from '../../icones/icons'
 import { StatusBadge } from '../../affichage/StatusBadge/StatusBadge'
+import { useLibelle } from '../../i18n/LangueProvider'
 
-const CMD_GROUPS = { objets: 'Objets', ecrans: 'Écrans', actions: 'Actions' } as const
+const CMD_GROUPS = { objets: 'cmd.objets', ecrans: 'cmd.ecrans', actions: 'cmd.actions' } as const
 const CMD_ICON: Record<string, IconName> = {
   institution: 'landmark',
   liaison: 'route',
@@ -36,12 +37,13 @@ export interface CommandPaletteProps {
 
 // Recherche globale Ctrl+K : objets, écrans, actions, résultats groupés (§7.4).
 export function CommandPalette(p: CommandPaletteProps) {
+  const t = useLibelle()
   const groups = ['objets', 'ecrans', 'actions'] as const
   const res = p.results || []
   const active = p.active || 0
   let n = -1
   return (
-    <div className="gm-cmd" role="dialog" aria-label="Recherche globale">
+    <div className="gm-cmd" role="dialog" aria-label={t('cmd.recherche')}>
       <div className="gm-cmd-input">
         <Icon name="search" size={20} />
         <input
@@ -49,20 +51,20 @@ export function CommandPalette(p: CommandPaletteProps) {
           role="combobox"
           aria-expanded="true"
           aria-controls="gm-cmd-list"
-          aria-label="Rechercher un objet, un écran ou une action"
+          aria-label={t('cmd.champ')}
           className="gm-cmd-field"
           value={p.query || ''}
           onChange={(e) => p.onQuery && p.onQuery(e.target.value)}
         />
-        <span className="gm-menu-kbd">Échap</span>
+        <span className="gm-menu-kbd">{t('cmd.echap')}</span>
       </div>
       <div id="gm-cmd-list" role="listbox" className="gm-cmd-list">
         {groups.map((g) => {
           const items = res.filter((r) => r.group === g)
           if (!items.length) return null
           return (
-            <div key={g} role="group" aria-label={CMD_GROUPS[g]}>
-              <div className="gm-cmd-group">{CMD_GROUPS[g]}</div>
+            <div key={g} role="group" aria-label={t(CMD_GROUPS[g])}>
+              <div className="gm-cmd-group">{t(CMD_GROUPS[g])}</div>
               {items.map((r) => {
                 n++
                 const sel = n === active
@@ -79,11 +81,11 @@ export function CommandPalette(p: CommandPaletteProps) {
             </div>
           )
         })}
-        {res.length ? null : <div className="gm-cmd-empty">{'Aucun résultat pour « ' + (p.query || '') + ' »'}</div>}
+        {res.length ? null : <div className="gm-cmd-empty">{t('cmd.aucun', { q: p.query || '' })}</div>}
       </div>
       <div className="gm-cmd-foot">
-        <span><span className="gm-menu-kbd">↑↓</span> parcourir</span>
-        <span><span className="gm-menu-kbd">Entrée</span> ouvrir</span>
+        <span><span className="gm-menu-kbd">↑↓</span> {t('cmd.parcourir')}</span>
+        <span><span className="gm-menu-kbd">{t('cmd.entree')}</span> {t('cmd.ouvrir')}</span>
         <span style={{ marginLeft: 'auto' }}>Ctrl+K</span>
       </div>
     </div>

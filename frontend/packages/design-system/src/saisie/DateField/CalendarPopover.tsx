@@ -1,8 +1,9 @@
 import { cx } from '../../lib/cx'
 import { Button } from '../../actions/Button/Button'
 import { IconButton } from '../../actions/IconButton/IconButton'
+import { useLibelle } from '../../i18n/LangueProvider'
 
-const DAYS = ['lu', 'ma', 'me', 'je', 've', 'sa', 'di']
+const DAYS = ['calendrier.lu', 'calendrier.ma', 'calendrier.me', 'calendrier.je', 'calendrier.ve', 'calendrier.sa', 'calendrier.di'] as const
 
 export interface CalendarPopoverProps {
   month?: string
@@ -13,18 +14,19 @@ export interface CalendarPopoverProps {
 
 // Calendrier accessible en popover (interne à DateField et DateRangeField).
 export function CalendarPopover(p: CalendarPopoverProps) {
+  const t = useLibelle()
   const days: number[] = []
   for (let i = 1; i <= 30; i++) days.push(i)
   return (
-    <div className="gm-popover gm-cal" role="dialog" aria-label="Calendrier">
+    <div className="gm-popover gm-cal" role="dialog" aria-label={t('calendrier.label')}>
       <div className="gm-cal-head">
-        <IconButton variant="ghost" size="sm" icon="chevron-right" label="Mois précédent" className="gm-flip" />
-        <strong>{p.month || 'Septembre 2026'}</strong>
-        <IconButton variant="ghost" size="sm" icon="chevron-right" label="Mois suivant" />
+        <IconButton variant="ghost" size="sm" icon="chevron-right" label={t('calendrier.precedent')} className="gm-flip" />
+        <strong>{p.month || t('calendrier.moisDefaut')}</strong>
+        <IconButton variant="ghost" size="sm" icon="chevron-right" label={t('calendrier.suivant')} />
       </div>
-      <div className="gm-cal-grid" role="group" aria-label="Jours du mois">
+      <div className="gm-cal-grid" role="group" aria-label={t('calendrier.jours')}>
         {DAYS.map((d) => (
-          <span key={d} className="gm-cal-dow">{d}</span>
+          <span key={d} className="gm-cal-dow">{t(d)}</span>
         ))}
         {[null, null].map((_, i) => (
           <span key={'e' + i} />
@@ -40,11 +42,11 @@ export function CalendarPopover(p: CalendarPopoverProps) {
         })}
       </div>
       <div className="gm-cal-foot">
-        {(p.shortcuts || ["aujourd'hui", 'J-7', 'ce mois']).map((s) => (
+        {(p.shortcuts || [t('calendrier.aujourdhui'), t('calendrier.j7'), t('calendrier.ceMois')]).map((s) => (
           <Button key={s} size="sm" variant="ghost">{s}</Button>
         ))}
       </div>
-      <div className="gm-cal-tz">Fuseau : Afrique centrale (UTC+1)</div>
+      <div className="gm-cal-tz">{t('calendrier.fuseau')}</div>
     </div>
   )
 }

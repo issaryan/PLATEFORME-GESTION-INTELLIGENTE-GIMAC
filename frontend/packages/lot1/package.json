@@ -1,0 +1,38 @@
+{
+  "name": "@gimac/lot1",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Lot 1 (PI-GIMAC-01) : ports et services homologation, certification et portail, hooks de données, descripteurs, pages DES-08 à DES-12 et POR-03",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./pages/*": "./src/pages/*.tsx"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "lint": "tsc --noEmit -p tsconfig.json"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18"
+  },
+  "dependencies": {
+    "@gimac/design-system": "1.0.0",
+    "@gimac/socle": "0.1.0",
+    "@tanstack/react-query": "5.104.0",
+    "i18next": "26.4.2",
+    "react-i18next": "17.0.15",
+    "react-router": "8.4.0"
+  },
+  "devDependencies": {
+    "@testing-library/react": "16.3.3",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "jsdom": "30.1.1",
+    "typescript": "~6.0.2",
+    "vite": "^8.3.0",
+    "vitest": "5.0.2"
+  }
+}

@@ -8,12 +8,14 @@ import { IconButton } from '../../actions/IconButton/IconButton'
 import { Link } from '../../actions/Link/Link'
 import { StatusBadge } from '../../affichage/StatusBadge/StatusBadge'
 import { Tabs } from '../../navigation/Tabs/Tabs'
+import { useLibelle } from '../../i18n/LangueProvider'
+import type { CleLibelle } from '../../i18n/libelles'
 
-const LEVELS: [Notification['level'], string, Status][] = [
-  ['critical', 'Critique', 'crit'],
-  ['urgent', 'Urgent', 'warn'],
-  ['important', 'Important', 'info'],
-  ['info', 'Information', 'neutral'],
+const LEVELS: [Notification['level'], CleLibelle, Status][] = [
+  ['critical', 'notif.critique', 'crit'],
+  ['urgent', 'notif.urgent', 'warn'],
+  ['important', 'notif.important', 'info'],
+  ['info', 'notif.information', 'neutral'],
 ]
 const NOTIF_ICON: Record<string, IconName> = {
   alert: 'bell-ring',
@@ -47,28 +49,29 @@ export interface NotificationCenterProps {
 
 // Centre de notifications de 400 px ouvert depuis la cloche (§6.5).
 export function NotificationCenter(p: NotificationCenterProps) {
+  const t = useLibelle()
   const [tab, setTab] = useState<string>(p.tab || 'unread')
   const list = (p.notifications || []).filter((n) => tab === 'all' || !n.read)
   return (
-    <div className="gm-notif" role="dialog" aria-label="Centre de notifications" style={{ height: p.height || 480 }}>
+    <div className="gm-notif" role="dialog" aria-label={t('notif.centre')} style={{ height: p.height || 480 }}>
       <div className="gm-notif-head">
-        <strong>Notifications</strong>
-        <span className="gm-field-help">{(p.notifications || []).filter((n) => !n.read).length + ' non lues'}</span>
+        <strong>{t('notif.titre')}</strong>
+        <span className="gm-field-help">{t('notif.nonLuesN', { n: (p.notifications || []).filter((n) => !n.read).length })}</span>
         <span style={{ marginLeft: 'auto' }} />
-        <Button size="sm" variant="ghost">Tout marquer comme lu</Button>
-        <IconButton variant="ghost" size="sm" icon="x" label="Fermer" onClick={p.onClose} />
+        <Button size="sm" variant="ghost">{t('notif.toutLu')}</Button>
+        <IconButton variant="ghost" size="sm" icon="x" label={t('commun.fermer')} onClick={p.onClose} />
       </div>
       <div style={{ padding: '0 var(--gm-space-3)' }}>
-        <Tabs items={[{ key: 'unread', label: 'Non lues' }, { key: 'all', label: 'Toutes' }]} value={tab} onChange={setTab} />
+        <Tabs items={[{ key: 'unread', label: t('notif.nonLues') }, { key: 'all', label: t('notif.toutes') }]} value={tab} onChange={setTab} />
       </div>
       <div className="gm-notif-list">
         {LEVELS.map((L) => {
           const items = list.filter((n) => n.level === L[0])
           if (!items.length) return null
           return (
-            <section key={L[0]} aria-label={L[1]}>
+            <section key={L[0]} aria-label={t(L[1])}>
               <div className="gm-notif-group">
-                <StatusBadge status={L[2]} label={L[1].toLowerCase()} icon={L[0] === 'info' ? 'info' : undefined} />
+                <StatusBadge status={L[2]} label={t(L[1]).toLowerCase()} icon={L[0] === 'info' ? 'info' : undefined} />
                 <span className="gm-field-help gm-num">{items.length}</span>
               </div>
               {items.map((n) => (
@@ -83,20 +86,20 @@ export function NotificationCenter(p: NotificationCenterProps) {
                     </div>
                   </div>
                   {(n.level === 'critical' || n.level === 'urgent') && !n.acked ? (
-                    <Button size="sm" variant="primary">Acquitter</Button>
+                    <Button size="sm" variant="primary">{t('commun.acquitter')}</Button>
                   ) : n.acked ? (
-                    <StatusBadge status="ok" label="acquittée" />
+                    <StatusBadge status="ok" label={t('notif.acquittee')} />
                   ) : null}
                 </article>
               ))}
             </section>
           )
         })}
-        {list.length ? null : <div className="gm-cmd-empty">Aucune notification non lue.</div>}
+        {list.length ? null : <div className="gm-cmd-empty">{t('notif.aucune')}</div>}
       </div>
       <div className="gm-notif-foot">
-        <Link href="#">Ouvrir le centre de notifications en pleine page</Link>
-        <Link href="#">Préférences</Link>
+        <Link href="#">{t('notif.pleinePage')}</Link>
+        <Link href="#">{t('notif.preferences')}</Link>
       </div>
     </div>
   )

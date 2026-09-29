@@ -12,6 +12,8 @@ export default defineConfig({
     strictPort: true,
     proxy: {
       '/api': passerelle,
+      '/bff': { target: passerelle, ws: false },
+      '/logout': passerelle,
       '/oauth2': passerelle,
       '/login': passerelle,
     },

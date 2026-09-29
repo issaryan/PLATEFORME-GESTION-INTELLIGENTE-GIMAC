@@ -1,15 +1,17 @@
 import { StateMachineBar } from '../../donnees/StateMachineBar/StateMachineBar'
+import { useLibelle } from '../../i18n/LangueProvider'
+import type { CleLibelle } from '../../i18n/libelles'
 
 export type TicketState = 'NOUVEAU' | 'QUALIFIE' | 'EN_COURS' | 'EN_ATTENTE_TIERS' | 'RESOLU' | 'CLOS' | 'ROUVERT'
 
-const TICKET_STATES: { key: TicketState; label: string }[] = [
-  { key: 'NOUVEAU', label: 'nouveau' },
-  { key: 'QUALIFIE', label: 'qualifié' },
-  { key: 'EN_COURS', label: 'en cours' },
-  { key: 'EN_ATTENTE_TIERS', label: 'en attente de tiers' },
-  { key: 'RESOLU', label: 'résolu' },
-  { key: 'CLOS', label: 'clos' },
-  { key: 'ROUVERT', label: 'rouvert' },
+const TICKET_STATES: { key: TicketState; cle: CleLibelle }[] = [
+  { key: 'NOUVEAU', cle: 'ticket.nouveau' },
+  { key: 'QUALIFIE', cle: 'ticket.qualifie' },
+  { key: 'EN_COURS', cle: 'ticket.enCours' },
+  { key: 'EN_ATTENTE_TIERS', cle: 'ticket.attenteTiers' },
+  { key: 'RESOLU', cle: 'ticket.resolu' },
+  { key: 'CLOS', cle: 'ticket.clos' },
+  { key: 'ROUVERT', cle: 'ticket.rouvert' },
 ]
 
 export interface TicketStateBarProps {
@@ -20,5 +22,6 @@ export interface TicketStateBarProps {
 
 // Automate à sept états d'un ticket (§7.7).
 export function TicketStateBar(p: TicketStateBarProps) {
-  return <StateMachineBar label="État du ticket" states={TICKET_STATES} current={p.current} allowed={p.allowed} />
+  const t = useLibelle()
+  return <StateMachineBar label={t('ticket.etat')} states={TICKET_STATES.map((s) => ({ key: s.key, label: t(s.cle) }))} current={p.current} allowed={p.allowed} />
 }

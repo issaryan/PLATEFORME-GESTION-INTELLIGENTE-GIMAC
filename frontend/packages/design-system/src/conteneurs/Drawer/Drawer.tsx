@@ -6,13 +6,14 @@ import { IconButton } from '../../actions/IconButton/IconButton'
 import { StatusBadge } from '../../affichage/StatusBadge/StatusBadge'
 import { Tabs } from '../../navigation/Tabs/Tabs'
 import { Overlay } from '../Overlay/Overlay'
+import { useLibelle } from '../../i18n/LangueProvider'
 
 const DRAWER_TABS = [
-  { key: 'detail', label: 'Détail' },
-  { key: 'chronologie', label: 'Chronologie' },
-  { key: 'pieces', label: 'Pièces' },
-  { key: 'audit', label: 'Audit' },
-]
+  { key: 'detail', cle: 'drawer.detail' },
+  { key: 'chronologie', cle: 'drawer.chronologie' },
+  { key: 'pieces', cle: 'drawer.pieces' },
+  { key: 'audit', cle: 'drawer.audit' },
+] as const
 
 export interface DrawerProps {
   type: string
@@ -35,6 +36,7 @@ export interface DrawerProps {
 
 // Tiroir de détail de 480 px (640 en lg) ouvert à droite sans quitter la liste (§6.4).
 export function Drawer(p: DrawerProps) {
+  const t = useLibelle()
   const ref = useRef<HTMLElement>(null)
   useFocusTrap(ref, p.open !== false, p.onClose)
   const [tab, setTab] = useState(p.tab || 'detail')
@@ -51,13 +53,13 @@ export function Drawer(p: DrawerProps) {
             </div>
           </div>
           <div className="gm-row">
-            <IconButton variant="ghost" size="sm" icon="arrow-right" label="Ouvrir en pleine page" />
-            <IconButton variant="ghost" size="sm" icon="x" label="Fermer" onClick={p.onClose} />
+            <IconButton variant="ghost" size="sm" icon="arrow-right" label={t('drawer.pleinePage')} />
+            <IconButton variant="ghost" size="sm" icon="x" label={t('commun.fermer')} onClick={p.onClose} />
           </div>
         </header>
         {p.title ? <div className="gm-drawer-title">{p.title}</div> : null}
         <div className="gm-drawer-tabs">
-          <Tabs items={p.tabs || DRAWER_TABS} value={tab} onChange={setTab} />
+          <Tabs items={p.tabs || DRAWER_TABS.map((d) => ({ key: d.key, label: t(d.cle) }))} value={tab} onChange={setTab} />
         </div>
         <div className="gm-drawer-body">{p.render ? p.render(tab) : p.children}</div>
         {p.actions ? <footer className="gm-drawer-foot">{p.actions}</footer> : null}

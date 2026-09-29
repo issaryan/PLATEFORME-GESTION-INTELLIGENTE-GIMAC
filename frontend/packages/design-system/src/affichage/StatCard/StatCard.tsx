@@ -3,6 +3,7 @@ import { cx } from '../../lib/cx'
 import type { Status } from '../../lib/types'
 import { Icon } from '../../icones/Icon/Icon'
 import { StatusBadge } from '../StatusBadge/StatusBadge'
+import { useLibelle } from '../../i18n/LangueProvider'
 
 export interface StatCardProps {
   label: ReactNode
@@ -18,8 +19,9 @@ export interface StatCardProps {
 
 // Carte d'indicateur (§7.3).
 export function StatCard(p: StatCardProps) {
+  const t = useLibelle()
   const st = p.status
-  const t = p.trend
+  const tendance = p.trend
   return (
     <div className={cx('gm-card', 'gm-stat', p.className)} role={p.onClick ? 'button' : undefined} tabIndex={p.onClick ? 0 : undefined} onClick={p.onClick}>
       <div className="gm-stat-label">{p.label}</div>
@@ -28,13 +30,13 @@ export function StatCard(p: StatCardProps) {
         {p.unit ? <span className="gm-stat-unit">{p.unit}</span> : null}
       </div>
       <div className="gm-stat-meta">
-        {t ? (
+        {tendance ? (
           <span className="gm-row" style={{ gap: '2px' }}>
-            <Icon name={t.direction === 'up' ? 'arrow-up' : 'arrow-down'} />
-            {t.delta}
+            <Icon name={tendance.direction === 'up' ? 'arrow-up' : 'arrow-down'} />
+            {tendance.delta}
           </span>
         ) : null}
-        {p.threshold ? <span>{'seuil ' + p.threshold}</span> : null}
+        {p.threshold ? <span>{t('commun.seuil', { valeur: p.threshold })}</span> : null}
         {st ? <StatusBadge status={st} label={p.statusLabel || st} /> : null}
       </div>
     </div>

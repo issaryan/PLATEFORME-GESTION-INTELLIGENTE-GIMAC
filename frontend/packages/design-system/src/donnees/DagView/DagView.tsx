@@ -6,6 +6,8 @@ import { StatusBadge } from '../../affichage/StatusBadge/StatusBadge'
 import { Tabs } from '../../navigation/Tabs/Tabs'
 import { DataTable } from '../DataTable/DataTable'
 import { OperationNode, type OperationNodeProps } from '../../domaine/OperationNode/OperationNode'
+import { useLibelle } from '../../i18n/LangueProvider'
+import type { CleLibelle } from '../../i18n/libelles'
 
 export interface DagNode extends OperationNodeProps {
   phase: string
@@ -16,23 +18,28 @@ export interface DagViewProps {
   phases: { key: string; label: string }[]
   nodes: DagNode[]
   view?: 'graph' | 'list'
+  /** Clic ou Entrée sur un nœud. */
+  onSelect?: (code: string) => void
+  /** Nœud sélectionné (contour de focus, aria-current). */
+  selected?: string
 }
 
 const NODE_W = 240
 const NODE_H = 118
 const COL_GAP = 64
 const ROW_GAP = 16
-const ETATS: Record<string, [Status, string]> = {
-  eligible: ['info', 'éligible'],
-  locked: ['neutral', 'verrouillée'],
-  closed: ['ok', 'close'],
-  out: ['neutral', 'hors périmètre'],
-  late: ['warn', 'en retard'],
+const ETATS: Record<string, [Status, CleLibelle]> = {
+  eligible: ['info', 'operation.eligible'],
+  locked: ['neutral', 'operation.verrouillee'],
+  closed: ['ok', 'operation.close'],
+  out: ['neutral', 'operation.hors'],
+  late: ['warn', 'operation.retard'],
 }
 
 // Graphe orienté acyclique des opérations d'une liaison : disposition par phase (colonnes),
 // liens orthogonaux, chemin critique, zoom et vue liste équivalente (§7.6).
 export function DagView(p: DagViewProps) {
+  const t = useLibelle()
   const [view, setView] = useState<string>(p.view || 'graph')
   const [zoom, setZoom] = useState(1)
   const phases = p.phases || []
@@ -48,20 +55,20 @@ export function DagView(p: DagViewProps) {
   const H = maxRows * (NODE_H + ROW_GAP) + 32
   const toolbar = (
     <div className="gm-dag-toolbar">
-      <Tabs items={[{ key: 'graph', label: 'Graphe' }, { key: 'list', label: 'Vue liste' }]} value={view} onChange={setView} />
+      <Tabs items={[{ key: 'graph', label: t('dag.graphe') }, { key: 'list', label: t('dag.liste') }]} value={view} onChange={setView} />
       <span style={{ flex: 1 }} />
       <span className="gm-row" style={{ gap: 'var(--gm-space-3)', fontSize: 12, color: 'var(--gm-color-text-secondary)' }}>
-        <span className="gm-dag-key gm-dag-key-critical">chemin critique</span>
-        <StatusBadge status="info" label="éligible" />
-        <StatusBadge status="ok" label="close" />
-        <StatusBadge status="warn" label="en retard" />
-        <StatusBadge status="neutral" label="verrouillée" />
+        <span className="gm-dag-key gm-dag-key-critical">{t('gantt.critique')}</span>
+        <StatusBadge status="info" label={t('operation.eligible')} />
+        <StatusBadge status="ok" label={t('operation.close')} />
+        <StatusBadge status="warn" label={t('operation.retard')} />
+        <StatusBadge status="neutral" label={t('operation.verrouillee')} />
       </span>
       {view === 'graph' ? (
         <span className="gm-row">
-          <IconButton variant="ghost" size="sm" icon="x" label="Réduire" onClick={() => setZoom(Math.max(0.5, zoom - 0.1))} />
+          <IconButton variant="ghost" size="sm" icon="x" label={t('dag.reduire')} onClick={() => setZoom(Math.max(0.5, zoom - 0.1))} />
           <span className="gm-num gm-field-help">{Math.round(zoom * 100) + ' %'}</span>
-          <IconButton variant="ghost" size="sm" icon="plus" label="Agrandir" onClick={() => setZoom(Math.min(1.5, zoom + 0.1))} />
+          <IconButton variant="ghost" size="sm" icon="plus" label={t('dag.agrandir')} onClick={() => setZoom(Math.min(1.5, zoom + 0.1))} />
         </span>
       ) : null}
     </div>
@@ -74,13 +81,13 @@ export function DagView(p: DagViewProps) {
           state="ok"
           rowKey={(r: DagNode) => r.code}
           columns={[
-            { key: 'code', header: 'Code', type: 'mono', width: 140 },
-            { key: 'label', header: 'Opération' },
-            { key: 'phase', header: 'Phase', render: (r: DagNode) => phases.filter((x) => x.key === r.phase)[0]?.label },
-            { key: 'owner', header: 'Incombe à' },
-            { key: 'state', header: 'État', render: (r: DagNode) => { const m = ETATS[r.state]; return <StatusBadge status={m[0]} label={m[1]} /> } },
-            { key: 'elements', header: 'Quatre éléments', render: (r: DagNode) => { const e = r.elements || {}; const n = (['owner', 'proof', 'timestamp', 'validation'] as const).filter((k) => e[k]).length; return <span className="gm-num">{n + ' / 4'}</span> } },
-            { key: 'deps', header: 'Dépend de', render: (r: DagNode) => <span className="gm-mono">{(r.deps || []).join(', ') || 'aucune'}</span> },
+            { key: 'code', header: t('dag.code'), type: 'mono', width: 140 },
+            { key: 'label', header: t('dag.operation') },
+            { key: 'phase', header: t('dag.phase'), render: (r: DagNode) => phases.filter((x) => x.key === r.phase)[0]?.label },
+            { key: 'owner', header: t('dag.incombe') },
+            { key: 'state', header: t('dag.etat'), render: (r: DagNode) => { const m = ETATS[r.state]; return <StatusBadge status={m[0]} label={t(m[1])} /> } },
+            { key: 'elements', header: t('dag.quatreElements'), render: (r: DagNode) => { const e = r.elements || {}; const n = (['owner', 'proof', 'timestamp', 'validation'] as const).filter((k) => e[k] && e[k] !== 'pending').length; return <span className="gm-num">{n + ' / 4'}</span> } },
+            { key: 'deps', header: t('dag.depend'), render: (r: DagNode) => <span className="gm-mono">{(r.deps || []).join(', ') || t('dag.aucune')}</span> },
           ]}
           rows={nodes}
           density="compact"
@@ -90,7 +97,7 @@ export function DagView(p: DagViewProps) {
   return (
     <div className="gm-dag">
       {toolbar}
-      <div className="gm-dag-canvas" role="img" aria-label={'Graphe des opérations : ' + nodes.length + ' opérations en ' + phases.length + ' phases. La vue liste donne les mêmes informations.'}>
+      <div className="gm-dag-canvas" role="img" aria-label={t('dag.description', { n: nodes.length, phases: phases.length })}>
         <div className="gm-dag-inner" style={{ width: W * zoom, height: H * zoom }}>
           <div style={{ transform: 'scale(' + zoom + ')', transformOrigin: '0 0', width: W, height: H, position: 'relative' }}>
             {phases.map((ph, ci) => (
@@ -111,7 +118,15 @@ export function DagView(p: DagViewProps) {
             {nodes.map((n) => {
               const q = pos[n.code]
               return (
-                <div key={n.code} className="gm-dag-node" style={{ left: q.x, top: q.y, width: NODE_W }}>
+                <div
+                  key={n.code}
+                  className={cx('gm-dag-node', p.selected === n.code && 'gm-dag-node-sel')}
+                  style={{ left: q.x, top: q.y, width: NODE_W, cursor: p.onSelect ? 'pointer' : undefined }}
+                  aria-current={p.selected === n.code ? 'true' : undefined}
+                  tabIndex={p.onSelect ? 0 : undefined}
+                  onClick={p.onSelect ? () => p.onSelect!(n.code) : undefined}
+                  onKeyDown={p.onSelect ? (e) => { if (e.key === 'Enter') p.onSelect!(n.code) } : undefined}
+                >
                   <OperationNode {...n} />
                 </div>
               )

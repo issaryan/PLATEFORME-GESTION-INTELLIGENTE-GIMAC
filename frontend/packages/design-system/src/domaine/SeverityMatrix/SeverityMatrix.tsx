@@ -1,5 +1,6 @@
 import { cx } from '../../lib/cx'
 import type { Severity } from '../../lib/types'
+import { useLibelle } from '../../i18n/LangueProvider'
 
 type Niveau = 1 | 2 | 3 | 4 | 5
 
@@ -20,11 +21,12 @@ export interface SeverityMatrixProps {
 
 // Matrice impact × urgence 5 × 5 pour la qualification d'un incident (§7.7).
 export function SeverityMatrix(p: SeverityMatrixProps) {
+  const t = useLibelle()
   return (
-    <table className="gm-matrix" role="grid" aria-label="Matrice impact par urgence">
+    <table className="gm-matrix" role="grid" aria-label={t('severite.label')}>
       <thead>
         <tr>
-          <th scope="col">{'Impact \\ Urgence'}</th>
+          <th scope="col">{t('severite.axes')}</th>
           {LEVELS.map((u) => (
             <th key={u} scope="col">{u}</th>
           ))}
@@ -40,7 +42,7 @@ export function SeverityMatrix(p: SeverityMatrixProps) {
               return (
                 <td key={u} className={cx('gm-matrix-cell', 'gm-matrix-' + s, sel && 'gm-matrix-sel')} aria-selected={sel ? 'true' : undefined}>
                   <span className={'gm-severity gm-severity-' + s}>{s}</span>
-                  {sel ? <span className="gm-matrix-mark">sélection</span> : null}
+                  {sel ? <span className="gm-matrix-mark">{t('severite.selection')}</span> : null}
                 </td>
               )
             })}

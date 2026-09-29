@@ -9,6 +9,8 @@ Espace de travail npm des trois couches de présentation de la plateforme (D-46,
 | `apps/console` | `@gimac/app-console` | Console d'administration et d'audit | Administration hors bande | 4202 |
 | `packages/theme` | `@gimac/theme` | Jetons du thème (CC 6.2) | — | — |
 | `packages/design-system` | `@gimac/design-system` | Système de conception DS-GIMAC-01 (jetons, styles, 87 composants React) | — | — |
+| `packages/socle` | `@gimac/socle` | Socle d'interface F0 : client passerelle, canal poussé, FIDO2, i18n, enveloppe, connexion | — | — |
+| `packages/lot1` | `@gimac/lot1` | Lot 1 : ports, services, hooks, écrans DES-08 à DES-12 et POR-03 | — | — |
 | `apps/catalogue` | `@gimac/app-catalogue` | Catalogue vivant, hors production | Poste de développement | 4203 |
 
 Pile : React 19.2, TypeScript 6, Vite 8, oxlint, générés par `create-vite` (gabarit `react-ts`).
@@ -41,3 +43,4 @@ Enveloppe commune IHM-01, bibliothèque de composants IHM-02, navigation élagu�
 | 2026-09-28 | — | Ajout de ce README et des README des applications |
 | 2026-09-28 | 6eca1ce | Paquet `@gimac/design-system` (portage React du DS-GIMAC-01, 87 composants) et catalogue vivant `apps/catalogue` (port 4203) |
 | 2026-09-29 | — | Système de conception terminé : ThemeProvider, reset.css, contrôle des valeurs en dur, tests (48 unitaires, 174 audits axe), corrections de DiffView, GanttView et DecisionToTaskRow |
+| 2026-09-29 | — | Lot 1 : paquets `@gimac/socle` (F0) et `@gimac/lot1` (ports, services HTTP et simulés, hooks, écrans DES-08 à DES-12 et POR-03) ; connexion TRA-01 ; i18n FR, EN, ES ; relais `/bff` dans Vite et nginx |

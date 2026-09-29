@@ -3,6 +3,7 @@ import { cx } from '../../lib/cx'
 import { useFocusTrap } from '../../lib/useFocusTrap'
 import { IconButton } from '../../actions/IconButton/IconButton'
 import { Overlay } from '../Overlay/Overlay'
+import { useLibelle } from '../../i18n/LangueProvider'
 
 export interface DialogProps {
   title: string
@@ -22,6 +23,7 @@ export interface DialogProps {
 
 // Fenêtre modale centrée de 560 px (720 en lg) sur le voile (§7.5).
 export function Dialog(p: DialogProps) {
+  const t = useLibelle()
   const ref = useRef<HTMLDivElement>(null)
   useFocusTrap(ref, p.open !== false, p.onClose)
   if (p.open === false) return null
@@ -38,7 +40,7 @@ export function Dialog(p: DialogProps) {
       >
         <header className="gm-dialog-head">
           <h2 id={id + '-title'} className="gm-card-title">{p.title}</h2>
-          {p.onClose ? <IconButton variant="ghost" size="sm" icon="x" label="Fermer" onClick={p.onClose} /> : null}
+          {p.onClose ? <IconButton variant="ghost" size="sm" icon="x" label={t('commun.fermer')} onClick={p.onClose} /> : null}
         </header>
         {p.description ? <p id={id + '-desc'} className="gm-dialog-desc">{p.description}</p> : null}
         <div className="gm-dialog-body">{p.children}</div>

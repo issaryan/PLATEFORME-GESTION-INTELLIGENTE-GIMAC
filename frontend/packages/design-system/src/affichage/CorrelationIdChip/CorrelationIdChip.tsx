@@ -1,4 +1,5 @@
 import { Icon } from '../../icones/Icon/Icon'
+import { useLibelle } from '../../i18n/LangueProvider'
 
 export interface CorrelationIdChipProps {
   id?: string
@@ -7,10 +8,11 @@ export interface CorrelationIdChipProps {
 
 // Identifiant de corrélation en chasse fixe avec copie (§7.3).
 export function CorrelationIdChip(p: CorrelationIdChipProps) {
+  const t = useLibelle()
   return (
     <span className="gm-chip">
-      {p.id}
-      <button type="button" aria-label="Copier l'identifiant de corrélation" onClick={p.onCopy}><Icon name="copy" size={14} /></button>
+      <span data-testid="correlation-id">{p.id}</span>
+      <button type="button" aria-label={t('correlation.copier')} onClick={p.onCopy}><Icon name="copy" size={14} /></button>
     </span>
   )
 }

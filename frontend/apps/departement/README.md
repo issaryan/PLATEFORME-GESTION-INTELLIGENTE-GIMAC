@@ -22,3 +22,4 @@ npm run dev:departement      # depuis frontend/
 |---|---|---|
 | 2026-09-28 | b20a049 | Génération `create-vite`, page d'accueil provisoire, thème, relais /api vers la passerelle |
 | 2026-09-28 | — | Remplacement du README du gabarit Vite par ce README |
+| 2026-09-29 | — | Routes du lot 1, enveloppe commune, connexion TRA-01, services simulés par défaut (`VITE_SERVICES=http` pour la passerelle), i18n FR, EN, ES, relais `/bff` |

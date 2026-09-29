@@ -3,6 +3,8 @@ import type { Status } from '../../lib/types'
 import { Button } from '../../actions/Button/Button'
 import { StatusBadge } from '../../affichage/StatusBadge/StatusBadge'
 import { Tabs } from '../../navigation/Tabs/Tabs'
+import { useLibelle } from '../../i18n/LangueProvider'
+import type { CleLibelle } from '../../i18n/libelles'
 
 export type RiskLevel = 1 | 2 | 3 | 4 | 5
 export type RiskCoord = [RiskLevel, RiskLevel]
@@ -23,13 +25,14 @@ export interface RiskMatrixProps {
 }
 
 const RM = [1, 2, 3, 4, 5]
-function zone(pr: number, im: number): [Status, string] {
+function zone(pr: number, im: number): [Status, CleLibelle] {
   const s = pr * im
-  return s >= 15 ? ['crit', 'critique'] : s >= 8 ? ['warn', 'élevé'] : s >= 4 ? ['info', 'modéré'] : ['ok', 'faible']
+  return s >= 15 ? ['crit', 'risque.critique'] : s >= 8 ? ['warn', 'risque.eleve'] : s >= 4 ? ['info', 'risque.modere'] : ['ok', 'risque.faible']
 }
 
 // Matrice 5 × 5 probabilité × impact, risques positionnés (§7.6, DES-24).
 export function RiskMatrix(p: RiskMatrixProps) {
+  const t = useLibelle()
   const [stage, setStage] = useState<string>(p.stage || 'residual')
   const risks = (p.risks || []).map((r) => {
     const v = r[stage as RiskStage] || r.residual || r.gross
@@ -38,15 +41,15 @@ export function RiskMatrix(p: RiskMatrixProps) {
   return (
     <div className="gm-riskm">
       <div className="gm-dag-toolbar">
-        <Tabs items={[{ key: 'gross', label: 'Brut' }, { key: 'control', label: 'Maîtrise' }, { key: 'residual', label: 'Résiduel' }]} value={stage} onChange={setStage} />
+        <Tabs items={[{ key: 'gross', label: t('risque.brut') }, { key: 'control', label: t('risque.maitrise') }, { key: 'residual', label: t('risque.residuel') }]} value={stage} onChange={setStage} />
         <span style={{ flex: 1 }} />
-        <Button size="sm" variant="ghost">Vue tableau</Button>
+        <Button size="sm" variant="ghost">{t('commun.vueTableau')}</Button>
       </div>
       <div className="gm-row" style={{ alignItems: 'flex-start', gap: 'var(--gm-space-5)' }}>
-        <table className="gm-matrix" role="grid" aria-label="Matrice des risques, probabilité par impact">
+        <table className="gm-matrix" role="grid" aria-label={t('risque.label')}>
           <thead>
             <tr>
-              <th scope="col">{'Probabilité \\ Impact'}</th>
+              <th scope="col">{t('risque.axes')}</th>
               {RM.map((i) => (
                 <th key={i} scope="col">{i}</th>
               ))}
@@ -61,7 +64,7 @@ export function RiskMatrix(p: RiskMatrixProps) {
                   const here = risks.filter((r) => r.pr === pr && r.im === im)
                   return (
                     <td key={im} className="gm-matrix-cell gm-risk-cell">
-                      <span className="gm-risk-zone" data-zone={z[0]}>{z[1]}</span>
+                      <span className="gm-risk-zone" data-zone={z[0]}>{t(z[1])}</span>
                       {here.length ? (
                         <span className="gm-row" style={{ gap: 4, justifyContent: 'center' }}>
                           {here.map((r) => (
@@ -86,7 +89,7 @@ export function RiskMatrix(p: RiskMatrixProps) {
                   {r.label}
                   <span className="gm-field-help" style={{ display: 'block' }}>{'P' + r.pr + ' × I' + r.im + ' · ' + r.owner}</span>
                 </span>
-                <StatusBadge status={z[0]} label={z[1]} />
+                <StatusBadge status={z[0]} label={t(z[1])} />
               </li>
             )
           })}

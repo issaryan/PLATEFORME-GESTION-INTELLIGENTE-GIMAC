@@ -1,5 +1,5 @@
 import { Component, Fragment, Suspense, lazy, useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from 'react'
-import { Icon } from '@gimac/design-system'
+import { Icon, LangueProvider, type LangueDS } from '@gimac/design-system'
 import { GROUPES, PLAN } from './plan'
 import { FONDATIONS } from './fondations'
 
@@ -71,6 +71,21 @@ function Fiche({ texte }: { texte: string }) {
 export function Catalogue() {
   const [id, setId] = useState(idDepuisAdresse)
   const [theme, setTheme] = useState<Theme>(lirePreference)
+  const [langue, setLangue] = useState<LangueDS>(() => {
+    try {
+      const l = localStorage.getItem('gm-catalogue-langue')
+      return l === 'en' || l === 'es' ? l : 'fr'
+    } catch {
+      return 'fr'
+    }
+  })
+  useEffect(() => {
+    try {
+      localStorage.setItem('gm-catalogue-langue', langue)
+    } catch {
+      /* préférence non mémorisée : sans conséquence */
+    }
+  }, [langue])
 
   useEffect(() => {
     const surHash = () => setId(idDepuisAdresse())
@@ -181,6 +196,13 @@ export function Catalogue() {
                 Sombre
               </button>
             </div>
+            <div className="cat-bascule" role="group" aria-label="Langue de l'aperçu">
+              {(['fr', 'en', 'es'] as const).map((l) => (
+                <button key={l} type="button" lang={l} aria-pressed={langue === l} onClick={() => setLangue(l)}>
+                  {l.toUpperCase()}
+                </button>
+              ))}
+            </div>
             <button type="button" className="gm-btn gm-btn-secondary gm-btn-sm" disabled={index <= 0} onClick={() => aller(ENTREES[index - 1])}>
               Précédent
             </button>
@@ -202,12 +224,14 @@ export function Catalogue() {
           style={{ width: largeurScene, minHeight: courante.hauteur, zoom: echelle }}
         >
           {Apercu ? (
-            <div className="gm-root gm-pad" data-theme={theme}>
-              <Garde key={courante.id}>
-                <Suspense fallback={<div className="gm-skeleton" style={{ height: 40 }} />}>
-                  <Apercu />
-                </Suspense>
-              </Garde>
+            <div className="gm-root gm-pad" data-theme={theme} lang={langue}>
+              <LangueProvider langue={langue}>
+                <Garde key={courante.id}>
+                  <Suspense fallback={<div className="gm-skeleton" style={{ height: 40 }} />}>
+                    <Apercu />
+                  </Suspense>
+                </Garde>
+              </LangueProvider>
             </div>
           ) : (
             <div className="cat-attente">

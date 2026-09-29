@@ -1,5 +1,6 @@
 import { cx } from '../../lib/cx'
 import { Icon } from '../../icones/Icon/Icon'
+import { useLibelle } from '../../i18n/LangueProvider'
 
 export interface PinFieldProps {
   label?: string
@@ -13,13 +14,14 @@ export interface PinFieldProps {
 
 // Saisie d'un code court à usage unique, une case par chiffre (§7.2).
 export function PinField(p: PinFieldProps) {
+  const t = useLibelle()
   const n = p.length || 6
   const v = (p.value || '').split('')
   const cells: number[] = []
   for (let i = 0; i < n; i++) cells.push(i)
   return (
     <div className="gm-field">
-      <span className="gm-field-label" id="pin-label">{p.label || 'Code court de vérification'}</span>
+      <span className="gm-field-label" id="pin-label">{p.label || t('pin.label')}</span>
       <div className="gm-pin" role="group" aria-labelledby="pin-label">
         {cells.map((i) => (
           <input
@@ -28,7 +30,7 @@ export function PinField(p: PinFieldProps) {
             inputMode="numeric"
             maxLength={1}
             className={cx('gm-input gm-pin-cell', p.error && 'gm-pin-err')}
-            aria-label={'Chiffre ' + (i + 1) + ' sur ' + n}
+            aria-label={t('pin.chiffre', { i: i + 1, n })}
             value={v[i] || ''}
             autoComplete={i === 0 ? 'one-time-code' : 'off'}
             onChange={() => {}}

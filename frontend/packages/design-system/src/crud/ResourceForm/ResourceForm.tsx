@@ -18,6 +18,7 @@ import { Stepper } from '../../navigation/Stepper/Stepper'
 import { InlineAlert } from '../../conteneurs/InlineAlert/InlineAlert'
 import type { FieldDescriptor, ResourceDescriptor } from '../descripteur'
 import { optionsOf } from '../outils'
+import { useLibelle } from '../../i18n/LangueProvider'
 
 export interface ResourceFormProps<T> {
   descriptor: ResourceDescriptor<T>
@@ -40,6 +41,7 @@ export interface ResourceFormProps<T> {
 
 // Création ou modification : champs inForm, erreurs mappées, étapes, brouillon (§8.3, gabarit G4).
 export function ResourceForm<T extends object>(p: ResourceFormProps<T>) {
+  const t = useLibelle()
   const desc = p.descriptor
   const mode = p.mode || 'create'
   const fields = desc.fields.filter((f) => f.inForm === true || f.inForm === mode)
@@ -93,7 +95,7 @@ export function ResourceForm<T extends object>(p: ResourceFormProps<T>) {
         return <DateRangeField {...common} from={plage.from || ''} to={plage.to || ''} />
       }
       case 'select':
-        return <Select {...common} value={s} options={[{ value: '', label: 'Choisir' }].concat(opts)} />
+        return <Select {...common} value={s} options={[{ value: '', label: t('crud.choisir') }].concat(opts)} />
       case 'searchSelect':
         return (
           <SearchSelect
@@ -122,7 +124,10 @@ export function ResourceForm<T extends object>(p: ResourceFormProps<T>) {
     }
   }
 
-  const title = (mode === 'create' ? 'Enregistrer ' : 'Modifier ') + (desc.label.gender === 'f' ? 'une ' : 'un ') + desc.label.singular
+  const g = desc.label.gender === 'f' ? 'f' : 'm'
+  const title = t(mode === 'create' ? (g === 'f' ? 'crud.enregistrerUne' : 'crud.enregistrerUn') : g === 'f' ? 'crud.modifierUne' : 'crud.modifierUn', { objet: desc.label.singular })
+  const elision = /^[aeiouyhàâéèêîôû]/i.test(desc.label.singular)
+  const soumettre = t(elision ? 'crud.enregistrerElision' : g === 'f' ? 'crud.enregistrerLa' : 'crud.enregistrerLe', { objet: desc.label.singular })
   const errList = Object.keys(errors)
   return (
     <form
@@ -140,7 +145,7 @@ export function ResourceForm<T extends object>(p: ResourceFormProps<T>) {
         </div>
       ) : null}
       {errList.length ? (
-        <InlineAlert level="crit" title={errList.length + ' champ' + (errList.length > 1 ? 's' : '') + ' à corriger :'}>
+        <InlineAlert level="crit" title={t(errList.length > 1 ? 'crud.champsACorriger' : 'crud.champACorriger', { n: errList.length })}>
           <ul style={{ margin: '4px 0 0', paddingLeft: 20 }}>
             {errList.map((k) => {
               const f = desc.fields.filter((x) => x.name === k)[0]
@@ -161,16 +166,16 @@ export function ResourceForm<T extends object>(p: ResourceFormProps<T>) {
           </div>
         ))}
       </div>
-      <div className="gm-field-help">* champ obligatoire · brouillon conservé en mémoire de session jusqu'à la soumission</div>
+      <div className="gm-field-help">{t('crud.legende')}</div>
       <div className="gm-form-actions">
-        <Button variant="ghost" type="button" onClick={p.onCancel}>Annuler</Button>
+        <Button variant="ghost" type="button" onClick={p.onCancel}>{t('commun.annuler')}</Button>
         <span style={{ flex: 1 }} />
-        {steps && step > 0 ? <Button variant="secondary" type="button" onClick={() => setStep(step - 1)}>Étape précédente</Button> : null}
+        {steps && step > 0 ? <Button variant="secondary" type="button" onClick={() => setStep(step - 1)}>{t('crud.etapePrecedente')}</Button> : null}
         {steps && step < steps.length - 1 ? (
-          <Button variant="primary" type="button" icon="arrow-right" onClick={() => setStep(step + 1)}>Étape suivante</Button>
+          <Button variant="primary" type="button" icon="arrow-right" onClick={() => setStep(step + 1)}>{t('crud.etapeSuivante')}</Button>
         ) : (
           <Button variant="primary" type="submit" icon={p.confirm === 'sign' ? 'pen-line' : undefined}>
-            {p.submitLabel || (mode === 'create' ? "Enregistrer l'" + desc.label.singular : 'Enregistrer les modifications')}
+            {p.submitLabel || (mode === 'create' ? soumettre : t('crud.enregistrerModifs'))}
           </Button>
         )}
       </div>

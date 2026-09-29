@@ -7,6 +7,7 @@ import { Money } from '../affichage/Money/Money'
 import { DateTime } from '../affichage/DateTime/DateTime'
 import { Tag } from '../affichage/Tag/Tag'
 import type { FieldDescriptor, ResourceAction, ResourceDescriptor } from './descripteur'
+import type { Traduire } from '../i18n/LangueProvider'
 
 export interface Runner<T> {
   run: (a: ResourceAction<T>, row: T | null) => void
@@ -26,7 +27,7 @@ export function optionsOf<T>(f: FieldDescriptor<T>): Option[] {
   return Array.isArray(f.options) ? f.options : []
 }
 
-export function renderField<T>(f: FieldDescriptor<T>, value: unknown, row: T, desc: ResourceDescriptor<T>): ReactNode {
+export function renderField<T>(f: FieldDescriptor<T>, value: unknown, row: T, desc: ResourceDescriptor<T>, t: Traduire): ReactNode {
   if (f.render) return f.render(value, row)
   if (f.kind === 'status') {
     const d = (desc.statusDictionary || {})[String(value)] || { label: String(value || '').toLowerCase(), status: 'neutral' as Status }
@@ -39,9 +40,9 @@ export function renderField<T>(f: FieldDescriptor<T>, value: unknown, row: T, de
     const o = optionsOf(f).filter((x) => x.value === value)[0]
     return o ? o.label : (value as ReactNode)
   }
-  if (f.kind === 'checkbox' || f.kind === 'switch') return value ? 'oui' : 'non'
+  if (f.kind === 'checkbox' || f.kind === 'switch') return value ? t('crud.oui') : t('crud.non')
   if (f.kind === 'multiSelect') return <span className="gm-row">{((value as string[]) || []).map((v) => <Tag key={v}>{v}</Tag>)}</span>
-  return value === undefined || value === null || value === '' ? <span className="gm-field-help">non renseigné</span> : (value as ReactNode)
+  return value === undefined || value === null || value === '' ? <span className="gm-field-help">{t('crud.nonRenseigne')}</span> : (value as ReactNode)
 }
 
 export function allowed<T>(action: ResourceAction<T>, row: T | null, perms?: string[]): boolean {

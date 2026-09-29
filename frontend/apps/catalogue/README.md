@@ -21,3 +21,4 @@ Navigation : liste à gauche, boutons Précédent et Suivant, Alt + flèche haut
 |---|---|---|
 | 2026-09-28 | 6eca1ce | Création du catalogue vivant |
 | 2026-09-29 | — | Mise à l'échelle des aperçus sur écran étroit, audit axe de tous les aperçus |
+| 2026-09-29 | — | Sélecteur de langue FR, EN, ES des aperçus |

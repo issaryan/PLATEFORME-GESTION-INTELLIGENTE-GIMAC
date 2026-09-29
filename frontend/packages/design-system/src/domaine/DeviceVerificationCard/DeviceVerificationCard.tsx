@@ -5,14 +5,16 @@ import { Hash } from '../../affichage/Hash/Hash'
 import { Card } from '../../conteneurs/Card/Card'
 import { Button } from '../../actions/Button/Button'
 import { PinField } from '../../saisie/PinField/PinField'
+import { useLibelle } from '../../i18n/LangueProvider'
+import type { CleLibelle } from '../../i18n/libelles'
 
 export type DeviceState = 'verified' | 'pending' | 'unverified' | 'revoked'
 
-const MAP: Record<DeviceState, [Status, string]> = {
-  verified: ['ok', 'vérifié'],
-  pending: ['info', 'vérification en cours'],
-  unverified: ['warn', 'non vérifié'],
-  revoked: ['crit', 'révoqué'],
+const MAP: Record<DeviceState, [Status, CleLibelle]> = {
+  verified: ['ok', 'terminal.verifie'],
+  pending: ['info', 'terminal.enCours'],
+  unverified: ['warn', 'terminal.nonVerifie'],
+  revoked: ['crit', 'terminal.revoque'],
 }
 
 export interface DeviceVerificationCardProps {
@@ -32,32 +34,33 @@ export interface DeviceVerificationCardProps {
 
 // Carte d'un terminal (§7.7, profil DES-02 et console CON-09).
 export function DeviceVerificationCard(p: DeviceVerificationCardProps) {
+  const t = useLibelle()
   const st = p.state || 'unverified'
   const m = MAP[st]
   return (
     <Card
       title={p.name}
-      actions={<StatusBadge status={m[0]} label={m[1]} icon="smartphone" />}
+      actions={<StatusBadge status={m[0]} label={t(m[1])} icon="smartphone" />}
       footer={
         st === 'revoked'
           ? null
           : [
-              <Button key={1} variant="danger" size="sm">Révoquer le terminal</Button>,
-              st !== 'verified' ? <Button key={2} variant="primary" size="sm" icon="key-round">Vérifier avec un code court</Button> : null,
+              <Button key={1} variant="danger" size="sm">{t('terminal.revoquer')}</Button>,
+              st !== 'verified' ? <Button key={2} variant="primary" size="sm" icon="key-round">{t('terminal.verifierCode')}</Button> : null,
             ]
       }
     >
       <KeyValueList
         items={[
-          { key: 'Identifiant', value: p.id, mono: true },
-          { key: 'Empreinte de clé', value: <Hash value={p.fingerprint || ''} /> },
-          { key: 'Dernière activité', value: p.lastSeen },
-          { key: 'Plateforme', value: p.platform },
+          { key: t('terminal.identifiant'), value: p.id, mono: true },
+          { key: t('terminal.empreinte'), value: <Hash value={p.fingerprint || ''} /> },
+          { key: t('terminal.activite'), value: p.lastSeen },
+          { key: t('terminal.plateforme'), value: p.platform },
         ]}
       />
       {st === 'pending' && p.code ? (
         <div style={{ marginTop: 'var(--gm-space-4)' }}>
-          <PinField label="Code court affiché sur l'autre terminal" value={p.code} help="Valable 10 minutes" />
+          <PinField label={t('terminal.code')} value={p.code} help={t('terminal.validite')} />
         </div>
       ) : null}
     </Card>

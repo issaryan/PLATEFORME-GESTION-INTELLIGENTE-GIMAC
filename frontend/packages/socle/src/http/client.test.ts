@@ -1,0 +1,83 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { configureHttp, http } from './client'
+import { ApiError } from './errors'
+
+const reply = (status: number, body: object | string, entetes: Record<string, string> = {}) =>
+  vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+    new Response(typeof body === 'string' ? body : JSON.stringify(body), {
+      status,
+      headers: { 'X-Correlation-Id': 'cid-1', 'Content-Type': typeof body === 'string' ? 'text/html' : 'application/json', ...entetes },
+    }),
+  )
+const entetes = (spy: ReturnType<typeof reply>, i = 0) => new Headers(spy.mock.calls[i][1]?.headers)
+
+beforeEach(() => configureHttp({ onUnauthorized: async () => false, onForbidden: () => undefined, onCorrelation: () => undefined, csrf: { cookie: 'XSRF-TOKEN', header: 'X-XSRF-TOKEN' } }))
+afterEach(() => {
+  vi.restoreAllMocks()
+  document.cookie = 'XSRF-TOKEN=; expires=Thu, 01 Jan 1970 00:00:00 GMT'
+})
+
+describe('F0 : client HTTP', () => {
+  it('F0 : une erreur 409 est normalisée en ApiError avec son identifiant de corrélation', async () => {
+    reply(409, { code: 'HOM_CLOSURE_ELEMENT_MISSING', message: 'preuve', correlationId: 'cid-409' })
+    await expect(http.post('/bff/des/homologation/operations/o1/validation')).rejects.toMatchObject({ status: 409, code: 'HOM_CLOSURE_ELEMENT_MISSING', correlationId: 'cid-409' })
+  })
+
+  it('F0 : un 401 déclenche la réauthentification puis rejoue la requête une seule fois', async () => {
+    const onUnauthorized = vi.fn(async () => true)
+    configureHttp({ onUnauthorized })
+    reply(401, {})
+    reply(200, { ok: true })
+    await expect(http.get('/bff/des/homologation/liaisons')).resolves.toEqual({ ok: true })
+    expect(onUnauthorized).toHaveBeenCalledTimes(1)
+  })
+
+  it("F0 : l'assertion est transmise dans X-Reauth-Assertion et aucun en-tête Authorization n'est posé", async () => {
+    const spy = reply(200, {})
+    await http.post('/bff/des/homologation/operations/o1/validation', { body: {}, reauthAssertion: 'YXNzZXJ0' })
+    expect(entetes(spy).get('X-Reauth-Assertion')).toBe('YXNzZXJ0')
+    expect(entetes(spy).has('Authorization')).toBe(false)
+  })
+
+  it("F0 : une requête signée n'est jamais rejouée après un 401 (défi FIDO2 à usage unique)", async () => {
+    const onUnauthorized = vi.fn(async () => true)
+    configureHttp({ onUnauthorized })
+    reply(401, { code: 'IAM_REAUTH_EXPIRED' })
+    await expect(http.post('/bff/des/homologation/operations/o1/validation', { reauthAssertion: 'x' })).rejects.toBeInstanceOf(ApiError)
+    expect(onUnauthorized).not.toHaveBeenCalled()
+  })
+
+  it('F0 : le jeton anti-CSRF de la passerelle accompagne les méthodes qui modifient, pas les lectures', async () => {
+    document.cookie = 'XSRF-TOKEN=jeton-csrf'
+    const spy = reply(200, {})
+    reply(200, {})
+    await http.post('/bff/des/homologation/liaisons', { body: {} })
+    await http.get('/bff/des/homologation/liaisons')
+    expect(entetes(spy, 0).get('X-XSRF-TOKEN')).toBe('jeton-csrf')
+    expect(entetes(spy, 1).has('X-XSRF-TOKEN')).toBe(false)
+  })
+
+  it("F0 : une page HTML renvoyée par un relais mal configuré devient une erreur explicite", async () => {
+    reply(200, '<!doctype html><html></html>')
+    await expect(http.get('/bff/des/homologation/liaisons')).rejects.toMatchObject({ code: 'REPONSE_NON_JSON' })
+  })
+
+  it('F0 : une passerelle injoignable est normalisée', async () => {
+    vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new TypeError('Failed to fetch'))
+    await expect(http.get('/bff/des/homologation/liaisons')).rejects.toMatchObject({ status: 0, code: 'RESEAU_INDISPONIBLE' })
+  })
+
+  it("F0 : un 403 est signalé à l'enveloppe (page Accès refusé)", async () => {
+    const onForbidden = vi.fn()
+    configureHttp({ onForbidden })
+    reply(403, { code: 'OPA_DENIED', message: 'refus' })
+    await expect(http.get('/bff/des/homologation/liaisons')).rejects.toBeInstanceOf(ApiError)
+    expect(onForbidden).toHaveBeenCalledWith(expect.objectContaining({ code: 'OPA_DENIED', correlationId: 'cid-1' }))
+  })
+
+  it("F0 : l'empreinte d'un téléchargement vient de Repr-Digest", async () => {
+    reply(200, { a: 1 }, { 'Repr-Digest': 'sha-256=:AAEC:' })
+    const r = await http.blob('/bff/des/certification/attestations/A', 'application/pdf')
+    expect(r.empreinte).toBe('000102')
+  })
+})

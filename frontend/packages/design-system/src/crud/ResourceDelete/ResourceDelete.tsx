@@ -2,6 +2,7 @@ import { ConfirmDialog } from '../../conteneurs/ConfirmDialog/ConfirmDialog'
 import { SignDialog } from '../../conteneurs/SignDialog/SignDialog'
 import type { ResourceDescriptor } from '../descripteur'
 import { champ } from '../outils'
+import { useLibelle } from '../../i18n/LangueProvider'
 
 export interface ResourceDeleteProps<T> {
   descriptor: ResourceDescriptor<T>
@@ -15,15 +16,15 @@ export interface ResourceDeleteProps<T> {
 
 // Suppression ou archivage à confirmation ; jamais de suppression physique d'un objet réglementaire (§8.3).
 export function ResourceDelete<T extends object>(p: ResourceDeleteProps<T>) {
+  const t = useLibelle()
   const desc = p.descriptor
   const row = (p.row || {}) as T
   const archive = !!desc.endpoints.archive || !desc.endpoints.delete
-  const verb = archive ? 'Archiver' : 'Supprimer'
-  const article = desc.label.gender === 'f' ? 'la ' : 'le '
-  const title = verb + ' ' + article + desc.label.singular
+  const g = desc.label.gender === 'f' ? 'f' : 'm'
+  const title = t(archive ? (g === 'f' ? 'crud.archiver.f' : 'crud.archiver.m') : g === 'f' ? 'crud.supprimer.f' : 'crud.supprimer.m', { objet: desc.label.singular })
   const object = [
     { key: desc.label.singular, value: String(champ(row, desc.titleField)) },
-    { key: 'Référence', value: String(champ(row, desc.idField)), mono: true },
+    { key: t('crud.reference'), value: String(champ(row, desc.idField)), mono: true },
   ]
   if (p.confirm === 'sign')
     return (
@@ -49,11 +50,8 @@ export function ResourceDelete<T extends object>(p: ResourceDeleteProps<T>) {
       object={object}
       consequences={
         archive
-          ? [
-              "Aucune suppression physique : l'objet est archivé et reste consultable en lecture seule, conformément à la rétention réglementaire.",
-              'Les liaisons, tickets et pièces rattachés restent accessibles depuis le registre.',
-            ]
-          : ["La suppression est définitive et consignée dans le registre d'audit."]
+          ? [t('crud.archive1'), t('crud.archive2')]
+          : [t('crud.suppression')]
       }
     />
   )

@@ -1,4 +1,5 @@
 import type { BaseProps, Option } from '../../lib/types'
+import { useLibelle } from '../../i18n/LangueProvider'
 
 export interface CheckboxGroupProps extends BaseProps {
   label: string
@@ -9,6 +10,7 @@ export interface CheckboxGroupProps extends BaseProps {
 
 // Groupe de cases avec « Tout sélectionner » à l'état indéterminé (§7.2).
 export function CheckboxGroup(p: CheckboxGroupProps) {
+  const t = useLibelle()
   const val = p.value || []
   const all = !!p.options.length && val.length === p.options.length
   const some = val.length > 0 && !all
@@ -24,7 +26,7 @@ export function CheckboxGroup(p: CheckboxGroupProps) {
           }}
           onChange={() => p.onChange && p.onChange(all ? [] : p.options.map((o) => o.value))}
         />
-        <span>Tout sélectionner</span>
+        <span>{t('checkboxGroup.tout')}</span>
       </label>
       <div className="gm-col" style={{ gap: 'var(--gm-space-2)', paddingLeft: 'var(--gm-space-5)' }}>
         {p.options.map((o) => (

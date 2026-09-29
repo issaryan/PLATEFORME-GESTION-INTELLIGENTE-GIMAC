@@ -16,3 +16,5 @@
 .gm-cov-4 { background: var(--gm-color-status-ok-fg); }
 .gm-cov-text { font-size: 12px; line-height: 18px; color: var(--gm-color-text-secondary); }
 .gm-late { color: var(--gm-color-status-crit-fg); font-weight: 600; }
+/* Extension lot 1 : anneau compact pour les colonnes de tableau (ProgressRing compact). */
+.gm-ring-compact { display: inline-flex; align-items: center; gap: var(--gm-space-2); }

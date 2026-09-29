@@ -17,10 +17,12 @@
     "jsx": "react-jsx",
 
     /* Linting */
+    "strict": true,
+    "resolveJsonModule": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src"]
+  "include": ["src", "../../packages/design-system/src", "../../packages/socle/src", "../../packages/lot1/src"]
 }

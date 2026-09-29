@@ -137,3 +137,5 @@ rect.gm-data-8, circle.gm-data-8, .gm-chart-swatch.gm-data-8 { fill: var(--gm-da
 .gm-diff-key.gm-diff-add { background: var(--gm-color-status-ok-bg); color: var(--gm-color-status-ok-fg); }
 .gm-diff-key.gm-diff-del { background: var(--gm-color-status-crit-bg); color: var(--gm-color-status-crit-fg); }
 .gm-diff-key.gm-diff-mod { background: var(--gm-color-status-warn-bg); color: var(--gm-color-status-warn-fg); }
+/* Extension lot 1 : nœud sélectionné du graphe (DagView selected). */
+.gm-dag-node-sel .gm-node { outline: var(--gm-border-2) solid var(--gm-color-focus); outline-offset: 2px; }

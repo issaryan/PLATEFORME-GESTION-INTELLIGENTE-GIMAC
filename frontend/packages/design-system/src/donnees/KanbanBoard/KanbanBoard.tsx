@@ -2,6 +2,7 @@ import { cx } from '../../lib/cx'
 import { Icon } from '../../icones/Icon/Icon'
 import { Button } from '../../actions/Button/Button'
 import { TicketCard, type TicketCardProps } from '../../domaine/TicketCard/TicketCard'
+import { useLibelle } from '../../i18n/LangueProvider'
 
 export interface KanbanColumn {
   key: string
@@ -19,8 +20,9 @@ export interface KanbanBoardProps {
 
 // Tableau Kanban avec limites d'en-cours (§7.6, DES-23).
 export function KanbanBoard(p: KanbanBoardProps) {
+  const t = useLibelle()
   return (
-    <div className="gm-kanban" role="group" aria-label={p.label || 'Tableau'}>
+    <div className="gm-kanban" role="group" aria-label={p.label || t('kanban.label')}>
       {(p.columns || []).map((c) => {
         const n = c.cards.length
         const over = c.limit && n > c.limit
@@ -38,15 +40,15 @@ export function KanbanBoard(p: KanbanBoardProps) {
                 <span className="gm-field-help gm-num">{n}</span>
               )}
             </header>
-            {over ? <div className="gm-kanban-notice">Limite d'en-cours dépassée : une dérogation (motif, approbateur distinct, 72 h) est requise.</div> : null}
+            {over ? <div className="gm-kanban-notice">{t('kanban.depassee')}</div> : null}
             <div className="gm-kanban-cards">
               {c.cards.map((card) => (
                 <TicketCard key={card.id} {...card} />
               ))}
-              {n === 0 ? <div className="gm-kanban-empty">Aucune tâche</div> : null}
+              {n === 0 ? <div className="gm-kanban-empty">{t('kanban.aucune')}</div> : null}
             </div>
             <footer className="gm-kanban-foot">
-              <Button size="sm" variant="ghost" icon="plus" disabled={!!(full && !c.allowAdd)} disabledReason="Limite d'en-cours atteinte, demandez une dérogation">Ajouter une tâche</Button>
+              <Button size="sm" variant="ghost" icon="plus" disabled={!!(full && !c.allowAdd)} disabledReason={t('kanban.atteinte')}>{t('kanban.ajouter')}</Button>
             </footer>
           </section>
         )

@@ -1,0 +1,13 @@
+// Socle d'interface du lot 1 (PI-GIMAC-01 F0).
+export { P, type Couche } from './http/prefixes'
+export { ApiError, estApiError, type Problem } from './http/errors'
+export { http, configureHttp, reprDigestToHex, type RequestOptions, type HttpHooks, type CsrfConfig } from './http/client'
+export { openLiveChannel, type LiveTopic, type LiveEvent, type EtatCanal } from './live/live'
+export { getReauthAssertion, ReauthCancelled, type SignPurpose } from './reauth/webauthn'
+export * from './ressource/types'
+export { QueryBoundary, EtatsRequete, type QueryBoundaryProps } from './requete/QueryBoundary'
+export { initI18n, LANGUES, type Langue, type Catalogue } from './i18n/i18n'
+export { Enveloppe, type EnveloppeProps, type EntreeNavigation, type GroupeNavigation } from './enveloppe/Enveloppe'
+export { Preferences } from './enveloppe/Preferences'
+export { usePreferences, langueInitiale, lirePreference, CLE_THEME, CLE_LANGUE } from './enveloppe/usePreferences'
+export { PageConnexion, type PageConnexionProps } from './connexion/PageConnexion'

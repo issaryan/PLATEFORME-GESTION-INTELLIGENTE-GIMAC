@@ -1,0 +1,26 @@
+/* Adaptation aux petits écrans (DS-GIMAC-01 §5.2 et §10.2 : portail fluide dès 360 px, tableaux en
+   cartes empilées sous --gm-bp-sm). Ne s'applique que sous 640 px : le rendu des écrans de poste et
+   des cartes du catalogue reste strictement celui du système publié. */
+@media (max-width: 640px) {
+  .gm-topbar { gap: var(--gm-space-2); padding: 0 var(--gm-space-2); }
+  .gm-topbar > .gm-input-wrap, .gm-topbar > nav, .gm-topbar-clock, .gm-topbar-live, .gm-topbar-layer { display: none; }
+  .gm-topbar-institution { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .gm-topbar img { height: 24px; width: auto; }
+
+  .gm-tabs { overflow-x: auto; gap: var(--gm-space-4); scrollbar-width: thin; }
+  .gm-tab { white-space: nowrap; flex: none; }
+
+  .gm-states { flex-wrap: wrap; }
+  .gm-states li { flex: 1 1 33%; border-bottom: var(--gm-border-1) solid var(--gm-color-border); }
+
+  .gm-pagination { flex-wrap: wrap; gap: var(--gm-space-2); }
+  .gm-resource-head { flex-wrap: wrap; gap: var(--gm-space-3); }
+
+  /* Tableaux en cartes empilées : chaque ligne devient une carte, chaque cellule porte son en-tête. */
+  .gm-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .gm-table, .gm-table tbody, .gm-table tr, .gm-table td { display: block; width: 100%; }
+  .gm-table tr { border-bottom: var(--gm-border-1) solid var(--gm-color-border); padding: var(--gm-space-2) 0; }
+  .gm-table td { height: auto; min-height: var(--gm-size-row-compact); display: flex; align-items: center; justify-content: space-between; gap: var(--gm-space-3); border: 0; text-align: right; }
+  .gm-table td[data-label]::before { content: attr(data-label); font-weight: 600; color: var(--gm-color-text-secondary); text-align: left; }
+  .gm-table td.gm-row { justify-content: flex-end; }
+}

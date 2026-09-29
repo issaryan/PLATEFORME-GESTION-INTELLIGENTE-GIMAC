@@ -1,11 +1,12 @@
 import { cx } from '../../lib/cx'
+import { useLibelle } from '../../i18n/LangueProvider'
 
-const COVER_STEPS: [string, string][] = [
-  ['inclus', 'gm-cov-1'],
-  ['en essai', 'gm-cov-2'],
-  ['certifié', 'gm-cov-3'],
-  ['en service', 'gm-cov-4'],
-]
+const COVER_STEPS = [
+  ['couverture.inclus', 'gm-cov-1'],
+  ['couverture.essai', 'gm-cov-2'],
+  ['couverture.certifie', 'gm-cov-3'],
+  ['couverture.service', 'gm-cov-4'],
+] as const
 
 export interface CoverageBarProps {
   service: string
@@ -15,8 +16,9 @@ export interface CoverageBarProps {
 
 // Barre de couverture d'un service avec légende textuelle (§7.3).
 export function CoverageBar(p: CoverageBarProps) {
+  const t = useLibelle()
   const lvl = p.level || 0
-  const texte = lvl ? COVER_STEPS[lvl - 1][0] : 'hors périmètre'
+  const texte = lvl ? t(COVER_STEPS[lvl - 1][0]) : t('couverture.hors')
   return (
     <div className="gm-cov">
       <div className="gm-cov-label">{p.service}</div>
