@@ -68,35 +68,53 @@ public class InstitutionQueryService extends QueryService<Institution> {
      * @return the matching {@link Specification} of the entity.
      */
     protected Specification<Institution> createSpecification(InstitutionCriteria criteria) {
-        Specification<Institution> specification = Specification.where(null);
+        Specification<Institution> specification = Specification.unrestricted();
+        specification = specification.and((root, query, builder) -> {
+            if (Long.class != query.getResultType()) {
+                root.fetch(Institution_.settlementBank, JoinType.LEFT);
+                root.fetch(Institution_.sponsorBank, JoinType.LEFT);
+            }
+            return null;
+        });
         if (criteria != null) {
             // This has to be called first, because the distinct method returns null
-            specification = Specification.allOf(
-                Boolean.TRUE.equals(criteria.getDistinct()) ? distinct(criteria.getDistinct()) : null,
-                buildSpecification(criteria.getId(), Institution_.id),
-                buildStringSpecification(criteria.getName(), Institution_.name),
-                buildStringSpecification(criteria.getAcronym(), Institution_.acronym),
-                buildStringSpecification(criteria.getParticipantCode(), Institution_.participantCode),
-                buildStringSpecification(criteria.getIdentificationCode(), Institution_.identificationCode),
-                buildStringSpecification(criteria.getBeacBankCode(), Institution_.beacBankCode),
-                buildStringSpecification(criteria.getCountry(), Institution_.country),
-                buildSpecification(criteria.getCategory(), Institution_.category),
-                buildSpecification(criteria.getMembershipMode(), Institution_.membershipMode),
-                buildStringSpecification(criteria.getSettlementAccountRef(), Institution_.settlementAccountRef),
-                buildStringSpecification(criteria.getRingFencedAccountRef(), Institution_.ringFencedAccountRef),
-                buildRangeSpecification(criteria.getJoinedOn(), Institution_.joinedOn),
-                buildSpecification(criteria.getStatus(), Institution_.status),
-                buildSpecification(criteria.getComplianceState(), Institution_.complianceState),
-                buildRangeSpecification(criteria.getAttestationIssuedAt(), Institution_.attestationIssuedAt),
-                buildRangeSpecification(criteria.getGoLiveAuthorizedAt(), Institution_.goLiveAuthorizedAt),
-                buildRangeSpecification(criteria.getOpenLinkCount(), Institution_.openLinkCount),
-                buildRangeSpecification(criteria.getOpenSuspenseCount(), Institution_.openSuspenseCount),
-                buildRangeSpecification(criteria.getCreatedAt(), Institution_.createdAt),
-                buildSpecification(criteria.getSettlementBankId(), root ->
-                    root.join(Institution_.settlementBank, JoinType.LEFT).get(Institution_.id)
-                ),
-                buildSpecification(criteria.getSponsorBankId(), root ->
-                    root.join(Institution_.sponsorBank, JoinType.LEFT).get(Institution_.id)
+            specification = specification.and(
+                Specification.allOf(
+                    Boolean.TRUE.equals(criteria.getDistinct()) ? distinct(criteria.getDistinct()) : Specification.unrestricted(),
+                    buildSpecification(criteria.getId(), Institution_.id),
+                    buildStringSpecification(criteria.getName(), Institution_.name),
+                    buildStringSpecification(criteria.getAcronym(), Institution_.acronym),
+                    buildStringSpecification(criteria.getParticipantCode(), Institution_.participantCode),
+                    buildStringSpecification(criteria.getIdentificationCode(), Institution_.identificationCode),
+                    buildStringSpecification(criteria.getBeacBankCode(), Institution_.beacBankCode),
+                    buildStringSpecification(criteria.getCountry(), Institution_.country),
+                    buildSpecification(criteria.getCategory(), Institution_.category),
+                    buildSpecification(criteria.getMembershipMode(), Institution_.membershipMode),
+                    buildStringSpecification(criteria.getSettlementAccountRef(), Institution_.settlementAccountRef),
+                    buildStringSpecification(criteria.getRingFencedAccountRef(), Institution_.ringFencedAccountRef),
+                    buildRangeSpecification(criteria.getJoinedOn(), Institution_.joinedOn),
+                    buildSpecification(criteria.getStatus(), Institution_.status),
+                    buildSpecification(criteria.getComplianceState(), Institution_.complianceState),
+                    buildRangeSpecification(criteria.getAttestationIssuedAt(), Institution_.attestationIssuedAt),
+                    buildRangeSpecification(criteria.getGoLiveAuthorizedAt(), Institution_.goLiveAuthorizedAt),
+                    buildRangeSpecification(criteria.getOpenLinkCount(), Institution_.openLinkCount),
+                    buildRangeSpecification(criteria.getOpenSuspenseCount(), Institution_.openSuspenseCount),
+                    buildRangeSpecification(criteria.getCreatedAt(), Institution_.createdAt),
+                    buildRangeSpecification(criteria.getContactedOn(), Institution_.contactedOn),
+                    buildStringSpecification(criteria.getContactOrigin(), Institution_.contactOrigin),
+                    buildStringSpecification(criteria.getIntendedProject(), Institution_.intendedProject),
+                    buildSpecification(criteria.getDdrmOfficerId(), Institution_.ddrmOfficerId),
+                    buildStringSpecification(criteria.getDdrmOfficerName(), Institution_.ddrmOfficerName),
+                    buildRangeSpecification(criteria.getAdmittedAt(), Institution_.admittedAt),
+                    buildSpecification(criteria.getAdmittedById(), Institution_.admittedById),
+                    buildStringSpecification(criteria.getClosureReason(), Institution_.closureReason),
+                    buildRangeSpecification(criteria.getClosedAt(), Institution_.closedAt),
+                    buildSpecification(criteria.getSettlementBankId(), root ->
+                        root.join(Institution_.settlementBank, JoinType.LEFT).get(Institution_.id)
+                    ),
+                    buildSpecification(criteria.getSponsorBankId(), root ->
+                        root.join(Institution_.sponsorBank, JoinType.LEFT).get(Institution_.id)
+                    )
                 )
             );
         }

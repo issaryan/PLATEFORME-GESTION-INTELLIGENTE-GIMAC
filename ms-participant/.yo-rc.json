@@ -5,12 +5,15 @@
     "baseName": "participant",
     "buildTool": "maven",
     "cacheProvider": "redis",
+    "creationTimestamp": 1790694080285,
     "databaseType": "sql",
+    "defaultCommand": "app",
     "devDatabaseType": "postgresql",
     "enableHibernateCache": false,
     "enableSwaggerCodegen": false,
     "enableTranslation": true,
     "entities": [
+      "AdhesionPiece",
       "Institution",
       "Convention",
       "SubscribedService",
@@ -21,12 +24,14 @@
       "EscalationContact",
       "StatusTransition"
     ],
-    "jhipsterVersion": "8.11.0",
+    "jhipsterVersion": "9.4.0",
     "jwtSecretKey": "NTU2MzRlNzY1ZGMyNDEwMzJmNzFhNGVjMzJjMmZiNzFkODY0NzdiYjQ4ZTYyZmM4MzYzNWY1ZWZhNTZhMDIzMDdjMDczOWZhY2JlMzhiYTY4OGIxNzlkZjA5MWIzMDAzZTY5YmY5YmE3MjI2NDA5MzEzOTU2ZGMxMzlkZTBiOTA=",
-    "languages": ["fr", "en"],
-    "lastLiquibaseTimestamp": 1790603289000,
+    "languages": [
+      "fr",
+      "en"
+    ],
+    "lastLiquibaseTimestamp": 1790694089000,
     "messageBroker": "kafka",
-    "monorepository": true,
     "nativeLanguage": "fr",
     "packageName": "cm.gimac.des.participant",
     "prodDatabaseType": "postgresql",
@@ -35,8 +40,10 @@
     "serverPort": "8085",
     "serviceDiscoveryType": "no",
     "skipClient": true,
-    "skipCommitHook": true,
     "skipUserManagement": true,
-    "testFrameworks": []
+    "testFrameworks": [
+      "cucumber"
+    ],
+    "skipFakeData": true
   }
 }

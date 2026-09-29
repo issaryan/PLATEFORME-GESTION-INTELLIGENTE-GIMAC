@@ -71,18 +71,26 @@ public class SubscribedServiceQueryService extends QueryService<SubscribedServic
      * @return the matching {@link Specification} of the entity.
      */
     protected Specification<SubscribedService> createSpecification(SubscribedServiceCriteria criteria) {
-        Specification<SubscribedService> specification = Specification.where(null);
+        Specification<SubscribedService> specification = Specification.unrestricted();
+        specification = specification.and((root, query, builder) -> {
+            if (Long.class != query.getResultType()) {
+                root.fetch(SubscribedService_.institution, JoinType.LEFT);
+            }
+            return null;
+        });
         if (criteria != null) {
             // This has to be called first, because the distinct method returns null
-            specification = Specification.allOf(
-                Boolean.TRUE.equals(criteria.getDistinct()) ? distinct(criteria.getDistinct()) : null,
-                buildSpecification(criteria.getId(), SubscribedService_.id),
-                buildStringSpecification(criteria.getServiceCode(), SubscribedService_.serviceCode),
-                buildRangeSpecification(criteria.getSubscribedOn(), SubscribedService_.subscribedOn),
-                buildRangeSpecification(criteria.getTerminatedOn(), SubscribedService_.terminatedOn),
-                buildSpecification(criteria.getState(), SubscribedService_.state),
-                buildSpecification(criteria.getInstitutionId(), root ->
-                    root.join(SubscribedService_.institution, JoinType.LEFT).get(Institution_.id)
+            specification = specification.and(
+                Specification.allOf(
+                    Boolean.TRUE.equals(criteria.getDistinct()) ? distinct(criteria.getDistinct()) : Specification.unrestricted(),
+                    buildSpecification(criteria.getId(), SubscribedService_.id),
+                    buildStringSpecification(criteria.getServiceCode(), SubscribedService_.serviceCode),
+                    buildRangeSpecification(criteria.getSubscribedOn(), SubscribedService_.subscribedOn),
+                    buildRangeSpecification(criteria.getTerminatedOn(), SubscribedService_.terminatedOn),
+                    buildSpecification(criteria.getState(), SubscribedService_.state),
+                    buildSpecification(criteria.getInstitutionId(), root ->
+                        root.join(SubscribedService_.institution, JoinType.LEFT).get(Institution_.id)
+                    )
                 )
             );
         }

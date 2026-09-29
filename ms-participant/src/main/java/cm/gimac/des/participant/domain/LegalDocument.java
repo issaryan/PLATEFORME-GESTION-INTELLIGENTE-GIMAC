@@ -5,6 +5,7 @@ import cm.gimac.des.participant.domain.enumeration.LegalDocumentType;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
+import java.io.Serial;
 import java.io.Serializable;
 import java.time.LocalDate;
 import java.util.UUID;
@@ -18,6 +19,7 @@ import java.util.UUID;
 @SuppressWarnings("common-java:DuplicatedBlocks")
 public class LegalDocument implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = 1L;
 
     @Id

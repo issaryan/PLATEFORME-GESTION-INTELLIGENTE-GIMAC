@@ -1,5 +1,6 @@
 package cm.gimac.des.participant.web.rest;
 
+import cm.gimac.des.participant.security.AuthoritiesConstants;
 import static cm.gimac.des.participant.domain.InteractionAsserts.*;
 import static cm.gimac.des.participant.web.rest.TestUtil.createUpdateProxyForBean;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -17,10 +18,8 @@ import cm.gimac.des.participant.repository.InteractionRepository;
 import cm.gimac.des.participant.service.InteractionService;
 import cm.gimac.des.participant.service.dto.InteractionDTO;
 import cm.gimac.des.participant.service.mapper.InteractionMapper;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -30,13 +29,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Integration tests for the {@link InteractionResource} REST controller.
@@ -44,7 +44,7 @@ import org.springframework.transaction.annotation.Transactional;
 @IntegrationTest
 @ExtendWith(MockitoExtension.class)
 @AutoConfigureMockMvc
-@WithMockUser
+@WithMockUser(authorities = AuthoritiesConstants.ADMIN)
 class InteractionResourceIT {
 
     private static final InteractionNature DEFAULT_NATURE = InteractionNature.COURRIER;
@@ -54,7 +54,7 @@ class InteractionResourceIT {
     private static final String UPDATED_SUMMARY = "BBBBBBBBBB";
 
     private static final Instant DEFAULT_OCCURRED_AT = Instant.ofEpochMilli(0L);
-    private static final Instant UPDATED_OCCURRED_AT = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+    private static final Instant UPDATED_OCCURRED_AT = Instant.ofEpochMilli(1790694080285L);
 
     private static final UUID DEFAULT_AUTHOR_ID = UUID.randomUUID();
     private static final UUID UPDATED_AUTHOR_ID = UUID.randomUUID();
@@ -118,7 +118,7 @@ class InteractionResourceIT {
             em.persist(institution);
             em.flush();
         } else {
-            institution = TestUtil.findAll(em, Institution.class).get(0);
+            institution = TestUtil.findAll(em, Institution.class).getFirst();
         }
         interaction.setInstitution(institution);
         return interaction;
@@ -146,7 +146,7 @@ class InteractionResourceIT {
             em.persist(institution);
             em.flush();
         } else {
-            institution = TestUtil.findAll(em, Institution.class).get(0);
+            institution = TestUtil.findAll(em, Institution.class).getFirst();
         }
         updatedInteraction.setInstitution(institution);
         return updatedInteraction;
@@ -624,7 +624,7 @@ class InteractionResourceIT {
             interactionRepository.saveAndFlush(interaction);
             institution = InstitutionResourceIT.createEntity();
         } else {
-            institution = TestUtil.findAll(em, Institution.class).get(0);
+            institution = TestUtil.findAll(em, Institution.class).getFirst();
         }
         em.persist(institution);
         em.flush();
@@ -806,7 +806,7 @@ class InteractionResourceIT {
         Interaction partialUpdatedInteraction = new Interaction();
         partialUpdatedInteraction.setId(interaction.getId());
 
-        partialUpdatedInteraction.authorId(UPDATED_AUTHOR_ID).sourceEventId(UPDATED_SOURCE_EVENT_ID);
+        partialUpdatedInteraction.nature(UPDATED_NATURE).reference(UPDATED_REFERENCE).sourceEventId(UPDATED_SOURCE_EVENT_ID);
 
         restInteractionMockMvc
             .perform(

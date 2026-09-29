@@ -38,7 +38,7 @@ public class SubscribedServiceResource {
 
     private static final String ENTITY_NAME = "participantSubscribedService";
 
-    @Value("${jhipster.clientApp.name}")
+    @Value("${jhipster.clientApp.name:participant}")
     private String applicationName;
 
     private final SubscribedServiceService subscribedServiceService;
@@ -61,7 +61,7 @@ public class SubscribedServiceResource {
      * {@code POST  /subscribed-services} : Create a new subscribedService.
      *
      * @param subscribedServiceDTO the subscribedServiceDTO to create.
-     * @return the {@link ResponseEntity} with status {@code 201 (Created)} and with body the new subscribedServiceDTO, or with status {@code 400 (Bad Request)} if the subscribedService has already an ID.
+     * @return the {@link ResponseEntity} with status {@code 201 (Created)} and with body the new subscribedServiceDTO, or with status {@code 400 (Bad Request)} if the subscribedService already has an ID.
      * @throws URISyntaxException if the Location URI syntax is incorrect.
      */
     @PostMapping("")
@@ -126,7 +126,7 @@ public class SubscribedServiceResource {
         @PathVariable(value = "id", required = false) final UUID id,
         @NotNull @RequestBody SubscribedServiceDTO subscribedServiceDTO
     ) throws URISyntaxException {
-        LOG.debug("REST request to partial update SubscribedService partially : {}, {}", id, subscribedServiceDTO);
+        LOG.debug("REST request to partially update SubscribedService : {}, {}", id, subscribedServiceDTO);
         if (subscribedServiceDTO.getId() == null) {
             throw new BadRequestAlertException("Invalid id", ENTITY_NAME, "idnull");
         }
@@ -147,11 +147,11 @@ public class SubscribedServiceResource {
     }
 
     /**
-     * {@code GET  /subscribed-services} : get all the subscribedServices.
+     * {@code GET  /subscribed-services} : get all the Subscribed Services.
      *
      * @param pageable the pagination information.
      * @param criteria the criteria which the requested entities should match.
-     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of subscribedServices in body.
+     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of Subscribed Services in body.
      */
     @GetMapping("")
     public ResponseEntity<List<SubscribedServiceDTO>> getAllSubscribedServices(

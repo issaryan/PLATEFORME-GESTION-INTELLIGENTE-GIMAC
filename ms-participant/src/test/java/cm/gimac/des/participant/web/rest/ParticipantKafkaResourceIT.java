@@ -1,5 +1,6 @@
 package cm.gimac.des.participant.web.rest;
 
+import cm.gimac.des.participant.security.AuthoritiesConstants;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -8,13 +9,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import cm.gimac.des.participant.IntegrationTest;
-import cm.gimac.des.participant.config.EmbeddedKafka;
 import java.util.HashMap;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.cloud.stream.binder.test.InputDestination;
 import org.springframework.cloud.stream.binder.test.OutputDestination;
 import org.springframework.cloud.stream.binder.test.TestChannelBinderConfiguration;
@@ -22,15 +22,16 @@ import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.support.GenericMessage;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.util.MimeTypeUtils;
 
 @IntegrationTest
 @AutoConfigureMockMvc
-@WithMockUser
-@EmbeddedKafka
+@WithMockUser(authorities = AuthoritiesConstants.ADMIN)
 @ImportAutoConfiguration(TestChannelBinderConfiguration.class)
+@ActiveProfiles({ "kafka" })
 class ParticipantKafkaResourceIT {
 
     @Autowired

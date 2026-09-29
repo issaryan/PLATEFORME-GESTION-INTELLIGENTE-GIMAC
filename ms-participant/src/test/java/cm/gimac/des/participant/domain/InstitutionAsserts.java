@@ -50,7 +50,8 @@ public class InstitutionAsserts {
             .satisfies(a -> assertThat(a.getName()).as("check name").isEqualTo(expected.getName()))
             .satisfies(a -> assertThat(a.getAcronym()).as("check acronym").isEqualTo(expected.getAcronym()))
             .satisfies(a -> assertThat(a.getParticipantCode()).as("check participantCode").isEqualTo(expected.getParticipantCode()))
-            .satisfies(a -> assertThat(a.getIdentificationCode()).as("check identificationCode").isEqualTo(expected.getIdentificationCode())
+            .satisfies(a ->
+                assertThat(a.getIdentificationCode()).as("check identificationCode").isEqualTo(expected.getIdentificationCode())
             )
             .satisfies(a -> assertThat(a.getBeacBankCode()).as("check beacBankCode").isEqualTo(expected.getBeacBankCode()))
             .satisfies(a -> assertThat(a.getCountry()).as("check country").isEqualTo(expected.getCountry()))
@@ -68,11 +69,21 @@ public class InstitutionAsserts {
             .satisfies(a ->
                 assertThat(a.getAttestationIssuedAt()).as("check attestationIssuedAt").isEqualTo(expected.getAttestationIssuedAt())
             )
-            .satisfies(a -> assertThat(a.getGoLiveAuthorizedAt()).as("check goLiveAuthorizedAt").isEqualTo(expected.getGoLiveAuthorizedAt())
+            .satisfies(a ->
+                assertThat(a.getGoLiveAuthorizedAt()).as("check goLiveAuthorizedAt").isEqualTo(expected.getGoLiveAuthorizedAt())
             )
             .satisfies(a -> assertThat(a.getOpenLinkCount()).as("check openLinkCount").isEqualTo(expected.getOpenLinkCount()))
             .satisfies(a -> assertThat(a.getOpenSuspenseCount()).as("check openSuspenseCount").isEqualTo(expected.getOpenSuspenseCount()))
-            .satisfies(a -> assertThat(a.getCreatedAt()).as("check createdAt").isEqualTo(expected.getCreatedAt()));
+            .satisfies(a -> assertThat(a.getCreatedAt()).as("check createdAt").isEqualTo(expected.getCreatedAt()))
+            .satisfies(a -> assertThat(a.getContactedOn()).as("check contactedOn").isEqualTo(expected.getContactedOn()))
+            .satisfies(a -> assertThat(a.getContactOrigin()).as("check contactOrigin").isEqualTo(expected.getContactOrigin()))
+            .satisfies(a -> assertThat(a.getIntendedProject()).as("check intendedProject").isEqualTo(expected.getIntendedProject()))
+            .satisfies(a -> assertThat(a.getDdrmOfficerId()).as("check ddrmOfficerId").isEqualTo(expected.getDdrmOfficerId()))
+            .satisfies(a -> assertThat(a.getDdrmOfficerName()).as("check ddrmOfficerName").isEqualTo(expected.getDdrmOfficerName()))
+            .satisfies(a -> assertThat(a.getAdmittedAt()).as("check admittedAt").isEqualTo(expected.getAdmittedAt()))
+            .satisfies(a -> assertThat(a.getAdmittedById()).as("check admittedById").isEqualTo(expected.getAdmittedById()))
+            .satisfies(a -> assertThat(a.getClosureReason()).as("check closureReason").isEqualTo(expected.getClosureReason()))
+            .satisfies(a -> assertThat(a.getClosedAt()).as("check closedAt").isEqualTo(expected.getClosedAt()));
     }
 
     /**

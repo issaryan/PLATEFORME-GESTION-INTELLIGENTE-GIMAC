@@ -1,6 +1,7 @@
 package cm.gimac.des.participant.service.criteria;
 
 import cm.gimac.des.participant.domain.enumeration.SubscriptionState;
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.Objects;
 import java.util.Optional;
@@ -38,6 +39,7 @@ public class SubscribedServiceCriteria implements Serializable, Criteria {
         }
     }
 
+    @Serial
     private static final long serialVersionUID = 1L;
 
     private UUIDFilter id;

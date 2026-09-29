@@ -38,7 +38,7 @@ public class EscalationContactResource {
 
     private static final String ENTITY_NAME = "participantEscalationContact";
 
-    @Value("${jhipster.clientApp.name}")
+    @Value("${jhipster.clientApp.name:participant}")
     private String applicationName;
 
     private final EscalationContactService escalationContactService;
@@ -61,7 +61,7 @@ public class EscalationContactResource {
      * {@code POST  /escalation-contacts} : Create a new escalationContact.
      *
      * @param escalationContactDTO the escalationContactDTO to create.
-     * @return the {@link ResponseEntity} with status {@code 201 (Created)} and with body the new escalationContactDTO, or with status {@code 400 (Bad Request)} if the escalationContact has already an ID.
+     * @return the {@link ResponseEntity} with status {@code 201 (Created)} and with body the new escalationContactDTO, or with status {@code 400 (Bad Request)} if the escalationContact already has an ID.
      * @throws URISyntaxException if the Location URI syntax is incorrect.
      */
     @PostMapping("")
@@ -126,7 +126,7 @@ public class EscalationContactResource {
         @PathVariable(value = "id", required = false) final UUID id,
         @NotNull @RequestBody EscalationContactDTO escalationContactDTO
     ) throws URISyntaxException {
-        LOG.debug("REST request to partial update EscalationContact partially : {}, {}", id, escalationContactDTO);
+        LOG.debug("REST request to partially update EscalationContact : {}, {}", id, escalationContactDTO);
         if (escalationContactDTO.getId() == null) {
             throw new BadRequestAlertException("Invalid id", ENTITY_NAME, "idnull");
         }
@@ -147,11 +147,11 @@ public class EscalationContactResource {
     }
 
     /**
-     * {@code GET  /escalation-contacts} : get all the escalationContacts.
+     * {@code GET  /escalation-contacts} : get all the Escalation Contacts.
      *
      * @param pageable the pagination information.
      * @param criteria the criteria which the requested entities should match.
-     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of escalationContacts in body.
+     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of Escalation Contacts in body.
      */
     @GetMapping("")
     public ResponseEntity<List<EscalationContactDTO>> getAllEscalationContacts(

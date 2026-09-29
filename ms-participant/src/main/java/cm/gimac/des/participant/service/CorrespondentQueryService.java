@@ -68,28 +68,36 @@ public class CorrespondentQueryService extends QueryService<Correspondent> {
      * @return the matching {@link Specification} of the entity.
      */
     protected Specification<Correspondent> createSpecification(CorrespondentCriteria criteria) {
-        Specification<Correspondent> specification = Specification.where(null);
+        Specification<Correspondent> specification = Specification.unrestricted();
+        specification = specification.and((root, query, builder) -> {
+            if (Long.class != query.getResultType()) {
+                root.fetch(Correspondent_.institution, JoinType.LEFT);
+            }
+            return null;
+        });
         if (criteria != null) {
             // This has to be called first, because the distinct method returns null
-            specification = Specification.allOf(
-                Boolean.TRUE.equals(criteria.getDistinct()) ? distinct(criteria.getDistinct()) : null,
-                buildSpecification(criteria.getId(), Correspondent_.id),
-                buildStringSpecification(criteria.getFullName(), Correspondent_.fullName),
-                buildSpecification(criteria.getDuty(), Correspondent_.duty),
-                buildStringSpecification(criteria.getChannels(), Correspondent_.channels),
-                buildStringSpecification(criteria.getEmail(), Correspondent_.email),
-                buildStringSpecification(criteria.getPhone(), Correspondent_.phone),
-                buildStringSpecification(criteria.getPublicKeyRef(), Correspondent_.publicKeyRef),
-                buildSpecification(criteria.getReachability(), Correspondent_.reachability),
-                buildRangeSpecification(criteria.getLastReachabilityCheckAt(), Correspondent_.lastReachabilityCheckAt),
-                buildSpecification(criteria.getOnCall247(), Correspondent_.onCall247),
-                buildSpecification(criteria.getUserId(), Correspondent_.userId),
-                buildSpecification(criteria.getActive(), Correspondent_.active),
-                buildSpecification(criteria.getProposedBy(), Correspondent_.proposedBy),
-                buildSpecification(criteria.getValidatedBy(), Correspondent_.validatedBy),
-                buildRangeSpecification(criteria.getValidatedAt(), Correspondent_.validatedAt),
-                buildSpecification(criteria.getInstitutionId(), root ->
-                    root.join(Correspondent_.institution, JoinType.LEFT).get(Institution_.id)
+            specification = specification.and(
+                Specification.allOf(
+                    Boolean.TRUE.equals(criteria.getDistinct()) ? distinct(criteria.getDistinct()) : Specification.unrestricted(),
+                    buildSpecification(criteria.getId(), Correspondent_.id),
+                    buildStringSpecification(criteria.getFullName(), Correspondent_.fullName),
+                    buildSpecification(criteria.getDuty(), Correspondent_.duty),
+                    buildStringSpecification(criteria.getChannels(), Correspondent_.channels),
+                    buildStringSpecification(criteria.getEmail(), Correspondent_.email),
+                    buildStringSpecification(criteria.getPhone(), Correspondent_.phone),
+                    buildStringSpecification(criteria.getPublicKeyRef(), Correspondent_.publicKeyRef),
+                    buildSpecification(criteria.getReachability(), Correspondent_.reachability),
+                    buildRangeSpecification(criteria.getLastReachabilityCheckAt(), Correspondent_.lastReachabilityCheckAt),
+                    buildSpecification(criteria.getOnCall247(), Correspondent_.onCall247),
+                    buildSpecification(criteria.getUserId(), Correspondent_.userId),
+                    buildSpecification(criteria.getActive(), Correspondent_.active),
+                    buildSpecification(criteria.getProposedBy(), Correspondent_.proposedBy),
+                    buildSpecification(criteria.getValidatedBy(), Correspondent_.validatedBy),
+                    buildRangeSpecification(criteria.getValidatedAt(), Correspondent_.validatedAt),
+                    buildSpecification(criteria.getInstitutionId(), root ->
+                        root.join(Correspondent_.institution, JoinType.LEFT).get(Institution_.id)
+                    )
                 )
             );
         }

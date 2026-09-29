@@ -68,21 +68,29 @@ public class InteractionQueryService extends QueryService<Interaction> {
      * @return the matching {@link Specification} of the entity.
      */
     protected Specification<Interaction> createSpecification(InteractionCriteria criteria) {
-        Specification<Interaction> specification = Specification.where(null);
+        Specification<Interaction> specification = Specification.unrestricted();
+        specification = specification.and((root, query, builder) -> {
+            if (Long.class != query.getResultType()) {
+                root.fetch(Interaction_.institution, JoinType.LEFT);
+            }
+            return null;
+        });
         if (criteria != null) {
             // This has to be called first, because the distinct method returns null
-            specification = Specification.allOf(
-                Boolean.TRUE.equals(criteria.getDistinct()) ? distinct(criteria.getDistinct()) : null,
-                buildSpecification(criteria.getId(), Interaction_.id),
-                buildSpecification(criteria.getNature(), Interaction_.nature),
-                buildStringSpecification(criteria.getSummary(), Interaction_.summary),
-                buildRangeSpecification(criteria.getOccurredAt(), Interaction_.occurredAt),
-                buildSpecification(criteria.getAuthorId(), Interaction_.authorId),
-                buildStringSpecification(criteria.getReference(), Interaction_.reference),
-                buildSpecification(criteria.getNotificationId(), Interaction_.notificationId),
-                buildSpecification(criteria.getSourceEventId(), Interaction_.sourceEventId),
-                buildSpecification(criteria.getInstitutionId(), root ->
-                    root.join(Interaction_.institution, JoinType.LEFT).get(Institution_.id)
+            specification = specification.and(
+                Specification.allOf(
+                    Boolean.TRUE.equals(criteria.getDistinct()) ? distinct(criteria.getDistinct()) : Specification.unrestricted(),
+                    buildSpecification(criteria.getId(), Interaction_.id),
+                    buildSpecification(criteria.getNature(), Interaction_.nature),
+                    buildStringSpecification(criteria.getSummary(), Interaction_.summary),
+                    buildRangeSpecification(criteria.getOccurredAt(), Interaction_.occurredAt),
+                    buildSpecification(criteria.getAuthorId(), Interaction_.authorId),
+                    buildStringSpecification(criteria.getReference(), Interaction_.reference),
+                    buildSpecification(criteria.getNotificationId(), Interaction_.notificationId),
+                    buildSpecification(criteria.getSourceEventId(), Interaction_.sourceEventId),
+                    buildSpecification(criteria.getInstitutionId(), root ->
+                        root.join(Interaction_.institution, JoinType.LEFT).get(Institution_.id)
+                    )
                 )
             );
         }

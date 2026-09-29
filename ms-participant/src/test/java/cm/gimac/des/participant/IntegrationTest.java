@@ -1,10 +1,8 @@
 package cm.gimac.des.participant;
 
 import cm.gimac.des.participant.config.AsyncSyncConfiguration;
-import cm.gimac.des.participant.config.EmbeddedKafka;
-import cm.gimac.des.participant.config.EmbeddedRedis;
-import cm.gimac.des.participant.config.EmbeddedSQL;
-import cm.gimac.des.participant.config.JacksonConfiguration;
+import cm.gimac.des.participant.config.DatabaseTestcontainer;
+import cm.gimac.des.participant.config.RedisTestContainer;
 import cm.gimac.des.participant.config.TestSecurityConfiguration;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -18,10 +16,13 @@ import org.springframework.boot.test.context.SpringBootTest;
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 @SpringBootTest(
-    classes = { ParticipantApp.class, JacksonConfiguration.class, AsyncSyncConfiguration.class, TestSecurityConfiguration.class }
+    classes = {
+        ParticipantApp.class,
+        AsyncSyncConfiguration.class,
+        TestSecurityConfiguration.class,
+        cm.gimac.des.participant.config.JacksonHibernateConfiguration.class,
+        DatabaseTestcontainer.class,
+        RedisTestContainer.class,
+    }
 )
-@EmbeddedRedis
-@EmbeddedSQL
-@EmbeddedKafka
-public @interface IntegrationTest {
-}
+public @interface IntegrationTest {}

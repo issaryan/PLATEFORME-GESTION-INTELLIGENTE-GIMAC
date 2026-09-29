@@ -1,5 +1,6 @@
 package cm.gimac.des.participant.web.rest;
 
+import cm.gimac.des.participant.security.AuthoritiesConstants;
 import static cm.gimac.des.participant.domain.LegalDocumentAsserts.*;
 import static cm.gimac.des.participant.web.rest.TestUtil.createUpdateProxyForBean;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -19,10 +20,8 @@ import cm.gimac.des.participant.repository.LegalDocumentRepository;
 import cm.gimac.des.participant.service.LegalDocumentService;
 import cm.gimac.des.participant.service.dto.LegalDocumentDTO;
 import cm.gimac.des.participant.service.mapper.LegalDocumentMapper;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -32,13 +31,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Integration tests for the {@link LegalDocumentResource} REST controller.
@@ -46,7 +46,7 @@ import org.springframework.transaction.annotation.Transactional;
 @IntegrationTest
 @ExtendWith(MockitoExtension.class)
 @AutoConfigureMockMvc
-@WithMockUser
+@WithMockUser(authorities = AuthoritiesConstants.ADMIN)
 class LegalDocumentResourceIT {
 
     private static final LegalDocumentType DEFAULT_TYPE = LegalDocumentType.AGREMENT;
@@ -59,11 +59,11 @@ class LegalDocumentResourceIT {
     private static final String UPDATED_ISSUING_AUTHORITY = "BBBBBBBBBB";
 
     private static final LocalDate DEFAULT_ISSUED_ON = LocalDate.ofEpochDay(0L);
-    private static final LocalDate UPDATED_ISSUED_ON = LocalDate.now(ZoneId.systemDefault());
+    private static final LocalDate UPDATED_ISSUED_ON = LocalDate.parse("2026-09-29");
     private static final LocalDate SMALLER_ISSUED_ON = LocalDate.ofEpochDay(-1L);
 
     private static final LocalDate DEFAULT_EXPIRES_ON = LocalDate.ofEpochDay(0L);
-    private static final LocalDate UPDATED_EXPIRES_ON = LocalDate.now(ZoneId.systemDefault());
+    private static final LocalDate UPDATED_EXPIRES_ON = LocalDate.parse("2026-09-29");
     private static final LocalDate SMALLER_EXPIRES_ON = LocalDate.ofEpochDay(-1L);
 
     private static final UUID DEFAULT_DOCUMENT_ID = UUID.randomUUID();
@@ -73,8 +73,8 @@ class LegalDocumentResourceIT {
     private static final Integer UPDATED_DOCUMENT_VERSION = 2;
     private static final Integer SMALLER_DOCUMENT_VERSION = 1 - 1;
 
-    private static final String DEFAULT_DIGEST = "dd39e57c008f6c990ea1fb6409e593ed756b2b40f4fdc43fa0935d7d96f35130";
-    private static final String UPDATED_DIGEST = "aa614a91dbc76283b0a6115d6a8db5636d7ffe4d7e325d906c116dd55e017ea9";
+    private static final String DEFAULT_DIGEST = "7a1b1a063eea72bde1f34d6a3f191c3c4107406e5411e840b506b2c3546bec88";
+    private static final String UPDATED_DIGEST = "b2da8047fb142526cfe6cd0c9ce7cdbdedc135d0b3bdc4ebd041fb6f37799415";
 
     private static final Boolean DEFAULT_SEALED = false;
     private static final Boolean UPDATED_SEALED = true;
@@ -135,7 +135,7 @@ class LegalDocumentResourceIT {
             em.persist(institution);
             em.flush();
         } else {
-            institution = TestUtil.findAll(em, Institution.class).get(0);
+            institution = TestUtil.findAll(em, Institution.class).getFirst();
         }
         legalDocument.setInstitution(institution);
         return legalDocument;
@@ -166,7 +166,7 @@ class LegalDocumentResourceIT {
             em.persist(institution);
             em.flush();
         } else {
-            institution = TestUtil.findAll(em, Institution.class).get(0);
+            institution = TestUtil.findAll(em, Institution.class).getFirst();
         }
         updatedLegalDocument.setInstitution(institution);
         return updatedLegalDocument;
@@ -973,7 +973,7 @@ class LegalDocumentResourceIT {
             legalDocumentRepository.saveAndFlush(legalDocument);
             previousDocument = LegalDocumentResourceIT.createEntity(em);
         } else {
-            previousDocument = TestUtil.findAll(em, LegalDocument.class).get(0);
+            previousDocument = TestUtil.findAll(em, LegalDocument.class).getFirst();
         }
         em.persist(previousDocument);
         em.flush();
@@ -995,7 +995,7 @@ class LegalDocumentResourceIT {
             legalDocumentRepository.saveAndFlush(legalDocument);
             institution = InstitutionResourceIT.createEntity();
         } else {
-            institution = TestUtil.findAll(em, Institution.class).get(0);
+            institution = TestUtil.findAll(em, Institution.class).getFirst();
         }
         em.persist(institution);
         em.flush();
@@ -1186,10 +1186,12 @@ class LegalDocumentResourceIT {
         partialUpdatedLegalDocument.setId(legalDocument.getId());
 
         partialUpdatedLegalDocument
+            .type(UPDATED_TYPE)
             .issuingAuthority(UPDATED_ISSUING_AUTHORITY)
+            .expiresOn(UPDATED_EXPIRES_ON)
             .documentId(UPDATED_DOCUMENT_ID)
-            .documentVersion(UPDATED_DOCUMENT_VERSION)
-            .sealed(UPDATED_SEALED);
+            .digest(UPDATED_DIGEST)
+            .state(UPDATED_STATE);
 
         restLegalDocumentMockMvc
             .perform(

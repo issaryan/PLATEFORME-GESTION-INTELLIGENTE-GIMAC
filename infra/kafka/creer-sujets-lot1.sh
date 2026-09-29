@@ -20,7 +20,8 @@ creer() { # sujet partitions [options...]
 
 for t in homologation.referential homologation.liaison homologation.operation homologation.campaign homologation.coverage \
          homologation.notification certification.circuit certification.quitus certification.dossier certification.attestation \
-         certification.notification; do
+         certification.notification \
+         participant.institution participant.adhesion participant.transition; do
   creer "$t" 6 --config retention.ms=2592000000 --config min.insync.replicas="$MIN_ISR"
 done
 for t in participant.subscription participant.status document.document iam.user iam.role homologation.liaison \

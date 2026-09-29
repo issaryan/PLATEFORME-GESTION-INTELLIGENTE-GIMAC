@@ -7,6 +7,7 @@ import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.*;
+import cm.gimac.des.participant.domain.enumeration.TransitionState;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
@@ -40,4 +41,10 @@ public interface StatusTransitionRepository extends JpaRepository<StatusTransiti
         "select statusTransition from StatusTransition statusTransition left join fetch statusTransition.institution where statusTransition.id =:id"
     )
     Optional<StatusTransition> findOneWithToOneRelationships(@Param("id") UUID id);
+
+    List<StatusTransition> findByInstitutionIdOrderByRequestedAtDesc(UUID institutionId);
+
+    boolean existsByInstitutionIdAndState(UUID institutionId, TransitionState state);
+
+    long countByState(TransitionState state);
 }

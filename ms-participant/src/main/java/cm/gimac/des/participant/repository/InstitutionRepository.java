@@ -7,6 +7,8 @@ import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.*;
+import cm.gimac.des.participant.domain.enumeration.InstitutionStatus;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
@@ -42,4 +44,17 @@ public interface InstitutionRepository extends JpaRepository<Institution, UUID>,
         "select institution from Institution institution left join fetch institution.settlementBank left join fetch institution.sponsorBank where institution.id =:id"
     )
     Optional<Institution> findOneWithToOneRelationships(@Param("id") UUID id);
+
+    /** Verrou pessimiste : une seule décision à la fois sur une institution (6.25). */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select institution from Institution institution where institution.id = :id")
+    Optional<Institution> findByIdForUpdate(@Param("id") UUID id);
+
+    boolean existsByParticipantCodeAndIdNot(String participantCode, UUID id);
+
+    boolean existsByIdentificationCodeAndIdNot(String identificationCode, UUID id);
+
+    boolean existsByBeacBankCodeAndIdNot(String beacBankCode, UUID id);
+
+    long countByStatus(InstitutionStatus status);
 }

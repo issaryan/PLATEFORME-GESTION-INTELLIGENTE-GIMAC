@@ -71,24 +71,34 @@ public class EscalationContactQueryService extends QueryService<EscalationContac
      * @return the matching {@link Specification} of the entity.
      */
     protected Specification<EscalationContact> createSpecification(EscalationContactCriteria criteria) {
-        Specification<EscalationContact> specification = Specification.where(null);
+        Specification<EscalationContact> specification = Specification.unrestricted();
+        specification = specification.and((root, query, builder) -> {
+            if (Long.class != query.getResultType()) {
+                root.fetch(EscalationContact_.institution, JoinType.LEFT);
+                root.fetch(EscalationContact_.correspondent, JoinType.LEFT);
+                root.fetch(EscalationContact_.deputy, JoinType.LEFT);
+            }
+            return null;
+        });
         if (criteria != null) {
             // This has to be called first, because the distinct method returns null
-            specification = Specification.allOf(
-                Boolean.TRUE.equals(criteria.getDistinct()) ? distinct(criteria.getDistinct()) : null,
-                buildSpecification(criteria.getId(), EscalationContact_.id),
-                buildRangeSpecification(criteria.getSeverity(), EscalationContact_.severity),
-                buildRangeSpecification(criteria.getEscalationRank(), EscalationContact_.escalationRank),
-                buildRangeSpecification(criteria.getAckDelay(), EscalationContact_.ackDelay),
-                buildSpecification(criteria.getActive(), EscalationContact_.active),
-                buildSpecification(criteria.getInstitutionId(), root ->
-                    root.join(EscalationContact_.institution, JoinType.LEFT).get(Institution_.id)
-                ),
-                buildSpecification(criteria.getCorrespondentId(), root ->
-                    root.join(EscalationContact_.correspondent, JoinType.LEFT).get(Correspondent_.id)
-                ),
-                buildSpecification(criteria.getDeputyId(), root ->
-                    root.join(EscalationContact_.deputy, JoinType.LEFT).get(Correspondent_.id)
+            specification = specification.and(
+                Specification.allOf(
+                    Boolean.TRUE.equals(criteria.getDistinct()) ? distinct(criteria.getDistinct()) : Specification.unrestricted(),
+                    buildSpecification(criteria.getId(), EscalationContact_.id),
+                    buildRangeSpecification(criteria.getSeverity(), EscalationContact_.severity),
+                    buildRangeSpecification(criteria.getEscalationRank(), EscalationContact_.escalationRank),
+                    buildRangeSpecification(criteria.getAckDelay(), EscalationContact_.ackDelay),
+                    buildSpecification(criteria.getActive(), EscalationContact_.active),
+                    buildSpecification(criteria.getInstitutionId(), root ->
+                        root.join(EscalationContact_.institution, JoinType.LEFT).get(Institution_.id)
+                    ),
+                    buildSpecification(criteria.getCorrespondentId(), root ->
+                        root.join(EscalationContact_.correspondent, JoinType.LEFT).get(Correspondent_.id)
+                    ),
+                    buildSpecification(criteria.getDeputyId(), root ->
+                        root.join(EscalationContact_.deputy, JoinType.LEFT).get(Correspondent_.id)
+                    )
                 )
             );
         }

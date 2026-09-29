@@ -1,6 +1,6 @@
 {
   "annotations": {
-    "changelogDate": "20260928134009"
+    "changelogDate": "20260929150121"
   },
   "applications": ["participant"],
   "clientRootFolder": "participant",
@@ -25,10 +25,10 @@
       "fieldValidateRulesMaxlength": "50"
     },
     {
-      "documentation": "Code participant GIMAC, par exemple EP-A-017.",
+      "documentation": "Code participant GIMAC, par exemple EP-A-017 ; attribué au prononcé de l'adhésion (D-57).",
       "fieldName": "participantCode",
       "fieldType": "String",
-      "fieldValidateRules": ["required", "unique", "maxlength", "pattern"],
+      "fieldValidateRules": ["unique", "maxlength", "pattern"],
       "fieldValidateRulesMaxlength": "20",
       "fieldValidateRulesPattern": "^[A-Z0-9-]+$"
     },
@@ -61,13 +61,13 @@
       "fieldType": "InstitutionCategory",
       "fieldTypeDocumentation": "Catégories d'établissement (PAR-01, CA §3.4.2).",
       "fieldValidateRules": ["required"],
-      "fieldValues": "BANQUE,MICROFINANCE,ETABLISSEMENT_PAIEMENT,EMETTEUR_MONNAIE_ELECTRONIQUE,TRESOR_PUBLIC"
+      "fieldValues": "BANQUE,MICROFINANCE,ETABLISSEMENT_PAIEMENT,EMETTEUR_MONNAIE_ELECTRONIQUE,TRESOR_PUBLIC,AGREGATEUR,FINTECH,EDITEUR_LOGICIEL"
     },
     {
+      "documentation": "Mode d'adhésion ; exigé au prononcé de l'adhésion, inconnu à la prise de contact.",
       "fieldName": "membershipMode",
       "fieldType": "MembershipMode",
       "fieldTypeDocumentation": "Mode d'adhésion : direct (compte de règlement BEAC) ou indirect (banque marraine).",
-      "fieldValidateRules": ["required"],
       "fieldValues": "DIRECT,INDIRECT"
     },
     {
@@ -91,9 +91,9 @@
     {
       "fieldName": "status",
       "fieldType": "InstitutionStatus",
-      "fieldTypeDocumentation": "Cycle de vie institutionnel (REC D-08). Les états du CA (HOMOLOGATION,\\nSURVEILLANCE, SUSPENSION, RÉSILIÉ) sont caducs.",
+      "fieldTypeDocumentation": "Cycle de vie de l'institution (D-08 complété par D-57) : CANDIDAT (« Prospect »\\ndu CR, prise de contact), ADHERENT (dossier d'adhésion complet, adhésion prononcée\\npar la DDRM), EN_HOMOLOGATION (première liaison ouverte), ... ; CLOS_SANS_SUITE\\ndepuis CANDIDAT ou ADHERENT, avec motif.",
       "fieldValidateRules": ["required"],
-      "fieldValues": "CANDIDAT,EN_HOMOLOGATION,ACTIF,A_REGULARISER,SUSPENDU,RETIRE"
+      "fieldValues": "CANDIDAT,ADHERENT,EN_HOMOLOGATION,ACTIF,A_REGULARISER,SUSPENDU,RETIRE,CLOS_SANS_SUITE"
     },
     {
       "fieldName": "complianceState",
@@ -130,6 +130,56 @@
       "fieldName": "createdAt",
       "fieldType": "Instant",
       "fieldValidateRules": ["required"]
+    },
+    {
+      "documentation": "Date de la prise de contact (rang 1).",
+      "fieldName": "contactedOn",
+      "fieldType": "LocalDate"
+    },
+    {
+      "documentation": "Origine de la prise de contact : courrier, réunion, salon, recommandation...",
+      "fieldName": "contactOrigin",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "255"
+    },
+    {
+      "documentation": "Projet envisagé par le candidat, tel qu'exprimé à la prise de contact.",
+      "fieldName": "intendedProject",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "1000"
+    },
+    {
+      "documentation": "Chargé de la DDRM qui porte le dossier.",
+      "fieldName": "ddrmOfficerId",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "ddrmOfficerName",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "200"
+    },
+    {
+      "documentation": "Prononcé de l'adhésion (rang 2) : date et auteur.",
+      "fieldName": "admittedAt",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "admittedById",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Clôture sans suite : motif et date.",
+      "fieldName": "closureReason",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "500"
+    },
+    {
+      "fieldName": "closedAt",
+      "fieldType": "Instant"
     }
   ],
   "jpaMetamodelFiltering": true,

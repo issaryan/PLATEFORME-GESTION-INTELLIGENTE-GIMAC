@@ -1,5 +1,6 @@
 package cm.gimac.des.participant.web.rest;
 
+import cm.gimac.des.participant.security.AuthoritiesConstants;
 import static cm.gimac.des.participant.domain.CorrespondentAsserts.*;
 import static cm.gimac.des.participant.web.rest.TestUtil.createUpdateProxyForBean;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -18,10 +19,8 @@ import cm.gimac.des.participant.repository.CorrespondentRepository;
 import cm.gimac.des.participant.service.CorrespondentService;
 import cm.gimac.des.participant.service.dto.CorrespondentDTO;
 import cm.gimac.des.participant.service.mapper.CorrespondentMapper;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -31,13 +30,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Integration tests for the {@link CorrespondentResource} REST controller.
@@ -45,7 +45,7 @@ import org.springframework.transaction.annotation.Transactional;
 @IntegrationTest
 @ExtendWith(MockitoExtension.class)
 @AutoConfigureMockMvc
-@WithMockUser
+@WithMockUser(authorities = AuthoritiesConstants.ADMIN)
 class CorrespondentResourceIT {
 
     private static final String DEFAULT_FULL_NAME = "AAAAAAAAAA";
@@ -70,7 +70,7 @@ class CorrespondentResourceIT {
     private static final Reachability UPDATED_REACHABILITY = Reachability.JOIGNABLE;
 
     private static final Instant DEFAULT_LAST_REACHABILITY_CHECK_AT = Instant.ofEpochMilli(0L);
-    private static final Instant UPDATED_LAST_REACHABILITY_CHECK_AT = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+    private static final Instant UPDATED_LAST_REACHABILITY_CHECK_AT = Instant.ofEpochMilli(1790694080285L);
 
     private static final Boolean DEFAULT_ON_CALL_247 = false;
     private static final Boolean UPDATED_ON_CALL_247 = true;
@@ -88,7 +88,7 @@ class CorrespondentResourceIT {
     private static final UUID UPDATED_VALIDATED_BY = UUID.randomUUID();
 
     private static final Instant DEFAULT_VALIDATED_AT = Instant.ofEpochMilli(0L);
-    private static final Instant UPDATED_VALIDATED_AT = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+    private static final Instant UPDATED_VALIDATED_AT = Instant.ofEpochMilli(1790694080285L);
 
     private static final String ENTITY_API_URL = "/api/correspondents";
     private static final String ENTITY_API_URL_ID = ENTITY_API_URL + "/{id}";
@@ -147,7 +147,7 @@ class CorrespondentResourceIT {
             em.persist(institution);
             em.flush();
         } else {
-            institution = TestUtil.findAll(em, Institution.class).get(0);
+            institution = TestUtil.findAll(em, Institution.class).getFirst();
         }
         correspondent.setInstitution(institution);
         return correspondent;
@@ -182,7 +182,7 @@ class CorrespondentResourceIT {
             em.persist(institution);
             em.flush();
         } else {
-            institution = TestUtil.findAll(em, Institution.class).get(0);
+            institution = TestUtil.findAll(em, Institution.class).getFirst();
         }
         updatedCorrespondent.setInstitution(institution);
         return updatedCorrespondent;
@@ -1003,7 +1003,7 @@ class CorrespondentResourceIT {
             correspondentRepository.saveAndFlush(correspondent);
             institution = InstitutionResourceIT.createEntity();
         } else {
-            institution = TestUtil.findAll(em, Institution.class).get(0);
+            institution = TestUtil.findAll(em, Institution.class).getFirst();
         }
         em.persist(institution);
         em.flush();
@@ -1202,12 +1202,12 @@ class CorrespondentResourceIT {
         partialUpdatedCorrespondent.setId(correspondent.getId());
 
         partialUpdatedCorrespondent
-            .fullName(UPDATED_FULL_NAME)
-            .reachability(UPDATED_REACHABILITY)
+            .duty(UPDATED_DUTY)
+            .phone(UPDATED_PHONE)
+            .publicKeyRef(UPDATED_PUBLIC_KEY_REF)
             .lastReachabilityCheckAt(UPDATED_LAST_REACHABILITY_CHECK_AT)
-            .onCall247(UPDATED_ON_CALL_247)
-            .userId(UPDATED_USER_ID)
-            .proposedBy(UPDATED_PROPOSED_BY)
+            .active(UPDATED_ACTIVE)
+            .validatedBy(UPDATED_VALIDATED_BY)
             .validatedAt(UPDATED_VALIDATED_AT);
 
         restCorrespondentMockMvc

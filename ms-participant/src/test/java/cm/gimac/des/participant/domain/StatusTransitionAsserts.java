@@ -62,7 +62,8 @@ public class StatusTransitionAsserts {
             .satisfies(a -> assertThat(a.getDecidedAt()).as("check decidedAt").isEqualTo(expected.getDecidedAt()))
             .satisfies(a -> assertThat(a.getState()).as("check state").isEqualTo(expected.getState()))
             .satisfies(a -> assertThat(a.getRejectionReason()).as("check rejectionReason").isEqualTo(expected.getRejectionReason()))
-            .satisfies(a -> assertThat(a.getEvidenceDocumentId()).as("check evidenceDocumentId").isEqualTo(expected.getEvidenceDocumentId())
+            .satisfies(a ->
+                assertThat(a.getEvidenceDocumentId()).as("check evidenceDocumentId").isEqualTo(expected.getEvidenceDocumentId())
             );
     }
 

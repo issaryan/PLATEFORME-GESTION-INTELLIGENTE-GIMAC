@@ -68,30 +68,39 @@ public class LegalDocumentQueryService extends QueryService<LegalDocument> {
      * @return the matching {@link Specification} of the entity.
      */
     protected Specification<LegalDocument> createSpecification(LegalDocumentCriteria criteria) {
-        Specification<LegalDocument> specification = Specification.where(null);
+        Specification<LegalDocument> specification = Specification.unrestricted();
+        specification = specification.and((root, query, builder) -> {
+            if (Long.class != query.getResultType()) {
+                root.fetch(LegalDocument_.previousDocument, JoinType.LEFT);
+                root.fetch(LegalDocument_.institution, JoinType.LEFT);
+            }
+            return null;
+        });
         if (criteria != null) {
             // This has to be called first, because the distinct method returns null
-            specification = Specification.allOf(
-                Boolean.TRUE.equals(criteria.getDistinct()) ? distinct(criteria.getDistinct()) : null,
-                buildSpecification(criteria.getId(), LegalDocument_.id),
-                buildSpecification(criteria.getType(), LegalDocument_.type),
-                buildStringSpecification(criteria.getReference(), LegalDocument_.reference),
-                buildStringSpecification(criteria.getIssuingAuthority(), LegalDocument_.issuingAuthority),
-                buildRangeSpecification(criteria.getIssuedOn(), LegalDocument_.issuedOn),
-                buildRangeSpecification(criteria.getExpiresOn(), LegalDocument_.expiresOn),
-                buildSpecification(criteria.getDocumentId(), LegalDocument_.documentId),
-                buildRangeSpecification(criteria.getDocumentVersion(), LegalDocument_.documentVersion),
-                buildStringSpecification(criteria.getDigest(), LegalDocument_.digest),
-                buildSpecification(criteria.getSealed(), LegalDocument_.sealed),
-                buildSpecification(criteria.getState(), LegalDocument_.state),
-                buildSpecification(criteria.getPreviousDocumentId(), root ->
-                    root.join(LegalDocument_.previousDocument, JoinType.LEFT).get(LegalDocument_.id)
-                ),
-                buildSpecification(criteria.getInstitutionId(), root ->
-                    root.join(LegalDocument_.institution, JoinType.LEFT).get(Institution_.id)
-                ),
-                buildSpecification(criteria.getLegalDocumentId(), root ->
-                    root.join(LegalDocument_.legalDocument, JoinType.LEFT).get(LegalDocument_.id)
+            specification = specification.and(
+                Specification.allOf(
+                    Boolean.TRUE.equals(criteria.getDistinct()) ? distinct(criteria.getDistinct()) : Specification.unrestricted(),
+                    buildSpecification(criteria.getId(), LegalDocument_.id),
+                    buildSpecification(criteria.getType(), LegalDocument_.type),
+                    buildStringSpecification(criteria.getReference(), LegalDocument_.reference),
+                    buildStringSpecification(criteria.getIssuingAuthority(), LegalDocument_.issuingAuthority),
+                    buildRangeSpecification(criteria.getIssuedOn(), LegalDocument_.issuedOn),
+                    buildRangeSpecification(criteria.getExpiresOn(), LegalDocument_.expiresOn),
+                    buildSpecification(criteria.getDocumentId(), LegalDocument_.documentId),
+                    buildRangeSpecification(criteria.getDocumentVersion(), LegalDocument_.documentVersion),
+                    buildStringSpecification(criteria.getDigest(), LegalDocument_.digest),
+                    buildSpecification(criteria.getSealed(), LegalDocument_.sealed),
+                    buildSpecification(criteria.getState(), LegalDocument_.state),
+                    buildSpecification(criteria.getPreviousDocumentId(), root ->
+                        root.join(LegalDocument_.previousDocument, JoinType.LEFT).get(LegalDocument_.id)
+                    ),
+                    buildSpecification(criteria.getInstitutionId(), root ->
+                        root.join(LegalDocument_.institution, JoinType.LEFT).get(Institution_.id)
+                    ),
+                    buildSpecification(criteria.getLegalDocumentId(), root ->
+                        root.join(LegalDocument_.legalDocument, JoinType.LEFT).get(LegalDocument_.id)
+                    )
                 )
             );
         }

@@ -10,37 +10,20 @@
 # ===================================================================
 # Standard Spring Boot properties.
 # Full reference is available at:
-# http://docs.spring.io/spring-boot/docs/current/reference/html/common-application-properties.html
+# https://docs.spring.io/spring-boot/appendix/application-properties/index.html
 # ===================================================================
 
 spring:
   application:
     name: participant
   cloud:
-    function:
-      definition: kafkaConsumer;kafkaProducer
-    stream:
-      kafka:
-        binder:
-          replicationFactor: 1
-          auto-create-topics: true
-      bindings:
-        binding-out-0:
-          content-type: text/plain
-          group: participant
-        kafkaConsumer-in-0:
-          destination: sse-topic
-          content-type: text/plain
-          group: participant
-        kafkaProducer-out-0:
-          content-type: text/plain
-          group: participant
   # Replace by 'prod, faker' to add the faker context and have sample data loaded in production
   liquibase:
     contexts: test
   jackson:
-    serialization:
-      write-durations-as-timestamps: false
+    datatype:
+      datetime:
+        write-durations-as-timestamps: false
   mail:
     host: localhost
   main:
@@ -80,8 +63,6 @@ server:
 # Full reference is available at: https://www.jhipster.tech/common-application-properties/
 # ===================================================================
 jhipster:
-  clientApp:
-    name: 'participantApp'
   mail:
     from: participant@localhost.com
     base-url: http://127.0.0.1:8080
@@ -108,3 +89,29 @@ management:
   health:
     mail:
       enabled: false
+
+# Lot 1 : adaptateurs de substitution et paramètres métier des tests (PI §0.8).
+gimac:
+  outbox:
+    delay: 500
+  adapters:
+    document-registry: stub
+    reauth: stub
+  services:
+    document:
+      url: http://localhost:8083
+    iam:
+      url: http://localhost:8081
+  kafka:
+    rebut:
+      actif: false
+  securite:
+    double-facteur:
+      exige: true
+      niveaux-acr: 2,3
+  participant:
+    adhesion:
+      pieces:
+        - { code: DEMANDE_ADHESION, libelle: "Lettre de demande d'adhésion", obligatoire: true }
+        - { code: STATUTS, libelle: "Statuts de l'établissement", obligatoire: true }
+        - { code: ORGANIGRAMME, libelle: "Organigramme et interlocuteurs désignés", obligatoire: false }

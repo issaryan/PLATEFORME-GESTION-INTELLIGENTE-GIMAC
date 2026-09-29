@@ -10,7 +10,7 @@ Plateforme du Département Exploitation et Supervision (DES) du GIMAC, groupemen
 | `CA-GIMAC-01_v1.1` | Cahier d'analyse : acteurs, cas d'utilisation, règles de gestion RG |
 | `CC-GIMAC-01_v1.1` | Cahier de conception : 14 microservices, événements, algorithmes, thème |
 | `CP-GIMAC-01_v2.0` | Carnet de produit : 313 récits, 17 épopées, feuille de route S0 à S12 |
-| `REC-GIMAC-01_Reconciliation.md` | **Référentiel d'implémentation** : décisions D-01 à D-55, prime sur les quatre cahiers pour les points qu'il tranche |
+| `REC-GIMAC-01_Reconciliation.md` | **Référentiel d'implémentation** : décisions D-01 à D-61, prime sur les quatre cahiers pour les points qu'il tranche |
 
 ## Organisation du dépôt
 
@@ -57,6 +57,7 @@ Les secrets locaux sont générés dans `infra/docker-compose/.env`, jamais vers
 - Trois couches React initialisées et conteneurisées.
 - 64 classes reprises du projet afriland (D-52) : jeton fantôme et mTLS de la passerelle, validation du jeton interne, file de rebut Kafka, masquage des journaux dans tous les services, canaux de notification, fusion PDF, JSON canonique. Inactives par défaut ; chaque récit les active. Écarts comblés (D-53) : jeton interne lié au certificat mTLS, chemins exemptés ancrés, masquage Luhn 6+4 ; administration Keycloak et jeton de service repris ensuite.
 - **Lot 1 engagé (module de gestion de la certification)** : Phase 0 réalisée (D-55), voir `docs/lot1`.
+- **Certification de bout en bout (D-56 à D-61)** : le compte rendu de cadrage CR-CERT-GIMAC-01 v1.4 est intégré ; réalisation par tranches verticales. Tranche DDRM livrée côté serveur : MS-PARTICIPANT régénéré en 9.4.0, étapes 1 et 2 du parcours (prise de contact, dossier d'adhésion, prononcé en maker-checker). Définition de fini : quatre types de tests (unitaires, intégration, sécurité, recette) et 80 % de couverture, bloquants ; accès par la matrice des rôles d'un jeton à deux facteurs.
 - Prochaine étape : itération A du lot 1, puis sprint 0 du carnet (gabarit hexagonal SOC-01, chaîne de livraison SOC-02, contrôles QUA-01, QUA-02, QUA-09, QUA-10).
 
 - **Socle vérifié le 29/09/2026 (D-54)** : 1 356 tests unitaires et 5 476 tests d'intégration réussis sur les 14 services ; plateforme complète démarrée ; `infra/docker-compose/tester-socle.sh` : 48 contrôles sur 48 réussis (santé, jeton Keycloak, API via la passerelle, OPA, WORM, simulacres, frontend, Prometheus).
@@ -78,3 +79,4 @@ Les secrets locaux sont générés dans `infra/docker-compose/.env`, jamais vers
 | 2026-09-28 | — | Écarts du code repris comblés et second inventaire d'afriland (D-53) |
 | 2026-09-29 | — | Socle vérifié de bout en bout : tests des 14 services, plateforme complète, `tester-socle.sh` (D-54) |
 | 2026-09-29 | — | Lot 1, Phase 0 : régénération de MS-HOMOLOGATION et MS-CERTIFICATION depuis le plan, domaine Keycloak gimac, OPA et routes /bff, messagerie, jeton de service (D-55) |
+| 2026-09-29 | — | Arbitrages de la certification d'après le CR de cadrage (D-56 à D-60) ; MS-PARTICIPANT régénéré en 9.4.0 et tranche DDRM (étapes 1 et 2) ; définition de fini des tests et double facteur (D-61) |

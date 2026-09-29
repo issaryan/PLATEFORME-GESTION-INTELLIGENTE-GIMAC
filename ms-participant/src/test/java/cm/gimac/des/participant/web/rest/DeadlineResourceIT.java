@@ -1,5 +1,6 @@
 package cm.gimac.des.participant.web.rest;
 
+import cm.gimac.des.participant.security.AuthoritiesConstants;
 import static cm.gimac.des.participant.domain.DeadlineAsserts.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasItem;
@@ -17,12 +18,9 @@ import cm.gimac.des.participant.domain.enumeration.DeadlineThreshold;
 import cm.gimac.des.participant.repository.DeadlineRepository;
 import cm.gimac.des.participant.service.DeadlineService;
 import cm.gimac.des.participant.service.mapper.DeadlineMapper;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneId;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -32,13 +30,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Integration tests for the {@link DeadlineResource} REST controller.
@@ -46,14 +45,14 @@ import org.springframework.transaction.annotation.Transactional;
 @IntegrationTest
 @ExtendWith(MockitoExtension.class)
 @AutoConfigureMockMvc
-@WithMockUser
+@WithMockUser(authorities = AuthoritiesConstants.ADMIN)
 class DeadlineResourceIT {
 
     private static final DeadlineThreshold DEFAULT_THRESHOLD = DeadlineThreshold.J_90;
     private static final DeadlineThreshold UPDATED_THRESHOLD = DeadlineThreshold.J_60;
 
     private static final LocalDate DEFAULT_DUE_ON = LocalDate.ofEpochDay(0L);
-    private static final LocalDate UPDATED_DUE_ON = LocalDate.now(ZoneId.systemDefault());
+    private static final LocalDate UPDATED_DUE_ON = LocalDate.parse("2026-09-29");
     private static final LocalDate SMALLER_DUE_ON = LocalDate.ofEpochDay(-1L);
 
     private static final DeadlineState DEFAULT_STATE = DeadlineState.ARMEE;
@@ -63,7 +62,7 @@ class DeadlineResourceIT {
     private static final String UPDATED_TRIGGERED_ACTION = "BBBBBBBBBB";
 
     private static final Instant DEFAULT_TRIGGERED_AT = Instant.ofEpochMilli(0L);
-    private static final Instant UPDATED_TRIGGERED_AT = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+    private static final Instant UPDATED_TRIGGERED_AT = Instant.ofEpochMilli(1790694080285L);
 
     private static final Boolean DEFAULT_ACKNOWLEDGEMENT_REQUIRED = false;
     private static final Boolean UPDATED_ACKNOWLEDGEMENT_REQUIRED = true;
@@ -72,7 +71,7 @@ class DeadlineResourceIT {
     private static final UUID UPDATED_NOTIFICATION_ID = UUID.randomUUID();
 
     private static final Instant DEFAULT_ACKNOWLEDGED_AT = Instant.ofEpochMilli(0L);
-    private static final Instant UPDATED_ACKNOWLEDGED_AT = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+    private static final Instant UPDATED_ACKNOWLEDGED_AT = Instant.ofEpochMilli(1790694080285L);
 
     private static final String ENTITY_API_URL = "/api/deadlines";
     private static final String ENTITY_API_URL_ID = ENTITY_API_URL + "/{id}";
@@ -125,7 +124,7 @@ class DeadlineResourceIT {
             em.persist(institution);
             em.flush();
         } else {
-            institution = TestUtil.findAll(em, Institution.class).get(0);
+            institution = TestUtil.findAll(em, Institution.class).getFirst();
         }
         deadline.setInstitution(institution);
         return deadline;
@@ -154,7 +153,7 @@ class DeadlineResourceIT {
             em.persist(institution);
             em.flush();
         } else {
-            institution = TestUtil.findAll(em, Institution.class).get(0);
+            institution = TestUtil.findAll(em, Institution.class).getFirst();
         }
         updatedDeadline.setInstitution(institution);
         return updatedDeadline;
@@ -580,7 +579,7 @@ class DeadlineResourceIT {
             deadlineRepository.saveAndFlush(deadline);
             institution = InstitutionResourceIT.createEntity();
         } else {
-            institution = TestUtil.findAll(em, Institution.class).get(0);
+            institution = TestUtil.findAll(em, Institution.class).getFirst();
         }
         em.persist(institution);
         em.flush();
@@ -602,7 +601,7 @@ class DeadlineResourceIT {
             deadlineRepository.saveAndFlush(deadline);
             legalDocument = LegalDocumentResourceIT.createEntity(em);
         } else {
-            legalDocument = TestUtil.findAll(em, LegalDocument.class).get(0);
+            legalDocument = TestUtil.findAll(em, LegalDocument.class).getFirst();
         }
         em.persist(legalDocument);
         em.flush();
@@ -624,7 +623,7 @@ class DeadlineResourceIT {
             deadlineRepository.saveAndFlush(deadline);
             convention = ConventionResourceIT.createEntity(em);
         } else {
-            convention = TestUtil.findAll(em, Convention.class).get(0);
+            convention = TestUtil.findAll(em, Convention.class).getFirst();
         }
         em.persist(convention);
         em.flush();

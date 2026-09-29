@@ -37,11 +37,11 @@ public class DeadlineResource {
     }
 
     /**
-     * {@code GET  /deadlines} : get all the deadlines.
+     * {@code GET  /deadlines} : get all the Deadlines.
      *
      * @param pageable the pagination information.
      * @param criteria the criteria which the requested entities should match.
-     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of deadlines in body.
+     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of Deadlines in body.
      */
     @GetMapping("")
     public ResponseEntity<List<DeadlineDTO>> getAllDeadlines(

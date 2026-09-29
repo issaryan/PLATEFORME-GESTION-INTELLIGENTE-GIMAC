@@ -38,7 +38,7 @@ public class InteractionResource {
 
     private static final String ENTITY_NAME = "participantInteraction";
 
-    @Value("${jhipster.clientApp.name}")
+    @Value("${jhipster.clientApp.name:participant}")
     private String applicationName;
 
     private final InteractionService interactionService;
@@ -61,7 +61,7 @@ public class InteractionResource {
      * {@code POST  /interactions} : Create a new interaction.
      *
      * @param interactionDTO the interactionDTO to create.
-     * @return the {@link ResponseEntity} with status {@code 201 (Created)} and with body the new interactionDTO, or with status {@code 400 (Bad Request)} if the interaction has already an ID.
+     * @return the {@link ResponseEntity} with status {@code 201 (Created)} and with body the new interactionDTO, or with status {@code 400 (Bad Request)} if the interaction already has an ID.
      * @throws URISyntaxException if the Location URI syntax is incorrect.
      */
     @PostMapping("")
@@ -125,7 +125,7 @@ public class InteractionResource {
         @PathVariable(value = "id", required = false) final UUID id,
         @NotNull @RequestBody InteractionDTO interactionDTO
     ) throws URISyntaxException {
-        LOG.debug("REST request to partial update Interaction partially : {}, {}", id, interactionDTO);
+        LOG.debug("REST request to partially update Interaction : {}, {}", id, interactionDTO);
         if (interactionDTO.getId() == null) {
             throw new BadRequestAlertException("Invalid id", ENTITY_NAME, "idnull");
         }
@@ -146,11 +146,11 @@ public class InteractionResource {
     }
 
     /**
-     * {@code GET  /interactions} : get all the interactions.
+     * {@code GET  /interactions} : get all the Interactions.
      *
      * @param pageable the pagination information.
      * @param criteria the criteria which the requested entities should match.
-     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of interactions in body.
+     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of Interactions in body.
      */
     @GetMapping("")
     public ResponseEntity<List<InteractionDTO>> getAllInteractions(

@@ -98,10 +98,11 @@ application {
     enableTranslation true
     nativeLanguage fr
     languages [fr, en]
-    testFrameworks []
+    testFrameworks [cucumber]
     enableSwaggerCodegen false
+    jhipsterVersion "9.4.0"
   }
-  entities Institution, Convention, SubscribedService, Correspondent, LegalDocument, Deadline, Interaction, EscalationContact, StatusTransition
+  entities AdhesionPiece, Institution, Convention, SubscribedService, Correspondent, LegalDocument, Deadline, Interaction, EscalationContact, StatusTransition
 }
 
 /* ---------------------------------------------------------------------------
@@ -112,13 +113,29 @@ application {
  * Cycle de vie institutionnel (REC D-08). Les états du CA (HOMOLOGATION,
  * SURVEILLANCE, SUSPENSION, RÉSILIÉ) sont caducs.
  */
+/**
+ * Cycle de vie de l'institution (D-08 complété par D-57) : CANDIDAT (« Prospect »
+ * du CR, prise de contact), ADHERENT (dossier d'adhésion complet, adhésion prononcée
+ * par la DDRM), EN_HOMOLOGATION (première liaison ouverte), ... ; CLOS_SANS_SUITE
+ * depuis CANDIDAT ou ADHERENT, avec motif.
+ */
 enum InstitutionStatus {
   CANDIDAT,
+  ADHERENT,
   EN_HOMOLOGATION,
   ACTIF,
   A_REGULARISER,
   SUSPENDU,
-  RETIRE
+  RETIRE,
+  CLOS_SANS_SUITE
+}
+
+/** Pièce du dossier d'adhésion (CR-CERT rang 2, D-57). */
+enum AdhesionPieceState {
+  ATTENDUE,
+  RECUE,
+  VALIDEE,
+  REJETEE
 }
 
 /** État de conformité documentaire (algorithme 6.27). */
@@ -171,7 +188,11 @@ enum InstitutionCategory {
   MICROFINANCE,
   ETABLISSEMENT_PAIEMENT,
   EMETTEUR_MONNAIE_ELECTRONIQUE,
-  TRESOR_PUBLIC
+  TRESOR_PUBLIC,
+  /* Typologie du CR-CERT (Fig. 7.3) : agrégateur, fintech, éditeur de logiciel. */
+  AGREGATEUR,
+  FINTECH,
+  EDITEUR_LOGICIEL
 }
 
 /** Mode d'adhésion : direct (compte de règlement BEAC) ou indirect (banque marraine). */
@@ -233,8 +254,8 @@ entity Institution {
   id UUID
   name String required maxlength(255)
   acronym String maxlength(50)
-  /** Code participant GIMAC, par exemple EP-A-017. */
-  participantCode String required unique maxlength(20) pattern(/^[A-Z0-9-]+$/)
+  /** Code participant GIMAC, par exemple EP-A-017 ; attribué au prononcé de l'adhésion (D-57). */
+  participantCode String unique maxlength(20) pattern(/^[A-Z0-9-]+$/)
   /** Code d'identification ISO 9362 (BIC), s'il existe (BF-07). */
   identificationCode String unique maxlength(11) pattern(/^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$/)
   /** Code banque BEAC, unique (RG-10). */
@@ -242,7 +263,8 @@ entity Institution {
   /** Pays CEMAC, code ISO 3166-1 alpha-2. */
   country String required maxlength(2) pattern(/^(CM|CF|CG|GA|GQ|TD)$/)
   category InstitutionCategory required
-  membershipMode MembershipMode required
+  /** Mode d'adhésion ; exigé au prononcé de l'adhésion, inconnu à la prise de contact. */
+  membershipMode MembershipMode
   /** Référence du compte de règlement à la BEAC, obligatoire en adhésion directe (RG-11). */
   settlementAccountRef String maxlength(50)
   /** Référence du compte de cantonnement, en adhésion indirecte (RG-12). */
@@ -259,6 +281,45 @@ entity Institution {
   /** Suspens ouverts dans MS-RAPPROCHEMENT, connus par événement (prérequis de RETIRE). */
   openSuspenseCount Integer required min(0)
   createdAt Instant required
+  /* Étapes 1 et 2 du parcours (CR-CERT §4.2.1, D-57). */
+  /** Date de la prise de contact (rang 1). */
+  contactedOn LocalDate
+  /** Origine de la prise de contact : courrier, réunion, salon, recommandation... */
+  contactOrigin String maxlength(255)
+  /** Projet envisagé par le candidat, tel qu'exprimé à la prise de contact. */
+  intendedProject String maxlength(1000)
+  /** Chargé de la DDRM qui porte le dossier. */
+  ddrmOfficerId UUID
+  ddrmOfficerName String maxlength(200)
+  /** Prononcé de l'adhésion (rang 2) : date et auteur. */
+  admittedAt Instant
+  admittedById UUID
+  /** Clôture sans suite : motif et date. */
+  closureReason String maxlength(500)
+  closedAt Instant
+}
+
+/**
+ * Pièce du dossier d'adhésion (CR-CERT rang 2). La liste des pièces attendues est
+ * paramétrée ; la pièce est déposée dans MS-DOCUMENT, seules sa référence et son
+ * empreinte sont conservées. L'adhésion ne peut être prononcée que si toutes les
+ * pièces obligatoires sont validées.
+ */
+entity AdhesionPiece {
+  id UUID
+  /** Code de la pièce dans la liste paramétrée, par exemple STATUTS. */
+  code String required maxlength(40) pattern(/^[A-Z0-9_]+$/)
+  label String required maxlength(255)
+  mandatory Boolean required
+  state AdhesionPieceState required
+  documentId UUID
+  documentSha256 String minlength(64) maxlength(64) pattern(/^[0-9a-f]{64}$/)
+  fileName String maxlength(255)
+  depositedAt Instant
+  depositedById UUID
+  reviewedAt Instant
+  reviewedById UUID
+  rejectionReason String maxlength(500)
 }
 
 /**
@@ -418,6 +479,7 @@ relationship ManyToOne {
   /** Banque de règlement et banque marraine : institutions du même registre. */
   Institution{settlementBank(participantCode)} to Institution
   Institution{sponsorBank(participantCode)} to Institution
+  AdhesionPiece{institution(name) required} to Institution
   Convention{institution(participantCode) required} to Institution
   SubscribedService{institution(participantCode) required} to Institution
   Correspondent{institution(participantCode) required} to Institution

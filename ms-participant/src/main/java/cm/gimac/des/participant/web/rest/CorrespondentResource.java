@@ -38,7 +38,7 @@ public class CorrespondentResource {
 
     private static final String ENTITY_NAME = "participantCorrespondent";
 
-    @Value("${jhipster.clientApp.name}")
+    @Value("${jhipster.clientApp.name:participant}")
     private String applicationName;
 
     private final CorrespondentService correspondentService;
@@ -61,7 +61,7 @@ public class CorrespondentResource {
      * {@code POST  /correspondents} : Create a new correspondent.
      *
      * @param correspondentDTO the correspondentDTO to create.
-     * @return the {@link ResponseEntity} with status {@code 201 (Created)} and with body the new correspondentDTO, or with status {@code 400 (Bad Request)} if the correspondent has already an ID.
+     * @return the {@link ResponseEntity} with status {@code 201 (Created)} and with body the new correspondentDTO, or with status {@code 400 (Bad Request)} if the correspondent already has an ID.
      * @throws URISyntaxException if the Location URI syntax is incorrect.
      */
     @PostMapping("")
@@ -126,7 +126,7 @@ public class CorrespondentResource {
         @PathVariable(value = "id", required = false) final UUID id,
         @NotNull @RequestBody CorrespondentDTO correspondentDTO
     ) throws URISyntaxException {
-        LOG.debug("REST request to partial update Correspondent partially : {}, {}", id, correspondentDTO);
+        LOG.debug("REST request to partially update Correspondent : {}, {}", id, correspondentDTO);
         if (correspondentDTO.getId() == null) {
             throw new BadRequestAlertException("Invalid id", ENTITY_NAME, "idnull");
         }
@@ -147,11 +147,11 @@ public class CorrespondentResource {
     }
 
     /**
-     * {@code GET  /correspondents} : get all the correspondents.
+     * {@code GET  /correspondents} : get all the Correspondents.
      *
      * @param pageable the pagination information.
      * @param criteria the criteria which the requested entities should match.
-     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of correspondents in body.
+     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of Correspondents in body.
      */
     @GetMapping("")
     public ResponseEntity<List<CorrespondentDTO>> getAllCorrespondents(

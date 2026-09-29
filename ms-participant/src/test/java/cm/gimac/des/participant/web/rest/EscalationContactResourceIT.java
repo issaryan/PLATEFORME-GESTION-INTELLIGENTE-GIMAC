@@ -1,5 +1,6 @@
 package cm.gimac.des.participant.web.rest;
 
+import cm.gimac.des.participant.security.AuthoritiesConstants;
 import static cm.gimac.des.participant.domain.EscalationContactAsserts.*;
 import static cm.gimac.des.participant.web.rest.TestUtil.createUpdateProxyForBean;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -17,7 +18,6 @@ import cm.gimac.des.participant.repository.EscalationContactRepository;
 import cm.gimac.des.participant.service.EscalationContactService;
 import cm.gimac.des.participant.service.dto.EscalationContactDTO;
 import cm.gimac.des.participant.service.mapper.EscalationContactMapper;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -29,13 +29,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Integration tests for the {@link EscalationContactResource} REST controller.
@@ -43,7 +44,7 @@ import org.springframework.transaction.annotation.Transactional;
 @IntegrationTest
 @ExtendWith(MockitoExtension.class)
 @AutoConfigureMockMvc
-@WithMockUser
+@WithMockUser(authorities = AuthoritiesConstants.ADMIN)
 class EscalationContactResourceIT {
 
     private static final Integer DEFAULT_SEVERITY = 1;
@@ -108,7 +109,7 @@ class EscalationContactResourceIT {
             em.persist(institution);
             em.flush();
         } else {
-            institution = TestUtil.findAll(em, Institution.class).get(0);
+            institution = TestUtil.findAll(em, Institution.class).getFirst();
         }
         escalationContact.setInstitution(institution);
         // Add required entity
@@ -118,7 +119,7 @@ class EscalationContactResourceIT {
             em.persist(correspondent);
             em.flush();
         } else {
-            correspondent = TestUtil.findAll(em, Correspondent.class).get(0);
+            correspondent = TestUtil.findAll(em, Correspondent.class).getFirst();
         }
         escalationContact.setCorrespondent(correspondent);
         return escalationContact;
@@ -143,7 +144,7 @@ class EscalationContactResourceIT {
             em.persist(institution);
             em.flush();
         } else {
-            institution = TestUtil.findAll(em, Institution.class).get(0);
+            institution = TestUtil.findAll(em, Institution.class).getFirst();
         }
         updatedEscalationContact.setInstitution(institution);
         // Add required entity
@@ -153,7 +154,7 @@ class EscalationContactResourceIT {
             em.persist(correspondent);
             em.flush();
         } else {
-            correspondent = TestUtil.findAll(em, Correspondent.class).get(0);
+            correspondent = TestUtil.findAll(em, Correspondent.class).getFirst();
         }
         updatedEscalationContact.setCorrespondent(correspondent);
         return updatedEscalationContact;
@@ -648,7 +649,7 @@ class EscalationContactResourceIT {
             escalationContactRepository.saveAndFlush(escalationContact);
             institution = InstitutionResourceIT.createEntity();
         } else {
-            institution = TestUtil.findAll(em, Institution.class).get(0);
+            institution = TestUtil.findAll(em, Institution.class).getFirst();
         }
         em.persist(institution);
         em.flush();
@@ -670,7 +671,7 @@ class EscalationContactResourceIT {
             escalationContactRepository.saveAndFlush(escalationContact);
             correspondent = CorrespondentResourceIT.createEntity(em);
         } else {
-            correspondent = TestUtil.findAll(em, Correspondent.class).get(0);
+            correspondent = TestUtil.findAll(em, Correspondent.class).getFirst();
         }
         em.persist(correspondent);
         em.flush();
@@ -692,7 +693,7 @@ class EscalationContactResourceIT {
             escalationContactRepository.saveAndFlush(escalationContact);
             deputy = CorrespondentResourceIT.createEntity(em);
         } else {
-            deputy = TestUtil.findAll(em, Correspondent.class).get(0);
+            deputy = TestUtil.findAll(em, Correspondent.class).getFirst();
         }
         em.persist(deputy);
         em.flush();
@@ -870,7 +871,7 @@ class EscalationContactResourceIT {
         EscalationContact partialUpdatedEscalationContact = new EscalationContact();
         partialUpdatedEscalationContact.setId(escalationContact.getId());
 
-        partialUpdatedEscalationContact.escalationRank(UPDATED_ESCALATION_RANK).ackDelay(UPDATED_ACK_DELAY).active(UPDATED_ACTIVE);
+        partialUpdatedEscalationContact.escalationRank(UPDATED_ESCALATION_RANK);
 
         restEscalationContactMockMvc
             .perform(

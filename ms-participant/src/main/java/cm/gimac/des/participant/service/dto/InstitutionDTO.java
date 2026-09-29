@@ -30,10 +30,9 @@ public class InstitutionDTO implements Serializable {
     @Size(max = 50)
     private String acronym;
 
-    @NotNull
     @Size(max = 20)
     @Pattern(regexp = "^[A-Z0-9-]+$")
-    @Schema(description = "Code participant GIMAC, par exemple EP-A-017.", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "Code participant GIMAC, par exemple EP-A-017 ; attribué au prononcé de l'adhésion (D-57).")
     private String participantCode;
 
     @Size(max = 11)
@@ -55,7 +54,7 @@ public class InstitutionDTO implements Serializable {
     @NotNull
     private InstitutionCategory category;
 
-    @NotNull
+    @Schema(description = "Mode d'adhésion ; exigé au prononcé de l'adhésion, inconnu à la prise de contact.")
     private MembershipMode membershipMode;
 
     @Size(max = 50)
@@ -98,6 +97,34 @@ public class InstitutionDTO implements Serializable {
 
     @NotNull
     private Instant createdAt;
+
+    @Schema(description = "Date de la prise de contact (rang 1).")
+    private LocalDate contactedOn;
+
+    @Size(max = 255)
+    @Schema(description = "Origine de la prise de contact : courrier, réunion, salon, recommandation...")
+    private String contactOrigin;
+
+    @Size(max = 1000)
+    @Schema(description = "Projet envisagé par le candidat, tel qu'exprimé à la prise de contact.")
+    private String intendedProject;
+
+    @Schema(description = "Chargé de la DDRM qui porte le dossier.")
+    private UUID ddrmOfficerId;
+
+    @Size(max = 200)
+    private String ddrmOfficerName;
+
+    @Schema(description = "Prononcé de l'adhésion (rang 2) : date et auteur.")
+    private Instant admittedAt;
+
+    private UUID admittedById;
+
+    @Size(max = 500)
+    @Schema(description = "Clôture sans suite : motif et date.")
+    private String closureReason;
+
+    private Instant closedAt;
 
     @Schema(description = "Banque de règlement et banque marraine : institutions du même registre.")
     private InstitutionDTO settlementBank;
@@ -256,6 +283,78 @@ public class InstitutionDTO implements Serializable {
         this.createdAt = createdAt;
     }
 
+    public LocalDate getContactedOn() {
+        return contactedOn;
+    }
+
+    public void setContactedOn(LocalDate contactedOn) {
+        this.contactedOn = contactedOn;
+    }
+
+    public String getContactOrigin() {
+        return contactOrigin;
+    }
+
+    public void setContactOrigin(String contactOrigin) {
+        this.contactOrigin = contactOrigin;
+    }
+
+    public String getIntendedProject() {
+        return intendedProject;
+    }
+
+    public void setIntendedProject(String intendedProject) {
+        this.intendedProject = intendedProject;
+    }
+
+    public UUID getDdrmOfficerId() {
+        return ddrmOfficerId;
+    }
+
+    public void setDdrmOfficerId(UUID ddrmOfficerId) {
+        this.ddrmOfficerId = ddrmOfficerId;
+    }
+
+    public String getDdrmOfficerName() {
+        return ddrmOfficerName;
+    }
+
+    public void setDdrmOfficerName(String ddrmOfficerName) {
+        this.ddrmOfficerName = ddrmOfficerName;
+    }
+
+    public Instant getAdmittedAt() {
+        return admittedAt;
+    }
+
+    public void setAdmittedAt(Instant admittedAt) {
+        this.admittedAt = admittedAt;
+    }
+
+    public UUID getAdmittedById() {
+        return admittedById;
+    }
+
+    public void setAdmittedById(UUID admittedById) {
+        this.admittedById = admittedById;
+    }
+
+    public String getClosureReason() {
+        return closureReason;
+    }
+
+    public void setClosureReason(String closureReason) {
+        this.closureReason = closureReason;
+    }
+
+    public Instant getClosedAt() {
+        return closedAt;
+    }
+
+    public void setClosedAt(Instant closedAt) {
+        this.closedAt = closedAt;
+    }
+
     public InstitutionDTO getSettlementBank() {
         return settlementBank;
     }
@@ -316,6 +415,15 @@ public class InstitutionDTO implements Serializable {
             ", openLinkCount=" + getOpenLinkCount() +
             ", openSuspenseCount=" + getOpenSuspenseCount() +
             ", createdAt='" + getCreatedAt() + "'" +
+            ", contactedOn='" + getContactedOn() + "'" +
+            ", contactOrigin='" + getContactOrigin() + "'" +
+            ", intendedProject='" + getIntendedProject() + "'" +
+            ", ddrmOfficerId='" + getDdrmOfficerId() + "'" +
+            ", ddrmOfficerName='" + getDdrmOfficerName() + "'" +
+            ", admittedAt='" + getAdmittedAt() + "'" +
+            ", admittedById='" + getAdmittedById() + "'" +
+            ", closureReason='" + getClosureReason() + "'" +
+            ", closedAt='" + getClosedAt() + "'" +
             ", settlementBank=" + getSettlementBank() +
             ", sponsorBank=" + getSponsorBank() +
             "}";

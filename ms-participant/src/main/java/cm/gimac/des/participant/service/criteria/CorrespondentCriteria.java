@@ -2,6 +2,7 @@ package cm.gimac.des.participant.service.criteria;
 
 import cm.gimac.des.participant.domain.enumeration.CorrespondentFunction;
 import cm.gimac.des.participant.domain.enumeration.Reachability;
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.Objects;
 import java.util.Optional;
@@ -56,6 +57,7 @@ public class CorrespondentCriteria implements Serializable, Criteria {
         }
     }
 
+    @Serial
     private static final long serialVersionUID = 1L;
 
     private UUIDFilter id;

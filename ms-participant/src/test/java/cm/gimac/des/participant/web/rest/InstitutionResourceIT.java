@@ -1,5 +1,6 @@
 package cm.gimac.des.participant.web.rest;
 
+import cm.gimac.des.participant.security.AuthoritiesConstants;
 import static cm.gimac.des.participant.domain.InstitutionAsserts.*;
 import static cm.gimac.des.participant.web.rest.TestUtil.createUpdateProxyForBean;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -20,12 +21,9 @@ import cm.gimac.des.participant.repository.InstitutionRepository;
 import cm.gimac.des.participant.service.InstitutionService;
 import cm.gimac.des.participant.service.dto.InstitutionDTO;
 import cm.gimac.des.participant.service.mapper.InstitutionMapper;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneId;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -35,13 +33,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Integration tests for the {@link InstitutionResource} REST controller.
@@ -49,7 +48,7 @@ import org.springframework.transaction.annotation.Transactional;
 @IntegrationTest
 @ExtendWith(MockitoExtension.class)
 @AutoConfigureMockMvc
-@WithMockUser
+@WithMockUser(authorities = AuthoritiesConstants.ADMIN)
 class InstitutionResourceIT {
 
     private static final String DEFAULT_NAME = "AAAAAAAAAA";
@@ -61,14 +60,14 @@ class InstitutionResourceIT {
     private static final String DEFAULT_PARTICIPANT_CODE = "AAAAAAAAAA";
     private static final String UPDATED_PARTICIPANT_CODE = "BBBBBBBBBB";
 
-    private static final String DEFAULT_IDENTIFICATION_CODE = "UPFHCH6F4I1";
-    private static final String UPDATED_IDENTIFICATION_CODE = "LNLBUNWNQBN";
+    private static final String DEFAULT_IDENTIFICATION_CODE = "FYTVIZXT";
+    private static final String UPDATED_IDENTIFICATION_CODE = "LILRLYSE";
 
     private static final String DEFAULT_BEAC_BANK_CODE = "AAAAAAAAAA";
     private static final String UPDATED_BEAC_BANK_CODE = "BBBBBBBBBB";
 
-    private static final String DEFAULT_COUNTRY = "CG";
-    private static final String UPDATED_COUNTRY = "GQ";
+    private static final String DEFAULT_COUNTRY = "CF";
+    private static final String UPDATED_COUNTRY = "CFB";
 
     private static final InstitutionCategory DEFAULT_CATEGORY = InstitutionCategory.BANQUE;
     private static final InstitutionCategory UPDATED_CATEGORY = InstitutionCategory.MICROFINANCE;
@@ -83,20 +82,20 @@ class InstitutionResourceIT {
     private static final String UPDATED_RING_FENCED_ACCOUNT_REF = "BBBBBBBBBB";
 
     private static final LocalDate DEFAULT_JOINED_ON = LocalDate.ofEpochDay(0L);
-    private static final LocalDate UPDATED_JOINED_ON = LocalDate.now(ZoneId.systemDefault());
+    private static final LocalDate UPDATED_JOINED_ON = LocalDate.parse("2026-09-29");
     private static final LocalDate SMALLER_JOINED_ON = LocalDate.ofEpochDay(-1L);
 
     private static final InstitutionStatus DEFAULT_STATUS = InstitutionStatus.CANDIDAT;
-    private static final InstitutionStatus UPDATED_STATUS = InstitutionStatus.EN_HOMOLOGATION;
+    private static final InstitutionStatus UPDATED_STATUS = InstitutionStatus.ADHERENT;
 
     private static final ComplianceState DEFAULT_COMPLIANCE_STATE = ComplianceState.CONFORME;
     private static final ComplianceState UPDATED_COMPLIANCE_STATE = ComplianceState.A_REGULARISER;
 
     private static final Instant DEFAULT_ATTESTATION_ISSUED_AT = Instant.ofEpochMilli(0L);
-    private static final Instant UPDATED_ATTESTATION_ISSUED_AT = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+    private static final Instant UPDATED_ATTESTATION_ISSUED_AT = Instant.ofEpochMilli(1790694080285L);
 
     private static final Instant DEFAULT_GO_LIVE_AUTHORIZED_AT = Instant.ofEpochMilli(0L);
-    private static final Instant UPDATED_GO_LIVE_AUTHORIZED_AT = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+    private static final Instant UPDATED_GO_LIVE_AUTHORIZED_AT = Instant.ofEpochMilli(1790694080285L);
 
     private static final Integer DEFAULT_OPEN_LINK_COUNT = 0;
     private static final Integer UPDATED_OPEN_LINK_COUNT = 1;
@@ -107,7 +106,35 @@ class InstitutionResourceIT {
     private static final Integer SMALLER_OPEN_SUSPENSE_COUNT = 0 - 1;
 
     private static final Instant DEFAULT_CREATED_AT = Instant.ofEpochMilli(0L);
-    private static final Instant UPDATED_CREATED_AT = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+    private static final Instant UPDATED_CREATED_AT = Instant.ofEpochMilli(1790694080285L);
+
+    private static final LocalDate DEFAULT_CONTACTED_ON = LocalDate.ofEpochDay(0L);
+    private static final LocalDate UPDATED_CONTACTED_ON = LocalDate.parse("2026-09-29");
+    private static final LocalDate SMALLER_CONTACTED_ON = LocalDate.ofEpochDay(-1L);
+
+    private static final String DEFAULT_CONTACT_ORIGIN = "AAAAAAAAAA";
+    private static final String UPDATED_CONTACT_ORIGIN = "BBBBBBBBBB";
+
+    private static final String DEFAULT_INTENDED_PROJECT = "AAAAAAAAAA";
+    private static final String UPDATED_INTENDED_PROJECT = "BBBBBBBBBB";
+
+    private static final UUID DEFAULT_DDRM_OFFICER_ID = UUID.randomUUID();
+    private static final UUID UPDATED_DDRM_OFFICER_ID = UUID.randomUUID();
+
+    private static final String DEFAULT_DDRM_OFFICER_NAME = "AAAAAAAAAA";
+    private static final String UPDATED_DDRM_OFFICER_NAME = "BBBBBBBBBB";
+
+    private static final Instant DEFAULT_ADMITTED_AT = Instant.ofEpochMilli(0L);
+    private static final Instant UPDATED_ADMITTED_AT = Instant.ofEpochMilli(1790694080285L);
+
+    private static final UUID DEFAULT_ADMITTED_BY_ID = UUID.randomUUID();
+    private static final UUID UPDATED_ADMITTED_BY_ID = UUID.randomUUID();
+
+    private static final String DEFAULT_CLOSURE_REASON = "AAAAAAAAAA";
+    private static final String UPDATED_CLOSURE_REASON = "BBBBBBBBBB";
+
+    private static final Instant DEFAULT_CLOSED_AT = Instant.ofEpochMilli(0L);
+    private static final Instant UPDATED_CLOSED_AT = Instant.ofEpochMilli(1790694080285L);
 
     private static final String ENTITY_API_URL = "/api/institutions";
     private static final String ENTITY_API_URL_ID = ENTITY_API_URL + "/{id}";
@@ -162,7 +189,16 @@ class InstitutionResourceIT {
             .goLiveAuthorizedAt(DEFAULT_GO_LIVE_AUTHORIZED_AT)
             .openLinkCount(DEFAULT_OPEN_LINK_COUNT)
             .openSuspenseCount(DEFAULT_OPEN_SUSPENSE_COUNT)
-            .createdAt(DEFAULT_CREATED_AT);
+            .createdAt(DEFAULT_CREATED_AT)
+            .contactedOn(DEFAULT_CONTACTED_ON)
+            .contactOrigin(DEFAULT_CONTACT_ORIGIN)
+            .intendedProject(DEFAULT_INTENDED_PROJECT)
+            .ddrmOfficerId(DEFAULT_DDRM_OFFICER_ID)
+            .ddrmOfficerName(DEFAULT_DDRM_OFFICER_NAME)
+            .admittedAt(DEFAULT_ADMITTED_AT)
+            .admittedById(DEFAULT_ADMITTED_BY_ID)
+            .closureReason(DEFAULT_CLOSURE_REASON)
+            .closedAt(DEFAULT_CLOSED_AT);
     }
 
     /**
@@ -190,7 +226,16 @@ class InstitutionResourceIT {
             .goLiveAuthorizedAt(UPDATED_GO_LIVE_AUTHORIZED_AT)
             .openLinkCount(UPDATED_OPEN_LINK_COUNT)
             .openSuspenseCount(UPDATED_OPEN_SUSPENSE_COUNT)
-            .createdAt(UPDATED_CREATED_AT);
+            .createdAt(UPDATED_CREATED_AT)
+            .contactedOn(UPDATED_CONTACTED_ON)
+            .contactOrigin(UPDATED_CONTACT_ORIGIN)
+            .intendedProject(UPDATED_INTENDED_PROJECT)
+            .ddrmOfficerId(UPDATED_DDRM_OFFICER_ID)
+            .ddrmOfficerName(UPDATED_DDRM_OFFICER_NAME)
+            .admittedAt(UPDATED_ADMITTED_AT)
+            .admittedById(UPDATED_ADMITTED_BY_ID)
+            .closureReason(UPDATED_CLOSURE_REASON)
+            .closedAt(UPDATED_CLOSED_AT);
     }
 
     @BeforeEach
@@ -273,25 +318,6 @@ class InstitutionResourceIT {
 
     @Test
     @Transactional
-    void checkParticipantCodeIsRequired() throws Exception {
-        long databaseSizeBeforeTest = getRepositoryCount();
-        // set the field null
-        institution.setParticipantCode(null);
-
-        // Create the Institution, which fails.
-        InstitutionDTO institutionDTO = institutionMapper.toDto(institution);
-
-        restInstitutionMockMvc
-            .perform(
-                post(ENTITY_API_URL).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(om.writeValueAsBytes(institutionDTO))
-            )
-            .andExpect(status().isBadRequest());
-
-        assertSameRepositoryCount(databaseSizeBeforeTest);
-    }
-
-    @Test
-    @Transactional
     void checkCountryIsRequired() throws Exception {
         long databaseSizeBeforeTest = getRepositoryCount();
         // set the field null
@@ -315,25 +341,6 @@ class InstitutionResourceIT {
         long databaseSizeBeforeTest = getRepositoryCount();
         // set the field null
         institution.setCategory(null);
-
-        // Create the Institution, which fails.
-        InstitutionDTO institutionDTO = institutionMapper.toDto(institution);
-
-        restInstitutionMockMvc
-            .perform(
-                post(ENTITY_API_URL).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(om.writeValueAsBytes(institutionDTO))
-            )
-            .andExpect(status().isBadRequest());
-
-        assertSameRepositoryCount(databaseSizeBeforeTest);
-    }
-
-    @Test
-    @Transactional
-    void checkMembershipModeIsRequired() throws Exception {
-        long databaseSizeBeforeTest = getRepositoryCount();
-        // set the field null
-        institution.setMembershipMode(null);
 
         // Create the Institution, which fails.
         InstitutionDTO institutionDTO = institutionMapper.toDto(institution);
@@ -471,7 +478,16 @@ class InstitutionResourceIT {
             .andExpect(jsonPath("$.[*].goLiveAuthorizedAt").value(hasItem(DEFAULT_GO_LIVE_AUTHORIZED_AT.toString())))
             .andExpect(jsonPath("$.[*].openLinkCount").value(hasItem(DEFAULT_OPEN_LINK_COUNT)))
             .andExpect(jsonPath("$.[*].openSuspenseCount").value(hasItem(DEFAULT_OPEN_SUSPENSE_COUNT)))
-            .andExpect(jsonPath("$.[*].createdAt").value(hasItem(DEFAULT_CREATED_AT.toString())));
+            .andExpect(jsonPath("$.[*].createdAt").value(hasItem(DEFAULT_CREATED_AT.toString())))
+            .andExpect(jsonPath("$.[*].contactedOn").value(hasItem(DEFAULT_CONTACTED_ON.toString())))
+            .andExpect(jsonPath("$.[*].contactOrigin").value(hasItem(DEFAULT_CONTACT_ORIGIN)))
+            .andExpect(jsonPath("$.[*].intendedProject").value(hasItem(DEFAULT_INTENDED_PROJECT)))
+            .andExpect(jsonPath("$.[*].ddrmOfficerId").value(hasItem(DEFAULT_DDRM_OFFICER_ID.toString())))
+            .andExpect(jsonPath("$.[*].ddrmOfficerName").value(hasItem(DEFAULT_DDRM_OFFICER_NAME)))
+            .andExpect(jsonPath("$.[*].admittedAt").value(hasItem(DEFAULT_ADMITTED_AT.toString())))
+            .andExpect(jsonPath("$.[*].admittedById").value(hasItem(DEFAULT_ADMITTED_BY_ID.toString())))
+            .andExpect(jsonPath("$.[*].closureReason").value(hasItem(DEFAULT_CLOSURE_REASON)))
+            .andExpect(jsonPath("$.[*].closedAt").value(hasItem(DEFAULT_CLOSED_AT.toString())));
     }
 
     @SuppressWarnings({ "unchecked" })
@@ -520,7 +536,16 @@ class InstitutionResourceIT {
             .andExpect(jsonPath("$.goLiveAuthorizedAt").value(DEFAULT_GO_LIVE_AUTHORIZED_AT.toString()))
             .andExpect(jsonPath("$.openLinkCount").value(DEFAULT_OPEN_LINK_COUNT))
             .andExpect(jsonPath("$.openSuspenseCount").value(DEFAULT_OPEN_SUSPENSE_COUNT))
-            .andExpect(jsonPath("$.createdAt").value(DEFAULT_CREATED_AT.toString()));
+            .andExpect(jsonPath("$.createdAt").value(DEFAULT_CREATED_AT.toString()))
+            .andExpect(jsonPath("$.contactedOn").value(DEFAULT_CONTACTED_ON.toString()))
+            .andExpect(jsonPath("$.contactOrigin").value(DEFAULT_CONTACT_ORIGIN))
+            .andExpect(jsonPath("$.intendedProject").value(DEFAULT_INTENDED_PROJECT))
+            .andExpect(jsonPath("$.ddrmOfficerId").value(DEFAULT_DDRM_OFFICER_ID.toString()))
+            .andExpect(jsonPath("$.ddrmOfficerName").value(DEFAULT_DDRM_OFFICER_NAME))
+            .andExpect(jsonPath("$.admittedAt").value(DEFAULT_ADMITTED_AT.toString()))
+            .andExpect(jsonPath("$.admittedById").value(DEFAULT_ADMITTED_BY_ID.toString()))
+            .andExpect(jsonPath("$.closureReason").value(DEFAULT_CLOSURE_REASON))
+            .andExpect(jsonPath("$.closedAt").value(DEFAULT_CLOSED_AT.toString()));
     }
 
     @Test
@@ -1464,13 +1489,457 @@ class InstitutionResourceIT {
 
     @Test
     @Transactional
+    void getAllInstitutionsByContactedOnIsEqualToSomething() throws Exception {
+        // Initialize the database
+        insertedInstitution = institutionRepository.saveAndFlush(institution);
+
+        // Get all the institutionList where contactedOn equals to
+        defaultInstitutionFiltering("contactedOn.equals=" + DEFAULT_CONTACTED_ON, "contactedOn.equals=" + UPDATED_CONTACTED_ON);
+    }
+
+    @Test
+    @Transactional
+    void getAllInstitutionsByContactedOnIsInShouldWork() throws Exception {
+        // Initialize the database
+        insertedInstitution = institutionRepository.saveAndFlush(institution);
+
+        // Get all the institutionList where contactedOn in
+        defaultInstitutionFiltering(
+            "contactedOn.in=" + DEFAULT_CONTACTED_ON + "," + UPDATED_CONTACTED_ON,
+            "contactedOn.in=" + UPDATED_CONTACTED_ON
+        );
+    }
+
+    @Test
+    @Transactional
+    void getAllInstitutionsByContactedOnIsNullOrNotNull() throws Exception {
+        // Initialize the database
+        insertedInstitution = institutionRepository.saveAndFlush(institution);
+
+        // Get all the institutionList where contactedOn is not null
+        defaultInstitutionFiltering("contactedOn.specified=true", "contactedOn.specified=false");
+    }
+
+    @Test
+    @Transactional
+    void getAllInstitutionsByContactedOnIsGreaterThanOrEqualToSomething() throws Exception {
+        // Initialize the database
+        insertedInstitution = institutionRepository.saveAndFlush(institution);
+
+        // Get all the institutionList where contactedOn is greater than or equal to
+        defaultInstitutionFiltering(
+            "contactedOn.greaterThanOrEqual=" + DEFAULT_CONTACTED_ON,
+            "contactedOn.greaterThanOrEqual=" + UPDATED_CONTACTED_ON
+        );
+    }
+
+    @Test
+    @Transactional
+    void getAllInstitutionsByContactedOnIsLessThanOrEqualToSomething() throws Exception {
+        // Initialize the database
+        insertedInstitution = institutionRepository.saveAndFlush(institution);
+
+        // Get all the institutionList where contactedOn is less than or equal to
+        defaultInstitutionFiltering(
+            "contactedOn.lessThanOrEqual=" + DEFAULT_CONTACTED_ON,
+            "contactedOn.lessThanOrEqual=" + SMALLER_CONTACTED_ON
+        );
+    }
+
+    @Test
+    @Transactional
+    void getAllInstitutionsByContactedOnIsLessThanSomething() throws Exception {
+        // Initialize the database
+        insertedInstitution = institutionRepository.saveAndFlush(institution);
+
+        // Get all the institutionList where contactedOn is less than
+        defaultInstitutionFiltering("contactedOn.lessThan=" + UPDATED_CONTACTED_ON, "contactedOn.lessThan=" + DEFAULT_CONTACTED_ON);
+    }
+
+    @Test
+    @Transactional
+    void getAllInstitutionsByContactedOnIsGreaterThanSomething() throws Exception {
+        // Initialize the database
+        insertedInstitution = institutionRepository.saveAndFlush(institution);
+
+        // Get all the institutionList where contactedOn is greater than
+        defaultInstitutionFiltering("contactedOn.greaterThan=" + SMALLER_CONTACTED_ON, "contactedOn.greaterThan=" + DEFAULT_CONTACTED_ON);
+    }
+
+    @Test
+    @Transactional
+    void getAllInstitutionsByContactOriginIsEqualToSomething() throws Exception {
+        // Initialize the database
+        insertedInstitution = institutionRepository.saveAndFlush(institution);
+
+        // Get all the institutionList where contactOrigin equals to
+        defaultInstitutionFiltering("contactOrigin.equals=" + DEFAULT_CONTACT_ORIGIN, "contactOrigin.equals=" + UPDATED_CONTACT_ORIGIN);
+    }
+
+    @Test
+    @Transactional
+    void getAllInstitutionsByContactOriginIsInShouldWork() throws Exception {
+        // Initialize the database
+        insertedInstitution = institutionRepository.saveAndFlush(institution);
+
+        // Get all the institutionList where contactOrigin in
+        defaultInstitutionFiltering(
+            "contactOrigin.in=" + DEFAULT_CONTACT_ORIGIN + "," + UPDATED_CONTACT_ORIGIN,
+            "contactOrigin.in=" + UPDATED_CONTACT_ORIGIN
+        );
+    }
+
+    @Test
+    @Transactional
+    void getAllInstitutionsByContactOriginIsNullOrNotNull() throws Exception {
+        // Initialize the database
+        insertedInstitution = institutionRepository.saveAndFlush(institution);
+
+        // Get all the institutionList where contactOrigin is not null
+        defaultInstitutionFiltering("contactOrigin.specified=true", "contactOrigin.specified=false");
+    }
+
+    @Test
+    @Transactional
+    void getAllInstitutionsByContactOriginContainsSomething() throws Exception {
+        // Initialize the database
+        insertedInstitution = institutionRepository.saveAndFlush(institution);
+
+        // Get all the institutionList where contactOrigin contains
+        defaultInstitutionFiltering("contactOrigin.contains=" + DEFAULT_CONTACT_ORIGIN, "contactOrigin.contains=" + UPDATED_CONTACT_ORIGIN);
+    }
+
+    @Test
+    @Transactional
+    void getAllInstitutionsByContactOriginNotContainsSomething() throws Exception {
+        // Initialize the database
+        insertedInstitution = institutionRepository.saveAndFlush(institution);
+
+        // Get all the institutionList where contactOrigin does not contain
+        defaultInstitutionFiltering(
+            "contactOrigin.doesNotContain=" + UPDATED_CONTACT_ORIGIN,
+            "contactOrigin.doesNotContain=" + DEFAULT_CONTACT_ORIGIN
+        );
+    }
+
+    @Test
+    @Transactional
+    void getAllInstitutionsByIntendedProjectIsEqualToSomething() throws Exception {
+        // Initialize the database
+        insertedInstitution = institutionRepository.saveAndFlush(institution);
+
+        // Get all the institutionList where intendedProject equals to
+        defaultInstitutionFiltering(
+            "intendedProject.equals=" + DEFAULT_INTENDED_PROJECT,
+            "intendedProject.equals=" + UPDATED_INTENDED_PROJECT
+        );
+    }
+
+    @Test
+    @Transactional
+    void getAllInstitutionsByIntendedProjectIsInShouldWork() throws Exception {
+        // Initialize the database
+        insertedInstitution = institutionRepository.saveAndFlush(institution);
+
+        // Get all the institutionList where intendedProject in
+        defaultInstitutionFiltering(
+            "intendedProject.in=" + DEFAULT_INTENDED_PROJECT + "," + UPDATED_INTENDED_PROJECT,
+            "intendedProject.in=" + UPDATED_INTENDED_PROJECT
+        );
+    }
+
+    @Test
+    @Transactional
+    void getAllInstitutionsByIntendedProjectIsNullOrNotNull() throws Exception {
+        // Initialize the database
+        insertedInstitution = institutionRepository.saveAndFlush(institution);
+
+        // Get all the institutionList where intendedProject is not null
+        defaultInstitutionFiltering("intendedProject.specified=true", "intendedProject.specified=false");
+    }
+
+    @Test
+    @Transactional
+    void getAllInstitutionsByIntendedProjectContainsSomething() throws Exception {
+        // Initialize the database
+        insertedInstitution = institutionRepository.saveAndFlush(institution);
+
+        // Get all the institutionList where intendedProject contains
+        defaultInstitutionFiltering(
+            "intendedProject.contains=" + DEFAULT_INTENDED_PROJECT,
+            "intendedProject.contains=" + UPDATED_INTENDED_PROJECT
+        );
+    }
+
+    @Test
+    @Transactional
+    void getAllInstitutionsByIntendedProjectNotContainsSomething() throws Exception {
+        // Initialize the database
+        insertedInstitution = institutionRepository.saveAndFlush(institution);
+
+        // Get all the institutionList where intendedProject does not contain
+        defaultInstitutionFiltering(
+            "intendedProject.doesNotContain=" + UPDATED_INTENDED_PROJECT,
+            "intendedProject.doesNotContain=" + DEFAULT_INTENDED_PROJECT
+        );
+    }
+
+    @Test
+    @Transactional
+    void getAllInstitutionsByDdrmOfficerIdIsEqualToSomething() throws Exception {
+        // Initialize the database
+        insertedInstitution = institutionRepository.saveAndFlush(institution);
+
+        // Get all the institutionList where ddrmOfficerId equals to
+        defaultInstitutionFiltering("ddrmOfficerId.equals=" + DEFAULT_DDRM_OFFICER_ID, "ddrmOfficerId.equals=" + UPDATED_DDRM_OFFICER_ID);
+    }
+
+    @Test
+    @Transactional
+    void getAllInstitutionsByDdrmOfficerIdIsInShouldWork() throws Exception {
+        // Initialize the database
+        insertedInstitution = institutionRepository.saveAndFlush(institution);
+
+        // Get all the institutionList where ddrmOfficerId in
+        defaultInstitutionFiltering(
+            "ddrmOfficerId.in=" + DEFAULT_DDRM_OFFICER_ID + "," + UPDATED_DDRM_OFFICER_ID,
+            "ddrmOfficerId.in=" + UPDATED_DDRM_OFFICER_ID
+        );
+    }
+
+    @Test
+    @Transactional
+    void getAllInstitutionsByDdrmOfficerIdIsNullOrNotNull() throws Exception {
+        // Initialize the database
+        insertedInstitution = institutionRepository.saveAndFlush(institution);
+
+        // Get all the institutionList where ddrmOfficerId is not null
+        defaultInstitutionFiltering("ddrmOfficerId.specified=true", "ddrmOfficerId.specified=false");
+    }
+
+    @Test
+    @Transactional
+    void getAllInstitutionsByDdrmOfficerNameIsEqualToSomething() throws Exception {
+        // Initialize the database
+        insertedInstitution = institutionRepository.saveAndFlush(institution);
+
+        // Get all the institutionList where ddrmOfficerName equals to
+        defaultInstitutionFiltering(
+            "ddrmOfficerName.equals=" + DEFAULT_DDRM_OFFICER_NAME,
+            "ddrmOfficerName.equals=" + UPDATED_DDRM_OFFICER_NAME
+        );
+    }
+
+    @Test
+    @Transactional
+    void getAllInstitutionsByDdrmOfficerNameIsInShouldWork() throws Exception {
+        // Initialize the database
+        insertedInstitution = institutionRepository.saveAndFlush(institution);
+
+        // Get all the institutionList where ddrmOfficerName in
+        defaultInstitutionFiltering(
+            "ddrmOfficerName.in=" + DEFAULT_DDRM_OFFICER_NAME + "," + UPDATED_DDRM_OFFICER_NAME,
+            "ddrmOfficerName.in=" + UPDATED_DDRM_OFFICER_NAME
+        );
+    }
+
+    @Test
+    @Transactional
+    void getAllInstitutionsByDdrmOfficerNameIsNullOrNotNull() throws Exception {
+        // Initialize the database
+        insertedInstitution = institutionRepository.saveAndFlush(institution);
+
+        // Get all the institutionList where ddrmOfficerName is not null
+        defaultInstitutionFiltering("ddrmOfficerName.specified=true", "ddrmOfficerName.specified=false");
+    }
+
+    @Test
+    @Transactional
+    void getAllInstitutionsByDdrmOfficerNameContainsSomething() throws Exception {
+        // Initialize the database
+        insertedInstitution = institutionRepository.saveAndFlush(institution);
+
+        // Get all the institutionList where ddrmOfficerName contains
+        defaultInstitutionFiltering(
+            "ddrmOfficerName.contains=" + DEFAULT_DDRM_OFFICER_NAME,
+            "ddrmOfficerName.contains=" + UPDATED_DDRM_OFFICER_NAME
+        );
+    }
+
+    @Test
+    @Transactional
+    void getAllInstitutionsByDdrmOfficerNameNotContainsSomething() throws Exception {
+        // Initialize the database
+        insertedInstitution = institutionRepository.saveAndFlush(institution);
+
+        // Get all the institutionList where ddrmOfficerName does not contain
+        defaultInstitutionFiltering(
+            "ddrmOfficerName.doesNotContain=" + UPDATED_DDRM_OFFICER_NAME,
+            "ddrmOfficerName.doesNotContain=" + DEFAULT_DDRM_OFFICER_NAME
+        );
+    }
+
+    @Test
+    @Transactional
+    void getAllInstitutionsByAdmittedAtIsEqualToSomething() throws Exception {
+        // Initialize the database
+        insertedInstitution = institutionRepository.saveAndFlush(institution);
+
+        // Get all the institutionList where admittedAt equals to
+        defaultInstitutionFiltering("admittedAt.equals=" + DEFAULT_ADMITTED_AT, "admittedAt.equals=" + UPDATED_ADMITTED_AT);
+    }
+
+    @Test
+    @Transactional
+    void getAllInstitutionsByAdmittedAtIsInShouldWork() throws Exception {
+        // Initialize the database
+        insertedInstitution = institutionRepository.saveAndFlush(institution);
+
+        // Get all the institutionList where admittedAt in
+        defaultInstitutionFiltering(
+            "admittedAt.in=" + DEFAULT_ADMITTED_AT + "," + UPDATED_ADMITTED_AT,
+            "admittedAt.in=" + UPDATED_ADMITTED_AT
+        );
+    }
+
+    @Test
+    @Transactional
+    void getAllInstitutionsByAdmittedAtIsNullOrNotNull() throws Exception {
+        // Initialize the database
+        insertedInstitution = institutionRepository.saveAndFlush(institution);
+
+        // Get all the institutionList where admittedAt is not null
+        defaultInstitutionFiltering("admittedAt.specified=true", "admittedAt.specified=false");
+    }
+
+    @Test
+    @Transactional
+    void getAllInstitutionsByAdmittedByIdIsEqualToSomething() throws Exception {
+        // Initialize the database
+        insertedInstitution = institutionRepository.saveAndFlush(institution);
+
+        // Get all the institutionList where admittedById equals to
+        defaultInstitutionFiltering("admittedById.equals=" + DEFAULT_ADMITTED_BY_ID, "admittedById.equals=" + UPDATED_ADMITTED_BY_ID);
+    }
+
+    @Test
+    @Transactional
+    void getAllInstitutionsByAdmittedByIdIsInShouldWork() throws Exception {
+        // Initialize the database
+        insertedInstitution = institutionRepository.saveAndFlush(institution);
+
+        // Get all the institutionList where admittedById in
+        defaultInstitutionFiltering(
+            "admittedById.in=" + DEFAULT_ADMITTED_BY_ID + "," + UPDATED_ADMITTED_BY_ID,
+            "admittedById.in=" + UPDATED_ADMITTED_BY_ID
+        );
+    }
+
+    @Test
+    @Transactional
+    void getAllInstitutionsByAdmittedByIdIsNullOrNotNull() throws Exception {
+        // Initialize the database
+        insertedInstitution = institutionRepository.saveAndFlush(institution);
+
+        // Get all the institutionList where admittedById is not null
+        defaultInstitutionFiltering("admittedById.specified=true", "admittedById.specified=false");
+    }
+
+    @Test
+    @Transactional
+    void getAllInstitutionsByClosureReasonIsEqualToSomething() throws Exception {
+        // Initialize the database
+        insertedInstitution = institutionRepository.saveAndFlush(institution);
+
+        // Get all the institutionList where closureReason equals to
+        defaultInstitutionFiltering("closureReason.equals=" + DEFAULT_CLOSURE_REASON, "closureReason.equals=" + UPDATED_CLOSURE_REASON);
+    }
+
+    @Test
+    @Transactional
+    void getAllInstitutionsByClosureReasonIsInShouldWork() throws Exception {
+        // Initialize the database
+        insertedInstitution = institutionRepository.saveAndFlush(institution);
+
+        // Get all the institutionList where closureReason in
+        defaultInstitutionFiltering(
+            "closureReason.in=" + DEFAULT_CLOSURE_REASON + "," + UPDATED_CLOSURE_REASON,
+            "closureReason.in=" + UPDATED_CLOSURE_REASON
+        );
+    }
+
+    @Test
+    @Transactional
+    void getAllInstitutionsByClosureReasonIsNullOrNotNull() throws Exception {
+        // Initialize the database
+        insertedInstitution = institutionRepository.saveAndFlush(institution);
+
+        // Get all the institutionList where closureReason is not null
+        defaultInstitutionFiltering("closureReason.specified=true", "closureReason.specified=false");
+    }
+
+    @Test
+    @Transactional
+    void getAllInstitutionsByClosureReasonContainsSomething() throws Exception {
+        // Initialize the database
+        insertedInstitution = institutionRepository.saveAndFlush(institution);
+
+        // Get all the institutionList where closureReason contains
+        defaultInstitutionFiltering("closureReason.contains=" + DEFAULT_CLOSURE_REASON, "closureReason.contains=" + UPDATED_CLOSURE_REASON);
+    }
+
+    @Test
+    @Transactional
+    void getAllInstitutionsByClosureReasonNotContainsSomething() throws Exception {
+        // Initialize the database
+        insertedInstitution = institutionRepository.saveAndFlush(institution);
+
+        // Get all the institutionList where closureReason does not contain
+        defaultInstitutionFiltering(
+            "closureReason.doesNotContain=" + UPDATED_CLOSURE_REASON,
+            "closureReason.doesNotContain=" + DEFAULT_CLOSURE_REASON
+        );
+    }
+
+    @Test
+    @Transactional
+    void getAllInstitutionsByClosedAtIsEqualToSomething() throws Exception {
+        // Initialize the database
+        insertedInstitution = institutionRepository.saveAndFlush(institution);
+
+        // Get all the institutionList where closedAt equals to
+        defaultInstitutionFiltering("closedAt.equals=" + DEFAULT_CLOSED_AT, "closedAt.equals=" + UPDATED_CLOSED_AT);
+    }
+
+    @Test
+    @Transactional
+    void getAllInstitutionsByClosedAtIsInShouldWork() throws Exception {
+        // Initialize the database
+        insertedInstitution = institutionRepository.saveAndFlush(institution);
+
+        // Get all the institutionList where closedAt in
+        defaultInstitutionFiltering("closedAt.in=" + DEFAULT_CLOSED_AT + "," + UPDATED_CLOSED_AT, "closedAt.in=" + UPDATED_CLOSED_AT);
+    }
+
+    @Test
+    @Transactional
+    void getAllInstitutionsByClosedAtIsNullOrNotNull() throws Exception {
+        // Initialize the database
+        insertedInstitution = institutionRepository.saveAndFlush(institution);
+
+        // Get all the institutionList where closedAt is not null
+        defaultInstitutionFiltering("closedAt.specified=true", "closedAt.specified=false");
+    }
+
+    @Test
+    @Transactional
     void getAllInstitutionsBySettlementBankIsEqualToSomething() throws Exception {
         Institution settlementBank;
         if (TestUtil.findAll(em, Institution.class).isEmpty()) {
             institutionRepository.saveAndFlush(institution);
-            settlementBank = InstitutionResourceIT.createUpdatedEntity(); // champs uniques distincts de l'entité testée
+            settlementBank = InstitutionResourceIT.createEntity();
         } else {
-            settlementBank = TestUtil.findAll(em, Institution.class).get(0);
+            settlementBank = TestUtil.findAll(em, Institution.class).getFirst();
         }
         em.persist(settlementBank);
         em.flush();
@@ -1490,9 +1959,9 @@ class InstitutionResourceIT {
         Institution sponsorBank;
         if (TestUtil.findAll(em, Institution.class).isEmpty()) {
             institutionRepository.saveAndFlush(institution);
-            sponsorBank = InstitutionResourceIT.createUpdatedEntity(); // champs uniques distincts de l'entité testée
+            sponsorBank = InstitutionResourceIT.createEntity();
         } else {
-            sponsorBank = TestUtil.findAll(em, Institution.class).get(0);
+            sponsorBank = TestUtil.findAll(em, Institution.class).getFirst();
         }
         em.persist(sponsorBank);
         em.flush();
@@ -1537,7 +2006,16 @@ class InstitutionResourceIT {
             .andExpect(jsonPath("$.[*].goLiveAuthorizedAt").value(hasItem(DEFAULT_GO_LIVE_AUTHORIZED_AT.toString())))
             .andExpect(jsonPath("$.[*].openLinkCount").value(hasItem(DEFAULT_OPEN_LINK_COUNT)))
             .andExpect(jsonPath("$.[*].openSuspenseCount").value(hasItem(DEFAULT_OPEN_SUSPENSE_COUNT)))
-            .andExpect(jsonPath("$.[*].createdAt").value(hasItem(DEFAULT_CREATED_AT.toString())));
+            .andExpect(jsonPath("$.[*].createdAt").value(hasItem(DEFAULT_CREATED_AT.toString())))
+            .andExpect(jsonPath("$.[*].contactedOn").value(hasItem(DEFAULT_CONTACTED_ON.toString())))
+            .andExpect(jsonPath("$.[*].contactOrigin").value(hasItem(DEFAULT_CONTACT_ORIGIN)))
+            .andExpect(jsonPath("$.[*].intendedProject").value(hasItem(DEFAULT_INTENDED_PROJECT)))
+            .andExpect(jsonPath("$.[*].ddrmOfficerId").value(hasItem(DEFAULT_DDRM_OFFICER_ID.toString())))
+            .andExpect(jsonPath("$.[*].ddrmOfficerName").value(hasItem(DEFAULT_DDRM_OFFICER_NAME)))
+            .andExpect(jsonPath("$.[*].admittedAt").value(hasItem(DEFAULT_ADMITTED_AT.toString())))
+            .andExpect(jsonPath("$.[*].admittedById").value(hasItem(DEFAULT_ADMITTED_BY_ID.toString())))
+            .andExpect(jsonPath("$.[*].closureReason").value(hasItem(DEFAULT_CLOSURE_REASON)))
+            .andExpect(jsonPath("$.[*].closedAt").value(hasItem(DEFAULT_CLOSED_AT.toString())));
 
         // Check, that the count call also returns 1
         restInstitutionMockMvc
@@ -1603,7 +2081,16 @@ class InstitutionResourceIT {
             .goLiveAuthorizedAt(UPDATED_GO_LIVE_AUTHORIZED_AT)
             .openLinkCount(UPDATED_OPEN_LINK_COUNT)
             .openSuspenseCount(UPDATED_OPEN_SUSPENSE_COUNT)
-            .createdAt(UPDATED_CREATED_AT);
+            .createdAt(UPDATED_CREATED_AT)
+            .contactedOn(UPDATED_CONTACTED_ON)
+            .contactOrigin(UPDATED_CONTACT_ORIGIN)
+            .intendedProject(UPDATED_INTENDED_PROJECT)
+            .ddrmOfficerId(UPDATED_DDRM_OFFICER_ID)
+            .ddrmOfficerName(UPDATED_DDRM_OFFICER_NAME)
+            .admittedAt(UPDATED_ADMITTED_AT)
+            .admittedById(UPDATED_ADMITTED_BY_ID)
+            .closureReason(UPDATED_CLOSURE_REASON)
+            .closedAt(UPDATED_CLOSED_AT);
         InstitutionDTO institutionDTO = institutionMapper.toDto(updatedInstitution);
 
         restInstitutionMockMvc
@@ -1698,12 +2185,15 @@ class InstitutionResourceIT {
 
         partialUpdatedInstitution
             .name(UPDATED_NAME)
-            .acronym(UPDATED_ACRONYM)
             .participantCode(UPDATED_PARTICIPANT_CODE)
             .country(UPDATED_COUNTRY)
-            .attestationIssuedAt(UPDATED_ATTESTATION_ISSUED_AT)
-            .goLiveAuthorizedAt(UPDATED_GO_LIVE_AUTHORIZED_AT)
-            .openSuspenseCount(UPDATED_OPEN_SUSPENSE_COUNT);
+            .membershipMode(UPDATED_MEMBERSHIP_MODE)
+            .settlementAccountRef(UPDATED_SETTLEMENT_ACCOUNT_REF)
+            .joinedOn(UPDATED_JOINED_ON)
+            .complianceState(UPDATED_COMPLIANCE_STATE)
+            .createdAt(UPDATED_CREATED_AT)
+            .contactOrigin(UPDATED_CONTACT_ORIGIN)
+            .ddrmOfficerId(UPDATED_DDRM_OFFICER_ID);
 
         restInstitutionMockMvc
             .perform(
@@ -1753,7 +2243,16 @@ class InstitutionResourceIT {
             .goLiveAuthorizedAt(UPDATED_GO_LIVE_AUTHORIZED_AT)
             .openLinkCount(UPDATED_OPEN_LINK_COUNT)
             .openSuspenseCount(UPDATED_OPEN_SUSPENSE_COUNT)
-            .createdAt(UPDATED_CREATED_AT);
+            .createdAt(UPDATED_CREATED_AT)
+            .contactedOn(UPDATED_CONTACTED_ON)
+            .contactOrigin(UPDATED_CONTACT_ORIGIN)
+            .intendedProject(UPDATED_INTENDED_PROJECT)
+            .ddrmOfficerId(UPDATED_DDRM_OFFICER_ID)
+            .ddrmOfficerName(UPDATED_DDRM_OFFICER_NAME)
+            .admittedAt(UPDATED_ADMITTED_AT)
+            .admittedById(UPDATED_ADMITTED_BY_ID)
+            .closureReason(UPDATED_CLOSURE_REASON)
+            .closedAt(UPDATED_CLOSED_AT);
 
         restInstitutionMockMvc
             .perform(

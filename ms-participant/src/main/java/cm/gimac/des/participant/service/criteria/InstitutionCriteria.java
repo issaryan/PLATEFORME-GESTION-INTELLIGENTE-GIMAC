@@ -4,6 +4,7 @@ import cm.gimac.des.participant.domain.enumeration.ComplianceState;
 import cm.gimac.des.participant.domain.enumeration.InstitutionCategory;
 import cm.gimac.des.participant.domain.enumeration.InstitutionStatus;
 import cm.gimac.des.participant.domain.enumeration.MembershipMode;
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.Objects;
 import java.util.Optional;
@@ -92,6 +93,7 @@ public class InstitutionCriteria implements Serializable, Criteria {
         }
     }
 
+    @Serial
     private static final long serialVersionUID = 1L;
 
     private UUIDFilter id;
@@ -132,6 +134,24 @@ public class InstitutionCriteria implements Serializable, Criteria {
 
     private InstantFilter createdAt;
 
+    private LocalDateFilter contactedOn;
+
+    private StringFilter contactOrigin;
+
+    private StringFilter intendedProject;
+
+    private UUIDFilter ddrmOfficerId;
+
+    private StringFilter ddrmOfficerName;
+
+    private InstantFilter admittedAt;
+
+    private UUIDFilter admittedById;
+
+    private StringFilter closureReason;
+
+    private InstantFilter closedAt;
+
     private UUIDFilter settlementBankId;
 
     private UUIDFilter sponsorBankId;
@@ -160,6 +180,15 @@ public class InstitutionCriteria implements Serializable, Criteria {
         this.openLinkCount = other.optionalOpenLinkCount().map(IntegerFilter::copy).orElse(null);
         this.openSuspenseCount = other.optionalOpenSuspenseCount().map(IntegerFilter::copy).orElse(null);
         this.createdAt = other.optionalCreatedAt().map(InstantFilter::copy).orElse(null);
+        this.contactedOn = other.optionalContactedOn().map(LocalDateFilter::copy).orElse(null);
+        this.contactOrigin = other.optionalContactOrigin().map(StringFilter::copy).orElse(null);
+        this.intendedProject = other.optionalIntendedProject().map(StringFilter::copy).orElse(null);
+        this.ddrmOfficerId = other.optionalDdrmOfficerId().map(UUIDFilter::copy).orElse(null);
+        this.ddrmOfficerName = other.optionalDdrmOfficerName().map(StringFilter::copy).orElse(null);
+        this.admittedAt = other.optionalAdmittedAt().map(InstantFilter::copy).orElse(null);
+        this.admittedById = other.optionalAdmittedById().map(UUIDFilter::copy).orElse(null);
+        this.closureReason = other.optionalClosureReason().map(StringFilter::copy).orElse(null);
+        this.closedAt = other.optionalClosedAt().map(InstantFilter::copy).orElse(null);
         this.settlementBankId = other.optionalSettlementBankId().map(UUIDFilter::copy).orElse(null);
         this.sponsorBankId = other.optionalSponsorBankId().map(UUIDFilter::copy).orElse(null);
         this.distinct = other.distinct;
@@ -531,6 +560,177 @@ public class InstitutionCriteria implements Serializable, Criteria {
         this.createdAt = createdAt;
     }
 
+    public LocalDateFilter getContactedOn() {
+        return contactedOn;
+    }
+
+    public Optional<LocalDateFilter> optionalContactedOn() {
+        return Optional.ofNullable(contactedOn);
+    }
+
+    public LocalDateFilter contactedOn() {
+        if (contactedOn == null) {
+            setContactedOn(new LocalDateFilter());
+        }
+        return contactedOn;
+    }
+
+    public void setContactedOn(LocalDateFilter contactedOn) {
+        this.contactedOn = contactedOn;
+    }
+
+    public StringFilter getContactOrigin() {
+        return contactOrigin;
+    }
+
+    public Optional<StringFilter> optionalContactOrigin() {
+        return Optional.ofNullable(contactOrigin);
+    }
+
+    public StringFilter contactOrigin() {
+        if (contactOrigin == null) {
+            setContactOrigin(new StringFilter());
+        }
+        return contactOrigin;
+    }
+
+    public void setContactOrigin(StringFilter contactOrigin) {
+        this.contactOrigin = contactOrigin;
+    }
+
+    public StringFilter getIntendedProject() {
+        return intendedProject;
+    }
+
+    public Optional<StringFilter> optionalIntendedProject() {
+        return Optional.ofNullable(intendedProject);
+    }
+
+    public StringFilter intendedProject() {
+        if (intendedProject == null) {
+            setIntendedProject(new StringFilter());
+        }
+        return intendedProject;
+    }
+
+    public void setIntendedProject(StringFilter intendedProject) {
+        this.intendedProject = intendedProject;
+    }
+
+    public UUIDFilter getDdrmOfficerId() {
+        return ddrmOfficerId;
+    }
+
+    public Optional<UUIDFilter> optionalDdrmOfficerId() {
+        return Optional.ofNullable(ddrmOfficerId);
+    }
+
+    public UUIDFilter ddrmOfficerId() {
+        if (ddrmOfficerId == null) {
+            setDdrmOfficerId(new UUIDFilter());
+        }
+        return ddrmOfficerId;
+    }
+
+    public void setDdrmOfficerId(UUIDFilter ddrmOfficerId) {
+        this.ddrmOfficerId = ddrmOfficerId;
+    }
+
+    public StringFilter getDdrmOfficerName() {
+        return ddrmOfficerName;
+    }
+
+    public Optional<StringFilter> optionalDdrmOfficerName() {
+        return Optional.ofNullable(ddrmOfficerName);
+    }
+
+    public StringFilter ddrmOfficerName() {
+        if (ddrmOfficerName == null) {
+            setDdrmOfficerName(new StringFilter());
+        }
+        return ddrmOfficerName;
+    }
+
+    public void setDdrmOfficerName(StringFilter ddrmOfficerName) {
+        this.ddrmOfficerName = ddrmOfficerName;
+    }
+
+    public InstantFilter getAdmittedAt() {
+        return admittedAt;
+    }
+
+    public Optional<InstantFilter> optionalAdmittedAt() {
+        return Optional.ofNullable(admittedAt);
+    }
+
+    public InstantFilter admittedAt() {
+        if (admittedAt == null) {
+            setAdmittedAt(new InstantFilter());
+        }
+        return admittedAt;
+    }
+
+    public void setAdmittedAt(InstantFilter admittedAt) {
+        this.admittedAt = admittedAt;
+    }
+
+    public UUIDFilter getAdmittedById() {
+        return admittedById;
+    }
+
+    public Optional<UUIDFilter> optionalAdmittedById() {
+        return Optional.ofNullable(admittedById);
+    }
+
+    public UUIDFilter admittedById() {
+        if (admittedById == null) {
+            setAdmittedById(new UUIDFilter());
+        }
+        return admittedById;
+    }
+
+    public void setAdmittedById(UUIDFilter admittedById) {
+        this.admittedById = admittedById;
+    }
+
+    public StringFilter getClosureReason() {
+        return closureReason;
+    }
+
+    public Optional<StringFilter> optionalClosureReason() {
+        return Optional.ofNullable(closureReason);
+    }
+
+    public StringFilter closureReason() {
+        if (closureReason == null) {
+            setClosureReason(new StringFilter());
+        }
+        return closureReason;
+    }
+
+    public void setClosureReason(StringFilter closureReason) {
+        this.closureReason = closureReason;
+    }
+
+    public InstantFilter getClosedAt() {
+        return closedAt;
+    }
+
+    public Optional<InstantFilter> optionalClosedAt() {
+        return Optional.ofNullable(closedAt);
+    }
+
+    public InstantFilter closedAt() {
+        if (closedAt == null) {
+            setClosedAt(new InstantFilter());
+        }
+        return closedAt;
+    }
+
+    public void setClosedAt(InstantFilter closedAt) {
+        this.closedAt = closedAt;
+    }
+
     public UUIDFilter getSettlementBankId() {
         return settlementBankId;
     }
@@ -617,6 +817,15 @@ public class InstitutionCriteria implements Serializable, Criteria {
             Objects.equals(openLinkCount, that.openLinkCount) &&
             Objects.equals(openSuspenseCount, that.openSuspenseCount) &&
             Objects.equals(createdAt, that.createdAt) &&
+            Objects.equals(contactedOn, that.contactedOn) &&
+            Objects.equals(contactOrigin, that.contactOrigin) &&
+            Objects.equals(intendedProject, that.intendedProject) &&
+            Objects.equals(ddrmOfficerId, that.ddrmOfficerId) &&
+            Objects.equals(ddrmOfficerName, that.ddrmOfficerName) &&
+            Objects.equals(admittedAt, that.admittedAt) &&
+            Objects.equals(admittedById, that.admittedById) &&
+            Objects.equals(closureReason, that.closureReason) &&
+            Objects.equals(closedAt, that.closedAt) &&
             Objects.equals(settlementBankId, that.settlementBankId) &&
             Objects.equals(sponsorBankId, that.sponsorBankId) &&
             Objects.equals(distinct, that.distinct)
@@ -645,6 +854,15 @@ public class InstitutionCriteria implements Serializable, Criteria {
             openLinkCount,
             openSuspenseCount,
             createdAt,
+            contactedOn,
+            contactOrigin,
+            intendedProject,
+            ddrmOfficerId,
+            ddrmOfficerName,
+            admittedAt,
+            admittedById,
+            closureReason,
+            closedAt,
             settlementBankId,
             sponsorBankId,
             distinct
@@ -674,6 +892,15 @@ public class InstitutionCriteria implements Serializable, Criteria {
             optionalOpenLinkCount().map(f -> "openLinkCount=" + f + ", ").orElse("") +
             optionalOpenSuspenseCount().map(f -> "openSuspenseCount=" + f + ", ").orElse("") +
             optionalCreatedAt().map(f -> "createdAt=" + f + ", ").orElse("") +
+            optionalContactedOn().map(f -> "contactedOn=" + f + ", ").orElse("") +
+            optionalContactOrigin().map(f -> "contactOrigin=" + f + ", ").orElse("") +
+            optionalIntendedProject().map(f -> "intendedProject=" + f + ", ").orElse("") +
+            optionalDdrmOfficerId().map(f -> "ddrmOfficerId=" + f + ", ").orElse("") +
+            optionalDdrmOfficerName().map(f -> "ddrmOfficerName=" + f + ", ").orElse("") +
+            optionalAdmittedAt().map(f -> "admittedAt=" + f + ", ").orElse("") +
+            optionalAdmittedById().map(f -> "admittedById=" + f + ", ").orElse("") +
+            optionalClosureReason().map(f -> "closureReason=" + f + ", ").orElse("") +
+            optionalClosedAt().map(f -> "closedAt=" + f + ", ").orElse("") +
             optionalSettlementBankId().map(f -> "settlementBankId=" + f + ", ").orElse("") +
             optionalSponsorBankId().map(f -> "sponsorBankId=" + f + ", ").orElse("") +
             optionalDistinct().map(f -> "distinct=" + f + ", ").orElse("") +

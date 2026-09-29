@@ -32,9 +32,7 @@ class InstitutionCriteriaTest {
 
         assertThat(institutionCriteria).satisfies(
             criteria ->
-                assertThat(criteria).is(
-                    copyFiltersAre(copy, (a, b) -> (a == null || a instanceof Boolean) ? a == b : (a != b && a.equals(b)))
-                ),
+                assertThat(criteria).is(copyFiltersAre(copy, (a, b) -> a == null || a instanceof Boolean ? a == b : a != b && a.equals(b))),
             criteria -> assertThat(criteria).isEqualTo(copy),
             criteria -> assertThat(criteria).hasSameHashCodeAs(copy)
         );
@@ -54,9 +52,7 @@ class InstitutionCriteriaTest {
 
         assertThat(institutionCriteria).satisfies(
             criteria ->
-                assertThat(criteria).is(
-                    copyFiltersAre(copy, (a, b) -> (a == null || a instanceof Boolean) ? a == b : (a != b && a.equals(b)))
-                ),
+                assertThat(criteria).is(copyFiltersAre(copy, (a, b) -> a == null || a instanceof Boolean ? a == b : a != b && a.equals(b))),
             criteria -> assertThat(criteria).isEqualTo(copy),
             criteria -> assertThat(criteria).hasSameHashCodeAs(copy)
         );
@@ -94,6 +90,15 @@ class InstitutionCriteriaTest {
         institutionCriteria.openLinkCount();
         institutionCriteria.openSuspenseCount();
         institutionCriteria.createdAt();
+        institutionCriteria.contactedOn();
+        institutionCriteria.contactOrigin();
+        institutionCriteria.intendedProject();
+        institutionCriteria.ddrmOfficerId();
+        institutionCriteria.ddrmOfficerName();
+        institutionCriteria.admittedAt();
+        institutionCriteria.admittedById();
+        institutionCriteria.closureReason();
+        institutionCriteria.closedAt();
         institutionCriteria.settlementBankId();
         institutionCriteria.sponsorBankId();
         institutionCriteria.distinct();
@@ -121,6 +126,15 @@ class InstitutionCriteriaTest {
                 condition.apply(criteria.getOpenLinkCount()) &&
                 condition.apply(criteria.getOpenSuspenseCount()) &&
                 condition.apply(criteria.getCreatedAt()) &&
+                condition.apply(criteria.getContactedOn()) &&
+                condition.apply(criteria.getContactOrigin()) &&
+                condition.apply(criteria.getIntendedProject()) &&
+                condition.apply(criteria.getDdrmOfficerId()) &&
+                condition.apply(criteria.getDdrmOfficerName()) &&
+                condition.apply(criteria.getAdmittedAt()) &&
+                condition.apply(criteria.getAdmittedById()) &&
+                condition.apply(criteria.getClosureReason()) &&
+                condition.apply(criteria.getClosedAt()) &&
                 condition.apply(criteria.getSettlementBankId()) &&
                 condition.apply(criteria.getSponsorBankId()) &&
                 condition.apply(criteria.getDistinct()),
@@ -150,6 +164,15 @@ class InstitutionCriteriaTest {
                 condition.apply(criteria.getOpenLinkCount(), copy.getOpenLinkCount()) &&
                 condition.apply(criteria.getOpenSuspenseCount(), copy.getOpenSuspenseCount()) &&
                 condition.apply(criteria.getCreatedAt(), copy.getCreatedAt()) &&
+                condition.apply(criteria.getContactedOn(), copy.getContactedOn()) &&
+                condition.apply(criteria.getContactOrigin(), copy.getContactOrigin()) &&
+                condition.apply(criteria.getIntendedProject(), copy.getIntendedProject()) &&
+                condition.apply(criteria.getDdrmOfficerId(), copy.getDdrmOfficerId()) &&
+                condition.apply(criteria.getDdrmOfficerName(), copy.getDdrmOfficerName()) &&
+                condition.apply(criteria.getAdmittedAt(), copy.getAdmittedAt()) &&
+                condition.apply(criteria.getAdmittedById(), copy.getAdmittedById()) &&
+                condition.apply(criteria.getClosureReason(), copy.getClosureReason()) &&
+                condition.apply(criteria.getClosedAt(), copy.getClosedAt()) &&
                 condition.apply(criteria.getSettlementBankId(), copy.getSettlementBankId()) &&
                 condition.apply(criteria.getSponsorBankId(), copy.getSponsorBankId()) &&
                 condition.apply(criteria.getDistinct(), copy.getDistinct()),

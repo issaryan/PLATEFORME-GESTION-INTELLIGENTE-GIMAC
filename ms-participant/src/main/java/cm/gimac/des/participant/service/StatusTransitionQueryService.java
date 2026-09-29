@@ -71,28 +71,36 @@ public class StatusTransitionQueryService extends QueryService<StatusTransition>
      * @return the matching {@link Specification} of the entity.
      */
     protected Specification<StatusTransition> createSpecification(StatusTransitionCriteria criteria) {
-        Specification<StatusTransition> specification = Specification.where(null);
+        Specification<StatusTransition> specification = Specification.unrestricted();
+        specification = specification.and((root, query, builder) -> {
+            if (Long.class != query.getResultType()) {
+                root.fetch(StatusTransition_.institution, JoinType.LEFT);
+            }
+            return null;
+        });
         if (criteria != null) {
             // This has to be called first, because the distinct method returns null
-            specification = Specification.allOf(
-                Boolean.TRUE.equals(criteria.getDistinct()) ? distinct(criteria.getDistinct()) : null,
-                buildSpecification(criteria.getId(), StatusTransition_.id),
-                buildSpecification(criteria.getFromStatus(), StatusTransition_.fromStatus),
-                buildSpecification(criteria.getToStatus(), StatusTransition_.toStatus),
-                buildStringSpecification(criteria.getReason(), StatusTransition_.reason),
-                buildSpecification(criteria.getRequesterId(), StatusTransition_.requesterId),
-                buildRangeSpecification(criteria.getRequestedAt(), StatusTransition_.requestedAt),
-                buildSpecification(criteria.getAutomaticTransition(), StatusTransition_.automaticTransition),
-                buildRangeSpecification(criteria.getRequiredApprovals(), StatusTransition_.requiredApprovals),
-                buildSpecification(criteria.getApproverId(), StatusTransition_.approverId),
-                buildSpecification(criteria.getSecondApproverId(), StatusTransition_.secondApproverId),
-                buildRangeSpecification(criteria.getSecondApprovedAt(), StatusTransition_.secondApprovedAt),
-                buildRangeSpecification(criteria.getDecidedAt(), StatusTransition_.decidedAt),
-                buildSpecification(criteria.getState(), StatusTransition_.state),
-                buildStringSpecification(criteria.getRejectionReason(), StatusTransition_.rejectionReason),
-                buildSpecification(criteria.getEvidenceDocumentId(), StatusTransition_.evidenceDocumentId),
-                buildSpecification(criteria.getInstitutionId(), root ->
-                    root.join(StatusTransition_.institution, JoinType.LEFT).get(Institution_.id)
+            specification = specification.and(
+                Specification.allOf(
+                    Boolean.TRUE.equals(criteria.getDistinct()) ? distinct(criteria.getDistinct()) : Specification.unrestricted(),
+                    buildSpecification(criteria.getId(), StatusTransition_.id),
+                    buildSpecification(criteria.getFromStatus(), StatusTransition_.fromStatus),
+                    buildSpecification(criteria.getToStatus(), StatusTransition_.toStatus),
+                    buildStringSpecification(criteria.getReason(), StatusTransition_.reason),
+                    buildSpecification(criteria.getRequesterId(), StatusTransition_.requesterId),
+                    buildRangeSpecification(criteria.getRequestedAt(), StatusTransition_.requestedAt),
+                    buildSpecification(criteria.getAutomaticTransition(), StatusTransition_.automaticTransition),
+                    buildRangeSpecification(criteria.getRequiredApprovals(), StatusTransition_.requiredApprovals),
+                    buildSpecification(criteria.getApproverId(), StatusTransition_.approverId),
+                    buildSpecification(criteria.getSecondApproverId(), StatusTransition_.secondApproverId),
+                    buildRangeSpecification(criteria.getSecondApprovedAt(), StatusTransition_.secondApprovedAt),
+                    buildRangeSpecification(criteria.getDecidedAt(), StatusTransition_.decidedAt),
+                    buildSpecification(criteria.getState(), StatusTransition_.state),
+                    buildStringSpecification(criteria.getRejectionReason(), StatusTransition_.rejectionReason),
+                    buildSpecification(criteria.getEvidenceDocumentId(), StatusTransition_.evidenceDocumentId),
+                    buildSpecification(criteria.getInstitutionId(), root ->
+                        root.join(StatusTransition_.institution, JoinType.LEFT).get(Institution_.id)
+                    )
                 )
             );
         }

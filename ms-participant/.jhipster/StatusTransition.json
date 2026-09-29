@@ -1,6 +1,6 @@
 {
   "annotations": {
-    "changelogDate": "20260928134809"
+    "changelogDate": "20260929150129"
   },
   "applications": ["participant"],
   "clientRootFolder": "participant",
@@ -15,16 +15,16 @@
     {
       "fieldName": "fromStatus",
       "fieldType": "InstitutionStatus",
-      "fieldTypeDocumentation": "Cycle de vie institutionnel (REC D-08). Les états du CA (HOMOLOGATION,\\nSURVEILLANCE, SUSPENSION, RÉSILIÉ) sont caducs.",
+      "fieldTypeDocumentation": "Cycle de vie de l'institution (D-08 complété par D-57) : CANDIDAT (« Prospect »\\ndu CR, prise de contact), ADHERENT (dossier d'adhésion complet, adhésion prononcée\\npar la DDRM), EN_HOMOLOGATION (première liaison ouverte), ... ; CLOS_SANS_SUITE\\ndepuis CANDIDAT ou ADHERENT, avec motif.",
       "fieldValidateRules": ["required"],
-      "fieldValues": "CANDIDAT,EN_HOMOLOGATION,ACTIF,A_REGULARISER,SUSPENDU,RETIRE"
+      "fieldValues": "CANDIDAT,ADHERENT,EN_HOMOLOGATION,ACTIF,A_REGULARISER,SUSPENDU,RETIRE,CLOS_SANS_SUITE"
     },
     {
       "fieldName": "toStatus",
       "fieldType": "InstitutionStatus",
-      "fieldTypeDocumentation": "Cycle de vie institutionnel (REC D-08). Les états du CA (HOMOLOGATION,\\nSURVEILLANCE, SUSPENSION, RÉSILIÉ) sont caducs.",
+      "fieldTypeDocumentation": "Cycle de vie de l'institution (D-08 complété par D-57) : CANDIDAT (« Prospect »\\ndu CR, prise de contact), ADHERENT (dossier d'adhésion complet, adhésion prononcée\\npar la DDRM), EN_HOMOLOGATION (première liaison ouverte), ... ; CLOS_SANS_SUITE\\ndepuis CANDIDAT ou ADHERENT, avec motif.",
       "fieldValidateRules": ["required"],
-      "fieldValues": "CANDIDAT,EN_HOMOLOGATION,ACTIF,A_REGULARISER,SUSPENDU,RETIRE"
+      "fieldValues": "CANDIDAT,ADHERENT,EN_HOMOLOGATION,ACTIF,A_REGULARISER,SUSPENDU,RETIRE,CLOS_SANS_SUITE"
     },
     {
       "fieldName": "reason",

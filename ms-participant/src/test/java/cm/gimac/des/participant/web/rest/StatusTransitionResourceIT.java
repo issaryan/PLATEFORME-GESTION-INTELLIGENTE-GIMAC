@@ -1,5 +1,6 @@
 package cm.gimac.des.participant.web.rest;
 
+import cm.gimac.des.participant.security.AuthoritiesConstants;
 import static cm.gimac.des.participant.domain.StatusTransitionAsserts.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasItem;
@@ -16,10 +17,8 @@ import cm.gimac.des.participant.domain.enumeration.TransitionState;
 import cm.gimac.des.participant.repository.StatusTransitionRepository;
 import cm.gimac.des.participant.service.StatusTransitionService;
 import cm.gimac.des.participant.service.mapper.StatusTransitionMapper;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -29,13 +28,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Integration tests for the {@link StatusTransitionResource} REST controller.
@@ -43,14 +43,14 @@ import org.springframework.transaction.annotation.Transactional;
 @IntegrationTest
 @ExtendWith(MockitoExtension.class)
 @AutoConfigureMockMvc
-@WithMockUser
+@WithMockUser(authorities = AuthoritiesConstants.ADMIN)
 class StatusTransitionResourceIT {
 
     private static final InstitutionStatus DEFAULT_FROM_STATUS = InstitutionStatus.CANDIDAT;
-    private static final InstitutionStatus UPDATED_FROM_STATUS = InstitutionStatus.EN_HOMOLOGATION;
+    private static final InstitutionStatus UPDATED_FROM_STATUS = InstitutionStatus.ADHERENT;
 
     private static final InstitutionStatus DEFAULT_TO_STATUS = InstitutionStatus.CANDIDAT;
-    private static final InstitutionStatus UPDATED_TO_STATUS = InstitutionStatus.EN_HOMOLOGATION;
+    private static final InstitutionStatus UPDATED_TO_STATUS = InstitutionStatus.ADHERENT;
 
     private static final String DEFAULT_REASON = "AAAAAAAAAA";
     private static final String UPDATED_REASON = "BBBBBBBBBB";
@@ -59,7 +59,7 @@ class StatusTransitionResourceIT {
     private static final UUID UPDATED_REQUESTER_ID = UUID.randomUUID();
 
     private static final Instant DEFAULT_REQUESTED_AT = Instant.ofEpochMilli(0L);
-    private static final Instant UPDATED_REQUESTED_AT = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+    private static final Instant UPDATED_REQUESTED_AT = Instant.ofEpochMilli(1790694080285L);
 
     private static final Boolean DEFAULT_AUTOMATIC_TRANSITION = false;
     private static final Boolean UPDATED_AUTOMATIC_TRANSITION = true;
@@ -75,10 +75,10 @@ class StatusTransitionResourceIT {
     private static final UUID UPDATED_SECOND_APPROVER_ID = UUID.randomUUID();
 
     private static final Instant DEFAULT_SECOND_APPROVED_AT = Instant.ofEpochMilli(0L);
-    private static final Instant UPDATED_SECOND_APPROVED_AT = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+    private static final Instant UPDATED_SECOND_APPROVED_AT = Instant.ofEpochMilli(1790694080285L);
 
     private static final Instant DEFAULT_DECIDED_AT = Instant.ofEpochMilli(0L);
-    private static final Instant UPDATED_DECIDED_AT = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+    private static final Instant UPDATED_DECIDED_AT = Instant.ofEpochMilli(1790694080285L);
 
     private static final TransitionState DEFAULT_STATE = TransitionState.PROPOSEE;
     private static final TransitionState UPDATED_STATE = TransitionState.APPROUVEE;
@@ -146,7 +146,7 @@ class StatusTransitionResourceIT {
             em.persist(institution);
             em.flush();
         } else {
-            institution = TestUtil.findAll(em, Institution.class).get(0);
+            institution = TestUtil.findAll(em, Institution.class).getFirst();
         }
         statusTransition.setInstitution(institution);
         return statusTransition;
@@ -181,7 +181,7 @@ class StatusTransitionResourceIT {
             em.persist(institution);
             em.flush();
         } else {
-            institution = TestUtil.findAll(em, Institution.class).get(0);
+            institution = TestUtil.findAll(em, Institution.class).getFirst();
         }
         updatedStatusTransition.setInstitution(institution);
         return updatedStatusTransition;
@@ -861,7 +861,7 @@ class StatusTransitionResourceIT {
             statusTransitionRepository.saveAndFlush(statusTransition);
             institution = InstitutionResourceIT.createEntity();
         } else {
-            institution = TestUtil.findAll(em, Institution.class).get(0);
+            institution = TestUtil.findAll(em, Institution.class).getFirst();
         }
         em.persist(institution);
         em.flush();

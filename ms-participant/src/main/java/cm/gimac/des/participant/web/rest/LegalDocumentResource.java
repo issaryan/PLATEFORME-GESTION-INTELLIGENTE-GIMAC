@@ -38,7 +38,7 @@ public class LegalDocumentResource {
 
     private static final String ENTITY_NAME = "participantLegalDocument";
 
-    @Value("${jhipster.clientApp.name}")
+    @Value("${jhipster.clientApp.name:participant}")
     private String applicationName;
 
     private final LegalDocumentService legalDocumentService;
@@ -61,7 +61,7 @@ public class LegalDocumentResource {
      * {@code POST  /legal-documents} : Create a new legalDocument.
      *
      * @param legalDocumentDTO the legalDocumentDTO to create.
-     * @return the {@link ResponseEntity} with status {@code 201 (Created)} and with body the new legalDocumentDTO, or with status {@code 400 (Bad Request)} if the legalDocument has already an ID.
+     * @return the {@link ResponseEntity} with status {@code 201 (Created)} and with body the new legalDocumentDTO, or with status {@code 400 (Bad Request)} if the legalDocument already has an ID.
      * @throws URISyntaxException if the Location URI syntax is incorrect.
      */
     @PostMapping("")
@@ -126,7 +126,7 @@ public class LegalDocumentResource {
         @PathVariable(value = "id", required = false) final UUID id,
         @NotNull @RequestBody LegalDocumentDTO legalDocumentDTO
     ) throws URISyntaxException {
-        LOG.debug("REST request to partial update LegalDocument partially : {}, {}", id, legalDocumentDTO);
+        LOG.debug("REST request to partially update LegalDocument : {}, {}", id, legalDocumentDTO);
         if (legalDocumentDTO.getId() == null) {
             throw new BadRequestAlertException("Invalid id", ENTITY_NAME, "idnull");
         }
@@ -147,11 +147,11 @@ public class LegalDocumentResource {
     }
 
     /**
-     * {@code GET  /legal-documents} : get all the legalDocuments.
+     * {@code GET  /legal-documents} : get all the Legal Documents.
      *
      * @param pageable the pagination information.
      * @param criteria the criteria which the requested entities should match.
-     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of legalDocuments in body.
+     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of Legal Documents in body.
      */
     @GetMapping("")
     public ResponseEntity<List<LegalDocumentDTO>> getAllLegalDocuments(

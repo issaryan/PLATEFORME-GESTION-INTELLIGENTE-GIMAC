@@ -1,6 +1,7 @@
 package cm.gimac.des.participant.service.dto;
 
 import cm.gimac.des.participant.domain.enumeration.InstitutionStatus;
+import cm.gimac.des.participant.domain.enumeration.InstitutionStatus;
 import cm.gimac.des.participant.domain.enumeration.TransitionState;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.*;

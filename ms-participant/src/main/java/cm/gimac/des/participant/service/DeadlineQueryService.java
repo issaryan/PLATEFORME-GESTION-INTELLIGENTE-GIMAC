@@ -68,26 +68,39 @@ public class DeadlineQueryService extends QueryService<Deadline> {
      * @return the matching {@link Specification} of the entity.
      */
     protected Specification<Deadline> createSpecification(DeadlineCriteria criteria) {
-        Specification<Deadline> specification = Specification.where(null);
+        Specification<Deadline> specification = Specification.unrestricted();
+        specification = specification.and((root, query, builder) -> {
+            if (Long.class != query.getResultType()) {
+                root.fetch(Deadline_.institution, JoinType.LEFT);
+                root.fetch(Deadline_.legalDocument, JoinType.LEFT);
+                root.fetch(Deadline_.convention, JoinType.LEFT);
+            }
+            return null;
+        });
         if (criteria != null) {
             // This has to be called first, because the distinct method returns null
-            specification = Specification.allOf(
-                Boolean.TRUE.equals(criteria.getDistinct()) ? distinct(criteria.getDistinct()) : null,
-                buildSpecification(criteria.getId(), Deadline_.id),
-                buildSpecification(criteria.getThreshold(), Deadline_.threshold),
-                buildRangeSpecification(criteria.getDueOn(), Deadline_.dueOn),
-                buildSpecification(criteria.getState(), Deadline_.state),
-                buildStringSpecification(criteria.getTriggeredAction(), Deadline_.triggeredAction),
-                buildRangeSpecification(criteria.getTriggeredAt(), Deadline_.triggeredAt),
-                buildSpecification(criteria.getAcknowledgementRequired(), Deadline_.acknowledgementRequired),
-                buildSpecification(criteria.getNotificationId(), Deadline_.notificationId),
-                buildRangeSpecification(criteria.getAcknowledgedAt(), Deadline_.acknowledgedAt),
-                buildSpecification(criteria.getInstitutionId(), root -> root.join(Deadline_.institution, JoinType.LEFT).get(Institution_.id)
-                ),
-                buildSpecification(criteria.getLegalDocumentId(), root ->
-                    root.join(Deadline_.legalDocument, JoinType.LEFT).get(LegalDocument_.id)
-                ),
-                buildSpecification(criteria.getConventionId(), root -> root.join(Deadline_.convention, JoinType.LEFT).get(Convention_.id))
+            specification = specification.and(
+                Specification.allOf(
+                    Boolean.TRUE.equals(criteria.getDistinct()) ? distinct(criteria.getDistinct()) : Specification.unrestricted(),
+                    buildSpecification(criteria.getId(), Deadline_.id),
+                    buildSpecification(criteria.getThreshold(), Deadline_.threshold),
+                    buildRangeSpecification(criteria.getDueOn(), Deadline_.dueOn),
+                    buildSpecification(criteria.getState(), Deadline_.state),
+                    buildStringSpecification(criteria.getTriggeredAction(), Deadline_.triggeredAction),
+                    buildRangeSpecification(criteria.getTriggeredAt(), Deadline_.triggeredAt),
+                    buildSpecification(criteria.getAcknowledgementRequired(), Deadline_.acknowledgementRequired),
+                    buildSpecification(criteria.getNotificationId(), Deadline_.notificationId),
+                    buildRangeSpecification(criteria.getAcknowledgedAt(), Deadline_.acknowledgedAt),
+                    buildSpecification(criteria.getInstitutionId(), root ->
+                        root.join(Deadline_.institution, JoinType.LEFT).get(Institution_.id)
+                    ),
+                    buildSpecification(criteria.getLegalDocumentId(), root ->
+                        root.join(Deadline_.legalDocument, JoinType.LEFT).get(LegalDocument_.id)
+                    ),
+                    buildSpecification(criteria.getConventionId(), root ->
+                        root.join(Deadline_.convention, JoinType.LEFT).get(Convention_.id)
+                    )
+                )
             );
         }
         return specification;

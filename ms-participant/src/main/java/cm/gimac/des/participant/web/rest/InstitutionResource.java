@@ -38,7 +38,7 @@ public class InstitutionResource {
 
     private static final String ENTITY_NAME = "participantInstitution";
 
-    @Value("${jhipster.clientApp.name}")
+    @Value("${jhipster.clientApp.name:participant}")
     private String applicationName;
 
     private final InstitutionService institutionService;
@@ -61,7 +61,7 @@ public class InstitutionResource {
      * {@code POST  /institutions} : Create a new institution.
      *
      * @param institutionDTO the institutionDTO to create.
-     * @return the {@link ResponseEntity} with status {@code 201 (Created)} and with body the new institutionDTO, or with status {@code 400 (Bad Request)} if the institution has already an ID.
+     * @return the {@link ResponseEntity} with status {@code 201 (Created)} and with body the new institutionDTO, or with status {@code 400 (Bad Request)} if the institution already has an ID.
      * @throws URISyntaxException if the Location URI syntax is incorrect.
      */
     @PostMapping("")
@@ -125,7 +125,7 @@ public class InstitutionResource {
         @PathVariable(value = "id", required = false) final UUID id,
         @NotNull @RequestBody InstitutionDTO institutionDTO
     ) throws URISyntaxException {
-        LOG.debug("REST request to partial update Institution partially : {}, {}", id, institutionDTO);
+        LOG.debug("REST request to partially update Institution : {}, {}", id, institutionDTO);
         if (institutionDTO.getId() == null) {
             throw new BadRequestAlertException("Invalid id", ENTITY_NAME, "idnull");
         }
@@ -146,11 +146,11 @@ public class InstitutionResource {
     }
 
     /**
-     * {@code GET  /institutions} : get all the institutions.
+     * {@code GET  /institutions} : get all the Institutions.
      *
      * @param pageable the pagination information.
      * @param criteria the criteria which the requested entities should match.
-     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of institutions in body.
+     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of Institutions in body.
      */
     @GetMapping("")
     public ResponseEntity<List<InstitutionDTO>> getAllInstitutions(

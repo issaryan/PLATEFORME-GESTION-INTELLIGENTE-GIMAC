@@ -1,5 +1,6 @@
 package cm.gimac.des.participant.web.rest;
 
+import cm.gimac.des.participant.security.AuthoritiesConstants;
 import static cm.gimac.des.participant.domain.SubscribedServiceAsserts.*;
 import static cm.gimac.des.participant.web.rest.TestUtil.createUpdateProxyForBean;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -17,10 +18,8 @@ import cm.gimac.des.participant.repository.SubscribedServiceRepository;
 import cm.gimac.des.participant.service.SubscribedServiceService;
 import cm.gimac.des.participant.service.dto.SubscribedServiceDTO;
 import cm.gimac.des.participant.service.mapper.SubscribedServiceMapper;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -30,13 +29,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Integration tests for the {@link SubscribedServiceResource} REST controller.
@@ -44,18 +44,18 @@ import org.springframework.transaction.annotation.Transactional;
 @IntegrationTest
 @ExtendWith(MockitoExtension.class)
 @AutoConfigureMockMvc
-@WithMockUser
+@WithMockUser(authorities = AuthoritiesConstants.ADMIN)
 class SubscribedServiceResourceIT {
 
     private static final String DEFAULT_SERVICE_CODE = "AAAAAAAAAA";
     private static final String UPDATED_SERVICE_CODE = "BBBBBBBBBB";
 
     private static final LocalDate DEFAULT_SUBSCRIBED_ON = LocalDate.ofEpochDay(0L);
-    private static final LocalDate UPDATED_SUBSCRIBED_ON = LocalDate.now(ZoneId.systemDefault());
+    private static final LocalDate UPDATED_SUBSCRIBED_ON = LocalDate.parse("2026-09-29");
     private static final LocalDate SMALLER_SUBSCRIBED_ON = LocalDate.ofEpochDay(-1L);
 
     private static final LocalDate DEFAULT_TERMINATED_ON = LocalDate.ofEpochDay(0L);
-    private static final LocalDate UPDATED_TERMINATED_ON = LocalDate.now(ZoneId.systemDefault());
+    private static final LocalDate UPDATED_TERMINATED_ON = LocalDate.parse("2026-09-29");
     private static final LocalDate SMALLER_TERMINATED_ON = LocalDate.ofEpochDay(-1L);
 
     private static final SubscriptionState DEFAULT_STATE = SubscriptionState.ACTIF;
@@ -108,7 +108,7 @@ class SubscribedServiceResourceIT {
             em.persist(institution);
             em.flush();
         } else {
-            institution = TestUtil.findAll(em, Institution.class).get(0);
+            institution = TestUtil.findAll(em, Institution.class).getFirst();
         }
         subscribedService.setInstitution(institution);
         return subscribedService;
@@ -133,7 +133,7 @@ class SubscribedServiceResourceIT {
             em.persist(institution);
             em.flush();
         } else {
-            institution = TestUtil.findAll(em, Institution.class).get(0);
+            institution = TestUtil.findAll(em, Institution.class).getFirst();
         }
         updatedSubscribedService.setInstitution(institution);
         return updatedSubscribedService;
@@ -598,7 +598,7 @@ class SubscribedServiceResourceIT {
             subscribedServiceRepository.saveAndFlush(subscribedService);
             institution = InstitutionResourceIT.createEntity();
         } else {
-            institution = TestUtil.findAll(em, Institution.class).get(0);
+            institution = TestUtil.findAll(em, Institution.class).getFirst();
         }
         em.persist(institution);
         em.flush();
@@ -776,7 +776,7 @@ class SubscribedServiceResourceIT {
         SubscribedService partialUpdatedSubscribedService = new SubscribedService();
         partialUpdatedSubscribedService.setId(subscribedService.getId());
 
-        partialUpdatedSubscribedService.state(UPDATED_STATE);
+        partialUpdatedSubscribedService.serviceCode(UPDATED_SERVICE_CODE).terminatedOn(UPDATED_TERMINATED_ON).state(UPDATED_STATE);
 
         restSubscribedServiceMockMvc
             .perform(

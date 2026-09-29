@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+
+    <!--
+        Added the entity Institution.
+    -->
+    <changeSet id="20260929150121-1" author="jhipster">
+        <createTable tableName="institution" remarks="Fiche institutionnelle (BF-07). Le statut ne change que par une\ntransition approuvée (StatusTransition) ; aucune donnée de routage.">
+            <column name="id" type="${uuidType}">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="name" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="acronym" type="varchar(50)">
+                <constraints nullable="true" />
+            </column>
+            <column name="participant_code" type="varchar(20)" remarks="Code participant GIMAC, par exemple EP-A-017 ; attribué au prononcé de l&apos;adhésion (D-57).">
+                <constraints nullable="true" unique="true" uniqueConstraintName="ux_institution__participant_code" />
+            </column>
+            <column name="identification_code" type="varchar(11)" remarks="Code d&apos;identification ISO 9362 (BIC), s&apos;il existe (BF-07).">
+                <constraints nullable="true" unique="true" uniqueConstraintName="ux_institution__identification_code" />
+            </column>
+            <column name="beac_bank_code" type="varchar(10)" remarks="Code banque BEAC, unique (RG-10).">
+                <constraints nullable="true" unique="true" uniqueConstraintName="ux_institution__beac_bank_code" />
+            </column>
+            <column name="country" type="varchar(2)" remarks="Pays CEMAC, code ISO 3166-1 alpha-2.">
+                <constraints nullable="false" />
+            </column>
+            <column name="category" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="membership_mode" type="varchar(255)" remarks="Mode d&apos;adhésion ; exigé au prononcé de l&apos;adhésion, inconnu à la prise de contact.">
+                <constraints nullable="true" />
+            </column>
+            <column name="settlement_account_ref" type="varchar(50)" remarks="Référence du compte de règlement à la BEAC, obligatoire en adhésion directe (RG-11).">
+                <constraints nullable="true" />
+            </column>
+            <column name="ring_fenced_account_ref" type="varchar(50)" remarks="Référence du compte de cantonnement, en adhésion indirecte (RG-12).">
+                <constraints nullable="true" />
+            </column>
+            <column name="joined_on" type="date">
+                <constraints nullable="true" />
+            </column>
+            <column name="status" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="compliance_state" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="attestation_issued_at" type="${datetimeType}" remarks="Réception de certification.attestation-issued.v1 (prérequis de ACTIF).">
+                <constraints nullable="true" />
+            </column>
+            <column name="go_live_authorized_at" type="${datetimeType}" remarks="Réception de certification.go-live-authorized.v1 (RG-13).">
+                <constraints nullable="true" />
+            </column>
+            <column name="open_link_count" type="integer" remarks="Liaisons ouvertes dans MS-HOMOLOGATION, connues par événement (prérequis de RETIRE).">
+                <constraints nullable="false" />
+            </column>
+            <column name="open_suspense_count" type="integer" remarks="Suspens ouverts dans MS-RAPPROCHEMENT, connus par événement (prérequis de RETIRE).">
+                <constraints nullable="false" />
+            </column>
+            <column name="created_at" type="${datetimeType}">
+                <constraints nullable="false" />
+            </column>
+            <column name="contacted_on" type="date" remarks="Date de la prise de contact (rang 1).">
+                <constraints nullable="true" />
+            </column>
+            <column name="contact_origin" type="varchar(255)" remarks="Origine de la prise de contact : courrier, réunion, salon, recommandation...">
+                <constraints nullable="true" />
+            </column>
+            <column name="intended_project" type="varchar(1000)" remarks="Projet envisagé par le candidat, tel qu&apos;exprimé à la prise de contact.">
+                <constraints nullable="true" />
+            </column>
+            <column name="ddrm_officer_id" type="${uuidType}" remarks="Chargé de la DDRM qui porte le dossier.">
+                <constraints nullable="true" />
+            </column>
+            <column name="ddrm_officer_name" type="varchar(200)">
+                <constraints nullable="true" />
+            </column>
+            <column name="admitted_at" type="${datetimeType}" remarks="Prononcé de l&apos;adhésion (rang 2) : date et auteur.">
+                <constraints nullable="true" />
+            </column>
+            <column name="admitted_by_id" type="${uuidType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="closure_reason" type="varchar(500)" remarks="Clôture sans suite : motif et date.">
+                <constraints nullable="true" />
+            </column>
+            <column name="closed_at" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="settlement_bank_id" type="${uuidType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="sponsor_bank_id" type="${uuidType}">
+                <constraints nullable="true" />
+            </column>
+            <!-- jhipster-needle-liquibase-add-column - JHipster will add columns here -->
+        </createTable>
+        <dropDefaultValue tableName="institution" columnName="attestation_issued_at" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="institution" columnName="go_live_authorized_at" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="institution" columnName="created_at" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="institution" columnName="admitted_at" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="institution" columnName="closed_at" columnDataType="${datetimeType}"/>
+    </changeSet>
+
+    <!-- jhipster-needle-liquibase-add-changeset - JHipster will add changesets here -->
+
+    <!--
+        Load sample data generated with Faker.js
+        - This data can be easily edited using a CSV editor (or even MS Excel) and
+          is located in the 'src/main/resources/config/liquibase/fake-data' directory
+        - By default this data is applied when running with the JHipster 'dev' profile.
+          This can be customized by adding or removing 'faker' in the 'spring.liquibase.contexts'
+          Spring Boot configuration key.
+    -->
+    <changeSet id="20260929150121-1-data" author="jhipster" context="faker">
+        <loadData
+                  file="../fake-data/institution.csv"
+                  relativeToChangelogFile="true"
+                  separator=";"
+                  tableName="institution"
+                  usePreparedStatements="true">
+            <column name="id" type="${uuidType}"/>
+            <column name="name" type="string"/>
+            <column name="acronym" type="string"/>
+            <column name="participant_code" type="string"/>
+            <column name="identification_code" type="string"/>
+            <column name="beac_bank_code" type="string"/>
+            <column name="country" type="string"/>
+            <column name="category" type="string"/>
+            <column name="membership_mode" type="string"/>
+            <column name="settlement_account_ref" type="string"/>
+            <column name="ring_fenced_account_ref" type="string"/>
+            <column name="joined_on" type="date"/>
+            <column name="status" type="string"/>
+            <column name="compliance_state" type="string"/>
+            <column name="attestation_issued_at" type="date"/>
+            <column name="go_live_authorized_at" type="date"/>
+            <column name="open_link_count" type="numeric"/>
+            <column name="open_suspense_count" type="numeric"/>
+            <column name="created_at" type="date"/>
+            <column name="contacted_on" type="date"/>
+            <column name="contact_origin" type="string"/>
+            <column name="intended_project" type="string"/>
+            <column name="ddrm_officer_id" type="${uuidType}"/>
+            <column name="ddrm_officer_name" type="string"/>
+            <column name="admitted_at" type="date"/>
+            <column name="admitted_by_id" type="${uuidType}"/>
+            <column name="closure_reason" type="string"/>
+            <column name="closed_at" type="date"/>
+            <!-- jhipster-needle-liquibase-add-loadcolumn - JHipster (and/or extensions) can add load columns here -->
+        </loadData>
+    </changeSet>
+</databaseChangeLog>

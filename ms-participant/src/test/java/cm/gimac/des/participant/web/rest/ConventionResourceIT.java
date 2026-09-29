@@ -1,5 +1,6 @@
 package cm.gimac.des.participant.web.rest;
 
+import cm.gimac.des.participant.security.AuthoritiesConstants;
 import static cm.gimac.des.participant.domain.ConventionAsserts.*;
 import static cm.gimac.des.participant.web.rest.TestUtil.createUpdateProxyForBean;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -17,10 +18,8 @@ import cm.gimac.des.participant.repository.ConventionRepository;
 import cm.gimac.des.participant.service.ConventionService;
 import cm.gimac.des.participant.service.dto.ConventionDTO;
 import cm.gimac.des.participant.service.mapper.ConventionMapper;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -30,13 +29,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Integration tests for the {@link ConventionResource} REST controller.
@@ -44,7 +44,7 @@ import org.springframework.transaction.annotation.Transactional;
 @IntegrationTest
 @ExtendWith(MockitoExtension.class)
 @AutoConfigureMockMvc
-@WithMockUser
+@WithMockUser(authorities = AuthoritiesConstants.ADMIN)
 class ConventionResourceIT {
 
     private static final ConventionType DEFAULT_TYPE = ConventionType.ADHESION;
@@ -54,18 +54,18 @@ class ConventionResourceIT {
     private static final String UPDATED_REFERENCE = "BBBBBBBBBB";
 
     private static final LocalDate DEFAULT_SIGNED_ON = LocalDate.ofEpochDay(0L);
-    private static final LocalDate UPDATED_SIGNED_ON = LocalDate.now(ZoneId.systemDefault());
+    private static final LocalDate UPDATED_SIGNED_ON = LocalDate.parse("2026-09-29");
     private static final LocalDate SMALLER_SIGNED_ON = LocalDate.ofEpochDay(-1L);
 
     private static final LocalDate DEFAULT_EXPIRES_ON = LocalDate.ofEpochDay(0L);
-    private static final LocalDate UPDATED_EXPIRES_ON = LocalDate.now(ZoneId.systemDefault());
+    private static final LocalDate UPDATED_EXPIRES_ON = LocalDate.parse("2026-09-29");
     private static final LocalDate SMALLER_EXPIRES_ON = LocalDate.ofEpochDay(-1L);
 
     private static final UUID DEFAULT_DOCUMENT_ID = UUID.randomUUID();
     private static final UUID UPDATED_DOCUMENT_ID = UUID.randomUUID();
 
-    private static final String DEFAULT_DOCUMENT_SHA_256 = "c0cd8a7ac7a80e385a6752f93f7526ae5f40b3185b8b38045a44cc25049ad623";
-    private static final String UPDATED_DOCUMENT_SHA_256 = "2230a0243bf8975542be0ff997fd311c999c904eadd35853f8a61b7157c183be";
+    private static final String DEFAULT_DOCUMENT_SHA_256 = "a758af4bd1da48e472fea457d367fa4bec526dfc1b6d620ea3b9dabba75230e8";
+    private static final String UPDATED_DOCUMENT_SHA_256 = "cc5d07d3e0780a5185ce597a50fa97821ef5f41b4cd8bb1864fb04b4e266c363";
 
     private static final String ENTITY_API_URL = "/api/conventions";
     private static final String ENTITY_API_URL_ID = ENTITY_API_URL + "/{id}";
@@ -116,7 +116,7 @@ class ConventionResourceIT {
             em.persist(institution);
             em.flush();
         } else {
-            institution = TestUtil.findAll(em, Institution.class).get(0);
+            institution = TestUtil.findAll(em, Institution.class).getFirst();
         }
         convention.setInstitution(institution);
         return convention;
@@ -143,7 +143,7 @@ class ConventionResourceIT {
             em.persist(institution);
             em.flush();
         } else {
-            institution = TestUtil.findAll(em, Institution.class).get(0);
+            institution = TestUtil.findAll(em, Institution.class).getFirst();
         }
         updatedConvention.setInstitution(institution);
         return updatedConvention;
@@ -668,7 +668,7 @@ class ConventionResourceIT {
             conventionRepository.saveAndFlush(convention);
             institution = InstitutionResourceIT.createEntity();
         } else {
-            institution = TestUtil.findAll(em, Institution.class).get(0);
+            institution = TestUtil.findAll(em, Institution.class).getFirst();
         }
         em.persist(institution);
         em.flush();
@@ -848,12 +848,7 @@ class ConventionResourceIT {
         Convention partialUpdatedConvention = new Convention();
         partialUpdatedConvention.setId(convention.getId());
 
-        partialUpdatedConvention
-            .type(UPDATED_TYPE)
-            .reference(UPDATED_REFERENCE)
-            .expiresOn(UPDATED_EXPIRES_ON)
-            .documentId(UPDATED_DOCUMENT_ID)
-            .documentSha256(UPDATED_DOCUMENT_SHA_256);
+        partialUpdatedConvention.reference(UPDATED_REFERENCE).documentSha256(UPDATED_DOCUMENT_SHA_256);
 
         restConventionMockMvc
             .perform(

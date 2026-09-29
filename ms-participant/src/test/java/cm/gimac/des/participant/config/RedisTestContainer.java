@@ -1,38 +1,31 @@
 package cm.gimac.des.participant.config;
 
-import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.DisposableBean;
-import org.springframework.beans.factory.InitializingBean;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.test.context.DynamicPropertyRegistrar;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.output.Slf4jLogConsumer;
 
-public class RedisTestContainer implements InitializingBean, DisposableBean {
+@TestConfiguration(proxyBeanMethods = false)
+public class RedisTestContainer {
 
-    private GenericContainer redisContainer;
-    private static final Logger LOG = LoggerFactory.getLogger(RedisTestContainer.class);
+    private static final GenericContainer REDIS_CONTAINER = new GenericContainer("redis:8.10.1")
+        .withExposedPorts(6379)
+        .withLogConsumer(new Slf4jLogConsumer(LoggerFactory.getLogger(RedisTestContainer.class)))
+        .withReuse(true);
 
-    @Override
-    public void destroy() {
-        if (null != redisContainer && redisContainer.isRunning()) {
-            redisContainer.close();
-        }
+    @Bean
+    GenericContainer redisContainer() {
+        return REDIS_CONTAINER;
     }
 
-    @Override
-    public void afterPropertiesSet() {
-        if (null == redisContainer) {
-            redisContainer = new GenericContainer("redis:8.0.0")
-                .withExposedPorts(6379)
-                .withLogConsumer(new Slf4jLogConsumer(LOG))
-                .withReuse(true);
-        }
-        if (!redisContainer.isRunning()) {
-            redisContainer.start();
-        }
-    }
-
-    public GenericContainer getRedisContainer() {
-        return redisContainer;
+    @Bean
+    DynamicPropertyRegistrar redisProperties(GenericContainer redisContainer) {
+        return registry ->
+            registry.add(
+                "jhipster.cache.redis.server",
+                () -> "redis://" + redisContainer.getContainerIpAddress() + ":" + redisContainer.getMappedPort(6379)
+            );
     }
 }

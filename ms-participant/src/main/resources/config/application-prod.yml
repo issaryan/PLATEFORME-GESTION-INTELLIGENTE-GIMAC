@@ -10,7 +10,7 @@
 # ===================================================================
 # Standard Spring Boot properties.
 # Full reference is available at:
-# http://docs.spring.io/spring-boot/docs/current/reference/html/common-application-properties.html
+# https://docs.spring.io/spring-boot/appendix/application-properties/index.html
 # ===================================================================
 
 logging:
@@ -40,8 +40,6 @@ spring:
   datasource:
     type: com.zaxxer.hikari.HikariDataSource
     url: jdbc:postgresql://localhost:5432/participant
-    username: participant
-    password:
     hikari:
       poolName: Hikari
       auto-commit: false
@@ -72,7 +70,7 @@ spring:
 # ===================================================================
 server:
   port: 8085
-  shutdown: graceful # see https://docs.spring.io/spring-boot/docs/current/reference/html/spring-boot-features.html#boot-features-graceful-shutdown
+  shutdown: graceful # see https://docs.spring.io/spring-boot/reference/web/graceful-shutdown.html#web.graceful-shutdown
   compression:
     enabled: true
     mime-types: text/html,text/xml,text/plain,text/css,application/javascript,application/json,image/svg+xml
@@ -112,3 +110,15 @@ jhipster:
 # ===================================================================
 
 # application:
+
+# Lot 1 : adresses des services joints en prod (Docker Compose, Kubernetes).
+gimac:
+  # Production : adaptateurs réels uniquement (PI §0.8).
+  adapters:
+    document-registry: real
+    reauth: real
+  services:
+    document:
+      url: http://document:8083
+    iam:
+      url: http://iam:8081

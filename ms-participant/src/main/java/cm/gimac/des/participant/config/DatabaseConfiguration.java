@@ -6,7 +6,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 
 @Configuration
-@EnableJpaRepositories({ "cm.gimac.des.participant.repository" })
+@EnableJpaRepositories({ "cm.gimac.des.participant.repository", "cm.gimac.des.participant.infrastructure" })
 @EnableJpaAuditing(auditorAwareRef = "springSecurityAuditorAware")
 @EnableTransactionManagement
 public class DatabaseConfiguration {}

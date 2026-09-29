@@ -1,0 +1,96 @@
+{
+  "annotations": {
+    "changelogDate": "20260929150120"
+  },
+  "applications": ["participant"],
+  "clientRootFolder": "participant",
+  "databaseType": "sql",
+  "documentation": "Pièce du dossier d'adhésion (CR-CERT rang 2). La liste des pièces attendues est\\nparamétrée ; la pièce est déposée dans MS-DOCUMENT, seules sa référence et son\\nempreinte sont conservées. L'adhésion ne peut être prononcée que si toutes les\\npièces obligatoires sont validées.",
+  "dto": "mapstruct",
+  "fields": [
+    {
+      "fieldName": "id",
+      "fieldType": "UUID"
+    },
+    {
+      "documentation": "Code de la pièce dans la liste paramétrée, par exemple STATUTS.",
+      "fieldName": "code",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "40",
+      "fieldValidateRulesPattern": "^[A-Z0-9_]+$"
+    },
+    {
+      "fieldName": "label",
+      "fieldType": "String",
+      "fieldValidateRules": ["required", "maxlength"],
+      "fieldValidateRulesMaxlength": "255"
+    },
+    {
+      "fieldName": "mandatory",
+      "fieldType": "Boolean",
+      "fieldValidateRules": ["required"]
+    },
+    {
+      "fieldName": "state",
+      "fieldType": "AdhesionPieceState",
+      "fieldTypeDocumentation": "Pièce du dossier d'adhésion (CR-CERT rang 2, D-57).",
+      "fieldValidateRules": ["required"],
+      "fieldValues": "ATTENDUE,RECUE,VALIDEE,REJETEE"
+    },
+    {
+      "fieldName": "documentId",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "documentSha256",
+      "fieldType": "String",
+      "fieldValidateRules": ["minlength", "maxlength", "pattern"],
+      "fieldValidateRulesMaxlength": "64",
+      "fieldValidateRulesMinlength": "64",
+      "fieldValidateRulesPattern": "^[0-9a-f]{64}$"
+    },
+    {
+      "fieldName": "fileName",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "255"
+    },
+    {
+      "fieldName": "depositedAt",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "depositedById",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "reviewedAt",
+      "fieldType": "Instant"
+    },
+    {
+      "fieldName": "reviewedById",
+      "fieldType": "UUID"
+    },
+    {
+      "fieldName": "rejectionReason",
+      "fieldType": "String",
+      "fieldValidateRules": ["maxlength"],
+      "fieldValidateRulesMaxlength": "500"
+    }
+  ],
+  "microserviceName": "participant",
+  "name": "AdhesionPiece",
+  "relationships": [
+    {
+      "otherEntityField": "name",
+      "otherEntityName": "institution",
+      "relationshipName": "institution",
+      "relationshipSide": "left",
+      "relationshipType": "many-to-one",
+      "relationshipValidateRules": "required"
+    }
+  ],
+  "searchEngine": "no",
+  "service": "serviceClass"
+}

@@ -10,24 +10,15 @@ import org.redisson.config.ClusterServersConfig;
 import org.redisson.config.Config;
 import org.redisson.config.SingleServerConfig;
 import org.redisson.jcache.configuration.RedissonConfiguration;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.cache.JCacheManagerCustomizer;
-import org.springframework.boot.info.BuildProperties;
-import org.springframework.boot.info.GitProperties;
+import org.springframework.boot.cache.autoconfigure.JCacheManagerCustomizer;
 import org.springframework.cache.annotation.EnableCaching;
-import org.springframework.cache.interceptor.KeyGenerator;
-import org.springframework.context.annotation.*;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import tech.jhipster.config.JHipsterProperties;
-import tech.jhipster.config.cache.PrefixedKeyGenerator;
 
 @Configuration
 @EnableCaching
 public class CacheConfiguration {
-
-    private GitProperties gitProperties;
-    private BuildProperties buildProperties;
 
     @Bean
     public javax.cache.configuration.Configuration<Object, Object> jcacheConfiguration(JHipsterProperties jHipsterProperties) {
@@ -71,6 +62,7 @@ public class CacheConfiguration {
     @Bean
     public JCacheManagerCustomizer cacheManagerCustomizer(javax.cache.configuration.Configuration<Object, Object> jcacheConfiguration) {
         return cm -> {
+            createCache(cm, cm.gimac.des.participant.domain.AdhesionPiece.class.getName(), jcacheConfiguration);
             createCache(cm, cm.gimac.des.participant.domain.Institution.class.getName(), jcacheConfiguration);
             createCache(cm, cm.gimac.des.participant.domain.Convention.class.getName(), jcacheConfiguration);
             createCache(cm, cm.gimac.des.participant.domain.SubscribedService.class.getName(), jcacheConfiguration);
@@ -95,20 +87,5 @@ public class CacheConfiguration {
         } else {
             cm.createCache(cacheName, jcacheConfiguration);
         }
-    }
-
-    @Autowired(required = false)
-    public void setGitProperties(GitProperties gitProperties) {
-        this.gitProperties = gitProperties;
-    }
-
-    @Autowired(required = false)
-    public void setBuildProperties(BuildProperties buildProperties) {
-        this.buildProperties = buildProperties;
-    }
-
-    @Bean
-    public KeyGenerator keyGenerator() {
-        return new PrefixedKeyGenerator(this.gitProperties, this.buildProperties);
     }
 }

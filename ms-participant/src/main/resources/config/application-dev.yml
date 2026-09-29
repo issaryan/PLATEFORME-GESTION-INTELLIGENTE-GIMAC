@@ -10,7 +10,7 @@
 # ===================================================================
 # Standard Spring Boot properties.
 # Full reference is available at:
-# http://docs.spring.io/spring-boot/docs/current/reference/html/common-application-properties.html
+# https://docs.spring.io/spring-boot/appendix/application-properties/index.html
 # ===================================================================
 
 logging:
@@ -34,21 +34,18 @@ spring:
       enabled: true
       additional-exclude: static/**
     livereload:
-      enabled: false # we use Webpack dev server + BrowserSync for livereload
+      enabled: false # we use bundler for livereload
   jackson:
     serialization:
       indent-output: true
   datasource:
     type: com.zaxxer.hikari.HikariDataSource
     url: jdbc:postgresql://localhost:5432/participant
-    username: participant
-    password:
     hikari:
       poolName: Hikari
       auto-commit: false
   liquibase:
-    # Remove 'faker' if you do not want the sample data to be loaded automatically
-    contexts: dev, faker
+    contexts: dev
   messages:
     cache-duration: PT1S # 1 second, see the ISO 8601 standard
   thymeleaf:

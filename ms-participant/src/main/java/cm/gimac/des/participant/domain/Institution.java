@@ -7,6 +7,7 @@ import cm.gimac.des.participant.domain.enumeration.MembershipMode;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
+import java.io.Serial;
 import java.io.Serializable;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -21,6 +22,7 @@ import java.util.UUID;
 @SuppressWarnings("common-java:DuplicatedBlocks")
 public class Institution implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = 1L;
 
     @Id
@@ -38,12 +40,11 @@ public class Institution implements Serializable {
     private String acronym;
 
     /**
-     * Code participant GIMAC, par exemple EP-A-017.
+     * Code participant GIMAC, par exemple EP-A-017 ; attribué au prononcé de l'adhésion (D-57).
      */
-    @NotNull
     @Size(max = 20)
     @Pattern(regexp = "^[A-Z0-9-]+$")
-    @Column(name = "participant_code", length = 20, nullable = false, unique = true)
+    @Column(name = "participant_code", length = 20, unique = true)
     private String participantCode;
 
     /**
@@ -76,9 +77,11 @@ public class Institution implements Serializable {
     @Column(name = "category", nullable = false)
     private InstitutionCategory category;
 
-    @NotNull
+    /**
+     * Mode d'adhésion ; exigé au prononcé de l'adhésion, inconnu à la prise de contact.
+     */
     @Enumerated(EnumType.STRING)
-    @Column(name = "membership_mode", nullable = false)
+    @Column(name = "membership_mode")
     private MembershipMode membershipMode;
 
     /**
@@ -139,6 +142,55 @@ public class Institution implements Serializable {
     @NotNull
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
+
+    /**
+     * Date de la prise de contact (rang 1).
+     */
+    @Column(name = "contacted_on")
+    private LocalDate contactedOn;
+
+    /**
+     * Origine de la prise de contact : courrier, réunion, salon, recommandation...
+     */
+    @Size(max = 255)
+    @Column(name = "contact_origin", length = 255)
+    private String contactOrigin;
+
+    /**
+     * Projet envisagé par le candidat, tel qu'exprimé à la prise de contact.
+     */
+    @Size(max = 1000)
+    @Column(name = "intended_project", length = 1000)
+    private String intendedProject;
+
+    /**
+     * Chargé de la DDRM qui porte le dossier.
+     */
+    @Column(name = "ddrm_officer_id")
+    private UUID ddrmOfficerId;
+
+    @Size(max = 200)
+    @Column(name = "ddrm_officer_name", length = 200)
+    private String ddrmOfficerName;
+
+    /**
+     * Prononcé de l'adhésion (rang 2) : date et auteur.
+     */
+    @Column(name = "admitted_at")
+    private Instant admittedAt;
+
+    @Column(name = "admitted_by_id")
+    private UUID admittedById;
+
+    /**
+     * Clôture sans suite : motif et date.
+     */
+    @Size(max = 500)
+    @Column(name = "closure_reason", length = 500)
+    private String closureReason;
+
+    @Column(name = "closed_at")
+    private Instant closedAt;
 
     /**
      * Banque de règlement et banque marraine : institutions du même registre.
@@ -400,6 +452,123 @@ public class Institution implements Serializable {
         this.createdAt = createdAt;
     }
 
+    public LocalDate getContactedOn() {
+        return this.contactedOn;
+    }
+
+    public Institution contactedOn(LocalDate contactedOn) {
+        this.setContactedOn(contactedOn);
+        return this;
+    }
+
+    public void setContactedOn(LocalDate contactedOn) {
+        this.contactedOn = contactedOn;
+    }
+
+    public String getContactOrigin() {
+        return this.contactOrigin;
+    }
+
+    public Institution contactOrigin(String contactOrigin) {
+        this.setContactOrigin(contactOrigin);
+        return this;
+    }
+
+    public void setContactOrigin(String contactOrigin) {
+        this.contactOrigin = contactOrigin;
+    }
+
+    public String getIntendedProject() {
+        return this.intendedProject;
+    }
+
+    public Institution intendedProject(String intendedProject) {
+        this.setIntendedProject(intendedProject);
+        return this;
+    }
+
+    public void setIntendedProject(String intendedProject) {
+        this.intendedProject = intendedProject;
+    }
+
+    public UUID getDdrmOfficerId() {
+        return this.ddrmOfficerId;
+    }
+
+    public Institution ddrmOfficerId(UUID ddrmOfficerId) {
+        this.setDdrmOfficerId(ddrmOfficerId);
+        return this;
+    }
+
+    public void setDdrmOfficerId(UUID ddrmOfficerId) {
+        this.ddrmOfficerId = ddrmOfficerId;
+    }
+
+    public String getDdrmOfficerName() {
+        return this.ddrmOfficerName;
+    }
+
+    public Institution ddrmOfficerName(String ddrmOfficerName) {
+        this.setDdrmOfficerName(ddrmOfficerName);
+        return this;
+    }
+
+    public void setDdrmOfficerName(String ddrmOfficerName) {
+        this.ddrmOfficerName = ddrmOfficerName;
+    }
+
+    public Instant getAdmittedAt() {
+        return this.admittedAt;
+    }
+
+    public Institution admittedAt(Instant admittedAt) {
+        this.setAdmittedAt(admittedAt);
+        return this;
+    }
+
+    public void setAdmittedAt(Instant admittedAt) {
+        this.admittedAt = admittedAt;
+    }
+
+    public UUID getAdmittedById() {
+        return this.admittedById;
+    }
+
+    public Institution admittedById(UUID admittedById) {
+        this.setAdmittedById(admittedById);
+        return this;
+    }
+
+    public void setAdmittedById(UUID admittedById) {
+        this.admittedById = admittedById;
+    }
+
+    public String getClosureReason() {
+        return this.closureReason;
+    }
+
+    public Institution closureReason(String closureReason) {
+        this.setClosureReason(closureReason);
+        return this;
+    }
+
+    public void setClosureReason(String closureReason) {
+        this.closureReason = closureReason;
+    }
+
+    public Instant getClosedAt() {
+        return this.closedAt;
+    }
+
+    public Institution closedAt(Instant closedAt) {
+        this.setClosedAt(closedAt);
+        return this;
+    }
+
+    public void setClosedAt(Instant closedAt) {
+        this.closedAt = closedAt;
+    }
+
     public Institution getSettlementBank() {
         return this.settlementBank;
     }
@@ -468,6 +637,15 @@ public class Institution implements Serializable {
             ", openLinkCount=" + getOpenLinkCount() +
             ", openSuspenseCount=" + getOpenSuspenseCount() +
             ", createdAt='" + getCreatedAt() + "'" +
+            ", contactedOn='" + getContactedOn() + "'" +
+            ", contactOrigin='" + getContactOrigin() + "'" +
+            ", intendedProject='" + getIntendedProject() + "'" +
+            ", ddrmOfficerId='" + getDdrmOfficerId() + "'" +
+            ", ddrmOfficerName='" + getDdrmOfficerName() + "'" +
+            ", admittedAt='" + getAdmittedAt() + "'" +
+            ", admittedById='" + getAdmittedById() + "'" +
+            ", closureReason='" + getClosureReason() + "'" +
+            ", closedAt='" + getClosedAt() + "'" +
             "}";
     }
 }

@@ -68,20 +68,28 @@ public class ConventionQueryService extends QueryService<Convention> {
      * @return the matching {@link Specification} of the entity.
      */
     protected Specification<Convention> createSpecification(ConventionCriteria criteria) {
-        Specification<Convention> specification = Specification.where(null);
+        Specification<Convention> specification = Specification.unrestricted();
+        specification = specification.and((root, query, builder) -> {
+            if (Long.class != query.getResultType()) {
+                root.fetch(Convention_.institution, JoinType.LEFT);
+            }
+            return null;
+        });
         if (criteria != null) {
             // This has to be called first, because the distinct method returns null
-            specification = Specification.allOf(
-                Boolean.TRUE.equals(criteria.getDistinct()) ? distinct(criteria.getDistinct()) : null,
-                buildSpecification(criteria.getId(), Convention_.id),
-                buildSpecification(criteria.getType(), Convention_.type),
-                buildStringSpecification(criteria.getReference(), Convention_.reference),
-                buildRangeSpecification(criteria.getSignedOn(), Convention_.signedOn),
-                buildRangeSpecification(criteria.getExpiresOn(), Convention_.expiresOn),
-                buildSpecification(criteria.getDocumentId(), Convention_.documentId),
-                buildStringSpecification(criteria.getDocumentSha256(), Convention_.documentSha256),
-                buildSpecification(criteria.getInstitutionId(), root ->
-                    root.join(Convention_.institution, JoinType.LEFT).get(Institution_.id)
+            specification = specification.and(
+                Specification.allOf(
+                    Boolean.TRUE.equals(criteria.getDistinct()) ? distinct(criteria.getDistinct()) : Specification.unrestricted(),
+                    buildSpecification(criteria.getId(), Convention_.id),
+                    buildSpecification(criteria.getType(), Convention_.type),
+                    buildStringSpecification(criteria.getReference(), Convention_.reference),
+                    buildRangeSpecification(criteria.getSignedOn(), Convention_.signedOn),
+                    buildRangeSpecification(criteria.getExpiresOn(), Convention_.expiresOn),
+                    buildSpecification(criteria.getDocumentId(), Convention_.documentId),
+                    buildStringSpecification(criteria.getDocumentSha256(), Convention_.documentSha256),
+                    buildSpecification(criteria.getInstitutionId(), root ->
+                        root.join(Convention_.institution, JoinType.LEFT).get(Institution_.id)
+                    )
                 )
             );
         }

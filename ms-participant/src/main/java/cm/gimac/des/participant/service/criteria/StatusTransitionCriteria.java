@@ -3,6 +3,7 @@ package cm.gimac.des.participant.service.criteria;
 import cm.gimac.des.participant.domain.enumeration.InstitutionStatus;
 import cm.gimac.des.participant.domain.enumeration.InstitutionStatus;
 import cm.gimac.des.participant.domain.enumeration.TransitionState;
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.Objects;
 import java.util.Optional;
@@ -57,6 +58,7 @@ public class StatusTransitionCriteria implements Serializable, Criteria {
         }
     }
 
+    @Serial
     private static final long serialVersionUID = 1L;
 
     private UUIDFilter id;

@@ -38,7 +38,7 @@ public class ConventionResource {
 
     private static final String ENTITY_NAME = "participantConvention";
 
-    @Value("${jhipster.clientApp.name}")
+    @Value("${jhipster.clientApp.name:participant}")
     private String applicationName;
 
     private final ConventionService conventionService;
@@ -61,7 +61,7 @@ public class ConventionResource {
      * {@code POST  /conventions} : Create a new convention.
      *
      * @param conventionDTO the conventionDTO to create.
-     * @return the {@link ResponseEntity} with status {@code 201 (Created)} and with body the new conventionDTO, or with status {@code 400 (Bad Request)} if the convention has already an ID.
+     * @return the {@link ResponseEntity} with status {@code 201 (Created)} and with body the new conventionDTO, or with status {@code 400 (Bad Request)} if the convention already has an ID.
      * @throws URISyntaxException if the Location URI syntax is incorrect.
      */
     @PostMapping("")
@@ -125,7 +125,7 @@ public class ConventionResource {
         @PathVariable(value = "id", required = false) final UUID id,
         @NotNull @RequestBody ConventionDTO conventionDTO
     ) throws URISyntaxException {
-        LOG.debug("REST request to partial update Convention partially : {}, {}", id, conventionDTO);
+        LOG.debug("REST request to partially update Convention : {}, {}", id, conventionDTO);
         if (conventionDTO.getId() == null) {
             throw new BadRequestAlertException("Invalid id", ENTITY_NAME, "idnull");
         }
@@ -146,11 +146,11 @@ public class ConventionResource {
     }
 
     /**
-     * {@code GET  /conventions} : get all the conventions.
+     * {@code GET  /conventions} : get all the Conventions.
      *
      * @param pageable the pagination information.
      * @param criteria the criteria which the requested entities should match.
-     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of conventions in body.
+     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of Conventions in body.
      */
     @GetMapping("")
     public ResponseEntity<List<ConventionDTO>> getAllConventions(
