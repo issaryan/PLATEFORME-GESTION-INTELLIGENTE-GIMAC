@@ -9,6 +9,8 @@ import org.hibernate.type.SqlTypes;
 import jakarta.validation.constraints.*;
 import java.io.Serial;
 import java.io.Serializable;
+import cm.gimac.des.homologation.domain.service.NoeudReferentiel;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -16,6 +18,7 @@ import java.util.UUID;
  */
 @Entity
 @Table(name = "reference_operation")
+@EntityListeners(ReferenceOperationImmutabilityListener.class)
 @SuppressWarnings("common-java:DuplicatedBlocks")
 public class ReferenceOperation implements Serializable {
 
@@ -32,33 +35,28 @@ public class ReferenceOperation implements Serializable {
     @Column(name = "code", length = 40, nullable = false)
     private String code;
 
-    @NotNull
     @Size(max = 200)
-    @Column(name = "libelle", length = 200, nullable = false)
+    @Column(name = "libelle", length = 200)
     private String libelle;
 
-    @NotNull
     @Size(max = 60)
-    @Column(name = "phase", length = 60, nullable = false)
+    @Column(name = "phase", length = 60)
     private String phase;
 
-    @NotNull
     @Enumerated(EnumType.STRING)
-    @Column(name = "segment", nullable = false)
+    @Column(name = "segment")
     private Segment segment;
 
-    @NotNull
     @Enumerated(EnumType.STRING)
-    @Column(name = "partie", nullable = false)
+    @Column(name = "partie")
     private Partie partie;
 
     @Size(max = 40)
     @Column(name = "service_code", length = 40)
     private String serviceCode;
 
-    @NotNull
     @Enumerated(EnumType.STRING)
-    @Column(name = "nature_couverture", nullable = false)
+    @Column(name = "nature_couverture")
     private NatureCouverture natureCouverture;
 
     @JdbcTypeCode(SqlTypes.JSON)
@@ -270,6 +268,57 @@ public class ReferenceOperation implements Serializable {
     }
 
     // jhipster-needle-entity-add-getters-setters - JHipster will add getters and setters here
+
+    // ------------------------------------------------------------------ HOM-01 : comportement
+
+    /** Nouvelle opération d'un brouillon, rattachée à sa version. */
+    public static ReferenceOperation nouvelle(ReferentialVersion version, String code) {
+        ReferenceOperation op = new ReferenceOperation();
+        op.code = code;
+        op.version = version;
+        op.predecesseurs = "[]";
+        return op;
+    }
+
+    /** Remplace les attributs de l'opération par la saisie (écriture complète d'un brouillon). */
+    public void appliquer(ReferenceOperationData data) {
+        this.libelle = data.libelle();
+        this.phase = data.phase();
+        this.segment = data.segment();
+        this.partie = data.partie();
+        this.serviceCode = data.serviceCode();
+        this.natureCouverture = data.natureCouverture();
+        this.preuveAttendue = JsonTexte.ecrire(data.preuveAttendue());
+        this.idScenario = data.idScenario();
+        this.predecesseurs = JsonTexte.ecrire(data.predecesseurs() == null ? List.of() : data.predecesseurs());
+        this.fonctionResponsable = data.fonctionResponsable();
+        this.grille = JsonTexte.ecrire(data.grille());
+    }
+
+    /** Copie profonde vers une autre version (dérivation d'un brouillon, HOM-01). */
+    public ReferenceOperation copierVers(ReferentialVersion cible) {
+        ReferenceOperation copie = nouvelle(cible, code);
+        copie.libelle = libelle;
+        copie.phase = phase;
+        copie.segment = segment;
+        copie.partie = partie;
+        copie.serviceCode = serviceCode;
+        copie.natureCouverture = natureCouverture;
+        copie.preuveAttendue = preuveAttendue;
+        copie.idScenario = idScenario;
+        copie.predecesseurs = predecesseurs;
+        copie.fonctionResponsable = fonctionResponsable;
+        copie.grille = grille;
+        return copie;
+    }
+
+    public List<String> predecesseursListe() {
+        return JsonTexte.listeDeTextes(predecesseurs);
+    }
+
+    public NoeudReferentiel noeud() {
+        return new NoeudReferentiel(code, libelle, segment, predecesseursListe());
+    }
 
     @Override
     public boolean equals(Object o) {

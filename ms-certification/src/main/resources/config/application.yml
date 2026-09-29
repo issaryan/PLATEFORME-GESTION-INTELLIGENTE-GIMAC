@@ -252,6 +252,10 @@ spring:
     # Producteur de l'outbox : même courtier que le binder Spring Cloud Stream.
     bootstrap-servers: ${spring.cloud.stream.kafka.binder.brokers:localhost:9092}
     producer:
+      # Explicites : le liant Spring Cloud Stream impose sinon ByteArraySerializer
+      # par défaut, et le relais de l'outbox (clés et enveloppes String) échoue.
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
       acks: all
       properties:
         enable.idempotence: true

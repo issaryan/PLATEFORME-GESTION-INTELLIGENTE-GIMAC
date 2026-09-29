@@ -14,6 +14,11 @@
 # ===================================================================
 
 spring:
+  kafka:
+    # Comme en principal : le liant Spring Cloud Stream imposerait ByteArraySerializer.
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
   application:
     name: certification
   cloud:

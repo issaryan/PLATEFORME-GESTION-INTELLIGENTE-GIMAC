@@ -348,6 +348,12 @@
             <groupId>tools.jackson.module</groupId>
             <artifactId>jackson-module-jaxb-annotations</artifactId>
         </dependency>
+        <!-- Lot 1 : consommateur de test des sujets Kafka (remise des événements de l'outbox). -->
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka-test</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>

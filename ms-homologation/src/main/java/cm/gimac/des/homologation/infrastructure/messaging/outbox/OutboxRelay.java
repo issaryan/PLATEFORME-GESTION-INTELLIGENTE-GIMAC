@@ -59,7 +59,7 @@ public class OutboxRelay {
                 if (e.getAttempts() >= MAX_ATTEMPTS) {
                     e.setStatus(OutboxEvent.Status.FAILED); // alerte MS-MONITORING par métrique
                 }
-                LOG.warn("Relais de l'événement {} ({}) en échec, essai {}", e.getId(), e.getEventType(), e.getAttempts());
+                LOG.warn("Relais de l'événement {} ({}) en échec, essai {} : {}", e.getId(), e.getEventType(), e.getAttempts(), ex.toString());
             }
         }
     }

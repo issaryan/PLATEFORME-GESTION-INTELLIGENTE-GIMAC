@@ -20,7 +20,6 @@ public class ReferentialVersionDTO implements Serializable {
     @NotNull
     private TypeProjet typeProjet;
 
-    @NotNull
     private Integer numero;
 
     @NotNull

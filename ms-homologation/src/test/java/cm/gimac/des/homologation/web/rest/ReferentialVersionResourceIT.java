@@ -211,28 +211,6 @@ class ReferentialVersionResourceIT {
 
     @Test
     @Transactional
-    void checkNumeroIsRequired() throws Exception {
-        long databaseSizeBeforeTest = getRepositoryCount();
-        // set the field null
-        referentialVersion.setNumero(null);
-
-        // Create the ReferentialVersion, which fails.
-        ReferentialVersionDTO referentialVersionDTO = referentialVersionMapper.toDto(referentialVersion);
-
-        restReferentialVersionMockMvc
-            .perform(
-                post(ENTITY_API_URL)
-                    .with(csrf())
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(om.writeValueAsBytes(referentialVersionDTO))
-            )
-            .andExpect(status().isBadRequest());
-
-        assertSameRepositoryCount(databaseSizeBeforeTest);
-    }
-
-    @Test
-    @Transactional
     void checkLibelleIsRequired() throws Exception {
         long databaseSizeBeforeTest = getRepositoryCount();
         // set the field null

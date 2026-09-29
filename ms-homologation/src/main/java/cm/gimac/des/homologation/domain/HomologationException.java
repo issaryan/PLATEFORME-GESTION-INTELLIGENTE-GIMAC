@@ -1,0 +1,47 @@
+package cm.gimac.des.homologation.domain;
+
+import java.util.Map;
+
+/**
+ * Erreur métier de MS-HOMOLOGATION, convertie en ProblemDetail RFC 9457 (PI-GIMAC-01, HOM-01 A2).
+ * Le code (par exemple HOM_REFERENTIAL_FROZEN) et les détails sont restitués au client.
+ */
+public class HomologationException extends RuntimeException {
+
+    private final String code;
+    private final int status;
+    private final transient Map<String, Object> details;
+
+    private HomologationException(String code, int status, String message, Map<String, Object> details) {
+        super(message);
+        this.code = code;
+        this.status = status;
+        this.details = Map.copyOf(details);
+    }
+
+    /** 409 : règle métier ou transition interdite. */
+    public static HomologationException conflict(String code, String message, Map<String, Object> details) {
+        return new HomologationException(code, 409, message, details);
+    }
+
+    /** 503 : tiers indisponible, sans valeur par défaut. */
+    public static HomologationException unavailable(String code, String message) {
+        return new HomologationException(code, 503, message, Map.of());
+    }
+
+    public static HomologationException notFound(String code, Object id) {
+        return new HomologationException(code, 404, "Ressource introuvable", Map.of("id", String.valueOf(id)));
+    }
+
+    public String code() {
+        return code;
+    }
+
+    public int status() {
+        return status;
+    }
+
+    public Map<String, Object> details() {
+        return details;
+    }
+}

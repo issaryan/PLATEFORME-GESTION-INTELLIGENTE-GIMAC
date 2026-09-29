@@ -21,24 +21,19 @@ public class ReferenceOperationDTO implements Serializable {
     @Size(max = 40)
     private String code;
 
-    @NotNull
     @Size(max = 200)
     private String libelle;
 
-    @NotNull
     @Size(max = 60)
     private String phase;
 
-    @NotNull
     private Segment segment;
 
-    @NotNull
     private Partie partie;
 
     @Size(max = 40)
     private String serviceCode;
 
-    @NotNull
     private NatureCouverture natureCouverture;
 
     @Lob

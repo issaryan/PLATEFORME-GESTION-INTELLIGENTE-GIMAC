@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- HOM-01 (PI-GIMAC-01, A1) : un brouillon se saisit progressivement. Le numéro n'est attribué
+     qu'à la publication et les attributs d'une opération sont contrôlés à la publication. -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="hom-01-brouillon-progressif" author="homologation">
+        <dropNotNullConstraint tableName="referential_version" columnName="numero" columnDataType="integer"/>
+        <dropNotNullConstraint tableName="reference_operation" columnName="libelle" columnDataType="varchar(200)"/>
+        <dropNotNullConstraint tableName="reference_operation" columnName="phase" columnDataType="varchar(60)"/>
+        <dropNotNullConstraint tableName="reference_operation" columnName="segment" columnDataType="varchar(255)"/>
+        <dropNotNullConstraint tableName="reference_operation" columnName="partie" columnDataType="varchar(255)"/>
+        <dropNotNullConstraint tableName="reference_operation" columnName="nature_couverture" columnDataType="varchar(255)"/>
+        <addDefaultValue tableName="reference_operation" columnName="predecesseurs" defaultValueComputed="'[]'::jsonb"/>
+    </changeSet>
+</databaseChangeLog>
