@@ -49,6 +49,7 @@ Copié et adapté (paquet `cm.gimac.des.audit`) ; chaque bean est inactif tant q
 | 2026-09-28 | — | Écarts comblés (liaison au certificat, masquage Luhn 6+4) et 1 classes reprises d'afriland : ServiceTokenProvider (D-53). |
 | 2026-09-29 | — | Masquage des journaux activé (logback, `%maskedMsg`) ; 72 tests unitaires et 161 tests d'intégration réussis, image Jib construite ; test généré `PeriodRootResourceIT` corrigé (période unique) (D-54). |
 | 2026-09-29 | — | Permissions métier (HOM_*, CER_*, INTERNAL_*) acceptées comme autorités, en plus de ROLE_* (D-55). |
+| 2026-09-29 | — | `.gitignore` : exception `!src/**/out/`, pour que les ports sortants `application/port/out` soient versionnés |
 <!-- GIMAC:FIN -->
 
 # audit

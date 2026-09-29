@@ -106,6 +106,7 @@ JaCoCo bloque la construction sous 80 % : à `test`, chaque classe du lot en lig
 | 2026-09-29 | — | Régénération JHipster 9.4.0 avec le socle de la Phase 0 ; tranche DDRM (étapes 1 et 2, D-57) : dossier d'adhésion, maker-checker, routes `/api/v1`, double facteur (D-61) ; 266 tests unitaires et de sécurité réussis, seuils JaCoCo de 80 % atteints ; tests d'intégration et de recette écrits, à exécuter sur le poste de développement. |
 | 2026-09-29 | — | Intégration verte (631 tests d'intégration et de recette), seuil global en lignes et fonctions hors MapStruct (D-61). |
 | 2026-09-29 | — | Étape 3 : passage automatique à `EN_HOMOLOGATION` à l'ouverture d'une liaison (consommateur Kafka idempotent), interface interne de lecture d'une institution et de ses services souscrits. |
+| 2026-09-29 | — | Ports sortants `application/port/out` versionnés : la règle `out/` du `.gitignore` généré par JHipster les ignorait, le dépôt distant ne compilait pas ; exception `!src/**/out/` ajoutée et ports `DocumentRegistry`, `StrongReauthVerifier` reconstitués d'après leurs adaptateurs |
 <!-- GIMAC:FIN -->
 
 

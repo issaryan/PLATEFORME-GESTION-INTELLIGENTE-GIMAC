@@ -59,6 +59,7 @@ Unitaires (`LiaisonOpeningPolicyTest`, `OpenLiaisonServiceTest`, `LiaisonQueries
 | 2026-09-29 | — | Masquage des journaux activé (logback, `%maskedMsg`) ; 103 tests unitaires et 386 tests d'intégration réussis, image Jib construite (D-54). |
 | 2026-09-29 | — | Étape 3, cadrage (D-57, D-58) : ouverture d'une liaison sur un adhérent par un chef de département, conducteur de projet désigné, périmètre dérivé des services souscrits, événements ; second facteur exigé sur `/api/v1/**`, CRUD généré réservé à l'administration ; garde d'immuabilité du CRUD des opérations appliquée à la version réelle ; seuils JaCoCo. 165 tests unitaires et de sécurité, 365 d'intégration et de recette réussis. |
 | 2026-09-29 | — | Lot 1, Phase 0 : régénération depuis le JDL du plan en JHipster 9.4.0, corrections Liquibase (jsonb, unicités, index, immuabilité), messagerie (outbox, relais, consommateur idempotent, rebut `.dlq`), jeton de service, sécurité du portail, arborescence hexagonale (D-55). |
+| 2026-09-29 | — | Ports sortants `application/port/out` versionnés : la règle `out/` du `.gitignore` généré par JHipster les ignorait, le dépôt distant ne compilait pas ; exception `!src/**/out/` ajoutée et ports `ParticipantDirectoryPort`, `CollaboratorDirectoryPort` reconstitués d'après leurs adaptateurs |
 <!-- GIMAC:FIN -->
 
 # homologation

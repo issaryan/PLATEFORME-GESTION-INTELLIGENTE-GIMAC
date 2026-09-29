@@ -62,7 +62,7 @@ public final class FormatPrometheus {
         List<Echantillon> resultat = new ArrayList<>();
         for (String ligne : lignes) {
             Optional<String> nom = nomMetrique(ligne);
-            if (nom.isPresent() && nomAccepte.test(nom.get())) {
+            if (nom.isPresent() && nomAccepte.test(nom.orElseThrow())) {
                 analyserLigne(ligne.strip()).ifPresent(resultat::add);
             }
         }

@@ -42,6 +42,8 @@ infra/docker-compose/gimac-dev.sh demarrer          # tout
 
 Les secrets locaux sont générés dans `infra/docker-compose/.env`, jamais versionné.
 
+Comptes nominatifs (un par tableau de bord) : décrire les comptes dans `infra/keycloak/local/comptes.json` (non versionné), puis `python3 infra/keycloak/creer-comptes-personnels.py` ; les mots de passe provisoires sont écrits dans `infra/keycloak/local/mots-de-passe-provisoires.txt`. Première connexion : nouveau mot de passe, enrôlement TOTP, puis premier accès de la plateforme. Keycloak de développement perd ses comptes quand son conteneur est recréé : relancer le script.
+
 ## Règles de travail
 
 - Aucun secret, aucune clé et aucune donnée de carte dans le dépôt (BNF-07, D-44).
@@ -83,3 +85,4 @@ Les secrets locaux sont générés dans `infra/docker-compose/.env`, jamais vers
 | 2026-09-29 | — | Sécurité (profils par fonction, double facteur, OPA, `/api/session`) ; frontend de la tranche DDRM : tableau de bord par acteur, registre et dossier numérique des institutions, pied de page GIMAC, seuils de couverture |
 | 2026-09-29 | — | Supervision de la plateforme en temps réel (passerelle), dépôt WORM et empreinte (MS-DOCUMENT), intégration verte de MS-PARTICIPANT |
 | 2026-09-29 | — | Administration complète depuis la plateforme, sans console Keycloak (D-62) : MS-IAM (comptes, premier accès, « Mon compte », politique de sécurité, messagerie, profils, journal, réauthentification FIDO2), routes et règles OPA, thème GIMAC des pages Keycloak, domaine `gimac` en Compose et en Kubernetes |
+| 2026-09-29 | — | Dépôt distant réparé : ports sortants `application/port/out` jamais versionnés (règle `out/` de JHipster), sept ports reconstitués, adaptateurs de MS-NOTIFICATION versionnés, modernizer de la passerelle, construction des images sous le seuil D-61 ; comptes nominatifs locaux (`infra/keycloak/creer-comptes-personnels.py`) |

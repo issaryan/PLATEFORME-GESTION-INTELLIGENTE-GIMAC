@@ -84,7 +84,9 @@ images_manquantes() {
 images() {
   local s; for s in "${SERVICES[@]}"; do
     echo "== Construction de l'image $s (Jib)"
-    (cd "$RACINE/ms-$s" && ./mvnw -ntp -Pprod verify jib:dockerBuild -DskipTests)
+    # Tests exclus : le seuil JaCoCo de verify (D-61) n'aurait aucune mesure et échouerait ;
+    # les tests et leurs seuils s'exécutent à part (./mvnw verify).
+    (cd "$RACINE/ms-$s" && ./mvnw -ntp -Pprod verify jib:dockerBuild -DskipTests -Djacoco.skip=true)
   done
 }
 

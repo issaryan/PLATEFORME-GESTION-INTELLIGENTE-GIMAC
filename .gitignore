@@ -183,3 +183,6 @@ infra/docker-compose/.journaux-echec/
 # État local des outils d'assistance (claude-flow, mémoire de session)
 .claude-flow/
 **/.claude-flow/
+
+# Comptes nominatifs et mots de passe provisoires de l'environnement local (aucune donnée personnelle versionnée)
+infra/keycloak/local/

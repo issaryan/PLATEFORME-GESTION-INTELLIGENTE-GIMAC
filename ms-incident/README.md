@@ -47,6 +47,7 @@ Copié et adapté (paquet `cm.gimac.des.incident`) ; chaque bean est inactif tan
 | 2026-09-28 | — | Reprise de 3 classes du projet afriland (D-52) ; compilation vérifiée. |
 | 2026-09-28 | — | Écarts comblés (liaison au certificat, masquage Luhn 6+4) et 2 classes reprises d'afriland : ServiceTokenProvider, TransitionInterditeException (D-53). |
 | 2026-09-29 | — | Masquage des journaux activé (logback, `%maskedMsg`) ; 111 tests unitaires et 606 tests d'intégration réussis, image Jib construite ; test généré `TicketResourceIT` corrigé (auto-référence) (D-54). |
+| 2026-09-29 | — | `.gitignore` : exception `!src/**/out/`, pour que les ports sortants `application/port/out` soient versionnés |
 <!-- GIMAC:FIN -->
 
 # incident
