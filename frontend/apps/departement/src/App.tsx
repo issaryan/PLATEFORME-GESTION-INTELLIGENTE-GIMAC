@@ -3,7 +3,7 @@ import { Navigate, Route, Routes } from 'react-router'
 import { Skeleton } from '@gimac/design-system'
 import { CONNEXION, Enveloppe, GardeSession, PageConnexion, PageDeconnexion, SessionProvider, configureHttp, lirePreference, type EtatCanal, type Session } from '@gimac/socle'
 import { CompteProvider, GardePremierAcces, MonComptePage, monCompteHttp, monCompteSimule } from '@gimac/compte'
-import { Fournisseurs, NAVIGATION_DES, creerClientRequetes, servicesHttp, servicesSimules } from '@gimac/lot1'
+import { Fournisseurs, NAVIGATION_DES, PROFILS, creerClientRequetes, servicesHttp, servicesSimules } from '@gimac/lot1'
 
 // Application du département (couche « des ») : routes du lot 1 (DS-GIMAC-01 §10.1). Services réels par
 // la passerelle (VITE_SERVICES=http) ou simulés pour le développement des écrans.
@@ -22,17 +22,24 @@ const ReferentielsOperationsPage = lazy(() => import('@gimac/lot1/pages/des/Refe
 const REELS = import.meta.env.VITE_SERVICES === 'http'
 const VERSION = import.meta.env.VITE_VERSION ?? '0.1.0'
 
-// Session de démonstration (services simulés seulement) : profil choisi par VITE_PROFIL_DEMO.
-const PROFILS_DEMO: Record<string, string[]> = {
-  ROLE_CHEF_DDRM: ['PAR_INSTITUTION_READ', 'PAR_INSTITUTION_CREATE', 'PAR_INSTITUTION_EDIT', 'PAR_ADHESION_INSTRUCT', 'PAR_TRANSITION_REQUEST', 'PAR_TRANSITION_APPROVE'],
-  ROLE_CHARGE_DDRM: ['PAR_INSTITUTION_READ', 'PAR_INSTITUTION_CREATE', 'PAR_INSTITUTION_EDIT', 'PAR_ADHESION_INSTRUCT', 'PAR_TRANSITION_REQUEST'],
-  ROLE_INGENIEUR_HOMOLOGATION: ['PAR_INSTITUTION_READ', 'HOM_LIAISON_LIST', 'HOM_LIAISON_READ', 'HOM_LIAISON_OPEN', 'HOM_DASHBOARD_READ', 'HOM_REFERENTIEL_READ',
-    'HOM_REFERENTIEL_EDIT', 'HOM_REFERENTIEL_PUBLISH', 'HOM_OPERATION_ASSIGN', 'HOM_EVIDENCE_SUBMIT', 'HOM_OPERATION_VALIDATE', 'HOM_OPERATION_REOPEN',
-    'HOM_GRID_EDIT', 'HOM_SCENARIO_QUALIFY', 'HOM_EVIDENCE_FILE_EXPORT', 'CER_DOSSIER_READ', 'CER_DOSSIER_VERIFY', 'CER_GOLIVE_REPORT_SUBMIT', 'CER_ATTESTATION_ISSUE'],
+// Session de démonstration (services simulés seulement) : profil choisi par ?profil=ROLE_… (retenu pour
+// l'onglet), sinon VITE_PROFIL_DEMO. Les quinze profils par fonction (D-58) viennent de @gimac/lot1.
+const profilDes = (r: string | null | undefined): r is string => Boolean(r && PROFILS[r] && r !== 'ROLE_CORRESPONDANT')
+function profilDemo(): string {
+  const demande = new URLSearchParams(window.location.search).get('profil')
+  try {
+    if (profilDes(demande)) sessionStorage.setItem('gimac.profilDemo', demande)
+    const retenu = sessionStorage.getItem('gimac.profilDemo')
+    if (profilDes(retenu)) return retenu
+  } catch {
+    if (profilDes(demande)) return demande
+  }
+  const env = import.meta.env.VITE_PROFIL_DEMO
+  return profilDes(env) ? env : 'ROLE_CHEF_DDRM'
 }
 function sessionDemo(): Session {
-  const role = import.meta.env.VITE_PROFIL_DEMO && PROFILS_DEMO[import.meta.env.VITE_PROFIL_DEMO] ? import.meta.env.VITE_PROFIL_DEMO : 'ROLE_CHEF_DDRM'
-  return { sujet: 'demo', nom: 'Démonstration', identifiant: 'demo', roles: [role], permissions: PROFILS_DEMO[role], institutionId: '', acr: '2', doubleFacteur: true }
+  const role = profilDemo()
+  return { sujet: 'demo', nom: 'Démonstration', identifiant: 'demo', roles: [role], permissions: PROFILS[role], institutionId: '', acr: '2', doubleFacteur: true }
 }
 
 // D-62 : après la garde de session, le premier accès (fiche, charte, actions requises) passe avant

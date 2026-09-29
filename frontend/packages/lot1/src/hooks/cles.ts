@@ -1,5 +1,6 @@
 import type { ListQuery } from '../modele/commun'
 import type { FiltreInstitutions } from '../modele/participant'
+import type { FiltreLiaisons } from '../services/ports'
 
 // Clés de requête du lot 1 : [sujet, ressource, identifiant, sous-ressource].
 export const cles = {
@@ -23,4 +24,12 @@ export const cles = {
   registre: (q?: ListQuery) => ['certification', 'registre', ...(q ? [q] : [])] as const,
   portail: (sous: string, id?: string) => ['homologation', 'portail', sous, ...(id ? [id] : [])] as const,
   portailCertifications: () => ['certification', 'portail'] as const,
+  // Parcours de la liaison, étapes 3 à 10 (D-56 à D-59)
+  parcours: ['parcours'] as const,
+  parcoursLiaisons: (f?: FiltreLiaisons) => ['parcours', 'liaisons', ...(f ? [f] : [])] as const,
+  parcoursDossier: (id: string, sous?: string) => ['parcours', 'dossier', id, ...(sous ? [sous] : [])] as const,
+  parcoursActeur: (fonctions: string[]) => ['parcours', 'acteur', fonctions.join(',')] as const,
+  parcoursPilotage: () => ['parcours', 'pilotage'] as const,
+  parcoursPersonnes: (fonction: string) => ['parcours', 'personnes', fonction] as const,
+  parcoursPortail: (sous: string, id?: string) => ['parcours', 'portail', sous, ...(id ? [id] : [])] as const,
 }

@@ -3,7 +3,7 @@ import { Navigate, Route, Routes } from 'react-router'
 import { Skeleton } from '@gimac/design-system'
 import { CONNEXION, Enveloppe, GardeSession, PageConnexion, PageDeconnexion, SessionProvider, configureHttp, lirePreference, type EtatCanal, type Session } from '@gimac/socle'
 import { CompteProvider, GardePremierAcces, MonComptePage, monCompteHttp, monCompteSimule } from '@gimac/compte'
-import { Fournisseurs, NAVIGATION_PORTAIL, creerClientRequetes, servicesHttp, servicesSimules } from '@gimac/lot1'
+import { Fournisseurs, NAVIGATION_PORTAIL, PROFILS, creerClientRequetes, servicesHttp, servicesSimules } from '@gimac/lot1'
 
 // Portail des participants (couche « portail ») : POR-03 du lot 1 (DS-GIMAC-01 §10.2). Toutes les données
 // sont cloisonnées à l'institution du jeton par la passerelle et les services.
@@ -14,10 +14,9 @@ const DepotPreuvePage = lazy(() => import('@gimac/lot1/pages/portail/DepotPreuve
 
 const REELS = import.meta.env.VITE_SERVICES === 'http'
 const VERSION = import.meta.env.VITE_VERSION ?? '0.1.0'
-const PERMISSIONS_DEMO = ['HOM_PORTAL_READ', 'HOM_PORTAL_SUBMIT', 'CER_PORTAL_READ']
 
 function sessionDemo(): Session {
-  return { sujet: 'demo-correspondant', nom: 'Correspondant A', identifiant: 'correspondant-a', roles: ['ROLE_CORRESPONDANT'], permissions: PERMISSIONS_DEMO, institutionId: 'INST-0042', acr: '2', doubleFacteur: true }
+  return { sujet: 'demo-correspondant', nom: 'Correspondant A', identifiant: 'correspondant-a', roles: ['ROLE_CORRESPONDANT'], permissions: PROFILS.ROLE_CORRESPONDANT, institutionId: 'INST-0042', acr: '2', doubleFacteur: true }
 }
 
 function AvecSession({ children }: { children: (s: Session) => ReactNode }) {

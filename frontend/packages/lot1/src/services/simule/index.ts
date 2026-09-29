@@ -5,6 +5,7 @@ import type { PortailLiaison } from '../../modele/portail'
 import type { ServiceCertification, ServiceHomologation, ServicePortail, Services } from '../ports'
 import * as D from './donnees'
 import { participantSimule } from './participant'
+import { parcoursSimule } from './parcours'
 
 // Implémentation simulée des ports, pour développer les écrans sans la passerelle : un serveur fictif en
 // mémoire, avec latence, identifiants de corrélation et refus normalisés comme ceux des services réels.
@@ -279,8 +280,13 @@ export function servicesSimules(o: OptionsSimulation = {}): Services {
     telechargerAttestation: () => certification.telechargerAttestation('ATT-2026-0007'),
   }
 
+  const { parcours, decision, portailParcours } = parcoursSimule(attendre, INSTITUTION_PORTAIL)
+
   return {
     participant: participantSimule(attendre, refus),
+    parcours,
+    decision,
+    portailParcours,
     homologation,
     certification,
     portail,
