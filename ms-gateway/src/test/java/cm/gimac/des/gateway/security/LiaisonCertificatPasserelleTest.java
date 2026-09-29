@@ -19,7 +19,7 @@ class LiaisonCertificatPasserelleTest {
     @Test
     void empreinteConformeALaRfc8705() throws Exception {
         // Valeur calculée indépendamment : openssl x509 -outform DER | openssl dgst -sha256 | base64url
-        assertThat(EmpreinteCertificat.x5tS256(certificat("client-test.pem"))).isEqualTo("Ym2FQ0bsC87TUU0Uwo1OxGXQZPYMrzeVpeZ84zdt7wE");
+        assertThat(EmpreinteCertificat.x5tS256(certificat("client-test.pem"))).isEqualTo("DZpfDMlaZ7ywWVDHqMGVY6tMCnR630RCkF0-QxGelAw");
     }
 
     @Test

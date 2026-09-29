@@ -24,7 +24,8 @@ import reactor.core.publisher.Mono;
 
 /**
  * Filtre « OpaAuthorize » des routes du lot 1 (PI-GIMAC-01 §0.6) : la passerelle soumet à OPA
- * la méthode, le chemin d'origine, les permissions et l'institution du jeton, et refuse (403)
+ * la méthode, le chemin d'origine, les permissions, l'institution et le niveau d'assurance (acr,
+ * D-61) du jeton, et refuse (403)
  * toute requête que la politique gimac.authz n'autorise pas. OPA injoignable vaut refus
  * (refus par défaut, RG-24). Le service applique ensuite son propre @PreAuthorize.
  */
@@ -33,6 +34,8 @@ public class OpaAuthorizeGatewayFilterFactory extends AbstractGatewayFilterFacto
 
     private static final Logger LOG = LoggerFactory.getLogger(OpaAuthorizeGatewayFilterFactory.class);
     static final String INSTITUTION_CLAIM = "institution_id";
+    /** Niveau d'assurance de l'authentification (D-61) : « 2 » après le second facteur. */
+    static final String ACR_CLAIM = "acr";
 
     private final WebClient opa;
 
@@ -71,7 +74,9 @@ public class OpaAuthorizeGatewayFilterFactory extends AbstractGatewayFilterFacto
                 "permissions",
                 permissions,
                 "institution_id",
-                authentifie ? institution(auth) : "",
+                authentifie ? claim(auth, INSTITUTION_CLAIM) : "",
+                "acr",
+                authentifie ? claim(auth, ACR_CLAIM) : "",
                 "authentifie",
                 authentifie
             )
@@ -88,11 +93,16 @@ public class OpaAuthorizeGatewayFilterFactory extends AbstractGatewayFilterFacto
     }
 
     static String institution(Authentication auth) {
+        return claim(auth, INSTITUTION_CLAIM);
+    }
+
+    /** Claim du jeton porteur ou du jeton d'identité de la session (connexion par la passerelle). */
+    static String claim(Authentication auth, String nom) {
         Object valeur = null;
         if (auth instanceof JwtAuthenticationToken jwt) {
-            valeur = jwt.getToken().getClaims().get(INSTITUTION_CLAIM);
+            valeur = jwt.getToken().getClaims().get(nom);
         } else if (auth.getPrincipal() instanceof OidcUser oidc) {
-            valeur = oidc.getClaims().get(INSTITUTION_CLAIM);
+            valeur = oidc.getClaims().get(nom);
         }
         return valeur == null ? "" : valeur.toString();
     }

@@ -7,28 +7,82 @@ test_refus_par_defaut if not authz.allow with input as {}
 
 test_publication_avec_permission if authz.allow with input as {
 	"method": "POST", "path": "/bff/des/homologation/referentiels/v1/publication",
-	"permissions": ["HOM_REFERENTIEL_PUBLISH"], "authentifie": true,
+	"permissions": ["HOM_REFERENTIEL_PUBLISH"], "authentifie": true, "acr": "2",
 }
 
 test_publication_sans_permission if not authz.allow with input as {
 	"method": "POST", "path": "/bff/des/homologation/referentiels/v1/publication",
-	"permissions": ["HOM_REFERENTIEL_READ"], "authentifie": true,
+	"permissions": ["HOM_REFERENTIEL_READ"], "authentifie": true, "acr": "2",
 }
 
 test_portail_sans_institution_refuse if not authz.allow with input as {
 	"method": "GET", "path": "/bff/portail/homologation/liaisons",
-	"permissions": ["HOM_PORTAL_READ"], "institution_id": "", "authentifie": true,
+	"permissions": ["HOM_PORTAL_READ"], "institution_id": "", "authentifie": true, "acr": "2",
 }
 
 test_portail_avec_institution if authz.allow with input as {
 	"method": "GET", "path": "/bff/portail/homologation/liaisons",
-	"permissions": ["HOM_PORTAL_READ"], "institution_id": "INST-0042", "authentifie": true,
+	"permissions": ["HOM_PORTAL_READ"], "institution_id": "INST-0042", "authentifie": true, "acr": "2",
 }
 
 test_lecture_des_authentifiee if authz.allow with input as {
-	"method": "GET", "path": "/bff/des/homologation/liaisons", "permissions": [], "authentifie": true,
+	"method": "GET", "path": "/bff/des/homologation/liaisons", "permissions": [], "authentifie": true, "acr": "2",
 }
 
 test_lecture_des_anonyme_refusee if not authz.allow with input as {
 	"method": "GET", "path": "/bff/des/homologation/liaisons", "permissions": [], "authentifie": false,
+}
+
+# D-61 : second facteur exigé sur toutes les routes /bff.
+test_permission_sans_second_facteur_refusee if not authz.allow with input as {
+	"method": "POST", "path": "/bff/des/homologation/referentiels/v1/publication",
+	"permissions": ["HOM_REFERENTIEL_PUBLISH"], "authentifie": true, "acr": "1",
+}
+
+test_portail_sans_second_facteur_refuse if not authz.allow with input as {
+	"method": "GET", "path": "/bff/portail/homologation/liaisons",
+	"permissions": ["HOM_PORTAL_READ"], "institution_id": "INST-0042", "authentifie": true,
+}
+
+test_lecture_des_sans_acr_refusee if not authz.allow with input as {
+	"method": "GET", "path": "/bff/des/pilotage/projets", "permissions": [], "authentifie": true, "acr": "",
+}
+
+# Registre des institutions (D-57) : chaque route et sa permission.
+routes_participant := [
+	["GET", "/bff/des/participant/institutions", "PAR_INSTITUTION_READ"],
+	["GET", "/bff/des/participant/institutions/indicateurs", "PAR_INSTITUTION_READ"],
+	["GET", "/bff/des/participant/institutions/i1/prerequis", "PAR_INSTITUTION_READ"],
+	["POST", "/bff/des/participant/institutions", "PAR_INSTITUTION_CREATE"],
+	["PUT", "/bff/des/participant/institutions/i1", "PAR_INSTITUTION_EDIT"],
+	["PUT", "/bff/des/participant/institutions/i1/conditions-adhesion", "PAR_INSTITUTION_EDIT"],
+	["POST", "/bff/des/participant/institutions/i1/pieces/STATUTS/depot", "PAR_ADHESION_INSTRUCT"],
+	["POST", "/bff/des/participant/institutions/i1/pieces/STATUTS/validation", "PAR_ADHESION_INSTRUCT"],
+	["POST", "/bff/des/participant/institutions/i1/pieces/STATUTS/rejet", "PAR_ADHESION_INSTRUCT"],
+	["POST", "/bff/des/participant/institutions/i1/transitions", "PAR_TRANSITION_REQUEST"],
+	["POST", "/bff/des/participant/institutions/i1/transitions/t1/approbation", "PAR_TRANSITION_APPROVE"],
+	["POST", "/bff/des/participant/institutions/i1/transitions/t1/rejet", "PAR_TRANSITION_APPROVE"],
+]
+
+test_participant_avec_permission if {
+	every r in routes_participant {
+		authz.allow with input as {"method": r[0], "path": r[1], "permissions": [r[2]], "authentifie": true, "acr": "2"}
+	}
+}
+
+test_participant_sans_permission if {
+	every r in routes_participant {
+		not authz.allow with input as {"method": r[0], "path": r[1], "permissions": ["HOM_LIAISON_READ"], "authentifie": true, "acr": "2"}
+	}
+}
+
+test_participant_sans_second_facteur if {
+	every r in routes_participant {
+		not authz.allow with input as {"method": r[0], "path": r[1], "permissions": [r[2]], "authentifie": true, "acr": "1"}
+	}
+}
+
+test_chef_ddrm_ne_cree_pas_sans_permission if not authz.allow with input as {
+	"method": "POST", "path": "/bff/des/participant/institutions/i1/transitions/t1/approbation",
+	"permissions": ["PAR_TRANSITION_REQUEST"], "authentifie": true, "acr": "2",
 }

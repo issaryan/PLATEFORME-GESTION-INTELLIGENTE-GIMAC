@@ -59,3 +59,4 @@ git checkout -- ../../ms-*/.yo-rc.json   # annule la réécriture de version par
 | 2026-09-28 | — | Ajout de ce README |
 | 2026-09-29 | — | Services dépendants de Kafka, délai de santé élargi, Valkey de la passerelle, amorçage Ceph robuste sous charge, conteneurs d'initialisation hors attente de santé, journaux conservés sur échec, `tester-socle.sh` : 48/48 (D-54) |
 | 2026-09-29 | — | Lot 1 : domaine Keycloak gimac importé, émetteur gimac pour tous les services, jeton de service des deux services du lot, caches Redis retirés (régénération), `scripts/token.sh` et `scripts/verifier-phase0.sh`, politique OPA du lot (D-55) |
+| 2026-09-29 | — | `scripts/token.sh` : jeton de niveau 2 par autorisation par appareil (double facteur, D-61), niveau 1 sur demande ; politique OPA : second facteur et routes du registre des institutions (18 tests, couverture 100 %) |

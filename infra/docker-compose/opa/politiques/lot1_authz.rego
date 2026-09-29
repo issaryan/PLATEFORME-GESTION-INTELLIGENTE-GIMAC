@@ -2,6 +2,7 @@
 # puis doublée par @PreAuthorize dans chaque service. Refus par défaut (RG-24).
 # Écart au plan : sa première règle allow acceptait aussi le portail sans institution ;
 # ici, un chemin du portail n'est autorisé que si le jeton porte institution_id (RG-59).
+# D-61 : toute route /bff exige un jeton issu d'une authentification à deux facteurs (acr 2 ou 3).
 package gimac.authz
 
 import rego.v1
@@ -20,7 +21,19 @@ regles := [
 	{"m": "GET", "re": `^/bff/portail/homologation/`, "p": "HOM_PORTAL_READ"},
 	{"m": "POST", "re": `^/bff/portail/homologation/operations/[^/]+/preuves$`, "p": "HOM_PORTAL_SUBMIT"},
 	{"m": "GET", "re": `^/bff/portail/certification/`, "p": "CER_PORTAL_READ"},
+	# Registre des institutions, étapes 1 et 2 du parcours (D-57).
+	{"m": "GET", "re": `^/bff/des/participant/institutions(/.*)?$`, "p": "PAR_INSTITUTION_READ"},
+	{"m": "POST", "re": `^/bff/des/participant/institutions$`, "p": "PAR_INSTITUTION_CREATE"},
+	{"m": "PUT", "re": `^/bff/des/participant/institutions/[^/]+(/conditions-adhesion)?$`, "p": "PAR_INSTITUTION_EDIT"},
+	{"m": "POST", "re": `^/bff/des/participant/institutions/[^/]+/pieces/[^/]+/(depot|validation|rejet)$`, "p": "PAR_ADHESION_INSTRUCT"},
+	{"m": "POST", "re": `^/bff/des/participant/institutions/[^/]+/transitions$`, "p": "PAR_TRANSITION_REQUEST"},
+	{"m": "POST", "re": `^/bff/des/participant/institutions/[^/]+/transitions/[^/]+/(approbation|rejet)$`, "p": "PAR_TRANSITION_APPROVE"},
 ]
+
+# Second facteur (D-61) : niveaux d'assurance acceptés.
+niveaux_double_facteur := {"2", "3"}
+
+double_facteur if input.acr in niveaux_double_facteur
 
 # Permission exigée par la première règle correspondant à la méthode et au chemin.
 required_permission := p if {
@@ -35,12 +48,14 @@ portail if startswith(input.path, "/bff/portail/")
 # Chemins du DES : la permission suffit.
 allow if {
 	not portail
+	double_facteur
 	required_permission in input.permissions
 }
 
 # Chemins du portail : permission et institution dans le jeton.
 allow if {
 	portail
+	double_facteur
 	required_permission in input.permissions
 	input.institution_id != ""
 }
@@ -52,4 +67,5 @@ allow if {
 	not portail
 	startswith(input.path, "/bff/des/")
 	input.authentifie == true
+	double_facteur
 }

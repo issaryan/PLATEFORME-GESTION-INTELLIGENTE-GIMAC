@@ -146,6 +146,20 @@ spring:
               filters:
                 - OpaAuthorize
                 - RewritePath=/bff/portail/homologation/(?<p>.*), /api/v1/portail/${p}
+            - id: des-participant
+              uri: ${gimac.services.participant}
+              predicates:
+                - Path=/bff/des/participant/**
+              filters:
+                - OpaAuthorize
+                - RewritePath=/bff/des/participant/(?<p>.*), /api/v1/${p}
+            - id: portail-participant
+              uri: ${gimac.services.participant}
+              predicates:
+                - Path=/bff/portail/participant/**
+              filters:
+                - OpaAuthorize
+                - RewritePath=/bff/portail/participant/(?<p>.*), /api/v1/portail/${p}
             - id: des-certification
               uri: ${gimac.services.certification}
               predicates:

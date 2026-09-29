@@ -41,6 +41,8 @@ vault-token
 openbao-token
 id_rsa*
 id_ed25519*
+# Certificats publics de test (sans clé privée) : empreintes RFC 8705 vérifiées par les tests.
+!**/src/test/resources/certificats/*.pem
 
 # -----------------------------------------------------------------------------
 # Données réelles et exports (BNF-16 : aucune donnée de carte)
