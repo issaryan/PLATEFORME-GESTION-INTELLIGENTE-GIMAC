@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!--
+        Écrit à la main (non généré par JHipster) : métadonnées du dépôt direct
+        POST /api/v1/documents (tranche DDRM). Le contenu est dans le dépôt objet WORM (D-50) ;
+        la table n'en garde que l'empreinte SHA-256 calculée par le serveur.
+    -->
+    <changeSet id="20260929120000-1" author="gimac">
+        <createTable tableName="depot_document" remarks="Fichiers déposés directement (tranche DDRM) : métadonnées en insertion seule.">
+            <column name="id" type="${uuidType}">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="finalite" type="varchar(50)" remarks="Finalité du dépôt, par exemple ADHESION.">
+                <constraints nullable="false"/>
+            </column>
+            <column name="reference" type="varchar(255)" remarks="Référence libre du déposant, par exemple institutionId/code.">
+                <constraints nullable="false"/>
+            </column>
+            <column name="nom_fichier" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="taille" type="bigint" remarks="Taille en octets.">
+                <constraints nullable="false"/>
+            </column>
+            <column name="type_mime" type="varchar(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sha256" type="varchar(64)" remarks="SHA-256 du contenu, hexadécimal minuscule.">
+                <constraints nullable="false"/>
+            </column>
+            <column name="cle_objet" type="varchar(255)" remarks="Clé de l'objet dans le compartiment WORM.">
+                <constraints nullable="false" unique="true" uniqueConstraintName="ux_depot_document_cle_objet"/>
+            </column>
+            <column name="version_objet" type="varchar(255)" remarks="Identifiant de version attribué par le dépôt objet.">
+                <constraints nullable="true"/>
+            </column>
+            <column name="deposant" type="varchar(255)" remarks="Sujet du jeton du déposant.">
+                <constraints nullable="false"/>
+            </column>
+            <column name="institution_id" type="varchar(64)" remarks="Institution du jeton, pour un représentant d'un participant.">
+                <constraints nullable="true"/>
+            </column>
+            <column name="depose_le" type="${datetimeType}">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="depot_document" indexName="ix_depot_document_finalite_reference">
+            <column name="finalite"/>
+            <column name="reference"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Empreinte au format canonique et taille strictement positive. -->
+    <changeSet id="20260929120000-2" author="gimac" dbms="postgresql">
+        <sql>
+            ALTER TABLE depot_document ADD CONSTRAINT ck_depot_document_sha256 CHECK (sha256 ~ '^[0-9a-f]{64}$');
+            ALTER TABLE depot_document ADD CONSTRAINT ck_depot_document_taille CHECK (taille &gt; 0);
+        </sql>
+    </changeSet>
+
+    <!-- Insertion seule (RG-04, RG-16) : toute modification ou suppression d'une ligne est refusée. -->
+    <changeSet id="20260929120000-3" author="gimac" dbms="postgresql">
+        <sql splitStatements="false">
+            CREATE OR REPLACE FUNCTION depot_document_insertion_seule() RETURNS trigger AS $$
+            BEGIN
+                RAISE EXCEPTION 'depot_document est en insertion seule (RG-04, RG-16)';
+            END;
+            $$ LANGUAGE plpgsql;
+        </sql>
+        <sql>
+            CREATE TRIGGER tr_depot_document_insertion_seule
+                BEFORE UPDATE OR DELETE ON depot_document
+                FOR EACH ROW EXECUTE FUNCTION depot_document_insertion_seule();
+        </sql>
+        <rollback>
+            <sql>
+                DROP TRIGGER IF EXISTS tr_depot_document_insertion_seule ON depot_document;
+                DROP FUNCTION IF EXISTS depot_document_insertion_seule();
+            </sql>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

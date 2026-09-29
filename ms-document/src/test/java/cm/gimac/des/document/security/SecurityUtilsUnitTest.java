@@ -90,6 +90,21 @@ class SecurityUtilsUnitTest {
     }
 
     @Test
+    void permissionsMetierAccepteesCommeAutorites() {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put(
+            "roles",
+            Arrays.asList("DOC_DEPOSIT", "INTERNAL_DOCUMENT_READ", "PAR_ADHESION_INSTRUCT", AuthoritiesConstants.USER, "offline_access", "DOC", "doc_deposit")
+        );
+
+        List<GrantedAuthority> authorities = SecurityUtils.extractAuthorityFromClaims(claims);
+
+        assertThat(authorities)
+            .extracting(GrantedAuthority::getAuthority)
+            .containsExactlyInAnyOrder("DOC_DEPOSIT", "INTERNAL_DOCUMENT_READ", "PAR_ADHESION_INSTRUCT", AuthoritiesConstants.USER);
+    }
+
+    @Test
     void testIsAuthenticated() {
         SecurityContext securityContext = SecurityContextHolder.createEmptyContext();
         securityContext.setAuthentication(new UsernamePasswordAuthenticationToken("admin", "admin"));

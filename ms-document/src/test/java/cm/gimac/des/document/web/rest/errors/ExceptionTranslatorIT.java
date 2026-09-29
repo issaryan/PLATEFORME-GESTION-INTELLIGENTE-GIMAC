@@ -13,12 +13,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
+import cm.gimac.des.document.security.AuthoritiesConstants;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
  * Integration tests {@link ExceptionTranslator} controller advice.
  */
-@WithMockUser
+@WithMockUser(authorities = AuthoritiesConstants.ADMIN)
 @AutoConfigureMockMvc
 @IntegrationTest
 class ExceptionTranslatorIT {
