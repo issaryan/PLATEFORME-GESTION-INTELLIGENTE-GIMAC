@@ -212,22 +212,22 @@ services:
     image: participant
     environment:
       - _JAVA_OPTIONS=-Xmx512m -Xms256m
-      - SPRING_PROFILES_ACTIVE=prod,api-docs
+      - SPRING_PROFILES_ACTIVE=prod,api-docs,secret-samples
       - MANAGEMENT_PROMETHEUS_METRICS_EXPORT_ENABLED=true
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://participant-postgresql:5432/participant
-      - SPRING_LIQUIBASE_URL=jdbc:postgresql://participant-postgresql:5432/participant
-      - JHIPSTER_CACHE_REDIS_SERVER=redis://participant-redis:6379
-      - JHIPSTER_CACHE_REDIS_CLUSTER=false
       - SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_OIDC_ISSUER_URI=http://keycloak:9080/realms/jhipster
       - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_ID=internal
       - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_SECRET=internal
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://participant-postgresql:5432/participant
+      - SPRING_DATASOURCE_USERNAME=participant
+      - SPRING_DATASOURCE_PASSWORD=
+      - SPRING_LIQUIBASE_URL=jdbc:postgresql://participant-postgresql:5432/participant
+      - JHIPSTER_CACHE_REDIS_SERVER=redis://participant-redis:6379
+      - JHIPSTER_CACHE_REDIS_CLUSTER=false
       - SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS=kafka:9092
     healthcheck:
       test:
-        - CMD
-        - curl
-        - -f
-        - http://localhost:8085/management/health
+        - CMD-SHELL
+        - "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8085; printf \"GET /management/health HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n\" >&3; grep -q \"\\\"status\\\":\\\"UP\\\"\" <&3'"
       interval: 5s
       timeout: 5s
       retries: 40
@@ -237,7 +237,7 @@ services:
       keycloak:
         condition: service_healthy
   participant-postgresql:
-    image: postgres:17.4
+    image: postgres:18.6
     environment:
       - POSTGRES_USER=participant
       - POSTGRES_HOST_AUTH_METHOD=trust
@@ -249,7 +249,7 @@ services:
       timeout: 5s
       retries: 10
   participant-redis:
-    image: redis:8.0.0
+    image: redis:8.10.1
 
   homologation:
     image: homologation
