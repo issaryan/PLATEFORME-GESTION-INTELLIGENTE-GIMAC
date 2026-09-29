@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import { cx } from '../../lib/cx'
 import { Button } from '../../actions/Button/Button'
 
@@ -25,8 +26,27 @@ export interface GanttViewProps {
 export function GanttView(p: GanttViewProps) {
   const days = p.days || 60
   const start = p.start || '01/09'
-  const colW = 14
+  // Échelle : 14 px par jour au plus (valeur publiée) ; réduite, jusqu'à 6 px, pour que la
+  // frise tienne dans la largeur disponible au lieu de déborder de la carte.
+  const scroll = useRef<HTMLDivElement>(null)
+  const noms = useRef<HTMLTableCellElement>(null)
+  const tenue = useRef<HTMLTableCellElement>(null)
+  const [colW, setColW] = useState(14)
+  useLayoutEffect(() => {
+    const el = scroll.current
+    if (!el) return
+    const ajuster = () => {
+      const fixe = (noms.current?.offsetWidth ?? 0) + (tenue.current?.offsetWidth ?? 0)
+      setColW(Math.max(6, Math.min(14, Math.floor((el.clientWidth - fixe) / days))))
+    }
+    ajuster()
+    if (typeof ResizeObserver === 'undefined') return
+    const obs = new ResizeObserver(ajuster)
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [days])
   const W = days * colW
+  const semaine = { '--gm-gantt-semaine': 7 * colW + 'px' } as CSSProperties
   return (
     <div className="gm-gantt">
       <div className="gm-dag-toolbar">
@@ -40,14 +60,14 @@ export function GanttView(p: GanttViewProps) {
         </span>
         <Button size="sm" variant="ghost">Vue tableau</Button>
       </div>
-      <div className="gm-gantt-scroll">
+      <div className="gm-gantt-scroll" ref={scroll}>
         <table className="gm-gantt-table" role="grid" aria-label="Jalons du projet">
           <thead>
             <tr>
-              <th scope="col" className="gm-gantt-name">Jalon</th>
-              <th scope="col" className="gm-gantt-name gm-num">Tenue</th>
+              <th scope="col" className="gm-gantt-name" ref={noms}>Jalon</th>
+              <th scope="col" className="gm-gantt-name gm-num" ref={tenue}>Tenue</th>
               <th scope="col" style={{ padding: 0 }}>
-                <div className="gm-gantt-axis" style={{ width: W }}>
+                <div className="gm-gantt-axis" style={{ ...semaine, width: W }}>
                   {(p.weeks || []).map((w, i) => (
                     <span key={i} style={{ left: w.day * colW }}>{w.label}</span>
                   ))}
@@ -67,7 +87,7 @@ export function GanttView(p: GanttViewProps) {
                   {m.probability !== undefined ? <span className={cx(m.probability < 50 && 'gm-late')}>{m.probability + ' %'}</span> : ''}
                 </td>
                 <td style={{ padding: 0, position: 'relative' }}>
-                  <div className="gm-gantt-lane" style={{ width: W }}>
+                  <div className="gm-gantt-lane" style={{ ...semaine, width: W }}>
                     {m.slack ? <span className="gm-gantt-slack" style={{ left: (m.start + m.duration) * colW, width: m.slack * colW }} /> : null}
                     <span
                       className={cx('gm-gantt-bar', m.critical && 'gm-gantt-bar-crit')}

@@ -22,7 +22,7 @@ export function CalendarPopover(p: CalendarPopoverProps) {
         <strong>{p.month || 'Septembre 2026'}</strong>
         <IconButton variant="ghost" size="sm" icon="chevron-right" label="Mois suivant" />
       </div>
-      <div className="gm-cal-grid" role="grid">
+      <div className="gm-cal-grid" role="group" aria-label="Jours du mois">
         {DAYS.map((d) => (
           <span key={d} className="gm-cal-dow">{d}</span>
         ))}

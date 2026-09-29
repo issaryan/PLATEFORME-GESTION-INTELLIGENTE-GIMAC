@@ -45,7 +45,7 @@ export function FileDropzone(p: FileDropzoneProps) {
               {p.file.name} <span className="gm-field-help">{p.file.size}</span>
             </div>
             {p.state === 'uploading' ? (
-              <div className="gm-progress" role="progressbar" aria-valuenow={p.progress || 0} aria-valuemin={0} aria-valuemax={100}>
+              <div className="gm-progress" role="progressbar" aria-label={'Dépôt de ' + p.file.name} aria-valuenow={p.progress || 0} aria-valuemin={0} aria-valuemax={100}>
                 <div className="gm-progress-bar" style={{ width: (p.progress || 0) + '%' }} />
               </div>
             ) : null}

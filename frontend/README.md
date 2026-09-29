@@ -8,6 +8,8 @@ Espace de travail npm des trois couches de présentation de la plateforme (D-46,
 | `apps/portail` | `@gimac/app-portail` | Portail des participants | DMZ | 4201 |
 | `apps/console` | `@gimac/app-console` | Console d'administration et d'audit | Administration hors bande | 4202 |
 | `packages/theme` | `@gimac/theme` | Jetons du thème (CC 6.2) | — | — |
+| `packages/design-system` | `@gimac/design-system` | Système de conception DS-GIMAC-01 (jetons, styles, 87 composants React) | — | — |
+| `apps/catalogue` | `@gimac/app-catalogue` | Catalogue vivant, hors production | Poste de développement | 4203 |
 
 Pile : React 19.2, TypeScript 6, Vite 8, oxlint, générés par `create-vite` (gabarit `react-ts`).
 
@@ -37,4 +39,5 @@ Enveloppe commune IHM-01, bibliothèque de composants IHM-02, navigation élagu�
 |---|---|---|
 | 2026-09-28 | b20a049 | Création : trois applications `create-vite`, paquet `@gimac/theme`, Dockerfile, configuration nginx |
 | 2026-09-28 | — | Ajout de ce README et des README des applications |
-| 2026-09-28 | — | Paquet `@gimac/design-system` (portage React du DS-GIMAC-01, 87 composants) et catalogue vivant `apps/catalogue` (port 4203) |
+| 2026-09-28 | 6eca1ce | Paquet `@gimac/design-system` (portage React du DS-GIMAC-01, 87 composants) et catalogue vivant `apps/catalogue` (port 4203) |
+| 2026-09-29 | — | Système de conception terminé : ThemeProvider, reset.css, contrôle des valeurs en dur, tests (48 unitaires, 174 audits axe), corrections de DiffView, GanttView et DecisionToTaskRow |

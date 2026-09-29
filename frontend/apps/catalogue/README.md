@@ -11,10 +11,13 @@ npm run dev:catalogue      # depuis frontend/, http://localhost:4203
 - `src/plan.ts` : inventaire des composants du système publié (groupe, dimensions, fiche).
 - `src/fabriques/` : données fictives de développement (« Établissement de paiement A », « Banque B »).
 
+Sous la largeur prévue d'une carte, l'aperçu est réduit à l'échelle pour rester entier. `npm run test -w @gimac/app-catalogue` rend chaque aperçu et l'audite avec axe, en clair et en sombre.
+
 Navigation : liste à gauche, boutons Précédent et Suivant, Alt + flèche haut ou bas ; l'adresse porte le composant affiché (`#/Button`).
 
 ## Journal des mises à jour
 
 | Date | Commit | Modification |
 |---|---|---|
-| 2026-09-28 | — | Création du catalogue vivant |
+| 2026-09-28 | 6eca1ce | Création du catalogue vivant |
+| 2026-09-29 | — | Mise à l'échelle des aperçus sur écran étroit, audit axe de tous les aperçus |

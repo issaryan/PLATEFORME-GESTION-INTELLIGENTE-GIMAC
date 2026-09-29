@@ -31,7 +31,7 @@ export function SlaClock(p: SlaClockProps) {
           <StatusBadge status={pct >= 80 ? 'warn' : 'ok'} label={pct >= 80 ? 'échéance proche' : "dans l'engagement"} />
         )}
       </div>
-      <div className="gm-progress" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
+      <div className="gm-progress" role="progressbar" aria-label={p.label || 'Délai de résolution imputable'} aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
         <div className={cx('gm-progress-bar', over && 'gm-progress-over')} style={{ width: pct + '%' }} />
       </div>
       <div className="gm-row gm-num" style={{ justifyContent: 'space-between', fontSize: 12, color: 'var(--gm-color-text-secondary)' }}>

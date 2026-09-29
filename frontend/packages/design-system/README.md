@@ -19,13 +19,30 @@ import '@gimac/design-system/styles.css'
 import { Button, StatusBadge } from '@gimac/design-system'
 ```
 
-Le thème sombre s'active par `data-theme="dark"` sur la racine (ou sur un conteneur). Les composants ne consomment que des jetons `--gm-*`.
+Le thème sombre s'active par `data-theme="dark"` sur la racine (ou sur un conteneur), ou par le fournisseur `ThemeProvider` qui pose `data-theme` et `data-density` depuis les préférences du profil (`useTheme()` pour les changer). Les couches importent aussi `@gimac/design-system/reset.css`. Les composants ne consomment que des jetons `--gm-*`.
+
+## Fidélité et écarts
+
+Chaque composant a été comparé au pixel près, en clair et en sombre, au rendu du système publié : écart nul, hors animations (spinner, squelette) et anticrénelage de quelques pixels. Les écarts suivants sont volontaires, car ils corrigent des défauts de l'original :
+
+| Composant | Défaut de l'original | Correction |
+|---|---|---|
+| DiffView | Les lignes longues débordaient du cadre | Défilement horizontal dans le composant |
+| GanttView | Échelle fixe de 14 px par jour : la frise sortait de la carte | Échelle adaptative de 14 px au plus, 6 px au moins |
+| DecisionToTaskRow | Colonne d'état de largeur nulle : le badge sortait de la ligne | Colonne à la largeur du badge |
+| DateField, FileDropzone, SlaClock, DecisionToTaskRow | Rôles ARIA invalides ou barres de progression sans nom (axe) | Rôles et noms accessibles, rendu inchangé |
+| DeviceVerificationCard | L'empreinte passait par la prop réservée `key` | Prop `fingerprint` |
+| Drawer | `useState` après un retour anticipé | Ordre des hooks corrigé |
+
+Écarts du système publié conservés à l'identique et signalés par les tests (à trancher au référentiel) : bordure de champ en clair à 1,9:1 au lieu de 3:1 ; badge « information » en sombre à 4,48:1 au lieu de 4,5:1.
 
 ## Commandes
 
 ```
 npm run jetons -w @gimac/design-system   # régénère tokens.css depuis tokens.json
-npm run lint -w @gimac/design-system     # TypeScript strict et jetons à jour
+npm run lint -w @gimac/design-system     # TypeScript strict, aucune valeur en dur, jetons à jour
+npm run test -w @gimac/design-system     # contrastes WCAG depuis les jetons, rendu, ARIA et clavier
+npm run test -w @gimac/app-catalogue     # chaque aperçu rendu et audité par axe, clair et sombre
 ```
 
 Le catalogue vivant (`apps/catalogue`) affiche chaque composant, un à un, en clair et en sombre.
@@ -34,4 +51,5 @@ Le catalogue vivant (`apps/catalogue`) affiche chaque composant, un à un, en cl
 
 | Date | Commit | Modification |
 |---|---|---|
-| 2026-09-28 | — | Création : jetons, styles, polices, pictogrammes et portage React des composants du système de conception publié |
+| 2026-09-28 | 6eca1ce | Création : jetons, styles, polices, pictogrammes et portage React des 87 composants du système de conception publié |
+| 2026-09-29 | — | ThemeProvider, reset.css, contrôle des valeurs en dur, tests (contrastes, composants, axe) ; corrections de DiffView, GanttView, DecisionToTaskRow et de l'accessibilité |

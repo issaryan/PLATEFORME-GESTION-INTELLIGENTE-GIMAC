@@ -19,7 +19,7 @@ export interface DecisionToTaskRowProps {
 // Traçabilité d'une décision de réunion vers la tâche engendrée (§7.7, DES-25).
 export function DecisionToTaskRow(p: DecisionToTaskRowProps) {
   return (
-    <div className="gm-dtt" role="row">
+    <div className="gm-dtt" role="group" aria-label={'Décision ' + p.decisionId}>
       <div className="gm-dtt-col" style={{ flex: 3 }}>
         <div className="gm-field-help">
           <Icon name="gavel" /> Décision <span className="gm-mono">{p.decisionId}</span>
@@ -41,7 +41,7 @@ export function DecisionToTaskRow(p: DecisionToTaskRowProps) {
         <div className="gm-field-help">Échéance</div>
         <div className={cx('gm-num', p.late && 'gm-late')}>{p.due}</div>
       </div>
-      <div className="gm-dtt-col" style={{ flex: 0 }}>
+      <div className="gm-dtt-col" style={{ flex: 'none' }}>
         <StatusBadge status={p.status} label={p.statusLabel} />
       </div>
     </div>

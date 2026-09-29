@@ -1,0 +1,12 @@
+/*
+ * Réinitialisation minimale de l'application (DS-GIMAC-01 §12.2) : à importer une fois par
+ * chaque couche, avant styles.css. Le catalogue ne l'emploie pas afin de rester identique
+ * aux aperçus publiés, qui portent ces règles sur .gm-root.
+ */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--gm-color-bg-page); color: var(--gm-color-text-primary); font-family: var(--font-sans); font-size: 14px; line-height: 22px; }
+:focus-visible { outline: var(--gm-border-2) solid var(--gm-color-focus); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-property: opacity !important; animation: none !important; }
+}

@@ -1,4 +1,4 @@
-import { Component, Fragment, Suspense, lazy, useEffect, useMemo, useState, type ComponentType, type ReactNode } from 'react'
+import { Component, Fragment, Suspense, lazy, useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from 'react'
 import { Icon } from '@gimac/design-system'
 import { GROUPES, PLAN } from './plan'
 import { FONDATIONS } from './fondations'
@@ -111,6 +111,25 @@ export function Catalogue() {
 
   const Apercu = courante.Apercu
 
+  // Largeur disponible : sous la largeur prévue de la carte, l'aperçu est réduit à l'échelle
+  // (zoom) plutôt que comprimé, afin que sa mise en page reste celle de l'original.
+  const contenu = useRef<HTMLElement>(null)
+  const [dispo, setDispo] = useState(Infinity)
+  useEffect(() => {
+    const el = contenu.current
+    if (!el) return
+    const mesurer = () => {
+      const cs = getComputedStyle(el)
+      setDispo(el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight))
+    }
+    mesurer()
+    const obs = new ResizeObserver(mesurer)
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [])
+  const largeurScene = (courante.largeur ?? 960) + 2
+  const echelle = Math.min(1, dispo / largeurScene)
+
   return (
     <div className="cat">
       <aside className="cat-nav" aria-label="Composants du catalogue">
@@ -147,7 +166,7 @@ export function Catalogue() {
         </nav>
       </aside>
 
-      <main className="cat-contenu">
+      <main className="cat-contenu" ref={contenu}>
         <header className="cat-entete">
           <div>
             <div className="gm-type-micro cat-groupe-courant">{courante.groupe}</div>
@@ -180,7 +199,7 @@ export function Catalogue() {
         <section
           className="cat-scene"
           aria-label={`Aperçu de ${courante.nom}`}
-          style={{ width: (courante.largeur ?? 960) + 2, minHeight: courante.hauteur }}
+          style={{ width: largeurScene, minHeight: courante.hauteur, zoom: echelle }}
         >
           {Apercu ? (
             <div className="gm-root gm-pad" data-theme={theme}>

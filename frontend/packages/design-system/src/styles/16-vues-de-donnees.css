@@ -43,9 +43,9 @@
 .gm-gantt-table thead th { font-size: 12px; color: var(--gm-color-text-secondary); height: 36px; }
 th.gm-gantt-name.gm-num { width: 72px; min-width: 72px; text-align: right; }
 td.gm-gantt-name.gm-num { width: 72px; min-width: 72px; text-align: right; font-weight: 400; }
-.gm-gantt-axis { position: relative; height: 36px; background-image: repeating-linear-gradient(to right, var(--gm-color-border) 0 1px, transparent 1px 98px); }
+.gm-gantt-axis { position: relative; height: 36px; background-image: repeating-linear-gradient(to right, var(--gm-color-border) 0 1px, transparent 1px var(--gm-gantt-semaine, 98px)); }
 .gm-gantt-axis span { position: absolute; top: 8px; font-size: 11px; color: var(--gm-color-text-muted); padding-left: 4px; }
-.gm-gantt-lane { position: relative; height: 44px; background-image: repeating-linear-gradient(to right, var(--gm-color-border) 0 1px, transparent 1px 98px); }
+.gm-gantt-lane { position: relative; height: 44px; background-image: repeating-linear-gradient(to right, var(--gm-color-border) 0 1px, transparent 1px var(--gm-gantt-semaine, 98px)); }
 .gm-gantt-bar { position: absolute; top: 12px; height: 20px; background: var(--gm-color-action); display: flex; align-items: center; }
 .gm-gantt-bar-crit { outline: var(--gm-border-2) solid var(--gm-color-status-crit-fg); outline-offset: 1px; }
 .gm-gantt-done { position: absolute; left: 0; top: 0; height: 100%; background: var(--gm-color-status-ok-fg); }
@@ -126,7 +126,7 @@ rect.gm-data-8, circle.gm-data-8, .gm-chart-swatch.gm-data-8 { fill: var(--gm-da
 .gm-proof-verdict { display: flex; align-items: center; gap: var(--gm-space-3); padding: var(--gm-space-3) var(--gm-space-4); border-left: var(--gm-border-4) solid; }
 .gm-proof-verdict.gm-banner-info { border-color: var(--gm-color-status-ok-fg); }
 .gm-proof-verdict.gm-banner-info > .gm-icon { color: var(--gm-color-status-ok-fg); }
-.gm-diff { border: var(--gm-border-1) solid var(--gm-color-border); background: var(--gm-color-surface); }
+.gm-diff { border: var(--gm-border-1) solid var(--gm-color-border); background: var(--gm-color-surface); overflow-x: auto; }
 .gm-diff-table { width: 100%; border-collapse: collapse; font-family: var(--font-mono); font-size: 13px; line-height: 20px; }
 .gm-diff-n { width: 44px; text-align: right; padding: 0 var(--gm-space-2); color: var(--gm-color-text-muted); border-right: var(--gm-border-1) solid var(--gm-color-border); user-select: none; background: var(--gm-color-surface-sunken); }
 .gm-diff-code { padding: 0 var(--gm-space-3); white-space: pre; }
