@@ -28,7 +28,7 @@ export function creerOperationDescriptor({ t, collaborateurs }: { t: Traduire; c
       { name: 'segment', label: 'operation.segment', kind: 'select', inList: true, inDetail: true, filterable: true, options: segmentOptions },
       { name: 'partie', label: 'operation.partie', kind: 'select', inList: true, inDetail: true, filterable: true, options: partieOptions },
       { name: 'etat', label: 'operation.etat', kind: 'status', inList: true, inDetail: true, filterable: true },
-      { name: 'responsableId', label: 'operation.responsable', kind: 'searchSelect', inForm: 'edit', required: true, options: collaborateurs },
+      { name: 'responsableId', label: 'operation.responsable', kind: 'select', inForm: 'edit', required: true, options: collaborateurs },
       { name: 'responsableNom', label: 'operation.responsable', kind: 'text', inList: true, inDetail: true },
       { name: 'echeance', label: 'operation.echeance', kind: 'date', inList: true, inDetail: true, sortable: true },
       {

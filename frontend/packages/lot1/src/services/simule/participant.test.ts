@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { servicesSimules } from './index'
+import type { ParticipantSimule } from './participant'
 
 // Serveur de substitution de MS-PARTICIPANT : mêmes formes et mêmes refus que le service réel.
 const svc = () => servicesSimules({ latenceMs: 0 }).participant
@@ -9,14 +10,36 @@ const refus = (code: string) => expect.objectContaining({ code })
 describe('participantSimule', () => {
   it('liste filtrée par statut, recherche, mes dossiers et paginée', async () => {
     const s = svc()
-    expect((await s.listerInstitutions({ page: 1, taille: 50 })).total).toBe(4)
-    expect((await s.listerInstitutions({ page: 1, taille: 50, statut: ['ADHERENT'] })).contenu.map((i) => i.nom)).toEqual(['Établissement de paiement A'])
+    expect((await s.listerInstitutions({ page: 1, taille: 50 })).total).toBe(9)
+    expect((await s.listerInstitutions({ page: 1, taille: 50, statut: ['ADHERENT'] })).contenu.map((i) => i.nom)).toEqual(['Mobile Money Sanaga', 'Crédit rural du Woleu'])
+    expect((await s.listerInstitutions({ page: 1, taille: 50, statut: ['EN_HOMOLOGATION'] })).contenu.map((i) => i.id)).toEqual(['INST-0042', 'INST-0088'])
     expect((await s.listerInstitutions({ page: 1, taille: 50, recherche: 'bdl' })).total).toBe(1)
-    expect((await s.listerInstitutions({ page: 1, taille: 50, mesDossiers: true })).total).toBe(4)
-    expect((await s.listerInstitutions({ page: 2, taille: 3 })).contenu).toHaveLength(1)
+    expect((await s.listerInstitutions({ page: 1, taille: 50, mesDossiers: true })).total).toBe(9)
+    expect((await s.listerInstitutions({ page: 2, taille: 5 })).contenu).toHaveLength(4)
   })
   it('indicateurs de la DDRM', async () => {
-    expect(await svc().indicateurs()).toEqual({ candidats: 3, piecesAExaminer: 1, propositionsEnAttente: 0, adherents: 1, enHomologation: 0, closSansSuite: 0 })
+    expect(await svc().indicateurs()).toEqual({ candidats: 3, piecesAExaminer: 1, propositionsEnAttente: 0, adherents: 2, enHomologation: 2, closSansSuite: 0 })
+  })
+  it('institutions engagées : historique des transitions, bascule automatique à l’ouverture d’une liaison', async () => {
+    const s = svc()
+    const d = await s.dossier('INST-0061')
+    expect(d.institution.statut).toBe('SUSPENDU')
+    expect(d.transitions.map((t) => `${t.de}>${t.vers}${t.automatique ? ' (auto)' : ''}`)).toEqual([
+      'ACTIF>SUSPENDU', 'EN_HOMOLOGATION>ACTIF', 'ADHERENT>EN_HOMOLOGATION (auto)', 'CANDIDAT>ADHERENT',
+    ])
+    expect((await s.dossier('INST-0105')).transitions).toHaveLength(1)
+  })
+  it('pont : homologation.liaison-opened.v1 fait passer un adhérent en homologation, et lui seul', async () => {
+    const s = servicesSimules({ latenceMs: 0 }).participant as ParticipantSimule
+    expect(s.pont.institution('INST-0105')?.statut).toBe('ADHERENT')
+    expect(s.pont.institution('inconnue')).toBeUndefined()
+    s.pont.liaisonOuverte('INST-0105', 'LIA-2026-041')
+    const d = await s.dossier('INST-0105')
+    expect(d.institution.statut).toBe('EN_HOMOLOGATION')
+    expect(d.transitions[0]).toMatchObject({ de: 'ADHERENT', vers: 'EN_HOMOLOGATION', etat: 'APPROUVEE', automatique: true, motif: 'Ouverture de la liaison LIA-2026-041' })
+    s.pont.liaisonOuverte('INST-0105', 'LIA-2026-042')
+    s.pont.liaisonOuverte('inconnue', 'LIA-2026-043')
+    expect((await s.dossier('INST-0105')).transitions).toHaveLength(2)
   })
   it('prise de contact, doublon de code refusé, modification', async () => {
     const s = svc()

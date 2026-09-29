@@ -46,6 +46,7 @@ test.describe('Fonctionnalité : console du RSSI', () => {
     await page.getByRole('button', { name: 'Modifier les profils' }).click()
     await expect(page.getByRole('dialog').getByLabel('Super administrateur')).toHaveCount(0)
     await page.getByRole('dialog').getByRole('button', { name: 'Annuler' }).click()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
     await test.step('Quand le RSSI ajoute un profil standard, le profil privilégié détenu est conservé', async () => {
       await page.getByRole('button', { name: 'Modifier les profils' }).click()
       await page.getByRole('dialog').getByLabel('Conformité').check()

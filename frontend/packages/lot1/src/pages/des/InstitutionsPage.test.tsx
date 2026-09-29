@@ -26,7 +26,7 @@ describe('DES-05 Registre des institutions', () => {
     expect(await screen.findByText('Fintech Kribi Pay')).toBeTruthy()
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Institutions membres')
     expect(screen.getAllByText('Candidat').length).toBeGreaterThan(0)
-    expect(screen.getByText('Gabon')).toBeTruthy()
+    expect(screen.getAllByText('Gabon').length).toBeGreaterThan(0)
   })
   it('chargement : squelettes pendant la requête', () => {
     const { container } = page({ services: avec({ listerInstitutions: () => new Promise(() => undefined) }) })

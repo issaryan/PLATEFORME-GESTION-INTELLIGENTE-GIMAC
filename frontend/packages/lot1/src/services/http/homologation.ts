@@ -10,6 +10,11 @@ const L = `${H}/liaisons`
 const O = `${H}/operations`
 
 const requete = (q: ListQuery) => ({ page: q.page, taille: q.taille, tri: q.tri, recherche: q.recherche, ...(q.filtres ?? {}) })
+/** Liste des liaisons (LiaisonsCadrageResource) : pagination du service à partir de 0, filtres vides omis. */
+const requeteLiaisons = (q: ListQuery) => {
+  const f = Object.fromEntries(Object.entries(q.filtres ?? {}).filter(([, v]) => v !== undefined && v !== '' && v !== false))
+  return { page: Math.max(q.page - 1, 0), taille: q.taille, tri: q.tri, recherche: q.recherche || undefined, ...f }
+}
 const depot = (fichier: File, typePiece: string) => {
   const body = new FormData()
   body.set('fichier', fichier)
@@ -34,12 +39,13 @@ export const homologationHttp: ServiceHomologation = {
   migrerLiaisons: (id, liaisonsRetenues) => http.post(`${R}/${id}/migrations`, { body: { liaisonsRetenues } }),
   historiqueReferentiel: (id) => http.get(`${R}/${id}/historique`),
 
-  listerLiaisons: (q) => http.get(L, { query: requete(q) }),
+  listerLiaisons: (q) => http.get(L, { query: requeteLiaisons(q) }),
   tableauDeBordLiaisons: (q) => http.get(`${H}/tableau-de-bord/liaisons`, { query: requete(q) }),
   lireLiaison: (id) => http.get(`${L}/${id}`),
   historiqueLiaison: (id) => http.get(`${L}/${id}/historique`),
   ouvrirLiaison: (entree) => http.post(L, { body: entree }),
-  designerChefDeProjet: (id, chefDeProjetId) => http.put(`${L}/${id}/chef-de-projet`, { body: { chefDeProjetId } }),
+  designerChefDeProjet: (id, chefDeProjetId, motif) => http.put(`${L}/${id}/chef-de-projet`, { body: motif ? { chefDeProjetId, motif } : { chefDeProjetId } }),
+  conducteurs: () => http.get(`${L}/conducteurs`),
   degelerLiaison: (id, motif) => http.post(`${L}/${id}/degel`, { body: { motif } }),
   exporterDossierDePreuves: (id) => http.post(`${L}/${id}/dossier-de-preuves`),
   dernierExportPreuves: (id) => http.get(`${L}/${id}/dossier-de-preuves`),
@@ -63,10 +69,6 @@ export const homologationHttp: ServiceHomologation = {
   qualifierScenario: (id, qualification, motif) => http.post(`${H}/scenarios-inconnus/${id}/qualification`, { body: { qualification, motif } }),
   etatReprise: () => http.get(`${H}/reprise/etat`),
 
-  rechercherInstitutions: (recherche) =>
-    http
-      .get<{ contenu: { id: string; code: string; denomination: string }[] }>('/bff/des/participant/institutions', { query: { recherche } })
-      .then((p): Option[] => p.contenu.map((i) => ({ value: i.id, label: i.denomination, hint: i.code }))),
   rechercherCollaborateurs: (recherche) =>
     http
       .get<{ contenu: { id: string; nom: string; role: string }[] }>('/bff/des/iam/collaborateurs', { query: { recherche, roles: 'INGENIEUR_HOMOLOGATION,CHEF_DES' } })

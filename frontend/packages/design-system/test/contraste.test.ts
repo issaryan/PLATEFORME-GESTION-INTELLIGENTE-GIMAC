@@ -37,6 +37,8 @@ const TEXTE: [string, string, string][] = [
   ['TextField valeur', 'gm-color-text-primary', 'gm-color-surface'],
   ['TextField étiquette sur la page', 'gm-color-text-primary', 'gm-color-bg-page'],
   ['TextField aide', 'gm-color-text-muted', 'gm-color-surface'],
+  // Aide et libellés atténués posés sur le fond de page (en-tête de fiche, « non renseigné ») : D-63.
+  ['Aide sur la page', 'gm-color-text-muted', 'gm-color-bg-page'],
   ['TextField erreur', 'gm-color-status-crit-fg', 'gm-color-surface'],
 ]
 

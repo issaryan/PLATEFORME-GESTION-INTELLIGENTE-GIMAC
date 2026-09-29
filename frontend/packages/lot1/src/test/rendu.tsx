@@ -15,7 +15,10 @@ export const sessionTest = (permissions: string[], roles: string[] = []): Sessio
   sujet: 'u-test', nom: 'Agent de test', identifiant: 'test', roles, permissions, institutionId: '', acr: '2', doubleFacteur: true,
 })
 
-export function rendrePage(page: ReactElement, o: { chemin: string; motif: string; langue?: Langue; theme?: 'light' | 'dark'; services?: Services; session?: Session }) {
+/** Routes supplémentaires (destination d'une navigation) : leur élément est rendu sous la même session. */
+type Autre = { motif: string; element: ReactElement }
+
+export function rendrePage(page: ReactElement, o: { chemin: string; motif: string; langue?: Langue; theme?: 'light' | 'dark'; services?: Services; session?: Session; autres?: Autre[] }) {
   if (!i18next.isInitialized) initI18n(catalogues, o.langue ?? 'fr')
   else void i18next.changeLanguage(o.langue ?? 'fr')
   document.documentElement.setAttribute('data-theme', o.theme ?? 'light')
@@ -26,7 +29,9 @@ export function rendrePage(page: ReactElement, o: { chemin: string; motif: strin
       <Fournisseurs couche="des" services={o.services ?? servicesSimules({ latenceMs: 0 })} canal={false} clientRequetes={client}>
         {() => (
           <Routes>
-            <Route path={o.motif} element={o.session ? <SessionProvider session={o.session}>{page}</SessionProvider> : page} />
+            {[{ motif: o.motif, element: page }, ...(o.autres ?? [])].map((r) => (
+              <Route key={r.motif} path={r.motif} element={o.session ? <SessionProvider session={o.session}>{r.element}</SessionProvider> : r.element} />
+            ))}
           </Routes>
         )}
       </Fournisseurs>

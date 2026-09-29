@@ -2,14 +2,14 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
-import { ConfirmDialog, SignDialog, Toast } from '@gimac/design-system'
+import { ConfirmDialog, IconButton, SignDialog, Toast, ToastRegion } from '@gimac/design-system'
 import { estApiError, ReauthCancelled, type ActionContext, type ResourceActionLot1 } from '@gimac/socle'
 import { useServices } from '../services/ServicesProvider'
 import type { Services } from '../services/ports'
 
 // Exécuteur des actions des descripteurs : confirmation (ConfirmDialog) ou signature (SignDialog avec
 // réauthentification FIDO2), motif, appel du service injecté, invalidation et retour (Toast).
-// Toute la présentation vient du design system ; aucune règle n'est évaluée ici.
+// Toute la présentation vient du design system (retour dans ToastRegion, D-63) ; aucune règle n'est évaluée ici.
 
 type Demande = { action: ResourceActionLot1<unknown, Services>; row: unknown; titre: string; empreinte?: string; sujet?: string }
 type Pilotes = { openForm?: (mode: 'create' | 'edit', row: unknown) => void; openTab?: (key: string) => void }
@@ -133,11 +133,9 @@ export function ExecuteurActions({ children }: { children: ReactNode }) {
           onClose={fermer}
         />
       ) : null}
-      {toast ? (
-        <div style={{ position: 'fixed', right: 'var(--gm-space-5)', bottom: 'var(--gm-space-5)', zIndex: 60 }} onClick={() => setToast(null)}>
-          <Toast>{toast}</Toast>
-        </div>
-      ) : null}
+      <ToastRegion>
+        {toast ? <Toast action={<IconButton icon="x" variant="ghost" size="sm" label={t('commun.fermer')} onClick={() => setToast(null)} />}>{toast}</Toast> : null}
+      </ToastRegion>
     </Contexte.Provider>
   )
 }

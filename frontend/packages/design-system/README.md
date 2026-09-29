@@ -34,6 +34,9 @@ Chaque composant a été comparé au pixel près, en clair et en sombre, au rend
 | DeviceVerificationCard | L'empreinte passait par la prop réservée `key` | Prop `fingerprint` |
 | Drawer | `useState` après un retour anticipé | Ordre des hooks corrigé |
 | Jeton `gm-color-action-subtle` (sombre) | Texte d'action et badge « information » à 4,48:1 sur ce fond, sous le seuil de 4,5:1 (audit axe du thème sombre, D-62) | `#2A4467` devient `#263E5F` : 4,9:1, écart de teinte imperceptible |
+| Jeton `gm-grey-600` (texte d'aide, clair) | Aide atténuée (`.gm-field-help`) à 4,47:1 sur le fond de page `gm-grey-100` (en-tête de fiche, « non renseigné »), relevé par l'audit axe de l'application du département (D-63) | `#6B7280` devient `#667080` : 4,63:1 sur la page, 5,01:1 sur la surface |
+| DataTable | Un clic sur un bouton ou un lien d'une ligne ouvrait aussi le tiroir de la ligne | Les contrôles de la ligne (bouton, lien, champ) agissent seuls ; le reste de la ligne l'ouvre |
+| ResourceList | « Plus d'actions » ne faisait rien ; une action lancée depuis le tiroir le laissait ouvert sous sa confirmation | Le bouton ouvre le tiroir de la ligne, qui porte toutes les actions permises ; lancer une action referme le tiroir |
 
 Écarts du système publié conservés à l'identique et signalés par les tests (à trancher au référentiel) : bordure de champ en clair à 1,9:1 au lieu de 3:1 ; étiquette de `FilterBar` (`.gm-filter-label`, texte atténué sur `gm-color-surface-sunken`) à 4,39:1 au lieu de 4,5:1, relevée par l'audit axe de bout en bout de la console (D-62) et seule exclusion de cet audit.
 
@@ -49,12 +52,28 @@ Assemblages de composants existants, sans nouvelle feuille de style ni valeur en
 
 Extensions rétrocompatibles : `TextField` `type="password"` (secret en écriture seule), `Checkbox` et `CheckboxGroup` `error` (erreur annoncée et reliée par `aria-describedby`), `CheckboxGroup` `disabled` et « Tout sélectionner » calculé sur les seules options du groupe.
 
+## Composites de la tranche DDRM et du cadrage (D-63)
+
+Promus depuis les écrans de l'application du département, où ils étaient composés à la main (grilles, listes et rangées de boutons en styles en ligne) : assemblages de composants et de classes existants, sans nouvelle feuille de style ni valeur en dur, testés (`test/composites-d63.test.tsx`, 80 % bloquants) et présentés au catalogue vivant.
+
+| Composant | Assemblage | Emploi |
+|---|---|---|
+| `PageHeader` | classes `gm-resource-head`, `gm-heading-display`, `gm-type-micro` | En-tête d'écran : surtitre, titre, ligne de contexte (profils en Tag), actions |
+| `PageSection` | région nommée, titre `gm-type-h3`, actions | Section d'un tableau de bord par acteur |
+| `StatGrid` | StatCard dans un groupe nommé | Tuiles d'indicateurs (liaisons en cadrage, mes projets…) |
+| `LinkList` | Link, StatusBadge, liste sans puces | « Mes dossiers », « Mes projets », liaisons d'une institution, raccourcis |
+| `ActionBar` | rangée `gm-row` alignée | Pied de carte ou de formulaire |
+| `ToastRegion` | emplacement fixe des Toast | Retours de l'exécuteur d'actions du lot 1 |
+
+Extensions rétrocompatibles : `ResourceForm` `intro` (texte sous le titre : effet de la soumission), `ResourceDetail` `summary` (résumé sous l'en-tête : phase, périmètre, intervenants d'une liaison).
+
 ## Commandes
 
 ```
 npm run jetons -w @gimac/design-system   # régénère tokens.css depuis tokens.json
 npm run lint -w @gimac/design-system     # TypeScript strict, aucune valeur en dur, jetons à jour
-npm run test -w @gimac/design-system     # contrastes WCAG depuis les jetons, rendu, ARIA et clavier
+npm run test -w @gimac/design-system     # contrastes WCAG depuis les jetons, rendu, ARIA et clavier, entrées du catalogue
+npm run couverture -w @gimac/design-system   # 80 % bloquants sur tout le paquet (D-61)
 npm run test -w @gimac/app-catalogue     # chaque aperçu rendu et audité par axe, clair et sombre
 ```
 
@@ -69,3 +88,4 @@ Le catalogue vivant (`apps/catalogue`) affiche chaque composant, un à un, en cl
 | 2026-09-29 | — | Internationalisation FR, EN, ES de tous les composants (`LangueProvider`, français par défaut, rendu inchangé) ; 18 extensions de contrat rétrocompatibles pour le lot 1 (quatre quitus, états parcourus, vérification d'empreinte, motif et zone complémentaire des dialogues, `onFile`, `onMenu`, onglets contrôlés, `onRowOpen`, `onQuery`, sélection dans DagView, anneau compact…) ; feuille adaptative sous 640 px (portail mobile, tableaux en cartes) |
 | 2026-09-29 | — | Composant `Footer` (pied de page GIMAC, §6.3) : groupement, version, classification, documentation, identifiant de corrélation, FR/EN/ES ; seuil de couverture de 80 % sur les nouveaux composants, cliquet sur le catalogue existant (D-61) |
 | 2026-09-29 | — | D-62 : composites `OneTimeSecret`, `PermissionPicker`, `LiveStatGroup` (catalogue vivant, tests, audit axe) ; extensions `TextField` password, erreur de `Checkbox` et `CheckboxGroup`, `CheckboxGroup` désactivé ; libellés FR, EN, ES |
+| 2026-09-29 | — | D-63 : composites `PageHeader`, `PageSection`, `StatGrid`, `LinkList`, `ActionBar`, `ToastRegion` promus depuis l'application du département ; `ResourceForm` `intro`, `ResourceDetail` `summary` ; corrections de DataTable (clic sur un contrôle de ligne), de ResourceList (« Plus d'actions », tiroir refermé à l'action) et du jeton `gm-grey-600` (4,63:1 sur le fond de page) ; tests du CRUD, des interactions et rendu de chaque entrée du catalogue : couverture portée à plus de 80 % sur tout le paquet, seuil bloquant (D-61) |

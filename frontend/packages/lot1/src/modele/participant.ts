@@ -73,6 +73,8 @@ export type TransitionStatut = {
   decideeLe: string | null
   motifRejet: string | null
   pieceDecisionId: string | null
+  /** Transition sans proposition ni approbation (ouverture d'une liaison, échéance) : MS-PARTICIPANT l'a appliquée seul. */
+  automatique?: boolean
   institutionId?: string
 }
 
