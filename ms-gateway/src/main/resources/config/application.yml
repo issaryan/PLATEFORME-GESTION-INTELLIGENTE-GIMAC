@@ -288,6 +288,13 @@ spring:
         registration:
           oidc:
             scope: openid, profile
+          # Jeton de service de la supervision de la plateforme (D-61) : client Keycloak
+          # « gateway-supervision » ; identifiant et secret fournis par l'environnement.
+          supervision:
+            provider: oidc
+            client-id: ${GIMAC_SUPERVISION_CLIENT_ID:gateway-supervision}
+            client-secret: ${GIMAC_SUPERVISION_CLIENT_SECRET:}
+            authorization-grant-type: client_credentials
   task:
     execution:
       thread-name-prefix: gateway-task-
@@ -378,3 +385,12 @@ gimac:
     pilotage: http://localhost:8091
     reporting: http://localhost:8092
     collaboration: http://localhost:8093
+  # Supervision de la plateforme (D-61, /api/plateforme/**) : les services supervisés sont la
+  # passerelle et ceux de gimac.services ; chaque appel est borné par « delai ».
+  supervision:
+    passerelle-url: http://localhost:${server.port:8080}
+    delai: 2s
+    intervalle-flux: 5s
+    prometheus-url: http://localhost:9090
+    alertmanager-url: http://localhost:9093
+    keycloak-sante-url: http://localhost:9990/health/ready

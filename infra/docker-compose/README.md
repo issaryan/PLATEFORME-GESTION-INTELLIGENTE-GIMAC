@@ -26,6 +26,8 @@ Environnement de développement de la plateforme en une commande (SOC-13, D-45, 
 - Registre des schémas Apicurio (8880), OpenBao (8200), OPA (8181).
 - Simulacres : simulateur (8190, lecture seule, écritures refusées), gestion des changements (8191), horodatage (8192), messagerie Mailpit (1025, 8025).
 - OpenTelemetry (4317, 4318), Loki (3100), Tempo (3200).
+- État des serveurs (D-61) : node-exporter (hôte, sans port publié) et, avec `COMPOSE_PROFILES=conteneurs`, cAdvisor (conteneurs) ; jobs `node-exporter` et `cadvisor` (découverte DNS, aucune cible sans le profil) ajoutés à `prometheus-conf/prometheus.yml`, à reporter après une régénération. La passerelle les restitue sur `/api/plateforme/serveurs`.
+- Jeton de service de la supervision de la passerelle : `GIMAC_SECRET_GATEWAY_SUPERVISION` dans `.env` (client Keycloak `gateway-supervision`) ; vide, la supervision fonctionne en mode dégradé.
 - Couches de présentation : département (4200), portail (4201), console (4202).
 
 ## Commandes
@@ -60,3 +62,4 @@ git checkout -- ../../ms-*/.yo-rc.json   # annule la réécriture de version par
 | 2026-09-29 | — | Services dépendants de Kafka, délai de santé élargi, Valkey de la passerelle, amorçage Ceph robuste sous charge, conteneurs d'initialisation hors attente de santé, journaux conservés sur échec, `tester-socle.sh` : 48/48 (D-54) |
 | 2026-09-29 | — | Lot 1 : domaine Keycloak gimac importé, émetteur gimac pour tous les services, jeton de service des deux services du lot, caches Redis retirés (régénération), `scripts/token.sh` et `scripts/verifier-phase0.sh`, politique OPA du lot (D-55) |
 | 2026-09-29 | — | `scripts/token.sh` : jeton de niveau 2 par autorisation par appareil (double facteur, D-61), niveau 1 sur demande ; politique OPA : second facteur et routes du registre des institutions (18 tests, couverture 100 %) |
+| 2026-09-29 | — | Supervision de la plateforme (D-61) : node-exporter, cAdvisor (profil `conteneurs`), collecte Prometheus correspondante, jeton de service de la passerelle (`GIMAC_SECRET_GATEWAY_SUPERVISION`, facultatif) |

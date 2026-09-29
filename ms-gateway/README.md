@@ -42,6 +42,37 @@ Copié et adapté (paquet `cm.gimac.des.gateway`) ; chaque bean est inactif tant
 
 Écarts comblés (D-53) : jeton interne lié au certificat mTLS de la passerelle (`cnf.x5t#S256`, `CertificatMtlsPasserelle`, `EmpreinteCertificat`) ; point JWKS repris (`web/rest/JwksController`) ; mTLS TLS 1.3 seul et mots de passe du magasin sans valeur par défaut ; route propre à afriland retirée et chemins exemptés de jeton ancrés (`CHEMINS_TECHNIQUES`) ; masquage des journaux limité aux numéros vérifiant Luhn, en 6+4. Tests : `LiaisonCertificatPasserelleTest`.
 
+## Supervision de la plateforme (D-61)
+
+Module hexagonal qui donne au super administrateur, en temps réel, l'état des services et des serveurs, les alertes, la configuration effective et les niveaux de journalisation de toute la plateforme.
+
+| Couche | Paquet | Contenu |
+|---|---|---|
+| Domaine | `domain/supervision` | Modèle (`EtatService`, `EtatServeurs`, `Alerte`…), analyse du format Prometheus (`FormatPrometheus`), masquage des secrets (`MasqueSecrets`), sélection des propriétés (`ProprietesExploitation`) |
+| Ports sortants | `domain/supervision/port` | `SondeService` (/management/** des services), `SourceServeurs` (Prometheus), `SourceAlertes` (Alertmanager), `SourceRoutes` (routes de la passerelle) |
+| Adaptateurs | `infrastructure/supervision` | WebClient (`ActuatorWebClientAdapter`, `PrometheusWebClientAdapter`, `AlertmanagerWebClientAdapter`), `RoutesPasserelleAdapter` (RouteLocator), `JetonServiceSupervision` (client_credentials) |
+| Application | `service/supervision/SupervisionPlateformeService` | Appels parallèles, délai par appel, injoignable sans bloquer les autres, agrégation, flux périodique |
+| REST | `web/rest/plateforme/PlateformeResource` | Routes ci-dessous |
+| Assemblage | `config/SupervisionConfiguration`, `config/SupervisionProperties` | Beans et propriétés `gimac.supervision` |
+
+| Route | Permission | Contenu |
+|---|---|---|
+| `GET /api/plateforme/services` | `PLATFORM_SUPERVISION_READ` | Passerelle et chaque service de `gimac.services` : état (UP, DOWN, OUT_OF_SERVICE, INCONNU, INJOIGNABLE), composants, latence, version, métriques (durée, CPU, tas, disque, charge, threads) ; Keycloak ; synthèse |
+| `GET /api/plateforme/serveurs` | `PLATFORM_SUPERVISION_READ` | Cibles de Prometheus ; hôtes (node-exporter) et conteneurs (cAdvisor) par PromQL |
+| `GET /api/plateforme/alertes` | `PLATFORM_SUPERVISION_READ` | Alertes actives d'Alertmanager |
+| `GET /api/plateforme/flux` | `PLATFORM_SUPERVISION_READ` | `text/event-stream`, événement `plateforme` toutes les `intervalle-flux` : instantané des services et nombre d'alertes (-1 si Alertmanager est injoignable) |
+| `GET /api/plateforme/configuration` | `PLATFORM_CONFIG_READ` | Routes effectives ; pour chaque service, profils actifs, `gimac.*` et propriétés d'exploitation, secrets masqués (`******`) |
+| `GET /api/plateforme/journalisation/{service}?filtre=` | `PLATFORM_CONFIG_READ` | Niveaux de journalisation |
+| `POST /api/plateforme/journalisation/{service}` | `PLATFORM_CONFIG_EDIT` | `{ logger, niveau, motif }` : niveau changé à chaud, motif obligatoire (5 à 500 caractères), changement journalisé |
+
+Toutes les routes exigent en plus une session à deux facteurs (`acr` ∈ `gimac.securite.double-facteur.niveaux-acr`, 2 et 3 par défaut) : 401 sans session, 403 sans second facteur ou sans la permission.
+
+Propriétés (`gimac.supervision`) : `passerelle-url`, `delai` (2 s), `intervalle-flux` (5 s), `prometheus-url`, `alertmanager-url`, `keycloak-sante-url` ; adresses Docker dans `application-prod.yml`. Jeton de service : enregistrement OAuth2 `supervision` (client Keycloak `gateway-supervision`, `client_credentials`), variables `GIMAC_SUPERVISION_CLIENT_ID` et `GIMAC_SUPERVISION_CLIENT_SECRET`. Sans jeton, la supervision fonctionne en mode dégradé : santé sans le détail des composants, configuration et journalisation des services refusées par ceux-ci. Le compte de service du client doit porter `ROLE_ADMIN` (points `/management/env` et `/management/loggers` des services JHipster).
+
+Tests : `FormatPrometheusTest`, `MasqueSecretsTest`, `SupervisionPlateformeServiceTest`, `AdaptateursSupervisionTest`, `SupervisionConfigurationTest`, `DoubleFacteurAuthorizationManagerTest` (unitaires) ; `PlateformeResourceSecurityTest` (sécurité, 30 cas, vraie chaîne de sécurité) ; `SupervisionPlateformeHttpTest` (intégration, serveurs HTTP locaux simulant services, Keycloak, Prometheus et Alertmanager). JaCoCo (`seuil-supervision-plateforme`, phase `test`) bloque la construction sous 80 % en lignes et méthodes par classe et en branches sur le module.
+
+Kubernetes (non livré) : installer node-exporter en DaemonSet et la collecte cAdvisor du kubelet (kube-prometheus-stack), un Alertmanager, puis ouvrir dans `infra/kubernetes-gimac/politiques-reseau.yaml` la sortie de la passerelle vers Prometheus (9090), Alertmanager (9093) et le port de gestion de Keycloak (9990), et l'entrée correspondante ; adresses à fixer par `GIMAC_SUPERVISION_PROMETHEUS_URL`, `GIMAC_SUPERVISION_ALERTMANAGER_URL`, `GIMAC_SUPERVISION_KEYCLOAK_SANTE_URL`.
+
 ## Journal des mises à jour
 
 | Date | Commit | Modification |
@@ -54,6 +85,7 @@ Copié et adapté (paquet `cm.gimac.des.gateway`) ; chaque bean est inactif tant
 | 2026-09-29 | — | Masquage des journaux activé (logback, `%maskedMsg`) ; 40 tests unitaires et 74 tests d'intégration réussis, image Jib construite ; 13 routes déclarées vers `gimac.services.<service>` (la résolution `lb://` générée ne fonctionne pas sans découverte) ; Valkey pour la sonde Redis ; `List.of` (contrôle de modernité) (D-54). |
 | 2026-09-29 | — | Lot 1 : routes `/bff/des` et `/bff/portail` vers l'homologation et la certification, filtre `OpaAuthorize`, 401 sans jeton sur `/bff/**`, permissions acceptées comme autorités (D-55). |
 | 2026-09-29 | — | Routes `/bff/des/participant` et `/bff/portail/participant` ; `acr` transmis à OPA, second facteur exigé sur `/bff/**` (D-61) ; `GET /api/session` (matrice des rôles et niveau d'assurance pour l'interface) ; certificat public de test `client-test.pem` versionné (il manquait, `*.pem` étant ignoré) ; 50 tests unitaires réussis. |
+| 2026-09-29 | — | Supervision de la plateforme (D-61) : `/api/plateforme/{services,serveurs,alertes,configuration,journalisation,flux}`, module hexagonal, jeton de service `supervision` (client `gateway-supervision`), session à deux facteurs exigée sur `/api/plateforme/**`, permissions `PLATFORM_SUPERVISION_READ`, `PLATFORM_CONFIG_READ`, `PLATFORM_CONFIG_EDIT` ; 128 tests unitaires réussis, couverture du module 100 % en lignes, 99,5 % en méthodes, 96 % en branches (seuil JaCoCo de 80 %). |
 <!-- GIMAC:FIN -->
 
 # gateway

@@ -5,6 +5,7 @@ import static org.springframework.security.oauth2.core.oidc.StandardClaimNames.P
 import static org.springframework.security.web.server.util.matcher.ServerWebExchangeMatchers.pathMatchers;
 
 import cm.gimac.des.gateway.security.AuthoritiesConstants;
+import cm.gimac.des.gateway.security.DoubleFacteurAuthorizationManager;
 import cm.gimac.des.gateway.security.SecurityUtils;
 import cm.gimac.des.gateway.security.oauth2.AudienceValidator;
 import com.github.benmanes.caffeine.cache.Cache;
@@ -65,6 +66,10 @@ public class SecurityConfiguration {
     @Value("${spring.security.oauth2.client.provider.oidc.issuer-uri}")
     private String issuerUri;
 
+    /** Niveaux d'assurance (acr) reconnus comme authentification à deux facteurs (D-61). */
+    @Value("${gimac.securite.double-facteur.niveaux-acr:2,3}")
+    private Set<String> niveauxDoubleFacteur = Set.of("2", "3");
+
     private final ReactiveClientRegistrationRepository clientRegistrationRepository;
 
     // See https://github.com/jhipster/generator-jhipster/issues/18868
@@ -110,6 +115,8 @@ public class SecurityConfiguration {
                     .pathMatchers("/api/authenticate").permitAll()
                     .pathMatchers("/api/auth-info").permitAll()
                     .pathMatchers("/api/admin/**").hasAuthority(AuthoritiesConstants.ADMIN)
+                    // Supervision de la plateforme (D-61) : session à deux facteurs, puis permission par route (@PreAuthorize).
+                    .pathMatchers("/api/plateforme/**").access(new DoubleFacteurAuthorizationManager(niveauxDoubleFacteur))
                     .pathMatchers("/api/**").authenticated()
                     .pathMatchers("/services/*/management/health/readiness").permitAll()
                     .pathMatchers("/services/*/v3/api-docs").hasAuthority(AuthoritiesConstants.ADMIN)

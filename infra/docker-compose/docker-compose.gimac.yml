@@ -95,6 +95,11 @@ services:
       - SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_OIDC_ISSUER_URI=http://keycloak:9080/realms/gimac
       - SPRING_DATA_REDIS_HOST=gateway-valkey
       - SPRING_DATA_REDIS_PORT=6379
+      # Supervision de la plateforme (D-61, /api/plateforme/**) : jeton de service du client
+      # Keycloak gateway-supervision ; sans secret, supervision en mode dégradé (santé sans
+      # détail, configuration et journalisation des services non lues).
+      - GIMAC_SUPERVISION_CLIENT_ID=gateway-supervision
+      - GIMAC_SUPERVISION_CLIENT_SECRET=${GIMAC_SECRET_GATEWAY_SUPERVISION:-}
     ports: !override
       - ${GIMAC_PORT_GATEWAY:-8080}:8080
 
@@ -123,6 +128,27 @@ services:
   prometheus:
     ports: !override
       - 127.0.0.1:${GIMAC_PORT_PROMETHEUS:-9090}:9090
+
+  # ------------------------------------------------ État des serveurs (D-61)
+  # Hôte : CPU, mémoire, disques, charge, collectés par Prometheus (job node-exporter) et
+  # restitués par la passerelle sur /api/plateforme/serveurs. Aucun port publié.
+  node-exporter:
+    image: prom/node-exporter:v1.12.1
+    command: ['--path.rootfs=/host']
+    pid: host
+    volumes:
+      - /:/host:ro
+
+  # Conteneurs : CPU et mémoire par conteneur (job cadvisor). Accès en lecture au démon
+  # Docker de l'hôte : service optionnel, activé par COMPOSE_PROFILES=conteneurs.
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.55.1
+    profiles: [conteneurs]
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
 
   alertmanager:
     ports: !override

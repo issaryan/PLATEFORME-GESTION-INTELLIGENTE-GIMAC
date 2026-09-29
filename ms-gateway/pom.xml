@@ -39,6 +39,8 @@
         <checkstyle.version>14.1.0</checkstyle.version>
         <commons-beanutils.version>1.11.0</commons-beanutils.version>
         <jacoco-maven-plugin.version>0.8.15</jacoco-maven-plugin.version>
+        <!-- Seuil de couverture de la définition de fini des tests (D-61). -->
+        <jacoco.seuil>0.80</jacoco.seuil>
         <jhipster-framework.version>9.4.0</jhipster-framework.version>
         <jib-maven-plugin.architecture>amd64</jib-maven-plugin.architecture>
         <jib-maven-plugin.image>eclipse-temurin:25-jre-noble</jib-maven-plugin.image>
@@ -783,6 +785,60 @@
                             <goals>
                                 <goal>report</goal>
                             </goals>
+                        </execution>
+                        <!--
+                            Définition de fini des tests (D-61) : couverture d'au moins 80 % des classes du
+                            module de supervision de la plateforme (/api/plateforme/**), en lignes et en
+                            méthodes par classe, en branches sur l'ensemble ; la construction échoue sinon.
+                        -->
+                        <execution>
+                            <id>seuil-supervision-plateforme</id>
+                            <phase>test</phase>
+                            <goals>
+                                <goal>check</goal>
+                            </goals>
+                            <configuration>
+                                <dataFile>${project.build.directory}/jacoco.exec</dataFile>
+                                <includes>
+                                    <include>cm/gimac/des/gateway/domain/supervision/**</include>
+                                    <include>cm/gimac/des/gateway/service/supervision/**</include>
+                                    <include>cm/gimac/des/gateway/infrastructure/supervision/**</include>
+                                    <include>cm/gimac/des/gateway/web/rest/plateforme/**</include>
+                                    <include>cm/gimac/des/gateway/security/DoubleFacteurAuthorizationManager*</include>
+                                    <include>cm/gimac/des/gateway/config/Supervision*</include>
+                                </includes>
+                                <rules>
+                                    <rule>
+                                        <element>CLASS</element>
+                                        <excludes>
+                                            <!-- Descripteurs de paquet, sans code. -->
+                                            <exclude>*.package-info</exclude>
+                                        </excludes>
+                                        <limits>
+                                            <limit>
+                                                <counter>LINE</counter>
+                                                <value>COVEREDRATIO</value>
+                                                <minimum>${jacoco.seuil}</minimum>
+                                            </limit>
+                                            <limit>
+                                                <counter>METHOD</counter>
+                                                <value>COVEREDRATIO</value>
+                                                <minimum>${jacoco.seuil}</minimum>
+                                            </limit>
+                                        </limits>
+                                    </rule>
+                                    <rule>
+                                        <element>BUNDLE</element>
+                                        <limits>
+                                            <limit>
+                                                <counter>BRANCH</counter>
+                                                <value>COVEREDRATIO</value>
+                                                <minimum>${jacoco.seuil}</minimum>
+                                            </limit>
+                                        </limits>
+                                    </rule>
+                                </rules>
+                            </configuration>
                         </execution>
                         <execution>
                             <id>pre-integration-tests</id>

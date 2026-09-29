@@ -105,6 +105,10 @@ jhipster:
 gimac:
   opa:
     url: http://opa:8181
+  supervision:
+    prometheus-url: http://prometheus:9090
+    alertmanager-url: http://alertmanager:9093
+    keycloak-sante-url: http://keycloak:9990/health/ready
   services:
     iam: http://iam:8081
     audit: http://audit:8082
