@@ -1197,7 +1197,7 @@ class TicketResourceIT {
         Ticket relatedTicket;
         if (TestUtil.findAll(em, Ticket.class).isEmpty()) {
             ticketRepository.saveAndFlush(ticket);
-            relatedTicket = TicketResourceIT.createEntity();
+            relatedTicket = TicketResourceIT.createUpdatedEntity(); // champs uniques distincts de l'entité testée
         } else {
             relatedTicket = TestUtil.findAll(em, Ticket.class).get(0);
         }

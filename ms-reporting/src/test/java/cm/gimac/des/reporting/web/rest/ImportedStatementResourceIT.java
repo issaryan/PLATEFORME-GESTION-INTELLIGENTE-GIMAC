@@ -784,7 +784,7 @@ class ImportedStatementResourceIT {
         ImportedStatement supersededBy;
         if (TestUtil.findAll(em, ImportedStatement.class).isEmpty()) {
             importedStatementRepository.saveAndFlush(importedStatement);
-            supersededBy = ImportedStatementResourceIT.createEntity();
+            supersededBy = ImportedStatementResourceIT.createUpdatedEntity(); // champs uniques distincts de l'entité testée
         } else {
             supersededBy = TestUtil.findAll(em, ImportedStatement.class).get(0);
         }

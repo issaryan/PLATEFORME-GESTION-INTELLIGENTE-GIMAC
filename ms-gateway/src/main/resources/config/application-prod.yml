@@ -100,3 +100,20 @@ jhipster:
 # ===================================================================
 
 # application:
+
+# Adresses des microservices en prod (Docker Compose, Kubernetes) : nom du service (GW-19).
+gimac:
+  services:
+    iam: http://iam:8081
+    audit: http://audit:8082
+    document: http://document:8083
+    notification: http://notification:8084
+    participant: http://participant:8085
+    homologation: http://homologation:8086
+    certification: http://certification:8087
+    incident: http://incident:8088
+    monitoring: http://monitoring:8089
+    rapprochement: http://rapprochement:8090
+    pilotage: http://pilotage:8091
+    reporting: http://reporting:8092
+    collaboration: http://collaboration:8093

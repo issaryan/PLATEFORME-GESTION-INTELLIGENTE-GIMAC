@@ -1,5 +1,7 @@
 package cm.gimac.des.iam.config;
 
+import cm.gimac.des.iam.adapter.outbound.keycloak.KeycloakProperties;
+
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
 import org.keycloak.OAuth2Constants;

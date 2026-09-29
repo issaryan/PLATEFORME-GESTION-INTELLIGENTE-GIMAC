@@ -55,6 +55,7 @@ Copié et adapté (paquet `cm.gimac.des.iam`) ; chaque bean est inactif tant que
 | 2026-09-28 | — | Ajout de cette section. |
 | 2026-09-28 | — | Reprise de 3 classes du projet afriland (D-52) ; compilation vérifiée. |
 | 2026-09-28 | — | Écarts comblés (liaison au certificat, masquage Luhn 6+4) et 11 classes reprises d'afriland : GroupeAgenceKc, IdentityProviderInfo, KeycloakAdminAdapter, KeycloakAdminPort, KeycloakClientRegistrationConfig, KeycloakConfig, KeycloakProperties, ProfilKeycloak, ServiceTokenProvider, SessionInfo, UtilisateurRealm (D-53). |
+| 2026-09-29 | — | Masquage des journaux activé (logback, `%maskedMsg`) ; 101 tests unitaires et 375 tests d'intégration réussis, image Jib construite ; `KeycloakProperties` déplacée dans l'adaptateur (test d'architecture) ; `List.of` (contrôle de modernité) (D-54). |
 <!-- GIMAC:FIN -->
 
 # iam

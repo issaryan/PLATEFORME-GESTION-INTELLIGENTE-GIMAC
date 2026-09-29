@@ -10,7 +10,7 @@ Plateforme du Département Exploitation et Supervision (DES) du GIMAC, groupemen
 | `CA-GIMAC-01_v1.1` | Cahier d'analyse : acteurs, cas d'utilisation, règles de gestion RG |
 | `CC-GIMAC-01_v1.1` | Cahier de conception : 14 microservices, événements, algorithmes, thème |
 | `CP-GIMAC-01_v2.0` | Carnet de produit : 313 récits, 17 épopées, feuille de route S0 à S12 |
-| `REC-GIMAC-01_Reconciliation.md` | **Référentiel d'implémentation** : décisions D-01 à D-53, prime sur les quatre cahiers pour les points qu'il tranche |
+| `REC-GIMAC-01_Reconciliation.md` | **Référentiel d'implémentation** : décisions D-01 à D-54, prime sur les quatre cahiers pour les points qu'il tranche |
 
 ## Organisation du dépôt
 
@@ -55,6 +55,8 @@ Les secrets locaux sont générés dans `infra/docker-compose/.env`, jamais vers
 - 64 classes reprises du projet afriland (D-52) : jeton fantôme et mTLS de la passerelle, validation du jeton interne, file de rebut Kafka, masquage des journaux dans tous les services, canaux de notification, fusion PDF, JSON canonique. Inactives par défaut ; chaque récit les active. Écarts comblés (D-53) : jeton interne lié au certificat mTLS, chemins exemptés ancrés, masquage Luhn 6+4 ; administration Keycloak et jeton de service repris ensuite.
 - Prochaine étape : sprint 0 du carnet (gabarit hexagonal SOC-01, chaîne de livraison SOC-02, contrôles QUA-01, QUA-02, QUA-09, QUA-10).
 
+- **Socle vérifié le 29/09/2026 (D-54)** : 1 356 tests unitaires et 5 476 tests d'intégration réussis sur les 14 services ; plateforme complète démarrée ; `infra/docker-compose/tester-socle.sh` : 48 contrôles sur 48 réussis (santé, jeton Keycloak, API via la passerelle, OPA, WORM, simulacres, frontend, Prometheus).
+
 ## Journal des mises à jour
 
 | Date | Commit | Modification |
@@ -70,3 +72,4 @@ Les secrets locaux sont générés dans `infra/docker-compose/.env`, jamais vers
 | 2026-09-28 | — | README du projet et README de chaque dossier |
 | 2026-09-28 | — | Reprise de code du projet afriland dans les 14 services (D-52) |
 | 2026-09-28 | — | Écarts du code repris comblés et second inventaire d'afriland (D-53) |
+| 2026-09-29 | — | Socle vérifié de bout en bout : tests des 14 services, plateforme complète, `tester-socle.sh` (D-54) |

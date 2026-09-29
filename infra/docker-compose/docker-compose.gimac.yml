@@ -13,6 +13,17 @@ x-valkey: &valkey
   # D-25 : Valkey remplace Redis, dont la licence n'est plus libre.
   image: valkey/valkey:9.0.6-alpine
 
+# Les 14 services générés ne dépendent pas de Kafka dans docker-compose.yml : sans
+# Kafka, leurs liaisons Spring Cloud Stream échouent et leur sonde reste en échec.
+# Démarrés ensemble, ils dépassent aussi les 200 s tolérées par la sonde générée.
+x-application: &application
+  depends_on:
+    kafka:
+      condition: service_started
+  healthcheck:
+    start_period: 240s
+    retries: 60
+
 x-sante: &sante
   interval: 5s
   timeout: 5s
@@ -21,6 +32,27 @@ x-sante: &sante
 
 services:
   # ------------------------------------------------ Surcharges des services générés
+  iam: *application
+  audit: *application
+  document: *application
+  notification: *application
+  participant: *application
+  homologation: *application
+  certification: *application
+  incident: *application
+  monitoring: *application
+  rapprochement: *application
+  pilotage: *application
+  reporting: *application
+  collaboration: *application
+  gateway-valkey:
+    <<: *valkey
+    healthcheck:
+      test: ['CMD', 'valkey-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
   iam-redis: *valkey
   document-redis: *valkey
   notification-redis: *valkey
@@ -37,6 +69,17 @@ services:
   # Ports de l'hôte réglables dans .env (!override remplace la liste générée),
   # pour cohabiter avec d'autres projets du poste. Défauts : ports de JHipster.
   gateway:
+    <<: *application
+    depends_on:
+      kafka:
+        condition: service_started
+      gateway-valkey:
+        condition: service_healthy
+    # Limitation de débit et révocations sur Valkey (GW-07, SOC-11, D-25) ; la dépendance
+    # Redis réactive active aussi un indicateur de santé Redis.
+    environment:
+      - SPRING_DATA_REDIS_HOST=gateway-valkey
+      - SPRING_DATA_REDIS_PORT=6379
     ports: !override
       - ${GIMAC_PORT_GATEWAY:-8080}:8080
 

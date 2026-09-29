@@ -29,12 +29,17 @@ verifier() {
 # Ports de l'hôte publiés par les services visés ; un port pris est signalé
 # avec la variable de .env qui permet de le déplacer.
 verifier_ports() {
-  local occupes
-  occupes=$(compose config --format json "$@" | python3 -c '
-import json, subprocess, sys
+  local occupes actifs
+  # Les ports tenus par les conteneurs déjà démarrés de ce projet ne sont pas des conflits.
+  actifs=$(compose ps --services --status running 2>/dev/null | tr '\n' ' ')
+  occupes=$(compose config --format json "$@" | GIMAC_ACTIFS="$actifs" python3 -c '
+import json, os, subprocess, sys
 config = json.load(sys.stdin)
+actifs = set(os.environ.get("GIMAC_ACTIFS", "").split())
 cibles = sys.argv[1:] or list(config["services"])
 for nom in cibles:
+    if nom in actifs:
+        continue
     for port in config["services"][nom].get("ports", []):
         hote = port.get("published")
         if hote and subprocess.run(["ss", "-ltnH", f"sport = :{hote}"], capture_output=True, text=True).stdout.strip():
@@ -55,6 +60,17 @@ preparer_env() {
                   GIMAC_S3_CLE_ACCES GIMAC_S3_CLE_SECRETE; do
     grep -q "^$variable=" "$fichier" || { echo "$variable=$(openssl rand -hex 20)" >> "$fichier"; echo "Secret ajouté à .env : $variable"; }
   done
+}
+
+# Avant l'arrêt sur échec, conserve les journaux des conteneurs en mauvaise santé ou arrêtés.
+conserver_journaux() {
+  local dossier="$ICI/.journaux-echec/$(date +%Y%m%d-%H%M%S)" nom
+  mkdir -p "$dossier"
+  for nom in $(docker ps -a --filter label=com.docker.compose.project=gimac-des --filter health=unhealthy --format '{{.Names}}') \
+             $(docker ps -a --filter label=com.docker.compose.project=gimac-des --filter status=exited --format '{{.Names}}'); do
+    docker logs --tail 300 "$nom" > "$dossier/$nom.log" 2>&1
+  done
+  echo "Journaux conservés dans $dossier" >&2
 }
 
 images_manquantes() {
@@ -82,11 +98,25 @@ demarrer() {
   fi
   verifier_ports "${cibles[@]}"
   # Aucun composant partiellement démarré n'est laissé en place en cas d'échec.
-  if ! compose up -d --wait "${cibles[@]}"; then
+  # Services durables : attente de leur santé. Les conteneurs d'initialisation, qui
+  # se terminent volontairement, sont lancés ensuite et jugés sur leur code de sortie.
+  [ ${#cibles[@]} -gt 0 ] || mapfile -t cibles < <(compose config --services)
+  local durables=() init
+  for s in "${cibles[@]}"; do [[ "$s" == *-init ]] || durables+=("$s"); done
+  if ! compose up -d --wait "${durables[@]}"; then
     echo "Échec du démarrage : arrêt des conteneurs lancés." >&2
+    conserver_journaux
     compose down
     exit 1
   fi
+  for init in $(compose config --services | grep -- '-init$'); do
+    compose up -d "$init" >/dev/null
+    if [ "$(docker wait "$(compose ps -a -q "$init")")" != 0 ]; then
+      echo "Échec de l'initialisation $init : arrêt des conteneurs lancés." >&2
+      compose down
+      exit 1
+    fi
+  done
   compose ps
 }
 

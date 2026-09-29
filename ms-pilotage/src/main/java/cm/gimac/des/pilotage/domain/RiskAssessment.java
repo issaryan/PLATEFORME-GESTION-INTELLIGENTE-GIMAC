@@ -39,7 +39,7 @@ public class RiskAssessment implements Serializable {
 
     @NotNull
     @DecimalMin(value = "0")
-    @DecimalMax(value = "0")
+    @DecimalMax(value = "0.9") // JDL max(0.9), tronqué à "0" par le générateur
     @Column(name = "control_coefficient", precision = 21, scale = 2, nullable = false)
     private BigDecimal controlCoefficient;
 

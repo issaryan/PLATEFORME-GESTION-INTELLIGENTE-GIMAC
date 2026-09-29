@@ -9,7 +9,8 @@ Environnement de développement de la plateforme en une commande (SOC-13, D-45, 
 | `.yo-rc.json` | Réponses du générateur `jhipster docker-compose` |
 | `docker-compose.yml` | **Généré** : 14 services, PostgreSQL et cache par service, Kafka, Keycloak, Prometheus, Alertmanager, Grafana. Ne pas éditer : régénérer |
 | `docker-compose.gimac.yml` | Complément du projet, fusionné au lancement |
-| `gimac-dev.sh` | Commande unique : prérequis, secrets, images, démarrage, arrêt |
+| `gimac-dev.sh` | Commande unique : prérequis, secrets, images, démarrage, arrêt ; journaux conservés dans `.journaux-echec/` en cas d'échec |
+| `tester-socle.sh` | Vérification de bout en bout du socle démarré (48 contrôles) ; code de sortie = nombre d'échecs |
 | `stockage-objet/` | Ceph RGW mono-nœud et création des compartiments WORM (D-50) |
 | `opa/politiques/` | Politique d'accès de développement et ses tests |
 | `simulacres/` | Simulacres WireMock du simulateur, de la gestion des changements et de l'autorité d'horodatage |
@@ -33,6 +34,7 @@ Environnement de développement de la plateforme en une commande (SOC-13, D-45, 
 ./gimac-dev.sh images                   # construit les images Jib des 14 services
 ./gimac-dev.sh demarrer                 # tout
 ./gimac-dev.sh etat | arreter | nettoyer
+./tester-socle.sh                       # vérification de bout en bout
 ```
 
 Un port déjà pris sur le poste est signalé avec la variable `GIMAC_PORT_*` à placer dans `.env`. En cas d'échec, tout ce qui a démarré est arrêté. Le projet Compose s'appelle `gimac-des`.
@@ -53,3 +55,4 @@ git checkout -- ../../ms-*/.yo-rc.json   # annule la réécriture de version par
 | 2026-09-28 | 7dcca58 | Ceph RGW remplace MinIO ; clés S3 dans le `.env` |
 | 2026-09-28 | b20a049 | Trois couches de présentation |
 | 2026-09-28 | — | Ajout de ce README |
+| 2026-09-29 | — | Services dépendants de Kafka, délai de santé élargi, Valkey de la passerelle, amorçage Ceph robuste sous charge, conteneurs d'initialisation hors attente de santé, journaux conservés sur échec, `tester-socle.sh` : 48/48 (D-54) |

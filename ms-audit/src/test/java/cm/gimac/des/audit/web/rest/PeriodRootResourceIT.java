@@ -738,6 +738,9 @@ class PeriodRootResourceIT {
         if (TestUtil.findAll(em, PeriodRoot.class).isEmpty()) {
             periodRootRepository.saveAndFlush(periodRoot);
             previousRoot = PeriodRootResourceIT.createEntity();
+            // La période est unique : la racine précédente doit porter une autre période
+            // (défaut du test généré par JHipster pour une auto-référence sur champ unique).
+            previousRoot.setPeriod(UPDATED_PERIOD);
         } else {
             previousRoot = TestUtil.findAll(em, PeriodRoot.class).getFirst();
         }

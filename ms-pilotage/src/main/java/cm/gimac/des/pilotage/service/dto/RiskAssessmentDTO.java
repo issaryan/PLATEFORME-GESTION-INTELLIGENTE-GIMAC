@@ -32,7 +32,7 @@ public class RiskAssessmentDTO implements Serializable {
 
     @NotNull
     @DecimalMin(value = "0")
-    @DecimalMax(value = "0")
+    @DecimalMax(value = "0.9") // JDL max(0.9), tronqué à "0" par le générateur
     private BigDecimal controlCoefficient;
 
     @NotNull

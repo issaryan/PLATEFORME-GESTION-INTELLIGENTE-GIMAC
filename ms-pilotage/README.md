@@ -46,6 +46,7 @@ Copié et adapté (paquet `cm.gimac.des.pilotage`) ; chaque bean est inactif tan
 | 2026-09-28 | — | Ajout de cette section. |
 | 2026-09-28 | — | Reprise de 3 classes du projet afriland (D-52) ; compilation vérifiée. |
 | 2026-09-28 | — | Écarts comblés (liaison au certificat, masquage Luhn 6+4) et 2 classes reprises d'afriland : ServiceTokenProvider, TransitionInterditeException (D-53). |
+| 2026-09-29 | — | Masquage des journaux activé (logback, `%maskedMsg`) ; 151 tests unitaires et 735 tests d'intégration réussis, image Jib construite ; `@DecimalMax("0")` généré pour `max(0.9)` rétabli à `0.9` sur le coefficient de maîtrise (Risk, RiskAssessment) ; tests ajustés (D-54). |
 <!-- GIMAC:FIN -->
 
 # pilotage

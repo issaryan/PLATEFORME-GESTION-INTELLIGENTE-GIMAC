@@ -7,9 +7,7 @@ import cm.gimac.des.iam.adapter.outbound.port.KeycloakAdminPort;
 import cm.gimac.des.iam.adapter.outbound.port.ProfilKeycloak;
 import cm.gimac.des.iam.adapter.outbound.port.SessionInfo;
 import cm.gimac.des.iam.adapter.outbound.port.UtilisateurRealm;
-import cm.gimac.des.iam.config.KeycloakProperties;
 import jakarta.ws.rs.core.Response;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -62,7 +60,7 @@ public class KeycloakAdminAdapter implements KeycloakAdminPort {
         user.setEmailVerified(false);
         // Pas de mot de passe local : Keycloak matérialise l'identité, l'activation
         // effective (mot de passe/2FA) relève du parcours d'onboarding utilisateur.
-        user.setCredentials(Collections.<CredentialRepresentation>emptyList());
+        user.setCredentials(List.<CredentialRepresentation>of());
         // Le User Profile du realm exige ces attributs (error-user-attribute-required
         // sinon) — tenant_id/agence pour le rattachement, phone_number requis par le realm.
         user.setAttributes(Map.of(

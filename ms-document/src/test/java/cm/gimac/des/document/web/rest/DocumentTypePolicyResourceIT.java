@@ -47,7 +47,8 @@ class DocumentTypePolicyResourceIT {
     private static final Integer SMALLER_POLICY_VERSION = 1 - 1;
 
     private static final String DEFAULT_RETENTION_PERIOD = "P32350Y";
-    private static final String UPDATED_RETENTION_PERIOD = "P";
+    // "P" (valeur générée) est contenue dans la valeur par défaut : le filtre « contient » ne pouvait pas être vide.
+    private static final String UPDATED_RETENTION_PERIOD = "P30D";
 
     private static final RetentionMode DEFAULT_RETENTION_MODE = RetentionMode.CONFORMITE;
     private static final RetentionMode UPDATED_RETENTION_MODE = RetentionMode.GOUVERNANCE;

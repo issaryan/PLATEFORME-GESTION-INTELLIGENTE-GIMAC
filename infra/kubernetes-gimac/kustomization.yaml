@@ -88,6 +88,17 @@ patches:
         path: /spec/template/metadata/labels/gimac.cm~1segment
         value: supervision
 
+  # Passerelle : limitation de débit et révocations sur le Valkey partagé (GW-07).
+  - target:
+      kind: Deployment
+      name: ^gateway$
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: SPRING_DATA_REDIS_HOST
+          value: valkey.gimac-des.svc.cluster.local
+
   # Cache partagé Valkey (D-25, SOC-11) pour les services configurés avec un cache.
   - target:
       kind: Deployment

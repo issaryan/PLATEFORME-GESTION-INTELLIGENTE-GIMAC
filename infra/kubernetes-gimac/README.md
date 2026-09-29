@@ -38,3 +38,4 @@ Dernier résultat : 130 objets, 111 valides, 19 ressources personnalisées non v
 | 2026-09-28 | c0b91ee | Création : segments, politiques réseau, Valkey, Kyverno, retrait des secrets, corrections de schéma |
 | 2026-09-28 | b20a049 | Couches de présentation et segment `presentation` |
 | 2026-09-28 | — | Ajout de ce README |
+| 2026-09-29 | — | Passerelle raccordée au Valkey partagé (sonde Redis, limitation de débit) |

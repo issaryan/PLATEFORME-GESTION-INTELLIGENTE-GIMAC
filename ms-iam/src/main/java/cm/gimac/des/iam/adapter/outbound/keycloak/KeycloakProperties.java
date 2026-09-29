@@ -1,4 +1,4 @@
-package cm.gimac.des.iam.config;
+package cm.gimac.des.iam.adapter.outbound.keycloak;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 

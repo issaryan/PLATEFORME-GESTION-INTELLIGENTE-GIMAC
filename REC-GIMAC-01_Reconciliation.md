@@ -8,7 +8,7 @@
 | Établi par | KOAGNE ISSA RYAN, Ingénieur en Informatique et Systèmes d'information |
 | Statut | Référentiel d'implémentation. Décisions D-01 à D-31, y compris les propositions [P], **acceptées par KOAGNE ISSA RYAN le 28/09/2026** ; validation formelle du Product Owner (chef du DES) attendue en revue d'itération |
 | Rôle | Base unique à partir de laquelle le code est écrit ; prime sur les quatre documents pour les points qu'elle tranche |
-| Révision | **v1.1 (28/09/2026)** : ajout des décisions D-32 à D-46 (§4.4), complétées par D-47 à D-53, pour réconcilier **CP-GIMAC-01 v2.0**, qui remplace CP v1.0, et fixer l'infrastructure et le frontend ; aucune disposition de la v1.0 n'est retirée |
+| Révision | **v1.1 (28/09/2026)** : ajout des décisions D-32 à D-46 (§4.4), complétées par D-47 à D-54, pour réconcilier **CP-GIMAC-01 v2.0**, qui remplace CP v1.0, et fixer l'infrastructure et le frontend ; aucune disposition de la v1.0 n'est retirée |
 
 **Légende des décisions**
 - **[R]** : réconciliation déduite des documents eux-mêmes, par application de la règle de préséance (§0).
@@ -439,6 +439,16 @@ Décisions ajoutées le 28/09/2026 à la réception du carnet de produit v2.0 (3
   - **Masquage des journaux (RG-52, PCI-DSS 3.4)** : seule une suite de 13 à 19 chiffres vérifiant la formule de Luhn est masquée, en 6+4 ; les identifiants et horodatages restent lisibles.
   - **Second inventaire** : repris en plus l'administration Keycloak (MS-IAM : sessions, révocation globale, activation, actions requises, fédération ; IAM-03, IAM-07, IAM-13, IAM-15), le fournisseur de jeton de service par `client_credentials` (13 services, IAM-16) et l'exception de transition interdite (7 services à automate d'état).
   - **Non repris** : les adaptateurs d'événements du commutateur (dont un adaptateur « GIMAC ») lisent des échecs de transactions ISO 8583 avec numéro de carte masqué, contraires à la non-intrusion et à l'absence de donnée de carte (D-27, RG-30) ; le moteur de règles, l'import Excel, les sagas et l'extraction de texte des PDF sont propres au crédit d'afriland ; la supervision Docker et Prometheus d'administration n'a pas d'usage dans le périmètre.
+- **D-54 [R] Socle vérifié avant le développement ; défauts de génération corrigés.** Constat du 29/09/2026 :
+  - **Tests** : les 14 services passent leur suite complète, soit 1 356 tests unitaires et 5 476 tests d'intégration (Testcontainers), et leurs images Jib sont construites.
+  - **Plateforme** : démarrée en entier par `gimac-dev.sh demarrer`, elle passe les 48 contrôles de `tester-socle.sh` : santé des 14 services et de l'infrastructure, jeton Keycloak, refus sans jeton, appel d'API authentifié via la passerelle vers quatre services, refus par défaut d'OPA, WORM Ceph en conformité, simulacres, en-têtes de sécurité des trois couches, collecte Prometheus des 14 services.
+  - **Défauts du générateur JHipster corrigés** :
+    - la passerelle n'avait aucune route vers les microservices, et la résolution `lb://` n'y fonctionne pas sans découverte de services : 13 routes déclarées vers `gimac.services.<service>` (localhost en DEV, nom du service en prod) ;
+    - `@DecimalMax(value = "0")` produit pour `max(0.9)` sur le coefficient de maîtrise des risques (MS-PILOTAGE, formule 6.64) : rétabli à `0.9`, faute de quoi l'API aurait refusé tout coefficient non nul ;
+    - le Docker Compose généré ne fait pas dépendre les services de Kafka : dépendance et délai de santé ajoutés au complément ;
+    - tests d'intégration générés en conflit avec des champs uniques (auto-références, valeurs « modifiées » contenues dans la valeur par défaut, lien un-pour-un) : corrigés dans 9 classes de test.
+  - **Activé** : masquage des journaux (numéros de carte vérifiant Luhn en 6+4, jetons, téléphones, courriels) dans les 14 services. **Restent inactifs** jusqu'à leurs récits : jeton fantôme et liaison au certificat (GW-04, GW-05, SOC-09), mTLS, administration Keycloak (IAM-03), jeton de service (IAM-16), file de rebut Kafka (aucun consommateur `@KafkaListener` encore).
+  - **Passerelle** : la dépendance Redis réactive reprise d'afriland active une sonde de santé Redis ; la passerelle reçoit son Valkey (Docker Compose) ou le Valkey partagé (Kubernetes).
 
 ---
 

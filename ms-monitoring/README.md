@@ -46,6 +46,7 @@ Copié et adapté (paquet `cm.gimac.des.monitoring`) ; chaque bean est inactif t
 | 2026-09-28 | — | Ajout de cette section. |
 | 2026-09-28 | — | Reprise de 3 classes du projet afriland (D-52) ; compilation vérifiée. |
 | 2026-09-28 | — | Écarts comblés (liaison au certificat, masquage Luhn 6+4) et 2 classes reprises d'afriland : ServiceTokenProvider, TransitionInterditeException (D-53). |
+| 2026-09-29 | — | Masquage des journaux activé (logback, `%maskedMsg`) ; 118 tests unitaires et 413 tests d'intégration réussis, image Jib construite ; tests générés `AlertResourceIT`, `ShiftLogEntryResourceIT`, `ShiftReportResourceIT`, `SupervisedLinkResourceIT` corrigés (champs uniques, quart un-pour-un) (D-54). |
 <!-- GIMAC:FIN -->
 
 # monitoring

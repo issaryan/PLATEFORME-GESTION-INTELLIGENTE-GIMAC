@@ -647,7 +647,7 @@ class ShiftLogEntryResourceIT {
         ShiftLogEntry corrects;
         if (TestUtil.findAll(em, ShiftLogEntry.class).isEmpty()) {
             shiftLogEntryRepository.saveAndFlush(shiftLogEntry);
-            corrects = ShiftLogEntryResourceIT.createEntity(em);
+            corrects = ShiftLogEntryResourceIT.createUpdatedEntity(em); // champs uniques distincts de l'entité testée
         } else {
             corrects = TestUtil.findAll(em, ShiftLogEntry.class).get(0);
         }

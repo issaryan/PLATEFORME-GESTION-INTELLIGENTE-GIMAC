@@ -46,7 +46,7 @@ public class RiskDTO implements Serializable {
 
     @NotNull
     @DecimalMin(value = "0")
-    @DecimalMax(value = "0")
+    @DecimalMax(value = "0.9") // JDL max(0.9), tronqué à "0" par le générateur
     @Schema(description = "Coefficient de maîtrise c, plafonné à 0,9 (formule 6.64).", requiredMode = Schema.RequiredMode.REQUIRED)
     private BigDecimal controlCoefficient;
 

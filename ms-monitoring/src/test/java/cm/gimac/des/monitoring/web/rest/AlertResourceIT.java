@@ -1004,7 +1004,7 @@ class AlertResourceIT {
         Alert correlationRoot;
         if (TestUtil.findAll(em, Alert.class).isEmpty()) {
             alertRepository.saveAndFlush(alert);
-            correlationRoot = AlertResourceIT.createEntity(em);
+            correlationRoot = AlertResourceIT.createUpdatedEntity(em); // champs uniques distincts de l'entité testée
         } else {
             correlationRoot = TestUtil.findAll(em, Alert.class).get(0);
         }

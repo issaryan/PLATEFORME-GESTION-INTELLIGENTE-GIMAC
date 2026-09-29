@@ -901,7 +901,7 @@ class SupervisedLinkResourceIT {
         SupervisedLink parentPlatform;
         if (TestUtil.findAll(em, SupervisedLink.class).isEmpty()) {
             supervisedLinkRepository.saveAndFlush(supervisedLink);
-            parentPlatform = SupervisedLinkResourceIT.createEntity();
+            parentPlatform = SupervisedLinkResourceIT.createUpdatedEntity(); // champs uniques distincts de l'entité testée
         } else {
             parentPlatform = TestUtil.findAll(em, SupervisedLink.class).get(0);
         }

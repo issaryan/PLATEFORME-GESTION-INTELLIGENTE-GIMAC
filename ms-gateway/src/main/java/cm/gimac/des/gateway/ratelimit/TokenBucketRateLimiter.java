@@ -14,7 +14,6 @@ import reactor.core.publisher.Mono;
 
 import java.time.Instant;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -74,7 +73,7 @@ public class TokenBucketRateLimiter {
         // CORRECTION ICI : Forçage du typage @NonNull pour satisfaire le contrat de
         // redisTemplate.execute
         List<String> keys = Objects.requireNonNull(
-                Collections.singletonList(key),
+                List.of(key),
                 "La liste des clés ne peut pas être nulle");
 
         List<String> args = Objects.requireNonNull(

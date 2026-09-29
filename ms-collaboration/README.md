@@ -45,6 +45,7 @@ Copié et adapté (paquet `cm.gimac.des.collaboration`) ; chaque bean est inacti
 | 2026-09-28 | — | Ajout de cette section. |
 | 2026-09-28 | — | Reprise de 3 classes du projet afriland (D-52) ; compilation vérifiée. |
 | 2026-09-28 | — | Écarts comblés (liaison au certificat, masquage Luhn 6+4) et 1 classes reprises d'afriland : ServiceTokenProvider (D-53). |
+| 2026-09-29 | — | Masquage des journaux activé (logback, `%maskedMsg`) ; 103 tests unitaires et 431 tests d'intégration réussis, image Jib construite (D-54). |
 <!-- GIMAC:FIN -->
 
 # collaboration

@@ -174,3 +174,6 @@ $RECYCLE.BIN/
 /tmp/
 *.tmp
 *.bak
+
+# Journaux conservés par gimac-dev.sh après un échec de démarrage
+infra/docker-compose/.journaux-echec/

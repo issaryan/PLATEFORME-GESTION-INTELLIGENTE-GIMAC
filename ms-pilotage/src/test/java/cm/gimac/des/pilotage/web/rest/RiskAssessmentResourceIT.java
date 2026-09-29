@@ -56,7 +56,7 @@ class RiskAssessmentResourceIT {
     private static final Integer SMALLER_IMPACT = 1 - 1;
 
     private static final BigDecimal DEFAULT_CONTROL_COEFFICIENT = new BigDecimal(0);
-    private static final BigDecimal UPDATED_CONTROL_COEFFICIENT = new BigDecimal(1);
+    private static final BigDecimal UPDATED_CONTROL_COEFFICIENT = new BigDecimal("0.5"); // 1 dépasse le plafond de 0,9
     private static final BigDecimal SMALLER_CONTROL_COEFFICIENT = new BigDecimal(0 - 1);
 
     private static final Integer DEFAULT_GROSS_SCORE = 1;

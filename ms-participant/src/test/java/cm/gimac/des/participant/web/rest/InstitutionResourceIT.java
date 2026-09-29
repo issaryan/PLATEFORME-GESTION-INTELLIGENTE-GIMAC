@@ -1468,7 +1468,7 @@ class InstitutionResourceIT {
         Institution settlementBank;
         if (TestUtil.findAll(em, Institution.class).isEmpty()) {
             institutionRepository.saveAndFlush(institution);
-            settlementBank = InstitutionResourceIT.createEntity();
+            settlementBank = InstitutionResourceIT.createUpdatedEntity(); // champs uniques distincts de l'entité testée
         } else {
             settlementBank = TestUtil.findAll(em, Institution.class).get(0);
         }
@@ -1490,7 +1490,7 @@ class InstitutionResourceIT {
         Institution sponsorBank;
         if (TestUtil.findAll(em, Institution.class).isEmpty()) {
             institutionRepository.saveAndFlush(institution);
-            sponsorBank = InstitutionResourceIT.createEntity();
+            sponsorBank = InstitutionResourceIT.createUpdatedEntity(); // champs uniques distincts de l'entité testée
         } else {
             sponsorBank = TestUtil.findAll(em, Institution.class).get(0);
         }

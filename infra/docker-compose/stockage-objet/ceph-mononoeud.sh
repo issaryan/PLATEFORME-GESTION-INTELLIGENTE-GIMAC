@@ -45,13 +45,20 @@ fi
 cp "$DONNEES/ceph.conf" "$CONF"
 
 ceph-mon -i a
+# Sous charge (démarrage de toute la plateforme), le moniteur peut tarder :
+# l'OSD ne démarre qu'une fois le moniteur joignable.
+until ceph -s --connect-timeout 5 >/dev/null 2>&1; do sleep 2; done
 ceph-mgr -i a
 if [ ! -f "$DONNEES/.amorce" ]; then
   OSD_UUID=$(uuidgen)
   OSD=$(ceph osd create "$OSD_UUID")
   ceph-osd -i "$OSD" --mkfs --osd-uuid "$OSD_UUID"
 fi
-ceph-osd -i 0
+for essai in 1 2 3 4 5; do
+  ceph-osd -i 0 && break
+  echo "Démarrage de l'OSD en échec (essai $essai), nouvel essai dans 5 s."
+  sleep 5
+done
 until ceph osd stat 2>/dev/null | grep -q "1 up"; do sleep 2; done
 radosgw -n client.rgw.gimac
 until curl -fsS http://127.0.0.1:7480 >/dev/null 2>&1; do sleep 2; done

@@ -787,7 +787,11 @@ class ShiftReportResourceIT {
         ShiftReport supersedes;
         if (TestUtil.findAll(em, ShiftReport.class).isEmpty()) {
             shiftReportRepository.saveAndFlush(shiftReport);
-            supersedes = ShiftReportResourceIT.createEntity(em);
+            supersedes = ShiftReportResourceIT.createUpdatedEntity(em); // champs uniques distincts de l'entité testée
+            // Un rapport par quart (clé unique) : le rapport remplacé porte son propre quart.
+            Shift autreQuart = ShiftResourceIT.createUpdatedEntity(em);
+            em.persist(autreQuart);
+            supersedes.setShift(autreQuart);
         } else {
             supersedes = TestUtil.findAll(em, ShiftReport.class).get(0);
         }
