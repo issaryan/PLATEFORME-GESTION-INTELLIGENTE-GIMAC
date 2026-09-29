@@ -18,6 +18,7 @@
     </parent>
 
     <properties>
+        <cucumber-bom.version>7.34.8</cucumber-bom.version>
         <!--
             Build properties
             The spring-boot version should match the one managed by https://mvnrepository.com/artifact/tech.jhipster/jhipster-dependencies/${jhipster-dependencies.version}
@@ -36,6 +37,8 @@
         <spring-boot.version>${project.parent.version}</spring-boot.version>
         <archunit-junit5.version>1.5.0</archunit-junit5.version>
         <checkstyle.version>14.1.0</checkstyle.version>
+        <!-- Définition de fini (D-61) : seuil de couverture des tests. -->
+        <jacoco.seuil>0.80</jacoco.seuil>
         <jacoco-maven-plugin.version>0.8.15</jacoco-maven-plugin.version>
         <jhipster-framework.version>9.4.0</jhipster-framework.version>
         <jib-maven-plugin.architecture>amd64</jib-maven-plugin.architecture>
@@ -70,6 +73,13 @@
                 <groupId>org.springframework.cloud</groupId>
                 <artifactId>spring-cloud-dependencies</artifactId>
                 <version>${spring-cloud-dependencies.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>io.cucumber</groupId>
+                <artifactId>cucumber-bom</artifactId>
+                <version>${cucumber-bom.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -335,6 +345,44 @@
             <groupId>org.keycloak</groupId>
             <artifactId>keycloak-admin-client</artifactId>
             <version>26.0.12</version>
+        </dependency>
+            <!-- Réauthentification forte FIDO2 (IAM-07) : vérification des enrôlements et des assertions WebAuthn. -->
+        <dependency>
+            <groupId>com.webauthn4j</groupId>
+            <artifactId>webauthn4j-core</artifactId>
+            <version>0.31.10.RELEASE</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- Recette Gherkin (définition de fini D-61) et émulateur d'authentificateur FIDO2 pour les tests. -->
+        <dependency>
+            <groupId>io.cucumber</groupId>
+            <artifactId>cucumber-java</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.cucumber</groupId>
+            <artifactId>cucumber-junit-platform-engine</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.cucumber</groupId>
+            <artifactId>cucumber-spring</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.platform</groupId>
+            <artifactId>junit-platform-suite</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.webauthn4j</groupId>
+            <artifactId>webauthn4j-test</artifactId>
+            <version>0.31.10.RELEASE</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 
@@ -774,6 +822,108 @@
                             <goals>
                                 <goal>report-integration</goal>
                             </goals>
+                        </execution>
+                        <execution>
+                            <id>seuil-unitaire-du-lot</id>
+                            <phase>test</phase>
+                            <goals>
+                                <goal>check</goal>
+                            </goals>
+                            <configuration>
+                                <dataFile>${project.build.directory}/jacoco.exec</dataFile>
+                                <includes>
+                                    <include>cm/gimac/des/iam/domain/service/**</include>
+                                    <include>cm/gimac/des/iam/domain/IamException*</include>
+                                    <include>cm/gimac/des/iam/domain/compte/**</include>
+                                    <include>cm/gimac/des/iam/application/usecase/**</include>
+                                    <include>cm/gimac/des/iam/infrastructure/idp/AnnuaireEnMemoire*</include>
+                                    <include>cm/gimac/des/iam/infrastructure/security/StrongAuthentication*</include>
+                                    <include>cm/gimac/des/iam/web/rest/lot1/**</include>
+                                    <include>cm/gimac/des/iam/web/rest/errors/IamExceptionHandler*</include>
+                                </includes>
+                                <rules>
+                                    <rule>
+                                        <element>CLASS</element>
+                                        <excludes>
+                                            <!-- Interfaces de ports et enregistrements sans logique. -->
+                                            <exclude>*.package-info</exclude>
+                                        </excludes>
+                                        <limits>
+                                            <limit>
+                                                <counter>LINE</counter>
+                                                <value>COVEREDRATIO</value>
+                                                <minimum>${jacoco.seuil}</minimum>
+                                            </limit>
+                                            <limit>
+                                                <counter>METHOD</counter>
+                                                <value>COVEREDRATIO</value>
+                                                <minimum>${jacoco.seuil}</minimum>
+                                            </limit>
+                                        </limits>
+                                    </rule>
+                                    <rule>
+                                        <element>BUNDLE</element>
+                                        <limits>
+                                            <limit>
+                                                <counter>BRANCH</counter>
+                                                <value>COVEREDRATIO</value>
+                                                <minimum>${jacoco.seuil}</minimum>
+                                            </limit>
+                                        </limits>
+                                    </rule>
+                                </rules>
+                            </configuration>
+                        </execution>
+                        <execution>
+                            <id>fusion-unitaires-integration</id>
+                            <phase>post-integration-test</phase>
+                            <goals>
+                                <goal>merge</goal>
+                            </goals>
+                            <configuration>
+                                <fileSets>
+                                    <fileSet>
+                                        <directory>${project.build.directory}</directory>
+                                        <includes>
+                                            <include>jacoco.exec</include>
+                                            <include>jacoco-it.exec</include>
+                                        </includes>
+                                    </fileSet>
+                                </fileSets>
+                                <destFile>${project.build.directory}/jacoco-fusion.exec</destFile>
+                            </configuration>
+                        </execution>
+                        <execution>
+                            <id>seuil-global-du-service</id>
+                            <phase>verify</phase>
+                            <goals>
+                                <goal>check</goal>
+                            </goals>
+                            <configuration>
+                                <dataFile>${project.build.directory}/jacoco-fusion.exec</dataFile>
+                                <excludes>
+                                    <exclude>cm/gimac/des/iam/IamApp*</exclude>
+                                    <!-- Implémentations MapStruct produites à la compilation (hors sources). -->
+                                    <exclude>cm/gimac/des/iam/service/mapper/*MapperImpl*</exclude>
+                                </excludes>
+                                <rules>
+                                    <rule>
+                                        <element>BUNDLE</element>
+                                        <limits>
+                                            <limit>
+                                                <counter>LINE</counter>
+                                                <value>COVEREDRATIO</value>
+                                                <minimum>${jacoco.seuil}</minimum>
+                                            </limit>
+                                            <limit>
+                                                <counter>METHOD</counter>
+                                                <value>COVEREDRATIO</value>
+                                                <minimum>${jacoco.seuil}</minimum>
+                                            </limit>
+                                        </limits>
+                                    </rule>
+                                </rules>
+                            </configuration>
                         </execution>
                     </executions>
                 </plugin>

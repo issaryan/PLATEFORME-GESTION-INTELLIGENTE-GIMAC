@@ -44,7 +44,7 @@ import tools.jackson.databind.ObjectMapper;
 @IntegrationTest
 @ExtendWith(MockitoExtension.class)
 @AutoConfigureMockMvc
-@WithMockUser
+@WithMockUser(authorities = cm.gimac.des.iam.security.AuthoritiesConstants.ADMIN)
 class RoleGrantResourceIT {
 
     private static final GrantState DEFAULT_STATE = GrantState.PROPOSE;

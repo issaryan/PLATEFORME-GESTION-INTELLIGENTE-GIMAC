@@ -33,7 +33,7 @@ import tools.jackson.databind.ObjectMapper;
  */
 @IntegrationTest
 @AutoConfigureMockMvc
-@WithMockUser
+@WithMockUser(authorities = cm.gimac.des.iam.security.AuthoritiesConstants.ADMIN)
 class AccessReviewResourceIT {
 
     private static final String DEFAULT_PERIOD = "AAAAAAAAAA";

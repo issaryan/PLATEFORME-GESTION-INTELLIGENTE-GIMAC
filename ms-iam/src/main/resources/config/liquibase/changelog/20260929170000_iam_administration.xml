@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- MS-IAM : messagerie du lot (outbox, déduplication, PI §0.4), journal d'administration des
+     comptes (D-62) et réauthentification forte FIDO2 (IAM-07). -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="iam-messagerie" author="lot1">
+        <createTable tableName="outbox_event">
+            <column name="id" type="uuid"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="aggregate_type" type="varchar(60)"><constraints nullable="false"/></column>
+            <column name="aggregate_id" type="varchar(80)"><constraints nullable="false"/></column>
+            <column name="event_type" type="varchar(120)"><constraints nullable="false"/></column>
+            <column name="payload" type="jsonb"><constraints nullable="false"/></column>
+            <column name="created_at" type="timestamptz"><constraints nullable="false"/></column>
+            <column name="status" type="varchar(16)"><constraints nullable="false"/></column>
+            <column name="sent_at" type="timestamptz"/>
+            <column name="attempts" type="integer" defaultValueNumeric="0"><constraints nullable="false"/></column>
+            <column name="correlation_id" type="varchar(80)"/>
+            <column name="institution_id" type="varchar(80)"/>
+        </createTable>
+        <sql>CREATE INDEX idx_outbox_pending ON outbox_event (created_at) WHERE status = 'PENDING';</sql>
+        <createTable tableName="processed_event">
+            <column name="id" type="uuid"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="event_id" type="varchar(80)"><constraints nullable="false"/></column>
+            <column name="consumer_group" type="varchar(120)"><constraints nullable="false"/></column>
+            <column name="processed_at" type="timestamptz"><constraints nullable="false"/></column>
+        </createTable>
+        <addUniqueConstraint tableName="processed_event" columnNames="event_id, consumer_group" constraintName="uk_processed_event_group"/>
+    </changeSet>
+
+    <changeSet id="iam-journal-administration" author="lot1">
+        <createTable tableName="journal_administration">
+            <column name="id" type="uuid"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="horodatage" type="timestamptz"><constraints nullable="false"/></column>
+            <column name="acteur_id" type="varchar(100)"><constraints nullable="false"/></column>
+            <column name="acteur_nom" type="varchar(255)"/>
+            <column name="action" type="varchar(60)"><constraints nullable="false"/></column>
+            <column name="cible_id" type="varchar(100)"/>
+            <column name="cible_libelle" type="varchar(255)"/>
+            <column name="motif" type="varchar(1000)"/>
+            <column name="details" type="varchar(2000)"/>
+            <column name="correlation_id" type="varchar(80)"/>
+        </createTable>
+        <createIndex tableName="journal_administration" indexName="idx_journal_admin_horodatage"><column name="horodatage"/></createIndex>
+        <createIndex tableName="journal_administration" indexName="idx_journal_admin_cible"><column name="cible_id"/></createIndex>
+        <!-- Écriture seule : aucune mise à jour ni suppression d'une entrée du journal. -->
+        <sql splitStatements="false">
+            CREATE OR REPLACE FUNCTION journal_administration_immuable() RETURNS trigger AS $$
+            BEGIN
+                RAISE EXCEPTION 'journal_administration est en ajout seul';
+            END;
+            $$ LANGUAGE plpgsql;
+        </sql>
+        <sql>CREATE TRIGGER trg_journal_administration_immuable BEFORE UPDATE OR DELETE ON journal_administration FOR EACH ROW EXECUTE FUNCTION journal_administration_immuable();</sql>
+    </changeSet>
+
+    <changeSet id="iam-webauthn" author="lot1">
+        <createTable tableName="cle_securite">
+            <column name="id" type="uuid"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="sujet" type="varchar(100)"><constraints nullable="false"/></column>
+            <column name="nom" type="varchar(100)"><constraints nullable="false"/></column>
+            <column name="identifiant_cle" type="varchar(1024)"><constraints nullable="false" unique="true" uniqueConstraintName="ux_cle_securite_identifiant"/></column>
+            <column name="donnees_attestees" type="varchar(4000)"><constraints nullable="false"/></column>
+            <column name="compteur" type="bigint"><constraints nullable="false"/></column>
+            <column name="creee_le" type="timestamptz"><constraints nullable="false"/></column>
+            <column name="derniere_utilisation" type="timestamptz"/>
+        </createTable>
+        <createIndex tableName="cle_securite" indexName="idx_cle_securite_sujet"><column name="sujet"/></createIndex>
+        <createTable tableName="defi_webauthn">
+            <column name="id" type="uuid"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="sujet" type="varchar(100)"><constraints nullable="false"/></column>
+            <column name="finalite" type="varchar(60)"><constraints nullable="false"/></column>
+            <column name="defi" type="varchar(100)"><constraints nullable="false"/></column>
+            <column name="expire_le" type="timestamptz"><constraints nullable="false"/></column>
+            <column name="consomme" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+        </createTable>
+    </changeSet>
+</databaseChangeLog>

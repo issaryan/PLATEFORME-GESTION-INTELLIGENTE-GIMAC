@@ -3,6 +3,7 @@ package cm.gimac.des.iam.config;
 import static org.springframework.security.config.Customizer.withDefaults;
 import static org.springframework.security.oauth2.core.oidc.StandardClaimNames.PREFERRED_USERNAME;
 
+import cm.gimac.des.iam.infrastructure.security.StrongAuthenticationAuthorizationManager;
 import cm.gimac.des.iam.security.*;
 import cm.gimac.des.iam.security.oauth2.AudienceValidator;
 import java.util.*;
@@ -31,6 +32,13 @@ public class SecurityConfiguration {
     @Value("${spring.security.oauth2.client.provider.oidc.issuer-uri}")
     private String issuerUri;
 
+    /** D-61 : jeton issu d'une authentification à deux facteurs, attestée par le claim acr. */
+    @Value("${gimac.securite.double-facteur.exige:true}")
+    private boolean doubleFacteurExige;
+
+    @Value("${gimac.securite.double-facteur.niveaux-acr:2,3}")
+    private Set<String> niveauxAcr;
+
     public SecurityConfiguration(JHipsterProperties jHipsterProperties) {
         this.jHipsterProperties = jHipsterProperties;
     }
@@ -44,7 +52,12 @@ public class SecurityConfiguration {
                     .requestMatchers("/api/authenticate").permitAll()
                     .requestMatchers("/api/auth-info").permitAll()
                     .requestMatchers("/api/admin/**").hasAuthority(AuthoritiesConstants.ADMIN)
-                    .requestMatchers("/api/**").authenticated()
+                    // Interfaces internes : jeton de service uniquement (PI §0.7).
+                    .requestMatchers("/api/v1/interne/**").hasAuthority("INTERNAL_IAM_READ")
+                    // Routes métier : jeton à deux facteurs (D-61), puis @PreAuthorize route par route.
+                    .requestMatchers("/api/v1/**").access(new StrongAuthenticationAuthorizationManager(doubleFacteurExige, niveauxAcr))
+                    // Ressources générées par JHipster : administration technique uniquement.
+                    .requestMatchers("/api/**").hasAuthority(AuthoritiesConstants.ADMIN)
                     .requestMatchers("/v3/api-docs/**").hasAuthority(AuthoritiesConstants.ADMIN)
                     .requestMatchers("/management/health").permitAll()
                     .requestMatchers("/management/health/**").permitAll()

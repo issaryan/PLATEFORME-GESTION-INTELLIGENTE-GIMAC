@@ -43,7 +43,7 @@ import tools.jackson.databind.ObjectMapper;
 @IntegrationTest
 @ExtendWith(MockitoExtension.class)
 @AutoConfigureMockMvc
-@WithMockUser
+@WithMockUser(authorities = cm.gimac.des.iam.security.AuthoritiesConstants.ADMIN)
 class UserSessionResourceIT {
 
     private static final String DEFAULT_CERTIFICATE_THUMBPRINT = "AAAAAAAAAA";

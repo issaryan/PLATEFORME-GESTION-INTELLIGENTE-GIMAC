@@ -34,7 +34,7 @@ import tools.jackson.databind.ObjectMapper;
  */
 @IntegrationTest
 @AutoConfigureMockMvc
-@WithMockUser
+@WithMockUser(authorities = cm.gimac.des.iam.security.AuthoritiesConstants.ADMIN)
 class CollaboratorResourceIT {
 
     private static final String DEFAULT_FEDERATED_ID = "AAAAAAAAAA";

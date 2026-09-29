@@ -15,7 +15,52 @@ Identités, rôles à cinq niveaux (D-31), délégations (élévation 60 min et 
 
 ## État
 
-Squelette généré en JHipster 9.4.0, version cible. Code JHipster brut : domaine JPA, DTO MapStruct, services, ressources REST, changelogs Liquibase, messages fr et en. L'architecture hexagonale, l'outbox, l'inbox et les algorithmes du CC restent à écrire (SOC-01, SOC-05).
+Squelette JHipster 9.4.0 (CRUD généré réservé à l'administration technique, `ROLE_ADMIN`) et, en architecture hexagonale (`domain`, `application`, `infrastructure`, `web.rest.lot1`), l'administration complète des comptes et de l'authentification depuis la plateforme (D-62) et la réauthentification forte FIDO2 (IAM-07). Keycloak reste le moteur d'authentification ; nul n'ouvre sa console.
+
+### Administration des comptes et de la plateforme (D-62)
+
+- **Annuaire** (port `application/port/out/Annuaire`) : adaptateur réel `infrastructure/idp/KeycloakAnnuaire` (API d'administration, compte de service `iam-service` du domaine `gimac`, rôles `manage-users`, `view-users`, `query-users`, `query-groups`, `manage-realm`, `view-realm`), choisi par `gimac.adapters.annuaire=real` (profil prod) ; adaptateur en mémoire `AnnuaireEnMemoire` en développement et en test (comptes de démonstration `super.admin`, `rssi`). Panne de Keycloak : erreur 503 `IAM_IDP_UNAVAILABLE`, jamais de valeur par défaut.
+- **Règles** (`domain/service/ReglesAdministration`, `PolitiqueMotDePasse`, services purs) : identifiant `^[a-z][a-z0-9._-]{2,49}$`, courriel unique, profils connus seulement, profils privilégiés (`ROLE_SUPER_ADMIN`, `ROLE_RSSI`) attribués par le seul détenteur de `IAM_ROLE_PRIVILEGED_GRANT`, nul ne s'administre soi-même, le dernier super administrateur ne peut être retiré, motif obligatoire des actes, planchers de la politique de sécurité (12 caractères au moins, OTP 6 ou 8 chiffres sur 30 à 60 s, sessions 5 à 120 min et 1 à 24 h, protection contre la force brute obligatoire, 3 à 10 échecs).
+- **Journal d'administration** (`journal_administration`, insertion seule, déclencheur PostgreSQL) et événements d'audit par l'outbox, dans la transaction de l'acte.
+- **Premier accès** : étapes restantes calculées (`UPDATE_PASSWORD`, `CONFIGURE_TOTP`, `VERIFY_EMAIL`, `UPDATE_PROFILE`, `FICHE`) ; la fiche (téléphone, langue fr/en/es, fonction, charte acceptée) termine le premier accès côté plateforme ; les actions exigées sont conduites par les pages de Keycloak au thème GIMAC.
+- **Réauthentification forte FIDO2** (`ReauthentificationService`, webauthn4j) : enrôlement des clés depuis « Mon compte », défi à usage unique lié au sujet et à la finalité (2 min), vérification pour le service qui porte la décision (compteur de signatures mis à jour, assertion jamais rejouable, résultat publié vers l'audit). Actes d'administration sensibles : finalité `ADMIN_SENSITIVE` (suppression, profils, politique, composition d'un profil), 428 sans assertion, 403 `IAM_REAUTH_INVALID` si elle est refusée.
+
+### Routes (`/api/v1`)
+
+| Route | Exposée sous | Permission |
+|---|---|---|
+| `GET /comptes`, `/comptes/indicateurs`, `/comptes/{id}`, `/comptes/{id}/sessions` | `/bff/console/iam` | `IAM_ACCOUNT_READ` |
+| `GET /comptes/journal` | `/bff/console/iam` | `IAM_JOURNAL_READ` |
+| `POST /comptes` | `/bff/console/iam` | `IAM_ACCOUNT_CREATE` |
+| `PUT /comptes/{id}` | `/bff/console/iam` | `IAM_ACCOUNT_EDIT` |
+| `PUT /comptes/{id}/profils` (FIDO2) | `/bff/console/iam` | `IAM_ACCOUNT_ROLES` |
+| `POST /comptes/{id}/activation`, `/desactivation` | `/bff/console/iam` | `IAM_ACCOUNT_STATUS` |
+| `DELETE /comptes/{id}?motif=` (FIDO2) | `/bff/console/iam` | `IAM_ACCOUNT_DELETE` |
+| `POST /comptes/{id}/actions-requises`, `/second-facteur/reinitialisation`, `/mot-de-passe-provisoire`, `/sessions/fermeture` | `/bff/console/iam` | `IAM_ACCOUNT_SECURITY` |
+| `GET` / `PUT` (FIDO2) `/configuration/politique-securite` | `/bff/console/iam` | `PLATFORM_SECURITY_POLICY_READ` / `_EDIT` |
+| `GET` / `PUT /configuration/messagerie`, `POST /configuration/messagerie/test` | `/bff/console/iam` | `PLATFORM_MESSAGING_EDIT` |
+| `GET /configuration/profils`, `/configuration/permissions` | `/bff/console/iam` | `IAM_ACCOUNT_READ` |
+| `PUT /configuration/profils/{code}/permissions` (FIDO2) | `/bff/console/iam` | `IAM_PROFILE_EDIT` |
+| `/moi` (GET, PUT), `/moi/premiere-configuration`, `/moi/actions`, `/moi/sessions`, `/moi/cles-securite` | `/bff/{des,portail,console}/iam` | tout utilisateur à deux facteurs |
+| `POST /reauthentification/defi` | `/bff/{des,portail,console}/iam` | tout utilisateur à deux facteurs |
+| `POST /interne/reauthentifications/verification` | jamais relayée | jeton de service `INTERNAL_IAM_READ` |
+
+Erreurs : ProblemDetail (`code`, `message`, `details`, `correlationId`). Sécurité (D-61) : `/api/v1/**` exige un jeton à deux facteurs (`acr` 2 ou 3) ; `/api/v1/interne/**` un jeton de service ; le CRUD généré `/api/**` le rôle `ROLE_ADMIN`.
+
+### Événements (outbox, CloudEvents)
+
+`iam.account-administered.v1` (sujet `iam.account`), `iam.configuration-changed.v1` (`iam.configuration`), `iam.reauthentication-verified.v1` (`iam.reauthentication`).
+
+## Tests : définition de fini (D-61)
+
+| Type | Tests |
+|---|---|
+| Unitaires | `ReglesAdministrationTest`, `PolitiqueMotDePasseTest`, `AdministrationComptesServiceTest`, `MonCompteEtConfigurationTest`, `JournalActesTest`, `ReauthentificationServiceTest` (authentificateur FIDO2 émulé, webauthn4j-test : enrôlement, assertion, non-rejeu, sujet et finalité liés, expiration) |
+| Sécurité | `IamRoutesSecurityTest` (toutes les routes : 401, 403 sans second facteur, 403 sans la permission, accès avec elle, 428 et 403 de la réauthentification, route interne), `TechnicalStructureTest` |
+| Intégration | `ParcoursAdministrationIT` (PostgreSQL et Kafka par Testcontainers, clé FIDO2 émulée de bout en bout), `KeycloakAnnuaireIT` (vrai Keycloak 26.7.4 et domaine `gimac` généré : attributs du profil utilisateur, profils, politique, messagerie, erreurs), CRUD généré |
+| Recette | `RecetteGherkinIT` : `administration-comptes.feature`, `premier-acces.feature` |
+
+Seuils JaCoCo (80 %) : à `test`, chaque classe de la tranche en lignes et en méthodes, l'ensemble en branches ; à `verify`, tout le service en lignes et en méthodes hors MapStruct. `KeycloakAnnuaireIT` démarre Keycloak par Testcontainers (`quay.io/keycloak/keycloak:26.7.4-0`) ou utilise un Keycloak déjà lancé : `GIMAC_KEYCLOAK_IT_URL`, `GIMAC_KEYCLOAK_IT_SECRET` (secret du client `iam-service`).
 
 ## Lancer
 
@@ -57,6 +102,7 @@ Copié et adapté (paquet `cm.gimac.des.iam`) ; chaque bean est inactif tant que
 | 2026-09-28 | — | Écarts comblés (liaison au certificat, masquage Luhn 6+4) et 11 classes reprises d'afriland : GroupeAgenceKc, IdentityProviderInfo, KeycloakAdminAdapter, KeycloakAdminPort, KeycloakClientRegistrationConfig, KeycloakConfig, KeycloakProperties, ProfilKeycloak, ServiceTokenProvider, SessionInfo, UtilisateurRealm (D-53). |
 | 2026-09-29 | — | Masquage des journaux activé (logback, `%maskedMsg`) ; 101 tests unitaires et 375 tests d'intégration réussis, image Jib construite ; `KeycloakProperties` déplacée dans l'adaptateur (test d'architecture) ; `List.of` (contrôle de modernité) (D-54). |
 | 2026-09-29 | — | Permissions métier (HOM_*, CER_*, INTERNAL_*) acceptées comme autorités, en plus de ROLE_* (D-55). |
+| 2026-09-29 | — | Administration des comptes et de l'authentification depuis la plateforme (D-62) : annuaire Keycloak, premier accès, « Mon compte », politique de sécurité, messagerie, profils, journal ; réauthentification forte FIDO2 (IAM-07). 170 tests unitaires et de sécurité, 396 d'intégration et de recette réussis ; seuils JaCoCo atteints. |
 <!-- GIMAC:FIN -->
 
 # iam

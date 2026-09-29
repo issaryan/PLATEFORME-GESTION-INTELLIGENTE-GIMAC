@@ -1,0 +1,224 @@
+package cm.gimac.des.iam.infrastructure.idp;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import cm.gimac.des.iam.domain.IamException;
+import cm.gimac.des.iam.domain.compte.ActionRequise;
+import cm.gimac.des.iam.domain.compte.Compte;
+import cm.gimac.des.iam.domain.compte.ConfigurationMessagerie;
+import cm.gimac.des.iam.domain.compte.FicheCompte;
+import cm.gimac.des.iam.domain.compte.NouveauCompte;
+import cm.gimac.des.iam.domain.compte.PolitiqueSecurite;
+import cm.gimac.des.iam.domain.compte.Profil;
+import java.nio.file.Path;
+import java.time.Duration;
+import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
+import org.keycloak.OAuth2Constants;
+import org.keycloak.admin.client.Keycloak;
+import org.keycloak.admin.client.KeycloakBuilder;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.wait.strategy.Wait;
+import org.testcontainers.utility.MountableFile;
+
+/**
+ * Adaptateur Keycloak de l'annuaire (D-62) face au vrai fournisseur d'identité, realm GIMAC généré
+ * (infra/keycloak/gimac-realm.json) : le compte de service iam-service y porte les rôles
+ * d'administration du realm, et le profil utilisateur déclare les attributs de la plateforme.
+ * Keycloak est lancé par Testcontainers, ou déjà démarré si GIMAC_KEYCLOAK_IT_URL est fourni.
+ */
+class KeycloakAnnuaireIT {
+
+    static final String SECRET = "secret-iam-it";
+    static final String IMAGE = "quay.io/keycloak/keycloak:26.7.4-0";
+    static final Set<String> PRIVILEGIES = Set.of("ROLE_SUPER_ADMIN", "ROLE_RSSI");
+
+    static GenericContainer<?> conteneur;
+    static Keycloak client;
+    static KeycloakAnnuaire annuaire;
+
+    @BeforeAll
+    @Timeout(value = 5, unit = TimeUnit.MINUTES)
+    @SuppressWarnings("resource")
+    static void demarrer() {
+        String url = System.getenv("GIMAC_KEYCLOAK_IT_URL");
+        String secret = System.getenv().getOrDefault("GIMAC_KEYCLOAK_IT_SECRET", SECRET);
+        if (url == null || url.isBlank()) {
+            conteneur = new GenericContainer<>(IMAGE)
+                .withExposedPorts(8080)
+                .withEnv("KC_BOOTSTRAP_ADMIN_USERNAME", "admin")
+                .withEnv("KC_BOOTSTRAP_ADMIN_PASSWORD", "admin")
+                .withEnv("GIMAC_SECRET_IAM_SERVICE", SECRET)
+                .withEnv("GIMAC_SECRET_TESTER_CLI", "x")
+                .withEnv("GIMAC_SECRET_HOMOLOGATION_SERVICE", "x")
+                .withEnv("GIMAC_SECRET_CERTIFICATION_SERVICE", "x")
+                .withEnv("GIMAC_SECRET_PARTICIPANT_SERVICE", "x")
+                .withEnv("GIMAC_SECRET_GATEWAY_SUPERVISION", "x")
+                .withEnv("GIMAC_MOT_DE_PASSE_TEST", "Test-Gimac-2026!")
+                .withCopyFileToContainer(
+                    MountableFile.forHostPath(Path.of("../infra/keycloak/gimac-realm.json")),
+                    "/opt/keycloak/data/import/gimac-realm.json"
+                )
+                .withCommand("start-dev", "--import-realm")
+                .waitingFor(Wait.forHttp("/realms/gimac").forStatusCode(200).withStartupTimeout(Duration.ofMinutes(4)));
+            conteneur.start();
+            url = "http://" + conteneur.getHost() + ":" + conteneur.getMappedPort(8080);
+        }
+        client = KeycloakBuilder.builder()
+            .serverUrl(url)
+            .realm("gimac")
+            .grantType(OAuth2Constants.CLIENT_CREDENTIALS)
+            .clientId("iam-service")
+            .clientSecret(secret)
+            .build();
+        annuaire = new KeycloakAnnuaire(client, "gimac", PRIVILEGIES);
+    }
+
+    @AfterAll
+    static void arreter() {
+        if (client != null) client.close();
+        if (conteneur != null) conteneur.stop();
+    }
+
+    static String unique(String prefixe) {
+        return prefixe + "-" + UUID.randomUUID().toString().substring(0, 8);
+    }
+
+    static NouveauCompte nouveau(String identifiant, String... profils) {
+        return new NouveauCompte(identifiant, "Awa", "Mballa", identifiant + "@gimac.test", "+237600000001", "Chargée DDRM", "INST-0042", Set.of(profils));
+    }
+
+    @Test
+    @DisplayName("Création : attributs de la plateforme conservés par le profil utilisateur, profil et actions de premier accès")
+    void creationEtRelecture() {
+        String identifiant = unique("agent");
+        String id = annuaire.creer(nouveau(identifiant, "ROLE_CHARGE_DDRM"), List.of(ActionRequise.UPDATE_PASSWORD, ActionRequise.CONFIGURE_TOTP));
+        Compte c = annuaire.lire(id).orElseThrow();
+        assertThat(c.identifiant()).isEqualTo(identifiant);
+        assertThat(c.telephone()).isEqualTo("+237600000001");
+        assertThat(c.fonction()).isEqualTo("Chargée DDRM");
+        assertThat(c.institutionId()).isEqualTo("INST-0042");
+        assertThat(c.langue()).isEqualTo("fr");
+        assertThat(c.profilComplet()).isFalse();
+        assertThat(c.premierAccesEnAttente()).isTrue();
+        assertThat(c.profils()).containsExactly("ROLE_CHARGE_DDRM");
+        assertThat(c.actionsRequises()).containsExactlyInAnyOrder(ActionRequise.UPDATE_PASSWORD, ActionRequise.CONFIGURE_TOTP);
+        assertThat(c.secondFacteur()).isFalse();
+        assertThat(c.creeLe()).isNotNull();
+
+        assertThat(annuaire.parIdentifiant(identifiant)).map(Compte::id).contains(id);
+        assertThat(annuaire.emailPris(identifiant + "@gimac.test", null)).isTrue();
+        assertThat(annuaire.emailPris(identifiant + "@gimac.test", id)).isFalse();
+        assertThat(annuaire.lister()).extracting(Compte::identifiant).contains(identifiant).noneMatch(u -> u.startsWith("service-account-"));
+        assertThatThrownBy(() -> annuaire.creer(nouveau(identifiant, "ROLE_CHARGE_DDRM"), List.of())).isInstanceOfSatisfying(IamException.class, e ->
+            assertThat(e.code()).isEqualTo("IAM_ACCOUNT_CONFLICT")
+        );
+    }
+
+    @Test
+    @DisplayName("Fiche, fin du premier accès, profils, activation, actions requises, second facteur, mot de passe provisoire")
+    void cycleDeVie() {
+        String id = annuaire.creer(nouveau(unique("cycle"), "ROLE_CHARGE_DDRM"), List.of());
+        annuaire.modifierFiche(id, new FicheCompte("Aïcha", null, null, "+237699000000", "Cheffe DDRM", "en", "INST-0043"));
+        annuaire.marquerProfilComplet(id, true);
+        annuaire.definirProfils(id, Set.of("ROLE_CHEF_DDRM"));
+        Compte c = annuaire.lire(id).orElseThrow();
+        assertThat(c.prenom()).isEqualTo("Aïcha");
+        assertThat(c.telephone()).isEqualTo("+237699000000");
+        assertThat(c.langue()).isEqualTo("en");
+        assertThat(c.institutionId()).isEqualTo("INST-0043");
+        assertThat(c.profilComplet()).isTrue();
+        assertThat(c.profils()).containsExactly("ROLE_CHEF_DDRM");
+
+        annuaire.definirActif(id, false);
+        assertThat(annuaire.lire(id).orElseThrow().actif()).isFalse();
+        annuaire.definirActif(id, true);
+        assertThat(annuaire.lire(id).orElseThrow().actif()).isTrue();
+
+        annuaire.exigerActions(id, Set.of(ActionRequise.UPDATE_PASSWORD));
+        annuaire.reinitialiserSecondFacteur(id);
+        assertThat(annuaire.lire(id).orElseThrow().actionsRequises()).containsExactlyInAnyOrder(ActionRequise.UPDATE_PASSWORD, ActionRequise.CONFIGURE_TOTP);
+        assertThat(annuaire.definirMotDePasseProvisoire(id)).hasSize(20);
+        assertThat(annuaire.sessions(id)).isEmpty();
+        annuaire.fermerSessions(id);
+        assertThatThrownBy(() -> annuaire.fermerSession(id, UUID.randomUUID().toString())).isInstanceOfSatisfying(IamException.class, e ->
+            assertThat(e.status()).isEqualTo(404)
+        );
+
+        annuaire.supprimer(id);
+        assertThat(annuaire.lire(id)).isEmpty();
+        assertThatThrownBy(() -> annuaire.supprimer(id)).isInstanceOfSatisfying(IamException.class, e -> assertThat(e.code()).isEqualTo("IAM_ACCOUNT_NOT_FOUND"));
+    }
+
+    @Test
+    @DisplayName("Politique de sécurité : écrite dans le realm puis relue à l'identique")
+    void politique() {
+        PolitiqueSecurite p = new PolitiqueSecurite(14, 1, 1, 1, 1, 5, 90, true, 6, 30, "HmacSHA256", 30, 10, true, 5, 15);
+        annuaire.appliquerPolitique(p);
+        assertThat(annuaire.politique()).isEqualTo(p);
+    }
+
+    @Test
+    @DisplayName("Messagerie : relue sans secret ; le mot de passe est conservé s'il n'est pas ressaisi")
+    void messagerie() {
+        annuaire.appliquerMessagerie(new ConfigurationMessagerie("smtp.gimac.test", 587, "des@gimac.test", "DES", true, false, true, "des", "s3cret", false));
+        ConfigurationMessagerie lue = annuaire.messagerie();
+        assertThat(lue.hote()).isEqualTo("smtp.gimac.test");
+        assertThat(lue.motDePasse()).isNull();
+        assertThat(lue.motDePasseDefini()).isTrue();
+        annuaire.appliquerMessagerie(new ConfigurationMessagerie("smtp2.gimac.test", 465, "des@gimac.test", "DES", false, true, true, "des", null, true));
+        assertThat(annuaire.messagerie().motDePasseDefini()).isTrue();
+        assertThat(annuaire.messagerie().port()).isEqualTo(465);
+        // Aucun serveur SMTP joignable : l'envoi d'essai échoue proprement.
+        assertThatThrownBy(() -> annuaire.testerMessagerie("rssi@gimac.test")).isInstanceOf(IamException.class);
+    }
+
+    @Test
+    @DisplayName("Profils par fonction : permissions composées, profils privilégiés signalés, composition modifiable")
+    void profils() {
+        List<Profil> profils = annuaire.profils();
+        Profil superAdmin = profils.stream().filter(p -> p.code().equals("ROLE_SUPER_ADMIN")).findFirst().orElseThrow();
+        assertThat(superAdmin.privilegie()).isTrue();
+        assertThat(superAdmin.permissions()).contains("IAM_ROLE_PRIVILEGED_GRANT", "PLATFORM_CONFIG_EDIT", "IAM_ACCOUNT_DELETE");
+        Profil rssi = profils.stream().filter(p -> p.code().equals("ROLE_RSSI")).findFirst().orElseThrow();
+        assertThat(rssi.permissions()).contains("IAM_ACCOUNT_CREATE", "PLATFORM_SECURITY_POLICY_EDIT").doesNotContain("IAM_ROLE_PRIVILEGED_GRANT");
+        assertThat(annuaire.permissions()).contains("PAR_INSTITUTION_READ", "IAM_ACCOUNT_READ").noneMatch(p -> p.startsWith("ROLE_"));
+
+        Profil sna = profils.stream().filter(p -> p.code().equals("ROLE_SNA")).findFirst().orElseThrow();
+        Set<String> avant = new TreeSet<>(sna.permissions());
+        Set<String> apres = new TreeSet<>(avant);
+        apres.add("HOM_EVIDENCE_FILE_EXPORT");
+        annuaire.definirPermissionsProfil("ROLE_SNA", apres);
+        assertThat(annuaire.profils().stream().filter(p -> p.code().equals("ROLE_SNA")).findFirst().orElseThrow().permissions()).contains("HOM_EVIDENCE_FILE_EXPORT");
+        annuaire.definirPermissionsProfil("ROLE_SNA", avant);
+        assertThat(annuaire.profils().stream().filter(p -> p.code().equals("ROLE_SNA")).findFirst().orElseThrow().permissions()).isEqualTo(avant);
+    }
+
+    @Test
+    @DisplayName("Compte inconnu : absent ; fournisseur injoignable : erreur 503 explicite")
+    void erreurs() {
+        assertThat(annuaire.lire(UUID.randomUUID().toString())).isEmpty();
+        try (
+            Keycloak injoignable = KeycloakBuilder.builder()
+                .serverUrl("http://127.0.0.1:1")
+                .realm("gimac")
+                .grantType(OAuth2Constants.CLIENT_CREDENTIALS)
+                .clientId("iam-service")
+                .clientSecret("x")
+                .build()
+        ) {
+            assertThatThrownBy(() -> new KeycloakAnnuaire(injoignable, "gimac", PRIVILEGIES).lister()).isInstanceOfSatisfying(IamException.class, e ->
+                assertThat(e.code()).isEqualTo("IAM_IDP_UNAVAILABLE")
+            );
+        }
+    }
+}

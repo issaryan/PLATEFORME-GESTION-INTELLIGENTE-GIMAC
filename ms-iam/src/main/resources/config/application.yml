@@ -101,6 +101,10 @@ management:
 spring:
   application:
     name: iam
+  jackson:
+    # Champs booléens et numériques facultatifs dans les requêtes : valeur par défaut (Jackson 3).
+    deserialization:
+      fail-on-null-for-primitives: false
   docker:
     compose:
       enabled: true
@@ -232,3 +236,69 @@ jhipster:
 # ===================================================================
 
 # application:
+
+---
+# ---------------------------------------------------------------------------
+# Socle du lot (PI-GIMAC-01 §0.4, §0.7), administration des comptes et
+# réauthentification forte (D-61) : outbox, jeton de service, adaptateurs.
+# ---------------------------------------------------------------------------
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          # Jeton de service (PI §0.7) : client Keycloak iam-service, secret fourni par l'environnement.
+          # Il porte aussi les rôles d'administration du realm (manage-users, view-realm, manage-realm)
+          # utilisés par l'adaptateur Keycloak.
+          service-token:
+            provider: oidc
+            client-id: ${GIMAC_SERVICE_CLIENT_ID:iam-service}
+            client-secret: ${GIMAC_SERVICE_CLIENT_SECRET:}
+            authorization-grant-type: client_credentials
+            scope: openid
+  kafka:
+    bootstrap-servers: ${spring.cloud.stream.kafka.binder.brokers:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      properties:
+        enable.idempotence: true
+gimac:
+  outbox:
+    delay: 500
+  # Sélection des adaptateurs (PI §0.8) : real | stub.
+  adapters:
+    annuaire: stub
+  kafka:
+    rebut:
+      actif: true
+      nombre-tentatives: 3
+      intervalle-ms: 1000
+  securite:
+    # D-61 : routes métier réservées aux jetons issus d'une authentification à deux facteurs.
+    double-facteur:
+      exige: true
+      niveaux-acr: 2,3
+  iam:
+    keycloak:
+      url: ${GIMAC_KEYCLOAK_URL:http://localhost:9080}
+      realm: ${GIMAC_KEYCLOAK_REALM:gimac}
+      client-id: ${GIMAC_SERVICE_CLIENT_ID:iam-service}
+      client-secret: ${GIMAC_SERVICE_CLIENT_SECRET:}
+    # Actions imposées à la première connexion d'un compte créé par l'administration.
+    premiere-connexion:
+      actions: [UPDATE_PASSWORD, CONFIGURE_TOTP, UPDATE_PROFILE, VERIFY_EMAIL]
+      validite-invitation: 72h
+    # Profils attribuables (rôles composites du realm) ; les profils privilégiés exigent
+    # IAM_ROLE_PRIVILEGED_GRANT (réservé au super administrateur).
+    profils:
+      attribuables: [ROLE_SUPER_ADMIN, ROLE_RSSI, ROLE_CHEF_DES, ROLE_INGENIEUR_HOMOLOGATION, ROLE_CONFORMITE, ROLE_DG, ROLE_CORRESPONDANT,
+        ROLE_CHARGE_DDRM, ROLE_CHEF_DDRM, ROLE_SNA, ROLE_PRODUCTION_MONETIQUE, ROLE_POLE_RESEAU, ROLE_POLE_SYSTEME, ROLE_CONDUCTEUR_PROJET]
+      privilegies: [ROLE_SUPER_ADMIN, ROLE_RSSI]
+    # Réauthentification forte FIDO2 (IAM-07).
+    webauthn:
+      rp-id: ${GIMAC_WEBAUTHN_RP_ID:localhost}
+      rp-nom: Plateforme DES du GIMAC
+      origines: ${GIMAC_WEBAUTHN_ORIGINES:http://localhost:4200,http://localhost:4201,http://localhost:4202,http://localhost:8080}
+      validite-defi: 2m

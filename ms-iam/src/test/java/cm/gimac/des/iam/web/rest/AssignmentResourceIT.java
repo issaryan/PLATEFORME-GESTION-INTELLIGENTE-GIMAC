@@ -42,7 +42,7 @@ import tools.jackson.databind.ObjectMapper;
 @IntegrationTest
 @ExtendWith(MockitoExtension.class)
 @AutoConfigureMockMvc
-@WithMockUser
+@WithMockUser(authorities = cm.gimac.des.iam.security.AuthoritiesConstants.ADMIN)
 class AssignmentResourceIT {
 
     private static final String DEFAULT_DEPARTMENT = "AAAAAAAAAA";

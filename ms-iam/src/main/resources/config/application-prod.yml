@@ -110,3 +110,7 @@ jhipster:
 # ===================================================================
 
 # application:
+gimac:
+  # Production : annuaire réel, API d'administration de Keycloak (D-62).
+  adapters:
+    annuaire: real

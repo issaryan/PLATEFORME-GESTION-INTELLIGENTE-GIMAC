@@ -45,7 +45,7 @@ import tools.jackson.databind.ObjectMapper;
 @IntegrationTest
 @ExtendWith(MockitoExtension.class)
 @AutoConfigureMockMvc
-@WithMockUser
+@WithMockUser(authorities = cm.gimac.des.iam.security.AuthoritiesConstants.ADMIN)
 class DelegationResourceIT {
 
     private static final DelegationType DEFAULT_TYPE = DelegationType.ELEVATION_JIT;

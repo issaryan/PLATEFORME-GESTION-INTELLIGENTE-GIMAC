@@ -14,6 +14,11 @@
 # ===================================================================
 
 spring:
+  kafka:
+    # Comme en principal : le liant Spring Cloud Stream imposerait ByteArraySerializer.
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
   application:
     name: iam
   cloud:
@@ -21,6 +26,9 @@ spring:
   liquibase:
     contexts: test
   jackson:
+    # Champs booléens et numériques facultatifs dans les requêtes : valeur par défaut (Jackson 3).
+    deserialization:
+      fail-on-null-for-primitives: false
     datatype:
       datetime:
         write-durations-as-timestamps: false
@@ -89,3 +97,35 @@ management:
   health:
     mail:
       enabled: false
+
+# Socle du lot et administration des comptes (D-61, D-62) : adaptateurs de substitution.
+gimac:
+  outbox:
+    delay: 500
+  adapters:
+    annuaire: stub
+  kafka:
+    rebut:
+      actif: false
+  securite:
+    double-facteur:
+      exige: true
+      niveaux-acr: 2,3
+  iam:
+    keycloak:
+      url: http://localhost:9080
+      realm: gimac
+      client-id: iam-service
+      client-secret: test
+    premiere-connexion:
+      actions: [UPDATE_PASSWORD, CONFIGURE_TOTP, UPDATE_PROFILE, VERIFY_EMAIL]
+      validite-invitation: 72h
+    profils:
+      attribuables: [ROLE_SUPER_ADMIN, ROLE_RSSI, ROLE_CHEF_DES, ROLE_INGENIEUR_HOMOLOGATION, ROLE_CONFORMITE, ROLE_DG, ROLE_CORRESPONDANT,
+        ROLE_CHARGE_DDRM, ROLE_CHEF_DDRM, ROLE_SNA, ROLE_PRODUCTION_MONETIQUE, ROLE_POLE_RESEAU, ROLE_POLE_SYSTEME, ROLE_CONDUCTEUR_PROJET]
+      privilegies: [ROLE_SUPER_ADMIN, ROLE_RSSI]
+    webauthn:
+      rp-id: localhost
+      rp-nom: Plateforme DES du GIMAC
+      origines: http://localhost
+      validite-defi: 2m
