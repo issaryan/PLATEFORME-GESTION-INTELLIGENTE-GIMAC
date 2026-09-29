@@ -10,4 +10,7 @@ import org.springframework.stereotype.Repository;
  */
 @SuppressWarnings("unused")
 @Repository
-public interface ScopeItemRepository extends JpaRepository<ScopeItem, UUID> {}
+public interface ScopeItemRepository extends JpaRepository<ScopeItem, UUID> {
+    /** Éléments du périmètre contractualisé d'une liaison (HOM-05). */
+    java.util.List<ScopeItem> findByScope_IdOrderByServiceCode(UUID scopeId);
+}

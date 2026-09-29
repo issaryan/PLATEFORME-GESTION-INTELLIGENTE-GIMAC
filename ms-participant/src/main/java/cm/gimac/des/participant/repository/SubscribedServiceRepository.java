@@ -15,6 +15,9 @@ import org.springframework.stereotype.Repository;
  */
 @Repository
 public interface SubscribedServiceRepository extends JpaRepository<SubscribedService, UUID>, JpaSpecificationExecutor<SubscribedService> {
+    /** Services souscrits d'une institution dans un état donné (périmètre contractualisé, HOM-05). */
+    List<SubscribedService> findByInstitution_IdAndStateOrderByServiceCode(UUID institutionId, cm.gimac.des.participant.domain.enumeration.SubscriptionState state);
+
     default Optional<SubscribedService> findOneWithEagerRelationships(UUID id) {
         return this.findOneWithToOneRelationships(id);
     }

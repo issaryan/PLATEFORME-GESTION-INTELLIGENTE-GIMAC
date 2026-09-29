@@ -48,6 +48,28 @@ public abstract class AbstractHomologationIT {
     @Autowired
     private RelaisOutboxDeTest relais;
 
+    /**
+     * Les scénarios du lot passent par MockMvc et valident leurs transactions : leurs données sont
+     * effacées après chaque test pour ne pas fausser les tests générés, qui comptent les lignes.
+     */
+    @org.junit.jupiter.api.AfterEach
+    void effacerDonneesDuScenario() {
+        effacer(jdbc);
+    }
+
+    /** La réserve de connexions n'est pas en validation automatique (JHipster) : validation explicite. */
+    public static void effacer(JdbcTemplate jdbc) {
+        jdbc.execute((org.springframework.jdbc.core.ConnectionCallback<Void>) c -> {
+            try (var st = c.createStatement()) {
+                st.execute("truncate table liaison, referential_version, outbox_event cascade");
+            }
+            if (!c.getAutoCommit()) {
+                c.commit();
+            }
+            return null;
+        });
+    }
+
     protected void relayerOutbox() {
         relais.relayer();
     }
@@ -57,7 +79,7 @@ public abstract class AbstractHomologationIT {
     }
 
     protected static RequestPostProcessor utilisateur(UUID id, String... permissions) {
-        return jwt().jwt(j -> j.subject(id.toString())).authorities(Arrays.stream(permissions).map(SimpleGrantedAuthority::new).toArray(GrantedAuthority[]::new));
+        return jwt().jwt(j -> j.subject(id.toString()).claim("acr", "2")).authorities(Arrays.stream(permissions).map(SimpleGrantedAuthority::new).toArray(GrantedAuthority[]::new));
     }
 
     protected Consumer<String, String> consommateur(String sujet) {

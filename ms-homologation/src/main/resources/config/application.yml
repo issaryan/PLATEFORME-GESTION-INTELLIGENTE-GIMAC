@@ -265,6 +265,8 @@ gimac:
   # Sélection des adaptateurs, un port à la fois (PI §0.8) : real | stub.
   adapters:
     participant-reader: stub
+    # Annuaire des collaborateurs de MS-IAM (habilitation du conducteur de projet, D-58).
+    collaborator-reader: stub
     document-deposit: stub
     reauthentication: stub
     simulator-reader: stub

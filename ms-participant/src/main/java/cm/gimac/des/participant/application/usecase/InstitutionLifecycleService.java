@@ -354,6 +354,48 @@ public class InstitutionLifecycleService implements ManageInstitutionUseCase {
         return t;
     }
 
+    /** Acteur des transitions automatiques : le système, sur événement d'un autre service. */
+    static final Acteur SYSTEME = new Acteur(new UUID(0, 0), "MS-HOMOLOGATION");
+
+    @Override
+    public java.util.Optional<StatusTransition> debuterHomologation(UUID institutionId, UUID liaisonId, String typeProjet) {
+        Institution i = verrouiller(institutionId);
+        if (i.getStatus() == InstitutionStatus.EN_HOMOLOGATION) {
+            return java.util.Optional.empty();
+        }
+        if (i.getStatus() != InstitutionStatus.ADHERENT) {
+            // MS-HOMOLOGATION n'ouvre une liaison que sur un adhérent ; un écart est signalé, jamais appliqué.
+            LOG.warn("Liaison {} ouverte sur l'institution {} à l'état {} : aucune transition automatique", liaisonId, institutionId, i.getStatus());
+            return java.util.Optional.empty();
+        }
+        InstitutionLifecycle.verifierTransition(i.getStatus(), InstitutionStatus.EN_HOMOLOGATION);
+        Instant maintenant = clock.instant();
+        String motif = "Ouverture de la liaison " + liaisonId + " (" + typeProjet + ")";
+        StatusTransition t = transitions.save(
+            new StatusTransition()
+                .fromStatus(i.getStatus())
+                .toStatus(InstitutionStatus.EN_HOMOLOGATION)
+                .reason(motif)
+                .requesterId(SYSTEME.id())
+                .requestedAt(maintenant)
+                .automaticTransition(true)
+                .requiredApprovals(1)
+                .approverId(SYSTEME.id())
+                .state(TransitionState.APPROUVEE)
+                .decidedAt(maintenant)
+                .institution(i)
+        );
+        appliquer(i, t, maintenant);
+        journaliser(i, InteractionNature.CHANGEMENT_STATUT, t.getFromStatus() + " vers " + t.getToStatus() + " : " + motif, SYSTEME, liaisonId.toString());
+        outbox.publish(
+            AGREGAT_INSTITUTION,
+            i.getId(),
+            StatusChangedPayload.TYPE,
+            new StatusChangedPayload(i.getId(), i.getParticipantCode(), t.getFromStatus().name(), i.getStatus().name(), motif, t.getId(), maintenant)
+        );
+        return java.util.Optional.of(t);
+    }
+
     // ------------------------------------------------------------------ outils
 
     private void appliquer(Institution i, StatusTransition t, Instant maintenant) {

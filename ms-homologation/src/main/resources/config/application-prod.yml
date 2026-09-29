@@ -106,6 +106,10 @@ jhipster:
 
 # Lot 1 : adresses des services joints en prod (Docker Compose, Kubernetes).
 gimac:
+  # Production : registre des institutions et annuaire réels pour le cadrage (étape 3, D-57, D-58).
+  adapters:
+    participant-reader: real
+    collaborator-reader: real
   services:
     participant:
       url: http://participant:8085

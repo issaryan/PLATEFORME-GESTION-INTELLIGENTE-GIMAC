@@ -33,7 +33,7 @@ import tools.jackson.databind.ObjectMapper;
  */
 @IntegrationTest
 @AutoConfigureMockMvc
-@WithMockUser
+@WithMockUser(authorities = cm.gimac.des.homologation.security.AuthoritiesConstants.ADMIN)
 class ContractualScopeResourceIT {
 
     private static final Instant DEFAULT_DATE_DERIVATION = Instant.ofEpochMilli(0L);

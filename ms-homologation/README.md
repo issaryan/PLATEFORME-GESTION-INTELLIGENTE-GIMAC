@@ -22,6 +22,26 @@ Suivi de l'homologation des participants : référentiel d'opérations versionn�
 - `web/rest/` : ressources générées (`/api/<entités>`) et ressources du lot (`/api/v1/...`, exposées par la passerelle sous `/bff/des/homologation` et `/bff/portail/homologation`).
 - Test d'architecture : couches `application` et `infrastructure`, services de domaine sans Spring.
 
+## Cadrage : étape 3 du parcours (D-57, D-58)
+
+La liaison s'ouvre au cadrage sur une institution **adhérente** (ou déjà en homologation, pour une nouvelle liaison sans repasser par l'adhésion, rang 35). Un **chef de département** (chef du DES ou de la DDRM : `HOM_LIAISON_OPEN` et `HOM_PROJECT_DESIGNATE`) l'ouvre en désignant le **conducteur de projet** parmi les détenteurs du rôle `CONDUCTEUR_PROJET`, actifs et internes au GIMAC ; la banque partenaire éventuelle doit être une banque. La liaison est liée à la version publiée en vigueur du référentiel ; son **périmètre contractualisé** est dérivé des services souscrits (HOM-05), le service `TRANSVERSE` toujours inclus. L'événement `homologation.liaison-opened.v1` (sujet `homologation.liaison`) fait passer l'adhérent à `EN_HOMOLOGATION` dans MS-PARTICIPANT ; la redésignation publie `homologation.liaison-lead-designated.v1`. Une seule liaison active par institution et type de projet (index partiel `uk_liaison_active`).
+
+| Méthode et chemin (`/api/v1`, sous `/bff/des/homologation`) | Permission | Objet |
+|---|---|---|
+| `GET /liaisons?etat=&typeProjet=&institutionId=&recherche=&mesProjets=&page=&taille=` | `HOM_LIAISON_LIST` ou `HOM_LIAISON_READ` | Liste `{contenu, total}` ; `mesProjets` : liaisons confiées au conducteur connecté |
+| `GET /liaisons/{id}` | `HOM_LIAISON_READ` | Fiche : phase, périmètre, intervenants, actions permises |
+| `GET /liaisons/conducteurs` | `HOM_PROJECT_DESIGNATE` ou `HOM_LIAISON_OPEN` | Conducteurs désignables |
+| `POST /liaisons` | `HOM_LIAISON_OPEN` et `HOM_PROJECT_DESIGNATE` | Ouverture (201, 403, 409, 503) |
+| `PUT /liaisons/{id}/chef-de-projet` | `HOM_PROJECT_DESIGNATE` | Redésignation motivée |
+
+Ports sortants : `ParticipantDirectoryPort` (interface interne `/api/v1/interne/institutions/{id}` de MS-PARTICIPANT) et `CollaboratorDirectoryPort` (`/api/v1/interne/collaborateurs` de MS-IAM), jeton de service ; adaptateurs réels en profil prod, de substitution en développement et en test (`gimac.adapters.participant-reader`, `collaborator-reader`). Un annuaire injoignable donne 503, jamais un statut supposé.
+
+Sécurité (D-61) : `/api/v1/**` exige un jeton à deux facteurs (`acr` 2 ou 3) ; le CRUD généré `/api/**` est réservé à `ROLE_ADMIN`.
+
+## Tests : définition de fini (D-61)
+
+Unitaires (`LiaisonOpeningPolicyTest`, `OpenLiaisonServiceTest`, `LiaisonQueriesTest`, `AdaptateursCadrageTest`, `StrongAuthenticationAuthorizationManagerTest`), sécurité (`LiaisonsCadrageResourceSecurityTest`), intégration (`CadrageLiaisonIT` sur PostgreSQL et Kafka), recette (`cadrage.feature` dans `RecetteGherkinIT`). Seuils JaCoCo à 80 % : à `test`, classes du cadrage en lignes et méthodes, l'ensemble en branches ; à `verify`, tout le service en lignes et en fonctions hors MapStruct. Les scénarios du lot effacent leurs données après chaque test (les tests générés comptent les lignes).
+
 ## Lancer
 
 - Avec la plateforme : `infra/docker-compose/gimac-dev.sh demarrer`, puis `infra/docker-compose/scripts/verifier-phase0.sh`.
@@ -37,6 +57,7 @@ Suivi de l'homologation des participants : référentiel d'opérations versionn�
 | 2026-09-28 | — | Reprise de 3 classes du projet afriland (D-52) ; compilation vérifiée. |
 | 2026-09-28 | — | Écarts comblés (liaison au certificat, masquage Luhn 6+4) et 2 classes reprises d'afriland : ServiceTokenProvider, TransitionInterditeException (D-53). |
 | 2026-09-29 | — | Masquage des journaux activé (logback, `%maskedMsg`) ; 103 tests unitaires et 386 tests d'intégration réussis, image Jib construite (D-54). |
+| 2026-09-29 | — | Étape 3, cadrage (D-57, D-58) : ouverture d'une liaison sur un adhérent par un chef de département, conducteur de projet désigné, périmètre dérivé des services souscrits, événements ; second facteur exigé sur `/api/v1/**`, CRUD généré réservé à l'administration ; garde d'immuabilité du CRUD des opérations appliquée à la version réelle ; seuils JaCoCo. 165 tests unitaires et de sécurité, 365 d'intégration et de recette réussis. |
 | 2026-09-29 | — | Lot 1, Phase 0 : régénération depuis le JDL du plan en JHipster 9.4.0, corrections Liquibase (jsonb, unicités, index, immuabilité), messagerie (outbox, relais, consommateur idempotent, rebut `.dlq`), jeton de service, sécurité du portail, arborescence hexagonale (D-55). |
 <!-- GIMAC:FIN -->
 

@@ -35,7 +35,7 @@ import tools.jackson.databind.ObjectMapper;
  */
 @IntegrationTest
 @AutoConfigureMockMvc
-@WithMockUser
+@WithMockUser(authorities = cm.gimac.des.homologation.security.AuthoritiesConstants.ADMIN)
 class ReferenceOperationResourceIT {
 
     private static final String DEFAULT_CODE = "AAAAAAAAAA";

@@ -29,6 +29,11 @@ public class DomainServicesConfiguration {
     }
 
     @Bean
+    public cm.gimac.des.homologation.domain.service.LiaisonOpeningPolicy liaisonOpeningPolicy() {
+        return new cm.gimac.des.homologation.domain.service.LiaisonOpeningPolicy();
+    }
+
+    @Bean
     public ReferentialCompletenessChecker referentialCompletenessChecker() {
         return new ReferentialCompletenessChecker();
     }

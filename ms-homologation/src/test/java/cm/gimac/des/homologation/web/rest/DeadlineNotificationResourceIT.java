@@ -32,7 +32,7 @@ import tools.jackson.databind.ObjectMapper;
  */
 @IntegrationTest
 @AutoConfigureMockMvc
-@WithMockUser
+@WithMockUser(authorities = cm.gimac.des.homologation.security.AuthoritiesConstants.ADMIN)
 class DeadlineNotificationResourceIT {
 
     private static final UUID DEFAULT_OPERATION_ID = UUID.randomUUID();

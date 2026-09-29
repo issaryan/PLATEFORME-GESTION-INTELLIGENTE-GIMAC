@@ -28,18 +28,22 @@ public class ReferenceOperationServiceImpl implements ReferenceOperationService 
 
     private final ReferenceOperationMapper referenceOperationMapper;
 
+    private final cm.gimac.des.homologation.repository.ReferentialVersionRepository referentialVersionRepository;
+
     public ReferenceOperationServiceImpl(
         ReferenceOperationRepository referenceOperationRepository,
-        ReferenceOperationMapper referenceOperationMapper
+        ReferenceOperationMapper referenceOperationMapper,
+        cm.gimac.des.homologation.repository.ReferentialVersionRepository referentialVersionRepository
     ) {
         this.referenceOperationRepository = referenceOperationRepository;
         this.referenceOperationMapper = referenceOperationMapper;
+        this.referentialVersionRepository = referentialVersionRepository;
     }
 
     @Override
     public ReferenceOperationDTO save(ReferenceOperationDTO referenceOperationDTO) {
         LOG.debug("Request to save ReferenceOperation : {}", referenceOperationDTO);
-        ReferenceOperation referenceOperation = referenceOperationMapper.toEntity(referenceOperationDTO);
+        ReferenceOperation referenceOperation = rattacherVersion(referenceOperationMapper.toEntity(referenceOperationDTO));
         referenceOperation = referenceOperationRepository.save(referenceOperation);
         return referenceOperationMapper.toDto(referenceOperation);
     }
@@ -47,7 +51,7 @@ public class ReferenceOperationServiceImpl implements ReferenceOperationService 
     @Override
     public ReferenceOperationDTO update(ReferenceOperationDTO referenceOperationDTO) {
         LOG.debug("Request to update ReferenceOperation : {}", referenceOperationDTO);
-        ReferenceOperation referenceOperation = referenceOperationMapper.toEntity(referenceOperationDTO);
+        ReferenceOperation referenceOperation = rattacherVersion(referenceOperationMapper.toEntity(referenceOperationDTO));
         referenceOperation = referenceOperationRepository.save(referenceOperation);
         return referenceOperationMapper.toDto(referenceOperation);
     }
@@ -89,5 +93,16 @@ public class ReferenceOperationServiceImpl implements ReferenceOperationService 
     public void delete(UUID id) {
         LOG.debug("Request to delete ReferenceOperation : {}", id);
         referenceOperationRepository.deleteById(id);
+    }
+
+    /**
+     * Le DTO ne porte que l'identifiant de la version : la version gérée est rattachée pour que la
+     * garde d'immuabilité (HOM-01) juge son état réel, et non celui d'une référence incomplète.
+     */
+    private ReferenceOperation rattacherVersion(ReferenceOperation operation) {
+        if (operation.getVersion() != null && operation.getVersion().getId() != null) {
+            referentialVersionRepository.findById(operation.getVersion().getId()).ifPresent(operation::setVersion);
+        }
+        return operation;
     }
 }

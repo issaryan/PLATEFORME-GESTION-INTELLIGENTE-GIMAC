@@ -34,7 +34,7 @@ import tools.jackson.databind.ObjectMapper;
  */
 @IntegrationTest
 @AutoConfigureMockMvc
-@WithMockUser
+@WithMockUser(authorities = cm.gimac.des.homologation.security.AuthoritiesConstants.ADMIN)
 class CampaignResultResourceIT {
 
     private static final String DEFAULT_CAMPAGNE_ID = "AAAAAAAAAA";

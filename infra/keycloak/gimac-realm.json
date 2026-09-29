@@ -95,6 +95,12 @@
         "attributes": {}
       },
       {
+        "name": "HOM_PROJECT_DESIGNATE",
+        "description": "Permission du lot 1",
+        "composite": false,
+        "clientRole": false
+      },
+      {
         "name": "HOM_REFERENTIEL_READ",
         "description": "Permission du lot 1",
         "composite": false,
@@ -484,7 +490,6 @@
             "PAR_INSTITUTION_READ",
             "HOM_REFERENTIEL_EDIT",
             "HOM_REFERENTIEL_PUBLISH",
-            "HOM_LIAISON_OPEN",
             "HOM_OPERATION_ASSIGN",
             "HOM_EVIDENCE_SUBMIT",
             "HOM_OPERATION_VALIDATE",
@@ -515,6 +520,8 @@
             "CER_DOSSIER_READ",
             "CER_REGISTER_READ",
             "PAR_INSTITUTION_READ",
+            "HOM_LIAISON_OPEN",
+            "HOM_PROJECT_DESIGNATE",
             "HOM_REFERENTIEL_MIGRATE",
             "HOM_LIAISON_UNFREEZE",
             "HOM_OPERATION_VALIDATE",
@@ -692,6 +699,8 @@
             "CER_DOSSIER_READ",
             "CER_REGISTER_READ",
             "PAR_INSTITUTION_READ",
+            "HOM_LIAISON_OPEN",
+            "HOM_PROJECT_DESIGNATE",
             "PAR_INSTITUTION_CREATE",
             "PAR_INSTITUTION_EDIT",
             "PAR_ADHESION_INSTRUCT",

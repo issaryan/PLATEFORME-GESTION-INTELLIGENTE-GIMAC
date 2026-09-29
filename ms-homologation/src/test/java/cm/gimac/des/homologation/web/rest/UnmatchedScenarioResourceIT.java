@@ -34,7 +34,7 @@ import tools.jackson.databind.ObjectMapper;
  */
 @IntegrationTest
 @AutoConfigureMockMvc
-@WithMockUser
+@WithMockUser(authorities = cm.gimac.des.homologation.security.AuthoritiesConstants.ADMIN)
 class UnmatchedScenarioResourceIT {
 
     private static final String DEFAULT_ID_SCENARIO = "AAAAAAAAAA";

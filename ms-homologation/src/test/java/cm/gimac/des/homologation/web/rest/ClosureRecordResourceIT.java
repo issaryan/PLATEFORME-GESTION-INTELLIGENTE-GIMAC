@@ -33,7 +33,7 @@ import tools.jackson.databind.ObjectMapper;
  */
 @IntegrationTest
 @AutoConfigureMockMvc
-@WithMockUser
+@WithMockUser(authorities = cm.gimac.des.homologation.security.AuthoritiesConstants.ADMIN)
 class ClosureRecordResourceIT {
 
     private static final UUID DEFAULT_VALIDATEUR_ID = UUID.randomUUID();

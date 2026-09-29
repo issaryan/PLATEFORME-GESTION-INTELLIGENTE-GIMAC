@@ -17,9 +17,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class HomologationFixtures {
 
     private final ManageReferentialUseCase referentiels;
+    private final cm.gimac.des.homologation.repository.ReferentialVersionRepository versions;
 
-    public HomologationFixtures(ManageReferentialUseCase referentiels) {
+    public HomologationFixtures(ManageReferentialUseCase referentiels, cm.gimac.des.homologation.repository.ReferentialVersionRepository versions) {
         this.referentiels = referentiels;
+        this.versions = versions;
     }
 
     /** Brouillon complet et acyclique (amont, branche, aval), validé en base. */
@@ -31,6 +33,14 @@ public class HomologationFixtures {
         referentiels.enregistrerOperation(v.getId(), p + "-BR-01", ReferenceOperationSamples.complete(Segment.BRANCHE).avecPredecesseurs(p + "-AMONT-01").data());
         referentiels.enregistrerOperation(v.getId(), p + "-AVAL-01", ReferenceOperationSamples.complete(Segment.TRONC_COMMUN_AVAL).avecPredecesseurs(p + "-BR-01").data());
         return v.getId();
+    }
+
+    /** Version publiée en vigueur pour le type (cadrage, étape 3) : réutilise celle qui existe. */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public synchronized UUID referentielPublie(TypeProjet type) {
+        return versions.findFirstByTypeProjetAndEtat(type, cm.gimac.des.homologation.domain.enumeration.EtatVersionReferentiel.PUBLIEE)
+            .map(ReferentialVersion::getId)
+            .orElseGet(() -> referentiels.publier(brouillonComplet(type)).getId());
     }
 
     /** Brouillon dont chaque opération désigne la suivante comme prédécesseur, la dernière désignant la première (HOM-02 D). */

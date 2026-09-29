@@ -64,4 +64,12 @@ public interface ManageInstitutionUseCase {
     StatusTransition approuverTransition(UUID institutionId, UUID transitionId, Acteur acteur, String assertionReauth);
 
     StatusTransition rejeterTransition(UUID institutionId, UUID transitionId, String motif, Acteur acteur);
+
+    /**
+     * Ouverture d'une liaison par MS-HOMOLOGATION (étape 3, D-57) : un adhérent passe
+     * automatiquement à EN_HOMOLOGATION ; une institution déjà en homologation reste en l'état.
+     *
+     * @return la transition automatique enregistrée, vide si aucun changement n'est dû
+     */
+    java.util.Optional<StatusTransition> debuterHomologation(UUID institutionId, UUID liaisonId, String typeProjet);
 }

@@ -36,7 +36,7 @@ import tools.jackson.databind.ObjectMapper;
  */
 @IntegrationTest
 @AutoConfigureMockMvc
-@WithMockUser
+@WithMockUser(authorities = cm.gimac.des.homologation.security.AuthoritiesConstants.ADMIN)
 class CoverageResourceIT {
 
     private static final String DEFAULT_SERVICE_CODE = "AAAAAAAAAA";

@@ -61,7 +61,7 @@ public class ReferentielStepDefs extends StepDefs {
         List<String> permissions = PROFILS.get(role);
         assertThat(permissions).as("profil %s", role).isNotNull();
         utilisateur = jwt()
-            .jwt(j -> j.subject(UUID.randomUUID().toString()))
+            .jwt(j -> j.subject(UUID.randomUUID().toString()).claim("acr", "2"))
             .authorities(permissions.stream().map(SimpleGrantedAuthority::new).toArray(GrantedAuthority[]::new));
     }
 

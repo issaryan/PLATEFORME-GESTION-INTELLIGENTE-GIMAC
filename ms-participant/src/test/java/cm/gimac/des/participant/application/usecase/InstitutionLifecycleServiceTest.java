@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -691,6 +692,50 @@ class InstitutionLifecycleServiceTest {
             ArgumentCaptor<Interaction> journal = ArgumentCaptor.forClass(Interaction.class);
             verify(interactions).save(journal.capture());
             assertThat(journal.getValue().getSummary()).hasSize(500);
+        }
+    }
+
+    @Nested
+    @DisplayName("Étape 3 : ouverture d'une liaison par MS-HOMOLOGATION (D-57)")
+    class OuvertureDeLiaison {
+
+        final UUID liaison = UUID.randomUUID();
+
+        @Test
+        @DisplayName("Un adhérent passe automatiquement à EN_HOMOLOGATION, transition tracée et événement publié")
+        void adherentEnHomologation() {
+            banque.setStatus(InstitutionStatus.ADHERENT);
+            StatusTransition t = service.debuterHomologation(banque.getId(), liaison, "PAIEMENT_MOBILE").orElseThrow();
+            assertThat(banque.getStatus()).isEqualTo(InstitutionStatus.EN_HOMOLOGATION);
+            assertThat(t.getAutomaticTransition()).isTrue();
+            assertThat(t.getState()).isEqualTo(TransitionState.APPROUVEE);
+            assertThat(t.getFromStatus()).isEqualTo(InstitutionStatus.ADHERENT);
+            assertThat(t.getReason()).contains(liaison.toString(), "PAIEMENT_MOBILE");
+            assertThat(t.getRequesterId()).isEqualTo(InstitutionLifecycleService.SYSTEME.id());
+            verify(interactions).save(any());
+            verify(outbox).publish(eq("institution"), eq(banque.getId()), eq(StatusChangedPayload.TYPE), any(StatusChangedPayload.class));
+        }
+
+        @Test
+        @DisplayName("Seconde liaison (rang 35) : l'institution déjà en homologation reste en l'état")
+        void dejaEnHomologation() {
+            banque.setStatus(InstitutionStatus.EN_HOMOLOGATION);
+            assertThat(service.debuterHomologation(banque.getId(), liaison, "CARTE_INTERBANCAIRE")).isEmpty();
+            verify(transitions, never()).save(any());
+            verifyNoInteractions(outbox);
+        }
+
+        @Test
+        @DisplayName("Institution non adhérente : signalé, jamais appliqué")
+        void nonAdherente() {
+            assertThat(service.debuterHomologation(banque.getId(), liaison, "PAIEMENT_MOBILE")).isEmpty();
+            assertThat(banque.getStatus()).isEqualTo(InstitutionStatus.CANDIDAT);
+            verifyNoInteractions(outbox);
+        }
+
+        @Test
+        void institutionInconnue() {
+            assertThatThrownBy(() -> service.debuterHomologation(UUID.randomUUID(), liaison, "PAIEMENT_MOBILE")).isInstanceOf(ParticipantException.class);
         }
     }
 }

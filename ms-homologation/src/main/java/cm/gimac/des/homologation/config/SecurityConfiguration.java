@@ -32,6 +32,13 @@ public class SecurityConfiguration {
     @Value("${spring.security.oauth2.client.provider.oidc.issuer-uri}")
     private String issuerUri;
 
+    /** D-61 : jeton issu d'une authentification à deux facteurs, attestée par le claim acr. */
+    @Value("${gimac.securite.double-facteur.exige:true}")
+    private boolean doubleFacteurExige;
+
+    @Value("${gimac.securite.double-facteur.niveaux-acr:2,3}")
+    private java.util.Set<String> niveauxAcr;
+
     public SecurityConfiguration(JHipsterProperties jHipsterProperties) {
         this.jHipsterProperties = jHipsterProperties;
     }
@@ -49,7 +56,10 @@ public class SecurityConfiguration {
                     .requestMatchers("/api/v1/liaisons/*/socle-evaluation", "/api/v1/liaisons/*/intervenants", "/api/v1/liaisons/*/dossier-de-preuves/interne/**").hasAuthority("INTERNAL_HOMOLOGATION_READ")
                     // Portail des participants : institution obligatoire dans le jeton (RG-59).
                     .requestMatchers("/api/v1/portail/**").access(new InstitutionClaimPresentAuthorizationManager())
-                    .requestMatchers("/api/**").authenticated()
+                    // D-61 : routes métier réservées aux jetons à deux facteurs (acr 2 ou 3).
+                    .requestMatchers("/api/v1/**").access(new cm.gimac.des.homologation.infrastructure.security.StrongAuthenticationAuthorizationManager(doubleFacteurExige, niveauxAcr))
+                    // CRUD généré : administration technique seulement.
+                    .requestMatchers("/api/**").hasAuthority(AuthoritiesConstants.ADMIN)
                     .requestMatchers("/v3/api-docs/**").hasAuthority(AuthoritiesConstants.ADMIN)
                     .requestMatchers("/management/health").permitAll()
                     .requestMatchers("/management/health/**").permitAll()

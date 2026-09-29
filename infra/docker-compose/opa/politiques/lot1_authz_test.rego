@@ -128,3 +128,19 @@ test_depot_portail if authz.allow with input as {
 	"method": "POST", "path": "/bff/portail/document/documents", "permissions": ["HOM_PORTAL_SUBMIT"], "institution_id": "INST-0042",
 	"authentifie": true, "acr": "2",
 }
+
+# Étape 3 : ouverture de la liaison et désignation du conducteur de projet (D-58).
+test_ouverture_liaison_chef_de_departement if authz.allow with input as {
+	"method": "POST", "path": "/bff/des/homologation/liaisons", "permissions": ["HOM_LIAISON_OPEN", "HOM_PROJECT_DESIGNATE"],
+	"authentifie": true, "acr": "2",
+}
+
+test_designation_conducteur_exige_sa_permission if not authz.allow with input as {
+	"method": "PUT", "path": "/bff/des/homologation/liaisons/l1/chef-de-projet", "permissions": ["HOM_LIAISON_OPEN"],
+	"authentifie": true, "acr": "2",
+}
+
+test_designation_conducteur if authz.allow with input as {
+	"method": "PUT", "path": "/bff/des/homologation/liaisons/l1/chef-de-projet", "permissions": ["HOM_PROJECT_DESIGNATE"],
+	"authentifie": true, "acr": "2",
+}

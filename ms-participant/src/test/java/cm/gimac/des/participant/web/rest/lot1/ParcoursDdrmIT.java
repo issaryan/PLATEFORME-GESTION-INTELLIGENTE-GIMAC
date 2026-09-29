@@ -19,7 +19,16 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.serialization.StringSerializer;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.kafka.autoconfigure.KafkaConnectionDetails;
 import org.springframework.http.MediaType;
+import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /**
@@ -239,5 +248,81 @@ class ParcoursDdrmIT extends AbstractParticipantIT {
             .perform(put("/api/v1/institutions/{id}", id).with(charge()).contentType(MediaType.APPLICATION_JSON).content(candidature("Candidat Abandon", null)))
             .andExpect(status().isConflict())
             .andExpect(jsonPath("$.code").value("PAR_INSTITUTION_CLOSED"));
+    }
+
+    @Autowired
+    KafkaListenerEndpointRegistry consommateurs;
+
+    @Autowired
+    KafkaConnectionDetails kafka;
+
+    /** Mène une candidature jusqu'à l'adhésion prononcée (étapes 1 et 2). */
+    String adherent(String nom, String bic, String code) throws Exception {
+        String id = enregistrer(nom, bic);
+        deposerEtValider(id, "DEMANDE_ADHESION");
+        deposerEtValider(id, "STATUTS");
+        mvc
+            .perform(
+                put("/api/v1/institutions/{id}/conditions-adhesion", id)
+                    .with(charge())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"codeParticipant\":\"" + code + "\",\"mode\":\"DIRECT\",\"compteReglement\":\"BEAC-" + code + "\"}")
+            )
+            .andExpect(status().isOk());
+        String t = JsonPath.read(
+            mvc
+                .perform(post("/api/v1/institutions/{id}/transitions", id).with(charge()).contentType(MediaType.APPLICATION_JSON).content("{\"vers\":\"ADHERENT\",\"motif\":\"Dossier complet\"}"))
+                .andReturn()
+                .getResponse()
+                .getContentAsString(),
+            "$.id"
+        );
+        mvc.perform(post("/api/v1/institutions/{id}/transitions/{t}/approbation", id, t).with(chef()).header("X-Reauth-Assertion", "a")).andExpect(status().isOk());
+        return id;
+    }
+
+    @Test
+    @org.junit.jupiter.api.Timeout(value = 2, unit = java.util.concurrent.TimeUnit.MINUTES)
+    @DisplayName("Étape 3 : l'ouverture d'une liaison (Kafka) fait passer l'adhérent à EN_HOMOLOGATION, une seule fois")
+    void ouvertureDeLiaison() throws Exception {
+        String id = adherent("Banque Cadrage", "BCADRCMX", "BQ-CAD-001");
+        mvc
+            .perform(get("/api/v1/interne/institutions/{id}", id).with(jwt().authorities(new SimpleGrantedAuthority("INTERNAL_PARTICIPANT_READ"))))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.statut").value("ADHERENT"))
+            .andExpect(jsonPath("$.codeParticipant").value("BQ-CAD-001"));
+
+        String liaison = UUID.randomUUID().toString();
+        String evenement = """
+            {"specversion":"1.0","id":"%s","source":"/ms-homologation","type":"homologation.liaison-opened.v1","subject":"%s",\
+            "datacontenttype":"application/json","data":{"liaisonId":"%s","institutionId":"%s","typeProjet":"CARTE_INTERBANCAIRE"}}"""
+            .formatted(UUID.randomUUID(), liaison, liaison, id);
+        var props = new java.util.HashMap<String, Object>();
+        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, String.join(",", kafka.getBootstrapServers()));
+        try (var producteur = new KafkaProducer<>(props, new StringSerializer(), new StringSerializer())) {
+            // Livré deux fois : le consommateur idempotent n'applique la transition qu'une fois.
+            producteur.send(new ProducerRecord<>("homologation.liaison", liaison, evenement)).get();
+            producteur.send(new ProducerRecord<>("homologation.liaison", liaison, evenement)).get();
+        }
+        consommateurs.getListenerContainer("participant-liaison-ouverte").start();
+        try {
+            String statut = null;
+            for (int essai = 0; essai < 60 && !"EN_HOMOLOGATION".equals(statut); essai++) {
+                Thread.sleep(500);
+                statut = jdbc.queryForObject("select status from institution where id = ?::uuid", String.class, id);
+            }
+            assertThat(statut).isEqualTo("EN_HOMOLOGATION");
+            Thread.sleep(1500);
+        } finally {
+            consommateurs.getListenerContainer("participant-liaison-ouverte").stop();
+        }
+        assertThat(
+            jdbc.queryForObject("select count(*) from status_transition where institution_id = ?::uuid and to_status = 'EN_HOMOLOGATION' and automatic_transition", Integer.class, id)
+        ).isEqualTo(1);
+        mvc
+            .perform(get("/api/v1/institutions/{id}", id).with(chef()))
+            .andExpect(jsonPath("$.institution.statut").value("EN_HOMOLOGATION"))
+            .andExpect(jsonPath("$.transitions[0].vers").value("EN_HOMOLOGATION"));
+        assertThat(jdbc.queryForList("select event_type from outbox_event where aggregate_id = ? order by created_at", String.class, id)).last().isEqualTo("participant.status-changed.v1");
     }
 }

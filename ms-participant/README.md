@@ -26,7 +26,7 @@ Régénéré en JHipster 9.4.0 (D-43) avec le socle de la Phase 0 repris de MS-H
 3. **Prononcé** : le chargé propose l'adhésion ; les prérequis sont évalués (pièces obligatoires validées, RG-11, RG-12, banque marraine membre direct actif) ; le chef de la DDRM approuve après réauthentification forte (en-tête `X-Reauth-Assertion`), en personne distincte du demandeur (algorithme 6.25). L'institution passe à `ADHERENT`.
 4. **Clôture sans suite** (`CLOS_SANS_SUITE`), par le même circuit, tant qu'aucune liaison n'est ouverte.
 
-`EN_HOMOLOGATION` n'est jamais proposé : il sera atteint à l'ouverture de la première liaison, au cadrage (étape 3, tranche suivante).
+`EN_HOMOLOGATION` n'est jamais proposé : il est atteint **automatiquement** à l'ouverture de la première liaison au cadrage (étape 3). Le consommateur `LiaisonOuverteConsumer` lit `homologation.liaison-opened.v1` (sujet `homologation.liaison`, consommation idempotente) et enregistre une transition automatique `ADHERENT` vers `EN_HOMOLOGATION` (journal, historique, `participant.status-changed.v1`) ; une institution déjà en homologation reste en l'état. MS-HOMOLOGATION lit l'institution et ses services souscrits par l'interface interne `GET /api/v1/interne/institutions/{id}` (jeton de service `INTERNAL_PARTICIPANT_READ`, jamais relayée par la passerelle).
 
 ### Routes (`/api/v1`, exposées sous `/bff/des/participant`)
 
@@ -104,6 +104,8 @@ JaCoCo bloque la construction sous 80 % : à `test`, chaque classe du lot en lig
 | 2026-09-28 | — | Écarts comblés (liaison au certificat, masquage Luhn 6+4) et 2 classes reprises d'afriland : ServiceTokenProvider, TransitionInterditeException (D-53). |
 | 2026-09-29 | — | Masquage des journaux activé (logback, `%maskedMsg`) ; 112 tests unitaires et 555 tests d'intégration réussis, image Jib construite ; test généré `InstitutionResourceIT` corrigé (code participant unique) (D-54). |
 | 2026-09-29 | — | Régénération JHipster 9.4.0 avec le socle de la Phase 0 ; tranche DDRM (étapes 1 et 2, D-57) : dossier d'adhésion, maker-checker, routes `/api/v1`, double facteur (D-61) ; 266 tests unitaires et de sécurité réussis, seuils JaCoCo de 80 % atteints ; tests d'intégration et de recette écrits, à exécuter sur le poste de développement. |
+| 2026-09-29 | — | Intégration verte (631 tests d'intégration et de recette), seuil global en lignes et fonctions hors MapStruct (D-61). |
+| 2026-09-29 | — | Étape 3 : passage automatique à `EN_HOMOLOGATION` à l'ouverture d'une liaison (consommateur Kafka idempotent), interface interne de lecture d'une institution et de ses services souscrits. |
 <!-- GIMAC:FIN -->
 
 

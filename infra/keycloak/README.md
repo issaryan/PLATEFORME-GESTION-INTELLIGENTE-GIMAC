@@ -19,3 +19,4 @@ Aucun secret : mots de passe et secrets de client sont des variables `${GIMAC_..
 | 2026-09-29 | — | Création du domaine gimac pour le lot 1 (D-55) |
 | 2026-09-29 | — | Permissions `PAR_*`, profils par fonction et rôle `CONDUCTEUR_PROJET` (D-58), client `participant-service`, flux à double facteur et niveau 2 exigé (D-61) |
 | 2026-09-29 | — | D-62 : permissions `IAM_*` et `PLATFORM_*`, profils `ROLE_SUPER_ADMIN` et `ROLE_RSSI` étendu, clients `iam-service` et `gateway-supervision`, profil utilisateur déclaratif, thème GIMAC des pages et des courriels, image Keycloak ; import vérifié sur Keycloak 26.7.4 et adaptateur MS-IAM éprouvé dessus (`KeycloakAnnuaireIT`) |
+| 2026-09-29 | — | Étape 3 (D-58) : permission `HOM_PROJECT_DESIGNATE` ; les chefs de département (`ROLE_CHEF_DES`, `ROLE_CHEF_DDRM`) ouvrent la liaison et désignent le conducteur de projet ; `HOM_LIAISON_OPEN` retirée de l'ingénieur d'homologation |

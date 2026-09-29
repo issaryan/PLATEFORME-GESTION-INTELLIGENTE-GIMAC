@@ -834,6 +834,7 @@
                                     <include>cm/gimac/des/participant/infrastructure/client/*Reauth*</include>
                                     <include>cm/gimac/des/participant/infrastructure/security/StrongAuthentication*</include>
                                     <include>cm/gimac/des/participant/web/rest/lot1/**</include>
+                                    <include>cm/gimac/des/participant/infrastructure/messaging/consumer/LiaisonOuverte*</include>
                                     <include>cm/gimac/des/participant/web/rest/errors/ParticipantExceptionHandler*</include>
                                 </includes>
                                 <rules>

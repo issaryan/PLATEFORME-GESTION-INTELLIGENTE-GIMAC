@@ -33,7 +33,7 @@ import tools.jackson.databind.ObjectMapper;
  */
 @IntegrationTest
 @AutoConfigureMockMvc
-@WithMockUser
+@WithMockUser(authorities = cm.gimac.des.homologation.security.AuthoritiesConstants.ADMIN)
 class ReferentialMigrationResourceIT {
 
     private static final UUID DEFAULT_VERSION_SOURCE_ID = UUID.randomUUID();

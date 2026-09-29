@@ -19,6 +19,11 @@ spring:
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      auto-offset-reset: earliest
+      enable-auto-commit: false
   application:
     name: participant
   cloud:
@@ -97,6 +102,9 @@ management:
 
 # Lot 1 : adaptateurs de substitution et paramètres métier des tests (PI §0.8).
 gimac:
+  # Consommateurs Kafka démarrés à la demande par les tests qui les éprouvent.
+  consommateurs:
+    demarrage-automatique: false
   outbox:
     delay: 500
   adapters:

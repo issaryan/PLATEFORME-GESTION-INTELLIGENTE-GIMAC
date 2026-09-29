@@ -29,6 +29,11 @@ public class HomologationException extends RuntimeException {
         return new HomologationException(code, 503, message, Map.of());
     }
 
+    /** 403 : acte réservé à une autre fonction ou à un autre titulaire. */
+    public static HomologationException forbidden(String code, String message) {
+        return new HomologationException(code, 403, message, Map.of());
+    }
+
     public static HomologationException notFound(String code, Object id) {
         return new HomologationException(code, 404, "Ressource introuvable", Map.of("id", String.valueOf(id)));
     }

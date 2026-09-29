@@ -62,7 +62,7 @@ import tech.jhipster.config.JHipsterProperties;
  * second facteur ; 403 sans la permission de la matrice des rôles ; 428 sans réauthentification forte
  * pour les actes sensibles ; routes internes réservées au jeton de service.
  */
-@WebMvcTest(controllers = { ComptesResource.class, MonCompteResource.class, ReauthentificationResource.class, ConfigurationAuthentificationResource.class })
+@WebMvcTest(controllers = { ComptesResource.class, MonCompteResource.class, ReauthentificationResource.class, ConfigurationAuthentificationResource.class, CollaborateursInternesResource.class })
 @Import({ SecurityConfiguration.class, TestSecurityConfiguration.class, IamExceptionHandler.class, ReauthAdministration.class })
 @EnableConfigurationProperties(JHipsterProperties.class)
 class IamRoutesSecurityTest {
@@ -283,6 +283,25 @@ class IamRoutesSecurityTest {
             .perform(req(HttpMethod.POST, "/api/v1/interne/reauthentifications/verification", corps).with(jwt().authorities(new SimpleGrantedAuthority("INTERNAL_IAM_READ"))))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.valide").value(true));
+    }
+
+    @Test
+    @DisplayName("IAM-04 : annuaire des collaborateurs réservé au jeton de service ; actifs seuls, sans coordonnées")
+    void collaborateursInternes() throws Exception {
+        mvc.perform(req(HttpMethod.GET, "/api/v1/interne/collaborateurs/" + ID, null).with(jeton("2", PERMISSIONS_IAM.toArray(String[]::new)))).andExpect(status().isForbidden());
+        mvc.perform(req(HttpMethod.GET, "/api/v1/interne/collaborateurs/" + ID, null)).andExpect(status().isUnauthorized());
+        var service = jwt().authorities(new SimpleGrantedAuthority("INTERNAL_IAM_READ"));
+        mvc
+            .perform(req(HttpMethod.GET, "/api/v1/interne/collaborateurs/" + ID, null).with(service))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.profils[0]").value("ROLE_CHARGE_DDRM"))
+            .andExpect(jsonPath("$.email").doesNotExist());
+        Compte inactif = new Compte("x", "inactif", "I", "N", "i@gimac.cm", true, false, Instant.EPOCH, null, null, "fr", null, true, Set.of("ROLE_CONDUCTEUR_PROJET"), List.of(), true);
+        when(comptes.lister(any(), anyInt(), anyInt())).thenReturn(new AdministrationComptesService.PageComptes(List.of(compte, inactif), 2));
+        mvc
+            .perform(req(HttpMethod.GET, "/api/v1/interne/collaborateurs?profil=ROLE_CONDUCTEUR_PROJET", null).with(service))
+            .andExpect(jsonPath("$.length()").value(1))
+            .andExpect(jsonPath("$[0].id").value(ID));
     }
 
     @Test

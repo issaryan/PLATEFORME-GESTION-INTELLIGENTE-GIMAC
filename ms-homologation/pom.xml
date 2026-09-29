@@ -37,6 +37,8 @@
         <archunit-junit5.version>1.5.0</archunit-junit5.version>
         <checkstyle.version>14.1.0</checkstyle.version>
         <cucumber-bom.version>7.34.8</cucumber-bom.version>
+        <!-- Définition de fini (D-61) : seuil de couverture des tests. -->
+        <jacoco.seuil>0.80</jacoco.seuil>
         <jacoco-maven-plugin.version>0.8.15</jacoco-maven-plugin.version>
         <jhipster-framework.version>9.4.0</jhipster-framework.version>
         <jib-maven-plugin.architecture>amd64</jib-maven-plugin.architecture>
@@ -795,6 +797,107 @@
                             <goals>
                                 <goal>report-integration</goal>
                             </goals>
+                        </execution>
+                        <execution>
+                            <id>seuil-unitaire-du-lot</id>
+                            <phase>test</phase>
+                            <goals>
+                                <goal>check</goal>
+                            </goals>
+                            <configuration>
+                                <dataFile>${project.build.directory}/jacoco.exec</dataFile>
+                                <includes>
+                                    <include>cm/gimac/des/homologation/domain/service/LiaisonOpeningPolicy*</include>
+                                    <include>cm/gimac/des/homologation/domain/cadrage/**</include>
+                                    <include>cm/gimac/des/homologation/application/usecase/OpenLiaisonService*</include>
+                                    <include>cm/gimac/des/homologation/application/usecase/LiaisonQueries*</include>
+                                    <include>cm/gimac/des/homologation/infrastructure/client/*Adapter*</include>
+                                    <include>cm/gimac/des/homologation/infrastructure/security/StrongAuthentication*</include>
+                                    <include>cm/gimac/des/homologation/web/rest/lot1/LiaisonsCadrage*</include>
+                                </includes>
+                                <rules>
+                                    <rule>
+                                        <element>CLASS</element>
+                                        <excludes>
+                                            <!-- Interfaces de ports et enregistrements sans logique. -->
+                                            <exclude>*.package-info</exclude>
+                                        </excludes>
+                                        <limits>
+                                            <limit>
+                                                <counter>LINE</counter>
+                                                <value>COVEREDRATIO</value>
+                                                <minimum>${jacoco.seuil}</minimum>
+                                            </limit>
+                                            <limit>
+                                                <counter>METHOD</counter>
+                                                <value>COVEREDRATIO</value>
+                                                <minimum>${jacoco.seuil}</minimum>
+                                            </limit>
+                                        </limits>
+                                    </rule>
+                                    <rule>
+                                        <element>BUNDLE</element>
+                                        <limits>
+                                            <limit>
+                                                <counter>BRANCH</counter>
+                                                <value>COVEREDRATIO</value>
+                                                <minimum>${jacoco.seuil}</minimum>
+                                            </limit>
+                                        </limits>
+                                    </rule>
+                                </rules>
+                            </configuration>
+                        </execution>
+                        <execution>
+                            <id>fusion-unitaires-integration</id>
+                            <phase>post-integration-test</phase>
+                            <goals>
+                                <goal>merge</goal>
+                            </goals>
+                            <configuration>
+                                <fileSets>
+                                    <fileSet>
+                                        <directory>${project.build.directory}</directory>
+                                        <includes>
+                                            <include>jacoco.exec</include>
+                                            <include>jacoco-it.exec</include>
+                                        </includes>
+                                    </fileSet>
+                                </fileSets>
+                                <destFile>${project.build.directory}/jacoco-fusion.exec</destFile>
+                            </configuration>
+                        </execution>
+                        <execution>
+                            <id>seuil-global-du-service</id>
+                            <phase>verify</phase>
+                            <goals>
+                                <goal>check</goal>
+                            </goals>
+                            <configuration>
+                                <dataFile>${project.build.directory}/jacoco-fusion.exec</dataFile>
+                                <excludes>
+                                    <exclude>cm/gimac/des/homologation/HomologationApp*</exclude>
+                                    <!-- Implémentations MapStruct produites à la compilation (hors sources). -->
+                                    <exclude>cm/gimac/des/homologation/service/mapper/*MapperImpl*</exclude>
+                                </excludes>
+                                <rules>
+                                    <rule>
+                                        <element>BUNDLE</element>
+                                        <limits>
+                                            <limit>
+                                                <counter>LINE</counter>
+                                                <value>COVEREDRATIO</value>
+                                                <minimum>${jacoco.seuil}</minimum>
+                                            </limit>
+                                            <limit>
+                                                <counter>METHOD</counter>
+                                                <value>COVEREDRATIO</value>
+                                                <minimum>${jacoco.seuil}</minimum>
+                                            </limit>
+                                        </limits>
+                                    </rule>
+                                </rules>
+                            </configuration>
                         </execution>
                     </executions>
                 </plugin>

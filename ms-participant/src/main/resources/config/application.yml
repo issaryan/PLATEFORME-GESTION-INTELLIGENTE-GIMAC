@@ -261,6 +261,13 @@ spring:
       acks: all
       properties:
         enable.idempotence: true
+    # Consommateurs des événements des autres services (@KafkaListener) : chaînes, lecture depuis le
+    # début d'un sujet pour un nouveau groupe (aucun événement perdu au premier démarrage).
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      auto-offset-reset: earliest
+      enable-auto-commit: false
 gimac:
   outbox:
     delay: 500

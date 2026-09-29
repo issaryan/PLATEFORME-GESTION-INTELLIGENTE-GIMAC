@@ -18,7 +18,7 @@ import org.springframework.test.web.servlet.MockMvc;
 /**
  * Integration tests {@link ExceptionTranslator} controller advice.
  */
-@WithMockUser
+@WithMockUser(authorities = cm.gimac.des.homologation.security.AuthoritiesConstants.ADMIN)
 @AutoConfigureMockMvc
 @IntegrationTest
 class ExceptionTranslatorIT {

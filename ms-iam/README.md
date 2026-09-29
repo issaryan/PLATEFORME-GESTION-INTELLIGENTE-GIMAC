@@ -44,6 +44,7 @@ Squelette JHipster 9.4.0 (CRUD généré réservé à l'administration technique
 | `/moi` (GET, PUT), `/moi/premiere-configuration`, `/moi/actions`, `/moi/sessions`, `/moi/cles-securite` | `/bff/{des,portail,console}/iam` | tout utilisateur à deux facteurs |
 | `POST /reauthentification/defi` | `/bff/{des,portail,console}/iam` | tout utilisateur à deux facteurs |
 | `POST /interne/reauthentifications/verification` | jamais relayée | jeton de service `INTERNAL_IAM_READ` |
+| `GET /interne/collaborateurs/{id}`, `GET /interne/collaborateurs?profil=` | jamais relayée | jeton de service `INTERNAL_IAM_READ` (annuaire IAM-04 : profils, rattachement, activité ; conducteurs de projet, D-58) |
 
 Erreurs : ProblemDetail (`code`, `message`, `details`, `correlationId`). Sécurité (D-61) : `/api/v1/**` exige un jeton à deux facteurs (`acr` 2 ou 3) ; `/api/v1/interne/**` un jeton de service ; le CRUD généré `/api/**` le rôle `ROLE_ADMIN`.
 
