@@ -115,23 +115,6 @@ describe('DES-11 : onglets du dossier', () => {
     fireEvent.click(within(d).getByRole('button', { name: 'Exporter le registre (contrôlé)' }))
     await waitFor(() => expect(URL.createObjectURL).toHaveBeenCalled())
   })
-  it('circuit : quitus défavorable avec opérations à reprendre', async () => {
-    const signer = vi.fn(async (..._a: unknown[]) => undefined)
-    ouvrir('circuit', avec({}, { signerQuitus: signer }, { assertion: async () => 'assertion' }))
-    fireEvent.click(await screen.findByRole('button', { name: 'Signer le quitus de sécurité' }))
-    const d = await screen.findByRole('dialog')
-    fireEvent.click(within(d).getByLabelText('Défavorable : renvoyer en homologation'))
-    fireEvent.change(within(d).getByLabelText(/Motif/), { target: { value: 'Écart de sécurité sur le rapprochement.' } })
-    fireEvent.click(within(d).getByRole('button', { name: 'Utiliser ma clé de sécurité' }))
-    await waitFor(() => expect(signer).toHaveBeenCalled())
-    expect(signer.mock.calls[0][2]).toMatchObject({ decisionFavorable: false, motif: 'Écart de sécurité sur le rapprochement.' })
-  })
-  it('circuit : aucun quitus à signer', async () => {
-    const s = servicesSimules({ latenceMs: 0 })
-    const c = await s.certification.circuit('CIR-2026-004')
-    ouvrir('circuit', avec({}, { circuit: async () => ({ ...c, quitus: c.quitus.map((q) => ({ ...q, actionsPermises: [] })) }) }))
-    expect(await screen.findByText('Aucun quitus ne vous revient à cette étape du circuit.')).toBeTruthy()
-  })
   it('actions de la fiche : vérifier, relire la fiche, émettre (refus du service expliqué)', async () => {
     const verifier = vi.fn(async () => undefined)
     const lier = vi.fn(async () => undefined)

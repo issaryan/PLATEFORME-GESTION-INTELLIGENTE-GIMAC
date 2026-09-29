@@ -93,7 +93,8 @@ describe('verrou 2 : approbation de la sécurité (rangs 20 à 26)', () => {
     expect(await types('LIA-2026-041')).toEqual(['ISO_27001', 'GSMA', 'COBAC'])
     expect((await s.decision.approbation('LIA-2026-041')).fintech).toBe(true)
     expect(await s.decision.approbation('LIA-2025-088')).toMatchObject({ etat: 'APPROUVEE', ficheChangement: { etatApprobation: 'APPROUVEE', aRelire: false }, actionsPermises: ['RELIRE_FICHE'] })
-    expect(await s.decision.approbation('LIA-2026-019')).toMatchObject({ etat: 'DOSSIER_CONSTITUE', ficheChangement: null, actionsPermises: ['REFERENCER_FICHE'] })
+    // LIA-2026-019 : attestations déjà fournies (à vérifier) et visas optionnels activés, signables avant l'approbation.
+    expect(await s.decision.approbation('LIA-2026-019')).toMatchObject({ etat: 'DOSSIER_CONSTITUE', ficheChangement: null, actionsPermises: ['VERIFIER_ATTESTATION', 'REFERENCER_FICHE', 'SIGNER_VISA_CONFORMITE', 'SIGNER_VISA_DG'] })
   })
   it('parcours complet : dossier, fiche lue (jamais refaite), attestations vérifiées puis archivées, approbation', async () => {
     const s = svc()
@@ -117,7 +118,7 @@ describe('verrou 2 : approbation de la sécurité (rangs 20 à 26)', () => {
     await expect(s.portailParcours.deposerAttestation(id, 'PCI_DSS', fichier('attestation.docx'))).rejects.toEqual(refus('CER_ATTESTATION_FORMAT'))
     await s.portailParcours.deposerAttestation(id, 'PCI_DSS', fichier('pci-dss.PDF'))
     expect((await s.decision.approbation(id)).actionsPermises).toEqual(['VERIFIER_ATTESTATION', 'RELIRE_FICHE'])
-    expect((await s.parcours.tableauActeur(['RSSI'])).compteurs.find((c) => c.cle === 'attestationsAVerifier')?.valeur).toBe(1)
+    expect((await s.parcours.tableauActeur(['RSSI'])).compteurs.find((c) => c.cle === 'attestationsAVerifier')?.valeur).toBe(2)
     await expect(s.decision.verifierAttestation(id, 'PCI_DSS', false, ' ')).rejects.toEqual(refus('CER_REJECTION_REASON_REQUIRED'))
     await s.decision.verifierAttestation(id, 'PCI_DSS', false, 'Certificat expiré')
     expect((await s.decision.approbation(id))).toMatchObject({ etat: 'EN_VERIFICATION', attestations: [{ preuve: null, motifRejet: 'Certificat expiré', verifieeLe: null }] })
@@ -134,7 +135,7 @@ describe('verrou 2 : approbation de la sécurité (rangs 20 à 26)', () => {
     expect((await s.decision.approbation(id))).toMatchObject({ etat: 'APPROUVEE', approuveeLe: '2026-09-29', ficheChangement: { etatApprobation: 'APPROUVEE', lueLe: '2026-09-29' } })
     expect((await s.parcours.dossier(id)).statut).toBe('APPROUVEE_SECURITE')
     // L'approbation clôt les rangs 21 à 25 ; l'ouverture de la fiche (rang 26) suit l'approbation (rang 24).
-    for (const r of ['21', '22', '23', '24', '25']) expect(await etat(s, id, r)).toBe('FAITE')
+    for (const r of ['21', '22', '23', '24', '25']) expect([r, await etat(s, id, r)]).toEqual([r, 'FAITE'])
     expect(await courante(s, id)).toBe('APPROBATION_SECURITE')
     await s.decision.referencerFicheChangement(id, 'CHG-2026-0412')
     expect(await etat(s, id, '26')).toBe('FAITE')
@@ -181,7 +182,7 @@ describe('étape 10 : fiche de suivi des services et constat de mise en service 
     await expect(s.portailParcours.renseignerFicheSuivi(id, [])).rejects.toEqual(refus('HOM_SERVICE_SHEET_NOT_OPEN'))
     expect(await s.decision.ficheSuivi(id)).toMatchObject({ etat: 'RENSEIGNEE', renseigneeLe: '2026-09-29', actionsPermises: ['CONSTATER'] })
     expect(await etat(s, id, '32')).toBe('FAITE')
-    expect((await s.parcours.tableauActeur(['SNA'])).compteurs.find((c) => c.cle === 'constatsMiseEnService')?.valeur).toBe(1)
+    expect((await s.parcours.tableauActeur(['SNA'])).compteurs.find((c) => c.cle === 'constatsMiseEnService')?.valeur).toBe(2)
     const d = await s.parcours.dossier(id)
     expect(d.perimetre.map((p) => p.etat)).toEqual(['OUVERT', 'OUVERT', 'NON_OUVERT', 'NON_DEMARRE'])
     expect(d.couvertureMiseEnService).toMatchObject({ taux: 67, numerateur: 2, denominateur: 3 })
@@ -205,7 +206,7 @@ describe('étape 10 : fiche de suivi des services et constat de mise en service 
 describe('portail du participant (qualité Externe)', () => {
   it('ses liaisons seulement ; projection du dossier sans donnée interne ; liaison d’un autre participant introuvable', async () => {
     const s = svc()
-    expect((await s.portailParcours.mesLiaisons()).map((l) => l.id)).toEqual(['LIA-2026-030', 'LIA-2025-088', 'LIA-2026-027'])
+    expect((await s.portailParcours.mesLiaisons()).map((l) => l.id)).toEqual(['LIA-2026-030', 'LIA-2025-088', 'LIA-2026-046', 'LIA-2026-027'])
     const d = await s.portailParcours.dossier('LIA-2026-030')
     expect(d).toMatchObject({ conducteur: { nom: 'Conducteur de projet GIMAC' }, blocages: [{ responsable: { nom: 'POLE_RESEAU' } }], actionsPermises: [] })
     for (const appel of [
@@ -221,11 +222,12 @@ describe('portail du participant (qualité Externe)', () => {
     const s = svc()
     const t = await s.portailParcours.mesTaches()
     expect(t.fonction).toBe('PARTICIPANT')
-    expect(t.liaisons.map((l) => l.id)).toEqual(['LIA-2026-030', 'LIA-2025-088', 'LIA-2026-027'])
-    expect(t.taches.map((x) => [x.operationId, x.qualite])).toEqual([['LIA-2025-088:32', 'R'], ['LIA-2026-027:19', 'E']])
-    expect(t.taches.every((x) => x.lien === `/portail/liaisons/${x.liaisonId}?onglet=a-faire`)).toBe(true)
+    expect(t.liaisons.map((l) => l.id)).toEqual(['LIA-2026-030', 'LIA-2025-088', 'LIA-2026-046', 'LIA-2026-027'])
+    expect(t.taches.map((x) => [x.operationId, x.qualite])).toEqual([['LIA-2025-088:32', 'R'], ['LIA-2026-027:19', 'E'], ['LIA-2026-046:12', 'R']])
+    // Chaque tâche mène à l'écran du portail où le geste s'accomplit.
+    expect(t.taches.map((x) => x.lien)).toEqual(['/portail/liaisons/LIA-2025-088/fiche-suivi', '/portail/liaisons/LIA-2026-027/proces-verbal', '/portail/liaisons/LIA-2026-046/coordonnees'])
     expect(t.blocages.map((b) => b.id)).toEqual(['BLQ-0007'])
-    expect(Object.fromEntries(t.compteurs.map((c) => [c.cle, c.valeur]))).toEqual({ tachesARealiser: 2, pvASigner: 1, attestationsAFournir: 0, fichesSuivi: 1, tachesEnRetard: 2, echeancesProches: 0 })
+    expect(Object.fromEntries(t.compteurs.map((c) => [c.cle, c.valeur]))).toEqual({ tachesARealiser: 3, pvASigner: 1, attestationsAFournir: 0, fichesSuivi: 1, tachesEnRetard: 3, echeancesProches: 0 })
     // Un blocage d'un autre participant n'apparaît pas.
     await s.parcours.declarerBlocage('LIA-2026-022', { motif: 'x', prochaineAction: 'x', responsableId: 'U-SNA-1', echeanceLevee: '2026-10-01' })
     expect((await s.portailParcours.mesTaches()).blocages.map((b) => b.liaisonId)).toEqual(['LIA-2026-030'])
@@ -260,7 +262,7 @@ describe('parcours de bout en bout (étapes 3 à 10)', () => {
     expect((await op(s, id, '12')).preuve?.valeurReference).toEqual({ libelle: 'parcours.valeur.12', valeur: 'essai.exemple:8443' })
     await expect(s.portailParcours.communiquerCoordonnees(id, { adresse: 'essai.exemple', port: '8443' })).rejects.toEqual(refus('HOM_OPERATION_NOT_OPEN'))
     // Rangs 13 à 16, dont le document de paramétrage (grain de phase, livrable unique).
-    expect((await op(s, id, '15')).actionsPermises).toEqual([])
+    expect((await op(s, id, '15'))).toMatchObject({ etat: 'VERROUILLEE', actionsPermises: ['ATTRIBUER'] })
     expect(await executer(s, id, ['17'])).toEqual(['13', '14', '15', '16'])
     expect((await op(s, id, '15')).preuve?.nom).toBe('piece.pdf')
     expect(await courante(s, id)).toBe('CERTIFICATION')

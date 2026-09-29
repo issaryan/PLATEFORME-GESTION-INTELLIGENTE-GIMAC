@@ -10,6 +10,8 @@
 #    à sa place, sans le code. npm ci n'est rejoué que si un manifeste ou le verrou change, et tout
 #    nouvel espace de travail est pris en compte sans modifier ce fichier.
 FROM node:22.23.3-alpine AS manifestes
+# Un échec de find ou de tar dans le tube interrompt la construction (hadolint DL4006).
+SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 WORKDIR /src
 COPY . .
 RUN mkdir /manifestes \

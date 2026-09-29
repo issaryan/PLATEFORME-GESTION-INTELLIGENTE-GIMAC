@@ -340,7 +340,7 @@ function tachesDe(etats: Etat[], fonctions: Fonction[]): TacheActeur[] {
 
 /** nomInstitution : nom tenu par le registre (MS-PARTICIPANT simulé), pour que la liaison ouverte porte le nom de l'adhérent choisi. */
 export function parcoursSimule(attendre: Attendre, institutionPortail: string, nomInstitution?: (id: string) => Promise<string | undefined>): { parcours: ServiceParcours; decision: ServiceDecision; portailParcours: ServicePortailParcours } {
-  const etats = new Map(SCENARIOS.map((s) => [s.id, construire(s)]))
+  const etats = new Map(SCENARIOS.map((s) => [s.id, construire(structuredClone(s))]))
   const tous = () => [...etats.values()]
   const trouver = (id: string) => {
     const e = etats.get(id)
@@ -471,7 +471,7 @@ export function parcoursSimule(attendre: Attendre, institutionPortail: string, n
       if (o.cle && c.codeControle && !/^[0-9A-F]{4,8}$/.test(c.codeControle)) throw refus(422, 'HOM_KEY_CHECK_VALUE_INVALID', 'Un code de contrôle compte de 4 à 8 caractères hexadécimaux.')
       if (o.valeurReference && !c.valeurReference) throw refus(422, 'HOM_REFERENCE_VALUE_REQUIRED', 'Cette preuve doit porter la valeur de référence relevée.')
       o.etat = 'EN_VALIDATION'
-      o.preuve = { documentRef: `DOC-${opId.replace(':', '-')}`, nom: fichier.name, empreinte: hex(fichier.name + fichier.size), deposeLe: jour(0), deposePar: o.raci.R?.nom ?? '', valeurReference: c.valeurReference ? { libelle: `parcours.valeur.${o.rang}`, valeur: c.valeurReference } : undefined, codeControle: c.codeControle, ceremonie: c.ceremonie }
+      o.preuve = { documentRef: `DOC-${opId.replace(':', '-')}`, nom: fichier.name, empreinte: hex(fichier.name + fichier.size), deposeLe: jour(0), deposePar: o.raci.R?.nom ?? '', valeurReference: c.valeurReference ? { libelle: `parcours.valeur.${o.rang}`, valeur: c.valeurReference } : undefined, codeControle: o.cle ? c.codeControle : undefined, ceremonie: o.rang === 'C1' ? c.ceremonie : undefined }
       o.actionsPermises = ['VALIDER', 'ATTRIBUER']
       void e
     }),
@@ -513,7 +513,9 @@ export function parcoursSimule(attendre: Attendre, institutionPortail: string, n
     tableauActeur: (fonctions) => attendre((): TableauActeur => {
       const f = (x: Fonction) => fonctions.includes(x)
       const actives = tous().filter((e) => e.s.statut !== 'CLOSE_SANS_SUITE')
-      const taches = tachesDe(f('PARTICIPANT') ? actives.filter((e) => e.s.institutionId === institutionPortail) : actives, fonctions)
+      // Le participant ne voit que les liaisons de son institution : tâches, blocages et liaisons compris.
+      const visibles = f('PARTICIPANT') ? actives.filter((e) => e.s.institutionId === institutionPortail) : actives
+      const taches = tachesDe(visibles, fonctions)
       const compteurs: TableauActeur['compteurs'] = []
       if (f('CHEF_DDRM') || f('CHEF_DES')) compteurs.push(compteur('conducteursADesigner', actives.filter((e) => !e.conducteur).length, 'warn', '/des/parcours?sansConducteur=1'))
       if (f('CHEF_DDRM')) compteurs.push(compteur('liaisonsAmont', aEtape(['CADRAGE', 'LANCEMENT', 'ATELIERS']).length, 'info', '/des/parcours?etape=CADRAGE,LANCEMENT,ATELIERS'))
@@ -545,12 +547,12 @@ export function parcoursSimule(attendre: Attendre, institutionPortail: string, n
       if (f('CONFORMITE')) compteurs.push(compteur('visasAttendus', actives.filter((e) => e.approbation.visas.some((v) => v.nature === 'CONFORMITE' && v.actif && v.etat === 'ATTENDU')).length, 'warn'), compteur('fintechsCobac', actives.filter((e) => e.approbation.fintech).length, 'info'))
       if (f('DG')) compteurs.push(compteur('visasAttendus', actives.filter((e) => e.approbation.visas.some((v) => v.nature === 'DIRECTION_GENERALE' && v.actif && v.etat === 'ATTENDU')).length, 'warn'))
       if (f('PARTICIPANT')) {
-        const siennes = actives.filter((e) => e.s.institutionId === institutionPortail)
+        const siennes = visibles
         compteurs.push(compteur('tachesARealiser', taches.length, 'warn'), compteur('pvASigner', siennes.filter((e) => e.pv.etat === 'ETABLI' || e.pv.etat === 'SIGNE_GIMAC').length, 'warn'), compteur('attestationsAFournir', siennes.flatMap((e) => e.approbation.attestations.filter((a) => !a.preuve && e.pv.etat === 'SIGNE')).length, 'warn'), compteur('fichesSuivi', siennes.filter((e) => e.fiche.etat === 'REMISE').length, 'warn'))
       }
       compteurs.push(compteur('tachesEnRetard', taches.filter((t) => t.sla === 'DEPASSE').length, 'crit'), compteur('echeancesProches', taches.filter((t) => t.sla === 'ECHEANCE_PROCHE').length, 'warn'))
-      const liaisons = (f('PARTICIPANT') ? actives.filter((e) => e.s.institutionId === institutionPortail) : f('CONDUCTEUR') && fonctions.length === 1 ? actives.filter((e) => e.conducteur?.id === personne('CONDUCTEUR', 0).id) : actives).map(resume)
-      return { fonction: fonctions[0] ?? 'DDRM', compteurs, taches: taches.sort((a, b) => (a.echeance ?? '9').localeCompare(b.echeance ?? '9')), liaisons, blocages: actives.flatMap((e) => e.blocages.filter((b) => !b.leveLe)) }
+      const liaisons = (f('PARTICIPANT') ? visibles : f('CONDUCTEUR') && fonctions.length === 1 ? actives.filter((e) => e.conducteur?.id === personne('CONDUCTEUR', 0).id) : actives).map(resume)
+      return { fonction: fonctions[0] ?? 'DDRM', compteurs, taches: taches.sort((a, b) => (a.echeance ?? '9').localeCompare(b.echeance ?? '9')), liaisons, blocages: visibles.flatMap((e) => e.blocages.filter((b) => !b.leveLe)) }
     }),
     pilotage: () => attendre((): IndicateursPilotage => {
       const actives = tous().filter((e) => e.s.statut !== 'CLOSE_SANS_SUITE')
@@ -665,6 +667,9 @@ export function parcoursSimule(attendre: Attendre, institutionPortail: string, n
       if (!e.approbation.attestations.every((a) => a.verifieeLe)) throw refus(409, 'CER_ATTESTATIONS_INCOMPLETE', 'Toutes les attestations exigées doivent être vérifiées avant l\'archivage.')
       e.approbation.attestations.forEach((a) => (a.archiveeLe = jour(0)))
       e.approbation.etat = 'VERIFIE_ARCHIVE'
+      // Rangs 21 et 22 (pièces du participant) : clos par l'archivage des attestations vérifiées, qui en sont la preuve.
+      const piece = e.approbation.attestations[0]?.preuve
+      ;['21', '22'].forEach((r) => { const o = e.ops.find((x) => x.rang === r); if (o && o.etat !== 'FAITE') { o.etat = 'A_FAIRE'; terminer(e, o, piece ?? { documentRef: `ATT-${r}`, nom: `attestations-${r}`, empreinte: hex(`att-${id}-${r}`), deposeLe: jour(0), deposePar: personne('RSSI').nom }) } })
     }),
     signerVisa: (id, nature, favorable, motif, assertion) => attendre(() => {
       if (!assertion) throw refus(401, 'IAM_REAUTH_REQUIRED', 'Réauthentification exigée.')

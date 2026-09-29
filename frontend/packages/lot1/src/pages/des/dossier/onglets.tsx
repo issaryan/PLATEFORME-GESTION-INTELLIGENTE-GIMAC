@@ -1,17 +1,17 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  Button, Card, DataTable, DateTimeField, EmptyState, Hash, InlineAlert, KeyValueList, MultiSelect, QuitusCircuit, RadioGroup, ResourceList,
+  Button, Card, DataTable, DateTimeField, EmptyState, Hash, InlineAlert, KeyValueList, ResourceList,
   StatusBadge, TextField, type Column,
 } from '@gimac/design-system'
 import { EtatsRequete } from '@gimac/socle'
-import type { Attestation, Circuit, Condition, Dossier, Horodatage } from '../../../modele/certification'
+import type { Attestation, Condition, Dossier, Horodatage } from '../../../modele/certification'
 import {
-  useAttestation, useCircuit, useConditions, useDeposerProcesVerbal, useFicheDeChangement, useHorodatages, useLierFiche, useProcesVerbal,
+  useAttestation, useConditions, useDeposerProcesVerbal, useFicheDeChangement, useHorodatages, useLierFiche, useProcesVerbal,
   useRegistre, useTelechargerAttestation,
 } from '../../../hooks/certification'
-import { designationsPossibles, quitusSignables, verifierEmpreinte, versQuitusCircuit } from '../../../adaptateurs/certification'
-import { actionApprouverStatut, actionSignerQuitus, cleDecision, decisionsEnCours, registreDescriptor, type QuitusCible } from '../../../ressources/dossier'
+import { verifierEmpreinte } from '../../../adaptateurs/certification'
+import { actionApprouverStatut, registreDescriptor } from '../../../ressources/dossier'
 import { useExecuteurActions } from '../../../ressources/actions'
 import { useDescripteurDS } from '../../../ressources/descripteur'
 import { enregistrerFichier } from '../../../ressources/fichier'
@@ -22,84 +22,6 @@ import { ChampFichier } from '../../commun/ChampFichier'
 function useLibellesEtats() {
   const { t } = useTranslation()
   return { vide: t('commun.vide'), erreur: t('commun.erreur.titre'), reessayer: t('commun.reessayer') }
-}
-
-/** Saisie de la décision d'un quitus, rendue dans le dialogue de signature. */
-function ChoixDecision({ cible, circuit }: { cible: QuitusCible; circuit: Circuit }) {
-  const { t } = useTranslation()
-  const [favorable, setFavorable] = useState(true)
-  const [designations, setDesignations] = useState<string[]>([])
-  const maj = (f: boolean, d: string[]) => decisionsEnCours.set(cleDecision(cible), { favorable: f, designations: d })
-  return (
-    <div className="gm-col" style={{ gap: 'var(--gm-space-3)' }}>
-      <RadioGroup
-        name="decision"
-        label={t('quitus.decision')}
-        value={favorable ? 'F' : 'D'}
-        options={[{ value: 'F', label: t('quitus.favorable') }, { value: 'D', label: t('quitus.defavorable') }]}
-        onChange={(v) => {
-          setFavorable(v === 'F')
-          maj(v === 'F', designations)
-        }}
-      />
-      {favorable ? null : (
-        <MultiSelect
-          name="designations"
-          label={t('quitus.designations')}
-          required
-          value={designations}
-          options={designationsPossibles(circuit)}
-          onChange={(d) => {
-            setDesignations(d)
-            maj(false, d)
-          }}
-        />
-      )}
-    </div>
-  )
-}
-
-export function OngletCircuit({ dossier }: { dossier: Dossier }) {
-  const { t } = useTranslation()
-  const e = useLibellesEtats()
-  const q = useCircuit(dossier.circuitId)
-  const executeur = useExecuteurActions()
-  return (
-    <EtatsRequete etat={q} emptyTitle={e.vide} errorTitle={e.erreur} retryLabel={e.reessayer}>
-      {(c) => {
-        const signables = quitusSignables(c)
-        const signer = actionSignerQuitus((cible) => <ChoixDecision cible={cible} circuit={c} />)
-        return (
-          <div className="gm-col">
-            <QuitusCircuit natures="quatre" quitus={versQuitusCircuit(c, (r) => t(`role.${r}`))} />
-            <KeyValueList items={[{ key: t('quitus.socle'), value: <Hash value={c.socle.empreinte} /> }]} />
-            {signables.length ? (
-              <div className="gm-row" data-testid="quitus-signables">
-                {signables.map((sq) => {
-                  const cible: QuitusCible = { circuitId: c.id, nature: sq.nature, socleEmpreinte: c.socle.empreinte, libelle: t(`quitus.nature.${sq.nature}`) }
-                  return (
-                    <Button
-                      key={sq.nature}
-                      variant="primary"
-                      icon="pen-line"
-                      onClick={() => {
-                        decisionsEnCours.set(cleDecision(cible), { favorable: true, designations: [] })
-                        executeur.lancer(signer, cible, cible.libelle, 'certification')
-                      }}
-                    >
-                      {t('quitus.action.signerNature', { nature: cible.libelle })}
-                    </Button>
-                  )
-                })}
-              </div>
-            ) : (
-              <p className="gm-field-help" style={{ margin: 0 }}>{t('quitus.aucuneSignature')}</p>
-            )}
-          </div>
-        )
-      }}
-    </EtatsRequete>
-  )
 }
 
 export function OngletCompletude({ dossier }: { dossier: Dossier }) {

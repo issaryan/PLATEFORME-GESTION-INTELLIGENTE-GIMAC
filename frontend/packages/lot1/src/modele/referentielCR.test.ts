@@ -47,10 +47,15 @@ describe('référentiel du compte rendu de cadrage (annexe A)', () => {
     expect(rangs(l.filter((o) => o.grain === 'PHASE'))).toEqual(['15'])
     expect(rangs(l.filter((o) => o.pivot))).toEqual(['19'])
     expect(rangs(l.filter((o) => o.oubliSansSymptome))).toEqual(['28'])
-    // Aucune valeur secrète : les opérations sur clé ne portent que la trace et le code de contrôle.
-    expect(rangs(referentielDe('CARTE_INTERBANCAIRE').filter((o) => o.cle))).toEqual(['C1', '29'])
-    expect(rangs(referentielDe('PAIEMENT_MOBILE').filter((o) => o.cle))).toEqual(['M3', 'M9', '29'])
-    expect(rangs(l.filter((o) => o.cle))).toEqual(['D2', 'D3', 'D12', 'D27', '29'])
+    // Aucune valeur secrète : les opérations sur clé ne portent que la trace et le code de contrôle ;
+    // les secrets non cryptographiques (identifiants, mots de passe) ne portent que la trace.
+    expect(rangs(referentielDe('CARTE_INTERBANCAIRE').filter((o) => o.cle))).toEqual(['C1'])
+    expect(rangs(referentielDe('CARTE_INTERBANCAIRE').filter((o) => o.secret))).toEqual(['29'])
+    expect(rangs(referentielDe('PAIEMENT_MOBILE').filter((o) => o.cle))).toEqual([])
+    expect(rangs(referentielDe('PAIEMENT_MOBILE').filter((o) => o.secret))).toEqual(['M3', 'M7', 'M9', '29'])
+    expect(rangs(l.filter((o) => o.cle))).toEqual(['D3', 'D12', 'D27'])
+    expect(rangs(l.filter((o) => o.secret))).toEqual(['D2', '29'])
+    expect(l.some((o) => o.cle && o.secret)).toBe(false)
     expect(rangs(referentielDe('CARTE_INTERBANCAIRE').filter((o) => o.valeurReference))).toEqual(['12', 'C2', 'C3'])
   })
   it('plateformes d’exécution : branche mobile sur la plateforme mobile, délégataire sur les deux switchs', () => {
