@@ -15,28 +15,27 @@ import cm.gimac.des.collaboration.domain.enumeration.RoomType;
 import cm.gimac.des.collaboration.repository.RoomRetentionPolicyRepository;
 import cm.gimac.des.collaboration.service.dto.RoomRetentionPolicyDTO;
 import cm.gimac.des.collaboration.service.mapper.RoomRetentionPolicyMapper;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Integration tests for the {@link RoomRetentionPolicyResource} REST controller.
  */
 @IntegrationTest
 @AutoConfigureMockMvc
-@WithMockUser
+@WithMockUser(authorities = cm.gimac.des.collaboration.security.AuthoritiesConstants.ADMIN)
 class RoomRetentionPolicyResourceIT {
 
     private static final RoomType DEFAULT_ROOM_TYPE = RoomType.QUART;
@@ -55,7 +54,7 @@ class RoomRetentionPolicyResourceIT {
     private static final Integer UPDATED_ARCHIVE_RETENTION_YEARS = 2;
 
     private static final Instant DEFAULT_UPDATED_AT = Instant.ofEpochMilli(0L);
-    private static final Instant UPDATED_UPDATED_AT = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+    private static final Instant UPDATED_UPDATED_AT = Instant.ofEpochMilli(1790746747003L);
 
     private static final String ENTITY_API_URL = "/api/room-retention-policies";
     private static final String ENTITY_API_URL_ID = ENTITY_API_URL + "/{id}";
@@ -455,8 +454,8 @@ class RoomRetentionPolicyResourceIT {
         partialUpdatedRoomRetentionPolicy
             .roomType(UPDATED_ROOM_TYPE)
             .anchor(UPDATED_ANCHOR)
-            .archiveRetentionYears(UPDATED_ARCHIVE_RETENTION_YEARS)
-            .updatedAt(UPDATED_UPDATED_AT);
+            .archived(UPDATED_ARCHIVED)
+            .archiveRetentionYears(UPDATED_ARCHIVE_RETENTION_YEARS);
 
         restRoomRetentionPolicyMockMvc
             .perform(

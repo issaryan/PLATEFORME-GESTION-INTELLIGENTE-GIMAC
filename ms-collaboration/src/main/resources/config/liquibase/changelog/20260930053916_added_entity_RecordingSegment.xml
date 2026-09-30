@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+
+    <!--
+        Added the entity RecordingSegment.
+    -->
+    <changeSet id="20260930053916-1" author="jhipster">
+        <createTable tableName="recording_segment" remarks="Segment enregistré, avec la liste des consentements qui l&apos;autorisent.\nÉcart CC corrigé : le segment est cité (§6.1.14.1, algorithme 6.61) sans\nêtre modélisé.">
+            <column name="id" type="${uuidType}">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="started_at" type="${datetimeType}">
+                <constraints nullable="false" />
+            </column>
+            <column name="ended_at" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="egress_reference" type="varchar(255)" remarks="Identifiant de l&apos;enregistrement (egress LiveKit).">
+                <constraints nullable="false" />
+            </column>
+            <column name="consenting_user_ids" type="varchar(4000)" remarks="Participants consentants : identifiants (MS-IAM), séparés par des virgules.">
+                <constraints nullable="false" />
+            </column>
+            <column name="conference_id" type="${uuidType}">
+                <constraints nullable="false" />
+            </column>
+            <!-- jhipster-needle-liquibase-add-column - JHipster will add columns here -->
+        </createTable>
+        <dropDefaultValue tableName="recording_segment" columnName="started_at" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="recording_segment" columnName="ended_at" columnDataType="${datetimeType}"/>
+    </changeSet>
+
+    <!-- jhipster-needle-liquibase-add-changeset - JHipster will add changesets here -->
+</databaseChangeLog>

@@ -16,7 +16,7 @@ import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
-import org.springframework.util.backoff.FixedBackOff;
+import org.springframework.kafka.support.ExponentialBackOffWithMaxRetries;
 
 /**
  * Traitement des echecs de consommation du journal d'audit.
@@ -35,13 +35,13 @@ import org.springframework.util.backoff.FixedBackOff;
  * <p>
  * <b>Le traitement retenu.</b> Les consommateurs laissent desormais l'exception
  * remonter. Le conteneur rejoue le message, puis, l'echec persistant, le publie
- * sur {@code <topic>.dlt} avant de valider l'offset. Rien n'est perdu : ce qui
+ * sur {@code <topic>.dlq} avant de valider l'offset. Rien n'est perdu : ce qui
  * echoue est conserve et rejouable. Le scellement etant idempotent
  * ({@code sealIfNotDuplicate}), un rejeu ne cree pas de doublon.
  *
  * <p>
  * <b>Pourquoi les files de rebut sont declarees ici.</b> Si le topic
- * {@code .dlt} n'existe pas et que la creation automatique est desactivee,
+ * {@code .dlq} n'existe pas et que la creation automatique est desactivee,
  * la publication echoue, l'offset n'est pas valide, et le consommateur boucle
  * indefiniment sur le meme message — une panne pire que celle corrigee. Ce piege
  * s'est deja produit sur ce depot avec le topic {@code demande.validation}. Les
@@ -55,7 +55,7 @@ public class KafkaErrorHandlingConfiguration {
     private static final Logger log = LoggerFactory.getLogger(KafkaErrorHandlingConfiguration.class);
 
     /** Suffixe des files de rebut, aligne sur la convention des services Python. */
-    private static final String SUFFIXE_REBUT = ".dlt";
+    private static final String SUFFIXE_REBUT = ".dlq";
 
     /**
      * Reglage du rejeu et de la mise en rebut.
@@ -138,7 +138,7 @@ public class KafkaErrorHandlingConfiguration {
     }
 
     /**
-     * Route un message en echec definitif vers {@code <topic>.dlt}.
+     * Route un message en echec definitif vers {@code <topic>.dlq}.
      *
      * <p>
      * La partition de destination est laissee au choix du courtier
@@ -179,14 +179,15 @@ public class KafkaErrorHandlingConfiguration {
         // FixedBackOff compte les REJEUX, pas les remises : pour N remises au
         // total il faut N-1 rejeux. Une valeur nulle ou negative reviendrait a
         // supprimer le rejeu sans le dire.
-        long rejeux = Math.max(0L, (long) reglage.getNombreTentatives() - 1L);
-        DefaultErrorHandler gestionnaire = new DefaultErrorHandler(
-            recuperateur,
-            new FixedBackOff(reglage.getIntervalleMs(), rejeux)
-        );
+        // PI-GIMAC-01 §0.7 : trois rejeux espacés de 1 s, 5 s puis 25 s avant la file de rebut.
+        int rejeux = Math.max(0, reglage.getNombreTentatives());
+        ExponentialBackOffWithMaxRetries attente = new ExponentialBackOffWithMaxRetries(rejeux);
+        attente.setInitialInterval(reglage.getIntervalleMs());
+        attente.setMultiplier(5.0);
+        DefaultErrorHandler gestionnaire = new DefaultErrorHandler(recuperateur, attente);
         gestionnaire.setCommitRecovered(true);
         log.info(
-            "Echecs de consommation : {} remises espacees de {} ms, puis publication sur <topic>{}.",
+            "Echecs de consommation : {} rejeux a partir de {} ms (x5), puis publication sur <topic>{}.",
             reglage.getNombreTentatives(),
             reglage.getIntervalleMs(),
             SUFFIXE_REBUT

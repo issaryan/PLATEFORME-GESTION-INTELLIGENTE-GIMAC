@@ -31,7 +31,7 @@ public class RoomRetentionPolicyResource {
 
     private static final String ENTITY_NAME = "collaborationRoomRetentionPolicy";
 
-    @Value("${jhipster.clientApp.name}")
+    @Value("${jhipster.clientApp.name:collaboration}")
     private String applicationName;
 
     private final RoomRetentionPolicyService roomRetentionPolicyService;
@@ -50,7 +50,7 @@ public class RoomRetentionPolicyResource {
      * {@code POST  /room-retention-policies} : Create a new roomRetentionPolicy.
      *
      * @param roomRetentionPolicyDTO the roomRetentionPolicyDTO to create.
-     * @return the {@link ResponseEntity} with status {@code 201 (Created)} and with body the new roomRetentionPolicyDTO, or with status {@code 400 (Bad Request)} if the roomRetentionPolicy has already an ID.
+     * @return the {@link ResponseEntity} with status {@code 201 (Created)} and with body the new roomRetentionPolicyDTO, or with status {@code 400 (Bad Request)} if the roomRetentionPolicy already has an ID.
      * @throws URISyntaxException if the Location URI syntax is incorrect.
      */
     @PostMapping("")
@@ -116,7 +116,7 @@ public class RoomRetentionPolicyResource {
         @PathVariable(value = "id", required = false) final UUID id,
         @NotNull @RequestBody RoomRetentionPolicyDTO roomRetentionPolicyDTO
     ) throws URISyntaxException {
-        LOG.debug("REST request to partial update RoomRetentionPolicy partially : {}, {}", id, roomRetentionPolicyDTO);
+        LOG.debug("REST request to partially update RoomRetentionPolicy : {}, {}", id, roomRetentionPolicyDTO);
         if (roomRetentionPolicyDTO.getId() == null) {
             throw new BadRequestAlertException("Invalid id", ENTITY_NAME, "idnull");
         }
@@ -137,9 +137,9 @@ public class RoomRetentionPolicyResource {
     }
 
     /**
-     * {@code GET  /room-retention-policies} : get all the roomRetentionPolicies.
+     * {@code GET  /room-retention-policies} : get all the Room Retention Policies.
      *
-     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of roomRetentionPolicies in body.
+     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of Room Retention Policies in body.
      */
     @GetMapping("")
     public List<RoomRetentionPolicyDTO> getAllRoomRetentionPolicies() {

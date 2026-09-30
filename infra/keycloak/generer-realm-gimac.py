@@ -34,7 +34,9 @@ PERMISSIONS = {
             "ACCOUNT_SECURITY", "JOURNAL_READ", "PROFILE_EDIT", "ROLE_PRIVILEGED_GRANT"],
     "PLATFORM": ["SUPERVISION_READ", "CONFIG_READ", "CONFIG_EDIT", "SECURITY_POLICY_READ", "SECURITY_POLICY_EDIT",
                  "MESSAGING_EDIT"],
-    "INTERNAL": ["HOMOLOGATION_READ", "CERTIFICATION_READ", "PARTICIPANT_READ", "DOCUMENT_READ", "IAM_READ"],
+    # Messagerie instantanée de travail entre acteurs internes (D-64, docs/lot1/messagerie.md).
+    "COL": ["MESSAGE_READ", "MESSAGE_SEND"],
+    "INTERNAL": ["HOMOLOGATION_READ", "CERTIFICATION_READ", "PARTICIPANT_READ", "DOCUMENT_READ", "DOCUMENT_DEPOSIT", "IAM_READ"],
 }
 TOUTES = [f"{d}_{p}" for d, ps in PERMISSIONS.items() for p in ps]
 
@@ -73,6 +75,13 @@ PROFILS = {
     "ROLE_POLE_SYSTEME": LECTURE_DES + ["HOM_EVIDENCE_SUBMIT"],
     "ROLE_CONDUCTEUR_PROJET": LECTURE_DES + ["HOM_OPERATION_ASSIGN", "HOM_EVIDENCE_SUBMIT", "HOM_EVIDENCE_FILE_EXPORT"],
 }
+# Messagerie de travail (D-64) : tous les profils internes du GIMAC, jamais le correspondant d'un
+# participant (profil externe, porteur d'une institution).
+PROFILS_EXTERNES = {"ROLE_CORRESPONDANT"}
+MESSAGERIE = ["COL_MESSAGE_READ", "COL_MESSAGE_SEND"]
+for _profil in PROFILS:
+    if _profil not in PROFILS_EXTERNES:
+        PROFILS[_profil] = PROFILS[_profil] + MESSAGERIE
 # Institutions fictives du jeu de données de référence (D-30).
 UTILISATEURS = [
     ("test-ingenieur-homologation", "Ingénieur", "Homologation", "ROLE_INGENIEUR_HOMOLOGATION", None),
@@ -95,6 +104,8 @@ SERVICES = {
     "homologation-service": ["INTERNAL_PARTICIPANT_READ", "INTERNAL_DOCUMENT_READ", "INTERNAL_IAM_READ"],
     "certification-service": ["INTERNAL_HOMOLOGATION_READ", "INTERNAL_DOCUMENT_READ", "INTERNAL_IAM_READ"],
     "participant-service": ["INTERNAL_DOCUMENT_READ", "INTERNAL_IAM_READ"],
+    # Messagerie (D-64) : annuaire des comptes internes (MS-IAM), dépôt et lecture des pièces jointes (MS-DOCUMENT).
+    "collaboration-service": ["INTERNAL_IAM_READ", "INTERNAL_DOCUMENT_READ", "INTERNAL_DOCUMENT_DEPOSIT"],
     # MS-IAM administre le realm par l'API d'administration (D-62) : rôles de realm-management ci-dessous.
     "iam-service": [],
     # Supervision de la passerelle : lecture des points /management des services (ROLE_ADMIN).
@@ -321,7 +332,7 @@ def main():
     assert all(c.get("secret", "${").startswith("${") for c in realm["clients"]), "secret de client en clair"
 
     assert all(x in texte for x in ('"browserFlow": "navigateur-gimac"', '"minimum.acr.value": "2"', "PAR_TRANSITION_APPROVE", "ROLE_SUPER_ADMIN",
-                                          "manage-realm", "unmanagedAttributePolicy",
+                                          "manage-realm", "unmanagedAttributePolicy", "COL_MESSAGE_SEND", "collaboration-service",
                                           '"loginTheme": "gimac"'))
     CIBLE.write_text(texte + "\n", encoding="utf-8")
     print(f"{CIBLE.relative_to(RACINE)} : {len(TOUTES)} permissions, {len(PROFILS)} profils, {len(UTILISATEURS)} utilisateurs de test")

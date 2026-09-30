@@ -443,6 +443,18 @@
         "clientRole": false
       },
       {
+        "name": "COL_MESSAGE_READ",
+        "description": "Permission du lot 1",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "COL_MESSAGE_SEND",
+        "description": "Permission du lot 1",
+        "composite": false,
+        "clientRole": false
+      },
+      {
         "name": "INTERNAL_HOMOLOGATION_READ",
         "description": "Permission du lot 1",
         "composite": false,
@@ -462,6 +474,12 @@
       },
       {
         "name": "INTERNAL_DOCUMENT_READ",
+        "description": "Permission du lot 1",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "INTERNAL_DOCUMENT_DEPOSIT",
         "description": "Permission du lot 1",
         "composite": false,
         "clientRole": false
@@ -500,7 +518,9 @@
             "HOM_EVIDENCE_FILE_EXPORT",
             "CER_DOSSIER_VERIFY",
             "CER_GOLIVE_REPORT_SUBMIT",
-            "CER_ATTESTATION_ISSUE"
+            "CER_ATTESTATION_ISSUE",
+            "COL_MESSAGE_READ",
+            "COL_MESSAGE_SEND"
           ]
         }
       },
@@ -530,7 +550,9 @@
             "CER_QUITUS_TECHNIQUE_SIGN",
             "CER_ATTESTATION_ISSUE",
             "CER_REGISTER_EXPORT",
-            "CER_ATTESTATION_STATUS_REQUEST"
+            "CER_ATTESTATION_STATUS_REQUEST",
+            "COL_MESSAGE_READ",
+            "COL_MESSAGE_SEND"
           ]
         }
       },
@@ -566,7 +588,9 @@
             "PLATFORM_CONFIG_EDIT",
             "PLATFORM_SECURITY_POLICY_READ",
             "PLATFORM_SECURITY_POLICY_EDIT",
-            "PLATFORM_MESSAGING_EDIT"
+            "PLATFORM_MESSAGING_EDIT",
+            "COL_MESSAGE_READ",
+            "COL_MESSAGE_SEND"
           ]
         }
       },
@@ -600,7 +624,9 @@
             "PLATFORM_CONFIG_READ",
             "PLATFORM_SECURITY_POLICY_READ",
             "PLATFORM_SECURITY_POLICY_EDIT",
-            "PLATFORM_MESSAGING_EDIT"
+            "PLATFORM_MESSAGING_EDIT",
+            "COL_MESSAGE_READ",
+            "COL_MESSAGE_SEND"
           ]
         }
       },
@@ -621,7 +647,9 @@
             "CER_REGISTER_READ",
             "PAR_INSTITUTION_READ",
             "CER_QUITUS_CONFORMITE_SIGN",
-            "CER_CHANGE_RECORD_LINK"
+            "CER_CHANGE_RECORD_LINK",
+            "COL_MESSAGE_READ",
+            "COL_MESSAGE_SEND"
           ]
         }
       },
@@ -642,7 +670,9 @@
             "CER_REGISTER_READ",
             "PAR_INSTITUTION_READ",
             "CER_QUITUS_DG_SIGN",
-            "CER_ATTESTATION_STATUS_APPROVE"
+            "CER_ATTESTATION_STATUS_APPROVE",
+            "COL_MESSAGE_READ",
+            "COL_MESSAGE_SEND"
           ]
         }
       },
@@ -679,7 +709,9 @@
             "PAR_INSTITUTION_CREATE",
             "PAR_INSTITUTION_EDIT",
             "PAR_ADHESION_INSTRUCT",
-            "PAR_TRANSITION_REQUEST"
+            "PAR_TRANSITION_REQUEST",
+            "COL_MESSAGE_READ",
+            "COL_MESSAGE_SEND"
           ]
         }
       },
@@ -705,7 +737,9 @@
             "PAR_INSTITUTION_EDIT",
             "PAR_ADHESION_INSTRUCT",
             "PAR_TRANSITION_REQUEST",
-            "PAR_TRANSITION_APPROVE"
+            "PAR_TRANSITION_APPROVE",
+            "COL_MESSAGE_READ",
+            "COL_MESSAGE_SEND"
           ]
         }
       },
@@ -726,7 +760,9 @@
             "CER_REGISTER_READ",
             "PAR_INSTITUTION_READ",
             "HOM_EVIDENCE_SUBMIT",
-            "HOM_OPERATION_VALIDATE"
+            "HOM_OPERATION_VALIDATE",
+            "COL_MESSAGE_READ",
+            "COL_MESSAGE_SEND"
           ]
         }
       },
@@ -746,7 +782,9 @@
             "CER_DOSSIER_READ",
             "CER_REGISTER_READ",
             "PAR_INSTITUTION_READ",
-            "HOM_EVIDENCE_SUBMIT"
+            "HOM_EVIDENCE_SUBMIT",
+            "COL_MESSAGE_READ",
+            "COL_MESSAGE_SEND"
           ]
         }
       },
@@ -766,7 +804,9 @@
             "CER_DOSSIER_READ",
             "CER_REGISTER_READ",
             "PAR_INSTITUTION_READ",
-            "HOM_EVIDENCE_SUBMIT"
+            "HOM_EVIDENCE_SUBMIT",
+            "COL_MESSAGE_READ",
+            "COL_MESSAGE_SEND"
           ]
         }
       },
@@ -786,7 +826,9 @@
             "CER_DOSSIER_READ",
             "CER_REGISTER_READ",
             "PAR_INSTITUTION_READ",
-            "HOM_EVIDENCE_SUBMIT"
+            "HOM_EVIDENCE_SUBMIT",
+            "COL_MESSAGE_READ",
+            "COL_MESSAGE_SEND"
           ]
         }
       },
@@ -808,7 +850,9 @@
             "PAR_INSTITUTION_READ",
             "HOM_OPERATION_ASSIGN",
             "HOM_EVIDENCE_SUBMIT",
-            "HOM_EVIDENCE_FILE_EXPORT"
+            "HOM_EVIDENCE_FILE_EXPORT",
+            "COL_MESSAGE_READ",
+            "COL_MESSAGE_SEND"
           ]
         }
       }
@@ -1752,6 +1796,17 @@
       ]
     },
     {
+      "username": "service-account-collaboration-service",
+      "enabled": true,
+      "serviceAccountClientId": "collaboration-service",
+      "realmRoles": [
+        "default-roles-gimac",
+        "INTERNAL_IAM_READ",
+        "INTERNAL_DOCUMENT_READ",
+        "INTERNAL_DOCUMENT_DEPOSIT"
+      ]
+    },
+    {
       "username": "service-account-iam-service",
       "enabled": true,
       "serviceAccountClientId": "iam-service",
@@ -2380,6 +2435,29 @@
       "publicClient": false,
       "clientAuthenticatorType": "client-secret",
       "secret": "${GIMAC_SECRET_PARTICIPANT_SERVICE}",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "protocol": "openid-connect",
+      "fullScopeAllowed": true,
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "jhipster",
+        "roles",
+        "profile",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "offline_access"
+      ]
+    },
+    {
+      "clientId": "collaboration-service",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${GIMAC_SECRET_COLLABORATION_SERVICE}",
       "standardFlowEnabled": false,
       "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": true,

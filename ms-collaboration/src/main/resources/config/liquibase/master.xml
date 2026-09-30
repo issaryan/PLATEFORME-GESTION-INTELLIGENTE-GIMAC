@@ -12,29 +12,31 @@
     <property name="timeType" value="time(6)" dbms="postgresql"/>
 
     <include file="config/liquibase/changelog/00000000000000_initial_schema.xml" relativeToChangelogFile="false"/>
-    <include file="config/liquibase/changelog/20260928134220_added_entity_RoomRetentionPolicy.xml" relativeToChangelogFile="false"/>
-    <include file="config/liquibase/changelog/20260928134320_added_entity_Room.xml" relativeToChangelogFile="false"/>
-    <include file="config/liquibase/changelog/20260928134420_added_entity_RoomMember.xml" relativeToChangelogFile="false"/>
-    <include file="config/liquibase/changelog/20260928134520_added_entity_VerifiedTerminal.xml" relativeToChangelogFile="false"/>
-    <include file="config/liquibase/changelog/20260928134620_added_entity_MessageMetadata.xml" relativeToChangelogFile="false"/>
-    <include file="config/liquibase/changelog/20260928134720_added_entity_MessageReceipt.xml" relativeToChangelogFile="false"/>
-    <include file="config/liquibase/changelog/20260928134820_added_entity_Conference.xml" relativeToChangelogFile="false"/>
-    <include file="config/liquibase/changelog/20260928134920_added_entity_ConferenceParticipant.xml" relativeToChangelogFile="false"/>
-    <include file="config/liquibase/changelog/20260928135020_added_entity_RecordingConsent.xml" relativeToChangelogFile="false"/>
-    <include file="config/liquibase/changelog/20260928135120_added_entity_RecordingSegment.xml" relativeToChangelogFile="false"/>
-    <include file="config/liquibase/changelog/20260928135220_added_entity_MediaKeyEpoch.xml" relativeToChangelogFile="false"/>
-    <include file="config/liquibase/changelog/20260928135320_added_entity_RoomArchive.xml" relativeToChangelogFile="false"/>
-    <include file="config/liquibase/changelog/20260928135420_added_entity_ProcessedEvent.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20260930053907_added_entity_RoomRetentionPolicy.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20260930053908_added_entity_Room.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20260930053909_added_entity_RoomMember.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20260930053910_added_entity_VerifiedTerminal.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20260930053911_added_entity_MessageMetadata.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20260930053912_added_entity_MessageReceipt.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20260930053913_added_entity_Conference.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20260930053914_added_entity_ConferenceParticipant.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20260930053915_added_entity_RecordingConsent.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20260930053916_added_entity_RecordingSegment.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20260930053917_added_entity_MediaKeyEpoch.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20260930053918_added_entity_RoomArchive.xml" relativeToChangelogFile="false"/>
     <!-- jhipster-needle-liquibase-add-changelog - JHipster will add liquibase changelogs here -->
-    <include file="config/liquibase/changelog/20260928134420_added_entity_constraints_RoomMember.xml" relativeToChangelogFile="false"/>
-    <include file="config/liquibase/changelog/20260928134620_added_entity_constraints_MessageMetadata.xml" relativeToChangelogFile="false"/>
-    <include file="config/liquibase/changelog/20260928134720_added_entity_constraints_MessageReceipt.xml" relativeToChangelogFile="false"/>
-    <include file="config/liquibase/changelog/20260928134820_added_entity_constraints_Conference.xml" relativeToChangelogFile="false"/>
-    <include file="config/liquibase/changelog/20260928134920_added_entity_constraints_ConferenceParticipant.xml" relativeToChangelogFile="false"/>
-    <include file="config/liquibase/changelog/20260928135020_added_entity_constraints_RecordingConsent.xml" relativeToChangelogFile="false"/>
-    <include file="config/liquibase/changelog/20260928135120_added_entity_constraints_RecordingSegment.xml" relativeToChangelogFile="false"/>
-    <include file="config/liquibase/changelog/20260928135220_added_entity_constraints_MediaKeyEpoch.xml" relativeToChangelogFile="false"/>
-    <include file="config/liquibase/changelog/20260928135320_added_entity_constraints_RoomArchive.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20260930053909_added_entity_constraints_RoomMember.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20260930053911_added_entity_constraints_MessageMetadata.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20260930053912_added_entity_constraints_MessageReceipt.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20260930053913_added_entity_constraints_Conference.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20260930053914_added_entity_constraints_ConferenceParticipant.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20260930053915_added_entity_constraints_RecordingConsent.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20260930053916_added_entity_constraints_RecordingSegment.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20260930053917_added_entity_constraints_MediaKeyEpoch.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20260930053918_added_entity_constraints_RoomArchive.xml" relativeToChangelogFile="false"/>
     <!-- jhipster-needle-liquibase-add-constraints-changelog - JHipster will add liquibase constraints changelogs here -->
+    <!-- Écrits à la main : messagerie inter-services (D-55) et messagerie de travail (D-64). -->
+    <include file="config/liquibase/changelog/20260930100000_lot1_post_generation.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20260930100100_col_messagerie.xml" relativeToChangelogFile="false"/>
     <!-- jhipster-needle-liquibase-add-incremental-changelog - JHipster will add incremental liquibase changelogs here -->
 </databaseChangeLog>

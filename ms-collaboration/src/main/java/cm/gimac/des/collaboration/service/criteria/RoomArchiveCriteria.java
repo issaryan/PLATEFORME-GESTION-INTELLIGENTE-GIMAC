@@ -1,6 +1,7 @@
 package cm.gimac.des.collaboration.service.criteria;
 
 import cm.gimac.des.collaboration.domain.enumeration.ArchiveState;
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.Objects;
 import java.util.Optional;
@@ -38,6 +39,7 @@ public class RoomArchiveCriteria implements Serializable, Criteria {
         }
     }
 
+    @Serial
     private static final long serialVersionUID = 1L;
 
     private UUIDFilter id;

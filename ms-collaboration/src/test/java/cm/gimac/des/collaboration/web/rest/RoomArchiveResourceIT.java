@@ -14,10 +14,8 @@ import cm.gimac.des.collaboration.domain.enumeration.ArchiveState;
 import cm.gimac.des.collaboration.repository.RoomArchiveRepository;
 import cm.gimac.des.collaboration.service.RoomArchiveService;
 import cm.gimac.des.collaboration.service.mapper.RoomArchiveMapper;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.UUID;
@@ -28,13 +26,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Integration tests for the {@link RoomArchiveResource} REST controller.
@@ -42,7 +41,7 @@ import org.springframework.transaction.annotation.Transactional;
 @IntegrationTest
 @ExtendWith(MockitoExtension.class)
 @AutoConfigureMockMvc
-@WithMockUser
+@WithMockUser(authorities = cm.gimac.des.collaboration.security.AuthoritiesConstants.ADMIN)
 class RoomArchiveResourceIT {
 
     private static final String DEFAULT_CRISIS_CELL_REFERENCE = "AAAAAAAAAA";
@@ -63,11 +62,11 @@ class RoomArchiveResourceIT {
     private static final Integer UPDATED_MASKED_SEQUENCES = 1;
     private static final Integer SMALLER_MASKED_SEQUENCES = 0 - 1;
 
-    private static final String DEFAULT_CHAIN_HEAD = "3ddb9f639dcd51720c85422d144b5105bfc4ae105c6667891032190aefb95c2d";
-    private static final String UPDATED_CHAIN_HEAD = "3dfc1cce2b038200c78506bed1d8954e5fce37e682f8896bb41fa48a466226a3";
+    private static final String DEFAULT_CHAIN_HEAD = "542253761566573184f891ea840eadd8548c89c91409b93b261b5b57be1154c1";
+    private static final String UPDATED_CHAIN_HEAD = "23b838a7954be8cb701a36fd29893d7f363a0073e90bf0d9137954739df5384e";
 
-    private static final String DEFAULT_CONTENT_DIGEST = "f188e77d4d3385361bddf124ddd5b6fb98ac05cdb2554561579516800345066a";
-    private static final String UPDATED_CONTENT_DIGEST = "ce8bbbf6fafd8acef0bfaecefbb1e2d5e6f83d10630764aa028ca380a0703467";
+    private static final String DEFAULT_CONTENT_DIGEST = "95af23813bf35071a95c38d40e1fe8819044c7b3523f8f7ac8bd918d2d389539";
+    private static final String UPDATED_CONTENT_DIGEST = "2c59b4bb3d3bbc0ab3c1ce274c69a0ba73ce9cbeedfde1b3b0b043ae024f296c";
 
     private static final byte[] DEFAULT_TIMESTAMP_TOKEN = TestUtil.createByteArray(1, "0");
     private static final byte[] UPDATED_TIMESTAMP_TOKEN = TestUtil.createByteArray(1, "1");
@@ -85,10 +84,10 @@ class RoomArchiveResourceIT {
     private static final ArchiveState UPDATED_STATE = ArchiveState.EN_ATTENTE_HORODATAGE;
 
     private static final Instant DEFAULT_STARTED_AT = Instant.ofEpochMilli(0L);
-    private static final Instant UPDATED_STARTED_AT = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+    private static final Instant UPDATED_STARTED_AT = Instant.ofEpochMilli(1790746747003L);
 
     private static final Instant DEFAULT_SEALED_AT = Instant.ofEpochMilli(0L);
-    private static final Instant UPDATED_SEALED_AT = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+    private static final Instant UPDATED_SEALED_AT = Instant.ofEpochMilli(1790746747003L);
 
     private static final String ENTITY_API_URL = "/api/room-archives";
     private static final String ENTITY_API_URL_ID = ENTITY_API_URL + "/{id}";
@@ -147,7 +146,7 @@ class RoomArchiveResourceIT {
             em.persist(room);
             em.flush();
         } else {
-            room = TestUtil.findAll(em, Room.class).get(0);
+            room = TestUtil.findAll(em, Room.class).getFirst();
         }
         roomArchive.setRoom(room);
         return roomArchive;
@@ -182,7 +181,7 @@ class RoomArchiveResourceIT {
             em.persist(room);
             em.flush();
         } else {
-            room = TestUtil.findAll(em, Room.class).get(0);
+            room = TestUtil.findAll(em, Room.class).getFirst();
         }
         updatedRoomArchive.setRoom(room);
         return updatedRoomArchive;

@@ -38,7 +38,7 @@ public class RoomMemberResource {
 
     private static final String ENTITY_NAME = "collaborationRoomMember";
 
-    @Value("${jhipster.clientApp.name}")
+    @Value("${jhipster.clientApp.name:collaboration}")
     private String applicationName;
 
     private final RoomMemberService roomMemberService;
@@ -61,7 +61,7 @@ public class RoomMemberResource {
      * {@code POST  /room-members} : Create a new roomMember.
      *
      * @param roomMemberDTO the roomMemberDTO to create.
-     * @return the {@link ResponseEntity} with status {@code 201 (Created)} and with body the new roomMemberDTO, or with status {@code 400 (Bad Request)} if the roomMember has already an ID.
+     * @return the {@link ResponseEntity} with status {@code 201 (Created)} and with body the new roomMemberDTO, or with status {@code 400 (Bad Request)} if the roomMember already has an ID.
      * @throws URISyntaxException if the Location URI syntax is incorrect.
      */
     @PostMapping("")
@@ -125,7 +125,7 @@ public class RoomMemberResource {
         @PathVariable(value = "id", required = false) final UUID id,
         @NotNull @RequestBody RoomMemberDTO roomMemberDTO
     ) throws URISyntaxException {
-        LOG.debug("REST request to partial update RoomMember partially : {}, {}", id, roomMemberDTO);
+        LOG.debug("REST request to partially update RoomMember : {}, {}", id, roomMemberDTO);
         if (roomMemberDTO.getId() == null) {
             throw new BadRequestAlertException("Invalid id", ENTITY_NAME, "idnull");
         }
@@ -146,11 +146,11 @@ public class RoomMemberResource {
     }
 
     /**
-     * {@code GET  /room-members} : get all the roomMembers.
+     * {@code GET  /room-members} : get all the Room Members.
      *
      * @param pageable the pagination information.
      * @param criteria the criteria which the requested entities should match.
-     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of roomMembers in body.
+     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of Room Members in body.
      */
     @GetMapping("")
     public ResponseEntity<List<RoomMemberDTO>> getAllRoomMembers(

@@ -45,6 +45,7 @@ Squelette JHipster 9.4.0 (CRUD généré réservé à l'administration technique
 | `POST /reauthentification/defi` | `/bff/{des,portail,console}/iam` | tout utilisateur à deux facteurs |
 | `POST /interne/reauthentifications/verification` | jamais relayée | jeton de service `INTERNAL_IAM_READ` |
 | `GET /interne/collaborateurs/{id}`, `GET /interne/collaborateurs?profil=` | jamais relayée | jeton de service `INTERNAL_IAM_READ` (annuaire IAM-04 : profils, rattachement, activité ; conducteurs de projet, D-58) |
+| `GET /interne/collaborateurs?recherche=&page=&taille=` | jamais relayée | jeton de service `INTERNAL_IAM_READ` : comptes internes actifs (sans institution), filtrés par nom, courriel ou fonction, page `{contenu, total, page, taille}` ; destinataires de la messagerie de MS-COLLABORATION (D-64) |
 
 Erreurs : ProblemDetail (`code`, `message`, `details`, `correlationId`). Sécurité (D-61) : `/api/v1/**` exige un jeton à deux facteurs (`acr` 2 ou 3) ; `/api/v1/interne/**` un jeton de service ; le CRUD généré `/api/**` le rôle `ROLE_ADMIN`.
 
@@ -105,6 +106,7 @@ Copié et adapté (paquet `cm.gimac.des.iam`) ; chaque bean est inactif tant que
 | 2026-09-29 | — | Permissions métier (HOM_*, CER_*, INTERNAL_*) acceptées comme autorités, en plus de ROLE_* (D-55). |
 | 2026-09-29 | — | Administration des comptes et de l'authentification depuis la plateforme (D-62) : annuaire Keycloak, premier accès, « Mon compte », politique de sécurité, messagerie, profils, journal ; réauthentification forte FIDO2 (IAM-07). 170 tests unitaires et de sécurité, 396 d'intégration et de recette réussis ; seuils JaCoCo atteints. |
 | 2026-09-29 | — | Ports sortants `application/port/out` versionnés : la règle `out/` du `.gitignore` généré par JHipster les ignorait, le dépôt distant ne compilait pas ; exception `!src/**/out/` ajoutée et port `Annuaire` reconstitué d'après `KeycloakAnnuaire` et `AnnuaireEnMemoire` |
+| 2026-09-30 | — | Annuaire interne de la messagerie (D-64) : `GET /api/v1/interne/collaborateurs?recherche=&page=&taille=` (comptes internes actifs, recherche par nom, courriel ou fonction, pagination), la liste `?profil=` inchangée ; tests unitaire, de sécurité et d'intégration (`CollaborateursInternesIT`). |
 <!-- GIMAC:FIN -->
 
 # iam

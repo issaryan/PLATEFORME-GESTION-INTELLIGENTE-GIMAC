@@ -13,10 +13,8 @@ import cm.gimac.des.collaboration.domain.ConferenceParticipant;
 import cm.gimac.des.collaboration.repository.ConferenceParticipantRepository;
 import cm.gimac.des.collaboration.service.ConferenceParticipantService;
 import cm.gimac.des.collaboration.service.mapper.ConferenceParticipantMapper;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -26,13 +24,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Integration tests for the {@link ConferenceParticipantResource} REST controller.
@@ -40,7 +39,7 @@ import org.springframework.transaction.annotation.Transactional;
 @IntegrationTest
 @ExtendWith(MockitoExtension.class)
 @AutoConfigureMockMvc
-@WithMockUser
+@WithMockUser(authorities = cm.gimac.des.collaboration.security.AuthoritiesConstants.ADMIN)
 class ConferenceParticipantResourceIT {
 
     private static final UUID DEFAULT_USER_ID = UUID.randomUUID();
@@ -50,10 +49,10 @@ class ConferenceParticipantResourceIT {
     private static final String UPDATED_TERMINAL_ID = "BBBBBBBBBB";
 
     private static final Instant DEFAULT_JOINED_AT = Instant.ofEpochMilli(0L);
-    private static final Instant UPDATED_JOINED_AT = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+    private static final Instant UPDATED_JOINED_AT = Instant.ofEpochMilli(1790746747003L);
 
     private static final Instant DEFAULT_LEFT_AT = Instant.ofEpochMilli(0L);
-    private static final Instant UPDATED_LEFT_AT = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+    private static final Instant UPDATED_LEFT_AT = Instant.ofEpochMilli(1790746747003L);
 
     private static final String ENTITY_API_URL = "/api/conference-participants";
     private static final String ENTITY_API_URL_ID = ENTITY_API_URL + "/{id}";
@@ -102,7 +101,7 @@ class ConferenceParticipantResourceIT {
             em.persist(conference);
             em.flush();
         } else {
-            conference = TestUtil.findAll(em, Conference.class).get(0);
+            conference = TestUtil.findAll(em, Conference.class).getFirst();
         }
         conferenceParticipant.setConference(conference);
         return conferenceParticipant;
@@ -127,7 +126,7 @@ class ConferenceParticipantResourceIT {
             em.persist(conference);
             em.flush();
         } else {
-            conference = TestUtil.findAll(em, Conference.class).get(0);
+            conference = TestUtil.findAll(em, Conference.class).getFirst();
         }
         updatedConferenceParticipant.setConference(conference);
         return updatedConferenceParticipant;

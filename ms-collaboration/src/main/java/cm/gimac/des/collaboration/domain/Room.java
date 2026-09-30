@@ -6,6 +6,7 @@ import cm.gimac.des.collaboration.domain.enumeration.RoomType;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
+import java.io.Serial;
 import java.io.Serializable;
 import java.time.Duration;
 import java.time.Instant;
@@ -20,6 +21,7 @@ import java.util.UUID;
 @SuppressWarnings("common-java:DuplicatedBlocks")
 public class Room implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = 1L;
 
     @Id

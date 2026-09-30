@@ -37,11 +37,11 @@ public class RoomArchiveResource {
     }
 
     /**
-     * {@code GET  /room-archives} : get all the roomArchives.
+     * {@code GET  /room-archives} : get all the Room Archives.
      *
      * @param pageable the pagination information.
      * @param criteria the criteria which the requested entities should match.
-     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of roomArchives in body.
+     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of Room Archives in body.
      */
     @GetMapping("")
     public ResponseEntity<List<RoomArchiveDTO>> getAllRoomArchives(

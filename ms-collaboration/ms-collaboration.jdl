@@ -53,6 +53,13 @@
  *     et collaboration.notification-requested.v1 ; aucune charge utile ne
  *     contient de contenu de message.
  *
+ * Messagerie instantanée de travail (D-64, docs/lot1/messagerie.md), premier
+ * incrément livré : écrite à la main hors de ce modèle (tables conversation,
+ * conversation_membre, message, message_etiquette, piece_jointe ; changelog
+ * 20260930100100_col_messagerie.xml), chiffrée au repos côté serveur. Les
+ * entités ci-dessous (salons chiffrés de bout en bout, V3) n'exposent pour
+ * l'instant que le CRUD généré, réservé à l'administration technique.
+ *
  * Références vers d'autres microservices (BNF-04) : identifiants UUID ou codes
  * commentés (collaborateurs de MS-IAM, cellules et tickets de MS-INCIDENT,
  * vacations de MS-MONITORING, documents de MS-DOCUMENT).
@@ -74,11 +81,11 @@ application {
     prodDatabaseType postgresql
     devDatabaseType postgresql
     /*
-     * Valkey en exploitation (REC D-25), compatible avec le protocole Redis :
-     * états de vérification des terminaux et membres actifs, consultés à
-     * chaque relais de partage de clé.
+     * Sans cache, comme MS-HOMOLOGATION et MS-CERTIFICATION (D-55) : le cache
+     * Valkey (D-25) des états de vérification des terminaux sera ajouté avec
+     * les salons chiffrés (V3), s'il est justifié par la charge.
      */
-    cacheProvider redis
+    cacheProvider no
     enableHibernateCache false
     messageBroker kafka
     searchEngine no
@@ -88,10 +95,11 @@ application {
     enableTranslation true
     nativeLanguage fr
     languages [fr, en]
-    testFrameworks []
+    testFrameworks [cucumber]
     enableSwaggerCodegen false
+    jhipsterVersion "9.4.0"
   }
-  entities RoomRetentionPolicy, Room, RoomMember, VerifiedTerminal, MessageMetadata, MessageReceipt, Conference, ConferenceParticipant, RecordingConsent, RecordingSegment, MediaKeyEpoch, RoomArchive, ProcessedEvent
+  entities RoomRetentionPolicy, Room, RoomMember, VerifiedTerminal, MessageMetadata, MessageReceipt, Conference, ConferenceParticipant, RecordingConsent, RecordingSegment, MediaKeyEpoch, RoomArchive
 }
 
 /* ---------------------------------------------------------------------------
@@ -410,13 +418,12 @@ entity RoomArchive {
   sealedAt Instant
 }
 
-/** Événement traité : clé unique = identifiant CloudEvents (RG-15, RG-35). */
-entity ProcessedEvent {
-  id UUID
-  eventId UUID required unique
-  subject String required maxlength(150)
-  processedAt Instant required
-}
+/*
+ * Événements traités (RG-15, RG-35) : la table de déduplication processed_event
+ * appartient au consommateur idempotent écrit à la main
+ * (infrastructure/messaging/consumer, D-55), comme dans MS-HOMOLOGATION ;
+ * elle n'est plus une entité générée.
+ */
 
 /* ---------------------------------------------------------------------------
  * Relations (internes au service uniquement, BNF-04)
@@ -450,7 +457,7 @@ service * with serviceClass
  * participations, consentements (recueillis par un port dédié, jamais par
  * CRUD), segments, époques de clés, archives scellées, événements traités.
  */
-readOnly MessageMetadata, MessageReceipt, ConferenceParticipant, RecordingConsent, RecordingSegment, MediaKeyEpoch, RoomArchive, ProcessedEvent
+readOnly MessageMetadata, MessageReceipt, ConferenceParticipant, RecordingConsent, RecordingSegment, MediaKeyEpoch, RoomArchive
 /* L'avertissement « paginate deprecated » de JHipster 9.4.0 est à ignorer. */
-paginate Room, RoomMember, VerifiedTerminal, MessageMetadata, MessageReceipt, Conference, ConferenceParticipant, MediaKeyEpoch, RoomArchive, ProcessedEvent with pagination
+paginate Room, RoomMember, VerifiedTerminal, MessageMetadata, MessageReceipt, Conference, ConferenceParticipant, MediaKeyEpoch, RoomArchive with pagination
 filter Room, RoomMember, VerifiedTerminal, MessageMetadata, Conference, RoomArchive

@@ -70,25 +70,27 @@ public class VerifiedTerminalQueryService extends QueryService<VerifiedTerminal>
      * @return the matching {@link Specification} of the entity.
      */
     protected Specification<VerifiedTerminal> createSpecification(VerifiedTerminalCriteria criteria) {
-        Specification<VerifiedTerminal> specification = Specification.where(null);
+        Specification<VerifiedTerminal> specification = Specification.unrestricted();
         if (criteria != null) {
             // This has to be called first, because the distinct method returns null
-            specification = Specification.allOf(
-                Boolean.TRUE.equals(criteria.getDistinct()) ? distinct(criteria.getDistinct()) : null,
-                buildSpecification(criteria.getId(), VerifiedTerminal_.id),
-                buildSpecification(criteria.getUserId(), VerifiedTerminal_.userId),
-                buildStringSpecification(criteria.getTerminalId(), VerifiedTerminal_.terminalId),
-                buildStringSpecification(criteria.getIdentityKey(), VerifiedTerminal_.identityKey),
-                buildStringSpecification(criteria.getAgreementKey(), VerifiedTerminal_.agreementKey),
-                buildStringSpecification(criteria.getSignedPreKey(), VerifiedTerminal_.signedPreKey),
-                buildStringSpecification(criteria.getSignedPreKeySignature(), VerifiedTerminal_.signedPreKeySignature),
-                buildRangeSpecification(criteria.getOneTimePreKeys(), VerifiedTerminal_.oneTimePreKeys),
-                buildStringSpecification(criteria.getCrossSignature(), VerifiedTerminal_.crossSignature),
-                buildSpecification(criteria.getState(), VerifiedTerminal_.state),
-                buildSpecification(criteria.getArchiveTerminal(), VerifiedTerminal_.archiveTerminal),
-                buildRangeSpecification(criteria.getRegisteredAt(), VerifiedTerminal_.registeredAt),
-                buildRangeSpecification(criteria.getVerifiedAt(), VerifiedTerminal_.verifiedAt),
-                buildRangeSpecification(criteria.getRevokedAt(), VerifiedTerminal_.revokedAt)
+            specification = specification.and(
+                Specification.allOf(
+                    Boolean.TRUE.equals(criteria.getDistinct()) ? distinct(criteria.getDistinct()) : Specification.unrestricted(),
+                    buildSpecification(criteria.getId(), VerifiedTerminal_.id),
+                    buildSpecification(criteria.getUserId(), VerifiedTerminal_.userId),
+                    buildStringSpecification(criteria.getTerminalId(), VerifiedTerminal_.terminalId),
+                    buildStringSpecification(criteria.getIdentityKey(), VerifiedTerminal_.identityKey),
+                    buildStringSpecification(criteria.getAgreementKey(), VerifiedTerminal_.agreementKey),
+                    buildStringSpecification(criteria.getSignedPreKey(), VerifiedTerminal_.signedPreKey),
+                    buildStringSpecification(criteria.getSignedPreKeySignature(), VerifiedTerminal_.signedPreKeySignature),
+                    buildRangeSpecification(criteria.getOneTimePreKeys(), VerifiedTerminal_.oneTimePreKeys),
+                    buildStringSpecification(criteria.getCrossSignature(), VerifiedTerminal_.crossSignature),
+                    buildSpecification(criteria.getState(), VerifiedTerminal_.state),
+                    buildSpecification(criteria.getArchiveTerminal(), VerifiedTerminal_.archiveTerminal),
+                    buildRangeSpecification(criteria.getRegisteredAt(), VerifiedTerminal_.registeredAt),
+                    buildRangeSpecification(criteria.getVerifiedAt(), VerifiedTerminal_.verifiedAt),
+                    buildRangeSpecification(criteria.getRevokedAt(), VerifiedTerminal_.revokedAt)
+                )
             );
         }
         return specification;

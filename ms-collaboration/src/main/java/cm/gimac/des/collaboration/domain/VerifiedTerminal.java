@@ -3,6 +3,7 @@ package cm.gimac.des.collaboration.domain;
 import cm.gimac.des.collaboration.domain.enumeration.VerificationState;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
+import java.io.Serial;
 import java.io.Serializable;
 import java.time.Instant;
 import java.util.UUID;
@@ -17,6 +18,7 @@ import java.util.UUID;
 @SuppressWarnings("common-java:DuplicatedBlocks")
 public class VerifiedTerminal implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = 1L;
 
     @Id

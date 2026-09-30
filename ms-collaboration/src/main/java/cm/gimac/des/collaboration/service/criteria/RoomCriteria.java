@@ -3,6 +3,7 @@ package cm.gimac.des.collaboration.service.criteria;
 import cm.gimac.des.collaboration.domain.enumeration.AttachmentKind;
 import cm.gimac.des.collaboration.domain.enumeration.RoomState;
 import cm.gimac.des.collaboration.domain.enumeration.RoomType;
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.Objects;
 import java.util.Optional;
@@ -74,6 +75,7 @@ public class RoomCriteria implements Serializable, Criteria {
         }
     }
 
+    @Serial
     private static final long serialVersionUID = 1L;
 
     private UUIDFilter id;

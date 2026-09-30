@@ -78,7 +78,7 @@ public class MessageMetadataService {
     }
 
     /**
-     * Get all the messageMetadata with eager load of many-to-many relationships.
+     * Get all the messageMetadatas with eager load of many-to-many relationships.
      *
      * @return the list of entities.
      */

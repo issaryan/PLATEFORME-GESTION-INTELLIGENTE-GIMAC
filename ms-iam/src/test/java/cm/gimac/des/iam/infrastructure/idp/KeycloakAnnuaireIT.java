@@ -63,6 +63,7 @@ class KeycloakAnnuaireIT {
                 .withEnv("GIMAC_SECRET_CERTIFICATION_SERVICE", "x")
                 .withEnv("GIMAC_SECRET_PARTICIPANT_SERVICE", "x")
                 .withEnv("GIMAC_SECRET_GATEWAY_SUPERVISION", "x")
+                .withEnv("GIMAC_SECRET_COLLABORATION_SERVICE", "x")
                 .withEnv("GIMAC_MOT_DE_PASSE_TEST", "Test-Gimac-2026!")
                 .withCopyFileToContainer(
                     MountableFile.forHostPath(Path.of("../infra/keycloak/gimac-realm.json")),

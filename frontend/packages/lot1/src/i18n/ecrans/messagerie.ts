@@ -46,6 +46,9 @@ export const catalogue: Catalogue = {
     'msg.erreur.COL_TOO_MANY_ATTACHMENTS': 'Cinq pièces jointes au plus.',
     'msg.erreur.COL_CONVERSATION_NOT_FOUND': 'Cette conversation n’existe pas ou ne vous est pas ouverte.',
     'msg.erreur.COL_ATTACHMENT_NOT_FOUND': 'Cette pièce jointe n’est pas disponible.',
+    'msg.erreur.COL_ATTACHMENT_REJECTED': 'Une pièce jointe a été refusée (par exemple, elle contient un numéro de carte en clair).',
+    'msg.erreur.COL_DIRECTORY_UNAVAILABLE': 'L’annuaire est momentanément indisponible ; réessayez.',
+    'msg.erreur.COL_DOCUMENT_UNAVAILABLE': 'Le dépôt des pièces jointes est momentanément indisponible ; réessayez.',
   },
   en: {
     'nav.messagerie': 'Messages',
@@ -91,6 +94,9 @@ export const catalogue: Catalogue = {
     'msg.erreur.COL_TOO_MANY_ATTACHMENTS': 'Five attachments at most.',
     'msg.erreur.COL_CONVERSATION_NOT_FOUND': 'This conversation does not exist or is not open to you.',
     'msg.erreur.COL_ATTACHMENT_NOT_FOUND': 'This attachment is not available.',
+    'msg.erreur.COL_ATTACHMENT_REJECTED': 'An attachment was refused (for instance, it contains an unmasked card number).',
+    'msg.erreur.COL_DIRECTORY_UNAVAILABLE': 'The directory is temporarily unavailable; try again.',
+    'msg.erreur.COL_DOCUMENT_UNAVAILABLE': 'Attachment storage is temporarily unavailable; try again.',
   },
   es: {
     'nav.messagerie': 'Mensajería',
@@ -136,5 +142,8 @@ export const catalogue: Catalogue = {
     'msg.erreur.COL_TOO_MANY_ATTACHMENTS': 'Cinco archivos adjuntos como máximo.',
     'msg.erreur.COL_CONVERSATION_NOT_FOUND': 'Esta conversación no existe o no le está abierta.',
     'msg.erreur.COL_ATTACHMENT_NOT_FOUND': 'Este archivo adjunto no está disponible.',
+    'msg.erreur.COL_ATTACHMENT_REJECTED': 'Se rechazó un archivo adjunto (por ejemplo, contiene un número de tarjeta sin enmascarar).',
+    'msg.erreur.COL_DIRECTORY_UNAVAILABLE': 'El directorio no está disponible por el momento; inténtelo de nuevo.',
+    'msg.erreur.COL_DOCUMENT_UNAVAILABLE': 'El depósito de archivos adjuntos no está disponible por el momento; inténtelo de nuevo.',
   },
 }

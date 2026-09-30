@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+
+    <!--
+        Added the entity MediaKeyEpoch.
+    -->
+    <changeSet id="20260930053917-1" author="jhipster">
+        <createTable tableName="media_key_epoch" remarks="Changement d&apos;époque des clés médias, consigné sans aucune clé (algorithme 6.61).">
+            <column name="id" type="${uuidType}">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="epoch" type="integer">
+                <constraints nullable="false" />
+            </column>
+            <column name="reason" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="rotated_at" type="${datetimeType}">
+                <constraints nullable="false" />
+            </column>
+            <column name="conference_id" type="${uuidType}">
+                <constraints nullable="false" />
+            </column>
+            <!-- jhipster-needle-liquibase-add-column - JHipster will add columns here -->
+        </createTable>
+        <dropDefaultValue tableName="media_key_epoch" columnName="rotated_at" columnDataType="${datetimeType}"/>
+    </changeSet>
+
+    <!-- jhipster-needle-liquibase-add-changeset - JHipster will add changesets here -->
+</databaseChangeLog>

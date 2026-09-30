@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+
+    <!--
+        Added the entity MessageMetadata.
+    -->
+    <changeSet id="20260930053911-1" author="jhipster">
+        <createTable tableName="message_metadata" remarks="Métadonnées d&apos;un message chiffré. Écart CC corrigé : l&apos;entité Message du CC\nporte le chiffré ; conformément à D-28, le chiffré reste dans Matrix Synapse\net seule la référence de l&apos;événement est conservée (renommage en\nMessageMetadata, qui évite aussi toute confusion avec Message de Spring).">
+            <column name="id" type="${uuidType}">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="matrix_event_id" type="varchar(255)" remarks="Identifiant de l&apos;événement dans Matrix Synapse.">
+                <constraints nullable="false" unique="true" uniqueConstraintName="ux_message_metadata__matrix_event_id" />
+            </column>
+            <column name="author_id" type="${uuidType}" remarks="Auteur (MS-IAM).">
+                <constraints nullable="false" />
+            </column>
+            <column name="terminal_id" type="varchar(100)">
+                <constraints nullable="false" />
+            </column>
+            <column name="sent_at" type="${datetimeType}">
+                <constraints nullable="false" />
+            </column>
+            <column name="session_id" type="varchar(255)" remarks="Identifiant de la session de groupe utilisée.">
+                <constraints nullable="true" />
+            </column>
+            <column name="ratchet_index" type="bigint" remarks="Indice de cliquet du message dans la chaîne.">
+                <constraints nullable="true" />
+            </column>
+            <column name="ciphertext_size" type="integer" remarks="Taille du chiffré, en octets.">
+                <constraints nullable="true" />
+            </column>
+            <column name="attachment_refs" type="varchar(2000)" remarks="Pièces jointes : identifiants de documents (MS-DOCUMENT), séparés par des virgules.">
+                <constraints nullable="true" />
+            </column>
+            <column name="room_id" type="${uuidType}">
+                <constraints nullable="false" />
+            </column>
+            <!-- jhipster-needle-liquibase-add-column - JHipster will add columns here -->
+        </createTable>
+        <dropDefaultValue tableName="message_metadata" columnName="sent_at" columnDataType="${datetimeType}"/>
+    </changeSet>
+
+    <!-- jhipster-needle-liquibase-add-changeset - JHipster will add changesets here -->
+</databaseChangeLog>

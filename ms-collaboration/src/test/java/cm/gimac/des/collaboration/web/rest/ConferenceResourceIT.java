@@ -16,10 +16,8 @@ import cm.gimac.des.collaboration.repository.ConferenceRepository;
 import cm.gimac.des.collaboration.service.ConferenceService;
 import cm.gimac.des.collaboration.service.dto.ConferenceDTO;
 import cm.gimac.des.collaboration.service.mapper.ConferenceMapper;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -29,13 +27,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Integration tests for the {@link ConferenceResource} REST controller.
@@ -43,17 +42,17 @@ import org.springframework.transaction.annotation.Transactional;
 @IntegrationTest
 @ExtendWith(MockitoExtension.class)
 @AutoConfigureMockMvc
-@WithMockUser
+@WithMockUser(authorities = cm.gimac.des.collaboration.security.AuthoritiesConstants.ADMIN)
 class ConferenceResourceIT {
 
     private static final String DEFAULT_SFU_ROOM = "AAAAAAAAAA";
     private static final String UPDATED_SFU_ROOM = "BBBBBBBBBB";
 
     private static final Instant DEFAULT_STARTED_AT = Instant.ofEpochMilli(0L);
-    private static final Instant UPDATED_STARTED_AT = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+    private static final Instant UPDATED_STARTED_AT = Instant.ofEpochMilli(1790746747003L);
 
     private static final Instant DEFAULT_ENDED_AT = Instant.ofEpochMilli(0L);
-    private static final Instant UPDATED_ENDED_AT = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+    private static final Instant UPDATED_ENDED_AT = Instant.ofEpochMilli(1790746747003L);
 
     private static final Boolean DEFAULT_SFRAME_REQUIRED = false;
     private static final Boolean UPDATED_SFRAME_REQUIRED = true;
@@ -118,7 +117,7 @@ class ConferenceResourceIT {
             em.persist(room);
             em.flush();
         } else {
-            room = TestUtil.findAll(em, Room.class).get(0);
+            room = TestUtil.findAll(em, Room.class).getFirst();
         }
         conference.setRoom(room);
         return conference;
@@ -146,7 +145,7 @@ class ConferenceResourceIT {
             em.persist(room);
             em.flush();
         } else {
-            room = TestUtil.findAll(em, Room.class).get(0);
+            room = TestUtil.findAll(em, Room.class).getFirst();
         }
         updatedConference.setRoom(room);
         return updatedConference;
@@ -665,7 +664,7 @@ class ConferenceResourceIT {
             conferenceRepository.saveAndFlush(conference);
             room = RoomResourceIT.createEntity();
         } else {
-            room = TestUtil.findAll(em, Room.class).get(0);
+            room = TestUtil.findAll(em, Room.class).getFirst();
         }
         em.persist(room);
         em.flush();
@@ -848,10 +847,8 @@ class ConferenceResourceIT {
         partialUpdatedConference.setId(conference.getId());
 
         partialUpdatedConference
-            .sfuRoom(UPDATED_SFU_ROOM)
+            .startedAt(UPDATED_STARTED_AT)
             .endedAt(UPDATED_ENDED_AT)
-            .sframeRequired(UPDATED_SFRAME_REQUIRED)
-            .screenShare(UPDATED_SCREEN_SHARE)
             .recording(UPDATED_RECORDING)
             .keyEpoch(UPDATED_KEY_EPOCH);
 

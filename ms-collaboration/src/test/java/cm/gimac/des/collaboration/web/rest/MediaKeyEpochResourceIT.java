@@ -14,10 +14,8 @@ import cm.gimac.des.collaboration.domain.enumeration.MediaKeyRotationReason;
 import cm.gimac.des.collaboration.repository.MediaKeyEpochRepository;
 import cm.gimac.des.collaboration.service.MediaKeyEpochService;
 import cm.gimac.des.collaboration.service.mapper.MediaKeyEpochMapper;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -27,13 +25,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Integration tests for the {@link MediaKeyEpochResource} REST controller.
@@ -41,7 +40,7 @@ import org.springframework.transaction.annotation.Transactional;
 @IntegrationTest
 @ExtendWith(MockitoExtension.class)
 @AutoConfigureMockMvc
-@WithMockUser
+@WithMockUser(authorities = cm.gimac.des.collaboration.security.AuthoritiesConstants.ADMIN)
 class MediaKeyEpochResourceIT {
 
     private static final Integer DEFAULT_EPOCH = 0;
@@ -51,7 +50,7 @@ class MediaKeyEpochResourceIT {
     private static final MediaKeyRotationReason UPDATED_REASON = MediaKeyRotationReason.ENTREE_PARTICIPANT;
 
     private static final Instant DEFAULT_ROTATED_AT = Instant.ofEpochMilli(0L);
-    private static final Instant UPDATED_ROTATED_AT = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+    private static final Instant UPDATED_ROTATED_AT = Instant.ofEpochMilli(1790746747003L);
 
     private static final String ENTITY_API_URL = "/api/media-key-epoches";
     private static final String ENTITY_API_URL_ID = ENTITY_API_URL + "/{id}";
@@ -96,7 +95,7 @@ class MediaKeyEpochResourceIT {
             em.persist(conference);
             em.flush();
         } else {
-            conference = TestUtil.findAll(em, Conference.class).get(0);
+            conference = TestUtil.findAll(em, Conference.class).getFirst();
         }
         mediaKeyEpoch.setConference(conference);
         return mediaKeyEpoch;
@@ -117,7 +116,7 @@ class MediaKeyEpochResourceIT {
             em.persist(conference);
             em.flush();
         } else {
-            conference = TestUtil.findAll(em, Conference.class).get(0);
+            conference = TestUtil.findAll(em, Conference.class).getFirst();
         }
         updatedMediaKeyEpoch.setConference(conference);
         return updatedMediaKeyEpoch;

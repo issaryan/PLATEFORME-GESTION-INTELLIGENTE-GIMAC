@@ -13,10 +13,8 @@ import cm.gimac.des.collaboration.domain.RecordingConsent;
 import cm.gimac.des.collaboration.repository.RecordingConsentRepository;
 import cm.gimac.des.collaboration.service.RecordingConsentService;
 import cm.gimac.des.collaboration.service.mapper.RecordingConsentMapper;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -26,13 +24,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.data.domain.PageImpl;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Integration tests for the {@link RecordingConsentResource} REST controller.
@@ -40,7 +38,7 @@ import org.springframework.transaction.annotation.Transactional;
 @IntegrationTest
 @ExtendWith(MockitoExtension.class)
 @AutoConfigureMockMvc
-@WithMockUser
+@WithMockUser(authorities = cm.gimac.des.collaboration.security.AuthoritiesConstants.ADMIN)
 class RecordingConsentResourceIT {
 
     private static final UUID DEFAULT_USER_ID = UUID.randomUUID();
@@ -50,7 +48,7 @@ class RecordingConsentResourceIT {
     private static final Boolean UPDATED_GRANTED = true;
 
     private static final Instant DEFAULT_DECIDED_AT = Instant.ofEpochMilli(0L);
-    private static final Instant UPDATED_DECIDED_AT = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+    private static final Instant UPDATED_DECIDED_AT = Instant.ofEpochMilli(1790746747003L);
 
     private static final String ENTITY_API_URL = "/api/recording-consents";
     private static final String ENTITY_API_URL_ID = ENTITY_API_URL + "/{id}";
@@ -98,7 +96,7 @@ class RecordingConsentResourceIT {
             em.persist(conference);
             em.flush();
         } else {
-            conference = TestUtil.findAll(em, Conference.class).get(0);
+            conference = TestUtil.findAll(em, Conference.class).getFirst();
         }
         recordingConsent.setConference(conference);
         return recordingConsent;
@@ -122,7 +120,7 @@ class RecordingConsentResourceIT {
             em.persist(conference);
             em.flush();
         } else {
-            conference = TestUtil.findAll(em, Conference.class).get(0);
+            conference = TestUtil.findAll(em, Conference.class).getFirst();
         }
         updatedRecordingConsent.setConference(conference);
         return updatedRecordingConsent;
@@ -160,16 +158,16 @@ class RecordingConsentResourceIT {
 
     @SuppressWarnings({ "unchecked" })
     void getAllRecordingConsentsWithEagerRelationshipsIsEnabled() throws Exception {
-        when(recordingConsentServiceMock.findAllWithEagerRelationships(any())).thenReturn(new PageImpl(new ArrayList<>()));
+        when(recordingConsentServiceMock.findAllWithEagerRelationships()).thenReturn(new ArrayList<>());
 
         restRecordingConsentMockMvc.perform(get(ENTITY_API_URL + "?eagerload=true")).andExpect(status().isOk());
 
-        verify(recordingConsentServiceMock, times(1)).findAllWithEagerRelationships(any());
+        verify(recordingConsentServiceMock, times(1)).findAllWithEagerRelationships();
     }
 
     @SuppressWarnings({ "unchecked" })
     void getAllRecordingConsentsWithEagerRelationshipsIsNotEnabled() throws Exception {
-        when(recordingConsentServiceMock.findAllWithEagerRelationships(any())).thenReturn(new PageImpl(new ArrayList<>()));
+        when(recordingConsentServiceMock.findAllWithEagerRelationships()).thenReturn(new ArrayList<>());
 
         restRecordingConsentMockMvc.perform(get(ENTITY_API_URL + "?eagerload=false")).andExpect(status().isOk());
         verify(recordingConsentRepositoryMock, times(1)).findAll(any(Pageable.class));

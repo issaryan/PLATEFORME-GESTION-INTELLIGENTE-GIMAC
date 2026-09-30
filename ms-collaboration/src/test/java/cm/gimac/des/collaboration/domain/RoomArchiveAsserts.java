@@ -52,7 +52,8 @@ public class RoomArchiveAsserts {
             )
             .satisfies(a -> assertThat(a.getTicketReference()).as("check ticketReference").isEqualTo(expected.getTicketReference()))
             .satisfies(a -> assertThat(a.getMessageCount()).as("check messageCount").isEqualTo(expected.getMessageCount()))
-            .satisfies(a -> assertThat(a.getUndecryptableCount()).as("check undecryptableCount").isEqualTo(expected.getUndecryptableCount())
+            .satisfies(a ->
+                assertThat(a.getUndecryptableCount()).as("check undecryptableCount").isEqualTo(expected.getUndecryptableCount())
             )
             .satisfies(a -> assertThat(a.getMaskedSequences()).as("check maskedSequences").isEqualTo(expected.getMaskedSequences()))
             .satisfies(a -> assertThat(a.getChainHead()).as("check chainHead").isEqualTo(expected.getChainHead()))
@@ -60,7 +61,7 @@ public class RoomArchiveAsserts {
             .satisfies(a -> assertThat(a.getTimestampToken()).as("check timestampToken").isEqualTo(expected.getTimestampToken()))
             .satisfies(a ->
                 assertThat(a.getTimestampTokenContentType())
-                    .as("check timestampToken contenty type")
+                    .as("check timestampToken content type")
                     .isEqualTo(expected.getTimestampTokenContentType())
             )
             .satisfies(a -> assertThat(a.getDocumentRef()).as("check documentRef").isEqualTo(expected.getDocumentRef()))

@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+
+    <!--
+        Added the entity RoomArchive.
+    -->
+    <changeSet id="20260930053918-1" author="jhipster">
+        <createTable tableName="room_archive" remarks="Archive scellée d&apos;un salon (algorithme 6.63) : PDF/A-3 horodaté RFC 3161,\ndéposé en WORM 10 ans dans MS-DOCUMENT (RG-53, D-11). Écart CC corrigé :\nCrisisArchive devient RoomArchive, D-28 étendant l&apos;archivage aux salons\nliés à un ticket.">
+            <column name="id" type="${uuidType}">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="crisis_cell_reference" type="varchar(50)" remarks="Cellule de crise (MS-INCIDENT), par exemple CRI-2026-009 ; vide pour un salon d&apos;incident.">
+                <constraints nullable="true" />
+            </column>
+            <column name="ticket_reference" type="varchar(50)" remarks="Ticket lié (MS-INCIDENT).">
+                <constraints nullable="true" />
+            </column>
+            <column name="message_count" type="integer">
+                <constraints nullable="false" />
+            </column>
+            <column name="undecryptable_count" type="integer" remarks="Messages que le terminal d&apos;archivage n&apos;a pu déchiffrer, consignés comme tels.">
+                <constraints nullable="false" />
+            </column>
+            <column name="masked_sequences" type="integer" remarks="Suites de chiffres masquées en 6+4 (RG-52).">
+                <constraints nullable="false" />
+            </column>
+            <column name="chain_head" type="varchar(64)" remarks="Tête de chaîne hM des entrées, portée au manifeste (formule 6.78).">
+                <constraints nullable="true" />
+            </column>
+            <column name="content_digest" type="varchar(64)" remarks="H = SHA256(document).">
+                <constraints nullable="true" />
+            </column>
+            <column name="timestamp_token" type="${blobType}" remarks="Jeton RFC 3161 encodé en DER.">
+                <constraints nullable="true" />
+            </column>
+            <column name="timestamp_token_content_type" type="varchar(255)">
+                <constraints nullable="true" />
+            </column>
+            <column name="document_ref" type="${uuidType}" remarks="Archive déposée : identifiant du document dans MS-DOCUMENT.">
+                <constraints nullable="true" />
+            </column>
+            <column name="retention_years" type="integer" remarks="Rétention de l&apos;archive, en années ; 10 pour une archive de crise.">
+                <constraints nullable="false" />
+            </column>
+            <column name="state" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="started_at" type="${datetimeType}">
+                <constraints nullable="false" />
+            </column>
+            <column name="sealed_at" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="room_id" type="${uuidType}">
+                <constraints nullable="false" unique="true" uniqueConstraintName="ux_room_archive__room_id" />
+            </column>
+            <!-- jhipster-needle-liquibase-add-column - JHipster will add columns here -->
+        </createTable>
+        <dropDefaultValue tableName="room_archive" columnName="started_at" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="room_archive" columnName="sealed_at" columnDataType="${datetimeType}"/>
+    </changeSet>
+
+    <!-- jhipster-needle-liquibase-add-changeset - JHipster will add changesets here -->
+</databaseChangeLog>

@@ -168,4 +168,29 @@ class AdministrationComptesServiceTest {
         assertThat(service.sessions(id)).isEmpty();
         verify(journal, never()).compte(eq(RSSI), eq("SUPPRESSION"), any(), any(), any(), anyList());
     }
+
+    @Test
+    @DisplayName("D-64 : annuaire interne, comptes actifs sans institution, filtrés par nom, courriel ou fonction, paginés")
+    void annuaireInterne() {
+        String agent = service.creer(RSSI, nouveau("agent.ddrm", "ROLE_CHARGE_DDRM"), true, false).compte().id();
+        service.creer(RSSI, new NouveauCompte("correspondant", "Jeanne", "Owona", "jeanne@banque.test", "+237600000003", "Correspondante", "INST-1", Set.of("ROLE_CHARGE_DDRM")), true, false);
+        String parti = service.creer(RSSI, nouveau("ancien.agent", "ROLE_CHARGE_DDRM"), true, false).compte().id();
+        service.definirActif(RSSI, parti, false, "départ");
+
+        var tous = service.annuaireInterne(null, 0, 20);
+        assertThat(tous.total()).isEqualTo(3);
+        assertThat(tous.contenu()).extracting(Compte::id).containsExactlyInAnyOrder("demo-super-admin", "demo-rssi", agent);
+        assertThat(service.annuaireInterne(" RSSI ", 0, 20).contenu()).extracting(Compte::id).containsExactly("demo-rssi");
+        assertThat(service.annuaireInterne("agent.ddrm@gimac", 0, 20).contenu()).extracting(Compte::id).containsExactly(agent);
+        assertThat(service.annuaireInterne("chargé", 0, 20).contenu()).extracting(Compte::id).containsExactly(agent);
+        assertThat(service.annuaireInterne("owona", 0, 20).total()).isZero();
+        var page = service.annuaireInterne("", 1, 2);
+        assertThat(page.contenu()).hasSize(1);
+        assertThat(page.page()).isEqualTo(1);
+        assertThat(page.taille()).isEqualTo(2);
+        var bornee = service.annuaireInterne(null, -3, 500);
+        assertThat(bornee.page()).isZero();
+        assertThat(bornee.taille()).isEqualTo(100);
+        assertThat(service.annuaireInterne(null, 9, 0).contenu()).isEmpty();
+    }
 }

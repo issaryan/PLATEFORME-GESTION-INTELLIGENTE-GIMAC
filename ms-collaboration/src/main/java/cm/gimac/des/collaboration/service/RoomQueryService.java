@@ -68,28 +68,32 @@ public class RoomQueryService extends QueryService<Room> {
      * @return the matching {@link Specification} of the entity.
      */
     protected Specification<Room> createSpecification(RoomCriteria criteria) {
-        Specification<Room> specification = Specification.where(null);
+        Specification<Room> specification = Specification.unrestricted();
         if (criteria != null) {
             // This has to be called first, because the distinct method returns null
-            specification = Specification.allOf(
-                Boolean.TRUE.equals(criteria.getDistinct()) ? distinct(criteria.getDistinct()) : null,
-                buildSpecification(criteria.getId(), Room_.id),
-                buildStringSpecification(criteria.getCode(), Room_.code),
-                buildSpecification(criteria.getType(), Room_.type),
-                buildSpecification(criteria.getAttachmentKind(), Room_.attachmentKind),
-                buildStringSpecification(criteria.getAttachmentReference(), Room_.attachmentReference),
-                buildStringSpecification(criteria.getAttachmentService(), Room_.attachmentService),
-                buildStringSpecification(criteria.getTicketReference(), Room_.ticketReference),
-                buildStringSpecification(criteria.getMatrixRoomId(), Room_.matrixRoomId),
-                buildStringSpecification(criteria.getEncryption(), Room_.encryption),
-                buildRangeSpecification(criteria.getCreatedAt(), Room_.createdAt),
-                buildSpecification(criteria.getState(), Room_.state),
-                buildRangeSpecification(criteria.getRetention(), Room_.retention),
-                buildRangeSpecification(criteria.getGroupSessionEpoch(), Room_.groupSessionEpoch),
-                buildRangeSpecification(criteria.getFrozenAt(), Room_.frozenAt),
-                buildRangeSpecification(criteria.getArchivedAt(), Room_.archivedAt),
-                buildRangeSpecification(criteria.getPurgeAfter(), Room_.purgeAfter),
-                buildSpecification(criteria.getRoomArchiveId(), root -> root.join(Room_.roomArchive, JoinType.LEFT).get(RoomArchive_.id))
+            specification = specification.and(
+                Specification.allOf(
+                    Boolean.TRUE.equals(criteria.getDistinct()) ? distinct(criteria.getDistinct()) : Specification.unrestricted(),
+                    buildSpecification(criteria.getId(), Room_.id),
+                    buildStringSpecification(criteria.getCode(), Room_.code),
+                    buildSpecification(criteria.getType(), Room_.type),
+                    buildSpecification(criteria.getAttachmentKind(), Room_.attachmentKind),
+                    buildStringSpecification(criteria.getAttachmentReference(), Room_.attachmentReference),
+                    buildStringSpecification(criteria.getAttachmentService(), Room_.attachmentService),
+                    buildStringSpecification(criteria.getTicketReference(), Room_.ticketReference),
+                    buildStringSpecification(criteria.getMatrixRoomId(), Room_.matrixRoomId),
+                    buildStringSpecification(criteria.getEncryption(), Room_.encryption),
+                    buildRangeSpecification(criteria.getCreatedAt(), Room_.createdAt),
+                    buildSpecification(criteria.getState(), Room_.state),
+                    buildRangeSpecification(criteria.getRetention(), Room_.retention),
+                    buildRangeSpecification(criteria.getGroupSessionEpoch(), Room_.groupSessionEpoch),
+                    buildRangeSpecification(criteria.getFrozenAt(), Room_.frozenAt),
+                    buildRangeSpecification(criteria.getArchivedAt(), Room_.archivedAt),
+                    buildRangeSpecification(criteria.getPurgeAfter(), Room_.purgeAfter),
+                    buildSpecification(criteria.getRoomArchiveId(), root ->
+                        root.join(Room_.roomArchive, JoinType.LEFT).get(RoomArchive_.id)
+                    )
+                )
             );
         }
         return specification;

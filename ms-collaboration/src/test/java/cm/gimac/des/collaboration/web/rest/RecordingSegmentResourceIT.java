@@ -13,10 +13,8 @@ import cm.gimac.des.collaboration.domain.RecordingSegment;
 import cm.gimac.des.collaboration.repository.RecordingSegmentRepository;
 import cm.gimac.des.collaboration.service.RecordingSegmentService;
 import cm.gimac.des.collaboration.service.mapper.RecordingSegmentMapper;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -26,13 +24,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.data.domain.PageImpl;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Integration tests for the {@link RecordingSegmentResource} REST controller.
@@ -40,14 +38,14 @@ import org.springframework.transaction.annotation.Transactional;
 @IntegrationTest
 @ExtendWith(MockitoExtension.class)
 @AutoConfigureMockMvc
-@WithMockUser
+@WithMockUser(authorities = cm.gimac.des.collaboration.security.AuthoritiesConstants.ADMIN)
 class RecordingSegmentResourceIT {
 
     private static final Instant DEFAULT_STARTED_AT = Instant.ofEpochMilli(0L);
-    private static final Instant UPDATED_STARTED_AT = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+    private static final Instant UPDATED_STARTED_AT = Instant.ofEpochMilli(1790746747003L);
 
     private static final Instant DEFAULT_ENDED_AT = Instant.ofEpochMilli(0L);
-    private static final Instant UPDATED_ENDED_AT = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+    private static final Instant UPDATED_ENDED_AT = Instant.ofEpochMilli(1790746747003L);
 
     private static final String DEFAULT_EGRESS_REFERENCE = "AAAAAAAAAA";
     private static final String UPDATED_EGRESS_REFERENCE = "BBBBBBBBBB";
@@ -102,7 +100,7 @@ class RecordingSegmentResourceIT {
             em.persist(conference);
             em.flush();
         } else {
-            conference = TestUtil.findAll(em, Conference.class).get(0);
+            conference = TestUtil.findAll(em, Conference.class).getFirst();
         }
         recordingSegment.setConference(conference);
         return recordingSegment;
@@ -127,7 +125,7 @@ class RecordingSegmentResourceIT {
             em.persist(conference);
             em.flush();
         } else {
-            conference = TestUtil.findAll(em, Conference.class).get(0);
+            conference = TestUtil.findAll(em, Conference.class).getFirst();
         }
         updatedRecordingSegment.setConference(conference);
         return updatedRecordingSegment;
@@ -166,16 +164,16 @@ class RecordingSegmentResourceIT {
 
     @SuppressWarnings({ "unchecked" })
     void getAllRecordingSegmentsWithEagerRelationshipsIsEnabled() throws Exception {
-        when(recordingSegmentServiceMock.findAllWithEagerRelationships(any())).thenReturn(new PageImpl(new ArrayList<>()));
+        when(recordingSegmentServiceMock.findAllWithEagerRelationships()).thenReturn(new ArrayList<>());
 
         restRecordingSegmentMockMvc.perform(get(ENTITY_API_URL + "?eagerload=true")).andExpect(status().isOk());
 
-        verify(recordingSegmentServiceMock, times(1)).findAllWithEagerRelationships(any());
+        verify(recordingSegmentServiceMock, times(1)).findAllWithEagerRelationships();
     }
 
     @SuppressWarnings({ "unchecked" })
     void getAllRecordingSegmentsWithEagerRelationshipsIsNotEnabled() throws Exception {
-        when(recordingSegmentServiceMock.findAllWithEagerRelationships(any())).thenReturn(new PageImpl(new ArrayList<>()));
+        when(recordingSegmentServiceMock.findAllWithEagerRelationships()).thenReturn(new ArrayList<>());
 
         restRecordingSegmentMockMvc.perform(get(ENTITY_API_URL + "?eagerload=false")).andExpect(status().isOk());
         verify(recordingSegmentRepositoryMock, times(1)).findAll(any(Pageable.class));

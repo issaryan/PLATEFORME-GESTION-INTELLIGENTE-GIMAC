@@ -41,10 +41,16 @@ Règles :
   masquée en `6 premiers + * + 4 derniers` avant l'enregistrement.
 - Un message est **immuable** une fois envoyé.
 
+Statuts : création `201` pour une nouvelle conversation, `200` quand la conversation directe existante
+est réutilisée ; envoi `201` ; `/lu` répond `204`. La création accepte aussi `liaisonReference`
+(facultatif) pour la liaison rattachée.
+
 Codes d'erreur (`application/problem+json`, champ `code`) : `COL_RECIPIENT_REQUIRED`, `COL_RECIPIENT_UNKNOWN`,
 `COL_RECIPIENT_SELF`, `COL_TOO_MANY_RECIPIENTS`, `COL_MESSAGE_EMPTY`, `COL_MESSAGE_TOO_LONG`,
 `COL_TAG_INVALID`, `COL_TOO_MANY_TAGS`, `COL_ATTACHMENT_TOO_LARGE`, `COL_ATTACHMENT_TYPE`,
-`COL_TOO_MANY_ATTACHMENTS`, `COL_CONVERSATION_NOT_FOUND`, `COL_ATTACHMENT_NOT_FOUND`.
+`COL_TOO_MANY_ATTACHMENTS`, `COL_CONVERSATION_NOT_FOUND`, `COL_ATTACHMENT_NOT_FOUND`,
+`COL_MESSAGE_NOT_FOUND`, `COL_ATTACHMENT_REJECTED` (400, refus de MS-DOCUMENT, par exemple un numéro de
+carte en clair), `COL_DIRECTORY_UNAVAILABLE` et `COL_DOCUMENT_UNAVAILABLE` (503), `COL_USER_TOKEN_REQUIRED`.
 
 ## 2. Représentations
 

@@ -4,6 +4,7 @@ import cm.gimac.des.collaboration.domain.enumeration.RetentionAnchor;
 import cm.gimac.des.collaboration.domain.enumeration.RoomType;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
+import java.io.Serial;
 import java.io.Serializable;
 import java.time.Duration;
 import java.time.Instant;
@@ -19,6 +20,7 @@ import java.util.UUID;
 @SuppressWarnings("common-java:DuplicatedBlocks")
 public class RoomRetentionPolicy implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = 1L;
 
     @Id

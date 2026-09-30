@@ -305,6 +305,30 @@ class IamRoutesSecurityTest {
     }
 
     @Test
+    @DisplayName("D-64 : annuaire interne paginé réservé au jeton de service INTERNAL_IAM_READ, sans coordonnées")
+    void annuaireInterne() throws Exception {
+        String uri = "/api/v1/interne/collaborateurs?recherche=mballa&page=1&taille=10";
+        mvc.perform(req(HttpMethod.GET, uri, null)).andExpect(status().isUnauthorized());
+        mvc.perform(req(HttpMethod.GET, uri, null).with(jeton("2", PERMISSIONS_IAM.toArray(String[]::new)))).andExpect(status().isForbidden());
+        mvc.perform(req(HttpMethod.GET, uri, null).with(jwt().authorities(new SimpleGrantedAuthority("INTERNAL_DOCUMENT_READ")))).andExpect(status().isForbidden());
+        when(comptes.annuaireInterne("mballa", 1, 10)).thenReturn(new AdministrationComptesService.PageAnnuaire(List.of(compte), 11, 1, 10));
+        mvc
+            .perform(req(HttpMethod.GET, uri, null).with(jwt().authorities(new SimpleGrantedAuthority("INTERNAL_IAM_READ"))))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.contenu[0].id").value(ID))
+            .andExpect(jsonPath("$.contenu[0].nomAffiche").value("Awa Mballa"))
+            .andExpect(jsonPath("$.contenu[0].email").doesNotExist())
+            .andExpect(jsonPath("$.total").value(11))
+            .andExpect(jsonPath("$.page").value(1))
+            .andExpect(jsonPath("$.taille").value(10));
+        when(comptes.annuaireInterne(null, 0, 20)).thenReturn(new AdministrationComptesService.PageAnnuaire(List.of(), 0, 0, 20));
+        mvc
+            .perform(req(HttpMethod.GET, "/api/v1/interne/collaborateurs", null).with(jwt().authorities(new SimpleGrantedAuthority("INTERNAL_IAM_READ"))))
+            .andExpect(jsonPath("$.total").value(0))
+            .andExpect(jsonPath("$.taille").value(20));
+    }
+
+    @Test
     @DisplayName("Jeton de service : aucune route d'administration ; CRUD générés réservés à l'administration technique")
     void cloisonnement() throws Exception {
         mvc.perform(req(HttpMethod.GET, "/api/v1/comptes", null).with(jwt().authorities(new SimpleGrantedAuthority("IAM_ACCOUNT_READ")))).andExpect(status().isForbidden());

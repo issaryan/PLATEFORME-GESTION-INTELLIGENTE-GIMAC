@@ -4,7 +4,8 @@
     "authenticationType": "oauth2",
     "baseName": "collaboration",
     "buildTool": "maven",
-    "cacheProvider": "redis",
+    "cacheProvider": "no",
+    "creationTimestamp": 1790746747003,
     "databaseType": "sql",
     "devDatabaseType": "postgresql",
     "enableHibernateCache": false,
@@ -22,13 +23,12 @@
       "RecordingConsent",
       "RecordingSegment",
       "MediaKeyEpoch",
-      "RoomArchive",
-      "ProcessedEvent"
+      "RoomArchive"
     ],
-    "jhipsterVersion": "8.11.0",
+    "jhipsterVersion": "9.4.0",
     "jwtSecretKey": "MGQ5NDUzZGZkOTMzNmIwOTQxNzYyNzhkZDVjMzFiYmI1NjUzNDI2YmQ2MTgwMTZlNTdkZjE2YTY3ZTkxMjliMmEyOGQ0MjZkMDZkN2Q4Y2ZiNmZiZmQ0MDY0OTRjZDk5Y2FkM2JiNmMzYWEwN2IzNzFkNDlhZDRmNDBhMjU3NGI=",
     "languages": ["fr", "en"],
-    "lastLiquibaseTimestamp": 1790603660000,
+    "lastLiquibaseTimestamp": 1790746758000,
     "messageBroker": "kafka",
     "monorepository": true,
     "nativeLanguage": "fr",
@@ -40,7 +40,8 @@
     "serviceDiscoveryType": "no",
     "skipClient": true,
     "skipCommitHook": true,
+    "skipFakeData": true,
     "skipUserManagement": true,
-    "testFrameworks": []
+    "testFrameworks": ["cucumber"]
   }
 }

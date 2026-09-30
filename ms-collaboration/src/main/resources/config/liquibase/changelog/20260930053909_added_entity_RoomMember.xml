@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+
+    <!--
+        Added the entity RoomMember.
+    -->
+    <changeSet id="20260930053909-1" author="jhipster">
+        <createTable tableName="room_member" remarks="Membre d&apos;un salon, tiré du rattachement et non d&apos;une liste libre. Le suivi\nd&apos;acquittement de l&apos;invitation trace l&apos;escalade vers le suppléant après\n10 min (RG-75) ; la temporisation elle-même relève de MS-NOTIFICATION (D-14).">
+            <column name="id" type="${uuidType}">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="user_id" type="${uuidType}" remarks="Collaborateur (MS-IAM), ou compte technique du terminal d&apos;archivage.">
+                <constraints nullable="false" />
+            </column>
+            <column name="role" type="varchar(255)">
+                <constraints nullable="false" />
+            </column>
+            <column name="invited_at" type="${datetimeType}">
+                <constraints nullable="false" />
+            </column>
+            <column name="acknowledged_at" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="replaces_user_id" type="${uuidType}" remarks="Membre suppléé : titulaire non acquitté remplacé par ce membre (RG-75).">
+                <constraints nullable="true" />
+            </column>
+            <column name="joined_at" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="left_at" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="room_id" type="${uuidType}">
+                <constraints nullable="false" />
+            </column>
+            <!-- jhipster-needle-liquibase-add-column - JHipster will add columns here -->
+        </createTable>
+        <dropDefaultValue tableName="room_member" columnName="invited_at" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="room_member" columnName="acknowledged_at" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="room_member" columnName="joined_at" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="room_member" columnName="left_at" columnDataType="${datetimeType}"/>
+    </changeSet>
+
+    <!-- jhipster-needle-liquibase-add-changeset - JHipster will add changesets here -->
+</databaseChangeLog>

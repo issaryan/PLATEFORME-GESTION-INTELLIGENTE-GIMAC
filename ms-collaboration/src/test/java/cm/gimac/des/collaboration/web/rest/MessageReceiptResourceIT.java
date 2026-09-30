@@ -14,10 +14,8 @@ import cm.gimac.des.collaboration.domain.enumeration.ReceiptKind;
 import cm.gimac.des.collaboration.repository.MessageReceiptRepository;
 import cm.gimac.des.collaboration.service.MessageReceiptService;
 import cm.gimac.des.collaboration.service.mapper.MessageReceiptMapper;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -27,13 +25,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Integration tests for the {@link MessageReceiptResource} REST controller.
@@ -41,7 +40,7 @@ import org.springframework.transaction.annotation.Transactional;
 @IntegrationTest
 @ExtendWith(MockitoExtension.class)
 @AutoConfigureMockMvc
-@WithMockUser
+@WithMockUser(authorities = cm.gimac.des.collaboration.security.AuthoritiesConstants.ADMIN)
 class MessageReceiptResourceIT {
 
     private static final UUID DEFAULT_USER_ID = UUID.randomUUID();
@@ -51,7 +50,7 @@ class MessageReceiptResourceIT {
     private static final ReceiptKind UPDATED_KIND = ReceiptKind.LU;
 
     private static final Instant DEFAULT_RECEIVED_AT = Instant.ofEpochMilli(0L);
-    private static final Instant UPDATED_RECEIVED_AT = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+    private static final Instant UPDATED_RECEIVED_AT = Instant.ofEpochMilli(1790746747003L);
 
     private static final String ENTITY_API_URL = "/api/message-receipts";
     private static final String ENTITY_API_URL_ID = ENTITY_API_URL + "/{id}";
@@ -96,7 +95,7 @@ class MessageReceiptResourceIT {
             em.persist(messageMetadata);
             em.flush();
         } else {
-            messageMetadata = TestUtil.findAll(em, MessageMetadata.class).get(0);
+            messageMetadata = TestUtil.findAll(em, MessageMetadata.class).getFirst();
         }
         messageReceipt.setMessage(messageMetadata);
         return messageReceipt;
@@ -120,7 +119,7 @@ class MessageReceiptResourceIT {
             em.persist(messageMetadata);
             em.flush();
         } else {
-            messageMetadata = TestUtil.findAll(em, MessageMetadata.class).get(0);
+            messageMetadata = TestUtil.findAll(em, MessageMetadata.class).getFirst();
         }
         updatedMessageReceipt.setMessage(messageMetadata);
         return updatedMessageReceipt;

@@ -83,6 +83,27 @@ public class AdministrationComptesService {
         return new PageComptes(l.subList(debut, Math.min(debut + t, l.size())), l.size());
     }
 
+    /** Page de l'annuaire interne, avec son numéro et sa taille effectifs. */
+    public record PageAnnuaire(List<Compte> contenu, long total, int page, int taille) {}
+
+    /**
+     * Annuaire des comptes internes actifs (D-64) : sans institution, filtrés par nom, courriel ou
+     * fonction, triés par nom affiché. Destinataires de la messagerie de MS-COLLABORATION.
+     */
+    @Transactional(readOnly = true)
+    public PageAnnuaire annuaireInterne(String recherche, int page, int taille) {
+        String r = recherche == null ? "" : recherche.trim().toLowerCase(Locale.ROOT);
+        List<Compte> l = annuaire.lister().stream()
+            .filter(c -> c.actif() && (c.institutionId() == null || c.institutionId().isBlank()))
+            .filter(c -> r.isEmpty() || contient(c.nomAffiche(), r) || contient(c.email(), r) || contient(c.fonction(), r))
+            .sorted(Comparator.comparing((Compte c) -> c.nomAffiche().toLowerCase(Locale.ROOT)).thenComparing(Compte::id))
+            .toList();
+        int t = Math.clamp(taille, 1, 100);
+        int p = Math.max(page, 0);
+        int debut = (int) Math.min((long) p * t, l.size());
+        return new PageAnnuaire(l.subList(debut, Math.min(debut + t, l.size())), l.size(), p, t);
+    }
+
     @Transactional(readOnly = true)
     public Compte lire(String id) {
         return annuaire.lire(id).orElseThrow(() -> IamException.introuvable("IAM_ACCOUNT_NOT_FOUND", id));

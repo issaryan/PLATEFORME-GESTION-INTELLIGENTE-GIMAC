@@ -7,7 +7,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class VerifiedTerminalTestSamples {
 
     private static final Random random = new Random();
-    private static final AtomicInteger intCount = new AtomicInteger(random.nextInt() + (2 * Short.MAX_VALUE));
+    private static final AtomicInteger intCount = new AtomicInteger(random.nextInt() + 2 * Short.MAX_VALUE);
 
     public static VerifiedTerminal getVerifiedTerminalSample1() {
         return new VerifiedTerminal()

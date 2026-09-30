@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- D-64 : messagerie instantanée de travail (docs/lot1/messagerie.md), écrite à la main.
+     Conversations directes ou de groupe, membres (instantané de l'annuaire et marque de lecture),
+     messages chiffrés au repos (AES-256-GCM, clé hors base), étiquettes de liaison et pièces
+     jointes déposées dans MS-DOCUMENT. Un message et ses annexes sont immuables. -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="col-messagerie-tables" author="d64">
+        <createTable tableName="conversation">
+            <column name="id" type="uuid"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="type" type="varchar(10)"><constraints nullable="false"/></column>
+            <column name="titre" type="varchar(200)"/>
+            <column name="liaison_id" type="uuid"/>
+            <column name="liaison_reference" type="varchar(30)"/>
+            <!-- Conversation directe : identifiants des deux membres, triés ; unicité = réutilisation. -->
+            <column name="cle_directe" type="varchar(200)"><constraints unique="true" uniqueConstraintName="uk_conversation_directe"/></column>
+            <column name="cree_par" type="varchar(64)"><constraints nullable="false"/></column>
+            <column name="creee_le" type="timestamptz"><constraints nullable="false"/></column>
+            <column name="mis_a_jour_le" type="timestamptz"><constraints nullable="false"/></column>
+            <column name="dernier_message_id" type="uuid"/>
+        </createTable>
+        <sql>ALTER TABLE conversation ADD CONSTRAINT ck_conversation_type CHECK (type IN ('DIRECTE', 'GROUPE'));</sql>
+        <createIndex tableName="conversation" indexName="idx_conversation_liaison"><column name="liaison_id"/></createIndex>
+
+        <createTable tableName="conversation_membre">
+            <column name="id" type="uuid"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="conversation_id" type="uuid">
+                <constraints nullable="false" foreignKeyName="fk_membre_conversation" references="conversation(id)"/>
+            </column>
+            <column name="membre_id" type="varchar(64)"><constraints nullable="false"/></column>
+            <column name="nom" type="varchar(200)"><constraints nullable="false"/></column>
+            <column name="fonction" type="varchar(200)"/>
+            <column name="ajoute_le" type="timestamptz"><constraints nullable="false"/></column>
+            <column name="dernier_lu_message_id" type="uuid"/>
+            <column name="dernier_lu_le" type="timestamptz"/>
+        </createTable>
+        <addUniqueConstraint tableName="conversation_membre" columnNames="conversation_id, membre_id" constraintName="uk_membre_conversation"/>
+        <createIndex tableName="conversation_membre" indexName="idx_membre_membre"><column name="membre_id"/></createIndex>
+
+        <createTable tableName="message">
+            <column name="id" type="uuid"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="conversation_id" type="uuid">
+                <constraints nullable="false" foreignKeyName="fk_message_conversation" references="conversation(id)"/>
+            </column>
+            <column name="auteur_id" type="varchar(64)"><constraints nullable="false"/></column>
+            <column name="auteur_nom" type="varchar(200)"><constraints nullable="false"/></column>
+            <column name="auteur_fonction" type="varchar(200)"/>
+            <!-- Version | IV (12 octets) | chiffré AES-256-GCM et étiquette ; jamais de clair en base. -->
+            <column name="contenu_chiffre" type="bytea"><constraints nullable="false"/></column>
+            <column name="envoye_le" type="timestamptz"><constraints nullable="false"/></column>
+        </createTable>
+        <createIndex tableName="message" indexName="idx_message_fil"><column name="conversation_id"/><column name="envoye_le"/><column name="id"/></createIndex>
+
+        <createTable tableName="message_etiquette">
+            <column name="id" type="uuid"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="message_id" type="uuid">
+                <constraints nullable="false" foreignKeyName="fk_etiquette_message" references="message(id)"/>
+            </column>
+            <column name="liaison_id" type="uuid"><constraints nullable="false"/></column>
+            <column name="reference" type="varchar(30)"><constraints nullable="false"/></column>
+        </createTable>
+        <addUniqueConstraint tableName="message_etiquette" columnNames="message_id, liaison_id, reference" constraintName="uk_etiquette_message"/>
+        <createIndex tableName="message_etiquette" indexName="idx_etiquette_liaison"><column name="liaison_id"/></createIndex>
+
+        <createTable tableName="piece_jointe">
+            <column name="id" type="uuid"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="message_id" type="uuid">
+                <constraints nullable="false" foreignKeyName="fk_piece_message" references="message(id)"/>
+            </column>
+            <column name="document_ref" type="uuid"><constraints nullable="false"/></column>
+            <column name="nom" type="varchar(255)"><constraints nullable="false"/></column>
+            <column name="taille" type="bigint"><constraints nullable="false"/></column>
+            <column name="type_mime" type="varchar(150)"><constraints nullable="false"/></column>
+            <column name="empreinte" type="varchar(64)"><constraints nullable="false"/></column>
+        </createTable>
+        <createIndex tableName="piece_jointe" indexName="idx_piece_message"><column name="message_id"/></createIndex>
+    </changeSet>
+
+    <!-- Immuabilité (D-64) : un message envoyé, ses étiquettes et ses pièces ne sont jamais modifiés ;
+         une correction passe par un nouveau message. La purge de conservation (RG-53) reste possible. -->
+    <changeSet id="col-messagerie-immuabilite" author="d64">
+        <sql splitStatements="false">
+            CREATE OR REPLACE FUNCTION col_message_immuable() RETURNS trigger AS $$
+            BEGIN
+                RAISE EXCEPTION 'COL_MESSAGE_IMMUTABLE : % est immuable une fois envoyé', TG_TABLE_NAME;
+            END;
+            $$ LANGUAGE plpgsql;
+        </sql>
+        <sql>CREATE TRIGGER trg_message_immuable BEFORE UPDATE ON message FOR EACH ROW EXECUTE FUNCTION col_message_immuable();</sql>
+        <sql>CREATE TRIGGER trg_etiquette_immuable BEFORE UPDATE ON message_etiquette FOR EACH ROW EXECUTE FUNCTION col_message_immuable();</sql>
+        <sql>CREATE TRIGGER trg_piece_immuable BEFORE UPDATE ON piece_jointe FOR EACH ROW EXECUTE FUNCTION col_message_immuable();</sql>
+    </changeSet>
+
+</databaseChangeLog>

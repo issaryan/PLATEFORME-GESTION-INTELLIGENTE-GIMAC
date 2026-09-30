@@ -68,25 +68,33 @@ public class RoomArchiveQueryService extends QueryService<RoomArchive> {
      * @return the matching {@link Specification} of the entity.
      */
     protected Specification<RoomArchive> createSpecification(RoomArchiveCriteria criteria) {
-        Specification<RoomArchive> specification = Specification.where(null);
+        Specification<RoomArchive> specification = Specification.unrestricted();
+        specification = specification.and((root, query, builder) -> {
+            if (Long.class != query.getResultType()) {
+                root.fetch(RoomArchive_.room, JoinType.LEFT);
+            }
+            return null;
+        });
         if (criteria != null) {
             // This has to be called first, because the distinct method returns null
-            specification = Specification.allOf(
-                Boolean.TRUE.equals(criteria.getDistinct()) ? distinct(criteria.getDistinct()) : null,
-                buildSpecification(criteria.getId(), RoomArchive_.id),
-                buildStringSpecification(criteria.getCrisisCellReference(), RoomArchive_.crisisCellReference),
-                buildStringSpecification(criteria.getTicketReference(), RoomArchive_.ticketReference),
-                buildRangeSpecification(criteria.getMessageCount(), RoomArchive_.messageCount),
-                buildRangeSpecification(criteria.getUndecryptableCount(), RoomArchive_.undecryptableCount),
-                buildRangeSpecification(criteria.getMaskedSequences(), RoomArchive_.maskedSequences),
-                buildStringSpecification(criteria.getChainHead(), RoomArchive_.chainHead),
-                buildStringSpecification(criteria.getContentDigest(), RoomArchive_.contentDigest),
-                buildSpecification(criteria.getDocumentRef(), RoomArchive_.documentRef),
-                buildRangeSpecification(criteria.getRetentionYears(), RoomArchive_.retentionYears),
-                buildSpecification(criteria.getState(), RoomArchive_.state),
-                buildRangeSpecification(criteria.getStartedAt(), RoomArchive_.startedAt),
-                buildRangeSpecification(criteria.getSealedAt(), RoomArchive_.sealedAt),
-                buildSpecification(criteria.getRoomId(), root -> root.join(RoomArchive_.room, JoinType.LEFT).get(Room_.id))
+            specification = specification.and(
+                Specification.allOf(
+                    Boolean.TRUE.equals(criteria.getDistinct()) ? distinct(criteria.getDistinct()) : Specification.unrestricted(),
+                    buildSpecification(criteria.getId(), RoomArchive_.id),
+                    buildStringSpecification(criteria.getCrisisCellReference(), RoomArchive_.crisisCellReference),
+                    buildStringSpecification(criteria.getTicketReference(), RoomArchive_.ticketReference),
+                    buildRangeSpecification(criteria.getMessageCount(), RoomArchive_.messageCount),
+                    buildRangeSpecification(criteria.getUndecryptableCount(), RoomArchive_.undecryptableCount),
+                    buildRangeSpecification(criteria.getMaskedSequences(), RoomArchive_.maskedSequences),
+                    buildStringSpecification(criteria.getChainHead(), RoomArchive_.chainHead),
+                    buildStringSpecification(criteria.getContentDigest(), RoomArchive_.contentDigest),
+                    buildSpecification(criteria.getDocumentRef(), RoomArchive_.documentRef),
+                    buildRangeSpecification(criteria.getRetentionYears(), RoomArchive_.retentionYears),
+                    buildSpecification(criteria.getState(), RoomArchive_.state),
+                    buildRangeSpecification(criteria.getStartedAt(), RoomArchive_.startedAt),
+                    buildRangeSpecification(criteria.getSealedAt(), RoomArchive_.sealedAt),
+                    buildSpecification(criteria.getRoomId(), root -> root.join(RoomArchive_.room, JoinType.LEFT).get(Room_.id))
+                )
             );
         }
         return specification;

@@ -32,11 +32,11 @@ public class MessageReceiptResource {
     }
 
     /**
-     * {@code GET  /message-receipts} : get all the messageReceipts.
+     * {@code GET  /message-receipts} : get all the Message Receipts.
      *
      * @param pageable the pagination information.
      * @param eagerload flag to eager load entities from relationships (This is applicable for many-to-many).
-     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of messageReceipts in body.
+     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of Message Receipts in body.
      */
     @GetMapping("")
     public ResponseEntity<List<MessageReceiptDTO>> getAllMessageReceipts(

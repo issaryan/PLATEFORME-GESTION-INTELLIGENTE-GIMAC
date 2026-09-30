@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+
+    <!--
+        Added the entity Conference.
+    -->
+    <changeSet id="20260930053913-1" author="jhipster">
+        <createTable tableName="conference" remarks="Conférence audio et vidéo sur le SFU local, SFrame obligatoire (RG-54).">
+            <column name="id" type="${uuidType}">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="sfu_room" type="varchar(100)" remarks="Nom de la salle LiveKit, par exemple SFU-C-0142.">
+                <constraints nullable="false" unique="true" uniqueConstraintName="ux_conference__sfu_room" />
+            </column>
+            <column name="started_at" type="${datetimeType}">
+                <constraints nullable="false" />
+            </column>
+            <column name="ended_at" type="${datetimeType}">
+                <constraints nullable="true" />
+            </column>
+            <column name="sframe_required" type="boolean" remarks="Sur-chiffrement SFrame exigé (toujours vrai).">
+                <constraints nullable="false" />
+            </column>
+            <column name="screen_share" type="boolean">
+                <constraints nullable="false" />
+            </column>
+            <column name="recording" type="boolean" remarks="Enregistrement actif, seulement avec le consentement de chaque présent (RG-55).">
+                <constraints nullable="false" />
+            </column>
+            <column name="key_epoch" type="integer" remarks="Époque courante des clés médias.">
+                <constraints nullable="false" />
+            </column>
+            <column name="room_id" type="${uuidType}">
+                <constraints nullable="false" />
+            </column>
+            <!-- jhipster-needle-liquibase-add-column - JHipster will add columns here -->
+        </createTable>
+        <dropDefaultValue tableName="conference" columnName="started_at" columnDataType="${datetimeType}"/>
+        <dropDefaultValue tableName="conference" columnName="ended_at" columnDataType="${datetimeType}"/>
+    </changeSet>
+
+    <!-- jhipster-needle-liquibase-add-changeset - JHipster will add changesets here -->
+</databaseChangeLog>

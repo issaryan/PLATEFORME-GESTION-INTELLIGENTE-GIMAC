@@ -14,27 +14,26 @@ import cm.gimac.des.collaboration.domain.enumeration.VerificationState;
 import cm.gimac.des.collaboration.repository.VerifiedTerminalRepository;
 import cm.gimac.des.collaboration.service.dto.VerifiedTerminalDTO;
 import cm.gimac.des.collaboration.service.mapper.VerifiedTerminalMapper;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Integration tests for the {@link VerifiedTerminalResource} REST controller.
  */
 @IntegrationTest
 @AutoConfigureMockMvc
-@WithMockUser
+@WithMockUser(authorities = cm.gimac.des.collaboration.security.AuthoritiesConstants.ADMIN)
 class VerifiedTerminalResourceIT {
 
     private static final UUID DEFAULT_USER_ID = UUID.randomUUID();
@@ -43,28 +42,28 @@ class VerifiedTerminalResourceIT {
     private static final String DEFAULT_TERMINAL_ID = "AAAAAAAAAA";
     private static final String UPDATED_TERMINAL_ID = "BBBBBBBBBB";
 
-    private static final String DEFAULT_IDENTITY_KEY = "d5f47926e77b9b7b8d51db6536e8a96bf26780d7789a5d1fd2f04d096b8d930a";
-    private static final String UPDATED_IDENTITY_KEY = "21bc64b81f8904a64cd67ef016d66b60ce528a8056010feed9ea62a777b29cfb";
+    private static final String DEFAULT_IDENTITY_KEY = "30be5727c0deac54424dd2418be0b7bd151c442feb274ce905b680fb919982db";
+    private static final String UPDATED_IDENTITY_KEY = "f31d12cbc8f37a9c1eeabf84a221a8ee9c3db79a2b0a170dedf79520b4683c22";
 
-    private static final String DEFAULT_AGREEMENT_KEY = "b0eb20ee921fa3c4d77f7052ca37ff8426c8124ee3aee023d0875ef695c4757d";
-    private static final String UPDATED_AGREEMENT_KEY = "352e7fd6a7d6473aef02b43b17c8f0b9653807839c9ae193c10a4b257efa5c73";
+    private static final String DEFAULT_AGREEMENT_KEY = "3a12b056689736dde8373cbdf387ca04f109a55e101f17620e37e9ec20fe4d39";
+    private static final String UPDATED_AGREEMENT_KEY = "24b762888c58b3d9295f34a6ff0ab188584eb0e365ea178dcdc96a77ca396f31";
 
-    private static final String DEFAULT_SIGNED_PRE_KEY = "24f1fb479d2eff986634382659e58e5b191380c7096e03663789a7df4b8fb1d4";
-    private static final String UPDATED_SIGNED_PRE_KEY = "d747d6dffb23388f2edb4af2f1055df6d06636bf80356d1b37c1317d5c095e7a";
+    private static final String DEFAULT_SIGNED_PRE_KEY = "ab8c69237a1361c6fabec1628d7dce501ff21a32c70858eed2e1da62fd4ed1f4";
+    private static final String UPDATED_SIGNED_PRE_KEY = "c73fc807a3d84aaddb66d032d525e6f508d26b6eaebd5b6842cb3fad80967b7f";
 
     private static final String DEFAULT_SIGNED_PRE_KEY_SIGNATURE =
-        "7db36ee3c29a1f4cf958c2db4b66f7ad6ed2410ed792d2e6991fba90fede3c04d75dde527af5326320a990406e953f79f7f324a69f5097a6d8a7c4d19390b4d3";
+        "5783b83bbdb7328335c8316c3feb0eef18c047a83c17b6f2bbcdf22876392fdbbdc834f519da1a928b4aac2748e21c4aee16eb1315943e45176f28c386b496ce";
     private static final String UPDATED_SIGNED_PRE_KEY_SIGNATURE =
-        "939b4dcc5c90948b36151b8d825daa7ec2c51fe6e94e848ce9751b2ec36b6b1e7bd3db2ac94772f4682101aad205662552d80309aec5e66eaeb80459f04961b5";
+        "01b509dbc6d5d22846ed6c148b8edefcd23f13cb1f9d0160d966f46507f346922d38cda0bb4e096565efa8cbf58e9737559d6e02f50f74463fcf1bf9b7ceb93a";
 
     private static final Integer DEFAULT_ONE_TIME_PRE_KEYS = 0;
     private static final Integer UPDATED_ONE_TIME_PRE_KEYS = 1;
     private static final Integer SMALLER_ONE_TIME_PRE_KEYS = 0 - 1;
 
     private static final String DEFAULT_CROSS_SIGNATURE =
-        "d291973a5007e9c806b7c294c29b0713ae9b2b8f34783d03e3b271befa55ddb4211448cd78292443fa7e77544969693863aea3826b338ca182e71df599380488";
+        "68e87e42b54cab9f356392ed2de357efb9f5d7c7bcf79f5e4d344e57818de941d2d5a0ae2542f3e92fc8af6d9c21e036d50836e1cde53ad447588fec392008b4";
     private static final String UPDATED_CROSS_SIGNATURE =
-        "cfadc74be320db61adbbf2faa95508098f153e73f306f31b6261ae69622e5fa7c3043778c4053c4dd9049fffa908ff6de6912fe079e739120c296a5f7a33d850";
+        "4faef3be3c4e9075bd1818baa2790eadeae9e366df07572f668ef048ba6796aae2608255d82de58f78b621a6afe63498bcb07967086d68902d091dd3df47c940";
 
     private static final VerificationState DEFAULT_STATE = VerificationState.NON_VERIFIE;
     private static final VerificationState UPDATED_STATE = VerificationState.VERIFIE;
@@ -73,13 +72,13 @@ class VerifiedTerminalResourceIT {
     private static final Boolean UPDATED_ARCHIVE_TERMINAL = true;
 
     private static final Instant DEFAULT_REGISTERED_AT = Instant.ofEpochMilli(0L);
-    private static final Instant UPDATED_REGISTERED_AT = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+    private static final Instant UPDATED_REGISTERED_AT = Instant.ofEpochMilli(1790746747003L);
 
     private static final Instant DEFAULT_VERIFIED_AT = Instant.ofEpochMilli(0L);
-    private static final Instant UPDATED_VERIFIED_AT = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+    private static final Instant UPDATED_VERIFIED_AT = Instant.ofEpochMilli(1790746747003L);
 
     private static final Instant DEFAULT_REVOKED_AT = Instant.ofEpochMilli(0L);
-    private static final Instant UPDATED_REVOKED_AT = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+    private static final Instant UPDATED_REVOKED_AT = Instant.ofEpochMilli(1790746747003L);
 
     private static final String ENTITY_API_URL = "/api/verified-terminals";
     private static final String ENTITY_API_URL_ID = ENTITY_API_URL + "/{id}";
@@ -1286,13 +1285,12 @@ class VerifiedTerminalResourceIT {
         partialUpdatedVerifiedTerminal.setId(verifiedTerminal.getId());
 
         partialUpdatedVerifiedTerminal
-            .terminalId(UPDATED_TERMINAL_ID)
-            .identityKey(UPDATED_IDENTITY_KEY)
-            .agreementKey(UPDATED_AGREEMENT_KEY)
             .signedPreKey(UPDATED_SIGNED_PRE_KEY)
-            .oneTimePreKeys(UPDATED_ONE_TIME_PRE_KEYS)
+            .signedPreKeySignature(UPDATED_SIGNED_PRE_KEY_SIGNATURE)
             .crossSignature(UPDATED_CROSS_SIGNATURE)
             .state(UPDATED_STATE)
+            .archiveTerminal(UPDATED_ARCHIVE_TERMINAL)
+            .registeredAt(UPDATED_REGISTERED_AT)
             .verifiedAt(UPDATED_VERIFIED_AT);
 
         restVerifiedTerminalMockMvc

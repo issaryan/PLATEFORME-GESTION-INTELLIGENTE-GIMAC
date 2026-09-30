@@ -38,7 +38,7 @@ public class RoomResource {
 
     private static final String ENTITY_NAME = "collaborationRoom";
 
-    @Value("${jhipster.clientApp.name}")
+    @Value("${jhipster.clientApp.name:collaboration}")
     private String applicationName;
 
     private final RoomService roomService;
@@ -57,7 +57,7 @@ public class RoomResource {
      * {@code POST  /rooms} : Create a new room.
      *
      * @param roomDTO the roomDTO to create.
-     * @return the {@link ResponseEntity} with status {@code 201 (Created)} and with body the new roomDTO, or with status {@code 400 (Bad Request)} if the room has already an ID.
+     * @return the {@link ResponseEntity} with status {@code 201 (Created)} and with body the new roomDTO, or with status {@code 400 (Bad Request)} if the room already has an ID.
      * @throws URISyntaxException if the Location URI syntax is incorrect.
      */
     @PostMapping("")
@@ -121,7 +121,7 @@ public class RoomResource {
         @PathVariable(value = "id", required = false) final UUID id,
         @NotNull @RequestBody RoomDTO roomDTO
     ) throws URISyntaxException {
-        LOG.debug("REST request to partial update Room partially : {}, {}", id, roomDTO);
+        LOG.debug("REST request to partially update Room : {}, {}", id, roomDTO);
         if (roomDTO.getId() == null) {
             throw new BadRequestAlertException("Invalid id", ENTITY_NAME, "idnull");
         }
@@ -142,11 +142,11 @@ public class RoomResource {
     }
 
     /**
-     * {@code GET  /rooms} : get all the rooms.
+     * {@code GET  /rooms} : get all the Rooms.
      *
      * @param pageable the pagination information.
      * @param criteria the criteria which the requested entities should match.
-     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of rooms in body.
+     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of Rooms in body.
      */
     @GetMapping("")
     public ResponseEntity<List<RoomDTO>> getAllRooms(

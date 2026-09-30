@@ -68,20 +68,28 @@ public class ConferenceQueryService extends QueryService<Conference> {
      * @return the matching {@link Specification} of the entity.
      */
     protected Specification<Conference> createSpecification(ConferenceCriteria criteria) {
-        Specification<Conference> specification = Specification.where(null);
+        Specification<Conference> specification = Specification.unrestricted();
+        specification = specification.and((root, query, builder) -> {
+            if (Long.class != query.getResultType()) {
+                root.fetch(Conference_.room, JoinType.LEFT);
+            }
+            return null;
+        });
         if (criteria != null) {
             // This has to be called first, because the distinct method returns null
-            specification = Specification.allOf(
-                Boolean.TRUE.equals(criteria.getDistinct()) ? distinct(criteria.getDistinct()) : null,
-                buildSpecification(criteria.getId(), Conference_.id),
-                buildStringSpecification(criteria.getSfuRoom(), Conference_.sfuRoom),
-                buildRangeSpecification(criteria.getStartedAt(), Conference_.startedAt),
-                buildRangeSpecification(criteria.getEndedAt(), Conference_.endedAt),
-                buildSpecification(criteria.getSframeRequired(), Conference_.sframeRequired),
-                buildSpecification(criteria.getScreenShare(), Conference_.screenShare),
-                buildSpecification(criteria.getRecording(), Conference_.recording),
-                buildRangeSpecification(criteria.getKeyEpoch(), Conference_.keyEpoch),
-                buildSpecification(criteria.getRoomId(), root -> root.join(Conference_.room, JoinType.LEFT).get(Room_.id))
+            specification = specification.and(
+                Specification.allOf(
+                    Boolean.TRUE.equals(criteria.getDistinct()) ? distinct(criteria.getDistinct()) : Specification.unrestricted(),
+                    buildSpecification(criteria.getId(), Conference_.id),
+                    buildStringSpecification(criteria.getSfuRoom(), Conference_.sfuRoom),
+                    buildRangeSpecification(criteria.getStartedAt(), Conference_.startedAt),
+                    buildRangeSpecification(criteria.getEndedAt(), Conference_.endedAt),
+                    buildSpecification(criteria.getSframeRequired(), Conference_.sframeRequired),
+                    buildSpecification(criteria.getScreenShare(), Conference_.screenShare),
+                    buildSpecification(criteria.getRecording(), Conference_.recording),
+                    buildRangeSpecification(criteria.getKeyEpoch(), Conference_.keyEpoch),
+                    buildSpecification(criteria.getRoomId(), root -> root.join(Conference_.room, JoinType.LEFT).get(Room_.id))
+                )
             );
         }
         return specification;

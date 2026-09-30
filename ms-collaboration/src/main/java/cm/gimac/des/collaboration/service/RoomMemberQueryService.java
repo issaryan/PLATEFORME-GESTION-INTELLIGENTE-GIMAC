@@ -68,20 +68,28 @@ public class RoomMemberQueryService extends QueryService<RoomMember> {
      * @return the matching {@link Specification} of the entity.
      */
     protected Specification<RoomMember> createSpecification(RoomMemberCriteria criteria) {
-        Specification<RoomMember> specification = Specification.where(null);
+        Specification<RoomMember> specification = Specification.unrestricted();
+        specification = specification.and((root, query, builder) -> {
+            if (Long.class != query.getResultType()) {
+                root.fetch(RoomMember_.room, JoinType.LEFT);
+            }
+            return null;
+        });
         if (criteria != null) {
             // This has to be called first, because the distinct method returns null
-            specification = Specification.allOf(
-                Boolean.TRUE.equals(criteria.getDistinct()) ? distinct(criteria.getDistinct()) : null,
-                buildSpecification(criteria.getId(), RoomMember_.id),
-                buildSpecification(criteria.getUserId(), RoomMember_.userId),
-                buildSpecification(criteria.getRole(), RoomMember_.role),
-                buildRangeSpecification(criteria.getInvitedAt(), RoomMember_.invitedAt),
-                buildRangeSpecification(criteria.getAcknowledgedAt(), RoomMember_.acknowledgedAt),
-                buildSpecification(criteria.getReplacesUserId(), RoomMember_.replacesUserId),
-                buildRangeSpecification(criteria.getJoinedAt(), RoomMember_.joinedAt),
-                buildRangeSpecification(criteria.getLeftAt(), RoomMember_.leftAt),
-                buildSpecification(criteria.getRoomId(), root -> root.join(RoomMember_.room, JoinType.LEFT).get(Room_.id))
+            specification = specification.and(
+                Specification.allOf(
+                    Boolean.TRUE.equals(criteria.getDistinct()) ? distinct(criteria.getDistinct()) : Specification.unrestricted(),
+                    buildSpecification(criteria.getId(), RoomMember_.id),
+                    buildSpecification(criteria.getUserId(), RoomMember_.userId),
+                    buildSpecification(criteria.getRole(), RoomMember_.role),
+                    buildRangeSpecification(criteria.getInvitedAt(), RoomMember_.invitedAt),
+                    buildRangeSpecification(criteria.getAcknowledgedAt(), RoomMember_.acknowledgedAt),
+                    buildSpecification(criteria.getReplacesUserId(), RoomMember_.replacesUserId),
+                    buildRangeSpecification(criteria.getJoinedAt(), RoomMember_.joinedAt),
+                    buildRangeSpecification(criteria.getLeftAt(), RoomMember_.leftAt),
+                    buildSpecification(criteria.getRoomId(), root -> root.join(RoomMember_.room, JoinType.LEFT).get(Room_.id))
+                )
             );
         }
         return specification;

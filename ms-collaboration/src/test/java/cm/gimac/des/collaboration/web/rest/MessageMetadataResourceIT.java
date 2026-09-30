@@ -13,10 +13,8 @@ import cm.gimac.des.collaboration.domain.Room;
 import cm.gimac.des.collaboration.repository.MessageMetadataRepository;
 import cm.gimac.des.collaboration.service.MessageMetadataService;
 import cm.gimac.des.collaboration.service.mapper.MessageMetadataMapper;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -26,13 +24,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Integration tests for the {@link MessageMetadataResource} REST controller.
@@ -40,7 +39,7 @@ import org.springframework.transaction.annotation.Transactional;
 @IntegrationTest
 @ExtendWith(MockitoExtension.class)
 @AutoConfigureMockMvc
-@WithMockUser
+@WithMockUser(authorities = cm.gimac.des.collaboration.security.AuthoritiesConstants.ADMIN)
 class MessageMetadataResourceIT {
 
     private static final String DEFAULT_MATRIX_EVENT_ID = "AAAAAAAAAA";
@@ -53,7 +52,7 @@ class MessageMetadataResourceIT {
     private static final String UPDATED_TERMINAL_ID = "BBBBBBBBBB";
 
     private static final Instant DEFAULT_SENT_AT = Instant.ofEpochMilli(0L);
-    private static final Instant UPDATED_SENT_AT = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+    private static final Instant UPDATED_SENT_AT = Instant.ofEpochMilli(1790746747003L);
 
     private static final String DEFAULT_SESSION_ID = "AAAAAAAAAA";
     private static final String UPDATED_SESSION_ID = "BBBBBBBBBB";
@@ -120,7 +119,7 @@ class MessageMetadataResourceIT {
             em.persist(room);
             em.flush();
         } else {
-            room = TestUtil.findAll(em, Room.class).get(0);
+            room = TestUtil.findAll(em, Room.class).getFirst();
         }
         messageMetadata.setRoom(room);
         return messageMetadata;
@@ -149,7 +148,7 @@ class MessageMetadataResourceIT {
             em.persist(room);
             em.flush();
         } else {
-            room = TestUtil.findAll(em, Room.class).get(0);
+            room = TestUtil.findAll(em, Room.class).getFirst();
         }
         updatedMessageMetadata.setRoom(room);
         return updatedMessageMetadata;
@@ -170,7 +169,7 @@ class MessageMetadataResourceIT {
 
     @Test
     @Transactional
-    void getAllMessageMetadata() throws Exception {
+    void getAllMessageMetadatas() throws Exception {
         // Initialize the database
         insertedMessageMetadata = messageMetadataRepository.saveAndFlush(messageMetadata);
 
@@ -191,7 +190,7 @@ class MessageMetadataResourceIT {
     }
 
     @SuppressWarnings({ "unchecked" })
-    void getAllMessageMetadataWithEagerRelationshipsIsEnabled() throws Exception {
+    void getAllMessageMetadatasWithEagerRelationshipsIsEnabled() throws Exception {
         when(messageMetadataServiceMock.findAllWithEagerRelationships(any())).thenReturn(new PageImpl(new ArrayList<>()));
 
         restMessageMetadataMockMvc.perform(get(ENTITY_API_URL + "?eagerload=true")).andExpect(status().isOk());
@@ -200,7 +199,7 @@ class MessageMetadataResourceIT {
     }
 
     @SuppressWarnings({ "unchecked" })
-    void getAllMessageMetadataWithEagerRelationshipsIsNotEnabled() throws Exception {
+    void getAllMessageMetadatasWithEagerRelationshipsIsNotEnabled() throws Exception {
         when(messageMetadataServiceMock.findAllWithEagerRelationships(any())).thenReturn(new PageImpl(new ArrayList<>()));
 
         restMessageMetadataMockMvc.perform(get(ENTITY_API_URL + "?eagerload=false")).andExpect(status().isOk());
@@ -231,7 +230,7 @@ class MessageMetadataResourceIT {
 
     @Test
     @Transactional
-    void getMessageMetadataByIdFiltering() throws Exception {
+    void getMessageMetadatasByIdFiltering() throws Exception {
         // Initialize the database
         insertedMessageMetadata = messageMetadataRepository.saveAndFlush(messageMetadata);
 
@@ -242,7 +241,7 @@ class MessageMetadataResourceIT {
 
     @Test
     @Transactional
-    void getAllMessageMetadataByMatrixEventIdIsEqualToSomething() throws Exception {
+    void getAllMessageMetadatasByMatrixEventIdIsEqualToSomething() throws Exception {
         // Initialize the database
         insertedMessageMetadata = messageMetadataRepository.saveAndFlush(messageMetadata);
 
@@ -255,7 +254,7 @@ class MessageMetadataResourceIT {
 
     @Test
     @Transactional
-    void getAllMessageMetadataByMatrixEventIdIsInShouldWork() throws Exception {
+    void getAllMessageMetadatasByMatrixEventIdIsInShouldWork() throws Exception {
         // Initialize the database
         insertedMessageMetadata = messageMetadataRepository.saveAndFlush(messageMetadata);
 
@@ -268,7 +267,7 @@ class MessageMetadataResourceIT {
 
     @Test
     @Transactional
-    void getAllMessageMetadataByMatrixEventIdIsNullOrNotNull() throws Exception {
+    void getAllMessageMetadatasByMatrixEventIdIsNullOrNotNull() throws Exception {
         // Initialize the database
         insertedMessageMetadata = messageMetadataRepository.saveAndFlush(messageMetadata);
 
@@ -278,7 +277,7 @@ class MessageMetadataResourceIT {
 
     @Test
     @Transactional
-    void getAllMessageMetadataByMatrixEventIdContainsSomething() throws Exception {
+    void getAllMessageMetadatasByMatrixEventIdContainsSomething() throws Exception {
         // Initialize the database
         insertedMessageMetadata = messageMetadataRepository.saveAndFlush(messageMetadata);
 
@@ -291,7 +290,7 @@ class MessageMetadataResourceIT {
 
     @Test
     @Transactional
-    void getAllMessageMetadataByMatrixEventIdNotContainsSomething() throws Exception {
+    void getAllMessageMetadatasByMatrixEventIdNotContainsSomething() throws Exception {
         // Initialize the database
         insertedMessageMetadata = messageMetadataRepository.saveAndFlush(messageMetadata);
 
@@ -304,7 +303,7 @@ class MessageMetadataResourceIT {
 
     @Test
     @Transactional
-    void getAllMessageMetadataByAuthorIdIsEqualToSomething() throws Exception {
+    void getAllMessageMetadatasByAuthorIdIsEqualToSomething() throws Exception {
         // Initialize the database
         insertedMessageMetadata = messageMetadataRepository.saveAndFlush(messageMetadata);
 
@@ -314,7 +313,7 @@ class MessageMetadataResourceIT {
 
     @Test
     @Transactional
-    void getAllMessageMetadataByAuthorIdIsInShouldWork() throws Exception {
+    void getAllMessageMetadatasByAuthorIdIsInShouldWork() throws Exception {
         // Initialize the database
         insertedMessageMetadata = messageMetadataRepository.saveAndFlush(messageMetadata);
 
@@ -324,7 +323,7 @@ class MessageMetadataResourceIT {
 
     @Test
     @Transactional
-    void getAllMessageMetadataByAuthorIdIsNullOrNotNull() throws Exception {
+    void getAllMessageMetadatasByAuthorIdIsNullOrNotNull() throws Exception {
         // Initialize the database
         insertedMessageMetadata = messageMetadataRepository.saveAndFlush(messageMetadata);
 
@@ -334,7 +333,7 @@ class MessageMetadataResourceIT {
 
     @Test
     @Transactional
-    void getAllMessageMetadataByTerminalIdIsEqualToSomething() throws Exception {
+    void getAllMessageMetadatasByTerminalIdIsEqualToSomething() throws Exception {
         // Initialize the database
         insertedMessageMetadata = messageMetadataRepository.saveAndFlush(messageMetadata);
 
@@ -344,7 +343,7 @@ class MessageMetadataResourceIT {
 
     @Test
     @Transactional
-    void getAllMessageMetadataByTerminalIdIsInShouldWork() throws Exception {
+    void getAllMessageMetadatasByTerminalIdIsInShouldWork() throws Exception {
         // Initialize the database
         insertedMessageMetadata = messageMetadataRepository.saveAndFlush(messageMetadata);
 
@@ -357,7 +356,7 @@ class MessageMetadataResourceIT {
 
     @Test
     @Transactional
-    void getAllMessageMetadataByTerminalIdIsNullOrNotNull() throws Exception {
+    void getAllMessageMetadatasByTerminalIdIsNullOrNotNull() throws Exception {
         // Initialize the database
         insertedMessageMetadata = messageMetadataRepository.saveAndFlush(messageMetadata);
 
@@ -367,7 +366,7 @@ class MessageMetadataResourceIT {
 
     @Test
     @Transactional
-    void getAllMessageMetadataByTerminalIdContainsSomething() throws Exception {
+    void getAllMessageMetadatasByTerminalIdContainsSomething() throws Exception {
         // Initialize the database
         insertedMessageMetadata = messageMetadataRepository.saveAndFlush(messageMetadata);
 
@@ -377,7 +376,7 @@ class MessageMetadataResourceIT {
 
     @Test
     @Transactional
-    void getAllMessageMetadataByTerminalIdNotContainsSomething() throws Exception {
+    void getAllMessageMetadatasByTerminalIdNotContainsSomething() throws Exception {
         // Initialize the database
         insertedMessageMetadata = messageMetadataRepository.saveAndFlush(messageMetadata);
 
@@ -390,7 +389,7 @@ class MessageMetadataResourceIT {
 
     @Test
     @Transactional
-    void getAllMessageMetadataBySentAtIsEqualToSomething() throws Exception {
+    void getAllMessageMetadatasBySentAtIsEqualToSomething() throws Exception {
         // Initialize the database
         insertedMessageMetadata = messageMetadataRepository.saveAndFlush(messageMetadata);
 
@@ -400,7 +399,7 @@ class MessageMetadataResourceIT {
 
     @Test
     @Transactional
-    void getAllMessageMetadataBySentAtIsInShouldWork() throws Exception {
+    void getAllMessageMetadatasBySentAtIsInShouldWork() throws Exception {
         // Initialize the database
         insertedMessageMetadata = messageMetadataRepository.saveAndFlush(messageMetadata);
 
@@ -410,7 +409,7 @@ class MessageMetadataResourceIT {
 
     @Test
     @Transactional
-    void getAllMessageMetadataBySentAtIsNullOrNotNull() throws Exception {
+    void getAllMessageMetadatasBySentAtIsNullOrNotNull() throws Exception {
         // Initialize the database
         insertedMessageMetadata = messageMetadataRepository.saveAndFlush(messageMetadata);
 
@@ -420,7 +419,7 @@ class MessageMetadataResourceIT {
 
     @Test
     @Transactional
-    void getAllMessageMetadataBySessionIdIsEqualToSomething() throws Exception {
+    void getAllMessageMetadatasBySessionIdIsEqualToSomething() throws Exception {
         // Initialize the database
         insertedMessageMetadata = messageMetadataRepository.saveAndFlush(messageMetadata);
 
@@ -430,7 +429,7 @@ class MessageMetadataResourceIT {
 
     @Test
     @Transactional
-    void getAllMessageMetadataBySessionIdIsInShouldWork() throws Exception {
+    void getAllMessageMetadatasBySessionIdIsInShouldWork() throws Exception {
         // Initialize the database
         insertedMessageMetadata = messageMetadataRepository.saveAndFlush(messageMetadata);
 
@@ -443,7 +442,7 @@ class MessageMetadataResourceIT {
 
     @Test
     @Transactional
-    void getAllMessageMetadataBySessionIdIsNullOrNotNull() throws Exception {
+    void getAllMessageMetadatasBySessionIdIsNullOrNotNull() throws Exception {
         // Initialize the database
         insertedMessageMetadata = messageMetadataRepository.saveAndFlush(messageMetadata);
 
@@ -453,7 +452,7 @@ class MessageMetadataResourceIT {
 
     @Test
     @Transactional
-    void getAllMessageMetadataBySessionIdContainsSomething() throws Exception {
+    void getAllMessageMetadatasBySessionIdContainsSomething() throws Exception {
         // Initialize the database
         insertedMessageMetadata = messageMetadataRepository.saveAndFlush(messageMetadata);
 
@@ -463,7 +462,7 @@ class MessageMetadataResourceIT {
 
     @Test
     @Transactional
-    void getAllMessageMetadataBySessionIdNotContainsSomething() throws Exception {
+    void getAllMessageMetadatasBySessionIdNotContainsSomething() throws Exception {
         // Initialize the database
         insertedMessageMetadata = messageMetadataRepository.saveAndFlush(messageMetadata);
 
@@ -473,7 +472,7 @@ class MessageMetadataResourceIT {
 
     @Test
     @Transactional
-    void getAllMessageMetadataByRatchetIndexIsEqualToSomething() throws Exception {
+    void getAllMessageMetadatasByRatchetIndexIsEqualToSomething() throws Exception {
         // Initialize the database
         insertedMessageMetadata = messageMetadataRepository.saveAndFlush(messageMetadata);
 
@@ -483,7 +482,7 @@ class MessageMetadataResourceIT {
 
     @Test
     @Transactional
-    void getAllMessageMetadataByRatchetIndexIsInShouldWork() throws Exception {
+    void getAllMessageMetadatasByRatchetIndexIsInShouldWork() throws Exception {
         // Initialize the database
         insertedMessageMetadata = messageMetadataRepository.saveAndFlush(messageMetadata);
 
@@ -496,7 +495,7 @@ class MessageMetadataResourceIT {
 
     @Test
     @Transactional
-    void getAllMessageMetadataByRatchetIndexIsNullOrNotNull() throws Exception {
+    void getAllMessageMetadatasByRatchetIndexIsNullOrNotNull() throws Exception {
         // Initialize the database
         insertedMessageMetadata = messageMetadataRepository.saveAndFlush(messageMetadata);
 
@@ -506,7 +505,7 @@ class MessageMetadataResourceIT {
 
     @Test
     @Transactional
-    void getAllMessageMetadataByRatchetIndexIsGreaterThanOrEqualToSomething() throws Exception {
+    void getAllMessageMetadatasByRatchetIndexIsGreaterThanOrEqualToSomething() throws Exception {
         // Initialize the database
         insertedMessageMetadata = messageMetadataRepository.saveAndFlush(messageMetadata);
 
@@ -519,7 +518,7 @@ class MessageMetadataResourceIT {
 
     @Test
     @Transactional
-    void getAllMessageMetadataByRatchetIndexIsLessThanOrEqualToSomething() throws Exception {
+    void getAllMessageMetadatasByRatchetIndexIsLessThanOrEqualToSomething() throws Exception {
         // Initialize the database
         insertedMessageMetadata = messageMetadataRepository.saveAndFlush(messageMetadata);
 
@@ -532,7 +531,7 @@ class MessageMetadataResourceIT {
 
     @Test
     @Transactional
-    void getAllMessageMetadataByRatchetIndexIsLessThanSomething() throws Exception {
+    void getAllMessageMetadatasByRatchetIndexIsLessThanSomething() throws Exception {
         // Initialize the database
         insertedMessageMetadata = messageMetadataRepository.saveAndFlush(messageMetadata);
 
@@ -542,7 +541,7 @@ class MessageMetadataResourceIT {
 
     @Test
     @Transactional
-    void getAllMessageMetadataByRatchetIndexIsGreaterThanSomething() throws Exception {
+    void getAllMessageMetadatasByRatchetIndexIsGreaterThanSomething() throws Exception {
         // Initialize the database
         insertedMessageMetadata = messageMetadataRepository.saveAndFlush(messageMetadata);
 
@@ -555,7 +554,7 @@ class MessageMetadataResourceIT {
 
     @Test
     @Transactional
-    void getAllMessageMetadataByCiphertextSizeIsEqualToSomething() throws Exception {
+    void getAllMessageMetadatasByCiphertextSizeIsEqualToSomething() throws Exception {
         // Initialize the database
         insertedMessageMetadata = messageMetadataRepository.saveAndFlush(messageMetadata);
 
@@ -568,7 +567,7 @@ class MessageMetadataResourceIT {
 
     @Test
     @Transactional
-    void getAllMessageMetadataByCiphertextSizeIsInShouldWork() throws Exception {
+    void getAllMessageMetadatasByCiphertextSizeIsInShouldWork() throws Exception {
         // Initialize the database
         insertedMessageMetadata = messageMetadataRepository.saveAndFlush(messageMetadata);
 
@@ -581,7 +580,7 @@ class MessageMetadataResourceIT {
 
     @Test
     @Transactional
-    void getAllMessageMetadataByCiphertextSizeIsNullOrNotNull() throws Exception {
+    void getAllMessageMetadatasByCiphertextSizeIsNullOrNotNull() throws Exception {
         // Initialize the database
         insertedMessageMetadata = messageMetadataRepository.saveAndFlush(messageMetadata);
 
@@ -591,7 +590,7 @@ class MessageMetadataResourceIT {
 
     @Test
     @Transactional
-    void getAllMessageMetadataByCiphertextSizeIsGreaterThanOrEqualToSomething() throws Exception {
+    void getAllMessageMetadatasByCiphertextSizeIsGreaterThanOrEqualToSomething() throws Exception {
         // Initialize the database
         insertedMessageMetadata = messageMetadataRepository.saveAndFlush(messageMetadata);
 
@@ -604,7 +603,7 @@ class MessageMetadataResourceIT {
 
     @Test
     @Transactional
-    void getAllMessageMetadataByCiphertextSizeIsLessThanOrEqualToSomething() throws Exception {
+    void getAllMessageMetadatasByCiphertextSizeIsLessThanOrEqualToSomething() throws Exception {
         // Initialize the database
         insertedMessageMetadata = messageMetadataRepository.saveAndFlush(messageMetadata);
 
@@ -617,7 +616,7 @@ class MessageMetadataResourceIT {
 
     @Test
     @Transactional
-    void getAllMessageMetadataByCiphertextSizeIsLessThanSomething() throws Exception {
+    void getAllMessageMetadatasByCiphertextSizeIsLessThanSomething() throws Exception {
         // Initialize the database
         insertedMessageMetadata = messageMetadataRepository.saveAndFlush(messageMetadata);
 
@@ -630,7 +629,7 @@ class MessageMetadataResourceIT {
 
     @Test
     @Transactional
-    void getAllMessageMetadataByCiphertextSizeIsGreaterThanSomething() throws Exception {
+    void getAllMessageMetadatasByCiphertextSizeIsGreaterThanSomething() throws Exception {
         // Initialize the database
         insertedMessageMetadata = messageMetadataRepository.saveAndFlush(messageMetadata);
 
@@ -643,7 +642,7 @@ class MessageMetadataResourceIT {
 
     @Test
     @Transactional
-    void getAllMessageMetadataByAttachmentRefsIsEqualToSomething() throws Exception {
+    void getAllMessageMetadatasByAttachmentRefsIsEqualToSomething() throws Exception {
         // Initialize the database
         insertedMessageMetadata = messageMetadataRepository.saveAndFlush(messageMetadata);
 
@@ -656,7 +655,7 @@ class MessageMetadataResourceIT {
 
     @Test
     @Transactional
-    void getAllMessageMetadataByAttachmentRefsIsInShouldWork() throws Exception {
+    void getAllMessageMetadatasByAttachmentRefsIsInShouldWork() throws Exception {
         // Initialize the database
         insertedMessageMetadata = messageMetadataRepository.saveAndFlush(messageMetadata);
 
@@ -669,7 +668,7 @@ class MessageMetadataResourceIT {
 
     @Test
     @Transactional
-    void getAllMessageMetadataByAttachmentRefsIsNullOrNotNull() throws Exception {
+    void getAllMessageMetadatasByAttachmentRefsIsNullOrNotNull() throws Exception {
         // Initialize the database
         insertedMessageMetadata = messageMetadataRepository.saveAndFlush(messageMetadata);
 
@@ -679,7 +678,7 @@ class MessageMetadataResourceIT {
 
     @Test
     @Transactional
-    void getAllMessageMetadataByAttachmentRefsContainsSomething() throws Exception {
+    void getAllMessageMetadatasByAttachmentRefsContainsSomething() throws Exception {
         // Initialize the database
         insertedMessageMetadata = messageMetadataRepository.saveAndFlush(messageMetadata);
 
@@ -692,7 +691,7 @@ class MessageMetadataResourceIT {
 
     @Test
     @Transactional
-    void getAllMessageMetadataByAttachmentRefsNotContainsSomething() throws Exception {
+    void getAllMessageMetadatasByAttachmentRefsNotContainsSomething() throws Exception {
         // Initialize the database
         insertedMessageMetadata = messageMetadataRepository.saveAndFlush(messageMetadata);
 
@@ -705,13 +704,13 @@ class MessageMetadataResourceIT {
 
     @Test
     @Transactional
-    void getAllMessageMetadataByRoomIsEqualToSomething() throws Exception {
+    void getAllMessageMetadatasByRoomIsEqualToSomething() throws Exception {
         Room room;
         if (TestUtil.findAll(em, Room.class).isEmpty()) {
             messageMetadataRepository.saveAndFlush(messageMetadata);
             room = RoomResourceIT.createEntity();
         } else {
-            room = TestUtil.findAll(em, Room.class).get(0);
+            room = TestUtil.findAll(em, Room.class).getFirst();
         }
         em.persist(room);
         em.flush();

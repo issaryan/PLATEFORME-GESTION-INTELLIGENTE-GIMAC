@@ -37,18 +37,18 @@ public class MessageMetadataResource {
     }
 
     /**
-     * {@code GET  /message-metadata} : get all the messageMetadata.
+     * {@code GET  /message-metadata} : get all the Message Metadata.
      *
      * @param pageable the pagination information.
      * @param criteria the criteria which the requested entities should match.
-     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of messageMetadata in body.
+     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of Message Metadata in body.
      */
     @GetMapping("")
-    public ResponseEntity<List<MessageMetadataDTO>> getAllMessageMetadata(
+    public ResponseEntity<List<MessageMetadataDTO>> getAllMessageMetadatas(
         MessageMetadataCriteria criteria,
         @org.springdoc.core.annotations.ParameterObject Pageable pageable
     ) {
-        LOG.debug("REST request to get MessageMetadata by criteria: {}", criteria);
+        LOG.debug("REST request to get MessageMetadatas by criteria: {}", criteria);
 
         Page<MessageMetadataDTO> page = messageMetadataQueryService.findByCriteria(criteria, pageable);
         HttpHeaders headers = PaginationUtil.generatePaginationHttpHeaders(ServletUriComponentsBuilder.fromCurrentRequest(), page);
@@ -56,14 +56,14 @@ public class MessageMetadataResource {
     }
 
     /**
-     * {@code GET  /message-metadata/count} : count all the messageMetadata.
+     * {@code GET  /message-metadata/count} : count all the messageMetadatas.
      *
      * @param criteria the criteria which the requested entities should match.
      * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the count in body.
      */
     @GetMapping("/count")
-    public ResponseEntity<Long> countMessageMetadata(MessageMetadataCriteria criteria) {
-        LOG.debug("REST request to count MessageMetadata by criteria: {}", criteria);
+    public ResponseEntity<Long> countMessageMetadatas(MessageMetadataCriteria criteria) {
+        LOG.debug("REST request to count MessageMetadatas by criteria: {}", criteria);
         return ResponseEntity.ok().body(messageMetadataQueryService.countByCriteria(criteria));
     }
 

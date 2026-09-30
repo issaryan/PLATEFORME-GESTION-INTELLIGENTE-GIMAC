@@ -16,28 +16,27 @@ import cm.gimac.des.collaboration.domain.enumeration.RoomType;
 import cm.gimac.des.collaboration.repository.RoomRepository;
 import cm.gimac.des.collaboration.service.dto.RoomDTO;
 import cm.gimac.des.collaboration.service.mapper.RoomMapper;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Integration tests for the {@link RoomResource} REST controller.
  */
 @IntegrationTest
 @AutoConfigureMockMvc
-@WithMockUser
+@WithMockUser(authorities = cm.gimac.des.collaboration.security.AuthoritiesConstants.ADMIN)
 class RoomResourceIT {
 
     private static final String DEFAULT_CODE = "AAAAAAAAAA";
@@ -65,7 +64,7 @@ class RoomResourceIT {
     private static final String UPDATED_ENCRYPTION = "BBBBBBBBBB";
 
     private static final Instant DEFAULT_CREATED_AT = Instant.ofEpochMilli(0L);
-    private static final Instant UPDATED_CREATED_AT = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+    private static final Instant UPDATED_CREATED_AT = Instant.ofEpochMilli(1790746747003L);
 
     private static final RoomState DEFAULT_STATE = RoomState.ACTIF;
     private static final RoomState UPDATED_STATE = RoomState.GELE;
@@ -79,13 +78,13 @@ class RoomResourceIT {
     private static final Integer SMALLER_GROUP_SESSION_EPOCH = 0 - 1;
 
     private static final Instant DEFAULT_FROZEN_AT = Instant.ofEpochMilli(0L);
-    private static final Instant UPDATED_FROZEN_AT = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+    private static final Instant UPDATED_FROZEN_AT = Instant.ofEpochMilli(1790746747003L);
 
     private static final Instant DEFAULT_ARCHIVED_AT = Instant.ofEpochMilli(0L);
-    private static final Instant UPDATED_ARCHIVED_AT = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+    private static final Instant UPDATED_ARCHIVED_AT = Instant.ofEpochMilli(1790746747003L);
 
     private static final Instant DEFAULT_PURGE_AFTER = Instant.ofEpochMilli(0L);
-    private static final Instant UPDATED_PURGE_AFTER = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+    private static final Instant UPDATED_PURGE_AFTER = Instant.ofEpochMilli(1790746747003L);
 
     private static final String ENTITY_API_URL = "/api/rooms";
     private static final String ENTITY_API_URL_ID = ENTITY_API_URL + "/{id}";
@@ -1365,16 +1364,15 @@ class RoomResourceIT {
         partialUpdatedRoom.setId(room.getId());
 
         partialUpdatedRoom
-            .code(UPDATED_CODE)
+            .attachmentKind(UPDATED_ATTACHMENT_KIND)
             .attachmentReference(UPDATED_ATTACHMENT_REFERENCE)
             .attachmentService(UPDATED_ATTACHMENT_SERVICE)
-            .ticketReference(UPDATED_TICKET_REFERENCE)
             .matrixRoomId(UPDATED_MATRIX_ROOM_ID)
             .encryption(UPDATED_ENCRYPTION)
-            .retention(UPDATED_RETENTION)
-            .frozenAt(UPDATED_FROZEN_AT)
-            .archivedAt(UPDATED_ARCHIVED_AT)
-            .purgeAfter(UPDATED_PURGE_AFTER);
+            .createdAt(UPDATED_CREATED_AT)
+            .state(UPDATED_STATE)
+            .groupSessionEpoch(UPDATED_GROUP_SESSION_EPOCH)
+            .archivedAt(UPDATED_ARCHIVED_AT);
 
         restRoomMockMvc
             .perform(

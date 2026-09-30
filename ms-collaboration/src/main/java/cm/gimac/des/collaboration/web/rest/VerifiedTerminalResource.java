@@ -38,7 +38,7 @@ public class VerifiedTerminalResource {
 
     private static final String ENTITY_NAME = "collaborationVerifiedTerminal";
 
-    @Value("${jhipster.clientApp.name}")
+    @Value("${jhipster.clientApp.name:collaboration}")
     private String applicationName;
 
     private final VerifiedTerminalService verifiedTerminalService;
@@ -61,7 +61,7 @@ public class VerifiedTerminalResource {
      * {@code POST  /verified-terminals} : Create a new verifiedTerminal.
      *
      * @param verifiedTerminalDTO the verifiedTerminalDTO to create.
-     * @return the {@link ResponseEntity} with status {@code 201 (Created)} and with body the new verifiedTerminalDTO, or with status {@code 400 (Bad Request)} if the verifiedTerminal has already an ID.
+     * @return the {@link ResponseEntity} with status {@code 201 (Created)} and with body the new verifiedTerminalDTO, or with status {@code 400 (Bad Request)} if the verifiedTerminal already has an ID.
      * @throws URISyntaxException if the Location URI syntax is incorrect.
      */
     @PostMapping("")
@@ -126,7 +126,7 @@ public class VerifiedTerminalResource {
         @PathVariable(value = "id", required = false) final UUID id,
         @NotNull @RequestBody VerifiedTerminalDTO verifiedTerminalDTO
     ) throws URISyntaxException {
-        LOG.debug("REST request to partial update VerifiedTerminal partially : {}, {}", id, verifiedTerminalDTO);
+        LOG.debug("REST request to partially update VerifiedTerminal : {}, {}", id, verifiedTerminalDTO);
         if (verifiedTerminalDTO.getId() == null) {
             throw new BadRequestAlertException("Invalid id", ENTITY_NAME, "idnull");
         }
@@ -147,11 +147,11 @@ public class VerifiedTerminalResource {
     }
 
     /**
-     * {@code GET  /verified-terminals} : get all the verifiedTerminals.
+     * {@code GET  /verified-terminals} : get all the Verified Terminals.
      *
      * @param pageable the pagination information.
      * @param criteria the criteria which the requested entities should match.
-     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of verifiedTerminals in body.
+     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of Verified Terminals in body.
      */
     @GetMapping("")
     public ResponseEntity<List<VerifiedTerminalDTO>> getAllVerifiedTerminals(

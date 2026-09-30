@@ -1,6 +1,7 @@
 package cm.gimac.des.collaboration.service.criteria;
 
 import cm.gimac.des.collaboration.domain.enumeration.VerificationState;
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.Objects;
 import java.util.Optional;
@@ -38,6 +39,7 @@ public class VerifiedTerminalCriteria implements Serializable, Criteria {
         }
     }
 
+    @Serial
     private static final long serialVersionUID = 1L;
 
     private UUIDFilter id;

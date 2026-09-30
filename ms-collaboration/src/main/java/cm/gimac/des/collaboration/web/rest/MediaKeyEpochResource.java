@@ -32,11 +32,11 @@ public class MediaKeyEpochResource {
     }
 
     /**
-     * {@code GET  /media-key-epoches} : get all the mediaKeyEpoches.
+     * {@code GET  /media-key-epoches} : get all the Media Key Epoches.
      *
      * @param pageable the pagination information.
      * @param eagerload flag to eager load entities from relationships (This is applicable for many-to-many).
-     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of mediaKeyEpoches in body.
+     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of Media Key Epoches in body.
      */
     @GetMapping("")
     public ResponseEntity<List<MediaKeyEpochDTO>> getAllMediaKeyEpoches(

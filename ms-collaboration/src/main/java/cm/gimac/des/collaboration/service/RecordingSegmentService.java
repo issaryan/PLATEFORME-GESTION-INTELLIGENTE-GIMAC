@@ -11,8 +11,6 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -100,8 +98,12 @@ public class RecordingSegmentService {
      *
      * @return the list of entities.
      */
-    public Page<RecordingSegmentDTO> findAllWithEagerRelationships(Pageable pageable) {
-        return recordingSegmentRepository.findAllWithEagerRelationships(pageable).map(recordingSegmentMapper::toDto);
+    public List<RecordingSegmentDTO> findAllWithEagerRelationships() {
+        return recordingSegmentRepository
+            .findAllWithEagerRelationships()
+            .stream()
+            .map(recordingSegmentMapper::toDto)
+            .collect(Collectors.toCollection(LinkedList::new));
     }
 
     /**

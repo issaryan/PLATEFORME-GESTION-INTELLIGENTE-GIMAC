@@ -90,7 +90,17 @@ services:
   rapprochement: *application
   pilotage: *application
   reporting: *application
-  collaboration: *application
+  # Messagerie de travail (D-64) : annuaire de MS-IAM et dépôt de MS-DOCUMENT par le jeton du client
+  # collaboration-service ; clé de chiffrement au repos des messages hors base (.env).
+  collaboration:
+    <<: *application
+    environment:
+      <<: *emetteur-gimac
+      GIMAC_SERVICE_CLIENT_ID: collaboration-service
+      GIMAC_SERVICE_CLIENT_SECRET: ${GIMAC_SECRET_COLLABORATION_SERVICE:?à définir dans .env}
+      GIMAC_MESSAGERIE_CLE: ${GIMAC_MESSAGERIE_CLE:?à définir dans .env}
+      GIMAC_SERVICES_IAM_URL: http://iam:8081
+      GIMAC_SERVICES_DOCUMENT_URL: http://document:8083
   gateway-valkey:
     <<: *valkey
     healthcheck:
@@ -160,6 +170,7 @@ services:
       - GIMAC_SECRET_PARTICIPANT_SERVICE=${GIMAC_SECRET_PARTICIPANT_SERVICE:?à définir dans .env}
       - GIMAC_SECRET_IAM_SERVICE=${GIMAC_SECRET_IAM_SERVICE:?à définir dans .env}
       - GIMAC_SECRET_GATEWAY_SUPERVISION=${GIMAC_SECRET_GATEWAY_SUPERVISION:?à définir dans .env}
+      - GIMAC_SECRET_COLLABORATION_SERVICE=${GIMAC_SECRET_COLLABORATION_SERVICE:?à définir dans .env}
       - GIMAC_SECRET_INTERNAL=${GIMAC_SECRET_INTERNAL:?à définir dans .env}
 
   prometheus:

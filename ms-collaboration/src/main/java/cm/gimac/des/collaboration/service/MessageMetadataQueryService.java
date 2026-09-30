@@ -68,21 +68,29 @@ public class MessageMetadataQueryService extends QueryService<MessageMetadata> {
      * @return the matching {@link Specification} of the entity.
      */
     protected Specification<MessageMetadata> createSpecification(MessageMetadataCriteria criteria) {
-        Specification<MessageMetadata> specification = Specification.where(null);
+        Specification<MessageMetadata> specification = Specification.unrestricted();
+        specification = specification.and((root, query, builder) -> {
+            if (Long.class != query.getResultType()) {
+                root.fetch(MessageMetadata_.room, JoinType.LEFT);
+            }
+            return null;
+        });
         if (criteria != null) {
             // This has to be called first, because the distinct method returns null
-            specification = Specification.allOf(
-                Boolean.TRUE.equals(criteria.getDistinct()) ? distinct(criteria.getDistinct()) : null,
-                buildSpecification(criteria.getId(), MessageMetadata_.id),
-                buildStringSpecification(criteria.getMatrixEventId(), MessageMetadata_.matrixEventId),
-                buildSpecification(criteria.getAuthorId(), MessageMetadata_.authorId),
-                buildStringSpecification(criteria.getTerminalId(), MessageMetadata_.terminalId),
-                buildRangeSpecification(criteria.getSentAt(), MessageMetadata_.sentAt),
-                buildStringSpecification(criteria.getSessionId(), MessageMetadata_.sessionId),
-                buildRangeSpecification(criteria.getRatchetIndex(), MessageMetadata_.ratchetIndex),
-                buildRangeSpecification(criteria.getCiphertextSize(), MessageMetadata_.ciphertextSize),
-                buildStringSpecification(criteria.getAttachmentRefs(), MessageMetadata_.attachmentRefs),
-                buildSpecification(criteria.getRoomId(), root -> root.join(MessageMetadata_.room, JoinType.LEFT).get(Room_.id))
+            specification = specification.and(
+                Specification.allOf(
+                    Boolean.TRUE.equals(criteria.getDistinct()) ? distinct(criteria.getDistinct()) : Specification.unrestricted(),
+                    buildSpecification(criteria.getId(), MessageMetadata_.id),
+                    buildStringSpecification(criteria.getMatrixEventId(), MessageMetadata_.matrixEventId),
+                    buildSpecification(criteria.getAuthorId(), MessageMetadata_.authorId),
+                    buildStringSpecification(criteria.getTerminalId(), MessageMetadata_.terminalId),
+                    buildRangeSpecification(criteria.getSentAt(), MessageMetadata_.sentAt),
+                    buildStringSpecification(criteria.getSessionId(), MessageMetadata_.sessionId),
+                    buildRangeSpecification(criteria.getRatchetIndex(), MessageMetadata_.ratchetIndex),
+                    buildRangeSpecification(criteria.getCiphertextSize(), MessageMetadata_.ciphertextSize),
+                    buildStringSpecification(criteria.getAttachmentRefs(), MessageMetadata_.attachmentRefs),
+                    buildSpecification(criteria.getRoomId(), root -> root.join(MessageMetadata_.room, JoinType.LEFT).get(Room_.id))
+                )
             );
         }
         return specification;

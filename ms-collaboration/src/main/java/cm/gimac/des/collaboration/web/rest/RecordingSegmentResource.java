@@ -27,17 +27,21 @@ public class RecordingSegmentResource {
     }
 
     /**
-     * {@code GET  /recording-segments} : get all the recordingSegments.
+     * {@code GET  /recording-segments} : get all the Recording Segments.
      *
      * @param eagerload flag to eager load entities from relationships (This is applicable for many-to-many).
-     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of recordingSegments in body.
+     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of Recording Segments in body.
      */
     @GetMapping("")
     public List<RecordingSegmentDTO> getAllRecordingSegments(
         @RequestParam(name = "eagerload", required = false, defaultValue = "true") boolean eagerload
     ) {
         LOG.debug("REST request to get all RecordingSegments");
-        return recordingSegmentService.findAll();
+        if (eagerload) {
+            return recordingSegmentService.findAllWithEagerRelationships();
+        } else {
+            return recordingSegmentService.findAll();
+        }
     }
 
     /**

@@ -27,17 +27,21 @@ public class RecordingConsentResource {
     }
 
     /**
-     * {@code GET  /recording-consents} : get all the recordingConsents.
+     * {@code GET  /recording-consents} : get all the Recording Consents.
      *
      * @param eagerload flag to eager load entities from relationships (This is applicable for many-to-many).
-     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of recordingConsents in body.
+     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of Recording Consents in body.
      */
     @GetMapping("")
     public List<RecordingConsentDTO> getAllRecordingConsents(
         @RequestParam(name = "eagerload", required = false, defaultValue = "true") boolean eagerload
     ) {
         LOG.debug("REST request to get all RecordingConsents");
-        return recordingConsentService.findAll();
+        if (eagerload) {
+            return recordingConsentService.findAllWithEagerRelationships();
+        } else {
+            return recordingConsentService.findAll();
+        }
     }
 
     /**

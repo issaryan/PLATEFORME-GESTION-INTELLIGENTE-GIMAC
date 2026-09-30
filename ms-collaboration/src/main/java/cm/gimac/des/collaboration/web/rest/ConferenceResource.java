@@ -38,7 +38,7 @@ public class ConferenceResource {
 
     private static final String ENTITY_NAME = "collaborationConference";
 
-    @Value("${jhipster.clientApp.name}")
+    @Value("${jhipster.clientApp.name:collaboration}")
     private String applicationName;
 
     private final ConferenceService conferenceService;
@@ -61,7 +61,7 @@ public class ConferenceResource {
      * {@code POST  /conferences} : Create a new conference.
      *
      * @param conferenceDTO the conferenceDTO to create.
-     * @return the {@link ResponseEntity} with status {@code 201 (Created)} and with body the new conferenceDTO, or with status {@code 400 (Bad Request)} if the conference has already an ID.
+     * @return the {@link ResponseEntity} with status {@code 201 (Created)} and with body the new conferenceDTO, or with status {@code 400 (Bad Request)} if the conference already has an ID.
      * @throws URISyntaxException if the Location URI syntax is incorrect.
      */
     @PostMapping("")
@@ -125,7 +125,7 @@ public class ConferenceResource {
         @PathVariable(value = "id", required = false) final UUID id,
         @NotNull @RequestBody ConferenceDTO conferenceDTO
     ) throws URISyntaxException {
-        LOG.debug("REST request to partial update Conference partially : {}, {}", id, conferenceDTO);
+        LOG.debug("REST request to partially update Conference : {}, {}", id, conferenceDTO);
         if (conferenceDTO.getId() == null) {
             throw new BadRequestAlertException("Invalid id", ENTITY_NAME, "idnull");
         }
@@ -146,11 +146,11 @@ public class ConferenceResource {
     }
 
     /**
-     * {@code GET  /conferences} : get all the conferences.
+     * {@code GET  /conferences} : get all the Conferences.
      *
      * @param pageable the pagination information.
      * @param criteria the criteria which the requested entities should match.
-     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of conferences in body.
+     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of Conferences in body.
      */
     @GetMapping("")
     public ResponseEntity<List<ConferenceDTO>> getAllConferences(
