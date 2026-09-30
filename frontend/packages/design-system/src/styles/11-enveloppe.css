@@ -19,8 +19,8 @@
 .gm-sidenav a[aria-current="page"] { border-left-color: var(--gm-green-300); background: rgb(255 255 255 / 0.14); color: var(--gm-color-text-inverse); font-weight: 600; }
 .gm-sidenav-badge { margin-left: auto; min-width: 20px; height: 20px; padding: 0 6px; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--gm-radius-avatar); background: var(--gm-green-300); color: var(--gm-blue-900); font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .gm-sidenav-group { padding: var(--gm-space-4) var(--gm-space-5) var(--gm-space-1); font-size: 11px; line-height: 16px; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 600; color: var(--gm-blue-300); }
-/* Cartouche du logo : fond blanc, comme l'en-tête de la page de connexion, filet bleu en haut. */
-.gm-sidenav-marque { display: flex; flex-direction: column; align-items: center; gap: var(--gm-space-1); padding: var(--gm-space-4) var(--gm-space-5) var(--gm-space-3); background: var(--gm-color-surface); border-top: var(--gm-border-4) solid var(--gm-blue-700); border-bottom: var(--gm-border-1) solid var(--gm-color-border); }
+/* Cartouche du logo : toujours blanc (logo en couleur), dans les deux thèmes, comme l'en-tête de la page de connexion. */
+.gm-sidenav-marque { display: flex; flex-direction: column; align-items: center; gap: var(--gm-space-1); padding: var(--gm-space-4) var(--gm-space-5) var(--gm-space-3); background: var(--gm-white); border-top: var(--gm-border-4) solid var(--gm-blue-700); border-bottom: var(--gm-border-1) solid var(--gm-color-border); }
 .gm-sidenav-marque img { width: 100%; max-width: 208px; height: auto; display: block; }
 .gm-sidenav-marque span { font-size: 11px; line-height: 16px; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 600; color: var(--gm-blue-700); }
 /* Enveloppe fixe (§6.2) : la barre supérieure reste en haut et la navigation latérale reste en place

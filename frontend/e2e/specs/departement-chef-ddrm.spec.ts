@@ -1,5 +1,5 @@
 import { ADRESSES, demo, expect, test } from '../fixtures'
-import { confirmer, naviguer } from './outils'
+import { confirmer, monTravail, naviguer, ongletSelectionne } from './outils'
 
 // Fonctionnalité : le chef de la DDRM tranche les propositions (étape 2) puis ouvre la liaison d'un
 // adhérent au cadrage et désigne son conducteur de projet (étape 3, D-57, D-58). Services simulés ; la
@@ -15,7 +15,8 @@ test.describe('Fonctionnalité : décisions du chef de la DDRM et cadrage des li
       await page.goto(`${ADRESSES.departement}/des/tableau-de-bord`)
       await expect(page.getByText('Chef de la DDRM', { exact: true })).toBeVisible()
       await expect(page.getByRole('region', { name: 'Relations avec les membres (DDRM)' }).getByText('Propositions à trancher')).toBeVisible()
-      await expect(page.getByRole('region', { name: 'Cadrage des liaisons' })).toBeVisible()
+      await expect(monTravail(page)).toBeVisible()
+      await expect(page.getByRole('region', { name: 'Pilotage des projets de certification' })).toBeVisible()
     })
     await test.step('Quand l’adhésion d’un dossier complet lui est proposée, il l’approuve avec sa clé de sécurité', async () => {
       await page.getByRole('region', { name: 'Relations avec les membres (DDRM)' }).getByRole('button').filter({ hasText: 'Candidats' }).click()
@@ -23,7 +24,8 @@ test.describe('Fonctionnalité : décisions du chef de la DDRM et cadrage des li
       await expect(page.getByRole('heading', { level: 1 })).toHaveText('Banque de Libreville')
       await page.getByRole('button', { name: 'Proposer l\'adhésion' }).click()
       await confirmer(page, 'Proposer l\'adhésion', 'Dossier complet')
-      await page.getByRole('tab', { name: 'Propositions de statut' }).click()
+      await expect(page.getByRole('alertdialog')).toHaveCount(0)
+      await ongletSelectionne(page, 'Propositions de statut')
       await page.getByRole('button', { name: 'Approuver' }).click()
       const d = page.getByRole('dialog')
       await expect(d.getByText(/L'institution passera à l'état « Adhérent »/)).toBeVisible()
@@ -42,7 +44,8 @@ test.describe('Fonctionnalité : décisions du chef de la DDRM et cadrage des li
       await expect(page.getByRole('heading', { level: 1 })).toHaveText('Fintech Kribi Pay')
       await page.getByRole('button', { name: 'Proposer la clôture sans suite' }).click()
       await confirmer(page, 'Proposer la clôture sans suite', 'Le candidat ne répond plus')
-      await page.getByRole('tab', { name: 'Propositions de statut' }).click()
+      await expect(page.getByRole('alertdialog')).toHaveCount(0)
+      await ongletSelectionne(page, 'Propositions de statut')
       await page.getByRole('row', { name: /Le candidat ne répond plus/ }).getByRole('button', { name: 'Plus d\'actions' }).click()
       await page.getByRole('dialog').getByRole('button', { name: 'Rejeter' }).click()
       await confirmer(page, 'Rejeter', 'Relance prévue le mois prochain')
@@ -55,7 +58,7 @@ test.describe('Fonctionnalité : décisions du chef de la DDRM et cadrage des li
   test('Scénario : ouvrir la liaison d’un adhérent au cadrage et désigner son conducteur', async ({ page }) => {
     await page.goto(`${ADRESSES.departement}/des/tableau-de-bord`)
     await test.step('Quand il part du registre des adhérents', async () => {
-      await page.getByRole('region', { name: 'Cadrage des liaisons' }).getByRole('link', { name: 'Ouvrir une liaison depuis le registre' }).click()
+      await page.getByRole('region', { name: 'Relations avec les membres (DDRM)' }).getByRole('button').filter({ hasText: 'Adhérents' }).click()
       await expect(page.getByRole('link', { name: 'Mobile Money Sanaga' })).toBeVisible()
       await page.getByRole('row', { name: /Mobile Money Sanaga/ }).getByRole('button', { name: 'Ouvrir une liaison (cadrage)' }).click()
     })

@@ -38,7 +38,7 @@ export function Button(p: ButtonProps) {
       data-testid={p['data-testid']}
       aria-busy={p.loading ? 'true' : undefined}
       title={p.disabled && p.disabledReason ? p.disabledReason : undefined}
-      aria-label={p.iconOnly ? p['aria-label'] || (typeof p.children === 'string' ? p.children : undefined) : undefined}
+      aria-label={p['aria-label'] || (p.iconOnly && typeof p.children === 'string' ? p.children : undefined)}
     >
       {p.loading ? <span className="gm-spinner" aria-hidden="true" /> : p.icon ? <Icon name={p.icon} size={20} /> : null}
       {p.iconOnly ? null : p.children}

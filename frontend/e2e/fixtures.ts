@@ -15,6 +15,7 @@ export const ADRESSES = {
   departement: 'http://localhost:5200',
   departementHttp: 'http://localhost:5210',
   portail: 'http://localhost:5201',
+  portailHttp: 'http://localhost:5211',
 }
 
 function ecrire(couverture: string | null) {
@@ -30,6 +31,7 @@ export async function recueillirCouverture(page: Page) {
 
 /** Profils de démonstration : console (D-62) et application du département (D-57, D-58). */
 export type ProfilDemo = 'ROLE_SUPER_ADMIN' | 'ROLE_RSSI' | 'ROLE_CHEF_DDRM' | 'ROLE_CHARGE_DDRM' | 'ROLE_CHEF_DES' | 'ROLE_INGENIEUR_HOMOLOGATION' | 'ROLE_CONDUCTEUR_PROJET' | 'ROLE_SNA'
+  | 'ROLE_PRODUCTION_MONETIQUE' | 'ROLE_POLE_RESEAU' | 'ROLE_POLE_SYSTEME' | 'ROLE_CONFORMITE' | 'ROLE_DG'
 
 /** Démonstration en services simulés : profil (gm.profilDemo) et premier accès (gm.premierAccesDemo). */
 export async function demo(page: Page, o: { profil?: ProfilDemo; premierAcces?: boolean; theme?: 'light' | 'dark' } = {}) {

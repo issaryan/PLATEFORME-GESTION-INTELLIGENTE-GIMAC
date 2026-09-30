@@ -49,8 +49,9 @@ test.describe('Fonctionnalité : accessibilité des écrans D-62', () => {
     })
   }
 
-  // Application du département (D-57, D-58, D-63) : tableaux de bord par acteur, registre et dossier des
-  // institutions, ouverture d'une liaison au cadrage, liaisons et désignation du conducteur.
+  // Application du département (D-57, D-58, D-63, D-64) : tableaux de bord par acteur, registre et dossier
+  // des institutions, ouverture d'une liaison au cadrage, liaisons et désignation du conducteur, liste et
+  // dossier numérique du parcours (onglets Décision et Étapes), messagerie.
   for (const theme of ['light', 'dark'] as const) {
     test(`Scénario : écrans de l’application du département (thème ${theme})`, async ({ page }) => {
       await demo(page, { profil: 'ROLE_CHEF_DDRM', theme })
@@ -63,6 +64,11 @@ test.describe('Fonctionnalité : accessibilité des écrans D-62', () => {
         ['/des/liaisons', 'Liaisons et parcours'],
         ['/des/liaisons/LIA-2026-030', 'Établissement de microfinance C'],
         ['/des/liaisons/LIA-2026-030?formulaire=chef', 'Désigner le conducteur de projet de la liaison de Établissement de microfinance C'],
+        ['/des/parcours', 'Liaisons'],
+        ['/des/parcours/LIA-2026-030', 'Établissement de paiement A'],
+        ['/des/parcours/LIA-2026-019?onglet=decision', 'Banque G'],
+        ['/des/parcours/LIA-2026-036?onglet=etapes&etape=ATELIERS', 'Établissement de microfinance C'],
+        ['/des/messagerie?conversation=CONV-0005', 'Messagerie'],
       ]) {
         await test.step(chemin, async () => {
           await page.goto(`${ADRESSES.departement}${chemin}`)
@@ -77,7 +83,8 @@ test.describe('Fonctionnalité : accessibilité des écrans D-62', () => {
   test('Scénario : tableau de bord du conducteur de projet (thème sombre)', async ({ page }) => {
     await demo(page, { profil: 'ROLE_CONDUCTEUR_PROJET', theme: 'dark' })
     await page.goto(`${ADRESSES.departement}/des/tableau-de-bord`)
-    await expect(page.getByRole('region', { name: 'Mes projets' }).getByRole('link').first()).toBeVisible()
+    await expect(page.getByRole('region', { name: 'Mon travail' }).getByRole('heading', { name: /^Mes projets \(\d+\)$/ })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'LIA-2026-041' }).first()).toBeVisible()
     await page.waitForLoadState('networkidle')
     await auditer(page)
   })

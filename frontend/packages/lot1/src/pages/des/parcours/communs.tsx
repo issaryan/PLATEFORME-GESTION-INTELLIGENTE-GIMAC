@@ -19,7 +19,12 @@ export const tonService: Record<EtatServicePerimetre, Status> = { NON_DEMARRE: '
 export function useFormatDate() {
   const { i18n } = useTranslation()
   const format = new Intl.DateTimeFormat(i18n.language, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
-  return (iso: string | null | undefined) => (iso ? format.format(new Date(iso.length === 10 ? `${iso}T00:00:00Z` : iso)) : '')
+  return (iso: string | null | undefined) => {
+    if (!iso) return ''
+    const d = new Date(iso.length === 10 ? `${iso}T00:00:00Z` : iso)
+    // Une date illisible s'affiche telle quelle plutôt que de faire tomber l'écran.
+    return Number.isNaN(d.getTime()) ? iso : format.format(d)
+  }
 }
 
 /** Date affichée, ou mention explicite de son absence. */

@@ -1,36 +1,42 @@
 import { ADRESSES, demo, expect, test } from '../fixtures'
-import { naviguer } from './outils'
+import { carte, monTravail, naviguer, ongletSelectionne } from './outils'
 
-// Fonctionnalité : le chef du DES suit le cadrage des liaisons, désigne les conducteurs de projet et
-// ouvre les liaisons des adhérents (D-57, D-58) ; il parcourt la fiche d'une liaison. Services simulés.
+// Fonctionnalité : le chef du DES suit son travail (« Mon travail »), désigne les conducteurs de projet et
+// ouvre les liaisons des adhérents (D-57, D-58) ; il parcourt la fiche historique d'une liaison (écrans
+// DES-08 et DES-09, joignables depuis le dossier). Services simulés.
 
 test.describe('Fonctionnalité : cadrage des liaisons par le chef du DES', () => {
   test.beforeEach(async ({ page }) => {
     await demo(page, { profil: 'ROLE_CHEF_DES', theme: 'light' })
   })
 
-  test('Scénario : suivre les liaisons en cadrage et désigner un conducteur depuis la liste', async ({ page }) => {
+  test('Scénario : suivre son travail, désigner le conducteur d’une liaison qui n’en a pas, puis la liste historique', async ({ page }) => {
     await test.step('Étant donné le chef du DES sur son tableau de bord', async () => {
       await page.goto(`${ADRESSES.departement}/des/tableau-de-bord`)
       await expect(page.getByText('Chef du DES', { exact: true })).toBeVisible()
-      const cadrage = page.getByRole('region', { name: 'Cadrage des liaisons' })
-      await expect(cadrage.getByText('Adhérents à engager')).toBeVisible()
-      await expect(cadrage.getByRole('link', { name: 'Établissement de microfinance C (Paiement mobile)' })).toBeVisible()
+      await expect(monTravail(page).getByRole('heading', { name: 'Liaison sans conducteur (1)' })).toBeVisible()
+      await expect(page.getByRole('region', { name: 'Pilotage des projets de certification' })).toBeVisible()
       await expect(page.getByRole('region', { name: 'Relations avec les membres (DDRM)' })).toHaveCount(0)
     })
-    await test.step('Quand il ouvre la liste des liaisons en cadrage', async () => {
-      await page.getByRole('region', { name: 'Cadrage des liaisons' }).getByRole('button').filter({ hasText: 'Liaisons en cadrage' }).click()
-      await expect(page.getByRole('heading', { level: 1 })).toHaveText('Liaisons et parcours')
-      await expect(page.getByRole('link', { name: 'Établissement de microfinance C' })).toBeVisible()
-      await expect(page.getByRole('link', { name: 'Banque D' })).toHaveCount(0)
+    await test.step('Quand il désigne le conducteur de la liaison sans conducteur', async () => {
+      await carte(page, 'Liaison sans conducteur (1)').getByRole('row', { name: /LIA-2026-044/ }).getByRole('button', { name: 'Désigner le conducteur' }).click()
+      await expect(page).toHaveURL(/\/des\/parcours\/LIA-2026-044\?action=designer/)
+      const d = page.getByRole('dialog', { name: 'Désigner le conducteur' })
+      await expect(d.getByLabel(/Conducteur désigné/).locator('option')).toHaveCount(3)
+      await d.getByLabel(/Conducteur désigné/).selectOption('U-COND-1')
+      await d.getByRole('button', { name: 'Désigner le conducteur' }).click()
     })
-    await test.step('Et qu’il désigne un autre conducteur pour la liaison', async () => {
+    await test.step('Alors le dossier de la liaison porte son conducteur', async () => {
+      await expect(page.getByText('Conducteur de projet 1 conduit désormais cette liaison.')).toBeVisible()
+      await expect(page.getByRole('button', { name: 'Redésigner le conducteur' })).toBeVisible()
+    })
+    await test.step('Et la liste historique des liaisons lui permet encore de désigner un conducteur', async () => {
+      await page.goto(`${ADRESSES.departement}/des/liaisons`)
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText('Liaisons et parcours')
       await page.getByRole('row', { name: /Établissement de microfinance C/ }).getByRole('button', { name: 'Désigner le conducteur' }).click()
       await expect(page.getByRole('heading', { level: 1 })).toHaveText('Désigner le conducteur de projet de la liaison de Établissement de microfinance C')
       await page.locator('select[name="chefDeProjetId"]').selectOption('U-202')
       await page.getByRole('button', { name: 'Désigner le conducteur' }).click()
-    })
-    await test.step('Alors la liste affiche le nouveau conducteur', async () => {
       await expect(page.getByRole('row', { name: /Établissement de microfinance C/ }).getByText('Brice Ondo Mba')).toBeVisible()
     })
     await test.step('Et le filtre « Mes projets » et la recherche restent à sa main', async () => {
@@ -106,7 +112,7 @@ test.describe('Fonctionnalité : cadrage des liaisons par le chef du DES', () =>
       await expect(page.getByText('Opérations et leurs preuves')).toBeVisible()
     })
     await test.step('Dégel motivé d’une liaison gelée', async () => {
-      await naviguer(page, 'Liaisons et parcours')
+      await page.goto(`${ADRESSES.departement}/des/liaisons`)
       await page.getByRole('link', { name: 'Banque D' }).click()
       await expect(page.getByRole('heading', { level: 1 })).toHaveText('Banque D')
       await page.getByRole('button', { name: 'Dégeler la liaison' }).click()
@@ -117,11 +123,16 @@ test.describe('Fonctionnalité : cadrage des liaisons par le chef du DES', () =>
       await expect(page.getByText('Dégeler la liaison : effectué.')).toBeVisible()
     })
     await test.step('Dossier de mise en service d’une liaison apte', async () => {
-      await naviguer(page, 'Liaisons et parcours')
+      await page.goto(`${ADRESSES.departement}/des/liaisons`)
       await page.getByRole('link', { name: 'Banque B' }).click()
       await expect(page.getByRole('heading', { level: 1 })).toHaveText('Banque B')
       await page.getByRole('button', { name: 'Ouvrir le dossier de mise en service' }).click()
-      await expect(page.getByRole('tab', { name: 'Circuit des quitus' })).toBeVisible()
+      await ongletSelectionne(page, 'Décision')
+      await expect(page.getByText('Décision de mise en production : modèle hybride')).toBeVisible()
+      // La liaison historique LIA-2025-102 n'a pas d'état de décision au parcours simulé : le résumé le dit.
+      await expect(page.getByTestId('resume-decision').getByText('L\'état de la décision n\'est pas disponible pour cette liaison.')).toBeVisible()
+      await page.getByRole('button', { name: 'Ouvrir la décision de la liaison' }).click()
+      await expect(page).toHaveURL(/\/des\/parcours\/LIA-2025-102\?onglet=decision/)
     })
     await test.step('Retour au tableau de bord', async () => {
       await naviguer(page, 'Tableau de bord')

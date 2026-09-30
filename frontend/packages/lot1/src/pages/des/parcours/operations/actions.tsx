@@ -53,7 +53,8 @@ export function useActionsOperation() {
       run: ({ row }) => envoyerPreuve({ operationId: row.id, ...row.saisie }),
     }
     const livrable: Action<Ligne<DepotLivrable>> = {
-      key: 'deposerLivrable', label: 'parcoursOps.action.deposerLivrable', icon: 'upload', variant: 'primary', scope: 'row', permission: PERM.preuveDeposer, confirm: 'confirm',
+      // Ouvert par usePermis (HOM_STEP_MANAGE ou HOM_EVIDENCE_SUBMIT) ; le service refait le contrôle.
+      key: 'deposerLivrable', label: 'parcoursOps.action.deposerLivrable', icon: 'upload', variant: 'primary', scope: 'row', permission: PERM.etapeConduire, confirm: 'confirm',
       consequences: ({ saisie: s }) => (
         <KeyValueList items={[{ key: t('parcoursOps.preuve.fichier'), value: s.fichier.name }, ...(s.commentaire.trim() ? [{ key: t('parcoursOps.livrable.commentaire'), value: s.commentaire }] : [])]} />
       ),

@@ -169,7 +169,7 @@ test.describe('Fonctionnalité : console du super administrateur', () => {
     await d.getByLabel('HOM_REPLAY_ADMIN').check()
     await d.getByRole('button', { name: 'Continuer vers la signature' }).click()
     await signerEtTerminer(page, 'Rejeu confié au service Normes et Agréments')
-    await expect(page.getByText(/La composition du profil Normes et agréments a été enregistrée/)).toBeVisible()
+    await expect(page.getByText(/La composition du profil Normes et Agréments a été enregistrée/)).toBeVisible()
   })
 
   test('Scénario : consulter la configuration et changer un niveau de journalisation', async ({ page }) => {

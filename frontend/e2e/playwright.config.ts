@@ -36,5 +36,6 @@ export default defineConfig({
     apercu('departement', 'dist-e2e', 5200),
     apercu('departement', 'dist-e2e-http', 5210),
     apercu('portail', 'dist-e2e', 5201),
+    apercu('portail', 'dist-e2e-http', 5211),
   ],
 })

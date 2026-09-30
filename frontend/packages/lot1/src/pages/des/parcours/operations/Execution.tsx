@@ -38,6 +38,12 @@ function ChampCodeControle({ label, valeur, onChange, erreur, help }: { label: s
   )
 }
 
+
+/** Date saisie (JJ/MM/AAAA, format du champ) envoyée au service en ISO (AAAA-MM-JJ) ; une date déjà ISO passe telle quelle. */
+export const dateIso = (saisie: string) => {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(saisie.trim())
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : saisie.trim()
+}
 export function FormulairePreuve({ op }: { op: OperationParcours }) {
   const { t } = useTranslation()
   const executeur = useExecuteurActions()
@@ -63,7 +69,7 @@ export function FormulairePreuve({ op }: { op: OperationParcours }) {
       fichier,
       valeurReference: op.valeurReference ? valeur.trim() : undefined,
       codeControle: op.cle && !ceremonie ? kcv : undefined,
-      ceremonie: ceremonie ? { tenueLe, porteurs: porteurs.map((p) => p.trim()), codesControle: kcvs } : undefined,
+      ceremonie: ceremonie ? { tenueLe: dateIso(tenueLe), porteurs: porteurs.map((p) => p.trim()), codesControle: kcvs } : undefined,
     }
     executeur.lancer(preuve, { ...op, saisie }, `${op.rang} · ${t(`parcours.op.${op.rang}`)}`, SUJET)
   }
@@ -225,7 +231,8 @@ export function usePermis(op: OperationParcours) {
   const a = (action: string, permission: string) => op.actionsPermises.includes(action) && aPermission(permissions, permission)
   return {
     preuve: a('DEPOSER_PREUVE', PERM.preuveDeposer),
-    livrable: a('DEPOSER_LIVRABLE', PERM.preuveDeposer),
+    // Livrable d'étape (compte rendu de lancement, d'atelier…) : conduite des étapes ou dépôt de preuve.
+    livrable: a('DEPOSER_LIVRABLE', PERM.etapeConduire) || a('DEPOSER_LIVRABLE', PERM.preuveDeposer),
     valider: a('VALIDER', PERM.operationValider),
     attribuer: a('ATTRIBUER', PERM.operationAttribuer),
     constater: a('CONSTATER_COUVERTURE', PERM.dossierVerifier),
