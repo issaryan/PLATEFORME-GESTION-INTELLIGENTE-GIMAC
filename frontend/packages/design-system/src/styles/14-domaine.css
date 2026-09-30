@@ -64,7 +64,7 @@
 .gm-conv-ligne { display: flex; align-items: baseline; gap: var(--gm-space-2); min-width: 0; }
 .gm-conv-titre { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
 .gm-conv-nonlu .gm-conv-titre, .gm-conv-nonlu .gm-conv-extrait { font-weight: 600; color: var(--gm-color-text-primary); }
-.gm-conv-quand { font-size: 12px; line-height: 18px; color: var(--gm-color-text-muted); flex: none; }
+.gm-conv-quand { font-size: 12px; line-height: 18px; color: var(--gm-color-text-secondary); flex: none; }
 .gm-conv-sous { font-size: 12px; line-height: 18px; color: var(--gm-color-text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gm-conv-extrait { flex: 1; min-width: 0; font-size: 13px; line-height: 20px; color: var(--gm-color-text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gm-conv-pastille { flex: none; min-width: 20px; height: 20px; padding: 0 6px; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--gm-radius-avatar); background: var(--gm-color-action); color: var(--gm-color-text-inverse); font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -80,6 +80,9 @@
 .gm-fil .gm-chat-list { min-height: 0; }
 .gm-fil-plus, .gm-fil-vide { align-self: center; list-style: none; }
 .gm-msg-texte { white-space: pre-wrap; overflow-wrap: anywhere; }
+.gm-msg-att .gm-field-help { color: var(--gm-color-text-secondary); }
+/* Pièce jointe : texte principal souligné, lisible sur les bulles des deux thèmes. */
+.gm-msg-att .gm-link { color: var(--gm-color-text-primary); text-decoration: underline; }
 .gm-msg-etiquettes { flex-wrap: wrap; gap: var(--gm-space-1); margin-top: var(--gm-space-1); }
 .gm-saisie { flex-direction: column; align-items: stretch; }
 .gm-saisie-ligne { align-items: flex-end; gap: var(--gm-space-2); }

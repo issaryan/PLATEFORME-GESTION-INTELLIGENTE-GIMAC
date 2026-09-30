@@ -48,7 +48,7 @@ test.describe('Fonctionnalité : conduite de projet de certification', () => {
       await page.getByRole('tab', { name: 'Opérations' }).click()
     })
     await test.step('Quand il ouvre l’opération 7 et dépose le livrable sans fichier, puis avec', async () => {
-      await page.getByRole('row', { name: /^7 Réunion de lancement/ }).click()
+      await page.getByRole('button', { name: /^Ouvrir l'opération 7 : Réunion de lancement/ }).click()
       const t = tiroir(page, '7')
       await t.getByRole('button', { name: 'Déposer le livrable' }).click()
       await expect(t.getByText('Choisissez le fichier de preuve.')).toBeVisible()
@@ -97,7 +97,8 @@ test.describe('Fonctionnalité : conduite de projet de certification', () => {
       await confirmerAction(page, 'Déposer la preuve')
     })
     await test.step('Alors la preuve attend la validation ; il la valide avec sa clé de sécurité', async () => {
-      await expect(t.getByText('En validation').first()).toBeVisible()
+      await expect(t.getByText('À valider').first()).toBeVisible()
+      await expect(t.getByText('Dépositaire 1 · A1B2C1')).toBeVisible()
       await t.getByRole('button', { name: 'Valider l\'opération' }).click()
       await signerCle(page)
       await expect(t.getByText(/Opération close le/)).toBeVisible()
@@ -139,10 +140,10 @@ test.describe('Fonctionnalité : conduite de projet de certification', () => {
       await expect(page.getByText('Arrêt du périmètre des services')).toHaveCount(0)
     })
     await test.step('Quand il ouvre l’opération 28 depuis l’alerte, puis l’opération 29 (secret)', async () => {
-      await page.getByRole('button', { name: 'Ouvrir l\'opération 28' }).click()
+      await page.getByRole('button', { name: 'Ouvrir l\'opération 28', exact: true }).click()
       await expect(tiroir(page, '28').getByText('Mise à jour du script de dépôt des fichiers', { exact: true })).toBeVisible()
       await tiroir(page, '28').getByRole('button', { name: 'Fermer' }).click()
-      await page.getByRole('row', { name: /^29 / }).getByRole('button', { name: '29', exact: true }).click()
+      await page.getByRole('button', { name: /^Ouvrir l'opération 29 :/ }).click()
       await expect(tiroir(page, '29').getByText('Aucun secret dans le dossier')).toBeVisible()
       await expect(tiroir(page, '29').getByLabel(/Code de contrôle/)).toHaveCount(0)
     })
@@ -164,7 +165,7 @@ test.describe('Fonctionnalité : conduite de projet de certification', () => {
       await t.getByRole('button', { name: 'Fermer' }).click()
     })
     await test.step('Quand il dépose la trace de l’opération 28 puis la valide avec sa clé de sécurité', async () => {
-      await page.getByRole('button', { name: 'Ouvrir l\'opération 28' }).click()
+      await page.getByRole('button', { name: 'Ouvrir l\'opération 28', exact: true }).click()
       const t = tiroir(page, '28')
       await t.getByRole('button', { name: 'Déposer la preuve' }).click()
       await expect(t.getByText('Choisissez le fichier de preuve.')).toBeVisible()
