@@ -10,7 +10,7 @@ Espace de travail npm des trois couches de présentation de la plateforme (D-46,
 | `packages/theme` | `@gimac/theme` | Jetons du thème (CC 6.2) | — | — |
 | `packages/design-system` | `@gimac/design-system` | Système de conception DS-GIMAC-01 (jetons, styles, 87 composants React) | — | — |
 | `packages/socle` | `@gimac/socle` | Socle d'interface F0 : client passerelle, canal poussé, FIDO2, i18n, enveloppe, connexion | — | — |
-| `packages/lot1` | `@gimac/lot1` | Lot 1 et certification : ports, services, hooks, tableau de bord par acteur, registre des institutions (DDRM), cadrage des liaisons (étape 3), écrans DES-08 à DES-12 et POR-03 | — | — |
+| `packages/lot1` | `@gimac/lot1` | Lot 1 et certification : ports, services, hooks, tableau de bord par acteur (« Mon travail », pilotage), registre des institutions (DDRM), parcours de la liaison (étapes 3 à 10, dossier numérique, verrous, mise en service, portail), messagerie de travail (D-64), écrans DES-08 à DES-12 et POR-03 | — | — |
 | `packages/compte` | `@gimac/compte` | « Mon compte » et premier accès (D-62), communs aux trois couches : port `/bff/<couche>/iam/moi`, services HTTP et simulé, garde de premier accès, assistant, page Mon compte | — | — |
 | `e2e` | — | Scénarios de bout en bout Playwright par acteur, couverture istanbul avec seuil de 80 % (hors espaces de travail npm) | — | — |
 | `apps/catalogue` | `@gimac/app-catalogue` | Catalogue vivant, hors production | Poste de développement | 4203 |
@@ -60,6 +60,16 @@ La variable `GIMAC_PASSERELLE` change l'adresse de la passerelle en développeme
 
 `Dockerfile` commun, argument `APPLICATION` (et `SERVICES`, `http` par défaut) : les manifestes `package.json` de tous les espaces de travail (racine, `packages/*`, `apps/*`, `e2e`) sont d'abord extraits à leur place pour `npm ci` (tout nouvel espace de travail est pris en compte sans modifier le fichier), puis construction avec Node 22 et service par `nginx-unprivileged` sur le port 8080, sous un utilisateur non root, en lecture seule. `nginx/gimac.conf.template` et `nginx/securite.conf` fixent la politique de sécurité du contenu, le cache et le relais vers la passerelle (`/api`, `/bff`, `/oauth2`, `/login`, `/logout`) ; les flux SSE (`/api/plateforme/flux`, `/bff/<couche>/live`) passent sans mise en tampon (HTTP/1.1, `proxy_buffering off`, délai de lecture de 24 h). `/sante` sert de sonde. Chaque couche est servie à la racine de son port ou de son hôte (4200, 4201, 4202 sous Docker Compose ; `departement`, `portail`, `console.des.gimac.local` sous Kubernetes) et route elle-même `/des`, `/portail` ou `/console`.
 
+## Messagerie de travail (D-64)
+
+Page `/des/messagerie` de l'application du département : conversations (la plus récente en tête,
+non-lus en pastille, pagination), fil (liaisons citées en liens vers leur dossier, pièces jointes
+téléchargeables), nouveau message (destinataires choisis dans l'annuaire de la plateforme, objet,
+liaison rattachée, jusqu'à cinq pièces de 20 Mo), « Discuter de cette liaison » depuis le dossier.
+Contrat : `docs/lot1/messagerie.md` ; service HTTP `/bff/des/collaboration/messagerie`, service simulé
+aux mêmes refus (RG-52 : numéros de carte masqués). Le canal poussé (`/bff/des/live`, sujet
+`collaboration`) rafraîchit la liste, le fil et le compteur de non-lus.
+
 ## Suite prévue
 
 Enveloppe commune IHM-01, bibliothèque de composants IHM-02, navigation élaguée IHM-03, bilinguisme IHM-10 et accessibilité WCAG 2.2 AA IHM-11, conformément au carnet v2.0.
@@ -77,3 +87,7 @@ Enveloppe commune IHM-01, bibliothèque de composants IHM-02, navigation élagu�
 | 2026-09-29 | — | D-62 : console d'administration réelle (supervision temps réel, comptes, journal, politique de sécurité, messagerie, profils, configuration et journalisation), paquet `@gimac/compte` (Mon compte et premier accès dans les trois couches), composites du design system (`OneTimeSecret`, `PermissionPicker`, `LiveStatGroup`), tests de bout en bout Playwright avec seuil de couverture istanbul de 80 % ; Dockerfile (tous les manifestes de l'espace de travail, `SERVICES=http`), relais SSE sans tampon dans nginx et l'Ingress |
 | 2026-09-29 | — | Étape 3, cadrage (D-57, D-58) dans `@gimac/lot1` et l'application du département (ouverture depuis la fiche de l'institution, résumé et désignation du conducteur, « Mes projets », tuiles par acteur, profils de démonstration) ; tâche 9 : audit D-63 de la tranche DDRM (composites `PageHeader`, `PageSection`, `StatGrid`, `LinkList`, `ActionBar`, `ToastRegion` promus au système de conception, corrections de DataTable, ResourceList et du jeton `gm-grey-600`), scénarios de bout en bout par acteur de l'application du département (simulée et sur passerelle simulée), audit axe clair et sombre, périmètre de couverture étendu au département ; couverture Vitest de 80 % bloquante sur tous les paquets (D-61) |
 | 2026-09-29 | — | Parcours de la liaison, socle (D-56 à D-59) : modèle des étapes 3 à 10, référentiel de l'annexe A du CR v1.4 (rangs 1 à 35, C1 à C10, M1 à M17, D1 à D34), matrice des 15 profils par fonction, ports `ServiceParcours`, `ServiceDecision` et `ServicePortailParcours` (HTTP : routes réelles de l'étape 3 ; simulé : liaisons fictives à chaque étape), hooks, vocabulaire FR, EN, ES ; profil de démonstration par `?profil=ROLE_…` |
+| 2026-09-30 | 292c28c | Recalage après l'arrêt des agents : compilation, cloisonnement du tableau du participant, état simulé isolé par instance, clôture des rangs 21 et 22, secrets non cryptographiques en trace seule, onglet du circuit des quatre quitus retiré (D-56) |
+| 2026-09-30 | 1a1ce09, 3ccf11f, 1025925 | Enveloppe fixe (barre supérieure et navigation latérale), navigation aux couleurs du GIMAC (logo et bande des États membres, entrée courante en vert), tableaux de bord épurés (« Mon travail », pilotage), pagination visible sur toute liste (DataTable), libellés unifiés |
+| 2026-09-30 | d07c74d, 01701e2 | Messagerie de travail (D-64) : `ConversationList`, `MessageThread`, `MessageComposer` au système de conception ; `SearchSelect` et `MultiSelect` interactifs ; page `/des/messagerie`, pastille de non-lus ; canal poussé testé (sujet `collaboration`, parcours rafraîchi) ; douze profils de démonstration dérivés de la matrice des permissions |
+| 2026-09-30 | 7d6c942 | Attribution des opérations : annuaire réel au lieu d'une route inexistante |

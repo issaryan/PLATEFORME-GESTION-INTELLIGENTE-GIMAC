@@ -10,26 +10,27 @@ Plateforme du Département Exploitation et Supervision (DES) du GIMAC, groupemen
 | `CA-GIMAC-01_v1.1` | Cahier d'analyse : acteurs, cas d'utilisation, règles de gestion RG |
 | `CC-GIMAC-01_v1.1` | Cahier de conception : 14 microservices, événements, algorithmes, thème |
 | `CP-GIMAC-01_v2.0` | Carnet de produit : 313 récits, 17 épopées, feuille de route S0 à S12 |
-| `REC-GIMAC-01_Reconciliation.md` | **Référentiel d'implémentation** : décisions D-01 à D-61, prime sur les quatre cahiers pour les points qu'il tranche |
+| `REC-GIMAC-01_Reconciliation.md` | **Référentiel d'implémentation** : décisions D-01 à D-64, prime sur les quatre cahiers pour les points qu'il tranche |
 
 ## Organisation du dépôt
 
 | Dossier | Contenu |
 |---|---|
-| `ms-gateway` … `ms-collaboration` | Les 14 microservices JHipster (Java 21, Spring Boot 3), un JDL par service |
+| `ms-gateway` … `ms-collaboration` | Les 14 microservices JHipster (Java 21), un JDL par service |
 | `frontend/` | Les trois couches de présentation React : application du département, portail des participants, console d'administration et d'audit |
 | `infra/docker-compose/` | Environnement local : Docker Compose généré par JHipster et complément du projet |
 | `infra/kubernetes/` | Déclarations Kubernetes générées par JHipster |
 | `infra/kubernetes-gimac/` | Complément Kustomize du projet : politiques réseau, sécurité, frontend |
 | `infra/keycloak/` | Domaine Keycloak `gimac` du lot 1 (permissions, profils, utilisateurs de test) |
 | `infra/kafka/` | Création des sujets Kafka du lot 1 et de leurs files de rebut |
-| `docs/lot1/` | Plan d'implémentation du lot 1, système de conception, tableau de correspondance |
+| `docs/lot1/` | Plan d'implémentation du lot 1, système de conception, tableau de correspondance, contrats de service du parcours (`parcours-backend.md`) et de la messagerie (`messagerie.md`) |
+| `infra/ci/` et `.github/workflows/ci.yml` | Chaîne d'intégration et de déploiement continus : validation de l'infrastructure, du backend, du frontend et de la sécurité, images signées, déploiement en recette |
 
 Chaque dossier a son propre README, avec un journal des mises à jour.
 
 ## Pile technique
 
-Java 21, Spring Boot 3 et JHipster 9.4.0 ; Kafka et CloudEvents ; PostgreSQL, un schéma par service ; Keycloak (OIDC) ; Valkey ; Ceph RGW pour le stockage WORM (D-50) ; OpenBao ; Open Policy Agent ; React 19, TypeScript et Vite (D-51) ; Prometheus, Grafana, OpenTelemetry, Loki, Tempo ; Kubernetes et Kyverno.
+Java 21 ; JHipster 9.4.0 et Spring Boot 4 pour les services régénérés (passerelle, IAM, audit, participant, homologation, certification, collaboration), JHipster 8.11 et Spring Boot 3 pour les sept autres jusqu'à leur régénération (D-43) ; Kafka et CloudEvents ; PostgreSQL, un schéma par service ; Keycloak (OIDC) ; Valkey ; Ceph RGW pour le stockage WORM (D-50) ; OpenBao ; Open Policy Agent ; React 19, TypeScript et Vite (D-51) ; Prometheus, Grafana, OpenTelemetry, Loki, Tempo ; Kubernetes et Kyverno.
 
 ## Démarrer en local
 
@@ -43,6 +44,19 @@ infra/docker-compose/gimac-dev.sh demarrer          # tout
 Les secrets locaux sont générés dans `infra/docker-compose/.env`, jamais versionné.
 
 Comptes nominatifs (un par tableau de bord) : décrire les comptes dans `infra/keycloak/local/comptes.json` (non versionné), puis `python3 infra/keycloak/creer-comptes-personnels.py` ; les mots de passe provisoires sont écrits dans `infra/keycloak/local/mots-de-passe-provisoires.txt`. Première connexion : nouveau mot de passe, enrôlement TOTP, puis premier accès de la plateforme. Keycloak de développement perd ses comptes quand son conteneur est recréé : relancer le script.
+
+## Intégration continue
+
+Toute la logique vit dans `infra/ci` (scripts exécutables à l'identique sur un poste et en CI) ;
+`.github/workflows/ci.yml` installe les outils et enchaîne les étapes. Détail : `infra/ci/README.md`.
+
+```
+infra/ci/installer-outils.sh                       # shellcheck, opa, kustomize, kubeconform, promtool, amtool, hadolint, actionlint, gitleaks, yamllint
+GIMAC_CI_STRICT=1 infra/ci/valider-infra.sh        # Compose, OPA (tests, couverture), Kubernetes, supervision, Dockerfiles, domaine Keycloak, YAML
+infra/ci/valider-backend.sh [ms-…]                 # tests unitaires, d'intégration (Testcontainers) et de recette, seuils JaCoCo
+infra/ci/valider-frontend.sh [--e2e]               # types, Vitest (≥ 80 %), construction, Playwright (≥ 80 %)
+infra/ci/valider-securite.sh                       # secrets (gitleaks) et vulnérabilités (Trivy)
+```
 
 ## Règles de travail
 
@@ -61,6 +75,13 @@ Comptes nominatifs (un par tableau de bord) : décrire les comptes dans `infra/k
 - **Lot 1 engagé (module de gestion de la certification)** : Phase 0 réalisée (D-55), voir `docs/lot1`.
 - **Certification de bout en bout (D-56 à D-61)** : le compte rendu de cadrage CR-CERT-GIMAC-01 v1.4 est intégré ; réalisation par tranches verticales. Tranche DDRM livrée côté serveur : MS-PARTICIPANT régénéré en 9.4.0, étapes 1 et 2 du parcours (prise de contact, dossier d'adhésion, prononcé en maker-checker). Définition de fini : quatre types de tests (unitaires, intégration, sécurité, recette) et 80 % de couverture, bloquants ; accès par la matrice des rôles d'un jeton à deux facteurs.
 - Prochaine étape : itération A du lot 1, puis sprint 0 du carnet (gabarit hexagonal SOC-01, chaîne de livraison SOC-02, contrôles QUA-01, QUA-02, QUA-09, QUA-10).
+
+## État au 30/09/2026
+
+- **Parcours de certification (étapes 3 à 10)** : interface complète par acteur (tableaux de bord « Mon travail » et pilotage consolidé, dossier numérique, verrous du procès-verbal et de la sécurité, mise en service, portail du participant), servie par un serveur de substitution qui passe ses tests ; backend des étapes 4 à 10 en cours dans MS-HOMOLOGATION et MS-CERTIFICATION selon `docs/lot1/parcours-backend.md`.
+- **Messagerie instantanée de travail (D-64)** : interface livrée (`/des/messagerie` : annuaire, liaisons citées en liens, pièces jointes, non-lus) ; canal poussé servi par la passerelle (`/bff/{couche}/live`, alimenté par Kafka) ; MS-COLLABORATION régénéré en 9.4.0 et module de messagerie en cours.
+- **Chaîne CI/CD** : infrastructure 35 contrôles sur 35, aucun secret en clair (gitleaks) ; sept services restés en JHipster 8.11 passés à Testcontainers 2 (Docker Engine 29 refusait l'API des versions 1.x).
+- Interface : navigation latérale fixe aux couleurs du GIMAC, pagination visible sur toute liste, listes de choix interactives.
 
 - **Socle vérifié le 29/09/2026 (D-54)** : 1 356 tests unitaires et 5 476 tests d'intégration réussis sur les 14 services ; plateforme complète démarrée ; `infra/docker-compose/tester-socle.sh` : 48 contrôles sur 48 réussis (santé, jeton Keycloak, API via la passerelle, OPA, WORM, simulacres, frontend, Prometheus).
 
@@ -86,3 +107,7 @@ Comptes nominatifs (un par tableau de bord) : décrire les comptes dans `infra/k
 | 2026-09-29 | — | Supervision de la plateforme en temps réel (passerelle), dépôt WORM et empreinte (MS-DOCUMENT), intégration verte de MS-PARTICIPANT |
 | 2026-09-29 | — | Administration complète depuis la plateforme, sans console Keycloak (D-62) : MS-IAM (comptes, premier accès, « Mon compte », politique de sécurité, messagerie, profils, journal, réauthentification FIDO2), routes et règles OPA, thème GIMAC des pages Keycloak, domaine `gimac` en Compose et en Kubernetes |
 | 2026-09-29 | — | Dépôt distant réparé : ports sortants `application/port/out` jamais versionnés (règle `out/` de JHipster), sept ports reconstitués, adaptateurs de MS-NOTIFICATION versionnés, modernizer de la passerelle, construction des images sous le seuil D-61 ; comptes nominatifs locaux (`infra/keycloak/creer-comptes-personnels.py`) |
+| 2026-09-30 | 292c28c, 1a1ce09, 3ccf11f, 1025925 | Interface recalée après l'arrêt des agents (cloisonnement du portail, état simulé isolé) ; enveloppe fixe, navigation latérale à l'identité GIMAC, tableaux de bord épurés, pagination visible |
+| 2026-09-30 | c913e71, ce6c88b | Chaîne CI/CD `infra/ci` ; plus aucun secret de client Keycloak en clair |
+| 2026-09-30 | 4fa6dc8, f9cfef1 | Canal poussé de la passerelle et routes de la messagerie ; Testcontainers 2 dans sept services |
+| 2026-09-30 | d07c74d, 0f46741 | Messagerie instantanée (D-64) : contrat et interface ; partage du backend des étapes 4 à 10 |
