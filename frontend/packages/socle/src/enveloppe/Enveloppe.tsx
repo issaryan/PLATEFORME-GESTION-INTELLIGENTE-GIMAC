@@ -48,6 +48,7 @@ export function Enveloppe(p: EnveloppeProps) {
   const [heure, setHeure] = useState(heureLocale)
   // Hauteur du bloc supérieur fixe (barre, préférences, bandeau) : la navigation latérale se loge dessous.
   const haut = useRef<HTMLDivElement>(null)
+  const racine = useRef<HTMLDivElement>(null)
   const [dessus, setDessus] = useState(56)
   const [hauteur, setHauteur] = useState(() => window.innerHeight - 56)
   const [prefs, setPrefs] = useState(false)
@@ -61,19 +62,30 @@ export function Enveloppe(p: EnveloppeProps) {
 
   useEffect(() => {
     const id = window.setInterval(() => setHeure(heureLocale()), 1000)
+    // La navigation occupe l'espace visible entre le bloc supérieur et le pied de page (ou le bas de la
+    // fenêtre) : elle ne déborde jamais sur le pied de page et n'est jamais repoussée hors de vue.
     const redim = () => {
       const h = haut.current?.offsetHeight || 56
+      const pied = racine.current?.querySelector('footer')?.getBoundingClientRect().top ?? window.innerHeight
       setDessus(h)
-      setHauteur(window.innerHeight - h)
+      setHauteur(Math.max(0, Math.min(window.innerHeight, pied) - h))
       setEtroit(window.innerWidth < 1280)
+    }
+    let image = 0
+    const defiler = () => {
+      cancelAnimationFrame(image)
+      image = requestAnimationFrame(redim)
     }
     redim()
     window.addEventListener('resize', redim)
+    window.addEventListener('scroll', defiler, { passive: true })
     const obs = typeof ResizeObserver === 'undefined' || !haut.current ? null : new ResizeObserver(redim)
     if (obs && haut.current) obs.observe(haut.current)
     return () => {
       window.clearInterval(id)
       window.removeEventListener('resize', redim)
+      window.removeEventListener('scroll', defiler)
+      cancelAnimationFrame(image)
       obs?.disconnect()
     }
   }, [])
@@ -107,7 +119,7 @@ export function Enveloppe(p: EnveloppeProps) {
   }
 
   return (
-    <div className="gm-root" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }} onClick={intercepter}>
+    <div ref={racine} className="gm-root" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }} onClick={intercepter}>
       <div ref={haut} className="gm-shell-top">
       <TopBar
         layer={p.couche}
@@ -129,8 +141,10 @@ export function Enveloppe(p: EnveloppeProps) {
       </div>
       <div style={{ display: 'flex', alignItems: 'stretch', flex: 1 }}>
         {etroit ? null : (
-          <div className="gm-shell-nav" style={{ top: dessus, height: hauteur }}>
-            <SideNav current={courante?.cle ?? ''} groups={groupes} height={hauteur} />
+          <div className="gm-shell-nav">
+            <div className="gm-shell-nav-fixe" style={{ top: dessus, height: hauteur }}>
+              <SideNav current={courante?.cle ?? ''} groups={groupes} height={hauteur} />
+            </div>
           </div>
         )}
         <main style={{ flex: 1, minWidth: 0, padding: etroit ? 'var(--gm-space-4)' : 'var(--gm-space-5) var(--gm-space-6)' }}>{p.children}</main>
