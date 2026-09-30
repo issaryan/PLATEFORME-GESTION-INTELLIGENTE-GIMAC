@@ -261,3 +261,39 @@ test_livrable_du_participant_sans_institution_refuse if not authz.allow with inp
 	"method": "POST", "path": "/bff/portail/homologation/operations/O1/livrable", "permissions": ["HOM_PORTAL_SUBMIT"],
 	"institution_id": "", "acr": "2", "authentifie": true,
 }
+
+# Parcours, étapes 4 à 10 : chaque geste à permission unique exige sa permission ; route interne refusée.
+routes_parcours := [
+	["POST", "/bff/des/homologation/parcours/operations/o1/validation", "HOM_OPERATION_VALIDATE"],
+	["POST", "/bff/des/homologation/parcours/operations/o1/preuves", "HOM_EVIDENCE_SUBMIT"],
+	["PUT", "/bff/des/homologation/liaisons/l1/ressources", "HOM_STEP_MANAGE"],
+	["POST", "/bff/des/homologation/liaisons/l1/blocages", "HOM_STEP_MANAGE"],
+	["POST", "/bff/des/homologation/blocages/b1/levee", "HOM_STEP_MANAGE"],
+	["POST", "/bff/des/homologation/liaisons/l1/fiche-suivi/remise", "HOM_STEP_MANAGE"],
+	["POST", "/bff/des/homologation/liaisons/l1/couverture/constat", "CER_DOSSIER_VERIFY"],
+	["POST", "/bff/des/homologation/liaisons/l1/fiche-suivi/constat", "CER_DOSSIER_VERIFY"],
+	["GET", "/bff/des/homologation/tableaux-de-bord/acteur", "HOM_DASHBOARD_READ"],
+	["GET", "/bff/des/homologation/tableaux-de-bord/pilotage", "HOM_DASHBOARD_READ"],
+]
+
+test_parcours_avec_permission if {
+	every r in routes_parcours {
+		authz.allow with input as {"method": r[0], "path": r[1], "permissions": [r[2]], "authentifie": true, "acr": "2"}
+	}
+}
+
+test_parcours_sans_permission if {
+	every r in routes_parcours {
+		not authz.allow with input as {"method": r[0], "path": r[1], "permissions": ["HOM_LIAISON_READ"], "authentifie": true, "acr": "2"}
+	}
+}
+
+test_parcours_livrable_laisse_au_service if authz.allow with input as {
+	"method": "POST", "path": "/bff/des/homologation/parcours/operations/o1/livrable", "permissions": ["HOM_STEP_MANAGE"],
+	"authentifie": true, "acr": "2",
+}
+
+test_contexte_certification_interne_refuse if not authz.allow with input as {
+	"method": "GET", "path": "/bff/des/homologation/interne/liaisons/l1/contexte-certification",
+	"permissions": ["INTERNAL_HOMOLOGATION_READ"], "authentifie": true, "acr": "2",
+}

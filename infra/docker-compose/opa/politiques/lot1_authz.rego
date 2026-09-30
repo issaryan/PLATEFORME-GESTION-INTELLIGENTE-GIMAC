@@ -16,6 +16,14 @@ regles := [
 	{"m": "PUT", "re": `^/bff/des/homologation/liaisons/[^/]+/chef-de-projet$`, "p": "HOM_PROJECT_DESIGNATE"},
 	{"m": "POST", "re": `^/bff/des/homologation/operations/[^/]+/validation$`, "p": "HOM_OPERATION_VALIDATE"},
 	{"m": "POST", "re": `^/bff/des/homologation/operations/[^/]+/reouverture$`, "p": "HOM_OPERATION_REOPEN"},
+	# Parcours, étapes 4 à 10 (docs/lot1/parcours-backend.md §1) : gestes à permission unique. Les gestes
+	# ouverts à plusieurs permissions (livrable, intervenants, services supplémentaires) restent au @PreAuthorize.
+	{"m": "POST", "re": `^/bff/des/homologation/parcours/operations/[^/]+/validation$`, "p": "HOM_OPERATION_VALIDATE"},
+	{"m": "POST", "re": `^/bff/des/homologation/parcours/operations/[^/]+/preuves$`, "p": "HOM_EVIDENCE_SUBMIT"},
+	{"m": "PUT", "re": `^/bff/des/homologation/liaisons/[^/]+/ressources$`, "p": "HOM_STEP_MANAGE"},
+	{"m": "POST", "re": `^/bff/des/homologation/(liaisons/[^/]+/blocages|blocages/[^/]+/levee|liaisons/[^/]+/fiche-suivi/remise)$`, "p": "HOM_STEP_MANAGE"},
+	{"m": "POST", "re": `^/bff/des/homologation/liaisons/[^/]+/(couverture|fiche-suivi)/constat$`, "p": "CER_DOSSIER_VERIFY"},
+	{"m": "GET", "re": `^/bff/des/homologation/tableaux-de-bord/(acteur|pilotage)$`, "p": "HOM_DASHBOARD_READ"},
 	{"m": "POST", "re": `^/bff/des/certification/circuits/[^/]+/quitus/technique$`, "p": "CER_QUITUS_TECHNIQUE_SIGN"},
 	{"m": "POST", "re": `^/bff/des/certification/circuits/[^/]+/quitus/securite$`, "p": "CER_QUITUS_SECURITE_SIGN"},
 	{"m": "POST", "re": `^/bff/des/certification/circuits/[^/]+/quitus/conformite$`, "p": "CER_QUITUS_CONFORMITE_SIGN"},

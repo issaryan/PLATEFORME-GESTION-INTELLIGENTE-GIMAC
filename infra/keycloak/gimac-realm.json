@@ -1807,6 +1807,7 @@
         "default-roles-gimac",
         "INTERNAL_PARTICIPANT_READ",
         "INTERNAL_DOCUMENT_READ",
+        "INTERNAL_DOCUMENT_DEPOSIT",
         "INTERNAL_IAM_READ"
       ]
     },

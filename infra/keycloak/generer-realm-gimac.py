@@ -106,7 +106,8 @@ UTILISATEURS = [
     ("test-conducteur-projet", "Conducteur", "Projet", "ROLE_CONDUCTEUR_PROJET", None),
 ]
 SERVICES = {
-    "homologation-service": ["INTERNAL_PARTICIPANT_READ", "INTERNAL_DOCUMENT_READ", "INTERNAL_IAM_READ"],
+    # Livrables du portail déposés pour le correspondant dans MS-DOCUMENT (étapes 4 à 10).
+    "homologation-service": ["INTERNAL_PARTICIPANT_READ", "INTERNAL_DOCUMENT_READ", "INTERNAL_DOCUMENT_DEPOSIT", "INTERNAL_IAM_READ"],
     # Attestations du participant déposées pour son compte dans MS-DOCUMENT (verrou 2).
     "certification-service": ["INTERNAL_HOMOLOGATION_READ", "INTERNAL_DOCUMENT_READ", "INTERNAL_DOCUMENT_DEPOSIT", "INTERNAL_IAM_READ"],
     "participant-service": ["INTERNAL_DOCUMENT_READ", "INTERNAL_IAM_READ"],
