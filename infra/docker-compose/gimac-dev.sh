@@ -66,7 +66,8 @@ preparer_env() {
 
 # Avant l'arrêt sur échec, conserve les journaux des conteneurs en mauvaise santé ou arrêtés.
 conserver_journaux() {
-  local dossier="$ICI/.journaux-echec/$(date +%Y%m%d-%H%M%S)" nom
+  local dossier nom
+  dossier="$ICI/.journaux-echec/$(date +%Y%m%d-%H%M%S)"
   mkdir -p "$dossier"
   for nom in $(docker ps -a --filter label=com.docker.compose.project=gimac-des --filter health=unhealthy --format '{{.Names}}') \
              $(docker ps -a --filter label=com.docker.compose.project=gimac-des --filter status=exited --format '{{.Names}}'); do

@@ -1,0 +1,20 @@
+# Règles yamllint de la chaîne d'intégration (D-61) : erreurs de syntaxe et doublons de clés
+# bloquants ; la mise en forme des fichiers générés par JHipster n'est pas imposée.
+extends: relaxed
+
+ignore: |
+  node_modules/
+  infra/keycloak/themes/
+
+rules:
+  line-length: disable
+  indentation: disable
+  trailing-spaces: disable
+  new-line-at-end-of-file: disable
+  empty-lines: disable
+  comments: disable
+  comments-indentation: disable
+  document-start: disable
+  truthy: disable
+  key-duplicates: enable
+  anchors: enable

@@ -1,0 +1,38 @@
+# Détection de secrets (BNF-07, D-44) : règles par défaut de gitleaks, moins les fichiers
+# produits par les générateurs JHipster pour le développement local, qui ne sont jamais
+# déployés tels quels (D-48). Tout autre secret en clair fait échouer la chaîne.
+title = "Détection de secrets de la plateforme DES"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Artefacts générés par JHipster pour le poste de développement, et données de test"
+paths = [
+  # Domaine Keycloak de développement généré par JHipster (le domaine « gimac » est contrôlé
+  # à part par infra/ci/valider-infra.sh).
+  '''(^|/)realm-config/jhipster-realm\.json$''',
+  # Configuration des générateurs (clé JWT de développement, inutilisée en OAuth2).
+  '''(^|/)\.yo-rc\.json$''',
+  # Secrets générés par « jhipster kubernetes », retirés du rendu par
+  # kubernetes-gimac/retrait-secrets-generes.yaml et recréés par creer-secrets.sh.
+  '''(^|/)infra/kubernetes/[^/]+/[^/]+-postgresql\.yml$''',
+  '''(^|/)infra/kubernetes/monitoring-k8s/jhipster-grafana\.yml$''',
+  # Jeux de données des tests (identifiants factices).
+  '''(^|/)src/test/''',
+  '''(^|/)node_modules/''',
+]
+
+[[allowlists]]
+description = "En-têtes PEM seuls (constantes de reconnaissance du format, sans clé)"
+targetRules = ["private-key"]
+regexTarget = "line"
+regexes = ['''"-----BEGIN (RSA )?PRIVATE KEY-----"''', '''\{@code -----BEGIN (RSA )?PRIVATE KEY-----\}''']
+
+[[allowlists]]
+description = "Extraits de tests cités dans la documentation (assertions factices)"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''(^|/)docs/.*\.md$''']
+regexTarget = "line"
+regexes = ['''\.header\("X-[A-Za-z-]+", "[a-z0-9-]+"\)''']
