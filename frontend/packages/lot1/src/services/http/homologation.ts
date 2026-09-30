@@ -69,8 +69,13 @@ export const homologationHttp: ServiceHomologation = {
   qualifierScenario: (id, qualification, motif) => http.post(`${H}/scenarios-inconnus/${id}/qualification`, { body: { qualification, motif } }),
   etatReprise: () => http.get(`${H}/reprise/etat`),
 
+  // Annuaire de la plateforme (comptes internes actifs, D-64) : seuls les profils qui peuvent porter une
+  // opération sont proposés ; le service refait le contrôle à l'attribution.
   rechercherCollaborateurs: (recherche) =>
     http
-      .get<{ contenu: { id: string; nom: string; role: string }[] }>('/bff/des/iam/collaborateurs', { query: { recherche, roles: 'INGENIEUR_HOMOLOGATION,CHEF_DES' } })
-      .then((p): Option[] => p.contenu.map((c) => ({ value: c.id, label: c.nom, hint: `role.${c.role}` }))),
+      .get<{ contenu: { id: string; nom: string; profils?: string[] }[] }>(`${P.desCollaboration}/messagerie/annuaire`, { query: { recherche: recherche || undefined, page: 0, taille: 100 } })
+      .then((p): Option[] => p.contenu.flatMap((c) => {
+        const role = (c.profils ?? []).find((r) => r === 'ROLE_INGENIEUR_HOMOLOGATION' || r === 'ROLE_CHEF_DES')
+        return role ? [{ value: c.id, label: c.nom, hint: `role.${role.replace(/^ROLE_/, '')}` }] : []
+      })),
 }

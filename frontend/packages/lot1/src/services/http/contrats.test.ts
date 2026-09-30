@@ -19,7 +19,7 @@ function brancher(...r: unknown[]) {
   reponses.push(...r)
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (u) => {
     const chemin = new URL(String(u)).pathname
-    const b = chemin.endsWith('/collaborateurs') ? { contenu: [{ id: 'U-1', nom: 'A', role: 'CHEF_DES' }] } : reponses.length ? reponses.shift() : {}
+    const b = chemin.endsWith('/annuaire') ? { contenu: [{ id: 'U-1', nom: 'A', profils: ['ROLE_CHEF_DES'] }, { id: 'U-2', nom: 'B', profils: ['ROLE_SNA'] }] } : reponses.length ? reponses.shift() : {}
     if (b === FICHIER) return new Response('%PDF', { status: 200, headers: { 'Content-Type': 'application/pdf', 'Repr-Digest': 'sha-256=:q80=:' } })
     return new Response(JSON.stringify(b ?? {}), { status: 200, headers: { 'Content-Type': 'application/json' } })
   })
@@ -112,7 +112,7 @@ describe('homologationHttp : référentiels, liaisons, opérations, simulateur',
       `GET ${H}/operations/O1/grille`, `PUT ${H}/operations/O1/grille`, `PUT ${H}/operations/O1/responsable`, `POST ${H}/operations/O1/reouverture`,
       `GET ${H}/operations/O1/elements-de-cloture`, `POST ${H}/operations/O1/preuves`, `POST ${H}/operations/O1/validation`, `GET ${H}/liaisons/L1/campagnes`,
       `GET ${H}/liaisons/L1/scenarios-inconnus`, `POST ${H}/scenarios-inconnus/S1/qualification`, `GET ${H}/reprise/etat`,
-      'GET /bff/des/iam/collaborateurs?recherche=a&roles=INGENIEUR_HOMOLOGATION%2CCHEF_DES',
+      'GET /bff/des/collaboration/messagerie/annuaire?recherche=a&page=0&taille=100',
     ])
     expect(corps(5)).toEqual({ typeProjet: 'CARTE_INTERBANCAIRE', libelle: 'v4' })
     expect(corps(6)).toEqual({ versionSourceId: 'R1' })
