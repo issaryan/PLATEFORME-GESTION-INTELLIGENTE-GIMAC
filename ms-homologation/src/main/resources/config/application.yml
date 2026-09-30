@@ -259,6 +259,18 @@ spring:
       acks: all
       properties:
         enable.idempotence: true
+    # Consommateurs des événements de MS-CERTIFICATION (@KafkaListener) : chaînes, lecture depuis le
+    # début d'un sujet pour un nouveau groupe (aucun événement perdu au premier démarrage).
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+  servlet:
+    multipart:
+      # Livrables du portail (POST /api/v1/portail/operations/{id}/livrable), transmis à MS-DOCUMENT.
+      max-file-size: 20MB
+      max-request-size: 21MB
 gimac:
   outbox:
     delay: 500
@@ -291,3 +303,10 @@ gimac:
       actif: true
       nombre-tentatives: 3
       intervalle-ms: 1000
+      # Sujets consommés (événements de MS-CERTIFICATION, docs/lot1/parcours-backend.md §3) : leur file de rebut est créée au démarrage.
+      topics-surveilles:
+        - certification.proces-verbal
+        - certification.approbation
+  consommateurs:
+    certification:
+      sujets: certification.proces-verbal,certification.approbation

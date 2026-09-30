@@ -4,6 +4,10 @@ Ce document fixe la répartition des responsabilités, les échanges entre les d
 événements qui les relient. Il complète `docs/lot1/correspondance.md` (routes attendues par l'interface)
 et s'appuie sur les décisions D-56 à D-60 de REC-GIMAC-01.
 
+**État (30/09/2026).** Les deux parts sont livrées ; les écarts assumés de MS-HOMOLOGATION au simulateur
+sont listés dans `ms-homologation/README.md`. Règles OPA à permission unique des gestes du parcours dans
+`lot1_authz.rego` ; le client `homologation-service` porte `INTERNAL_DOCUMENT_DEPOSIT` (livrables du portail).
+
 **Spécification exécutable.** Le comportement attendu est celui du serveur de substitution de
 l'interface, qui passe ses tests : `frontend/packages/lot1/src/services/simule/parcours.ts` (règles, refus,
 compteurs, liens), `frontend/packages/lot1/src/modele/parcours.ts` (représentations),

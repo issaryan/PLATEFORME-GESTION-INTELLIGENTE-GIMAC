@@ -814,6 +814,19 @@
                                     <include>cm/gimac/des/homologation/infrastructure/client/*Adapter*</include>
                                     <include>cm/gimac/des/homologation/infrastructure/security/StrongAuthentication*</include>
                                     <include>cm/gimac/des/homologation/web/rest/lot1/LiaisonsCadrage*</include>
+                                    <!-- Parcours de la liaison, étapes 4 à 10 (docs/lot1/parcours-backend.md). -->
+                                    <include>cm/gimac/des/homologation/domain/parcours/**</include>
+                                    <include>cm/gimac/des/homologation/domain/service/ParcoursProjection*</include>
+                                    <include>cm/gimac/des/homologation/domain/service/TableauDeBordCalculateur*</include>
+                                    <include>cm/gimac/des/homologation/application/usecase/Parcours*</include>
+                                    <include>cm/gimac/des/homologation/application/usecase/Intervenants*</include>
+                                    <include>cm/gimac/des/homologation/application/usecase/EvenementsCertification*</include>
+                                    <include>cm/gimac/des/homologation/infrastructure/messaging/consumer/EvenementsCertificationConsumer*</include>
+                                    <include>cm/gimac/des/homologation/web/rest/lot1/Parcours*</include>
+                                    <include>cm/gimac/des/homologation/web/rest/lot1/TableauxDeBord*</include>
+                                    <include>cm/gimac/des/homologation/web/rest/lot1/PortailParcours*</include>
+                                    <include>cm/gimac/des/homologation/web/rest/lot1/ContexteCertification*</include>
+                                    <include>cm/gimac/des/homologation/web/rest/lot1/ActeurCourant*</include>
                                 </includes>
                                 <rules>
                                     <rule>
@@ -821,6 +834,8 @@
                                         <excludes>
                                             <!-- Interfaces de ports et enregistrements sans logique. -->
                                             <exclude>*.package-info</exclude>
+                                            <!-- Métamodèle JPA produit à la compilation. -->
+                                            <exclude>cm.gimac.des.homologation.domain.parcours.*_</exclude>
                                         </excludes>
                                         <limits>
                                             <limit>

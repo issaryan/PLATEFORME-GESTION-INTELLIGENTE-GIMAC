@@ -8,10 +8,14 @@ import cm.gimac.des.homologation.domain.HomologationException;
 import cm.gimac.des.homologation.domain.Liaison;
 import cm.gimac.des.homologation.domain.enumeration.EtatLiaison;
 import cm.gimac.des.homologation.domain.enumeration.TypeProjet;
+import cm.gimac.des.homologation.domain.parcours.EtapeCode;
+import cm.gimac.des.homologation.domain.parcours.StatutParcours;
+import cm.gimac.des.homologation.domain.parcours.Vues;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.net.URI;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -42,6 +46,10 @@ public class LiaisonsCadrageResource {
     public record Couverture(Double taux, int numerateur, int denominateur, boolean calculable, String motifNonCalculable) {
         /** Aucune opération instanciée au cadrage : taux non calculable (HOM-17). */
         static final Couverture AUCUNE = new Couverture(null, 0, 0, false, "Aucune opération instanciée");
+
+        static Couverture de(cm.gimac.des.homologation.domain.parcours.Couverture c) {
+            return new Couverture(c.taux() == null ? null : c.taux().doubleValue(), c.numerateur(), c.denominateur(), c.calculable(), c.motifNonCalculable());
+        }
     }
 
     public record LiaisonVue(
@@ -66,15 +74,38 @@ public class LiaisonsCadrageResource {
         List<String> perimetre,
         List<LiaisonQueries.Intervenant> intervenants,
         List<String> transitionsPermises,
-        List<String> actionsPermises
+        List<String> actionsPermises,
+        String reference,
+        StatutParcours statut,
+        EtapeCode etapeCourante,
+        Boolean bloquee,
+        LocalDate prochaineEcheance,
+        LocalDate dateCibleProduction,
+        UUID liaisonOrigineId
     ) {
         static LiaisonVue de(LiaisonQueries.Fiche f) {
             Liaison l = f.liaison();
+            Vues.LiaisonResume r = f.parcours();
             return new LiaisonVue(
                 l.getId(), l.getTypeProjet(), l.getInstitutionId(), l.getInstitutionNom(), l.getEtat(), l.getChefDeProjetId(), f.chefDeProjetNom(),
                 l.getBanquePartenaireId(), f.banquePartenaireNom(), l.getDateOuverture().toString(), l.getMotifEtat(), l.getVersion().getId(),
-                l.getVersion().getNumero(), l.getEtat() == EtatLiaison.OUVERTE ? "CADRAGE" : l.getEtat().name(), Couverture.AUCUNE, Couverture.AUCUNE, 0,
-                List.of(l.getEtat()), f.perimetre(), f.intervenants(), List.of(), f.actionsPermises()
+                l.getVersion().getNumero(), l.getEtat() == EtatLiaison.OUVERTE ? "CADRAGE" : l.getEtat().name(),
+                r == null ? Couverture.AUCUNE : Couverture.de(r.couvertureCertification()),
+                r == null ? Couverture.AUCUNE : Couverture.de(r.couvertureMiseEnService()),
+                r == null ? 0 : (int) r.tachesEnRetard(),
+                List.of(l.getEtat()), f.perimetre(), f.intervenants(), List.of(), f.actionsPermises(),
+                r == null ? null : r.reference(), r == null ? null : r.statut(), r == null ? null : r.etapeCourante(), r == null ? null : r.bloquee(),
+                r == null ? null : r.prochaineEcheance(), r == null ? null : r.dateCibleProduction(), l.getLiaisonOrigineId()
+            );
+        }
+
+        /** Portail : même forme, sans identifiant interne du conducteur ni de la banque partenaire. */
+        static LiaisonVue dePortail(LiaisonQueries.Fiche f) {
+            LiaisonVue v = de(f);
+            return new LiaisonVue(
+                v.id(), v.typeProjet(), v.institutionId(), v.institutionNom(), v.etat(), null, v.chefDeProjetNom(), null, null, v.dateOuverture(), v.motifEtat(),
+                v.versionId(), v.versionNumero(), v.phaseCourante(), v.couvertureCertification(), v.couvertureMiseEnService(), v.operationsEnRetard(), v.etatsParcourus(),
+                v.perimetre(), v.intervenants(), List.of(), List.of(), v.reference(), v.statut(), v.etapeCourante(), v.bloquee(), v.prochaineEcheance(), v.dateCibleProduction(), v.liaisonOrigineId()
             );
         }
     }
@@ -103,12 +134,16 @@ public class LiaisonsCadrageResource {
         @RequestParam(name = "institutionId", required = false) UUID institutionId,
         @RequestParam(name = "recherche", required = false) String recherche,
         @RequestParam(name = "mesProjets", defaultValue = "false") boolean mesProjets,
+        @RequestParam(name = "statut", required = false) StatutParcours statut,
+        @RequestParam(name = "etape", required = false) List<EtapeCode> etapes,
+        @RequestParam(name = "bloquees", defaultValue = "false") boolean bloquees,
+        @RequestParam(name = "sansConducteur", defaultValue = "false") boolean sansConducteur,
         @RequestParam(name = "page", defaultValue = "0") int page,
         @RequestParam(name = "taille", defaultValue = "25") int taille,
         Authentication auth
     ) {
         UUID conducteur = mesProjets ? sujet(auth) : null;
-        var p = queries.lister(new LiaisonQueries.Filtre(etat, typeProjet, institutionId, recherche, conducteur), page, taille, permissions(auth));
+        var p = queries.lister(new LiaisonQueries.Filtre(etat, typeProjet, institutionId, recherche, conducteur, statut, etapes == null ? List.of() : etapes, bloquees, sansConducteur), page, taille, permissions(auth));
         return new PageVue<>(p.getContent().stream().map(LiaisonVue::de).toList(), p.getTotalElements());
     }
 

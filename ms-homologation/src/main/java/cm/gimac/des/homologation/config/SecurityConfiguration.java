@@ -54,8 +54,15 @@ public class SecurityConfiguration {
                     .requestMatchers("/api/admin/**").hasAuthority(AuthoritiesConstants.ADMIN)
                     // Lot 1 (PI-GIMAC-01 §0.6) : routes internes réservées au jeton de service.
                     .requestMatchers("/api/v1/liaisons/*/socle-evaluation", "/api/v1/liaisons/*/intervenants", "/api/v1/liaisons/*/dossier-de-preuves/interne/**").hasAuthority("INTERNAL_HOMOLOGATION_READ")
-                    // Portail des participants : institution obligatoire dans le jeton (RG-59).
-                    .requestMatchers("/api/v1/portail/**").access(new InstitutionClaimPresentAuthorizationManager())
+                    // Interface interne (docs/lot1/parcours-backend.md §2) : jeton de service de MS-CERTIFICATION.
+                    .requestMatchers("/api/v1/interne/**").hasAuthority("INTERNAL_HOMOLOGATION_READ")
+                    // Portail des participants : institution obligatoire dans le jeton (RG-59) et second facteur (D-61).
+                    .requestMatchers("/api/v1/portail/**").access(
+                        org.springframework.security.authorization.AuthorizationManagers.allOf(
+                            new InstitutionClaimPresentAuthorizationManager(),
+                            new cm.gimac.des.homologation.infrastructure.security.StrongAuthenticationAuthorizationManager(doubleFacteurExige, niveauxAcr)
+                        )
+                    )
                     // D-61 : routes métier réservées aux jetons à deux facteurs (acr 2 ou 3).
                     .requestMatchers("/api/v1/**").access(new cm.gimac.des.homologation.infrastructure.security.StrongAuthenticationAuthorizationManager(doubleFacteurExige, niveauxAcr))
                     // CRUD généré : administration technique seulement.

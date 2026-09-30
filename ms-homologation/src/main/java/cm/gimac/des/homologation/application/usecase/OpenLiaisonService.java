@@ -53,6 +53,8 @@ public class OpenLiaisonService implements OpenLiaisonUseCase {
     private final ScopeItemRepository elements;
     private final OutboxPublisher outbox;
     private final Clock clock;
+    private final ParcoursInstanciation parcours;
+    private final ParcoursCommandes conduite;
 
     public OpenLiaisonService(
         ParticipantDirectoryPort participants,
@@ -63,7 +65,9 @@ public class OpenLiaisonService implements OpenLiaisonUseCase {
         ContractualScopeRepository perimetres,
         ScopeItemRepository elements,
         OutboxPublisher outbox,
-        Clock clock
+        Clock clock,
+        ParcoursInstanciation parcours,
+        ParcoursCommandes conduite
     ) {
         this.participants = participants;
         this.collaborateurs = collaborateurs;
@@ -74,6 +78,8 @@ public class OpenLiaisonService implements OpenLiaisonUseCase {
         this.elements = elements;
         this.outbox = outbox;
         this.clock = clock;
+        this.parcours = parcours;
+        this.conduite = conduite;
     }
 
     @Override
@@ -85,7 +91,7 @@ public class OpenLiaisonService implements OpenLiaisonUseCase {
         InstitutionView institution = participants.getInstitution(cmd.institutionId());
         InstitutionView porteur = cmd.banquePartenaireId() == null ? null : participants.getInstitution(cmd.banquePartenaireId());
         politique.verifier(institution, porteur, collaborateurs.findCollaborator(cmd.chefDeProjetId()).orElse(null));
-        if (liaisons.existsByInstitutionIdAndTypeProjetAndEtatNot(cmd.institutionId(), cmd.typeProjet(), EtatLiaison.CLOSE)) {
+        if (liaisons.existsByInstitutionIdAndTypeProjetAndEtatNotAndLiaisonOrigineIdIsNull(cmd.institutionId(), cmd.typeProjet(), EtatLiaison.CLOSE)) {
             throw doublon(cmd);
         }
         ReferentialVersion enVigueur = versions
@@ -111,6 +117,8 @@ public class OpenLiaisonService implements OpenLiaisonUseCase {
             throw doublon(cmd);
         }
         List<String> perimetre = deriverPerimetre(l, institution, maintenant);
+        // Étapes 3 à 10 : référentiel de l'annexe A instancié pour la liaison (D-59).
+        parcours.instancier(l, perimetre, estFintech(institution), null, false);
         outbox.publish(
             AGREGAT,
             l.getId(),
@@ -131,6 +139,8 @@ public class OpenLiaisonService implements OpenLiaisonUseCase {
             throw HomologationException.conflict("HOM_LIAISON_CLOSED", "La liaison est close", Map.of("etat", l.getEtat().name()));
         }
         UUID ancien = l.getChefDeProjetId();
+        // Le conducteur tient désormais sa fonction sur les opérations non faites (étapes 4 à 10).
+        conduite.conducteurDesigne(liaisonId, chefDeProjetId);
         if (ancien.equals(chefDeProjetId)) {
             return l;
         }
@@ -142,6 +152,11 @@ public class OpenLiaisonService implements OpenLiaisonUseCase {
             new ProjectLeadDesignatedPayload(l.getId(), l.getInstitutionId(), ancien, chefDeProjetId, acteur.id(), motif)
         );
         return l;
+    }
+
+    /** Participant fintech : conformité COBAC exigée (rang 22, D-56). */
+    static boolean estFintech(InstitutionView i) {
+        return i.categorie() != null && i.categorie().toUpperCase(java.util.Locale.ROOT).contains("FINTECH");
     }
 
     /** Périmètre contractualisé (HOM-05) : services souscrits actifs, plus le service TRANSVERSE. */

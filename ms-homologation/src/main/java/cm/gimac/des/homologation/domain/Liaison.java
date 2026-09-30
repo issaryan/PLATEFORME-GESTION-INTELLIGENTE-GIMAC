@@ -81,7 +81,20 @@ public class Liaison implements Serializable {
     @OneToOne(fetch = FetchType.LAZY, mappedBy = "liaison")
     private ContractualScope contractualScope;
 
+    /** Liaison d'origine d'un service supplémentaire (rang 35, D-57) ; hors unicité des liaisons actives. */
+    @Column(name = "liaison_origine_id")
+    private UUID liaisonOrigineId;
+
     // jhipster-needle-entity-add-field - JHipster will add fields here
+
+    public UUID getLiaisonOrigineId() {
+        return this.liaisonOrigineId;
+    }
+
+    public Liaison liaisonOrigineId(UUID id) {
+        this.liaisonOrigineId = id;
+        return this;
+    }
 
     public UUID getId() {
         return this.id;

@@ -34,6 +34,16 @@ public class DomainServicesConfiguration {
     }
 
     @Bean
+    public cm.gimac.des.homologation.domain.service.ParcoursProjection parcoursProjection() {
+        return new cm.gimac.des.homologation.domain.service.ParcoursProjection();
+    }
+
+    @Bean
+    public cm.gimac.des.homologation.domain.service.TableauDeBordCalculateur tableauDeBordCalculateur(cm.gimac.des.homologation.domain.service.ParcoursProjection projection) {
+        return new cm.gimac.des.homologation.domain.service.TableauDeBordCalculateur(projection);
+    }
+
+    @Bean
     public ReferentialCompletenessChecker referentialCompletenessChecker() {
         return new ReferentialCompletenessChecker();
     }

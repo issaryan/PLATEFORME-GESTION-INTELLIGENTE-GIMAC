@@ -24,6 +24,21 @@ public class HomologationException extends RuntimeException {
         return new HomologationException(code, 409, message, details);
     }
 
+    /** 422 : demande bien formée mais irrecevable (preuve incomplète, valeur invalide). */
+    public static HomologationException unprocessable(String code, String message) {
+        return new HomologationException(code, 422, message, Map.of());
+    }
+
+    /** 428 : décision engageante sans réauthentification forte (IAM-07, en-tête X-Reauth-Assertion). */
+    public static HomologationException reauthRequired() {
+        return new HomologationException("IAM_REAUTH_REQUIRED", 428, "Réauthentification forte exigée", Map.of());
+    }
+
+    /** 404 avec un message explicite (portail : liaison d'une autre institution). */
+    public static HomologationException notFound(String code, String message, Object id) {
+        return new HomologationException(code, 404, message, Map.of("id", String.valueOf(id)));
+    }
+
     /** 503 : tiers indisponible, sans valeur par défaut. */
     public static HomologationException unavailable(String code, String message) {
         return new HomologationException(code, 503, message, Map.of());

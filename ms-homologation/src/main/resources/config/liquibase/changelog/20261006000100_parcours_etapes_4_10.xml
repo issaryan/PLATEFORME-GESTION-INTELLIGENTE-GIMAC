@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Parcours de la liaison, étapes 4 à 10 (docs/lot1/parcours-backend.md, D-56 à D-59) :
+     référentiel de l'annexe A du CR-CERT-GIMAC-01 v1.4 (jeu d'initialisation, D-59), opérations
+     instanciées par liaison, périmètre suivi service par service, blocages datés, projection de l'état
+     des verrous tenus par MS-CERTIFICATION. Aucune valeur secrète n'est conservée (CR p.34, p.54). -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- 1. Référentiel de l'annexe A : 36 rangs du tronc, branches C1 à C10, M1 à M17, D1 à D34. -->
+    <changeSet id="parcours-referentiel-cr" author="homologation">
+        <createTable tableName="parcours_referentiel_operation">
+            <column name="version_cr" type="varchar(20)" defaultValue="CR-1.4"><constraints nullable="false"/></column>
+            <column name="rang" type="varchar(8)"><constraints nullable="false"/></column>
+            <column name="ordre" type="integer"><constraints nullable="false"/></column>
+            <column name="etape" type="varchar(30)"><constraints nullable="false"/></column>
+            <column name="segment" type="varchar(10)"><constraints nullable="false"/></column>
+            <column name="porteurs" type="varchar(200)"><constraints nullable="false"/></column>
+            <column name="types" type="varchar(120)"><constraints nullable="false"/></column>
+            <column name="plateforme" type="varchar(30)"/>
+            <column name="grain" type="varchar(12)"><constraints nullable="false"/></column>
+            <column name="cle" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+            <column name="secret" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+            <column name="valeur_reference" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+            <column name="oubli_sans_symptome" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+            <column name="pivot" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+            <column name="predecesseurs" type="varchar(120)"/>
+            <column name="delai_jours" type="integer" defaultValueNumeric="3"><constraints nullable="false"/></column>
+        </createTable>
+        <addPrimaryKey tableName="parcours_referentiel_operation" columnNames="version_cr, rang" constraintName="pk_parcours_referentiel"/>
+        <loadData tableName="parcours_referentiel_operation" file="config/liquibase/data/parcours_referentiel_cr.csv" separator=";" usePreparedStatements="true">
+            <column name="rang" type="string"/>
+            <column name="ordre" type="numeric"/>
+            <column name="etape" type="string"/>
+            <column name="segment" type="string"/>
+            <column name="porteurs" type="string"/>
+            <column name="types" type="string"/>
+            <column name="plateforme" type="string"/>
+            <column name="grain" type="string"/>
+            <column name="cle" type="boolean"/>
+            <column name="secret" type="boolean"/>
+            <column name="valeur_reference" type="boolean"/>
+            <column name="oubli_sans_symptome" type="boolean"/>
+            <column name="pivot" type="boolean"/>
+            <column name="predecesseurs" type="string"/>
+            <column name="delai_jours" type="numeric"/>
+        </loadData>
+    </changeSet>
+
+    <!-- 2. Service supplémentaire (rang 35) : liaison propre, sans effet sur l'unicité de la liaison principale. -->
+    <changeSet id="parcours-liaison-origine" author="homologation">
+        <addColumn tableName="liaison">
+            <column name="liaison_origine_id" type="uuid"/>
+        </addColumn>
+        <sql>
+            DROP INDEX IF EXISTS uk_liaison_active;
+            CREATE UNIQUE INDEX uk_liaison_active ON liaison (institution_id, type_projet) WHERE etat NOT IN ('CLOSE') AND liaison_origine_id IS NULL;
+        </sql>
+    </changeSet>
+
+    <!-- 3. État du parcours par liaison (étape courante, statut du CR, fiche de suivi, projection des verrous). -->
+    <changeSet id="parcours-liaison" author="homologation">
+        <createSequence sequenceName="parcours_reference_seq" startValue="1" incrementBy="1"/>
+        <createTable tableName="parcours_liaison">
+            <column name="liaison_id" type="uuid"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="reference" type="varchar(20)"><constraints nullable="false" unique="true" uniqueConstraintName="uk_parcours_reference"/></column>
+            <column name="version_cr" type="varchar(20)"><constraints nullable="false"/></column>
+            <column name="statut" type="varchar(30)"><constraints nullable="false"/></column>
+            <column name="etape_courante" type="varchar(30)"><constraints nullable="false"/></column>
+            <column name="bloquee" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+            <column name="date_demarrage" type="date"><constraints nullable="false"/></column>
+            <column name="liaison_origine_id" type="uuid"/>
+            <column name="fintech" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+            <column name="conducteur_a_designer" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+            <column name="ressources" type="jsonb"/>
+            <column name="fiche_etat" type="varchar(20)"><constraints nullable="false"/></column>
+            <column name="fiche_renseignee_le" type="date"/>
+            <column name="fiche_constatee_le" type="date"/>
+            <column name="points_terminaison" type="varchar(500)"/>
+            <column name="couverture_constatee" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+            <column name="couverture_constatee_le" type="date"/>
+            <column name="etat_pv" type="varchar(30)"><constraints nullable="false"/></column>
+            <column name="etat_approbation" type="varchar(30)"><constraints nullable="false"/></column>
+            <column name="attestations_deposees" type="jsonb"/>
+            <column name="visas_attendus" type="jsonb"/>
+            <column name="fiche_changement_reference" type="varchar(40)"/>
+            <column name="version" type="bigint" defaultValueNumeric="0"><constraints nullable="false"/></column>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="parcours_liaison" baseColumnNames="liaison_id" constraintName="fk_parcours_liaison"
+            referencedTableName="liaison" referencedColumnNames="id" onDelete="CASCADE"/>
+        <createIndex tableName="parcours_liaison" indexName="idx_parcours_statut"><column name="statut"/><column name="etape_courante"/></createIndex>
+    </changeSet>
+
+    <!-- 4. Opérations instanciées (rangs 3 et suivants, branche du type de projet), RACI + E, preuve. -->
+    <changeSet id="parcours-operation" author="homologation">
+        <createTable tableName="parcours_operation">
+            <column name="id" type="uuid"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="liaison_id" type="uuid"><constraints nullable="false"/></column>
+            <column name="rang" type="varchar(8)"><constraints nullable="false"/></column>
+            <column name="ordre" type="integer"><constraints nullable="false"/></column>
+            <column name="etape" type="varchar(30)"><constraints nullable="false"/></column>
+            <column name="segment" type="varchar(10)"><constraints nullable="false"/></column>
+            <column name="plateforme" type="varchar(30)"/>
+            <column name="grain" type="varchar(12)"><constraints nullable="false"/></column>
+            <column name="etat" type="varchar(20)"><constraints nullable="false"/></column>
+            <column name="cle" type="boolean"><constraints nullable="false"/></column>
+            <column name="secret" type="boolean"><constraints nullable="false"/></column>
+            <column name="valeur_reference" type="boolean"><constraints nullable="false"/></column>
+            <column name="oubli_sans_symptome" type="boolean"><constraints nullable="false"/></column>
+            <column name="pivot" type="boolean"><constraints nullable="false"/></column>
+            <column name="predecesseurs" type="varchar(120)"/>
+            <column name="echeance" type="date"/>
+            <column name="faite_le" type="date"/>
+            <column name="raci" type="jsonb"><constraints nullable="false"/></column>
+            <column name="preuve" type="jsonb"/>
+            <column name="version" type="bigint" defaultValueNumeric="0"><constraints nullable="false"/></column>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="parcours_operation" baseColumnNames="liaison_id" constraintName="fk_parcours_operation_liaison"
+            referencedTableName="liaison" referencedColumnNames="id" onDelete="CASCADE"/>
+        <addUniqueConstraint tableName="parcours_operation" columnNames="liaison_id, rang" constraintName="uk_parcours_operation_rang"/>
+        <createIndex tableName="parcours_operation" indexName="idx_parcours_operation_etat"><column name="etat"/></createIndex>
+    </changeSet>
+
+    <!-- 5. Périmètre suivi service par service : essais, certification, ouverture (fiche de suivi, rang 32). -->
+    <changeSet id="parcours-service" author="homologation">
+        <createTable tableName="parcours_service">
+            <column name="id" type="uuid"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="liaison_id" type="uuid"><constraints nullable="false"/></column>
+            <column name="service_code" type="varchar(40)"><constraints nullable="false"/></column>
+            <column name="libelle" type="varchar(200)"><constraints nullable="false"/></column>
+            <column name="inclus" type="boolean"><constraints nullable="false"/></column>
+            <column name="entree_essai" type="date"/>
+            <column name="sortie_essai" type="date"/>
+            <column name="certifie_le" type="date"/>
+            <column name="ouvert" type="boolean"/>
+            <column name="commentaire" type="varchar(500)"/>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="parcours_service" baseColumnNames="liaison_id" constraintName="fk_parcours_service_liaison"
+            referencedTableName="liaison" referencedColumnNames="id" onDelete="CASCADE"/>
+        <addUniqueConstraint tableName="parcours_service" columnNames="liaison_id, service_code" constraintName="uk_parcours_service"/>
+    </changeSet>
+
+    <!-- 6. Blocages datés (CR annexe B) : motif, depuis le, prochaine action, responsable, échéance de levée. -->
+    <changeSet id="parcours-blocage" author="homologation">
+        <createTable tableName="parcours_blocage">
+            <column name="id" type="uuid"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="liaison_id" type="uuid"><constraints nullable="false"/></column>
+            <column name="motif" type="varchar(500)"><constraints nullable="false"/></column>
+            <column name="depuis" type="date"><constraints nullable="false"/></column>
+            <column name="prochaine_action" type="varchar(500)"><constraints nullable="false"/></column>
+            <column name="responsable" type="jsonb"><constraints nullable="false"/></column>
+            <column name="echeance_levee" type="date"><constraints nullable="false"/></column>
+            <column name="leve_le" type="date"/>
+            <column name="commentaire_levee" type="varchar(500)"/>
+            <column name="etape" type="varchar(30)"><constraints nullable="false"/></column>
+            <column name="declare_par" type="uuid"/>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="parcours_blocage" baseColumnNames="liaison_id" constraintName="fk_parcours_blocage_liaison"
+            referencedTableName="liaison" referencedColumnNames="id" onDelete="CASCADE"/>
+        <createIndex tableName="parcours_blocage" indexName="idx_parcours_blocage_liaison"><column name="liaison_id"/></createIndex>
+    </changeSet>
+</databaseChangeLog>

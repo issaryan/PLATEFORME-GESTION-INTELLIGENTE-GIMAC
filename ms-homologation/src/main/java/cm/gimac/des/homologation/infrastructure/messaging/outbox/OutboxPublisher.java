@@ -25,6 +25,10 @@ public class OutboxPublisher {
     /** À appeler dans la transaction de l'agrégat : l'événement part avec elle ou pas du tout. */
     @Transactional(propagation = Propagation.MANDATORY)
     public UUID publish(String aggregateType, String aggregateId, String eventType, Object payload) {
+        return ecrire(aggregateType, aggregateId, eventType, payload, ctx.institutionId().orElse(null));
+    }
+
+    private UUID ecrire(String aggregateType, String aggregateId, String eventType, Object payload, String institutionId) {
         OutboxEvent e = new OutboxEvent();
         e.setAggregateType(aggregateType);
         e.setAggregateId(aggregateId);
@@ -35,12 +39,21 @@ public class OutboxPublisher {
             throw new IllegalArgumentException("charge utile non sérialisable", ex);
         }
         e.setCorrelationId(ctx.correlationId());
-        e.setInstitutionId(ctx.institutionId().orElse(null));
+        e.setInstitutionId(institutionId);
         return repo.save(e).getId();
     }
 
     @Transactional(propagation = Propagation.MANDATORY)
     public UUID publish(String aggregateType, UUID aggregateId, String eventType, Object payload) {
         return publish(aggregateType, aggregateId.toString(), eventType, payload);
+    }
+
+    /**
+     * Variante qui porte l'institution de l'agrégat (extension CloudEvents institutionid) quand l'acteur
+     * est un collaborateur du DES, dont le jeton n'en porte pas : le canal poussé du portail s'en sert.
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public UUID publish(String aggregateType, UUID aggregateId, String eventType, Object payload, String institutionId) {
+        return ecrire(aggregateType, aggregateId.toString(), eventType, payload, institutionId);
     }
 }

@@ -38,9 +38,43 @@ Ports sortants : `ParticipantDirectoryPort` (interface interne `/api/v1/interne/
 
 Sécurité (D-61) : `/api/v1/**` exige un jeton à deux facteurs (`acr` 2 ou 3) ; le CRUD généré `/api/**` est réservé à `ROLE_ADMIN`.
 
+## Parcours de la liaison : étapes 4 à 10 (D-56 à D-59)
+
+Part de MS-HOMOLOGATION fixée par `docs/lot1/parcours-backend.md` ; les règles, refus, compteurs et liens sont ceux du serveur de substitution de l'interface (`frontend/packages/lot1/src/services/simule/parcours.ts`), les formes celles de `modele/parcours.ts`.
+
+- **Référentiel de l'annexe A** (CR-CERT-GIMAC-01 v1.4, D-59) chargé par Liquibase (`config/liquibase/data/parcours_referentiel_cr.csv`, table `parcours_referentiel_operation`) : 96 opérations (rangs 1 à 35, C1 à C10, M1 à M17, D1 à D34) avec étape, segment, porteurs, types, plateforme, grain, `cle`, `secret`, `valeurReference`, `oubliSansSymptome`, `pivot`, prédécesseurs et délai. Il est **instancié à l'ouverture** de chaque liaison (rangs 3 et suivants, seule branche du type ; le rang 27 suit la dernière opération de la branche ; rangs 15 et 16 sur le simulateur pour le mobile) ; une liaison ouverte avant cette tranche l'est à la première lecture. Référence lisible `LIA-AAAA-NNN`.
+- **Agrégat** `domain/parcours/Parcours` (sans Spring) : graphe des prédécesseurs (`VERROUILLEE`, `A_FAIRE`, `EN_VALIDATION`, `FAITE`, `BLOQUEE`), qualités RACI + E (le validateur n'est jamais le responsable), échéances et SLA (proche à 5 jours), étape courante et statut du CR (`CADREE` … `EN_PRODUCTION`) projetés sur l'automate technique de la liaison (`OUVERTE` … `CLOSE`), couvertures de certification et de mise en service par service, blocages datés, fiche de suivi, projection des verrous de MS-CERTIFICATION. Projections et tableaux de bord : `domain/service/ParcoursProjection`, `TableauDeBordCalculateur`.
+- **Preuves** : une pièce déposée par l'interface dans MS-DOCUMENT est rattachée par `documentId` et `empreinte`, **revérifiées** auprès de MS-DOCUMENT (`HOM_DOCUMENT_UNKNOWN`, `HOM_DOCUMENT_HASH_MISMATCH`) ; une clé (C1, D3, D12, D27) ne porte que des codes de contrôle (4 à 8 hexadécimaux), C1 sa cérémonie ; un secret (29, M3, M7, M9, D2) une trace ; toute propriété hors contrat est refusée (`HOM_EVIDENCE_FIELD_REFUSED`). Validation après réauthentification forte (`X-Reauth-Assertion` vérifiée par MS-IAM, 428 `IAM_REAUTH_REQUIRED`, 403 `HOM_REAUTH_INVALID`).
+- **Couverture** : un service est certifié à la fin des essais (rang 16) ; si le simulateur a été repris (table `coverage`, nature `CERTIFICATION`, HOM-12), seul un service mesuré à 100 % l'est. Le constat (rang 17) publie `homologation.coverage-established.v1`.
+
+| Méthode et chemin (`/api/v1`) | Permission | Objet |
+|---|---|---|
+| `GET /liaisons/{id}/dossier` | `HOM_LIAISON_READ` | Dossier numérique : périmètre, deux couvertures, onze étapes à six éléments, blocages, actions permises |
+| `GET /liaisons/{id}/parcours/operations?etape=&fonction=` | `HOM_LIAISON_READ` | Opérations instanciées, RACI + E, plateforme, grain, SLA, preuve, actions permises |
+| `PUT /liaisons/{id}/ressources` | `HOM_STEP_MANAGE` | Affectation des ressources (rang 6) |
+| `POST /parcours/operations/{id}/livrable` | `HOM_STEP_MANAGE` ou `HOM_EVIDENCE_SUBMIT` | Livrable (clôt l'opération) |
+| `POST /parcours/operations/{id}/preuves` | `HOM_EVIDENCE_SUBMIT` | Preuve (valeur de référence, code de contrôle, cérémonie ; jamais de secret) |
+| `POST /parcours/operations/{id}/validation` | `HOM_OPERATION_VALIDATE` + FIDO2 | Validation par V, jamais par R |
+| `PUT /parcours/operations/{id}/intervenants` | `HOM_OPERATION_ASSIGN` ou `HOM_STEP_MANAGE` | Qualités R, C, V, I, E |
+| `POST /liaisons/{id}/blocages` · `POST /blocages/{id}/levee` | `HOM_STEP_MANAGE` | Blocage daté, levée |
+| `POST /liaisons/{id}/couverture/constat` | `CER_DOSSIER_VERIFY` | Constat de la couverture (rang 17) |
+| `POST /liaisons/{id}/services-supplementaires` | `HOM_LIAISON_OPEN` ou `HOM_STEP_MANAGE` | Nouvelle liaison au cadrage pour un service supplémentaire (rang 35), hors unicité, conducteur à désigner |
+| `GET /liaisons/{id}/fiche-suivi` · `POST …/remise` · `POST …/constat` | `HOM_LIAISON_READ` · `HOM_STEP_MANAGE` · `CER_DOSSIER_VERIFY` | Fiche de suivi des services, constat de mise en service (rangs 32, 33) |
+| `GET /tableaux-de-bord/acteur?fonctions=` · `GET /tableaux-de-bord/pilotage` | `HOM_DASHBOARD_READ` | Tableau de bord par fonction (seules les fonctions des profils `ROLE_*` du jeton) ; pilotage : 4 compteurs, répartition, délais, 6 questions de l'annexe B |
+| `GET /intervenants?fonction=` | `HOM_LIAISON_READ`, `HOM_OPERATION_ASSIGN` ou `HOM_STEP_MANAGE` | Personnes d'une fonction (annuaire de MS-IAM) |
+| `GET /portail/liaisons` · `GET /portail/liaisons/{id}/dossier` · `GET /portail/taches` · `GET /portail/liaisons/{id}/fiche-suivi` | `HOM_PORTAL_READ` | Portail (`/bff/portail/homologation`) : institution du jeton, projection sans nom interne, tâches avec leur geste et leur écran |
+| `PUT /portail/liaisons/{id}/coordonnees-techniques` · `POST /portail/operations/{id}/livrable` (multipart) · `PUT /portail/liaisons/{id}/fiche-suivi` | `HOM_PORTAL_SUBMIT` | Coordonnées d'essai (rang 12, hôte et port contrôlés), livrable déposé dans MS-DOCUMENT pour le compte du participant, fiche renseignée (rang 32) |
+| `GET /interne/liaisons/{id}/contexte-certification` | `INTERNAL_HOMOLOGATION_READ` (jeton de service) | Contexte servi à MS-CERTIFICATION (§2) |
+
+La liste `GET /liaisons` sert en outre `reference`, `statut`, `etapeCourante`, `bloquee`, `prochaineEcheance`, `dateCibleProduction`, `liaisonOrigineId` et les couvertures réelles ; elle se filtre par `statut`, `etape` (liste), `bloquees` et `sansConducteur`. Le portail exige l'institution et le second facteur ; une liaison d'une autre institution est introuvable (404).
+
+Événements : publié `homologation.coverage-established.v1` (sujet `homologation.liaison`, extension `institutionid`). Consommés (groupe `homologation-certification`, sujets `certification.proces-verbal` et `certification.approbation`, idempotents, rebut `.dlq`) : `certification.pv-established.v1` (rang 18), `pv-signed.v1` (rang 19, `CERTIFIEE`), `change-record-constituted.v1` (rang 20), `change-record-referenced.v1` (rang 26 s'il est ouvert), `attestations-archived.v1` (rangs 21, 22), `security-approved.v1` (rangs 23 à 25, `APPROUVEE_SECURITE`) ; tolérés pour les compteurs : `attestation-deposited.v1`, `attestation-verified.v1`, `visas-required.v1`, `visa-signed.v1`.
+
+Ports sortants ajoutés : `DocumentRegistryPort` (MS-DOCUMENT, `/api/v1/interne/documents{,/{id}/empreinte}`, `gimac.adapters.document-deposit`) et `StrongReauthPort` (MS-IAM, `/api/v1/interne/reauthentifications/verification`, `gimac.adapters.reauthentication`), adaptateurs réels et de substitution.
+
 ## Tests : définition de fini (D-61)
 
-Unitaires (`LiaisonOpeningPolicyTest`, `OpenLiaisonServiceTest`, `LiaisonQueriesTest`, `AdaptateursCadrageTest`, `StrongAuthenticationAuthorizationManagerTest`), sécurité (`LiaisonsCadrageResourceSecurityTest`), intégration (`CadrageLiaisonIT` sur PostgreSQL et Kafka), recette (`cadrage.feature` dans `RecetteGherkinIT`). Seuils JaCoCo à 80 % : à `test`, classes du cadrage en lignes et méthodes, l'ensemble en branches ; à `verify`, tout le service en lignes et en fonctions hors MapStruct. Les scénarios du lot effacent leurs données après chaque test (les tests générés comptent les lignes).
+Unitaires (`LiaisonOpeningPolicyTest`, `OpenLiaisonServiceTest`, `LiaisonQueriesTest`, `AdaptateursCadrageTest`, `StrongAuthenticationAuthorizationManagerTest` ; parcours : `ParcoursTest`, `ParcoursProjectionTest`, `TableauDeBordCalculateurTest`, `ParcoursCommandesTest`, `ParcoursLecturesTest`, `ParcoursInstanciationTest`, `ParcoursDepotTest`, `IntervenantsTest`, `EvenementsCertificationTest`, `EvenementsCertificationConsumerTest`, `AdaptateursParcoursTest`), sécurité (`LiaisonsCadrageResourceSecurityTest`, `ParcoursResourceSecurityTest`, `TableauxDeBordResourceSecurityTest`, `PortailParcoursResourceSecurityTest`, `ContexteCertificationResourceSecurityTest`), intégration (`CadrageLiaisonIT`, `ParcoursConduiteIT`, `ParcoursVerrousIT`, `ParcoursPortailIT`, `TableauxDeBordIT` sur PostgreSQL et Kafka), recette (`cadrage.feature`, `parcours.feature` dans `RecetteGherkinIT`). Seuils JaCoCo à 80 % : à `test`, classes du cadrage en lignes et méthodes, l'ensemble en branches ; à `verify`, tout le service en lignes et en fonctions hors MapStruct. Les scénarios du lot effacent leurs données après chaque test (les tests générés comptent les lignes).
 
 ## Lancer
 
@@ -60,6 +94,7 @@ Unitaires (`LiaisonOpeningPolicyTest`, `OpenLiaisonServiceTest`, `LiaisonQueries
 | 2026-09-29 | — | Étape 3, cadrage (D-57, D-58) : ouverture d'une liaison sur un adhérent par un chef de département, conducteur de projet désigné, périmètre dérivé des services souscrits, événements ; second facteur exigé sur `/api/v1/**`, CRUD généré réservé à l'administration ; garde d'immuabilité du CRUD des opérations appliquée à la version réelle ; seuils JaCoCo. 165 tests unitaires et de sécurité, 365 d'intégration et de recette réussis. |
 | 2026-09-29 | — | Lot 1, Phase 0 : régénération depuis le JDL du plan en JHipster 9.4.0, corrections Liquibase (jsonb, unicités, index, immuabilité), messagerie (outbox, relais, consommateur idempotent, rebut `.dlq`), jeton de service, sécurité du portail, arborescence hexagonale (D-55). |
 | 2026-09-29 | — | Ports sortants `application/port/out` versionnés : la règle `out/` du `.gitignore` généré par JHipster les ignorait, le dépôt distant ne compilait pas ; exception `!src/**/out/` ajoutée et ports `ParticipantDirectoryPort`, `CollaboratorDirectoryPort` reconstitués d'après leurs adaptateurs |
+| 2026-09-30 | — | Parcours de la liaison, étapes 4 à 10 (D-56 à D-59) : référentiel de l'annexe A chargé et instancié à l'ouverture, dossier numérique, opérations, ressources, livrables et preuves revérifiés auprès de MS-DOCUMENT, validation FIDO2, qualités, blocages, constat de la couverture (`homologation.coverage-established.v1`), service supplémentaire, fiche de suivi, tableaux de bord par fonction et pilotage, portail cloisonné, contexte interne pour MS-CERTIFICATION, consommation idempotente des événements `certification.*`. |
 <!-- GIMAC:FIN -->
 
 # homologation

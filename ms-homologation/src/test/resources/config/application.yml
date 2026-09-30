@@ -19,6 +19,9 @@ spring:
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
+    # Consommateur des événements de MS-CERTIFICATION : lecture depuis le début d'un sujet créé pendant le test.
+    consumer:
+      auto-offset-reset: earliest
   application:
     name: homologation
   cloud:

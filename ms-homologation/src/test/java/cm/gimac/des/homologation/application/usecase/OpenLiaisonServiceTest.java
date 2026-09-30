@@ -81,11 +81,17 @@ class OpenLiaisonServiceTest {
     @Mock
     OutboxPublisher outbox;
 
+    @Mock
+    ParcoursInstanciation instanciation;
+
+    @Mock
+    ParcoursCommandes conduite;
+
     OpenLiaisonService service;
 
     @BeforeEach
     void init() {
-        service = new OpenLiaisonService(participants, collaborateurs, new LiaisonOpeningPolicy(), liaisons, versions, perimetres, elements, outbox, Clock.fixed(T, ZoneOffset.UTC));
+        service = new OpenLiaisonService(participants, collaborateurs, new LiaisonOpeningPolicy(), liaisons, versions, perimetres, elements, outbox, Clock.fixed(T, ZoneOffset.UTC), instanciation, conduite);
         lenient().when(participants.getInstitution(EP_A)).thenReturn(
             new InstitutionView(EP_A, "Établissement de paiement A", "ADHERENT", "ETABLISSEMENT_PAIEMENT", List.of(new InstitutionView.ServiceSouscrit("PAIEMENT_MOBILE", "2026-09-01"), new InstitutionView.ServiceSouscrit("TRANSVERSE", null)))
         );
@@ -137,7 +143,7 @@ class OpenLiaisonServiceTest {
     @Test
     @DisplayName("Seconde liaison active pour la même institution et le même type : HOM_LIAISON_DUPLICATE, rien créé")
     void doublon() {
-        when(liaisons.existsByInstitutionIdAndTypeProjetAndEtatNot(EP_A, TypeProjet.PAIEMENT_MOBILE, EtatLiaison.CLOSE)).thenReturn(true);
+        when(liaisons.existsByInstitutionIdAndTypeProjetAndEtatNotAndLiaisonOrigineIdIsNull(EP_A, TypeProjet.PAIEMENT_MOBILE, EtatLiaison.CLOSE)).thenReturn(true);
         refus(() -> service.ouvrir(new OpenLiaisonCommand(EP_A, TypeProjet.PAIEMENT_MOBILE, CONDUCTEUR, null), CHEF), "HOM_LIAISON_DUPLICATE");
         verify(liaisons, never()).saveAndFlush(any());
         verifyNoInteractions(outbox);

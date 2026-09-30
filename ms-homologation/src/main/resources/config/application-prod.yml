@@ -110,6 +110,10 @@ gimac:
   adapters:
     participant-reader: real
     collaborator-reader: real
+    # Parcours, étapes 4 à 10 : pièces revérifiées et déposées dans MS-DOCUMENT (INTERNAL_DOCUMENT_READ,
+    # INTERNAL_DOCUMENT_DEPOSIT), validation après réauthentification forte vérifiée par MS-IAM (INTERNAL_IAM_READ).
+    document-deposit: real
+    reauthentication: real
   services:
     participant:
       url: http://participant:8085
