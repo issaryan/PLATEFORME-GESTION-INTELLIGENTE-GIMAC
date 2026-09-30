@@ -4,6 +4,7 @@ import cm.gimac.des.document.infrastructure.stockage.StockageObjetS3;
 import cm.gimac.des.document.infrastructure.stockage.StockageS3Proprietes;
 import java.net.URI;
 import java.time.Duration;
+import java.util.Map;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.images.builder.Transferable;
@@ -38,7 +39,19 @@ public final class S3TestContainer {
         if (conteneur == null) {
             conteneur = new GenericContainer<>("chrislusf/seaweedfs:3.97")
                 .withCopyToContainer(Transferable.of(IDENTITES), "/etc/seaweedfs/s3.json")
-                .withCommand("server", "-s3", "-s3.config=/etc/seaweedfs/s3.json", "-dir=/data", "-ip.bind=0.0.0.0")
+                // Volumes SeaweedFS plafonnés à 32 Mo et /data en tmpfs : sans cela, chaque volume vise 1 Go
+                // et s'écrit dans un volume Docker anonyme qui survit au conteneur. SeaweedFS crée 7 volumes
+                // par compartiment : 64 emplacements couvrent largement les compartiments des tests (3).
+                .withCommand(
+                    "server",
+                    "-s3",
+                    "-s3.config=/etc/seaweedfs/s3.json",
+                    "-dir=/data",
+                    "-ip.bind=0.0.0.0",
+                    "-master.volumeSizeLimitMB=32",
+                    "-volume.max=64"
+                )
+                .withTmpFs(Map.of("/data", "rw,size=2g"))
                 .withExposedPorts(8333)
                 .waitingFor(Wait.forHttp("/").forPort(8333).forStatusCodeMatching(c -> c < 500).withStartupTimeout(Duration.ofMinutes(3)));
             conteneur.start();

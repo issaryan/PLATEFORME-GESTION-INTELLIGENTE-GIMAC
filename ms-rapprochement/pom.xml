@@ -34,6 +34,13 @@
         <m2e.apt.activation>jdt_apt</m2e.apt.activation>
         <run.addResources>false</run.addResources>
         <spring-boot.version>${project.parent.version}</spring-boot.version>
+        <!--
+            Testcontainers 2.x (même version que ms-audit) au lieu du 1.20.6 géré par Spring Boot 3.4.5 :
+            les 1.x dialoguent avec Docker par l'API 1.32, que Docker Engine 29 refuse (API 1.40 au
+            minimum). Le BOM Spring Boot 3.4 ne connaît pas les artefacts 2.x (préfixés
+            « testcontainers- ») : le BOM Testcontainers est importé explicitement ci-dessous.
+        -->
+        <testcontainers.version>2.0.5</testcontainers.version>
         <archunit-junit5.version>1.4.0</archunit-junit5.version>
         <checkstyle.version>10.23.1</checkstyle.version>
         <git-commit-id-maven-plugin.version>9.0.1</git-commit-id-maven-plugin.version>
@@ -77,6 +84,14 @@
 
     <dependencyManagement>
         <dependencies>
+            <!-- BOM Testcontainers 2.x importé en premier pour primer sur les autres BOM. -->
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>testcontainers-bom</artifactId>
+                <version>${testcontainers.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
             <dependency>
                 <groupId>org.springframework.cloud</groupId>
                 <artifactId>spring-cloud-dependencies</artifactId>
@@ -300,22 +315,22 @@
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
-            <artifactId>jdbc</artifactId>
+            <artifactId>testcontainers-jdbc</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
-            <artifactId>junit-jupiter</artifactId>
+            <artifactId>testcontainers-junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
-            <artifactId>kafka</artifactId>
+            <artifactId>testcontainers-kafka</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
-            <artifactId>postgresql</artifactId>
+            <artifactId>testcontainers-postgresql</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
