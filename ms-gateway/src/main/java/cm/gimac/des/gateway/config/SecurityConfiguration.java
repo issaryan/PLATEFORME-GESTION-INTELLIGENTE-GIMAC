@@ -22,6 +22,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.convert.converter.Converter;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.config.annotation.method.configuration.EnableReactiveMethodSecurity;
@@ -121,6 +122,9 @@ public class SecurityConfiguration {
                     .pathMatchers("/services/*/management/health/readiness").permitAll()
                     .pathMatchers("/services/*/v3/api-docs").hasAuthority(AuthoritiesConstants.ADMIN)
                     .pathMatchers("/services/**").authenticated()
+                    // Canal poussé des couches (contrat de messagerie §5) : servi par la passerelle, hors OPA ;
+                    // session à deux facteurs exigée comme sur toute route /bff (D-61).
+                    .pathMatchers(HttpMethod.GET, "/bff/*/live").access(new DoubleFacteurAuthorizationManager(niveauxDoubleFacteur))
                     // Couches de présentation du lot 1 (PI-GIMAC-01 §0.6) : authentification exigée, puis OPA.
                     .pathMatchers("/bff/**").authenticated()
                     .pathMatchers("/v3/api-docs/**").hasAuthority(AuthoritiesConstants.ADMIN)

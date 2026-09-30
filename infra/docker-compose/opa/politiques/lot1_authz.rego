@@ -49,10 +49,21 @@ regles := [
 	{"m": "POST", "re": `^/bff/console/iam/configuration/messagerie/test$`, "p": "PLATFORM_MESSAGING_EDIT"},
 	{"m": "GET", "re": `^/bff/console/iam/configuration/(profils|permissions)$`, "p": "IAM_ACCOUNT_READ"},
 	{"m": "PUT", "re": `^/bff/console/iam/configuration/profils/[^/]+/permissions$`, "p": "IAM_PROFILE_EDIT"},
+	# Messagerie instantanée de travail (D-64, docs/lot1/messagerie.md §1) : DES seulement.
+	{"m": "GET", "re": `^/bff/des/collaboration/messagerie/(annuaire|non-lus|conversations(/[^/]+(/messages)?)?|pieces/[^/]+)$`, "p": "COL_MESSAGE_READ"},
+	{"m": "POST", "re": `^/bff/des/collaboration/messagerie/conversations/[^/]+/lu$`, "p": "COL_MESSAGE_READ"},
+	{"m": "POST", "re": `^/bff/des/collaboration/messagerie/conversations(/[^/]+/messages)?$`, "p": "COL_MESSAGE_SEND"},
 ]
 
 # Routes internes des services (jeton de service) : jamais relayées depuis une couche de présentation.
 interne if regex.match(`^/bff/[^/]+/[^/]+/interne(/|$)`, input.path)
+
+# Messagerie (D-64) : seuls les chemins listés dans « regles » sont relayés ; tout autre chemin ou
+# méthode sous /bff/des/collaboration/messagerie est refusé (pas de repli sur @PreAuthorize).
+messagerie if regex.match(`^/bff/des/collaboration/messagerie(/|$)`, input.path)
+
+# La collaboration est réservée aux acteurs internes : aucun chemin du portail n'est relayé.
+collaboration_portail if regex.match(`^/bff/portail/collaboration(/|$)`, input.path)
 
 # « Mon compte » et défi de réauthentification (D-62) : tout utilisateur à deux facteurs, depuis
 # chacune des trois couches ; MS-IAM n'y expose que le compte du titulaire du jeton.
@@ -94,6 +105,7 @@ allow if {
 allow if {
 	not interne
 	portail
+	not collaboration_portail
 	double_facteur
 	required_permission in input.permissions
 	input.institution_id != ""
@@ -105,6 +117,7 @@ allow if {
 	not interne
 	not required_permission
 	not portail
+	not messagerie
 	startswith(input.path, "/bff/des/")
 	input.authentifie == true
 	double_facteur

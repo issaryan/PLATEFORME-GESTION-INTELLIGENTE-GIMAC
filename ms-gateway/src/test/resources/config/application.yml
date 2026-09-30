@@ -92,3 +92,9 @@ management:
   health:
     mail:
       enabled: false
+
+# Canal poussé : pas de consommateur Kafka dans les tests (source vide) ; les tests du canal
+# fournissent leur propre source ou leur conteneur Kafka.
+gimac:
+  live:
+    actif: false

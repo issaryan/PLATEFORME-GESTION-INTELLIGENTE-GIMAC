@@ -840,6 +840,58 @@
                                 </rules>
                             </configuration>
                         </execution>
+                        <!--
+                            Définition de fini des tests (D-61) : même seuil pour le canal poussé des couches
+                            de présentation (/bff/{couche}/live, contrat de messagerie §5).
+                        -->
+                        <execution>
+                            <id>seuil-canal-pousse</id>
+                            <phase>test</phase>
+                            <goals>
+                                <goal>check</goal>
+                            </goals>
+                            <configuration>
+                                <dataFile>${project.build.directory}/jacoco.exec</dataFile>
+                                <includes>
+                                    <include>cm/gimac/des/gateway/domain/live/**</include>
+                                    <include>cm/gimac/des/gateway/service/live/**</include>
+                                    <include>cm/gimac/des/gateway/infrastructure/live/**</include>
+                                    <include>cm/gimac/des/gateway/web/rest/live/**</include>
+                                    <include>cm/gimac/des/gateway/security/RevendicationsSession*</include>
+                                    <include>cm/gimac/des/gateway/config/Live*</include>
+                                </includes>
+                                <rules>
+                                    <rule>
+                                        <element>CLASS</element>
+                                        <excludes>
+                                            <exclude>*.package-info</exclude>
+                                        </excludes>
+                                        <limits>
+                                            <limit>
+                                                <counter>LINE</counter>
+                                                <value>COVEREDRATIO</value>
+                                                <minimum>${jacoco.seuil}</minimum>
+                                            </limit>
+                                            <limit>
+                                                <counter>METHOD</counter>
+                                                <value>COVEREDRATIO</value>
+                                                <minimum>${jacoco.seuil}</minimum>
+                                            </limit>
+                                        </limits>
+                                    </rule>
+                                    <rule>
+                                        <element>BUNDLE</element>
+                                        <limits>
+                                            <limit>
+                                                <counter>BRANCH</counter>
+                                                <value>COVEREDRATIO</value>
+                                                <minimum>${jacoco.seuil}</minimum>
+                                            </limit>
+                                        </limits>
+                                    </rule>
+                                </rules>
+                            </configuration>
+                        </execution>
                         <execution>
                             <id>pre-integration-tests</id>
                             <goals>

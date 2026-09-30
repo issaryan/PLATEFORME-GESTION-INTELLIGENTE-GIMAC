@@ -144,3 +144,69 @@ test_designation_conducteur if authz.allow with input as {
 	"method": "PUT", "path": "/bff/des/homologation/liaisons/l1/chef-de-projet", "permissions": ["HOM_PROJECT_DESIGNATE"],
 	"authentifie": true, "acr": "2",
 }
+
+# D-64 : messagerie instantanée de travail (docs/lot1/messagerie.md §1), DES seulement.
+routes_messagerie := [
+	["GET", "/bff/des/collaboration/messagerie/annuaire", "COL_MESSAGE_READ"],
+	["GET", "/bff/des/collaboration/messagerie/conversations", "COL_MESSAGE_READ"],
+	["GET", "/bff/des/collaboration/messagerie/conversations/c1", "COL_MESSAGE_READ"],
+	["GET", "/bff/des/collaboration/messagerie/conversations/c1/messages", "COL_MESSAGE_READ"],
+	["GET", "/bff/des/collaboration/messagerie/non-lus", "COL_MESSAGE_READ"],
+	["GET", "/bff/des/collaboration/messagerie/pieces/p1", "COL_MESSAGE_READ"],
+	["POST", "/bff/des/collaboration/messagerie/conversations/c1/lu", "COL_MESSAGE_READ"],
+	["POST", "/bff/des/collaboration/messagerie/conversations", "COL_MESSAGE_SEND"],
+	["POST", "/bff/des/collaboration/messagerie/conversations/c1/messages", "COL_MESSAGE_SEND"],
+]
+
+test_messagerie_avec_permission if {
+	every r in routes_messagerie {
+		authz.allow with input as {"method": r[0], "path": r[1], "permissions": [r[2]], "authentifie": true, "acr": "2"}
+	}
+}
+
+test_messagerie_sans_permission if {
+	every r in routes_messagerie {
+		not authz.allow with input as {"method": r[0], "path": r[1], "permissions": ["HOM_LIAISON_READ"], "authentifie": true, "acr": "2"}
+	}
+}
+
+test_messagerie_sans_second_facteur if {
+	every r in routes_messagerie {
+		not authz.allow with input as {"method": r[0], "path": r[1], "permissions": [r[2]], "authentifie": true, "acr": "1"}
+	}
+}
+
+test_messagerie_lecture_ne_permet_pas_envoi if not authz.allow with input as {
+	"method": "POST", "path": "/bff/des/collaboration/messagerie/conversations/c1/messages",
+	"permissions": ["COL_MESSAGE_READ"], "authentifie": true, "acr": "2",
+}
+
+test_messagerie_chemin_non_liste_refuse if not authz.allow with input as {
+	"method": "DELETE", "path": "/bff/des/collaboration/messagerie/conversations/c1",
+	"permissions": ["COL_MESSAGE_READ", "COL_MESSAGE_SEND"], "authentifie": true, "acr": "2",
+}
+
+test_messagerie_portail_refusee if {
+	every r in routes_messagerie {
+		not authz.allow with input as {
+			"method": r[0], "path": replace(r[1], "/bff/des/", "/bff/portail/"),
+			"permissions": ["COL_MESSAGE_READ", "COL_MESSAGE_SEND", "HOM_PORTAL_READ"],
+			"institution_id": "INST-0042", "authentifie": true, "acr": "2",
+		}
+	}
+}
+
+test_collaboration_portail_refusee if not authz.allow with input as {
+	"method": "GET", "path": "/bff/portail/collaboration",
+	"permissions": ["COL_MESSAGE_READ"], "institution_id": "INST-0042", "authentifie": true, "acr": "3",
+}
+
+test_messagerie_racine_refusee if not authz.allow with input as {
+	"method": "GET", "path": "/bff/des/collaboration/messagerie",
+	"permissions": ["COL_MESSAGE_READ"], "authentifie": true, "acr": "2",
+}
+
+test_collaboration_hors_messagerie_laissee_au_service if authz.allow with input as {
+	"method": "GET", "path": "/bff/des/collaboration/espaces",
+	"permissions": [], "authentifie": true, "acr": "2",
+}

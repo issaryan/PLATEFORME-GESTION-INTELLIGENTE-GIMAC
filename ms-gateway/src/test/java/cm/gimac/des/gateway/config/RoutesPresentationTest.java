@@ -10,10 +10,12 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.http.server.PathContainer;
+import org.springframework.util.unit.DataSize;
 import org.springframework.web.util.pattern.PathPattern;
 import org.springframework.web.util.pattern.PathPatternParser;
 import org.yaml.snakeyaml.Yaml;
@@ -88,7 +90,25 @@ class RoutesPresentationTest {
             Arguments.of("/bff/console/iam/comptes/c1/profils", "${gimac.services.iam}", "/api/v1/comptes/c1/profils"),
             Arguments.of("/bff/console/iam/configuration/politique-securite", "${gimac.services.iam}", "/api/v1/configuration/politique-securite"),
             Arguments.of("/bff/des/document/documents", "${gimac.services.document}", "/api/v1/documents"),
-            Arguments.of("/bff/portail/document/documents", "${gimac.services.document}", "/api/v1/documents")
+            Arguments.of("/bff/portail/document/documents", "${gimac.services.document}", "/api/v1/documents"),
+            Arguments.of("/bff/des/collaboration/messagerie/annuaire", "${gimac.services.collaboration}", "/api/v1/messagerie/annuaire"),
+            Arguments.of(
+                "/bff/des/collaboration/messagerie/conversations",
+                "${gimac.services.collaboration}",
+                "/api/v1/messagerie/conversations"
+            ),
+            Arguments.of(
+                "/bff/des/collaboration/messagerie/conversations/c1/messages",
+                "${gimac.services.collaboration}",
+                "/api/v1/messagerie/conversations/c1/messages"
+            ),
+            Arguments.of(
+                "/bff/des/collaboration/messagerie/conversations/c1/lu",
+                "${gimac.services.collaboration}",
+                "/api/v1/messagerie/conversations/c1/lu"
+            ),
+            Arguments.of("/bff/des/collaboration/messagerie/non-lus", "${gimac.services.collaboration}", "/api/v1/messagerie/non-lus"),
+            Arguments.of("/bff/des/collaboration/messagerie/pieces/p1", "${gimac.services.collaboration}", "/api/v1/messagerie/pieces/p1")
         );
     }
 
@@ -103,6 +123,15 @@ class RoutesPresentationTest {
         assertThat(reecrire(r.get(0), chemin)).isEqualTo(cible);
     }
 
+    @Test
+    @DisplayName("Messagerie : envois multipart de 5 pièces de 20 Mo admis, taille bornée")
+    void tailleMessagerie() {
+        Route r = correspondantes("/bff/des/collaboration/messagerie/conversations").get(0);
+        String taille = r.filtres().stream().filter(f -> f.contains("RequestSize")).findFirst().orElseThrow();
+        long max = DataSize.parse(taille.replaceAll(".*maxSize=([^,}]+).*", "$1")).toBytes();
+        assertThat(max).isGreaterThan(5L * 20 * 1024 * 1024).isLessThanOrEqualTo(110L * 1024 * 1024);
+    }
+
     static Stream<String> fermes() {
         return Stream.of(
             "/bff/des/iam/comptes",
@@ -110,13 +139,17 @@ class RoutesPresentationTest {
             "/bff/des/iam/interne/reauthentifications/verification",
             "/bff/console/iam/interne/reauthentifications/verification",
             "/bff/des/document/interne/documents/1/empreinte",
-            "/bff/des/document/documents/1"
+            "/bff/des/document/documents/1",
+            "/bff/portail/collaboration/messagerie/conversations",
+            "/bff/console/collaboration/messagerie/conversations",
+            "/bff/des/live",
+            "/bff/portail/live"
         );
     }
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("fermes")
-    @DisplayName("Administration hors console, routes internes et lectures de documents : aucune route")
+    @DisplayName("Administration hors console, routes internes, lectures de documents, messagerie hors DES et canal temps réel : aucune route")
     void fermes(String chemin) {
         assertThat(correspondantes(chemin)).isEmpty();
     }

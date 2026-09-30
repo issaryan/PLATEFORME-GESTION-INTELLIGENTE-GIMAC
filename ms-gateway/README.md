@@ -42,6 +42,55 @@ Copié et adapté (paquet `cm.gimac.des.gateway`) ; chaque bean est inactif tant
 
 Écarts comblés (D-53) : jeton interne lié au certificat mTLS de la passerelle (`cnf.x5t#S256`, `CertificatMtlsPasserelle`, `EmpreinteCertificat`) ; point JWKS repris (`web/rest/JwksController`) ; mTLS TLS 1.3 seul et mots de passe du magasin sans valeur par défaut ; route propre à afriland retirée et chemins exemptés de jeton ancrés (`CHEMINS_TECHNIQUES`) ; masquage des journaux limité aux numéros vérifiant Luhn, en 6+4. Tests : `LiaisonCertificatPasserelleTest`.
 
+## Routes des couches de présentation (PI-GIMAC-01 §0.6)
+
+Déclarées dans `src/main/resources/config/application.yml` (`spring.cloud.gateway.server.webflux.routes`) et vérifiées par `RoutesPresentationTest`. Chaque route passe d'abord le filtre `OpaAuthorize` (politique `gimac.authz`, `infra/docker-compose/opa/politiques/lot1_authz.rego`) sur le chemin d'origine, puis est réécrite vers l'API v1 du service ; `TokenRelay` est un filtre par défaut. Toute route `/bff/**` exige une session (401 sinon) et un second facteur (`acr` 2 ou 3, D-61).
+
+| Chemin public | Service | Chemin réécrit | Particularités |
+|---|---|---|---|
+| `/bff/des/homologation/**` | homologation | `/api/v1/**` | |
+| `/bff/portail/homologation/**` | homologation | `/api/v1/portail/**` | `institution_id` exigé (RG-59) |
+| `/bff/des/certification/**` | certification | `/api/v1/**` | |
+| `/bff/portail/certification/**` | certification | `/api/v1/portail/**` | `institution_id` exigé |
+| `/bff/des/participant/**` | participant | `/api/v1/**` | |
+| `/bff/portail/participant/**` | participant | `/api/v1/portail/**` | `institution_id` exigé |
+| `/bff/{des,portail,console}/iam/moi/**`, `/iam/reauthentification/defi` | iam | `/api/v1/**` | tout utilisateur à deux facteurs (D-62) |
+| `/bff/console/iam/comptes/**`, `/bff/console/iam/configuration/**` | iam | `/api/v1/**` | console seulement |
+| `/bff/{des,portail}/document/documents` | document | `/api/v1/documents` | dépôt d'une pièce |
+| `/bff/des/collaboration/messagerie/**` | collaboration | `/api/v1/messagerie/**` | messagerie (D-64) : DES seulement ; corps multipart relayés en flux, taille annoncée bornée à 101 Mo (`RequestSize`, 5 pièces de 20 Mo, partie JSON et délimiteurs), 413 au-delà |
+
+Messagerie, règles OPA (`docs/lot1/messagerie.md` §1) : `COL_MESSAGE_READ` pour `GET annuaire`, `conversations`, `conversations/{id}`, `conversations/{id}/messages`, `non-lus`, `pieces/{id}` et `POST conversations/{id}/lu` ; `COL_MESSAGE_SEND` pour `POST conversations` et `POST conversations/{id}/messages` ; tout autre chemin ou méthode sous `/bff/des/collaboration/messagerie` est refusé ; `/bff/portail/collaboration/**` est refusé en entier (aucune route ne le relaie). Aucune limite de taille de corps n'est posée ailleurs dans la passerelle (pas de `max-in-memory-size` sur les routes relayées) ; un mandataire placé devant la passerelle doit admettre au moins 101 Mo.
+
+## Canal poussé des couches (contrat de messagerie §5)
+
+`GET /bff/{des|portail|console}/live?sujets=homologation,certification,collaboration&depuis=<id>` : flux `text/event-stream` servi par la passerelle elle-même (hors OPA), ouvert par `EventSource` avec le cookie de session (`frontend/packages/socle/src/live/live.ts`). Chaque événement porte une ligne `id:` et `data: {"id","type","subject","topic"}` ; aucune donnée métier n'est relayée : le frontend invalide ses requêtes du sujet et relit l'état par l'API, sous ses propres droits.
+
+| Règle | Comportement |
+|---|---|
+| Session | 401 sans session ; 403 sans second facteur (`acr` 2 ou 3) ; 404 pour une couche inconnue |
+| Sujets | `sujets` absent : tous ceux de la couche ; inconnus ignorés. DES : homologation, certification, collaboration ; portail et console : homologation, certification |
+| Portail | `institution_id` exigé (403 sinon) ; seuls les événements dont l'enveloppe porte `institutionid` égal à celui de l'utilisateur sont remis |
+| Collaboration | `collaboration.message-sent.v1` n'est remis qu'aux utilisateurs dont le `sub` (identifiant IAM) figure dans `data.destinataires` ; jamais au portail |
+| Reprise | tampon en mémoire des 500 derniers événements (5 min) ; `Last-Event-ID`, sinon `depuis` : événements postérieurs rejoués ; identifiant inconnu ou expiré : tout le tampon (un doublon ne fait qu'invalider une requête) |
+| Maintien | commentaire `:ouvert` à l'ouverture (l'état « connecté » s'affiche aussitôt), `:battement` toutes les 25 s ; en-tête `X-Accel-Buffering: no` |
+| Débit | tampon de 256 événements par connexion, les plus anciens abandonnés si le navigateur ne suit pas ; les autres connexions ne sont pas freinées |
+| Durée | connexion close après 30 min : le navigateur se reconnecte avec son dernier identifiant et ses droits sont réévalués |
+
+Source : sujets Kafka du lot 1 (`homologation.{referential,liaison,operation,campaign,coverage,notification}`, `certification.{circuit,quitus,dossier,attestation,notification}`, `collaboration.message`), enveloppes CloudEvents 1.0 en mode structuré ; sujet fonctionnel = premier segment du sujet Kafka. Chaque instance a son propre groupe de consommateurs (`gateway-live-<aléa>`), positionné à la fin des sujets, sans validation de décalage : c'est une diffusion de notifications, pas un traitement. Courtier injoignable : le consommateur réessaie en arrière-plan sans bloquer le démarrage, le canal reste servi.
+
+| Couche | Paquet | Contenu |
+|---|---|---|
+| Domaine | `domain/live` | `EvenementLive`, `VueEvenement` (données remises), `Couche`, `Abonne` (règles de remise), `TamponRejeu` |
+| Port sortant | `domain/live/port/SourceEvenements` | Flux chaud des événements |
+| Adaptateurs | `infrastructure/live` | `KafkaSourceEvenements` (Spring Kafka, cycle de vie du contexte), `LectureCloudEvent` (enveloppe → événement) |
+| Application | `service/live/CanalDirectService` | Reprise et direct sans trou ni doublon, filtrage, maintien, débit et durée par connexion |
+| REST | `web/rest/live/CanalDirectResource` | `GET /bff/{couche}/live` |
+| Assemblage | `config/LiveConfiguration`, `config/LiveProperties`, `security/RevendicationsSession` | Beans, propriétés `gimac.live`, claims `sub` et `institution_id` |
+
+Propriétés (`gimac.live`) : `actif` (vrai ; faux dans les tests : source vide), `bootstrap-servers` (`spring.kafka.bootstrap-servers`, soit `SPRING_KAFKA_BOOTSTRAP_SERVERS`, à défaut `spring.cloud.stream.kafka.binder.brokers`, puis `localhost:9092`), `sujets`, `kafka.*` (propriétés supplémentaires du consommateur, sécurité du courtier), `taille-tampon` (500), `duree-tampon` (5m), `battement` (25s), `duree-max-connexion` (30m), `tampon-connexion` (256).
+
+Tests : `AbonneTest`, `TamponRejeuTest`, `LectureCloudEventTest`, `KafkaSourceEvenementsTest`, `CanalDirectServiceTest`, `LiveConfigurationTest`, `RevendicationsSessionTest` (unitaires) ; `CanalDirectResourceTest` (WebFlux et sécurité sur la vraie chaîne : 401, 403, 404, destinataire, autre utilisateur, portail, reprise) ; `KafkaSourceEvenementsIT` (intégration, courtier Kafka Testcontainers). JaCoCo (`seuil-canal-pousse`, phase `test`) bloque la construction sous 80 % en lignes et méthodes par classe et en branches sur le module.
+
 ## Supervision de la plateforme (D-61)
 
 Module hexagonal qui donne au super administrateur, en temps réel, l'état des services et des serveurs, les alertes, la configuration effective et les niveaux de journalisation de toute la plateforme.
@@ -88,6 +137,7 @@ Kubernetes (non livré) : installer node-exporter en DaemonSet et la collecte cA
 | 2026-09-29 | — | Routes `/bff/des/participant` et `/bff/portail/participant` ; `acr` transmis à OPA, second facteur exigé sur `/bff/**` (D-61) ; `GET /api/session` (matrice des rôles et niveau d'assurance pour l'interface) ; certificat public de test `client-test.pem` versionné (il manquait, `*.pem` étant ignoré) ; 50 tests unitaires réussis. |
 | 2026-09-29 | — | Supervision de la plateforme (D-61) : `/api/plateforme/{services,serveurs,alertes,configuration,journalisation,flux}`, module hexagonal, jeton de service `supervision` (client `gateway-supervision`), session à deux facteurs exigée sur `/api/plateforme/**`, permissions `PLATFORM_SUPERVISION_READ`, `PLATFORM_CONFIG_READ`, `PLATFORM_CONFIG_EDIT` ; 128 tests unitaires réussis, couverture du module 100 % en lignes, 99,5 % en méthodes, 96 % en branches (seuil JaCoCo de 80 %). |
 | 2026-09-29 | — | Deux violations modernizer de la supervision corrigées (`Optional.orElseThrow`, corps de `/loggers` en `HashMap` car le niveau nul est admis) ; exception `!src/**/out/` au `.gitignore` |
+| 2026-09-30 | — | Messagerie (D-64) : route `/bff/des/collaboration/messagerie/**` vers MS-COLLABORATION (`/api/v1/messagerie/**`), OPA d'abord, corps multipart bornés à 101 Mo ; règles OPA `COL_MESSAGE_READ` et `COL_MESSAGE_SEND`, `/bff/portail/collaboration/**` refusé. Canal poussé `GET /bff/{couche}/live` (SSE, contrat de messagerie §5) : consommateur Kafka par instance, remise filtrée par couche, institution et destinataires, reprise sur 500 événements (5 min), maintien toutes les 25 s ; seuil JaCoCo `seuil-canal-pousse`. `./mvnw verify` : 192 tests unitaires et 76 d'intégration réussis ; couverture du canal 100 % en lignes, 98,7 % en méthodes, 96,3 % en branches. |
 <!-- GIMAC:FIN -->
 
 # gateway

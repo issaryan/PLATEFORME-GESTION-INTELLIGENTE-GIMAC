@@ -199,6 +199,19 @@ spring:
               filters:
                 - OpaAuthorize
                 - RewritePath=/bff/(?<couche>des|portail)/document/documents, /api/v1/documents
+            # MS-COLLABORATION, messagerie instantanée de travail (D-64, docs/lot1/messagerie.md §1) :
+            # DES seulement. Envois multipart relayés en flux (5 pièces de 20 Mo au plus) : la
+            # taille annoncée est bornée à 101 Mo (pièces, partie JSON et délimiteurs), au-delà 413.
+            - id: des-collaboration-messagerie
+              uri: ${gimac.services.collaboration}
+              predicates:
+                - Path=/bff/des/collaboration/messagerie/**
+              filters:
+                - OpaAuthorize
+                - name: RequestSize
+                  args:
+                    maxSize: 101MB
+                - RewritePath=/bff/des/collaboration/messagerie/(?<p>.*), /api/v1/messagerie/${p}
             - id: iam_route
               uri: ${gimac.services.iam}
               predicates:
@@ -410,6 +423,29 @@ gimac:
     pilotage: http://localhost:8091
     reporting: http://localhost:8092
     collaboration: http://localhost:8093
+  # Canal poussé des couches de présentation (GET /bff/{couche}/live, contrat de messagerie §5) :
+  # consommateur Kafka propre à chaque instance, reprise sur les 500 derniers événements (5 min).
+  live:
+    actif: true
+    bootstrap-servers: ${spring.kafka.bootstrap-servers:${spring.cloud.stream.kafka.binder.brokers:localhost:9092}}
+    taille-tampon: 500
+    duree-tampon: 5m
+    battement: 25s
+    duree-max-connexion: 30m
+    tampon-connexion: 256
+    sujets:
+      - homologation.referential
+      - homologation.liaison
+      - homologation.operation
+      - homologation.campaign
+      - homologation.coverage
+      - homologation.notification
+      - certification.circuit
+      - certification.quitus
+      - certification.dossier
+      - certification.attestation
+      - certification.notification
+      - collaboration.message
   # Supervision de la plateforme (D-61, /api/plateforme/**) : les services supervisés sont la
   # passerelle et ceux de gimac.services ; chaque appel est borné par « delai ».
   supervision:
