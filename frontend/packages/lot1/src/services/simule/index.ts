@@ -5,13 +5,19 @@ import type { PortailLiaison } from '../../modele/portail'
 import type { ServiceCertification, ServiceHomologation, ServicePortail, Services } from '../ports'
 import * as D from './donnees'
 import { participantSimule } from './participant'
+import { messagerieSimulee } from './messagerie'
 import { parcoursSimule } from './parcours'
 
 // Implémentation simulée des ports, pour développer les écrans sans la passerelle : un serveur fictif en
 // mémoire, avec latence, identifiants de corrélation et refus normalisés comme ceux des services réels.
 // Les « règles » ici ne sont que celles d'un serveur de substitution ; l'interface n'en porte aucune.
 
-export type OptionsSimulation = { latenceMs?: number; echecs?: boolean }
+export type OptionsSimulation = {
+  latenceMs?: number
+  echecs?: boolean
+  /** Utilisateur de la démonstration, membre des conversations simulées (messagerie, D-64). */
+  utilisateur?: { id: string; nom: string; fonction?: string | null }
+}
 
 let compteur = 0
 const correlation = () => `sim-${Date.now().toString(36)}-${(++compteur).toString(36)}`
@@ -328,6 +334,7 @@ export function servicesSimules(o: OptionsSimulation = {}): Services {
     homologation,
     certification,
     portail,
+    messagerie: messagerieSimulee(attendre, refus, o.utilisateur ? { id: o.utilisateur.id, nom: o.utilisateur.nom, fonction: o.utilisateur.fonction ?? null } : undefined),
     // Clé de sécurité simulée : confirme après un délai ; l'option echecs simule une annulation.
     reauth: {
       assertion: () => new Promise((res, rej) => window.setTimeout(() => (o.echecs ? rej(new ReauthCancelled()) : res(btoa('assertion-simulee'))), 900)),

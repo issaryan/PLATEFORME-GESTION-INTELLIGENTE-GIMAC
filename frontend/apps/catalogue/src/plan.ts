@@ -454,6 +454,13 @@ export const PLAN: EntreePlan[] = [
     "description": "Ligne d'alerte de supervision (DES-16, tableau de bord) : référence, sévérité, liaison, message et horodatage, délai d'acquittement restant (décompte, en rouge sous 5 minutes), actions « Acquitter » (ConfirmDialog court) et « Ouvrir un ticket » pré-rempli. Le filet gauche prend la couleur de statut ; le fond reste `gm-color-surface`."
   },
   {
+    "nom": "Messagerie",
+    "groupe": "Domaine",
+    "hauteur": 480,
+    "largeur": null,
+    "description": "Messagerie de travail entre acteurs du GIMAC (D-64) : ConversationList (la plus récente en tête, non-lus en pastille, conversation ouverte marquée), MessageThread (messages du plus ancien au plus récent, « Vous » pour les siens, étiquettes de liaison en liens, pièces jointes téléchargeables, messages plus anciens à la demande) et MessageComposer (Entrée pour envoyer, Maj + Entrée pour aller à la ligne, cinq pièces au plus, retirables)."
+  },
+  {
     "nom": "ChatPanel",
     "groupe": "Domaine",
     "hauteur": 460,

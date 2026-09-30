@@ -145,7 +145,7 @@ describe('Profils et permissions', () => {
     expect(definir.mock.calls[0][0]).toBe('ROLE_SNA')
     expect(definir.mock.calls[0][1]).toContain('HOM_REPLAY_ADMIN')
     fireEvent.click(within(s).getByRole('button', { name: 'Continuer' }))
-    expect(await screen.findByText(/La composition du profil Normes et agréments a été enregistrée/)).toBeTruthy()
+    expect(await screen.findByText(/La composition du profil Normes et Agréments a été enregistrée/)).toBeTruthy()
   })
 
   it('RSSI : profils privilégiés en consultation seule ; lecteur : aucune modification', async () => {

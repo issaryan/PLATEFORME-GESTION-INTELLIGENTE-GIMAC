@@ -4,7 +4,7 @@ import { useLibelle } from '../../i18n/LangueProvider'
 
 export interface SideNavProps {
   current?: string
-  groups?: { label?: string; items: { key: string; label: string; icon: IconName; href?: string }[] }[]
+  groups?: { label?: string; items: { key: string; label: string; icon: IconName; href?: string; badge?: number }[] }[]
   /** Logo en couleur du groupement, avec la bande des États membres (même visuel que la page de connexion). */
   logo?: string
   /** Couche nommée sous le logo (application du département, portail, console). */
@@ -43,6 +43,7 @@ export function SideNav(p: SideNavProps) {
                   >
                     <Icon name={it.icon} size={20} />
                     {it.label}
+                    {it.badge ? <span className="gm-sidenav-badge" aria-label={t('messagerie.nonLus', { n: it.badge })}>{it.badge > 99 ? '99+' : it.badge}</span> : null}
                   </a>
                 </li>
               ))}

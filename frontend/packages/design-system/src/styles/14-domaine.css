@@ -54,6 +54,36 @@
 .gm-msg-att { margin-top: var(--gm-space-1); font-size: 12px; line-height: 18px; color: var(--gm-color-action); }
 .gm-msg-ack { font-size: 11px; line-height: 16px; color: var(--gm-color-text-muted); }
 .gm-chat-input { display: flex; gap: var(--gm-space-2); padding: var(--gm-space-2) var(--gm-space-3); border-top: var(--gm-border-1) solid var(--gm-color-border); }
+/* Messagerie de travail (D-64) : liste des conversations et fil, sur les classes du salon. */
+.gm-conv-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.gm-conv { all: unset; box-sizing: border-box; width: 100%; display: flex; gap: var(--gm-space-3); padding: var(--gm-space-3); cursor: pointer; border-left: var(--gm-border-4) solid transparent; border-bottom: var(--gm-border-1) solid var(--gm-color-border); }
+.gm-conv:hover { background: var(--gm-color-surface-sunken); }
+.gm-conv:focus-visible { outline: 2px solid var(--gm-color-focus); outline-offset: -2px; }
+.gm-conv[aria-current="true"] { background: var(--gm-color-action-subtle); border-left-color: var(--gm-color-action); }
+.gm-conv-corps { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.gm-conv-ligne { display: flex; align-items: baseline; gap: var(--gm-space-2); min-width: 0; }
+.gm-conv-titre { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.gm-conv-nonlu .gm-conv-titre, .gm-conv-nonlu .gm-conv-extrait { font-weight: 600; color: var(--gm-color-text-primary); }
+.gm-conv-quand { font-size: 12px; line-height: 18px; color: var(--gm-color-text-muted); flex: none; }
+.gm-conv-sous { font-size: 12px; line-height: 18px; color: var(--gm-color-text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gm-conv-extrait { flex: 1; min-width: 0; font-size: 13px; line-height: 20px; color: var(--gm-color-text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gm-conv-pastille { flex: none; min-width: 20px; height: 20px; padding: 0 6px; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--gm-radius-avatar); background: var(--gm-color-action); color: var(--gm-color-text-inverse); font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; }
+/* Page de messagerie : conversations à gauche, fil à droite, hauteur de la fenêtre sous l'en-tête. */
+.gm-messagerie { display: grid; grid-template-columns: minmax(280px, 360px) minmax(0, 1fr); height: calc(100vh - 220px); min-height: 480px; border: var(--gm-border-1) solid var(--gm-color-border); background: var(--gm-color-surface); }
+.gm-messagerie-liste { display: flex; flex-direction: column; min-height: 0; border-right: var(--gm-border-1) solid var(--gm-color-border); }
+.gm-messagerie-defile { flex: 1; min-height: 0; overflow: auto; border-top: var(--gm-border-1) solid var(--gm-color-border); }
+.gm-messagerie-liste .gm-pagination { padding: var(--gm-space-2) var(--gm-space-3); border-top: var(--gm-border-1) solid var(--gm-color-border); flex-wrap: wrap; }
+.gm-messagerie-fil { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.gm-messagerie-fil > .gm-chat { border: 0; flex: 1; min-height: 0; }
+.gm-messagerie-fil > .gm-empty { margin: auto; }
+@media (max-width: 960px) { .gm-messagerie { grid-template-columns: 1fr; height: auto; } .gm-messagerie-liste { border-right: 0; max-height: 360px; } .gm-messagerie-fil { min-height: 520px; } }
+.gm-fil .gm-chat-list { min-height: 0; }
+.gm-fil-plus, .gm-fil-vide { align-self: center; list-style: none; }
+.gm-msg-texte { white-space: pre-wrap; overflow-wrap: anywhere; }
+.gm-msg-etiquettes { flex-wrap: wrap; gap: var(--gm-space-1); margin-top: var(--gm-space-1); }
+.gm-saisie { flex-direction: column; align-items: stretch; }
+.gm-saisie-ligne { align-items: flex-end; gap: var(--gm-space-2); }
+.gm-saisie-texte { flex: 1; min-height: 44px; max-height: 160px; resize: vertical; padding: var(--gm-space-2); font: inherit; }
 .gm-conf { display: flex; align-items: center; gap: var(--gm-space-3); padding: var(--gm-space-2) var(--gm-space-3); border: var(--gm-border-1) solid var(--gm-color-border); background: var(--gm-color-surface-raised); flex-wrap: wrap; }
 .gm-policy th[scope="row"] { text-align: left; }
 .gm-policy-cell { display: inline-grid; place-content: center; width: 28px; height: 28px; color: var(--gm-color-text-muted); }

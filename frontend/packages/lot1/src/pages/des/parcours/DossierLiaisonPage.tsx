@@ -38,6 +38,7 @@ export function useGestesDossier(dossier: DossierLiaison) {
 }
 
 function Dossier({ dossier }: { dossier: DossierLiaison }) {
+  const permissions = usePermissions()
   const { t } = useTranslation()
   const [params, setParams] = useSearchParams()
   const [retour, annoncer] = useRetour()
@@ -105,6 +106,10 @@ function Dossier({ dossier }: { dossier: DossierLiaison }) {
         </div>
         <div className="gm-row">
           <Link href={`/des/liaisons/${dossier.id}?onglet=graphe`}>{t('parcoursDossier.graphe')}</Link>
+          {/* Messagerie (D-64) : un nouveau message rattaché à cette liaison, qui y est citée d'emblée. */}
+          {aPermission(permissions, PERM.messageEnvoyer) ? (
+            <Link href={`/des/messagerie?nouveau=1&liaison=${encodeURIComponent(dossier.id)}`}>{t('msg.discuter')}</Link>
+          ) : null}
           {gestes.bloquer ? <Button variant="secondary" icon="flag" onClick={() => maj({ action: 'bloquer' })}>{t('parcoursBlocages.declarer')}</Button> : null}
           {gestes.designer ? (
             <Button variant={dossier.conducteur ? 'secondary' : 'primary'} icon="user" onClick={() => maj({ action: 'designer' })}>

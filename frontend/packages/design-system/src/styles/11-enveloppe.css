@@ -17,6 +17,7 @@
 .gm-sidenav a:hover { background: rgb(255 255 255 / 0.08); color: var(--gm-color-text-inverse); }
 .gm-sidenav a:focus-visible { outline: 2px solid var(--gm-color-text-inverse); outline-offset: -2px; }
 .gm-sidenav a[aria-current="page"] { border-left-color: var(--gm-green-300); background: rgb(255 255 255 / 0.14); color: var(--gm-color-text-inverse); font-weight: 600; }
+.gm-sidenav-badge { margin-left: auto; min-width: 20px; height: 20px; padding: 0 6px; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--gm-radius-avatar); background: var(--gm-green-300); color: var(--gm-blue-900); font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .gm-sidenav-group { padding: var(--gm-space-4) var(--gm-space-5) var(--gm-space-1); font-size: 11px; line-height: 16px; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 600; color: var(--gm-blue-300); }
 /* Cartouche du logo : fond blanc, comme l'en-tête de la page de connexion, filet bleu en haut. */
 .gm-sidenav-marque { display: flex; flex-direction: column; align-items: center; gap: var(--gm-space-1); padding: var(--gm-space-4) var(--gm-space-5) var(--gm-space-3); background: var(--gm-color-surface); border-top: var(--gm-border-4) solid var(--gm-blue-700); border-bottom: var(--gm-border-1) solid var(--gm-color-border); }

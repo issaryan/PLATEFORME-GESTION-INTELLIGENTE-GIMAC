@@ -33,6 +33,8 @@ describe('Dossier numérique de la liaison (CR Fig. 7.3)', () => {
     expect(screen.getByText('Hors périmètre')).toBeTruthy()
     expect(screen.getByRole('tab', { name: 'Blocages (1)' })).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Graphe des opérations' }).getAttribute('href')).toBe('/des/liaisons/LIA-2026-030?onglet=graphe')
+    // Messagerie (D-64) : un message rattaché à la liaison se prépare depuis son dossier.
+    expect(screen.getByRole('link', { name: 'Discuter de cette liaison' }).getAttribute('href')).toBe('/des/messagerie?nouveau=1&liaison=LIA-2026-030')
   })
   it('branche mobile : avancement repris du simulateur ; liaison d’origine d’un service supplémentaire', async () => {
     page('/des/parcours/LIA-2025-088')

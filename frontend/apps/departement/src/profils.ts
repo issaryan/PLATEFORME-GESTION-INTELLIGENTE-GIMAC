@@ -1,4 +1,5 @@
 import { lirePreference, type Session } from '@gimac/socle'
+import { ANNUAIRE, PROFILS } from '@gimac/lot1'
 
 // Profils de démonstration de l'application du département (services simulés seulement), d'après les
 // profils du domaine « gimac » (infra/keycloak/generer-realm-gimac.py, D-57, D-58, D-61) : les chefs du
@@ -7,31 +8,22 @@ import { lirePreference, type Session } from '@gimac/socle'
 // « Mes projets ». Profil choisi par gm.profilDemo (préférence locale) ou VITE_PROFIL_DEMO.
 export const CLE_PROFIL_DEMO = 'gm.profilDemo'
 
-const LECTURE_DES = ['HOM_REFERENTIEL_READ', 'HOM_LIAISON_READ', 'HOM_LIAISON_LIST', 'HOM_DASHBOARD_READ', 'CER_CIRCUIT_READ', 'CER_DOSSIER_READ', 'CER_REGISTER_READ', 'PAR_INSTITUTION_READ']
-const DDRM = ['PAR_INSTITUTION_CREATE', 'PAR_INSTITUTION_EDIT', 'PAR_ADHESION_INSTRUCT', 'PAR_TRANSITION_REQUEST']
-const CADRAGE = ['HOM_LIAISON_OPEN', 'HOM_PROJECT_DESIGNATE']
-
 export type ProfilDemo = { identifiant: string; nom: string; sujet: string; permissions: string[] }
 
-export const PROFILS_DEMO: Record<string, ProfilDemo> = {
-  ROLE_CHEF_DDRM: { identifiant: 'b.nguema', nom: 'Bertrand Nguema Obiang', sujet: 'U-020', permissions: [...LECTURE_DES, ...DDRM, 'PAR_TRANSITION_APPROVE', ...CADRAGE] },
-  ROLE_CHARGE_DDRM: { identifiant: 'f.abakar', nom: 'Fatimé Abakar Hissein', sujet: 'sim-charge', permissions: [...LECTURE_DES, ...DDRM] },
-  ROLE_CHEF_DES: {
-    identifiant: 'p.mbarga', nom: 'Paul Mbarga Atangana', sujet: 'U-001',
-    permissions: [...LECTURE_DES, 'HOM_REFERENTIEL_MIGRATE', 'HOM_LIAISON_UNFREEZE', 'HOM_OPERATION_VALIDATE', 'HOM_DEADLINE_CONFIG', 'HOM_EVIDENCE_FILE_EXPORT',
-      'CER_QUITUS_TECHNIQUE_SIGN', 'CER_ATTESTATION_ISSUE', 'CER_REGISTER_EXPORT', 'CER_ATTESTATION_STATUS_REQUEST', ...CADRAGE],
-  },
-  ROLE_INGENIEUR_HOMOLOGATION: {
-    identifiant: 'j.ekotto', nom: 'Joël Ekotto Mballa', sujet: 'U-101',
-    permissions: [...LECTURE_DES, 'HOM_REFERENTIEL_EDIT', 'HOM_REFERENTIEL_PUBLISH', 'HOM_OPERATION_ASSIGN', 'HOM_EVIDENCE_SUBMIT', 'HOM_OPERATION_VALIDATE',
-      'HOM_OPERATION_REOPEN', 'HOM_GRID_EDIT', 'HOM_REPLAY_ADMIN', 'HOM_SCENARIO_QUALIFY', 'HOM_EVIDENCE_FILE_EXPORT', 'CER_DOSSIER_VERIFY', 'CER_GOLIVE_REPORT_SUBMIT',
-      'CER_ATTESTATION_ISSUE'],
-  },
-  ROLE_CONDUCTEUR_PROJET: {
-    identifiant: 'a.mahamat', nom: 'Aïcha Mahamat Nour', sujet: 'U-201', permissions: [...LECTURE_DES, 'HOM_OPERATION_ASSIGN', 'HOM_EVIDENCE_SUBMIT', 'HOM_EVIDENCE_FILE_EXPORT'],
-  },
-  ROLE_SNA: { identifiant: 'r.biyong', nom: 'Rachel Biyong Mengue', sujet: 'u-sna', permissions: [...LECTURE_DES, 'HOM_EVIDENCE_SUBMIT', 'HOM_OPERATION_VALIDATE'] },
+// Un profil de démonstration par profil interne du domaine « gimac » (matrice PROFILS de @gimac/lot1,
+// reflet de generer-realm-gimac.py) ; noms et identifiants de l'annuaire simulé de la messagerie (D-64).
+const identifiant = (nom: string) => {
+  const [prenom, ...reste] = nom.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().split(' ')
+  return `${prenom[0]}.${reste[0] ?? prenom}`
 }
+export const PROFILS_DEMO: Record<string, ProfilDemo> = Object.fromEntries(
+  Object.entries(PROFILS)
+    .filter(([role]) => role !== 'ROLE_CORRESPONDANT')
+    .map(([role, permissions]) => {
+      const p = ANNUAIRE.find((x) => x.profils?.includes(role)) ?? ANNUAIRE[0]
+      return [role, { identifiant: identifiant(p.nom), nom: p.nom, sujet: p.id, permissions }]
+    }),
+)
 
 /** Profil demandé dans l'adresse (?profil=ROLE_…), sinon préférence locale, puis variable de construction ; chef de la DDRM à défaut. */
 export function roleDemo(demande = profilDeLAdresse() ?? lirePreference(CLE_PROFIL_DEMO) ?? import.meta.env.VITE_PROFIL_DEMO): string {

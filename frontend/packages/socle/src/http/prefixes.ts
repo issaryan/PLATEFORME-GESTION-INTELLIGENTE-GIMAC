@@ -7,6 +7,8 @@ export const P = {
   portailCertification: '/bff/portail/certification',
   desParticipant: '/bff/des/participant',
   desDocument: '/bff/des/document',
+  // Messagerie instantanée de travail (D-64), MS-COLLABORATION : couche du département seulement.
+  desCollaboration: '/bff/des/collaboration',
   portailParticipant: '/bff/portail/participant',
   // Administration des comptes et de la configuration de l'authentification (D-62), console seulement.
   consoleIam: '/bff/console/iam',

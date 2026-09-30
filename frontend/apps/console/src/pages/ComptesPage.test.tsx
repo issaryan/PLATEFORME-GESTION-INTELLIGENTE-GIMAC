@@ -84,7 +84,7 @@ describe('Comptes : création (aucune inscription libre)', () => {
     const { container } = creation(SUPER_ADMIN, { services: avec('comptes', { creer: async (n) => { recu = n; return base.comptes.creer(n) } }, base) })
     await screen.findByLabelText('Super administrateur')
     remplir(container, { identifiant: 'N.Agent', prenom: 'Nadia', nom: 'Agent', email: 'n.agent@gimac-afr.org', telephone: '+237 699 44 55 66', fonction: 'Analyste', institutionId: '' })
-    fireEvent.click(screen.getByLabelText('Normes et agréments'))
+    fireEvent.click(screen.getByLabelText('Normes et Agréments'))
     fireEvent.click(screen.getByLabelText('Les deux'))
     fireEvent.submit(container.querySelector('form')!)
     expect(await screen.findByText('Compte n.agent créé')).toBeTruthy()
@@ -100,7 +100,7 @@ describe('Comptes : création (aucune inscription libre)', () => {
 
   it('invitation seule : pas de mot de passe affiché ; ouverture de la fiche', async () => {
     const { container } = creation()
-    await screen.findByLabelText('Normes et agréments')
+    await screen.findByLabelText('Normes et Agréments')
     remplir(container, { identifiant: 'b.essono', prenom: 'Blaise', nom: 'Essono', email: 'b.essono@gimac-afr.org' })
     fireEvent.click(screen.getByLabelText('Pôle réseau'))
     fireEvent.submit(container.querySelector('form')!)
@@ -115,11 +115,11 @@ describe('Comptes : création (aucune inscription libre)', () => {
     let code = 'IAM_ACCOUNT_CONFLICT'
     const services = avec('comptes', { creer: async () => { throw new ApiError(409, code, 'x', 'RQ-C-1') } })
     const { container } = creation(RSSI, { services })
-    await screen.findByLabelText('Normes et agréments')
+    await screen.findByLabelText('Normes et Agréments')
     expect(screen.queryByLabelText('Super administrateur')).toBeNull()
     expect(screen.queryByLabelText('RSSI')).toBeNull()
     remplir(container, { identifiant: 'rssi', prenom: 'R', nom: 'S', email: 'rssi@gimac-afr.org' })
-    fireEvent.click(screen.getByLabelText('Normes et agréments'))
+    fireEvent.click(screen.getByLabelText('Normes et Agréments'))
     fireEvent.submit(container.querySelector('form')!)
     const champ = container.querySelector('input[name="identifiant"]')!
     await waitFor(() => expect(champ.getAttribute('aria-invalid')).toBe('true'))

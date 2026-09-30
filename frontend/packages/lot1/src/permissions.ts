@@ -44,12 +44,16 @@ export const PERM = {
   portailCertification: 'CER_PORTAL_READ',
   /** Nouvelle : signature du procès-verbal par le participant (rang 19). */
   portailSigner: 'CER_PORTAL_SIGN',
+  // Messagerie de travail entre acteurs internes (D-64, MS-COLLABORATION)
+  messageLire: 'COL_MESSAGE_READ',
+  messageEnvoyer: 'COL_MESSAGE_SEND',
 } as const
 
 /** Permissions nouvelles attendues du backend pour le modèle hybride (consignées dans docs/lot1/correspondance.md). */
 export const PERMISSIONS_NOUVELLES = [PERM.etapeConduire, PERM.pvEtablir, PERM.securiteVerifier, PERM.portailSigner] as const
 
-const COMMUN_DES = [PERM.institutionLire, PERM.liaisonLister, PERM.liaisonLire, PERM.pilotageLire, PERM.referentielLire, 'CER_CIRCUIT_READ', PERM.dossierLire, PERM.registreLire]
+const COMMUN_DES = [PERM.institutionLire, PERM.liaisonLister, PERM.liaisonLire, PERM.pilotageLire, PERM.referentielLire, 'CER_CIRCUIT_READ', PERM.dossierLire, PERM.registreLire,
+  PERM.messageLire, PERM.messageEnvoyer]
 
 /** Profils par fonction (D-58), reflet du domaine Keycloak `gimac` et des permissions nouvelles. */
 export const PROFILS: Record<string, string[]> = {

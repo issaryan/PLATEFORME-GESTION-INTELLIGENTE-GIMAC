@@ -3,7 +3,7 @@ import { Navigate, Route, Routes } from 'react-router'
 import { Skeleton } from '@gimac/design-system'
 import { CONNEXION, Enveloppe, GardeSession, PageConnexion, PageDeconnexion, SessionProvider, configureHttp, lirePreference, type EtatCanal, type Session } from '@gimac/socle'
 import { CompteProvider, GardePremierAcces, MonComptePage, monCompteHttp, monCompteSimule } from '@gimac/compte'
-import { Fournisseurs, NAVIGATION_DES, creerClientRequetes, servicesHttp, servicesSimules } from '@gimac/lot1'
+import { Fournisseurs, NAVIGATION_DES, PERM, creerClientRequetes, servicesHttp, servicesSimules, useNonLus } from '@gimac/lot1'
 import { PROFILS_DEMO, roleDemo, sessionDemo } from './profils'
 
 // Application du département (couche « des ») : routes du lot 1 (DS-GIMAC-01 §10.1). Services réels par
@@ -22,12 +22,15 @@ const DossierMiseEnServicePage = lazy(() => import('@gimac/lot1/pages/des/Dossie
 const ParcoursPage = lazy(() => import('@gimac/lot1/pages/des/parcours/ParcoursPage'))
 const DossierLiaisonPage = lazy(() => import('@gimac/lot1/pages/des/parcours/DossierLiaisonPage'))
 const ReferentielsOperationsPage = lazy(() => import('@gimac/lot1/pages/des/ReferentielsOperationsPage'))
+const MessageriePage = lazy(() => import('@gimac/lot1/pages/des/messagerie/MessageriePage'))
 
 const VERSION = import.meta.env.VITE_VERSION ?? '0.1.0'
 
 // D-62 : après la garde de session, le premier accès (fiche, charte, actions requises) passe avant
 // tout tableau de bord ; « Mon compte » et la déconnexion sont dans l'espace personnel de l'enveloppe.
 function Pages({ session, etatCanal, correlationId }: { session: Session; etatCanal: EtatCanal | undefined; correlationId?: string }) {
+  // Messages non lus (D-64) : pastille de l'entrée « Messagerie », rafraîchie par le canal poussé.
+  const nonLus = useNonLus(session.permissions.includes(PERM.messageLire))
   return (
     <GardePremierAcces>
       {(assistant) => (
@@ -35,6 +38,7 @@ function Pages({ session, etatCanal, correlationId }: { session: Session; etatCa
           couche="des"
           navigation={assistant ? [] : NAVIGATION_DES}
           permissions={session.permissions}
+          badges={{ messagerie: nonLus.data?.total ?? 0 }}
           utilisateur={session.nom}
           etatCanal={etatCanal}
           version={VERSION}
@@ -58,6 +62,7 @@ function Pages({ session, etatCanal, correlationId }: { session: Session; etatCa
                   <Route path="liaisons/:id/mise-en-service" element={<DossierMiseEnServicePage />} />
                   <Route path="parcours" element={<ParcoursPage />} />
                   <Route path="parcours/:id" element={<DossierLiaisonPage />} />
+                  <Route path="messagerie" element={<MessageriePage />} />
                   <Route path="referentiels/operations" element={<ReferentielsOperationsPage />} />
                   <Route path="*" element={<Navigate to="/des/tableau-de-bord" replace />} />
                 </>
@@ -80,7 +85,11 @@ function AvecSession({ reels, children }: { reels: boolean; children: (s: Sessio
 
 export default function App() {
   const reels = import.meta.env.VITE_SERVICES === 'http'
-  const services = useMemo(() => (reels ? servicesHttp('des') : servicesSimules()), [reels])
+  const services = useMemo(() => {
+    if (reels) return servicesHttp('des')
+    const s = sessionDemo()
+    return servicesSimules({ utilisateur: { id: s.sujet, nom: s.nom } })
+  }, [reels])
   // « Mon compte » (D-62) : /bff/des/iam/moi, ou service simulé au nom du profil de démonstration
   // (gm.premierAccesDemo = 1 : démonstration du premier accès).
   const compte = useMemo(() => {

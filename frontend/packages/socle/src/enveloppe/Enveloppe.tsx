@@ -18,6 +18,8 @@ export type EnveloppeProps = {
   navigation: GroupeNavigation[]
   /** Permissions effectives du jeton : une entrée non autorisée est absente du DOM, pas grisée (§6.2). */
   permissions?: string[]
+  /** Compteurs affichés en pastille sur les entrées de navigation (clé de l'entrée → nombre), par ex. les messages non lus. */
+  badges?: Record<string, number>
   utilisateur?: string
   institution?: string
   fil?: { label: string; href?: string }[]
@@ -105,7 +107,7 @@ export function Enveloppe(p: EnveloppeProps) {
     : p.navigation
   const autorisee = (e: EntreeNavigation) => !e.permission || !p.permissions || p.permissions.includes(e.permission)
   const groupes = navigation
-    .map((g) => ({ label: g.libelleKey ? t(g.libelleKey) : undefined, items: g.entrees.filter(autorisee).map((e) => ({ key: e.cle, label: t(e.libelleKey), icon: e.icone, href: e.chemin })) }))
+    .map((g) => ({ label: g.libelleKey ? t(g.libelleKey) : undefined, items: g.entrees.filter(autorisee).map((e) => ({ key: e.cle, label: t(e.libelleKey), icon: e.icone, href: e.chemin, badge: p.badges?.[e.cle] })) }))
     .filter((g) => g.items.length > 0)
   const courante = navigation.flatMap((g) => g.entrees).filter((e) => pathname.startsWith(e.chemin)).sort((a, b) => b.chemin.length - a.chemin.length)[0]
 

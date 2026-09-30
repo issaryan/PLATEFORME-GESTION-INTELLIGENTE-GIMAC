@@ -1,0 +1,64 @@
+import { keepPreviousData, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import type { ApiError } from '@gimac/socle'
+import type { Envoi, FilMessages, NouvelleConversation } from '../modele/messagerie'
+import { useServices } from '../services/ServicesProvider'
+import { useLecture } from './base'
+
+// Données de la messagerie (D-64). Toutes les clés commencent par le sujet « collaboration » : un message
+// reçu par le canal poussé invalide la liste, le fil ouvert et le compteur de non-lus.
+export const clesMessagerie = {
+  tout: ['collaboration'] as const,
+  annuaire: (recherche: string) => ['collaboration', 'annuaire', recherche] as const,
+  conversations: (q: { recherche?: string; liaisonId?: string; page?: number }) => ['collaboration', 'conversations', q] as const,
+  conversation: (id: string) => ['collaboration', 'conversation', id] as const,
+  fil: (id: string) => ['collaboration', 'conversation', id, 'messages'] as const,
+  nonLus: () => ['collaboration', 'non-lus'] as const,
+}
+
+export const useAnnuaire = (recherche: string, actif = true) =>
+  useLecture(clesMessagerie.annuaire(recherche), (s) => s.messagerie.annuaire(recherche, 0, 20), { enabled: actif, placeholderData: keepPreviousData })
+
+export const useConversations = (q: { recherche?: string; liaisonId?: string; page?: number }) =>
+  useLecture(clesMessagerie.conversations(q), (s) => s.messagerie.conversations({ ...q, taille: 20 }), { placeholderData: keepPreviousData })
+
+export const useConversation = (id: string | undefined) =>
+  useLecture(clesMessagerie.conversation(id ?? ''), (s) => s.messagerie.conversation(id!), { enabled: !!id })
+
+/** Compteur de non-lus de la navigation ; rafraîchi par le canal poussé, et toutes les minutes à défaut. */
+export const useNonLus = (actif = true) =>
+  useLecture(clesMessagerie.nonLus(), (s) => s.messagerie.nonLus(), { enabled: actif, refetchInterval: 60_000 })
+
+/** Fil d'une conversation : la dernière page d'abord, les plus anciennes à la demande. */
+export function useFil(id: string | undefined) {
+  const s = useServices()
+  return useInfiniteQuery<FilMessages, ApiError, FilMessages[], readonly unknown[], string | undefined>({
+    queryKey: clesMessagerie.fil(id ?? ''),
+    enabled: !!id,
+    initialPageParam: undefined,
+    queryFn: ({ pageParam }) => s.messagerie.messages(id!, pageParam),
+    getNextPageParam: (derniere) => (derniere.plusAnciens ? derniere.contenu[0]?.id : undefined),
+    select: (d) => d.pages,
+  })
+}
+
+function useEcriture<V, R>(agir: (v: V) => Promise<R>) {
+  const qc = useQueryClient()
+  return useMutation<R, ApiError, V>({ mutationFn: agir, onSuccess: () => qc.invalidateQueries({ queryKey: clesMessagerie.tout }) })
+}
+
+export function useDemarrer() {
+  const s = useServices()
+  return useEcriture((n: NouvelleConversation) => s.messagerie.demarrer(n))
+}
+export function useEnvoyer(conversationId: string) {
+  const s = useServices()
+  return useEcriture((e: Envoi) => s.messagerie.envoyer(conversationId, e))
+}
+export function useMarquerLu() {
+  const s = useServices()
+  return useEcriture((id: string) => s.messagerie.marquerLu(id))
+}
+export function useTelechargerPiece() {
+  const s = useServices()
+  return useMutation<{ blob: Blob; empreinte: string | null }, ApiError, string>({ mutationFn: (id) => s.messagerie.telechargerPiece(id) })
+}

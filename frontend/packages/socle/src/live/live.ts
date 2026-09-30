@@ -3,9 +3,10 @@ import type { Couche } from '../http/prefixes'
 
 // Canal poussé (F0 §A3) : un flux d'événements par couche, repris depuis le dernier identifiant reçu ;
 // chaque événement invalide les requêtes dont la clé commence par son sujet ([sujet, ressource, id]).
-export type LiveTopic = 'homologation' | 'certification'
+export type LiveTopic = 'homologation' | 'certification' | 'collaboration'
 export type LiveEvent = { id: string; type: string; subject: string; topic: LiveTopic }
 export type EtatCanal = 'connected' | 'lost'
+const ALIAS: Partial<Record<LiveTopic, string[]>> = { homologation: ['parcours'], certification: ['parcours'] }
 
 export function openLiveChannel(
   layer: Couche,
@@ -31,6 +32,9 @@ export function openLiveChannel(
       const ev = JSON.parse(m.data as string) as LiveEvent
       lastId = ev.id
       void qc.invalidateQueries({ queryKey: [ev.topic] })
+      // Le parcours de la liaison (étapes 3 à 10) se lit sous le sujet « parcours » : un événement
+      // d'homologation ou de certification le rafraîchit aussi.
+      ;(ALIAS[ev.topic] ?? []).forEach((cle) => void qc.invalidateQueries({ queryKey: [cle] }))
     }
     source.onerror = () => {
       source?.close()

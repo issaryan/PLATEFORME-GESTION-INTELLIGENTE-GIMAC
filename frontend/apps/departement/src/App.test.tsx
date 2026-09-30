@@ -50,10 +50,12 @@ describe('profils de démonstration', () => {
 })
 
 describe('Application du département', () => {
-  it('chef de la DDRM (défaut) : tableau de bord, cadrage, registre et Mon compte à son nom', async () => {
+  it('chef de la DDRM (défaut) : tableau de bord, « Mon travail », registre, messagerie et Mon compte à son nom', async () => {
     monter()
     expect(await screen.findByRole('heading', { level: 1, name: 'Tableau de bord' }, { timeout: 8000 })).toBeTruthy()
-    expect(await screen.findByRole('region', { name: 'Cadrage des liaisons' })).toBeTruthy()
+    expect(await screen.findByRole('region', { name: 'Mon travail' })).toBeTruthy()
+    // Messages non lus en pastille sur l'entrée « Messagerie » (D-64).
+    expect(await screen.findByLabelText(/non lus/)).toBeTruthy()
     expect(screen.getByRole('region', { name: 'Relations avec les membres (DDRM)' })).toBeTruthy()
     for (const n of ['Institutions membres', 'Liaisons et parcours', 'Mon compte', 'Se déconnecter']) expect(screen.getAllByRole('link', { name: n }).length).toBeGreaterThan(0)
     expect(document.querySelector('.gm-footer')).toBeTruthy()
@@ -66,7 +68,7 @@ describe('Application du département', () => {
     monter('/des/liaisons')
     expect(await screen.findByRole('switch', { name: 'Mes projets' }, { timeout: 8000 })).toBeTruthy()
     fireEvent.click(screen.getAllByRole('link', { name: 'Tableau de bord' })[0])
-    expect(await screen.findByRole('region', { name: 'Mes projets' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: /^Mes projets \(/ })).toBeTruthy()
   })
   it.each([
     ['/des/institutions', 'Institutions membres'],
@@ -75,6 +77,7 @@ describe('Application du département', () => {
     ['/des/liaisons/LIA-2025-102/mise-en-service', 'Banque B'],
     ['/des/liaisons/LIA-2026-017/operations/OPI-017-3/cloture', /OP-E04/],
     ['/des/referentiels/operations', 'Référentiels d\'opérations'],
+    ['/des/messagerie?conversation=CONV-0001', 'Messagerie'],
   ])('route %s : écran chargé à la demande', async (chemin, titre) => {
     monter(chemin)
     expect(await screen.findByRole('heading', { level: 1, name: titre }, { timeout: 8000 })).toBeTruthy()

@@ -10,6 +10,7 @@ import type {
   Telechargement, TypeDemande,
 } from '../modele/certification'
 import type { PortailCertification, PortailLiaison, PortailOperation } from '../modele/portail'
+import type { Conversation, Correspondant, Envoi, FilMessages, Message, NouvelleConversation, PageMessagerie } from '../modele/messagerie'
 import type {
   Candidature, ConditionsAdhesion, DossierInstitution, FiltreInstitutions, IndicateursDdrm, Institution, PieceAdhesion, Prerequis,
   StatutInstitution, TransitionStatut,
@@ -207,6 +208,21 @@ export interface ServiceReauthentification {
   assertion(purpose: SignPurpose): Promise<Assertion>
 }
 
+/** Messagerie instantanée de travail (D-64) : MS-COLLABORATION, /bff/des/collaboration/messagerie. */
+export interface ServiceMessagerie {
+  annuaire(recherche: string, page?: number, taille?: number): Promise<PageMessagerie<Correspondant>>
+  conversations(q: { page?: number; taille?: number; recherche?: string; liaisonId?: string }): Promise<PageMessagerie<Conversation>>
+  conversation(id: string): Promise<Conversation>
+  /** Fil d'une conversation, du plus ancien au plus récent ; `avant` remonte vers le passé. */
+  messages(id: string, avant?: string): Promise<FilMessages>
+  /** Crée la conversation (ou réutilise la conversation directe existante) et y dépose le premier message. */
+  demarrer(c: NouvelleConversation): Promise<Conversation>
+  envoyer(conversationId: string, e: Envoi): Promise<Message>
+  marquerLu(conversationId: string): Promise<void>
+  nonLus(): Promise<{ total: number }>
+  telechargerPiece(pieceId: string): Promise<{ blob: Blob; empreinte: string | null }>
+}
+
 export interface Services {
   participant: ServiceParticipant
   parcours: ServiceParcours
@@ -216,4 +232,5 @@ export interface Services {
   certification: ServiceCertification
   portail: ServicePortail
   reauth: ServiceReauthentification
+  messagerie: ServiceMessagerie
 }
