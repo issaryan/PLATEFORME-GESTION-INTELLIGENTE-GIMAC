@@ -183,7 +183,7 @@ spring:
         registration:
           oidc:
             client-id: internal
-            client-secret: internal
+            client-secret: ${GIMAC_SECRET_INTERNAL:}
             scope: openid, profile, email, offline_access # last one for refresh tokens
   task:
     execution:

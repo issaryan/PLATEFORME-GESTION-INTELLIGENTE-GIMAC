@@ -21,7 +21,8 @@ creer gimac-clients-keycloak \
   --from-literal=certification-service="$(openssl rand -hex 24)" \
   --from-literal=participant-service="$(openssl rand -hex 24)" \
   --from-literal=iam-service="$(openssl rand -hex 24)" \
-  --from-literal=gateway-supervision="$(openssl rand -hex 24)"
+  --from-literal=gateway-supervision="$(openssl rand -hex 24)" \
+  --from-literal=internal="$(openssl rand -hex 24)"
 # Dépôt objet WORM de MS-DOCUMENT (D-50) : point d'accès et clés délivrés par l'exploitant de Ceph RGW.
 if [ -n "${GIMAC_S3_POINT_ACCES:-}" ] && [ -n "${GIMAC_S3_CLE_ACCES:-}" ] && [ -n "${GIMAC_S3_CLE_SECRETE:-}" ]; then
   creer gimac-stockage-objet --from-literal=point-acces="$GIMAC_S3_POINT_ACCES" \

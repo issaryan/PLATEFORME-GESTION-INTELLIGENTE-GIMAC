@@ -251,6 +251,13 @@ def main():
     for c in realm["clients"]:
         if c["clientId"] == "internal" and "jhipster" not in c.get("defaultClientScopes", []):
             c["defaultClientScopes"].append("jhipster")
+        # Aucun secret hérité du realm JHipster (BNF-07) : le client de service « internal » reçoit une
+        # variable résolue à l'import ; les clients publics n'en ont pas l'usage et les clients intégrés
+        # (account, broker, realm-management) en reçoivent un de Keycloak.
+        if c["clientId"] == "internal":
+            c["secret"] = "${GIMAC_SECRET_INTERNAL}"
+        else:
+            c.pop("secret", None)
     realm["clients"].append(client_confidentiel("tester-cli", "GIMAC_SECRET_TESTER_CLI", directs=True))
     # Jetons de recette à deux facteurs pour les contrôles cURL : autorisation par appareil (RFC 8628),
     # qui passe par le flux navigateur ; le mot de passe direct ne donne que le niveau 1.
@@ -311,6 +318,8 @@ def main():
 
     texte = json.dumps(realm, ensure_ascii=False, indent=2)
     assert "default-roles-jhipster" not in texte
+    assert all(c.get("secret", "${").startswith("${") for c in realm["clients"]), "secret de client en clair"
+
     assert all(x in texte for x in ('"browserFlow": "navigateur-gimac"', '"minimum.acr.value": "2"', "PAR_TRANSITION_APPROVE", "ROLE_SUPER_ADMIN",
                                           "manage-realm", "unmanagedAttributePolicy",
                                           '"loginTheme": "gimac"'))

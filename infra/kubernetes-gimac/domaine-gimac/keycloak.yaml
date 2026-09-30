@@ -59,6 +59,11 @@ spec:
                 secretKeyRef:
                   name: gimac-clients-keycloak
                   key: gateway-supervision
+            - name: GIMAC_SECRET_INTERNAL
+              valueFrom:
+                secretKeyRef:
+                  name: gimac-clients-keycloak
+                  key: internal
           volumeMounts:
             - name: keycloak-volume
               mountPath: /opt/keycloak/data/import

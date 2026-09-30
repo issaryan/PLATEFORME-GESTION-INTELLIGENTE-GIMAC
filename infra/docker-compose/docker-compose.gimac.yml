@@ -16,6 +16,8 @@ x-valkey: &valkey
 # Domaine Keycloak du lot 1 (PI-GIMAC-01) : jetons émis par le domaine « gimac ».
 x-emetteur-gimac: &emetteur-gimac
   SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_OIDC_ISSUER_URI: http://keycloak:9080/realms/gimac
+  # Secret du client de service « internal » des services générés (aucun secret dans le dépôt).
+  GIMAC_SECRET_INTERNAL: ${GIMAC_SECRET_INTERNAL:?à définir dans .env}
 
 # Les 14 services générés ne dépendent pas de Kafka dans docker-compose.yml : sans
 # Kafka, leurs liaisons Spring Cloud Stream échouent et leur sonde reste en échec.
@@ -158,6 +160,7 @@ services:
       - GIMAC_SECRET_PARTICIPANT_SERVICE=${GIMAC_SECRET_PARTICIPANT_SERVICE:?à définir dans .env}
       - GIMAC_SECRET_IAM_SERVICE=${GIMAC_SECRET_IAM_SERVICE:?à définir dans .env}
       - GIMAC_SECRET_GATEWAY_SUPERVISION=${GIMAC_SECRET_GATEWAY_SUPERVISION:?à définir dans .env}
+      - GIMAC_SECRET_INTERNAL=${GIMAC_SECRET_INTERNAL:?à définir dans .env}
 
   prometheus:
     ports: !override

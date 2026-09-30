@@ -1808,7 +1808,6 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "secret": "b6734241-da52-4cc0-8a71-d177133efa15",
       "redirectUris": [
         "/realms/jhipster/account/*"
       ],
@@ -1852,7 +1851,6 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "secret": "9d420ff2-06f6-484b-a368-f5817c16caa5",
       "redirectUris": [
         "/realms/jhipster/account/*"
       ],
@@ -1904,7 +1902,6 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "secret": "234bbb4a-51fd-4d51-b94f-01e9417c7ea2",
       "redirectUris": [],
       "webOrigins": [],
       "notBefore": 0,
@@ -1944,7 +1941,6 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "secret": "1e8bb3e8-f765-47bd-9f59-c2263bdbf4a6",
       "redirectUris": [],
       "webOrigins": [],
       "notBefore": 0,
@@ -1983,7 +1979,7 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "secret": "internal",
+      "secret": "${GIMAC_SECRET_INTERNAL}",
       "redirectUris": [],
       "webOrigins": [],
       "notBefore": 0,
@@ -2082,7 +2078,6 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "secret": "jhipster-control-center",
       "redirectUris": [
         "dev.localhost.ionic:*",
         "http://127.0.0.1:*",
@@ -2144,7 +2139,6 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "secret": "007f4b1e-712c-4977-bc11-29d573282908",
       "redirectUris": [],
       "webOrigins": [],
       "notBefore": 0,
@@ -2186,7 +2180,6 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "secret": "4f569aee-ef33-40d8-a39e-e01638edfca3",
       "redirectUris": [
         "/admin/jhipster/console/*"
       ],
@@ -2248,7 +2241,6 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "secret": "web_app",
       "redirectUris": [
         "http://localhost:8080/*",
         "https://localhost:8080/*",
