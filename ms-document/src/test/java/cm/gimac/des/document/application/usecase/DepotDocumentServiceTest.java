@@ -168,6 +168,46 @@ class DepotDocumentServiceTest {
     }
 
     @Test
+    @DisplayName("Dépôt par un service interne : déposant = utilisateur transmis, service inscrit, sans institution")
+    void depotParUnService() {
+        Resultat r = service.deposer(
+            new Commande(new Fichier("rapport.txt", "text/plain", CONTENU), "messagerie", "conversation/1"),
+            Deposant.pourLeCompteDe("  7c1e0000-0000-0000-0000-00000000dd01 ", "collaboration-service")
+        );
+
+        assertThat(r.id()).isNotNull();
+        ArgumentCaptor<DepotDocument> ligne = ArgumentCaptor.forClass(DepotDocument.class);
+        verify(repository).saveAndFlush(ligne.capture());
+        assertThat(ligne.getValue().getFinalite()).isEqualTo("MESSAGERIE");
+        assertThat(ligne.getValue().getDeposant()).isEqualTo("7c1e0000-0000-0000-0000-00000000dd01");
+        assertThat(ligne.getValue().getServiceDeposant()).isEqualTo("collaboration-service");
+        assertThat(ligne.getValue().getInstitutionId()).isNull();
+        assertThat(ligne.getValue().getCleObjet()).startsWith("messagerie/2026/09/29/");
+    }
+
+    @Test
+    @DisplayName("Dépôt par un service : identifiant du déposant absent ou trop long, 400 DOC_DEPOSITOR_INVALID avant tout dépôt")
+    void deposantInvalide() {
+        assertThatThrownBy(() -> service.deposer(commande(CONTENU), Deposant.pourLeCompteDe(null, "collaboration-service"))).hasFieldOrPropertyWithValue(
+            "code",
+            "DOC_DEPOSITOR_INVALID"
+        );
+        assertThatThrownBy(() -> service.deposer(commande(CONTENU), Deposant.pourLeCompteDe("u".repeat(101), "collaboration-service")))
+            .hasFieldOrPropertyWithValue("code", "DOC_DEPOSITOR_INVALID");
+        verifyNoInteractions(stockage, repository);
+    }
+
+    @Test
+    @DisplayName("Dépôt direct : aucun service inscrit")
+    void depotDirectSansService() {
+        service.deposer(commande(CONTENU), AGENT);
+        ArgumentCaptor<DepotDocument> ligne = ArgumentCaptor.forClass(DepotDocument.class);
+        verify(repository).saveAndFlush(ligne.capture());
+        assertThat(ligne.getValue().getServiceDeposant()).isNull();
+        assertThat(AGENT.service()).isNull();
+    }
+
+    @Test
     @DisplayName("Constructeur Spring : horloge du système")
     void constructeurSpring() {
         DepotDocumentService s = new DepotDocumentService(stockage, extracteur, repository, DataSize.ofMegabytes(1));

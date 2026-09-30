@@ -50,6 +50,11 @@ public class DocumentException extends RuntimeException {
         return new DocumentException("DOC_NOT_FOUND", 404, "Document introuvable", Map.of("id", String.valueOf(id)));
     }
 
+    /** 500 : contenu conservé absent ou altéré (empreinte recalculée différente de l'empreinte inscrite). */
+    public static DocumentException altere(String code, String message, Object id) {
+        return new DocumentException(code, 500, message, Map.of("id", String.valueOf(id)));
+    }
+
     /** 503 : dépôt objet indisponible, sans valeur par défaut. */
     public static DocumentException indisponible(String code, String message) {
         return new DocumentException(code, 503, message, Map.of());

@@ -2,11 +2,13 @@ package cm.gimac.des.document.web.rest.v1;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -17,13 +19,17 @@ import cm.gimac.des.document.application.port.in.DeposerDocumentUseCase;
 import cm.gimac.des.document.application.port.in.DeposerDocumentUseCase.Commande;
 import cm.gimac.des.document.application.port.in.DeposerDocumentUseCase.Deposant;
 import cm.gimac.des.document.application.port.in.DeposerDocumentUseCase.Resultat;
+import cm.gimac.des.document.application.port.in.LireDocumentUseCase;
+import cm.gimac.des.document.application.port.in.LireDocumentUseCase.Contenu;
 import cm.gimac.des.document.config.SecurityConfiguration;
 import cm.gimac.des.document.config.TestSecurityConfiguration;
 import cm.gimac.des.document.domain.DocumentException;
+import cm.gimac.des.document.domain.service.EmpreinteSha256;
 import cm.gimac.des.document.web.rest.errors.DocumentExceptionHandler;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Stream;
@@ -49,8 +55,8 @@ import tech.jhipster.config.JHipsterProperties;
 /**
  * Tests de sécurité des routes de MS-DOCUMENT (D-61) avec la vraie chaîne de filtres : 401 sans
  * jeton ; 403 sans second facteur (acr) ; 403 sans l'une des permissions de dépôt ; accès avec
- * chacune ; interface interne refusée à tout jeton utilisateur. Exécutés sans Docker (tranche
- * web, cas d'utilisation simulé).
+ * chacune ; interface interne refusée à tout jeton utilisateur et à tout jeton de service sans la
+ * permission interne de la route. Exécutés sans Docker (tranche web, cas d'utilisation simulé).
  */
 @WebMvcTest(controllers = { DocumentDepotResource.class, DocumentInterneResource.class })
 @Import({ SecurityConfiguration.class, TestSecurityConfiguration.class, DocumentExceptionHandler.class })
@@ -68,6 +74,9 @@ class DocumentResourceSecurityTest {
 
     @MockitoBean
     DeposerDocumentUseCase useCase;
+
+    @MockitoBean
+    LireDocumentUseCase lecture;
 
     @BeforeEach
     void init() {
@@ -95,9 +104,15 @@ class DocumentResourceSecurityTest {
             .authorities(Stream.of(permissions).map(SimpleGrantedAuthority::new).toArray(GrantedAuthority[]::new));
     }
 
-    /** Jeton de service (client_credentials) : pas d'acr, permission interne. */
+    /** Jeton de service (client_credentials) : compte de service du client, pas d'acr, permissions internes. */
+    static RequestPostProcessor jetonDeService(String client, String... permissions) {
+        return jwt()
+            .jwt(j -> j.subject(UUID.randomUUID().toString()).claim("azp", client).claim("preferred_username", "service-account-" + client))
+            .authorities(Stream.of(permissions).map(SimpleGrantedAuthority::new).toArray(GrantedAuthority[]::new));
+    }
+
     static RequestPostProcessor jetonDeService() {
-        return jwt().jwt(j -> j.subject("service-account-participant")).authorities(new SimpleGrantedAuthority("INTERNAL_DOCUMENT_READ"));
+        return jetonDeService("participant-service", "INTERNAL_DOCUMENT_READ");
     }
 
     // ------------------------------------------------------------------ POST /api/v1/documents
@@ -260,6 +275,213 @@ class DocumentResourceSecurityTest {
             .andExpect(jsonPath("$.code").value("DOC_NOT_FOUND"))
             .andExpect(jsonPath("$.details.id").value(inconnu.toString()))
             .andExpect(jsonPath("$.correlationId").exists());
+    }
+
+    @Test
+    @DisplayName("Empreinte avec un jeton de service sans INTERNAL_DOCUMENT_READ : 403")
+    void empreinteSansPermissionInterne() throws Exception {
+        mvc.perform(get(EMPREINTE).with(jetonDeService(COLLABORATION, "INTERNAL_DOCUMENT_DEPOSIT"))).andExpect(status().isForbidden());
+        verifyNoInteractions(useCase);
+    }
+
+    // ------------------------------------------------------------------ POST /api/v1/interne/documents
+
+    static final String DEPOT_INTERNE = "/api/v1/interne/documents";
+    static final String COLLABORATION = "collaboration-service";
+    static final String CONTENU = "/api/v1/interne/documents/" + ID + "/contenu";
+
+    static MockMultipartHttpServletRequestBuilder depotInterne() {
+        MockMultipartHttpServletRequestBuilder b = multipart(DEPOT_INTERNE);
+        b.file(new MockMultipartFile("fichier", "rapport.pdf", "application/pdf", "%PDF-1.7".getBytes(StandardCharsets.US_ASCII)));
+        b.param("finalite", "MESSAGERIE");
+        b.param("reference", "conversation/" + ID);
+        b.param("deposantId", "7c1e0000-0000-0000-0000-00000000dd01");
+        return b;
+    }
+
+    @Test
+    @DisplayName("Dépôt interne sans jeton : 401")
+    void depotInterneSansJeton() throws Exception {
+        mvc.perform(depotInterne()).andExpect(status().isUnauthorized());
+        verifyNoInteractions(useCase);
+    }
+
+    @Test
+    @DisplayName("Dépôt interne refusé à un jeton utilisateur à deux facteurs, même porteur des permissions de dépôt ou de la permission interne")
+    void depotInterneRefuseAUnUtilisateur() throws Exception {
+        mvc.perform(depotInterne().with(jeton("2", PERMISSIONS_DE_DEPOT))).andExpect(status().isForbidden());
+        mvc.perform(depotInterne().with(jeton("2", "INTERNAL_DOCUMENT_DEPOSIT"))).andExpect(status().isForbidden());
+        verifyNoInteractions(useCase);
+    }
+
+    @Test
+    @DisplayName("Dépôt interne : jeton dont le nom ne correspond pas au compte de service du client, 403")
+    void depotInterneFauxCompteDeService() throws Exception {
+        mvc
+            .perform(
+                depotInterne()
+                    .with(
+                        jwt()
+                            .jwt(j -> j.subject("agent").claim("azp", "web_app").claim("preferred_username", "service-account-collaboration-service"))
+                            .authorities(new SimpleGrantedAuthority("INTERNAL_DOCUMENT_DEPOSIT"))
+                    )
+            )
+            .andExpect(status().isForbidden());
+        verifyNoInteractions(useCase);
+    }
+
+    @Test
+    @DisplayName("Dépôt interne avec un jeton de service sans INTERNAL_DOCUMENT_DEPOSIT : 403")
+    void depotInterneSansPermission() throws Exception {
+        mvc.perform(depotInterne().with(jetonDeService(COLLABORATION, "INTERNAL_DOCUMENT_READ", "DOC_DEPOSIT"))).andExpect(status().isForbidden());
+        verifyNoInteractions(useCase);
+    }
+
+    @Test
+    @DisplayName("Dépôt interne avec INTERNAL_DOCUMENT_DEPOSIT : 201, déposant = utilisateur transmis et client du service")
+    void depotInterneAvecPermission() throws Exception {
+        mvc
+            .perform(depotInterne().with(jetonDeService(COLLABORATION, "INTERNAL_DOCUMENT_DEPOSIT")))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.id").value(ID.toString()))
+            .andExpect(jsonPath("$.sha256").value(SHA))
+            .andExpect(jsonPath("$.nomFichier").value("statuts.pdf"))
+            .andExpect(jsonPath("$.taille").value(1234))
+            .andExpect(jsonPath("$.typeMime").value("application/pdf"));
+
+        ArgumentCaptor<Commande> commande = ArgumentCaptor.forClass(Commande.class);
+        ArgumentCaptor<Deposant> deposant = ArgumentCaptor.forClass(Deposant.class);
+        verify(useCase).deposer(commande.capture(), deposant.capture());
+        assertThat(commande.getValue().finalite()).isEqualTo("MESSAGERIE");
+        assertThat(commande.getValue().reference()).isEqualTo("conversation/" + ID);
+        assertThat(commande.getValue().fichier().nomFichier()).isEqualTo("rapport.pdf");
+        assertThat(commande.getValue().fichier().contenu()).asString(StandardCharsets.US_ASCII).isEqualTo("%PDF-1.7");
+        assertThat(deposant.getValue()).isEqualTo(new Deposant("7c1e0000-0000-0000-0000-00000000dd01", null, COLLABORATION));
+    }
+
+    @Test
+    @DisplayName("Dépôt interne : fichier absent transmis comme absent ; erreurs du dépôt en ProblemDetail (400, 413, 422)")
+    void depotInterneErreurs() throws Exception {
+        when(useCase.deposer(any(), any())).thenThrow(DocumentException.invalide("DOC_FILE_MISSING", "La partie « fichier » est obligatoire"));
+        mvc
+            .perform(
+                multipart(DEPOT_INTERNE)
+                    .param("finalite", "MESSAGERIE")
+                    .param("reference", "r")
+                    .param("deposantId", "u")
+                    .with(jetonDeService(COLLABORATION, "INTERNAL_DOCUMENT_DEPOSIT"))
+            )
+            .andExpect(status().isBadRequest())
+            .andExpect(header().string("Content-Type", "application/problem+json"))
+            .andExpect(jsonPath("$.code").value("DOC_FILE_MISSING"));
+        ArgumentCaptor<Commande> commande = ArgumentCaptor.forClass(Commande.class);
+        verify(useCase).deposer(commande.capture(), any());
+        assertThat(commande.getValue().fichier()).isNull();
+
+        doThrow(DocumentException.tropVolumineux(20_971_521, 20_971_520)).when(useCase).deposer(any(), any());
+        mvc
+            .perform(depotInterne().with(jetonDeService(COLLABORATION, "INTERNAL_DOCUMENT_DEPOSIT")))
+            .andExpect(status().isPayloadTooLarge())
+            .andExpect(jsonPath("$.code").value("DOC_FILE_TOO_LARGE"));
+
+        doThrow(DocumentException.refuse("DOC_PAN_DETECTED", "Numéro de carte", Map.of("occurrences", 1))).when(useCase).deposer(any(), any());
+        mvc
+            .perform(depotInterne().with(jetonDeService(COLLABORATION, "INTERNAL_DOCUMENT_DEPOSIT")))
+            .andExpect(status().isUnprocessableEntity())
+            .andExpect(jsonPath("$.code").value("DOC_PAN_DETECTED"));
+    }
+
+    // ------------------------------------------------------------------ GET /api/v1/interne/documents/{id}/contenu
+
+    static final byte[] OCTETS = "Compte rendu de la réunion".getBytes(StandardCharsets.UTF_8);
+
+    void contenuConnu(String nom, String type) {
+        when(lecture.lire(eq(ID), any())).thenReturn(new Contenu(ID, nom, type, EmpreinteSha256.de(OCTETS), OCTETS));
+    }
+
+    @Test
+    @DisplayName("Contenu sans jeton : 401")
+    void contenuSansJeton() throws Exception {
+        mvc.perform(get(CONTENU)).andExpect(status().isUnauthorized());
+        verifyNoInteractions(lecture);
+    }
+
+    @Test
+    @DisplayName("Contenu refusé à un jeton utilisateur à deux facteurs, même porteur de INTERNAL_DOCUMENT_READ")
+    void contenuRefuseAUnUtilisateur() throws Exception {
+        mvc.perform(get(CONTENU).with(jeton("2", PERMISSIONS_DE_DEPOT))).andExpect(status().isForbidden());
+        mvc.perform(get(CONTENU).with(jeton("2", "INTERNAL_DOCUMENT_READ"))).andExpect(status().isForbidden());
+        verifyNoInteractions(lecture);
+    }
+
+    @Test
+    @DisplayName("Contenu avec un jeton de service sans INTERNAL_DOCUMENT_READ : 403")
+    void contenuSansPermission() throws Exception {
+        mvc.perform(get(CONTENU).with(jetonDeService(COLLABORATION, "INTERNAL_DOCUMENT_DEPOSIT"))).andExpect(status().isForbidden());
+        verifyNoInteractions(lecture);
+    }
+
+    @Test
+    @DisplayName("Contenu avec INTERNAL_DOCUMENT_READ : 200, octets, type, taille, pièce jointe, Repr-Digest ; lecteur = client du service")
+    void contenuAvecPermission() throws Exception {
+        contenuConnu("compte-rendu.txt", "text/plain");
+        byte[] corps = mvc
+            .perform(get(CONTENU).with(jetonDeService(COLLABORATION, "INTERNAL_DOCUMENT_READ")))
+            .andExpect(status().isOk())
+            .andExpect(header().string("Content-Type", "text/plain"))
+            .andExpect(header().longValue("Content-Length", OCTETS.length))
+            .andExpect(header().string("Content-Disposition", "attachment; filename*=UTF-8''compte-rendu.txt"))
+            .andExpect(header().string("Repr-Digest", "sha-256=:" + Base64.getEncoder().encodeToString(sha256(OCTETS)) + ":"))
+            .andExpect(header().string("X-Content-Type-Options", "nosniff"))
+            .andReturn()
+            .getResponse()
+            .getContentAsByteArray();
+        assertThat(corps).isEqualTo(OCTETS);
+        verify(lecture).lire(ID, COLLABORATION);
+    }
+
+    @Test
+    @DisplayName("Contenu : nom de fichier non ASCII encodé selon RFC 5987")
+    void contenuNomNonAscii() throws Exception {
+        contenuConnu("procès-verbal n°2.pdf", "application/pdf");
+        mvc
+            .perform(get(CONTENU).with(jetonDeService(COLLABORATION, "INTERNAL_DOCUMENT_READ")))
+            .andExpect(status().isOk())
+            .andExpect(header().string("Content-Type", "application/pdf"))
+            .andExpect(header().string("Content-Disposition", "attachment; filename*=UTF-8''proc%C3%A8s-verbal%20n%C2%B02.pdf"));
+    }
+
+    @Test
+    @DisplayName("Contenu d'un document inconnu : 404 DOC_NOT_FOUND ; contenu altéré : 500 DOC_INTEGRITY_MISMATCH")
+    void contenuErreurs() throws Exception {
+        UUID inconnu = UUID.randomUUID();
+        when(lecture.lire(eq(inconnu), any())).thenThrow(DocumentException.introuvable(inconnu));
+        mvc
+            .perform(get("/api/v1/interne/documents/" + inconnu + "/contenu").with(jetonDeService(COLLABORATION, "INTERNAL_DOCUMENT_READ")))
+            .andExpect(status().isNotFound())
+            .andExpect(header().string("Content-Type", "application/problem+json"))
+            .andExpect(jsonPath("$.code").value("DOC_NOT_FOUND"))
+            .andExpect(jsonPath("$.details.id").value(inconnu.toString()));
+
+        when(lecture.lire(eq(ID), any())).thenThrow(DocumentException.altere("DOC_INTEGRITY_MISMATCH", "Contenu altéré", ID));
+        mvc
+            .perform(get(CONTENU).with(jetonDeService(COLLABORATION, "INTERNAL_DOCUMENT_READ")))
+            .andExpect(status().isInternalServerError())
+            .andExpect(jsonPath("$.code").value("DOC_INTEGRITY_MISMATCH"));
+    }
+
+    @Test
+    @DisplayName("Autre chemin ou autre méthode de l'interface interne : refusé même à un jeton de service porteur des permissions internes")
+    void autreCheminInterne() throws Exception {
+        RequestPostProcessor service = jetonDeService(COLLABORATION, "INTERNAL_DOCUMENT_READ", "INTERNAL_DOCUMENT_DEPOSIT");
+        mvc.perform(get("/api/v1/interne/documents/" + ID + "/versions").with(service)).andExpect(status().isForbidden());
+        mvc.perform(delete("/api/v1/interne/documents/" + ID).with(service)).andExpect(status().isForbidden());
+        mvc.perform(get("/api/v1/interne/documents").with(service)).andExpect(status().isForbidden());
+        verifyNoInteractions(useCase, lecture);
+    }
+
+    static byte[] sha256(byte[] octets) throws Exception {
+        return java.security.MessageDigest.getInstance("SHA-256").digest(octets);
     }
 
     // ------------------------------------------------------------------ autres chemins

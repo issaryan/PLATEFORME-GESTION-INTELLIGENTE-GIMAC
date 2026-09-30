@@ -114,7 +114,7 @@ class RecetteDepotDocumentIT {
         mvc
             .perform(
                 get("/api/v1/interne/documents/" + id + "/empreinte").with(
-                    jwt().jwt(j -> j.subject("service-account-participant")).authorities(new SimpleGrantedAuthority("INTERNAL_DOCUMENT_READ"))
+                    jwt().jwt(j -> j.subject("service-account-participant").claim("azp", "participant-service").claim("preferred_username", "service-account-participant-service")).authorities(new SimpleGrantedAuthority("INTERNAL_DOCUMENT_READ"))
                 )
             )
             .andExpect(status().isOk())

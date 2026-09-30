@@ -27,7 +27,9 @@ import org.springframework.util.unit.DataSize;
 /**
  * Dépôt direct d'un fichier (tranche DDRM) : admission (présence, taille, finalité, référence),
  * empreinte SHA-256 calculée par le serveur, contrôle de masquage des numéros de carte (BNF-16),
- * conservation dans le dépôt objet WORM, puis inscription des métadonnées.
+ * conservation dans le dépôt objet WORM, puis inscription des métadonnées. Même chaîne pour le
+ * dépôt direct d'un utilisateur et pour le dépôt d'un service interne pour le compte d'un
+ * utilisateur (pièces jointes de la messagerie, D-64) : le service déposant est alors inscrit.
  *
  * L'objet est écrit avant la ligne de métadonnées : si l'écriture en base échoue, l'objet reste
  * orphelin dans le dépôt WORM (il ne peut pas être supprimé) et sa clé est journalisée pour le
@@ -73,6 +75,8 @@ public class DepotDocumentService implements DeposerDocumentUseCase {
         String reference = ValidationDepot.reference(commande.reference());
         String nomFichier = ValidationDepot.nomFichier(fichier.nomFichier());
         String typeMime = ValidationDepot.typeMime(fichier.typeMime(), contenu);
+        // Dépôt par un service interne : l'utilisateur pour le compte duquel il dépose est transmis, donc contrôlé.
+        String deposantId = deposant.service() == null ? deposant.id() : ValidationDepot.deposantId(deposant.id());
 
         // BNF-16 : aucune donnée de carte dans une pièce ; le rejet ne cite jamais le numéro trouvé.
         int numeros = extracteur.extraire(contenu, typeMime).map(ControleNumerosCarte::compter).orElse(0);
@@ -102,15 +106,20 @@ public class DepotDocumentService implements DeposerDocumentUseCase {
                     .sha256(sha256)
                     .cleObjet(objet.cle())
                     .versionObjet(objet.version())
-                    .deposant(deposant.id())
+                    .deposant(deposantId)
                     .institutionId(deposant.institutionId())
+                    .serviceDeposant(deposant.service())
                     .deposeLe(maintenant)
             );
         } catch (RuntimeException e) {
             LOG.error("Objet orphelin dans le dépôt WORM : métadonnées non inscrites pour la clé {}", objet.cle());
             throw e;
         }
-        LOG.info("Document {} déposé : finalité {}, {} octets, {}", id, finalite, contenu.length, typeMime);
+        if (deposant.service() == null) {
+            LOG.info("Document {} déposé : finalité {}, {} octets, {}", id, finalite, contenu.length, typeMime);
+        } else {
+            LOG.info("Document {} déposé par le service {} : finalité {}, {} octets, {}", id, deposant.service(), finalite, contenu.length, typeMime);
+        }
         return new Resultat(id, sha256, nomFichier, contenu.length, typeMime);
     }
 

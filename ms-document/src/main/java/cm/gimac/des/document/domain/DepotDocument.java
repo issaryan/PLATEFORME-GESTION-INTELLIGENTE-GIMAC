@@ -9,7 +9,8 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * Métadonnées d'un fichier déposé par POST /api/v1/documents (dépôt direct de la tranche DDRM).
+ * Métadonnées d'un fichier déposé par POST /api/v1/documents (dépôt direct de la tranche DDRM)
+ * ou par POST /api/v1/interne/documents (dépôt par un service pour le compte d'un utilisateur).
  * Le contenu est dans le dépôt objet WORM (D-50) sous {@code cleObjet} ; la base n'en garde que
  * l'empreinte SHA-256 calculée par le serveur, la taille, le type et la finalité.
  *
@@ -57,6 +58,10 @@ public class DepotDocument implements Serializable {
 
     @Column(name = "institution_id", length = 64, updatable = false)
     private String institutionId;
+
+    /** Client du service qui a déposé pour le compte de l'utilisateur (interface interne), sinon absent. */
+    @Column(name = "service_deposant", length = 100, updatable = false)
+    private String serviceDeposant;
 
     @Column(name = "depose_le", nullable = false, updatable = false)
     private Instant deposeLe;
@@ -157,6 +162,15 @@ public class DepotDocument implements Serializable {
 
     public DepotDocument institutionId(String institutionId) {
         this.institutionId = institutionId;
+        return this;
+    }
+
+    public String getServiceDeposant() {
+        return serviceDeposant;
+    }
+
+    public DepotDocument serviceDeposant(String serviceDeposant) {
+        this.serviceDeposant = serviceDeposant;
         return this;
     }
 

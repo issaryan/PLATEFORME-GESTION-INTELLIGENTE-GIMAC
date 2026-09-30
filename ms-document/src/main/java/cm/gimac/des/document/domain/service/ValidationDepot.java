@@ -15,6 +15,7 @@ public final class ValidationDepot {
     public static final String TYPE_PDF = "application/pdf";
     static final int LONGUEUR_MAX_REFERENCE = 255;
     static final int LONGUEUR_MAX_NOM = 255;
+    static final int LONGUEUR_MAX_DEPOSANT = 100;
 
     private static final Pattern FINALITE = Pattern.compile("^[A-Z][A-Z0-9_]{1,49}$");
     private static final Pattern TYPE_MIME = Pattern.compile("^[a-z0-9][a-z0-9!#$&^_.+-]{0,62}/[a-z0-9][a-z0-9!#$&^_.+-]{0,62}$");
@@ -52,6 +53,18 @@ public final class ValidationDepot {
             throw DocumentException.invalide("DOC_REFERENCE_INVALID", "Référence absente, trop longue ou mal formée");
         }
         return r;
+    }
+
+    /**
+     * Identifiant de l'utilisateur pour le compte duquel un service dépose (interface interne) :
+     * obligatoire, sans caractère de contrôle, 100 caractères au plus ; DOC_DEPOSITOR_INVALID sinon.
+     */
+    public static String deposantId(String deposantId) {
+        String d = deposantId == null ? "" : deposantId.trim();
+        if (d.isEmpty() || d.length() > LONGUEUR_MAX_DEPOSANT || CONTROLE.matcher(d).find()) {
+            throw DocumentException.invalide("DOC_DEPOSITOR_INVALID", "Identifiant du déposant absent, trop long ou mal formé");
+        }
+        return d;
     }
 
     /**

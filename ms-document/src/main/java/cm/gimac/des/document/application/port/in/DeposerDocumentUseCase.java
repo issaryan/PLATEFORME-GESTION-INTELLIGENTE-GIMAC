@@ -14,8 +14,22 @@ public interface DeposerDocumentUseCase {
     /** Commande de dépôt : fichier (absent si la partie manque), finalité (ADHESION...) et référence libre. */
     record Commande(Fichier fichier, String finalite, String reference) {}
 
-    /** Déposant lu dans le jeton : sujet et, pour un représentant d'un participant, son institution. */
-    record Deposant(String id, String institutionId) {}
+    /**
+     * Déposant : utilisateur (sujet du jeton ou, par l'interface interne, identifiant transmis par
+     * le service), son institution pour un représentant d'un participant, et le client du service
+     * qui dépose pour son compte (absent pour un dépôt direct par l'utilisateur).
+     */
+    record Deposant(String id, String institutionId, String service) {
+        /** Dépôt direct par l'utilisateur, sans service intermédiaire. */
+        public Deposant(String id, String institutionId) {
+            this(id, institutionId, null);
+        }
+
+        /** Dépôt par un service interne pour le compte d'un utilisateur. */
+        public static Deposant pourLeCompteDe(String utilisateurId, String service) {
+            return new Deposant(utilisateurId, null, service);
+        }
+    }
 
     /** Résultat restitué au client. */
     record Resultat(UUID id, String sha256, String nomFichier, long taille, String typeMime) {}

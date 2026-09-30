@@ -4,6 +4,7 @@ import static org.springframework.security.config.Customizer.withDefaults;
 import static org.springframework.security.oauth2.core.oidc.StandardClaimNames.PREFERRED_USERNAME;
 
 import cm.gimac.des.document.infrastructure.security.InstitutionClaimPresentAuthorizationManager;
+import cm.gimac.des.document.infrastructure.security.ServiceTokenAuthorizationManager;
 import cm.gimac.des.document.infrastructure.security.StrongAuthenticationAuthorizationManager;
 import cm.gimac.des.document.security.*;
 import cm.gimac.des.document.security.SecurityUtils;
@@ -13,6 +14,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.convert.converter.Converter;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -57,8 +59,12 @@ public class SecurityConfiguration {
                     .requestMatchers(mvc.pattern("/api/authenticate")).permitAll()
                     .requestMatchers(mvc.pattern("/api/auth-info")).permitAll()
                     .requestMatchers(mvc.pattern("/api/admin/**")).hasAuthority(AuthoritiesConstants.ADMIN)
-                    // Interfaces internes : jeton de service uniquement (PI §0.7).
-                    .requestMatchers(mvc.pattern("/api/v1/interne/**")).hasAuthority("INTERNAL_DOCUMENT_READ")
+                    // Interfaces internes : jeton de service uniquement (PI §0.7), permission interne route par route ;
+                    // tout autre chemin interne est refusé.
+                    .requestMatchers(mvc.pattern(HttpMethod.POST, "/api/v1/interne/documents")).access(new ServiceTokenAuthorizationManager("INTERNAL_DOCUMENT_DEPOSIT"))
+                    .requestMatchers(mvc.pattern(HttpMethod.GET, "/api/v1/interne/documents/*/empreinte")).access(new ServiceTokenAuthorizationManager("INTERNAL_DOCUMENT_READ"))
+                    .requestMatchers(mvc.pattern(HttpMethod.GET, "/api/v1/interne/documents/*/contenu")).access(new ServiceTokenAuthorizationManager("INTERNAL_DOCUMENT_READ"))
+                    .requestMatchers(mvc.pattern("/api/v1/interne/**")).denyAll()
                     // Portail des participants : institution obligatoire dans le jeton (RG-59).
                     .requestMatchers(mvc.pattern("/api/v1/portail/**")).access(new InstitutionClaimPresentAuthorizationManager())
                     // Routes métier : jeton à deux facteurs (D-61), puis @PreAuthorize route par route.

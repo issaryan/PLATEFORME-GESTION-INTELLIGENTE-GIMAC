@@ -55,7 +55,7 @@ class DepotDocumentIT {
     }
 
     static RequestPostProcessor serviceParticipant() {
-        return jwt().jwt(j -> j.subject("service-account-participant")).authorities(new SimpleGrantedAuthority("INTERNAL_DOCUMENT_READ"));
+        return jwt().jwt(j -> j.subject("5e0c0000-0000-0000-0000-0000000000a1").claim("azp", "participant-service").claim("preferred_username", "service-account-participant-service")).authorities(new SimpleGrantedAuthority("INTERNAL_DOCUMENT_READ"));
     }
 
     ResultActions deposer(String nom, String type, byte[] contenu, String reference) throws Exception {

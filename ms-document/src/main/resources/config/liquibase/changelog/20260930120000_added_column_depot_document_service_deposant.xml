@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!--
+        Écrit à la main : dépôt par un service interne pour le compte d'un utilisateur
+        (POST /api/v1/interne/documents, pièces jointes de la messagerie, D-64). La colonne
+        « deposant » garde l'utilisateur ; « service_deposant » inscrit le client du service
+        appelant. Ajout de colonne seulement : les lignes restent en insertion seule.
+    -->
+    <changeSet id="20260930120000-1" author="gimac">
+        <addColumn tableName="depot_document">
+            <column name="service_deposant" type="varchar(100)" remarks="Client du service qui a déposé pour le compte de l'utilisateur ; absent pour un dépôt direct.">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>

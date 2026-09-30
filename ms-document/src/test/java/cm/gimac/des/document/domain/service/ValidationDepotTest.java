@@ -137,11 +137,31 @@ class ValidationDepotTest {
     }
 
     @Test
+    @DisplayName("Identifiant du déposant transmis par un service : rogné, 100 caractères au plus")
+    void deposantId() {
+        assertThat(ValidationDepot.deposantId(" 7c1e0000-0000-0000-0000-00000000dd01 ")).isEqualTo("7c1e0000-0000-0000-0000-00000000dd01");
+        assertThat(ValidationDepot.deposantId("u".repeat(100))).hasSize(100);
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = { "   ", "a\tb", "a\u0000b" })
+    @DisplayName("Identifiant du déposant absent, blanc ou avec caractère de contrôle : 400 DOC_DEPOSITOR_INVALID")
+    void deposantIdInvalide(String id) {
+        DocumentException e = erreur(() -> ValidationDepot.deposantId(id));
+        assertThat(e.code()).isEqualTo("DOC_DEPOSITOR_INVALID");
+        assertThat(e.status()).isEqualTo(400);
+        assertThat(erreur(() -> ValidationDepot.deposantId("u".repeat(101))).code()).isEqualTo("DOC_DEPOSITOR_INVALID");
+    }
+
+    @Test
     @DisplayName("Erreurs : fabriques de DocumentException")
     void fabriques() {
         assertThat(DocumentException.introuvable("x").status()).isEqualTo(404);
         assertThat(DocumentException.introuvable("x").details()).containsEntry("id", "x");
         assertThat(DocumentException.indisponible("DOC_STORAGE_UNAVAILABLE", "m").status()).isEqualTo(503);
+        assertThat(DocumentException.altere("DOC_INTEGRITY_MISMATCH", "m", "x").status()).isEqualTo(500);
+        assertThat(DocumentException.altere("DOC_INTEGRITY_MISMATCH", "m", "x").details()).containsEntry("id", "x");
         assertThat(DocumentException.interdit("DOC_USER_TOKEN_REQUIRED", "m").status()).isEqualTo(403);
         assertThatThrownBy(() -> {
             throw DocumentException.refuse("DOC_PAN_DETECTED", "m", java.util.Map.of("occurrences", 1));
