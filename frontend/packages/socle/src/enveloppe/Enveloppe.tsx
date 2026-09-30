@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { Banner, Footer, SideNav, TopBar, type IconName } from '@gimac/design-system'
 import logoBleu from '@gimac/design-system/assets/logo/gimac-bleu.png'
+import logoCouleur from '@gimac/design-system/assets/logo/gimac-couleur-recadre.png'
 import logoBlanc from '@gimac/design-system/assets/logo/gimac-blanc.png'
 import type { Couche } from '../http/prefixes'
 import type { EtatCanal } from '../live/live'
@@ -124,6 +125,7 @@ export function Enveloppe(p: EnveloppeProps) {
       <TopBar
         layer={p.couche}
         logo={theme === 'dark' ? logoBlanc : logoBleu}
+        sansMarque={!etroit}
         breadcrumb={p.fil}
         user={p.utilisateur}
         institution={p.institution}
@@ -143,7 +145,7 @@ export function Enveloppe(p: EnveloppeProps) {
         {etroit ? null : (
           <div className="gm-shell-nav">
             <div className="gm-shell-nav-fixe" style={{ top: dessus, height: hauteur }}>
-              <SideNav current={courante?.cle ?? ''} groups={groupes} height={hauteur} />
+              <SideNav current={courante?.cle ?? ''} groups={groupes} height={hauteur} logo={logoCouleur} couche={p.couche} />
             </div>
           </div>
         )}
@@ -153,7 +155,7 @@ export function Enveloppe(p: EnveloppeProps) {
       {etroit && navOuverte ? (
         // Tiroir de navigation : voile du catalogue (gm-overlay) et SideNav, fermeture par le voile ou Échap.
         <div className="gm-overlay" style={{ justifyContent: 'flex-start', alignItems: 'stretch', top: dessus, padding: 0 }} onClick={(e) => e.target === e.currentTarget && setNavOuverte(false)} onKeyDown={(e) => e.key === 'Escape' && setNavOuverte(false)}>
-          <SideNav current={courante?.cle ?? ''} groups={groupes} height={hauteur} />
+          <SideNav current={courante?.cle ?? ''} groups={groupes} height={hauteur} logo={logoCouleur} couche={p.couche} />
         </div>
       ) : null}
     </div>

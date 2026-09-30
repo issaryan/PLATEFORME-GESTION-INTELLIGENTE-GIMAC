@@ -13,6 +13,8 @@ export interface TopBarProps {
   layer?: Layer
   /** Adresse du logo monochrome (28 px) ; à défaut, le nom GIMAC en titrage. */
   logo?: string
+  /** Masque le logo et le nom de la couche quand la navigation latérale les porte déjà. */
+  sansMarque?: boolean
   breadcrumb?: { label: string; href?: string }[]
   user?: string
   live?: boolean
@@ -32,10 +34,10 @@ export function TopBar(p: TopBarProps) {
   return (
     <div>
       <header className="gm-topbar">
-        {p.logo ? <img src={p.logo} alt="GIMAC" height={28} /> : <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, color: 'var(--gm-color-action)', fontSize: 18 }}>GIMAC</span>}
-        <span className="gm-topbar-layer">{t(LAYER[layer])}</span>
+        {p.sansMarque ? null : p.logo ? <img src={p.logo} alt="GIMAC" height={28} /> : <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, color: 'var(--gm-color-action)', fontSize: 18 }}>GIMAC</span>}
+        {p.sansMarque ? null : <span className="gm-topbar-layer">{t(LAYER[layer])}</span>}
         {layer === 'portail' && p.institution ? <span className="gm-topbar-institution" style={{ fontWeight: 600 }}>{p.institution}</span> : null}
-        {layer !== 'portail' || p.onMenu ? <IconButton variant="ghost" icon="menu" label={t('topbar.replier')} onClick={p.onMenu} /> : null}
+        {p.onMenu ? <IconButton variant="ghost" icon="menu" label={t('topbar.replier')} onClick={p.onMenu} /> : null}
         {p.breadcrumb ? <Breadcrumb items={p.breadcrumb} /> : null}
         <span style={{ flex: 1 }} />
         {layer !== 'portail' ? <SearchInput label={t('topbar.recherche')} width={260} /> : null}

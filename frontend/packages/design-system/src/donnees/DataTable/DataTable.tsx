@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { cx } from '../../lib/cx'
 import type { ApiError, Severity, Status } from '../../lib/types'
 import { Icon } from '../../icones/Icon/Icon'
@@ -51,6 +51,9 @@ export interface DataTableProps<Row extends TableRow = TableRow> {
   liveUpdates?: boolean
   toolbar?: ReactNode
   className?: string
+  /** Pagination visible sur toute liste : sans `total` (pagination serveur), la table découpe elle-même
+   * ses lignes. `false` la retire (tableau de synthèse qui n'est pas une liste). */
+  pagination?: boolean
 }
 
 function cellule<Row extends TableRow>(c: Column<Row>, r: Row): ReactNode {
@@ -71,8 +74,15 @@ function cellule<Row extends TableRow>(c: Column<Row>, r: Row): ReactNode {
 export function DataTable<Row extends TableRow = TableRow>(p: DataTableProps<Row>) {
   const t = useLibelle()
   const cols = p.columns || []
-  const rows = p.rows || []
+  const toutes = p.rows || []
   const state = p.state || 'ok'
+  // Pagination locale : toute liste montre sa pagination, même courte (DS-GIMAC-01 §7.4).
+  const locale = p.total === undefined && p.pagination !== false
+  const [pageLocale, setPageLocale] = useState(1)
+  const [tailleLocale, setTailleLocale] = useState(p.pageSize || 10)
+  const pages = Math.max(1, Math.ceil(toutes.length / tailleLocale))
+  const courante = Math.min(pageLocale, pages)
+  const rows = locale ? toutes.slice((courante - 1) * tailleLocale, courante * tailleLocale) : toutes
   let body: ReactNode
   if (state === 'loading')
     body = (
@@ -156,6 +166,17 @@ export function DataTable<Row extends TableRow = TableRow>(p: DataTableProps<Row
         </thead>
         {body}
       </table>
+      {locale && state === 'ok' ? (
+        <div className="gm-table-toolbar" style={{ borderTop: 'var(--gm-border-1) solid var(--gm-color-border)', borderBottom: 0, justifyContent: 'flex-end' }}>
+          <Pagination
+            total={toutes.length}
+            page={courante}
+            pageSize={tailleLocale}
+            onPage={setPageLocale}
+            onPageSize={(n) => { setTailleLocale(n); setPageLocale(1) }}
+          />
+        </div>
+      ) : null}
       {p.total !== undefined && state === 'ok' ? (
         <div className="gm-table-toolbar" style={{ borderTop: 'var(--gm-border-1) solid var(--gm-color-border)', borderBottom: 0, justifyContent: 'flex-end' }}>
           <Pagination total={p.total} page={p.page || 1} pageSize={p.pageSize || 25} onPage={p.onPage} onPageSize={p.onPageSize} />

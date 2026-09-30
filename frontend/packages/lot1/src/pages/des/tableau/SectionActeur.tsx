@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 import { Button, Card, DataTable, Link, StatCard, StatusBadge, Tag, type Column, type Status } from '@gimac/design-system'
@@ -14,7 +14,6 @@ import { colonnesLiaisons, Echeance, Jour, useFormatDate } from '../parcours/com
 // liaisons et les blocages en cours. Le conducteur retrouve ses projets et les procès-verbaux à établir ;
 // les chefs de département, les liaisons sans conducteur et les liaisons en amont, avec leurs gestes.
 
-const PAR_PAGE = 10
 const AMONT = ['CADRAGE', 'LANCEMENT', 'ATELIERS']
 const LIBELLE_TON: Record<Status, string> = { ok: 'parcoursActeur.ton.ok', warn: 'parcoursActeur.ton.warn', crit: 'parcoursActeur.ton.crit', info: 'parcoursActeur.ton.info', neutral: 'parcoursActeur.ton.info' }
 
@@ -27,24 +26,10 @@ function Titre({ children, actions }: { children: ReactNode; actions?: ReactNode
   )
 }
 
-/** Liste paginée à l'affichage : le service sert déjà les lignes triées ; l'interface ne fait que les découper. */
+/** Liste servie triée par le service ; la table la pagine à l'affichage (pagination toujours visible). */
 function Paginee<T extends object>({ lignes, colonnes, cle, vide, aide }: { lignes: T[]; colonnes: Column<T>[]; cle: (r: T) => string; vide: string; aide?: string }) {
-  const [page, setPage] = useState(1)
-  const debut = (page - 1) * PAR_PAGE
   return (
-    <DataTable
-      columns={colonnes}
-      rows={lignes.slice(debut, debut + PAR_PAGE)}
-      rowKey={cle}
-      total={lignes.length > PAR_PAGE ? lignes.length : undefined}
-      page={page}
-      pageSize={PAR_PAGE}
-      onPage={setPage}
-      density="compact"
-      state={lignes.length ? 'ok' : 'empty'}
-      emptyText={vide}
-      emptyHelp={aide}
-    />
+    <DataTable columns={colonnes} rows={lignes} rowKey={cle} pageSize={10} density="compact" state={lignes.length ? 'ok' : 'empty'} emptyText={vide} emptyHelp={aide} />
   )
 }
 

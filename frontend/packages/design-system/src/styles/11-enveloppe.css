@@ -9,20 +9,27 @@
 .gm-envband-prod { background: var(--gm-color-action); color: var(--gm-color-text-inverse); }
 .gm-envband-recette { background: var(--gm-color-status-warn-bg); color: var(--gm-color-status-warn-fg); }
 .gm-envband-integration { background: var(--gm-color-surface-sunken); color: var(--gm-color-text-secondary); }
-.gm-sidenav { width: var(--gm-size-sidenav); flex-shrink: 0; background: var(--gm-color-surface); border-right: var(--gm-border-1) solid var(--gm-color-border); display: flex; flex-direction: column; overflow-y: auto; overscroll-behavior: contain; }
+.gm-sidenav { width: var(--gm-size-sidenav); flex-shrink: 0; display: flex; flex-direction: column; color: var(--gm-grey-100);
+  background: linear-gradient(180deg, var(--gm-blue-900) 0%, var(--gm-blue-700) 100%); overflow: hidden; }
+.gm-sidenav-entrees { flex: 1; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: rgb(255 255 255 / 0.25) transparent; }
+.gm-sidenav ul { list-style: none; margin: 0; padding: var(--gm-space-1) var(--gm-space-2); }
+.gm-sidenav a { display: flex; align-items: center; gap: var(--gm-space-3); padding: 0 var(--gm-space-3); height: var(--gm-size-control-md); color: rgb(255 255 255 / 0.86); text-decoration: none; border-left: var(--gm-border-4) solid transparent; transition: background-color 120ms ease, color 120ms ease; }
+.gm-sidenav a:hover { background: rgb(255 255 255 / 0.08); color: var(--gm-color-text-inverse); }
+.gm-sidenav a:focus-visible { outline: 2px solid var(--gm-color-text-inverse); outline-offset: -2px; }
+.gm-sidenav a[aria-current="page"] { border-left-color: var(--gm-green-300); background: rgb(255 255 255 / 0.14); color: var(--gm-color-text-inverse); font-weight: 600; }
+.gm-sidenav-group { padding: var(--gm-space-4) var(--gm-space-5) var(--gm-space-1); font-size: 11px; line-height: 16px; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 600; color: var(--gm-blue-300); }
+/* Cartouche du logo : fond blanc, comme l'en-tête de la page de connexion, filet bleu en haut. */
+.gm-sidenav-marque { display: flex; flex-direction: column; align-items: center; gap: var(--gm-space-1); padding: var(--gm-space-4) var(--gm-space-5) var(--gm-space-3); background: var(--gm-color-surface); border-top: var(--gm-border-4) solid var(--gm-blue-700); border-bottom: var(--gm-border-1) solid var(--gm-color-border); }
+.gm-sidenav-marque img { width: 100%; max-width: 208px; height: auto; display: block; }
+.gm-sidenav-marque span { font-size: 11px; line-height: 16px; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 600; color: var(--gm-blue-700); }
 /* Enveloppe fixe (§6.2) : la barre supérieure reste en haut et la navigation latérale reste en place
-   pendant le défilement du contenu ; seule la zone principale défile. */
+   pendant le défilement du contenu ; seule la zone principale défile. La colonne de navigation
+   s'étend jusqu'au pied de page ; son contenu se réduit à l'espace visible au-dessus de lui. */
 .gm-shell-top { position: sticky; top: 0; z-index: 30; }
-/* La colonne de navigation s'étend jusqu'au pied de page ; son contenu reste en place pendant le défilement. */
-.gm-shell-nav { align-self: stretch; flex-shrink: 0; background: var(--gm-color-surface); border-right: var(--gm-border-1) solid var(--gm-color-border); }
+.gm-shell-nav { align-self: stretch; flex-shrink: 0; background: var(--gm-blue-700); }
 .gm-shell-nav-fixe { position: sticky; display: flex; }
-.gm-shell-nav .gm-sidenav { border-right: 0; }
-.gm-sidenav ul { list-style: none; margin: 0; padding: var(--gm-space-2) 0; }
-.gm-sidenav a { display: flex; align-items: center; gap: var(--gm-space-3); padding: 0 var(--gm-space-4); height: var(--gm-size-control-md); color: var(--gm-color-text-primary); text-decoration: none; border-left: var(--gm-border-4) solid transparent; }
-.gm-sidenav a:hover { background: var(--gm-color-action-subtle); }
-.gm-sidenav a[aria-current="page"] { border-left-color: var(--gm-color-action); background: var(--gm-color-action-subtle); color: var(--gm-color-action); font-weight: 600; }
-.gm-sidenav-group { padding: var(--gm-space-3) var(--gm-space-4) var(--gm-space-1); font-size: 11px; line-height: 16px; letter-spacing: 0.04em; text-transform: uppercase; font-weight: 500; color: var(--gm-color-text-muted); }
-.gm-sidenav-foot { margin-top: auto; padding: var(--gm-space-3) var(--gm-space-4); font-size: 12px; line-height: 18px; color: var(--gm-color-text-muted); border-top: var(--gm-border-1) solid var(--gm-color-border); }
+/* Bande des États membres (Cameroun, Centrafrique, Congo, Gabon, Guinée équatoriale, Tchad). */
+.gm-sidenav-bande { flex-shrink: 0; height: 6px; background: linear-gradient(90deg, var(--gm-cemac-vert) 0 16.66%, var(--gm-cemac-jaune) 16.66% 33.33%, var(--gm-cemac-rouge) 33.33% 50%, var(--gm-cemac-bleu) 50% 66.66%, var(--gm-cemac-vert-clair) 66.66% 83.33%, var(--gm-cemac-marine) 83.33% 100%); }
 .gm-heading-display { font-family: var(--font-heading); font-size: 28px; line-height: 36px; font-weight: 700; margin: 0; }
 /* Pied de page GIMAC (§6.3) */
 .gm-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--gm-space-2) var(--gm-space-6); padding: var(--gm-space-3) var(--gm-space-6); background: var(--gm-color-surface); border-top: var(--gm-border-1) solid var(--gm-color-border); font-size: 12px; line-height: 18px; color: var(--gm-color-text-secondary); }

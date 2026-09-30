@@ -16,6 +16,13 @@
   --gm-green-600: #1e7f4b;
   --gm-green-300: #6fcf97;
   --gm-green-50: #e6f2ea;
+  /* Couleurs de la bande des six États membres, reprises du logo (ornement de la navigation). */
+  --gm-cemac-vert: #007a3d;
+  --gm-cemac-jaune: #fcd116;
+  --gm-cemac-rouge: #ce1126;
+  --gm-cemac-bleu: #3a75c4;
+  --gm-cemac-vert-clair: #009e49;
+  --gm-cemac-marine: #002664;
   --gm-ochre-700: #8a5a14;
   --gm-ochre-300: #f2c14e;
   --gm-ochre-50: #f8f0e0;

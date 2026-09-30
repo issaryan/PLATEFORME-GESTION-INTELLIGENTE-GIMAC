@@ -1,9 +1,9 @@
 // Internationalisation des composants : trois catalogues aux clés identiques, rendus sans texte
 // français résiduel en anglais et en espagnol, français par défaut sans fournisseur.
 import { afterEach, describe, expect, it } from 'vitest'
-import { cleanup, render } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import type { ReactNode } from 'react'
-import { DateField, Drawer, Hash, LangueProvider, Pagination, QuitusCircuit, type LangueDS } from '../src'
+import { DataTable, DateField, Drawer, Hash, LangueProvider, Pagination, QuitusCircuit, type LangueDS } from '../src'
 import { LIBELLES } from '../src/i18n/libelles'
 
 afterEach(cleanup)
@@ -61,5 +61,24 @@ describe('pagination', () => {
     expect(container.textContent).toContain('Page 1 sur 2')
     rerender(<Pagination total={16} page={1} pageSize={10} onPageSize={() => undefined} />)
     expect((container.querySelector('select') as HTMLSelectElement).value).toBe('10')
+  })
+})
+
+describe('DataTable : pagination visible sur toute liste', () => {
+  const colonnes = [{ key: 'n', header: 'N' }]
+  const lignes = Array.from({ length: 23 }, (_, i) => ({ n: `L${i + 1}` }))
+  it('liste courte : barre de pagination affichée ; liste longue : découpée et navigable', async () => {
+    const { container, rerender } = render(<DataTable columns={colonnes} rows={lignes.slice(0, 3)} />)
+    expect(container.textContent).toContain('Page 1 sur 1 · 3 éléments')
+    rerender(<DataTable columns={colonnes} rows={lignes} />)
+    expect(container.querySelectorAll('tbody tr')).toHaveLength(10)
+    fireEvent.click(screen.getByRole('button', { name: 'Suivante' }))
+    expect(container.textContent).toContain('L11')
+    fireEvent.change(screen.getByLabelText('Taille de page'), { target: { value: '25' } })
+    expect(container.querySelectorAll('tbody tr')).toHaveLength(23)
+  })
+  it('tableau de synthèse : pagination retirée à la demande', () => {
+    const { container } = render(<DataTable columns={colonnes} rows={lignes.slice(0, 3)} pagination={false} />)
+    expect(container.querySelector('.gm-pagination')).toBeNull()
   })
 })
