@@ -144,39 +144,45 @@ describe('Liaisons : « Mes projets » et désignation depuis la liste', () => {
   })
 })
 
-describe('Tableaux de bord : cadrage et « Mes projets »', () => {
-  it('chef du DES : liaisons en cadrage, adhérents à engager, lien vers le registre', async () => {
+describe('Tableaux de bord : « Mon travail » de chaque fonction (D-58)', () => {
+  const travail = () => screen.findByRole('region', { name: 'Mon travail' })
+  it('chef du DES : liaisons sans conducteur à désigner, ouverture d’une liaison, pilotage', async () => {
     tableau(CHEF_DES, ['ROLE_CHEF_DES'])
-    const s = await screen.findByRole('region', { name: 'Cadrage des liaisons' })
-    expect(within(s).getByText('Liaisons en cadrage')).toBeTruthy()
-    expect(within(s).getByText('Adhérents à engager')).toBeTruthy()
-    expect(await within(s).findByRole('link', { name: 'Établissement de microfinance C (Paiement mobile)' })).toBeTruthy()
-    expect(screen.queryByRole('region', { name: 'Mes projets' })).toBeNull()
-    fireEvent.click(within(s).getAllByRole('button')[0])
+    const s = await travail()
+    expect(await within(s).findByText('Conducteurs à désigner')).toBeTruthy()
+    expect(await within(s).findByRole('heading', { name: /Liaison sans conducteur/ })).toBeTruthy()
+    expect(within(s).getAllByRole('button', { name: 'Désigner le conducteur' }).length).toBeGreaterThan(0)
+    expect(screen.getByRole('button', { name: 'Ouvrir une liaison' })).toBeTruthy()
+    expect(await screen.findByRole('region', { name: 'Pilotage des projets de certification' })).toBeTruthy()
+    // Plus de section héritée du premier modèle ni de raccourcis en double de la navigation.
+    expect(screen.queryByRole('region', { name: 'Cadrage des liaisons' })).toBeNull()
+    expect(screen.queryByRole('region', { name: 'Mes accès' })).toBeNull()
   })
-  it('chef de la DDRM : section DDRM et cadrage, sans tuile d’adhérents en double', async () => {
+  it('chef de la DDRM : section DDRM, liaisons en phase amont', async () => {
     tableau(CHEF_DDRM, ['ROLE_CHEF_DDRM'])
-    const s = await screen.findByRole('region', { name: 'Cadrage des liaisons' })
-    expect(within(s).queryByText('Adhérents à engager')).toBeNull()
+    const s = await travail()
+    expect(await within(s).findByRole('heading', { name: /Liaisons en phase amont/ })).toBeTruthy()
     expect(screen.getByRole('region', { name: 'Relations avec les membres (DDRM)' })).toBeTruthy()
   })
-  it('conducteur de projet : ses projets, dont ceux en cadrage', async () => {
+  it('conducteur de projet : ses projets et les procès-verbaux à établir', async () => {
     tableau(CONDUCTEUR, ['ROLE_CONDUCTEUR_PROJET'])
-    const s = await screen.findByRole('region', { name: 'Mes projets' })
-    expect(await within(s).findByRole('link', { name: 'Établissement de paiement A (Carte interbancaire)' })).toBeTruthy()
-    await waitFor(() => expect(within(s).getByText('Dont en cadrage').parentElement?.textContent).toContain('1'))
-    expect(screen.queryByRole('region', { name: 'Cadrage des liaisons' })).toBeNull()
-    fireEvent.click(within(s).getAllByRole('button')[0])
+    const s = await travail()
+    expect(await within(s).findByText('Procès-verbaux à établir')).toBeTruthy()
+    expect(await within(s).findByRole('heading', { name: /^Mes projets \(/ })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Ouvrir une liaison' })).toBeNull()
   })
   it('conducteur sans projet : état explicite', async () => {
-    tableau(CONDUCTEUR, ['ROLE_CONDUCTEUR_PROJET'], avec({ listerLiaisons: async () => ({ contenu: [], total: 0 }) }))
-    expect(await screen.findByText('Aucune liaison ne vous est confiée pour le moment.')).toBeTruthy()
+    const s = servicesSimules({ latenceMs: 0 })
+    const vide = { ...s, parcours: { ...s.parcours, tableauActeur: async () => ({ fonction: 'CONDUCTEUR' as const, compteurs: [], taches: [], liaisons: [], blocages: [] }) } }
+    tableau(CONDUCTEUR, ['ROLE_CONDUCTEUR_PROJET'], vide)
+    expect(await screen.findByText('Aucune tâche à réaliser')).toBeTruthy()
+    expect(screen.getAllByText('Aucune liaison').length).toBeGreaterThan(0)
   })
-  it('normes et agréments : tableau de bord en lecture seule (pilotage et accès)', async () => {
+  it('normes et agréments : ses compteurs et ses tâches, sans pilotage consolidé', async () => {
     tableau(SNA, ['ROLE_SNA'])
-    expect(await screen.findByRole('link', { name: 'Pilotage des liaisons' })).toBeTruthy()
-    expect(screen.getByRole('region', { name: 'Mes accès' })).toBeTruthy()
-    expect(screen.queryByRole('region', { name: 'Cadrage des liaisons' })).toBeNull()
-    expect(screen.queryByRole('region', { name: 'Mes projets' })).toBeNull()
+    const s = await travail()
+    expect(await within(s).findByText('Essais en cours')).toBeTruthy()
+    expect(screen.queryByRole('region', { name: 'Pilotage des projets de certification' })).toBeNull()
+    expect(screen.queryByRole('region', { name: 'Mes accès' })).toBeNull()
   })
 })

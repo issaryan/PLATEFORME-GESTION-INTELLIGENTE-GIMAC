@@ -73,7 +73,7 @@ type Scenario = {
   fiche?: 'A_REMETTRE' | 'RENSEIGNEE'
 }
 const SERVICES_CARTE = [{ code: 'RETRAIT', libelle: 'Retrait' }, { code: 'PAIEMENT', libelle: 'Paiement marchand' }, { code: 'TRANSFERT', libelle: 'Transfert' }, { code: 'COMMERCE_ELECTRONIQUE', libelle: 'Commerce électronique' }]
-const SERVICES_MOBILE = [{ code: 'PAIEMENT_MARCHAND', libelle: 'Paiement marchand' }, { code: 'REMITTANCE', libelle: 'Rémittence entrante' }, { code: 'FACTURE', libelle: 'Paiement de facture' }, { code: 'CASH_IN', libelle: 'Cash-in agent' }]
+const SERVICES_MOBILE = [{ code: 'PAIEMENT_MARCHAND', libelle: 'Paiement marchand mobile' }, { code: 'REMITTANCE', libelle: 'Rémittence entrante' }, { code: 'FACTURE', libelle: 'Paiement de facture' }, { code: 'CASH_IN', libelle: 'Cash-in agent' }]
 const perimetre = (base: typeof SERVICES_CARTE, exclus: string[]) => base.map((s) => ({ ...s, inclus: !exclus.includes(s.code) }))
 
 const SCENARIOS: Scenario[] = [

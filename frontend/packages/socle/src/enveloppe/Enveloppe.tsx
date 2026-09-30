@@ -1,4 +1,4 @@
-import { useEffect, useState, type MouseEvent, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react'
 import { useLocation, useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { Banner, Footer, SideNav, TopBar, type IconName } from '@gimac/design-system'
@@ -46,6 +46,9 @@ export function Enveloppe(p: EnveloppeProps) {
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const [heure, setHeure] = useState(heureLocale)
+  // Hauteur du bloc supérieur fixe (barre, préférences, bandeau) : la navigation latérale se loge dessous.
+  const haut = useRef<HTMLDivElement>(null)
+  const [dessus, setDessus] = useState(56)
   const [hauteur, setHauteur] = useState(() => window.innerHeight - 56)
   const [prefs, setPrefs] = useState(false)
   // Sous 1 280 px (--gm-bp-lg), la navigation devient un tiroir ouvert par le bouton de menu (§6.2, §10.2).
@@ -59,13 +62,19 @@ export function Enveloppe(p: EnveloppeProps) {
   useEffect(() => {
     const id = window.setInterval(() => setHeure(heureLocale()), 1000)
     const redim = () => {
-      setHauteur(window.innerHeight - 56)
+      const h = haut.current?.offsetHeight || 56
+      setDessus(h)
+      setHauteur(window.innerHeight - h)
       setEtroit(window.innerWidth < 1280)
     }
+    redim()
     window.addEventListener('resize', redim)
+    const obs = typeof ResizeObserver === 'undefined' || !haut.current ? null : new ResizeObserver(redim)
+    if (obs && haut.current) obs.observe(haut.current)
     return () => {
       window.clearInterval(id)
       window.removeEventListener('resize', redim)
+      obs?.disconnect()
     }
   }, [])
 
@@ -99,6 +108,7 @@ export function Enveloppe(p: EnveloppeProps) {
 
   return (
     <div className="gm-root" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }} onClick={intercepter}>
+      <div ref={haut} className="gm-shell-top">
       <TopBar
         layer={p.couche}
         logo={theme === 'dark' ? logoBlanc : logoBleu}
@@ -116,14 +126,19 @@ export function Enveloppe(p: EnveloppeProps) {
         </div>
       ) : null}
       {p.etatCanal === 'lost' ? <Banner level="info">{t('live.perdu')}</Banner> : null}
+      </div>
       <div style={{ display: 'flex', alignItems: 'stretch', flex: 1 }}>
-        {etroit ? null : <SideNav current={courante?.cle ?? ''} groups={groupes} height={hauteur} />}
+        {etroit ? null : (
+          <div className="gm-shell-nav" style={{ top: dessus, height: hauteur }}>
+            <SideNav current={courante?.cle ?? ''} groups={groupes} height={hauteur} />
+          </div>
+        )}
         <main style={{ flex: 1, minWidth: 0, padding: etroit ? 'var(--gm-space-4)' : 'var(--gm-space-5) var(--gm-space-6)' }}>{p.children}</main>
       </div>
       <Footer version={p.version} documentation={p.documentation} correlationId={p.correlationId} />
       {etroit && navOuverte ? (
         // Tiroir de navigation : voile du catalogue (gm-overlay) et SideNav, fermeture par le voile ou Échap.
-        <div className="gm-overlay" style={{ justifyContent: 'flex-start', alignItems: 'stretch', top: 'var(--gm-size-topbar)', padding: 0 }} onClick={(e) => e.target === e.currentTarget && setNavOuverte(false)} onKeyDown={(e) => e.key === 'Escape' && setNavOuverte(false)}>
+        <div className="gm-overlay" style={{ justifyContent: 'flex-start', alignItems: 'stretch', top: dessus, padding: 0 }} onClick={(e) => e.target === e.currentTarget && setNavOuverte(false)} onKeyDown={(e) => e.key === 'Escape' && setNavOuverte(false)}>
           <SideNav current={courante?.cle ?? ''} groups={groupes} height={hauteur} />
         </div>
       ) : null}

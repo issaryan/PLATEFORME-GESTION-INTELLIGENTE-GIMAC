@@ -11,7 +11,7 @@ afterEach(cleanup)
 const enLangue = (langue: LangueDS, el: ReactNode) => render(<LangueProvider langue={langue}>{el}</LangueProvider>)
 const composants = (
   <>
-    <Pagination total={1284} page={1} pageSize={25} />
+    <Pagination total={1284} page={1} pageSize={25} onPageSize={() => undefined} />
     <Hash value="3f9a1c7e2b4d8f01a6c5e9b2d7f4a1c83e6b9d2f5a8c1e4b7d0f3a6c9e2b5d8f" />
     <Drawer inline type="Ticket" reference="TCK-000318" status="info" statusLabel="x" onClose={() => {}} />
     <QuitusCircuit quitus={{ tech: { state: 'signed', at: '25/09/2026 16:10' }, sec: { state: 'pending' } }} />
@@ -51,5 +51,15 @@ describe('rendu par langue', () => {
     expect(enLangue('en', composants).container.textContent).toContain('Rows per page')
     cleanup()
     expect(enLangue('es', composants).container.textContent).toContain('Filas por página')
+  })
+})
+
+describe('pagination', () => {
+  it('sans choix de taille, pas de sélecteur ; la taille affichée est celle appliquée', () => {
+    const { container, rerender } = render(<Pagination total={16} page={1} pageSize={10} />)
+    expect(container.querySelector('select')).toBeNull()
+    expect(container.textContent).toContain('Page 1 sur 2')
+    rerender(<Pagination total={16} page={1} pageSize={10} onPageSize={() => undefined} />)
+    expect((container.querySelector('select') as HTMLSelectElement).value).toBe('10')
   })
 })

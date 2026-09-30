@@ -9,7 +9,11 @@
 .gm-envband-prod { background: var(--gm-color-action); color: var(--gm-color-text-inverse); }
 .gm-envband-recette { background: var(--gm-color-status-warn-bg); color: var(--gm-color-status-warn-fg); }
 .gm-envband-integration { background: var(--gm-color-surface-sunken); color: var(--gm-color-text-secondary); }
-.gm-sidenav { width: var(--gm-size-sidenav); background: var(--gm-color-surface); border-right: var(--gm-border-1) solid var(--gm-color-border); display: flex; flex-direction: column; }
+.gm-sidenav { width: var(--gm-size-sidenav); flex-shrink: 0; background: var(--gm-color-surface); border-right: var(--gm-border-1) solid var(--gm-color-border); display: flex; flex-direction: column; overflow-y: auto; overscroll-behavior: contain; }
+/* Enveloppe fixe (§6.2) : la barre supérieure reste en haut et la navigation latérale reste en place
+   pendant le défilement du contenu ; seule la zone principale défile. */
+.gm-shell-top { position: sticky; top: 0; z-index: 30; }
+.gm-shell-nav { position: sticky; align-self: flex-start; flex-shrink: 0; display: flex; }
 .gm-sidenav ul { list-style: none; margin: 0; padding: var(--gm-space-2) 0; }
 .gm-sidenav a { display: flex; align-items: center; gap: var(--gm-space-3); padding: 0 var(--gm-space-4); height: var(--gm-size-control-md); color: var(--gm-color-text-primary); text-decoration: none; border-left: var(--gm-border-4) solid transparent; }
 .gm-sidenav a:hover { background: var(--gm-color-action-subtle); }

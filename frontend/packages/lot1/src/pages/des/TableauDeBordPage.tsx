@@ -2,12 +2,9 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 import { Card, EmptyState, Link, LinkList, PageHeader, PageSection, Skeleton, StatGrid, StatusBadge, Tag, type StatCardProps } from '@gimac/design-system'
 import { aPermission, usePermissions, useSession, type GroupeNavigation } from '@gimac/socle'
-import type { Liaison } from '../../modele/homologation'
 import { useIndicateursDdrm, useInstitutions } from '../../hooks/participant'
-import { useLiaisons } from '../../hooks/liaisons'
-import { etatInstitution, etatLiaison } from '../../dictionnaires'
+import { etatInstitution } from '../../dictionnaires'
 import { NAVIGATION_DES } from '../../navigation'
-import { mesProjetsParDefaut } from './liaisons/communs'
 import { fonctionsDe } from '../../permissions'
 import { SectionActeur } from './tableau/SectionActeur'
 import { SectionCockpit } from './tableau/SectionCockpit'
@@ -18,20 +15,6 @@ import { SectionCockpit } from './tableau/SectionCockpit'
 // PageHeader, PageSection, StatGrid, LinkList.
 
 type Tuile = StatCardProps & { key: string }
-
-/** Liaisons d'une liste, en liens vers leur fiche (état et phase à droite). */
-function useLiensLiaisons() {
-  const { t } = useTranslation()
-  return (ls: Liaison[]) =>
-    ls.map((l) => ({
-      key: l.id,
-      href: `/des/liaisons/${l.id}`,
-      label: `${l.institutionNom} (${t(`typeProjet.${l.typeProjet}`)})`,
-      meta: t(`phase.${l.phaseCourante}`, { defaultValue: l.phaseCourante }),
-      status: etatLiaison[l.etat]?.status ?? 'neutral',
-      statusLabel: t(etatLiaison[l.etat]?.label ?? l.etat),
-    }))
-}
 
 /** Chargé et chef de la DDRM : étapes 1 et 2 du parcours (prise de contact, adhésion). */
 function SectionDdrm({ approbateur, instructeur }: { approbateur: boolean; instructeur: boolean }) {
@@ -85,46 +68,6 @@ function SectionDdrm({ approbateur, instructeur }: { approbateur: boolean; instr
   )
 }
 
-/** Chef du DES et chef de la DDRM : cadrage des liaisons (étape 3, D-57) ; ils ouvrent et désignent. */
-function SectionCadrage({ adherents }: { adherents: boolean }) {
-  const { t } = useTranslation()
-  const navigate = useNavigate()
-  const liens = useLiensLiaisons()
-  const enCadrage = useLiaisons({ page: 1, taille: 5, filtres: { etat: 'OUVERTE' } })
-  const indicateurs = useIndicateursDdrm(adherents)
-  const tuiles: Tuile[] = [
-    { key: 'cadrage', label: t('tableau.cadrage.enCadrage'), value: enCadrage.data?.total ?? '…', status: 'info', statusLabel: t('phase.CADRAGE'), onClick: () => void navigate('/des/liaisons?etat=OUVERTE') },
-    ...(adherents ? [{ key: 'adherents', label: t('tableau.cadrage.adherents'), value: indicateurs.data?.adherents ?? '…', onClick: () => void navigate('/des/institutions?statut=ADHERENT') }] : []),
-  ]
-  return (
-    <PageSection title={t('tableau.cadrage.titre')} actions={<Link href="/des/institutions?statut=ADHERENT">{t('tableau.cadrage.ouvrir')}</Link>}>
-      <StatGrid label={t('tableau.cadrage.titre')} items={tuiles} />
-      {enCadrage.isPending ? <Skeleton height={48} /> : <LinkList label={t('tableau.cadrage.enCadrage')} items={liens(enCadrage.data?.contenu ?? [])} />}
-    </PageSection>
-  )
-}
-
-/** Conducteur de projet : « Mes projets », les liaisons dont il est le conducteur. */
-function SectionMesProjets() {
-  const { t } = useTranslation()
-  const navigate = useNavigate()
-  const liens = useLiensLiaisons()
-  const mes = useLiaisons({ page: 1, taille: 10, filtres: { mesProjets: true } })
-  const enCadrage = useLiaisons({ page: 1, taille: 1, filtres: { mesProjets: true, etat: 'OUVERTE' } })
-  return (
-    <PageSection title={t('tableau.projets.titre')} actions={<Link href="/des/liaisons?mesProjets=1">{t('tableau.voirTout')}</Link>}>
-      <StatGrid
-        label={t('tableau.projets.titre')}
-        items={[
-          { key: 'total', label: t('tableau.projets.total'), value: mes.data?.total ?? '…', onClick: () => void navigate('/des/liaisons?mesProjets=1') },
-          { key: 'cadrage', label: t('tableau.projets.enCadrage'), value: enCadrage.data?.total ?? '…', status: 'info', statusLabel: t('phase.CADRAGE') },
-        ]}
-      />
-      {mes.isPending ? <Skeleton height={48} /> : <LinkList label={t('tableau.projets.liste')} empty={t('tableau.projets.aucun')} items={liens(mes.data?.contenu ?? [])} />}
-    </PageSection>
-  )
-}
-
 /** Raccourcis vers les écrans que la matrice des rôles ouvre (navigation filtrée par permission). */
 function MesAcces({ permissions }: { permissions: string[] | undefined }) {
   const { t } = useTranslation()
@@ -147,12 +90,13 @@ export default function TableauDeBordPage() {
   const instructeur = lecteurRegistre && aPermission(permissions, 'PAR_ADHESION_INSTRUCT')
   const approbateur = lecteurRegistre && aPermission(permissions, 'PAR_TRANSITION_APPROVE')
   const ddrm = instructeur || approbateur
-  const cadrage = aPermission(permissions, 'HOM_LIAISON_OPEN') && aPermission(permissions, 'HOM_PROJECT_DESIGNATE')
-  const projets = mesProjetsParDefaut(session?.roles, permissions)
   const pilotage = aPermission(permissions, 'HOM_DASHBOARD_READ')
   const profils = (session?.roles ?? []).filter((r) => r !== 'ROLE_USER')
   const fonctions = fonctionsDe(session?.roles ?? [])
-  const rien = !ddrm && !cadrage && !projets && !pilotage && !lecteurRegistre
+  // « Mon travail » (étapes 3 à 10) couvre le cadrage, « Mes projets » et les gestes de chaque fonction.
+  const travail = fonctions.length > 0 && aPermission(permissions, 'HOM_LIAISON_LIST')
+  const cockpit = pilotage && fonctions.some((f) => f === 'DG' || f === 'CHEF_DES' || f === 'CHEF_DDRM')
+  const rien = !ddrm && !travail && !cockpit && !lecteurRegistre
   return (
     <div className="gm-col">
       <PageHeader
@@ -160,16 +104,10 @@ export default function TableauDeBordPage() {
         meta={session ? <><span>{t('tableau.bienvenue', { nom: session.nom })}</span>{profils.map((r) => <Tag key={r}>{t(`profil.${r}`, { defaultValue: r })}</Tag>)}</> : undefined}
       />
       {ddrm ? <SectionDdrm approbateur={approbateur} instructeur={instructeur} /> : null}
-      {cadrage ? <SectionCadrage adherents={!ddrm && lecteurRegistre} /> : null}
-      {projets ? <SectionMesProjets /> : null}
-      {pilotage ? (
-        <PageSection title={t('tableau.homologation.titre')}>
-          <LinkList label={t('tableau.homologation.titre')} items={[{ key: 'pilotage', href: '/des/liaisons?onglet=pilotage', label: t('tableau.homologation.pilotage') }]} />
-        </PageSection>
-      ) : null}
-      {pilotage && fonctions.some((f) => f === 'DG' || f === 'CHEF_DES' || f === 'CHEF_DDRM') ? <SectionCockpit /> : null}
-      {fonctions.length > 0 && aPermission(permissions, 'HOM_LIAISON_LIST') ? <SectionActeur fonctions={fonctions} /> : null}
-      <MesAcces permissions={permissions} />
+      {cockpit ? <SectionCockpit /> : null}
+      {travail ? <SectionActeur fonctions={fonctions} /> : null}
+      {/* Raccourcis seulement pour un profil sans section de travail (lecture seule) : la navigation les porte déjà. */}
+      {!travail ? <MesAcces permissions={permissions} /> : null}
       {rien ? <EmptyState icon="gauge" title={t('tableau.vide.titre')} text={t('tableau.vide.texte')} /> : null}
     </div>
   )

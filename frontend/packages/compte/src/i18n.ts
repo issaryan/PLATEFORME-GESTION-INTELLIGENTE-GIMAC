@@ -97,7 +97,7 @@ const fr: Record<string, string> = {
   'compte.profil.ROLE_CORRESPONDANT': 'Correspondant du participant',
   'compte.profil.ROLE_CHARGE_DDRM': 'Chargé de la DDRM',
   'compte.profil.ROLE_CHEF_DDRM': 'Chef de la DDRM',
-  'compte.profil.ROLE_SNA': 'Normes et agréments',
+  'compte.profil.ROLE_SNA': 'Normes et Agréments',
   'compte.profil.ROLE_PRODUCTION_MONETIQUE': 'Production monétique',
   'compte.profil.ROLE_POLE_RESEAU': 'Pôle réseau',
   'compte.profil.ROLE_POLE_SYSTEME': 'Pôle système',

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Card, DataTable, Link, type Column } from '@gimac/design-system'
 import type { EtapeCode, IndicateursPilotage } from '../../../../modele/parcours'
 import { Vide } from './commun'
+import { useFormatDate } from '../communs'
 
 // Les six questions de l'annexe B du compte rendu (critère d'acceptation, D-59) : chacune est un bloc lisible
 // qui y répond directement, avec un lien vers la liste filtrée des liaisons quand elle existe.
@@ -39,6 +40,7 @@ function Chiffre({ valeur, unite, aide }: { valeur: number | null; unite?: strin
 export function QuestionsPilotage({ indicateurs }: { indicateurs: IndicateursPilotage }) {
   const { t } = useTranslation()
   const q: Q = indicateurs.questions
+  const formatDate = useFormatDate()
   const parEtape = new Map(indicateurs.repartitionParEtape.map((r) => [r.etape, r.nombre]))
   const colDemandes: Column<Q['servicesPlusDemandes'][number]>[] = [
     { key: 'libelle', header: t('cockpit.colonne.service') },
@@ -47,12 +49,6 @@ export function QuestionsPilotage({ indicateurs }: { indicateurs: IndicateursPil
   const colLongs: Column<Q['servicesPlusLongs'][number]>[] = [
     { key: 'libelle', header: t('cockpit.colonne.service') },
     { key: 'delaiMoyenJours', header: t('cockpit.colonne.delaiMoyen'), type: 'number', render: (s) => t('cockpit.jours', { count: s.delaiMoyenJours }) },
-  ]
-  const colBloques: Column<Q['projetsBloques'][number]>[] = [
-    { key: 'reference', header: t('cockpit.colonne.liaison'), render: (b) => <Link href={`/des/parcours/${b.liaisonId}`} mono>{b.reference}</Link> },
-    { key: 'institutionNom', header: t('cockpit.colonne.participant') },
-    { key: 'motif', header: t('cockpit.colonne.motif') },
-    { key: 'depuis', header: t('cockpit.colonne.depuis'), render: (b) => t('cockpit.depuis', { date: b.depuis, count: b.jours }) },
   ]
   const colLancements: Column<Q['lancementsParService12Mois'][number]>[] = [
     { key: 'libelle', header: t('cockpit.colonne.service') },
@@ -84,7 +80,19 @@ export function QuestionsPilotage({ indicateurs }: { indicateurs: IndicateursPil
         <Question numero={5}>
           {q.projetsBloques.length ? (
             <>
-              <DataTable columns={colBloques} rows={q.projetsBloques} rowKey={(b) => `${b.liaisonId}-${b.depuis}`} density="compact" />
+              {/* Liste plutôt que tableau : dans un bloc d'un tiers de largeur, le motif reste lisible. */}
+              <ul className="gm-col" aria-label={t('cockpit.question.5')} style={{ listStyle: 'none', margin: 0, padding: 0, gap: 'var(--gm-space-3)' }}>
+                {q.projetsBloques.map((b) => (
+                  <li key={`${b.liaisonId}-${b.depuis}`} className="gm-col" style={{ gap: 2 }}>
+                    <span className="gm-row" style={{ gap: 'var(--gm-space-2)', flexWrap: 'wrap' }}>
+                      <Link href={`/des/parcours/${b.liaisonId}`} mono>{b.reference}</Link>
+                      <span>{b.institutionNom}</span>
+                    </span>
+                    <span>{b.motif}</span>
+                    <span className="gm-field-help">{t('cockpit.depuis', { date: formatDate(b.depuis), count: b.jours })}</span>
+                  </li>
+                ))}
+              </ul>
               <Link href="/des/parcours?bloquees=1">{t('cockpit.q5.voir')}</Link>
             </>
           ) : (

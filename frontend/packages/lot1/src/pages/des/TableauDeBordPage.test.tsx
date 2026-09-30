@@ -30,12 +30,16 @@ describe('DES-01 Tableau de bord par acteur', () => {
     expect(await screen.findByText('Fintech Kribi Pay')).toBeTruthy()
     expect(screen.queryByText('Propositions à trancher')).toBeNull()
   })
-  it('ingénieur d’homologation : pilotage des liaisons, sans section DDRM', async () => {
+  it('ingénieur d’homologation : « Mon travail » de Normes et Agréments, sans section DDRM ni raccourcis', async () => {
     page(INGENIEUR, ['ROLE_INGENIEUR_HOMOLOGATION'])
-    expect(await screen.findByText('Pilotage des liaisons')).toBeTruthy()
+    expect(await screen.findByRole('region', { name: 'Mon travail' })).toBeTruthy()
     expect(screen.queryByText('Relations avec les membres (DDRM)')).toBeNull()
+    expect(screen.queryByRole('region', { name: 'Mes accès' })).toBeNull()
+  })
+  it('lecture seule du registre : raccourcis vers les écrans ouverts par la matrice', async () => {
+    page(LECTURE, ['ROLE_LECTEUR'])
+    expect(await screen.findByRole('region', { name: 'Mes accès' })).toBeTruthy()
     expect(screen.getByText('Institutions membres')).toBeTruthy()
-    expect(screen.getByText('Liaisons et parcours')).toBeTruthy()
   })
   it('profil sans section : état vide explicite, aucun accès proposé', async () => {
     page([], ['ROLE_USER'])

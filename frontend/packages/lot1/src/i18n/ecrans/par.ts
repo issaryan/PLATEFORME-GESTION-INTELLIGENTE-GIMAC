@@ -36,7 +36,7 @@ export const catalogue: Catalogue = {
     "profil.ROLE_CORRESPONDANT": "Correspondant du participant",
     "profil.ROLE_CHARGE_DDRM": "Chargé de la DDRM",
     "profil.ROLE_CHEF_DDRM": "Chef de la DDRM",
-    "profil.ROLE_SNA": "Normes et agréments",
+    "profil.ROLE_SNA": "Normes et Agréments",
     "profil.ROLE_PRODUCTION_MONETIQUE": "Production monétique",
     "profil.ROLE_POLE_RESEAU": "Pôle réseau",
     "profil.ROLE_POLE_SYSTEME": "Pôle système",

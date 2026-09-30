@@ -14,7 +14,6 @@ import { colonnesLiaisons, Echeance, Jour, useFormatDate } from '../parcours/com
 // liaisons et les blocages en cours. Le conducteur retrouve ses projets et les procès-verbaux à établir ;
 // les chefs de département, les liaisons sans conducteur et les liaisons en amont, avec leurs gestes.
 
-const grille = { alignItems: 'stretch', gap: 'var(--gm-space-4)' }
 const PAR_PAGE = 10
 const AMONT = ['CADRAGE', 'LANCEMENT', 'ATELIERS']
 const LIBELLE_TON: Record<Status, string> = { ok: 'parcoursActeur.ton.ok', warn: 'parcoursActeur.ton.warn', crit: 'parcoursActeur.ton.crit', info: 'parcoursActeur.ton.info', neutral: 'parcoursActeur.ton.info' }
@@ -52,7 +51,7 @@ function Paginee<T extends object>({ lignes, colonnes, cle, vide, aide }: { lign
 function Compteurs({ tableau }: { tableau: TableauActeur }) {
   const { t } = useTranslation()
   return (
-    <div className="gm-row" style={grille} aria-label={t('parcoursActeur.compteurs')}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 'var(--gm-space-4)' }} aria-label={t('parcoursActeur.compteurs')}>
       {tableau.compteurs.map((c) => (
         <StatCard
           key={c.cle}
@@ -109,7 +108,7 @@ function Taches({ taches }: { taches: TacheActeur[] }) {
 function Blocages({ blocages }: { blocages: Blocage[] }) {
   const { t } = useTranslation()
   const colonnes: Column<Blocage>[] = [
-    { key: 'liaison', header: t('parcoursActeur.liaison'), render: (b) => <Link href={`/des/parcours/${b.liaisonId}?onglet=blocages`} mono>{b.liaisonId}</Link> },
+    { key: 'liaison', header: t('parcoursActeur.liaison'), render: (b) => <span style={{ whiteSpace: 'nowrap' }}><Link href={`/des/parcours/${b.liaisonId}?onglet=blocages`} mono>{b.liaisonId}</Link></span> },
     { key: 'motif', header: t('parcoursBlocages.motif'), render: (b) => b.motif },
     { key: 'depuis', header: t('parcoursBlocages.depuis'), render: (b) => <Jour iso={b.depuis} /> },
     { key: 'prochaineAction', header: t('parcoursBlocages.prochaineAction'), render: (b) => b.prochaineAction },
@@ -190,12 +189,7 @@ export function SectionActeur({ fonctions }: { fonctions: Fonction[] }) {
           ) : undefined
         }
       >
-        <span className="gm-row" style={{ gap: 'var(--gm-space-2)' }}>
-          {t('parcoursActeur.titre')}
-          {fonctions.map((f) => (
-            <Tag key={f}>{t(`parcours.fonction.${f}`)}</Tag>
-          ))}
-        </span>
+        {t('parcoursActeur.titre')}
       </Titre>
       <Donnees requete={tableau}>{(tb) => <MonTravail tableau={tb} fonctions={fonctions} />}</Donnees>
     </section>
