@@ -445,6 +445,8 @@ gimac:
       - certification.dossier
       - certification.attestation
       - certification.notification
+      - certification.proces-verbal
+      - certification.approbation
       - collaboration.message
   # Supervision de la plateforme (D-61, /api/plateforme/**) : les services supervisés sont la
   # passerelle et ceux de gimac.services ; chaque appel est borné par « delai ».

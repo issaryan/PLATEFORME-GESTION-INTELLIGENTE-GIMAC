@@ -221,6 +221,12 @@
         "clientRole": false
       },
       {
+        "name": "HOM_STEP_MANAGE",
+        "description": "Permission du lot 1",
+        "composite": false,
+        "clientRole": false
+      },
+      {
         "name": "CER_CIRCUIT_READ",
         "description": "Permission du lot 1",
         "composite": false,
@@ -306,6 +312,24 @@
       },
       {
         "name": "CER_PORTAL_READ",
+        "description": "Permission du lot 1",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "CER_PV_ESTABLISH",
+        "description": "Permission du lot 1",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "CER_SECURITY_VERIFY",
+        "description": "Permission du lot 1",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "CER_PORTAL_SIGN",
         "description": "Permission du lot 1",
         "composite": false,
         "clientRole": false
@@ -551,6 +575,7 @@
             "CER_ATTESTATION_ISSUE",
             "CER_REGISTER_EXPORT",
             "CER_ATTESTATION_STATUS_REQUEST",
+            "HOM_STEP_MANAGE",
             "COL_MESSAGE_READ",
             "COL_MESSAGE_SEND"
           ]
@@ -611,6 +636,8 @@
             "CER_REGISTER_READ",
             "PAR_INSTITUTION_READ",
             "CER_QUITUS_SECURITE_SIGN",
+            "CER_SECURITY_VERIFY",
+            "HOM_EVIDENCE_SUBMIT",
             "IAM_ACCOUNT_READ",
             "IAM_ACCOUNT_CREATE",
             "IAM_ACCOUNT_EDIT",
@@ -686,7 +713,8 @@
             "ROLE_USER",
             "HOM_PORTAL_READ",
             "HOM_PORTAL_SUBMIT",
-            "CER_PORTAL_READ"
+            "CER_PORTAL_READ",
+            "CER_PORTAL_SIGN"
           ]
         }
       },
@@ -710,6 +738,7 @@
             "PAR_INSTITUTION_EDIT",
             "PAR_ADHESION_INSTRUCT",
             "PAR_TRANSITION_REQUEST",
+            "HOM_STEP_MANAGE",
             "COL_MESSAGE_READ",
             "COL_MESSAGE_SEND"
           ]
@@ -738,6 +767,7 @@
             "PAR_ADHESION_INSTRUCT",
             "PAR_TRANSITION_REQUEST",
             "PAR_TRANSITION_APPROVE",
+            "HOM_STEP_MANAGE",
             "COL_MESSAGE_READ",
             "COL_MESSAGE_SEND"
           ]
@@ -761,6 +791,7 @@
             "PAR_INSTITUTION_READ",
             "HOM_EVIDENCE_SUBMIT",
             "HOM_OPERATION_VALIDATE",
+            "CER_DOSSIER_VERIFY",
             "COL_MESSAGE_READ",
             "COL_MESSAGE_SEND"
           ]
@@ -783,6 +814,8 @@
             "CER_REGISTER_READ",
             "PAR_INSTITUTION_READ",
             "HOM_EVIDENCE_SUBMIT",
+            "CER_CHANGE_RECORD_LINK",
+            "CER_GOLIVE_REPORT_SUBMIT",
             "COL_MESSAGE_READ",
             "COL_MESSAGE_SEND"
           ]
@@ -851,6 +884,9 @@
             "HOM_OPERATION_ASSIGN",
             "HOM_EVIDENCE_SUBMIT",
             "HOM_EVIDENCE_FILE_EXPORT",
+            "HOM_OPERATION_VALIDATE",
+            "HOM_STEP_MANAGE",
+            "CER_PV_ESTABLISH",
             "COL_MESSAGE_READ",
             "COL_MESSAGE_SEND"
           ]
@@ -1782,6 +1818,7 @@
         "default-roles-gimac",
         "INTERNAL_HOMOLOGATION_READ",
         "INTERNAL_DOCUMENT_READ",
+        "INTERNAL_DOCUMENT_DEPOSIT",
         "INTERNAL_IAM_READ"
       ]
     },

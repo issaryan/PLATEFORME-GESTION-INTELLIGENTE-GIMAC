@@ -210,3 +210,54 @@ test_collaboration_hors_messagerie_laissee_au_service if authz.allow with input 
 	"method": "GET", "path": "/bff/des/collaboration/espaces",
 	"permissions": [], "authentifie": true, "acr": "2",
 }
+
+# Verrous de la décision et gestes du portail (D-56).
+test_pv_etabli_par_le_conducteur if authz.allow with input as {
+	"method": "POST", "path": "/bff/des/certification/liaisons/L1/proces-verbal", "permissions": ["CER_PV_ESTABLISH"], "acr": "2", "authentifie": true,
+}
+
+test_pv_non_etabli_sans_permission if not authz.allow with input as {
+	"method": "POST", "path": "/bff/des/certification/liaisons/L1/proces-verbal", "permissions": ["CER_DOSSIER_READ"], "acr": "2", "authentifie": true,
+}
+
+test_signature_gimac_du_chef_des if authz.allow with input as {
+	"method": "POST", "path": "/bff/des/certification/liaisons/L1/proces-verbal/signature-gimac", "permissions": ["CER_QUITUS_TECHNIQUE_SIGN"], "acr": "2", "authentifie": true,
+}
+
+test_verification_des_attestations_reservee_au_rssi if not authz.allow with input as {
+	"method": "POST", "path": "/bff/des/certification/liaisons/L1/approbation-securite/attestations/PCI_DSS/verification", "permissions": ["CER_CHANGE_RECORD_LINK"], "acr": "2", "authentifie": true,
+}
+
+test_archivage_par_le_rssi if authz.allow with input as {
+	"method": "POST", "path": "/bff/des/certification/liaisons/L1/approbation-securite/archivage", "permissions": ["CER_SECURITY_VERIFY"], "acr": "3", "authentifie": true,
+}
+
+test_visa_dg_refuse_a_la_conformite if not authz.allow with input as {
+	"method": "POST", "path": "/bff/des/certification/liaisons/L1/approbation-securite/visas/DIRECTION_GENERALE", "permissions": ["CER_QUITUS_CONFORMITE_SIGN"], "acr": "2", "authentifie": true,
+}
+
+test_signature_du_participant if authz.allow with input as {
+	"method": "POST", "path": "/bff/portail/certification/liaisons/L1/proces-verbal/signature", "permissions": ["CER_PORTAL_READ", "CER_PORTAL_SIGN"],
+	"institution_id": "INST-0042", "acr": "2", "authentifie": true,
+}
+
+test_signature_du_participant_refusee_sans_permission if not authz.allow with input as {
+	"method": "POST", "path": "/bff/portail/certification/liaisons/L1/proces-verbal/signature", "permissions": ["CER_PORTAL_READ"],
+	"institution_id": "INST-0042", "acr": "2", "authentifie": true,
+}
+
+test_attestation_et_coordonnees_du_participant if {
+	authz.allow with input as {
+		"method": "POST", "path": "/bff/portail/certification/liaisons/L1/attestations/PCI_DSS", "permissions": ["HOM_PORTAL_SUBMIT"],
+		"institution_id": "INST-0042", "acr": "2", "authentifie": true,
+	}
+	authz.allow with input as {
+		"method": "PUT", "path": "/bff/portail/homologation/liaisons/L1/coordonnees-techniques", "permissions": ["HOM_PORTAL_SUBMIT"],
+		"institution_id": "INST-0042", "acr": "2", "authentifie": true,
+	}
+}
+
+test_livrable_du_participant_sans_institution_refuse if not authz.allow with input as {
+	"method": "POST", "path": "/bff/portail/homologation/operations/O1/livrable", "permissions": ["HOM_PORTAL_SUBMIT"],
+	"institution_id": "", "acr": "2", "authentifie": true,
+}

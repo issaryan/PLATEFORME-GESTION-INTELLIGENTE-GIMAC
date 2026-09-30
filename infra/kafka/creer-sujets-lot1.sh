@@ -2,6 +2,8 @@
 # Sujets Kafka du lot 1 (PI-GIMAC-01 §0.5) : sujets d'agrégat (6 partitions, rétention
 # 30 jours) et file de rebut .dlq de chaque sujet consommé. collaboration.message porte
 # collaboration.message-sent.v1 (D-64), clé = conversation, sans contenu de message.
+# certification.proces-verbal et certification.approbation portent les verrous de la décision (D-56),
+# consommés par MS-HOMOLOGATION (docs/lot1/parcours-backend.md §3).
 #   KAFKA_BOOTSTRAP  courtier (défaut : kafka:9092, réseau Docker gimac-des_default)
 #   REPLICATION      facteur de réplication (défaut 3 ; 1 sur le poste de développement)
 #   KAFKA_TOPICS     commande kafka-topics.sh ; par défaut, l'image officielle Apache Kafka
@@ -21,12 +23,13 @@ creer() { # sujet partitions [options...]
 
 for t in homologation.referential homologation.liaison homologation.operation homologation.campaign homologation.coverage \
          homologation.notification certification.circuit certification.quitus certification.dossier certification.attestation \
-         certification.notification \
+         certification.notification certification.proces-verbal certification.approbation \
          participant.institution participant.adhesion participant.transition \
          collaboration.message; do
   creer "$t" 6 --config retention.ms=2592000000 --config min.insync.replicas="$MIN_ISR"
 done
 for t in participant.subscription participant.status document.document iam.user iam.role homologation.liaison \
-         homologation.operation homologation.coverage certification.quitus certification.dossier certification.attestation; do
+         homologation.operation homologation.coverage certification.quitus certification.dossier certification.attestation \
+         certification.proces-verbal certification.approbation; do
   creer "$t.dlq" 3
 done
