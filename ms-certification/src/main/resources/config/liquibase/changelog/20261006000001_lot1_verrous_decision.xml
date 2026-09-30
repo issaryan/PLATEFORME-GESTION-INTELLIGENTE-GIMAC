@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Décision de mise en production, modèle hybride (REC-GIMAC-01 D-56) : verrou 1 (procès-verbal de
+     certification, rangs 17 à 19), verrou 2 (approbation de la sécurité, rangs 20 à 26), visas optionnels
+     (conformité, Direction Générale) et signatures personnelles scellées (D-35). Les jetons d'horodatage des
+     cachets réutilisent la table timestamp_token (objet_type = SIGNATURE). -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- Verrou 1 : procès-verbal de certification, un par liaison. -->
+    <changeSet id="lot1-verrou1-proces-verbal" author="lot1">
+        <createTable tableName="proces_verbal_certification">
+            <column name="id" type="uuid"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="liaison_id" type="uuid"><constraints nullable="false" unique="true" uniqueConstraintName="uk_pv_liaison"/></column>
+            <column name="reference" type="varchar(60)"/>
+            <column name="institution_id" type="varchar(80)"/>
+            <column name="institution_nom" type="varchar(200)"/>
+            <column name="type_projet" type="varchar(30)"/>
+            <column name="fintech" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+            <column name="etat" type="varchar(20)"><constraints nullable="false"/></column>
+            <column name="couverture_taux" type="integer"/>
+            <column name="couverture_numerateur" type="integer" defaultValueNumeric="0"><constraints nullable="false"/></column>
+            <column name="couverture_denominateur" type="integer" defaultValueNumeric="0"><constraints nullable="false"/></column>
+            <column name="couverture_constatee" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+            <column name="services_couverts" type="varchar(2000)"/>
+            <column name="etabli_par_id" type="varchar(80)"/>
+            <column name="etabli_par_nom" type="varchar(200)"/>
+            <column name="etabli_le" type="timestamptz"/>
+            <column name="empreinte" type="varchar(64)"/>
+            <column name="version" type="integer" defaultValueNumeric="0"><constraints nullable="false"/></column>
+        </createTable>
+    </changeSet>
+
+    <!-- Signatures personnelles (assertion FIDO2 vérifiée par MS-IAM) puis cachet horodaté de la plateforme (D-35). -->
+    <changeSet id="lot1-verrous-signature" author="lot1">
+        <createTable tableName="signature_verrou">
+            <column name="id" type="uuid"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="liaison_id" type="uuid"><constraints nullable="false"/></column>
+            <column name="objet" type="varchar(20)"><constraints nullable="false"/></column>
+            <column name="role" type="varchar(30)"><constraints nullable="false"/></column>
+            <column name="signataire_id" type="varchar(80)"><constraints nullable="false"/></column>
+            <column name="signataire_nom" type="varchar(200)"><constraints nullable="false"/></column>
+            <column name="fonction" type="varchar(30)"><constraints nullable="false"/></column>
+            <column name="favorable" type="boolean"><constraints nullable="false"/></column>
+            <column name="motif" type="varchar(1000)"/>
+            <column name="signe_le" type="timestamptz"><constraints nullable="false"/></column>
+            <column name="empreinte_objet" type="varchar(64)"/>
+            <column name="empreinte_decision" type="varchar(64)"><constraints nullable="false"/></column>
+            <column name="assertion" type="text"><constraints nullable="false"/></column>
+            <column name="cachet" type="text"><constraints nullable="false"/></column>
+            <column name="horodatage" type="timestamptz"><constraints nullable="false"/></column>
+            <column name="jeton_horodatage_id" type="uuid"/>
+        </createTable>
+        <addUniqueConstraint tableName="signature_verrou" columnNames="liaison_id, objet, role" constraintName="uk_signature_verrou_role"/>
+        <addForeignKeyConstraint baseTableName="signature_verrou" baseColumnNames="jeton_horodatage_id" constraintName="fk_signature_verrou_jeton"
+                                 referencedTableName="timestamp_token" referencedColumnNames="id"/>
+        <!-- Une signature est immuable : ni modification ni suppression (défense en profondeur, D-35). -->
+        <sql splitStatements="false">
+            CREATE OR REPLACE FUNCTION refuse_modification_signature_verrou() RETURNS trigger AS $$
+            BEGIN RAISE EXCEPTION 'signature immuable (%)', OLD.id; END; $$ LANGUAGE plpgsql;
+            CREATE TRIGGER trg_signature_verrou_immuable BEFORE UPDATE OR DELETE ON signature_verrou
+              FOR EACH ROW EXECUTE FUNCTION refuse_modification_signature_verrou();
+        </sql>
+    </changeSet>
+
+    <!-- Verrou 2 : approbation de la sécurité, ses attestations et ses visas optionnels. -->
+    <changeSet id="lot1-verrou2-approbation" author="lot1">
+        <createTable tableName="approbation_securite">
+            <column name="id" type="uuid"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="liaison_id" type="uuid"><constraints nullable="false" unique="true" uniqueConstraintName="uk_approbation_liaison"/></column>
+            <column name="institution_id" type="varchar(80)"/>
+            <column name="type_projet" type="varchar(30)"/>
+            <column name="fintech" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+            <column name="etat" type="varchar(30)"><constraints nullable="false"/></column>
+            <column name="dossier_document_ref" type="varchar(120)"/>
+            <column name="dossier_nom" type="varchar(255)"/>
+            <column name="dossier_empreinte" type="varchar(64)"/>
+            <column name="dossier_depose_le" type="timestamptz"/>
+            <column name="dossier_depose_par_id" type="varchar(80)"/>
+            <column name="dossier_depose_par_nom" type="varchar(200)"/>
+            <column name="fiche_reference" type="varchar(40)"/>
+            <column name="fiche_etat" type="varchar(20)"/>
+            <column name="fiche_lue_le" type="timestamptz"/>
+            <column name="archivee_le" type="timestamptz"/>
+            <column name="approuvee_le" type="timestamptz"/>
+            <column name="version" type="integer" defaultValueNumeric="0"><constraints nullable="false"/></column>
+        </createTable>
+        <createTable tableName="attestation_securite">
+            <column name="id" type="uuid"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="approbation_id" type="uuid"><constraints nullable="false"/></column>
+            <column name="type" type="varchar(20)"><constraints nullable="false"/></column>
+            <column name="requise" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
+            <column name="document_ref" type="varchar(120)"/>
+            <column name="nom" type="varchar(255)"/>
+            <column name="empreinte" type="varchar(64)"/>
+            <column name="depose_le" type="timestamptz"/>
+            <column name="depose_par" type="varchar(200)"/>
+            <column name="verifiee_le" type="timestamptz"/>
+            <column name="verifiee_par_id" type="varchar(80)"/>
+            <column name="verifiee_par_nom" type="varchar(200)"/>
+            <column name="archivee_le" type="timestamptz"/>
+            <column name="motif_rejet" type="varchar(1000)"/>
+        </createTable>
+        <addUniqueConstraint tableName="attestation_securite" columnNames="approbation_id, type" constraintName="uk_attestation_securite_type"/>
+        <addForeignKeyConstraint baseTableName="attestation_securite" baseColumnNames="approbation_id" constraintName="fk_attestation_securite_approbation"
+                                 referencedTableName="approbation_securite" referencedColumnNames="id"/>
+        <createTable tableName="visa_securite">
+            <column name="id" type="uuid"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="approbation_id" type="uuid"><constraints nullable="false"/></column>
+            <column name="nature" type="varchar(30)"><constraints nullable="false"/></column>
+            <column name="actif" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+            <column name="etat" type="varchar(30)"><constraints nullable="false"/></column>
+            <column name="motif" type="varchar(1000)"/>
+            <column name="signature_id" type="uuid"/>
+        </createTable>
+        <addUniqueConstraint tableName="visa_securite" columnNames="approbation_id, nature" constraintName="uk_visa_securite_nature"/>
+        <addForeignKeyConstraint baseTableName="visa_securite" baseColumnNames="approbation_id" constraintName="fk_visa_securite_approbation"
+                                 referencedTableName="approbation_securite" referencedColumnNames="id"/>
+        <addForeignKeyConstraint baseTableName="visa_securite" baseColumnNames="signature_id" constraintName="fk_visa_securite_signature"
+                                 referencedTableName="signature_verrou" referencedColumnNames="id"/>
+    </changeSet>
+
+</databaseChangeLog>

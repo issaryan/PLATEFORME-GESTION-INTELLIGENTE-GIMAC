@@ -33,7 +33,7 @@ import tools.jackson.databind.ObjectMapper;
  */
 @IntegrationTest
 @AutoConfigureMockMvc
-@WithMockUser
+@WithMockUser(authorities = cm.gimac.des.certification.security.AuthoritiesConstants.ADMIN)
 class ChangeRecordSnapshotResourceIT {
 
     private static final String DEFAULT_REFERENCE = "AAAAAAAAAA";

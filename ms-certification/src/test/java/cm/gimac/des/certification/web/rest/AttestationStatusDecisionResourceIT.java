@@ -34,7 +34,7 @@ import tools.jackson.databind.ObjectMapper;
  */
 @IntegrationTest
 @AutoConfigureMockMvc
-@WithMockUser
+@WithMockUser(authorities = cm.gimac.des.certification.security.AuthoritiesConstants.ADMIN)
 class AttestationStatusDecisionResourceIT {
 
     private static final TypeDemandeStatut DEFAULT_TYPE_DEMANDE = TypeDemandeStatut.REVOCATION;

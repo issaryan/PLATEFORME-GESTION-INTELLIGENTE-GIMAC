@@ -33,7 +33,7 @@ import tools.jackson.databind.ObjectMapper;
  */
 @IntegrationTest
 @AutoConfigureMockMvc
-@WithMockUser
+@WithMockUser(authorities = cm.gimac.des.certification.security.AuthoritiesConstants.ADMIN)
 class GoLiveReportResourceIT {
 
     private static final String DEFAULT_DOCUMENT_REF = "AAAAAAAAAA";

@@ -28,7 +28,7 @@ import org.springframework.util.MimeTypeUtils;
 
 @IntegrationTest
 @AutoConfigureMockMvc
-@WithMockUser
+@WithMockUser(authorities = cm.gimac.des.certification.security.AuthoritiesConstants.ADMIN)
 @ImportAutoConfiguration(TestChannelBinderConfiguration.class)
 @ActiveProfiles({ "kafka" })
 class CertificationKafkaResourceIT {

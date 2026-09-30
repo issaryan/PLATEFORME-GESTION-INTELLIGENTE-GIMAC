@@ -33,7 +33,7 @@ import tools.jackson.databind.ObjectMapper;
  */
 @IntegrationTest
 @AutoConfigureMockMvc
-@WithMockUser
+@WithMockUser(authorities = cm.gimac.des.certification.security.AuthoritiesConstants.ADMIN)
 class SignedDecisionResourceIT {
 
     private static final Boolean DEFAULT_DECISION_FAVORABLE = false;

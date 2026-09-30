@@ -35,7 +35,7 @@ import tools.jackson.databind.ObjectMapper;
  */
 @IntegrationTest
 @AutoConfigureMockMvc
-@WithMockUser
+@WithMockUser(authorities = cm.gimac.des.certification.security.AuthoritiesConstants.ADMIN)
 class QuitusResourceIT {
 
     private static final NatureQuitus DEFAULT_NATURE = NatureQuitus.TECHNIQUE;

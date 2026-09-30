@@ -106,6 +106,13 @@ jhipster:
 
 # Lot 1 : adresses des services joints en prod (Docker Compose, Kubernetes).
 gimac:
+  # Production : contexte de certification (MS-HOMOLOGATION), réauthentification (MS-IAM) et pièces
+  # (MS-DOCUMENT) réels. Le cachet (coffre, TSA) et la lecture des fiches de changement restent substitués
+  # tant que ces dispositifs ne sont pas livrés.
+  adapters:
+    homologation-reader: real
+    reauthentication: real
+    document-deposit: real
   services:
     homologation:
       url: http://homologation:8086

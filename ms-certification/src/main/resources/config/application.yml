@@ -259,12 +259,26 @@ spring:
       acks: all
       properties:
         enable.idempotence: true
+    # Consommateurs des événements des autres services (@KafkaListener) : chaînes, lecture depuis le
+    # début d'un sujet pour un nouveau groupe (aucun événement perdu au premier démarrage).
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+  # Portail : dépôt des attestations de sécurité (PDF), relayé vers MS-DOCUMENT.
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 21MB
 gimac:
   outbox:
     delay: 500
   # Sélection des adaptateurs, un port à la fois (PI §0.8) : real | stub.
   adapters:
     participant-reader: stub
+    # Contexte de certification d'une liaison (MS-HOMOLOGATION, parcours-backend §2).
+    homologation-reader: stub
     document-deposit: stub
     reauthentication: stub
     simulator-reader: stub
@@ -286,6 +300,17 @@ gimac:
   certification:
     change-record: {freshness: PT15M}
     renewal: {notice-days: 90}
+    # Visas optionnels (D-56) : types de projet (CARTE_INTERBANCAIRE, PAIEMENT_MOBILE, DELEGATAIRE) pour
+    # lesquels le visa est activé ; désactivés par défaut.
+    visas:
+      conformite:
+      direction-generale:
+  securite:
+    # D-61 : les routes métier exigent un jeton issu d'une authentification à deux facteurs.
+    # Keycloak pose acr selon le niveau d'assurance atteint (LoA 2 : mot de passe et OTP ou FIDO2).
+    double-facteur:
+      exige: true
+      niveaux-acr: 2,3
   kafka:
     rebut:
       actif: true

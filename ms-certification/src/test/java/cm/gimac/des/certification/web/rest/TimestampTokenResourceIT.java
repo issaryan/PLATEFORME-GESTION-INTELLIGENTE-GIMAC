@@ -32,7 +32,7 @@ import tools.jackson.databind.ObjectMapper;
  */
 @IntegrationTest
 @AutoConfigureMockMvc
-@WithMockUser
+@WithMockUser(authorities = cm.gimac.des.certification.security.AuthoritiesConstants.ADMIN)
 class TimestampTokenResourceIT {
 
     private static final String DEFAULT_OBJET_TYPE = "AAAAAAAAAA";

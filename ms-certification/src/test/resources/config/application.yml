@@ -19,6 +19,11 @@ spring:
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      auto-offset-reset: earliest
+      enable-auto-commit: false
   application:
     name: certification
   cloud:
@@ -94,3 +99,37 @@ management:
   health:
     mail:
       enabled: false
+
+# Lot 1 : adaptateurs de substitution et paramètres métier des tests (PI §0.8).
+gimac:
+  # Consommateurs Kafka démarrés à la demande par les tests qui les éprouvent.
+  consommateurs:
+    demarrage-automatique: false
+  outbox:
+    delay: 500
+  adapters:
+    homologation-reader: stub
+    document-deposit: stub
+    reauthentication: stub
+    key-vault-signing: stub
+    change-record-reader: stub
+  services:
+    homologation:
+      url: http://localhost:8086
+    document:
+      url: http://localhost:8083
+    iam:
+      url: http://localhost:8081
+  certification:
+    change-record: {freshness: PT15M}
+    # Visas activés pour le délégataire dans les tests (scénarios des visas) ; désactivés ailleurs.
+    visas:
+      conformite: DELEGATAIRE
+      direction-generale: DELEGATAIRE
+  kafka:
+    rebut:
+      actif: false
+  securite:
+    double-facteur:
+      exige: true
+      niveaux-acr: 2,3

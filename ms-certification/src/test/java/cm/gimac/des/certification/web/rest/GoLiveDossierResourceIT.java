@@ -35,7 +35,7 @@ import tools.jackson.databind.ObjectMapper;
  */
 @IntegrationTest
 @AutoConfigureMockMvc
-@WithMockUser
+@WithMockUser(authorities = cm.gimac.des.certification.security.AuthoritiesConstants.ADMIN)
 class GoLiveDossierResourceIT {
 
     private static final UUID DEFAULT_LIAISON_ID = UUID.randomUUID();

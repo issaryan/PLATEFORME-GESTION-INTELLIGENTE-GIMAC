@@ -34,7 +34,7 @@ import tools.jackson.databind.ObjectMapper;
  */
 @IntegrationTest
 @AutoConfigureMockMvc
-@WithMockUser
+@WithMockUser(authorities = cm.gimac.des.certification.security.AuthoritiesConstants.ADMIN)
 class AttestationResourceIT {
 
     private static final String DEFAULT_NUMERO = "AAAAAAAAAA";

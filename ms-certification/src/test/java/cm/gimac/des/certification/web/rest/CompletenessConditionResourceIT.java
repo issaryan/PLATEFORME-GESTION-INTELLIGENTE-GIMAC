@@ -34,7 +34,7 @@ import tools.jackson.databind.ObjectMapper;
  */
 @IntegrationTest
 @AutoConfigureMockMvc
-@WithMockUser
+@WithMockUser(authorities = cm.gimac.des.certification.security.AuthoritiesConstants.ADMIN)
 class CompletenessConditionResourceIT {
 
     private static final ConditionCode DEFAULT_CODE = ConditionCode.COUVERTURE_CERTIFICATION;

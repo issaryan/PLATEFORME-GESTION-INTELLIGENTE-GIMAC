@@ -1,16 +1,17 @@
 <!-- GIMAC:DEBUT : section du projet, tenue à jour à chaque modification ; la documentation JHipster suit. -->
 # MS-CERTIFICATION : plateforme DES du GIMAC
 
-Certification et mise en service : circuit des quatre quitus, impartialité des signataires, dossier de mise en service, fiche de changement lue sans écriture, scellement et horodatage, attestation PDF/A-3 signée, registre et révocation.
+Certification et mise en service. Décision de mise en production selon le modèle hybride (REC-GIMAC-01 D-56) : verrou 1, procès-verbal de certification établi à 100 % de couverture et signé par le GIMAC et le participant ; verrou 2, approbation de la sécurité (dossier et fiche de changement lue sans écriture, attestations vérifiées puis archivées) ; visas optionnels de la conformité et de la Direction Générale. Signatures personnelles FIDO2 puis cachet horodaté (D-35). Le circuit des quatre quitus du plan est remplacé ; dossier de mise en service, attestation PDF/A-3, registre et révocation (CER-08 à CER-15) restent au modèle généré.
 
 | Élément | Valeur |
 |---|---|
 | Lot | Lot 1, module de gestion de la certification (PI-GIMAC-01 v1.0, `docs/lot1`) |
-| Récits | CER-01 à CER-15 |
+| Récits | CER-01 à CER-07 réécrits selon D-56 (verrous 1 et 2, visas) ; CER-08 à CER-15 |
 | Port | 8087 |
 | Paquet Java | `cm.gimac.des.certification` |
 | Modèle | `ms-certification.jdl` (JDL du plan, §0.2) ; JHipster 9.4.0 ; Cucumber |
-| Entités (11) | CertificationCircuit, Quitus, SignedDecision, GoLiveDossier, CompletenessCondition, ChangeRecordSnapshot, GoLiveReport, TimestampToken, Attestation, CertificationRegisterEntry, AttestationStatusDecision |
+| Entités générées (11) | CertificationCircuit, Quitus, SignedDecision, GoLiveDossier, CompletenessCondition, ChangeRecordSnapshot, GoLiveReport, TimestampToken, Attestation, CertificationRegisterEntry, AttestationStatusDecision |
+| Entités des verrous (5, `domain/decision`) | ProcesVerbalCertification, SignatureVerrou (immuable), ApprobationSecurite, AttestationSecurite, VisaSecurite ; jetons d'horodatage des cachets dans `timestamp_token` (objet `SIGNATURE`) ; changelog `20261006000001_lot1_verrous_decision.xml` |
 | Règles de gestion (REC-GIMAC-01 §5) | RG-34, RG-73 |
 | Correspondances avec le plan | `docs/lot1/correspondance.md` |
 
@@ -21,6 +22,40 @@ Certification et mise en service : circuit des quatre quitus, impartialité des 
 - `infrastructure/` : outbox et relais CloudEvents, consommateur idempotent, adaptateurs réels et de substitution (`gimac.adapters.*`), jeton de service, contexte de corrélation.
 - `web/rest/` : ressources générées (`/api/<entités>`) et ressources du lot (`/api/v1/...`, exposées par la passerelle sous `/bff/des/certification` et `/bff/portail/certification`).
 - Test d'architecture : couches `application` et `infrastructure`, services de domaine sans Spring.
+
+## Verrous de la décision (D-56 ; `docs/lot1/parcours-backend.md`)
+
+Spécification exécutable : `frontend/packages/lot1/src/services/simule/parcours.ts` (objets `decision` et `portailParcours`) ; chemins et corps : `services/http/parcours.ts`. Toutes les routes exigent un jeton à deux facteurs (`acr` 2 ou 3, D-61) ; le portail exige en plus `institution_id` et répond 404 `HOM_LIAISON_NOT_FOUND` pour une liaison d'une autre institution, sans nom interne (fonctions `CONDUCTEUR`, `CHEF_DES`, `PRODUCTION_MONETIQUE`, `RSSI`, visas absents). Erreurs en `application/problem+json` avec `code`.
+
+| Route (`/api/v1`, passerelle `/bff/des/certification`) | Permission | Effet, refus |
+|---|---|---|
+| `GET /liaisons/{id}/proces-verbal` | `CER_DOSSIER_READ` | `ProcesVerbalCertification` ; actions `ETABLIR`, `ETABLIR_BLOQUE`, `SIGNER_GIMAC` filtrées par permission |
+| `POST /liaisons/{id}/proces-verbal` | `CER_PV_ESTABLISH` | Rang 18 ; `CER_COVERAGE_INCOMPLETE`, `CER_PV_NOT_READY`, `HOM_LIAISON_NOT_FOUND` |
+| `POST /liaisons/{id}/proces-verbal/signature-gimac` (`X-Reauth-Assertion`) | `CER_QUITUS_TECHNIQUE_SIGN` | Rang 19 ; `IAM_REAUTH_REQUIRED` (401), `CER_REAUTH_INVALID` (403), `CER_PV_NOT_SIGNABLE` |
+| `GET /liaisons/{id}/approbation-securite` | `CER_DOSSIER_READ` | `ApprobationSecurite` ; actions `CONSTITUER_DOSSIER`, `VERIFIER_ATTESTATION`, `ARCHIVER`, `REFERENCER_FICHE`, `RELIRE_FICHE`, `SIGNER_VISA_CONFORMITE`, `SIGNER_VISA_DG` |
+| `POST …/approbation-securite/dossier` `{documentId, empreinte, nom}` | `CER_CHANGE_RECORD_LINK` | Rang 20, empreinte revérifiée par MS-DOCUMENT ; `CER_PV_NOT_SIGNED`, `CER_DOCUMENT_INVALID`, `CER_CHANGE_DOSSIER_ALREADY_CONSTITUTED` |
+| `PUT …/approbation-securite/fiche` `{reference}` | `CER_CHANGE_RECORD_LINK` | Rang 26, fiche lue aussitôt ; `CER_CHANGE_RECORD_INVALID` |
+| `POST …/approbation-securite/fiche/lecture` | `CER_CHANGE_RECORD_LINK` ou `CER_SECURITY_VERIFY` | Lecture, jamais refaite ; approbation si dossier, archivage, fiche approuvée et visas actifs favorables ; `CER_CHANGE_RECORD_MISSING` |
+| `POST …/approbation-securite/attestations/{type}/verification` `{conforme, motif}` | `CER_SECURITY_VERIFY` | Rang 23 ; `CER_ATTESTATION_MISSING`, `CER_ATTESTATION_NOT_REQUIRED`, `CER_REJECTION_REASON_REQUIRED`, `CER_ATTESTATIONS_ARCHIVED` |
+| `POST …/approbation-securite/archivage` | `CER_SECURITY_VERIFY` | `CER_ATTESTATIONS_INCOMPLETE` |
+| `POST …/approbation-securite/visas/{CONFORMITE,DIRECTION_GENERALE}` `{favorable, motif}` (`X-Reauth-Assertion`) | `CER_QUITUS_CONFORMITE_SIGN`, `CER_QUITUS_DG_SIGN` | `CER_VISA_NOT_REQUIRED`, `CER_VISA_ALREADY_SIGNED`, `CER_REJECTION_REASON_REQUIRED` ; avis défavorable : `REFUSEE` |
+| `GET /portail/liaisons/{id}/proces-verbal` | `CER_PORTAL_READ` | Action `SIGNER_PARTICIPANT` |
+| `POST /portail/liaisons/{id}/proces-verbal/signature` (`X-Reauth-Assertion`) | `CER_PORTAL_SIGN` | Rang 19, participant |
+| `GET /portail/liaisons/{id}/approbation-securite` | `CER_PORTAL_READ` | Action `DEPOSER_ATTESTATION` |
+| `POST /portail/liaisons/{id}/attestations/{type}` (multipart `fichier`, PDF) | `HOM_PORTAL_SUBMIT` | Dépôt dans MS-DOCUMENT pour le compte du correspondant ; `CER_PV_NOT_SIGNED`, `CER_ATTESTATION_NOT_REQUIRED`, `CER_ATTESTATION_FORMAT`, `CER_ATTESTATION_ALREADY_VERIFIED` |
+
+Attestations exigées : `PCI_DSS` (carte interbancaire, délégataire), `ISO_27001` et `GSMA` (paiement mobile), `COBAC` en plus pour une fintech. Visas : `gimac.certification.visas.{conformite,direction-generale}` (types de projet, vides par défaut). Actes concurrents : 409 `CER_CONCURRENT_UPDATE`.
+
+Événements (outbox, CloudEvents 1.0, extension `institutionid` de la liaison) :
+
+| Type | Sujet |
+|---|---|
+| `certification.pv-established.v1` `{liaisonId, etabliPar, etabliParId, empreinte}` ; `certification.pv-signed.v1` `{liaisonId, signatures:[{fonction, signataire, signeLe}], empreinte}` ; complément `certification.pv-signature-recorded.v1` `{liaisonId, fonction, signeLe, etat}` | `certification.proces-verbal` |
+| `certification.change-record-constituted.v1`, `certification.change-record-referenced.v1`, `certification.attestations-archived.v1`, `certification.security-approved.v1` ; compléments `certification.attestation-submitted.v1`, `certification.attestation-verified.v1`, `certification.visa-signed.v1` | `certification.approbation` |
+
+Consommé : `homologation.coverage-established.v1` `{liaisonId, taux, servicesCouverts}` (sujets `homologation.liaison` et `homologation.coverage`, groupe `certification-couverture-etablie`, idempotent) : le procès-verbal devient établissable.
+
+Adaptateurs (`gimac.adapters.*`, `real` en production) : `homologation-reader` (contexte de certification, `GET /api/v1/interne/liaisons/{id}/contexte-certification`), `reauthentication` (MS-IAM, finalité `QUITUS_SIGN`), `document-deposit` (MS-DOCUMENT : empreinte et dépôt interne). `key-vault-signing` (cachet HMAC et horodatage locaux) et `change-record-reader` (fiche lue approuvée) n'ont qu'un substitut tant que le coffre, l'autorité d'horodatage et l'interface du dispositif de changement ne sont pas livrés.
 
 ## Lancer
 
@@ -39,6 +74,7 @@ Certification et mise en service : circuit des quatre quitus, impartialité des 
 | 2026-09-29 | — | Masquage des journaux activé (logback, `%maskedMsg`) ; 88 tests unitaires et 275 tests d'intégration réussis, image Jib construite (D-54). |
 | 2026-09-29 | — | Lot 1, Phase 0 : régénération depuis le JDL du plan en JHipster 9.4.0, corrections Liquibase (jsonb, unicités, index, immuabilité), messagerie (outbox, relais, consommateur idempotent, rebut `.dlq`), jeton de service, sécurité du portail, arborescence hexagonale (D-55). |
 | 2026-09-29 | — | Ports sortants `application/port/out` versionnés : la règle `out/` du `.gitignore` généré par JHipster les ignorait, le dépôt distant ne compilait pas ; exception `!src/**/out/` ajoutée |
+| 2026-09-30 | — | Verrous de la décision (D-56) : procès-verbal de certification (établissement à 100 %, signatures GIMAC et participant FIDO2 puis cachet horodaté, immuables), approbation de la sécurité (dossier et fiche de changement, attestations vérifiées avec rejet motivé puis archivées), visas optionnels, portail cloisonné ; contexte de MS-HOMOLOGATION, consommation de `homologation.coverage-established.v1`, 10 événements `certification.*` ; routes métier et portail à deux facteurs (D-61), CRUD généré réservé à l'administration ; seuils JaCoCo D-61 ; 191 tests unitaires et de sécurité, 233 tests d'intégration dont 8 scénarios Gherkin des verrous (`RecetteGherkinIT`), `verify` réussi. |
 <!-- GIMAC:FIN -->
 
 # certification
