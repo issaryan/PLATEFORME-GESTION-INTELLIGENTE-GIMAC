@@ -17,4 +17,7 @@ RUN mvn -B -ntp -q package
 FROM quay.io/keycloak/keycloak:26.7.4-0
 COPY --from=extension --chown=keycloak:keycloak /construction/target/gimac-totp.jar /opt/keycloak/providers/gimac-totp.jar
 COPY --chown=keycloak:keycloak themes/gimac /opt/keycloak/themes/gimac
-COPY --chown=keycloak:keycloak gimac-realm.json /opt/keycloak/data/import/gimac-realm.json
+# DOMAINE : gimac-realm.json (développement, recette : comptes test-*) ; gimac-realm-production.json pour la
+# production (aucun compte de test, seuls les comptes de service) : --build-arg DOMAINE=gimac-realm-production.json.
+ARG DOMAINE=gimac-realm.json
+COPY --chown=keycloak:keycloak ${DOMAINE} /opt/keycloak/data/import/gimac-realm.json

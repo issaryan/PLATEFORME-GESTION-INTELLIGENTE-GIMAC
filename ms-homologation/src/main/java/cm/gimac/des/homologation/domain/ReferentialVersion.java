@@ -273,7 +273,11 @@ public class ReferentialVersion implements Serializable {
 
     /** Actions proposées à l'interface (DES-12) selon l'état : l'écran ne recalcule pas la règle. */
     public List<String> actionsPermises() {
-        return etat == EtatVersionReferentiel.BROUILLON ? List.of("EDITER", "CONTROLER", "PUBLIER") : List.of("DERIVER");
+        if (etat == EtatVersionReferentiel.BROUILLON) {
+            return List.of("EDITER", "CONTROLER", "PUBLIER");
+        }
+        // Version en vigueur : cible d'une migration des liaisons ouvertes sur une version antérieure (HOM-03).
+        return etat == EtatVersionReferentiel.PUBLIEE ? List.of("DERIVER", "MIGRER") : List.of("DERIVER");
     }
 
     @Override

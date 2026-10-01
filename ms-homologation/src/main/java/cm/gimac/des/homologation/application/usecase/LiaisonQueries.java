@@ -56,10 +56,26 @@ public class LiaisonQueries {
         StatutParcours statut,
         List<EtapeCode> etapes,
         boolean bloquees,
-        boolean sansConducteur
+        boolean sansConducteur,
+        UUID versionId,
+        boolean actives
     ) {
         public Filtre(EtatLiaison etat, TypeProjet typeProjet, UUID institutionId, String recherche, UUID conducteurId) {
             this(etat, typeProjet, institutionId, recherche, conducteurId, null, List.of(), false, false);
+        }
+
+        public Filtre(
+            EtatLiaison etat,
+            TypeProjet typeProjet,
+            UUID institutionId,
+            String recherche,
+            UUID conducteurId,
+            StatutParcours statut,
+            List<EtapeCode> etapes,
+            boolean bloquees,
+            boolean sansConducteur
+        ) {
+            this(etat, typeProjet, institutionId, recherche, conducteurId, statut, etapes, bloquees, sansConducteur, null, false);
         }
     }
 
@@ -169,6 +185,9 @@ public class LiaisonQueries {
             if (f.typeProjet() != null) p.add(cb.equal(racine.get(Liaison_.TYPE_PROJET), f.typeProjet()));
             if (f.institutionId() != null) p.add(cb.equal(racine.get(Liaison_.INSTITUTION_ID), f.institutionId()));
             if (f.conducteurId() != null) p.add(cb.equal(racine.get(Liaison_.CHEF_DE_PROJET_ID), f.conducteurId()));
+            // Liaisons rattachées à une version du référentiel (impact d'une publication, HOM-03), actives : non closes.
+            if (f.versionId() != null) p.add(cb.equal(racine.get(Liaison_.VERSION).get("id"), f.versionId()));
+            if (f.actives()) p.add(cb.notEqual(racine.get(Liaison_.ETAT), EtatLiaison.CLOSE));
             if (f.recherche() != null && !f.recherche().isBlank()) {
                 p.add(cb.like(cb.lower(racine.get(Liaison_.INSTITUTION_NOM)), "%" + f.recherche().trim().toLowerCase(Locale.ROOT) + "%"));
             }

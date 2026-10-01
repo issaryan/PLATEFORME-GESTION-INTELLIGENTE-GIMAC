@@ -339,6 +339,35 @@ public final class Parcours {
         }
     }
 
+    /**
+     * Rangs dont le geste a sa route propre et ne se clôt jamais par un livrable ni une preuve libres : affectation
+     * des ressources (6), verrous de la décision tenus par MS-CERTIFICATION (18 à 25, D-56 : procès-verbal signé,
+     * dossier de changement, attestations, approbation de la sécurité), fiche de suivi et constat (32, 33).
+     */
+    public static final Set<String> GESTES_DEDIES = Set.of("6", "18", "19", "20", "21", "22", "23", "24", "25", "32", "33");
+
+    private static String empreinte(String texte) {
+        try {
+            return java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(texte.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    public static boolean gesteDedie(OperationParcours o) {
+        return GESTES_DEDIES.contains(o.getRang());
+    }
+
+    private static void refuserGesteLibre(OperationParcours o) {
+        if (gesteDedie(o)) {
+            throw HomologationException.conflict(
+                "HOM_OPERATION_DEDICATED_GESTURE",
+                "Cette opération se réalise par son geste propre (affectation, verrous de la décision ou fiche de suivi), jamais par une pièce libre.",
+                Map.of("rang", o.getRang())
+            );
+        }
+    }
+
     /** Geste attendu sur une opération ouverte : constat (rang 17), livrable (pièces de phase, rangs 7 à 11), sinon preuve. */
     public static String geste(OperationParcours o) {
         if ("17".equals(o.getRang())) {
@@ -349,6 +378,7 @@ public final class Parcours {
 
     /** Livrable (compte rendu, document de paramétrage…) : clôt l'opération ouverte ; jamais sur une clé ni une valeur de référence. */
     public void deposerLivrable(OperationParcours o, Preuve preuve, LocalDate aujourdhui) {
+        refuserGesteLibre(o);
         if (!o.getEtat().ouverte() || "17".equals(o.getRang()) || o.isCle() || o.isValeurReference()) {
             throw HomologationException.conflict("HOM_OPERATION_NOT_OPEN", "Cette opération n'attend pas de livrable.", Map.of("etat", o.getEtat().name(), "rang", o.getRang()));
         }
@@ -362,6 +392,7 @@ public final class Parcours {
      * en validation.
      */
     public void deposerPreuve(OperationParcours o, Preuve piece, String valeurReference, String codeControle, Ceremonie ceremonie) {
+        refuserGesteLibre(o);
         if (!o.getEtat().ouverte() || "17".equals(o.getRang())) {
             throw HomologationException.conflict("HOM_OPERATION_NOT_OPEN", "Cette opération n'est pas ouverte.", Map.of("etat", o.getEtat().name(), "rang", o.getRang()));
         }
@@ -608,6 +639,12 @@ public final class Parcours {
         etat.setVisasAttendus(List.of());
         for (String r : List.of("23", "24", "25")) {
             forcerCloture(r, preuve, aujourdhui);
+        }
+        // Rang 26 (ouverture de la fiche de changement) : il ne s'ouvre qu'après l'approbation, alors que la fiche est
+        // déjà référencée et lue (elle fonde l'approbation, D-56) ; sa preuve est cette référence, jamais redemandée.
+        String reference = etat.getFicheChangementReference();
+        if (reference != null) {
+            operation("26").filter(o -> o.getEtat().ouverte()).ifPresent(o -> terminer(o, Preuve.piece(reference, reference, empreinte(reference), aujourdhui, "PRODUCTION_MONETIQUE"), aujourdhui));
         }
         rafraichir();
     }

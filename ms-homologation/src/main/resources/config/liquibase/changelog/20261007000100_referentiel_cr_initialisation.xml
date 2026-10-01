@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Jeu d'initialisation des référentiels (D-59) : l'annexe A du CR-CERT-GIMAC-01 v1.4 chargée en une version
+     BROUILLON par type de projet. Sans version publiée, aucune liaison ne s'ouvre (HOM_REFERENTIAL_NONE_PUBLISHED) :
+     le titulaire de HOM_REFERENTIEL_PUBLISH contrôle puis publie chaque version depuis DES-12. Hors contexte
+     « test » : les tests créent leurs propres versions. Voir docs/exploitation/reprise-des-donnees.md. -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="referentiel-cr-annexe-a-brouillons" author="homologation" context="!test">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM referential_version</sqlCheck>
+        </preConditions>
+        <sqlFile path="config/liquibase/data/referentiel_cr_initialisation.sql" splitStatements="true" stripComments="true"/>
+    </changeSet>
+</databaseChangeLog>

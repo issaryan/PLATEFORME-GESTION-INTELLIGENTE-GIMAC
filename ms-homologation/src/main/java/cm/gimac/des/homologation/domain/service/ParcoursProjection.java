@@ -38,7 +38,8 @@ public class ParcoursProjection {
     public record Contexte(Personne conducteur, String banquePartenaireNom, Integer versionReferentiel) {}
 
     private static final Pattern RANGS_DECISION = Pattern.compile("^(1[89]|2[0-6])$");
-    private static final Pattern RANGS_MISE_EN_SERVICE = Pattern.compile("^3[2-5]$");
+    // Fiche de suivi (32, 33) et service supplémentaire (35) ; le suivi de l'exploitation (34) se prouve dans l'onglet des opérations.
+    private static final Pattern RANGS_MISE_EN_SERVICE = Pattern.compile("^3[235]$");
     private static final String CONDUCTEUR_GIMAC = "Conducteur de projet GIMAC";
 
     // ------------------------------------------------------------------ opérations
@@ -76,6 +77,10 @@ public class ParcoursProjection {
         switch (o.getEtat()) {
             case FAITE, SANS_OBJET -> l.add("CONSULTER");
             case A_FAIRE, EN_COURS -> {
+                if (Parcours.gesteDedie(o)) {
+                    // Geste réalisé ailleurs (affectation, onglet de la décision, fiche de suivi) : aucune pièce libre.
+                    break;
+                }
                 String geste = Parcours.geste(o);
                 boolean permis = switch (geste) {
                     case "CONSTATER_COUVERTURE" -> a.peut(Permissions.DOSSIER_VERIFY);
@@ -369,7 +374,7 @@ public class ParcoursProjection {
                 actions.add("RENSEIGNER");
             }
         } else {
-            if (e == EtatFicheSuivi.A_REMETTRE && p.etat().getStatut() == StatutParcours.EN_PRODUCTION && a.peut(Permissions.STEP_MANAGE)) {
+            if (e == EtatFicheSuivi.A_REMETTRE && p.etat().getStatut() == StatutParcours.EN_PRODUCTION && a.peut(Permissions.STEP_MANAGE, Permissions.DOSSIER_VERIFY)) {
                 actions.add("REMETTRE");
             }
             if (e == EtatFicheSuivi.RENSEIGNEE && a.peut(Permissions.DOSSIER_VERIFY)) {

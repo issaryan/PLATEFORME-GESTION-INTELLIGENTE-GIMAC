@@ -138,12 +138,14 @@ public class LiaisonsCadrageResource {
         @RequestParam(name = "etape", required = false) List<EtapeCode> etapes,
         @RequestParam(name = "bloquees", defaultValue = "false") boolean bloquees,
         @RequestParam(name = "sansConducteur", defaultValue = "false") boolean sansConducteur,
+        @RequestParam(name = "versionId", required = false) UUID versionId,
+        @RequestParam(name = "actives", defaultValue = "false") boolean actives,
         @RequestParam(name = "page", defaultValue = "0") int page,
         @RequestParam(name = "taille", defaultValue = "25") int taille,
         Authentication auth
     ) {
         UUID conducteur = mesProjets ? sujet(auth) : null;
-        var p = queries.lister(new LiaisonQueries.Filtre(etat, typeProjet, institutionId, recherche, conducteur, statut, etapes == null ? List.of() : etapes, bloquees, sansConducteur), page, taille, permissions(auth));
+        var p = queries.lister(new LiaisonQueries.Filtre(etat, typeProjet, institutionId, recherche, conducteur, statut, etapes == null ? List.of() : etapes, bloquees, sansConducteur, versionId, actives), page, taille, permissions(auth));
         return new PageVue<>(p.getContent().stream().map(LiaisonVue::de).toList(), p.getTotalElements());
     }
 

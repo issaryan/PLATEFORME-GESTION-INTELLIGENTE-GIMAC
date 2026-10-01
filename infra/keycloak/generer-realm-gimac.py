@@ -17,6 +17,9 @@ import uuid
 RACINE = pathlib.Path(__file__).resolve().parents[2]
 SOURCE = RACINE / "infra/docker-compose/realm-config/jhipster-realm.json"
 CIBLE = RACINE / "infra/keycloak/gimac-realm.json"
+# Domaine de production : identique, sans aucun compte de test (seuls les comptes de service des clients restent) ;
+# les comptes réels sont créés depuis la console (D-62, docs/exploitation/reprise-des-donnees.md).
+CIBLE_PRODUCTION = RACINE / "infra/keycloak/gimac-realm-production.json"
 
 PERMISSIONS = {
     "HOM": ["PROJECT_DESIGNATE", "REFERENTIEL_READ", "REFERENTIEL_EDIT", "REFERENTIEL_PUBLISH", "REFERENTIEL_MIGRATE", "LIAISON_READ", "LIAISON_LIST",
@@ -468,7 +471,11 @@ def main():
     assert realm["passwordPolicy"] == POLITIQUE_MOTS_DE_PASSE
     assert realm["resetPasswordAllowed"] is False and "gimac_actions_requises" in texte
     CIBLE.write_text(texte + "\n", encoding="utf-8")
+    production = dict(realm, users=[u for u in realm["users"] if u.get("serviceAccountClientId")])
+    assert not any(u["username"].startswith("test-") for u in production["users"]) and production["users"], "domaine de production"
+    CIBLE_PRODUCTION.write_text(json.dumps(production, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"{CIBLE.relative_to(RACINE)} : {len(TOUTES)} permissions, {len(PROFILS)} profils, {len(UTILISATEURS)} utilisateurs de test")
+    print(f"{CIBLE_PRODUCTION.relative_to(RACINE)} : {len(production['users'])} comptes de service, aucun compte de test")
 
 
 if __name__ == "__main__":

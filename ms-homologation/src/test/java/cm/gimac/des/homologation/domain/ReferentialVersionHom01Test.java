@@ -29,7 +29,7 @@ class ReferentialVersionHom01Test {
                 assertThat(ex.status()).isEqualTo(409);
                 assertThat(ex.details()).containsKey("brouillonDerivePropose");
             });
-        assertThat(v.actionsPermises()).containsExactly("DERIVER");
+        assertThat(v.actionsPermises()).containsExactly("DERIVER", "MIGRER");
         assertThat(v.ordreTopologiqueListe()).containsExactly("CI-AMONT-01");
     }
 

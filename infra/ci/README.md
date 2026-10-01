@@ -34,7 +34,8 @@ préparation ──┬── infra ─────┐
 | Préparation | `valider-backend.sh --lister-json` | liste des microservices munis de tests (matrice du backend), nom du registre |
 | Infrastructure | `valider-infra.sh` | voir ci-dessous |
 | Backend | `valider-backend.sh <service>` | `./mvnw -ntp -B clean verify` : compilation, Checkstyle, tests unitaires, d'intégration et d'acceptation, Modernizer, seuils JaCoCo du `pom.xml` ; rapports publiés en artefacts |
-| Frontend | `valider-frontend.sh --e2e` | `npm ci`, `npm run lint`, `npm run couverture`, `npm run build`, `npm run e2e:couverture` ; rapports de couverture publiés |
+| Frontend | `valider-frontend.sh --e2e` | `npm ci`, `npm run lint`, `npm run couverture`, `npm run build`, contrôle des paquets construits (aucune donnée fictive du simulateur), `npm run e2e:couverture` ; rapports de couverture publiés |
+| Contrat des routes | `valider-contrat.sh` | chaque appel HTTP du frontend a sa route de passerelle, une règle OPA qui le laisse passer et un contrôleur dont le `@PreAuthorize` admet la permission d'OPA (`contrat/routes.mjs`, écarts admis dans `contrat/ecarts-connus.txt`, tableau dans `docs/lot1/correspondance.md`) |
 | Sécurité | `valider-securite.sh` + Trivy | secrets dans l'arborescence et dans les commits nouveaux ; vulnérabilités des dépendances Maven et npm ; configuration Docker et Kubernetes (informatif) |
 | Images | `construire-images.sh --pousser <cible>` | microservices par Jib (profil `prod`), frontend (3 images) et Keycloak par Dockerfile ; publication dans GHCR et signature cosign |
 | Déploiement | `deployer-recette.sh <liste>` | `kubectl apply -k` de `infra/kubernetes-gimac` avec les images de ce commit, référencées par empreinte, puis attente des déploiements |
@@ -56,7 +57,8 @@ préparation ──┬── infra ─────┐
 5. **Supervision** : `promtool check config`, `promtool check rules`, `amtool check-config`.
 6. **Dockerfiles** : `hadolint --failure-threshold warning`.
 7. **Domaine Keycloak** : `generer-realm-gimac.py` est rejoué dans une copie ; le résultat doit
-   être identique à `infra/keycloak/gimac-realm.json` versionné. Aucun client confidentiel ne
+   être identique à `infra/keycloak/gimac-realm.json` et à `gimac-realm-production.json` (sans compte de
+   test, retenu par `--build-arg DOMAINE=gimac-realm-production.json`) versionnés. Aucun client confidentiel ne
    doit porter de secret en clair (seulement des variables `${…}`).
 8. **JSON et YAML** : syntaxe des JSON, `yamllint` (règles de `yamllint.yml`).
 9. **Chaîne** : `actionlint` sur `.github/workflows`.
@@ -75,6 +77,8 @@ infra/ci/valider-infra.sh                    # quelques secondes, sans conteneur
 infra/ci/valider-securite.sh                 # gitleaks (et trivy s'il est installé)
 infra/ci/valider-frontend.sh                 # lint, couverture, construction
 infra/ci/valider-frontend.sh --e2e           # + tests de bout en bout Playwright
+infra/ci/valider-contrat.sh                  # contrat des routes frontend, passerelle, OPA, contrôleurs
+node infra/ci/contrat/routes.mjs --markdown  # tableau route par route
 infra/ci/valider-backend.sh ms-iam           # un service (Docker requis pour Testcontainers)
 infra/ci/valider-backend.sh                  # les 14 services, l'un après l'autre
 infra/ci/valider-tout.sh                     # tout, dans l'ordre de la CI
@@ -123,7 +127,8 @@ Secrets à définir dans GitHub : `COSIGN_PRIVATE_KEY`, `COSIGN_PASSWORD` (dép�
 |---|---|
 | `commun.sh` | fonctions partagées : sections, états, bilan, résumé GitHub |
 | `installer-outils.sh` | installation des outils en versions épinglées |
-| `valider-infra.sh`, `valider-backend.sh`, `valider-frontend.sh`, `valider-securite.sh` | validations |
+| `valider-infra.sh`, `valider-backend.sh`, `valider-frontend.sh`, `valider-securite.sh`, `valider-contrat.sh` | validations |
+| `contrat/routes.mjs`, `contrat/ecarts-connus.txt` | contrôle du contrat des routes et écarts admis |
 | `valider-tout.sh` | toutes les validations sur le poste |
 | `construire-images.sh`, `deployer-recette.sh` | livraison et déploiement continus |
 | `deployer-serveur.sh`, `fusionner-domaine.py` | serveur de démonstration (10.20.36.214) : images construites sur place, démarrage par `gimac-dev.sh` avec `docker-compose.serveur.yml`, Keycloak persistant (domaine modifié réimporté en conservant comptes, mots de passe et TOTP), comptes nominatifs ; lancé par `.github/workflows/deploiement-serveur.yml` sur l'exécuteur auto-hébergé `gimac-214` à chaque poussée sur `main` |

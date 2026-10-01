@@ -11,12 +11,12 @@ import java.util.Set;
 
 /**
  * Couche de présentation qui ouvre le canal (/bff/{couche}/live) et sujets qu'elle peut recevoir.
- * La collaboration est réservée aux acteurs internes (D-64) : DES seulement.
+ * La collaboration est réservée aux acteurs internes (D-64) : DES et console, jamais le portail.
  */
 public enum Couche {
     DES(Set.of(HOMOLOGATION, CERTIFICATION, COLLABORATION)),
     PORTAIL(Set.of(HOMOLOGATION, CERTIFICATION)),
-    CONSOLE(Set.of(HOMOLOGATION, CERTIFICATION));
+    CONSOLE(Set.of(HOMOLOGATION, CERTIFICATION, COLLABORATION));
 
     private final Set<String> sujets;
 

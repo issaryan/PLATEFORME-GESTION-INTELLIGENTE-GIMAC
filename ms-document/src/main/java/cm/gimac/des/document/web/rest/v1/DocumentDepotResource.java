@@ -39,7 +39,9 @@ public class DocumentDepotResource {
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasAnyAuthority('PAR_ADHESION_INSTRUCT', 'HOM_EVIDENCE_SUBMIT', 'HOM_PORTAL_SUBMIT', 'DOC_DEPOSIT')")
+    // Déposants : instruction de l'adhésion, preuves, livrables d'étape (HOM_STEP_MANAGE), dossier de changement
+    // (CER_CHANGE_RECORD_LINK), portail ; chaque service revérifie ensuite la pièce rattachée.
+    @PreAuthorize("hasAnyAuthority('PAR_ADHESION_INSTRUCT', 'HOM_EVIDENCE_SUBMIT', 'HOM_STEP_MANAGE', 'CER_CHANGE_RECORD_LINK', 'HOM_PORTAL_SUBMIT', 'DOC_DEPOSIT')")
     public ResponseEntity<DocumentDeposeVue> deposer(
         @RequestPart(name = "fichier", required = false) MultipartFile fichier,
         @RequestParam(name = "finalite", required = false) String finalite,

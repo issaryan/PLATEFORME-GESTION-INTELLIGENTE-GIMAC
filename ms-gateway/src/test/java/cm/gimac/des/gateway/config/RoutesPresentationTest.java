@@ -114,7 +114,13 @@ class RoutesPresentationTest {
                 "/api/v1/messagerie/conversations/c1/lu"
             ),
             Arguments.of("/bff/des/collaboration/messagerie/non-lus", "${gimac.services.collaboration}", "/api/v1/messagerie/non-lus"),
-            Arguments.of("/bff/des/collaboration/messagerie/pieces/p1", "${gimac.services.collaboration}", "/api/v1/messagerie/pieces/p1")
+            Arguments.of("/bff/des/collaboration/messagerie/pieces/p1", "${gimac.services.collaboration}", "/api/v1/messagerie/pieces/p1"),
+            Arguments.of(
+                "/bff/console/collaboration/messagerie/conversations/c1/messages",
+                "${gimac.services.collaboration}",
+                "/api/v1/messagerie/conversations/c1/messages"
+            ),
+            Arguments.of("/bff/console/collaboration/messagerie/non-lus", "${gimac.services.collaboration}", "/api/v1/messagerie/non-lus")
         );
     }
 
@@ -147,7 +153,6 @@ class RoutesPresentationTest {
             "/bff/des/document/interne/documents/1/empreinte",
             "/bff/des/document/documents/1",
             "/bff/portail/collaboration/messagerie/conversations",
-            "/bff/console/collaboration/messagerie/conversations",
             "/bff/des/live",
             "/bff/portail/live",
             "/bff/portail/iam/avatars/u-123",

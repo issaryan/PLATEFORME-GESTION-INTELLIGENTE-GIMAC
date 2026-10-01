@@ -143,6 +143,23 @@ class LiaisonQueriesTest {
     }
 
     @Test
+    @DisplayName("Filtres de DES-12 : liaisons rattachées à une version du référentiel, actives (non closes)")
+    @SuppressWarnings({ "unchecked", "rawtypes" })
+    void filtreVersion() {
+        jakarta.persistence.criteria.Root racine = org.mockito.Mockito.mock(jakarta.persistence.criteria.Root.class);
+        jakarta.persistence.criteria.CriteriaQuery requete = org.mockito.Mockito.mock(jakarta.persistence.criteria.CriteriaQuery.class);
+        jakarta.persistence.criteria.CriteriaBuilder cb = org.mockito.Mockito.mock(jakarta.persistence.criteria.CriteriaBuilder.class);
+        jakarta.persistence.criteria.Path chemin = org.mockito.Mockito.mock(jakarta.persistence.criteria.Path.class);
+        when(racine.get(any(String.class))).thenReturn(chemin);
+        when(chemin.get(any(String.class))).thenReturn(chemin);
+        UUID version = UUID.randomUUID();
+        var f = new LiaisonQueries.Filtre(null, null, null, null, null, null, List.of(), false, false, version, true);
+        LiaisonQueries.specification(f).toPredicate(racine, requete, cb);
+        org.mockito.Mockito.verify(cb).equal(chemin, version);
+        org.mockito.Mockito.verify(cb).notEqual(chemin, EtatLiaison.CLOSE);
+    }
+
+    @Test
     @DisplayName("Portail : fiche sans nom interne ni action ; résumé du parcours joint à la fiche du DES")
     void portailEtParcours() {
         UUID conducteur = UUID.randomUUID();

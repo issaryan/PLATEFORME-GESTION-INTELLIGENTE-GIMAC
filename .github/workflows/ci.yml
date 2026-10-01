@@ -119,6 +119,10 @@ jobs:
         env:
           GIMAC_NPM_CI: "0"
         run: ../infra/ci/valider-frontend.sh --e2e
+      - name: Contrat des routes (frontend, passerelle, OPA, contrôleurs)
+        env:
+          GIMAC_CI_STRICT: "1"
+        run: ../infra/ci/valider-contrat.sh
       - name: Rapports de couverture et de tests de bout en bout
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7

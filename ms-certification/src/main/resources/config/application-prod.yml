@@ -106,13 +106,15 @@ jhipster:
 
 # Lot 1 : adresses des services joints en prod (Docker Compose, Kubernetes).
 gimac:
-  # Production : contexte de certification (MS-HOMOLOGATION), réauthentification (MS-IAM) et pièces
-  # (MS-DOCUMENT) réels. Le cachet (coffre, TSA) et la lecture des fiches de changement restent substitués
-  # tant que ces dispositifs ne sont pas livrés.
+  # Production : contexte de certification (MS-HOMOLOGATION), réauthentification (MS-IAM), pièces
+  # (MS-DOCUMENT) et lecture des fiches de changement (dispositif de gestion des changements) réels : aucune
+  # fiche n'est supposée approuvée. Le cachet (coffre, TSA) reste substitué tant que ces dispositifs ne sont pas
+  # livrés (autorité déclarée « SUBSTITUTION », prérequis de la mise en production : docs/exploitation).
   adapters:
     homologation-reader: real
     reauthentication: real
     document-deposit: real
+    change-record-reader: real
   services:
     homologation:
       url: http://homologation:8086
@@ -124,3 +126,6 @@ gimac:
       url: http://iam:8081
     audit:
       url: http://audit:8082
+    # Dispositif existant de gestion des changements (simulacre WireMock sous Docker Compose).
+    gestion-changements:
+      url: ${GIMAC_GESTION_CHANGEMENTS_URL:http://gestion-changements:8080}

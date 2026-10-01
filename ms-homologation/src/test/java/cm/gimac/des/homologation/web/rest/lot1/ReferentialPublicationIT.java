@@ -37,7 +37,7 @@ class ReferentialPublicationIT extends AbstractHomologationIT {
             .andExpect(jsonPath("$.etat").value("PUBLIEE"))
             .andExpect(jsonPath("$.numero").isNumber())
             .andExpect(jsonPath("$.ordreTopologique").value(contains("PM-AMONT-01", "PM-BR-01", "PM-AVAL-01")))
-            .andExpect(jsonPath("$.actionsPermises").value(contains("DERIVER")));
+            .andExpect(jsonPath("$.actionsPermises").value(contains("DERIVER", "MIGRER")));
 
         assertThat(
             jdbc.queryForObject(

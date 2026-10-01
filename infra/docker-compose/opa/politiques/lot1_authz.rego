@@ -23,7 +23,8 @@ regles := [
 	{"m": "POST", "re": `^/bff/des/homologation/parcours/operations/[^/]+/validation$`, "p": "HOM_OPERATION_VALIDATE"},
 	{"m": "POST", "re": `^/bff/des/homologation/parcours/operations/[^/]+/preuves$`, "p": "HOM_EVIDENCE_SUBMIT"},
 	{"m": "PUT", "re": `^/bff/des/homologation/liaisons/[^/]+/ressources$`, "p": "HOM_STEP_MANAGE"},
-	{"m": "POST", "re": `^/bff/des/homologation/(liaisons/[^/]+/blocages|blocages/[^/]+/levee|liaisons/[^/]+/fiche-suivi/remise)$`, "p": "HOM_STEP_MANAGE"},
+	{"m": "POST", "re": `^/bff/des/homologation/(liaisons/[^/]+/blocages|blocages/[^/]+/levee)$`, "p": "HOM_STEP_MANAGE"},
+	# Remise de la fiche de suivi : conducteur (HOM_STEP_MANAGE) ou Normes et Agréments (CER_DOSSIER_VERIFY), au @PreAuthorize.
 	{"m": "POST", "re": `^/bff/des/homologation/liaisons/[^/]+/(couverture|fiche-suivi)/constat$`, "p": "CER_DOSSIER_VERIFY"},
 	{"m": "GET", "re": `^/bff/des/homologation/tableaux-de-bord/(acteur|pilotage)$`, "p": "HOM_DASHBOARD_READ"},
 	{"m": "POST", "re": `^/bff/des/certification/circuits/[^/]+/quitus/technique$`, "p": "CER_QUITUS_TECHNIQUE_SIGN"},
@@ -72,18 +73,27 @@ regles := [
 	{"m": "POST", "re": `^/bff/console/iam/configuration/messagerie/test$`, "p": "PLATFORM_MESSAGING_EDIT"},
 	{"m": "GET", "re": `^/bff/console/iam/configuration/(profils|permissions)$`, "p": "IAM_ACCOUNT_READ"},
 	{"m": "PUT", "re": `^/bff/console/iam/configuration/profils/[^/]+/permissions$`, "p": "IAM_PROFILE_EDIT"},
-	# Messagerie instantanée de travail (D-64, docs/lot1/messagerie.md §1) : DES seulement.
-	{"m": "GET", "re": `^/bff/des/collaboration/messagerie/(annuaire|non-lus|conversations(/[^/]+(/messages)?)?|pieces/[^/]+)$`, "p": "COL_MESSAGE_READ"},
-	{"m": "POST", "re": `^/bff/des/collaboration/messagerie/conversations/[^/]+/lu$`, "p": "COL_MESSAGE_READ"},
-	{"m": "POST", "re": `^/bff/des/collaboration/messagerie/conversations(/[^/]+/messages)?$`, "p": "COL_MESSAGE_SEND"},
+	# Messagerie instantanée de travail (D-64, docs/lot1/messagerie.md §1) : tout membre interne du
+	# GIMAC, depuis le DES et depuis la console (RSSI, super administrateur).
+	{"m": "GET", "re": `^/bff/(des|console)/collaboration/messagerie/(annuaire|non-lus|conversations(/[^/]+(/messages)?)?|pieces/[^/]+)$`, "p": "COL_MESSAGE_READ"},
+	{"m": "POST", "re": `^/bff/(des|console)/collaboration/messagerie/conversations/[^/]+/lu$`, "p": "COL_MESSAGE_READ"},
+	{"m": "POST", "re": `^/bff/(des|console)/collaboration/messagerie/conversations(/[^/]+/messages)?$`, "p": "COL_MESSAGE_SEND"},
 ]
 
 # Routes internes des services (jeton de service) : jamais relayées depuis une couche de présentation.
 interne if regex.match(`^/bff/[^/]+/[^/]+/interne(/|$)`, input.path)
 
 # Messagerie (D-64) : seuls les chemins listés dans « regles » sont relayés ; tout autre chemin ou
-# méthode sous /bff/des/collaboration/messagerie est refusé (pas de repli sur @PreAuthorize).
-messagerie if regex.match(`^/bff/des/collaboration/messagerie(/|$)`, input.path)
+# méthode sous /bff/{des,console}/collaboration/messagerie est refusé (pas de repli sur @PreAuthorize).
+messagerie if regex.match(`^/bff/(des|console)/collaboration/messagerie(/|$)`, input.path)
+
+# Les correspondants des institutions (jeton portant une institution) n'ont jamais accès à la messagerie.
+compte_externe if input.institution_id != ""
+
+messagerie_externe if {
+	messagerie
+	compte_externe
+}
 
 # La collaboration est réservée aux acteurs internes : aucun chemin du portail n'est relayé.
 collaboration_portail if regex.match(`^/bff/portail/collaboration(/|$)`, input.path)
@@ -145,11 +155,12 @@ required_permission := regles[min(correspondances)].p if count(correspondances) 
 
 portail if startswith(input.path, "/bff/portail/")
 
-# Chemins du DES et de la console : la permission suffit.
+# Chemins du DES et de la console : la permission suffit (messagerie : comptes internes seulement).
 allow if {
 	not restreinte
 	not interne
 	not portail
+	not messagerie_externe
 	double_facteur
 	required_permission in input.permissions
 }

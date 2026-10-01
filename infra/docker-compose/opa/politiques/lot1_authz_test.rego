@@ -145,7 +145,7 @@ test_designation_conducteur if authz.allow with input as {
 	"authentifie": true, "acr": "2",
 }
 
-# D-64 : messagerie instantanée de travail (docs/lot1/messagerie.md §1), DES seulement.
+# D-64 : messagerie instantanée de travail (docs/lot1/messagerie.md §1), tout membre interne (DES et console).
 routes_messagerie := [
 	["GET", "/bff/des/collaboration/messagerie/annuaire", "COL_MESSAGE_READ"],
 	["GET", "/bff/des/collaboration/messagerie/conversations", "COL_MESSAGE_READ"],
@@ -157,6 +157,43 @@ routes_messagerie := [
 	["POST", "/bff/des/collaboration/messagerie/conversations", "COL_MESSAGE_SEND"],
 	["POST", "/bff/des/collaboration/messagerie/conversations/c1/messages", "COL_MESSAGE_SEND"],
 ]
+
+test_messagerie_console_avec_permission if {
+	every r in routes_messagerie {
+		authz.allow with input as {
+			"method": r[0], "path": replace(r[1], "/bff/des/", "/bff/console/"), "permissions": [r[2]],
+			"authentifie": true, "acr": "2",
+		}
+	}
+}
+
+test_messagerie_console_sans_permission if {
+	every r in routes_messagerie {
+		not authz.allow with input as {
+			"method": r[0], "path": replace(r[1], "/bff/des/", "/bff/console/"), "permissions": ["IAM_ACCOUNT_READ"],
+			"authentifie": true, "acr": "2",
+		}
+	}
+}
+
+test_messagerie_compte_externe_refuse if {
+	every r in routes_messagerie {
+		not authz.allow with input as {
+			"method": r[0], "path": r[1], "permissions": [r[2]], "institution_id": "INST-0042",
+			"authentifie": true, "acr": "2",
+		}
+	}
+}
+
+test_messagerie_compte_interne_institution_vide if authz.allow with input as {
+	"method": "GET", "path": "/bff/des/collaboration/messagerie/non-lus", "permissions": ["COL_MESSAGE_READ"],
+	"institution_id": "", "authentifie": true, "acr": "2",
+}
+
+test_messagerie_session_restreinte_refusee if not authz.allow with input as {
+	"method": "GET", "path": "/bff/console/collaboration/messagerie/non-lus", "permissions": ["COL_MESSAGE_READ"],
+	"authentifie": true, "acr": "2", "restreinte": true,
+}
 
 test_messagerie_avec_permission if {
 	every r in routes_messagerie {
@@ -269,7 +306,6 @@ routes_parcours := [
 	["PUT", "/bff/des/homologation/liaisons/l1/ressources", "HOM_STEP_MANAGE"],
 	["POST", "/bff/des/homologation/liaisons/l1/blocages", "HOM_STEP_MANAGE"],
 	["POST", "/bff/des/homologation/blocages/b1/levee", "HOM_STEP_MANAGE"],
-	["POST", "/bff/des/homologation/liaisons/l1/fiche-suivi/remise", "HOM_STEP_MANAGE"],
 	["POST", "/bff/des/homologation/liaisons/l1/couverture/constat", "CER_DOSSIER_VERIFY"],
 	["POST", "/bff/des/homologation/liaisons/l1/fiche-suivi/constat", "CER_DOSSIER_VERIFY"],
 	["GET", "/bff/des/homologation/tableaux-de-bord/acteur", "HOM_DASHBOARD_READ"],
@@ -291,6 +327,19 @@ test_parcours_sans_permission if {
 test_parcours_livrable_laisse_au_service if authz.allow with input as {
 	"method": "POST", "path": "/bff/des/homologation/parcours/operations/o1/livrable", "permissions": ["HOM_STEP_MANAGE"],
 	"authentifie": true, "acr": "2",
+}
+
+# Remise de la fiche de suivi : conducteur ou Normes et Agréments, décidé par le @PreAuthorize du service.
+test_parcours_remise_fiche_laissee_au_service if authz.allow with input as {
+	"method": "POST", "path": "/bff/des/homologation/liaisons/l1/fiche-suivi/remise", "permissions": ["CER_DOSSIER_VERIFY"],
+	"authentifie": true, "acr": "2",
+}
+
+# Dépôt d'une pièce depuis le DES : livrable d'étape (HOM_STEP_MANAGE) et dossier de changement (CER_CHANGE_RECORD_LINK).
+test_depot_document_livrable_et_dossier_changement if {
+	every p in ["HOM_STEP_MANAGE", "CER_CHANGE_RECORD_LINK"] {
+		authz.allow with input as {"method": "POST", "path": "/bff/des/document/documents", "permissions": [p], "authentifie": true, "acr": "2"}
+	}
 }
 
 test_contexte_certification_interne_refuse if not authz.allow with input as {

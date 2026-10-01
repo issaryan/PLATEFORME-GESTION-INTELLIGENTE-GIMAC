@@ -23,7 +23,8 @@ public enum Fonction {
     RSSI("ROLE_RSSI"),
     CONFORMITE("ROLE_CONFORMITE"),
     DG("ROLE_DG"),
-    EXPLOITATION("ROLE_EXPLOITATION"),
+    // Exploitation et supervision (CR §3) : tenue par la production monétique, aucun profil propre (D-58).
+    EXPLOITATION("ROLE_PRODUCTION_MONETIQUE"),
     PARTICIPANT("ROLE_CORRESPONDANT"),
     BANQUE_PARTENAIRE,
     PERSONNALISATEUR;
@@ -57,7 +58,12 @@ public enum Fonction {
     /** Fonctions portées par une session (un utilisateur peut détenir plusieurs profils). */
     public static Set<Fonction> desProfils(Collection<String> autorites) {
         Set<Fonction> fonctions = EnumSet.noneOf(Fonction.class);
-        autorites.forEach(a -> duProfil(a).ifPresent(fonctions::add));
+        // Un profil peut conférer plusieurs fonctions (production monétique : aussi l'exploitation).
+        for (Fonction f : values()) {
+            if (f != CHEFS_DEPARTEMENT && f.profils.stream().anyMatch(autorites::contains)) {
+                fonctions.add(f);
+            }
+        }
         return fonctions;
     }
 }

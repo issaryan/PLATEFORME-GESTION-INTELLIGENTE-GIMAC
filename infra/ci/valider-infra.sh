@@ -167,8 +167,9 @@ valider_keycloak() {
   cp "$INFRA/keycloak/generer-realm-gimac.py" "$copie/infra/keycloak/"
   cp "$COMPOSE/realm-config/jhipster-realm.json" "$copie/infra/docker-compose/realm-config/"
   if python3 "$copie/infra/keycloak/generer-realm-gimac.py" >/dev/null; then
-    if diff -q "$INFRA/keycloak/gimac-realm.json" "$copie/infra/keycloak/gimac-realm.json" >/dev/null; then
-      reussi "gimac-realm.json identique à la sortie de generer-realm-gimac.py"
+    if diff -q "$INFRA/keycloak/gimac-realm.json" "$copie/infra/keycloak/gimac-realm.json" >/dev/null \
+      && diff -q "$INFRA/keycloak/gimac-realm-production.json" "$copie/infra/keycloak/gimac-realm-production.json" >/dev/null; then
+      reussi "gimac-realm.json et gimac-realm-production.json (sans compte de test) identiques à la sortie de generer-realm-gimac.py"
     else
       diff -u "$INFRA/keycloak/gimac-realm.json" "$copie/infra/keycloak/gimac-realm.json" | head -40 || true
       echec "gimac-realm.json désynchronisé : lancer « python3 infra/keycloak/generer-realm-gimac.py » et versionner le résultat"

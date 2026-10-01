@@ -67,7 +67,7 @@ class DocumentResourceSecurityTest {
     static final String SHA = "0f".repeat(32);
     static final String DEPOT = "/api/v1/documents";
     static final String EMPREINTE = "/api/v1/interne/documents/" + ID + "/empreinte";
-    static final String[] PERMISSIONS_DE_DEPOT = { "PAR_ADHESION_INSTRUCT", "HOM_EVIDENCE_SUBMIT", "HOM_PORTAL_SUBMIT", "DOC_DEPOSIT" };
+    static final String[] PERMISSIONS_DE_DEPOT = { "PAR_ADHESION_INSTRUCT", "HOM_EVIDENCE_SUBMIT", "HOM_STEP_MANAGE", "CER_CHANGE_RECORD_LINK", "HOM_PORTAL_SUBMIT", "DOC_DEPOSIT" };
 
     @Autowired
     MockMvc mvc;
@@ -140,7 +140,7 @@ class DocumentResourceSecurityTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = { "PAR_ADHESION_INSTRUCT", "HOM_EVIDENCE_SUBMIT", "HOM_PORTAL_SUBMIT", "DOC_DEPOSIT" })
+    @ValueSource(strings = { "PAR_ADHESION_INSTRUCT", "HOM_EVIDENCE_SUBMIT", "HOM_STEP_MANAGE", "CER_CHANGE_RECORD_LINK", "HOM_PORTAL_SUBMIT", "DOC_DEPOSIT" })
     @DisplayName("Dépôt avec le second facteur et l'une des permissions : 201")
     void depotAvecPermission(String permission) throws Exception {
         mvc

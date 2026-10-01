@@ -216,18 +216,18 @@ spring:
                 - OpaAuthorize
                 - RewritePath=/bff/(?<couche>des|portail)/document/documents, /api/v1/documents
             # MS-COLLABORATION, messagerie instantanée de travail (D-64, docs/lot1/messagerie.md §1) :
-            # DES seulement. Envois multipart relayés en flux (5 pièces de 20 Mo au plus) : la
+            # tout membre interne, depuis le DES et la console (OPA refuse les comptes d'institution). Envois multipart relayés en flux (5 pièces de 20 Mo au plus) : la
             # taille annoncée est bornée à 101 Mo (pièces, partie JSON et délimiteurs), au-delà 413.
             - id: des-collaboration-messagerie
               uri: ${gimac.services.collaboration}
               predicates:
-                - Path=/bff/des/collaboration/messagerie/**
+                - Path=/bff/des/collaboration/messagerie/**,/bff/console/collaboration/messagerie/**
               filters:
                 - OpaAuthorize
                 - name: RequestSize
                   args:
                     maxSize: 101MB
-                - RewritePath=/bff/des/collaboration/messagerie/(?<p>.*), /api/v1/messagerie/${p}
+                - RewritePath=/bff/(?<couche>des|console)/collaboration/messagerie/(?<p>.*), /api/v1/messagerie/${p}
             - id: iam_route
               uri: ${gimac.services.iam}
               predicates:

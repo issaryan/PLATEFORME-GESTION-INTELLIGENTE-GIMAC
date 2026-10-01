@@ -1,0 +1,49 @@
+# Écarts connus du contrat des routes (infra/ci/contrat/routes.mjs, docs/lot1/correspondance.md).
+# Routes appelées par des écrans antérieurs au modèle du parcours (D-56 à D-58), que le backend ne sert pas.
+# Chaque ligne : MÉTHODE chemin  # motif. Un écart résolu doit être retiré : le contrôle échoue sinon.
+POST /bff/des/certification/attestations/{…}/demandes-de-statut  # DES-11 (dossier de mise en service, circuit des quatre quitus) : remplacé par les verrous de D-56 ; CER-08 à CER-15 à livrer
+GET /bff/des/certification/attestations/{…}/fiche  # DES-11 (dossier de mise en service, circuit des quatre quitus) : remplacé par les verrous de D-56 ; CER-08 à CER-15 à livrer
+GET /bff/des/certification/attestations/{…}  # DES-11 (dossier de mise en service, circuit des quatre quitus) : remplacé par les verrous de D-56 ; CER-08 à CER-15 à livrer
+POST /bff/des/certification/circuits/{…}/quitus/{…}  # DES-11 (dossier de mise en service, circuit des quatre quitus) : remplacé par les verrous de D-56 ; CER-08 à CER-15 à livrer
+GET /bff/des/certification/circuits/{…}  # DES-11 (dossier de mise en service, circuit des quatre quitus) : remplacé par les verrous de D-56 ; CER-08 à CER-15 à livrer
+POST /bff/des/certification/demandes-de-statut/{…}/approbation  # DES-11 (dossier de mise en service, circuit des quatre quitus) : remplacé par les verrous de D-56 ; CER-08 à CER-15 à livrer
+POST /bff/des/certification/dossiers/{…}/attestation  # DES-11 (dossier de mise en service, circuit des quatre quitus) : remplacé par les verrous de D-56 ; CER-08 à CER-15 à livrer
+GET /bff/des/certification/dossiers/{…}/conditions  # DES-11 (dossier de mise en service, circuit des quatre quitus) : remplacé par les verrous de D-56 ; CER-08 à CER-15 à livrer
+GET /bff/des/certification/dossiers/{…}/fiche-de-changement  # DES-11 (dossier de mise en service, circuit des quatre quitus) : remplacé par les verrous de D-56 ; CER-08 à CER-15 à livrer
+PUT /bff/des/certification/dossiers/{…}/fiche-de-changement  # DES-11 (dossier de mise en service, circuit des quatre quitus) : remplacé par les verrous de D-56 ; CER-08 à CER-15 à livrer
+GET /bff/des/certification/dossiers/{…}/historique  # DES-11 (dossier de mise en service, circuit des quatre quitus) : remplacé par les verrous de D-56 ; CER-08 à CER-15 à livrer
+GET /bff/des/certification/dossiers/{…}/horodatages  # DES-11 (dossier de mise en service, circuit des quatre quitus) : remplacé par les verrous de D-56 ; CER-08 à CER-15 à livrer
+GET /bff/des/certification/dossiers/{…}/proces-verbal  # DES-11 (dossier de mise en service, circuit des quatre quitus) : remplacé par les verrous de D-56 ; CER-08 à CER-15 à livrer
+POST /bff/des/certification/dossiers/{…}/proces-verbal  # DES-11 (dossier de mise en service, circuit des quatre quitus) : remplacé par les verrous de D-56 ; CER-08 à CER-15 à livrer
+POST /bff/des/certification/dossiers/{…}/verification  # DES-11 (dossier de mise en service, circuit des quatre quitus) : remplacé par les verrous de D-56 ; CER-08 à CER-15 à livrer
+GET /bff/des/certification/dossiers/{…}  # DES-11 (dossier de mise en service, circuit des quatre quitus) : remplacé par les verrous de D-56 ; CER-08 à CER-15 à livrer
+GET /bff/des/certification/dossiers  # DES-11 (dossier de mise en service, circuit des quatre quitus) : remplacé par les verrous de D-56 ; CER-08 à CER-15 à livrer
+GET /bff/des/certification/registre/export  # CER-14 : export du registre des certifications à livrer
+GET /bff/des/homologation/liaisons/{…}/campagnes  # DES-08, DES-09 et clôture d'opération (HOM-07 à HOM-19) : remplacés par le dossier numérique du parcours (D-57)
+GET /bff/des/homologation/liaisons/{…}/couvertures  # DES-08, DES-09 et clôture d'opération (HOM-07 à HOM-19) : remplacés par le dossier numérique du parcours (D-57)
+POST /bff/des/homologation/liaisons/{…}/degel  # DES-08, DES-09 et clôture d'opération (HOM-07 à HOM-19) : remplacés par le dossier numérique du parcours (D-57)
+GET /bff/des/homologation/liaisons/{…}/dossier-de-preuves  # DES-08, DES-09 et clôture d'opération (HOM-07 à HOM-19) : remplacés par le dossier numérique du parcours (D-57)
+POST /bff/des/homologation/liaisons/{…}/dossier-de-preuves  # DES-08, DES-09 et clôture d'opération (HOM-07 à HOM-19) : remplacés par le dossier numérique du parcours (D-57)
+GET /bff/des/homologation/liaisons/{…}/graphe  # DES-08, DES-09 et clôture d'opération (HOM-07 à HOM-19) : remplacés par le dossier numérique du parcours (D-57)
+GET /bff/des/homologation/liaisons/{…}/historique  # DES-08, DES-09 et clôture d'opération (HOM-07 à HOM-19) : remplacés par le dossier numérique du parcours (D-57)
+GET /bff/des/homologation/liaisons/{…}/operations  # DES-08, DES-09 et clôture d'opération (HOM-07 à HOM-19) : remplacés par le dossier numérique du parcours (D-57)
+GET /bff/des/homologation/liaisons/{…}/scenarios-inconnus  # DES-08, DES-09 et clôture d'opération (HOM-07 à HOM-19) : remplacés par le dossier numérique du parcours (D-57)
+GET /bff/des/homologation/operations/{…}/attributions  # DES-08, DES-09 et clôture d'opération (HOM-07 à HOM-19) : remplacés par le dossier numérique du parcours (D-57)
+GET /bff/des/homologation/operations/{…}/elements-de-cloture  # DES-08, DES-09 et clôture d'opération (HOM-07 à HOM-19) : remplacés par le dossier numérique du parcours (D-57)
+GET /bff/des/homologation/operations/{…}/grille  # DES-08, DES-09 et clôture d'opération (HOM-07 à HOM-19) : remplacés par le dossier numérique du parcours (D-57)
+PUT /bff/des/homologation/operations/{…}/grille  # DES-08, DES-09 et clôture d'opération (HOM-07 à HOM-19) : remplacés par le dossier numérique du parcours (D-57)
+GET /bff/des/homologation/operations/{…}/preuves  # DES-08, DES-09 et clôture d'opération (HOM-07 à HOM-19) : remplacés par le dossier numérique du parcours (D-57)
+POST /bff/des/homologation/operations/{…}/preuves  # DES-08, DES-09 et clôture d'opération (HOM-07 à HOM-19) : remplacés par le dossier numérique du parcours (D-57)
+POST /bff/des/homologation/operations/{…}/reouverture  # DES-08, DES-09 et clôture d'opération (HOM-07 à HOM-19) : remplacés par le dossier numérique du parcours (D-57)
+PUT /bff/des/homologation/operations/{…}/responsable  # DES-08, DES-09 et clôture d'opération (HOM-07 à HOM-19) : remplacés par le dossier numérique du parcours (D-57)
+POST /bff/des/homologation/operations/{…}/validation  # DES-08, DES-09 et clôture d'opération (HOM-07 à HOM-19) : remplacés par le dossier numérique du parcours (D-57)
+GET /bff/des/homologation/operations/{…}  # DES-08, DES-09 et clôture d'opération (HOM-07 à HOM-19) : remplacés par le dossier numérique du parcours (D-57)
+GET /bff/des/homologation/reprise/etat  # DES-08, DES-09 et clôture d'opération (HOM-07 à HOM-19) : remplacés par le dossier numérique du parcours (D-57)
+POST /bff/des/homologation/scenarios-inconnus/{…}/qualification  # DES-08, DES-09 et clôture d'opération (HOM-07 à HOM-19) : remplacés par le dossier numérique du parcours (D-57)
+GET /bff/des/homologation/tableau-de-bord/liaisons  # DES-08, DES-09 et clôture d'opération (HOM-07 à HOM-19) : remplacés par le dossier numérique du parcours (D-57)
+GET /bff/portail/certification/certifications/{…}/attestation  # POR-03 antérieur : remplacé par le portail du parcours (D-58)
+GET /bff/portail/certification/certifications  # POR-03 antérieur : remplacé par le portail du parcours (D-58)
+GET /bff/portail/homologation/liaisons/{…}/a-faire/{…}  # POR-03 antérieur : remplacé par le portail du parcours (D-58)
+GET /bff/portail/homologation/liaisons/{…}/a-faire  # POR-03 antérieur : remplacé par le portail du parcours (D-58)
+GET /bff/portail/homologation/liaisons/{…}  # POR-03 antérieur : remplacé par le portail du parcours (D-58)
+POST /bff/portail/homologation/operations/{…}/preuves  # POR-03 antérieur : remplacé par le portail du parcours (D-58)

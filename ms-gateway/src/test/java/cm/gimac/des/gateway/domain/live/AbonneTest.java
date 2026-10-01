@@ -30,7 +30,7 @@ class AbonneTest {
         assertThat(Couche.depuis(null)).isEmpty();
         assertThat(Couche.DES.sujets()).containsExactlyInAnyOrder(HOMOLOGATION, CERTIFICATION, COLLABORATION);
         assertThat(Couche.PORTAIL.sujets()).doesNotContain(COLLABORATION);
-        assertThat(Couche.CONSOLE.sujets()).doesNotContain(COLLABORATION);
+        assertThat(Couche.CONSOLE.sujets()).containsExactlyInAnyOrder(HOMOLOGATION, CERTIFICATION, COLLABORATION);
     }
 
     @Test
@@ -65,7 +65,7 @@ class AbonneTest {
     }
 
     @Test
-    @DisplayName("Collaboration : remise aux seuls destinataires, jamais au portail")
+    @DisplayName("Collaboration : remise aux seuls destinataires, au DES et à la console, jamais au portail")
     void collaboration() {
         assertThat(Abonne.de(Couche.DES, "u1", "", null).recoit(message("u1", "u2"))).isTrue();
         assertThat(Abonne.de(Couche.DES, "u3", "", null).recoit(message("u1", "u2"))).isFalse();
@@ -73,6 +73,8 @@ class AbonneTest {
         assertThat(Abonne.de(Couche.DES, null, "", null).recoit(message("u1"))).isFalse();
         assertThat(Abonne.de(Couche.DES, "u1", "", null).recoit(message())).isFalse();
         assertThat(Abonne.de(Couche.PORTAIL, "u1", "I1", "collaboration").recoit(message("u1"))).isFalse();
+        assertThat(Abonne.de(Couche.CONSOLE, "u1", "", "collaboration").recoit(message("u1", "u2"))).isTrue();
+        assertThat(Abonne.de(Couche.CONSOLE, "u3", "", null).recoit(message("u1", "u2"))).isFalse();
     }
 
     @Test

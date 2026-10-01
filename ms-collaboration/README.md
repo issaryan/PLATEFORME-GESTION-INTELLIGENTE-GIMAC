@@ -31,7 +31,7 @@ Collaboration entre les acteurs du GIMAC. Premier incrément livré (D-64) : la 
 
 **Écart assumé et borné (D-64).** Le chiffrement de bout en bout (RG-22, D-28, BF-24) et l'archivage scellé par terminal déclaré restent exigés pour les salons de crise et les salons liés à un ticket (V3). La messagerie de travail n'en porte pas : le serveur voit le clair, pour appliquer RG-52, et le protège par TLS en transit et AES-256-GCM au repos. Le RSSI confirme cet écart avant la mise en production.
 
-### API (`/api/v1/messagerie`, sous `/bff/des/collaboration/messagerie`)
+### API (`/api/v1/messagerie`, sous `/bff/{des,console}/collaboration/messagerie`)
 
 | Méthode et chemin | Permission | Réponse |
 |---|---|---|

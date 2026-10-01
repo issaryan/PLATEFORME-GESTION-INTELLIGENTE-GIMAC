@@ -55,7 +55,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class ParcoursCommandes {
 
     private static final Logger LOG = LoggerFactory.getLogger(ParcoursCommandes.class);
-    static final String FINALITE_VALIDATION = "HOM_OPERATION_VALIDATE";
+    // Finalité du défi demandé par l'interface (SignPurpose du socle : OPERATION_VALIDATE), vérifiée par MS-IAM.
+    static final String FINALITE_VALIDATION = "OPERATION_VALIDATE";
     private static final Pattern SHA256 = Pattern.compile("^[0-9a-fA-F]{64}$");
     private static final Pattern CODE_SERVICE = Pattern.compile("^[A-Z0-9_]{2,40}$");
 

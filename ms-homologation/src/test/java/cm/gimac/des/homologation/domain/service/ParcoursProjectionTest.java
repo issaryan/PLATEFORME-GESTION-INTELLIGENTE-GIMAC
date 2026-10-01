@@ -58,7 +58,9 @@ class ParcoursProjectionTest {
         assertThat(projection.actions(op(p, "3"), CONDUCTEUR)).containsExactly("CONSULTER");
         p.terminer(op(p, "17"), PIECE, J);
         OperationParcours o18 = op(p, "18");
-        p.deposerPreuve(o18, PIECE, null, null, null);
+        // Verrou de la décision : aucun dépôt libre proposé (geste dédié), seulement l'attribution.
+        assertThat(projection.actions(o18, CONDUCTEUR)).containsExactly("ATTRIBUER");
+        o18.setEtat(EtatOperationParcours.EN_VALIDATION);
         assertThat(projection.actions(o18, CONDUCTEUR)).containsExactly("ATTRIBUER");
         assertThat(projection.actions(o18, new Acteur(UUID.randomUUID(), null, Set.of("HOM_OPERATION_VALIDATE"), null))).containsExactly("VALIDER");
         o18.setEtat(EtatOperationParcours.SANS_OBJET);

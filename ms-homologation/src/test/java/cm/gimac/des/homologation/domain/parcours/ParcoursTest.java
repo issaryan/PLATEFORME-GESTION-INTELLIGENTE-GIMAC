@@ -320,9 +320,10 @@ class ParcoursTest {
             p.securiteApprouvee(PIECE, J);
             assertThat(p.etat().getStatut()).isEqualTo(StatutParcours.APPROUVEE_SECURITE);
             assertThat(p.liaison().getEtat()).isEqualTo(EtatLiaison.MISE_EN_SERVICE_AUTORISEE);
-            assertThat(p.etapeCourante()).isEqualTo(EtapeCode.APPROBATION_SECURITE);
-            p.ficheChangementReferencee("CHG-2026-0412", PIECE, J);
+            // Rang 26 : ouvert par l'approbation, clos aussitôt par la fiche déjà référencée.
             assertThat(op(p, "26").faite()).isTrue();
+            assertThat(p.etapeCourante()).isEqualTo(EtapeCode.MISE_EN_PRODUCTION);
+            p.ficheChangementReferencee("CHG-2026-0412", PIECE, J);
             assertThat(p.etapeCourante()).isEqualTo(EtapeCode.MISE_EN_PRODUCTION);
         }
 

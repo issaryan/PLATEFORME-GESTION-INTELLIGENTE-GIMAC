@@ -6,8 +6,11 @@ backend (MS-COLLABORATION, MS-IAM, MS-DOCUMENT, MS-GATEWAY) et pour le frontend 
 
 ## 1. Routes exposées
 
-Chemin public (passerelle) : `/bff/des/collaboration/messagerie/**` réécrit en `/api/v1/messagerie/**`
-sur MS-COLLABORATION (port 8093). Jeton utilisateur de niveau 2 (`acr` 2 ou 3) exigé sur tout `/api/v1/**`.
+Chemins publics (passerelle) : `/bff/des/collaboration/messagerie/**` (application du département) et
+`/bff/console/collaboration/messagerie/**` (console : RSSI, super administrateur), réécrits en
+`/api/v1/messagerie/**` sur MS-COLLABORATION (port 8093). Jeton utilisateur de niveau 2 (`acr` 2 ou 3) exigé
+sur tout `/api/v1/**`. Tout membre interne y a accès quel que soit son profil (D-64, 01/10/2026) ; OPA refuse
+tout jeton portant une institution et tout chemin `/bff/portail/collaboration/**`.
 
 | Méthode | Chemin (service) | Permission | Objet |
 |---|---|---|---|

@@ -182,7 +182,8 @@ public class ParcoursResource {
     }
 
     @PostMapping("/liaisons/{id}/fiche-suivi/remise")
-    @PreAuthorize("hasAuthority('HOM_STEP_MANAGE')")
+    // Remise par le conducteur (conduite de l'étape 10) ou par Normes et Agréments, comme l'interface (PERMISSION_GESTE).
+    @PreAuthorize("hasAnyAuthority('HOM_STEP_MANAGE', 'CER_DOSSIER_VERIFY')")
     public ResponseEntity<Void> remettreFiche(@PathVariable UUID id, Authentication auth) {
         commandes.remettreFiche(id, ActeurCourant.de(auth));
         return ResponseEntity.noContent().build();

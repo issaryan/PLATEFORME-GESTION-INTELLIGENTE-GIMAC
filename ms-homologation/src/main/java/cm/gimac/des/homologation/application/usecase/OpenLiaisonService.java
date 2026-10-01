@@ -159,12 +159,24 @@ public class OpenLiaisonService implements OpenLiaisonUseCase {
         return i.categorie() != null && i.categorie().toUpperCase(java.util.Locale.ROOT).contains("FINTECH");
     }
 
-    /** Périmètre contractualisé (HOM-05) : services souscrits actifs, plus le service TRANSVERSE. */
-    private List<String> deriverPerimetre(Liaison l, InstitutionView institution, Instant maintenant) {
-        ContractualScope p = perimetres.save(new ContractualScope().dateDerivation(maintenant).sourceEventId("ouverture:" + l.getId()).liaison(l));
+    /**
+     * Périmètre contractualisé (HOM-05) : services souscrits actifs, plus le service TRANSVERSE. Sans service souscrit
+     * enregistré au registre, le périmètre est le catalogue du type de projet, arrêté ensuite au rang 3 (règle du
+     * simulateur de l'interface) : une liaison n'est jamais ouverte sans service à certifier.
+     */
+    static List<String> perimetre(cm.gimac.des.homologation.domain.enumeration.TypeProjet type, InstitutionView institution) {
         List<String> codes = new ArrayList<>();
         codes.add(TRANSVERSE);
         institution.servicesSouscrits().stream().map(InstitutionView.ServiceSouscrit::code).filter(c -> c != null && !c.isBlank() && !TRANSVERSE.equals(c)).distinct().forEach(codes::add);
+        if (codes.size() == 1) {
+            codes.addAll(cm.gimac.des.homologation.domain.parcours.CatalogueServices.parType(type));
+        }
+        return codes;
+    }
+
+    private List<String> deriverPerimetre(Liaison l, InstitutionView institution, Instant maintenant) {
+        ContractualScope p = perimetres.save(new ContractualScope().dateDerivation(maintenant).sourceEventId("ouverture:" + l.getId()).liaison(l));
+        List<String> codes = perimetre(l.getTypeProjet(), institution);
         for (String code : codes) {
             elements.save(new ScopeItem().serviceCode(code).serviceLibelle(code).etat(EtatScopeItem.A_ENGAGER).scope(p));
         }

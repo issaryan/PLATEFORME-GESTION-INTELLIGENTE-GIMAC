@@ -72,7 +72,10 @@ class ParcoursVerrousIT extends ParcoursITSupport {
         evenement("certification.security-approved.v1", id, "\"approuveeLe\":\"2026-10-06\"");
         assertThat(statut(id)).isEqualTo("APPROUVEE_SECURITE");
         assertThat(etat(id, "25")).isEqualTo("FAITE");
-        assertThat(etat(id, "26")).isEqualTo("A_FAIRE");
+        // Rang 26 ouvert par l'approbation et clos aussitôt par la fiche déjà référencée (défaut de la pile réelle :
+        // il restait à faire, la fiche n'étant jamais référencée une seconde fois).
+        assertThat(etat(id, "26")).isEqualTo("FAITE");
+        // Un nouvel événement de référence n'y change rien.
         evenement("certification.change-record-referenced.v1", id, "\"reference\":\"CHG-2026-0412\"");
         assertThat(etat(id, "26")).isEqualTo("FAITE");
         mvc.perform(get("/api/v1/liaisons/" + id + "/dossier").with(conducteur())).andExpect(jsonPath("$.etapeCourante").value("MISE_EN_PRODUCTION"));

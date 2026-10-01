@@ -15,4 +15,7 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEvent, UUID> 
     List<OutboxEvent> lockPendingBatch(@Param("n") int n);
 
     List<OutboxEvent> findByEventTypeOrderByCreatedAtAsc(String eventType);
+
+    /** Événements d'un agrégat (chronologie d'une version du référentiel). */
+    List<OutboxEvent> findByAggregateIdOrderByCreatedAtAsc(String aggregateId);
 }

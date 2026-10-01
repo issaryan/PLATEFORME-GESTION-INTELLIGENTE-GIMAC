@@ -47,6 +47,7 @@
     <include file="config/liquibase/changelog/20261005000001_lot1_post_generation.xml" relativeToChangelogFile="false"/>
     <include file="config/liquibase/changelog/20261005000100_hom01_referentiel.xml" relativeToChangelogFile="false"/>
     <include file="config/liquibase/changelog/20261006000100_parcours_etapes_4_10.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261007000100_referentiel_cr_initialisation.xml" relativeToChangelogFile="false"/>
     <!-- jhipster-needle-liquibase-add-constraints-changelog - JHipster will add liquibase constraints changelogs here -->
     <!-- jhipster-needle-liquibase-add-incremental-changelog - JHipster will add incremental liquibase changelogs here -->
 </databaseChangeLog>

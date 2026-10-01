@@ -126,7 +126,7 @@ class ParcoursResourceSecurityTest {
             Arguments.of(HttpMethod.POST, l + "/couverture/constat", "{}", List.of("CER_DOSSIER_VERIFY"), 204),
             Arguments.of(HttpMethod.POST, l + "/services-supplementaires", "{\"services\":[\"CASH_IN\"]}", List.of("HOM_LIAISON_OPEN", "HOM_STEP_MANAGE"), 201),
             Arguments.of(HttpMethod.GET, l + "/fiche-suivi", null, List.of("HOM_LIAISON_READ"), 200),
-            Arguments.of(HttpMethod.POST, l + "/fiche-suivi/remise", "{}", List.of("HOM_STEP_MANAGE"), 204),
+            Arguments.of(HttpMethod.POST, l + "/fiche-suivi/remise", "{}", List.of("HOM_STEP_MANAGE", "CER_DOSSIER_VERIFY"), 204),
             Arguments.of(HttpMethod.POST, l + "/fiche-suivi/constat", "{}", List.of("CER_DOSSIER_VERIFY"), 204)
         );
     }
