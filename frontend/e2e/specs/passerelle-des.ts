@@ -96,8 +96,10 @@ export class PasserelleDes {
     }
     if (chemin === '/api/logout') return json({ logoutUrl: '/connexion' })
     if (chemin === '/bff/des/live') {
-      return route.fulfill({ status: 200, headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' },
-        body: `id: 1\ndata: ${JSON.stringify({ id: '1', type: 'liaison-opened', subject: 'liaison', topic: 'homologation' })}\n\n` })
+      // Comme la passerelle, la reprise (« depuis ») ne rejoue que les événements postérieurs : aucun ici.
+      // Rejouer l'événement à chaque reconnexion relançait sans fin les listes du sujet homologation.
+      const rejeu = url.searchParams.get('depuis') ? '' : `id: 1\ndata: ${JSON.stringify({ id: '1', type: 'liaison-opened', subject: 'liaison', topic: 'homologation' })}\n\n`
+      return route.fulfill({ status: 200, headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' }, body: rejeu })
     }
 
     // ------------------------------------------------ MS-IAM : Mon compte, réauthentification
