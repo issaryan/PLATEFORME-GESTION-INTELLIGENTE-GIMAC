@@ -193,6 +193,14 @@ describe('PageConnexion : identifiant, mot de passe, puis code', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Connexion' })).toBeTruthy()
     expect(screen.getByRole('img', { name: 'Moabi' }).getAttribute('data-style')).toBe('guilloche')
     expect(screen.getByText('GIMAC · Afrique centrale')).toBeTruthy()
+    // Décor de l'arbre moabi : cernes derrière la carte, arbre derrière le nom, feuille sur le i ; décoratif.
+    const carte = screen.getByRole('main')
+    expect(carte.querySelector('.gm-acces-cernes')?.getAttribute('aria-hidden')).toBe('true')
+    expect(carte.querySelectorAll('.gm-acces-cernes path').length).toBeGreaterThan(50)
+    const nom = screen.getByRole('img', { name: 'Moabi' })
+    expect(nom.querySelector('.gm-marque-arbre')?.getAttribute('aria-hidden')).toBe('true')
+    expect(nom.querySelectorAll('.gm-arbre-feuille').length).toBeGreaterThan(100)
+    expect(nom.querySelector('.gm-marque-feuille')).toBeTruthy()
     expect(screen.getByRole('timer', { name: 'Heure locale et heure UTC' }).textContent).toMatch(/^Douala \d{2}:\d{2}:\d{2} · UTC \d{2}:\d{2}:\d{2}$/)
     expect(screen.getByText(/Application du département · Usage interne, confidentiel/)).toBeTruthy()
     // Thème : bascule directe ; le nom passe en contour.

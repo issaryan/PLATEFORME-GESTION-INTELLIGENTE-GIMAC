@@ -1,5 +1,5 @@
-/* Écran de connexion (TRA-01, D-67) : courbes de niveau du relief sur toute la page, carte d'accès à filet
-   tricolore à gauche, nom de la plateforme en grand à droite. Angles droits, aucune ombre, aucune animation ;
+/* Écran de connexion (TRA-01, D-67) : carte d'accès à filet tricolore à gauche, posée sur les cernes du bois ;
+   nom de la plateforme en grand à droite, sur l'arbre moabi. Angles droits, aucune ombre, aucune animation ;
    uniquement des jetons --gm-*, d'où le mode clair et le mode sombre. */
 .gm-acces {
   position: relative; min-height: 100vh; overflow: hidden; display: flex; flex-direction: column;
@@ -8,10 +8,11 @@
 }
 [data-theme="dark"] .gm-acces, .gm-acces[data-theme="dark"] { --gm-acces-opacite: 0.12; }
 
-/* Relief : traits fins couleur terre, une courbe maîtresse sur cinq en bleu. */
-.gm-acces-relief { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-.gm-acces-relief path { fill: none; stroke: var(--gm-acces-relief); stroke-opacity: var(--gm-acces-opacite); stroke-width: 1; vector-effect: non-scaling-stroke; }
-.gm-acces-relief path.gm-relief-maitresse { stroke: var(--gm-acces-maitresse); stroke-opacity: calc(var(--gm-acces-opacite) * 1.5); stroke-width: 1.25; }
+/* Cernes derrière la carte : cœur du tronc caché par la carte, effacés vers la droite avant l'arbre. */
+.gm-acces-cernes { position: absolute; z-index: -1; left: calc(50% - 45.6px - 1300px); top: calc(50% + 14px - 1300px); width: 1950px; height: 2600px; pointer-events: none; }
+.gm-acces-cernes path { fill: none; stroke: var(--gm-acces-relief); stroke-opacity: calc(var(--gm-acces-opacite) * 1.1); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.gm-acces-cernes path.gm-cerne-fort { stroke: var(--gm-acces-maitresse); stroke-opacity: calc(var(--gm-acces-opacite) * 1.8); stroke-width: 1.3; }
+.gm-acces-cernes path.gm-cerne-rayon { stroke-opacity: calc(var(--gm-acces-opacite) * 0.9); }
 
 .gm-acces-haut { position: relative; z-index: 2; display: flex; justify-content: flex-end; padding: var(--gm-space-4) var(--gm-space-6); }
 .gm-acces-outils { display: flex; align-items: center; gap: var(--gm-space-1); }
@@ -29,7 +30,7 @@
 }
 
 /* Carte d'accès : surface opaque, filet tricolore bleu, vert, terre en tête. */
-.gm-acces-carte { width: 432px; max-width: 100%; flex-shrink: 0; background: var(--gm-color-surface); border: var(--gm-border-1) solid var(--gm-color-border); }
+.gm-acces-carte { position: relative; width: 432px; max-width: 100%; flex-shrink: 0; background: var(--gm-color-surface); border: var(--gm-border-1) solid var(--gm-color-border); }
 .gm-filet { display: grid; grid-template-columns: 2fr 1fr 1fr; height: 4px; }
 .gm-filet i:nth-child(1) { background: var(--gm-blue-700); }
 .gm-filet i:nth-child(2) { background: var(--gm-green-700); }
@@ -56,6 +57,11 @@
 .gm-marque-lisere { fill: none; stroke: var(--gm-color-action); stroke-width: 1.2; }
 .gm-marque-halo { fill: none; stroke: var(--gm-color-brand-accent); stroke-opacity: 0.35; stroke-width: 7; }
 .gm-marque-contour { fill: var(--gm-color-surface); stroke: var(--gm-color-action); stroke-width: 1.6; }
+/* Arbre moabi derrière le nom (bois couleur terre, feuilles vertes, une grappe sur cinq bleue) ; feuille sur le i. */
+.gm-marque-arbre path { fill: none; stroke: var(--gm-acces-relief); stroke-opacity: calc(var(--gm-acces-opacite) * 2.4); }
+.gm-marque-arbre .gm-arbre-feuille path { stroke: var(--gm-green-700); }
+.gm-marque-arbre .gm-arbre-feuille-bleue path { stroke: var(--gm-acces-maitresse); }
+.gm-marque-feuille path { fill: none; stroke: var(--gm-green-700); }
 .gm-acces-signature { font-size: 13px; line-height: 20px; font-weight: 500; letter-spacing: 0.32em; text-transform: uppercase; color: var(--gm-color-text-secondary); }
 
 .gm-acces-pied {
@@ -69,6 +75,7 @@
   .gm-acces-corps { flex-direction: column-reverse; justify-content: center; align-items: center; padding: var(--gm-space-4); gap: var(--gm-space-6); }
   .gm-acces-marque { align-items: center; }
   .gm-acces-marque svg { width: min(360px, 80vw); }
+  .gm-marque-arbre { display: none; }
 }
 @media (max-width: 640px) {
   .gm-acces-marque .gm-filet, .gm-acces-signature { display: none; }

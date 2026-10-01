@@ -35,7 +35,7 @@
 
 \pagestyle{fancy}
 \fancyhf{}
-\fancyhead[L]{\small\color{gris}IG-GIMAC-01 v1.0}
+\fancyhead[L]{\small\color{gris}IG-GIMAC-01 v1.1}
 \fancyhead[R]{\small\color{gris}Moabi, module de certification}
 \fancyfoot[L]{\small\color{gris}GIMAC}
 \fancyfoot[C]{\small\color{gris}Présentation des interfaces}
@@ -83,7 +83,7 @@
 {\color{bleuclair}\rule{\linewidth}{0.8pt}}\par
 \vspace{0.45cm}
 \renewcommand{\arraystretch}{1.1}\begin{tabular}{>{\raggedleft\bfseries}p{4.6cm} p{9.2cm}}
-Référence & \textbf{IG-GIMAC-01 v1.0}\\[0pt]
+Référence & \textbf{IG-GIMAC-01 v1.1}\\[0pt]
 Statut & \textbf{Document de présentation}\\[0pt]
 Nature & Présentation commentée des interfaces graphiques\\[0pt]
 Périmètre & Module de certification (étapes 1 à 10 du parcours)\\[0pt]
@@ -106,8 +106,8 @@ Octobre 2026}
 \hline
 \rowcolor{bleu}\multicolumn{2}{|c|}{\textcolor{white}{\textbf{Informations générales}}}\\ \hline
 Titre & Présentation des interfaces du module de certification\\ \hline
-Référence & IG-GIMAC-01 v1.0\\ \hline
-Version & Version 1.0 (première diffusion)\\ \hline
+Référence & IG-GIMAC-01 v1.1\\ \hline
+Version & Version 1.1\\ \hline
 Date d'émission & 1er octobre 2026\\ \hline
 Établi par & KOAGNE ISSA RYAN, Ingénieur \quad NGOUNOU STEVE DELORS, Ingénieur\\ \hline
 Organisme & Groupement Interbancaire Monétique de l'Afrique Centrale (GIMAC)\\ \hline
@@ -122,6 +122,7 @@ Objet & Montrer chaque écran et chaque fenêtre de dialogue du module, avec une
 \hline
 \rowcolor{bleu}\textcolor{white}{\textbf{Version}} & \textcolor{white}{\textbf{Date}} & \textcolor{white}{\textbf{Auteur}} & \textcolor{white}{\textbf{Description}}\\ \hline
 v1.0 & 01/10/2026 & KOAGNE ISSA RYAN, NGOUNOU STEVE DELORS & Première version : préambule sur le nom Moabi, charte graphique, écrans et fenêtres de dialogue du module de certification.\\ \hline
+v1.1 & 01/10/2026 & KOAGNE ISSA RYAN, NGOUNOU STEVE DELORS & Motifs de l'arbre moabi : cernes du bois, arbre et feuille sur le i ; nouvel écran de connexion.\\ \hline
 \end{tabularx}
 \clearpage
 
@@ -187,7 +188,7 @@ Les couleurs viennent de l'identité du GIMAC : le bleu pour les actions et la n
 \pastille{15569E} & Bleu GIMAC & \#15569E & Boutons principaux, liens, en-têtes de tableaux\\ \hline
 \pastille{006EB7} & Bleu vif & \#006EB7 & Accents secondaires\\ \hline
 \pastille{0B6938} & Vert GIMAC & \#0B6938 & Filet tricolore, état « terminé » ou « conforme »\\ \hline
-\pastille{7A3E1D} & Terre & \#7A3E1D & Filet tricolore, motifs, courbes de niveau\\ \hline
+\pastille{7A3E1D} & Terre & \#7A3E1D & Filet tricolore, motifs, bois de l'arbre et cernes\\ \hline
 \pastille{F1E4DA} & Sable & \#F1E4DA & Fond du motif de trame\\ \hline
 \pastille{F5F6F8} & Gris de fond & \#F5F6F8 & Fond des pages en mode clair\\ \hline
 \pastille{181A1E} & Fond sombre & \#181A1E & Fond des pages en mode sombre\\ \hline
@@ -201,12 +202,14 @@ Trois polices sont utilisées. Ubuntu, en gras, pour les titres. Inter pour le t
 \begin{center}\setlength{\fboxsep}{0pt}\fcolorbox{gris!40}{white}{\includegraphics[width=0.97\linewidth]{typographie.png}}\end{center}
 
 \subsection{Motifs}
-Trois motifs habillent la plateforme. Ils restent discrets pour ne jamais gêner la lecture.
+Quatre motifs habillent la plateforme. Ils restent discrets pour ne jamais gêner la lecture. Les deux motifs du milieu viennent directement de l'arbre qui donne son nom à la plateforme.
 \begin{itemize}[leftmargin=1.2cm,itemsep=2pt]
-\item \textbf{la trame} (à gauche) : des losanges couleur terre, inspirés des tissages de la sous-région ; elle sert de fond aux zones vides et aux discussions ;
-\item \textbf{les courbes de niveau} (au centre) : elles évoquent le relief de l'Afrique centrale et couvrent l'écran de connexion ;
-\item \textbf{le guillochage} (à droite) : des lignes fines et régulières, comme sur les billets de banque ; il remplit les lettres du nom Moabi sur l'écran de connexion.
+\item \textbf{la trame} : des losanges couleur terre, inspirés des tissages de la sous-région ; elle sert de fond aux zones vides et aux discussions ;
+\item \textbf{les cernes du bois} : la coupe d'un tronc, où chaque cerne marque une année de croissance ; ils rappellent la durabilité et se trouvent derrière la carte de connexion ;
+\item \textbf{l'arbre moabi} : dessiné au trait fin avec ses racines, son fût, sa large couronne et ses feuilles ; il se tient derrière le nom Moabi sur l'écran de connexion ;
+\item \textbf{le guillochage} : des lignes fines et régulières, comme sur les billets de banque ; il remplit les lettres du nom Moabi.
 \end{itemize}
+Dans le nom Moabi, le point du i est remplacé par une feuille verte de moabi. Cette petite feuille sert de signe distinctif à la plateforme.
 \begin{center}\setlength{\fboxsep}{0pt}\fcolorbox{gris!40}{white}{\includegraphics[width=0.97\linewidth]{motifs.png}}\end{center}
 
 \subsection{Éléments d'interface}
@@ -219,7 +222,7 @@ Chaque utilisateur choisit son mode depuis le menu du globe, en haut à droite. 
 
 \begin{center}\setlength{\fboxsep}{0pt}\fcolorbox{gris!40}{white}{\includegraphics[width=0.97\linewidth]{composants-sombre.png}}\end{center}
 
-\ecran{z01-connexion-sombre.jpg}{Écran de connexion en mode sombre}{En mode sombre, le nom Moabi est dessiné en contour. Les courbes de niveau restent visibles, plus discrètes.}
+\ecran{z01-connexion-sombre.jpg}{Écran de connexion en mode sombre}{En mode sombre, le nom Moabi est dessiné en contour. L'arbre et les cernes du bois restent visibles, plus discrets.}
 \ecran{z02-tdb-chef-des-sombre.jpg}{Tableau de bord en mode sombre}{Le tableau de bord du chef du DES en mode sombre. La barre latérale, les cartes et le graphique s'adaptent ; les couleurs d'état restent les mêmes.}
 \ecran{z03-dossier-operations-sombre.jpg}{Dossier d'une liaison en mode sombre}{Le dossier numérique d'une liaison, onglet des opérations, en mode sombre.}
 \ecran{z04-modale-sombre.jpg}{Fenêtre de dialogue en mode sombre}{Une fenêtre de dialogue en mode sombre : le fond de l'écran est voilé pour concentrer l'attention sur la saisie.}
@@ -229,7 +232,7 @@ Chaque utilisateur choisit son mode depuis le menu du globe, en haut à droite. 
 \section{Accès à la plateforme}
 La connexion se fait entièrement sur la plateforme. Il faut un identifiant, un mot de passe, puis un code à six chiffres donné par une application d'authentification sur téléphone. Une session sans activité pendant trente minutes se ferme d'elle-même.
 
-\ecran{a01-connexion.jpg}{Écran de connexion}{C'est la première page que voit l'utilisateur. À gauche, la carte de connexion avec le logo du GIMAC, l'identifiant et le mot de passe. À droite, le nom de la plateforme. En haut à droite, le globe permet de changer de langue et la lune de passer en mode sombre. En bas, on lit l'application ouverte, la mention « usage interne, confidentiel » et l'heure de Douala avec l'heure universelle.}
+\ecran{a01-connexion.jpg}{Écran de connexion}{C'est la première page que voit l'utilisateur. À gauche, la carte de connexion avec le logo du GIMAC, l'identifiant et le mot de passe, posée sur les cernes du bois. À droite, le nom de la plateforme devant l'arbre moabi, avec une feuille à la place du point du i. En haut à droite, le globe permet de changer de langue et la lune de passer en mode sombre. En bas, on lit l'application ouverte, la mention « usage interne, confidentiel » et l'heure de Douala avec l'heure universelle.}
 \ecran{a02-code.jpg}{Saisie du code à six chiffres}{Après un mot de passe correct, la plateforme demande le code à six chiffres affiché par l'application d'authentification. Ce second contrôle protège le compte même si le mot de passe est connu d'une autre personne.}
 \ecran{a03-oubli.jpg}{Mot de passe oublié}{L'utilisateur saisit son identifiant ou son adresse électronique. S'il a un compte actif, il reçoit un lien par courriel pour choisir un nouveau mot de passe. La réponse est toujours la même, pour ne pas révéler quels comptes existent.}
 \ecran{a04-erreur.jpg}{Erreur de connexion}{En cas d'erreur, un message clair s'affiche en haut de la carte, avec un numéro de suivi. Ce numéro aide l'équipe technique à retrouver la cause si l'utilisateur la signale.}

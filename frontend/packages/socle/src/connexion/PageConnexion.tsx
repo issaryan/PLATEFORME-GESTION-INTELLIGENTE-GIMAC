@@ -8,7 +8,7 @@ import { estApiError } from '../http/errors'
 import { CONNEXION, type Couche } from '../http/prefixes'
 import { usePreferences } from '../enveloppe/usePreferences'
 import { Preferences } from '../enveloppe/Preferences'
-import { Marque, NOM_PLATEFORME, Relief } from './Decor'
+import { Cernes, Marque, NOM_PLATEFORME } from './Decor'
 import { navigation, retourSur } from '../session/deconnexion'
 import { useConnexion } from './contexte'
 import type { ServiceConnexion } from './modele'
@@ -311,10 +311,10 @@ export function PageConnexion({ couche, destination, service, erreur }: PageConn
 
   return (
     <div className="gm-acces gm-root">
-      <Relief />
       <header className="gm-acces-haut"><OutilsConnexion /></header>
       <div className="gm-acces-corps">
         <main className="gm-acces-carte" aria-labelledby={vue === 'connexion' ? 'gm-acces-titre' : undefined}>
+          <Cernes />
           <div className="gm-filet" aria-hidden="true"><i /><i /><i /></div>
           <div className="gm-acces-contenu">
             <img className="gm-acces-logo" src={sombre ? logoBlanc : logoCouleur} alt="GIMAC" />
