@@ -520,6 +520,14 @@ Source ajoutée : **CR-CERT-GIMAC-01 v1.4**, compte rendu d'entretiens et de cad
   - **Courriels de la plateforme** : invitation et mot de passe oublié envoyés par MS-IAM, avec un lien vers la plateforme (jeton aléatoire à usage unique, conservé haché : 24 h pour une invitation, 30 min pour une réinitialisation).
   - **Mise en œuvre** : contrat dans `docs/lot1/connexion.md` (passerelle, MS-IAM, Keycloak, frontend).
 
+- **D-66 [R] Finition de l'interface, dérogations à DS-GIMAC-01 (01/10/2026).** Arbitrages de KOAGNE ISSA RYAN sur les écrans ; DS-GIMAC-01 reste la référence pour tout le reste (sobriété, rayon 0, aucune ombre ni dégradé, couche sémantique, typographie, mode sombre) et passe en version 1.1.
+  - **Surbrillance sans filet vertical** : l'entrée de navigation active et tout élément mis en évidence sont marqués par une teinte de fond et un texte contrasté (blanc en mode sombre), jamais par un filet gauche de 4 px (remplace DS §5.3 et §6.2 sur ce point).
+  - **Logo seul** dans la barre latérale, sans les drapeaux ni cartouche, version blanche sur la barre bleue ou sombre, couleur sur fond clair ; pas de nom de couche sous le logo ; pas de bandeau d'environnement (« PRODUCTION ») dans la console (remplace DS §2.3, dernier interdit, et §6.1).
+  - **Barre latérale sombre en mode sombre**, texte actif blanc ; contraste ≥ 4,5:1 vérifié par test dans les deux thèmes.
+  - **Sélecteur de langue** (FR, EN, ES) en menu surgissant ancré au bouton, sans déformer la page.
+  - **Listes** : pagination toujours visible ; **gestes CRUD** dans la modale standard du système de conception (création, modification, suppression, action sensible, confirmation, détail).
+  - **Aucun texte orphelin** : tout texte est porté par un composant stylé du catalogue (en-tête de page, description de section, note).
+
 ---
 
 ## 5. Règles de gestion par microservice

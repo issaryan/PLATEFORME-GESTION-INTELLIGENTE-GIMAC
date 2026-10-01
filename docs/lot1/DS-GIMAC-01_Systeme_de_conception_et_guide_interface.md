@@ -1,6 +1,6 @@
 # DS-GIMAC-01 : Système de conception et guide d'interface de la plateforme intégrée du DES
 
-Version 1.0, 28 septembre 2026. Établi par KOAGNE ISSA RYAN, Ingénieur, et NGOUNOU STEVE DELORS, Ingénieur, pour le Groupement Interbancaire Monétique de l'Afrique Centrale (GIMAC), Département Exploitation et Supervision (DES).
+Version 1.1, 1er octobre 2026 (dérogations D-66 de REC-GIMAC-01, signalées « D-66 » ci-dessous ; version 1.0 du 28 septembre 2026). Établi par KOAGNE ISSA RYAN, Ingénieur, et NGOUNOU STEVE DELORS, Ingénieur, pour le Groupement Interbancaire Monétique de l'Afrique Centrale (GIMAC), Département Exploitation et Supervision (DES).
 
 Documents amont : cahier de charges techniques CCT-GIMAC-01 v1.1 (besoins BF-26 à BF-28, BNF-13, BNF-17, BNF-18), cahier d'analyse CA-GIMAC-01 v1.1 (domaine 7), cahier de conception CC-GIMAC-01 v1.1 (section 6.2 thème, section 6.3 cartographie des écrans), carnet de produit CP-GIMAC-01 v2.0 (épopée IHM, récits d'écran de chaque microservice).
 
@@ -76,7 +76,7 @@ Le logo original (`GIMAC-LOGO.png`, 1024 × 341) est la référence colorimétri
 
 ### 2.3 Interdits
 
-Ne jamais déformer, incliner, recolorer, ombrer, contourner, animer le logo ; ne jamais le placer sur le motif de trame à plus de 8 % d'opacité ; ne jamais le placer sur une photographie ; ne jamais retirer ni réordonner les drapeaux dans la version couleur.
+Ne jamais déformer, incliner, recolorer, ombrer, contourner, animer le logo ; ne jamais le placer sur le motif de trame à plus de 8 % d'opacité ; ne jamais le placer sur une photographie ; ne jamais réordonner les drapeaux dans la version couleur ; dans la barre latérale, le logo s'emploie seul, sans les drapeaux (D-66).
 
 ---
 
@@ -260,7 +260,7 @@ Pas de base 4 px, grille de composition 8 px. Jetons : `--gm-space-1` 4 px, `-2`
 
 ### 5.3 Formes et élévation
 
-Rayon `--gm-radius` = 0 partout (angles droits) ; l'unique exception est l'avatar circulaire des utilisateurs. Aucune ombre portée : la hiérarchie des surfaces est rendue par les fonds (page, surface, surélevée) et des bordures de 1 px ; un tiroir ou un dialogue ouvert est séparé de la page par un voile `rgba(20, 22, 26, 0,45)`. Épaisseurs : 1 px pour les bordures, 2 px pour le focus et la bordure active des champs, 4 px pour les filets de statut et l'indicateur de navigation active.
+Rayon `--gm-radius` = 0 partout (angles droits) ; l'unique exception est l'avatar circulaire des utilisateurs. Aucune ombre portée : la hiérarchie des surfaces est rendue par les fonds (page, surface, surélevée) et des bordures de 1 px ; un tiroir ou un dialogue ouvert est séparé de la page par un voile `rgba(20, 22, 26, 0,45)`. Épaisseurs : 1 px pour les bordures, 2 px pour le focus et la bordure active des champs, 4 px pour les filets de statut des tableaux ; aucun filet vertical de surbrillance (D-66).
 
 ### 5.4 Mouvement
 
@@ -309,11 +309,11 @@ L'enveloppe (`AppShell`) est commune aux trois couches et n'est écrite qu'une f
 
 De gauche à droite : logo monochrome (28 px) et nom de la couche en micro-capitales (« APPLICATION DU DÉPARTEMENT », « PORTAIL DES PARTICIPANTS », « CONSOLE D'ADMINISTRATION ET D'AUDIT ») ; bouton de repli de la navigation ; fil d'Ariane ; zone centrale : recherche globale (`Ctrl+K`, application du département et console uniquement) ; à droite : horloge (heure locale, UTC au survol, mise à jour à la seconde), pastille de vacation en cours pour les opérateurs (« Quart de nuit, 22:00 à 06:00, chef de quart : … » en infobulle, sans nom dans la barre), indicateur de connexion au canal poussé (point vert ou gris avec libellé au survol), centre de notifications (cloche avec compteur), sélecteur de langue (FR/EN), menu utilisateur (avatar, nom, rôle, institution pour le portail, profil, thème clair ou sombre, densité, déconnexion).
 
-Portail : pas de recherche globale ni de pastille de vacation ; nom de l'institution affiché à droite du nom de la couche. Console : bandeau d'environnement de 28 px sous la barre (« PRODUCTION », « RECETTE », « INTÉGRATION ») toujours visible ; en production le bandeau est bleu, en recette ocre, en intégration gris.
+Portail : pas de recherche globale ni de pastille de vacation ; nom de l'institution affiché à droite du nom de la couche. Console : pas de bandeau d'environnement (D-66). Le sélecteur de langue (FR, EN, ES) s'ouvre en menu surgissant ancré au bouton, sans déformer la page (D-66).
 
 ### 6.2 Navigation latérale (`SideNav`, 264 px, repliable à 64 px)
 
-Entrées de premier niveau par module (voir la cartographie du chapitre 10), avec pictogramme et libellé ; entrée active marquée par un filet gauche de 4 px `--gm-color-action` et un fond `--gm-color-action-subtle` ; groupes repliables ; les entrées non autorisées par les permissions du jeton sont absentes du DOM, pas grisées. Sous 1280 px, la navigation devient un tiroir. Le bas de la navigation porte la version de la plateforme et la classification (« Usage interne, confidentiel »).
+Entrées de premier niveau par module (voir la cartographie du chapitre 10), avec pictogramme et libellé ; entrée active marquée par une teinte de fond et un texte contrasté, blanc en mode sombre, sans filet vertical (D-66) ; barre latérale sombre en mode sombre ; logo seul en tête, sans drapeaux ni nom de couche (D-66) ; groupes repliables ; les entrées non autorisées par les permissions du jeton sont absentes du DOM, pas grisées. Sous 1280 px, la navigation devient un tiroir. Le bas de la navigation porte la version de la plateforme et la classification (« Usage interne, confidentiel »).
 
 ### 6.3 Zone de contenu
 
