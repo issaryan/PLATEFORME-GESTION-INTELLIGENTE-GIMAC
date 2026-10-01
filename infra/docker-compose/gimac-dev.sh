@@ -102,6 +102,9 @@ images() {
     # les tests et leurs seuils s'exécutent à part (./mvnw verify).
     (cd "$RACINE/ms-$s" && ./mvnw -ntp -Pprod verify jib:dockerBuild -DskipTests -Djacoco.skip=true)
   done
+  # Sans reconstruction explicite, le Compose garde des couches de présentation périmées.
+  echo "== Construction des images des couches de présentation"
+  compose build frontend-departement frontend-portail frontend-console
 }
 
 demarrer() {
