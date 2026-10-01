@@ -527,6 +527,7 @@ Source ajoutée : **CR-CERT-GIMAC-01 v1.4**, compte rendu d'entretiens et de cad
   - **Sélecteur de langue** (FR, EN, ES) en menu surgissant ancré au bouton, sans déformer la page.
   - **Listes** : pagination toujours visible ; **gestes CRUD** dans la modale standard du système de conception (création, modification, suppression, action sensible, confirmation, détail).
   - **Aucun texte orphelin** : tout texte est porté par un composant stylé du catalogue (en-tête de page, description de section, note).
+  - **Photo de profil** : l'avatar affiche la photo choisie par le titulaire (contrat docs/lot1/mon-compte.md), à défaut ses initiales ; il reste la seule forme ronde (remplace « jamais de photo » de DS §7.3).
   - **Fond texturé des discussions** : le motif de trame (DS §5.6) habille le fond du fil de la messagerie et son état vide, à opacité réduite et décliné en mode sombre ; les bulles, la saisie, l'en-tête du fil et la liste gardent un fond plein, de sorte qu'aucun texte ne repose sur le motif (dérogation encadrée à l'interdit « derrière un texte courant »).
 
 ---

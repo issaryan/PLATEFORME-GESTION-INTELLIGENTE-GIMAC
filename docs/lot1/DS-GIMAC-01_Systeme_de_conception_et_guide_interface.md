@@ -411,7 +411,7 @@ Validation : côté client par schéma (zod) pour le format, jamais pour la règ
 | `StatusBadge` | Puce 24 px : pictogramme 16 px + libellé `small-strong`, fond de statut ; `{ status, label, icon? }` ; les libellés viennent d'un dictionnaire par objet (institution, liaison, ticket, suspens, alerte) |
 | `SeverityBadge` | S1 à S4 : puce à bordure, S1 critique, S2 à surveiller, S3 et S4 neutres |
 | `Tag` | Étiquette neutre (catégorie, type de projet) ; retirable dans les filtres |
-| `Avatar` | Initiales sur fond `action-subtle`, cercle 32 px ; jamais de photo |
+| `Avatar` | Cercle (seule forme arrondie, §5.3), cinq tailles de 20 à 96 px ; photo de profil choisie par le titulaire (recadrée en carré, 256 px, sans métadonnées, docs/lot1/mon-compte.md), à défaut initiales sur fond `action-subtle` (D-66) |
 | `KeyValueList` | Liste clé-valeur en deux colonnes (clé `text-secondary`, valeur `text-primary`), copie au clic pour les identifiants |
 | `Timeline` | Chronologie verticale : point, horodatage, acteur (rôle et nom), événement, identifiant de corrélation en chasse fixe, pièce liée |
 | `ProgressRing` | Anneau de couverture (certification, mise en service) avec pourcentage au centre, teinte action, statut sur le libellé |
