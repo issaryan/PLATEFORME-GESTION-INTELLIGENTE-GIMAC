@@ -15,7 +15,7 @@
   "connexion.titre": "Connexion",
   "connexion.explication": "Saisissez votre identifiant et votre mot de passe, puis le code à six chiffres de votre application d'authentification.",
   "connexion.action": "Se connecter",
-  "connexion.cle": "Les actions signées (clôture, quitus) vous demanderont votre clé de sécurité.",
+  "connexion.cle": "Un code à six chiffres vous sera ensuite demandé. Les actions signées vous demanderont votre clé de sécurité.",
   "connexion.erreur": "La connexion a échoué.",
   "connexion.classification": "Usage interne, confidentiel",
   "connexion.couche.des": "Application du département",
@@ -93,5 +93,6 @@
   "session.inactivite.texte": "Sans activité de votre part, la plateforme ferme votre session pour protéger vos données.",
   "session.inactivite.restant": "Fermeture dans",
   "session.inactivite.rester": "Rester connecté",
-  "commun.enCours": "Enregistrement en cours…"
+  "commun.enCours": "Enregistrement en cours…",
+  "connexion.signature": "GIMAC · Afrique centrale"
 }

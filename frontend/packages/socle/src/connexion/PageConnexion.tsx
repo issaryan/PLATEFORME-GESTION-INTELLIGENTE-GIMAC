@@ -1,13 +1,14 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useSearchParams } from 'react-router'
-import { Button, InlineAlert, Link, TextField } from '@gimac/design-system'
+import { Button, Icon, IconButton, InlineAlert, Link, TextField } from '@gimac/design-system'
 import logoCouleur from '@gimac/design-system/assets/logo/gimac-logo-couleur.png'
 import logoBlanc from '@gimac/design-system/assets/logo/gimac-logo-blanc.png'
 import { estApiError } from '../http/errors'
 import { CONNEXION, type Couche } from '../http/prefixes'
-import { LANGUES } from '../i18n/i18n'
 import { usePreferences } from '../enveloppe/usePreferences'
+import { Preferences } from '../enveloppe/Preferences'
+import { Marque, NOM_PLATEFORME, Relief } from './Decor'
 import { navigation, retourSur } from '../session/deconnexion'
 import { useConnexion } from './contexte'
 import type { ServiceConnexion } from './modele'
@@ -26,21 +27,6 @@ export type PageConnexionProps = {
 }
 
 type Erreur = { texte: string; correlationId?: string; violations?: string[]; code?: string }
-
-/** Motif de trame (§5.6) : losanges et chevrons sur la grille de 8 px, période de 32 px, en tuile répétée. */
-function Trame({ id }: { id: string }) {
-  return (
-    <svg className="gm-tuile-trame" aria-hidden="true">
-      <defs>
-        <pattern id={id} width="32" height="32" patternUnits="userSpaceOnUse">
-          <path d="M16 0 L32 16 L16 32 L0 16 Z" />
-          <path d="M0 8 L8 0 M24 32 L32 24 M0 24 L8 32 M24 0 L32 8" />
-        </pattern>
-      </defs>
-      <rect width="100%" height="100%" fill={`url(#${id})`} />
-    </svg>
-  )
-}
 
 const format = (d: Date, fuseau: string) =>
   d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: fuseau })
@@ -141,11 +127,11 @@ function FormulaireConnexion({ service, couche, destination, erreurApplication }
       {etape === 'IDENTIFIANTS' ? (
         <>
           <TextField name="identifiant" label={t('connexion.identifiant')} value={identifiant} onChange={setIdentifiant} required autoComplete="username" error={champs.identifiant} />
-          <TextField name="motDePasse" type="password" label={t('connexion.motDePasse')} value={motDePasse} onChange={setMotDePasse} required autoComplete="current-password" error={champs.motDePasse} />
-          <div className="gm-row gm-acces-actions">
-            <Button variant="primary" size="lg" type="submit" icon="key-round" loading={enCours}>{t('connexion.action')}</Button>
+          <div className="gm-acces-mdp">
+            <TextField name="motDePasse" type="password" label={t('connexion.motDePasse')} value={motDePasse} onChange={setMotDePasse} required autoComplete="current-password" error={champs.motDePasse} />
             <Link href={`${CONNEXION}/mot-de-passe-oublie`}>{t('connexion.oubli.lien')}</Link>
           </div>
+          <Button variant="primary" size="lg" type="submit" icon="key-round" loading={enCours}>{t('connexion.action')}</Button>
         </>
       ) : (
         <>
@@ -188,7 +174,7 @@ function MotDePasseOublie({ service }: { service: ServiceConnexion }) {
   }
   return (
     <form className="gm-col gm-acces-formulaire" onSubmit={(e) => void soumettre(e)} noValidate aria-labelledby="gm-oubli-titre">
-      <h2 id="gm-oubli-titre" className="gm-type-h3" style={{ margin: 0 }}>{t('connexion.oubli.titre')}</h2>
+      <h1 id="gm-oubli-titre" className="gm-acces-titre">{t('connexion.oubli.titre')}</h1>
       {envoye ? (
         <InlineAlert level="info" title={t('connexion.oubli.envoye')} />
       ) : (
@@ -239,7 +225,7 @@ function NouveauMotDePasse({ service }: { service: ServiceConnexion }) {
   }
   return (
     <form className="gm-col gm-acces-formulaire" onSubmit={(e) => void soumettre(e)} noValidate aria-labelledby="gm-nouveau-titre">
-      <h2 id="gm-nouveau-titre" className="gm-type-h3" style={{ margin: 0 }}>{t('connexion.nouveau.titre')}</h2>
+      <h1 id="gm-nouveau-titre" className="gm-acces-titre">{t('connexion.nouveau.titre')}</h1>
       {fait ? (
         <>
           <InlineAlert level="info" title={t('connexion.nouveau.fait')} />
@@ -265,12 +251,47 @@ function NouveauMotDePasse({ service }: { service: ServiceConnexion }) {
   )
 }
 
-// Connexion sur la plateforme (TRA-01, D-65) : une mosaïque tissée qui prolonge la couverture ; l'accès est
-// l'un de ses blocs. Identifiant et mot de passe, puis code à six chiffres ; mot de passe oublié et
-// nouveau mot de passe sous /connexion. La passerelle soumet les secrets à Keycloak, serveur à serveur :
-// aucune page du fournisseur d'identité n'est ouverte. Langue et thème sont des tuiles de la mosaïque.
-export function PageConnexion({ couche, destination, service, erreur }: PageConnexionProps) {
+/** Préférences de l'écran de connexion : langue (menu surgissant du globe) et bascule directe du thème. */
+function OutilsConnexion() {
   const { t, i18n } = useTranslation()
+  const p = usePreferences()
+  const [ouvert, setOuvert] = useState(false)
+  const ancre = useRef<HTMLSpanElement>(null)
+  useEffect(() => {
+    if (!ouvert) return
+    const fermer = (e: MouseEvent | KeyboardEvent) => {
+      if (e instanceof KeyboardEvent ? e.key === 'Escape' : !ancre.current?.contains(e.target as Node)) setOuvert(false)
+    }
+    document.addEventListener('mousedown', fermer)
+    document.addEventListener('keydown', fermer)
+    return () => {
+      document.removeEventListener('mousedown', fermer)
+      document.removeEventListener('keydown', fermer)
+    }
+  }, [ouvert])
+  const sombre = p.theme === 'dark'
+  return (
+    <div className="gm-acces-outils">
+      <span ref={ancre} className="gm-topbar-ancre">
+        <button type="button" className="gm-acces-outil" aria-label={t('shell.preferences')} aria-haspopup="dialog" aria-expanded={ouvert} onClick={() => setOuvert(!ouvert)}>
+          <Icon name="globe" size={18} />
+          <span>{i18n.language.slice(0, 2).toUpperCase()}</span>
+          <Icon name="chevron-down" size={16} />
+        </button>
+        {ouvert ? <div className="gm-popover gm-topbar-pop" role="dialog" aria-label={t('shell.preferences')}><Preferences /></div> : null}
+      </span>
+      <IconButton variant="ghost" icon={sombre ? 'sun' : 'moon'} label={sombre ? t('shell.theme.clair') : t('shell.theme.sombre')} onClick={() => p.changerTheme(sombre ? 'light' : 'dark')} />
+    </div>
+  )
+}
+
+// Connexion sur la plateforme (TRA-01, D-65, D-67) : courbes de niveau sur toute la page, carte d'accès à filet
+// tricolore à gauche, nom de la plateforme en grand à droite. Identifiant et mot de passe, puis code à six
+// chiffres ; mot de passe oublié et nouveau mot de passe sous /connexion. La passerelle soumet les secrets à
+// Keycloak, serveur à serveur : aucune page du fournisseur d'identité n'est ouverte. Langue et thème en haut à
+// droite ; couche, classification et heures de Douala et UTC en pied de page.
+export function PageConnexion({ couche, destination, service, erreur }: PageConnexionProps) {
+  const { t } = useTranslation()
   const p = usePreferences()
   const contexte = useConnexion()
   const svc = service ?? contexte.service
@@ -282,61 +303,36 @@ export function PageConnexion({ couche, destination, service, erreur }: PageConn
     return () => window.clearInterval(id)
   }, [])
   useEffect(() => {
-    document.title = `GIMAC · ${t('connexion.titre')}`
+    document.title = `${NOM_PLATEFORME} · ${t('connexion.titre')}`
   }, [t])
-  const date = maintenant.toLocaleDateString(i18n.language, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Africa/Douala' })
   const vue = pathname.endsWith('/mot-de-passe-oublie') ? 'oubli' : pathname.endsWith('/nouveau-mot-de-passe') ? 'nouveau' : 'connexion'
   const apres = retourSur(parametres.get('retour')) ?? destination ?? `/${couche}/tableau-de-bord`
+  const sombre = p.theme === 'dark'
 
   return (
-    <div className="gm-mosaique gm-root">
-      <div className="gm-tuile gm-tuile-action" aria-hidden="true" />
-      <div className="gm-tuile gm-tuile-logo" aria-hidden="true" />
-      <div className="gm-tuile gm-tuile-coche" aria-hidden="true" />
-      <div className="gm-tuile gm-tuile-terre" aria-hidden="true"><Trame id="trame-terre" /></div>
-      <div className="gm-tuile gm-tuile-relief" aria-hidden="true"><Trame id="trame-relief" /></div>
-
-      <div className="gm-tuile gm-tuile-bande">
-        <span className="gm-type-micro">{t(`connexion.couche.${couche}`)}</span>
-        <span className="gm-type-micro">{t('connexion.classification')}</span>
+    <div className="gm-acces gm-root">
+      <Relief />
+      <header className="gm-acces-haut"><OutilsConnexion /></header>
+      <div className="gm-acces-corps">
+        <main className="gm-acces-carte" aria-labelledby={vue === 'connexion' ? 'gm-acces-titre' : undefined}>
+          <div className="gm-filet" aria-hidden="true"><i /><i /><i /></div>
+          <div className="gm-acces-contenu">
+            <img className="gm-acces-logo" src={sombre ? logoBlanc : logoCouleur} alt="GIMAC" />
+            {vue === 'connexion' ? <h1 id="gm-acces-titre" className="gm-acces-titre">{t('connexion.titre')}</h1> : null}
+            {vue === 'oubli' ? <MotDePasseOublie service={svc} /> : null}
+            {vue === 'nouveau' ? <NouveauMotDePasse service={svc} /> : null}
+            {vue === 'connexion' ? <FormulaireConnexion service={svc} couche={couche} destination={apres} erreurApplication={erreur} /> : null}
+            {vue === 'connexion' ? <p className="gm-acces-note">{t('connexion.cle')}</p> : null}
+          </div>
+        </main>
+        <Marque sombre={sombre} signature={t('connexion.signature')} />
       </div>
-
-      <main className="gm-tuile gm-tuile-acces" aria-labelledby="gm-acces-titre">
-        <img src={p.theme === 'dark' ? logoBlanc : logoCouleur} alt="GIMAC" />
-        <h1 id="gm-acces-titre" className="gm-acces-nom">
-          GIMAC <span>DES</span>
-        </h1>
-        {vue === 'connexion' ? <p className="gm-acces-texte">{t('connexion.explication')}</p> : null}
-        {vue === 'oubli' ? <MotDePasseOublie service={svc} /> : null}
-        {vue === 'nouveau' ? <NouveauMotDePasse service={svc} /> : null}
-        {vue === 'connexion' ? <FormulaireConnexion service={svc} couche={couche} destination={apres} erreurApplication={erreur} /> : null}
-        {vue === 'connexion' ? <p className="gm-field-help" style={{ margin: 0 }}>{t('connexion.cle')}</p> : null}
-      </main>
-
-      <section className="gm-tuile gm-tuile-instrument" aria-label={t('connexion.heure')}>
-        <span className="gm-type-micro">{date}</span>
-        <time className="gm-instrument-heure" dateTime={maintenant.toISOString()}>{format(maintenant, 'Africa/Douala')}</time>
-        <span className="gm-instrument-utc">UTC {format(maintenant, 'UTC')}</span>
-      </section>
-
-      <section className="gm-tuile gm-tuile-choix gm-tuile-langue" aria-label={t('shell.langue')}>
-        <span className="gm-type-micro">{t('shell.langue')}</span>
-        <div className="gm-choix" role="group" aria-label={t('shell.langue')}>
-          {LANGUES.map((l) => (
-            <button key={l} type="button" lang={l} aria-pressed={p.langue === l} onClick={() => p.changerLangue(l)}>
-              {l.toUpperCase()}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <section className="gm-tuile gm-tuile-choix gm-tuile-theme" aria-label={t('shell.theme')}>
-        <span className="gm-type-micro">{t('shell.theme')}</span>
-        <div className="gm-choix" role="group" aria-label={t('shell.theme')}>
-          <button type="button" aria-pressed={p.theme === 'light'} onClick={() => p.changerTheme('light')}>{t('shell.theme.clair')}</button>
-          <button type="button" aria-pressed={p.theme === 'dark'} onClick={() => p.changerTheme('dark')}>{t('shell.theme.sombre.court')}</button>
-        </div>
-      </section>
+      <footer className="gm-acces-pied">
+        <span>{t(`connexion.couche.${couche}`)} · {t('connexion.classification')}</span>
+        <span className="gm-acces-heure" role="timer" aria-label={t('connexion.heure')}>
+          <time dateTime={maintenant.toISOString()}>Douala {format(maintenant, 'Africa/Douala')}</time> · UTC {format(maintenant, 'UTC')}
+        </span>
+      </footer>
     </div>
   )
 }

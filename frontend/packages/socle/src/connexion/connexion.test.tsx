@@ -55,9 +55,10 @@ const saisir = (nom: string, valeur: string) => fireEvent.change(document.queryS
 const cliquer = (nom: string | RegExp) => fireEvent.click(screen.getByRole('button', { name: nom }))
 
 describe('PageConnexion : identifiant, mot de passe, puis code', () => {
-  it('mosaïque conservée, formulaire de la plateforme, aucun renvoi vers le fournisseur d’identité', () => {
+  it('carte d’accès, formulaire de la plateforme, aucun renvoi vers le fournisseur d’identité', () => {
     monter()
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toContain('GIMAC')
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Connexion')
+    expect(screen.getByRole('img', { name: 'GIMAC' })).toBeTruthy()
     expect(screen.getByLabelText(/^Identifiant/)).toBeTruthy()
     expect((screen.getByLabelText(/^Mot de passe/) as HTMLInputElement).type).toBe('password')
     expect(screen.getByRole('link', { name: 'Mot de passe oublié ?' }).getAttribute('href')).toBe('/connexion/mot-de-passe-oublie')
@@ -186,14 +187,32 @@ describe('PageConnexion : identifiant, mot de passe, puis code', () => {
     await waitFor(() => expect(vers).toHaveBeenCalledWith('/des/parcours'))
   })
 
-  it('langue et thème restent des tuiles de la mosaïque', () => {
+  it('écran Moabi (D-67) : carte, nom guilloché ou en contour selon le thème, langue en menu, heures en pied', () => {
     monter()
-    fireEvent.click(screen.getByRole('button', { name: 'Sombre' }))
-    expect(screen.getByRole('button', { name: 'Sombre' }).getAttribute('aria-pressed')).toBe('true')
-    fireEvent.click(screen.getByRole('button', { name: 'EN' }))
-    expect(screen.getByRole('button', { name: 'Sign in' })).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'FR' }))
+    expect(document.title).toBe('Moabi · Connexion')
+    expect(screen.getByRole('heading', { level: 1, name: 'Connexion' })).toBeTruthy()
+    expect(screen.getByRole('img', { name: 'Moabi' }).getAttribute('data-style')).toBe('guilloche')
+    expect(screen.getByText('GIMAC · Afrique centrale')).toBeTruthy()
+    expect(screen.getByRole('timer', { name: 'Heure locale et heure UTC' }).textContent).toMatch(/^Douala \d{2}:\d{2}:\d{2} · UTC \d{2}:\d{2}:\d{2}$/)
+    expect(screen.getByText(/Application du département · Usage interne, confidentiel/)).toBeTruthy()
+    // Thème : bascule directe ; le nom passe en contour.
+    fireEvent.click(screen.getByRole('button', { name: 'Mode sombre' }))
+    expect(screen.getByRole('img', { name: 'Moabi' }).getAttribute('data-style')).toBe('contour')
     fireEvent.click(screen.getByRole('button', { name: 'Clair' }))
+    expect(screen.getByRole('img', { name: 'Moabi' }).getAttribute('data-style')).toBe('guilloche')
+    // Langue : menu surgissant du globe, fermé par Échap ou un clic à l'extérieur.
+    const globe = screen.getByRole('button', { name: 'Préférences' })
+    fireEvent.click(globe)
+    expect(globe.getAttribute('aria-expanded')).toBe('true')
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(globe.getAttribute('aria-expanded')).toBe('false')
+    fireEvent.click(globe)
+    fireEvent.change(screen.getByRole('combobox', { name: 'Langue' }), { target: { value: 'en' } })
+    expect(screen.getByRole('button', { name: 'Sign in' })).toBeTruthy()
+    fireEvent.mouseDown(document.body)
+    expect(screen.queryByRole('dialog', { name: 'Preferences' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Preferences' }))
+    fireEvent.change(screen.getByRole('combobox', { name: 'Language' }), { target: { value: 'fr' } })
   })
 })
 

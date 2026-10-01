@@ -11,6 +11,8 @@ const EXCLUS = ['.gm-filter-label']
 
 /** Audit de la page entière, ou du seul dialogue ouvert (le contenu recouvert par le voile est hors sujet). */
 async function auditer(page: Page, portee?: string) {
+  // Animations d'apparition (fondu des modales) terminées : sinon le contraste est mesuré en cours de fondu.
+  await page.evaluate(() => Promise.all(document.getAnimations().filter((a) => a.effect?.getComputedTiming().iterations !== Infinity).map((a) => a.finished.catch(() => undefined))))
   await page.addScriptTag({ path: axe })
   const violations = await page.evaluate(async ({ exclus, portee }) => {
     const w = window as unknown as { axe: { run: (c: unknown, o: unknown) => Promise<{ violations: { id: string; nodes: { html: string }[] }[] }> } }

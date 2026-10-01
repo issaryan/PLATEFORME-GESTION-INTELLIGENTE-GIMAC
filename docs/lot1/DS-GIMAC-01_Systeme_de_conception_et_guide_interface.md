@@ -1,6 +1,6 @@
 # DS-GIMAC-01 : Système de conception et guide d'interface de la plateforme intégrée du DES
 
-Version 1.1, 1er octobre 2026 (dérogations D-66 de REC-GIMAC-01, signalées « D-66 » ci-dessous ; version 1.0 du 28 septembre 2026). Établi par KOAGNE ISSA RYAN, Ingénieur, et NGOUNOU STEVE DELORS, Ingénieur, pour le Groupement Interbancaire Monétique de l'Afrique Centrale (GIMAC), Département Exploitation et Supervision (DES).
+Version 1.2, 1er octobre 2026 (dérogations D-66 et D-67 de REC-GIMAC-01, signalées « D-66 » et « D-67 » ci-dessous ; version 1.1 du même jour ; version 1.0 du 28 septembre 2026). Établi par KOAGNE ISSA RYAN, Ingénieur, et NGOUNOU STEVE DELORS, Ingénieur, pour le Groupement Interbancaire Monétique de l'Afrique Centrale (GIMAC), Département Exploitation et Supervision (DES).
 
 Documents amont : cahier de charges techniques CCT-GIMAC-01 v1.1 (besoins BF-26 à BF-28, BNF-13, BNF-17, BNF-18), cahier d'analyse CA-GIMAC-01 v1.1 (domaine 7), cahier de conception CC-GIMAC-01 v1.1 (section 6.2 thème, section 6.3 cartographie des écrans), carnet de produit CP-GIMAC-01 v2.0 (épopée IHM, récits d'écran de chaque microservice).
 
@@ -767,7 +767,7 @@ Le portail est adapté au mobile dès 360 px : navigation en tiroir, tableaux en
 
 | Réf. | Écran | Route | Gabarit | Contenu |
 |---|---|---|---|---|
-| TRA-01 | Connexion | `/connexion` | G10 | Bandeau gauche avec motif de trame et logo couleur ; bouton « Se connecter avec le fournisseur d'identité » ; mention de la couche ; aucun champ de mot de passe |
+| TRA-01 | Connexion | `/connexion` | G10 | D-65, D-67 : courbes de niveau, carte d'accès à filet tricolore (logo GIMAC, identifiant, mot de passe, puis code), nom « Moabi » guilloché (clair) ou en contour (sombre) ; langue, thème, couche, classification et heures |
 | TRA-02 | Réauthentification forte | dialogue | Dialog | `SignatureField` FIDO2, contexte de l'action |
 | TRA-03 | Accès refusé (403) | `/acces-refuse` | G10 | Explication, permission manquante en langage clair, identifiant de corrélation, retour |
 | TRA-04 | Page introuvable (404) | `*` | G10 | |
@@ -958,7 +958,7 @@ Enveloppe portail (nom de l'institution, pas de recherche globale) ; accueil G1 
 Enveloppe console (bandeau d'environnement permanent, sessions courtes) ; `PolicyMatrix` rôles × permissions par domaine avec approbation à quatre yeux ; campagne de réexamen (G4 puis liste des décisions, scellement) ; audit : recherche multicritère, `AuditProofViewer` (feuille, chemin, racine, jeton, verdict), `RootPublicationCard`, export au format ouvert avec journalisation ; rétention et purges à quatre yeux ; routes, quotas, politiques avec `DiffView` et décisions récentes ; référentiels et matrices versionnés ; état des quatorze services, retards, rebuts, disjoncteurs, reprises ; salons et terminaux ; environnements et versions, sauvegardes et restauration testée.
 
 **TRA-01 Connexion** (GW-01)
-G10 avec bandeau gauche (40 %, motif de trame sur `--gm-color-brand-pattern`, logo couleur, nom de la couche) ; bouton principal « Se connecter avec le fournisseur d'identité » ; aucun champ de saisie ; message d'erreur de délégation avec identifiant de corrélation ; mention de classification.
+D-65 et D-67 : connexion entièrement sur la plateforme, une seule page. Fond `--gm-color-bg-page` couvert de courbes de niveau (traits de 1 px couleur `--gm-color-brand-accent`, opacité 0,11 ; une courbe maîtresse sur cinq en `--gm-color-action`). Carte d'accès de 432 px à gauche, surface opaque, filet tricolore de 4 px en tête (bleu 2/4, vert 1/4, terre 1/4) : logo GIMAC seul, titre « Connexion », identifiant, mot de passe avec « Mot de passe oublié ? » aligné sur le libellé, bouton principal pleine largeur, note séparée par un filet ; étape du code à six chiffres, mot de passe oublié et nouveau mot de passe dans la même carte. Nom « Moabi » en grand à droite, guilloché en mode clair (ondes fines `--gm-color-action`, une sur six en terre, liseré), en contour en mode sombre (trait `--gm-color-action`, halo terre), filet tricolore de 6 px et signature « GIMAC · Afrique centrale » en capitales espacées. En haut à droite : menu surgissant du globe (préférences) et bascule du thème ; en pied : couche · classification, heures de Douala et UTC. Sous 1 024 px, le nom passe au-dessus de la carte ; sous 640 px, filet et signature sont masqués. Messages d'erreur avec identifiant de corrélation.
 
 ### 12.6 Prompt : revue d'un écran ou d'un composant
 

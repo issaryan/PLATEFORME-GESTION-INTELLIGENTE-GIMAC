@@ -15,7 +15,7 @@
   "connexion.titre": "Inicio de sesión",
   "connexion.explication": "Introduzca su identificador y su contraseña y, a continuación, el código de seis cifras de su aplicación de autenticación.",
   "connexion.action": "Iniciar sesión",
-  "connexion.cle": "Las acciones firmadas (cierre, quitus) le pedirán su llave de seguridad.",
+  "connexion.cle": "A continuación se le pedirá un código de seis cifras. Las acciones firmadas le pedirán su llave de seguridad.",
   "connexion.erreur": "El inicio de sesión ha fallado.",
   "connexion.classification": "Uso interno, confidencial",
   "connexion.couche.des": "Aplicación del departamento",
@@ -93,5 +93,6 @@
   "session.inactivite.texte": "Sin actividad por su parte, la plataforma cierra su sesión para proteger sus datos.",
   "session.inactivite.restant": "Cierre en",
   "session.inactivite.rester": "Permanecer conectado",
-  "commun.enCours": "Guardando…"
+  "commun.enCours": "Guardando…",
+  "connexion.signature": "GIMAC · África Central"
 }

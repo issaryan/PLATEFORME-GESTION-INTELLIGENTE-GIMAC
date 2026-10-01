@@ -15,7 +15,7 @@
   "connexion.titre": "Sign in",
   "connexion.explication": "Enter your username and password, then the six-digit code from your authenticator app.",
   "connexion.action": "Sign in",
-  "connexion.cle": "Signed actions (closure, quitus) will ask for your security key.",
+  "connexion.cle": "A six-digit code will then be requested. Signed actions will ask for your security key.",
   "connexion.erreur": "Sign-in failed.",
   "connexion.classification": "Internal use, confidential",
   "connexion.couche.des": "Department application",
@@ -93,5 +93,6 @@
   "session.inactivite.texte": "Without any activity on your part, the platform closes your session to protect your data.",
   "session.inactivite.restant": "Closing in",
   "session.inactivite.rester": "Stay signed in",
-  "commun.enCours": "Saving…"
+  "commun.enCours": "Saving…",
+  "connexion.signature": "GIMAC · Central Africa"
 }

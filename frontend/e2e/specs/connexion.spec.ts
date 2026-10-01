@@ -22,7 +22,7 @@ test.describe('Fonctionnalité : connexion sur la plateforme', () => {
     await test.step('Étant donné un utilisateur sans session qui ouvre une page de la console', async () => {
       await page.goto(`${ADRESSES.console}/console/comptes`)
       await expect(page).toHaveURL(/\/connexion\?retour=%2Fconsole%2Fcomptes$/)
-      await expect(page.getByRole('heading', { level: 1 })).toContainText('GIMAC')
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText('Connexion')
       await expect(page.getByText(/fournisseur d.identité/)).toHaveCount(0)
     })
     await test.step('Quand il saisit son identifiant et son mot de passe, un code est demandé', async () => {
