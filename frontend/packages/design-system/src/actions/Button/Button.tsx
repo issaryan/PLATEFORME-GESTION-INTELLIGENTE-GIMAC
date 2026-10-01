@@ -15,11 +15,16 @@ export interface ButtonProps extends BaseProps {
   /** Pictogramme seul : exige aria-label. */
   iconOnly?: boolean
   'aria-label'?: string
+  /** Bouton qui ouvre un menu ou un dialogue surgissant. */
+  'aria-haspopup'?: 'menu' | 'dialog' | 'true'
+  'aria-expanded'?: boolean
   loading?: boolean
   disabled?: boolean
   /** Affiché en infobulle quand le bouton est désactivé : jamais désactivé sans explication. */
   disabledReason?: string
   type?: 'button' | 'submit'
+  /** Formulaire soumis par ce bouton quand il est placé hors du formulaire (pied d'un dialogue). */
+  form?: string
   onClick?: (e: MouseEvent<HTMLButtonElement>) => void
   /** Verbe à l'infinitif et son objet. */
   children?: ReactNode
@@ -32,11 +37,14 @@ export function Button(p: ButtonProps) {
   return (
     <button
       type={p.type || 'button'}
+      form={p.form}
       className={cx('gm-btn', 'gm-btn-' + variant, size !== 'md' && 'gm-btn-' + size, p.iconOnly && 'gm-btn-icon', p.className)}
       disabled={p.disabled}
       onClick={p.onClick}
       data-testid={p['data-testid']}
       aria-busy={p.loading ? 'true' : undefined}
+      aria-haspopup={p['aria-haspopup']}
+      aria-expanded={p['aria-expanded']}
       title={p.disabled && p.disabledReason ? p.disabledReason : undefined}
       aria-label={p['aria-label'] || (p.iconOnly && typeof p.children === 'string' ? p.children : undefined)}
     >

@@ -8,7 +8,7 @@
 .gm-input:focus { outline: none; border: var(--gm-border-2) solid var(--gm-color-action); padding: 0 calc(var(--gm-space-3) - 1px); }
 .gm-input.gm-mono { font-size: 13px; }
 .gm-input[aria-invalid="true"] { border-color: var(--gm-color-status-crit-fg); }
-.gm-input[disabled], .gm-input[readonly] { background: var(--gm-color-surface-sunken); color: var(--gm-color-text-muted); }
+.gm-input[disabled], .gm-input[readonly] { background: var(--gm-color-surface-sunken); color: var(--gm-color-text-secondary); }
 textarea.gm-input { height: auto; min-height: calc(22px * 3 + 16px); padding: var(--gm-space-2) var(--gm-space-3); resize: vertical; }
 .gm-input-wrap { position: relative; display: flex; align-items: center; }
 .gm-input-suffix { position: absolute; right: var(--gm-space-3); color: var(--gm-color-text-secondary); pointer-events: none; }

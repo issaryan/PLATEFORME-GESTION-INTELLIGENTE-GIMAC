@@ -4,7 +4,35 @@
 .gm-split-menu { position: absolute; top: calc(100% + 2px); right: 0; z-index: 20; }
 .gm-resource { display: flex; flex-direction: column; gap: var(--gm-space-4); position: relative; }
 .gm-resource-embedded { gap: var(--gm-space-3); }
-.gm-resource-head { display: flex; align-items: center; justify-content: space-between; gap: var(--gm-space-4); }
+.gm-resource-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--gm-space-3) var(--gm-space-4); }
+/* Le titre garde la priorité : il ne se réduit pas pour laisser place aux actions, qui passent dessous. */
+.gm-resource-head > :first-child { flex: 1 0 auto; max-width: 100%; min-width: 0; }
 .gm-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--gm-space-4) var(--gm-space-5); }
 .gm-form-wide { grid-column: 1 / -1; }
 .gm-form-actions { display: flex; align-items: center; gap: var(--gm-space-2); padding-top: var(--gm-space-4); border-top: var(--gm-border-1) solid var(--gm-color-border); }
+/* En-tête de page (PageHeader) : titre et une ligne de description à gauche ; à droite, alignés sur la
+   ligne du titre, la personne connectée et ses profils en texte simple, puis les actions. À plat, filet inférieur de 1 px. */
+.gm-pagehead { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--gm-space-3) var(--gm-space-6); padding-bottom: var(--gm-space-4); border-bottom: var(--gm-border-1) solid var(--gm-color-border); }
+.gm-pagehead-texte { flex: 1 1 420px; min-width: 0; display: flex; flex-direction: column; gap: var(--gm-space-1); }
+.gm-pagehead-retour { font-size: 13px; line-height: 20px; }
+.gm-pagehead-sur { margin: 0; font-size: 13px; line-height: 20px; color: var(--gm-color-text-secondary); }
+.gm-pagehead-sous { margin: 0; max-width: 88ch; font-size: 14px; line-height: 22px; color: var(--gm-color-text-secondary); }
+.gm-pagehead-meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--gm-space-2) var(--gm-space-3); margin-top: var(--gm-space-1); }
+.gm-pagehead-droite { display: flex; flex-direction: column; align-items: flex-end; gap: var(--gm-space-3); max-width: 100%; padding-top: var(--gm-space-2); }
+.gm-pagehead-user { margin: 0; text-align: right; font-size: 13px; line-height: 20px; color: var(--gm-color-text-secondary); }
+.gm-pagehead-nom { font-weight: 600; color: var(--gm-color-text-primary); }
+.gm-pagehead-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--gm-space-2); }
+/* Description de section et note d'aide : aucun texte posé à nu. */
+.gm-section-desc { margin: 0; max-width: 92ch; color: var(--gm-color-text-secondary); }
+.gm-note { display: flex; align-items: flex-start; gap: var(--gm-space-3); padding: var(--gm-space-3) var(--gm-space-4); background: var(--gm-color-surface-sunken); border: var(--gm-border-1) solid var(--gm-color-border); font-size: 13px; line-height: 20px; color: var(--gm-color-text-primary); }
+.gm-note > .gm-icon { flex: none; margin-top: 2px; color: var(--gm-color-action); }
+.gm-note-texte { flex: 1; min-width: 0; }
+.gm-note-titre { font-weight: 600; margin-bottom: 2px; }
+/* Liste de liens paginée (LinkList). */
+.gm-linklist { display: flex; flex-direction: column; }
+.gm-linklist ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.gm-linklist li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--gm-space-2) var(--gm-space-3); min-height: var(--gm-size-row-compact); padding: var(--gm-space-2) var(--gm-space-2); border-bottom: var(--gm-border-1) solid var(--gm-color-border); }
+.gm-linklist li:hover { background: var(--gm-color-surface-sunken); }
+.gm-linklist .gm-pagination { justify-content: flex-end; padding-top: var(--gm-space-3); }
+/* Grille de cartes de même rang (groupes de réglages, sections d'une fiche). */
+.gm-grille-cartes { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: var(--gm-space-4); align-items: start; }

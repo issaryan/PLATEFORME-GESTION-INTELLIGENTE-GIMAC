@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Dialog, InlineAlert, KeyValueList, TextArea } from '@gimac/design-system'
+import { CrudDialog, InlineAlert, KeyValueList, TextArea } from '@gimac/design-system'
 import type { OperationParcours } from '../../../modele/parcours'
 import { useDeposerLivrable } from '../../../hooks/parcours'
 import { ChampFichier } from '../../commun/ChampFichier'
@@ -23,18 +23,16 @@ export function DialogueLivrable({ operation, onFermer, onDepose }: { operation:
     deposer.mutate({ operationId: operation.id, fichier, commentaire: commentaire.trim() }, { onSuccess: onDepose })
   }
   return (
-    <Dialog
-      open
+    <CrudDialog
+      context="create"
       id="gm-livrable"
       title={t('parcoursLivrable.titre')}
       description={t(`parcours.op.${operation.rang}`)}
       onClose={onFermer}
-      footer={
-        <>
-          <Button variant="secondary" onClick={onFermer}>{t('commun.annuler')}</Button>
-          <Button variant="primary" icon="upload" loading={deposer.isPending} onClick={soumettre}>{t('parcoursLivrable.deposer')}</Button>
-        </>
-      }
+      onSubmit={soumettre}
+      submitLabel={t('parcoursLivrable.deposer')}
+      submitIcon="upload"
+      submitting={deposer.isPending}
     >
       <div className="gm-col">
         <KeyValueList
@@ -63,6 +61,6 @@ export function DialogueLivrable({ operation, onFermer, onDepose }: { operation:
         />
         <TextArea name="commentaire" label={t('parcoursLivrable.commentaire')} help={t('parcoursLivrable.commentaire.aide')} value={commentaire} onChange={setCommentaire} />
       </div>
-    </Dialog>
+    </CrudDialog>
   )
 }

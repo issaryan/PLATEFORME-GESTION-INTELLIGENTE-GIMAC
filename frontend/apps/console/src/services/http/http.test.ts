@@ -50,7 +50,7 @@ describe('comptes (MS-IAM)', () => {
     await comptesHttp.activer('u-1', 'Retour de congé')
     await comptesHttp.desactiver('u-1', 'Départ')
     await comptesHttp.supprimer('u-1', 'Doublon', 'ASSERTION-2')
-    await comptesHttp.exigerActions('u-1', ['UPDATE_PASSWORD'], true, 'Suspicion de fuite')
+    await comptesHttp.exigerActions('u-1', ['MOT_DE_PASSE'], true, 'Suspicion de fuite')
     await comptesHttp.reinitialiserSecondFacteur('u-1', 'Téléphone perdu')
     await comptesHttp.motDePasseProvisoire('u-1', 'Oubli')
     await comptesHttp.fermerSessions('u-1', 'Poste volé')
@@ -70,7 +70,7 @@ describe('comptes (MS-IAM)', () => {
     expect(entete(spy, 5, 'X-Reauth-Assertion')).toBe('ASSERTION-2')
     expect(entete(spy, 3, 'X-Reauth-Assertion')).toBeNull()
     expect(JSON.parse(String((spy.mock.calls[2][1] as RequestInit).body))).toEqual({ profils: ['ROLE_SNA'], motif: 'Changement de fonction' })
-    expect(JSON.parse(String((spy.mock.calls[6][1] as RequestInit).body))).toEqual({ actions: ['UPDATE_PASSWORD'], parCourriel: true, motif: 'Suspicion de fuite' })
+    expect(JSON.parse(String((spy.mock.calls[6][1] as RequestInit).body))).toEqual({ actions: ['MOT_DE_PASSE'], parCourriel: true, motif: 'Suspicion de fuite' })
   })
 
   it('428 : réauthentification exigée remontée telle quelle', async () => {

@@ -13,7 +13,7 @@ test.describe('Fonctionnalité : constats de Normes et Agréments', () => {
   test('Scénario : constater la couverture du périmètre, incomplète, qui bloque le procès-verbal', async ({ page }) => {
     await test.step('Étant donné Normes et Agréments et la couverture à constater de LIA-2026-022', async () => {
       await page.goto(`${ADRESSES.departement}/des/tableau-de-bord`)
-      await expect(page.getByText('Normes et Agréments', { exact: true })).toBeVisible()
+      await expect(page.locator('.gm-pagehead-user', { hasText: 'Normes et Agréments' })).toBeVisible()
       const compteurs = monTravail(page).locator('[aria-label="Mes compteurs"]')
       for (const c of ['Essais en cours', 'Documents de paramétrage attendus', 'Mises en service à constater']) await expect(compteurs.getByText(c, { exact: true })).toBeVisible()
       await compteurs.getByRole('link', { name: 'Couvertures à constater' }).click()

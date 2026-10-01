@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
-import { Button, Dialog, Icon, InlineAlert, RadioGroup, Select } from '@gimac/design-system'
+import { CrudDialog, Icon, InlineAlert, RadioGroup, Select } from '@gimac/design-system'
 import type { TypeProjet } from '../../../modele/commun'
 import { useInstitutions } from '../../../hooks/participant'
 import { useConducteurs, useOuvrirLiaison } from '../../../hooks/parcours'
@@ -65,21 +65,18 @@ export function DialogueOuverture({ onFermer }: { onFermer: () => void }) {
   const e = (cle: keyof typeof erreurs) => (tente ? erreurs[cle] : undefined)
 
   return (
-    <Dialog
-      open
+    <CrudDialog
+      context="create"
       size="lg"
       id="gm-ouverture"
       title={t('parcoursOuverture.titre')}
       description={t('parcoursOuverture.description')}
       onClose={onFermer}
-      footer={
-        <>
-          <Button variant="secondary" onClick={onFermer}>{t('commun.annuler')}</Button>
-          <Button variant="primary" icon="plus" loading={ouvrir.isPending} disabled={aucunAdherent} disabledReason={t('parcoursOuverture.aucunAdherent')} onClick={soumettre}>
-            {t('parcoursOuverture.valider')}
-          </Button>
-        </>
-      }
+      onSubmit={soumettre}
+      submitLabel={t('parcoursOuverture.valider')}
+      submitIcon="plus"
+      submitting={ouvrir.isPending}
+      submitDisabled={aucunAdherent} submitDisabledReason={t('parcoursOuverture.aucunAdherent')}
     >
       <div className="gm-col">
         {refus ? (
@@ -146,6 +143,6 @@ export function DialogueOuverture({ onFermer }: { onFermer: () => void }) {
           onChange={setConducteur}
         />
       </div>
-    </Dialog>
+    </CrudDialog>
   )
 }

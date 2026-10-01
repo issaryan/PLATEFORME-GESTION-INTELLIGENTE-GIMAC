@@ -4,14 +4,26 @@
 .gm-card-title { margin: 0; font-family: var(--font-heading); font-size: 18px; line-height: 26px; font-weight: 500; }
 .gm-card-body { padding: var(--gm-space-4); }
 .gm-card-footer { padding: var(--gm-space-3) var(--gm-space-4); border-top: var(--gm-border-1) solid var(--gm-color-border); display: flex; gap: var(--gm-space-2); justify-content: flex-end; }
-.gm-panel { background: var(--gm-color-surface-sunken); border-radius: var(--gm-radius); padding: var(--gm-space-4); }
-.gm-stat { padding: var(--gm-space-4); display: flex; flex-direction: column; gap: var(--gm-space-1); min-width: 200px; }
-.gm-stat[role="button"] { cursor: pointer; }
-.gm-stat[role="button"]:hover { background: var(--gm-color-action-subtle); }
-.gm-stat-label { font-size: 12px; line-height: 18px; color: var(--gm-color-text-secondary); }
-.gm-stat-value { font-size: 32px; line-height: 40px; font-weight: 600; font-variant-numeric: tabular-nums; display: flex; align-items: baseline; gap: var(--gm-space-1); }
+.gm-panel { background: var(--gm-color-surface-sunken); padding: var(--gm-space-4); }
+/* Carte d'indicateur (DS-GIMAC-01 §7.3) : surface plate, bordure de 1 px, angles droits ; libellé
+   small, valeur stat (32 px, 600, chiffres tabulaires) ; statut sur pictogramme et libellé colorés. */
+.gm-stat { padding: var(--gm-space-4); display: flex; flex-direction: column; gap: var(--gm-space-1); min-width: 0; transition: border-color var(--gm-motion-fast) var(--gm-motion-ease), background-color var(--gm-motion-fast) var(--gm-motion-ease); }
+.gm-stat-label { font-size: 12px; line-height: 18px; font-weight: 400; color: var(--gm-color-text-secondary); }
+.gm-stat-value { font-family: var(--font-sans); font-size: 32px; line-height: 40px; font-weight: 600; color: var(--gm-color-text-primary); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; display: flex; align-items: baseline; gap: var(--gm-space-1); }
 .gm-stat-unit { font-size: 14px; line-height: 22px; font-weight: 400; color: var(--gm-color-text-secondary); }
-.gm-stat-meta { display: flex; align-items: center; gap: var(--gm-space-2); font-size: 12px; line-height: 18px; color: var(--gm-color-text-secondary); }
+.gm-stat-meta { margin-top: auto; min-height: 18px; display: flex; flex-wrap: wrap; align-items: center; gap: var(--gm-space-1) var(--gm-space-3); font-size: 12px; line-height: 18px; color: var(--gm-color-text-secondary); }
+.gm-stat-etat, .gm-stat-tendance { display: inline-flex; align-items: center; gap: var(--gm-space-1); }
+.gm-stat-etat { font-weight: 600; color: var(--gm-color-status-neutral-fg); }
+.gm-stat-etat-ok { color: var(--gm-color-status-ok-fg); }
+.gm-stat-etat-warn { color: var(--gm-color-status-warn-fg); }
+.gm-stat-etat-crit { color: var(--gm-color-status-crit-fg); }
+.gm-stat-etat-info { color: var(--gm-color-status-info-fg); }
+.gm-stat-lien { cursor: pointer; }
+.gm-stat-lien:hover { border-color: var(--gm-color-action); background: var(--gm-color-surface-sunken); }
+.gm-stat-lien:hover .gm-stat-label { color: var(--gm-color-text-primary); text-decoration: underline; }
+.gm-stat-lien:focus-visible { outline: var(--gm-border-2) solid var(--gm-color-focus); outline-offset: 2px; }
+/* Grille régulière d'indicateurs : colonnes égales, renvoi à la ligne sous la largeur disponible. */
+.gm-stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(208px, 1fr)); gap: var(--gm-space-4); align-items: stretch; }
 .gm-kv { display: grid; grid-template-columns: max-content 1fr; gap: var(--gm-space-2) var(--gm-space-5); margin: 0; }
 .gm-kv dt { color: var(--gm-color-text-secondary); }
 .gm-kv dd { margin: 0; color: var(--gm-color-text-primary); }

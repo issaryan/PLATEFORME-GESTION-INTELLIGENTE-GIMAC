@@ -1,9 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  Button, Card, DataTable, DateTimeField, EmptyState, Hash, InlineAlert, KeyValueList, ResourceList,
-  StatusBadge, TextField, type Column,
-} from '@gimac/design-system'
+import { ActionBar, Button, DataTable, DateTimeField, EmptyState, CrudDialog, Hash, InlineAlert, KeyValueList, ResourceList, StatusBadge, TextField, type Column, Note } from '@gimac/design-system'
 import { EtatsRequete } from '@gimac/socle'
 import type { Attestation, Condition, Dossier, Horodatage } from '../../../modele/certification'
 import {
@@ -17,7 +14,8 @@ import { useDescripteurDS } from '../../../ressources/descripteur'
 import { enregistrerFichier } from '../../../ressources/fichier'
 import { ChampFichier } from '../../commun/ChampFichier'
 
-// Onglets de DES-11 : compositions de composants du catalogue, alimentées par les hooks de données.
+// Onglets de DES-11 : compositions de composants du catalogue, alimentées par les hooks de données ; les
+// saisies (liaison de la fiche, dépôt du procès-verbal) s'ouvrent dans des fenêtres modales.
 
 function useLibellesEtats() {
   const { t } = useTranslation()
@@ -48,16 +46,22 @@ export function OngletFiche({ dossier }: { dossier: Dossier }) {
   const q = useFicheDeChangement(dossier.id)
   const lier = useLierFiche()
   const [reference, setReference] = useState('')
+  const [saisie, setSaisie] = useState(false)
+  // Liaison de la fiche : bouton sur l'onglet, saisie dans une fenêtre modale.
   const formulaire = dossier.actionsPermises.includes('LIER_FICHE') ? (
-    <Card title={t('fiche.action.lier')}>
-      <div className="gm-col" style={{ gap: 'var(--gm-space-3)', maxWidth: 480 }}>
-        <TextField name="referenceFiche" label={t('fiche.reference')} help={t('fiche.reference.aide')} mono required value={reference} onChange={setReference} />
-        {lier.error ? <InlineAlert level="crit" correlationId={lier.error.correlationId || undefined}>{t(`erreur.${lier.error.code}`, { defaultValue: lier.error.message })}</InlineAlert> : null}
-        <Button variant="primary" icon="check" loading={lier.isPending} disabled={!reference.trim()} disabledReason={t('fiche.reference.requise')} onClick={() => lier.mutate({ dossierId: dossier.id, reference: reference.trim() })}>
-          {t('fiche.action.lier')}
-        </Button>
-      </div>
-    </Card>
+    <>
+      <ActionBar align="start">
+        <Button variant="primary" icon="check" onClick={() => setSaisie(true)}>{t('fiche.action.lier')}</Button>
+      </ActionBar>
+      {saisie ? (
+        <CrudDialog context="edit" id="gm-dlg-lier-fiche" size="sm" subject={dossier.id} title={t('fiche.action.lier')} onClose={() => setSaisie(false)}
+          onSubmit={() => reference.trim() && lier.mutate({ dossierId: dossier.id, reference: reference.trim() }, { onSuccess: () => setSaisie(false) })}
+          submitLabel={t('fiche.action.lier')} submitIcon="check" submitting={lier.isPending} submitDisabled={!reference.trim()} submitDisabledReason={t('fiche.reference.requise')}
+          error={lier.error ? { title: t(`erreur.${lier.error.code}`, { defaultValue: lier.error.message }), correlationId: lier.error.correlationId || undefined } : undefined}>
+          <TextField name="referenceFiche" label={t('fiche.reference')} help={t('fiche.reference.aide')} mono required value={reference} onChange={setReference} />
+        </CrudDialog>
+      ) : null}
+    </>
   ) : null
   return (
     <EtatsRequete etat={q} emptyTitle={e.vide} errorTitle={e.erreur} retryLabel={e.reessayer}>
@@ -78,7 +82,7 @@ export function OngletFiche({ dossier }: { dossier: Dossier }) {
                 { key: t('fiche.dateLecture'), value: f.dateLecture },
               ]}
             />
-            <p className="gm-field-help" style={{ margin: 0 }}>{t('fiche.lectureSeule')}</p>
+            <Note>{t('fiche.lectureSeule')}</Note>
           </div>
         )
       }
@@ -93,6 +97,7 @@ export function OngletProcesVerbal({ dossier }: { dossier: Dossier }) {
   const deposer = useDeposerProcesVerbal()
   const [fichier, setFichier] = useState<File | null>(null)
   const [bascule, setBascule] = useState({ date: '', time: '' })
+  const [saisie, setSaisie] = useState(false)
   const permis = dossier.actionsPermises.includes('DEPOSER_PROCES_VERBAL')
   return (
     <EtatsRequete etat={q} emptyTitle={e.vide} errorTitle={e.erreur} retryLabel={e.reessayer}>
@@ -109,23 +114,18 @@ export function OngletProcesVerbal({ dossier }: { dossier: Dossier }) {
           <div className="gm-col">
             <EmptyState icon="file-text" title={t('pv.aucun')} text={t(permis ? 'pv.aucun.depot' : 'pv.aucun.attente')} />
             {permis ? (
-              <Card title={t('pv.action.deposer')}>
-                <div className="gm-col" style={{ gap: 'var(--gm-space-3)', maxWidth: 480 }}>
-                  <ChampFichier name="proces-verbal" label={t('pv.fichier')} accept="PDF" maxSize="20 Mo" required fichier={fichier} onFichier={setFichier} />
-                  <DateTimeField name="heureBascule" label={t('pv.heureBascule')} date={bascule.date} time={bascule.time} onChange={setBascule} required />
-                  {deposer.error ? <InlineAlert level="crit" correlationId={deposer.error.correlationId || undefined}>{t(`erreur.${deposer.error.code}`, { defaultValue: deposer.error.message })}</InlineAlert> : null}
-                  <Button
-                    variant="primary"
-                    icon="upload"
-                    loading={deposer.isPending}
-                    disabled={!fichier || !bascule.date || !bascule.time}
-                    disabledReason={t('pv.incomplet')}
-                    onClick={() => fichier && deposer.mutate({ dossierId: dossier.id, fichier, heureBascule: `${bascule.date} ${bascule.time}` })}
-                  >
-                    {t('pv.action.deposer')}
-                  </Button>
-                </div>
-              </Card>
+              <ActionBar align="start">
+                <Button variant="primary" icon="upload" onClick={() => setSaisie(true)}>{t('pv.action.deposer')}</Button>
+              </ActionBar>
+            ) : null}
+            {permis && saisie ? (
+              <CrudDialog context="create" id="gm-dlg-pv" size="md" subject={dossier.id} title={t('pv.action.deposer')} onClose={() => setSaisie(false)}
+                onSubmit={() => fichier && deposer.mutate({ dossierId: dossier.id, fichier, heureBascule: `${bascule.date} ${bascule.time}` }, { onSuccess: () => setSaisie(false) })}
+                submitLabel={t('pv.action.deposer')} submitIcon="upload" submitting={deposer.isPending} submitDisabled={!fichier || !bascule.date || !bascule.time} submitDisabledReason={t('pv.incomplet')}
+                error={deposer.error ? { title: t(`erreur.${deposer.error.code}`, { defaultValue: deposer.error.message }), correlationId: deposer.error.correlationId || undefined } : undefined}>
+                <ChampFichier name="proces-verbal" label={t('pv.fichier')} accept="PDF" maxSize="20 Mo" required fichier={fichier} onFichier={setFichier} />
+                <DateTimeField name="heureBascule" label={t('pv.heureBascule')} date={bascule.date} time={bascule.time} onChange={setBascule} required />
+              </CrudDialog>
             ) : null}
           </div>
         )

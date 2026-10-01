@@ -30,7 +30,7 @@
 .gm-kanban-over { border-color: var(--gm-color-status-crit-fg); }
 .gm-kanban-head { display: flex; align-items: center; justify-content: space-between; padding: var(--gm-space-2) var(--gm-space-3); border-bottom: var(--gm-border-1) solid var(--gm-color-border); }
 .gm-kanban-wip { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: var(--gm-color-text-secondary); }
-.gm-kanban-notice { padding: var(--gm-space-2) var(--gm-space-3); font-size: 12px; line-height: 18px; color: var(--gm-color-status-crit-fg); background: var(--gm-color-status-crit-bg); border-left: var(--gm-border-4) solid var(--gm-color-status-crit-fg); }
+.gm-kanban-notice { padding: var(--gm-space-2) var(--gm-space-3); font-size: 12px; line-height: 18px; color: var(--gm-color-status-crit-fg); border-top: var(--gm-border-1) solid var(--gm-color-border); font-weight: 600; }
 .gm-kanban-cards { display: flex; flex-direction: column; gap: var(--gm-space-2); padding: var(--gm-space-2); min-height: 80px; }
 .gm-kanban-cards .gm-tcard { width: auto; }
 .gm-kanban-empty { padding: var(--gm-space-4); text-align: center; color: var(--gm-color-text-muted); font-size: 12px; }
@@ -123,7 +123,7 @@ rect.gm-data-8, circle.gm-data-8, .gm-chart-swatch.gm-data-8 { fill: var(--gm-da
 .gm-proof-step + .gm-proof-step::before { content: ""; position: absolute; left: 24px; top: -21px; height: 20px; width: 2px; background: var(--gm-color-action); }
 .gm-proof-path { margin-left: var(--gm-space-5); }
 .gm-proof-k { font-size: 11px; line-height: 16px; letter-spacing: 0.04em; text-transform: uppercase; font-weight: 500; color: var(--gm-color-text-muted); }
-.gm-proof-verdict { display: flex; align-items: center; gap: var(--gm-space-3); padding: var(--gm-space-3) var(--gm-space-4); border-left: var(--gm-border-4) solid; }
+.gm-proof-verdict { display: flex; align-items: center; gap: var(--gm-space-3); padding: var(--gm-space-3) var(--gm-space-4); font-weight: 600; }
 .gm-proof-verdict.gm-banner-info { border-color: var(--gm-color-status-ok-fg); }
 .gm-proof-verdict.gm-banner-info > .gm-icon { color: var(--gm-color-status-ok-fg); }
 .gm-diff { border: var(--gm-border-1) solid var(--gm-color-border); background: var(--gm-color-surface); overflow-x: auto; }
@@ -139,3 +139,12 @@ rect.gm-data-8, circle.gm-data-8, .gm-chart-swatch.gm-data-8 { fill: var(--gm-da
 .gm-diff-key.gm-diff-mod { background: var(--gm-color-status-warn-bg); color: var(--gm-color-status-warn-fg); }
 /* Extension lot 1 : nœud sélectionné du graphe (DagView selected). */
 .gm-dag-node-sel .gm-node { outline: var(--gm-border-2) solid var(--gm-color-focus); outline-offset: 2px; }
+/* Grille de réglages en lecture (SettingsGrid). */
+.gm-reglages { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--gm-space-3); margin: 0; }
+.gm-reglage { display: flex; flex-direction: column; gap: var(--gm-space-1); padding: var(--gm-space-3) var(--gm-space-4); background: var(--gm-color-surface-sunken); border: var(--gm-border-1) solid var(--gm-color-border); }
+.gm-reglage dt { font-size: 13px; line-height: 20px; color: var(--gm-color-text-secondary); }
+.gm-reglage dd { margin: 0; }
+.gm-reglage-valeur { font-family: var(--font-sans); font-size: 18px; line-height: 26px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--gm-color-text-primary); display: flex; align-items: baseline; gap: var(--gm-space-1); }
+.gm-reglage-etat { align-self: center; display: inline-flex; }
+.gm-reglage-unite { font-family: var(--font-sans); font-size: 13px; line-height: 20px; font-weight: 400; color: var(--gm-color-text-secondary); }
+.gm-reglage-aide { font-size: 12px; line-height: 18px; color: var(--gm-color-text-secondary); }

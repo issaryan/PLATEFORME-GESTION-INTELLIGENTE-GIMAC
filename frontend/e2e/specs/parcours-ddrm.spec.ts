@@ -10,7 +10,7 @@ test.describe('Fonctionnalité : phase amont conduite par la DDRM', () => {
     await demo(page, { profil: 'ROLE_CHEF_DDRM', theme: 'light' })
     await test.step('Étant donné le chef de la DDRM sur son tableau de bord', async () => {
       await page.goto(`${ADRESSES.departement}/des/tableau-de-bord`)
-      await expect(page.getByText('Bienvenue, Bertrand Nguema Obiang')).toBeVisible()
+      await expect(page.locator('.gm-pagehead-nom', { hasText: 'Bertrand Nguema Obiang' })).toBeVisible()
       const compteurs = monTravail(page).locator('[aria-label="Mes compteurs"]')
       for (const c of ['Conducteurs à désigner', 'Liaisons en phase amont', 'Ateliers à tenir', 'Périmètres à arrêter']) await expect(compteurs.getByText(c, { exact: true })).toBeVisible()
       await expect(carte(page, 'Liaison sans conducteur (1)')).toBeVisible()
@@ -58,7 +58,7 @@ test.describe('Fonctionnalité : phase amont conduite par la DDRM', () => {
     await demo(page, { profil: 'ROLE_CHARGE_DDRM', theme: 'light' })
     await test.step('Étant donné la chargée de la DDRM et ses tâches de phase amont', async () => {
       await page.goto(`${ADRESSES.departement}/des/tableau-de-bord`)
-      await expect(page.getByText('Bienvenue, Fatimé Abakar Hissein')).toBeVisible()
+      await expect(page.locator('.gm-pagehead-nom', { hasText: 'Fatimé Abakar Hissein' })).toBeVisible()
       await expect(page.getByRole('region', { name: 'Pilotage des projets de certification' })).toHaveCount(0)
       await expect(carte(page, 'Liaison sans conducteur (1)')).toHaveCount(0)
       const taches = carte(page, /^Mes tâches \(\d+\)$/)

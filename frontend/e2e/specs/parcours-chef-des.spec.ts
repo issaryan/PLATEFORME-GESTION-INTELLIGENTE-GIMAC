@@ -14,7 +14,7 @@ test.describe('Fonctionnalité : parcours de certification conduit par le chef d
   test('Scénario : piloter les projets depuis le tableau de bord et la liste des liaisons', async ({ page }) => {
     await test.step('Étant donné le chef du DES sur son tableau de bord', async () => {
       await page.goto(`${ADRESSES.departement}/des/tableau-de-bord`)
-      await expect(page.getByText('Bienvenue, Paul Mbarga Atangana')).toBeVisible()
+      await expect(page.locator('.gm-pagehead-nom', { hasText: 'Paul Mbarga Atangana' })).toBeVisible()
       const compteurs = monTravail(page).locator('[aria-label="Mes compteurs"]')
       for (const c of ['Conducteurs à désigner', 'Ressources à affecter', 'En intégration ou en test', 'Procès-verbaux à signer', 'Tâches en retard', 'Échéances proches']) {
         await expect(compteurs.getByText(c, { exact: true })).toBeVisible()
@@ -245,11 +245,12 @@ test.describe('Fonctionnalité : parcours de certification conduit par le chef d
       await expect(page.getByText('Fiche remise : le participant la renseigne sur son portail.')).toBeVisible()
       await expect(page.getByText('Couverture de mise en service')).toBeVisible()
       await expect(page.getByRole('heading', { name: 'Suivi de l\'exploitation' })).toBeVisible()
-      await expect(page.getByRole('button', { name: 'Ouvrir une nouvelle liaison' })).toBeDisabled()
+      await page.getByRole('button', { name: 'Ouvrir une nouvelle liaison' }).click()
+      await expect(page.getByRole('dialog').getByRole('button', { name: 'Ouvrir une nouvelle liaison' })).toBeDisabled()
     })
     await test.step('Quand il choisit le service hors périmètre et ouvre une nouvelle liaison', async () => {
-      await page.getByRole('checkbox', { name: 'Cash-in agent' }).check()
-      await page.getByRole('button', { name: 'Ouvrir une nouvelle liaison' }).click()
+      await page.getByRole('dialog').getByRole('checkbox', { name: 'Cash-in agent' }).check()
+      await page.getByRole('dialog').getByRole('button', { name: 'Ouvrir une nouvelle liaison' }).click()
       await expect(page.getByRole('alertdialog').getByText(/Cash-in agent/)).toBeVisible()
       await confirmerAction(page, 'Ouvrir une nouvelle liaison')
     })

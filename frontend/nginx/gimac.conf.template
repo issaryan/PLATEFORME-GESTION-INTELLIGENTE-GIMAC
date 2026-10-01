@@ -47,9 +47,10 @@ server {
         proxy_send_timeout 24h;
     }
 
-    # Modèle BFF : la session est portée par MS-GATEWAY ; le navigateur ne voit aucun jeton.
+    # Modèle BFF : la session est portée par MS-GATEWAY ; le navigateur ne voit aucun jeton. Connexion sur la
+    # plateforme (D-65) : /api/connexion ; plus de redirection vers le fournisseur d'identité (/oauth2, /login).
     # /bff porte les routes des couches (PI-GIMAC-01 §0.6), y compris le canal poussé (flux SSE).
-    location ~ ^/(api|bff|oauth2|login|logout)(/|$) {
+    location ~ ^/(api|bff|logout)(/|$) {
         proxy_pass $passerelle;
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-Proto $scheme;

@@ -1,13 +1,14 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
-import { ActionBar, Button, Card, FileDropzone, InlineAlert, ResourceForm, type Option, type ResourceDescriptor } from '@gimac/design-system'
+import { FileDropzone, CrudDialog, ResourceForm, type Option, type ResourceDescriptor } from '@gimac/design-system'
 import type { CategorieInstitution, Candidature, ConditionsAdhesion, Institution, ModeAdhesion, PieceAdhesion } from '../../../modele/participant'
 import { useDefinirConditions, useDeposerPiece, useEnregistrerInstitution, useModifierInstitution } from '../../../hooks/participant'
 import { useErreurService } from '../liaisons/communs'
 
 // Formulaires de la DDRM composés du catalogue (DES-06, DES-07) : prise de contact, données
-// descriptives, conditions d'adhésion, dépôt d'une pièce. Le service décide ; le formulaire affiche son refus.
+// descriptives, conditions d'adhésion, dépôt d'une pièce, chacun dans une fenêtre modale ouverte sur la
+// liste ou la fiche. Le service décide ; le formulaire affiche son refus.
 
 const texte = (v: unknown) => (typeof v === 'string' && v.trim() !== '' ? v.trim() : null)
 
@@ -42,6 +43,8 @@ export function FormulaireInstitution({ descripteur, institution, onFermer }: {
         title={t('institution.form.modifier', { nom: institution.nom })}
         submitLabel={t('institution.action.modifier')}
         initial={{ ...institution }}
+        presentation="dialog"
+        submitting={modifier.isPending}
         serverError={erreur(modifier.error)}
         onCancel={onFermer}
         onSubmit={(v) => modifier.mutate({ id: institution.id, c: candidature(v) }, { onSuccess: onFermer })}
@@ -54,6 +57,8 @@ export function FormulaireInstitution({ descripteur, institution, onFermer }: {
       mode="create"
       title={t('institution.form.priseDeContact')}
       submitLabel={t('institution.action.enregistrer')}
+      presentation="dialog"
+      submitting={enregistrer.isPending}
       serverError={erreur(enregistrer.error)}
       onCancel={onFermer}
       onSubmit={(v) => enregistrer.mutate(candidature(v), { onSuccess: (i) => void navigate(`/des/institutions/${(i as Institution).id}`) })}
@@ -91,6 +96,8 @@ export function FormulaireConditions({ institution, marraines, onFermer }: { ins
       title={t('adhesion.form.conditions', { nom: institution.nom })}
       submitLabel={t('adhesion.action.enregistrerConditions')}
       initial={{ codeParticipant: institution.codeParticipant ?? '', mode: institution.modeAdhesion ?? '' }}
+      presentation="dialog"
+      submitting={definir.isPending}
       serverError={erreur(definir.error)}
       onCancel={onFermer}
       onSubmit={(v) =>
@@ -120,38 +127,31 @@ export function FormulaireDepot({ institutionId, piece, onFermer }: { institutio
   const [fichier, setFichier] = useState<File | null>(null)
   const refus = erreur(deposer.error)
   return (
-    <Card
+    <CrudDialog
+      context="create"
+      id="gm-dlg-piece"
+      size="md"
       title={t('piece.form.depot', { piece: piece.libelle })}
-      footer={
-        <ActionBar>
-          <Button variant="secondary" onClick={onFermer}>{t('commun.annuler')}</Button>
-          <Button
-            variant="primary"
-            icon="upload"
-            loading={deposer.isPending}
-            disabled={!fichier}
-            disabledReason={t('piece.form.fichierRequis')}
-            onClick={() => fichier && deposer.mutate({ id: institutionId, code: piece.code, fichier }, { onSuccess: onFermer })}
-          >
-            {t('piece.action.deposer')}
-          </Button>
-        </ActionBar>
-      }
+      onClose={onFermer}
+      onSubmit={() => fichier && deposer.mutate({ id: institutionId, code: piece.code, fichier }, { onSuccess: onFermer })}
+      submitLabel={t('piece.action.deposer')}
+      submitIcon="upload"
+      submitting={deposer.isPending}
+      submitDisabled={!fichier}
+      submitDisabledReason={t('piece.form.fichierRequis')}
+      error={refus ? { title: refus.message, correlationId: refus.correlationId || undefined } : undefined}
     >
-      <div className="gm-col">
-        <FileDropzone
-          label={t('piece.fichier')}
-          required
-          accept="application/pdf,image/png,image/jpeg"
-          maxSize="20 Mo"
-          help={t('piece.form.aide')}
-          file={fichier ? { name: fichier.name, size: `${Math.max(1, Math.round(fichier.size / 1024))} Ko` } : undefined}
-          state={deposer.isPending ? 'uploading' : fichier ? 'done' : 'idle'}
-          onFile={setFichier}
-          onRemove={() => setFichier(null)}
-        />
-        {refus ? <InlineAlert level="crit" correlationId={refus.correlationId || undefined}>{refus.message}</InlineAlert> : null}
-      </div>
-    </Card>
+      <FileDropzone
+        label={t('piece.fichier')}
+        required
+        accept="application/pdf,image/png,image/jpeg"
+        maxSize="20 Mo"
+        help={t('piece.form.aide')}
+        file={fichier ? { name: fichier.name, size: `${Math.max(1, Math.round(fichier.size / 1024))} Ko` } : undefined}
+        state={deposer.isPending ? 'uploading' : fichier ? 'done' : 'idle'}
+        onFile={setFichier}
+        onRemove={() => setFichier(null)}
+      />
+    </CrudDialog>
   )
 }

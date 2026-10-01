@@ -16,9 +16,9 @@ export const services = (surcharge?: (s: Services) => Partial<Services['portailP
   return surcharge ? { ...s, portailParcours: { ...s.portailParcours, ...surcharge(s) } } : s
 }
 
-export function ouvrir(page: ReactElement, chemin: string, motif: string, o: { langue?: Langue; services?: Services; sans?: string[] } = {}) {
+export function ouvrir(page: ReactElement, chemin: string, motif: string, o: { langue?: Langue; services?: Services; sans?: string[]; autres?: { motif: string; element: ReactElement }[] } = {}) {
   const session = sessionTest(PERMISSIONS_CORRESPONDANT.filter((p) => !o.sans?.includes(p)), ['ROLE_CORRESPONDANT'])
-  return rendrePage(page, { chemin, motif, langue: o.langue, services: o.services ?? services(), session: { ...session, nom: 'Correspondant A', institutionId: 'INST-0042' } })
+  return rendrePage(page, { chemin, motif, langue: o.langue, services: o.services ?? services(), session: { ...session, nom: 'Correspondant A', institutionId: 'INST-0042' }, autres: o.autres })
 }
 
 /** Audit axe (WCAG 2.2 AA) du rendu ; les contrastes ne sont pas calculables sous jsdom (vérifiés en e2e). */

@@ -4,6 +4,8 @@
 #   docker build --build-arg APPLICATION=departement -t frontend-departement .
 # APPLICATION : departement | portail | console
 # SERVICES : http (défaut, passerelle MS-GATEWAY) ; vide pour les services simulés de démonstration.
+# URL_CONSOLE : adresse de la console d'administration, cible des liens « Administration » de
+#   l'application du département (D-62) ; http://localhost:4202 par défaut.
 # Écrit à la main : aucun générateur (JHipster, docker init) ne couvre ce frontend séparé.
 
 # 1. Manifestes de l'espace de travail npm : chaque package.json (racine, packages/*, apps/*, e2e),
@@ -33,8 +35,10 @@ COPY e2e e2e
 ARG APPLICATION
 ARG SERVICES=http
 ARG VERSION=0.1.0
+ARG URL_CONSOLE=http://localhost:4202
 ENV VITE_SERVICES=$SERVICES \
-    VITE_VERSION=$VERSION
+    VITE_VERSION=$VERSION \
+    VITE_URL_CONSOLE=$URL_CONSOLE
 RUN test -n "$APPLICATION" && npm run build -w "@gimac/app-$APPLICATION"
 
 # 3. Service des fichiers statiques.
@@ -42,7 +46,7 @@ FROM nginxinc/nginx-unprivileged:1.31.2-alpine
 ARG APPLICATION
 LABEL org.opencontainers.image.title="gimac-frontend-$APPLICATION" \
       org.opencontainers.image.vendor="GIMAC - Département Exploitation et Supervision"
-# Passerelle MS-GATEWAY vers laquelle /api, /bff, /oauth2, /login et /logout sont relayés (BFF, RG-58),
+# Passerelle MS-GATEWAY vers laquelle /api, /bff et /logout sont relayés (BFF, RG-58),
 # et résolveur DNS (127.0.0.11 sous Docker ; service DNS de la grappe sous Kubernetes).
 ENV GIMAC_PASSERELLE=http://gateway:8080 \
     GIMAC_RESOLVEUR=127.0.0.11

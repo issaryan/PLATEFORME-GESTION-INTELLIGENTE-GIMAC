@@ -1,8 +1,9 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { ApiError } from '../http/errors'
 import { initI18n } from '../i18n/i18n'
-import { GardeSession, SessionProvider, aPermission, chargerSession, usePermissions, useSession, type Session } from './session'
+import { navigation } from './deconnexion'
+import { GardeSession, SessionActive, SessionProvider, aPermission, chargerSession, usePermissions, useSession, type Session } from './session'
 
 // D-61 : accès par la matrice des rôles d'un jeton issu d'une authentification à deux facteurs.
 beforeAll(() => {
@@ -64,10 +65,33 @@ describe('GardeSession', () => {
     expect(screen.getByRole('button', { name: 'Se connecter' })).toBeTruthy()
   })
 
-  it('sans session (401) : invitation à se connecter', async () => {
+  it('sans session (401) : renvoi vers l’écran de connexion de la plateforme, avec la page en retour', async () => {
+    const vers = vi.spyOn(navigation, 'vers').mockImplementation(() => undefined)
+    window.history.pushState({}, '', '/des/liaisons')
     render(<GardeSession charger={async () => { throw new ApiError(401, 'HTTP_401', '', '') }}>{() => <span>protégé</span>}</GardeSession>)
     expect(await screen.findByText(/session a expiré/)).toBeTruthy()
     expect(screen.queryByText('protégé')).toBeNull()
+    expect(vers).toHaveBeenCalledWith('/connexion?retour=%2Fdes%2Fliaisons')
+    fireEvent.click(screen.getByRole('button', { name: 'Se connecter' }))
+    expect(vers).toHaveBeenCalledTimes(2)
+    window.history.pushState({}, '', '/')
+  })
+
+  it('adresse de connexion imposée', async () => {
+    const vers = vi.spyOn(navigation, 'vers').mockImplementation(() => undefined)
+    render(<GardeSession connexion="/ailleurs" charger={async () => { throw new ApiError(401, 'HTTP_401', '', '') }}>{() => <span>protégé</span>}</GardeSession>)
+    await waitFor(() => expect(vers).toHaveBeenCalledWith('/ailleurs'))
+  })
+
+  it('session restreinte du premier accès : servie sans second facteur (assistant de premier accès)', async () => {
+    render(<GardeSession charger={async () => session({ acr: '1', doubleFacteur: false, restreinte: true })}>{() => <span>assistant</span>}</GardeSession>)
+    expect(await screen.findByText('assistant')).toBeTruthy()
+  })
+
+  it('SessionActive sans surveillance : fournit la session seule', () => {
+    render(<SessionActive session={session()} surveiller={false}><Sonde /></SessionActive>)
+    expect(screen.getByText('Chef DDRM:PAR_INSTITUTION_READ,PAR_TRANSITION_APPROVE')).toBeTruthy()
+    expect(screen.queryByRole('alertdialog')).toBeNull()
   })
 
   it('erreur de la passerelle : identifiant de corrélation affiché', async () => {

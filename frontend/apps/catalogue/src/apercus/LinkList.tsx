@@ -1,13 +1,12 @@
 import { LinkList } from '@gimac/design-system'
 
+const INSTITUTIONS = ['Établissement de microfinance C', 'Établissement de paiement A', 'Banque B', 'Banque D', 'Fintech E', 'Banque F', 'Établissement de paiement G']
+
 export default function Apercu() {
   return (
     <LinkList
       label="Mes projets"
-      items={[
-        { key: '030', href: '#/LinkList', label: 'Établissement de microfinance C', meta: 'LIA-2026-030', status: 'neutral', statusLabel: 'Ouverte' },
-        { key: '017', href: '#/LinkList', label: 'Établissement de paiement A', meta: 'LIA-2026-017', status: 'info', statusLabel: 'En homologation' },
-      ]}
+      items={INSTITUTIONS.map((nom, i) => ({ key: String(i), href: '#/LinkList', label: nom, meta: `LIA-2026-0${30 + i}`, status: i % 2 ? 'info' : 'neutral', statusLabel: i % 2 ? 'en homologation' : 'ouverte' }))}
     />
   )
 }

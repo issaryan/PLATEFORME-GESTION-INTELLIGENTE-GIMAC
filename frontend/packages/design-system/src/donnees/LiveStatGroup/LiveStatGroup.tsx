@@ -36,7 +36,7 @@ export function LiveStatGroup(p: LiveStatGroupProps) {
           <StatusBadge status={statut} label={t(cle)} />
         </span>
       </div>
-      <div className="gm-row" style={{ alignItems: 'stretch', gap: 'var(--gm-space-4)' }} aria-live="polite">
+      <div className="gm-stat-grid" aria-live="polite">
         {p.items.map(({ key, ...s }) => (
           <StatCard key={key} {...s} />
         ))}

@@ -80,4 +80,31 @@ describe('F0 : client HTTP', () => {
     const r = await http.blob('/bff/des/certification/attestations/A', 'application/pdf')
     expect(r.empreinte).toBe('000102')
   })
+
+  it('D-65 : appel de fond marqué X-Gimac-Fond: 1 (ne prolonge pas la session) ; appel ordinaire sans marque', async () => {
+    const spy = reply(200, {})
+    reply(200, {})
+    await http.get('/bff/des/collaboration/messagerie/non-lus', { fond: true })
+    await http.get('/bff/des/collaboration/messagerie')
+    expect(entetes(spy, 0).get('X-Gimac-Fond')).toBe('1')
+    expect(entetes(spy, 1).has('X-Gimac-Fond')).toBe(false)
+  })
+
+  it('D-65 : route publique (anonyme) : un 401 est une réponse du formulaire, sans crochet de session', async () => {
+    const onUnauthorized = vi.fn(async () => true)
+    configureHttp({ onUnauthorized })
+    reply(401, { code: 'CNX_IDENTIFIANTS_INVALIDES' })
+    await expect(http.post('/api/connexion', { body: {}, anonyme: true })).rejects.toMatchObject({ status: 401, code: 'CNX_IDENTIFIANTS_INVALIDES' })
+    expect(onUnauthorized).not.toHaveBeenCalled()
+  })
+
+  it('D-65 : le crochet 401 reçoit l’erreur (CNX_SESSION_EXPIREE) ; violations de premier niveau reprises dans details', async () => {
+    const onUnauthorized = vi.fn(async (_e: ApiError) => false)
+    configureHttp({ onUnauthorized })
+    reply(401, { code: 'CNX_SESSION_EXPIREE' })
+    await expect(http.get('/bff/des/homologation/liaisons')).rejects.toMatchObject({ code: 'CNX_SESSION_EXPIREE' })
+    expect(onUnauthorized.mock.calls[0][0]).toMatchObject({ code: 'CNX_SESSION_EXPIREE' })
+    reply(400, { code: 'IAM_PASSWORD_POLICY', violations: ['LONGUEUR'] })
+    await expect(http.post('/api/connexion/nouveau-mot-de-passe', { anonyme: true })).rejects.toMatchObject({ details: { violations: ['LONGUEUR'] } })
+  })
 })

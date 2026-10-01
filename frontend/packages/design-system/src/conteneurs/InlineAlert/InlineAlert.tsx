@@ -17,7 +17,7 @@ export interface InlineAlertProps {
 export function InlineAlert(p: InlineAlertProps) {
   const lvl = p.level || 'info'
   return (
-    <div className={cx('gm-inline', 'gm-banner-' + lvl)} role={lvl === 'crit' ? 'alert' : 'status'} style={{ borderLeft: 'var(--gm-border-4) solid' }}>
+    <div className={cx('gm-inline', 'gm-banner-' + lvl)} role={lvl === 'crit' ? 'alert' : 'status'}>
       <Icon name={STATUS_ICON[lvl] || 'info'} size={20} />
       <div className="gm-banner-text">
         {p.title ? <div className="gm-banner-title">{p.title}</div> : null}

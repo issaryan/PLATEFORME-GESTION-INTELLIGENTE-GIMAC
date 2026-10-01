@@ -1,7 +1,7 @@
 /* ---------- Saisie avancée */
 .gm-input-btn { position: absolute; right: 0; top: 0; height: 100%; width: var(--gm-size-control-md); display: grid; place-content: center; border: 0; background: transparent; color: var(--gm-color-text-secondary); cursor: pointer; }
 .gm-input-btn:hover { color: var(--gm-color-action); }
-.gm-popover { background: var(--gm-color-surface-raised); border: var(--gm-border-1) solid var(--gm-color-border); padding: var(--gm-space-3); width: 296px; }
+.gm-popover { background: var(--gm-color-surface-raised); border: var(--gm-border-1) solid var(--gm-color-border); padding: var(--gm-space-4); width: 296px; animation: gm-surgir var(--gm-motion-base) var(--gm-motion-ease); }
 .gm-cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--gm-space-2); }
 .gm-flip { transform: scaleX(-1); }
 .gm-cal-grid { display: grid; grid-template-columns: repeat(7, 36px); gap: 2px; }

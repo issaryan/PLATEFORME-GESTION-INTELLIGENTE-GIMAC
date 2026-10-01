@@ -47,10 +47,21 @@ export const PERM = {
   // Messagerie de travail entre acteurs internes (D-64, MS-COLLABORATION)
   messageLire: 'COL_MESSAGE_READ',
   messageEnvoyer: 'COL_MESSAGE_SEND',
+  // Administration des comptes et de la plateforme, portée par la console (D-62) : l'application du
+  // département n'y renvoie que par des liens (groupe « Administration » de la navigation).
+  comptesLire: 'IAM_ACCOUNT_READ',
+  compteCreer: 'IAM_ACCOUNT_CREATE',
+  journalAdministrationLire: 'IAM_JOURNAL_READ',
+  politiqueLire: 'PLATFORM_SECURITY_POLICY_READ',
+  supervisionLire: 'PLATFORM_SUPERVISION_READ',
 } as const
 
 /** Permissions nouvelles attendues du backend pour le modèle hybride (consignées dans docs/lot1/correspondance.md). */
 export const PERMISSIONS_NOUVELLES = [PERM.etapeConduire, PERM.pvEtablir, PERM.securiteVerifier, PERM.portailSigner] as const
+
+/** Administration des comptes (D-62), comme le domaine Keycloak : toutes les permissions IAM sauf l'octroi privilégié. */
+const IAM_SANS_PRIVILEGE = ['IAM_ACCOUNT_READ', 'IAM_ACCOUNT_CREATE', 'IAM_ACCOUNT_EDIT', 'IAM_ACCOUNT_ROLES', 'IAM_ACCOUNT_STATUS', 'IAM_ACCOUNT_DELETE',
+  'IAM_ACCOUNT_SECURITY', 'IAM_JOURNAL_READ', 'IAM_PROFILE_EDIT']
 
 const COMMUN_DES = [PERM.institutionLire, PERM.liaisonLister, PERM.liaisonLire, PERM.pilotageLire, PERM.referentielLire, 'CER_CIRCUIT_READ', PERM.dossierLire, PERM.registreLire,
   PERM.messageLire, PERM.messageEnvoyer]
@@ -67,7 +78,10 @@ export const PROFILS: Record<string, string[]> = {
   ROLE_PRODUCTION_MONETIQUE: [...COMMUN_DES, PERM.preuveDeposer, PERM.ficheChangementLier, PERM.pvMiseEnServiceDeposer],
   ROLE_POLE_RESEAU: [...COMMUN_DES, PERM.preuveDeposer],
   ROLE_POLE_SYSTEME: [...COMMUN_DES, PERM.preuveDeposer],
-  ROLE_RSSI: [...COMMUN_DES, PERM.securiteVerifier, PERM.preuveDeposer],
+  // RSSI (generer-realm-gimac.py) : vérification de la sécurité, administration des comptes sans octroi
+  // privilégié, supervision et configuration en lecture, politique de sécurité et messagerie de la plateforme.
+  ROLE_RSSI: [...COMMUN_DES, 'CER_QUITUS_SECURITE_SIGN', PERM.securiteVerifier, PERM.preuveDeposer, ...IAM_SANS_PRIVILEGE,
+    'PLATFORM_SUPERVISION_READ', 'PLATFORM_CONFIG_READ', 'PLATFORM_SECURITY_POLICY_READ', 'PLATFORM_SECURITY_POLICY_EDIT', 'PLATFORM_MESSAGING_EDIT'],
   ROLE_CONFORMITE: [...COMMUN_DES, PERM.visaConformite, PERM.ficheChangementLier],
   ROLE_DG: [...COMMUN_DES, PERM.visaDg, 'CER_ATTESTATION_STATUS_APPROVE'],
   ROLE_INGENIEUR_HOMOLOGATION: [...COMMUN_DES, PERM.operationAttribuer, PERM.preuveDeposer, PERM.operationValider, PERM.operationRouvrir, 'HOM_REFERENTIEL_EDIT',

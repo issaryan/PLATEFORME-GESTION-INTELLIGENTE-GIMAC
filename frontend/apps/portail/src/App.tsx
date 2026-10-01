@@ -1,15 +1,20 @@
 import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { Navigate, Route, Routes } from 'react-router'
+import { Navigate, Route, Routes, useLocation } from 'react-router'
 import { Skeleton } from '@gimac/design-system'
-import { CONNEXION, Enveloppe, GardeSession, PageConnexion, PageDeconnexion, SessionProvider, configureHttp, lirePreference, type EtatCanal, type Session } from '@gimac/socle'
+import {
+  ConnexionProvider, Enveloppe, GardeSession, PageConnexion, PageDeconnexion, SessionActive, adresseConnexion, configureHttp, connexionHttp, lirePreference, lireSessionDemo,
+  surNonAutorise, type EtatCanal, type Session,
+} from '@gimac/socle'
 import { CompteProvider, GardePremierAcces, MonComptePage, monCompteHttp, monCompteSimule } from '@gimac/compte'
-import { Fournisseurs, NAVIGATION_PORTAIL, PROFILS, creerClientRequetes, servicesHttp, servicesSimules } from '@gimac/lot1'
+import { Fournisseurs, NAVIGATION_PORTAIL, creerClientRequetes, servicesHttp, servicesSimules } from '@gimac/lot1'
+import { connexionDemo, sessionCorrespondant } from './connexionDemo'
 
 // Portail des participants (couche « portail ») : POR-03 du lot 1 (DS-GIMAC-01 §10.2), tableau de bord du
 // participant et gestes qui lui incombent (qualité Externe, CR §3.4, D-56 à D-59). Toutes les données
 // sont cloisonnées à l'institution du jeton par la passerelle et les services.
 // D-61, D-62 : session lue sur /api/session (second facteur exigé), premier accès avant tout écran,
-// « Mon compte » et déconnexion dans l'espace personnel de l'enveloppe.
+// « Mon compte » et déconnexion dans l'espace personnel de l'enveloppe. D-65 : connexion sur la plateforme
+// (/connexion, connexion simulée en démonstration : connexionDemo.ts), fermeture après 30 minutes d'inactivité.
 const TableauDeBordPage = lazy(() => import('@gimac/lot1/pages/portail/parcours/TableauDeBordPage'))
 const MaLiaisonPage = lazy(() => import('@gimac/lot1/pages/portail/MaLiaisonPage'))
 const DepotPreuvePage = lazy(() => import('@gimac/lot1/pages/portail/DepotPreuvePage'))
@@ -22,13 +27,16 @@ const REELS = import.meta.env.VITE_SERVICES === 'http'
 const VERSION = import.meta.env.VITE_VERSION ?? '0.1.0'
 
 function sessionDemo(): Session {
-  return { sujet: 'demo-correspondant', nom: 'Correspondant A', identifiant: 'correspondant-a', roles: ['ROLE_CORRESPONDANT'], permissions: PROFILS.ROLE_CORRESPONDANT, institutionId: 'INST-0042', acr: '2', doubleFacteur: true }
+  const demo = lireSessionDemo()
+  return { ...sessionCorrespondant(demo?.identifiant || undefined), ...(demo?.premierAcces ? { restreinte: true } : {}) }
 }
 
 function AvecSession({ children }: { children: (s: Session) => ReactNode }) {
+  const ici = useLocation()
   if (!REELS) {
+    if (!lireSessionDemo()) return <Navigate to={adresseConnexion({ retour: ici.pathname + ici.search })} replace />
     const s = sessionDemo()
-    return <SessionProvider session={s}>{children(s)}</SessionProvider>
+    return <SessionActive session={s} prolonger={async () => undefined}>{children(s)}</SessionActive>
   }
   return <GardeSession>{children}</GardeSession>
 }
@@ -68,32 +76,37 @@ function Pages({ session, etatCanal, correlationId }: { session: Session; etatCa
 
 export default function App() {
   const services = useMemo(() => (REELS ? servicesHttp('portail') : servicesSimules()), [])
-  const compte = useMemo(
-    () => (REELS ? monCompteHttp('portail') : monCompteSimule({ premierAcces: lirePreference('gm.premierAccesDemo') === '1', compte: { identifiant: 'correspondant-a', prenom: 'Brice', nom: 'Nzeng Mba', nomAffiche: 'Brice Nzeng Mba', profils: ['ROLE_CORRESPONDANT'], institutionId: 'INST-0042' } })),
-    [],
-  )
+  const compte = useMemo(() => {
+    if (REELS) return monCompteHttp('portail')
+    const demo = lireSessionDemo()
+    return monCompteSimule({
+      premierAcces: demo?.premierAcces ?? lirePreference('gm.premierAccesDemo') === '1',
+      etapes: demo?.etapes,
+      compte: { identifiant: demo?.identifiant || 'correspondant-a', prenom: 'Brice', nom: 'Nzeng Mba', nomAffiche: 'Brice Nzeng Mba', profils: ['ROLE_CORRESPONDANT'], institutionId: 'INST-0042' },
+    })
+  }, [])
+  const connexion = useMemo(() => (REELS ? connexionHttp() : connexionDemo()), [])
   const client = useMemo(() => creerClientRequetes(), [])
   const [correlationId, setCorrelationId] = useState<string | undefined>()
   useEffect(() => {
-    // Session expirée : retour à la connexion (le fournisseur d'identité exige de nouveau le second facteur).
+    // Session absente ou close par la passerelle (401, CNX_SESSION_EXPIREE) : retour à la connexion (D-65).
     configureHttp({
       onCorrelation: setCorrelationId,
-      onUnauthorized: async () => {
-        if (REELS) window.location.assign(CONNEXION)
-        return false
-      },
+      onUnauthorized: async (e) => (REELS ? surNonAutorise(e) : false),
     })
   }, [])
   return (
     <Fournisseurs couche="portail" services={services} canal={REELS} clientRequetes={client}>
       {(etatCanal) => (
+        <ConnexionProvider service={connexion} couche="portail">
         <CompteProvider service={compte}>
           <Routes>
-            <Route path="/connexion" element={<PageConnexion couche="portail" />} />
+            <Route path="/connexion/*" element={<PageConnexion couche="portail" />} />
             <Route path="/portail/*" element={<AvecSession>{(s) => <Pages session={s} etatCanal={etatCanal} correlationId={correlationId} />}</AvecSession>} />
             <Route path="*" element={<Navigate to="/portail/tableau-de-bord" replace />} />
           </Routes>
         </CompteProvider>
+        </ConnexionProvider>
       )}
     </Fournisseurs>
   )

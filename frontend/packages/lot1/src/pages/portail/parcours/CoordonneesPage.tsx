@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
-import { Button, Card, EmptyState, InlineAlert, KeyValueList, TextArea, TextField } from '@gimac/design-system'
+import { Button, Card, EmptyState, InlineAlert, KeyValueList, TextArea, TextField, Note } from '@gimac/design-system'
 import type { DossierLiaison } from '../../../modele/parcours'
 import { useCommuniquerCoordonnees } from '../../../hooks/parcours'
 import { CadreAction, useTacheLiaison } from './cadre'
@@ -102,7 +102,7 @@ function Coordonnees({ d }: { d: DossierLiaison }) {
   return (
     <Card title={t('pp.coordonnees.formulaire')}>
       <div className="gm-col">
-        <p className="gm-type-body" style={{ margin: 0 }}>{t('pp.coordonnees.intro')}</p>
+        <Note>{t('pp.coordonnees.intro')}</Note>
         {tache ? <KeyValueList items={[{ key: t('pp.echeance'), value: <Echeance date={tache.echeance} sla={tache.sla} /> }, { key: t('pp.preuveAttendueLibelle'), value: t('parcours.preuveAttendue.12') }]} /> : null}
         {peut ? <Formulaire d={d} /> : <InlineAlert level="info">{t('pp.droitManquant')}</InlineAlert>}
       </div>

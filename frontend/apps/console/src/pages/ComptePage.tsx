@@ -1,8 +1,8 @@
-import { useState, type FormEvent } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate, useParams } from 'react-router'
+import { useNavigate, useParams, useSearchParams } from 'react-router'
 import {
-  Button, Checkbox, CheckboxGroup, ConfirmDialog, DataTable, Dialog, InlineAlert, KeyValueList, OneTimeSecret, Select, StatusBadge, Tabs, Tag, TextArea, TextField,
+  ActionBar, Button, Checkbox, CheckboxGroup, ConfirmDialog, CrudDialog, DataTable, InlineAlert, KeyValueList, OneTimeSecret, Select, StatusBadge, Tabs, Tag, TextField,
   type Column,
 } from '@gimac/design-system'
 import { aPermission, usePermissions, useSession } from '@gimac/socle'
@@ -25,15 +25,15 @@ function DialogueFiche({ compte, onFermer, onEnregistre }: { compte: Compte; onF
   const { t } = useTranslation()
   const message = useMessageErreur()
   const modifier = useEffet((s, f: FicheCompte) => s.comptes.modifier(compte.id, f))
-  const [v, setV] = useState({
+  const [initiale] = useState(() => ({
     prenom: compte.prenom ?? '', nom: compte.nom ?? '', email: compte.email ?? '', telephone: compte.telephone ?? '', fonction: compte.fonction ?? '',
     langue: compte.langue ?? 'fr', institutionId: compte.institutionId ?? '',
-  })
+  }))
+  const [v, setV] = useState(initiale)
   const [erreurs, setErreurs] = useState<Record<string, string>>({})
   const [erreur, setErreur] = useState<MessageErreur | null>(null)
   const champ = (k: keyof typeof v) => (x: string) => setV((o) => ({ ...o, [k]: x }))
-  const soumettre = async (e: FormEvent) => {
-    e.preventDefault()
+  const soumettre = async () => {
     setErreurs({})
     setErreur(null)
     try {
@@ -50,26 +50,22 @@ function DialogueFiche({ compte, onFermer, onEnregistre }: { compte: Compte; onF
     }
   }
   return (
-    <Dialog open size="lg" title={t('console.compte.modifierFiche')} onClose={onFermer} id="gm-dlg-fiche">
-      <form className="gm-col" onSubmit={(e) => void soumettre(e)} aria-label={t('console.compte.modifierFiche')}>
-        {erreur ? <InlineAlert level="crit" title={erreur.texte} correlationId={erreur.correlationId} /> : null}
-        <div className="gm-form-grid">
-          <div className="gm-form-field"><TextField name="prenom" label={t('compte.prenom')} value={v.prenom} onChange={champ('prenom')} /></div>
-          <div className="gm-form-field"><TextField name="nom" label={t('compte.nom')} value={v.nom} onChange={champ('nom')} /></div>
-          <div className="gm-form-field"><TextField name="email" type="email" label={t('compte.email')} value={v.email} onChange={champ('email')} error={erreurs.email} /></div>
-          <div className="gm-form-field"><TextField name="telephone" type="tel" label={t('compte.telephone')} value={v.telephone} onChange={champ('telephone')} error={erreurs.telephone} /></div>
-          <div className="gm-form-field"><TextField name="fonction" label={t('compte.fonction')} value={v.fonction} onChange={champ('fonction')} /></div>
-          <div className="gm-form-field">
-            <Select name="langue" label={t('compte.langue')} value={v.langue} onChange={champ('langue')} error={erreurs.langue} options={LANGUES_COMPTE.map((l) => ({ value: l, label: t(`compte.langue.${l}`) }))} />
-          </div>
-          <div className="gm-form-field"><TextField name="institutionId" label={t('console.creation.institution')} mono value={v.institutionId} onChange={champ('institutionId')} /></div>
+    <CrudDialog context="edit" id="gm-dlg-fiche" title={t('console.compte.modifierFiche')} subject={`${compte.identifiant} · ${compte.nomAffiche}`} description={t('console.compte.modifierFiche.texte')} onClose={onFermer}
+      dirty={JSON.stringify(v) !== JSON.stringify(initiale)}
+      onSubmit={() => void soumettre()} submitLabel={t('console.compte.enregistrerFiche')} submitIcon="pen-line" submitting={modifier.isPending}
+      error={erreur ? { title: erreur.texte, correlationId: erreur.correlationId } : undefined}>
+      <div className="gm-form-grid">
+        <div className="gm-form-field"><TextField name="prenom" label={t('compte.prenom')} value={v.prenom} onChange={champ('prenom')} /></div>
+        <div className="gm-form-field"><TextField name="nom" label={t('compte.nom')} value={v.nom} onChange={champ('nom')} /></div>
+        <div className="gm-form-field"><TextField name="email" type="email" label={t('compte.email')} value={v.email} onChange={champ('email')} error={erreurs.email} /></div>
+        <div className="gm-form-field"><TextField name="telephone" type="tel" label={t('compte.telephone')} value={v.telephone} onChange={champ('telephone')} error={erreurs.telephone} /></div>
+        <div className="gm-form-field"><TextField name="fonction" label={t('compte.fonction')} value={v.fonction} onChange={champ('fonction')} /></div>
+        <div className="gm-form-field">
+          <Select name="langue" label={t('compte.langue')} value={v.langue} onChange={champ('langue')} error={erreurs.langue} options={LANGUES_COMPTE.map((l) => ({ value: l, label: t(`compte.langue.${l}`) }))} />
         </div>
-        <div className="gm-row" style={{ justifyContent: 'flex-end' }}>
-          <Button variant="ghost" onClick={onFermer}>{t('commun.annuler')}</Button>
-          <Button variant="primary" type="submit" loading={modifier.isPending}>{t('console.compte.enregistrerFiche')}</Button>
-        </div>
-      </form>
-    </Dialog>
+        <div className="gm-form-field"><TextField name="institutionId" label={t('console.creation.institution')} mono value={v.institutionId} onChange={champ('institutionId')} /></div>
+      </div>
+    </CrudDialog>
   )
 }
 
@@ -79,54 +75,45 @@ function DialogueProfils({ compte, privilegie, onFermer, onContinuer }: { compte
   const profils = useProfils()
   const [choix, setChoix] = useState<string[]>(compte.profils)
   return (
-    <Dialog open size="lg" title={t('console.compte.modifierProfils')} description={t('console.compte.profils.texte')} onClose={onFermer} id="gm-dlg-profils"
-      footer={[
-        <Button key="a" variant="secondary" onClick={onFermer}>{t('commun.annuler')}</Button>,
-        <Button key="b" variant="primary" icon="pen-line" onClick={() => {
-          // Sans droit d'octroi privilégié, les profils privilégiés détenus sont conservés tels quels.
-          const privilegies = (profils.data ?? []).filter((p) => p.privilegie).map((p) => p.code)
-          const conserves = privilegie ? [] : compte.profils.filter((p) => privilegies.includes(p))
-          onContinuer([...new Set([...choix.filter((p) => privilegie || !privilegies.includes(p)), ...conserves])].sort())
-        }}>{t('console.compte.profils.continuer')}</Button>,
-      ]}>
+    <CrudDialog context="edit" id="gm-dlg-profils" title={t('console.compte.modifierProfils')} subject={`${compte.identifiant} · ${compte.nomAffiche}`} description={t('console.compte.profils.texte')}
+      onClose={onFermer} dirty={[...choix].sort().join() !== [...compte.profils].sort().join()} reauth
+      submitLabel={t('console.compte.profils.continuer')} submitIcon="pen-line"
+      onSubmit={() => {
+        // Sans droit d'octroi privilégié, les profils privilégiés détenus sont conservés tels quels.
+        const privilegies = (profils.data ?? []).filter((p) => p.privilegie).map((p) => p.code)
+        const conserves = privilegie ? [] : compte.profils.filter((p) => privilegies.includes(p))
+        onContinuer([...new Set([...choix.filter((p) => privilegie || !privilegies.includes(p)), ...conserves])].sort())
+      }}>
       <Donnees requete={profils}>
         {(l) => (
           <CheckboxGroup label={t('compte.profils')} value={choix} onChange={setChoix}
             options={l.filter((p) => privilegie || !p.privilegie).map((p) => ({ value: p.code, label: libelleProfil(p.code) }))} />
         )}
       </Donnees>
-    </Dialog>
+    </CrudDialog>
   )
 }
 
-function DialogueActions({ onFermer, onValider }: { onFermer: () => void; onValider: (a: ActionRequise[], parCourriel: boolean, motif: string) => void }) {
+function DialogueActions({ sujet, onFermer, onValider }: { sujet: string; onFermer: () => void; onValider: (a: ActionRequise[], parCourriel: boolean, motif: string) => void }) {
   const { t } = useTranslation()
   const [actions, setActions] = useState<string[]>([])
   const [parCourriel, setParCourriel] = useState(true)
-  const [motif, setMotif] = useState('')
-  const ok = actions.length > 0 && motif.trim().length >= 10
   return (
-    <Dialog open title={t('console.compte.exigerActions')} description={t('console.compte.exigerActions.texte')} onClose={onFermer} id="gm-dlg-actions"
-      footer={[
-        <Button key="a" variant="secondary" onClick={onFermer}>{t('commun.annuler')}</Button>,
-        <Button key="b" variant="primary" disabled={!ok} disabledReason={t('console.compte.exigerActions.incomplet')}
-          onClick={() => onValider(actions as ActionRequise[], parCourriel, motif.trim())}>{t('console.compte.exigerActions')}</Button>,
-      ]}>
-      <div className="gm-col">
-        <CheckboxGroup label={t('console.compte.actionsRequises')} value={actions} onChange={setActions} options={ACTIONS_REQUISES.map((a) => ({ value: a, label: t(`console.action.${a}`) }))} />
-        <Checkbox name="parCourriel" label={t('console.compte.parCourriel')} checked={parCourriel} onChange={setParCourriel} />
-        <TextArea name="motifActions" label={t('console.motif')} required value={motif} onChange={setMotif} help={t('console.motif.aide')} />
-      </div>
-    </Dialog>
+    <CrudDialog context="sensitive" id="gm-dlg-actions" title={t('console.compte.exigerActions')} subject={sujet} description={t('console.compte.exigerActions.texte')} onClose={onFermer}
+      onSubmit={(motif) => onValider(actions as ActionRequise[], parCourriel, motif)} submitLabel={t('console.compte.exigerActions')} submitIcon="flag"
+      submitDisabled={actions.length === 0} submitDisabledReason={t('console.compte.exigerActions.incomplet')} dirty={actions.length > 0}>
+      <CheckboxGroup label={t('console.compte.actionsRequises')} value={actions} onChange={setActions} options={ACTIONS_REQUISES.map((a) => ({ value: a, label: t(`console.action.${a}`) }))} />
+      <Checkbox name="parCourriel" label={t('console.compte.parCourriel')} checked={parCourriel} onChange={setParCourriel} />
+    </CrudDialog>
   )
 }
 
 function MotDePasse({ valeur, onFermer }: { valeur: string; onFermer: () => void }) {
   const { t } = useTranslation()
   return (
-    <Dialog open title={t('console.creation.mdp.titre')} onClose={onFermer} id="gm-dlg-mdp" footer={<Button variant="primary" onClick={onFermer}>{t('commun.fermer')}</Button>}>
+    <CrudDialog context="detail" size="md" title={t('console.creation.mdp.titre')} onClose={onFermer} id="gm-dlg-mdp">
       <OneTimeSecret label={t('console.creation.mdp.titre')} value={valeur} warning={t('console.creation.mdp.avertissement')} />
-    </Dialog>
+    </CrudDialog>
   )
 }
 
@@ -204,7 +191,10 @@ export default function ComptePage() {
     motDePasse: useEffet((x, motif: string) => x.comptes.motDePasseProvisoire(id, motif)),
     sessions: useEffet((x, motif: string) => x.comptes.fermerSessions(id, motif)),
   }
-  const [onglet, setOnglet] = useState('fiche')
+  // Onglet porté par l'adresse (?onglet=securite…), pour y mener depuis le tableau de bord ou la liste.
+  const [params, setParams] = useSearchParams()
+  const onglet = ['securite', 'sessions', 'journal'].includes(params.get('onglet') ?? '') ? params.get('onglet')! : 'fiche'
+  const setOnglet = (k: string) => setParams(k === 'fiche' ? {} : { onglet: k }, { replace: true })
   const [dialogue, setDialogue] = useState<'fiche' | 'profils' | 'actions' | 'suppression' | null>(null)
   const [mdp, setMdp] = useState<string | null>(null)
   const peut = (p: string) => aPermission(permissions, p)
@@ -242,6 +232,7 @@ export default function ComptePage() {
               </div>
             </header>
             {soiMeme ? <InlineAlert level="info" title={t('console.compte.soiMeme')} /> : null}
+            {/* Cycle de vie du compte, toujours visible ; les actes de sécurité et de sessions sont dans leur onglet. */}
             <div className="gm-row" role="toolbar" aria-label={t('console.compte.actes')} style={{ flexWrap: 'wrap', margin: 'var(--gm-space-4) 0' }}>
               {peut('IAM_ACCOUNT_EDIT') ? <Button icon="pen-line" onClick={() => setDialogue('fiche')}>{t('console.compte.modifierFiche')}</Button> : null}
               {peut('IAM_ACCOUNT_ROLES') && !soiMeme ? <Button icon="shield-check" onClick={() => setDialogue('profils')}>{t('console.compte.modifierProfils')}</Button> : null}
@@ -257,44 +248,56 @@ export default function ComptePage() {
                   {t(c.actif ? 'console.compte.desactiver' : 'console.compte.activer')}
                 </Button>
               ) : null}
-              {peut('IAM_ACCOUNT_SECURITY') ? (
-                <>
-                  <Button icon="flag" onClick={() => setDialogue('actions')}>{t('console.compte.exigerActions')}</Button>
-                  {!soiMeme ? (
-                    <>
-                      <Button icon="smartphone" onClick={() => actes.motive({ titre: t('console.compte.reinitialiser2fa'), libelle: t('console.compte.reinitialiser2fa'), objet, danger: true,
-                        description: t('console.compte.reinitialiser2fa.texte'), succes: t('console.compte.2faReinitialise'), executer: (m) => s.secondFacteur.mutateAsync(m) })}>
-                        {t('console.compte.reinitialiser2fa')}
-                      </Button>
-                      <Button icon="key-round" onClick={() => actes.motive({ titre: t('console.compte.motDePasseProvisoire'), libelle: t('console.compte.motDePasseProvisoire'), objet,
-                        description: t('console.compte.motDePasseProvisoire.texte'), succes: t('console.compte.motDePasseDefini'),
-                        executer: async (m) => setMdp((await s.motDePasse.mutateAsync(m)).motDePasseProvisoire) })}>
-                        {t('console.compte.motDePasseProvisoire')}
-                      </Button>
-                    </>
-                  ) : null}
-                  <Button icon="lock" onClick={() => actes.motive({ titre: t('console.compte.fermerSessions'), libelle: t('console.compte.fermerSessions'), objet,
-                    description: t('console.compte.fermerSessions.texte'), succes: t('console.compte.sessionsFermees'), executer: (m) => s.sessions.mutateAsync(m) })}>
-                    {t('console.compte.fermerSessions')}
-                  </Button>
-                </>
-              ) : null}
               {peut('IAM_ACCOUNT_DELETE') && !soiMeme ? <Button variant="danger" icon="x" onClick={() => setDialogue('suppression')}>{t('console.compte.supprimer')}</Button> : null}
             </div>
             <Annonce retour={actes.retour} />
             <Tabs items={onglets} value={onglet} onChange={setOnglet} />
-            <div style={{ paddingTop: 'var(--gm-space-4)' }} role="tabpanel" aria-label={onglets.find((o) => o.key === onglet)?.label}>
+            <div className="gm-col" style={{ paddingTop: 'var(--gm-space-4)' }} role="tabpanel" aria-label={onglets.find((o) => o.key === onglet)?.label}>
               {onglet === 'fiche' ? <Fiche compte={c} /> : null}
               {onglet === 'securite' ? (
-                <KeyValueList
-                  items={[
-                    { key: t('compte.secondFacteur'), value: <StatusBadge status={c.secondFacteur ? 'ok' : 'warn'} label={t(c.secondFacteur ? 'compte.secondFacteur.actif' : 'compte.secondFacteur.absent')} /> },
-                    { key: t('console.compte.actionsRequises'), value: c.actionsRequises.length ? <span className="gm-row">{c.actionsRequises.map((a) => <Tag key={a}>{t(`console.action.${a}`, { defaultValue: a })}</Tag>)}</span> : t('console.compte.aucuneAction') },
-                    { key: t('console.compte.premierAcces'), value: t(c.premierAccesEnAttente ? 'console.compte.premierAcces.enAttente' : 'console.compte.premierAcces.termine') },
-                  ]}
-                />
+                <>
+                  <KeyValueList
+                    items={[
+                      { key: t('console.comptes.etat'), value: <StatusBadge status={c.actif ? 'ok' : 'neutral'} label={t(c.actif ? 'console.comptes.actif' : 'console.comptes.inactif')} /> },
+                      { key: t('compte.secondFacteur'), value: <StatusBadge status={c.secondFacteur ? 'ok' : 'warn'} label={t(c.secondFacteur ? 'compte.secondFacteur.actif' : 'compte.secondFacteur.absent')} /> },
+                      { key: t('compte.email'), value: t(c.emailVerifie ? 'compte.email.verifie' : 'compte.email.nonVerifie') },
+                      { key: t('console.compte.actionsRequises'), value: c.actionsRequises.length ? <span className="gm-row">{c.actionsRequises.map((a) => <Tag key={a}>{t(`console.action.${a}`, { defaultValue: a })}</Tag>)}</span> : t('console.compte.aucuneAction') },
+                      { key: t('console.compte.premierAcces'), value: t(c.premierAccesEnAttente ? 'console.compte.premierAcces.enAttente' : 'console.compte.premierAcces.termine') },
+                    ]}
+                  />
+                  {peut('IAM_ACCOUNT_SECURITY') ? (
+                    <ActionBar align="start" label={t('console.compte.actesSecurite')}>
+                      <Button icon="flag" onClick={() => setDialogue('actions')}>{t('console.compte.exigerActions')}</Button>
+                      {!soiMeme ? (
+                        <>
+                          <Button icon="smartphone" onClick={() => actes.motive({ titre: t('console.compte.reinitialiser2fa'), libelle: t('console.compte.reinitialiser2fa'), objet, danger: true,
+                            description: t('console.compte.reinitialiser2fa.texte'), succes: t('console.compte.2faReinitialise'), executer: (m) => s.secondFacteur.mutateAsync(m) })}>
+                            {t('console.compte.reinitialiser2fa')}
+                          </Button>
+                          <Button icon="key-round" onClick={() => actes.motive({ titre: t('console.compte.motDePasseProvisoire'), libelle: t('console.compte.motDePasseProvisoire'), objet,
+                            description: t('console.compte.motDePasseProvisoire.texte'), succes: t('console.compte.motDePasseDefini'),
+                            executer: async (m) => setMdp((await s.motDePasse.mutateAsync(m)).motDePasseProvisoire) })}>
+                            {t('console.compte.motDePasseProvisoire')}
+                          </Button>
+                        </>
+                      ) : null}
+                    </ActionBar>
+                  ) : null}
+                </>
               ) : null}
-              {onglet === 'sessions' ? <Sessions id={c.id} /> : null}
+              {onglet === 'sessions' ? (
+                <>
+                  {peut('IAM_ACCOUNT_SECURITY') ? (
+                    <ActionBar align="start" label={t('console.compte.onglet.sessions')}>
+                      <Button icon="lock" onClick={() => actes.motive({ titre: t('console.compte.fermerSessions'), libelle: t('console.compte.fermerSessions'), objet,
+                        description: t('console.compte.fermerSessions.texte'), succes: t('console.compte.sessionsFermees'), executer: (m) => s.sessions.mutateAsync(m) })}>
+                        {t('console.compte.fermerSessions')}
+                      </Button>
+                    </ActionBar>
+                  ) : null}
+                  <Sessions id={c.id} />
+                </>
+              ) : null}
               {onglet === 'journal' ? <Journal id={c.id} /> : null}
             </div>
             {dialogue === 'fiche' ? (
@@ -311,7 +314,7 @@ export default function ComptePage() {
               }} />
             ) : null}
             {dialogue === 'actions' ? (
-              <DialogueActions onFermer={() => setDialogue(null)} onValider={(a, parCourriel, motif) => {
+              <DialogueActions sujet={`${c.identifiant} · ${c.nomAffiche}`} onFermer={() => setDialogue(null)} onValider={(a, parCourriel, motif) => {
                 setDialogue(null)
                 actes.setRetour(null)
                 s.actions.mutateAsync({ actions: a, parCourriel, motif }).then(

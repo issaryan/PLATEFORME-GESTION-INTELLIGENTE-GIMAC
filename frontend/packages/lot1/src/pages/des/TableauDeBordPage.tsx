@@ -1,6 +1,7 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
-import { Card, EmptyState, Link, LinkList, PageHeader, PageSection, Skeleton, StatGrid, StatusBadge, Tag, type StatCardProps } from '@gimac/design-system'
+import { Card, EmptyState, Link, LinkList, PageHeader, PageSection, Skeleton, StatGrid, StatusBadge, type StatCardProps } from '@gimac/design-system'
 import { aPermission, usePermissions, useSession, type GroupeNavigation } from '@gimac/socle'
 import { useIndicateursDdrm, useInstitutions } from '../../hooks/participant'
 import { etatInstitution } from '../../dictionnaires'
@@ -8,6 +9,7 @@ import { NAVIGATION_DES } from '../../navigation'
 import { fonctionsDe } from '../../permissions'
 import { SectionActeur } from './tableau/SectionActeur'
 import { SectionCockpit } from './tableau/SectionCockpit'
+import { SectionAdministration } from './tableau/SectionAdministration'
 
 // DES-01 Tableau de bord (/des/tableau-de-bord, gabarit G1 ; D-58, D-61) : chaque acteur voit son
 // tableau de bord, composé des seules sections que la matrice des rôles de son jeton ouvre. Les
@@ -21,7 +23,9 @@ function SectionDdrm({ approbateur, instructeur }: { approbateur: boolean; instr
   const { t } = useTranslation()
   const navigate = useNavigate()
   const indicateurs = useIndicateursDdrm()
-  const mesDossiers = useInstitutions({ page: 1, taille: 5, mesDossiers: true, statut: ['CANDIDAT'] }, instructeur)
+  // « Mes dossiers en cours » paginés côté serveur, pagination visible comme celle des tableaux.
+  const [pageDossiers, setPageDossiers] = useState({ page: 1, taille: 5 })
+  const mesDossiers = useInstitutions({ ...pageDossiers, mesDossiers: true, statut: ['CANDIDAT'] }, instructeur)
   const i = indicateurs.data
   const vers = (statut: string) => () => void navigate(`/des/institutions?statut=${statut}`)
   const tuiles: Tuile[] = i
@@ -57,6 +61,11 @@ function SectionDdrm({ approbateur, instructeur }: { approbateur: boolean; instr
             <LinkList
               label={t('tableau.ddrm.mesDossiers')}
               empty={t('tableau.ddrm.aucunDossier')}
+              page={pageDossiers.page}
+              pageSize={pageDossiers.taille}
+              total={mesDossiers.data?.total ?? 0}
+              onPage={(page) => setPageDossiers((p) => ({ ...p, page }))}
+              onPageSize={(taille) => setPageDossiers({ page: 1, taille })}
               items={(mesDossiers.data?.contenu ?? []).map((d) => ({
                 key: d.id, href: `/des/institutions/${d.id}`, label: d.nom, status: etatInstitution[d.statut]?.status ?? 'neutral', statusLabel: t(`institution.statut.${d.statut}`),
               }))}
@@ -96,13 +105,17 @@ export default function TableauDeBordPage() {
   // « Mon travail » (étapes 3 à 10) couvre le cadrage, « Mes projets » et les gestes de chaque fonction.
   const travail = fonctions.length > 0 && aPermission(permissions, 'HOM_LIAISON_LIST')
   const cockpit = pilotage && fonctions.some((f) => f === 'DG' || f === 'CHEF_DES' || f === 'CHEF_DDRM')
-  const rien = !ddrm && !travail && !cockpit && !lecteurRegistre
+  // Administration des comptes (D-62) : liens vers la console pour les porteurs de IAM_ACCOUNT_READ (RSSI).
+  const administration = aPermission(permissions, 'IAM_ACCOUNT_READ')
+  const rien = !ddrm && !travail && !cockpit && !lecteurRegistre && !administration
   return (
     <div className="gm-col">
       <PageHeader
         title={t('tableau.titre')}
-        meta={session ? <><span>{t('tableau.bienvenue', { nom: session.nom })}</span>{profils.map((r) => <Tag key={r}>{t(`profil.${r}`, { defaultValue: r })}</Tag>)}</> : undefined}
+        subtitle={t('tableau.sousTitre')}
+        user={session ? { name: session.nom, roles: profils.map((r) => t(`profil.${r}`, { defaultValue: r })) } : undefined}
       />
+      {administration ? <SectionAdministration /> : null}
       {ddrm ? <SectionDdrm approbateur={approbateur} instructeur={instructeur} /> : null}
       {cockpit ? <SectionCockpit /> : null}
       {travail ? <SectionActeur fonctions={fonctions} /> : null}

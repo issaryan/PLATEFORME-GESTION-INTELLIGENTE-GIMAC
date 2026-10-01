@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Button, Card, KeyValueList, StatusBadge } from '@gimac/design-system'
+import { Button, Card, KeyValueList, StatusBadge, Note } from '@gimac/design-system'
 import type { ApprobationSecurite, DossierLiaison, ProcesVerbalCertification, Visa } from '../../../../modele/parcours'
 import { useSignerVisa } from '../../../../hooks/parcours'
 import { EtatSignature, TON_VISA, useLancer, usePeut, type Action, type Geste, PERMISSION_GESTE } from './commun'
@@ -35,7 +35,7 @@ export function CarteVisas({ dossier, approbation, pv }: { dossier: DossierLiais
   return (
     <Card title={t('decision.visa.titre')}>
       <div className="gm-col">
-        <p className="gm-field-help" style={{ margin: 0 }}>{t('decision.visa.explication')}</p>
+        <Note>{t('decision.visa.explication')}</Note>
         {actifs.map((v) => {
           const { action, geste } = ACTION[v.nature]
           const signable = peut(approbation.actionsPermises, action, geste)

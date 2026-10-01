@@ -16,6 +16,6 @@ export class ApiError extends Error {
 }
 
 /** Corps d'erreur des services (problème RFC 9457 enrichi). */
-export type Problem = { code?: string; message?: string; detail?: string; details?: Record<string, unknown>; correlationId?: string }
+export type Problem = { code?: string; message?: string; detail?: string; details?: Record<string, unknown>; violations?: unknown[]; correlationId?: string }
 
 export const estApiError = (e: unknown): e is ApiError => e instanceof ApiError

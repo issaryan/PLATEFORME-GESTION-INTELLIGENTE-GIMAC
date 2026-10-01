@@ -15,7 +15,7 @@ test.describe('Fonctionnalité : portail des participants sur la passerelle', ()
     await gw.brancher(page)
     await test.step('Étant donné la tâche de fourniture des attestations de LIA-2026-060', async () => {
       await page.goto(`${P}/portail/tableau-de-bord`)
-      await expect(page.getByText('Bienvenue, Brice Nzeng Mba')).toBeVisible()
+      await expect(page.locator('.gm-pagehead-nom', { hasText: 'Brice Nzeng Mba' })).toBeVisible()
       const taches = page.getByRole('region', { name: 'Ce que le GIMAC attend de vous' })
       await expect(taches.getByText(/^Page 1 sur 1 · 2 éléments$/)).toBeVisible()
       await taches.getByRole('row', { name: /LIA-2026-060/ }).getByRole('button', { name: 'Fournir' }).click()

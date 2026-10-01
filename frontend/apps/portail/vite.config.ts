@@ -2,7 +2,7 @@ import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import { pluginsE2E } from '../../e2e/instrumentation.mts'
 
-// Couche « Portail des participants ». En développement, les appels /api et /oauth2 sont relayés
+// Couche « Portail des participants ». En développement, les appels /api et /bff sont relayés
 // vers MS-GATEWAY (modèle BFF, RG-58) : aucun jeton n'est manipulé par le navigateur.
 const passerelle = process.env.GIMAC_PASSERELLE ?? 'http://localhost:8080'
 
@@ -16,8 +16,6 @@ export default defineConfig({
       '/api': passerelle,
       '/bff': { target: passerelle, ws: false },
       '/logout': passerelle,
-      '/oauth2': passerelle,
-      '/login': passerelle,
     },
   },
 })

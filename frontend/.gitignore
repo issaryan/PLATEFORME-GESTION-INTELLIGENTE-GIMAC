@@ -1,7 +1,7 @@
 # Sorties des tests de bout en bout (Playwright, couverture istanbul) et constructions instrumentées.
-dist-e2e/
-dist-e2e-http/
-e2e/resultats/
+dist-e2e*/
+dist-e2e-http*/
+e2e/resultats*/
 e2e/couverture/
-e2e/.nyc_output/
+e2e/.nyc_output*/
 playwright-report/

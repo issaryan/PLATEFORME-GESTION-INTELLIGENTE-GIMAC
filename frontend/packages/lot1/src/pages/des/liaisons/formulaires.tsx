@@ -5,8 +5,8 @@ import type { Liaison, OperationInstance } from '../../../modele/homologation'
 import { useAttribuerOperation, useDesignerChefDeProjet } from '../../../hooks/liaisons'
 import { useErreurService } from './communs'
 
-// Formulaires du lot composés de ResourceForm : désignation du conducteur de projet (D-58), attribution
-// d'une opération (HOM-08). L'ouverture d'une liaison se fait depuis la fiche de l'institution
+// Formulaires du lot composés de ResourceForm, présentés en fenêtre modale : désignation du conducteur de
+// projet (D-58), attribution d'une opération (HOM-08). L'ouverture d'une liaison se fait depuis la fiche de l'institution
 // (institutions/cadrage.tsx). Le service décide ; le formulaire affiche son refus.
 
 const texte = (v: unknown) => (typeof v === 'string' ? v : '')
@@ -32,6 +32,8 @@ export function FormulaireChefDeProjet({ descripteur, liaison, onFermer }: { des
       title={t('liaison.form.chef', { institution: liaison.institutionNom })}
       submitLabel={t('liaison.action.designerChef')}
       initial={{ chefDeProjetId: liaison.chefDeProjetId, motif: '' }}
+      presentation="dialog"
+      submitting={designer.isPending}
       errors={erreurs}
       serverError={erreur(designer.error)}
       onCancel={onFermer}
@@ -60,7 +62,9 @@ export function FormulaireAttribution({ descripteur, operation, onFermer }: { de
     <ResourceForm
       descriptor={avecMotif}
       mode="edit"
-      embedded
+      presentation="dialog"
+      submitting={attribuer.isPending}
+      title={t('operation.attribution.titre', { code: operation.code })}
       submitLabel={t('operation.action.attribuer')}
       initial={{ responsableId: operation.responsableId ?? '', motif: '' }}
       serverError={erreur(attribuer.error)}

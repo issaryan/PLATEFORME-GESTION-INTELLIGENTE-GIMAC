@@ -11,7 +11,7 @@ test.describe('Fonctionnalité : tableaux de bord en lecture seule', () => {
       await demo(page, { profil, theme: 'light' })
       await test.step('Étant donné son tableau de bord', async () => {
         await page.goto(`${ADRESSES.departement}/des/tableau-de-bord`)
-        await expect(page.getByText(libelle, { exact: true })).toBeVisible()
+        await expect(page.locator('.gm-pagehead-user', { hasText: libelle })).toBeVisible()
         await expect(monTravail(page).getByRole('heading', { name: /^Liaisons suivies \(\d+\)$/ })).toBeVisible()
         await expect(monTravail(page).getByRole('button', { name: 'Ouvrir une liaison' })).toHaveCount(0)
         await expect(monTravail(page).getByRole('button', { name: 'Désigner le conducteur' })).toHaveCount(0)

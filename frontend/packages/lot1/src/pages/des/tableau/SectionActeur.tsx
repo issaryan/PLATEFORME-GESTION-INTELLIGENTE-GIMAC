@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
-import { Button, Card, DataTable, Link, StatCard, StatusBadge, Tag, type Column, type Status } from '@gimac/design-system'
+import { Button, Card, DataTable, Link, StatCard, StatusBadge, Tag, type Column, type Status, Note } from '@gimac/design-system'
 import { aPermission, usePermissions } from '@gimac/socle'
 import type { Blocage, Fonction, LiaisonResume, TableauActeur, TacheActeur } from '../../../modele/parcours'
 import { useTableauActeur } from '../../../hooks/parcours'
@@ -33,10 +33,11 @@ function Paginee<T extends object>({ lignes, colonnes, cle, vide, aide }: { lign
   )
 }
 
+/** Pictogramme de chaque compteur de « Mon travail » (le compteur sans pictogramme connu n'en porte pas). */
 function Compteurs({ tableau }: { tableau: TableauActeur }) {
   const { t } = useTranslation()
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 'var(--gm-space-4)' }} aria-label={t('parcoursActeur.compteurs')}>
+    <div className="gm-stat-grid" role="group" aria-label={t('parcoursActeur.compteurs')}>
       {tableau.compteurs.map((c) => (
         <StatCard
           key={c.cle}
@@ -83,7 +84,7 @@ function Taches({ taches }: { taches: TacheActeur[] }) {
   return (
     <Card title={t('parcoursActeur.taches', { count: taches.length })}>
       {taches.some((x) => x.oubliSansSymptome) ? (
-        <p className="gm-field-help" style={{ margin: '0 0 var(--gm-space-3)' }}>{t('parcours.alerte.oubliSansSymptome')}</p>
+        <Note>{t('parcours.alerte.oubliSansSymptome')}</Note>
       ) : null}
       <Paginee lignes={taches} colonnes={colonnes} cle={(x) => `${x.operationId}:${x.qualite}`} vide={t('parcoursActeur.aucuneTache')} aide={t('parcoursActeur.aucuneTache.aide')} />
     </Card>

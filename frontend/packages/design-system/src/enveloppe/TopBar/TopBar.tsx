@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { cx } from '../../lib/cx'
 import { IconButton } from '../../actions/IconButton/IconButton'
 import { Breadcrumb } from '../../navigation/Breadcrumb/Breadcrumb'
@@ -7,7 +8,6 @@ import { useLibelle } from '../../i18n/LangueProvider'
 
 export type Layer = 'des' | 'portail' | 'console'
 
-const LAYER = { des: 'topbar.couche.des', portail: 'topbar.couche.portail', console: 'topbar.couche.console' } as const
 
 export interface TopBarProps {
   layer?: Layer
@@ -19,23 +19,54 @@ export interface TopBarProps {
   user?: string
   live?: boolean
   institution?: string
+  /** Conservé pour compatibilité : aucun bandeau d'environnement n'est plus affiché. */
   env?: 'prod' | 'recette' | 'integration'
   clock?: string
-  /** Ouvre le sélecteur de langue (FR, EN, ES). */
+  /** Appelé à l'ouverture et à la fermeture du menu des préférences (langue, thème). */
   onLangue?: () => void
+  /** Contenu du menu surgissant ancré au bouton du globe (langue FR, EN, ES, thème). */
+  preferences?: ReactNode
   /** Replie ou déplie la navigation latérale. */
   onMenu?: () => void
 }
 
-// Barre supérieure de 56 px commune aux trois couches (§6.1).
+// Barre supérieure de 56 px commune aux trois couches (§6.1). Les préférences (langue, thème) s'ouvrent
+// dans un menu surgissant ancré au bouton du globe : la page n'est jamais déformée ; Échap ou un clic au
+// dehors le ferment et rendent le focus au bouton. Aucun bandeau d'environnement.
 export function TopBar(p: TopBarProps) {
   const t = useLibelle()
   const layer = p.layer || 'des'
+  const [ouvert, setOuvert] = useState(false)
+  const ancre = useRef<HTMLSpanElement>(null)
+  const panneau = useRef<HTMLDivElement>(null)
+  const basculer = (v: boolean) => {
+    setOuvert(v)
+    if (p.onLangue) p.onLangue()
+  }
+  useEffect(() => {
+    if (!ouvert) return
+    const premier = panneau.current?.querySelector<HTMLElement>('select, button, input, [tabindex]:not([tabindex="-1"])')
+    premier?.focus()
+    const dehors = (e: MouseEvent) => {
+      if (ancre.current && !ancre.current.contains(e.target as Node)) setOuvert(false)
+    }
+    const touche = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setOuvert(false)
+        ancre.current?.querySelector<HTMLElement>('button')?.focus()
+      }
+    }
+    document.addEventListener('mousedown', dehors)
+    document.addEventListener('keydown', touche)
+    return () => {
+      document.removeEventListener('mousedown', dehors)
+      document.removeEventListener('keydown', touche)
+    }
+  }, [ouvert])
   return (
     <div>
       <header className="gm-topbar">
         {p.sansMarque ? null : p.logo ? <img src={p.logo} alt="GIMAC" height={28} /> : <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, color: 'var(--gm-color-action)', fontSize: 18 }}>GIMAC</span>}
-        {p.sansMarque ? null : <span className="gm-topbar-layer">{t(LAYER[layer])}</span>}
         {layer === 'portail' && p.institution ? <span className="gm-topbar-institution" style={{ fontWeight: 600 }}>{p.institution}</span> : null}
         {p.onMenu ? <IconButton variant="ghost" icon="menu" label={t('topbar.replier')} onClick={p.onMenu} /> : null}
         {p.breadcrumb ? <Breadcrumb items={p.breadcrumb} /> : null}
@@ -47,12 +78,16 @@ export function TopBar(p: TopBarProps) {
           {p.live === false ? t('topbar.horsLigne') : t('topbar.tempsReel')}
         </span>
         <IconButton variant="ghost" icon="bell-ring" label={t('notif.titre')} />
-        <IconButton variant="ghost" icon="globe" label={t('topbar.langue')} onClick={p.onLangue} />
+        <span ref={ancre} className="gm-topbar-ancre">
+          <IconButton variant="ghost" icon="globe" label={t('topbar.langue')} onClick={() => basculer(!ouvert)} aria-haspopup="dialog" aria-expanded={ouvert} />
+          {ouvert && p.preferences ? (
+            <div ref={panneau} className="gm-popover gm-topbar-pop" role="dialog" aria-label={t('topbar.preferences')}>
+              {p.preferences}
+            </div>
+          ) : null}
+        </span>
         <Avatar name={p.user || t('topbar.utilisateur')} />
       </header>
-      {layer === 'console' ? (
-        <div className={cx('gm-envband', 'gm-envband-' + (p.env || 'prod'))}>{p.env === 'recette' ? t('topbar.env.recette') : p.env === 'integration' ? t('topbar.env.integration') : t('topbar.env.production')}</div>
-      ) : null}
     </div>
   )
 }

@@ -1,9 +1,10 @@
 import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { Navigate, Route, Routes } from 'react-router'
+import { Navigate, Route, Routes, useLocation } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { EmptyState, Skeleton } from '@gimac/design-system'
 import {
-  CONNEXION, Enveloppe, GardeSession, PageConnexion, PageDeconnexion, SessionProvider, aPermission, configureHttp, lirePreference, type Session,
+  ConnexionProvider, Enveloppe, GardeSession, PageConnexion, PageDeconnexion, SessionActive, aPermission, adresseConnexion, configureHttp, connexionHttp, lirePreference,
+  lireSessionDemo, surNonAutorise, type Session,
 } from '@gimac/socle'
 import { GardePremierAcces, MonComptePage, monCompteHttp, monCompteSimule } from '@gimac/compte'
 import { Fournisseurs } from './Fournisseurs'
@@ -11,6 +12,7 @@ import { creerClientRequetes } from './services/clientRequetes'
 import { CLE_PREMIER_ACCES_DEMO, CLE_PROFIL_DEMO, NAVIGATION_CONSOLE, PROFILS_DEMO } from './navigation'
 import { servicesConsoleHttp } from './services/http'
 import { servicesConsoleSimules } from './services/simule'
+import { connexionDemo } from './connexionDemo'
 
 // Console d'administration et d'audit (couche « console », D-46, D-61, D-62) : le super administrateur,
 // le RSSI et chaque utilisateur configurent tout depuis la plateforme, sans ouvrir la console du
@@ -30,13 +32,19 @@ const JournalisationPage = lazy(() => import('./pages/JournalisationPage'))
 const VERSION = import.meta.env.VITE_VERSION ?? '0.1.0'
 
 function profilDemo() {
-  const demande = lirePreference(CLE_PROFIL_DEMO) ?? import.meta.env.VITE_PROFIL_DEMO
+  const adresse = typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('profil')
+  // Profil de la session ouverte par la connexion simulée (D-65) d'abord.
+  const demande = lireSessionDemo()?.role ?? (adresse && PROFILS_DEMO[adresse] ? adresse : null) ?? lirePreference(CLE_PROFIL_DEMO) ?? import.meta.env.VITE_PROFIL_DEMO
   const role = demande && PROFILS_DEMO[demande] ? demande : 'ROLE_SUPER_ADMIN'
   return { role, ...PROFILS_DEMO[role] }
 }
 function sessionDemo(): Session {
   const p = profilDemo()
-  return { sujet: p.sujet, nom: p.nom, identifiant: p.identifiant, roles: [p.role], permissions: p.permissions, institutionId: '', acr: '2', doubleFacteur: true }
+  const demo = lireSessionDemo()
+  return {
+    sujet: p.sujet, nom: p.nom, identifiant: demo?.identifiant || p.identifiant, roles: [p.role], permissions: p.permissions, institutionId: '', acr: '2', doubleFacteur: true,
+    ...(demo?.premierAcces ? { restreinte: true } : {}),
+  }
 }
 
 /** Écran réservé à une permission : sans elle, accès refusé explicite (la passerelle refait le contrôle). */
@@ -82,9 +90,12 @@ function Pages({ session, correlationId }: { session: Session; correlationId?: s
 }
 
 function AvecSession({ reels, children }: { reels: boolean; children: (s: Session) => ReactNode }) {
+  const ici = useLocation()
   if (!reels) {
+    // Connexion simulée (D-65) : sans session de démonstration, écran de connexion.
+    if (!lireSessionDemo()) return <Navigate to={adresseConnexion({ retour: ici.pathname + ici.search })} replace />
     const s = sessionDemo()
-    return <SessionProvider session={s}>{children(s)}</SessionProvider>
+    return <SessionActive session={s} prolonger={async () => undefined}>{children(s)}</SessionActive>
   }
   return <GardeSession>{children}</GardeSession>
 }
@@ -99,31 +110,34 @@ export default function App() {
   const compte = useMemo(() => {
     if (reels) return monCompteHttp('console')
     const p = profilDemo()
+    const demo = lireSessionDemo()
+    const identifiant = demo?.identifiant || p.identifiant
     const [prenom, ...nom] = p.nom.split(' ')
     return monCompteSimule({
-      premierAcces: lirePreference(CLE_PREMIER_ACCES_DEMO) === '1',
-      compte: { id: p.sujet, identifiant: p.identifiant, prenom, nom: nom.join(' '), nomAffiche: p.nom, email: `${p.identifiant}@gimac-afr.org`, profils: [p.role] },
+      premierAcces: demo?.premierAcces ?? lirePreference(CLE_PREMIER_ACCES_DEMO) === '1',
+      etapes: demo?.etapes,
+      compte: { id: p.sujet, identifiant, prenom, nom: nom.join(' '), nomAffiche: p.nom, email: `${identifiant}@gimac-afr.org`, profils: [p.role] },
     })
   }, [reels])
+  const connexion = useMemo(() => (reels ? connexionHttp() : connexionDemo()), [reels])
   const client = useMemo(() => creerClientRequetes(), [])
   const [correlationId, setCorrelationId] = useState<string | undefined>()
   useEffect(() => {
-    // Session expirée : retour à la connexion (Keycloak exige de nouveau le second facteur).
+    // Session absente ou close par la passerelle (401, CNX_SESSION_EXPIREE) : retour à la connexion (D-65).
     configureHttp({
       onCorrelation: setCorrelationId,
-      onUnauthorized: async () => {
-        if (reels) window.location.assign(CONNEXION)
-        return false
-      },
+      onUnauthorized: async (e) => (reels ? surNonAutorise(e) : false),
     })
   }, [reels])
   return (
     <Fournisseurs services={services} compte={compte} clientRequetes={client}>
+      <ConnexionProvider service={connexion} couche="console">
       <Routes>
-        <Route path="/connexion" element={<PageConnexion couche="console" />} />
+        <Route path="/connexion/*" element={<PageConnexion couche="console" />} />
         <Route path="/console/*" element={<AvecSession reels={reels}>{(s) => <Pages session={s} correlationId={correlationId} />}</AvecSession>} />
         <Route path="*" element={<Navigate to="/console/tableau-de-bord" replace />} />
       </Routes>
+      </ConnexionProvider>
     </Fournisseurs>
   )
 }

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { cleanup, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, screen, within } from '@testing-library/react'
 import { ApiError } from '@gimac/socle'
 import MaLiaisonPage from './MaLiaisonPage'
 import { auditer, ouvrir, sansCleNiNomInterne, services } from './parcours/outilsTest'
@@ -78,5 +78,25 @@ describe('POR-03 Mes liaisons et suivi de mon projet', () => {
     await screen.findByText(langue === 'en' ? 'Tracking my project LIA-2025-088' : 'Seguimiento de mi proyecto LIA-2025-088')
     await screen.findByText(langue === 'en' ? 'Your documents' : 'Sus documentos')
     sansCleNiNomInterne()
+  })
+})
+
+// Livrables du participant : la tâche du tableau de bord et du dossier mène à l'écran de dépôt
+// (/portail/liaisons/:id/livrables/:op), quel que soit le lien servi.
+describe('Portail : tâches de livrable vers l’écran de dépôt', () => {
+  it('dossier : bouton « Déposer » de la tâche et pièce « à déposer » menant à l’écran de dépôt', async () => {
+    const s = services((b) => ({
+      mesTaches: async () => {
+        const t = await b.portailParcours.mesTaches()
+        const livrable = { ...t.taches[0], operationId: 'LIA-2026-046:15', liaisonId: 'LIA-2026-046', liaisonReference: 'LIA-2026-046', rang: '15', lien: '/portail/liaisons/LIA-2026-046', actionsPermises: ['DEPOSER_LIVRABLE'] }
+        return { ...t, taches: [...t.taches, livrable] }
+      },
+    }))
+    monter('/portail/liaisons/LIA-2026-046', { services: s, autres: [{ motif: '/portail/liaisons/:id/livrables/:op', element: <span>écran de dépôt</span> }] })
+    const depot = await screen.findByRole('link', { name: 'Déposer le livrable' })
+    expect(depot.getAttribute('href')).toBe('/portail/liaisons/LIA-2026-046/livrables/LIA-2026-046%3A15')
+    expect(screen.getByText('à déposer')).toBeTruthy()
+    fireEvent.click(await screen.findByRole('button', { name: 'Déposer' }))
+    expect(await screen.findByText('écran de dépôt')).toBeTruthy()
   })
 })

@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ApiError, CleSecurite } from '@gimac/socle'
 import { useServiceCompte } from './contexte'
-import type { ActionLibreService, FichePersonnelle, Moi, PremiereConfiguration, SessionCompte } from './modele'
+import type { ChangementMotDePasse, ConfirmationTotp, FichePersonnelle, Moi, PremiereConfiguration, SessionCompte } from './modele'
 
 // Hooks de données de « Mon compte » : seuls points d'appel du port. Clés [compte, ressource].
 export const clesCompte = {
@@ -38,17 +38,20 @@ export const useModifierFiche = () => {
   const s = useServiceCompte()
   return useEffetCompte((f: FichePersonnelle) => s.modifier(f))
 }
-/** Inscrit l'action (mot de passe, second facteur) puis reconnecte : le fournisseur d'identité l'exécute. */
-export const useActionLibreService = () => {
+/** Changement du mot de passe sur la plateforme (D-65). */
+export const useChangerMotDePasse = () => {
   const s = useServiceCompte()
-  return useEffetCompte(async (a: ActionLibreService) => {
-    await s.demanderAction(a)
-    await s.reconnecter()
-  })
+  return useEffetCompte((c: ChangementMotDePasse) => s.changerMotDePasse(c))
 }
-export const useReconnecter = () => {
+/** Nouveau secret TOTP et son URI otpauth (sans effet sur le compte avant confirmation). */
+export const useEnrolerTotp = () => {
   const s = useServiceCompte()
-  return useEffetCompte(() => s.reconnecter())
+  return useMutation({ mutationFn: () => s.enrolerTotp() })
+}
+/** Confirmation du code TOTP par un premier code de l'application d'authentification. */
+export const useConfirmerTotp = () => {
+  const s = useServiceCompte()
+  return useEffetCompte((c: ConfirmationTotp) => s.confirmerTotp(c))
 }
 export const useFermerSession = () => {
   const s = useServiceCompte()

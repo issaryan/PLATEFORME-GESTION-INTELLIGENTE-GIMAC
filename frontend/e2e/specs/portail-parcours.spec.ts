@@ -16,7 +16,7 @@ test.describe('Fonctionnalité : parcours de certification sur le portail du par
     await test.step('Étant donné le correspondant sur son tableau de bord', async () => {
       await page.goto(`${P}/portail/tableau-de-bord`)
       await expect(page.getByRole('heading', { level: 1 })).toHaveText('Mon espace de certification')
-      await expect(page.getByText('Bienvenue, Correspondant A')).toBeVisible()
+      await expect(page.locator('.gm-pagehead-nom', { hasText: 'Correspondant A' })).toBeVisible()
       for (const c of ['Tâches à réaliser', 'Procès-verbaux à signer', 'Attestations à fournir', 'Fiches de suivi à renseigner', 'Tâches en retard', 'Échéances proches']) {
         await expect(page.getByRole('region', { name: 'En un coup d\'œil' }).getByText(c, { exact: true })).toBeVisible()
       }

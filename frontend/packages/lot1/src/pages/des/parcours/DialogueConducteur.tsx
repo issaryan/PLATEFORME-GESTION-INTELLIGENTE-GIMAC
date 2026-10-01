@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Dialog, InlineAlert, KeyValueList, Select, TextArea } from '@gimac/design-system'
+import { CrudDialog, InlineAlert, KeyValueList, Select, TextArea } from '@gimac/design-system'
 import type { Personne } from '../../../modele/parcours'
 import { useConducteurs, useDesignerConducteur } from '../../../hooks/parcours'
 import { useErreurService } from '../liaisons/communs'
@@ -37,18 +37,17 @@ export function DialogueConducteur({ liaison, onFermer, onDesigne }: {
   }
   const titre = t(redesignation ? 'parcoursConducteur.redesigner' : 'parcoursConducteur.designer')
   return (
-    <Dialog
-      open
+    <CrudDialog
+      context="edit"
       id="gm-conducteur"
       title={titre}
       description={t(redesignation ? 'parcoursConducteur.description.redesignation' : 'parcoursConducteur.description.designation')}
       onClose={onFermer}
-      footer={
-        <>
-          <Button variant="secondary" onClick={onFermer}>{t('commun.annuler')}</Button>
-          <Button variant="primary" icon="user" loading={designer.isPending} onClick={soumettre}>{titre}</Button>
-        </>
-      }
+      onSubmit={soumettre}
+      submitLabel={titre}
+      submitIcon="user"
+      submitting={designer.isPending}
+      subject={`${liaison.reference} · ${liaison.institutionNom}`}
     >
       <div className="gm-col">
         <KeyValueList
@@ -86,6 +85,6 @@ export function DialogueConducteur({ liaison, onFermer, onDesigne }: {
           />
         ) : null}
       </div>
-    </Dialog>
+    </CrudDialog>
   )
 }

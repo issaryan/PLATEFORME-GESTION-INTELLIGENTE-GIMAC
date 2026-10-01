@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
-import { Button, Card, EmptyState, ResourceDetail, ResourceForm, TreeView, type ResourceDescriptor } from '@gimac/design-system'
+import { Button, Card, EmptyState, ResourceDetail, ResourceForm, TreeView, type ResourceDescriptor, PageHeader } from '@gimac/design-system'
 import { EtatsRequete } from '@gimac/socle'
 import { useEffet } from '../../hooks/base'
 import { useHistoriqueReferentiel, useReferentiel, useReferentiels } from '../../hooks/referentiels'
@@ -32,15 +32,9 @@ export default function ReferentielsOperationsPage() {
 
   return (
     <div className="gm-col" style={{ gap: 'var(--gm-space-5)' }}>
-      <header className="gm-row" style={{ justifyContent: 'space-between' }}>
-        <div>
-          <p className="gm-type-micro" style={{ margin: 0 }}>{t('nav.groupe.homologation')}</p>
-          <h1 className="gm-type-h1" style={{ margin: 0 }}>{t('referentiel.titre')}</h1>
-        </div>
-        <Button variant="primary" icon="plus" onClick={() => executeur.lancer(creer, null as unknown as ReferentielVersion, t('referentiel.pluriel'), 'homologation', { openForm: ouvrirFormulaire })}>
+      <PageHeader title={t('referentiel.titre')} actions={<Button variant="primary" icon="plus" onClick={() => executeur.lancer(creer, null as unknown as ReferentielVersion, t('referentiel.pluriel'), 'homologation', { openForm: ouvrirFormulaire })}>
           {t(creer.label)}
-        </Button>
-      </header>
+        </Button>} />
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(240px, 320px) minmax(0, 1fr)', gap: 'var(--gm-space-5)', alignItems: 'start' }}>
         <Card title={t('referentiel.arbre')}>
           <EtatsRequete
@@ -57,15 +51,15 @@ export default function ReferentielsOperationsPage() {
           </EtatsRequete>
         </Card>
         <section aria-label={t('referentiel.detail')}>
-          {creation ? (
-            <FormulaireBrouillon onFin={(id) => { setCreation(false); if (id) setParams({ version: id }) }} />
-          ) : versionId ? (
+          {versionId ? (
             <Version key={`${versionId}-${onglet}`} id={versionId} onglet={onglet} ouvrirOnglet={ouvrirOnglet} ouvrirFormulaire={ouvrirFormulaire} />
           ) : (
             <EmptyState icon="kanban" title={t('referentiel.vide.titre')} text={t('referentiel.vide.texte')} />
           )}
         </section>
       </div>
+      {/* Création d'un brouillon : fenêtre modale ouverte sur l'arbre des versions. */}
+      {creation ? <FormulaireBrouillon onFin={(id) => { setCreation(false); if (id) setParams({ version: id }) }} /> : null}
     </div>
   )
 }
@@ -103,6 +97,8 @@ function FormulaireBrouillon({ onFin }: { onFin: (id?: string) => void }) {
       descriptor={desc as ResourceDescriptor<ReferentielVersion>}
       mode="create"
       title={t('referentiel.action.creer')}
+      presentation="dialog"
+      submitting={creer.isPending}
       errors={erreurs}
       serverError={creer.error ?? undefined}
       submitLabel={t('referentiel.action.creer')}

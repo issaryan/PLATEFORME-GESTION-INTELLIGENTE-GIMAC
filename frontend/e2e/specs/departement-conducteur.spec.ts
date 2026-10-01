@@ -12,7 +12,7 @@ test.describe('Fonctionnalité : « Mes projets » du conducteur de projet', () 
   test('Scénario : suivre ses projets depuis le tableau de bord', async ({ page }) => {
     await test.step('Étant donné le conducteur de projet sur son tableau de bord', async () => {
       await page.goto(`${ADRESSES.departement}/des/tableau-de-bord`)
-      await expect(page.getByText('Bienvenue, Aïcha Mahamat Nour')).toBeVisible()
+      await expect(page.locator('.gm-pagehead-nom', { hasText: 'Aïcha Mahamat Nour' })).toBeVisible()
       const projets = carte(page, /^Mes projets \(\d+\)$/)
       await expect(projets.getByRole('link', { name: 'LIA-2026-041' })).toBeVisible()
       await expect(projets.getByRole('link', { name: 'LIA-2026-027' })).toBeVisible()

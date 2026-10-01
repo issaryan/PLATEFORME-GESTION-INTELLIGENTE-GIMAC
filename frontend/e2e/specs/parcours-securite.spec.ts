@@ -12,7 +12,7 @@ test.describe('Fonctionnalité : approbation de la sécurité et visas', () => {
     await demo(page, { profil: 'ROLE_PRODUCTION_MONETIQUE', theme: 'light' })
     await test.step('Étant donné la production monétique et ses compteurs', async () => {
       await page.goto(`${ADRESSES.departement}/des/tableau-de-bord`)
-      await expect(page.getByText('Bienvenue, Serge Ondoua Essomba')).toBeVisible()
+      await expect(page.locator('.gm-pagehead-nom', { hasText: 'Serge Ondoua Essomba' })).toBeVisible()
       const compteurs = monTravail(page).locator('[aria-label="Mes compteurs"]')
       for (const c of ['Dossiers de changement à constituer', 'Opérations de branche à faire', 'Rapports de mise en production']) await expect(compteurs.getByText(c, { exact: true })).toBeVisible()
     })
@@ -22,19 +22,21 @@ test.describe('Fonctionnalité : approbation de la sécurité et visas', () => {
       await expect(verrou2.getByText('Dossier de changement (rang 20)')).toBeVisible()
       await expect(verrou2.getByText('dossier-changement-LIA-2026-019.pdf')).toBeVisible()
       await expect(page.getByRole('button', { name: 'Déclarer conforme' })).toHaveCount(0)
-      await expect(page.getByRole('button', { name: 'Référencer la fiche de changement' })).toBeDisabled()
+      await page.getByRole('button', { name: 'Référencer la fiche de changement' }).click()
+      await expect(page.getByRole('dialog').getByRole('button', { name: 'Référencer la fiche de changement' })).toBeDisabled()
     })
     await test.step('Quand il référence une fiche au mauvais format, le service la refuse', async () => {
-      await page.getByRole('textbox', { name: /Référence de la fiche/ }).fill('chg412')
-      await page.getByRole('button', { name: 'Référencer la fiche de changement' }).click()
+      await page.getByRole('dialog').getByRole('textbox', { name: /Référence de la fiche/ }).fill('chg412')
+      await page.getByRole('dialog').getByRole('button', { name: 'Référencer la fiche de changement' }).click()
       const d = page.getByRole('alertdialog')
       await d.getByRole('button', { name: 'Référencer la fiche de changement' }).click()
       await expect(d.getByText(/Référence de fiche de changement invalide/)).toBeVisible()
       await d.getByRole('button', { name: 'Annuler' }).click()
     })
     await test.step('Et quand il la référence au format CHG-AAAA-N', async () => {
-      await page.getByRole('textbox', { name: /Référence de la fiche/ }).fill('CHG-2026-412')
       await page.getByRole('button', { name: 'Référencer la fiche de changement' }).click()
+      await page.getByRole('dialog').getByRole('textbox', { name: /Référence de la fiche/ }).fill('CHG-2026-412')
+      await page.getByRole('dialog').getByRole('button', { name: 'Référencer la fiche de changement' }).click()
       await confirmerAction(page, 'Référencer la fiche de changement')
     })
     await test.step('Alors la fiche est lue, en examen, et l’approbation attend l’archivage des attestations', async () => {
@@ -133,7 +135,7 @@ test.describe('Fonctionnalité : approbation de la sécurité et visas', () => {
     await demo(page, { profil: 'ROLE_DG', theme: 'light' })
     await test.step('Étant donné la direction générale, son cockpit et son visa attendu', async () => {
       await page.goto(`${ADRESSES.departement}/des/tableau-de-bord`)
-      await expect(page.getByText('Bienvenue, Jean-Baptiste Ella Mintsa')).toBeVisible()
+      await expect(page.locator('.gm-pagehead-nom', { hasText: 'Jean-Baptiste Ella Mintsa' })).toBeVisible()
       await expect(page.getByRole('region', { name: 'Pilotage des projets de certification' })).toBeVisible()
       await expect(monTravail(page).locator('[aria-label="Mes compteurs"]').getByText('Visas attendus')).toBeVisible()
       await page.goto(`${ADRESSES.departement}${cheminDossier('LIA-2026-019', 'decision')}`)

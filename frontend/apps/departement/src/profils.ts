@@ -1,4 +1,4 @@
-import { lirePreference, type Session } from '@gimac/socle'
+import { lirePreference, lireSessionDemo, type Session } from '@gimac/socle'
 import { ANNUAIRE, PROFILS } from '@gimac/lot1'
 
 // Profils de démonstration de l'application du département (services simulés seulement), d'après les
@@ -25,8 +25,11 @@ export const PROFILS_DEMO: Record<string, ProfilDemo> = Object.fromEntries(
     }),
 )
 
-/** Profil demandé dans l'adresse (?profil=ROLE_…), sinon préférence locale, puis variable de construction ; chef de la DDRM à défaut. */
-export function roleDemo(demande = profilDeLAdresse() ?? lirePreference(CLE_PROFIL_DEMO) ?? import.meta.env.VITE_PROFIL_DEMO): string {
+/**
+ * Profil de la session de démonstration ouverte par la connexion simulée (D-65), sinon demandé dans
+ * l'adresse (?profil=ROLE_…), puis préférence locale, puis variable de construction ; chef de la DDRM à défaut.
+ */
+export function roleDemo(demande = lireSessionDemo()?.role ?? profilDeLAdresse() ?? lirePreference(CLE_PROFIL_DEMO) ?? import.meta.env.VITE_PROFIL_DEMO): string {
   return demande && PROFILS_DEMO[demande] ? demande : 'ROLE_CHEF_DDRM'
 }
 
@@ -35,8 +38,15 @@ function profilDeLAdresse(): string | null {
   return demande && PROFILS_DEMO[demande] ? demande : null
 }
 
-/** Session de démonstration : second facteur réputé fait, matrice des rôles du profil. */
+/**
+ * Session de démonstration : second facteur réputé fait, matrice des rôles du profil ; restreinte pendant
+ * le premier accès ouvert par la connexion simulée.
+ */
 export function sessionDemo(role = roleDemo()): Session {
   const p = PROFILS_DEMO[role]
-  return { sujet: p.sujet, nom: p.nom, identifiant: p.identifiant, roles: [role], permissions: p.permissions, institutionId: '', acr: '2', doubleFacteur: true }
+  const demo = lireSessionDemo()
+  return {
+    sujet: p.sujet, nom: p.nom, identifiant: demo?.identifiant || p.identifiant, roles: [role], permissions: p.permissions, institutionId: '', acr: '2', doubleFacteur: true,
+    ...(demo?.premierAcces ? { restreinte: true } : {}),
+  }
 }

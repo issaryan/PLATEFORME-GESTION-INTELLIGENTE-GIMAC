@@ -10,10 +10,24 @@ import type { FiltreComptes, NouveauCompte } from '../modele/comptes'
 afterEach(cleanup)
 const liste = (permissions = SUPER_ADMIN, o: Partial<Parameters<typeof rendrePage>[1]> = {}) =>
   rendrePage(<ComptesPage />, { chemin: '/console/comptes', motif: '/console/comptes', permissions, ...o })
+const formulaire = () => screen.getByRole('dialog').querySelector('form')!
 const creation = (permissions = SUPER_ADMIN, o: Partial<Parameters<typeof rendrePage>[1]> = {}) =>
   rendrePage(<CreationComptePage />, { chemin: '/console/comptes/nouveau', motif: '/console/comptes/nouveau', permissions, ...o })
 
 describe('Comptes : liste', () => {
+  it('filtre d’état initial lu dans l’adresse (?etat=), cible des indicateurs du tableau de bord ; valeur inconnue ignorée', async () => {
+    const filtres: FiltreComptes[] = []
+    const base = simules()
+    const services = avec('comptes', { lister: async (f) => { filtres.push(f); return base.comptes.lister(f) } }, base)
+    rendrePage(<ComptesPage />, { chemin: '/console/comptes?etat=SANS_2FA', motif: '/console/comptes', services })
+    await waitFor(() => expect(filtres[0]).toMatchObject({ etat: 'SANS_2FA', page: 1 }))
+    expect((screen.getByRole('combobox', { name: 'État' }) as HTMLSelectElement).value).toBe('SANS_2FA')
+    cleanup()
+    filtres.length = 0
+    rendrePage(<ComptesPage />, { chemin: '/console/comptes?etat=INCONNU', motif: '/console/comptes', services })
+    await waitFor(() => expect(filtres[0]).toEqual({ page: 1, taille: 25 }))
+  })
+
   it('liste, recherche, filtres de profil et d’état acceptés par MS-IAM, pagination, ouverture', async () => {
     const filtres: FiltreComptes[] = []
     const base = simules()
@@ -54,7 +68,12 @@ describe('Comptes : liste', () => {
     cleanup()
     liste(SUPER_ADMIN)
     fireEvent.click(await screen.findByRole('button', { name: 'Créer un compte' }))
-    expect(screen.getByTestId('emplacement').textContent).toBe('/console/comptes/nouveau')
+    // Création dans une fenêtre modale ouverte sur la liste, sans changer d'écran.
+    const d = screen.getByRole('dialog', { name: 'Créer un compte' })
+    expect(d.getAttribute('aria-modal')).toBe('true')
+    expect(screen.getByTestId('emplacement').textContent).toBe('/console/comptes')
+    fireEvent.keyDown(d, { key: 'Escape' })
+    expect(screen.queryByRole('dialog')).toBeNull()
     cleanup()
     let echec = true
     const base = simules()
@@ -71,9 +90,9 @@ describe('Comptes : création (aucune inscription libre)', () => {
     Object.entries(v).forEach(([k, x]) => fireEvent.change(c.querySelector(`input[name="${k}"]`)!, { target: { value: x } }))
 
   it('validation locale : champs obligatoires et au moins un profil', async () => {
-    const { container } = creation()
+    creation()
     await screen.findByLabelText('Chef de la DDRM')
-    fireEvent.submit(container.querySelector('form')!)
+    fireEvent.submit(formulaire())
     expect((await screen.findAllByText('Champ obligatoire.')).length).toBe(4)
     expect(screen.getByText('Choisissez au moins un profil.')).toBeTruthy()
   })
@@ -86,7 +105,7 @@ describe('Comptes : création (aucune inscription libre)', () => {
     remplir(container, { identifiant: 'N.Agent', prenom: 'Nadia', nom: 'Agent', email: 'n.agent@gimac-afr.org', telephone: '+237 699 44 55 66', fonction: 'Analyste', institutionId: '' })
     fireEvent.click(screen.getByLabelText('Normes et Agréments'))
     fireEvent.click(screen.getByLabelText('Les deux'))
-    fireEvent.submit(container.querySelector('form')!)
+    fireEvent.submit(formulaire())
     expect(await screen.findByText('Compte n.agent créé')).toBeTruthy()
     expect(recu).toMatchObject({ identifiant: 'n.agent', profils: ['ROLE_SNA'], envoyerInvitation: true, motDePasseProvisoire: true, institutionId: null })
     expect(screen.getByTestId('secret-valeur').textContent).toBe('Kp7#vQ2m!Lx9Tz4w')
@@ -103,7 +122,7 @@ describe('Comptes : création (aucune inscription libre)', () => {
     await screen.findByLabelText('Normes et Agréments')
     remplir(container, { identifiant: 'b.essono', prenom: 'Blaise', nom: 'Essono', email: 'b.essono@gimac-afr.org' })
     fireEvent.click(screen.getByLabelText('Pôle réseau'))
-    fireEvent.submit(container.querySelector('form')!)
+    fireEvent.submit(formulaire())
     expect(await screen.findByText('Compte b.essono créé')).toBeTruthy()
     expect(screen.queryByTestId('secret-valeur')).toBeNull()
     expect(screen.getByText('envoyée')).toBeTruthy()
@@ -120,14 +139,17 @@ describe('Comptes : création (aucune inscription libre)', () => {
     expect(screen.queryByLabelText('RSSI')).toBeNull()
     remplir(container, { identifiant: 'rssi', prenom: 'R', nom: 'S', email: 'rssi@gimac-afr.org' })
     fireEvent.click(screen.getByLabelText('Normes et Agréments'))
-    fireEvent.submit(container.querySelector('form')!)
+    fireEvent.submit(formulaire())
     const champ = container.querySelector('input[name="identifiant"]')!
     await waitFor(() => expect(champ.getAttribute('aria-invalid')).toBe('true'))
     expect(screen.getByText('Identifiant ou courriel déjà utilisé.')).toBeTruthy()
     code = 'IAM_IDP_UNAVAILABLE'
-    fireEvent.submit(container.querySelector('form')!)
+    fireEvent.submit(formulaire())
     expect(await screen.findByText('RQ-C-1')).toBeTruthy()
+    // Saisie en cours : l'abandon est confirmé avant la fermeture.
     fireEvent.click(screen.getByRole('button', { name: 'Annuler' }))
+    expect(screen.getByText('Abandonner la saisie ?')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Abandonner les modifications' }))
     expect(screen.getByTestId('emplacement').textContent).toBe('/console/comptes')
   })
 })

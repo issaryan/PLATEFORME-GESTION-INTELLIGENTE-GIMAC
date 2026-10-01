@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router'
-import { Button, DataTable, Dialog, EmptyState, SearchInput, Select, StatusBadge, TextArea, type Column } from '@gimac/design-system'
+import { Button, CrudDialog, DataTable, EmptyState, PageHeader, SearchInput, Select, StatusBadge, TextArea, type Column } from '@gimac/design-system'
 import { aPermission, usePermissions } from '@gimac/socle'
 import { useMessageErreur } from '@gimac/compte'
 import { cles, useConfigurationPlateforme, useEffet, useJournalisation } from '../hooks'
@@ -20,17 +20,13 @@ function Modifier({ logger, niveaux, onFermer, onValider }: { logger: NiveauLogg
   const [motif, setMotif] = useState('')
   const ok = motif.trim().length >= 5 && motif.trim().length <= 500
   return (
-    <Dialog open id="gm-dlg-niveau" title={t('console.journalisation.modifier')} description={logger.nom} onClose={onFermer}
-      footer={[
-        <Button key="a" variant="secondary" onClick={onFermer}>{t('commun.annuler')}</Button>,
-        <Button key="b" variant="primary" disabled={!ok} disabledReason={t('console.journalisation.motif.aide')} onClick={() => onValider(niveau, motif.trim())}>{t('console.journalisation.appliquer')}</Button>,
-      ]}>
-      <div className="gm-col">
-        <Select name="niveau" label={t('console.journalisation.niveau')} value={niveau} onChange={setNiveau}
-          options={[...niveaux.map((n) => ({ value: n, label: n })), { value: 'NULL', label: t('console.journalisation.heriter') }]} />
-        <TextArea name="motifNiveau" label={t('console.motif')} required value={motif} onChange={setMotif} help={t('console.journalisation.motif.aide')} />
-      </div>
-    </Dialog>
+    <CrudDialog context="edit" size="md" id="gm-dlg-niveau" title={t('console.journalisation.modifier')} subject={<span className="gm-mono">{logger.nom}</span>} onClose={onFermer}
+      onSubmit={() => onValider(niveau, motif.trim())} submitLabel={t('console.journalisation.appliquer')} submitDisabled={!ok} submitDisabledReason={t('console.journalisation.motif.aide')}
+      dirty={motif.trim() !== ''}>
+      <Select name="niveau" label={t('console.journalisation.niveau')} value={niveau} onChange={setNiveau}
+        options={[...niveaux.map((n) => ({ value: n, label: n })), { value: 'NULL', label: t('console.journalisation.heriter') }]} />
+      <TextArea name="motifNiveau" label={t('console.motif')} required value={motif} onChange={setMotif} help={t('console.journalisation.motif.aide')} />
+    </CrudDialog>
   )
 }
 
@@ -60,8 +56,7 @@ export default function JournalisationPage() {
 
   return (
     <div className="gm-col">
-      <h1 className="gm-heading-display">{t('console.journalisation.titre')}</h1>
-      <p style={{ margin: 0 }}>{t(edition ? 'console.journalisation.texte' : 'console.journalisation.lecture')}</p>
+      <PageHeader title={t('console.journalisation.titre')} subtitle={t(edition ? 'console.journalisation.texte' : 'console.journalisation.lecture')} />
       <div className="gm-row" style={{ alignItems: 'flex-end' }}>
         <div style={{ width: 280 }}>
           <Select name="service" label={t('console.journalisation.service')} value={service}

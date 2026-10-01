@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
-import { Breadcrumb, Button, Card, FourElementsChecklist, Hash, InlineAlert, KeyValueList, StatusBadge, Stepper } from '@gimac/design-system'
+import { Breadcrumb, Button, Card, FourElementsChecklist, Hash, InlineAlert, KeyValueList, StatusBadge, Stepper, Note, PageHeader } from '@gimac/design-system'
 import { EtatsRequete } from '@gimac/socle'
 import { useElementsDeCloture } from '../../hooks/cloture'
 import { useExecuteurActions } from '../../ressources/actions'
@@ -50,13 +50,8 @@ function Assistant({ cloture: c, liaisonId }: { cloture: ClotureOperation; liais
           { label: c.code },
         ]}
       />
-      <header className="gm-col" style={{ gap: 'var(--gm-space-2)' }}>
-        <h1 className="gm-heading-display" style={{ margin: 0 }}>{t('cloture.titre', { code: c.code })}</h1>
-        <div className="gm-row">
-          <span>{c.libelle}</span>
-          {statut ? <StatusBadge status={statut.status} label={t(statut.label)} /> : null}
-        </div>
-      </header>
+      <PageHeader title={t('cloture.titre', { code: c.code })} subtitle={c.libelle}
+        meta={statut ? <StatusBadge status={statut.status} label={t(statut.label)} /> : undefined} />
 
       <Stepper steps={ETAPES_CLOTURE.map((e, i) => ({ label: t(`cloture.etape.${e}`), state: i < index ? 'done' : i === index ? 'current' : 'todo' }))} />
 
@@ -95,7 +90,7 @@ function Assistant({ cloture: c, liaisonId }: { cloture: ClotureOperation; liais
       {etape === 'elements' ? (
         <Card title={t('cloture.quatreElements')}>
           <div className="gm-col">
-            <p className="gm-field-help" style={{ margin: 0 }}>{t('cloture.quatreElements.regle')}</p>
+            <Note>{t('cloture.quatreElements.regle')}</Note>
             <FourElementsChecklist {...versQuatreElements(c.elements, t)} />
           </div>
         </Card>

@@ -137,7 +137,7 @@ export function servicesConsoleSimules(o: OptionsConsoleSimulee = {}): ServicesC
         const c = recalculer({
           id: `u-sim-${++n}`, identifiant, prenom: x.prenom.trim(), nom: x.nom.trim(), nomAffiche: '', email: x.email.trim(), emailVerifie: false, actif: true,
           creeLe: new Date().toISOString(), telephone: x.telephone || null, fonction: x.fonction || null, langue: 'fr', institutionId: x.institutionId || null,
-          profilComplet: false, premierAccesEnAttente: true, profils: [...x.profils].sort(), actionsRequises: ['UPDATE_PASSWORD', 'CONFIGURE_TOTP', 'UPDATE_PROFILE', 'VERIFY_EMAIL'], secondFacteur: false,
+          profilComplet: false, premierAccesEnAttente: true, profils: [...x.profils].sort(), actionsRequises: ['MOT_DE_PASSE', 'SECOND_FACTEUR', 'FICHE', 'VERIFIER_COURRIEL'], secondFacteur: false,
         })
         comptes = [...comptes, c]
         tracer('CREATION', { id: c.id, libelle: identifiant }, null, c.profils)

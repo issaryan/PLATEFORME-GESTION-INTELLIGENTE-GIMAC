@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { act, cleanup, screen, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, screen, within } from '@testing-library/react'
 import { ApiError } from '@gimac/socle'
 import TableauDeBordPage from './TableauDeBordPage'
 import { LECTEUR, RSSI, SUPER_ADMIN, avec, rendrePage, session, simules } from '../test/rendu'
@@ -15,7 +15,7 @@ describe('Tableau de bord de la console', () => {
   it('super administrateur : état de la plateforme en temps réel, services, serveurs, alertes, comptes', async () => {
     const { container } = page(SUPER_ADMIN)
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Tableau de bord du super administrateur')
-    expect(screen.getByText('Super administrateur')).toBeTruthy()
+    expect(screen.getByText(/· Super administrateur$/)).toBeTruthy()
     const direct = await screen.findByRole('region', { name: 'État en temps réel' })
     expect(within(direct).getByText('Dégradée', { selector: '.gm-stat-value' })).toBeTruthy()
     expect(within(direct).getByText('7 / 8')).toBeTruthy()
@@ -26,14 +26,17 @@ describe('Tableau de bord de la console', () => {
     expect(screen.getAllByText('injoignable').length).toBeGreaterThan(0)
     expect(await screen.findByText('ServiceInjoignable')).toBeTruthy()
     expect(screen.getAllByText('Critiques').length).toBe(2)
-    expect(await screen.findByText('Comptes de la plateforme')).toBeTruthy()
-    expect(screen.queryByText('Posture de sécurité des comptes')).toBeNull()
+    expect(await screen.findByRole('group', { name: 'Comptes de la plateforme' })).toBeTruthy()
+    expect(screen.queryByRole('group', { name: 'Posture de sécurité des comptes' })).toBeNull()
+    // Gestion des utilisateurs en tête du tableau de bord, avant la supervision.
+    const regions = screen.getAllByRole('region').map((r) => r.getAttribute('aria-labelledby') && document.getElementById(r.getAttribute('aria-labelledby')!)?.textContent)
+    expect(regions.indexOf('Gestion des utilisateurs')).toBeLessThan(regions.indexOf('Supervision de la plateforme'))
   })
 
   it('RSSI : posture de sécurité, derniers actes, politique, et supervision ouverte par sa permission', async () => {
     page(RSSI)
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Tableau de bord de la sécurité des SI')
-    expect(await screen.findByText('Posture de sécurité des comptes')).toBeTruthy()
+    expect(await screen.findByRole('group', { name: 'Posture de sécurité des comptes' })).toBeTruthy()
     expect(await screen.findByText('Sans second facteur')).toBeTruthy()
     expect(screen.getByText('Créés depuis 30 jours')).toBeTruthy()
     expect(await screen.findByText(/Super administrateur : 1/)).toBeTruthy()
@@ -44,9 +47,54 @@ describe('Tableau de bord de la console', () => {
 
   it('RSSI sans supervision ni journal : ni flux ni derniers actes', async () => {
     page(RSSI.filter((p) => p !== 'PLATFORM_SUPERVISION_READ' && p !== 'IAM_JOURNAL_READ'))
-    expect(await screen.findByText('Posture de sécurité des comptes')).toBeTruthy()
+    expect(await screen.findByRole('group', { name: 'Posture de sécurité des comptes' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Journal d’administration' })).toBeNull()
     expect(screen.queryByText('Supervision de la plateforme')).toBeNull()
     expect(screen.queryByText('Derniers actes d’administration')).toBeNull()
+  })
+
+  it.each([['super administrateur', SUPER_ADMIN], ['RSSI', RSSI]] as const)('%s : gestion des utilisateurs, actions directes et indicateurs cliquables vers la liste filtrée', async (_n, permissions) => {
+    // Motif large : le tableau de bord reste monté pendant que l'adresse change.
+    page([...permissions], { motif: '/console/*' })
+    const gestion = screen.getByRole('region', { name: 'Gestion des utilisateurs' })
+    const actions = within(gestion).getByRole('group', { name: 'Actions de gestion des utilisateurs' })
+    const allerPar = async (nom: string, cible: string) => {
+      fireEvent.click(within(actions).getByRole('button', { name: nom }))
+      expect(screen.getByTestId('emplacement').textContent).toBe(cible)
+    }
+    await allerPar('Tous les comptes', '/console/comptes')
+    await allerPar('Comptes sans second facteur', '/console/comptes?etat=SANS_2FA')
+    await allerPar('Premiers accès en attente', '/console/comptes?etat=PREMIER_ACCES')
+    await allerPar('Profils et permissions', '/console/profils')
+    await allerPar('Journal d’administration', '/console/journal')
+    await allerPar('Politique de sécurité', '/console/politique-securite')
+    const cartes = await within(gestion).findByRole('group', { name: /Comptes de la plateforme|Posture de sécurité des comptes/ })
+    const carte = (libelle: string) => within(cartes).getByText(libelle).closest('[role="button"]') as HTMLElement
+    fireEvent.click(carte('Sans second facteur'))
+    expect(screen.getByTestId('emplacement').textContent).toBe('/console/comptes?etat=SANS_2FA')
+    fireEvent.keyDown(carte('Premier accès en attente'), { key: 'Enter' })
+    expect(screen.getByTestId('emplacement').textContent).toBe('/console/comptes?etat=PREMIER_ACCES')
+    fireEvent.click(carte('Actifs'))
+    expect(screen.getByTestId('emplacement').textContent).toBe('/console/comptes?etat=ACTIF')
+    fireEvent.click(carte('Désactivés'))
+    expect(screen.getByTestId('emplacement').textContent).toBe('/console/comptes?etat=INACTIF')
+    fireEvent.click(carte('Comptes'))
+    fireEvent.click(carte('Comptes privilégiés'))
+    expect(screen.getByTestId('emplacement').textContent).toBe('/console/profils')
+    fireEvent.click(carte('Actes d’administration (24 h)'))
+    expect(screen.getByTestId('emplacement').textContent).toBe('/console/journal')
+    // Création d'un compte dans une fenêtre modale, sans quitter le tableau de bord.
+    fireEvent.click(within(actions).getByRole('button', { name: 'Créer un compte' }))
+    const d = screen.getByRole('dialog', { name: 'Créer un compte' })
+    expect(d.getAttribute('aria-modal')).toBe('true')
+    fireEvent.click(within(d).getByRole('button', { name: 'Annuler' }))
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('sans droit de création : pas de bouton « Créer un compte »', async () => {
+    page(RSSI.filter((p) => p !== 'IAM_ACCOUNT_CREATE'))
+    await screen.findByRole('group', { name: 'Posture de sécurité des comptes' })
+    expect(screen.queryByRole('button', { name: 'Créer un compte' })).toBeNull()
   })
 
   it('profil sans tableau de bord : état vide', () => {
@@ -95,7 +143,8 @@ describe('Tableau de bord de la console', () => {
 
   it.each(['en', 'es'] as const)('rendu en %s sans clé brute', async (langue) => {
     const { container } = page(RSSI, { langue })
-    await screen.findByText(langue === 'en' ? 'Account security posture' : 'Postura de seguridad de las cuentas')
+    await screen.findByRole('group', { name: langue === 'en' ? 'Account security posture' : 'Postura de seguridad de las cuentas' })
+    await screen.findByRole('region', { name: langue === 'en' ? 'User management' : 'Gestión de usuarios' })
     await screen.findByText(langue === 'en' ? 'Real time' : 'Tiempo real')
     expect(container.textContent).not.toMatch(/\b(console|compte|commun)\.[a-zA-Z]/)
   })

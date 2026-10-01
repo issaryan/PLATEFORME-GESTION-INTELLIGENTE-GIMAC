@@ -13,7 +13,7 @@ test.describe('Fonctionnalité : cadrage des liaisons par le chef du DES', () =>
   test('Scénario : suivre son travail, désigner le conducteur d’une liaison qui n’en a pas, puis la liste historique', async ({ page }) => {
     await test.step('Étant donné le chef du DES sur son tableau de bord', async () => {
       await page.goto(`${ADRESSES.departement}/des/tableau-de-bord`)
-      await expect(page.getByText('Chef du DES', { exact: true })).toBeVisible()
+      await expect(page.locator('.gm-pagehead-user', { hasText: 'Chef du DES' })).toBeVisible()
       await expect(monTravail(page).getByRole('heading', { name: 'Liaison sans conducteur (1)' })).toBeVisible()
       await expect(page.getByRole('region', { name: 'Pilotage des projets de certification' })).toBeVisible()
       await expect(page.getByRole('region', { name: 'Relations avec les membres (DDRM)' })).toHaveCount(0)
@@ -34,9 +34,9 @@ test.describe('Fonctionnalité : cadrage des liaisons par le chef du DES', () =>
       await page.goto(`${ADRESSES.departement}/des/liaisons`)
       await expect(page.getByRole('heading', { level: 1 })).toHaveText('Liaisons et parcours')
       await page.getByRole('row', { name: /Établissement de microfinance C/ }).getByRole('button', { name: 'Désigner le conducteur' }).click()
-      await expect(page.getByRole('heading', { level: 1 })).toHaveText('Désigner le conducteur de projet de la liaison de Établissement de microfinance C')
+      await expect(page.getByRole('dialog', { name: 'Désigner le conducteur de projet de la liaison de Établissement de microfinance C' })).toBeVisible()
       await page.locator('select[name="chefDeProjetId"]').selectOption('U-202')
-      await page.getByRole('button', { name: 'Désigner le conducteur' }).click()
+      await page.getByRole('dialog').getByRole('button', { name: 'Désigner le conducteur' }).click()
       await expect(page.getByRole('row', { name: /Établissement de microfinance C/ }).getByText('Brice Ondo Mba')).toBeVisible()
     })
     await test.step('Et le filtre « Mes projets » et la recherche restent à sa main', async () => {
@@ -62,19 +62,20 @@ test.describe('Fonctionnalité : cadrage des liaisons par le chef du DES', () =>
     await page.getByRole('link', { name: 'Crédit rural du Woleu' }).click()
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Crédit rural du Woleu')
     await page.getByRole('button', { name: 'Ouvrir une liaison (cadrage)' }).click()
+    const d = page.getByRole('dialog')
     await test.step('Quand il soumet sans type de projet', async () => {
       await page.locator('select[name="chefDeProjetId"]').selectOption('U-201')
-      await page.getByRole('button', { name: 'Ouvrir une liaison (cadrage)' }).click()
+      await d.getByRole('button', { name: 'Ouvrir une liaison (cadrage)' }).click()
       await expect(page.getByText('Choisissez le type de projet.').first()).toBeVisible()
     })
     await test.step('Quand il choisit un projet délégataire, sans référentiel publié', async () => {
       await page.getByLabel('Délégataire').check()
-      await page.getByRole('button', { name: 'Ouvrir une liaison (cadrage)' }).click()
+      await d.getByRole('button', { name: 'Ouvrir une liaison (cadrage)' }).click()
       await expect(page.getByText(/Aucun référentiel d'opérations n'est publié pour ce type de projet/)).toBeVisible()
     })
     await test.step('Puis un projet de carte interbancaire', async () => {
       await page.getByLabel('Carte interbancaire').check()
-      await page.getByRole('button', { name: 'Ouvrir une liaison (cadrage)' }).click()
+      await d.getByRole('button', { name: 'Ouvrir une liaison (cadrage)' }).click()
       await expect(page.getByText(/ouverte en phase de cadrage/)).toBeVisible()
       await expect(page.getByRole('heading', { level: 1 })).toHaveText('Crédit rural du Woleu')
     })
@@ -102,8 +103,8 @@ test.describe('Fonctionnalité : cadrage des liaisons par le chef du DES', () =>
       await page.getByRole('button', { name: 'Attribuer l\'opération' }).first().click()
       await page.locator('select[name="responsableId"]').selectOption('U-102')
       await page.locator('textarea[name="motif"]').fill('Charge rééquilibrée')
-      await page.locator('form').getByRole('button', { name: 'Attribuer l\'opération' }).click()
-      await expect(page.locator('form')).toHaveCount(0)
+      await page.getByRole('dialog').getByRole('button', { name: 'Attribuer l\'opération' }).click()
+      await expect(page.getByRole('dialog')).toHaveCount(0)
     })
     await test.step('Export scellé du dossier de preuves, après confirmation', async () => {
       await page.getByRole('tab', { name: 'Détail' }).click()

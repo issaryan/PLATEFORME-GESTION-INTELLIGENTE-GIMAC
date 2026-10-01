@@ -29,7 +29,7 @@ test.describe('Fonctionnalité : accessibilité des écrans D-62', () => {
       for (const [chemin, titre] of [
         ['/console/tableau-de-bord', 'Tableau de bord du super administrateur'],
         ['/console/comptes', 'Comptes'],
-        ['/console/comptes/nouveau', 'Créer un compte'],
+        ['/console/comptes/nouveau', 'Comptes'], // création en modale sur la liste
         ['/console/comptes/u-sna', 'Rachel Biyong Mengue'],
         ['/console/journal', 'Journal d’administration'],
         ['/console/politique-securite', 'Politique de sécurité'],
@@ -54,16 +54,18 @@ test.describe('Fonctionnalité : accessibilité des écrans D-62', () => {
   // dossier numérique du parcours (onglets Décision et Étapes), messagerie.
   for (const theme of ['light', 'dark'] as const) {
     test(`Scénario : écrans de l’application du département (thème ${theme})`, async ({ page }) => {
+      // Treize écrans audités l'un après l'autre : délai porté au double.
+      test.slow()
       await demo(page, { profil: 'ROLE_CHEF_DDRM', theme })
       for (const [chemin, titre] of [
         ['/des/tableau-de-bord', 'Tableau de bord'],
         ['/des/institutions', 'Institutions membres'],
         ['/des/institutions/INST-0105', 'Mobile Money Sanaga'],
         ['/des/institutions/INST-0042?onglet=transitions', 'Établissement de paiement A'],
-        ['/des/institutions/INST-0105?formulaire=liaison', 'Ouvrir une liaison (cadrage) pour Mobile Money Sanaga'],
+        ['/des/institutions/INST-0105?formulaire=liaison', 'Mobile Money Sanaga'], // ouverture au cadrage en modale sur la fiche
         ['/des/liaisons', 'Liaisons et parcours'],
         ['/des/liaisons/LIA-2026-030', 'Établissement de microfinance C'],
-        ['/des/liaisons/LIA-2026-030?formulaire=chef', 'Désigner le conducteur de projet de la liaison de Établissement de microfinance C'],
+        ['/des/liaisons/LIA-2026-030?formulaire=chef', 'Établissement de microfinance C'], // désignation en modale sur la fiche
         ['/des/parcours', 'Liaisons'],
         ['/des/parcours/LIA-2026-030', 'Établissement de paiement A'],
         ['/des/parcours/LIA-2026-019?onglet=decision', 'Banque G'],
@@ -105,6 +107,41 @@ test.describe('Fonctionnalité : accessibilité des écrans D-62', () => {
     await page.getByRole('button', { name: 'Continuer vers la signature' }).click()
     await expect(page.getByRole('dialog')).toBeVisible()
     await auditer(page)
+  })
+
+  // Connexion sur la plateforme (D-65) : formulaire, code, mot de passe oublié, nouveau mot de passe.
+  for (const theme of ['light', 'dark'] as const) {
+    test(`Scénario : écrans de connexion (thème ${theme})`, async ({ page }) => {
+      await demo(page, { theme })
+      await page.goto(`${ADRESSES.console}/connexion?motif=inactivite&minutes=30`)
+      await expect(page.locator('input[name="identifiant"]')).toBeVisible()
+      await auditer(page)
+      await page.locator('input[name="identifiant"]').fill('rssi')
+      await page.locator('input[name="motDePasse"]').fill('Gimac-Demo-2026!')
+      await page.getByRole('button', { name: 'Se connecter' }).click()
+      await expect(page.locator('input[name="code"]')).toBeVisible()
+      await auditer(page)
+      await page.goto(`${ADRESSES.console}/connexion/mot-de-passe-oublie`)
+      await auditer(page)
+      await page.goto(`${ADRESSES.console}/connexion/nouveau-mot-de-passe?jeton=jeton-de-demonstration-e2e`)
+      await auditer(page)
+    })
+  }
+
+  test('Scénario : avertissement d’inactivité et modales de Mon compte', async ({ page }) => {
+    await page.clock.install()
+    await page.goto(`${ADRESSES.departement}/des/mon-compte`)
+    await expect(page.getByRole('heading', { level: 1, name: 'Mon compte' })).toBeVisible()
+    await page.getByRole('button', { name: 'Reconfigurer mon code TOTP' }).click()
+    await expect(page.getByRole('dialog').getByRole('img', { name: /Code QR/ })).toBeVisible()
+    await auditer(page, '[role="dialog"]')
+    await page.getByRole('dialog').getByRole('button', { name: 'Annuler' }).click()
+    await page.getByRole('button', { name: 'Changer mon mot de passe' }).click()
+    await auditer(page, '[role="dialog"]')
+    await page.getByRole('dialog').getByRole('button', { name: 'Annuler' }).click()
+    await page.clock.fastForward('28:10')
+    await expect(page.getByRole('alertdialog', { name: 'Votre session va expirer' })).toBeVisible()
+    await auditer(page, '[role="alertdialog"]')
   })
 
   test('Scénario : assistant de premier accès', async ({ page }) => {

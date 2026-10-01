@@ -4,7 +4,7 @@ import { Button, DataTable, Link, ProgressRing, StatusBadge, Tag, type Column } 
 import { usePermissions, type ApiError } from '@gimac/socle'
 import type { CoverageValue } from '../../../modele/commun'
 import type { LiaisonResume, TacheActeur } from '../../../modele/parcours'
-import { Echeance, GESTES, gesteDe, tonStatut, useDate, useLibelleTache } from './commun'
+import { Echeance, GESTES, gesteDe, lienGeste, tonStatut, useDate, useLibelleTache } from './commun'
 
 // Listes du portail du participant : les tâches qui lui incombent, chacune menant à son geste, et ses
 // liaisons avec l'étape courante et les deux couvertures (CR §6.5 : lues directement et séparément).
@@ -49,7 +49,7 @@ export function TableTaches({ taches, requete, liaison = true }: { taches: Tache
       render: (x) => {
         const g = gesteDe(x, permissions)
         return g ? (
-          <Button size="sm" variant="primary" icon={GESTES[g].icone} onClick={() => void navigate(x.lien)}>{t(GESTES[g].cle)}</Button>
+          <Button size="sm" variant="secondary" icon={GESTES[g].icone} onClick={() => void navigate(lienGeste(x, g))}>{t(GESTES[g].cle)}</Button>
         ) : (
           <span className="gm-row" style={{ gap: 'var(--gm-space-2)' }}>
             <StatusBadge status="neutral" label={t('pp.enAttenteGimac')} />

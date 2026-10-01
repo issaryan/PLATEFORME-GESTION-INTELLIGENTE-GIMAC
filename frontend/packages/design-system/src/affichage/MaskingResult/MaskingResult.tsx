@@ -23,7 +23,7 @@ export function MaskingResult(p: MaskingResultProps) {
   const t = useLibelle()
   const m = MAP[p.result] || MAP.accepted
   return (
-    <div className={cx('gm-inline', 'gm-banner-' + m[0])} style={{ borderLeft: 'var(--gm-border-4) solid' }} role={p.result === 'rejected' ? 'alert' : 'status'}>
+    <div className={cx('gm-inline', 'gm-banner-' + m[0])} role={p.result === 'rejected' ? 'alert' : 'status'}>
       <Icon name={m[2]} size={20} />
       <div className="gm-banner-text">
         <div className="gm-banner-title">

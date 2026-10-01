@@ -18,6 +18,8 @@ export default defineConfig({
         // Composites et extensions de la console et de « Mon compte » (D-62).
         '{src/affichage/OneTimeSecret/**,src/saisie/PermissionPicker/**,src/donnees/LiveStatGroup/**,src/saisie/Checkbox/**,src/saisie/CheckboxGroup/**,src/saisie/TextField/**}': { statements: 80, branches: 80, functions: 80, lines: 80 },
         // Composites de la tranche DDRM et du cadrage (D-63).
+        // Modales de saisie et coquille applicative (D-63, demande du 30/09/2026).
+        '{src/affichage/QrCode/**,src/conteneurs/CrudDialog/**,src/conteneurs/ConfirmDialog/**,src/conteneurs/SignDialog/**,src/conteneurs/Dialog/**,src/enveloppe/SideNav/**,src/affichage/StatCard/**}': { statements: 80, branches: 80, functions: 80, lines: 80 },
         '{src/enveloppe/PageHeader/**,src/conteneurs/PageSection/**,src/conteneurs/ToastRegion/**,src/donnees/StatGrid/**,src/navigation/LinkList/**,src/actions/ActionBar/**}': { statements: 80, branches: 80, functions: 80, lines: 80 },
       },
     },

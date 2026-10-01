@@ -1,14 +1,18 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Card, DataTable, EmptyState, InlineAlert, Link, LiveStatGroup, Skeleton, StatCard, StatusBadge, Tag, type Column, type Status } from '@gimac/design-system'
+import { useNavigate } from 'react-router'
+import { ActionBar, Button, Card, DataTable, EmptyState, InlineAlert, Link, LiveStatGroup, PageHeader, PageSection, Skeleton, StatCard, StatGrid, StatusBadge, Tag, type Column, type Status } from '@gimac/design-system'
 import { aPermission, usePermissions, useSession } from '@gimac/socle'
 import { dateHeure, useLibelleProfil } from '@gimac/compte'
 import { useAlertes, useFluxPlateforme, useIndicateursComptes, useJournal, useServeurs, useServicesPlateforme } from '../hooks'
 import type { Alerte, EtatConteneur, EtatHote, EtatPlateforme, EtatService } from '../modele/plateforme'
 import type { EntreeJournal } from '../modele/comptes'
 import { Donnees, Section } from '../composants/communs'
-import { etatDirect, grille, nombre, octets, pourcent } from '../composants/formats'
+import { DialogueCreationCompte } from '../composants/DialogueCreationCompte'
+import { etatDirect, nombre, octets, pourcent } from '../composants/formats'
 
-// Tableau de bord de la console (D-61, D-62), composé selon les permissions de la session :
+// Tableau de bord de la console (D-61, D-62), composé selon les permissions de la session ; la gestion
+// des utilisateurs (actions directes et indicateurs cliquables) vient en tête pour les deux profils :
 // - super administrateur (PLATFORM_SUPERVISION_READ et IAM_ROLE_PRIVILEGED_GRANT) : état de la plateforme
 //   en temps réel (flux SSE /api/plateforme/flux), services, serveurs, alertes, indicateurs des comptes ;
 // - RSSI (IAM_ACCOUNT_READ sans IAM_ROLE_PRIVILEGED_GRANT) : posture de sécurité des comptes, derniers
@@ -111,7 +115,7 @@ function SectionSupervision() {
               <InlineAlert level="warn" title={t('console.alertes.injoignable')}>{a.erreur}</InlineAlert>
             ) : (
               <div className="gm-col">
-                <div style={grille}>
+                <div className="gm-stat-grid">
                   {SEVERITES.map((s) => {
                     const n = a.alertes.filter((x) => (x.severite ?? 'info') === s).length
                     return <StatCard key={s} label={t(`console.alertes.severite.${s}`)} value={n} status={n > 0 ? statutSeverite(s) : 'ok'} statusLabel={t(n > 0 ? 'console.aTraiter' : 'console.aJour')} />
@@ -127,26 +131,48 @@ function SectionSupervision() {
   )
 }
 
-function SectionComptes({ posture }: { posture: boolean }) {
+/**
+ * Gestion des utilisateurs (D-62), en tête du tableau de bord du super administrateur et du RSSI :
+ * actions directes (création si IAM_ACCOUNT_CREATE, listes filtrées, profils, journal, politique) et
+ * indicateurs des comptes cliquables vers la liste filtrée (?etat=). La création s'ouvre en modale.
+ */
+function SectionGestionUtilisateurs({ posture }: { posture: boolean }) {
   const { t } = useTranslation()
+  const navigate = useNavigate()
+  const permissions = usePermissions()
   const libelleProfil = useLibelleProfil()
   const indicateurs = useIndicateursComptes()
+  const [creation, setCreation] = useState(false)
+  const peut = (p: string) => aPermission(permissions, p)
+  const vers = (chemin: string) => () => void navigate(chemin)
+  const alerte = (n: number, s: 'crit' | 'warn', libelle: string) => ({ status: n > 0 ? s : ('ok' as const), statusLabel: t(n > 0 ? libelle : 'console.aJour') })
   return (
-    <Section titre={t(posture ? 'console.posture.titre' : 'console.comptes.indicateurs')} id="gm-comptes" action={<Link href="/console/comptes">{t('console.voirComptes')}</Link>}>
+    <PageSection title={t('console.gestion.titre')} description={t(posture ? 'console.gestion.texte.rssi' : 'console.gestion.texte')}>
+      <ActionBar align="start" label={t('console.gestion.actions')}>
+        {peut('IAM_ACCOUNT_CREATE') ? <Button variant="primary" icon="plus" onClick={() => setCreation(true)}>{t('console.comptes.creer')}</Button> : null}
+        <Button onClick={vers('/console/comptes')}>{t('console.gestion.tous')}</Button>
+        <Button variant="ghost" onClick={vers('/console/comptes?etat=SANS_2FA')}>{t('console.gestion.sans2fa')}</Button>
+        <Button variant="ghost" onClick={vers('/console/comptes?etat=PREMIER_ACCES')}>{t('console.gestion.premierAcces')}</Button>
+        <Button variant="ghost" onClick={vers('/console/profils')}>{t('console.nav.profils')}</Button>
+        {peut('IAM_JOURNAL_READ') ? <Button variant="ghost" onClick={vers('/console/journal')}>{t('console.nav.journal')}</Button> : null}
+        {peut('PLATFORM_SECURITY_POLICY_READ') ? <Button variant="ghost" onClick={vers('/console/politique-securite')}>{t('console.nav.politique')}</Button> : null}
+      </ActionBar>
       <Donnees requete={indicateurs}>
         {(i) => (
           <div className="gm-col">
-            <div style={grille}>
-              {posture ? null : <StatCard label={t('console.indicateur.total')} value={i.total} />}
-              {posture ? null : <StatCard label={t('console.indicateur.actifs')} value={i.actifs} />}
-              <StatCard label={t('console.indicateur.sansSecondFacteur')} value={i.sansSecondFacteur} status={i.sansSecondFacteur > 0 ? 'crit' : 'ok'}
-                statusLabel={t(i.sansSecondFacteur > 0 ? 'console.aTraiter' : 'console.aJour')} />
-              <StatCard label={t('console.indicateur.premierAcces')} value={i.premierAccesEnAttente} status={i.premierAccesEnAttente > 0 ? 'warn' : 'ok'}
-                statusLabel={t(i.premierAccesEnAttente > 0 ? 'console.enAttente' : 'console.aJour')} />
-              <StatCard label={t('console.indicateur.privilegies')} value={i.privilegies} />
-              {posture ? <StatCard label={t('console.indicateur.crees30')} value={i.creesDepuis30Jours} /> : <StatCard label={t('console.indicateur.inactifs')} value={i.inactifs} />}
-              <StatCard label={t('console.indicateur.actes24')} value={i.actesDepuis24Heures} />
-            </div>
+            <StatGrid
+              label={t(posture ? 'console.posture.titre' : 'console.comptes.indicateurs')}
+              items={[
+                { key: 'total', label: t('console.indicateur.total'), value: i.total, onClick: vers('/console/comptes') },
+                { key: 'actifs', label: t('console.indicateur.actifs'), value: i.actifs, onClick: vers('/console/comptes?etat=ACTIF') },
+                { key: 'sans2fa', label: t('console.indicateur.sansSecondFacteur'), value: i.sansSecondFacteur, ...alerte(i.sansSecondFacteur, 'crit', 'console.aTraiter'), onClick: vers('/console/comptes?etat=SANS_2FA') },
+                { key: 'premierAcces', label: t('console.indicateur.premierAcces'), value: i.premierAccesEnAttente, ...alerte(i.premierAccesEnAttente, 'warn', 'console.enAttente'), onClick: vers('/console/comptes?etat=PREMIER_ACCES') },
+                { key: 'inactifs', label: t('console.indicateur.inactifs'), value: i.inactifs, onClick: vers('/console/comptes?etat=INACTIF') },
+                { key: 'privilegies', label: t('console.indicateur.privilegies'), value: i.privilegies, onClick: vers('/console/profils') },
+                ...(posture ? [{ key: 'crees30', label: t('console.indicateur.crees30'), value: i.creesDepuis30Jours, onClick: vers('/console/comptes') }] : []),
+                { key: 'actes24', label: t('console.indicateur.actes24'), value: i.actesDepuis24Heures, ...(peut('IAM_JOURNAL_READ') ? { onClick: vers('/console/journal') } : {}) },
+              ]}
+            />
             {posture ? (
               <Card title={t('console.indicateur.parProfil')}>
                 <span className="gm-row">
@@ -157,7 +183,8 @@ function SectionComptes({ posture }: { posture: boolean }) {
           </div>
         )}
       </Donnees>
-    </Section>
+      {creation ? <DialogueCreationCompte onFermer={() => setCreation(false)} /> : null}
+    </PageSection>
   )
 }
 
@@ -193,32 +220,24 @@ export default function TableauDeBordPage() {
   const profils = (session?.roles ?? []).filter((r) => r !== 'ROLE_USER')
   return (
     <div className="gm-col" style={{ gap: 'var(--gm-space-6)' }}>
-      <header className="gm-col" style={{ gap: 'var(--gm-space-2)' }}>
-        <h1 className="gm-heading-display">{t(superAdmin ? 'console.tableau.superAdmin' : rssi ? 'console.tableau.rssi' : 'console.tableau.titre')}</h1>
-        {session ? (
-          <div className="gm-row">
-            <span>{t('console.tableau.bienvenue', { nom: session.nom })}</span>
-            {profils.map((r) => <Tag key={r}>{libelleProfil(r)}</Tag>)}
-          </div>
-        ) : null}
-      </header>
+      <PageHeader
+        title={t(superAdmin ? 'console.tableau.superAdmin' : rssi ? 'console.tableau.rssi' : 'console.tableau.titre')}
+        subtitle={t(superAdmin ? 'console.tableau.sousTitre.superAdmin' : rssi ? 'console.tableau.sousTitre.rssi' : 'console.tableau.vide.texte')}
+        user={session ? { name: session.nom, roles: profils.map((r) => libelleProfil(r)) } : undefined}
+      />
       {superAdmin ? (
         <>
+          {lecteurComptes ? <SectionGestionUtilisateurs posture={false} /> : null}
           <SectionSupervision />
-          {lecteurComptes ? <SectionComptes posture={false} /> : null}
         </>
       ) : null}
       {rssi ? (
         <>
-          <SectionComptes posture />
+          <SectionGestionUtilisateurs posture />
           {aPermission(permissions, 'IAM_JOURNAL_READ') ? <SectionActes /> : null}
           {aPermission(permissions, 'PLATFORM_SECURITY_POLICY_READ') ? (
-            <Card title={t('console.nav.politique')}>
-              <div className="gm-col">
-                <span>{t('console.tableau.politique.texte')}</span>
-                <Link href="/console/politique-securite">{t('console.tableau.politique.lien')}</Link>
-              </div>
-            </Card>
+            <PageSection title={t('console.nav.politique')} description={t('console.tableau.politique.texte')}
+              actions={<Link href="/console/politique-securite">{t('console.tableau.politique.lien')}</Link>} />
           ) : null}
           {supervision ? <SectionSupervision /> : null}
         </>

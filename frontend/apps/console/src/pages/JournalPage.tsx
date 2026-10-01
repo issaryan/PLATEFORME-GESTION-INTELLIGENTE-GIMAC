@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router'
-import { CorrelationIdChip, DataTable, Link, Select, type Column } from '@gimac/design-system'
+import { CorrelationIdChip, DataTable, Link, PageHeader, Select, type Column } from '@gimac/design-system'
 import { aPermission, usePermissions } from '@gimac/socle'
 import { dateHeure } from '@gimac/compte'
 import { useComptes, useJournal } from '../hooks'
@@ -37,7 +37,7 @@ export default function JournalPage() {
 
   return (
     <div className="gm-col">
-      <h1 className="gm-heading-display">{t('console.journal.titre')}</h1>
+      <PageHeader title={t('console.journal.titre')} subtitle={t('console.journal.sousTitre')} />
       <div style={{ maxWidth: 420 }}>
         <Select
           name="compte"

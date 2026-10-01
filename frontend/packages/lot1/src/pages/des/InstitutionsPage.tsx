@@ -11,7 +11,7 @@ import { etatListe } from './liaisons/communs'
 import { FormulaireInstitution } from './institutions/formulaires'
 
 // DES-05 Registre des institutions (/des/institutions, gabarit G2 ; PAR-01, PAR-17) et DES-07 prise de
-// contact (?formulaire=nouvelle). Liste paginée côté serveur, filtrée par statut, recherche libre ;
+// contact (?formulaire=nouvelle, fenêtre modale sur la liste). Liste paginée côté serveur, filtrée par statut, recherche libre ;
 // l'onglet « Mes dossiers » (chargé de la DDRM) restreint aux dossiers qu'il porte.
 export default function InstitutionsPage() {
   const { t } = useTranslation()
@@ -29,8 +29,6 @@ export default function InstitutionsPage() {
   const pilotes = useMemo(() => ({ openForm: (mode: 'create' | 'edit') => mode === 'create' && definir.current({ formulaire: 'nouvelle' }) }), [])
   const descripteur = useDescripteurDS(lot, pilotes)
   const liste = useInstitutions(filtre)
-
-  if (params.get('formulaire') === 'nouvelle') return <FormulaireInstitution descripteur={descripteur} onFermer={() => setParams({})} />
 
   const lignes: Institution[] = liste.data?.contenu ?? []
   const surRequete = (q: ListQuery) =>
@@ -53,6 +51,8 @@ export default function InstitutionsPage() {
         onQuery={surRequete}
         {...etatListe(liste, lignes)}
       />
+      {/* DES-07 prise de contact : fenêtre modale ouverte sur le registre. */}
+      {params.get('formulaire') === 'nouvelle' ? <FormulaireInstitution descripteur={descripteur} onFermer={() => setParams({})} /> : null}
     </div>
   )
 }

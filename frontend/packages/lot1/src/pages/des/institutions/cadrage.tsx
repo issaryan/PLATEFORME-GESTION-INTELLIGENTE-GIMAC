@@ -60,6 +60,8 @@ export function FormulaireCadrage({ institution, onFermer }: { institution: Inst
       submitLabel={t('cadrage.action.ouvrir')}
       intro={<InlineAlert level="info">{t(`cadrage.form.intro.${institution.statut === 'EN_HOMOLOGATION' ? 'EN_HOMOLOGATION' : 'ADHERENT'}`, { nom: institution.nom })}</InlineAlert>}
       errors={erreurs}
+      presentation="dialog"
+      submitting={ouvrir.isPending}
       serverError={erreur(ouvrir.error)}
       onCancel={onFermer}
       onSubmit={(v) => {

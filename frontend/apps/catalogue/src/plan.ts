@@ -143,7 +143,7 @@ export const PLAN: EntreePlan[] = [
     "groupe": "Affichage",
     "hauteur": 56,
     "largeur": null,
-    "description": "Initiales sur fond `gm-color-action-subtle`, cercle de 32 px (`gm-radius-avatar`, la seule forme arrondie du système). Jamais de photo. Dans la barre supérieure, le menu utilisateur affiche le nom, le rôle et, sur le portail, l'institution."
+    "description": "Initiales sur fond `gm-color-action-subtle`, cercle de 32 px (`gm-radius-avatar`, la seule forme arrondie du système, §5.3). Jamais de photo. Dans la barre supérieure, le menu utilisateur affiche le nom, le rôle et, sur le portail, l'institution."
   },
   {
     "nom": "CorrelationIdChip",
@@ -206,7 +206,7 @@ export const PLAN: EntreePlan[] = [
     "groupe": "Affichage",
     "hauteur": 168,
     "largeur": null,
-    "description": "Carte d'indicateur : libellé (`gm-type-small`), valeur (`gm-type-stat`, chiffres tabulaires), unité, tendance (flèche et variation), seuil (« seuil 95 % »), statut porté par pictogramme et libellé uniquement (StatusBadge), jamais par un fond coloré. `onClick` ouvre le détail ou l'écran filtré. Rangée de 4 à 6 cartes en tête d'un tableau de bord (gabarit G1). Sur le mur d'écrans, la valeur passe en `gm-type-stat-wall`."
+    "description": "Carte d'indicateur (DS-GIMAC-01 §7.3) : surface plate, bordure de 1 px, angles droits, aucune ombre ni pictogramme décoratif. Libellé (`gm-type-small`), valeur (`gm-type-stat` : 32 px, 600, chiffres tabulaires), unité ; ligne de contexte : statut porté par le pictogramme réservé (§5.5) et le libellé, colorés, jamais par un fond ni une bande ; tendance (flèche et variation), seuil (« seuil 95 % »), `context` libre (échéance, période). `onClick` ouvre le détail ou l'écran filtré : bordure d'action et cartouche au survol, anneau de focus, Entrée et Espace. Rangée de 4 à 6 cartes en tête d'un tableau de bord (gabarit G1), grille régulière `gm-stat-grid`.\n\n**Le consommateur fournit** `label`, `value`, `unit?`, `trend?`, `threshold?`, `context?`, `status?`, `statusLabel?`, `onClick?`.\n\n**Interdits** : un pictogramme décoratif ; un statut porté par la seule couleur."
   },
   {
     "nom": "StatusBadge",
@@ -304,7 +304,7 @@ export const PLAN: EntreePlan[] = [
     "groupe": "Dialogues",
     "hauteur": 380,
     "largeur": 900,
-    "description": "Fenêtre modale centrée de 560 px (720 px en `lg`) sur le voile `gm-color-overlay` : titre `gm-type-h2`, description, corps, pied d'actions. Piège de focus, fermeture par Échap et par le voile, retour du focus au déclencheur à la fermeture, `aria-modal` et `aria-labelledby`. Aucune ombre : la fenêtre est séparée de la page par le voile et une bordure de 1 px. Un dialogue ne contient jamais un tableau ni un formulaire long (c'est un Drawer ou un Stepper).\n\n**Le consommateur fournit** `title`, `description?`, `children`, `footer` (au plus un bouton principal), `onClose`, `size?`, `open?` ; `inline` confine le voile au conteneur parent (catalogue, aperçus)."
+    "description": "Fenêtre modale centrée de 560 px (720 px en `lg`) sur le voile `gm-color-overlay` : titre `gm-type-h2`, angles droits, ouverture en fondu (opacité seule, 200 ms, supprimée sous `prefers-reduced-motion`), description, corps, pied d'actions. Piège de focus, fermeture par Échap et par le voile, retour du focus au déclencheur à la fermeture, `aria-modal` et `aria-labelledby`. Aucune ombre : la fenêtre est séparée de la page par le voile et une bordure de 1 px. Un dialogue ne contient jamais un tableau ni un formulaire long (c'est un Drawer ou un Stepper).\n\n**Le consommateur fournit** `title`, `description?`, `children`, `footer` (au plus un bouton principal), `onClose`, `size?`, `open?` ; `inline` confine le voile au conteneur parent (catalogue, aperçus)."
   },
   {
     "nom": "Drawer",
@@ -340,6 +340,13 @@ export const PLAN: EntreePlan[] = [
     "hauteur": 600,
     "largeur": 900,
     "description": "Confirmation avec réauthentification forte FIDO2 (`confirm: \"sign\"`) pour les quitus, clôtures, scellements, purges, transitions de statut et relèves de quart : rappel de l'objet, empreinte de ce qui sera signé (Hash), SignatureField, résultat horodaté. Le dialogue ne peut être fermé pendant la signature ; à l'issue, le résultat (jeton d'horodatage, référence d'audit) est affiché avant de continuer. Le client n'accède jamais à un jeton ; la vérification est faite par le service."
+  },
+  {
+    "nom": "CrudDialog",
+    "groupe": "Dialogues",
+    "hauteur": 520,
+    "largeur": 900,
+    "description": "Modale CRUD standard (D-63) : toute création, modification, suppression, action sensible ou lecture de détail déclenchée depuis une fiche ou une liste s'ouvre dans cette fenêtre, sans quitter l'écran, adaptée à son contexte. Assemblage de Dialog (voile, focus piégé, Échap, `aria-modal`, titre, sous-titre de contexte et description), d'un formulaire natif et d'un pied d'actions standard : « Annuler » et l'action principale, reliée au formulaire par l'attribut `form` (Entrée dans un champ soumet), avec état de chargement.\n\n**Contextes** (`context`) : `create` (large, pictogramme « + ») ; `edit` (large) ; `delete` (moyenne, mise en garde « action définitive », case « irréversible », bouton danger, `alertdialog`) ; `sensitive` (moyenne, motif obligatoire de 10 caractères, réauthentification FIDO2 annoncée avec `reauth`, `alertdialog`) ; `confirm` (moyenne, `alertdialog`) ; `detail` (lecture seule, seul « Fermer » au pied). Tailles `sm` (440 px), `md` (560 px), `lg` (720 px).\n\n**Garde-fous** : pendant l'envoi (`submitting`), ni Échap, ni le voile, ni « Annuler » ne ferment ; un formulaire modifié (`dirty`) demande de confirmer l'abandon de la saisie. Le refus du service s'affiche en tête du corps (InlineAlert critique avec l'identifiant de corrélation). ConfirmDialog et SignDialog en sont des spécialisations ; ResourceForm s'y présente avec `presentation=\"dialog\"`.\n\n**Le consommateur fournit** `context`, `title`, `subject?`, `description?`, `onSubmit(motif)`, `onClose`, `submitLabel` (verbe et objet), `submitIcon?`, `submitting?`, `submitDisabled?` avec `submitDisabledReason`, `dirty?`, `error?`, `object?`, `consequences?`, `reason?`, `irreversible?`, `reauth?`, `danger?`, `extraActions?`, `size?`, `children` (champs du catalogue).\n\n**Interdits** : une saisie de modification en pleine page depuis une fiche ; un bouton principal « OK » ; plus d'un bouton principal ; une suppression sans contexte `delete`."
   },
   {
     "nom": "AuditProofViewer",
@@ -437,14 +444,14 @@ export const PLAN: EntreePlan[] = [
     "groupe": "Enveloppe",
     "hauteur": 576,
     "largeur": 320,
-    "description": "Navigation latérale de 264 px, repliable à 64 px : entrées de premier niveau par module avec pictogramme et libellé ; entrée active marquée par un filet gauche de 4 px `gm-color-action` et un fond `gm-color-action-subtle` ; groupes repliables ; les entrées non autorisées par les permissions sont absentes du DOM, pas grisées. Sous 1280 px, elle devient un tiroir. Le pied porte la version et la classification « Usage interne, confidentiel »."
+    "description": "Navigation latérale de 264 px, repliable à 64 px (§6.2) : fond uni (bleu institutionnel en clair, gris anthracite du thème en sombre : `gm-color-nav-fond`), aucun dégradé ; logo GIMAC seul en blanc, sans drapeaux, sans cartouche ni nom de couche (D-66). Entrées par module avec pictogramme et libellé ; entrée active marquée par une teinte de fond (`gm-color-nav-actif`) et un texte et un pictogramme blancs, sans filet vertical (D-66) ; survol et focus en blanc. Les entrées non autorisées sont absentes du DOM, pas grisées. Sous 1280 px, elle devient un tiroir. Dans la coquille applicative, elle occupe toute la hauteur disponible et défile seule."
   },
   {
     "nom": "TopBar",
     "groupe": "Enveloppe",
     "hauteur": 200,
     "largeur": 1120,
-    "description": "Barre supérieure de 56 px, fixe, commune aux trois couches et paramétrée par `layer` (`des`, `portail`, `console`) : logo monochrome 28 px, nom de la couche en micro-capitales, repli de la navigation, fil d'Ariane, recherche globale Ctrl+K (pas sur le portail), horloge locale (UTC au survol), indicateur du canal poussé (point vert ou gris avec libellé), notifications, langue FR/EN, menu utilisateur (Avatar). Portail : nom de l'institution à droite du nom de la couche. Console : bandeau d'environnement de 28 px sous la barre (production bleu, recette ocre, intégration gris), toujours visible.\n\n**Le consommateur fournit** `layer`, `logo` (l'asset `gimac-bleu` ou `gimac-blanc` selon le thème), `breadcrumb`, `user`, `live`, `institution` (portail), `env` (console)."
+    "description": "Barre supérieure de 56 px, fixe, commune aux trois couches (§6.1) : logo (couleur en clair, blanc en sombre), recherche globale Ctrl+K (pas sur le portail), horloge locale (UTC au survol), indicateur du canal poussé (point vert ou gris avec libellé), notifications, bouton « Préférences » (globe) ouvrant un menu surgissant ancré (langue FR, EN, ES et thème ; Échap, clic extérieur, focus rendu au bouton) sans déformer la page, menu utilisateur (Avatar). Ni nom de couche, ni bandeau d'environnement (D-66)."
   },
   {
     "nom": "AlertRow",
@@ -629,6 +636,13 @@ export const PLAN: EntreePlan[] = [
     "description": "Composant universel de liste (gabarit G2) : lit un descripteur de ressource et rien d'autre. Compose le titre et les actions de page (une principale au plus), FilterBar (champs `filterable`), DataTable (champs `inList`, colonne d'actions de ligne selon `isAllowed` et les permissions), Drawer de détail (ResourceDetail en mode tiroir, chronologie, audit), ConfirmDialog ou SignDialog selon `confirm` de l'action, rafraîchissement poussé (`liveTopic`). Quatre états via `state`. Une page « Institutions membres » se réduit à `<ResourceList descriptor={institutionDescriptor} />`.\n\n**Le consommateur fournit** `descriptor`, `rows` et `total` (ou les hooks de données), `state`, `permissions?` (celles du jeton), `defaultQuery?`, `embedded?` (dans un onglet), `fixedFilters?` (par exemple `institutionId`)."
   },
   {
+    "nom": "QrCode",
+    "groupe": "Affichage",
+    "hauteur": 220,
+    "largeur": null,
+    "description": "Code QR calculé dans le navigateur (D-65) pour configurer l'application d'authentification : URI `otpauth://` jamais envoyée à un service tiers (bibliothèque d'encodage embarquée), correction d'erreur M, zone de silence de quatre modules, un seul tracé SVG net à toute échelle. Modules sombres sur fond blanc dans les deux thèmes (la lecture par un téléphone l'exige) ; image nommée (`role=\"img\"`). Toujours accompagné du secret en clair pour la saisie manuelle.\n\n**Le consommateur fournit** `value`, `label`, `size?` (192 px par défaut)."
+  },
+  {
     "nom": "OneTimeSecret",
     "groupe": "Affichage",
     "hauteur": 200,
@@ -654,7 +668,7 @@ export const PLAN: EntreePlan[] = [
     "groupe": "Enveloppe",
     "hauteur": 160,
     "largeur": null,
-    "description": "En-tête d'écran (gabarits G1 à G3, D-63) : surtitre de rubrique en petites capitales, titre unique `h1`, ligne de contexte (accueil, profils en Tag, statut) et actions de page, alignés par la classe `gm-resource-head`.\n\n**Le consommateur fournit** `title`, `overline?`, `meta?`, `actions?` (une action principale au plus).\n\n**Interdits** : plusieurs `h1` dans un écran ; un en-tête composé à la main avec des marges propres."
+    "description": "En-tête d'écran (gabarits G1 à G3, §6.3, D-63) : à plat, filet inférieur de 1 px. À gauche, lien de retour éventuel, rubrique en texte secondaire, titre unique `h1` (`gm-type-display`), une ligne de description, ligne de contexte (référence, statut) ; à droite, alignés sur la ligne du titre, la personne connectée et ses profils en texte simple (« Nom · Profil »), puis les actions (une principale au plus).\n\n**Le consommateur fournit** `title`, `subtitle?`, `overline?`, `user?` (`name`, `roles?`), `meta?`, `actions?`, `back?`, `id?`.\n\n**Interdits** : plusieurs `h1` dans un écran ; un en-tête composé à la main ; avatar, puces ou formule d'accueil dans l'en-tête."
   },
   {
     "nom": "PageSection",
@@ -675,7 +689,21 @@ export const PLAN: EntreePlan[] = [
     "groupe": "Navigation",
     "hauteur": 160,
     "largeur": 560,
-    "description": "Liste de liens vers des fiches (« Mes dossiers », « Mes projets », raccourcis ; D-63) : un Link par ligne, complément (référence, date) et StatusBadge alignés à droite, liste sans puces nommée ; texte explicite quand elle est vide.\n\n**Le consommateur fournit** `label`, `items` (`key`, `href`, `label`, `meta?`, `status?`, `statusLabel?`), `empty?`.\n\n**Interdits** : un lien qui déclenche une action à effet (c'est un Button)."
+    "description": "Liste de liens vers des fiches (« Mes dossiers en cours », « Mes tâches », raccourcis ; D-63) : un Link par ligne, complément (référence, date) et StatusBadge alignés à droite, filet de 1 px entre les lignes ; pagination toujours visible (D-66), 5 lignes par page par défaut, côté client ou côté serveur (`total` et `onPage`) ; texte explicite quand elle est vide.\n\n**Le consommateur fournit** `label`, `items` (`key`, `href`, `label`, `meta?`, `status?`, `statusLabel?`), `empty?`, `pageSize?`, `page?`, `total?`, `onPage?`, `onPageSize?`, `pagination?`.\n\n**Interdits** : un lien qui déclenche une action à effet (c'est un Button) ; une liste longue sans pagination."
+  },
+  {
+    "nom": "Note",
+    "groupe": "Conteneurs",
+    "hauteur": 120,
+    "largeur": 560,
+    "description": "Note d'aide (D-63) : explication, règle ou rappel posé dans une section, en cartouche (`gm-color-surface-sunken`, bordure de 1 px, angles droits) avec le pictogramme `info` ; jamais un paragraphe à nu, jamais une bande latérale. Pour un état ou un refus, InlineAlert.\n\n**Le consommateur fournit** `children`, `title?`, `icon?` (`null` pour aucun).\n\n**Interdits** : y porter un statut (c'est un StatusBadge ou une InlineAlert)."
+  },
+  {
+    "nom": "SettingsGrid",
+    "groupe": "Données",
+    "hauteur": 220,
+    "largeur": null,
+    "description": "Grille de réglages en lecture (politique de sécurité, configuration ; D-63) : une cartouche par réglage (bordure de 1 px, angles droits), libellé discret, valeur mise en valeur avec son unité, aide (plancher, plage admise) en dessous ; état d'une valeur booléenne porté par le pictogramme de statut et le libellé (« activée »). Colonnes régulières.\n\n**Le consommateur fournit** `label`, `items` (`key`, `label`, `value`, `unit?`, `hint?`, `status?`).\n\n**Interdits** : y modifier une valeur (l'édition passe par CrudDialog)."
   },
   {
     "nom": "ActionBar",

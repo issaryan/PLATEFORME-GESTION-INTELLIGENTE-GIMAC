@@ -22,7 +22,7 @@ const GRAINES: Graine[] = [
   ['u-sna', 'r.biyong', 'Rachel', 'Biyong Mengue', 'Analyste Normes et Agréments', ['ROLE_SNA']],
   ['u-inactif', 'k.ateba', 'Kevin', 'Ateba Owona', 'Ancien opérateur réseau', ['ROLE_POLE_RESEAU'], { actif: false }],
   ['u-premier-acces', 'l.nguema', 'Laetitia', 'Nguema Ondo', 'Opératrice production monétique', ['ROLE_PRODUCTION_MONETIQUE'],
-    { profilComplet: false, telephone: null, actionsRequises: ['UPDATE_PASSWORD', 'CONFIGURE_TOTP', 'VERIFY_EMAIL'], secondFacteur: false, emailVerifie: false, creeLe: il(30) }],
+    { profilComplet: false, telephone: null, actionsRequises: ['MOT_DE_PASSE', 'SECOND_FACTEUR', 'VERIFIER_COURRIEL'], secondFacteur: false, emailVerifie: false, creeLe: il(30) }],
   ['u-sans-2fa', 'b.hamadou', 'Bachir', 'Hamadou Ali', 'Ingénieur système', ['ROLE_POLE_SYSTEME'], { secondFacteur: false }],
 ]
 
@@ -44,7 +44,7 @@ export function journalInitial(): EntreeJournal[] {
   })
   return [
     e(2, 'CREATION', 'u-premier-acces', 'l.nguema', null, 'ROLE_PRODUCTION_MONETIQUE'),
-    e(5, 'ACTIONS_REQUISES', 'u-sans-2fa', 'b.hamadou', 'Second facteur absent depuis la migration du poste', 'CONFIGURE_TOTP', ['u-rssi', 'Carine Ebongue Ndjock']),
+    e(5, 'ACTIONS_REQUISES', 'u-sans-2fa', 'b.hamadou', 'Second facteur absent depuis la migration du poste', 'SECOND_FACTEUR', ['u-rssi', 'Carine Ebongue Ndjock']),
     e(20, 'CONFIGURATION_POLITIQUE_SECURITE', null, 'POLITIQUE_SECURITE', 'Alignement sur la PSSI 2026 : 14 caractères', 'longueurMinimale', ['u-rssi', 'Carine Ebongue Ndjock']),
     e(30, 'DESACTIVATION', 'u-inactif', 'k.ateba', 'Départ du collaborateur le 15 septembre', ''),
     e(52, 'PROFILS', 'u-ingenieur', 'p.mbida', 'Désignation comme conducteur de projet LIA-2026-017', 'ROLE_CONDUCTEUR_PROJET, ROLE_INGENIEUR_HOMOLOGATION'),

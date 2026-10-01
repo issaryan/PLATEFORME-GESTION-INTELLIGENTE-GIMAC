@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Button, DataTable, Hash, InlineAlert, KeyValueList, Link, StatusBadge, type Column } from '@gimac/design-system'
+import { Button, DataTable, Hash, InlineAlert, KeyValueList, Link, StatusBadge, type Column, Note } from '@gimac/design-system'
 import type { DossierLiaison, OperationParcours, Personne, ServicePerimetre } from '../../../../modele/parcours'
 import { tonService, tonSla, useFormatDate } from '../communs'
 import { externe, lienDuGeste, ongletDuGeste } from './regles'
@@ -87,7 +87,7 @@ export function Raci({ op }: { op: OperationParcours }) {
           { key: t('parcours.qualite.E'), value: liste(op.raci.E) },
         ]}
       />
-      <p className="gm-field-help" style={{ margin: 0 }}>{t('parcoursOps.raci.regle')}</p>
+      <Note>{t('parcoursOps.raci.regle')}</Note>
     </div>
   )
 }
@@ -111,7 +111,7 @@ export function PreuveDeposee({ op }: { op: OperationParcours }) {
           ...(p.codeControle ? [{ key: t('parcoursOps.preuve.codeControle'), value: p.codeControle, mono: true }] : []),
         ]}
       />
-      {p.valeurReference ? <p className="gm-field-help" style={{ margin: 0 }}>{t('parcoursOps.valeur.reference')}</p> : null}
+      {p.valeurReference ? <Note>{t('parcoursOps.valeur.reference')}</Note> : null}
       {c ? (
         <>
           <h3 className="gm-type-h3" style={{ margin: 0 }}>{t('parcoursOps.ceremonie.titre')}</h3>
@@ -121,7 +121,7 @@ export function PreuveDeposee({ op }: { op: OperationParcours }) {
               ...c.porteurs.map((nom, i) => ({ key: t('parcoursOps.ceremonie.composante', { n: i + 1 }), value: <span>{nom} · <span className="gm-mono">{c.codesControle[i] ?? ''}</span></span> })),
             ]}
           />
-          <p className="gm-field-help" style={{ margin: 0 }}>{t('parcoursOps.ceremonie.aucuneComposante')}</p>
+          <Note>{t('parcoursOps.ceremonie.aucuneComposante')}</Note>
         </>
       ) : null}
     </div>
@@ -168,7 +168,7 @@ export function Couverture({ dossier }: { dossier: DossierLiaison }) {
         <InlineAlert level="warn" title={t('parcoursOps.couverture.nonCalculable')}>{c.motifNonCalculable ?? ''}</InlineAlert>
       )}
       {c.taux !== null && c.taux < 100 ? <InlineAlert level="warn">{t('parcoursOps.couverture.incomplete')}</InlineAlert> : null}
-      <p className="gm-field-help" style={{ margin: 0 }}>{t('parcoursOps.couverture.regle')}</p>
+      <Note>{t('parcoursOps.couverture.regle')}</Note>
     </div>
   )
 }

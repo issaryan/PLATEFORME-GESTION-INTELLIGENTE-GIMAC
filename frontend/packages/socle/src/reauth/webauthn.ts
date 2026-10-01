@@ -4,8 +4,9 @@ import { prefixeIam, type Couche } from '../http/prefixes'
 
 // Réauthentification FIDO2 (IAM-07) : défi obtenu auprès de MS-IAM (/bff/<couche>/iam/reauthentification/defi),
 // assertion sérialisée pour l'en-tête X-Reauth-Assertion (base64 d'un JSON challengeId, id, clientDataJSON,
-// authenticatorData, signature, userHandle). ADMIN_SENSITIVE : actes d'administration sensibles (D-62).
-export type SignPurpose = 'OPERATION_VALIDATE' | 'QUITUS_SIGN' | 'STATUS_APPROVE' | 'ADMIN_SENSITIVE'
+// authenticatorData, signature, userHandle). ADMIN_SENSITIVE : actes d'administration sensibles (D-62) ;
+// ACCOUNT_SENSITIVE : reconfiguration du code TOTP hors premier accès (D-65).
+export type SignPurpose = 'OPERATION_VALIDATE' | 'QUITUS_SIGN' | 'STATUS_APPROVE' | 'ADMIN_SENSITIVE' | 'ACCOUNT_SENSITIVE'
 type Challenge = { challengeId: string; challenge: string; rpId: string; allowCredentials: string[]; timeoutMs: number }
 
 /** Encodage base64url sans remplissage (WebAuthn). */

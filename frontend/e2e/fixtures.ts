@@ -7,15 +7,19 @@ import { fileURLToPath } from 'node:url'
 // Recueil de la couverture istanbul (window.__coverage__) dans e2e/.nyc_output : à la fin de chaque
 // scénario et à chaque déchargement de page (navigation complète : connexion, déconnexion), par une
 // liaison Playwright appelée sur « pagehide ». nyc fusionne les fichiers et impose les seuils.
-const SORTIE = resolve(dirname(fileURLToPath(import.meta.url)), '.nyc_output')
+// GIMAC_E2E_NYC : autre dossier de recueil (exécutions parallèles) ; GIMAC_E2E_PORT : base des ports.
+const SORTIE = process.env.GIMAC_E2E_NYC ? resolve(process.env.GIMAC_E2E_NYC) : resolve(dirname(fileURLToPath(import.meta.url)), '.nyc_output')
+const BASE = Number(process.env.GIMAC_E2E_PORT ?? 5200)
 
 export const ADRESSES = {
-  console: 'http://localhost:5202',
-  consoleHttp: 'http://localhost:5212',
-  departement: 'http://localhost:5200',
-  departementHttp: 'http://localhost:5210',
-  portail: 'http://localhost:5201',
-  portailHttp: 'http://localhost:5211',
+  console: `http://localhost:${BASE + 2}`,
+  consoleHttp: `http://localhost:${BASE + 12}`,
+  departement: `http://localhost:${BASE}`,
+  departementHttp: `http://localhost:${BASE + 10}`,
+  portail: `http://localhost:${BASE + 1}`,
+  portailHttp: `http://localhost:${BASE + 11}`,
+  /** Console telle que l'application du département la lie (VITE_URL_CONSOLE, défaut http://localhost:4202). */
+  consoleLiee: process.env.VITE_URL_CONSOLE ?? 'http://localhost:4202',
 }
 
 function ecrire(couverture: string | null) {
@@ -42,8 +46,19 @@ export async function demo(page: Page, o: { profil?: ProfilDemo; premierAcces?: 
   }, o)
 }
 
-export const test = base.extend({
-  page: async ({ page }, use) => {
+/**
+ * `connecte` (vrai par défaut) : session de démonstration ouverte d'avance dans l'onglet (gm.sessionDemo,
+ * services simulés, D-65), comme après la connexion simulée ; le profil reste celui de `demo`. Les
+ * scénarios de connexion posent `test.use({ connecte: false })`.
+ */
+export const test = base.extend<{ connecte: boolean }>({
+  connecte: [true, { option: true }],
+  page: async ({ page, connecte }, use) => {
+    if (connecte) {
+      await page.addInitScript(() => {
+        if (!sessionStorage.getItem('gm.sessionDemo')) sessionStorage.setItem('gm.sessionDemo', JSON.stringify({ identifiant: '' }))
+      })
+    }
     await page.exposeFunction('__gmCouverture', (json: string) => ecrire(json))
     await page.addInitScript(() => {
       window.addEventListener('pagehide', () => {

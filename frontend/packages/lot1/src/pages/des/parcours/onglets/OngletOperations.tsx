@@ -84,7 +84,7 @@ function Vue({ dossier, ops }: { dossier: DossierLiaison; ops: OperationParcours
         </InlineAlert>
       ) : null}
 
-      <div className="gm-row" style={{ alignItems: 'stretch' }}>
+      <div className="gm-stat-grid">
         <StatCard label={t('parcoursOps.compteur.aFaire')} value={n.aFaire} />
         <StatCard label={t('parcoursOps.compteur.aValider')} value={n.aValider} status={n.aValider ? 'warn' : undefined} statusLabel={n.aValider ? t('parcours.etatOp.EN_VALIDATION') : undefined} />
         <StatCard label={t('parcoursOps.compteur.retard')} value={n.retard} status={n.retard ? 'crit' : 'ok'} statusLabel={t(n.retard ? 'parcours.sla.DEPASSE' : 'parcours.sla.DANS_LES_DELAIS')} />
@@ -108,7 +108,7 @@ function Vue({ dossier, ops }: { dossier: DossierLiaison; ops: OperationParcours
           </Button>
         ) : null}
       </div>
-      <p className="gm-field-help" style={{ margin: 0 }} aria-live="polite">{t('parcoursOps.resultat', { n: visibles.length, total: ops.length })}</p>
+      <p className="gm-section-desc" aria-live="polite">{t('parcoursOps.resultat', { n: visibles.length, total: ops.length })}</p>
 
       {groupes.length === 0 ? <InlineAlert level="info">{t('parcoursOps.aucunResultat')}</InlineAlert> : null}
       {groupes.map((g) => {

@@ -10,7 +10,11 @@ class FauxFlux {
   onmessage: ((m: { data: string }) => void) | null = null
   onerror: (() => void) | null = null
   ferme = false
-  constructor(public url: string, public init?: EventSourceInit) {
+  url: string
+  init?: EventSourceInit
+  constructor(url: string, init?: EventSourceInit) {
+    this.url = url
+    this.init = init
     FauxFlux.ouverts.push(this)
   }
   close() {

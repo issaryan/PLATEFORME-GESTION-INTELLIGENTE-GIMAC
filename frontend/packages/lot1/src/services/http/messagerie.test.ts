@@ -28,6 +28,9 @@ describe('messagerieHttp', () => {
       '/bff/des/collaboration/messagerie/conversations/C1/messages?avant=M9&taille=50',
       '/bff/des/collaboration/messagerie/non-lus',
     ])
+    // Compteur périodique : appel de fond, sans prolonger la session d'inactivité (D-65 §6).
+    expect(new Headers(appels()[6][1].headers).get('X-Gimac-Fond')).toBe('1')
+    expect(new Headers(appels()[0][1].headers).has('X-Gimac-Fond')).toBe(false)
   })
   it('écritures : démarrage et envoi en multipart, lecture marquée, pièce téléchargée', async () => {
     brancher()

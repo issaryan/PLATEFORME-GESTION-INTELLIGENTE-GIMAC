@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
-import { Button, InlineAlert, KeyValueList, Skeleton, StatusBadge } from '@gimac/design-system'
+import { Button, InlineAlert, KeyValueList, Skeleton, StatusBadge, Note } from '@gimac/design-system'
 import { useApprobation, useProcesVerbal } from '../../../../hooks/parcours'
 import { TON_APPROBATION, TON_PV, TON_VISA } from './commun'
 
@@ -31,7 +31,7 @@ export function ResumeDecision({ liaisonId }: { liaisonId: string }) {
           ]}
         />
       ) : (
-        <p className="gm-field-help" style={{ margin: 0 }}>{t('decision.resume.indisponible')}</p>
+        <Note>{t('decision.resume.indisponible')}</Note>
       )}
       <div className="gm-row">
         <Button variant="primary" icon="arrow-right" onClick={() => void navigate(`/des/parcours/${liaisonId}?onglet=decision`)}>

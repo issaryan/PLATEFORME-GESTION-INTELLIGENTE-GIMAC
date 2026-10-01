@@ -1,22 +1,39 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router'
-import { Button, DataTable, FilterBar, Link, StatusBadge, Tag, type Column } from '@gimac/design-system'
+import { useNavigate, useSearchParams } from 'react-router'
+import { Button, DataTable, FilterBar, Link, PageHeader, StatusBadge, Tag, type Column } from '@gimac/design-system'
 import { aPermission, usePermissions } from '@gimac/socle'
 import { useLibelleProfil, type Compte } from '@gimac/compte'
 import { useComptes, useProfils } from '../hooks'
 import { ETATS_FILTRE, type EtatFiltre, type FiltreComptes } from '../modele/comptes'
 import { etatListe } from '../composants/formats'
+import { DialogueCreationCompte } from '../composants/DialogueCreationCompte'
 
 // Comptes (D-62) : liste paginée côté serveur, recherche libre, filtres par profil et par état (valeurs
 // acceptées par MS-IAM : ACTIF, INACTIF, PREMIER_ACCES, SANS_2FA). Aucune inscription libre : la
-// création d'un compte est réservée à IAM_ACCOUNT_CREATE.
-export default function ComptesPage() {
+// création d'un compte est réservée à IAM_ACCOUNT_CREATE. Filtre d'état initial lu dans l'adresse (?etat=),
+// cible des indicateurs du tableau de bord. La création s'ouvre dans une fenêtre modale sur la liste
+// (/console/comptes/nouveau ou le bouton « Créer un compte »).
+export default function ComptesPage({ creation = false }: { creation?: boolean }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const permissions = usePermissions()
   const libelleProfil = useLibelleProfil()
-  const [filtre, setFiltre] = useState<FiltreComptes>({ page: 1, taille: 25 })
+  const [params] = useSearchParams()
+  const etatDemande = params.get('etat') as EtatFiltre | null
+  const etatValide = etatDemande && ETATS_FILTRE.includes(etatDemande) ? etatDemande : undefined
+  const [filtre, setFiltre] = useState<FiltreComptes>({ page: 1, taille: 25, etat: etatValide })
+  // Indicateur suivi depuis le tableau de bord alors que la liste est déjà affichée : le filtre suit l'adresse.
+  const [etatSuivi, setEtatSuivi] = useState(etatValide)
+  if (etatSuivi !== etatValide) {
+    setEtatSuivi(etatValide)
+    setFiltre((f) => ({ ...f, page: 1, etat: etatValide }))
+  }
+  const [creer, setCreer] = useState(creation)
+  const fermerCreation = () => {
+    setCreer(false)
+    if (creation) void navigate('/console/comptes', { replace: true })
+  }
   const liste = useComptes(filtre)
   const profils = useProfils()
   const lignes = liste.data?.contenu ?? []
@@ -45,12 +62,8 @@ export default function ComptesPage() {
 
   return (
     <div className="gm-col">
-      <div className="gm-resource-head">
-        <h1 className="gm-heading-display">{t('console.comptes.titre')}</h1>
-        {aPermission(permissions, 'IAM_ACCOUNT_CREATE') ? (
-          <Button variant="primary" icon="plus" onClick={() => void navigate('/console/comptes/nouveau')}>{t('console.comptes.creer')}</Button>
-        ) : null}
-      </div>
+      <PageHeader title={t('console.comptes.titre')} subtitle={t('console.comptes.sousTitre')}
+        actions={aPermission(permissions, 'IAM_ACCOUNT_CREATE') ? <Button variant="primary" icon="plus" onClick={() => setCreer(true)}>{t('console.comptes.creer')}</Button> : undefined} />
       <FilterBar
         query={filtre.q ?? ''}
         onQuery={(q) => changer('q', q)}
@@ -77,6 +90,7 @@ export default function ComptesPage() {
         {...etatListe(liste, lignes)}
         toolbar={<span className="gm-num">{t('console.comptes.total', { n: liste.data?.total ?? 0 })}</span>}
       />
+      {creer && aPermission(permissions, 'IAM_ACCOUNT_CREATE') ? <DialogueCreationCompte onFermer={fermerCreation} /> : null}
     </div>
   )
 }

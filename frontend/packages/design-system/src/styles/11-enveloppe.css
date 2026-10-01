@@ -2,38 +2,55 @@
 .gm-topbar { display: flex; align-items: center; gap: var(--gm-space-4); height: var(--gm-size-topbar); padding: 0 var(--gm-space-4); background: var(--gm-color-surface); border-bottom: var(--gm-border-1) solid var(--gm-color-border); }
 .gm-topbar-layer { font-size: 11px; line-height: 16px; font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase; color: var(--gm-color-text-secondary); }
 .gm-topbar-clock { font-variant-numeric: tabular-nums; color: var(--gm-color-text-secondary); }
+/* Menu surgissant des préférences, ancré au bouton du globe. */
+.gm-topbar-ancre { position: relative; display: inline-flex; }
+.gm-topbar-pop { position: absolute; right: 0; top: calc(100% + var(--gm-space-2)); z-index: 40; width: 288px; display: flex; flex-direction: column; gap: var(--gm-space-3); }
 .gm-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
 .gm-dot-ok { background: var(--gm-color-status-ok-fg); }
 .gm-dot-off { background: var(--gm-color-text-muted); }
-.gm-envband { height: 28px; display: flex; align-items: center; justify-content: center; font-size: 11px; line-height: 16px; letter-spacing: 0.04em; font-weight: 500; }
-.gm-envband-prod { background: var(--gm-color-action); color: var(--gm-color-text-inverse); }
-.gm-envband-recette { background: var(--gm-color-status-warn-bg); color: var(--gm-color-status-warn-fg); }
-.gm-envband-integration { background: var(--gm-color-surface-sunken); color: var(--gm-color-text-secondary); }
-.gm-sidenav { width: var(--gm-size-sidenav); flex-shrink: 0; display: flex; flex-direction: column; color: var(--gm-grey-100);
-  background: linear-gradient(180deg, var(--gm-blue-900) 0%, var(--gm-blue-700) 100%); overflow: hidden; }
-.gm-sidenav-entrees { flex: 1; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: rgb(255 255 255 / 0.25) transparent; }
+.gm-sidenav { width: var(--gm-size-sidenav); flex-shrink: 0; display: flex; flex-direction: column; color: var(--gm-color-nav-texte); background: var(--gm-color-nav-fond); border-right: var(--gm-border-1) solid var(--gm-color-nav-separateur); overflow: hidden; }
+.gm-sidenav-entrees { flex: 1; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--gm-inverse-a25) transparent; }
 .gm-sidenav ul { list-style: none; margin: 0; padding: var(--gm-space-1) var(--gm-space-2); }
-.gm-sidenav a { display: flex; align-items: center; gap: var(--gm-space-3); padding: 0 var(--gm-space-3); height: var(--gm-size-control-md); color: rgb(255 255 255 / 0.86); text-decoration: none; border-left: var(--gm-border-4) solid transparent; transition: background-color 120ms ease, color 120ms ease; }
-.gm-sidenav a:hover { background: rgb(255 255 255 / 0.08); color: var(--gm-color-text-inverse); }
-.gm-sidenav a:focus-visible { outline: 2px solid var(--gm-color-text-inverse); outline-offset: -2px; }
-.gm-sidenav a[aria-current="page"] { border-left-color: var(--gm-green-300); background: rgb(255 255 255 / 0.14); color: var(--gm-color-text-inverse); font-weight: 600; }
-.gm-sidenav-badge { margin-left: auto; min-width: 20px; height: 20px; padding: 0 6px; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--gm-radius-avatar); background: var(--gm-green-300); color: var(--gm-blue-900); font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; }
-.gm-sidenav-group { padding: var(--gm-space-4) var(--gm-space-5) var(--gm-space-1); font-size: 11px; line-height: 16px; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 600; color: var(--gm-blue-300); }
-/* Cartouche du logo : toujours blanc (logo en couleur), dans les deux thèmes, comme l'en-tête de la page de connexion. */
-.gm-sidenav-marque { display: flex; flex-direction: column; align-items: center; gap: var(--gm-space-1); padding: var(--gm-space-4) var(--gm-space-5) var(--gm-space-3); background: var(--gm-white); border-top: var(--gm-border-4) solid var(--gm-blue-700); border-bottom: var(--gm-border-1) solid var(--gm-color-border); }
-.gm-sidenav-marque img { width: 100%; max-width: 208px; height: auto; display: block; }
-.gm-sidenav-marque span { font-size: 11px; line-height: 16px; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 600; color: var(--gm-blue-700); }
-/* Enveloppe fixe (§6.2) : la barre supérieure reste en haut et la navigation latérale reste en place
-   pendant le défilement du contenu ; seule la zone principale défile. La colonne de navigation
-   s'étend jusqu'au pied de page ; son contenu se réduit à l'espace visible au-dessus de lui. */
-.gm-shell-top { position: sticky; top: 0; z-index: 30; }
-.gm-shell-nav { align-self: stretch; flex-shrink: 0; background: var(--gm-blue-700); }
-.gm-shell-nav-fixe { position: sticky; display: flex; }
+.gm-sidenav a { display: flex; align-items: center; gap: var(--gm-space-3); padding: 0 var(--gm-space-3); height: var(--gm-size-control-md); color: var(--gm-color-nav-texte); text-decoration: none; transition: background-color var(--gm-motion-fast) var(--gm-motion-ease), color var(--gm-motion-fast) var(--gm-motion-ease); }
+.gm-sidenav li + li { margin-top: 2px; }
+.gm-sidenav a:hover { background: var(--gm-color-nav-survol); color: var(--gm-color-nav-texte-actif); }
+.gm-sidenav a:focus-visible { outline: 2px solid var(--gm-color-nav-texte-actif); outline-offset: -2px; color: var(--gm-color-nav-texte-actif); }
+/* Entrée courante : fond éclairci et texte en gras, sans bande latérale. */
+.gm-sidenav a[aria-current="page"] { background: var(--gm-color-nav-actif); color: var(--gm-color-nav-texte-actif); font-weight: 600; }
+.gm-sidenav a .gm-icon { color: currentColor; }
+.gm-sidenav-badge { margin-left: auto; min-width: 20px; height: 20px; padding: 0 6px; display: inline-flex; align-items: center; justify-content: center; background: var(--gm-green-300); color: var(--gm-blue-900); font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.gm-sidenav-group { padding: var(--gm-space-4) var(--gm-space-5) var(--gm-space-1); font-size: 11px; line-height: 16px; letter-spacing: 0.04em; text-transform: uppercase; font-weight: 500; color: var(--gm-color-nav-groupe); }
+/* Logo principal blanc posé sur le dégradé de la navigation, sans cartouche ni bande des drapeaux. */
+.gm-sidenav-marque { display: flex; align-items: center; justify-content: center; padding: var(--gm-space-5) var(--gm-space-5) var(--gm-space-4); }
+.gm-sidenav-marque img { width: 100%; max-width: 148px; height: auto; display: block; }
+/* Coquille applicative (§6.2) : la page elle-même ne défile pas. La barre supérieure est fixe en haut ;
+   la navigation latérale occupe toute la hauteur disponible sous elle, défile seule si ses entrées
+   dépassent et ne s'étire jamais avec le contenu ; la zone de contenu à droite est le seul conteneur
+   qui défile, le pied de page en bas de cette zone. Aucune hauteur n'est calculée en JavaScript. */
+.gm-shell { height: 100vh; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
+.gm-shell-top { flex: none; z-index: 30; }
+.gm-shell-corps { flex: 1 1 auto; min-height: 0; display: flex; position: relative; }
+.gm-shell-nav { flex: none; display: flex; min-height: 0; background: var(--gm-color-nav-bas); }
+.gm-shell-contenu { flex: 1 1 auto; min-width: 0; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; display: flex; flex-direction: column; }
+.gm-shell-main { flex: 1 0 auto; padding: var(--gm-space-5) var(--gm-space-6); }
+.gm-shell-main:focus { outline: none; }
+/* Sous --gm-bp-lg (1 280 px) : la navigation devient un tiroir posé sur la zone de contenu. */
+.gm-shell-tiroir { justify-content: flex-start; align-items: stretch; padding: 0; }
+.gm-shell-tiroir > .gm-sidenav { max-width: 85vw; }
+@media (max-width: 1279px) {
+  .gm-shell-main { padding: var(--gm-space-4); }
+}
 /* Bande des États membres (Cameroun, Centrafrique, Congo, Gabon, Guinée équatoriale, Tchad). */
-.gm-sidenav-bande { flex-shrink: 0; height: 6px; background: linear-gradient(90deg, var(--gm-cemac-vert) 0 16.66%, var(--gm-cemac-jaune) 16.66% 33.33%, var(--gm-cemac-rouge) 33.33% 50%, var(--gm-cemac-bleu) 50% 66.66%, var(--gm-cemac-vert-clair) 66.66% 83.33%, var(--gm-cemac-marine) 83.33% 100%); }
 .gm-heading-display { font-family: var(--font-heading); font-size: 28px; line-height: 36px; font-weight: 700; margin: 0; }
 /* Pied de page GIMAC (§6.3) */
 .gm-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--gm-space-2) var(--gm-space-6); padding: var(--gm-space-3) var(--gm-space-6); background: var(--gm-color-surface); border-top: var(--gm-border-1) solid var(--gm-color-border); font-size: 12px; line-height: 18px; color: var(--gm-color-text-secondary); }
 .gm-footer-identite { display: flex; align-items: center; gap: var(--gm-space-3); }
 .gm-footer-marque { font-family: var(--font-heading); font-weight: 700; letter-spacing: 0.04em; color: var(--gm-color-action); }
 .gm-footer-meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--gm-space-2) var(--gm-space-4); }
+/* Préférences d'affichage dans le menu surgissant de la barre supérieure : titre, puis rubriques
+   (langue, thème) séparées par un filet de 1 px. */
+.gm-prefs { display: flex; flex-direction: column; }
+.gm-prefs-titre { margin: 0 0 var(--gm-space-3); font-family: var(--font-heading); font-size: 16px; line-height: 24px; font-weight: 500; color: var(--gm-color-text-primary); }
+.gm-prefs-rubrique { display: flex; flex-direction: column; gap: var(--gm-space-2); padding: var(--gm-space-3) 0; border-top: var(--gm-border-1) solid var(--gm-color-border); }
+.gm-prefs-rubrique:last-child { padding-bottom: 0; }
+.gm-prefs-libelle { margin: 0; font-weight: 600; color: var(--gm-color-text-primary); }

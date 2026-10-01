@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Button, Card, CoverageBar, DataTable, InlineAlert, ProgressRing, StatusBadge, type Column } from '@gimac/design-system'
+import { Button, Card, CoverageBar, DataTable, InlineAlert, ProgressRing, StatusBadge, type Column, Note } from '@gimac/design-system'
 import type { DossierLiaison, FicheSuiviServices, ServicePerimetre } from '../../../../modele/parcours'
 import { useConstaterMiseEnService, useRemettreFicheSuivi } from '../../../../hooks/parcours'
 import { TON_FICHE_SUIVI, useLancer, usePeut, Vide, type Action, PERMISSION_GESTE } from './commun'
@@ -46,7 +46,7 @@ export function CarteFicheSuivi({ dossier, fiche }: { dossier: DossierLiaison; f
   return (
     <Card title={t('miseEnService.fiche.titre')} actions={<StatusBadge status={TON_FICHE_SUIVI[fiche.etat] ?? 'neutral'} label={t(`parcours.fiche.${fiche.etat}`)} />}>
       <div className="gm-col">
-        <p className="gm-field-help" style={{ margin: 0 }}>{t('miseEnService.fiche.explication')}</p>
+        <Note>{t('miseEnService.fiche.explication')}</Note>
         {fiche.etat === 'REMISE' ? <InlineAlert level="info">{t('miseEnService.fiche.attenteParticipant')}</InlineAlert> : null}
         {fiche.etat === 'RENSEIGNEE' ? <InlineAlert level="warn">{t('miseEnService.fiche.aConstater', { date: fiche.renseigneeLe ?? '' })}</InlineAlert> : null}
         {fiche.etat === 'CONSTATEE' ? <InlineAlert level="info">{t('miseEnService.fiche.constatee', { date: fiche.constateeLe ?? '' })}</InlineAlert> : null}
@@ -82,7 +82,7 @@ export function CarteCouvertureMiseEnService({ dossier }: { dossier: DossierLiai
           </div>
         <div className="gm-col" style={{ flex: '1 1 280px', gap: 'var(--gm-space-2)' }}>
           {inclus.map((s) => <CoverageBar key={s.serviceCode} service={s.libelle} level={NIVEAU[s.etat]} />)}
-          {inclus.some((s) => s.etat === 'NON_OUVERT') ? <p className="gm-field-help" style={{ margin: 0 }}>{t('miseEnService.couverture.nonOuverts')}</p> : null}
+          {inclus.some((s) => s.etat === 'NON_OUVERT') ? <Note>{t('miseEnService.couverture.nonOuverts')}</Note> : null}
         </div>
       </div>
     </Card>

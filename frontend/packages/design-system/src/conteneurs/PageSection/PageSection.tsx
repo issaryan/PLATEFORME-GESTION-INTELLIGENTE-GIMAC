@@ -3,6 +3,8 @@ import { cx } from '../../lib/cx'
 
 export interface PageSectionProps {
   title: string
+  /** Description de la section, en texte secondaire sous le titre. */
+  description?: ReactNode
   /** Actions ou liens de la section (« Voir tout »). */
   actions?: ReactNode
   /** Niveau du titre (2 par défaut). */
@@ -22,6 +24,7 @@ export function PageSection(p: PageSectionProps) {
         <Titre id={id} className="gm-type-h3" style={{ margin: 0 }}>{p.title}</Titre>
         {p.actions ? <div className="gm-row">{p.actions}</div> : null}
       </div>
+      {p.description ? <p className="gm-section-desc">{p.description}</p> : null}
       {p.children}
     </section>
   )

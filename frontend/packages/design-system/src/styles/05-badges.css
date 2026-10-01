@@ -1,5 +1,5 @@
 /* Badges, tags, avatar */
-.gm-badge { display: inline-flex; align-items: center; gap: var(--gm-space-1); height: var(--gm-size-badge); padding: 0 var(--gm-space-2); border-radius: var(--gm-radius); font-size: 12px; line-height: 18px; font-weight: 600; white-space: nowrap; }
+.gm-badge { display: inline-flex; align-items: center; gap: var(--gm-space-1); height: var(--gm-size-badge); padding: 0 var(--gm-space-2); font-size: 12px; line-height: 18px; font-weight: 600; white-space: nowrap; }
 .gm-badge-ok { color: var(--gm-color-status-ok-fg); background: var(--gm-color-status-ok-bg); }
 .gm-badge-warn { color: var(--gm-color-status-warn-fg); background: var(--gm-color-status-warn-bg); }
 .gm-badge-crit { color: var(--gm-color-status-crit-fg); background: var(--gm-color-status-crit-bg); }
@@ -11,4 +11,4 @@
 .gm-severity-S3, .gm-severity-S4 { color: var(--gm-color-status-neutral-fg); }
 .gm-tag { display: inline-flex; align-items: center; gap: var(--gm-space-1); height: var(--gm-size-badge); padding: 0 var(--gm-space-2); border: var(--gm-border-1) solid var(--gm-color-border); background: var(--gm-color-surface); color: var(--gm-color-text-secondary); font-size: 12px; line-height: 18px; }
 .gm-tag button { all: unset; cursor: pointer; display: inline-flex; }
-.gm-avatar { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: var(--gm-radius-avatar); background: var(--gm-color-action-subtle); color: var(--gm-color-action); font-size: 12px; font-weight: 600; flex: none; }
+.gm-avatar { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; background: var(--gm-color-action-subtle); color: var(--gm-color-action); font-size: 12px; font-weight: 600; flex: none; }

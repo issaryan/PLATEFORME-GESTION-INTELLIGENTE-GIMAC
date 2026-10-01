@@ -26,6 +26,7 @@ export const messagerieHttp: ServiceMessagerie = {
   demarrer: (c) => http.post(`${M}/conversations`, { body: multipart(nouvelle(c), c.fichiers) }),
   envoyer: (id, e) => http.post(`${M}/conversations/${encodeURIComponent(id)}/messages`, { body: multipart(envoi(e), e.fichiers) }),
   marquerLu: (id) => http.post(`${M}/conversations/${encodeURIComponent(id)}/lu`),
-  nonLus: () => http.get(`${M}/non-lus`),
+  // Compteur périodique : appel de fond, qui ne prolonge pas la session d'inactivité (D-65 §6).
+  nonLus: () => http.get(`${M}/non-lus`, { fond: true }),
   telechargerPiece: (id) => http.blob(`${M}/pieces/${encodeURIComponent(id)}`, '*/*'),
 }

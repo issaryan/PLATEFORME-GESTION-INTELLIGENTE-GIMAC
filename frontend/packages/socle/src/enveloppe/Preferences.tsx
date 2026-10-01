@@ -5,13 +5,16 @@ import { usePreferences } from './usePreferences'
 
 const NOMS: Record<Langue, string> = { fr: 'Français', en: 'English', es: 'Español' }
 
-// Choix de la langue (FR, EN, ES : langues de la zone CEMAC) et du thème, composé du catalogue.
+// Préférences d'affichage (DS-GIMAC-01 TRA-08, D-66) : menu surgissant du globe de la barre supérieure,
+// titré « Préférences », en deux rubriques séparées par un filet : la langue (FR, EN, ES : langues de la
+// zone CEMAC) et le thème (interrupteur carré du catalogue). Composé du catalogue.
 export function Preferences() {
   const { t } = useTranslation()
   const p = usePreferences()
   return (
-    <div className="gm-row" style={{ gap: 'var(--gm-space-4)', alignItems: 'flex-end' }}>
-      <div style={{ width: 160 }}>
+    <div className="gm-prefs">
+      <h2 className="gm-prefs-titre">{t('shell.preferences')}</h2>
+      <section className="gm-prefs-rubrique" aria-label={t('shell.langue')}>
         <Select
           name="langue"
           label={t('shell.langue')}
@@ -19,10 +22,11 @@ export function Preferences() {
           options={LANGUES.map((l) => ({ value: l, label: NOMS[l] }))}
           onChange={(v: string) => p.changerLangue(v as Langue)}
         />
-      </div>
-      <div style={{ paddingBottom: 'var(--gm-space-2)' }}>
+      </section>
+      <section className="gm-prefs-rubrique" aria-label={t('shell.theme')}>
+        <p className="gm-prefs-libelle">{t('shell.theme')}</p>
         <Switch label={t('shell.theme.sombre')} checked={p.theme === 'dark'} onChange={(v: boolean) => p.changerTheme(v ? 'dark' : 'light')} />
-      </div>
+      </section>
     </div>
   )
 }

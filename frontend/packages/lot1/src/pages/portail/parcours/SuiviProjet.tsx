@@ -1,12 +1,10 @@
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  Card, CoverageBar, DataTable, InlineAlert, KeyValueList, Link, ProgressRing, Skeleton, StateMachineBar, StatusBadge, Tag, type Column, type CoverageBarProps,
-} from '@gimac/design-system'
-import { EtatsRequete } from '@gimac/socle'
-import type { DossierLiaison, EtapeParcours, ServicePerimetre } from '../../../modele/parcours'
+import { Card, CoverageBar, DataTable, InlineAlert, KeyValueList, Link, ProgressRing, Skeleton, StateMachineBar, StatusBadge, Tag, type Column, type CoverageBarProps, Note } from '@gimac/design-system'
+import { EtatsRequete, usePermissions } from '@gimac/socle'
+import type { DossierLiaison, EtapeParcours, ServicePerimetre, TacheActeur } from '../../../modele/parcours'
 import { useApprobationPortail, useDossierPortail, useFicheSuiviPortail, useMesTachesPortail, useProcesVerbalPortail } from '../../../hooks/parcours'
-import { EnTete, Echeance, PERM, Section, tonEtape, tonStatut, useDate, useFonction, usePermissionPortail } from './commun'
+import { EnTete, Echeance, PERM, Section, gesteDe, lienLivrable, tonEtape, tonStatut, useDate, useFonction, useLibelleTache, usePermissionPortail } from './commun'
 import { TableTaches } from './listes'
 
 // Suivi de mon projet (portail, par liaison) : ce qui est attendu du participant, les blocages qui le
@@ -99,7 +97,7 @@ function Couvertures({ d }: { d: DossierLiaison }) {
           {ring(t('pp.couvertureCertification'), d.couvertureCertification)}
           {ring(t('pp.couvertureMiseEnService'), d.couvertureMiseEnService)}
         </div>
-        <p className="gm-type-small" style={{ margin: 0, color: 'var(--gm-color-text-secondary)' }}>{t('pp.couvertures.aide')}</p>
+        <Note>{t('pp.couvertures.aide')}</Note>
         <div className="gm-col" style={{ gap: 'var(--gm-space-2)' }}>
           {d.perimetre.map((s) => <CoverageBar key={s.serviceCode} service={s.libelle} level={niveau(s)} />)}
         </div>
@@ -150,10 +148,11 @@ function Interlocuteurs({ d }: { d: DossierLiaison }) {
   )
 }
 
-/** Pièces du participant sur la liaison : chacune avec son état et l'écran où la consulter ou l'établir. */
-function Pieces({ d }: { d: DossierLiaison }) {
+/** Pièces du participant sur la liaison : chacune avec son état et l'écran où la consulter ou l'établir ; livrables attendus menant à leur écran de dépôt. */
+function Pieces({ d, livrables }: { d: DossierLiaison; livrables: TacheActeur[] }) {
   const { t } = useTranslation()
   const certification = usePermissionPortail(PERM.lireCertification)
+  const libelle = useLibelleTache()
   const base = `/portail/liaisons/${d.id}`
   const c = d.coordonneesTechniques
   const piece = (titre: string, etat: ReactNode, chemin: string) => (
@@ -172,6 +171,15 @@ function Pieces({ d }: { d: DossierLiaison }) {
         {certification ? piece(t('pp.pv.titre'), <EtatPv id={d.id} />, 'proces-verbal') : null}
         {certification ? piece(t('pp.attestations.titre'), <EtatApprobation id={d.id} />, 'attestations') : null}
         {piece(t('pp.fiche.titre'), <EtatFiche id={d.id} />, 'fiche-suivi')}
+        {livrables.map((x) => (
+          <li key={x.operationId} className="gm-row" style={{ justifyContent: 'space-between', gap: 'var(--gm-space-3)', padding: 'var(--gm-space-2) 0', borderBottom: 'var(--gm-border-1) solid var(--gm-color-border)' }}>
+            <span className="gm-col" style={{ gap: 'var(--gm-space-1)', minWidth: 0 }}>
+              <span className="gm-type-body-strong">{libelle(x)}</span>
+              <span><StatusBadge status="warn" label={t('pp.livrable.aDeposer')} /></span>
+            </span>
+            <Link href={lienLivrable(x)}>{t('pp.livrable.deposer')}</Link>
+          </li>
+        ))}
       </ul>
     </Card>
   )
@@ -205,6 +213,7 @@ function EtatFiche({ id }: { id: string }) {
 
 function Suivi({ d }: { d: DossierLiaison }) {
   const { t } = useTranslation()
+  const permissions = usePermissions()
   const taches = useMesTachesPortail()
   const miennes = (taches.data?.taches ?? []).filter((x) => x.liaisonId === d.id)
   return (
@@ -237,7 +246,7 @@ function Suivi({ d }: { d: DossierLiaison }) {
         </div>
         <div className="gm-col" style={{ flex: '1 1 320px', minWidth: 0 }}>
           <Couvertures d={d} />
-          <Pieces d={d} />
+          <Pieces d={d} livrables={miennes.filter((x) => gesteDe(x, permissions) === 'DEPOSER_LIVRABLE')} />
         </div>
       </div>
       <div style={colonnes}>

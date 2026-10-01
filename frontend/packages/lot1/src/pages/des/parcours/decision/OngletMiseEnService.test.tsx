@@ -86,11 +86,14 @@ describe('Étape 10 : mise en service constatée', () => {
 describe('Service supplémentaire (rang 35)', () => {
   it('chef du DES : ouvre une nouvelle liaison au cadrage et y est conduit', async () => {
     ouvrir('LIA-2025-088', 'ROLE_CHEF_DES')
-    const choix = await screen.findByRole('checkbox', { name: 'Cash-in agent' })
-    const bouton = screen.getByRole('button', { name: 'Ouvrir une nouvelle liaison' }) as HTMLButtonElement
+    // Choix des services dans une fenêtre modale, puis confirmation de l'ouverture.
+    fireEvent.click(await screen.findByRole('button', { name: 'Ouvrir une nouvelle liaison' }))
+    const f = await screen.findByRole('dialog', { name: 'Service supplémentaire (rang 35)' })
+    const choix = within(f).getByRole('checkbox', { name: 'Cash-in agent' })
+    const bouton = within(f).getByRole('button', { name: 'Ouvrir une nouvelle liaison' }) as HTMLButtonElement
     expect(bouton.disabled || bouton.getAttribute('aria-disabled') === 'true').toBe(true)
     fireEvent.click(choix)
-    fireEvent.click(screen.getByRole('button', { name: 'Ouvrir une nouvelle liaison' }))
+    fireEvent.click(within(f).getByRole('button', { name: 'Ouvrir une nouvelle liaison' }))
     const d = await screen.findByRole('alertdialog')
     expect(d.textContent).toContain('Cash-in agent')
     fireEvent.click(within(d).getByRole('button', { name: 'Ouvrir une nouvelle liaison' }))
@@ -122,7 +125,7 @@ describe('Langues, thème et accessibilité', () => {
 
   it.each(['light', 'dark'] as const)('axe sans violation (thème %s)', async (theme) => {
     const { container } = ouvrir('LIA-2025-088', 'ROLE_CHEF_DES', { theme })
-    await screen.findByRole('checkbox', { name: 'Cash-in agent' })
+    await screen.findByRole('button', { name: 'Ouvrir une nouvelle liaison' })
     await screen.findByText('Constat des services effectivement ouverts')
     const res = await axe.run(container, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'] }, rules: { 'color-contrast': { enabled: false }, region: { enabled: false } } })
     expect(res.violations.map((v) => `${v.id}: ${v.nodes[0]?.html.slice(0, 120)}`)).toEqual([])

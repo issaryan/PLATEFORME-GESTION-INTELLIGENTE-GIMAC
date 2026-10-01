@@ -10,7 +10,7 @@ export interface StatGridProps {
 // à la ligne sous la largeur disponible. Pour un flux temps réel, LiveStatGroup.
 export function StatGrid(p: StatGridProps) {
   return (
-    <div className="gm-row" role="group" aria-label={p.label} style={{ alignItems: 'stretch', gap: 'var(--gm-space-4)' }}>
+    <div className="gm-stat-grid" role="group" aria-label={p.label}>
       {p.items.map(({ key, ...s }) => (
         <StatCard key={key} {...s} />
       ))}

@@ -1,10 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router'
-import {
-  Button, ConversationList, EmptyState, InlineAlert, Link, MessageComposer, MessageThread, MultiSelect, PageHeader, Pagination, SearchInput, SearchSelect,
-  Skeleton, Tag, TextField, type ThreadMessage,
-} from '@gimac/design-system'
+import { Button, ConversationList, EmptyState, InlineAlert, Link, MessageComposer, MessageThread, MultiSelect, PageHeader, Pagination, SearchInput, SearchSelect, Skeleton, Tag, TextField, type ThreadMessage, Note } from '@gimac/design-system'
 import { aPermission, usePermissions, useSession, type ApiError } from '@gimac/socle'
 import type { Conversation, EtiquetteLiaison, Message } from '../../../modele/messagerie'
 import { LIMITES_MESSAGERIE, MOTIF_LIAISON } from '../../../modele/messagerie'
@@ -231,7 +228,7 @@ function NouveauMessage({ liaisonId, destinataire, onCree, onAnnuler }: { liaiso
           options={personnes.map((p) => ({ value: p.id, label: p.fonction ? `${p.nom} · ${p.fonction}` : p.nom }))}
         />
         <TextField name="objet" label={t('msg.objet')} help={t('msg.objetAide')} value={objet} onChange={setObjet} />
-        {liaisonId ? <p className="gm-field-help" style={{ margin: 0 }}>{t('msg.liaisonRattachee', { reference: rattachee?.reference ?? liaisonId })} · {t('msg.liaisonAide')}</p> : null}
+        {liaisonId ? <Note>{t('msg.liaisonRattachee', { reference: rattachee?.reference ?? liaisonId })} · {t('msg.liaisonAide')}</Note> : null}
       </div>
       {/* Remontée une fois la liaison rattachée connue : elle est alors citée d'emblée. */}
       <Saisie

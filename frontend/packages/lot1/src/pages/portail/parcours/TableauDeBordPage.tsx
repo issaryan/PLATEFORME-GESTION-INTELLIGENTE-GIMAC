@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { InlineAlert, Link, Skeleton, StatCard, Tag, Button } from '@gimac/design-system'
+import { InlineAlert, Link, Skeleton, StatCard, Button } from '@gimac/design-system'
 import { useSession } from '@gimac/socle'
 import { useMesLiaisonsPortail, useMesTachesPortail } from '../../../hooks/parcours'
 import { EnTete, Section } from './commun'
@@ -10,9 +10,9 @@ import { TableLiaisons, TableTaches } from './listes'
 // geste, et ses liaisons avec l'étape courante et les deux couvertures.
 
 // Trois colonnes au poste (ce qui est à faire, puis l'état des délais), une seule sur mobile : StatCard a 200 px de largeur minimale.
-const grille = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))', gap: 'var(--gm-space-4)' }
 
 /** Ordre de lecture des compteurs : ce que le participant doit faire, puis l'état de ses délais. */
+/** Pictogramme de chaque compteur du participant. */
 const ORDRE = ['tachesARealiser', 'pvASigner', 'attestationsAFournir', 'fichesSuivi', 'tachesEnRetard', 'echeancesProches']
 
 export default function TableauDeBordPage() {
@@ -28,24 +28,19 @@ export default function TableauDeBordPage() {
     <div className="gm-col" style={{ gap: 'var(--gm-space-6)' }}>
       <EnTete
         titre={t('pp.tableau.titre')}
-        sousTitre={
-          <span className="gm-row">
-            <span>{session ? t('pp.tableau.bienvenue', { nom: session.nom }) : null}</span>
-            <Tag>{t('pp.profil')}</Tag>
-            {institution ? <Tag>{institution}</Tag> : null}
-          </span>
-        }
+        sousTitre={t('pp.tableau.sousTitre')}
+        utilisateur={session ? { name: session.nom, roles: [t('pp.profil'), ...(institution ? [institution] : [])] } : undefined}
       />
       <Section titre={t('pp.tableau.aFaire')}>
         {taches.isPending ? (
-          <div style={grille} aria-busy="true">{ORDRE.map((c) => <Skeleton key={c} height={104} />)}</div>
+          <div className="gm-stat-grid" aria-busy="true">{ORDRE.map((c) => <Skeleton key={c} height={104} />)}</div>
         ) : taches.isError ? (
           <InlineAlert level="crit" title={t('commun.erreur.titre')} correlationId={taches.error?.correlationId || undefined}
             action={<Button size="sm" icon="refresh" onClick={() => void taches.refetch()}>{t('commun.reessayer')}</Button>}>
             {taches.error?.message}
           </InlineAlert>
         ) : (
-          <div style={grille}>
+          <div className="gm-stat-grid" role="group" aria-label={t('pp.tableau.aFaire')}>
             {compteurs.map((c) => (
               <StatCard
                 key={c.cle}
@@ -58,8 +53,7 @@ export default function TableauDeBordPage() {
           </div>
         )}
       </Section>
-      <Section titre={t('pp.tableau.mesTaches')}>
-        <p className="gm-type-body" style={{ margin: 0, color: 'var(--gm-color-text-secondary)' }}>{t('pp.tableau.mesTachesAide')}</p>
+      <Section titre={t('pp.tableau.mesTaches')} description={t('pp.tableau.mesTachesAide')}>
         <TableTaches taches={tableau?.taches ?? []} requete={taches} />
       </Section>
       <Section titre={t('pp.tableau.mesLiaisons')} action={<Link href="/portail/liaisons">{t('pp.voirTout')}</Link>}>

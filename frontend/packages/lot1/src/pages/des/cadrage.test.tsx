@@ -52,7 +52,7 @@ describe('Cadrage : ouverture d’une liaison depuis la fiche de l’institution
   it('chef de la DDRM : ouvre la liaison, arrive sur sa fiche, l’institution passe en homologation', async () => {
     const { container, services } = fiche('INST-0105')
     fireEvent.click(await screen.findByRole('button', { name: 'Ouvrir une liaison (cadrage)' }))
-    expect(await screen.findByRole('heading', { level: 1, name: 'Ouvrir une liaison (cadrage) pour Mobile Money Sanaga' })).toBeTruthy()
+    expect(await screen.findByRole('dialog', { name: 'Ouvrir une liaison (cadrage) pour Mobile Money Sanaga' })).toBeTruthy()
     expect(screen.getByText(/fera ensuite passer Mobile Money Sanaga du statut « Adhérent » au statut « En homologation »/)).toBeTruthy()
     const f = await formulaire(container)
     await choisir(container, { type: 'PAIEMENT_MOBILE', conducteur: 'U-202', banque: 'INST-0017' })

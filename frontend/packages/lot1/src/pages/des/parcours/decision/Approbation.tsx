@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Card, InlineAlert, StatusBadge } from '@gimac/design-system'
+import { Card, InlineAlert, StatusBadge, Note } from '@gimac/design-system'
 import type { ApprobationSecurite, DossierLiaison, ProcesVerbalCertification } from '../../../../modele/parcours'
 import { BlocAttestations } from './Attestations'
 import { BlocDossierChangement, BlocFicheChangement } from './FicheChangement'
@@ -17,7 +17,7 @@ export function CarteApprobation({ dossier, approbation, pv }: { dossier: Dossie
       actions={<StatusBadge status={TON_APPROBATION[approbation.etat] ?? 'neutral'} label={t(`parcours.approbation.etat.${approbation.etat}`)} />}
     >
       <div className="gm-col" style={{ gap: 'var(--gm-space-5)' }}>
-        <p className="gm-field-help" style={{ margin: 0 }}>{t('decision.approbation.explication')}</p>
+        <Note>{t('decision.approbation.explication')}</Note>
         {!ouvert ? <InlineAlert level="info" title={t('decision.approbation.ferme.titre')}>{t('decision.approbation.ferme.texte')}</InlineAlert> : null}
         {approbation.etat === 'APPROUVEE' ? (
           <InlineAlert level="info" title={t('decision.approbation.approuvee.titre')}>

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, DateField, InlineAlert, KeyValueList, Select, TextArea, TextField } from '@gimac/design-system'
+import { Button, DateField, InlineAlert, KeyValueList, Select, TextArea, TextField, Note } from '@gimac/design-system'
 import { aPermission, usePermissions } from '@gimac/socle'
 import { usePersonnes } from '../../../../hooks/parcours'
 import type { Fonction, OperationParcours, Qualite } from '../../../../modele/parcours'
@@ -183,7 +183,7 @@ export function FormulaireAttribution({ op }: { op: OperationParcours }) {
   const [tente, setTente] = useState(false)
   return (
     <div className="gm-col">
-      <p className="gm-field-help" style={{ margin: 0 }}>{t('parcoursOps.attribution.regle')}</p>
+      <Note>{t('parcoursOps.attribution.regle')}</Note>
       <div className="gm-row" style={{ alignItems: 'flex-start' }}>
         <div style={{ flex: '1 1 140px' }}>
           <Select label={t('parcoursOps.attribution.qualite')} value={qualite} onChange={(v) => setQualite(v as Qualite)} options={QUALITES.map((q) => ({ value: q, label: t(`parcours.qualite.${q}`) }))} />

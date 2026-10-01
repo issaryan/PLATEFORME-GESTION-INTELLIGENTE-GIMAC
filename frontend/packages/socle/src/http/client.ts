@@ -12,11 +12,21 @@ export type RequestOptions = {
   reauthAssertion?: string
   accept?: string
   signal?: AbortSignal
+  /**
+   * Appel de fond (compteurs périodiques, sondages) : en-tête X-Gimac-Fond: 1, que la passerelle ne
+   * compte pas comme une activité de l'utilisateur ; la session d'inactivité n'est pas prolongée (D-65 §6).
+   */
+  fond?: boolean
+  /** Route publique (connexion) : un 401 est une réponse du formulaire, jamais une session expirée. */
+  anonyme?: boolean
 }
 
 export type HttpHooks = {
-  /** Session expirée : rétablit la session ; renvoie true si la requête peut être rejouée dans la page. */
-  onUnauthorized: () => Promise<boolean>
+  /**
+   * 401 hors route publique (session absente, ou close par la passerelle : CNX_SESSION_EXPIREE) :
+   * rétablit la session ou ramène à la connexion ; renvoie true si la requête peut être rejouée.
+   */
+  onUnauthorized: (e: ApiError) => Promise<boolean>
   onForbidden: (e: ApiError) => void
   onCorrelation: (id: string) => void
 }
@@ -47,6 +57,7 @@ async function send(method: string, path: string, o: RequestOptions, rejoue = fa
   const headers = new Headers({ Accept: o.accept ?? 'application/json' })
   if (o.body !== undefined && !(o.body instanceof FormData)) headers.set('Content-Type', 'application/json')
   if (o.reauthAssertion) headers.set('X-Reauth-Assertion', o.reauthAssertion)
+  if (o.fond) headers.set('X-Gimac-Fond', '1')
   if (csrf && MUTATIONS.has(method)) {
     const jeton = lireTemoin(csrf.cookie)
     if (jeton) headers.set(csrf.header, jeton)
@@ -69,21 +80,24 @@ async function send(method: string, path: string, o: RequestOptions, rejoue = fa
   const correlationId = res.headers.get('X-Correlation-Id') ?? ''
   if (correlationId) hooks.onCorrelation(correlationId)
 
-  // Une requête portant une assertion FIDO2 n'est pas rejouée : le défi est à usage unique.
-  if (res.status === 401 && !rejoue && !o.reauthAssertion) {
-    if (await hooks.onUnauthorized()) return send(method, path, o, true)
-  }
   if (res.ok) return res
 
   const estJson = (res.headers.get('Content-Type') ?? '').includes('json')
   const p: Problem = estJson ? await res.json().catch(() => ({})) : {}
-  const err = new ApiError(res.status, p.code ?? `HTTP_${res.status}`, p.message ?? p.detail ?? '', p.correlationId ?? correlationId, p.details)
+  const details = p.details ?? (p.violations ? { violations: p.violations } : undefined)
+  const err = new ApiError(res.status, p.code ?? `HTTP_${res.status}`, p.message ?? p.detail ?? '', p.correlationId ?? correlationId, details)
+  // Une requête portant une assertion FIDO2 n'est pas rejouée : le défi est à usage unique.
+  if (res.status === 401 && !rejoue && !o.reauthAssertion && !o.anonyme) {
+    if (await hooks.onUnauthorized(err)) return send(method, path, o, true)
+  }
   if (res.status === 403) hooks.onForbidden(err)
   throw err
 }
 
 async function json<R>(r: Response): Promise<R> {
   if (r.status === 204) return undefined as R
+  // 202 sans corps (mot de passe oublié, D-65) : accepté, rien à lire.
+  if (r.status === 202 && !(r.headers.get('Content-Type') ?? '').includes('json')) return undefined as R
   // Un relais mal configuré renvoie la page de l'application : erreur explicite plutôt que JSON illisible.
   if (!(r.headers.get('Content-Type') ?? '').includes('json')) {
     throw new ApiError(r.status, 'REPONSE_NON_JSON', 'Réponse inattendue de la passerelle.', r.headers.get('X-Correlation-Id') ?? '')

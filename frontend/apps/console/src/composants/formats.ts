@@ -4,7 +4,6 @@ import type { EtatFlux } from '../modele/plateforme'
 
 // Outils de présentation de la console : grille des indicateurs, état des listes, formats.
 
-export const grille = { display: 'flex', flexWrap: 'wrap' as const, gap: 'var(--gm-space-4)' }
 
 /** État d'une requête de liste pour DataTable. */
 export function etatListe(q: { isPending: boolean; isError: boolean; error: ApiError | null }, lignes: unknown[] | undefined): { state: 'loading' | 'error' | 'empty' | 'ok'; error?: { message: string; correlationId?: string } } {

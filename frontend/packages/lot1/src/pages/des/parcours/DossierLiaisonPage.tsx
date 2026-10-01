@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, useSearchParams } from 'react-router'
-import { Banner, Breadcrumb, Button, Card, KeyValueList, Link, StatusBadge, Tabs } from '@gimac/design-system'
+import { Banner, Breadcrumb, Button, Card, KeyValueList, Link, StatusBadge, Tabs, PageHeader } from '@gimac/design-system'
 import { aPermission, usePermissions } from '@gimac/socle'
 import type { DossierLiaison } from '../../../modele/parcours'
 import { useDossierLiaison } from '../../../hooks/parcours'
@@ -94,17 +94,15 @@ function Dossier({ dossier }: { dossier: DossierLiaison }) {
           {t('parcoursDossier.nouvelle.texte')}
         </Banner>
       ) : null}
-      <div className="gm-resource-head" style={{ alignItems: 'flex-start' }}>
-        <div className="gm-col" style={{ gap: 'var(--gm-space-2)' }}>
-          <h1 className="gm-heading-display">{dossier.institutionNom}</h1>
-          <div className="gm-row">
-            <span className="gm-mono">{dossier.reference}</span>
-            <BadgeStatut statut={dossier.statut} />
-            <span className="gm-field-help">{t('parcoursDossier.etapeCourante', { etape: t(`parcours.etape.${dossier.etapeCourante}`) })}</span>
-            {blocagesEnCours > 0 ? <StatusBadge status="crit" label={t('parcoursListe.bloquee')} /> : null}
-          </div>
-        </div>
-        <div className="gm-row">
+      <PageHeader
+        title={dossier.institutionNom}
+        meta={<>
+          <span className="gm-mono">{dossier.reference}</span>
+          <BadgeStatut statut={dossier.statut} />
+          <span className="gm-pagehead-user">{t('parcoursDossier.etapeCourante', { etape: t(`parcours.etape.${dossier.etapeCourante}`) })}</span>
+          {blocagesEnCours > 0 ? <StatusBadge status="crit" label={t('parcoursListe.bloquee')} /> : null}
+        </>}
+        actions={<>
           <Link href={`/des/liaisons/${dossier.id}?onglet=graphe`}>{t('parcoursDossier.graphe')}</Link>
           {/* Messagerie (D-64) : un nouveau message rattaché à cette liaison, qui y est citée d'emblée. */}
           {aPermission(permissions, PERM.messageEnvoyer) ? (
@@ -117,8 +115,8 @@ function Dossier({ dossier }: { dossier: DossierLiaison }) {
             </Button>
           ) : null}
           {gestes.affecter ? <Button variant="primary" icon="users" onClick={() => maj({ action: 'affecter' })}>{t('parcoursAffectation.titre')}</Button> : null}
-        </div>
-      </div>
+        </>}
+      />
       <div className="gm-row" style={{ alignItems: 'stretch', gap: 'var(--gm-space-4)' }}>
         <div style={{ flex: '1 1 320px', minWidth: 0 }}>
           <Card title={t('parcoursDossier.identification')}>

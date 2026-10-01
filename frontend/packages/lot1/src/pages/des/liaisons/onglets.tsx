@@ -61,13 +61,8 @@ export function OngletOperations({ liaison, avecPreuve = false }: { liaison: Lia
   const lignes = operations.data ?? []
   return (
     <div className="gm-col">
-      {attribution ? (
-        <div className="gm-panel">
-          <h2 className="gm-card-title">{t('operation.attribution.titre', { code: attribution.code })}</h2>
-          <FormulaireAttribution descripteur={descripteur} operation={attribution} onFermer={() => setAttribution(null)} />
-        </div>
-      ) : null}
       <ResourceList descriptor={descripteur} rows={lignes} embedded {...etatListe(operations, lignes)} />
+      {attribution ? <FormulaireAttribution descripteur={descripteur} operation={attribution} onFermer={() => setAttribution(null)} /> : null}
     </div>
   )
 }

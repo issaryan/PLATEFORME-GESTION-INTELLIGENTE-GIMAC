@@ -6,7 +6,7 @@ import { KeyValueList } from '../../affichage/KeyValueList/KeyValueList'
 import { Hash } from '../../affichage/Hash/Hash'
 import { SignatureField } from '../../saisie/SignatureField/SignatureField'
 import { InlineAlert } from '../InlineAlert/InlineAlert'
-import { Dialog } from '../Dialog/Dialog'
+import { CrudDialog } from '../CrudDialog/CrudDialog'
 import { useLibelle } from '../../i18n/LangueProvider'
 
 export interface SignDialogProps {
@@ -35,45 +35,44 @@ export interface SignDialogProps {
   extra?: ReactNode
 }
 
-// Confirmation avec réauthentification FIDO2 (§7.5) : quitus, clôture, scellement, purge.
+// Confirmation avec réauthentification FIDO2 (§7.5) : quitus, clôture, scellement, purge. Modale CRUD
+// standard en contexte « action sensible », la signature tenant lieu d'action principale.
 export function SignDialog(p: SignDialogProps) {
   const t = useLibelle()
   const st = p.state || 'idle'
   const [motif, setMotif] = useState('')
   const motifOk = !p.reason || motif.trim().length >= 10
   return (
-    <Dialog
+    <CrudDialog
+      context="sensitive"
+      role="dialog"
+      reason={false}
       inline={p.inline}
       open={p.open}
-      onClose={st === 'waiting' ? undefined : p.onClose}
+      submitting={st === 'waiting'}
+      onClose={() => p.onClose?.()}
       title={p.title}
       description={p.description || t('sign.description')}
-      footer={[
-        <Button key={1} variant="secondary" onClick={p.onClose} disabled={st === 'waiting'} disabledReason={t('sign.enCours')}>
-          {st === 'done' ? t('commun.fermer') : t('commun.annuler')}
-        </Button>,
-        st === 'done' ? <Button key={2} variant="primary" onClick={p.onDone}>{p.doneLabel || t('sign.continuer')}</Button> : null,
-      ]}
+      cancelLabel={st === 'done' ? t('commun.fermer') : t('commun.annuler')}
+      extraActions={st === 'done' ? <Button variant="primary" onClick={p.onDone}>{p.doneLabel || t('sign.continuer')}</Button> : undefined}
     >
-      <div className="gm-col" style={{ gap: 'var(--gm-space-3)' }}>
-        {p.object ? <div className="gm-panel"><KeyValueList items={p.object} /></div> : null}
-        {p.extra ?? null}
-        {p.reason ? <TextArea name="motif" label={t('confirm.motif')} required value={motif} onChange={setMotif} help={t('confirm.motifAide')} readOnly={st === 'waiting' || st === 'done'} /> : null}
-        <div>
-          <div className="gm-field-help">{t('sign.empreinte')}</div>
-          <Hash value={p.hash} />
-        </div>
-        <SignatureField
-          state={st}
-          action={p.action}
-          at={p.at}
-          onSign={p.onSign ? () => p.onSign!(p.reason ? motif.trim() : '') : undefined}
-          disabled={!motifOk}
-          disabledReason={motifOk ? undefined : t('confirm.motifObligatoire')}
-        />
-        {p.error ? <InlineAlert level="crit" title={p.error} /> : null}
-        {st === 'done' && p.result ? <InlineAlert level="info" title={t('sign.resultat')}>{p.result}</InlineAlert> : null}
+      {p.object ? <div className="gm-panel"><KeyValueList items={p.object} /></div> : null}
+      {p.extra ?? null}
+      {p.reason ? <TextArea name="motif" label={t('confirm.motif')} required value={motif} onChange={setMotif} help={t('confirm.motifAide')} readOnly={st === 'waiting' || st === 'done'} /> : null}
+      <div>
+        <div className="gm-field-help">{t('sign.empreinte')}</div>
+        <Hash value={p.hash} />
       </div>
-    </Dialog>
+      <SignatureField
+        state={st}
+        action={p.action}
+        at={p.at}
+        onSign={p.onSign ? () => p.onSign!(p.reason ? motif.trim() : '') : undefined}
+        disabled={!motifOk}
+        disabledReason={motifOk ? undefined : t('confirm.motifObligatoire')}
+      />
+      {p.error ? <InlineAlert level="crit" title={p.error} /> : null}
+      {st === 'done' && p.result ? <InlineAlert level="info" title={t('sign.resultat')}>{p.result}</InlineAlert> : null}
+    </CrudDialog>
   )
 }

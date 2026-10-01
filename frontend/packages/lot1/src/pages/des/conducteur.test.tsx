@@ -61,7 +61,7 @@ describe('Liaison au cadrage : résumé et désignation du conducteur', () => {
     const services: Services = { ...base, homologation: { ...base.homologation, designerChefDeProjet: async (...a) => { appels.push(a); return base.homologation.designerChefDeProjet(...a) } } }
     const { container } = liaison('LIA-2026-030', { services })
     fireEvent.click(await screen.findByRole('button', { name: 'Désigner le conducteur' }))
-    expect(await screen.findByRole('heading', { level: 1, name: 'Désigner le conducteur de projet de la liaison de Établissement de microfinance C' })).toBeTruthy()
+    expect(await screen.findByRole('dialog', { name: 'Désigner le conducteur de projet de la liaison de Établissement de microfinance C' })).toBeTruthy()
     await waitFor(() => expect(container.querySelector('select[name="chefDeProjetId"] option[value="U-203"]')).toBeTruthy())
     fireEvent.change(container.querySelector('select[name="chefDeProjetId"]')!, { target: { value: 'U-203' } })
     fireEvent.change(container.querySelector('textarea[name="motif"]')!, { target: { value: 'Réorganisation du portefeuille' } })

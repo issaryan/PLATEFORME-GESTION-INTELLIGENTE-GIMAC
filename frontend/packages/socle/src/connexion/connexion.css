@@ -76,3 +76,8 @@
   .gm-tuile-action, .gm-tuile-logo, .gm-tuile-coche, .gm-tuile-terre, .gm-tuile-relief { display: none; }
   .gm-acces-nom { font-size: 32px; line-height: 40px; }
 }
+
+/* Formulaire d'accès (D-65) : champs empilés, actions alignées à gauche, largeur de lecture. */
+.gm-acces-formulaire { max-width: 480px; gap: var(--gm-space-4); }
+.gm-acces-actions { align-items: center; gap: var(--gm-space-4); flex-wrap: wrap; }
+.gm-tuile-acces .gm-acces-formulaire .gm-btn { align-self: auto; }

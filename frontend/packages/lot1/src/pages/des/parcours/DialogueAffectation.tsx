@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Dialog, InlineAlert, KeyValueList, Select } from '@gimac/design-system'
+import { CrudDialog, InlineAlert, KeyValueList, Select } from '@gimac/design-system'
 import type { DossierLiaison, Fonction } from '../../../modele/parcours'
 import { useAffecterRessources, usePersonnes } from '../../../hooks/parcours'
 import { useErreurService } from '../liaisons/communs'
@@ -57,19 +57,18 @@ export function DialogueAffectation({ dossier, onFermer, onAffecte }: { dossier:
     affecter.mutate({ liaisonId: dossier.id, affectations }, { onSuccess: onAffecte })
   }
   return (
-    <Dialog
-      open
+    <CrudDialog
+      context="edit"
       size="lg"
       id="gm-affectation"
       title={t('parcoursAffectation.titre')}
       description={t('parcoursAffectation.description')}
       onClose={onFermer}
-      footer={
-        <>
-          <Button variant="secondary" onClick={onFermer}>{t('commun.annuler')}</Button>
-          <Button variant="primary" icon="users" loading={affecter.isPending} onClick={soumettre}>{t('parcoursAffectation.valider')}</Button>
-        </>
-      }
+      onSubmit={soumettre}
+      submitLabel={t('parcoursAffectation.valider')}
+      submitIcon="users"
+      submitting={affecter.isPending}
+      subject={`${dossier.reference} · ${dossier.institutionNom}`}
     >
       <div className="gm-col">
         <KeyValueList
@@ -98,6 +97,6 @@ export function DialogueAffectation({ dossier, onFermer, onAffecte }: { dossier:
           ))}
         </div>
       </div>
-    </Dialog>
+    </CrudDialog>
   )
 }

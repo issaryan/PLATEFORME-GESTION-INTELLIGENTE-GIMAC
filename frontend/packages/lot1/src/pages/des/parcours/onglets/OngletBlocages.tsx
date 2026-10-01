@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Card, ConfirmDialog, DataTable, DateField, Dialog, EmptyState, InlineAlert, Select, TextArea, type Column } from '@gimac/design-system'
+import { Button, Card, ConfirmDialog, CrudDialog, DataTable, DateField, EmptyState, InlineAlert, Select, TextArea, type Column } from '@gimac/design-system'
 import { aPermission, usePermissions } from '@gimac/socle'
 import type { Blocage, DossierLiaison, Fonction } from '../../../../modele/parcours'
 import { useDeclarerBlocage, useLeverBlocage, usePersonnes } from '../../../../hooks/parcours'
@@ -41,18 +41,19 @@ export function DialogueBlocage({ dossier, onFermer, onDeclare }: { dossier: Dos
   }
   const e = (k: keyof typeof erreurs) => (tente ? erreurs[k] : undefined)
   return (
-    <Dialog
-      open
+    <CrudDialog
+      context="create"
+      size="md"
       id="gm-blocage"
       title={t('parcoursBlocages.declarer')}
+      subject={`${dossier.reference} · ${dossier.institutionNom}`}
       description={t('parcoursBlocages.description', { etape: t(`parcours.etape.${dossier.etapeCourante}`) })}
       onClose={onFermer}
-      footer={
-        <>
-          <Button variant="secondary" onClick={onFermer}>{t('commun.annuler')}</Button>
-          <Button variant="primary" icon="flag" loading={declarer.isPending} onClick={soumettre}>{t('parcoursBlocages.declarer')}</Button>
-        </>
-      }
+      onSubmit={soumettre}
+      submitLabel={t('parcoursBlocages.declarer')}
+      submitIcon="flag"
+      submitting={declarer.isPending}
+      dirty={motif.trim() !== '' || prochaineAction.trim() !== ''}
     >
       <div className="gm-col">
         {refus ? (
@@ -90,7 +91,7 @@ export function DialogueBlocage({ dossier, onFermer, onDeclare }: { dossier: Dos
         </div>
         <DateField name="echeanceLevee" label={t('parcoursBlocages.echeanceLevee')} required value={echeance} error={e('echeance')} onChange={setEcheance} />
       </div>
-    </Dialog>
+    </CrudDialog>
   )
 }
 

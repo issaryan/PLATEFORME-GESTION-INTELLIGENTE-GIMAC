@@ -1,8 +1,8 @@
-import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import i18next from 'i18next'
-import { initI18n } from '@gimac/socle'
+import { MOT_DE_PASSE_DEMO, initI18n } from '@gimac/socle'
 import { catalogueCompte } from '@gimac/compte'
 import App from './App'
 import { catalogues } from './i18n'
@@ -16,9 +16,12 @@ beforeAll(() => {
   if (!i18next.isInitialized) initI18n([catalogueCompte, ...catalogues], 'fr')
   Object.defineProperty(window, 'innerWidth', { value: 1400, configurable: true })
 })
+// Session de démonstration ouverte (connexion simulée, D-65) ; retirée par les scénarios de connexion.
+beforeEach(() => sessionStorage.setItem('gm.sessionDemo', JSON.stringify({ identifiant: 'test' })))
 afterEach(() => {
   cleanup()
   localStorage.clear()
+  sessionStorage.clear()
   vi.unstubAllEnvs()
   vi.restoreAllMocks()
 })
@@ -71,14 +74,32 @@ describe('Console', () => {
     expect(screen.getByRole('link', { name: 'Se déconnecter' })).toBeTruthy()
   })
 
-  it('services réels : sans session, invitation à se connecter ; déconnexion par la passerelle', async () => {
+  it('services réels : sans session, retour à l’écran de connexion de la plateforme (D-65)', async () => {
     vi.stubEnv('VITE_SERVICES', 'http')
+    const assign = vi.fn()
+    Object.defineProperty(window, 'location', { value: { ...window.location, assign }, configurable: true })
     vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response(JSON.stringify({}), { status: 401, headers: { 'Content-Type': 'application/json' } }))
     monter('/console/tableau-de-bord')
     expect(await screen.findByText(/session a expiré/, {}, { timeout: 8000 })).toBeTruthy()
+    await waitFor(() => expect(assign).toHaveBeenCalledWith(expect.stringMatching(/^\/connexion(\?|$)/)))
     cleanup()
     monter('/connexion')
-    expect(await screen.findByRole('button', { name: 'Se connecter avec le fournisseur d\'identité' })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: 'Se connecter' })).toBeTruthy()
+  })
+
+  it('services simulés : sans session, écran de connexion ; RSSI connecté avec son code', async () => {
+    sessionStorage.clear()
+    const assign = vi.fn()
+    Object.defineProperty(window, 'location', { value: { ...window.location, assign }, configurable: true })
+    monter('/console/comptes')
+    expect(await screen.findByRole('button', { name: 'Se connecter' }, { timeout: 8000 })).toBeTruthy()
+    fireEvent.change(document.querySelector('input[name="identifiant"]')!, { target: { value: 'rssi' } })
+    fireEvent.change(document.querySelector('input[name="motDePasse"]')!, { target: { value: MOT_DE_PASSE_DEMO } })
+    fireEvent.click(screen.getByRole('button', { name: 'Se connecter' }))
+    fireEvent.change(await screen.findByLabelText(/^Code à six chiffres/, {}, { timeout: 8000 }), { target: { value: '000000' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Vérifier le code' }))
+    await waitFor(() => expect(assign).toHaveBeenCalledWith('/console/comptes'), { timeout: 8000 })
+    expect(JSON.parse(sessionStorage.getItem('gm.sessionDemo')!)).toMatchObject({ identifiant: 'rssi', role: 'ROLE_RSSI' })
   })
 })
 
@@ -97,6 +118,6 @@ describe('déconnexion', () => {
     Object.defineProperty(window, 'location', { value: { ...window.location, assign }, configurable: true })
     vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response(JSON.stringify({ logoutUrl: '/fin' }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
     monter('/console/deconnexion')
-    await waitFor(() => expect(assign).toHaveBeenCalledWith('/fin'), { timeout: 8000 })
+    await waitFor(() => expect(assign).toHaveBeenCalledWith('/connexion?motif=deconnexion'), { timeout: 8000 })
   })
 })

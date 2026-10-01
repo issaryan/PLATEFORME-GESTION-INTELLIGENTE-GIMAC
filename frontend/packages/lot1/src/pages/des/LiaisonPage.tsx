@@ -50,16 +50,15 @@ function FicheLiaison({ liaison, onglet }: { liaison: Liaison; onglet: string })
   }, [t, conducteurs.data])
   const pilotes = useMemo(
     () => ({
-      openForm: () => definir.current({ formulaire: 'chef' }),
+      openForm: () => definir.current((p) => ({ ...Object.fromEntries(p), formulaire: 'chef' })),
       openTab: (key: string) => definir.current({ onglet: key }),
     }),
     [],
   )
   const descripteur = useDescripteurDS(lot, pilotes)
 
-  if (params.get('formulaire') === 'chef' && designation && liaison.actionsPermises.includes('DESIGNER_CHEF_DE_PROJET')) {
-    return <FormulaireChefDeProjet descripteur={descripteur} liaison={liaison} onFermer={() => setParams({})} />
-  }
+  // Désignation du conducteur : fenêtre modale ouverte sur la fiche (?formulaire=chef).
+  const chef = params.get('formulaire') === 'chef' && designation && liaison.actionsPermises.includes('DESIGNER_CHEF_DE_PROJET')
   return (
     <div className="gm-col">
       {params.get('ouverte') === '1' ? <InlineAlert level="info">{t('cadrage.ouverte', { id: liaison.id, institution: liaison.institutionNom })}</InlineAlert> : null}
@@ -74,6 +73,7 @@ function FicheLiaison({ liaison, onglet }: { liaison: Liaison; onglet: string })
         summary={<ResumeCadrage liaison={liaison} />}
         onAction={(a, row) => void a.run?.({ row, descriptor: descripteur })}
       />
+      {chef ? <FormulaireChefDeProjet descripteur={descripteur} liaison={liaison} onFermer={() => setParams(onglet === 'detail' ? {} : { onglet })} /> : null}
     </div>
   )
 }

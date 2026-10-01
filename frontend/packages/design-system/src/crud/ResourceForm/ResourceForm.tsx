@@ -16,6 +16,7 @@ import { Switch } from '../../saisie/Switch/Switch'
 import { FileDropzone } from '../../saisie/FileDropzone/FileDropzone'
 import { Stepper } from '../../navigation/Stepper/Stepper'
 import { InlineAlert } from '../../conteneurs/InlineAlert/InlineAlert'
+import { CrudDialog } from '../../conteneurs/CrudDialog/CrudDialog'
 import type { FieldDescriptor, ResourceDescriptor } from '../descripteur'
 import { optionsOf } from '../outils'
 import { useLibelle } from '../../i18n/LangueProvider'
@@ -39,6 +40,15 @@ export interface ResourceFormProps<T> {
   title?: string
   /** Texte d'introduction sous le titre (effets de la soumission, rappel d'une règle du service). */
   intro?: ReactNode
+  /**
+   * Présentation : « page » (gabarit G4, défaut) ou « dialog » (modale CRUD standard, CrudDialog, ouverte sur la fiche ou la liste :
+   * toute modification, mise à jour ou création déclenchée depuis une fiche ou une liste, D-63).
+   */
+  presentation?: 'page' | 'dialog'
+  /** Envoi en cours (présentation « dialog ») : bouton principal occupé. */
+  submitting?: boolean
+  /** Présentation « dialog » : sous-titre de contexte, l'objet concerné. */
+  subject?: ReactNode
 }
 
 // Création ou modification : champs inForm, erreurs mappées, étapes, brouillon (§8.3, gabarit G4).
@@ -131,16 +141,8 @@ export function ResourceForm<T extends object>(p: ResourceFormProps<T>) {
   const elision = /^[aeiouyhàâéèêîôû]/i.test(desc.label.singular)
   const soumettre = t(elision ? 'crud.enregistrerElision' : g === 'f' ? 'crud.enregistrerLa' : 'crud.enregistrerLe', { objet: desc.label.singular })
   const errList = Object.keys(errors)
-  return (
-    <form
-      className="gm-resource gm-form"
-      onSubmit={(e) => {
-        e.preventDefault()
-        if (p.onSubmit) p.onSubmit(vals)
-      }}
-      aria-labelledby="gm-form-title"
-    >
-      {p.embedded ? null : <h1 id="gm-form-title" className="gm-heading-display">{p.title || title}</h1>}
+  const corps = (
+    <>
       {p.intro ? p.intro : null}
       {steps ? (
         <div style={{ margin: 'var(--gm-space-4) 0' }}>
@@ -170,6 +172,39 @@ export function ResourceForm<T extends object>(p: ResourceFormProps<T>) {
         ))}
       </div>
       <div className="gm-field-help">{t('crud.legende')}</div>
+    </>
+  )
+  const derniere = !steps || step >= steps.length - 1
+  if (p.presentation === 'dialog') {
+    return (
+      <CrudDialog
+        context={mode === 'create' ? 'create' : 'edit'}
+        title={p.title || title}
+        subject={p.subject}
+        dirty={JSON.stringify(vals) !== JSON.stringify(p.initial || {})}
+        onClose={() => p.onCancel?.()}
+        onSubmit={() => (derniere ? p.onSubmit?.(vals) : setStep(step + 1))}
+        submitLabel={derniere ? p.submitLabel || (mode === 'create' ? soumettre : t('crud.enregistrerModifs')) : t('crud.etapeSuivante')}
+        submitIcon={derniere ? (p.confirm === 'sign' ? 'pen-line' : undefined) : 'arrow-right'}
+        reauth={p.confirm === 'sign'}
+        submitting={p.submitting}
+        extraActions={steps && step > 0 ? <Button variant="secondary" type="button" onClick={() => setStep(step - 1)}>{t('crud.etapePrecedente')}</Button> : undefined}
+      >
+        {corps}
+      </CrudDialog>
+    )
+  }
+  return (
+    <form
+      className="gm-resource gm-form"
+      onSubmit={(e) => {
+        e.preventDefault()
+        if (p.onSubmit) p.onSubmit(vals)
+      }}
+      aria-labelledby="gm-form-title"
+    >
+      {p.embedded ? null : <h1 id="gm-form-title" className="gm-heading-display">{p.title || title}</h1>}
+      {corps}
       <div className="gm-form-actions">
         <Button variant="ghost" type="button" onClick={p.onCancel}>{t('commun.annuler')}</Button>
         <span style={{ flex: 1 }} />

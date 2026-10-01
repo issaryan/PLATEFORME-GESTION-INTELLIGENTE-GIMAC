@@ -46,7 +46,12 @@ export type OptionsPasserelle = {
   comptesEnErreur?: boolean
   /** Compte courant sans second facteur ni courriel vérifié. */
   moiIncomplet?: boolean
+  /** La passerelle a fermé la session (inactivité) : tout appel /bff répond 401 CNX_SESSION_EXPIREE. */
+  sessionExpiree?: boolean
 }
+
+/** Connexion sur la plateforme (D-65) : mot de passe provisoire, puis mot de passe définitif et code accepté. */
+export const CONNEXION_E2E = { provisoire: 'Provisoire-2026!', motDePasse: 'Definitif-Gimac-2026!', code: '123456' }
 
 export class Passerelle {
   appels: { methode: string; chemin: string; recherche: string; entetes: Record<string, string>; corps: unknown }[] = []
@@ -62,16 +67,25 @@ export class Passerelle {
   moi: Record<string, unknown>
   o: OptionsPasserelle
 
+  motDePasse = CONNEXION_E2E.motDePasse
+  /** Actions exigées de la plateforme restant à faire au premier accès (D-65). */
+  restantes: string[]
+
   constructor(o: OptionsPasserelle = {}) {
     this.o = o
+    this.restantes = o.premierAcces ? ['MOT_DE_PASSE', 'SECOND_FACTEUR', 'CHARTE'] : []
     this.moi = o.premierAcces
-      ? { ...compte('u-super-admin', 'super.admin', 'Serge', 'Mouelle Kombi', ['ROLE_SUPER_ADMIN'], { profilComplet: false, telephone: null, actionsRequises: ['UPDATE_PASSWORD'] }) }
+      ? { ...compte('u-super-admin', 'super.admin', 'Serge', 'Mouelle Kombi', ['ROLE_SUPER_ADMIN'], { profilComplet: false, telephone: null, secondFacteur: false, actionsRequises: ['MOT_DE_PASSE', 'SECOND_FACTEUR'] }) }
       : { ...this.comptes[0], ...(o.moiIncomplet ? { secondFacteur: false, emailVerifie: false, telephone: null, fonction: null, langue: null, prenom: null } : {}) }
   }
 
+  private retirer(etape: string) {
+    this.restantes = this.restantes.filter((e) => e !== etape)
+  }
+
   private etapes() {
-    const m = this.moi as { profilComplet: boolean; actionsRequises: string[] }
-    return [...m.actionsRequises, ...(m.profilComplet ? [] : ['FICHE'])]
+    const m = this.moi as { profilComplet: boolean }
+    return [...this.restantes, ...(m.profilComplet ? [] : ['FICHE'])]
   }
 
   async brancher(page: Page) {
@@ -95,7 +109,7 @@ export class Passerelle {
         },
       })
     })
-    await page.route(/\/(api|bff|oauth2)\//, (r) => this.servir(r))
+    await page.route(/\/(api|bff)\//, (r) => this.servir(r))
   }
 
   private async servir(route: Route) {
@@ -109,13 +123,34 @@ export class Passerelle {
     const refus = (status: number, code: string, message: string, details: Record<string, unknown> = {}) => json({ code, message, details, correlationId: `e2e-${code}` }, status)
     const vide = () => route.fulfill({ status: 204 })
 
-    if (chemin.startsWith('/oauth2/')) return route.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><title>Fournisseur d’identité</title><h1>Authentification GIMAC</h1>' })
+    // ------------------------------------------------ Connexion sur la plateforme (D-65, /api/connexion/**)
+    if (chemin === '/api/connexion') {
+      const premier = !!this.o.premierAcces && this.etapes().length > 0
+      const attendu = this.o.premierAcces ? (this.etapes().includes('MOT_DE_PASSE') ? CONNEXION_E2E.provisoire : this.motDePasse) : CONNEXION_E2E.motDePasse
+      if (corps.identifiant !== 'super.admin' || corps.motDePasse !== attendu) return refus(401, 'CNX_IDENTIFIANTS_INVALIDES', 'Identifiants invalides')
+      if (corps.couche !== 'console') return refus(403, 'CNX_COUCHE_REFUSEE', 'Couche refusée')
+      if (premier) return json({ etat: 'PREMIER_ACCES', etapes: this.etapes() })
+      if (!corps.code) return json({ etat: 'CODE_REQUIS' })
+      if (corps.code !== CONNEXION_E2E.code) return refus(401, 'CNX_IDENTIFIANTS_INVALIDES', 'Identifiants invalides')
+      this.o.premierAcces = false
+      this.o.session = { permissions: PERMISSIONS_SUPER_ADMIN }
+      return json({ etat: 'CONNECTE', session: {} })
+    }
+    if (chemin === '/api/connexion/mot-de-passe-oublie') return route.fulfill({ status: 202 })
+    if (chemin === '/api/connexion/nouveau-mot-de-passe') {
+      if (corps.jeton !== 'jeton-valide-e2e-0123456789') return refus(400, 'CNX_JETON_INVALIDE', 'Jeton invalide')
+      if (corps.motDePasse.length < 12) return refus(400, 'IAM_PASSWORD_POLICY', 'Politique', { violations: ['invalidPasswordMinLengthMessage', 'invalidPasswordMinDigitsMessage'] })
+      return vide()
+    }
+    if (chemin === '/api/session/prolongation') return vide()
+    if (this.o.sessionExpiree && chemin.startsWith('/bff/')) return refus(401, 'CNX_SESSION_EXPIREE', 'Session fermée après inactivité')
     if (chemin === '/api/session') {
       if (this.o.sessionIndisponible) return refus(503, 'HTTP_503', 'Passerelle indisponible')
       if (!this.o.session) return refus(401, 'HTTP_401', 'Non authentifié')
       const rssi = !this.o.session.permissions.includes('IAM_ROLE_PRIVILEGED_GRANT')
       return json({ sujet: this.o.session.sujet ?? 'u-super-admin', nom: rssi ? 'Carine Ebongue Ndjock' : 'Serge Mouelle Kombi', identifiant: rssi ? 'rssi' : 'super.admin', roles: [rssi ? 'ROLE_RSSI' : 'ROLE_SUPER_ADMIN', 'ROLE_USER'], permissions: this.o.session.permissions,
-        institutionId: '', acr: this.o.session.doubleFacteur === false ? '1' : '2', doubleFacteur: this.o.session.doubleFacteur !== false })
+        institutionId: '', acr: this.o.session.doubleFacteur === false || this.o.premierAcces ? '1' : '2', doubleFacteur: this.o.session.doubleFacteur !== false && !this.o.premierAcces,
+        ...(this.o.premierAcces ? { restreinte: true } : {}), expireA: new Date(Date.now() + 30 * 60_000).toISOString() })
     }
     if (chemin === '/api/logout') return json({ logoutUrl: '/connexion' })
 
@@ -128,9 +163,26 @@ export class Passerelle {
     }
     if (chemin === `${M}/premiere-configuration`) {
       Object.assign(this.moi, { telephone: corps.telephone, langue: corps.langue, profilComplet: true })
+      this.retirer('CHARTE')
       return json({ compte: this.moi, clesSecurite: this.cles.length, sessions: 1, etapesRestantes: this.etapes() })
     }
-    if (chemin === `${M}/actions`) return json({ compte: this.moi, clesSecurite: this.cles.length, sessions: 1, etapesRestantes: [corps.action] })
+    if (chemin === `${M}/mot-de-passe`) {
+      const actuel = this.etapes().includes('MOT_DE_PASSE') ? CONNEXION_E2E.provisoire : this.motDePasse
+      if (corps.actuel !== actuel) return refus(400, 'IAM_PASSWORD_INVALID', 'Mot de passe actuel incorrect')
+      if (corps.nouveau.length < 12) return refus(400, 'IAM_PASSWORD_POLICY', 'Politique', { violations: ['invalidPasswordMinLengthMessage'] })
+      this.motDePasse = corps.nouveau
+      this.retirer('MOT_DE_PASSE')
+      return vide()
+    }
+    if (chemin === `${M}/second-facteur/totp/enrolement`) {
+      return json({ enrolementId: 'enr-totp-1', secret: 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP', uri: 'otpauth://totp/GIMAC%20DES%3Asuper.admin?secret=JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP&issuer=GIMAC%20DES&digits=6&period=30&algorithm=SHA1' })
+    }
+    if (chemin === `${M}/second-facteur/totp`) {
+      if (corps.code === '000000') return refus(400, 'IAM_TOTP_CODE_INVALID', 'Code incorrect')
+      this.moi.secondFacteur = true
+      this.retirer('SECOND_FACTEUR')
+      return vide()
+    }
     if (chemin === `${M}/sessions` && methode === 'GET') return json([{ id: 's-1', adresseIp: '10.20.1.15', debut: il(1), dernierAcces: il(0), applications: ['gateway'] }])
     if (chemin.startsWith(`${M}/sessions`) && methode === 'DELETE') return vide()
     if (chemin === `${M}/cles-securite` && methode === 'GET') return json(this.cles)

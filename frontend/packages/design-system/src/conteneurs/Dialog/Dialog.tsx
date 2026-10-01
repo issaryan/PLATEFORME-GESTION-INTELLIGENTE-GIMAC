@@ -7,12 +7,15 @@ import { useLibelle } from '../../i18n/LangueProvider'
 
 export interface DialogProps {
   title: string
+  /** Sous-titre de contexte sous le titre : l'objet concerné (compte, liaison, institution…). */
+  subtitle?: ReactNode
   description?: string
   children?: ReactNode
   /** Pied d'actions : au plus un bouton principal. */
   footer?: ReactNode
   onClose?: () => void
-  size?: 'md' | 'lg'
+  /** Petite (440 px), moyenne (560 px, défaut) ou large (720 px). */
+  size?: 'sm' | 'md' | 'lg'
   open?: boolean
   /** Confine le voile au conteneur parent. */
   inline?: boolean
@@ -21,7 +24,7 @@ export interface DialogProps {
   className?: string
 }
 
-// Fenêtre modale centrée de 560 px (720 en lg) sur le voile (§7.5).
+// Fenêtre modale centrée de 560 px (440 en sm, 720 en lg) sur le voile (§7.5).
 export function Dialog(p: DialogProps) {
   const t = useLibelle()
   const ref = useRef<HTMLDivElement>(null)
@@ -32,14 +35,21 @@ export function Dialog(p: DialogProps) {
     <Overlay inline={p.inline} onClose={p.onClose}>
       <div
         ref={ref}
-        className={cx('gm-dialog', p.size === 'lg' && 'gm-dialog-lg', p.className)}
+        className={cx('gm-dialog', p.size === 'lg' && 'gm-dialog-lg', p.size === 'sm' && 'gm-dialog-sm', p.className)}
         role={p.role || 'dialog'}
         aria-modal="true"
         aria-labelledby={id + '-title'}
-        aria-describedby={p.description ? id + '-desc' : undefined}
+        aria-describedby={[p.subtitle ? id + '-sujet' : '', p.description ? id + '-desc' : ''].filter(Boolean).join(' ') || undefined}
       >
         <header className="gm-dialog-head">
-          <h2 id={id + '-title'} className="gm-card-title">{p.title}</h2>
+          {p.subtitle ? (
+            <div>
+              <h2 id={id + '-title'} className="gm-card-title">{p.title}</h2>
+              <span className="gm-dialog-sujet" id={id + '-sujet'}>{p.subtitle}</span>
+            </div>
+          ) : (
+            <h2 id={id + '-title'} className="gm-card-title">{p.title}</h2>
+          )}
           {p.onClose ? <IconButton variant="ghost" size="sm" icon="x" label={t('commun.fermer')} onClick={p.onClose} /> : null}
         </header>
         {p.description ? <p id={id + '-desc'} className="gm-dialog-desc">{p.description}</p> : null}

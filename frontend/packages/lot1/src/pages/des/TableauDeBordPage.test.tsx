@@ -21,8 +21,8 @@ describe('DES-01 Tableau de bord par acteur', () => {
     expect(await screen.findByText('Propositions à trancher')).toBeTruthy()
     expect(screen.getByText('Candidats')).toBeTruthy()
     expect(screen.getByText('Pièces à examiner')).toBeTruthy()
-    expect(screen.getByText('Chef de la DDRM')).toBeTruthy()
-    expect(screen.getByText('Bienvenue, Agent de test')).toBeTruthy()
+    // Personne connectée et profil en texte simple, à droite du titre.
+    expect(screen.getByText('Agent de test').parentElement?.textContent).toBe('Agent de test · Chef de la DDRM')
   })
   it('chargé de la DDRM : ses dossiers en cours, sans propositions à trancher', async () => {
     page(CHARGE, ['ROLE_CHARGE_DDRM'])

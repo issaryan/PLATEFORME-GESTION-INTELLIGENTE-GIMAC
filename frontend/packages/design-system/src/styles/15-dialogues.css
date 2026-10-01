@@ -1,13 +1,26 @@
 /* ---------- Dialogues et surcouches */
-.gm-overlay { position: fixed; inset: 0; background: var(--gm-color-overlay); display: flex; align-items: center; justify-content: center; padding: var(--gm-space-5); z-index: 100; }
+.gm-overlay { position: fixed; inset: 0; background: var(--gm-color-overlay); display: flex; align-items: center; justify-content: center; padding: var(--gm-space-6); z-index: 100; animation: gm-voile var(--gm-motion-base) var(--gm-motion-ease); }
 .gm-overlay-inline { position: absolute; }
 .gm-overlay-right { align-items: stretch; justify-content: flex-end; padding: 0; }
-.gm-dialog { width: var(--gm-size-dialog); max-width: 100%; max-height: 100%; display: flex; flex-direction: column; background: var(--gm-color-surface-raised); border: var(--gm-border-1) solid var(--gm-color-border); }
+/* Fenêtre modale (DS-GIMAC-01 §7.5) : 560 px (720 en large), angles droits, bordure de 1 px, aucune
+   ombre, voile gm-color-overlay ; titre h2 ; en-tête et pied séparés par un filet de 1 px,
+   boutons du pied à droite ; ouverture en fondu (opacité seule, 200 ms). */
+.gm-dialog { width: var(--gm-size-dialog); max-width: 100%; max-height: 100%; display: flex; flex-direction: column; background: var(--gm-color-surface-raised); border: var(--gm-border-1) solid var(--gm-color-border); overflow: hidden; animation: gm-surgir var(--gm-motion-base) var(--gm-motion-ease); }
 .gm-dialog-lg { width: 720px; }
-.gm-dialog-head { display: flex; align-items: center; justify-content: space-between; gap: var(--gm-space-2); padding: var(--gm-space-4) var(--gm-space-5); border-bottom: var(--gm-border-1) solid var(--gm-color-border); }
-.gm-dialog-desc { margin: 0; padding: var(--gm-space-3) var(--gm-space-5) 0; color: var(--gm-color-text-secondary); }
-.gm-dialog-body { padding: var(--gm-space-4) var(--gm-space-5); overflow: auto; }
-.gm-dialog-foot { display: flex; justify-content: flex-end; gap: var(--gm-space-2); padding: var(--gm-space-3) var(--gm-space-5); border-top: var(--gm-border-1) solid var(--gm-color-border); }
+.gm-dialog-sm { width: 440px; }
+/* Aides des champs sur la surface surélevée d'une modale : contraste AA dans les deux thèmes (audit axe). */
+.gm-dialog .gm-field-help { color: var(--gm-color-text-secondary); }
+/* Sous-titre de contexte d'une modale CRUD : l'objet concerné, sous le titre. */
+.gm-dialog-sujet { display: block; margin-top: var(--gm-space-1); font-size: 13px; line-height: 20px; font-weight: 400; color: var(--gm-color-text-secondary); }
+.gm-dialog-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--gm-space-3); padding: var(--gm-space-5) var(--gm-space-6) var(--gm-space-4); border-bottom: var(--gm-border-1) solid var(--gm-color-border); }
+.gm-dialog-head .gm-card-title { font-size: 18px; line-height: 26px; font-weight: 500; }
+.gm-dialog-desc { margin: 0; padding: var(--gm-space-4) var(--gm-space-6) 0; color: var(--gm-color-text-secondary); }
+.gm-dialog-body { padding: var(--gm-space-5) var(--gm-space-6); overflow: auto; }
+.gm-dialog-body .gm-form-grid { gap: var(--gm-space-4) var(--gm-space-5); align-items: start; }
+.gm-dialog-foot { display: flex; justify-content: flex-end; align-items: center; gap: var(--gm-space-3); padding: var(--gm-space-4) var(--gm-space-6); border-top: var(--gm-border-1) solid var(--gm-color-border); }
+@keyframes gm-voile { from { opacity: 0; } to { opacity: 1; } }
+@keyframes gm-surgir { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .gm-overlay, .gm-dialog, .gm-popover { animation: none; } }
 .gm-consequences { margin: 0; padding-left: var(--gm-space-5); color: var(--gm-color-text-primary); }
 .gm-consequences li + li { margin-top: var(--gm-space-1); }
 .gm-drawer { width: var(--gm-size-drawer); max-width: 100%; height: 100%; display: flex; flex-direction: column; background: var(--gm-color-surface-raised); border-left: var(--gm-border-1) solid var(--gm-color-border); }
@@ -16,7 +29,7 @@
 .gm-drawer-title { padding: var(--gm-space-3) var(--gm-space-4) 0; font-family: var(--font-heading); font-size: 18px; line-height: 26px; font-weight: 500; }
 .gm-drawer-tabs { padding: var(--gm-space-2) var(--gm-space-4) 0; }
 .gm-drawer-body { padding: var(--gm-space-4); overflow: auto; flex: 1; }
-.gm-drawer-foot { display: flex; justify-content: flex-end; gap: var(--gm-space-2); padding: var(--gm-space-3) var(--gm-space-4); border-top: var(--gm-border-1) solid var(--gm-color-border); background: var(--gm-color-surface-sunken); }
+.gm-drawer-foot { display: flex; justify-content: flex-end; gap: var(--gm-space-2); padding: var(--gm-space-3) var(--gm-space-4); border-top: var(--gm-border-1) solid var(--gm-color-border); }
 .gm-menu { display: flex; flex-direction: column; min-width: 240px; padding: var(--gm-space-1) 0; background: var(--gm-color-surface-raised); border: var(--gm-border-1) solid var(--gm-color-border); }
 .gm-menu-item { all: unset; display: flex; align-items: center; gap: var(--gm-space-2); height: var(--gm-size-control-md); padding: 0 var(--gm-space-3); cursor: pointer; color: var(--gm-color-text-primary); }
 .gm-menu-item:hover, .gm-menu-item:focus-visible { background: var(--gm-color-action-subtle); }
@@ -48,7 +61,8 @@
 .gm-notif-group { display: flex; align-items: center; gap: var(--gm-space-2); padding: var(--gm-space-2) var(--gm-space-3); background: var(--gm-color-surface-sunken); }
 .gm-notif-item { display: flex; gap: var(--gm-space-3); padding: var(--gm-space-3); border-bottom: var(--gm-border-1) solid var(--gm-color-border); align-items: flex-start; }
 .gm-notif-item > .gm-icon { color: var(--gm-color-text-secondary); flex: none; margin-top: 2px; }
-.gm-notif-unread { border-left: var(--gm-border-4) solid var(--gm-color-action); }
+.gm-notif-unread { background: var(--gm-color-action-subtle); }
+.gm-notif-unread .gm-notif-title { color: var(--gm-color-action); }
 .gm-notif-title { font-weight: 600; }
 .gm-notif-foot { display: flex; justify-content: space-between; padding: var(--gm-space-2) var(--gm-space-3); border-top: var(--gm-border-1) solid var(--gm-color-border); font-size: 12px; line-height: 18px; }
 .gm-stage { position: relative; overflow: hidden; background: var(--gm-color-bg-page); border: var(--gm-border-1) solid var(--gm-color-border); }

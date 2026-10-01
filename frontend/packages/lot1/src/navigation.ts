@@ -1,5 +1,10 @@
 import type { GroupeNavigation } from '@gimac/socle'
 
+/** Adresse de la console d'administration (D-62) : VITE_URL_CONSOLE, http://localhost:4202 par défaut. */
+export const URL_CONSOLE = String(import.meta.env.VITE_URL_CONSOLE || 'http://localhost:4202').replace(/\/+$/, '')
+/** Adresse d'un écran de la console (chemin commençant par /console). */
+export const versConsole = (chemin: string) => `${URL_CONSOLE}${chemin}`
+
 // Entrées de navigation du lot 1, avec la permission qui les rend visibles (DS-GIMAC-01 §6.2).
 export const NAVIGATION_DES: GroupeNavigation[] = [
   // Tableau de bord propre à chaque acteur (D-58) : sections composées selon les permissions du jeton.
@@ -23,6 +28,17 @@ export const NAVIGATION_DES: GroupeNavigation[] = [
       // « Mes projets » : les liaisons confiées au conducteur de projet (D-58), seul à établir le procès-verbal.
       { cle: 'mesProjets', libelleKey: 'nav.mesProjets', icone: 'user', chemin: '/des/parcours?mesProjets=1', permission: 'CER_PV_ESTABLISH' },
       { cle: 'referentiels', libelleKey: 'nav.referentiels', icone: 'kanban', chemin: '/des/referentiels/operations', permission: 'HOM_REFERENTIEL_READ' },
+    ],
+  },
+  // Administration des comptes (D-62) : écrans de la console, ouverts par un lien (le RSSI, IAM_ACCOUNT_READ).
+  {
+    libelleKey: 'nav.groupe.administration',
+    entrees: [
+      { cle: 'adminComptes', libelleKey: 'nav.admin.comptes', icone: 'users', chemin: versConsole('/console/comptes'), permission: 'IAM_ACCOUNT_READ' },
+      { cle: 'adminProfils', libelleKey: 'nav.admin.profils', icone: 'shield-check', chemin: versConsole('/console/profils'), permission: 'IAM_ACCOUNT_READ' },
+      { cle: 'adminJournal', libelleKey: 'nav.admin.journal', icone: 'scroll-text', chemin: versConsole('/console/journal'), permission: 'IAM_JOURNAL_READ' },
+      { cle: 'adminPolitique', libelleKey: 'nav.admin.politique', icone: 'lock', chemin: versConsole('/console/politique-securite'), permission: 'PLATFORM_SECURITY_POLICY_READ' },
+      { cle: 'adminConsole', libelleKey: 'nav.admin.console', icone: 'monitor', chemin: versConsole('/console/tableau-de-bord'), permission: 'IAM_ACCOUNT_READ' },
     ],
   },
 ]

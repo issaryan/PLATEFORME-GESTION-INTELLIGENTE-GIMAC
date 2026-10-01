@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams } from 'react-router'
-import { Button, DataTable, FilterBar, Tabs } from '@gimac/design-system'
+import { Button, DataTable, FilterBar, Tabs, PageHeader } from '@gimac/design-system'
 import { aPermission, usePermissions } from '@gimac/socle'
 import { ETAPES, type StatutParcours } from '../../../modele/parcours'
 import type { FiltreLiaisons } from '../../../services/ports'
@@ -97,17 +97,15 @@ export default function ParcoursPage() {
   const vide = actifs.length > 0 || mesProjets
   return (
     <div className="gm-col">
-      <div className="gm-resource-head">
-        <div className="gm-col" style={{ gap: 'var(--gm-space-1)' }}>
-          <h1 className="gm-heading-display">{t(mesProjets ? 'parcoursListe.titre.mesProjets' : 'parcoursListe.titre')}</h1>
-          <span className="gm-field-help">{t(mesProjets ? 'parcoursListe.intro.mesProjets' : 'parcoursListe.intro')}</span>
-        </div>
-        {peutOuvrir ? (
+      <PageHeader
+        title={t(mesProjets ? 'parcoursListe.titre.mesProjets' : 'parcoursListe.titre')}
+        subtitle={t(mesProjets ? 'parcoursListe.intro.mesProjets' : 'parcoursListe.intro')}
+        actions={peutOuvrir ? (
           <Button variant="primary" icon="plus" onClick={() => modifier({ formulaire: 'ouvrir' }, true)}>
             {t('parcoursListe.ouvrir')}
           </Button>
-        ) : null}
-      </div>
+        ) : undefined}
+      />
       {conducteur ? (
         <Tabs
           items={[{ key: 'toutes', label: t('parcoursListe.onglet.toutes') }, { key: 'mesProjets', label: t('parcoursListe.onglet.mesProjets') }]}

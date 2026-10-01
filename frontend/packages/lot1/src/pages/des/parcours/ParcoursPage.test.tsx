@@ -117,5 +117,6 @@ describe('Étape 3 : liste des liaisons du parcours', () => {
     await axeSansViolation(container)
     document.documentElement.setAttribute('data-theme', 'dark')
     await axeSansViolation(container)
-  })
+    // Deux audits axe complets d'une liste chargée : délai élargi sous charge (suite complète en parallèle).
+  }, 60_000)
 })

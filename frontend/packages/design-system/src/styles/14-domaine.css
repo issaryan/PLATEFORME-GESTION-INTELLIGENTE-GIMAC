@@ -5,7 +5,8 @@
 .gm-node { width: 240px; padding: var(--gm-space-3); border: var(--gm-border-1) solid var(--gm-color-border); background: var(--gm-color-surface); display: flex; flex-direction: column; gap: var(--gm-space-1); }
 .gm-node-closed { background: var(--gm-color-surface-sunken); }
 .gm-node-locked, .gm-node-out { color: var(--gm-color-text-muted); }
-.gm-node-critical { border-left: var(--gm-border-4) solid var(--gm-color-action); }
+.gm-node-critical { background: var(--gm-color-action-subtle); }
+.gm-node-critical .gm-node-title { color: var(--gm-color-action); }
 .gm-node-title { font-weight: 600; color: var(--gm-color-text-primary); }
 .gm-node-el { display: flex; gap: var(--gm-space-1); margin-top: var(--gm-space-1); }
 .gm-node-dot { width: 28px; height: 28px; display: grid; place-content: center; border: var(--gm-border-1) solid var(--gm-color-border); color: var(--gm-color-text-muted); background: var(--gm-color-surface); }
@@ -13,7 +14,8 @@
 .gm-check4 { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--gm-space-2); }
 .gm-check4-row { display: flex; align-items: center; gap: var(--gm-space-3); padding: var(--gm-space-3); border: var(--gm-border-1) solid var(--gm-color-border); background: var(--gm-color-surface); }
 .gm-check4-ok .gm-icon { color: var(--gm-color-status-ok-fg); }
-.gm-check4-missing { border-left: var(--gm-border-4) solid var(--gm-color-status-warn-fg); }
+.gm-check4-missing { background: var(--gm-color-surface-sunken); }
+.gm-check4-missing > span:not(.gm-icon) { font-weight: 600; }
 .gm-check4-missing .gm-icon { color: var(--gm-color-status-warn-fg); }
 .gm-quitus { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .gm-quitus-step { display: flex; align-items: center; gap: var(--gm-space-3); padding: var(--gm-space-3) 0; border-bottom: var(--gm-border-1) solid var(--gm-color-border); }
@@ -32,16 +34,16 @@
 .gm-matrix-sel { outline: var(--gm-border-2) solid var(--gm-color-action); outline-offset: -2px; background: var(--gm-color-surface-selected); }
 .gm-matrix-mark { display: block; font-size: 11px; line-height: 16px; color: var(--gm-color-action); font-weight: 600; }
 .gm-sla { display: flex; flex-direction: column; gap: var(--gm-space-2); padding: var(--gm-space-3); border: var(--gm-border-1) solid var(--gm-color-border); background: var(--gm-color-surface); }
-.gm-alert { display: flex; align-items: center; gap: var(--gm-space-3); padding: var(--gm-space-2) var(--gm-space-3); border: var(--gm-border-1) solid var(--gm-color-border); border-left-width: var(--gm-border-4); background: var(--gm-color-surface); }
-.gm-alert-crit { border-left-color: var(--gm-color-status-crit-fg); }
+.gm-alert { display: flex; align-items: center; gap: var(--gm-space-3); padding: var(--gm-space-2) var(--gm-space-3); border: var(--gm-border-1) solid var(--gm-color-border); background: var(--gm-color-surface); }
+.gm-alert-crit { font-weight: 600; }
 .gm-alert-crit > .gm-icon { color: var(--gm-color-status-crit-fg); }
-.gm-alert-warn { border-left-color: var(--gm-color-status-warn-fg); }
+.gm-alert-warn { font-weight: 600; }
 .gm-alert-warn > .gm-icon { color: var(--gm-color-status-warn-fg); }
 .gm-logbook { display: flex; flex-direction: column; border: var(--gm-border-1) solid var(--gm-color-border); background: var(--gm-color-surface); }
 .gm-logbook-list { list-style: none; margin: 0; padding: 0; max-height: 320px; overflow: auto; }
 .gm-logbook-entry { padding: var(--gm-space-2) var(--gm-space-3); border-bottom: var(--gm-border-1) solid var(--gm-color-border); display: flex; flex-direction: column; gap: 2px; }
 .gm-logbook-input { display: flex; gap: var(--gm-space-2); padding: var(--gm-space-2) var(--gm-space-3); background: var(--gm-color-surface-sunken); }
-.gm-crisis { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--gm-space-4); padding: var(--gm-space-4); border: var(--gm-border-1) solid var(--gm-color-border); border-left: var(--gm-border-4) solid var(--gm-color-status-crit-fg); background: var(--gm-color-surface); }
+.gm-crisis { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--gm-space-4); padding: var(--gm-space-4); border: var(--gm-border-1) solid var(--gm-color-border); background: var(--gm-color-surface); }
 .gm-crisis-main { display: flex; flex-direction: column; gap: var(--gm-space-2); }
 .gm-chat { display: flex; flex-direction: column; border: var(--gm-border-1) solid var(--gm-color-border); background: var(--gm-color-surface); }
 .gm-chat-head { display: flex; align-items: center; gap: var(--gm-space-2); padding: var(--gm-space-2) var(--gm-space-3); border-bottom: var(--gm-border-1) solid var(--gm-color-border); }
@@ -56,10 +58,11 @@
 .gm-chat-input { display: flex; gap: var(--gm-space-2); padding: var(--gm-space-2) var(--gm-space-3); border-top: var(--gm-border-1) solid var(--gm-color-border); }
 /* Messagerie de travail (D-64) : liste des conversations et fil, sur les classes du salon. */
 .gm-conv-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
-.gm-conv { all: unset; box-sizing: border-box; width: 100%; display: flex; gap: var(--gm-space-3); padding: var(--gm-space-3); cursor: pointer; border-left: var(--gm-border-4) solid transparent; border-bottom: var(--gm-border-1) solid var(--gm-color-border); }
+.gm-conv { all: unset; box-sizing: border-box; width: 100%; display: flex; gap: var(--gm-space-3); padding: var(--gm-space-3); cursor: pointer; border-bottom: var(--gm-border-1) solid var(--gm-color-border); }
 .gm-conv:hover { background: var(--gm-color-surface-sunken); }
 .gm-conv:focus-visible { outline: 2px solid var(--gm-color-focus); outline-offset: -2px; }
-.gm-conv[aria-current="true"] { background: var(--gm-color-action-subtle); border-left-color: var(--gm-color-action); }
+.gm-conv[aria-current="true"] { background: var(--gm-color-action-subtle); }
+.gm-conv[aria-current="true"] .gm-conv-ligne strong { color: var(--gm-color-action); }
 .gm-conv-corps { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
 .gm-conv-ligne { display: flex; align-items: baseline; gap: var(--gm-space-2); min-width: 0; }
 .gm-conv-titre { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
@@ -67,7 +70,7 @@
 .gm-conv-quand { font-size: 12px; line-height: 18px; color: var(--gm-color-text-secondary); flex: none; }
 .gm-conv-sous { font-size: 12px; line-height: 18px; color: var(--gm-color-text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gm-conv-extrait { flex: 1; min-width: 0; font-size: 13px; line-height: 20px; color: var(--gm-color-text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.gm-conv-pastille { flex: none; min-width: 20px; height: 20px; padding: 0 6px; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--gm-radius-avatar); background: var(--gm-color-action); color: var(--gm-color-text-inverse); font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.gm-conv-pastille { flex: none; min-width: 20px; height: 20px; padding: 0 6px; display: inline-flex; align-items: center; justify-content: center; background: var(--gm-color-action); color: var(--gm-color-text-inverse); font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; }
 /* Page de messagerie : conversations à gauche, fil à droite, hauteur de la fenêtre sous l'en-tête. */
 .gm-messagerie { display: grid; grid-template-columns: minmax(280px, 360px) minmax(0, 1fr); height: calc(100vh - 220px); min-height: 480px; border: var(--gm-border-1) solid var(--gm-color-border); background: var(--gm-color-surface); }
 .gm-messagerie-liste { display: flex; flex-direction: column; min-height: 0; border-right: var(--gm-border-1) solid var(--gm-color-border); }

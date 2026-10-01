@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Card, DataTable, InlineAlert, KeyValueList, Link, StatusBadge, Tag, type Column } from '@gimac/design-system'
+import { Card, DataTable, InlineAlert, KeyValueList, Link, PageHeader, StatusBadge, Tag, type Column } from '@gimac/design-system'
 import { dateHeure } from '@gimac/compte'
 import { useConfigurationPlateforme } from '../hooks'
 import type { RouteVue } from '../modele/plateforme'
@@ -20,7 +20,7 @@ export default function ConfigurationPlateformePage() {
   ]
   return (
     <div className="gm-col" style={{ gap: 'var(--gm-space-6)' }}>
-      <h1 className="gm-heading-display">{t('console.config.titre')}</h1>
+      <PageHeader title={t('console.config.titre')} subtitle={t('console.config.sousTitre')} />
       <Donnees requete={configuration}>
         {(c) => (
           <>

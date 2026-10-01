@@ -7,18 +7,26 @@ import { ActionBar, Button, InlineAlert, LinkList, PageHeader, PageSection, Reso
 afterEach(cleanup)
 
 describe('PageHeader', () => {
-  it('titre, surtitre, ligne de contexte et actions', () => {
-    render(<PageHeader title="Tableau de bord" overline="Registre" meta={<Tag>Chef de la DDRM</Tag>} actions={<Button>Ouvrir une liaison</Button>} />)
+  it('titre, rubrique, description, ligne de contexte, personne connectée et actions', () => {
+    render(<PageHeader title="Tableau de bord" overline="Registre" subtitle="Votre travail du jour." meta={<Tag>Chef de la DDRM</Tag>}
+      user={{ name: 'Awa Ndiaye', roles: ['Chef de la DDRM', 'RSSI'] }} actions={<Button>Ouvrir une liaison</Button>} back={{ href: '/des', label: 'Retour' }} />)
     expect(screen.getByRole('heading', { level: 1, name: 'Tableau de bord' })).toBeTruthy()
-    expect(screen.getByText('Registre').className).toContain('gm-type-micro')
-    expect(screen.getByText('Chef de la DDRM')).toBeTruthy()
+    expect(screen.getByText('Registre').className).toBe('gm-pagehead-sur')
+    expect(screen.getByText('Votre travail du jour.').className).toBe('gm-pagehead-sous')
+    expect(screen.getByText('Awa Ndiaye').className).toBe('gm-pagehead-nom')
+    // Personne et profils en texte simple : ni avatar, ni puces.
+    expect(screen.getByText('Awa Ndiaye').parentElement?.textContent).toBe('Awa Ndiaye · Chef de la DDRM, RSSI')
+    expect(document.querySelector('.gm-avatar')).toBeNull()
     expect(screen.getByRole('button', { name: 'Ouvrir une liaison' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: '← Retour' })).toBeTruthy()
   })
-  it('titre seul : ni surtitre, ni ligne de contexte, ni actions', () => {
-    const { container } = render(<PageHeader title="Liaisons" className="x" />)
-    expect(container.querySelector('header')?.className).toBe('gm-resource-head x')
-    expect(container.querySelectorAll('.gm-row')).toHaveLength(0)
-    expect(container.querySelector('.gm-type-micro')).toBeNull()
+  it('titre seul : ni rubrique, ni description, ni colonne de droite', () => {
+    const { container } = render(<PageHeader title="Liaisons" className="x" user={{ name: 'Awa Ndiaye' }} />)
+    expect(container.querySelector('header')?.className).toBe('gm-pagehead x')
+    expect(container.querySelector('.gm-pagehead-sur')).toBeNull()
+    expect(container.querySelector('.gm-pagehead-sous')).toBeNull()
+    expect(container.querySelector('.gm-pagehead-actions')).toBeNull()
+    expect(container.querySelector('.gm-pagehead-user')?.textContent).toBe('Awa Ndiaye')
   })
 })
 

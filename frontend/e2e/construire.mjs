@@ -6,13 +6,15 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const racine = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+// GIMAC_E2E_SORTIE suffixe les dossiers de sortie (exécutions parallèles, voir playwright.config.ts).
+const s = process.env.GIMAC_E2E_SORTIE ?? ''
 const constructions = [
-  { app: 'console', sortie: 'dist-e2e', env: {} },
-  { app: 'console', sortie: 'dist-e2e-http', env: { VITE_SERVICES: 'http' } },
-  { app: 'departement', sortie: 'dist-e2e', env: {} },
-  { app: 'departement', sortie: 'dist-e2e-http', env: { VITE_SERVICES: 'http' } },
-  { app: 'portail', sortie: 'dist-e2e', env: {} },
-  { app: 'portail', sortie: 'dist-e2e-http', env: { VITE_SERVICES: 'http' } },
+  { app: 'console', sortie: `dist-e2e${s}`, env: {} },
+  { app: 'console', sortie: `dist-e2e-http${s}`, env: { VITE_SERVICES: 'http' } },
+  { app: 'departement', sortie: `dist-e2e${s}`, env: {} },
+  { app: 'departement', sortie: `dist-e2e-http${s}`, env: { VITE_SERVICES: 'http' } },
+  { app: 'portail', sortie: `dist-e2e${s}`, env: {} },
+  { app: 'portail', sortie: `dist-e2e-http${s}`, env: { VITE_SERVICES: 'http' } },
 ]
 for (const c of constructions) {
   console.log(`Construction instrumentée de ${c.app} (${c.sortie})`)

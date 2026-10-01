@@ -1,6 +1,6 @@
 import { useCallback, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link, StatusBadge, type Status } from '@gimac/design-system'
+import { PageHeader, StatusBadge, type PageHeaderUser, type Status } from '@gimac/design-system'
 import { aPermission, usePermissions, type ResourceActionLot1 } from '@gimac/socle'
 import type { EtatEtape, Fonction, Sla, StatutParcours, TacheActeur } from '../../../modele/parcours'
 import type { Services } from '../../../services/ports'
@@ -58,27 +58,19 @@ export function Echeance({ date, sla }: { date: string | null; sla: Sla | null }
   )
 }
 
-/** En-tête d'un écran du portail : retour, titre, sous-titre et état. */
-export function EnTete({ titre, sousTitre, retour, etat }: { titre: string; sousTitre?: ReactNode; retour?: { href: string; libelle: string }; etat?: ReactNode }) {
-  return (
-    <header className="gm-col" style={{ gap: 'var(--gm-space-2)' }}>
-      {retour ? <Link href={retour.href}>{`← ${retour.libelle}`}</Link> : null}
-      <div className="gm-row" style={{ gap: 'var(--gm-space-3)' }}>
-        <h1 className="gm-heading-display" style={{ margin: 0 }}>{titre}</h1>
-        {etat}
-      </div>
-      {sousTitre ? <div className="gm-type-body" style={{ color: 'var(--gm-color-text-secondary)' }}>{sousTitre}</div> : null}
-    </header>
-  )
+/** En-tête d'un écran du portail (PageHeader du catalogue) : retour, titre, sous-titre, personne connectée et état. */
+export function EnTete({ titre, sousTitre, retour, etat, utilisateur }: { titre: string; sousTitre?: ReactNode; retour?: { href: string; libelle: string }; etat?: ReactNode; utilisateur?: PageHeaderUser }) {
+  return <PageHeader title={titre} subtitle={sousTitre} back={retour ? { href: retour.href, label: retour.libelle } : undefined} meta={etat} user={utilisateur} />
 }
 
-export function Section({ titre, action, children }: { titre: string; action?: ReactNode; children: ReactNode }) {
+export function Section({ titre, action, description, children }: { titre: string; action?: ReactNode; description?: ReactNode; children: ReactNode }) {
   return (
     <section className="gm-col" aria-label={titre} style={{ gap: 'var(--gm-space-3)' }}>
       <div className="gm-row" style={{ justifyContent: 'space-between' }}>
         <h2 className="gm-type-h3" style={{ margin: 0 }}>{titre}</h2>
         {action}
       </div>
+      {description ? <p className="gm-section-desc">{description}</p> : null}
       {children}
     </section>
   )
@@ -102,6 +94,13 @@ export const GESTES: Record<string, { cle: string; icone: 'upload' | 'pen-line' 
 export const PERMISSION_GESTE: Record<string, string> = {
   COMMUNIQUER_COORDONNEES: PERM.deposer, DEPOSER_LIVRABLE: PERM.deposer, SIGNER_PROCES_VERBAL: PERM.signer, DEPOSER_ATTESTATION: PERM.deposer, RENSEIGNER_FICHE_SUIVI: PERM.deposer,
 }
+/** Écran de dépôt d'un livrable (/portail/liaisons/:id/livrables/:op). */
+export const lienLivrable = (x: Pick<TacheActeur, 'liaisonId' | 'operationId'>) => `/portail/liaisons/${encodeURIComponent(x.liaisonId)}/livrables/${encodeURIComponent(x.operationId)}`
+/**
+ * Écran où se réalise le geste d'une tâche : un livrable mène toujours à son écran de dépôt, quel que soit
+ * le lien servi ; les autres gestes suivent le lien du service.
+ */
+export const lienGeste = (x: TacheActeur, geste: string | undefined) => (geste === 'DEPOSER_LIVRABLE' ? lienLivrable(x) : x.lien)
 /** Premier geste de la tâche que le service permet et que le jeton autorise. */
 export function gesteDe(tache: TacheActeur, permissions: string[] | undefined) {
   return (tache.actionsPermises ?? []).find((a) => GESTES[a] && aPermission(permissions, PERMISSION_GESTE[a]))

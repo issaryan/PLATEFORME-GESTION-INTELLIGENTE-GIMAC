@@ -81,7 +81,10 @@ describe('DES-06 Dossier numérique d’une institution', () => {
   it('dépôt d’une pièce : formulaire avec zone de dépôt', async () => {
     await monter('Fintech Kribi Pay', { suffixe: '?onglet=pieces&piece=STATUTS' })
     expect(await screen.findByText("Déposer : Statuts de l'établissement")).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Déposer la pièce' })).toBeTruthy()
+    // Fenêtre modale ouverte sur la fiche, qui reste affichée dessous.
+    const d = screen.getByRole('dialog', { name: "Déposer : Statuts de l'établissement" })
+    expect(within(d).getByRole('button', { name: 'Déposer la pièce' })).toBeTruthy()
+    expect(screen.getByRole('heading', { level: 1, name: 'Fintech Kribi Pay' })).toBeTruthy()
   })
   it('modification de la fiche : formulaire pré-rempli', async () => {
     await monter('Fintech Kribi Pay', { suffixe: '?formulaire=modifier' })
@@ -99,25 +102,28 @@ describe('DES-06 Dossier numérique d’une institution', () => {
         modifier: async (id, c) => { appels.push(`modifier:${c.nom}`); return base.participant.modifier(id, c) },
       },
     }
-    const { container } = await monter('Fintech Kribi Pay', { services, suffixe: '?onglet=conditions&formulaire=conditions' })
+    await monter('Fintech Kribi Pay', { services, suffixe: '?onglet=conditions&formulaire=conditions' })
     await screen.findByText("Conditions d'adhésion de Fintech Kribi Pay")
+    const container = screen.getByRole('dialog')
     fireEvent.change(container.querySelector('input[name="codeParticipant"]')!, { target: { value: 'fk-001' } })
     fireEvent.click(container.querySelector('input[type="radio"][value="INDIRECT"]')!)
     fireEvent.submit(container.querySelector('form')!)
     await waitFor(() => expect(appels).toContain('conditions:FK-001:INDIRECT'))
     cleanup()
 
-    const r = await monter('Fintech Kribi Pay', { services, suffixe: '?onglet=pieces&piece=AGREMENT' })
+    await monter('Fintech Kribi Pay', { services, suffixe: '?onglet=pieces&piece=AGREMENT' })
     await screen.findByText("Déposer : Agrément ou autorisation d'exercer")
-    fireEvent.change(r.container.querySelector('input[type="file"]')!, { target: { files: [new File(['x'], 'agrement.pdf', { type: 'application/pdf' })] } })
-    fireEvent.click(screen.getByRole('button', { name: 'Déposer la pièce' }))
+    const r = screen.getByRole('dialog')
+    fireEvent.change(r.querySelector('input[type="file"]')!, { target: { files: [new File(['x'], 'agrement.pdf', { type: 'application/pdf' })] } })
+    fireEvent.click(within(r).getByRole('button', { name: 'Déposer la pièce' }))
     await waitFor(() => expect(appels).toContain('depot:AGREMENT:agrement.pdf'))
     cleanup()
 
-    const m = await monter('Fintech Kribi Pay', { services, suffixe: '?formulaire=modifier' })
+    await monter('Fintech Kribi Pay', { services, suffixe: '?formulaire=modifier' })
     await screen.findByText('Modifier la fiche de Fintech Kribi Pay')
-    fireEvent.change(m.container.querySelector('input[name="nom"]')!, { target: { value: 'Fintech Kribi Pay SA' } })
-    fireEvent.submit(m.container.querySelector('form')!)
+    const m = screen.getByRole('dialog')
+    fireEvent.change(m.querySelector('input[name="nom"]')!, { target: { value: 'Fintech Kribi Pay SA' } })
+    fireEvent.submit(m.querySelector('form')!)
     await waitFor(() => expect(appels).toContain('modifier:Fintech Kribi Pay SA'))
   })
   it('navigation : onglets portés par l’adresse, action de modification, annulations', async () => {
@@ -131,7 +137,7 @@ describe('DES-06 Dossier numérique d’une institution', () => {
     expect(await screen.findByRole('button', { name: "Définir les conditions d'adhésion" })).toBeTruthy()
     fireEvent.click(screen.getByRole('tab', { name: "Dossier d'adhésion" }))
     fireEvent.click((await screen.findAllByRole('button', { name: 'Déposer la pièce' }))[0])
-    fireEvent.click(await screen.findByRole('button', { name: 'Annuler' }))
+    fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Annuler' }))
     fireEvent.click(await screen.findByRole('tab', { name: 'Détail' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Modifier la fiche' }))
     expect(await screen.findByText('Modifier la fiche de Fintech Kribi Pay')).toBeTruthy()

@@ -1,4 +1,5 @@
 import { SideNav } from '@gimac/design-system'
+import logo from '@gimac/design-system/assets/logo/gimac-logo-blanc.png'
 
 export default function Apercu() {
   return (
@@ -6,6 +7,8 @@ export default function Apercu() {
       <SideNav
         current="institutions"
         height={576}
+        logo={logo}
+        couche="des"
         groups={[
           { items: [{ key: 'accueil', label: 'Tableau de bord', icon: 'gauge' }] },
           { label: 'Participants', items: [{ key: 'institutions', label: 'Institutions membres', icon: 'landmark' }, { key: 'liaisons', label: 'Liaisons et parcours', icon: 'route' }] },

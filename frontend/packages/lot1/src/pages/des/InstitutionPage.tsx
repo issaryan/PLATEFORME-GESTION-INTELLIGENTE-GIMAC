@@ -14,7 +14,8 @@ import { FormulaireCadrage, OngletLiaisonsInstitution, STATUTS_OUVERTURE } from 
 // DES-06 Dossier numérique d'une institution (/des/institutions/:id, gabarit G3 ; PAR-01 à PAR-04,
 // D-57) : fiche, dossier d'adhésion (pièces), conditions d'adhésion, prérequis, propositions de
 // transition, liaisons ; ouverture d'une liaison au cadrage (étape 3, D-57, D-58) par un chef de département.
-// L'onglet et les formulaires sont portés par l'adresse (?onglet=, ?formulaire=, ?piece=).
+// L'onglet et les formulaires sont portés par l'adresse (?onglet=, ?formulaire=, ?piece=) ; chaque formulaire
+// s'ouvre dans une fenêtre modale sur la fiche, qui reste affichée dessous.
 
 const vide = (t: (k: string) => string, v: ReactNode) => (v === null || v === undefined || v === '' ? <span className="gm-field-help">{t('commun.nonRenseigne')}</span> : v)
 
@@ -115,35 +116,41 @@ function Dossier({ dossier }: { dossier: DossierInstitution }) {
       ],
     }
   }, [t, dossier, ouverture, lecteurLiaisons])
-  const pilotes = useMemo(() => ({ openForm: () => definir.current({ formulaire: 'modifier' }), openTab: (key: string) => definir.current({ onglet: key }) }), [])
+  const pilotes = useMemo(() => ({ openForm: () => definir.current((p) => ({ ...Object.fromEntries(p), formulaire: 'modifier' })), openTab: (key: string) => definir.current({ onglet: key }) }), [])
   const descripteur = useDescripteurDS(lot, pilotes)
   const fermer = () => setParams(onglet === 'detail' ? {} : { onglet })
 
+  // Formulaires et dépôt d'une pièce : fenêtres modales ouvertes sur la fiche, portées par l'adresse.
   const formulaire = params.get('formulaire')
-  if (formulaire === 'liaison' && ouverture && STATUTS_OUVERTURE.includes(dossier.institution.statut)) {
-    return <FormulaireCadrage institution={dossier.institution} onFermer={() => setParams({})} />
-  }
-  if (formulaire === 'modifier') return <FormulaireInstitution descripteur={descripteur} institution={dossier.institution} onFermer={() => setParams({})} />
-  if (formulaire === 'conditions') {
-    const options = (marraines.data?.contenu ?? []).filter((i) => i.id !== dossier.institution.id && i.modeAdhesion === 'DIRECT').map((i) => ({ value: i.id, label: i.nom, hint: i.codeParticipant ?? '' }))
-    return <FormulaireConditions institution={dossier.institution} marraines={options} onFermer={fermer} />
-  }
   const piece = dossier.pieces.find((p) => p.code === params.get('piece'))
-  if (piece) return <FormulaireDepot institutionId={dossier.institution.id} piece={piece} onFermer={() => setParams({ onglet: 'pieces' })} />
+  const options = (marraines.data?.contenu ?? []).filter((i) => i.id !== dossier.institution.id && i.modeAdhesion === 'DIRECT').map((i) => ({ value: i.id, label: i.nom, hint: i.codeParticipant ?? '' }))
+  const dialogue =
+    formulaire === 'liaison' && ouverture && STATUTS_OUVERTURE.includes(dossier.institution.statut) ? (
+      <FormulaireCadrage institution={dossier.institution} onFermer={fermer} />
+    ) : formulaire === 'modifier' ? (
+      <FormulaireInstitution descripteur={descripteur} institution={dossier.institution} onFermer={fermer} />
+    ) : formulaire === 'conditions' ? (
+      <FormulaireConditions institution={dossier.institution} marraines={options} onFermer={fermer} />
+    ) : piece ? (
+      <FormulaireDepot institutionId={dossier.institution.id} piece={piece} onFermer={() => setParams({ onglet: 'pieces' })} />
+    ) : null
 
   const ligne = { ...dossier.institution, transitionsPermises: dossier.transitionsPermises } as Institution
   return (
-    <ResourceDetail
-      key={onglet}
-      descriptor={descripteur}
-      row={ligne}
-      mode="page"
-      tab={onglet}
-      permissions={permissions}
-      audit={false}
-      onTabChange={(k) => setParams(k === 'detail' ? {} : { onglet: k })}
-      onAction={(a, row) => void a.run?.({ row, descriptor: descripteur })}
-    />
+    <>
+      <ResourceDetail
+        key={onglet}
+        descriptor={descripteur}
+        row={ligne}
+        mode="page"
+        tab={onglet}
+        permissions={permissions}
+        audit={false}
+        onTabChange={(k) => setParams(k === 'detail' ? {} : { onglet: k })}
+        onAction={(a, row) => void a.run?.({ row, descriptor: descripteur })}
+      />
+      {dialogue}
+    </>
   )
 }
 

@@ -1,11 +1,15 @@
 import couleur from '@gimac/design-system/assets/logo/gimac-couleur.png'
 import bleu from '@gimac/design-system/assets/logo/gimac-bleu.png'
 import blanc from '@gimac/design-system/assets/logo/gimac-blanc.png'
+import logoCouleur from '@gimac/design-system/assets/logo/gimac-logo-couleur.png'
+import logoBlanc from '@gimac/design-system/assets/logo/gimac-logo-blanc.png'
 
 const VERSIONS = [
   { src: couleur, nom: 'gimac-couleur.png', usage: 'Connexion, rapports, portail', fond: 'var(--gm-white)' },
   { src: bleu, nom: 'gimac-bleu.png', usage: 'Barre supérieure sur fond clair', fond: 'var(--gm-white)' },
-  { src: blanc, nom: 'gimac-blanc.png', usage: 'Barre supérieure en sombre, bandeaux bleus', fond: 'var(--gm-blue-700)' },
+  { src: blanc, nom: 'gimac-blanc.png', usage: 'Bandeaux bleus avec la bande des drapeaux', fond: 'var(--gm-blue-700)' },
+  { src: logoBlanc, nom: 'gimac-logo-blanc.png', usage: 'Logo principal sans drapeaux : navigation latérale (dégradé bleu), barre supérieure en sombre', fond: 'var(--gm-blue-700)' },
+  { src: logoCouleur, nom: 'gimac-logo-couleur.png', usage: 'Logo principal sans drapeaux : barre supérieure sur fond clair', fond: 'var(--gm-white)' },
 ]
 
 export default function Logo() {

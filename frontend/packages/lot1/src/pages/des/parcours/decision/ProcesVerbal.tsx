@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Button, Card, CoverageBar, Hash, InlineAlert, KeyValueList, ProgressRing, StatusBadge } from '@gimac/design-system'
+import { Button, Card, CoverageBar, Hash, InlineAlert, KeyValueList, ProgressRing, StatusBadge, Note } from '@gimac/design-system'
 import type { DossierLiaison, ProcesVerbalCertification, ServicePerimetre } from '../../../../modele/parcours'
 import { useEtablirProcesVerbal, useSignerProcesVerbalGimac } from '../../../../hooks/parcours'
 import { EtatSignature, SousTitre, TON_PV, useDetient, useLancer, usePeut, Vide, type Action, PERMISSION_GESTE } from './commun'
@@ -45,7 +45,7 @@ export function CarteProcesVerbal({ dossier, pv }: { dossier: DossierLiaison; pv
       actions={<StatusBadge status={TON_PV[pv.etat] ?? 'neutral'} label={t(`parcours.pv.etat.${pv.etat}`)} />}
     >
       <div className="gm-col">
-        <p className="gm-field-help" style={{ margin: 0 }}>{t('decision.pv.explication')}</p>
+        <Note>{t('decision.pv.explication')}</Note>
 
         <SousTitre>{t('decision.pv.couverture')}</SousTitre>
         <div className="gm-row" style={{ alignItems: 'flex-start', gap: 'var(--gm-space-6)' }}>

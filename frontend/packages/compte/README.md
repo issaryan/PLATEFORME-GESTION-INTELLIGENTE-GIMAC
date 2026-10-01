@@ -14,17 +14,18 @@ GardePremierAcces, PremierAccesPage, MonComptePage ──> hooks (react-query) �
 
 | Fichier | Contenu |
 |---|---|
-| `src/modele.ts` | `Compte`, `Moi`, `SessionCompte`, actions requises du fournisseur d'identité, langues |
-| `src/services/ports.ts` | `ServiceMonCompte` : moi, première configuration, fiche, action en libre-service, sessions, clés de sécurité, reconnexion |
-| `src/services/http.ts` | Routes `/bff/{des,portail,console}/iam/moi`, `/moi/premiere-configuration`, `/moi/actions`, `/moi/sessions[/{id}]`, `/moi/cles-securite[/defi|/{id}]` ; enrôlement par `enrolerCleSecurite` du socle ; reconnexion par la passerelle |
+| `src/modele.ts` | `Compte`, `Moi`, `SessionCompte`, étapes de l'assistant (`MOT_DE_PASSE`, `SECOND_FACTEUR`, `FICHE`, `CHARTE`, noms historiques ramenés), changement de mot de passe, enrôlement TOTP, langues |
+| `src/services/ports.ts` | `ServiceMonCompte` : moi, première configuration, fiche, mot de passe, code TOTP (enrôlement, confirmation), sessions, clés de sécurité |
+| `src/services/http.ts` | Routes `/bff/{des,portail,console}/iam/moi`, `/moi/premiere-configuration`, `/moi/mot-de-passe`, `/moi/second-facteur/totp[/enrolement]` (réauthentification `ACCOUNT_SENSITIVE` sur 428), `/moi/sessions[/{id}]`, `/moi/cles-securite[/defi|/{id}]` ; enrôlement par `enrolerCleSecurite` du socle |
 | `src/services/simule.ts`, `simulateur.ts` | Substitut de MS-IAM (mêmes formes, mêmes codes de refus : `IAM_PHONE_INVALID`, `IAM_CHARTER_REQUIRED`…) ; `creerSimulateur` réutilisé par la console |
 | `src/contexte.tsx`, `src/hooks.ts` | Injection du service (`CompteProvider`) et hooks `useMoi`, `useMesCles`, `useEnrolerCle`… |
 | `src/GardePremierAcces.tsx` | Après `GardeSession` : lit `/moi` ; tant que `etapesRestantes` n'est pas vide, fournit l'assistant à placer dans l'enveloppe (sans navigation) à la place de toutes les pages ; MS-IAM injoignable : pages servies (mode dégradé) |
-| `src/pages/PremierAccesPage.tsx` | Assistant (Stepper) : fiche (téléphone obligatoire, langue fr, en ou es, fonction, charte d'usage), clé de sécurité facultative, puis actions requises du fournisseur d'identité (mot de passe, second facteur, courriel, profil) expliquées et exécutées après reconnexion (`Continuer`) |
-| `src/pages/MonComptePage.tsx` | Fiche personnelle, mot de passe et second facteur (action inscrite puis reconnexion), clés de sécurité (liste, enrôlement, suppression), sessions (fermer une, fermer toutes) |
+| `src/pages/PremierAccesPage.tsx` | Assistant (Stepper, D-65) : mot de passe définitif (politique rappelée, violations), code TOTP (code QR local, secret sur demande, code de vérification), fiche (téléphone obligatoire, langue, fonction), charte ; dans la session restreinte, connexion finale avec le nouveau mot de passe et un code |
+| `src/pages/MonComptePage.tsx` | Fiche personnelle, mot de passe, code TOTP, clés de sécurité, sessions : toute modification en modale CRUD standard (`src/composants/ModaleSaisie.tsx`, seul point d'emploi de `CrudDialog`) |
+| `src/composants/` | `useSaisieMotDePasse`, `useSaisieTotp` (champs et envoi partagés par l'assistant et les modales), `QrCode` (bibliothèque `uqr` embarquée, à promouvoir au système de conception) |
 | `src/i18n.ts` | Libellés FR, EN, ES (`premierAcces.*`, `compte.*`, profils, codes d'erreur IAM) |
 
-Reconnexion : `POST /api/logout` (session de la passerelle close) puis `/oauth2/authorization/oidc` ; le fournisseur d'identité exécute alors les actions requises sur ses pages aux couleurs du GIMAC.
+D-65 : tout se fait sur la plateforme, aucune page du fournisseur d'identité n'est ouverte (contrat `docs/lot1/connexion.md`). Service simulé : mot de passe actuel `Gimac-Demo-2026!`, tout code TOTP de six chiffres accepté ; le mot de passe choisi et la fin du premier accès sont transmis à la connexion simulée du socle, en mémoire de la page.
 
 Composants : uniquement ceux de `@gimac/design-system` (Stepper, Card, Panel, TextField, Select, Checkbox avec erreur, KeyValueList, DataTable, ConfirmDialog, InlineAlert).
 

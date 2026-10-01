@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, DataTable, Dialog, PermissionPicker, StatusBadge, type Column, type PermissionGroup } from '@gimac/design-system'
+import { Button, CrudDialog, DataTable, PageHeader, PermissionPicker, StatusBadge, type Column, type PermissionGroup } from '@gimac/design-system'
 import { aPermission, usePermissions } from '@gimac/socle'
 import { useLibelleProfil } from '@gimac/compte'
 import { useEffet, usePermissionsRealm, useProfils } from '../hooks'
@@ -29,15 +29,13 @@ function Composition({ profil, modifiable, onFermer, onContinuer }: { profil: Pr
   const permissions = usePermissionsRealm()
   const [choix, setChoix] = useState<string[]>(profil.permissions.filter((p) => !p.startsWith('INTERNAL_')))
   return (
-    <Dialog open size="lg" id="gm-dlg-composition" title={t('console.profils.composition', { profil: libelleProfil(profil.code) })}
-      description={t(modifiable ? 'console.profils.composition.texte' : 'console.profils.composition.lecture')} onClose={onFermer}
-      footer={[
-        <Button key="a" variant="secondary" onClick={onFermer}>{t(modifiable ? 'commun.annuler' : 'commun.fermer')}</Button>,
-        modifiable ? <Button key="b" variant="primary" icon="pen-line" onClick={() => onContinuer([...choix].sort())}>{t('console.profils.enregistrer')}</Button> : null,
-      ]}>
+    <CrudDialog context={modifiable ? 'edit' : 'detail'} id="gm-dlg-composition" title={t('console.profils.composition', { profil: libelleProfil(profil.code) })}
+      subject={<span className="gm-mono">{profil.code}</span>} description={t(modifiable ? 'console.profils.composition.texte' : 'console.profils.composition.lecture')} onClose={onFermer}
+      onSubmit={() => onContinuer([...choix].sort())} submitLabel={modifiable ? t('console.profils.enregistrer') : undefined} submitIcon="pen-line" reauth={modifiable}
+      dirty={modifiable && [...choix].sort().join() !== profil.permissions.filter((p) => !p.startsWith('INTERNAL_')).sort().join()}>
       <PermissionPicker label={t('console.profils.permissions')} readOnly={!modifiable} value={choix} onChange={setChoix}
         groups={groupesPermissions(permissions.data ?? profil.permissions, (d) => t(`console.domaine.${d}`))} />
-    </Dialog>
+    </CrudDialog>
   )
 }
 
@@ -68,8 +66,7 @@ export default function ProfilsPage() {
 
   return (
     <div className="gm-col">
-      <h1 className="gm-heading-display">{t('console.profils.titre')}</h1>
-      <p style={{ margin: 0 }}>{t('console.profils.texte')}</p>
+      <PageHeader title={t('console.profils.titre')} subtitle={t('console.profils.texte')} />
       <Annonce retour={actes.retour} />
       <DataTable columns={colonnes} rows={lignes} rowKey={(p) => p.code} onRetry={() => void profils.refetch()} emptyText={t('console.profils.aucun')} {...etatListe(profils, lignes)} />
       {ouvert ? (

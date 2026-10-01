@@ -5,6 +5,11 @@ import { fileURLToPath } from 'node:url'
 // Tests de bout en bout (D-61, D-62) : scénarios par acteur sur les constructions instrumentées
 // (npm run e2e:construire), servies par vite preview. Chromium préinstallé (/opt/pw-browsers).
 const ici = dirname(fileURLToPath(import.meta.url))
+// Exécutions parallèles sur un même poste (plusieurs agents ou branches) : GIMAC_E2E_PORT déplace les six
+// ports de prévisualisation (base, base+1, base+2 et base+10 à base+12), GIMAC_E2E_SORTIE suffixe les
+// dossiers de construction (dist-e2e<suffixe>) et de résultats. Par défaut : 5200 et aucun suffixe.
+const BASE = Number(process.env.GIMAC_E2E_PORT ?? 5200)
+const SUFFIXE = process.env.GIMAC_E2E_SORTIE ?? ''
 const apercu = (app: string, sortie: string, port: number) => ({
   command: `npx vite preview --outDir ${sortie} --port ${port} --strictPort`,
   cwd: resolve(ici, '..', 'apps', app),
@@ -15,7 +20,7 @@ const apercu = (app: string, sortie: string, port: number) => ({
 
 export default defineConfig({
   testDir: './specs',
-  outputDir: './resultats',
+  outputDir: `./resultats${SUFFIXE}`,
   timeout: 60_000,
   expect: { timeout: 10_000 },
   fullyParallel: true,
@@ -31,11 +36,11 @@ export default defineConfig({
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } } }],
   webServer: [
-    apercu('console', 'dist-e2e', 5202),
-    apercu('console', 'dist-e2e-http', 5212),
-    apercu('departement', 'dist-e2e', 5200),
-    apercu('departement', 'dist-e2e-http', 5210),
-    apercu('portail', 'dist-e2e', 5201),
-    apercu('portail', 'dist-e2e-http', 5211),
+    apercu('console', `dist-e2e${SUFFIXE}`, BASE + 2),
+    apercu('console', `dist-e2e-http${SUFFIXE}`, BASE + 12),
+    apercu('departement', `dist-e2e${SUFFIXE}`, BASE),
+    apercu('departement', `dist-e2e-http${SUFFIXE}`, BASE + 10),
+    apercu('portail', `dist-e2e${SUFFIXE}`, BASE + 1),
+    apercu('portail', `dist-e2e-http${SUFFIXE}`, BASE + 11),
   ],
 })

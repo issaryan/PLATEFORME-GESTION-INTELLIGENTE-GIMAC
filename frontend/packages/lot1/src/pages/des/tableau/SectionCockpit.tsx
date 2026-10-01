@@ -11,7 +11,7 @@ import { QuestionsPilotage } from '../parcours/decision/QuestionsPilotage'
 // certification, taux de respect des délais, et les six questions de l'annexe B. Tous les chiffres viennent
 // du service ; chaque compteur mène à la liste filtrée correspondante.
 
-const grille = { alignItems: 'stretch', gap: 'var(--gm-space-4)' }
+const grille = { alignItems: 'stretch', gap: 'var(--gm-space-4)' } as const
 
 function Cockpit({ i }: { i: IndicateursPilotage }) {
   const { t } = useTranslation()
@@ -21,7 +21,7 @@ function Cockpit({ i }: { i: IndicateursPilotage }) {
   const nc = t('cockpit.nc')
   return (
     <div className="gm-col" style={{ gap: 'var(--gm-space-5)' }}>
-      <div className="gm-row" style={grille} aria-label={t('cockpit.compteurs')}>
+      <div className="gm-stat-grid" role="group" aria-label={t('cockpit.compteurs')}>
         <StatCard label={t('cockpit.projetsActifs')} value={i.projetsActifs} onClick={vers('/des/parcours')} />
         <StatCard
           label={t('cockpit.projetsBloques')}

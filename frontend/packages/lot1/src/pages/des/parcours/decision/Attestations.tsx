@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Button, DataTable, Hash, InlineAlert, StatusBadge, type Column, type Status } from '@gimac/design-system'
+import { Button, DataTable, Hash, InlineAlert, StatusBadge, type Column, type Status, Note } from '@gimac/design-system'
 import type { ApprobationSecurite, Attestation, DossierLiaison } from '../../../../modele/parcours'
 import { useArchiverAttestations, useVerifierAttestation } from '../../../../hooks/parcours'
 import { SousTitre, useLancer, usePeut, Vide, type Action, PERMISSION_GESTE } from './commun'
@@ -91,7 +91,7 @@ export function BlocAttestations({ dossier, approbation }: { dossier: DossierLia
   return (
     <div className="gm-col">
       <SousTitre>{t('decision.attestation.titre')}</SousTitre>
-      <p className="gm-field-help" style={{ margin: 0 }}>{t(dossier.typeProjet === 'PAIEMENT_MOBILE' ? 'decision.attestation.exigenceMobile' : 'decision.attestation.exigenceCarte')}</p>
+      <Note>{t(dossier.typeProjet === 'PAIEMENT_MOBILE' ? 'decision.attestation.exigenceMobile' : 'decision.attestation.exigenceCarte')}</Note>
       {approbation.fintech ? <InlineAlert level="info">{t('decision.attestation.fintech')}</InlineAlert> : null}
       {verifiable && aVerifier > 0 ? <InlineAlert level="warn">{t('decision.attestation.aVerifier', { count: aVerifier })}</InlineAlert> : null}
       <DataTable columns={colonnes} rows={approbation.attestations} rowKey={(a) => a.type} state={approbation.attestations.length ? 'ok' : 'empty'} emptyText={t('decision.attestation.aucune')} />

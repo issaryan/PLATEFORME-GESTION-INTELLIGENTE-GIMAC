@@ -24,7 +24,7 @@ for (const t of jetons.color.tokens) {
   if (t.value[sombre] !== undefined) racineSombre.push(`  --${t.name}: ${valeur(t.value[sombre])};`)
 }
 
-const familles = ['spacing', 'radius', 'border', 'duration', 'breakpoint', 'size']
+const familles = ['spacing', 'radius', 'border', 'duration', 'breakpoint', 'size'].filter((f) => jetons[f])
 const autres = familles.flatMap((f) => [
   `  /* ${f} */`,
   ...jetons[f].tokens.map((t) => `  --${t.name}: ${t.value};`),

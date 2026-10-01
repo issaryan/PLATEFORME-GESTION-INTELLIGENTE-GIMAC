@@ -3,7 +3,9 @@ import { useTranslation } from 'react-i18next'
 import { Banner, Button, Skeleton } from '@gimac/design-system'
 import { http } from '../http/client'
 import { estApiError } from '../http/errors'
-import { CONNEXION, SESSION } from '../http/prefixes'
+import { SESSION } from '../http/prefixes'
+import { adresseConnexion, navigation, retourCourant } from './deconnexion'
+import { SurveillanceInactivite } from './inactivite'
 
 // Session de l'utilisateur (D-58, D-61) : la matrice des rôles (permissions) du jeton obtenu à la
 // connexion à deux facteurs. L'interface n'affiche que les tableaux de bord et les actions que ces
@@ -18,6 +20,10 @@ export type Session = {
   institutionId: string
   acr: string
   doubleFacteur: boolean
+  /** Fin d'inactivité prévue par la passerelle (ISO 8601, D-65 §6). */
+  expireA?: string | null
+  /** Session restreinte du premier accès (acr 1, D-65) : seul l'assistant de premier accès est servi. */
+  restreinte?: boolean
 }
 
 const Contexte = createContext<Session | null>(null)
@@ -42,16 +48,37 @@ export function aPermission(permissions: string[] | undefined, ...exigees: strin
   return !!permissions && exigees.some((p) => permissions.includes(p))
 }
 
+/**
+ * Session ouverte : fournit la session et surveille l'inactivité (fermeture à 30 minutes, avertissement
+ * à 28, D-65 §6). `surveiller` à faux pour un composant isolé.
+ */
+export function SessionActive({ session, surveiller = true, prolonger, children }: {
+  session: Session
+  surveiller?: boolean
+  /** Prolongation de la session serveur ; sans passerelle (services simulés), une fonction sans effet. */
+  prolonger?: () => Promise<unknown>
+  children: ReactNode
+}) {
+  return (
+    <SessionProvider session={session}>
+      {surveiller ? <SurveillanceInactivite expireA={session.expireA} prolonger={prolonger} /> : null}
+      {children}
+    </SessionProvider>
+  )
+}
+
 export const chargerSession = (): Promise<Session> => http.get<Session>(SESSION)
 
 type EtatSession = { etat: 'chargement' } | { etat: 'ok'; session: Session } | { etat: 'anonyme' } | { etat: 'erreur'; correlationId?: string }
 
 /**
- * Garde de session : charge la session, renvoie vers la connexion sans session, refuse l'accès
- * tant que le jeton n'est pas issu d'une authentification à deux facteurs, puis fournit la session.
+ * Garde de session : charge la session, renvoie vers l'écran de connexion de la plateforme sans session,
+ * refuse l'accès tant que le jeton n'est pas issu d'une authentification à deux facteurs (hors session
+ * restreinte du premier accès, que l'assistant de premier accès prend en charge), puis fournit la session.
  */
-export function GardeSession({ charger = chargerSession, connexion = CONNEXION, children }: {
+export function GardeSession({ charger = chargerSession, connexion, children }: {
   charger?: () => Promise<Session>
+  /** Adresse de l'écran de connexion ; par défaut /connexion avec la page courante en retour. */
   connexion?: string
   children: (session: Session) => ReactNode
 }) {
@@ -71,9 +98,13 @@ export function GardeSession({ charger = chargerSession, connexion = CONNEXION, 
     }
   }, [charger])
 
+  useEffect(() => {
+    if (etat.etat === 'anonyme') navigation.vers(connexion ?? adresseConnexion({ retour: retourCourant() }))
+  }, [etat.etat, connexion])
+
   if (etat.etat === 'chargement') return <Skeleton height={32} />
   const reconnecter = (
-    <Button variant="primary" icon="lock" onClick={() => window.location.assign(connexion)}>
+    <Button variant="primary" icon="lock" onClick={() => navigation.vers(connexion ?? adresseConnexion({ retour: retourCourant() }))}>
       {t('session.seConnecter')}
     </Button>
   )
@@ -92,7 +123,7 @@ export function GardeSession({ charger = chargerSession, connexion = CONNEXION, 
       </div>
     )
   }
-  if (!etat.session.doubleFacteur) {
+  if (!etat.session.doubleFacteur && !etat.session.restreinte) {
     return (
       <div className="gm-col gm-pad">
         <Banner level="warn">{t('session.doubleFacteurRequis')}</Banner>
@@ -100,5 +131,5 @@ export function GardeSession({ charger = chargerSession, connexion = CONNEXION, 
       </div>
     )
   }
-  return <SessionProvider session={etat.session}>{children(etat.session)}</SessionProvider>
+  return <SessionActive session={etat.session}>{children(etat.session)}</SessionActive>
 }

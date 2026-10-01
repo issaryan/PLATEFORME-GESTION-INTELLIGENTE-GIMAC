@@ -43,12 +43,12 @@ test.describe('Fonctionnalité : application du département sur la passerelle',
       await page.getByLabel('Paiement mobile').check()
       await page.locator('select[name="chefDeProjetId"]').selectOption('U-201')
       await page.locator('select[name="banquePartenaireId"]').selectOption({ label: 'Banque B' })
-      await page.getByRole('button', { name: 'Ouvrir une liaison (cadrage)' }).click()
+      await page.getByRole('dialog').getByRole('button', { name: 'Ouvrir une liaison (cadrage)' }).click()
       await expect(page.getByText(/son statut est « Candidat »/)).toBeVisible()
       await expect(page.getByText('e2e-HOM_LIAISON_INSTITUTION_NOT_ELIGIBLE')).toBeVisible()
     })
     await test.step('Alors une nouvelle soumission ouvre la liaison au cadrage', async () => {
-      await page.getByRole('button', { name: 'Ouvrir une liaison (cadrage)' }).click()
+      await page.getByRole('dialog').getByRole('button', { name: 'Ouvrir une liaison (cadrage)' }).click()
       await expect(page.getByText(/Liaison LIA-2026-101 ouverte en phase de cadrage/)).toBeVisible()
       const ouverture = gw.appels.filter((a) => a.methode === 'POST' && a.chemin === '/bff/des/homologation/liaisons').at(-1)!
       expect(ouverture.corps).toEqual({ institutionId: 'i-mms', typeProjet: 'PAIEMENT_MOBILE', chefDeProjetId: 'U-201', banquePartenaireId: 'i-bqb' })
@@ -57,7 +57,7 @@ test.describe('Fonctionnalité : application du département sur la passerelle',
       await page.getByRole('button', { name: 'Désigner le conducteur' }).click()
       await page.locator('select[name="chefDeProjetId"]').selectOption('U-202')
       await page.locator('textarea[name="motif"]').fill('Charge du premier conducteur')
-      await page.getByRole('button', { name: 'Désigner le conducteur' }).click()
+      await page.getByRole('dialog').getByRole('button', { name: 'Désigner le conducteur' }).click()
       await expect(page.locator('section').filter({ has: page.getByRole('heading', { name: 'Cadrage de la liaison' }) }).getByText('Brice Ondo Mba')).toBeVisible()
       const designation = gw.appels.find((a) => a.methode === 'PUT' && a.chemin === '/bff/des/homologation/liaisons/LIA-2026-101/chef-de-projet')!
       expect(designation.corps).toEqual({ chefDeProjetId: 'U-202', motif: 'Charge du premier conducteur' })
@@ -76,7 +76,7 @@ test.describe('Fonctionnalité : application du département sur la passerelle',
     await page.goto(`${ADRESSES.departementHttp}/des/institutions/i-mms?formulaire=liaison`)
     await page.getByLabel('Carte interbancaire').check()
     await page.locator('select[name="chefDeProjetId"]').selectOption('U-202')
-    await page.getByRole('button', { name: 'Ouvrir une liaison (cadrage)' }).click()
+    await page.getByRole('dialog').getByRole('button', { name: 'Ouvrir une liaison (cadrage)' }).click()
     await expect(page.getByText(/droit de désigner un conducteur de projet/)).toBeVisible()
     await test.step('Et une liaison antérieure au cadrage se lit sans périmètre ni conducteur', async () => {
       await page.goto(`${ADRESSES.departementHttp}/des/liaisons/LIA-2025-090`)

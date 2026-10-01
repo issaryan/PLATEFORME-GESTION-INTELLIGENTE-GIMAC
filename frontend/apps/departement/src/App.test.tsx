@@ -1,8 +1,8 @@
-import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import i18next from 'i18next'
-import { initI18n } from '@gimac/socle'
+import { MOT_DE_PASSE_DEMO, initI18n } from '@gimac/socle'
 import { catalogues } from '@gimac/lot1'
 import { catalogueCompte } from '@gimac/compte'
 import App from './App'
@@ -14,9 +14,12 @@ beforeAll(() => {
   if (!i18next.isInitialized) initI18n([...catalogues, catalogueCompte], 'fr')
   Object.defineProperty(window, 'innerWidth', { value: 1400, configurable: true })
 })
+// Session de démonstration ouverte (connexion simulée, D-65) ; retirée par les scénarios de connexion.
+beforeEach(() => sessionStorage.setItem('gm.sessionDemo', JSON.stringify({ identifiant: 'test' })))
 afterEach(() => {
   cleanup()
   localStorage.clear()
+  sessionStorage.clear()
   vi.unstubAllEnvs()
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
@@ -61,7 +64,7 @@ describe('Application du département', () => {
     expect(document.querySelector('.gm-footer')).toBeTruthy()
     fireEvent.click(screen.getByRole('link', { name: 'Mon compte' }))
     expect(await screen.findByRole('heading', { level: 1, name: 'Mon compte' })).toBeTruthy()
-    expect(await screen.findByDisplayValue('Bertrand')).toBeTruthy()
+    expect(await screen.findByText('Bertrand')).toBeTruthy()
   })
   it('conducteur de projet : « Mes projets », sans registre des institutions en écriture', async () => {
     localStorage.setItem(CLE_PROFIL_DEMO, 'ROLE_CONDUCTEUR_PROJET')
@@ -111,24 +114,40 @@ describe('Application du département', () => {
     await waitFor(() => expect(spy.mock.calls.map(([u]) => new URL(String(u)).pathname)).toContain('/bff/des/homologation/liaisons'))
     expect(spy.mock.calls.map(([u]) => new URL(String(u)).pathname)).toContain('/bff/des/iam/moi')
   })
-  it('services réels : sans session, invitation à se connecter ; écran de connexion', async () => {
+  it('services réels : sans session, retour à l’écran de connexion de la plateforme (D-65)', async () => {
     vi.stubEnv('VITE_SERVICES', 'http')
     vi.stubGlobal('EventSource', FluxMuet)
     const assign = vi.fn()
     Object.defineProperty(window, 'location', { value: { ...window.location, assign }, configurable: true })
-    vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response(JSON.stringify({}), { status: 401, headers: { 'Content-Type': 'application/json' } }))
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response(JSON.stringify({ code: 'CNX_SESSION_EXPIREE' }), { status: 401, headers: { 'Content-Type': 'application/json' } }))
     monter('/des/tableau-de-bord')
     expect(await screen.findByText(/session a expiré/, {}, { timeout: 8000 })).toBeTruthy()
-    await waitFor(() => expect(assign).toHaveBeenCalledWith('/oauth2/authorization/oidc'))
+    await waitFor(() => expect(assign).toHaveBeenCalledWith(expect.stringMatching(/^\/connexion(\?|$)/)))
+    expect(assign.mock.calls.flat().join(' ')).not.toContain('oauth2')
     cleanup()
     monter('/connexion')
-    expect(await screen.findByRole('button', { name: 'Se connecter avec le fournisseur d\'identité' })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: 'Se connecter' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Mot de passe oublié ?' })).toBeTruthy()
   })
-  it('déconnexion : la passerelle clôt la session', async () => {
+  it('services simulés sans session : écran de connexion ; connexion d’un profil de démonstration', async () => {
+    sessionStorage.clear()
+    const assign = vi.fn()
+    Object.defineProperty(window, 'location', { value: { ...window.location, assign }, configurable: true })
+    monter('/des/liaisons')
+    expect(await screen.findByRole('button', { name: 'Se connecter' }, { timeout: 8000 })).toBeTruthy()
+    fireEvent.change(document.querySelector('input[name="identifiant"]')!, { target: { value: PROFILS_DEMO.ROLE_CHEF_DES.identifiant } })
+    fireEvent.change(document.querySelector('input[name="motDePasse"]')!, { target: { value: MOT_DE_PASSE_DEMO } })
+    fireEvent.click(screen.getByRole('button', { name: 'Se connecter' }))
+    fireEvent.change(await screen.findByLabelText(/^Code à six chiffres/, {}, { timeout: 8000 }), { target: { value: '000000' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Vérifier le code' }))
+    await waitFor(() => expect(assign).toHaveBeenCalledWith('/des/liaisons'), { timeout: 8000 })
+    expect(roleDemo()).toBe('ROLE_CHEF_DES')
+  })
+  it('déconnexion : la passerelle clôt la session, retour à la connexion', async () => {
     const assign = vi.fn()
     Object.defineProperty(window, 'location', { value: { ...window.location, assign }, configurable: true })
     vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response(JSON.stringify({ logoutUrl: '/fin' }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
     monter('/des/deconnexion')
-    await waitFor(() => expect(assign).toHaveBeenCalledWith('/fin'), { timeout: 8000 })
+    await waitFor(() => expect(assign).toHaveBeenCalledWith('/connexion?motif=deconnexion'), { timeout: 8000 })
   })
 })

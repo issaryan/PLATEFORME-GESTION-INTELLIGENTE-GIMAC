@@ -2,9 +2,8 @@ import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 're
 import { useLocation, useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { Banner, Footer, SideNav, TopBar, type IconName } from '@gimac/design-system'
-import logoBleu from '@gimac/design-system/assets/logo/gimac-bleu.png'
-import logoCouleur from '@gimac/design-system/assets/logo/gimac-couleur-recadre.png'
-import logoBlanc from '@gimac/design-system/assets/logo/gimac-blanc.png'
+import logoCouleur from '@gimac/design-system/assets/logo/gimac-logo-couleur.png'
+import logoBlanc from '@gimac/design-system/assets/logo/gimac-logo-blanc.png'
 import type { Couche } from '../http/prefixes'
 import type { EtatCanal } from '../live/live'
 import { Preferences } from './Preferences'
@@ -42,54 +41,34 @@ function heureLocale() {
 
 // Enveloppe applicative commune (DS-GIMAC-01 §6) : barre supérieure, navigation latérale, bandeau de
 // perte du canal poussé, préférences d'affichage, pied de page GIMAC. Composée uniquement de
-// composants du catalogue.
+// composants du catalogue. Coquille fixe : la page ne défile pas ; seule la zone de contenu défile
+// (classes gm-shell-* du système de conception) et change au clic d'une entrée de la navigation,
+// son défilement revenant alors en haut. Aucune hauteur n'est calculée ici.
 export function Enveloppe(p: EnveloppeProps) {
   const { t } = useTranslation()
   const { theme } = usePreferences()
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const [heure, setHeure] = useState(heureLocale)
-  // Hauteur du bloc supérieur fixe (barre, préférences, bandeau) : la navigation latérale se loge dessous.
-  const haut = useRef<HTMLDivElement>(null)
-  const racine = useRef<HTMLDivElement>(null)
-  const [dessus, setDessus] = useState(56)
-  const [hauteur, setHauteur] = useState(() => window.innerHeight - 56)
-  const [prefs, setPrefs] = useState(false)
+  const contenu = useRef<HTMLDivElement>(null)
   // Sous 1 280 px (--gm-bp-lg), la navigation devient un tiroir ouvert par le bouton de menu (§6.2, §10.2).
   const [etroit, setEtroit] = useState(() => window.innerWidth < 1280)
   const [navOuverte, setNavOuverte] = useState(false)
 
+  // Changement de page : le tiroir se referme et la zone de contenu revient en haut.
   useEffect(() => {
     setNavOuverte(false)
+    const zone = contenu.current
+    if (zone) zone.scrollTop = 0
   }, [pathname])
 
   useEffect(() => {
     const id = window.setInterval(() => setHeure(heureLocale()), 1000)
-    // La navigation occupe l'espace visible entre le bloc supérieur et le pied de page (ou le bas de la
-    // fenêtre) : elle ne déborde jamais sur le pied de page et n'est jamais repoussée hors de vue.
-    const redim = () => {
-      const h = haut.current?.offsetHeight || 56
-      const pied = racine.current?.querySelector('footer')?.getBoundingClientRect().top ?? window.innerHeight
-      setDessus(h)
-      setHauteur(Math.max(0, Math.min(window.innerHeight, pied) - h))
-      setEtroit(window.innerWidth < 1280)
-    }
-    let image = 0
-    const defiler = () => {
-      cancelAnimationFrame(image)
-      image = requestAnimationFrame(redim)
-    }
-    redim()
+    const redim = () => setEtroit(window.innerWidth < 1280)
     window.addEventListener('resize', redim)
-    window.addEventListener('scroll', defiler, { passive: true })
-    const obs = typeof ResizeObserver === 'undefined' || !haut.current ? null : new ResizeObserver(redim)
-    if (obs && haut.current) obs.observe(haut.current)
     return () => {
       window.clearInterval(id)
       window.removeEventListener('resize', redim)
-      window.removeEventListener('scroll', defiler)
-      cancelAnimationFrame(image)
-      obs?.disconnect()
     }
   }, [])
 
@@ -111,7 +90,7 @@ export function Enveloppe(p: EnveloppeProps) {
     .filter((g) => g.items.length > 0)
   const courante = navigation.flatMap((g) => g.entrees).filter((e) => pathname.startsWith(e.chemin)).sort((a, b) => b.chemin.length - a.chemin.length)[0]
 
-  // Navigation sans rechargement : les liens du catalogue sont interceptés par le routeur.
+  // Navigation sans rechargement : les liens internes du catalogue sont interceptés par le routeur.
   const intercepter = (e: MouseEvent<HTMLElement>) => {
     const a = (e.target as HTMLElement).closest('a')
     const href = a?.getAttribute('href')
@@ -120,46 +99,39 @@ export function Enveloppe(p: EnveloppeProps) {
       void navigate(href)
     }
   }
+  // Logo principal blanc, fondu dans le dégradé bleu de la navigation (dans les deux thèmes).
+  const nav = <SideNav current={courante?.cle ?? ''} groups={groupes} height="100%" logo={logoBlanc} couche={p.couche} />
 
   return (
-    <div ref={racine} className="gm-root" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }} onClick={intercepter}>
-      <div ref={haut} className="gm-shell-top">
-      <TopBar
-        layer={p.couche}
-        logo={theme === 'dark' ? logoBlanc : logoBleu}
-        sansMarque={!etroit}
-        breadcrumb={p.fil}
-        user={p.utilisateur}
-        institution={p.institution}
-        live={p.etatCanal !== 'lost'}
-        clock={heure}
-        onLangue={() => setPrefs((v) => !v)}
-        onMenu={etroit ? () => setNavOuverte((v) => !v) : undefined}
-      />
-      {prefs ? (
-        <div className="gm-row gm-pad" style={{ justifyContent: 'flex-end', background: 'var(--gm-color-surface)', borderBottom: 'var(--gm-border-1) solid var(--gm-color-border)' }}>
-          <Preferences />
-        </div>
-      ) : null}
-      {p.etatCanal === 'lost' ? <Banner level="info">{t('live.perdu')}</Banner> : null}
+    <div className="gm-root gm-shell" onClick={intercepter}>
+      <div className="gm-shell-top">
+        <TopBar
+          layer={p.couche}
+          logo={theme === 'dark' ? logoBlanc : logoCouleur}
+          sansMarque={!etroit}
+          breadcrumb={p.fil}
+          user={p.utilisateur}
+          institution={p.institution}
+          live={p.etatCanal !== 'lost'}
+          clock={heure}
+          preferences={<Preferences />}
+          onMenu={etroit ? () => setNavOuverte((v) => !v) : undefined}
+        />
+        {p.etatCanal === 'lost' ? <Banner level="info">{t('live.perdu')}</Banner> : null}
       </div>
-      <div style={{ display: 'flex', alignItems: 'stretch', flex: 1 }}>
-        {etroit ? null : (
-          <div className="gm-shell-nav">
-            <div className="gm-shell-nav-fixe" style={{ top: dessus, height: hauteur }}>
-              <SideNav current={courante?.cle ?? ''} groups={groupes} height={hauteur} logo={logoCouleur} couche={p.couche} />
-            </div>
+      <div className="gm-shell-corps">
+        {etroit ? null : <div className="gm-shell-nav">{nav}</div>}
+        <div ref={contenu} className="gm-shell-contenu" data-testid="gm-shell-contenu">
+          <main className="gm-shell-main">{p.children}</main>
+          <Footer version={p.version} documentation={p.documentation} correlationId={p.correlationId} />
+        </div>
+        {etroit && navOuverte ? (
+          // Tiroir de navigation : voile du catalogue confiné à la zone sous la barre supérieure, fermeture par le voile ou Échap.
+          <div className="gm-overlay gm-overlay-inline gm-shell-tiroir" onClick={(e) => e.target === e.currentTarget && setNavOuverte(false)} onKeyDown={(e) => e.key === 'Escape' && setNavOuverte(false)}>
+            {nav}
           </div>
-        )}
-        <main style={{ flex: 1, minWidth: 0, padding: etroit ? 'var(--gm-space-4)' : 'var(--gm-space-5) var(--gm-space-6)' }}>{p.children}</main>
+        ) : null}
       </div>
-      <Footer version={p.version} documentation={p.documentation} correlationId={p.correlationId} />
-      {etroit && navOuverte ? (
-        // Tiroir de navigation : voile du catalogue (gm-overlay) et SideNav, fermeture par le voile ou Échap.
-        <div className="gm-overlay" style={{ justifyContent: 'flex-start', alignItems: 'stretch', top: dessus, padding: 0 }} onClick={(e) => e.target === e.currentTarget && setNavOuverte(false)} onKeyDown={(e) => e.key === 'Escape' && setNavOuverte(false)}>
-          <SideNav current={courante?.cle ?? ''} groups={groupes} height={hauteur} logo={logoCouleur} couche={p.couche} />
-        </div>
-      ) : null}
     </div>
   )
 }
