@@ -134,11 +134,9 @@ describe('verrou 2 : approbation de la sécurité (rangs 20 à 26)', () => {
     await s.decision.relireFicheChangement(id)
     expect((await s.decision.approbation(id))).toMatchObject({ etat: 'APPROUVEE', approuveeLe: '2026-09-29', ficheChangement: { etatApprobation: 'APPROUVEE', lueLe: '2026-09-29' } })
     expect((await s.parcours.dossier(id)).statut).toBe('APPROUVEE_SECURITE')
-    // L'approbation clôt les rangs 21 à 25 ; l'ouverture de la fiche (rang 26) suit l'approbation (rang 24).
-    for (const r of ['21', '22', '23', '24', '25']) expect([r, await etat(s, id, r)]).toEqual([r, 'FAITE'])
-    expect(await courante(s, id)).toBe('APPROBATION_SECURITE')
-    await s.decision.referencerFicheChangement(id, 'CHG-2026-0412')
-    expect(await etat(s, id, '26')).toBe('FAITE')
+    // L'approbation clôt les rangs 21 à 25 ; l'ouverture de la fiche (rang 26) suit l'approbation (rang 24) et se clôt
+    // aussitôt par la fiche déjà référencée et lue (jamais refaite).
+    for (const r of ['21', '22', '23', '24', '25', '26']) expect([r, await etat(s, id, r)]).toEqual([r, 'FAITE'])
     expect(await courante(s, id)).toBe('MISE_EN_PRODUCTION')
     expect(await op(s, id, 'D1')).toMatchObject({ etat: 'A_FAIRE', raci: { R: { fonction: 'CONDUCTEUR' } } })
   })

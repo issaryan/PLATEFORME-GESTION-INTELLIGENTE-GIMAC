@@ -3,14 +3,16 @@ import { QueryClientProvider, type QueryClient } from '@tanstack/react-query'
 import { ThemeProvider } from '@gimac/design-system'
 import { CLE_THEME, LangueComposants, lirePreference } from '@gimac/socle'
 import { CompteProvider, type ServiceMonCompte } from '@gimac/compte'
+import { ServicesProvider, type Services } from '@gimac/lot1'
 import { ServicesConsoleProvider } from './services/ServicesConsole'
 import type { ServicesConsole } from './services/ports'
 
 // Fournisseurs de la console : requêtes (sans persistance), thème, langue des composants, services
-// injectés de la console et de « Mon compte ».
-export function Fournisseurs({ services, compte, clientRequetes, children }: {
+// injectés de la console, de « Mon compte » et de la messagerie instantanée (services du lot 1, D-64).
+export function Fournisseurs({ services, compte, messagerie, clientRequetes, children }: {
   services: ServicesConsole
   compte: ServiceMonCompte
+  messagerie: Services
   clientRequetes: QueryClient
   children: ReactNode
 }) {
@@ -20,7 +22,9 @@ export function Fournisseurs({ services, compte, clientRequetes, children }: {
       <ThemeProvider theme={theme === 'dark' ? 'dark' : theme === 'light' ? 'light' : undefined}>
         <LangueComposants>
           <ServicesConsoleProvider services={services}>
-            <CompteProvider service={compte}>{children}</CompteProvider>
+            <ServicesProvider services={messagerie}>
+              <CompteProvider service={compte}>{children}</CompteProvider>
+            </ServicesProvider>
           </ServicesConsoleProvider>
         </LangueComposants>
       </ThemeProvider>

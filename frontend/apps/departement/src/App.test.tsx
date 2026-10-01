@@ -114,6 +114,16 @@ describe('Application du département', () => {
     await waitFor(() => expect(spy.mock.calls.map(([u]) => new URL(String(u)).pathname)).toContain('/bff/des/homologation/liaisons'))
     expect(spy.mock.calls.map(([u]) => new URL(String(u)).pathname)).toContain('/bff/des/iam/moi')
   })
+  it('services réels par défaut : sans VITE_SERVICES, la session vient de la passerelle et aucun profil de démonstration ne sert', async () => {
+    vi.stubEnv('VITE_SERVICES', '')
+    vi.stubGlobal('EventSource', FluxMuet)
+    const spy = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response(JSON.stringify({ code: 'CNX_SESSION_EXPIREE' }), { status: 401, headers: { 'Content-Type': 'application/json' } }))
+    Object.defineProperty(window, 'location', { value: { ...window.location, assign: vi.fn() }, configurable: true })
+    monter('/des/tableau-de-bord')
+    await waitFor(() => expect(spy.mock.calls.map(([u]) => new URL(String(u)).pathname)).toContain('/api/session'))
+    // La session de démonstration de l'onglet (gm.sessionDemo) est ignorée : aucun écran n'est servi sans la passerelle.
+    expect(screen.queryByRole('heading', { level: 1, name: 'Tableau de bord' })).toBeNull()
+  })
   it('services réels : sans session, retour à l’écran de connexion de la plateforme (D-65)', async () => {
     vi.stubEnv('VITE_SERVICES', 'http')
     vi.stubGlobal('EventSource', FluxMuet)

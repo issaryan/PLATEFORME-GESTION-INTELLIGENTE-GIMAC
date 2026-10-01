@@ -20,6 +20,10 @@ export type EnveloppeProps = {
   /** Compteurs affichés en pastille sur les entrées de navigation (clé de l'entrée → nombre), par ex. les messages non lus. */
   badges?: Record<string, number>
   utilisateur?: string
+  /** Photo de profil de l'utilisateur (adresse versionnée, urlAvatar) ; initiales à défaut. */
+  avatar?: string | null
+  /** Fonction ou profil de l'utilisateur, seconde ligne du menu utilisateur. */
+  fonction?: string | null
   institution?: string
   fil?: { label: string; href?: string }[]
   etatCanal?: EtatCanal
@@ -43,7 +47,8 @@ function heureLocale() {
 // perte du canal poussé, préférences d'affichage, pied de page GIMAC. Composée uniquement de
 // composants du catalogue. Coquille fixe : la page ne défile pas ; seule la zone de contenu défile
 // (classes gm-shell-* du système de conception) et change au clic d'une entrée de la navigation,
-// son défilement revenant alors en haut. Aucune hauteur n'est calculée ici.
+// son défilement revenant alors en haut. Aucune hauteur n'est calculée ici. Menu utilisateur de la barre
+// supérieure (docs/lot1/mon-compte.md §4) : photo de profil ou initiales, nom, fonction, Mon compte, déconnexion.
 export function Enveloppe(p: EnveloppeProps) {
   const { t } = useTranslation()
   const { theme } = usePreferences()
@@ -106,6 +111,16 @@ export function Enveloppe(p: EnveloppeProps) {
     <div className="gm-root gm-shell" onClick={intercepter}>
       <div className="gm-shell-top">
         <TopBar
+          avatar={p.avatar}
+          userDetail={p.fonction ?? undefined}
+          userMenu={
+            p.espacePersonnel
+              ? [
+                  { key: 'monCompte', label: t('nav.monCompte'), icon: 'user', onClick: () => void navigate(`${p.espacePersonnel}/mon-compte`) },
+                  { key: 'deconnexion', label: t('nav.deconnexion'), icon: 'log-out', onClick: () => void navigate(`${p.espacePersonnel}/deconnexion`) },
+                ]
+              : undefined
+          }
           layer={p.couche}
           logo={theme === 'dark' ? logoBlanc : logoCouleur}
           sansMarque={!etroit}

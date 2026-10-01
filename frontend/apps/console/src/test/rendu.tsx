@@ -5,6 +5,7 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
 import i18next from 'i18next'
 import { SessionProvider, initI18n, type Langue, type Session } from '@gimac/socle'
 import { catalogueCompte, monCompteSimule, type ServiceMonCompte } from '@gimac/compte'
+import { catalogueMessagerie, servicesSimules } from '@gimac/lot1'
 import { catalogues } from '../i18n'
 import { Fournisseurs } from '../Fournisseurs'
 import { creerClientRequetes } from '../services/clientRequetes'
@@ -36,14 +37,15 @@ function Emplacement() {
 }
 
 export function rendrePage(page: ReactElement, o: { chemin: string; motif: string; permissions?: string[]; session?: Session; services?: ServicesConsole; compte?: ServiceMonCompte; langue?: Langue }) {
-  if (!i18next.isInitialized) initI18n([catalogueCompte, ...catalogues], o.langue ?? 'fr')
+  if (!i18next.isInitialized) initI18n([catalogueCompte, catalogueMessagerie, ...catalogues], o.langue ?? 'fr')
   else void i18next.changeLanguage(o.langue ?? 'fr')
   const client = creerClientRequetes()
   client.setDefaultOptions({ queries: { retry: false, staleTime: 0 }, mutations: { retry: false } })
   const s = o.session ?? session(o.permissions ?? SUPER_ADMIN)
   return render(
     <MemoryRouter initialEntries={[o.chemin]}>
-      <Fournisseurs services={o.services ?? simules()} compte={o.compte ?? monCompteSimule({ latenceMs: 0 })} clientRequetes={client}>
+      <Fournisseurs services={o.services ?? simules()} compte={o.compte ?? monCompteSimule({ latenceMs: 0 })}
+        messagerie={servicesSimules({ latenceMs: 0, utilisateur: { id: s.sujet, nom: s.nom } })} clientRequetes={client}>
         <SessionProvider session={s}>
           <Routes>
             <Route path={o.motif} element={page} />

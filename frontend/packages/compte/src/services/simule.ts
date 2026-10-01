@@ -1,5 +1,5 @@
-import { ETAPES_PREMIER_ACCES, MOT_DE_PASSE_DEMO, ReauthCancelled, simulationConnexion, violationsMotDePasse, type CleSecurite } from '@gimac/socle'
-import { LANGUES_COMPTE, type Compte, type EnrolementTotp, type Moi, type SessionCompte } from '../modele'
+import { ETAPES_PREMIER_ACCES, MOT_DE_PASSE_DEMO, ReauthCancelled, avatarsSimules, simulationConnexion, violationsMotDePasse, type CleSecurite } from '@gimac/socle'
+import { LANGUES_COMPTE, PHOTO_PROFIL, type Appareil, type Compte, type Connexion, type DescriptionAppareil, type EnrolementTotp, type Moi, type ResultatConnexion, type SessionCompte } from '../modele'
 import type { ServiceMonCompte } from './ports'
 import { creerSimulateur, type OptionsSimulateur } from './simulateur'
 
@@ -18,12 +18,57 @@ export type OptionsMonCompteSimule = OptionsSimulateur & {
   motDePasse?: string
   /** L'utilisateur annule la demande de sa clé de sécurité. */
   annulerEnrolement?: boolean
+  /** Couche de la session courante (appareils connectés) ; « des » à défaut. */
+  couche?: string
+  /** Photo de profil de démonstration déjà déposée. */
+  photo?: boolean
 }
 
 const TELEPHONE = /^\+?[0-9 ]{8,20}$/
 const CODE = /^[0-9]{6}$/
 const BASE32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'
 const il = (heures: number) => new Date(Date.now() - heures * 3_600_000).toISOString()
+
+const minutes = (m: number) => new Date(Date.now() - m * 60_000).toISOString()
+
+/** Appareils connectés de démonstration : la session courante, puis des sessions plus anciennes (IP masquées). */
+export function appareilsDemo(couche = 'des'): Appareil[] {
+  const a = (navigateur: string, systeme: string, type: DescriptionAppareil['type']): DescriptionAppareil => ({ navigateur, systeme, type })
+  return [
+    { id: 'app-7f3c2a', courante: true, appareil: a('Chrome 129', 'Windows 11', 'ORDINATEUR'), adresseIp: '10.20.1.15', couche, ouverteLe: minutes(64), derniereActivite: minutes(0), expireA: new Date(Date.now() + 30 * 60_000).toISOString() },
+    { id: 'app-91b4e0', courante: false, appareil: a('Firefox 131', 'Ubuntu 24.04', 'ORDINATEUR'), adresseIp: '10.20.4.•', couche, ouverteLe: minutes(60 * 26), derniereActivite: minutes(60 * 20 + 12), expireA: minutes(-10) },
+    { id: 'app-2d8e57', courante: false, appareil: a('Safari 18', 'iOS 18', 'MOBILE'), adresseIp: '41.202.219.•', couche: 'des', ouverteLe: minutes(60 * 3 + 5), derniereActivite: minutes(42), expireA: minutes(-12) },
+    { id: 'app-c05a19', courante: false, appareil: a('Chrome 129', 'Android 14', 'TABLETTE'), adresseIp: '10.20.7.•', couche: 'portail', ouverteLe: minutes(60 * 50), derniereActivite: minutes(60 * 49), expireA: minutes(-60 * 48) },
+    { id: 'app-e6f310', courante: false, appareil: a('Edge 129', 'Windows 10', 'ORDINATEUR'), adresseIp: '10.20.2.•', couche, ouverteLe: minutes(60 * 6), derniereActivite: minutes(95), expireA: minutes(-20) },
+  ]
+}
+
+/** Historique de démonstration : 90 jours de connexions, la plus récente d'abord, échecs et un blocage. */
+export function historiqueDemo(couche = 'des'): Connexion[] {
+  const postes: [string, string, DescriptionAppareil['type'], string][] = [
+    ['Chrome 129', 'Windows 11', 'ORDINATEUR', '10.20.1.15'],
+    ['Firefox 131', 'Ubuntu 24.04', 'ORDINATEUR', '10.20.4.•'],
+    ['Safari 18', 'iOS 18', 'MOBILE', '41.202.219.•'],
+    ['Edge 129', 'Windows 10', 'ORDINATEUR', '10.20.2.•'],
+  ]
+  const lignes: Connexion[] = []
+  for (let i = 0; i < 64; i++) {
+    const [navigateur, systeme, type, ip] = postes[(i * 7) % postes.length]
+    const resultat: ResultatConnexion = i === 23 ? 'BLOQUEE' : i % 11 === 4 ? 'ECHEC_MOT_DE_PASSE' : i % 13 === 7 ? 'ECHEC_CODE' : 'REUSSIE'
+    lignes.push({ le: minutes(64 + i * 60 * 33 + (i % 5) * 17), resultat, appareil: { navigateur, systeme, type }, adresseIp: ip.replace(/\.\d+$/, '.•'), couche: i % 9 === 5 ? 'portail' : couche })
+  }
+  return lignes
+}
+
+/** Lit une image (Blob) en adresse data: ; rien si illisible. */
+function lireEnAdresse(b: Blob): Promise<string | null> {
+  return new Promise((res) => {
+    const r = new FileReader()
+    r.onload = () => res(typeof r.result === 'string' ? r.result : null)
+    r.onerror = () => res(null)
+    r.readAsDataURL(b)
+  })
+}
 
 export function compteDemo(c: Partial<Compte> = {}): Compte {
   return {
@@ -57,6 +102,10 @@ export function monCompteSimule(o: OptionsMonCompteSimule = {}): ServiceMonCompt
   }
   let motDePasse = o.motDePasse ?? MOT_DE_PASSE_DEMO
   let cles: CleSecurite[] = o.premierAcces ? [] : [{ id: 'k-0001', nom: 'YubiKey 5 NFC (bureau)', creeeLe: il(24 * 60), derniereUtilisation: il(3) }]
+  if (o.photo) compte.avatarVersion = avatarsSimules.demo(compte.id)
+  else compte.avatarVersion ??= avatarsSimules.version(compte.id)
+  let appareils = appareilsDemo(o.couche)
+  const historique = historiqueDemo(o.couche)
   let sessions: SessionCompte[] = [
     { id: 's-courante', adresseIp: '10.20.1.15', debut: il(1), dernierAcces: il(0), applications: ['gateway'] },
     { id: 's-ancienne', adresseIp: '10.20.4.62', debut: il(26), dernierAcces: il(20), applications: ['gateway'] },
@@ -109,6 +158,7 @@ export function monCompteSimule(o: OptionsMonCompteSimule = {}): ServiceMonCompt
         const violations = violationsMotDePasse(c.nouveau, compte.identifiant)
         if (violations.length) throw refus(400, 'IAM_PASSWORD_POLICY', 'Mot de passe non conforme à la politique de sécurité', { violations })
         motDePasse = c.nouveau
+        if (c.fermerAutresSessions) appareils = appareils.filter((a) => a.courante)
         simulationConnexion.definirMotDePasse(compte.identifiant, c.nouveau)
         retirer('MOT_DE_PASSE')
       }),
@@ -152,5 +202,34 @@ export function monCompteSimule(o: OptionsMonCompteSimule = {}): ServiceMonCompt
         if (!cles.some((c) => c.id === id)) throw refus(404, 'IAM_KEY_NOT_FOUND', 'Ressource introuvable')
         cles = cles.filter((c) => c.id !== id)
       }),
+    // Photo de profil : mêmes refus que MS-IAM (type réel, poids) ; image gardée en mémoire de la page.
+    changerPhoto: async (image) => {
+      const adresse = PHOTO_PROFIL.types.includes(image.type) && image.size > 0 && image.size <= PHOTO_PROFIL.tailleMaxOctets ? await lireEnAdresse(image) : null
+      return attendre(() => {
+        if (!PHOTO_PROFIL.types.includes(image.type)) throw refus(400, 'IAM_AVATAR_TYPE', 'Format d’image non accepté')
+        if (image.size > PHOTO_PROFIL.tailleMaxOctets) throw refus(400, 'IAM_AVATAR_TOO_LARGE', 'Image trop volumineuse')
+        if (!adresse || image.size === 0) throw refus(400, 'IAM_AVATAR_UNREADABLE', 'Image illisible')
+        compte.avatarVersion = avatarsSimules.definir(compte.id, adresse)
+        return { version: compte.avatarVersion }
+      })
+    },
+    retirerPhoto: () =>
+      attendre(() => {
+        avatarsSimules.retirer(compte.id)
+        compte.avatarVersion = null
+      }),
+    appareils: () => attendre(() => appareils),
+    fermerAppareil: (id) =>
+      attendre(() => {
+        const a = appareils.find((x) => x.id === id)
+        if (!a) throw refus(404, 'CNX_APPAREIL_INCONNU', 'Session inconnue')
+        if (a.courante) throw refus(409, 'CNX_SESSION_COURANTE', 'Utilisez la déconnexion pour fermer la session courante')
+        appareils = appareils.filter((x) => x.id !== id)
+      }),
+    fermerAutresAppareils: () =>
+      attendre(() => {
+        appareils = appareils.filter((x) => x.courante)
+      }),
+    historique: (page, taille) => attendre(() => ({ contenu: historique.slice(page * taille, (page + 1) * taille), total: historique.length })),
   }
 }

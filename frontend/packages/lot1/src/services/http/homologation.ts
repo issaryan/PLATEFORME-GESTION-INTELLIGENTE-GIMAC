@@ -1,5 +1,5 @@
 import { http, P } from '@gimac/socle'
-import type { ListQuery, Option, Page } from '../../modele/commun'
+import type { EvenementChronologie, ListQuery, Option, Page } from '../../modele/commun'
 import type { ServiceHomologation } from '../ports'
 
 // Implémentation HTTP de ServiceHomologation : chemins de la cartographie des contrats (PI-GIMAC-01),
@@ -9,6 +9,13 @@ const R = `${H}/referentiels`
 const L = `${H}/liaisons`
 const O = `${H}/operations`
 
+/** Instant ISO-8601 en « jj/mm/aaaa hh:mm » (Afrique centrale) ; une valeur absente ou déjà lisible est gardée. */
+export const horodatage = (iso: string | null | undefined): string => {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return iso
+  return new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Douala' }).format(d).replace(',', '')
+}
 const requete = (q: ListQuery) => ({ page: q.page, taille: q.taille, tri: q.tri, recherche: q.recherche, ...(q.filtres ?? {}) })
 /** Liste des liaisons (LiaisonsCadrageResource) : pagination du service à partir de 0, filtres vides omis. */
 const requeteLiaisons = (q: ListQuery) => {
@@ -37,7 +44,9 @@ export const homologationHttp: ServiceHomologation = {
   deriverBrouillon: (versionSourceId) => http.post(R, { body: { versionSourceId } }),
   publierReferentiel: (id) => http.post(`${R}/${id}/publication`),
   migrerLiaisons: (id, liaisonsRetenues) => http.post(`${R}/${id}/migrations`, { body: { liaisonsRetenues } }),
-  historiqueReferentiel: (id) => http.get(`${R}/${id}/historique`),
+  // Chronologie servie avec des instants ISO-8601 : affichés à la minute, à l'heure de Douala.
+  historiqueReferentiel: async (id) =>
+    (await http.get<EvenementChronologie[]>(`${R}/${id}/historique`)).map((e) => ({ ...e, at: horodatage(e.at), actor: e.actor ?? undefined, correlationId: e.correlationId ?? undefined })),
 
   listerLiaisons: (q) => http.get(L, { query: requeteLiaisons(q) }),
   tableauDeBordLiaisons: (q) => http.get(`${H}/tableau-de-bord/liaisons`, { query: requete(q) }),

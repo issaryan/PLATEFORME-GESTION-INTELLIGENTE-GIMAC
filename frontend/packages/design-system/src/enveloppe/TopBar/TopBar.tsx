@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { cx } from '../../lib/cx'
 import { IconButton } from '../../actions/IconButton/IconButton'
 import { Breadcrumb } from '../../navigation/Breadcrumb/Breadcrumb'
 import { SearchInput } from '../../saisie/SearchInput/SearchInput'
 import { Avatar } from '../../affichage/Avatar/Avatar'
+import { Icon } from '../../icones/Icon/Icon'
+import { Menu, type MenuItem } from '../../conteneurs/Menu/Menu'
 import { useLibelle } from '../../i18n/LangueProvider'
 
 export type Layer = 'des' | 'portail' | 'console'
@@ -17,6 +19,12 @@ export interface TopBarProps {
   sansMarque?: boolean
   breadcrumb?: { label: string; href?: string }[]
   user?: string
+  /** Photo de profil de l'utilisateur (adresse versionnée) ; initiales à défaut. */
+  avatar?: string | null
+  /** Seconde ligne du menu utilisateur : fonction ou profil. */
+  userDetail?: string
+  /** Entrées du menu utilisateur (Mon compte, Se déconnecter) ; sans entrée, l'avatar seul. */
+  userMenu?: MenuItem[]
   live?: boolean
   institution?: string
   /** Conservé pour compatibilité : aucun bandeau d'environnement n'est plus affiché. */
@@ -30,29 +38,18 @@ export interface TopBarProps {
   onMenu?: () => void
 }
 
-// Barre supérieure de 56 px commune aux trois couches (§6.1). Les préférences (langue, thème) s'ouvrent
-// dans un menu surgissant ancré au bouton du globe : la page n'est jamais déformée ; Échap ou un clic au
-// dehors le ferment et rendent le focus au bouton. Aucun bandeau d'environnement.
-export function TopBar(p: TopBarProps) {
-  const t = useLibelle()
-  const layer = p.layer || 'des'
-  const [ouvert, setOuvert] = useState(false)
-  const ancre = useRef<HTMLSpanElement>(null)
-  const panneau = useRef<HTMLDivElement>(null)
-  const basculer = (v: boolean) => {
-    setOuvert(v)
-    if (p.onLangue) p.onLangue()
-  }
+/** Menu surgissant ancré : Échap ou un clic au dehors le ferment et rendent le focus au bouton. */
+function useSurgissant(ancre: RefObject<HTMLSpanElement | null>, panneau: RefObject<HTMLDivElement | null>, ouvert: boolean, fermer: () => void) {
   useEffect(() => {
     if (!ouvert) return
     const premier = panneau.current?.querySelector<HTMLElement>('select, button, input, [tabindex]:not([tabindex="-1"])')
     premier?.focus()
     const dehors = (e: MouseEvent) => {
-      if (ancre.current && !ancre.current.contains(e.target as Node)) setOuvert(false)
+      if (ancre.current && !ancre.current.contains(e.target as Node)) fermer()
     }
     const touche = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        setOuvert(false)
+        fermer()
         ancre.current?.querySelector<HTMLElement>('button')?.focus()
       }
     }
@@ -62,7 +59,39 @@ export function TopBar(p: TopBarProps) {
       document.removeEventListener('mousedown', dehors)
       document.removeEventListener('keydown', touche)
     }
-  }, [ouvert])
+  }, [ouvert, ancre, panneau, fermer])
+}
+
+// Barre supérieure de 56 px commune aux trois couches (§6.1). Les préférences (langue, thème) s'ouvrent
+// dans un menu surgissant ancré au bouton du globe : la page n'est jamais déformée ; Échap ou un clic au
+// dehors le ferment et rendent le focus au bouton. Le menu utilisateur (avatar avec photo ou initiales) s'ouvre
+// de même : nom, fonction, puis les entrées fournies (Mon compte, Se déconnecter). Aucun bandeau d'environnement.
+export function TopBar(p: TopBarProps) {
+  const t = useLibelle()
+  const layer = p.layer || 'des'
+  const [ouvert, setOuvert] = useState(false)
+  const [menu, setMenu] = useState(false)
+  const ancre = useRef<HTMLSpanElement>(null)
+  const panneau = useRef<HTMLDivElement>(null)
+  const ancreMenu = useRef<HTMLSpanElement>(null)
+  const panneauMenu = useRef<HTMLDivElement>(null)
+  const fermerPrefs = useCallback(() => setOuvert(false), [])
+  const fermerMenu = useCallback(() => setMenu(false), [])
+  useSurgissant(ancre, panneau, ouvert, fermerPrefs)
+  useSurgissant(ancreMenu, panneauMenu, menu, fermerMenu)
+  const basculer = (v: boolean) => {
+    setOuvert(v)
+    if (v) setMenu(false)
+    if (p.onLangue) p.onLangue()
+  }
+  const nom = p.user || t('topbar.utilisateur')
+  const entrees = (p.userMenu ?? []).map((it) => ({
+    ...it,
+    onClick: () => {
+      setMenu(false)
+      it.onClick?.()
+    },
+  }))
   return (
     <div>
       <header className="gm-topbar">
@@ -86,7 +115,30 @@ export function TopBar(p: TopBarProps) {
             </div>
           ) : null}
         </span>
-        <Avatar name={p.user || t('topbar.utilisateur')} />
+        {entrees.length ? (
+          <span ref={ancreMenu} className="gm-topbar-ancre">
+            <button type="button" className="gm-topbar-user" aria-label={t('topbar.menuUtilisateur', { nom })} aria-haspopup="menu" aria-expanded={menu}
+              onClick={() => { setMenu(!menu); setOuvert(false) }}>
+              <Avatar name={nom} src={p.avatar} decorative />
+              <Icon name="chevron-down" size={16} />
+            </button>
+            {menu ? (
+              <div ref={panneauMenu} className="gm-popover gm-topbar-pop gm-topbar-menu">
+                <div className="gm-topbar-menu-tete">
+                  <Avatar name={nom} src={p.avatar} size="lg" decorative />
+                  <span className="gm-topbar-menu-identite">
+                    <strong className="gm-topbar-menu-nom">{nom}</strong>
+                    {p.userDetail ? <span className="gm-topbar-menu-detail">{p.userDetail}</span> : null}
+                    {layer === 'portail' && p.institution ? <span className="gm-topbar-menu-detail">{p.institution}</span> : null}
+                  </span>
+                </div>
+                <Menu items={entrees} label={t('topbar.menuUtilisateur', { nom })} />
+              </div>
+            ) : null}
+          </span>
+        ) : (
+          <Avatar name={nom} src={p.avatar} />
+        )}
       </header>
     </div>
   )

@@ -7,6 +7,9 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: 'jsdom',
+    // Services réels par défaut (passerelle) ; les tests d'écran tournent sur les services simulés, demandés
+    // explicitement comme en démonstration. Les tests « services réels » posent VITE_SERVICES=http ou le retirent.
+    env: { VITE_SERVICES: 'simule' },
     include: ['src/**/*.test.{ts,tsx}'],
     testTimeout: 30000,
     setupFiles: ['src/test/setup.ts'],

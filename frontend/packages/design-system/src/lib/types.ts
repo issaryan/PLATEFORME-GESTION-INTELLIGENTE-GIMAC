@@ -5,6 +5,8 @@ export type Severity = 'S1' | 'S2' | 'S3' | 'S4'
 export interface Option {
   value: string
   label: string
+  /** Option désignant une personne : avatar (photo ou initiales) affiché avec le libellé. */
+  avatar?: { name: string; src?: string | null }
 }
 
 // Propriétés communes exposées par tous les composants (§7 : className et data-testid).

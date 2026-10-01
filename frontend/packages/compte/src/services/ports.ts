@@ -1,5 +1,5 @@
 import type { CleSecurite } from '@gimac/socle'
-import type { ChangementMotDePasse, ConfirmationTotp, EnrolementTotp, FichePersonnelle, Moi, PremiereConfiguration, SessionCompte } from '../modele'
+import type { Appareil, ChangementMotDePasse, ConfirmationTotp, EnrolementTotp, FichePersonnelle, Moi, PageHistorique, PremiereConfiguration, SessionCompte, VersionPhoto } from '../modele'
 
 // Port de « Mon compte » (D-62, D-65) : seul contrat entre les écrans et les données. Implémentations :
 // HTTP (/bff/<couche>/iam/moi, relayé par la passerelle vers MS-IAM) et simulée (développement).
@@ -22,4 +22,16 @@ export interface ServiceMonCompte {
   /** Défi, navigator.credentials.create, enregistrement ; ReauthCancelled si l'utilisateur annule. */
   enrolerCle(nom: string): Promise<CleSecurite>
   supprimerCle(id: string): Promise<void>
+  /** PUT /moi/avatar (multipart « image ») ; 400 IAM_AVATAR_TYPE, IAM_AVATAR_TOO_LARGE, IAM_AVATAR_DIMENSIONS, IAM_AVATAR_UNREADABLE. */
+  changerPhoto(image: Blob): Promise<VersionPhoto>
+  /** DELETE /moi/avatar : retour aux initiales. */
+  retirerPhoto(): Promise<void>
+  /** Appareils connectés : sessions ouvertes de la passerelle (GET /api/session/appareils). */
+  appareils(): Promise<Appareil[]>
+  /** Ferme une autre session ; 409 CNX_SESSION_COURANTE pour la session courante (utiliser la déconnexion). */
+  fermerAppareil(id: string): Promise<void>
+  /** Ferme toutes les autres sessions du compte. */
+  fermerAutresAppareils(): Promise<void>
+  /** Historique des connexions (90 jours), page à partir de 0. */
+  historique(page: number, taille: number): Promise<PageHistorique>
 }

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { homologationHttp } from './homologation'
+import { homologationHttp, horodatage } from './homologation'
 import { certificationHttp } from './certification'
 import { portailHttp } from './portail'
 import { servicesHttp } from './index'
@@ -62,9 +62,21 @@ describe('homologationHttp : cadrage (étape 3, D-57, D-58)', () => {
   })
 })
 
+describe('homologationHttp : chronologie d’une version du référentiel', () => {
+  it('instants ISO de MS-HOMOLOGATION affichés à la minute (Afrique centrale), champs absents retirés', async () => {
+    brancher([{ event: 'Version publiée sous le numéro 1', at: '2026-10-01T14:35:15.165823Z', actor: null, correlationId: 'c-1' }, { event: 'Version créée', at: '2026-10-01T00:00:00Z', actor: null, correlationId: null }])
+    expect(await homologationHttp.historiqueReferentiel('R1')).toEqual([
+      { event: 'Version publiée sous le numéro 1', at: '01/10/2026 15:35', actor: undefined, correlationId: 'c-1' },
+      { event: 'Version créée', at: '01/10/2026 01:00', actor: undefined, correlationId: undefined },
+    ])
+    expect(horodatage(undefined)).toBe('')
+    expect(horodatage('22/09/2026 11:02')).toBe('22/09/2026 11:02')
+  })
+})
+
 describe('homologationHttp : référentiels, liaisons, opérations, simulateur', () => {
   it('chaque route du port, sa méthode et son corps', async () => {
-    brancher(...Array.from({ length: 33 }, (_, i) => (i === 9 ? { total: 3 } : {})))
+    brancher(...Array.from({ length: 33 }, (_, i) => (i === 9 ? { total: 3 } : i === 10 ? [] : {})))
     const h = homologationHttp
     const fichier = new File(['x'], 'preuve.pdf')
     await h.listerReferentiels()

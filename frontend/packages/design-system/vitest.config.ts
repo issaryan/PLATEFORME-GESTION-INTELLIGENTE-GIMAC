@@ -21,6 +21,8 @@ export default defineConfig({
         // Modales de saisie et coquille applicative (D-63, demande du 30/09/2026).
         '{src/affichage/QrCode/**,src/conteneurs/CrudDialog/**,src/conteneurs/ConfirmDialog/**,src/conteneurs/SignDialog/**,src/conteneurs/Dialog/**,src/enveloppe/SideNav/**,src/affichage/StatCard/**}': { statements: 80, branches: 80, functions: 80, lines: 80 },
         '{src/enveloppe/PageHeader/**,src/conteneurs/PageSection/**,src/conteneurs/ToastRegion/**,src/donnees/StatGrid/**,src/navigation/LinkList/**,src/actions/ActionBar/**}': { statements: 80, branches: 80, functions: 80, lines: 80 },
+        // Photo de profil, recadrage et menu utilisateur (docs/lot1/mon-compte.md).
+        '{src/affichage/Avatar/**,src/saisie/AvatarCropper/**,src/enveloppe/TopBar/**,src/domaine/Messagerie/**}': { statements: 80, branches: 80, functions: 80, lines: 80 },
       },
     },
   },

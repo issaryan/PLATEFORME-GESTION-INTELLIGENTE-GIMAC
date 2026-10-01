@@ -24,7 +24,8 @@ export const PERMISSION_GESTE = {
   archiverAttestations: [PERM.securiteVerifier],
   visaConformite: [PERM.visaConformite],
   visaDg: [PERM.visaDg],
-  remettreFiche: [PERM.dossierVerifier],
+  // Remise de la fiche de suivi : Normes et Agréments ou le conducteur (conduite de l'étape 10), comme MS-HOMOLOGATION.
+  remettreFiche: [PERM.dossierVerifier, PERM.etapeConduire],
   constaterMiseEnService: [PERM.dossierVerifier],
   ouvrirServiceSupplementaire: [PERM.liaisonOuvrir],
 } as const

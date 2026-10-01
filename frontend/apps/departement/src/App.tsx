@@ -5,13 +5,14 @@ import {
   ConnexionProvider, Enveloppe, GardeSession, PageConnexion, PageDeconnexion, SessionActive, adresseConnexion, configureHttp, connexionHttp, lirePreference, lireSessionDemo,
   surNonAutorise, type EtatCanal, type Session,
 } from '@gimac/socle'
-import { CompteProvider, GardePremierAcces, MonComptePage, monCompteHttp, monCompteSimule } from '@gimac/compte'
+import { CompteProvider, GardePremierAcces, MonComptePage, useMonAvatar, monCompteHttp, monCompteSimule } from '@gimac/compte'
 import { Fournisseurs, NAVIGATION_DES, PERM, creerClientRequetes, servicesHttp, servicesSimules, useNonLus } from '@gimac/lot1'
 import { PROFILS_DEMO, roleDemo, sessionDemo } from './profils'
 import { connexionDemo } from './connexionDemo'
 
 // Application du département (couche « des ») : routes du lot 1 (DS-GIMAC-01 §10.1). Services réels par
-// la passerelle (VITE_SERVICES=http) ou simulés pour le développement des écrans.
+// la passerelle par défaut ; services simulés seulement sur demande explicite (VITE_SERVICES=simule : tests de bout
+// en bout et démonstrations). Aucune donnée fictive n'est servie par une construction de production.
 // D-61 : la session (matrice des rôles du jeton obtenu par authentification à deux facteurs) est lue
 // sur /api/session ; sans second facteur, aucun écran n'est servi. Chaque acteur voit son tableau de
 // bord et les seules actions que ses permissions ouvrent ; la passerelle et les services refont le contrôle.
@@ -35,12 +36,16 @@ const VERSION = import.meta.env.VITE_VERSION ?? '0.1.0'
 // D-62 : après la garde de session, le premier accès (fiche, charte, actions requises) passe avant
 // tout tableau de bord ; « Mon compte » et la déconnexion sont dans l'espace personnel de l'enveloppe.
 function Pages({ session, etatCanal, correlationId }: { session: Session; etatCanal: EtatCanal | undefined; correlationId?: string }) {
+  // Photo de profil du titulaire (docs/lot1/mon-compte.md §4) : menu utilisateur de la barre du haut.
+  const moi = useMonAvatar()
   // Messages non lus (D-64) : pastille de l'entrée « Messagerie », rafraîchie par le canal poussé.
   const nonLus = useNonLus(session.permissions.includes(PERM.messageLire))
   return (
     <GardePremierAcces>
       {(assistant) => (
         <Enveloppe
+          avatar={moi?.src}
+          fonction={moi?.fonction}
           couche="des"
           navigation={assistant ? [] : NAVIGATION_DES}
           permissions={session.permissions}
@@ -81,9 +86,11 @@ function Pages({ session, etatCanal, correlationId }: { session: Session; etatCa
   )
 }
 
-function AvecSession({ reels, children }: { reels: boolean; children: (s: Session) => ReactNode }) {
+function AvecSession({ children }: { children: (s: Session) => ReactNode }) {
   const ici = useLocation()
-  if (!reels) {
+  // Lu ici et non reçu en propriété : constant à la construction, la branche simulée (profils et comptes de
+  // démonstration) disparaît du paquet servi en production.
+  if (import.meta.env.VITE_SERVICES === 'simule') {
     if (!lireSessionDemo()) return <Navigate to={adresseConnexion({ retour: ici.pathname + ici.search })} replace />
     const s = sessionDemo()
     return <SessionActive session={s} prolonger={async () => undefined}>{children(s)}</SessionActive>
@@ -92,7 +99,7 @@ function AvecSession({ reels, children }: { reels: boolean; children: (s: Sessio
 }
 
 export default function App() {
-  const reels = import.meta.env.VITE_SERVICES === 'http'
+  const reels = import.meta.env.VITE_SERVICES !== 'simule'
   const services = useMemo(() => {
     if (reels) return servicesHttp('des')
     const s = sessionDemo()
@@ -108,6 +115,7 @@ export default function App() {
     const identifiant = demo?.identifiant || p.identifiant
     const [prenom, ...nom] = p.nom.split(' ')
     return monCompteSimule({
+      couche: 'des',
       premierAcces: demo?.premierAcces ?? lirePreference('gm.premierAccesDemo') === '1',
       etapes: demo?.etapes,
       compte: { id: p.sujet, identifiant, prenom, nom: nom.join(' '), nomAffiche: p.nom, email: `${identifiant}@gimac-afr.org`, profils: [role] },
@@ -130,7 +138,7 @@ export default function App() {
         <CompteProvider service={compte}>
           <Routes>
             <Route path="/connexion/*" element={<PageConnexion couche="des" />} />
-            <Route path="/des/*" element={<AvecSession reels={reels}>{(s) => <Pages session={s} etatCanal={etatCanal} correlationId={correlationId} />}</AvecSession>} />
+            <Route path="/des/*" element={<AvecSession>{(s) => <Pages session={s} etatCanal={etatCanal} correlationId={correlationId} />}</AvecSession>} />
             <Route path="*" element={<Navigate to="/des/tableau-de-bord" replace />} />
           </Routes>
         </CompteProvider>

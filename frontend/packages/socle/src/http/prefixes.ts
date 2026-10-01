@@ -7,8 +7,9 @@ export const P = {
   portailCertification: '/bff/portail/certification',
   desParticipant: '/bff/des/participant',
   desDocument: '/bff/des/document',
-  // Messagerie instantanée de travail (D-64), MS-COLLABORATION : couche du département seulement.
+  // Messagerie instantanée de travail (D-64), MS-COLLABORATION : tout membre interne, DES et console.
   desCollaboration: '/bff/des/collaboration',
+  consoleCollaboration: '/bff/console/collaboration',
   portailParticipant: '/bff/portail/participant',
   // Administration des comptes et de la configuration de l'authentification (D-62), console seulement.
   consoleIam: '/bff/console/iam',
@@ -22,6 +23,10 @@ export const DECONNEXION = '/api/logout'
 
 /** Session de la passerelle : matrice des rôles, niveau d'assurance (D-61) et fin d'inactivité prévue (D-65 §6). */
 export const SESSION = '/api/session'
+/** Appareils connectés du compte : sessions ouvertes de la passerelle (docs/lot1/mon-compte.md §3). */
+export const APPAREILS = '/api/session/appareils'
+/** Historique des connexions du compte, 90 jours (docs/lot1/mon-compte.md §3). */
+export const HISTORIQUE_CONNEXIONS = '/api/session/historique'
 /** Écran de connexion de la plateforme (D-65) : route de chaque couche, jamais une page du fournisseur d'identité. */
 export const CONNEXION = '/connexion'
 

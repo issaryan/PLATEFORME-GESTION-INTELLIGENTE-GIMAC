@@ -1,3 +1,4 @@
+import { avatarsSimules } from '@gimac/socle'
 import type { Compte } from '@gimac/compte'
 import type { EntreeJournal } from '../../modele/comptes'
 import type { ConfigurationMessagerie, PolitiqueSecurite } from '../../modele/configuration'
@@ -26,12 +27,16 @@ const GRAINES: Graine[] = [
   ['u-sans-2fa', 'b.hamadou', 'Bachir', 'Hamadou Ali', 'Ingénieur système', ['ROLE_POLE_SYSTEME'], { secondFacteur: false }],
 ]
 
+/** Comptes qui ont déposé une photo de profil (démonstration, docs/lot1/mon-compte.md) ; les autres gardent leurs initiales. */
+export const PHOTOS_DEMO = ['u-rssi', 'u-chef-des', 'u-chef-ddrm', 'u-conformite', 'u-correspondant', 'u-sna', 'u-dg']
+
 export function comptesInitiaux(): Compte[] {
+  PHOTOS_DEMO.forEach((id) => avatarsSimules.demo(id))
   return GRAINES.map(([id, identifiant, prenom, nom, fonction, profils, o], i) => {
     const c: Compte = {
       id, identifiant, prenom, nom, nomAffiche: `${prenom} ${nom}`, email: `${identifiant}@gimac-afr.org`,
       emailVerifie: true, actif: true, creeLe: il(24 * (200 - i * 12)), telephone: `+237 6${(90 + i).toString()} ${(10 + i).toString()} ${(20 + i).toString()} ${(30 + i).toString()}`,
-      fonction, langue: 'fr', institutionId: null, profilComplet: true, premierAccesEnAttente: false, profils, actionsRequises: [], secondFacteur: true, ...o,
+      fonction, langue: 'fr', institutionId: null, profilComplet: true, premierAccesEnAttente: false, profils, actionsRequises: [], secondFacteur: true, avatarVersion: avatarsSimules.version(id), ...o,
     }
     c.premierAccesEnAttente = !c.profilComplet || c.actionsRequises.length > 0
     return c

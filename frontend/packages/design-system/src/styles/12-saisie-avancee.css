@@ -38,3 +38,25 @@
 .gm-signature-done .gm-signature-icon { background: var(--gm-color-status-ok-bg); color: var(--gm-color-status-ok-fg); }
 .gm-signature-error .gm-signature-icon { background: var(--gm-color-status-crit-bg); color: var(--gm-color-status-crit-fg); }
 .gm-signature-waiting { border-color: var(--gm-color-action); }
+/* Recadrage d'une photo de profil (AvatarCropper) : cadre carré à angles droits, guide circulaire de l'avatar,
+   aperçus ronds (gm-radius-avatar, seule exception au rayon nul). Ni ombre ni voile. */
+.gm-crop { display: flex; flex-direction: column; gap: var(--gm-space-3); }
+.gm-crop-zone { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--gm-space-5); }
+.gm-crop-cadre { position: relative; overflow: hidden; flex: none; background: var(--gm-color-surface-sunken); border: var(--gm-border-1) solid var(--gm-color-border-strong); cursor: grab; touch-action: none; user-select: none; }
+.gm-crop-cadre:active { cursor: grabbing; }
+.gm-crop-cadre:focus-visible { outline: var(--gm-border-2) solid var(--gm-color-focus); outline-offset: 2px; }
+.gm-crop-cadre img { pointer-events: none; }
+.gm-crop-guide { position: absolute; inset: 0; border-radius: var(--gm-radius-avatar); border: var(--gm-border-2) dashed var(--gm-color-surface); pointer-events: none; }
+.gm-crop-apercus { display: flex; flex-direction: column; gap: var(--gm-space-2); }
+.gm-crop-apercus-titre { font-weight: 600; color: var(--gm-color-text-primary); }
+.gm-crop-mini { position: relative; display: inline-block; overflow: hidden; flex: none; border-radius: var(--gm-radius-avatar); background: var(--gm-color-surface-sunken); }
+.gm-crop-reglages { display: flex; flex-wrap: wrap; align-items: center; gap: var(--gm-space-3); }
+.gm-crop-zoom { display: flex; align-items: center; gap: var(--gm-space-3); flex: 1; min-width: 240px; }
+.gm-crop-valeur { min-width: 48px; text-align: right; color: var(--gm-color-text-secondary); }
+/* Curseur (input range) : piste de 4 px, poignée carrée de 16 px, focus de 2 px. */
+.gm-range { appearance: none; -webkit-appearance: none; flex: 1; height: 24px; margin: 0; background: transparent; cursor: pointer; }
+.gm-range::-webkit-slider-runnable-track { height: 4px; background: var(--gm-color-border-strong); }
+.gm-range::-moz-range-track { height: 4px; background: var(--gm-color-border-strong); }
+.gm-range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 16px; height: 16px; margin-top: -6px; border: 0; border-radius: var(--gm-radius); background: var(--gm-color-action); }
+.gm-range::-moz-range-thumb { width: 16px; height: 16px; border: 0; border-radius: var(--gm-radius); background: var(--gm-color-action); }
+.gm-range:focus-visible { outline: var(--gm-border-2) solid var(--gm-color-focus); outline-offset: 2px; }

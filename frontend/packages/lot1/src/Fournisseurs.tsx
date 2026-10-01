@@ -17,8 +17,8 @@ function CanalPousse({ couche, actif, onEtat }: { couche: Couche; actif: boolean
   const qc = useQueryClient()
   useEffect(() => {
     if (!actif) return
-    // La messagerie (D-64) n'existe que dans la couche du département.
-    return openLiveChannel(couche, couche === 'des' ? ['homologation', 'certification', 'collaboration'] : ['homologation', 'certification'], qc, onEtat, { baseMs: 1000, maxMs: 30_000 })
+    // La messagerie (D-64) est réservée aux couches internes : le DES et la console.
+    return openLiveChannel(couche, couche === 'portail' ? ['homologation', 'certification'] : ['homologation', 'certification', 'collaboration'], qc, onEtat, { baseMs: 1000, maxMs: 30_000 })
   }, [couche, actif, qc, onEtat])
   return null
 }

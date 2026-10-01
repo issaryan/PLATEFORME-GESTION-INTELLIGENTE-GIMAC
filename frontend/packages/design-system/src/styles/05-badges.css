@@ -11,4 +11,12 @@
 .gm-severity-S3, .gm-severity-S4 { color: var(--gm-color-status-neutral-fg); }
 .gm-tag { display: inline-flex; align-items: center; gap: var(--gm-space-1); height: var(--gm-size-badge); padding: 0 var(--gm-space-2); border: var(--gm-border-1) solid var(--gm-color-border); background: var(--gm-color-surface); color: var(--gm-color-text-secondary); font-size: 12px; line-height: 18px; }
 .gm-tag button { all: unset; cursor: pointer; display: inline-flex; }
-.gm-avatar { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; background: var(--gm-color-action-subtle); color: var(--gm-color-action); font-size: 12px; font-weight: 600; flex: none; }
+.gm-tag-personne { padding-left: 2px; }
+.gm-avatar { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; background: var(--gm-color-action-subtle); color: var(--gm-color-action); font-size: 12px; font-weight: 600; flex: none; border-radius: var(--gm-radius-avatar); overflow: hidden; line-height: 1; user-select: none; }
+/* Avatar : seule forme ronde du système (gm-radius-avatar) ; photo recadrée, initiales à défaut. */
+.gm-avatar img { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: var(--gm-radius-avatar); }
+.gm-avatar-photo { background: var(--gm-color-surface-sunken); }
+.gm-avatar-xs { width: 20px; height: 20px; font-size: 9px; }
+.gm-avatar-sm { width: 24px; height: 24px; font-size: 10px; }
+.gm-avatar-lg { width: 40px; height: 40px; font-size: 14px; }
+.gm-avatar-xl { width: 96px; height: 96px; font-size: 32px; font-family: var(--font-heading); }

@@ -76,7 +76,7 @@ test.describe('Fonctionnalité : modales de la console', () => {
     await expect(p.getByText('Votre clé de sécurité vous sera demandée pour confirmer ce geste.')).toBeVisible()
     await capturer(page, 'modale-politique')
     await p.getByRole('button', { name: 'Annuler' }).click()
-    await page.goto(`${ADRESSES.console}/console/messagerie`)
+    await page.goto(`${ADRESSES.console}/console/plateforme/courriels`)
     await page.getByRole('button', { name: 'Modifier la messagerie' }).click()
     await expect(page.getByRole('dialog', { name: 'Modifier la messagerie' }).locator('input[name="hote"]')).toBeVisible()
     await capturer(page, 'modale-messagerie')

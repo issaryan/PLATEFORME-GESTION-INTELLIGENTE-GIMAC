@@ -68,7 +68,7 @@ test.describe('Fonctionnalité : administration par la passerelle', () => {
     await page.getByRole('combobox', { name: 'Compte concerné' }).selectOption('u-sna')
     await expect.poll(() => gw.appels.some((a) => a.chemin === '/bff/console/iam/comptes/journal' && a.recherche.includes('compte=u-sna'))).toBe(true)
 
-    await naviguer(page, 'Messagerie')
+    await naviguer(page, 'Courriels de la plateforme')
     await expect(page.getByText('mot de passe non défini')).toBeVisible()
     await page.getByRole('button', { name: 'Modifier la messagerie' }).click()
     await page.locator('input[name="motDePasse"]').fill('Secret-SMTP-2026')

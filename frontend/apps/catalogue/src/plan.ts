@@ -143,7 +143,7 @@ export const PLAN: EntreePlan[] = [
     "groupe": "Affichage",
     "hauteur": 56,
     "largeur": null,
-    "description": "Initiales sur fond `gm-color-action-subtle`, cercle de 32 px (`gm-radius-avatar`, la seule forme arrondie du système, §5.3). Jamais de photo. Dans la barre supérieure, le menu utilisateur affiche le nom, le rôle et, sur le portail, l'institution."
+    "description": "Avatar d'une personne, cercle (`gm-radius-avatar`, la seule forme arrondie du système, §5.3) : photo de profil recadrée si le compte en a une (adresse versionnée `/bff/<couche>/iam/avatars/{id}?v=<version>`, docs/lot1/mon-compte.md), initiales sur fond `gm-color-action-subtle` à défaut ou si l'image ne se charge pas. Tailles `xs` 20 px (jetons de destinataires), `sm` 24 px (fil, tableaux), `md` 32 px (défaut), `lg` 40 px (menu utilisateur), `xl` 96 px (Mon compte, fiche d'un compte). Employé dans le menu utilisateur, la messagerie (conversations, fil, destinataires) et la console (liste et fiche des comptes).\n\n**Le consommateur fournit** `name`, `src?` (adresse de la photo), `size?`, `decorative?` (nom déjà écrit à côté).\n\n**Interdits** : ombre, liseré coloré, photo non recadrée ; une photo sans repli sur les initiales."
   },
   {
     "nom": "CorrelationIdChip",
@@ -451,7 +451,7 @@ export const PLAN: EntreePlan[] = [
     "groupe": "Enveloppe",
     "hauteur": 200,
     "largeur": 1120,
-    "description": "Barre supérieure de 56 px, fixe, commune aux trois couches (§6.1) : logo (couleur en clair, blanc en sombre), recherche globale Ctrl+K (pas sur le portail), horloge locale (UTC au survol), indicateur du canal poussé (point vert ou gris avec libellé), notifications, bouton « Préférences » (globe) ouvrant un menu surgissant ancré (langue FR, EN, ES et thème ; Échap, clic extérieur, focus rendu au bouton) sans déformer la page, menu utilisateur (Avatar). Ni nom de couche, ni bandeau d'environnement (D-66)."
+    "description": "Barre supérieure de 56 px, fixe, commune aux trois couches (§6.1) : logo (couleur en clair, blanc en sombre), recherche globale Ctrl+K (pas sur le portail), horloge locale (UTC au survol), indicateur du canal poussé (point vert ou gris avec libellé), notifications, bouton « Préférences » (globe) ouvrant un menu surgissant ancré (langue FR, EN, ES et thème ; Échap, clic extérieur, focus rendu au bouton) sans déformer la page, menu utilisateur ancré à l'avatar (photo ou initiales, chevron) : en-tête avec avatar de 40 px, nom, fonction (et institution sur le portail), puis les entrées fournies (Mon compte, Se déconnecter) ; Échap, clic extérieur, focus rendu ; les deux menus surgissants s'excluent. Ni nom de couche, ni bandeau d'environnement (D-66)."
   },
   {
     "nom": "AlertRow",
@@ -465,7 +465,7 @@ export const PLAN: EntreePlan[] = [
     "groupe": "Domaine",
     "hauteur": 480,
     "largeur": null,
-    "description": "Messagerie de travail entre acteurs du GIMAC (D-64) : ConversationList (la plus récente en tête, non-lus en pastille, conversation ouverte marquée), MessageThread (messages du plus ancien au plus récent, « Vous » pour les siens, étiquettes de liaison en liens, pièces jointes téléchargeables, messages plus anciens à la demande) et MessageComposer (Entrée pour envoyer, Maj + Entrée pour aller à la ligne, cinq pièces au plus, retirables)."
+    "description": "Messagerie de travail entre acteurs du GIMAC (D-64) : ConversationList (la plus récente en tête, non-lus en pastille, conversation ouverte marquée), MessageThread (messages du plus ancien au plus récent, « Vous » pour les siens, étiquettes de liaison en liens, pièces jointes téléchargeables, messages plus anciens à la demande) et MessageComposer (Entrée pour envoyer, Maj + Entrée pour aller à la ligne, cinq pièces au plus, retirables).\n\n**Photos et fond du fil (docs/lot1/mon-compte.md, D-66)** : avatar (photo ou initiales) de l'interlocuteur d'un échange direct (`avatar` de ConversationItem) et de l'auteur de chaque message (`avatar` de ThreadMessage) ; la zone des messages (et l'état vide de la page) porte le motif « trame » de §5.6 (classe `gm-trame-fil`, masque `assets/motif/trame-masque.svg`, jeton `gm-color-motif-fil` : brand-accent à 6 %, 7 % en sombre), décoratif, retiré sous `prefers-reduced-transparency` et en couleurs forcées ; bulles, ligne d'auteur, en-tête, saisie et liste des conversations restent sur fond plein : aucun texte posé sur le motif."
   },
   {
     "nom": "ChatPanel",
@@ -648,6 +648,13 @@ export const PLAN: EntreePlan[] = [
     "hauteur": 200,
     "largeur": 560,
     "description": "Secret affiché une seule fois (mot de passe provisoire d'un compte, D-62), assemblage de Banner (avertissement `warn`), d'une puce `gm-chip` en chasse fixe et d'un Button de copie ; la confirmation de copie est annoncée (`role=status`).\n\n**Le consommateur fournit** `label` (nature du secret), `value`, `warning?` (avertissement propre), `onCopy?` (par défaut, presse-papiers du navigateur).\n\n**Interdits** : réafficher un secret déjà communiqué ; le stocker dans le navigateur."
+  },
+  {
+    "nom": "AvatarCropper",
+    "groupe": "Saisie",
+    "hauteur": 420,
+    "largeur": 620,
+    "description": "Recadrage carré d'une photo de profil (docs/lot1/mon-compte.md §4), assemblage d'une image, d'un curseur de zoom et de Button : cadre carré à angles droits avec guide circulaire de l'avatar, image déplacée à la souris, au doigt ou au clavier (flèches, Maj pour aller plus vite ; + et − pour le zoom ; 0 recentre), aperçus ronds à 96, 40 et 24 px, bouton « Recentrer ». `recadrerImage` calcule l'image recadrée dans le navigateur (canevas, WebP sinon PNG) ; `zoneRecadree` donne la zone retenue.\n\n**Le consommateur fournit** `src` (adresse data: de l'image choisie), `label`, `value` (`zoom` de 1 à 4, `x` et `y` de −1 à 1), `onChange`, `size?` (240 px), `name?`.\n\n**Interdits** : voile ou ombre autour du cadre ; envoi de l'image d'origine sans recadrage."
   },
   {
     "nom": "PermissionPicker",

@@ -63,7 +63,7 @@ test.describe('Fonctionnalité : refus et états dégradés', () => {
 
   test('Scénario : messagerie sans authentification et niveau hérité du parent', async ({ page }) => {
     await demo(page, { profil: 'ROLE_SUPER_ADMIN' })
-    await page.goto(`${ADRESSES.console}/console/messagerie`)
+    await page.goto(`${ADRESSES.console}/console/plateforme/courriels`)
     await page.getByRole('button', { name: 'Modifier la messagerie' }).click()
     await page.getByLabel('Le serveur exige une authentification').uncheck()
     await page.getByLabel('STARTTLS').uncheck()

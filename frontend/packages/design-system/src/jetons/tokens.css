@@ -74,6 +74,7 @@
   --gm-color-status-neutral-fg: var(--gm-grey-700);
   --gm-color-brand-accent: var(--gm-earth-700);
   --gm-color-brand-pattern: var(--gm-earth-100);
+  --gm-color-motif-fil: rgba(122, 62, 29, 0.06);
   --gm-color-nav-fond: var(--gm-blue-900);
   --gm-color-nav-texte: var(--gm-blue-50);
   --gm-color-nav-texte-actif: var(--gm-white);
@@ -166,6 +167,7 @@
   --gm-color-status-neutral-fg: var(--gm-dark-200);
   --gm-color-brand-accent: #c98b63;
   --gm-color-brand-pattern: var(--gm-dark-700);
+  --gm-color-motif-fil: rgba(201, 139, 99, 0.07);
   --gm-color-nav-fond: #111316;
   --gm-color-nav-texte: var(--gm-dark-200);
   --gm-color-nav-texte-actif: var(--gm-white);

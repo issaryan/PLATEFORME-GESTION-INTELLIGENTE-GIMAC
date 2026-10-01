@@ -5,8 +5,10 @@ import type { Page, Route } from '@playwright/test'
 // Le flux SSE /api/plateforme/flux renvoie une impulsion puis se ferme : le client se reconnecte.
 
 const IAM = ['ACCOUNT_READ', 'ACCOUNT_CREATE', 'ACCOUNT_EDIT', 'ACCOUNT_ROLES', 'ACCOUNT_STATUS', 'ACCOUNT_DELETE', 'ACCOUNT_SECURITY', 'JOURNAL_READ', 'PROFILE_EDIT'].map((p) => `IAM_${p}`)
-export const PERMISSIONS_RSSI = [...IAM, 'PLATFORM_SUPERVISION_READ', 'PLATFORM_CONFIG_READ', 'PLATFORM_SECURITY_POLICY_READ', 'PLATFORM_MESSAGING_EDIT']
-export const PERMISSIONS_SUPER_ADMIN = [...IAM, 'IAM_ROLE_PRIVILEGED_GRANT', 'PLATFORM_SUPERVISION_READ', 'PLATFORM_CONFIG_READ', 'PLATFORM_CONFIG_EDIT',
+// Messagerie instantanée (D-64) : tout membre interne, dont le RSSI et le super administrateur.
+const MESSAGERIE = ['COL_MESSAGE_READ', 'COL_MESSAGE_SEND']
+export const PERMISSIONS_RSSI = [...IAM, ...MESSAGERIE, 'PLATFORM_SUPERVISION_READ', 'PLATFORM_CONFIG_READ', 'PLATFORM_SECURITY_POLICY_READ', 'PLATFORM_MESSAGING_EDIT']
+export const PERMISSIONS_SUPER_ADMIN = [...IAM, ...MESSAGERIE, 'IAM_ROLE_PRIVILEGED_GRANT', 'PLATFORM_SUPERVISION_READ', 'PLATFORM_CONFIG_READ', 'PLATFORM_CONFIG_EDIT',
   'PLATFORM_SECURITY_POLICY_READ', 'PLATFORM_SECURITY_POLICY_EDIT', 'PLATFORM_MESSAGING_EDIT']
 
 const il = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString()
@@ -68,6 +70,14 @@ export class Passerelle {
   o: OptionsPasserelle
 
   motDePasse = CONNEXION_E2E.motDePasse
+  /** Appareils connectés (MS-GATEWAY, docs/lot1/mon-compte.md §3). */
+  appareils = [
+    { id: 'app-courante', courante: true, appareil: { navigateur: 'Chrome 129', systeme: 'Windows 11', type: 'ORDINATEUR' }, adresseIp: '10.20.1.15', couche: 'console', ouverteLe: il(1), derniereActivite: il(0), expireA: null },
+    { id: 'app-ancienne', courante: false, appareil: { navigateur: 'Firefox 131', systeme: 'Ubuntu 24.04', type: 'ORDINATEUR' }, adresseIp: '10.20.4.•', couche: 'console', ouverteLe: il(26), derniereActivite: il(20), expireA: null },
+    { id: 'app-mobile', courante: false, appareil: { navigateur: 'Safari 18', systeme: 'iOS 18', type: 'MOBILE' }, adresseIp: '41.202.219.•', couche: 'des', ouverteLe: il(3), derniereActivite: il(1), expireA: null },
+  ]
+  /** Photo de profil déposée (multipart reçu), version servie par /moi. */
+  photos = 0
   /** Actions exigées de la plateforme restant à faire au premier accès (D-65). */
   restantes: string[]
 
@@ -117,7 +127,9 @@ export class Passerelle {
     const url = new URL(req.url())
     const chemin = url.pathname
     const methode = req.method()
-    const corps = req.postData() ? JSON.parse(req.postData()!) : undefined
+    const brut = req.postDataBuffer()?.toString('utf8') ?? null
+    const multipart = (req.headers()['content-type'] ?? '').startsWith('multipart/form-data')
+    const corps = brut && !multipart ? JSON.parse(brut) : undefined
     this.appels.push({ methode, chemin, recherche: url.search, entetes: req.headers(), corps })
     const json = (b: unknown, status = 200) => route.fulfill({ status, json: b, headers: { 'X-Correlation-Id': `e2e-${this.appels.length}` } })
     const refus = (status: number, code: string, message: string, details: Record<string, unknown> = {}) => json({ code, message, details, correlationId: `e2e-${code}` }, status)
@@ -143,6 +155,38 @@ export class Passerelle {
       return vide()
     }
     if (chemin === '/api/session/prolongation') return vide()
+    // ------------------------------------------------ Appareils connectés et historique (docs/lot1/mon-compte.md §3)
+    if (chemin === '/api/session/appareils' && methode === 'GET') return json(this.appareils)
+    if (chemin === '/api/session/appareils' && methode === 'DELETE') {
+      this.appareils = this.appareils.filter((a) => a.courante)
+      return vide()
+    }
+    if (chemin.startsWith('/api/session/appareils/') && methode === 'DELETE') {
+      const id = decodeURIComponent(chemin.split('/').pop()!)
+      if (!this.appareils.some((a) => a.id === id)) return refus(404, 'CNX_APPAREIL_INCONNU', 'Session inconnue')
+      if (this.appareils.find((a) => a.id === id)?.courante) return refus(409, 'CNX_SESSION_COURANTE', 'Session courante')
+      this.appareils = this.appareils.filter((a) => a.id !== id)
+      return vide()
+    }
+    if (chemin === '/api/session/historique') {
+      const page = Number(url.searchParams.get('page') ?? 0)
+      const taille = Number(url.searchParams.get('taille') ?? 20)
+      const tout = Array.from({ length: 27 }, (_, i) => ({ le: il(i * 7 + 1), resultat: i === 3 ? 'ECHEC_CODE' : i === 9 ? 'BLOQUEE' : 'REUSSIE', appareil: { navigateur: 'Chrome 129', systeme: 'Windows 11', type: 'ORDINATEUR' }, adresseIp: '10.20.1.•', couche: 'console' }))
+      return json({ contenu: tout.slice(page * taille, (page + 1) * taille), total: tout.length })
+    }
+    // ------------------------------------------------ Photos de profil (docs/lot1/mon-compte.md §1)
+    if (chemin.startsWith('/bff/console/iam/avatars/')) {
+      return route.fulfill({ status: 200, contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256"><rect width="256" height="256" fill="#3f8a83"/><circle cx="90" cy="80" r="30" fill="#f8f4e3"/></svg>' })
+    }
+    if (chemin === '/bff/console/iam/moi/avatar' && methode === 'PUT') {
+      if (!multipart || !brut?.includes('name="image"')) return refus(400, 'IAM_AVATAR_UNREADABLE', 'Image illisible')
+      this.moi.avatarVersion = `e2e${++this.photos}`
+      return json({ version: this.moi.avatarVersion })
+    }
+    if (chemin === '/bff/console/iam/moi/avatar' && methode === 'DELETE') {
+      this.moi.avatarVersion = null
+      return vide()
+    }
     if (this.o.sessionExpiree && chemin.startsWith('/bff/')) return refus(401, 'CNX_SESSION_EXPIREE', 'Session fermée après inactivité')
     if (chemin === '/api/session') {
       if (this.o.sessionIndisponible) return refus(503, 'HTTP_503', 'Passerelle indisponible')
@@ -310,6 +354,37 @@ export class Passerelle {
       const impulsion = { sequence: this.fluxOuverts, instantane: this.o.degradee ? instantaneDegrade() : instantane('OPERATIONNELLE'), nombreAlertes: this.o.degradee ? -1 : 0 }
       return route.fulfill({ status: 200, headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' }, body: `id: ${this.fluxOuverts}\nevent: plateforme\ndata: ${JSON.stringify(impulsion)}\n\n` })
     }
+    // ------------------------------------------------ Messagerie instantanée depuis la console (D-64)
+    const CM = '/bff/console/collaboration/messagerie'
+    if (chemin === '/bff/console/live') {
+      return route.fulfill({ status: 200, headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' }, body: ': battement\n\n' })
+    }
+    if (chemin === `${CM}/non-lus`) return json({ total: this.messages.length === 1 ? 1 : 0 })
+    if (chemin === `${CM}/conversations` && methode === 'GET') return json({ contenu: [this.conversation()], total: 1, page: 0, taille: 20 })
+    if (chemin === `${CM}/conversations/c-dg` && methode === 'GET') return json(this.conversation())
+    if (chemin === `${CM}/conversations/c-dg/messages` && methode === 'GET') return json({ contenu: this.messages.slice().reverse(), plusAnciens: false })
+    if (chemin === `${CM}/conversations/c-dg/lu` && methode === 'POST') return vide()
+    if (chemin === `${CM}/conversations/c-dg/messages` && methode === 'POST') {
+      const contenu = /"contenu":"([^"]*)"/.exec(brut ?? '')?.[1] ?? ''
+      const m = { id: `m-${this.messages.length + 1}`, conversationId: 'c-dg', auteur: { id: 'u-super-admin', nom: 'Serge Mouelle Kombi', fonction: null }, moi: true, contenu, etiquettes: [], piecesJointes: [], envoyeLe: il(0) }
+      this.messages.push(m)
+      return json(m, 201)
+    }
     return refus(404, 'HTTP_404', `Route non simulée : ${methode} ${chemin}`)
+  }
+
+  /** Échange direct avec la direction générale, servi par MS-COLLABORATION derrière /bff/console. */
+  messages: Record<string, unknown>[] = [{
+    id: 'm-1', conversationId: 'c-dg', auteur: { id: 'u-dg', nom: 'François Tchoumi Kamga', fonction: 'Directeur général adjoint' }, moi: false,
+    contenu: 'Pouvez-vous me confirmer la revue des habilitations avant vendredi ?', etiquettes: [], piecesJointes: [], envoyeLe: il(1),
+  }]
+
+  private conversation() {
+    const dernier = this.messages.at(-1) as { id: string; auteur: { nom: string }; contenu: string; envoyeLe: string }
+    return {
+      id: 'c-dg', type: 'DIRECTE', titre: null, liaison: null, nonLus: this.messages.length === 1 ? 1 : 0, misAJourLe: dernier.envoyeLe, creeeLe: il(2),
+      membres: [{ id: 'u-super-admin', nom: 'Serge Mouelle Kombi', fonction: null }, { id: 'u-dg', nom: 'François Tchoumi Kamga', fonction: 'Directeur général adjoint' }],
+      dernierMessage: { id: dernier.id, auteurNom: dernier.auteur.nom, extrait: dernier.contenu, envoyeLe: dernier.envoyeLe, piecesJointes: 0 },
+    }
   }
 }

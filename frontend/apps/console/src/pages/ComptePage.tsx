@@ -2,10 +2,10 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams, useSearchParams } from 'react-router'
 import {
-  ActionBar, Button, Checkbox, CheckboxGroup, ConfirmDialog, CrudDialog, DataTable, InlineAlert, KeyValueList, OneTimeSecret, Select, StatusBadge, Tabs, Tag, TextField,
+  ActionBar, Avatar, Button, Checkbox, CheckboxGroup, ConfirmDialog, CrudDialog, DataTable, InlineAlert, KeyValueList, OneTimeSecret, Select, StatusBadge, Tabs, Tag, TextField,
   type Column,
 } from '@gimac/design-system'
-import { aPermission, usePermissions, useSession } from '@gimac/socle'
+import { aPermission, urlAvatar, usePermissions, useSession } from '@gimac/socle'
 import { ACTIONS_REQUISES, LANGUES_COMPTE, dateHeure, useLibelleProfil, useMessageErreur, type ActionRequise, type Compte, type MessageErreur, type SessionCompte } from '@gimac/compte'
 import { useCompte, useEffet, useJournal, useProfils, useSessionsCompte } from '../hooks'
 import type { EntreeJournal, FicheCompte } from '../modele/comptes'
@@ -217,7 +217,8 @@ export default function ComptePage() {
         return (
           <div className="gm-resource">
             <header className="gm-objhead">
-              <div className="gm-objhead-main">
+              <Avatar name={c.nomAffiche} src={urlAvatar('console', c.id, c.avatarVersion)} size="xl" />
+              <div className="gm-objhead-main" style={{ flex: 1 }}>
                 <div className="gm-row">
                   <span className="gm-type-small">{t('console.compte.type')}</span>
                   <span className="gm-mono">{c.identifiant}</span>

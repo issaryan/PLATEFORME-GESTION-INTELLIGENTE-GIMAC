@@ -21,8 +21,9 @@ GardePremierAcces, PremierAccesPage, MonComptePage ──> hooks (react-query) �
 | `src/contexte.tsx`, `src/hooks.ts` | Injection du service (`CompteProvider`) et hooks `useMoi`, `useMesCles`, `useEnrolerCle`… |
 | `src/GardePremierAcces.tsx` | Après `GardeSession` : lit `/moi` ; tant que `etapesRestantes` n'est pas vide, fournit l'assistant à placer dans l'enveloppe (sans navigation) à la place de toutes les pages ; MS-IAM injoignable : pages servies (mode dégradé) |
 | `src/pages/PremierAccesPage.tsx` | Assistant (Stepper, D-65) : mot de passe définitif (politique rappelée, violations), code TOTP (code QR local, secret sur demande, code de vérification), fiche (téléphone obligatoire, langue, fonction), charte ; dans la session restreinte, connexion finale avec le nouveau mot de passe et un code |
-| `src/pages/MonComptePage.tsx` | Fiche personnelle, mot de passe, code TOTP, clés de sécurité, sessions : toute modification en modale CRUD standard (`src/composants/ModaleSaisie.tsx`, seul point d'emploi de `CrudDialog`) |
+| `src/pages/MonComptePage.tsx`, `src/pages/monCompte/` | Photo de profil (`Photo.tsx` : choix contrôlé, recadrage, envoi, retrait), fiche personnelle, mot de passe (case « Fermer mes autres sessions »), code TOTP, clés de sécurité, appareils connectés et historique des connexions (`Appareils.tsx`) : toute modification en modale CRUD standard (`src/composants/ModaleSaisie.tsx`, seul point d'emploi de `CrudDialog`) |
 | `src/composants/` | `useSaisieMotDePasse`, `useSaisieTotp` (champs et envoi partagés par l'assistant et les modales), `QrCode` (bibliothèque `uqr` embarquée, à promouvoir au système de conception) |
+| `src/composants/photo.ts` | Contrôles d'une image avant l'envoi : type réel par les octets, poids, dimensions (codes `IAM_AVATAR_*`) |
 | `src/i18n.ts` | Libellés FR, EN, ES (`premierAcces.*`, `compte.*`, profils, codes d'erreur IAM) |
 
 D-65 : tout se fait sur la plateforme, aucune page du fournisseur d'identité n'est ouverte (contrat `docs/lot1/connexion.md`). Service simulé : mot de passe actuel `Gimac-Demo-2026!`, tout code TOTP de six chiffres accepté ; le mot de passe choisi et la fin du premier accès sont transmis à la connexion simulée du socle, en mémoire de la page.
@@ -40,3 +41,4 @@ npm run lint -w @gimac/compte
 | Date | Commit | Modification |
 |---|---|---|
 | 2026-09-29 | — | Création (D-62) : port, services HTTP et simulé, hooks, garde de premier accès, assistant, page Mon compte, FR/EN/ES ; 25 tests, couverture 98,5 % des instructions, 85,6 % des branches |
+| 2026-10-01 | — | Photo de profil (`PUT`/`DELETE /moi/avatar`, `useMonAvatar`), appareils connectés et historique (`/api/session/appareils`, `/api/session/historique`), `fermerAutresSessions` ; 38 tests |

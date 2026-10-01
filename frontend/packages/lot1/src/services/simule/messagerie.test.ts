@@ -94,3 +94,18 @@ describe('messagerieSimulee', () => {
     expect(ancien.plusAnciens).toBe(false)
   })
 })
+
+describe('messagerieSimulee : photos de profil', () => {
+  it('annuaire, membres et auteurs portent la version de la photo ; null sans photo', async () => {
+    const m = svc()
+    const a = (await m.annuaire('')).contenu
+    expect(a.find((p) => p.id === 'u-rssi')?.avatarVersion).toMatch(/^sim/)
+    expect(a.find((p) => p.id === 'u-prod')?.avatarVersion).toBeNull()
+    const c = (await m.conversations({})).contenu[0]
+    expect(c.membres.find((p) => p.id === 'u-sna')?.avatarVersion).toMatch(/^sim/)
+    const fil = await m.messages(c.id)
+    expect(fil.contenu.some((x) => x.auteur.avatarVersion)).toBe(true)
+    const envoye = await m.envoyer(c.id, { contenu: 'Bonjour', etiquettes: [], fichiers: [] })
+    expect(envoye.auteur.id).toBe('U-001')
+  })
+})

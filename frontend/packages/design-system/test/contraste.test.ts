@@ -40,6 +40,18 @@ const TEXTE: [string, string, string][] = [
   // Aide et libellés atténués posés sur le fond de page (en-tête de fiche, « non renseigné ») : D-63.
   ['Aide sur la page', 'gm-color-text-muted', 'gm-color-bg-page'],
   ['TextField erreur', 'gm-color-status-crit-fg', 'gm-color-surface'],
+  // Mon compte (docs/lot1/mon-compte.md §4) : initiales de l'avatar, menu utilisateur, recadrage, appareils.
+  ['Avatar : initiales', 'gm-color-action', 'gm-color-action-subtle'],
+  ['Menu utilisateur : nom', 'gm-color-text-primary', 'gm-color-surface-raised'],
+  ['Menu utilisateur : fonction', 'gm-color-text-secondary', 'gm-color-surface-raised'],
+  ['Bouton du menu utilisateur survolé', 'gm-color-text-primary', 'gm-color-action-subtle'],
+  ['Recadrage : aide et valeur du zoom dans un dialogue', 'gm-color-text-secondary', 'gm-color-surface-raised'],
+  ['Appareils : détail sur la surface', 'gm-color-text-secondary', 'gm-color-surface'],
+  // Fil de la messagerie sur fond texturé (D-66) : le texte n'est jamais posé sur le motif ; fonds pleins inchangés.
+  ['Messagerie : bulle reçue', 'gm-color-text-primary', 'gm-color-surface-sunken'],
+  ['Messagerie : bulle envoyée', 'gm-color-text-primary', 'gm-color-action-subtle'],
+  ['Messagerie : auteur et heure (cartouche pleine)', 'gm-color-text-secondary', 'gm-color-surface'],
+  ['Messagerie : lien dans une bulle reçue', 'gm-color-action', 'gm-color-surface-sunken'],
 ]
 
 describe.each(['light', 'dark'] as Theme[])('contrastes en thème %s', (theme) => {
@@ -132,5 +144,17 @@ describe('écarts du système publié, conservés à l\'identique et signalés',
   })
   it('bordure de champ en clair à 3:1 au moins', () => {
     expect(contraste('gm-color-border-strong', 'gm-color-surface', 'light')).toBeGreaterThanOrEqual(3)
+  })
+})
+
+// Motif du fil (D-66) : trait très atténué, quasi invisible à côté du texte (moins de 1,3:1 sur la surface).
+describe.each(['light', 'dark'] as Theme[])('motif de trame du fil en thème %s', (theme) => {
+  it('jeton rgba atténué (6 à 8 %), de la teinte brand-accent', () => {
+    const v = table.get('gm-color-motif-fil') as Record<Theme, string>
+    const [, r, g, b, a] = v[theme].match(/rgba\((\d+), (\d+), (\d+), ([\d.]+)\)/)!.map(Number)
+    expect(a).toBeGreaterThanOrEqual(0.04)
+    expect(a).toBeLessThanOrEqual(0.08)
+    const accent = resoudre('gm-color-brand-accent', theme).toLowerCase()
+    expect(`#${[r, g, b].map((x) => x.toString(16).padStart(2, '0')).join('')}`).toBe(accent)
   })
 })

@@ -6,6 +6,7 @@
   "description": "Lot 1 (PI-GIMAC-01) : ports et services homologation, certification et portail, hooks de données, descripteurs, pages DES-08 à DES-12 et POR-03",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
+  "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
     "./pages/*": "./src/pages/*.tsx"

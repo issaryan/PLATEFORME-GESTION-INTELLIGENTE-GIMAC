@@ -60,7 +60,8 @@ export type GesteAilleurs = 'affectation' | 'decision' | 'mise-en-service'
 export function ongletDuGeste(rang: string): GesteAilleurs | null {
   if (rang === '6') return 'affectation'
   if (/^(1[89]|2[0-6])$/.test(rang)) return 'decision'
-  if (/^3[2-5]$/.test(rang)) return 'mise-en-service'
+  // Fiche de suivi (32, 33) et service supplémentaire (35) ; le suivi de l'exploitation (34) se prouve ici.
+  if (/^3[235]$/.test(rang)) return 'mise-en-service'
   return null
 }
 export function lienDuGeste(g: GesteAilleurs, o: { liaisonId: string; id: string }): string {

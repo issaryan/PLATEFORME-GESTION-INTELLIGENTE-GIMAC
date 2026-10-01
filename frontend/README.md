@@ -8,10 +8,10 @@ Espace de travail npm des trois couches de présentation de la plateforme (D-46,
 | `apps/portail` | `@gimac/app-portail` | Portail des participants | DMZ | 4201 |
 | `apps/console` | `@gimac/app-console` | Console d'administration et d'audit | Administration hors bande | 4202 |
 | `packages/theme` | `@gimac/theme` | Jetons du thème (CC 6.2) | — | — |
-| `packages/design-system` | `@gimac/design-system` | Système de conception DS-GIMAC-01 (jetons, styles, 87 composants React) | — | — |
+| `packages/design-system` | `@gimac/design-system` | Système de conception DS-GIMAC-01 (jetons, styles, 88 composants React, dont `AvatarCropper`) | — | — |
 | `packages/socle` | `@gimac/socle` | Socle d'interface F0 : client passerelle (CSRF, appels de fond), canal poussé, FIDO2, i18n, enveloppe, connexion sur la plateforme et mot de passe oublié (D-65), session et fermeture après inactivité | — | — |
 | `packages/lot1` | `@gimac/lot1` | Lot 1 et certification : ports, services, hooks, tableau de bord par acteur (« Mon travail », pilotage), registre des institutions (DDRM), parcours de la liaison (étapes 3 à 10, dossier numérique, verrous, mise en service, portail), messagerie de travail (D-64), écrans DES-08 à DES-12 et POR-03 | — | — |
-| `packages/compte` | `@gimac/compte` | « Mon compte » et premier accès (D-62, D-65), communs aux trois couches : port `/bff/<couche>/iam/moi`, services HTTP et simulé, garde de premier accès, assistant (mot de passe, code TOTP par code QR, fiche, charte, connexion), page Mon compte en modales | — | — |
+| `packages/compte` | `@gimac/compte` | « Mon compte » et premier accès (D-62, D-65), communs aux trois couches : port `/bff/<couche>/iam/moi`, services HTTP et simulé, garde de premier accès, assistant (mot de passe, code TOTP par code QR, fiche, charte, connexion), page Mon compte en modales : photo de profil, fiche, mot de passe, code TOTP, clés, appareils connectés, historique des connexions | — | — |
 | `e2e` | — | Scénarios de bout en bout Playwright par acteur, couverture istanbul avec seuil de 80 % (hors espaces de travail npm) | — | — |
 | `apps/catalogue` | `@gimac/app-catalogue` | Catalogue vivant, hors production | Poste de développement | 4203 |
 
@@ -21,7 +21,8 @@ Pile : React 19.2, TypeScript 6, Vite 8, oxlint, générés par `create-vite` (g
 
 ```
 npm install                   # à la racine de frontend/
-npm run dev:departement       # ou dev:portail, dev:console ; /api relayé vers localhost:8080
+npm run dev:departement       # ou dev:portail, dev:console ; services réels, /api et /bff relayés vers localhost:8080
+VITE_SERVICES=simule npm run dev:departement   # démonstration sur les services simulés (jamais en production)
 npm run build                 # les trois couches
 npm run lint
 npm test                      # tests de tous les paquets
@@ -53,6 +54,7 @@ docker build --build-arg APPLICATION=portail -t frontend-portail .
 | `specs/coquille.spec.ts` | Coquille fixe : page sans défilement, zone de contenu seule à défiler, navigation immobile et à défilement propre, retour en haut au changement de page, page courte, tiroir sur mobile, portail et console |
 | `specs/modales.spec.ts` | Modale CRUD standard : fiche d'un compte (abandon confirmé), création sur la liste, suppression et action sensible, politique et messagerie, blocage du dossier de liaison, fiche d'une institution |
 | `specs/administration.spec.ts` | Gestion des utilisateurs en tête du tableau de bord (super administrateur et RSSI), indicateurs vers la liste filtrée, onglets de la fiche d'un compte, liens « Administration » du RSSI vers la console |
+| `specs/mon-compte.spec.ts` | Mon compte (docs/lot1/mon-compte.md), en clair et en sombre : photo refusée (type réel) puis choisie, recadrée au clavier, enregistrée, affichée dans le menu utilisateur et la messagerie (conversations, fil, destinataires), retirée ; appareils connectés (session courante marquée, fermeture d'une session puis des autres en modale) ; historique paginé ; audits axe ; photos de la liste et de la fiche des comptes de la console ; routes du contrat sur la passerelle simulée (PUT multipart `/bff/console/iam/moi/avatar`, `/api/session/appareils`, `/api/session/historique`, `fermerAutresSessions`) |
 | `specs/accessibilite.spec.ts` | Audit axe (WCAG 2.2 AA) en clair et en sombre : console, Mon compte et ses modales, premier accès, écrans de connexion, avertissement d'inactivité, écrans de l'application du département (tableau de bord, registre, fiche, ouverture d'une liaison, liaisons, désignation), dialogues |
 
 `npm run e2e:construire` produit des constructions instrumentées par `vite-plugin-istanbul` (`GIMAC_E2E=1`, `e2e/instrumentation.mts`) : `dist-e2e` (services simulés) pour les trois couches et `dist-e2e-http` pour la console et l'application du département ; `vite preview` les sert (ports 5200, 5201, 5202, 5210, 5212). Chaque scénario dépose `window.__coverage__` dans `e2e/.nyc_output` (aussi à chaque déchargement de page) ; `nyc report` (`e2e/.nycrc.json`) échoue sous 80 %. Périmètre mesuré : la console, `@gimac/compte`, la réauthentification et la déconnexion du socle, les points d'entrée des trois couches et l'application du département (`apps/departement/src`, écrans, compositions, descripteurs et exécuteur d'actions des étapes 1 à 3 dans `@gimac/lot1` ; les services HTTP et simulés relèvent des tests de contrat Vitest). Le profil de démonstration de chaque scénario est posé par `gm.profilDemo` (fixture `demo`). Chromium préinstallé : `/opt/pw-browsers/chromium` (ou `GIMAC_CHROMIUM`), jamais `playwright install`.
@@ -72,6 +74,25 @@ Exécutions parallèles sur un même poste : `GIMAC_E2E_PORT` (base des six port
 - **Administration visible** : section « Gestion des utilisateurs » en tête du tableau de bord de la console (super administrateur et RSSI), indicateurs cliquables vers `/console/comptes?etat=…`, création en modale ; fiche d'un compte en onglets Fiche, Sécurité, Sessions, Journal (`?onglet=`). Dans l'application du département, le RSSI (profil aligné sur `generer-realm-gimac.py`) a le groupe « Administration » de la navigation et la section « Administration et sécurité des comptes », liens vers la console : `VITE_URL_CONSOLE` (argument `URL_CONSOLE` du Dockerfile, `http://localhost:4202` par défaut).
 - **QrCode** promu au système de conception (dépendance `uqr`, tests et catalogue), employé par `@gimac/compte` pour la configuration du TOTP.
 - **Portail** : une tâche de livrable mène toujours à `/portail/liaisons/:id/livrables/:op`, depuis le tableau de bord et le dossier (pièces « à déposer »).
+
+## Mon compte : photo de profil, appareils connectés, historique (01/10/2026)
+
+Contrat : `docs/lot1/mon-compte.md`.
+
+- **Photo de profil** (`@gimac/compte`, carte « Photo de profil ») : choix d'une image dans la modale CRUD standard ; contrôles avant l'envoi aux mêmes codes que MS-IAM (type réel par les octets : PNG, JPEG, WebP, `IAM_AVATAR_TYPE` ; 2 Mo au plus, `IAM_AVATAR_TOO_LARGE` ; 64 à 4 096 px, `IAM_AVATAR_DIMENSIONS` ; fichier illisible, `IAM_AVATAR_UNREADABLE`), messages explicatifs en FR, EN, ES ; recadrage carré `AvatarCropper` (système de conception : glisser, flèches, Maj, + et −, 0 ; curseur de zoom ; aperçus à 96, 40 et 24 px) ; image recadrée calculée dans le navigateur depuis le fichier d'origine, orientation EXIF appliquée (`recadrerImage` : `createImageBitmap(fichier, { imageOrientation: 'from-image' })`, repli sur une image décodée ; 512 px, WebP sinon PNG ; MS-IAM ne lit pas l'orientation : une photo de téléphone n'arrive jamais tournée, scénario JPEG `Orientation = 6`) puis `PUT /bff/<couche>/iam/moi/avatar` (multipart `image`) ; retrait confirmé (`DELETE`). Lecture de l'image choisie en adresse `data:` (politique de sécurité du contenu inchangée : `img-src 'self' data:`).
+- **Avatar** (système de conception) : cercle (`gm-radius-avatar`, seule forme ronde), `src` avec repli sur les initiales si l'image manque ou échoue, tailles `xs` à `xl`. Adresse `urlAvatar(couche, id, version)` du socle : `/bff/<couche>/iam/avatars/{id}?v=<version>` (portail : `/bff/portail/iam/moi/avatar?v=`, seule photo qui lui est ouverte, §5), version issue de `/moi`, de l'annuaire et des comptes (`avatarVersion`). Employé dans le menu utilisateur de la barre du haut (nouveau menu ancré : avatar, nom, fonction, Mon compte, Se déconnecter), la liste et le fil des conversations, le choix des destinataires (`Option.avatar`, `Tag.avatar`), la liste et la fiche des comptes de la console. Services simulés : registre en mémoire de la page (`avatarsSimules`, photos de démonstration en SVG, dépôts de la démonstration), jamais employé avec les services réels.
+- **Sécurité** : « Changer mon mot de passe » avec la case « Fermer mes autres sessions » (`fermerAutresSessions`) ; « Reconfigurer mon code TOTP » inchangé ; **Appareils connectés** (`GET /api/session/appareils` : appareil, navigateur, système, IP masquée, couche, ouverture, dernière activité ; « Cet appareil » ; `DELETE /api/session/appareils/{id}` et `DELETE /api/session/appareils`, confirmations en modale, `CNX_SESSION_COURANTE` et `CNX_APPAREIL_INCONNU` expliqués) remplace l'ancienne carte « Sessions ouvertes » ; **Historique des connexions** (`GET /api/session/historique?page=&taille=`, tableau paginé, résultat en `StatusBadge`, adresses masquées, `CNX_HISTORIQUE_INDISPONIBLE` expliqué).
+- **Fond du fil de la messagerie** (D-66) : motif « trame » de §5.6 (classe `gm-trame-fil`, masque `assets/motif/trame-masque.svg`, jeton `gm-color-motif-fil`, 6 % en clair et 7 % en sombre) derrière les messages et l'état vide seulement ; bulles, ligne d'auteur, en-tête, saisie et liste sur fond plein ; retiré sous `prefers-reduced-transparency` et en couleurs forcées.
+
+## Services réels ou simulés
+
+Les services réels (HTTP, par la passerelle) sont le défaut : `VITE_SERVICES` absent ou `http`. Les services simulés
+(données fictives, comptes de démonstration) ne sont retenus qu'avec `VITE_SERVICES=simule` : scénarios de bout en bout
+(`e2e/construire.mjs`), démonstrations, image construite avec `--build-arg SERVICES=simule`. La constante est remplacée
+à la construction ; `sideEffects` (`false` pour `@gimac/lot1`, feuilles de style seulement pour les applications) laisse
+Rollup élaguer le simulateur, si bien qu'un paquet construit pour la production ne contient aucune donnée fictive.
+`valider-frontend.sh` le vérifie sur les trois `dist`. Les tests Vitest des applications posent `VITE_SERVICES=simule`
+(`vitest.config.ts`).
 
 ## Image
 
@@ -107,6 +128,12 @@ Contrat : `docs/lot1/messagerie.md` ; service HTTP `/bff/des/collaboration/messa
 aux mêmes refus (RG-52 : numéros de carte masqués). Le canal poussé (`/bff/des/live`, sujet
 `collaboration`) rafraîchit la liste, le fil et le compteur de non-lus.
 
+La même page sert la console (`/console/messagerie`, `couche="console"`) : tout membre interne, dont le RSSI
+et le super administrateur, y a accès (D-64). Service HTTP `/bff/console/collaboration/messagerie`, canal
+poussé `/bff/console/live` ; les liaisons citées s'y affichent en texte, sans citation ni lien vers le DES.
+La configuration du serveur d'envoi des courriels est sous « Courriels de la plateforme »
+(`/console/plateforme/courriels`).
+
 ## Suite prévue
 
 Enveloppe commune IHM-01, bibliothèque de composants IHM-02, navigation élaguée IHM-03, bilinguisme IHM-10 et accessibilité WCAG 2.2 AA IHM-11, conformément au carnet v2.0.
@@ -130,3 +157,5 @@ Enveloppe commune IHM-01, bibliothèque de composants IHM-02, navigation élagu�
 | 2026-09-30 | 7d6c942 | Attribution des opérations : annuaire réel au lieu d'une route inexistante |
 | 2026-09-30 | — | Coquille fixe (seule la zone de contenu défile), nom de couche retiré sous le logo, modale CRUD standard `CrudDialog` partout, gestion des utilisateurs visible (console et RSSI du département), liens de dépôt des livrables du portail, jetons de la navigation (`gm-inverse-a*`, `gm-cemac-*`), ports et sorties E2E paramétrables |
 | 2026-09-30 | — | D-65 : connexion sur la plateforme (identifiant, mot de passe, code ; mot de passe oublié ; messages par code), premier accès avec code TOTP par code QR local et connexion finale, Mon compte en modales CRUD standard, fermeture des sessions après 30 minutes d'inactivité (avertissement, prolongation, onglets), appels de fond `X-Gimac-Fond`, services simulés de connexion ; relais `/oauth2` et `/login` retirés ; scénarios de bout en bout de connexion et ports dédiés |
+| 2026-10-01 | — | Mon compte (docs/lot1/mon-compte.md) : photo de profil (choix contrôlé, recadrage `AvatarCropper`, envoi, retrait), `Avatar` avec photo et repli sur les initiales dans le menu utilisateur, la messagerie et la console ; case « Fermer mes autres sessions » ; appareils connectés et historique des connexions (services HTTP et simulés, hooks) ; fond texturé du fil de la messagerie (D-66) ; scénarios `mon-compte.spec.ts` |
+| 2026-10-01 | — | Lien avec le backend : services réels par défaut, simulateur seulement avec `VITE_SERVICES=simule` et élagué des paquets de production ; gestes dédiés des verrous et rang 26 dans le simulateur, rang 34 dans l'onglet des opérations, remise de la fiche de suivi ouverte à `HOM_STEP_MANAGE`, référence `LIA-AAAA-NNN` du service, chronologie des référentiels ; contrat des routes vérifié en CI (`infra/ci/valider-contrat.sh`) |

@@ -23,6 +23,8 @@ export interface ConversationItem {
   nonLus?: number
   /** Conversation de groupe : pictogramme de groupe à la place des initiales. */
   groupe?: boolean
+  /** Photo de profil de l'interlocuteur (échange direct) ; initiales à défaut. */
+  avatar?: string | null
 }
 
 export interface ConversationListProps {
@@ -41,7 +43,7 @@ export function ConversationList(p: ConversationListProps) {
       {p.items.map((c) => (
         <li key={c.id}>
           <button type="button" className={cx('gm-conv', c.nonLus ? 'gm-conv-nonlu' : undefined)} aria-current={c.id === p.selected ? 'true' : undefined} onClick={() => p.onSelect?.(c.id)}>
-            {c.groupe ? <span className="gm-avatar" aria-hidden="true"><Icon name="users" size={16} /></span> : <Avatar name={c.titre} />}
+            {c.groupe ? <span className="gm-avatar" aria-hidden="true"><Icon name="users" size={16} /></span> : <Avatar name={c.titre} src={c.avatar} />}
             <span className="gm-conv-corps">
               <span className="gm-conv-ligne">
                 <strong className="gm-conv-titre">{c.titre}</strong>
@@ -71,6 +73,8 @@ export interface ThreadMessage {
   auteur: string
   quand: string
   mine?: boolean
+  /** Photo de profil de l'auteur ; initiales à défaut. */
+  avatar?: string | null
   /** Corps déjà mis en forme (liens des liaisons citées, retours à la ligne). */
   contenu: ReactNode
   /** Étiquettes de projet, en liens. */
@@ -109,8 +113,10 @@ export function MessageThread(p: MessageThreadProps) {
           <strong>{p.titre}</strong>
           {p.sousTitre ? <span className="gm-field-help">{p.sousTitre}</span> : null}
         </span>
-        {p.actions ? <span className="gm-row" style={{ marginLeft: 'auto' }}>{p.actions}</span> : null}
+        {p.actions ? <span className="gm-row gm-chat-head-actions">{p.actions}</span> : null}
       </header>
+      {/* Fond texturé (motif de trame atténué, D-66) derrière les messages seulement ; tout texte reste sur fond plein. */}
+      <div className="gm-fil-fond gm-trame-fil">
       <ol className="gm-chat-list" ref={liste} aria-label={t('messagerie.messages')}>
         {p.plusAnciens ? (
           <li className="gm-fil-plus">
@@ -121,6 +127,7 @@ export function MessageThread(p: MessageThreadProps) {
         {p.messages.map((m) => (
           <li key={m.id} className={cx('gm-msg', m.mine && 'gm-msg-mine')}>
             <div className="gm-msg-meta">
+              <Avatar name={m.auteur} src={m.avatar} size="sm" decorative />
               <strong>{m.mine ? t('messagerie.vous') : m.auteur}</strong>
               <span className="gm-num">{m.quand}</span>
             </div>
@@ -139,6 +146,7 @@ export function MessageThread(p: MessageThreadProps) {
           </li>
         ))}
       </ol>
+      </div>
       {p.saisie}
     </section>
   )

@@ -85,9 +85,11 @@ test.describe('Fonctionnalité : console sur la passerelle', () => {
     await page.getByRole('alertdialog').getByLabel('Je confirme : cette action est irréversible.').check()
     await page.getByRole('alertdialog').getByRole('button', { name: 'Supprimer la clé' }).click()
     await expect(page.getByText('La clé « YubiKey (bureau) » a été supprimée.')).toBeVisible()
-    await page.getByRole('button', { name: 'Fermer', exact: true }).click()
+    // Appareils connectés (docs/lot1/mon-compte.md §3) : DELETE /api/session/appareils/{id}.
+    await page.getByRole('row', { name: /Firefox 131/ }).getByRole('button', { name: 'Fermer la session' }).click()
     await page.getByRole('alertdialog').getByRole('button', { name: 'Fermer la session' }).click()
-    await expect(page.getByText('La session a été fermée.')).toBeVisible()
+    await expect(page.getByText('La session a été fermée : l’appareil est déconnecté.')).toBeVisible()
+    expect(gw.appels.some((a) => a.methode === 'DELETE' && a.chemin === '/api/session/appareils/app-ancienne')).toBe(true)
     await page.getByRole('button', { name: 'Modifier ma fiche' }).click()
     await page.getByRole('dialog').locator('input[name="telephone"]').fill('+237 699 99 88 77')
     await page.getByRole('dialog').getByRole('button', { name: 'Enregistrer ma fiche' }).click()
@@ -151,13 +153,42 @@ test.describe('Fonctionnalité : console sur la passerelle', () => {
     })
   })
 
+  test('Scénario : messagerie instantanée depuis la console, servie par /bff/console/collaboration (D-64)', async ({ page }) => {
+    const gw = new Passerelle({ session: { permissions: PERMISSIONS_SUPER_ADMIN } })
+    await gw.brancher(page)
+    await page.goto(`${ADRESSES.consoleHttp}/console/tableau-de-bord`)
+    const entree = page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('link', { name: /^Messagerie/ })
+    await test.step('Étant donné un message non lu de la direction générale, signalé dans la navigation', async () => {
+      await expect(entree.getByLabel(/^1 non lu/)).toBeVisible()
+      await expect(page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('link', { name: 'Courriels de la plateforme' })).toBeVisible()
+    })
+    await test.step('Quand le super administrateur ouvre la conversation et répond', async () => {
+      await entree.click()
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText('Messagerie')
+      await page.getByRole('list', { name: 'Conversations' }).getByRole('button', { name: /François Tchoumi Kamga/ }).click()
+      const fil = page.getByRole('region', { name: 'François Tchoumi Kamga' })
+      await expect(fil.getByText('Pouvez-vous me confirmer la revue des habilitations avant vendredi ?')).toBeVisible()
+      await expect(fil.getByRole('button', { name: 'Citer une liaison' })).toHaveCount(0)
+      await fil.getByLabel('Votre message').fill('Revue terminée ce soir, je vous transmets le journal.')
+      await fil.getByRole('button', { name: 'Envoyer' }).click()
+      await expect(fil.getByText('Revue terminée ce soir, je vous transmets le journal.')).toBeVisible()
+    })
+    await test.step('Alors tous les appels passent par la couche console, jamais par celle du département', async () => {
+      const chemins = gw.appels.map((a) => a.chemin)
+      expect(chemins).toContain('/bff/console/collaboration/messagerie/conversations/c-dg/messages')
+      expect(chemins.filter((c) => c.startsWith('/bff/des/'))).toEqual([])
+      await expect(entree.getByLabel(/non lu/)).toHaveCount(0)
+    })
+  })
+
   test('Scénario : sans session ou sans second facteur, aucun écran n’est servi', async ({ page }) => {
     const sans = new Passerelle({ session: null })
     await sans.brancher(page)
     await page.goto(`${ADRESSES.consoleHttp}/console/comptes`)
     // Session absente (401) : retour immédiat à l'écran de connexion de la plateforme, page en retour.
     await expect(page.getByRole('button', { name: 'Se connecter' })).toBeVisible()
-    expect(new URL(page.url()).searchParams.get('retour')).toBe('/console/comptes')
+    // Deux gardiens peuvent rediriger (garde de session et 401 du client) : l'adresse finale porte le retour.
+    await expect.poll(() => new URL(page.url()).searchParams.get('retour')).toBe('/console/comptes')
     await page.unrouteAll()
     const unFacteur = new Passerelle({ session: { permissions: PERMISSIONS_SUPER_ADMIN, doubleFacteur: false } })
     await unFacteur.brancher(page)

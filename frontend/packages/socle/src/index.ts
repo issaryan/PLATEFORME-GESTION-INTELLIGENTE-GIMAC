@@ -1,5 +1,6 @@
 // Socle d'interface du lot 1 (PI-GIMAC-01 F0).
-export { P, SESSION, CONNEXION, DECONNEXION, API_CONNEXION, prefixeIam, type Couche } from './http/prefixes'
+export { P, SESSION, CONNEXION, DECONNEXION, API_CONNEXION, APPAREILS, HISTORIQUE_CONNEXIONS, prefixeIam, type Couche } from './http/prefixes'
+export { urlAvatar, avatarsSimules, photoDemo } from './avatar/avatar'
 export { ApiError, estApiError, type Problem } from './http/errors'
 export { http, configureHttp, reprDigestToHex, type RequestOptions, type HttpHooks, type CsrfConfig } from './http/client'
 export { openLiveChannel, type LiveTopic, type LiveEvent, type EtatCanal } from './live/live'

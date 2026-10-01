@@ -1,26 +1,22 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Card, DataTable, InlineAlert, KeyValueList, Select, StatusBadge, Tag, TextField, type Column, Note, PageHeader } from '@gimac/design-system'
+import { Button, Card, DataTable, KeyValueList, Select, StatusBadge, Tag, TextField, type Column, Note, PageHeader } from '@gimac/design-system'
 import { EtatsRequete, type CleSecurite } from '@gimac/socle'
-import { LANGUES_COMPTE, type LangueCompte, type Moi, type SessionCompte } from '../modele'
-import { useEnrolerCle, useFermerSession, useFermerSessions, useMesCles, useMesSessions, useModifierFiche, useMoi, useSupprimerCle } from '../hooks'
-import { dateHeure, useLibelleProfil, useMessageErreur, type MessageErreur } from '../outils'
+import { LANGUES_COMPTE, type LangueCompte, type Moi } from '../modele'
+import { useEnrolerCle, useMesCles, useModifierFiche, useMoi, useSupprimerCle } from '../hooks'
+import { dateHeure, useLibelleProfil, useMessageErreur } from '../outils'
 import { ModaleCompte, type ErreurModale } from '../composants/ModaleSaisie'
+import { Annonce, type Retour } from '../composants/Annonce'
 import { useSaisieMotDePasse } from '../composants/saisieMotDePasse'
 import { useSaisieTotp } from '../composants/saisieTotp'
+import { Photo } from './monCompte/Photo'
+import { Appareils, Historique } from './monCompte/Appareils'
 
-// Mon compte (D-62, D-65), commun aux trois couches : fiche personnelle, mot de passe et code TOTP,
-// clés de sécurité FIDO2, sessions ouvertes. Toute modification se fait dans une fenêtre modale, sur la
+// Mon compte (D-62, D-65, docs/lot1/mon-compte.md), commun aux trois couches : photo de profil, fiche
+// personnelle, mot de passe et code TOTP, clés de sécurité FIDO2, appareils connectés, historique des connexions. Toute modification se fait dans une fenêtre modale, sur la
 // plateforme : aucune page du fournisseur d'identité n'est ouverte. Modale CRUD standard du système de
 // conception (ModaleCompte), adaptée au contexte : modification, création, suppression, confirmation ; une
 // saisie modifiée demande confirmation avant l'abandon.
-
-type Retour = { niveau: 'info' | 'crit' | 'warn'; message: MessageErreur } | null
-
-/** Résultat d'une action : InlineAlert du catalogue, annoncé (role status ou alert). */
-function Annonce({ retour }: { retour: Retour }) {
-  return retour ? <InlineAlert level={retour.niveau} title={retour.message.texte} correlationId={retour.message.correlationId} /> : null
-}
 
 function DialogueFiche({ moi, onFait, onFermer }: { moi: Moi; onFait: () => void; onFermer: () => void }) {
   const { t } = useTranslation()
@@ -62,9 +58,9 @@ function DialogueFiche({ moi, onFait, onFermer }: { moi: Moi; onFait: () => void
   )
 }
 
-function ModaleMotDePasse({ onFait, onFermer }: { onFait: () => void; onFermer: () => void }) {
+function ModaleMotDePasse({ onFait, onFermer }: { onFait: (autresFermees: boolean) => void; onFermer: () => void }) {
   const { t } = useTranslation()
-  const saisie = useSaisieMotDePasse({ onFait })
+  const saisie = useSaisieMotDePasse({ fermeture: true, onFait: (_n, autresFermees) => onFait(autresFermees) })
   return (
     <ModaleCompte id="gm-dialogue-mdp" size="md" title={t('compte.securite.motDePasse')} description={t('compte.securite.motDePasse.texte')} onClose={onFermer}
       submitLabel={t('motDePasse.enregistrer')} submitIcon="key-round" onSubmit={() => void saisie.soumettre()} submitting={saisie.enCours} error={saisie.erreur}
@@ -146,7 +142,9 @@ function Securite({ moi }: { moi: Moi }) {
         </div>
         <Annonce retour={retour} />
       </div>
-      {dialogue === 'MOT_DE_PASSE' ? <ModaleMotDePasse onFait={() => fait('compte.securite.motDePasse.fait')} onFermer={() => setDialogue(null)} /> : null}
+      {dialogue === 'MOT_DE_PASSE' ? (
+        <ModaleMotDePasse onFait={(autres) => fait(autres ? 'compte.securite.motDePasse.faitAutres' : 'compte.securite.motDePasse.fait')} onFermer={() => setDialogue(null)} />
+      ) : null}
       {dialogue === 'TOTP' ? <ModaleTotp onFait={() => fait('compte.securite.secondFacteur.fait')} onFermer={() => setDialogue(null)} /> : null}
     </Card>
   )
@@ -223,52 +221,6 @@ function Cles() {
   )
 }
 
-function Sessions() {
-  const { t, i18n } = useTranslation()
-  const message = useMessageErreur()
-  const sessions = useMesSessions()
-  const fermer = useFermerSession()
-  const fermerTout = useFermerSessions()
-  const [aFermer, setAFermer] = useState<SessionCompte | 'TOUTES' | null>(null)
-  const [retour, setRetour] = useState<Retour>(null)
-  const agir = async (f: () => Promise<unknown>, succes: string) => {
-    setAFermer(null)
-    setRetour(null)
-    try {
-      await f()
-      setRetour({ niveau: 'info', message: { texte: succes } })
-    } catch (x) {
-      setRetour({ niveau: 'crit', message: message(x) })
-    }
-  }
-  const colonnes: Column<SessionCompte>[] = [
-    { key: 'adresseIp', header: t('compte.sessions.adresse'), render: (s) => <span className="gm-mono">{s.adresseIp ?? '—'}</span> },
-    { key: 'debut', header: t('compte.sessions.debut'), render: (s) => dateHeure(s.debut, i18n.language) },
-    { key: 'dernierAcces', header: t('compte.sessions.dernierAcces'), render: (s) => dateHeure(s.dernierAcces, i18n.language) },
-    { key: 'applications', header: t('compte.sessions.applications'), render: (s) => s.applications.join(', ') },
-    { key: 'actions', header: '', type: 'actions', render: (s) => <Button size="sm" onClick={() => setAFermer(s)}>{t('compte.sessions.fermer')}</Button> },
-  ]
-  return (
-    <Card title={t('compte.sessions.titre')} actions={<Button size="sm" variant="danger" onClick={() => setAFermer('TOUTES')}>{t('compte.sessions.fermerToutes')}</Button>}>
-      <div className="gm-col">
-        <EtatsRequete etat={sessions} isEmpty={(l) => l.length === 0} emptyTitle={t('compte.sessions.aucune')} errorTitle={t('commun.erreur.titre')} retryLabel={t('commun.reessayer')}>
-          {(l) => <DataTable columns={colonnes} rows={l} rowKey={(s) => s.id} density="compact" />}
-        </EtatsRequete>
-        <Annonce retour={retour} />
-      </div>
-      {aFermer === 'TOUTES' ? (
-        <ModaleCompte id="gm-dialogue-sessions" context="delete" irreversible={false} title={t('compte.sessions.fermerToutes')} description={t('compte.sessions.fermerToutes.texte')}
-          submitLabel={t('compte.sessions.fermerToutes')} onSubmit={() => void agir(() => fermerTout.mutateAsync(undefined), t('compte.sessions.fermees'))} onClose={() => setAFermer(null)} />
-      ) : aFermer ? (
-        <ModaleCompte id="gm-dialogue-session" context="confirm" title={t('compte.sessions.fermer.titre')} description={t('compte.sessions.fermer.texte')}
-          submitLabel={t('compte.sessions.fermer.titre')}
-          object={[{ key: t('compte.sessions.adresse'), value: aFermer.adresseIp ?? '—' }, { key: t('compte.sessions.debut'), value: dateHeure(aFermer.debut, i18n.language) }]}
-          onSubmit={() => void agir(() => fermer.mutateAsync(aFermer.id), t('compte.sessions.fermee'))} onClose={() => setAFermer(null)} />
-      ) : null}
-    </Card>
-  )
-}
-
 export default function MonComptePage() {
   const { t } = useTranslation()
   const moi = useMoi()
@@ -281,10 +233,12 @@ export default function MonComptePage() {
       <EtatsRequete etat={moi} emptyTitle={t('commun.vide')} errorTitle={t('commun.erreur.titre')} retryLabel={t('commun.reessayer')}>
         {(m) => (
           <>
+            <Photo moi={m} />
             <Fiche moi={m} />
             <Securite moi={m} />
             <Cles />
-            <Sessions />
+            <Appareils />
+            <Historique />
           </>
         )}
       </EtatsRequete>

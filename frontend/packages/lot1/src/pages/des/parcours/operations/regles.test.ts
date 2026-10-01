@@ -56,6 +56,8 @@ describe('onglet Opérations : règles de présentation', () => {
 
   it('geste ailleurs : affectation, décision, mise en service ; opérations externes', () => {
     expect(['6', '18', '26', '32', '35', '17', '27', 'C1'].map(ongletDuGeste)).toEqual(['affectation', 'decision', 'decision', 'mise-en-service', 'mise-en-service', null, null, null])
+    // Suivi de l'exploitation (34) : prouvé dans l'onglet des opérations (sinon aucun geste ne le clôt).
+    expect(ongletDuGeste('34')).toBeNull()
     expect(lienDuGeste('affectation', { liaisonId: 'L', id: 'L:6' })).toBe('/des/parcours/L?onglet=etapes&action=affecter')
     expect(lienDuGeste('decision', { liaisonId: 'L', id: 'L:20' })).toBe('/des/parcours/L?onglet=decision&operation=L%3A20')
     expect(externe(op({ raci: { R: P('PARTICIPANT'), C: [], V: null, I: [], E: [] } }))).toBe(true)

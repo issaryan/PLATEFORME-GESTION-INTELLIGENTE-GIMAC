@@ -27,6 +27,8 @@ export type LiaisonVue = {
   couvertureMiseEnService: CoverageValue
   operationsEnRetard: number
   /** Champs du modèle hybride (D-57), servis dès que le service les porte ; sinon correspondance d'affichage. */
+  /** Référence lisible LIA-AAAA-NNN du parcours ; absente pour une liaison pas encore instanciée. */
+  reference?: string | null
   statut?: StatutParcours
   etapeCourante?: EtapeCode
   bloquee?: boolean
@@ -52,7 +54,8 @@ export function versResume(v: LiaisonVue): LiaisonResume {
   const a = AFFICHAGE[v.etat] ?? AFFICHAGE.OUVERTE
   return {
     id: v.id,
-    reference: v.id.length > 12 ? v.id.slice(0, 8).toUpperCase() : v.id,
+    // Référence du parcours servie par MS-HOMOLOGATION (LIA-AAAA-NNN) ; à défaut seulement, un extrait de l'identifiant.
+    reference: v.reference || (v.id.length > 12 ? v.id.slice(0, 8).toUpperCase() : v.id),
     institutionNom: v.institutionNom,
     typeProjet: v.typeProjet,
     statut: v.statut ?? a.statut,

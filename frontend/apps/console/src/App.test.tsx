@@ -1,9 +1,10 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import i18next from 'i18next'
 import { MOT_DE_PASSE_DEMO, initI18n } from '@gimac/socle'
 import { catalogueCompte } from '@gimac/compte'
+import { catalogueMessagerie } from '@gimac/lot1'
 import App from './App'
 import { catalogues } from './i18n'
 import { fr } from './i18n/fr'
@@ -13,7 +14,7 @@ import { es } from './i18n/es'
 // Application console : session de démonstration par profil, navigation élaguée selon les permissions,
 // premier accès avant tout écran, écrans réservés, session réelle par la passerelle.
 beforeAll(() => {
-  if (!i18next.isInitialized) initI18n([catalogueCompte, ...catalogues], 'fr')
+  if (!i18next.isInitialized) initI18n([catalogueCompte, catalogueMessagerie, ...catalogues], 'fr')
   Object.defineProperty(window, 'innerWidth', { value: 1400, configurable: true })
 })
 // Session de démonstration ouverte (connexion simulée, D-65) ; retirée par les scénarios de connexion.
@@ -31,9 +32,16 @@ describe('Console', () => {
   it('super administrateur (profil par défaut) : tableau de bord et navigation complète', async () => {
     monter()
     expect(await screen.findByRole('heading', { name: 'Tableau de bord du super administrateur' }, { timeout: 8000 })).toBeTruthy()
-    for (const n of ['Comptes', 'Profils et permissions', 'Journal d’administration', 'Politique de sécurité', 'Messagerie', 'Configuration', 'Journalisation', 'Mon compte', 'Se déconnecter']) {
+    for (const n of ['Comptes', 'Profils et permissions', 'Journal d’administration', 'Politique de sécurité', 'Courriels de la plateforme', 'Configuration', 'Journalisation', 'Mon compte', 'Se déconnecter']) {
       expect(screen.getByRole('link', { name: n })).toBeTruthy()
     }
+    // Messagerie instantanée (D-64) : ouverte au super administrateur, pastille des non-lus de l'annuaire simulé.
+    const messagerie = screen.getByRole('link', { name: /^Messagerie/ })
+    expect(messagerie.getAttribute('href')).toBe('/console/messagerie')
+    expect(await within(messagerie).findByLabelText('3 non lus')).toBeTruthy()
+    fireEvent.click(messagerie)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Messagerie' }, { timeout: 8000 })).toBeTruthy()
+    expect(await screen.findByRole('list', { name: 'Conversations' })).toBeTruthy()
     expect(document.querySelector('.gm-footer')).toBeTruthy()
     fireEvent.click(screen.getByRole('link', { name: 'Mon compte' }))
     expect(await screen.findByRole('heading', { level: 1, name: 'Mon compte' })).toBeTruthy()
@@ -45,6 +53,8 @@ describe('Console', () => {
     expect(await screen.findByRole('heading', { name: 'Journalisation des services' }, { timeout: 8000 })).toBeTruthy()
     fireEvent.click(screen.getByRole('link', { name: 'Tableau de bord' }))
     expect(await screen.findByRole('heading', { name: 'Tableau de bord de la sécurité des SI' })).toBeTruthy()
+    // Le RSSI, membre interne, dispose de la messagerie instantanée (D-64).
+    expect(screen.getByRole('link', { name: /^Messagerie/ }).getAttribute('href')).toBe('/console/messagerie')
     cleanup()
     localStorage.setItem('gm.profilDemo', 'ROLE_INCONNU')
     monter('/console/inconnue')

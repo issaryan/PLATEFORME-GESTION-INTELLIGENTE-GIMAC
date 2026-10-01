@@ -2,6 +2,7 @@ import { useState, type KeyboardEvent } from 'react'
 import { cx } from '../../lib/cx'
 import { FieldWrapper } from '../FieldWrapper/FieldWrapper'
 import { Tag } from '../../affichage/Tag/Tag'
+import { Avatar } from '../../affichage/Avatar/Avatar'
 import { useFieldId2 } from '../../lib/useFieldId2'
 import type { BaseProps, Option } from '../../lib/types'
 import { useLibelle } from '../../i18n/LangueProvider'
@@ -22,6 +23,8 @@ export interface MultiSelectProps extends BaseProps {
   suggestions?: boolean
   /** Libellés des valeurs choisies absentes des options courantes (recherche serveur). */
   labels?: Record<string, string>
+  /** Avatars des valeurs choisies absentes des options courantes (destinataires). */
+  avatars?: Record<string, { name: string; src?: string | null }>
 }
 
 // Sélection multiple par jetons, retrait au clavier (Retour arrière) et à la souris (§7.2) ; avec
@@ -35,6 +38,7 @@ export function MultiSelect(p: MultiSelectProps) {
   const proposees = (p.options || []).filter((o) => !value.includes(o.value))
   const visible = !!p.suggestions && ouverte
   const libelle = (v: string) => (p.options || []).find((x) => x.value === v)?.label ?? p.labels?.[v] ?? v
+  const avatar = (v: string) => (p.options || []).find((x) => x.value === v)?.avatar ?? p.avatars?.[v]
   const ajouter = (o: Option) => {
     p.onChange?.([...value, o.value])
     p.onQuery?.('')
@@ -61,7 +65,7 @@ export function MultiSelect(p: MultiSelectProps) {
     <FieldWrapper id={id} label={p.label} required={p.required} help={p.help} error={p.error} className={p.className}>
       <div className="gm-multi">
         {value.map((v) => (
-          <Tag key={v} onRemove={() => p.onChange?.(value.filter((x) => x !== v))}>
+          <Tag key={v} avatar={avatar(v)} onRemove={() => p.onChange?.(value.filter((x) => x !== v))}>
             {libelle(v)}
           </Tag>
         ))}
@@ -100,6 +104,7 @@ export function MultiSelect(p: MultiSelectProps) {
                   ajouter(o)
                 }}
               >
+                {o.avatar ? <Avatar name={o.avatar.name} src={o.avatar.src} size="sm" decorative /> : null}
                 {o.label}
               </li>
             ))

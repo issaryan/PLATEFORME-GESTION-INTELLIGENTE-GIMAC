@@ -1,8 +1,8 @@
 // Messagerie instantanée de travail entre acteurs du GIMAC (D-64, docs/lot1/messagerie.md) : représentations
 // servies par MS-COLLABORATION. L'interface n'en calcule rien : non-lus, masquage RG-52 et droits viennent du service.
 
-/** Personne joignable de l'annuaire (compte interne actif). */
-export type Correspondant = { id: string; nom: string; fonction: string | null; profils?: string[] }
+/** Personne joignable de l'annuaire (compte interne actif) ; avatarVersion : photo de profil (mon-compte.md §1), null sans photo. */
+export type Correspondant = { id: string; nom: string; fonction: string | null; profils?: string[]; avatarVersion?: string | null }
 
 /** Étiquette de projet : lien direct vers le dossier de la liaison. */
 export type EtiquetteLiaison = { liaisonId: string; reference: string }

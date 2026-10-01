@@ -1,9 +1,9 @@
 // « Mon compte » et premier accès (D-62), communs aux couches des, portail et console.
 export type * from './modele'
-export { ACTIONS_REQUISES, ETAPES_ASSISTANT, LANGUES_COMPTE, actionsFournisseur, etapesAssistant } from './modele'
+export { ACTIONS_REQUISES, ETAPES_ASSISTANT, LANGUES_COMPTE, PHOTO_PROFIL, RESULTATS_CONNEXION, actionsFournisseur, etapesAssistant } from './modele'
 export type { ServiceMonCompte } from './services/ports'
 export { monCompteHttp } from './services/http'
-export { monCompteSimule, compteDemo, type OptionsMonCompteSimule } from './services/simule'
+export { monCompteSimule, compteDemo, appareilsDemo, historiqueDemo, type OptionsMonCompteSimule } from './services/simule'
 export { creerSimulateur, type Simulateur, type OptionsSimulateur } from './services/simulateur'
 export { CompteProvider, useServiceCompte } from './contexte'
 export * from './hooks'

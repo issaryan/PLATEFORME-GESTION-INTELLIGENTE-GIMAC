@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router'
 import { Button, ConversationList, EmptyState, InlineAlert, Link, MessageComposer, MessageThread, MultiSelect, PageHeader, Pagination, SearchInput, SearchSelect, Skeleton, Tag, TextField, type ThreadMessage, Note } from '@gimac/design-system'
-import { aPermission, usePermissions, useSession, type ApiError } from '@gimac/socle'
-import type { Conversation, EtiquetteLiaison, Message } from '../../../modele/messagerie'
+import { aPermission, urlAvatar, usePermissions, useSession, type ApiError } from '@gimac/socle'
+import type { Conversation, Correspondant, EtiquetteLiaison, Message } from '../../../modele/messagerie'
 import { LIMITES_MESSAGERIE, MOTIF_LIAISON } from '../../../modele/messagerie'
 import { useAnnuaire, useConversation, useConversations, useDemarrer, useEnvoyer, useFil, useMarquerLu, useTelechargerPiece } from '../../../hooks/messagerie'
 import { useLiaisonsParcours } from '../../../hooks/parcours'
@@ -14,6 +14,12 @@ import { enregistrerFichier } from '../../../ressources/fichier'
 // à droite, comme un client de messagerie. Les destinataires viennent de l'annuaire de la plateforme ; une
 // liaison citée devient un lien vers son dossier ; le service applique les droits, le masquage RG-52 et les bornes.
 // Adresse : ?conversation=<id> ouvre un fil ; ?nouveau=1[&liaison=<id>][&destinataire=<id>] prépare un message.
+// Ouverte à tout membre interne du GIMAC, depuis le DES et depuis la console (RSSI, super administrateur) :
+// dans la console, les liaisons ne se citent pas (la couche n'y a pas accès), leurs liens mènent au DES.
+
+/** Couche de présentation qui affiche la messagerie : préfixe des photos, citation des liaisons. */
+type CoucheMessagerie = 'des' | 'console'
+const Couche = createContext<CoucheMessagerie>('des')
 
 const PAR_PAGE = 20
 const taille = (octets: number) => (octets < 1024 * 1024 ? `${Math.max(1, Math.round(octets / 1024))} Ko` : `${(octets / 1024 / 1024).toFixed(1).replace('.', ',')} Mo`)
@@ -27,11 +33,30 @@ function useQuand() {
   }
 }
 
+/** Photo de profil d'une personne de l'annuaire (docs/lot1/mon-compte.md §1), initiales à défaut. */
+function usePhoto() {
+  const couche = useContext(Couche)
+  return (p: Pick<Correspondant, 'id' | 'avatarVersion'> | undefined) => (p ? urlAvatar(couche, p.id, p.avatarVersion) : undefined)
+}
+
+/** Interlocuteur d'un échange direct : l'autre membre (sa photo illustre la conversation). */
+export function interlocuteur(c: Conversation, moi: string | undefined): Correspondant | undefined {
+  return c.type === 'DIRECTE' && !c.titre ? c.membres.find((m) => m.id !== moi) : undefined
+}
+
 /** Titre d'une conversation : son objet, sinon l'autre membre (échange direct), sinon les membres. */
 export function titreConversation(c: Conversation, moi: string | undefined): string {
   if (c.titre) return c.titre
   const autres = c.membres.filter((m) => m.id !== moi)
   return (autres.length ? autres : c.membres).map((m) => m.nom).join(', ')
+}
+
+/**
+ * Référence de liaison : lien vers son dossier dans le DES ; texte simple dans la console, servie sur une autre
+ * origine et sans accès aux liaisons.
+ */
+function RefLiaison({ href, children }: { href: string; children: string }) {
+  return useContext(Couche) === 'des' ? <Link href={href} mono>{children}</Link> : <span className="gm-mono">{children}</span>
 }
 
 /** Corps d'un message : les références de liaison citées deviennent des liens vers leur dossier. */
@@ -42,7 +67,7 @@ export function CorpsMessage({ contenu, etiquettes }: { contenu: string; etiquet
     const debut = m.index ?? 0
     if (debut > dernier) morceaux.push(contenu.slice(dernier, debut))
     const e = etiquettes.find((x) => x.reference === m[0])
-    morceaux.push(<Link key={debut} href={e ? `/des/parcours/${encodeURIComponent(e.liaisonId)}` : `/des/parcours?q=${encodeURIComponent(m[0])}`} mono>{m[0]}</Link>)
+    morceaux.push(<RefLiaison key={debut} href={e ? `/des/parcours/${encodeURIComponent(e.liaisonId)}` : `/des/parcours?q=${encodeURIComponent(m[0])}`}>{m[0]}</RefLiaison>)
     dernier = debut + m[0].length
   }
   if (dernier < contenu.length) morceaux.push(contenu.slice(dernier))
@@ -54,7 +79,7 @@ function Etiquettes({ etiquettes }: { etiquettes: EtiquetteLiaison[] }) {
   return (
     <>
       {etiquettes.map((e) => (
-        <Link key={e.liaisonId} href={`/des/parcours/${encodeURIComponent(e.liaisonId)}`} mono>{`# ${e.reference}`}</Link>
+        <RefLiaison key={e.liaisonId} href={`/des/parcours/${encodeURIComponent(e.liaisonId)}`}>{`# ${e.reference}`}</RefLiaison>
       ))}
     </>
   )
@@ -109,6 +134,7 @@ function Saisie({ envoi, erreur, onEnvoyer, etiquettesInitiales = [] }: {
   const [fichiers, setFichiers] = useState<File[]>([])
   const [etiquettes, setEtiquettes] = useState<EtiquetteLiaison[]>(etiquettesInitiales)
   const [citer, setCiter] = useState(etiquettesInitiales.length > 0)
+  const citable = useContext(Couche) === 'des'
   const vider = () => {
     setTexte('')
     setFichiers([])
@@ -128,7 +154,7 @@ function Saisie({ envoi, erreur, onEnvoyer, etiquettesInitiales = [] }: {
       onSend={() => onEnvoyer({ contenu: texte, fichiers, etiquettes }, vider)}
       extras={
         <div className="gm-col" style={{ gap: 'var(--gm-space-1)' }}>
-          {citer ? <CiterLiaisons valeur={etiquettes} onChange={setEtiquettes} /> : (
+          {!citable ? null : citer ? <CiterLiaisons valeur={etiquettes} onChange={setEtiquettes} /> : (
             <span>
               <Button size="sm" variant="ghost" icon="route" onClick={() => setCiter(true)}>{t('msg.citer')}</Button>
             </span>
@@ -150,6 +176,8 @@ function Fil({ id, peutEcrire }: { id: string; peutEcrire: boolean }) {
   const lu = useMarquerLu()
   const telecharger = useTelechargerPiece()
   const erreur = useMessageErreur()
+  const photo = usePhoto()
+  const couche = useContext(Couche)
   // Pages : la plus récente d'abord ; le fil se lit du plus ancien au plus récent.
   const messages: Message[] = useMemo(() => (fil.data ?? []).slice().reverse().flatMap((p) => p.contenu), [fil.data])
   const nonLus = conversation.data?.nonLus ?? 0
@@ -162,7 +190,7 @@ function Fil({ id, peutEcrire }: { id: string; peutEcrire: boolean }) {
   if (!conversation.data || !fil.data) return <Skeleton height={320} />
   const c = conversation.data
   const vus: ThreadMessage[] = messages.map((m) => ({
-    id: m.id, auteur: m.auteur.nom, quand: quand(m.envoyeLe), mine: m.moi,
+    id: m.id, auteur: m.auteur.nom, quand: quand(m.envoyeLe), mine: m.moi, avatar: photo(m.auteur),
     contenu: <CorpsMessage contenu={m.contenu} etiquettes={m.etiquettes} />,
     etiquettes: m.etiquettes.length ? <Etiquettes etiquettes={m.etiquettes} /> : undefined,
     pieces: m.piecesJointes.map((p) => ({ id: p.id, nom: p.nom, taille: taille(p.taille) })),
@@ -172,7 +200,7 @@ function Fil({ id, peutEcrire }: { id: string; peutEcrire: boolean }) {
     <MessageThread
       titre={titreConversation(c, session?.sujet)}
       sousTitre={[t('msg.membres', { count: c.membres.length }), c.membres.map((m) => (m.id === session?.sujet ? t('msg.vous') : m.nom)).join(', ')].join(' · ')}
-      actions={c.liaison ? <Link href={`/des/parcours/${encodeURIComponent(c.liaison.liaisonId)}`}>{t('msg.ouvrirLiaison', { reference: c.liaison.reference })}</Link> : undefined}
+      actions={c.liaison && couche === 'des' ? <Link href={`/des/parcours/${encodeURIComponent(c.liaison.liaisonId)}`}>{t('msg.ouvrirLiaison', { reference: c.liaison.reference })}</Link> : undefined}
       messages={vus}
       plusAnciens={derniere?.plusAnciens}
       onPlusAnciens={() => void fil.fetchNextPage()}
@@ -196,17 +224,18 @@ function NouveauMessage({ liaisonId, destinataire, onCree, onAnnuler }: { liaiso
   const { t } = useTranslation()
   const [q, setQ] = useState('')
   const [destinataires, setDestinataires] = useState<string[]>(destinataire ? [destinataire] : [])
-  const [connus, setConnus] = useState<Record<string, string>>({})
+  const [connus, setConnus] = useState<Record<string, Correspondant>>({})
   const [objet, setObjet] = useState('')
   const annuaire = useAnnuaire(q.trim())
   const demarrer = useDemarrer()
   const erreur = useMessageErreur()
-  const liaison = useLiaisonsParcours({ page: 1, taille: 1, recherche: liaisonId ?? undefined })
+  const photo = usePhoto()
+  const liaison = useLiaisonsParcours({ page: 1, taille: 1, recherche: liaisonId ?? undefined }, useContext(Couche) === 'des' && Boolean(liaisonId))
   const rattachee = liaisonId ? liaison.data?.contenu.find((l) => l.id === liaisonId) : undefined
   const personnes = annuaire.data?.contenu ?? []
   // Libellé de chaque destinataire choisi, même s'il sort des résultats de la recherche courante.
   useEffect(() => {
-    if (personnes.length) setConnus((k) => ({ ...k, ...Object.fromEntries(personnes.map((p) => [p.id, p.nom])) }))
+    if (personnes.length) setConnus((k) => ({ ...k, ...Object.fromEntries(personnes.map((p) => [p.id, p])) }))
   }, [personnes])
   return (
     <section className="gm-chat gm-fil" aria-label={t('msg.nouveau.titre')} style={{ height: '100%' }}>
@@ -224,8 +253,9 @@ function NouveauMessage({ liaisonId, destinataire, onCree, onAnnuler }: { liaiso
           onChange={setDestinataires}
           query={q}
           onQuery={setQ}
-          labels={connus}
-          options={personnes.map((p) => ({ value: p.id, label: p.fonction ? `${p.nom} · ${p.fonction}` : p.nom }))}
+          labels={Object.fromEntries(Object.values(connus).map((p) => [p.id, p.nom]))}
+          avatars={Object.fromEntries(Object.values(connus).map((p) => [p.id, { name: p.nom, src: photo(p) }]))}
+          options={personnes.map((p) => ({ value: p.id, label: p.fonction ? `${p.nom} · ${p.fonction}` : p.nom, avatar: { name: p.nom, src: photo(p) } }))}
         />
         <TextField name="objet" label={t('msg.objet')} help={t('msg.objetAide')} value={objet} onChange={setObjet} />
         {liaisonId ? <Note>{t('msg.liaisonRattachee', { reference: rattachee?.reference ?? liaisonId })} · {t('msg.liaisonAide')}</Note> : null}
@@ -245,8 +275,13 @@ function NouveauMessage({ liaisonId, destinataire, onCree, onAnnuler }: { liaiso
   )
 }
 
-export default function MessageriePage() {
+export default function MessageriePage({ couche = 'des' }: { couche?: CoucheMessagerie }) {
+  return <Couche.Provider value={couche}><Messagerie /></Couche.Provider>
+}
+
+function Messagerie() {
   const { t } = useTranslation()
+  const photo = usePhoto()
   const session = useSession()
   const permissions = usePermissions()
   const peutEcrire = aPermission(permissions, PERM.messageEnvoyer)
@@ -295,13 +330,15 @@ export default function MessageriePage() {
                   quand: c.dernierMessage ? quand(c.dernierMessage.envoyeLe) : undefined,
                   nonLus: c.nonLus,
                   groupe: c.type === 'GROUPE',
+                  avatar: photo(interlocuteur(c, session?.sujet)),
                 }))}
               />
             )}
           </div>
           <Pagination total={liste.data?.total ?? 0} page={page} pageSize={PAR_PAGE} onPage={setPage} />
         </aside>
-        <div className="gm-messagerie-fil">
+        {/* État vide sur le fond texturé du fil (motif de trame atténué, D-66), le texte sur fond plein. */}
+        <div className={nouveau || ouverte ? 'gm-messagerie-fil' : 'gm-messagerie-fil gm-trame-fil'}>
           {nouveau ? (
             <NouveauMessage
               key={`${params.get('liaison')}-${params.get('destinataire')}`}

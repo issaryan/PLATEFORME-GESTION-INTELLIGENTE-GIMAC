@@ -54,3 +54,14 @@
 .gm-prefs-rubrique { display: flex; flex-direction: column; gap: var(--gm-space-2); padding: var(--gm-space-3) 0; border-top: var(--gm-border-1) solid var(--gm-color-border); }
 .gm-prefs-rubrique:last-child { padding-bottom: 0; }
 .gm-prefs-libelle { margin: 0; font-weight: 600; color: var(--gm-color-text-primary); }
+/* Menu utilisateur de la barre supérieure : avatar (photo ou initiales) et chevron ; en-tête du menu (avatar
+   de 40 px, nom, fonction), puis les entrées du menu d'actions. */
+.gm-topbar-user { all: unset; display: inline-flex; align-items: center; gap: var(--gm-space-1); height: var(--gm-size-control-md); padding: 0 var(--gm-space-1); cursor: pointer; color: var(--gm-color-text-secondary); }
+.gm-topbar-user:hover { background: var(--gm-color-action-subtle); color: var(--gm-color-text-primary); }
+.gm-topbar-user:focus-visible { outline: var(--gm-border-2) solid var(--gm-color-focus); outline-offset: 2px; }
+.gm-topbar-menu { padding: 0; gap: 0; width: 304px; }
+.gm-topbar-menu .gm-menu { border: 0; min-width: 0; }
+.gm-topbar-menu-tete { display: flex; align-items: center; gap: var(--gm-space-3); padding: var(--gm-space-4); border-bottom: var(--gm-border-1) solid var(--gm-color-border); }
+.gm-topbar-menu-identite { display: flex; flex-direction: column; min-width: 0; }
+.gm-topbar-menu-nom { color: var(--gm-color-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gm-topbar-menu-detail { font-size: 12px; line-height: 18px; color: var(--gm-color-text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

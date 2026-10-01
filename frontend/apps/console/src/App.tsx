@@ -1,12 +1,14 @@
 import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { Navigate, Route, Routes, useLocation } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { EmptyState, Skeleton } from '@gimac/design-system'
 import {
   ConnexionProvider, Enveloppe, GardeSession, PageConnexion, PageDeconnexion, SessionActive, aPermission, adresseConnexion, configureHttp, connexionHttp, lirePreference,
-  lireSessionDemo, surNonAutorise, type Session,
+  lireSessionDemo, openLiveChannel, surNonAutorise, type EtatCanal, type Session,
 } from '@gimac/socle'
-import { GardePremierAcces, MonComptePage, monCompteHttp, monCompteSimule } from '@gimac/compte'
+import { GardePremierAcces, MonComptePage, useMonAvatar, monCompteHttp, monCompteSimule } from '@gimac/compte'
+import { PERM, servicesHttp, servicesSimules, useNonLus } from '@gimac/lot1'
 import { Fournisseurs } from './Fournisseurs'
 import { creerClientRequetes } from './services/clientRequetes'
 import { CLE_PREMIER_ACCES_DEMO, CLE_PROFIL_DEMO, NAVIGATION_CONSOLE, PROFILS_DEMO } from './navigation'
@@ -16,15 +18,17 @@ import { connexionDemo } from './connexionDemo'
 
 // Console d'administration et d'audit (couche « console », D-46, D-61, D-62) : le super administrateur,
 // le RSSI et chaque utilisateur configurent tout depuis la plateforme, sans ouvrir la console du
-// fournisseur d'identité. Services réels par la passerelle (VITE_SERVICES=http) ou simulés pour le
-// développement ; session lue sur /api/session, second facteur exigé ; premier accès avant tout écran.
+// fournisseur d'identité. Services réels par la passerelle par défaut, simulés seulement si VITE_SERVICES=simule (tests
+// de bout en bout, démonstrations) ; session lue sur /api/session, second facteur exigé ; premier accès avant tout écran.
 const TableauDeBordPage = lazy(() => import('./pages/TableauDeBordPage'))
 const ComptesPage = lazy(() => import('./pages/ComptesPage'))
 const ComptePage = lazy(() => import('./pages/ComptePage'))
 const CreationComptePage = lazy(() => import('./pages/CreationComptePage'))
 const JournalPage = lazy(() => import('./pages/JournalPage'))
 const PolitiqueSecuritePage = lazy(() => import('./pages/PolitiqueSecuritePage'))
-const MessageriePage = lazy(() => import('./pages/MessageriePage'))
+const CourrielsPage = lazy(() => import('./pages/MessageriePage'))
+// Messagerie instantanée de travail (D-64), commune au DES : tout membre interne, dont le RSSI et le super administrateur.
+const MessagerieInstantanee = lazy(() => import('@gimac/lot1/pages/des/messagerie/MessageriePage'))
 const ProfilsPage = lazy(() => import('./pages/ProfilsPage'))
 const ConfigurationPlateformePage = lazy(() => import('./pages/ConfigurationPlateformePage'))
 const JournalisationPage = lazy(() => import('./pages/JournalisationPage'))
@@ -53,13 +57,27 @@ function Autorise({ permissions, exigee, children }: { permissions: string[]; ex
   return aPermission(permissions, exigee) ? <>{children}</> : <EmptyState icon="lock" title={t('console.refuse.titre')} text={t('console.refuse.texte')} />
 }
 
+/** Canal poussé de la console (services réels) : nouveaux messages de la messagerie instantanée (D-64). */
+function CanalMessagerie({ actif, onEtat }: { actif: boolean; onEtat: (e: EtatCanal) => void }) {
+  const qc = useQueryClient()
+  useEffect(() => (actif ? openLiveChannel('console', ['collaboration'], qc, onEtat, { baseMs: 1000, maxMs: 30_000 }) : undefined), [actif, qc, onEtat])
+  return null
+}
+
 function Pages({ session, correlationId }: { session: Session; correlationId?: string }) {
+  // Photo de profil du titulaire (docs/lot1/mon-compte.md §4) : menu utilisateur de la barre du haut.
+  const moi = useMonAvatar()
   const p = session.permissions
+  const messagerie = aPermission(p, PERM.messageLire)
+  const [etatCanal, setEtatCanal] = useState<EtatCanal | undefined>()
+  // Messages non lus (D-64) : pastille de l'entrée « Messagerie », rafraîchie par le canal poussé.
+  const nonLus = useNonLus(messagerie)
   return (
     <GardePremierAcces>
       {(assistant) => (
-        <Enveloppe couche="console" navigation={assistant ? [] : NAVIGATION_CONSOLE} permissions={p} utilisateur={session.nom} version={VERSION}
-          correlationId={correlationId} espacePersonnel="/console">
+        <Enveloppe avatar={moi?.src} fonction={moi?.fonction} couche="console" navigation={assistant ? [] : NAVIGATION_CONSOLE} permissions={p} utilisateur={session.nom} version={VERSION}
+          badges={{ messagerie: nonLus.data?.total ?? 0 }} etatCanal={etatCanal} correlationId={correlationId} espacePersonnel="/console">
+          <CanalMessagerie actif={messagerie && !assistant && import.meta.env.VITE_SERVICES !== 'simule'} onEtat={setEtatCanal} />
           <Suspense fallback={<Skeleton height={32} />}>
             <Routes>
               <Route path="deconnexion" element={<PageDeconnexion />} />
@@ -74,7 +92,8 @@ function Pages({ session, correlationId }: { session: Session; correlationId?: s
                   <Route path="journal" element={<Autorise permissions={p} exigee="IAM_JOURNAL_READ"><JournalPage /></Autorise>} />
                   <Route path="profils" element={<Autorise permissions={p} exigee="IAM_ACCOUNT_READ"><ProfilsPage /></Autorise>} />
                   <Route path="politique-securite" element={<Autorise permissions={p} exigee="PLATFORM_SECURITY_POLICY_READ"><PolitiqueSecuritePage /></Autorise>} />
-                  <Route path="messagerie" element={<Autorise permissions={p} exigee="PLATFORM_MESSAGING_EDIT"><MessageriePage /></Autorise>} />
+                  <Route path="messagerie" element={<Autorise permissions={p} exigee={PERM.messageLire}><MessagerieInstantanee couche="console" /></Autorise>} />
+                  <Route path="plateforme/courriels" element={<Autorise permissions={p} exigee="PLATFORM_MESSAGING_EDIT"><CourrielsPage /></Autorise>} />
                   <Route path="plateforme/configuration" element={<Autorise permissions={p} exigee="PLATFORM_CONFIG_READ"><ConfigurationPlateformePage /></Autorise>} />
                   <Route path="plateforme/journalisation" element={<Autorise permissions={p} exigee="PLATFORM_CONFIG_READ"><JournalisationPage /></Autorise>} />
                   <Route path="mon-compte" element={<MonComptePage />} />
@@ -89,9 +108,11 @@ function Pages({ session, correlationId }: { session: Session; correlationId?: s
   )
 }
 
-function AvecSession({ reels, children }: { reels: boolean; children: (s: Session) => ReactNode }) {
+function AvecSession({ children }: { children: (s: Session) => ReactNode }) {
   const ici = useLocation()
-  if (!reels) {
+  // Lu ici et non reçu en propriété : constant à la construction, la branche simulée (profils et comptes de
+  // démonstration) disparaît du paquet servi en production.
+  if (import.meta.env.VITE_SERVICES === 'simule') {
     // Connexion simulée (D-65) : sans session de démonstration, écran de connexion.
     if (!lireSessionDemo()) return <Navigate to={adresseConnexion({ retour: ici.pathname + ici.search })} replace />
     const s = sessionDemo()
@@ -101,11 +122,17 @@ function AvecSession({ reels, children }: { reels: boolean; children: (s: Sessio
 }
 
 export default function App() {
-  const reels = import.meta.env.VITE_SERVICES === 'http'
+  const reels = import.meta.env.VITE_SERVICES !== 'simule'
   const services = useMemo(() => {
     if (reels) return servicesConsoleHttp()
     const p = profilDemo()
     return servicesConsoleSimules({ acteur: { id: p.sujet, nom: p.nom, permissions: p.permissions } })
+  }, [reels])
+  // Messagerie instantanée (D-64) : /bff/console/collaboration, ou annuaire et conversations simulés.
+  const messagerie = useMemo(() => {
+    if (reels) return servicesHttp('console')
+    const p = profilDemo()
+    return servicesSimules({ utilisateur: { id: p.sujet, nom: p.nom } })
   }, [reels])
   const compte = useMemo(() => {
     if (reels) return monCompteHttp('console')
@@ -114,6 +141,7 @@ export default function App() {
     const identifiant = demo?.identifiant || p.identifiant
     const [prenom, ...nom] = p.nom.split(' ')
     return monCompteSimule({
+      couche: 'console',
       premierAcces: demo?.premierAcces ?? lirePreference(CLE_PREMIER_ACCES_DEMO) === '1',
       etapes: demo?.etapes,
       compte: { id: p.sujet, identifiant, prenom, nom: nom.join(' '), nomAffiche: p.nom, email: `${identifiant}@gimac-afr.org`, profils: [p.role] },
@@ -130,11 +158,11 @@ export default function App() {
     })
   }, [reels])
   return (
-    <Fournisseurs services={services} compte={compte} clientRequetes={client}>
+    <Fournisseurs services={services} compte={compte} messagerie={messagerie} clientRequetes={client}>
       <ConnexionProvider service={connexion} couche="console">
       <Routes>
         <Route path="/connexion/*" element={<PageConnexion couche="console" />} />
-        <Route path="/console/*" element={<AvecSession reels={reels}>{(s) => <Pages session={s} correlationId={correlationId} />}</AvecSession>} />
+        <Route path="/console/*" element={<AvecSession>{(s) => <Pages session={s} correlationId={correlationId} />}</AvecSession>} />
         <Route path="*" element={<Navigate to="/console/tableau-de-bord" replace />} />
       </Routes>
       </ConnexionProvider>

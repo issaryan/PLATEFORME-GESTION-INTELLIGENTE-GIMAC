@@ -484,6 +484,12 @@ const fr = {
   "direct.perdu": "Flux interrompu, reconnexion en cours",
   "direct.misAJour": "Mis à jour à {heure}",
   "permissions.selection": "{n} permission(s) sur {total}",
+  "recadrage.cadre": "cadre de recadrage",
+  "recadrage.aide": "Faites glisser l'image, ou utilisez les flèches du clavier pour la placer (Maj pour aller plus vite) ; + et − règlent le zoom, 0 recentre. Seule la zone du cadre est conservée.",
+  "recadrage.zoom": "Zoom",
+  "recadrage.apercu": "Aperçu",
+  "recadrage.recentrer": "Recentrer",
+  "topbar.menuUtilisateur": "Menu utilisateur : {nom}",
 } as const
 
 export type CleLibelle = keyof typeof fr
@@ -971,6 +977,12 @@ const en: Record<CleLibelle, string> = {
   "direct.misAJour": "Updated at {heure}",
   "permissions.selection": "{n} of {total} permission(s)",
 
+  "recadrage.cadre": "crop frame",
+  "recadrage.aide": "Drag the image, or use the arrow keys to position it (Shift to move faster); + and − set the zoom, 0 recentres. Only the area inside the frame is kept.",
+  "recadrage.zoom": "Zoom",
+  "recadrage.apercu": "Preview",
+  "recadrage.recentrer": "Recentre",
+  "topbar.menuUtilisateur": "User menu: {nom}",
 }
 
 const es: Record<CleLibelle, string> = {
@@ -1456,6 +1468,12 @@ const es: Record<CleLibelle, string> = {
   "direct.misAJour": "Actualizado a las {heure}",
   "permissions.selection": "{n} permiso(s) de {total}",
 
+  "recadrage.cadre": "marco de recorte",
+  "recadrage.aide": "Arrastre la imagen o use las flechas del teclado para colocarla (Mayús para ir más rápido); + y − ajustan el zoom, 0 la vuelve a centrar. Solo se conserva la zona del marco.",
+  "recadrage.zoom": "Zoom",
+  "recadrage.apercu": "Vista previa",
+  "recadrage.recentrer": "Volver a centrar",
+  "topbar.menuUtilisateur": "Menú de usuario: {nom}",
 }
 
 export const LIBELLES: Record<'fr' | 'en' | 'es', Record<CleLibelle, string>> = { fr, en, es }

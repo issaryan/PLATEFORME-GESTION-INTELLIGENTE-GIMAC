@@ -126,27 +126,34 @@ describe('Mon compte', () => {
     expect(await screen.findByText('RQ-9')).toBeTruthy()
   })
 
-  it('sessions : fermer une session après confirmation, fermer toutes les sessions, erreur', async () => {
+  it('appareils connectés : session courante marquée, fermer une session puis les autres, refus avec corrélation', async () => {
     const base = monCompteSimule({ latenceMs: 0 })
     let echec = false
-    rendre(<MonComptePage />, { service: avec({ fermerSession: async (id) => { if (echec) throw new ApiError(503, 'X', 'indisponible', 'RQ-10'); return base.fermerSession(id) } }, base) })
-    expect(await screen.findByText('10.20.4.62')).toBeTruthy()
-    fireEvent.click(screen.getAllByRole('button', { name: 'Fermer' })[1])
-    expect(within(confirmation()).getByText('10.20.4.62')).toBeTruthy()
+    rendre(<MonComptePage />, { service: avec({ fermerAppareil: async (id) => { if (echec) throw new ApiError(409, 'CNX_SESSION_COURANTE', 'x', 'RQ-10'); return base.fermerAppareil(id) } }, base) })
+    const carte = (await screen.findByRole('heading', { name: 'Appareils connectés' })).closest('section')!
+    expect(await within(carte).findByText('Firefox 131')).toBeTruthy()
+    const courante = within(carte).getByText('Cet appareil').closest('tr')!
+    expect(within(courante).getByText('10.20.1.15')).toBeTruthy()
+    expect(within(courante).queryByRole('button')).toBeNull()
+    expect(within(carte).getByText('10.20.4.•')).toBeTruthy()
+    fireEvent.click(within(within(carte).getByText('Firefox 131').closest('tr')!).getByRole('button', { name: 'Fermer la session' }))
+    expect(within(confirmation()).getByText(/Ordinateur · Firefox 131 · Ubuntu 24\.04/)).toBeTruthy()
     fireEvent.click(within(confirmation()).getByRole('button', { name: 'Fermer la session' }))
-    expect(await screen.findByText('La session a été fermée.')).toBeTruthy()
-    await waitFor(() => expect(screen.queryByText('10.20.4.62')).toBeNull())
+    expect(await screen.findByText('La session a été fermée : l’appareil est déconnecté.')).toBeTruthy()
+    await waitFor(() => expect(within(carte).queryByText('Firefox 131')).toBeNull())
     echec = true
-    fireEvent.click(screen.getAllByRole('button', { name: 'Fermer' })[0])
+    fireEvent.click(within(carte).getAllByRole('button', { name: 'Fermer la session' })[0])
     fireEvent.click(within(confirmation()).getByRole('button', { name: 'Fermer la session' }))
     expect(await screen.findByText('RQ-10')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Fermer toutes mes sessions' }))
-    expect(within(confirmation()).getByText(/y compris celle-ci/)).toBeTruthy()
+    expect(screen.getByText(/utilisez « Se déconnecter »/)).toBeTruthy()
+    fireEvent.click(within(carte).getByRole('button', { name: 'Fermer les autres sessions' }))
+    expect(within(confirmation()).getByText('3 autres sessions seront fermées. Cet appareil reste connecté.')).toBeTruthy()
     fireEvent.click(within(confirmation()).getByRole('button', { name: 'Annuler' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Fermer toutes mes sessions' }))
-    fireEvent.click(within(confirmation()).getByRole('button', { name: 'Fermer toutes mes sessions' }))
-    expect(await screen.findByText('Toutes vos sessions ont été fermées.')).toBeTruthy()
-    expect(await screen.findByText('Aucune session ouverte')).toBeTruthy()
+    fireEvent.click(within(carte).getByRole('button', { name: 'Fermer les autres sessions' }))
+    fireEvent.click(within(confirmation()).getByRole('button', { name: 'Fermer les autres sessions' }))
+    expect(await screen.findByText('Vos autres sessions ont été fermées. Cet appareil reste connecté.')).toBeTruthy()
+    await waitFor(() => expect(within(carte).getAllByRole('row')).toHaveLength(2))
+    expect((within(carte).getByRole('button', { name: 'Fermer les autres sessions' }) as HTMLButtonElement).disabled).toBe(true)
   })
 
   it('compte sans clé ni second facteur : états signalés ; lecture impossible : corrélation', async () => {

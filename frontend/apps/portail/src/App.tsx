@@ -5,7 +5,7 @@ import {
   ConnexionProvider, Enveloppe, GardeSession, PageConnexion, PageDeconnexion, SessionActive, adresseConnexion, configureHttp, connexionHttp, lirePreference, lireSessionDemo,
   surNonAutorise, type EtatCanal, type Session,
 } from '@gimac/socle'
-import { CompteProvider, GardePremierAcces, MonComptePage, monCompteHttp, monCompteSimule } from '@gimac/compte'
+import { CompteProvider, GardePremierAcces, MonComptePage, useMonAvatar, monCompteHttp, monCompteSimule } from '@gimac/compte'
 import { Fournisseurs, NAVIGATION_PORTAIL, creerClientRequetes, servicesHttp, servicesSimules } from '@gimac/lot1'
 import { connexionDemo, sessionCorrespondant } from './connexionDemo'
 
@@ -23,7 +23,7 @@ const ProcesVerbalPage = lazy(() => import('@gimac/lot1/pages/portail/parcours/P
 const AttestationsPage = lazy(() => import('@gimac/lot1/pages/portail/parcours/AttestationsPage'))
 const FicheSuiviPage = lazy(() => import('@gimac/lot1/pages/portail/parcours/FicheSuiviPage'))
 
-const REELS = import.meta.env.VITE_SERVICES === 'http'
+const REELS = import.meta.env.VITE_SERVICES !== 'simule'
 const VERSION = import.meta.env.VITE_VERSION ?? '0.1.0'
 
 function sessionDemo(): Session {
@@ -42,10 +42,12 @@ function AvecSession({ children }: { children: (s: Session) => ReactNode }) {
 }
 
 function Pages({ session, etatCanal, correlationId }: { session: Session; etatCanal: EtatCanal | undefined; correlationId?: string }) {
+  // Photo de profil du titulaire (docs/lot1/mon-compte.md §4) : menu utilisateur de la barre du haut.
+  const moi = useMonAvatar()
   return (
     <GardePremierAcces>
       {(assistant) => (
-        <Enveloppe couche="portail" navigation={assistant ? [] : NAVIGATION_PORTAIL} permissions={session.permissions} utilisateur={session.nom}
+        <Enveloppe avatar={moi?.src} fonction={moi?.fonction} couche="portail" navigation={assistant ? [] : NAVIGATION_PORTAIL} permissions={session.permissions} utilisateur={session.nom}
           institution={REELS ? undefined : 'Établissement de paiement A'} etatCanal={etatCanal} version={VERSION} correlationId={correlationId} espacePersonnel="/portail">
           <Suspense fallback={<Skeleton height={32} />}>
             <Routes>
@@ -80,6 +82,7 @@ export default function App() {
     if (REELS) return monCompteHttp('portail')
     const demo = lireSessionDemo()
     return monCompteSimule({
+      couche: 'portail',
       premierAcces: demo?.premierAcces ?? lirePreference('gm.premierAccesDemo') === '1',
       etapes: demo?.etapes,
       compte: { identifiant: demo?.identifiant || 'correspondant-a', prenom: 'Brice', nom: 'Nzeng Mba', nomAffiche: 'Brice Nzeng Mba', profils: ['ROLE_CORRESPONDANT'], institutionId: 'INST-0042' },

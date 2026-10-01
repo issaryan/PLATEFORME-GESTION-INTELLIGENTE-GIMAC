@@ -1,4 +1,4 @@
-import { ApiError } from '@gimac/socle'
+import { ApiError, avatarsSimules } from '@gimac/socle'
 import type { Conversation, Correspondant, EtiquetteLiaison, Message, PieceJointe } from '../../modele/messagerie'
 import { LIMITES_MESSAGERIE } from '../../modele/messagerie'
 import type { ServiceMessagerie } from '../ports'
@@ -25,6 +25,12 @@ export const ANNUAIRE: Correspondant[] = [
   { id: 'u-conf', nom: 'Mireille Obame Nze', fonction: 'Conformité', profils: ['ROLE_CONFORMITE'] },
   { id: 'u-dg', nom: 'Jean-Baptiste Ella Mintsa', fonction: 'Direction générale', profils: ['ROLE_DG'] },
 ]
+
+/** Comptes de l'annuaire qui ont déposé une photo de profil (démonstration) ; les autres gardent leurs initiales. */
+export const PHOTOS_DEMO = ['U-020', 'sim-charge', 'U-201', 'u-sna', 'u-rssi', 'u-conf', 'u-dg']
+
+/** Version courante de la photo d'une personne (photos de démonstration et dépôts faits dans « Mon compte »). */
+const avecPhoto = <P extends Correspondant>(p: P): P => ({ ...p, avatarVersion: avatarsSimules.version(p.id) })
 
 const LIAISON = /^LIA-\d{4}-\d{3,6}$/
 const TYPES = new Set(LIMITES_MESSAGERIE.types.split(','))
@@ -53,6 +59,7 @@ type EtatConversation = Omit<Conversation, 'dernierMessage' | 'nonLus'> & { mess
 
 export function messagerieSimulee(attendre: Attendre, refus: Refus, moi: Correspondant = ANNUAIRE[0]): ServiceMessagerie {
   let sequence = 0
+  PHOTOS_DEMO.forEach((p) => avatarsSimules.demo(p))
   const id = (prefixe: string) => `${prefixe}-${(++sequence).toString().padStart(4, '0')}`
   const ilYA = (minutes: number) => new Date(Date.UTC(2026, 8, 29, 16, 0) - minutes * 60_000).toISOString()
   const personne = (pid: string) => ANNUAIRE.find((p) => p.id === pid) ?? (pid === moi.id ? moi : undefined)
@@ -106,8 +113,10 @@ export function messagerieSimulee(attendre: Attendre, refus: Refus, moi: Corresp
   const vue = (c: EtatConversation): Conversation => {
     const dernier = c.messages[c.messages.length - 1]
     const { messages: _m, lus: _l, ...reste } = c
+    const copie = structuredClone(reste)
     return {
-      ...structuredClone(reste),
+      ...copie,
+      membres: copie.membres.map(avecPhoto),
       dernierMessage: dernier ? { id: dernier.id, auteurNom: dernier.auteur.nom, extrait: dernier.contenu.slice(0, 120), envoyeLe: dernier.envoyeLe, piecesJointes: dernier.piecesJointes.length } : null,
       nonLus: nonLusDe(c),
     }
@@ -132,7 +141,7 @@ export function messagerieSimulee(attendre: Attendre, refus: Refus, moi: Corresp
     annuaire: (recherche, page = 0, taille = 20) => attendre(() => {
       const r = recherche.trim().toLowerCase()
       const l = ANNUAIRE.filter((p) => p.id !== moi.id && (!r || `${p.nom} ${p.fonction ?? ''}`.toLowerCase().includes(r)))
-      return { contenu: l.slice(page * taille, (page + 1) * taille), total: l.length, page, taille }
+      return { contenu: l.slice(page * taille, (page + 1) * taille).map(avecPhoto), total: l.length, page, taille }
     }),
     conversations: (q) => attendre(() => {
       const r = (q.recherche ?? '').trim().toLowerCase()
@@ -148,7 +157,7 @@ export function messagerieSimulee(attendre: Attendre, refus: Refus, moi: Corresp
       const c = sienne(cid)
       const fin = avant ? c.messages.findIndex((m) => m.id === avant) : c.messages.length
       const debut = Math.max(0, fin - 50)
-      return { contenu: structuredClone(c.messages.slice(debut, fin)), plusAnciens: debut > 0 }
+      return { contenu: structuredClone(c.messages.slice(debut, fin)).map((m) => ({ ...m, auteur: avecPhoto(m.auteur) })), plusAnciens: debut > 0 }
     }),
     demarrer: (n) => attendre(() => {
       const destinataires = [...new Set(n.destinataires)]
@@ -174,7 +183,8 @@ export function messagerieSimulee(attendre: Attendre, refus: Refus, moi: Corresp
     envoyer: (cid, e) => attendre(() => {
       const c = sienne(cid)
       valider(e.contenu, e.etiquettes, e.fichiers)
-      return structuredClone(ajouterMessage(c, moi, e.contenu, new Date().toISOString(), e.etiquettes, e.fichiers))
+      const m = structuredClone(ajouterMessage(c, moi, e.contenu, new Date().toISOString(), e.etiquettes, e.fichiers))
+      return { ...m, auteur: avecPhoto(m.auteur) }
     }),
     marquerLu: (cid) => attendre(() => {
       const c = sienne(cid)

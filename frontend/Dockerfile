@@ -3,7 +3,8 @@
 # des fichiers statiques par nginx sans privilège (port 8080, utilisateur non root).
 #   docker build --build-arg APPLICATION=departement -t frontend-departement .
 # APPLICATION : departement | portail | console
-# SERVICES : http (défaut, passerelle MS-GATEWAY) ; vide pour les services simulés de démonstration.
+# SERVICES : http (défaut, passerelle MS-GATEWAY) ; simule pour une image de démonstration, jamais en production
+#   (services et comptes fictifs). Toute autre valeur est refusée.
 # URL_CONSOLE : adresse de la console d'administration, cible des liens « Administration » de
 #   l'application du département (D-62) ; http://localhost:4202 par défaut.
 # Écrit à la main : aucun générateur (JHipster, docker init) ne couvre ce frontend séparé.
@@ -39,7 +40,9 @@ ARG URL_CONSOLE=http://localhost:4202
 ENV VITE_SERVICES=$SERVICES \
     VITE_VERSION=$VERSION \
     VITE_URL_CONSOLE=$URL_CONSOLE
-RUN test -n "$APPLICATION" && npm run build -w "@gimac/app-$APPLICATION"
+RUN test -n "$APPLICATION" \
+ && case "$SERVICES" in http|simule) ;; *) echo "SERVICES : http ou simule" >&2; exit 1 ;; esac \
+ && npm run build -w "@gimac/app-$APPLICATION"
 
 # 3. Service des fichiers statiques.
 FROM nginxinc/nginx-unprivileged:1.31.2-alpine

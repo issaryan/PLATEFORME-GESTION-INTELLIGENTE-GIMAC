@@ -56,6 +56,9 @@ describe('versResume : vue de MS-HOMOLOGATION vers le résumé du parcours', () 
     })
     expect(versResume(vue())).toMatchObject({ prochaineEcheance: null, dateCibleProduction: null })
   })
+  it('référence LIA-AAAA-NNN servie par MS-HOMOLOGATION : affichée telle quelle (défaut de la pile réelle : un extrait d’UUID)', () => {
+    expect(versResume(vue({ id: '3f2a9c1e-0000-4000-8000-000000000001', reference: 'LIA-2026-004' })).reference).toBe('LIA-2026-004')
+  })
   it('référence courte : un identifiant long (UUID) est abrégé à huit caractères en majuscules', () => {
     expect(versResume(vue({ id: '3f2a9c1e-0000-4000-8000-000000000001' })).reference).toBe('3F2A9C1E')
     expect(versResume(vue({ id: 'LIA-2026-041' })).reference).toBe('LIA-2026-041')

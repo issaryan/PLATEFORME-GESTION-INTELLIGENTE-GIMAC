@@ -44,6 +44,8 @@ export type Compte = {
   profils: string[]
   actionsRequises: string[]
   secondFacteur: boolean
+  /** Version de la photo de profil (empreinte courte de MS-IAM), null sans photo (docs/lot1/mon-compte.md §1). */
+  avatarVersion?: string | null
 }
 
 /** GET /moi : compte, clés de sécurité, sessions ouvertes et étapes de premier accès restantes. */
@@ -57,8 +59,46 @@ export type PremiereConfiguration = { telephone: string; langue: LangueCompte; f
 /** PUT /moi : coordonnées modifiables par le titulaire. */
 export type FichePersonnelle = { prenom?: string | null; nom?: string | null; telephone?: string | null; fonction?: string | null; langue?: LangueCompte | null }
 
-/** POST /moi/mot-de-passe (D-65). */
-export type ChangementMotDePasse = { actuel: string; nouveau: string }
+/** POST /moi/mot-de-passe (D-65) ; fermerAutresSessions ferme les autres sessions du compte (mon-compte.md §2). */
+export type ChangementMotDePasse = { actuel: string; nouveau: string; fermerAutresSessions?: boolean }
+
+/** Photo de profil (mon-compte.md §1) : formats, poids et dimensions admis par MS-IAM, vérifiés aussi avant l'envoi. */
+export const PHOTO_PROFIL = {
+  types: ['image/png', 'image/jpeg', 'image/webp'] as readonly string[],
+  tailleMaxOctets: 2 * 1024 * 1024,
+  dimensionMin: 64,
+  dimensionMax: 4096,
+  /** Côté de l'image envoyée après recadrage ; MS-IAM la ramène à 256 × 256 et la réencode. */
+  coteEnvoi: 512,
+} as const
+
+/** PUT /moi/avatar : nouvelle version de la photo. */
+export type VersionPhoto = { version: string }
+
+/** Appareil déduit de l'en-tête User-Agent à la connexion (mon-compte.md §3). */
+export type TypeAppareil = 'ORDINATEUR' | 'MOBILE' | 'TABLETTE' | 'INCONNU'
+export type DescriptionAppareil = { navigateur: string | null; systeme: string | null; type: TypeAppareil }
+
+/** GET /api/session/appareils : session ouverte du compte (identifiant opaque, IP masquée hors session courante). */
+export type Appareil = {
+  id: string
+  courante: boolean
+  appareil: DescriptionAppareil
+  adresseIp: string | null
+  couche: string
+  ouverteLe: string
+  derniereActivite: string | null
+  expireA: string | null
+}
+
+export type ResultatConnexion = 'REUSSIE' | 'ECHEC_MOT_DE_PASSE' | 'ECHEC_CODE' | 'BLOQUEE'
+export const RESULTATS_CONNEXION: ResultatConnexion[] = ['REUSSIE', 'ECHEC_MOT_DE_PASSE', 'ECHEC_CODE', 'BLOQUEE']
+
+/** Tentative de connexion de l'historique (90 jours, la plus récente d'abord). */
+export type Connexion = { le: string; resultat: ResultatConnexion; appareil: DescriptionAppareil | string | null; adresseIp: string | null; couche: string | null }
+
+/** GET /api/session/historique?page=&taille= */
+export type PageHistorique = { contenu: Connexion[]; total: number }
 
 /** POST /moi/second-facteur/totp/enrolement : secret base32 et URI otpauth, gardés 10 minutes par MS-IAM. */
 export type EnrolementTotp = { enrolementId: string; secret: string; uri: string }

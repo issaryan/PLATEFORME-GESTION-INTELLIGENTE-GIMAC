@@ -21,6 +21,24 @@ const page = (chemin = '/des/messagerie', o: { permissions?: string[]; s?: Servi
   rendrePage(<MessageriePage />, { chemin, motif: '/des/messagerie', services: o.s ?? services(), session: sessionTest(o.permissions ?? ECRITURE) })
 
 describe('MessageriePage', () => {
+  it('console (RSSI, super administrateur) : photos de la couche console, liaisons en texte, sans citation ni lien vers le DES', async () => {
+    const s = services()
+    const espion = vi.spyOn(s.parcours, 'listerLiaisons')
+    const groupe = (await s.messagerie.conversations({})).contenu[0]
+    rendrePage(<MessageriePage couche="console" />, {
+      chemin: `/console/messagerie?conversation=${groupe.id}`, motif: '/console/messagerie', services: s, session: sessionTest([PERM.messageLire, PERM.messageEnvoyer]),
+    })
+    const fil = await screen.findByRole('region', { name: 'Essais de LIA-2026-030' })
+    await waitFor(() => expect(within(fil).getAllByText(/LIA-2026-030/).length).toBeGreaterThan(1))
+    expect(within(fil).queryAllByRole('link', { name: /LIA-2026/ })).toEqual([])
+    expect(within(fil).queryByRole('link', { name: /Ouvrir la liaison/ })).toBeNull()
+    expect(within(fil).queryByRole('button', { name: 'Citer une liaison' })).toBeNull()
+    expect(within(fil).getByLabelText('Votre message')).toBeTruthy()
+    // Nouveau message : aucune lecture des liaisons depuis la console.
+    fireEvent.click(screen.getByRole('button', { name: 'Nouveau message' }))
+    expect(await screen.findByText('Destinataires')).toBeTruthy()
+    expect(espion).not.toHaveBeenCalled()
+  })
   it('liste des conversations : la plus récente en tête, non-lus, liaison rattachée ; choix d’une conversation', async () => {
     page()
     const liste = await screen.findByRole('list', { name: 'Conversations' })
@@ -30,6 +48,8 @@ describe('MessageriePage', () => {
     expect(boutons[0].textContent).toContain('Liaison LIA-2026-030')
     expect(within(liste).getByLabelText('2 non lus')).toBeTruthy()
     expect(screen.getByText('Choisissez une conversation')).toBeTruthy()
+    // État vide sur le fond texturé du fil (motif de trame, D-66).
+    expect(screen.getByText('Choisissez une conversation').closest('.gm-messagerie-fil')!.classList.contains('gm-trame-fil')).toBe(true)
     // Pagination toujours visible sous la liste.
     expect(screen.getByText(/Page 1 sur 1/)).toBeTruthy()
     fireEvent.click(boutons[0])
@@ -141,5 +161,34 @@ describe('titreConversation et CorpsMessage', () => {
     render(<CorpsMessage contenu="Voir LIA-2026-027 et LIA-2026-099." etiquettes={[{ liaisonId: 'uuid-27', reference: 'LIA-2026-027' }]} />)
     expect(screen.getByRole('link', { name: 'LIA-2026-027' }).getAttribute('href')).toBe('/des/parcours/uuid-27')
     expect(screen.getByRole('link', { name: 'LIA-2026-099' }).getAttribute('href')).toBe('/des/parcours?q=LIA-2026-099')
+  })
+})
+
+describe('MessageriePage : photos de profil (docs/lot1/mon-compte.md §4)', () => {
+  it('conversation directe illustrée par la photo de l’interlocuteur, auteurs du fil, destinataires proposés et choisis', async () => {
+    const s = services()
+    const { container } = page('/des/messagerie', { s })
+    const liste = await screen.findByRole('list', { name: 'Conversations' })
+    // Échange direct avec Hervé Kamga (photo de démonstration) ; groupe : pictogramme.
+    await waitFor(() => expect(within(liste).getByRole('img', { name: 'Hervé Kamga Tchoupo' }).querySelector('img')).toBeTruthy())
+    fireEvent.click(within(liste).getAllByRole('button')[0])
+    const fil = await screen.findByRole('region', { name: 'Essais de LIA-2026-030' })
+    await waitFor(() => expect(fil.querySelectorAll('.gm-msg-meta .gm-avatar img').length).toBeGreaterThan(0))
+    cleanup()
+    page('/des/messagerie?nouveau=1', { s })
+    const champ = await screen.findByRole('combobox', { name: 'Destinataires' })
+    fireEvent.focus(champ)
+    fireEvent.change(champ, { target: { value: 'Rachel' } })
+    const option = await screen.findByRole('option', { name: /Rachel Biyong Mengue/ })
+    expect(option.querySelector('.gm-avatar img')).toBeTruthy()
+    fireEvent.mouseDown(option)
+    await waitFor(() => expect(document.querySelector('.gm-tag-personne img')).toBeTruthy())
+    expect(container).toBeTruthy()
+  })
+  it('interlocuteur : seulement pour un échange direct sans objet', async () => {
+    const { interlocuteur } = await import('./MessageriePage')
+    const c = { type: 'DIRECTE', titre: null, membres: [{ id: 'a', nom: 'A', fonction: null }, { id: 'b', nom: 'B', fonction: null }] } as unknown as Conversation
+    expect(interlocuteur(c, 'a')?.id).toBe('b')
+    expect(interlocuteur({ ...c, type: 'GROUPE' }, 'a')).toBeUndefined()
   })
 })

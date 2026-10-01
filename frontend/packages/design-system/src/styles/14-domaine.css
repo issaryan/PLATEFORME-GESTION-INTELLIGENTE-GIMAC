@@ -47,10 +47,11 @@
 .gm-crisis-main { display: flex; flex-direction: column; gap: var(--gm-space-2); }
 .gm-chat { display: flex; flex-direction: column; border: var(--gm-border-1) solid var(--gm-color-border); background: var(--gm-color-surface); }
 .gm-chat-head { display: flex; align-items: center; gap: var(--gm-space-2); padding: var(--gm-space-2) var(--gm-space-3); border-bottom: var(--gm-border-1) solid var(--gm-color-border); }
+.gm-chat-head-actions { margin-left: auto; flex-shrink: 0; white-space: nowrap; }
 .gm-chat-list { list-style: none; margin: 0; padding: var(--gm-space-3); flex: 1; overflow: auto; display: flex; flex-direction: column; gap: var(--gm-space-2); }
 .gm-msg { max-width: 70%; display: flex; flex-direction: column; gap: 2px; align-self: flex-start; }
 .gm-msg-mine { align-self: flex-end; align-items: flex-end; }
-.gm-msg-meta { font-size: 12px; line-height: 18px; color: var(--gm-color-text-secondary); display: flex; gap: var(--gm-space-2); }
+.gm-msg-meta { font-size: 12px; line-height: 18px; color: var(--gm-color-text-secondary); display: flex; align-items: center; gap: var(--gm-space-2); }
 .gm-msg-body { padding: var(--gm-space-2) var(--gm-space-3); background: var(--gm-color-surface-sunken); }
 .gm-msg-mine .gm-msg-body { background: var(--gm-color-action-subtle); }
 .gm-msg-att { margin-top: var(--gm-space-1); font-size: 12px; line-height: 18px; color: var(--gm-color-action); }
@@ -80,7 +81,8 @@
 .gm-messagerie-fil > .gm-chat { border: 0; flex: 1; min-height: 0; }
 .gm-messagerie-fil > .gm-empty { margin: auto; }
 @media (max-width: 960px) { .gm-messagerie { grid-template-columns: 1fr; height: auto; } .gm-messagerie-liste { border-right: 0; max-height: 360px; } .gm-messagerie-fil { min-height: 520px; } }
-.gm-fil .gm-chat-list { min-height: 0; }
+.gm-fil .gm-chat-head-actions { margin-left: auto; flex-shrink: 0; white-space: nowrap; }
+.gm-chat-list { min-height: 0; }
 .gm-fil-plus, .gm-fil-vide { align-self: center; list-style: none; }
 .gm-msg-texte { white-space: pre-wrap; overflow-wrap: anywhere; }
 .gm-msg-att .gm-field-help { color: var(--gm-color-text-secondary); }
@@ -106,3 +108,18 @@
 .gm-pdca-done .gm-step-num { background: var(--gm-color-status-ok-fg); border-color: var(--gm-color-status-ok-fg); color: var(--gm-color-text-inverse); }
 .gm-pdca-current { color: var(--gm-color-text-primary); font-weight: 600; }
 .gm-pdca-current .gm-step-num { background: var(--gm-color-action); border-color: var(--gm-color-action); color: var(--gm-color-text-inverse); }
+/* Fond texturé du fil de la messagerie (DS-GIMAC-01 §5.6, dérogation D-66) : motif « trame » (losanges et
+   chevrons, période 32 px, trait 1 px) masqué dans la couleur --gm-color-motif-fil (brand-accent atténué),
+   derrière les messages seulement. Tout texte reste sur un fond plein : bulles, ligne d'auteur, bouton des
+   messages plus anciens, état vide. Décor pur (pseudo-élément, absent de l'arbre d'accessibilité) ; retiré si
+   l'utilisateur demande moins de transparence ou en couleurs forcées. */
+.gm-trame-fil { position: relative; background: var(--gm-color-surface); }
+.gm-trame-fil > * { position: relative; z-index: 1; }
+.gm-trame-fil::before { content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none; background-color: var(--gm-color-motif-fil);
+  -webkit-mask-image: url("../assets/motif/trame-masque.svg"); mask-image: url("../assets/motif/trame-masque.svg"); -webkit-mask-size: 32px 32px; mask-size: 32px 32px; -webkit-mask-repeat: repeat; mask-repeat: repeat; }
+@media (prefers-reduced-transparency: reduce), (forced-colors: active) { .gm-trame-fil::before { display: none; } }
+.gm-fil-fond { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.gm-trame-fil .gm-msg-meta { align-self: flex-start; padding: 0 var(--gm-space-2) 0 var(--gm-space-1); background: var(--gm-color-surface); }
+.gm-trame-fil .gm-msg-mine .gm-msg-meta { align-self: flex-end; }
+.gm-trame-fil .gm-fil-plus .gm-btn, .gm-trame-fil .gm-fil-vide .gm-empty, .gm-trame-fil > .gm-empty { background: var(--gm-color-surface); border: var(--gm-border-1) solid var(--gm-color-border); }
+.gm-trame-fil > .gm-empty { padding: var(--gm-space-5) var(--gm-space-6); }

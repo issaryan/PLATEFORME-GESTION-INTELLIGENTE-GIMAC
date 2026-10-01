@@ -109,9 +109,17 @@ type Etat = {
 /** Geste attendu sur une opération ouverte : livrable pour les pièces de phase et les comptes rendus (rangs 7 à 11). */
 const actionOuverte = (o: { grain: string; rang: string }) => (o.rang === '17' ? 'CONSTATER_COUVERTURE' : o.grain === 'PHASE' || ['7', '8', '9', '10', '11'].includes(o.rang) ? 'DEPOSER_LIVRABLE' : 'DEPOSER_PREUVE')
 /** Actions d'une opération ouverte : son geste, et l'attribution des qualités tant qu'elle n'est pas faite. */
-const actionsOuvertes = (o: { grain: string; rang: string }) => [actionOuverte(o), 'ATTRIBUER']
+/**
+ * Rangs dont le geste a sa route propre (affectation des ressources, verrous de la décision tenus par
+ * MS-CERTIFICATION, fiche de suivi et constat) : jamais clos par une pièce libre (D-56), comme MS-HOMOLOGATION.
+ */
+export const GESTES_DEDIES = ['6', '18', '19', '20', '21', '22', '23', '24', '25', '32', '33']
+const actionsOuvertes = (o: { grain: string; rang: string }) => (GESTES_DEDIES.includes(o.rang) ? ['ATTRIBUER'] : [actionOuverte(o), 'ATTRIBUER'])
+const refuserGesteLibre = (o: { rang: string }) => {
+  if (GESTES_DEDIES.includes(o.rang)) throw refus(409, 'HOM_OPERATION_DEDICATED_GESTURE', 'Cette opération se réalise par son geste propre (affectation, verrous de la décision ou fiche de suivi), jamais par une pièce libre.')
+}
 /** Onglet du dossier où se réalise le geste d'une opération : décision (verrous 1 et 2), mise en service (étape 10), sinon opérations. */
-export const ongletDuRang = (rang: string) => (/^(1[89]|2[0-6])$/.test(rang) ? 'decision' : /^3[2-5]$/.test(rang) ? 'mise-en-service' : 'operations')
+export const ongletDuRang = (rang: string) => (/^(1[89]|2[0-6])$/.test(rang) ? 'decision' : /^3[235]$/.test(rang) ? 'mise-en-service' : 'operations')
 const lienOperation = (o: { liaisonId: string; id: string; rang: string }) => `/des/parcours/${o.liaisonId}?onglet=${ongletDuRang(o.rang)}&operation=${encodeURIComponent(o.id)}`
 
 const couv = (n: number, d: number): CoverageValue => ({ taux: d ? Math.round((n / d) * 100) : null, numerateur: n, denominateur: d, calculable: d > 0, motifNonCalculable: d ? undefined : 'aucun service inclus' })
@@ -446,6 +454,7 @@ export function parcoursSimule(attendre: Attendre, institutionPortail: string, n
     }),
     deposerLivrable: (opId, fichier, commentaire) => attendre(() => {
       const { e, o } = operation(opId)
+      refuserGesteLibre(o)
       if (!o.actionsPermises.includes('DEPOSER_LIVRABLE') && !o.actionsPermises.includes('DEPOSER_PREUVE')) throw refus(409, 'HOM_OPERATION_NOT_OPEN', 'Cette opération n\'attend pas de livrable.')
       terminer(e, o, { documentRef: `DOC-${opId.replace(':', '-')}`, nom: fichier.name, empreinte: hex(fichier.name + fichier.size + commentaire), deposeLe: jour(0), deposePar: o.raci.R?.nom ?? '' })
     }),
@@ -461,6 +470,7 @@ export function parcoursSimule(attendre: Attendre, institutionPortail: string, n
     }),
     deposerPreuve: (opId, fichier, c) => attendre(() => {
       const { e, o } = operation(opId)
+      refuserGesteLibre(o)
       if (o.etat !== 'A_FAIRE' && o.etat !== 'EN_COURS') throw refus(409, 'HOM_OPERATION_NOT_OPEN', 'Cette opération n\'est pas ouverte.')
       const kcv = /^[0-9A-F]{4,8}$/
       if (o.rang === 'C1') {
@@ -652,6 +662,9 @@ export function parcoursSimule(attendre: Attendre, institutionPortail: string, n
       if (approuvee) {
         e.s.statut = 'APPROUVEE_SECURITE'
         ;['23', '24', '25'].forEach((r) => { const o = e.ops.find((x) => x.rang === r); if (o && o.etat !== 'FAITE') { o.etat = 'A_FAIRE'; terminer(e, o, { documentRef: `SSI-${r}`, nom: `approbation-${r}`, empreinte: hex(`ssi-${id}-${r}`), deposeLe: jour(0), deposePar: personne('RSSI').nom }) } })
+        // Rang 26 ouvert après l'approbation : la fiche, déjà référencée et lue, en est la preuve (comme MS-HOMOLOGATION).
+        const o26 = e.ops.find((x) => x.rang === '26')
+        if (o26 && o26.etat === 'A_FAIRE') terminer(e, o26, { documentRef: f.reference, nom: f.reference, empreinte: hex(f.reference), deposeLe: jour(0), deposePar: personne('PRODUCTION_MONETIQUE').nom })
       }
     }),
     verifierAttestation: (id, type, conforme, motif) => attendre(() => {

@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams } from 'react-router'
-import { Button, DataTable, FilterBar, Link, PageHeader, StatusBadge, Tag, type Column } from '@gimac/design-system'
-import { aPermission, usePermissions } from '@gimac/socle'
+import { Avatar, Button, DataTable, FilterBar, Link, PageHeader, StatusBadge, Tag, type Column } from '@gimac/design-system'
+import { aPermission, urlAvatar, usePermissions } from '@gimac/socle'
 import { useLibelleProfil, type Compte } from '@gimac/compte'
 import { useComptes, useProfils } from '../hooks'
 import { ETATS_FILTRE, type EtatFiltre, type FiltreComptes } from '../modele/comptes'
@@ -40,7 +40,15 @@ export default function ComptesPage({ creation = false }: { creation?: boolean }
 
   const colonnes: Column<Compte>[] = [
     { key: 'identifiant', header: t('compte.identifiant'), render: (c) => <Link href={`/console/comptes/${c.id}`} mono>{c.identifiant}</Link> },
-    { key: 'nomAffiche', header: t('console.comptes.nom') },
+    {
+      key: 'nomAffiche', header: t('console.comptes.nom'),
+      render: (c) => (
+        <span className="gm-row" style={{ gap: 'var(--gm-space-2)', flexWrap: 'nowrap' }}>
+          <Avatar name={c.nomAffiche} src={urlAvatar('console', c.id, c.avatarVersion)} size="sm" decorative />
+          <span>{c.nomAffiche}</span>
+        </span>
+      ),
+    },
     { key: 'email', header: t('compte.email'), render: (c) => c.email ?? '—' },
     { key: 'profils', header: t('compte.profils'), render: (c) => <span className="gm-row">{c.profils.map((p) => <Tag key={p}>{libelleProfil(p)}</Tag>)}</span> },
     {

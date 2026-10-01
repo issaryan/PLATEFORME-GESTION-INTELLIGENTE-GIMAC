@@ -35,6 +35,26 @@ describe('Enveloppe : espace personnel', () => {
     expect(screen.getByRole('link', { name: 'Se déconnecter' }).getAttribute('href')).toBe('/console/deconnexion')
     expect(document.querySelector('.gm-footer')).toBeTruthy()
   })
+  it('menu utilisateur de la barre du haut : photo, nom, fonction, Mon compte et déconnexion', () => {
+    render(
+      <MemoryRouter initialEntries={['/des/tableau-de-bord']}>
+        <ThemeProvider theme="light">
+          <Enveloppe couche="des" navigation={[]} espacePersonnel="/des" utilisateur="Paul Mbarga" fonction="Chef du département DES" avatar="data:image/png;base64,AAAA">
+            <Routes><Route path="*" element={<Ici />} /></Routes>
+          </Enveloppe>
+        </ThemeProvider>
+      </MemoryRouter>,
+    )
+    const bouton = screen.getByRole('button', { name: 'Menu utilisateur : Paul Mbarga' })
+    expect(bouton.querySelector('img')!.getAttribute('src')).toBe('data:image/png;base64,AAAA')
+    fireEvent.click(bouton)
+    expect(screen.getByText('Chef du département DES')).toBeTruthy()
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Mon compte' }))
+    expect(screen.getByTestId('ici').textContent).toBe('/des/mon-compte')
+    fireEvent.click(bouton)
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Se déconnecter' }))
+    expect(screen.getByTestId('ici').textContent).toBe('/des/deconnexion')
+  })
   it('sans espace personnel : groupe absent', () => {
     monter()
     expect(screen.queryByText('Mon espace')).toBeNull()

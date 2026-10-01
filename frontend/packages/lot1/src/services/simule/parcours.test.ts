@@ -240,3 +240,14 @@ describe('parcoursSimule : tableaux de bord et portail', () => {
     await expect(portailParcours.deposerLivrable('LIA-2026-022:16', fichier('x.pdf'), '')).rejects.toEqual(refus('HOM_LIAISON_NOT_FOUND'))
   })
 })
+
+describe('parcoursSimule : gestes dédiés (D-56)', () => {
+  it('verrou de la décision (rang 18) : ni livrable ni preuve libres, seule l’attribution est proposée', async () => {
+    const { parcours } = svc()
+    const o18 = (await parcours.operations('LIA-2026-025')).find((o) => o.rang === '18')!
+    expect(o18.etat).toBe('A_FAIRE')
+    expect(o18.actionsPermises).toEqual(['ATTRIBUER'])
+    await expect(parcours.deposerPreuve(o18.id, fichier('pv.pdf'), {})).rejects.toEqual(refus('HOM_OPERATION_DEDICATED_GESTURE'))
+    await expect(parcours.deposerLivrable(o18.id, fichier('pv.pdf'), 'PV')).rejects.toEqual(refus('HOM_OPERATION_DEDICATED_GESTURE'))
+  })
+})

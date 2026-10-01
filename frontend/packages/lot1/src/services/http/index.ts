@@ -5,7 +5,7 @@ import { certificationHttp } from './certification'
 import { portailHttp } from './portail'
 import { participantHttp } from './participant'
 import { decisionHttp, parcoursHttp, portailParcoursHttp } from './parcours'
-import { messagerieHttp } from './messagerie'
+import { messagerieHttp, messagerieHttpPour } from './messagerie'
 
 /** Services réels, par la passerelle : à employer dès que les routes /bff du lot 1 sont opérationnelles. */
 export function servicesHttp(couche: Couche): Services {
@@ -18,6 +18,6 @@ export function servicesHttp(couche: Couche): Services {
     certification: certificationHttp,
     portail: portailHttp,
     reauth: { assertion: (purpose) => getReauthAssertion(couche, purpose) },
-    messagerie: messagerieHttp,
+    messagerie: couche === 'console' ? messagerieHttpPour('console') : messagerieHttp,
   }
 }

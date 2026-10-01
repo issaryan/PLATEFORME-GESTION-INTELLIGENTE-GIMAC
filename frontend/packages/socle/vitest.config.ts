@@ -8,7 +8,7 @@ export default defineConfig({
     testTimeout: 20000,
     coverage: {
       provider: 'v8',
-      include: ['src/http/**', 'src/session/**', 'src/reauth/**', 'src/connexion/**'],
+      include: ['src/http/**', 'src/session/**', 'src/reauth/**', 'src/connexion/**', 'src/avatar/**'],
       exclude: ['src/**/*.test.{ts,tsx}'],
       reporter: ['text-summary', 'html', 'lcov'],
       thresholds: { statements: 80, branches: 80, functions: 80, lines: 80 },

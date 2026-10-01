@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ApiError, MOT_DE_PASSE_DEMO, ReauthCancelled, connexionSimulee, simulationConnexion, type Session } from '@gimac/socle'
+import { ApiError, MOT_DE_PASSE_DEMO, ReauthCancelled, avatarsSimules, connexionSimulee, simulationConnexion, urlAvatar, type Session } from '@gimac/socle'
 import { catalogue } from '../i18n'
 import { actionsFournisseur, etapesAssistant } from '../modele'
 import { monCompteHttp } from './http'
@@ -65,6 +65,76 @@ describe('Mon compte : adaptateur HTTP', () => {
       .mockResolvedValueOnce(json({ id: 'k-9', nom: 'Clé', creeeLe: '2026-09-29T00:00:00Z', derniereUtilisation: null }))
     Object.defineProperty(navigator, 'credentials', { value: { create: async () => ({ id: 'x', response: { clientDataJSON: new Uint8Array([1]).buffer, attestationObject: new Uint8Array([2]).buffer } }) }, configurable: true })
     expect((await monCompteHttp('des').enrolerCle('Clé')).id).toBe('k-9')
+  })
+})
+
+describe('Mon compte : photo, appareils et historique (mon-compte.md)', () => {
+  it('HTTP : /bff/<couche>/iam/moi/avatar (multipart « image »), /api/session/appareils, /api/session/historique', async () => {
+    const spy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (_u, init) => json({ version: 'v1' }, init?.method === 'DELETE' ? 204 : 200))
+    const s = monCompteHttp('console')
+    expect(await s.changerPhoto(new Blob(['x'], { type: 'image/webp' }))).toEqual({ version: 'v1' })
+    await s.changerPhoto(new Blob(['x'], { type: 'image/png' }))
+    await s.changerPhoto(new Blob(['x'], { type: 'image/jpeg' }))
+    await s.retirerPhoto()
+    await s.appareils()
+    await s.fermerAppareil('app/1')
+    await s.fermerAutresAppareils()
+    await s.historique(2, 20)
+    const appels = spy.mock.calls.map(([u, i]) => `${i?.method} ${new URL(String(u)).pathname}${new URL(String(u)).search}`)
+    expect(appels).toEqual([
+      'PUT /bff/console/iam/moi/avatar', 'PUT /bff/console/iam/moi/avatar', 'PUT /bff/console/iam/moi/avatar', 'DELETE /bff/console/iam/moi/avatar',
+      'GET /api/session/appareils', 'DELETE /api/session/appareils/app%2F1', 'DELETE /api/session/appareils', 'GET /api/session/historique?page=2&taille=20',
+    ])
+    const corps = spy.mock.calls[0][1]?.body as FormData
+    expect(corps).toBeInstanceOf(FormData)
+    expect((corps.get('image') as File).name).toBe('photo.webp')
+    expect(((spy.mock.calls[1][1]?.body as FormData).get('image') as File).name).toBe('photo.png')
+    expect(((spy.mock.calls[2][1]?.body as FormData).get('image') as File).name).toBe('photo.jpg')
+    expect(new Headers(spy.mock.calls[0][1]?.headers).get('Content-Type')).toBeNull()
+  })
+
+  it('simulé : photo (refus IAM_AVATAR_*, version, adresse en mémoire, retrait), mot de passe fermant les autres sessions', async () => {
+    avatarsSimules.reinitialiser()
+    const s = monCompteSimule({ latenceMs: 0 })
+    expect((await s.moi()).compte.avatarVersion).toBeNull()
+    await expect(s.changerPhoto(new Blob(['x'], { type: 'application/pdf' }))).rejects.toMatchObject({ code: 'IAM_AVATAR_TYPE' })
+    await expect(s.changerPhoto(new Blob([new Uint8Array(2 * 1024 * 1024 + 1)], { type: 'image/png' }))).rejects.toMatchObject({ code: 'IAM_AVATAR_TOO_LARGE' })
+    await expect(s.changerPhoto(new Blob([], { type: 'image/png' }))).rejects.toMatchObject({ code: 'IAM_AVATAR_UNREADABLE' })
+    const { version } = await s.changerPhoto(new Blob(['png'], { type: 'image/png' }))
+    const moi = await s.moi()
+    expect(moi.compte.avatarVersion).toBe(version)
+    expect(urlAvatar('des', moi.compte.id, version)).toMatch(/^data:image\/png;base64,/)
+    // Une seconde instance (autre écran de la page) lit la même photo.
+    expect((await monCompteSimule({ latenceMs: 0 }).moi()).compte.avatarVersion).toBe(version)
+    await s.retirerPhoto()
+    expect((await s.moi()).compte.avatarVersion).toBeNull()
+    expect((await monCompteSimule({ latenceMs: 0, photo: true }).moi()).compte.avatarVersion).toMatch(/^sim/)
+    expect(await s.appareils()).toHaveLength(5)
+    await s.changerMotDePasse({ actuel: MOT_DE_PASSE_DEMO, nouveau: 'Suivant-Mdp-2026!', fermerAutresSessions: true })
+    expect((await s.appareils()).map((a) => a.courante)).toEqual([true])
+  })
+
+  it('simulé : appareils (courante protégée, inconnue, fermeture des autres), historique paginé de 90 jours', async () => {
+    const s = monCompteSimule({ latenceMs: 0, couche: 'console' })
+    const liste = await s.appareils()
+    expect(liste[0]).toMatchObject({ courante: true, couche: 'console', adresseIp: '10.20.1.15' })
+    expect(liste.slice(1).every((a) => a.adresseIp?.endsWith('•'))).toBe(true)
+    await expect(s.fermerAppareil(liste[0].id)).rejects.toMatchObject({ status: 409, code: 'CNX_SESSION_COURANTE' })
+    await expect(s.fermerAppareil('inconnu')).rejects.toMatchObject({ status: 404, code: 'CNX_APPAREIL_INCONNU' })
+    await s.fermerAppareil(liste[1].id)
+    expect(await s.appareils()).toHaveLength(4)
+    await s.fermerAutresAppareils()
+    expect(await s.appareils()).toHaveLength(1)
+    const p0 = await s.historique(0, 20)
+    expect(p0.total).toBe(64)
+    expect(p0.contenu).toHaveLength(20)
+    expect(new Date(p0.contenu[0].le) > new Date(p0.contenu[1].le)).toBe(true)
+    expect((await s.historique(3, 20)).contenu).toHaveLength(4)
+    const tout = (await s.historique(0, 100)).contenu
+    expect(new Set(tout.map((c) => c.resultat))).toEqual(new Set(['REUSSIE', 'ECHEC_MOT_DE_PASSE', 'ECHEC_CODE', 'BLOQUEE']))
+    expect(Date.now() - new Date(tout[tout.length - 1].le).getTime()).toBeLessThan(90 * 86_400_000)
+    // Historique : adresse masquée au dernier octet (§5).
+    expect(tout.every((c) => c.adresseIp?.endsWith('.•'))).toBe(true)
   })
 })
 
