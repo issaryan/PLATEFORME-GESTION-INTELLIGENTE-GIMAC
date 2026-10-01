@@ -89,6 +89,12 @@
     <build>
         <finalName>gimac-totp</finalName>
         <plugins>
+            <!-- Version épinglée : le plugin implicite de Maven 3.8 (3.1) ignore maven.compiler.release et compile en Java 5. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.14.1</version>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
