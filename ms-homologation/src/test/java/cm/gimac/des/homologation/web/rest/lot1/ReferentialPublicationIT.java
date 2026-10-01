@@ -2,6 +2,10 @@ package cm.gimac.des.homologation.web.rest.lot1;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.everyItem;
+import static org.hamcrest.Matchers.hasItems;
+import static org.hamcrest.Matchers.is;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -86,5 +90,22 @@ class ReferentialPublicationIT extends AbstractHomologationIT {
         mvc
             .perform(post("/api/v1/referentiels/{id}/publication", versionId).with(utilisateur(INGENIEUR, "HOM_PORTAL_READ")))
             .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("HOM-01 : la liste sans type rend les versions de tous les types, avec type seulement celles du type")
+    void listeAvecEtSansType() throws Exception {
+        UUID carte = fixtures.brouillonComplet(TypeProjet.CARTE_INTERBANCAIRE);
+        UUID mobile = fixtures.brouillonComplet(TypeProjet.PAIEMENT_MOBILE);
+
+        mvc
+            .perform(get("/api/v1/referentiels").with(utilisateur(INGENIEUR, "HOM_REFERENTIEL_READ")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[*].id").value(hasItems(carte.toString(), mobile.toString())));
+        mvc
+            .perform(get("/api/v1/referentiels").param("type", "PAIEMENT_MOBILE").with(utilisateur(INGENIEUR, "HOM_REFERENTIEL_READ")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[*].typeProjet").value(everyItem(is("PAIEMENT_MOBILE"))))
+            .andExpect(jsonPath("$[*].id").value(hasItems(mobile.toString())));
     }
 }

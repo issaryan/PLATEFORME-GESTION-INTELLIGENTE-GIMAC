@@ -61,8 +61,12 @@ public class ReferentialResource {
     @GetMapping
     @PreAuthorize("hasAuthority('HOM_REFERENTIEL_READ')")
     @Transactional(readOnly = true)
-    public List<VersionVue> lister(@RequestParam("type") TypeProjet type) {
-        return versions.findByTypeProjetOrderByDateCreationDesc(type).stream().map(VersionVue::de).toList();
+    public List<VersionVue> lister(@RequestParam(name = "type", required = false) TypeProjet type) {
+        // Sans type : toutes les versions, que l'écran DES-12 regroupe par type de projet.
+        List<ReferentialVersion> trouvees = type == null
+            ? versions.findAllByOrderByDateCreationDesc()
+            : versions.findByTypeProjetOrderByDateCreationDesc(type);
+        return trouvees.stream().map(VersionVue::de).toList();
     }
 
     @GetMapping("/{id}/operations")

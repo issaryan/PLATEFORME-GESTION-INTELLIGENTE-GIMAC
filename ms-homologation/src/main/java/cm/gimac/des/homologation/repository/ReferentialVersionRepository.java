@@ -26,4 +26,6 @@ public interface ReferentialVersionRepository extends JpaRepository<ReferentialV
     java.util.Optional<Integer> maxNumero(@org.springframework.data.repository.query.Param("type") cm.gimac.des.homologation.domain.enumeration.TypeProjet type);
 
     java.util.List<ReferentialVersion> findByTypeProjetOrderByDateCreationDesc(cm.gimac.des.homologation.domain.enumeration.TypeProjet typeProjet);
+
+    java.util.List<ReferentialVersion> findAllByOrderByDateCreationDesc();
 }

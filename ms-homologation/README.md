@@ -399,3 +399,4 @@ To configure CI for your project, run the ci-cd sub-generator (`jhipster ci-cd`)
 - [Setting up Continuous Integration](https://www.jhipster.tech/documentation-archive/v9.4.0/setting-up-ci/)
 - [Node.js](https://nodejs.org/)
 - [NPM](https://www.npmjs.com/)
+| 2026-10-01 | — | `GET /api/v1/referentiels` : paramètre `type` facultatif ; sans lui, toutes les versions (écran DES-12, qui les regroupe par type, recevait un 400) ; test `listeAvecEtSansType` |
