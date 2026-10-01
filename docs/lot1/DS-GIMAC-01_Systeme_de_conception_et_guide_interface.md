@@ -295,7 +295,7 @@ Un seul jeu : pictogrammes linéaires monochromes à trait de 1,5 px (jeu libre 
 
 ### 5.6 Motif de trame (ancrage régional)
 
-Le motif « trame » est un pavage géométrique de losanges et de chevrons sur la grille de 8 px (période 32 px), dessiné en SVG, trait de 1 px, couleur `--gm-color-brand-accent` à 8 % d'opacité sur `--gm-color-brand-pattern`. Il évoque les tissages d'Afrique centrale (bandes à motifs répétés) sans citer une ethnie ni une pièce précise. Emplois autorisés : bandeau gauche de la page de connexion (40 % de la largeur), fond des états vides (derrière le pictogramme, 240 × 160 px), en-tête des rapports PDF (bande de 12 mm), page d'accueil du portail (bandeau de bienvenue). Emplois interdits : derrière un texte courant, dans un tableau, dans un tiroir, sur le mur d'écrans.
+Le motif « trame » est un pavage géométrique de losanges et de chevrons sur la grille de 8 px (période 32 px), dessiné en SVG, trait de 1 px, couleur `--gm-color-brand-accent` à 8 % d'opacité sur `--gm-color-brand-pattern`. Il évoque les tissages d'Afrique centrale (bandes à motifs répétés) sans citer une ethnie ni une pièce précise. Emplois autorisés : bandeau gauche de la page de connexion (40 % de la largeur), fond des états vides (derrière le pictogramme, 240 × 160 px), en-tête des rapports PDF (bande de 12 mm), page d'accueil du portail (bandeau de bienvenue), fond du fil et de l'état vide de la messagerie à opacité réduite, bulles et saisie restant sur fond plein (D-66). Emplois interdits : derrière un texte courant, dans un tableau, dans un tiroir, sur le mur d'écrans.
 
 Fichier : `assets/pattern/trame.svg` ; classe utilitaire `.gm-pattern` ; le motif est décoratif (`aria-hidden="true"`).
 
