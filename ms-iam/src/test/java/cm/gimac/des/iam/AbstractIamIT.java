@@ -74,6 +74,19 @@ public abstract class AbstractIamIT {
             .authorities(Arrays.stream(permissions).map(SimpleGrantedAuthority::new).toArray(GrantedAuthority[]::new));
     }
 
+    /**
+     * Code TOTP courant pour l'URI otpauth d'un enrôlement : chiffres, période et algorithme repris de
+     * l'URI (la politique OTP peut avoir été changée par un autre test du même contexte).
+     */
+    public static String codeTotp(String uri) {
+        java.util.Map<String, String> p = new java.util.HashMap<>();
+        for (String kv : uri.substring(uri.indexOf('?') + 1).split("&")) {
+            String[] x = kv.split("=", 2);
+            p.put(x[0], x[1]);
+        }
+        return cm.gimac.des.iam.domain.service.Totp.code(p.get("secret"), java.time.Instant.now(), Integer.parseInt(p.get("digits")), Integer.parseInt(p.get("period")), "Hmac" + p.get("algorithm"));
+    }
+
     public static RequestPostProcessor jetonDeService(String... permissions) {
         return jwt().jwt(j -> j.subject("service-account-participant-service")).authorities(Arrays.stream(permissions).map(SimpleGrantedAuthority::new).toArray(GrantedAuthority[]::new));
     }

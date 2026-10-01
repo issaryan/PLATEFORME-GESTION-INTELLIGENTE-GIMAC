@@ -104,6 +104,7 @@ gimac:
     delay: 500
   adapters:
     annuaire: stub
+    courriel: stub
   kafka:
     rebut:
       actif: false
@@ -118,8 +119,18 @@ gimac:
       client-id: iam-service
       client-secret: test
     premiere-connexion:
-      actions: [UPDATE_PASSWORD, CONFIGURE_TOTP, UPDATE_PROFILE, VERIFY_EMAIL]
-      validite-invitation: 72h
+      actions: [MOT_DE_PASSE, SECOND_FACTEUR, FICHE, CHARTE]
+    liens:
+      des: https://des.gimac.test
+      portail: https://portail.gimac.test/
+      console: https://console.gimac.test
+      validite-invitation: 24h
+      validite-reinitialisation: 30m
+      validite-enrolement-totp: 10m
+    connexion:
+      client-id: gimac-connexion
+      client-secret: test
+      clients-internes: gateway-service
     profils:
       attribuables: [ROLE_SUPER_ADMIN, ROLE_RSSI, ROLE_CHEF_DES, ROLE_INGENIEUR_HOMOLOGATION, ROLE_CONFORMITE, ROLE_DG, ROLE_CORRESPONDANT,
         ROLE_CHARGE_DDRM, ROLE_CHEF_DDRM, ROLE_SNA, ROLE_PRODUCTION_MONETIQUE, ROLE_POLE_RESEAU, ROLE_POLE_SYSTEME, ROLE_CONDUCTEUR_PROJET]

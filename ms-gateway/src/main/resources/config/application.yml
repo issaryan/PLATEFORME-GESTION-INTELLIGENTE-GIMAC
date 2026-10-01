@@ -324,8 +324,24 @@ spring:
     oauth2:
       client:
         registration:
+          # Connexion sur la plateforme (D-65, docs/lot1/connexion.md §2) : octroi direct de serveur à
+          # serveur, jamais de redirection vers Keycloak. « oidc » : client web_app (mot de passe et code
+          # TOTP obligatoire, acr 2) ; « connexion » : client gimac-connexion (mot de passe seul, acr 1,
+          # session restreinte du premier accès). Secrets par variables d'environnement seulement.
           oidc:
             scope: openid, profile
+          connexion:
+            provider: oidc
+            client-id: ${GIMAC_CONNEXION_CLIENT_ID:gimac-connexion}
+            client-secret: ${GIMAC_SECRET_CONNEXION:}
+            scope: openid, profile
+          # Jeton de service de la passerelle vers MS-IAM (etat-connexion, mot de passe oublié), gardé
+          # jusqu'à son expiration.
+          gateway-service:
+            provider: oidc
+            client-id: ${GIMAC_SERVICE_CLIENT_ID:gateway-service}
+            client-secret: ${GIMAC_SERVICE_CLIENT_SECRET:}
+            authorization-grant-type: client_credentials
           # Jeton de service de la supervision de la plateforme (D-61) : client Keycloak
           # « gateway-supervision » ; identifiant et secret fournis par l'environnement.
           supervision:
@@ -355,6 +371,16 @@ server:
     session:
       cookie:
         http-only: true
+  # Session de la passerelle (D-65 §2 et §6) : témoin HttpOnly, Secure, SameSite=Lax. Le magasin garde
+  # la session jusqu'à la durée maximale ; l'inactivité (30 min) est jugée par la passerelle, qui révoque
+  # alors les jetons chez Keycloak (GardeSessionWebFilter, balayage chaque minute).
+  reactive:
+    session:
+      timeout: 10h
+      cookie:
+        http-only: true
+        secure: ${GIMAC_SESSION_TEMOIN_SECURISE:true}
+        same-site: lax
 
 springdoc:
   show-actuator: true
@@ -448,6 +474,16 @@ gimac:
       - certification.proces-verbal
       - certification.approbation
       - collaboration.message
+  # Connexion sur la plateforme (D-65) : MS-IAM (routes internes), délai des appels, limitation.
+  connexion:
+    iam-url: ${gimac.services.iam}
+    delai: 5s
+    tentatives-par-minute: 5
+  # Fermeture des sessions (D-65 §6) : inactivité maximale 30 min (valeur plafond), durée absolue 10 h.
+  session:
+    inactivite-max: PT30M
+    duree-max: PT10H
+    balayage: PT1M
   # Supervision de la plateforme (D-61, /api/plateforme/**) : les services supervisés sont la
   # passerelle et ceux de gimac.services ; chaque appel est borné par « delai ».
   supervision:

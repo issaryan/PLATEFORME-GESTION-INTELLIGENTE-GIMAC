@@ -31,8 +31,10 @@ echo "== Sécurité et routage"
 JETON=$($CURL -X POST http://keycloak:9080/realms/gimac/protocol/openid-connect/token \
   -d grant_type=client_credentials -d client_id=internal -d client_secret=internal -d scope=openid | sed -n 's/.*"access_token":"\([^"]*\)".*/\1/p')
 verifier "jeton Keycloak obtenu (client_credentials, portée openid pour userinfo)" "[ -n \"$JETON\" ]"
-# Sans jeton, la passerelle BFF redirige vers la connexion Keycloak (302) ; aucune donnée n'est servie.
-verifier "API refusée sans jeton (302 vers Keycloak)" "$CURL -o /dev/null -w '%{http_code} %{redirect_url}' http://gateway:8080/services/iam/api/collaborators | grep -q '^302 .*oauth2/authorization'"
+# D-65 : sans session ni jeton, la passerelle répond 401 (plus de redirection vers Keycloak) ;
+# la délégation par redirection est retirée (404) ; aucune donnée n'est servie.
+verifier "API refusée sans jeton (401)" "[ \"\$($CURL -o /dev/null -w '%{http_code}' http://gateway:8080/services/iam/api/collaborators)\" = 401 ]"
+verifier "redirection vers Keycloak retirée (404)" "[ \"\$($CURL -o /dev/null -w '%{http_code}' http://gateway:8080/oauth2/authorization/oidc)\" = 404 ]"
 for cible in incident:tickets audit:audit-events; do
   s=${cible%%:*}; r=${cible##*:}
   verifier "API $s atteinte via la passerelle avec jeton (GET /api/$r = 200)" "[ \"\$($CURL -o /dev/null -w '%{http_code}' -H 'Authorization: Bearer $JETON' http://gateway:8080/services/$s/api/$r)\" = 200 ]"

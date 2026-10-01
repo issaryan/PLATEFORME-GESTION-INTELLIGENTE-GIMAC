@@ -35,16 +35,16 @@
   "verifyEmail": false,
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,
-  "resetPasswordAllowed": true,
+  "resetPasswordAllowed": false,
   "editUsernameAllowed": false,
-  "bruteForceProtected": false,
+  "bruteForceProtected": true,
   "permanentLockout": false,
   "maxFailureWaitSeconds": 900,
   "minimumQuickLoginWaitSeconds": 60,
-  "waitIncrementSeconds": 60,
+  "waitIncrementSeconds": 900,
   "quickLoginCheckMilliSeconds": 1000,
   "maxDeltaTimeSeconds": 43200,
-  "failureFactor": 30,
+  "failureFactor": 5,
   "roles": {
     "realm": [
       {
@@ -1248,7 +1248,6 @@
         }
       ],
       "disableableCredentialTypes": [],
-      "requiredActions": [],
       "realmRoles": [
         "offline_access",
         "uma_authorization"
@@ -1282,7 +1281,6 @@
         }
       ],
       "disableableCredentialTypes": [],
-      "requiredActions": [],
       "realmRoles": [
         "offline_access",
         "uma_authorization"
@@ -1325,11 +1323,11 @@
         ],
         "login": [
           "test-ingenieur-homologation"
+        ],
+        "gimac_actions_requises": [
+          "SECOND_FACTEUR"
         ]
-      },
-      "requiredActions": [
-        "CONFIGURE_TOTP"
-      ]
+      }
     },
     {
       "username": "test-chef-des",
@@ -1358,11 +1356,11 @@
         ],
         "login": [
           "test-chef-des"
+        ],
+        "gimac_actions_requises": [
+          "SECOND_FACTEUR"
         ]
-      },
-      "requiredActions": [
-        "CONFIGURE_TOTP"
-      ]
+      }
     },
     {
       "username": "test-super-admin",
@@ -1391,11 +1389,11 @@
         ],
         "login": [
           "test-super-admin"
+        ],
+        "gimac_actions_requises": [
+          "SECOND_FACTEUR"
         ]
-      },
-      "requiredActions": [
-        "CONFIGURE_TOTP"
-      ]
+      }
     },
     {
       "username": "test-rssi",
@@ -1424,11 +1422,11 @@
         ],
         "login": [
           "test-rssi"
+        ],
+        "gimac_actions_requises": [
+          "SECOND_FACTEUR"
         ]
-      },
-      "requiredActions": [
-        "CONFIGURE_TOTP"
-      ]
+      }
     },
     {
       "username": "test-conformite",
@@ -1457,11 +1455,11 @@
         ],
         "login": [
           "test-conformite"
+        ],
+        "gimac_actions_requises": [
+          "SECOND_FACTEUR"
         ]
-      },
-      "requiredActions": [
-        "CONFIGURE_TOTP"
-      ]
+      }
     },
     {
       "username": "test-dg",
@@ -1490,11 +1488,11 @@
         ],
         "login": [
           "test-dg"
+        ],
+        "gimac_actions_requises": [
+          "SECOND_FACTEUR"
         ]
-      },
-      "requiredActions": [
-        "CONFIGURE_TOTP"
-      ]
+      }
     },
     {
       "username": "test-correspondant-a",
@@ -1524,13 +1522,13 @@
         "login": [
           "test-correspondant-a"
         ],
+        "gimac_actions_requises": [
+          "SECOND_FACTEUR"
+        ],
         "institution_id": [
           "INST-0042"
         ]
-      },
-      "requiredActions": [
-        "CONFIGURE_TOTP"
-      ]
+      }
     },
     {
       "username": "test-correspondant-b",
@@ -1560,13 +1558,13 @@
         "login": [
           "test-correspondant-b"
         ],
+        "gimac_actions_requises": [
+          "SECOND_FACTEUR"
+        ],
         "institution_id": [
           "INST-0043"
         ]
-      },
-      "requiredActions": [
-        "CONFIGURE_TOTP"
-      ]
+      }
     },
     {
       "username": "test-charge-ddrm",
@@ -1595,11 +1593,11 @@
         ],
         "login": [
           "test-charge-ddrm"
+        ],
+        "gimac_actions_requises": [
+          "SECOND_FACTEUR"
         ]
-      },
-      "requiredActions": [
-        "CONFIGURE_TOTP"
-      ]
+      }
     },
     {
       "username": "test-chef-ddrm",
@@ -1628,11 +1626,11 @@
         ],
         "login": [
           "test-chef-ddrm"
+        ],
+        "gimac_actions_requises": [
+          "SECOND_FACTEUR"
         ]
-      },
-      "requiredActions": [
-        "CONFIGURE_TOTP"
-      ]
+      }
     },
     {
       "username": "test-sna",
@@ -1661,11 +1659,11 @@
         ],
         "login": [
           "test-sna"
+        ],
+        "gimac_actions_requises": [
+          "SECOND_FACTEUR"
         ]
-      },
-      "requiredActions": [
-        "CONFIGURE_TOTP"
-      ]
+      }
     },
     {
       "username": "test-production-monetique",
@@ -1694,11 +1692,11 @@
         ],
         "login": [
           "test-production-monetique"
+        ],
+        "gimac_actions_requises": [
+          "SECOND_FACTEUR"
         ]
-      },
-      "requiredActions": [
-        "CONFIGURE_TOTP"
-      ]
+      }
     },
     {
       "username": "test-pole-reseau",
@@ -1727,11 +1725,11 @@
         ],
         "login": [
           "test-pole-reseau"
+        ],
+        "gimac_actions_requises": [
+          "SECOND_FACTEUR"
         ]
-      },
-      "requiredActions": [
-        "CONFIGURE_TOTP"
-      ]
+      }
     },
     {
       "username": "test-pole-systeme",
@@ -1760,11 +1758,11 @@
         ],
         "login": [
           "test-pole-systeme"
+        ],
+        "gimac_actions_requises": [
+          "SECOND_FACTEUR"
         ]
-      },
-      "requiredActions": [
-        "CONFIGURE_TOTP"
-      ]
+      }
     },
     {
       "username": "test-conducteur-projet",
@@ -1793,11 +1791,11 @@
         ],
         "login": [
           "test-conducteur-projet"
+        ],
+        "gimac_actions_requises": [
+          "SECOND_FACTEUR"
         ]
-      },
-      "requiredActions": [
-        "CONFIGURE_TOTP"
-      ]
+      }
     },
     {
       "username": "service-account-homologation-service",
@@ -1861,6 +1859,15 @@
           "view-realm"
         ]
       }
+    },
+    {
+      "username": "service-account-gateway-service",
+      "enabled": true,
+      "serviceAccountClientId": "gateway-service",
+      "realmRoles": [
+        "default-roles-gimac",
+        "INTERNAL_IAM_READ"
+      ]
     },
     {
       "username": "service-account-gateway-supervision",
@@ -2334,29 +2341,16 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "redirectUris": [
-        "http://localhost:8080/*",
-        "https://localhost:8080/*",
-        "http://localhost:9060/*",
-        "http://localhost:8100/*",
-        "http://127.0.0.1:8761/*",
-        "dev.localhost.ionic:*"
-      ],
-      "webOrigins": [
-        "http://localhost:8080",
-        "https://localhost:8080",
-        "http://localhost:9060",
-        "http://localhost:8100",
-        "http://127.0.0.1:8761"
-      ],
+      "redirectUris": [],
+      "webOrigins": [],
       "notBefore": 0,
       "bearerOnly": false,
       "consentRequired": false,
-      "standardFlowEnabled": true,
-      "implicitFlowEnabled": true,
-      "directAccessGrantsEnabled": false,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
       "serviceAccountsEnabled": false,
-      "publicClient": true,
+      "publicClient": false,
       "frontchannelLogout": false,
       "protocol": "openid-connect",
       "attributes": {
@@ -2374,14 +2368,15 @@
         "saml.authnstatement": "false",
         "display.on.consent.screen": "false",
         "saml.onetimeuse.condition": "false",
-        "minimum.acr.value": "2"
+        "access.token.lifespan": "300"
       },
-      "authenticationFlowBindingOverrides": {},
+      "authenticationFlowBindingOverrides": {
+        "direct_grant": "d459138b-0672-5845-9e2a-fc5d7aa69582"
+      },
       "fullScopeAllowed": true,
       "nodeReRegistrationTimeout": -1,
       "defaultClientScopes": [
         "web-origins",
-        "acr",
         "jhipster",
         "roles",
         "profile",
@@ -2392,7 +2387,26 @@
         "phone",
         "offline_access",
         "microprofile-jwt"
-      ]
+      ],
+      "protocolMappers": [
+        {
+          "name": "acr-gimac",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "acr",
+            "claim.value": "2",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        }
+      ],
+      "secret": "${GIMAC_SECRET_WEB_APP}",
+      "description": "Connexion sur la plateforme, mot de passe et code TOTP (acr 2) : passerelle"
     },
     {
       "clientId": "tester-cli",
@@ -2419,6 +2433,56 @@
       "attributes": {
         "oauth2.device.authorization.grant.enabled": "true",
         "minimum.acr.value": "2"
+      }
+    },
+    {
+      "clientId": "gimac-connexion",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${GIMAC_SECRET_CONNEXION}",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "protocol": "openid-connect",
+      "fullScopeAllowed": true,
+      "defaultClientScopes": [
+        "web-origins",
+        "jhipster",
+        "roles",
+        "profile",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "offline_access"
+      ],
+      "description": "Connexion sur la plateforme, mot de passe seul (acr 1, premier accès) : passerelle et MS-IAM",
+      "implicitFlowEnabled": false,
+      "frontchannelLogout": false,
+      "redirectUris": [],
+      "webOrigins": [],
+      "authenticationFlowBindingOverrides": {
+        "direct_grant": "76c4fb59-e66f-5fba-aa5b-743b2e3ca506"
+      },
+      "protocolMappers": [
+        {
+          "name": "acr-gimac",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "acr",
+            "claim.value": "1",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        }
+      ],
+      "attributes": {
+        "access.token.lifespan": "300"
       }
     },
     {
@@ -2519,6 +2583,29 @@
       "publicClient": false,
       "clientAuthenticatorType": "client-secret",
       "secret": "${GIMAC_SECRET_IAM_SERVICE}",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "protocol": "openid-connect",
+      "fullScopeAllowed": true,
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "jhipster",
+        "roles",
+        "profile",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "offline_access"
+      ]
+    },
+    {
+      "clientId": "gateway-service",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${GIMAC_SECRET_GATEWAY_SERVICE}",
       "standardFlowEnabled": false,
       "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": true,
@@ -2661,7 +2748,7 @@
           "config": {
             "multivalued": "true",
             "userinfo.token.claim": "true",
-            "id.token.claim": "false",
+            "id.token.claim": "true",
             "access.token.claim": "true",
             "claim.name": "roles",
             "jsonType.label": "String"
@@ -3246,7 +3333,7 @@
         "subComponents": {},
         "config": {
           "kc.user.profile.config": [
-            "{\"unmanagedAttributePolicy\": \"ADMIN_EDIT\", \"attributes\": [{\"name\": \"username\", \"displayName\": \"${username}\", \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\"]}, \"validations\": {\"length\": {\"min\": 3, \"max\": 255}, \"username-prohibited-characters\": {}, \"up-username-not-idn-homograph\": {}}}, {\"name\": \"email\", \"displayName\": \"${email}\", \"required\": {\"roles\": [\"user\"]}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\"]}, \"validations\": {\"email\": {}, \"length\": {\"max\": 255}}}, {\"name\": \"firstName\", \"displayName\": \"${firstName}\", \"required\": {\"roles\": [\"user\"]}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"validations\": {\"length\": {\"max\": 255}, \"person-name-prohibited-characters\": {}}}, {\"name\": \"lastName\", \"displayName\": \"${lastName}\", \"required\": {\"roles\": [\"user\"]}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"validations\": {\"length\": {\"max\": 255}, \"person-name-prohibited-characters\": {}}}, {\"name\": \"institution_id\", \"displayName\": \"Institution\", \"permissions\": {\"view\": [\"admin\"], \"edit\": [\"admin\"]}, \"multivalued\": false}, {\"name\": \"phone_number\", \"displayName\": \"Téléphone\", \"permissions\": {\"view\": [\"admin\"], \"edit\": [\"admin\"]}, \"multivalued\": false}, {\"name\": \"fonction\", \"displayName\": \"Fonction\", \"permissions\": {\"view\": [\"admin\"], \"edit\": [\"admin\"]}, \"multivalued\": false}, {\"name\": \"profil_complet\", \"displayName\": \"Premier accès terminé\", \"permissions\": {\"view\": [\"admin\"], \"edit\": [\"admin\"]}, \"multivalued\": false}, {\"name\": \"langKey\", \"displayName\": \"Langue\", \"permissions\": {\"view\": [\"admin\"], \"edit\": [\"admin\"]}, \"multivalued\": false}, {\"name\": \"login\", \"displayName\": \"Identifiant\", \"permissions\": {\"view\": [\"admin\"], \"edit\": [\"admin\"]}, \"multivalued\": false}], \"groups\": []}"
+            "{\"unmanagedAttributePolicy\": \"ADMIN_EDIT\", \"attributes\": [{\"name\": \"username\", \"displayName\": \"${username}\", \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\"]}, \"validations\": {\"length\": {\"min\": 3, \"max\": 255}, \"username-prohibited-characters\": {}, \"up-username-not-idn-homograph\": {}}}, {\"name\": \"email\", \"displayName\": \"${email}\", \"required\": {\"roles\": [\"user\"]}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\"]}, \"validations\": {\"email\": {}, \"length\": {\"max\": 255}}}, {\"name\": \"firstName\", \"displayName\": \"${firstName}\", \"required\": {\"roles\": [\"user\"]}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"validations\": {\"length\": {\"max\": 255}, \"person-name-prohibited-characters\": {}}}, {\"name\": \"lastName\", \"displayName\": \"${lastName}\", \"required\": {\"roles\": [\"user\"]}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"validations\": {\"length\": {\"max\": 255}, \"person-name-prohibited-characters\": {}}}, {\"name\": \"institution_id\", \"displayName\": \"Institution\", \"permissions\": {\"view\": [\"admin\"], \"edit\": [\"admin\"]}, \"multivalued\": false}, {\"name\": \"phone_number\", \"displayName\": \"Téléphone\", \"permissions\": {\"view\": [\"admin\"], \"edit\": [\"admin\"]}, \"multivalued\": false}, {\"name\": \"fonction\", \"displayName\": \"Fonction\", \"permissions\": {\"view\": [\"admin\"], \"edit\": [\"admin\"]}, \"multivalued\": false}, {\"name\": \"profil_complet\", \"displayName\": \"Premier accès terminé\", \"permissions\": {\"view\": [\"admin\"], \"edit\": [\"admin\"]}, \"multivalued\": false}, {\"name\": \"langKey\", \"displayName\": \"Langue\", \"permissions\": {\"view\": [\"admin\"], \"edit\": [\"admin\"]}, \"multivalued\": false}, {\"name\": \"login\", \"displayName\": \"Identifiant\", \"permissions\": {\"view\": [\"admin\"], \"edit\": [\"admin\"]}, \"multivalued\": false}, {\"name\": \"gimac_actions_requises\", \"displayName\": \"Actions exigées par la plateforme\", \"permissions\": {\"view\": [\"admin\"], \"edit\": [\"admin\"]}, \"multivalued\": true}], \"groups\": []}"
           ]
         }
       }
@@ -3922,6 +4009,61 @@
           "userSetupAllowed": false
         }
       ]
+    },
+    {
+      "alias": "direct-gimac-mot-de-passe",
+      "description": "Octroi direct GIMAC : identifiant et mot de passe (premier accès, acr 1)",
+      "providerId": "basic-flow",
+      "topLevel": true,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "direct-grant-validate-username",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "direct-grant-validate-password",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 20,
+          "userSetupAllowed": false
+        }
+      ],
+      "id": "76c4fb59-e66f-5fba-aa5b-743b2e3ca506"
+    },
+    {
+      "alias": "direct-gimac-deux-facteurs",
+      "description": "Octroi direct GIMAC : identifiant, mot de passe et code TOTP obligatoire (acr 2)",
+      "providerId": "basic-flow",
+      "topLevel": true,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "direct-grant-validate-username",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "direct-grant-validate-password",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 20,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "direct-grant-validate-otp",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 30,
+          "userSetupAllowed": false
+        }
+      ],
+      "id": "d459138b-0672-5845-9e2a-fc5d7aa69582"
     }
   ],
   "authenticatorConfig": [
@@ -4067,5 +4209,6 @@
   },
   "defaultLocale": "fr",
   "loginTheme": "gimac",
-  "emailTheme": "gimac"
+  "emailTheme": "gimac",
+  "passwordPolicy": "length(12) and notUsername(undefined)"
 }

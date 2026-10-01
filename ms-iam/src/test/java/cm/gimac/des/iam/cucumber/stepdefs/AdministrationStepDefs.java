@@ -128,7 +128,7 @@ public class AdministrationStepDefs {
             post("/api/v1/comptes/{id}/actions-requises", compteId)
                 .with(jeton)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"actions\":[\"UPDATE_PASSWORD\",\"CONFIGURE_TOTP\"],\"parCourriel\":true,\"motif\":\"Revue des accès\"}")
+                .content("{\"actions\":[\"MOT_DE_PASSE\",\"SECOND_FACTEUR\"],\"parCourriel\":true,\"motif\":\"Revue des accès\"}")
         );
     }
 
@@ -278,5 +278,80 @@ public class AdministrationStepDefs {
         reponse = mvc.perform(
             post("/api/v1/moi/actions").with(AbstractIamIT.utilisateur(compteId)).contentType(MediaType.APPLICATION_JSON).content("{\"action\":\"" + action + "\"}")
         );
+    }
+
+    // ------------------------------------------------------------------ connexion sur la plateforme (D-65)
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private cm.gimac.des.iam.infrastructure.courriel.CourrielsEnMemoire courriels;
+
+    private String lienInvitation;
+
+    private static org.springframework.test.web.servlet.request.RequestPostProcessor passerelle() {
+        return org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt()
+            .jwt(j -> j.subject("service-account-gateway-service").claim("azp", "gateway-service"))
+            .authorities(new org.springframework.security.core.authority.SimpleGrantedAuthority("INTERNAL_IAM_READ"));
+    }
+
+    private org.springframework.test.web.servlet.request.RequestPostProcessor restreinte() {
+        return org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt().jwt(j -> j.subject(compteId).claim("acr", "1"));
+    }
+
+    private void nouveauMotDePasse(String jeton, String motDePasse) throws Exception {
+        reponse = mvc.perform(
+            post("/api/v1/interne/connexion/nouveau-mot-de-passe")
+                .with(passerelle())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"jeton\":\"%s\",\"motDePasse\":\"%s\"}".formatted(jeton, motDePasse))
+        );
+    }
+
+    @Quand("le titulaire suit le lien de son invitation avec le mot de passe {string}")
+    public void suitLeLien(String motDePasse) throws Exception {
+        String email = JsonPath.read(
+            mvc.perform(get("/api/v1/comptes/{id}", compteId).with(AbstractIamIT.utilisateur(AbstractIamIT.RSSI, "IAM_ACCOUNT_READ"))).andReturn().getResponse().getContentAsString(),
+            "$.email"
+        );
+        String texte = courriels.dernierPour(email).orElseThrow().texte();
+        int i = texte.indexOf("jeton=");
+        lienInvitation = texte.substring(i + 6, i + 6 + 43);
+        nouveauMotDePasse(lienInvitation, motDePasse);
+    }
+
+    @Quand("le titulaire suit à nouveau le même lien avec le mot de passe {string}")
+    public void suitANouveau(String motDePasse) throws Exception {
+        nouveauMotDePasse(lienInvitation, motDePasse);
+    }
+
+    private String etatConnexion() throws Exception {
+        return mvc.perform(get("/api/v1/interne/comptes/{id}/etat-connexion", compteId).with(passerelle())).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+    }
+
+    @Et("la passerelle lit pour le compte les actions {string}")
+    public void etatActions(String attendues) throws Exception {
+        assertThat(JsonPath.<List<String>>read(etatConnexion(), "$.actionsRequises")).containsExactly(attendues.split(","));
+    }
+
+    @Et("la passerelle lit pour le compte un second facteur configuré")
+    public void etatSecondFacteur() throws Exception {
+        assertThat(JsonPath.<Boolean>read(etatConnexion(), "$.secondFacteur")).isTrue();
+        assertThat(JsonPath.<List<String>>read(etatConnexion(), "$.actionsRequises")).doesNotContain("SECOND_FACTEUR");
+    }
+
+    @Quand("le titulaire, en session restreinte, configure son code TOTP avec un code juste")
+    public void configureTotp() throws Exception {
+        String e = mvc.perform(post("/api/v1/moi/second-facteur/totp/enrolement").with(restreinte())).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        String code = AbstractIamIT.codeTotp(JsonPath.read(e, "$.uri"));
+        reponse = mvc.perform(
+            post("/api/v1/moi/second-facteur/totp")
+                .with(restreinte())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"enrolementId\":\"%s\",\"code\":\"%s\"}".formatted(JsonPath.<String>read(e, "$.enrolementId"), code))
+        );
+    }
+
+    @Quand("le titulaire, en session restreinte, consulte ses sessions")
+    public void sessionsRestreintes() throws Exception {
+        reponse = mvc.perform(get("/api/v1/moi/sessions").with(restreinte()));
     }
 }

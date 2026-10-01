@@ -297,3 +297,78 @@ test_contexte_certification_interne_refuse if not authz.allow with input as {
 	"method": "GET", "path": "/bff/des/homologation/interne/liaisons/l1/contexte-certification",
 	"permissions": ["INTERNAL_HOMOLOGATION_READ"], "authentifie": true, "acr": "2",
 }
+
+# D-65 : session restreinte du premier accès (acr 1), règle premier_acces.
+chemins_premier_acces := [
+	["GET", "/bff/des/iam/moi"],
+	["POST", "/bff/des/iam/moi/premiere-configuration"],
+	["POST", "/bff/portail/iam/moi/mot-de-passe"],
+	["POST", "/bff/console/iam/moi/second-facteur/totp/enrolement"],
+	["POST", "/bff/console/iam/moi/second-facteur/totp"],
+	["GET", "/bff/portail/iam/moi/second-facteur"],
+]
+
+test_premier_acces_chemins_admis if {
+	every r in chemins_premier_acces {
+		authz.allow with input as {"method": r[0], "path": r[1], "permissions": [], "authentifie": true, "acr": "1", "restreinte": true}
+	}
+}
+
+test_premier_acces_exige_session_restreinte if {
+	every r in chemins_premier_acces {
+		not authz.allow with input as {"method": r[0], "path": r[1], "permissions": [], "authentifie": true, "acr": "1"}
+	}
+}
+
+test_premier_acces_exige_authentification if not authz.allow with input as {
+	"method": "GET", "path": "/bff/des/iam/moi", "permissions": [], "authentifie": false, "acr": "1", "restreinte": true,
+}
+
+test_premier_acces_exige_acr_1 if not authz.allow with input as {
+	"method": "GET", "path": "/bff/des/iam/moi", "permissions": [], "authentifie": true, "acr": "", "restreinte": true,
+}
+
+test_premier_acces_methodes_limitees if {
+	every m in ["PUT", "DELETE", "PATCH"] {
+		not authz.allow with input as {"method": m, "path": "/bff/des/iam/moi/mot-de-passe", "permissions": [], "authentifie": true, "acr": "1", "restreinte": true}
+	}
+}
+
+# Hors de l'assistant, une session restreinte n'ouvre rien, même avec la permission ou acr 2.
+chemins_hors_premier_acces := [
+	["GET", "/bff/des/iam/moi/sessions"],
+	["POST", "/bff/des/iam/moi/fido2"],
+	["POST", "/bff/des/iam/reauthentification/defi"],
+	["GET", "/bff/des/homologation/liaisons"],
+	["GET", "/bff/console/iam/comptes"],
+	["GET", "/bff/des/iam/interne/comptes/c1/etat-connexion"],
+	["POST", "/bff/des/iam/moi-autre"],
+]
+
+test_session_restreinte_hors_assistant_refusee if {
+	every r in chemins_hors_premier_acces {
+		not authz.allow with input as {
+			"method": r[0], "path": r[1], "permissions": ["IAM_ACCOUNT_READ", "HOM_LIAISON_READ"],
+			"authentifie": true, "acr": "1", "restreinte": true,
+		}
+	}
+}
+
+test_session_restreinte_acr_2_refusee_hors_assistant if not authz.allow with input as {
+	"method": "GET", "path": "/bff/console/iam/comptes", "permissions": ["IAM_ACCOUNT_READ"],
+	"authentifie": true, "acr": "2", "restreinte": true,
+}
+
+test_session_restreinte_depot_refuse if not authz.allow with input as {
+	"method": "POST", "path": "/bff/des/document/documents", "permissions": ["DOC_DEPOSIT"],
+	"authentifie": true, "acr": "2", "restreinte": true,
+}
+
+# Session complète : inchangée (acr 2 ou 3 exigé), restreinte fausse ou absente.
+test_session_complete_mon_compte if authz.allow with input as {
+	"method": "GET", "path": "/bff/des/iam/moi/sessions", "permissions": [], "authentifie": true, "acr": "2", "restreinte": false,
+}
+
+test_session_complete_acr_1_refusee if not authz.allow with input as {
+	"method": "GET", "path": "/bff/des/iam/moi", "permissions": [], "authentifie": true, "acr": "1", "restreinte": false,
+}

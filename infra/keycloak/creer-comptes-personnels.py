@@ -4,7 +4,8 @@
 Crée dans le domaine gimac les comptes décrits dans infra/keycloak/local/comptes.json, fichier
 local jamais versionné (aucune donnée personnelle dans le dépôt). Chaque compte est créé comme
 MS-IAM le fait depuis la console : mot de passe provisoire, profil, attributs de la plateforme,
-premier accès à accomplir (profil_complet=false, changement du mot de passe, enrôlement TOTP).
+premier accès à accomplir sur la plateforme (D-65 : attribut gimac_actions_requises, mot de passe provisoire
+non temporaire pour Keycloak, changement du mot de passe et code TOTP dans l'assistant de premier accès).
 
 L'amorçage passe par l'API d'administration de Keycloak parce que la route de MS-IAM exige un
 jeton à deux facteurs qu'aucun compte ne détient encore ; les comptes suivants se créent depuis
@@ -36,7 +37,9 @@ ENV = RACINE / "infra/docker-compose/.env"
 DOMAINE = "gimac"
 # Actions de la première connexion (MS-IAM, iam.premiere-connexion.actions). La vérification du
 # courriel est omise : la messagerie de développement (Mailpit) ne délivre pas aux vraies adresses.
-ACTIONS = ["UPDATE_PASSWORD", "CONFIGURE_TOTP", "UPDATE_PROFILE"]
+# Actions exigées par la plateforme (D-65), attribut gimac_actions_requises : jamais d'action requise
+# de Keycloak, qui bloquerait l'octroi direct de la connexion sur la plateforme.
+ACTIONS = ["MOT_DE_PASSE", "SECOND_FACTEUR", "FICHE", "CHARTE"]
 
 
 def env():
@@ -87,17 +90,17 @@ def main():
         if existants:
             print(f"déjà présent : {c['identifiant']}")
             continue
-        attributs = {"profil_complet": ["false"], "locale": ["fr"], "langKey": ["fr"]}
+        attributs = {"profil_complet": ["false"], "locale": ["fr"], "langKey": ["fr"], "gimac_actions_requises": ACTIONS}
         if c.get("fonction"):
             attributs["fonction"] = [c["fonction"]]
         if c.get("institution_id"):
             attributs["institution_id"] = [c["institution_id"]]
         _, _, entetes = appel("POST", f"{admin}/users", jeton, corps={
             "username": c["identifiant"], "email": c["email"], "firstName": c["prenom"], "lastName": c["nom"],
-            "enabled": True, "emailVerified": True, "requiredActions": ACTIONS, "attributes": attributs})
+            "enabled": True, "emailVerified": True, "attributes": attributs})
         uid = entetes["Location"].rsplit("/", 1)[1]
         mdp = mot_de_passe()
-        appel("PUT", f"{admin}/users/{uid}/reset-password", jeton, corps={"type": "password", "value": mdp, "temporary": True})
+        appel("PUT", f"{admin}/users/{uid}/reset-password", jeton, corps={"type": "password", "value": mdp, "temporary": False})
         _, role, _ = appel("GET", f"{admin}/roles/{c['profil']}", jeton)
         appel("POST", f"{admin}/users/{uid}/role-mappings/realm", jeton, corps=[role])
         sortie.append(f"{c['identifiant']}\t{c['email']}\t{c['profil']}\t{mdp}")

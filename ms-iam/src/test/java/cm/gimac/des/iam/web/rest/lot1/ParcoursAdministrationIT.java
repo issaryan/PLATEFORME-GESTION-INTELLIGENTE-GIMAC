@@ -175,10 +175,10 @@ class ParcoursAdministrationIT extends AbstractIamIT {
                 post("/api/v1/comptes/{id}/actions-requises", id)
                     .with(rssi())
                     .contentType(MediaType.APPLICATION_JSON)
-                    .content("{\"actions\":[\"UPDATE_PASSWORD\",\"CONFIGURE_TOTP\"],\"parCourriel\":true,\"motif\":\"Revue des accès\"}")
+                    .content("{\"actions\":[\"MOT_DE_PASSE\",\"SECOND_FACTEUR\"],\"parCourriel\":true,\"motif\":\"Revue des accès\"}")
             )
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.actionsRequises").value(org.hamcrest.Matchers.hasItems("UPDATE_PASSWORD", "CONFIGURE_TOTP")));
+            .andExpect(jsonPath("$.actionsRequises").value(org.hamcrest.Matchers.hasItems("MOT_DE_PASSE", "SECOND_FACTEUR")));
     }
 
     @Test

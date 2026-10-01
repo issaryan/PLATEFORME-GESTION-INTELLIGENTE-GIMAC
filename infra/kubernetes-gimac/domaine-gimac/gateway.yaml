@@ -19,3 +19,21 @@ spec:
                 secretKeyRef:
                   name: gimac-clients-keycloak
                   key: gateway-supervision
+            # Connexion sur la plateforme (D-65) : octroi direct (web_app, gimac-connexion), jeton de service vers MS-IAM.
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: gimac-clients-keycloak
+                  key: web-app
+            - name: GIMAC_SECRET_CONNEXION
+              valueFrom:
+                secretKeyRef:
+                  name: gimac-clients-keycloak
+                  key: connexion
+            - name: GIMAC_SERVICE_CLIENT_ID
+              value: gateway-service
+            - name: GIMAC_SERVICE_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: gimac-clients-keycloak
+                  key: gateway-service

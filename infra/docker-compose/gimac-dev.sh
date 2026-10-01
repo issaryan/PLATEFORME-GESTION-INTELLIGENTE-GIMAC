@@ -60,12 +60,16 @@ preparer_env() {
                   GIMAC_S3_CLE_ACCES GIMAC_S3_CLE_SECRETE GIMAC_MOT_DE_PASSE_TEST GIMAC_SECRET_TESTER_CLI \
                   GIMAC_SECRET_HOMOLOGATION_SERVICE GIMAC_SECRET_CERTIFICATION_SERVICE GIMAC_SECRET_PARTICIPANT_SERVICE \
                   GIMAC_SECRET_IAM_SERVICE GIMAC_SECRET_GATEWAY_SUPERVISION GIMAC_SECRET_INTERNAL \
-                  GIMAC_SECRET_COLLABORATION_SERVICE; do
+                  GIMAC_SECRET_COLLABORATION_SERVICE GIMAC_SECRET_CONNEXION GIMAC_SECRET_WEB_APP \
+                  GIMAC_SECRET_GATEWAY_SERVICE; do
     grep -q "^$variable=" "$fichier" || { echo "$variable=$(openssl rand -hex 20)" >> "$fichier"; echo "Secret ajouté à .env : $variable"; }
   done
   # Clé AES-256-GCM du chiffrement au repos de la messagerie (D-64) : 32 octets en base 64.
   grep -q "^GIMAC_MESSAGERIE_CLE=" "$fichier" \
     || { echo "GIMAC_MESSAGERIE_CLE=$(openssl rand -base64 32)" >> "$fichier"; echo "Secret ajouté à .env : GIMAC_MESSAGERIE_CLE"; }
+  # Clé AES-256-GCM des secrets de MS-IAM (enrôlement TOTP, mot de passe SMTP, D-65) : 32 octets en base 64.
+  grep -q "^GIMAC_IAM_CLE_CHIFFREMENT=" "$fichier" \
+    || { echo "GIMAC_IAM_CLE_CHIFFREMENT=$(openssl rand -base64 32)" >> "$fichier"; echo "Secret ajouté à .env : GIMAC_IAM_CLE_CHIFFREMENT"; }
 }
 
 # Avant l'arrêt sur échec, conserve les journaux des conteneurs en mauvaise santé ou arrêtés.
@@ -87,6 +91,9 @@ images_manquantes() {
 }
 
 images() {
+  # Extension gimac-totp de Keycloak (D-65), montée par le Compose dans /opt/keycloak/providers.
+  echo "== Construction de l'extension Keycloak gimac-totp"
+  (cd "$RACINE/infra/keycloak/extensions/gimac-totp" && mvn -q -ntp -B package -DskipTests)
   local s; for s in "${SERVICES[@]}"; do
     echo "== Construction de l'image $s (Jib)"
     # Tests exclus : le seuil JaCoCo de verify (D-61) n'aurait aucune mesure et échouerait ;

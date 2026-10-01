@@ -892,6 +892,62 @@
                                 </rules>
                             </configuration>
                         </execution>
+                        <!--
+                            Définition de fini des tests (D-61) : même seuil pour la connexion sur la plateforme
+                            et la fermeture des sessions (D-65, /api/connexion/**, /api/session, sessions restreintes).
+                        -->
+                        <execution>
+                            <id>seuil-connexion-sessions</id>
+                            <phase>test</phase>
+                            <goals>
+                                <goal>check</goal>
+                            </goals>
+                            <configuration>
+                                <dataFile>${project.build.directory}/jacoco.exec</dataFile>
+                                <includes>
+                                    <include>cm/gimac/des/gateway/domain/connexion/**</include>
+                                    <include>cm/gimac/des/gateway/service/connexion/**</include>
+                                    <include>cm/gimac/des/gateway/infrastructure/connexion/**</include>
+                                    <include>cm/gimac/des/gateway/security/session/**</include>
+                                    <include>cm/gimac/des/gateway/web/rest/ConnexionResource*</include>
+                                    <include>cm/gimac/des/gateway/web/rest/SessionResource*</include>
+                                    <include>cm/gimac/des/gateway/web/rest/LogoutResource*</include>
+                                    <include>cm/gimac/des/gateway/web/filter/**</include>
+                                    <include>cm/gimac/des/gateway/config/Connexion*</include>
+                                    <include>cm/gimac/des/gateway/config/SessionProperties*</include>
+                                </includes>
+                                <rules>
+                                    <rule>
+                                        <element>CLASS</element>
+                                        <excludes>
+                                            <exclude>*.package-info</exclude>
+                                        </excludes>
+                                        <limits>
+                                            <limit>
+                                                <counter>LINE</counter>
+                                                <value>COVEREDRATIO</value>
+                                                <minimum>${jacoco.seuil}</minimum>
+                                            </limit>
+                                            <limit>
+                                                <counter>METHOD</counter>
+                                                <value>COVEREDRATIO</value>
+                                                <minimum>${jacoco.seuil}</minimum>
+                                            </limit>
+                                        </limits>
+                                    </rule>
+                                    <rule>
+                                        <element>BUNDLE</element>
+                                        <limits>
+                                            <limit>
+                                                <counter>BRANCH</counter>
+                                                <value>COVEREDRATIO</value>
+                                                <minimum>${jacoco.seuil}</minimum>
+                                            </limit>
+                                        </limits>
+                                    </rule>
+                                </rules>
+                            </configuration>
+                        </execution>
                         <execution>
                             <id>pre-integration-tests</id>
                             <goals>

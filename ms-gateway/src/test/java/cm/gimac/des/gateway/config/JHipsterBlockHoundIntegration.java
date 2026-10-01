@@ -15,6 +15,10 @@ public class JHipsterBlockHoundIntegration implements BlockHoundIntegration {
         builder.allowBlockingCallsInside("org.springdoc.core.service.OpenAPIService", "build");
         builder.allowBlockingCallsInside("org.springdoc.core.service.OpenAPIService", "getWebhooksClasses");
         builder.allowBlockingCallsInside("org.springdoc.core.service.AbstractRequestService", "build");
+        // Jackson 3 : la première création d'un désérialiseur prend un verrou court (ReentrantLock) du cache ;
+        // deux décodages concurrents sur des fils Netty (sondes de la supervision) faisaient signaler une
+        // attente de verrou, sans entrée-sortie, comme appel bloquant (échec intermittent sous charge).
+        builder.allowBlockingCallsInside("tools.jackson.databind.deser.DeserializerCache", "_createAndCacheValueDeserializer");
         // jhipster-needle-blockhound-integration - JHipster will add additional gradle plugins here
     }
 }

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- MS-IAM : connexion et configuration des comptes sur la plateforme (D-65) : jetons des liens
+     envoyés par courriel (conservés hachés, usage unique), enrôlements TOTP en cours (secret chiffré,
+     10 min), paramètres secrets chiffrés (mot de passe du serveur de messagerie). -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="iam-jeton-lien" author="lot1">
+        <createTable tableName="jeton_lien">
+            <column name="id" type="uuid"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="empreinte" type="varchar(64)"><constraints nullable="false" unique="true" uniqueConstraintName="ux_jeton_lien_empreinte"/></column>
+            <column name="finalite" type="varchar(20)"><constraints nullable="false"/></column>
+            <column name="compte_id" type="varchar(100)"><constraints nullable="false"/></column>
+            <column name="couche" type="varchar(20)"><constraints nullable="false"/></column>
+            <column name="cree_le" type="timestamptz"><constraints nullable="false"/></column>
+            <column name="expire_le" type="timestamptz"><constraints nullable="false"/></column>
+            <column name="utilise_le" type="timestamptz"/>
+        </createTable>
+        <createIndex tableName="jeton_lien" indexName="idx_jeton_lien_compte"><column name="compte_id"/></createIndex>
+        <sql>ALTER TABLE jeton_lien ADD CONSTRAINT ck_jeton_lien_finalite CHECK (finalite IN ('INVITATION', 'REINITIALISATION'));</sql>
+    </changeSet>
+
+    <changeSet id="iam-enrolement-totp" author="lot1">
+        <createTable tableName="enrolement_totp">
+            <column name="id" type="uuid"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="sujet" type="varchar(100)"><constraints nullable="false"/></column>
+            <column name="secret_chiffre" type="varchar(512)"><constraints nullable="false"/></column>
+            <column name="cree_le" type="timestamptz"><constraints nullable="false"/></column>
+            <column name="expire_le" type="timestamptz"><constraints nullable="false"/></column>
+        </createTable>
+        <createIndex tableName="enrolement_totp" indexName="idx_enrolement_totp_sujet"><column name="sujet"/></createIndex>
+    </changeSet>
+
+    <changeSet id="iam-parametre-chiffre" author="lot1">
+        <createTable tableName="parametre_chiffre">
+            <column name="cle" type="varchar(100)"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="valeur_chiffree" type="varchar(2048)"><constraints nullable="false"/></column>
+            <column name="modifie_le" type="timestamptz"><constraints nullable="false"/></column>
+        </createTable>
+    </changeSet>
+</databaseChangeLog>

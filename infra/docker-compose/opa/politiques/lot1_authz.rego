@@ -3,6 +3,8 @@
 # Écart au plan : sa première règle allow acceptait aussi le portail sans institution ;
 # ici, un chemin du portail n'est autorisé que si le jeton porte institution_id (RG-59).
 # D-61 : toute route /bff exige un jeton issu d'une authentification à deux facteurs (acr 2 ou 3).
+# D-65 : seule exception, la session restreinte du premier accès (acr 1, règle premier_acces), limitée
+# à l'assistant de configuration du compte sur MS-IAM ; une session restreinte n'ouvre rien d'autre.
 package gimac.authz
 
 import rego.v1
@@ -98,6 +100,26 @@ depot_document_des if {
 	input.path == "/bff/des/document/documents"
 }
 
+# Session restreinte du premier accès (D-65, docs/lot1/connexion.md §2), transmise par la passerelle.
+restreinte if input.restreinte == true
+
+# Assistant de premier accès : GET|POST /bff/{couche}/iam/moi, …/premiere-configuration,
+# …/mot-de-passe et …/second-facteur/**.
+chemin_premier_acces if regex.match(
+	`^/bff/(des|portail|console)/iam/moi(/premiere-configuration|/mot-de-passe|/second-facteur(/.*)?)?$`,
+	input.path,
+)
+
+premier_acces if {
+	restreinte
+	input.authentifie == true
+	input.acr == "1"
+	input.method in {"GET", "POST"}
+	chemin_premier_acces
+}
+
+allow if premier_acces
+
 # Second facteur (D-61) : niveaux d'assurance acceptés.
 niveaux_double_facteur := {"2", "3"}
 
@@ -116,6 +138,7 @@ portail if startswith(input.path, "/bff/portail/")
 
 # Chemins du DES et de la console : la permission suffit.
 allow if {
+	not restreinte
 	not interne
 	not portail
 	double_facteur
@@ -124,6 +147,7 @@ allow if {
 
 # Chemins du portail : permission et institution dans le jeton.
 allow if {
+	not restreinte
 	not interne
 	portail
 	not collaboration_portail
@@ -135,6 +159,7 @@ allow if {
 # Chemins du lot non listés : l'accès est laissé au contrôle @PreAuthorize du service,
 # à condition d'être authentifié (liste d'autorisations explicites du plan, extrait).
 allow if {
+	not restreinte
 	not interne
 	not required_permission
 	not portail
@@ -145,6 +170,7 @@ allow if {
 }
 
 allow if {
+	not restreinte
 	not interne
 	libre_service
 	input.authentifie == true
@@ -152,6 +178,7 @@ allow if {
 }
 
 allow if {
+	not restreinte
 	depot_document_des
 	double_facteur
 	some p in input.permissions

@@ -16,7 +16,7 @@ Fonctionnalité: Administration des comptes par le super administrateur et le RS
     Et un compte existant avec le profil "ROLE_SNA"
     Quand il exige la mise à jour du mot de passe et la configuration du second facteur
     Alors la réponse a le statut 200
-    Et le compte doit accomplir les actions "UPDATE_PASSWORD,CONFIGURE_TOTP"
+    Et le compte doit accomplir les actions "MOT_DE_PASSE,SECOND_FACTEUR"
 
   Scénario: Le RSSI ne peut attribuer un profil privilégié
     Étant donné le "RSSI" authentifié à deux facteurs

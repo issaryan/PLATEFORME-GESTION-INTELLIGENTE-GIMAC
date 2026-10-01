@@ -11,14 +11,19 @@ import cm.gimac.des.iam.domain.compte.FicheCompte;
 import cm.gimac.des.iam.domain.compte.NouveauCompte;
 import cm.gimac.des.iam.domain.compte.PolitiqueSecurite;
 import cm.gimac.des.iam.domain.compte.Profil;
+import cm.gimac.des.iam.domain.service.Totp;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.SecureRandom;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -31,48 +36,94 @@ import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.utility.MountableFile;
 
 /**
- * Adaptateur Keycloak de l'annuaire (D-62) face au vrai fournisseur d'identité, realm GIMAC généré
- * (infra/keycloak/gimac-realm.json) : le compte de service iam-service y porte les rôles
- * d'administration du realm, et le profil utilisateur déclare les attributs de la plateforme.
- * Keycloak est lancé par Testcontainers, ou déjà démarré si GIMAC_KEYCLOAK_IT_URL est fourni.
+ * Adaptateur Keycloak de l'annuaire (D-62, D-65) face au vrai fournisseur d'identité, realm GIMAC
+ * généré (infra/keycloak/gimac-realm.json) et extension gimac-totp : le compte de service iam-service
+ * y porte les rôles d'administration du realm, le profil utilisateur déclare les attributs de la
+ * plateforme (dont gimac_actions_requises), le client gimac-connexion vérifie le mot de passe par
+ * l'octroi direct. Keycloak est lancé par Testcontainers, ou déjà démarré si GIMAC_KEYCLOAK_IT_URL
+ * est fourni (GIMAC_KEYCLOAK_IT_SECRET : secret de iam-service, GIMAC_KEYCLOAK_IT_SECRET_CONNEXION :
+ * secret de gimac-connexion).
  */
 class KeycloakAnnuaireIT {
 
     static final String SECRET = "secret-iam-it";
+    static final String SECRET_CONNEXION = "secret-connexion-it";
     static final String IMAGE = "quay.io/keycloak/keycloak:26.7.4-0";
     static final Set<String> PRIVILEGIES = Set.of("ROLE_SUPER_ADMIN", "ROLE_RSSI");
+    static final Path EXTENSION = Path.of("../infra/keycloak/extensions/gimac-totp");
+    static final Path JAR = EXTENSION.resolve("target/gimac-totp.jar");
 
     static GenericContainer<?> conteneur;
     static Keycloak client;
     static KeycloakAnnuaire annuaire;
+    static boolean extensionChargee;
+
+    /**
+     * Jar de l'extension gimac-totp : construit s'il manque (Maven Wrapper de MS-IAM, sans les tests de
+     * l'extension, qui ont leur propre construction). Vide s'il ne peut l'être.
+     */
+    static boolean construireExtension() {
+        if (Files.exists(JAR)) {
+            return true;
+        }
+        if (!Files.exists(EXTENSION.resolve("pom.xml"))) {
+            return false;
+        }
+        try {
+            Process p = new ProcessBuilder(Path.of("mvnw").toAbsolutePath().toString(), "-q", "-B", "-ntp", "-f", EXTENSION.resolve("pom.xml").toString(), "package", "-DskipTests", "-Djacoco.skip=true")
+                .redirectErrorStream(true)
+                .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+                .start();
+            return p.waitFor(5, TimeUnit.MINUTES) && p.exitValue() == 0 && Files.exists(JAR);
+        } catch (java.io.IOException e) {
+            return false;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return false;
+        }
+    }
 
     @BeforeAll
-    @Timeout(value = 5, unit = TimeUnit.MINUTES)
+    @Timeout(value = 15, unit = TimeUnit.MINUTES)
     @SuppressWarnings("resource")
     static void demarrer() {
         String url = System.getenv("GIMAC_KEYCLOAK_IT_URL");
         String secret = System.getenv().getOrDefault("GIMAC_KEYCLOAK_IT_SECRET", SECRET);
+        String secretConnexion = System.getenv().getOrDefault("GIMAC_KEYCLOAK_IT_SECRET_CONNEXION", SECRET_CONNEXION);
         if (url == null || url.isBlank()) {
             conteneur = new GenericContainer<>(IMAGE)
-                .withExposedPorts(8080)
+                .withExposedPorts(8080, 9000)
                 .withEnv("KC_BOOTSTRAP_ADMIN_USERNAME", "admin")
                 .withEnv("KC_BOOTSTRAP_ADMIN_PASSWORD", "admin")
+                .withEnv("KC_HEALTH_ENABLED", "true")
                 .withEnv("GIMAC_SECRET_IAM_SERVICE", SECRET)
+                .withEnv("GIMAC_SECRET_CONNEXION", SECRET_CONNEXION)
+                .withEnv("GIMAC_SECRET_WEB_APP", "x")
+                .withEnv("GIMAC_SECRET_GATEWAY_SERVICE", "x")
                 .withEnv("GIMAC_SECRET_TESTER_CLI", "x")
                 .withEnv("GIMAC_SECRET_HOMOLOGATION_SERVICE", "x")
                 .withEnv("GIMAC_SECRET_CERTIFICATION_SERVICE", "x")
                 .withEnv("GIMAC_SECRET_PARTICIPANT_SERVICE", "x")
                 .withEnv("GIMAC_SECRET_GATEWAY_SUPERVISION", "x")
                 .withEnv("GIMAC_SECRET_COLLABORATION_SERVICE", "x")
+                .withEnv("GIMAC_SECRET_INTERNAL", "x")
                 .withEnv("GIMAC_MOT_DE_PASSE_TEST", "Test-Gimac-2026!")
                 .withCopyFileToContainer(
                     MountableFile.forHostPath(Path.of("../infra/keycloak/gimac-realm.json")),
                     "/opt/keycloak/data/import/gimac-realm.json"
                 )
                 .withCommand("start-dev", "--import-realm")
-                .waitingFor(Wait.forHttp("/realms/gimac").forStatusCode(200).withStartupTimeout(Duration.ofMinutes(4)));
+                // Sonde de disponibilité de Keycloak (port de gestion), puis le domaine importé ; délai
+                // large : le démarrage est lent sous la charge de constructions parallèles.
+                .waitingFor(Wait.forHttp("/health/ready").forPort(9000).forStatusCode(200).withStartupTimeout(Duration.ofMinutes(10)));
+            extensionChargee = construireExtension();
+            if (extensionChargee) {
+                conteneur.withCopyFileToContainer(MountableFile.forHostPath(JAR), "/opt/keycloak/providers/gimac-totp.jar");
+            }
             conteneur.start();
             url = "http://" + conteneur.getHost() + ":" + conteneur.getMappedPort(8080);
+        } else {
+            extensionChargee = true;
         }
         client = KeycloakBuilder.builder()
             .serverUrl(url)
@@ -81,7 +132,23 @@ class KeycloakAnnuaireIT {
             .clientId("iam-service")
             .clientSecret(secret)
             .build();
-        annuaire = new KeycloakAnnuaire(client, "gimac", PRIVILEGIES);
+        annuaire = new KeycloakAnnuaire(client, url, "gimac", PRIVILEGIES, "gimac-connexion", secretConnexion);
+        // Le domaine est importé avant que la sonde ne réponde ; on attend qu'il serve des jetons.
+        long fin = System.nanoTime() + Duration.ofMinutes(2).toNanos();
+        while (true) {
+            try {
+                client.tokenManager().getAccessTokenString();
+                break;
+            } catch (RuntimeException e) {
+                if (System.nanoTime() > fin) throw e;
+                try {
+                    Thread.sleep(2000);
+                } catch (InterruptedException i) {
+                    Thread.currentThread().interrupt();
+                    throw e;
+                }
+            }
+        }
     }
 
     @AfterAll
@@ -102,7 +169,10 @@ class KeycloakAnnuaireIT {
     @DisplayName("Création : attributs de la plateforme conservés par le profil utilisateur, profil et actions de premier accès")
     void creationEtRelecture() {
         String identifiant = unique("agent");
-        String id = annuaire.creer(nouveau(identifiant, "ROLE_CHARGE_DDRM"), List.of(ActionRequise.UPDATE_PASSWORD, ActionRequise.CONFIGURE_TOTP));
+        String id = annuaire.creer(nouveau(identifiant, "ROLE_CHARGE_DDRM"), List.of(ActionRequise.MOT_DE_PASSE, ActionRequise.SECOND_FACTEUR));
+        // D-65 : aucune action requise de Keycloak, les actions sont celles de la plateforme (attribut).
+        assertThat(client.realm("gimac").users().get(id).toRepresentation().getRequiredActions()).isNullOrEmpty();
+        assertThat(client.realm("gimac").users().get(id).toRepresentation().getAttributes().get("gimac_actions_requises")).containsExactly("MOT_DE_PASSE", "SECOND_FACTEUR");
         Compte c = annuaire.lire(id).orElseThrow();
         assertThat(c.identifiant()).isEqualTo(identifiant);
         assertThat(c.telephone()).isEqualTo("+237600000001");
@@ -112,7 +182,7 @@ class KeycloakAnnuaireIT {
         assertThat(c.profilComplet()).isFalse();
         assertThat(c.premierAccesEnAttente()).isTrue();
         assertThat(c.profils()).containsExactly("ROLE_CHARGE_DDRM");
-        assertThat(c.actionsRequises()).containsExactlyInAnyOrder(ActionRequise.UPDATE_PASSWORD, ActionRequise.CONFIGURE_TOTP);
+        assertThat(c.actionsRequises()).containsExactlyInAnyOrder(ActionRequise.MOT_DE_PASSE, ActionRequise.SECOND_FACTEUR);
         assertThat(c.secondFacteur()).isFalse();
         assertThat(c.creeLe()).isNotNull();
 
@@ -145,10 +215,16 @@ class KeycloakAnnuaireIT {
         annuaire.definirActif(id, true);
         assertThat(annuaire.lire(id).orElseThrow().actif()).isTrue();
 
-        annuaire.exigerActions(id, Set.of(ActionRequise.UPDATE_PASSWORD));
+        annuaire.exigerActions(id, Set.of(ActionRequise.MOT_DE_PASSE));
+        annuaire.exigerActions(id, Set.of(ActionRequise.SECOND_FACTEUR, ActionRequise.CHARTE));
         annuaire.reinitialiserSecondFacteur(id);
-        assertThat(annuaire.lire(id).orElseThrow().actionsRequises()).containsExactlyInAnyOrder(ActionRequise.UPDATE_PASSWORD, ActionRequise.CONFIGURE_TOTP);
-        assertThat(annuaire.definirMotDePasseProvisoire(id)).hasSize(20);
+        assertThat(annuaire.lire(id).orElseThrow().actionsRequises()).containsExactly(ActionRequise.MOT_DE_PASSE, ActionRequise.SECOND_FACTEUR, ActionRequise.CHARTE);
+        annuaire.retirerActions(id, Set.of(ActionRequise.CHARTE, ActionRequise.FICHE));
+        assertThat(annuaire.lire(id).orElseThrow().actionsRequises()).containsExactly(ActionRequise.MOT_DE_PASSE, ActionRequise.SECOND_FACTEUR);
+        String provisoire = annuaire.definirMotDePasseProvisoire(id);
+        assertThat(provisoire).hasSize(20);
+        // Non temporaire : l'octroi direct l'accepte (D-65).
+        assertThat(client.realm("gimac").users().get(id).credentials()).anyMatch(k -> "password".equals(k.getType()));
         assertThat(annuaire.sessions(id)).isEmpty();
         annuaire.fermerSessions(id);
         assertThatThrownBy(() -> annuaire.fermerSession(id, UUID.randomUUID().toString())).isInstanceOfSatisfying(IamException.class, e ->
@@ -217,9 +293,61 @@ class KeycloakAnnuaireIT {
                 .clientSecret("x")
                 .build()
         ) {
-            assertThatThrownBy(() -> new KeycloakAnnuaire(injoignable, "gimac", PRIVILEGIES).lister()).isInstanceOfSatisfying(IamException.class, e ->
-                assertThat(e.code()).isEqualTo("IAM_IDP_UNAVAILABLE")
-            );
+            KeycloakAnnuaire horsLigne = new KeycloakAnnuaire(injoignable, "http://127.0.0.1:1/", "gimac", PRIVILEGIES, "gimac-connexion", "x");
+            assertThatThrownBy(horsLigne::lister).isInstanceOfSatisfying(IamException.class, e -> assertThat(e.code()).isEqualTo("IAM_IDP_UNAVAILABLE"));
+            assertThatThrownBy(() -> horsLigne.verifierMotDePasse("agent", "x")).isInstanceOfSatisfying(IamException.class, e -> assertThat(e.code()).isEqualTo("IAM_IDP_UNAVAILABLE"));
+            assertThatThrownBy(() -> horsLigne.enregistrerTotp("id", "JBSWY3DPEHPK3PXP", "123456", null)).isInstanceOfSatisfying(IamException.class, e -> assertThat(e.code()).isEqualTo("IAM_IDP_UNAVAILABLE"));
+            assertThatThrownBy(() -> horsLigne.definirMotDePasse("id", "Nouveau-Mot-2026!")).isInstanceOfSatisfying(IamException.class, e -> assertThat(e.code()).isEqualTo("IAM_IDP_UNAVAILABLE"));
         }
+    }
+
+    @Test
+    @DisplayName("D-65 : mot de passe vérifié par l'octroi direct gimac-connexion, défini selon la politique, refus ramenés aux violations")
+    void motsDePasse() {
+        String identifiant = unique("mdp");
+        String id = annuaire.creer(nouveau(identifiant, "ROLE_SNA"), List.of(ActionRequise.MOT_DE_PASSE));
+        assertThat(annuaire.parEmail(identifiant.toUpperCase() + "@GIMAC.TEST")).map(Compte::id).contains(id);
+        assertThat(annuaire.parEmail("personne-" + identifiant + "@gimac.test")).isEmpty();
+        String provisoire = annuaire.definirMotDePasseProvisoire(id);
+        assertThat(annuaire.verifierMotDePasse(identifiant, provisoire)).isTrue();
+        assertThat(annuaire.verifierMotDePasse(identifiant, "faux-" + provisoire)).isFalse();
+        assertThat(annuaire.verifierMotDePasse("inconnu-" + identifiant, provisoire)).isFalse();
+
+        assertThatThrownBy(() -> annuaire.definirMotDePasse(id, "court")).isInstanceOfSatisfying(IamException.class, e -> {
+            assertThat(e.code()).isEqualTo("IAM_PASSWORD_POLICY");
+            assertThat(e.details().get("violations")).isEqualTo(List.of("LONGUEUR"));
+        });
+        annuaire.definirMotDePasse(id, "Nouveau-Mot-2026!");
+        assertThat(annuaire.verifierMotDePasse(identifiant, "Nouveau-Mot-2026!")).isTrue();
+        assertThat(annuaire.verifierMotDePasse(identifiant, provisoire)).isFalse();
+        assertThat(client.realm("gimac").users().get(id).toRepresentation().getRequiredActions()).isNullOrEmpty();
+
+        annuaire.appliquerPolitique(new PolitiqueSecurite(12, 1, 1, 1, 1, 3, 0, true, 6, 30, "HmacSHA1", 30, 10, true, 5, 15));
+        assertThatThrownBy(() -> annuaire.definirMotDePasse(id, "Nouveau-Mot-2026!")).isInstanceOfSatisfying(IamException.class, e -> assertThat(e.code()).isEqualTo("IAM_PASSWORD_REUSED"));
+        assertThatThrownBy(() -> annuaire.definirMotDePasse("inconnu", "Nouveau-Mot-2027!")).isInstanceOfSatisfying(IamException.class, e -> assertThat(e.status()).isEqualTo(404));
+
+        assertThat(annuaire.lire(id).orElseThrow().emailVerifie()).isFalse();
+        annuaire.marquerEmailVerifie(id);
+        assertThat(annuaire.lire(id).orElseThrow().emailVerifie()).isTrue();
+    }
+
+    @Test
+    @DisplayName("D-65 : code TOTP enregistré par l'extension gimac-totp (code vérifié), puis supprimé par la réinitialisation")
+    void totp() {
+        Assumptions.assumeTrue(extensionChargee, "extension gimac-totp non construite (infra/keycloak/extensions/gimac-totp)");
+        String id = annuaire.creer(nouveau(unique("totp"), "ROLE_SNA"), List.of(ActionRequise.SECOND_FACTEUR));
+        String secret = Totp.nouveauSecret(new SecureRandom());
+        // Politique OTP courante du domaine (un autre test peut l'avoir changée).
+        PolitiqueSecurite p = annuaire.politique();
+        String juste = Totp.code(secret, Instant.now(), p.otpChiffres(), p.otpPeriodeSecondes(), p.otpAlgorithme());
+        String faux = juste.startsWith("0") ? "1".repeat(juste.length()) : "0".repeat(juste.length());
+        assertThatThrownBy(() -> annuaire.enregistrerTotp(id, secret, faux, null)).isInstanceOfSatisfying(IamException.class, e -> assertThat(e.code()).isEqualTo("IAM_TOTP_CODE_INVALID"));
+        assertThat(annuaire.lire(id).orElseThrow().secondFacteur()).isFalse();
+        annuaire.enregistrerTotp(id, secret, juste, "Téléphone \"pro\"");
+        assertThat(annuaire.lire(id).orElseThrow().secondFacteur()).isTrue();
+        assertThat(client.realm("gimac").users().get(id).credentials()).anyMatch(c -> "otp".equals(c.getType()) && "Téléphone \"pro\"".equals(c.getUserLabel()));
+        assertThatThrownBy(() -> annuaire.enregistrerTotp(UUID.randomUUID().toString(), secret, juste, null)).isInstanceOfSatisfying(IamException.class, e -> assertThat(e.status()).isEqualTo(404));
+        annuaire.reinitialiserSecondFacteur(id);
+        assertThat(annuaire.lire(id).orElseThrow().secondFacteur()).isFalse();
     }
 }

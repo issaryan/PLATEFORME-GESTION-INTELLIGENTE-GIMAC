@@ -9,6 +9,10 @@ import cm.gimac.des.iam.domain.compte.PolitiqueSecurite;
 import cm.gimac.des.iam.domain.compte.Profil;
 import cm.gimac.des.iam.domain.service.PolitiqueMotDePasse;
 import cm.gimac.des.iam.domain.service.ReglesAdministration;
+import cm.gimac.des.iam.infrastructure.persistence.ParametreChiffre;
+import cm.gimac.des.iam.infrastructure.persistence.ParametreChiffreRepository;
+import cm.gimac.des.iam.infrastructure.securite.ChiffrementSecrets;
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -32,11 +36,24 @@ public class ConfigurationAuthentificationService {
     private final Annuaire annuaire;
     private final JournalActes journal;
     private final IamProprietes proprietes;
+    private final ParametreChiffreRepository parametres;
+    private final ChiffrementSecrets chiffrement;
+    private final Clock clock;
 
-    public ConfigurationAuthentificationService(Annuaire annuaire, JournalActes journal, IamProprietes proprietes) {
+    public ConfigurationAuthentificationService(
+        Annuaire annuaire,
+        JournalActes journal,
+        IamProprietes proprietes,
+        ParametreChiffreRepository parametres,
+        ChiffrementSecrets chiffrement,
+        Clock clock
+    ) {
         this.annuaire = annuaire;
         this.journal = journal;
         this.proprietes = proprietes;
+        this.parametres = parametres;
+        this.chiffrement = chiffrement;
+        this.clock = clock;
     }
 
     @Transactional(readOnly = true)
@@ -67,6 +84,13 @@ public class ConfigurationAuthentificationService {
             throw IamException.invalide("IAM_SMTP_INVALID", "Utilisateur obligatoire avec l'authentification", Map.of());
         }
         annuaire.appliquerMessagerie(m);
+        // D-65 : MS-IAM envoie lui-même ses courriels ; le fournisseur d'identité ne restitue jamais le mot de
+        // passe du serveur, MS-IAM en garde donc une copie chiffrée (écriture seule, jamais relue par l'API).
+        if (!m.authentification()) {
+            parametres.deleteById(ParametreChiffre.SMTP_MOT_DE_PASSE);
+        } else if (m.motDePasse() != null && !m.motDePasse().isEmpty()) {
+            parametres.save(new ParametreChiffre(ParametreChiffre.SMTP_MOT_DE_PASSE, chiffrement.chiffrer(m.motDePasse()), clock.instant()));
+        }
         journal.configuration(acteur, "MESSAGERIE", motif, List.of("hote", "port", "expediteur"));
         return messagerie();
     }

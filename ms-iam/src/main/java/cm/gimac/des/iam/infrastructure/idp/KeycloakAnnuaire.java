@@ -15,19 +15,28 @@ import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.ProcessingException;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response;
+import java.io.IOException;
+import java.net.URI;
+import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.function.Supplier;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.resource.RealmResource;
 import org.keycloak.admin.client.resource.UserResource;
@@ -41,6 +50,11 @@ import org.keycloak.representations.idm.UserSessionRepresentation;
  * Adaptateur réel de l'annuaire : API d'administration de Keycloak, avec le compte de service de
  * MS-IAM (rôles manage-users, view-users, manage-realm, view-realm). Toute panne de Keycloak donne
  * une erreur 503 explicite, jamais une valeur par défaut.
+ *
+ * <p>D-65 : actions exigées tenues dans l'attribut {@code gimac_actions_requises} (jamais les actions
+ * requises de Keycloak, qui bloqueraient l'octroi direct) ; mot de passe actuel vérifié par l'octroi
+ * direct du client {@code gimac-connexion} ; code TOTP enregistré par l'extension {@code gimac-totp}
+ * avec le jeton du compte de service. Aucun mot de passe, secret ni code n'est journalisé.
  */
 public class KeycloakAnnuaire implements Annuaire {
 
@@ -51,18 +65,45 @@ public class KeycloakAnnuaire implements Annuaire {
     static final String LANGUE_APPLICATION = "langKey";
     static final String INSTITUTION = "institution_id";
     static final String PROFIL_COMPLET = "profil_complet";
+    /** Actions exigées par la plateforme (D-65), attribut multivalué déclaré par le profil utilisateur. */
+    static final String ACTIONS = "gimac_actions_requises";
+    private static final Pattern ERREUR = Pattern.compile("\"error\"\\s*:\\s*\"([^\"]+)\"");
+    private static final Pattern CODE_EXTENSION = Pattern.compile("\"code\"\\s*:\\s*\"([^\"]+)\"");
+    private static final Pattern JETON_RAFRAICHISSEMENT = Pattern.compile("\"refresh_token\"\\s*:\\s*\"([^\"]+)\"");
+    private static final Map<String, String> VIOLATIONS = Map.of(
+        "invalidPasswordMinLengthMessage", "LONGUEUR",
+        "invalidPasswordMinUpperCaseCharsMessage", "MAJUSCULE",
+        "invalidPasswordMinLowerCaseCharsMessage", "MINUSCULE",
+        "invalidPasswordMinDigitsMessage", "CHIFFRE",
+        "invalidPasswordMinSpecialCharsMessage", "SPECIAL",
+        "invalidPasswordNotUsernameMessage", "IDENTIFIANT",
+        "invalidPasswordNotEmailMessage", "COURRIEL",
+        "invalidPasswordHistoryMessage", "HISTORIQUE"
+    );
     private static final Pattern PERMISSION = Pattern.compile("^[A-Z][A-Z0-9]*(_[A-Z0-9]+)+$");
     private static final String CARACTERES = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#%*-_";
 
     private final Keycloak keycloak;
+    private final String url;
     private final String realm;
     private final Set<String> privilegies;
+    private final String clientConnexion;
+    private final String secretConnexion;
+    private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
     private final SecureRandom aleatoire = new SecureRandom();
 
-    public KeycloakAnnuaire(Keycloak keycloak, String realm, Set<String> privilegies) {
+    /**
+     * @param url adresse de Keycloak (sans /realms)
+     * @param clientConnexion client à octroi direct, mot de passe seul (gimac-connexion)
+     * @param secretConnexion son secret, fourni par l'environnement
+     */
+    public KeycloakAnnuaire(Keycloak keycloak, String url, String realm, Set<String> privilegies, String clientConnexion, String secretConnexion) {
         this.keycloak = keycloak;
+        this.url = url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
         this.realm = realm;
         this.privilegies = Set.copyOf(privilegies);
+        this.clientConnexion = clientConnexion;
+        this.secretConnexion = secretConnexion;
     }
 
     private RealmResource r() {
@@ -139,6 +180,13 @@ public class KeycloakAnnuaire implements Annuaire {
     }
 
     @Override
+    public Optional<Compte> parEmail(String email) {
+        String adresse = email.trim().toLowerCase(java.util.Locale.ROOT);
+        List<UserRepresentation> trouves = appel(() -> r().users().searchByEmail(adresse, true)).stream().filter(u -> adresse.equalsIgnoreCase(u.getEmail())).toList();
+        return trouves.size() == 1 ? lire(trouves.get(0).getId()) : Optional.empty();
+    }
+
+    @Override
     public boolean emailPris(String email, String saufId) {
         return appel(() -> r().users().search(null, null, null, email, 0, 20).stream().anyMatch(u -> email.equalsIgnoreCase(u.getEmail()) && !u.getId().equals(saufId)));
     }
@@ -152,8 +200,8 @@ public class KeycloakAnnuaire implements Annuaire {
         u.setEmail(c.email());
         u.setEnabled(true);
         u.setEmailVerified(false);
-        u.setRequiredActions(actions.stream().map(Enum::name).toList());
         Map<String, List<String>> attributs = new HashMap<>();
+        attributs.put(ACTIONS, noms(actions));
         mettre(attributs, TELEPHONE, c.telephone());
         mettre(attributs, FONCTION, c.fonction());
         mettre(attributs, INSTITUTION, c.institutionId());
@@ -251,19 +299,29 @@ public class KeycloakAnnuaire implements Annuaire {
 
     @Override
     public void exigerActions(String id, Set<ActionRequise> actions) {
-        faire(() -> {
-            UserResource u = r().users().get(id);
-            UserRepresentation rep = u.toRepresentation();
-            Set<String> toutes = new LinkedHashSet<>(rep.getRequiredActions() == null ? List.of() : rep.getRequiredActions());
-            actions.forEach(a -> toutes.add(a.name()));
-            rep.setRequiredActions(List.copyOf(toutes));
-            u.update(rep);
-        });
+        modifierActions(id, actions, true);
     }
 
     @Override
-    public void envoyerInvitation(String id, List<ActionRequise> actions, Duration validite) {
-        faire(() -> r().users().get(id).executeActionsEmail(actions.stream().map(Enum::name).toList(), (int) validite.toSeconds()));
+    public void retirerActions(String id, Set<ActionRequise> actions) {
+        modifierActions(id, actions, false);
+    }
+
+    private void modifierActions(String id, Set<ActionRequise> actions, boolean ajout) {
+        faire(() -> {
+            UserResource u = r().users().get(id);
+            UserRepresentation rep = u.toRepresentation();
+            Map<String, List<String>> a = rep.getAttributes() == null ? new HashMap<>() : new HashMap<>(rep.getAttributes());
+            Set<ActionRequise> toutes = new TreeSet<>(actions(a));
+            if (ajout) {
+                toutes.addAll(actions);
+            } else {
+                toutes.removeAll(actions);
+            }
+            a.put(ACTIONS, noms(toutes));
+            rep.setAttributes(a);
+            u.update(rep);
+        });
     }
 
     @Override
@@ -275,9 +333,71 @@ public class KeycloakAnnuaire implements Annuaire {
         CredentialRepresentation c = new CredentialRepresentation();
         c.setType(CredentialRepresentation.PASSWORD);
         c.setValue(mdp.toString());
-        c.setTemporary(true);
+        // Non temporaire : une action requise de Keycloak bloquerait l'octroi direct (D-65) ; le
+        // changement est exigé par l'action MOT_DE_PASSE de la plateforme.
+        c.setTemporary(false);
         faire(() -> r().users().get(id).resetPassword(c));
         return mdp.toString();
+    }
+
+    @Override
+    public void definirMotDePasse(String id, String motDePasse) {
+        CredentialRepresentation c = new CredentialRepresentation();
+        c.setType(CredentialRepresentation.PASSWORD);
+        c.setValue(motDePasse);
+        c.setTemporary(false);
+        try {
+            r().users().get(id).resetPassword(c);
+        } catch (NotFoundException e) {
+            throw IamException.introuvable("IAM_ACCOUNT_NOT_FOUND", id);
+        } catch (WebApplicationException e) {
+            if (e.getResponse() != null && e.getResponse().getStatus() == 400) {
+                throw refusMotDePasse(corps(e.getResponse()));
+            }
+            throw IamException.indisponible("IAM_IDP_UNAVAILABLE", "Fournisseur d'identité indisponible");
+        } catch (ProcessingException e) {
+            throw IamException.indisponible("IAM_IDP_UNAVAILABLE", "Fournisseur d'identité indisponible");
+        }
+    }
+
+    /** Refus de la politique par Keycloak, ramené aux violations de la plateforme. */
+    static IamException refusMotDePasse(String corps) {
+        Matcher m = ERREUR.matcher(corps == null ? "" : corps);
+        String erreur = m.find() ? m.group(1) : "";
+        if ("invalidPasswordHistoryMessage".equals(erreur)) {
+            return IamException.invalide("IAM_PASSWORD_REUSED", "Le nouveau mot de passe doit différer des précédents", Map.of("violations", List.of("HISTORIQUE")));
+        }
+        if (erreur.startsWith("invalidPassword")) {
+            return IamException.invalide("IAM_PASSWORD_POLICY", "Mot de passe non conforme à la politique de sécurité", Map.of("violations", List.of(VIOLATIONS.getOrDefault(erreur, erreur))));
+        }
+        return IamException.invalide("IAM_IDP_REJECTED", "Données refusées par le fournisseur d'identité", Map.of());
+    }
+
+    @Override
+    public boolean verifierMotDePasse(String identifiant, String motDePasse) {
+        HttpResponse<String> reponse = envoyer(
+            HttpRequest.newBuilder(URI.create(url + "/realms/" + realm + "/protocol/openid-connect/token"))
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .POST(formulaire(Map.of("grant_type", "password", "client_id", clientConnexion, "client_secret", secretConnexion, "username", identifiant, "password", motDePasse, "scope", "openid")))
+                .build()
+        );
+        if (reponse.statusCode() == 400 || reponse.statusCode() == 401) {
+            return false;
+        }
+        if (reponse.statusCode() != 200) {
+            throw IamException.indisponible("IAM_IDP_UNAVAILABLE", "Fournisseur d'identité indisponible");
+        }
+        // Vérification seulement : la session ouverte par l'octroi est aussitôt fermée.
+        Matcher m = JETON_RAFRAICHISSEMENT.matcher(reponse.body());
+        if (m.find()) {
+            envoyer(
+                HttpRequest.newBuilder(URI.create(url + "/realms/" + realm + "/protocol/openid-connect/logout"))
+                    .header("Content-Type", "application/x-www-form-urlencoded")
+                    .POST(formulaire(Map.of("client_id", clientConnexion, "client_secret", secretConnexion, "refresh_token", m.group(1))))
+                    .build()
+            );
+        }
+        return true;
     }
 
     @Override
@@ -286,7 +406,81 @@ public class KeycloakAnnuaire implements Annuaire {
             UserResource u = r().users().get(id);
             u.credentials().stream().filter(c -> "otp".equals(c.getType())).forEach(c -> u.removeCredential(c.getId()));
         });
-        exigerActions(id, Set.of(ActionRequise.CONFIGURE_TOTP));
+    }
+
+    @Override
+    public void enregistrerTotp(String id, String secretBase32, String code, String libelle) {
+        String jeton = appel(() -> keycloak.tokenManager().getAccessTokenString());
+        String corps = "{\"secret\":\"" + json(secretBase32) + "\",\"code\":\"" + json(code) + "\",\"libelle\":" + (libelle == null ? "null" : "\"" + json(libelle) + "\"") + "}";
+        HttpResponse<String> reponse = envoyer(
+            HttpRequest.newBuilder(URI.create(url + "/realms/" + realm + "/gimac-totp/utilisateurs/" + URLEncoder.encode(id, StandardCharsets.UTF_8) + "/totp"))
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer " + jeton)
+                .POST(HttpRequest.BodyPublishers.ofString(corps))
+                .build()
+        );
+        int statut = reponse.statusCode();
+        if (statut == 204 || statut == 200) {
+            return;
+        }
+        Matcher m = CODE_EXTENSION.matcher(reponse.body() == null ? "" : reponse.body());
+        String motif = m.find() ? m.group(1) : "";
+        if (statut == 400 && "GIMAC_TOTP_CODE_INVALIDE".equals(motif)) {
+            throw IamException.invalide("IAM_TOTP_CODE_INVALID", "Code de vérification incorrect", Map.of());
+        }
+        if (statut == 404 && "GIMAC_TOTP_COMPTE_INTROUVABLE".equals(motif)) {
+            throw IamException.introuvable("IAM_ACCOUNT_NOT_FOUND", id);
+        }
+        throw IamException.indisponible("IAM_IDP_UNAVAILABLE", "Enregistrement du code refusé par le fournisseur d'identité (HTTP " + statut + (motif.isEmpty() ? "" : ", " + motif) + ")");
+    }
+
+    @Override
+    public void marquerEmailVerifie(String id) {
+        faire(() -> {
+            UserResource u = r().users().get(id);
+            UserRepresentation rep = u.toRepresentation();
+            rep.setEmailVerified(true);
+            u.update(rep);
+        });
+    }
+
+    private HttpResponse<String> envoyer(HttpRequest requete) {
+        try {
+            return http.send(requete, HttpResponse.BodyHandlers.ofString());
+        } catch (IOException e) {
+            throw IamException.indisponible("IAM_IDP_UNAVAILABLE", "Fournisseur d'identité indisponible");
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw IamException.indisponible("IAM_IDP_UNAVAILABLE", "Fournisseur d'identité indisponible");
+        }
+    }
+
+    private static HttpRequest.BodyPublisher formulaire(Map<String, String> champs) {
+        return HttpRequest.BodyPublishers.ofString(
+            champs.entrySet().stream().map(e -> e.getKey() + "=" + URLEncoder.encode(e.getValue() == null ? "" : e.getValue(), StandardCharsets.UTF_8)).collect(Collectors.joining("&"))
+        );
+    }
+
+    static String json(String texte) {
+        StringBuilder b = new StringBuilder();
+        for (char c : texte.toCharArray()) {
+            if (c == '"' || c == '\\') {
+                b.append('\\').append(c);
+            } else if (c < 0x20) {
+                b.append("\\u%04x".formatted((int) c));
+            } else {
+                b.append(c);
+            }
+        }
+        return b.toString();
+    }
+
+    private static String corps(Response r) {
+        try {
+            return r.readEntity(String.class);
+        } catch (RuntimeException e) {
+            return "";
+        }
     }
 
     @Override
@@ -477,16 +671,7 @@ public class KeycloakAnnuaire implements Annuaire {
 
     static Compte vers(UserRepresentation u, Set<String> profils, boolean secondFacteur) {
         Map<String, List<String>> a = u.getAttributes() == null ? Map.of() : u.getAttributes();
-        List<ActionRequise> actions = new ArrayList<>();
-        if (u.getRequiredActions() != null) {
-            for (String x : u.getRequiredActions()) {
-                try {
-                    actions.add(ActionRequise.valueOf(x));
-                } catch (IllegalArgumentException e) {
-                    // Action propre au fournisseur, sans objet pour la plateforme.
-                }
-            }
-        }
+        List<ActionRequise> actions = List.copyOf(actions(a));
         return new Compte(
             u.getId(),
             u.getUsername(),
@@ -515,6 +700,17 @@ public class KeycloakAnnuaire implements Annuaire {
             Instant.ofEpochMilli(s.getLastAccess()),
             s.getClients() == null ? List.of() : List.copyOf(s.getClients().values())
         );
+    }
+
+    /** Actions exigées lues dans l'attribut de la plateforme ; une valeur inconnue est ignorée. */
+    static Set<ActionRequise> actions(Map<String, List<String>> a) {
+        Set<ActionRequise> s = new TreeSet<>();
+        a.getOrDefault(ACTIONS, List.of()).forEach(v -> ActionRequise.lire(v).ifPresent(s::add));
+        return s;
+    }
+
+    private static List<String> noms(java.util.Collection<ActionRequise> actions) {
+        return actions.stream().distinct().sorted().map(Enum::name).toList();
     }
 
     private static String premier(Map<String, List<String>> a, String cle) {

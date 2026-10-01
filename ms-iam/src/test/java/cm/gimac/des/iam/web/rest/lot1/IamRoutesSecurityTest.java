@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -16,6 +17,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import cm.gimac.des.iam.application.usecase.AdministrationComptesService;
 import cm.gimac.des.iam.application.usecase.ConfigurationAuthentificationService;
+import cm.gimac.des.iam.application.usecase.ConnexionService;
 import cm.gimac.des.iam.application.usecase.MonCompteService;
 import cm.gimac.des.iam.application.usecase.ReauthentificationService;
 import cm.gimac.des.iam.config.SecurityConfiguration;
@@ -24,6 +26,7 @@ import cm.gimac.des.iam.domain.IamException;
 import cm.gimac.des.iam.domain.compte.ActionRequise;
 import cm.gimac.des.iam.domain.compte.Compte;
 import cm.gimac.des.iam.domain.compte.ConfigurationMessagerie;
+import cm.gimac.des.iam.domain.compte.EtatConnexion;
 import cm.gimac.des.iam.domain.compte.PolitiqueSecurite;
 import cm.gimac.des.iam.domain.compte.Profil;
 import cm.gimac.des.iam.domain.compte.SessionCompte;
@@ -58,11 +61,22 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import tech.jhipster.config.JHipsterProperties;
 
 /**
- * Sécurité des routes d'IAM (D-61, D-62) avec la vraie chaîne de filtres : 401 sans jeton ; 403 sans
- * second facteur ; 403 sans la permission de la matrice des rôles ; 428 sans réauthentification forte
- * pour les actes sensibles ; routes internes réservées au jeton de service.
+ * Sécurité des routes d'IAM (D-61, D-62, D-65) avec la vraie chaîne de filtres : 401 sans jeton ; 403
+ * sans second facteur ; 403 sans la permission de la matrice des rôles ; 428 sans réauthentification
+ * forte pour les actes sensibles ; routes internes réservées au jeton de service ; acr 1 (premier
+ * accès) admis sur les seules routes de l'assistant ; routes internes de la connexion réservées au
+ * jeton de service de la passerelle.
  */
-@WebMvcTest(controllers = { ComptesResource.class, MonCompteResource.class, ReauthentificationResource.class, ConfigurationAuthentificationResource.class, CollaborateursInternesResource.class })
+@WebMvcTest(
+    controllers = {
+        ComptesResource.class,
+        MonCompteResource.class,
+        ReauthentificationResource.class,
+        ConfigurationAuthentificationResource.class,
+        CollaborateursInternesResource.class,
+        ConnexionInterneResource.class,
+    }
+)
 @Import({ SecurityConfiguration.class, TestSecurityConfiguration.class, IamExceptionHandler.class, ReauthAdministration.class })
 @EnableConfigurationProperties(JHipsterProperties.class)
 class IamRoutesSecurityTest {
@@ -74,7 +88,10 @@ class IamRoutesSecurityTest {
         {"identifiant":"agent.ddrm","prenom":"Awa","nom":"Mballa","email":"awa@gimac.cm","profils":["ROLE_CHARGE_DDRM"],"envoyerInvitation":true}""";
     static final String FICHE = "{\"telephone\":\"+237600000000\"}";
     static final String PROFILS = "{\"profils\":[\"ROLE_CHARGE_DDRM\"],\"motif\":\"Mutation\"}";
-    static final String ACTIONS = "{\"actions\":[\"UPDATE_PASSWORD\",\"CONFIGURE_TOTP\"],\"parCourriel\":true,\"motif\":\"Audit\"}";
+    static final String ACTIONS = "{\"actions\":[\"MOT_DE_PASSE\",\"SECOND_FACTEUR\"],\"parCourriel\":true,\"motif\":\"Audit\"}";
+    static final String ENROLEMENT = "3f1c2d4e-0000-4000-8000-00000000e001";
+    static final String TOTP = "{\"enrolementId\":\"" + ENROLEMENT + "\",\"code\":\"123456\",\"libelle\":\"Téléphone\"}";
+    static final String MOT_DE_PASSE = "{\"actuel\":\"Ancien-Mot-2026!\",\"nouveau\":\"Nouveau-Mot-2026!\"}";
     static final String POLITIQUE =
         "{\"politique\":{\"longueurMinimale\":14,\"majusculesMin\":1,\"minusculesMin\":1,\"chiffresMin\":1,\"speciauxMin\":1,\"historique\":5,\"expirationJours\":90,\"interditIdentifiant\":true,\"otpChiffres\":6,\"otpPeriodeSecondes\":30,\"otpAlgorithme\":\"HmacSHA256\",\"sessionInactiviteMinutes\":30,\"sessionDureeMaxHeures\":10,\"forceBruteActive\":true,\"forceBruteEchecsMax\":5,\"forceBruteAttenteMinutes\":15},\"motif\":\"Revue\"}";
     static final String MESSAGERIE =
@@ -114,11 +131,14 @@ class IamRoutesSecurityTest {
     @MockitoBean
     JournalAdministrationRepository journal;
 
+    @MockitoBean
+    ConnexionService connexion;
+
     Compte compte;
 
     @BeforeEach
     void init() {
-        compte = new Compte(ID, "agent.ddrm", "Awa", "Mballa", "awa@gimac.cm", true, true, Instant.EPOCH, null, null, "fr", null, false, Set.of("ROLE_CHARGE_DDRM"), List.of(ActionRequise.UPDATE_PASSWORD), false);
+        compte = new Compte(ID, "agent.ddrm", "Awa", "Mballa", "awa@gimac.cm", true, true, Instant.EPOCH, null, null, "fr", null, false, Set.of("ROLE_CHARGE_DDRM"), List.of(ActionRequise.MOT_DE_PASSE), false);
         var mc = new MonCompteService.MonCompte(compte, 1, 2, List.of("FICHE"));
         var politique = new PolitiqueSecurite(14, 1, 1, 1, 1, 5, 90, true, 6, 30, "HmacSHA256", 30, 10, true, 5, 15);
         var messagerie = new ConfigurationMessagerie("smtp.gimac.cm", 587, "des@gimac.cm", null, true, false, false, null, null, false);
@@ -143,6 +163,8 @@ class IamRoutesSecurityTest {
         when(moi.modifier(any(), any(), any(), any(), any(), any())).thenReturn(mc);
         when(moi.demander(any(), any())).thenReturn(mc);
         when(moi.sessions(any())).thenReturn(List.of(session));
+        when(moi.enrolementTotp(any())).thenReturn(new MonCompteService.Enrolement(UUID.fromString(ENROLEMENT), "JBSWY3DPEHPK3PXP", "otpauth://totp/GIMAC%20DES:agent"));
+        when(connexion.etat(ID)).thenReturn(new EtatConnexion(true, false, List.of(ActionRequise.SECOND_FACTEUR, ActionRequise.FICHE)));
         when(reauth.cles(any())).thenReturn(List.of(cle));
         when(reauth.enroler(any(), anyString(), anyString(), anyString(), anyString())).thenReturn(cle);
         when(reauth.defiEnrolement(any())).thenReturn(
@@ -190,14 +212,24 @@ class IamRoutesSecurityTest {
         );
     }
 
-    /** Routes « Mon compte » et défi de réauthentification : tout utilisateur à deux facteurs. */
-    static Stream<Arguments> libreService() {
+    /** Routes de l'assistant de premier accès (D-65) : acr 1 admis, comme acr 2 et 3. */
+    static Stream<Arguments> premierAcces() {
         String m = "/api/v1/moi";
         return Stream.of(
             Arguments.of(HttpMethod.GET, m, null, 200),
             Arguments.of(HttpMethod.POST, m + "/premiere-configuration", "{\"telephone\":\"+237600000000\",\"langue\":\"fr\",\"charteAcceptee\":true}", 200),
+            Arguments.of(HttpMethod.POST, m + "/mot-de-passe", MOT_DE_PASSE, 204),
+            Arguments.of(HttpMethod.POST, m + "/second-facteur/totp/enrolement", null, 200),
+            Arguments.of(HttpMethod.POST, m + "/second-facteur/totp", TOTP, 204)
+        );
+    }
+
+    /** Routes « Mon compte » et défi de réauthentification : tout utilisateur à deux facteurs. */
+    static Stream<Arguments> libreService() {
+        String m = "/api/v1/moi";
+        return Stream.of(
             Arguments.of(HttpMethod.PUT, m, "{\"prenom\":\"Awa\"}", 200),
-            Arguments.of(HttpMethod.POST, m + "/actions", "{\"action\":\"UPDATE_PASSWORD\"}", 200),
+            Arguments.of(HttpMethod.POST, m + "/actions", "{\"action\":\"MOT_DE_PASSE\"}", 200),
             Arguments.of(HttpMethod.GET, m + "/sessions", null, 200),
             Arguments.of(HttpMethod.DELETE, m + "/sessions/s1", null, 204),
             Arguments.of(HttpMethod.DELETE, m + "/sessions", null, 204),
@@ -239,6 +271,104 @@ class IamRoutesSecurityTest {
         mvc.perform(req(m, uri, body).with(jeton("2", autres))).andExpect(status().isForbidden());
         mvc.perform(req(m, uri, body).with(jeton("2", permission))).andExpect(status().is(ok));
         mvc.perform(req(m, uri, body).with(jeton("3", permission))).andExpect(status().is(ok));
+    }
+
+    @ParameterizedTest(name = "{0} {1}")
+    @MethodSource("premierAcces")
+    @DisplayName("D-65 : assistant de premier accès, 401 sans jeton, 403 sans acr, accès en acr 1, 2 et 3")
+    void premierAccesMatrice(HttpMethod m, String uri, String body, int ok) throws Exception {
+        mvc.perform(req(m, uri, body)).andExpect(status().isUnauthorized());
+        mvc.perform(req(m, uri, body).with(jeton(null))).andExpect(status().isForbidden());
+        mvc.perform(req(m, uri, body).with(jeton("0"))).andExpect(status().isForbidden());
+        mvc.perform(req(m, uri, body).with(jeton("1"))).andExpect(status().is(ok));
+        mvc.perform(req(m, uri, body).with(jeton("2"))).andExpect(status().is(ok));
+        mvc.perform(req(m, uri, body).with(jeton("3"))).andExpect(status().is(ok));
+    }
+
+    @Test
+    @DisplayName("D-65 : acr 1 limité aux routes listées (même chemin avec une autre méthode refusé)")
+    void premierAccesBorne() throws Exception {
+        mvc.perform(req(HttpMethod.PUT, "/api/v1/moi", "{\"prenom\":\"Awa\"}").with(jeton("1"))).andExpect(status().isForbidden());
+        mvc.perform(req(HttpMethod.GET, "/api/v1/moi/sessions", null).with(jeton("1"))).andExpect(status().isForbidden());
+        mvc.perform(req(HttpMethod.POST, "/api/v1/moi/actions", "{\"action\":\"MOT_DE_PASSE\"}").with(jeton("1"))).andExpect(status().isForbidden());
+        mvc.perform(req(HttpMethod.GET, "/api/v1/moi/second-facteur/totp", null).with(jeton("1"))).andExpect(status().isForbidden());
+        mvc.perform(req(HttpMethod.POST, "/api/v1/reauthentification/defi", "{\"purpose\":\"STATUS_APPROVE\"}").with(jeton("1"))).andExpect(status().isForbidden());
+        mvc.perform(req(HttpMethod.GET, "/api/v1/comptes", null).with(jeton("1", PERMISSIONS_IAM.toArray(String[]::new)))).andExpect(status().isForbidden());
+        mvc.perform(req(HttpMethod.GET, "/api/v1/configuration/politique-securite", null).with(jeton("1", PERMISSIONS_IAM.toArray(String[]::new)))).andExpect(status().isForbidden());
+    }
+
+    static RequestPostProcessor service(String client, String... permissions) {
+        return jwt().jwt(j -> j.subject("service-account-" + client).claim("azp", client)).authorities(Stream.of(permissions).map(SimpleGrantedAuthority::new).toArray(GrantedAuthority[]::new));
+    }
+
+    /** Routes internes de la connexion (D-65) : méthode, URI, corps, statut attendu pour la passerelle. */
+    static Stream<Arguments> connexionInterne() {
+        return Stream.of(
+            Arguments.of(HttpMethod.GET, "/api/v1/interne/comptes/" + ID + "/etat-connexion", null, 200),
+            Arguments.of(HttpMethod.POST, "/api/v1/interne/connexion/mot-de-passe-oublie", "{\"identifiant\":\"agent\",\"couche\":\"des\"}", 202),
+            Arguments.of(HttpMethod.POST, "/api/v1/interne/connexion/nouveau-mot-de-passe", "{\"jeton\":\"abc\",\"motDePasse\":\"Nouveau-Mot-2026!\"}", 204)
+        );
+    }
+
+    @ParameterizedTest(name = "{0} {1}")
+    @MethodSource("connexionInterne")
+    @DisplayName("D-65 : routes internes de la connexion, jeton de service de la passerelle (gateway-service, INTERNAL_IAM_READ) seulement")
+    void connexionInterneMatrice(HttpMethod m, String uri, String body, int ok) throws Exception {
+        mvc.perform(req(m, uri, body)).andExpect(status().isUnauthorized());
+        mvc.perform(req(m, uri, body).with(jeton("2", PERMISSIONS_IAM.toArray(String[]::new)))).andExpect(status().isForbidden());
+        mvc.perform(req(m, uri, body).with(service("homologation-service", "INTERNAL_IAM_READ"))).andExpect(status().isForbidden());
+        mvc.perform(req(m, uri, body).with(service("gateway-service", "INTERNAL_DOCUMENT_READ"))).andExpect(status().isForbidden());
+        mvc.perform(req(m, uri, body).with(jwt().jwt(j -> j.subject("s").claim("client_id", "autre")).authorities(new SimpleGrantedAuthority("INTERNAL_IAM_READ")))).andExpect(status().isForbidden());
+        mvc.perform(req(m, uri, body).with(service("gateway-service", "INTERNAL_IAM_READ"))).andExpect(status().is(ok));
+        mvc.perform(req(m, uri, body).with(jwt().jwt(j -> j.subject("s").claim("client_id", "gateway-service")).authorities(new SimpleGrantedAuthority("INTERNAL_IAM_READ")))).andExpect(status().is(ok));
+    }
+
+    @Test
+    @DisplayName("D-65 : formes du contrat, état de connexion, erreurs problem+json (jeton, politique avec violations, code TOTP)")
+    void formesConnexion() throws Exception {
+        var passerelle = service("gateway-service", "INTERNAL_IAM_READ");
+        mvc
+            .perform(req(HttpMethod.GET, "/api/v1/interne/comptes/" + ID + "/etat-connexion", null).with(passerelle))
+            .andExpect(jsonPath("$.actif").value(true))
+            .andExpect(jsonPath("$.secondFacteur").value(false))
+            .andExpect(jsonPath("$.actionsRequises[0]").value("SECOND_FACTEUR"))
+            .andExpect(jsonPath("$.actionsRequises[1]").value("FICHE"));
+        org.mockito.Mockito.doThrow(IamException.invalide("CNX_JETON_INVALIDE", "Lien inconnu, expiré ou déjà utilisé", Map.of())).when(connexion).nouveauMotDePasse(eq("perime"), anyString());
+        mvc
+            .perform(req(HttpMethod.POST, "/api/v1/interne/connexion/nouveau-mot-de-passe", "{\"jeton\":\"perime\",\"motDePasse\":\"x\"}").with(passerelle))
+            .andExpect(status().isBadRequest())
+            .andExpect(header().string("Content-Type", org.hamcrest.Matchers.containsString("application/problem+json")))
+            .andExpect(jsonPath("$.code").value("CNX_JETON_INVALIDE"));
+        org.mockito.Mockito.doThrow(IamException.invalide("IAM_PASSWORD_POLICY", "Politique", Map.of("violations", List.of("LONGUEUR")))).when(connexion).nouveauMotDePasse(eq("court"), anyString());
+        mvc
+            .perform(req(HttpMethod.POST, "/api/v1/interne/connexion/nouveau-mot-de-passe", "{\"jeton\":\"court\",\"motDePasse\":\"x\"}").with(passerelle))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("IAM_PASSWORD_POLICY"))
+            .andExpect(jsonPath("$.violations[0]").value("LONGUEUR"))
+            .andExpect(jsonPath("$.details.violations[0]").value("LONGUEUR"));
+        mvc.perform(req(HttpMethod.POST, "/api/v1/interne/connexion/nouveau-mot-de-passe", "{\"motDePasse\":\"x\"}").with(passerelle)).andExpect(status().isBadRequest());
+        mvc.perform(req(HttpMethod.POST, "/api/v1/interne/connexion/mot-de-passe-oublie", "{\"identifiant\":\" \"}").with(passerelle)).andExpect(status().isBadRequest());
+        verify(connexion, never()).motDePasseOublie(anyString(), any());
+
+        mvc
+            .perform(req(HttpMethod.POST, "/api/v1/moi/second-facteur/totp/enrolement", null).with(jeton("1")))
+            .andExpect(jsonPath("$.enrolementId").value(ENROLEMENT))
+            .andExpect(jsonPath("$.secret").value("JBSWY3DPEHPK3PXP"))
+            .andExpect(jsonPath("$.uri").value("otpauth://totp/GIMAC%20DES:agent"));
+        org.mockito.Mockito.doThrow(IamException.invalide("IAM_TOTP_CODE_INVALID", "Code", Map.of())).when(moi).confirmerTotp(any(), any(), eq("000000"), any(), any());
+        mvc
+            .perform(req(HttpMethod.POST, "/api/v1/moi/second-facteur/totp", TOTP.replace("123456", "000000")).with(jeton("1")))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("IAM_TOTP_CODE_INVALID"));
+        mvc.perform(req(HttpMethod.POST, "/api/v1/moi/second-facteur/totp", TOTP).with(jeton("1"))).andExpect(status().isNoContent());
+        verify(moi).confirmerTotp(any(), eq(UUID.fromString(ENROLEMENT)), eq("123456"), eq("Téléphone"), eq("valide"));
+        mvc.perform(req(HttpMethod.POST, "/api/v1/moi/second-facteur/totp", "{\"code\":\"123456\"}").with(jeton("1"))).andExpect(status().isBadRequest());
+        mvc.perform(req(HttpMethod.POST, "/api/v1/moi/mot-de-passe", MOT_DE_PASSE).with(jeton("1"))).andExpect(status().isNoContent());
+        verify(moi).changerMotDePasse(any(), eq("Ancien-Mot-2026!"), eq("Nouveau-Mot-2026!"));
+        // Aucune trace des secrets dans la représentation des requêtes.
+        assertThat(new MonCompteResource.MotDePasseRequest("a1", "b2").toString()).doesNotContain("a1").doesNotContain("b2");
+        assertThat(new MonCompteResource.TotpRequest(UUID.fromString(ENROLEMENT), "654321", null).toString()).doesNotContain("654321");
+        assertThat(new ConnexionInterneResource.NouveauMotDePasseRequest("jeton-secret", "mdp-secret").toString()).doesNotContain("secret");
     }
 
     @ParameterizedTest(name = "{0} {1}")
@@ -343,7 +473,7 @@ class IamRoutesSecurityTest {
             .andExpect(jsonPath("$.total").value(1))
             .andExpect(jsonPath("$.contenu[0].nomAffiche").value("Awa Mballa"))
             .andExpect(jsonPath("$.contenu[0].premierAccesEnAttente").value(true))
-            .andExpect(jsonPath("$.contenu[0].actionsRequises[0]").value("UPDATE_PASSWORD"));
+            .andExpect(jsonPath("$.contenu[0].actionsRequises[0]").value("MOT_DE_PASSE"));
         mvc.perform(req(HttpMethod.POST, "/api/v1/comptes", CREATION).with(jeton("2", "IAM_ACCOUNT_CREATE"))).andExpect(status().isCreated()).andExpect(header().string("Location", "/api/v1/comptes/" + ID));
         mvc.perform(req(HttpMethod.GET, "/api/v1/comptes/journal?compte=" + ID, null).with(jeton("2", "IAM_JOURNAL_READ"))).andExpect(jsonPath("$.total").value(0));
         when(journal.findAllByOrderByHorodatageDesc(any())).thenReturn(
@@ -355,6 +485,7 @@ class IamRoutesSecurityTest {
             .andExpect(jsonPath("$.contenu[0].acteurNom").value("RSSI"))
             .andExpect(jsonPath("$.contenu[0].correlationId").value("corr-1"));
         mvc.perform(req(HttpMethod.GET, "/api/v1/moi", null).with(jeton("2"))).andExpect(jsonPath("$.etapesRestantes[0]").value("FICHE"));
+        mvc.perform(req(HttpMethod.GET, "/api/v1/comptes/" + ID, null).with(jeton("2", "IAM_ACCOUNT_READ"))).andExpect(jsonPath("$.actionsRequises[0]").value("MOT_DE_PASSE"));
         when(comptes.lire("absent")).thenThrow(IamException.introuvable("IAM_ACCOUNT_NOT_FOUND", "absent"));
         mvc
             .perform(req(HttpMethod.GET, "/api/v1/comptes/absent", null).with(jeton("2", "IAM_ACCOUNT_READ")))

@@ -19,13 +19,15 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * « Mon compte » (D-62), pour tout utilisateur authentifié à deux facteurs : première
- * configuration, coordonnées, mot de passe et second facteur, clés de sécurité, sessions. Exposé
- * sous /bff/{des,portail,console}/iam/moi.
+ * « Mon compte » (D-62, D-65), pour tout utilisateur authentifié à deux facteurs : première
+ * configuration, coordonnées, mot de passe et code TOTP, clés de sécurité, sessions. Exposé sous
+ * /bff/{des,portail,console}/iam/moi. Pendant le premier accès (jeton acr 1), seules GET /moi et les
+ * routes de l'assistant (première configuration, mot de passe, second facteur) sont admises.
  */
 @RestController
 @RequestMapping("/api/v1/moi")
@@ -44,6 +46,22 @@ public class MonCompteResource {
     public record ActionRequest(@NotNull ActionRequise action) {}
 
     public record EnrolementRequest(@NotBlank String challengeId, @NotBlank @Size(max = 100) String nom, @NotBlank String clientDataJSON, @NotBlank String attestationObject) {}
+
+    /** Mots de passe : jamais dans une trace. */
+    public record MotDePasseRequest(@NotNull @Size(max = 256) String actuel, @NotNull @Size(max = 256) String nouveau) {
+        @Override
+        public String toString() {
+            return "MotDePasseRequest[actuel=****, nouveau=****]";
+        }
+    }
+
+    /** Code saisi : jamais dans une trace. */
+    public record TotpRequest(@NotNull UUID enrolementId, @NotBlank @Size(max = 10) String code, @Size(max = 100) String libelle) {
+        @Override
+        public String toString() {
+            return "TotpRequest[enrolementId=" + enrolementId + ", code=****]";
+        }
+    }
 
     private final MonCompteService service;
     private final ReauthentificationService reauth;
@@ -72,6 +90,26 @@ public class MonCompteResource {
     @PostMapping("/actions")
     public MoiVue demander(@Valid @RequestBody ActionRequest r, Authentication auth) {
         return MoiVue.de(service.demander(ActeurCourant.de(auth), r.action()));
+    }
+
+    /** Changement du mot de passe (premier accès ou « Mon compte ») ; retire l'action MOT_DE_PASSE. */
+    @PostMapping("/mot-de-passe")
+    public ResponseEntity<Void> changerMotDePasse(@Valid @RequestBody MotDePasseRequest r, Authentication auth) {
+        service.changerMotDePasse(ActeurCourant.de(auth), r.actuel(), r.nouveau());
+        return ResponseEntity.noContent().build();
+    }
+
+    /** Début de la configuration du code TOTP : secret (base 32) et URI otpauth du code QR, 10 min. */
+    @PostMapping("/second-facteur/totp/enrolement")
+    public MonCompteService.Enrolement enrolementTotp(Authentication auth) {
+        return service.enrolementTotp(ActeurCourant.de(auth));
+    }
+
+    /** Fin de la configuration : code vérifié puis enregistré ; FIDO2 exigé pour remplacer un code (clé enrôlée). */
+    @PostMapping("/second-facteur/totp")
+    public ResponseEntity<Void> confirmerTotp(@Valid @RequestBody TotpRequest r, @RequestHeader(name = ComptesResource.REAUTH, required = false) String assertion, Authentication auth) {
+        service.confirmerTotp(ActeurCourant.de(auth), r.enrolementId(), r.code(), r.libelle(), assertion);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/sessions")

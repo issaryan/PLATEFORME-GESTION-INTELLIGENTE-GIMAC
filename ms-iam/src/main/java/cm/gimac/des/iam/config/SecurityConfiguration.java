@@ -3,6 +3,7 @@ package cm.gimac.des.iam.config;
 import static org.springframework.security.config.Customizer.withDefaults;
 import static org.springframework.security.oauth2.core.oidc.StandardClaimNames.PREFERRED_USERNAME;
 
+import cm.gimac.des.iam.infrastructure.security.ClientInterneAuthorizationManager;
 import cm.gimac.des.iam.infrastructure.security.StrongAuthenticationAuthorizationManager;
 import cm.gimac.des.iam.security.*;
 import cm.gimac.des.iam.security.oauth2.AudienceValidator;
@@ -11,6 +12,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.convert.converter.Converter;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -39,6 +41,17 @@ public class SecurityConfiguration {
     @Value("${gimac.securite.double-facteur.niveaux-acr:2,3}")
     private Set<String> niveauxAcr;
 
+    /**
+     * D-65 : session restreinte du premier accès (octroi direct à un facteur, acr 1), admise sur les
+     * seules routes de l'assistant ; tout le reste exige toujours acr 2 ou 3 (D-61).
+     */
+    @Value("${gimac.securite.double-facteur.niveaux-acr-premier-acces:1,2,3}")
+    private Set<String> niveauxAcrPremierAcces;
+
+    /** D-65 : clients de service admis sur les routes internes de la connexion (la passerelle). */
+    @Value("${gimac.iam.connexion.clients-internes:gateway-service}")
+    private Set<String> clientsInternesConnexion;
+
     public SecurityConfiguration(JHipsterProperties jHipsterProperties) {
         this.jHipsterProperties = jHipsterProperties;
     }
@@ -52,8 +65,17 @@ public class SecurityConfiguration {
                     .requestMatchers("/api/authenticate").permitAll()
                     .requestMatchers("/api/auth-info").permitAll()
                     .requestMatchers("/api/admin/**").hasAuthority(AuthoritiesConstants.ADMIN)
+                    // Connexion sur la plateforme (D-65) : jeton de service de la passerelle seulement.
+                    .requestMatchers("/api/v1/interne/comptes/*/etat-connexion", "/api/v1/interne/connexion/**")
+                        .access(new ClientInterneAuthorizationManager("INTERNAL_IAM_READ", clientsInternesConnexion))
                     // Interfaces internes : jeton de service uniquement (PI §0.7).
                     .requestMatchers("/api/v1/interne/**").hasAuthority("INTERNAL_IAM_READ")
+                    // Premier accès (D-65) : acr 1 admis sur les seules routes de l'assistant.
+                    .requestMatchers(HttpMethod.GET, "/api/v1/moi").access(new StrongAuthenticationAuthorizationManager(doubleFacteurExige, niveauxAcrPremierAcces))
+                    .requestMatchers(HttpMethod.POST, "/api/v1/moi/premiere-configuration", "/api/v1/moi/mot-de-passe")
+                        .access(new StrongAuthenticationAuthorizationManager(doubleFacteurExige, niveauxAcrPremierAcces))
+                    .requestMatchers(HttpMethod.POST, "/api/v1/moi/second-facteur/**")
+                        .access(new StrongAuthenticationAuthorizationManager(doubleFacteurExige, niveauxAcrPremierAcces))
                     // Routes métier : jeton à deux facteurs (D-61), puis @PreAuthorize route par route.
                     .requestMatchers("/api/v1/**").access(new StrongAuthenticationAuthorizationManager(doubleFacteurExige, niveauxAcr))
                     // Ressources générées par JHipster : administration technique uniquement.

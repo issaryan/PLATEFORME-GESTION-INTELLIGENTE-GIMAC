@@ -1,7 +1,7 @@
 <!-- GIMAC:DEBUT : section du projet, tenue à jour à chaque modification ; la documentation JHipster suit. -->
 # MS-GATEWAY : plateforme DES du GIMAC
 
-Passerelle d'accès et frontière d'entrée : point d'entrée unique des trois couches, authentification déléguée, jeton interne lié au certificat (RFC 8705), routes déclarées, limitation de débit, masquage des numéros de carte, BFF.
+Passerelle d'accès et frontière d'entrée : point d'entrée unique des trois couches, connexion sur la plateforme (octroi direct, D-65), jeton interne lié au certificat (RFC 8705), routes déclarées, limitation de débit, masquage des numéros de carte, BFF.
 
 | Élément | Valeur |
 |---|---|
@@ -122,6 +122,44 @@ Tests : `FormatPrometheusTest`, `MasqueSecretsTest`, `SupervisionPlateformeServi
 
 Kubernetes (non livré) : installer node-exporter en DaemonSet et la collecte cAdvisor du kubelet (kube-prometheus-stack), un Alertmanager, puis ouvrir dans `infra/kubernetes-gimac/politiques-reseau.yaml` la sortie de la passerelle vers Prometheus (9090), Alertmanager (9093) et le port de gestion de Keycloak (9990), et l'entrée correspondante ; adresses à fixer par `GIMAC_SUPERVISION_PROMETHEUS_URL`, `GIMAC_SUPERVISION_ALERTMANAGER_URL`, `GIMAC_SUPERVISION_KEYCLOAK_SANTE_URL`.
 
+## Connexion sur la plateforme et sessions (D-65)
+
+Contrat : `docs/lot1/connexion.md` (§2 passerelle, §6 sessions). L'utilisateur ne voit jamais Keycloak : la passerelle (BFF) soumet identifiant, mot de passe et code TOTP à Keycloak par l'octroi direct, de serveur à serveur, et ne renvoie au navigateur que le témoin de session. La délégation par redirection est retirée : ni `oauth2Login` ni `oauth2Client`, `/oauth2/authorization/**` et `/login/oauth2/code/**` répondent 404 ; sans session, toute route protégée répond 401, sans redirection.
+
+| Route | Réponses |
+|---|---|
+| `POST /api/connexion` `{identifiant, motDePasse, code?, couche}` | 200 `{etat: CODE_REQUIS}` ; 200 `{etat: PREMIER_ACCES, etapes}` ; 200 `{etat: CONNECTE, session}` ; 400 `CNX_REQUETE_INVALIDE` ; 401 `CNX_IDENTIFIANTS_INVALIDES` ; 403 `CNX_COUCHE_REFUSEE`, `CNX_COMPTE_INACTIF` ; 429 `CNX_TROP_DE_TENTATIVES` (`Retry-After: 60`) ; 503 `CNX_SERVICE_INDISPONIBLE` |
+| `POST /api/connexion/mot-de-passe-oublie` `{identifiant, couche?}` | 202 toujours (transmis à MS-IAM, sauf au-delà de la limite ou en panne, sans le dire) |
+| `POST /api/connexion/nouveau-mot-de-passe` `{jeton, motDePasse}` | 204 ; 400 de MS-IAM relayé tel quel (`CNX_JETON_INVALIDE`, `IAM_PASSWORD_POLICY` et `violations`) ; 400 `CNX_REQUETE_INVALIDE` ; 503 |
+| `GET /api/session` | `SessionVue` plus `expireA` (fin d'inactivité prévue, ISO-8601, bornée par la durée maximale) et `restreinte` |
+| `POST /api/session/prolongation` | 204 (activité explicite, « Rester connecté ») |
+| `POST /api/logout` | 200 `{}` : jeton de rafraîchissement révoqué chez Keycloak, session supprimée ; plus d'adresse `logoutUrl` du fournisseur d'identité |
+
+Erreurs en `application/problem+json` (champ `code`). Routes `/api/connexion/**` publiques, protégées contre la CSRF (témoin `XSRF-TOKEN`).
+
+Déroulé de `POST /api/connexion` (`ServiceConnexion`) : limitation (5 tentatives par minute par adresse IP puis par identifiant, clé = empreinte SHA-256 de l'identifiant) ; octroi direct sur `gimac-connexion` (enregistrement `connexion`) ; validation du jeton d'identité par le JWKS du domaine (signature, émetteur, audience, échéance, sujets concordants) ; couche (`institution_id` n'ouvre que le portail) ; état du compte sur MS-IAM (`GET /api/v1/interne/comptes/{sub}/etat-connexion`, jeton de service `gateway-service` en `client_credentials`, gardé jusqu'à expiration) ; actions requises ou second facteur absent : session restreinte (`acr` 1) et `PREMIER_ACCES` ; sans code : `CODE_REQUIS` sans session ; avec code : octroi direct sur `web_app` (enregistrement `oidc`, `acr` 2). Tout jeton de `gimac-connexion` qui ne porte pas une session restreinte est révoqué aussitôt.
+
+Ouverture de la session (`OuvertureSession`) : ancienne session vidée (jetons révoqués), nouvel identifiant de session, `OAuth2AuthenticationToken` dont l'`OidcUser` est construit sur le jeton d'identité validé (rôles et permissions des jetons d'identité et d'accès), `OAuth2AuthorizedClient` (accès et rafraîchissement) enregistré dans le `ServerOAuth2AuthorizedClientRepository`, contexte de sécurité dans la session. `TokenRelay`, le rafraîchissement (`OAuth2ReactiveRefreshTokensWebFilter`, par le client de la session : `web_app` ou `gimac-connexion`), `/api/session` et `/api/logout` fonctionnent donc comme avec une connexion OIDC. Le principal porte un identifiant propre à la session (claim `gimac_session`) : deux sessions d'un même compte ne partagent jamais leurs jetons. Un rafraîchissement refusé ferme la session (401 `CNX_SESSION_EXPIREE`). Le gestionnaire des clients autorisés est fourni par `ConnexionConfiguration` : celui que Spring Security 7 installe par défaut rechargeait l'utilisateur OIDC (appel userinfo) à chaque rafraîchissement et remplaçait le principal ; ici le principal reste celui de la connexion, un changement de droits s'applique à la connexion suivante.
+
+Session restreinte (premier accès) : `GardeSessionWebFilter` ne sert que `GET|POST /bff/{couche}/iam/moi`, `…/premiere-configuration`, `…/mot-de-passe`, `…/second-facteur/**`, `GET /api/session`, `POST /api/session/prolongation`, `POST /api/logout` et `/api/connexion/**` ; ailleurs 403 `CNX_SESSION_RESTREINTE`. Le filtre `OpaAuthorize` transmet `restreinte` à OPA ; la règle `premier_acces` de `lot1_authz.rego` n'admet `acr` 1 que sur ces chemins, et une session restreinte n'ouvre aucune autre règle.
+
+Sessions (§6) : `GardeSessionWebFilter` (ordre -150, avant Spring Security) ferme la session après `gimac.session.inactivite-max` (PT30M) sans activité ou `gimac.session.duree-max` (PT10H) : jeton de rafraîchissement révoqué, client autorisé oublié, session invalidée, 401 `CNX_SESSION_EXPIREE` (aussi pour un témoin qui désigne encore une session fermée pour échéance). Les requêtes `X-Gimac-Fond: 1` et le canal poussé `/bff/{couche}/live` ne prolongent pas la session. `BalayeurSessions` ferme chaque `gimac.session.balayage` (PT1M) les sessions échues sans attendre de requête. Témoin `SESSION` HttpOnly, `Secure` (`GIMAC_SESSION_TEMOIN_SECURISE`, vrai par défaut), `SameSite=Lax` ; magasin en mémoire gardé 10 h (`server.reactive.session.timeout`).
+
+Journal d'audit : `gateway.login-succeeded.v1` (états `PREMIER_ACCES`, `CONNECTE`) et `gateway.login-failed.v1` (code et cause technique), identifiant masqué (`je***t`), adresse IP, couche, jamais le mot de passe ni le code ; journal applicatif `gimac.audit.connexion` et, si `gimac.passerelle.journal-decisions.actif`, sujet Kafka `gateway.security.events` (`GatewayAuditEventPublisher.publishSecurityEvent`, publié hors du fil Netty, Jackson 3). Limitation : `TokenBucketRateLimiter` sur Valkey si `gimac.passerelle.limitation-debit.actif`, avec repli en mémoire si Valkey ne répond pas ; sinon en mémoire de l'instance.
+
+| Couche | Paquet | Contenu |
+|---|---|---|
+| Domaine | `domain/connexion` | `EtapesPremierAcces`, `RegleCouche`, `MasqueIdentifiant`, `CauseEchec` (statuts et codes), `ResultatConnexion` ; ports `FournisseurIdentite`, `AnnuaireComptes`, `LimiteurTentatives`, `JournalConnexion` |
+| Adaptateurs | `infrastructure/connexion` | `KeycloakFournisseurIdentite`, `IamAnnuaireComptes`, `JetonServicePasserelle`, `LimiteurTentativesMemoire`, `LimiteurTentativesValkey`, `JournalConnexionAudit` |
+| Application | `service/connexion/ServiceConnexion` | Déroulé du contrat |
+| Sécurité | `security/session` | `OuvertureSession`, `FermetureSession`, `GardeSessionWebFilter`, `BalayeurSessions`, `RegistreSessions`, `SessionGimac`, `ReponseProbleme` |
+| REST | `web/rest` | `ConnexionResource`, `SessionResource`, `LogoutResource` |
+| Assemblage | `config` | `ConnexionConfiguration`, `ConnexionProperties` (`gimac.connexion` : `iam-url`, `delai` 5 s, `tentatives-par-minute` 5), `SessionProperties` (`gimac.session`) |
+
+Configuration : enregistrements OAuth2 `oidc` (client `web_app`, secret `SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_SECRET`), `connexion` (`GIMAC_CONNEXION_CLIENT_ID`, `GIMAC_SECRET_CONNEXION`), `gateway-service` (`GIMAC_SERVICE_CLIENT_ID`, `GIMAC_SERVICE_CLIENT_SECRET`) ; aucun secret dans le dépôt (`infra/docker-compose` les tire du `.env` : `GIMAC_SECRET_WEB_APP`, `GIMAC_SECRET_CONNEXION`, `GIMAC_SECRET_GATEWAY_SERVICE`). En production, `server.forward-headers-strategy: native` : l'adresse du client est lue dans `X-Forwarded-For` posé par le mandataire des couches.
+
+Tests : `ConnexionDomaineTest`, `SessionGimacTest`, `AdaptateursConnexionTest`, `ServiceConnexionTest`, `GatewayAuditEventPublisherTest`, `SessionResourceTest`, `OpaAuthorizeGatewayFilterFactoryTest`, `OAuth2ReactiveRefreshTokensWebFilterTest` (unitaires) ; `ConnexionResourceSecuriteTest` (sécurité, vraie chaîne, Keycloak et MS-IAM simulés : états, codes 400/401/403/429/503, CSRF, fixation de session, session restreinte, inactivité, appels de fond, durée absolue, balayage, déconnexion, redirection retirée, audit) ; `ConnexionIT` (intégration, contexte complet : enregistrements construits depuis la découverte OIDC du Keycloak simulé `KeycloakSimule`, route `/bff/{couche}/iam/moi` avec `OpaAuthorize` et `TokenRelay`, rafraîchissement par le client de la session, témoin `Secure`). JaCoCo (`seuil-connexion-sessions`, phase `test`) bloque la construction sous 80 % en lignes et méthodes par classe et en branches sur le module. Politique OPA : `opa test infra/docker-compose/opa/politiques`.
+
 ## Journal des mises à jour
 
 | Date | Commit | Modification |
@@ -138,6 +176,7 @@ Kubernetes (non livré) : installer node-exporter en DaemonSet et la collecte cA
 | 2026-09-29 | — | Supervision de la plateforme (D-61) : `/api/plateforme/{services,serveurs,alertes,configuration,journalisation,flux}`, module hexagonal, jeton de service `supervision` (client `gateway-supervision`), session à deux facteurs exigée sur `/api/plateforme/**`, permissions `PLATFORM_SUPERVISION_READ`, `PLATFORM_CONFIG_READ`, `PLATFORM_CONFIG_EDIT` ; 128 tests unitaires réussis, couverture du module 100 % en lignes, 99,5 % en méthodes, 96 % en branches (seuil JaCoCo de 80 %). |
 | 2026-09-29 | — | Deux violations modernizer de la supervision corrigées (`Optional.orElseThrow`, corps de `/loggers` en `HashMap` car le niveau nul est admis) ; exception `!src/**/out/` au `.gitignore` |
 | 2026-09-30 | — | Messagerie (D-64) : route `/bff/des/collaboration/messagerie/**` vers MS-COLLABORATION (`/api/v1/messagerie/**`), OPA d'abord, corps multipart bornés à 101 Mo ; règles OPA `COL_MESSAGE_READ` et `COL_MESSAGE_SEND`, `/bff/portail/collaboration/**` refusé. Canal poussé `GET /bff/{couche}/live` (SSE, contrat de messagerie §5) : consommateur Kafka par instance, remise filtrée par couche, institution et destinataires, reprise sur 500 événements (5 min), maintien toutes les 25 s ; seuil JaCoCo `seuil-canal-pousse`. `./mvnw verify` : 192 tests unitaires et 76 d'intégration réussis ; couverture du canal 100 % en lignes, 98,7 % en méthodes, 96,3 % en branches. |
+| 2026-10-01 | — | Connexion sur la plateforme (D-65) : `POST /api/connexion` (octroi direct sur `gimac-connexion` puis `web_app`, état du compte sur MS-IAM par le jeton de service `gateway-service`, `CODE_REQUIS`, `PREMIER_ACCES`, `CONNECTE`), mot de passe oublié et nouveau mot de passe, limitation 5/min par adresse IP et par identifiant, audit `gateway.login-succeeded.v1` et `gateway.login-failed.v1` ; redirection vers Keycloak retirée (404) ; session restreinte (`acr` 1, OPA `premier_acces`) ; fermeture après 30 min d'inactivité ou 10 h (révocation chez Keycloak, 401 `CNX_SESSION_EXPIREE`, balayage), `expireA`, `restreinte`, `POST /api/session/prolongation` ; publication d'audit passée à Jackson 3 ; échecs intermittents corrigés (BlockHound et verrou du cache de désérialiseurs de Jackson 3, délais de `SupervisionPlateformeHttpTest`, délai de `LiveConfigurationTest.actif`). `./mvnw -ntp -B verify` : 258 tests unitaires et 79 d'intégration réussis ; couverture du module 99,0 % en lignes, 97,9 % en méthodes, 90,8 % en branches. |
 <!-- GIMAC:FIN -->
 
 # gateway

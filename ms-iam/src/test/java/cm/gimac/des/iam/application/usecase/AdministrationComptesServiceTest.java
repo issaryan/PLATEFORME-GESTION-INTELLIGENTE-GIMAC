@@ -17,12 +17,15 @@ import cm.gimac.des.iam.domain.compte.ActionRequise;
 import cm.gimac.des.iam.domain.compte.Compte;
 import cm.gimac.des.iam.domain.compte.FicheCompte;
 import cm.gimac.des.iam.domain.compte.NouveauCompte;
+import cm.gimac.des.iam.infrastructure.courriel.CourrielsEnMemoire;
 import cm.gimac.des.iam.infrastructure.idp.AnnuaireEnMemoire;
+import cm.gimac.des.iam.infrastructure.persistence.JetonLien;
 import cm.gimac.des.iam.infrastructure.persistence.JournalAdministrationRepository;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,7 +35,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-/** Administration des comptes (D-62) sur l'annuaire de substitution : règles, journal, invitations. */
+/** Administration des comptes (D-62, D-65) sur l'annuaire de substitution : règles, journal, invitations par courriel de la plateforme. */
 @ExtendWith(MockitoExtension.class)
 class AdministrationComptesServiceTest {
 
@@ -49,20 +52,29 @@ class AdministrationComptesServiceTest {
 
     AnnuaireEnMemoire annuaire;
     AdministrationComptesService service;
+    CourrielsEnMemoire courriels;
+    List<JetonLien> jetons;
 
     static IamProprietes proprietes() {
         return new IamProprietes(
             new IamProprietes.Keycloak("http://kc", "gimac", "iam-service", "s"),
-            new IamProprietes.PremiereConnexion(List.of(ActionRequise.UPDATE_PASSWORD, ActionRequise.CONFIGURE_TOTP, ActionRequise.UPDATE_PROFILE), Duration.ofHours(72)),
+            new IamProprietes.PremiereConnexion(List.of(ActionRequise.MOT_DE_PASSE, ActionRequise.SECOND_FACTEUR, ActionRequise.FICHE, ActionRequise.CHARTE)),
             new IamProprietes.Profils(CATALOGUE, PRIVILEGIES),
-            new IamProprietes.Webauthn("localhost", "GIMAC", List.of("http://localhost"), Duration.ofMinutes(2))
+            new IamProprietes.Webauthn("localhost", "GIMAC", List.of("http://localhost"), Duration.ofMinutes(2)),
+            new IamProprietes.Liens("https://des.gimac.test", "https://portail.gimac.test", "https://console.gimac.test/", null, null, null),
+            new IamProprietes.Connexion("gimac-connexion", "s", null),
+            null
         );
     }
 
     @BeforeEach
     void init() {
         annuaire = new AnnuaireEnMemoire(AnnuaireEnMemoire.catalogueParDefaut(CATALOGUE), PRIVILEGIES);
-        service = new AdministrationComptesService(annuaire, journal, entrees, proprietes(), Clock.fixed(Instant.parse("2026-09-29T08:00:00Z"), ZoneOffset.UTC));
+        courriels = new CourrielsEnMemoire();
+        jetons = new ArrayList<>();
+        Clock clock = Clock.fixed(Instant.parse("2026-09-29T08:00:00Z"), ZoneOffset.UTC);
+        LiensCourriel liens = new LiensCourriel(JetonsEnMemoire.creer(jetons), new CourrielsPlateforme(courriels), proprietes(), clock);
+        service = new AdministrationComptesService(annuaire, journal, entrees, proprietes(), liens, clock);
     }
 
     NouveauCompte nouveau(String id, String... profils) {
@@ -77,15 +89,33 @@ class AdministrationComptesServiceTest {
     @DisplayName("Création par le RSSI : actions de premier accès, invitation, journal ; mot de passe provisoire rendu une fois")
     void creation() {
         var c = service.creer(RSSI, nouveau("agent.ddrm", "ROLE_CHARGE_DDRM"), true, false);
-        assertThat(c.compte().actionsRequises()).containsExactly(ActionRequise.UPDATE_PASSWORD, ActionRequise.CONFIGURE_TOTP, ActionRequise.UPDATE_PROFILE);
+        assertThat(c.compte().actionsRequises()).containsExactly(ActionRequise.MOT_DE_PASSE, ActionRequise.SECOND_FACTEUR, ActionRequise.FICHE, ActionRequise.CHARTE);
         assertThat(c.compte().premierAccesEnAttente()).isTrue();
         assertThat(c.invitationEnvoyee()).isTrue();
         assertThat(c.motDePasseProvisoire()).isNull();
-        assertThat(annuaire.invitations()).containsExactly(c.compte().id());
+        // D-65 : courriel de la plateforme, lien vers le département, jeton de 24 h conservé haché.
+        var courriel = courriels.dernierPour("agent.ddrm@gimac.test").orElseThrow();
+        assertThat(courriel.objet()).isEqualTo("Votre compte sur la plateforme DES du GIMAC");
+        assertThat(courriel.texte()).contains("https://des.gimac.test/connexion/nouveau-mot-de-passe?jeton=").contains("24 heures").contains("agent.ddrm");
+        assertThat(courriel.html()).contains("Choisir mon mot de passe");
+        String jeton = JetonsEnMemoire.jeton(courriel.texte()).orElseThrow();
+        assertThat(jetons).singleElement().satisfies(j -> {
+            assertThat(j.getEmpreinte()).hasSize(64).isNotEqualTo(jeton);
+            assertThat(j.getFinalite()).isEqualTo("INVITATION");
+            assertThat(j.getExpireLe()).isEqualTo(Instant.parse("2026-09-30T08:00:00Z"));
+        });
         verify(journal).compte(eq(RSSI), eq("CREATION"), eq(c.compte().id()), eq("agent.ddrm"), isNull(), anyList());
+        verify(journal).compte(eq(RSSI), eq("INVITATION"), eq(c.compte().id()), eq("agent.ddrm"), isNull(), eq(List.of("DES")));
 
         var p = service.creer(RSSI, nouveau("agent.deux", "ROLE_CHARGE_DDRM"), false, true);
         assertThat(p.motDePasseProvisoire()).startsWith("Provisoire-");
+        assertThat(p.compte().actionsRequises()).contains(ActionRequise.MOT_DE_PASSE);
+        assertThat(p.invitationEnvoyee()).isFalse();
+        // Super administrateur invité sur la console ; correspondant sur le portail.
+        service.creer(SUPER, nouveau("admin.deux", "ROLE_SUPER_ADMIN"), true, false);
+        assertThat(courriels.dernierPour("admin.deux@gimac.test").orElseThrow().texte()).contains("https://console.gimac.test/connexion/");
+        service.creer(RSSI, new NouveauCompte("corr.a", "C", "A", "corr.a@banque.test", null, null, "INST-9", Set.of("ROLE_CHARGE_DDRM")), true, false);
+        assertThat(courriels.dernierPour("corr.a@banque.test").orElseThrow().texte()).contains("https://portail.gimac.test/connexion/");
     }
 
     @Test
@@ -156,17 +186,50 @@ class AdministrationComptesServiceTest {
         String id = service.creer(RSSI, nouveau("agent.ddrm", "ROLE_CHARGE_DDRM"), true, false).compte().id();
         annuaire.ouvrirSession(id, "10.0.0.1");
         assertThat(service.sessions(id)).hasSize(1);
-        assertThat(service.exigerActions(RSSI, id, Set.of(ActionRequise.VERIFY_EMAIL), true, "courriel changé").actionsRequises()).contains(ActionRequise.VERIFY_EMAIL);
-        assertThat(annuaire.invitations()).hasSize(2);
+        assertThat(service.exigerActions(RSSI, id, Set.of(ActionRequise.VERIFIER_COURRIEL), true, "courriel changé").actionsRequises()).contains(ActionRequise.VERIFIER_COURRIEL);
+        // Nouveau lien : l'invitation précédente n'est plus utilisable.
+        assertThat(courriels.envoyes()).hasSize(2);
+        assertThat(jetons).hasSize(2);
+        assertThat(jetons.get(0).getUtiliseLe()).isNotNull();
+        assertThat(jetons.get(1).getUtiliseLe()).isNull();
+        // Rappel sans jeton quand ni le mot de passe ni le courriel ne sont en cause.
+        service.exigerActions(RSSI, id, Set.of(ActionRequise.FICHE), true, "fiche à revoir");
+        assertThat(courriels.envoyes()).hasSize(3);
+        assertThat(courriels.envoyes().get(2).texte()).contains("https://des.gimac.test/connexion").doesNotContain("jeton=");
+        assertThat(jetons).hasSize(2);
         refus(() -> service.exigerActions(RSSI, id, Set.of(), false, "x"), "IAM_ACTIONS_REQUIRED");
-        assertThat(service.exigerActions(RSSI, id, Set.of(ActionRequise.UPDATE_PASSWORD), false, "rotation").actionsRequises()).contains(ActionRequise.UPDATE_PASSWORD);
-        assertThat(service.reinitialiserSecondFacteur(RSSI, id, "perte du téléphone").secondFacteur()).isFalse();
+        assertThat(service.exigerActions(RSSI, id, Set.of(ActionRequise.MOT_DE_PASSE), false, "rotation").actionsRequises()).contains(ActionRequise.MOT_DE_PASSE);
+        annuaire.enregistrerTotp(id, "JBSWY3DPEHPK3PXP", cm.gimac.des.iam.domain.service.Totp.code("JBSWY3DPEHPK3PXP", Instant.now(), 6, 30, "HmacSHA1"), null);
+        annuaire.retirerActions(id, Set.of(ActionRequise.SECOND_FACTEUR));
+        var reinitialise = service.reinitialiserSecondFacteur(RSSI, id, "perte du téléphone");
+        assertThat(reinitialise.secondFacteur()).isFalse();
+        assertThat(reinitialise.actionsRequises()).contains(ActionRequise.SECOND_FACTEUR);
         assertThat(service.sessions(id)).isEmpty();
-        assertThat(service.motDePasseProvisoire(RSSI, id, "oubli")).isNotBlank();
+        annuaire.retirerActions(id, Set.of(ActionRequise.MOT_DE_PASSE));
+        String provisoire = service.motDePasseProvisoire(RSSI, id, "oubli");
+        assertThat(provisoire).isNotBlank();
+        assertThat(annuaire.verifierMotDePasse("agent.ddrm", provisoire)).isTrue();
+        assertThat(service.lire(id).actionsRequises()).contains(ActionRequise.MOT_DE_PASSE);
         annuaire.ouvrirSession(id, "10.0.0.2");
         service.fermerSessions(RSSI, id, "incident");
         assertThat(service.sessions(id)).isEmpty();
         verify(journal, never()).compte(eq(RSSI), eq("SUPPRESSION"), any(), any(), any(), anyList());
+    }
+
+    @Test
+    @DisplayName("D-65 : messagerie en panne → création maintenue, invitation non envoyée et tracée ; exigence par courriel refusée (503)")
+    void messagerieEnPanne() {
+        Clock clock = Clock.fixed(Instant.parse("2026-09-29T08:00:00Z"), ZoneOffset.UTC);
+        cm.gimac.des.iam.application.port.out.ServiceCourriel enPanne = c -> {
+            throw IamException.indisponible("IAM_SMTP_FAILED", "refus");
+        };
+        LiensCourriel liens = new LiensCourriel(JetonsEnMemoire.creer(jetons), new CourrielsPlateforme(enPanne), proprietes(), clock);
+        service = new AdministrationComptesService(annuaire, journal, entrees, proprietes(), liens, clock);
+        var c = service.creer(RSSI, nouveau("agent.ddrm", "ROLE_CHARGE_DDRM"), true, false);
+        assertThat(c.invitationEnvoyee()).isFalse();
+        assertThat(service.lire(c.compte().id())).isNotNull();
+        verify(journal).compte(eq(RSSI), eq("INVITATION_ECHEC"), eq(c.compte().id()), eq("agent.ddrm"), isNull(), eq(List.of("IAM_SMTP_FAILED")));
+        refus(() -> service.exigerActions(RSSI, c.compte().id(), Set.of(ActionRequise.MOT_DE_PASSE), true, "rotation"), "IAM_SMTP_FAILED");
     }
 
     @Test

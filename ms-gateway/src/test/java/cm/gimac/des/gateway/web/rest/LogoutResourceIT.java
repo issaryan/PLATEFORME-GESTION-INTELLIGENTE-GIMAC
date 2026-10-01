@@ -1,6 +1,5 @@
 package cm.gimac.des.gateway.web.rest;
 
-import static cm.gimac.des.gateway.test.util.OAuth2TestUtil.ID_TOKEN;
 import static cm.gimac.des.gateway.test.util.OAuth2TestUtil.authenticationToken;
 import static cm.gimac.des.gateway.test.util.OAuth2TestUtil.registerAuthenticationToken;
 import static org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers.*;
@@ -14,11 +13,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.client.ReactiveOAuth2AuthorizedClientService;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
-import org.springframework.security.oauth2.client.registration.ReactiveClientRegistrationRepository;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
 /**
@@ -26,9 +23,6 @@ import org.springframework.test.web.reactive.server.WebTestClient;
  */
 @IntegrationTest
 class LogoutResourceIT {
-
-    @Autowired
-    private ReactiveClientRegistrationRepository registrations;
 
     @Autowired
     private ApplicationContext context;
@@ -54,12 +48,8 @@ class LogoutResourceIT {
 
     @Test
     void getLogoutInformation() {
-        final String ORIGIN_URL = "http://localhost:8080";
-        String logoutUrl = this.registrations
-            .findByRegistrationId("oidc")
-            .map(oidc -> oidc.getProviderDetails().getConfigurationMetadata().get("end_session_endpoint").toString())
-            .block();
-        logoutUrl = logoutUrl + "?id_token_hint=" + ID_TOKEN + "&post_logout_redirect_uri=" + ORIGIN_URL;
+        // D-65 : la session Keycloak est fermée de serveur à serveur ; aucune adresse du fournisseur
+        // d'identité n'est renvoyée au navigateur.
         this.webTestClient
             .mutateWith(csrf())
             .mutateWith(
@@ -67,7 +57,6 @@ class LogoutResourceIT {
             )
             .post()
             .uri("http://localhost:8080/api/logout")
-            .header(HttpHeaders.ORIGIN, ORIGIN_URL)
             .exchange()
             .expectStatus()
             .isOk()
@@ -75,30 +64,11 @@ class LogoutResourceIT {
             .contentType(MediaType.APPLICATION_JSON_VALUE)
             .expectBody()
             .jsonPath("$.logoutUrl")
-            .isEqualTo(logoutUrl);
+            .doesNotExist();
     }
 
     @Test
-    void getLogoutInformationWithoutOriginHeader() {
-        final String ORIGIN_URL = "http://localhost:8080";
-        String logoutUrl = this.registrations
-            .findByRegistrationId("oidc")
-            .map(oidc -> oidc.getProviderDetails().getConfigurationMetadata().get("end_session_endpoint").toString())
-            .block();
-        logoutUrl = logoutUrl + "?id_token_hint=" + ID_TOKEN + "&post_logout_redirect_uri=" + ORIGIN_URL;
-
-        this.webTestClient
-            .mutateWith(csrf())
-            .mutateWith(
-                mockAuthentication(registerAuthenticationToken(authorizedClientService, clientRegistration, authenticationToken(claims)))
-            )
-            .post()
-            .uri(ORIGIN_URL + "/api/logout")
-            .exchange()
-            .expectStatus()
-            .isOk()
-            .expectBody()
-            .jsonPath("$.logoutUrl")
-            .isEqualTo(logoutUrl);
+    void logoutWithoutSession() {
+        this.webTestClient.mutateWith(csrf()).post().uri("http://localhost:8080/api/logout").exchange().expectStatus().isUnauthorized();
     }
 }

@@ -1,6 +1,7 @@
 package cm.gimac.des.iam.domain.compte;
 
 import java.time.Instant;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 
@@ -38,8 +39,26 @@ public record Compte(
         return n.isEmpty() ? identifiant : n;
     }
 
-    /** Le premier accès n'est pas terminé tant qu'une action requise ou la fiche reste à faire. */
+    /**
+     * Étapes restant à faire sur la plateforme (D-65), dans l'ordre de l'assistant : actions exigées,
+     * fiche et charte tant que le premier accès n'est pas marqué terminé, second facteur tant qu'aucun
+     * code TOTP n'est configuré.
+     */
+    public List<ActionRequise> etapesRestantes() {
+        Set<ActionRequise> e = EnumSet.noneOf(ActionRequise.class);
+        e.addAll(actionsRequises);
+        if (!profilComplet) {
+            e.add(ActionRequise.FICHE);
+            e.add(ActionRequise.CHARTE);
+        }
+        if (!secondFacteur) {
+            e.add(ActionRequise.SECOND_FACTEUR);
+        }
+        return List.copyOf(e);
+    }
+
+    /** Le premier accès n'est pas terminé tant qu'une étape reste à faire. */
     public boolean premierAccesEnAttente() {
-        return !profilComplet || !actionsRequises.isEmpty();
+        return !etapesRestantes().isEmpty();
     }
 }

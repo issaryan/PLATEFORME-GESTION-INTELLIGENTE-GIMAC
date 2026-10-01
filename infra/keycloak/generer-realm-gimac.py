@@ -115,6 +115,8 @@ SERVICES = {
     "collaboration-service": ["INTERNAL_IAM_READ", "INTERNAL_DOCUMENT_READ", "INTERNAL_DOCUMENT_DEPOSIT"],
     # MS-IAM administre le realm par l'API d'administration (D-62) : rôles de realm-management ci-dessous.
     "iam-service": [],
+    # Connexion sur la plateforme (D-65) : la passerelle lit l'état de connexion du compte sur MS-IAM.
+    "gateway-service": ["INTERNAL_IAM_READ"],
     # Supervision de la passerelle : lecture des points /management des services (ROLE_ADMIN).
     "gateway-supervision": ["ROLE_ADMIN"],
 }
@@ -145,6 +147,10 @@ PROFIL_UTILISATEUR = {
         {"name": "profil_complet", "displayName": "Premier accès terminé", "permissions": ADMIN_SEUL, "multivalued": False},
         {"name": "langKey", "displayName": "Langue", "permissions": ADMIN_SEUL, "multivalued": False},
         {"name": "login", "displayName": "Identifiant", "permissions": ADMIN_SEUL, "multivalued": False},
+        # Actions exigées tenues par la plateforme (D-65), jamais par les actions requises de Keycloak,
+        # qui bloqueraient l'octroi direct : MOT_DE_PASSE, SECOND_FACTEUR, FICHE, CHARTE, VERIFIER_COURRIEL.
+        {"name": "gimac_actions_requises", "displayName": "Actions exigées par la plateforme", "permissions": ADMIN_SEUL,
+         "multivalued": True},
     ],
     "groups": [],
 }
@@ -153,7 +159,29 @@ PROFIL_UTILISATEUR = {
 # niveau 2 : mot de passe puis code à usage unique (TOTP). Keycloak pose le niveau atteint dans
 # le claim acr (« 1 » ou « 2 ») ; les clients des couches de présentation exigent le niveau 2.
 FLUX_NAVIGATEUR = "navigateur-gimac"
-CLIENTS_NIVEAU_2 = ["web_app", "tester-cli"]
+# D-65 : web_app ne passe plus par le navigateur (octroi direct à deux facteurs, acr posé par mappeur) ;
+# seul tester-cli (contrôles cURL des développeurs, autorisation par appareil) garde le flux navigateur.
+CLIENTS_NIVEAU_2 = ["tester-cli"]
+
+# Connexion sur la plateforme (D-65, docs/lot1/connexion.md §4) : la passerelle soumet identifiant,
+# mot de passe et code à Keycloak par l'octroi direct, serveur à serveur ; aucune page de Keycloak.
+FLUX_MOT_DE_PASSE = "direct-gimac-mot-de-passe"
+FLUX_DEUX_FACTEURS = "direct-gimac-deux-facteurs"
+CLIENT_CONNEXION = "gimac-connexion"
+# Actions exigées des comptes de test : second facteur à configurer sur la plateforme au premier accès.
+ACTIONS_TEST = ["SECOND_FACTEUR"]
+# Sessions (connexion.md §6) : 30 min d'inactivité, 10 h au plus, jeton d'accès de 5 min.
+SESSIONS = {"ssoSessionIdleTimeout": 1800, "ssoSessionMaxLifespan": 36000, "accessTokenLifespan": 300}
+# Protection contre la force brute (D-62, planchers) : elle s'applique aussi à l'octroi direct.
+FORCE_BRUTE = {"bruteForceProtected": True, "permanentLockout": False, "failureFactor": 5, "waitIncrementSeconds": 900,
+               "maxFailureWaitSeconds": 900, "maxDeltaTimeSeconds": 43200, "quickLoginCheckMilliSeconds": 1000,
+               "minimumQuickLoginWaitSeconds": 60}
+# Politique OTP du domaine, lue par MS-IAM et par l'extension gimac-totp pour vérifier le premier code.
+# Politique des mots de passe au plancher de la plateforme (D-62), écrite dans la syntaxe de Keycloak
+# comme MS-IAM l'écrit (PolitiqueMotDePasse.versChaine) ; la console la durcit ensuite.
+POLITIQUE_MOTS_DE_PASSE = "length(12) and notUsername(undefined)"
+POLITIQUE_OTP = {"otpPolicyType": "totp", "otpPolicyAlgorithm": "HmacSHA1", "otpPolicyDigits": 6, "otpPolicyPeriod": 30,
+                 "otpPolicyLookAheadWindow": 1, "otpPolicyInitialCounter": 0, "otpPolicyCodeReusable": False}
 
 
 def execution(authenticator, requirement, priority, config=None):
@@ -202,6 +230,42 @@ def flux_double_facteur():
     return flux_, configs
 
 
+def flux_octroi_direct():
+    """Deux flux d'octroi direct (D-65) : mot de passe seul (acr 1), mot de passe et code obligatoire (acr 2)."""
+    base = [execution("direct-grant-validate-username", "REQUIRED", 10),
+            execution("direct-grant-validate-password", "REQUIRED", 20)]
+    mot_de_passe = flux(FLUX_MOT_DE_PASSE, "Octroi direct GIMAC : identifiant et mot de passe (premier accès, acr 1)",
+                        copy.deepcopy(base), top_level=True)
+    deux_facteurs = flux(FLUX_DEUX_FACTEURS, "Octroi direct GIMAC : identifiant, mot de passe et code TOTP obligatoire (acr 2)",
+                         copy.deepcopy(base) + [execution("direct-grant-validate-otp", "REQUIRED", 30)], top_level=True)
+    # Identifiants propres (nouveaux flux) : les clients s'y lient par identifiant, que Keycloak remappe à l'import.
+    mot_de_passe["id"] = uid("flow:" + FLUX_MOT_DE_PASSE)
+    deux_facteurs["id"] = uid("flow:" + FLUX_DEUX_FACTEURS)
+    return [mot_de_passe, deux_facteurs]
+
+
+def mappeur_acr(niveau):
+    """Niveau d'assurance posé en dur : l'octroi direct ne le calcule pas (acr 1 ou 2 selon le client)."""
+    return {"name": "acr-gimac", "protocol": "openid-connect", "protocolMapper": "oidc-hardcoded-claim-mapper",
+            "consentRequired": False,
+            "config": {"claim.name": "acr", "claim.value": niveau, "jsonType.label": "String", "id.token.claim": "true",
+                       "access.token.claim": "true", "userinfo.token.claim": "true", "introspection.token.claim": "true"}}
+
+
+def client_octroi_direct(c, flux_id, niveau):
+    """Client confidentiel à octroi direct seul, lié à son flux, acr en dur, sans portée acr par défaut."""
+    c.update({"enabled": True, "publicClient": False, "clientAuthenticatorType": "client-secret",
+              "standardFlowEnabled": False, "implicitFlowEnabled": False, "directAccessGrantsEnabled": True,
+              "serviceAccountsEnabled": False, "frontchannelLogout": False, "redirectUris": [], "webOrigins": []})
+    c["defaultClientScopes"] = [s for s in c.get("defaultClientScopes", []) if s != "acr"]
+    c["authenticationFlowBindingOverrides"] = {"direct_grant": flux_id}
+    c["protocolMappers"] = [m for m in c.get("protocolMappers", []) if m.get("name") != "acr-gimac"] + [mappeur_acr(niveau)]
+    attributs = c.setdefault("attributes", {})
+    attributs.pop("minimum.acr.value", None)
+    attributs["access.token.lifespan"] = "300"
+    return c
+
+
 def uid(nom):
     return str(uuid.uuid5(uuid.NAMESPACE_URL, "gimac:" + nom))
 
@@ -240,7 +304,8 @@ def main():
     realm["loginTheme"] = "gimac"
     realm["emailTheme"] = "gimac"
     realm["registrationAllowed"] = False
-    realm["resetPasswordAllowed"] = True
+    # D-65 : le mot de passe oublié se réinitialise sur la plateforme (courriel de MS-IAM), jamais par Keycloak.
+    realm["resetPasswordAllowed"] = False
     realm["rememberMe"] = False
     realm["editUsernameAllowed"] = False
     realm["loginWithEmailAllowed"] = True
@@ -259,6 +324,12 @@ def main():
     # Claim institution_id (RG-59), porté par le client scope jhipster déjà servi aux applications.
     for cs in realm["clientScopes"]:
         if cs["name"] == "jhipster":
+            # D-65 : la passerelle ouvre la session à partir de l'octroi direct ; les rôles et permissions
+            # figurent dans le jeton d'identité comme dans le jeton d'accès (acr et institution_id aussi).
+            for m in cs["protocolMappers"]:
+                if m["name"] == "roles":
+                    m["config"]["id.token.claim"] = "true"
+                    m["config"]["access.token.claim"] = "true"
             cs["protocolMappers"].append({
                 "id": uid("mapper:institution_id"), "name": "institution_id", "protocol": "openid-connect",
                 "protocolMapper": "oidc-usermodel-attribute-mapper", "consentRequired": False,
@@ -288,6 +359,20 @@ def main():
     for c in realm["clients"]:
         if c["clientId"] in CLIENTS_NIVEAU_2:
             c.setdefault("attributes", {})["minimum.acr.value"] = "2"
+
+    # D-65 : octroi direct. gimac-connexion (mot de passe seul, acr 1, session restreinte du premier
+    # accès) et web_app (mot de passe et code obligatoire, acr 2), confidentiels, sans flux navigateur.
+    octroi = flux_octroi_direct()
+    realm["authenticationFlows"] = [x for x in realm["authenticationFlows"] if not x["alias"].startswith("direct-gimac-")] + octroi
+    flux_mdp, flux_2fa = (f["id"] for f in octroi)
+    connexion = client_confidentiel(CLIENT_CONNEXION, "GIMAC_SECRET_CONNEXION", directs=True)
+    connexion["description"] = "Connexion sur la plateforme, mot de passe seul (acr 1, premier accès) : passerelle et MS-IAM"
+    realm["clients"].append(client_octroi_direct(connexion, flux_mdp, "1"))
+    for c in realm["clients"]:
+        if c["clientId"] == "web_app":
+            client_octroi_direct(c, flux_2fa, "2")
+            c["secret"] = "${GIMAC_SECRET_WEB_APP}"
+            c["description"] = "Connexion sur la plateforme, mot de passe et code TOTP (acr 2) : passerelle"
     for client_id in SERVICES:
         realm["clients"].append(client_confidentiel(client_id, "GIMAC_SECRET_" + client_id.upper().replace("-", "_"), service=True))
 
@@ -298,9 +383,9 @@ def main():
             "firstName": prenom, "lastName": nom, "email": f"{login}@gimac.test",
             "credentials": [{"type": "password", "value": "${GIMAC_MOT_DE_PASSE_TEST}", "temporary": False}],
             "realmRoles": ["default-roles-gimac", profil], "groups": ["/Users"],
-            "attributes": {"langKey": ["fr"], "login": [login]},
-            # Second facteur enrôlé à la première connexion (D-61).
-            "requiredActions": ["CONFIGURE_TOTP"],
+            # Second facteur configuré sur la plateforme au premier accès (D-61, D-65) : action tenue par
+            # l'attribut gimac_actions_requises, aucune action requise de Keycloak (elle bloquerait l'octroi direct).
+            "attributes": {"langKey": ["fr"], "login": [login], "gimac_actions_requises": list(ACTIONS_TEST)},
         }
         if institution:
             u["attributes"]["institution_id"] = [institution]
@@ -315,7 +400,13 @@ def main():
         if u["username"] in ("admin", "user"):
             # Les empreintes du realm généré (mot de passe connu « admin », « user ») sont remplacées.
             u["credentials"] = [{"type": "password", "value": "${GIMAC_MOT_DE_PASSE_TEST}", "temporary": False}]
+    for u in utilisateurs:
+        u.pop("requiredActions", None)
     realm["users"] = utilisateurs
+    realm.update(SESSIONS)
+    realm.update(FORCE_BRUTE)
+    realm.update(POLITIQUE_OTP)
+    realm["passwordPolicy"] = POLITIQUE_MOTS_DE_PASSE
     for u in realm["users"]:
         client_id = u.get("serviceAccountClientId")
         if client_id in ROLES_CLIENT_SERVICES:
@@ -333,6 +424,10 @@ def main():
             return [sans_identifiants(v) for v in noeud]
         return noeud
     realm = sans_identifiants(realm, racine=True)
+    # Les flux d'octroi direct gardent leur identifiant : les clients s'y lient par lui (remappé à l'import).
+    for f in realm["authenticationFlows"]:
+        if f["alias"] in (FLUX_MOT_DE_PASSE, FLUX_DEUX_FACTEURS):
+            f["id"] = uid("flow:" + f["alias"])
 
     texte = json.dumps(realm, ensure_ascii=False, indent=2)
     assert "default-roles-jhipster" not in texte
@@ -341,6 +436,37 @@ def main():
     assert all(x in texte for x in ('"browserFlow": "navigateur-gimac"', '"minimum.acr.value": "2"', "PAR_TRANSITION_APPROVE", "ROLE_SUPER_ADMIN",
                                           "manage-realm", "unmanagedAttributePolicy", "COL_MESSAGE_SEND", "collaboration-service",
                                           '"loginTheme": "gimac"'))
+    # D-65 : connexion sur la plateforme, jamais de page Keycloak.
+    clients = {c["clientId"]: c for c in realm["clients"]}
+    flux_ids = {f["alias"]: f.get("id") for f in realm["authenticationFlows"]}
+    for client_id, flux_alias, niveau in ((CLIENT_CONNEXION, FLUX_MOT_DE_PASSE, "1"), ("web_app", FLUX_DEUX_FACTEURS, "2")):
+        c = clients[client_id]
+        assert not c["publicClient"] and c["directAccessGrantsEnabled"] and not c["standardFlowEnabled"], client_id
+        assert not c.get("implicitFlowEnabled") and not c.get("serviceAccountsEnabled"), client_id
+        assert c["secret"].startswith("${GIMAC_SECRET_"), client_id
+        assert c["authenticationFlowBindingOverrides"] == {"direct_grant": flux_ids[flux_alias]}, client_id
+        assert "acr" not in c["defaultClientScopes"] and "jhipster" in c["defaultClientScopes"], client_id
+        assert "minimum.acr.value" not in c.get("attributes", {}), client_id
+        assert [m["config"]["claim.value"] for m in c["protocolMappers"] if m["protocolMapper"] == "oidc-hardcoded-claim-mapper"
+                and m["config"]["claim.name"] == "acr"] == [niveau], client_id
+    assert clients[CLIENT_CONNEXION]["secret"] == "${GIMAC_SECRET_CONNEXION}"
+    assert clients["web_app"]["secret"] == "${GIMAC_SECRET_WEB_APP}" and clients["gateway-service"]["secret"] == "${GIMAC_SECRET_GATEWAY_SERVICE}"
+    jhipster = next(cs for cs in realm["clientScopes"] if cs["name"] == "jhipster")
+    assert all(m["config"]["id.token.claim"] == m["config"]["access.token.claim"] == "true"
+               for m in jhipster["protocolMappers"] if m["name"] in ("roles", "institution_id"))
+    assert clients[CLIENT_CONNEXION]["attributes"]["access.token.lifespan"] == "300"
+    otp = [e["authenticator"] for f in realm["authenticationFlows"] if f["alias"] == FLUX_DEUX_FACTEURS
+           for e in f["authenticationExecutions"] if e["requirement"] == "REQUIRED"]
+    assert otp == ["direct-grant-validate-username", "direct-grant-validate-password", "direct-grant-validate-otp"], otp
+    assert "direct-grant-validate-otp" not in texte.split(FLUX_MOT_DE_PASSE, 1)[1].split('"topLevel"', 1)[0]
+    comptes_service = {u.get("serviceAccountClientId"): u for u in realm["users"]}
+    assert clients["gateway-service"]["serviceAccountsEnabled"] and "INTERNAL_IAM_READ" in comptes_service["gateway-service"]["realmRoles"]
+    assert "manage-users" in comptes_service["iam-service"]["clientRoles"]["realm-management"]
+    assert not any(u.get("requiredActions") for u in realm["users"]), "action requise Keycloak sur un compte"
+    assert all(u["attributes"]["gimac_actions_requises"] == ACTIONS_TEST for u in realm["users"] if u["username"].startswith("test-"))
+    assert all(realm[k] == v for k, v in {**SESSIONS, **FORCE_BRUTE, **POLITIQUE_OTP}.items())
+    assert realm["passwordPolicy"] == POLITIQUE_MOTS_DE_PASSE
+    assert realm["resetPasswordAllowed"] is False and "gimac_actions_requises" in texte
     CIBLE.write_text(texte + "\n", encoding="utf-8")
     print(f"{CIBLE.relative_to(RACINE)} : {len(TOUTES)} permissions, {len(PROFILS)} profils, {len(UTILISATEURS)} utilisateurs de test")
 

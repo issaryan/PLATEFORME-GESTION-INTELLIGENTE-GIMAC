@@ -70,6 +70,29 @@ public final class PolitiqueMotDePasse {
         }
     }
 
+    /**
+     * Violations d'un mot de passe au regard de la politique (codes de la plateforme, repris par
+     * l'interface) : LONGUEUR, MAJUSCULE, MINUSCULE, CHIFFRE, SPECIAL, IDENTIFIANT. Liste vide s'il est
+     * conforme ; le fournisseur d'identité reste juge en dernier ressort (historique notamment).
+     */
+    public static List<String> violations(PolitiqueSecurite p, String motDePasse, String identifiant) {
+        List<String> v = new ArrayList<>();
+        String m = motDePasse == null ? "" : motDePasse;
+        if (m.length() < Math.max(p.longueurMinimale(), LONGUEUR_PLANCHER)) v.add("LONGUEUR");
+        if (compter(m, Character::isUpperCase) < p.majusculesMin()) v.add("MAJUSCULE");
+        if (compter(m, Character::isLowerCase) < p.minusculesMin()) v.add("MINUSCULE");
+        if (compter(m, Character::isDigit) < p.chiffresMin()) v.add("CHIFFRE");
+        if (compter(m, c -> !Character.isLetterOrDigit(c)) < p.speciauxMin()) v.add("SPECIAL");
+        if (p.interditIdentifiant() && identifiant != null && !identifiant.isBlank() && m.toLowerCase(java.util.Locale.ROOT).contains(identifiant.toLowerCase(java.util.Locale.ROOT))) {
+            v.add("IDENTIFIANT");
+        }
+        return v;
+    }
+
+    private static long compter(String m, java.util.function.IntPredicate test) {
+        return m.codePoints().filter(test).count();
+    }
+
     private static void ajouter(List<String> r, String regle, int valeur) {
         if (valeur > 0) {
             r.add(regle + "(" + valeur + ")");

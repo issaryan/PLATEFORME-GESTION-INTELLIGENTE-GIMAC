@@ -111,6 +111,8 @@ jhipster:
 
 # application:
 gimac:
-  # Production : annuaire réel, API d'administration de Keycloak (D-62).
+  # Production : annuaire réel, API d'administration de Keycloak (D-62) ; courriels de la plateforme
+  # envoyés par SMTP avec les paramètres de messagerie de la console (D-65).
   adapters:
     annuaire: real
+    courriel: smtp

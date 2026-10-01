@@ -26,6 +26,23 @@ Fonctionnalité: Premier accès et « Mon compte » (D-62)
     Et une assertion pour la finalité "STATUS_APPROVE" est reconnue valide par la route interne
 
   Scénario: Le titulaire demande à changer son mot de passe
-    Quand le titulaire demande l'action "UPDATE_PASSWORD"
+    Quand le titulaire demande l'action "MOT_DE_PASSE"
     Alors la réponse a le statut 200
-    Et le compte doit accomplir les actions "UPDATE_PASSWORD"
+    Et le compte doit accomplir les actions "MOT_DE_PASSE"
+
+  Scénario: D-65 — le titulaire fixe son mot de passe par le lien de l'invitation, sans page Keycloak
+    Quand le titulaire suit le lien de son invitation avec le mot de passe "Premier-Mot-2026!"
+    Alors la réponse a le statut 204
+    Et la passerelle lit pour le compte les actions "SECOND_FACTEUR,FICHE,CHARTE"
+    Quand le titulaire suit à nouveau le même lien avec le mot de passe "Autre-Mot-2026!"
+    Alors la réponse a le statut 400
+    Et le code d'erreur est "CNX_JETON_INVALIDE"
+
+  Scénario: D-65 — le titulaire configure son code TOTP dans l'assistant de premier accès
+    Quand le titulaire, en session restreinte, configure son code TOTP avec un code juste
+    Alors la réponse a le statut 204
+    Et la passerelle lit pour le compte un second facteur configuré
+
+  Scénario: D-65 — la session restreinte n'ouvre aucune autre route
+    Quand le titulaire, en session restreinte, consulte ses sessions
+    Alors la réponse a le statut 403

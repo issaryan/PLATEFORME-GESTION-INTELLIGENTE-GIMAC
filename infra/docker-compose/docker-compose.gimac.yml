@@ -28,6 +28,9 @@ x-application: &application
   depends_on:
     kafka:
       condition: service_started
+    # Sujets du lot 1 créés avec leurs partitions avant tout producteur (sinon auto-créés à 1 partition).
+    kafka-sujets-init:
+      condition: service_completed_successfully
   healthcheck:
     start_period: 240s
     retries: 60
@@ -51,6 +54,13 @@ services:
       GIMAC_KEYCLOAK_URL: http://keycloak:9080
       GIMAC_WEBAUTHN_RP_ID: ${GIMAC_WEBAUTHN_RP_ID:-localhost}
       GIMAC_WEBAUTHN_ORIGINES: ${GIMAC_WEBAUTHN_ORIGINES:-http://localhost:4200,http://localhost:4201,http://localhost:4202}
+      # Connexion sur la plateforme (D-65) : vérification du mot de passe actuel (client gimac-connexion),
+      # chiffrement au repos des secrets d'enrôlement TOTP et du mot de passe SMTP, liens des courriels.
+      GIMAC_SECRET_CONNEXION: ${GIMAC_SECRET_CONNEXION:?à définir dans .env}
+      GIMAC_IAM_CLE_CHIFFREMENT: ${GIMAC_IAM_CLE_CHIFFREMENT:?à définir dans .env}
+      GIMAC_URL_DES: ${GIMAC_URL_DES:-http://localhost:4200}
+      GIMAC_URL_PORTAIL: ${GIMAC_URL_PORTAIL:-http://localhost:4201}
+      GIMAC_URL_CONSOLE: ${GIMAC_URL_CONSOLE:-http://localhost:4202}
   audit: *application
   # Dépôt direct de la tranche DDRM : adaptateur S3 réel vers Ceph RGW (D-50), démarré
   # après la création des compartiments WORM (le service vérifie le verrouillage d'objets).
@@ -64,6 +74,8 @@ services:
     depends_on:
       kafka:
         condition: service_started
+      kafka-sujets-init:
+        condition: service_completed_successfully
       stockage-objet-init:
         condition: service_completed_successfully
   notification: *application
@@ -127,6 +139,8 @@ services:
     depends_on:
       kafka:
         condition: service_started
+      kafka-sujets-init:
+        condition: service_completed_successfully
       gateway-valkey:
         condition: service_healthy
     # Limitation de débit et révocations sur Valkey (GW-07, SOC-11, D-25) ; la dépendance
@@ -140,6 +154,22 @@ services:
       # détail, configuration et journalisation des services non lues).
       - GIMAC_SUPERVISION_CLIENT_ID=gateway-supervision
       - GIMAC_SUPERVISION_CLIENT_SECRET=${GIMAC_SECRET_GATEWAY_SUPERVISION:?à définir dans .env}
+      # Connexion sur la plateforme (D-65, docs/lot1/connexion.md §2) : octroi direct de serveur à serveur
+      # sur les clients confidentiels gimac-connexion (mot de passe seul, acr 1) et web_app (mot de passe
+      # et code TOTP, acr 2) ; jeton de service gateway-service vers MS-IAM (INTERNAL_IAM_READ).
+      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_ID=web_app
+      - SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_SECRET=${GIMAC_SECRET_WEB_APP:?à définir dans .env}
+      - GIMAC_CONNEXION_CLIENT_ID=gimac-connexion
+      - GIMAC_SECRET_CONNEXION=${GIMAC_SECRET_CONNEXION:?à définir dans .env}
+      - GIMAC_SERVICE_CLIENT_ID=gateway-service
+      - GIMAC_SERVICE_CLIENT_SECRET=${GIMAC_SECRET_GATEWAY_SERVICE:?à définir dans .env}
+      # Témoin de session Secure (les navigateurs l'acceptent sur http://localhost) ; false seulement
+      # pour un poste servi en http sous un autre nom d'hôte.
+      - GIMAC_SESSION_TEMOIN_SECURISE=${GIMAC_SESSION_TEMOIN_SECURISE:-true}
+      # Journal d'audit de la connexion (gateway.login-succeeded.v1, gateway.login-failed.v1) publié sur
+      # le sujet gateway.security.events, scellé par MS-AUDIT.
+      - GIMAC_PASSERELLE_JOURNAL_DECISIONS_ACTIF=true
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
     ports: !override
       - ${GIMAC_PORT_GATEWAY:-8080}:8080
 
@@ -152,6 +182,9 @@ services:
       # Thème GIMAC des pages de connexion et des courriels (D-62) ; en Kubernetes, il est
       # intégré à l'image construite depuis infra/keycloak/Dockerfile.
       - ../keycloak/themes/gimac:/opt/keycloak/themes/gimac:ro
+      # Extension gimac-totp (D-65) : enregistrement du code TOTP configuré sur la plateforme ; construite
+      # par `mvn -f ../keycloak/extensions/gimac-totp package` (gimac-dev.sh), intégrée à l'image en Kubernetes.
+      - ../keycloak/extensions/gimac-totp/target/gimac-totp.jar:/opt/keycloak/providers/gimac-totp.jar:ro
     ports: !override
       - ${GIMAC_PORT_KEYCLOAK:-9080}:9080
       - ${GIMAC_PORT_KEYCLOAK_TLS:-9443}:9443
@@ -170,6 +203,10 @@ services:
       - GIMAC_SECRET_PARTICIPANT_SERVICE=${GIMAC_SECRET_PARTICIPANT_SERVICE:?à définir dans .env}
       - GIMAC_SECRET_IAM_SERVICE=${GIMAC_SECRET_IAM_SERVICE:?à définir dans .env}
       - GIMAC_SECRET_GATEWAY_SUPERVISION=${GIMAC_SECRET_GATEWAY_SUPERVISION:?à définir dans .env}
+      # Clients de la connexion sur la plateforme (D-65) : gimac-connexion, web_app, gateway-service.
+      - GIMAC_SECRET_CONNEXION=${GIMAC_SECRET_CONNEXION:?à définir dans .env}
+      - GIMAC_SECRET_WEB_APP=${GIMAC_SECRET_WEB_APP:?à définir dans .env}
+      - GIMAC_SECRET_GATEWAY_SERVICE=${GIMAC_SECRET_GATEWAY_SERVICE:?à définir dans .env}
       - GIMAC_SECRET_COLLABORATION_SERVICE=${GIMAC_SECRET_COLLABORATION_SERVICE:?à définir dans .env}
       - GIMAC_SECRET_INTERNAL=${GIMAC_SECRET_INTERNAL:?à définir dans .env}
 
@@ -225,6 +262,8 @@ services:
       args:
         APPLICATION: departement
         SERVICES: http
+        # Liens « Administration » vers la console (D-62), publiée sur l'hôte au port de frontend-console.
+        URL_CONSOLE: http://localhost:${GIMAC_PORT_FRONTEND_CONSOLE:-4202}
     environment:
       GIMAC_PASSERELLE: http://gateway:8080
     ports:
@@ -264,6 +303,45 @@ services:
     healthcheck:
       test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:8080/sante']
       <<: *sante
+
+  # ------------------------------------------------ Courtier Kafka (mono-nœud de développement)
+  # Le Compose généré ne règle pas la réplication des sujets internes : l'image Kafka, dès qu'elle
+  # reçoit des variables KAFKA_*, n'applique que celles-ci et garde le facteur 3 par défaut. Sur un
+  # seul courtier, __consumer_offsets n'est alors jamais créé : aucun coordinateur de groupe, aucun
+  # consommateur abonné ne reçoit de partition (canal poussé de la passerelle muet, liaisons Spring
+  # Cloud Stream sans message). Vérifié par CourtierPlateformeIT (ms-gateway).
+  kafka:
+    environment:
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_SHARE_COORDINATOR_STATE_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_SHARE_COORDINATOR_STATE_TOPIC_MIN_ISR: 1
+
+  # Sujets du lot 1 (infra/kafka/creer-sujets-lot1.sh, PI-GIMAC-01 §0.5) : 6 partitions, rétention
+  # 30 jours, files .dlq ; réplication 1. L'image native du courtier n'a pas les outils : image
+  # officielle complète. Attend le courtier, ne recrée rien (idempotent).
+  kafka-sujets-init:
+    image: apache/kafka:4.3.1
+    depends_on:
+      kafka:
+        condition: service_started
+    environment:
+      KAFKA_BOOTSTRAP: kafka:9092
+      REPLICATION: 1
+      KAFKA_TOPICS: /opt/kafka/bin/kafka-topics.sh
+    volumes:
+      - ../kafka/creer-sujets-lot1.sh:/creer-sujets-lot1.sh:ro
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        for i in $$(seq 60); do
+          /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --list >/dev/null 2>&1 && exec /bin/bash /creer-sujets-lot1.sh
+          echo "courtier kafka:9092 indisponible ($$i/60)"; sleep 2
+        done
+        exit 1
+    restart: 'no'
 
   # ------------------------------------------------ Registre des schémas (SOC-03, D-37)
   registre-schemas:

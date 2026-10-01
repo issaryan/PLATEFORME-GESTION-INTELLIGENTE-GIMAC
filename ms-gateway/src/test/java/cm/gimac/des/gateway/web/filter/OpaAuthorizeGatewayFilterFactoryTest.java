@@ -153,6 +153,31 @@ class OpaAuthorizeGatewayFilterFactoryTest {
     }
 
     @Test
+    @DisplayName("Session restreinte du premier accès (D-65) : « restreinte » transmis à OPA")
+    void restreinte() {
+        org.springframework.mock.web.server.MockWebSession session = new org.springframework.mock.web.server.MockWebSession();
+        session.getAttributes().put(cm.gimac.des.gateway.security.session.SessionGimac.RESTREINTE, true);
+        MockServerWebExchange e = MockServerWebExchange.builder(MockServerHttpRequest.get("/bff/des/iam/moi")).session(session).build();
+        assertThat(filtrer(factory.apply(new Object()), e, jwt("1", null))).isTrue();
+        assertThat(recu.get()).contains("\"restreinte\":true").contains("\"acr\":\"1\"");
+        MockServerWebExchange sans = echange("/bff/des/iam/moi");
+        filtrer(factory.apply(new Object()), sans, jwt("2", null));
+        assertThat(recu.get()).contains("\"restreinte\":false");
+    }
+
+    @Test
+    @DisplayName("Authentification anonyme : sans principal ni justificatif")
+    void marqueurAnonyme() {
+        decision = "{\"result\":true}";
+        MockServerWebExchange e = echange("/bff/des/x");
+        filtrer(factory.apply(new Object()), e, null);
+        assertThat(recu.get()).contains("\"authentifie\":false");
+        var m = new OpaAuthorizeGatewayFilterFactory.AnonymousMarker();
+        assertThat(m.getPrincipal()).isEqualTo("anonyme");
+        assertThat(m.getCredentials()).isEqualTo("");
+    }
+
+    @Test
     @DisplayName("OPA injoignable : refus par défaut (RG-24)")
     void opaInjoignable() {
         opa.stop(0);

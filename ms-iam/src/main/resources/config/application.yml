@@ -270,6 +270,7 @@ gimac:
   # Sélection des adaptateurs (PI §0.8) : real | stub.
   adapters:
     annuaire: stub
+    courriel: stub
   kafka:
     rebut:
       actif: true
@@ -286,10 +287,29 @@ gimac:
       realm: ${GIMAC_KEYCLOAK_REALM:gimac}
       client-id: ${GIMAC_SERVICE_CLIENT_ID:iam-service}
       client-secret: ${GIMAC_SERVICE_CLIENT_SECRET:}
-    # Actions imposées à la première connexion d'un compte créé par l'administration.
+    # Actions exigées par la plateforme au premier accès d'un compte créé par l'administration (D-65),
+    # tenues dans l'attribut gimac_actions_requises, jamais dans les actions requises de Keycloak.
     premiere-connexion:
-      actions: [UPDATE_PASSWORD, CONFIGURE_TOTP, UPDATE_PROFILE, VERIFY_EMAIL]
-      validite-invitation: 72h
+      actions: [MOT_DE_PASSE, SECOND_FACTEUR, FICHE, CHARTE]
+    # Liens des courriels de la plateforme (invitation 24 h, mot de passe oublié 30 min), construits sur
+    # l'adresse publique de chaque couche ; enrôlement TOTP gardé 10 min (D-65).
+    liens:
+      des: ${GIMAC_URL_DES:http://localhost:4200}
+      portail: ${GIMAC_URL_PORTAIL:http://localhost:4201}
+      console: ${GIMAC_URL_CONSOLE:http://localhost:4202}
+      validite-invitation: 24h
+      validite-reinitialisation: 30m
+      validite-enrolement-totp: 10m
+    # Client gimac-connexion (octroi direct, mot de passe seul) : vérification du mot de passe actuel ;
+    # clients de service admis sur /api/v1/interne/connexion/** et l'état de connexion (la passerelle).
+    connexion:
+      client-id: ${GIMAC_CONNEXION_CLIENT_ID:gimac-connexion}
+      client-secret: ${GIMAC_SECRET_CONNEXION:}
+      clients-internes: gateway-service
+    # Clé AES-256 (32 octets en base 64) des secrets gardés par MS-IAM (enrôlements TOTP, mot de passe
+    # SMTP) ; absente : clé éphémère (développement), à fournir en production.
+    chiffrement:
+      cle: ${GIMAC_IAM_CLE_CHIFFREMENT:}
     # Profils attribuables (rôles composites du realm) ; les profils privilégiés exigent
     # IAM_ROLE_PRIVILEGED_GRANT (réservé au super administrateur).
     profils:

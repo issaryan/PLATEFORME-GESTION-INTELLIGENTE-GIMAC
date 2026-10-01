@@ -31,6 +31,9 @@ class LiveConfigurationTest {
     }
 
     @Test
+    // Vrai client Kafka démarré puis arrêté avec le contexte : chargement des classes du client (JVM froide,
+    // agent JaCoCo) et arrêt du consommateur dépassaient le délai par défaut de 15 s sur une machine chargée.
+    @org.junit.jupiter.api.Timeout(60)
     @DisplayName("Actif par défaut : consommateur Kafka démarré avec le contexte, courtier injoignable sans blocage")
     void actif() {
         contexte

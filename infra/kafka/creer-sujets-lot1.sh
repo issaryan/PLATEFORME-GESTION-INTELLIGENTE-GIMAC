@@ -8,14 +8,19 @@
 #   REPLICATION      facteur de réplication (défaut 3 ; 1 sur le poste de développement)
 #   KAFKA_TOPICS     commande kafka-topics.sh ; par défaut, l'image officielle Apache Kafka
 #                    lancée sur le réseau du projet (l'image native du socle n'a pas les outils)
+# Exécuté au démarrage de la pile par le conteneur kafka-sujets-init (infra/docker-compose).
 set -euo pipefail
 KAFKA_BOOTSTRAP="${KAFKA_BOOTSTRAP:-kafka:9092}"
 REPLICATION="${REPLICATION:-3}"
 MIN_ISR=$(( REPLICATION > 1 ? 2 : 1 ))
 KAFKA_TOPICS="${KAFKA_TOPICS:-docker run --rm --network gimac-des_default apache/kafka:4.3.1 /opt/kafka/bin/kafka-topics.sh}"
 
+# Sujets existants lus une fois : un sujet présent n'est ni recréé ni modifié (une JVM de moins par sujet).
+EXISTANTS=$($KAFKA_TOPICS --bootstrap-server "$KAFKA_BOOTSTRAP" --list)
+
 creer() { # sujet partitions [options...]
   local sujet=$1 partitions=$2; shift 2
+  if grep -qxF "$sujet" <<< "$EXISTANTS"; then echo "sujet existant : $sujet"; return; fi
   $KAFKA_TOPICS --bootstrap-server "$KAFKA_BOOTSTRAP" --create --if-not-exists --topic "$sujet" \
     --partitions "$partitions" --replication-factor "$REPLICATION" "$@" >/dev/null
   echo "sujet prêt : $sujet"

@@ -25,6 +25,10 @@ public class IamExceptionHandler {
         pd.setProperty("code", ex.code());
         pd.setProperty("message", ex.getMessage());
         pd.setProperty("details", ex.details());
+        // Politique des mots de passe (D-65) : violations aussi au premier niveau (contrat de la connexion).
+        if (ex.details().containsKey("violations")) {
+            pd.setProperty("violations", ex.details().get("violations"));
+        }
         pd.setProperty("correlationId", CorrelationContext.current());
         return ResponseEntity.status(statut).body(pd);
     }

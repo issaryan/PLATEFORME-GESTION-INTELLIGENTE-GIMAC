@@ -2,11 +2,12 @@ package cm.gimac.des.gateway.audit;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ObjectNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
@@ -37,7 +38,10 @@ public class GatewayAuditEventPublisher {
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final ObjectMapper objectMapper;
 
-    public GatewayAuditEventPublisher(KafkaTemplate<String, String> kafkaTemplate, ObjectMapper objectMapper) {
+    public GatewayAuditEventPublisher(
+        @Qualifier(ProducteurAuditConfiguration.MODELE_AUDIT) KafkaTemplate<String, String> kafkaTemplate,
+        ObjectMapper objectMapper
+    ) {
         this.kafkaTemplate = kafkaTemplate;
         this.objectMapper = objectMapper;
     }
@@ -74,6 +78,34 @@ public class GatewayAuditEventPublisher {
             });
         } catch (Exception e) {
             log.error("[{}] Construction de l'événement d'audit impossible : {}", correlationId, e.getMessage());
+        }
+    }
+
+    /**
+     * Événement de sécurité nommé (D-65 : gateway.login-succeeded.v1, gateway.login-failed.v1),
+     * même sujet et même enveloppe que les mutations, avec son type et ses détails. Les détails ne
+     * portent jamais de secret (mot de passe, code, jeton) : l'appelant les masque.
+     */
+    public void publishSecurityEvent(String eventType, String actor, String ip, int status, java.util.Map<String, String> details) {
+        try {
+            ObjectNode n = objectMapper.createObjectNode();
+            n.put("eventType", eventType);
+            n.put("actor", actor != null && !actor.isBlank() ? actor : "anonymous");
+            n.put("tenantId", "default");
+            n.put("timestamp", Instant.now().toString());
+            n.put("severity", severityFor(status));
+            n.put("status", status);
+            n.put("ipAddress", ip);
+            ObjectNode d = n.putObject("details");
+            details.forEach(d::put);
+            String json = objectMapper.writeValueAsString(n);
+            kafkaTemplate.send(TOPIC, json).whenComplete((res, ex) -> {
+                if (ex != null) {
+                    log.error("Échec publication audit {} -> journal souverain : {}", eventType, ex.getMessage());
+                }
+            });
+        } catch (Exception e) {
+            log.error("Construction de l'événement d'audit {} impossible : {}", eventType, e.getMessage());
         }
     }
 

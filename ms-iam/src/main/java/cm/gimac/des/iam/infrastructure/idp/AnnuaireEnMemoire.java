@@ -10,11 +10,14 @@ import cm.gimac.des.iam.domain.compte.NouveauCompte;
 import cm.gimac.des.iam.domain.compte.PolitiqueSecurite;
 import cm.gimac.des.iam.domain.compte.Profil;
 import cm.gimac.des.iam.domain.compte.SessionCompte;
-import java.time.Duration;
+import cm.gimac.des.iam.domain.service.PolitiqueMotDePasse;
+import cm.gimac.des.iam.domain.service.Totp;
 import java.time.Instant;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
+import java.util.EnumSet;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -26,8 +29,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Annuaire de substitution en mémoire (profils dev et test, PI §0.8) : mêmes refus que l'adaptateur
- * Keycloak (identifiant pris, compte introuvable). Jamais sélectionné en production. Il démarre avec
- * un super administrateur et un RSSI de démonstration pour que la console soit utilisable.
+ * Keycloak (identifiant pris, compte introuvable, politique des mots de passe et historique, code TOTP
+ * vérifié). Jamais sélectionné en production. Il démarre avec un super administrateur et un RSSI de
+ * démonstration pour que la console soit utilisable.
  */
 public class AnnuaireEnMemoire implements Annuaire {
 
@@ -35,7 +39,9 @@ public class AnnuaireEnMemoire implements Annuaire {
     private final Map<String, List<SessionCompte>> sessions = new ConcurrentHashMap<>();
     private final Map<String, Set<String>> profils = new TreeMap<>();
     private final Set<String> privilegies;
-    private final List<String> invitations = new ArrayList<>();
+    /** Mots de passe du substitut (le plus récent en tête), jamais exposés. */
+    private final Map<String, Deque<String>> motsDePasse = new ConcurrentHashMap<>();
+    private final Map<String, String> totp = new ConcurrentHashMap<>();
     private volatile PolitiqueSecurite politique = new PolitiqueSecurite(12, 1, 1, 1, 1, 5, 90, true, 6, 30, "HmacSHA1", 30, 10, true, 5, 15);
     private volatile ConfigurationMessagerie messagerie = new ConfigurationMessagerie("messagerie", 1025, "plateforme@gimac.test", "Plateforme DES du GIMAC", false, false, false, null, null, false);
 
@@ -64,9 +70,9 @@ public class AnnuaireEnMemoire implements Annuaire {
         comptes.put(c.id(), c);
     }
 
-    /** Invitations envoyées (identifiant du compte), pour les tests. */
-    public List<String> invitations() {
-        return List.copyOf(invitations);
+    /** Libellé du code TOTP enregistré (tests), vide sinon. */
+    public Optional<String> libelleTotp(String id) {
+        return Optional.ofNullable(totp.get(id));
     }
 
     @Override
@@ -82,6 +88,12 @@ public class AnnuaireEnMemoire implements Annuaire {
     @Override
     public Optional<Compte> parIdentifiant(String identifiant) {
         return comptes.values().stream().filter(c -> c.identifiant().equals(identifiant)).findFirst();
+    }
+
+    @Override
+    public Optional<Compte> parEmail(String email) {
+        List<Compte> l = comptes.values().stream().filter(c -> email.equalsIgnoreCase(c.email())).toList();
+        return l.size() == 1 ? Optional.of(l.get(0)) : Optional.empty();
     }
 
     @Override
@@ -133,34 +145,83 @@ public class AnnuaireEnMemoire implements Annuaire {
         exiger(id);
         comptes.remove(id);
         sessions.remove(id);
+        motsDePasse.remove(id);
+        totp.remove(id);
     }
 
     @Override
     public void exigerActions(String id, Set<ActionRequise> actions) {
         Compte c = exiger(id);
-        Set<ActionRequise> toutes = new LinkedHashSet<>(c.actionsRequises());
+        Set<ActionRequise> toutes = EnumSet.noneOf(ActionRequise.class);
+        toutes.addAll(c.actionsRequises());
         toutes.addAll(actions);
         remplacer(avec(c, c.actif(), c.profilComplet(), c.profils(), List.copyOf(toutes), c.secondFacteur()));
     }
 
     @Override
-    public void envoyerInvitation(String id, List<ActionRequise> actions, Duration validite) {
-        exiger(id);
-        invitations.add(id);
+    public void retirerActions(String id, Set<ActionRequise> actions) {
+        Compte c = exiger(id);
+        List<ActionRequise> restantes = c.actionsRequises().stream().filter(a -> !actions.contains(a)).toList();
+        remplacer(avec(c, c.actif(), c.profilComplet(), c.profils(), restantes, c.secondFacteur()));
     }
 
     @Override
     public String definirMotDePasseProvisoire(String id) {
-        exigerActions(id, Set.of(ActionRequise.UPDATE_PASSWORD));
-        return "Provisoire-" + UUID.randomUUID().toString().substring(0, 12);
+        exiger(id);
+        String mdp = "Provisoire-" + UUID.randomUUID().toString().substring(0, 12) + "!A1";
+        memoriser(id, mdp);
+        return mdp;
+    }
+
+    @Override
+    public void definirMotDePasse(String id, String motDePasse) {
+        Compte c = exiger(id);
+        List<String> violations = PolitiqueMotDePasse.violations(politique, motDePasse, c.identifiant());
+        if (!violations.isEmpty()) {
+            throw IamException.invalide("IAM_PASSWORD_POLICY", "Mot de passe non conforme à la politique de sécurité", Map.of("violations", violations));
+        }
+        Deque<String> historique = motsDePasse.getOrDefault(id, new ArrayDeque<>());
+        if (historique.stream().limit(Math.max(politique.historique(), 1)).anyMatch(motDePasse::equals)) {
+            throw IamException.invalide("IAM_PASSWORD_REUSED", "Le nouveau mot de passe doit différer des précédents", Map.of("violations", List.of("HISTORIQUE")));
+        }
+        memoriser(id, motDePasse);
+    }
+
+    private void memoriser(String id, String motDePasse) {
+        Deque<String> h = motsDePasse.computeIfAbsent(id, k -> new ArrayDeque<>());
+        h.addFirst(motDePasse);
+        while (h.size() > 25) {
+            h.removeLast();
+        }
+    }
+
+    @Override
+    public boolean verifierMotDePasse(String identifiant, String motDePasse) {
+        return parIdentifiant(identifiant).filter(Compte::actif).map(c -> motsDePasse.getOrDefault(c.id(), new ArrayDeque<>()).peekFirst()).map(motDePasse::equals).orElse(false);
     }
 
     @Override
     public void reinitialiserSecondFacteur(String id) {
         Compte c = exiger(id);
-        Set<ActionRequise> toutes = new LinkedHashSet<>(c.actionsRequises());
-        toutes.add(ActionRequise.CONFIGURE_TOTP);
-        remplacer(avec(c, c.actif(), c.profilComplet(), c.profils(), List.copyOf(toutes), false));
+        totp.remove(id);
+        remplacer(avec(c, c.actif(), c.profilComplet(), c.profils(), c.actionsRequises(), false));
+    }
+
+    @Override
+    public void enregistrerTotp(String id, String secretBase32, String code, String libelle) {
+        Compte c = exiger(id);
+        if (!Totp.verifier(secretBase32, code, Instant.now(), politique.otpChiffres(), politique.otpPeriodeSecondes(), politique.otpAlgorithme(), 1)) {
+            throw IamException.invalide("IAM_TOTP_CODE_INVALID", "Code de vérification incorrect", Map.of());
+        }
+        totp.put(id, libelle == null || libelle.isBlank() ? "Application d'authentification" : libelle);
+        remplacer(avec(c, c.actif(), c.profilComplet(), c.profils(), c.actionsRequises(), true));
+    }
+
+    @Override
+    public void marquerEmailVerifie(String id) {
+        Compte c = exiger(id);
+        remplacer(new Compte(c.id(), c.identifiant(), c.prenom(), c.nom(), c.email(), true, c.actif(), c.creeLe(), c.telephone(), c.fonction(), c.langue(),
+            c.institutionId(), c.profilComplet(), c.profils(), c.actionsRequises(), c.secondFacteur()));
     }
 
     @Override

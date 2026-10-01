@@ -6,7 +6,9 @@ import cm.gimac.des.iam.domain.IamException;
 import cm.gimac.des.iam.domain.compte.Acteur;
 import cm.gimac.des.iam.domain.compte.ActionRequise;
 import cm.gimac.des.iam.domain.compte.Compte;
+import cm.gimac.des.iam.domain.compte.Couche;
 import cm.gimac.des.iam.domain.compte.FicheCompte;
+import cm.gimac.des.iam.domain.compte.FinaliteJeton;
 import cm.gimac.des.iam.domain.compte.NouveauCompte;
 import cm.gimac.des.iam.domain.compte.SessionCompte;
 import cm.gimac.des.iam.domain.service.ReglesAdministration;
@@ -15,12 +17,13 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Comparator;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,10 +31,16 @@ import org.springframework.transaction.annotation.Transactional;
  * Administration des comptes par le super administrateur et le RSSI (D-62) : création (aucune
  * inscription libre), fiche, profils, activation, suppression, actions de sécurité (changement de
  * mot de passe, second facteur), sessions. Chaque acte est journalisé et publié vers l'audit.
+ *
+ * <p>D-65 : les actions exigées sont celles de la plateforme (attribut gimac_actions_requises), jamais
+ * celles de Keycloak ; invitations et rappels partent en courriels de la plateforme, avec un lien vers
+ * l'application de la couche du compte.
  */
 @Service
 @Transactional
 public class AdministrationComptesService {
+
+    private static final Logger LOG = LoggerFactory.getLogger(AdministrationComptesService.class);
 
     /** Filtre de la liste : recherche libre, profil, état. */
     public record Filtre(String recherche, String profil, String etat) {}
@@ -57,13 +66,22 @@ public class AdministrationComptesService {
     private final JournalActes journal;
     private final JournalAdministrationRepository entrees;
     private final IamProprietes proprietes;
+    private final LiensCourriel liens;
     private final Clock clock;
 
-    public AdministrationComptesService(Annuaire annuaire, JournalActes journal, JournalAdministrationRepository entrees, IamProprietes proprietes, Clock clock) {
+    public AdministrationComptesService(
+        Annuaire annuaire,
+        JournalActes journal,
+        JournalAdministrationRepository entrees,
+        IamProprietes proprietes,
+        LiensCourriel liens,
+        Clock clock
+    ) {
         this.annuaire = annuaire;
         this.journal = journal;
         this.entrees = entrees;
         this.proprietes = proprietes;
+        this.liens = liens;
         this.clock = clock;
     }
 
@@ -150,14 +168,36 @@ public class AdministrationComptesService {
         if (annuaire.parIdentifiant(n.identifiant()).isPresent() || annuaire.emailPris(n.email(), null)) {
             throw IamException.conflit("IAM_ACCOUNT_CONFLICT", "Identifiant ou courriel déjà utilisé", Map.of());
         }
-        List<ActionRequise> actions = proprietes.premiereConnexion().actions();
-        String id = annuaire.creer(n, actions);
-        String mdp = motDePasseProvisoire ? annuaire.definirMotDePasseProvisoire(id) : null;
-        if (envoyerInvitation) {
-            annuaire.envoyerInvitation(id, actions, proprietes.premiereConnexion().validiteInvitation());
+        Set<ActionRequise> actions = new TreeSet<>(proprietes.premiereConnexion().actions());
+        if (motDePasseProvisoire) {
+            actions.add(ActionRequise.MOT_DE_PASSE);
         }
+        String id = annuaire.creer(n, List.copyOf(actions));
+        String mdp = motDePasseProvisoire ? annuaire.definirMotDePasseProvisoire(id) : null;
         journal.compte(acteur, "CREATION", id, n.identifiant(), null, List.copyOf(new TreeSet<>(n.profils())));
-        return new Creation(lire(id), envoyerInvitation, mdp);
+        boolean invitation = envoyerInvitation && inviter(acteur, lire(id));
+        return new Creation(lire(id), invitation, mdp);
+    }
+
+    /**
+     * Invitation par courriel de la plateforme (lien vers le nouveau mot de passe, 24 h). Un échec de
+     * la messagerie n'annule pas la création : il est tracé et rendu (invitation non envoyée).
+     */
+    private boolean inviter(Acteur acteur, Compte c) {
+        try {
+            liens.envoyer(c, FinaliteJeton.INVITATION, couche(c));
+            journal.compte(acteur, "INVITATION", c.id(), c.identifiant(), null, List.of(couche(c).name()));
+            return true;
+        } catch (IamException e) {
+            LOG.warn("Invitation non envoyée au compte {} ({})", c.id(), e.code());
+            journal.compte(acteur, "INVITATION_ECHEC", c.id(), c.identifiant(), null, List.of(e.code()));
+            return false;
+        }
+    }
+
+    /** Couche où le compte se connecte : portail pour un correspondant, console pour un super administrateur, département sinon. */
+    static Couche couche(Compte c) {
+        return Couche.pour(c, c.profils().contains(ReglesAdministration.SUPER_ADMIN) ? Couche.CONSOLE : Couche.DES);
     }
 
     public Compte modifier(Acteur acteur, String id, FicheCompte f) {
@@ -207,7 +247,11 @@ public class AdministrationComptesService {
         journal.compte(acteur, "SUPPRESSION", id, c.identifiant(), motif, List.of());
     }
 
-    /** Demande à l'utilisateur, à sa prochaine connexion, de changer son mot de passe ou de configurer son second facteur. */
+    /**
+     * Exige des actions à la prochaine connexion (attribut gimac_actions_requises). Par courriel : un
+     * lien vers le nouveau mot de passe (24 h) si le mot de passe ou la vérification du courriel est
+     * exigé, un rappel avec le lien de connexion sinon.
+     */
     public Compte exigerActions(Acteur acteur, String id, Set<ActionRequise> actions, boolean parCourriel, String motif) {
         ReglesAdministration.exigerMotif(motif);
         if (actions == null || actions.isEmpty()) {
@@ -215,10 +259,14 @@ public class AdministrationComptesService {
         }
         Compte c = lire(id);
         annuaire.exigerActions(id, actions);
-        if (parCourriel) {
-            annuaire.envoyerInvitation(id, List.copyOf(EnumSet.copyOf(actions)), proprietes.premiereConnexion().validiteInvitation());
-        }
         journal.compte(acteur, "ACTIONS_REQUISES", id, c.identifiant(), motif, actions.stream().map(Enum::name).sorted().toList());
+        if (parCourriel) {
+            if (actions.contains(ActionRequise.MOT_DE_PASSE) || actions.contains(ActionRequise.VERIFIER_COURRIEL)) {
+                liens.envoyer(c, FinaliteJeton.INVITATION, couche(c));
+            } else {
+                liens.rappeler(c, couche(c));
+            }
+        }
         return lire(id);
     }
 
@@ -227,6 +275,7 @@ public class AdministrationComptesService {
         ReglesAdministration.exigerMotif(motif);
         Compte c = lire(id);
         annuaire.reinitialiserSecondFacteur(id);
+        annuaire.exigerActions(id, Set.of(ActionRequise.SECOND_FACTEUR));
         annuaire.fermerSessions(id);
         journal.compte(acteur, "REINITIALISATION_2FA", id, c.identifiant(), motif, List.of());
         return lire(id);
@@ -237,6 +286,7 @@ public class AdministrationComptesService {
         ReglesAdministration.exigerMotif(motif);
         Compte c = lire(id);
         String mdp = annuaire.definirMotDePasseProvisoire(id);
+        annuaire.exigerActions(id, Set.of(ActionRequise.MOT_DE_PASSE));
         annuaire.fermerSessions(id);
         journal.compte(acteur, "MOT_DE_PASSE_PROVISOIRE", id, c.identifiant(), motif, List.of());
         return mdp;

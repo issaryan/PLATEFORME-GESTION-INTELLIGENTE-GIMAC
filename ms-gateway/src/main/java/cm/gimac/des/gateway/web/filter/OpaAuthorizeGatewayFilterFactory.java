@@ -17,6 +17,7 @@ import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import cm.gimac.des.gateway.security.session.SessionGimac;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.server.ServerWebExchange;
@@ -24,8 +25,8 @@ import reactor.core.publisher.Mono;
 
 /**
  * Filtre « OpaAuthorize » des routes du lot 1 (PI-GIMAC-01 §0.6) : la passerelle soumet à OPA
- * la méthode, le chemin d'origine, les permissions, l'institution et le niveau d'assurance (acr,
- * D-61) du jeton, et refuse (403)
+ * la méthode, le chemin d'origine, les permissions, l'institution, le niveau d'assurance (acr,
+ * D-61) du jeton et l'état restreint de la session (premier accès, D-65), et refuse (403)
  * toute requête que la politique gimac.authz n'autorise pas. OPA injoignable vaut refus
  * (refus par défaut, RG-24). Le service applique ensuite son propre @PreAuthorize.
  */
@@ -51,7 +52,8 @@ public class OpaAuthorizeGatewayFilterFactory extends AbstractGatewayFilterFacto
             ReactiveSecurityContextHolder.getContext()
                 .map(SecurityContext::getAuthentication)
                 .defaultIfEmpty(anonyme())
-                .flatMap(auth -> decider(entree(exchange, auth)))
+                .zipWith(restreinte(exchange))
+                .flatMap(t -> decider(entree(exchange, t.getT1(), t.getT2())))
                 .flatMap(autorise -> {
                     if (Boolean.TRUE.equals(autorise)) {
                         return chain.filter(exchange);
@@ -61,7 +63,16 @@ public class OpaAuthorizeGatewayFilterFactory extends AbstractGatewayFilterFacto
                 });
     }
 
+    /** Session restreinte du premier accès (acr 1, D-65) : OPA n'y admet que la règle premier_acces. */
+    static Mono<Boolean> restreinte(ServerWebExchange exchange) {
+        return exchange.getSession().map(SessionGimac::restreinte).defaultIfEmpty(false);
+    }
+
     Map<String, Object> entree(ServerWebExchange exchange, Authentication auth) {
+        return entree(exchange, auth, false);
+    }
+
+    Map<String, Object> entree(ServerWebExchange exchange, Authentication auth, boolean restreinte) {
         boolean authentifie = auth != null && auth.isAuthenticated() && !(auth instanceof AnonymousMarker);
         List<String> permissions = authentifie ? auth.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList() : List.of();
         return Map.of(
@@ -78,7 +89,9 @@ public class OpaAuthorizeGatewayFilterFactory extends AbstractGatewayFilterFacto
                 "acr",
                 authentifie ? claim(auth, ACR_CLAIM) : "",
                 "authentifie",
-                authentifie
+                authentifie,
+                "restreinte",
+                authentifie && restreinte
             )
         );
     }
@@ -126,7 +139,7 @@ public class OpaAuthorizeGatewayFilterFactory extends AbstractGatewayFilterFacto
     }
 
     /** Authentification vide : aucune permission, non authentifiée. */
-    private static final class AnonymousMarker extends org.springframework.security.authentication.AbstractAuthenticationToken {
+    static final class AnonymousMarker extends org.springframework.security.authentication.AbstractAuthenticationToken {
 
         AnonymousMarker() {
             super(List.of());

@@ -23,9 +23,14 @@ creer gimac-clients-keycloak \
   --from-literal=iam-service="$(openssl rand -hex 24)" \
   --from-literal=gateway-supervision="$(openssl rand -hex 24)" \
   --from-literal=collaboration-service="$(openssl rand -hex 24)" \
-  --from-literal=internal="$(openssl rand -hex 24)"
+  --from-literal=internal="$(openssl rand -hex 24)" \
+  --from-literal=connexion="$(openssl rand -hex 24)" \
+  --from-literal=web-app="$(openssl rand -hex 24)" \
+  --from-literal=gateway-service="$(openssl rand -hex 24)"
 # Messagerie de travail (D-64) : clé AES-256-GCM du chiffrement au repos (32 octets en base 64).
 creer gimac-messagerie --from-literal=cle-chiffrement="$(openssl rand -base64 32)"
+# Clé AES-256-GCM des secrets de MS-IAM (enrôlement TOTP, mot de passe SMTP, D-65).
+creer gimac-iam --from-literal=cle-chiffrement="$(openssl rand -base64 32)"
 # Dépôt objet WORM de MS-DOCUMENT (D-50) : point d'accès et clés délivrés par l'exploitant de Ceph RGW.
 if [ -n "${GIMAC_S3_POINT_ACCES:-}" ] && [ -n "${GIMAC_S3_CLE_ACCES:-}" ] && [ -n "${GIMAC_S3_CLE_SECRETE:-}" ]; then
   creer gimac-stockage-objet --from-literal=point-acces="$GIMAC_S3_POINT_ACCES" \

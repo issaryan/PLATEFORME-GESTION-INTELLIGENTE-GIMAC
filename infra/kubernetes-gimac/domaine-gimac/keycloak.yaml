@@ -69,6 +69,22 @@ spec:
                 secretKeyRef:
                   name: gimac-clients-keycloak
                   key: internal
+            # Connexion sur la plateforme (D-65) : clients d'octroi direct et jeton de service de la passerelle.
+            - name: GIMAC_SECRET_CONNEXION
+              valueFrom:
+                secretKeyRef:
+                  name: gimac-clients-keycloak
+                  key: connexion
+            - name: GIMAC_SECRET_WEB_APP
+              valueFrom:
+                secretKeyRef:
+                  name: gimac-clients-keycloak
+                  key: web-app
+            - name: GIMAC_SECRET_GATEWAY_SERVICE
+              valueFrom:
+                secretKeyRef:
+                  name: gimac-clients-keycloak
+                  key: gateway-service
           volumeMounts:
             - name: keycloak-volume
               mountPath: /opt/keycloak/data/import

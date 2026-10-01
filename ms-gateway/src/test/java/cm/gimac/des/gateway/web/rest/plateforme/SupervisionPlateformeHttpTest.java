@@ -84,7 +84,7 @@ class SupervisionPlateformeHttpTest {
             .json("/management/loggers", 200, "{\"levels\":[\"OFF\",\"ERROR\",\"WARN\",\"INFO\",\"DEBUG\",\"TRACE\"],\"loggers\":{\"ROOT\":{\"configuredLevel\":\"INFO\",\"effectiveLevel\":\"INFO\"},\"cm.gimac.des\":{\"effectiveLevel\":\"INFO\"}}}")
             .repondre("/management/loggers/cm.gimac.des", 204, "application/json", "", 0);
         audit = new ServeurHttpLocal().json("/management/health", 503, "{\"status\":\"DOWN\",\"components\":{\"db\":{\"status\":\"DOWN\"}}}");
-        lent = new ServeurHttpLocal().repondre("/management/health", 200, "application/json", "{\"status\":\"UP\"}", 3000);
+        lent = new ServeurHttpLocal().repondre("/management/health", 200, "application/json", "{\"status\":\"UP\"}", 8000);
         ServeurHttpLocal arrete = new ServeurHttpLocal();
         adresseArretee = arrete.url();
         arrete.close();
@@ -103,7 +103,9 @@ class SupervisionPlateformeHttpTest {
                 "[{\"labels\":{\"alertname\":\"InstanceDown\",\"severity\":\"page\",\"instance\":\"audit:8082\",\"job\":\"services\"},\"annotations\":{\"summary\":\"Instance audit:8082 down\"},\"startsAt\":\"2026-09-29T09:59:00Z\",\"status\":{\"state\":\"active\"}}]"
             );
 
-        Duration delai = Duration.ofMillis(800);
+        // Délai par appel assez large pour une machine chargée (JVM froide, constructions parallèles) :
+        // avec 0,8 s, le décodage d'une réponse pourtant immédiate dépassait parfois le délai.
+        Duration delai = Duration.ofMillis(2500);
         List<ServiceCible> services = List.of(
             new ServiceCible("iam", iam.url()),
             new ServiceCible("audit", audit.url()),
@@ -186,8 +188,8 @@ class SupervisionPlateformeHttpTest {
             .isEqualTo("INJOIGNABLE")
             .jsonPath("$.keycloak.etat")
             .isEqualTo("UP");
-        // Le service lent (3 s) ne retarde pas la réponse au-delà du délai (0,8 s) et de la marge.
-        assertThat(Duration.ofNanos(System.nanoTime() - debut)).isLessThan(Duration.ofMillis(2800));
+        // Le service lent (8 s) ne retarde pas la réponse au-delà du délai (2,5 s) et de la marge.
+        assertThat(Duration.ofNanos(System.nanoTime() - debut)).isLessThan(Duration.ofMillis(6500));
         assertThat(iam.recues()).allSatisfy(r -> assertThat(r.autorisation()).isEqualTo("Bearer jeton-de-service"));
     }
 

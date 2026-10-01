@@ -26,3 +26,21 @@ spec:
               value: des.gimac.local
             - name: GIMAC_WEBAUTHN_ORIGINES
               value: https://departement.des.gimac.local,https://portail.des.gimac.local,https://console.des.gimac.local
+            # Connexion sur la plateforme (D-65) : vérification du mot de passe actuel, chiffrement au repos,
+            # liens des courriels de la plateforme.
+            - name: GIMAC_SECRET_CONNEXION
+              valueFrom:
+                secretKeyRef:
+                  name: gimac-clients-keycloak
+                  key: connexion
+            - name: GIMAC_IAM_CLE_CHIFFREMENT
+              valueFrom:
+                secretKeyRef:
+                  name: gimac-iam
+                  key: cle-chiffrement
+            - name: GIMAC_URL_DES
+              value: https://departement.des.gimac.local
+            - name: GIMAC_URL_PORTAIL
+              value: https://portail.des.gimac.local
+            - name: GIMAC_URL_CONSOLE
+              value: https://console.des.gimac.local
