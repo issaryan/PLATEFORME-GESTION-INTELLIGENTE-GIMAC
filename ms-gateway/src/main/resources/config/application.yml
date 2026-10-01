@@ -177,13 +177,29 @@ spring:
             # MS-IAM (D-62) : « Mon compte » et défi de réauthentification depuis chaque couche ;
             # comptes et configuration depuis la console seulement. Les routes /interne ne sont
             # jamais relayées (aucun prédicat ne les couvre, OPA les refuse).
+            # « Mon compte » (D-62, D-65, docs/lot1/mon-compte.md) : fiche, mot de passe (fermeture des autres
+            # sessions par la passerelle), code TOTP, photo de profil (PUT/DELETE/GET …/moi/avatar).
             - id: iam-libre-service
               uri: ${gimac.services.iam}
               predicates:
                 - Path=/bff/{couche}/iam/moi,/bff/{couche}/iam/moi/**,/bff/{couche}/iam/reauthentification/defi
               filters:
                 - OpaAuthorize
+                - FermetureAutresSessions
+                # Photo de profil : 2 Mo au plus (MS-IAM), corps multipart annoncé borné à 3 Mo, 413 au-delà.
+                - name: RequestSize
+                  args:
+                    maxSize: 3MB
                 - RewritePath=/bff/(?<couche>des|portail|console)/iam/(?<p>.*), /api/v1/${p}
+            # Photos de profil des collègues (mon-compte.md §1) : département et console seulement ; le
+            # portail n'a accès qu'à la photo de son titulaire (…/moi/avatar).
+            - id: iam-avatars
+              uri: ${gimac.services.iam}
+              predicates:
+                - Path=/bff/des/iam/avatars/**,/bff/console/iam/avatars/**
+              filters:
+                - OpaAuthorize
+                - RewritePath=/bff/(?<couche>des|console)/iam/avatars/(?<p>.*), /api/v1/avatars/${p}
             - id: console-iam
               uri: ${gimac.services.iam}
               predicates:
@@ -484,6 +500,11 @@ gimac:
     inactivite-max: PT30M
     duree-max: PT10H
     balayage: PT1M
+  # Appareils connectés et historique des connexions (docs/lot1/mon-compte.md §3) : rétention de
+  # l'historique (table historique_connexion de la base de la passerelle) et période de la purge.
+  appareils:
+    retention: P90D
+    purge: PT1H
   # Supervision de la plateforme (D-61, /api/plateforme/**) : les services supervisés sont la
   # passerelle et ceux de gimac.services ; chaque appel est borné par « delai ».
   supervision:

@@ -9,6 +9,7 @@ import cm.gimac.des.collaboration.domain.messagerie.Etiquette;
 import cm.gimac.des.collaboration.domain.messagerie.PieceJointe;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -23,15 +24,17 @@ public final class MessagerieVues {
 
     public record PageVue<T>(List<T> contenu, long total, int page, int taille) {}
 
-    public record PersonneVue(String id, String nom, String fonction, Set<String> profils) {
+    /** « avatarVersion » : version de la photo de profil, nulle sans photo (docs/lot1/mon-compte.md §1). */
+    public record PersonneVue(String id, String nom, String fonction, Set<String> profils, String avatarVersion) {
         static PersonneVue de(Collaborateur c) {
-            return new PersonneVue(c.id(), c.nom(), c.fonction(), c.profils());
+            return new PersonneVue(c.id(), c.nom(), c.fonction(), c.profils(), c.avatarVersion());
         }
     }
 
-    public record MembreVue(String id, String nom, String fonction) {
-        static MembreVue de(ConversationMembre m) {
-            return new MembreVue(m.getMembreId(), m.getNom(), m.getFonction());
+    /** Membre ou auteur : nom et fonction figés à l'entrée, photo de profil courante (avatarVersion). */
+    public record MembreVue(String id, String nom, String fonction, String avatarVersion) {
+        static MembreVue de(ConversationMembre m, Map<String, String> avatars) {
+            return new MembreVue(m.getMembreId(), m.getNom(), m.getFonction(), avatars.get(m.getMembreId()));
         }
     }
 
@@ -50,7 +53,7 @@ public final class MessagerieVues {
         Instant misAJourLe,
         Instant creeeLe
     ) {
-        static ConversationVue de(ConversationLue l) {
+        static ConversationVue de(ConversationLue l, Map<String, String> avatars) {
             Conversation c = l.conversation();
             var d = l.dernierMessage();
             return new ConversationVue(
@@ -58,7 +61,7 @@ public final class MessagerieVues {
                 c.getType().name(),
                 c.getTitre(),
                 c.getLiaisonId() == null ? null : new LiaisonVue(c.getLiaisonId(), c.getLiaisonReference()),
-                l.membres().stream().map(MembreVue::de).toList(),
+                l.membres().stream().map(m -> MembreVue.de(m, avatars)).toList(),
                 d == null ? null : new DernierMessageVue(d.id(), d.auteurNom(), d.extrait(), d.envoyeLe(), d.piecesJointes()),
                 l.nonLus(),
                 c.getMisAJourLe(),
@@ -83,12 +86,12 @@ public final class MessagerieVues {
         List<Etiquette> etiquettes,
         List<PieceVue> piecesJointes
     ) {
-        static MessageVue de(MessageLu l, String appelantId) {
+        static MessageVue de(MessageLu l, String appelantId, Map<String, String> avatars) {
             var m = l.message();
             return new MessageVue(
                 m.getId(),
                 m.getConversation().getId(),
-                new MembreVue(m.getAuteurId(), m.getAuteurNom(), m.getAuteurFonction()),
+                new MembreVue(m.getAuteurId(), m.getAuteurNom(), m.getAuteurFonction(), avatars.get(m.getAuteurId())),
                 m.getAuteurId().equals(appelantId),
                 l.contenu(),
                 m.getEnvoyeLe(),

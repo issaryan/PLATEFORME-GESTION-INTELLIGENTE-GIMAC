@@ -260,4 +260,33 @@ class MessagerieIT extends AbstractCollaborationIT {
         assertThat(jdbc.queryForObject("select count(*) from conversation", Integer.class)).isZero();
         assertThat(jdbc.queryForObject("select count(*) from outbox_event", Integer.class)).isZero();
     }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    cm.gimac.des.collaboration.application.port.out.CollaboratorDirectoryPort annuaireBean;
+
+    @Test
+    @DisplayName("mon-compte.md §1 : version de la photo de profil relayée dans l'annuaire, les membres et les auteurs")
+    void avatarVersion() throws Exception {
+        CollaboratorStubAdapter annuaire = (CollaboratorStubAdapter) annuaireBean;
+        var serge = annuaire.trouver(SERGE).orElseThrow();
+        annuaire.enregistrer(new cm.gimac.des.collaboration.domain.messagerie.Collaborateur(serge.id(), serge.nom(), serge.fonction(), serge.profils(), null, true, "0123456789abcdef"));
+        try {
+            mvc
+                .perform(get(BASE + "/annuaire?recherche=Ndzana").with(utilisateur(CLARISSE, MESSAGERIE)))
+                .andExpect(jsonPath("$.contenu[0].avatarVersion").value("0123456789abcdef"));
+            String id = directe(SERGE, CLARISSE, "Photo");
+            mvc
+                .perform(get(BASE + "/conversations/" + id).with(utilisateur(CLARISSE, MESSAGERIE)))
+                .andExpect(jsonPath("$.membres[?(@.id == '" + SERGE + "')].avatarVersion").value(org.hamcrest.Matchers.hasItem("0123456789abcdef")))
+                .andExpect(jsonPath("$.membres[?(@.id == '" + CLARISSE + "')].avatarVersion").value(org.hamcrest.Matchers.hasItem(org.hamcrest.Matchers.nullValue())));
+            mvc
+                .perform(get(BASE + "/conversations/" + id + "/messages").with(utilisateur(CLARISSE, MESSAGERIE)))
+                .andExpect(jsonPath("$.contenu[0].auteur.avatarVersion").value("0123456789abcdef"));
+            mvc
+                .perform(get(BASE + "/conversations").with(utilisateur(CLARISSE, MESSAGERIE)))
+                .andExpect(jsonPath("$.contenu[*].membres[?(@.id == '" + SERGE + "')].avatarVersion").value(org.hamcrest.Matchers.hasItem("0123456789abcdef")));
+        } finally {
+            annuaire.enregistrer(serge);
+        }
+    }
 }

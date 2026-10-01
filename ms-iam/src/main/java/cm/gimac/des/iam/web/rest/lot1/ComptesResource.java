@@ -1,6 +1,7 @@
 package cm.gimac.des.iam.web.rest.lot1;
 
 import cm.gimac.des.iam.application.usecase.AdministrationComptesService;
+import cm.gimac.des.iam.application.usecase.AvatarService;
 import cm.gimac.des.iam.domain.compte.Acteur;
 import cm.gimac.des.iam.domain.compte.ActionRequise;
 import cm.gimac.des.iam.domain.compte.Compte;
@@ -18,6 +19,7 @@ import jakarta.validation.constraints.Size;
 import java.net.URI;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -63,13 +65,22 @@ public class ComptesResource {
         boolean premierAccesEnAttente,
         List<String> profils,
         List<String> actionsRequises,
-        boolean secondFacteur
+        boolean secondFacteur,
+        String avatarVersion
     ) {
         static CompteVue de(Compte c) {
             return new CompteVue(
                 c.id(), c.identifiant(), c.prenom(), c.nom(), c.nomAffiche(), c.email(), c.emailVerifie(), c.actif(), c.creeLe(), c.telephone(),
                 c.fonction(), c.langue(), c.institutionId(), c.profilComplet(), c.premierAccesEnAttente(), c.profils().stream().sorted().toList(),
-                c.actionsRequises().stream().map(Enum::name).toList(), c.secondFacteur()
+                c.actionsRequises().stream().map(Enum::name).toList(), c.secondFacteur(), null
+            );
+        }
+
+        /** Même vue avec la version de la photo de profil (docs/lot1/mon-compte.md §1), nulle sans photo. */
+        CompteVue avecAvatar(String version) {
+            return new CompteVue(
+                id, identifiant, prenom, nom, nomAffiche, email, emailVerifie, actif, creeLe, telephone, fonction, langue, institutionId, profilComplet,
+                premierAccesEnAttente, profils, actionsRequises, secondFacteur, version
             );
         }
     }
@@ -118,11 +129,13 @@ public class ComptesResource {
     private final AdministrationComptesService service;
     private final JournalAdministrationRepository journal;
     private final ReauthAdministration reauth;
+    private final AvatarService avatars;
 
-    public ComptesResource(AdministrationComptesService service, JournalAdministrationRepository journal, ReauthAdministration reauth) {
+    public ComptesResource(AdministrationComptesService service, JournalAdministrationRepository journal, ReauthAdministration reauth, AvatarService avatars) {
         this.service = service;
         this.journal = journal;
         this.reauth = reauth;
+        this.avatars = avatars;
     }
 
     // ------------------------------------------------------------------ lectures
@@ -137,7 +150,8 @@ public class ComptesResource {
         @RequestParam(name = "taille", defaultValue = "25") int taille
     ) {
         var p = service.lister(new AdministrationComptesService.Filtre(q, profil, etat), page, taille);
-        return new PageVue<>(p.contenu().stream().map(CompteVue::de).toList(), p.total());
+        Map<String, String> versions = avatars.versions(p.contenu().stream().map(Compte::id).toList());
+        return new PageVue<>(p.contenu().stream().map(c -> CompteVue.de(c).avecAvatar(versions.get(c.id()))).toList(), p.total());
     }
 
     @GetMapping("/indicateurs")
@@ -161,7 +175,7 @@ public class ComptesResource {
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('IAM_ACCOUNT_READ')")
     public CompteVue lire(@PathVariable String id) {
-        return CompteVue.de(service.lire(id));
+        return CompteVue.de(service.lire(id)).avecAvatar(avatars.version(id).orElse(null));
     }
 
     @GetMapping("/{id}/sessions")

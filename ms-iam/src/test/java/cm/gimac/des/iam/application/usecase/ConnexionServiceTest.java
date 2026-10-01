@@ -194,4 +194,23 @@ class ConnexionServiceTest {
         assertThat(service.etat(agent).actionsRequises()).containsExactly(ActionRequise.SECOND_FACTEUR, ActionRequise.FICHE, ActionRequise.CHARTE);
         assertThat(Totp.base32(new byte[] { 1 })).isEqualTo("AE");
     }
+
+    @Test
+    @DisplayName("mon-compte.md §3 : alerte « nouvel appareil » au titulaire actif, dans sa couche, tracée ; rien pour un compte inactif ; 404 sinon")
+    void alerteNouvelAppareil() {
+        var connexion = new ConnexionService.NouvelleConnexion("Firefox 131", "Windows 10", "ORDINATEUR", "41.202.10.20", "des", Instant.parse("2026-10-01T08:30:00Z"));
+        assertThat(service.alerterNouvelAppareil(agent, connexion)).isTrue();
+        Courriel c = courriels.dernierPour("awa@gimac.test").orElseThrow();
+        assertThat(c.objet()).isEqualTo("Nouvelle connexion à votre compte");
+        assertThat(c.texte()).contains("Firefox 131 sur Windows 10, adresse IP 41.202.10.20, le 01/10/2026 08:30 (UTC)").contains("/des/mon-compte");
+        org.mockito.Mockito.verify(journal).compte(any(), org.mockito.ArgumentMatchers.eq("ALERTE_NOUVEL_APPAREIL"), org.mockito.ArgumentMatchers.eq(agent), org.mockito.ArgumentMatchers.eq("agent.sna"), org.mockito.ArgumentMatchers.isNull(), org.mockito.ArgumentMatchers.eq(List.of("Firefox 131 / Windows 10", "DES")));
+        // Valeurs absentes : remplacées, jamais « null ».
+        assertThat(service.alerterNouvelAppareil(agent, new ConnexionService.NouvelleConnexion(null, " ", null, null, null, null))).isTrue();
+        assertThat(courriels.dernierPour("awa@gimac.test").orElseThrow().texte()).contains("? sur ?, adresse IP ?").doesNotContain("null");
+        annuaire.definirActif(agent, false);
+        int avant = courriels.envoyes().size();
+        assertThat(service.alerterNouvelAppareil(agent, connexion)).isFalse();
+        assertThat(courriels.envoyes()).hasSize(avant);
+        refus(() -> service.alerterNouvelAppareil("inconnu", connexion), "IAM_ACCOUNT_NOT_FOUND");
+    }
 }

@@ -1,5 +1,6 @@
 package cm.gimac.des.iam.application.usecase;
 
+import cm.gimac.des.iam.domain.event.AvatarModifiePayload;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -62,5 +63,27 @@ class JournalActesTest {
             eq(ConfigurationModifieePayload.TYPE),
             eq(new ConfigurationModifieePayload("POLITIQUE_SECURITE", "demo-rssi", "Revue", List.of("longueurMinimale", "historique")))
         );
+    }
+
+    @Test
+    @DisplayName("Photo de profil : journal AVATAR_* et iam.avatar-changed.v1, sans l'image")
+    void avatar() {
+        JournalActes j = new JournalActes(journal, outbox, Clock.fixed(T, ZoneOffset.UTC));
+        j.avatar(RSSI, "demo-rssi", "rssi", "REMPLACEE", "0123456789abcdef");
+        j.avatar(RSSI, "demo-rssi", "rssi", "RETIREE", null);
+        ArgumentCaptor<JournalAdministration> e = ArgumentCaptor.forClass(JournalAdministration.class);
+        verify(journal, org.mockito.Mockito.times(2)).save(e.capture());
+        assertThat(e.getAllValues().get(0).getAction()).isEqualTo("AVATAR_REMPLACEE");
+        assertThat(e.getAllValues().get(0).getDetails()).isEqualTo("version 0123456789abcdef");
+        assertThat(e.getAllValues().get(1).getAction()).isEqualTo("AVATAR_RETIREE");
+        assertThat(e.getAllValues().get(1).getDetails()).isEmpty();
+        verify(outbox).publish(
+            eq("avatar"),
+            eq("demo-rssi"),
+            eq(AvatarModifiePayload.TYPE),
+            eq(new AvatarModifiePayload("demo-rssi", "rssi", "REMPLACEE", "0123456789abcdef", "demo-rssi"))
+        );
+        assertThat(AvatarModifiePayload.TYPE).isEqualTo("iam.avatar-changed.v1");
+        assertThat(new cm.gimac.des.iam.infrastructure.messaging.TopicResolver().topicFor(AvatarModifiePayload.TYPE)).isEqualTo("iam.avatar");
     }
 }

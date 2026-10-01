@@ -1,6 +1,7 @@
 package cm.gimac.des.iam.application.usecase;
 
 import cm.gimac.des.iam.domain.compte.Acteur;
+import cm.gimac.des.iam.domain.event.AvatarModifiePayload;
 import cm.gimac.des.iam.domain.event.CompteAdministrePayload;
 import cm.gimac.des.iam.domain.event.ConfigurationModifieePayload;
 import cm.gimac.des.iam.infrastructure.messaging.outbox.OutboxPublisher;
@@ -34,6 +35,18 @@ public class JournalActes {
     public void compte(Acteur acteur, String action, String compteId, String libelle, String motif, List<String> details) {
         journal.save(new JournalAdministration(clock.instant(), acteur.id(), acteur.nom(), action, compteId, libelle, motif, String.join(", ", details), CorrelationContext.current()));
         outbox.publish("account", compteId, CompteAdministrePayload.TYPE, new CompteAdministrePayload(action, compteId, libelle, acteur.id(), motif, details));
+    }
+
+    /**
+     * Photo de profil remplacée ou retirée (docs/lot1/mon-compte.md §1) : entrée du journal
+     * d'administration et événement iam.avatar-changed.v1, sans l'image.
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void avatar(Acteur acteur, String compteId, String identifiant, String action, String version) {
+        journal.save(
+            new JournalAdministration(clock.instant(), acteur.id(), acteur.nom(), "AVATAR_" + action, compteId, identifiant, null, version == null ? "" : "version " + version, CorrelationContext.current())
+        );
+        outbox.publish("avatar", compteId, AvatarModifiePayload.TYPE, new AvatarModifiePayload(compteId, identifiant, action, version, acteur.id()));
     }
 
     @Transactional(propagation = Propagation.MANDATORY)

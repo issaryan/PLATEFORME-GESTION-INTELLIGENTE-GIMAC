@@ -3,11 +3,15 @@ package cm.gimac.des.collaboration.infrastructure.client;
 import cm.gimac.des.collaboration.application.port.out.CollaboratorDirectoryPort;
 import cm.gimac.des.collaboration.domain.exception.CollaborationException;
 import cm.gimac.des.collaboration.domain.messagerie.Collaborateur;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
@@ -21,11 +25,16 @@ import org.springframework.web.client.RestClientException;
 @ConditionalOnProperty(name = "gimac.adaptateurs.annuaire", havingValue = "real")
 public class IamCollaboratorAdapter implements CollaboratorDirectoryPort {
 
-    record CollaborateurIam(String id, String nomAffiche, Set<String> profils, String institutionId, Boolean actif, String fonction) {
+    record CollaborateurIam(String id, String nomAffiche, Set<String> profils, String institutionId, Boolean actif, String fonction, String avatarVersion) {
         Collaborateur vue() {
-            return new Collaborateur(id, nomAffiche, fonction, profils, institutionId, Boolean.TRUE.equals(actif));
+            return new Collaborateur(id, nomAffiche, fonction, profils, institutionId, Boolean.TRUE.equals(actif), avatarVersion);
         }
     }
+
+    /** Identifiants par appel de /interne/collaborateurs/avatars (borne de MS-IAM). */
+    static final int LOT_VERSIONS = 200;
+
+    private static final ParameterizedTypeReference<Map<String, String>> VERSIONS = new ParameterizedTypeReference<>() {};
 
     /** Champs facultatifs : Jackson 3 refuse par défaut une valeur absente pour un type primitif. */
     record PageIam(List<CollaborateurIam> contenu, Long total, Integer page, Integer taille) {}
@@ -65,6 +74,28 @@ public class IamCollaboratorAdapter implements CollaboratorDirectoryPort {
         } catch (RestClientException | IllegalStateException e) {
             throw indisponible();
         }
+    }
+
+    @Override
+    public Map<String, String> versionsAvatar(Collection<String> ids) {
+        Map<String, String> versions = new HashMap<>();
+        List<String> liste = ids == null ? List.of() : ids.stream().filter(i -> i != null && !i.isBlank()).distinct().toList();
+        try {
+            for (int debut = 0; debut < liste.size(); debut += LOT_VERSIONS) {
+                List<String> lot = liste.subList(debut, Math.min(debut + LOT_VERSIONS, liste.size()));
+                Map<String, String> r = client
+                    .get()
+                    .uri(u -> u.path("/api/v1/interne/collaborateurs/avatars").queryParam("ids", lot.toArray()).build())
+                    .retrieve()
+                    .body(VERSIONS);
+                if (r != null) {
+                    versions.putAll(r);
+                }
+            }
+        } catch (RestClientException | IllegalStateException e) {
+            throw indisponible();
+        }
+        return versions;
     }
 
     private static CollaborationException indisponible() {

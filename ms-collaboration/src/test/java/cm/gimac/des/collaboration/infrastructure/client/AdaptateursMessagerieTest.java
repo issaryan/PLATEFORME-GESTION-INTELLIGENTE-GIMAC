@@ -213,4 +213,48 @@ class AdaptateursMessagerieTest {
         });
         assertThatThrownBy(() -> a.deposer(illisible, message, "moi")).isInstanceOf(java.io.UncheckedIOException.class);
     }
+
+    @Test
+    @DisplayName("mon-compte.md §1 : versions des photos par lots de 200 avec le jeton de service ; version relayée par l'annuaire ; panne : 503")
+    void versionsAvatarReel() {
+        RestClient.Builder b = RestClient.builder();
+        MockRestServiceServer serveur = MockRestServiceServer.bindTo(b).build();
+        IamCollaboratorAdapter a = new IamCollaboratorAdapter(b, jeton(), "http://iam");
+        java.util.List<String> ids = new java.util.ArrayList<>();
+        for (int i = 0; i < 201; i++) {
+            ids.add("u" + i);
+        }
+        serveur
+            .expect(org.springframework.test.web.client.match.MockRestRequestMatchers.requestToUriTemplate("http://iam/api/v1/interne/collaborateurs/avatars?ids={a}", "u0"))
+            .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
+        serveur
+            .expect(org.springframework.test.web.client.match.MockRestRequestMatchers.queryParam("ids", ids.subList(0, 200).toArray(String[]::new)))
+            .andExpect(header("Authorization", "Bearer jeton"))
+            .andRespond(withSuccess("{\"u1\":\"0123456789abcdef\"}", MediaType.APPLICATION_JSON));
+        serveur.expect(org.springframework.test.web.client.match.MockRestRequestMatchers.queryParam("ids", "u200")).andRespond(withSuccess("{\"u200\":\"fedcba9876543210\"}", MediaType.APPLICATION_JSON));
+        serveur.expect(requestTo("http://iam/api/v1/interne/collaborateurs/avatars?ids=u0")).andRespond(withServerError());
+        serveur
+            .expect(requestTo("http://iam/api/v1/interne/collaborateurs/" + ID))
+            .andRespond(withSuccess("{\"id\":\"" + ID + "\",\"nomAffiche\":\"A\",\"actif\":true,\"avatarVersion\":\"0123456789abcdef\"}", MediaType.APPLICATION_JSON));
+
+        assertThat(a.versionsAvatar(java.util.Arrays.asList("u0", null, " ", "u0"))).isEmpty();
+        assertThat(a.versionsAvatar(ids)).containsEntry("u1", "0123456789abcdef").containsEntry("u200", "fedcba9876543210").hasSize(2);
+        erreur(() -> a.versionsAvatar(java.util.List.of("u0")), "COL_DIRECTORY_UNAVAILABLE", 503);
+        assertThat(a.versionsAvatar(java.util.List.of())).isEmpty();
+        assertThat(a.versionsAvatar(null)).isEmpty();
+        assertThat(a.trouver(ID)).map(Collaborateur::avatarVersion).contains("0123456789abcdef");
+        serveur.verify();
+    }
+
+    @Test
+    @DisplayName("mon-compte.md §1 : annuaire de substitution, versions des photos des comptes connus seulement")
+    void versionsAvatarSubstitution() {
+        CollaboratorStubAdapter a = new CollaboratorStubAdapter();
+        a.enregistrer(new Collaborateur(CollaboratorStubAdapter.RSSI, "Clarisse Bilong", "RSSI", Set.of("ROLE_RSSI"), null, true, "0123456789abcdef"));
+        assertThat(a.versionsAvatar(java.util.Arrays.asList(CollaboratorStubAdapter.RSSI, CollaboratorStubAdapter.DDRM, "inconnu", null))).containsExactly(
+            java.util.Map.entry(CollaboratorStubAdapter.RSSI, "0123456789abcdef")
+        );
+        assertThat(a.versionsAvatar(null)).isEmpty();
+        assertThat(a.trouver(CollaboratorStubAdapter.DDRM)).map(Collaborateur::avatarVersion).isEmpty();
+    }
 }

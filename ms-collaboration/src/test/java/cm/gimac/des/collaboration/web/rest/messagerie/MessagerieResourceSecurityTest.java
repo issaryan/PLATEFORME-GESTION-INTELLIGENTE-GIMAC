@@ -304,4 +304,31 @@ class MessagerieResourceSecurityTest {
             );
         }
     }
+
+    @Test
+    @DisplayName("mon-compte.md §1 : avatarVersion dans l'annuaire, les membres des conversations et les auteurs des messages")
+    void avatarVersions() throws Exception {
+        UUID cid = CONVERSATION.getId();
+        when(lecture.annuaire(anyString(), any(), anyInt(), anyInt())).thenReturn(
+            new Page<>(List.of(new Collaborateur("aminata", "Aminata Ngono", "Conductrice", Set.of(), null, true, "0123456789abcdef")), 1, 0, 20)
+        );
+        when(lecture.versionsAvatar(any())).thenReturn(java.util.Map.of(MOI, "fedcba9876543210", "aminata", "0123456789abcdef"));
+        mvc.perform(request(HttpMethod.GET, "/api/v1/messagerie/annuaire").with(jeton("2", "COL_MESSAGE_READ"))).andExpect(jsonPath("$.contenu[0].avatarVersion").value("0123456789abcdef"));
+        mvc
+            .perform(request(HttpMethod.GET, "/api/v1/messagerie/conversations").with(jeton("2", "COL_MESSAGE_READ")))
+            .andExpect(jsonPath("$.contenu[0].membres[?(@.id == 'aminata')].avatarVersion").value(org.hamcrest.Matchers.hasItem("0123456789abcdef")))
+            .andExpect(jsonPath("$.contenu[0].membres[?(@.id == '" + MOI + "')].avatarVersion").value(org.hamcrest.Matchers.hasItem("fedcba9876543210")));
+        mvc
+            .perform(request(HttpMethod.GET, "/api/v1/messagerie/conversations/" + cid).with(jeton("2", "COL_MESSAGE_READ")))
+            .andExpect(jsonPath("$.membres[?(@.id == 'aminata')].avatarVersion").value(org.hamcrest.Matchers.hasItem("0123456789abcdef")));
+        mvc
+            .perform(request(HttpMethod.GET, "/api/v1/messagerie/conversations/" + cid + "/messages").with(jeton("2", "COL_MESSAGE_READ")))
+            .andExpect(jsonPath("$.contenu[0].auteur.avatarVersion").value("fedcba9876543210"));
+        verify(lecture, org.mockito.Mockito.atLeastOnce()).versionsAvatar(Set.of(MOI, "aminata"));
+        verify(lecture, org.mockito.Mockito.atLeastOnce()).versionsAvatar(Set.of(MOI));
+        when(lecture.versionsAvatar(any())).thenReturn(java.util.Map.of());
+        mvc
+            .perform(request(HttpMethod.GET, "/api/v1/messagerie/conversations/" + cid + "/messages").with(jeton("2", "COL_MESSAGE_READ")))
+            .andExpect(jsonPath("$.contenu[0].auteur.avatarVersion").value(org.hamcrest.Matchers.nullValue()));
+    }
 }

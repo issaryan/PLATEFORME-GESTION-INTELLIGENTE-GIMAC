@@ -92,8 +92,17 @@ collaboration_portail if regex.match(`^/bff/portail/collaboration(/|$)`, input.p
 # chacune des trois couches ; MS-IAM n'y expose que le compte du titulaire du jeton.
 libre_service if regex.match(`^/bff/(des|portail|console)/iam/(moi(/.*)?|reauthentification/defi)$`, input.path)
 
+# Photos de profil des collègues (docs/lot1/mon-compte.md §1) : DES et console, lecture seule, tout
+# utilisateur à deux facteurs ; le portail n'y a pas accès (seulement à la sienne, sous /iam/moi/avatar).
+avatars if regex.match(`^/bff/(des|console)/iam/avatars(/|$)`, input.path)
+
+avatar_collegue if {
+	input.method == "GET"
+	regex.match(`^/bff/(des|console)/iam/avatars/[^/]+$`, input.path)
+}
+
 # Dépôt d'une pièce depuis le DES : l'une des permissions d'instruction ou de soumission.
-permissions_depot_document := {"PAR_ADHESION_INSTRUCT", "HOM_EVIDENCE_SUBMIT", "DOC_DEPOSIT"}
+permissions_depot_document := {"PAR_ADHESION_INSTRUCT", "HOM_EVIDENCE_SUBMIT", "HOM_STEP_MANAGE", "CER_CHANGE_RECORD_LINK", "DOC_DEPOSIT"}
 
 depot_document_des if {
 	input.method == "POST"
@@ -164,6 +173,7 @@ allow if {
 	not required_permission
 	not portail
 	not messagerie
+	not avatars
 	startswith(input.path, "/bff/des/")
 	input.authentifie == true
 	double_facteur
@@ -183,4 +193,11 @@ allow if {
 	double_facteur
 	some p in input.permissions
 	p in permissions_depot_document
+}
+
+allow if {
+	not restreinte
+	avatar_collegue
+	input.authentifie == true
+	double_facteur
 }

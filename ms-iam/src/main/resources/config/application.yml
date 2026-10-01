@@ -156,6 +156,12 @@ spring:
     basename: i18n/messages
   main:
     allow-bean-definition-overriding: true
+  servlet:
+    # Photo de profil (docs/lot1/mon-compte.md §1) : la règle des 2 Mo est appliquée par le domaine
+    # (IAM_AVATAR_TOO_LARGE) ; au-delà de 3 Mo, la requête est refusée avant lecture (même code).
+    multipart:
+      max-file-size: 3MB
+      max-request-size: 3MB
   mvc:
     problemdetails:
       enabled: true

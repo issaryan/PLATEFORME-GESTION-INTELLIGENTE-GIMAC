@@ -103,6 +103,9 @@ public class SecurityConfiguration {
                     .pathMatchers("/api/admin/**").hasAuthority(AuthoritiesConstants.ADMIN)
                     // Supervision de la plateforme (D-61) : session à deux facteurs, puis permission par route (@PreAuthorize).
                     .pathMatchers("/api/plateforme/**").access(new DoubleFacteurAuthorizationManager(niveauxDoubleFacteur))
+                    // Appareils connectés et historique des connexions (mon-compte.md §3) : session à deux facteurs.
+                    .pathMatchers("/api/session/appareils", "/api/session/appareils/**", "/api/session/historique")
+                        .access(new DoubleFacteurAuthorizationManager(niveauxDoubleFacteur))
                     .pathMatchers("/api/**").authenticated()
                     .pathMatchers("/services/*/management/health/readiness").permitAll()
                     .pathMatchers("/services/*/v3/api-docs").hasAuthority(AuthoritiesConstants.ADMIN)

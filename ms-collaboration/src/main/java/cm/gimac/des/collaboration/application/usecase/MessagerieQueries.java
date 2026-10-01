@@ -15,6 +15,7 @@ import cm.gimac.des.collaboration.repository.ConversationRepository;
 import cm.gimac.des.collaboration.repository.MessageRepository;
 import cm.gimac.des.collaboration.repository.PieceJointeRepository;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -73,6 +74,19 @@ public class MessagerieQueries implements ConsulterMessagerieUseCase {
         List<Collaborateur> joignables = r.contenu().stream().filter(c -> !c.id().equals(appelantId) && c.joignable()).toList();
         boolean appelantRetire = r.contenu().stream().anyMatch(c -> c.id().equals(appelantId));
         return new Page<>(joignables, Math.max(0, r.total() - (appelantRetire ? 1 : 0)), p, t);
+    }
+
+    @Override
+    public Map<String, String> versionsAvatar(Collection<String> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return Map.of();
+        }
+        try {
+            return annuaire.versionsAvatar(ids);
+        } catch (CollaborationException e) {
+            LOG.warn("Versions des photos de profil indisponibles ({}) : initiales affichées", e.getMessage());
+            return Map.of();
+        }
     }
 
     @Override

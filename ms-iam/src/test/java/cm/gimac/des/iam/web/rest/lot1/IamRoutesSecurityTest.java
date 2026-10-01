@@ -16,6 +16,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import cm.gimac.des.iam.application.usecase.AdministrationComptesService;
+import cm.gimac.des.iam.application.usecase.AvatarService;
 import cm.gimac.des.iam.application.usecase.ConfigurationAuthentificationService;
 import cm.gimac.des.iam.application.usecase.ConnexionService;
 import cm.gimac.des.iam.application.usecase.MonCompteService;
@@ -36,6 +37,7 @@ import cm.gimac.des.iam.web.rest.errors.IamExceptionHandler;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
@@ -75,6 +77,7 @@ import tech.jhipster.config.JHipsterProperties;
         ConfigurationAuthentificationResource.class,
         CollaborateursInternesResource.class,
         ConnexionInterneResource.class,
+        AvatarResource.class,
     }
 )
 @Import({ SecurityConfiguration.class, TestSecurityConfiguration.class, IamExceptionHandler.class, ReauthAdministration.class })
@@ -96,6 +99,9 @@ class IamRoutesSecurityTest {
         "{\"politique\":{\"longueurMinimale\":14,\"majusculesMin\":1,\"minusculesMin\":1,\"chiffresMin\":1,\"speciauxMin\":1,\"historique\":5,\"expirationJours\":90,\"interditIdentifiant\":true,\"otpChiffres\":6,\"otpPeriodeSecondes\":30,\"otpAlgorithme\":\"HmacSHA256\",\"sessionInactiviteMinutes\":30,\"sessionDureeMaxHeures\":10,\"forceBruteActive\":true,\"forceBruteEchecsMax\":5,\"forceBruteAttenteMinutes\":15},\"motif\":\"Revue\"}";
     static final String MESSAGERIE =
         "{\"messagerie\":{\"hote\":\"smtp.gimac.cm\",\"port\":587,\"expediteur\":\"des@gimac.cm\",\"starttls\":true,\"authentification\":false},\"motif\":\"Mise en service\"}";
+    static final String ALERTE =
+        "{\"navigateur\":\"Firefox 131\",\"systeme\":\"Windows 10\",\"type\":\"ORDINATEUR\",\"adresseIp\":\"41.202.10.20\",\"couche\":\"des\",\"le\":\"2026-10-01T08:30:00Z\"}";
+    static final byte[] PNG = { (byte) 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A };
     static final String PERMISSIONS = "{\"permissions\":[\"PAR_INSTITUTION_READ\"],\"motif\":\"Revue\"}";
 
     static final List<String> PERMISSIONS_IAM = List.of(
@@ -134,12 +140,15 @@ class IamRoutesSecurityTest {
     @MockitoBean
     ConnexionService connexion;
 
+    @MockitoBean
+    AvatarService avatars;
+
     Compte compte;
 
     @BeforeEach
     void init() {
         compte = new Compte(ID, "agent.ddrm", "Awa", "Mballa", "awa@gimac.cm", true, true, Instant.EPOCH, null, null, "fr", null, false, Set.of("ROLE_CHARGE_DDRM"), List.of(ActionRequise.MOT_DE_PASSE), false);
-        var mc = new MonCompteService.MonCompte(compte, 1, 2, List.of("FICHE"));
+        var mc = new MonCompteService.MonCompte(compte, 1, 2, List.of("FICHE"), null);
         var politique = new PolitiqueSecurite(14, 1, 1, 1, 1, 5, 90, true, 6, 30, "HmacSHA256", 30, 10, true, 5, 15);
         var messagerie = new ConfigurationMessagerie("smtp.gimac.cm", 587, "des@gimac.cm", null, true, false, false, null, null, false);
         var profil = new Profil("ROLE_CHARGE_DDRM", "Chargé DDRM", Set.of("PAR_INSTITUTION_READ"), false, 3);
@@ -306,7 +315,8 @@ class IamRoutesSecurityTest {
         return Stream.of(
             Arguments.of(HttpMethod.GET, "/api/v1/interne/comptes/" + ID + "/etat-connexion", null, 200),
             Arguments.of(HttpMethod.POST, "/api/v1/interne/connexion/mot-de-passe-oublie", "{\"identifiant\":\"agent\",\"couche\":\"des\"}", 202),
-            Arguments.of(HttpMethod.POST, "/api/v1/interne/connexion/nouveau-mot-de-passe", "{\"jeton\":\"abc\",\"motDePasse\":\"Nouveau-Mot-2026!\"}", 204)
+            Arguments.of(HttpMethod.POST, "/api/v1/interne/connexion/nouveau-mot-de-passe", "{\"jeton\":\"abc\",\"motDePasse\":\"Nouveau-Mot-2026!\"}", 204),
+            Arguments.of(HttpMethod.POST, "/api/v1/interne/comptes/" + ID + "/alerte-connexion", ALERTE, 204)
         );
     }
 
@@ -364,7 +374,7 @@ class IamRoutesSecurityTest {
         verify(moi).confirmerTotp(any(), eq(UUID.fromString(ENROLEMENT)), eq("123456"), eq("Téléphone"), eq("valide"));
         mvc.perform(req(HttpMethod.POST, "/api/v1/moi/second-facteur/totp", "{\"code\":\"123456\"}").with(jeton("1"))).andExpect(status().isBadRequest());
         mvc.perform(req(HttpMethod.POST, "/api/v1/moi/mot-de-passe", MOT_DE_PASSE).with(jeton("1"))).andExpect(status().isNoContent());
-        verify(moi).changerMotDePasse(any(), eq("Ancien-Mot-2026!"), eq("Nouveau-Mot-2026!"));
+        verify(moi).changerMotDePasse(any(), eq("Ancien-Mot-2026!"), eq("Nouveau-Mot-2026!"), eq(false), org.mockito.ArgumentMatchers.isNull());
         // Aucune trace des secrets dans la représentation des requêtes.
         assertThat(new MonCompteResource.MotDePasseRequest("a1", "b2").toString()).doesNotContain("a1").doesNotContain("b2");
         assertThat(new MonCompteResource.TotpRequest(UUID.fromString(ENROLEMENT), "654321", null).toString()).doesNotContain("654321");
@@ -513,5 +523,156 @@ class IamRoutesSecurityTest {
         mvc.perform(req(HttpMethod.POST, "/api/v1/comptes", CREATION.replace("[\"ROLE_CHARGE_DDRM\"]", "[]")).with(jeton("2", "IAM_ACCOUNT_CREATE"))).andExpect(status().isBadRequest());
         mvc.perform(req(HttpMethod.POST, "/api/v1/comptes/" + ID + "/desactivation", "{}").with(jeton("2", "IAM_ACCOUNT_STATUS"))).andExpect(status().isBadRequest());
         verify(comptes, never()).definirActif(any(), anyString(), eq(false), any());
+    }
+
+    // ------------------------------------------------------------------ « Mon compte » : photo, mot de passe, alerte (mon-compte.md)
+
+    static org.springframework.test.web.servlet.request.AbstractMockHttpServletRequestBuilder<?> envoiAvatar(byte[] octets) {
+        return org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart(HttpMethod.PUT, "/api/v1/moi/avatar").file(
+            new org.springframework.mock.web.MockMultipartFile("image", "photo.png", "image/png", octets)
+        );
+    }
+
+    @Test
+    @DisplayName("mon-compte.md §1 : routes de la photo, 401 sans jeton, 403 sans second facteur (acr 1 compris), accès en acr 2 et 3")
+    void avatarMatrice() throws Exception {
+        when(avatars.remplacer(any(), any())).thenReturn("0123456789abcdef");
+        when(avatars.lire(anyString())).thenReturn(Optional.of(new cm.gimac.des.iam.domain.service.TraitementAvatar.ImageAvatar(PNG, "image/png", "0123456789abcdef")));
+        List<org.springframework.test.web.servlet.request.AbstractMockHttpServletRequestBuilder<?>> routes = List.of(
+            envoiAvatar(PNG),
+            request(HttpMethod.DELETE, "/api/v1/moi/avatar"),
+            request(HttpMethod.GET, "/api/v1/moi/avatar"),
+            request(HttpMethod.GET, "/api/v1/avatars/" + ID + "?v=0123456789abcdef")
+        );
+        List<Integer> attendus = List.of(200, 204, 200, 200);
+        for (int i = 0; i < routes.size(); i++) {
+            mvc.perform(routes.get(i)).andExpect(status().isUnauthorized());
+            mvc.perform(routes.get(i).with(jeton(null))).andExpect(status().isForbidden());
+            mvc.perform(routes.get(i).with(jeton("1"))).andExpect(status().isForbidden());
+            mvc.perform(routes.get(i).with(jeton("2"))).andExpect(status().is(attendus.get(i)));
+            mvc.perform(routes.get(i).with(jeton("3"))).andExpect(status().is(attendus.get(i)));
+        }
+    }
+
+    @Test
+    @DisplayName("mon-compte.md §1 : formes (version, image en cache privé immuable, 404 sans photo, portail limité à sa propre photo, refus)")
+    void avatarFormes() throws Exception {
+        when(avatars.remplacer(any(), any())).thenReturn("0123456789abcdef");
+        mvc.perform(envoiAvatar(PNG).with(jeton("2"))).andExpect(status().isOk()).andExpect(jsonPath("$.version").value("0123456789abcdef"));
+        verify(avatars).remplacer(org.mockito.ArgumentMatchers.argThat(a -> a.id().equals("demo-super-admin")), eq(PNG));
+        mvc
+            .perform(envoiAvatar(new byte[0]).with(jeton("2")))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("IAM_AVATAR_UNREADABLE"));
+        mvc
+            .perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart(HttpMethod.PUT, "/api/v1/moi/avatar").with(jeton("2")))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("IAM_AVATAR_UNREADABLE"));
+        when(avatars.remplacer(any(), eq(new byte[] { 1, 2, 3 }))).thenThrow(new org.springframework.web.multipart.MaxUploadSizeExceededException(3L));
+        mvc
+            .perform(envoiAvatar(new byte[] { 1, 2, 3 }).with(jeton("2")))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("IAM_AVATAR_TOO_LARGE"));
+        when(avatars.remplacer(any(), eq(new byte[] { 4 }))).thenThrow(IamException.invalide("IAM_AVATAR_TYPE", "Format refusé", Map.of()));
+        mvc.perform(envoiAvatar(new byte[] { 4 }).with(jeton("2"))).andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("IAM_AVATAR_TYPE"));
+
+        var image = new cm.gimac.des.iam.domain.service.TraitementAvatar.ImageAvatar(PNG, "image/png", "0123456789abcdef");
+        when(avatars.lire(ID)).thenReturn(Optional.of(image));
+        when(avatars.lire("demo-super-admin")).thenReturn(Optional.of(image));
+        when(avatars.lire("sans-photo")).thenReturn(Optional.empty());
+        mvc
+            .perform(request(HttpMethod.GET, "/api/v1/avatars/" + ID).with(jeton("2")))
+            .andExpect(status().isOk())
+            .andExpect(header().string("Content-Type", "image/png"))
+            .andExpect(header().string("Cache-Control", org.hamcrest.Matchers.allOf(org.hamcrest.Matchers.containsString("max-age=86400"), org.hamcrest.Matchers.containsString("private"), org.hamcrest.Matchers.containsString("immutable"))))
+            .andExpect(header().string("ETag", "\"0123456789abcdef\""))
+            .andExpect(result -> assertThat(result.getResponse().getContentAsByteArray()).isEqualTo(PNG));
+        mvc
+            .perform(request(HttpMethod.GET, "/api/v1/avatars/sans-photo").with(jeton("2")))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.code").value("IAM_AVATAR_NOT_FOUND"));
+        // Correspondant d'un participant (portail) : sa propre photo seulement.
+        var correspondant = jwt().jwt(j -> j.subject("demo-super-admin").claim("acr", "2").claim("institution_id", "INST-0042"));
+        mvc.perform(request(HttpMethod.GET, "/api/v1/avatars/" + ID).with(correspondant)).andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("IAM_AVATAR_FORBIDDEN"));
+        mvc.perform(request(HttpMethod.GET, "/api/v1/avatars/demo-super-admin").with(correspondant)).andExpect(status().isOk());
+        mvc.perform(request(HttpMethod.GET, "/api/v1/moi/avatar").with(correspondant)).andExpect(status().isOk());
+        var institutionVide = jwt().jwt(j -> j.subject("demo-super-admin").claim("acr", "2").claim("institution_id", " "));
+        mvc.perform(request(HttpMethod.GET, "/api/v1/avatars/" + ID).with(institutionVide)).andExpect(status().isOk());
+        assertThat(AvatarResource.correspondant(null)).isFalse();
+    }
+
+    @Test
+    @DisplayName("mon-compte.md §1 : avatarVersion dans GET /moi, la liste et la fiche des comptes, l'annuaire interne")
+    void avatarVersions() throws Exception {
+        var mc = new MonCompteService.MonCompte(compte, 1, 2, List.of(), "0123456789abcdef");
+        when(moi.moi(any())).thenReturn(mc);
+        when(avatars.version(ID)).thenReturn(Optional.of("0123456789abcdef"));
+        when(avatars.versions(any())).thenReturn(Map.of(ID, "0123456789abcdef"));
+        mvc
+            .perform(req(HttpMethod.GET, "/api/v1/moi", null).with(jeton("2")))
+            .andExpect(jsonPath("$.avatarVersion").value("0123456789abcdef"))
+            .andExpect(jsonPath("$.compte.avatarVersion").value("0123456789abcdef"));
+        mvc.perform(req(HttpMethod.GET, "/api/v1/comptes", null).with(jeton("2", "IAM_ACCOUNT_READ"))).andExpect(jsonPath("$.contenu[0].avatarVersion").value("0123456789abcdef"));
+        mvc.perform(req(HttpMethod.GET, "/api/v1/comptes/" + ID, null).with(jeton("2", "IAM_ACCOUNT_READ"))).andExpect(jsonPath("$.avatarVersion").value("0123456789abcdef"));
+        var service = jwt().authorities(new SimpleGrantedAuthority("INTERNAL_IAM_READ"));
+        mvc.perform(req(HttpMethod.GET, "/api/v1/interne/collaborateurs/" + ID, null).with(service)).andExpect(jsonPath("$.avatarVersion").value("0123456789abcdef"));
+        when(comptes.annuaireInterne(null, 0, 20)).thenReturn(new AdministrationComptesService.PageAnnuaire(List.of(compte), 1, 0, 20));
+        mvc
+            .perform(req(HttpMethod.GET, "/api/v1/interne/collaborateurs", null).with(service))
+            .andExpect(jsonPath("$.contenu[0].avatarVersion").value("0123456789abcdef"));
+        when(avatars.versions(any())).thenReturn(Map.of());
+        mvc.perform(req(HttpMethod.GET, "/api/v1/interne/collaborateurs", null).with(service)).andExpect(jsonPath("$.contenu[0].avatarVersion").value(org.hamcrest.Matchers.nullValue()));
+    }
+
+    @Test
+    @DisplayName("mon-compte.md §2 : fermerAutresSessions transmis avec la session courante (sid) ; en-tête pour la passerelle")
+    void motDePasseFermerAutresSessions() throws Exception {
+        String corps = MOT_DE_PASSE.replace("}", ",\"fermerAutresSessions\":true}");
+        var avecSid = jwt().jwt(j -> j.subject("demo-super-admin").claim("acr", "2").claim("sid", "kc-session-1"));
+        mvc
+            .perform(req(HttpMethod.POST, "/api/v1/moi/mot-de-passe", corps).with(avecSid))
+            .andExpect(status().isNoContent())
+            .andExpect(header().string(MonCompteResource.EN_TETE_FERMER_AUTRES_SESSIONS, "1"));
+        verify(moi).changerMotDePasse(any(), eq("Ancien-Mot-2026!"), eq("Nouveau-Mot-2026!"), eq(true), eq("kc-session-1"));
+        mvc
+            .perform(req(HttpMethod.POST, "/api/v1/moi/mot-de-passe", MOT_DE_PASSE).with(avecSid))
+            .andExpect(status().isNoContent())
+            .andExpect(header().doesNotExist(MonCompteResource.EN_TETE_FERMER_AUTRES_SESSIONS));
+        assertThat(new MonCompteResource.MotDePasseRequest("a1", "b2", true).toString()).doesNotContain("a1").doesNotContain("b2").contains("fermerAutresSessions=true");
+    }
+
+    @Test
+    @DisplayName("mon-compte.md §3 : alerte « nouvel appareil » transmise au service avec la connexion décrite")
+    void alerteConnexion() throws Exception {
+        mvc
+            .perform(req(HttpMethod.POST, "/api/v1/interne/comptes/" + ID + "/alerte-connexion", ALERTE).with(service("gateway-service", "INTERNAL_IAM_READ")))
+            .andExpect(status().isNoContent());
+        verify(connexion, org.mockito.Mockito.atLeastOnce()).alerterNouvelAppareil(
+            eq(ID),
+            eq(new ConnexionService.NouvelleConnexion("Firefox 131", "Windows 10", "ORDINATEUR", "41.202.10.20", "des", Instant.parse("2026-10-01T08:30:00Z")))
+        );
+        mvc
+            .perform(req(HttpMethod.POST, "/api/v1/interne/comptes/" + ID + "/alerte-connexion", "{\"navigateur\":\"" + "x".repeat(101) + "\"}").with(service("gateway-service", "INTERNAL_IAM_READ")))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("mon-compte.md §1 : versions des photos par lot, jeton de service INTERNAL_IAM_READ seulement, 200 identifiants au plus")
+    void versionsAvatarsInternes() throws Exception {
+        String uri = "/api/v1/interne/collaborateurs/avatars?ids=u1&ids=u2&ids=u1&ids=";
+        mvc.perform(req(HttpMethod.GET, uri, null)).andExpect(status().isUnauthorized());
+        mvc.perform(req(HttpMethod.GET, uri, null).with(jeton("2", PERMISSIONS_IAM.toArray(String[]::new)))).andExpect(status().isForbidden());
+        when(avatars.versions(List.of("u1", "u2"))).thenReturn(Map.of("u1", "0123456789abcdef"));
+        mvc
+            .perform(req(HttpMethod.GET, uri, null).with(jwt().authorities(new SimpleGrantedAuthority("INTERNAL_IAM_READ"))))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.u1").value("0123456789abcdef"))
+            .andExpect(jsonPath("$.u2").doesNotExist());
+        StringBuilder beaucoup = new StringBuilder("/api/v1/interne/collaborateurs/avatars?ids=x0");
+        for (int i = 1; i < 250; i++) {
+            beaucoup.append("&ids=x").append(i);
+        }
+        mvc.perform(req(HttpMethod.GET, beaucoup.toString(), null).with(jwt().authorities(new SimpleGrantedAuthority("INTERNAL_IAM_READ")))).andExpect(status().isOk());
+        verify(avatars).versions(org.mockito.ArgumentMatchers.argThat(l -> l.size() == 200));
     }
 }

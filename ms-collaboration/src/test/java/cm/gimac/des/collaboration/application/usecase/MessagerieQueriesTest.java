@@ -230,4 +230,15 @@ class MessagerieQueriesTest {
         introuvable(() -> queries.piece("moi", inconnue), "COL_ATTACHMENT_NOT_FOUND");
         org.mockito.Mockito.verify(documents, org.mockito.Mockito.times(1)).lire(any());
     }
+
+    @Test
+    @DisplayName("mon-compte.md §1 : versions des photos relayées ; annuaire en panne : vide, la lecture n'échoue pas")
+    void versionsAvatar() {
+        when(annuaire.versionsAvatar(java.util.Set.of("a"))).thenReturn(java.util.Map.of("a", "v1"));
+        assertThat(queries.versionsAvatar(java.util.Set.of("a"))).containsEntry("a", "v1");
+        when(annuaire.versionsAvatar(java.util.Set.of("b"))).thenThrow(cm.gimac.des.collaboration.domain.exception.CollaborationException.indisponible("COL_DIRECTORY_UNAVAILABLE", "panne"));
+        assertThat(queries.versionsAvatar(java.util.Set.of("b"))).isEmpty();
+        assertThat(queries.versionsAvatar(java.util.Set.of())).isEmpty();
+        assertThat(queries.versionsAvatar(null)).isEmpty();
+    }
 }

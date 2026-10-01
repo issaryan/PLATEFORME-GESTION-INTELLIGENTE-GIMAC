@@ -54,3 +54,28 @@ les sessions Keycloak correspondantes. Courriel d'information au titulaire aprè
   mon code TOTP », « Appareils connectés » (session courante marquée, fermer une session ou toutes les
   autres, en modale de confirmation), « Historique des connexions » (paginé).
 - Toutes ces actions en modale CRUD standard ; captures en clair et en sombre.
+
+## 5. Précisions de la mise en œuvre serveur (01/10/2026)
+
+Ajouts minimaux au contrat, sans changer ce qui précède :
+
+- MS-IAM : `GET /api/v1/moi/avatar` (photo du titulaire, mêmes en-têtes que `/avatars/{compteId}`), seule
+  lecture ouverte au portail par `/bff/portail/iam/moi/avatar`. Image conservée et servie en `image/png`.
+  Refus `IAM_AVATAR_*` en 400 ; `IAM_AVATAR_NOT_FOUND` (404, sans photo) ; `IAM_AVATAR_FORBIDDEN` (403,
+  jeton portant `institution_id` lisant la photo d'un autre compte).
+- `avatarVersion` figure aussi dans `compte` de `GET /api/v1/moi` et dans la liste et la fiche des comptes
+  de la console (`/api/v1/comptes`, `/api/v1/comptes/{id}`).
+- Interne : `GET /api/v1/interne/collaborateurs/avatars?ids=…&ids=…` (`INTERNAL_IAM_READ`, 200 identifiants
+  au plus) → `{ "<compteId>": "<version>" }` ; MS-COLLABORATION y lit les versions des membres et des
+  auteurs (annuaire injoignable : versions absentes, initiales affichées, jamais d'échec de lecture).
+- `POST /api/v1/interne/comptes/{id}/alerte-connexion` : corps `{ "navigateur", "systeme", "type",
+  "adresseIp", "couche", "le" }`, 204 ; rien n'est envoyé à un compte inactif ; 404 compte inconnu.
+- §2 : MS-IAM ferme les sessions Keycloak autres que celle du jeton (claim `sid`) et signale l'option à la
+  passerelle par l'en-tête de réponse `X-Gimac-Fermer-Autres-Sessions: 1` ; la passerelle ferme alors les
+  autres sessions du compte et retire l'en-tête (jamais transmis au navigateur).
+- §3 : `DELETE /api/session/appareils/{id}` d'une session inconnue ou d'un autre compte : 404
+  `CNX_APPAREIL_INCONNU` ; historique indisponible : 503 `CNX_HISTORIQUE_INDISPONIBLE`. Dans l'historique,
+  l'adresse est aussi masquée au dernier octet. `BLOQUEE` couvre la limitation (429), le compte inactif et la
+  couche refusée ; l'étape intermédiaire `CODE_REQUIS` n'est pas inscrite. Nouvel appareil : familles du
+  navigateur et du système (sans versions) jamais vues dans une connexion réussie du compte ; aucune alerte à
+  la toute première connexion réussie d'un compte.

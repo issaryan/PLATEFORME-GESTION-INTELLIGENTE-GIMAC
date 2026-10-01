@@ -372,3 +372,53 @@ test_session_complete_mon_compte if authz.allow with input as {
 test_session_complete_acr_1_refusee if not authz.allow with input as {
 	"method": "GET", "path": "/bff/des/iam/moi", "permissions": [], "authentifie": true, "acr": "1", "restreinte": false,
 }
+
+# « Mon compte » (docs/lot1/mon-compte.md §1) : photo du titulaire depuis chaque couche, acr 2 exigé.
+test_photo_du_titulaire_chaque_couche if {
+	every r in [["PUT", "/bff/des/iam/moi/avatar"], ["DELETE", "/bff/portail/iam/moi/avatar"], ["GET", "/bff/console/iam/moi/avatar"], ["GET", "/bff/portail/iam/moi/avatar"]] {
+		authz.allow with input as {"method": r[0], "path": r[1], "permissions": [], "institution_id": "", "authentifie": true, "acr": "2"}
+	}
+}
+
+test_photo_du_titulaire_sans_second_facteur_refusee if {
+	every acr in ["1", "", "0"] {
+		not authz.allow with input as {"method": "PUT", "path": "/bff/des/iam/moi/avatar", "permissions": [], "authentifie": true, "acr": acr}
+	}
+}
+
+test_photo_du_titulaire_hors_assistant_en_session_restreinte if {
+	every m in ["GET", "PUT", "DELETE"] {
+		not authz.allow with input as {"method": m, "path": "/bff/des/iam/moi/avatar", "permissions": [], "authentifie": true, "acr": "1", "restreinte": true}
+	}
+}
+
+test_photo_d_un_collegue_des_et_console if {
+	every c in ["des", "console"] {
+		authz.allow with input as {"method": "GET", "path": sprintf("/bff/%s/iam/avatars/u-123", [c]), "permissions": [], "authentifie": true, "acr": "2"}
+	}
+}
+
+test_photo_d_un_collegue_acr_3 if authz.allow with input as {"method": "GET", "path": "/bff/des/iam/avatars/u-123", "permissions": [], "authentifie": true, "acr": "3"}
+
+test_photo_d_un_collegue_refusee_au_portail if not authz.allow with input as {
+	"method": "GET", "path": "/bff/portail/iam/avatars/u-123", "permissions": ["HOM_PORTAL_READ"], "institution_id": "INST-0042",
+	"authentifie": true, "acr": "2",
+}
+
+test_photo_d_un_collegue_sans_second_facteur_refusee if not authz.allow with input as {
+	"method": "GET", "path": "/bff/des/iam/avatars/u-123", "permissions": [], "authentifie": true, "acr": "1",
+}
+
+test_photo_d_un_collegue_sans_authentification_refusee if not authz.allow with input as {
+	"method": "GET", "path": "/bff/console/iam/avatars/u-123", "permissions": [], "authentifie": false, "acr": "2",
+}
+
+test_photo_d_un_collegue_session_restreinte_refusee if not authz.allow with input as {
+	"method": "GET", "path": "/bff/des/iam/avatars/u-123", "permissions": [], "authentifie": true, "acr": "2", "restreinte": true,
+}
+
+test_photo_d_un_collegue_lecture_seule if {
+	every r in [["PUT", "/bff/des/iam/avatars/u-123"], ["DELETE", "/bff/console/iam/avatars/u-123"], ["GET", "/bff/des/iam/avatars"], ["GET", "/bff/des/iam/avatars/u-1/autre"]] {
+		not authz.allow with input as {"method": r[0], "path": r[1], "permissions": [], "authentifie": true, "acr": "2"}
+	}
+}

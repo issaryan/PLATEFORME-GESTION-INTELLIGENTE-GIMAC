@@ -273,4 +273,25 @@ class AdaptateursConnexionTest {
         when(g.authorize(any())).thenReturn(Mono.error(new IllegalStateException("panne")));
         assertThat(new JetonServicePasserelle(g).get().blockOptional()).isEmpty();
     }
+
+    @Test
+    @DisplayName("mon-compte.md §3 : alerte « nouvel appareil » transmise à MS-IAM avec le jeton de service ; refus : erreur")
+    void alerteNouvelAppareil() throws IOException {
+        try (ServeurHttpLocal iam = new ServeurHttpLocal()) {
+            iam.json("/api/v1/interne/comptes/u1/alerte-connexion", 204, "");
+            IamAnnuaireComptes annuaire = new IamAnnuaireComptes(WebClient.builder().baseUrl(iam.url()).build(), () -> Mono.just("jeton-service"), Duration.ofSeconds(3));
+            var appareil = new cm.gimac.des.gateway.domain.appareils.Appareil("Safari 17", "iOS 17", cm.gimac.des.gateway.domain.appareils.TypeAppareil.MOBILE);
+            annuaire.alerter("u1", appareil, "41.202.10.20", "des", java.time.Instant.parse("2026-10-01T08:30:00Z")).block();
+            var recue = iam.recues().get(0);
+            assertThat(recue.methode()).isEqualTo("POST");
+            assertThat(recue.autorisation()).isEqualTo("Bearer jeton-service");
+            assertThat(recue.corps())
+                .contains("\"navigateur\":\"Safari 17\"")
+                .contains("\"type\":\"MOBILE\"")
+                .contains("\"adresseIp\":\"41.202.10.20\"")
+                .contains("\"le\":\"2026-10-01T08:30:00Z\"");
+            annuaire.alerter("u1", appareil, null, null, null).block();
+            org.assertj.core.api.Assertions.assertThatThrownBy(() -> annuaire.alerter("inconnu", appareil, "ip", "des", null).block()).isNotNull();
+        }
+    }
 }

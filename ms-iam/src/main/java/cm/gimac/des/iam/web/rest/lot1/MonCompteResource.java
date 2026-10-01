@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -33,11 +34,19 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/moi")
 public class MonCompteResource {
 
-    public record MoiVue(CompteVue compte, long clesSecurite, int sessions, List<String> etapesRestantes) {
+    /** « avatarVersion » : version de la photo de profil, nulle sans photo (docs/lot1/mon-compte.md §1). */
+    public record MoiVue(CompteVue compte, long clesSecurite, int sessions, List<String> etapesRestantes, String avatarVersion) {
         static MoiVue de(MonCompteService.MonCompte m) {
-            return new MoiVue(CompteVue.de(m.compte()), m.clesSecurite(), m.sessions(), m.etapesRestantes());
+            return new MoiVue(CompteVue.de(m.compte()).avecAvatar(m.avatarVersion()), m.clesSecurite(), m.sessions(), m.etapesRestantes(), m.avatarVersion());
         }
     }
+
+    /**
+     * En-tête de la réponse de POST /moi/mot-de-passe quand les autres sessions doivent être fermées
+     * (docs/lot1/mon-compte.md §2) : la passerelle, porteuse des sessions, ferme alors les autres
+     * sessions du compte et retire l'en-tête avant de répondre au navigateur.
+     */
+    public static final String EN_TETE_FERMER_AUTRES_SESSIONS = "X-Gimac-Fermer-Autres-Sessions";
 
     public record PremiereConfigurationRequest(@NotBlank @Size(max = 20) String telephone, @NotBlank @Size(max = 5) String langue, @Size(max = 200) String fonction, boolean charteAcceptee) {}
 
@@ -47,11 +56,19 @@ public class MonCompteResource {
 
     public record EnrolementRequest(@NotBlank String challengeId, @NotBlank @Size(max = 100) String nom, @NotBlank String clientDataJSON, @NotBlank String attestationObject) {}
 
-    /** Mots de passe : jamais dans une trace. */
-    public record MotDePasseRequest(@NotNull @Size(max = 256) String actuel, @NotNull @Size(max = 256) String nouveau) {
+    /** Mots de passe : jamais dans une trace. « fermerAutresSessions » facultatif (mon-compte.md §2). */
+    public record MotDePasseRequest(@NotNull @Size(max = 256) String actuel, @NotNull @Size(max = 256) String nouveau, Boolean fermerAutresSessions) {
+        public MotDePasseRequest(String actuel, String nouveau) {
+            this(actuel, nouveau, null);
+        }
+
+        public boolean fermer() {
+            return Boolean.TRUE.equals(fermerAutresSessions);
+        }
+
         @Override
         public String toString() {
-            return "MotDePasseRequest[actuel=****, nouveau=****]";
+            return "MotDePasseRequest[actuel=****, nouveau=****, fermerAutresSessions=" + fermer() + "]";
         }
     }
 
@@ -95,8 +112,17 @@ public class MonCompteResource {
     /** Changement du mot de passe (premier accès ou « Mon compte ») ; retire l'action MOT_DE_PASSE. */
     @PostMapping("/mot-de-passe")
     public ResponseEntity<Void> changerMotDePasse(@Valid @RequestBody MotDePasseRequest r, Authentication auth) {
-        service.changerMotDePasse(ActeurCourant.de(auth), r.actuel(), r.nouveau());
-        return ResponseEntity.noContent().build();
+        service.changerMotDePasse(ActeurCourant.de(auth), r.actuel(), r.nouveau(), r.fermer(), sessionCourante(auth));
+        ResponseEntity.HeadersBuilder<?> reponse = ResponseEntity.noContent();
+        if (r.fermer()) {
+            reponse.header(EN_TETE_FERMER_AUTRES_SESSIONS, "1");
+        }
+        return reponse.build();
+    }
+
+    /** Session du fournisseur d'identité qui a émis le jeton (claim sid de Keycloak). */
+    static String sessionCourante(Authentication auth) {
+        return auth instanceof JwtAuthenticationToken jwt ? jwt.getToken().getClaimAsString("sid") : null;
     }
 
     /** Début de la configuration du code TOTP : secret (base 32) et URI otpauth du code QR, 10 min. */

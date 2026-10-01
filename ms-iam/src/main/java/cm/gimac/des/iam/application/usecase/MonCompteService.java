@@ -8,9 +8,11 @@ import cm.gimac.des.iam.domain.compte.ActionRequise;
 import cm.gimac.des.iam.domain.compte.Compte;
 import cm.gimac.des.iam.domain.compte.FicheCompte;
 import cm.gimac.des.iam.domain.compte.PolitiqueSecurite;
-import cm.gimac.des.iam.domain.compte.SessionCompte;
 import cm.gimac.des.iam.domain.service.ReglesAdministration;
 import cm.gimac.des.iam.domain.service.Totp;
+import cm.gimac.des.iam.domain.compte.Couche;
+import cm.gimac.des.iam.domain.compte.SessionCompte;
+import cm.gimac.des.iam.infrastructure.persistence.AvatarCompteRepository;
 import cm.gimac.des.iam.infrastructure.persistence.CleSecuriteRepository;
 import cm.gimac.des.iam.infrastructure.persistence.EnrolementTotp;
 import cm.gimac.des.iam.infrastructure.persistence.EnrolementTotpRepository;
@@ -22,6 +24,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,8 +45,8 @@ public class MonCompteService {
     /** Tolérance d'un pas de 30 s de part et d'autre (décalage d'horloge du téléphone). */
     private static final int TOLERANCE_TOTP = 1;
 
-    /** Compte, avancement du premier accès et état de la sécurité. */
-    public record MonCompte(Compte compte, long clesSecurite, int sessions, List<String> etapesRestantes) {}
+    /** Compte, avancement du premier accès, état de la sécurité et version de la photo de profil (nulle sans photo). */
+    public record MonCompte(Compte compte, long clesSecurite, int sessions, List<String> etapesRestantes, String avatarVersion) {}
 
     /** Enrôlement TOTP proposé : secret (base 32) et URI du code QR, à ne jamais journaliser. */
     public record Enrolement(UUID enrolementId, String secret, String uri) {
@@ -52,6 +56,8 @@ public class MonCompteService {
         }
     }
 
+    private static final Logger LOG = LoggerFactory.getLogger(MonCompteService.class);
+
     private final Annuaire annuaire;
     private final JournalActes journal;
     private final CleSecuriteRepository cles;
@@ -59,6 +65,8 @@ public class MonCompteService {
     private final ChiffrementSecrets chiffrement;
     private final ReauthentificationService reauth;
     private final IamProprietes proprietes;
+    private final AvatarCompteRepository avatars;
+    private final CourrielsPlateforme courriels;
     private final Clock clock;
     private final SecureRandom aleatoire = new SecureRandom();
 
@@ -70,6 +78,8 @@ public class MonCompteService {
         ChiffrementSecrets chiffrement,
         ReauthentificationService reauth,
         IamProprietes proprietes,
+        AvatarCompteRepository avatars,
+        CourrielsPlateforme courriels,
         Clock clock
     ) {
         this.annuaire = annuaire;
@@ -79,13 +89,21 @@ public class MonCompteService {
         this.chiffrement = chiffrement;
         this.reauth = reauth;
         this.proprietes = proprietes;
+        this.avatars = avatars;
+        this.courriels = courriels;
         this.clock = clock;
     }
 
     @Transactional(readOnly = true)
     public MonCompte moi(Acteur acteur) {
         Compte c = compte(acteur);
-        return new MonCompte(c, cles.countBySujet(acteur.id()), annuaire.sessions(acteur.id()).size(), c.etapesRestantes().stream().map(Enum::name).toList());
+        return new MonCompte(
+            c,
+            cles.countBySujet(acteur.id()),
+            annuaire.sessions(acteur.id()).size(),
+            c.etapesRestantes().stream().map(Enum::name).toList(),
+            avatars.version(acteur.id()).orElse(null)
+        );
     }
 
     /** Première configuration : coordonnées vérifiées, charte d'usage acceptée ; la fiche devient complète. */
@@ -122,6 +140,19 @@ public class MonCompteService {
      * nouveau contrôlé par la politique puis enregistré ; l'action MOT_DE_PASSE est retirée.
      */
     public void changerMotDePasse(Acteur acteur, String actuel, String nouveau) {
+        changerMotDePasse(acteur, actuel, nouveau, false, null);
+    }
+
+    /**
+     * Changement de mot de passe avec, sur demande (« fermerAutresSessions », docs/lot1/mon-compte.md
+     * §2), fermeture des autres sessions du compte chez le fournisseur d'identité : toutes sauf
+     * {@code sessionCourante} (claim sid du jeton) ; sans session courante connue, aucune n'est fermée
+     * ici (la passerelle ferme les siennes). Un courriel d'information part au titulaire après tout
+     * changement ; son échec n'annule pas le changement.
+     *
+     * @return nombre de sessions fermées chez le fournisseur d'identité
+     */
+    public int changerMotDePasse(Acteur acteur, String actuel, String nouveau, boolean fermerAutresSessions, String sessionCourante) {
         Compte c = compte(acteur);
         if (actuel == null || actuel.isEmpty() || !annuaire.verifierMotDePasse(c.identifiant(), actuel)) {
             throw IamException.invalide("IAM_PASSWORD_INVALID", "Mot de passe actuel incorrect", Map.of());
@@ -132,7 +163,35 @@ public class MonCompteService {
         MotsDePasse.verifier(annuaire, c, nouveau);
         annuaire.definirMotDePasse(acteur.id(), nouveau);
         annuaire.retirerActions(acteur.id(), Set.of(ActionRequise.MOT_DE_PASSE));
-        journal.compte(acteur, "LIBRE_SERVICE_MOT_DE_PASSE", acteur.id(), c.identifiant(), null, List.of());
+        int fermees = 0;
+        if (fermerAutresSessions && sessionCourante != null && !sessionCourante.isBlank()) {
+            for (SessionCompte s : annuaire.sessions(acteur.id())) {
+                if (!sessionCourante.equals(s.id())) {
+                    annuaire.fermerSession(acteur.id(), s.id());
+                    fermees++;
+                }
+            }
+        }
+        journal.compte(
+            acteur,
+            "LIBRE_SERVICE_MOT_DE_PASSE",
+            acteur.id(),
+            c.identifiant(),
+            null,
+            fermerAutresSessions ? List.of("autres sessions fermées : " + fermees) : List.of()
+        );
+        informer(c);
+        return fermees;
+    }
+
+    /** Courriel d'information « mot de passe modifié », lien vers « Mon compte » de la couche du compte. */
+    private void informer(Compte c) {
+        try {
+            Couche couche = CourrielsPlateforme.coucheDe(c);
+            courriels.envoyer(c, CourrielsPlateforme.Modele.MOT_DE_PASSE_MODIFIE, CourrielsPlateforme.lienMonCompte(proprietes, couche), null);
+        } catch (RuntimeException e) {
+            LOG.warn("Courriel d'information (mot de passe modifié) non envoyé : {}", e.getMessage());
+        }
     }
 
     /**

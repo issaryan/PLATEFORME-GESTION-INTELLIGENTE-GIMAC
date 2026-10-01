@@ -73,7 +73,14 @@ public class ConnexionResource {
         if (corps == null || vide(corps.identifiant()) || vide(corps.motDePasse()) || couche.isEmpty()) {
             return Mono.just(probleme(CauseEchec.REQUETE_INVALIDE, exchange));
         }
-        DemandeConnexion demande = new DemandeConnexion(corps.identifiant().trim(), corps.motDePasse(), corps.code(), couche.orElseThrow(), adresseIp(exchange));
+        DemandeConnexion demande = new DemandeConnexion(
+            corps.identifiant().trim(),
+            corps.motDePasse(),
+            corps.code(),
+            couche.orElseThrow(),
+            adresseIp(exchange),
+            exchange.getRequest().getHeaders().getFirst(HttpHeaders.USER_AGENT)
+        );
         return service
             .connecter(demande, exchange)
             .flatMap(issue -> reponse(issue, exchange))

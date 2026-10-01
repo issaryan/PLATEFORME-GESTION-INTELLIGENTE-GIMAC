@@ -74,7 +74,14 @@ class ConnexionIT {
         r.add(route + "uri", IAM::url);
         r.add(route + "predicates[0]", () -> "Path=/bff/{couche}/iam/moi,/bff/{couche}/iam/moi/**");
         r.add(route + "filters[0]", () -> "OpaAuthorize");
-        r.add(route + "filters[1]", () -> "RewritePath=/bff/(?<couche>des|portail|console)/iam/(?<p>.*), /api/v1/$\\{p}");
+        r.add(route + "filters[1]", () -> "FermetureAutresSessions");
+        r.add(route + "filters[2]", () -> "RewritePath=/bff/(?<couche>des|portail|console)/iam/(?<p>.*), /api/v1/$\\{p}");
+        String avatars = "spring.cloud.gateway.server.webflux.routes[1].";
+        r.add(avatars + "id", () -> "iam-avatars");
+        r.add(avatars + "uri", IAM::url);
+        r.add(avatars + "predicates[0]", () -> "Path=/bff/des/iam/avatars/**,/bff/console/iam/avatars/**");
+        r.add(avatars + "filters[0]", () -> "OpaAuthorize");
+        r.add(avatars + "filters[1]", () -> "RewritePath=/bff/(?<couche>des|console)/iam/avatars/(?<p>.*), /api/v1/avatars/$\\{p}");
     }
 
     @AfterAll
@@ -167,5 +174,74 @@ class ConnexionIT {
         client.get().uri("/oauth2/authorization/oidc").exchange().expectStatus().isNotFound();
         client.get().uri("/login/oauth2/code/oidc?code=a&state=b").exchange().expectStatus().isNotFound();
         client.get().uri("/api/account").exchange().expectStatus().isUnauthorized().expectHeader().doesNotExist("Location");
+    }
+
+    String connecterDepuis(String userAgent) {
+        var r = client
+            .mutateWith(csrf())
+            .post()
+            .uri("/api/connexion")
+            .header(org.springframework.http.HttpHeaders.USER_AGENT, userAgent)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("{\"identifiant\":\"agent.sna\",\"motDePasse\":\"Mot-de-passe-1\",\"code\":\"123456\",\"couche\":\"des\"}")
+            .exchange()
+            .expectStatus()
+            .isOk()
+            .expectBody()
+            .returnResult();
+        return r.getResponseCookies().getFirst("SESSION").getValue();
+    }
+
+    @Test
+    @DisplayName("mon-compte.md : historique en base (R2DBC), appareils, fermeture des autres sessions au changement de mot de passe, photos relayées")
+    void monCompte() {
+        String a = connecterDepuis("Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:131.0) Gecko/20100101 Firefox/131.0");
+        String b = connecterDepuis("Mozilla/5.0 (iPhone; CPU iPhone OS 17_1 like Mac OS X) AppleWebKit/605.1.15 Version/17.1 Mobile/15E148 Safari/604.1");
+        // Historique persistant : les deux connexions réussies, la plus récente d'abord.
+        client
+            .get()
+            .uri("/api/session/historique?taille=2")
+            .cookie("SESSION", a)
+            .exchange()
+            .expectStatus()
+            .isOk()
+            .expectBody()
+            .jsonPath("$.contenu[0].resultat")
+            .isEqualTo("REUSSIE")
+            .jsonPath("$.contenu[0].appareil.navigateur")
+            .isEqualTo("Safari 17")
+            .jsonPath("$.contenu.length()")
+            .isEqualTo(2);
+        client.get().uri("/api/session/appareils").cookie("SESSION", a).exchange().expectStatus().isOk().expectBody().jsonPath("$[0].courante").isEqualTo(true);
+
+        // Mot de passe changé avec « fermerAutresSessions » : MS-IAM le signale, la passerelle ferme B et retire l'en-tête.
+        IAM.repondre("/api/v1/moi/mot-de-passe", 204, "application/json", "", java.util.Map.of("X-Gimac-Fermer-Autres-Sessions", "1"));
+        client
+            .mutateWith(csrf())
+            .post()
+            .uri("/bff/des/iam/moi/mot-de-passe")
+            .cookie("SESSION", a)
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("{\"actuel\":\"Mot-de-passe-1\",\"nouveau\":\"Mot-de-passe-2!\",\"fermerAutresSessions\":true}")
+            .exchange()
+            .expectStatus()
+            .isNoContent()
+            .expectHeader()
+            .doesNotExist("X-Gimac-Fermer-Autres-Sessions");
+        client.get().uri("/api/session").cookie("SESSION", b).exchange().expectStatus().isUnauthorized();
+        client.get().uri("/api/session").cookie("SESSION", a).exchange().expectStatus().isOk();
+
+        // Photos : celle du titulaire et celle d'un collègue relayées vers MS-IAM.
+        IAM.repondre("/api/v1/avatars/u-collegue", 200, "image/png", "png", java.util.Map.of("Cache-Control", "private, max-age=86400, immutable"));
+        client
+            .get()
+            .uri("/bff/des/iam/avatars/u-collegue?v=0123456789abcdef")
+            .cookie("SESSION", a)
+            .exchange()
+            .expectStatus()
+            .isOk()
+            .expectHeader()
+            .valueEquals("Cache-Control", "private, max-age=86400, immutable");
+        assertThat(IAM.recues().stream().filter(q -> q.chemin().equals("/api/v1/avatars/u-collegue")).findFirst().orElseThrow().autorisation()).startsWith("Bearer eyJ");
     }
 }

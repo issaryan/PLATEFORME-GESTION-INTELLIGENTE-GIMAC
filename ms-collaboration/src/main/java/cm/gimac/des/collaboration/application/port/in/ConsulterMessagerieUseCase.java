@@ -7,7 +7,9 @@ import cm.gimac.des.collaboration.domain.messagerie.ConversationMembre;
 import cm.gimac.des.collaboration.domain.messagerie.Etiquette;
 import cm.gimac.des.collaboration.domain.messagerie.Message;
 import cm.gimac.des.collaboration.domain.messagerie.PieceJointe;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /** Lectures de la messagerie (D-64), toujours limitées aux conversations dont l'appelant est membre. */
@@ -41,4 +43,10 @@ public interface ConsulterMessagerieUseCase {
     long nonLus(String appelantId);
 
     PieceATelecharger piece(String appelantId, UUID pieceId);
+
+    /**
+     * Versions des photos de profil des personnes affichées (membres, auteurs ; mon-compte.md §1).
+     * Annuaire injoignable : vide (les initiales s'affichent), jamais d'échec de la lecture.
+     */
+    Map<String, String> versionsAvatar(Collection<String> ids);
 }

@@ -1,10 +1,13 @@
 package cm.gimac.des.gateway.infrastructure.connexion;
 
+import cm.gimac.des.gateway.domain.appareils.Appareil;
+import cm.gimac.des.gateway.domain.appareils.port.AlerteNouvelAppareil;
 import cm.gimac.des.gateway.domain.connexion.CauseEchec;
 import cm.gimac.des.gateway.domain.connexion.EchecConnexion;
 import cm.gimac.des.gateway.domain.connexion.EtatCompte;
 import cm.gimac.des.gateway.domain.connexion.port.AnnuaireComptes;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,7 +22,7 @@ import reactor.core.publisher.Mono;
  * Routes internes de MS-IAM (contrat D-65 §3.1), appelées avec le jeton de service gateway-service.
  * Aucune n'est relayée depuis une couche de présentation : seule la passerelle les appelle.
  */
-public class IamAnnuaireComptes implements AnnuaireComptes {
+public class IamAnnuaireComptes implements AnnuaireComptes, AlerteNouvelAppareil {
 
     private static final ParameterizedTypeReference<Map<String, Object>> JSON = new ParameterizedTypeReference<>() {};
 
@@ -110,6 +113,31 @@ public class IamAnnuaireComptes implements AnnuaireComptes {
             )
             .timeout(delai)
             .onErrorMap(e -> !(e instanceof EchecConnexion), e -> new EchecConnexion(CauseEchec.SERVICE_INDISPONIBLE, "MS-IAM injoignable : " + e.getMessage()));
+    }
+
+    /** Alerte « nouvel appareil » (mon-compte.md §3) : MS-IAM envoie le courriel ; erreur si MS-IAM refuse. */
+    @Override
+    public Mono<Void> alerter(String sujet, Appareil appareil, String adresseIp, String couche, Instant le) {
+        Map<String, Object> corps = new HashMap<>();
+        corps.put("navigateur", appareil.navigateur());
+        corps.put("systeme", appareil.systeme());
+        corps.put("type", appareil.type().name());
+        corps.put("adresseIp", adresseIp);
+        corps.put("couche", couche);
+        corps.put("le", le == null ? null : le.toString());
+        return jeton()
+            .flatMap(j ->
+                iam
+                    .post()
+                    .uri("/api/v1/interne/comptes/{id}/alerte-connexion", sujet)
+                    .headers(h -> h.setBearerAuth(j))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(corps)
+                    .retrieve()
+                    .toBodilessEntity()
+            )
+            .timeout(delai)
+            .then();
     }
 
     private Mono<String> jeton() {

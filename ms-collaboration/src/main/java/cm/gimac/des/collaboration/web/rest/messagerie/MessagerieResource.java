@@ -1,5 +1,9 @@
 package cm.gimac.des.collaboration.web.rest.messagerie;
 
+import java.util.stream.Collectors;
+import java.util.Set;
+import java.util.Map;
+import cm.gimac.des.collaboration.domain.messagerie.ConversationMembre;
 import cm.gimac.des.collaboration.application.port.in.ConsulterMessagerieUseCase;
 import cm.gimac.des.collaboration.application.port.in.EnvoyerMessageUseCase;
 import cm.gimac.des.collaboration.application.port.in.EnvoyerMessageUseCase.Expediteur;
@@ -59,6 +63,11 @@ public class MessagerieResource {
         this.lecture = lecture;
     }
 
+    /** Conversation avec les photos de profil courantes de ses membres. */
+    private ConversationVue vue(ConsulterMessagerieUseCase.ConversationLue l) {
+        return ConversationVue.de(l, lecture.versionsAvatar(l.membres().stream().map(ConversationMembre::getMembreId).collect(Collectors.toSet())));
+    }
+
     @GetMapping("/annuaire")
     @PreAuthorize(LIRE)
     public PageVue<PersonneVue> annuaire(
@@ -81,7 +90,8 @@ public class MessagerieResource {
         Authentication auth
     ) {
         var p = lecture.conversations(appelant(auth).id(), recherche, liaisonId, page, taille);
-        return new PageVue<>(p.contenu().stream().map(ConversationVue::de).toList(), p.total(), p.page(), p.taille());
+        Map<String, String> avatars = lecture.versionsAvatar(p.contenu().stream().flatMap(c -> c.membres().stream()).map(ConversationMembre::getMembreId).collect(Collectors.toSet()));
+        return new PageVue<>(p.contenu().stream().map(c -> ConversationVue.de(c, avatars)).toList(), p.total(), p.page(), p.taille());
     }
 
     @PostMapping(value = "/conversations", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -104,7 +114,7 @@ public class MessagerieResource {
             ),
             pieces(fichiers)
         );
-        ConversationVue vue = ConversationVue.de(lecture.conversation(moi.id(), r.conversationId()));
+        ConversationVue vue = vue(lecture.conversation(moi.id(), r.conversationId()));
         return ResponseEntity.status(r.creee() ? HttpStatus.CREATED : HttpStatus.OK)
             .location(URI.create("/api/v1/messagerie/conversations/" + r.conversationId()))
             .body(vue);
@@ -113,7 +123,7 @@ public class MessagerieResource {
     @GetMapping("/conversations/{id}")
     @PreAuthorize(LIRE)
     public ConversationVue conversation(@PathVariable UUID id, Authentication auth) {
-        return ConversationVue.de(lecture.conversation(appelant(auth).id(), id));
+        return vue(lecture.conversation(appelant(auth).id(), id));
     }
 
     @GetMapping("/conversations/{id}/messages")
@@ -126,7 +136,8 @@ public class MessagerieResource {
     ) {
         String moi = appelant(auth).id();
         var p = lecture.messages(moi, id, avant, taille);
-        return new PageMessagesVue(p.contenu().stream().map(m -> MessageVue.de(m, moi)).toList(), p.plusAnciens());
+        Map<String, String> avatars = lecture.versionsAvatar(p.contenu().stream().map(m -> m.message().getAuteurId()).collect(Collectors.toSet()));
+        return new PageMessagesVue(p.contenu().stream().map(m -> MessageVue.de(m, moi, avatars)).toList(), p.plusAnciens());
     }
 
     @PostMapping(value = "/conversations/{id}/messages", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -139,7 +150,8 @@ public class MessagerieResource {
     ) {
         Expediteur moi = appelant(auth);
         var r = envoi.envoyer(moi, id, new EnvoyerMessageUseCase.NouveauMessage(message.contenu(), message.etiquettes()), pieces(fichiers));
-        return ResponseEntity.status(HttpStatus.CREATED).body(MessageVue.de(lecture.message(moi.id(), r.messageId()), moi.id()));
+        var lu = lecture.message(moi.id(), r.messageId());
+        return ResponseEntity.status(HttpStatus.CREATED).body(MessageVue.de(lu, moi.id(), lecture.versionsAvatar(Set.of(lu.message().getAuteurId()))));
     }
 
     @PostMapping("/conversations/{id}/lu")

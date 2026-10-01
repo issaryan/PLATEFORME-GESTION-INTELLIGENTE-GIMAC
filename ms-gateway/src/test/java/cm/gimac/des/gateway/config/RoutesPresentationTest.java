@@ -89,6 +89,12 @@ class RoutesPresentationTest {
             Arguments.of("/bff/console/iam/comptes", "${gimac.services.iam}", "/api/v1/comptes"),
             Arguments.of("/bff/console/iam/comptes/c1/profils", "${gimac.services.iam}", "/api/v1/comptes/c1/profils"),
             Arguments.of("/bff/console/iam/configuration/politique-securite", "${gimac.services.iam}", "/api/v1/configuration/politique-securite"),
+            // « Mon compte » (docs/lot1/mon-compte.md) : photo du titulaire depuis chaque couche, photos des collègues (DES, console).
+            Arguments.of("/bff/des/iam/moi/avatar", "${gimac.services.iam}", "/api/v1/moi/avatar"),
+            Arguments.of("/bff/portail/iam/moi/avatar", "${gimac.services.iam}", "/api/v1/moi/avatar"),
+            Arguments.of("/bff/console/iam/moi/mot-de-passe", "${gimac.services.iam}", "/api/v1/moi/mot-de-passe"),
+            Arguments.of("/bff/des/iam/avatars/u-123", "${gimac.services.iam}", "/api/v1/avatars/u-123"),
+            Arguments.of("/bff/console/iam/avatars/u-123", "${gimac.services.iam}", "/api/v1/avatars/u-123"),
             Arguments.of("/bff/des/document/documents", "${gimac.services.document}", "/api/v1/documents"),
             Arguments.of("/bff/portail/document/documents", "${gimac.services.document}", "/api/v1/documents"),
             Arguments.of("/bff/des/collaboration/messagerie/annuaire", "${gimac.services.collaboration}", "/api/v1/messagerie/annuaire"),
@@ -143,7 +149,9 @@ class RoutesPresentationTest {
             "/bff/portail/collaboration/messagerie/conversations",
             "/bff/console/collaboration/messagerie/conversations",
             "/bff/des/live",
-            "/bff/portail/live"
+            "/bff/portail/live",
+            "/bff/portail/iam/avatars/u-123",
+            "/bff/des/iam/interne/collaborateurs/avatars"
         );
     }
 
@@ -152,5 +160,17 @@ class RoutesPresentationTest {
     @DisplayName("Administration hors console, routes internes, lectures de documents, messagerie hors DES et canal temps réel : aucune route")
     void fermes(String chemin) {
         assertThat(correspondantes(chemin)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("mon-compte.md : « Mon compte » ferme les autres sessions (filtre passerelle) et borne la photo à 3 Mo ; avatars des collègues relus par OPA")
+    void monCompte() {
+        Route moi = correspondantes("/bff/des/iam/moi/mot-de-passe").get(0);
+        assertThat(moi.filtres()).startsWith("OpaAuthorize").contains("FermetureAutresSessions");
+        String taille = moi.filtres().stream().filter(f -> f.contains("RequestSize")).findFirst().orElseThrow();
+        assertThat(DataSize.parse(taille.replaceAll(".*maxSize=([^,}]+).*", "$1")).toBytes()).isGreaterThanOrEqualTo(2L * 1024 * 1024).isLessThanOrEqualTo(4L * 1024 * 1024);
+        Route avatars = correspondantes("/bff/des/iam/avatars/u-1").get(0);
+        assertThat(avatars.id()).isEqualTo("iam-avatars");
+        assertThat(avatars.filtres()).doesNotContain("FermetureAutresSessions");
     }
 }

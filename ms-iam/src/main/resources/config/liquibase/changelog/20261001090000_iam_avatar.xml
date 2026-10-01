@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- MS-IAM : photo de profil des comptes (docs/lot1/mon-compte.md §1) : image réencodée 256 × 256,
+     sans métadonnées, type, version (empreinte courte) et date de mise à jour ; une ligne par compte. -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="iam-avatar-compte" author="lot1">
+        <createTable tableName="avatar_compte">
+            <column name="compte_id" type="varchar(100)"><constraints primaryKey="true" nullable="false" primaryKeyName="pk_avatar_compte"/></column>
+            <column name="image" type="bytea"><constraints nullable="false"/></column>
+            <column name="type_contenu" type="varchar(30)"><constraints nullable="false"/></column>
+            <column name="version" type="varchar(32)"><constraints nullable="false"/></column>
+            <column name="mis_a_jour_le" type="timestamptz"><constraints nullable="false"/></column>
+        </createTable>
+        <sql>ALTER TABLE avatar_compte ADD CONSTRAINT ck_avatar_compte_type CHECK (type_contenu IN ('image/png', 'image/webp'));</sql>
+        <sql>ALTER TABLE avatar_compte ADD CONSTRAINT ck_avatar_compte_taille CHECK (octet_length(image) &lt;= 1048576);</sql>
+    </changeSet>
+</databaseChangeLog>

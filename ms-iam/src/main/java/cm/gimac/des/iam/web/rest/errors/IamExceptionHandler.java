@@ -1,6 +1,7 @@
 package cm.gimac.des.iam.web.rest.errors;
 
 import cm.gimac.des.iam.domain.IamException;
+import cm.gimac.des.iam.domain.service.TraitementAvatar;
 import cm.gimac.des.iam.infrastructure.security.CorrelationContext;
 import java.net.URI;
 import org.springframework.core.Ordered;
@@ -10,11 +11,18 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 /** Erreurs métier en ProblemDetail RFC 9457 : code stable (IAM_*), message, détails, corrélation. */
 @RestControllerAdvice
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class IamExceptionHandler {
+
+    /** Fichier au-delà de la borne de la requête (seule route multipart : la photo de profil). */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ProblemDetail> tropVolumineux(MaxUploadSizeExceededException ex) {
+        return traiter(TraitementAvatar.tropGrande());
+    }
 
     @ExceptionHandler(IamException.class)
     public ResponseEntity<ProblemDetail> traiter(IamException ex) {

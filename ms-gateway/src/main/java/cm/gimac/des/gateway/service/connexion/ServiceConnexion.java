@@ -15,6 +15,7 @@ import cm.gimac.des.gateway.domain.connexion.port.JournalConnexion;
 import cm.gimac.des.gateway.domain.connexion.port.LimiteurTentatives;
 import cm.gimac.des.gateway.domain.live.Couche;
 import cm.gimac.des.gateway.security.session.OuvertureSession;
+import cm.gimac.des.gateway.service.appareils.SuiviConnexions;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -48,6 +49,7 @@ public class ServiceConnexion {
     private final LimiteurTentatives limiteur;
     private final JournalConnexion journal;
     private final OuvertureSession ouverture;
+    private final SuiviConnexions suivi;
 
     public ServiceConnexion(
         FournisseurIdentite fournisseur,
@@ -56,11 +58,24 @@ public class ServiceConnexion {
         JournalConnexion journal,
         OuvertureSession ouverture
     ) {
+        this(fournisseur, annuaire, limiteur, journal, ouverture, SuiviConnexions.aucun());
+    }
+
+    /** @param suivi historique des connexions, description des sessions, alerte « nouvel appareil » (mon-compte.md §3) */
+    public ServiceConnexion(
+        FournisseurIdentite fournisseur,
+        AnnuaireComptes annuaire,
+        LimiteurTentatives limiteur,
+        JournalConnexion journal,
+        OuvertureSession ouverture,
+        SuiviConnexions suivi
+    ) {
         this.fournisseur = fournisseur;
         this.annuaire = annuaire;
         this.limiteur = limiteur;
         this.journal = journal;
         this.ouverture = ouverture;
+        this.suivi = suivi;
     }
 
     public Mono<IssueConnexion> connecter(DemandeConnexion demande, ServerWebExchange exchange) {
@@ -73,8 +88,14 @@ public class ServiceConnexion {
                     journal.reussie(demande, sujet(issue), etat(issue.resultat()));
                 }
             })
+            .flatMap(issue ->
+                issue.resultat() instanceof ResultatConnexion.CodeRequis
+                    ? Mono.just(issue)
+                    : suivi.reussie(demande, sujet(issue), issue.resultat() instanceof ResultatConnexion.Connecte, exchange).thenReturn(issue)
+            )
             .onErrorMap(e -> !(e instanceof EchecConnexion), e -> new EchecConnexion(CauseEchec.SERVICE_INDISPONIBLE, e.getMessage()))
-            .doOnError(EchecConnexion.class, e -> journal.echouee(demande, e.causeEchec(), e.getMessage()));
+            .doOnError(EchecConnexion.class, e -> journal.echouee(demande, e.causeEchec(), e.getMessage()))
+            .onErrorResume(EchecConnexion.class, e -> suivi.echouee(demande, e).then(Mono.error(e)));
     }
 
     private Mono<IssueConnexion> authentifier(DemandeConnexion d, ServerWebExchange exchange) {
@@ -83,7 +104,7 @@ public class ServiceConnexion {
             .flatMap(jetons ->
                 fournisseur
                     .valider(ClientConnexion.MOT_DE_PASSE, jetons)
-                    .flatMap(identite -> poursuivre(d, jetons, identite, exchange))
+                    .flatMap(identite -> poursuivre(d, jetons, identite, exchange).onErrorMap(EchecConnexion.class, e -> e.pour(identite.sujet())))
                     // Tout échec après l'octroi : le jeton de gimac-connexion ne doit pas survivre.
                     .onErrorResume(e -> revoquer(jetons).then(Mono.error(e)))
             );
@@ -110,7 +131,7 @@ public class ServiceConnexion {
                 }
                 return fournisseur
                     .octroyer(ClientConnexion.DEUX_FACTEURS, d.identifiant(), d.motDePasse(), d.code())
-                    .onErrorMap(EchecConnexion.class, e -> new EchecConnexion(e.causeEchec(), "second facteur : " + e.getMessage()))
+                    .onErrorMap(EchecConnexion.class, e -> new EchecConnexion(e.causeEchec(), "second facteur : " + e.getMessage(), identite.sujet(), true))
                     .flatMap(complets ->
                         fournisseur
                             .valider(ClientConnexion.DEUX_FACTEURS, complets)

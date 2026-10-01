@@ -61,6 +61,15 @@ public class LiensCourriel {
         courriels.envoyer(compte, CourrielsPlateforme.Modele.ACTIONS, proprietes.liens().adresse(couche) + CHEMIN_CONNEXION, null);
     }
 
+    /**
+     * Alerte « connexion depuis un nouvel appareil » (docs/lot1/mon-compte.md §3), avec un lien vers
+     * « Mon compte » (appareils connectés) dans l'application de la couche ; IamException 503
+     * IAM_SMTP_FAILED si l'envoi échoue.
+     */
+    public void alerterNouvelAppareil(Compte compte, Couche couche, String navigateur, String systeme, String adresseIp, String le) {
+        courriels.alerterNouvelAppareil(compte, CourrielsPlateforme.lienMonCompte(proprietes, couche), navigateur, systeme, adresseIp, le);
+    }
+
     /** Jeton utilisable (connu, ni expiré ni déjà utilisé), verrouillé jusqu'à la fin de la transaction. */
     public Optional<JetonLien> utilisable(String jeton) {
         if (!JetonsLien.bienForme(jeton)) {

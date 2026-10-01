@@ -948,6 +948,57 @@
                                 </rules>
                             </configuration>
                         </execution>
+                        <!--
+                            Appareils connectés et historique des connexions (docs/lot1/mon-compte.md §3) :
+                            80 % en lignes et méthodes par classe, en branches sur l'ensemble, dès les tests
+                            unitaires ; l'adaptateur R2DBC est couvert par HistoriqueConnexionsR2dbcIT.
+                        -->
+                        <execution>
+                            <id>seuil-appareils-connectes</id>
+                            <phase>test</phase>
+                            <goals>
+                                <goal>check</goal>
+                            </goals>
+                            <configuration>
+                                <dataFile>${project.build.directory}/jacoco.exec</dataFile>
+                                <includes>
+                                    <include>cm/gimac/des/gateway/domain/appareils/**</include>
+                                    <include>cm/gimac/des/gateway/service/appareils/**</include>
+                                    <include>cm/gimac/des/gateway/infrastructure/appareils/HistoriqueConnexionsMemoire*</include>
+                                    <include>cm/gimac/des/gateway/web/rest/AppareilsResource*</include>
+                                </includes>
+                                <rules>
+                                    <rule>
+                                        <element>CLASS</element>
+                                        <excludes>
+                                            <exclude>*.package-info</exclude>
+                                        </excludes>
+                                        <limits>
+                                            <limit>
+                                                <counter>LINE</counter>
+                                                <value>COVEREDRATIO</value>
+                                                <minimum>${jacoco.seuil}</minimum>
+                                            </limit>
+                                            <limit>
+                                                <counter>METHOD</counter>
+                                                <value>COVEREDRATIO</value>
+                                                <minimum>${jacoco.seuil}</minimum>
+                                            </limit>
+                                        </limits>
+                                    </rule>
+                                    <rule>
+                                        <element>BUNDLE</element>
+                                        <limits>
+                                            <limit>
+                                                <counter>BRANCH</counter>
+                                                <value>COVEREDRATIO</value>
+                                                <minimum>${jacoco.seuil}</minimum>
+                                            </limit>
+                                        </limits>
+                                    </rule>
+                                </rules>
+                            </configuration>
+                        </execution>
                         <execution>
                             <id>pre-integration-tests</id>
                             <goals>

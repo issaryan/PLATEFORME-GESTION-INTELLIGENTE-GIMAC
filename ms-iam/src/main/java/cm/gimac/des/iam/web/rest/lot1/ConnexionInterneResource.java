@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import java.time.Instant;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -39,6 +40,16 @@ public class ConnexionInterneResource {
         }
     }
 
+    /** Connexion depuis un nouvel appareil (docs/lot1/mon-compte.md §3), signalée par la passerelle. */
+    public record AlerteConnexionRequest(
+        @Size(max = 100) String navigateur,
+        @Size(max = 100) String systeme,
+        @Size(max = 20) String type,
+        @Size(max = 64) String adresseIp,
+        @Size(max = 20) String couche,
+        Instant le
+    ) {}
+
     private final ConnexionService service;
 
     public ConnexionInterneResource(ConnexionService service) {
@@ -48,6 +59,13 @@ public class ConnexionInterneResource {
     @GetMapping("/comptes/{id}/etat-connexion")
     public EtatConnexionVue etat(@PathVariable String id) {
         return EtatConnexionVue.de(service.etat(id));
+    }
+
+    /** Courriel « nouvel appareil » au titulaire ; 204 (rien n'est envoyé à un compte inactif). */
+    @PostMapping("/comptes/{id}/alerte-connexion")
+    public ResponseEntity<Void> alerteConnexion(@PathVariable String id, @Valid @RequestBody AlerteConnexionRequest r) {
+        service.alerterNouvelAppareil(id, new ConnexionService.NouvelleConnexion(r.navigateur(), r.systeme(), r.type(), r.adresseIp(), r.couche(), r.le()));
+        return ResponseEntity.noContent().build();
     }
 
     /** 202 toujours : l'existence d'un compte n'est jamais révélée. */

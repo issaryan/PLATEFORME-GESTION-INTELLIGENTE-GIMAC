@@ -21,7 +21,11 @@ public final class ServeurHttpLocal implements AutoCloseable {
     /** Requête reçue. */
     public record Recue(String methode, String chemin, String requete, String autorisation, String corps) {}
 
-    private record Reponse(int statut, String typeContenu, String corps, long delaiMs) {}
+    private record Reponse(int statut, String typeContenu, String corps, long delaiMs, Map<String, String> entetes) {
+        Reponse(int statut, String typeContenu, String corps, long delaiMs) {
+            this(statut, typeContenu, corps, delaiMs, Map.of());
+        }
+    }
 
     private final HttpServer serveur;
     private final Map<String, Reponse> reponses = new ConcurrentHashMap<>();
@@ -51,6 +55,12 @@ public final class ServeurHttpLocal implements AutoCloseable {
         return this;
     }
 
+    /** Réponse portant des en-têtes supplémentaires (signal d'un service à la passerelle). */
+    public ServeurHttpLocal repondre(String chemin, int statut, String typeContenu, String corps, Map<String, String> entetes) {
+        reponses.put(chemin, new Reponse(statut, typeContenu, corps, 0, Map.copyOf(entetes)));
+        return this;
+    }
+
     public List<Recue> recues() {
         return recues;
     }
@@ -77,6 +87,7 @@ public final class ServeurHttpLocal implements AutoCloseable {
         }
         byte[] corps = r.corps().getBytes(StandardCharsets.UTF_8);
         echange.getResponseHeaders().add("Content-Type", r.typeContenu());
+        r.entetes().forEach((k, v) -> echange.getResponseHeaders().add(k, v));
         try {
             echange.sendResponseHeaders(r.statut(), corps.length == 0 ? -1 : corps.length);
             if (corps.length > 0) {

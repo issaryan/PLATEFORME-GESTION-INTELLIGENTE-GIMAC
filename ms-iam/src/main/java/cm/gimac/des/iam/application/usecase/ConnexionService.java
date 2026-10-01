@@ -9,6 +9,7 @@ import cm.gimac.des.iam.domain.compte.Couche;
 import cm.gimac.des.iam.domain.compte.EtatConnexion;
 import cm.gimac.des.iam.domain.compte.FinaliteJeton;
 import cm.gimac.des.iam.infrastructure.persistence.JetonLien;
+import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -44,6 +45,34 @@ public class ConnexionService {
     @Transactional(readOnly = true)
     public EtatConnexion etat(String id) {
         return EtatConnexion.de(annuaire.lire(id).orElseThrow(() -> IamException.introuvable("IAM_ACCOUNT_NOT_FOUND", id)));
+    }
+
+    /** Connexion signalée par la passerelle depuis un appareil jamais vu pour le compte (mon-compte.md §3). */
+    public record NouvelleConnexion(String navigateur, String systeme, String type, String adresseIp, String couche, Instant le) {}
+
+    /**
+     * Alerte « nouvel appareil » (docs/lot1/mon-compte.md §3) : courriel au titulaire d'un compte actif
+     * joignable, dans sa langue, avec un lien vers ses appareils connectés ; tracé au journal. Compte
+     * inconnu : 404 ; compte inactif ou sans courriel : rien n'est envoyé.
+     *
+     * @return vrai si le courriel est parti
+     */
+    public boolean alerterNouvelAppareil(String id, NouvelleConnexion connexion) {
+        Compte c = annuaire.lire(id).orElseThrow(() -> IamException.introuvable("IAM_ACCOUNT_NOT_FOUND", id));
+        if (!c.actif() || c.email() == null || c.email().isBlank()) {
+            return false;
+        }
+        Couche couche = Couche.pour(c, Couche.lire(connexion.couche()));
+        String le = connexion.le() == null ? "" : DATE.format(connexion.le());
+        liens.alerterNouvelAppareil(c, couche, texte(connexion.navigateur()), texte(connexion.systeme()), texte(connexion.adresseIp()), le);
+        journal.compte(titulaire(c), "ALERTE_NOUVEL_APPAREIL", c.id(), c.identifiant(), null, List.of(texte(connexion.navigateur()) + " / " + texte(connexion.systeme()), couche.name()));
+        return true;
+    }
+
+    private static final java.time.format.DateTimeFormatter DATE = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm").withZone(java.time.ZoneOffset.UTC);
+
+    private static String texte(String s) {
+        return s == null || s.isBlank() ? "?" : s;
     }
 
     /**

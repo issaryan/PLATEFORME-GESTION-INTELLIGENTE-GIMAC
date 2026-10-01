@@ -1,7 +1,16 @@
 package cm.gimac.des.gateway.config;
 
 import cm.gimac.des.gateway.audit.GatewayAuditEventPublisher;
+import cm.gimac.des.gateway.domain.appareils.port.AlerteNouvelAppareil;
+import cm.gimac.des.gateway.domain.appareils.port.HistoriqueConnexions;
 import cm.gimac.des.gateway.domain.connexion.port.AnnuaireComptes;
+import cm.gimac.des.gateway.infrastructure.appareils.HistoriqueConnexionsMemoire;
+import cm.gimac.des.gateway.infrastructure.appareils.HistoriqueConnexionsR2dbc;
+import cm.gimac.des.gateway.service.appareils.PurgeHistorique;
+import cm.gimac.des.gateway.service.appareils.ServiceAppareils;
+import cm.gimac.des.gateway.service.appareils.SuiviConnexions;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.r2dbc.core.DatabaseClient;
 import cm.gimac.des.gateway.domain.connexion.port.FournisseurIdentite;
 import cm.gimac.des.gateway.domain.connexion.port.JournalConnexion;
 import cm.gimac.des.gateway.domain.connexion.port.LimiteurTentatives;
@@ -128,9 +137,47 @@ public class ConnexionConfiguration {
         AnnuaireComptes annuaire,
         LimiteurTentatives limiteur,
         JournalConnexion journal,
-        OuvertureSession ouverture
+        OuvertureSession ouverture,
+        SuiviConnexions suivi
     ) {
-        return new ServiceConnexion(fournisseur, annuaire, limiteur, journal, ouverture);
+        return new ServiceConnexion(fournisseur, annuaire, limiteur, journal, ouverture, suivi);
+    }
+
+    /**
+     * Historique des connexions (mon-compte.md §3) : base PostgreSQL de la passerelle (R2DBC, table
+     * historique_connexion de Liquibase) ; en mémoire seulement dans un contexte sans base (tests web).
+     */
+    @Bean
+    public HistoriqueConnexions historiqueConnexions(ObjectProvider<DatabaseClient> base) {
+        DatabaseClient client = base.getIfAvailable();
+        return client == null ? new HistoriqueConnexionsMemoire() : new HistoriqueConnexionsR2dbc(client);
+    }
+
+    @Bean
+    public SuiviConnexions suiviConnexions(HistoriqueConnexions historique, AnnuaireComptes annuaire, ObjectProvider<Clock> horloge) {
+        return new SuiviConnexions(historique, annuaire instanceof AlerteNouvelAppareil a ? a : null, horloge(horloge));
+    }
+
+    @Bean
+    public ServiceAppareils serviceAppareils(
+        RegistreSessions registre,
+        FermetureSession fermeture,
+        ParametresSession parametres,
+        HistoriqueConnexions historique,
+        ObjectProvider<Clock> horloge
+    ) {
+        return new ServiceAppareils(registre, fermeture, parametres, historique, horloge(horloge));
+    }
+
+    /** Rétention de l'historique : 90 jours (gimac.appareils.retention), purge horaire (gimac.appareils.purge). */
+    @Bean(destroyMethod = "close")
+    public PurgeHistorique purgeHistorique(
+        HistoriqueConnexions historique,
+        @Value("${gimac.appareils.retention:P90D}") Duration retention,
+        @Value("${gimac.appareils.purge:PT1H}") Duration periode,
+        ObjectProvider<Clock> horloge
+    ) {
+        return new PurgeHistorique(historique, retention, periode, horloge(horloge));
     }
 
     @Bean

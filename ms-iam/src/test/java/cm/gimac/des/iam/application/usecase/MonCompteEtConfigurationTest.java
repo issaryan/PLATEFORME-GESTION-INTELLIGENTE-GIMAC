@@ -19,6 +19,8 @@ import cm.gimac.des.iam.domain.compte.ConfigurationMessagerie;
 import cm.gimac.des.iam.domain.compte.PolitiqueSecurite;
 import cm.gimac.des.iam.domain.service.Totp;
 import cm.gimac.des.iam.infrastructure.idp.AnnuaireEnMemoire;
+import cm.gimac.des.iam.infrastructure.courriel.CourrielsEnMemoire;
+import cm.gimac.des.iam.infrastructure.persistence.AvatarCompteRepository;
 import cm.gimac.des.iam.infrastructure.persistence.CleSecuriteRepository;
 import cm.gimac.des.iam.infrastructure.persistence.EnrolementTotp;
 import cm.gimac.des.iam.infrastructure.persistence.EnrolementTotpRepository;
@@ -64,6 +66,11 @@ class MonCompteEtConfigurationTest {
     @Mock
     ReauthentificationService reauth;
 
+    @Mock
+    AvatarCompteRepository avatars;
+
+    final CourrielsEnMemoire courriels = new CourrielsEnMemoire();
+
     /** Instant réel : l'annuaire de substitution vérifie le code TOTP à l'heure du système. */
     static final Instant MAINTENANT = Instant.now();
     final ChiffrementSecrets chiffrement = new ChiffrementSecrets(null);
@@ -81,7 +88,18 @@ class MonCompteEtConfigurationTest {
             Set.of("ROLE_SUPER_ADMIN", "ROLE_RSSI")
         );
         Clock clock = Clock.fixed(MAINTENANT, ZoneOffset.UTC);
-        moi = new MonCompteService(annuaire, journal, cles, enrolements, chiffrement, reauth, AdministrationComptesServiceTest.proprietes(), clock);
+        moi = new MonCompteService(
+            annuaire,
+            journal,
+            cles,
+            enrolements,
+            chiffrement,
+            reauth,
+            AdministrationComptesServiceTest.proprietes(),
+            avatars,
+            new CourrielsPlateforme(courriels),
+            clock
+        );
         configuration = new ConfigurationAuthentificationService(annuaire, journal, AdministrationComptesServiceTest.proprietes(), parametres, chiffrement, clock);
         nouveau = annuaire.creer(
             new cm.gimac.des.iam.domain.compte.NouveauCompte("agent", "A", "B", "agent@gimac.test", null, null, null, Set.of("ROLE_CHARGE_DDRM")),
@@ -199,6 +217,58 @@ class MonCompteEtConfigurationTest {
         assertThat(annuaire.lire(nouveau).orElseThrow().actionsRequises()).doesNotContain(ActionRequise.MOT_DE_PASSE);
         verify(journal).compte(eq(titulaire), eq("LIBRE_SERVICE_MOT_DE_PASSE"), eq(nouveau), eq("agent"), isNull(), anyList());
         refus(() -> moi.changerMotDePasse(titulaire, "Nouveau-Mot-2026!", provisoire), "IAM_PASSWORD_REUSED");
+        // Courriel d'information au titulaire après tout changement (mon-compte.md §2).
+        var info = courriels.dernierPour("agent@gimac.test").orElseThrow();
+        assertThat(info.objet()).isEqualTo("Votre mot de passe a été modifié");
+        assertThat(info.texte()).contains("/des/mon-compte").doesNotContain("Nouveau-Mot-2026!").contains("RSSI");
+    }
+
+    @Test
+    @DisplayName("mon-compte.md §2 : fermerAutresSessions ferme toutes les sessions du fournisseur d'identité sauf la courante")
+    void motDePasseFermerAutresSessions() {
+        String provisoire = annuaire.definirMotDePasseProvisoire(nouveau);
+        String courante = annuaire.ouvrirSession(nouveau, "10.0.0.1");
+        annuaire.ouvrirSession(nouveau, "10.0.0.2");
+        annuaire.ouvrirSession(nouveau, "10.0.0.3");
+        assertThat(moi.changerMotDePasse(titulaire, provisoire, "Nouveau-Mot-2026!", true, courante)).isEqualTo(2);
+        assertThat(annuaire.sessions(nouveau)).extracting(cm.gimac.des.iam.domain.compte.SessionCompte::id).containsExactly(courante);
+        verify(journal).compte(eq(titulaire), eq("LIBRE_SERVICE_MOT_DE_PASSE"), eq(nouveau), eq("agent"), isNull(), eq(List.of("autres sessions fermées : 2")));
+        // Sans session courante connue (jeton sans sid) : aucune session n'est fermée ici.
+        annuaire.ouvrirSession(nouveau, "10.0.0.4");
+        assertThat(moi.changerMotDePasse(titulaire, "Nouveau-Mot-2026!", "Autre-Mot-2026!x", true, null)).isZero();
+        assertThat(annuaire.sessions(nouveau)).hasSize(2);
+        // Option absente : rien n'est fermé.
+        assertThat(moi.changerMotDePasse(titulaire, "Autre-Mot-2026!x", "Troisieme-Mot-2026!", false, courante)).isZero();
+    }
+
+    @Test
+    @DisplayName("mon-compte.md §2 : une panne de la messagerie n'annule pas le changement de mot de passe")
+    void motDePasseCourrielEnPanne() {
+        moi = new MonCompteService(
+            annuaire,
+            journal,
+            cles,
+            enrolements,
+            chiffrement,
+            reauth,
+            AdministrationComptesServiceTest.proprietes(),
+            avatars,
+            new CourrielsPlateforme(c -> {
+                throw IamException.indisponible("IAM_SMTP_FAILED", "panne");
+            }),
+            Clock.systemUTC()
+        );
+        String provisoire = annuaire.definirMotDePasseProvisoire(nouveau);
+        moi.changerMotDePasse(titulaire, provisoire, "Nouveau-Mot-2026!");
+        assertThat(annuaire.verifierMotDePasse("agent", "Nouveau-Mot-2026!")).isTrue();
+    }
+
+    @Test
+    @DisplayName("mon-compte.md §1 : GET /moi porte la version de la photo de profil, nulle sans photo")
+    void avatarVersion() {
+        when(avatars.version(nouveau)).thenReturn(Optional.empty(), Optional.of("0123456789abcdef"));
+        assertThat(moi.moi(titulaire).avatarVersion()).isNull();
+        assertThat(moi.moi(titulaire).avatarVersion()).isEqualTo("0123456789abcdef");
     }
 
     @Test

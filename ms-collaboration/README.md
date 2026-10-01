@@ -27,6 +27,8 @@ Collaboration entre les acteurs du GIMAC. Premier incrément livré (D-64) : la 
 - **Pièces jointes** : 5 au plus, 20 Mo chacune ; PDF, PNG, JPEG, texte, CSV, Word, Excel, PowerPoint, ZIP (extension et type contrôlés, type rendu canonique). Déposées dans MS-DOCUMENT (dépôt WORM, finalité `MESSAGERIE`, référence = message) ; nom, taille, type et empreinte SHA-256 conservés. Téléchargement réservé aux membres, en `Content-Disposition: attachment`, avec l'empreinte en `Repr-Digest` (RFC 9530) ; chaque lecture est journalisée.
 - **Événement** `collaboration.message-sent.v1` (sujet `collaboration.message`, clé = conversation, outbox transactionnelle, CloudEvents 1.0) : `conversationId`, `messageId`, `auteurId`, `destinataires`, `envoyeLe` ; **jamais le contenu**. La passerelle le pousse aux seuls destinataires connectés (`/bff/{couche}/live`).
 
+- **Photo de profil** (docs/lot1/mon-compte.md §1) : `avatarVersion` (nulle sans photo) dans l'annuaire (relayé de MS-IAM), dans les membres des conversations et dans l'auteur de chaque message ; versions lues à chaque réponse par lot (`GET /api/v1/interne/collaborateurs/avatars?ids=` de MS-IAM, port `CollaboratorDirectoryPort.versionsAvatar`) car une photo change après l'entrée du membre ; annuaire injoignable : versions absentes (initiales), la lecture n'échoue pas. L'image elle-même est servie par MS-IAM (`/bff/des/iam/avatars/{id}?v=`).
+
 **Écart assumé et borné (D-64).** Le chiffrement de bout en bout (RG-22, D-28, BF-24) et l'archivage scellé par terminal déclaré restent exigés pour les salons de crise et les salons liés à un ticket (V3). La messagerie de travail n'en porte pas : le serveur voit le clair, pour appliquer RG-52, et le protège par TLS en transit et AES-256-GCM au repos. Le RSSI confirme cet écart avant la mise en production.
 
 ### API (`/api/v1/messagerie`, sous `/bff/des/collaboration/messagerie`)
@@ -50,6 +52,7 @@ Refus : 401 sans jeton ; 403 sans second facteur (`acr` 2 ou 3) ou sans la permi
 | Service | Route | Permission | État |
 |---|---|---|---|
 | MS-IAM | `GET /api/v1/interne/collaborateurs?recherche=&page=&taille=`, `GET /api/v1/interne/collaborateurs/{id}` | `INTERNAL_IAM_READ` | Livrée avec cet incrément |
+| MS-IAM | `GET /api/v1/interne/collaborateurs/avatars?ids=` (versions des photos de profil, 200 par appel) | `INTERNAL_IAM_READ` | Livrée (mon-compte.md §1) |
 | MS-DOCUMENT | `POST /api/v1/interne/documents` (multipart `fichier`, `finalite`, `reference`, `deposantId`) | `INTERNAL_DOCUMENT_DEPOSIT` | Client écrit d'après le contrat ; route à livrer dans MS-DOCUMENT |
 | MS-DOCUMENT | `GET /api/v1/interne/documents/{id}/contenu` | `INTERNAL_DOCUMENT_READ` | Idem |
 
@@ -115,6 +118,7 @@ Copié et adapté (paquet `cm.gimac.des.collaboration`), aligné sur MS-HOMOLOGA
 | 2026-09-29 | — | Masquage des journaux activé (logback, `%maskedMsg`) ; 103 tests unitaires et 431 tests d'intégration réussis, image Jib construite (D-54). |
 | 2026-09-29 | — | `.gitignore` : exception `!src/**/out/`, pour que les ports sortants `application/port/out` soient versionnés |
 | 2026-09-30 | — | Régénération en JHipster 9.4.0 (D-43, D-55 : Spring Boot 4.1, Java 21, sans cache, Cucumber ; `ProcessedEvent` remplacée par la déduplication du consommateur idempotent) ; socle du lot 1 repris de MS-HOMOLOGATION (outbox, relais, rebut `.dlq`, jeton de service, second facteur, ArchUnit, JaCoCo). Messagerie de travail (D-64) : conversations directes et de groupe, RG-52, chiffrement AES-256-GCM au repos, étiquettes, pièces jointes via MS-DOCUMENT, non-lus, événement `collaboration.message-sent.v1`. 184 tests unitaires et de sécurité, 442 d'intégration et de recette réussis ; couverture fusionnée du service 88,8 % en lignes et 86,4 % en méthodes (hors MapStruct), code de la messagerie 96,8 % en lignes et 93,6 % en branches. |
+| 2026-10-01 | — | Photo de profil (docs/lot1/mon-compte.md §1) : `avatarVersion` dans l'annuaire, les membres des conversations et l'auteur des messages (versions lues par lot sur MS-IAM, annuaire injoignable sans échec). `./mvnw -ntp -B verify` : 188 tests unitaires et de sécurité, 443 d'intégration et de recette réussis ; couverture fusionnée hors MapStruct 88,9 % en lignes, 86,6 % en méthodes. |
 <!-- GIMAC:FIN -->
 
 # collaboration

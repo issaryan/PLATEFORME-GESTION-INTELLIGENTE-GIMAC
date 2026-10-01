@@ -66,7 +66,7 @@ public class SecurityConfiguration {
                     .requestMatchers("/api/auth-info").permitAll()
                     .requestMatchers("/api/admin/**").hasAuthority(AuthoritiesConstants.ADMIN)
                     // Connexion sur la plateforme (D-65) : jeton de service de la passerelle seulement.
-                    .requestMatchers("/api/v1/interne/comptes/*/etat-connexion", "/api/v1/interne/connexion/**")
+                    .requestMatchers("/api/v1/interne/comptes/*/etat-connexion", "/api/v1/interne/comptes/*/alerte-connexion", "/api/v1/interne/connexion/**")
                         .access(new ClientInterneAuthorizationManager("INTERNAL_IAM_READ", clientsInternesConnexion))
                     // Interfaces internes : jeton de service uniquement (PI §0.7).
                     .requestMatchers("/api/v1/interne/**").hasAuthority("INTERNAL_IAM_READ")

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- MS-GATEWAY : historique des connexions (docs/lot1/mon-compte.md §3), alimenté à chaque tentative,
+     conservé 90 jours ; jamais d'identifiant en clair (empreinte), jamais de mot de passe ni de code. -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="gateway-historique-connexion" author="lot1">
+        <createTable tableName="historique_connexion">
+            <column name="id" type="uuid"><constraints primaryKey="true" nullable="false" primaryKeyName="pk_historique_connexion"/></column>
+            <column name="le" type="timestamptz"><constraints nullable="false"/></column>
+            <column name="sujet" type="varchar(100)"/>
+            <column name="empreinte_identifiant" type="varchar(64)"/>
+            <column name="resultat" type="varchar(30)"><constraints nullable="false"/></column>
+            <column name="navigateur" type="varchar(60)"><constraints nullable="false"/></column>
+            <column name="systeme" type="varchar(60)"><constraints nullable="false"/></column>
+            <column name="type_appareil" type="varchar(20)"><constraints nullable="false"/></column>
+            <column name="adresse_ip" type="varchar(64)"/>
+            <column name="couche" type="varchar(20)"/>
+        </createTable>
+        <createIndex tableName="historique_connexion" indexName="idx_historique_connexion_sujet"><column name="sujet"/><column name="le" descending="true"/></createIndex>
+        <createIndex tableName="historique_connexion" indexName="idx_historique_connexion_identifiant"><column name="empreinte_identifiant"/><column name="le" descending="true"/></createIndex>
+        <createIndex tableName="historique_connexion" indexName="idx_historique_connexion_le"><column name="le"/></createIndex>
+        <sql>ALTER TABLE historique_connexion ADD CONSTRAINT ck_historique_connexion_resultat CHECK (resultat IN ('REUSSIE', 'ECHEC_MOT_DE_PASSE', 'ECHEC_CODE', 'BLOQUEE'));</sql>
+    </changeSet>
+</databaseChangeLog>

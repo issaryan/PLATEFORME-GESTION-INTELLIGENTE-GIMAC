@@ -2,7 +2,9 @@ package cm.gimac.des.collaboration.infrastructure.client;
 
 import cm.gimac.des.collaboration.application.port.out.CollaboratorDirectoryPort;
 import cm.gimac.des.collaboration.domain.messagerie.Collaborateur;
+import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -61,6 +63,20 @@ public class CollaboratorStubAdapter implements CollaboratorDirectoryPort {
     @Override
     public Optional<Collaborateur> trouver(String id) {
         return Optional.ofNullable(collaborateurs.get(id));
+    }
+
+    @Override
+    public Map<String, String> versionsAvatar(Collection<String> ids) {
+        Map<String, String> v = new HashMap<>();
+        if (ids != null) {
+            ids.forEach(id -> {
+                Collaborateur c = id == null ? null : collaborateurs.get(id);
+                if (c != null && c.avatarVersion() != null) {
+                    v.put(id, c.avatarVersion());
+                }
+            });
+        }
+        return v;
     }
 
     private static boolean contient(String valeur, String motif) {

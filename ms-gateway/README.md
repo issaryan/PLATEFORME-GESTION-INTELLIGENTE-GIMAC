@@ -54,7 +54,8 @@ Déclarées dans `src/main/resources/config/application.yml` (`spring.cloud.gate
 | `/bff/portail/certification/**` | certification | `/api/v1/portail/**` | `institution_id` exigé |
 | `/bff/des/participant/**` | participant | `/api/v1/**` | |
 | `/bff/portail/participant/**` | participant | `/api/v1/portail/**` | `institution_id` exigé |
-| `/bff/{des,portail,console}/iam/moi/**`, `/iam/reauthentification/defi` | iam | `/api/v1/**` | tout utilisateur à deux facteurs (D-62) |
+| `/bff/{des,portail,console}/iam/moi/**`, `/iam/reauthentification/defi` | iam | `/api/v1/**` | tout utilisateur à deux facteurs (D-62) ; filtre `FermetureAutresSessions`, corps borné à 3 Mo (photo) |
+| `/bff/{des,console}/iam/avatars/**` | iam | `/api/v1/avatars/**` | photos des collègues, `GET` seulement (mon-compte.md §1) ; aucune route depuis le portail |
 | `/bff/console/iam/comptes/**`, `/bff/console/iam/configuration/**` | iam | `/api/v1/**` | console seulement |
 | `/bff/{des,portail}/document/documents` | document | `/api/v1/documents` | dépôt d'une pièce |
 | `/bff/des/collaboration/messagerie/**` | collaboration | `/api/v1/messagerie/**` | messagerie (D-64) : DES seulement ; corps multipart relayés en flux, taille annoncée bornée à 101 Mo (`RequestSize`, 5 pièces de 20 Mo, partie JSON et délimiteurs), 413 au-delà |
@@ -160,6 +161,34 @@ Configuration : enregistrements OAuth2 `oidc` (client `web_app`, secret `SPRING_
 
 Tests : `ConnexionDomaineTest`, `SessionGimacTest`, `AdaptateursConnexionTest`, `ServiceConnexionTest`, `GatewayAuditEventPublisherTest`, `SessionResourceTest`, `OpaAuthorizeGatewayFilterFactoryTest`, `OAuth2ReactiveRefreshTokensWebFilterTest` (unitaires) ; `ConnexionResourceSecuriteTest` (sécurité, vraie chaîne, Keycloak et MS-IAM simulés : états, codes 400/401/403/429/503, CSRF, fixation de session, session restreinte, inactivité, appels de fond, durée absolue, balayage, déconnexion, redirection retirée, audit) ; `ConnexionIT` (intégration, contexte complet : enregistrements construits depuis la découverte OIDC du Keycloak simulé `KeycloakSimule`, route `/bff/{couche}/iam/moi` avec `OpaAuthorize` et `TokenRelay`, rafraîchissement par le client de la session, témoin `Secure`). JaCoCo (`seuil-connexion-sessions`, phase `test`) bloque la construction sous 80 % en lignes et méthodes par classe et en branches sur le module. Politique OPA : `opa test infra/docker-compose/opa/politiques`.
 
+## « Mon compte » : appareils connectés, historique, photo, mot de passe (docs/lot1/mon-compte.md)
+
+La passerelle, porteuse des sessions, sert les appareils connectés et l'historique des connexions, relaie la photo de profil et applique l'option « fermer mes autres sessions » du changement de mot de passe.
+
+| Route | Réponses |
+|---|---|
+| `GET /api/session/appareils` | Sessions ouvertes du compte, courante d'abord : `{id, courante, appareil{navigateur, systeme, type}, adresseIp, couche, ouverteLe, derniereActivite, expireA}` ; `id` opaque propre à la session (jamais l'identifiant du témoin) ; adresse masquée au dernier octet hors session courante |
+| `DELETE /api/session/appareils/{id}` | 204 (jeton de rafraîchissement révoqué, session supprimée) ; 409 `CNX_SESSION_COURANTE` ; 404 `CNX_APPAREIL_INCONNU` (inconnue ou d'un autre compte) |
+| `DELETE /api/session/appareils` | 204 : toutes les autres sessions du compte fermées |
+| `GET /api/session/historique?page=0&taille=20` | `{contenu[{le, resultat, appareil, adresseIp (masquée), couche}], total}`, plus récentes d'abord, taille 1 à 100 ; 503 `CNX_HISTORIQUE_INDISPONIBLE` |
+
+Session à deux facteurs exigée (`DoubleFacteurAuthorizationManager`) : 401 sans session, 403 sans second facteur, 403 `CNX_SESSION_RESTREINTE` au premier accès ; fermetures protégées contre la CSRF.
+
+- **Appareil** : en-tête `User-Agent` analysé localement (`domain/appareils/AnalyseurUserAgent` : Edge, Opera, Samsung Internet, Firefox, Chrome, Safari, Internet Explorer ; Windows, Android, iOS, iPadOS, ChromeOS, macOS, Linux ; ORDINATEUR, MOBILE, TABLETTE, INCONNU), décrit dans la session à la connexion (`SessionGimac.decrire`).
+- **Historique** : table `historique_connexion` de la base PostgreSQL de la passerelle (Liquibase `20261001100000_historique_connexion.xml`, lue et écrite en R2DBC par `HistoriqueConnexionsR2dbc` ; en mémoire seulement sans base, tests web). Chaque tentative : `REUSSIE` (connexion complète ou premier accès), `ECHEC_MOT_DE_PASSE`, `ECHEC_CODE`, `BLOQUEE` (limitation, compte inactif, couche refusée) ; l'étape `CODE_REQUIS`, une requête mal formée et une panne ne sont pas inscrites. Identifiant jamais en clair (empreinte SHA-256 tronquée, qui retrouve les échecs du mot de passe du compte), jamais de mot de passe ni de code. Rétention : `gimac.appareils.retention` (P90D), purge `gimac.appareils.purge` (PT1H, `PurgeHistorique`). Base en panne : la connexion n'attend pas plus de 2 s et n'échoue pas.
+- **Nouvel appareil** : familles du navigateur et du système (sans versions) jamais vues dans une connexion réussie du compte, sauf à sa toute première connexion : `POST /api/v1/interne/comptes/{id}/alerte-connexion` sur MS-IAM (jeton de service `gateway-service`), hors du fil de la réponse.
+- **Mot de passe** : filtre `FermetureAutresSessions` de la route « Mon compte » : sur `POST /bff/{couche}/iam/moi/mot-de-passe` réussi portant l'en-tête `X-Gimac-Fermer-Autres-Sessions: 1` de MS-IAM, les autres sessions du compte sont fermées avant la réponse ; l'en-tête n'est jamais transmis au navigateur.
+- **Photo** : `/bff/{des,portail,console}/iam/moi/avatar` par la route « Mon compte » (corps annoncé borné à 3 Mo, `RequestSize`) ; `/bff/{des,console}/iam/avatars/**` → `/api/v1/avatars/**` (route `iam-avatars`) ; OPA : `GET` seulement, authentifié, acr 2 ou 3, jamais en session restreinte ; le portail n'a aucune route vers les photos des autres.
+
+| Couche | Paquet | Contenu |
+|---|---|---|
+| Domaine | `domain/appareils` | `Appareil`, `TypeAppareil`, `AnalyseurUserAgent`, `MasqueAdresseIp`, `ResultatTentative`, `TentativeConnexion` ; ports `HistoriqueConnexions`, `AlerteNouvelAppareil` |
+| Adaptateurs | `infrastructure/appareils`, `infrastructure/connexion/IamAnnuaireComptes` | `HistoriqueConnexionsR2dbc`, `HistoriqueConnexionsMemoire` ; alerte vers MS-IAM |
+| Application | `service/appareils` | `SuiviConnexions` (historique, description de la session, alerte), `ServiceAppareils`, `PurgeHistorique` |
+| REST et filtre | `web/rest/AppareilsResource`, `web/filter/FermetureAutresSessionsGatewayFilterFactory` | Routes ci-dessus |
+
+Tests : `AppareilsDomaineTest`, `SuiviEtServiceAppareilsTest`, `FermetureAutresSessionsGatewayFilterFactoryTest`, `AdaptateursConnexionTest.alerteNouvelAppareil` (unitaires) ; `AppareilsResourceSecuriteTest` (sécurité, vraie chaîne et vraie connexion : 401, 403, session restreinte, CSRF, appareils, 409, 404, fermetures, historique, alerte) ; `HistoriqueConnexionsR2dbcIT` (PostgreSQL Testcontainers) et `ConnexionIT.monCompte` (contexte complet : historique en base, fermeture des autres sessions au changement de mot de passe, photo relayée) ; `RoutesPresentationTest` ; politique OPA (`lot1_authz_test.rego`). JaCoCo `seuil-appareils-connectes` (phase `test`).
+
 ## Journal des mises à jour
 
 | Date | Commit | Modification |
@@ -177,6 +206,7 @@ Tests : `ConnexionDomaineTest`, `SessionGimacTest`, `AdaptateursConnexionTest`, 
 | 2026-09-29 | — | Deux violations modernizer de la supervision corrigées (`Optional.orElseThrow`, corps de `/loggers` en `HashMap` car le niveau nul est admis) ; exception `!src/**/out/` au `.gitignore` |
 | 2026-09-30 | — | Messagerie (D-64) : route `/bff/des/collaboration/messagerie/**` vers MS-COLLABORATION (`/api/v1/messagerie/**`), OPA d'abord, corps multipart bornés à 101 Mo ; règles OPA `COL_MESSAGE_READ` et `COL_MESSAGE_SEND`, `/bff/portail/collaboration/**` refusé. Canal poussé `GET /bff/{couche}/live` (SSE, contrat de messagerie §5) : consommateur Kafka par instance, remise filtrée par couche, institution et destinataires, reprise sur 500 événements (5 min), maintien toutes les 25 s ; seuil JaCoCo `seuil-canal-pousse`. `./mvnw verify` : 192 tests unitaires et 76 d'intégration réussis ; couverture du canal 100 % en lignes, 98,7 % en méthodes, 96,3 % en branches. |
 | 2026-10-01 | — | Connexion sur la plateforme (D-65) : `POST /api/connexion` (octroi direct sur `gimac-connexion` puis `web_app`, état du compte sur MS-IAM par le jeton de service `gateway-service`, `CODE_REQUIS`, `PREMIER_ACCES`, `CONNECTE`), mot de passe oublié et nouveau mot de passe, limitation 5/min par adresse IP et par identifiant, audit `gateway.login-succeeded.v1` et `gateway.login-failed.v1` ; redirection vers Keycloak retirée (404) ; session restreinte (`acr` 1, OPA `premier_acces`) ; fermeture après 30 min d'inactivité ou 10 h (révocation chez Keycloak, 401 `CNX_SESSION_EXPIREE`, balayage), `expireA`, `restreinte`, `POST /api/session/prolongation` ; publication d'audit passée à Jackson 3 ; échecs intermittents corrigés (BlockHound et verrou du cache de désérialiseurs de Jackson 3, délais de `SupervisionPlateformeHttpTest`, délai de `LiveConfigurationTest.actif`). `./mvnw -ntp -B verify` : 258 tests unitaires et 79 d'intégration réussis ; couverture du module 99,0 % en lignes, 97,9 % en méthodes, 90,8 % en branches. |
+| 2026-10-01 | — | « Mon compte » (docs/lot1/mon-compte.md §1 à §3) : appareils connectés (`GET`/`DELETE /api/session/appareils`, 409 `CNX_SESSION_COURANTE`), historique persistant des connexions (`GET /api/session/historique`, table `historique_connexion` en R2DBC, 90 jours), User-Agent analysé localement, alerte « nouvel appareil » vers MS-IAM, filtre `FermetureAutresSessions`, routes des photos (`/bff/{couche}/iam/moi/avatar` bornée à 3 Mo, `/bff/{des,console}/iam/avatars/**`), règles OPA et tests ; seuil JaCoCo `seuil-appareils-connectes`. `./mvnw -ntp -B verify` : 299 tests unitaires et 83 d'intégration réussis ; couverture fusionnée hors MapStruct 81,1 % en lignes, 85,5 % en méthodes ; code nouveau 98,9 % en lignes, 90,2 % en branches ; `opa test` 80/80. |
 <!-- GIMAC:FIN -->
 
 # gateway

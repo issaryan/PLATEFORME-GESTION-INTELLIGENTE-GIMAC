@@ -13,7 +13,11 @@ public enum CauseEchec {
     TROP_DE_TENTATIVES(429, "CNX_TROP_DE_TENTATIVES", "Trop de tentatives : réessayez dans une minute."),
     SERVICE_INDISPONIBLE(503, "CNX_SERVICE_INDISPONIBLE", "Service de connexion momentanément indisponible."),
     SESSION_EXPIREE(401, "CNX_SESSION_EXPIREE", "Session fermée après inactivité ou durée maximale atteinte."),
-    SESSION_RESTREINTE(403, "CNX_SESSION_RESTREINTE", "Terminez d'abord la configuration de votre compte.");
+    SESSION_RESTREINTE(403, "CNX_SESSION_RESTREINTE", "Terminez d'abord la configuration de votre compte."),
+    /** Appareils connectés (mon-compte.md §3) : la session courante se ferme par la déconnexion. */
+    SESSION_COURANTE(409, "CNX_SESSION_COURANTE", "Utilisez la déconnexion pour fermer la session courante."),
+    APPAREIL_INCONNU(404, "CNX_APPAREIL_INCONNU", "Session introuvable ou déjà fermée."),
+    HISTORIQUE_INDISPONIBLE(503, "CNX_HISTORIQUE_INDISPONIBLE", "Historique des connexions momentanément indisponible.");
 
     private final int statut;
     private final String code;

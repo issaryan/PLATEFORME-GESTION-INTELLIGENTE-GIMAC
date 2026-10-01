@@ -1,7 +1,9 @@
 package cm.gimac.des.collaboration.application.port.out;
 
 import cm.gimac.des.collaboration.domain.messagerie.Collaborateur;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -19,4 +21,11 @@ public interface CollaboratorDirectoryPort {
     PageAnnuaire rechercher(String recherche, int page, int taille);
 
     Optional<Collaborateur> trouver(String id);
+
+    /**
+     * Versions des photos de profil d'un lot de comptes (docs/lot1/mon-compte.md §1) : membres et
+     * auteurs affichés ; les comptes sans photo sont absents. Annuaire injoignable :
+     * COL_DIRECTORY_UNAVAILABLE.
+     */
+    Map<String, String> versionsAvatar(Collection<String> ids);
 }

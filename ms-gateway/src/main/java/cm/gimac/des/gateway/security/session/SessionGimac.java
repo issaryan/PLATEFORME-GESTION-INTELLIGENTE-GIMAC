@@ -21,6 +21,15 @@ public final class SessionGimac {
     /** Nom du principal sous lequel le client autorisé est enregistré. */
     public static final String PRINCIPAL = "gimac.session.principal";
 
+    /** Appareils connectés (docs/lot1/mon-compte.md §3) : compte, identifiant opaque et description de la session. */
+    public static final String SUJET = "gimac.session.sujet";
+    public static final String IDENTIFIANT_APPAREIL = "gimac.session.appareil.id";
+    public static final String NAVIGATEUR = "gimac.session.appareil.navigateur";
+    public static final String SYSTEME = "gimac.session.appareil.systeme";
+    public static final String TYPE_APPAREIL = "gimac.session.appareil.type";
+    public static final String ADRESSE_IP = "gimac.session.adresse-ip";
+    public static final String COUCHE = "gimac.session.couche";
+
     /** En-tête des appels de fond (sondages, canal poussé) : « 1 », pas une activité de l'utilisateur. */
     public static final String EN_TETE_FOND = "X-Gimac-Fond";
 
@@ -62,6 +71,34 @@ public final class SessionGimac {
         if (geree(session)) {
             session.getAttributes().put(DERNIERE_ACTIVITE, maintenant);
         }
+    }
+
+    /**
+     * Description de la session pour « Appareils connectés » : compte, identifiant opaque propre à la
+     * session (jamais l'identifiant du témoin), appareil, adresse IP et couche.
+     */
+    public static String decrire(WebSession session, String sujet, String navigateur, String systeme, String type, String adresseIp, String couche) {
+        String id = java.util.UUID.randomUUID().toString();
+        java.util.Map<String, Object> a = session.getAttributes();
+        a.put(IDENTIFIANT_APPAREIL, id);
+        mettre(a, SUJET, sujet);
+        mettre(a, NAVIGATEUR, navigateur);
+        mettre(a, SYSTEME, systeme);
+        mettre(a, TYPE_APPAREIL, type);
+        mettre(a, ADRESSE_IP, adresseIp);
+        mettre(a, COUCHE, couche);
+        return id;
+    }
+
+    private static void mettre(java.util.Map<String, Object> a, String cle, String valeur) {
+        if (valeur != null) {
+            a.put(cle, valeur);
+        }
+    }
+
+    /** Attribut textuel de la session, nul s'il est absent. */
+    public static String texte(WebSession session, String cle) {
+        return session.getAttribute(cle) instanceof String s ? s : null;
     }
 
     /** Appel de fond : en-tête X-Gimac-Fond: 1 ou canal poussé /bff/{couche}/live. */
