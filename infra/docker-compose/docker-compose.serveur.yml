@@ -1,0 +1,20 @@
+# Surcouche du serveur de démonstration (10.20.36.214), ajoutée par GIMAC_COMPOSE_SUPPLEMENT
+# (infra/ci/deployer-serveur.sh). Seules les trois couches de présentation sont publiées sur le
+# réseau ; passerelle et Keycloak restent derrière le pare-feu, joints par le relais nginx.
+# Adresses publiques dans le .env du serveur : GIMAC_HOTE_PUBLIC, GIMAC_URL_DES, GIMAC_URL_PORTAIL,
+# GIMAC_URL_CONSOLE, GIMAC_SESSION_TEMOIN_SECURISE=false (service en http sous une adresse IP).
+services:
+  frontend-departement:
+    build:
+      args:
+        URL_CONSOLE: ${GIMAC_URL_CONSOLE:?à définir dans .env}
+    ports: !override
+      - 0.0.0.0:${GIMAC_PORT_FRONTEND_DEPARTEMENT:-4200}:8080
+
+  frontend-portail:
+    ports: !override
+      - 0.0.0.0:${GIMAC_PORT_FRONTEND_PORTAIL:-4201}:8080
+
+  frontend-console:
+    ports: !override
+      - 0.0.0.0:${GIMAC_PORT_FRONTEND_CONSOLE:-4202}:8080

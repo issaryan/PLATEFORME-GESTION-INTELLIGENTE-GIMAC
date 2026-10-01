@@ -1,0 +1,33 @@
+# Mise à jour automatique du serveur de démonstration (10.20.36.214) à chaque poussée sur main.
+#
+# Exécuté par l'exécuteur auto-hébergé du serveur (étiquette gimac-214) : construction des images
+# sur place et redémarrage des seuls conteneurs changés (infra/ci/deployer-serveur.sh). Indépendant
+# de ci.yml, qui reste la référence de la définition de « terminé » (D-61) et du déploiement en recette.
+name: Déploiement du serveur de démonstration
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Une seule mise à jour à la fois ; une poussée plus récente remplace celle en attente.
+concurrency:
+  group: deploiement-serveur
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploiement:
+    name: Déploiement sur gimac-214
+    runs-on: [self-hosted, gimac-214]
+    timeout-minutes: 120
+    steps:
+      # clean: false conserve les fichiers non versionnés du serveur (.env et ses secrets,
+      # comptes nominatifs) et les constructions Maven précédentes.
+      - uses: actions/checkout@v7
+        with:
+          clean: false
+      - name: Construction et démarrage
+        run: infra/ci/deployer-serveur.sh

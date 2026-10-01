@@ -1,0 +1,4 @@
+# Étiquettes des exécuteurs auto-hébergés (actionlint, contrôle « Chaîne » de valider-infra.sh).
+self-hosted-runner:
+  labels:
+    - gimac-214

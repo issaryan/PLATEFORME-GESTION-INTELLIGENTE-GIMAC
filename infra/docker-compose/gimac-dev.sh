@@ -13,7 +13,9 @@ ICI="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RACINE="$(cd "$ICI/../.." && pwd)"
 SERVICES=(gateway iam audit document notification participant homologation
           certification incident monitoring rapprochement pilotage reporting collaboration)
-compose() { docker compose --project-name gimac-des -f "$ICI/docker-compose.yml" -f "$ICI/docker-compose.gimac.yml" "$@"; }
+# GIMAC_COMPOSE_SUPPLEMENT : surcouche facultative d'un hôte (ex. docker-compose.serveur.yml).
+compose() { docker compose --project-name gimac-des -f "$ICI/docker-compose.yml" -f "$ICI/docker-compose.gimac.yml" \
+  ${GIMAC_COMPOSE_SUPPLEMENT:+-f "$GIMAC_COMPOSE_SUPPLEMENT"} "$@"; }
 echec() { echo "ERREUR : $*" >&2; exit 1; }
 
 verifier() {
