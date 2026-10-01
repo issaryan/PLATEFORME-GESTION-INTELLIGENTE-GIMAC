@@ -76,6 +76,28 @@ test.describe('Fonctionnalité : parcours de certification conduit par le chef d
     })
   })
 
+  test('Scénario : rechercher aussitôt après avoir réinitialisé les filtres', async ({ page }) => {
+    await page.goto(`${ADRESSES.departement}/des/parcours?statut=EN_TEST&type=CARTE_INTERBANCAIRE&etape=SUIVI`)
+    await test.step('Étant donné une liste filtrée sans résultat', async () => {
+      await expect(page.getByText('Aucune liaison ne correspond')).toBeVisible()
+    })
+    await test.step('Quand il réinitialise et tape une recherche dans le même élan', async () => {
+      // Clic et frappe dans la même tâche du navigateur : le routeur n'a pas encore appliqué l'adresse
+      // réinitialisée quand la recherche est saisie (cas observé sur une machine chargée).
+      await page.evaluate(() => {
+        ;[...document.querySelectorAll('button')].find((b) => /Réinitialiser/.test(b.textContent ?? ''))!.click()
+        const champ = [...document.querySelectorAll('input')].find((i) => i.getAttribute('aria-label') === 'Rechercher' || document.querySelector(`label[for="${i.id}"]`)?.textContent?.trim() === 'Rechercher')!
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(champ, 'Banque K')
+        champ.dispatchEvent(new Event('input', { bubbles: true }))
+      })
+    })
+    await test.step('Alors seule la recherche s’applique, les filtres retirés ne reviennent pas', async () => {
+      await expect(page.getByText('1 liaison', { exact: true })).toBeVisible()
+      await expect(page.getByRole('link', { name: 'LIA-2026-025' })).toBeVisible()
+      await expect(page).toHaveURL(/\/des\/parcours\?q=Banque\+K$/)
+    })
+  })
+
   test('Scénario : ouvrir une liaison sur un adhérent depuis « Mon travail », doublon refusé', async ({ page }) => {
     await page.goto(`${ADRESSES.departement}/des/tableau-de-bord`)
     await test.step('Quand il choisit « Ouvrir une liaison » dans son travail', async () => {

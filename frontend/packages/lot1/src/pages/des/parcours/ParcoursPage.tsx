@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams } from 'react-router'
 import { Button, DataTable, FilterBar, Tabs, PageHeader } from '@gimac/design-system'
@@ -34,10 +34,15 @@ export default function ParcoursPage() {
   const q = params.get('q') ?? ''
   const [saisie, setSaisie] = useState(q)
 
+  // Dernière adresse demandée : le routeur applique l'adresse dans une transition, après la frappe ; une
+  // recherche saisie juste après « Réinitialiser » part donc de l'adresse demandée, pas de celle encore affichée.
+  const adresse = useRef(params)
+  useEffect(() => { adresse.current = params }, [params])
   const modifier = (maj: Record<string, string | null>, garderPage = false) => {
-    const suivant = new URLSearchParams(params)
+    const suivant = new URLSearchParams(adresse.current)
     Object.entries(maj).forEach(([k, v]) => (v ? suivant.set(k, v) : suivant.delete(k)))
     if (!garderPage) suivant.delete('page')
+    adresse.current = suivant
     setParams(suivant, { replace: true })
   }
   // Recherche portée par l'adresse : une navigation (menu, compteur) remet le champ à sa valeur.
