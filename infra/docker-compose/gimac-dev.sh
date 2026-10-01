@@ -84,6 +84,16 @@ conserver_journaux() {
     docker logs --tail 300 "$nom" > "$dossier/$nom.log" 2>&1
   done
   echo "Journaux conservés dans $dossier" >&2
+  # Exécuteur GitHub Actions (déploiement du serveur de démonstration) : fin des journaux dans la sortie du
+  # travail, pour un diagnostic sans accès au serveur ; valeurs de type secret masquées.
+  if [ "${GITHUB_ACTIONS:-}" = true ]; then
+    for nom in "$dossier"/*.log; do
+      [ -e "$nom" ] || continue
+      echo "::group::$(basename "$nom" .log) (60 dernières lignes)"
+      tail -n 60 "$nom" | sed -E 's/((password|passwd|secret|token|credential)[A-Za-z_]*[=:][[:space:]]*)[^[:space:],}]+/\1******/Ig'
+      echo "::endgroup::"
+    done
+  fi
 }
 
 images_manquantes() {

@@ -12,7 +12,8 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.4.5</version>
+        <!-- 3.5.12 : CVE-2026-22731 et CVE-2026-22733 (Actuator) corrigées ; 3.4.x n'a pas de correctif. -->
+        <version>3.5.12</version>
         <relativePath/>
         <!-- lookup parent from repository -->
     </parent>
@@ -34,6 +35,8 @@
         <m2e.apt.activation>jdt_apt</m2e.apt.activation>
         <run.addResources>false</run.addResources>
         <spring-boot.version>${project.parent.version}</spring-boot.version>
+        <!-- Pilote PostgreSQL : CVE-2025-49146, CVE-2026-42198 et CVE-2026-54291 corrigées (Trivy). -->
+        <postgresql.version>42.7.13</postgresql.version>
         <archunit-junit5.version>1.4.0</archunit-junit5.version>
         <checkstyle.version>10.23.1</checkstyle.version>
         <git-commit-id-maven-plugin.version>9.0.1</git-commit-id-maven-plugin.version>
@@ -80,7 +83,7 @@
         <resource.delimiter>@</resource.delimiter>
         <sonar-maven-plugin.version>5.1.0.4751</sonar-maven-plugin.version>
         <spotless-maven-plugin.version>2.44.4</spotless-maven-plugin.version>
-        <spring-cloud-dependencies.version>2024.0.1</spring-cloud-dependencies.version>
+        <spring-cloud-dependencies.version>2025.0.3</spring-cloud-dependencies.version>
         <spring.profiles.active>dev</spring.profiles.active>
         <springdoc-openapi-starter-webmvc-api.version>2.8.8</springdoc-openapi-starter-webmvc-api.version>
     </properties>
