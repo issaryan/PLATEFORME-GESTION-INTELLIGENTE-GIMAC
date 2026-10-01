@@ -22,6 +22,23 @@ export GIMAC_COMPOSE_SUPPLEMENT="$COMPOSE_DIR/docker-compose.serveur.yml"
 
 etape() { echo; echo "== $*"; }
 
+# État du serveur hors de la copie de travail, qu'un exécuteur peut recloner : secrets du .env
+# (liés aux volumes, dont la base de Keycloak), comptes nominatifs et mots de passe provisoires.
+ETAT_SERVEUR="$HOME/.config/gimac-des"
+lier_etat() {
+  local cible="$1" nom="$2"
+  mkdir -p "$ETAT_SERVEUR" "$(dirname "$cible")"
+  chmod 700 "$ETAT_SERVEUR"
+  if [ -f "$cible" ] && [ ! -L "$cible" ] && [ ! -e "$ETAT_SERVEUR/$nom" ]; then
+    mv "$cible" "$ETAT_SERVEUR/$nom"
+  fi
+  [ -e "$ETAT_SERVEUR/$nom" ] || { [ "$nom" = comptes.json ] && return 0; touch "$ETAT_SERVEUR/$nom"; chmod 600 "$ETAT_SERVEUR/$nom"; }
+  ln -sfn "$ETAT_SERVEUR/$nom" "$cible"
+}
+lier_etat "$ENV" env
+lier_etat "$RACINE/infra/keycloak/local/comptes.json" comptes.json
+lier_etat "$RACINE/infra/keycloak/local/mots-de-passe-provisoires.txt" mots-de-passe-provisoires.txt
+
 # Un seul déploiement à la fois sur l'hôte.
 exec 9>"${TMPDIR:-/tmp}/gimac-deploiement.verrou"
 flock 9
@@ -62,6 +79,7 @@ configurer_env() {
   definir GIMAC_WEBAUTHN_ORIGINES "http://$hote:4200,http://$hote:4201,http://$hote:4202"
   # Service en http sous une adresse IP : un témoin Secure n'y serait jamais renvoyé.
   definir GIMAC_SESSION_TEMOIN_SECURISE false
+  definir GIMAC_KEYCLOAK_DB_PASSWORD "$(openssl rand -hex 20)"
 }
 
 compose() {
@@ -69,17 +87,46 @@ compose() {
     -f "$COMPOSE_DIR/docker-compose.gimac.yml" -f "$GIMAC_COMPOSE_SUPPLEMENT" --env-file "$ENV" "$@"
 }
 
+# Keycloak est persistant (docker-compose.serveur.yml) : --import-realm ignore un domaine existant.
+# Quand gimac-realm.json change, le domaine en service est exporté avec ses comptes (kc.sh export,
+# mots de passe hachés et codes TOTP compris), fusionné avec la version du dépôt, puis réimporté.
+DOMAINE="$RACINE/infra/keycloak/gimac-realm.json"
+# Les fichiers d'échange contiennent des empreintes de mots de passe : supprimés en sortie.
+ECHANGE=""
+trap 'rm -rf "${ECHANGE:-/nonexistent}"' EXIT
+EMPREINTE="$HOME/.local/state/gimac-des/gimac-realm.sha256"
+
+actualiser_domaine() {
+  local nouvelle
+  nouvelle="$(sha256sum "$DOMAINE" | cut -d' ' -f1)"
+  docker volume inspect gimac-des_keycloak_donnees >/dev/null 2>&1 || return 0   # premier import
+  [ "$(cat "$EMPREINTE" 2>/dev/null)" != "$nouvelle" ] || return 0
+  etape "Domaine gimac modifié : réimport en conservant les comptes"
+  ECHANGE="$(mktemp -d)"
+  mkdir -p "$ECHANGE/import"
+  compose stop keycloak
+  compose up -d --wait keycloak-postgresql
+  compose run --rm --no-deps --user "$(id -u):0" -v "$ECHANGE:/echange" keycloak \
+    export --dir /echange --realm gimac --users realm_file
+  python3 "$RACINE/infra/ci/fusionner-domaine.py" "$DOMAINE" "$ECHANGE/gimac-realm.json" > "$ECHANGE/import/gimac-realm.json"
+  compose run --rm --no-deps --user "$(id -u):0" -v "$ECHANGE/import:/echange" keycloak \
+    import --dir /echange --override true
+}
+
 outils
 configurer_env "${1:-}"
 
 etape "Images des 14 microservices et extension Keycloak"
 "$COMPOSE_DIR/gimac-dev.sh" images
+actualiser_domaine
 
 etape "Images des trois couches de présentation"
 compose build frontend-departement frontend-portail frontend-console
 
 etape "Démarrage"
 "$COMPOSE_DIR/gimac-dev.sh" demarrer
+mkdir -p "$(dirname "$EMPREINTE")"
+sha256sum "$DOMAINE" | cut -d' ' -f1 > "$EMPREINTE"
 
 if [ -f "$RACINE/infra/keycloak/local/comptes.json" ]; then
   etape "Comptes nominatifs (les comptes existants sont conservés)"

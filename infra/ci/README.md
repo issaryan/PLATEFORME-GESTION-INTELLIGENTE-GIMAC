@@ -126,5 +126,5 @@ Secrets à définir dans GitHub : `COSIGN_PRIVATE_KEY`, `COSIGN_PASSWORD` (dép�
 | `valider-infra.sh`, `valider-backend.sh`, `valider-frontend.sh`, `valider-securite.sh` | validations |
 | `valider-tout.sh` | toutes les validations sur le poste |
 | `construire-images.sh`, `deployer-recette.sh` | livraison et déploiement continus |
-| `deployer-serveur.sh` | serveur de démonstration (10.20.36.214) : images construites sur place, démarrage par `gimac-dev.sh` avec `docker-compose.serveur.yml`, comptes nominatifs ; lancé par `.github/workflows/deploiement-serveur.yml` sur l'exécuteur auto-hébergé `gimac-214` à chaque poussée sur `main` |
+| `deployer-serveur.sh`, `fusionner-domaine.py` | serveur de démonstration (10.20.36.214) : images construites sur place, démarrage par `gimac-dev.sh` avec `docker-compose.serveur.yml`, Keycloak persistant (domaine modifié réimporté en conservant comptes, mots de passe et TOTP), comptes nominatifs ; lancé par `.github/workflows/deploiement-serveur.yml` sur l'exécuteur auto-hébergé `gimac-214` à chaque poussée sur `main` |
 | `yamllint.yml`, `gitleaks.toml` | règles de yamllint et de gitleaks |
