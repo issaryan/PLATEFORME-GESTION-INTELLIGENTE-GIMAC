@@ -15,7 +15,7 @@ import org.testcontainers.kafka.KafkaContainer;
 @TestConfiguration(proxyBeanMethods = false)
 public class KafkaTestContainer {
 
-    private static final KafkaContainer KAFKA_CONTAINER = new KafkaContainer("apache/kafka-native:4.3.1")
+    private static final KafkaContainer KAFKA_CONTAINER = new KafkaContainer("apache/kafka:4.3.1")
         .withStartupTimeout(Duration.ofMinutes(2))
         .withStartupAttempts(3)
         .withEnv("KAFKA_LISTENERS", "PLAINTEXT://:9092,BROKER://:9093,CONTROLLER://:9094")
