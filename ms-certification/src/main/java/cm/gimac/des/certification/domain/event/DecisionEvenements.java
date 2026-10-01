@@ -26,6 +26,8 @@ public final class DecisionEvenements {
     /** Complément au §3 : attestation vérifiée conforme ou rejetée avec motif (projection attestationsAFournir). */
     public static final String ATTESTATION_VERIFIEE = "certification.attestation-verified.v1";
     public static final String ATTESTATIONS_ARCHIVEES = "certification.attestations-archived.v1";
+    /** Complément au §3 : visas optionnels activés à l'ouverture du verrou 2 (projection visasAttendus). */
+    public static final String VISAS_REQUIS = "certification.visas-required.v1";
     /** Complément au §3 : visa optionnel signé (projection visasAttendus). */
     public static final String VISA_SIGNE = "certification.visa-signed.v1";
     public static final String SECURITE_APPROUVEE = "certification.security-approved.v1";
@@ -53,6 +55,8 @@ public final class DecisionEvenements {
     public record AttestationsArchivees(UUID liaisonId, List<AttestationArchivee> attestations) {}
 
     public record VisaSigne(UUID liaisonId, String nature, boolean favorable) {}
+
+    public record VisasRequis(UUID liaisonId, java.util.List<String> natures) {}
 
     public record SecuriteApprouvee(UUID liaisonId, Instant approuveeLe) {}
 }

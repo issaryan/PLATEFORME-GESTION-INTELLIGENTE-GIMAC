@@ -61,7 +61,8 @@ class EvenementsCertificationConsumerTest {
         consommateur.recevoir(evenement("certification.change-record-referenced.v1", "{" + l + ",\"reference\":\"CHG-2026-1\"}"));
         consommateur.recevoir(evenement("certification.attestations-archived.v1", "{" + l + ",\"attestations\":[{\"type\":\"PCI_DSS\",\"documentRef\":\"a1\"},{\"type\":\"COBAC\"}]}"));
         consommateur.recevoir(evenement("certification.security-approved.v1", "{" + l + ",\"approuveeLe\":\"2026-10-06\"}"));
-        consommateur.recevoir(evenement("certification.attestation-deposited.v1", "{" + l + ",\"type\":\"GSMA\"}"));
+        consommateur.recevoir(evenement("certification.attestation-submitted.v1", "{" + l + ",\"type\":\"GSMA\"}"));
+        consommateur.recevoir(evenement("certification.attestation-deposited.v1", "{" + l + ",\"type\":\"COBAC\"}"));
         consommateur.recevoir(evenement("certification.attestation-verified.v1", "{" + l + ",\"type\":\"GSMA\",\"conforme\":true}"));
         consommateur.recevoir(evenement("certification.visas-required.v1", "{" + l + ",\"natures\":[\"CONFORMITE\"]}"));
         consommateur.recevoir(evenement("certification.visa-signed.v1", "{" + l + ",\"nature\":\"CONFORMITE\"}"));
@@ -72,6 +73,7 @@ class EvenementsCertificationConsumerTest {
         verify(effets).attestationsArchivees(L, List.of("a1"));
         verify(effets).securiteApprouvee(L, "2026-10-06");
         verify(effets).attestationDeposee(L, TypeAttestation.GSMA);
+        verify(effets).attestationDeposee(L, TypeAttestation.COBAC);
         verify(effets).attestationVerifiee(L, TypeAttestation.GSMA);
         verify(effets).visasAttendus(L, List.of("CONFORMITE"));
         verify(effets).visaSigne(L, "CONFORMITE");

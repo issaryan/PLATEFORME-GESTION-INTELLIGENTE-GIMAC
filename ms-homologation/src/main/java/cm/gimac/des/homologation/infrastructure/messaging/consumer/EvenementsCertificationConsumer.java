@@ -75,7 +75,8 @@ public class EvenementsCertificationConsumer {
             case "certification.change-record-referenced.v1" -> () -> effets.ficheChangementReferencee(l, texte(d, "reference"));
             case "certification.attestations-archived.v1" -> () -> effets.attestationsArchivees(l, references(d.path("attestations")));
             case "certification.security-approved.v1" -> () -> effets.securiteApprouvee(l, texte(d, "approuveeLe"));
-            case "certification.attestation-deposited.v1" -> () -> effets.attestationDeposee(l, TypeAttestation.valueOf(texte(d, "type")));
+            // Nom émis par MS-CERTIFICATION (attestation-submitted) ; « deposited » reste admis.
+            case "certification.attestation-submitted.v1", "certification.attestation-deposited.v1" -> () -> effets.attestationDeposee(l, TypeAttestation.valueOf(texte(d, "type")));
             case "certification.attestation-verified.v1" -> () -> effets.attestationVerifiee(l, TypeAttestation.valueOf(texte(d, "type")));
             case "certification.visas-required.v1" -> () -> effets.visasAttendus(l, textes(d.path("natures")));
             case "certification.visa-signed.v1" -> () -> effets.visaSigne(l, texte(d, "nature"));

@@ -63,7 +63,7 @@ class ParcoursVerrousIT extends ParcoursITSupport {
         // Verrou 2 : dossier de changement, fiche référencée avant l'ouverture du rang 26, attestations, approbation.
         evenement("certification.change-record-constituted.v1", id, "\"documentRef\":\"CHG-DOS-1\",\"nom\":\"dossier.pdf\",\"empreinte\":\"" + SHA + "\"");
         evenement("certification.change-record-referenced.v1", id, "\"reference\":\"CHG-2026-0412\"");
-        evenement("certification.attestation-deposited.v1", id, "\"type\":\"PCI_DSS\"");
+        evenement("certification.attestation-submitted.v1", id, "\"type\":\"PCI_DSS\"");
         mvc.perform(get("/api/v1/tableaux-de-bord/acteur").param("fonctions", "RSSI").with(utilisateur(UUID.randomUUID(), "ROLE_RSSI", "HOM_DASHBOARD_READ")))
             .andExpect(jsonPath("$.compteurs[?(@.cle == 'attestationsAVerifier')].valeur").value(Matchers.hasItem(Matchers.greaterThanOrEqualTo(1))));
         evenement("certification.attestations-archived.v1", id, "\"attestations\":[{\"type\":\"PCI_DSS\",\"documentRef\":\"ATT-PCI\"}]");

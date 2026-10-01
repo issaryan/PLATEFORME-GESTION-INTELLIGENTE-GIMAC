@@ -18,6 +18,7 @@ public class TopicResolver {
         Map.entry(DecisionEvenements.ATTESTATION_DEPOSEE, DecisionEvenements.SUJET_APPROBATION),
         Map.entry(DecisionEvenements.ATTESTATION_VERIFIEE, DecisionEvenements.SUJET_APPROBATION),
         Map.entry(DecisionEvenements.ATTESTATIONS_ARCHIVEES, DecisionEvenements.SUJET_APPROBATION),
+        Map.entry(DecisionEvenements.VISAS_REQUIS, DecisionEvenements.SUJET_APPROBATION),
         Map.entry(DecisionEvenements.VISA_SIGNE, DecisionEvenements.SUJET_APPROBATION),
         Map.entry(DecisionEvenements.SECURITE_APPROUVEE, DecisionEvenements.SUJET_APPROBATION)
     );

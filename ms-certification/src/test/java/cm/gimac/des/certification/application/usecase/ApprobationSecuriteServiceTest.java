@@ -69,6 +69,8 @@ class ApprobationSecuriteServiceTest {
     @DisplayName("Parcours complet d'une carte : dossier, attestation PCI DSS, vérification, archivage, fiche lue : APPROUVEE")
     void parcoursComplet() {
         UUID id = banc.pvSigne("CARTE_INTERBANCAIRE", false);
+        // Aucun visa activé pour une carte : aucun événement de visas attendus.
+        assertThat(banc.evenements).noneMatch(e -> e.type().equals(DecisionEvenements.VISAS_REQUIS));
         ApprobationVue v = banc.approbations.consulter(id, production());
         assertThat(v.actionsPermises()).containsExactly("CONSTITUER_DOSSIER");
         v = dossier(id);
@@ -178,6 +180,10 @@ class ApprobationSecuriteServiceTest {
     @DisplayName("Visas activés (délégataire) : insérés avant l'approbation, signés avec assertion, immuables")
     void visas() {
         UUID id = banc.pvSigne("DELEGATAIRE", false);
+        // Ouverture du verrou 2 : visas attendus publiés pour les tableaux de bord de la conformité et de la DG.
+        var requis = (DecisionEvenements.VisasRequis) banc.evenements.stream().filter(e -> e.type().equals(DecisionEvenements.VISAS_REQUIS)).findFirst().orElseThrow().charge();
+        assertThat(requis.liaisonId()).isEqualTo(id);
+        assertThat(requis.natures()).containsExactly("CONFORMITE", "DIRECTION_GENERALE");
         ApprobationVue v = banc.approbations.consulter(id, conformite());
         assertThat(v.visas()).extracting(DecisionVues.VisaVue::actif).containsExactly(true, true);
         assertThat(v.actionsPermises()).containsExactly("SIGNER_VISA_CONFORMITE");

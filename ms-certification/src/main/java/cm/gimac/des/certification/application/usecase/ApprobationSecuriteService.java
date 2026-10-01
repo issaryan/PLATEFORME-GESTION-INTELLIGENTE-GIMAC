@@ -120,20 +120,27 @@ public class ApprobationSecuriteService {
 
     /** Ouverture du verrou 2 quand le procès-verbal est signé des deux parties (appelée par le verrou 1). */
     public ApprobationSecurite ouvrir(ProcesVerbalCertification pv) {
-        return approbations
-            .findByLiaisonId(pv.getLiaisonId())
-            .orElseGet(() ->
-                approbations.save(
-                    new ApprobationSecurite(
-                        pv.getLiaisonId(),
-                        pv.getInstitutionId(),
-                        pv.getTypeProjet(),
-                        pv.isFintech(),
-                        ApprobationPolicy.attestationsExigees(pv.getTypeProjet(), pv.isFintech()),
-                        visasActifs(pv.getTypeProjet())
-                    )
-                )
-            );
+        Optional<ApprobationSecurite> existante = approbations.findByLiaisonId(pv.getLiaisonId());
+        if (existante.isPresent()) {
+            return existante.orElseThrow();
+        }
+        Set<NatureVisa> visas = visasActifs(pv.getTypeProjet());
+        ApprobationSecurite a = approbations.save(
+            new ApprobationSecurite(
+                pv.getLiaisonId(),
+                pv.getInstitutionId(),
+                pv.getTypeProjet(),
+                pv.isFintech(),
+                ApprobationPolicy.attestationsExigees(pv.getTypeProjet(), pv.isFintech()),
+                visas
+            )
+        );
+        // Visas optionnels activés pour ce type de projet : attendus de la conformité et de la DG
+        // (projection visasAttendus de MS-HOMOLOGATION, tableaux de bord de ces fonctions).
+        if (!visas.isEmpty()) {
+            publier(a, DecisionEvenements.VISAS_REQUIS, new DecisionEvenements.VisasRequis(pv.getLiaisonId(), visas.stream().map(Enum::name).sorted().toList()));
+        }
+        return a;
     }
 
     // ------------------------------------------------------------------ Lecture (DES)
