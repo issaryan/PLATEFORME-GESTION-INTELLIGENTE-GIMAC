@@ -29,7 +29,8 @@
   display: flex; flex-direction: column; justify-content: center; gap: var(--gm-space-4);
   padding: var(--gm-space-6);
 }
-.gm-tuile-acces img { height: 104px; margin: calc(-1 * var(--gm-space-4)) 0 calc(-1 * var(--gm-space-3)) calc(-1 * var(--gm-space-5)); width: auto; align-self: flex-start; }
+/* Logo seul, sans la bande des drapeaux (D-66). */
+.gm-tuile-acces img { height: 48px; width: auto; align-self: flex-start; }
 .gm-acces-nom { margin: 0; font-family: var(--font-heading); font-size: 40px; line-height: 44px; font-weight: 700; }
 .gm-acces-nom span { color: var(--gm-color-action); font-weight: 500; }
 .gm-acces-texte { margin: 0; max-width: 56ch; color: var(--gm-color-text-secondary); }
