@@ -106,6 +106,13 @@ actualiser_domaine() {
   mkdir -p "$ECHANGE/import"
   compose stop keycloak
   compose up -d --wait keycloak-postgresql
+  # Volume présent mais domaine jamais importé (premier démarrage interrompu) : rien à conserver,
+  # l'import du démarrage (--import-realm) crée le domaine.
+  if [ -z "$(compose exec -T keycloak-postgresql psql -U keycloak -d keycloak -tAc \
+      "select 1 from realm where name = 'gimac'" 2>/dev/null)" ]; then
+    echo "  Domaine gimac absent de la base : import au démarrage"
+    return 0
+  fi
   compose run --rm --no-deps --user "$(id -u):0" -v "$ECHANGE:/echange" keycloak \
     export --dir /echange --realm gimac --users realm_file
   python3 "$RACINE/infra/ci/fusionner-domaine.py" "$DOMAINE" "$ECHANGE/gimac-realm.json" > "$ECHANGE/import/gimac-realm.json"

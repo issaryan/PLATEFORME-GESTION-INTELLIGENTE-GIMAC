@@ -99,12 +99,12 @@ if voulu gitleaks; then
 fi
 
 if voulu yamllint; then
-  if command -v pipx >/dev/null 2>&1; then
-    pipx install --force "yamllint==$VERSION_YAMLLINT" >/dev/null
-  else
-    python3 -m pip install --user --quiet "yamllint==$VERSION_YAMLLINT"
-  fi
-  echo "  yamllint $VERSION_YAMLLINT -> dossier des commandes de pipx ou pip --user"
+  # Environnement virtuel propre dans le dossier des outils : le pipx des exécuteurs GitHub refuse de
+  # remplacer son environnement yamllint préinstallé (/opt/pipx, « Operation not permitted »).
+  python3 -m venv --clear "$DOSSIER/.yamllint"
+  "$DOSSIER/.yamllint/bin/pip" install --quiet "yamllint==$VERSION_YAMLLINT"
+  ln -sf "$DOSSIER/.yamllint/bin/yamllint" "$DOSSIER/yamllint"
+  echo "  yamllint $VERSION_YAMLLINT -> $DOSSIER/yamllint"
 fi
 
 echo "Outils installés dans $DOSSIER (à ajouter au PATH)."

@@ -24,6 +24,12 @@ paths = [
 ]
 
 [[allowlists]]
+description = "Références à une variable d'environnement (Compose, shell) et URL JDBC sans identifiants"
+targetRules = ["generic-api-key"]
+regexTarget = "line"
+regexes = ['''=jdbc:[a-z]+://[A-Za-z0-9.-]+(:[0-9]+)?/[A-Za-z0-9_-]+\s*$''', '''=\$\{[A-Z][A-Z0-9_]*(:?[?-][^}]*)?\}\s*$''']
+
+[[allowlists]]
 description = "En-têtes PEM seuls (constantes de reconnaissance du format, sans clé)"
 targetRules = ["private-key"]
 regexTarget = "line"
