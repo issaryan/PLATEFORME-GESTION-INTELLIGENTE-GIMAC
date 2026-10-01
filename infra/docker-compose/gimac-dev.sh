@@ -102,10 +102,23 @@ images_manquantes() {
   done
 }
 
+# Keycloak tourne sous son propre utilisateur (uid 1000) : l'extension montée doit être lisible par tous,
+# même construite sous un masque restrictif (exécuteur du serveur de démonstration, umask 077).
+# Sinon : « Failed to read …/providers/gimac-totp.jar » au démarrage.
+lisible_par_keycloak() {
+  local cible="$RACINE/infra/keycloak/extensions/gimac-totp/target"
+  # Domaines importés et thème, montés depuis la copie de travail.
+  chmod a+r "$RACINE/infra/keycloak/gimac-realm.json" "$ICI/realm-config/jhipster-realm.json" "$ICI/realm-config/keycloak-health-check.sh"
+  chmod -R a+rX "$RACINE/infra/keycloak/themes/gimac"
+  [ -e "$cible/gimac-totp.jar" ] || return 0
+  chmod a+rx "$cible" && chmod a+r "$cible/gimac-totp.jar"
+}
+
 images() {
   # Extension gimac-totp de Keycloak (D-65), montée par le Compose dans /opt/keycloak/providers.
   echo "== Construction de l'extension Keycloak gimac-totp"
   (cd "$RACINE/infra/keycloak/extensions/gimac-totp" && mvn -q -ntp -B package -DskipTests)
+  lisible_par_keycloak
   local s; for s in "${SERVICES[@]}"; do
     echo "== Construction de l'image $s (Jib)"
     # Tests exclus : le seuil JaCoCo de verify (D-61) n'aurait aucune mesure et échouerait ;
@@ -119,6 +132,7 @@ images() {
 
 demarrer() {
   verifier
+  lisible_par_keycloak
   preparer_env
   local cibles=()
   if [ "${1:-}" = "--socle" ]; then
