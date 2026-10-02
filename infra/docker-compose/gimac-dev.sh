@@ -13,7 +13,13 @@ ICI="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RACINE="$(cd "$ICI/../.." && pwd)"
 SERVICES=(gateway iam audit document notification participant homologation
           certification incident monitoring rapprochement pilotage reporting collaboration)
-# GIMAC_COMPOSE_SUPPLEMENT : surcouche facultative d'un hôte (ex. docker-compose.serveur.yml).
+# GIMAC_COMPOSE_SUPPLEMENT : surcouche facultative d'un hôte (ex. docker-compose.serveur.yml), prise de
+# l'environnement ou, à défaut, du .env du poste (ex. docker-compose.keycloak-persistant.yml) ; un chemin
+# relatif s'entend depuis ce dossier.
+if [ -z "${GIMAC_COMPOSE_SUPPLEMENT:-}" ] && [ -f "$ICI/.env" ]; then
+  GIMAC_COMPOSE_SUPPLEMENT="$(sed -n 's/^GIMAC_COMPOSE_SUPPLEMENT=//p' "$ICI/.env" | tail -1)"
+fi
+case "${GIMAC_COMPOSE_SUPPLEMENT:-}" in ""|/*) ;; *) GIMAC_COMPOSE_SUPPLEMENT="$ICI/$GIMAC_COMPOSE_SUPPLEMENT" ;; esac
 compose() { docker compose --project-name gimac-des -f "$ICI/docker-compose.yml" -f "$ICI/docker-compose.gimac.yml" \
   ${GIMAC_COMPOSE_SUPPLEMENT:+-f "$GIMAC_COMPOSE_SUPPLEMENT"} "$@"; }
 echec() { echo "ERREUR : $*" >&2; exit 1; }
@@ -61,7 +67,7 @@ preparer_env() {
   for variable in GIMAC_KEYCLOAK_ADMIN_PASSWORD GIMAC_GRAFANA_ADMIN_PASSWORD GIMAC_OPENBAO_TOKEN \
                   GIMAC_S3_CLE_ACCES GIMAC_S3_CLE_SECRETE GIMAC_MOT_DE_PASSE_TEST GIMAC_SECRET_TESTER_CLI \
                   GIMAC_SECRET_HOMOLOGATION_SERVICE GIMAC_SECRET_CERTIFICATION_SERVICE GIMAC_SECRET_PARTICIPANT_SERVICE \
-                  GIMAC_SECRET_IAM_SERVICE GIMAC_SECRET_GATEWAY_SUPERVISION GIMAC_SECRET_INTERNAL \
+                  GIMAC_SECRET_IAM_SERVICE GIMAC_SECRET_GATEWAY_SUPERVISION GIMAC_SECRET_INTERNAL GIMAC_KEYCLOAK_DB_PASSWORD \
                   GIMAC_SECRET_COLLABORATION_SERVICE GIMAC_SECRET_CONNEXION GIMAC_SECRET_WEB_APP \
                   GIMAC_SECRET_GATEWAY_SERVICE; do
     grep -q "^$variable=" "$fichier" || { echo "$variable=$(openssl rand -hex 20)" >> "$fichier"; echo "Secret ajouté à .env : $variable"; }

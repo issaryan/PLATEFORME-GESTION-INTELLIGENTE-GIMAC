@@ -112,3 +112,4 @@ infra/ci/valider-securite.sh                       # secrets (gitleaks) et vuln�
 | 2026-09-30 | 4fa6dc8, f9cfef1 | Canal poussé de la passerelle et routes de la messagerie ; Testcontainers 2 dans sept services |
 | 2026-09-30 | d07c74d, 0f46741 | Messagerie instantanée (D-64) : contrat et interface ; partage du backend des étapes 4 à 10 |
 | 2026-10-01 | — | Serveur de démonstration 10.20.36.214 mis à jour à chaque poussée sur `main` (`.github/workflows/deploiement-serveur.yml`, exécuteur auto-hébergé `gimac-214`, `infra/ci/deployer-serveur.sh`) |
+| 2026-10-02 | — | Keycloak persistant sur un poste de développement (surcouche activée par le `.env`), comme sur le serveur de démonstration |
