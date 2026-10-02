@@ -175,7 +175,8 @@ spring:
                 - OpaAuthorize
                 - RewritePath=/bff/portail/certification/(?<p>.*), /api/v1/portail/${p}
             # MS-IAM (D-62) : « Mon compte » et défi de réauthentification depuis chaque couche ;
-            # comptes et configuration depuis la console seulement. Les routes /interne ne sont
+            # comptes, journal, politique et profils depuis la console et le département (D-69) ;
+            # serveur de courriels depuis la console seulement. Les routes /interne ne sont
             # jamais relayées (aucun prédicat ne les couvre, OPA les refuse).
             # « Mon compte » (D-62, D-65, docs/lot1/mon-compte.md) : fiche, mot de passe (fermeture des autres
             # sessions par la passerelle), code TOTP, photo de profil (PUT/DELETE/GET …/moi/avatar).
@@ -207,6 +208,14 @@ spring:
               filters:
                 - OpaAuthorize
                 - RewritePath=/bff/console/iam/(?<p>.*), /api/v1/${p}
+            # Administration dans le département (D-69) : RSSI et super administrateur, mêmes permissions (OPA).
+            - id: des-iam-administration
+              uri: ${gimac.services.iam}
+              predicates:
+                - Path=/bff/des/iam/comptes,/bff/des/iam/comptes/**,/bff/des/iam/configuration/politique-securite,/bff/des/iam/configuration/profils,/bff/des/iam/configuration/profils/**,/bff/des/iam/configuration/permissions
+              filters:
+                - OpaAuthorize
+                - RewritePath=/bff/des/iam/(?<p>.*), /api/v1/${p}
             # MS-DOCUMENT : dépôt direct d'une pièce (empreinte calculée par le service).
             - id: depot-document
               uri: ${gimac.services.document}

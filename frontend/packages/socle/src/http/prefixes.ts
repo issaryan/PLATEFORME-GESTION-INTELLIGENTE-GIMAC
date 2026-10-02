@@ -11,8 +11,10 @@ export const P = {
   desCollaboration: '/bff/des/collaboration',
   consoleCollaboration: '/bff/console/collaboration',
   portailParticipant: '/bff/portail/participant',
-  // Administration des comptes et de la configuration de l'authentification (D-62), console seulement.
+  // Administration des comptes et de la configuration de l'authentification (D-62) : console, et
+  // département pour les comptes, le journal, la politique et les profils (D-69).
   consoleIam: '/bff/console/iam',
+  desIam: '/bff/des/iam',
 } as const
 
 /** Préfixe de MS-IAM pour une couche : « Mon compte », premier accès et réauthentification (D-62). */

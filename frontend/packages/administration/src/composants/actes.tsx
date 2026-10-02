@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ConfirmDialog, InlineAlert, Link, SignDialog, type KeyValueItem } from '@gimac/design-system'
 import { useMessageErreur, type MessageErreur } from '@gimac/compte'
-import { useServicesConsole } from '../services/useServicesConsole'
+import { useChemins, useServicesConsole } from '../services/useServicesConsole'
 
 // Exécution des actes de la console, toujours composés du design system :
 // - acte motivé : ConfirmDialog avec motif obligatoire (activation, sécurité du compte…) ;
@@ -31,7 +31,8 @@ export async function empreinte(contenu: unknown): Promise<string> {
   return Array.from(new Uint8Array(d), (b) => b.toString(16).padStart(2, '0')).join('')
 }
 
-export function useActes(espace = '/console') {
+export function useActes() {
+  const { espace } = useChemins()
   const { t } = useTranslation()
   const services = useServicesConsole()
   const message = useMessageErreur()

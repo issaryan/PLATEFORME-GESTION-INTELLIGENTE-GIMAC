@@ -3,7 +3,8 @@ import { fileURLToPath } from 'node:url'
 import istanbul from 'vite-plugin-istanbul'
 import type { PluginOption } from 'vite'
 
-// Instrumentation istanbul des constructions de bout en bout (GIMAC_E2E=1). Code mesuré : console,
+// Instrumentation istanbul des constructions de bout en bout (GIMAC_E2E=1). Code mesuré : console et
+// administration (@gimac/administration, servie aussi dans le département, D-69),
 // « Mon compte », réauthentification et déconnexion du socle (D-62), points d'entrée des trois couches, et
 // l'application du département : ses profils, les écrans et compositions des étapes 1 à 3 du parcours
 // (tableau de bord par acteur, registre et dossier des institutions, cadrage et liaisons), leurs
@@ -16,6 +17,7 @@ const racine = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 
 export const PERIMETRE_E2E = [
   'apps/console/src/**',
+  'packages/administration/src/**',
   'apps/departement/src/**',
   'packages/lot1/src/Fournisseurs.tsx',
   'packages/lot1/src/pages/des/TableauDeBordPage.tsx',

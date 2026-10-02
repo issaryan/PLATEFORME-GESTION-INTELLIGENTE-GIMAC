@@ -1,10 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { comptesHttp } from './comptes'
-import { configurationHttp } from './configuration'
+import { comptesHttp as fabriqueComptes } from './comptes'
+import { configurationHttp as fabriqueConfiguration } from './configuration'
 import { ouvrirFlux, plateformeHttp } from './plateforme'
 import { servicesConsoleHttp } from './index'
 
-// Adaptateurs HTTP de la console : routes /bff/console/iam (MS-IAM) et /api/plateforme (MS-GATEWAY).
+// Adaptateurs HTTP de l'administration : routes /bff/console/iam ou /bff/des/iam (MS-IAM, D-69) et
+// /api/plateforme (MS-GATEWAY).
+const comptesHttp = fabriqueComptes('console')
+const configurationHttp = fabriqueConfiguration('console')
 const json = (corps: unknown, status = 200) =>
   status === 204 ? new Response(null, { status }) : new Response(JSON.stringify(corps), { status, headers: { 'Content-Type': 'application/json' } })
 type Espion = { mock: { calls: unknown[][] } }
@@ -131,9 +134,19 @@ describe('supervision (MS-GATEWAY)', () => {
   it('services HTTP assemblés ; réauthentification sur la couche console', async () => {
     const spy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(json({ code: 'IAM_NO_SECURITY_KEY' }, 409))
     const s = servicesConsoleHttp()
-    expect(s.comptes).toBe(comptesHttp)
+    expect(s.plateforme).toBe(plateformeHttp)
     await expect(s.reauth.assertion('ADMIN_SENSITIVE')).rejects.toMatchObject({ code: 'IAM_NO_SECURITY_KEY' })
     expect(String(spy.mock.calls[0][0])).toContain('/bff/console/iam/reauthentification/defi')
+  })
+  it('département (D-69) : comptes, politique et clé de sécurité sous /bff/des/iam', async () => {
+    const spy = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => json({ contenu: [], total: 0 }))
+    const s = servicesConsoleHttp('des')
+    await s.comptes.lister({ page: 1, taille: 20 })
+    await s.configuration.politique()
+    expect(appels(spy)).toEqual(['GET /bff/des/iam/comptes?page=0&taille=20', 'GET /bff/des/iam/configuration/politique-securite'])
+    spy.mockImplementation(async () => json({ code: 'IAM_NO_SECURITY_KEY', title: 'Aucune clé' }, 409))
+    await expect(s.reauth.assertion('ADMIN_SENSITIVE')).rejects.toBeTruthy()
+    expect(String(spy.mock.calls[2][0])).toContain('/bff/des/iam/reauthentification/defi')
   })
 })
 

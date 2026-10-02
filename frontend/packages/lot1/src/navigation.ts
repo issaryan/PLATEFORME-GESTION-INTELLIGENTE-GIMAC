@@ -4,6 +4,8 @@ import type { GroupeNavigation } from '@gimac/socle'
 export const URL_CONSOLE = String(import.meta.env.VITE_URL_CONSOLE || 'http://localhost:4202').replace(/\/+$/, '')
 /** Adresse d'un écran de la console (chemin commençant par /console). */
 export const versConsole = (chemin: string) => `${URL_CONSOLE}${chemin}`
+/** Écrans de l'administration servis dans le département (D-69) : comptes, profils, journal, politique. */
+export const ADMINISTRATION = '/des/administration'
 
 // Entrées de navigation du lot 1, avec la permission qui les rend visibles (DS-GIMAC-01 §6.2).
 export const NAVIGATION_DES: GroupeNavigation[] = [
@@ -30,15 +32,16 @@ export const NAVIGATION_DES: GroupeNavigation[] = [
       { cle: 'referentiels', libelleKey: 'nav.referentiels', icone: 'kanban', chemin: '/des/referentiels/operations', permission: 'HOM_REFERENTIEL_READ' },
     ],
   },
-  // Administration des comptes (D-62) : écrans de la console, ouverts par un lien (le RSSI, IAM_ACCOUNT_READ).
+  // Administration des comptes (D-62, D-69) : écrans servis dans le département (RSSI, super administrateur),
+  // sans changer d'application ; seule la console de la plateforme (supervision, configuration) reste à part.
   {
     libelleKey: 'nav.groupe.administration',
     entrees: [
-      { cle: 'adminComptes', libelleKey: 'nav.admin.comptes', icone: 'users', chemin: versConsole('/console/comptes'), permission: 'IAM_ACCOUNT_READ' },
-      { cle: 'adminProfils', libelleKey: 'nav.admin.profils', icone: 'shield-check', chemin: versConsole('/console/profils'), permission: 'IAM_ACCOUNT_READ' },
-      { cle: 'adminJournal', libelleKey: 'nav.admin.journal', icone: 'scroll-text', chemin: versConsole('/console/journal'), permission: 'IAM_JOURNAL_READ' },
-      { cle: 'adminPolitique', libelleKey: 'nav.admin.politique', icone: 'lock', chemin: versConsole('/console/politique-securite'), permission: 'PLATFORM_SECURITY_POLICY_READ' },
-      { cle: 'adminConsole', libelleKey: 'nav.admin.console', icone: 'monitor', chemin: versConsole('/console/tableau-de-bord'), permission: 'IAM_ACCOUNT_READ' },
+      { cle: 'adminComptes', libelleKey: 'nav.admin.comptes', icone: 'users', chemin: `${ADMINISTRATION}/comptes`, permission: 'IAM_ACCOUNT_READ' },
+      { cle: 'adminProfils', libelleKey: 'nav.admin.profils', icone: 'shield-check', chemin: `${ADMINISTRATION}/profils`, permission: 'IAM_ACCOUNT_READ' },
+      { cle: 'adminJournal', libelleKey: 'nav.admin.journal', icone: 'scroll-text', chemin: `${ADMINISTRATION}/journal`, permission: 'IAM_JOURNAL_READ' },
+      { cle: 'adminPolitique', libelleKey: 'nav.admin.politique', icone: 'lock', chemin: `${ADMINISTRATION}/politique-securite`, permission: 'PLATFORM_SECURITY_POLICY_READ' },
+      { cle: 'adminConsole', libelleKey: 'nav.admin.console', icone: 'monitor', chemin: versConsole('/console/tableau-de-bord'), permission: 'PLATFORM_CONFIG_READ' },
     ],
   },
 ]

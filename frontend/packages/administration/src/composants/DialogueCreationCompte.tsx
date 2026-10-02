@@ -7,6 +7,7 @@ import { useLibelleProfil, useMessageErreur, type MessageErreur } from '@gimac/c
 import { useEffet, useProfils } from '../hooks'
 import type { Creation, NouveauCompte } from '../modele/comptes'
 import { Donnees } from './communs'
+import { useChemins } from '../services/useServicesConsole'
 
 // Création d'un compte (D-62) par le super administrateur ou le RSSI, dans une fenêtre modale ouverte
 // depuis la liste des comptes ou le tableau de bord : aucune inscription libre. Le titulaire complète son
@@ -29,11 +30,12 @@ const CHAMP_DU_CODE: Record<string, string> = {
 function Resultat({ creation, onAutre, onFermer }: { creation: Creation; onAutre: () => void; onFermer: () => void }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const { base } = useChemins()
   return (
     <CrudDialog context="detail" id="gm-dlg-creation-resultat" title={t('console.creation.cree', { identifiant: creation.compte.identifiant })} subject={creation.compte.email ?? undefined} onClose={onFermer}
       extraActions={<>
         <Button onClick={onAutre}>{t('console.creation.autre')}</Button>
-        <Button variant="primary" onClick={() => void navigate(`/console/comptes/${creation.compte.id}`)}>{t('console.creation.ouvrir')}</Button>
+        <Button variant="primary" onClick={() => void navigate(`${base}/comptes/${creation.compte.id}`)}>{t('console.creation.ouvrir')}</Button>
       </>}>
       <div className="gm-col">
         <KeyValueList

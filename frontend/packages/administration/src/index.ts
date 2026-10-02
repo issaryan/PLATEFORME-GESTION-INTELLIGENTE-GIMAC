@@ -1,0 +1,15 @@
+// Administration de la plateforme (D-62, D-69) : comptes, profils, journal, politique de sécurité,
+// supervision et configuration. Écrans communs à la console (/console) et au département (/des/administration).
+export type * from './modele/comptes'
+export type * from './modele/configuration'
+export type * from './modele/plateforme'
+export type { ServicesConsole, ServiceComptes, ServiceConfiguration, ServicePlateforme, ServiceReauthentification, Assertion } from './services/ports'
+export { ServicesConsoleProvider } from './services/ServicesConsole'
+export { CHEMINS_CONSOLE, type CheminsAdministration } from './services/contexte'
+export { useChemins, useServicesConsole } from './services/useServicesConsole'
+export { servicesConsoleHttp } from './services/http'
+export { servicesConsoleSimules, type OptionsConsoleSimulee } from './services/simule'
+export { creerClientRequetes } from './services/clientRequetes'
+export { Fournisseurs } from './Fournisseurs'
+export { CLE_PREMIER_ACCES_DEMO, CLE_PROFIL_DEMO, PROFILS_DEMO } from './profilsDemo'
+export { catalogues as cataloguesAdministration } from './i18n'

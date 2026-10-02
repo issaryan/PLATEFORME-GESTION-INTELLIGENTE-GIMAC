@@ -7,12 +7,14 @@ import { dateHeure } from '@gimac/compte'
 import { useComptes, useJournal } from '../hooks'
 import type { EntreeJournal } from '../modele/comptes'
 import { etatListe } from '../composants/formats'
+import { useChemins } from '../services/useServicesConsole'
 
 // Journal d'administration (D-62, IAM_JOURNAL_READ) : chaque acte de la console (création, profils,
 // sécurité, configuration), avec son auteur, son motif et son identifiant de corrélation ; paginé,
 // filtrable par compte (?compte=<id>).
 export default function JournalPage() {
   const { t, i18n } = useTranslation()
+  const { base } = useChemins()
   const permissions = usePermissions()
   const [params, setParams] = useSearchParams()
   const compte = params.get('compte') ?? ''
@@ -28,7 +30,7 @@ export default function JournalPage() {
     { key: 'action', header: t('console.journal.action'), render: (j) => t(`console.journal.action.${j.action}`, { defaultValue: j.action }) },
     {
       key: 'cibleLibelle', header: t('console.journal.cible'),
-      render: (j) => (j.cibleId ? <Link href={`/console/comptes/${j.cibleId}`} mono>{j.cibleLibelle ?? j.cibleId}</Link> : <span className="gm-mono">{j.cibleLibelle ?? '—'}</span>),
+      render: (j) => (j.cibleId ? <Link href={`${base}/comptes/${j.cibleId}`} mono>{j.cibleLibelle ?? j.cibleId}</Link> : <span className="gm-mono">{j.cibleLibelle ?? '—'}</span>),
     },
     { key: 'motif', header: t('console.journal.motif'), render: (j) => j.motif ?? '—' },
     { key: 'details', header: t('console.journal.details'), render: (j) => j.details || '—' },

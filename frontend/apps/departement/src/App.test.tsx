@@ -5,13 +5,14 @@ import i18next from 'i18next'
 import { MOT_DE_PASSE_DEMO, initI18n } from '@gimac/socle'
 import { catalogues } from '@gimac/lot1'
 import { catalogueCompte } from '@gimac/compte'
+import { cataloguesAdministration } from '@gimac/administration'
 import App from './App'
 import { CLE_PROFIL_DEMO, PROFILS_DEMO, roleDemo, sessionDemo } from './profils'
 
 // Application du département : session de démonstration par profil (D-57, D-58), navigation élaguée
 // selon les permissions, premier accès, session réelle par la passerelle, déconnexion.
 beforeAll(() => {
-  if (!i18next.isInitialized) initI18n([...catalogues, catalogueCompte], 'fr')
+  if (!i18next.isInitialized) initI18n([...catalogues, catalogueCompte, ...cataloguesAdministration], 'fr')
   Object.defineProperty(window, 'innerWidth', { value: 1400, configurable: true })
 })
 // Session de démonstration ouverte (connexion simulée, D-65) ; retirée par les scénarios de connexion.
@@ -49,6 +50,8 @@ describe('profils de démonstration', () => {
     localStorage.setItem(CLE_PROFIL_DEMO, 'ROLE_CONDUCTEUR_PROJET')
     expect(sessionDemo()).toMatchObject({ sujet: 'U-201', nom: 'Aïcha Mahamat Nour', roles: ['ROLE_CONDUCTEUR_PROJET'], doubleFacteur: true })
     expect(roleDemo('ROLE_INCONNU')).toBe('ROLE_CHEF_DDRM')
+    // Super administrateur (D-69) : même identité que dans la console.
+    expect(sessionDemo('ROLE_SUPER_ADMIN')).toMatchObject({ sujet: 'u-super-admin', nom: 'Serge Mouelle Kombi' })
   })
 })
 
@@ -84,6 +87,33 @@ describe('Application du département', () => {
   ])('route %s : écran chargé à la demande', async (chemin, titre) => {
     monter(chemin)
     expect(await screen.findByRole('heading', { level: 1, name: titre }, { timeout: 8000 })).toBeTruthy()
+  })
+  it('administration (D-69) : le RSSI gère les comptes dans le département, sans quitter son application', async () => {
+    localStorage.setItem(CLE_PROFIL_DEMO, 'ROLE_RSSI')
+    monter('/des/tableau-de-bord')
+    const lien = (await screen.findAllByRole('link', { name: 'Comptes utilisateurs' }, { timeout: 8000 }))[0]
+    expect(lien.getAttribute('href')).toBe('/des/administration/comptes')
+    fireEvent.click(lien)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Comptes' }, { timeout: 8000 })).toBeTruthy()
+    // Toujours l'application du département : sa navigation reste en place.
+    expect(screen.getAllByRole('link', { name: 'Liaisons et parcours' }).length).toBeGreaterThan(0)
+    expect(screen.getByRole('link', { name: /Console de la plateforme/ }).getAttribute('href')).toBe('http://localhost:4202/console/tableau-de-bord')
+  })
+  it.each([
+    ['/des/administration/comptes/nouveau', 'Comptes'],
+    ['/des/administration/comptes/u-sna', /./],
+    ['/des/administration/journal', 'Journal d’administration'],
+    ['/des/administration/profils', 'Profils et permissions'],
+    ['/des/administration/politique-securite', 'Politique de sécurité'],
+  ])('administration, super administrateur : %s', async (chemin, titre) => {
+    localStorage.setItem(CLE_PROFIL_DEMO, 'ROLE_SUPER_ADMIN')
+    monter(chemin)
+    expect(await screen.findByRole('heading', { level: 1, name: titre }, { timeout: 8000 })).toBeTruthy()
+  })
+  it('administration : refusée sans la permission (chef de la DDRM)', async () => {
+    monter('/des/administration/comptes')
+    expect(await screen.findByText('Accès refusé', { exact: false }, { timeout: 8000 }).catch(() => screen.findByRole('heading', { name: /refus|autoris/i }))).toBeTruthy()
+    expect(screen.queryByRole('link', { name: 'Comptes utilisateurs' })).toBeNull()
   })
   it('adresse inconnue : retour au tableau de bord', async () => {
     monter('/des/inconnue')

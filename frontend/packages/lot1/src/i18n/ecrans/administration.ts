@@ -1,22 +1,23 @@
 import type { Catalogue } from '@gimac/socle'
 
-// Administration des comptes depuis l'application du département (D-62) : la gestion des comptes est
-// dans la console ; le RSSI (IAM_ACCOUNT_READ) y est mené par le groupe « Administration » de la
-// navigation et la section de son tableau de bord. Préfixes « nav.admin. » et « admin. ». FR, EN, ES.
+// Administration des comptes dans l'application du département (D-62, D-69) : le RSSI et le super
+// administrateur (IAM_ACCOUNT_READ) gèrent comptes, profils, journal et politique sans quitter le
+// département ; la console reste pour la supervision et la configuration de la plateforme.
+// Préfixes « nav.admin. » et « admin. ». FR, EN, ES.
 export const catalogue: Catalogue = {
   fr: {
     'tableau.surtitre': 'Application du département',
     'tableau.sousTitre': "Votre travail du jour, les indicateurs de vos projets et les accès que votre profil ouvre.",
     'pp.tableau.sousTitre': "Votre espace de certification : ce que le GIMAC attend de vous, vos liaisons et leurs échéances.",
     'nav.groupe.administration': 'Administration',
-    'nav.admin.console': 'Console d’administration',
+    'nav.admin.console': 'Console de la plateforme',
     'nav.admin.comptes': 'Comptes utilisateurs',
     'nav.admin.profils': 'Profils et permissions',
     'nav.admin.journal': 'Journal d’administration',
     'nav.admin.politique': 'Politique de sécurité',
     'admin.titre': 'Administration et sécurité des comptes',
-    'admin.texte': 'La gestion des comptes (création, profils, activation, second facteur, sessions, suppression) se fait dans la console d’administration ; chaque acte y est motivé et journalisé. Les liens ci-dessous l’ouvrent sur l’écran voulu.',
-    'admin.liens': 'Écrans d’administration de la console',
+    'admin.texte': 'Création, profils, activation, second facteur, sessions et suppression des comptes ; chaque acte est motivé et journalisé. La console reste réservée à la supervision et à la configuration de la plateforme.',
+    'admin.liens': 'Écrans d’administration',
     'admin.creer': 'Créer un compte',
     'admin.comptes': 'Tous les comptes',
     'admin.sans2fa': 'Comptes sans second facteur',
@@ -25,7 +26,7 @@ export const catalogue: Catalogue = {
     'admin.profils': 'Profils et permissions',
     'admin.journal': 'Journal d’administration',
     'admin.politique': 'Politique de sécurité',
-    'admin.console': 'Tableau de bord de la console',
+    'admin.console': 'Console de la plateforme',
     'admin.meta.console': 'console',
   },
   en: {
@@ -33,14 +34,14 @@ export const catalogue: Catalogue = {
     'tableau.sousTitre': "Today's work, your project indicators and the access your profile grants.",
     'pp.tableau.sousTitre': "Your certification space: what GIMAC expects from you, your links and their deadlines.",
     'nav.groupe.administration': 'Administration',
-    'nav.admin.console': 'Administration console',
+    'nav.admin.console': 'Platform console',
     'nav.admin.comptes': 'User accounts',
     'nav.admin.profils': 'Profiles and permissions',
     'nav.admin.journal': 'Administration log',
     'nav.admin.politique': 'Security policy',
     'admin.titre': 'Account administration and security',
-    'admin.texte': 'Accounts are managed (creation, profiles, activation, second factor, sessions, deletion) in the administration console, where every act is justified and logged. The links below open it on the relevant screen.',
-    'admin.liens': 'Console administration screens',
+    'admin.texte': 'Account creation, profiles, activation, second factor, sessions and deletion; every act is justified and logged. The console remains reserved for platform supervision and configuration.',
+    'admin.liens': 'Administration screens',
     'admin.creer': 'Create an account',
     'admin.comptes': 'All accounts',
     'admin.sans2fa': 'Accounts without a second factor',
@@ -49,7 +50,7 @@ export const catalogue: Catalogue = {
     'admin.profils': 'Profiles and permissions',
     'admin.journal': 'Administration log',
     'admin.politique': 'Security policy',
-    'admin.console': 'Console dashboard',
+    'admin.console': 'Platform console',
     'admin.meta.console': 'console',
   },
   es: {
@@ -57,14 +58,14 @@ export const catalogue: Catalogue = {
     'tableau.sousTitre': "Su trabajo del día, los indicadores de sus proyectos y los accesos que abre su perfil.",
     'pp.tableau.sousTitre': "Su espacio de certificación: lo que el GIMAC espera de usted, sus enlaces y sus plazos.",
     'nav.groupe.administration': 'Administración',
-    'nav.admin.console': 'Consola de administración',
+    'nav.admin.console': 'Consola de la plataforma',
     'nav.admin.comptes': 'Cuentas de usuario',
     'nav.admin.profils': 'Perfiles y permisos',
     'nav.admin.journal': 'Diario de administración',
     'nav.admin.politique': 'Política de seguridad',
     'admin.titre': 'Administración y seguridad de las cuentas',
-    'admin.texte': 'Las cuentas se gestionan (creación, perfiles, activación, segundo factor, sesiones, supresión) en la consola de administración, donde cada acto se motiva y se registra. Los enlaces siguientes la abren en la pantalla deseada.',
-    'admin.liens': 'Pantallas de administración de la consola',
+    'admin.texte': 'Creación, perfiles, activación, segundo factor, sesiones y supresión de las cuentas; cada acto se motiva y se registra. La consola queda reservada a la supervisión y a la configuración de la plataforma.',
+    'admin.liens': 'Pantallas de administración',
     'admin.creer': 'Crear una cuenta',
     'admin.comptes': 'Todas las cuentas',
     'admin.sans2fa': 'Cuentas sin segundo factor',
@@ -73,7 +74,7 @@ export const catalogue: Catalogue = {
     'admin.profils': 'Perfiles y permisos',
     'admin.journal': 'Diario de administración',
     'admin.politique': 'Política de seguridad',
-    'admin.console': 'Panel de la consola',
+    'admin.console': 'Consola de la plataforma',
     'admin.meta.console': 'consola',
   },
 }

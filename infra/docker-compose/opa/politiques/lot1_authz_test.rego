@@ -94,6 +94,20 @@ test_console_profils_exige_roles if not authz.allow with input as {"method": "PU
 
 test_console_sans_permission_refusee if not authz.allow with input as {"method": "GET", "path": "/bff/console/iam/comptes", "permissions": [], "authentifie": true, "acr": "2"}
 
+# Administration dans le département (D-69) : mêmes permissions que dans la console ; les courriels restent à la console.
+test_departement_comptes_avec_permission if authz.allow with input as {"method": "GET", "path": "/bff/des/iam/comptes", "permissions": ["IAM_ACCOUNT_READ"], "authentifie": true, "acr": "2"}
+
+test_departement_comptes_sans_permission_refusee if not authz.allow with input as {"method": "GET", "path": "/bff/des/iam/comptes", "permissions": ["HOM_LIAISON_READ"], "authentifie": true, "acr": "2"}
+
+test_departement_suppression_exige_sa_permission if not authz.allow with input as {"method": "DELETE", "path": "/bff/des/iam/comptes/c1", "permissions": ["IAM_ACCOUNT_EDIT"], "authentifie": true, "acr": "2"}
+
+test_departement_politique_et_profils if {
+	authz.allow with input as {"method": "PUT", "path": "/bff/des/iam/configuration/politique-securite", "permissions": ["PLATFORM_SECURITY_POLICY_EDIT"], "authentifie": true, "acr": "2"}
+	authz.allow with input as {"method": "GET", "path": "/bff/des/iam/configuration/profils", "permissions": ["IAM_ACCOUNT_READ"], "authentifie": true, "acr": "2"}
+	not authz.allow with input as {"method": "PUT", "path": "/bff/des/iam/configuration/profils/ROLE_SNA/permissions", "permissions": ["IAM_ACCOUNT_READ"], "authentifie": true, "acr": "2"}
+	not authz.allow with input as {"method": "GET", "path": "/bff/des/iam/comptes", "permissions": ["IAM_ACCOUNT_READ"], "authentifie": true, "acr": "1"}
+}
+
 test_console_non_listee_refusee if not authz.allow with input as {"method": "GET", "path": "/bff/console/iam/autre", "permissions": ["IAM_ACCOUNT_READ"], "authentifie": true, "acr": "2"}
 
 test_console_politique_sans_second_facteur_refusee if not authz.allow with input as {

@@ -1,0 +1,44 @@
+{
+  "name": "@gimac/administration",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Administration de la plateforme (D-62, D-69) : comptes, profils, journal, politique de sécurité, supervision et configuration ; écrans communs à la console et au département",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./pages/*": "./src/pages/*.tsx"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "lint": "tsc --noEmit -p tsconfig.json",
+    "couverture": "vitest run --coverage"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18"
+  },
+  "dependencies": {
+    "@gimac/design-system": "1.0.0",
+    "@gimac/socle": "0.1.0",
+    "@gimac/compte": "0.1.0",
+    "@gimac/lot1": "0.1.0",
+    "@tanstack/react-query": "5.104.0",
+    "i18next": "26.4.2",
+    "react-i18next": "17.0.15",
+    "react-router": "8.4.0"
+  },
+  "devDependencies": {
+    "@testing-library/react": "16.3.3",
+    "@vitejs/plugin-react": "^6.1.1",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@vitest/coverage-v8": "^5.0.2",
+    "jsdom": "30.1.1",
+    "typescript": "~6.0.2",
+    "vite": "^8.3.0",
+    "vitest": "5.0.2"
+  }
+}

@@ -6,7 +6,9 @@ import { ADRESSES, demo, expect, test } from '../fixtures'
 // Fonctionnalité : administration des utilisateurs visible (D-62). En tête du tableau de bord de la
 // console, le super administrateur et le RSSI trouvent la gestion des utilisateurs (actions directes,
 // indicateurs cliquables vers la liste filtrée) ; la fiche d'un compte a ses quatre onglets. Dans
-// l'application du département, le RSSI est mené à la console par la navigation et son tableau de bord.
+// l'application du département (D-69), le RSSI et le super administrateur gèrent les comptes, le journal,
+// les profils et la politique sans quitter l'application ni changer de thème ; seule la console de la
+// plateforme (supervision, configuration) reste un lien externe.
 
 const CAPTURES = process.env.GIMAC_CAPTURES
 async function capturer(page: Page, nom: string) {
@@ -44,20 +46,52 @@ for (const [profil, titre] of [['ROLE_SUPER_ADMIN', 'Tableau de bord du super ad
   })
 }
 
-test('Scénario : le RSSI de l’application du département est mené aux écrans de la console', async ({ page }) => {
-  await demo(page, { profil: 'ROLE_RSSI' })
+test('Scénario : le RSSI gère les comptes dans l’application du département, sans changer d’application ni de thème', async ({ page }) => {
+  await demo(page, { profil: 'ROLE_RSSI', theme: 'dark' })
   await page.goto(`${ADRESSES.departement}/des/tableau-de-bord`)
   const nav = page.getByRole('navigation', { name: 'Navigation principale' })
-  await expect(nav.getByText('Administration', { exact: true })).toBeVisible()
-  await expect(nav.getByRole('link', { name: 'Comptes utilisateurs' })).toHaveAttribute('href', `${ADRESSES.consoleLiee}/console/comptes`)
-  await expect(nav.getByRole('link', { name: 'Console d’administration' })).toHaveAttribute('href', `${ADRESSES.consoleLiee}/console/tableau-de-bord`)
-  const section = page.getByRole('region', { name: 'Administration et sécurité des comptes' })
-  await expect(section.getByRole('link', { name: 'Créer un compte' })).toHaveAttribute('href', `${ADRESSES.consoleLiee}/console/comptes/nouveau`)
-  await expect(section.getByRole('link', { name: 'Comptes sans second facteur' })).toHaveAttribute('href', `${ADRESSES.consoleLiee}/console/comptes?etat=SANS_2FA`)
-  await capturer(page, 'administration-departement-rssi')
-  // Un profil sans IAM_ACCOUNT_READ n'a ni groupe ni section d'administration.
-  await demo(page, { profil: 'ROLE_SNA' })
-  await page.goto(`${ADRESSES.departement}/des/tableau-de-bord?profil=ROLE_SNA`)
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Tableau de bord')
-  await expect(page.getByRole('navigation', { name: 'Navigation principale' }).getByText('Administration', { exact: true })).toHaveCount(0)
+  await test.step('Étant donné le groupe « Administration » de sa navigation', async () => {
+    await expect(nav.getByText('Administration', { exact: true })).toBeVisible()
+    await expect(nav.getByRole('link', { name: 'Comptes utilisateurs' })).toHaveAttribute('href', '/des/administration/comptes')
+    await expect(nav.getByRole('link', { name: 'Console de la plateforme' })).toHaveAttribute('href', `${ADRESSES.consoleLiee}/console/tableau-de-bord`)
+    const section = page.getByRole('region', { name: 'Administration et sécurité des comptes' })
+    await expect(section.getByRole('link', { name: 'Créer un compte' })).toHaveAttribute('href', '/des/administration/comptes/nouveau')
+    await expect(section.getByRole('link', { name: 'Comptes sans second facteur' })).toHaveAttribute('href', '/des/administration/comptes?etat=SANS_2FA')
+  })
+  await test.step('Quand il ouvre « Comptes utilisateurs », la liste s’affiche dans le département, en mode sombre', async () => {
+    await nav.getByRole('link', { name: 'Comptes utilisateurs' }).click()
+    await expect(page).toHaveURL(`${ADRESSES.departement}/des/administration/comptes`)
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Comptes')
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+    await expect(nav.getByRole('link', { name: 'Liaisons et parcours' })).toBeVisible()
+    await capturer(page, 'administration-departement-comptes-dark')
+  })
+  await test.step('Et il ouvre une fiche de compte, puis le journal, les profils et la politique', async () => {
+    await page.getByRole('row').nth(1).getByRole('link').first().click()
+    await expect(page).toHaveURL(/\/des\/administration\/comptes\/[^/?]+/)
+    await expect(page.getByRole('tab').first()).toBeVisible()
+    await nav.getByRole('link', { name: 'Journal d’administration' }).click()
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Journal d’administration')
+    await nav.getByRole('link', { name: 'Profils et permissions' }).click()
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Profils et permissions')
+    await nav.getByRole('link', { name: 'Politique de sécurité' }).click()
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Politique de sécurité')
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+  })
+  await test.step('Alors un profil sans IAM_ACCOUNT_READ n’a ni groupe ni accès', async () => {
+    await demo(page, { profil: 'ROLE_SNA' })
+    await page.goto(`${ADRESSES.departement}/des/tableau-de-bord?profil=ROLE_SNA`)
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Tableau de bord')
+    await expect(page.getByRole('navigation', { name: 'Navigation principale' }).getByText('Administration', { exact: true })).toHaveCount(0)
+    await page.goto(`${ADRESSES.departement}/des/administration/comptes?profil=ROLE_SNA`)
+    await expect(page.getByText('Accès refusé')).toBeVisible()
+  })
+})
+
+test('Scénario : le super administrateur crée un compte depuis le département', async ({ page }) => {
+  await demo(page, { profil: 'ROLE_SUPER_ADMIN', theme: 'light' })
+  await page.goto(`${ADRESSES.departement}/des/administration/comptes/nouveau`)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Comptes')
+  await expect(page.getByRole('dialog')).toBeVisible()
+  await capturer(page, 'administration-departement-creation-light')
 })

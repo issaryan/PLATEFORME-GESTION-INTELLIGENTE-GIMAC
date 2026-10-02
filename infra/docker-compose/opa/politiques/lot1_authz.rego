@@ -56,23 +56,24 @@ regles := [
 	{"m": "POST", "re": `^/bff/des/participant/institutions/[^/]+/transitions/[^/]+/(approbation|rejet)$`, "p": "PAR_TRANSITION_APPROVE"},
 	# Pièces déposées par le correspondant depuis le portail (MS-DOCUMENT).
 	{"m": "POST", "re": `^/bff/portail/document/documents$`, "p": "HOM_PORTAL_SUBMIT"},
-	# Console d'administration (D-62) : comptes, journal, politique de sécurité, messagerie, profils.
+	# Administration (D-62, D-69) : comptes, journal, politique de sécurité et profils depuis la console et
+	# depuis le département (RSSI, super administrateur) ; serveur de courriels depuis la console seulement.
 	# La première règle correspondante s'applique : les chemins les plus précis viennent d'abord.
-	{"m": "GET", "re": `^/bff/console/iam/comptes/journal$`, "p": "IAM_JOURNAL_READ"},
-	{"m": "GET", "re": `^/bff/console/iam/comptes(/.*)?$`, "p": "IAM_ACCOUNT_READ"},
-	{"m": "POST", "re": `^/bff/console/iam/comptes$`, "p": "IAM_ACCOUNT_CREATE"},
-	{"m": "PUT", "re": `^/bff/console/iam/comptes/[^/]+/profils$`, "p": "IAM_ACCOUNT_ROLES"},
-	{"m": "PUT", "re": `^/bff/console/iam/comptes/[^/]+$`, "p": "IAM_ACCOUNT_EDIT"},
-	{"m": "POST", "re": `^/bff/console/iam/comptes/[^/]+/(activation|desactivation)$`, "p": "IAM_ACCOUNT_STATUS"},
-	{"m": "DELETE", "re": `^/bff/console/iam/comptes/[^/]+$`, "p": "IAM_ACCOUNT_DELETE"},
-	{"m": "POST", "re": `^/bff/console/iam/comptes/[^/]+/(actions-requises|second-facteur/reinitialisation|mot-de-passe-provisoire|sessions/fermeture)$`, "p": "IAM_ACCOUNT_SECURITY"},
-	{"m": "GET", "re": `^/bff/console/iam/configuration/politique-securite$`, "p": "PLATFORM_SECURITY_POLICY_READ"},
-	{"m": "PUT", "re": `^/bff/console/iam/configuration/politique-securite$`, "p": "PLATFORM_SECURITY_POLICY_EDIT"},
+	{"m": "GET", "re": `^/bff/(des|console)/iam/comptes/journal$`, "p": "IAM_JOURNAL_READ"},
+	{"m": "GET", "re": `^/bff/(des|console)/iam/comptes(/.*)?$`, "p": "IAM_ACCOUNT_READ"},
+	{"m": "POST", "re": `^/bff/(des|console)/iam/comptes$`, "p": "IAM_ACCOUNT_CREATE"},
+	{"m": "PUT", "re": `^/bff/(des|console)/iam/comptes/[^/]+/profils$`, "p": "IAM_ACCOUNT_ROLES"},
+	{"m": "PUT", "re": `^/bff/(des|console)/iam/comptes/[^/]+$`, "p": "IAM_ACCOUNT_EDIT"},
+	{"m": "POST", "re": `^/bff/(des|console)/iam/comptes/[^/]+/(activation|desactivation)$`, "p": "IAM_ACCOUNT_STATUS"},
+	{"m": "DELETE", "re": `^/bff/(des|console)/iam/comptes/[^/]+$`, "p": "IAM_ACCOUNT_DELETE"},
+	{"m": "POST", "re": `^/bff/(des|console)/iam/comptes/[^/]+/(actions-requises|second-facteur/reinitialisation|mot-de-passe-provisoire|sessions/fermeture)$`, "p": "IAM_ACCOUNT_SECURITY"},
+	{"m": "GET", "re": `^/bff/(des|console)/iam/configuration/politique-securite$`, "p": "PLATFORM_SECURITY_POLICY_READ"},
+	{"m": "PUT", "re": `^/bff/(des|console)/iam/configuration/politique-securite$`, "p": "PLATFORM_SECURITY_POLICY_EDIT"},
 	{"m": "GET", "re": `^/bff/console/iam/configuration/messagerie$`, "p": "PLATFORM_MESSAGING_EDIT"},
 	{"m": "PUT", "re": `^/bff/console/iam/configuration/messagerie$`, "p": "PLATFORM_MESSAGING_EDIT"},
 	{"m": "POST", "re": `^/bff/console/iam/configuration/messagerie/test$`, "p": "PLATFORM_MESSAGING_EDIT"},
-	{"m": "GET", "re": `^/bff/console/iam/configuration/(profils|permissions)$`, "p": "IAM_ACCOUNT_READ"},
-	{"m": "PUT", "re": `^/bff/console/iam/configuration/profils/[^/]+/permissions$`, "p": "IAM_PROFILE_EDIT"},
+	{"m": "GET", "re": `^/bff/(des|console)/iam/configuration/(profils|permissions)$`, "p": "IAM_ACCOUNT_READ"},
+	{"m": "PUT", "re": `^/bff/(des|console)/iam/configuration/profils/[^/]+/permissions$`, "p": "IAM_PROFILE_EDIT"},
 	# Messagerie instantanée de travail (D-64, docs/lot1/messagerie.md §1) : tout membre interne du
 	# GIMAC, depuis le DES et depuis la console (RSSI, super administrateur).
 	{"m": "GET", "re": `^/bff/(des|console)/collaboration/messagerie/(annuaire|non-lus|conversations(/[^/]+(/messages)?)?|pieces/[^/]+)$`, "p": "COL_MESSAGE_READ"},

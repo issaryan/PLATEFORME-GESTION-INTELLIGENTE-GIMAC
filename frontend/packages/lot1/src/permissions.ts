@@ -53,6 +53,7 @@ export const PERM = {
   compteCreer: 'IAM_ACCOUNT_CREATE',
   journalAdministrationLire: 'IAM_JOURNAL_READ',
   politiqueLire: 'PLATFORM_SECURITY_POLICY_READ',
+  configurationLire: 'PLATFORM_CONFIG_READ',
   supervisionLire: 'PLATFORM_SUPERVISION_READ',
 } as const
 
@@ -82,6 +83,10 @@ export const PROFILS: Record<string, string[]> = {
   // privilégié, supervision et configuration en lecture, politique de sécurité et messagerie de la plateforme.
   ROLE_RSSI: [...COMMUN_DES, 'CER_QUITUS_SECURITE_SIGN', PERM.securiteVerifier, PERM.preuveDeposer, ...IAM_SANS_PRIVILEGE,
     'PLATFORM_SUPERVISION_READ', 'PLATFORM_CONFIG_READ', 'PLATFORM_SECURITY_POLICY_READ', 'PLATFORM_SECURITY_POLICY_EDIT', 'PLATFORM_MESSAGING_EDIT'],
+  // Super administrateur (generer-realm-gimac.py) : lecture du DES, toute l'administration des comptes dont
+  // l'octroi privilégié, supervision et configuration de la plateforme (D-62, D-69).
+  ROLE_SUPER_ADMIN: [...COMMUN_DES, ...IAM_SANS_PRIVILEGE, 'IAM_ROLE_PRIVILEGED_GRANT', 'PLATFORM_SUPERVISION_READ', 'PLATFORM_CONFIG_READ', 'PLATFORM_CONFIG_EDIT',
+    'PLATFORM_SECURITY_POLICY_READ', 'PLATFORM_SECURITY_POLICY_EDIT', 'PLATFORM_MESSAGING_EDIT'],
   ROLE_CONFORMITE: [...COMMUN_DES, PERM.visaConformite, PERM.ficheChangementLier],
   ROLE_DG: [...COMMUN_DES, PERM.visaDg, 'CER_ATTESTATION_STATUS_APPROVE'],
   ROLE_INGENIEUR_HOMOLOGATION: [...COMMUN_DES, PERM.operationAttribuer, PERM.preuveDeposer, PERM.operationValider, PERM.operationRouvrir, 'HOM_REFERENTIEL_EDIT',

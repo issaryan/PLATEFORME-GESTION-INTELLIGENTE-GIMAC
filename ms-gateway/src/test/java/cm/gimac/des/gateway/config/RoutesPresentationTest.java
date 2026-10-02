@@ -89,6 +89,14 @@ class RoutesPresentationTest {
             Arguments.of("/bff/console/iam/comptes", "${gimac.services.iam}", "/api/v1/comptes"),
             Arguments.of("/bff/console/iam/comptes/c1/profils", "${gimac.services.iam}", "/api/v1/comptes/c1/profils"),
             Arguments.of("/bff/console/iam/configuration/politique-securite", "${gimac.services.iam}", "/api/v1/configuration/politique-securite"),
+            // Administration dans le département (D-69) : comptes, journal, politique et profils.
+            Arguments.of("/bff/des/iam/comptes", "${gimac.services.iam}", "/api/v1/comptes"),
+            Arguments.of("/bff/des/iam/comptes/journal", "${gimac.services.iam}", "/api/v1/comptes/journal"),
+            Arguments.of("/bff/des/iam/comptes/c1/second-facteur/reinitialisation", "${gimac.services.iam}", "/api/v1/comptes/c1/second-facteur/reinitialisation"),
+            Arguments.of("/bff/des/iam/configuration/politique-securite", "${gimac.services.iam}", "/api/v1/configuration/politique-securite"),
+            Arguments.of("/bff/des/iam/configuration/profils", "${gimac.services.iam}", "/api/v1/configuration/profils"),
+            Arguments.of("/bff/des/iam/configuration/profils/ROLE_SNA/permissions", "${gimac.services.iam}", "/api/v1/configuration/profils/ROLE_SNA/permissions"),
+            Arguments.of("/bff/des/iam/configuration/permissions", "${gimac.services.iam}", "/api/v1/configuration/permissions"),
             // « Mon compte » (docs/lot1/mon-compte.md) : photo du titulaire depuis chaque couche, photos des collègues (DES, console).
             Arguments.of("/bff/des/iam/moi/avatar", "${gimac.services.iam}", "/api/v1/moi/avatar"),
             Arguments.of("/bff/portail/iam/moi/avatar", "${gimac.services.iam}", "/api/v1/moi/avatar"),
@@ -146,7 +154,10 @@ class RoutesPresentationTest {
 
     static Stream<String> fermes() {
         return Stream.of(
-            "/bff/des/iam/comptes",
+            // Département (D-69) : ni serveur de courriels ni autre configuration ; portail : aucune administration.
+            "/bff/des/iam/configuration/messagerie",
+            "/bff/des/iam/configuration/messagerie/test",
+            "/bff/portail/iam/comptes",
             "/bff/portail/iam/configuration/politique-securite",
             "/bff/des/iam/interne/reauthentifications/verification",
             "/bff/console/iam/interne/reauthentifications/verification",
@@ -162,7 +173,7 @@ class RoutesPresentationTest {
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("fermes")
-    @DisplayName("Administration hors console, routes internes, lectures de documents, messagerie hors DES et canal temps réel : aucune route")
+    @DisplayName("Administration hors console et département, courriels hors console, routes internes, lectures de documents, messagerie hors DES et canal temps réel : aucune route")
     void fermes(String chemin) {
         assertThat(correspondantes(chemin)).isEmpty();
     }

@@ -26,7 +26,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * Configuration de l'authentification depuis la console (D-62), sous /bff/console/iam/configuration :
- * politique de sécurité, messagerie des invitations, profils et leurs permissions.
+ * politique de sécurité, messagerie des invitations, profils et leurs permissions. Le département
+ * (D-69, /bff/des/iam/configuration) n'atteint que la politique, les profils et les permissions.
  */
 @RestController
 @RequestMapping("/api/v1/configuration")

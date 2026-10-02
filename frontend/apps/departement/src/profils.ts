@@ -1,5 +1,6 @@
 import { lirePreference, lireSessionDemo, type Session } from '@gimac/socle'
 import { ANNUAIRE, PROFILS } from '@gimac/lot1'
+import { PROFILS_DEMO as PROFILS_ADMINISTRATION } from '@gimac/administration'
 
 // Profils de démonstration de l'application du département (services simulés seulement), d'après les
 // profils du domaine « gimac » (infra/keycloak/generer-realm-gimac.py, D-57, D-58, D-61) : les chefs du
@@ -20,6 +21,9 @@ export const PROFILS_DEMO: Record<string, ProfilDemo> = Object.fromEntries(
   Object.entries(PROFILS)
     .filter(([role]) => role !== 'ROLE_CORRESPONDANT')
     .map(([role, permissions]) => {
+      // Super administrateur (D-69) : même identité que dans la console, hors annuaire de la messagerie.
+      const admin = PROFILS_ADMINISTRATION[role]
+      if (admin && !ANNUAIRE.some((x) => x.profils?.includes(role))) return [role, { identifiant: admin.identifiant, nom: admin.nom, sujet: admin.sujet, permissions }]
       const p = ANNUAIRE.find((x) => x.profils?.includes(role)) ?? ANNUAIRE[0]
       return [role, { identifiant: identifiant(p.nom), nom: p.nom, sujet: p.id, permissions }]
     }),

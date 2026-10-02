@@ -9,29 +9,26 @@ import {
 } from '@gimac/socle'
 import { GardePremierAcces, MonComptePage, useMonAvatar, monCompteHttp, monCompteSimule } from '@gimac/compte'
 import { PERM, servicesHttp, servicesSimules, useNonLus } from '@gimac/lot1'
-import { Fournisseurs } from './Fournisseurs'
-import { creerClientRequetes } from './services/clientRequetes'
+import { Fournisseurs, creerClientRequetes, servicesConsoleHttp, servicesConsoleSimules } from '@gimac/administration'
 import { CLE_PREMIER_ACCES_DEMO, CLE_PROFIL_DEMO, NAVIGATION_CONSOLE, PROFILS_DEMO } from './navigation'
-import { servicesConsoleHttp } from './services/http'
-import { servicesConsoleSimules } from './services/simule'
 import { connexionDemo } from './connexionDemo'
 
 // Console d'administration et d'audit (couche « console », D-46, D-61, D-62) : le super administrateur,
 // le RSSI et chaque utilisateur configurent tout depuis la plateforme, sans ouvrir la console du
 // fournisseur d'identité. Services réels par la passerelle par défaut, simulés seulement si VITE_SERVICES=simule (tests
 // de bout en bout, démonstrations) ; session lue sur /api/session, second facteur exigé ; premier accès avant tout écran.
-const TableauDeBordPage = lazy(() => import('./pages/TableauDeBordPage'))
-const ComptesPage = lazy(() => import('./pages/ComptesPage'))
-const ComptePage = lazy(() => import('./pages/ComptePage'))
-const CreationComptePage = lazy(() => import('./pages/CreationComptePage'))
-const JournalPage = lazy(() => import('./pages/JournalPage'))
-const PolitiqueSecuritePage = lazy(() => import('./pages/PolitiqueSecuritePage'))
-const CourrielsPage = lazy(() => import('./pages/MessageriePage'))
+const TableauDeBordPage = lazy(() => import('@gimac/administration/pages/TableauDeBordPage'))
+const ComptesPage = lazy(() => import('@gimac/administration/pages/ComptesPage'))
+const ComptePage = lazy(() => import('@gimac/administration/pages/ComptePage'))
+const CreationComptePage = lazy(() => import('@gimac/administration/pages/CreationComptePage'))
+const JournalPage = lazy(() => import('@gimac/administration/pages/JournalPage'))
+const PolitiqueSecuritePage = lazy(() => import('@gimac/administration/pages/PolitiqueSecuritePage'))
+const CourrielsPage = lazy(() => import('@gimac/administration/pages/MessageriePage'))
 // Messagerie instantanée de travail (D-64), commune au DES : tout membre interne, dont le RSSI et le super administrateur.
 const MessagerieInstantanee = lazy(() => import('@gimac/lot1/pages/des/messagerie/MessageriePage'))
-const ProfilsPage = lazy(() => import('./pages/ProfilsPage'))
-const ConfigurationPlateformePage = lazy(() => import('./pages/ConfigurationPlateformePage'))
-const JournalisationPage = lazy(() => import('./pages/JournalisationPage'))
+const ProfilsPage = lazy(() => import('@gimac/administration/pages/ProfilsPage'))
+const ConfigurationPlateformePage = lazy(() => import('@gimac/administration/pages/ConfigurationPlateformePage'))
+const JournalisationPage = lazy(() => import('@gimac/administration/pages/JournalisationPage'))
 
 const VERSION = import.meta.env.VITE_VERSION ?? '0.1.0'
 

@@ -39,7 +39,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * Administration des comptes par le super administrateur et le RSSI (D-62), exposée sous
- * /bff/console/iam/comptes. Aucune inscription libre : tout compte est créé ici.
+ * /bff/console/iam/comptes et /bff/des/iam/comptes (D-69). Aucune inscription libre : tout compte est créé ici.
  */
 @RestController
 @RequestMapping("/api/v1/comptes")

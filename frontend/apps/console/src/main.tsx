@@ -6,10 +6,10 @@ import '@gimac/design-system/styles.css'
 import { initI18n, langueInitiale } from '@gimac/socle'
 import { catalogueCompte } from '@gimac/compte'
 import { catalogueMessagerie } from '@gimac/lot1'
-import { catalogues } from './i18n'
+import { cataloguesAdministration } from '@gimac/administration'
 import App from './App.tsx'
 
-initI18n([catalogueCompte, catalogueMessagerie, ...catalogues], langueInitiale())
+initI18n([catalogueCompte, catalogueMessagerie, ...cataloguesAdministration], langueInitiale())
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

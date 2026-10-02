@@ -46,8 +46,8 @@ describe('matrice des rôles (PROFILS)', () => {
 })
 
 describe('fonctions du parcours', () => {
-  it('chaque profil porte une fonction ; l’ingénieur d’homologation relève du SNA', () => {
-    expect(Object.keys(FONCTION_DU_ROLE).sort()).toEqual(Object.keys(PROFILS).sort())
+  it('chaque profil métier porte une fonction (le super administrateur n’en a aucune) ; l’ingénieur d’homologation relève du SNA', () => {
+    expect(Object.keys(FONCTION_DU_ROLE).sort()).toEqual(Object.keys(PROFILS).filter((r) => r !== 'ROLE_SUPER_ADMIN').sort())
     expect(FONCTION_DU_ROLE.ROLE_INGENIEUR_HOMOLOGATION).toBe('SNA')
     expect(FONCTION_DU_ROLE.ROLE_CORRESPONDANT).toBe('PARTICIPANT')
     expect(FONCTION_DU_ROLE.ROLE_CONDUCTEUR_PROJET).toBe('CONDUCTEUR')

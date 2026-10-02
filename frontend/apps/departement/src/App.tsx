@@ -1,12 +1,14 @@
 import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router'
-import { Skeleton } from '@gimac/design-system'
+import { EmptyState, Skeleton } from '@gimac/design-system'
+import { useTranslation } from 'react-i18next'
 import {
-  ConnexionProvider, Enveloppe, GardeSession, PageConnexion, PageDeconnexion, SessionActive, adresseConnexion, configureHttp, connexionHttp, lirePreference, lireSessionDemo,
+  ConnexionProvider, Enveloppe, aPermission, GardeSession, PageConnexion, PageDeconnexion, SessionActive, adresseConnexion, configureHttp, connexionHttp, lirePreference, lireSessionDemo,
   surNonAutorise, type EtatCanal, type Session,
 } from '@gimac/socle'
 import { CompteProvider, GardePremierAcces, MonComptePage, useMonAvatar, monCompteHttp, monCompteSimule } from '@gimac/compte'
 import { Fournisseurs, NAVIGATION_DES, PERM, creerClientRequetes, servicesHttp, servicesSimules, useNonLus } from '@gimac/lot1'
+import { ServicesConsoleProvider, servicesConsoleHttp, servicesConsoleSimules } from '@gimac/administration'
 import { PROFILS_DEMO, roleDemo, sessionDemo } from './profils'
 import { connexionDemo } from './connexionDemo'
 
@@ -30,6 +32,21 @@ const ParcoursPage = lazy(() => import('@gimac/lot1/pages/des/parcours/ParcoursP
 const DossierLiaisonPage = lazy(() => import('@gimac/lot1/pages/des/parcours/DossierLiaisonPage'))
 const ReferentielsOperationsPage = lazy(() => import('@gimac/lot1/pages/des/ReferentielsOperationsPage'))
 const MessageriePage = lazy(() => import('@gimac/lot1/pages/des/messagerie/MessageriePage'))
+// Administration des comptes (D-69) : écrans de @gimac/administration servis sous /des/administration,
+// pour le RSSI et le super administrateur ; la console garde la supervision et la configuration.
+const ComptesPage = lazy(() => import('@gimac/administration/pages/ComptesPage'))
+const ComptePage = lazy(() => import('@gimac/administration/pages/ComptePage'))
+const CreationComptePage = lazy(() => import('@gimac/administration/pages/CreationComptePage'))
+const JournalAdministrationPage = lazy(() => import('@gimac/administration/pages/JournalPage'))
+const ProfilsPage = lazy(() => import('@gimac/administration/pages/ProfilsPage'))
+const PolitiqueSecuritePage = lazy(() => import('@gimac/administration/pages/PolitiqueSecuritePage'))
+const CHEMINS_ADMINISTRATION = { base: '/des/administration', espace: '/des' }
+
+/** Écran réservé à une permission : sans elle, accès refusé explicite (la passerelle refait le contrôle). */
+function Autorise({ permissions, exigee, children }: { permissions: string[]; exigee: string; children: ReactNode }) {
+  const { t } = useTranslation()
+  return aPermission(permissions, exigee) ? <>{children}</> : <EmptyState icon="lock" title={t('console.refuse.titre')} text={t('console.refuse.texte')} />
+}
 
 const VERSION = import.meta.env.VITE_VERSION ?? '0.1.0'
 
@@ -40,6 +57,7 @@ function Pages({ session, etatCanal, correlationId }: { session: Session; etatCa
   const moi = useMonAvatar()
   // Messages non lus (D-64) : pastille de l'entrée « Messagerie », rafraîchie par le canal poussé.
   const nonLus = useNonLus(session.permissions.includes(PERM.messageLire))
+  const p = session.permissions
   return (
     <GardePremierAcces>
       {(assistant) => (
@@ -75,6 +93,12 @@ function Pages({ session, etatCanal, correlationId }: { session: Session; etatCa
                   <Route path="parcours/:id" element={<DossierLiaisonPage />} />
                   <Route path="messagerie" element={<MessageriePage />} />
                   <Route path="referentiels/operations" element={<ReferentielsOperationsPage />} />
+                  <Route path="administration/comptes" element={<Autorise permissions={p} exigee="IAM_ACCOUNT_READ"><ComptesPage /></Autorise>} />
+                  <Route path="administration/comptes/nouveau" element={<Autorise permissions={p} exigee="IAM_ACCOUNT_CREATE"><CreationComptePage /></Autorise>} />
+                  <Route path="administration/comptes/:id" element={<Autorise permissions={p} exigee="IAM_ACCOUNT_READ"><ComptePage /></Autorise>} />
+                  <Route path="administration/journal" element={<Autorise permissions={p} exigee="IAM_JOURNAL_READ"><JournalAdministrationPage /></Autorise>} />
+                  <Route path="administration/profils" element={<Autorise permissions={p} exigee="IAM_ACCOUNT_READ"><ProfilsPage /></Autorise>} />
+                  <Route path="administration/politique-securite" element={<Autorise permissions={p} exigee="PLATFORM_SECURITY_POLICY_READ"><PolitiqueSecuritePage /></Autorise>} />
                   <Route path="*" element={<Navigate to="/des/tableau-de-bord" replace />} />
                 </>
               )}
@@ -121,6 +145,12 @@ export default function App() {
       compte: { id: p.sujet, identifiant, prenom, nom: nom.join(' '), nomAffiche: p.nom, email: `${identifiant}@gimac-afr.org`, profils: [role] },
     })
   }, [reels])
+  // Administration des comptes (D-69) : /bff/des/iam, ou MS-IAM simulé au nom du profil de démonstration.
+  const administration = useMemo(() => {
+    if (reels) return servicesConsoleHttp('des')
+    const s = sessionDemo()
+    return servicesConsoleSimules({ acteur: { id: s.sujet, nom: s.nom, permissions: s.permissions } })
+  }, [reels])
   const connexion = useMemo(() => (reels ? connexionHttp() : connexionDemo()), [reels])
   const client = useMemo(() => creerClientRequetes(), [])
   const [correlationId, setCorrelationId] = useState<string | undefined>()
@@ -136,11 +166,13 @@ export default function App() {
       {(etatCanal) => (
         <ConnexionProvider service={connexion} couche="des">
         <CompteProvider service={compte}>
+        <ServicesConsoleProvider services={administration} chemins={CHEMINS_ADMINISTRATION}>
           <Routes>
             <Route path="/connexion/*" element={<PageConnexion couche="des" />} />
             <Route path="/des/*" element={<AvecSession>{(s) => <Pages session={s} etatCanal={etatCanal} correlationId={correlationId} />}</AvecSession>} />
             <Route path="*" element={<Navigate to="/des/tableau-de-bord" replace />} />
           </Routes>
+        </ServicesConsoleProvider>
         </CompteProvider>
         </ConnexionProvider>
       )}

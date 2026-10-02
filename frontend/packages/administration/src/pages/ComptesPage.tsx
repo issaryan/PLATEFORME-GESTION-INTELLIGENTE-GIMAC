@@ -8,6 +8,7 @@ import { useComptes, useProfils } from '../hooks'
 import { ETATS_FILTRE, type EtatFiltre, type FiltreComptes } from '../modele/comptes'
 import { etatListe } from '../composants/formats'
 import { DialogueCreationCompte } from '../composants/DialogueCreationCompte'
+import { useChemins } from '../services/useServicesConsole'
 
 // Comptes (D-62) : liste paginée côté serveur, recherche libre, filtres par profil et par état (valeurs
 // acceptées par MS-IAM : ACTIF, INACTIF, PREMIER_ACCES, SANS_2FA). Aucune inscription libre : la
@@ -16,6 +17,7 @@ import { DialogueCreationCompte } from '../composants/DialogueCreationCompte'
 // (/console/comptes/nouveau ou le bouton « Créer un compte »).
 export default function ComptesPage({ creation = false }: { creation?: boolean }) {
   const { t } = useTranslation()
+  const { base } = useChemins()
   const navigate = useNavigate()
   const permissions = usePermissions()
   const libelleProfil = useLibelleProfil()
@@ -32,14 +34,14 @@ export default function ComptesPage({ creation = false }: { creation?: boolean }
   const [creer, setCreer] = useState(creation)
   const fermerCreation = () => {
     setCreer(false)
-    if (creation) void navigate('/console/comptes', { replace: true })
+    if (creation) void navigate(`${base}/comptes`, { replace: true })
   }
   const liste = useComptes(filtre)
   const profils = useProfils()
   const lignes = liste.data?.contenu ?? []
 
   const colonnes: Column<Compte>[] = [
-    { key: 'identifiant', header: t('compte.identifiant'), render: (c) => <Link href={`/console/comptes/${c.id}`} mono>{c.identifiant}</Link> },
+    { key: 'identifiant', header: t('compte.identifiant'), render: (c) => <Link href={`${base}/comptes/${c.id}`} mono>{c.identifiant}</Link> },
     {
       key: 'nomAffiche', header: t('console.comptes.nom'),
       render: (c) => (
@@ -91,7 +93,7 @@ export default function ComptesPage({ creation = false }: { creation?: boolean }
         pageSize={filtre.taille}
         onPage={(page) => setFiltre((f) => ({ ...f, page }))}
         onPageSize={(taille) => setFiltre((f) => ({ ...f, taille, page: 1 }))}
-        onRowOpen={(c) => void navigate(`/console/comptes/${c.id}`)}
+        onRowOpen={(c) => void navigate(`${base}/comptes/${c.id}`)}
         onRetry={() => void liste.refetch()}
         emptyText={t('console.comptes.aucun')}
         emptyHelp={t('console.comptes.aucun.aide')}

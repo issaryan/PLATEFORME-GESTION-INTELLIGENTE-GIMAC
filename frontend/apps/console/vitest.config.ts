@@ -15,7 +15,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       include: ['src/**/*.{ts,tsx}'],
-      exclude: ['src/**/*.test.{ts,tsx}', 'src/test/**', 'src/i18n/**', 'src/main.tsx', 'src/services/simule/catalogue.ts'],
+      exclude: ['src/**/*.test.{ts,tsx}', 'src/test/**', 'src/main.tsx'],
       reporter: ['text-summary', 'html', 'lcov'],
       thresholds: { statements: 80, branches: 80, functions: 80, lines: 80 },
     },

@@ -13,6 +13,7 @@ import { Annonce } from '../composants/Annonce'
 import { useActes } from '../composants/actes'
 import { Donnees } from '../composants/communs'
 import { etatListe } from '../composants/formats'
+import { useChemins } from '../services/useServicesConsole'
 
 // Fiche d'un compte (D-62) : identité, profils, sécurité (actions requises, second facteur), sessions,
 // journal. Chaque acte n'apparaît qu'avec sa permission ; profils et suppression exigent la
@@ -174,6 +175,7 @@ function Fiche({ compte }: { compte: Compte }) {
 export default function ComptePage() {
   const { id = '' } = useParams()
   const { t } = useTranslation()
+  const { base } = useChemins()
   const navigate = useNavigate()
   const session = useSession()
   const permissions = usePermissions()
@@ -333,7 +335,7 @@ export default function ComptePage() {
                     titre: t('console.compte.supprimer'), objet, contenu: { compte: c.id, acte: 'SUPPRESSION' }, succes: t('console.compte.supprime'),
                     executer: async (motif, assertion) => {
                       await s.supprimer.mutateAsync({ motif, assertion })
-                      void navigate('/console/comptes')
+                      void navigate(`${base}/comptes`)
                     },
                   })
                 }} />

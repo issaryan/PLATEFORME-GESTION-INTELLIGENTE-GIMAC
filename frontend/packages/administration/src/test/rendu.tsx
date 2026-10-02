@@ -11,7 +11,7 @@ import { Fournisseurs } from '../Fournisseurs'
 import { creerClientRequetes } from '../services/clientRequetes'
 import { servicesConsoleSimules, type OptionsConsoleSimulee } from '../services/simule'
 import type { ServicesConsole } from '../services/ports'
-import { PROFILS_DEMO } from '../navigation'
+import { PROFILS_DEMO } from '../profilsDemo'
 
 // Monte un écran de la console comme dans l'application : routeur, services simulés sans latence,
 // requêtes sans réessai, session du profil demandé. Aucun appel réseau.

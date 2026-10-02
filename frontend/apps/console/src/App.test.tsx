@@ -6,10 +6,7 @@ import { MOT_DE_PASSE_DEMO, initI18n } from '@gimac/socle'
 import { catalogueCompte } from '@gimac/compte'
 import { catalogueMessagerie } from '@gimac/lot1'
 import App from './App'
-import { catalogues } from './i18n'
-import { fr } from './i18n/fr'
-import { en } from './i18n/en'
-import { es } from './i18n/es'
+import { cataloguesAdministration as catalogues } from '@gimac/administration'
 
 // Application console : session de démonstration par profil, navigation élaguée selon les permissions,
 // premier accès avant tout écran, écrans réservés, session réelle par la passerelle.
@@ -47,6 +44,17 @@ describe('Console', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Mon compte' })).toBeTruthy()
   })
 
+  it('écrans de l’administration (paquet @gimac/administration) servis sous /console', async () => {
+    for (const [chemin, titre] of [
+      ['/console/comptes', 'Comptes'], ['/console/comptes/nouveau', 'Comptes'], ['/console/comptes/u-sna', /Rachel|u-sna|Compte/], ['/console/journal', 'Journal d’administration'],
+      ['/console/profils', 'Profils et permissions'], ['/console/politique-securite', 'Politique de sécurité'], ['/console/plateforme/courriels', 'Courriels de la plateforme'],
+      ['/console/plateforme/configuration', 'Configuration de la plateforme'], ['/console/plateforme/journalisation', 'Journalisation des services'],
+    ] as const) {
+      monter(chemin)
+      expect(await screen.findByRole('heading', { level: 1, name: titre }, { timeout: 8000 })).toBeTruthy()
+      cleanup()
+    }
+  })
   it('RSSI (gm.profilDemo) : son tableau de bord ; un écran non permis est refusé', async () => {
     localStorage.setItem('gm.profilDemo', 'ROLE_RSSI')
     monter('/console/plateforme/journalisation')
@@ -110,15 +118,6 @@ describe('Console', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Vérifier le code' }))
     await waitFor(() => expect(assign).toHaveBeenCalledWith('/console/comptes'), { timeout: 8000 })
     expect(JSON.parse(sessionStorage.getItem('gm.sessionDemo')!)).toMatchObject({ identifiant: 'rssi', role: 'ROLE_RSSI' })
-  })
-})
-
-describe('catalogues de la console', () => {
-  it('FR, EN et ES portent les mêmes clés, sans traduction vide', () => {
-    const cles = (c: Record<string, string>) => Object.keys(c).sort()
-    expect(cles(en)).toEqual(cles(fr))
-    expect(cles(es)).toEqual(cles(fr))
-    for (const c of [fr, en, es]) expect(Object.values(c).filter((v) => !v.trim())).toEqual([])
   })
 })
 
