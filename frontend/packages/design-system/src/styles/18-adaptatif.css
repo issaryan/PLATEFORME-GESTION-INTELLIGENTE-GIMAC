@@ -3,7 +3,8 @@
    des cartes du catalogue reste strictement celui du système publié. */
 @media (max-width: 640px) {
   .gm-topbar { gap: var(--gm-space-2); padding: 0 var(--gm-space-2); }
-  .gm-topbar > .gm-input-wrap, .gm-topbar > nav, .gm-topbar-clock, .gm-topbar-live, .gm-topbar-layer { display: none; }
+  .gm-topbar > .gm-input-wrap, .gm-topbar-recherche-texte, .gm-topbar-recherche .gm-menu-kbd, .gm-topbar > nav, .gm-topbar-clock, .gm-topbar-live, .gm-topbar-layer { display: none; }
+  .gm-topbar-recherche { width: auto; padding: 0 var(--gm-space-2); }
   .gm-topbar-institution { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .gm-topbar img { height: 24px; width: auto; }
 

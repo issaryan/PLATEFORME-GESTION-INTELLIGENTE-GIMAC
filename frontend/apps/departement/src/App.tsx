@@ -7,8 +7,8 @@ import {
   surNonAutorise, type EtatCanal, type Session,
 } from '@gimac/socle'
 import { CompteProvider, GardePremierAcces, MonComptePage, useMonAvatar, monCompteHttp, monCompteSimule } from '@gimac/compte'
-import { Fournisseurs, NAVIGATION_DES, PERM, creerClientRequetes, servicesHttp, servicesSimules, useNonLus } from '@gimac/lot1'
-import { ServicesConsoleProvider, servicesConsoleHttp, servicesConsoleSimules } from '@gimac/administration'
+import { Fournisseurs, NAVIGATION_DES, PERM, creerClientRequetes, servicesHttp, servicesSimules, useNonLus, useSourcesRecherche } from '@gimac/lot1'
+import { ServicesConsoleProvider, servicesConsoleHttp, servicesConsoleSimules, useSourceComptes } from '@gimac/administration'
 import { PROFILS_DEMO, roleDemo, sessionDemo } from './profils'
 import { connexionDemo } from './connexionDemo'
 
@@ -58,6 +58,10 @@ function Pages({ session, etatCanal, correlationId }: { session: Session; etatCa
   // Messages non lus (D-64) : pastille de l'entrée « Messagerie », rafraîchie par le canal poussé.
   const nonLus = useNonLus(session.permissions.includes(PERM.messageLire))
   const p = session.permissions
+  // Recherche globale (Ctrl+K) : liaisons, institutions, conversations et, pour l'administration, comptes.
+  const objets = useSourcesRecherche(p, '/des')
+  const comptes = useSourceComptes(p)
+  const recherche = useMemo(() => [...objets, ...comptes], [objets, comptes])
   return (
     <GardePremierAcces>
       {(assistant) => (
@@ -73,6 +77,7 @@ function Pages({ session, etatCanal, correlationId }: { session: Session; etatCa
           version={VERSION}
           correlationId={correlationId}
           espacePersonnel="/des"
+          recherche={assistant ? undefined : recherche}
         >
           <Suspense fallback={<Skeleton height={32} />}>
             <Routes>

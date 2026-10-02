@@ -1,5 +1,9 @@
 /* AppShell */
 .gm-topbar { display: flex; align-items: center; gap: var(--gm-space-4); height: var(--gm-size-topbar); padding: 0 var(--gm-space-4); background: var(--gm-color-surface); border-bottom: var(--gm-border-1) solid var(--gm-color-border); }
+.gm-topbar-recherche { all: unset; box-sizing: border-box; display: inline-flex; align-items: center; gap: var(--gm-space-2); width: 260px; height: var(--gm-size-control-md); padding: 0 var(--gm-space-2) 0 var(--gm-space-3); border: var(--gm-border-1) solid var(--gm-color-border-strong); background: var(--gm-color-surface); color: var(--gm-color-text-secondary); cursor: text; }
+.gm-topbar-recherche:hover { border-color: var(--gm-color-action); }
+.gm-topbar-recherche:focus-visible { outline: var(--gm-border-2) solid var(--gm-color-focus); outline-offset: 2px; }
+.gm-topbar-recherche-texte { flex: 1; }
 .gm-topbar-layer { font-size: 11px; line-height: 16px; font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase; color: var(--gm-color-text-secondary); }
 .gm-topbar-clock { font-variant-numeric: tabular-nums; color: var(--gm-color-text-secondary); }
 /* Menu surgissant des préférences, ancré au bouton du globe. */
@@ -23,11 +27,13 @@
 /* Logo principal blanc posé sur le dégradé de la navigation, sans cartouche ni bande des drapeaux. */
 .gm-sidenav-marque { display: flex; align-items: center; justify-content: center; padding: var(--gm-space-5) var(--gm-space-5) var(--gm-space-4); }
 .gm-sidenav-marque img { width: 100%; max-width: 148px; height: auto; display: block; }
-/* Coquille applicative (§6.2) : la page elle-même ne défile pas. La barre supérieure est fixe en haut ;
-   la navigation latérale occupe toute la hauteur disponible sous elle, défile seule si ses entrées
-   dépassent et ne s'étire jamais avec le contenu ; la zone de contenu à droite est le seul conteneur
-   qui défile, le pied de page en bas de cette zone. Aucune hauteur n'est calculée en JavaScript. */
-.gm-shell { height: 100vh; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
+/* Coquille applicative (§6.2) : la page elle-même ne défile pas. La navigation latérale occupe toute la
+   hauteur de la fenêtre, du haut jusqu'en bas, défile seule si ses entrées dépassent et ne s'étire
+   jamais avec le contenu. À sa droite, une colonne porte la barre supérieure, fixe en haut, puis la zone
+   de contenu, seul conteneur qui défile, le pied de page en bas de cette zone : barre supérieure et pied
+   de page ont la même largeur. Aucune hauteur n'est calculée en JavaScript. */
+.gm-shell { height: 100vh; height: 100dvh; display: flex; flex-direction: row; overflow: hidden; }
+.gm-shell-colonne { flex: 1 1 auto; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
 .gm-shell-top { flex: none; z-index: 30; }
 .gm-shell-corps { flex: 1 1 auto; min-height: 0; display: flex; position: relative; }
 .gm-shell-nav { flex: none; display: flex; min-height: 0; background: var(--gm-color-nav-bas); }

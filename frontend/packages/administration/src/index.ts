@@ -7,6 +7,7 @@ export type { ServicesConsole, ServiceComptes, ServiceConfiguration, ServicePlat
 export { ServicesConsoleProvider } from './services/ServicesConsole'
 export { CHEMINS_CONSOLE, type CheminsAdministration } from './services/contexte'
 export { useChemins, useServicesConsole } from './services/useServicesConsole'
+export { useSourceComptes } from './recherche'
 export { servicesConsoleHttp } from './services/http'
 export { servicesConsoleSimules, type OptionsConsoleSimulee } from './services/simule'
 export { creerClientRequetes } from './services/clientRequetes'

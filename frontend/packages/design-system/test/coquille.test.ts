@@ -13,7 +13,10 @@ describe('coquille applicative', () => {
   it('la page ne défile pas : coquille à la hauteur de la fenêtre, débordement masqué', () => {
     expect(regle('.gm-shell')).toMatch(/height: 100dvh/)
     expect(regle('.gm-shell')).toMatch(/overflow: hidden/)
-    expect(regle('.gm-shell')).toMatch(/flex-direction: column/)
+    // Navigation sur toute la hauteur à gauche ; colonne (barre supérieure, contenu, pied de page) à droite.
+    expect(regle('.gm-shell')).toMatch(/flex-direction: row/)
+    expect(regle('.gm-shell-colonne')).toMatch(/flex-direction: column/)
+    expect(regle('.gm-shell-colonne')).toMatch(/min-width: 0/)
   })
   it('barre supérieure hors du défilement, sans position collante', () => {
     expect(regle('.gm-shell-top')).toMatch(/flex: none/)

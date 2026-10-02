@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObjec
 import { cx } from '../../lib/cx'
 import { IconButton } from '../../actions/IconButton/IconButton'
 import { Breadcrumb } from '../../navigation/Breadcrumb/Breadcrumb'
-import { SearchInput } from '../../saisie/SearchInput/SearchInput'
 import { Avatar } from '../../affichage/Avatar/Avatar'
 import { Icon } from '../../icones/Icon/Icon'
 import { Menu, type MenuItem } from '../../conteneurs/Menu/Menu'
@@ -36,6 +35,8 @@ export interface TopBarProps {
   preferences?: ReactNode
   /** Replie ou déplie la navigation latérale. */
   onMenu?: () => void
+  /** Ouvre la recherche globale (Ctrl+K) ; sans elle, aucun champ de recherche n'est affiché. */
+  onRecherche?: () => void
 }
 
 /** Menu surgissant ancré : Échap ou un clic au dehors le ferment et rendent le focus au bouton. */
@@ -100,7 +101,13 @@ export function TopBar(p: TopBarProps) {
         {p.onMenu ? <IconButton variant="ghost" icon="menu" label={t('topbar.replier')} onClick={p.onMenu} /> : null}
         {p.breadcrumb ? <Breadcrumb items={p.breadcrumb} /> : null}
         <span style={{ flex: 1 }} />
-        {layer !== 'portail' ? <SearchInput label={t('topbar.recherche')} width={260} /> : null}
+        {p.onRecherche ? (
+          <button type="button" className="gm-topbar-recherche" aria-label={t('topbar.recherche')} aria-haspopup="dialog" aria-keyshortcuts="Control+K" onClick={p.onRecherche}>
+            <Icon name="search" size={16} />
+            <span className="gm-topbar-recherche-texte">{t('topbar.rechercher')}</span>
+            <span className="gm-menu-kbd">Ctrl K</span>
+          </button>
+        ) : null}
         <span className="gm-topbar-clock">{p.clock || '14:05:32'}</span>
         <span className="gm-row gm-topbar-live" style={{ gap: 'var(--gm-space-1)', fontSize: 12, color: 'var(--gm-color-text-secondary)' }}>
           <span className={cx('gm-dot', p.live === false ? 'gm-dot-off' : 'gm-dot-ok')} aria-hidden="true" />

@@ -11,6 +11,7 @@ export { QueryBoundary, EtatsRequete, type QueryBoundaryProps } from './requete/
 export { initI18n, LANGUES, type Langue, type Catalogue } from './i18n/i18n'
 export { Enveloppe, type EnveloppeProps, type EntreeNavigation, type GroupeNavigation } from './enveloppe/Enveloppe'
 export { Preferences } from './enveloppe/Preferences'
+export { RechercheGlobale, type ResultatRecherche, type SourceRecherche, type EcranRecherche } from './enveloppe/RechercheGlobale'
 export { usePreferences, langueInitiale, lirePreference, CLE_THEME, CLE_LANGUE } from './enveloppe/usePreferences'
 export { PageConnexion, type PageConnexionProps } from './connexion/PageConnexion'
 export { CODES_CONNEXION, type ServiceConnexion, type DemandeConnexion, type ReponseConnexion, type EtapePremierAcces } from './connexion/modele'

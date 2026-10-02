@@ -6,7 +6,8 @@ import { naviguer } from './outils'
 
 // Fonctionnalité : coquille applicative fixe (DS-GIMAC-01 §6.2, demande du 30/09/2026). La page ne défile
 // pas ; la barre supérieure et la navigation latérale restent en place, la navigation occupe toute la
-// hauteur disponible sans jamais s'étirer avec le contenu ; seule la zone de contenu défile, le pied de
+// hauteur de la fenêtre, du haut jusqu'en bas, sans jamais s'étirer avec le contenu ; la barre supérieure
+// et le pied de page sont à sa droite, sur la largeur du contenu (02/10/2026) ; seule la zone de contenu défile, le pied de
 // page en bas de cette zone ; au clic d'une entrée, seule la zone de contenu change et revient en haut.
 // GIMAC_CAPTURES=<dossier> enregistre les captures de chaque état.
 
@@ -30,9 +31,9 @@ async function mesurer(page: Page) {
       hauteur: window.innerHeight,
       zoneDefilable: zone.scrollHeight - zone.clientHeight,
       zoneHaut: zone.scrollTop,
-      nav: nav ? { haut: Math.round(nav.top), bas: Math.round(nav.bottom), hauteur: Math.round(nav.height) } : null,
-      barre: { haut: Math.round(barre.top), bas: Math.round(barre.bottom) },
-      pied: { haut: Math.round(pied.top), bas: Math.round(pied.bottom) },
+      nav: nav ? { haut: Math.round(nav.top), bas: Math.round(nav.bottom), hauteur: Math.round(nav.height), droite: Math.round(nav.right) } : null,
+      barre: { haut: Math.round(barre.top), bas: Math.round(barre.bottom), gauche: Math.round(barre.left) },
+      pied: { haut: Math.round(pied.top), bas: Math.round(pied.bottom), gauche: Math.round(pied.left) },
       piedDansZone: zone.contains(document.querySelector('footer.gm-footer')),
       entreesDefilables: entrees ? entrees.scrollHeight - entrees.clientHeight : 0,
     }
@@ -51,8 +52,11 @@ test.describe('Fonctionnalité : coquille applicative fixe', () => {
       expect(avant.zoneDefilable).toBeGreaterThan(200)
       expect(avant.piedDansZone).toBe(true)
       expect(avant.barre.haut).toBe(0)
-      expect(avant.nav!.haut).toBe(avant.barre.bas)
+      // Navigation du haut jusqu'en bas ; barre supérieure et pied de page à sa droite.
+      expect(avant.nav!.haut).toBe(0)
       expect(avant.nav!.bas).toBe(avant.hauteur)
+      expect(avant.barre.gauche).toBe(avant.nav!.droite)
+      expect(avant.pied.gauche).toBe(avant.nav!.droite)
     })
     await capturer(page, 'coquille-longue-haut')
     await test.step('Quand il fait défiler le contenu jusqu’en bas', async () => {

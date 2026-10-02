@@ -7,6 +7,7 @@ import logoBlanc from '@gimac/design-system/assets/logo/gimac-logo-blanc.png'
 import type { Couche } from '../http/prefixes'
 import type { EtatCanal } from '../live/live'
 import { Preferences } from './Preferences'
+import { RechercheGlobale, type SourceRecherche } from './RechercheGlobale'
 import { usePreferences } from './usePreferences'
 
 export type EntreeNavigation = { cle: string; libelleKey: string; icone: IconName; chemin: string; permission?: string }
@@ -36,6 +37,11 @@ export type EnveloppeProps = {
    * « Mon espace » (Mon compte, Se déconnecter), toujours visible, en bas de la navigation.
    */
   espacePersonnel?: string
+  /**
+   * Sources de la recherche globale (Ctrl+K) : objets cherchés côté service selon les droits, en plus des
+   * écrans permis. Sans elles (premier accès, par exemple), pas de recherche ; jamais au portail (§6.1).
+   */
+  recherche?: SourceRecherche[]
   children: ReactNode
 }
 
@@ -45,7 +51,9 @@ function heureLocale() {
 
 // Enveloppe applicative commune (DS-GIMAC-01 §6) : barre supérieure, navigation latérale, bandeau de
 // perte du canal poussé, préférences d'affichage, pied de page GIMAC. Composée uniquement de
-// composants du catalogue. Coquille fixe : la page ne défile pas ; seule la zone de contenu défile
+// composants du catalogue. La navigation latérale va du haut jusqu'en bas de la fenêtre ; la barre
+// supérieure et le pied de page sont dans la colonne de droite, sur la largeur du contenu.
+// Coquille fixe : la page ne défile pas ; seule la zone de contenu défile
 // (classes gm-shell-* du système de conception) et change au clic d'une entrée de la navigation,
 // son défilement revenant alors en haut. Aucune hauteur n'est calculée ici. Menu utilisateur de la barre
 // supérieure (docs/lot1/mon-compte.md §4) : photo de profil ou initiales, nom, fonction, Mon compte, déconnexion.
@@ -59,6 +67,8 @@ export function Enveloppe(p: EnveloppeProps) {
   // Sous 1 280 px (--gm-bp-lg), la navigation devient un tiroir ouvert par le bouton de menu (§6.2, §10.2).
   const [etroit, setEtroit] = useState(() => window.innerWidth < 1280)
   const [navOuverte, setNavOuverte] = useState(false)
+  const [rechercheOuverte, setRechercheOuverte] = useState(false)
+  const avecRecherche = p.recherche !== undefined && p.couche !== 'portail'
 
   // Changement de page : le tiroir se referme et la zone de contenu revient en haut.
   useEffect(() => {
@@ -66,6 +76,24 @@ export function Enveloppe(p: EnveloppeProps) {
     const zone = contenu.current
     if (zone) zone.scrollTop = 0
   }, [pathname])
+
+  // Ctrl+K (ou Cmd+K) ouvre la recherche globale depuis n'importe quel écran ; « / » aussi, hors saisie.
+  useEffect(() => {
+    if (!avecRecherche) return
+    const touche = (e: KeyboardEvent) => {
+      const cible = e.target as HTMLElement | null
+      const saisie = cible?.closest?.('input, textarea, select, [contenteditable="true"]')
+      if ((e.key === 'k' || e.key === 'K') && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault()
+        setRechercheOuverte(true)
+      } else if (e.key === '/' && !saisie && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault()
+        setRechercheOuverte(true)
+      }
+    }
+    document.addEventListener('keydown', touche)
+    return () => document.removeEventListener('keydown', touche)
+  }, [avecRecherche])
 
   useEffect(() => {
     const id = window.setInterval(() => setHeure(heureLocale()), 1000)
@@ -95,6 +123,13 @@ export function Enveloppe(p: EnveloppeProps) {
     .filter((g) => g.items.length > 0)
   const courante = navigation.flatMap((g) => g.entrees).filter((e) => pathname.startsWith(e.chemin)).sort((a, b) => b.chemin.length - a.chemin.length)[0]
 
+  const ecrans = navigation.flatMap((g) => g.entrees.filter(autorisee).filter((e) => e.cle !== 'deconnexion').map((e) => ({ cle: e.cle, libelle: t(e.libelleKey), href: e.chemin })))
+  const ouvrir = (href: string) => {
+    setRechercheOuverte(false)
+    if (href.startsWith('/')) void navigate(href)
+    else window.location.assign(href)
+  }
+
   // Navigation sans rechargement : les liens internes du catalogue sont interceptés par le routeur.
   const intercepter = (e: MouseEvent<HTMLElement>) => {
     const a = (e.target as HTMLElement).closest('a')
@@ -109,6 +144,8 @@ export function Enveloppe(p: EnveloppeProps) {
 
   return (
     <div className="gm-root gm-shell" onClick={intercepter}>
+      {etroit ? null : <div className="gm-shell-nav">{nav}</div>}
+      <div className="gm-shell-colonne">
       <div className="gm-shell-top">
         <TopBar
           avatar={p.avatar}
@@ -131,11 +168,11 @@ export function Enveloppe(p: EnveloppeProps) {
           clock={heure}
           preferences={<Preferences />}
           onMenu={etroit ? () => setNavOuverte((v) => !v) : undefined}
+          onRecherche={avecRecherche ? () => setRechercheOuverte(true) : undefined}
         />
         {p.etatCanal === 'lost' ? <Banner level="info">{t('live.perdu')}</Banner> : null}
       </div>
       <div className="gm-shell-corps">
-        {etroit ? null : <div className="gm-shell-nav">{nav}</div>}
         <div ref={contenu} className="gm-shell-contenu" data-testid="gm-shell-contenu">
           <main className="gm-shell-main">{p.children}</main>
           <Footer version={p.version} documentation={p.documentation} correlationId={p.correlationId} />
@@ -147,6 +184,8 @@ export function Enveloppe(p: EnveloppeProps) {
           </div>
         ) : null}
       </div>
+      </div>
+      {rechercheOuverte ? <RechercheGlobale ecrans={ecrans} sources={p.recherche ?? []} onOuvrir={ouvrir} onFermer={() => setRechercheOuverte(false)} /> : null}
     </div>
   )
 }

@@ -1,4 +1,4 @@
-import { afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
 import { ThemeProvider } from '@gimac/design-system'
@@ -83,13 +83,16 @@ const coquille = () =>
   )
 
 describe('Enveloppe : coquille fixe', () => {
-  it('barre supérieure, navigation et zone de contenu séparées ; pied de page dans la zone de contenu', () => {
+  it('navigation sur toute la hauteur ; à sa droite, barre supérieure puis zone de contenu et pied de page', () => {
     const { container } = coquille()
     const racine = container.querySelector('.gm-shell')!
     expect(racine.classList.contains('gm-root')).toBe(true)
-    expect(racine.querySelector(':scope > .gm-shell-top .gm-topbar')).toBeTruthy()
-    const corps = racine.querySelector(':scope > .gm-shell-corps')!
-    expect(corps.querySelector(':scope > .gm-shell-nav > nav.gm-sidenav')).toBeTruthy()
+    // La navigation est un enfant direct de la coquille, à côté de la colonne (barre du haut, contenu).
+    expect(racine.querySelector(':scope > .gm-shell-nav > nav.gm-sidenav')).toBeTruthy()
+    const colonne = racine.querySelector(':scope > .gm-shell-colonne')!
+    expect(colonne.querySelector(':scope > .gm-shell-top .gm-topbar')).toBeTruthy()
+    expect(colonne.querySelector(':scope > .gm-shell-corps > [data-testid="gm-shell-contenu"]')).toBeTruthy()
+    expect(racine.firstElementChild?.classList.contains('gm-shell-nav')).toBe(true)
     const contenu = screen.getByTestId('gm-shell-contenu')
     expect(contenu.querySelector(':scope > main.gm-shell-main')).toBeTruthy()
     expect(contenu.querySelector(':scope > footer.gm-footer')).toBeTruthy()
@@ -136,5 +139,83 @@ describe('Enveloppe : tiroir de navigation sous 1 280 px', () => {
     } finally {
       Object.defineProperty(window, 'innerWidth', { value: 1400, configurable: true })
     }
+  })
+})
+
+// Recherche globale (Ctrl+K) : écrans permis de la navigation et objets des sources ; portail sans recherche.
+describe('Enveloppe : recherche globale', () => {
+  const SOURCES = [
+    {
+      cle: 'liaisons',
+      chercher: async (q: string) => (q.toLowerCase().startsWith('ba') ? [{ cle: 'L1', type: 'liaison' as const, code: 'LIA-2026-030', libelle: 'Banque C', detail: 'Certification', href: '/des/parcours/L1' }] : []),
+    },
+    { cle: 'panne', chercher: async () => Promise.reject(new Error('503')) },
+    { cle: 'externe', chercher: async () => [{ cle: 'X', type: 'compte' as const, libelle: 'Banque externe', href: 'http://localhost:4202/console/comptes/X' }] },
+  ]
+  const avecRecherche = (couche: 'des' | 'portail' = 'des') =>
+    render(
+      <MemoryRouter initialEntries={['/des/tableau-de-bord']}>
+        <ThemeProvider theme="light">
+          <Enveloppe couche={couche} navigation={[{ entrees: [
+            { cle: 'tb', libelleKey: 'x.tableau', icone: 'gauge', chemin: '/des/tableau-de-bord' },
+            { cle: 'li', libelleKey: 'x.liaisons', icone: 'route', chemin: '/des/parcours' },
+            { cle: 'adm', libelleKey: 'x.admin', icone: 'users', chemin: '/des/administration/comptes', permission: 'IAM_ACCOUNT_READ' },
+          ] }]} permissions={[]} espacePersonnel="/des" recherche={SOURCES}>
+            <Routes><Route path="*" element={<Ici />} /></Routes>
+          </Enveloppe>
+        </ThemeProvider>
+      </MemoryRouter>,
+    )
+  it('Ctrl+K ouvre la palette : écrans permis, objets des sources (une source en échec ignorée), ouverture au clavier', async () => {
+    avecRecherche()
+    fireEvent.keyDown(document.body, { key: 'k', ctrlKey: true })
+    const champ = screen.getByRole('combobox')
+    // Écrans permis seulement (sans l'administration ni la déconnexion).
+    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['x.tableau', 'x.liaisons', 'Mon compte'])
+    // Écrans filtrés sur place ; objets cherchés dans les sources, recherche en cours annoncée.
+    fireEvent.change(champ, { target: { value: 'liai' } })
+    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['x.liaisons'])
+    expect(await screen.findByRole('status')).toBeTruthy()
+    fireEvent.change(champ, { target: { value: 'ba' } })
+    expect(await screen.findByText('Banque C', {}, { timeout: 2000 })).toBeTruthy()
+    expect(screen.getByText('Banque externe')).toBeTruthy()
+    fireEvent.keyDown(champ, { key: 'Enter' })
+    expect(screen.getByTestId('ici').textContent).toBe('/des/parcours/L1')
+    expect(screen.queryByRole('combobox')).toBeNull()
+  })
+  it('bouton de la barre, « / » hors saisie, Échap et clic sur le voile ; lien absolu ouvert hors du routeur', async () => {
+    const assign = vi.fn()
+    vi.stubGlobal('location', { ...window.location, assign })
+    try {
+      avecRecherche()
+      fireEvent.click(screen.getByRole('button', { name: 'Recherche globale (Ctrl+K)' }))
+      fireEvent.keyDown(screen.getByRole('combobox'), { key: 'Escape' })
+      expect(screen.queryByRole('combobox')).toBeNull()
+      fireEvent.keyDown(document.body, { key: '/' })
+      const voile = document.querySelector('.gm-recherche-voile') as HTMLElement
+      fireEvent.mouseDown(voile)
+      expect(screen.queryByRole('combobox')).toBeNull()
+      fireEvent.keyDown(document.body, { key: 'K', metaKey: true })
+      fireEvent.change(screen.getByRole('combobox'), { target: { value: 'externe' } })
+      fireEvent.mouseDown(await screen.findByText('Banque externe', {}, { timeout: 2000 }))
+      expect(assign).toHaveBeenCalledWith('http://localhost:4202/console/comptes/X')
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+  it('portail : ni bouton ni raccourci', () => {
+    avecRecherche('portail')
+    expect(screen.queryByRole('button', { name: 'Recherche globale (Ctrl+K)' })).toBeNull()
+    fireEvent.keyDown(document.body, { key: 'k', ctrlKey: true })
+    expect(screen.queryByRole('combobox')).toBeNull()
+  })
+})
+
+describe('Enveloppe : sans sources de recherche', () => {
+  it('premier accès ou couche sans recherche : ni bouton ni raccourci', () => {
+    monter('/console')
+    expect(screen.queryByRole('button', { name: 'Recherche globale (Ctrl+K)' })).toBeNull()
+    fireEvent.keyDown(document.body, { key: 'k', ctrlKey: true })
+    expect(screen.queryByRole('combobox')).toBeNull()
   })
 })

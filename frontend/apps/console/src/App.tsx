@@ -8,8 +8,8 @@ import {
   lireSessionDemo, openLiveChannel, surNonAutorise, type EtatCanal, type Session,
 } from '@gimac/socle'
 import { GardePremierAcces, MonComptePage, useMonAvatar, monCompteHttp, monCompteSimule } from '@gimac/compte'
-import { PERM, servicesHttp, servicesSimules, useNonLus } from '@gimac/lot1'
-import { Fournisseurs, creerClientRequetes, servicesConsoleHttp, servicesConsoleSimules } from '@gimac/administration'
+import { PERM, servicesHttp, servicesSimules, useNonLus, useSourcesRecherche } from '@gimac/lot1'
+import { Fournisseurs, creerClientRequetes, servicesConsoleHttp, servicesConsoleSimules, useSourceComptes } from '@gimac/administration'
 import { CLE_PREMIER_ACCES_DEMO, CLE_PROFIL_DEMO, NAVIGATION_CONSOLE, PROFILS_DEMO } from './navigation'
 import { connexionDemo } from './connexionDemo'
 
@@ -69,11 +69,15 @@ function Pages({ session, correlationId }: { session: Session; correlationId?: s
   const [etatCanal, setEtatCanal] = useState<EtatCanal | undefined>()
   // Messages non lus (D-64) : pastille de l'entrée « Messagerie », rafraîchie par le canal poussé.
   const nonLus = useNonLus(messagerie)
+  // Recherche globale (Ctrl+K) : comptes et conversations de la messagerie.
+  const comptes = useSourceComptes(p)
+  const conversations = useSourcesRecherche(p, '/console')
+  const recherche = useMemo(() => [...comptes, ...conversations], [comptes, conversations])
   return (
     <GardePremierAcces>
       {(assistant) => (
         <Enveloppe avatar={moi?.src} fonction={moi?.fonction} couche="console" navigation={assistant ? [] : NAVIGATION_CONSOLE} permissions={p} utilisateur={session.nom} version={VERSION}
-          badges={{ messagerie: nonLus.data?.total ?? 0 }} etatCanal={etatCanal} correlationId={correlationId} espacePersonnel="/console">
+          badges={{ messagerie: nonLus.data?.total ?? 0 }} etatCanal={etatCanal} correlationId={correlationId} espacePersonnel="/console" recherche={assistant ? undefined : recherche}>
           <CanalMessagerie actif={messagerie && !assistant && import.meta.env.VITE_SERVICES !== 'simule'} onEtat={setEtatCanal} />
           <Suspense fallback={<Skeleton height={32} />}>
             <Routes>
