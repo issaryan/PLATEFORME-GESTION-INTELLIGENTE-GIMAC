@@ -1,3 +1,5 @@
+import { mkdirSync } from 'node:fs'
+import { join } from 'node:path'
 import type { Page } from '@playwright/test'
 import { ADRESSES, demo, expect, test } from '../fixtures'
 import { joindre } from './outils'
@@ -10,6 +12,27 @@ import { joindre } from './outils'
 
 const entree = (page: Page) => page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('link', { name: /^Messagerie/ })
 const conversations = (page: Page) => page.getByRole('list', { name: 'Conversations' })
+const CAPTURES = process.env.GIMAC_CAPTURES
+async function capturer(page: Page, nom: string) {
+  if (!CAPTURES) return
+  mkdirSync(CAPTURES, { recursive: true })
+  await page.screenshot({ path: join(CAPTURES, `${nom}.png`) })
+}
+
+// Présence (D-72) : point vert des collègues en ligne dans la liste et l'en-tête du fil, « Vu … » sinon.
+for (const theme of ['light', 'dark'] as const) {
+  test(`Scénario : voir qui est en ligne dans la messagerie (thème ${theme})`, async ({ page }) => {
+    await demo(page, { profil: 'ROLE_CHEF_DES', theme })
+    await page.goto(`${ADRESSES.departement}/des/messagerie`)
+    const aicha = conversations(page).getByRole('button', { name: /Aïcha Mahamat Nour/ })
+    await expect(aicha.getByRole('img', { name: 'En ligne' })).toBeVisible()
+    await aicha.click()
+    const fil = page.getByRole('region', { name: 'Aïcha Mahamat Nour' })
+    await expect(fil.getByText('En ligne', { exact: true })).toBeVisible()
+    await expect(fil.getByRole('img', { name: 'En ligne' })).toBeVisible()
+    await capturer(page, `messagerie-presence-${theme === 'light' ? 'clair' : 'sombre'}`)
+  })
+}
 
 test.describe('Fonctionnalité : messagerie de travail', () => {
   test.beforeEach(async ({ page }) => {

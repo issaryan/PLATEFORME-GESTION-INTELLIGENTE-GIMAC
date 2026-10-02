@@ -28,9 +28,9 @@ class AbonneTest {
         assertThat(Couche.depuis("console")).contains(Couche.CONSOLE);
         assertThat(Couche.depuis("autre")).isEmpty();
         assertThat(Couche.depuis(null)).isEmpty();
-        assertThat(Couche.DES.sujets()).containsExactlyInAnyOrder(HOMOLOGATION, CERTIFICATION, COLLABORATION);
-        assertThat(Couche.PORTAIL.sujets()).doesNotContain(COLLABORATION);
-        assertThat(Couche.CONSOLE.sujets()).containsExactlyInAnyOrder(HOMOLOGATION, CERTIFICATION, COLLABORATION);
+        assertThat(Couche.DES.sujets()).containsExactlyInAnyOrder(HOMOLOGATION, CERTIFICATION, COLLABORATION, EvenementLive.PRESENCE);
+        assertThat(Couche.PORTAIL.sujets()).doesNotContain(COLLABORATION, EvenementLive.PRESENCE);
+        assertThat(Couche.CONSOLE.sujets()).containsExactlyInAnyOrder(HOMOLOGATION, CERTIFICATION, COLLABORATION, EvenementLive.PRESENCE);
     }
 
     @Test
@@ -83,5 +83,22 @@ class AbonneTest {
         EvenementLive e = new EvenementLive("m1", "collaboration.message-sent.v1", "c1", COLLABORATION, "I1", Set.of("u1"));
         assertThat(e.vue()).isEqualTo(new VueEvenement("m1", "collaboration.message-sent.v1", "c1", COLLABORATION));
         assertThat(homologation(null).destinataires()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Présence (D-72) : tout abonné du DES ou de la console, sauf pour lui-même ; jamais le portail")
+    void presence() {
+        EvenementLive enLigne = new EvenementLive("p1", EvenementLive.EN_LIGNE, "u2", EvenementLive.PRESENCE, null, null, "u2");
+        assertThat(Abonne.de(Couche.DES, "u1", "", null).recoit(enLigne)).isTrue();
+        assertThat(Abonne.de(Couche.CONSOLE, "u1", "", null).recoit(enLigne)).isTrue();
+        assertThat(Abonne.de(Couche.DES, "u2", "", null).recoit(enLigne)).isFalse();
+        assertThat(Abonne.de(Couche.DES, "", "", null).recoit(enLigne)).isFalse();
+        assertThat(Abonne.de(Couche.PORTAIL, "u1", "I1", "presence").recoit(enLigne)).isFalse();
+        assertThat(Abonne.de(Couche.DES, "u1", "", "collaboration").recoit(enLigne)).isFalse();
+        assertThat(enLigne.ephemere()).isTrue();
+        assertThat(new EvenementLive("s1", EvenementLive.SAISIE, "c1", COLLABORATION, null, Set.of("u1"), "u2").ephemere()).isTrue();
+        assertThat(message("u1").ephemere()).isFalse();
+        assertThat(Couche.PORTAIL.interne()).isFalse();
+        assertThat(enLigne.vue()).isEqualTo(new VueEvenement("p1", EvenementLive.EN_LIGNE, "u2", EvenementLive.PRESENCE, "u2"));
     }
 }

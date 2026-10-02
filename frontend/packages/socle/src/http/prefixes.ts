@@ -10,6 +10,9 @@ export const P = {
   // Messagerie instantanée de travail (D-64), MS-COLLABORATION : tout membre interne, DES et console.
   desCollaboration: '/bff/des/collaboration',
   consoleCollaboration: '/bff/console/collaboration',
+  // Présence des comptes internes (D-72), servie par la passerelle elle-même.
+  desPresence: '/bff/des/presence',
+  consolePresence: '/bff/console/presence',
   portailParticipant: '/bff/portail/participant',
   // Administration des comptes et de la configuration de l'authentification (D-62) : console, et
   // département pour les comptes, le journal, la politique et les profils (D-69).

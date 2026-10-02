@@ -27,6 +27,7 @@ import cm.gimac.des.collaboration.application.port.in.EnvoyerMessageUseCase;
 import cm.gimac.des.collaboration.application.port.in.EnvoyerMessageUseCase.Envoi;
 import cm.gimac.des.collaboration.application.port.in.EnvoyerMessageUseCase.Expediteur;
 import cm.gimac.des.collaboration.application.port.in.GererGroupeUseCase;
+import cm.gimac.des.collaboration.application.port.in.SignalerSaisieUseCase;
 import cm.gimac.des.collaboration.application.port.out.DocumentStoragePort.ContenuDocument;
 import cm.gimac.des.collaboration.config.SecurityConfiguration;
 import cm.gimac.des.collaboration.config.TestSecurityConfiguration;
@@ -111,6 +112,9 @@ class MessagerieResourceSecurityTest {
     @MockitoBean
     GererGroupeUseCase groupes;
 
+    @MockitoBean
+    SignalerSaisieUseCase saisie;
+
     @BeforeEach
     void init() {
         UUID cid = CONVERSATION.getId();
@@ -150,6 +154,8 @@ class MessagerieResourceSecurityTest {
             Arguments.of(HttpMethod.GET, c + "/messages?taille=20", null, "COL_MESSAGE_READ", 200),
             Arguments.of(HttpMethod.POST, c + "/messages", ENVOI, "COL_MESSAGE_SEND", 201),
             Arguments.of(HttpMethod.POST, c + "/lu", null, "COL_MESSAGE_READ", 204),
+            // « En train d'écrire » (D-72) : relève de l'envoi.
+            Arguments.of(HttpMethod.POST, c + "/saisie", null, "COL_MESSAGE_SEND", 204),
             Arguments.of(HttpMethod.GET, "/api/v1/messagerie/non-lus", null, "COL_MESSAGE_READ", 200),
             Arguments.of(HttpMethod.GET, "/api/v1/messagerie/pieces/" + PIECE.getId(), null, "COL_MESSAGE_READ", 200),
             // Groupes de discussion (D-68) : gérer un groupe relève de l'envoi.

@@ -157,4 +157,92 @@ class CanalDirectServiceTest {
         );
         assertThat(enErreur.connexions()).isZero();
     }
+
+    // Présence et saisie (D-72).
+
+    static final Duration GRACE = Duration.ofMillis(200);
+
+    CanalDirectService canalPresence() {
+        return new CanalDirectService(
+            source::asFlux,
+            new TamponRejeu(500, Duration.ofMinutes(5), Clock.systemUTC()),
+            new CanalDirectService.Parametres(Duration.ofHours(1), Duration.ofHours(1), 16, GRACE)
+        );
+    }
+
+    static boolean presence(ServerSentEvent<VueEvenement> e, String type, String compte) {
+        return e.data() != null && e.id() == null && type.equals(e.data().type()) && compte.equals(e.data().acteur()) && compte.equals(e.data().subject());
+    }
+
+    @Test
+    @DisplayName("Présence : en ligne à la première connexion interne, hors ligne après le délai de grâce ; ni le portail ni soi-même")
+    void presence() {
+        CanalDirectService c = canalPresence();
+        var u2 = new java.util.concurrent.atomic.AtomicReference<reactor.core.Disposable>();
+        var portail = new java.util.concurrent.atomic.AtomicReference<reactor.core.Disposable>();
+        StepVerifier.create(c.ouvrir(Abonne.de(Couche.DES, "u1", "", null), null))
+            .expectNextMatches(e -> commentaire(e, CanalDirectService.OUVERTURE))
+            .then(() -> {
+                portail.set(c.ouvrir(Abonne.de(Couche.PORTAIL, "p1", "I1", null), null).subscribe());
+                u2.set(c.ouvrir(Abonne.de(Couche.CONSOLE, "u2", "", null), null).subscribe());
+            })
+            .expectNextMatches(e -> presence(e, EvenementLive.EN_LIGNE, "u2"))
+            .then(() -> {
+                assertThat(c.presence().enLigne()).containsExactly("u1", "u2");
+                u2.get().dispose();
+                portail.get().dispose();
+            })
+            .expectNextMatches(e -> presence(e, EvenementLive.HORS_LIGNE, "u2"))
+            .then(() -> {
+                assertThat(c.presence().enLigne()).containsExactly("u1");
+                assertThat(c.presence().vusLe()).containsOnlyKeys("u2");
+            })
+            .thenCancel()
+            .verify(DELAI);
+    }
+
+    @Test
+    @DisplayName("Reconnexion dans le délai de grâce : aucune annonce hors ligne")
+    void reconnexionSansClignotement() {
+        CanalDirectService c = canalPresence();
+        var u2 = new java.util.concurrent.atomic.AtomicReference<reactor.core.Disposable>();
+        StepVerifier.create(c.ouvrir(Abonne.de(Couche.DES, "u1", "", null), null))
+            .expectNextMatches(e -> commentaire(e, CanalDirectService.OUVERTURE))
+            .then(() -> u2.set(c.ouvrir(Abonne.de(Couche.DES, "u2", "", null), null).subscribe()))
+            .expectNextMatches(e -> presence(e, EvenementLive.EN_LIGNE, "u2"))
+            .then(() -> {
+                u2.get().dispose();
+                u2.set(c.ouvrir(Abonne.de(Couche.DES, "u2", "", null), null).subscribe());
+            })
+            .expectNextMatches(e -> presence(e, EvenementLive.EN_LIGNE, "u2"))
+            .expectNoEvent(GRACE.multipliedBy(3))
+            .thenCancel()
+            .verify(DELAI);
+        assertThat(c.presence().enLigne()).contains("u2");
+    }
+
+    @Test
+    @DisplayName("Saisie : remise aux destinataires sans identifiant, jamais rejouée à la reprise")
+    void saisieEphemere() {
+        CanalDirectService c = canal();
+        var saisie = new EvenementLive("s1", EvenementLive.SAISIE, "c1", EvenementLive.COLLABORATION, null, Set.of("u1"), "u2");
+        StepVerifier.create(c.ouvrir(Abonne.de(Couche.DES, "u1", "", null), null))
+            .expectNextMatches(e -> commentaire(e, CanalDirectService.OUVERTURE))
+            .then(() -> {
+                source.tryEmitNext(homologation("h1", null));
+                source.tryEmitNext(saisie);
+                source.tryEmitNext(homologation("h2", null));
+            })
+            .expectNextMatches(e -> evenement(e, "h1"))
+            .expectNextMatches(e -> e.id() == null && "s1".equals(e.data().id()) && "u2".equals(e.data().acteur()))
+            .expectNextMatches(e -> evenement(e, "h2"))
+            .thenCancel()
+            .verify(DELAI);
+        StepVerifier.create(c.ouvrir(Abonne.de(Couche.DES, "u1", "", null), "h1"))
+            .expectNextMatches(e -> commentaire(e, CanalDirectService.OUVERTURE))
+            .expectNextMatches(e -> evenement(e, "h2"))
+            .expectNoEvent(Duration.ofMillis(100))
+            .thenCancel()
+            .verify(DELAI);
+    }
 }

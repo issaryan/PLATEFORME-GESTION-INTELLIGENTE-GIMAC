@@ -27,6 +27,26 @@ export interface ConversationItem {
   groupe?: boolean
   /** Photo de profil de l'interlocuteur (échange direct) ; initiales à défaut. */
   avatar?: string | null
+  /** Interlocuteur en ligne (D-72) : point vert sur l'avatar. */
+  enLigne?: boolean
+  /** « Aminata écrit… » (D-72) : remplace l'extrait tant que quelqu'un écrit. */
+  saisie?: string
+}
+
+/** Point « en ligne » (D-72) sur un avatar, annoncé aux technologies d'assistance. */
+export function Presence({ enLigne, children }: { enLigne?: boolean; children: ReactNode }) {
+  const t = useLibelle()
+  return (
+    <span className="gm-presence">
+      {children}
+      {enLigne ? <span className="gm-presence-point" role="img" aria-label={t('messagerie.enLigne')} /> : null}
+    </span>
+  )
+}
+
+/** Trois points animés de « … écrit » (D-72) ; immobiles si l'utilisateur réduit les animations. */
+function Points() {
+  return <span className="gm-points" aria-hidden="true"><i /><i /><i /></span>
 }
 
 export interface ConversationListProps {
@@ -45,7 +65,7 @@ export function ConversationList(p: ConversationListProps) {
       {p.items.map((c) => (
         <li key={c.id}>
           <button type="button" className={cx('gm-conv', c.nonLus ? 'gm-conv-nonlu' : undefined)} aria-current={c.id === p.selected ? 'true' : undefined} onClick={() => p.onSelect?.(c.id)}>
-            {c.groupe ? <span className="gm-avatar" aria-hidden="true"><Icon name="users" size={16} /></span> : <Avatar name={c.titre} src={c.avatar} />}
+            {c.groupe ? <span className="gm-avatar" aria-hidden="true"><Icon name="users" size={16} /></span> : <Presence enLigne={c.enLigne}><Avatar name={c.titre} src={c.avatar} /></Presence>}
             <span className="gm-conv-corps">
               <span className="gm-conv-ligne">
                 <strong className="gm-conv-titre">{c.titre}</strong>
@@ -53,7 +73,7 @@ export function ConversationList(p: ConversationListProps) {
               </span>
               {c.sousTitre ? <span className="gm-conv-sous">{c.sousTitre}</span> : null}
               <span className="gm-conv-ligne">
-                <span className="gm-conv-extrait">{c.extrait}</span>
+                {c.saisie ? <span className="gm-conv-extrait gm-conv-saisie">{c.saisie}</span> : <span className="gm-conv-extrait">{c.extrait}</span>}
                 {c.nonLus ? <span className="gm-conv-pastille" aria-label={t('messagerie.nonLus', { n: c.nonLus })}>{c.nonLus}</span> : null}
               </span>
             </span>
@@ -89,6 +109,10 @@ export interface ThreadMessage {
 export interface MessageThreadProps {
   titre: string
   sousTitre?: ReactNode
+  /** Avatar de l'en-tête (interlocuteur d'un échange direct, D-72) ; pictogramme de messagerie à défaut. */
+  avatar?: ReactNode
+  /** « Aminata écrit… » (D-72), sous le dernier message. */
+  ecrit?: string
   actions?: ReactNode
   messages: ThreadMessage[]
   plusAnciens?: boolean
@@ -112,7 +136,7 @@ export function MessageThread(p: MessageThreadProps) {
   return (
     <section className="gm-chat gm-fil" style={{ height: p.height ?? '100%' }} aria-label={p.titre}>
       <header className="gm-chat-head">
-        <Icon name="messages-square" size={20} />
+        {p.avatar ?? <Icon name="messages-square" size={20} />}
         <span className="gm-col" style={{ gap: 0, minWidth: 0 }}>
           <strong>{p.titre}</strong>
           {p.sousTitre ? <span className="gm-field-help">{p.sousTitre}</span> : null}
@@ -155,6 +179,9 @@ export function MessageThread(p: MessageThreadProps) {
           </li>
         ))}
       </ol>
+      <div className="gm-fil-saisie" aria-live="polite">
+        {p.ecrit ? <span className="gm-msg-saisie"><Points />{p.ecrit}</span> : null}
+      </div>
       </div>
       {p.saisie}
     </section>

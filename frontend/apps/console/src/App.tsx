@@ -57,7 +57,7 @@ function Autorise({ permissions, exigee, children }: { permissions: string[]; ex
 /** Canal poussé de la console (services réels) : nouveaux messages de la messagerie instantanée (D-64). */
 function CanalMessagerie({ actif, onEtat }: { actif: boolean; onEtat: (e: EtatCanal) => void }) {
   const qc = useQueryClient()
-  useEffect(() => (actif ? openLiveChannel('console', ['collaboration'], qc, onEtat, { baseMs: 1000, maxMs: 30_000 }) : undefined), [actif, qc, onEtat])
+  useEffect(() => (actif ? openLiveChannel('console', ['collaboration', 'presence'], qc, onEtat, { baseMs: 1000, maxMs: 30_000 }) : undefined), [actif, qc, onEtat])
   return null
 }
 

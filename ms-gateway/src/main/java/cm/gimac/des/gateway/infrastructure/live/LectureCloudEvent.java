@@ -48,8 +48,11 @@ public class LectureCloudEvent {
             return Optional.empty();
         }
         String topic = topic(sujetKafka);
-        Set<String> destinataires = EvenementLive.COLLABORATION.equals(topic) ? destinataires(ce.get("data")) : Set.of();
-        return Optional.of(new EvenementLive(id, type, texte(ce, "subject"), topic, texte(ce, "institutionid"), destinataires));
+        boolean collaboration = EvenementLive.COLLABORATION.equals(topic);
+        JsonNode data = collaboration ? donnees(ce.get("data")) : null;
+        Set<String> destinataires = collaboration ? destinataires(data) : Set.of();
+        String acteur = data != null ? texte(data, "auteurId") : null;
+        return Optional.of(new EvenementLive(id, type, texte(ce, "subject"), topic, texte(ce, "institutionid"), destinataires, acteur));
     }
 
     /** Sujet fonctionnel : premier segment du sujet Kafka (homologation.liaison → homologation). */
@@ -58,9 +61,14 @@ public class LectureCloudEvent {
         return point < 0 ? sujetKafka : sujetKafka.substring(0, point);
     }
 
-    /** Destinataires de data.destinataires ; « data » peut être un objet ou une chaîne JSON. */
-    private Set<String> destinataires(JsonNode data) {
+    /** « data » d'une enveloppe : un objet, ou une chaîne JSON ; null sinon. */
+    private JsonNode donnees(JsonNode data) {
         JsonNode d = data != null && data.isString() ? arbre(data.asString()) : data;
+        return d != null && d.isObject() ? d : null;
+    }
+
+    /** Destinataires de data.destinataires. */
+    private Set<String> destinataires(JsonNode d) {
         Set<String> ids = new LinkedHashSet<>();
         if (d != null && d.isObject() && d.get("destinataires") != null && d.get("destinataires").isArray()) {
             for (JsonNode n : d.get("destinataires")) {

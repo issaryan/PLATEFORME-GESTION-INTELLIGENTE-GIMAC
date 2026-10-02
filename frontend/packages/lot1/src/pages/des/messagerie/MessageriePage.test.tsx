@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { ApiError } from '@gimac/socle'
+import { act } from 'react'
+import { ApiError, SIGNAL, appliquerSignal, viderSignaux } from '@gimac/socle'
 import MessageriePage, { CorpsMessage, titreConversation } from './MessageriePage'
 import { rendrePage, sessionTest } from '../../../test/rendu'
 import { servicesSimules } from '../../../services/simule'
@@ -13,6 +14,7 @@ import { PERM } from '../../../permissions'
 afterEach(() => {
   cleanup()
   vi.restoreAllMocks()
+  viderSignaux()
 })
 const LECTURE = [PERM.messageLire, PERM.liaisonLister, PERM.liaisonLire]
 const ECRITURE = [...LECTURE, PERM.messageEnvoyer]
@@ -247,5 +249,52 @@ describe('MessageriePage : photos de profil (docs/lot1/mon-compte.md §4)', () =
     const c = { type: 'DIRECTE', titre: null, membres: [{ id: 'a', nom: 'A', fonction: null }, { id: 'b', nom: 'B', fonction: null }] } as unknown as Conversation
     expect(interlocuteur(c, 'a')?.id).toBe('b')
     expect(interlocuteur({ ...c, type: 'GROUPE' }, 'a')).toBeUndefined()
+  })
+  it('D-72 : présence et « écrit… » dans la liste, l’en-tête et sous le fil ; la frappe signale la saisie', async () => {
+    const s = services()
+    const signaler = vi.spyOn(s.messagerie, 'signalerSaisie')
+    const { contenu } = await s.messagerie.conversations({})
+    const directe = contenu.find((c) => c.type === 'DIRECTE' && !c.titre)!
+    const autre = directe.membres.find((m) => m.id !== 'u-test')!
+    const groupe = contenu.find((c) => c.type === 'GROUPE')!
+    page(`/des/messagerie?conversation=${directe.id}`, { s })
+    const fil = await screen.findByRole('region', { name: autre.nom })
+    const liste = await screen.findByRole('list', { name: 'Conversations' })
+    // Présence initiale (service), puis tenue à jour par le canal.
+    act(() => void appliquerSignal({ type: SIGNAL.horsLigne, subject: autre.id, acteur: autre.id }))
+    expect(await within(fil).findByText(/^Vu /)).toBeTruthy()
+    const entree = () => within(liste).getAllByRole('button').find((b) => b.textContent?.includes(autre.nom))!
+    expect(within(entree()).queryByRole('img', { name: 'En ligne' })).toBeNull()
+    act(() => void appliquerSignal({ type: SIGNAL.enLigne, subject: autre.id, acteur: autre.id }))
+    expect(await within(fil).findByText('En ligne')).toBeTruthy()
+    expect(within(fil).getByRole('img', { name: 'En ligne' })).toBeTruthy()
+    expect(within(entree()).getByRole('img', { name: 'En ligne' })).toBeTruthy()
+    // « écrit… » : seul dans la liste pour un échange direct, avec le prénom sous le fil ; effacé par son message.
+    act(() => void appliquerSignal({ type: SIGNAL.saisie, subject: directe.id, acteur: autre.id }))
+    expect(await within(liste).findByText('écrit…')).toBeTruthy()
+    expect(within(fil).getByText(`${autre.nom.split(' ')[0]} écrit…`)).toBeTruthy()
+    act(() => void appliquerSignal({ type: SIGNAL.message, subject: directe.id, acteur: autre.id }))
+    await waitFor(() => expect(within(fil).queryByText(/écrit…/)).toBeNull())
+    // Groupe : prénoms de ceux qui écrivent, dans la liste.
+    act(() => {
+      groupe.membres.filter((m) => m.id !== 'u-test').slice(0, 2).forEach((m) => appliquerSignal({ type: SIGNAL.saisie, subject: groupe.id, acteur: m.id }))
+    })
+    expect(await within(liste).findByText(/écrivent…|écrit…/)).toBeTruthy()
+    // Frappe : un signal, pas un par touche.
+    const champ = within(fil).getByLabelText('Votre message')
+    fireEvent.change(champ, { target: { value: 'B' } })
+    fireEvent.change(champ, { target: { value: 'Bo' } })
+    fireEvent.change(champ, { target: { value: '' } })
+    expect(signaler).toHaveBeenCalledTimes(1)
+    expect(signaler).toHaveBeenCalledWith(directe.id)
+  })
+  it('D-72 : groupe, nombre de membres en ligne dans l’en-tête', async () => {
+    const s = services()
+    const groupe = (await s.messagerie.conversations({})).contenu.find((c) => c.type === 'GROUPE')!
+    page(`/des/messagerie?conversation=${groupe.id}`, { s })
+    const fil = await screen.findByRole('region', { name: groupe.titre ?? undefined })
+    const membre = groupe.membres.find((m) => m.id !== 'u-test')!
+    act(() => void appliquerSignal({ type: SIGNAL.enLigne, subject: membre.id, acteur: membre.id }))
+    expect(await within(fil).findByText(/\d en ligne/)).toBeTruthy()
   })
 })

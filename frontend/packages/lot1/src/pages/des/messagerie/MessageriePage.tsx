@@ -1,11 +1,11 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router'
-import { AttachmentViewer, Avatar, Button, ConfirmDialog, ConversationList, Dialog, EmptyState, Icon, IconButton, InlineAlert, Link, MessageComposer, MessageThread, PageHeader, Pagination, SearchInput, SearchSelect, Skeleton, Tag, TextField, type ThreadMessage, Note } from '@gimac/design-system'
-import { aPermission, urlAvatar, usePermissions, useSession, type ApiError } from '@gimac/socle'
+import { AttachmentViewer, Avatar, Button, ConfirmDialog, ConversationList, Dialog, EmptyState, Icon, IconButton, InlineAlert, Link, MessageComposer, MessageThread, PageHeader, Pagination, Presence, SearchInput, SearchSelect, Skeleton, Tag, TextField, type ThreadMessage, Note } from '@gimac/design-system'
+import { aPermission, urlAvatar, useEnLigne, usePermissions, usePresence, useSaisies, useSession, type ApiError } from '@gimac/socle'
 import type { Conversation, Correspondant, EtiquetteLiaison, EvenementGroupe, Message, PieceJointe } from '../../../modele/messagerie'
 import { LIMITES_MESSAGERIE, MOTIF_LIAISON } from '../../../modele/messagerie'
-import { useAjouterMembres, useAnnuaire, useConversation, useConversations, useDemarrer, useEnvoyer, useFil, useMarquerLu, useRenommerGroupe, useRetirerMembre, useTelechargerPiece } from '../../../hooks/messagerie'
+import { useAjouterMembres, useAnnuaire, useConversation, useConversations, useDemarrer, useEnvoyer, useFil, useMarquerLu, usePresenceMessagerie, useRenommerGroupe, useRetirerMembre, useSignalerSaisie, useTelechargerPiece } from '../../../hooks/messagerie'
 import { useLiaisonsParcours } from '../../../hooks/parcours'
 import { PERM } from '../../../permissions'
 import { enregistrerFichier } from '../../../ressources/fichier'
@@ -18,6 +18,8 @@ import { enregistrerFichier } from '../../../ressources/fichier'
 // administrateur (nom, membres) ; les pièces jointes s'ouvrent dans une fenêtre d'aperçu.
 // Ouverte à tout membre interne du GIMAC, depuis le DES et depuis la console (RSSI, super administrateur) :
 // dans la console, les liaisons ne se citent pas (la couche n'y a pas accès), leurs liens mènent au DES.
+// Comme une messagerie grand public (D-72) : point vert des collègues en ligne, « Vu … » sinon, et
+// « … écrit » dans la liste et sous le fil pendant qu'un membre tape.
 
 /** Couche de présentation qui affiche la messagerie : préfixe des photos, citation des liaisons. */
 type CoucheMessagerie = 'des' | 'console'
@@ -39,6 +41,24 @@ function useQuand() {
 function usePhoto() {
   const couche = useContext(Couche)
   return (p: Pick<Correspondant, 'id' | 'avatarVersion'> | undefined) => (p ? urlAvatar(couche, p.id, p.avatarVersion) : undefined)
+}
+
+/**
+ * « Aminata écrit… » d'une conversation (D-72) : prénoms des membres qui écrivent ; « écrit… » seul dans
+ * la liste pour un échange direct, comme une messagerie grand public.
+ */
+function useTexteSaisie() {
+  const { t } = useTranslation()
+  const saisies = useSaisies()
+  return (c: Conversation, moi: string | undefined, liste = false): string | undefined => {
+    const noms = saisies(c.id)
+      .filter((id) => id !== moi)
+      .map((id) => c.membres.find((m) => m.id === id)?.nom.split(' ')[0])
+      .filter((n): n is string => Boolean(n))
+    if (noms.length === 0) return undefined
+    if (liste && c.type !== 'GROUPE') return t('msg.ecritDirect')
+    return noms.length === 1 ? t('msg.ecrit', { nom: noms[0] }) : t('msg.ecrivent', { noms: noms.join(', ') })
+  }
 }
 
 /** Interlocuteur d'un échange direct : l'autre membre (sa photo illustre la conversation). */
@@ -190,8 +210,10 @@ function CiterLiaisons({ valeur, onChange }: { valeur: EtiquetteLiaison[]; onCha
 }
 
 /** Zone de saisie commune au fil et au nouveau message : texte, pièces jointes, liaisons citées. */
-function Saisie({ envoi, erreur, onEnvoyer, etiquettesInitiales = [] }: {
+function Saisie({ envoi, erreur, onEnvoyer, onFrappe, etiquettesInitiales = [] }: {
   envoi: boolean
+  /** Frappe dans le champ (D-72) : signal « en train d'écrire », limité par l'appelant. */
+  onFrappe?: () => void
   erreur?: string
   onEnvoyer: (e: { contenu: string; fichiers: File[]; etiquettes: EtiquetteLiaison[] }, vider: () => void) => void
   etiquettesInitiales?: EtiquetteLiaison[]
@@ -211,7 +233,10 @@ function Saisie({ envoi, erreur, onEnvoyer, etiquettesInitiales = [] }: {
   return (
     <MessageComposer
       value={texte}
-      onChange={setTexte}
+      onChange={(v) => {
+        setTexte(v)
+        if (v.trim()) onFrappe?.()
+      }}
       fichiers={fichiers}
       onFichiers={setFichiers}
       maxFichiers={LIMITES_MESSAGERIE.piecesMax}
@@ -248,6 +273,11 @@ function Fil({ id, peutEcrire, onQuitte }: { id: string; peutEcrire: boolean; on
   const erreur = useMessageErreur()
   const photo = usePhoto()
   const couche = useContext(Couche)
+  const frappe = useSignalerSaisie(id)
+  const texteSaisie = useTexteSaisie()
+  const enLigne = useEnLigne()
+  const autre = conversation.data ? interlocuteur(conversation.data, session?.sujet) : undefined
+  const presence = usePresence(autre?.id)
   // Pages : la plus récente d'abord ; le fil se lit du plus ancien au plus récent.
   const messages: Message[] = useMemo(() => (fil.data ?? []).slice().reverse().flatMap((p) => p.contenu), [fil.data])
   const nonLus = conversation.data?.nonLus ?? 0
@@ -281,7 +311,18 @@ function Fil({ id, peutEcrire, onQuitte }: { id: string; peutEcrire: boolean; on
     <>
     <MessageThread
       titre={titreConversation(c, session?.sujet)}
-      sousTitre={[t('msg.membres', { count: c.membres.length }), c.membres.map((m) => (m.id === session?.sujet ? t('msg.vous') : m.nom)).join(', ')].join(' · ')}
+      avatar={autre ? <Presence enLigne={presence.enLigne}><Avatar name={autre.nom} src={photo(autre)} decorative /></Presence> : undefined}
+      sousTitre={autre
+        ? (presence.enLigne ? t('msg.enLigne') : presence.vuLe ? t('msg.vuLe', { quand: quand(presence.vuLe) }) : t('msg.horsLigne'))
+        : [
+            t('msg.membres', { count: c.membres.length }),
+            ...(() => {
+              const n = c.membres.filter((m) => m.id !== session?.sujet && enLigne(m.id)).length
+              return n ? [t('msg.membresEnLigne', { count: n })] : []
+            })(),
+            c.membres.map((m) => (m.id === session?.sujet ? t('msg.vous') : m.nom)).join(', '),
+          ].join(' · ')}
+      ecrit={texteSaisie(c, session?.sujet)}
       actions={(
         <>
           {c.liaison && couche === 'des' ? <Link href={`/des/parcours/${encodeURIComponent(c.liaison.liaisonId)}`}>{t('msg.ouvrirLiaison', { reference: c.liaison.reference })}</Link> : null}
@@ -298,6 +339,7 @@ function Fil({ id, peutEcrire, onQuitte }: { id: string; peutEcrire: boolean; on
           envoi={envoyer.isPending}
           erreur={envoyer.isError ? erreur(envoyer.error) : telecharger.isError ? erreur(telecharger.error) : undefined}
           onEnvoyer={(e, vider) => envoyer.mutate(e, { onSuccess: vider })}
+          onFrappe={frappe}
         />
       ) : undefined}
     />
@@ -489,7 +531,9 @@ function GererGroupe({ c, onFermer, onQuitte }: { c: Conversation; onFermer: () 
           confirmLabel={'quitter' in confirmer ? t('msg.groupe.quitter') : t('msg.groupe.retirer', { nom: confirmer.retirer.nom })}
           onClose={() => setConfirmer(null)}
           onConfirm={() => {
-            if ('quitter' in confirmer) retirer.mutate(moi ?? '', { onSuccess: () => { setConfirmer(null); onFermer(); onQuitte() } })
+            // Promesse plutôt que rappel : la relecture du groupe quitté (404) démonte ce panneau avant que
+            // les rappels de mutate ne s'exécutent ; la navigation hors du fil doit avoir lieu quand même.
+            if ('quitter' in confirmer) retirer.mutateAsync(moi ?? '').then(onQuitte, () => undefined)
             else retirer.mutate(confirmer.retirer.id, { onSuccess: () => setConfirmer(null) })
           }}
         />
@@ -504,6 +548,9 @@ export default function MessageriePage({ couche = 'des' }: { couche?: CoucheMess
 
 function Messagerie() {
   const { t } = useTranslation()
+  usePresenceMessagerie()
+  const enLigne = useEnLigne()
+  const texteSaisie = useTexteSaisie()
   const photo = usePhoto()
   const session = useSession()
   const permissions = usePermissions()
@@ -563,6 +610,8 @@ function Messagerie() {
                   nonLus: c.nonLus,
                   groupe: c.type === 'GROUPE',
                   avatar: photo(interlocuteur(c, session?.sujet)),
+                  enLigne: enLigne(interlocuteur(c, session?.sujet)?.id),
+                  saisie: texteSaisie(c, session?.sujet, true),
                 }))}
               />
             )}

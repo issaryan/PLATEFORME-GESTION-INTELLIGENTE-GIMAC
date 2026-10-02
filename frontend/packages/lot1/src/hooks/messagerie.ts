@@ -1,5 +1,6 @@
+import { useCallback, useEffect, useRef } from 'react'
 import { keepPreviousData, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import type { ApiError } from '@gimac/socle'
+import { initialiserPresence, type ApiError } from '@gimac/socle'
 import type { Envoi, FilMessages, NouvelleConversation } from '../modele/messagerie'
 import { useServices } from '../services/ServicesProvider'
 import { useLecture } from './base'
@@ -15,11 +16,17 @@ export const clesMessagerie = {
   nonLus: () => ['collaboration', 'non-lus'] as const,
 }
 
+/**
+ * Repli du canal poussé : la liste et le fil ouverts sont relus toutes les 5 secondes tant que la page est
+ * visible (jamais en arrière-plan), si un événement se perd (relais coupé, onglet resté sur un autre compte).
+ */
+export const SONDAGE_MESSAGERIE = 5_000
+
 export const useAnnuaire = (recherche: string, actif = true) =>
   useLecture(clesMessagerie.annuaire(recherche), (s) => s.messagerie.annuaire(recherche, 0, 20), { enabled: actif, placeholderData: keepPreviousData })
 
 export const useConversations = (q: { recherche?: string; liaisonId?: string; page?: number }) =>
-  useLecture(clesMessagerie.conversations(q), (s) => s.messagerie.conversations({ ...q, taille: 20 }), { placeholderData: keepPreviousData })
+  useLecture(clesMessagerie.conversations(q), (s) => s.messagerie.conversations({ ...q, taille: 20 }), { placeholderData: keepPreviousData, refetchInterval: SONDAGE_MESSAGERIE })
 
 export const useConversation = (id: string | undefined) =>
   useLecture(clesMessagerie.conversation(id ?? ''), (s) => s.messagerie.conversation(id!), { enabled: !!id })
@@ -38,6 +45,7 @@ export function useFil(id: string | undefined) {
     queryFn: ({ pageParam }) => s.messagerie.messages(id!, pageParam),
     getNextPageParam: (derniere) => (derniere.plusAnciens ? derniere.contenu[0]?.id : undefined),
     select: (d) => d.pages,
+    refetchInterval: SONDAGE_MESSAGERIE,
   })
 }
 
@@ -75,4 +83,29 @@ export function useAjouterMembres(conversationId: string) {
 export function useRetirerMembre(conversationId: string) {
   const s = useServices()
   return useEcriture((membreId: string) => s.messagerie.retirerMembre(conversationId, membreId))
+}
+
+/**
+ * Présence des comptes internes (D-72) : état initial lu à l'ouverture de la messagerie et à chaque
+ * (re)connexion du canal poussé (clé ['presence']), puis tenu à jour par ses signaux.
+ */
+export function usePresenceMessagerie() {
+  const r = useLecture(['presence'], (s) => s.messagerie.presence())
+  useEffect(() => {
+    if (r.data) initialiserPresence(r.data)
+  }, [r.data])
+}
+
+/** Un signal « en train d'écrire » au plus toutes les 3 secondes pendant la frappe (D-72). */
+export const INTERVALLE_SAISIE_MS = 3_000
+
+export function useSignalerSaisie(conversationId: string) {
+  const s = useServices()
+  const dernier = useRef(0)
+  return useCallback(() => {
+    const maintenant = Date.now()
+    if (maintenant - dernier.current < INTERVALLE_SAISIE_MS) return
+    dernier.current = maintenant
+    s.messagerie.signalerSaisie(conversationId).catch(() => undefined)
+  }, [s, conversationId])
 }

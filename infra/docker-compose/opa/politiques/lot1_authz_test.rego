@@ -168,6 +168,7 @@ routes_messagerie := [
 	["GET", "/bff/des/collaboration/messagerie/non-lus", "COL_MESSAGE_READ"],
 	["GET", "/bff/des/collaboration/messagerie/pieces/p1", "COL_MESSAGE_READ"],
 	["POST", "/bff/des/collaboration/messagerie/conversations/c1/lu", "COL_MESSAGE_READ"],
+	["POST", "/bff/des/collaboration/messagerie/conversations/c1/saisie", "COL_MESSAGE_SEND"],
 	["POST", "/bff/des/collaboration/messagerie/conversations", "COL_MESSAGE_SEND"],
 	["POST", "/bff/des/collaboration/messagerie/conversations/c1/messages", "COL_MESSAGE_SEND"],
 	["PATCH", "/bff/des/collaboration/messagerie/conversations/c1", "COL_MESSAGE_SEND"],

@@ -113,6 +113,8 @@ public class SecurityConfiguration {
                     // Canal poussé des couches (contrat de messagerie §5) : servi par la passerelle, hors OPA ;
                     // session à deux facteurs exigée comme sur toute route /bff (D-61).
                     .pathMatchers(HttpMethod.GET, "/bff/*/live").access(new DoubleFacteurAuthorizationManager(niveauxDoubleFacteur))
+                    // Présence des comptes internes (D-72) : servie par la passerelle avec le canal, mêmes exigences.
+                    .pathMatchers(HttpMethod.GET, "/bff/*/presence").access(new DoubleFacteurAuthorizationManager(niveauxDoubleFacteur))
                     // Couches de présentation du lot 1 (PI-GIMAC-01 §0.6) : authentification exigée, puis OPA.
                     .pathMatchers("/bff/**").authenticated()
                     .pathMatchers("/v3/api-docs/**").hasAuthority(AuthoritiesConstants.ADMIN)

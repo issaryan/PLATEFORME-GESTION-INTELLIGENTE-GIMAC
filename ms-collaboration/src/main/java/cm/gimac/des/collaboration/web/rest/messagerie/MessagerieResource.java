@@ -7,6 +7,7 @@ import cm.gimac.des.collaboration.domain.messagerie.ConversationMembre;
 import cm.gimac.des.collaboration.application.port.in.ConsulterMessagerieUseCase;
 import cm.gimac.des.collaboration.application.port.in.EnvoyerMessageUseCase;
 import cm.gimac.des.collaboration.application.port.in.GererGroupeUseCase;
+import cm.gimac.des.collaboration.application.port.in.SignalerSaisieUseCase;
 import cm.gimac.des.collaboration.application.port.in.EnvoyerMessageUseCase.Expediteur;
 import cm.gimac.des.collaboration.domain.exception.CollaborationException;
 import cm.gimac.des.collaboration.domain.messagerie.FichierJoint;
@@ -64,11 +65,13 @@ public class MessagerieResource {
     private final EnvoyerMessageUseCase envoi;
     private final ConsulterMessagerieUseCase lecture;
     private final GererGroupeUseCase groupes;
+    private final SignalerSaisieUseCase saisie;
 
-    public MessagerieResource(EnvoyerMessageUseCase envoi, ConsulterMessagerieUseCase lecture, GererGroupeUseCase groupes) {
+    public MessagerieResource(EnvoyerMessageUseCase envoi, ConsulterMessagerieUseCase lecture, GererGroupeUseCase groupes, SignalerSaisieUseCase saisie) {
         this.envoi = envoi;
         this.lecture = lecture;
         this.groupes = groupes;
+        this.saisie = saisie;
     }
 
     /** Conversation avec les photos de profil courantes de ses membres. */
@@ -193,6 +196,14 @@ public class MessagerieResource {
     @PreAuthorize(LIRE)
     public ResponseEntity<Void> marquerLu(@PathVariable UUID id, Authentication auth) {
         envoi.marquerLu(appelant(auth).id(), id);
+        return ResponseEntity.noContent().build();
+    }
+
+    /** « En train d'écrire » (D-72) : signal éphémère aux autres membres ; 204, 404 hors de la conversation. */
+    @PostMapping("/conversations/{id}/saisie")
+    @PreAuthorize(ENVOYER)
+    public ResponseEntity<Void> saisie(@PathVariable UUID id, Authentication auth) {
+        saisie.signalerSaisie(appelant(auth).id(), id);
         return ResponseEntity.noContent().build();
     }
 

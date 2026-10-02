@@ -7,7 +7,7 @@ import { fermerSessionDemo } from './demo'
 // d'identité n'est jamais ouverte : la passerelle ferme la session de Keycloak côté serveur.
 
 /** Navigation du document ; remplaçable dans les tests. */
-export const navigation = { vers: (adresse: string) => window.location.assign(adresse) }
+export const navigation = { vers: (adresse: string) => window.location.assign(adresse), recharger: () => window.location.reload() }
 
 /** Motif affiché par l'écran de connexion. */
 export type MotifConnexion = 'deconnexion' | 'inactivite' | 'expiree'
@@ -41,6 +41,12 @@ export async function deconnecter(motif: MotifConnexion = 'deconnexion', minutes
     /* session déjà close : retour à la connexion */
   }
   fermerSessionDemo()
+  // Les autres onglets de ce navigateur partageaient cette session : ils se rechargent (session.tsx).
+  try {
+    localStorage.removeItem('gm.session.compte')
+  } catch {
+    /* stockage indisponible */
+  }
   navigation.vers(adresseConnexion({ motif, minutes, retour: motif === 'deconnexion' ? undefined : retourCourant() }))
 }
 

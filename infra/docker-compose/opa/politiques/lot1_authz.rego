@@ -84,6 +84,8 @@ regles := [
 	{"m": "PATCH", "re": `^/bff/(des|console)/collaboration/messagerie/conversations/[^/]+$`, "p": "COL_MESSAGE_SEND"},
 	{"m": "POST", "re": `^/bff/(des|console)/collaboration/messagerie/conversations/[^/]+/membres$`, "p": "COL_MESSAGE_SEND"},
 	{"m": "DELETE", "re": `^/bff/(des|console)/collaboration/messagerie/conversations/[^/]+/membres/[^/]+$`, "p": "COL_MESSAGE_SEND"},
+	# « En train d'écrire » (D-72) : signal éphémère ; l'appartenance est vérifiée par MS-COLLABORATION.
+	{"m": "POST", "re": `^/bff/(des|console)/collaboration/messagerie/conversations/[^/]+/saisie$`, "p": "COL_MESSAGE_SEND"},
 ]
 
 # Routes internes des services (jeton de service) : jamais relayées depuis une couche de présentation.

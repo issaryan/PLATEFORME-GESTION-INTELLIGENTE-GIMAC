@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { QueryClient } from '@tanstack/react-query'
 import { openLiveChannel, type EtatCanal } from './live'
+import { SIGNAL, viderSignaux } from './signaux'
 
 // Canal poussé : connexion par couche et par sujets, invalidation des requêtes du sujet (et du parcours pour
 // l'homologation et la certification), reprise depuis le dernier identifiant, reconnexion à délai croissant.
@@ -89,5 +90,22 @@ describe('openLiveChannel', () => {
     FauxFlux.ouverts[1].onerror?.()
     vi.advanceTimersByTime(10_000)
     expect(FauxFlux.ouverts).toHaveLength(2)
+  })
+  it('D-72 : signaux éphémères appliqués sans invalidation ni reprise ; présence relue à chaque connexion', () => {
+    viderSignaux()
+    const qc = new QueryClient()
+    const invalider = vi.spyOn(qc, 'invalidateQueries').mockResolvedValue()
+    openLiveChannel('des', ['collaboration', 'presence'], qc, () => undefined, { baseMs: 1000, maxMs: 8000 })
+    const f = FauxFlux.ouverts[0]
+    f.onopen?.()
+    expect(invalider.mock.calls.map((c) => c[0])).toEqual([{ queryKey: ['presence'] }])
+    invalider.mockClear()
+    f.onmessage?.({ data: JSON.stringify({ id: 'e1', type: 'collaboration.message-sent.v1', subject: 'C1', topic: 'collaboration' }) })
+    f.onmessage?.({ data: JSON.stringify({ id: 's1', type: SIGNAL.saisie, subject: 'C1', topic: 'collaboration', acteur: 'u2' }) })
+    f.onmessage?.({ data: JSON.stringify({ id: 'p1', type: SIGNAL.enLigne, subject: 'u2', topic: 'presence', acteur: 'u2' }) })
+    expect(invalider.mock.calls.map((c) => c[0])).toEqual([{ queryKey: ['collaboration'] }])
+    f.onerror?.()
+    vi.advanceTimersByTime(1000)
+    expect(FauxFlux.ouverts[1].url).toContain('depuis=e1')
   })
 })

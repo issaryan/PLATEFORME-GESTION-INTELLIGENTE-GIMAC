@@ -147,3 +147,15 @@ button.gm-annuaire-personne:focus-visible { outline: var(--gm-border-2) solid va
 .gm-trame-fil .gm-msg-mine .gm-msg-meta { align-self: flex-end; }
 .gm-trame-fil .gm-fil-plus .gm-btn, .gm-trame-fil .gm-fil-vide .gm-empty, .gm-trame-fil > .gm-empty { background: var(--gm-color-surface); border: var(--gm-border-1) solid var(--gm-color-border); }
 .gm-trame-fil > .gm-empty { padding: var(--gm-space-5) var(--gm-space-6); }
+
+/* Présence et saisie (D-72) : point « en ligne » sur l'avatar, « … écrit » dans la liste et sous le fil. */
+.gm-presence { position: relative; display: inline-flex; flex: none; }
+.gm-presence-point { position: absolute; right: -1px; bottom: -1px; width: 10px; height: 10px; border-radius: var(--gm-radius-avatar); background: var(--gm-color-status-ok-fg); box-shadow: 0 0 0 2px var(--gm-color-surface); }
+.gm-conv-saisie { color: var(--gm-color-action); font-style: italic; }
+.gm-fil-saisie { min-height: 0; padding: 0 var(--gm-space-3); }
+.gm-msg-saisie { display: inline-flex; align-items: center; gap: var(--gm-space-2); margin-bottom: var(--gm-space-2); padding: var(--gm-space-1) var(--gm-space-3); background: var(--gm-color-surface); border: var(--gm-border-1) solid var(--gm-color-border); color: var(--gm-color-text-secondary); font-size: 13px; line-height: 20px; font-style: italic; }
+.gm-points { display: inline-flex; gap: 3px; }
+.gm-points i { width: 5px; height: 5px; border-radius: var(--gm-radius-avatar); background: currentColor; animation: gm-points 1.2s infinite ease-in-out; }
+.gm-points i:nth-child(2) { animation-delay: 0.2s; }
+.gm-points i:nth-child(3) { animation-delay: 0.4s; }
+@keyframes gm-points { 0%, 60%, 100% { opacity: 0.3; } 30% { opacity: 1; } }

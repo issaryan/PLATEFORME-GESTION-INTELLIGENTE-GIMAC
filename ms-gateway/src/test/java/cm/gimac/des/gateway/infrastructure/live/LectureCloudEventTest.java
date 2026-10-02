@@ -42,6 +42,18 @@ class LectureCloudEventTest {
     }
 
     @Test
+    @DisplayName("Saisie (D-72) : auteur lu dans data.auteurId, destinataires ; aucun acteur hors collaboration")
+    void saisie() {
+        String ce = "{\"id\":\"s-1\",\"type\":\"collaboration.message-typing.v1\",\"subject\":\"c1\",\"data\":{\"auteurId\":\"u2\",\"destinataires\":[\"u1\"]}}";
+        EvenementLive e = lecture.lire("collaboration.message", ce).orElseThrow();
+        assertThat(e.acteur()).isEqualTo("u2");
+        assertThat(e.destinataires()).containsExactly("u1");
+        assertThat(e.ephemere()).isTrue();
+        String h = "{\"id\":\"h-1\",\"type\":\"homologation.liaison-opened.v1\",\"data\":{\"auteurId\":\"u2\"}}";
+        assertThat(lecture.lire("homologation.liaison", h).orElseThrow().acteur()).isNull();
+    }
+
+    @Test
     @DisplayName("Message dont data est une chaîne JSON : destinataires lus")
     void dataChaine() {
         String ce = "{\"id\":\"m-2\",\"type\":\"collaboration.message-sent.v1\",\"data\":\"{\\\"destinataires\\\":[\\\"u9\\\"]}\"}";

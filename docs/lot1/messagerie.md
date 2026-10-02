@@ -25,6 +25,7 @@ tout jeton portant une institution et tout chemin `/bff/portail/collaboration/**
 | DELETE | `/api/v1/messagerie/conversations/{id}/membres/{membreId}` | `COL_MESSAGE_SEND` | Retire un membre (administrateur) ou quitte le groupe (`membreId` = l'appelant) ; `204` |
 | POST | `/api/v1/messagerie/conversations/{id}/messages` (multipart) | `COL_MESSAGE_SEND` | Nouveau message |
 | POST | `/api/v1/messagerie/conversations/{id}/lu` | `COL_MESSAGE_READ` | Marque lus tous les messages jusqu'au dernier |
+| POST | `/api/v1/messagerie/conversations/{id}/saisie` | `COL_MESSAGE_SEND` | « En train d'écrire » (D-72) : signal éphémère aux autres membres, 204 ; 404 hors de la conversation |
 | GET | `/api/v1/messagerie/non-lus` | `COL_MESSAGE_READ` | `{ "total": n }` |
 | GET | `/api/v1/messagerie/pieces/{pieceId}` | `COL_MESSAGE_READ` | Contenu d'une pièce jointe (membre seulement), `Content-Disposition: attachment` |
 
@@ -136,9 +137,23 @@ leurs `destinataires` comprennent aussi la personne retirée, pour que sa liste 
 ## 5. Temps réel
 
 `GET /bff/{couche}/live?sujets=collaboration,homologation,certification&depuis=<id>` (passerelle, SSE,
-cookie de session). Chaque événement : `{ "id", "type", "subject", "topic" }`. Les événements
+cookie de session). Chaque événement : `{ "id", "type", "subject", "topic", "acteur" }`. Les événements
 `collaboration.message-sent.v1` ne sont remis qu'aux utilisateurs dont l'identifiant figure parmi les
 `destinataires` ; le frontend invalide alors ses requêtes du sujet `collaboration` (liste, fil, non-lus).
+À défaut d'événement (relais coupé), la liste et le fil ouverts sont relus toutes les 5 s quand la page est
+visible, en appels de fond (`X-Gimac-Fond: 1`).
+
+Signaux éphémères (D-72), ni enregistrés ni rejoués (pas de ligne `id:`) :
+
+| Événement | Origine | Remis à | `subject` / `acteur` |
+|---|---|---|---|
+| `collaboration.message-typing.v1` | `POST …/conversations/{id}/saisie` (MS-COLLABORATION, hors outbox) | autres membres de la conversation | conversation / compte qui écrit |
+| `presence.account-online.v1` | passerelle, première connexion du compte au canal (DES, console) | tout abonné interne sauf le compte | compte / compte |
+| `presence.account-offline.v1` | passerelle, 10 s après la fermeture de sa dernière connexion | tout abonné interne sauf le compte | compte / compte |
+
+État initial de la présence : `GET /bff/{des|console}/presence` → `{ "enLigne": [ids], "vusLe": { id: instant } }`
+(passerelle, session à deux facteurs ; 404 sur le portail). Un signal « écrit… » au plus toutes les 3 s côté
+navigateur, toutes les 2 s par membre côté service ; affiché 6 s ou jusqu'au message de son auteur.
 
 ## 6. Permissions (domaine Keycloak `gimac`)
 

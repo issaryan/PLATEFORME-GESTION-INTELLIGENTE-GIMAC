@@ -131,5 +131,34 @@ export function GardeSession({ charger = chargerSession, connexion, children }: 
       </div>
     )
   }
-  return <SessionActive session={etat.session}>{children(etat.session)}</SessionActive>
+  return (
+    <SessionActive session={etat.session}>
+      <SessionUniqueParNavigateur sujet={etat.session.sujet} />
+      {children(etat.session)}
+    </SessionActive>
+  )
+}
+
+/** Clé partagée par les onglets d'une même origine : compte de la session ouverte dans ce navigateur. */
+export const CLE_COMPTE_ONGLETS = 'gm.session.compte'
+
+/**
+ * Une session par navigateur : le témoin de session de la passerelle est commun à tous les onglets d'une
+ * origine. Quand un autre onglet ouvre la session d'un autre compte (ou ferme la session), cet onglet ne doit
+ * plus agir ni afficher au nom de l'ancien compte : il se recharge et prend la session en cours.
+ */
+function SessionUniqueParNavigateur({ sujet }: { sujet: string }) {
+  useEffect(() => {
+    try {
+      localStorage.setItem(CLE_COMPTE_ONGLETS, sujet)
+    } catch {
+      // Stockage indisponible (navigation privée stricte) : pas de surveillance entre onglets.
+    }
+    const changement = (e: StorageEvent) => {
+      if (e.key === CLE_COMPTE_ONGLETS && e.newValue !== sujet) navigation.recharger()
+    }
+    window.addEventListener('storage', changement)
+    return () => window.removeEventListener('storage', changement)
+  }, [sujet])
+  return null
 }

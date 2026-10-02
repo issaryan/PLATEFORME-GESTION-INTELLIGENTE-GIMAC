@@ -161,14 +161,14 @@ class CanalDirectResourceTest {
     }
 
     @Test
-    @DisplayName("DES : message remis à son destinataire, données limitées à id, type, subject, topic")
+    @DisplayName("DES : message remis à son destinataire, données limitées à id, type, subject, topic et acteur")
     void destinataire() {
         StepVerifier.create(ouvrir(session("u1", "2", null), "/bff/des/live?sujets=collaboration,homologation"))
             .then(() -> emettre(message("m-1", "u2"), message("m-2", "u1", "u2")))
             .assertNext(e -> {
                 assertThat(e.id()).isEqualTo("m-2");
                 assertThat(e.data()).isEqualTo(
-                    "{\"id\":\"m-2\",\"type\":\"collaboration.message-sent.v1\",\"subject\":\"c-1\",\"topic\":\"collaboration\"}"
+                    "{\"id\":\"m-2\",\"type\":\"collaboration.message-sent.v1\",\"subject\":\"c-1\",\"topic\":\"collaboration\",\"acteur\":null}"
                 );
             })
             .thenCancel()
@@ -211,6 +211,42 @@ class CanalDirectResourceTest {
             .verify(DELAI);
         StepVerifier.create(ouvrir(session("u1", "2", null), "/bff/console/live?depuis=r-1", "r-2"))
             .assertNext(e -> assertThat(e.id()).isEqualTo("r-3"))
+            .thenCancel()
+            .verify(DELAI);
+    }
+
+    @Test
+    @DisplayName("Présence (D-72) : 401 sans session, 403 sans second facteur, 404 au portail ou couche inconnue")
+    void presenceSecurite() {
+        client.get().uri("/bff/des/presence").exchange().expectStatus().isUnauthorized();
+        session("u1", "1", null).get().uri("/bff/des/presence").exchange().expectStatus().isForbidden();
+        session("u1", "3", "INST-0042").get().uri("/bff/portail/presence").exchange().expectStatus().isNotFound();
+        session("u1", "2", null).get().uri("/bff/autre/presence").exchange().expectStatus().isNotFound();
+    }
+
+    @Test
+    @DisplayName("Présence (D-72) : le compte connecté au canal figure parmi les comptes en ligne ; annonce sans identifiant")
+    void presence() {
+        StepVerifier.create(ouvrir(session("u7", "2", null), "/bff/des/live"))
+            .then(() -> {
+                emettre();
+                session("u8", "2", null)
+                    .get()
+                    .uri("/bff/console/presence")
+                    .exchange()
+                    .expectStatus()
+                    .isOk()
+                    .expectBody()
+                    .jsonPath("$.enLigne")
+                    .value(v -> assertThat(v.toString()).contains("u7"));
+                emettre(
+                    new EvenementLive("p-1", EvenementLive.EN_LIGNE, "u9", EvenementLive.PRESENCE, null, null, "u9")
+                );
+            })
+            .assertNext(e -> {
+                assertThat(e.id()).isNull();
+                assertThat(e.data()).contains("\"acteur\":\"u9\"").contains("\"topic\":\"presence\"");
+            })
             .thenCancel()
             .verify(DELAI);
     }

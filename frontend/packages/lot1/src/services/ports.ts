@@ -10,6 +10,7 @@ import type {
   Telechargement, TypeDemande,
 } from '../modele/certification'
 import type { PortailCertification, PortailLiaison, PortailOperation } from '../modele/portail'
+import type { EtatPresence } from '@gimac/socle'
 import type { Conversation, Correspondant, Envoi, FilMessages, Message, NouvelleConversation, PageMessagerie } from '../modele/messagerie'
 import type {
   Candidature, ConditionsAdhesion, DossierInstitution, FiltreInstitutions, IndicateursDdrm, Institution, PieceAdhesion, Prerequis,
@@ -226,6 +227,10 @@ export interface ServiceMessagerie {
   ajouterMembres(conversationId: string, membres: string[]): Promise<Conversation>
   /** Retrait d'un membre, ou départ quand membreId est l'utilisateur courant. */
   retirerMembre(conversationId: string, membreId: string): Promise<void>
+  /** Présence des comptes internes (D-72) : état initial, tenu à jour par le canal poussé. */
+  presence(): Promise<EtatPresence>
+  /** « En train d'écrire » (D-72) : signal éphémère aux autres membres. */
+  signalerSaisie(conversationId: string): Promise<void>
 }
 
 export interface Services {

@@ -34,7 +34,8 @@ public record Abonne(Couche couche, String compte, String institutionId, Set<Str
 
     /**
      * Règles de remise : sujet retenu ; sur le portail, événement de l'institution de
-     * l'utilisateur seulement (RG-59) ; en collaboration, utilisateur parmi les destinataires.
+     * l'utilisateur seulement (RG-59) ; en collaboration, utilisateur parmi les destinataires ;
+     * présence (D-72) : tout abonné d'une couche interne, sauf pour sa propre présence.
      */
     public boolean recoit(EvenementLive e) {
         if (!sujets.contains(e.topic())) {
@@ -42,6 +43,9 @@ public record Abonne(Couche couche, String compte, String institutionId, Set<Str
         }
         if (couche == Couche.PORTAIL && (vide(institutionId) || !institutionId.equals(e.institutionId()))) {
             return false;
+        }
+        if (EvenementLive.PRESENCE.equals(e.topic())) {
+            return !vide(compte) && !compte.equals(e.acteur());
         }
         if (EvenementLive.COLLABORATION.equals(e.topic())) {
             return !vide(compte) && e.destinataires().contains(compte);

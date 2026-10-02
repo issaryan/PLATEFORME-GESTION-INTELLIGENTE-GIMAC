@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { messagerieHttp } from './messagerie'
+import { messagerieHttp, messagerieHttpPour } from './messagerie'
 
 // Contrat HTTP de la messagerie (docs/lot1/messagerie.md) : /bff/des/collaboration/messagerie, pagination
 // à partir de 0, corps multipart (partie JSON « message » et parties « fichiers »).
@@ -29,7 +29,8 @@ describe('messagerieHttp', () => {
       '/bff/des/collaboration/messagerie/non-lus',
     ])
     // Compteur périodique : appel de fond, sans prolonger la session d'inactivité (D-65 §6).
-    expect(new Headers(appels()[6][1].headers).get('X-Gimac-Fond')).toBe('1')
+    // Liste, conversation et fil, relus par le sondage de repli (D-72) : appels de fond aussi.
+    expect([2, 3, 4, 5, 6].map((i) => new Headers(appels()[i][1].headers).get('X-Gimac-Fond'))).toEqual(['1', '1', '1', '1', '1'])
     expect(new Headers(appels()[0][1].headers).has('X-Gimac-Fond')).toBe(false)
   })
   it('écritures : démarrage et envoi en multipart, lecture marquée, pièce téléchargée', async () => {
@@ -68,5 +69,17 @@ describe('messagerieHttp', () => {
     expect(JSON.parse(await (creation.get('message') as Blob).text())).toMatchObject({ destinataires: ['u2', 'u3'], titre: 'Cellule', groupe: true })
     expect(JSON.parse(String(appels()[1][1].body))).toEqual({ titre: 'Cellule bis' })
     expect(JSON.parse(String(appels()[2][1].body))).toEqual({ membres: ['u4'] })
+  })
+  it('D-72 : présence servie par la passerelle, saisie signalée ; appels de fond', async () => {
+    brancher()
+    await messagerieHttp.presence()
+    await messagerieHttp.signalerSaisie('C 1')
+    await messagerieHttpPour('console').presence()
+    expect([0, 1, 2].map((i) => `${methode(i)} ${url(i).pathname}`)).toEqual([
+      'GET /bff/des/presence',
+      'POST /bff/des/collaboration/messagerie/conversations/C%201/saisie',
+      'GET /bff/console/presence',
+    ])
+    expect([0, 1, 2].map((i) => new Headers(appels()[i][1].headers).get('X-Gimac-Fond'))).toEqual(['1', '1', '1'])
   })
 })

@@ -271,6 +271,14 @@ export function messagerieSimulee(attendre: Attendre, refus: Refus, moi: Corresp
       if (c.membres.length && !c.membres.some((m) => m.administrateur)) c.membres[0] = { ...c.membres[0], administrateur: true }
       evenement(c, depart ? cible : moi, depart ? 'MEMBRE_PARTI' : 'MEMBRE_RETIRE', depart ? [] : [cible.nom], new Date().toISOString())
     }),
+    // Présence simulée (D-72) : quelques collègues en ligne, les autres vus il y a un moment.
+    presence: () => attendre(() => ({
+      enLigne: ['U-020', 'U-201', 'u-sna', 'u-rssi'].filter((id) => id !== moi.id),
+      vusLe: { 'U-101': new Date(Date.now() - 25 * 60_000).toISOString(), 'u-prod': new Date(Date.now() - 3 * 3_600_000).toISOString() },
+    })),
+    signalerSaisie: (cid) => attendre(() => {
+      sienne(cid)
+    }),
     // Le contenu n'est pas copié (un Blob ne se clone pas) : contrôle d'accès simulé, puis le fichier tel quel.
     telechargerPiece: (pid) => attendre(() => {
       const p = pieces.get(pid)

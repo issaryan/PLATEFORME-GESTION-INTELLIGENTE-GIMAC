@@ -8,7 +8,7 @@
 //      prédicats Path= et filtre RewritePath=) ;
 //   3. le chemin réécrit doit correspondre à une route d'un contrôleur du service cible
 //      (@RequestMapping de la classe + @GetMapping/@PostMapping/@PutMapping/@PatchMapping/@DeleteMapping),
-//      ou à un contrôleur de la passerelle elle-même pour /api/** et /bff/{couche}/live ;
+//      ou à un contrôleur de la passerelle elle-même pour /api/**, /bff/{couche}/live et /bff/{couche}/presence ;
 //   4. la politique OPA (lot1_authz.rego) ne doit pas refuser la route par construction (chemin du portail
 //      ou de la messagerie non listé), et la permission qu'elle exige doit figurer dans le @PreAuthorize
 //      du contrôleur.
@@ -337,10 +337,13 @@ const precision = (r) => segments(r.chemin).filter((s) => !/^\{/.test(s)).length
 const rego = readFileSync(join(RACINE, 'infra/docker-compose/opa/politiques/lot1_authz.rego'), 'utf8')
 const reglesOpa = [...rego.matchAll(/\{"m": "([A-Z]+)", "re": `([^`]+)`, "p": "([A-Z_]+)"\}/g)].map((m) => ({ methode: m[1], re: new RegExp(m[2]), permission: m[3] }))
 
+/** Chemins /bff servis par la passerelle elle-même : canal poussé et présence (D-72). */
+const LOCALE_PASSERELLE = /^\/bff\/(des|portail|console)\/(live|presence)$/
+
 function opa(methode, chemin) {
   const ex = echantillon(chemin)
-  // Canal poussé : contrôleur de la passerelle, hors filtre OpaAuthorize (session à deux facteurs exigée).
-  if (/^\/bff\/(des|portail|console)\/live$/.test(ex)) return { decision: 'HORS_OPA' }
+  // Canal poussé et présence (D-72) : contrôleurs de la passerelle, hors filtre OpaAuthorize (session à deux facteurs exigée).
+  if (LOCALE_PASSERELLE.test(ex)) return { decision: 'HORS_OPA' }
   const r = reglesOpa.find((x) => x.methode === methode && x.re.test(ex))
   if (r) return { decision: 'PERMISSION', permission: r.permission }
   if (/^\/bff\/[^/]+\/[^/]+\/interne(\/|$)/.test(ex)) return { decision: 'REFUS', motif: 'route interne' }
@@ -369,8 +372,9 @@ for (const a of appels) {
     continue
   }
   let candidats
-  const route = a.chemin.startsWith('/bff/') && !/^\/bff\/[^/]+\/live$/.test(a.chemin.replaceAll(JOKER, 'x')) ? routePasserelle(a.chemin) : null
-  if (a.chemin.startsWith('/bff/') && !route && !/^\/bff\/[^/]+\/live$/.test(a.chemin.replaceAll(JOKER, 'x'))) {
+  const locale = LOCALE_PASSERELLE.test(a.chemin.replaceAll(JOKER, 'x'))
+  const route = a.chemin.startsWith('/bff/') && !locale ? routePasserelle(a.chemin) : null
+  if (a.chemin.startsWith('/bff/') && !route && !locale) {
     l.ecarts.push('aucune route de la passerelle')
   } else if (route) {
     l.passerelle = route.id
