@@ -126,7 +126,9 @@ images() {
     (cd "$RACINE/ms-$s" && ./mvnw -ntp -Pprod verify jib:dockerBuild -DskipTests -Djacoco.skip=true)
   done
   # Sans reconstruction explicite, le Compose garde des couches de présentation périmées.
+  # Le Compose n'interpole qu'avec les secrets du .env : générés ici sur un poste neuf.
   echo "== Construction des images des couches de présentation"
+  preparer_env
   compose build frontend-departement frontend-portail frontend-console
 }
 
