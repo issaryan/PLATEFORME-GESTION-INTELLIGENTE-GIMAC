@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- D-68 : groupes de discussion de la messagerie (docs/lot1/messagerie.md §1.1), écrite à la main.
+     Administrateur d'un groupe (le créateur, puis le plus ancien membre s'il part) et événements de
+     la vie du groupe inscrits dans le fil (création, nouveau nom, membres ajoutés, retiré ou parti). -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="col-groupes-administrateur" author="d68">
+        <addColumn tableName="conversation_membre">
+            <column name="administrateur" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+        </addColumn>
+        <!-- Groupes existants : leur créateur en devient l'administrateur. -->
+        <sql>
+            UPDATE conversation_membre m SET administrateur = TRUE
+            FROM conversation c
+            WHERE m.conversation_id = c.id AND c.type = 'GROUPE' AND m.membre_id = c.cree_par
+        </sql>
+    </changeSet>
+
+    <changeSet id="col-groupes-evenements" author="d68">
+        <addColumn tableName="message">
+            <column name="evenement" type="varchar(30)"/>
+            <column name="evenement_cibles" type="varchar(4000)"/>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>

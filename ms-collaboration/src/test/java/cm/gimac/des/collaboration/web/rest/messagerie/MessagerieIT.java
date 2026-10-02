@@ -2,8 +2,10 @@ package cm.gimac.des.collaboration.web.rest.messagerie;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -93,6 +95,60 @@ class MessagerieIT extends AbstractCollaborationIT {
         assertThat((String) JsonPath.read(evenement, "$.data.conversationId")).isEqualTo(id);
         assertThat((List<String>) JsonPath.read(evenement, "$.data.destinataires")).containsExactly(AMINATA);
         assertThat(evenement).doesNotContain("Bonjour");
+    }
+
+    @Test
+    @DisplayName("Groupe de discussion (D-68) : créé nommé sans message, renommé, membres ajoutés et retirés, départ ; événements dans le fil")
+    void groupeDeDiscussion() throws Exception {
+        String id = JsonPath.read(
+            creer(PAUL, "{\"groupe\":true,\"destinataires\":[\"" + AMINATA + "\"],\"titre\":\"Comité DES\",\"contenu\":\"\"}")
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.type").value("GROUPE"))
+                .andExpect(jsonPath("$.titre").value("Comité DES"))
+                .andExpect(jsonPath("$.membres[?(@.id=='" + PAUL + "')].administrateur").value(org.hamcrest.Matchers.contains(true)))
+                .andExpect(jsonPath("$.membres[?(@.id=='" + AMINATA + "')].administrateur").value(org.hamcrest.Matchers.contains(false)))
+                .andExpect(jsonPath("$.dernierMessage.evenement.type").value("GROUPE_CREE"))
+                .andReturn()
+                .getResponse()
+                .getContentAsString(),
+            "$.id"
+        );
+        String c = BASE + "/conversations/" + id;
+        mvc
+            .perform(patch(c).contentType(MediaType.APPLICATION_JSON).content("{\"titre\":\"Comité de pilotage\"}").with(utilisateur(PAUL, MESSAGERIE)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.titre").value("Comité de pilotage"));
+        mvc
+            .perform(post(c + "/membres").contentType(MediaType.APPLICATION_JSON).content("{\"membres\":[\"" + SERGE + "\",\"" + CLARISSE + "\"]}").with(utilisateur(PAUL, MESSAGERIE)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.membres.length()").value(4));
+        // Un membre ordinaire ne gère pas le groupe.
+        mvc
+            .perform(patch(c).contentType(MediaType.APPLICATION_JSON).content("{\"titre\":\"X\"}").with(utilisateur(AMINATA, MESSAGERIE)))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.code").value("COL_GROUP_ADMIN_REQUIRED"));
+        mvc.perform(delete(c + "/membres/" + CLARISSE).with(utilisateur(PAUL, MESSAGERIE))).andExpect(status().isNoContent());
+        mvc.perform(get(c).with(utilisateur(CLARISSE, MESSAGERIE))).andExpect(status().isNotFound());
+        mvc.perform(delete(c + "/membres/" + SERGE).with(utilisateur(SERGE, MESSAGERIE))).andExpect(status().isNoContent());
+        mvc
+            .perform(get(c + "/messages").with(utilisateur(AMINATA, MESSAGERIE)))
+            .andExpect(jsonPath("$.contenu[*].evenement.type").value(org.hamcrest.Matchers.contains("GROUPE_CREE", "GROUPE_RENOMME", "MEMBRES_AJOUTES", "MEMBRE_RETIRE", "MEMBRE_PARTI")))
+            .andExpect(jsonPath("$.contenu[2].evenement.cibles.length()").value(2))
+            .andExpect(jsonPath("$.contenu[3].evenement.cibles[0]").value("Clarisse Bilong"))
+            .andExpect(jsonPath("$.contenu[4].auteur.id").value(SERGE))
+            .andExpect(jsonPath("$.contenu[0].contenu").value(""));
+        // Le départ de l'administrateur confie la gestion au plus ancien membre restant.
+        mvc.perform(delete(c + "/membres/" + PAUL).with(utilisateur(PAUL, MESSAGERIE))).andExpect(status().isNoContent());
+        mvc
+            .perform(get(c).with(utilisateur(AMINATA, MESSAGERIE)))
+            .andExpect(jsonPath("$.membres.length()").value(1))
+            .andExpect(jsonPath("$.membres[0].administrateur").value(true));
+        // Une conversation directe ne se quitte pas.
+        String d = directe(PAUL, AMINATA, "Bonjour");
+        mvc
+            .perform(delete(BASE + "/conversations/" + d + "/membres/" + PAUL).with(utilisateur(PAUL, MESSAGERIE)))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("COL_NOT_A_GROUP"));
     }
 
     @Test

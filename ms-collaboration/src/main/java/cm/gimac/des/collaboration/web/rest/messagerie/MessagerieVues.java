@@ -6,6 +6,7 @@ import cm.gimac.des.collaboration.domain.messagerie.Collaborateur;
 import cm.gimac.des.collaboration.domain.messagerie.Conversation;
 import cm.gimac.des.collaboration.domain.messagerie.ConversationMembre;
 import cm.gimac.des.collaboration.domain.messagerie.Etiquette;
+import cm.gimac.des.collaboration.domain.messagerie.EvenementGroupe;
 import cm.gimac.des.collaboration.domain.messagerie.PieceJointe;
 import java.time.Instant;
 import java.util.List;
@@ -18,7 +19,22 @@ public final class MessagerieVues {
 
     private MessagerieVues() {}
 
-    public record CreationRequest(List<String> destinataires, String titre, UUID liaisonId, String liaisonReference, String contenu, List<Etiquette> etiquettes) {}
+    /** « groupe » (D-68) : groupe de discussion nommé ; absent ou faux, conduite d'avant (directe si possible). */
+    public record CreationRequest(
+        List<String> destinataires,
+        String titre,
+        UUID liaisonId,
+        String liaisonReference,
+        String contenu,
+        List<Etiquette> etiquettes,
+        Boolean groupe
+    ) {}
+
+    /** Nouveau nom d'un groupe (D-68). */
+    public record RenommageRequest(String titre) {}
+
+    /** Membres ajoutés à un groupe (D-68), identifiants de l'annuaire. */
+    public record AjoutMembresRequest(List<String> membres) {}
 
     public record EnvoiRequest(String contenu, List<Etiquette> etiquettes) {}
 
@@ -31,16 +47,26 @@ public final class MessagerieVues {
         }
     }
 
-    /** Membre ou auteur : nom et fonction figés à l'entrée, photo de profil courante (avatarVersion). */
-    public record MembreVue(String id, String nom, String fonction, String avatarVersion) {
+    /**
+     * Membre ou auteur : nom et fonction figés à l'entrée, photo de profil courante (avatarVersion) ;
+     * « administrateur » : administrateur du groupe (D-68), toujours faux pour un auteur de message.
+     */
+    public record MembreVue(String id, String nom, String fonction, String avatarVersion, boolean administrateur) {
         static MembreVue de(ConversationMembre m, Map<String, String> avatars) {
-            return new MembreVue(m.getMembreId(), m.getNom(), m.getFonction(), avatars.get(m.getMembreId()));
+            return new MembreVue(m.getMembreId(), m.getNom(), m.getFonction(), avatars.get(m.getMembreId()), m.isAdministrateur());
+        }
+    }
+
+    /** Événement de groupe (D-68) : type et noms concernés. */
+    public record EvenementVue(String type, List<String> cibles) {
+        static EvenementVue de(EvenementGroupe e, List<String> cibles) {
+            return e == null ? null : new EvenementVue(e.name(), cibles);
         }
     }
 
     public record LiaisonVue(UUID liaisonId, String reference) {}
 
-    public record DernierMessageVue(UUID id, String auteurNom, String extrait, Instant envoyeLe, int piecesJointes) {}
+    public record DernierMessageVue(UUID id, String auteurNom, String extrait, Instant envoyeLe, int piecesJointes, EvenementVue evenement) {}
 
     public record ConversationVue(
         UUID id,
@@ -62,7 +88,7 @@ public final class MessagerieVues {
                 c.getTitre(),
                 c.getLiaisonId() == null ? null : new LiaisonVue(c.getLiaisonId(), c.getLiaisonReference()),
                 l.membres().stream().map(m -> MembreVue.de(m, avatars)).toList(),
-                d == null ? null : new DernierMessageVue(d.id(), d.auteurNom(), d.extrait(), d.envoyeLe(), d.piecesJointes()),
+                d == null ? null : new DernierMessageVue(d.id(), d.auteurNom(), d.extrait(), d.envoyeLe(), d.piecesJointes(), EvenementVue.de(d.evenement(), d.cibles())),
                 l.nonLus(),
                 c.getMisAJourLe(),
                 c.getCreeeLe()
@@ -84,19 +110,21 @@ public final class MessagerieVues {
         String contenu,
         Instant envoyeLe,
         List<Etiquette> etiquettes,
-        List<PieceVue> piecesJointes
+        List<PieceVue> piecesJointes,
+        EvenementVue evenement
     ) {
         static MessageVue de(MessageLu l, String appelantId, Map<String, String> avatars) {
             var m = l.message();
             return new MessageVue(
                 m.getId(),
                 m.getConversation().getId(),
-                new MembreVue(m.getAuteurId(), m.getAuteurNom(), m.getAuteurFonction(), avatars.get(m.getAuteurId())),
+                new MembreVue(m.getAuteurId(), m.getAuteurNom(), m.getAuteurFonction(), avatars.get(m.getAuteurId()), false),
                 m.getAuteurId().equals(appelantId),
                 l.contenu(),
                 m.getEnvoyeLe(),
                 l.etiquettes(),
-                l.piecesJointes().stream().map(PieceVue::de).toList()
+                l.piecesJointes().stream().map(PieceVue::de).toList(),
+                EvenementVue.de(m.getEvenement(), m.getEvenementCibles())
             );
         }
     }

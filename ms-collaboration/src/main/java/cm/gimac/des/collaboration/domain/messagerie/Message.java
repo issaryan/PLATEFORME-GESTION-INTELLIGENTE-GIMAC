@@ -3,6 +3,8 @@ package cm.gimac.des.collaboration.domain.messagerie;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
@@ -45,6 +47,15 @@ public class Message extends EntiteMessagerie {
     @Column(name = "envoye_le", nullable = false)
     private Instant envoyeLe;
 
+    /** Événement de groupe (D-68) ; nul pour un message ordinaire. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "evenement", length = 30)
+    private EvenementGroupe evenement;
+
+    /** Noms concernés par l'événement, séparés par un saut de ligne. */
+    @Column(name = "evenement_cibles", length = 4000)
+    private String evenementCibles;
+
     @OneToMany(mappedBy = "message", cascade = CascadeType.PERSIST, fetch = FetchType.LAZY)
     @OrderBy("reference ASC")
     @BatchSize(size = 50)
@@ -65,6 +76,22 @@ public class Message extends EntiteMessagerie {
         this.auteurFonction = auteur.fonction();
         this.contenuChiffre = contenuChiffre.clone();
         this.envoyeLe = envoyeLe;
+    }
+
+    /** Événement de groupe : contenu chiffré vide, cibles en clair (noms et nom du groupe, jamais de données de carte). */
+    public static Message evenement(UUID id, Conversation conversation, Collaborateur auteur, byte[] contenuVideChiffre, Instant le, EvenementGroupe e, List<String> cibles) {
+        Message m = new Message(id, conversation, auteur, contenuVideChiffre, le);
+        m.evenement = e;
+        m.evenementCibles = cibles.isEmpty() ? null : String.join("\n", cibles);
+        return m;
+    }
+
+    public EvenementGroupe getEvenement() {
+        return evenement;
+    }
+
+    public List<String> getEvenementCibles() {
+        return evenementCibles == null ? List.of() : List.of(evenementCibles.split("\n"));
     }
 
     public void etiqueter(Etiquette e) {

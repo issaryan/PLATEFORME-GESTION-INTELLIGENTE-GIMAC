@@ -1,6 +1,7 @@
 package cm.gimac.des.collaboration.application.usecase;
 
 import cm.gimac.des.collaboration.application.port.in.EnvoyerMessageUseCase;
+import cm.gimac.des.collaboration.application.port.in.GererGroupeUseCase;
 import cm.gimac.des.collaboration.application.port.out.ChiffrementPort;
 import cm.gimac.des.collaboration.application.port.out.CollaboratorDirectoryPort;
 import cm.gimac.des.collaboration.application.port.out.DocumentStoragePort;
@@ -11,6 +12,7 @@ import cm.gimac.des.collaboration.domain.messagerie.Collaborateur;
 import cm.gimac.des.collaboration.domain.messagerie.Conversation;
 import cm.gimac.des.collaboration.domain.messagerie.ConversationMembre;
 import cm.gimac.des.collaboration.domain.messagerie.Etiquette;
+import cm.gimac.des.collaboration.domain.messagerie.EvenementGroupe;
 import cm.gimac.des.collaboration.domain.messagerie.FichierJoint;
 import cm.gimac.des.collaboration.domain.messagerie.Message;
 import cm.gimac.des.collaboration.domain.messagerie.TypeConversation;
@@ -23,6 +25,8 @@ import cm.gimac.des.collaboration.repository.MessageRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -36,11 +40,12 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Envoi des messages de la messagerie de travail (D-64) : destinataires pris dans l'annuaire,
  * conversation directe réutilisée, masquage des numéros de carte (RG-52) puis chiffrement au repos,
- * pièces déposées dans MS-DOCUMENT, événement collaboration.message-sent.v1 par l'outbox.
+ * pièces déposées dans MS-DOCUMENT, événement collaboration.message-sent.v1 par l'outbox. Groupes de
+ * discussion (D-68) : création explicite, administrateur, nom, membres ajoutés ou retirés, départ.
  */
 @Service
 @Transactional
-public class MessagerieService implements EnvoyerMessageUseCase {
+public class MessagerieService implements EnvoyerMessageUseCase, GererGroupeUseCase {
 
     private static final Logger LOG = LoggerFactory.getLogger(MessagerieService.class);
 
@@ -82,10 +87,13 @@ public class MessagerieService implements EnvoyerMessageUseCase {
     @Override
     public Envoi creerConversation(Expediteur expediteur, NouvelleConversation demande, List<FichierJoint> fichiers) {
         List<FichierJoint> pieces = regles.pieces(fichiers);
-        String contenu = regles.contenu(demande.contenu(), pieces.size());
+        boolean groupe = demande.groupe();
+        // Groupe nommé (D-68) : le premier message est facultatif, la création suffit à l'ouvrir.
+        boolean avecMessage = !groupe || (demande.contenu() != null && !demande.contenu().isBlank()) || !pieces.isEmpty();
+        String contenu = avecMessage ? regles.contenu(demande.contenu(), pieces.size()) : null;
         List<Etiquette> etiquettes = regles.etiquettes(demande.etiquettes());
         List<String> ids = regles.destinataires(demande.destinataires(), expediteur.id());
-        String titre = regles.titre(demande.titre());
+        String titre = groupe ? regles.titreGroupe(demande.titre()) : regles.titre(demande.titre());
         String reference = referenceLiaison(demande, etiquettes);
         List<Collaborateur> destinataires = ids.stream().map(this::destinataire).toList();
         Collaborateur auteur = annuaire.trouver(expediteur.id()).orElseGet(() -> depuisJeton(expediteur));
@@ -93,7 +101,7 @@ public class MessagerieService implements EnvoyerMessageUseCase {
 
         Conversation conversation;
         boolean creee;
-        if (regles.estDirecte(ids, titre, demande.liaisonId())) {
+        if (!groupe && regles.estDirecte(ids, titre, demande.liaisonId())) {
             String cle = regles.cleDirecte(expediteur.id(), ids.get(0));
             Optional<Conversation> existante = conversations.findByCleDirecte(cle);
             creee = existante.isEmpty();
@@ -103,12 +111,107 @@ public class MessagerieService implements EnvoyerMessageUseCase {
             conversation = new Conversation(TypeConversation.GROUPE, titre, demande.liaisonId(), reference, null, expediteur.id(), maintenant);
         }
         if (creee) {
-            conversation.ajouterMembre(auteur, maintenant);
+            ConversationMembre createur = conversation.ajouterMembre(auteur, maintenant);
+            if (conversation.estGroupe()) {
+                createur.nommerAdministrateur();
+            }
             destinataires.forEach(d -> conversation.ajouterMembre(d, maintenant));
             conversations.save(conversation);
         }
-        UUID messageId = ajouterMessage(conversation, auteur, contenu, etiquettes, pieces, maintenant);
+        UUID messageId = null;
+        Instant le = maintenant;
+        if (groupe) {
+            messageId = evenement(conversation, auteur, EvenementGroupe.GROUPE_CREE, List.of(titre), le, List.of());
+            le = le.plus(1, ChronoUnit.MICROS);
+        }
+        if (avecMessage) {
+            messageId = ajouterMessage(conversation, auteur, contenu, etiquettes, pieces, le);
+        }
         return new Envoi(conversation.getId(), messageId, creee);
+    }
+
+    @Override
+    public void renommer(Expediteur appelant, UUID conversationId, String titre) {
+        Conversation c = groupeAdministre(appelant, conversationId);
+        String nom = regles.titreGroupe(titre);
+        if (nom.equals(c.getTitre())) {
+            return;
+        }
+        Instant le = maintenant();
+        c.renommer(nom, le);
+        evenement(c, membreAuteur(c, appelant), EvenementGroupe.GROUPE_RENOMME, List.of(nom), le, List.of());
+    }
+
+    @Override
+    public void ajouterMembres(Expediteur appelant, UUID conversationId, List<String> membres) {
+        Conversation c = groupeAdministre(appelant, conversationId);
+        List<String> nouveaux = regles
+            .destinataires(membres, appelant.id())
+            .stream()
+            .filter(id -> c.membre(id).isEmpty())
+            .toList();
+        if (nouveaux.isEmpty()) {
+            return;
+        }
+        int total = c.getMembres().size() + nouveaux.size();
+        if (total > ReglesMessagerie.DESTINATAIRES_MAX + 1) {
+            throw CollaborationException.invalide(
+                "COL_TOO_MANY_RECIPIENTS",
+                "Au plus " + (ReglesMessagerie.DESTINATAIRES_MAX + 1) + " membres par groupe",
+                Map.of("nombre", total, "maximum", ReglesMessagerie.DESTINATAIRES_MAX + 1)
+            );
+        }
+        List<Collaborateur> ajoutes = nouveaux.stream().map(this::destinataire).toList();
+        Instant le = maintenant();
+        ajoutes.forEach(a -> c.ajouterMembre(a, le));
+        evenement(c, membreAuteur(c, appelant), EvenementGroupe.MEMBRES_AJOUTES, ajoutes.stream().map(Collaborateur::nom).toList(), le, List.of());
+    }
+
+    @Override
+    public void retirerMembre(Expediteur appelant, UUID conversationId, String membreId) {
+        Conversation c = conversations
+            .pourMembre(conversationId, appelant.id())
+            .orElseThrow(() -> CollaborationException.introuvable("COL_CONVERSATION_NOT_FOUND", conversationId));
+        if (!c.estGroupe()) {
+            throw CollaborationException.invalide("COL_NOT_A_GROUP", "Seul un groupe de discussion se quitte ou perd des membres");
+        }
+        ConversationMembre moi = c.membre(appelant.id()).orElseThrow();
+        ConversationMembre cible = c.membre(membreId).orElseThrow(() -> CollaborationException.introuvable("COL_MEMBER_NOT_FOUND", membreId));
+        boolean depart = membreId.equals(appelant.id());
+        if (!depart && !moi.isAdministrateur()) {
+            throw CollaborationException.interdit("COL_GROUP_ADMIN_REQUIRED", "Réservé à l'administrateur du groupe");
+        }
+        Collaborateur auteur = membreAuteur(c, appelant);
+        String nomCible = cible.getNom();
+        c.retirerMembre(cible);
+        evenement(
+            c,
+            auteur,
+            depart ? EvenementGroupe.MEMBRE_PARTI : EvenementGroupe.MEMBRE_RETIRE,
+            depart ? List.of() : List.of(nomCible),
+            maintenant(),
+            // Le membre retiré est prévenu : sa liste se met à jour et le fil lui est fermé.
+            depart ? List.of() : List.of(membreId)
+        );
+    }
+
+    /** Groupe dont l'appelant est l'administrateur ; sinon 404 (non-membre), 400 (directe) ou 403. */
+    private Conversation groupeAdministre(Expediteur appelant, UUID conversationId) {
+        Conversation c = conversations
+            .pourMembre(conversationId, appelant.id())
+            .orElseThrow(() -> CollaborationException.introuvable("COL_CONVERSATION_NOT_FOUND", conversationId));
+        if (!c.estGroupe()) {
+            throw CollaborationException.invalide("COL_NOT_A_GROUP", "Seul un groupe de discussion se renomme ou change de membres");
+        }
+        if (!c.membre(appelant.id()).map(ConversationMembre::isAdministrateur).orElse(false)) {
+            throw CollaborationException.interdit("COL_GROUP_ADMIN_REQUIRED", "Réservé à l'administrateur du groupe");
+        }
+        return c;
+    }
+
+    private static Collaborateur membreAuteur(Conversation c, Expediteur appelant) {
+        ConversationMembre m = c.membre(appelant.id()).orElseThrow();
+        return new Collaborateur(m.getMembreId(), m.getNom(), m.getFonction(), Set.of(), null, true);
     }
 
     @Override
@@ -119,9 +222,7 @@ public class MessagerieService implements EnvoyerMessageUseCase {
         List<FichierJoint> pieces = regles.pieces(fichiers);
         String contenu = regles.contenu(demande.contenu(), pieces.size());
         List<Etiquette> etiquettes = regles.etiquettes(demande.etiquettes());
-        ConversationMembre moi = conversation.membre(expediteur.id()).orElseThrow();
-        Collaborateur auteur = new Collaborateur(moi.getMembreId(), moi.getNom(), moi.getFonction(), Set.of(), null, true);
-        UUID messageId = ajouterMessage(conversation, auteur, contenu, etiquettes, pieces, maintenant());
+        UUID messageId = ajouterMessage(conversation, membreAuteur(conversation, expediteur), contenu, etiquettes, pieces, maintenant());
         return new Envoi(conversationId, messageId, false);
     }
 
@@ -153,21 +254,32 @@ public class MessagerieService implements EnvoyerMessageUseCase {
             message.joindre(depot.id(), piece.nom(), depot.taille(), piece.typeMime(), depot.sha256());
         }
         messages.save(message);
+        enregistrer(conversation, auteur, id, envoyeLe, List.of());
+        return id;
+    }
+
+    /** Événement de groupe inscrit dans le fil (D-68) : sans contenu, ni étiquette, ni pièce. */
+    private UUID evenement(Conversation c, Collaborateur auteur, EvenementGroupe e, List<String> cibles, Instant le, Collection<String> aussiPrevenir) {
+        UUID id = UUID.randomUUID();
+        messages.save(Message.evenement(id, c, auteur, chiffrement.chiffrer("", id), le, e, cibles));
+        enregistrer(c, auteur, id, le, aussiPrevenir);
+        return id;
+    }
+
+    /** Dernier message de la conversation, lu par son auteur ; collaboration.message-sent.v1 aux autres membres. */
+    private void enregistrer(Conversation conversation, Collaborateur auteur, UUID id, Instant envoyeLe, Collection<String> aussiPrevenir) {
         conversation.messageAjoute(id, envoyeLe);
         conversation.membre(auteur.id()).ifPresent(m -> m.marquerLu(id, envoyeLe));
-        List<String> destinataires = conversation
-            .getMembres()
-            .stream()
-            .map(ConversationMembre::getMembreId)
-            .filter(m -> !m.equals(auteur.id()))
-            .toList();
+        List<String> destinataires = new ArrayList<>(
+            conversation.getMembres().stream().map(ConversationMembre::getMembreId).filter(m -> !m.equals(auteur.id())).toList()
+        );
+        aussiPrevenir.stream().filter(m -> !destinataires.contains(m)).forEach(destinataires::add);
         outbox.publish(
             "conversation",
             conversation.getId(),
             MessageEnvoyePayload.TYPE,
-            new MessageEnvoyePayload(conversation.getId(), id, auteur.id(), destinataires, envoyeLe)
+            new MessageEnvoyePayload(conversation.getId(), id, auteur.id(), List.copyOf(destinataires), envoyeLe)
         );
-        return id;
     }
 
     private Collaborateur destinataire(String id) {

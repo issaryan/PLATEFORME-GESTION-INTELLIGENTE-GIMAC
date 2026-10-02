@@ -20,7 +20,16 @@ public interface ConsulterMessagerieUseCase {
         }
     }
 
-    record DernierMessage(UUID id, String auteurNom, String extrait, java.time.Instant envoyeLe, int piecesJointes) {}
+    /** « evenement » et « cibles » : événement de groupe (D-68), extrait alors vide. */
+    record DernierMessage(
+        UUID id,
+        String auteurNom,
+        String extrait,
+        java.time.Instant envoyeLe,
+        int piecesJointes,
+        cm.gimac.des.collaboration.domain.messagerie.EvenementGroupe evenement,
+        List<String> cibles
+    ) {}
 
     record ConversationLue(Conversation conversation, List<ConversationMembre> membres, DernierMessage dernierMessage, long nonLus) {}
 

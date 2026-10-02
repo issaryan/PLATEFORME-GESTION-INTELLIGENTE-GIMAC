@@ -26,6 +26,7 @@ import cm.gimac.des.collaboration.application.port.in.ConsulterMessagerieUseCase
 import cm.gimac.des.collaboration.application.port.in.EnvoyerMessageUseCase;
 import cm.gimac.des.collaboration.application.port.in.EnvoyerMessageUseCase.Envoi;
 import cm.gimac.des.collaboration.application.port.in.EnvoyerMessageUseCase.Expediteur;
+import cm.gimac.des.collaboration.application.port.in.GererGroupeUseCase;
 import cm.gimac.des.collaboration.application.port.out.DocumentStoragePort.ContenuDocument;
 import cm.gimac.des.collaboration.config.SecurityConfiguration;
 import cm.gimac.des.collaboration.config.TestSecurityConfiguration;
@@ -33,6 +34,7 @@ import cm.gimac.des.collaboration.domain.exception.CollaborationException;
 import cm.gimac.des.collaboration.domain.messagerie.Collaborateur;
 import cm.gimac.des.collaboration.domain.messagerie.Conversation;
 import cm.gimac.des.collaboration.domain.messagerie.Etiquette;
+import cm.gimac.des.collaboration.domain.messagerie.EvenementGroupe;
 import cm.gimac.des.collaboration.domain.messagerie.FichierJoint;
 import cm.gimac.des.collaboration.domain.messagerie.Message;
 import cm.gimac.des.collaboration.domain.messagerie.PieceJointe;
@@ -106,10 +108,13 @@ class MessagerieResourceSecurityTest {
     @MockitoBean
     ConsulterMessagerieUseCase lecture;
 
+    @MockitoBean
+    GererGroupeUseCase groupes;
+
     @BeforeEach
     void init() {
         UUID cid = CONVERSATION.getId();
-        var lue = new ConversationLue(CONVERSATION, CONVERSATION.getMembres(), new DernierMessage(MESSAGE.getId(), "Paul Mbarga Atangana", "Bonjour", T, 1), 2);
+        var lue = new ConversationLue(CONVERSATION, CONVERSATION.getMembres(), new DernierMessage(MESSAGE.getId(), "Paul Mbarga Atangana", "Bonjour", T, 1, null, java.util.List.of()), 2);
         var lu = new MessageLu(MESSAGE, "Bonjour", List.of(new Etiquette(CONVERSATION.getLiaisonId(), "LIA-2026-027")), List.of(PIECE));
         when(lecture.annuaire(anyString(), any(), anyInt(), anyInt())).thenReturn(new Page<>(List.of(AMINATA), 1, 0, 20));
         when(lecture.conversations(anyString(), any(), any(), anyInt(), anyInt())).thenReturn(new Page<>(List.of(lue), 1, 0, 20));
@@ -128,6 +133,10 @@ class MessagerieResourceSecurityTest {
         if (message == null) {
             return () -> request(m, uri);
         }
+        // Corps JSON (gestion des groupes, D-68) : « json: » suivi du document.
+        if (message.startsWith("json:")) {
+            return () -> request(m, uri).contentType(MediaType.APPLICATION_JSON).content(message.substring(5));
+        }
         return () -> multipart(uri).file(new MockMultipartFile("message", "", MediaType.APPLICATION_JSON_VALUE, message.getBytes()));
     }
 
@@ -142,7 +151,11 @@ class MessagerieResourceSecurityTest {
             Arguments.of(HttpMethod.POST, c + "/messages", ENVOI, "COL_MESSAGE_SEND", 201),
             Arguments.of(HttpMethod.POST, c + "/lu", null, "COL_MESSAGE_READ", 204),
             Arguments.of(HttpMethod.GET, "/api/v1/messagerie/non-lus", null, "COL_MESSAGE_READ", 200),
-            Arguments.of(HttpMethod.GET, "/api/v1/messagerie/pieces/" + PIECE.getId(), null, "COL_MESSAGE_READ", 200)
+            Arguments.of(HttpMethod.GET, "/api/v1/messagerie/pieces/" + PIECE.getId(), null, "COL_MESSAGE_READ", 200),
+            // Groupes de discussion (D-68) : gérer un groupe relève de l'envoi.
+            Arguments.of(HttpMethod.PATCH, c, "json:{\"titre\":\"Comité\"}", "COL_MESSAGE_SEND", 200),
+            Arguments.of(HttpMethod.POST, c + "/membres", "json:{\"membres\":[\"serge\"]}", "COL_MESSAGE_SEND", 200),
+            Arguments.of(HttpMethod.DELETE, c + "/membres/serge", null, "COL_MESSAGE_SEND", 204)
         );
     }
 
@@ -215,6 +228,36 @@ class MessagerieResourceSecurityTest {
             .andExpect(header().string("Repr-Digest", "sha-256=:" + java.util.Base64.getEncoder().encodeToString(java.util.HexFormat.of().parseHex("e".repeat(64))) + ":"))
             .andExpect(content().contentType(MediaType.APPLICATION_PDF))
             .andExpect(content().bytes(new byte[] { 'a', 'b', 'c' }));
+    }
+
+    @Test
+    @DisplayName("Groupes (D-68) : nom, membres ajoutés, retrait transmis ; drapeau « groupe » de la création ; administrateur et événement exposés")
+    void groupes() throws Exception {
+        UUID cid = CONVERSATION.getId();
+        when(lecture.conversation(MOI, cid)).thenReturn(
+            new ConversationLue(
+                CONVERSATION,
+                CONVERSATION.getMembres(),
+                new DernierMessage(MESSAGE.getId(), "Paul Mbarga Atangana", "", T, 0, EvenementGroupe.GROUPE_RENOMME, List.of("Comité")),
+                0
+            )
+        );
+        mvc
+            .perform(requete(HttpMethod.PATCH, "/api/v1/messagerie/conversations/" + cid, "json:{\"titre\":\"Comité\"}").get().with(jeton("2", "COL_MESSAGE_SEND")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.membres[0].administrateur").isBoolean())
+            .andExpect(jsonPath("$.dernierMessage.evenement.type").value("GROUPE_RENOMME"))
+            .andExpect(jsonPath("$.dernierMessage.evenement.cibles[0]").value("Comité"));
+        verify(groupes).renommer(new Expediteur(MOI, "Paul Mbarga Atangana"), cid, "Comité");
+        mvc.perform(requete(HttpMethod.POST, "/api/v1/messagerie/conversations/" + cid + "/membres", "json:{\"membres\":[\"serge\",\"fatime\"]}").get().with(jeton("2", "COL_MESSAGE_SEND")));
+        verify(groupes).ajouterMembres(new Expediteur(MOI, "Paul Mbarga Atangana"), cid, List.of("serge", "fatime"));
+        mvc.perform(request(HttpMethod.DELETE, "/api/v1/messagerie/conversations/" + cid + "/membres/" + MOI).with(jeton("2", "COL_MESSAGE_SEND"))).andExpect(status().isNoContent());
+        verify(groupes).retirerMembre(new Expediteur(MOI, "Paul Mbarga Atangana"), cid, MOI);
+        ArgumentCaptor<EnvoyerMessageUseCase.NouvelleConversation> d = ArgumentCaptor.forClass(EnvoyerMessageUseCase.NouvelleConversation.class);
+        String groupe = CREATION.replaceFirst("\\{", "{\"groupe\":true,");
+        mvc.perform(requete(HttpMethod.POST, "/api/v1/messagerie/conversations", groupe).get().with(jeton("2", "COL_MESSAGE_SEND")));
+        verify(envoi, org.mockito.Mockito.atLeastOnce()).creerConversation(any(), d.capture(), any());
+        assertThat(d.getValue().groupe()).isTrue();
     }
 
     @Test

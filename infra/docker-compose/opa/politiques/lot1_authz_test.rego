@@ -156,6 +156,9 @@ routes_messagerie := [
 	["POST", "/bff/des/collaboration/messagerie/conversations/c1/lu", "COL_MESSAGE_READ"],
 	["POST", "/bff/des/collaboration/messagerie/conversations", "COL_MESSAGE_SEND"],
 	["POST", "/bff/des/collaboration/messagerie/conversations/c1/messages", "COL_MESSAGE_SEND"],
+	["PATCH", "/bff/des/collaboration/messagerie/conversations/c1", "COL_MESSAGE_SEND"],
+	["POST", "/bff/des/collaboration/messagerie/conversations/c1/membres", "COL_MESSAGE_SEND"],
+	["DELETE", "/bff/des/collaboration/messagerie/conversations/c1/membres/u1", "COL_MESSAGE_SEND"],
 ]
 
 test_messagerie_console_avec_permission if {
@@ -469,5 +472,19 @@ test_photo_d_un_collegue_session_restreinte_refusee if not authz.allow with inpu
 test_photo_d_un_collegue_lecture_seule if {
 	every r in [["PUT", "/bff/des/iam/avatars/u-123"], ["DELETE", "/bff/console/iam/avatars/u-123"], ["GET", "/bff/des/iam/avatars"], ["GET", "/bff/des/iam/avatars/u-1/autre"]] {
 		not authz.allow with input as {"method": r[0], "path": r[1], "permissions": [], "authentifie": true, "acr": "2"}
+	}
+}
+
+# D-68 : seules les formes prévues de gestion d'un groupe passent (pas de suppression de conversation).
+test_messagerie_groupe_formes_non_prevues_refusees if {
+	every r in [
+		["DELETE", "/bff/des/collaboration/messagerie/conversations/c1"],
+		["PATCH", "/bff/des/collaboration/messagerie/conversations/c1/membres/u1"],
+		["PUT", "/bff/des/collaboration/messagerie/conversations/c1"],
+	] {
+		not authz.allow with input as {
+			"method": r[0], "path": r[1], "permissions": ["COL_MESSAGE_SEND", "COL_MESSAGE_READ"],
+			"authentifie": true, "acr": "2", "institution_id": "",
+		}
 	}
 }

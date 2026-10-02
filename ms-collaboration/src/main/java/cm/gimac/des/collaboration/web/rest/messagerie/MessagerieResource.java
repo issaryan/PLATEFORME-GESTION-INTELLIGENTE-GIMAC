@@ -6,9 +6,11 @@ import java.util.Map;
 import cm.gimac.des.collaboration.domain.messagerie.ConversationMembre;
 import cm.gimac.des.collaboration.application.port.in.ConsulterMessagerieUseCase;
 import cm.gimac.des.collaboration.application.port.in.EnvoyerMessageUseCase;
+import cm.gimac.des.collaboration.application.port.in.GererGroupeUseCase;
 import cm.gimac.des.collaboration.application.port.in.EnvoyerMessageUseCase.Expediteur;
 import cm.gimac.des.collaboration.domain.exception.CollaborationException;
 import cm.gimac.des.collaboration.domain.messagerie.FichierJoint;
+import cm.gimac.des.collaboration.web.rest.messagerie.MessagerieVues.AjoutMembresRequest;
 import cm.gimac.des.collaboration.web.rest.messagerie.MessagerieVues.ConversationVue;
 import cm.gimac.des.collaboration.web.rest.messagerie.MessagerieVues.CreationRequest;
 import cm.gimac.des.collaboration.web.rest.messagerie.MessagerieVues.EnvoiRequest;
@@ -17,6 +19,7 @@ import cm.gimac.des.collaboration.web.rest.messagerie.MessagerieVues.NonLusVue;
 import cm.gimac.des.collaboration.web.rest.messagerie.MessagerieVues.PageMessagesVue;
 import cm.gimac.des.collaboration.web.rest.messagerie.MessagerieVues.PageVue;
 import cm.gimac.des.collaboration.web.rest.messagerie.MessagerieVues.PersonneVue;
+import cm.gimac.des.collaboration.web.rest.messagerie.MessagerieVues.RenommageRequest;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
@@ -33,9 +36,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
@@ -57,10 +63,12 @@ public class MessagerieResource {
 
     private final EnvoyerMessageUseCase envoi;
     private final ConsulterMessagerieUseCase lecture;
+    private final GererGroupeUseCase groupes;
 
-    public MessagerieResource(EnvoyerMessageUseCase envoi, ConsulterMessagerieUseCase lecture) {
+    public MessagerieResource(EnvoyerMessageUseCase envoi, ConsulterMessagerieUseCase lecture, GererGroupeUseCase groupes) {
         this.envoi = envoi;
         this.lecture = lecture;
+        this.groupes = groupes;
     }
 
     /** Conversation avec les photos de profil courantes de ses membres. */
@@ -110,7 +118,8 @@ public class MessagerieResource {
                 message.liaisonId(),
                 message.liaisonReference(),
                 message.contenu(),
-                message.etiquettes()
+                message.etiquettes(),
+                Boolean.TRUE.equals(message.groupe())
             ),
             pieces(fichiers)
         );
@@ -124,6 +133,32 @@ public class MessagerieResource {
     @PreAuthorize(LIRE)
     public ConversationVue conversation(@PathVariable UUID id, Authentication auth) {
         return vue(lecture.conversation(appelant(auth).id(), id));
+    }
+
+    /** Nouveau nom d'un groupe (D-68), réservé à son administrateur. */
+    @PatchMapping(value = "/conversations/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize(ENVOYER)
+    public ConversationVue renommer(@PathVariable UUID id, @RequestBody RenommageRequest demande, Authentication auth) {
+        Expediteur moi = appelant(auth);
+        groupes.renommer(moi, id, demande.titre());
+        return vue(lecture.conversation(moi.id(), id));
+    }
+
+    /** Membres ajoutés à un groupe (D-68), réservé à son administrateur. */
+    @PostMapping(value = "/conversations/{id}/membres", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize(ENVOYER)
+    public ConversationVue ajouterMembres(@PathVariable UUID id, @RequestBody AjoutMembresRequest demande, Authentication auth) {
+        Expediteur moi = appelant(auth);
+        groupes.ajouterMembres(moi, id, demande.membres());
+        return vue(lecture.conversation(moi.id(), id));
+    }
+
+    /** Retrait d'un membre par l'administrateur, ou départ de l'appelant (son propre identifiant). */
+    @DeleteMapping("/conversations/{id}/membres/{membreId}")
+    @PreAuthorize(ENVOYER)
+    public ResponseEntity<Void> retirerMembre(@PathVariable UUID id, @PathVariable String membreId, Authentication auth) {
+        groupes.retirerMembre(appelant(auth), id, membreId);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/conversations/{id}/messages")

@@ -52,7 +52,7 @@ public class Conversation extends EntiteMessagerie {
     @Column(name = "dernier_message_id")
     private UUID dernierMessageId;
 
-    @OneToMany(mappedBy = "conversation", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "conversation", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("ajouteLe ASC, nom ASC")
     @BatchSize(size = 50)
     private List<ConversationMembre> membres = new ArrayList<>();
@@ -68,6 +68,27 @@ public class Conversation extends EntiteMessagerie {
         this.creePar = creePar;
         this.creeeLe = creeeLe;
         this.misAJourLe = creeeLe;
+    }
+
+    public boolean estGroupe() {
+        return type == TypeConversation.GROUPE;
+    }
+
+    /** Nouveau nom d'un groupe (D-68). */
+    public void renommer(String nouveauTitre, Instant le) {
+        this.titre = nouveauTitre;
+        this.misAJourLe = le;
+    }
+
+    /**
+     * Retire un membre d'un groupe (D-68). S'il ne reste aucun administrateur, le membre présent depuis
+     * le plus longtemps le devient : un groupe garde toujours quelqu'un pour le gérer.
+     */
+    public void retirerMembre(ConversationMembre m) {
+        membres.remove(m);
+        if (!membres.isEmpty() && membres.stream().noneMatch(ConversationMembre::isAdministrateur)) {
+            membres.stream().min(java.util.Comparator.comparing(ConversationMembre::getAjouteLe)).ifPresent(ConversationMembre::nommerAdministrateur);
+        }
     }
 
     public ConversationMembre ajouterMembre(Collaborateur c, Instant le) {

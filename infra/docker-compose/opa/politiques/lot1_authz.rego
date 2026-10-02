@@ -78,6 +78,11 @@ regles := [
 	{"m": "GET", "re": `^/bff/(des|console)/collaboration/messagerie/(annuaire|non-lus|conversations(/[^/]+(/messages)?)?|pieces/[^/]+)$`, "p": "COL_MESSAGE_READ"},
 	{"m": "POST", "re": `^/bff/(des|console)/collaboration/messagerie/conversations/[^/]+/lu$`, "p": "COL_MESSAGE_READ"},
 	{"m": "POST", "re": `^/bff/(des|console)/collaboration/messagerie/conversations(/[^/]+/messages)?$`, "p": "COL_MESSAGE_SEND"},
+	# Groupes de discussion (D-68) : nom, membres ajoutés, retrait ou départ ; l'administration du groupe
+	# est vérifiée par MS-COLLABORATION.
+	{"m": "PATCH", "re": `^/bff/(des|console)/collaboration/messagerie/conversations/[^/]+$`, "p": "COL_MESSAGE_SEND"},
+	{"m": "POST", "re": `^/bff/(des|console)/collaboration/messagerie/conversations/[^/]+/membres$`, "p": "COL_MESSAGE_SEND"},
+	{"m": "DELETE", "re": `^/bff/(des|console)/collaboration/messagerie/conversations/[^/]+/membres/[^/]+$`, "p": "COL_MESSAGE_SEND"},
 ]
 
 # Routes internes des services (jeton de service) : jamais relayées depuis une couche de présentation.

@@ -176,7 +176,9 @@ public class MessagerieQueries implements ConsulterMessagerieUseCase {
                         m.getAuteurNom(),
                         regles.extrait(chiffrement.dechiffrer(m.getContenuChiffre(), m.getId())),
                         m.getEnvoyeLe(),
-                        m.getPiecesJointes().size()
+                        m.getPiecesJointes().size(),
+                        m.getEvenement(),
+                        m.getEvenementCibles()
                     )
                 )
                 .orElse(null);

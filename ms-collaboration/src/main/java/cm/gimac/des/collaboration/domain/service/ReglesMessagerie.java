@@ -71,6 +71,15 @@ public final class ReglesMessagerie {
         return t.length() > TITRE_MAX ? t.substring(0, TITRE_MAX) : t;
     }
 
+    /** Nom obligatoire d'un groupe de discussion (D-68), 1 à 200 caractères, sans espaces aux bords. */
+    public String titreGroupe(String brut) {
+        String t = titre(brut);
+        if (t == null) {
+            throw CollaborationException.invalide("COL_GROUP_TITLE_REQUIRED", "Donner un nom au groupe de discussion");
+        }
+        return t;
+    }
+
     /** Destinataires distincts, 1 à 50, l'expéditeur exclu. */
     public List<String> destinataires(List<String> bruts, String expediteurId) {
         Set<String> distincts = new LinkedHashSet<>();

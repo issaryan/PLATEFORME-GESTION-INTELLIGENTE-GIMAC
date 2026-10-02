@@ -10,7 +10,23 @@ public interface EnvoyerMessageUseCase {
     /** Appelant : identifiant IAM (sujet du jeton) et nom porté par le jeton, à défaut de l'annuaire. */
     record Expediteur(String id, String nomJeton) {}
 
-    record NouvelleConversation(List<String> destinataires, String titre, UUID liaisonId, String liaisonReference, String contenu, List<Etiquette> etiquettes) {}
+    /**
+     * « groupe » (D-68) : groupe de discussion nommé, même avec un seul autre membre ; le premier message
+     * y est alors facultatif. Sans lui, deux personnes sans titre ni liaison forment une conversation directe.
+     */
+    record NouvelleConversation(
+        List<String> destinataires,
+        String titre,
+        UUID liaisonId,
+        String liaisonReference,
+        String contenu,
+        List<Etiquette> etiquettes,
+        boolean groupe
+    ) {
+        public NouvelleConversation(List<String> destinataires, String titre, UUID liaisonId, String liaisonReference, String contenu, List<Etiquette> etiquettes) {
+            this(destinataires, titre, liaisonId, liaisonReference, contenu, etiquettes, false);
+        }
+    }
 
     record NouveauMessage(String contenu, List<Etiquette> etiquettes) {}
 

@@ -39,6 +39,10 @@ public class ConversationMembre extends EntiteMessagerie {
     @Column(name = "dernier_lu_le")
     private Instant dernierLuLe;
 
+    /** Administrateur d'un groupe (D-68) : le créateur, puis le plus ancien membre s'il part. */
+    @Column(name = "administrateur", nullable = false)
+    private boolean administrateur;
+
     protected ConversationMembre() {}
 
     ConversationMembre(Conversation conversation, String membreId, String nom, String fonction, Instant ajouteLe) {
@@ -47,6 +51,14 @@ public class ConversationMembre extends EntiteMessagerie {
         this.nom = nom;
         this.fonction = fonction;
         this.ajouteLe = ajouteLe;
+    }
+
+    public boolean isAdministrateur() {
+        return administrateur;
+    }
+
+    public void nommerAdministrateur() {
+        this.administrateur = true;
     }
 
     /** La marque ne recule jamais : lire un message plus ancien ne rend pas les suivants non lus. */
