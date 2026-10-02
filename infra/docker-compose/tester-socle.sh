@@ -29,7 +29,7 @@ verifier "compartiments WORM initialisés" "compose logs stockage-objet-init | g
 
 echo "== Sécurité et routage"
 JETON=$($CURL -X POST http://keycloak:9080/realms/gimac/protocol/openid-connect/token \
-  -d grant_type=client_credentials -d client_id=internal -d client_secret=internal -d scope=openid | sed -n 's/.*"access_token":"\([^"]*\)".*/\1/p')
+  -d grant_type=client_credentials -d client_id=internal -d "client_secret=${GIMAC_SECRET_INTERNAL}" -d scope=openid | sed -n 's/.*"access_token":"\([^"]*\)".*/\1/p')
 verifier "jeton Keycloak obtenu (client_credentials, portée openid pour userinfo)" "[ -n \"$JETON\" ]"
 # D-65 : sans session ni jeton, la passerelle répond 401 (plus de redirection vers Keycloak) ;
 # la délégation par redirection est retirée (404) ; aucune donnée n'est servie.
@@ -43,7 +43,7 @@ done
 # Refus attendu pour un jeton sans ROLE_ADMIN ; accès avec le compte de service gateway-supervision,
 # qui le porte (lecture des points d'administration par la passerelle).
 JETON_ADMIN=$($CURL -X POST http://keycloak:9080/realms/gimac/protocol/openid-connect/token \
-  -d grant_type=client_credentials -d client_id=gateway-supervision -d "client_secret=${GIMAC_SECRET_GATEWAY_SUPERVISION}" | sed -n 's/.*"access_token":"\([^"]*\)".*/\1/p')
+  -d grant_type=client_credentials -d client_id=gateway-supervision -d "client_secret=${GIMAC_SECRET_GATEWAY_SUPERVISION}" -d scope=openid | sed -n 's/.*"access_token":"\([^"]*\)".*/\1/p')
 for cible in iam:collaborators participant:institutions; do
   s=${cible%%:*}; r=${cible##*:}
   verifier "CRUD $s refusé sans ROLE_ADMIN (GET /api/$r = 403)" "[ \"\$($CURL -o /dev/null -w '%{http_code}' -H 'Authorization: Bearer $JETON' http://gateway:8080/services/$s/api/$r)\" = 403 ]"
