@@ -63,7 +63,7 @@ export const politiqueInitiale = (): PolitiqueSecurite => ({
 })
 
 export const messagerieInitiale = (): ConfigurationMessagerie => ({
-  hote: 'smtp.gimac-afr.org', port: 587, expediteur: 'plateforme-des@gimac-afr.org', nomExpediteur: 'Plateforme DES du GIMAC', starttls: true, ssl: false,
+  hote: 'smtp.gimac-afr.org', port: 587, expediteur: 'moabi@gimac-afr.org', nomExpediteur: 'Plateforme Moabi du GIMAC', starttls: true, ssl: false,
   authentification: true, utilisateur: 'plateforme-des', motDePasse: null, motDePasseDefini: true,
 })
 

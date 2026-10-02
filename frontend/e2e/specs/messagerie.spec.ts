@@ -1,5 +1,6 @@
-import { mkdirSync } from 'node:fs'
-import { join } from 'node:path'
+import { mkdirSync, readFileSync } from 'node:fs'
+import { dirname, join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import type { Page } from '@playwright/test'
 import { ADRESSES, demo, expect, test } from '../fixtures'
 import { joindre } from './outils'
@@ -12,6 +13,22 @@ import { joindre } from './outils'
 
 const entree = (page: Page) => page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('link', { name: /^Messagerie/ })
 const conversations = (page: Page) => page.getByRole('list', { name: 'Conversations' })
+// Politique de sécurité des contenus servie par nginx en production (frontend/nginx/securite.conf), appliquée
+// aux documents de l'application pendant le scénario ; chaque refus signalé par le navigateur est relevé.
+const CSP = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '../../nginx/securite.conf'), 'utf8').match(/Content-Security-Policy "([^"]+)"/)![1]
+async function politiqueDuServeur(page: Page): Promise<string[]> {
+  const refus: string[] = []
+  page.on('console', (m) => {
+    if (/Content Security Policy|Refused to/i.test(m.text())) refus.push(m.text())
+  })
+  await page.route('**/*', async (route) => {
+    if (route.request().resourceType() !== 'document') return route.continue()
+    const reponse = await route.fetch()
+    await route.fulfill({ response: reponse, headers: { ...reponse.headers(), 'content-security-policy': CSP } })
+  })
+  return refus
+}
+
 const CAPTURES = process.env.GIMAC_CAPTURES
 async function capturer(page: Page, nom: string) {
   if (!CAPTURES) return
@@ -40,6 +57,7 @@ test.describe('Fonctionnalité : messagerie de travail', () => {
   })
 
   test('Scénario : lire ses conversations, les non-lus diminuent, répondre en citant une liaison', async ({ page }) => {
+    const refus = await politiqueDuServeur(page)
     await test.step('Étant donné trois messages non lus signalés dans la navigation', async () => {
       await page.goto(`${ADRESSES.departement}/des/tableau-de-bord`)
       await expect(entree(page).getByLabel('3 non lus')).toBeVisible()
@@ -68,7 +86,20 @@ test.describe('Fonctionnalité : messagerie de travail', () => {
     })
     await test.step('Alors le rapport s’affiche dans une fenêtre d’aperçu, d’où il se télécharge', async () => {
       const apercu = page.getByRole('dialog', { name: /rapport-essais-LIA-2026-030\.pdf/ })
-      await expect(apercu.locator('iframe.gm-apercu-cadre')).toBeVisible()
+      // Dessiné par pdf.js (D-73), sans cadre blob: : rien n'est refusé par la politique de sécurité du serveur.
+      await expect(apercu.getByRole('img', { name: 'Page 1 sur 1' })).toBeVisible()
+      await expect(apercu.getByRole('document')).toHaveAttribute('aria-busy', 'false')
+      await expect(apercu.getByText('Ce PDF ne peut pas être affiché')).toHaveCount(0)
+      // Page réellement dessinée : des pixels non blancs dans le canevas.
+      expect(await apercu.locator('canvas.gm-apercu-page').evaluate((c: HTMLCanvasElement) => {
+        const d = c.getContext('2d')!.getImageData(0, 0, c.width, c.height).data
+        let encre = 0
+        for (let i = 0; i < d.length; i += 4) if (d[i] < 200) encre++
+        return encre
+      })).toBeGreaterThan(100)
+      await expect(apercu.locator('iframe')).toHaveCount(0)
+      expect(refus).toEqual([])
+      await capturer(page, 'messagerie-apercu-pdf')
       const telechargement = page.waitForEvent('download')
       await apercu.getByRole('button', { name: 'Télécharger' }).click()
       expect((await telechargement).suggestedFilename()).toBe('rapport-essais-LIA-2026-030.pdf')

@@ -4,6 +4,12 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/rea
 import { AttachmentViewer, ConversationList, formatApercu, LangueProvider, MessageComposer, MessageThread } from '../src'
 
 afterEach(cleanup)
+// pdf.js ne s'exécute pas sous jsdom : document simulé (le rendu est couvert par apercuPdf.test.tsx et l'E2E).
+vi.mock('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url', () => ({ default: '/assets/pdf.worker.mjs' }))
+vi.mock('pdfjs-dist/legacy/build/pdf.mjs', () => ({
+  GlobalWorkerOptions: { workerSrc: '' },
+  getDocument: () => ({ destroy: () => undefined, promise: Promise.resolve({ numPages: 0, getPage: async () => undefined }) }),
+}))
 
 describe('ConversationList', () => {
   it('conversations, non-lus en pastille, conversation ouverte marquée, sélection', () => {
@@ -126,13 +132,15 @@ describe('AttachmentViewer et événements du fil', () => {
     expect(formatApercu('application/octet-stream', 'notes.txt')).toBe('texte')
     expect(formatApercu('application/zip', 'archive.zip')).toBe('aucun')
   })
-  it('PDF dans un cadre, image, texte, puis télécharger et fermer', async () => {
+  it('PDF dessiné par pdf.js (sans cadre), image, texte, puis télécharger et fermer', async () => {
     Object.assign(URL, { createObjectURL: vi.fn(() => 'blob:apercu'), revokeObjectURL: vi.fn() })
     const telecharger = vi.fn()
     const fermer = vi.fn()
     const { rerender } = render(<AttachmentViewer nom="r.pdf" typeMime="application/pdf" taille="2 Ko" blob={new Blob(['%PDF'])} onTelecharger={telecharger} onClose={fermer} />)
     const d = screen.getByRole('dialog', { name: /r\.pdf/ })
-    expect(d.querySelector('iframe')?.getAttribute('src')).toBe('blob:apercu')
+    // D-73 : plus de cadre blob: soumis à la politique de sécurité ; zone de document de pdf.js.
+    expect(d.querySelector('iframe')).toBeNull()
+    expect(within(d).getByRole('document', { name: 'Aperçu de r.pdf' })).toBeTruthy()
     fireEvent.click(within(d).getByRole('button', { name: 'Télécharger' }))
     expect(telecharger).toHaveBeenCalled()
     fireEvent.click(within(d).getAllByRole('button', { name: 'Fermer' }).at(-1)!)

@@ -51,6 +51,11 @@ server {
     # plateforme (D-65) : /api/connexion ; plus de redirection vers le fournisseur d'identité (/oauth2, /login).
     # /bff porte les routes des couches (PI-GIMAC-01 §0.6), y compris le canal poussé (flux SSE).
     location ~ ^/(api|bff|logout)(/|$) {
+        # Corps des requêtes (D-73) : nginx refuse au-delà de 1 Mo par défaut (413). La borne utile est celle
+        # des services (messagerie : 5 pièces de 20 Mo ; documents : 20 Mo ; photo de profil : 3 Mo) ;
+        # 110 Mo couvre la plus large, et le corps est transmis au fil de l'eau, sans tampon disque.
+        client_max_body_size 110m;
+        proxy_request_buffering off;
         proxy_pass $passerelle;
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-Proto $scheme;

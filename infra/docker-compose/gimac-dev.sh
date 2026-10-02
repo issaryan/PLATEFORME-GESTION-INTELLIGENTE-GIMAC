@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Environnement local de la plateforme DES du GIMAC en une commande (SOC-13, D-45).
+# Environnement local de la plateforme Moabi du GIMAC en une commande (SOC-13, D-45).
 #
 #   ./gimac-dev.sh verifier                 contrôle les prérequis
 #   ./gimac-dev.sh images                   construit les images des 14 services (Jib, JHipster)

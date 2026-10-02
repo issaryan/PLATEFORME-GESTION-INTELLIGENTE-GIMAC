@@ -1,6 +1,6 @@
 # Chaîne d'intégration et de déploiement continus (CI/CD)
 
-Ce dossier contient toute la logique de validation de la plateforme DES : infrastructure,
+Ce dossier contient toute la logique de validation de la plateforme Moabi : infrastructure,
 backend (14 microservices JHipster) et frontend (couches de présentation). Les scripts
 s'exécutent à l'identique sur un poste de développement et dans GitHub Actions. La définition
 de la chaîne, `.github/workflows/ci.yml`, se limite à installer les outils et à appeler ces

@@ -1,7 +1,7 @@
 {
   "id": "gimac",
   "realm": "gimac",
-  "displayName": "Plateforme DES du GIMAC (développement)",
+  "displayName": "Plateforme Moabi du GIMAC (développement)",
   "displayNameHtml": "<div class=\"kc-logo-text\"><span>JHipster</span></div>",
   "notBefore": 0,
   "defaultSignatureAlgorithm": "RS256",
@@ -2647,7 +2647,7 @@
     "host": "messagerie",
     "port": "1025",
     "from": "des@gimac.test",
-    "fromDisplayName": "Plateforme DES du GIMAC",
+    "fromDisplayName": "Plateforme Moabi du GIMAC",
     "auth": "false",
     "starttls": "false",
     "ssl": "false"

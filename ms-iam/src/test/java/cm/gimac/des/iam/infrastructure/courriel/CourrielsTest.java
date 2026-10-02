@@ -50,7 +50,7 @@ class CourrielsTest {
     @Test
     @DisplayName("SMTP : paramètres de la console, mot de passe déchiffré, message multipart (texte et HTML) avec nom d'expéditeur")
     void envoi() throws Exception {
-        ConfigurationMessagerie m = new ConfigurationMessagerie("smtp.gimac.cm", 587, "des@gimac.cm", "Plateforme DES", true, false, true, "des", null, true);
+        ConfigurationMessagerie m = new ConfigurationMessagerie("smtp.gimac.cm", 587, "des@gimac.cm", "Plateforme Moabi", true, false, true, "des", null, true);
         when(annuaire.messagerie()).thenReturn(m);
         when(parametres.findById(ParametreChiffre.SMTP_MOT_DE_PASSE)).thenReturn(Optional.of(new ParametreChiffre(ParametreChiffre.SMTP_MOT_DE_PASSE, chiffrement.chiffrer("s3cret"), Instant.EPOCH)));
         when(envoi.createMimeMessage()).thenReturn(new MimeMessage(Session.getInstance(new Properties())));
@@ -59,7 +59,7 @@ class CourrielsTest {
         verify(envoi).send(envoye.capture());
         assertThat(envoye.getValue().getSubject()).isEqualTo("Objet");
         assertThat(envoye.getValue().getRecipients(Message.RecipientType.TO)[0].toString()).isEqualTo("awa@gimac.test");
-        assertThat(envoye.getValue().getFrom()[0].toString()).contains("Plateforme DES").contains("des@gimac.cm");
+        assertThat(envoye.getValue().getFrom()[0].toString()).contains("Plateforme Moabi").contains("des@gimac.cm");
 
         JavaMailSenderImpl reel = new CourrielSmtp(annuaire, parametres, chiffrement).expediteur(m);
         assertThat(reel.getHost()).isEqualTo("smtp.gimac.cm");

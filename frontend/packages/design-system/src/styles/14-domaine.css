@@ -56,7 +56,10 @@
 .gm-msg-evenement .gm-num { font-size: 12px; color: var(--gm-color-text-muted); }
 /* Aperçu d'une pièce jointe (D-68) : visionneuse pleine largeur de la fenêtre. */
 .gm-apercu.gm-dialog-lg { width: min(960px, calc(100vw - 32px)); }
-.gm-apercu-cadre { display: block; width: 100%; height: min(70vh, 720px); border: var(--gm-border-1) solid var(--gm-color-border); background: var(--gm-color-surface-sunken); }
+.gm-apercu-pdf { height: min(70vh, 720px); overflow: auto; padding: var(--gm-space-3); border: var(--gm-border-1) solid var(--gm-color-border); background: var(--gm-color-surface-sunken); display: flex; flex-direction: column; gap: var(--gm-space-3); }
+.gm-apercu-pdf:focus-visible { outline: 2px solid var(--gm-color-focus); outline-offset: -2px; }
+.gm-apercu-pages { display: flex; flex-direction: column; gap: var(--gm-space-3); }
+.gm-apercu-page { display: block; width: 100%; height: auto; box-shadow: 0 0 0 var(--gm-border-1) var(--gm-color-border); }
 .gm-apercu-image { display: block; max-width: 100%; max-height: 70vh; margin: 0 auto; border: var(--gm-border-1) solid var(--gm-color-border); }
 .gm-apercu-texte { margin: 0; max-height: 70vh; overflow: auto; padding: var(--gm-space-3); background: var(--gm-color-surface-sunken); border: var(--gm-border-1) solid var(--gm-color-border); font-family: var(--font-mono); font-size: 13px; line-height: 20px; white-space: pre-wrap; }
 /* Annuaire de la plateforme (D-68) : recherche de personnes par nom ou fonction, choix simple ou multiple. */

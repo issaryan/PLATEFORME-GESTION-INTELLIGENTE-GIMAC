@@ -13,7 +13,7 @@ describe('Footer', () => {
     expect(pied?.className).toBe('gm-footer')
     expect(screen.getByText('GIMAC').className).toBe('gm-footer-marque')
     expect(screen.getByText("Groupement Interbancaire Monétique de l'Afrique Centrale")).toBeTruthy()
-    expect(screen.getByText('Plateforme de suivi des activités du DES, version 1.0.0')).toBeTruthy()
+    expect(screen.getByText('Plateforme de suivi des activités du GIMAC, version 1.0.0')).toBeTruthy()
     expect(screen.getByText('Usage interne, confidentiel')).toBeTruthy()
     expect(screen.getByText('© 2026 GIMAC')).toBeTruthy()
     expect(screen.queryByText('Documentation')).toBeNull()
@@ -21,7 +21,7 @@ describe('Footer', () => {
 
   it('affiche la documentation et l’identifiant de corrélation de la dernière requête', () => {
     render(<Footer documentation="/docs" correlationId="c0ffee00-1234" />)
-    expect(screen.getByText('Plateforme de suivi des activités du DES')).toBeTruthy()
+    expect(screen.getByText('Plateforme de suivi des activités du GIMAC')).toBeTruthy()
     expect(screen.getByText('Documentation').closest('a')?.getAttribute('href')).toBe('/docs')
     expect(screen.getByText(/Dernière requête/)).toBeTruthy()
     expect(document.body.textContent).toContain('c0ffee00-1234')

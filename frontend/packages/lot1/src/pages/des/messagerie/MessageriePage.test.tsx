@@ -72,7 +72,9 @@ describe('MessageriePage', () => {
     // La pièce s'ouvre dans la fenêtre d'aperçu ; « Télécharger » l'enregistre.
     fireEvent.click(within(fil).getByRole('button', { name: 'Ouvrir rapport-essais-LIA-2026-030.pdf' }))
     const apercu = await screen.findByRole('dialog', { name: /rapport-essais-LIA-2026-030\.pdf/ })
-    await waitFor(() => expect(apercu.querySelector('iframe')).toBeTruthy())
+    // PDF dessiné par pdf.js dans la fenêtre (D-73), sans cadre blob: soumis à la politique de sécurité.
+    expect(await within(apercu).findByRole('document', { name: /rapport-essais-LIA-2026-030\.pdf/ })).toBeTruthy()
+    expect(apercu.querySelector('iframe')).toBeNull()
     fireEvent.click(within(apercu).getByRole('button', { name: 'Télécharger' }))
     await waitFor(() => expect(createObjectURL).toHaveBeenCalled())
     fireEvent.click(within(apercu).getAllByRole('button', { name: 'Fermer' }).at(-1)!)

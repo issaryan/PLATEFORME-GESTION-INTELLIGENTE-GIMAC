@@ -1,7 +1,7 @@
 # Détection de secrets (BNF-07, D-44) : règles par défaut de gitleaks, moins les fichiers
 # produits par les générateurs JHipster pour le développement local, qui ne sont jamais
 # déployés tels quels (D-48). Tout autre secret en clair fait échouer la chaîne.
-title = "Détection de secrets de la plateforme DES"
+title = "Détection de secrets de la plateforme Moabi"
 
 [extend]
 useDefault = true

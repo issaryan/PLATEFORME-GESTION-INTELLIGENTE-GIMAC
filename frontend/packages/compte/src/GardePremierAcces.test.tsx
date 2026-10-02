@@ -97,7 +97,7 @@ describe('Garde de premier accès', () => {
     saisir('telephone', '+237 699 11 22 33')
     saisir('fonction', 'Analyste SOC')
     cliquer('Continuer')
-    expect(await screen.findByRole('heading', { name: 'Charte d’usage de la plateforme DES' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'Charte d’usage de la plateforme Moabi' })).toBeTruthy()
     cliquer('Valider et continuer')
     expect(await screen.findByText('Vous devez accepter la charte d’usage pour continuer.')).toBeTruthy()
     fireEvent.click(screen.getByLabelText('J’ai lu la charte d’usage et je l’accepte'))

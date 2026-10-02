@@ -64,7 +64,7 @@ radosgw -n client.rgw.gimac
 until curl -fsS http://127.0.0.1:7480 >/dev/null 2>&1; do sleep 2; done
 
 if [ ! -f "$DONNEES/.amorce" ]; then
-  radosgw-admin user create --uid=gimac --display-name="Plateforme DES (DEV)" \
+  radosgw-admin user create --uid=gimac --display-name="Plateforme Moabi (DEV)" \
     --access-key="$GIMAC_S3_CLE_ACCES" --secret="$GIMAC_S3_CLE_SECRETE" >/dev/null
   touch "$DONNEES/.amorce"
 fi

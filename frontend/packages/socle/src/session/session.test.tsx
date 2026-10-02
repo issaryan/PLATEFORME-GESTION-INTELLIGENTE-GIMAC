@@ -105,10 +105,12 @@ describe('GardeSession', () => {
 describe('GardeSession : changement de compte dans un autre onglet', () => {
   const evenement = (newValue: string | null) => window.dispatchEvent(new StorageEvent('storage', { key: 'gm.session.compte', newValue }))
   it('compte publié ; un autre compte ou la fermeture dans un autre onglet recharge cet onglet ; même compte : rien', async () => {
+    localStorage.clear()
     const recharger = vi.spyOn(navigation, 'recharger').mockImplementation(() => undefined)
     render(<GardeSession charger={async () => session({ sujet: 'u-a' })}>{(s) => <span>{s.nom}</span>}</GardeSession>)
     await screen.findByText('Chef DDRM')
-    expect(localStorage.getItem('gm.session.compte')).toBe('u-a')
+    // Publié par un effet, après l'affichage.
+    await waitFor(() => expect(localStorage.getItem('gm.session.compte')).toBe('u-a'))
     evenement('u-a')
     window.dispatchEvent(new StorageEvent('storage', { key: 'autre', newValue: 'x' }))
     expect(recharger).not.toHaveBeenCalled()

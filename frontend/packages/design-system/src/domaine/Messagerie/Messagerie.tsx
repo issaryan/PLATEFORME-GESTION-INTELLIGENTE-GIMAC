@@ -10,6 +10,7 @@ import { InlineAlert } from '../../conteneurs/InlineAlert/InlineAlert'
 import { Dialog } from '../../conteneurs/Dialog/Dialog'
 import { Skeleton } from '../../affichage/Skeleton/Skeleton'
 import { useLibelle } from '../../i18n/LangueProvider'
+import { ApercuPdf } from './ApercuPdf'
 
 // Messagerie de travail (D-64) : liste des conversations, fil et zone de saisie, assemblés à partir de
 // l'avatar, de l'étiquette, des boutons et des classes du salon (gm-chat, gm-msg). Le fond vient du
@@ -288,7 +289,7 @@ function useAdresseLocale(blob: Blob | null | undefined, type: string): string |
   const [url, setUrl] = useState<string>()
   useEffect(() => {
     if (!blob || typeof URL.createObjectURL !== 'function') return undefined
-    // Type imposé : un PDF s'affiche dans la visionneuse même si le service l'a servi en octets bruts.
+    // Type imposé : une image s'affiche même si le service l'a servie en octets bruts.
     const u = URL.createObjectURL(blob.type === type ? blob : new Blob([blob], { type }))
     setUrl(u)
     return () => URL.revokeObjectURL(u)
@@ -297,14 +298,14 @@ function useAdresseLocale(blob: Blob | null | undefined, type: string): string |
 }
 
 /**
- * Aperçu d'une pièce jointe dans une fenêtre modale (D-68) : PDF dans la visionneuse du navigateur, image,
+ * Aperçu d'une pièce jointe dans une fenêtre modale (D-68) : PDF dessiné par pdf.js (D-73), image,
  * texte ; pour les autres formats, un message et le téléchargement. Le contenu n'est jamais exécuté.
  */
 export function AttachmentViewer(p: AttachmentViewerProps) {
   const t = useLibelle()
   const format = formatApercu(p.typeMime, p.nom)
-  const type = format === 'pdf' ? 'application/pdf' : p.typeMime
-  const url = useAdresseLocale(format === 'pdf' || format === 'image' ? p.blob : null, type)
+  const type = p.typeMime
+  const url = useAdresseLocale(format === 'image' ? p.blob : null, type)
   const [texte, setTexte] = useState<string>()
   useEffect(() => {
     setTexte(undefined)
@@ -313,7 +314,7 @@ export function AttachmentViewer(p: AttachmentViewerProps) {
   let corps: ReactNode
   if (p.erreur) corps = <InlineAlert level="crit">{p.erreur}</InlineAlert>
   else if (p.chargement || !p.blob) corps = <div aria-busy="true" aria-label={t('messagerie.apercu.chargement')}><Skeleton height={420} /></div>
-  else if (format === 'pdf') corps = url ? <iframe className="gm-apercu-cadre" src={url} title={t('messagerie.apercu.document', { nom: p.nom })} /> : null
+  else if (format === 'pdf') corps = <ApercuPdf blob={p.blob} titre={p.nom} />
   else if (format === 'image') corps = url ? <img className="gm-apercu-image" src={url} alt={p.nom} /> : null
   else if (format === 'texte') corps = <pre className="gm-apercu-texte" tabIndex={0}>{texte}</pre>
   else corps = <EmptyState icon="paperclip" title={t('messagerie.apercu.indisponible')} text={t('messagerie.apercu.indisponibleTexte')} />

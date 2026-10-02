@@ -95,7 +95,7 @@ class AdministrationComptesServiceTest {
         assertThat(c.motDePasseProvisoire()).isNull();
         // D-65 : courriel de la plateforme, lien vers le département, jeton de 24 h conservé haché.
         var courriel = courriels.dernierPour("agent.ddrm@gimac.test").orElseThrow();
-        assertThat(courriel.objet()).isEqualTo("Votre compte sur la plateforme DES du GIMAC");
+        assertThat(courriel.objet()).isEqualTo("Votre compte sur la plateforme Moabi du GIMAC");
         assertThat(courriel.texte()).contains("https://des.gimac.test/connexion/nouveau-mot-de-passe?jeton=").contains("24 heures").contains("agent.ddrm");
         assertThat(courriel.html()).contains("Choisir mon mot de passe");
         String jeton = JetonsEnMemoire.jeton(courriel.texte()).orElseThrow();

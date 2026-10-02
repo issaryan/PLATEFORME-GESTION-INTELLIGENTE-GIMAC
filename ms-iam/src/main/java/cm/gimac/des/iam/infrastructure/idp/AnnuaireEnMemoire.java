@@ -43,7 +43,7 @@ public class AnnuaireEnMemoire implements Annuaire {
     private final Map<String, Deque<String>> motsDePasse = new ConcurrentHashMap<>();
     private final Map<String, String> totp = new ConcurrentHashMap<>();
     private volatile PolitiqueSecurite politique = new PolitiqueSecurite(12, 1, 1, 1, 1, 5, 90, true, 6, 30, "HmacSHA1", 30, 10, true, 5, 15);
-    private volatile ConfigurationMessagerie messagerie = new ConfigurationMessagerie("messagerie", 1025, "plateforme@gimac.test", "Plateforme DES du GIMAC", false, false, false, null, null, false);
+    private volatile ConfigurationMessagerie messagerie = new ConfigurationMessagerie("messagerie", 1025, "plateforme@gimac.test", "Plateforme Moabi du GIMAC", false, false, false, null, null, false);
 
     public AnnuaireEnMemoire(Map<String, Set<String>> catalogue, Set<String> privilegies) {
         this.privilegies = Set.copyOf(privilegies);

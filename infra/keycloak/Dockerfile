@@ -1,4 +1,4 @@
-# Image Keycloak de la plateforme DES (D-62, D-65) : thème GIMAC, extension « gimac-totp » (code TOTP
+# Image Keycloak de la plateforme Moabi (D-62, D-65) : thème GIMAC, extension « gimac-totp » (code TOTP
 # configuré sur la plateforme, docs/lot1/connexion.md §4) et domaine « gimac » importé au démarrage
 # (secrets substitués depuis l'environnement).
 # Construite depuis infra/keycloak : docker build -t registre.gimac.local/des/keycloak:26.7.4-gimac .

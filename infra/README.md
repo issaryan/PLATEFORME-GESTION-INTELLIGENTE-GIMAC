@@ -1,4 +1,4 @@
-# Infrastructure de la plateforme DES
+# Infrastructure de la plateforme Moabi
 
 | Dossier | Rôle | Produit par |
 |---|---|---|

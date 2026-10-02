@@ -22,7 +22,7 @@ class CourrielsPlateformeTest {
     @DisplayName("Langue du compte, français pour une langue absente ou inconnue ; durées en heures ou en minutes")
     void langues() {
         Courriel en = CourrielsPlateforme.composer(compte("en", "Awa"), CourrielsPlateforme.Modele.INVITATION, "https://des.gimac.test/x", Duration.ofHours(24));
-        assertThat(en.objet()).isEqualTo("Your account on the GIMAC DES platform");
+        assertThat(en.objet()).isEqualTo("Your account on the GIMAC Moabi platform");
         assertThat(en.texte()).contains("24 hours").contains("Hello Awa <Mballa>,");
         assertThat(en.html()).contains("lang=\"en\"").contains("&lt;Mballa&gt;").doesNotContain("<Mballa>");
         Courriel es = CourrielsPlateforme.composer(compte("es", "Awa"), CourrielsPlateforme.Modele.REINITIALISATION, "https://des.gimac.test/x", Duration.ofMinutes(90));

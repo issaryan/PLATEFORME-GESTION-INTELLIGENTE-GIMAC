@@ -137,6 +137,6 @@ gimac:
       privilegies: [ROLE_SUPER_ADMIN, ROLE_RSSI]
     webauthn:
       rp-id: localhost
-      rp-nom: Plateforme DES du GIMAC
+      rp-nom: Plateforme Moabi du GIMAC
       origines: http://localhost
       validite-defi: 2m

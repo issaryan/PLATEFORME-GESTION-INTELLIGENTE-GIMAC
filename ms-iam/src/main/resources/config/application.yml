@@ -325,6 +325,6 @@ gimac:
     # Réauthentification forte FIDO2 (IAM-07).
     webauthn:
       rp-id: ${GIMAC_WEBAUTHN_RP_ID:localhost}
-      rp-nom: Plateforme DES du GIMAC
+      rp-nom: Plateforme Moabi du GIMAC
       origines: ${GIMAC_WEBAUTHN_ORIGINES:http://localhost:4200,http://localhost:4201,http://localhost:4202,http://localhost:8080}
       validite-defi: 2m

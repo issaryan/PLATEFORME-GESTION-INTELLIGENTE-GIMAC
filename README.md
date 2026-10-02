@@ -1,4 +1,4 @@
-# Plateforme de suivi des activités du DES du GIMAC
+# Moabi, plateforme de suivi des activités du GIMAC
 
 Plateforme du Département Exploitation et Supervision (DES) du GIMAC, groupement interbancaire monétique de la CEMAC. Elle **lit, référence et trace** les activités du département : homologation et certification des liaisons, exploitation et incidents, rapprochement, pilotage, reporting et collaboration. Elle n'écrit jamais dans le commutateur, le simulateur de certification ni la gestion des changements, ne traite aucune donnée de carte et ne comporte aucune composante d'intelligence artificielle (D-27).
 

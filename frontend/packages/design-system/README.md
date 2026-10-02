@@ -1,6 +1,6 @@
 # @gimac/design-system
 
-Système de conception de la plateforme DES du GIMAC (DS-GIMAC-01 v1.0), porté en React et TypeScript strict à partir du système de conception publié. Référence unique du frontend : un écart est une demande de changement, pas une initiative.
+Système de conception de la plateforme Moabi du GIMAC (DS-GIMAC-01 v1.0), porté en React et TypeScript strict à partir du système de conception publié. Référence unique du frontend : un écart est une demande de changement, pas une initiative.
 
 ## Contenu
 

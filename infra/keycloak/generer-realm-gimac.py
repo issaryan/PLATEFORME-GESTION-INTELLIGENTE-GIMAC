@@ -297,7 +297,7 @@ def main():
     realm = copy.deepcopy(realm)
     realm["realm"] = "gimac"
     realm["id"] = "gimac"
-    realm["displayName"] = "Plateforme DES du GIMAC (développement)"
+    realm["displayName"] = "Plateforme Moabi du GIMAC (développement)"
     realm["internationalizationEnabled"] = True
     realm["supportedLocales"] = ["fr", "en", "es"]
     realm["defaultLocale"] = "fr"
@@ -314,7 +314,7 @@ def main():
     realm["loginWithEmailAllowed"] = True
     # Messagerie de développement (Mailpit du Compose) ; reconfigurable depuis la console.
     realm["smtpServer"] = {"host": "messagerie", "port": "1025", "from": "des@gimac.test",
-                           "fromDisplayName": "Plateforme DES du GIMAC", "auth": "false", "starttls": "false", "ssl": "false"}
+                           "fromDisplayName": "Plateforme Moabi du GIMAC", "auth": "false", "starttls": "false", "ssl": "false"}
     for r in realm["roles"]["realm"]:
         if r["name"] == "default-roles-jhipster":
             r["name"] = "default-roles-gimac"

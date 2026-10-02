@@ -103,7 +103,7 @@ jhipster:
       port: 5000
       ring-buffer-size: 512
 # ===================================================================
-# Propriétés propres à la plateforme DES du GIMAC
+# Propriétés propres à la plateforme Moabi du GIMAC
 # ===================================================================
 gimac:
   # Production : adaptateurs réels uniquement (PI §0.8).
