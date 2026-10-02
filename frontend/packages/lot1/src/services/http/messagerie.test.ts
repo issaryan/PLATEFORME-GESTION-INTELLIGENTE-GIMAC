@@ -52,4 +52,21 @@ describe('messagerieHttp', () => {
     expect(JSON.parse(await (envoi.get('message') as Blob).text())).toEqual({ contenu: 'Suite', etiquettes: [] })
     expect(envoi.getAll('fichiers')).toHaveLength(0)
   })
+  it('groupes (D-68) : création nommée, renommage en PATCH JSON, ajout et retrait de membres', async () => {
+    brancher()
+    await messagerieHttp.demarrer({ destinataires: ['u2', 'u3'], titre: 'Cellule', liaisonId: null, contenu: '', etiquettes: [], fichiers: [], groupe: true })
+    await messagerieHttp.renommerGroupe('C1', 'Cellule bis')
+    await messagerieHttp.ajouterMembres('C1', ['u4'])
+    await messagerieHttp.retirerMembre('C1', 'u 2')
+    expect([0, 1, 2, 3].map((i) => `${methode(i)} ${url(i).pathname}`)).toEqual([
+      'POST /bff/des/collaboration/messagerie/conversations',
+      'PATCH /bff/des/collaboration/messagerie/conversations/C1',
+      'POST /bff/des/collaboration/messagerie/conversations/C1/membres',
+      'DELETE /bff/des/collaboration/messagerie/conversations/C1/membres/u%202',
+    ])
+    const creation = appels()[0][1].body as FormData
+    expect(JSON.parse(await (creation.get('message') as Blob).text())).toMatchObject({ destinataires: ['u2', 'u3'], titre: 'Cellule', groupe: true })
+    expect(JSON.parse(String(appels()[1][1].body))).toEqual({ titre: 'Cellule bis' })
+    expect(JSON.parse(String(appels()[2][1].body))).toEqual({ membres: ['u4'] })
+  })
 })

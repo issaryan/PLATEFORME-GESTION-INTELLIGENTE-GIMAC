@@ -62,3 +62,17 @@ export function useTelechargerPiece() {
   const s = useServices()
   return useMutation<{ blob: Blob; empreinte: string | null }, ApiError, string>({ mutationFn: (id) => s.messagerie.telechargerPiece(id) })
 }
+
+/** Groupes de discussion (D-68) : nom, membres ajoutés, retrait ou départ. */
+export function useRenommerGroupe(conversationId: string) {
+  const s = useServices()
+  return useEcriture((titre: string) => s.messagerie.renommerGroupe(conversationId, titre))
+}
+export function useAjouterMembres(conversationId: string) {
+  const s = useServices()
+  return useEcriture((membres: string[]) => s.messagerie.ajouterMembres(conversationId, membres))
+}
+export function useRetirerMembre(conversationId: string) {
+  const s = useServices()
+  return useEcriture((membreId: string) => s.messagerie.retirerMembre(conversationId, membreId))
+}

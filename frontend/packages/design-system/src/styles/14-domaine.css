@@ -51,6 +51,30 @@
 .gm-chat-list { list-style: none; margin: 0; padding: var(--gm-space-3); flex: 1; overflow: auto; display: flex; flex-direction: column; gap: var(--gm-space-2); }
 .gm-msg { max-width: 70%; display: flex; flex-direction: column; gap: 2px; align-self: flex-start; }
 .gm-msg-mine { align-self: flex-end; align-items: flex-end; }
+/* Événement de groupe (D-68) : ligne centrée, discrète, sans bulle. */
+.gm-msg-evenement { align-self: center; display: flex; gap: var(--gm-space-2); align-items: baseline; max-width: 90%; padding: var(--gm-space-1) var(--gm-space-3); border: var(--gm-border-1) solid var(--gm-color-border); background: var(--gm-color-surface); color: var(--gm-color-text-secondary); font-size: 13px; line-height: 20px; text-align: center; }
+.gm-msg-evenement .gm-num { font-size: 12px; color: var(--gm-color-text-muted); }
+/* Aperçu d'une pièce jointe (D-68) : visionneuse pleine largeur de la fenêtre. */
+.gm-apercu.gm-dialog-lg { width: min(960px, calc(100vw - 32px)); }
+.gm-apercu-cadre { display: block; width: 100%; height: min(70vh, 720px); border: var(--gm-border-1) solid var(--gm-color-border); background: var(--gm-color-surface-sunken); }
+.gm-apercu-image { display: block; max-width: 100%; max-height: 70vh; margin: 0 auto; border: var(--gm-border-1) solid var(--gm-color-border); }
+.gm-apercu-texte { margin: 0; max-height: 70vh; overflow: auto; padding: var(--gm-space-3); background: var(--gm-color-surface-sunken); border: var(--gm-border-1) solid var(--gm-color-border); font-family: var(--font-mono); font-size: 13px; line-height: 20px; white-space: pre-wrap; }
+/* Annuaire de la plateforme (D-68) : recherche de personnes par nom ou fonction, choix simple ou multiple. */
+.gm-annuaire { display: flex; flex-direction: column; gap: var(--gm-space-2); }
+.gm-annuaire-choisis { flex-wrap: wrap; gap: var(--gm-space-1); align-items: center; }
+.gm-annuaire-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; max-height: 320px; overflow: auto; border: var(--gm-border-1) solid var(--gm-color-border); background: var(--gm-color-surface); }
+.gm-annuaire-liste > li + li { border-top: var(--gm-border-1) solid var(--gm-color-border); }
+.gm-annuaire-personne { display: flex; align-items: center; gap: var(--gm-space-3); width: 100%; min-height: 48px; padding: var(--gm-space-2) var(--gm-space-3); border: 0; background: transparent; color: var(--gm-color-text); font: inherit; text-align: left; cursor: pointer; }
+li.gm-annuaire-personne { cursor: default; }
+button.gm-annuaire-personne:hover { background: var(--gm-color-surface-sunken); }
+button.gm-annuaire-personne:focus-visible { outline: var(--gm-border-2) solid var(--gm-color-focus); outline-offset: calc(-1 * var(--gm-border-2)); }
+.gm-annuaire-personne[aria-pressed='true'] { background: var(--gm-color-action-subtle); box-shadow: inset var(--gm-border-2) 0 0 var(--gm-color-action); }
+.gm-annuaire-identite { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.gm-annuaire-identite strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gm-annuaire-coche { color: var(--gm-color-action); display: inline-flex; }
+.gm-annuaire-vide { padding: var(--gm-space-3); color: var(--gm-color-text-secondary); }
+.gm-annuaire-destinataire { display: flex; flex-direction: column; gap: var(--gm-space-1); padding: var(--gm-space-2) var(--gm-space-3); border: var(--gm-border-1) solid var(--gm-color-border); background: var(--gm-color-surface); }
+.gm-groupe-membres { max-height: 280px; }
 .gm-msg-meta { font-size: 12px; line-height: 18px; color: var(--gm-color-text-secondary); display: flex; align-items: center; gap: var(--gm-space-2); }
 .gm-msg-body { padding: var(--gm-space-2) var(--gm-space-3); background: var(--gm-color-surface-sunken); }
 .gm-msg-mine .gm-msg-body { background: var(--gm-color-action-subtle); }

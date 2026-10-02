@@ -35,7 +35,7 @@
 
 \pagestyle{fancy}
 \fancyhf{}
-\fancyhead[L]{\small\color{gris}IG-GIMAC-01 v1.1}
+\fancyhead[L]{\small\color{gris}IG-GIMAC-01 v1.2}
 \fancyhead[R]{\small\color{gris}Moabi, module de certification}
 \fancyfoot[L]{\small\color{gris}GIMAC}
 \fancyfoot[C]{\small\color{gris}Présentation des interfaces}
@@ -83,7 +83,7 @@
 {\color{bleuclair}\rule{\linewidth}{0.8pt}}\par
 \vspace{0.45cm}
 \renewcommand{\arraystretch}{1.1}\begin{tabular}{>{\raggedleft\bfseries}p{4.6cm} p{9.2cm}}
-Référence & \textbf{IG-GIMAC-01 v1.1}\\[0pt]
+Référence & \textbf{IG-GIMAC-01 v1.2}\\[0pt]
 Statut & \textbf{Document de présentation}\\[0pt]
 Nature & Présentation commentée des interfaces graphiques\\[0pt]
 Périmètre & Module de certification (étapes 1 à 10 du parcours)\\[0pt]
@@ -106,8 +106,8 @@ Octobre 2026}
 \hline
 \rowcolor{bleu}\multicolumn{2}{|c|}{\textcolor{white}{\textbf{Informations générales}}}\\ \hline
 Titre & Présentation des interfaces du module de certification\\ \hline
-Référence & IG-GIMAC-01 v1.1\\ \hline
-Version & Version 1.1\\ \hline
+Référence & IG-GIMAC-01 v1.2\\ \hline
+Version & Version 1.2\\ \hline
 Date d'émission & 1er octobre 2026\\ \hline
 Établi par & KOAGNE ISSA RYAN, Ingénieur \quad NGOUNOU STEVE DELORS, Ingénieur\\ \hline
 Organisme & Groupement Interbancaire Monétique de l'Afrique Centrale (GIMAC)\\ \hline
@@ -123,6 +123,7 @@ Objet & Montrer chaque écran et chaque fenêtre de dialogue du module, avec une
 \rowcolor{bleu}\textcolor{white}{\textbf{Version}} & \textcolor{white}{\textbf{Date}} & \textcolor{white}{\textbf{Auteur}} & \textcolor{white}{\textbf{Description}}\\ \hline
 v1.0 & 01/10/2026 & KOAGNE ISSA RYAN, NGOUNOU STEVE DELORS & Première version : préambule sur le nom Moabi, charte graphique, écrans et fenêtres de dialogue du module de certification.\\ \hline
 v1.1 & 01/10/2026 & KOAGNE ISSA RYAN, NGOUNOU STEVE DELORS & Motifs de l'arbre moabi : cernes du bois, arbre et feuille sur le i ; nouvel écran de connexion.\\ \hline
+v1.2 & 02/10/2026 & KOAGNE ISSA RYAN, NGOUNOU STEVE DELORS & Messagerie : annuaire des personnes, groupes de discussion et leur gestion, aperçu des pièces jointes.\\ \hline
 \end{tabularx}
 \clearpage
 
@@ -330,12 +331,18 @@ Le correspondant de l'institution utilise son propre portail. Il n'y voit que le
 En plus des écrans du parcours, la plateforme offre des fonctions communes à tous les acteurs.
 
 \subsection{Messagerie instantanée}
-Tous les membres internes du GIMAC disposent d'une messagerie instantanée de travail, quel que soit leur service. Elle permet d'échanger des messages directs ou de groupe, de joindre des pièces et de citer une liaison. Un message peut ainsi renvoyer directement au dossier de la liaison concernée. Le compteur de messages non lus est visible dans la barre latérale.
+Tous les membres internes du GIMAC disposent d'une messagerie instantanée de travail, quel que soit leur service. On y écrit à une personne choisie par son nom dans l'annuaire de la plateforme, ou l'on crée un groupe de discussion. On peut joindre des pièces, les consulter sans les télécharger, et citer une liaison : un message renvoie ainsi directement au dossier de la liaison concernée. Le compteur de messages non lus est visible dans la barre latérale.
 
 \ecran{j01-messagerie-light.jpg}{Messagerie instantanée}{À gauche, la liste des conversations, avec le nombre de messages non lus. À droite, le fil de la conversation choisie. La référence d'une liaison citée devient un lien vers son dossier. Un fond texturé léger, tiré de la charte, habille le fil.}
-\ecran{j02-nouveau-message.jpg}{Nouveau message}{On choisit un ou plusieurs destinataires dans l'annuaire de la plateforme, un objet, et l'on peut rattacher le message à une liaison. Les pièces jointes sont déposées dans la zone prévue.}
+\ecran{j02-nouveau-message.jpg}{Nouveau message}{L'annuaire présente les membres internes du GIMAC avec leur photo et leur fonction. On cherche une personne par son nom, sa fonction ou son service, puis on lui écrit. Le message peut être rattaché à une liaison et porter des pièces jointes.}
+\ecran{j04-nouveau-groupe.jpg}{Nouveau groupe de discussion}{Un groupe porte un nom et réunit les personnes choisies dans l'annuaire. Les personnes retenues sont cochées et rappelées au-dessus de la liste. Le créateur du groupe en devient l'administrateur.}
+\ecran{j05-gestion-groupe.jpg}{Membres et réglages du groupe}{L'administrateur renomme le groupe, ajoute des membres depuis l'annuaire et en retire, après confirmation. Les autres membres consultent la liste. Chacun peut quitter le groupe. Chaque changement est inscrit dans le fil de la conversation.}
+\ecran{j06-apercu-pdf.jpg}{Aperçu d'une pièce jointe}{Un clic sur une pièce jointe l'ouvre dans une fenêtre d'aperçu. Un document PDF s'y lit page par page, et le bouton « Télécharger » l'enregistre sur le poste.}
+\ecran{j07-apercu-csv.jpg}{Aperçu d'un fichier texte}{Les fichiers texte et CSV s'affichent tels quels. Pour les autres formats, la fenêtre invite à télécharger le fichier.}
 \ecran{j03-messagerie-console.jpg}{Messagerie dans la console}{La même messagerie est accessible depuis la console pour le RSSI et le super administrateur, afin que tous les membres internes se joignent, où qu'ils travaillent.}
 \ecran{j01-messagerie-dark.jpg}{Messagerie en mode sombre}{La messagerie en mode sombre.}
+\ecran{j09-gestion-groupe-dark.jpg}{Gestion d'un groupe en mode sombre}{La fenêtre des membres et réglages en mode sombre.}
+\ecran{j08-apercu-pdf-dark.jpg}{Aperçu d'une pièce jointe en mode sombre}{La fenêtre d'aperçu en mode sombre. Le document garde son propre fond.}
 
 \subsection{Langues : français, anglais et espagnol}
 Toute la plateforme est traduite en français, en anglais et en espagnol, les trois langues de la zone CEMAC. Chaque utilisateur choisit sa langue depuis le menu du globe, en haut à droite. Le choix est conservé pour ses prochaines visites. Les deux captures ci-dessous montrent le même tableau de bord dans deux langues.

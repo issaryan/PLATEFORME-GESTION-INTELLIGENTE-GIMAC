@@ -51,10 +51,14 @@ describe('F0 : client HTTP', () => {
     document.cookie = 'XSRF-TOKEN=jeton-csrf'
     const spy = reply(200, {})
     reply(200, {})
+    reply(200, { titre: 'G' })
     await http.post('/bff/des/homologation/liaisons', { body: {} })
     await http.get('/bff/des/homologation/liaisons')
+    expect(await http.patch('/bff/des/collaboration/messagerie/conversations/C1', { body: { titre: 'G' } })).toEqual({ titre: 'G' })
     expect(entetes(spy, 0).get('X-XSRF-TOKEN')).toBe('jeton-csrf')
     expect(entetes(spy, 1).has('X-XSRF-TOKEN')).toBe(false)
+    expect(spy.mock.calls[2][1]?.method).toBe('PATCH')
+    expect(entetes(spy, 2).get('X-XSRF-TOKEN')).toBe('jeton-csrf')
   })
 
   it("F0 : une page HTML renvoyée par un relais mal configuré devient une erreur explicite", async () => {

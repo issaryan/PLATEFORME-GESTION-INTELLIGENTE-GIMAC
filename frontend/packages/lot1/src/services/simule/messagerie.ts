@@ -1,11 +1,12 @@
 import { ApiError, avatarsSimules } from '@gimac/socle'
-import type { Conversation, Correspondant, EtiquetteLiaison, Message, PieceJointe } from '../../modele/messagerie'
+import type { Conversation, Correspondant, EtiquetteLiaison, Message, PieceJointe, TypeEvenementGroupe } from '../../modele/messagerie'
 import { LIMITES_MESSAGERIE } from '../../modele/messagerie'
 import type { ServiceMessagerie } from '../ports'
 
 // Messagerie simulée (D-64) : mêmes formes de réponse et mêmes codes de refus que MS-COLLABORATION
 // (docs/lot1/messagerie.md). Ses règles ne sont qu'une imitation : membres seuls, conversation directe
-// réutilisée, masquage des numéros de carte (RG-52), bornes du contrat, non-lus par membre.
+// réutilisée, masquage des numéros de carte (RG-52), bornes du contrat, non-lus par membre, groupes de
+// discussion (D-68 : administrateur, nom, membres ajoutés ou retirés, départ, événements dans le fil).
 
 type Attendre = <T>(v: T | (() => T)) => Promise<T>
 type Refus = (status: number, code: string, message: string) => ApiError
@@ -55,6 +56,26 @@ function luhn(chiffres: string): boolean {
   return somme % 10 === 0
 }
 
+/** PDF d'une page, valide, pour la démonstration de l'aperçu des pièces jointes (D-68). */
+export function pdfDemo(lignes: string[]): Blob {
+  const texte = lignes.map((l, i) => `BT /F1 ${i === 0 ? 16 : 11} Tf 56 ${780 - i * 22} Td (${l.replace(/[()\\]/g, '')}) Tj ET`).join('\n')
+  const objets = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>',
+    `<< /Length ${texte.length} >>\nstream\n${texte}\nendstream`,
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>',
+  ]
+  let corps = '%PDF-1.4\n'
+  const positions: number[] = []
+  objets.forEach((o, i) => { positions.push(corps.length); corps += `${i + 1} 0 obj\n${o}\nendobj\n` })
+  const xref = corps.length
+  corps += `xref\n0 ${objets.length + 1}\n0000000000 65535 f \n${positions.map((p) => `${String(p).padStart(10, '0')} 00000 n \n`).join('')}`
+  corps += `trailer\n<< /Size ${objets.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`
+  // Octets en Latin-1 (WinAnsi) : un caractère par octet, positions de la table xref exactes, accents rendus.
+  return new Blob([Uint8Array.from(corps, (c) => (c === '’' ? 0x92 : c.charCodeAt(0) & 0xff))], { type: 'application/pdf' })
+}
+
 type EtatConversation = Omit<Conversation, 'dernierMessage' | 'nonLus'> & { messages: Message[]; lus: Map<string, number> }
 
 export function messagerieSimulee(attendre: Attendre, refus: Refus, moi: Correspondant = ANNUAIRE[0]): ServiceMessagerie {
@@ -81,10 +102,18 @@ export function messagerieSimulee(attendre: Attendre, refus: Refus, moi: Corresp
     c.lus.set(auteur.id, c.messages.length)
     return m
   }
-  const creer = (membres: Correspondant[], titre: string | null, liaison: EtiquetteLiaison | null, creeeLe: string): EtatConversation => {
-    const c: EtatConversation = { id: id('CONV'), type: membres.length === 2 && !titre && !liaison ? 'DIRECTE' : 'GROUPE', titre, liaison, membres, messages: [], lus: new Map(), misAJourLe: creeeLe, creeeLe }
+  const creer = (membres: Correspondant[], titre: string | null, liaison: EtiquetteLiaison | null, creeeLe: string, groupe = false): EtatConversation => {
+    const type = !groupe && membres.length === 2 && !titre && !liaison ? 'DIRECTE' : 'GROUPE'
+    // Le créateur (premier membre) administre le groupe (D-68).
+    const c: EtatConversation = { id: id('CONV'), type, titre, liaison, membres: membres.map((m, i) => ({ ...m, administrateur: type === 'GROUPE' && i === 0 })), messages: [], lus: new Map(), misAJourLe: creeeLe, creeeLe }
     conversations.push(c)
     return c
+  }
+  /** Événement de groupe inscrit dans le fil (D-68) : contenu vide, l'auteur agit. */
+  const evenement = (c: EtatConversation, auteur: Correspondant, type: TypeEvenementGroupe, cibles: string[], le: string) => {
+    const m = ajouterMessage(c, auteur, '', le)
+    m.evenement = { type, cibles }
+    return m
   }
 
   // Jeu de démonstration : trois conversations où figure l'utilisateur courant, dont une rattachée à une liaison.
@@ -97,8 +126,13 @@ export function messagerieSimulee(attendre: Attendre, refus: Refus, moi: Corresp
   ajouterMessage(d1, moi, 'Bien reçu, je le signe cet après-midi.', ilYA(280))
   ajouterMessage(d1, cond, 'Merci. Le participant signera ensuite depuis son portail.', ilYA(45))
   const g1 = creer([moi, sna, cond, rssi], 'Essais de LIA-2026-030', { liaisonId: 'LIA-2026-030', reference: 'LIA-2026-030' }, ilYA(1500))
-  ajouterMessage(g1, sna, 'Les essais sont suspendus : l’élément de sécurité du participant doit être renouvelé. Rapport joint.', ilYA(1490), [{ liaisonId: 'LIA-2026-030', reference: 'LIA-2026-030' }],
-    [new File(['Rapport des essais'], 'rapport-essais-LIA-2026-030.pdf', { type: 'application/pdf' })])
+  evenement(g1, moi, 'GROUPE_CREE', ['Essais de LIA-2026-030'], ilYA(1500))
+  ajouterMessage(g1, sna, 'Les essais sont suspendus : l’élément de sécurité du participant doit être renouvelé. Rapport et journal joints.', ilYA(1490), [{ liaisonId: 'LIA-2026-030', reference: 'LIA-2026-030' }],
+    [
+      new File([pdfDemo(['Rapport des essais de LIA-2026-030', 'Normes et Agréments, GIMAC', '', 'Essais suspendus : élément de sécurité du participant à renouveler.', 'Opérations testées : 18 sur 24. Échecs : 2 (code réponse 05).', 'Prochaine étape : nouvelle cérémonie de clés, puis reprise des essais.'])],
+        'rapport-essais-LIA-2026-030.pdf', { type: 'application/pdf' }),
+      new File(['opération;statut;code réponse\nachat;réussi;00\nretrait;échec;05\nconsultation de solde;réussi;00\n'], 'journal-essais.csv', { type: 'text/csv' }),
+    ])
   ajouterMessage(g1, rssi, 'Je prends contact avec le correspondant pour la nouvelle cérémonie.', ilYA(120))
   ajouterMessage(g1, sna, 'Le blocage est déclaré sur la liaison ; échéance de levée au 27 septembre.', ilYA(20))
   const d2 = creer([moi, rssi], null, null, ilYA(4000))
@@ -106,7 +140,7 @@ export function messagerieSimulee(attendre: Attendre, refus: Refus, moi: Corresp
   ajouterMessage(d2, rssi, 'Attestation reçue et en cours de vérification.', ilYA(3000))
   // Non-lus de démonstration : le dernier message de d1 et les deux derniers de g1.
   d1.lus.set(moi.id, 2)
-  g1.lus.set(moi.id, 1)
+  g1.lus.set(moi.id, 2)
   d2.lus.set(moi.id, 2)
 
   const nonLusDe = (c: EtatConversation) => c.messages.length - Math.min(c.lus.get(moi.id) ?? 0, c.messages.length)
@@ -117,7 +151,7 @@ export function messagerieSimulee(attendre: Attendre, refus: Refus, moi: Corresp
     return {
       ...copie,
       membres: copie.membres.map(avecPhoto),
-      dernierMessage: dernier ? { id: dernier.id, auteurNom: dernier.auteur.nom, extrait: dernier.contenu.slice(0, 120), envoyeLe: dernier.envoyeLe, piecesJointes: dernier.piecesJointes.length } : null,
+      dernierMessage: dernier ? { id: dernier.id, auteurNom: dernier.auteur.nom, extrait: dernier.contenu.slice(0, 120), envoyeLe: dernier.envoyeLe, piecesJointes: dernier.piecesJointes.length, evenement: dernier.evenement ?? null } : null,
       nonLus: nonLusDe(c),
     }
   }
@@ -134,6 +168,12 @@ export function messagerieSimulee(attendre: Attendre, refus: Refus, moi: Corresp
     if (fichiers.length > LIMITES_MESSAGERIE.piecesMax) throw refus(422, 'COL_TOO_MANY_ATTACHMENTS', 'Cinq pièces jointes au plus.')
     if (fichiers.some((f) => f.size > LIMITES_MESSAGERIE.tailleMaxOctets)) throw refus(422, 'COL_ATTACHMENT_TOO_LARGE', 'Une pièce jointe dépasse 20 Mo.')
     if (fichiers.some((f) => !TYPES.has(extension(f.name)))) throw refus(422, 'COL_ATTACHMENT_TYPE', 'Type de pièce jointe non admis.')
+  }
+  const groupeAdministre = (cid: string) => {
+    const c = sienne(cid)
+    if (c.type !== 'GROUPE') throw refus(400, 'COL_NOT_A_GROUP', 'Seul un groupe de discussion se renomme ou change de membres.')
+    if (!c.membres.find((m) => m.id === moi.id)?.administrateur) throw refus(403, 'COL_GROUP_ADMIN_REQUIRED', 'Réservé à l’administrateur du groupe.')
+    return c
   }
   const miennes = () => conversations.filter((c) => c.membres.some((m) => m.id === moi.id)).sort((a, b) => b.misAJourLe.localeCompare(a.misAJourLe))
 
@@ -169,15 +209,20 @@ export function messagerieSimulee(attendre: Attendre, refus: Refus, moi: Corresp
         if (!p) throw refus(422, 'COL_RECIPIENT_UNKNOWN', 'Destinataire inconnu de l’annuaire.')
         return p
       })
-      valider(n.contenu, n.etiquettes, n.fichiers)
       const titre = n.titre?.trim() || null
+      // Groupe nommé (D-68) : nom obligatoire, premier message facultatif.
+      if (n.groupe && !titre) throw refus(400, 'COL_GROUP_TITLE_REQUIRED', 'Donnez un nom au groupe de discussion.')
+      const avecMessage = !n.groupe || n.contenu.trim().length > 0 || n.fichiers.length > 0
+      if (avecMessage) valider(n.contenu, n.etiquettes, n.fichiers)
       const liaison = n.liaisonId ? { liaisonId: n.liaisonId, reference: n.liaisonId } : null
       // Deux personnes, sans titre ni liaison : la conversation directe existante est réutilisée.
-      const existante = !titre && !liaison && membres.length === 1
+      const existante = !n.groupe && !titre && !liaison && membres.length === 1
         ? conversations.find((c) => c.type === 'DIRECTE' && c.membres.some((m) => m.id === moi.id) && c.membres.some((m) => m.id === membres[0].id))
         : undefined
-      const c = existante ?? creer([moi, ...membres], titre, liaison, new Date().toISOString())
-      ajouterMessage(c, moi, n.contenu, new Date().toISOString(), n.etiquettes, n.fichiers)
+      const maintenant = new Date().toISOString()
+      const c = existante ?? creer([moi, ...membres], titre, liaison, maintenant, n.groupe)
+      if (n.groupe) evenement(c, moi, 'GROUPE_CREE', [titre!], maintenant)
+      if (avecMessage) ajouterMessage(c, moi, n.contenu, new Date().toISOString(), n.etiquettes, n.fichiers)
       return vue(c)
     }),
     envoyer: (cid, e) => attendre(() => {
@@ -191,6 +236,41 @@ export function messagerieSimulee(attendre: Attendre, refus: Refus, moi: Corresp
       c.lus.set(moi.id, c.messages.length)
     }),
     nonLus: () => attendre(() => ({ total: miennes().reduce((n, c) => n + nonLusDe(c), 0) })),
+    renommerGroupe: (cid, titre) => attendre(() => {
+      const c = groupeAdministre(cid)
+      const nom = titre.trim()
+      if (!nom) throw refus(400, 'COL_GROUP_TITLE_REQUIRED', 'Donnez un nom au groupe de discussion.')
+      if (nom !== c.titre) {
+        c.titre = nom
+        evenement(c, moi, 'GROUPE_RENOMME', [nom], new Date().toISOString())
+      }
+      return vue(c)
+    }),
+    ajouterMembres: (cid, ids) => attendre(() => {
+      const c = groupeAdministre(cid)
+      const nouveaux = [...new Set(ids)].filter((i) => !c.membres.some((m) => m.id === i)).map((i) => {
+        const p = personne(i)
+        if (!p) throw refus(400, 'COL_RECIPIENT_UNKNOWN', 'Destinataire inconnu de l’annuaire.')
+        return p
+      })
+      if (c.membres.length + nouveaux.length > LIMITES_MESSAGERIE.destinatairesMax + 1) throw refus(400, 'COL_TOO_MANY_RECIPIENTS', 'Cinquante et un membres au plus.')
+      if (nouveaux.length) {
+        c.membres.push(...nouveaux.map((p) => ({ ...p, administrateur: false })))
+        evenement(c, moi, 'MEMBRES_AJOUTES', nouveaux.map((p) => p.nom), new Date().toISOString())
+      }
+      return vue(c)
+    }),
+    retirerMembre: (cid, membreId) => attendre(() => {
+      const c = sienne(cid)
+      if (c.type !== 'GROUPE') throw refus(400, 'COL_NOT_A_GROUP', 'Seul un groupe de discussion se quitte ou perd des membres.')
+      const cible = c.membres.find((m) => m.id === membreId)
+      if (!cible) throw refus(404, 'COL_MEMBER_NOT_FOUND', 'Membre introuvable.')
+      const depart = membreId === moi.id
+      if (!depart && !c.membres.find((m) => m.id === moi.id)?.administrateur) throw refus(403, 'COL_GROUP_ADMIN_REQUIRED', 'Réservé à l’administrateur du groupe.')
+      c.membres = c.membres.filter((m) => m.id !== membreId)
+      if (c.membres.length && !c.membres.some((m) => m.administrateur)) c.membres[0] = { ...c.membres[0], administrateur: true }
+      evenement(c, depart ? cible : moi, depart ? 'MEMBRE_PARTI' : 'MEMBRE_RETIRE', depart ? [] : [cible.nom], new Date().toISOString())
+    }),
     // Le contenu n'est pas copié (un Blob ne se clone pas) : contrôle d'accès simulé, puis le fichier tel quel.
     telechargerPiece: (pid) => attendre(() => {
       const p = pieces.get(pid)

@@ -2,7 +2,11 @@
 // servies par MS-COLLABORATION. L'interface n'en calcule rien : non-lus, masquage RG-52 et droits viennent du service.
 
 /** Personne joignable de l'annuaire (compte interne actif) ; avatarVersion : photo de profil (mon-compte.md §1), null sans photo. */
-export type Correspondant = { id: string; nom: string; fonction: string | null; profils?: string[]; avatarVersion?: string | null }
+export type Correspondant = { id: string; nom: string; fonction: string | null; profils?: string[]; avatarVersion?: string | null; administrateur?: boolean }
+
+/** Événement de la vie d'un groupe (D-68), inscrit dans le fil : l'auteur agit, les cibles sont les noms concernés. */
+export type TypeEvenementGroupe = 'GROUPE_CREE' | 'GROUPE_RENOMME' | 'MEMBRES_AJOUTES' | 'MEMBRE_RETIRE' | 'MEMBRE_PARTI'
+export type EvenementGroupe = { type: TypeEvenementGroupe; cibles: string[] }
 
 /** Étiquette de projet : lien direct vers le dossier de la liaison. */
 export type EtiquetteLiaison = { liaisonId: string; reference: string }
@@ -19,6 +23,8 @@ export type Message = {
   envoyeLe: string
   etiquettes: EtiquetteLiaison[]
   piecesJointes: PieceJointe[]
+  /** Événement de groupe (D-68) : contenu vide, rendu en ligne centrée. */
+  evenement?: EvenementGroupe | null
 }
 
 export type Conversation = {
@@ -27,7 +33,7 @@ export type Conversation = {
   titre: string | null
   liaison: EtiquetteLiaison | null
   membres: Correspondant[]
-  dernierMessage: { id: string; auteurNom: string; extrait: string; envoyeLe: string; piecesJointes: number } | null
+  dernierMessage: { id: string; auteurNom: string; extrait: string; envoyeLe: string; piecesJointes: number; evenement?: EvenementGroupe | null } | null
   nonLus: number
   misAJourLe: string
   creeeLe: string
@@ -37,7 +43,8 @@ export type PageMessagerie<T> = { contenu: T[]; total: number; page: number; tai
 export type FilMessages = { contenu: Message[]; plusAnciens: boolean }
 
 export type Envoi = { contenu: string; etiquettes: EtiquetteLiaison[]; fichiers: File[] }
-export type NouvelleConversation = Envoi & { destinataires: string[]; titre: string | null; liaisonId: string | null }
+/** « groupe » (D-68) : groupe de discussion nommé ; le premier message y est facultatif. */
+export type NouvelleConversation = Envoi & { destinataires: string[]; titre: string | null; liaisonId: string | null; groupe?: boolean }
 
 /** Bornes du contrat (docs/lot1/messagerie.md §1), annoncées à l'utilisateur avant l'envoi. */
 export const LIMITES_MESSAGERIE = {

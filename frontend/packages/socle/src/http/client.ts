@@ -114,6 +114,7 @@ export const http = {
   get: <R>(path: string, o: RequestOptions = {}) => send('GET', path, o).then((r) => json<R>(r)),
   post: <R>(path: string, o: RequestOptions = {}) => send('POST', path, o).then((r) => json<R>(r)),
   put: <R>(path: string, o: RequestOptions = {}) => send('PUT', path, o).then((r) => json<R>(r)),
+  patch: <R>(path: string, o: RequestOptions = {}) => send('PATCH', path, o).then((r) => json<R>(r)),
   delete: <R = void>(path: string, o: RequestOptions = {}) => send('DELETE', path, o).then((r) => json<R>(r)),
   /** Téléchargement journalisé côté service ; empreinte de l'en-tête Repr-Digest (RFC 9530), null si absente. */
   blob: async (path: string, accept: string) => {

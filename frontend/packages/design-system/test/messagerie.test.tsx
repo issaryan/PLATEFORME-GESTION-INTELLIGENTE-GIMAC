@@ -1,7 +1,7 @@
 // Messagerie de travail (D-64) : liste des conversations, fil et zone de saisie.
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
-import { ConversationList, LangueProvider, MessageComposer, MessageThread } from '../src'
+import { AttachmentViewer, ConversationList, formatApercu, LangueProvider, MessageComposer, MessageThread } from '../src'
 
 afterEach(cleanup)
 
@@ -58,7 +58,7 @@ describe('MessageThread', () => {
     const fil = screen.getByRole('list', { name: 'Messages' })
     expect(within(fil).getByText('Vous')).toBeTruthy()
     expect(within(fil).getByRole('link', { name: 'LIA-2026-030' }).getAttribute('href')).toBe('/des/parcours/LIA-2026-030')
-    fireEvent.click(screen.getByRole('button', { name: 'Télécharger rapport.pdf' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Ouvrir rapport.pdf' }))
     expect(piece).toHaveBeenCalledWith('p1')
     fireEvent.click(screen.getByRole('button', { name: 'Afficher les messages plus anciens' }))
     expect(plus).toHaveBeenCalled()
@@ -111,5 +111,48 @@ describe('MessageComposer', () => {
     render(<LangueProvider langue="en"><MessageComposer value="" onChange={() => undefined} onSend={() => undefined} /></LangueProvider>)
     expect(screen.getByRole('button', { name: 'Send' })).toBeTruthy()
     expect(screen.getByLabelText('Your message')).toBeTruthy()
+  })
+})
+
+// Aperçu des pièces jointes (D-68) : PDF en cadre, image, texte, format sans aperçu, chargement, erreur ; événements de groupe.
+describe('AttachmentViewer et événements du fil', () => {
+  afterEach(() => cleanup())
+  const base = { onTelecharger: vi.fn(), onClose: vi.fn() }
+  it('formatApercu : selon le type, sinon l’extension', () => {
+    expect(formatApercu('application/pdf', 'a')).toBe('pdf')
+    expect(formatApercu('application/octet-stream', 'rapport.PDF')).toBe('pdf')
+    expect(formatApercu('image/png', 'x.png')).toBe('image')
+    expect(formatApercu('text/csv', 'j.csv')).toBe('texte')
+    expect(formatApercu('application/octet-stream', 'notes.txt')).toBe('texte')
+    expect(formatApercu('application/zip', 'archive.zip')).toBe('aucun')
+  })
+  it('PDF dans un cadre, image, texte, puis télécharger et fermer', async () => {
+    Object.assign(URL, { createObjectURL: vi.fn(() => 'blob:apercu'), revokeObjectURL: vi.fn() })
+    const telecharger = vi.fn()
+    const fermer = vi.fn()
+    const { rerender } = render(<AttachmentViewer nom="r.pdf" typeMime="application/pdf" taille="2 Ko" blob={new Blob(['%PDF'])} onTelecharger={telecharger} onClose={fermer} />)
+    const d = screen.getByRole('dialog', { name: /r\.pdf/ })
+    expect(d.querySelector('iframe')?.getAttribute('src')).toBe('blob:apercu')
+    fireEvent.click(within(d).getByRole('button', { name: 'Télécharger' }))
+    expect(telecharger).toHaveBeenCalled()
+    fireEvent.click(within(d).getAllByRole('button', { name: 'Fermer' }).at(-1)!)
+    expect(fermer).toHaveBeenCalled()
+    rerender(<AttachmentViewer {...base} nom="p.png" typeMime="image/png" blob={new Blob(['x'])} />)
+    expect(screen.getByRole('img', { name: 'p.png' })).toBeTruthy()
+    rerender(<AttachmentViewer {...base} nom="j.csv" typeMime="text/csv" blob={new Blob(['a;b\n1;2'])} />)
+    expect(await screen.findByText(/a;b/)).toBeTruthy()
+  })
+  it('chargement, erreur, format sans aperçu', () => {
+    const { rerender } = render(<AttachmentViewer {...base} nom="r.pdf" typeMime="application/pdf" />)
+    expect(screen.getByLabelText('Chargement de l’aperçu', { exact: false })).toBeTruthy()
+    rerender(<AttachmentViewer {...base} nom="r.pdf" typeMime="application/pdf" erreur="Pièce introuvable" />)
+    expect(screen.getByText('Pièce introuvable')).toBeTruthy()
+    rerender(<AttachmentViewer {...base} nom="a.zip" typeMime="application/zip" blob={new Blob(['x'])} />)
+    expect(screen.getByText('Aperçu indisponible', { exact: false })).toBeTruthy()
+  })
+  it('événement de groupe : ligne centrée, sans bulle', () => {
+    render(<MessageThread titre="G" messages={[{ id: 'e', auteur: 'A', quand: '10:00', evenement: true, contenu: 'A a créé le groupe « G »' }]} />)
+    const ligne = screen.getByText('A a créé le groupe « G »').closest('li')!
+    expect(ligne.classList.contains('gm-msg-evenement')).toBe(true)
   })
 })

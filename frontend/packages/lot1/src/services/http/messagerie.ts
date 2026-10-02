@@ -14,7 +14,7 @@ function multipart(message: object, fichiers: File[]): FormData {
 }
 
 const envoi = (e: Envoi) => ({ contenu: e.contenu, etiquettes: e.etiquettes })
-const nouvelle = (c: NouvelleConversation) => ({ ...envoi(c), destinataires: c.destinataires, titre: c.titre, liaisonId: c.liaisonId })
+const nouvelle = (c: NouvelleConversation) => ({ ...envoi(c), destinataires: c.destinataires, titre: c.titre, liaisonId: c.liaisonId, ...(c.groupe ? { groupe: true } : {}) })
 
 /** Messagerie d'une couche interne : le DES, ou la console (RSSI, super administrateur). */
 export function messagerieHttpPour(couche: 'des' | 'console'): ServiceMessagerie {
@@ -31,6 +31,9 @@ export function messagerieHttpPour(couche: 'des' | 'console'): ServiceMessagerie
     // Compteur périodique : appel de fond, qui ne prolonge pas la session d'inactivité (D-65 §6).
     nonLus: () => http.get(`${M}/non-lus`, { fond: true }),
     telechargerPiece: (id) => http.blob(`${M}/pieces/${encodeURIComponent(id)}`, '*/*'),
+    renommerGroupe: (id, titre) => http.patch(`${M}/conversations/${encodeURIComponent(id)}`, { body: { titre } }),
+    ajouterMembres: (id, membres) => http.post(`${M}/conversations/${encodeURIComponent(id)}/membres`, { body: { membres } }),
+    retirerMembre: (id, membreId) => http.delete(`${M}/conversations/${encodeURIComponent(id)}/membres/${encodeURIComponent(membreId)}`),
   }
 }
 

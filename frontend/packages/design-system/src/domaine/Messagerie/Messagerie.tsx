@@ -1,4 +1,4 @@
-import { useEffect, useRef, type KeyboardEvent, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { cx } from '../../lib/cx'
 import { Avatar } from '../../affichage/Avatar/Avatar'
 import { Tag } from '../../affichage/Tag/Tag'
@@ -7,6 +7,8 @@ import { Button } from '../../actions/Button/Button'
 import { IconButton } from '../../actions/IconButton/IconButton'
 import { Icon } from '../../icones/Icon/Icon'
 import { InlineAlert } from '../../conteneurs/InlineAlert/InlineAlert'
+import { Dialog } from '../../conteneurs/Dialog/Dialog'
+import { Skeleton } from '../../affichage/Skeleton/Skeleton'
 import { useLibelle } from '../../i18n/LangueProvider'
 
 // Messagerie de travail (D-64) : liste des conversations, fil et zone de saisie, assemblés à partir de
@@ -80,6 +82,8 @@ export interface ThreadMessage {
   /** Étiquettes de projet, en liens. */
   etiquettes?: ReactNode
   pieces?: ThreadAttachment[]
+  /** Événement de la vie d'un groupe (D-68) : ligne centrée, sans bulle ni auteur. */
+  evenement?: boolean
 }
 
 export interface MessageThreadProps {
@@ -124,7 +128,12 @@ export function MessageThread(p: MessageThreadProps) {
           </li>
         ) : null}
         {p.messages.length === 0 ? <li className="gm-fil-vide"><EmptyState icon="message-square" title={t('messagerie.vide')} /></li> : null}
-        {p.messages.map((m) => (
+        {p.messages.map((m) => m.evenement ? (
+          <li key={m.id} className="gm-msg-evenement">
+            <span>{m.contenu}</span>
+            <span className="gm-num">{m.quand}</span>
+          </li>
+        ) : (
           <li key={m.id} className={cx('gm-msg', m.mine && 'gm-msg-mine')}>
             <div className="gm-msg-meta">
               <Avatar name={m.auteur} src={m.avatar} size="sm" decorative />
@@ -220,5 +229,84 @@ export function MessageComposer(p: MessageComposerProps) {
         <Button variant="primary" icon="send" loading={p.sending} disabled={!peutEnvoyer} onClick={p.onSend}>{t('messagerie.envoyer')}</Button>
       </div>
     </div>
+  )
+}
+
+export interface AttachmentViewerProps {
+  nom: string
+  typeMime: string
+  /** Taille lisible (« 12,4 Ko »). */
+  taille?: string
+  /** Contenu de la pièce ; absent pendant le chargement. */
+  blob?: Blob | null
+  chargement?: boolean
+  erreur?: ReactNode
+  onTelecharger: () => void
+  onClose: () => void
+  open?: boolean
+}
+
+/** Format affichable dans la plateforme : PDF, image, texte (dont CSV) ; les autres se téléchargent. */
+export function formatApercu(typeMime: string, nom: string): 'pdf' | 'image' | 'texte' | 'aucun' {
+  const t = typeMime.toLowerCase()
+  const ext = nom.slice(nom.lastIndexOf('.') + 1).toLowerCase()
+  if (t === 'application/pdf' || ext === 'pdf') return 'pdf'
+  if (/^image\/(png|jpe?g|gif|webp)$/.test(t) || ['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext)) return 'image'
+  if (t.startsWith('text/') || ['txt', 'csv', 'log', 'md'].includes(ext)) return 'texte'
+  return 'aucun'
+}
+
+/** Adresse locale (blob:) d'un contenu, révoquée au démontage ou au changement de contenu. */
+function useAdresseLocale(blob: Blob | null | undefined, type: string): string | undefined {
+  const [url, setUrl] = useState<string>()
+  useEffect(() => {
+    if (!blob || typeof URL.createObjectURL !== 'function') return undefined
+    // Type imposé : un PDF s'affiche dans la visionneuse même si le service l'a servi en octets bruts.
+    const u = URL.createObjectURL(blob.type === type ? blob : new Blob([blob], { type }))
+    setUrl(u)
+    return () => URL.revokeObjectURL(u)
+  }, [blob, type])
+  return url
+}
+
+/**
+ * Aperçu d'une pièce jointe dans une fenêtre modale (D-68) : PDF dans la visionneuse du navigateur, image,
+ * texte ; pour les autres formats, un message et le téléchargement. Le contenu n'est jamais exécuté.
+ */
+export function AttachmentViewer(p: AttachmentViewerProps) {
+  const t = useLibelle()
+  const format = formatApercu(p.typeMime, p.nom)
+  const type = format === 'pdf' ? 'application/pdf' : p.typeMime
+  const url = useAdresseLocale(format === 'pdf' || format === 'image' ? p.blob : null, type)
+  const [texte, setTexte] = useState<string>()
+  useEffect(() => {
+    setTexte(undefined)
+    if (format === 'texte' && p.blob) void p.blob.text().then(setTexte)
+  }, [format, p.blob])
+  let corps: ReactNode
+  if (p.erreur) corps = <InlineAlert level="crit">{p.erreur}</InlineAlert>
+  else if (p.chargement || !p.blob) corps = <div aria-busy="true" aria-label={t('messagerie.apercu.chargement')}><Skeleton height={420} /></div>
+  else if (format === 'pdf') corps = url ? <iframe className="gm-apercu-cadre" src={url} title={t('messagerie.apercu.document', { nom: p.nom })} /> : null
+  else if (format === 'image') corps = url ? <img className="gm-apercu-image" src={url} alt={p.nom} /> : null
+  else if (format === 'texte') corps = <pre className="gm-apercu-texte" tabIndex={0}>{texte}</pre>
+  else corps = <EmptyState icon="paperclip" title={t('messagerie.apercu.indisponible')} text={t('messagerie.apercu.indisponibleTexte')} />
+  return (
+    <Dialog
+      open={p.open}
+      size="lg"
+      id="gm-apercu-piece"
+      className="gm-apercu"
+      title={p.nom}
+      subtitle={[p.typeMime, p.taille].filter(Boolean).join(' · ')}
+      onClose={p.onClose}
+      footer={(
+        <>
+          <Button variant="ghost" onClick={p.onClose}>{t('commun.fermer')}</Button>
+          <Button variant="primary" icon="download" onClick={p.onTelecharger}>{t('messagerie.apercu.telecharger')}</Button>
+        </>
+      )}
+    >
+      {corps}
+    </Dialog>
   )
 }

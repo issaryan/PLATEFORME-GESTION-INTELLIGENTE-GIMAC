@@ -221,6 +221,11 @@ export interface ServiceMessagerie {
   marquerLu(conversationId: string): Promise<void>
   nonLus(): Promise<{ total: number }>
   telechargerPiece(pieceId: string): Promise<{ blob: Blob; empreinte: string | null }>
+  /** Groupes de discussion (D-68), réservés à l'administrateur du groupe ; le départ est ouvert à tout membre. */
+  renommerGroupe(conversationId: string, titre: string): Promise<Conversation>
+  ajouterMembres(conversationId: string, membres: string[]): Promise<Conversation>
+  /** Retrait d'un membre, ou départ quand membreId est l'utilisateur courant. */
+  retirerMembre(conversationId: string, membreId: string): Promise<void>
 }
 
 export interface Services {
