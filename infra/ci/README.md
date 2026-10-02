@@ -131,6 +131,5 @@ Secrets à définir dans GitHub : `COSIGN_PRIVATE_KEY`, `COSIGN_PASSWORD` (dép�
 | `contrat/routes.mjs`, `contrat/ecarts-connus.txt` | contrôle du contrat des routes et écarts admis |
 | `valider-tout.sh` | toutes les validations sur le poste |
 | `construire-images.sh`, `deployer-recette.sh` | livraison et déploiement continus |
-| `compte-nominatif.sh` | compte nominatif du serveur de démonstration créé sans accès au serveur : workflow manuel `.github/workflows/compte-nominatif.yml` sur l'exécuteur `gimac-214`, liste des comptes conservée sur le serveur (BNF-07), mot de passe provisoire dans le résumé de l'exécution, à supprimer une fois transmis |
 | `deployer-serveur.sh`, `fusionner-domaine.py` | serveur de démonstration (10.20.36.214) : images construites sur place, démarrage par `gimac-dev.sh` avec `docker-compose.serveur.yml`, Keycloak persistant (domaine modifié réimporté en conservant comptes, mots de passe et TOTP), comptes nominatifs, configurations montées (politiques OPA, simulacres, observabilité) suivies par empreinte : un service dont la configuration a changé est redémarré puis attendu sain ; lancé par `.github/workflows/deploiement-serveur.yml` sur l'exécuteur auto-hébergé `gimac-214` à chaque poussée sur `main` |
 | `yamllint.yml`, `gitleaks.toml` | règles de yamllint et de gitleaks |
