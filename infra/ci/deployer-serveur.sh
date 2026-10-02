@@ -120,6 +120,44 @@ actualiser_domaine() {
     import --dir /echange --override true
 }
 
+# Configurations montées en lecture seule (politiques OPA, simulacres, observabilité) : lues au démarrage
+# de leur conteneur, que « compose up » ne recrée pas quand seul le contenu du dossier change. Chaque
+# service dont la configuration a changé depuis le déploiement précédent est redémarré, puis attendu sain.
+CONFIGURATIONS_MONTEES=(
+  "opa:opa/politiques"
+  "simulateur-certification:simulacres/simulateur"
+  "gestion-changements:simulacres/changements"
+  "autorite-horodatage:simulacres/horodatage"
+  "grafana:observabilite/grafana/provisioning"
+  "otel-collector:observabilite/otel-collector.yaml"
+  "tempo:observabilite/tempo.yaml"
+)
+EMPREINTES_MONTEES="$HOME/.local/state/gimac-des/configurations"
+
+empreinte_montee() {
+  (cd "$COMPOSE_DIR" && find "$1" -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -d' ' -f1)
+}
+
+actualiser_configurations_montees() {
+  local entree service chemin nouvelle fichier
+  local relances=() empreintes=()
+  mkdir -p "$EMPREINTES_MONTEES"
+  for entree in "${CONFIGURATIONS_MONTEES[@]}"; do
+    service="${entree%%:*}"; chemin="${entree#*:}"
+    [ -e "$COMPOSE_DIR/$chemin" ] || continue
+    compose ps --status running -q "$service" 2>/dev/null | grep -q . || continue
+    nouvelle="$(empreinte_montee "$chemin")"
+    fichier="$EMPREINTES_MONTEES/$service.sha256"
+    [ "$(cat "$fichier" 2>/dev/null)" != "$nouvelle" ] || continue
+    relances+=("$service"); empreintes+=("$fichier:$nouvelle")
+  done
+  [ ${#relances[@]} -gt 0 ] || return 0
+  etape "Configurations montées modifiées : redémarrage de ${relances[*]}"
+  compose restart "${relances[@]}"
+  compose up -d --wait "${relances[@]}"
+  for entree in "${empreintes[@]}"; do echo "${entree#*:}" > "${entree%%:*}"; done
+}
+
 outils
 configurer_env "${1:-}"
 
@@ -132,6 +170,7 @@ compose build frontend-departement frontend-portail frontend-console
 
 etape "Démarrage"
 "$COMPOSE_DIR/gimac-dev.sh" demarrer
+actualiser_configurations_montees
 mkdir -p "$(dirname "$EMPREINTE")"
 sha256sum "$DOMAINE" | cut -d' ' -f1 > "$EMPREINTE"
 
