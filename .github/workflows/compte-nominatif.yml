@@ -1,0 +1,80 @@
+# Création d'un compte nominatif sur le serveur de démonstration (10.20.36.214), à la demande, sans
+# accès au serveur (D-62 : amorçage par infra/keycloak/creer-comptes-personnels.py).
+#
+# Exécuté par l'exécuteur auto-hébergé du serveur (étiquette gimac-214), dans la même file que le
+# déploiement : le compte est ajouté à la liste locale du serveur (~/.config/gimac-des/comptes.json,
+# jamais versionnée, BNF-07) puis créé dans Keycloak avec un mot de passe provisoire et le premier
+# accès à accomplir (mot de passe, code TOTP, fiche, charte). Un compte existant est laissé tel quel.
+# Le mot de passe provisoire figure dans le résumé de l'exécution : supprimer l'exécution une fois
+# le mot de passe transmis à son titulaire.
+name: Compte nominatif du serveur de démonstration
+
+on:
+  workflow_dispatch:
+    inputs:
+      identifiant:
+        description: "Identifiant (prenom.nom, minuscules)"
+        required: true
+        type: string
+      email:
+        description: "Courriel professionnel"
+        required: true
+        type: string
+      prenom:
+        description: "Prénom"
+        required: true
+        type: string
+      nom:
+        description: "Nom"
+        required: true
+        type: string
+      profil:
+        description: "Profil"
+        required: true
+        type: choice
+        options:
+          - ROLE_POLE_RESEAU
+          - ROLE_POLE_SYSTEME
+          - ROLE_SNA
+          - ROLE_PRODUCTION_MONETIQUE
+          - ROLE_INGENIEUR_HOMOLOGATION
+          - ROLE_CONDUCTEUR_PROJET
+          - ROLE_CHARGE_DDRM
+          - ROLE_CHEF_DDRM
+          - ROLE_CHEF_DES
+          - ROLE_CONFORMITE
+          - ROLE_DG
+          - ROLE_RSSI
+          - ROLE_SUPER_ADMIN
+      fonction:
+        description: "Fonction affichée"
+        required: false
+        type: string
+
+# Même file que le déploiement : jamais pendant une mise à jour du serveur.
+concurrency:
+  group: deploiement-serveur
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  compte:
+    name: Compte nominatif sur gimac-214
+    runs-on: [self-hosted, gimac-214]
+    timeout-minutes: 15
+    steps:
+      # clean: false conserve le .env et la liste des comptes liés à l'état du serveur.
+      - uses: actions/checkout@v7
+        with:
+          clean: false
+      - name: Création du compte
+        env:
+          IDENTIFIANT: ${{ inputs.identifiant }}
+          EMAIL: ${{ inputs.email }}
+          PRENOM: ${{ inputs.prenom }}
+          NOM: ${{ inputs.nom }}
+          PROFIL: ${{ inputs.profil }}
+          FONCTION: ${{ inputs.fonction }}
+        run: infra/ci/compte-nominatif.sh
