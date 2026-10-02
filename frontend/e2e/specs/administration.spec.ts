@@ -54,9 +54,15 @@ test('Scénario : le RSSI gère les comptes dans l’application du département
     await expect(nav.getByText('Administration', { exact: true })).toBeVisible()
     await expect(nav.getByRole('link', { name: 'Comptes utilisateurs' })).toHaveAttribute('href', '/des/administration/comptes')
     await expect(nav.getByRole('link', { name: 'Console de la plateforme' })).toHaveAttribute('href', `${ADRESSES.consoleLiee}/console/tableau-de-bord`)
-    const section = page.getByRole('region', { name: 'Administration et sécurité des comptes' })
-    await expect(section.getByRole('link', { name: 'Créer un compte' })).toHaveAttribute('href', '/des/administration/comptes/nouveau')
-    await expect(section.getByRole('link', { name: 'Comptes sans second facteur' })).toHaveAttribute('href', '/des/administration/comptes?etat=SANS_2FA')
+    // Tableau de bord d'administration (D-69) : indicateurs cliquables et derniers actes, aucune liste de liens.
+    const gestion = page.getByRole('region', { name: 'Gestion des utilisateurs' })
+    await expect(gestion.getByRole('button', { name: 'Créer un compte' })).toBeVisible()
+    await expect(page.getByRole('region', { name: 'Derniers actes d’administration' })).toBeVisible()
+    await expect(page.getByRole('region', { name: 'Mes accès' })).toHaveCount(0)
+    await capturer(page, 'administration-departement-tableau-dark')
+    await gestion.getByRole('button', { name: /^Sans second facteur/ }).click()
+    await expect(page).toHaveURL(`${ADRESSES.departement}/des/administration/comptes?etat=SANS_2FA`)
+    await page.goBack()
   })
   await test.step('Quand il ouvre « Comptes utilisateurs », la liste s’affiche dans le département, en mode sombre', async () => {
     await nav.getByRole('link', { name: 'Comptes utilisateurs' }).click()

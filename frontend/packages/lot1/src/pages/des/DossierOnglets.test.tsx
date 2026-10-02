@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { ApiError } from '@gimac/socle'
-import { rendrePage } from '../../test/rendu'
+import { rendrePage, sessionTest } from '../../test/rendu'
 import { servicesSimules } from '../../services/simule'
 import type { Services } from '../../services/ports'
 import type { Dossier } from '../../modele/certification'
@@ -17,8 +17,10 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-const ouvrir = (onglet: string, services?: Services) =>
-  rendrePage(<DossierMiseEnServicePage />, { chemin: `/des/liaisons/LIA-2025-102/mise-en-service?onglet=${onglet}`, motif: '/des/liaisons/:id/mise-en-service', services })
+const ouvrir = (onglet: string, services?: Services, permissions?: string[]) =>
+  rendrePage(<DossierMiseEnServicePage />, {
+    chemin: `/des/liaisons/LIA-2025-102/mise-en-service?onglet=${onglet}`, motif: '/des/liaisons/:id/mise-en-service', services, ...(permissions ? { session: sessionTest(permissions) } : {}),
+  })
 /** Services simulés dont le dossier et la certification sont ajustés pour le scénario. */
 function avec(dossier: Partial<Dossier>, certification: Partial<Services['certification']> = {}, reauth?: Services['reauth']): Services {
   const s = servicesSimules({ latenceMs: 0 })
@@ -113,8 +115,12 @@ describe('DES-11 : onglets du dossier', () => {
     ouvrir('attestation', avec({ numeroAttestation: 'ATT-2026-0007' }, { lireAttestation: async () => ({ ...a, demandeEnAttente: { ...demande, demandeeParMoi: true } }) }))
     expect(await screen.findByText(/son approbation revient à un autre utilisateur/)).toBeTruthy()
   })
-  it('registre : attestations et export contrôlé', async () => {
-    ouvrir('registre')
+  it('registre : attestations et export contrôlé ; sans CER_REGISTER_EXPORT, pas de bouton d’export', async () => {
+    ouvrir('registre', undefined, ['CER_REGISTER_READ'])
+    expect(await screen.findByText('ATT-2025-0031')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Exporter le registre (contrôlé)' })).toBeNull()
+    cleanup()
+    ouvrir('registre', undefined, ['CER_REGISTER_READ', 'CER_REGISTER_EXPORT'])
     expect(await screen.findByText('ATT-2025-0031')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Exporter le registre (contrôlé)' }))
     const d = await screen.findByRole('alertdialog')

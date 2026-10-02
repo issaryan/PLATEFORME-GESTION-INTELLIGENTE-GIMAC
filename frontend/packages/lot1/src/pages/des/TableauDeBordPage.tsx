@@ -10,6 +10,7 @@ import { fonctionsDe } from '../../permissions'
 import { SectionActeur } from './tableau/SectionActeur'
 import { SectionCockpit } from './tableau/SectionCockpit'
 import { SectionAdministration } from './tableau/SectionAdministration'
+import { useExtensionsTableauDeBord } from './tableau/extensions'
 
 // DES-01 Tableau de bord (/des/tableau-de-bord, gabarit G1 ; D-58, D-61) : chaque acteur voit son
 // tableau de bord, composé des seules sections que la matrice des rôles de son jeton ouvre. Les
@@ -107,6 +108,7 @@ export default function TableauDeBordPage() {
   const cockpit = pilotage && fonctions.some((f) => f === 'DG' || f === 'CHEF_DES' || f === 'CHEF_DDRM')
   // Administration des comptes (D-62) : liens vers la console pour les porteurs de IAM_ACCOUNT_READ (RSSI).
   const administration = aPermission(permissions, 'IAM_ACCOUNT_READ')
+  const { administration: TableauAdministration } = useExtensionsTableauDeBord()
   const rien = !ddrm && !travail && !cockpit && !lecteurRegistre && !administration
   return (
     <div className="gm-col">
@@ -115,12 +117,13 @@ export default function TableauDeBordPage() {
         subtitle={t('tableau.sousTitre')}
         user={session ? { name: session.nom, roles: profils.map((r) => t(`profil.${r}`, { defaultValue: r })) } : undefined}
       />
-      {administration ? <SectionAdministration /> : null}
+      {/* Administration des comptes (D-69) : indicateurs et actions de l'application, sinon section d'actions. */}
+      {administration ? (TableauAdministration ? <TableauAdministration /> : <SectionAdministration />) : null}
       {ddrm ? <SectionDdrm approbateur={approbateur} instructeur={instructeur} /> : null}
       {cockpit ? <SectionCockpit /> : null}
       {travail ? <SectionActeur fonctions={fonctions} /> : null}
-      {/* Raccourcis seulement pour un profil sans section de travail (lecture seule) : la navigation les porte déjà. */}
-      {!travail ? <MesAcces permissions={permissions} /> : null}
+      {/* Raccourcis seulement pour un profil sans aucune section (lecture seule) : la navigation les porte déjà. */}
+      {!travail && !ddrm && !cockpit && !administration ? <MesAcces permissions={permissions} /> : null}
       {rien ? <EmptyState icon="gauge" title={t('tableau.vide.titre')} text={t('tableau.vide.texte')} /> : null}
     </div>
   )

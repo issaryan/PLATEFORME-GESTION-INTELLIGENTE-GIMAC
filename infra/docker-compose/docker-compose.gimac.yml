@@ -296,6 +296,8 @@ services:
       args:
         APPLICATION: console
         SERVICES: http
+        # Retour au département (D-69), publié sur l'hôte au port de frontend-departement.
+        URL_DEPARTEMENT: http://localhost:${GIMAC_PORT_FRONTEND_DEPARTEMENT:-4200}
     environment:
       GIMAC_PASSERELLE: http://gateway:8080
     ports:

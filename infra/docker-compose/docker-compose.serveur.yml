@@ -44,6 +44,9 @@ services:
       - 0.0.0.0:${GIMAC_PORT_FRONTEND_PORTAIL:-4201}:8080
 
   frontend-console:
+    build:
+      args:
+        URL_DEPARTEMENT: ${GIMAC_URL_DES:?à définir dans .env}
     ports: !override
       - 0.0.0.0:${GIMAC_PORT_FRONTEND_CONSOLE:-4202}:8080
 

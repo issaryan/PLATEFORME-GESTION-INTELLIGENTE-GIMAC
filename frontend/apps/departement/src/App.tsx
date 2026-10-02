@@ -7,8 +7,8 @@ import {
   surNonAutorise, type EtatCanal, type Session,
 } from '@gimac/socle'
 import { CompteProvider, GardePremierAcces, MonComptePage, useMonAvatar, monCompteHttp, monCompteSimule } from '@gimac/compte'
-import { Fournisseurs, NAVIGATION_DES, PERM, creerClientRequetes, servicesHttp, servicesSimules, useNonLus, useSourcesRecherche } from '@gimac/lot1'
-import { ServicesConsoleProvider, servicesConsoleHttp, servicesConsoleSimules, useSourceComptes } from '@gimac/administration'
+import { ExtensionsTableauDeBordProvider, Fournisseurs, NAVIGATION_DES, PERM, creerClientRequetes, servicesHttp, servicesSimules, useNonLus, useSourcesRecherche } from '@gimac/lot1'
+import { ServicesConsoleProvider, TableauAdministrationComptes, servicesConsoleHttp, servicesConsoleSimules, useSourceComptes } from '@gimac/administration'
 import { PROFILS_DEMO, roleDemo, sessionDemo } from './profils'
 import { connexionDemo } from './connexionDemo'
 
@@ -41,6 +41,8 @@ const JournalAdministrationPage = lazy(() => import('@gimac/administration/pages
 const ProfilsPage = lazy(() => import('@gimac/administration/pages/ProfilsPage'))
 const PolitiqueSecuritePage = lazy(() => import('@gimac/administration/pages/PolitiqueSecuritePage'))
 const CHEMINS_ADMINISTRATION = { base: '/des/administration', espace: '/des' }
+// Tableau de bord : indicateurs, actions et derniers actes d'administration des comptes (D-69).
+const EXTENSIONS_TABLEAU = { administration: TableauAdministrationComptes }
 
 /** Écran réservé à une permission : sans elle, accès refusé explicite (la passerelle refait le contrôle). */
 function Autorise({ permissions, exigee, children }: { permissions: string[]; exigee: string; children: ReactNode }) {
@@ -172,11 +174,13 @@ export default function App() {
         <ConnexionProvider service={connexion} couche="des">
         <CompteProvider service={compte}>
         <ServicesConsoleProvider services={administration} chemins={CHEMINS_ADMINISTRATION}>
+        <ExtensionsTableauDeBordProvider valeur={EXTENSIONS_TABLEAU}>
           <Routes>
             <Route path="/connexion/*" element={<PageConnexion couche="des" />} />
             <Route path="/des/*" element={<AvecSession>{(s) => <Pages session={s} etatCanal={etatCanal} correlationId={correlationId} />}</AvecSession>} />
             <Route path="*" element={<Navigate to="/des/tableau-de-bord" replace />} />
           </Routes>
+        </ExtensionsTableauDeBordProvider>
         </ServicesConsoleProvider>
         </CompteProvider>
         </ConnexionProvider>

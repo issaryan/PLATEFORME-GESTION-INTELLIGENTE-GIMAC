@@ -1,6 +1,7 @@
 // Console d'administration et d'audit (D-61, D-62) : libellés français (référence).
 export const fr: Record<string, string> = {
   'console.nav.tableauDeBord': 'Tableau de bord',
+  'console.nav.departement': 'Retour au département',
   'console.nav.groupe.comptes': 'Comptes et profils',
   'console.nav.comptes': 'Comptes',
   'console.nav.profils': 'Profils et permissions',

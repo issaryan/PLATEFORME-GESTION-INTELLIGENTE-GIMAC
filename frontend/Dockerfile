@@ -7,6 +7,8 @@
 #   (services et comptes fictifs). Toute autre valeur est refusée.
 # URL_CONSOLE : adresse de la console d'administration, cible des liens « Administration » de
 #   l'application du département (D-62) ; http://localhost:4202 par défaut.
+# URL_DEPARTEMENT : adresse de l'application du département, cible du retour depuis la console (D-69) ;
+#   http://localhost:4200 par défaut.
 # Écrit à la main : aucun générateur (JHipster, docker init) ne couvre ce frontend séparé.
 
 # 1. Manifestes de l'espace de travail npm : chaque package.json (racine, packages/*, apps/*, e2e),
@@ -37,9 +39,11 @@ ARG APPLICATION
 ARG SERVICES=http
 ARG VERSION=0.1.0
 ARG URL_CONSOLE=http://localhost:4202
+ARG URL_DEPARTEMENT=http://localhost:4200
 ENV VITE_SERVICES=$SERVICES \
     VITE_VERSION=$VERSION \
-    VITE_URL_CONSOLE=$URL_CONSOLE
+    VITE_URL_CONSOLE=$URL_CONSOLE \
+    VITE_URL_DEPARTEMENT=$URL_DEPARTEMENT
 RUN test -n "$APPLICATION" \
  && case "$SERVICES" in http|simule) ;; *) echo "SERVICES : http ou simule" >&2; exit 1 ;; esac \
  && npm run build -w "@gimac/app-$APPLICATION"

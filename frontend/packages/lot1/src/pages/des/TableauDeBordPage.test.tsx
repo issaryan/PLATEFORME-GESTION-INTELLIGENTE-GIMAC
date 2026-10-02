@@ -51,7 +51,9 @@ describe('DES-01 Tableau de bord par acteur', () => {
     const services = { ...s, participant: { ...s.participant, indicateurs: async () => { throw new ApiError(503, 'X', 'x', 'c') } } }
     page(CHEF, [], { services })
     expect(await screen.findByText('Le chargement a échoué.')).toBeTruthy()
-    expect(screen.getByText('Mes accès')).toBeTruthy()
+    // Le reste du tableau de bord demeure ; les raccourcis « Mes accès » sont réservés aux profils sans section.
+    expect(screen.getByRole('heading', { level: 1, name: 'Tableau de bord' })).toBeTruthy()
+    expect(screen.queryByText('Mes accès')).toBeNull()
   })
   it.each(['en', 'es'] as const)('rendu en %s sans clé brute', async (langue) => {
     const { container } = page(CHEF, ['ROLE_CHEF_DDRM'], { langue })

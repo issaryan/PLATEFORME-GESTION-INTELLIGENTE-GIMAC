@@ -1,6 +1,7 @@
 // Administration and audit console (D-61, D-62): English labels.
 export const en: Record<string, string> = {
   'console.nav.tableauDeBord': 'Dashboard',
+  'console.nav.departement': 'Back to the department',
   'console.nav.groupe.comptes': 'Accounts and profiles',
   'console.nav.comptes': 'Accounts',
   'console.nav.profils': 'Profiles and permissions',

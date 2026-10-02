@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActionBar, Button, DataTable, DateTimeField, EmptyState, CrudDialog, Hash, InlineAlert, KeyValueList, ResourceList, StatusBadge, TextField, type Column, Note } from '@gimac/design-system'
-import { EtatsRequete } from '@gimac/socle'
+import { EtatsRequete, aPermission, usePermissions } from '@gimac/socle'
 import type { Attestation, Condition, Dossier, Horodatage } from '../../../modele/certification'
 import {
   useAttestation, useConditions, useDeposerProcesVerbal, useFicheDeChangement, useHorodatages, useLierFiche, useProcesVerbal,
@@ -225,13 +225,17 @@ export function OngletRegistre() {
   const descripteur = useDescripteurDS(registreDescriptor)
   const executeur = useExecuteurActions()
   const exporter = registreDescriptor.actions[0]
+  // Export du registre : seulement avec CER_REGISTER_EXPORT (le lecteur du registre ne l'a pas).
+  const peutExporter = aPermission(usePermissions(), exporter.permission ?? '')
   return (
     <div className="gm-col">
-      <div className="gm-row" style={{ justifyContent: 'flex-end' }}>
-        <Button variant="secondary" icon="download" onClick={() => executeur.lancer(exporter, null as never, t('registre.pluriel'), 'certification')}>
-          {t(exporter.label)}
-        </Button>
-      </div>
+      {peutExporter ? (
+        <div className="gm-row" style={{ justifyContent: 'flex-end' }}>
+          <Button variant="secondary" icon="download" onClick={() => executeur.lancer(exporter, null as never, t('registre.pluriel'), 'certification')}>
+            {t(exporter.label)}
+          </Button>
+        </div>
+      ) : null}
       <ResourceList
       descriptor={descripteur}
       rows={q.data?.contenu ?? []}

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
-import { rendrePage } from '../../test/rendu'
+import { rendrePage, sessionTest } from '../../test/rendu'
 import { servicesSimules } from '../../services/simule'
 import ReferentielsOperationsPage from './ReferentielsOperationsPage'
 
@@ -11,9 +11,27 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 const MOTIF = '/des/referentiels/operations'
-const ouvrir = (suffixe = '', services = servicesSimules({ latenceMs: 0 })) => ({ ...rendrePage(<ReferentielsOperationsPage />, { chemin: `${MOTIF}${suffixe}`, motif: MOTIF, services }), services })
+// Ingénieur d'homologation (édition, publication, migration) ; LECTEUR : le seul droit de lecture (super administrateur).
+const EDITION = ['HOM_REFERENTIEL_READ', 'HOM_REFERENTIEL_EDIT', 'HOM_REFERENTIEL_PUBLISH', 'HOM_REFERENTIEL_MIGRATE']
+const ouvrir = (suffixe = '', services = servicesSimules({ latenceMs: 0 }), permissions = EDITION) =>
+  ({ ...rendrePage(<ReferentielsOperationsPage />, { chemin: `${MOTIF}${suffixe}`, motif: MOTIF, services, session: sessionTest(permissions) }), services })
 
 describe('DES-12 : actions sur les versions', () => {
+  it('lecteur seul (HOM_REFERENTIEL_READ) : ni « Nouveau brouillon », ni contrôle, ni simulation de migration (aucun 403)', async () => {
+    const services = servicesSimules({ latenceMs: 0 })
+    const simuler = vi.spyOn(services.homologation, 'simulerMigration')
+    const controler = vi.spyOn(services.homologation, 'controlerReferentiel')
+    const creer = vi.spyOn(services.homologation, 'creerBrouillon')
+    const [v] = await services.homologation.listerReferentiels()
+    ouvrir(`?version=${v.id}&onglet=migration`, services, ['HOM_REFERENTIEL_READ'])
+    expect(await screen.findByRole('tab', { name: /Opérations/ })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /brouillon/i })).toBeNull()
+    expect(screen.queryByRole('tab', { name: /migration/i })).toBeNull()
+    expect(screen.queryByRole('tab', { name: /Contrôle/ })).toBeNull()
+    expect(simuler).not.toHaveBeenCalled()
+    expect(controler).not.toHaveBeenCalled()
+    expect(creer).not.toHaveBeenCalled()
+  })
   it('création d’un brouillon : champs requis, puis version créée et sélectionnée', async () => {
     const { container, services } = ouvrir()
     const creer = vi.spyOn(services.homologation, 'creerBrouillon')

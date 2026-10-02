@@ -1,10 +1,15 @@
 import type { GroupeNavigation } from '@gimac/socle'
 
+/** Adresse de l'application du département (D-69) : VITE_URL_DEPARTEMENT, http://localhost:4200 par défaut. */
+export const URL_DEPARTEMENT = String(import.meta.env.VITE_URL_DEPARTEMENT || 'http://localhost:4200').replace(/\/+$/, '')
+
 // Entrées de navigation de la console, avec la permission qui les rend visibles (DS-GIMAC-01 §6.2) :
 // une entrée non permise est absente du DOM. Le tableau de bord est composé selon les permissions.
 export const NAVIGATION_CONSOLE: GroupeNavigation[] = [
   {
     entrees: [
+      // Retour au tableau de bord du département, d'où le RSSI et le super administrateur ouvrent la console (D-69).
+      { cle: 'departement', libelleKey: 'console.nav.departement', icone: 'arrow-left', chemin: `${URL_DEPARTEMENT}/des/tableau-de-bord` },
       { cle: 'tableauDeBord', libelleKey: 'console.nav.tableauDeBord', icone: 'gauge', chemin: '/console/tableau-de-bord' },
       // Messagerie instantanée de travail (D-64) : tout membre interne du GIMAC, dont le RSSI et le super administrateur.
       { cle: 'messagerie', libelleKey: 'console.nav.messagerie', icone: 'messages-square', chemin: '/console/messagerie', permission: 'COL_MESSAGE_READ' },

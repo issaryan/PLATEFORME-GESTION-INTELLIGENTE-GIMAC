@@ -1,14 +1,11 @@
-import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router'
-import { ActionBar, Button, Card, DataTable, EmptyState, InlineAlert, Link, LiveStatGroup, PageHeader, PageSection, Skeleton, StatCard, StatGrid, StatusBadge, Tag, type Column, type Status } from '@gimac/design-system'
+import { Card, DataTable, EmptyState, InlineAlert, Link, LiveStatGroup, PageHeader, PageSection, Skeleton, StatCard, StatusBadge, type Column, type Status } from '@gimac/design-system'
 import { aPermission, usePermissions, useSession } from '@gimac/socle'
 import { dateHeure, useLibelleProfil } from '@gimac/compte'
-import { useAlertes, useFluxPlateforme, useIndicateursComptes, useJournal, useServeurs, useServicesPlateforme } from '../hooks'
+import { useAlertes, useFluxPlateforme, useServeurs, useServicesPlateforme } from '../hooks'
 import type { Alerte, EtatConteneur, EtatHote, EtatPlateforme, EtatService } from '../modele/plateforme'
-import type { EntreeJournal } from '../modele/comptes'
 import { Donnees, Section } from '../composants/communs'
-import { DialogueCreationCompte } from '../composants/DialogueCreationCompte'
+import { SectionActes, SectionGestionUtilisateurs } from '../composants/sectionsTableau'
 import { etatDirect, nombre, octets, pourcent } from '../composants/formats'
 
 // Tableau de bord de la console (D-61, D-62), composé selon les permissions de la session ; la gestion
@@ -127,82 +124,6 @@ function SectionSupervision() {
           }
         </Donnees>
       </Card>
-    </Section>
-  )
-}
-
-/**
- * Gestion des utilisateurs (D-62), en tête du tableau de bord du super administrateur et du RSSI :
- * actions directes (création si IAM_ACCOUNT_CREATE, listes filtrées, profils, journal, politique) et
- * indicateurs des comptes cliquables vers la liste filtrée (?etat=). La création s'ouvre en modale.
- */
-function SectionGestionUtilisateurs({ posture }: { posture: boolean }) {
-  const { t } = useTranslation()
-  const navigate = useNavigate()
-  const permissions = usePermissions()
-  const libelleProfil = useLibelleProfil()
-  const indicateurs = useIndicateursComptes()
-  const [creation, setCreation] = useState(false)
-  const peut = (p: string) => aPermission(permissions, p)
-  const vers = (chemin: string) => () => void navigate(chemin)
-  const alerte = (n: number, s: 'crit' | 'warn', libelle: string) => ({ status: n > 0 ? s : ('ok' as const), statusLabel: t(n > 0 ? libelle : 'console.aJour') })
-  return (
-    <PageSection title={t('console.gestion.titre')} description={t(posture ? 'console.gestion.texte.rssi' : 'console.gestion.texte')}>
-      <ActionBar align="start" label={t('console.gestion.actions')}>
-        {peut('IAM_ACCOUNT_CREATE') ? <Button variant="primary" icon="plus" onClick={() => setCreation(true)}>{t('console.comptes.creer')}</Button> : null}
-        <Button onClick={vers('/console/comptes')}>{t('console.gestion.tous')}</Button>
-        <Button variant="ghost" onClick={vers('/console/comptes?etat=SANS_2FA')}>{t('console.gestion.sans2fa')}</Button>
-        <Button variant="ghost" onClick={vers('/console/comptes?etat=PREMIER_ACCES')}>{t('console.gestion.premierAcces')}</Button>
-        <Button variant="ghost" onClick={vers('/console/profils')}>{t('console.nav.profils')}</Button>
-        {peut('IAM_JOURNAL_READ') ? <Button variant="ghost" onClick={vers('/console/journal')}>{t('console.nav.journal')}</Button> : null}
-        {peut('PLATFORM_SECURITY_POLICY_READ') ? <Button variant="ghost" onClick={vers('/console/politique-securite')}>{t('console.nav.politique')}</Button> : null}
-      </ActionBar>
-      <Donnees requete={indicateurs}>
-        {(i) => (
-          <div className="gm-col">
-            <StatGrid
-              label={t(posture ? 'console.posture.titre' : 'console.comptes.indicateurs')}
-              items={[
-                { key: 'total', label: t('console.indicateur.total'), value: i.total, onClick: vers('/console/comptes') },
-                { key: 'actifs', label: t('console.indicateur.actifs'), value: i.actifs, onClick: vers('/console/comptes?etat=ACTIF') },
-                { key: 'sans2fa', label: t('console.indicateur.sansSecondFacteur'), value: i.sansSecondFacteur, ...alerte(i.sansSecondFacteur, 'crit', 'console.aTraiter'), onClick: vers('/console/comptes?etat=SANS_2FA') },
-                { key: 'premierAcces', label: t('console.indicateur.premierAcces'), value: i.premierAccesEnAttente, ...alerte(i.premierAccesEnAttente, 'warn', 'console.enAttente'), onClick: vers('/console/comptes?etat=PREMIER_ACCES') },
-                { key: 'inactifs', label: t('console.indicateur.inactifs'), value: i.inactifs, onClick: vers('/console/comptes?etat=INACTIF') },
-                { key: 'privilegies', label: t('console.indicateur.privilegies'), value: i.privilegies, onClick: vers('/console/profils') },
-                ...(posture ? [{ key: 'crees30', label: t('console.indicateur.crees30'), value: i.creesDepuis30Jours, onClick: vers('/console/comptes') }] : []),
-                { key: 'actes24', label: t('console.indicateur.actes24'), value: i.actesDepuis24Heures, ...(peut('IAM_JOURNAL_READ') ? { onClick: vers('/console/journal') } : {}) },
-              ]}
-            />
-            {posture ? (
-              <Card title={t('console.indicateur.parProfil')}>
-                <span className="gm-row">
-                  {Object.entries(i.parProfil).map(([p, n]) => <Tag key={p}>{`${libelleProfil(p)} : ${n}`}</Tag>)}
-                </span>
-              </Card>
-            ) : null}
-          </div>
-        )}
-      </Donnees>
-      {creation ? <DialogueCreationCompte onFermer={() => setCreation(false)} /> : null}
-    </PageSection>
-  )
-}
-
-function SectionActes() {
-  const { t, i18n } = useTranslation()
-  const journal = useJournal({ page: 1, taille: 5 })
-  const colonnes: Column<EntreeJournal>[] = [
-    { key: 'horodatage', header: t('console.journal.horodatage'), render: (j) => dateHeure(j.horodatage, i18n.language) },
-    { key: 'acteurNom', header: t('console.journal.acteur'), render: (j) => j.acteurNom ?? j.acteurId },
-    { key: 'action', header: t('console.journal.action'), render: (j) => t(`console.journal.action.${j.action}`, { defaultValue: j.action }) },
-    { key: 'cibleLibelle', header: t('console.journal.cible'), render: (j) => <span className="gm-mono">{j.cibleLibelle ?? '—'}</span> },
-    { key: 'motif', header: t('console.journal.motif'), render: (j) => j.motif ?? '—' },
-  ]
-  return (
-    <Section titre={t('console.actes.titre')} id="gm-actes" action={<Link href="/console/journal">{t('console.actes.voirTout')}</Link>}>
-      <Donnees requete={journal} estVide={(p) => p.contenu.length === 0} vide={t('console.journal.vide')}>
-        {(p) => <DataTable columns={colonnes} rows={p.contenu} rowKey={(j) => j.id} density="compact" />}
-      </Donnees>
     </Section>
   )
 }

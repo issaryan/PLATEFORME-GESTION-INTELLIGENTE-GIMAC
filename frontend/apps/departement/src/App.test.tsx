@@ -91,6 +91,11 @@ describe('Application du département', () => {
   it('administration (D-69) : le RSSI gère les comptes dans le département, sans quitter son application', async () => {
     localStorage.setItem(CLE_PROFIL_DEMO, 'ROLE_RSSI')
     monter('/des/tableau-de-bord')
+    // Tableau de bord : indicateurs des comptes et derniers actes, plus de listes de liens (D-69).
+    expect(await screen.findByRole('region', { name: 'Gestion des utilisateurs' }, { timeout: 8000 })).toBeTruthy()
+    expect(await screen.findByText('Sans second facteur')).toBeTruthy()
+    expect(screen.getByRole('region', { name: 'Derniers actes d’administration' })).toBeTruthy()
+    expect(screen.queryByRole('region', { name: 'Mes accès' })).toBeNull()
     const lien = (await screen.findAllByRole('link', { name: 'Comptes utilisateurs' }, { timeout: 8000 }))[0]
     expect(lien.getAttribute('href')).toBe('/des/administration/comptes')
     fireEvent.click(lien)

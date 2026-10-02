@@ -1,6 +1,7 @@
 // Consola de administración y auditoría (D-61, D-62): textos en español.
 export const es: Record<string, string> = {
   'console.nav.tableauDeBord': 'Panel de control',
+  'console.nav.departement': 'Volver al departamento',
   'console.nav.groupe.comptes': 'Cuentas y perfiles',
   'console.nav.comptes': 'Cuentas',
   'console.nav.profils': 'Perfiles y permisos',

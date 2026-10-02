@@ -103,7 +103,7 @@ test.describe('Fonctionnalité : coquille applicative fixe', () => {
     await demo(page, { profil: 'ROLE_RSSI' })
     await page.setViewportSize({ width: 1440, height: 560 })
     await page.goto(`${ADRESSES.departement}/des/tableau-de-bord`)
-    await expect(page.getByRole('region', { name: 'Administration et sécurité des comptes' })).toBeVisible()
+    await expect(page.getByRole('region', { name: 'Gestion des utilisateurs' })).toBeVisible()
     const m = await mesurer(page)
     expect(m.pageDefile).toBe(0)
     expect(m.nav!.bas).toBe(560)

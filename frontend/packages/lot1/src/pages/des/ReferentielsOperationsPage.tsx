@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { Button, Card, EmptyState, ResourceDetail, ResourceForm, TreeView, type ResourceDescriptor, PageHeader } from '@gimac/design-system'
-import { EtatsRequete, usePermissions } from '@gimac/socle'
+import { EtatsRequete, aPermission, usePermissions } from '@gimac/socle'
 import { useEffet } from '../../hooks/base'
 import { useHistoriqueReferentiel, useReferentiel, useReferentiels } from '../../hooks/referentiels'
 import { useDescripteurDS } from '../../ressources/descripteur'
@@ -22,6 +22,8 @@ export default function ReferentielsOperationsPage() {
   const executeur = useExecuteurActions()
   const versions = useReferentiels()
   const creer = referentielOperationsDescriptor.actions.find((a) => a.key === 'creer')!
+  // « Nouveau brouillon » : seulement avec la permission de l'action (HOM_REFERENTIEL_EDIT), sinon 403 du service.
+  const peutCreer = aPermission(usePermissions(), creer.permission ?? '')
   const choisir = (id: string) => {
     if (id.startsWith('type:')) return
     setCreation(false)
@@ -32,9 +34,9 @@ export default function ReferentielsOperationsPage() {
 
   return (
     <div className="gm-col" style={{ gap: 'var(--gm-space-5)' }}>
-      <PageHeader title={t('referentiel.titre')} actions={<Button variant="primary" icon="plus" onClick={() => executeur.lancer(creer, null as unknown as ReferentielVersion, t('referentiel.pluriel'), 'homologation', { openForm: ouvrirFormulaire })}>
+      <PageHeader title={t('referentiel.titre')} actions={peutCreer ? <Button variant="primary" icon="plus" onClick={() => executeur.lancer(creer, null as unknown as ReferentielVersion, t('referentiel.pluriel'), 'homologation', { openForm: ouvrirFormulaire })}>
           {t(creer.label)}
-        </Button>} />
+        </Button> : undefined} />
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(240px, 320px) minmax(0, 1fr)', gap: 'var(--gm-space-5)', alignItems: 'start' }}>
         <Card title={t('referentiel.arbre')}>
           <EtatsRequete
@@ -59,7 +61,7 @@ export default function ReferentielsOperationsPage() {
         </section>
       </div>
       {/* Création d'un brouillon : fenêtre modale ouverte sur l'arbre des versions. */}
-      {creation ? <FormulaireBrouillon onFin={(id) => { setCreation(false); if (id) setParams({ version: id }) }} /> : null}
+      {creation && peutCreer ? <FormulaireBrouillon onFin={(id) => { setCreation(false); if (id) setParams({ version: id }) }} /> : null}
     </div>
   )
 }

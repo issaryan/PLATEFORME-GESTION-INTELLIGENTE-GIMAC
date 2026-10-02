@@ -1,9 +1,10 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { cleanup, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, screen, within } from '@testing-library/react'
 import TableauDeBordPage from './pages/des/TableauDeBordPage'
 import { rendrePage, sessionTest } from './test/rendu'
 import { NAVIGATION_DES, URL_CONSOLE, versConsole } from './navigation'
 import { PROFILS } from './permissions'
+import { ExtensionsTableauDeBordProvider } from './pages/des/tableau/extensions'
 
 // Administration des comptes dans l'application du département (D-62, D-69) : le RSSI et le super
 // administrateur (IAM_ACCOUNT_READ) y gèrent les comptes sous /des/administration, menés par le groupe
@@ -48,30 +49,41 @@ const page = (permissions: string[], roles: string[]) =>
   rendrePage(<TableauDeBordPage />, { chemin: '/des/tableau-de-bord', motif: '/des/tableau-de-bord', session: sessionTest(permissions, roles) })
 
 describe('tableau de bord : « Administration et sécurité des comptes »', () => {
-  it('RSSI : liens vers les écrans du département (création, listes filtrées, profils, journal, politique) et la console', async () => {
-    page(PROFILS.ROLE_RSSI, ['ROLE_RSSI'])
+  it('RSSI, sans tableau d’administration fourni : barre d’actions vers les écrans du département, sans liste ni « Mes accès »', async () => {
+    rendrePage(<TableauDeBordPage />, {
+      chemin: '/des/tableau-de-bord', motif: '/des/tableau-de-bord', session: sessionTest(PROFILS.ROLE_RSSI, ['ROLE_RSSI']),
+      autres: [{ motif: '/des/administration/comptes', element: <span>écran des comptes</span> }],
+    })
     const section = await screen.findByRole('region', { name: 'Administration et sécurité des comptes' })
-    const liens = within(within(section).getByRole('list', { name: 'Écrans d’administration' })).getAllByRole('link')
-    expect(liens.map((l) => [l.textContent, l.getAttribute('href')])).toEqual([
-      ['Créer un compte', '/des/administration/comptes/nouveau'],
-      ['Tous les comptes', '/des/administration/comptes'],
-      ['Comptes sans second facteur', '/des/administration/comptes?etat=SANS_2FA'],
-      ['Premiers accès en attente', '/des/administration/comptes?etat=PREMIER_ACCES'],
-      ['Comptes désactivés', '/des/administration/comptes?etat=INACTIF'],
-      ['Profils et permissions', '/des/administration/profils'],
-      ['Journal d’administration', '/des/administration/journal'],
-      ['Politique de sécurité', '/des/administration/politique-securite'],
-      [expect.stringContaining('Console de la plateforme'), 'http://localhost:4202/console/tableau-de-bord'],
+    expect(within(section).queryByRole('list')).toBeNull()
+    expect(screen.queryByRole('region', { name: 'Mes accès' })).toBeNull()
+    const barre = within(section).getByRole('group', { name: 'Écrans d’administration' })
+    expect(within(barre).getAllByRole('button').map((b) => b.textContent)).toEqual([
+      'Créer un compte', 'Tous les comptes', 'Comptes sans second facteur', 'Premiers accès en attente', 'Comptes désactivés',
+      'Profils et permissions', 'Journal d’administration', 'Politique de sécurité', 'Console de la plateforme',
     ])
+    fireEvent.click(within(barre).getByRole('button', { name: 'Comptes sans second facteur' }))
+    expect(await screen.findByText('écran des comptes')).toBeTruthy()
   })
-  it('lecteur des comptes sans création, journal ni politique : liens restreints ; sans IAM_ACCOUNT_READ : pas de section', async () => {
+  it('tableau d’administration fourni par l’application : il remplace la barre d’actions', async () => {
+    rendrePage(
+      <ExtensionsTableauDeBordProvider valeur={{ administration: () => <section aria-label="Tableau d’administration">indicateurs</section> }}>
+        <TableauDeBordPage />
+      </ExtensionsTableauDeBordProvider>,
+      { chemin: '/des/tableau-de-bord', motif: '/des/tableau-de-bord', session: sessionTest(PROFILS.ROLE_SUPER_ADMIN, ['ROLE_SUPER_ADMIN']) },
+    )
+    expect(await screen.findByRole('region', { name: 'Tableau d’administration' })).toBeTruthy()
+    expect(screen.queryByRole('region', { name: 'Administration et sécurité des comptes' })).toBeNull()
+    expect(screen.queryByRole('region', { name: 'Mes accès' })).toBeNull()
+  })
+  it('lecteur des comptes sans création, journal ni politique : actions restreintes ; sans IAM_ACCOUNT_READ : pas de section', async () => {
     page(['IAM_ACCOUNT_READ'], ['ROLE_LECTEUR'])
     const section = await screen.findByRole('region', { name: 'Administration et sécurité des comptes' })
-    const textes = within(section).getAllByRole('link').map((l) => l.textContent)
+    const textes = within(section).getAllByRole('button').map((l) => l.textContent)
     expect(textes).not.toContain('Créer un compte')
     expect(textes).not.toContain('Journal d’administration')
     expect(textes).not.toContain('Politique de sécurité')
-    expect(textes.some((x) => x?.includes('Console de la plateforme'))).toBe(false)
+    expect(textes).not.toContain('Console de la plateforme')
     expect(screen.queryByText('Aucun tableau de bord pour votre profil')).toBeNull()
     cleanup()
     page(PROFILS.ROLE_SNA, ['ROLE_SNA'])

@@ -1,31 +1,35 @@
 import { useTranslation } from 'react-i18next'
-import { LinkList, PageSection, type LinkListItem } from '@gimac/design-system'
+import { useNavigate } from 'react-router'
+import { ActionBar, Button, PageSection } from '@gimac/design-system'
 import { aPermission, usePermissions } from '@gimac/socle'
 import { ADMINISTRATION, versConsole } from '../../../navigation'
 import { PERM } from '../../../permissions'
 
 // Administration et sécurité des comptes (D-62, D-69), sur le tableau de bord des porteurs de IAM_ACCOUNT_READ
-// (RSSI, super administrateur) : chaque lien ouvre l'écran voulu du département (liste filtrée, profils,
-// journal, politique) ; la console de la plateforme reste un lien externe. Aucune donnée n'est lue ici.
+// (RSSI, super administrateur), quand l'application ne fournit pas son tableau d'administration (extensions.tsx) :
+// barre d'actions vers les écrans du département (création, listes filtrées, profils, journal, politique) et
+// la console de la plateforme. Aucune donnée d'administration n'est lue ici.
 export function SectionAdministration() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const permissions = usePermissions()
   const peut = (p: string) => aPermission(permissions, p)
-  const lien = (key: string, chemin: string, libelle: string): LinkListItem => ({ key, href: `${ADMINISTRATION}${chemin}`, label: t(libelle) })
-  const items: LinkListItem[] = [
-    ...(peut(PERM.compteCreer) ? [lien('creer', '/comptes/nouveau', 'admin.creer')] : []),
-    lien('comptes', '/comptes', 'admin.comptes'),
-    lien('sans2fa', '/comptes?etat=SANS_2FA', 'admin.sans2fa'),
-    lien('premierAcces', '/comptes?etat=PREMIER_ACCES', 'admin.premierAcces'),
-    lien('inactifs', '/comptes?etat=INACTIF', 'admin.inactifs'),
-    lien('profils', '/profils', 'admin.profils'),
-    ...(peut(PERM.journalAdministrationLire) ? [lien('journal', '/journal', 'admin.journal')] : []),
-    ...(peut(PERM.politiqueLire) ? [lien('politique', '/politique-securite', 'admin.politique')] : []),
-    ...(peut(PERM.configurationLire) ? [{ key: 'console', href: versConsole('/console/tableau-de-bord'), label: t('admin.console'), meta: t('admin.meta.console') }] : []),
-  ]
+  const vers = (chemin: string) => () => void navigate(`${ADMINISTRATION}${chemin}`)
   return (
     <PageSection title={t('admin.titre')} description={t('admin.texte')}>
-      <LinkList label={t('admin.liens')} items={items} pageSize={10} />
+      <ActionBar align="start" label={t('admin.liens')}>
+        {peut(PERM.compteCreer) ? <Button variant="primary" icon="plus" onClick={vers('/comptes/nouveau')}>{t('admin.creer')}</Button> : null}
+        <Button onClick={vers('/comptes')}>{t('admin.comptes')}</Button>
+        <Button variant="ghost" onClick={vers('/comptes?etat=SANS_2FA')}>{t('admin.sans2fa')}</Button>
+        <Button variant="ghost" onClick={vers('/comptes?etat=PREMIER_ACCES')}>{t('admin.premierAcces')}</Button>
+        <Button variant="ghost" onClick={vers('/comptes?etat=INACTIF')}>{t('admin.inactifs')}</Button>
+        <Button variant="ghost" onClick={vers('/profils')}>{t('admin.profils')}</Button>
+        {peut(PERM.journalAdministrationLire) ? <Button variant="ghost" onClick={vers('/journal')}>{t('admin.journal')}</Button> : null}
+        {peut(PERM.politiqueLire) ? <Button variant="ghost" onClick={vers('/politique-securite')}>{t('admin.politique')}</Button> : null}
+        {peut(PERM.configurationLire) ? (
+          <Button variant="ghost" icon="monitor" onClick={() => window.location.assign(versConsole('/console/tableau-de-bord'))}>{t('admin.console')}</Button>
+        ) : null}
+      </ActionBar>
     </PageSection>
   )
 }

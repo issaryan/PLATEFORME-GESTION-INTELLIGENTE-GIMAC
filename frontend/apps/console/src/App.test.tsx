@@ -33,6 +33,8 @@ describe('Console', () => {
       expect(screen.getByRole('link', { name: n })).toBeTruthy()
     }
     // Messagerie instantanée (D-64) : ouverte au super administrateur, pastille des non-lus de l'annuaire simulé.
+    // Retour au tableau de bord du département, d'où la console a été ouverte (D-69).
+    expect(screen.getByRole('link', { name: 'Retour au département' }).getAttribute('href')).toBe('http://localhost:4200/des/tableau-de-bord')
     const messagerie = screen.getByRole('link', { name: /^Messagerie/ })
     expect(messagerie.getAttribute('href')).toBe('/console/messagerie')
     expect(await within(messagerie).findByLabelText('3 non lus')).toBeTruthy()
