@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { Button, Card, EmptyState, ResourceDetail, ResourceForm, TreeView, type ResourceDescriptor, PageHeader } from '@gimac/design-system'
-import { EtatsRequete } from '@gimac/socle'
+import { EtatsRequete, usePermissions } from '@gimac/socle'
 import { useEffet } from '../../hooks/base'
 import { useHistoriqueReferentiel, useReferentiel, useReferentiels } from '../../hooks/referentiels'
 import { useDescripteurDS } from '../../ressources/descripteur'
@@ -70,6 +70,7 @@ function Version({ id, onglet, ouvrirOnglet, ouvrirFormulaire }: { id: string; o
   const historique = useHistoriqueReferentiel(id)
   const pilotes = useMemo(() => ({ openTab: ouvrirOnglet, openForm: ouvrirFormulaire }), [ouvrirOnglet, ouvrirFormulaire])
   const desc = useDescripteurDS(referentielOperationsDescriptor, pilotes)
+  const permissions = usePermissions()
   return (
     <EtatsRequete etat={q} emptyTitle={t('erreur.introuvable')} errorTitle={t('commun.erreur.titre')} retryLabel={t('commun.reessayer')}>
       {(v) => (
@@ -78,6 +79,7 @@ function Version({ id, onglet, ouvrirOnglet, ouvrirFormulaire }: { id: string; o
           row={v}
           mode="page"
           tab={onglet}
+          permissions={permissions}
           timeline={historique.data ?? []}
           onAction={(a, row) => a.run?.({ row: row ?? v, descriptor: desc })}
         />

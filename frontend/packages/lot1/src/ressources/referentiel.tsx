@@ -51,7 +51,7 @@ export const referentielOperationsDescriptor: ResourceDescriptorLot1<Referentiel
   tabs: [
     { key: 'operations', label: 'referentiel.onglet.operations', render: (r) => <OngletOperations versionId={r.id} /> },
     { key: 'comparaison', label: 'referentiel.onglet.comparaison', render: (r) => <OngletComparaison version={r} /> },
-    { key: 'controle', label: 'referentiel.onglet.controle', render: (r) => <OngletControle versionId={r.id} /> },
+    { key: 'controle', label: 'referentiel.onglet.controle', permission: 'HOM_REFERENTIEL_EDIT', render: (r) => <OngletControle versionId={r.id} /> },
     { key: 'migration', label: 'referentiel.onglet.migration', render: (r) => <OngletMigration version={r} /> },
   ],
   timeline: (r) => `${R}/${r.id}/historique`,

@@ -42,8 +42,10 @@ export function ResourceDetail<T extends object>(p: ResourceDetailProps<T>) {
   const perms = p.permissions
   const mode = p.mode || 'page'
   const fields = desc.fields.filter((f) => f.inDetail && (!f.permission || !perms || perms.indexOf(f.permission) >= 0))
+  // Onglet soumis à une permission : absent pour qui ne la détient pas (pas de requête refusée).
+  const ongletsPermis = (desc.tabs || []).filter((o) => !o.permission || !perms || perms.indexOf(o.permission) >= 0)
   const tabs = [{ key: 'detail', label: t('drawer.detail') }]
-    .concat((desc.tabs || []).map((o) => ({ key: o.key, label: o.label })))
+    .concat(ongletsPermis.map((o) => ({ key: o.key, label: o.label })))
     .concat(desc.timeline ? [{ key: 'chronologie', label: t('drawer.chronologie') }] : [])
     .concat(p.audit === false ? [] : [{ key: 'audit', label: t('drawer.audit') }])
   const [tab, setTabState] = useState(p.tab || 'detail')
@@ -76,7 +78,7 @@ export function ResourceDetail<T extends object>(p: ResourceDetailProps<T>) {
   else if (tab === 'audit')
     contenu = <div className="gm-col" style={{ gap: 'var(--gm-space-2)' }}>{(p.audit || []).map((c: string) => <CorrelationIdChip key={c} id={c} />)}</div>
   else {
-    const onglet = (desc.tabs || []).filter((x) => x.key === tab)[0]
+    const onglet = ongletsPermis.filter((x) => x.key === tab)[0]
     contenu = onglet && onglet.render ? onglet.render(row) : <EmptyState title={t('commun.aucunElement')} text={t('crud.ongletVide')} />
   }
   return (

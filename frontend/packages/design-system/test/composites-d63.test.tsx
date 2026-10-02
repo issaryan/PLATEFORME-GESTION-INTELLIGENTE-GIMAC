@@ -131,6 +131,19 @@ describe('ResourceDetail : résumé sous l’en-tête', () => {
     const { container } = render(<ResourceDetail descriptor={d} row={{ id: 'LIA-1', nom: 'Banque B', etat: 'OUVERTE' }} audit={false} />)
     expect(container.querySelector('header.gm-objhead')?.nextElementSibling?.textContent).toContain('ouverte')
   })
+  it('onglet soumis à une permission : absent et non rendu sans elle, même demandé par l’adresse', () => {
+    const rendu = vi.fn(() => <p>Contrôle à blanc</p>)
+    const avecOnglet: ResourceDescriptor<Liaison> = { ...d, tabs: [{ key: 'libre', label: 'Libre' }, { key: 'controle', label: 'Contrôle', permission: 'EDIT', render: rendu }] }
+    const ligne = { id: 'LIA-1', nom: 'Banque B', etat: 'OUVERTE' }
+    render(<ResourceDetail descriptor={avecOnglet} row={ligne} audit={false} permissions={['X']} tab="controle" />)
+    expect(screen.getByRole('tab', { name: 'Libre' })).toBeTruthy()
+    expect(screen.queryByRole('tab', { name: 'Contrôle' })).toBeNull()
+    expect(rendu).not.toHaveBeenCalled()
+    cleanup()
+    render(<ResourceDetail descriptor={avecOnglet} row={ligne} audit={false} permissions={['X', 'EDIT']} tab="controle" />)
+    expect(screen.getByRole('tab', { name: 'Contrôle' })).toBeTruthy()
+    expect(screen.getByText('Contrôle à blanc')).toBeTruthy()
+  })
 })
 
 describe('ResourceList : « Plus d’actions » ouvre le tiroir de la ligne', () => {

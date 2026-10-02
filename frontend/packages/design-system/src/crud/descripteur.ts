@@ -62,7 +62,8 @@ export interface ResourceDescriptor<T = Record<string, unknown>> {
   endpoints: { list: string; get: string; create?: string; update?: string; delete?: string; archive?: string }
   fields: FieldDescriptor<T>[]
   actions: ResourceAction<T>[]
-  tabs?: { key: string; label: string; render?: (row: T) => ReactNode }[]
+  /** Permission requise pour voir l'onglet (et déclencher ses lectures). */
+  tabs?: { key: string; label: string; permission?: string; render?: (row: T) => ReactNode }[]
   timeline?: (row: T) => string
   statusDictionary?: Record<string, { label: string; status: Status }>
   permissions: { list: string; read: string; create?: string; update?: string; delete?: string }
