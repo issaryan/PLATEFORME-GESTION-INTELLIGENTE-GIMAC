@@ -45,9 +45,27 @@ public class DocumentException extends RuntimeException {
         return new DocumentException(code, 422, message, details);
     }
 
+    /** 400 : requête invalide, avec détails (taille de partie attendue, par exemple). */
+    public static DocumentException invalide(String code, String message, Map<String, Object> details) {
+        return new DocumentException(code, 400, message, details);
+    }
+
     /** 404 : document inconnu. */
     public static DocumentException introuvable(Object id) {
         return new DocumentException("DOC_NOT_FOUND", 404, "Document introuvable", Map.of("id", String.valueOf(id)));
+    }
+
+    /**
+     * 404 : dépôt fragmenté inconnu ou ouvert par un autre compte ; la réponse est la même dans les
+     * deux cas, pour ne pas révéler l'existence du dépôt.
+     */
+    public static DocumentException depotIntrouvable(Object id) {
+        return new DocumentException("DOC_UPLOAD_NOT_FOUND", 404, "Dépôt introuvable", Map.of("id", String.valueOf(id)));
+    }
+
+    /** 409 : action incompatible avec l'état du dépôt (fermé, incomplet). */
+    public static DocumentException conflit(String code, String message, Map<String, Object> details) {
+        return new DocumentException(code, 409, message, details);
     }
 
     /** 500 : contenu conservé absent ou altéré (empreinte recalculée différente de l'empreinte inscrite). */

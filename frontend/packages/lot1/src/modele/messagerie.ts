@@ -42,7 +42,11 @@ export type Conversation = {
 export type PageMessagerie<T> = { contenu: T[]; total: number; page: number; taille: number }
 export type FilMessages = { contenu: Message[]; plusAnciens: boolean }
 
-export type Envoi = { contenu: string; etiquettes: EtiquetteLiaison[]; fichiers: File[] }
+/**
+ * Pièces d'un message : `fichiers` (envoi direct, 20 Mo au plus, hérité), `documents` (tickets de dépôts
+ * fragmentés, D-74, jusqu'à 20 Go) et `transferts` (pièces existantes repartagées par leur ticket, sans copie).
+ */
+export type Envoi = { contenu: string; etiquettes: EtiquetteLiaison[]; fichiers: File[]; documents?: string[]; transferts?: string[] }
 /** « groupe » (D-68) : groupe de discussion nommé ; le premier message y est facultatif. */
 export type NouvelleConversation = Envoi & { destinataires: string[]; titre: string | null; liaisonId: string | null; groupe?: boolean }
 
@@ -54,6 +58,11 @@ export const LIMITES_MESSAGERIE = {
   piecesMax: 5,
   tailleMaxOctets: 20 * 1024 * 1024,
   types: '.pdf,.png,.jpg,.jpeg,.txt,.csv,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip',
+  /** Dépôt fragmenté (D-74) : enregistrements d'ateliers, archives ; 20 Go par fichier. */
+  tailleMaxDepotOctets: 20 * 1024 ** 3,
+  typesDepot: '.pdf,.png,.jpg,.jpeg,.txt,.csv,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.mp4,.mov,.webm,.mkv,.avi,.mp3,.wav,.m4a,.7z,.tar,.gz',
+  /** Au-delà, pas d'aperçu : téléchargement direct, sans charger le fichier en mémoire. */
+  apercuMaxOctets: 50 * 1024 * 1024,
 } as const
 
 /** Références de liaison citées dans un texte (LIA-AAAA-NNN), rendues en liens. */

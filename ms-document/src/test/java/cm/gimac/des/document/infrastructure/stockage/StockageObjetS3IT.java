@@ -86,7 +86,7 @@ class StockageObjetS3IT {
     @Test
     @DisplayName("Passerelle injoignable : 503 DOC_STORAGE_UNAVAILABLE")
     void passerelleInjoignable() {
-        StockageS3Proprietes p = new StockageS3Proprietes(URI.create("http://127.0.0.1:1"), null, "a", "b", COMPARTIMENT, false);
+        StockageS3Proprietes p = new StockageS3Proprietes(URI.create("http://127.0.0.1:1"), null, "a", "b", COMPARTIMENT, null, false);
         try (S3Client injoignable = StockageObjetS3.client(p)) {
             StockageObjetS3 s = new StockageObjetS3(injoignable, p);
             assertThatThrownBy(() -> s.deposer("k", new byte[] { 1 }, "text/plain", "a".repeat(64))).isInstanceOfSatisfying(DocumentException.class, e ->

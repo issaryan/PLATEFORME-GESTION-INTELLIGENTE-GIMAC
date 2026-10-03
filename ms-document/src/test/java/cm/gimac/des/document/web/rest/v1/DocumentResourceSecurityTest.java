@@ -396,7 +396,61 @@ class DocumentResourceSecurityTest {
     static final byte[] OCTETS = "Compte rendu de la réunion".getBytes(StandardCharsets.UTF_8);
 
     void contenuConnu(String nom, String type) {
-        when(lecture.lire(eq(ID), any())).thenReturn(new Contenu(ID, nom, type, EmpreinteSha256.de(OCTETS), OCTETS));
+        when(lecture.lire(eq(ID), any())).thenReturn(
+            new Contenu(ID, nom, type, EmpreinteSha256.de(OCTETS), OCTETS.length, new java.io.ByteArrayInputStream(OCTETS))
+        );
+    }
+
+    // ------------------------------------------------------------------ GET /api/v1/interne/documents/{id}
+
+    static final String METADONNEES = "/api/v1/interne/documents/" + ID;
+
+    @Test
+    @DisplayName("Métadonnées : 401 sans jeton ; 403 pour un jeton utilisateur ou un jeton de service sans INTERNAL_DOCUMENT_READ")
+    void metadonneesRefusees() throws Exception {
+        mvc.perform(get(METADONNEES)).andExpect(status().isUnauthorized());
+        mvc.perform(get(METADONNEES).with(jeton("2", "INTERNAL_DOCUMENT_READ", "DOC_DEPOSIT"))).andExpect(status().isForbidden());
+        mvc.perform(get(METADONNEES).with(jetonDeService(COLLABORATION, "INTERNAL_DOCUMENT_DEPOSIT"))).andExpect(status().isForbidden());
+        verifyNoInteractions(lecture);
+    }
+
+    @Test
+    @DisplayName("Métadonnées avec INTERNAL_DOCUMENT_READ : nom, taille, type, empreinte, finalité, référence, déposant, institution, date ; 404 sinon")
+    void metadonnees() throws Exception {
+        when(lecture.metadonnees(ID)).thenReturn(
+            new LireDocumentUseCase.Metadonnees(
+                ID,
+                "atelier.mp4",
+                4_294_967_296L,
+                "video/mp4",
+                SHA,
+                "MESSAGERIE",
+                "conversation/c1",
+                "agent-ddrm",
+                null,
+                java.time.Instant.parse("2026-10-02T08:00:00Z")
+            )
+        );
+        mvc
+            .perform(get(METADONNEES).with(jetonDeService(COLLABORATION, "INTERNAL_DOCUMENT_READ")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(ID.toString()))
+            .andExpect(jsonPath("$.nomFichier").value("atelier.mp4"))
+            .andExpect(jsonPath("$.taille").value(4_294_967_296L))
+            .andExpect(jsonPath("$.typeMime").value("video/mp4"))
+            .andExpect(jsonPath("$.sha256").value(SHA))
+            .andExpect(jsonPath("$.finalite").value("MESSAGERIE"))
+            .andExpect(jsonPath("$.reference").value("conversation/c1"))
+            .andExpect(jsonPath("$.deposant").value("agent-ddrm"))
+            .andExpect(jsonPath("$.institutionId").doesNotExist())
+            .andExpect(jsonPath("$.deposeLe").value("2026-10-02T08:00:00Z"));
+
+        UUID inconnu = UUID.randomUUID();
+        when(lecture.metadonnees(inconnu)).thenThrow(DocumentException.introuvable(inconnu));
+        mvc
+            .perform(get("/api/v1/interne/documents/" + inconnu).with(jetonDeService(COLLABORATION, "INTERNAL_DOCUMENT_READ")))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.code").value("DOC_NOT_FOUND"));
     }
 
     @Test

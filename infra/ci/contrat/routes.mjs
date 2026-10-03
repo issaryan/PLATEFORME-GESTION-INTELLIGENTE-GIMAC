@@ -349,6 +349,14 @@ function opa(methode, chemin) {
   if (/^\/bff\/[^/]+\/[^/]+\/interne(\/|$)/.test(ex)) return { decision: 'REFUS', motif: 'route interne' }
   if (/^\/bff\/(des|portail|console)\/iam\/(moi(\/.*)?|reauthentification\/defi)$/.test(ex)) return { decision: 'LIBRE_SERVICE' }
   if (ex === '/bff/des/document/documents' && methode === 'POST') return { decision: 'DEPOT', permission: 'PAR_ADHESION_INSTRUCT|HOM_EVIDENCE_SUBMIT|DOC_DEPOSIT' }
+  // Dépôts fragmentés (D-74) depuis le DES et la console : règle route_depot_fragmente (permissions du dépôt ou COL_MESSAGE_SEND).
+  if (
+    (methode === 'POST' && /^\/bff\/(des|console)\/document\/depots(\/[^/]+\/fin)?$/.test(ex)) ||
+    (methode === 'PUT' && /^\/bff\/(des|console)\/document\/depots\/[^/]+\/parties\/[^/]+$/.test(ex)) ||
+    (['GET', 'DELETE'].includes(methode) && /^\/bff\/(des|console)\/document\/depots\/[^/]+$/.test(ex))
+  )
+    return { decision: 'DEPOT', permission: 'PAR_ADHESION_INSTRUCT|HOM_EVIDENCE_SUBMIT|HOM_STEP_MANAGE|CER_CHANGE_RECORD_LINK|DOC_DEPOSIT|COL_MESSAGE_SEND' }
+  if (/^\/bff\/(des|console)\/document\/depots(\/|$)/.test(ex)) return { decision: 'REFUS', motif: 'chemin de dépôt fragmenté sans règle' }
   if (ex.startsWith('/bff/portail/')) return { decision: 'REFUS', motif: 'chemin du portail sans règle' }
   if (/^\/bff\/des\/collaboration\/messagerie(\/|$)/.test(ex)) return { decision: 'REFUS', motif: 'chemin de messagerie sans règle' }
   if (ex.startsWith('/bff/des/')) return { decision: 'PREAUTHORIZE' }

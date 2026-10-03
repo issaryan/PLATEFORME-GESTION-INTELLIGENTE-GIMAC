@@ -9,10 +9,13 @@ import cm.gimac.des.document.domain.DocumentException;
 import cm.gimac.des.document.infrastructure.security.ServiceTokenAuthorizationManager;
 import cm.gimac.des.document.web.rest.v1.DocumentVues.DocumentDeposeVue;
 import cm.gimac.des.document.web.rest.v1.DocumentVues.EmpreinteVue;
+import cm.gimac.des.document.web.rest.v1.DocumentVues.MetadonneesVue;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.HexFormat;
 import java.util.UUID;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -37,8 +40,10 @@ import org.springframework.web.multipart.MultipartFile;
  *   déclarée d'une pièce avant de la rattacher au dossier ;</li>
  *   <li>{@code POST /} (INTERNAL_DOCUMENT_DEPOSIT) : MS-COLLABORATION dépose une pièce jointe de la
  *   messagerie pour le compte de l'utilisateur {@code deposantId} (même chaîne que le dépôt direct) ;</li>
- *   <li>{@code GET /{id}/contenu} (INTERNAL_DOCUMENT_READ) : contenu du document, vérifié contre son
- *   empreinte, restitué en pièce jointe avec l'en-tête {@code Repr-Digest} (RFC 9530).</li>
+ *   <li>{@code GET /{id}} (INTERNAL_DOCUMENT_READ) : métadonnées du document (nom, taille, type,
+ *   empreinte, finalité, référence, déposant), pour vérifier un ticket de dépôt fragmenté (D-74) ;</li>
+ *   <li>{@code GET /{id}/contenu} (INTERNAL_DOCUMENT_READ) : contenu du document, servi en flux et
+ *   vérifié contre son empreinte, restitué en pièce jointe avec l'en-tête {@code Repr-Digest} (RFC 9530).</li>
  * </ul>
  */
 @RestController
@@ -83,9 +88,20 @@ public class DocumentInterneResource {
         return ResponseEntity.status(HttpStatus.CREATED).body(DocumentDeposeVue.de(depot.deposer(commande, deposant)));
     }
 
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('INTERNAL_DOCUMENT_READ')")
+    public MetadonneesVue metadonnees(@PathVariable UUID id) {
+        return MetadonneesVue.de(lecture.metadonnees(id));
+    }
+
+    /**
+     * Contenu servi en flux (D-74), sans le charger en mémoire : Content-Length et Repr-Digest
+     * annoncent la taille et l'empreinte inscrites ; un contenu altéré interrompt la réponse avant
+     * ses derniers octets.
+     */
     @GetMapping("/{id}/contenu")
     @PreAuthorize("hasAuthority('INTERNAL_DOCUMENT_READ')")
-    public ResponseEntity<byte[]> contenu(@PathVariable UUID id, Authentication auth) {
+    public ResponseEntity<Resource> contenu(@PathVariable UUID id, Authentication auth) {
         Contenu c = lecture.lire(id, service(auth));
         return ResponseEntity.ok()
             .contentType(MediaType.parseMediaType(c.typeMime()))
@@ -93,7 +109,7 @@ public class DocumentInterneResource {
             .header(HttpHeaders.CONTENT_DISPOSITION, pieceJointe(c.nomFichier()))
             .header(REPR_DIGEST, reprDigest(c.sha256()))
             .header("X-Content-Type-Options", "nosniff")
-            .body(c.octets());
+            .body(new InputStreamResource(c.flux()));
     }
 
     /**

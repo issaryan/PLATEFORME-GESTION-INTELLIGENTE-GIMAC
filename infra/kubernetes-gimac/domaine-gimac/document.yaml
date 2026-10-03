@@ -29,3 +29,8 @@ spec:
                 secretKeyRef:
                   name: gimac-stockage-objet
                   key: cle-secrete
+            # Dépôts fragmentés en cours (D-74) : compartiment sans verrouillage d'objets, créé par
+            # l'exploitant avec ses règles de cycle de vie (objets expirés après 2 jours, téléversements
+            # incomplets abandonnés après 1 jour), comme init-compartiments.sh en développement.
+            - name: GIMAC_S3_COMPARTIMENT_DEPOTS
+              value: gimac-depots

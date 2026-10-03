@@ -116,6 +116,9 @@ gimac:
       cle-acces: ${GIMAC_S3_CLE_ACCES}
       cle-secrete: ${GIMAC_S3_CLE_SECRETE}
       compartiment: ${GIMAC_S3_COMPARTIMENT:gimac-documents}
+      # Dépôts fragmentés en cours (D-74) : sans verrouillage ; objets expirés après 2 jours,
+      # téléversements incomplets abandonnés après 1 jour (règles posées à la création du compartiment).
+      compartiment-depots: ${GIMAC_S3_COMPARTIMENT_DEPOTS:gimac-depots}
       # Démarrage refusé si le compartiment n'a pas le verrouillage d'objets (RG-04, RG-16).
       exiger-verrouillage: true
 

@@ -129,6 +129,52 @@ class ReglesMessagerieTest {
         @ParameterizedTest(name = "{0} ({1})")
         @CsvSource(
             {
+                "atelier.mp4,video/mp4,video/mp4",
+                "atelier.MOV,video/quicktime,video/quicktime",
+                "atelier.webm,application/octet-stream,video/webm",
+                "atelier.mkv,,video/x-matroska",
+                "atelier.avi,video/x-msvideo,video/x-msvideo",
+                "son.mp3,audio/mpeg,audio/mpeg",
+                "son.wav,audio/x-wav,audio/wav",
+                "son.m4a,audio/mp4,audio/mp4",
+                "lot.7z,application/x-7z-compressed,application/x-7z-compressed",
+                "lot.tar,application/x-tar,application/x-tar",
+                "lot.tar.gz,application/gzip,application/gzip",
+                "lot.zip,application/zip,application/zip",
+                "rapport.pdf,application/pdf,application/pdf",
+            }
+        )
+        @DisplayName("D-74 : formats des documents déposés par envoi fragmenté (liste étendue), type canonique, nom simple")
+        void documentsAdmis(String nom, String type, String attendu) {
+            var retenu = regles.document("dossier/" + nom, type, 5L * 1024 * 1024 * 1024);
+            assertThat(retenu.typeMime()).isEqualTo(attendu);
+            assertThat(retenu.nom()).isEqualTo(nom);
+        }
+
+        @Test
+        @DisplayName("D-74 : document refusé si l'extension est inconnue, le type contraire ou la taille nulle ; vidéo refusée en fichier multipart")
+        void documentsRefuses() {
+            refuse(() -> regles.document("outil.exe", "application/octet-stream", 10), "COL_ATTACHMENT_TYPE");
+            refuse(() -> regles.document("atelier.mp4", "audio/mpeg", 10), "COL_ATTACHMENT_TYPE");
+            refuse(() -> regles.document("atelier.mp4", "video/mp4", 0), "COL_ATTACHMENT_TYPE");
+            refuse(() -> regles.pieces(List.of(fichier("atelier.mp4", "video/mp4", 10))), "COL_ATTACHMENT_TYPE");
+        }
+
+        @Test
+        @DisplayName("D-74 : 5 pièces au plus toutes sources confondues ; identifiants sans doublon ni valeur nulle")
+        void nombreEtIdentifiants() {
+            regles.nombrePieces(5);
+            refuse(() -> regles.nombrePieces(6), "COL_TOO_MANY_ATTACHMENTS");
+            UUID a = UUID.randomUUID();
+            UUID b = UUID.randomUUID();
+            assertThat(regles.identifiants(Arrays.asList(a, null, b, a))).containsExactly(a, b);
+            assertThat(regles.identifiants(null)).isEmpty();
+            assertThat(regles.identifiants(List.of())).isEmpty();
+        }
+
+        @ParameterizedTest(name = "{0} ({1})")
+        @CsvSource(
+            {
                 "rapport.pdf,application/pdf,application/pdf",
                 "capture.PNG,image/png,image/png",
                 "photo.jpg,image/jpeg,image/jpeg",

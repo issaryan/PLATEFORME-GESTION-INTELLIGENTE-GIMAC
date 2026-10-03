@@ -60,7 +60,7 @@ public final class S3TestContainer {
     }
 
     public static StockageS3Proprietes proprietes(String compartiment, boolean exigerVerrouillage) {
-        return new StockageS3Proprietes(pointAcces(), "us-east-1", CLE_ACCES, CLE_SECRETE, compartiment, exigerVerrouillage);
+        return new StockageS3Proprietes(pointAcces(), "us-east-1", CLE_ACCES, CLE_SECRETE, compartiment, compartiment + "-depots", exigerVerrouillage);
     }
 
     /** Client S3 construit comme en production (adressage par chemin, sommes de contrôle à la demande). */

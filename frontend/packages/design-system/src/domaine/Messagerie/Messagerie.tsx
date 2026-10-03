@@ -119,6 +119,8 @@ export interface MessageThreadProps {
   plusAnciens?: boolean
   onPlusAnciens?: () => void
   onPiece?: (id: string) => void
+  /** Repartage d'une pièce par son ticket (D-74) : bouton « Transférer » à côté de chaque pièce. */
+  onTransferer?: (id: string) => void
   /** Zone de saisie, sous le fil. */
   saisie?: ReactNode
   height?: number | string
@@ -174,6 +176,9 @@ export function MessageThread(p: MessageThreadProps) {
                     <Icon name="paperclip" size={14} /> {pj.nom}
                   </button>
                   {pj.taille ? <span className="gm-num gm-field-help"> · {pj.taille}</span> : null}
+                  {p.onTransferer ? (
+                    <IconButton variant="ghost" icon="forward" label={t('messagerie.transferer', { nom: pj.nom })} onClick={() => p.onTransferer?.(pj.id)} />
+                  ) : null}
                 </div>
               ))}
             </div>
@@ -204,6 +209,48 @@ export interface MessageComposerProps {
   extras?: ReactNode
   disabled?: boolean
   label?: string
+  /**
+   * Pièces envoyées par morceaux (dépôts fragmentés, D-74), avec leur progression ; « Envoyer » attend
+   * qu'elles soient toutes prêtes. Le sélecteur rend alors seulement les fichiers nouvellement choisis.
+   */
+  envois?: EnvoiPiece[]
+  onAnnulerEnvoi?: (cle: string) => void
+}
+
+/** Pièce en cours d'envoi : octets partis (envoi), vérification par le service, prête, ou en échec. */
+export interface EnvoiPiece {
+  cle: string
+  nom: string
+  phase: 'envoi' | 'verification' | 'pret' | 'erreur'
+  /** De 0 à 100, pendant l'envoi. */
+  pourcent: number
+  /** « 1,2 Go sur 4,0 Go ». */
+  detail?: string
+  erreur?: string
+}
+
+function LigneEnvoi({ e, onAnnuler }: { e: EnvoiPiece; onAnnuler?: (cle: string) => void }) {
+  const t = useLibelle()
+  const etat = e.phase === 'envoi' ? t('messagerie.envoi.enCours', { pourcent: e.pourcent })
+    : e.phase === 'verification' ? t('messagerie.envoi.verification')
+    : e.phase === 'pret' ? t('messagerie.envoi.pret')
+    : e.erreur ?? t('messagerie.envoi.echec')
+  return (
+    <li className={cx('gm-envoi', `gm-envoi-${e.phase}`)}>
+      <Icon name={e.phase === 'pret' ? 'check' : e.phase === 'erreur' ? 'triangle-alert' : 'paperclip'} size={14} />
+      <span className="gm-envoi-corps">
+        <span className="gm-envoi-ligne">
+          <strong className="gm-envoi-nom">{e.nom}</strong>
+          <span className="gm-envoi-etat" aria-live="polite">{etat}</span>
+        </span>
+        {e.phase === 'envoi' || e.phase === 'verification' ? (
+          <progress className="gm-envoi-barre" max={100} value={e.phase === 'envoi' ? e.pourcent : undefined} aria-label={t('messagerie.envoi.progression', { nom: e.nom })} />
+        ) : null}
+        {e.detail && e.phase === 'envoi' ? <span className="gm-num gm-field-help">{e.detail}</span> : null}
+      </span>
+      {onAnnuler ? <IconButton variant="ghost" icon="x" label={t(e.phase === 'pret' || e.phase === 'erreur' ? 'messagerie.envoi.retirer' : 'messagerie.envoi.annuler', { nom: e.nom })} onClick={() => onAnnuler(e.cle)} /> : null}
+    </li>
+  )
 }
 
 /** Zone de saisie : texte sur plusieurs lignes, pièces jointes retirables, envoi à l'Entrée. */
@@ -211,7 +258,9 @@ export function MessageComposer(p: MessageComposerProps) {
   const t = useLibelle()
   const selecteur = useRef<HTMLInputElement>(null)
   const fichiers = p.fichiers ?? []
-  const peutEnvoyer = !p.disabled && !p.sending && (p.value.trim().length > 0 || fichiers.length > 0)
+  const envois = p.envois ?? []
+  const enCours = envois.some((e) => e.phase !== 'pret')
+  const peutEnvoyer = !p.disabled && !p.sending && !enCours && (p.value.trim().length > 0 || fichiers.length > 0 || envois.length > 0)
   const touche = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault()
@@ -227,6 +276,11 @@ export function MessageComposer(p: MessageComposerProps) {
             <Tag key={`${f.name}-${i}`} onRemove={() => p.onFichiers?.(fichiers.filter((_, j) => j !== i))}>{f.name}</Tag>
           ))}
         </div>
+      ) : null}
+      {envois.length ? (
+        <ul className="gm-envois" aria-label={t('messagerie.envoi.liste')}>
+          {envois.map((e) => <LigneEnvoi key={e.cle} e={e} onAnnuler={p.onAnnulerEnvoi} />)}
+        </ul>
       ) : null}
       {p.error ? <InlineAlert level="crit">{p.error}</InlineAlert> : null}
       <div className="gm-row gm-saisie-ligne">

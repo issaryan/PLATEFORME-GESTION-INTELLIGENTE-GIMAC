@@ -22,7 +22,7 @@ Environnement de développement de la plateforme en une commande (SOC-13, D-45, 
 ## Complément du projet
 
 - Valkey à la place de Redis (D-25) et mots de passe d'administration issus du `.env` (D-44).
-- Ceph RGW (port 7480) avec compartiments `gimac-preuves`, `gimac-documents`, `gimac-archives`, `gimac-rapports`, verrouillage d'objets activé.
+- Ceph RGW (port 7480) avec compartiments `gimac-preuves`, `gimac-documents`, `gimac-archives`, `gimac-rapports`, verrouillage d'objets activé ; compartiment `gimac-depots` des dépôts fragmentés en cours (D-74), sans verrouillage, objets expirés après 2 jours et téléversements incomplets abandonnés après 1 jour.
 - Registre des schémas Apicurio (8880), OpenBao (8200), OPA (8181).
 - Simulacres : simulateur (8190, lecture seule, écritures refusées), gestion des changements (8191), horodatage (8192), messagerie Mailpit (1025, 8025).
 - OpenTelemetry (4317, 4318), Loki (3100), Tempo (3200).

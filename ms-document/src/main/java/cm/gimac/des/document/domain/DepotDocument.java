@@ -47,7 +47,8 @@ public class DepotDocument implements Serializable {
     @Column(name = "sha256", length = 64, nullable = false, updatable = false)
     private String sha256;
 
-    @Column(name = "cle_objet", length = 255, nullable = false, unique = true, updatable = false)
+    /** Clé de l'objet WORM ; plusieurs documents de même contenu peuvent la partager (déduplication, D-74). */
+    @Column(name = "cle_objet", length = 255, nullable = false, updatable = false)
     private String cleObjet;
 
     @Column(name = "version_objet", length = 255, updatable = false)

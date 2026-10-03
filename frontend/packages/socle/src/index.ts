@@ -3,6 +3,9 @@ export { P, SESSION, CONNEXION, DECONNEXION, API_CONNEXION, APPAREILS, HISTORIQU
 export { urlAvatar, avatarsSimules, photoDemo } from './avatar/avatar'
 export { ApiError, estApiError, type Problem } from './http/errors'
 export { http, configureHttp, reprDigestToHex, type RequestOptions, type HttpHooks, type CsrfConfig } from './http/client'
+export {
+  televerser, depotsHttp, type ServiceDepots, type Depot, type EtatDepot, type OuvertureDepot, type Progression, type Televersement, type OptionsTeleversement,
+} from './http/televersement'
 export { openLiveChannel, type LiveTopic, type LiveEvent, type EtatCanal } from './live/live'
 export { SIGNAL, DUREE_SAISIE_MS, initialiserPresence, appliquerSignal, viderSignaux, usePresence, useEnLigne, useSaisies, type EtatPresence } from './live/signaux'
 export { getReauthAssertion, ReauthCancelled, refusReauth, estAnnulation, b64u, fromB64u, type SignPurpose, type RefusReauth } from './reauth/webauthn'
@@ -27,7 +30,7 @@ export {
 } from './session/deconnexion'
 export { lireSessionDemo, ouvrirSessionDemo, fermerSessionDemo, CLE_SESSION_DEMO, type SessionDemo } from './session/demo'
 export {
-  SurveillanceInactivite, dureeInactivite, prolongerSession, minutesSecondes, INACTIVITE_MAX_MS, PREAVIS_MS, CANAL_SESSION, type SurveillanceInactiviteProps,
+  SurveillanceInactivite, dureeInactivite, prolongerSession, signalerActivite, minutesSecondes, INACTIVITE_MAX_MS, PREAVIS_MS, CANAL_SESSION, type SurveillanceInactiviteProps,
 } from './session/inactivite'
 export { PageDeconnexion } from './session/PageDeconnexion'
 export { LangueComposants } from './i18n/LangueComposants'

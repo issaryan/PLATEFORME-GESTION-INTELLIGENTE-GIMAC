@@ -36,6 +36,41 @@ async function capturer(page: Page, nom: string) {
   await page.screenshot({ path: join(CAPTURES, `${nom}.png`) })
 }
 
+// Dépôt fragmenté et repartage par ticket (D-74) : progression de l'envoi, puis transfert sans nouvel envoi.
+for (const theme of ['light', 'dark'] as const) {
+  test(`Scénario : joindre un enregistrement d’atelier avec sa progression, puis transférer une pièce (thème ${theme})`, async ({ page }) => {
+    await demo(page, { profil: 'ROLE_CHEF_DES', theme })
+    await page.goto(`${ADRESSES.departement}/des/messagerie`)
+    await conversations(page).getByRole('button', { name: /Essais de LIA-2026-030/ }).click()
+    const fil = page.getByRole('region', { name: 'Essais de LIA-2026-030' })
+    const envois = fil.getByRole('list', { name: 'Pièces en cours d’envoi' })
+    // Type refusé avant tout envoi, puis retiré ; envoi annulé en cours de route.
+    await joindre(fil, 'outil-installation.exe', 'binaire', 'application/octet-stream')
+    await expect(envois.getByText('Ce type de fichier n’est pas admis.')).toBeVisible()
+    await envois.getByRole('button', { name: 'Retirer outil-installation.exe' }).click()
+    await joindre(fil, 'brouillon-abandonne.zip', 'archive', 'application/zip')
+    await expect(envois.getByText(/^Envoi \d+ %$/)).toBeVisible()
+    await envois.getByRole('button', { name: 'Annuler l’envoi de brouillon-abandonne.zip' }).click()
+    await expect(envois).toHaveCount(0)
+    await joindre(fil, 'atelier-cles-LIA-2026-030.mp4', 'enregistrement', 'video/mp4')
+    await expect(envois.getByText(/^Envoi \d+ %$/)).toBeVisible()
+    await expect(fil.getByRole('button', { name: 'Envoyer' })).toBeDisabled()
+    await capturer(page, `messagerie-envoi-progression-${theme === 'light' ? 'clair' : 'sombre'}`)
+    await expect(envois.getByText('Prêt')).toBeVisible()
+    await fil.getByLabel('Votre message').fill('Enregistrement de l’atelier de cérémonie des clés.')
+    await fil.getByRole('button', { name: 'Envoyer' }).click()
+    await expect(fil.getByRole('button', { name: 'Ouvrir atelier-cles-LIA-2026-030.mp4' })).toBeVisible()
+    // Transfert : la pièce rejoint une autre conversation par son ticket.
+    await fil.getByRole('button', { name: 'Transférer atelier-cles-LIA-2026-030.mp4' }).click()
+    const dialogue = page.getByRole('dialog', { name: /Transférer la pièce jointe/ })
+    await expect(dialogue.getByText('la pièce y est partagée telle quelle, sans nouvel envoi', { exact: false })).toBeVisible()
+    await capturer(page, `messagerie-transfert-${theme === 'light' ? 'clair' : 'sombre'}`)
+    await dialogue.getByRole('button', { name: /Aïcha Mahamat Nour/ }).click()
+    const cible = page.getByRole('region', { name: 'Aïcha Mahamat Nour' })
+    await expect(cible.getByRole('button', { name: 'Ouvrir atelier-cles-LIA-2026-030.mp4' })).toBeVisible()
+  })
+}
+
 // Présence (D-72) : point vert des collègues en ligne dans la liste et l'en-tête du fil, « Vu … » sinon.
 for (const theme of ['light', 'dark'] as const) {
   test(`Scénario : voir qui est en ligne dans la messagerie (thème ${theme})`, async ({ page }) => {
@@ -156,8 +191,11 @@ test.describe('Fonctionnalité : messagerie de travail', () => {
       await panneau.getByRole('option', { name: /LIA-2026-012/ }).click()
       await expect(panneau.getByText('# LIA-2026-012')).toBeVisible()
       await joindre(panneau, 'plan-bascule.pdf', 'plan de bascule')
-      await expect(panneau.getByText('plan-bascule.pdf')).toBeVisible()
+      // D-74 : la pièce part aussitôt par morceaux, sa progression affichée ; « Envoyer » attend qu'elle soit prête.
+      const envois = panneau.getByRole('list', { name: 'Pièces en cours d’envoi' })
+      await expect(envois.getByText('plan-bascule.pdf')).toBeVisible()
       await panneau.getByLabel('Votre message').fill('Plan de bascule joint pour relecture.')
+      await expect(envois.getByText('Prêt')).toBeVisible()
       await panneau.getByRole('button', { name: 'Envoyer' }).click()
     })
     await test.step('Alors la conversation directe s’ouvre sur le message et la pièce', async () => {

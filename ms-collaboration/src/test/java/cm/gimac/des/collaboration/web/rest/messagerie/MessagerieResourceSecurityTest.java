@@ -294,6 +294,110 @@ class MessagerieResourceSecurityTest {
     }
 
     @Test
+    @DisplayName("D-74 : tickets et transferts dans la partie « message », sans aucune partie « fichiers » (envoi et création)")
+    @SuppressWarnings("unchecked")
+    void multipartSansFichier() throws Exception {
+        UUID cid = CONVERSATION.getId();
+        UUID ticket = UUID.randomUUID();
+        UUID piece = UUID.randomUUID();
+        String corps = "{\"contenu\":\"\",\"documents\":[\"" + ticket + "\"],\"transferts\":[\"" + piece + "\"]}";
+        mvc
+            .perform(requete(HttpMethod.POST, "/api/v1/messagerie/conversations/" + cid + "/messages", corps).get().with(jeton("2", "COL_MESSAGE_SEND")))
+            .andExpect(status().isCreated());
+        ArgumentCaptor<EnvoyerMessageUseCase.NouveauMessage> n = ArgumentCaptor.forClass(EnvoyerMessageUseCase.NouveauMessage.class);
+        ArgumentCaptor<List<FichierJoint>> f = ArgumentCaptor.forClass(List.class);
+        verify(envoi).envoyer(any(), eq(cid), n.capture(), f.capture());
+        assertThat(n.getValue().documents()).containsExactly(ticket);
+        assertThat(n.getValue().transferts()).containsExactly(piece);
+        assertThat(n.getValue().etiquettes()).isNull();
+        assertThat(f.getValue()).isEmpty();
+
+        // Sans les champs : listes vides transmises.
+        mvc.perform(requete(HttpMethod.POST, "/api/v1/messagerie/conversations/" + cid + "/messages", ENVOI).get().with(jeton("2", "COL_MESSAGE_SEND")));
+        verify(envoi, org.mockito.Mockito.times(2)).envoyer(any(), eq(cid), n.capture(), any());
+        assertThat(n.getValue().documents()).isEmpty();
+        assertThat(n.getValue().transferts()).isEmpty();
+
+        String creation = CREATION.replaceFirst("\\{", "{\"documents\":[\"" + ticket + "\"],\"transferts\":[\"" + piece + "\"],");
+        mvc.perform(requete(HttpMethod.POST, "/api/v1/messagerie/conversations", creation).get().with(jeton("2", "COL_MESSAGE_SEND"))).andExpect(status().isCreated());
+        ArgumentCaptor<EnvoyerMessageUseCase.NouvelleConversation> d = ArgumentCaptor.forClass(EnvoyerMessageUseCase.NouvelleConversation.class);
+        verify(envoi).creerConversation(any(), d.capture(), f.capture());
+        assertThat(d.getValue().documents()).containsExactly(ticket);
+        assertThat(d.getValue().transferts()).containsExactly(piece);
+        assertThat(f.getValue()).isEmpty();
+
+        when(envoi.envoyer(any(), eq(cid), any(), any())).thenThrow(CollaborationException.invalide("COL_DOCUMENT_INVALID", "x", Map.of("id", ticket.toString())));
+        mvc
+            .perform(requete(HttpMethod.POST, "/api/v1/messagerie/conversations/" + cid + "/messages", corps).get().with(jeton("2", "COL_MESSAGE_SEND")))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("COL_DOCUMENT_INVALID"));
+    }
+
+    /** Flux de la taille donnée, produit à la demande (rien en mémoire) ; retient la plus grande lecture demandée et sa fermeture. */
+    static final class FluxGenere extends java.io.InputStream {
+
+        final long taille;
+        long lus;
+        int plusGrandeLecture;
+        boolean ferme;
+
+        FluxGenere(long taille) {
+            this.taille = taille;
+        }
+
+        @Override
+        public int read() {
+            if (lus >= taille) {
+                return -1;
+            }
+            return (int) (lus++ % 251);
+        }
+
+        @Override
+        public int read(byte[] b, int off, int len) {
+            plusGrandeLecture = Math.max(plusGrandeLecture, len);
+            if (lus >= taille) {
+                return -1;
+            }
+            int n = (int) Math.min(len, taille - lus);
+            for (int i = 0; i < n; i++) {
+                b[off + i] = (byte) ((lus + i) % 251);
+            }
+            lus += n;
+            return n;
+        }
+
+        @Override
+        public void close() {
+            ferme = true;
+        }
+    }
+
+    @Test
+    @DisplayName("D-74 : téléchargement relayé en flux par tampons, au-delà de 20 Mo ; Content-Length, Repr-Digest et Content-Disposition conservés")
+    void telechargementEnFlux() throws Exception {
+        long taille = 24L * 1024 * 1024 + 7;
+        Message m = new Message(UUID.randomUUID(), CONVERSATION, PAUL, new byte[] { 1 }, T);
+        PieceJointe grosse = m.joindre(UUID.randomUUID(), "atelier.mp4", taille, "video/mp4", "c".repeat(64));
+        FluxGenere flux = new FluxGenere(taille);
+        when(lecture.piece(anyString(), eq(grosse.getId()))).thenReturn(new PieceATelecharger(grosse, new ContenuDocument(flux, -1)));
+
+        var r = mvc
+            .perform(request(HttpMethod.GET, "/api/v1/messagerie/pieces/" + grosse.getId()).with(jeton("2", "COL_MESSAGE_READ")))
+            .andExpect(status().isOk())
+            .andExpect(header().string("Content-Length", String.valueOf(taille)))
+            .andExpect(header().string("Content-Disposition", org.hamcrest.Matchers.containsString("atelier.mp4")))
+            .andExpect(header().exists("Repr-Digest"))
+            .andExpect(content().contentType("video/mp4"))
+            .andReturn();
+        assertThat(r.getResponse().getContentAsByteArray()).hasSize((int) taille);
+        assertThat(flux.lus).isEqualTo(taille);
+        // Recopie par tampons : jamais une lecture du fichier entier.
+        assertThat(flux.plusGrandeLecture).isPositive().isLessThanOrEqualTo(64 * 1024);
+        assertThat(flux.ferme).isTrue();
+    }
+
+    @Test
     @DisplayName("Erreurs métier en problem+json avec code ; non-membre : 404 ; annuaire indisponible : 503")
     void erreurs() throws Exception {
         UUID inconnue = UUID.randomUUID();

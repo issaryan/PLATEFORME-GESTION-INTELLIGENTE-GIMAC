@@ -3,7 +3,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { ApiError } from '../http/errors'
 import { initI18n } from '../i18n/i18n'
 import { navigation } from './deconnexion'
-import { CANAL_SESSION, INACTIVITE_MAX_MS, SurveillanceInactivite, dureeInactivite, minutesSecondes, prolongerSession } from './inactivite'
+import { CANAL_SESSION, INACTIVITE_MAX_MS, SurveillanceInactivite, dureeInactivite, minutesSecondes, prolongerSession, signalerActivite } from './inactivite'
 
 // D-65 §6 : fermeture après 30 minutes d'inactivité, avertissement à 28, activité partagée entre onglets.
 
@@ -98,6 +98,16 @@ describe('SurveillanceInactivite', () => {
     expect(CanalFictif.instances[0].envoyes.filter((m) => (m as { type: string }).type === 'activite').length).toBeGreaterThanOrEqual(3)
   })
 
+  it('D-74 : un envoi de fichier en cours compte comme une activité', () => {
+    const expirer = vi.fn()
+    render(<SurveillanceInactivite prolonger={vi.fn(async () => undefined)} expirer={expirer} />)
+    for (let i = 0; i < 4; i++) {
+      avancer(20 * MIN)
+      signalerActivite()
+    }
+    expect(expirer).not.toHaveBeenCalled()
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+  })
   it('activité : la session serveur est prolongée au plus toutes les 5 minutes', () => {
     const prolonger = vi.fn(async () => undefined)
     render(<SurveillanceInactivite prolonger={prolonger} expirer={vi.fn()} />)

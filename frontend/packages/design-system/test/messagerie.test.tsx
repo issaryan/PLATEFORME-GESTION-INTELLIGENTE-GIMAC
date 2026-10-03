@@ -164,3 +164,31 @@ describe('AttachmentViewer et événements du fil', () => {
     expect(ligne.classList.contains('gm-msg-evenement')).toBe(true)
   })
 })
+
+describe('MessageComposer : pièces envoyées par morceaux (D-74)', () => {
+  it('progression, vérification, prête, échec ; « Envoyer » attend toutes les pièces ; annulation', () => {
+    const annuler = vi.fn()
+    const envoyer = vi.fn()
+    const envois = [
+      { cle: 'a', nom: 'atelier.mp4', phase: 'envoi' as const, pourcent: 42, detail: '1,7 Go sur 4,0 Go' },
+      { cle: 'b', nom: 'notes.pdf', phase: 'verification' as const, pourcent: 100 },
+    ]
+    const { rerender } = render(<MessageComposer value="Voici" onChange={() => undefined} onSend={envoyer} envois={envois} onAnnulerEnvoi={annuler} />)
+    const liste = screen.getByRole('list', { name: 'Pièces en cours d’envoi' })
+    expect(within(liste).getByText('Envoi 42 %')).toBeTruthy()
+    expect(within(liste).getByText('1,7 Go sur 4,0 Go')).toBeTruthy()
+    expect((screen.getByRole('progressbar', { name: 'Progression de l’envoi de atelier.mp4' }) as HTMLProgressElement).value).toBe(42)
+    expect(within(liste).getByText('Vérification…')).toBeTruthy()
+    expect((screen.getByRole('button', { name: 'Envoyer' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: 'Annuler l’envoi de atelier.mp4' }))
+    expect(annuler).toHaveBeenCalledWith('a')
+    rerender(<MessageComposer value="" onChange={() => undefined} onSend={envoyer} envois={[{ cle: 'a', nom: 'atelier.mp4', phase: 'pret', pourcent: 100 }, { cle: 'c', nom: 'x.zip', phase: 'erreur', pourcent: 0, erreur: 'Type non admis' }]} onAnnulerEnvoi={annuler} />)
+    expect(screen.getByText('Prêt')).toBeTruthy()
+    expect(screen.getByText('Type non admis')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Retirer x.zip' })).toBeTruthy()
+    expect((screen.getByRole('button', { name: 'Envoyer' }) as HTMLButtonElement).disabled).toBe(true)
+    rerender(<MessageComposer value="" onChange={() => undefined} onSend={envoyer} envois={[{ cle: 'a', nom: 'atelier.mp4', phase: 'pret', pourcent: 100 }]} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Envoyer' }))
+    expect(envoyer).toHaveBeenCalled()
+  })
+})

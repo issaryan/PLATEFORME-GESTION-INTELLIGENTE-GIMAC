@@ -1,5 +1,6 @@
 package cm.gimac.des.document.config;
 
+import cm.gimac.des.document.application.usecase.DepotFragmenteProprietes;
 import cm.gimac.des.document.infrastructure.stockage.StockageObjetS3;
 import cm.gimac.des.document.infrastructure.stockage.StockageS3Proprietes;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -11,10 +12,10 @@ import software.amazon.awssdk.services.s3.S3Client;
 /**
  * Dépôt objet WORM (D-50) : le client S3 n'est créé qu'avec l'adaptateur réel
  * ({@code gimac.adapters.stockage=real}, profil prod) ; les profils dev et test utilisent le
- * substitut en mémoire.
+ * substitut en mémoire. Réglages des dépôts fragmentés (D-74) : {@code gimac.document.depot.*}.
  */
 @Configuration
-@EnableConfigurationProperties(StockageS3Proprietes.class)
+@EnableConfigurationProperties({ StockageS3Proprietes.class, DepotFragmenteProprietes.class })
 public class StockageObjetConfiguration {
 
     @Bean(destroyMethod = "close")

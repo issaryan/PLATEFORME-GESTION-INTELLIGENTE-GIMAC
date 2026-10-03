@@ -1,4 +1,4 @@
-import { ApiError, avatarsSimules } from '@gimac/socle'
+import { ApiError, avatarsSimules, type OptionsTeleversement, type Televersement } from '@gimac/socle'
 import type { Conversation, Correspondant, EtiquetteLiaison, Message, PieceJointe, TypeEvenementGroupe } from '../../modele/messagerie'
 import { LIMITES_MESSAGERIE } from '../../modele/messagerie'
 import type { ServiceMessagerie } from '../ports'
@@ -36,6 +36,9 @@ const avecPhoto = <P extends Correspondant>(p: P): P => ({ ...p, avatarVersion: 
 const LIAISON = /^LIA-\d{4}-\d{3,6}$/
 const TYPES = new Set(LIMITES_MESSAGERIE.types.split(','))
 const extension = (nom: string) => nom.slice(nom.lastIndexOf('.')).toLowerCase()
+const TYPES_DEPOT = new Set(LIMITES_MESSAGERIE.typesDepot.split(","))
+/** Durée d'une étape du dépôt simulé (dix étapes d'envoi, une de vérification). */
+export const DUREE_ETAPE_DEPOT_MS = 120
 
 /** RG-52 : une suite de 13 à 19 chiffres (espaces ou tirets admis) passant le contrôle de Luhn est masquée (6 + 4). */
 export function masquerNumerosCarte(texte: string): string {
@@ -85,14 +88,18 @@ export function messagerieSimulee(attendre: Attendre, refus: Refus, moi: Corresp
   const ilYA = (minutes: number) => new Date(Date.UTC(2026, 8, 29, 16, 0) - minutes * 60_000).toISOString()
   const personne = (pid: string) => ANNUAIRE.find((p) => p.id === pid) ?? (pid === moi.id ? moi : undefined)
   const pieces = new Map<string, { piece: PieceJointe; blob: Blob; conversationId: string }>()
+  /** Documents déposés par morceaux (D-74), par ticket ; un même contenu (nom et taille) n'est gardé qu'une fois. */
+  const documents = new Map<string, { nom: string; taille: number; typeMime: string; blob: Blob; empreinte: string; deposant: string }>()
+  type Source = { nom: string; taille: number; typeMime: string; blob: Blob; empreinte: string }
   const conversations: EtatConversation[] = []
 
-  const ajouterMessage = (c: EtatConversation, auteur: Correspondant, contenu: string, envoyeLe: string, etiquettes: EtiquetteLiaison[] = [], fichiers: File[] = []): Message => {
+  const depuisFichier = (f: File): Source => ({ nom: f.name, taille: f.size, typeMime: f.type || 'application/octet-stream', blob: f, empreinte: `sim${f.size.toString(16).padStart(8, '0')}` })
+  const ajouterMessage = (c: EtatConversation, auteur: Correspondant, contenu: string, envoyeLe: string, etiquettes: EtiquetteLiaison[] = [], fichiers: File[] = [], autres: Source[] = []): Message => {
     const m: Message = {
       id: id('MSG'), conversationId: c.id, auteur, moi: auteur.id === moi.id, contenu: masquerNumerosCarte(contenu.trim()), envoyeLe, etiquettes,
-      piecesJointes: fichiers.map((f) => {
-        const piece: PieceJointe = { id: id('PJ'), nom: f.name, taille: f.size, typeMime: f.type || 'application/octet-stream', empreinte: `sim${f.size.toString(16).padStart(8, '0')}` }
-        pieces.set(piece.id, { piece, blob: f, conversationId: c.id })
+      piecesJointes: [...fichiers.map(depuisFichier), ...autres].map((f) => {
+        const piece: PieceJointe = { id: id('PJ'), nom: f.nom, taille: f.taille, typeMime: f.typeMime, empreinte: f.empreinte }
+        pieces.set(piece.id, { piece, blob: f.blob, conversationId: c.id })
         return piece
       }),
     }
@@ -160,12 +167,25 @@ export function messagerieSimulee(attendre: Attendre, refus: Refus, moi: Corresp
     if (!c) throw refus(404, 'COL_CONVERSATION_NOT_FOUND', 'Conversation introuvable.')
     return c
   }
-  const valider = (contenu: string, etiquettes: EtiquetteLiaison[], fichiers: File[]) => {
-    if (!contenu.trim() && fichiers.length === 0) throw refus(422, 'COL_MESSAGE_EMPTY', 'Le message est vide.')
+  /** Pièces portées par ticket (D-74) : documents déposés par l'émetteur, pièces repartagées de ses conversations. */
+  const sources = (documentsIds: string[] = [], transferts: string[] = []): Source[] => [
+    ...documentsIds.map((d) => {
+      const doc = documents.get(d)
+      if (!doc || doc.deposant !== moi.id) throw refus(400, 'COL_DOCUMENT_INVALID', 'Document inconnu ou déposé par un autre compte.')
+      return { nom: doc.nom, taille: doc.taille, typeMime: doc.typeMime, blob: doc.blob, empreinte: doc.empreinte }
+    }),
+    ...transferts.map((pid) => {
+      const p = pieces.get(pid)
+      if (!p || !conversations.some((c) => c.id === p.conversationId && c.membres.some((m) => m.id === moi.id))) throw refus(404, 'COL_ATTACHMENT_NOT_FOUND', 'Pièce jointe introuvable.')
+      return { nom: p.piece.nom, taille: p.piece.taille, typeMime: p.piece.typeMime, blob: p.blob, empreinte: p.piece.empreinte }
+    }),
+  ]
+  const valider = (contenu: string, etiquettes: EtiquetteLiaison[], fichiers: File[], autres: Source[] = []) => {
+    if (!contenu.trim() && fichiers.length === 0 && autres.length === 0) throw refus(422, 'COL_MESSAGE_EMPTY', 'Le message est vide.')
     if (contenu.trim().length > LIMITES_MESSAGERIE.contenuMax) throw refus(422, 'COL_MESSAGE_TOO_LONG', 'Le message dépasse 4 000 caractères.')
     if (etiquettes.length > LIMITES_MESSAGERIE.etiquettesMax) throw refus(422, 'COL_TOO_MANY_TAGS', 'Dix liaisons au plus peuvent être citées.')
     if (etiquettes.some((e) => !LIAISON.test(e.reference))) throw refus(422, 'COL_TAG_INVALID', 'Référence de liaison invalide.')
-    if (fichiers.length > LIMITES_MESSAGERIE.piecesMax) throw refus(422, 'COL_TOO_MANY_ATTACHMENTS', 'Cinq pièces jointes au plus.')
+    if (fichiers.length + autres.length > LIMITES_MESSAGERIE.piecesMax) throw refus(422, 'COL_TOO_MANY_ATTACHMENTS', 'Cinq pièces jointes au plus.')
     if (fichiers.some((f) => f.size > LIMITES_MESSAGERIE.tailleMaxOctets)) throw refus(422, 'COL_ATTACHMENT_TOO_LARGE', 'Une pièce jointe dépasse 20 Mo.')
     if (fichiers.some((f) => !TYPES.has(extension(f.name)))) throw refus(422, 'COL_ATTACHMENT_TYPE', 'Type de pièce jointe non admis.')
   }
@@ -212,8 +232,9 @@ export function messagerieSimulee(attendre: Attendre, refus: Refus, moi: Corresp
       const titre = n.titre?.trim() || null
       // Groupe nommé (D-68) : nom obligatoire, premier message facultatif.
       if (n.groupe && !titre) throw refus(400, 'COL_GROUP_TITLE_REQUIRED', 'Donnez un nom au groupe de discussion.')
-      const avecMessage = !n.groupe || n.contenu.trim().length > 0 || n.fichiers.length > 0
-      if (avecMessage) valider(n.contenu, n.etiquettes, n.fichiers)
+      const autres = sources(n.documents, n.transferts)
+      const avecMessage = !n.groupe || n.contenu.trim().length > 0 || n.fichiers.length > 0 || autres.length > 0
+      if (avecMessage) valider(n.contenu, n.etiquettes, n.fichiers, autres)
       const liaison = n.liaisonId ? { liaisonId: n.liaisonId, reference: n.liaisonId } : null
       // Deux personnes, sans titre ni liaison : la conversation directe existante est réutilisée.
       const existante = !n.groupe && !titre && !liaison && membres.length === 1
@@ -222,13 +243,14 @@ export function messagerieSimulee(attendre: Attendre, refus: Refus, moi: Corresp
       const maintenant = new Date().toISOString()
       const c = existante ?? creer([moi, ...membres], titre, liaison, maintenant, n.groupe)
       if (n.groupe) evenement(c, moi, 'GROUPE_CREE', [titre!], maintenant)
-      if (avecMessage) ajouterMessage(c, moi, n.contenu, new Date().toISOString(), n.etiquettes, n.fichiers)
+      if (avecMessage) ajouterMessage(c, moi, n.contenu, new Date().toISOString(), n.etiquettes, n.fichiers, autres)
       return vue(c)
     }),
     envoyer: (cid, e) => attendre(() => {
       const c = sienne(cid)
-      valider(e.contenu, e.etiquettes, e.fichiers)
-      const m = structuredClone(ajouterMessage(c, moi, e.contenu, new Date().toISOString(), e.etiquettes, e.fichiers))
+      const autres = sources(e.documents, e.transferts)
+      valider(e.contenu, e.etiquettes, e.fichiers, autres)
+      const m = structuredClone(ajouterMessage(c, moi, e.contenu, new Date().toISOString(), e.etiquettes, e.fichiers, autres))
       return { ...m, auteur: avecPhoto(m.auteur) }
     }),
     marquerLu: (cid) => attendre(() => {
@@ -271,6 +293,35 @@ export function messagerieSimulee(attendre: Attendre, refus: Refus, moi: Corresp
       if (c.membres.length && !c.membres.some((m) => m.administrateur)) c.membres[0] = { ...c.membres[0], administrateur: true }
       evenement(c, depart ? cible : moi, depart ? 'MEMBRE_PARTI' : 'MEMBRE_RETIRE', depart ? [] : [cible.nom], new Date().toISOString())
     }),
+    // Dépôt fragmenté simulé (D-74) : progression en dix étapes, vérification, ticket ; même nom et même
+    // taille qu'un document déjà déposé : même ticket (déduplication).
+    deposer: async (fichier: File, _reference: string, o: OptionsTeleversement = {}): Promise<Televersement> => {
+      if (fichier.size > LIMITES_MESSAGERIE.tailleMaxDepotOctets) throw refus(413, 'DOC_FILE_TOO_LARGE', 'Le fichier dépasse 20 Go.')
+      if (!TYPES_DEPOT.has(extension(fichier.name))) throw refus(422, 'COL_ATTACHMENT_TYPE', 'Type de pièce jointe non admis.')
+      const pause = (ms: number) => new Promise<void>((ok, ko) => {
+        const t = window.setTimeout(ok, ms)
+        o.signal?.addEventListener('abort', () => {
+          window.clearTimeout(t)
+          ko(new DOMException('Envoi annulé', 'AbortError'))
+        })
+      })
+      const total = fichier.size
+      for (let i = 0; i <= 10; i++) {
+        o.surProgression?.({ phase: 'envoi', envoye: Math.round((total * i) / 10), total })
+        if (i < 10) await pause(DUREE_ETAPE_DEPOT_MS)
+      }
+      o.surProgression?.({ phase: 'verification', envoye: total, total })
+      await pause(DUREE_ETAPE_DEPOT_MS)
+      const existant = [...documents.entries()].find(([, d]) => d.nom === fichier.name && d.taille === total)
+      const documentId = existant?.[0] ?? id('DOC')
+      if (!existant) {
+        documents.set(documentId, { nom: fichier.name, taille: total, typeMime: fichier.type || 'application/octet-stream', blob: fichier, empreinte: `sim${total.toString(16).padStart(8, '0')}`, deposant: moi.id })
+      }
+      o.surProgression?.({ phase: 'pret', envoye: total, total })
+      return { documentId, sha256: documents.get(documentId)!.empreinte, dedoublonne: Boolean(existant), depotId: id('DEPOT') }
+    },
+    // Pas de lien direct en démonstration : le contenu simulé se télécharge en mémoire.
+    lienPiece: () => null,
     // Présence simulée (D-72) : quelques collègues en ligne, les autres vus il y a un moment.
     presence: () => attendre(() => ({
       enLigne: ['U-020', 'U-201', 'u-sna', 'u-rssi'].filter((id) => id !== moi.id),

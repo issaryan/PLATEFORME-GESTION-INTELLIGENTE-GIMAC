@@ -42,3 +42,4 @@ Dernier résultat : 130 objets, 111 valides, 19 ressources personnalisées non v
 | 2026-09-29 | — | Passerelle raccordée au Valkey partagé (sonde Redis, limitation de débit) |
 | 2026-09-29 | — | Domaine `gimac` pour tous les services, clients de service et image Keycloak GIMAC ; administrateur de Keycloak par Secret (D-62) ; `kustomize build` vérifié (130 objets) |
 | 2026-09-29 | — | MS-DOCUMENT : point d'accès et clés du dépôt WORM par le Secret `gimac-stockage-objet`, fourni par l'exploitant (`GIMAC_S3_*` à l'appel de `creer-secrets.sh`) |
+| 2026-10-02 | - | MS-DOCUMENT : compartiment des dépôts fragmentés en cours `GIMAC_S3_COMPARTIMENT_DEPOTS` (`gimac-depots`, sans verrouillage, cycle de vie : objets 2 jours, téléversements incomplets 1 jour), créé par l'exploitant (D-74) |

@@ -71,6 +71,8 @@ services:
       GIMAC_S3_POINT_ACCES: http://stockage-objet:7480
       GIMAC_S3_CLE_ACCES: ${GIMAC_S3_CLE_ACCES:?à définir dans .env}
       GIMAC_S3_CLE_SECRETE: ${GIMAC_S3_CLE_SECRETE:?à définir dans .env}
+      # Dépôts fragmentés en cours (D-74) : compartiment sans verrouillage, créé par stockage-objet-init.
+      GIMAC_S3_COMPARTIMENT_DEPOTS: gimac-depots
     depends_on:
       kafka:
         condition: service_started
@@ -382,6 +384,7 @@ services:
       AWS_ACCESS_KEY_ID: ${GIMAC_S3_CLE_ACCES}
       AWS_SECRET_ACCESS_KEY: ${GIMAC_S3_CLE_SECRETE}
       AWS_DEFAULT_REGION: us-east-1
+      GIMAC_S3_COMPARTIMENT_DEPOTS: gimac-depots
     volumes:
       - ./stockage-objet/init-compartiments.sh:/init-compartiments.sh:ro
     entrypoint: ['/bin/sh', '/init-compartiments.sh']

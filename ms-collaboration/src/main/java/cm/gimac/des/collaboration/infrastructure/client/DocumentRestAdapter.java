@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -22,14 +23,18 @@ import org.springframework.web.client.RestClientException;
 /**
  * Adaptateur réel du dépôt documentaire : interface interne de MS-DOCUMENT, jeton de service.
  * Dépôt : POST /api/v1/interne/documents (multipart fichier, finalite=MESSAGERIE, reference=message,
- * deposantId ; INTERNAL_DOCUMENT_DEPOSIT). Lecture : GET /api/v1/interne/documents/{id}/contenu
- * (INTERNAL_DOCUMENT_READ), flux transmis sans copie intégrale en mémoire.
+ * deposantId ; INTERNAL_DOCUMENT_DEPOSIT). Métadonnées d'un ticket (D-74) : GET /api/v1/interne/documents/{id}.
+ * Lecture : GET /api/v1/interne/documents/{id}/contenu (INTERNAL_DOCUMENT_READ), flux transmis sans copie
+ * intégrale en mémoire.
  */
 @Component
 @ConditionalOnProperty(name = "gimac.adaptateurs.documents", havingValue = "real")
 public class DocumentRestAdapter implements DocumentStoragePort {
 
     record Depot(UUID id, String sha256, String nomFichier, Long taille, String typeMime) {}
+
+    /** Réponse de GET /api/v1/interne/documents/{id} (docs/lot1/depots-fragmentes.md §4), champs utiles seulement. */
+    record Metadonnees(UUID id, String nomFichier, Long taille, String typeMime, String sha256, String finalite, String reference, String deposant) {}
 
     private final RestClient client;
 
@@ -66,6 +71,36 @@ public class DocumentRestAdapter implements DocumentStoragePort {
         } catch (RestClientException | IllegalStateException | UncheckedIOException e) {
             throw indisponible();
         }
+    }
+
+    @Override
+    public Optional<MetadonneesDocument> metadonnees(UUID documentId) {
+        Metadonnees m;
+        try {
+            m = client
+                .get()
+                .uri("/api/v1/interne/documents/{id}", documentId)
+                .accept(MediaType.APPLICATION_JSON)
+                .exchange((requete, reponse) -> {
+                    if (reponse.getStatusCode().isSameCodeAs(HttpStatus.NOT_FOUND)) {
+                        return null;
+                    }
+                    if (!reponse.getStatusCode().is2xxSuccessful()) {
+                        throw indisponible();
+                    }
+                    return reponse.bodyTo(Metadonnees.class);
+                });
+        } catch (RestClientException | IllegalStateException e) {
+            throw indisponible();
+        }
+        if (m == null) {
+            return Optional.empty();
+        }
+        if (m.id() == null || m.taille() == null) {
+            // Réponse incomplète : on ne suppose aucune valeur.
+            throw indisponible();
+        }
+        return Optional.of(new MetadonneesDocument(m.id(), m.nomFichier(), m.taille(), m.typeMime(), m.sha256(), m.finalite(), m.reference(), m.deposant()));
     }
 
     @Override

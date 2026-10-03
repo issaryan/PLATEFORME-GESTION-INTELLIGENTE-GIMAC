@@ -25,6 +25,13 @@ const EVENEMENTS = ['mousemove', 'mousedown', 'pointerdown', 'keydown', 'scroll'
 
 type Message = { type: 'activite' | 'prolongation' | 'expiration'; t?: number }
 
+// Activité signalée par le code (D-74) : un envoi de fichier en cours compte comme une activité, sans
+// geste de l'utilisateur, pour qu'un dépôt de plusieurs gigaoctets ne soit pas interrompu par l'inactivité.
+const activitesProgrammees = new EventTarget()
+export const signalerActivite = (): void => {
+  activitesProgrammees.dispatchEvent(new Event('activite'))
+}
+
 /** Durée d'inactivité : lue sur la fin prévue par la passerelle (expireA), bornée à 1 et 30 minutes. */
 export function dureeInactivite(expireA?: string | null, maintenant = Date.now()): number {
   const fin = expireA ? Date.parse(expireA) : Number.NaN
@@ -122,9 +129,11 @@ export function SurveillanceInactivite({ expireA, prolonger = prolongerSession, 
       }
     }
     EVENEMENTS.forEach((e) => window.addEventListener(e, activite, { passive: true, capture: true }))
+    activitesProgrammees.addEventListener('activite', activite)
     const id = window.setInterval(tic, 1000)
     return () => {
       window.clearInterval(id)
+      activitesProgrammees.removeEventListener('activite', activite)
       EVENEMENTS.forEach((e) => window.removeEventListener(e, activite, { capture: true }))
       bc?.close()
       canal.current = null

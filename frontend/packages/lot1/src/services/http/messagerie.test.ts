@@ -82,4 +82,20 @@ describe('messagerieHttp', () => {
     ])
     expect([0, 1, 2].map((i) => new Headers(appels()[i][1].headers).get('X-Gimac-Fond'))).toEqual(['1', '1', '1'])
   })
+  it('D-74 : tickets portés par le message (documents, transferts), lien direct, dépôt par morceaux', async () => {
+    brancher()
+    await messagerieHttp.envoyer('C1', { contenu: '', etiquettes: [], fichiers: [], documents: ['DOC-1'], transferts: ['PJ-9'] })
+    await messagerieHttp.envoyer('C1', { contenu: 'Seul', etiquettes: [], fichiers: [] })
+    const corps = async (i: number) => JSON.parse(await ((appels()[i][1].body as FormData).get('message') as Blob).text())
+    expect(await corps(0)).toEqual({ contenu: '', etiquettes: [], documents: ['DOC-1'], transferts: ['PJ-9'] })
+    expect(await corps(1)).toEqual({ contenu: 'Seul', etiquettes: [] })
+    expect(messagerieHttpPour('console').lienPiece('P 1')).toBe('/bff/console/collaboration/messagerie/pieces/P%201')
+    // Dépôt : ouverture sur MS-DOCUMENT par la couche, finalité MESSAGERIE, référence de la conversation.
+    vi.restoreAllMocks()
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response(JSON.stringify({ id: 'D1', etat: 'REJETE', motif: 'DOC_PAN_DETECTED', taille: 0, taillePartie: 16, nombreParties: 0, partiesRecues: [] }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+    await expect(messagerieHttpPour('console').deposer(new File([], 'vide.txt'), 'C1', { intervalleMs: 1 })).rejects.toMatchObject({ code: 'DOC_PAN_DETECTED' })
+    const ouverture = appels()[0]
+    expect(`${ouverture[1].method} ${new URL(String(ouverture[0])).pathname}`).toBe('POST /bff/console/document/depots')
+    expect(JSON.parse(String(ouverture[1].body))).toMatchObject({ nomFichier: 'vide.txt', finalite: 'MESSAGERIE', reference: 'C1', taille: 0 })
+  })
 })

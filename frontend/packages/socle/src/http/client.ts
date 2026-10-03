@@ -49,6 +49,14 @@ function lireTemoin(nom: string): string | null {
   return m ? decodeURIComponent(m[1]) : null
 }
 
+/** En-têtes d'une requête qui modifie, hors fetch (envoi par morceaux, D-74) : le jeton anti-CSRF. */
+export function entetesEcriture(): Headers {
+  const h = new Headers()
+  const jeton = csrf ? lireTemoin(csrf.cookie) : null
+  if (csrf && jeton) h.set(csrf.header, jeton)
+  return h
+}
+
 async function send(method: string, path: string, o: RequestOptions, rejoue = false): Promise<Response> {
   const url = new URL(path, window.location.origin)
   Object.entries(o.query ?? {}).forEach(([k, v]) => {

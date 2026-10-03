@@ -10,7 +10,7 @@ import type {
   Telechargement, TypeDemande,
 } from '../modele/certification'
 import type { PortailCertification, PortailLiaison, PortailOperation } from '../modele/portail'
-import type { EtatPresence } from '@gimac/socle'
+import type { EtatPresence, OptionsTeleversement, Televersement } from '@gimac/socle'
 import type { Conversation, Correspondant, Envoi, FilMessages, Message, NouvelleConversation, PageMessagerie } from '../modele/messagerie'
 import type {
   Candidature, ConditionsAdhesion, DossierInstitution, FiltreInstitutions, IndicateursDdrm, Institution, PieceAdhesion, Prerequis,
@@ -227,6 +227,13 @@ export interface ServiceMessagerie {
   ajouterMembres(conversationId: string, membres: string[]): Promise<Conversation>
   /** Retrait d'un membre, ou départ quand membreId est l'utilisateur courant. */
   retirerMembre(conversationId: string, membreId: string): Promise<void>
+  /**
+   * Dépôt fragmenté d'une pièce (claim check, D-74) : envoi par morceaux avec progression, puis ticket du
+   * document à porter par le message (`documents`). `reference` : la conversation, si elle existe déjà.
+   */
+  deposer(fichier: File, reference: string, o?: OptionsTeleversement): Promise<Televersement>
+  /** Adresse de téléchargement direct d'une pièce volumineuse (flux du navigateur), null si indisponible. */
+  lienPiece(pieceId: string): string | null
   /** Présence des comptes internes (D-72) : état initial, tenu à jour par le canal poussé. */
   presence(): Promise<EtatPresence>
   /** « En train d'écrire » (D-72) : signal éphémère aux autres membres. */

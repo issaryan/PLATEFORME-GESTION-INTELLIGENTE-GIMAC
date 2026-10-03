@@ -117,6 +117,7 @@ gimac:
       cle-acces: test
       cle-secrete: test
       compartiment: gimac-documents
+      compartiment-depots: gimac-depots
       exiger-verrouillage: false
   securite:
     double-facteur:

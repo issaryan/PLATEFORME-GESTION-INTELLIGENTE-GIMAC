@@ -1,14 +1,15 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router'
-import { AttachmentViewer, Avatar, Button, ConfirmDialog, ConversationList, Dialog, EmptyState, Icon, IconButton, InlineAlert, Link, MessageComposer, MessageThread, PageHeader, Pagination, Presence, SearchInput, SearchSelect, Skeleton, Tag, TextField, type ThreadMessage, Note } from '@gimac/design-system'
+import { AttachmentViewer, Avatar, Button, ConfirmDialog, ConversationList, Dialog, EmptyState, Icon, IconButton, InlineAlert, Link, MessageComposer, MessageThread, PageHeader, type EnvoiPiece, Pagination, Presence, SearchInput, SearchSelect, Skeleton, Tag, TextField, type ThreadMessage, Note } from '@gimac/design-system'
 import { aPermission, urlAvatar, useEnLigne, usePermissions, usePresence, useSaisies, useSession, type ApiError } from '@gimac/socle'
 import type { Conversation, Correspondant, EtiquetteLiaison, EvenementGroupe, Message, PieceJointe } from '../../../modele/messagerie'
 import { LIMITES_MESSAGERIE, MOTIF_LIAISON } from '../../../modele/messagerie'
-import { useAjouterMembres, useAnnuaire, useConversation, useConversations, useDemarrer, useEnvoyer, useFil, useMarquerLu, usePresenceMessagerie, useRenommerGroupe, useRetirerMembre, useSignalerSaisie, useTelechargerPiece } from '../../../hooks/messagerie'
+import { useAjouterMembres, useAnnuaire, useConversation, useConversations, useDemarrer, useEnvoyer, useFil, useMarquerLu, usePresenceMessagerie, useRenommerGroupe, useRetirerMembre, useSignalerSaisie, useTelechargerPiece, useTransferer } from '../../../hooks/messagerie'
 import { useLiaisonsParcours } from '../../../hooks/parcours'
 import { PERM } from '../../../permissions'
 import { enregistrerFichier } from '../../../ressources/fichier'
+import { useServices } from '../../../services/ServicesProvider'
 
 // Messagerie instantanée de travail (D-64, /des/messagerie) : conversations à gauche, fil ou nouveau message
 // à droite, comme un client de messagerie. Les destinataires viennent de l'annuaire de la plateforme ; une
@@ -26,7 +27,9 @@ type CoucheMessagerie = 'des' | 'console'
 const Couche = createContext<CoucheMessagerie>('des')
 
 const PAR_PAGE = 20
-const taille = (octets: number) => (octets < 1024 * 1024 ? `${Math.max(1, Math.round(octets / 1024))} Ko` : `${(octets / 1024 / 1024).toFixed(1).replace('.', ',')} Mo`)
+const taille = (octets: number) => (octets < 1024 * 1024 ? `${Math.max(1, Math.round(octets / 1024))} Ko`
+  : octets < 1024 ** 3 ? `${(octets / 1024 / 1024).toFixed(1).replace('.', ',')} Mo`
+  : `${(octets / 1024 ** 3).toFixed(1).replace('.', ',')} Go`)
 
 function useQuand() {
   const { i18n } = useTranslation()
@@ -210,23 +213,68 @@ function CiterLiaisons({ valeur, onChange }: { valeur: EtiquetteLiaison[]; onCha
 }
 
 /** Zone de saisie commune au fil et au nouveau message : texte, pièces jointes, liaisons citées. */
-function Saisie({ envoi, erreur, onEnvoyer, onFrappe, etiquettesInitiales = [] }: {
+/** Pièce envoyée par morceaux depuis la zone de saisie (D-74) : son avancement, puis son ticket. */
+type PieceEnvoyee = { cle: string; fichier: File; phase: EnvoiPiece['phase']; envoye: number; documentId?: string; erreur?: string; arret: AbortController }
+
+/**
+ * Zone de saisie : chaque pièce choisie part aussitôt par morceaux (claim check, D-74), avec sa progression ;
+ * « Envoyer » attend qu'elles soient prêtes, puis le message ne porte que leurs tickets (`documents`).
+ * `reference` : la conversation, ou « nouvelle-conversation » avant sa création.
+ */
+function Saisie({ envoi, erreur, onEnvoyer, onFrappe, reference, etiquettesInitiales = [] }: {
   envoi: boolean
+  erreur?: string
+  onEnvoyer: (e: { contenu: string; fichiers: File[]; documents: string[]; etiquettes: EtiquetteLiaison[] }, vider: () => void) => void
   /** Frappe dans le champ (D-72) : signal « en train d'écrire », limité par l'appelant. */
   onFrappe?: () => void
-  erreur?: string
-  onEnvoyer: (e: { contenu: string; fichiers: File[]; etiquettes: EtiquetteLiaison[] }, vider: () => void) => void
+  reference: string
   etiquettesInitiales?: EtiquetteLiaison[]
 }) {
   const { t } = useTranslation()
+  const services = useServices()
+  const messageErreur = useMessageErreur()
   const [texte, setTexte] = useState('')
-  const [fichiers, setFichiers] = useState<File[]>([])
+  const [pieces, setPieces] = useState<PieceEnvoyee[]>([])
   const [etiquettes, setEtiquettes] = useState<EtiquetteLiaison[]>(etiquettesInitiales)
   const [citer, setCiter] = useState(etiquettesInitiales.length > 0)
   const citable = useContext(Couche) === 'des'
+  // Envois encore en cours au démontage (conversation quittée) : abandonnés côté serveur.
+  const enCours = useRef(pieces)
+  enCours.current = pieces
+  useEffect(() => () => enCours.current.forEach((p) => p.phase !== 'pret' && p.arret.abort()), [])
+  const maj = (cle: string, m: Partial<PieceEnvoyee>) => setPieces((l) => l.map((p) => (p.cle === cle ? { ...p, ...m } : p)))
+  const ajouter = (fichiers: File[]) => {
+    const nouvelles = fichiers.map((fichier): PieceEnvoyee => ({ cle: `${fichier.name}-${fichier.size}-${Math.random().toString(36).slice(2)}`, fichier, phase: 'envoi', envoye: 0, arret: new AbortController() }))
+    setPieces((l) => [...l, ...nouvelles])
+    nouvelles.forEach((p) => {
+      if (p.fichier.size > LIMITES_MESSAGERIE.tailleMaxDepotOctets) {
+        maj(p.cle, { phase: 'erreur', erreur: t('msg.depot.tropLourd') })
+        return
+      }
+      // Type contrôlé avant tout envoi : un refus après plusieurs gigaoctets envoyés serait absurde.
+      const ext = p.fichier.name.slice(p.fichier.name.lastIndexOf('.')).toLowerCase()
+      if (!p.fichier.name.includes('.') || !LIMITES_MESSAGERIE.typesDepot.split(',').includes(ext)) {
+        maj(p.cle, { phase: 'erreur', erreur: t('msg.erreur.COL_ATTACHMENT_TYPE') })
+        return
+      }
+      services.messagerie
+        .deposer(p.fichier, reference, { signal: p.arret.signal, surProgression: (g) => maj(p.cle, { phase: g.phase, envoye: g.envoye }) })
+        .then((r) => maj(p.cle, { phase: 'pret', documentId: r.documentId, envoye: p.fichier.size }))
+        .catch((e: unknown) => {
+          if (e instanceof DOMException && e.name === 'AbortError') return
+          maj(p.cle, { phase: 'erreur', erreur: messageErreur(e as ApiError) })
+        })
+    })
+  }
+  const retirer = (cle: string) => {
+    setPieces((l) => {
+      l.find((p) => p.cle === cle && p.phase !== 'pret')?.arret.abort()
+      return l.filter((p) => p.cle !== cle)
+    })
+  }
   const vider = () => {
     setTexte('')
-    setFichiers([])
+    setPieces([])
     setEtiquettes([])
     setCiter(false)
   }
@@ -237,13 +285,19 @@ function Saisie({ envoi, erreur, onEnvoyer, onFrappe, etiquettesInitiales = [] }
         setTexte(v)
         if (v.trim()) onFrappe?.()
       }}
-      fichiers={fichiers}
-      onFichiers={setFichiers}
-      maxFichiers={LIMITES_MESSAGERIE.piecesMax}
-      accept={LIMITES_MESSAGERIE.types}
+      fichiers={[]}
+      onFichiers={ajouter}
+      maxFichiers={LIMITES_MESSAGERIE.piecesMax - pieces.length}
+      accept={LIMITES_MESSAGERIE.typesDepot}
+      envois={pieces.map((p) => ({
+        cle: p.cle, nom: p.fichier.name, phase: p.phase, erreur: p.erreur,
+        pourcent: p.fichier.size ? Math.floor((p.envoye / p.fichier.size) * 100) : 100,
+        detail: t('msg.depot.detail', { envoye: taille(p.envoye), total: taille(p.fichier.size) }),
+      }))}
+      onAnnulerEnvoi={retirer}
       sending={envoi}
       error={erreur}
-      onSend={() => onEnvoyer({ contenu: texte, fichiers, etiquettes }, vider)}
+      onSend={() => onEnvoyer({ contenu: texte, fichiers: [], documents: pieces.flatMap((p) => (p.documentId ? [p.documentId] : [])), etiquettes }, vider)}
       extras={
         <div className="gm-col" style={{ gap: 'var(--gm-space-1)' }}>
           {!citable ? null : citer ? <CiterLiaisons valeur={etiquettes} onChange={setEtiquettes} /> : (
@@ -251,18 +305,51 @@ function Saisie({ envoi, erreur, onEnvoyer, onFrappe, etiquettesInitiales = [] }
               <Button size="sm" variant="ghost" icon="route" onClick={() => setCiter(true)}>{t('msg.citer')}</Button>
             </span>
           )}
-          <span className="gm-field-help">{t('msg.limites', { max: LIMITES_MESSAGERIE.piecesMax })}</span>
+          <span className="gm-field-help">{t('msg.limitesDepot', { max: LIMITES_MESSAGERIE.piecesMax })}</span>
         </div>
       }
     />
   )
 }
 
-function Fil({ id, peutEcrire, onQuitte }: { id: string; peutEcrire: boolean; onQuitte: () => void }) {
+/**
+ * Transfert d'une pièce (D-74) : choix d'une autre conversation ; le message transféré porte le ticket du
+ * document, sans copie ni nouvel envoi.
+ */
+function TransfererPiece({ piece, depuis, onFermer, onTransfere }: { piece: PieceJointe; depuis: string; onFermer: () => void; onTransfere: (conversationId: string) => void }) {
+  const { t } = useTranslation()
+  const session = useSession()
+  const [recherche, setRecherche] = useState('')
+  const liste = useConversations({ recherche: recherche.trim() || undefined, page: 0 })
+  const transferer = useTransferer()
+  const erreur = useMessageErreur()
+  const cibles = (liste.data?.contenu ?? []).filter((c) => c.id !== depuis)
+  return (
+    <Dialog open size="md" id="gm-transfert-piece" title={t('msg.transfert.titre')} subtitle={`${piece.nom} · ${taille(piece.taille)}`} onClose={onFermer}
+      footer={<Button variant="ghost" onClick={onFermer}>{t('commun.annuler')}</Button>}>
+      <div className="gm-col" style={{ gap: 'var(--gm-space-3)' }}>
+        <Note>{t('msg.transfert.aide')}</Note>
+        <SearchInput label={t('msg.recherche')} value={recherche} onChange={setRecherche} />
+        {transferer.isError ? <InlineAlert level="crit">{erreur(transferer.error)}</InlineAlert> : null}
+        {liste.isPending ? <Skeleton height={160} /> : (
+          <ConversationList
+            empty={t('msg.aucune')}
+            onSelect={(cid) => transferer.mutate({ conversationId: cid, pieceId: piece.id }, { onSuccess: () => onTransfere(cid) })}
+            items={cibles.map((c) => ({ id: c.id, titre: titreConversation(c, session?.sujet), groupe: c.type === 'GROUPE', sousTitre: c.type === 'GROUPE' ? t('msg.membres', { count: c.membres.length }) : undefined }))}
+          />
+        )}
+      </div>
+    </Dialog>
+  )
+}
+
+function Fil({ id, peutEcrire, onQuitte, onAller }: { id: string; peutEcrire: boolean; onQuitte: () => void; onAller: (conversationId: string) => void }) {
   const { t } = useTranslation()
   const texteEvenement = useTexteEvenement()
   const [gestion, setGestion] = useState(false)
   const [apercu, setApercu] = useState<{ piece: PieceJointe; blob?: Blob; erreur?: string } | null>(null)
+  const [transfert, setTransfert] = useState<PieceJointe | null>(null)
+  const services = useServices()
   const session = useSession()
   const quand = useQuand()
   const conversation = useConversation(id)
@@ -298,9 +385,19 @@ function Fil({ id, peutEcrire, onQuitte }: { id: string; peutEcrire: boolean; on
     pieces: m.piecesJointes.map((p) => ({ id: p.id, nom: p.nom, taille: taille(p.taille) })),
   }))
   const derniere = fil.data[fil.data.length - 1]
+  const pieceDe = (pid: string) => messages.flatMap((m) => m.piecesJointes).find((x) => x.id === pid)
   const ouvrirPiece = (pid: string) => {
-    const piece = messages.flatMap((m) => m.piecesJointes).find((x) => x.id === pid)
+    const piece = pieceDe(pid)
     if (!piece) return
+    // Pièce volumineuse (D-74) : ni aperçu ni chargement en mémoire ; le navigateur la télécharge en flux.
+    const lien = piece.taille > LIMITES_MESSAGERIE.apercuMaxOctets ? services.messagerie.lienPiece(pid) : null
+    if (lien) {
+      const a = document.createElement('a')
+      a.href = lien
+      a.download = piece.nom
+      a.click()
+      return
+    }
     setApercu({ piece })
     telecharger.mutate(pid, {
       onSuccess: (r) => setApercu((a) => (a && a.piece.id === pid ? { ...a, blob: r.blob } : a)),
@@ -333,6 +430,7 @@ function Fil({ id, peutEcrire, onQuitte }: { id: string; peutEcrire: boolean; on
       plusAnciens={derniere?.plusAnciens}
       onPlusAnciens={() => void fil.fetchNextPage()}
       onPiece={ouvrirPiece}
+      onTransferer={peutEcrire ? (pid) => setTransfert(pieceDe(pid) ?? null) : undefined}
       saisie={peutEcrire ? (
         <Saisie
           key={id}
@@ -340,10 +438,12 @@ function Fil({ id, peutEcrire, onQuitte }: { id: string; peutEcrire: boolean; on
           erreur={envoyer.isError ? erreur(envoyer.error) : telecharger.isError ? erreur(telecharger.error) : undefined}
           onEnvoyer={(e, vider) => envoyer.mutate(e, { onSuccess: vider })}
           onFrappe={frappe}
+          reference={id}
         />
       ) : undefined}
     />
     {gestion ? <GererGroupe c={c} onFermer={() => setGestion(false)} onQuitte={onQuitte} /> : null}
+    {transfert ? <TransfererPiece piece={transfert} depuis={id} onFermer={() => setTransfert(null)} onTransfere={(cid) => { setTransfert(null); onAller(cid) }} /> : null}
     {apercu ? (
       <AttachmentViewer
         nom={apercu.piece.nom}
@@ -402,6 +502,7 @@ function NouveauMessage({ liaisonId, destinataire, onCree, onAnnuler }: { liaiso
       {personne ? (
         <Saisie
           key={rattachee?.id ?? 'sans-liaison'}
+          reference="nouvelle-conversation"
           envoi={demarrer.isPending}
           erreur={demarrer.isError ? erreur(demarrer.error) : undefined}
           etiquettesInitiales={rattachee ? [{ liaisonId: rattachee.id, reference: rattachee.reference }] : []}
@@ -631,7 +732,7 @@ function Messagerie() {
               onAnnuler={() => aller({})}
             />
           ) : ouverte ? (
-            <Fil key={ouverte} id={ouverte} peutEcrire={peutEcrire} onQuitte={() => aller({})} />
+            <Fil key={ouverte} id={ouverte} peutEcrire={peutEcrire} onQuitte={() => aller({})} onAller={(cid) => aller({ conversation: cid })} />
           ) : (
             <EmptyState icon="messages-square" title={liste.data?.total === 0 ? t('msg.aucune') : t('msg.choisir')} text={liste.data?.total === 0 ? t('msg.aucuneAide') : t('msg.choisirAide')} />
           )}

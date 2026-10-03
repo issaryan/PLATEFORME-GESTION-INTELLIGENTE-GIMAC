@@ -119,6 +119,11 @@ describe('MessageriePage', () => {
     const fichier = new File(['plan'], 'plan-bascule.pdf', { type: 'application/pdf' })
     fireEvent.change(panneau.querySelector('input[type="file"]')!, { target: { files: [fichier] } })
     fireEvent.change(within(panneau).getByLabelText('Votre message'), { target: { value: 'Plan de bascule joint.' } })
+    // D-74 : la pièce part aussitôt par morceaux ; « Envoyer » attend qu'elle soit prête.
+    const envois = within(panneau).getByRole('list', { name: 'Pièces en cours d’envoi' })
+    expect(within(envois).getByText(/^Envoi \d+ %$/)).toBeTruthy()
+    expect((within(panneau).getByRole('button', { name: 'Envoyer' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(await within(envois).findByText('Prêt', {}, { timeout: 5000 })).toBeTruthy()
     fireEvent.click(within(panneau).getByRole('button', { name: 'Envoyer' }))
     const fil = await screen.findByRole('region', { name: 'Rachel Biyong Mengue' })
     expect(await within(fil).findByText('plan-bascule.pdf', { exact: false })).toBeTruthy()
@@ -298,5 +303,64 @@ describe('MessageriePage : photos de profil (docs/lot1/mon-compte.md §4)', () =
     const membre = groupe.membres.find((m) => m.id !== 'u-test')!
     act(() => void appliquerSignal({ type: SIGNAL.enLigne, subject: membre.id, acteur: membre.id }))
     expect(await within(fil).findByText(/\d en ligne/)).toBeTruthy()
+  })
+  it('D-74 : transférer une pièce vers une autre conversation partage son ticket, sans nouvel envoi', async () => {
+    const s = services()
+    const deposer = vi.spyOn(s.messagerie, 'deposer')
+    const { contenu } = await s.messagerie.conversations({})
+    const groupe = contenu.find((c) => c.type === 'GROUPE')!
+    const directe = contenu.find((c) => c.type === 'DIRECTE' && !c.titre)!
+    const autre = directe.membres.find((m) => m.id !== 'u-test')!
+    page(`/des/messagerie?conversation=${groupe.id}`, { s })
+    const fil = await screen.findByRole('region', { name: 'Essais de LIA-2026-030' })
+    fireEvent.click(await within(fil).findByRole('button', { name: 'Transférer rapport-essais-LIA-2026-030.pdf' }))
+    const dialogue = await screen.findByRole('dialog', { name: /Transférer la pièce jointe/ })
+    const choix = await within(dialogue).findByRole('button', { name: new RegExp(autre.nom) })
+    expect(within(dialogue).queryByRole('button', { name: /Essais de LIA-2026-030/ })).toBeNull()
+    fireEvent.click(choix)
+    const cible = await screen.findByRole('region', { name: autre.nom })
+    expect(await within(cible).findByRole('button', { name: 'Ouvrir rapport-essais-LIA-2026-030.pdf' })).toBeTruthy()
+    expect(deposer).not.toHaveBeenCalled()
+    const source = (await s.messagerie.messages(groupe.id)).contenu.flatMap((m) => m.piecesJointes).find((x) => x.nom === 'rapport-essais-LIA-2026-030.pdf')!
+    const copie = (await s.messagerie.messages(directe.id)).contenu.flatMap((m) => m.piecesJointes).find((x) => x.nom === 'rapport-essais-LIA-2026-030.pdf')!
+    expect(copie.empreinte).toBe(source.empreinte)
+  })
+  it('D-74 : pièce volumineuse téléchargée par lien direct, sans aperçu ni chargement en mémoire', async () => {
+    const s = services()
+    const original = s.messagerie.messages.bind(s.messagerie)
+    vi.spyOn(s.messagerie, 'messages').mockImplementation(async (cid, avant) => {
+      const f = await original(cid, avant)
+      return { ...f, contenu: f.contenu.map((m) => ({ ...m, piecesJointes: m.piecesJointes.map((p) => ({ ...p, taille: 4 * 1024 ** 3 })) })) }
+    })
+    vi.spyOn(s.messagerie, 'lienPiece').mockImplementation((id) => `/bff/des/collaboration/messagerie/pieces/${id}`)
+    const telecharger = vi.spyOn(s.messagerie, 'telechargerPiece')
+    const clic = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined)
+    const groupe = (await s.messagerie.conversations({})).contenu.find((c) => c.type === 'GROUPE')!
+    page(`/des/messagerie?conversation=${groupe.id}`, { s })
+    const fil = await screen.findByRole('region', { name: 'Essais de LIA-2026-030' })
+    expect((await within(fil).findAllByText(/4,0 Go/)).length).toBeGreaterThan(0)
+    fireEvent.click(within(fil).getByRole('button', { name: 'Ouvrir rapport-essais-LIA-2026-030.pdf' }))
+    expect(clic).toHaveBeenCalledTimes(1)
+    expect((clic.mock.contexts[0] as HTMLAnchorElement).getAttribute('href')).toMatch(/^\/bff\/des\/collaboration\/messagerie\/pieces\//)
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(telecharger).not.toHaveBeenCalled()
+  })
+  it('D-74 : pièce refusée (type, taille) signalée ; envoi en cours annulé', async () => {
+    const s = services()
+    const groupe = (await s.messagerie.conversations({})).contenu.find((c) => c.type === 'GROUPE')!
+    page(`/des/messagerie?conversation=${groupe.id}`, { s })
+    const fil = await screen.findByRole('region', { name: 'Essais de LIA-2026-030' })
+    const selecteur = fil.querySelector('input[type="file"]')!
+    const lourd = new File(['x'], 'enorme.mp4', { type: 'video/mp4' })
+    Object.defineProperty(lourd, 'size', { value: 21 * 1024 ** 3 })
+    fireEvent.change(selecteur, { target: { files: [new File(['x'], 'outil.exe'), lourd, new File(['video'], 'atelier.mp4', { type: 'video/mp4' })] } })
+    const envois = within(fil).getByRole('list', { name: 'Pièces en cours d’envoi' })
+    expect(await within(envois).findByText('Ce type de fichier n’est pas admis.')).toBeTruthy()
+    expect(within(envois).getByText('Fichier de plus de 20 Go')).toBeTruthy()
+    fireEvent.click(within(envois).getByRole('button', { name: 'Annuler l’envoi de atelier.mp4' }))
+    expect(within(envois).queryByText('atelier.mp4')).toBeNull()
+    fireEvent.click(within(envois).getByRole('button', { name: 'Retirer outil.exe' }))
+    fireEvent.click(within(envois).getByRole('button', { name: 'Retirer enorme.mp4' }))
+    expect(within(fil).queryByRole('list', { name: 'Pièces en cours d’envoi' })).toBeNull()
   })
 })

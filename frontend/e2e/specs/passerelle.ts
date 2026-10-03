@@ -129,7 +129,9 @@ export class Passerelle {
     const methode = req.method()
     const brut = req.postDataBuffer()?.toString('utf8') ?? null
     const multipart = (req.headers()['content-type'] ?? '').startsWith('multipart/form-data')
-    const corps = brut && !multipart ? JSON.parse(brut) : undefined
+    // Parties d'un dépôt fragmenté (D-74) : octets bruts, jamais lus comme du JSON.
+    const octets = (req.headers()['content-type'] ?? '').startsWith('application/octet-stream')
+    const corps = brut && !multipart && !octets ? JSON.parse(brut) : undefined
     this.appels.push({ methode, chemin, recherche: url.search, entetes: req.headers(), corps })
     const json = (b: unknown, status = 200) => route.fulfill({ status, json: b, headers: { 'X-Correlation-Id': `e2e-${this.appels.length}` } })
     const refus = (status: number, code: string, message: string, details: Record<string, unknown> = {}) => json({ code, message, details, correlationId: `e2e-${code}` }, status)
@@ -359,6 +361,35 @@ export class Passerelle {
     if (chemin === '/bff/console/live') {
       return route.fulfill({ status: 200, headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' }, body: ': battement\n\n' })
     }
+    if (chemin === '/bff/console/presence') return json({ enLigne: ['u-dg'], vusLe: {} })
+    if (chemin === `${CM}/conversations/c-dg/saisie`) return vide()
+    // Dépôt fragmenté (D-74) : parties de 8 octets ; la deuxième échoue une fois (503), puis vérification en deux relectures.
+    const D = '/bff/console/document/depots'
+    if (chemin === D && methode === 'POST') {
+      this.depot = { id: 'dep-1', etat: 'OUVERT', nomFichier: corps.nomFichier, typeMime: corps.typeMime, taille: corps.taille, taillePartie: 8, nombreParties: Math.ceil(corps.taille / 8), partiesRecues: [] as number[] }
+      return json(this.depot, 201)
+    }
+    const partie = new RegExp(`^${D}/dep-1/parties/(\\d+)$`).exec(chemin)
+    if (partie && methode === 'PUT') {
+      const n = Number(partie[1])
+      this.parties.push({ n, type: req.headers()['content-type'] ?? '', octets: req.postDataBuffer()?.length ?? 0 })
+      if (n === 2 && !this.partieEchouee) {
+        this.partieEchouee = true
+        return refus(503, 'DOC_STORAGE_UNAVAILABLE', 'Dépôt objet indisponible')
+      }
+      this.depot!.partiesRecues.push(n)
+      return vide()
+    }
+    if (chemin === `${D}/dep-1/fin` && methode === 'POST') {
+      this.depot!.etat = 'EN_VERIFICATION'
+      return json(this.depot, 202)
+    }
+    if (chemin === `${D}/dep-1` && methode === 'GET') {
+      if (this.depot!.etat === 'EN_VERIFICATION' && ++this.relectures >= 2) Object.assign(this.depot!, { etat: 'DISPONIBLE', documentId: 'doc-1', sha256: 'b'.repeat(64), dedoublonne: false })
+      return json(this.depot)
+    }
+    // Pièce volumineuse (4 Go) : téléchargée par lien direct, en flux.
+    if (chemin === `${CM}/pieces/pj-gros`) return route.fulfill({ status: 200, headers: { 'Content-Type': 'video/mp4', 'Content-Disposition': 'attachment; filename="atelier-revue.mp4"' }, body: 'video' })
     if (chemin === `${CM}/non-lus`) return json({ total: this.messages.length === 1 ? 1 : 0 })
     if (chemin === `${CM}/conversations` && methode === 'GET') return json({ contenu: [this.conversation()], total: 1, page: 0, taille: 20 })
     if (chemin === `${CM}/conversations/c-dg` && methode === 'GET') return json(this.conversation())
@@ -366,17 +397,28 @@ export class Passerelle {
     if (chemin === `${CM}/conversations/c-dg/lu` && methode === 'POST') return vide()
     if (chemin === `${CM}/conversations/c-dg/messages` && methode === 'POST') {
       const contenu = /"contenu":"([^"]*)"/.exec(brut ?? '')?.[1] ?? ''
-      const m = { id: `m-${this.messages.length + 1}`, conversationId: 'c-dg', auteur: { id: 'u-super-admin', nom: 'Serge Mouelle Kombi', fonction: null }, moi: true, contenu, etiquettes: [], piecesJointes: [], envoyeLe: il(0) }
+      const documents = JSON.parse(/"documents":(\[[^\]]*\])/.exec(brut ?? '')?.[1] ?? '[]') as string[]
+      this.documentsRecus.push(...documents)
+      const piecesJointes = documents.map((d) => ({ id: `pj-${d}`, nom: this.depot?.nomFichier ?? d, taille: this.depot?.taille ?? 0, typeMime: this.depot?.typeMime ?? 'application/octet-stream', empreinte: 'b'.repeat(64) }))
+      const m = { id: `m-${this.messages.length + 1}`, conversationId: 'c-dg', auteur: { id: 'u-super-admin', nom: 'Serge Mouelle Kombi', fonction: null }, moi: true, contenu, etiquettes: [], piecesJointes, envoyeLe: il(0) }
       this.messages.push(m)
       return json(m, 201)
     }
     return refus(404, 'HTTP_404', `Route non simulée : ${methode} ${chemin}`)
   }
 
+  /** Dépôt fragmenté en cours (D-74), parties reçues, tickets portés par les messages. */
+  depot: { id: string; etat: string; nomFichier: string; typeMime: string; taille: number; taillePartie: number; nombreParties: number; partiesRecues: number[]; documentId?: string } | null = null
+  parties: { n: number; type: string; octets: number }[] = []
+  partieEchouee = false
+  relectures = 0
+  documentsRecus: string[] = []
+
   /** Échange direct avec la direction générale, servi par MS-COLLABORATION derrière /bff/console. */
   messages: Record<string, unknown>[] = [{
     id: 'm-1', conversationId: 'c-dg', auteur: { id: 'u-dg', nom: 'François Tchoumi Kamga', fonction: 'Directeur général adjoint' }, moi: false,
-    contenu: 'Pouvez-vous me confirmer la revue des habilitations avant vendredi ?', etiquettes: [], piecesJointes: [], envoyeLe: il(1),
+    contenu: 'Pouvez-vous me confirmer la revue des habilitations avant vendredi ?', etiquettes: [],
+    piecesJointes: [{ id: 'pj-gros', nom: 'atelier-revue.mp4', taille: 4 * 1024 ** 3, typeMime: 'video/mp4', empreinte: 'c'.repeat(64) }], envoyeLe: il(1),
   }]
 
   private conversation() {

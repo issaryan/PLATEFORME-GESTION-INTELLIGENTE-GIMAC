@@ -224,6 +224,20 @@ spring:
               filters:
                 - OpaAuthorize
                 - RewritePath=/bff/(?<couche>des|portail)/document/documents, /api/v1/documents
+            # MS-DOCUMENT, dépôts fragmentés (claim check, D-74, docs/lot1/depots-fragmentes.md §3) : ouverture,
+            # parties de 16 Mio en octets bruts, état, fin et abandon, depuis les trois couches (OPA : permissions
+            # de dépôt ou COL_MESSAGE_SEND ; portail : HOM_PORTAL_SUBMIT et institution). Corps borné à 17 Mio
+            # (une partie et sa marge), 413 au-delà.
+            - id: depot-fragmente
+              uri: ${gimac.services.document}
+              predicates:
+                - Path=/bff/des/document/depots/**,/bff/console/document/depots/**,/bff/portail/document/depots/**
+              filters:
+                - OpaAuthorize
+                - name: RequestSize
+                  args:
+                    maxSize: 17MB
+                - RewritePath=/bff/(?<couche>des|console|portail)/document/depots(?<p>/.*)?, /api/v1/depots${p}
             # MS-COLLABORATION, messagerie instantanée de travail (D-64, docs/lot1/messagerie.md §1) :
             # tout membre interne, depuis le DES et la console (OPA refuse les comptes d'institution). Envois multipart relayés en flux (5 pièces de 20 Mo au plus) : la
             # taille annoncée est bornée à 101 Mo (pièces, partie JSON et délimiteurs), au-delà 413.

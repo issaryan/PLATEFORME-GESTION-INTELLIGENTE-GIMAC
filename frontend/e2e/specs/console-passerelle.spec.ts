@@ -169,9 +169,28 @@ test.describe('Fonctionnalité : console sur la passerelle', () => {
       const fil = page.getByRole('region', { name: 'François Tchoumi Kamga' })
       await expect(fil.getByText('Pouvez-vous me confirmer la revue des habilitations avant vendredi ?')).toBeVisible()
       await expect(fil.getByRole('button', { name: 'Citer une liaison' })).toHaveCount(0)
+      // D-74 : pièce de 4 Go reçue, téléchargée par lien direct (flux du navigateur), sans aperçu.
+      await expect(fil.getByText(/4,0 Go/)).toBeVisible()
+      const telechargement = page.waitForEvent('download')
+      await fil.getByRole('button', { name: 'Ouvrir atelier-revue.mp4' }).click()
+      expect((await telechargement).suggestedFilename()).toBe('atelier-revue.mp4')
+      await expect(page.getByRole('dialog')).toHaveCount(0)
+      // D-74 : le journal part par morceaux vers MS-DOCUMENT avant l'envoi du message.
+      await fil.locator('input[type="file"]').first().setInputFiles({ name: 'journal-revue.csv', mimeType: 'text/csv', buffer: Buffer.from('compte;profil;revue\nrssi;RSSI;ok\n') })
+      const envois = fil.getByRole('list', { name: 'Pièces en cours d’envoi' })
+      await expect(envois.getByText('Prêt')).toBeVisible()
       await fil.getByLabel('Votre message').fill('Revue terminée ce soir, je vous transmets le journal.')
       await fil.getByRole('button', { name: 'Envoyer' }).click()
       await expect(fil.getByText('Revue terminée ce soir, je vous transmets le journal.')).toBeVisible()
+      await expect(fil.getByRole('button', { name: 'Ouvrir journal-revue.csv' })).toBeVisible()
+    })
+    await test.step('Et la pièce est passée par le dépôt fragmenté : parties en octets bruts, reprise après une erreur, ticket seul dans le message', async () => {
+      expect(gw.parties.map((x) => x.n)).toEqual([1, 2, 2, 3, 4, 5])
+      expect(gw.parties.every((x) => x.type === 'application/octet-stream' && x.octets <= 8)).toBe(true)
+      expect(gw.appels.filter((a) => a.chemin.startsWith('/bff/console/document/depots')).map((a) => `${a.methode} ${a.chemin}`)).toEqual(expect.arrayContaining([
+        'POST /bff/console/document/depots', 'GET /bff/console/document/depots/dep-1', 'POST /bff/console/document/depots/dep-1/fin',
+      ]))
+      expect(gw.documentsRecus).toEqual(['doc-1'])
     })
     await test.step('Alors tous les appels passent par la couche console, jamais par celle du département', async () => {
       const chemins = gw.appels.map((a) => a.chemin)

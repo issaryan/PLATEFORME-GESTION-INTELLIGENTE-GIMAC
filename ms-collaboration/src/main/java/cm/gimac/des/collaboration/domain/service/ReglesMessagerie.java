@@ -4,10 +4,12 @@ import cm.gimac.des.collaboration.domain.exception.CollaborationException;
 import cm.gimac.des.collaboration.domain.messagerie.Etiquette;
 import cm.gimac.des.collaboration.domain.messagerie.FichierJoint;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -45,6 +47,32 @@ public final class ReglesMessagerie {
         Map.entry("pptx", List.of("application/vnd.openxmlformats-officedocument.presentationml.presentation")),
         Map.entry("zip", List.of("application/zip", "application/x-zip-compressed"))
     );
+
+    /**
+     * Formats admis pour les documents déposés par envoi fragmenté (D-74, enregistrements d'ateliers) :
+     * ceux des pièces jointes, plus vidéo, audio et archives.
+     */
+    private static final Map<String, List<String>> FORMATS_DOCUMENTS = formatsDocuments();
+
+    private static final String MESSAGE_TYPE = "Format de pièce jointe non admis : PDF, PNG, JPEG, texte, CSV, Word, Excel, PowerPoint ou ZIP";
+    private static final String MESSAGE_TYPE_DOCUMENT =
+        "Format de document non admis : PDF, PNG, JPEG, texte, CSV, Word, Excel, PowerPoint, vidéo (MP4, MOV, WebM, MKV, AVI), audio (MP3, WAV, M4A) ou archive (ZIP, 7z, TAR, GZ)";
+
+    private static Map<String, List<String>> formatsDocuments() {
+        Map<String, List<String>> f = new HashMap<>(FORMATS);
+        f.put("mp4", List.of("video/mp4"));
+        f.put("mov", List.of("video/quicktime"));
+        f.put("webm", List.of("video/webm"));
+        f.put("mkv", List.of("video/x-matroska"));
+        f.put("avi", List.of("video/x-msvideo"));
+        f.put("mp3", List.of("audio/mpeg"));
+        f.put("wav", List.of("audio/wav", "audio/x-wav"));
+        f.put("m4a", List.of("audio/mp4"));
+        f.put("7z", List.of("application/x-7z-compressed"));
+        f.put("tar", List.of("application/x-tar"));
+        f.put("gz", List.of("application/gzip"));
+        return Map.copyOf(f);
+    }
 
     /** Contenu sans les espaces aux bords ; vide admis seulement avec au moins une pièce jointe. */
     public String contenu(String brut, int nombrePieces) {
@@ -154,10 +182,45 @@ public final class ReglesMessagerie {
                     Map.of("nom", nom, "taille", f.taille(), "maximum", PIECE_TAILLE_MAX)
                 );
             }
-            admises.add(f.avecNomEtType(nom, typeAdmis(nom, f.typeMime(), f.taille())));
+            admises.add(f.avecNomEtType(nom, typeAdmis(FORMATS, MESSAGE_TYPE, nom, f.typeMime(), f.taille())));
         }
         return List.copyOf(admises);
     }
+
+    /** Identifiants distincts (tickets de documents ou pièces à transférer, D-74), sans valeur nulle. */
+    public List<UUID> identifiants(List<UUID> bruts) {
+        if (bruts == null || bruts.isEmpty()) {
+            return List.of();
+        }
+        Set<UUID> distincts = new LinkedHashSet<>();
+        bruts.stream().filter(Objects::nonNull).forEach(distincts::add);
+        return List.copyOf(distincts);
+    }
+
+    /** Pièces d'un message toutes sources confondues (fichiers, documents, transferts, D-74) : 5 au plus. */
+    public void nombrePieces(int nombre) {
+        if (nombre > PIECES_MAX) {
+            throw CollaborationException.invalide(
+                "COL_TOO_MANY_ATTACHMENTS",
+                "Au plus " + PIECES_MAX + " pièces jointes par message",
+                Map.of("nombre", nombre, "maximum", PIECES_MAX)
+            );
+        }
+    }
+
+    /**
+     * Document déposé par envoi fragmenté (D-74) : sans limite de taille propre à la messagerie (celle du
+     * dépôt s'applique), formats des pièces jointes étendus à la vidéo, à l'audio et aux archives. Le
+     * type des métadonnées doit correspondre à l'extension du nom (application/octet-stream admis) ;
+     * rend le nom simple et le type canonique.
+     */
+    public NomEtType document(String nomFichier, String typeMime, long taille) {
+        String nom = nomSimple(nomFichier);
+        return new NomEtType(nom, typeAdmis(FORMATS_DOCUMENTS, MESSAGE_TYPE_DOCUMENT, nom, typeMime, taille));
+    }
+
+    /** Nom simple et type canonique retenus pour une pièce. */
+    public record NomEtType(String nom, String typeMime) {}
 
     /** Deux personnes, sans titre ni liaison : conversation directe. */
     public boolean estDirecte(List<String> destinataires, String titre, UUID liaisonId) {
@@ -177,17 +240,13 @@ public final class ReglesMessagerie {
         return contenu.length() <= 120 ? contenu : contenu.substring(0, 120);
     }
 
-    private static String typeAdmis(String nom, String declare, long taille) {
+    private static String typeAdmis(Map<String, List<String>> formats, String message, String nom, String declare, long taille) {
         int point = nom.lastIndexOf('.');
         String extension = point < 0 ? "" : nom.substring(point + 1).toLowerCase(Locale.ROOT);
-        List<String> types = FORMATS.get(extension);
+        List<String> types = formats.get(extension);
         String type = declare == null ? OCTETS : declare.toLowerCase(Locale.ROOT).split(";")[0].strip();
         if (types == null || taille <= 0 || !(type.isEmpty() || OCTETS.equals(type) || types.contains(type))) {
-            throw CollaborationException.invalide(
-                "COL_ATTACHMENT_TYPE",
-                "Format de pièce jointe non admis : PDF, PNG, JPEG, texte, CSV, Word, Excel, PowerPoint ou ZIP",
-                Map.of("nom", nom, "typeMime", type)
-            );
+            throw CollaborationException.invalide("COL_ATTACHMENT_TYPE", message, Map.of("nom", nom, "typeMime", type));
         }
         return types.get(0);
     }

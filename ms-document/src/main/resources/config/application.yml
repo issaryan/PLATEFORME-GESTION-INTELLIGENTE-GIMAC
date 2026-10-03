@@ -269,7 +269,19 @@ gimac:
     stockage: stub
   document:
     depot:
+      # Dépôt direct ; aussi seuil du contrôle des numéros de carte d'un dépôt fragmenté.
       taille-max: 20MB
+      # Dépôts fragmentés (D-74, docs/lot1/depots-fragmentes.md) : taille maximale, taille d'une partie
+      # (5 Mio au moins, minimum S3 ; la passerelle borne le corps à 17 Mio), abandon après inactivité.
+      taille-max-fragmente: 20GB
+      taille-partie: 16MB
+      inactivite: PT24H
+      # Vérification en tâche de fond : intervalle, bail d'une instance sur un dépôt (reprise après un
+      # arrêt au-delà), délai avant une nouvelle tentative quand le dépôt objet est indisponible.
+      intervalle-verification: PT5S
+      bail-verification: PT1H
+      delai-nouvelle-tentative: PT1M
+      intervalle-expiration: PT10M
   stockage:
     s3:
       point-acces: http://localhost:7480
@@ -277,6 +289,8 @@ gimac:
       cle-acces: ${GIMAC_S3_CLE_ACCES:}
       cle-secrete: ${GIMAC_S3_CLE_SECRETE:}
       compartiment: gimac-documents
+      # Dépôts fragmentés en cours (D-74) : sans verrouillage d'objets, avec règles de cycle de vie.
+      compartiment-depots: gimac-depots
       exiger-verrouillage: false
   securite:
     # D-61 : les routes métier exigent un jeton issu d'une authentification à deux facteurs.

@@ -19,7 +19,10 @@ public final class MessagerieVues {
 
     private MessagerieVues() {}
 
-    /** « groupe » (D-68) : groupe de discussion nommé ; absent ou faux, conduite d'avant (directe si possible). */
+    /**
+     * « groupe » (D-68) : groupe de discussion nommé ; absent ou faux, conduite d'avant (directe si possible).
+     * « documents » et « transferts » (D-74) : voir {@link EnvoiRequest}.
+     */
     public record CreationRequest(
         List<String> destinataires,
         String titre,
@@ -27,7 +30,9 @@ public final class MessagerieVues {
         String liaisonReference,
         String contenu,
         List<Etiquette> etiquettes,
-        Boolean groupe
+        Boolean groupe,
+        List<UUID> documents,
+        List<UUID> transferts
     ) {}
 
     /** Nouveau nom d'un groupe (D-68). */
@@ -36,7 +41,11 @@ public final class MessagerieVues {
     /** Membres ajoutés à un groupe (D-68), identifiants de l'annuaire. */
     public record AjoutMembresRequest(List<String> membres) {}
 
-    public record EnvoiRequest(String contenu, List<Etiquette> etiquettes) {}
+    /**
+     * Nouveau message. « documents » (D-74) : tickets de documents déposés par envoi fragmenté ;
+     * « transferts » : identifiants de pièces jointes existantes à repartager. Facultatifs.
+     */
+    public record EnvoiRequest(String contenu, List<Etiquette> etiquettes, List<UUID> documents, List<UUID> transferts) {}
 
     public record PageVue<T>(List<T> contenu, long total, int page, int taille) {}
 

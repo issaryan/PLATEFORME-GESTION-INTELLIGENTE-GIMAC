@@ -503,3 +503,102 @@ test_messagerie_groupe_formes_non_prevues_refusees if {
 		}
 	}
 }
+
+# Dépôts fragmentés (D-74, docs/lot1/depots-fragmentes.md §3) : routes du contrat depuis les trois couches.
+routes_depots_fragmentes(couche) := [
+	["POST", sprintf("/bff/%s/document/depots", [couche])],
+	["PUT", sprintf("/bff/%s/document/depots/d1/parties/1", [couche])],
+	["PUT", sprintf("/bff/%s/document/depots/d1/parties/256", [couche])],
+	["GET", sprintf("/bff/%s/document/depots/d1", [couche])],
+	["POST", sprintf("/bff/%s/document/depots/d1/fin", [couche])],
+	["DELETE", sprintf("/bff/%s/document/depots/d1", [couche])],
+]
+
+test_depots_fragmentes_des_et_console_avec_permission if {
+	every couche in ["des", "console"] {
+		every r in routes_depots_fragmentes(couche) {
+			every p in ["PAR_ADHESION_INSTRUCT", "HOM_EVIDENCE_SUBMIT", "HOM_STEP_MANAGE", "CER_CHANGE_RECORD_LINK", "DOC_DEPOSIT", "COL_MESSAGE_SEND"] {
+				authz.allow with input as {"method": r[0], "path": r[1], "permissions": [p], "authentifie": true, "acr": "2"}
+			}
+		}
+	}
+}
+
+test_depots_fragmentes_acr_3 if authz.allow with input as {
+	"method": "PUT", "path": "/bff/console/document/depots/d1/parties/3", "permissions": ["COL_MESSAGE_SEND"],
+	"authentifie": true, "acr": "3",
+}
+
+test_depots_fragmentes_sans_permission_refuses if {
+	every couche in ["des", "console"] {
+		every r in routes_depots_fragmentes(couche) {
+			not authz.allow with input as {
+				"method": r[0], "path": r[1], "permissions": ["COL_MESSAGE_READ", "HOM_PORTAL_READ", "INTERNAL_DOCUMENT_READ"],
+				"authentifie": true, "acr": "2",
+			}
+		}
+	}
+}
+
+test_depots_fragmentes_sans_second_facteur_refuses if {
+	every couche in ["des", "console", "portail"] {
+		every r in routes_depots_fragmentes(couche) {
+			not authz.allow with input as {
+				"method": r[0], "path": r[1], "permissions": ["DOC_DEPOSIT", "COL_MESSAGE_SEND", "HOM_PORTAL_SUBMIT"],
+				"institution_id": "INST-0042", "authentifie": true, "acr": "1",
+			}
+		}
+	}
+}
+
+test_depots_fragmentes_session_restreinte_refuses if {
+	every r in routes_depots_fragmentes("des") {
+		not authz.allow with input as {
+			"method": r[0], "path": r[1], "permissions": ["DOC_DEPOSIT"], "authentifie": true, "acr": "2", "restreinte": true,
+		}
+	}
+}
+
+test_depots_fragmentes_portail if {
+	every r in routes_depots_fragmentes("portail") {
+		authz.allow with input as {
+			"method": r[0], "path": r[1], "permissions": ["HOM_PORTAL_SUBMIT"], "institution_id": "INST-0042",
+			"authentifie": true, "acr": "2",
+		}
+	}
+}
+
+test_depots_fragmentes_portail_exige_institution_et_permission if {
+	every r in routes_depots_fragmentes("portail") {
+		not authz.allow with input as {
+			"method": r[0], "path": r[1], "permissions": ["HOM_PORTAL_SUBMIT"], "institution_id": "",
+			"authentifie": true, "acr": "2",
+		}
+		not authz.allow with input as {
+			"method": r[0], "path": r[1], "permissions": ["DOC_DEPOSIT", "COL_MESSAGE_SEND", "HOM_PORTAL_READ"],
+			"institution_id": "INST-0042", "authentifie": true, "acr": "2",
+		}
+	}
+}
+
+# Pas de repli sur @PreAuthorize : autres méthodes et chemins voisins refusés, même avec toutes les permissions.
+test_depots_fragmentes_formes_non_prevues_refusees if {
+	every couche in ["des", "console", "portail"] {
+		every r in [
+			["GET", sprintf("/bff/%s/document/depots", [couche])],
+			["PUT", sprintf("/bff/%s/document/depots/d1", [couche])],
+			["PATCH", sprintf("/bff/%s/document/depots/d1", [couche])],
+			["POST", sprintf("/bff/%s/document/depots/d1/parties/1", [couche])],
+			["PUT", sprintf("/bff/%s/document/depots/d1/parties/1/x", [couche])],
+			["GET", sprintf("/bff/%s/document/depots/d1/parties", [couche])],
+			["DELETE", sprintf("/bff/%s/document/depots/d1/fin", [couche])],
+			["GET", sprintf("/bff/%s/document/depots/d1/autre/chose", [couche])],
+		] {
+			not authz.allow with input as {
+				"method": r[0], "path": r[1],
+				"permissions": ["DOC_DEPOSIT", "COL_MESSAGE_SEND", "HOM_PORTAL_SUBMIT", "PAR_ADHESION_INSTRUCT"],
+				"institution_id": "INST-0042", "authentifie": true, "acr": "2",
+			}
+		}
+	}
+}

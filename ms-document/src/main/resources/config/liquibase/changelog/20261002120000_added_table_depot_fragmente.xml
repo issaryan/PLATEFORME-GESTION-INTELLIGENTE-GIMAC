@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!--
+        Écrit à la main : dépôts fragmentés (claim check, D-74, docs/lot1/depots-fragmentes.md).
+        Un fichier de plusieurs gigaoctets est envoyé par parties dans un téléversement multipart du
+        compartiment des dépôts en cours, vérifié par le serveur, puis conservé dans le dépôt WORM.
+    -->
+
+    <!--
+        Déduplication : plusieurs documents de même contenu (même empreinte, même taille) pointent vers
+        le même objet WORM. L'unicité de depot_document.cle_objet devient un index simple ; un index
+        sur (sha256, taille) sert la recherche d'un document existant. Aucune ligne n'est modifiée :
+        la table reste en insertion seule.
+    -->
+    <changeSet id="20261002120000-1" author="gimac">
+        <dropUniqueConstraint tableName="depot_document" constraintName="ux_depot_document_cle_objet"/>
+        <createIndex tableName="depot_document" indexName="ix_depot_document_cle_objet">
+            <column name="cle_objet"/>
+        </createIndex>
+        <createIndex tableName="depot_document" indexName="ix_depot_document_sha256_taille">
+            <column name="sha256"/>
+            <column name="taille"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="20261002120000-2" author="gimac">
+        <createTable tableName="depot_fragmente" remarks="Dépôts fragmentés (D-74) : envoi par parties, vérification serveur, ticket du document.">
+            <column name="id" type="${uuidType}">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="etat" type="varchar(20)" remarks="OUVERT, EN_VERIFICATION, DISPONIBLE, REJETE ou ABANDONNE.">
+                <constraints nullable="false"/>
+            </column>
+            <column name="finalite" type="varchar(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="reference" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="nom_fichier" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="type_mime" type="varchar(100)" remarks="Type déclaré, puis type retenu par la vérification (signature PDF).">
+                <constraints nullable="false"/>
+            </column>
+            <column name="taille" type="bigint" remarks="Taille annoncée en octets.">
+                <constraints nullable="false"/>
+            </column>
+            <column name="taille_partie" type="bigint" remarks="Taille d'une partie en octets ; la dernière porte le reste.">
+                <constraints nullable="false"/>
+            </column>
+            <column name="nombre_parties" type="integer">
+                <constraints nullable="false"/>
+            </column>
+            <column name="envoi" type="varchar(1024)" remarks="Identifiant du téléversement multipart dans le compartiment des dépôts en cours.">
+                <constraints nullable="false"/>
+            </column>
+            <column name="cle_depot" type="varchar(255)" remarks="Clé de l'objet dans le compartiment des dépôts en cours.">
+                <constraints nullable="false"/>
+            </column>
+            <column name="deposant" type="varchar(255)" remarks="Sujet du jeton du compte qui a ouvert le dépôt.">
+                <constraints nullable="false"/>
+            </column>
+            <column name="institution_id" type="varchar(64)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="ouvert_le" type="${datetimeType}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="actif_le" type="${datetimeType}" remarks="Dernière activité (ouverture, partie reçue, fin, vérification).">
+                <constraints nullable="false"/>
+            </column>
+            <column name="reprise_le" type="${datetimeType}" remarks="Instant à partir duquel la vérification peut (re)prendre le dépôt.">
+                <constraints nullable="true"/>
+            </column>
+            <column name="document_id" type="${uuidType}" remarks="Identifiant du document créé (ticket), attribué à la vérification.">
+                <constraints nullable="true"/>
+            </column>
+            <column name="cle_objet" type="varchar(255)" remarks="Clé WORM visée par la vérification en cours.">
+                <constraints nullable="true"/>
+            </column>
+            <column name="envoi_worm" type="varchar(1024)" remarks="Téléversement WORM en cours, abandonné si la vérification reprend.">
+                <constraints nullable="true"/>
+            </column>
+            <column name="sha256" type="varchar(64)" remarks="SHA-256 calculé par le serveur, hexadécimal minuscule.">
+                <constraints nullable="true"/>
+            </column>
+            <column name="dedoublonne" type="boolean" defaultValueBoolean="false" remarks="Vrai si le document réutilise un objet WORM existant.">
+                <constraints nullable="false"/>
+            </column>
+            <column name="motif" type="varchar(50)" remarks="Code du rejet.">
+                <constraints nullable="true"/>
+            </column>
+            <column name="version" type="bigint" remarks="Verrouillage optimiste.">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="depot_fragmente" indexName="ix_depot_fragmente_etat_actif">
+            <column name="etat"/>
+            <column name="actif_le"/>
+        </createIndex>
+        <createIndex tableName="depot_fragmente" indexName="ix_depot_fragmente_etat_reprise">
+            <column name="etat"/>
+            <column name="reprise_le"/>
+        </createIndex>
+
+        <createTable tableName="depot_fragmente_partie" remarks="Parties reçues d'un dépôt fragmenté et leur ETag (assemblage).">
+            <column name="depot_id" type="${uuidType}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="numero" type="integer" remarks="Numéro de la partie, à partir de 1.">
+                <constraints nullable="false"/>
+            </column>
+            <column name="etag" type="varchar(100)" remarks="ETag rendu par le dépôt objet.">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addPrimaryKey tableName="depot_fragmente_partie" columnNames="depot_id, numero" constraintName="pk_depot_fragmente_partie"/>
+        <addForeignKeyConstraint
+            baseTableName="depot_fragmente_partie"
+            baseColumnNames="depot_id"
+            constraintName="fk_depot_fragmente_partie_depot"
+            referencedTableName="depot_fragmente"
+            referencedColumnNames="id"
+            onDelete="CASCADE"/>
+    </changeSet>
+
+    <!-- États connus, tailles cohérentes (au plus 10 000 parties, maximum S3), empreinte au format canonique. -->
+    <changeSet id="20261002120000-3" author="gimac" dbms="postgresql">
+        <sql>
+            ALTER TABLE depot_fragmente ADD CONSTRAINT ck_depot_fragmente_etat CHECK (etat IN ('OUVERT', 'EN_VERIFICATION', 'DISPONIBLE', 'REJETE', 'ABANDONNE'));
+            ALTER TABLE depot_fragmente ADD CONSTRAINT ck_depot_fragmente_taille CHECK (taille &gt; 0 AND taille_partie &gt; 0 AND nombre_parties BETWEEN 1 AND 10000);
+            ALTER TABLE depot_fragmente ADD CONSTRAINT ck_depot_fragmente_sha256 CHECK (sha256 IS NULL OR sha256 ~ '^[0-9a-f]{64}$');
+            ALTER TABLE depot_fragmente_partie ADD CONSTRAINT ck_depot_fragmente_partie_numero CHECK (numero BETWEEN 1 AND 10000);
+        </sql>
+    </changeSet>
+</databaseChangeLog>

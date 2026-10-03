@@ -166,7 +166,12 @@ etape "Images des 14 microservices et extension Keycloak"
 actualiser_domaine
 
 etape "Images des trois couches de présentation"
-compose build frontend-departement frontend-portail frontend-console
+# Une image après l'autre : trois constructions Vite simultanées épuisent la mémoire du serveur et font
+# tomber le démon de construction (« failed to receive status … EOF »). Les couches communes (npm ci)
+# sont en cache dès la première image.
+for couche in frontend-departement frontend-portail frontend-console; do
+  compose build "$couche"
+done
 
 etape "Démarrage"
 "$COMPOSE_DIR/gimac-dev.sh" demarrer

@@ -56,6 +56,13 @@ regles := [
 	{"m": "POST", "re": `^/bff/des/participant/institutions/[^/]+/transitions/[^/]+/(approbation|rejet)$`, "p": "PAR_TRANSITION_APPROVE"},
 	# Pièces déposées par le correspondant depuis le portail (MS-DOCUMENT).
 	{"m": "POST", "re": `^/bff/portail/document/documents$`, "p": "HOM_PORTAL_SUBMIT"},
+	# Dépôts fragmentés depuis le portail (D-74, docs/lot1/depots-fragmentes.md §3) : ouverture, parties,
+	# état, fin et abandon ; institution exigée comme pour toute route du portail.
+	{"m": "POST", "re": `^/bff/portail/document/depots$`, "p": "HOM_PORTAL_SUBMIT"},
+	{"m": "PUT", "re": `^/bff/portail/document/depots/[^/]+/parties/[^/]+$`, "p": "HOM_PORTAL_SUBMIT"},
+	{"m": "GET", "re": `^/bff/portail/document/depots/[^/]+$`, "p": "HOM_PORTAL_SUBMIT"},
+	{"m": "POST", "re": `^/bff/portail/document/depots/[^/]+/fin$`, "p": "HOM_PORTAL_SUBMIT"},
+	{"m": "DELETE", "re": `^/bff/portail/document/depots/[^/]+$`, "p": "HOM_PORTAL_SUBMIT"},
 	# Administration (D-62, D-69) : comptes, journal, politique de sécurité et profils depuis la console et
 	# depuis le département (RSSI, super administrateur) ; serveur de courriels depuis la console seulement.
 	# La première règle correspondante s'applique : les chemins les plus précis viennent d'abord.
@@ -127,6 +134,30 @@ depot_document_des if {
 	input.path == "/bff/des/document/documents"
 }
 
+# Dépôts fragmentés (D-74, docs/lot1/depots-fragmentes.md §3) : seuls les chemins et méthodes du contrat
+# sont relayés ; tout autre chemin ou méthode sous …/document/depots est refusé (pas de repli sur
+# @PreAuthorize). Portail : règles de « regles » (HOM_PORTAL_SUBMIT et institution).
+depots_fragmentes if regex.match(`^/bff/(des|console|portail)/document/depots(/|$)`, input.path)
+
+# DES et console : l'une des permissions du dépôt direct ou COL_MESSAGE_SEND (pièces jointes de la
+# messagerie) ; MS-DOCUMENT exige ensuite la permission propre à la finalité.
+permissions_depot_fragmente := permissions_depot_document | {"COL_MESSAGE_SEND"}
+
+route_depot_fragmente if {
+	input.method == "POST"
+	regex.match(`^/bff/(des|console)/document/depots(/[^/]+/fin)?$`, input.path)
+}
+
+route_depot_fragmente if {
+	input.method == "PUT"
+	regex.match(`^/bff/(des|console)/document/depots/[^/]+/parties/[^/]+$`, input.path)
+}
+
+route_depot_fragmente if {
+	input.method in {"GET", "DELETE"}
+	regex.match(`^/bff/(des|console)/document/depots/[^/]+$`, input.path)
+}
+
 # Session restreinte du premier accès (D-65, docs/lot1/connexion.md §2), transmise par la passerelle.
 restreinte if input.restreinte == true
 
@@ -193,6 +224,7 @@ allow if {
 	not portail
 	not messagerie
 	not avatars
+	not depots_fragmentes
 	startswith(input.path, "/bff/des/")
 	input.authentifie == true
 	double_facteur
@@ -212,6 +244,14 @@ allow if {
 	double_facteur
 	some p in input.permissions
 	p in permissions_depot_document
+}
+
+allow if {
+	not restreinte
+	route_depot_fragmente
+	double_facteur
+	some p in input.permissions
+	p in permissions_depot_fragmente
 }
 
 allow if {

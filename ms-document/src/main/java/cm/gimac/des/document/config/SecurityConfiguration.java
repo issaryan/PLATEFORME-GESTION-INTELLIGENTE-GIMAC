@@ -62,6 +62,7 @@ public class SecurityConfiguration {
                     // Interfaces internes : jeton de service uniquement (PI §0.7), permission interne route par route ;
                     // tout autre chemin interne est refusé.
                     .requestMatchers(mvc.pattern(HttpMethod.POST, "/api/v1/interne/documents")).access(new ServiceTokenAuthorizationManager("INTERNAL_DOCUMENT_DEPOSIT"))
+                    .requestMatchers(mvc.pattern(HttpMethod.GET, "/api/v1/interne/documents/*")).access(new ServiceTokenAuthorizationManager("INTERNAL_DOCUMENT_READ"))
                     .requestMatchers(mvc.pattern(HttpMethod.GET, "/api/v1/interne/documents/*/empreinte")).access(new ServiceTokenAuthorizationManager("INTERNAL_DOCUMENT_READ"))
                     .requestMatchers(mvc.pattern(HttpMethod.GET, "/api/v1/interne/documents/*/contenu")).access(new ServiceTokenAuthorizationManager("INTERNAL_DOCUMENT_READ"))
                     .requestMatchers(mvc.pattern("/api/v1/interne/**")).denyAll()

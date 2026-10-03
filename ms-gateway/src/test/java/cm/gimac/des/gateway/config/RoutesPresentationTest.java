@@ -105,6 +105,13 @@ class RoutesPresentationTest {
             Arguments.of("/bff/console/iam/avatars/u-123", "${gimac.services.iam}", "/api/v1/avatars/u-123"),
             Arguments.of("/bff/des/document/documents", "${gimac.services.document}", "/api/v1/documents"),
             Arguments.of("/bff/portail/document/documents", "${gimac.services.document}", "/api/v1/documents"),
+            // Dépôts fragmentés (D-74, docs/lot1/depots-fragmentes.md §3) depuis les trois couches.
+            Arguments.of("/bff/des/document/depots", "${gimac.services.document}", "/api/v1/depots"),
+            Arguments.of("/bff/console/document/depots", "${gimac.services.document}", "/api/v1/depots"),
+            Arguments.of("/bff/portail/document/depots", "${gimac.services.document}", "/api/v1/depots"),
+            Arguments.of("/bff/des/document/depots/d1", "${gimac.services.document}", "/api/v1/depots/d1"),
+            Arguments.of("/bff/console/document/depots/d1/parties/12", "${gimac.services.document}", "/api/v1/depots/d1/parties/12"),
+            Arguments.of("/bff/portail/document/depots/d1/fin", "${gimac.services.document}", "/api/v1/depots/d1/fin"),
             Arguments.of("/bff/des/collaboration/messagerie/annuaire", "${gimac.services.collaboration}", "/api/v1/messagerie/annuaire"),
             Arguments.of(
                 "/bff/des/collaboration/messagerie/conversations",
@@ -152,8 +159,23 @@ class RoutesPresentationTest {
         assertThat(max).isGreaterThan(5L * 20 * 1024 * 1024).isLessThanOrEqualTo(110L * 1024 * 1024);
     }
 
+    @Test
+    @DisplayName("Dépôts fragmentés : une partie de 16 Mio admise, corps borné à 17 Mio")
+    void tailleDepotsFragmentes() {
+        for (String couche : new String[] { "des", "console", "portail" }) {
+            Route r = correspondantes("/bff/" + couche + "/document/depots/d1/parties/1").get(0);
+            assertThat(r.id()).isEqualTo("depot-fragmente");
+            String taille = r.filtres().stream().filter(f -> f.contains("RequestSize")).findFirst().orElseThrow();
+            long max = DataSize.parse(taille.replaceAll(".*maxSize=([^,}]+).*", "$1")).toBytes();
+            assertThat(max).isEqualTo(17L * 1024 * 1024).isGreaterThan(16L * 1024 * 1024);
+        }
+    }
+
     static Stream<String> fermes() {
         return Stream.of(
+            // Dépôts fragmentés : ni autre service, ni chemin voisin.
+            "/bff/des/document/depotsx",
+            "/bff/portail/document/interne/documents/1",
             // Département (D-69) : ni serveur de courriels ni autre configuration ; portail : aucune administration.
             "/bff/des/iam/configuration/messagerie",
             "/bff/des/iam/configuration/messagerie/test",

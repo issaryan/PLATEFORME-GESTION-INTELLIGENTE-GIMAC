@@ -39,6 +39,7 @@ class StockageObjetS3Test {
         "cle",
         "secret",
         "gimac-documents",
+        "gimac-depots",
         false
     );
 
@@ -100,7 +101,7 @@ class StockageObjetS3Test {
     }
 
     static StockageS3Proprietes exigeant() {
-        return new StockageS3Proprietes(URI.create("http://localhost:7480"), "us-east-1", "cle", "secret", "gimac-documents", true);
+        return new StockageS3Proprietes(URI.create("http://localhost:7480"), "us-east-1", "cle", "secret", "gimac-documents", "gimac-depots", true);
     }
 
     @Test
@@ -149,11 +150,11 @@ class StockageObjetS3Test {
             assertThat(c.serviceClientConfiguration().region().id()).isEqualTo("us-east-1");
             assertThat(c.serviceClientConfiguration().endpointOverride()).contains(URI.create("http://localhost:7480"));
         }
-        assertThatThrownBy(() -> StockageObjetS3.client(new StockageS3Proprietes(null, null, "a", "b", null, false))).hasMessageContaining("point-acces");
-        assertThatThrownBy(() -> StockageObjetS3.client(new StockageS3Proprietes(URI.create("http://x"), null, null, "b", null, false))).hasMessageContaining(
+        assertThatThrownBy(() -> StockageObjetS3.client(new StockageS3Proprietes(null, null, "a", "b", null, null, false))).hasMessageContaining("point-acces");
+        assertThatThrownBy(() -> StockageObjetS3.client(new StockageS3Proprietes(URI.create("http://x"), null, null, "b", null, null, false))).hasMessageContaining(
             "cle-acces"
         );
-        assertThatThrownBy(() -> StockageObjetS3.client(new StockageS3Proprietes(URI.create("http://x"), null, "a", null, null, false))).hasMessageContaining(
+        assertThatThrownBy(() -> StockageObjetS3.client(new StockageS3Proprietes(URI.create("http://x"), null, "a", null, null, null, false))).hasMessageContaining(
             "cle-secrete"
         );
     }
@@ -161,9 +162,14 @@ class StockageObjetS3Test {
     @Test
     @DisplayName("Propriétés : région et compartiment par défaut")
     void proprietesParDefaut() {
-        StockageS3Proprietes p = new StockageS3Proprietes(URI.create("http://x"), " ", "a", "b", "", false);
+        StockageS3Proprietes p = new StockageS3Proprietes(URI.create("http://x"), " ", "a", "b", "", null, false);
         assertThat(p.region()).isEqualTo("us-east-1");
         assertThat(p.compartiment()).isEqualTo("gimac-documents");
-        assertThat(new StockageS3Proprietes(URI.create("http://x"), "eu-west-3", "a", "b", "autre", true).compartiment()).isEqualTo("autre");
+        assertThat(p.compartimentDepots()).isEqualTo("gimac-depots");
+        assertThat(new StockageS3Proprietes(URI.create("http://x"), "eu-west-3", "a", "b", "autre", "autres-depots", true).compartiment()).isEqualTo("autre");
+        assertThat(new StockageS3Proprietes(URI.create("http://x"), null, "a", "b", null, " ", true).compartimentDepots()).isEqualTo("gimac-depots");
+        assertThat(new StockageS3Proprietes(URI.create("http://x"), null, "a", "b", null, "autres-depots", true).compartimentDepots()).isEqualTo(
+            "autres-depots"
+        );
     }
 }

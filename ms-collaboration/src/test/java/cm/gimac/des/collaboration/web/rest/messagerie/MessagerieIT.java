@@ -14,6 +14,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import cm.gimac.des.collaboration.AbstractCollaborationIT;
 import cm.gimac.des.collaboration.infrastructure.client.CollaboratorStubAdapter;
+import cm.gimac.des.collaboration.infrastructure.client.DocumentStubAdapter;
 import com.jayway.jsonpath.JsonPath;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -22,6 +23,7 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.ResultActions;
@@ -35,6 +37,9 @@ class MessagerieIT extends AbstractCollaborationIT {
     static final String SERGE = CollaboratorStubAdapter.INGENIEUR;
     static final String CLARISSE = CollaboratorStubAdapter.RSSI;
     static final String BASE = "/api/v1/messagerie";
+
+    @Autowired
+    DocumentStubAdapter depots;
 
     static MockMultipartFile json(String contenu) {
         return new MockMultipartFile("message", "", MediaType.APPLICATION_JSON_VALUE, contenu.getBytes(StandardCharsets.UTF_8));
@@ -274,6 +279,60 @@ class MessagerieIT extends AbstractCollaborationIT {
         creer(PAUL, "{\"destinataires\":[\"" + AMINATA + "\"],\"contenu\":\"x\"}", new MockMultipartFile("fichiers", "outil.exe", "application/octet-stream", new byte[] { 1 }))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.code").value("COL_ATTACHMENT_TYPE"));
+    }
+
+    @Test
+    @DisplayName("D-74 : ticket d'un dépôt fragmenté joint sans fichier, puis transféré vers une autre conversation (même document) ; ticket d'un autre : 400")
+    void ticketEtTransfert() throws Exception {
+        byte[] video = "atelier du 01/10".getBytes(StandardCharsets.UTF_8);
+        UUID ticket = depots.deposerFragmente("atelier.mp4", "video/mp4", video, "MESSAGERIE", PAUL);
+        String corps = creer(PAUL, "{\"destinataires\":[\"" + AMINATA + "\"],\"contenu\":\"\",\"documents\":[\"" + ticket + "\"]}")
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.dernierMessage.piecesJointes").value(1))
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+        String id = JsonPath.read(corps, "$.id");
+        String fil = mvc
+            .perform(get(BASE + "/conversations/" + id + "/messages").with(utilisateur(AMINATA, MESSAGERIE)))
+            .andExpect(jsonPath("$.contenu[0].piecesJointes[0].nom").value("atelier.mp4"))
+            .andExpect(jsonPath("$.contenu[0].piecesJointes[0].typeMime").value("video/mp4"))
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+        String piece = JsonPath.read(fil, "$.contenu[0].piecesJointes[0].id");
+
+        // Aminata transfère la pièce à Serge : nouvelle pièce, même document.
+        String vers = directe(AMINATA, SERGE, "Enregistrement de l'atelier");
+        mvc
+            .perform(
+                multipart(BASE + "/conversations/" + vers + "/messages")
+                    .file(json("{\"contenu\":\"\",\"transferts\":[\"" + piece + "\"]}"))
+                    .with(utilisateur(AMINATA, MESSAGERIE))
+            )
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.piecesJointes[0].nom").value("atelier.mp4"));
+        assertThat(jdbc.queryForObject("select count(distinct document_ref) from piece_jointe", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select count(*) from piece_jointe", Integer.class)).isEqualTo(2);
+        String filSerge = mvc.perform(get(BASE + "/conversations/" + vers + "/messages").with(utilisateur(SERGE, MESSAGERIE))).andReturn().getResponse().getContentAsString();
+        String transferee = JsonPath.read(filSerge, "$.contenu[1].piecesJointes[0].id");
+        mvc
+            .perform(get(BASE + "/pieces/" + transferee).with(utilisateur(SERGE, MESSAGERIE)))
+            .andExpect(status().isOk())
+            .andExpect(header().string("Content-Length", String.valueOf(video.length)))
+            .andExpect(content().bytes(video));
+
+        // Serge ne peut ni réutiliser le ticket de Paul, ni transférer une pièce d'une conversation dont il n'est pas membre.
+        envoyerJson(SERGE, vers, "{\"contenu\":\"\",\"documents\":[\"" + ticket + "\"]}")
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("COL_DOCUMENT_INVALID"));
+        envoyerJson(SERGE, vers, "{\"contenu\":\"\",\"transferts\":[\"" + piece + "\"]}")
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.code").value("COL_ATTACHMENT_NOT_FOUND"));
+    }
+
+    ResultActions envoyerJson(String qui, String conversation, String message) throws Exception {
+        return mvc.perform(multipart(BASE + "/conversations/" + conversation + "/messages").file(json(message)).with(utilisateur(qui, MESSAGERIE)));
     }
 
     @Test

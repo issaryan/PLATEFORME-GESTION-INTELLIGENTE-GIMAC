@@ -6,6 +6,7 @@ import cm.gimac.des.collaboration.application.port.out.ChiffrementPort;
 import cm.gimac.des.collaboration.application.port.out.CollaboratorDirectoryPort;
 import cm.gimac.des.collaboration.application.port.out.DocumentStoragePort;
 import cm.gimac.des.collaboration.application.port.out.DocumentStoragePort.DocumentDepose;
+import cm.gimac.des.collaboration.application.port.out.DocumentStoragePort.MetadonneesDocument;
 import cm.gimac.des.collaboration.domain.event.MessageEnvoyePayload;
 import cm.gimac.des.collaboration.domain.exception.CollaborationException;
 import cm.gimac.des.collaboration.domain.messagerie.Collaborateur;
@@ -15,6 +16,7 @@ import cm.gimac.des.collaboration.domain.messagerie.Etiquette;
 import cm.gimac.des.collaboration.domain.messagerie.EvenementGroupe;
 import cm.gimac.des.collaboration.domain.messagerie.FichierJoint;
 import cm.gimac.des.collaboration.domain.messagerie.Message;
+import cm.gimac.des.collaboration.domain.messagerie.PieceJointe;
 import cm.gimac.des.collaboration.domain.messagerie.TypeConversation;
 import cm.gimac.des.collaboration.domain.service.MasquagePan;
 import cm.gimac.des.collaboration.domain.service.ReglesMessagerie;
@@ -22,12 +24,14 @@ import cm.gimac.des.collaboration.infrastructure.messaging.outbox.OutboxPublishe
 import cm.gimac.des.collaboration.repository.ConversationMembreRepository;
 import cm.gimac.des.collaboration.repository.ConversationRepository;
 import cm.gimac.des.collaboration.repository.MessageRepository;
+import cm.gimac.des.collaboration.repository.PieceJointeRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -42,6 +46,8 @@ import org.springframework.transaction.annotation.Transactional;
  * conversation directe réutilisée, masquage des numéros de carte (RG-52) puis chiffrement au repos,
  * pièces déposées dans MS-DOCUMENT, événement collaboration.message-sent.v1 par l'outbox. Groupes de
  * discussion (D-68) : création explicite, administrateur, nom, membres ajoutés ou retirés, départ.
+ * Dépôts fragmentés (D-74, docs/lot1/depots-fragmentes.md §5) : tickets de documents déjà déposés par
+ * l'expéditeur et pièces repartagées, joints sans nouvel envoi ni copie.
  */
 @Service
 @Transactional
@@ -52,6 +58,7 @@ public class MessagerieService implements EnvoyerMessageUseCase, GererGroupeUseC
     private final ConversationRepository conversations;
     private final ConversationMembreRepository membres;
     private final MessageRepository messages;
+    private final PieceJointeRepository piecesJointes;
     private final CollaboratorDirectoryPort annuaire;
     private final DocumentStoragePort documents;
     private final ChiffrementPort chiffrement;
@@ -64,6 +71,7 @@ public class MessagerieService implements EnvoyerMessageUseCase, GererGroupeUseC
         ConversationRepository conversations,
         ConversationMembreRepository membres,
         MessageRepository messages,
+        PieceJointeRepository piecesJointes,
         CollaboratorDirectoryPort annuaire,
         DocumentStoragePort documents,
         ChiffrementPort chiffrement,
@@ -75,6 +83,7 @@ public class MessagerieService implements EnvoyerMessageUseCase, GererGroupeUseC
         this.conversations = conversations;
         this.membres = membres;
         this.messages = messages;
+        this.piecesJointes = piecesJointes;
         this.annuaire = annuaire;
         this.documents = documents;
         this.chiffrement = chiffrement;
@@ -88,9 +97,12 @@ public class MessagerieService implements EnvoyerMessageUseCase, GererGroupeUseC
     public Envoi creerConversation(Expediteur expediteur, NouvelleConversation demande, List<FichierJoint> fichiers) {
         List<FichierJoint> pieces = regles.pieces(fichiers);
         boolean groupe = demande.groupe();
+        // Tickets et transferts vérifiés avant toute écriture (D-74).
+        List<PieceExistante> existantes = existantes(expediteur, demande.documents(), demande.transferts(), pieces.size());
+        int nombrePieces = pieces.size() + existantes.size();
         // Groupe nommé (D-68) : le premier message est facultatif, la création suffit à l'ouvrir.
-        boolean avecMessage = !groupe || (demande.contenu() != null && !demande.contenu().isBlank()) || !pieces.isEmpty();
-        String contenu = avecMessage ? regles.contenu(demande.contenu(), pieces.size()) : null;
+        boolean avecMessage = !groupe || (demande.contenu() != null && !demande.contenu().isBlank()) || nombrePieces > 0;
+        String contenu = avecMessage ? regles.contenu(demande.contenu(), nombrePieces) : null;
         List<Etiquette> etiquettes = regles.etiquettes(demande.etiquettes());
         List<String> ids = regles.destinataires(demande.destinataires(), expediteur.id());
         String titre = groupe ? regles.titreGroupe(demande.titre()) : regles.titre(demande.titre());
@@ -125,7 +137,7 @@ public class MessagerieService implements EnvoyerMessageUseCase, GererGroupeUseC
             le = le.plus(1, ChronoUnit.MICROS);
         }
         if (avecMessage) {
-            messageId = ajouterMessage(conversation, auteur, contenu, etiquettes, pieces, le);
+            messageId = ajouterMessage(conversation, auteur, contenu, etiquettes, pieces, existantes, le);
         }
         return new Envoi(conversation.getId(), messageId, creee);
     }
@@ -220,9 +232,18 @@ public class MessagerieService implements EnvoyerMessageUseCase, GererGroupeUseC
             .pourMembre(conversationId, expediteur.id())
             .orElseThrow(() -> CollaborationException.introuvable("COL_CONVERSATION_NOT_FOUND", conversationId));
         List<FichierJoint> pieces = regles.pieces(fichiers);
-        String contenu = regles.contenu(demande.contenu(), pieces.size());
+        List<PieceExistante> existantes = existantes(expediteur, demande.documents(), demande.transferts(), pieces.size());
+        String contenu = regles.contenu(demande.contenu(), pieces.size() + existantes.size());
         List<Etiquette> etiquettes = regles.etiquettes(demande.etiquettes());
-        UUID messageId = ajouterMessage(conversation, membreAuteur(conversation, expediteur), contenu, etiquettes, pieces, maintenant());
+        UUID messageId = ajouterMessage(
+            conversation,
+            membreAuteur(conversation, expediteur),
+            contenu,
+            etiquettes,
+            pieces,
+            existantes,
+            maintenant()
+        );
         return new Envoi(conversationId, messageId, false);
     }
 
@@ -240,6 +261,7 @@ public class MessagerieService implements EnvoyerMessageUseCase, GererGroupeUseC
         String contenu,
         List<Etiquette> etiquettes,
         List<FichierJoint> pieces,
+        List<PieceExistante> existantes,
         Instant envoyeLe
     ) {
         UUID id = UUID.randomUUID();
@@ -253,9 +275,58 @@ public class MessagerieService implements EnvoyerMessageUseCase, GererGroupeUseC
             DocumentDepose depot = documents.deposer(piece, id, auteur.id());
             message.joindre(depot.id(), piece.nom(), depot.taille(), piece.typeMime(), depot.sha256());
         }
+        // Ticket ou transfert (D-74) : la pièce référence le document existant, rien n'est envoyé ni copié.
+        existantes.forEach(p -> message.joindre(p.documentRef(), p.nom(), p.taille(), p.typeMime(), p.empreinte()));
         messages.save(message);
         enregistrer(conversation, auteur, id, envoyeLe, List.of());
         return id;
+    }
+
+    /** Pièce dont le document est déjà dans MS-DOCUMENT (ticket d'un dépôt fragmenté ou pièce repartagée, D-74). */
+    private record PieceExistante(UUID documentRef, String nom, long taille, String typeMime, String empreinte) {}
+
+    /**
+     * Tickets et transferts d'un message (D-74), sans doublon ; 5 pièces au plus avec les fichiers
+     * (COL_TOO_MANY_ATTACHMENTS), contrôlé avant tout appel à MS-DOCUMENT.
+     */
+    private List<PieceExistante> existantes(Expediteur expediteur, List<UUID> documents, List<UUID> transferts, int nombreFichiers) {
+        List<UUID> tickets = regles.identifiants(documents);
+        List<UUID> repartages = regles.identifiants(transferts);
+        regles.nombrePieces(nombreFichiers + tickets.size() + repartages.size());
+        List<PieceExistante> r = new ArrayList<>();
+        tickets.forEach(t -> r.add(document(expediteur.id(), t)));
+        repartages.forEach(p -> r.add(transfert(expediteur.id(), p)));
+        return r;
+    }
+
+    /**
+     * Ticket d'un dépôt fragmenté : document connu de MS-DOCUMENT, de finalité MESSAGERIE, déposé par
+     * l'expéditeur et vérifié (empreinte) ; sinon COL_DOCUMENT_INVALID, sans rien révéler du document
+     * d'un autre. Puis formats admis pour les documents (COL_ATTACHMENT_TYPE).
+     */
+    private PieceExistante document(String expediteurId, UUID ticket) {
+        MetadonneesDocument m = documents
+            .metadonnees(ticket)
+            .filter(d -> DocumentStoragePort.FINALITE.equals(d.finalite()) && expediteurId.equals(d.deposant()))
+            .filter(d -> d.sha256() != null && d.sha256().matches("^[0-9a-fA-F]{64}$"))
+            .orElseThrow(() ->
+                CollaborationException.invalide(
+                    "COL_DOCUMENT_INVALID",
+                    "Document inconnu, ou non déposé par l'expéditeur pour la messagerie",
+                    Map.of("id", ticket.toString())
+                )
+            );
+        ReglesMessagerie.NomEtType retenu = regles.document(m.nomFichier(), m.typeMime(), m.taille());
+        return new PieceExistante(ticket, retenu.nom(), m.taille(), retenu.typeMime(), m.sha256().toLowerCase(Locale.ROOT));
+    }
+
+    /** Pièce repartagée : l'expéditeur doit être membre de la conversation d'origine ; sinon 404 COL_ATTACHMENT_NOT_FOUND. */
+    private PieceExistante transfert(String expediteurId, UUID pieceId) {
+        PieceJointe p = piecesJointes
+            .avecConversation(pieceId)
+            .filter(pj -> conversations.pourMembre(pj.getMessage().getConversation().getId(), expediteurId).isPresent())
+            .orElseThrow(() -> CollaborationException.introuvable("COL_ATTACHMENT_NOT_FOUND", pieceId));
+        return new PieceExistante(p.getDocumentRef(), p.getNom(), p.getTaille(), p.getTypeMime(), p.getEmpreinte());
     }
 
     /** Événement de groupe inscrit dans le fil (D-68) : sans contenu, ni étiquette, ni pièce. */

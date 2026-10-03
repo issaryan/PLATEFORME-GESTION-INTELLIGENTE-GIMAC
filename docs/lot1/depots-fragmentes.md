@@ -117,3 +117,20 @@ flux, quelle que soit sa taille.
   prêts. Bouton « Transférer » sur chaque pièce du fil : choix d'une conversation, envoi du ticket.
 - Pièces de plus de 50 Mo : pas d'aperçu ; téléchargement par lien direct (flux du navigateur), sans
   charger le fichier en mémoire.
+
+## 7. Précisions de mise en œuvre
+
+- Codes d'erreur ajoutés : 400 `DOC_SIZE_INVALID` (taille absente ou nulle), 400 `DOC_PART_NUMBER_INVALID`
+  (numéro hors de 1 à `nombreParties`), 403 `DOC_PURPOSE_FORBIDDEN` (permission absente pour la finalité),
+  404 `DOC_UPLOAD_NOT_FOUND` (dépôt inconnu ou d'un autre compte). Motifs de rejet ajoutés :
+  `DOC_PDF_UNREADABLE`, `DOC_CONTENT_MISSING`.
+- La vérification est une tâche planifiée (toutes les 5 s) qui réserve un dépôt pour une heure ; reprise
+  après un arrêt : l'écriture WORM interrompue est abandonnée et recommencée, avec le même ticket.
+- Rétention : MS-DOCUMENT lit au démarrage la rétention par défaut du compartiment WORM et la pose
+  explicitement à l'ouverture de chaque écriture multipart (certaines passerelles S3 ne l'appliquent pas
+  d'elles-mêmes aux objets assemblés). À contrôler sur Ceph RGW à la recette du socle.
+- Un objet écrit par morceaux ne porte pas la métadonnée `x-amz-meta-sha256` (l'empreinte n'est connue
+  qu'en fin d'écriture) : l'empreinte de référence est celle de `depot_document`.
+- `GET /api/v1/interne/documents/{id}/contenu` vérifie l'empreinte pendant la lecture : un contenu altéré
+  interrompt le flux avant ses derniers octets.
+- Kubernetes : le compartiment `gimac-depots` est créé par l'exploitant (variable `GIMAC_S3_COMPARTIMENT_DEPOTS`).

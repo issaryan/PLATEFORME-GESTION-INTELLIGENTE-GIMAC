@@ -241,7 +241,9 @@ spring:
   servlet:
     multipart:
       # Cinq pièces de 20 Mo au plus (D-64) : la limite fine est contrôlée par le domaine
-      # (COL_ATTACHMENT_TOO_LARGE) ; celle-ci borne seulement la requête.
+      # (COL_ATTACHMENT_TOO_LARGE) ; celle-ci borne seulement la requête. Les gros fichiers ne passent
+      # pas ici : déposés par envoi fragmenté dans MS-DOCUMENT, ils arrivent comme tickets (D-74,
+      # « documents » de la partie « message », sans partie « fichiers »).
       max-file-size: 21MB
       max-request-size: 106MB
   security:

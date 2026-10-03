@@ -71,6 +71,14 @@ export function useTelechargerPiece() {
   return useMutation<{ blob: Blob; empreinte: string | null }, ApiError, string>({ mutationFn: (id) => s.messagerie.telechargerPiece(id) })
 }
 
+/** Repartage d'une pièce par son ticket (D-74) : message sans texte vers une autre conversation, même document. */
+export function useTransferer() {
+  const s = useServices()
+  return useEcriture(({ conversationId, pieceId }: { conversationId: string; pieceId: string }) =>
+    s.messagerie.envoyer(conversationId, { contenu: '', etiquettes: [], fichiers: [], transferts: [pieceId] }),
+  )
+}
+
 /** Groupes de discussion (D-68) : nom, membres ajoutés, retrait ou départ. */
 export function useRenommerGroupe(conversationId: string) {
   const s = useServices()

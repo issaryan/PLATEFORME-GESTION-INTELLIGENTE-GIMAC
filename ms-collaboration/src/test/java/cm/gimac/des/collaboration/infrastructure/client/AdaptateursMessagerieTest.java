@@ -193,6 +193,69 @@ class AdaptateursMessagerieTest {
     }
 
     @Test
+    @DisplayName("D-74 : métadonnées réelles d'un ticket avec le jeton de service ; 404 : vide ; panne ou réponse incomplète : 503")
+    void metadonneesReelles() {
+        RestClient.Builder b = RestClient.builder();
+        MockRestServiceServer serveur = MockRestServiceServer.bindTo(b).build();
+        DocumentRestAdapter a = new DocumentRestAdapter(b, jeton(), "http://document");
+        UUID doc = UUID.randomUUID();
+        String url = "http://document/api/v1/interne/documents/" + doc;
+        String json =
+            "{\"id\":\"" + doc + "\",\"nomFichier\":\"atelier.mp4\",\"taille\":4294967296,\"typeMime\":\"video/mp4\",\"sha256\":\"" + "c".repeat(64) +
+            "\",\"finalite\":\"MESSAGERIE\",\"reference\":null,\"deposant\":\"moi\",\"institutionId\":null,\"deposeLe\":\"2026-10-01T08:00:00Z\"}";
+        serveur
+            .expect(requestTo(url))
+            .andExpect(method(HttpMethod.GET))
+            .andExpect(header("Authorization", "Bearer jeton"))
+            .andRespond(withSuccess(json, MediaType.APPLICATION_JSON));
+        serveur.expect(requestTo(url)).andRespond(withStatus(HttpStatus.NOT_FOUND));
+        serveur.expect(requestTo(url)).andRespond(withServerError());
+        serveur.expect(requestTo(url)).andRespond(withStatus(HttpStatus.FORBIDDEN));
+        serveur.expect(requestTo(url)).andRespond(withSuccess("{\"nomFichier\":\"x\"}", MediaType.APPLICATION_JSON));
+
+        assertThat(a.metadonnees(doc)).hasValueSatisfying(m -> {
+            assertThat(m.id()).isEqualTo(doc);
+            assertThat(m.nomFichier()).isEqualTo("atelier.mp4");
+            assertThat(m.taille()).isEqualTo(4294967296L);
+            assertThat(m.typeMime()).isEqualTo("video/mp4");
+            assertThat(m.sha256()).isEqualTo("c".repeat(64));
+            assertThat(m.finalite()).isEqualTo("MESSAGERIE");
+            assertThat(m.deposant()).isEqualTo("moi");
+        });
+        assertThat(a.metadonnees(doc)).isEmpty();
+        erreur(() -> a.metadonnees(doc), "COL_DOCUMENT_UNAVAILABLE", 503);
+        erreur(() -> a.metadonnees(doc), "COL_DOCUMENT_UNAVAILABLE", 503);
+        erreur(() -> a.metadonnees(doc), "COL_DOCUMENT_UNAVAILABLE", 503);
+        serveur.verify();
+    }
+
+    @Test
+    @DisplayName("D-74 : métadonnées de substitution, cohérentes avec ses dépôts (direct et fragmenté simulé) ; inconnu : vide")
+    void metadonneesSubstitution() throws Exception {
+        DocumentStubAdapter a = new DocumentStubAdapter();
+        UUID message = UUID.randomUUID();
+        DocumentDepose d = a.deposer(fichier("abc"), message, "moi");
+        assertThat(a.metadonnees(d.id())).hasValueSatisfying(m -> {
+            assertThat(m.nomFichier()).isEqualTo("pv de recette.pdf");
+            assertThat(m.taille()).isEqualTo(3);
+            assertThat(m.sha256()).isEqualTo(d.sha256());
+            assertThat(m.finalite()).isEqualTo("MESSAGERIE");
+            assertThat(m.reference()).isEqualTo(message.toString());
+            assertThat(m.deposant()).isEqualTo("moi");
+        });
+        UUID ticket = a.deposerFragmente("atelier.mp4", "video/mp4", new byte[] { 'a', 'b', 'c' }, "MESSAGERIE", "moi");
+        assertThat(a.metadonnees(ticket)).hasValueSatisfying(m -> {
+            assertThat(m.id()).isEqualTo(ticket);
+            assertThat(m.typeMime()).isEqualTo("video/mp4");
+            assertThat(m.sha256()).isEqualTo("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
+        });
+        try (InputStream in = a.lire(ticket).flux()) {
+            assertThat(in.readAllBytes()).containsExactly('a', 'b', 'c');
+        }
+        assertThat(a.metadonnees(UUID.randomUUID())).isEmpty();
+    }
+
+    @Test
     @DisplayName("Dépôt de substitution : empreinte SHA-256, métadonnées du dépôt, relecture ; inconnu : 404")
     void depotSubstitution() throws Exception {
         DocumentStubAdapter a = new DocumentStubAdapter();

@@ -1,4 +1,4 @@
-import { http, P } from '@gimac/socle'
+import { depotsHttp, http, P, televerser } from '@gimac/socle'
 import type { Envoi, NouvelleConversation } from '../../modele/messagerie'
 import type { ServiceMessagerie } from '../ports'
 
@@ -13,13 +13,20 @@ function multipart(message: object, fichiers: File[]): FormData {
   return corps
 }
 
-const envoi = (e: Envoi) => ({ contenu: e.contenu, etiquettes: e.etiquettes })
+const envoi = (e: Envoi) => ({
+  contenu: e.contenu,
+  etiquettes: e.etiquettes,
+  // Tickets (D-74) : documents déposés par morceaux, pièces repartagées ; absents s'il n'y en a pas.
+  ...(e.documents?.length ? { documents: e.documents } : {}),
+  ...(e.transferts?.length ? { transferts: e.transferts } : {}),
+})
 const nouvelle = (c: NouvelleConversation) => ({ ...envoi(c), destinataires: c.destinataires, titre: c.titre, liaisonId: c.liaisonId, ...(c.groupe ? { groupe: true } : {}) })
 
 /** Messagerie d'une couche interne : le DES, ou la console (RSSI, super administrateur). */
 export function messagerieHttpPour(couche: 'des' | 'console'): ServiceMessagerie {
   const M = `${couche === 'console' ? P.consoleCollaboration : P.desCollaboration}/messagerie`
   const PRESENCE = couche === 'console' ? P.consolePresence : P.desPresence
+  const depots = depotsHttp(couche)
   return {
     // Pagination de l'interface à partir de 0, comme le service.
     annuaire: (recherche, page = 0, taille = 20) => http.get(`${M}/annuaire`, { query: { recherche: recherche || undefined, page, taille } }),
@@ -34,6 +41,8 @@ export function messagerieHttpPour(couche: 'des' | 'console'): ServiceMessagerie
     // Compteur périodique : appel de fond, qui ne prolonge pas la session d'inactivité (D-65 §6).
     nonLus: () => http.get(`${M}/non-lus`, { fond: true }),
     telechargerPiece: (id) => http.blob(`${M}/pieces/${encodeURIComponent(id)}`, '*/*'),
+    deposer: (fichier, reference, o) => televerser(depots, fichier, { finalite: 'MESSAGERIE', reference }, o),
+    lienPiece: (id) => `${M}/pieces/${encodeURIComponent(id)}`,
     renommerGroupe: (id, titre) => http.patch(`${M}/conversations/${encodeURIComponent(id)}`, { body: { titre } }),
     ajouterMembres: (id, membres) => http.post(`${M}/conversations/${encodeURIComponent(id)}/membres`, { body: { membres } }),
     retirerMembre: (id, membreId) => http.delete(`${M}/conversations/${encodeURIComponent(id)}/membres/${encodeURIComponent(membreId)}`),

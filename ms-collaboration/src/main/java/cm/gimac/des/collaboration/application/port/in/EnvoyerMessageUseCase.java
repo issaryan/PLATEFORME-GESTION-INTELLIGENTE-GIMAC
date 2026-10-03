@@ -13,6 +13,7 @@ public interface EnvoyerMessageUseCase {
     /**
      * « groupe » (D-68) : groupe de discussion nommé, même avec un seul autre membre ; le premier message
      * y est alors facultatif. Sans lui, deux personnes sans titre ni liaison forment une conversation directe.
+     * « documents » et « transferts » (D-74) : voir {@link NouveauMessage}.
      */
     record NouvelleConversation(
         List<String> destinataires,
@@ -21,14 +22,37 @@ public interface EnvoyerMessageUseCase {
         String liaisonReference,
         String contenu,
         List<Etiquette> etiquettes,
-        boolean groupe
+        boolean groupe,
+        List<UUID> documents,
+        List<UUID> transferts
     ) {
+        public NouvelleConversation(
+            List<String> destinataires,
+            String titre,
+            UUID liaisonId,
+            String liaisonReference,
+            String contenu,
+            List<Etiquette> etiquettes,
+            boolean groupe
+        ) {
+            this(destinataires, titre, liaisonId, liaisonReference, contenu, etiquettes, groupe, List.of(), List.of());
+        }
+
         public NouvelleConversation(List<String> destinataires, String titre, UUID liaisonId, String liaisonReference, String contenu, List<Etiquette> etiquettes) {
             this(destinataires, titre, liaisonId, liaisonReference, contenu, etiquettes, false);
         }
     }
 
-    record NouveauMessage(String contenu, List<Etiquette> etiquettes) {}
+    /**
+     * Nouveau message. « documents » (D-74) : tickets de documents déposés par l'expéditeur par envoi
+     * fragmenté, de finalité MESSAGERIE ; « transferts » : pièces jointes existantes repartagées (même
+     * document, sans copie).
+     */
+    record NouveauMessage(String contenu, List<Etiquette> etiquettes, List<UUID> documents, List<UUID> transferts) {
+        public NouveauMessage(String contenu, List<Etiquette> etiquettes) {
+            this(contenu, etiquettes, List.of(), List.of());
+        }
+    }
 
     /** Conversation créée, ou conversation directe existante réutilisée ; message ajouté. */
     record Envoi(UUID conversationId, UUID messageId, boolean creee) {}

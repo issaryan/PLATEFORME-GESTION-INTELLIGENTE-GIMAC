@@ -27,7 +27,7 @@ tout jeton portant une institution et tout chemin `/bff/portail/collaboration/**
 | POST | `/api/v1/messagerie/conversations/{id}/lu` | `COL_MESSAGE_READ` | Marque lus tous les messages jusqu'au dernier |
 | POST | `/api/v1/messagerie/conversations/{id}/saisie` | `COL_MESSAGE_SEND` | « En train d'écrire » (D-72) : signal éphémère aux autres membres, 204 ; 404 hors de la conversation |
 | GET | `/api/v1/messagerie/non-lus` | `COL_MESSAGE_READ` | `{ "total": n }` |
-| GET | `/api/v1/messagerie/pieces/{pieceId}` | `COL_MESSAGE_READ` | Contenu d'une pièce jointe (membre seulement), `Content-Disposition: attachment` |
+| GET | `/api/v1/messagerie/pieces/{pieceId}` | `COL_MESSAGE_READ` | Contenu d'une pièce jointe (membre seulement), relayé en flux quelle que soit sa taille (D-74) : `Content-Disposition: attachment`, `Content-Length`, `Repr-Digest` |
 
 Refus : 401 sans jeton ; 403 sans second facteur ou sans la permission ; 404 pour une conversation dont
 l'appelant n'est pas membre (on ne révèle pas son existence).
@@ -35,19 +35,54 @@ l'appelant n'est pas membre (on ne révèle pas son existence).
 ### Corps multipart (création et envoi)
 
 - `message` (partie JSON, `application/json`) :
-  - création : `{ "destinataires": ["<id IAM>", …], "titre": "…" | null, "liaisonId": "<uuid>" | null, "contenu": "…", "etiquettes": [{ "liaisonId": "<uuid>", "reference": "LIA-2026-027" }], "groupe": false }`
-  - envoi : `{ "contenu": "…", "etiquettes": [ … ] }`
-- `fichiers` (0 à 5 parties) : pièces jointes.
+  - création : `{ "destinataires": ["<id IAM>", …], "titre": "…" | null, "liaisonId": "<uuid>" | null, "contenu": "…", "etiquettes": [{ "liaisonId": "<uuid>", "reference": "LIA-2026-027" }], "groupe": false, "documents": ["<uuid>"], "transferts": ["<uuid>"] }`
+  - envoi : `{ "contenu": "…", "etiquettes": [ … ], "documents": [ … ], "transferts": [ … ] }`
+  - `documents` et `transferts` sont facultatifs (D-74, voir ci-dessous).
+- `fichiers` (0 à 5 parties) : petites pièces jointes envoyées avec le message. Une requête sans aucune
+  partie `fichiers` est admise (message ne portant que du texte, des tickets ou des transferts).
 
 Règles :
 - `contenu` : 1 à 4 000 caractères (espaces retirés aux bords) ; au moins un contenu **ou** une pièce jointe.
 - `destinataires` : 1 à 50 comptes internes actifs de l'annuaire, distincts de l'expéditeur ; deux personnes
   sans titre ni liaison forment une conversation **directe** : la conversation directe existante est réutilisée.
 - `etiquettes` : 0 à 10, `reference` au format `^LIA-\d{4}-\d{3,6}$`.
-- Pièces jointes : 5 au plus, 20 Mo chacune ; PDF, PNG, JPEG, texte, CSV, Word, Excel, PowerPoint, ZIP.
+- Pièces jointes : **5 au plus par message, toutes sources confondues** (`fichiers`, `documents`,
+  `transferts` ; un identifiant répété compte une fois), `COL_TOO_MANY_ATTACHMENTS`.
+- `fichiers` : 20 Mo chacun (`COL_ATTACHMENT_TOO_LARGE`) ; PDF, PNG, JPEG, texte, CSV, Word, Excel,
+  PowerPoint, ZIP (`COL_ATTACHMENT_TYPE`).
 - **RG-52** : toute suite de 13 à 19 chiffres (espaces ou tirets admis) passant le contrôle de Luhn est
   masquée en `6 premiers + * + 4 derniers` avant l'enregistrement.
 - Un message est **immuable** une fois envoyé.
+
+### Gros fichiers et repartage (D-74, `docs/lot1/depots-fragmentes.md` §5)
+
+- `documents` : **tickets** (identifiants de documents) obtenus par l'expéditeur au terme d'un dépôt
+  fragmenté de finalité `MESSAGERIE` dans MS-DOCUMENT. Chaque ticket est vérifié par
+  `GET /api/v1/interne/documents/{id}` : document existant, `finalite` = `MESSAGERIE`, `deposant` =
+  l'expéditeur, empreinte SHA-256 présente. Sinon 400 `COL_DOCUMENT_INVALID`, dont les détails ne portent
+  que le ticket fourni (rien n'est révélé du document d'un autre). La pièce reprend le nom, la taille, le
+  type et l'empreinte des métadonnées ; rien n'est envoyé à nouveau.
+- Les tickets n'ont pas de limite de taille propre à la messagerie (celle du dépôt fragmenté s'applique,
+  20 Go par défaut). Formats admis, contrôlés sur l'extension du nom **et** sur le type des métadonnées
+  (`application/octet-stream` admis seulement pour une extension de la liste ; type rendu canonique),
+  sinon `COL_ATTACHMENT_TYPE` :
+
+  | Famille | Extensions | Types |
+  |---|---|---|
+  | Pièces jointes ordinaires | `pdf`, `png`, `jpg`, `jpeg`, `txt`, `csv`, `doc`, `docx`, `xls`, `xlsx`, `ppt`, `pptx`, `zip` | ceux des `fichiers` |
+  | Vidéo | `mp4`, `mov`, `webm`, `mkv`, `avi` | `video/mp4`, `video/quicktime`, `video/webm`, `video/x-matroska`, `video/x-msvideo` |
+  | Audio | `mp3`, `wav`, `m4a` | `audio/mpeg`, `audio/wav` (ou `audio/x-wav`), `audio/mp4` |
+  | Archives | `zip`, `7z`, `tar`, `gz` | `application/zip`, `application/x-7z-compressed`, `application/x-tar`, `application/gzip` |
+
+  Le frontend contrôle l'extension avant d'ouvrir le dépôt, pour ne pas envoyer plusieurs gigaoctets
+  refusés à l'envoi du message.
+- `transferts` : identifiants de pièces jointes existantes à repartager. L'expéditeur doit être membre
+  de la conversation d'origine de chaque pièce ; sinon 404 `COL_ATTACHMENT_NOT_FOUND` (pièce inconnue ou
+  hors de portée, indistinctement). La nouvelle pièce référence le **même document** (même objet du
+  dépôt WORM) avec le même nom, la même taille, le même type et la même empreinte : ni copie, ni nouveau
+  dépôt.
+- Tous les tickets et transferts sont vérifiés avant toute écriture : en cas de refus, ni conversation
+  ni message n'est créé. L'événement `collaboration.message-sent.v1` est inchangé.
 
 ### Groupes de discussion (D-68)
 
@@ -73,7 +108,7 @@ Codes d'erreur (`application/problem+json`, champ `code`) : `COL_RECIPIENT_REQUI
 `COL_RECIPIENT_SELF`, `COL_TOO_MANY_RECIPIENTS`, `COL_MESSAGE_EMPTY`, `COL_MESSAGE_TOO_LONG`,
 `COL_TAG_INVALID`, `COL_TOO_MANY_TAGS`, `COL_ATTACHMENT_TOO_LARGE`, `COL_ATTACHMENT_TYPE`,
 `COL_TOO_MANY_ATTACHMENTS`, `COL_CONVERSATION_NOT_FOUND`, `COL_ATTACHMENT_NOT_FOUND`,
-`COL_MESSAGE_NOT_FOUND`, `COL_GROUP_TITLE_REQUIRED`, `COL_NOT_A_GROUP` (400), `COL_GROUP_ADMIN_REQUIRED` (403),
+`COL_MESSAGE_NOT_FOUND`, `COL_DOCUMENT_INVALID` (400, ticket inconnu, d'un autre déposant ou d'une autre finalité), `COL_GROUP_TITLE_REQUIRED`, `COL_NOT_A_GROUP` (400), `COL_GROUP_ADMIN_REQUIRED` (403),
 `COL_MEMBER_NOT_FOUND` (404), `COL_ATTACHMENT_REJECTED` (400, refus de MS-DOCUMENT, par exemple un numéro de
 carte en clair), `COL_DIRECTORY_UNAVAILABLE` et `COL_DOCUMENT_UNAVAILABLE` (503), `COL_USER_TOKEN_REQUIRED`.
 
@@ -114,7 +149,11 @@ messages : `{ "contenu": [...], "plusAnciens": true|false }`.
 - **MS-DOCUMENT** `POST /api/v1/interne/documents` (multipart `fichier`, `finalite=MESSAGERIE`, `reference`,
   `deposantId`) (`INTERNAL_DOCUMENT_DEPOSIT`) → `{ id, sha256, nomFichier, taille, typeMime }` ; dépôt WORM,
   refus d'un fichier portant un numéro de carte en clair (BNF-16) ;
-  `GET /api/v1/interne/documents/{id}/contenu` (`INTERNAL_DOCUMENT_READ`) : flux du document.
+  `GET /api/v1/interne/documents/{id}/contenu` (`INTERNAL_DOCUMENT_READ`) : flux du document, servi et
+  relayé en flux (`Content-Length`, `Repr-Digest`), sans tableau d'octets en mémoire (D-74) ;
+  `GET /api/v1/interne/documents/{id}` (même autorité) : métadonnées `{ id, nomFichier, taille, typeMime,
+  sha256, finalite, reference, deposant, institutionId, deposeLe }`, 404 si inconnu, pour vérifier les
+  tickets (`docs/lot1/depots-fragmentes.md` §4).
 
 ## 4. Événements (outbox, CloudEvents 1.0)
 

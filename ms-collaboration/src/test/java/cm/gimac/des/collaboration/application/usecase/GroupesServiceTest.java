@@ -30,6 +30,7 @@ import cm.gimac.des.collaboration.infrastructure.messaging.outbox.OutboxPublishe
 import cm.gimac.des.collaboration.repository.ConversationMembreRepository;
 import cm.gimac.des.collaboration.repository.ConversationRepository;
 import cm.gimac.des.collaboration.repository.MessageRepository;
+import cm.gimac.des.collaboration.repository.PieceJointeRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -65,6 +66,9 @@ class GroupesServiceTest {
     MessageRepository messages;
 
     @Mock
+    PieceJointeRepository piecesJointes;
+
+    @Mock
     CollaboratorDirectoryPort annuaire;
 
     @Mock
@@ -84,6 +88,7 @@ class GroupesServiceTest {
             conversations,
             membres,
             messages,
+            piecesJointes,
             annuaire,
             documents,
             chiffrement,

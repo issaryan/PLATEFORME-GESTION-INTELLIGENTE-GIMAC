@@ -122,7 +122,9 @@ public class MessagerieResource {
                 message.liaisonReference(),
                 message.contenu(),
                 message.etiquettes(),
-                Boolean.TRUE.equals(message.groupe())
+                Boolean.TRUE.equals(message.groupe()),
+                vide(message.documents()),
+                vide(message.transferts())
             ),
             pieces(fichiers)
         );
@@ -187,7 +189,17 @@ public class MessagerieResource {
         Authentication auth
     ) {
         Expediteur moi = appelant(auth);
-        var r = envoi.envoyer(moi, id, new EnvoyerMessageUseCase.NouveauMessage(message.contenu(), message.etiquettes()), pieces(fichiers));
+        var r = envoi.envoyer(
+            moi,
+            id,
+            new EnvoyerMessageUseCase.NouveauMessage(
+                message.contenu(),
+                message.etiquettes(),
+                vide(message.documents()),
+                vide(message.transferts())
+            ),
+            pieces(fichiers)
+        );
         var lu = lecture.message(moi.id(), r.messageId());
         return ResponseEntity.status(HttpStatus.CREATED).body(MessageVue.de(lu, moi.id(), lecture.versionsAvatar(Set.of(lu.message().getAuteurId()))));
     }
@@ -213,6 +225,11 @@ public class MessagerieResource {
         return new NonLusVue(lecture.nonLus(appelant(auth).id()));
     }
 
+    /**
+     * Contenu d'une pièce, relayé en flux quelle que soit sa taille (D-74) : le flux de MS-DOCUMENT est
+     * recopié par tampons vers la réponse, jamais chargé en entier ; Content-Length est la taille connue.
+     * InputStreamResource exactement : pas de traitement de Range, qui exigerait un flux relisible.
+     */
     @GetMapping("/pieces/{pieceId}")
     @PreAuthorize(LIRE)
     public ResponseEntity<Resource> piece(@PathVariable UUID pieceId, Authentication auth) {
@@ -238,6 +255,10 @@ public class MessagerieResource {
             return null;
         }
         return "sha-256=:" + Base64.getEncoder().encodeToString(HexFormat.of().parseHex(sha256Hex)) + ":";
+    }
+
+    private static <T> List<T> vide(List<T> liste) {
+        return liste == null ? List.of() : liste;
     }
 
     private static List<FichierJoint> pieces(List<MultipartFile> fichiers) {
