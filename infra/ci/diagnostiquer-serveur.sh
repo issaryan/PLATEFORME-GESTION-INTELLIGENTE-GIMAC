@@ -43,12 +43,41 @@ done
 echo "-- POST /api/connexion (corps vide, attendu 400 ou 401)"
 curl -sS -m 15 -o /dev/null -w 'statut=%{http_code} duree=%{time_total}s\n' -X POST -H 'Content-Type: application/json' -d '{}' "http://localhost:4200/api/connexion" 2>&1
 
+etape "Sonde d'intermittence : 200 appels successifs à /api/auth-info (port 4200)"
+echecs=0; lents=0
+for i in $(seq 1 200); do
+  r="$(curl -sS -m 10 -o /dev/null -w '%{http_code} %{time_total}' "http://localhost:4200/api/auth-info" 2>&1 | tail -1)"
+  code="${r%% *}"; t="${r##* }"
+  [ "$code" = "200" ] || { echecs=$((echecs+1)); echo "  appel $i : $r"; }
+  awk -v t="$t" 'BEGIN{exit !(t+0>1)}' && lents=$((lents+1))
+done
+echo "échecs=$echecs/200, réponses de plus d'une seconde=$lents"
+
+for f in frontend-departement frontend-portail frontend-console; do
+  etape "Accès nginx $f (24 h) : statuts des appels /api et /bff"
+  compose logs --no-color --since 24h "$f" 2>&1 | grep -E '"(GET|POST|PUT|PATCH|DELETE) /(api|bff)' > /tmp/acces-diag.txt || true
+  echo "requêtes=$(wc -l < /tmp/acces-diag.txt)"
+  awk '{for(i=1;i<=NF;i++) if($i ~ /^"(GET|POST|PUT|PATCH|DELETE)$/){print $(i+3); break}}' /tmp/acces-diag.txt | sort | uniq -c | sort -rn
+  echo "-- statuts 0, 444, 499, 5xx (30 derniers)"
+  awk '{for(i=1;i<=NF;i++) if($i ~ /^"(GET|POST|PUT|PATCH|DELETE)$/){ if($(i+3) ~ /^(0|444|499|5[0-9][0-9])$/) print; break}}' /tmp/acces-diag.txt | sed -E 's/\?[^ ]*/?…/' | tail -30 | masquer
+  rm -f /tmp/acces-diag.txt
+  echo "-- erreurs nginx"
+  compose logs --no-color --since 24h "$f" 2>&1 | grep -E '\[(error|crit|alert|emerg)\]' | sed -E 's/\?[^ ,]*/?…/' | tail -20 | masquer
+done
+
+etape "Passerelle (24 h) : connexions coupées, délais dépassés"
+compose logs --no-color --since 24h gateway 2>&1 | grep -Ei 'reset by peer|prematurely|PrematureClose|timed? ?out|Connection refused|pool|AbortedException' | grep -v 'Not updating' | tail -30 | masquer
+
+etape "Hôte : connexions TCP vers les ports 4200 à 4202"
+ss -tan state established '( sport = :4200 or sport = :4201 or sport = :4202 )' 2>/dev/null | wc -l
+ss -s 2>/dev/null | head -5
+
 etape "Erreurs récentes de nginx (département)"
 compose logs --no-color --since 6h frontend-departement 2>&1 | grep -Ei 'error|upstream|refused|reset|timed out| 50[0-9] ' | tail -40 | masquer
 
 for s in gateway iam document keycloak; do
   etape "Erreurs récentes : $s (6 dernières heures)"
-  compose logs --no-color --since 6h "$s" 2>&1 | grep -E 'ERROR|WARN|Exception|OutOfMemory|Killed|refused|Caused by' | tail -40 | masquer
+  compose logs --no-color --since 6h "$s" 2>&1 | grep -E 'ERROR|WARN|Exception|OutOfMemory|Killed|refused|Caused by' | grep -Ev 'Not updating high watermark|HHH90006001|ConversionRuleAction' | tail -40 | masquer
 done
 
 etape "Dernières lignes de la passerelle"
