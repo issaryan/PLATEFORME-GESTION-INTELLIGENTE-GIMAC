@@ -75,9 +75,17 @@ ss -s 2>/dev/null | head -5
 etape "Erreurs récentes de nginx (département)"
 compose logs --no-color --since 6h frontend-departement 2>&1 | grep -Ei 'error|upstream|refused|reset|timed out| 50[0-9] ' | tail -40 | masquer
 
-for s in gateway iam document keycloak; do
+for s in gateway iam document keycloak pilotage notification homologation collaboration; do
   etape "Erreurs récentes : $s (6 dernières heures)"
   compose logs --no-color --since 6h "$s" 2>&1 | grep -E 'ERROR|WARN|Exception|OutOfMemory|Killed|refused|Caused by' | grep -Ev 'Not updating high watermark|HHH90006001|ConversionRuleAction' | tail -40 | masquer
+done
+
+etape "Clients de service refusés par Keycloak (dernière heure)"
+compose logs --no-color --since 1h keycloak 2>&1 | grep -o 'type="CLIENT_LOGIN_ERROR".*clientId="[^"]*".*error="[^"]*"' | sed -E 's/.*clientId="([^"]*)".*error="([^"]*)".*/\1 \2/' | sort | uniq -c
+
+etape "Migrations Liquibase (homologation, pilotage, notification)"
+for s in homologation pilotage notification; do
+  echo "-- $s"; compose logs --no-color "$s" 2>&1 | grep -E "Liquibase|ChangeSet .* ran|d77-reprise|Started [A-Za-z]+App" | tail -6 | masquer
 done
 
 etape "Dernières lignes de la passerelle"
