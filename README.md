@@ -116,3 +116,4 @@ infra/ci/valider-securite.sh                       # secrets (gitleaks) et vuln�
 | 2026-10-02 | — | Keycloak persistant sur un poste de développement (surcouche activée par le `.env`), comme sur le serveur de démonstration |
 | 2026-10-05 | — | `infra/docker-compose/mettre-a-jour.sh` : mise à jour et redéploiement d'un poste en une commande, sans perte des comptes |
 | 2026-10-05 | — | Publication HTTPS (D-75) : port retenu 8463 (`GIMAC_PORT_HTTPS=8463`), noms `moabi`, `moabi-portail`, `moabi-console`.gimac-afr.org ; procédure complétée (chemins du certificat ANTIC, contrôle du relais avant DNS) |
+| 2026-10-05 | — | Relais HTTPS de Moabi installé sur le nginx du serveur 214 (port 8463, trois noms) et vérifié ; en attente du DNS OVH et du pare-feu |

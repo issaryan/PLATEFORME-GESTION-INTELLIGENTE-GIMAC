@@ -22,3 +22,4 @@ Principe (D-48) : ce que JHipster sait générer est régénéré, jamais édit�
 | 2026-09-29 | — | Lot 1 : `infra/keycloak` (domaine gimac) et `infra/kafka` (sujets du lot) |
 | 2026-09-29 | — | `infra/ci` : chaîne CI/CD (validation, images signées, déploiement en recette) |
 | 2026-10-05 | — | Publication HTTPS (D-75) : port retenu 8463 (`GIMAC_PORT_HTTPS=8463`), noms `moabi`, `moabi-portail`, `moabi-console`.gimac-afr.org ; procédure complétée (chemins du certificat ANTIC, contrôle du relais avant DNS) |
+| 2026-10-05 | — | Relais HTTPS de Moabi installé sur le nginx du serveur 214 (port 8463, trois noms) et vérifié ; en attente du DNS OVH et du pare-feu |
