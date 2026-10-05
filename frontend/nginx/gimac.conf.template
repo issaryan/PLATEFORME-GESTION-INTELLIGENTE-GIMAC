@@ -77,6 +77,12 @@ server {
         include /etc/nginx/gimac-securite.conf;
         add_header Cache-Control "public, max-age=31536000, immutable" always;
         try_files $uri =404;
+        # Modules ECMAScript (.mjs, dont le worker de pdf.js, D-73) : absents du mime.types de nginx,
+        # ils partiraient en application/octet-stream, que le navigateur refuse de charger en module.
+        location ~ \.mjs$ {
+            types { text/javascript mjs; }
+            try_files $uri =404;
+        }
     }
 
     # Application monopage : toute route inconnue rend index.html, jamais mis en cache.
