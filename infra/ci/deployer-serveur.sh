@@ -218,6 +218,11 @@ actualiser_configurations_montees
 mkdir -p "$(dirname "$EMPREINTE")"
 sha256sum "$DOMAINE" | cut -d' ' -f1 > "$EMPREINTE"
 
+# Secrets des clients de service : alignés sur le .env (un client ajouté au domaine réimporté gardait un
+# secret différent de celui du service, invalid_client_credentials). Idempotent, aucun secret affiché.
+etape "Secrets des clients de service"
+python3 "$RACINE/infra/keycloak/aligner-secrets-clients.py"
+
 if [ -f "$RACINE/infra/keycloak/local/comptes.json" ]; then
   etape "Comptes nominatifs (les comptes existants sont conservés)"
   python3 "$RACINE/infra/keycloak/creer-comptes-personnels.py"
