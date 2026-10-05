@@ -83,6 +83,20 @@ done
 etape "Clients de service refusés par Keycloak (dernière heure)"
 compose logs --no-color --since 1h keycloak 2>&1 | grep -o 'type="CLIENT_LOGIN_ERROR".*clientId="[^"]*".*error="[^"]*"' | sed -E 's/.*clientId="([^"]*)".*error="([^"]*)".*/\1 \2/' | sort | uniq -c
 
+etape "Jeton de chaque client de service (code HTTP seulement, aucun secret affiché)"
+# Le secret est lu dans le .env et transmis par l'environnement (docker exec -e NOM, sans valeur sur la
+# ligne de commande) ; seul le code de la réponse de Keycloak est affiché.
+for client in pilotage-service:GIMAC_SECRET_PILOTAGE_SERVICE notification-service:GIMAC_SECRET_NOTIFICATION_SERVICE \
+              collaboration-service:GIMAC_SECRET_COLLABORATION_SERVICE homologation-service:GIMAC_SECRET_HOMOLOGATION_SERVICE; do
+  CLIENT_ID="${client%%:*}"
+  CLIENT_SECRET="$(sed -n "s/^${client#*:}=//p" "$ENV" 2>/dev/null)"
+  export CLIENT_ID CLIENT_SECRET
+  code="$(compose exec -T -e CLIENT_ID -e CLIENT_SECRET frontend-departement sh -c \
+    'wget -q -S -O /dev/null --post-data "grant_type=client_credentials&client_id=$CLIENT_ID&client_secret=$CLIENT_SECRET" http://keycloak:9080/realms/gimac/protocol/openid-connect/token 2>&1 | grep -o "HTTP/[0-9.]* [0-9]*" | tail -1' 2>&1)"
+  echo "$CLIENT_ID : ${code:-aucune réponse} (secret présent dans .env : $([ -n "$CLIENT_SECRET" ] && echo oui || echo non))"
+  unset CLIENT_SECRET
+done
+
 etape "Migrations Liquibase (homologation, pilotage, notification)"
 for s in homologation pilotage notification; do
   echo "-- $s"; compose logs --no-color "$s" 2>&1 | grep -E "Liquibase|ChangeSet .* ran|d77-reprise|Started [A-Za-z]+App" | tail -6 | masquer
