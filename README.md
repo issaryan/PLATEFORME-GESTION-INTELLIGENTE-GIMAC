@@ -39,6 +39,7 @@ infra/docker-compose/gimac-dev.sh verifier          # prérequis et ports
 infra/docker-compose/gimac-dev.sh demarrer --socle  # infrastructure et frontend, sans les 14 services
 infra/docker-compose/gimac-dev.sh images            # images Jib des 14 services
 infra/docker-compose/gimac-dev.sh demarrer          # tout
+infra/docker-compose/mettre-a-jour.sh              # après un pull : ne reconstruit que ce qui a changé
 ```
 
 Les secrets locaux sont générés dans `infra/docker-compose/.env`, jamais versionné.
@@ -113,3 +114,4 @@ infra/ci/valider-securite.sh                       # secrets (gitleaks) et vuln�
 | 2026-09-30 | d07c74d, 0f46741 | Messagerie instantanée (D-64) : contrat et interface ; partage du backend des étapes 4 à 10 |
 | 2026-10-01 | — | Serveur de démonstration 10.20.36.214 mis à jour à chaque poussée sur `main` (`.github/workflows/deploiement-serveur.yml`, exécuteur auto-hébergé `gimac-214`, `infra/ci/deployer-serveur.sh`) |
 | 2026-10-02 | — | Keycloak persistant sur un poste de développement (surcouche activée par le `.env`), comme sur le serveur de démonstration |
+| 2026-10-05 | — | `infra/docker-compose/mettre-a-jour.sh` : mise à jour et redéploiement d'un poste en une commande, sans perte des comptes |

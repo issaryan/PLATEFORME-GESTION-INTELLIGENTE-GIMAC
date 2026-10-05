@@ -46,6 +46,16 @@ Environnement de développement de la plateforme en une commande (SOC-13, D-45, 
 
 Un port déjà pris sur le poste est signalé avec la variable `GIMAC_PORT_*` à placer dans `.env`. En cas d'échec, tout ce qui a démarré est arrêté. Le projet Compose s'appelle `gimac-des`.
 
+## Mettre à jour un poste
+
+```
+infra/docker-compose/mettre-a-jour.sh              # git pull, images périmées, domaine Keycloak, redémarrage
+infra/docker-compose/mettre-a-jour.sh --tout       # reconstruit les 14 services et les trois couches
+infra/docker-compose/mettre-a-jour.sh --sans-pull  # code local non poussé
+```
+
+Le script tire `main`, reconstruit les seules images dont le code a changé depuis leur construction (commit postérieur sur `ms-<service>/src/main`, `pom.xml` ou `frontend/`), applique une nouvelle version de `gimac-realm.json` en conservant les comptes (Keycloak persistant), démarre la plateforme, redémarre les services dont la configuration montée a changé (OPA, simulacres, observabilité), puis vérifie les trois couches. Les modifications non commitées ne sont pas détectées : `--tout`. Il remplace la chaîne CI/CD tant qu'elle est indisponible.
+
 ## Keycloak persistant sur un poste
 
 Par défaut, Keycloak garde ses données dans son conteneur (dev-file) : comptes, mots de passe et codes TOTP enrôlés disparaissent quand il est recréé. Pour les conserver, comme sur le serveur de démonstration, ajouter au `.env` du poste :
@@ -87,3 +97,4 @@ git checkout -- ../../ms-*/.yo-rc.json   # annule la réécriture de version par
 | 2026-10-02 | — | `gimac-dev.sh images` : secrets du `.env` préparés avant la construction des couches de présentation (sur un poste neuf, le Compose refusait d'interpoler les secrets absents) |
 | 2026-10-02 | — | `tester-socle.sh` : 51/51. Secret du client `internal` lu dans `.env` (`GIMAC_SECRET_INTERNAL`) ; CRUD de MS-IAM et MS-PARTICIPANT contrôlés selon D-62 (403 sans `ROLE_ADMIN`, 200 avec le compte de service `gateway-supervision`, portée `openid` exigée par l'appel `userinfo` de la passerelle) |
 | 2026-10-02 | — | Surcouche `docker-compose.keycloak-persistant.yml` : Keycloak persistant sur un poste (comptes, mots de passe et TOTP conservés) ; `GIMAC_COMPOSE_SUPPLEMENT` lu dans le `.env` par `gimac-dev.sh`, `GIMAC_KEYCLOAK_DB_PASSWORD` généré |
+| 2026-10-05 | — | `mettre-a-jour.sh` : mise à jour d'un poste en une commande (pull, images périmées seulement, domaine Keycloak réimporté en conservant les comptes, configurations montées, état final) |
