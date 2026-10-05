@@ -2,6 +2,7 @@ package cm.gimac.des.iam.web.rest.lot1;
 
 import cm.gimac.des.iam.application.usecase.AdministrationComptesService;
 import cm.gimac.des.iam.application.usecase.AvatarService;
+import cm.gimac.des.iam.application.usecase.OrganisationService;
 import cm.gimac.des.iam.domain.compte.Acteur;
 import cm.gimac.des.iam.domain.compte.ActionRequise;
 import cm.gimac.des.iam.domain.compte.Compte;
@@ -66,13 +67,15 @@ public class ComptesResource {
         List<String> profils,
         List<String> actionsRequises,
         boolean secondFacteur,
-        String avatarVersion
+        String avatarVersion,
+        String unite,
+        String responsableId
     ) {
         static CompteVue de(Compte c) {
             return new CompteVue(
                 c.id(), c.identifiant(), c.prenom(), c.nom(), c.nomAffiche(), c.email(), c.emailVerifie(), c.actif(), c.creeLe(), c.telephone(),
                 c.fonction(), c.langue(), c.institutionId(), c.profilComplet(), c.premierAccesEnAttente(), c.profils().stream().sorted().toList(),
-                c.actionsRequises().stream().map(Enum::name).toList(), c.secondFacteur(), null
+                c.actionsRequises().stream().map(Enum::name).toList(), c.secondFacteur(), null, c.unite(), c.responsableId()
             );
         }
 
@@ -80,7 +83,7 @@ public class ComptesResource {
         CompteVue avecAvatar(String version) {
             return new CompteVue(
                 id, identifiant, prenom, nom, nomAffiche, email, emailVerifie, actif, creeLe, telephone, fonction, langue, institutionId, profilComplet,
-                premierAccesEnAttente, profils, actionsRequises, secondFacteur, version
+                premierAccesEnAttente, profils, actionsRequises, secondFacteur, version, unite, responsableId
             );
         }
     }
@@ -112,6 +115,9 @@ public class ComptesResource {
         @Size(max = 36) String institutionId
     ) {}
 
+    /** Rattachement organisationnel (docs/lot1/mon-activite.md §1.3) ; null retire la valeur. */
+    public record RattachementRequest(@Size(max = 32) String unite, @Size(max = 36) String responsableId) {}
+
     public record ProfilsRequest(@NotNull Set<String> profils, @NotBlank @Size(max = 1000) String motif) {}
 
     public record MotifRequest(@NotBlank @Size(max = 1000) String motif) {}
@@ -130,12 +136,20 @@ public class ComptesResource {
     private final JournalAdministrationRepository journal;
     private final ReauthAdministration reauth;
     private final AvatarService avatars;
+    private final OrganisationService organisation;
 
-    public ComptesResource(AdministrationComptesService service, JournalAdministrationRepository journal, ReauthAdministration reauth, AvatarService avatars) {
+    public ComptesResource(
+        AdministrationComptesService service,
+        JournalAdministrationRepository journal,
+        ReauthAdministration reauth,
+        AvatarService avatars,
+        OrganisationService organisation
+    ) {
         this.service = service;
         this.journal = journal;
         this.reauth = reauth;
         this.avatars = avatars;
+        this.organisation = organisation;
     }
 
     // ------------------------------------------------------------------ lectures
@@ -202,6 +216,13 @@ public class ComptesResource {
     @PreAuthorize("hasAuthority('IAM_ACCOUNT_EDIT')")
     public CompteVue modifier(@PathVariable String id, @Valid @RequestBody FicheRequest r, Authentication auth) {
         return CompteVue.de(service.modifier(ActeurCourant.de(auth), id, new FicheCompte(r.prenom(), r.nom(), r.email(), r.telephone(), r.fonction(), r.langue(), r.institutionId())));
+    }
+
+    /** Rattachement organisationnel d'un compte (D-76, docs/lot1/mon-activite.md §1.2) ; réponse : la fiche du compte. */
+    @PutMapping("/{id}/rattachement")
+    @PreAuthorize("hasAuthority('IAM_ACCOUNT_EDIT')")
+    public CompteVue rattacher(@PathVariable String id, @Valid @RequestBody RattachementRequest r, Authentication auth) {
+        return CompteVue.de(organisation.rattacher(ActeurCourant.de(auth), id, r.unite(), r.responsableId())).avecAvatar(avatars.version(id).orElse(null));
     }
 
     @PutMapping("/{id}/profils")

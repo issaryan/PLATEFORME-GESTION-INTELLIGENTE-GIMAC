@@ -35,12 +35,29 @@ public class HomologationFixtures {
         return v.getId();
     }
 
-    /** Version publiée en vigueur pour le type (cadrage, étape 3) : réutilise celle qui existe. */
+    /**
+     * Version publiée en vigueur pour le type (cadrage, étape 3) : réutilise celle qui existe, sinon publie la
+     * version 1 fidèle à l'annexe A du CR (D-77), comme la reprise des données le fait en exploitation.
+     */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public synchronized UUID referentielPublie(TypeProjet type) {
         return versions.findFirstByTypeProjetAndEtat(type, cm.gimac.des.homologation.domain.enumeration.EtatVersionReferentiel.PUBLIEE)
             .map(ReferentialVersion::getId)
-            .orElseGet(() -> referentiels.publier(brouillonComplet(type)).getId());
+            .orElseGet(() -> referentiels.publier(brouillonAnnexeA(type)).getId());
+    }
+
+    /** Brouillon fidèle à l'annexe A du CR (version 1, D-77). */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public UUID brouillonAnnexeA(TypeProjet type) {
+        ReferentialVersion v = referentiels.creerBrouillon(type, "Annexe A du CR-CERT-GIMAC-01 v1.4 (jeu d'essai)", null);
+        cm.gimac.des.homologation.domain.service.ConversionAnnexeA.version1(type).forEach(o -> referentiels.enregistrerOperation(v.getId(), o.code(), o.data()));
+        return v.getId();
+    }
+
+    /** Version publiée minimale (amont, branche, aval) : simulation et migration des liaisons (HOM-03). */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public UUID referentielMinimalPublie(TypeProjet type) {
+        return referentiels.publier(brouillonComplet(type)).getId();
     }
 
     /** Brouillon dont chaque opération désigne la suivante comme prédécesseur, la dernière désignant la première (HOM-02 D). */

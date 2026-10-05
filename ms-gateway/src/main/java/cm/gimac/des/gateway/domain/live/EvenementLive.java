@@ -5,7 +5,8 @@ import java.util.Set;
 /**
  * Événement métier reçu d'un service, réduit à ce qu'il faut pour le remettre : identifiant,
  * type et sujet CloudEvents, sujet fonctionnel (premier segment du sujet Kafka), institution
- * concernée et, pour un message de la messagerie, les comptes destinataires et son auteur.
+ * concernée et, pour un message de la messagerie ou une notification, les comptes destinataires et son
+ * auteur (ou acteur).
  *
  * @param institutionId institution portée par l'enveloppe (claim « institutionid »), null si aucune
  * @param destinataires identifiants IAM des destinataires ; vide si l'événement n'en désigne pas
@@ -16,6 +17,8 @@ public record EvenementLive(String id, String type, String subject, String topic
     public static final String HOMOLOGATION = "homologation";
     public static final String CERTIFICATION = "certification";
     public static final String COLLABORATION = "collaboration";
+    /** Notifications de la plateforme (D-80, sujet Kafka notification.inapp) : remises au seul destinataire. */
+    public static final String NOTIFICATION = "notification";
     /** Présence des comptes internes (D-72) : produite par la passerelle elle-même. */
     public static final String PRESENCE = "presence";
 

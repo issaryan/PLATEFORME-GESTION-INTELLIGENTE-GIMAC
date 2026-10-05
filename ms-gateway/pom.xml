@@ -841,6 +841,61 @@
                             </configuration>
                         </execution>
                         <!--
+                            Définition de fini des tests (D-61) : même seuil pour l'exploitation de l'infrastructure
+                            depuis la console (D-78, /api/plateforme/infrastructure/**). Le journal R2DBC est couvert
+                            par son test d'intégration (JournalOperationsR2dbcIT), hors de ce relevé unitaire.
+                        -->
+                        <execution>
+                            <id>seuil-exploitation-infrastructure</id>
+                            <phase>test</phase>
+                            <goals>
+                                <goal>check</goal>
+                            </goals>
+                            <configuration>
+                                <dataFile>${project.build.directory}/jacoco.exec</dataFile>
+                                <includes>
+                                    <include>cm/gimac/des/gateway/domain/exploitation/**</include>
+                                    <include>cm/gimac/des/gateway/service/exploitation/**</include>
+                                    <include>cm/gimac/des/gateway/infrastructure/exploitation/**</include>
+                                    <include>cm/gimac/des/gateway/web/rest/plateforme/InfrastructureResource*</include>
+                                    <include>cm/gimac/des/gateway/config/Exploitation*</include>
+                                </includes>
+                                <excludes>
+                                    <exclude>cm/gimac/des/gateway/infrastructure/exploitation/JournalOperationsR2dbc*</exclude>
+                                </excludes>
+                                <rules>
+                                    <rule>
+                                        <element>CLASS</element>
+                                        <excludes>
+                                            <exclude>*.package-info</exclude>
+                                        </excludes>
+                                        <limits>
+                                            <limit>
+                                                <counter>LINE</counter>
+                                                <value>COVEREDRATIO</value>
+                                                <minimum>${jacoco.seuil}</minimum>
+                                            </limit>
+                                            <limit>
+                                                <counter>METHOD</counter>
+                                                <value>COVEREDRATIO</value>
+                                                <minimum>${jacoco.seuil}</minimum>
+                                            </limit>
+                                        </limits>
+                                    </rule>
+                                    <rule>
+                                        <element>BUNDLE</element>
+                                        <limits>
+                                            <limit>
+                                                <counter>BRANCH</counter>
+                                                <value>COVEREDRATIO</value>
+                                                <minimum>${jacoco.seuil}</minimum>
+                                            </limit>
+                                        </limits>
+                                    </rule>
+                                </rules>
+                            </configuration>
+                        </execution>
+                        <!--
                             Définition de fini des tests (D-61) : même seuil pour le canal poussé des couches
                             de présentation (/bff/{couche}/live, contrat de messagerie §5).
                         -->

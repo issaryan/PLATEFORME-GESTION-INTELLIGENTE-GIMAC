@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Modélisateur de processus et moteur unique des référentiels (D-77, docs/lot1/modelisateur-processus.md).
+     1. Modèle de l'opération du référentiel (§1) : colonnes typées, livrables et position en jsonb.
+     2. Pilote du brouillon (§5).
+     3. Moteur unique (§3) : le parcours suit la version publiée de sa liaison (version_id et numéro), chaque
+        opération instanciée recopie le modèle (geste, jalon, déclencheur, particularité, livrables, délai).
+     4. Demandes de tâches pour MS-PILOTAGE, relayées avec réessai (§5).
+     5. Reprise des données, une fois, hors contexte « test » : version 1 publiée par type, fidèle à l'annexe A. -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="d77-operation-modele" author="homologation">
+        <modifyDataType tableName="reference_operation" columnName="libelle" newDataType="varchar(300)"/>
+        <addColumn tableName="reference_operation">
+            <column name="description" type="varchar(4000)"/>
+            <column name="etape" type="varchar(40)"/>
+            <column name="ordre" type="integer"/>
+            <column name="responsable" type="varchar(40)"/>
+            <column name="validateur" type="varchar(40)"/>
+            <column name="consultes" type="jsonb" defaultValueComputed="'[]'::jsonb"/>
+            <column name="informes" type="jsonb" defaultValueComputed="'[]'::jsonb"/>
+            <column name="externes" type="jsonb" defaultValueComputed="'[]'::jsonb"/>
+            <column name="delai_jours" type="integer"/>
+            <column name="grain" type="varchar(20)"/>
+            <column name="plateforme" type="varchar(40)"/>
+            <column name="cle" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+            <column name="secret" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+            <column name="oubli_sans_symptome" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+            <column name="pivot" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+            <column name="valeur_reference" type="varchar(120)"/>
+            <column name="livrables" type="jsonb" defaultValueComputed="'[]'::jsonb"/>
+            <column name="geste" type="varchar(40)"/>
+            <column name="jalon" type="varchar(40)"/>
+            <column name="declencheur" type="varchar(120)"/>
+            <column name="position" type="jsonb"/>
+            <column name="particularite" type="varchar(40)"/>
+        </addColumn>
+        <sql>ALTER TABLE reference_operation ADD CONSTRAINT ck_reference_operation_delai CHECK (delai_jours IS NULL OR (delai_jours BETWEEN 0 AND 365));</sql>
+    </changeSet>
+
+    <changeSet id="d77-pilote-brouillon" author="homologation">
+        <addColumn tableName="referential_version">
+            <column name="pilote_id" type="uuid"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="d77-moteur-unique" author="homologation">
+        <dropNotNullConstraint tableName="parcours_liaison" columnName="version_cr" columnDataType="varchar(20)"/>
+        <addColumn tableName="parcours_liaison">
+            <column name="version_id" type="uuid"/>
+            <column name="version_numero" type="integer"/>
+        </addColumn>
+        <modifyDataType tableName="parcours_operation" columnName="rang" newDataType="varchar(40)"/>
+        <modifyDataType tableName="parcours_operation" columnName="predecesseurs" newDataType="varchar(2000)"/>
+        <addColumn tableName="parcours_operation">
+            <column name="version_id" type="uuid"/>
+            <column name="libelle" type="varchar(300)"/>
+            <column name="geste" type="varchar(40)"/>
+            <column name="jalon" type="varchar(40)"/>
+            <column name="declencheur" type="varchar(120)"/>
+            <column name="particularite" type="varchar(40)"/>
+            <column name="livrables" type="jsonb"/>
+            <column name="delai_jours" type="integer"/>
+            <column name="responsable" type="varchar(40)"/>
+        </addColumn>
+        <createIndex tableName="parcours_operation" indexName="idx_parcours_operation_version"><column name="version_id"/></createIndex>
+    </changeSet>
+
+    <changeSet id="d77-demandes-taches" author="homologation">
+        <createTable tableName="demande_tache_pilotage" remarks="Demandes de tâches pour MS-PILOTAGE, relayées avec réessai (D-77, §5).">
+            <column name="numero" type="bigint" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="nature" type="varchar(16)"><constraints nullable="false"/></column>
+            <column name="cle" type="varchar(300)"><constraints nullable="false"/></column>
+            <column name="corps" type="jsonb"><constraints nullable="false"/></column>
+            <column name="statut" type="varchar(16)"><constraints nullable="false"/></column>
+            <column name="tentatives" type="integer" defaultValueNumeric="0"><constraints nullable="false"/></column>
+            <column name="prochain_essai" type="timestamptz"><constraints nullable="false"/></column>
+            <column name="cree_le" type="timestamptz"><constraints nullable="false"/></column>
+            <column name="traitee_le" type="timestamptz"/>
+            <column name="derniere_erreur" type="varchar(500)"/>
+        </createTable>
+        <createIndex tableName="demande_tache_pilotage" indexName="idx_demande_tache_statut"><column name="statut"/><column name="numero"/></createIndex>
+    </changeSet>
+
+    <!-- Reprise (§3) : par type de projet, version fidèle à l'annexe A du CR v1.4 publiée sous le numéro suivant (la
+         version publiée antérieure est retirée), liaisons du type rattachées, parcours renseignés (version, modèle des
+         opérations). Idempotente (une version de ce libellé existe déjà pour le type : rien n'est fait). -->
+    <changeSet id="d77-reprise-version-1" author="homologation" context="!test">
+        <customChange class="cm.gimac.des.homologation.config.liquibase.RepriseReferentielCr"/>
+    </changeSet>
+</databaseChangeLog>

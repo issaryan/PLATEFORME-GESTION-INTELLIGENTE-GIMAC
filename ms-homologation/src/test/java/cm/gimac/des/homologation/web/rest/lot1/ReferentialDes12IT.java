@@ -117,7 +117,7 @@ class ReferentialDes12IT extends AbstractHomologationIT {
     @Test
     @DisplayName("HOM-03 : liaisons de l'ancienne version comptées, simulées puis migrées vers la nouvelle version en vigueur")
     void simulationEtMigration() throws Exception {
-        UUID v1 = fixtures.referentielPublie(TypeProjet.CARTE_INTERBANCAIRE);
+        UUID v1 = fixtures.referentielMinimalPublie(TypeProjet.CARTE_INTERBANCAIRE);
         String liaison = ouvrir(adherent("Établissement à migrer"));
 
         mvc

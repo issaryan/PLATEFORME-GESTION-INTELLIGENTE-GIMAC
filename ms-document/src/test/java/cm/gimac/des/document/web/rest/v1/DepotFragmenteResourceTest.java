@@ -158,7 +158,7 @@ class DepotFragmenteResourceTest {
     }
 
     @Test
-    @DisplayName("Sans permission de dépôt ni COL_MESSAGE_SEND : 403 sur chaque route")
+    @DisplayName("Sans permission de dépôt, ni COL_MESSAGE_SEND, ni PIL_ACTIVITY_OWN : 403 sur chaque route")
     void sansPermission() throws Exception {
         for (MockHttpServletRequestBuilder r : routes().toList()) {
             mvc.perform(r.with(jeton("2", "COL_MESSAGE_READ", "INTERNAL_DOCUMENT_READ"))).andExpect(status().isForbidden());
@@ -168,7 +168,7 @@ class DepotFragmenteResourceTest {
 
     @ParameterizedTest
     @ValueSource(
-        strings = { "PAR_ADHESION_INSTRUCT", "HOM_EVIDENCE_SUBMIT", "HOM_STEP_MANAGE", "CER_CHANGE_RECORD_LINK", "HOM_PORTAL_SUBMIT", "DOC_DEPOSIT", "COL_MESSAGE_SEND" }
+        strings = { "PAR_ADHESION_INSTRUCT", "HOM_EVIDENCE_SUBMIT", "HOM_STEP_MANAGE", "CER_CHANGE_RECORD_LINK", "HOM_PORTAL_SUBMIT", "DOC_DEPOSIT", "COL_MESSAGE_SEND", "PIL_ACTIVITY_OWN" }
     )
     @DisplayName("Ouverture avec l'une des permissions : 201 Depot ; demandeur = sujet, institution et permissions du jeton")
     void ouvertureAvecPermission(String permission) throws Exception {

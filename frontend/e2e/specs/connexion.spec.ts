@@ -49,8 +49,13 @@ test.describe('Fonctionnalité : connexion sur la plateforme', () => {
     await expect(page.getByText('Saisissez votre identifiant.')).toBeVisible()
     await saisirIdentifiants(page, 'compte.desactive', DEMO)
     await expect(page.getByText(/Ce compte est désactivé/)).toBeVisible()
+    // Aiguillage (D-79) : un compte d'institution refusé par la console est conduit vers la connexion du portail.
     await saisirIdentifiants(page, 'correspondant-a', DEMO)
-    await expect(page.getByText(/Ce compte n'ouvre pas cette application/)).toBeVisible()
+    await expect(page.getByText(/compte d'institution : il s'ouvre dans le portail des participants/)).toBeVisible()
+    await expect(page).toHaveURL(`${ADRESSES.portail}/connexion?motif=aiguillage&depuis=console&identifiant=correspondant-a`)
+    await expect(page.getByText(/La console d'administration vous a conduit ici/)).toBeVisible()
+    await expect(page.locator('input[name="identifiant"]')).toHaveValue('correspondant-a')
+    await page.goto(`${ADRESSES.console}/connexion`)
     for (let i = 0; i < 5; i++) {
       await saisirIdentifiants(page, 'super.admin', `faux-${i}`)
       await expect(page.getByText('Identifiant ou mot de passe incorrect.')).toBeVisible()

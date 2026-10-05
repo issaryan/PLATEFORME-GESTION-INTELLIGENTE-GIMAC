@@ -37,7 +37,15 @@ export interface TopBarProps {
   onMenu?: () => void
   /** Ouvre la recherche globale (Ctrl+K) ; sans elle, aucun champ de recherche n'est affiché. */
   onRecherche?: () => void
+  /**
+   * Cloche des notifications : pastille du nombre de non-lues (99+ au-delà) et panneau surgissant ancré,
+   * reçu avec la fonction qui le ferme (ouverture d'une notification). Sans elle, la cloche reste inerte.
+   */
+  notifications?: { nonLues: number; panneau: (fermer: () => void) => ReactNode }
 }
+
+/** Pastille d'un compteur : « 99+ » au-delà de 99. */
+export const pastilleCompteur = (n: number) => (n > 99 ? '99+' : String(n))
 
 /** Menu surgissant ancré : Échap ou un clic au dehors le ferment et rendent le focus au bouton. */
 function useSurgissant(ancre: RefObject<HTMLSpanElement | null>, panneau: RefObject<HTMLDivElement | null>, ouvert: boolean, fermer: () => void) {
@@ -78,13 +86,22 @@ export function TopBar(p: TopBarProps) {
   const panneauMenu = useRef<HTMLDivElement>(null)
   const fermerPrefs = useCallback(() => setOuvert(false), [])
   const fermerMenu = useCallback(() => setMenu(false), [])
+  const [cloche, setCloche] = useState(false)
+  const ancreCloche = useRef<HTMLSpanElement>(null)
+  const panneauCloche = useRef<HTMLDivElement>(null)
+  const fermerCloche = useCallback(() => setCloche(false), [])
   useSurgissant(ancre, panneau, ouvert, fermerPrefs)
   useSurgissant(ancreMenu, panneauMenu, menu, fermerMenu)
+  useSurgissant(ancreCloche, panneauCloche, cloche, fermerCloche)
   const basculer = (v: boolean) => {
     setOuvert(v)
-    if (v) setMenu(false)
+    if (v) {
+      setMenu(false)
+      setCloche(false)
+    }
     if (p.onLangue) p.onLangue()
   }
+  const nonLues = p.notifications?.nonLues ?? 0
   const nom = p.user || t('topbar.utilisateur')
   const entrees = (p.userMenu ?? []).map((it) => ({
     ...it,
@@ -113,7 +130,20 @@ export function TopBar(p: TopBarProps) {
           <span className={cx('gm-dot', p.live === false ? 'gm-dot-off' : 'gm-dot-ok')} aria-hidden="true" />
           {p.live === false ? t('topbar.horsLigne') : t('topbar.tempsReel')}
         </span>
-        <IconButton variant="ghost" icon="bell-ring" label={t('notif.titre')} />
+        {p.notifications ? (
+          <span ref={ancreCloche} className="gm-topbar-ancre">
+            <IconButton variant="ghost" icon="bell-ring" label={nonLues > 0 ? t('notif.clocheN', { n: pastilleCompteur(nonLues) }) : t('notif.titre')} aria-haspopup="dialog" aria-expanded={cloche}
+              onClick={() => { setCloche(!cloche); setOuvert(false); setMenu(false) }} />
+            {nonLues > 0 ? <span className="gm-topbar-pastille gm-num" aria-hidden="true">{pastilleCompteur(nonLues)}</span> : null}
+            {cloche ? (
+              <div ref={panneauCloche} className="gm-popover gm-topbar-pop gm-topbar-notif" role="dialog" aria-label={t('notif.centre')}>
+                {p.notifications.panneau(fermerCloche)}
+              </div>
+            ) : null}
+          </span>
+        ) : (
+          <IconButton variant="ghost" icon="bell-ring" label={t('notif.titre')} />
+        )}
         <span ref={ancre} className="gm-topbar-ancre">
           <IconButton variant="ghost" icon="globe" label={t('topbar.langue')} onClick={() => basculer(!ouvert)} aria-haspopup="dialog" aria-expanded={ouvert} />
           {ouvert && p.preferences ? (
@@ -125,7 +155,7 @@ export function TopBar(p: TopBarProps) {
         {entrees.length ? (
           <span ref={ancreMenu} className="gm-topbar-ancre">
             <button type="button" className="gm-topbar-user" aria-label={t('topbar.menuUtilisateur', { nom })} aria-haspopup="menu" aria-expanded={menu}
-              onClick={() => { setMenu(!menu); setOuvert(false) }}>
+              onClick={() => { setMenu(!menu); setOuvert(false); setCloche(false) }}>
               <Avatar name={nom} src={p.avatar} decorative />
               <Icon name="chevron-down" size={16} />
             </button>

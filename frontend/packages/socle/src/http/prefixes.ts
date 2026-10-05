@@ -14,6 +14,9 @@ export const P = {
   desPresence: '/bff/des/presence',
   consolePresence: '/bff/console/presence',
   portailParticipant: '/bff/portail/participant',
+  // Notifications de la plateforme (D-80), MS-NOTIFICATION : cloche, liste, préférences ; couches internes.
+  desNotification: '/bff/des/notification',
+  consoleNotification: '/bff/console/notification',
   // Administration des comptes et de la configuration de l'authentification (D-62) : console, et
   // département pour les comptes, le journal, la politique et les profils (D-69).
   consoleIam: '/bff/console/iam',

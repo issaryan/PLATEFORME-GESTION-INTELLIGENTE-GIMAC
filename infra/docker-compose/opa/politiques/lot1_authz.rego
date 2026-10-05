@@ -13,6 +13,12 @@ default allow := false
 
 regles := [
 	{"m": "POST", "re": `^/bff/des/homologation/referentiels/[^/]+/publication$`, "p": "HOM_REFERENTIEL_PUBLISH"},
+	# Modélisateur de processus (D-77, docs/lot1/modelisateur-processus.md §4) : édition des brouillons,
+	# migration des liaisons ; la lecture reste au @PreAuthorize (HOM_REFERENTIEL_READ).
+	{"m": "POST", "re": `^/bff/des/homologation/referentiels/[^/]+/migrations(/simulation)?$`, "p": "HOM_REFERENTIEL_MIGRATE"},
+	{"m": "POST", "re": `^/bff/des/homologation/referentiels(/[^/]+/(operations|controle))?$`, "p": "HOM_REFERENTIEL_EDIT"},
+	{"m": "PUT", "re": `^/bff/des/homologation/referentiels/[^/]+/(operations/[^/]+|positions|arcs|pilote)$`, "p": "HOM_REFERENTIEL_EDIT"},
+	{"m": "DELETE", "re": `^/bff/des/homologation/referentiels/[^/]+/operations/[^/]+$`, "p": "HOM_REFERENTIEL_EDIT"},
 	{"m": "POST", "re": `^/bff/des/homologation/liaisons$`, "p": "HOM_LIAISON_OPEN"},
 	# Cadrage (étape 3, D-58) : désignation du conducteur de projet par un chef de département.
 	{"m": "PUT", "re": `^/bff/des/homologation/liaisons/[^/]+/chef-de-projet$`, "p": "HOM_PROJECT_DESIGNATE"},
@@ -70,6 +76,8 @@ regles := [
 	{"m": "GET", "re": `^/bff/(des|console)/iam/comptes(/.*)?$`, "p": "IAM_ACCOUNT_READ"},
 	{"m": "POST", "re": `^/bff/(des|console)/iam/comptes$`, "p": "IAM_ACCOUNT_CREATE"},
 	{"m": "PUT", "re": `^/bff/(des|console)/iam/comptes/[^/]+/profils$`, "p": "IAM_ACCOUNT_ROLES"},
+	# Rattachement d'un compte à une unité et à son responsable (D-76, docs/lot1/mon-activite.md §1.3).
+	{"m": "PUT", "re": `^/bff/(des|console)/iam/comptes/[^/]+/rattachement$`, "p": "IAM_ACCOUNT_EDIT"},
 	{"m": "PUT", "re": `^/bff/(des|console)/iam/comptes/[^/]+$`, "p": "IAM_ACCOUNT_EDIT"},
 	{"m": "POST", "re": `^/bff/(des|console)/iam/comptes/[^/]+/(activation|desactivation)$`, "p": "IAM_ACCOUNT_STATUS"},
 	{"m": "DELETE", "re": `^/bff/(des|console)/iam/comptes/[^/]+$`, "p": "IAM_ACCOUNT_DELETE"},
@@ -93,6 +101,24 @@ regles := [
 	{"m": "DELETE", "re": `^/bff/(des|console)/collaboration/messagerie/conversations/[^/]+/membres/[^/]+$`, "p": "COL_MESSAGE_SEND"},
 	# « En train d'écrire » (D-72) : signal éphémère ; l'appartenance est vérifiée par MS-COLLABORATION.
 	{"m": "POST", "re": `^/bff/(des|console)/collaboration/messagerie/conversations/[^/]+/saisie$`, "p": "COL_MESSAGE_SEND"},
+	# Organisation (D-76 §1.3) : catalogue des unités (édition par l'administration des comptes) et
+	# rattachement du titulaire ; lecture du catalogue : tout membre interne (département), l'administration
+	# des comptes (console).
+	{"m": "POST", "re": `^/bff/(des|console)/iam/organisation/unites$`, "p": "IAM_ACCOUNT_EDIT"},
+	{"m": "PUT", "re": `^/bff/(des|console)/iam/organisation/unites/[^/]+$`, "p": "IAM_ACCOUNT_EDIT"},
+	{"m": "GET", "re": `^/bff/des/iam/organisation/(moi|unites)$`, "p": "PIL_ACTIVITY_OWN"},
+	{"m": "GET", "re": `^/bff/console/iam/organisation/unites$`, "p": "IAM_ACCOUNT_READ"},
+	# Notifications de la plateforme (D-80, docs/lot1/notifications.md §3) : les siennes seulement (MS-NOTIFICATION).
+	{"m": "GET", "re": `^/bff/(des|console)/notification/(notifications(/compteur)?|preferences)$`, "p": "NOT_INBOX_READ"},
+	{"m": "POST", "re": `^/bff/(des|console)/notification/notifications(/[^/]+)?/lecture$`, "p": "NOT_INBOX_READ"},
+	{"m": "PUT", "re": `^/bff/(des|console)/notification/preferences$`, "p": "NOT_INBOX_READ"},
+	# Mon activité (D-76 §2) : agenda, activités, tâches, rapports de chacun ; équipe des responsables.
+	# Les droits fins (propriétaire, équipe, destinataire) sont vérifiés par MS-PILOTAGE.
+	{"m": "GET", "re": `^/bff/des/pilotage/equipe$`, "p": "PIL_TEAM_READ"},
+	{"m": "GET", "re": `^/bff/des/pilotage/(agenda|activites|taches(/[^/]+)?|rapports(/[^/]+(/document)?)?|moi/synthese)$`, "p": "PIL_ACTIVITY_OWN"},
+	{"m": "POST", "re": `^/bff/des/pilotage/(agenda(/[^/]+/reponse)?|activites(/[^/]+/statut)?|taches(/[^/]+/transition)?|rapports(/preremplissage|/[^/]+/(soumission|visa))?)$`, "p": "PIL_ACTIVITY_OWN"},
+	{"m": "PUT", "re": `^/bff/des/pilotage/(agenda|activites|taches|rapports)/[^/]+$`, "p": "PIL_ACTIVITY_OWN"},
+	{"m": "DELETE", "re": `^/bff/des/pilotage/(agenda|activites)/[^/]+$`, "p": "PIL_ACTIVITY_OWN"},
 ]
 
 # Routes internes des services (jeton de service) : jamais relayées depuis une couche de présentation.
@@ -107,6 +133,29 @@ compte_externe if input.institution_id != ""
 
 messagerie_externe if {
 	messagerie
+	compte_externe
+}
+
+# Mon activité et organisation (D-76) : comme la messagerie, seuls les chemins listés dans « regles »
+# sont relayés, et jamais pour un compte d'institution.
+pilotage if regex.match(`^/bff/des/pilotage(/|$)`, input.path)
+
+organisation if regex.match(`^/bff/(des|console)/iam/organisation(/|$)`, input.path)
+
+boite_notifications if regex.match(`^/bff/(des|console|portail)/notification(/|$)`, input.path)
+
+reserve_interne_externe if {
+	boite_notifications
+	compte_externe
+}
+
+reserve_interne_externe if {
+	pilotage
+	compte_externe
+}
+
+reserve_interne_externe if {
+	organisation
 	compte_externe
 }
 
@@ -139,9 +188,10 @@ depot_document_des if {
 # @PreAuthorize). Portail : règles de « regles » (HOM_PORTAL_SUBMIT et institution).
 depots_fragmentes if regex.match(`^/bff/(des|console|portail)/document/depots(/|$)`, input.path)
 
-# DES et console : l'une des permissions du dépôt direct ou COL_MESSAGE_SEND (pièces jointes de la
-# messagerie) ; MS-DOCUMENT exige ensuite la permission propre à la finalité.
-permissions_depot_fragmente := permissions_depot_document | {"COL_MESSAGE_SEND"}
+# DES et console : l'une des permissions du dépôt direct, COL_MESSAGE_SEND (pièces jointes de la
+# messagerie) ou PIL_ACTIVITY_OWN (rapports d'activité déposés, D-76) ; MS-DOCUMENT exige ensuite la
+# permission propre à la finalité.
+permissions_depot_fragmente := permissions_depot_document | {"COL_MESSAGE_SEND", "PIL_ACTIVITY_OWN"}
 
 route_depot_fragmente if {
 	input.method == "POST"
@@ -200,6 +250,7 @@ allow if {
 	not interne
 	not portail
 	not messagerie_externe
+	not reserve_interne_externe
 	double_facteur
 	required_permission in input.permissions
 }
@@ -223,6 +274,9 @@ allow if {
 	not required_permission
 	not portail
 	not messagerie
+	not pilotage
+	not organisation
+	not boite_notifications
 	not avatars
 	not depots_fragmentes
 	startswith(input.path, "/bff/des/")

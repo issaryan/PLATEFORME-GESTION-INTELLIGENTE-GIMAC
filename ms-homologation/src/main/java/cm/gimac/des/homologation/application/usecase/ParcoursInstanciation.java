@@ -1,16 +1,18 @@
 package cm.gimac.des.homologation.application.usecase;
 
+import cm.gimac.des.homologation.domain.HomologationException;
 import cm.gimac.des.homologation.domain.Liaison;
+import cm.gimac.des.homologation.domain.ReferentialVersion;
 import cm.gimac.des.homologation.domain.ScopeItem;
 import cm.gimac.des.homologation.domain.enumeration.EtatScopeItem;
+import cm.gimac.des.homologation.domain.enumeration.EtatVersionReferentiel;
 import cm.gimac.des.homologation.domain.parcours.CatalogueServices;
 import cm.gimac.des.homologation.domain.parcours.Fonction;
 import cm.gimac.des.homologation.domain.parcours.Parcours;
 import cm.gimac.des.homologation.domain.parcours.ParcoursLiaison;
 import cm.gimac.des.homologation.domain.parcours.Personne;
-import cm.gimac.des.homologation.domain.parcours.ReferentielOperation;
 import cm.gimac.des.homologation.domain.parcours.ServiceParcours;
-import cm.gimac.des.homologation.repository.ReferentielOperationRepository;
+import cm.gimac.des.homologation.repository.ReferentialVersionRepository;
 import cm.gimac.des.homologation.repository.ScopeItemRepository;
 import java.time.Clock;
 import java.time.LocalDate;
@@ -24,21 +26,22 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Instanciation du référentiel de l'annexe A pour une liaison, à son ouverture (étape 3) : rangs 3 et
- * suivants, branche du type de projet, qualités initiales par fonction, périmètre suivi service par service,
- * référence lisible LIA-AAAA-NNN. Les liaisons ouvertes avant cette tranche sont instanciées à la première lecture.
+ * Instanciation du parcours d'une liaison à son ouverture (étape 3) depuis la version publiée du référentiel à
+ * laquelle elle est rattachée (moteur unique, D-77) : opérations de la version, qualités initiales par fonction,
+ * périmètre suivi service par service, référence lisible LIA-AAAA-NNN. Les liaisons ouvertes avant cette tranche
+ * sont instanciées à la première lecture.
  */
 @Component
 public class ParcoursInstanciation {
 
-    private final ReferentielOperationRepository referentiel;
+    private final ReferentialVersionRepository versions;
     private final ScopeItemRepository elements;
     private final ParcoursDepot depot;
     private final Intervenants intervenants;
     private final Clock clock;
 
-    public ParcoursInstanciation(ReferentielOperationRepository referentiel, ScopeItemRepository elements, ParcoursDepot depot, Intervenants intervenants, Clock clock) {
-        this.referentiel = referentiel;
+    public ParcoursInstanciation(ReferentialVersionRepository versions, ScopeItemRepository elements, ParcoursDepot depot, Intervenants intervenants, Clock clock) {
+        this.versions = versions;
         this.elements = elements;
         this.depot = depot;
         this.intervenants = intervenants;
@@ -61,9 +64,36 @@ public class ParcoursInstanciation {
             .distinct()
             .map(c -> new ServiceParcours(l.getId(), c, CatalogueServices.libelle(c), true))
             .toList();
+        ReferentialVersion version = version(l);
+        etat.rattacher(version.getId(), version.getNumero());
+        Parcours p = Parcours.instancier(l, etat, version.getOperations(), svc, designation(l, Map.of()));
+        depot.creer(p);
+        return p;
+    }
+
+    /** Version de la liaison ; à défaut (liaison antérieure au rattachement), la version publiée de son type. */
+    ReferentialVersion version(Liaison l) {
+        if (l.getVersion() != null && !l.getVersion().getOperations().isEmpty()) {
+            return l.getVersion();
+        }
+        ReferentialVersion v = versions
+            .findFirstByTypeProjetAndEtat(l.getTypeProjet(), EtatVersionReferentiel.PUBLIEE)
+            .orElseThrow(() ->
+                HomologationException.conflict("HOM_REFERENTIAL_NONE_PUBLISHED", "Aucune version publiée du référentiel pour ce type de projet", Map.of("typeProjet", l.getTypeProjet().name()))
+            );
+        l.setVersion(v);
+        return v;
+    }
+
+    /**
+     * Personne qui tient chaque fonction : ressources déjà affectées, conducteur de la liaison, correspondant du
+     * participant, tiers désignés par leur fonction, sinon le premier titulaire de l'annuaire.
+     */
+    public Parcours.Designation designation(Liaison l, Map<Fonction, Personne> affectees) {
         Map<Fonction, Personne> cache = new EnumMap<>(Fonction.class);
+        cache.putAll(affectees);
         Personne conducteur = new Personne(l.getChefDeProjetId().toString(), nomOuDefaut(l.getChefDeProjetId()), Fonction.CONDUCTEUR);
-        Parcours.Designation d = f ->
+        return f ->
             cache.computeIfAbsent(f, x ->
                 switch (x) {
                     case CONDUCTEUR -> conducteur;
@@ -74,9 +104,6 @@ public class ParcoursInstanciation {
                     default -> intervenants.titulaire(x);
                 }
             );
-        Parcours p = Parcours.instancier(l, etat, referentiel.findByVersionCrOrderByOrdre(ReferentielOperation.VERSION_CR), svc, d);
-        depot.creer(p);
-        return p;
     }
 
     /** Liaison ouverte avant cette tranche : instanciée depuis son périmètre contractualisé. */

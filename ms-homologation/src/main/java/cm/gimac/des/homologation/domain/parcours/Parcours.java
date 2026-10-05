@@ -2,6 +2,7 @@ package cm.gimac.des.homologation.domain.parcours;
 
 import cm.gimac.des.homologation.domain.HomologationException;
 import cm.gimac.des.homologation.domain.Liaison;
+import cm.gimac.des.homologation.domain.ReferenceOperation;
 import cm.gimac.des.homologation.domain.enumeration.EtatLiaison;
 import cm.gimac.des.homologation.domain.enumeration.TypeProjet;
 import java.time.LocalDate;
@@ -16,15 +17,17 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
 /**
  * Agrégat du parcours d'une liaison, étapes 3 à 10 (docs/lot1/parcours-backend.md) : opérations
- * instanciées du référentiel de l'annexe A, graphe des prédécesseurs, gestes (livrable, preuve,
+ * instanciées de la version publiée du référentiel de la liaison (moteur unique, D-77), graphe des
+ * prédécesseurs, gestes (livrable, preuve,
  * validation, qualités, ressources, blocages, constat de la couverture, coordonnées d'essai, fiche de
  * suivi), projection des verrous tenus par MS-CERTIFICATION, et grandeurs calculées (étape courante,
- * statut du CR, SLA, couvertures). Sans Spring : les règles sont celles du serveur de substitution de
- * l'interface ({@code frontend/packages/lot1/src/services/simule/parcours.ts}).
+ * statut du CR, SLA, couvertures). Les gestes, jalons, déclencheurs, particularités et livrables sont lus
+ * sur chaque opération : aucun rang n'est codé en dur. Sans Spring.
  */
 public final class Parcours {
 
@@ -64,52 +67,143 @@ public final class Parcours {
     }
 
     /**
-     * Instancie le parcours à l'ouverture de la liaison : rangs 3 et suivants du tronc commun et la seule
-     * branche du type de projet (CR §5.2.3), le rang 27 succédant à la dernière opération de la branche ;
-     * échéances planifiées depuis le démarrage, qualités initiales par fonction, opérations sans
-     * prédécesseur en attente ouvertes.
+     * Instancie le parcours à l'ouverture de la liaison depuis les opérations de la version publiée de son
+     * référentiel (les étapes 1 et 2, tenues par MS-PARTICIPANT, ne sont pas instanciées) : échéances au plus tôt
+     * sur le graphe depuis le démarrage, qualités initiales par fonction (R, V, C, I, E de l'opération),
+     * opérations sans prédécesseur en attente ouvertes.
      */
     public static Parcours instancier(
         Liaison liaison,
         ParcoursLiaison etat,
-        List<ReferentielOperation> referentiel,
+        List<ReferenceOperation> referentiel,
         List<ServiceParcours> services,
         Designation designation
     ) {
-        TypeProjet type = liaison.getTypeProjet();
-        List<ReferentielOperation> suite = referentiel
+        List<ReferenceOperation> suite = referentiel
             .stream()
-            .filter(o -> o.getTypes().contains(type))
-            .filter(o -> o.rangNumerique() < 0 || o.rangNumerique() >= 3)
-            .sorted(Comparator.comparingInt(ReferentielOperation::getOrdre))
+            .filter(o -> !o.etapeEffective().horsParcours())
+            .sorted(Comparator.comparingInt(ReferenceOperation::ordreEffectif).thenComparing(ReferenceOperation::getCode))
             .toList();
-        String finBranche = suite.stream().filter(o -> o.getSegment() == SegmentParcours.BRANCHE).reduce((a, b) -> b).map(ReferentielOperation::getRang).orElse(null);
         List<OperationParcours> ops = new ArrayList<>();
-        int cumul = 0;
         for (int i = 0; i < suite.size(); i++) {
-            ReferentielOperation o = suite.get(i);
-            List<String> preds = o.getSegment() == SegmentParcours.AVAL && o.getPredecesseurs().isEmpty() && finBranche != null ? List.of(finBranche) : o.getPredecesseurs();
-            OperationParcours op = new OperationParcours(liaison.getId(), o, i, preds);
-            if ("15".equals(o.getRang()) || "16".equals(o.getRang())) {
-                op.setPlateforme(type == TypeProjet.PAIEMENT_MOBILE ? PlateformeExecution.SIMULATEUR : null);
-            }
-            cumul += o.getDelaiJours();
-            op.setEcheance(etat.getDateDemarrage().plusDays(1L + cumul));
-            op.setRaci(raciInitial(o.getPorteurs(), designation));
+            ReferenceOperation o = suite.get(i);
+            OperationParcours op = new OperationParcours(liaison.getId(), o, i);
+            op.setRaci(raciInitial(o, designation));
             ops.add(op);
         }
         Parcours p = new Parcours(liaison, etat, ops, services, List.of());
-        p.ouvrirSuivantes();
+        p.planifier();
+        p.ouvrirSuivantes(etat.getDateDemarrage());
         p.rafraichir();
         return p;
     }
 
-    /** Qualités initiales : R le premier porteur, C et E les autres, V le conducteur (ou le chef du DES pour le conducteur), I le chef de la DDRM. */
-    static Raci raciInitial(List<Fonction> porteurs, Designation d) {
-        Personne r = d.pour(porteurs.get(0));
-        List<Personne> autres = porteurs.stream().skip(1).map(d::pour).toList();
-        Personne v = porteurs.get(0) == Fonction.CONDUCTEUR ? d.pour(Fonction.CHEF_DES) : d.pour(Fonction.CONDUCTEUR);
-        return new Raci(r, autres.stream().filter(p -> !p.fonction().externe()).toList(), v, List.of(d.pour(Fonction.CHEF_DDRM)), autres.stream().filter(p -> p.fonction().externe()).toList());
+    /** Qualités initiales de l'opération : chaque fonction (R, V, C, I, E) tenue par la personne désignée. */
+    static Raci raciInitial(ReferenceOperation o, Designation d) {
+        return new Raci(
+            d.pour(o.responsableEffectif()),
+            o.getConsultes().stream().map(d::pour).toList(),
+            d.pour(o.validateurEffectif()),
+            o.informesEffectifs().stream().map(d::pour).toList(),
+            o.getExternes().stream().map(d::pour).toList()
+        );
+    }
+
+    /**
+     * Échéances au plus tôt sur le graphe (docs/lot1/modelisateur-processus.md §3) : maximum des échéances des
+     * prédécesseurs, plus la durée de l'opération, depuis la date de démarrage ; jours calendaires.
+     */
+    public void planifier() {
+        Map<String, CalendrierDag.Tache> g = new LinkedHashMap<>();
+        operations.forEach(o -> g.put(o.getRang(), new CalendrierDag.Tache(o.getPredecesseurs(), o.getDelaiJours())));
+        CalendrierDag.Resultat r = CalendrierDag.calculer(g);
+        for (OperationParcours o : operations) {
+            Integer fin = r.fins().get(o.getRang());
+            if (fin != null && !o.faite()) {
+                o.setEcheance(etat.getDateDemarrage().plusDays(fin));
+            }
+        }
+    }
+
+    /** Différentiel appliqué par une migration : opérations ajoutées, supprimées, mises sans objet, modifiées. */
+    public record Differentiel(List<OperationParcours> ajoutees, List<OperationParcours> supprimees, int sansObjet, int modifiees) {}
+
+    /**
+     * Migration vers une nouvelle version publiée du référentiel (docs/lot1/modelisateur-processus.md §3) :
+     * opérations ajoutées verrouillées puis éligibilité recalculée ; retirées supprimées si elles ne sont pas
+     * commencées, sinon conservées sans objet (une opération faite garde sa preuve et son état) ; modifiées et
+     * non faites : modèle (libellé, geste, jalon, déclencheur, livrables, délai, prédécesseurs…) et qualités mis à
+     * jour, les personnes déjà désignées restant en place quand les fonctions ne changent pas. Les échéances au
+     * plus tôt des opérations non faites sont recalculées.
+     */
+    public Differentiel migrer(UUID versionId, Integer numero, List<ReferenceOperation> cible, Designation designation, LocalDate aujourdhui) {
+        List<ReferenceOperation> refs = cible
+            .stream()
+            .filter(o -> !o.etapeEffective().horsParcours())
+            .sorted(Comparator.comparingInt(ReferenceOperation::ordreEffectif).thenComparing(ReferenceOperation::getCode))
+            .toList();
+        Map<String, ReferenceOperation> parCode = new LinkedHashMap<>();
+        refs.forEach(r -> parCode.put(r.getCode(), r));
+        List<OperationParcours> supprimees = new ArrayList<>();
+        int sansObjet = 0;
+        int modifiees = 0;
+        for (OperationParcours o : List.copyOf(operations)) {
+            ReferenceOperation ref = parCode.get(o.getRang());
+            if (ref == null) {
+                if (!o.faite() && o.getPreuve() == null && Set.of(EtatOperationParcours.VERROUILLEE, EtatOperationParcours.A_FAIRE, EtatOperationParcours.BLOQUEE).contains(o.getEtat())) {
+                    supprimees.add(o);
+                    operations.remove(o);
+                    continue;
+                }
+                if (!o.faite() && o.getEtat() != EtatOperationParcours.SANS_OBJET) {
+                    o.setEtat(EtatOperationParcours.SANS_OBJET);
+                    sansObjet++;
+                }
+                o.setVersionId(versionId);
+            } else if (o.faite()) {
+                o.setVersionId(versionId);
+            } else {
+                List<Object> avant = o.signature();
+                o.appliquerModele(ref);
+                Raci nouvelle = raciInitial(ref, designation);
+                if (!fonctions(nouvelle).equals(fonctions(o.getRaci()))) {
+                    o.setRaci(nouvelle);
+                }
+                if (!avant.equals(o.signature())) {
+                    modifiees++;
+                }
+            }
+        }
+        List<OperationParcours> ajoutees = new ArrayList<>();
+        for (ReferenceOperation ref : refs) {
+            if (operation(ref.getCode()).isEmpty()) {
+                OperationParcours n = new OperationParcours(liaison.getId(), ref, 0);
+                n.setRaci(raciInitial(ref, designation));
+                operations.add(n);
+                ajoutees.add(n);
+            }
+        }
+        List<String> ordre = new ArrayList<>(parCode.keySet());
+        for (OperationParcours o : operations) {
+            int i = ordre.indexOf(o.getRang());
+            o.setOrdre(i >= 0 ? i : 10_000 + o.getOrdre());
+        }
+        operations.sort(Comparator.comparingInt(OperationParcours::getOrdre));
+        for (OperationParcours o : operations) {
+            if (o.getEtat() == EtatOperationParcours.A_FAIRE && !predecesseursNonFaits(o).isEmpty()) {
+                o.setEtat(EtatOperationParcours.VERROUILLEE);
+            }
+        }
+        etat.rattacher(versionId, numero);
+        planifier();
+        ouvrirSuivantes(aujourdhui);
+        rafraichir();
+        return new Differentiel(List.copyOf(ajoutees), List.copyOf(supprimees), sansObjet, modifiees);
+    }
+
+    private static List<Object> fonctions(Raci r) {
+        java.util.function.Function<Personne, Object> f = x -> x == null ? null : x.fonction();
+        return java.util.Arrays.asList(f.apply(r.r()), f.apply(r.v()), r.c().stream().map(f).toList(), r.i().stream().map(f).toList(), r.e().stream().map(f).toList());
     }
 
     // ------------------------------------------------------------------ accès
@@ -152,6 +246,41 @@ public final class Parcours {
         return operations.stream().filter(o -> o.getRang().equals(rang)).findFirst();
     }
 
+    /** Opérations qui satisfont un critère du modèle, dans l'ordre du référentiel. */
+    public List<OperationParcours> operations(Predicate<OperationParcours> critere) {
+        return operations.stream().filter(critere).toList();
+    }
+
+    /** Première opération portant un geste. */
+    public Optional<OperationParcours> parGeste(Geste g) {
+        return operations.stream().filter(o -> o.porte(g)).findFirst();
+    }
+
+    /** Opération qui porte un jalon. */
+    public Optional<OperationParcours> parJalon(Jalon j) {
+        return operations.stream().filter(o -> o.getJalon() == j).findFirst();
+    }
+
+    /** Le jalon est atteint : l'opération qui le porte est faite. */
+    public boolean jalonAtteint(Jalon j) {
+        return parJalon(j).map(OperationParcours::faite).orElse(false);
+    }
+
+    /** Opérations closes par un sujet d'événement. */
+    public List<OperationParcours> parDeclencheur(String sujet) {
+        return operations(o -> sujet.equals(o.getDeclencheur()));
+    }
+
+    /** Première opération d'une étape, dans l'ordre du référentiel. */
+    public Optional<OperationParcours> premiereDeLEtape(EtapeCode e) {
+        return operations.stream().filter(o -> o.getEtape() == e).findFirst();
+    }
+
+    /** Première opération (dans l'ordre du référentiel) dont la fonction responsable de référence est donnée. */
+    public Optional<OperationParcours> premiereDuResponsable(Fonction f) {
+        return operations.stream().filter(o -> o.getResponsable() == f).findFirst();
+    }
+
     public OperationParcours operation(UUID id) {
         return operations
             .stream()
@@ -192,13 +321,13 @@ public final class Parcours {
         if (etat.getStatut() == StatutParcours.SUSPENDUE || etat.getStatut() == StatutParcours.CLOSE_SANS_SUITE) {
             return etat.getStatut();
         }
-        if (fait("31")) {
+        if (jalonAtteint(Jalon.EN_PRODUCTION)) {
             return StatutParcours.EN_PRODUCTION;
         }
-        if ((fait("23") && fait("24") && fait("25")) || etat.getEtatApprobation() == EtatApprobation.APPROUVEE) {
+        if (jalonAtteint(Jalon.APPROUVEE_SECURITE) || etat.getEtatApprobation() == EtatApprobation.APPROUVEE) {
             return StatutParcours.APPROUVEE_SECURITE;
         }
-        if (fait("19")) {
+        if (jalonAtteint(Jalon.CERTIFIEE)) {
             return StatutParcours.CERTIFIEE;
         }
         EtapeCode e = etapeCourante();
@@ -206,10 +335,6 @@ public final class Parcours {
             return StatutParcours.EN_TEST;
         }
         return e == EtapeCode.INTEGRATION ? StatutParcours.EN_INTEGRATION : StatutParcours.CADREE;
-    }
-
-    private boolean fait(String rang) {
-        return operation(rang).map(OperationParcours::faite).orElse(false);
     }
 
     public boolean bloquee() {
@@ -235,9 +360,9 @@ public final class Parcours {
         return operations.stream().filter(o -> !o.faite() && o.getEcheance() != null).map(OperationParcours::getEcheance).min(Comparator.naturalOrder()).orElse(null);
     }
 
-    /** Date cible de mise en production : échéance planifiée du rapport consolidé (rang 31). */
+    /** Date cible de mise en production : échéance planifiée de l'opération qui porte le jalon EN_PRODUCTION. */
     public LocalDate dateCibleProduction() {
-        return operation("31").map(OperationParcours::getEcheance).orElse(null);
+        return parJalon(Jalon.EN_PRODUCTION).map(OperationParcours::getEcheance).orElse(null);
     }
 
     /** Couverture de certification : services inclus certifiés (ouverts ou non). */
@@ -271,7 +396,7 @@ public final class Parcours {
         etat.setStatut(statutCalcule());
         etat.setBloquee(bloquee());
         if (liaison.getEtat() != EtatLiaison.GELEE) {
-            liaison.setEtat(etatTechnique(etat.getStatut(), fait("17")));
+            liaison.setEtat(etatTechnique(etat.getStatut(), jalonAtteint(Jalon.APTE_CERTIFICATION)));
         }
     }
 
@@ -290,37 +415,61 @@ public final class Parcours {
 
     // ------------------------------------------------------------------ gestes
 
-    /** Clôt une opération, puis ouvre les suivantes dont tous les prédécesseurs sont faits. */
+    /**
+     * Clôt une opération, applique sa particularité (entrée en essai, fin des essais), puis ouvre les suivantes
+     * dont tous les prédécesseurs sont faits.
+     */
     public void terminer(OperationParcours o, Preuve preuve, LocalDate aujourdhui) {
         o.setEtat(EtatOperationParcours.FAITE);
         o.setFaiteLe(aujourdhui);
         o.setPreuve(preuve);
-        if ("15".equals(o.getRang())) {
+        if (o.getParticularite() == Particularite.ENTREE_ESSAIS) {
             servicesInclus().stream().filter(s -> s.getEntreeEssai() == null).forEach(s -> s.setEntreeEssai(aujourdhui));
         }
-        if ("16".equals(o.getRang())) {
+        if (o.getParticularite() == Particularite.FIN_ESSAIS) {
             certifierServices(aujourdhui);
         }
-        ouvrirSuivantes();
+        ouvrirSuivantes(aujourdhui);
         rafraichir();
     }
 
-    /** Clôture imposée par un événement ou un constat (rangs 18 à 26, 32, 33) : sans effet si l'opération est faite. */
-    public void forcerCloture(String rang, Preuve preuve, LocalDate aujourdhui) {
-        operation(rang).filter(o -> !o.faite()).ifPresent(o -> terminer(o, preuve, aujourdhui));
+    /** Clôture imposée par un événement ou un constat : sans effet si l'opération est faite. */
+    public void forcerCloture(OperationParcours o, Preuve preuve, LocalDate aujourdhui) {
+        if (!o.faite()) {
+            terminer(o, preuve, aujourdhui);
+        }
     }
 
-    private void ouvrirSuivantes() {
+    /** Clôture imposée de toutes les opérations qu'un sujet d'événement déclenche, dans l'ordre du référentiel. */
+    public void forcerCloture(String sujet, Preuve preuve, LocalDate aujourdhui) {
+        parDeclencheur(sujet).forEach(o -> forcerCloture(o, preuve, aujourdhui));
+    }
+
+    /**
+     * Ouvre les opérations verrouillées dont tous les prédécesseurs sont faits ; un point de passage (geste AUCUN)
+     * devenu éligible est clos aussitôt, ce qui peut en ouvrir d'autres.
+     */
+    void ouvrirSuivantes(LocalDate aujourdhui) {
         boolean bloque = bloquee();
-        for (OperationParcours x : operations) {
-            if (x.getEtat() == EtatOperationParcours.VERROUILLEE && predecesseursNonFaits(x).isEmpty()) {
-                x.setEtat(bloque ? EtatOperationParcours.BLOQUEE : EtatOperationParcours.A_FAIRE);
+        boolean encore = true;
+        while (encore) {
+            encore = false;
+            for (OperationParcours x : operations) {
+                if (x.getEtat() == EtatOperationParcours.VERROUILLEE && predecesseursNonFaits(x).isEmpty()) {
+                    if (x.porte(Geste.AUCUN)) {
+                        x.setEtat(EtatOperationParcours.FAITE);
+                        x.setFaiteLe(aujourdhui);
+                        encore = true;
+                    } else {
+                        x.setEtat(bloque ? EtatOperationParcours.BLOQUEE : EtatOperationParcours.A_FAIRE);
+                    }
+                }
             }
         }
     }
 
     /**
-     * Certification des services à la fin des essais (rang 16) et au constat (rang 17) : un service mesuré
+     * Certification des services à la fin des essais (particularité FIN_ESSAIS) et au constat de la couverture : un service mesuré
      * par le simulateur est certifié à 100 % ; sans aucune mesure reprise, les essais validés certifient
      * le périmètre inclus.
      */
@@ -339,13 +488,6 @@ public final class Parcours {
         }
     }
 
-    /**
-     * Rangs dont le geste a sa route propre et ne se clôt jamais par un livrable ni une preuve libres : affectation
-     * des ressources (6), verrous de la décision tenus par MS-CERTIFICATION (18 à 25, D-56 : procès-verbal signé,
-     * dossier de changement, attestations, approbation de la sécurité), fiche de suivi et constat (32, 33).
-     */
-    public static final Set<String> GESTES_DEDIES = Set.of("6", "18", "19", "20", "21", "22", "23", "24", "25", "32", "33");
-
     private static String empreinte(String texte) {
         try {
             return java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(texte.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
@@ -354,8 +496,13 @@ public final class Parcours {
         }
     }
 
+    /**
+     * Opération dont le geste a sa route propre et ne se clôt jamais par un livrable ni une preuve libres :
+     * affectation des ressources, verrous de la décision tenus par MS-CERTIFICATION (événement externe, D-56),
+     * fiche de suivi et son constat.
+     */
     public static boolean gesteDedie(OperationParcours o) {
-        return GESTES_DEDIES.contains(o.getRang());
+        return o.getGeste().dedie();
     }
 
     private static void refuserGesteLibre(OperationParcours o) {
@@ -368,18 +515,15 @@ public final class Parcours {
         }
     }
 
-    /** Geste attendu sur une opération ouverte : constat (rang 17), livrable (pièces de phase, rangs 7 à 11), sinon preuve. */
+    /** Action attendue sur une opération ouverte, selon son geste : constat, livrable, sinon preuve. */
     public static String geste(OperationParcours o) {
-        if ("17".equals(o.getRang())) {
-            return "CONSTATER_COUVERTURE";
-        }
-        return o.getGrain() == GrainPreuve.PHASE || Set.of("7", "8", "9", "10", "11").contains(o.getRang()) ? "DEPOSER_LIVRABLE" : "DEPOSER_PREUVE";
+        return o.getGeste().action();
     }
 
     /** Livrable (compte rendu, document de paramétrage…) : clôt l'opération ouverte ; jamais sur une clé ni une valeur de référence. */
     public void deposerLivrable(OperationParcours o, Preuve preuve, LocalDate aujourdhui) {
         refuserGesteLibre(o);
-        if (!o.getEtat().ouverte() || "17".equals(o.getRang()) || o.isCle() || o.isValeurReference()) {
+        if (!o.getEtat().ouverte() || o.porte(Geste.CONSTATER_COUVERTURE) || o.isCle() || o.isValeurReference()) {
             throw HomologationException.conflict("HOM_OPERATION_NOT_OPEN", "Cette opération n'attend pas de livrable.", Map.of("etat", o.getEtat().name(), "rang", o.getRang()));
         }
         terminer(o, preuve, aujourdhui);
@@ -387,18 +531,19 @@ public final class Parcours {
 
     /**
      * Preuve au grain de l'opération (CR §6.4.3, D-59) : une clé ne porte que son code de contrôle (4 à 8
-     * hexadécimaux), la cérémonie C1 sa date, ses trois porteurs et leurs trois codes ; un secret ne porte
+     * hexadécimaux), une cérémonie de clés (particularité CEREMONIE_CLES) sa date, ses trois porteurs et leurs
+     * trois codes ; un secret ne porte
      * qu'une trace ; une valeur de référence est exigée quand l'opération en attend une. L'opération passe
      * en validation.
      */
     public void deposerPreuve(OperationParcours o, Preuve piece, String valeurReference, String codeControle, Ceremonie ceremonie) {
         refuserGesteLibre(o);
-        if (!o.getEtat().ouverte() || "17".equals(o.getRang())) {
+        if (!o.getEtat().ouverte() || o.porte(Geste.CONSTATER_COUVERTURE)) {
             throw HomologationException.conflict("HOM_OPERATION_NOT_OPEN", "Cette opération n'est pas ouverte.", Map.of("etat", o.getEtat().name(), "rang", o.getRang()));
         }
         String code = codeControle == null || codeControle.isBlank() ? null : codeControle.trim().toUpperCase(java.util.Locale.ROOT);
         Ceremonie c = null;
-        if ("C1".equals(o.getRang())) {
+        if (o.getParticularite() == Particularite.CEREMONIE_CLES) {
             c = ceremonieControlee(ceremonie);
         } else if (o.isCle() && code == null) {
             throw HomologationException.unprocessable("HOM_KEY_CHECK_VALUE_REQUIRED", "Le code de contrôle de la clé est exigé ; aucune valeur de clé n'est admise.");
@@ -472,9 +617,9 @@ public final class Parcours {
         o.setRaci(r.ajouter(q, p));
     }
 
-    /** Affectation des ressources (rang 6) : chaque personne remplace la fonction qu'elle tient sur les opérations non faites. */
+    /** Affectation des ressources (geste AFFECTER_RESSOURCES) : chaque personne remplace la fonction qu'elle tient sur les opérations non faites. */
     public void affecterRessources(List<Personne> affectations, Preuve preuve, LocalDate aujourdhui) {
-        OperationParcours o6 = operation("6").filter(o -> o.getEtat() == EtatOperationParcours.A_FAIRE).orElseThrow(() ->
+        OperationParcours o6 = operations(o -> o.porte(Geste.AFFECTER_RESSOURCES) && o.getEtat() == EtatOperationParcours.A_FAIRE).stream().findFirst().orElseThrow(() ->
             HomologationException.conflict("HOM_STEP_NOT_OPEN", "L'affectation des ressources n'est pas ouverte.", Map.of())
         );
         if (affectations.isEmpty()) {
@@ -522,9 +667,9 @@ public final class Parcours {
         rafraichir();
     }
 
-    /** Constat de la couverture (rang 17) : ouvert à la fin des essais ; la couverture constatée est rendue. */
+    /** Constat de la couverture (geste CONSTATER_COUVERTURE) : ouvert à la fin des essais ; la couverture constatée est rendue. */
     public Couverture constaterCouverture(Preuve preuve, LocalDate aujourdhui) {
-        OperationParcours o17 = operation("17").filter(o -> o.getEtat().ouverte()).orElseThrow(() ->
+        OperationParcours o17 = operations(o -> o.porte(Geste.CONSTATER_COUVERTURE) && o.getEtat().ouverte()).stream().findFirst().orElseThrow(() ->
             HomologationException.conflict("HOM_COVERAGE_NOT_READY", "Les essais ne sont pas terminés : la couverture ne peut pas être constatée.", Map.of())
         );
         certifierServices(aujourdhui);
@@ -533,18 +678,18 @@ public final class Parcours {
         return couvertureCertification();
     }
 
-    /** Coordonnées techniques d'essai communiquées par le participant (rang 12) : hôte et port contrôlés, relisibles. */
+    /** Coordonnées techniques d'essai communiquées par le participant (geste COORDONNEES_TECHNIQUES) : hôte et port contrôlés, relisibles. */
     public void communiquerCoordonnees(String adresse, String port, String pointsTerminaison, Preuve piece, LocalDate aujourdhui) {
         String a = adresse == null ? "" : adresse.trim();
         String p = port == null ? "" : port.trim();
         if (!HOTE.matcher(a).matches() || !PORT.matcher(p).matches() || Integer.parseInt(p) > 65535 || (pointsTerminaison != null && pointsTerminaison.length() > 500)) {
             throw HomologationException.unprocessable("HOM_TECHNICAL_DATA_INVALID", "Adresse ou port invalide.");
         }
-        OperationParcours o12 = operation("12").filter(o -> o.getEtat() == EtatOperationParcours.A_FAIRE).orElseThrow(() ->
+        OperationParcours o12 = operations(o -> o.porte(Geste.COORDONNEES_TECHNIQUES) && o.getEtat() == EtatOperationParcours.A_FAIRE).stream().findFirst().orElseThrow(() ->
             HomologationException.conflict("HOM_OPERATION_NOT_OPEN", "Les coordonnées techniques ne sont pas attendues à cette étape.", Map.of())
         );
         etat.setPointsTerminaison(pointsTerminaison == null || pointsTerminaison.isBlank() ? null : pointsTerminaison.trim());
-        terminer(o12, piece.avecValeurReference(new ValeurReference("parcours.valeur.12", a + ":" + p)), aujourdhui);
+        terminer(o12, piece.avecValeurReference(new ValeurReference("parcours.valeur." + o12.getRang(), a + ":" + p)), aujourdhui);
     }
 
     /** Remise de la fiche de suivi des services au participant (étape 10). */
@@ -555,7 +700,7 @@ public final class Parcours {
         etat.setFicheEtat(EtatFicheSuivi.REMISE);
     }
 
-    /** Fiche renseignée par le participant (rang 32) : chaque service du périmètre, ouvert ou non. */
+    /** Fiche renseignée par le participant (geste FICHE_SUIVI, responsable externe) : chaque service du périmètre, ouvert ou non. */
     public void renseignerFiche(List<LigneFiche> lignes, Preuve preuve, LocalDate aujourdhui) {
         if (etat.getFicheEtat() != EtatFicheSuivi.REMISE) {
             throw HomologationException.conflict("HOM_SERVICE_SHEET_NOT_OPEN", "La fiche de suivi n'est pas ouverte à la saisie.", Map.of("etat", etat.getFicheEtat().name()));
@@ -573,78 +718,87 @@ public final class Parcours {
         }
         etat.setFicheEtat(EtatFicheSuivi.RENSEIGNEE);
         etat.setFicheRenseigneeLe(aujourdhui);
-        forcerCloture("32", preuve, aujourdhui);
+        operations(o -> o.porte(Geste.FICHE_SUIVI) && ficheDuParticipant(o)).forEach(o -> forcerCloture(o, preuve, aujourdhui));
     }
 
-    /** Constat de mise en service (rang 33), sur la fiche renseignée. */
+    /** Opération de la fiche de suivi qui revient au participant (responsable de référence externe), sinon son constat. */
+    public static boolean ficheDuParticipant(OperationParcours o) {
+        return o.getResponsable() != null && o.getResponsable().externe();
+    }
+
+    /** Constat de mise en service (geste FICHE_SUIVI, responsable interne), sur la fiche renseignée. */
     public void constaterMiseEnService(Preuve preuve, LocalDate aujourdhui) {
         if (etat.getFicheEtat() != EtatFicheSuivi.RENSEIGNEE) {
             throw HomologationException.conflict("HOM_SERVICE_SHEET_INCOMPLETE", "La fiche de suivi n'est pas encore renseignée par le participant.", Map.of("etat", etat.getFicheEtat().name()));
         }
         etat.setFicheEtat(EtatFicheSuivi.CONSTATEE);
         etat.setFicheConstateeLe(aujourdhui);
-        forcerCloture("33", preuve, aujourdhui);
+        operations(o -> o.porte(Geste.FICHE_SUIVI) && !ficheDuParticipant(o)).forEach(o -> forcerCloture(o, preuve, aujourdhui));
     }
 
     // ------------------------------------------------------------------ projection des verrous (événements de MS-CERTIFICATION)
 
-    /** certification.pv-established.v1 : rang 18 clos avec le procès-verbal. */
+    /** certification.pv-established.v1 : opérations de ce déclencheur closes avec le procès-verbal. */
     public void pvEtabli(Preuve preuve, LocalDate aujourdhui) {
         if (etat.getEtatPv() == EtatProcesVerbal.NON_ETABLI) {
             etat.setEtatPv(EtatProcesVerbal.ETABLI);
         }
-        forcerCloture("18", preuve, aujourdhui);
+        forcerCloture(Declencheurs.PV_ETABLI, preuve, aujourdhui);
     }
 
-    /** certification.pv-signed.v1 : signé des deux parties, rang 19 clos et liaison CERTIFIEE ; une seule signature est projetée. */
+    /**
+     * certification.pv-signed.v1 : signé des deux parties, les opérations du procès-verbal établi puis signé sont
+     * closes (jalon CERTIFIEE) ; une seule signature est projetée.
+     */
     public void pvSigne(boolean gimac, boolean participant, Preuve preuve, LocalDate aujourdhui) {
         EtatProcesVerbal e = etat.getEtatPv();
         boolean g = gimac || e == EtatProcesVerbal.SIGNE_GIMAC || e == EtatProcesVerbal.SIGNE;
         boolean pa = participant || e == EtatProcesVerbal.SIGNE_PARTICIPANT || e == EtatProcesVerbal.SIGNE;
         if (g && pa) {
             etat.setEtatPv(EtatProcesVerbal.SIGNE);
-            forcerCloture("18", preuve, aujourdhui);
-            forcerCloture("19", preuve, aujourdhui);
+            forcerCloture(Declencheurs.PV_ETABLI, preuve, aujourdhui);
+            forcerCloture(Declencheurs.PV_SIGNE, preuve, aujourdhui);
         } else if (g || pa) {
             etat.setEtatPv(g ? EtatProcesVerbal.SIGNE_GIMAC : EtatProcesVerbal.SIGNE_PARTICIPANT);
         }
         rafraichir();
     }
 
-    /** certification.change-record-constituted.v1 : rang 20 clos. */
+    /** certification.change-record-constituted.v1 : opérations de ce déclencheur closes. */
     public void dossierChangementConstitue(Preuve preuve, LocalDate aujourdhui) {
         if (etat.getEtatApprobation() == EtatApprobation.EN_ATTENTE_DOSSIER) {
             etat.setEtatApprobation(EtatApprobation.DOSSIER_CONSTITUE);
         }
-        forcerCloture("20", preuve, aujourdhui);
+        forcerCloture(Declencheurs.DOSSIER_CHANGEMENT, preuve, aujourdhui);
     }
 
-    /** certification.change-record-referenced.v1 : rang 26 clos s'il est ouvert. */
+    /** certification.change-record-referenced.v1 : opérations de ce déclencheur closes si elles sont ouvertes. */
     public void ficheChangementReferencee(String reference, Preuve preuve, LocalDate aujourdhui) {
         etat.setFicheChangementReference(reference);
-        operation("26").filter(o -> o.getEtat().ouverte()).ifPresent(o -> terminer(o, preuve, aujourdhui));
+        parDeclencheur(Declencheurs.FICHE_CHANGEMENT).stream().filter(o -> o.getEtat().ouverte()).forEach(o -> terminer(o, preuve, aujourdhui));
     }
 
-    /** certification.attestations-archived.v1 : rangs 21 et 22 clos. */
+    /** certification.attestations-archived.v1 : opérations de ce déclencheur closes. */
     public void attestationsArchivees(Preuve preuve, LocalDate aujourdhui) {
         etat.setEtatApprobation(EtatApprobation.VERIFIE_ARCHIVE);
         etat.setAttestationsDeposees(List.of());
-        forcerCloture("21", preuve, aujourdhui);
-        forcerCloture("22", preuve, aujourdhui);
+        forcerCloture(Declencheurs.ATTESTATIONS_ARCHIVEES, preuve, aujourdhui);
     }
 
-    /** certification.security-approved.v1 : rangs 23 à 25 clos, liaison APPROUVEE_SECURITE. */
+    /** certification.security-approved.v1 : opérations de ce déclencheur closes, liaison APPROUVEE_SECURITE. */
     public void securiteApprouvee(Preuve preuve, LocalDate aujourdhui) {
         etat.setEtatApprobation(EtatApprobation.APPROUVEE);
         etat.setVisasAttendus(List.of());
-        for (String r : List.of("23", "24", "25")) {
-            forcerCloture(r, preuve, aujourdhui);
-        }
-        // Rang 26 (ouverture de la fiche de changement) : il ne s'ouvre qu'après l'approbation, alors que la fiche est
-        // déjà référencée et lue (elle fonde l'approbation, D-56) ; sa preuve est cette référence, jamais redemandée.
+        forcerCloture(Declencheurs.SECURITE_APPROUVEE, preuve, aujourdhui);
+        // Ouverture de la fiche de changement (déclencheur change-record-referenced) : elle ne s'ouvre qu'après
+        // l'approbation, alors que la fiche est déjà référencée et lue (elle fonde l'approbation, D-56) ; sa preuve
+        // est cette référence, jamais redemandée.
         String reference = etat.getFicheChangementReference();
         if (reference != null) {
-            operation("26").filter(o -> o.getEtat().ouverte()).ifPresent(o -> terminer(o, Preuve.piece(reference, reference, empreinte(reference), aujourdhui, "PRODUCTION_MONETIQUE"), aujourdhui));
+            parDeclencheur(Declencheurs.FICHE_CHANGEMENT)
+                .stream()
+                .filter(o -> o.getEtat().ouverte())
+                .forEach(o -> terminer(o, Preuve.piece(reference, reference, empreinte(reference), aujourdhui, "PRODUCTION_MONETIQUE"), aujourdhui));
         }
         rafraichir();
     }

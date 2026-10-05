@@ -10,6 +10,7 @@ export function useServicesConsole(): ServicesConsole {
 }
 
 /** Chemins des écrans de l'administration dans l'application courante (console ou département). */
-export function useChemins(): CheminsAdministration {
-  return useContext(ContexteChemins)
+export function useChemins(): Required<CheminsAdministration> {
+  const c = useContext(ContexteChemins)
+  return { ...c, plateforme: c.plateforme ?? `${c.espace}/plateforme` }
 }

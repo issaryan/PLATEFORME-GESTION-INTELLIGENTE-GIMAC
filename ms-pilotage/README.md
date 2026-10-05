@@ -15,7 +15,15 @@ Pilotage : tableaux Kanban, projets et jalons, risques, fiches d'action, comité
 
 ## État
 
-Squelette généré en JHipster 8.11.0 ; régénération en 9.4.0 prévue lors du passage au gabarit hexagonal (D-43). Code JHipster brut : domaine JPA, DTO MapStruct, services, ressources REST, changelogs Liquibase, messages fr et en. L'architecture hexagonale, l'outbox, l'inbox et les algorithmes du CC restent à écrire (SOC-01, SOC-05).
+Squelette généré en JHipster 8.11.0 ; régénération en 9.4.0 prévue lors du passage au gabarit hexagonal (D-43). Code JHipster brut (domaine JPA, DTO MapStruct, services, ressources REST, changelogs Liquibase) conservé tel quel ; les tableaux Kanban, projets, risques et comités du CC restent à écrire (SOC-01, SOC-05).
+
+**Mon activité (D-76, `docs/lot1/mon-activite.md` §2, §3, §5)**, en architecture hexagonale (`application`, `domain/activite`, `domain/service`, `infrastructure`, `web/rest/activite`) :
+
+- Routes `/api/v1/agenda`, `/activites`, `/taches`, `/rapports` (préremplissage, soumission, visa, document), `/equipe`, `/moi/synthese` : jeton à deux facteurs (D-61), puis `PIL_ACTIVITY_OWN` (`/equipe` : `PIL_TEAM_READ`) ; règles d'équipe (403 `PIL_HORS_EQUIPE`) et confiance de tâches (`PIL_TASK_ASSIGN`) contrôlées par les cas d'utilisation. `POST /api/v1/interne/taches` : jeton de service `INTERNAL_PILOTAGE_TASK_CREATE`, idempotent par origine et responsable. `POST /api/v1/interne/taches/cloture` et `/reouverture` (D-77) : même jeton ; corps `{origine: {type?, reference}, responsableId?}` ; les tâches de l'origine créées par un service (jamais une tâche `INTERNE`), restreintes au responsable s'il est donné, sont terminées depuis tout état ouvert (événement `pilotage.task-completed.v1`) ou rouvertes `EN_COURS` si elles étaient terminées ; 200 avec les tâches visées, idempotent.
+- Tables `evenement_agenda`, `evenement_participant`, `activite`, `tache`, `tache_historique` (ajout seul, garanti par un déclencheur), `rapport`, `outbox_event` (changelog `20261005090000_pil_mon_activite.xml`). Fuseau `Africa/Douala`, semaines ISO.
+- Organisation lue sur MS-IAM (`/api/v1/interne/organisation/{id}`, `/equipe`, `/api/v1/interne/collaborateurs/{id}`, cache de 60 s), documents des rapports vérifiés et relayés en flux depuis MS-DOCUMENT (finalité `RAPPORT_ACTIVITE`), avec le jeton du client `pilotage-service` ; adaptateurs `gimac.adaptateurs.organisation` et `gimac.adaptateurs.documents` : `real` (profil `prod`) ou `stub`.
+- Événements `pilotage.task-created.v1`, `pilotage.task-assigned.v1`, `pilotage.task-completed.v1`, `pilotage.report-submitted.v1`, `pilotage.report-visaed.v1` par l'outbox (CloudEvents 1.0, sujets `pilotage.task` et `pilotage.report`), sans contenu de rapport.
+- Tests : unitaires du domaine (transitions, périodes, rapports, préremplissage), des adaptateurs, et d'intégration REST (`web/rest/activite/*IT`, PostgreSQL et Kafka par Testcontainers).
 
 ## Lancer
 
@@ -48,6 +56,7 @@ Copié et adapté (paquet `cm.gimac.des.pilotage`) ; chaque bean est inactif tan
 | 2026-09-28 | — | Écarts comblés (liaison au certificat, masquage Luhn 6+4) et 2 classes reprises d'afriland : ServiceTokenProvider, TransitionInterditeException (D-53). |
 | 2026-09-29 | — | Masquage des journaux activé (logback, `%maskedMsg`) ; 151 tests unitaires et 735 tests d'intégration réussis, image Jib construite ; `@DecimalMax("0")` généré pour `max(0.9)` rétabli à `0.9` sur le coefficient de maîtrise (Risk, RiskAssessment) ; tests ajustés (D-54). |
 | 2026-09-29 | — | `.gitignore` : exception `!src/**/out/`, pour que les ports sortants `application/port/out` soient versionnés |
+| 2026-10-05 | - | Mon activité (D-76) : agenda, activités du jour, tâches, rapports, équipe et synthèse ; jeton de service `pilotage-service` vers MS-IAM et MS-DOCUMENT ; outbox des événements `pilotage.*` ; permissions métier (`PIL_*`, `INTERNAL_*`) conservées dans les autorités du jeton |
 <!-- GIMAC:FIN -->
 
 # pilotage

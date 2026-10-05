@@ -5,8 +5,10 @@ import type { PortailLiaison } from '../../modele/portail'
 import type { ServiceCertification, ServiceHomologation, ServicePortail, Services } from '../ports'
 import * as D from './donnees'
 import { participantSimule } from './participant'
-import { messagerieSimulee } from './messagerie'
+import { messagerieSimulee, type MessagerieSimulee } from './messagerie'
 import { parcoursSimule } from './parcours'
+import { pilotageSimule } from './pilotage'
+import { referentielsSimules } from './referentiels'
 
 // Implémentation simulée des ports, pour développer les écrans sans la passerelle : un serveur fictif en
 // mémoire, avec latence, identifiants de corrélation et refus normalisés comme ceux des services réels.
@@ -15,7 +17,7 @@ import { parcoursSimule } from './parcours'
 export type OptionsSimulation = {
   latenceMs?: number
   echecs?: boolean
-  /** Utilisateur de la démonstration, membre des conversations simulées (messagerie, D-64). */
+  /** Utilisateur de la démonstration, membre des conversations simulées (messagerie, D-64) et auteur de « Mon activité » (D-76). */
   utilisateur?: { id: string; nom: string; fonction?: string | null }
 }
 
@@ -39,7 +41,10 @@ function pagine<T>(lignes: T[], q: ListQuery, champs: (keyof T)[]): Page<T> {
   return { contenu: clone(l.slice(debut, debut + q.taille)), total: l.length }
 }
 
-export function servicesSimules(o: OptionsSimulation = {}): Services {
+/** Services simulés : les ports, plus la réception de messages de démonstration (notifications, D-80). */
+export type ServicesSimules = Services & { messagerie: MessagerieSimulee }
+
+export function servicesSimules(o: OptionsSimulation = {}): ServicesSimules {
   const latence = o.latenceMs ?? 350
   // État propre à chaque instance : les liaisons ouvertes ou modifiées ne fuient pas d'une instance à l'autre.
   const liaisons: Liaison[] = clone(D.liaisons)
@@ -68,6 +73,10 @@ export function servicesSimules(o: OptionsSimulation = {}): Services {
   }
   const depots = new Map<string, ClotureOperation['dernierDepot']>()
   const participant = participantSimule(attendre, refus)
+  // Référentiels et modélisateur (D-77) : état propre à l'instance.
+  const referentiels = referentielsSimules(attendre, refus, {
+    utilisateur: o.utilisateur?.id, maintenant, liaisonsActives: (versionId) => liaisons.filter((l) => l.versionId === versionId && l.etat !== 'CLOSE').length,
+  })
   let numeroLiaison = 40
 
   /** « Mes projets » : liaisons dont le conducteur de projet est l'utilisateur de la démonstration. */
@@ -93,7 +102,7 @@ export function servicesSimules(o: OptionsSimulation = {}): Services {
     const chef = conducteur(e.chefDeProjetId)
     const banque = e.banquePartenaireId ? participant.pont.institution(e.banquePartenaireId) : undefined
     if (e.banquePartenaireId && banque?.categorie !== 'BANQUE') throw refus(409, 'HOM_LIAISON_CARRIER_NOT_BANK', 'Le porteur désigné n\'est pas une banque.')
-    const version = D.referentiels.find((r) => r.typeProjet === e.typeProjet && r.etat === 'PUBLIEE')
+    const version = referentiels.versions.find((r) => r.typeProjet === e.typeProjet && r.etat === 'PUBLIEE')
     if (!version) throw refus(409, 'HOM_REFERENTIAL_NONE_PUBLISHED', 'Aucun référentiel publié pour ce type de projet.')
     const n = String(++numeroLiaison).padStart(3, '0')
     const base: Liaison = {
@@ -111,42 +120,11 @@ export function servicesSimules(o: OptionsSimulation = {}): Services {
   }
 
   const homologation: ServiceHomologation = {
-    listerReferentiels: () => attendre(D.referentiels),
-    lireReferentiel: (id) => attendre(() => {
-      const r = D.referentiels.find((x) => x.id === id)
-      if (!r) throw refus(404, 'HOM_REFERENTIAL_NOT_FOUND', 'Version introuvable.')
-      return r
-    }),
-    operationsReferentiel: (id) => attendre(D.operationsReferentiel[id] ?? []),
-    controlerReferentiel: (id) => attendre(() => {
-      const ops = D.operationsReferentiel[id] ?? []
-      return { acyclique: true, ordreTopologique: ops.map((x) => x.code), cycle: [], incoherences: [], manquants: id === 'REF-CI-4' ? [{ code: 'OP-E05', attributs: ['preuveAttendue.grille'] }] : [] }
-    }),
+    ...referentiels.port,
     simulerMigration: () => attendre([
       { liaisonId: 'LIA-2026-017', institutionNom: 'Établissement de paiement A', conservees: 3, ajoutees: 1, retirees: 1, modifiees: 0, exclue: false, motifExclusion: null },
       { liaisonId: 'LIA-2025-102', institutionNom: 'Banque B', conservees: 4, ajoutees: 0, retirees: 0, modifiees: 0, exclue: true, motifExclusion: 'circuit de quitus ouvert' },
     ]),
-    liaisonsImpactees: (versionId) => attendre({ total: liaisons.filter((l) => l.versionId === versionId && l.etat !== 'CLOSE').length }),
-    creerBrouillon: (e) => attendre(() => {
-      const v = { ...D.referentiels[1], id: `REF-${Date.now()}`, libelle: e.libelle, typeProjet: e.typeProjet as Liaison['typeProjet'], dateCreation: maintenant() }
-      D.referentiels.push(v)
-      return v
-    }),
-    deriverBrouillon: (source) => attendre(() => {
-      const s = D.referentiels.find((x) => x.id === source) ?? D.referentiels[0]
-      const v = { ...s, id: `REF-${Date.now()}`, numero: null, etat: 'BROUILLON' as const, libelle: `${s.libelle}, brouillon`, versionSourceId: s.id, datePublication: null, dateCreation: maintenant(), actionsPermises: ['CONTROLER', 'PUBLIER', 'MODIFIER'] }
-      D.referentiels.push(v)
-      D.operationsReferentiel[v.id] = clone(D.operationsReferentiel[s.id] ?? [])
-      return v
-    }),
-    publierReferentiel: (id) => attendre(() => {
-      const v = D.referentiels.find((x) => x.id === id)
-      if (!v || v.etat !== 'BROUILLON') throw refus(409, 'HOM_REFERENTIAL_FROZEN', 'Une version publiée est figée.')
-      v.etat = 'PUBLIEE'
-      v.numero = Math.max(...D.referentiels.filter((x) => x.typeProjet === v.typeProjet).map((x) => x.numero ?? 0)) + 1
-      v.datePublication = maintenant()
-      v.actionsPermises = ['DERIVER', 'CONTROLER']
-    }),
     migrerLiaisons: () => attendre(undefined),
     historiqueReferentiel: (id) => attendre([{ event: `Version ${id} créée`, at: '22/09/2026 11:02', actor: 'Ingénieur d\'homologation', correlationId: 'RQ-2026-0922-4' }]),
 
@@ -335,6 +313,8 @@ export function servicesSimules(o: OptionsSimulation = {}): Services {
     certification,
     portail,
     messagerie: messagerieSimulee(attendre, refus, o.utilisateur ? { id: o.utilisateur.id, nom: o.utilisateur.nom, fonction: o.utilisateur.fonction ?? null } : undefined),
+    // Mon activité (D-76) : agenda, activités, tâches, rapports et équipe de l'utilisateur de la démonstration.
+    pilotage: pilotageSimule(attendre, refus, o.utilisateur ? { id: o.utilisateur.id, nom: o.utilisateur.nom } : undefined),
     // Clé de sécurité simulée : confirme après un délai ; l'option echecs simule une annulation.
     reauth: {
       assertion: () => new Promise((res, rej) => window.setTimeout(() => (o.echecs ? rej(new ReauthCancelled()) : res(btoa('assertion-simulee'))), 900)),

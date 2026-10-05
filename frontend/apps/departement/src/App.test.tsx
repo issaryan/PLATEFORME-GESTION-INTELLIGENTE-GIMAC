@@ -1,5 +1,5 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import i18next from 'i18next'
 import { MOT_DE_PASSE_DEMO, initI18n } from '@gimac/socle'
@@ -52,6 +52,29 @@ describe('profils de démonstration', () => {
     expect(roleDemo('ROLE_INCONNU')).toBe('ROLE_CHEF_DDRM')
     // Super administrateur (D-69) : même identité que dans la console.
     expect(sessionDemo('ROLE_SUPER_ADMIN')).toMatchObject({ sujet: 'u-super-admin', nom: 'Serge Mouelle Kombi' })
+  })
+})
+
+describe('Mon activité (D-76)', () => {
+  it('profils de démonstration : collaborateur et responsable de service, PIL_* selon le contrat', () => {
+    expect(PROFILS_DEMO.ROLE_COLLABORATEUR).toMatchObject({ sujet: 'u-collab', nom: 'Nadège Mvondo Assiga', permissions: ['COL_MESSAGE_READ', 'COL_MESSAGE_SEND', 'PIL_ACTIVITY_OWN', 'NOT_INBOX_READ'] })
+    expect(PROFILS_DEMO.ROLE_RESPONSABLE_SERVICE.permissions).toEqual(expect.arrayContaining(['PIL_ACTIVITY_OWN', 'PIL_TEAM_READ', 'PIL_TASK_ASSIGN']))
+    for (const r of ['ROLE_CHEF_DES', 'ROLE_CHEF_DDRM', 'ROLE_DG', 'ROLE_RSSI', 'ROLE_CONFORMITE']) expect(PROFILS_DEMO[r].permissions).toContain('PIL_TEAM_READ')
+    for (const p of Object.values(PROFILS_DEMO)) expect(p.permissions).toEqual(expect.arrayContaining(['PIL_ACTIVITY_OWN', 'NOT_INBOX_READ']))
+    expect(PROFILS_DEMO.ROLE_SNA.permissions).not.toContain('PIL_TEAM_READ')
+  })
+  it('collaborateur : groupe « Mon activité » sans « Mon équipe » ni registre ; « Ma journée » en tête du tableau de bord', async () => {
+    localStorage.setItem(CLE_PROFIL_DEMO, 'ROLE_COLLABORATEUR')
+    monter()
+    expect(await screen.findByRole('region', { name: 'Ma journée' }, { timeout: 8000 })).toBeTruthy()
+    for (const n of ['Ma journée', 'Agenda', 'Tâches', 'Rapports']) expect(within(navigation()).getByRole('link', { name: n })).toBeTruthy()
+    expect(within(navigation()).queryByRole('link', { name: 'Mon équipe' })).toBeNull()
+    expect(within(navigation()).queryByRole('link', { name: 'Institutions membres' })).toBeNull()
+  })
+  it('écran réservé : « Mon équipe » refusé au collaborateur', async () => {
+    localStorage.setItem(CLE_PROFIL_DEMO, 'ROLE_COLLABORATEUR')
+    monter('/des/equipe')
+    expect(await screen.findByText('Accès refusé', {}, { timeout: 8000 })).toBeTruthy()
   })
 })
 

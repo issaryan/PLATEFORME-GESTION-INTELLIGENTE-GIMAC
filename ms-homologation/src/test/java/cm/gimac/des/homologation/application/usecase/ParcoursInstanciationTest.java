@@ -14,9 +14,8 @@ import cm.gimac.des.homologation.domain.parcours.Fonction;
 import cm.gimac.des.homologation.domain.parcours.Parcours;
 import cm.gimac.des.homologation.domain.parcours.ParcoursSamples;
 import cm.gimac.des.homologation.domain.parcours.Personne;
-import cm.gimac.des.homologation.domain.parcours.ReferentielOperation;
 import cm.gimac.des.homologation.domain.parcours.ServiceParcours;
-import cm.gimac.des.homologation.repository.ReferentielOperationRepository;
+import cm.gimac.des.homologation.repository.ReferentialVersionRepository;
 import cm.gimac.des.homologation.repository.ScopeItemRepository;
 import java.time.Clock;
 import java.time.Instant;
@@ -35,7 +34,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class ParcoursInstanciationTest {
 
     @Mock
-    ReferentielOperationRepository referentiel;
+    ReferentialVersionRepository versions;
 
     @Mock
     ScopeItemRepository elements;
@@ -50,8 +49,7 @@ class ParcoursInstanciationTest {
 
     @BeforeEach
     void init() {
-        instanciation = new ParcoursInstanciation(referentiel, elements, depot, intervenants, Clock.fixed(Instant.parse("2026-10-06T09:00:00Z"), ZoneOffset.UTC));
-        when(referentiel.findByVersionCrOrderByOrdre(ReferentielOperation.VERSION_CR)).thenReturn(ParcoursSamples.referentiel());
+        instanciation = new ParcoursInstanciation(versions, elements, depot, intervenants, Clock.fixed(Instant.parse("2026-10-06T09:00:00Z"), ZoneOffset.UTC));
         when(depot.prochainNumero()).thenReturn(7L);
         when(intervenants.titulaire(any())).thenAnswer(i -> Personne.aAffecter(i.getArgument(0)));
     }

@@ -18,6 +18,13 @@ afterEach(() => {
 })
 
 describe('F0 : client HTTP', () => {
+  it('lecture avec en-têtes : corps et en-têtes de la réponse (X-Orchestrateur, D-78)', async () => {
+    reply(200, [{ nom: 'iam' }], { 'X-Orchestrateur': 'AUCUN' })
+    const r = await http.getAvecEntetes<{ nom: string }[]>('/api/plateforme/infrastructure/charges')
+    expect(r.donnees).toEqual([{ nom: 'iam' }])
+    expect(r.entetes.get('X-Orchestrateur')).toBe('AUCUN')
+  })
+
   it('F0 : une erreur 409 est normalisée en ApiError avec son identifiant de corrélation', async () => {
     reply(409, { code: 'HOM_CLOSURE_ELEMENT_MISSING', message: 'preuve', correlationId: 'cid-409' })
     await expect(http.post('/bff/des/homologation/operations/o1/validation')).rejects.toMatchObject({ status: 409, code: 'HOM_CLOSURE_ELEMENT_MISSING', correlationId: 'cid-409' })

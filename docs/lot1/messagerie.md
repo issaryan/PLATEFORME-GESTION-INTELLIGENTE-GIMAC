@@ -161,6 +161,12 @@ Sujet Kafka `collaboration.message`, type `collaboration.message-sent.v1`, clé 
 Donnée : `{ "conversationId", "messageId", "auteurId", "destinataires": ["<id>", …], "envoyeLe" }` ;
 **aucun contenu de message** dans l'événement. Les événements de groupe (D-68) passent par le même type ;
 leurs `destinataires` comprennent aussi la personne retirée, pour que sa liste se mette à jour.
+Champ `evenement` (D-80, ajout compatible) : nom de l'événement de groupe (`GROUPE_CREE`, `GROUPE_RENOMME`,
+`MEMBRES_AJOUTES`, `MEMBRE_RETIRE`, `MEMBRE_PARTI`), `null` pour un vrai message ; MS-NOTIFICATION ne notifie
+que les vrais messages. Interface interne pour les autres services : `GET /api/v1/interne/conversations/{id}`
+→ `{ "id", "type": "DIRECTE"|"GROUPE", "nom" (groupe, sinon null), "membres": ["<id>", …] }`, jeton de service
+portant `INTERNAL_COLLABORATION_READ` (client `notification-service`), 404 `COL_CONVERSATION_NOT_FOUND` ;
+MS-COLLABORATION ne publie aucun événement de lecture d'une conversation.
 
 ## 4 bis. Interface (frontend, D-68)
 

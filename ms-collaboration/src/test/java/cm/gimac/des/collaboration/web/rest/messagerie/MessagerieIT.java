@@ -349,6 +349,37 @@ class MessagerieIT extends AbstractCollaborationIT {
     }
 
     @Test
+    @DisplayName("Route interne (D-80) : conversation lue par le jeton de service INTERNAL_COLLABORATION_READ, nom du groupe et membres")
+    void conversationInterne() throws Exception {
+        String groupe = JsonPath.read(
+            creer(PAUL, "{\"groupe\":true,\"destinataires\":[\"" + AMINATA + "\"],\"titre\":\"Groupe Cadrage L-12\",\"contenu\":\"\"}")
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString(),
+            "$.id"
+        );
+        var service = org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt()
+            .jwt(j -> j.subject("sa").claim("azp", "notification-service").claim("preferred_username", "service-account-notification-service"))
+            .authorities(new org.springframework.security.core.authority.SimpleGrantedAuthority("INTERNAL_COLLABORATION_READ"));
+        mvc
+            .perform(get("/api/v1/interne/conversations/" + groupe).with(service))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(groupe))
+            .andExpect(jsonPath("$.type").value("GROUPE"))
+            .andExpect(jsonPath("$.nom").value("Groupe Cadrage L-12"))
+            .andExpect(jsonPath("$.membres", org.hamcrest.Matchers.containsInAnyOrder(PAUL, AMINATA)));
+        String directe = directe(PAUL, SERGE, "Bonjour");
+        mvc
+            .perform(get("/api/v1/interne/conversations/" + directe).with(service))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.type").value("DIRECTE"))
+            .andExpect(jsonPath("$.nom").doesNotExist());
+        mvc.perform(get("/api/v1/interne/conversations/" + UUID.randomUUID()).with(service)).andExpect(status().isNotFound());
+        mvc.perform(get("/api/v1/interne/conversations/" + groupe).with(utilisateur(PAUL, MESSAGERIE))).andExpect(status().isForbidden());
+    }
+
+    @Test
     @DisplayName("Annuaire et règles : appelant exclu, destinataires inconnus, soi-même, contenu vide ou trop long, étiquette invalide")
     void annuaireEtRegles() throws Exception {
         mvc

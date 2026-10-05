@@ -13,6 +13,7 @@ import { useActionsOperation } from '../operations/actions'
 import { useExecuteurActions } from '../../../../ressources/actions'
 import { compter, externe, filtrer, grouper, ongletDuGeste, plateformes, TON_ETAT, VUES, type Filtres, type Vue } from '../operations/regles'
 import { tonEtape, tonSla, useFormatDate } from '../communs'
+import { libelleOperation } from '../../../../adaptateurs/modelisateur'
 
 // Onglet « Opérations » du dossier de liaison (étapes 3 à 10, exécution des étapes 6 à 9) : opérations
 // regroupées par étape et par segment, RACI+E, plateforme, grain de preuve, verrous, échéances ; tiroir
@@ -49,7 +50,7 @@ function Vue({ dossier, ops }: { dossier: DossierLiaison; ops: OperationParcours
     miennes: params.get('miennes') === '1',
     recherche: params.get('q') ?? '',
   }
-  const libelle = (o: OperationParcours) => t(`parcours.op.${o.rang}`)
+  const libelle = (o: OperationParcours) => libelleOperation(t, o)
   const visibles = filtrer(ops, filtres, fonctions, libelle)
   const groupes = grouper(visibles)
   const n = compter(ops)
@@ -165,7 +166,7 @@ function TableOperations({ operations, selection, onOuvrir }: { operations: Oper
       header: t('parcoursOps.col.rang'),
       width: 64,
       render: (o) => (
-        <Button variant="ghost" size="sm" aria-label={t('parcoursOps.ouvrir', { rang: o.rang, libelle: t(`parcours.op.${o.rang}`) })} onClick={(e) => { e.stopPropagation(); onOuvrir(o.id) }}>
+        <Button variant="ghost" size="sm" aria-label={t('parcoursOps.ouvrir', { rang: o.rang, libelle: libelleOperation(t, o) })} onClick={(e) => { e.stopPropagation(); onOuvrir(o.id) }}>
           <span className="gm-mono">{o.rang}</span>
         </Button>
       ),
@@ -175,7 +176,7 @@ function TableOperations({ operations, selection, onOuvrir }: { operations: Oper
       header: t('parcoursOps.col.operation'),
       render: (o) => (
         <span className="gm-row" style={{ gap: 'var(--gm-space-1)' }}>
-          <span className="gm-type-body-strong">{t(`parcours.op.${o.rang}`)}</span>
+          <span className="gm-type-body-strong">{libelleOperation(t, o)}</span>
           {o.oubliSansSymptome ? <StatusBadge status="crit" icon="triangle-alert" label={t('parcoursOps.marque.oubli')} /> : null}
           {o.cle ? <StatusBadge status="neutral" icon="key-round" label={t('parcoursOps.marque.cle')} /> : null}
           {o.secret ? <StatusBadge status="neutral" icon="lock" label={t('parcoursOps.marque.secret')} /> : null}
@@ -230,7 +231,7 @@ function Tiroir({ op, dossier, onFermer, onOuvrirRang }: { op: OperationParcours
       reference={op.rang}
       status={TON_ETAT[op.etat]}
       statusLabel={t(`parcours.etatOp.${op.etat}`)}
-      title={t(`parcours.op.${op.rang}`)}
+      title={libelleOperation(t, op)}
       tabs={onglets}
       tab="execution"
       size="lg"
@@ -279,7 +280,7 @@ function Execution({ op, dossier, onOuvrirRang }: { op: OperationParcours; dossi
         <>
           <Couverture dossier={dossier} />
           <div className="gm-row">
-            <Button variant="primary" icon="square-check" onClick={() => executeur.lancer(constat, op, `${op.rang} · ${t(`parcours.op.${op.rang}`)}`, 'parcours')}>{t(constat.label)}</Button>
+            <Button variant="primary" icon="square-check" onClick={() => executeur.lancer(constat, op, `${op.rang} · ${libelleOperation(t, op)}`, 'parcours')}>{t(constat.label)}</Button>
           </div>
         </>
       ) : null}

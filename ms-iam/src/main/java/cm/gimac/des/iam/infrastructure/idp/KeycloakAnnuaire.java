@@ -60,6 +60,11 @@ public class KeycloakAnnuaire implements Annuaire {
 
     static final String TELEPHONE = "phone_number";
     static final String FONCTION = "fonction";
+    /** Rattachement organisationnel (D-76) : code de l'unité et identifiant du responsable (n+1). */
+    static final String UNITE = "unite";
+    static final String RESPONSABLE = "responsable_id";
+    /** Borne d'une recherche des comptes d'un responsable (l'équipe entière est bornée à 500). */
+    private static final int EQUIPE_MAX = 500;
     static final String LANGUE = "locale";
     /** Langue lue par les applications (claim langKey du client scope jhipster), tenue égale à locale. */
     static final String LANGUE_APPLICATION = "langKey";
@@ -247,6 +252,35 @@ public class KeycloakAnnuaire implements Annuaire {
             rep.setAttributes(a);
             u.update(rep);
         });
+    }
+
+    @Override
+    public void definirRattachement(String id, String unite, String responsableId) {
+        faire(() -> {
+            UserResource u = r().users().get(id);
+            UserRepresentation rep = u.toRepresentation();
+            Map<String, List<String>> a = rep.getAttributes() == null ? new HashMap<>() : new HashMap<>(rep.getAttributes());
+            mettre(a, UNITE, unite);
+            mettre(a, RESPONSABLE, responsableId);
+            rep.setAttributes(a);
+            u.update(rep);
+        });
+    }
+
+    /**
+     * Recherche par attribut de l'API d'administration (q=responsable_id:X, correspondance exacte),
+     * représentation complète pour lire les attributs. Comptes allégés : ni profils ni second facteur.
+     */
+    @Override
+    public List<Compte> parResponsable(String responsableId) {
+        // Arguments : first, max, enabled, exact, briefRepresentation, q.
+        return appel(() ->
+            r().users().searchByAttributes(0, EQUIPE_MAX, null, true, false, RESPONSABLE + ":" + responsableId).stream()
+                .filter(u -> u.getServiceAccountClientId() == null && !u.getUsername().startsWith("service-account-"))
+                .filter(u -> u.getAttributes() != null && responsableId.equals(premier(u.getAttributes(), RESPONSABLE)))
+                .map(u -> vers(u, Set.of(), false))
+                .toList()
+        );
     }
 
     @Override
@@ -688,7 +722,9 @@ public class KeycloakAnnuaire implements Annuaire {
             "true".equals(premier(a, PROFIL_COMPLET)),
             profils,
             actions,
-            secondFacteur
+            secondFacteur,
+            premier(a, UNITE),
+            premier(a, RESPONSABLE)
         );
     }
 

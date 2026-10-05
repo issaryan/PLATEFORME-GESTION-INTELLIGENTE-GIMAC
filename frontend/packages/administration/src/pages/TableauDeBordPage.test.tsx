@@ -2,9 +2,10 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { act, cleanup, fireEvent, screen, within } from '@testing-library/react'
 import { ApiError } from '@gimac/socle'
 import TableauDeBordPage from './TableauDeBordPage'
-import { LECTEUR, RSSI, SUPER_ADMIN, avec, rendrePage, session, simules } from '../test/rendu'
+import { RSSI, SUPER_ADMIN, avec, rendrePage, session, simules } from '../test/rendu'
 import type { EcouteurFlux } from '../services/ports'
 import { instantane } from '../services/simule/donnees'
+import { PROFILS_DEMO } from '../profilsDemo'
 
 afterEach(cleanup)
 const page = (permissions: string[], o: Parameters<typeof rendrePage>[1] extends infer T ? Partial<T> : never = {}) =>
@@ -101,8 +102,20 @@ describe('Tableau de bord de la console', () => {
     page([], { session: session(['CER_DOSSIER_READ']) })
     expect(screen.getByText('Aucun tableau de bord pour votre profil')).toBeTruthy()
     cleanup()
-    page(LECTEUR.concat('IAM_ROLE_PRIVILEGED_GRANT'))
+    page(['IAM_ROLE_PRIVILEGED_GRANT'])
     expect(screen.getByText('Aucun tableau de bord pour votre profil')).toBeTruthy()
+  })
+
+  // D-78, D-79 : composé par permission ; l'administrateur système n'a ni comptes ni politique.
+  it('administrateur système : exploitation (charges en erreur) puis supervision, sans gestion des comptes', async () => {
+    page(PROFILS_DEMO.ROLE_ADMIN_SYSTEME.permissions)
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Tableau de bord de l’exploitation')
+    const charges = await screen.findByRole('region', { name: 'Charges en erreur' })
+    expect(await within(charges).findByText('pilotage')).toBeTruthy()
+    expect(within(charges).getByText('certification')).toBeTruthy()
+    expect(within(charges).getByRole('link', { name: 'Ouvrir l’infrastructure' }).getAttribute('href')).toBe('/console/plateforme/infrastructure')
+    expect(await screen.findByRole('region', { name: 'État en temps réel' })).toBeTruthy()
+    expect(screen.queryByRole('group', { name: 'Comptes de la plateforme' })).toBeNull()
   })
 
   it('flux interrompu : bandeau et état annoncé, impulsion reçue ensuite ; Alertmanager injoignable', async () => {

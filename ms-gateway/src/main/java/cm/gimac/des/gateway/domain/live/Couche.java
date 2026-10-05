@@ -3,6 +3,7 @@ package cm.gimac.des.gateway.domain.live;
 import static cm.gimac.des.gateway.domain.live.EvenementLive.CERTIFICATION;
 import static cm.gimac.des.gateway.domain.live.EvenementLive.COLLABORATION;
 import static cm.gimac.des.gateway.domain.live.EvenementLive.HOMOLOGATION;
+import static cm.gimac.des.gateway.domain.live.EvenementLive.NOTIFICATION;
 import static cm.gimac.des.gateway.domain.live.EvenementLive.PRESENCE;
 
 import java.util.Arrays;
@@ -12,13 +13,13 @@ import java.util.Set;
 
 /**
  * Couche de présentation qui ouvre le canal (/bff/{couche}/live) et sujets qu'elle peut recevoir.
- * La collaboration et la présence sont réservées aux acteurs internes (D-64, D-72) : DES et console,
- * jamais le portail.
+ * La collaboration, la présence et les notifications de la plateforme sont réservées aux acteurs internes
+ * (D-64, D-72, D-80) : DES et console, jamais le portail.
  */
 public enum Couche {
-    DES(Set.of(HOMOLOGATION, CERTIFICATION, COLLABORATION, PRESENCE)),
+    DES(Set.of(HOMOLOGATION, CERTIFICATION, COLLABORATION, PRESENCE, NOTIFICATION)),
     PORTAIL(Set.of(HOMOLOGATION, CERTIFICATION)),
-    CONSOLE(Set.of(HOMOLOGATION, CERTIFICATION, COLLABORATION, PRESENCE));
+    CONSOLE(Set.of(HOMOLOGATION, CERTIFICATION, COLLABORATION, PRESENCE, NOTIFICATION));
 
     /** Couche des acteurs internes, seuls à figurer dans la présence (D-72). */
     public boolean interne() {

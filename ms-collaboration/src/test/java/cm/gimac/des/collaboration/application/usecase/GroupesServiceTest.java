@@ -150,6 +150,10 @@ class GroupesServiceTest {
         List<Message> m = messagesEnregistres();
         assertThat(m).extracting(Message::getEvenement).containsExactly(EvenementGroupe.GROUPE_CREE, null);
         assertThat(m.get(1).getEnvoyeLe()).isAfter(m.get(0).getEnvoyeLe());
+        // D-80 : l'événement de groupe est nommé dans collaboration.message-sent.v1, un vrai message n'en porte aucun.
+        ArgumentCaptor<Object> p = ArgumentCaptor.forClass(Object.class);
+        verify(outbox, org.mockito.Mockito.times(2)).publish(eq("conversation"), any(java.util.UUID.class), eq(MessageEnvoyePayload.TYPE), p.capture());
+        assertThat(p.getAllValues()).extracting(e -> ((MessageEnvoyePayload) e).evenement()).containsExactly("GROUPE_CREE", null);
     }
 
     @Test
@@ -206,6 +210,7 @@ class GroupesServiceTest {
         assertThat(m.getEvenement()).isEqualTo(EvenementGroupe.MEMBRES_AJOUTES);
         assertThat(m.getEvenementCibles()).containsExactly("Fatimé Abakar");
         assertThat(dernierEvenement().destinataires()).containsExactlyInAnyOrder("aminata", "serge", "fatime");
+        assertThat(dernierEvenement().evenement()).isEqualTo("MEMBRES_AJOUTES");
     }
 
     @Test
@@ -232,6 +237,7 @@ class GroupesServiceTest {
         assertThat(m.getEvenement()).isEqualTo(EvenementGroupe.MEMBRE_RETIRE);
         assertThat(m.getEvenementCibles()).containsExactly("Serge Ndzana");
         assertThat(dernierEvenement().destinataires()).containsExactlyInAnyOrder("aminata", "serge");
+        assertThat(dernierEvenement().evenement()).isEqualTo("MEMBRE_RETIRE");
     }
 
     @Test

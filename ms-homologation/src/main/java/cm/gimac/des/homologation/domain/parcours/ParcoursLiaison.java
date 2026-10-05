@@ -19,7 +19,8 @@ import org.hibernate.type.SqlTypes;
 
 /**
  * État du parcours d'une liaison (étapes 3 à 10) : référence lisible, statut et étape courante du CR
- * (dénormalisés pour les filtres), ressources affectées au rang 6, fiche de suivi, coordonnées
+ * (dénormalisés pour les filtres), version publiée du référentiel suivie, ressources affectées (geste
+ * AFFECTER_RESSOURCES), fiche de suivi, coordonnées
  * d'essai, constat de la couverture et projection de l'état des verrous tenus par MS-CERTIFICATION.
  */
 @Entity
@@ -33,8 +34,16 @@ public class ParcoursLiaison {
     @Column(name = "reference", nullable = false)
     private String reference;
 
-    @Column(name = "version_cr", nullable = false)
+    /** Version du CR (« CR-1.4 ») des parcours instanciés avant D-77 ; vide ensuite. */
+    @Column(name = "version_cr")
     private String versionCr;
+
+    /** Version publiée du référentiel dont le parcours est instancié (D-77) et son numéro. */
+    @Column(name = "version_id")
+    private UUID versionId;
+
+    @Column(name = "version_numero")
+    private Integer versionNumero;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "statut", nullable = false)
@@ -110,8 +119,21 @@ public class ParcoursLiaison {
     public ParcoursLiaison(UUID liaisonId, String reference, LocalDate dateDemarrage) {
         this.liaisonId = liaisonId;
         this.reference = reference;
-        this.versionCr = ReferentielOperation.VERSION_CR;
         this.dateDemarrage = dateDemarrage;
+    }
+
+    public UUID getVersionId() {
+        return versionId;
+    }
+
+    public Integer getVersionNumero() {
+        return versionNumero;
+    }
+
+    /** Rattachement à une version publiée (instanciation, migration). */
+    public void rattacher(UUID versionId, Integer numero) {
+        this.versionId = versionId;
+        this.versionNumero = numero;
     }
 
     public UUID getLiaisonId() {

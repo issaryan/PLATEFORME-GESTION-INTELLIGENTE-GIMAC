@@ -79,9 +79,9 @@ class ParcoursProjectionTest {
         assertThat(projection.operation(p, op(p, "7"), CONDUCTEUR, J).predecesseursNonFaits()).containsExactly("6");
         String json = JsonMapper.builder().build().writeValueAsString(o);
         assertThat(json).contains("\"R\":{").contains("\"V\":{").contains("\"E\":[");
-        assertThat(ParcoursProjection.ongletDuRang("19")).isEqualTo("decision");
-        assertThat(ParcoursProjection.ongletDuRang("33")).isEqualTo("mise-en-service");
-        assertThat(ParcoursProjection.ongletDuRang("C1")).isEqualTo("operations");
+        assertThat(ParcoursProjection.onglet(op(p, "19"))).isEqualTo("decision");
+        assertThat(ParcoursProjection.onglet(op(p, "33"))).isEqualTo("mise-en-service");
+        assertThat(ParcoursProjection.onglet(op(parcours(TypeProjet.CARTE_INTERBANCAIRE, "RETRAIT"), "C1"))).isEqualTo("operations");
         assertThat(ParcoursProjection.lienOperation(p, op(p, "20"))).isEqualTo("/des/parcours/" + p.id() + "?onglet=decision&operation=" + op(p, "20").getId());
     }
 

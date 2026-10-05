@@ -39,6 +39,18 @@ public interface Annuaire {
 
     void marquerProfilComplet(String id, boolean complet);
 
+    /**
+     * Rattachement organisationnel (D-76) : attributs unite et responsable_id du compte ; une valeur
+     * nulle retire l'attribut.
+     */
+    void definirRattachement(String id, String unite, String responsableId);
+
+    /**
+     * Comptes dont le responsable (n+1) est ce compte (attribut responsable_id), 500 au plus. Comptes
+     * allégés : profils et second facteur n'y sont pas renseignés.
+     */
+    List<Compte> parResponsable(String responsableId);
+
     void definirProfils(String id, Set<String> profils);
 
     void definirActif(String id, boolean actif);

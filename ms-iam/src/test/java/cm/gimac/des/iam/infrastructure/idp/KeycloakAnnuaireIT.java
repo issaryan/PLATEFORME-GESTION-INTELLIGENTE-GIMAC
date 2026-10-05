@@ -237,6 +237,29 @@ class KeycloakAnnuaireIT {
     }
 
     @Test
+    @DisplayName("D-76 : rattachement (attributs unite et responsable_id) conservé, recherche des comptes d'un responsable par attribut")
+    void rattachement() {
+        String chef = annuaire.creer(nouveau(unique("chef"), "ROLE_CHARGE_DDRM"), List.of());
+        String agent = annuaire.creer(nouveau(unique("agent"), "ROLE_CHARGE_DDRM"), List.of());
+        String autre = annuaire.creer(nouveau(unique("autre"), "ROLE_CHARGE_DDRM"), List.of());
+        annuaire.definirRattachement(agent, "POLE_RESEAU", chef);
+        annuaire.definirRattachement(autre, "DES", chef + "-x");
+        Compte c = annuaire.lire(agent).orElseThrow();
+        assertThat(c.unite()).isEqualTo("POLE_RESEAU");
+        assertThat(c.responsableId()).isEqualTo(chef);
+        // La fiche modifiée ensuite garde le rattachement.
+        annuaire.modifierFiche(agent, new FicheCompte(null, null, null, null, "Technicien réseau", null, null));
+        assertThat(annuaire.lire(agent).orElseThrow().unite()).isEqualTo("POLE_RESEAU");
+        assertThat(annuaire.parResponsable(chef)).extracting(Compte::id).containsExactly(agent);
+        assertThat(annuaire.parResponsable(chef)).extracting(Compte::fonction).containsExactly("Technicien réseau");
+        assertThat(annuaire.parResponsable(agent)).isEmpty();
+        annuaire.definirRattachement(agent, null, null);
+        assertThat(annuaire.lire(agent).orElseThrow().unite()).isNull();
+        assertThat(annuaire.lire(agent).orElseThrow().responsableId()).isNull();
+        assertThat(annuaire.parResponsable(chef)).isEmpty();
+    }
+
+    @Test
     @DisplayName("Politique de sécurité : écrite dans le realm puis relue à l'identique")
     void politique() {
         PolitiqueSecurite p = new PolitiqueSecurite(14, 1, 1, 1, 1, 5, 90, true, 6, 30, "HmacSHA256", 30, 10, true, 5, 15);

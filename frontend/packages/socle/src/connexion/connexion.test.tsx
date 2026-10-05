@@ -3,6 +3,8 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { MemoryRouter } from 'react-router'
 import { ThemeProvider } from '@gimac/design-system'
 import { ApiError } from '../http/errors'
+import type { Couche } from '../http/prefixes'
+import { reglageAiguillage } from '../session/Aiguillage'
 import { initI18n } from '../i18n/i18n'
 import type { Session } from '../session/session'
 import { lireSessionDemo } from '../session/demo'
@@ -38,13 +40,14 @@ const COMPTES: CompteConnexionDemo[] = [
 ]
 const sim = () => connexionSimulee({ comptes: COMPTES, latenceMs: 0 })
 
-function monter(adresse = '/connexion', service: ServiceConnexion = sim(), o: { destination?: string; erreur?: { message: string; correlationId?: string } } = {}) {
+function monter(adresse = '/connexion', service: ServiceConnexion = sim(), o: { destination?: string; erreur?: { message: string; correlationId?: string }; couche?: Couche } = {}) {
   const vers = vi.spyOn(navigation, 'vers').mockImplementation(() => undefined)
+  const couche = o.couche ?? 'des'
   render(
     <MemoryRouter initialEntries={[adresse]}>
       <ThemeProvider theme="light">
-        <ConnexionProvider service={service} couche="des">
-          <PageConnexion couche="des" destination={o.destination} erreur={o.erreur} />
+        <ConnexionProvider service={service} couche={couche}>
+          <PageConnexion couche={couche} destination={o.destination} erreur={o.erreur} />
         </ConnexionProvider>
       </ThemeProvider>
     </MemoryRouter>,
@@ -129,7 +132,6 @@ describe('PageConnexion : identifiant, mot de passe, puis code', () => {
     ['c.ateba', 'mauvais', 'Identifiant ou mot de passe incorrect.'],
     ['inconnu', MOT_DE_PASSE_DEMO, 'Identifiant ou mot de passe incorrect.'],
     ['ancien', MOT_DE_PASSE_DEMO, /Ce compte est désactivé/],
-    ['correspondant-a', 'Propre-Mdp-2026!', /Ce compte n'ouvre pas cette application/],
   ])('refus : %s → message par code', async (identifiant, mdp, attendu) => {
     monter()
     saisir('identifiant', identifiant)
@@ -352,5 +354,57 @@ describe('Services de connexion', () => {
     render(<Sonde />)
     expect(vu?.couche).toBe('des')
     expect(typeof vu?.service.connecter).toBe('function')
+  })
+})
+
+// D-79 : aiguillage des comptes entre les applications, à la connexion.
+describe('PageConnexion : aiguillage vers l’application du compte', () => {
+  beforeEach(() => {
+    reglageAiguillage.delaiMs = 0
+  })
+  const interne = (permissions: string[]): Session => ({ ...session('agent'), permissions })
+  const comptes = (s: Session, couches: Couche[] = ['des', 'console']): ServiceConnexion =>
+    connexionSimulee({ comptes: [{ identifiant: 'agent', couches, role: 'ROLE_COLLABORATEUR', session: s }], latenceMs: 0 })
+  const connecter = async () => {
+    saisir('identifiant', 'agent')
+    saisir('motDePasse', MOT_DE_PASSE_DEMO)
+    cliquer('Se connecter')
+    await screen.findByLabelText(/^Code/)
+    saisir('code', '000000')
+    cliquer('Vérifier le code')
+  }
+
+  it('compte interne sans permission de console sur la console : message bref, puis application interne avec la session de démonstration', async () => {
+    const vers = monter('/connexion', comptes(interne(['COL_MESSAGE_READ'])), { couche: 'console' })
+    await connecter()
+    expect(await screen.findByText(/n'ouvre pas la console d'administration/)).toBeTruthy()
+    const lien = screen.getByRole('link', { name: 'Continuer maintenant' }).getAttribute('href')!
+    expect(lien).toMatch(/^http:\/\/localhost:4200\/des\/tableau-de-bord#gm-session-demo=/)
+    await waitFor(() => expect(vers).toHaveBeenCalledWith(lien))
+  })
+
+  it('compte interne portant une permission de console : reste sur la console', async () => {
+    const vers = monter('/connexion', comptes(interne(['PLATFORM_OPS_READ'])), { couche: 'console' })
+    await connecter()
+    await waitFor(() => expect(vers).toHaveBeenCalledWith('/console/tableau-de-bord'))
+  })
+
+  it.each([
+    ['portail' as Couche, ['des', 'console'] as Couche[], /compte interne : il s'ouvre dans l'application interne/, 'http://localhost:4200/connexion?motif=aiguillage&depuis=portail&identifiant=agent'],
+    ['des' as Couche, ['portail'] as Couche[], /compte d'institution : il s'ouvre dans le portail/, 'http://localhost:4201/connexion?motif=aiguillage&depuis=des&identifiant=agent'],
+    ['console' as Couche, ['portail'] as Couche[], /compte d'institution : il s'ouvre dans le portail/, 'http://localhost:4201/connexion?motif=aiguillage&depuis=console&identifiant=agent'],
+  ])('couche refusée sur %s : écran de connexion de l’autre application, identifiant prérempli', async (couche, couches, texte, adresse) => {
+    const vers = monter('/connexion', comptes(interne([]), couches), { couche })
+    saisir('identifiant', 'agent')
+    saisir('motDePasse', MOT_DE_PASSE_DEMO)
+    cliquer('Se connecter')
+    expect(await screen.findByText(texte)).toBeTruthy()
+    await waitFor(() => expect(vers).toHaveBeenCalledWith(adresse))
+  })
+
+  it('arrivée par aiguillage : motif affiché et identifiant prérempli', () => {
+    monter('/connexion?motif=aiguillage&depuis=portail&identifiant=p.mbarga')
+    expect(screen.getByText(/Le portail des participants vous a conduit ici/)).toBeTruthy()
+    expect((document.querySelector('input[name="identifiant"]') as HTMLInputElement).value).toBe('p.mbarga')
   })
 })

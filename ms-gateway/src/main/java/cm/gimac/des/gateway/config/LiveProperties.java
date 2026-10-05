@@ -31,7 +31,8 @@ public class LiveProperties {
             "certification.dossier",
             "certification.attestation",
             "certification.notification",
-            "collaboration.message"
+            "collaboration.message",
+            "notification.inapp"
         )
     );
 

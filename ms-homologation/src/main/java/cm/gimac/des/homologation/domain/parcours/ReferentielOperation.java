@@ -14,7 +14,8 @@ import java.util.List;
  * Opération du référentiel de l'annexe A du CR (jeu d'initialisation, D-59), chargée par Liquibase :
  * étape, segment, porteurs (le premier est le responsable principal), types de projet concernés,
  * plateforme, grain de preuve, attributs cle, secret, valeurReference, oubliSansSymptome, pivot,
- * prédécesseurs et délai en jours. Lecture seule.
+ * prédécesseurs et délai en jours. Lecture seule. Depuis D-77, le moteur ne lit plus cette table : elle et le
+ * fichier dont elle est chargée ne servent qu'à la reprise en version 1 publiée ({@code ConversionAnnexeA}).
  */
 @Entity
 @Table(name = "parcours_referentiel_operation")
@@ -104,6 +105,12 @@ public class ReferentielOperation implements Serializable {
         this.valeurReference = valeurReference;
         this.oubliSansSymptome = oubli;
         this.pivot = pivot;
+        return this;
+    }
+
+    /** Délai en jours lu dans le CSV (reprise). */
+    public ReferentielOperation delai(int jours) {
+        this.delaiJours = jours;
         return this;
     }
 

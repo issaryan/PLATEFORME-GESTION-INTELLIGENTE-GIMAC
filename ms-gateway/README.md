@@ -65,20 +65,21 @@ Messagerie, règles OPA (`docs/lot1/messagerie.md` §1) : `COL_MESSAGE_READ` pou
 
 ## Canal poussé des couches (contrat de messagerie §5)
 
-`GET /bff/{des|portail|console}/live?sujets=homologation,certification,collaboration&depuis=<id>` : flux `text/event-stream` servi par la passerelle elle-même (hors OPA), ouvert par `EventSource` avec le cookie de session (`frontend/packages/socle/src/live/live.ts`). Chaque événement porte une ligne `id:` et `data: {"id","type","subject","topic"}` ; aucune donnée métier n'est relayée : le frontend invalide ses requêtes du sujet et relit l'état par l'API, sous ses propres droits.
+`GET /bff/{des|portail|console}/live?sujets=homologation,certification,collaboration,notification&depuis=<id>` : flux `text/event-stream` servi par la passerelle elle-même (hors OPA), ouvert par `EventSource` avec le cookie de session (`frontend/packages/socle/src/live/live.ts`). Chaque événement porte une ligne `id:` et `data: {"id","type","subject","topic"}` ; aucune donnée métier n'est relayée : le frontend invalide ses requêtes du sujet et relit l'état par l'API, sous ses propres droits.
 
 | Règle | Comportement |
 |---|---|
 | Session | 401 sans session ; 403 sans second facteur (`acr` 2 ou 3) ; 404 pour une couche inconnue |
-| Sujets | `sujets` absent : tous ceux de la couche ; inconnus ignorés. DES : homologation, certification, collaboration ; portail et console : homologation, certification |
+| Sujets | `sujets` absent : tous ceux de la couche ; inconnus ignorés. DES et console : homologation, certification, collaboration, presence, notification ; portail : homologation, certification |
 | Portail | `institution_id` exigé (403 sinon) ; seuls les événements dont l'enveloppe porte `institutionid` égal à celui de l'utilisateur sont remis |
 | Collaboration | `collaboration.message-sent.v1` n'est remis qu'aux utilisateurs dont le `sub` (identifiant IAM) figure dans `data.destinataires` ; jamais au portail |
+| Notification (D-80) | sujet `notification` (Kafka `notification.inapp`, `notification.inapp-created.v1` de MS-NOTIFICATION) : remis au seul compte de `data.destinataires`, au DES et à la console, jamais au portail ; `acteur` lu dans `data.acteurId` |
 | Reprise | tampon en mémoire des 500 derniers événements (5 min) ; `Last-Event-ID`, sinon `depuis` : événements postérieurs rejoués ; identifiant inconnu ou expiré : tout le tampon (un doublon ne fait qu'invalider une requête) |
 | Maintien | commentaire `:ouvert` à l'ouverture (l'état « connecté » s'affiche aussitôt), `:battement` toutes les 25 s ; en-tête `X-Accel-Buffering: no` |
 | Débit | tampon de 256 événements par connexion, les plus anciens abandonnés si le navigateur ne suit pas ; les autres connexions ne sont pas freinées |
 | Durée | connexion close après 30 min : le navigateur se reconnecte avec son dernier identifiant et ses droits sont réévalués |
 
-Source : sujets Kafka du lot 1 (`homologation.{referential,liaison,operation,campaign,coverage,notification}`, `certification.{circuit,quitus,dossier,attestation,notification}`, `collaboration.message`), enveloppes CloudEvents 1.0 en mode structuré ; sujet fonctionnel = premier segment du sujet Kafka. Chaque instance a son propre groupe de consommateurs (`gateway-live-<aléa>`), positionné à la fin des sujets, sans validation de décalage : c'est une diffusion de notifications, pas un traitement. Courtier injoignable : le consommateur réessaie en arrière-plan sans bloquer le démarrage, le canal reste servi.
+Source : sujets Kafka du lot 1 (`homologation.{referential,liaison,operation,campaign,coverage,notification}`, `certification.{circuit,quitus,dossier,attestation,notification}`, `collaboration.message`, `notification.inapp`), enveloppes CloudEvents 1.0 en mode structuré ; sujet fonctionnel = premier segment du sujet Kafka. Chaque instance a son propre groupe de consommateurs (`gateway-live-<aléa>`), positionné à la fin des sujets, sans validation de décalage : c'est une diffusion de notifications, pas un traitement. Courtier injoignable : le consommateur réessaie en arrière-plan sans bloquer le démarrage, le canal reste servi.
 
 | Couche | Paquet | Contenu |
 |---|---|---|
@@ -123,6 +124,41 @@ Propriétés (`gimac.supervision`) : `passerelle-url`, `delai` (2 s), `intervall
 Tests : `FormatPrometheusTest`, `MasqueSecretsTest`, `SupervisionPlateformeServiceTest`, `AdaptateursSupervisionTest`, `SupervisionConfigurationTest`, `DoubleFacteurAuthorizationManagerTest` (unitaires) ; `PlateformeResourceSecurityTest` (sécurité, 30 cas, vraie chaîne de sécurité) ; `SupervisionPlateformeHttpTest` (intégration, serveurs HTTP locaux simulant services, Keycloak, Prometheus et Alertmanager). JaCoCo (`seuil-supervision-plateforme`, phase `test`) bloque la construction sous 80 % en lignes et méthodes par classe et en branches sur le module.
 
 Kubernetes (non livré) : installer node-exporter en DaemonSet et la collecte cAdvisor du kubelet (kube-prometheus-stack), un Alertmanager, puis ouvrir dans `infra/kubernetes-gimac/politiques-reseau.yaml` la sortie de la passerelle vers Prometheus (9090), Alertmanager (9093) et le port de gestion de Keycloak (9990), et l'entrée correspondante ; adresses à fixer par `GIMAC_SUPERVISION_PROMETHEUS_URL`, `GIMAC_SUPERVISION_ALERTMANAGER_URL`, `GIMAC_SUPERVISION_KEYCLOAK_SANTE_URL`.
+
+## Exploitation de l'infrastructure depuis la console (D-78)
+
+Contrat : `docs/exploitation/operations-infrastructure.md`. Gestes d'exploitation (redémarrer, arrêter, démarrer, mettre à l'échelle) et lecture des charges de travail et de leurs journaux, servis par un contrôleur propre de la passerelle (aucun relais vers un service).
+
+| Couche | Paquet | Contenu |
+|---|---|---|
+| Domaine | `domain/exploitation` | Modèle (`Charge`, `Operation`, `JournauxCharge`…), `ChargesProtegees` (motifs à `*`), `MasqueJournaux` (JWT, Bearer, mots de passe et secrets comme `infra/ci/diagnostiquer-serveur.sh`, carte Luhn 13 à 19 chiffres en 6+4), `ExploitationException` (codes du contrat) |
+| Ports sortants | `domain/exploitation/port` | `Orchestrateur`, `JournalOperations`, `VerificateurReauthentification`, `PublicationOperations` |
+| Adaptateurs | `infrastructure/exploitation` | `DockerOrchestrateur` (API du moteur par le mandataire, `FluxMultiplexeDocker`), `KubernetesOrchestrateur` (API du cluster, `CompteServiceKubernetes`), `OrchestrateurNonConfigure`, `JournalOperationsR2dbc` (table `operation_infrastructure`) et `JournalOperationsMemoire`, `IamVerificateurReauthentification`, `PublicationOperationsAudit` |
+| Application | `service/exploitation/ExploitationInfrastructureService` | Règles, verrou par charge, geste en tâche de fond, journal, audit, diffusion |
+| REST | `web/rest/plateforme/InfrastructureResource` | Routes ci-dessous ; opérations poussées sur `GET /api/plateforme/flux` |
+| Assemblage | `config/ExploitationConfiguration`, `config/ExploitationProperties` | Choix de l'orchestrateur, propriétés `gimac.orchestrateur` |
+
+| Route | Permission | Contenu |
+|---|---|---|
+| `GET /api/plateforme/infrastructure/charges` | `PLATFORM_OPS_READ` | Charges du périmètre (état, santé, répliques, redémarrages, image, démarrage, protection, gestes permis) ; en-tête `X-Orchestrateur` (`DOCKER`, `KUBERNETES`, `AUCUN` : liste vide, exploitation non configurée) |
+| `GET /api/plateforme/infrastructure/charges/{nom}/journaux?lignes=200&depuis=PT10M` | `PLATFORM_OPS_READ` | 1 à 500 lignes, `PT1S` à `PT30M`, masquées ; `tronque` si des lignes plus anciennes existent ou si une ligne dépasse 4 000 caractères |
+| `GET /api/plateforme/infrastructure/operations?page=0&taille=20` | `PLATFORM_OPS_READ` | Historique, des plus récentes aux plus anciennes (`contenu`, `total`, `page`, `taille`) |
+| `POST /api/plateforme/infrastructure/charges/{nom}/redemarrage` | `PLATFORM_OPS_EXECUTE` + FIDO2 | 202, opération `EN_COURS` |
+| `POST /api/plateforme/infrastructure/charges/{nom}/arret` | `PLATFORM_OPS_EXECUTE` + FIDO2 | 202 ; charge protégée : 409 `OPS_CHARGE_PROTEGEE` |
+| `POST /api/plateforme/infrastructure/charges/{nom}/demarrage` | `PLATFORM_OPS_EXECUTE` + FIDO2 | 202 |
+| `PUT /api/plateforme/infrastructure/charges/{nom}/repliques` | `PLATFORM_OPS_EXECUTE` + FIDO2 | `{ motif, repliques }` (0 à 5) ; Kubernetes seulement (Docker : 422 `OPS_NON_PRIS_EN_CHARGE`) ; zéro réplique d'une charge protégée : 409 |
+
+Session à deux facteurs exigée comme sur tout `/api/plateforme/**`. Contrôles d'un geste, dans l'ordre : orchestrateur configuré (422 `OPS_NON_CONFIGURE`), prise en charge, motif de 5 à 500 caractères (400 `OPS_MOTIF_INVALIDE`), répliques (400 `OPS_REPLIQUES_INVALIDES`), présence de l'assertion (401 `REAUTH_REQUIRED`), charge connue (404 `OPS_CHARGE_INCONNUE`), protection (409), une opération à la fois par charge (409 `OPS_OPERATION_EN_COURS`), geste permis dans l'état actuel (409 `OPS_GESTE_NON_PERMIS`), puis vérification de l'assertion par MS-IAM (refus : 401 `REAUTH_REQUIRED` ; MS-IAM injoignable : 503 `OPS_REAUTH_INDISPONIBLE`). Réponses d'erreur `application/problem+json` portant `code`.
+
+FIDO2 : même mécanisme que les décisions sensibles des services (IAM-07, D-62). La console demande un défi (`POST /bff/console/iam/reauthentification/defi`, `purpose` = `ADMIN_SENSITIVE`) puis envoie l'assertion dans `X-Reauth-Assertion` ; la passerelle la fait vérifier et consommer par MS-IAM (`POST /api/v1/interne/reauthentifications/verification`, jeton de service `gateway-service`, `INTERNAL_IAM_READ`) pour le sujet de la session (`sub`) et la finalité `gimac.orchestrateur.finalite-reauthentification`.
+
+Traçabilité : table `operation_infrastructure` (Liquibase `20261005100000`), événement `platform.infrastructure-operation.v1` à la demande puis à l'issue (mécanisme d'audit de la passerelle, sujet `gateway.security.events`, si `gimac.passerelle.journal-decisions.actif`), journal applicatif `gimac.audit.exploitation`, événement SSE `operation-infrastructure` sur `/api/plateforme/flux` pour qui porte `PLATFORM_OPS_READ`.
+
+Propriétés (`gimac.orchestrateur`) : `type` (`docker`, `kubernetes`, `aucun` par défaut ; un type inconnu arrête le démarrage), `delai-lecture` (10 s), `delai-geste` (90 s), `charges-protegees` (défaut : `gateway`, `frontend-console`, `docker-socket-proxy`, `*-postgresql`, `keycloak*`, `kafka`, `*-kafka`, `stockage-objet*`, `minio*`, `*-redis`, `*-valkey`, `valkey*`, `redis*`), `finalite-reauthentification` (`ADMIN_SENSITIVE`) ; `docker.url` (mandataire, port 2375), `docker.projet` (`gimac-des`), `docker.delai-arret` (10 s) ; `kubernetes.url` (`kubernetes.default.svc` en HTTPS), `kubernetes.espace` (`gimac-des`), `kubernetes.jeton` et `kubernetes.autorite` (fichiers du compte de service monté).
+
+Déploiement : serveur de démonstration, `infra/docker-compose/docker-compose.serveur.yml` (service `docker-socket-proxy`, réseau interne `exploitation`, liste fermée de l'API dans `infra/docker-compose/exploitation/docker-socket-proxy.cfg`, `GIMAC_ORCHESTRATEUR_TYPE=docker`) ; Kubernetes, `infra/kubernetes/gateway-k8s/gateway-rbac.yml` (compte de service `gateway`, `Role` `gateway-exploitation`) et sortie vers l'API du cluster dans `infra/kubernetes-gimac/politiques-reseau.yaml`.
+
+Tests : `ReglesExploitationTest`, `FluxMultiplexeDockerTest`, `DockerOrchestrateurTest`, `KubernetesOrchestrateurTest`, `AdaptateursExploitationTest`, `ExploitationInfrastructureServiceTest`, `ExploitationConfigurationTest` (unitaires, serveurs HTTP locaux simulant le moteur Docker, l'API Kubernetes et MS-IAM) ; `InfrastructureResourceSecurityTest` (sécurité, vraie chaîne de sécurité et vrai service : RSSI en lecture seule, sans FIDO2, protections, flux) ; `JournalOperationsR2dbcIT` (PostgreSQL par Testcontainers). JaCoCo `seuil-exploitation-infrastructure` (80 %).
 
 ## Connexion sur la plateforme et sessions (D-65)
 
@@ -210,6 +246,8 @@ Tests : `AppareilsDomaineTest`, `SuiviEtServiceAppareilsTest`, `FermetureAutresS
 | 2026-10-01 | — | « Mon compte » (docs/lot1/mon-compte.md §1 à §3) : appareils connectés (`GET`/`DELETE /api/session/appareils`, 409 `CNX_SESSION_COURANTE`), historique persistant des connexions (`GET /api/session/historique`, table `historique_connexion` en R2DBC, 90 jours), User-Agent analysé localement, alerte « nouvel appareil » vers MS-IAM, filtre `FermetureAutresSessions`, routes des photos (`/bff/{couche}/iam/moi/avatar` bornée à 3 Mo, `/bff/{des,console}/iam/avatars/**`), règles OPA et tests ; seuil JaCoCo `seuil-appareils-connectes`. `./mvnw -ntp -B verify` : 299 tests unitaires et 83 d'intégration réussis ; couverture fusionnée hors MapStruct 81,1 % en lignes, 85,5 % en méthodes ; code nouveau 98,9 % en lignes, 90,2 % en branches ; `opa test` 80/80. |
 | 2026-10-01 | — | Messagerie (D-64) ouverte à tout membre interne, depuis le DES et la console : route `/bff/console/collaboration/messagerie/**`, sujet `collaboration` du canal poussé remis à la couche console ; OPA refuse la messagerie à tout jeton portant une institution (87 tests OPA). |
 | 2026-10-02 | - | Dépôts fragmentés (D-74) : route `depot-fragmente`, `/bff/{des,console,portail}/document/depots/**` réécrit en `/api/v1/depots/**` (MS-DOCUMENT), `OpaAuthorize` puis `RequestSize` 17 Mio ; `RoutesPresentationTest` (routage depuis les trois couches, taille bornée) ; 325 tests réussis. |
+| 2026-10-05 | - | Exploitation de l'infrastructure depuis la console (D-78) : `/api/plateforme/infrastructure/{charges,charges/{nom}/journaux,operations}` (`PLATFORM_OPS_READ`), gestes `redemarrage`, `arret`, `demarrage`, `repliques` (`PLATFORM_OPS_EXECUTE`, motif, FIDO2 vérifié par MS-IAM), orchestrateurs Docker (mandataire `docker-socket-proxy`) et Kubernetes (compte de service `gateway`), charges protégées, journaux masqués, table `operation_infrastructure`, audit `platform.infrastructure-operation.v1`, opérations poussées sur `/api/plateforme/flux`. |
+| 2026-10-05 | - | Notifications de la plateforme (D-80) : sujet Kafka `notification.inapp` relayé sur le canal poussé (sujet logique `notification`, DES et console), remis au seul compte de `data.destinataires`, `acteur` lu dans `data.acteurId` ; `sujets=notification` accepté. `./mvnw verify` : 428 tests unitaires et 85 d'intégration réussis (`ConnexionIT`, en dépassement de délai sous la charge de la machine, réussi relancé seul) ; seuils JaCoCo, modernizer et checkstyle respectés. |
 <!-- GIMAC:FIN -->
 
 # gateway

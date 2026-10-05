@@ -26,10 +26,12 @@ export function OngletOperations({ versionId }: { versionId: string }) {
   const colonnes: Column<LigneOp>[] = [
     { key: 'code', header: t('operation.code'), type: 'mono', width: 110 },
     { key: 'libelle', header: t('operation.libelle') },
-    { key: 'phase', header: t('referentiel.op.phase') },
-    { key: 'partie', header: t('referentiel.op.partie'), render: (r) => t(`partie.${r.partie}`) },
-    { key: 'serviceCode', header: t('referentiel.op.service'), type: 'mono' },
+    { key: 'etape', header: t('modelisateur.champ.etape'), render: (r) => (r.etape ? t(`parcours.etape.${r.etape}`) : r.phase ?? '') },
+    { key: 'responsable', header: 'R', render: (r) => (r.responsable ? t(`parcours.fonction.${r.responsable}`) : r.fonctionResponsable ?? '') },
+    { key: 'validateur', header: 'V', render: (r) => (r.validateur ? t(`parcours.fonction.${r.validateur}`) : '') },
     { key: 'predecesseurs', header: t('referentiel.op.predecesseurs'), render: (r) => <span className="gm-row">{r.predecesseurs.map((p) => <Tag key={p}>{p}</Tag>)}</span> },
+    { key: 'delaiJours', header: t('modelisateur.champ.delai'), render: (r) => t('modelisateur.carte.delai', { n: r.delaiJours ?? 0 }) },
+    { key: 'geste', header: t('modelisateur.champ.geste'), render: (r) => (r.geste ? t(`modelisateur.geste.${r.geste}`) : '') },
     { key: 'idScenario', header: t('referentiel.op.scenario'), render: (r) => (r.idScenario ? <span className="gm-mono">{r.idScenario}</span> : <span className="gm-field-help">{t('referentiel.op.sansScenario')}</span>) },
   ]
   return (
@@ -38,7 +40,7 @@ export function OngletOperations({ versionId }: { versionId: string }) {
         <div className="gm-col">
           {parSegment(ops).map((g) => (
             <section key={g.segment} className="gm-col" style={{ gap: 'var(--gm-space-2)' }}>
-              <h2 className="gm-type-h3" style={{ margin: 0 }}>{t(`segment.${g.segment}`)}</h2>
+              <h2 className="gm-type-h3" style={{ margin: 0 }}>{t(`parcours.segment.${g.segment}`)}</h2>
               <DataTable<LigneOp> columns={colonnes} rows={g.operations as LigneOp[]} rowKey={(r) => r.code} state="ok" density="compact" />
             </section>
           ))}

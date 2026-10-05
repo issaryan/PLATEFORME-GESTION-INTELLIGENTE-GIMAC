@@ -1,4 +1,5 @@
 import type { CoverageValue, Permitted, TypeProjet } from './commun'
+import type { Geste, Jalon, Livrable } from './homologation'
 
 // Parcours d'une liaison, étapes 3 à 10 (CR-CERT-GIMAC-01, D-56 à D-59). L'objet suivi est la liaison,
 // non le participant. Tout ce qui est calculé (étape courante, couvertures, SLA, compteurs, actions
@@ -67,6 +68,12 @@ export type OperationParcours = Permitted & {
   oubliSansSymptome: boolean
   pivot: boolean
   predecesseursNonFaits: string[]
+  /** Modélisateur (D-77, §3) : libellé, geste, jalon, déclencheur et livrables lus sur l'opération du référentiel publié. */
+  libelle?: string | null
+  geste?: Geste | null
+  jalon?: Jalon | null
+  declencheur?: string | null
+  livrables?: Livrable[]
 }
 
 /** Workflow d'une étape : six éléments, l'étape n'est close que s'ils sont tous réunis (CR §7.1). */

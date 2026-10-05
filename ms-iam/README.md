@@ -46,6 +46,12 @@ Contrat : `docs/lot1/connexion.md` §3. L'utilisateur ne voit jamais une page de
 - **Mot de passe** : `fermerAutresSessions` facultatif ; MS-IAM ferme les sessions Keycloak autres que celle du jeton (claim `sid`) et répond avec l'en-tête `X-Gimac-Fermer-Autres-Sessions: 1`, que la passerelle consomme pour fermer ses autres sessions. Courriel d'information (« mot de passe modifié », lien vers « Mon compte » de la couche) après tout changement ; son échec n'annule pas le changement.
 - **Alerte « nouvel appareil »** : `POST /interne/comptes/{id}/alerte-connexion` (jeton de service de `gateway-service`) → courriel dans la langue du compte (appareil, adresse, date UTC, lien vers les appareils connectés), acte `ALERTE_NOUVEL_APPAREIL` au journal ; rien pour un compte inactif.
 
+### Organisation : unités et rattachement des comptes (D-76, docs/lot1/mon-activite.md §1)
+
+- **Catalogue** `unite_organisationnelle` (Liquibase `20261005090000_iam_organisation.xml`, jeu initial DG, DES, SNA, PROD_MONETIQUE, PROD_INFO, POLE_RESEAU, POLE_SYSTEME, DDRM, SSI, CONFORMITE) ; port `CatalogueUnites`, adaptateur JPA `CatalogueUnitesJpa`. Règles (`domain/service/ReglesOrganisation`, service pur) : code `^[A-Z][A-Z0-9_]{1,31}$`, libellé 1 à 120, type `DIRECTION|DEPARTEMENT|SERVICE|POLE|CELLULE`, direction sans parent (400 `ORG_UNITE_INVALIDE`), code unique (409 `ORG_UNITE_EXISTANTE`), parent connu et actif (422 `ORG_UNITE_INCONNUE`), sans cycle (409 `ORG_CYCLE`), pas de désactivation avec des sous-unités actives (409 `ORG_UNITE_SOUS_UNITES_ACTIVES`). Chaque création ou modification entre au journal (`CONFIGURATION_UNITE_ORGANISATIONNELLE`).
+- **Rattachement** : attributs Keycloak `unite` et `responsable_id` (profil utilisateur, administration seule) ; `unite` et `responsableId` dans la fiche des comptes (console, « Mon compte ») et dans l'annuaire interne. Refus : 422 `ORG_COMPTE_EXTERNE` (compte d'institution), 422 `ORG_UNITE_INCONNUE` (unité inconnue ou inactive ; l'unité actuelle, même désactivée, peut être conservée), 422 `ORG_RESPONSABLE_INVALIDE` (responsable absent, inactif, d'institution ou titulaire lui-même), 409 `ORG_CYCLE`. Journal `COMPTE_RATTACHEMENT_MODIFIE` (avant, après).
+- **Lectures** : rattachement `{id, nomAffiche, unite, chemin, responsable, chaine (10 au plus), equipeDirecte}` ; équipe récursive (recherche Keycloak par attribut `q=responsable_id:X`, niveau par niveau, sans cycle, 500 comptes au plus) `[{id, nomAffiche, fonction, unite, responsableId, niveau, actif}]`.
+
 ### Routes (`/api/v1`)
 
 | Route | Exposée sous | Permission |
@@ -54,6 +60,11 @@ Contrat : `docs/lot1/connexion.md` §3. L'utilisateur ne voit jamais une page de
 | `GET /comptes/journal` | `/bff/console/iam` | `IAM_JOURNAL_READ` |
 | `POST /comptes` | `/bff/console/iam` | `IAM_ACCOUNT_CREATE` |
 | `PUT /comptes/{id}` | `/bff/console/iam` | `IAM_ACCOUNT_EDIT` |
+| `PUT /comptes/{id}/rattachement` (`{unite, responsableId}`, réponse : la fiche du compte) | `/bff/{des,console}/iam` | `IAM_ACCOUNT_EDIT` |
+| `GET /organisation/unites[?actives=true]` | `/bff/{des,console}/iam` | `PIL_ACTIVITY_OWN` ou `IAM_ACCOUNT_READ` |
+| `POST /organisation/unites` (201), `PUT /organisation/unites/{code}` | `/bff/{des,console}/iam` | `IAM_ACCOUNT_EDIT` |
+| `GET /organisation/moi` | `/bff/des/iam` | `PIL_ACTIVITY_OWN` |
+| `GET /interne/organisation/{id}`, `GET /interne/organisation/{id}/equipe` | jamais relayée | jeton de service `INTERNAL_IAM_READ` (MS-PILOTAGE, règles d'équipe) |
 | `PUT /comptes/{id}/profils` (FIDO2) | `/bff/console/iam` | `IAM_ACCOUNT_ROLES` |
 | `POST /comptes/{id}/activation`, `/desactivation` | `/bff/console/iam` | `IAM_ACCOUNT_STATUS` |
 | `DELETE /comptes/{id}?motif=` (FIDO2) | `/bff/console/iam` | `IAM_ACCOUNT_DELETE` |
@@ -136,6 +147,7 @@ Copié et adapté (paquet `cm.gimac.des.iam`) ; chaque bean est inactif tant que
 | 2026-09-30 | — | D-65 : connexion et configuration des comptes sur la plateforme (état de connexion, mot de passe oublié et nouveau mot de passe par lien à usage unique, courriels fr/en/es envoyés par MS-IAM, changement de mot de passe, enrôlement TOTP par l'extension `gimac-totp`, actions dans `gimac_actions_requises`, `acr` 1 limité à l'assistant) ; tables `jeton_lien`, `enrolement_totp`, `parametre_chiffre`. Résultats : voir le rapport de la tranche. |
 | 2026-09-30 | — | Annuaire interne de la messagerie (D-64) : `GET /api/v1/interne/collaborateurs?recherche=&page=&taille=` (comptes internes actifs, recherche par nom, courriel ou fonction, pagination), la liste `?profil=` inchangée ; tests unitaire, de sécurité et d'intégration (`CollaborateursInternesIT`). |
 | 2026-10-01 | — | « Mon compte » (docs/lot1/mon-compte.md) : photo de profil (`PUT`/`DELETE`/`GET /moi/avatar`, `GET /avatars/{compteId}`, type par les octets, 2 Mo, 64 à 4 096 px, carré 256 × 256 réencodé en PNG sans EXIF ni GPS, table `avatar_compte`, `iam.avatar-changed.v1`), `avatarVersion` dans `/moi`, la console et l'annuaire (et par lot : `/interne/collaborateurs/avatars`), `fermerAutresSessions` et courriel d'information au changement de mot de passe, alerte « nouvel appareil » (`/interne/comptes/{id}/alerte-connexion`, `gateway-service`) ; WebP lu par TwelveMonkeys `imageio-webp` 3.12.0. `./mvnw -ntp -B verify` : 238 tests unitaires et de sécurité, 407 d'intégration et de recette réussis ; couverture fusionnée hors MapStruct 87,8 % en lignes, 87,6 % en méthodes ; code nouveau ou modifié 98,1 % en lignes, 84,8 % en branches. |
+| 2026-10-05 | - | Organisation du GIMAC (D-76, docs/lot1/mon-activite.md §1) : catalogue `unite_organisationnelle` et jeu initial, routes `/organisation/unites`, `/organisation/moi`, `PUT /comptes/{id}/rattachement`, `/interne/organisation/{id}` et `/{id}/equipe` ; attributs Keycloak `unite` et `responsable_id` ; `unite` et `responsableId` dans la fiche des comptes, « Mon compte » et l'annuaire interne. `./mvnw -q verify` : 256 tests unitaires et de sécurité, 410 d'intégration et de recette réussis. |
 <!-- GIMAC:FIN -->
 
 # iam

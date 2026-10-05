@@ -11,6 +11,7 @@ import { useCompte, useEffet, useJournal, useProfils, useSessionsCompte } from '
 import type { EntreeJournal, FicheCompte } from '../modele/comptes'
 import { Annonce } from '../composants/Annonce'
 import { useActes } from '../composants/actes'
+import { SectionRattachement } from '../composants/rattachement'
 import { Donnees } from '../composants/communs'
 import { etatListe } from '../composants/formats'
 import { useChemins } from '../services/useServicesConsole'
@@ -256,7 +257,14 @@ export default function ComptePage() {
             <Annonce retour={actes.retour} />
             <Tabs items={onglets} value={onglet} onChange={setOnglet} />
             <div className="gm-col" style={{ paddingTop: 'var(--gm-space-4)' }} role="tabpanel" aria-label={onglets.find((o) => o.key === onglet)?.label}>
-              {onglet === 'fiche' ? <Fiche compte={c} /> : null}
+              {onglet === 'fiche' ? (
+                <>
+                  <Fiche compte={c} />
+                  {/* Rattachement organisationnel (D-76) : unité et responsable (n+1). */}
+                  <SectionRattachement compte={c} peutModifier={peut('IAM_ACCOUNT_EDIT')}
+                    onFait={() => actes.setRetour({ niveau: 'info', message: { texte: t('console.org.rattachement.enregistre') } })} />
+                </>
+              ) : null}
               {onglet === 'securite' ? (
                 <>
                   <KeyValueList

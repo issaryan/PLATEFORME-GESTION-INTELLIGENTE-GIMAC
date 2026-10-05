@@ -11,6 +11,7 @@ resources:
   - gateway-k8s/gateway-postgresql.yml
   - gateway-k8s/gateway-ingress.yml
   - gateway-k8s/gateway-prometheus-sm.yml
+  - gateway-k8s/gateway-rbac.yml
   - iam-k8s/iam-deployment.yml
   - iam-k8s/iam-service.yml
   - iam-k8s/iam-postgresql.yml

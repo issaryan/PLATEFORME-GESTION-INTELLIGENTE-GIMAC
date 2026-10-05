@@ -20,6 +20,7 @@ public final class Vues {
         String id,
         String liaisonId,
         String rang,
+        String libelle,
         EtapeCode etape,
         SegmentParcours segment,
         PlateformeExecution plateforme,
@@ -37,7 +38,11 @@ public final class Vues {
         boolean pivot,
         List<String> predecesseursNonFaits,
         List<String> transitionsPermises,
-        List<String> actionsPermises
+        List<String> actionsPermises,
+        Geste geste,
+        Jalon jalon,
+        String declencheur,
+        List<cm.gimac.des.homologation.domain.parcours.Livrable> livrables
     ) {}
 
     public record Livrable(String libelleKey, boolean fourni) {}

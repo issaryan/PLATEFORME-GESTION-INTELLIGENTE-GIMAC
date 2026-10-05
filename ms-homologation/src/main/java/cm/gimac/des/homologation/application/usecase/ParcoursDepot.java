@@ -40,6 +40,7 @@ public class ParcoursDepot {
     private final BlocageParcoursRepository blocages;
     private final CoverageRepository couvertures;
     private final EntityManager em;
+    private SuiviTachesParcours suivi;
 
     public ParcoursDepot(
         LiaisonRepository liaisons,
@@ -59,13 +60,23 @@ public class ParcoursDepot {
         this.em = em;
     }
 
+    /** Suivi des tâches de MS-PILOTAGE (D-77, §5) : chaque parcours chargé pour une écriture est observé. */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setSuivi(SuiviTachesParcours suivi) {
+        this.suivi = suivi;
+    }
+
     /** Parcours d'une liaison ; {@code verrou} sérialise les écritures concurrentes sur la liaison. */
     public Optional<Parcours> trouver(UUID liaisonId, boolean verrou) {
         Optional<Liaison> l = verrou ? liaisons.findByIdForUpdate(liaisonId) : liaisons.findById(liaisonId);
         if (l.isEmpty()) {
             return Optional.empty();
         }
-        return parcours.findById(liaisonId).map(p -> assembler(l.orElseThrow(), p));
+        Optional<Parcours> p = parcours.findById(liaisonId).map(e -> assembler(l.orElseThrow(), e));
+        if (suivi != null) {
+            p.ifPresent(suivi::observer);
+        }
+        return p;
     }
 
     public Liaison liaison(UUID liaisonId) {
@@ -153,6 +164,19 @@ public class ParcoursDepot {
         em.persist(p.etat());
         p.operations().forEach(em::persist);
         p.services().forEach(em::persist);
+        if (suivi != null) {
+            suivi.observerNouveau(p);
+        }
+    }
+
+    /** Opération ajoutée par une migration vers une nouvelle version du référentiel. */
+    public void ajouter(OperationParcours o) {
+        em.persist(o);
+    }
+
+    /** Opération retirée par une migration, jamais commencée. */
+    public void supprimer(OperationParcours o) {
+        em.remove(o);
     }
 
     /** Enregistre un blocage nouvellement déclaré ; le reste de l'agrégat est suivi par le contexte de persistance. */

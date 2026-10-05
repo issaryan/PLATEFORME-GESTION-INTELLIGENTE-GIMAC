@@ -59,9 +59,10 @@ describe('DES-12 Référentiels d\'opérations', () => {
   })
 
   it.each(['en', 'es'] as const)('DES-12 : rendu en %s sans clé brute', async (langue) => {
-    const { container } = rendrePage(<ReferentielsOperationsPage />, { chemin: `${MOTIF}?version=REF-CI-4`, motif: MOTIF, langue })
+    const { container } = rendrePage(<ReferentielsOperationsPage />, { chemin: `${MOTIF}?version=REF-CI-4&vue=liste`, motif: MOTIF, langue })
     await screen.findByRole('tree')
     await screen.findAllByRole('table')
+    expect(container.textContent).not.toMatch(/\b(modelisateur|parcours)\.[a-zA-Z.]+/)
     expect(container.textContent).not.toMatch(/\b(referentiel|segment|partie|typeProjet|commun)\.[a-zA-Z.]+/)
     expect(container.textContent).not.toContain('Référentiels d\'opérations')
   })

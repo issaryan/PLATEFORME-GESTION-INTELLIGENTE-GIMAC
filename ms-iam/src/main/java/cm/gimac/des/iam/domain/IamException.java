@@ -29,6 +29,14 @@ public class IamException extends RuntimeException {
         return new IamException(code, 409, message, details);
     }
 
+    /**
+     * 422 : demande bien formée mais inapplicable à l'état des données (unité inconnue ou inactive,
+     * responsable invalide, compte d'institution, docs/lot1/mon-activite.md §1.2).
+     */
+    public static IamException nonTraitable(String code, String message, Map<String, Object> details) {
+        return new IamException(code, 422, message, details);
+    }
+
     /** 403 : action refusée à cet acteur (séparation des pouvoirs, profil privilégié). */
     public static IamException interdit(String code, String message) {
         return new IamException(code, 403, message, Map.of());

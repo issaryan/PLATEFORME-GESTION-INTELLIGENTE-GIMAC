@@ -278,7 +278,7 @@ public class MessagerieService implements EnvoyerMessageUseCase, GererGroupeUseC
         // Ticket ou transfert (D-74) : la pièce référence le document existant, rien n'est envoyé ni copié.
         existantes.forEach(p -> message.joindre(p.documentRef(), p.nom(), p.taille(), p.typeMime(), p.empreinte()));
         messages.save(message);
-        enregistrer(conversation, auteur, id, envoyeLe, List.of());
+        enregistrer(conversation, auteur, id, envoyeLe, List.of(), null);
         return id;
     }
 
@@ -333,12 +333,22 @@ public class MessagerieService implements EnvoyerMessageUseCase, GererGroupeUseC
     private UUID evenement(Conversation c, Collaborateur auteur, EvenementGroupe e, List<String> cibles, Instant le, Collection<String> aussiPrevenir) {
         UUID id = UUID.randomUUID();
         messages.save(Message.evenement(id, c, auteur, chiffrement.chiffrer("", id), le, e, cibles));
-        enregistrer(c, auteur, id, le, aussiPrevenir);
+        enregistrer(c, auteur, id, le, aussiPrevenir, e);
         return id;
     }
 
-    /** Dernier message de la conversation, lu par son auteur ; collaboration.message-sent.v1 aux autres membres. */
-    private void enregistrer(Conversation conversation, Collaborateur auteur, UUID id, Instant envoyeLe, Collection<String> aussiPrevenir) {
+    /**
+     * Dernier message de la conversation, lu par son auteur ; collaboration.message-sent.v1 aux autres membres,
+     * avec l'événement de groupe éventuel (null pour un vrai message, D-80).
+     */
+    private void enregistrer(
+        Conversation conversation,
+        Collaborateur auteur,
+        UUID id,
+        Instant envoyeLe,
+        Collection<String> aussiPrevenir,
+        EvenementGroupe evenement
+    ) {
         conversation.messageAjoute(id, envoyeLe);
         conversation.membre(auteur.id()).ifPresent(m -> m.marquerLu(id, envoyeLe));
         List<String> destinataires = new ArrayList<>(
@@ -349,7 +359,14 @@ public class MessagerieService implements EnvoyerMessageUseCase, GererGroupeUseC
             "conversation",
             conversation.getId(),
             MessageEnvoyePayload.TYPE,
-            new MessageEnvoyePayload(conversation.getId(), id, auteur.id(), List.copyOf(destinataires), envoyeLe)
+            new MessageEnvoyePayload(
+                conversation.getId(),
+                id,
+                auteur.id(),
+                List.copyOf(destinataires),
+                envoyeLe,
+                evenement == null ? null : evenement.name()
+            )
         );
     }
 

@@ -1,5 +1,5 @@
 import { ETAPES_PREMIER_ACCES, MOT_DE_PASSE_DEMO, ReauthCancelled, avatarsSimules, simulationConnexion, violationsMotDePasse, type CleSecurite } from '@gimac/socle'
-import { LANGUES_COMPTE, PHOTO_PROFIL, type Appareil, type Compte, type Connexion, type DescriptionAppareil, type EnrolementTotp, type Moi, type ResultatConnexion, type SessionCompte } from '../modele'
+import { LANGUES_COMPTE, PHOTO_PROFIL, type Appareil, type Compte, type Connexion, type DescriptionAppareil, type EnrolementTotp, type Moi, type RattachementCompte, type ResultatConnexion, type SessionCompte } from '../modele'
 import type { ServiceMonCompte } from './ports'
 import { creerSimulateur, type OptionsSimulateur } from './simulateur'
 
@@ -22,6 +22,8 @@ export type OptionsMonCompteSimule = OptionsSimulateur & {
   couche?: string
   /** Photo de profil de démonstration déjà déposée. */
   photo?: boolean
+  /** Rattachement organisationnel de démonstration (D-76) : servi par organisation(), couche interne seulement. */
+  rattachement?: RattachementCompte
 }
 
 const TELEPHONE = /^\+?[0-9 ]{8,20}$/
@@ -231,5 +233,6 @@ export function monCompteSimule(o: OptionsMonCompteSimule = {}): ServiceMonCompt
         appareils = appareils.filter((x) => x.courante)
       }),
     historique: (page, taille) => attendre(() => ({ contenu: historique.slice(page * taille, (page + 1) * taille), total: historique.length })),
+    ...(o.rattachement ? { organisation: () => attendre(() => o.rattachement!) } : {}),
   }
 }

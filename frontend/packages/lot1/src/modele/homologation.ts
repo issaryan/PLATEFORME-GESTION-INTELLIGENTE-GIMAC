@@ -1,15 +1,63 @@
 import type { CoverageValue, Partie, Permitted, Segment, TypeProjet } from './commun'
+import type { EtapeCode, Fonction, GrainPreuve, PlateformeExecution, SegmentParcours } from './parcours'
 
 // MS-HOMOLOGATION : référentiels (HOM-01 à HOM-03), liaisons (HOM-04 à HOM-24).
 
 export type ReferentielVersion = Permitted & {
   id: string; typeProjet: TypeProjet; numero: number | null; libelle: string; etat: 'BROUILLON' | 'PUBLIEE' | 'RETIREE'
   dateCreation: string; datePublication: string | null; versionSourceId: string | null; versionActiveId: string | null
+  /** Pilote du brouillon (D-77, §5) : compte qui reçoit la tâche « Compléter et publier ». */
+  piloteId?: string | null
+  nombreOperations?: number
 }
-export type ReferenceOperation = Permitted & {
-  versionId: string; code: string; libelle: string; phase: string; segment: Segment; partie: Partie; serviceCode: string
-  natureCouverture: 'CERTIFICATION' | 'MISE_EN_SERVICE' | 'AUCUNE'; idScenario: string | null; predecesseurs: string[]
-  fonctionResponsable: string; preuveAttendue: Record<string, string>
+
+// Modélisateur de processus (D-77, docs/lot1/modelisateur-processus.md §1) : formes servies par MS-HOMOLOGATION.
+export type Geste = 'DEPOSER_LIVRABLE' | 'DEPOSER_PREUVE' | 'CONSTATER_COUVERTURE' | 'AFFECTER_RESSOURCES' | 'COORDONNEES_TECHNIQUES' | 'FICHE_SUIVI' | 'EVENEMENT_EXTERNE' | 'AUCUN'
+export type Jalon = 'APTE_CERTIFICATION' | 'CERTIFIEE' | 'APPROUVEE_SECURITE' | 'EN_PRODUCTION'
+export type Particularite = 'ENTREE_ESSAIS' | 'FIN_ESSAIS' | 'CEREMONIE_CLES' | 'SERVICE_SUPPLEMENTAIRE'
+export type NatureLivrable = 'LIVRABLE' | 'PREUVE'
+export type TypeAnomalie =
+  | 'CODE_DUPLIQUE' | 'PREDECESSEUR_INCONNU' | 'SEGMENT_INCOHERENT' | 'CYCLE' | 'RESPONSABLE_ABSENT' | 'VALIDATEUR_ABSENT' | 'VALIDATEUR_EGAL_RESPONSABLE'
+  | 'DECLENCHEUR_INCONNU' | 'JALON_DUPLIQUE' | 'JALON_DESORDONNE' | 'SANS_ENTREE' | 'LIVRABLE_DUPLIQUE' | 'SECRET_AVEC_VALEUR'
+/** Livrable ou preuve attendu d'une opération, avec la fonction qui le dépose (externe : depuis le portail). */
+export type Livrable = { code: string; libelle: string; nature: NatureLivrable; deposant: Fonction | null; typesPieces: string[]; obligatoire: boolean }
+export type PositionNoeud = { x: number; y: number }
+
+/** Saisie d'une opération (corps de PUT ; POST y ajoute le code). Position et particularité absentes : conservées. */
+export type SaisieOperation = {
+  libelle: string; description: string | null; etape: EtapeCode | null; segment: SegmentParcours | null; ordre: number | null
+  responsable: Fonction | null; validateur: Fonction | null; consultes: Fonction[]; informes: Fonction[]; externes: Fonction[]
+  predecesseurs: string[]; delaiJours: number | null; grain: GrainPreuve | null; plateforme: PlateformeExecution | null
+  cle: boolean; secret: boolean; oubliSansSymptome: boolean; pivot: boolean; valeurReference: string | null
+  livrables: Livrable[]; geste: Geste | null; jalon: Jalon | null; declencheur: string | null; particularite: Particularite | null
+  position?: PositionNoeud | null
+  // Attributs historiques de couverture (HOM-01), renvoyés tels quels pour ne pas être effacés.
+  phase?: string | null; partie?: Partie | null; serviceCode?: string | null; natureCouverture?: 'CERTIFICATION' | 'MISE_EN_SERVICE' | 'AUCUNE' | null
+  preuveAttendue?: Record<string, unknown> | null; idScenario?: string | null; fonctionResponsable?: string | null; grille?: Record<string, unknown> | null
+}
+
+/** Opération du référentiel telle que servie (GET /referentiels/{id}/operations) : saisie complète et successeurs déduits. */
+export type ReferenceOperation = Partial<Permitted> & Omit<SaisieOperation, 'phase' | 'partie' | 'serviceCode' | 'natureCouverture' | 'preuveAttendue' | 'idScenario' | 'fonctionResponsable'> & {
+  id?: string; versionId?: string; code: string; successeurs?: string[]
+  phase: string | null; partie: Partie | null; serviceCode: string | null
+  natureCouverture: 'CERTIFICATION' | 'MISE_EN_SERVICE' | 'AUCUNE' | null; idScenario: string | null
+  fonctionResponsable: string | null; preuveAttendue: Record<string, unknown> | null
+}
+
+/** Nœud du graphe étendu : l'opération à plat, sa couche de Kahn, ses dates au plus tôt (jours), le chemin critique et ses anomalies. */
+export type NoeudGraphe = ReferenceOperation & { couche: number | null; debutAuPlusTot: number | null; finAuPlusTot: number | null; critique: boolean; anomalies: TypeAnomalie[] }
+export type AnomalieGraphe = { type: TypeAnomalie; codes: string[]; motif: string }
+export type GrapheReferentiel = {
+  versionId: string; typeProjet: TypeProjet; numero: number | null; etat: ReferentielVersion['etat']; piloteId: string | null
+  noeuds: NoeudGraphe[]; arcs: { de: string; vers: string; critique: boolean }[]; anomalies: AnomalieGraphe[]
+  manquants: { code: string; attributs: string[] }[]; cheminCritique: { codes: string[]; dureeJours: number }; actionsPermises: string[]
+}
+/** Élément d'un catalogue du modélisateur : code, libellé français, précisions facultatives. */
+export type EntreeCatalogue = { code: string; libelle: string; profils?: string[]; externe?: boolean; dedie?: boolean; rang?: number }
+export type CatalogueModelisateur = {
+  fonctions: EntreeCatalogue[]; gestes: EntreeCatalogue[]; jalons: EntreeCatalogue[]; declencheurs: EntreeCatalogue[]; etapes: EntreeCatalogue[]
+  segments: EntreeCatalogue[]; plateformes: EntreeCatalogue[]; grains: EntreeCatalogue[]; naturesLivrable: EntreeCatalogue[]; particularites: EntreeCatalogue[]
+  typesPieces: string[]; pilotes: { id: string; nom: string }[]
 }
 export type ImpactMigration = {
   liaisonId: string; institutionNom: string; conservees: number; ajoutees: number; retirees: number; modifiees: number

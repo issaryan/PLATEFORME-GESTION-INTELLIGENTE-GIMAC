@@ -467,6 +467,18 @@
         "clientRole": false
       },
       {
+        "name": "PLATFORM_OPS_READ",
+        "description": "Permission du lot 1",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "PLATFORM_OPS_EXECUTE",
+        "description": "Permission du lot 1",
+        "composite": false,
+        "clientRole": false
+      },
+      {
         "name": "COL_MESSAGE_READ",
         "description": "Permission du lot 1",
         "composite": false,
@@ -474,6 +486,30 @@
       },
       {
         "name": "COL_MESSAGE_SEND",
+        "description": "Permission du lot 1",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "PIL_ACTIVITY_OWN",
+        "description": "Permission du lot 1",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "PIL_TEAM_READ",
+        "description": "Permission du lot 1",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "PIL_TASK_ASSIGN",
+        "description": "Permission du lot 1",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "NOT_INBOX_READ",
         "description": "Permission du lot 1",
         "composite": false,
         "clientRole": false
@@ -515,6 +551,18 @@
         "clientRole": false
       },
       {
+        "name": "INTERNAL_PILOTAGE_TASK_CREATE",
+        "description": "Permission du lot 1",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "INTERNAL_COLLABORATION_READ",
+        "description": "Permission du lot 1",
+        "composite": false,
+        "clientRole": false
+      },
+      {
         "name": "ROLE_INGENIEUR_HOMOLOGATION",
         "description": "Profil du lot 1",
         "composite": true,
@@ -544,7 +592,9 @@
             "CER_GOLIVE_REPORT_SUBMIT",
             "CER_ATTESTATION_ISSUE",
             "COL_MESSAGE_READ",
-            "COL_MESSAGE_SEND"
+            "COL_MESSAGE_SEND",
+            "PIL_ACTIVITY_OWN",
+            "NOT_INBOX_READ"
           ]
         }
       },
@@ -577,7 +627,11 @@
             "CER_ATTESTATION_STATUS_REQUEST",
             "HOM_STEP_MANAGE",
             "COL_MESSAGE_READ",
-            "COL_MESSAGE_SEND"
+            "COL_MESSAGE_SEND",
+            "PIL_ACTIVITY_OWN",
+            "NOT_INBOX_READ",
+            "PIL_TEAM_READ",
+            "PIL_TASK_ASSIGN"
           ]
         }
       },
@@ -614,8 +668,12 @@
             "PLATFORM_SECURITY_POLICY_READ",
             "PLATFORM_SECURITY_POLICY_EDIT",
             "PLATFORM_MESSAGING_EDIT",
+            "PLATFORM_OPS_READ",
+            "PLATFORM_OPS_EXECUTE",
             "COL_MESSAGE_READ",
-            "COL_MESSAGE_SEND"
+            "COL_MESSAGE_SEND",
+            "PIL_ACTIVITY_OWN",
+            "NOT_INBOX_READ"
           ]
         }
       },
@@ -652,8 +710,13 @@
             "PLATFORM_SECURITY_POLICY_READ",
             "PLATFORM_SECURITY_POLICY_EDIT",
             "PLATFORM_MESSAGING_EDIT",
+            "PLATFORM_OPS_READ",
             "COL_MESSAGE_READ",
-            "COL_MESSAGE_SEND"
+            "COL_MESSAGE_SEND",
+            "PIL_ACTIVITY_OWN",
+            "NOT_INBOX_READ",
+            "PIL_TEAM_READ",
+            "PIL_TASK_ASSIGN"
           ]
         }
       },
@@ -676,7 +739,11 @@
             "CER_QUITUS_CONFORMITE_SIGN",
             "CER_CHANGE_RECORD_LINK",
             "COL_MESSAGE_READ",
-            "COL_MESSAGE_SEND"
+            "COL_MESSAGE_SEND",
+            "PIL_ACTIVITY_OWN",
+            "NOT_INBOX_READ",
+            "PIL_TEAM_READ",
+            "PIL_TASK_ASSIGN"
           ]
         }
       },
@@ -699,7 +766,11 @@
             "CER_QUITUS_DG_SIGN",
             "CER_ATTESTATION_STATUS_APPROVE",
             "COL_MESSAGE_READ",
-            "COL_MESSAGE_SEND"
+            "COL_MESSAGE_SEND",
+            "PIL_ACTIVITY_OWN",
+            "NOT_INBOX_READ",
+            "PIL_TEAM_READ",
+            "PIL_TASK_ASSIGN"
           ]
         }
       },
@@ -740,7 +811,9 @@
             "PAR_TRANSITION_REQUEST",
             "HOM_STEP_MANAGE",
             "COL_MESSAGE_READ",
-            "COL_MESSAGE_SEND"
+            "COL_MESSAGE_SEND",
+            "PIL_ACTIVITY_OWN",
+            "NOT_INBOX_READ"
           ]
         }
       },
@@ -769,7 +842,11 @@
             "PAR_TRANSITION_APPROVE",
             "HOM_STEP_MANAGE",
             "COL_MESSAGE_READ",
-            "COL_MESSAGE_SEND"
+            "COL_MESSAGE_SEND",
+            "PIL_ACTIVITY_OWN",
+            "NOT_INBOX_READ",
+            "PIL_TEAM_READ",
+            "PIL_TASK_ASSIGN"
           ]
         }
       },
@@ -793,7 +870,9 @@
             "HOM_OPERATION_VALIDATE",
             "CER_DOSSIER_VERIFY",
             "COL_MESSAGE_READ",
-            "COL_MESSAGE_SEND"
+            "COL_MESSAGE_SEND",
+            "PIL_ACTIVITY_OWN",
+            "NOT_INBOX_READ"
           ]
         }
       },
@@ -817,7 +896,9 @@
             "CER_CHANGE_RECORD_LINK",
             "CER_GOLIVE_REPORT_SUBMIT",
             "COL_MESSAGE_READ",
-            "COL_MESSAGE_SEND"
+            "COL_MESSAGE_SEND",
+            "PIL_ACTIVITY_OWN",
+            "NOT_INBOX_READ"
           ]
         }
       },
@@ -839,7 +920,9 @@
             "PAR_INSTITUTION_READ",
             "HOM_EVIDENCE_SUBMIT",
             "COL_MESSAGE_READ",
-            "COL_MESSAGE_SEND"
+            "COL_MESSAGE_SEND",
+            "PIL_ACTIVITY_OWN",
+            "NOT_INBOX_READ"
           ]
         }
       },
@@ -861,7 +944,60 @@
             "PAR_INSTITUTION_READ",
             "HOM_EVIDENCE_SUBMIT",
             "COL_MESSAGE_READ",
-            "COL_MESSAGE_SEND"
+            "COL_MESSAGE_SEND",
+            "PIL_ACTIVITY_OWN",
+            "NOT_INBOX_READ"
+          ]
+        }
+      },
+      {
+        "name": "ROLE_COLLABORATEUR",
+        "description": "Profil du lot 1",
+        "composite": true,
+        "clientRole": false,
+        "composites": {
+          "realm": [
+            "ROLE_USER",
+            "COL_MESSAGE_READ",
+            "COL_MESSAGE_SEND",
+            "PIL_ACTIVITY_OWN",
+            "NOT_INBOX_READ"
+          ]
+        }
+      },
+      {
+        "name": "ROLE_ADMIN_SYSTEME",
+        "description": "Profil du lot 1",
+        "composite": true,
+        "clientRole": false,
+        "composites": {
+          "realm": [
+            "ROLE_USER",
+            "PLATFORM_SUPERVISION_READ",
+            "PLATFORM_CONFIG_READ",
+            "PLATFORM_OPS_READ",
+            "PLATFORM_OPS_EXECUTE",
+            "COL_MESSAGE_READ",
+            "COL_MESSAGE_SEND",
+            "PIL_ACTIVITY_OWN",
+            "NOT_INBOX_READ"
+          ]
+        }
+      },
+      {
+        "name": "ROLE_RESPONSABLE_SERVICE",
+        "description": "Profil du lot 1",
+        "composite": true,
+        "clientRole": false,
+        "composites": {
+          "realm": [
+            "ROLE_USER",
+            "COL_MESSAGE_READ",
+            "COL_MESSAGE_SEND",
+            "PIL_ACTIVITY_OWN",
+            "NOT_INBOX_READ",
+            "PIL_TEAM_READ",
+            "PIL_TASK_ASSIGN"
           ]
         }
       },
@@ -888,7 +1024,9 @@
             "HOM_STEP_MANAGE",
             "CER_PV_ESTABLISH",
             "COL_MESSAGE_READ",
-            "COL_MESSAGE_SEND"
+            "COL_MESSAGE_SEND",
+            "PIL_ACTIVITY_OWN",
+            "NOT_INBOX_READ"
           ]
         }
       }
@@ -1240,7 +1378,8 @@
         "INTERNAL_PARTICIPANT_READ",
         "INTERNAL_DOCUMENT_READ",
         "INTERNAL_DOCUMENT_DEPOSIT",
-        "INTERNAL_IAM_READ"
+        "INTERNAL_IAM_READ",
+        "INTERNAL_PILOTAGE_TASK_CREATE"
       ]
     },
     {
@@ -1274,6 +1413,26 @@
         "INTERNAL_IAM_READ",
         "INTERNAL_DOCUMENT_READ",
         "INTERNAL_DOCUMENT_DEPOSIT"
+      ]
+    },
+    {
+      "username": "service-account-pilotage-service",
+      "enabled": true,
+      "serviceAccountClientId": "pilotage-service",
+      "realmRoles": [
+        "default-roles-gimac",
+        "INTERNAL_IAM_READ",
+        "INTERNAL_DOCUMENT_READ"
+      ]
+    },
+    {
+      "username": "service-account-notification-service",
+      "enabled": true,
+      "serviceAccountClientId": "notification-service",
+      "realmRoles": [
+        "default-roles-gimac",
+        "INTERNAL_IAM_READ",
+        "INTERNAL_COLLABORATION_READ"
       ]
     },
     {
@@ -1994,6 +2153,52 @@
       "publicClient": false,
       "clientAuthenticatorType": "client-secret",
       "secret": "${GIMAC_SECRET_COLLABORATION_SERVICE}",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "protocol": "openid-connect",
+      "fullScopeAllowed": true,
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "jhipster",
+        "roles",
+        "profile",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "offline_access"
+      ]
+    },
+    {
+      "clientId": "pilotage-service",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${GIMAC_SECRET_PILOTAGE_SERVICE}",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "protocol": "openid-connect",
+      "fullScopeAllowed": true,
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "jhipster",
+        "roles",
+        "profile",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "offline_access"
+      ]
+    },
+    {
+      "clientId": "notification-service",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${GIMAC_SECRET_NOTIFICATION_SERVICE}",
       "standardFlowEnabled": false,
       "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": true,
@@ -2767,7 +2972,7 @@
         "subComponents": {},
         "config": {
           "kc.user.profile.config": [
-            "{\"unmanagedAttributePolicy\": \"ADMIN_EDIT\", \"attributes\": [{\"name\": \"username\", \"displayName\": \"${username}\", \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\"]}, \"validations\": {\"length\": {\"min\": 3, \"max\": 255}, \"username-prohibited-characters\": {}, \"up-username-not-idn-homograph\": {}}}, {\"name\": \"email\", \"displayName\": \"${email}\", \"required\": {\"roles\": [\"user\"]}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\"]}, \"validations\": {\"email\": {}, \"length\": {\"max\": 255}}}, {\"name\": \"firstName\", \"displayName\": \"${firstName}\", \"required\": {\"roles\": [\"user\"]}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"validations\": {\"length\": {\"max\": 255}, \"person-name-prohibited-characters\": {}}}, {\"name\": \"lastName\", \"displayName\": \"${lastName}\", \"required\": {\"roles\": [\"user\"]}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"validations\": {\"length\": {\"max\": 255}, \"person-name-prohibited-characters\": {}}}, {\"name\": \"institution_id\", \"displayName\": \"Institution\", \"permissions\": {\"view\": [\"admin\"], \"edit\": [\"admin\"]}, \"multivalued\": false}, {\"name\": \"phone_number\", \"displayName\": \"Téléphone\", \"permissions\": {\"view\": [\"admin\"], \"edit\": [\"admin\"]}, \"multivalued\": false}, {\"name\": \"fonction\", \"displayName\": \"Fonction\", \"permissions\": {\"view\": [\"admin\"], \"edit\": [\"admin\"]}, \"multivalued\": false}, {\"name\": \"profil_complet\", \"displayName\": \"Premier accès terminé\", \"permissions\": {\"view\": [\"admin\"], \"edit\": [\"admin\"]}, \"multivalued\": false}, {\"name\": \"langKey\", \"displayName\": \"Langue\", \"permissions\": {\"view\": [\"admin\"], \"edit\": [\"admin\"]}, \"multivalued\": false}, {\"name\": \"login\", \"displayName\": \"Identifiant\", \"permissions\": {\"view\": [\"admin\"], \"edit\": [\"admin\"]}, \"multivalued\": false}, {\"name\": \"gimac_actions_requises\", \"displayName\": \"Actions exigées par la plateforme\", \"permissions\": {\"view\": [\"admin\"], \"edit\": [\"admin\"]}, \"multivalued\": true}], \"groups\": []}"
+            "{\"unmanagedAttributePolicy\": \"ADMIN_EDIT\", \"attributes\": [{\"name\": \"username\", \"displayName\": \"${username}\", \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\"]}, \"validations\": {\"length\": {\"min\": 3, \"max\": 255}, \"username-prohibited-characters\": {}, \"up-username-not-idn-homograph\": {}}}, {\"name\": \"email\", \"displayName\": \"${email}\", \"required\": {\"roles\": [\"user\"]}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\"]}, \"validations\": {\"email\": {}, \"length\": {\"max\": 255}}}, {\"name\": \"firstName\", \"displayName\": \"${firstName}\", \"required\": {\"roles\": [\"user\"]}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"validations\": {\"length\": {\"max\": 255}, \"person-name-prohibited-characters\": {}}}, {\"name\": \"lastName\", \"displayName\": \"${lastName}\", \"required\": {\"roles\": [\"user\"]}, \"permissions\": {\"view\": [\"admin\", \"user\"], \"edit\": [\"admin\", \"user\"]}, \"validations\": {\"length\": {\"max\": 255}, \"person-name-prohibited-characters\": {}}}, {\"name\": \"institution_id\", \"displayName\": \"Institution\", \"permissions\": {\"view\": [\"admin\"], \"edit\": [\"admin\"]}, \"multivalued\": false}, {\"name\": \"phone_number\", \"displayName\": \"Téléphone\", \"permissions\": {\"view\": [\"admin\"], \"edit\": [\"admin\"]}, \"multivalued\": false}, {\"name\": \"fonction\", \"displayName\": \"Fonction\", \"permissions\": {\"view\": [\"admin\"], \"edit\": [\"admin\"]}, \"multivalued\": false}, {\"name\": \"unite\", \"displayName\": \"Unité organisationnelle\", \"permissions\": {\"view\": [\"admin\"], \"edit\": [\"admin\"]}, \"multivalued\": false}, {\"name\": \"responsable_id\", \"displayName\": \"Responsable (n+1)\", \"permissions\": {\"view\": [\"admin\"], \"edit\": [\"admin\"]}, \"multivalued\": false}, {\"name\": \"profil_complet\", \"displayName\": \"Premier accès terminé\", \"permissions\": {\"view\": [\"admin\"], \"edit\": [\"admin\"]}, \"multivalued\": false}, {\"name\": \"langKey\", \"displayName\": \"Langue\", \"permissions\": {\"view\": [\"admin\"], \"edit\": [\"admin\"]}, \"multivalued\": false}, {\"name\": \"login\", \"displayName\": \"Identifiant\", \"permissions\": {\"view\": [\"admin\"], \"edit\": [\"admin\"]}, \"multivalued\": false}, {\"name\": \"gimac_actions_requises\", \"displayName\": \"Actions exigées par la plateforme\", \"permissions\": {\"view\": [\"admin\"], \"edit\": [\"admin\"]}, \"multivalued\": true}], \"groups\": []}"
           ]
         }
       }

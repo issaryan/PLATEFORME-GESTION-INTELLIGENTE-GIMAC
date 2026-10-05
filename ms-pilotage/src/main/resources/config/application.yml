@@ -265,3 +265,49 @@ jhipster:
 # ===================================================================
 
 # application:
+
+---
+# ---------------------------------------------------------------------------
+# Mon activité (D-76, docs/lot1/mon-activite.md) : jeton de service du client
+# pilotage-service, adaptateurs MS-IAM et MS-DOCUMENT, outbox des événements pilotage.*.
+# ---------------------------------------------------------------------------
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          # Jeton de service (PI §0.7) : client Keycloak pilotage-service (INTERNAL_IAM_READ,
+          # INTERNAL_DOCUMENT_READ), secret fourni par l'environnement, jamais dans le dépôt.
+          service-token:
+            provider: oidc
+            client-id: ${GIMAC_SERVICE_CLIENT_ID:pilotage-service}
+            client-secret: ${GIMAC_SERVICE_CLIENT_SECRET:}
+            authorization-grant-type: client_credentials
+            scope: openid
+  kafka:
+    # Producteur de l'outbox : même courtier que le binder Spring Cloud Stream.
+    bootstrap-servers: ${spring.cloud.stream.kafka.binder.brokers:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      properties:
+        enable.idempotence: true
+gimac:
+  outbox:
+    delay: 500
+  # Sélection des adaptateurs, un port à la fois (PI §0.8) : real | stub.
+  adaptateurs:
+    # Organisation (rattachement, équipe, collaborateurs) de MS-IAM.
+    organisation: stub
+    # Documents des rapports (mode DOCUMENT) dans MS-DOCUMENT.
+    documents: stub
+  # Services joints par les adaptateurs réels (surchargés par l'environnement).
+  services:
+    iam:
+      url: http://localhost:8081
+    document:
+      url: http://localhost:8083
+  organisation:
+    # Équipe, rattachement et noms affichés mis en cache 60 s (§3).
+    cache-secondes: 60

@@ -1,4 +1,5 @@
-# Domaine Keycloak « gimac » du lot 1 (D-61, D-62) : émetteur des jetons.
+# Domaine Keycloak « gimac » du lot 1 (D-61, D-62) : émetteur des jetons ; notifications de la plateforme
+# (D-80) : client de service notification-service, annuaire de MS-IAM et conversations de MS-COLLABORATION.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -12,3 +13,10 @@ spec:
           env:
             - name: SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_OIDC_ISSUER_URI
               value: http://keycloak.gimac-des.des.gimac.local/realms/gimac
+            - name: GIMAC_SERVICE_CLIENT_ID
+              value: notification-service
+            - name: GIMAC_SERVICE_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: gimac-clients-keycloak
+                  key: notification-service

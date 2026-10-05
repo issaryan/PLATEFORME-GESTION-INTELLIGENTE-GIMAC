@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Button, Card, EmptyState, ResourceDetail, ResourceForm, TreeView, type ResourceDescriptor, PageHeader } from '@gimac/design-system'
 import { EtatsRequete, aPermission, usePermissions } from '@gimac/socle'
 import { useEffet } from '../../hooks/base'
-import { useHistoriqueReferentiel, useReferentiel, useReferentiels } from '../../hooks/referentiels'
+import { useCatalogueReferentiels, useHistoriqueReferentiel, useReferentiel, useReferentiels } from '../../hooks/referentiels'
 import { useDescripteurDS } from '../../ressources/descripteur'
 import { useExecuteurActions } from '../../ressources/actions'
 import { referentielOperationsDescriptor } from '../../ressources/referentiel'
@@ -17,7 +17,7 @@ export default function ReferentielsOperationsPage() {
   const { t } = useTranslation()
   const [params, setParams] = useSearchParams()
   const versionId = params.get('version') ?? ''
-  const onglet = params.get('onglet') ?? 'operations'
+  const onglet = params.get('onglet') ?? 'modelisateur'
   const [creation, setCreation] = useState(false)
   const executeur = useExecuteurActions()
   const versions = useReferentiels()
@@ -93,8 +93,14 @@ function Version({ id, onglet, ouvrirOnglet, ouvrirFormulaire }: { id: string; o
 /** Création d'un brouillon : formulaire du catalogue piloté par le descripteur (champs inForm « create »). */
 function FormulaireBrouillon({ onFin }: { onFin: (id?: string) => void }) {
   const { t } = useTranslation()
-  const desc = useDescripteurDS(referentielOperationsDescriptor)
-  const creer = useEffet((s, v: { typeProjet: string; libelle: string }) => s.homologation.creerBrouillon(v), [['homologation']])
+  const base = useDescripteurDS(referentielOperationsDescriptor)
+  // Pilote facultatif : comptes du catalogue du modélisateur (D-77, §5) ; vide, le créateur pilote.
+  const catalogue = useCatalogueReferentiels()
+  const desc = useMemo(() => ({
+    ...base,
+    fields: base.fields.map((f) => (f.name === 'piloteId' ? { ...f, options: [{ value: '', label: t('referentiel.piloteParDefaut') }, ...(catalogue.data?.pilotes ?? []).map((x) => ({ value: x.id, label: x.nom }))] } : f)),
+  }), [base, catalogue.data, t])
+  const creer = useEffet((s, v: { typeProjet: string; libelle: string; piloteId?: string }) => s.homologation.creerBrouillon(v), [['homologation']])
   const [erreurs, setErreurs] = useState<Record<string, string>>({})
   return (
     <ResourceForm<ReferentielVersion>
@@ -104,18 +110,19 @@ function FormulaireBrouillon({ onFin }: { onFin: (id?: string) => void }) {
       presentation="dialog"
       submitting={creer.isPending}
       errors={erreurs}
-      serverError={creer.error ?? undefined}
+      serverError={creer.error ? { code: creer.error.code, message: t(`erreur.${creer.error.code}`, { defaultValue: creer.error.message }), correlationId: creer.error.correlationId } : undefined}
       submitLabel={t('referentiel.action.creer')}
       onCancel={() => onFin()}
       onSubmit={(vals) => {
         const typeProjet = String(vals.typeProjet ?? '')
         const libelle = String(vals.libelle ?? '').trim()
+        const piloteId = String(vals.piloteId ?? '')
         const e: Record<string, string> = {}
         if (!typeProjet) e.typeProjet = t('commun.champObligatoire')
         if (!libelle) e.libelle = t('commun.champObligatoire')
         setErreurs(e)
         if (Object.keys(e).length) return
-        creer.mutate({ typeProjet, libelle }, { onSuccess: (v) => onFin((v as ReferentielVersion).id) })
+        creer.mutate(piloteId ? { typeProjet, libelle, piloteId } : { typeProjet, libelle }, { onSuccess: (v) => onFin((v as ReferentielVersion).id) })
       }}
     />
   )

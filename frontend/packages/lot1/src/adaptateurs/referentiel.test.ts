@@ -9,6 +9,9 @@ const version = (id: string, numero: number | null, etat: ReferentielVersion['et
 const op = (code: string, segment: ReferenceOperation['segment'], libelle = code, predecesseurs: string[] = []): ReferenceOperation => ({
   versionId: 'V', code, libelle, phase: 'P', segment, partie: 'DES', serviceCode: 'RETRAIT', natureCouverture: 'AUCUNE', idScenario: null, predecesseurs,
   fonctionResponsable: '', preuveAttendue: {}, transitionsPermises: [], actionsPermises: [],
+  description: null, etape: 'TESTS', ordre: 1, responsable: 'SNA', validateur: 'CONDUCTEUR', consultes: [], informes: [], externes: [], delaiJours: 3, grain: 'OPERATION',
+  plateforme: null, cle: false, secret: false, oubliSansSymptome: false, pivot: false, valeurReference: null, livrables: [], geste: 'DEPOSER_PREUVE', jalon: null, declencheur: null,
+  particularite: null,
 })
 
 describe('DES-12 adaptateurs', () => {
@@ -19,8 +22,8 @@ describe('DES-12 adaptateurs', () => {
     expect(arbre[0].children?.[1].badge).toMatchObject({ status: 'ok', label: 'referentiel.etat.PUBLIEE' })
   })
   it('range les opérations dans l\'ordre des segments', () => {
-    const g = parSegment([op('C', 'TRONC_COMMUN_AVAL'), op('A', 'TRONC_COMMUN_AMONT'), op('B', 'BRANCHE')])
-    expect(g.map((x) => x.segment)).toEqual(['TRONC_COMMUN_AMONT', 'BRANCHE', 'TRONC_COMMUN_AVAL'])
+    const g = parSegment([op('C', 'AVAL'), op('A', 'AMONT'), op('B', 'BRANCHE')])
+    expect(g.map((x) => x.segment)).toEqual(['AMONT', 'BRANCHE', 'AVAL'])
   })
   it('compare deux versions par code : conservée, modifiée, retirée, ajoutée', () => {
     const l = versLignesDiff([op('A', 'BRANCHE'), op('B', 'BRANCHE'), op('C', 'BRANCHE')], [op('A', 'BRANCHE'), op('B', 'BRANCHE', 'B modifiée'), op('D', 'BRANCHE')])

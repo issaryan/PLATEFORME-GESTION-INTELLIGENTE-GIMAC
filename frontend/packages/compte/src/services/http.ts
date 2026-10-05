@@ -43,5 +43,7 @@ export function monCompteHttp(couche: Couche): ServiceMonCompte {
     fermerAppareil: (id) => http.delete(`${APPAREILS}/${encodeURIComponent(id)}`),
     fermerAutresAppareils: () => http.delete(APPAREILS),
     historique: (page, taille) => http.get(HISTORIQUE_CONNEXIONS, { query: { page, taille } }),
+    // Rattachement (D-76 §1.3) : servi à la couche interne seulement, comme « Mon activité ».
+    ...(couche === 'des' ? { organisation: () => http.get('/bff/des/iam/organisation/moi') } : {}),
   }
 }

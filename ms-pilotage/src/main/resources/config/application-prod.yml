@@ -112,3 +112,14 @@ jhipster:
 # ===================================================================
 
 # application:
+
+# Mon activité (D-76) : organisation de MS-IAM et documents de MS-DOCUMENT réels, adresses des services joints.
+gimac:
+  adaptateurs:
+    organisation: real
+    documents: real
+  services:
+    iam:
+      url: http://iam:8081
+    document:
+      url: http://document:8083

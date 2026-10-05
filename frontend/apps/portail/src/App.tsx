@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from 're
 import { Navigate, Route, Routes, useLocation } from 'react-router'
 import { Skeleton } from '@gimac/design-system'
 import {
-  ConnexionProvider, Enveloppe, GardeSession, PageConnexion, PageDeconnexion, SessionActive, adresseConnexion, configureHttp, connexionHttp, lirePreference, lireSessionDemo,
+  Aiguillage, ConnexionProvider, Enveloppe, GardeSession, PageConnexion, PageDeconnexion, SessionActive, adresseConnexion, configureHttp, connexionHttp, lirePreference, lireSessionDemo,
   surNonAutorise, type EtatCanal, type Session,
 } from '@gimac/socle'
 import { CompteProvider, GardePremierAcces, MonComptePage, useMonAvatar, monCompteHttp, monCompteSimule } from '@gimac/compte'
@@ -36,9 +36,10 @@ function AvecSession({ children }: { children: (s: Session) => ReactNode }) {
   if (!REELS) {
     if (!lireSessionDemo()) return <Navigate to={adresseConnexion({ retour: ici.pathname + ici.search })} replace />
     const s = sessionDemo()
-    return <SessionActive session={s} prolonger={async () => undefined}>{children(s)}</SessionActive>
+    return <SessionActive session={s} prolonger={async () => undefined}><Aiguillage session={s} couche="portail">{children(s)}</Aiguillage></SessionActive>
   }
-  return <GardeSession>{children}</GardeSession>
+  // Aiguillage (D-79) : un compte interne (session sans institution) est conduit vers l'application interne.
+  return <GardeSession>{(s) => <Aiguillage session={s} couche="portail">{children(s)}</Aiguillage>}</GardeSession>
 }
 
 function Pages({ session, etatCanal, correlationId }: { session: Session; etatCanal: EtatCanal | undefined; correlationId?: string }) {

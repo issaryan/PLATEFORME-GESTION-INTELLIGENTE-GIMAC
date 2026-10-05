@@ -30,16 +30,40 @@ describe('profil du RSSI (reflet de generer-realm-gimac.py)', () => {
   })
 })
 
+describe('navigation : groupe « Mon activité » (D-76)', () => {
+  it('juste après le tableau de bord : journée, agenda, tâches, rapports (PIL_ACTIVITY_OWN), équipe (PIL_TEAM_READ)', () => {
+    expect(NAVIGATION_DES[1].libelleKey).toBe('nav.groupe.monActivite')
+    expect(NAVIGATION_DES[1].entrees.map((e) => [e.chemin, e.predicat?.any?.[0]])).toEqual([
+      ['/des/activite', 'PIL_ACTIVITY_OWN'],
+      ['/des/agenda', 'PIL_ACTIVITY_OWN'],
+      ['/des/taches', 'PIL_ACTIVITY_OWN'],
+      ['/des/rapports', 'PIL_ACTIVITY_OWN'],
+      ['/des/equipe', 'PIL_TEAM_READ'],
+    ])
+  })
+})
+
 describe('navigation : groupe « Administration » dans le département', () => {
   it('écrans sous /des/administration ; console de la plateforme par VITE_URL_CONSOLE (http://localhost:4202 par défaut)', () => {
     expect(URL_CONSOLE).toBe('http://localhost:4202')
     expect(versConsole('/console/comptes')).toBe('http://localhost:4202/console/comptes')
     const groupe = NAVIGATION_DES.find((g) => g.libelleKey === 'nav.groupe.administration')!
-    expect(groupe.entrees.map((e) => [e.chemin, e.permission])).toEqual([
+    expect(groupe.entrees.map((e) => [e.chemin, e.predicat?.any?.[0]])).toEqual([
       ['/des/administration/comptes', 'IAM_ACCOUNT_READ'],
       ['/des/administration/profils', 'IAM_ACCOUNT_READ'],
+      // Catalogue des unités organisationnelles (D-76).
+      ['/des/administration/organisation', 'IAM_ACCOUNT_READ'],
       ['/des/administration/journal', 'IAM_JOURNAL_READ'],
       ['/des/administration/politique-securite', 'PLATFORM_SECURITY_POLICY_READ'],
+    ])
+    // Plateforme (D-79) : écrans de la console servis aussi dans l'application interne, et lien vers la console.
+    const plateforme = NAVIGATION_DES.find((g) => g.libelleKey === 'nav.groupe.plateforme')!
+    expect(plateforme.entrees.map((e) => [e.chemin, e.predicat?.any?.[0]])).toEqual([
+      ['/des/plateforme/supervision', 'PLATFORM_SUPERVISION_READ'],
+      ['/des/plateforme/infrastructure', 'PLATFORM_OPS_READ'],
+      ['/des/plateforme/configuration', 'PLATFORM_CONFIG_READ'],
+      ['/des/plateforme/journalisation', 'PLATFORM_CONFIG_READ'],
+      ['/des/plateforme/courriels', 'PLATFORM_MESSAGING_EDIT'],
       ['http://localhost:4202/console/tableau-de-bord', 'PLATFORM_CONFIG_READ'],
     ])
   })

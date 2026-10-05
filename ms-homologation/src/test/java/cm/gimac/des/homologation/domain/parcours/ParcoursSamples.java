@@ -4,6 +4,7 @@ import cm.gimac.des.homologation.domain.Liaison;
 import cm.gimac.des.homologation.domain.ReferentialVersion;
 import cm.gimac.des.homologation.domain.enumeration.EtatLiaison;
 import cm.gimac.des.homologation.domain.enumeration.TypeProjet;
+import cm.gimac.des.homologation.domain.service.ConversionAnnexeA;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
@@ -16,7 +17,8 @@ import java.util.UUID;
 
 /**
  * Jeux d'essai du parcours : référentiel de l'annexe A lu dans le fichier chargé par Liquibase
- * (config/liquibase/data/parcours_referentiel_cr.csv), liaisons et parcours instanciés.
+ * (config/liquibase/data/parcours_referentiel_cr.csv), sa version 1 (D-77) à laquelle les liaisons sont
+ * rattachées, liaisons et parcours instanciés depuis cette version.
  */
 public final class ParcoursSamples {
 
@@ -61,10 +63,17 @@ public final class ParcoursSamples {
         }
     }
 
-    public static Liaison liaison(TypeProjet type) {
-        ReferentialVersion v = new ReferentialVersion();
+    /** Version 1 du référentiel d'un type (conversion fidèle de l'annexe A), numérotée 2 dans les jeux d'essai. */
+    public static ReferentialVersion version1(TypeProjet type) {
+        ReferentialVersion v = ReferentialVersion.nouveauBrouillon(type, ConversionAnnexeA.LIBELLE_VERSION, Instant.parse("2026-09-01T00:00:00Z"));
         v.setId(UUID.randomUUID());
+        ConversionAnnexeA.version1(type).forEach(o -> v.upsertOperation(o.code(), o.data()));
         v.setNumero(2);
+        return v;
+    }
+
+    public static Liaison liaison(TypeProjet type) {
+        ReferentialVersion v = version1(type);
         Liaison l = new Liaison()
             .typeProjet(type)
             .institutionId(UUID.randomUUID())
@@ -96,7 +105,7 @@ public final class ParcoursSamples {
         Liaison l = liaison(type);
         ParcoursLiaison e = new ParcoursLiaison(l.getId(), "LIA-2026-001", DEBUT);
         List<ServiceParcours> svc = Arrays.stream(services).map(s -> new ServiceParcours(l.getId(), s, CatalogueServices.libelle(s), true)).toList();
-        return Parcours.instancier(l, e, referentiel(), svc, designation(l));
+        return Parcours.instancier(l, e, l.getVersion().getOperations(), svc, designation(l));
     }
 
     /** Clôt dans l'ordre toutes les opérations jusqu'au rang donné compris (par leur geste le plus simple). */

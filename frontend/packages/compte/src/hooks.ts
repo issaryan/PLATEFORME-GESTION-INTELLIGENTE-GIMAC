@@ -1,7 +1,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { urlAvatar, useConnexion, type ApiError, type CleSecurite } from '@gimac/socle'
 import { useServiceCompte } from './contexte'
-import type { Appareil, ChangementMotDePasse, ConfirmationTotp, FichePersonnelle, Moi, PageHistorique, PremiereConfiguration, SessionCompte } from './modele'
+import type { Appareil, ChangementMotDePasse, ConfirmationTotp, FichePersonnelle, Moi, PageHistorique, PremiereConfiguration, RattachementCompte, SessionCompte } from './modele'
 
 // Hooks de données de « Mon compte » : seuls points d'appel du port. Clés [compte, ressource].
 export const clesCompte = {
@@ -11,11 +11,17 @@ export const clesCompte = {
   cles: ['compte', 'cles'] as const,
   appareils: ['compte', 'appareils'] as const,
   historique: (page: number, taille: number) => ['compte', 'historique', page, taille] as const,
+  organisation: ['compte', 'organisation'] as const,
 }
 
 export const useMoi = () => {
   const s = useServiceCompte()
   return useQuery<Moi, ApiError>({ queryKey: clesCompte.moi, queryFn: () => s.moi() })
+}
+/** Rattachement organisationnel (D-76) : lu seulement si le compte en a un et si la couche le sert. */
+export const useMonRattachement = (actif: boolean) => {
+  const s = useServiceCompte()
+  return useQuery<RattachementCompte, ApiError>({ queryKey: clesCompte.organisation, queryFn: () => s.organisation!(), enabled: actif && !!s.organisation })
 }
 export const useMesSessions = () => {
   const s = useServiceCompte()

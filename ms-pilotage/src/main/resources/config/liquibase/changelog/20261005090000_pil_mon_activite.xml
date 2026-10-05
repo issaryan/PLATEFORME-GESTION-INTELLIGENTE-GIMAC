@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Mon activité (D-76, docs/lot1/mon-activite.md §2 à §5) : agenda et participants, activités du jour,
+     tâches et leur historique en ajout seul, rapports quotidiens et hebdomadaires, outbox transactionnelle.
+     Écrit à la main, à côté des tables générées par JHipster. -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="pil-mon-activite-agenda" author="lot1">
+        <createTable tableName="evenement_agenda" remarks="Événement de l'agenda d'un compte interne (§2.1).">
+            <column name="id" type="uuid"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="proprietaire_id" type="varchar(80)"><constraints nullable="false"/></column>
+            <column name="titre" type="varchar(200)"><constraints nullable="false"/></column>
+            <column name="description" type="varchar(4000)"/>
+            <column name="lieu" type="varchar(200)"/>
+            <column name="debut" type="timestamptz"><constraints nullable="false"/></column>
+            <column name="fin" type="timestamptz"><constraints nullable="false"/></column>
+            <column name="journee_entiere" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+            <column name="categorie" type="varchar(16)"><constraints nullable="false"/></column>
+            <column name="cree_le" type="timestamptz"><constraints nullable="false"/></column>
+            <column name="modifie_le" type="timestamptz"><constraints nullable="false"/></column>
+            <column name="version" type="bigint" defaultValueNumeric="0"><constraints nullable="false"/></column>
+        </createTable>
+        <sql>ALTER TABLE evenement_agenda ADD CONSTRAINT ck_evenement_agenda_bornes CHECK (fin &gt; debut);</sql>
+        <createIndex tableName="evenement_agenda" indexName="ix_evenement_agenda_proprietaire">
+            <column name="proprietaire_id"/>
+            <column name="debut"/>
+        </createIndex>
+        <createTable tableName="evenement_participant" remarks="Participant invité à un événement et sa réponse.">
+            <column name="evenement_id" type="uuid"><constraints nullable="false" foreignKeyName="fk_evenement_participant_evenement" referencedTableName="evenement_agenda" referencedColumnNames="id" deleteCascade="true"/></column>
+            <column name="rang" type="integer"><constraints nullable="false"/></column>
+            <column name="participant_id" type="varchar(80)"><constraints nullable="false"/></column>
+            <column name="reponse" type="varchar(16)"><constraints nullable="false"/></column>
+            <column name="repondu_le" type="timestamptz"/>
+        </createTable>
+        <addPrimaryKey tableName="evenement_participant" columnNames="evenement_id, rang" constraintName="pk_evenement_participant"/>
+        <createIndex tableName="evenement_participant" indexName="ix_evenement_participant_compte">
+            <column name="participant_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="pil-mon-activite-activites" author="lot1">
+        <createTable tableName="activite" remarks="Activité du jour d'un compte interne (§2.2).">
+            <column name="id" type="uuid"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="auteur_id" type="varchar(80)"><constraints nullable="false"/></column>
+            <column name="jour" type="date"><constraints nullable="false"/></column>
+            <column name="titre" type="varchar(200)"><constraints nullable="false"/></column>
+            <column name="description" type="varchar(4000)"/>
+            <column name="statut" type="varchar(16)"><constraints nullable="false"/></column>
+            <column name="duree_minutes" type="integer"/>
+            <column name="ordre" type="integer"><constraints nullable="false"/></column>
+            <column name="tache_id" type="uuid"/>
+            <column name="reportee_au" type="date"/>
+            <column name="origine_id" type="uuid"/>
+            <column name="cree_le" type="timestamptz"><constraints nullable="false"/></column>
+            <column name="modifie_le" type="timestamptz"><constraints nullable="false"/></column>
+            <column name="version" type="bigint" defaultValueNumeric="0"><constraints nullable="false"/></column>
+        </createTable>
+        <sql>ALTER TABLE activite ADD CONSTRAINT ck_activite_duree CHECK (duree_minutes IS NULL OR duree_minutes BETWEEN 0 AND 1440);</sql>
+        <createIndex tableName="activite" indexName="ix_activite_auteur_jour">
+            <column name="auteur_id"/>
+            <column name="jour"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="pil-mon-activite-taches" author="lot1">
+        <createTable tableName="tache" remarks="Tâche à responsable unique (§2.3, RG-20).">
+            <column name="id" type="uuid"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="titre" type="varchar(200)"><constraints nullable="false"/></column>
+            <column name="description" type="varchar(4000)"/>
+            <column name="echeance" type="date"/>
+            <column name="priorite" type="varchar(16)"><constraints nullable="false"/></column>
+            <column name="etat" type="varchar(16)"><constraints nullable="false"/></column>
+            <column name="responsable_id" type="varchar(80)"><constraints nullable="false"/></column>
+            <column name="createur_id" type="varchar(80)"><constraints nullable="false"/></column>
+            <column name="origine_type" type="varchar(16)"><constraints nullable="false"/></column>
+            <column name="origine_reference" type="varchar(200)"/>
+            <column name="origine_service" type="varchar(60)"/>
+            <column name="origine_lien" type="varchar(500)"/>
+            <column name="cree_le" type="timestamptz"><constraints nullable="false"/></column>
+            <column name="modifie_le" type="timestamptz"><constraints nullable="false"/></column>
+            <column name="terminee_le" type="timestamptz"/>
+            <column name="version" type="bigint" defaultValueNumeric="0"><constraints nullable="false"/></column>
+        </createTable>
+        <createIndex tableName="tache" indexName="ix_tache_responsable">
+            <column name="responsable_id"/>
+            <column name="etat"/>
+        </createIndex>
+        <createIndex tableName="tache" indexName="ix_tache_createur">
+            <column name="createur_id"/>
+        </createIndex>
+        <!-- Création par un autre service idempotente par origine.reference + responsable (§2.3). -->
+        <sql>CREATE UNIQUE INDEX ux_tache_origine ON tache (origine_reference, responsable_id) WHERE origine_reference IS NOT NULL;</sql>
+
+        <createTable tableName="tache_historique" remarks="Historique d'une tâche, en ajout seul.">
+            <column name="id" type="uuid"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="tache_id" type="uuid"><constraints nullable="false" foreignKeyName="fk_tache_historique_tache" referencedTableName="tache" referencedColumnNames="id"/></column>
+            <column name="quand" type="timestamptz"><constraints nullable="false"/></column>
+            <column name="acteur_id" type="varchar(80)"><constraints nullable="false"/></column>
+            <column name="action" type="varchar(16)"><constraints nullable="false"/></column>
+            <column name="detail" type="varchar(1200)"/>
+        </createTable>
+        <createIndex tableName="tache_historique" indexName="ix_tache_historique_tache">
+            <column name="tache_id"/>
+            <column name="quand"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Ajout seul : la base refuse toute modification ou suppression d'une ligne d'historique. -->
+    <changeSet id="pil-mon-activite-historique-ajout-seul" author="lot1" dbms="postgresql">
+        <sql splitStatements="false">
+            CREATE OR REPLACE FUNCTION tache_historique_ajout_seul() RETURNS trigger AS $$
+            BEGIN
+                RAISE EXCEPTION 'tache_historique : ajout seul (ni modification ni suppression)';
+            END;
+            $$ LANGUAGE plpgsql;
+        </sql>
+        <sql>CREATE TRIGGER tr_tache_historique_ajout_seul BEFORE UPDATE OR DELETE ON tache_historique FOR EACH ROW EXECUTE FUNCTION tache_historique_ajout_seul();</sql>
+    </changeSet>
+
+    <changeSet id="pil-mon-activite-rapports" author="lot1">
+        <createTable tableName="rapport" remarks="Rapport quotidien ou hebdomadaire d'un compte interne (§2.4).">
+            <column name="id" type="uuid"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="auteur_id" type="varchar(80)"><constraints nullable="false"/></column>
+            <column name="type" type="varchar(16)"><constraints nullable="false"/></column>
+            <column name="periode" type="varchar(10)"><constraints nullable="false"/></column>
+            <column name="mode" type="varchar(16)"><constraints nullable="false"/></column>
+            <column name="contenu" type="text"/>
+            <column name="document_id" type="uuid"/>
+            <column name="document_nom" type="varchar(255)"/>
+            <column name="document_type_mime" type="varchar(255)"/>
+            <column name="document_taille" type="bigint"/>
+            <column name="etat" type="varchar(16)"><constraints nullable="false"/></column>
+            <column name="destinataire_id" type="varchar(80)"/>
+            <column name="soumis_le" type="timestamptz"/>
+            <column name="vise_le" type="timestamptz"/>
+            <column name="visa_par_id" type="varchar(80)"/>
+            <column name="visa_commentaire" type="varchar(2000)"/>
+            <column name="ind_activites_faites" type="integer"/>
+            <column name="ind_activites_prevues" type="integer"/>
+            <column name="ind_minutes" type="integer"/>
+            <column name="ind_taches_terminees" type="integer"/>
+            <column name="cree_le" type="timestamptz"><constraints nullable="false"/></column>
+            <column name="modifie_le" type="timestamptz"><constraints nullable="false"/></column>
+            <column name="version" type="bigint" defaultValueNumeric="0"><constraints nullable="false"/></column>
+        </createTable>
+        <addUniqueConstraint tableName="rapport" columnNames="auteur_id, type, periode" constraintName="ux_rapport_auteur_type_periode"/>
+        <sql>ALTER TABLE rapport ADD CONSTRAINT ck_rapport_contenu CHECK (contenu IS NULL OR char_length(contenu) &lt;= 20000);</sql>
+        <createIndex tableName="rapport" indexName="ix_rapport_destinataire">
+            <column name="destinataire_id"/>
+            <column name="etat"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="pil-mon-activite-outbox" author="lot1">
+        <createTable tableName="outbox_event" remarks="Outbox transactionnelle (PI-GIMAC-01 §0.4) : événements pilotage.*.">
+            <column name="id" type="uuid"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="aggregate_type" type="varchar(60)"><constraints nullable="false"/></column>
+            <column name="aggregate_id" type="varchar(80)"><constraints nullable="false"/></column>
+            <column name="event_type" type="varchar(120)"><constraints nullable="false"/></column>
+            <column name="payload" type="jsonb"><constraints nullable="false"/></column>
+            <column name="created_at" type="timestamptz"><constraints nullable="false"/></column>
+            <column name="status" type="varchar(16)"><constraints nullable="false"/></column>
+            <column name="sent_at" type="timestamptz"/>
+            <column name="attempts" type="integer" defaultValueNumeric="0"><constraints nullable="false"/></column>
+            <column name="correlation_id" type="varchar(80)"/>
+            <column name="institution_id" type="varchar(80)"/>
+        </createTable>
+        <sql>CREATE INDEX idx_outbox_pending ON outbox_event (created_at) WHERE status = 'PENDING';</sql>
+    </changeSet>
+
+</databaseChangeLog>

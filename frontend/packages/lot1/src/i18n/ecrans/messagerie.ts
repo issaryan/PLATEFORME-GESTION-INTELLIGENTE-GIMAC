@@ -4,6 +4,7 @@ import type { Catalogue } from '@gimac/socle'
 export const catalogue: Catalogue = {
   fr: {
     'nav.messagerie': 'Messagerie',
+    'nav.notifications': 'Notifications',
     'msg.titre': 'Messagerie',
     'msg.sousTitre': 'Échanges entre acteurs du GIMAC, rattachés aux liaisons quand il y a lieu',
     'msg.nouveau': 'Nouveau message',
@@ -115,6 +116,7 @@ export const catalogue: Catalogue = {
   },
   en: {
     'nav.messagerie': 'Messages',
+    'nav.notifications': 'Notifications',
     'msg.titre': 'Messages',
     'msg.sousTitre': 'Exchanges between GIMAC staff, linked to connections where relevant',
     'msg.nouveau': 'New message',
@@ -226,6 +228,7 @@ export const catalogue: Catalogue = {
   },
   es: {
     'nav.messagerie': 'Mensajería',
+    'nav.notifications': 'Notificaciones',
     'msg.titre': 'Mensajería',
     'msg.sousTitre': 'Intercambios entre el personal del GIMAC, vinculados a los enlaces cuando procede',
     'msg.nouveau': 'Nuevo mensaje',

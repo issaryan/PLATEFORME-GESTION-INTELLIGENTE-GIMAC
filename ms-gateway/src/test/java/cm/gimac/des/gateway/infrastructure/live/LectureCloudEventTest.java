@@ -70,6 +70,17 @@ class LectureCloudEventTest {
     }
 
     @Test
+    @DisplayName("Notification de la plateforme (D-80) : destinataires de data.destinataires, acteur de data.acteurId, rien d'autre")
+    void notification() {
+        String ce =
+            "{\"specversion\":\"1.0\",\"id\":\"o-1\",\"type\":\"notification.inapp-created.v1\",\"subject\":\"n-1\"," +
+            "\"data\":{\"notificationId\":\"n-1\",\"type\":\"MESSAGE\",\"destinataires\":[\"u1\"],\"referenceId\":\"c-1\",\"acteurId\":\"u0\",\"nombre\":2}}";
+        EvenementLive e = lecture.lire("notification.inapp", ce).orElseThrow();
+        assertThat(e).isEqualTo(new EvenementLive("o-1", "notification.inapp-created.v1", "n-1", EvenementLive.NOTIFICATION, null, java.util.Set.of("u1"), "u0"));
+        assertThat(e.vue().toString()).doesNotContain("c-1", "MESSAGE");
+    }
+
+    @Test
     @DisplayName("Hors collaboration, data.destinataires n'est pas lu")
     void destinatairesIgnores() {
         String ce = "{\"id\":\"e\",\"type\":\"t\",\"data\":{\"destinataires\":[\"u1\"]}}";

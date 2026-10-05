@@ -43,5 +43,7 @@
     <include file="config/liquibase/changelog/20260928135310_added_entity_constraints_MeetingAttendance.xml" relativeToChangelogFile="false"/>
     <include file="config/liquibase/changelog/20260928135410_added_entity_constraints_Decision.xml" relativeToChangelogFile="false"/>
     <!-- jhipster-needle-liquibase-add-constraints-changelog - JHipster will add liquibase constraints changelogs here -->
+    <!-- Mon activité (D-76), écrit à la main. -->
+    <include file="config/liquibase/changelog/20261005090000_pil_mon_activite.xml" relativeToChangelogFile="false"/>
     <!-- jhipster-needle-liquibase-add-incremental-changelog - JHipster will add incremental liquibase changelogs here -->
 </databaseChangeLog>

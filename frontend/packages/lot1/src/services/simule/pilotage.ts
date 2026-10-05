@@ -1,0 +1,503 @@
+import type { ApiError, OptionsTeleversement, Televersement } from '@gimac/socle'
+import type {
+  Activite, EntreeEvenement, EtatRapportDuJour, EtatTache, Evenement, MembreEquipe, PersonneActivite, Rapport, Rattachement, Tache, TypeRapport, Unite,
+} from '../../modele/pilotage'
+import { TRANSITIONS_TACHE, motifExige } from '../../modele/pilotage'
+import { ajouterJours, aujourdhui, instant, jourDe, jourOuvreSuivant, lundiDe, lundiDeSemaine, semaineIso } from '../../modele/jours'
+import type { ServicePilotage } from '../ports'
+import { pdfDemo } from './messagerie'
+
+// « Mon activité » simulée (D-76, docs/lot1/mon-activite.md) : mêmes formes de réponse et mêmes codes de refus
+// que MS-PILOTAGE et l'organisation de MS-IAM ; ses règles ne sont qu'une imitation : équipe (chaîne des
+// responsables), lecture réduite de l'agenda d'un membre, transitions des tâches, rapport unique par période,
+// destinataire fixé à la soumission, visa final. Jeu de démonstration daté d'aujourd'hui, en mémoire.
+
+type Attendre = <T>(v: T | (() => T)) => Promise<T>
+type Refus = (status: number, code: string, message: string) => ApiError
+
+/** Catalogue initial des unités (§1.1, CR p.13-14, CCT p.19-21). */
+export const UNITES_DEMO: Unite[] = [
+  { code: 'DG', libelle: 'Direction Générale', type: 'DIRECTION', parent: null, active: true },
+  { code: 'DES', libelle: 'Département Exploitation et Supervision', type: 'DEPARTEMENT', parent: 'DG', active: true },
+  { code: 'SNA', libelle: 'Service Normes et Agréments', type: 'SERVICE', parent: 'DES', active: true },
+  { code: 'PROD_MONETIQUE', libelle: 'Service Production monétique', type: 'SERVICE', parent: 'DES', active: true },
+  { code: 'PROD_INFO', libelle: 'Service Production informatique', type: 'SERVICE', parent: 'DES', active: true },
+  { code: 'POLE_RESEAU', libelle: 'Pôle réseau', type: 'POLE', parent: 'PROD_INFO', active: true },
+  { code: 'POLE_SYSTEME', libelle: 'Pôle système', type: 'POLE', parent: 'PROD_INFO', active: true },
+  { code: 'DDRM', libelle: 'Département Développement du Réseau et du Marché', type: 'DEPARTEMENT', parent: 'DG', active: true },
+  { code: 'SSI', libelle: 'Sécurité des systèmes d’information', type: 'SERVICE', parent: 'DG', active: true },
+  { code: 'CONFORMITE', libelle: 'Conformité', type: 'SERVICE', parent: 'DG', active: true },
+]
+
+type Membre = { id: string; nomAffiche: string; fonction: string; unite: string | null; responsableId: string | null }
+
+/** Organisation de démonstration : comptes de l'annuaire simulé, unité la plus fine et responsable (n+1). */
+export const ORGANISATION_DEMO: Membre[] = [
+  { id: 'u-dg', nomAffiche: 'Jean-Baptiste Ella Mintsa', fonction: 'Directeur général', unite: 'DG', responsableId: null },
+  { id: 'U-001', nomAffiche: 'Paul Mbarga Atangana', fonction: 'Chef du département DES', unite: 'DES', responsableId: 'u-dg' },
+  { id: 'U-020', nomAffiche: 'Bertrand Nguema Obiang', fonction: 'Chef de la DDRM', unite: 'DDRM', responsableId: 'u-dg' },
+  { id: 'sim-charge', nomAffiche: 'Fatimé Abakar Hissein', fonction: 'Chargée de la DDRM', unite: 'DDRM', responsableId: 'U-020' },
+  { id: 'U-201', nomAffiche: 'Aïcha Mahamat Nour', fonction: 'Conductrice de projet', unite: 'DES', responsableId: 'U-001' },
+  { id: 'U-101', nomAffiche: 'Joël Ekotto Mballa', fonction: 'Ingénieur d’homologation', unite: 'SNA', responsableId: 'U-001' },
+  { id: 'u-sna', nomAffiche: 'Rachel Biyong Mengue', fonction: 'Analyste Normes et Agréments', unite: 'SNA', responsableId: 'U-001' },
+  { id: 'u-prod', nomAffiche: 'Serge Ondoua Essomba', fonction: 'Chargé de production monétique', unite: 'PROD_MONETIQUE', responsableId: 'U-001' },
+  { id: 'u-resp-info', nomAffiche: 'Gaston Ndzana Ebode', fonction: 'Chef du service Production informatique', unite: 'PROD_INFO', responsableId: 'U-001' },
+  { id: 'u-res', nomAffiche: 'Idriss Mahamat Saleh', fonction: 'Ingénieur réseau', unite: 'POLE_RESEAU', responsableId: 'u-resp-info' },
+  { id: 'u-sys', nomAffiche: 'Chantal Ngo Bassong', fonction: 'Ingénieure système', unite: 'POLE_SYSTEME', responsableId: 'u-resp-info' },
+  { id: 'u-collab', nomAffiche: 'Nadège Mvondo Assiga', fonction: 'Technicienne réseau', unite: 'POLE_RESEAU', responsableId: 'u-resp-info' },
+  { id: 'u-rssi', nomAffiche: 'Hervé Kamga Tchoupo', fonction: 'Responsable de la sécurité des SI', unite: 'SSI', responsableId: 'u-dg' },
+  { id: 'u-conf', nomAffiche: 'Mireille Obame Nze', fonction: 'Responsable conformité', unite: 'CONFORMITE', responsableId: 'u-dg' },
+]
+
+/** Chaîne des unités, de la plus haute à la plus fine. */
+const cheminDe = (unites: Unite[], code: string | null): Unite[] => {
+  const chemin: Unite[] = []
+  let u = unites.find((x) => x.code === code)
+  while (u && chemin.length < 10) {
+    chemin.unshift(u)
+    u = unites.find((x) => x.code === u!.parent)
+  }
+  return chemin
+}
+
+/** Rattachement de démonstration d'un compte (GET organisation/moi), null s'il est hors de l'organisation simulée. */
+export function rattachementDemo(id: string, nomAffiche?: string): Rattachement {
+  const m = ORGANISATION_DEMO.find((x) => x.id === id)
+  const resp = ORGANISATION_DEMO.find((x) => x.id === m?.responsableId)
+  const chaine: string[] = []
+  for (let r = resp; r && chaine.length < 10; r = ORGANISATION_DEMO.find((x) => x.id === r!.responsableId)) chaine.push(r.id)
+  const chemin = cheminDe(UNITES_DEMO, m?.unite ?? null)
+  return {
+    id, nomAffiche: m?.nomAffiche ?? nomAffiche ?? id, unite: chemin.at(-1) ?? null, chemin,
+    responsable: resp ? { id: resp.id, nomAffiche: resp.nomAffiche, fonction: resp.fonction } : null,
+    chaine, equipeDirecte: ORGANISATION_DEMO.filter((x) => x.responsableId === id).length,
+  }
+}
+
+/** Durée d'une étape du dépôt simulé d'un document de rapport (dix étapes d'envoi, une de vérification). */
+export const DUREE_ETAPE_DOCUMENT_MS = 80
+
+type EtatEvenement = Omit<Evenement, 'moi'>
+type EtatTacheSim = Required<Tache>
+type EtatRapport = Rapport & { documentBlob?: Blob }
+
+export function pilotageSimule(attendre: Attendre, refus: Refus, utilisateur: { id: string; nom: string } = { id: 'U-001', nom: 'Paul Mbarga Atangana' }): ServicePilotage {
+  const unites = UNITES_DEMO.map((u) => ({ ...u }))
+  const organisation = ORGANISATION_DEMO.some((m) => m.id === utilisateur.id)
+    ? ORGANISATION_DEMO
+    : [...ORGANISATION_DEMO, { id: utilisateur.id, nomAffiche: utilisateur.nom, fonction: '', unite: null, responsableId: null }]
+  const moi: PersonneActivite = { id: utilisateur.id, nomAffiche: organisation.find((m) => m.id === utilisateur.id)!.nomAffiche }
+  const personne = (id: string): PersonneActivite => {
+    const m = organisation.find((x) => x.id === id)
+    return { id, nomAffiche: m?.nomAffiche ?? id }
+  }
+  const responsableDe = (id: string) => organisation.find((m) => m.id === id)?.responsableId ?? null
+  /** Équipe (§3) : comptes dont l'utilisateur figure dans la chaîne des responsables, avec leur niveau. */
+  const equipeDe = (id: string) => {
+    const l: { membre: Membre; niveau: number }[] = []
+    const parcourir = (chef: string, niveau: number) => organisation.filter((m) => m.responsableId === chef).forEach((m) => {
+      if (l.some((x) => x.membre.id === m.id) || niveau > 10) return
+      l.push({ membre: m, niveau })
+      parcourir(m.id, niveau + 1)
+    })
+    parcourir(id, 1)
+    return l
+  }
+  const dansEquipe = (id: string) => equipeDe(moi.id).some((x) => x.membre.id === id)
+  const lisible = (collaborateur?: string) => {
+    if (collaborateur && collaborateur !== moi.id && !dansEquipe(collaborateur)) throw refus(403, 'PIL_HORS_EQUIPE', 'Ce compte n’est pas dans votre équipe.')
+    return collaborateur ?? moi.id
+  }
+
+  let sequence = 0
+  const id = (prefixe: string) => `${prefixe}-${(++sequence).toString().padStart(4, '0')}`
+  const maintenant = () => new Date().toISOString()
+  const jour = aujourdhui()
+  const hier = ajouterJours(jour, -1)
+  const avantHier = ajouterJours(jour, -2)
+  const demain = ajouterJours(jour, 1)
+
+  // ---------------------------------------------------------------- jeu de démonstration
+  const activites: Activite[] = []
+  const evenements: EtatEvenement[] = []
+  const taches: EtatTacheSim[] = []
+  const rapports: EtatRapport[] = []
+
+  const activite = (auteur: string, j: string, titre: string, statut: Activite['statut'], dureeMinutes: number | null, o: Partial<Activite> = {}) => {
+    const ordre = activites.filter((a) => a.auteur.id === auteur && a.jour === j).length + 1
+    const a: Activite = { id: id('ACT'), jour: j, titre, description: null, statut, dureeMinutes, ordre, tacheId: null, reporteeAu: null, auteur: personne(auteur), modifieeLe: maintenant(), ...o }
+    activites.push(a)
+    return a
+  }
+  const tache = (responsable: string, createur: string, titre: string, etat: EtatTache, echeance: string | null, o: Partial<Tache> = {}) => {
+    const t: EtatTacheSim = {
+      id: id('TCH'), titre, description: null, echeance, priorite: 'NORMALE', etat, responsable: personne(responsable), createur: personne(createur),
+      origine: { type: 'INTERNE', reference: null, service: null, lien: null }, enRetard: false, creeeLe: `${ajouterJours(jour, -6)}T08:30:00+01:00`,
+      termineeLe: etat === 'TERMINEE' ? `${hier}T16:10:00+01:00` : null,
+      historique: [{ quand: `${ajouterJours(jour, -6)}T08:30:00+01:00`, acteur: personne(createur), action: 'CREEE', detail: null }],
+      ...o,
+    }
+    taches.push(t)
+    return t
+  }
+  const evenement = (proprietaire: string, titre: string, categorie: Evenement['categorie'], debut: string, fin: string, participants: [string, Evenement['participants'][number]['reponse']][] = [], o: Partial<EtatEvenement> = {}) => {
+    const e: EtatEvenement = {
+      id: id('EVT'), titre, description: null, lieu: null, debut, fin, journeeEntiere: false, categorie, proprietaire: personne(proprietaire),
+      participants: participants.map(([p, reponse]) => ({ ...personne(p), reponse })), ...o,
+    }
+    evenements.push(e)
+    return e
+  }
+
+  const TRAVAUX: Record<string, string> = {
+    DES: 'Arbitrer le planning des essais de LIA-2026-030', DDRM: 'Instruire le dossier d’adhésion de la Banque de Libreville', SNA: 'Vérifier les preuves de l’opération OP-E05',
+    PROD_MONETIQUE: 'Préparer la bascule de la liaison LIA-2026-027', PROD_INFO: 'Planifier la maintenance des serveurs de recette', POLE_RESEAU: 'Configurer le VPN du participant',
+    POLE_SYSTEME: 'Mettre à jour les serveurs de recette', SSI: 'Analyser les attestations PCI DSS reçues', CONFORMITE: 'Relire la fiche de conformité de LIA-2026-019', DG: 'Préparer le comité de direction',
+  }
+  organisation.forEach((m, i) => {
+    const resp = m.responsableId
+    // Activités : la veille terminée, la journée en cours avec un report de la veille.
+    activite(m.id, hier, 'Point de situation avec l’équipe', 'FAITE', 30)
+    activite(m.id, hier, TRAVAUX[m.unite ?? 'DG'] ?? 'Traiter les demandes en attente', 'FAITE', 150)
+    activite(m.id, hier, 'Classer les comptes rendus de la semaine', 'REPORTEE', null, { reporteeAu: jour })
+    activite(m.id, jour, 'Point de situation avec l’équipe', i % 3 === 2 ? 'A_FAIRE' : 'FAITE', i % 3 === 2 ? null : 30)
+    activite(m.id, jour, TRAVAUX[m.unite ?? 'DG'] ?? 'Traiter les demandes en attente', 'EN_COURS', 90, { description: 'Suite des travaux de la veille.' })
+    activite(m.id, jour, 'Classer les comptes rendus de la semaine', 'A_FAIRE', null)
+    if (i % 2 === 0) activite(m.id, jour, 'Répondre aux courriels en attente', 'A_FAIRE', null)
+    activite(m.id, demain, 'Préparer la revue hebdomadaire', 'A_FAIRE', null)
+    // Tâches : une confiée par le responsable, une issue d'un autre service (en retard), une terminée.
+    tache(m.id, resp ?? m.id, 'Mettre à jour la fiche de procédure du service', 'OUVERTE', ajouterJours(jour, 3), { description: 'Intégrer les changements de la note de service de septembre.' })
+    if (i % 2 === 0) {
+      tache(m.id, resp ?? m.id, 'Compléter les preuves de l’opération OP-E05 de LIA-2026-030', 'EN_COURS', hier, {
+        priorite: 'HAUTE', origine: { type: 'OPERATION', reference: 'LIA-2026-030:OP-E05', service: 'homologation', lien: '/des/parcours/LIA-2026-030' },
+      })
+    }
+    tache(m.id, m.id, 'Archiver les pièces du dossier LIA-2026-019', 'TERMINEE', ajouterJours(jour, -1), { priorite: 'BASSE' })
+    // Rapports : celui d'avant-hier visé, celui d'hier soumis, l'hebdomadaire précédent visé.
+    if (resp) {
+      const r = personne(resp)
+      const base = (type: TypeRapport, periode: string, etat: Rapport['etat'], o: Partial<EtatRapport> = {}): EtatRapport => ({
+        id: id('RAP'), type, periode, mode: 'PREREMPLI', contenu: `# Rapport du ${periode}\n\n## Réalisé\n- Point de situation avec l’équipe (30 min)\n- ${TRAVAUX[m.unite ?? 'DG'] ?? 'Travaux du service'} (2 h 30)\n\n## Reporté\n- Classer les comptes rendus de la semaine`,
+        document: null, etat, auteur: personne(m.id), destinataire: r, soumisLe: `${periode.includes('W') ? lundiDeSemaine(periode) : periode}T18:00:00+01:00`,
+        viseLe: etat === 'VISE' ? `${jour}T08:15:00+01:00` : null, visa: etat === 'VISE' ? { par: r, commentaire: 'Merci pour ce suivi précis.' } : null,
+        indicateurs: { activitesFaites: 2, activitesPrevues: 3, minutes: 180, tachesTerminees: 1 }, ...o,
+      })
+      rapports.push(base('QUOTIDIEN', avantHier, 'VISE'))
+      rapports.push(base('QUOTIDIEN', hier, 'SOUMIS'))
+      rapports.push(base('HEBDOMADAIRE', semaineIso(ajouterJours(jour, -7)), 'VISE'))
+      // Rapport du jour d'un membre sur trois déjà soumis, un autre en brouillon.
+      if (m.id !== utilisateur.id && i % 3 === 0) rapports.push(base('QUOTIDIEN', jour, 'SOUMIS', { soumisLe: maintenant() }))
+      if (m.id !== utilisateur.id && i % 3 === 1) rapports.push(base('QUOTIDIEN', jour, 'BROUILLON', { soumisLe: null, destinataire: null }))
+    }
+  })
+  // Rapport déposé en document (D-74) : le pôle réseau, soumis au chef de service.
+  const parDocument = rapports.find((r) => r.auteur.id === 'u-res' && r.periode === hier)
+  if (parDocument) {
+    const blob = pdfDemo(['Rapport d’activité du pôle réseau', `Journée du ${hier}`, '', 'VPN du participant configuré et testé.', 'Supervision des liens : aucun incident.'])
+    Object.assign(parDocument, { mode: 'DOCUMENT', contenu: 'Rapport joint, signé par le chef de pôle.', document: { ticket: id('DOC'), nom: `rapport-pole-reseau-${hier}.pdf`, typeMime: 'application/pdf', taille: blob.size }, documentBlob: blob })
+  }
+  // Agenda : revue hebdomadaire de chaque responsable, absences, formation, invitation en attente.
+  organisation.filter((m) => organisation.some((x) => x.responsableId === m.id)).forEach((chef) => {
+    const equipe = organisation.filter((x) => x.responsableId === chef.id)
+    const lundi = lundiDe(jour)
+    evenement(chef.id, `Revue hebdomadaire : ${unites.find((u) => u.code === chef.unite)?.libelle ?? chef.nomAffiche}`, 'REUNION', instant(lundi, '09:00'), instant(lundi, '10:00'), equipe.map((x, i) => [x.id, i === 0 ? 'EN_ATTENTE' : 'ACCEPTE']), { lieu: 'Salle 2', description: 'Avancement, priorités et points de blocage.' })
+  })
+  organisation.forEach((m, i) => {
+    evenement(m.id, i % 2 ? 'Point téléphonique avec le correspondant' : 'Préparation du comité de pilotage', 'ACTIVITE', instant(jour, '11:00'), instant(jour, '12:00'))
+    if (i % 4 === 1) evenement(m.id, 'Déplacement à la BEAC', 'DEPLACEMENT', instant(demain, '08:00'), instant(demain, '13:00'), [], { lieu: 'Yaoundé' })
+  })
+  evenement('u-sys', 'Congé annuel', 'ABSENCE', instant(jour, '00:00'), instant(ajouterJours(jour, 2), '00:00'), [], { journeeEntiere: true })
+  evenement('u-rssi', 'Formation à la sécurité des systèmes d’information', 'FORMATION', instant(ajouterJours(jour, 2), '14:00'), instant(ajouterJours(jour, 2), '17:00'),
+    organisation.filter((m) => m.id !== 'u-rssi').slice(0, 8).map((m) => [m.id, 'ACCEPTE']), { lieu: 'Salle de formation' })
+  const hote = responsableDe(moi.id) ?? organisation.find((m) => m.id !== moi.id)!.id
+  evenement(hote, 'Comité de pilotage des liaisons', 'REUNION', instant(demain, '15:00'), instant(demain, '16:30'), [[moi.id, 'EN_ATTENTE']], { lieu: 'Salle du conseil', description: 'Arbitrages du trimestre.' })
+
+  // ---------------------------------------------------------------- règles imitées
+  const ouverte = (t: Tache) => t.etat !== 'TERMINEE' && t.etat !== 'ANNULEE'
+  const vueTache = (t: EtatTacheSim): Tache => ({ ...t, enRetard: ouverte(t) && !!t.echeance && t.echeance < aujourdhui() })
+  const trouverTache = (tid: string) => {
+    const t = taches.find((x) => x.id === tid)
+    if (!t || (t.responsable.id !== moi.id && t.createur.id !== moi.id && !dansEquipe(t.responsable.id))) throw refus(404, 'PIL_TACHE_INTROUVABLE', 'Tâche introuvable.')
+    return t
+  }
+  const vueEvenement = (e: EtatEvenement, collaborateur?: string): Evenement => {
+    if (e.proprietaire.id === moi.id) return { ...e, moi: 'PROPRIETAIRE' }
+    if (e.participants.some((p) => p.id === moi.id)) return { ...e, moi: 'PARTICIPANT' }
+    // Agenda d'un membre de l'équipe : catégorie, titre et horaires seulement.
+    return { ...e, description: null, lieu: null, participants: [], moi: collaborateur ? 'EQUIPE' : 'PARTICIPANT' }
+  }
+  const concerne = (e: EtatEvenement, qui: string) => e.proprietaire.id === qui || e.participants.some((p) => p.id === qui)
+  const chevauche = (e: EtatEvenement, du: string, au: string) => jourDe(e.debut) <= au && jourDe(new Date(new Date(e.fin).getTime() - 1)) >= du
+  const valider = (e: EntreeEvenement) => {
+    if (!e.titre.trim() || !(new Date(e.fin).getTime() > new Date(e.debut).getTime())) throw refus(400, 'PIL_REQUETE_INVALIDE', 'Titre et horaires obligatoires, la fin après le début.')
+    if (e.participants.length > 50) throw refus(422, 'PIL_PARTICIPANT_INVALIDE', 'Cinquante participants au plus.')
+  }
+  const sienEvenement = (eid: string) => {
+    const e = evenements.find((x) => x.id === eid)
+    if (!e || !concerne(e, moi.id)) throw refus(404, 'PIL_EVENEMENT_INTROUVABLE', 'Événement introuvable.')
+    if (e.proprietaire.id !== moi.id) throw refus(403, 'PIL_ACTION_RESERVEE', 'Seul le propriétaire modifie cet événement.')
+    return e
+  }
+  const sienne = (aid: string) => {
+    const a = activites.find((x) => x.id === aid)
+    if (!a || a.auteur.id !== moi.id) throw refus(404, 'PIL_ACTIVITE_INTROUVABLE', 'Activité introuvable.')
+    return a
+  }
+  const trier = (l: Activite[]) => [...l].sort((a, b) => a.jour.localeCompare(b.jour) || a.ordre - b.ordre)
+  const minutesDuJour = (qui: string, du: string, au: string) => activites.filter((a) => a.auteur.id === qui && a.jour >= du && a.jour <= au)
+  const bornes = (type: TypeRapport, periode: string): [string, string] => (type === 'QUOTIDIEN' ? [periode, periode] : [lundiDeSemaine(periode), ajouterJours(lundiDeSemaine(periode), 6)])
+  const indicateurs = (qui: string, type: TypeRapport, periode: string): Rapport['indicateurs'] => {
+    const [du, au] = bornes(type, periode)
+    const l = minutesDuJour(qui, du, au)
+    return {
+      activitesFaites: l.filter((a) => a.statut === 'FAITE').length, activitesPrevues: l.filter((a) => a.statut !== 'ANNULEE').length,
+      minutes: l.reduce((s, a) => s + (a.dureeMinutes ?? 0), 0),
+      tachesTerminees: taches.filter((t) => t.responsable.id === qui && t.termineeLe && jourDe(t.termineeLe) >= du && jourDe(t.termineeLe) <= au).length,
+    }
+  }
+  const duree = (m: number | null) => (!m ? '' : m < 60 ? ` (${m} min)` : ` (${Math.floor(m / 60)} h${m % 60 ? ` ${String(m % 60).padStart(2, '0')}` : ''})`)
+  const rubriques = (du: string, au: string) => {
+    const l = trier(minutesDuJour(moi.id, du, au))
+    const liste = (x: string[]) => (x.length ? x.map((s) => `- ${s}`).join('\n') : '- Néant')
+    const terminees = taches.filter((t) => t.responsable.id === moi.id && t.termineeLe && jourDe(t.termineeLe) >= du && jourDe(t.termineeLe) <= au)
+    return [
+      `## Réalisé\n${liste(l.filter((a) => a.statut === 'FAITE').map((a) => `${a.titre}${duree(a.dureeMinutes)}`))}`,
+      `## En cours\n${liste(l.filter((a) => a.statut === 'EN_COURS').map((a) => a.titre))}`,
+      `## Reporté\n${liste(l.filter((a) => a.statut === 'REPORTEE').map((a) => `${a.titre}${a.reporteeAu ? ` (au ${a.reporteeAu})` : ''}`))}`,
+      `## Tâches terminées\n${liste(terminees.map((t) => t.titre))}`,
+    ]
+  }
+  const preremplissage = (type: TypeRapport, periode: string) => {
+    if (type === 'QUOTIDIEN') {
+      const suivant = jourOuvreSuivant(periode)
+      const prevu = trier(minutesDuJour(moi.id, suivant, suivant)).map((a) => `- ${a.titre}`)
+      return [`# Rapport quotidien du ${periode}`, ...rubriques(periode, periode), `## Prévu demain\n${prevu.length ? prevu.join('\n') : '- Néant'}`].join('\n\n')
+    }
+    const [du] = bornes(type, periode)
+    const jours = Array.from({ length: 5 }, (_, i) => ajouterJours(du, i))
+    const total = minutesDuJour(moi.id, du, ajouterJours(du, 6)).reduce((s, a) => s + (a.dureeMinutes ?? 0), 0)
+    return [`# Rapport hebdomadaire de la semaine ${periode}`, ...jours.map((j) => `### ${j}\n\n${rubriques(j, j).join('\n\n')}`), `## Total des heures\n- ${Math.floor(total / 60)} h ${String(total % 60).padStart(2, '0')}`].join('\n\n')
+  }
+  const futur = (type: TypeRapport, periode: string) => (type === 'QUOTIDIEN' ? periode > aujourdhui() : periode > semaineIso(aujourdhui()))
+  const trouverRapport = (rid: string) => {
+    const r = rapports.find((x) => x.id === rid)
+    const auteur = r?.auteur.id === moi.id
+    const lecteur = r && r.etat !== 'BROUILLON' && (r.destinataire?.id === moi.id || dansEquipe(r.auteur.id))
+    if (!r || (!auteur && !lecteur)) throw refus(404, 'PIL_RAPPORT_INTROUVABLE', 'Rapport introuvable.')
+    return r
+  }
+  const vueRapport = (r: EtatRapport): Rapport => {
+    const { documentBlob: _b, ...v } = r
+    return { ...v, indicateurs: r.auteur.id === moi.id ? indicateurs(moi.id, r.type, r.periode) : r.indicateurs }
+  }
+  const brouillon = (rid: string) => {
+    const r = trouverRapport(rid)
+    if (r.auteur.id !== moi.id || r.etat !== 'BROUILLON') throw refus(409, 'PIL_RAPPORT_NON_MODIFIABLE', 'Seul un brouillon de l’auteur se modifie.')
+    return r
+  }
+  const rapportDuJour = (qui: string, j: string): EtatRapportDuJour => rapports.find((r) => r.auteur.id === qui && r.type === 'QUOTIDIEN' && r.periode === j)?.etat ?? 'ABSENT'
+  const documents = new Map<string, { blob: Blob; nom: string; typeMime: string; taille: number }>()
+  const page = <T>(l: T[], p = 0, taille = 20) => ({ contenu: l.slice(p * taille, (p + 1) * taille), total: l.length })
+
+  return {
+    agenda: (du, au, collaborateur) => attendre(() => {
+      const qui = lisible(collaborateur)
+      return evenements.filter((e) => concerne(e, qui) && chevauche(e, du, au)).sort((a, b) => a.debut.localeCompare(b.debut)).map((e) => vueEvenement(e, qui !== moi.id ? qui : undefined))
+    }),
+    creerEvenement: (x) => attendre(() => {
+      valider(x)
+      const e = evenement(moi.id, x.titre.trim(), x.categorie, x.debut, x.fin, [...new Set(x.participants)].filter((p) => p !== moi.id).map((p) => [p, 'EN_ATTENTE']), {
+        description: x.description?.trim() || null, lieu: x.lieu?.trim() || null, journeeEntiere: x.journeeEntiere,
+      })
+      return vueEvenement(e)
+    }),
+    modifierEvenement: (eid, x) => attendre(() => {
+      valider(x)
+      const e = sienEvenement(eid)
+      const participants = [...new Set(x.participants)].filter((p) => p !== moi.id).map((p) => e.participants.find((q) => q.id === p) ?? { ...personne(p), reponse: 'EN_ATTENTE' as const })
+      Object.assign(e, { titre: x.titre.trim(), description: x.description?.trim() || null, lieu: x.lieu?.trim() || null, debut: x.debut, fin: x.fin, journeeEntiere: x.journeeEntiere, categorie: x.categorie, participants })
+      return vueEvenement(e)
+    }),
+    supprimerEvenement: (eid) => attendre(() => {
+      const e = sienEvenement(eid)
+      evenements.splice(evenements.indexOf(e), 1)
+    }),
+    repondre: (eid, reponse) => attendre(() => {
+      const e = evenements.find((x) => x.id === eid)
+      const p = e?.participants.find((x) => x.id === moi.id)
+      if (!e || !p) throw refus(404, 'PIL_EVENEMENT_INTROUVABLE', 'Vous n’êtes pas invité à cet événement.')
+      p.reponse = reponse
+      return vueEvenement(e)
+    }),
+
+    activites: (du, au, collaborateur) => attendre(() => trier(minutesDuJour(lisible(collaborateur), du, au))),
+    creerActivite: (x) => attendre(() => {
+      if (!x.titre.trim()) throw refus(400, 'PIL_REQUETE_INVALIDE', 'Intitulé obligatoire.')
+      return activite(moi.id, x.jour, x.titre.trim(), 'A_FAIRE', x.dureeMinutes, { description: x.description?.trim() || null, tacheId: x.tacheId ?? null })
+    }),
+    modifierActivite: (aid, x) => attendre(() => {
+      const a = sienne(aid)
+      if (!x.titre.trim()) throw refus(400, 'PIL_REQUETE_INVALIDE', 'Intitulé obligatoire.')
+      if (x.dureeMinutes !== null && (x.dureeMinutes < 0 || x.dureeMinutes > 1440)) throw refus(400, 'PIL_REQUETE_INVALIDE', 'Durée de 0 à 1440 minutes.')
+      Object.assign(a, { jour: x.jour, titre: x.titre.trim(), description: x.description?.trim() || null, dureeMinutes: x.dureeMinutes, ordre: x.ordre ?? a.ordre, modifieeLe: maintenant() })
+      return a
+    }),
+    changerStatut: (aid, statut, reporteeAu) => attendre(() => {
+      const a = sienne(aid)
+      if (statut === 'REPORTEE') {
+        if (!reporteeAu || reporteeAu <= a.jour) throw refus(400, 'PIL_REQUETE_INVALIDE', 'Indiquez un jour postérieur.')
+        activite(moi.id, reporteeAu, a.titre, 'A_FAIRE', null, { description: a.description, tacheId: a.tacheId })
+      }
+      Object.assign(a, { statut, reporteeAu: statut === 'REPORTEE' ? reporteeAu : null, modifieeLe: maintenant() })
+      return a
+    }),
+    supprimerActivite: (aid) => attendre(() => {
+      activites.splice(activites.indexOf(sienne(aid)), 1)
+    }),
+
+    taches: (q) => attendre(() => {
+      const equipe = equipeDe(moi.id).map((x) => x.membre.id)
+      const l = taches
+        .filter((t) => (q.vue === 'moi' ? t.responsable.id === moi.id : q.vue === 'creees' ? t.createur.id === moi.id && t.responsable.id !== moi.id : equipe.includes(t.responsable.id)))
+        .filter((t) => !q.etat || t.etat === q.etat)
+        .map(vueTache)
+        .sort((a, b) => Number(!ouverte(a)) - Number(!ouverte(b)) || (a.echeance ?? '9999').localeCompare(b.echeance ?? '9999'))
+        .map(({ historique: _h, ...t }) => t)
+      return page(l, q.page, q.taille)
+    }),
+    tache: (tid) => attendre(() => vueTache(trouverTache(tid))),
+    creerTache: (x) => attendre(() => {
+      const responsable = x.responsableId ?? moi.id
+      if (responsable !== moi.id && !dansEquipe(responsable)) throw refus(403, 'PIL_HORS_EQUIPE', 'Ce compte n’est pas dans votre équipe.')
+      if (!x.titre.trim()) throw refus(400, 'PIL_REQUETE_INVALIDE', 'Intitulé obligatoire.')
+      const t = tache(responsable, moi.id, x.titre.trim(), 'OUVERTE', x.echeance, { description: x.description?.trim() || null, priorite: x.priorite, creeeLe: maintenant(), historique: [] })
+      t.historique.push({ quand: maintenant(), acteur: moi, action: 'CREEE', detail: responsable !== moi.id ? `Confiée à ${personne(responsable).nomAffiche}` : null })
+      return vueTache(t)
+    }),
+    modifierTache: (tid, x) => attendre(() => {
+      const t = trouverTache(tid)
+      if (t.createur.id !== moi.id && t.responsable.id !== moi.id) throw refus(403, 'PIL_ACTION_RESERVEE', 'Seuls le créateur et le responsable modifient la tâche.')
+      Object.assign(t, { titre: x.titre.trim(), description: x.description?.trim() || null, echeance: x.echeance, priorite: x.priorite })
+      t.historique.push({ quand: maintenant(), acteur: moi, action: 'MODIFIEE', detail: null })
+      if (x.responsableId && x.responsableId !== t.responsable.id) {
+        if (t.createur.id !== moi.id) throw refus(403, 'PIL_ACTION_RESERVEE', 'Seul le créateur réaffecte la tâche.')
+        if (x.responsableId !== moi.id && !dansEquipe(x.responsableId)) throw refus(403, 'PIL_HORS_EQUIPE', 'Ce compte n’est pas dans votre équipe.')
+        t.responsable = personne(x.responsableId)
+        t.historique.push({ quand: maintenant(), acteur: moi, action: 'REAFFECTEE', detail: `À ${t.responsable.nomAffiche}` })
+      }
+      return vueTache(t)
+    }),
+    transition: (tid, etat, motif) => attendre(() => {
+      const t = trouverTache(tid)
+      const autorise = t.responsable.id === moi.id || (etat === 'ANNULEE' && t.createur.id === moi.id)
+      if (!autorise || !TRANSITIONS_TACHE[t.etat].includes(etat)) throw refus(409, 'PIL_TRANSITION_INTERDITE', 'Transition non permise.')
+      if (motifExige(t.etat, etat) && !motif?.trim()) throw refus(422, 'PIL_MOTIF_OBLIGATOIRE', 'Motif obligatoire.')
+      t.historique.push({ quand: maintenant(), acteur: moi, action: 'TRANSITION', detail: `${t.etat} → ${etat}${motif?.trim() ? ` : ${motif.trim()}` : ''}` })
+      Object.assign(t, { etat, termineeLe: etat === 'TERMINEE' ? maintenant() : null })
+      return vueTache(t)
+    }),
+
+    rapports: (q) => attendre(() => {
+      const l = rapports
+        .filter((r) => (q.vue === 'moi' ? r.auteur.id === moi.id : r.auteur.id !== moi.id && r.etat !== 'BROUILLON' && (r.destinataire?.id === moi.id || dansEquipe(r.auteur.id))))
+        .filter((r) => (!q.type || r.type === q.type) && (!q.etat || r.etat === q.etat))
+        .sort((a, b) => (b.soumisLe ?? `${b.periode}~`).localeCompare(a.soumisLe ?? `${a.periode}~`) || b.periode.localeCompare(a.periode))
+        .map(vueRapport)
+      return page(l, q.page, q.taille)
+    }),
+    rapport: (rid) => attendre(() => vueRapport(trouverRapport(rid))),
+    preremplir: (type, periode) => attendre(() => {
+      if (futur(type, periode)) throw refus(422, 'PIL_PERIODE_FUTURE', 'La période n’est pas encore commencée.')
+      return { contenu: preremplissage(type, periode) }
+    }),
+    creerRapport: (x) => attendre(() => {
+      if (futur(x.type, x.periode)) throw refus(422, 'PIL_PERIODE_FUTURE', 'La période n’est pas encore commencée.')
+      if (rapports.some((r) => r.auteur.id === moi.id && r.type === x.type && r.periode === x.periode)) throw refus(409, 'PIL_RAPPORT_EXISTANT', 'Un rapport existe déjà pour cette période.')
+      const r: EtatRapport = {
+        id: id('RAP'), type: x.type, periode: x.periode, mode: x.mode, contenu: x.contenu?.trim() || null, document: null, etat: 'BROUILLON', auteur: moi, destinataire: null,
+        soumisLe: null, viseLe: null, visa: null, indicateurs: indicateurs(moi.id, x.type, x.periode),
+      }
+      rapports.push(r)
+      return vueRapport(r)
+    }),
+    modifierRapport: (rid, x) => attendre(() => {
+      const r = brouillon(rid)
+      const doc = x.document ? documents.get(x.document.ticket) : undefined
+      // Le service relit nom, type et taille du document auprès de MS-DOCUMENT : la demande ne porte que le ticket.
+      if (x.document && !doc) throw refus(422, 'PIL_DOCUMENT_INVALIDE', 'Document inconnu de MS-DOCUMENT.')
+      Object.assign(r, { mode: x.mode, contenu: x.contenu?.trim() || null, ...(x.document && doc ? { document: { ticket: x.document.ticket, nom: doc.nom, typeMime: doc.typeMime, taille: doc.taille }, documentBlob: doc.blob } : {}) })
+      return vueRapport(r)
+    }),
+    soumettre: (rid) => attendre(() => {
+      const r = brouillon(rid)
+      const resp = responsableDe(moi.id)
+      if (!resp) throw refus(422, 'PIL_SANS_RESPONSABLE', 'Aucun responsable (n+1) n’est désigné pour votre compte.')
+      if (!r.contenu && !r.document) throw refus(422, 'PIL_RAPPORT_INCOMPLET', 'Le rapport n’a ni texte ni document.')
+      Object.assign(r, { etat: 'SOUMIS', destinataire: personne(resp), soumisLe: maintenant(), indicateurs: indicateurs(moi.id, r.type, r.periode) })
+      return vueRapport(r)
+    }),
+    viser: (rid, commentaire) => attendre(() => {
+      const r = trouverRapport(rid)
+      if (r.auteur.id === moi.id || r.etat !== 'SOUMIS') throw refus(409, 'PIL_TRANSITION_INTERDITE', 'Seul un rapport soumis se vise, par son destinataire.')
+      Object.assign(r, { etat: 'VISE', viseLe: maintenant(), visa: { par: moi, commentaire: commentaire.trim() || null } })
+      return vueRapport(r)
+    }),
+    // Le contenu n'est pas copié (un Blob ne se clone pas) : contrôle d'accès simulé, puis le document tel quel.
+    documentRapport: (rid) => attendre(() => {
+      const r = trouverRapport(rid)
+      if (!r.documentBlob) throw refus(404, 'PIL_DOCUMENT_INTROUVABLE', 'Aucun document joint.')
+      return rid
+    }).then((ok) => ({ blob: rapports.find((r) => r.id === ok)!.documentBlob!, empreinte: null })),
+    // Dépôt fragmenté simulé (D-74) : progression en dix étapes, vérification, ticket.
+    deposerDocument: async (fichier: File, _rapportId: string, o: OptionsTeleversement = {}): Promise<Televersement> => {
+      if (/carte|pan/i.test(fichier.name)) throw refus(422, 'DOC_UPLOAD_REJECTED', 'Le document contient un numéro de carte non masqué.')
+      const pause = (ms: number) => new Promise<void>((ok, ko) => {
+        const t = window.setTimeout(ok, ms)
+        o.signal?.addEventListener('abort', () => {
+          window.clearTimeout(t)
+          ko(new DOMException('Envoi annulé', 'AbortError'))
+        })
+      })
+      const total = fichier.size
+      for (let i = 0; i <= 10; i++) {
+        o.surProgression?.({ phase: 'envoi', envoye: Math.round((total * i) / 10), total })
+        if (i < 10) await pause(DUREE_ETAPE_DOCUMENT_MS)
+      }
+      o.surProgression?.({ phase: 'verification', envoye: total, total })
+      await pause(DUREE_ETAPE_DOCUMENT_MS)
+      const ticket = id('DOC')
+      documents.set(ticket, { blob: fichier, nom: fichier.name, typeMime: fichier.type || 'application/octet-stream', taille: total })
+      o.surProgression?.({ phase: 'pret', envoye: total, total })
+      return { documentId: ticket, sha256: `sim${total.toString(16).padStart(8, '0')}`, dedoublonne: false, depotId: id('DEPOT') }
+    },
+
+    equipe: (j) => attendre(() => equipeDe(moi.id).map(({ membre, niveau }): MembreEquipe => {
+      const l = activites.filter((a) => a.auteur.id === membre.id && a.jour === j)
+      const ts = taches.filter((t) => t.responsable.id === membre.id).map(vueTache).filter(ouverte)
+      return {
+        collaborateur: { id: membre.id, nomAffiche: membre.nomAffiche, fonction: membre.fonction, unite: membre.unite, niveau },
+        activites: { prevues: l.filter((a) => a.statut !== 'ANNULEE' && a.statut !== 'REPORTEE').length, faites: l.filter((a) => a.statut === 'FAITE').length, enCours: l.filter((a) => a.statut === 'EN_COURS').length },
+        rapportDuJour: rapportDuJour(membre.id, j),
+        tachesOuvertes: ts.length,
+        tachesEnRetard: ts.filter((t) => t.enRetard).length,
+        absent: evenements.some((e) => e.categorie === 'ABSENCE' && e.proprietaire.id === membre.id && chevauche(e, j, j)),
+      }
+    })),
+    synthese: (j) => attendre(() => {
+      const l = activites.filter((a) => a.auteur.id === moi.id && a.jour === j)
+      const ts = taches.filter((t) => t.responsable.id === moi.id).map(vueTache).filter(ouverte)
+      const limite = ajouterJours(j, 3)
+      const prochains = evenements.filter((e) => concerne(e, moi.id) && new Date(e.fin).getTime() > Date.now()).sort((a, b) => a.debut.localeCompare(b.debut)).slice(0, 5).map((e) => vueEvenement(e))
+      return {
+        activites: { prevues: l.filter((a) => a.statut !== 'ANNULEE' && a.statut !== 'REPORTEE').length, faites: l.filter((a) => a.statut === 'FAITE').length, enCours: l.filter((a) => a.statut === 'EN_COURS').length },
+        evenements: prochains,
+        taches: { ouvertes: ts.length, enRetard: ts.filter((t) => t.enRetard).length, echeanceProche: ts.filter((t) => !t.enRetard && t.echeance && t.echeance <= limite).length },
+        rapportDuJour: rapportDuJour(moi.id, j),
+        rapportsARecevoir: rapports.filter((r) => r.destinataire?.id === moi.id && r.etat === 'SOUMIS').length,
+      }
+    }),
+
+    unites: () => attendre(() => unites),
+    organisation: () => attendre(() => rattachementDemo(moi.id, moi.nomAffiche)),
+  }
+}

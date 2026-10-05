@@ -5,8 +5,8 @@ import type { Page, Route } from '@playwright/test'
 // Le flux SSE /api/plateforme/flux renvoie une impulsion puis se ferme : le client se reconnecte.
 
 const IAM = ['ACCOUNT_READ', 'ACCOUNT_CREATE', 'ACCOUNT_EDIT', 'ACCOUNT_ROLES', 'ACCOUNT_STATUS', 'ACCOUNT_DELETE', 'ACCOUNT_SECURITY', 'JOURNAL_READ', 'PROFILE_EDIT'].map((p) => `IAM_${p}`)
-// Messagerie instantanée (D-64) : tout membre interne, dont le RSSI et le super administrateur.
-const MESSAGERIE = ['COL_MESSAGE_READ', 'COL_MESSAGE_SEND']
+// Messagerie instantanée (D-64) et notifications de la plateforme (D-80) : tout membre interne, dont le RSSI et le super administrateur.
+const MESSAGERIE = ['COL_MESSAGE_READ', 'COL_MESSAGE_SEND', 'NOT_INBOX_READ']
 export const PERMISSIONS_RSSI = [...IAM, ...MESSAGERIE, 'PLATFORM_SUPERVISION_READ', 'PLATFORM_CONFIG_READ', 'PLATFORM_SECURITY_POLICY_READ', 'PLATFORM_MESSAGING_EDIT']
 export const PERMISSIONS_SUPER_ADMIN = [...IAM, ...MESSAGERIE, 'IAM_ROLE_PRIVILEGED_GRANT', 'PLATFORM_SUPERVISION_READ', 'PLATFORM_CONFIG_READ', 'PLATFORM_CONFIG_EDIT',
   'PLATFORM_SECURITY_POLICY_READ', 'PLATFORM_SECURITY_POLICY_EDIT', 'PLATFORM_MESSAGING_EDIT']
@@ -34,6 +34,12 @@ const instantaneDegrade = () => {
   return { ...i, services: [...i.services, service('audit', 'INJOIGNABLE'), service('document', 'INCONNU')], keycloak: service('keycloak', 'DOWN') }
 }
 
+/** Notification servie par MS-NOTIFICATION (D-80, docs/lot1/notifications.md §2). */
+type NotificationE2E = {
+  id: string; type: string; titre: string; sousTitre: string | null; lien: string; reference: { service: string; type: string; id: string }
+  acteur: { id: string; nomAffiche: string } | null; nombre: number; creeLe: string; misAJourLe: string; lueLe: string | null
+}
+
 export type OptionsPasserelle = {
   /** Session de la passerelle ; null : aucune session (401). */
   session?: { permissions: string[]; doubleFacteur?: boolean; sujet?: string } | null
@@ -50,6 +56,10 @@ export type OptionsPasserelle = {
   moiIncomplet?: boolean
   /** La passerelle a fermé la session (inactivité) : tout appel /bff répond 401 CNX_SESSION_EXPIREE. */
   sessionExpiree?: boolean
+  /** Exploitation de l'infrastructure (D-78) : orchestrateur annoncé par X-Orchestrateur (DOCKER par défaut). */
+  orchestrateur?: 'DOCKER' | 'KUBERNETES' | 'AUCUN'
+  /** Refus des gestes d'exploitation par ce code (409), après la clé de sécurité. */
+  refusGeste?: string
 }
 
 /** Connexion sur la plateforme (D-65) : mot de passe provisoire, puis mot de passe définitif et code accepté. */
@@ -66,6 +76,14 @@ export class Passerelle {
     compte('u-sna', 'r.biyong', 'Rachel', 'Biyong Mengue', ['ROLE_SNA'], { secondFacteur: false }),
   ]
   cles = [{ id: 'k-1', nom: 'YubiKey (bureau)', creeeLe: il(100), derniereUtilisation: il(2) }]
+  /** Catalogue des unités organisationnelles de MS-IAM (D-76) et refus du premier rattachement (ORG_CYCLE). */
+  unites = [
+    { code: 'DG', libelle: 'Direction Générale', type: 'DIRECTION', parent: null, active: true },
+    { code: 'DES', libelle: 'Département Exploitation et Supervision', type: 'DEPARTEMENT', parent: 'DG', active: true },
+    { code: 'SNA', libelle: 'Service Normes et Agréments', type: 'SERVICE', parent: 'DES', active: true },
+    { code: 'SSI', libelle: 'Sécurité des systèmes d’information', type: 'SERVICE', parent: 'DG', active: true },
+  ]
+  rattachementsRefuses = 0
   moi: Record<string, unknown>
   o: OptionsPasserelle
 
@@ -96,6 +114,15 @@ export class Passerelle {
   private etapes() {
     const m = this.moi as { profilComplet: boolean }
     return [...this.restantes, ...(m.profilComplet ? [] : ['FICHE'])]
+  }
+
+  /** Vue de la session (GET /api/session, et réponse CONNECTE de la connexion) ; session ouverte supposée. */
+  private vueSession() {
+    const session = this.o.session!
+    const rssi = !session.permissions.includes('IAM_ROLE_PRIVILEGED_GRANT')
+    return { sujet: session.sujet ?? 'u-super-admin', nom: rssi ? 'Carine Ebongue Ndjock' : 'Serge Mouelle Kombi', identifiant: rssi ? 'rssi' : 'super.admin', roles: [rssi ? 'ROLE_RSSI' : 'ROLE_SUPER_ADMIN', 'ROLE_USER'], permissions: session.permissions,
+      institutionId: '', acr: session.doubleFacteur === false || this.o.premierAcces ? '1' : '2', doubleFacteur: session.doubleFacteur !== false && !this.o.premierAcces,
+      ...(this.o.premierAcces ? { restreinte: true } : {}), expireA: new Date(Date.now() + 30 * 60_000).toISOString() }
   }
 
   async brancher(page: Page) {
@@ -148,7 +175,8 @@ export class Passerelle {
       if (corps.code !== CONNEXION_E2E.code) return refus(401, 'CNX_IDENTIFIANTS_INVALIDES', 'Identifiants invalides')
       this.o.premierAcces = false
       this.o.session = { permissions: PERMISSIONS_SUPER_ADMIN }
-      return json({ etat: 'CONNECTE', session: {} })
+      // Comme la passerelle (ConnexionResource) : la vue de session complète, permissions comprises (aiguillage, D-79).
+      return json({ etat: 'CONNECTE', session: this.vueSession() })
     }
     if (chemin === '/api/connexion/mot-de-passe-oublie') return route.fulfill({ status: 202 })
     if (chemin === '/api/connexion/nouveau-mot-de-passe') {
@@ -193,10 +221,7 @@ export class Passerelle {
     if (chemin === '/api/session') {
       if (this.o.sessionIndisponible) return refus(503, 'HTTP_503', 'Passerelle indisponible')
       if (!this.o.session) return refus(401, 'HTTP_401', 'Non authentifié')
-      const rssi = !this.o.session.permissions.includes('IAM_ROLE_PRIVILEGED_GRANT')
-      return json({ sujet: this.o.session.sujet ?? 'u-super-admin', nom: rssi ? 'Carine Ebongue Ndjock' : 'Serge Mouelle Kombi', identifiant: rssi ? 'rssi' : 'super.admin', roles: [rssi ? 'ROLE_RSSI' : 'ROLE_SUPER_ADMIN', 'ROLE_USER'], permissions: this.o.session.permissions,
-        institutionId: '', acr: this.o.session.doubleFacteur === false || this.o.premierAcces ? '1' : '2', doubleFacteur: this.o.session.doubleFacteur !== false && !this.o.premierAcces,
-        ...(this.o.premierAcces ? { restreinte: true } : {}), expireA: new Date(Date.now() + 30 * 60_000).toISOString() })
+      return json(this.vueSession())
     }
     if (chemin === '/api/logout') return json({ logoutUrl: '/connexion' })
 
@@ -248,6 +273,18 @@ export class Passerelle {
     if (chemin === '/bff/console/iam/reauthentification/defi') {
       if (this.o.sansCle) return refus(409, 'IAM_NO_SECURITY_KEY', 'Aucune clé de sécurité enrôlée')
       return json({ challengeId: 'defi-1', challenge: 'AQIDBA', rpId: 'localhost', allowCredentials: ['AQ'], timeoutMs: 60000 })
+    }
+
+    // ------------------------------------------------ Organisation (D-76, docs/lot1/mon-activite.md §1.3)
+    const O = '/bff/console/iam/organisation/unites'
+    if (chemin === O && methode === 'GET') return json(this.unites)
+    const rattachement = chemin.match(/^\/bff\/console\/iam\/comptes\/([^/]+)\/rattachement$/)
+    if (rattachement && methode === 'PUT') {
+      const c = this.comptes.find((x) => x.id === decodeURIComponent(rattachement[1]))
+      if (!c) return refus(404, 'IAM_ACCOUNT_NOT_FOUND', 'Ressource introuvable')
+      // Premier essai refusé : le titulaire figurerait dans la chaîne de ses propres responsables.
+      if (this.rattachementsRefuses++ === 0) return refus(409, 'ORG_CYCLE', 'Le titulaire figure dans la chaîne de ses propres responsables', { responsableId: corps.responsableId })
+      return json(Object.assign(c, { unite: corps.unite, responsableId: corps.responsableId }))
     }
 
     // ------------------------------------------------ Comptes (/bff/console/iam/comptes)
@@ -351,15 +388,49 @@ export class Passerelle {
     if (chemin.startsWith('/api/plateforme/journalisation/') && methode === 'POST') {
       return json({ service: 'iam', logger: corps.logger, niveau: corps.niveau, motif: corps.motif, auteur: 'super.admin', horodatage: il(0) })
     }
+    // ------------------------------------------------ Infrastructure (D-78, /api/plateforme/infrastructure)
+    const INF = '/api/plateforme/infrastructure'
+    if (chemin === `${INF}/charges`) {
+      const orchestrateur = this.o.orchestrateur ?? 'DOCKER'
+      const charge = (nom: string, etat: string, gestes: string[], o: Record<string, unknown> = {}) => ({
+        nom, orchestrateur, etat, sante: etat === 'EN_COURS' ? 'SAINE' : 'DEGRADEE', repliques: { voulues: 1, pretes: etat === 'EN_COURS' ? 1 : 0 }, redemarrages: 2, image: `${nom}:1.0`,
+        demarreeLe: il(5), protegee: false, gestes, ...o,
+      })
+      const charges = orchestrateur === 'AUCUN' ? [] : [charge('gateway', 'EN_COURS', ['REDEMARRER'], { protegee: true }), charge('iam', 'EN_COURS', ['REDEMARRER', 'ARRETER']), charge('pilotage', 'EN_ERREUR', ['REDEMARRER', 'DEMARRER'])]
+      return route.fulfill({ status: 200, json: charges, headers: { 'X-Orchestrateur': orchestrateur } })
+    }
+    if (/^\/api\/plateforme\/infrastructure\/charges\/[^/]+\/journaux$/.test(chemin)) {
+      return json({ charge: 'iam', lignes: [{ quand: il(0), flux: 'stdout', texte: 'Démarrage du service' }, { quand: il(0), flux: 'stderr', texte: 'Jeton Bearer **** renouvelé' }], tronque: false })
+    }
+    if (chemin === `${INF}/operations`) {
+      return json({ contenu: [{ id: 'op-1', charge: 'iam', geste: 'REDEMARRER', motif: 'Configuration SMTP', acteur: { id: 'u-1', nomAffiche: 'Admin système' }, avant: 'EN_COURS', apres: 'EN_COURS',
+        resultat: 'REUSSIE', erreur: null, demandeeLe: il(1), termineeLe: il(1) }], total: 1, page: Number(url.searchParams.get('page') ?? 0), taille: Number(url.searchParams.get('taille') ?? 20) })
+    }
+    if (/^\/api\/plateforme\/infrastructure\/charges\/[^/]+\/(redemarrage|arret|demarrage|repliques)$/.test(chemin)) {
+      if (!req.headers()['x-reauth-assertion']) return refus(401, 'REAUTH_REQUIRED', 'Confirmation par la clé de sécurité exigée.')
+      if (this.o.refusGeste) return refus(409, this.o.refusGeste, 'Refus')
+      return json({ id: 'op-2', charge: chemin.split('/')[5], geste: 'REDEMARRER', motif: corps.motif, acteur: { id: 'u-1', nomAffiche: 'Admin système' }, avant: 'EN_COURS', apres: null,
+        resultat: 'EN_COURS', erreur: null, demandeeLe: il(0), termineeLe: null }, 202)
+    }
     if (chemin === '/api/plateforme/flux') {
       this.fluxOuverts++
       const impulsion = { sequence: this.fluxOuverts, instantane: this.o.degradee ? instantaneDegrade() : instantane('OPERATIONNELLE'), nombreAlertes: this.o.degradee ? -1 : 0 }
-      return route.fulfill({ status: 200, headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' }, body: `id: ${this.fluxOuverts}\nevent: plateforme\ndata: ${JSON.stringify(impulsion)}\n\n` })
+      // Opération d'infrastructure poussée (D-78) quand l'exploitation est configurée.
+      const operation = this.o.orchestrateur && this.o.orchestrateur !== 'AUCUN'
+        ? `event: operation-infrastructure\ndata: ${JSON.stringify({ id: 'op-flux', charge: 'iam', geste: 'REDEMARRER', resultat: 'REUSSIE' })}\n\n` : ''
+      return route.fulfill({ status: 200, headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' }, body: `id: ${this.fluxOuverts}\nevent: plateforme\ndata: ${JSON.stringify(impulsion)}\n\n${operation}` })
     }
+    // ------------------------------------------------ Notifications de la plateforme (D-80), MS-NOTIFICATION
+    const N = '/bff/console/notification'
+    if (chemin.startsWith(`${N}/`)) return this.servirNotifications(chemin.slice(N.length), methode, url.searchParams, corps, json, refus, vide)
     // ------------------------------------------------ Messagerie instantanée depuis la console (D-64)
     const CM = '/bff/console/collaboration/messagerie'
     if (chemin === '/bff/console/live') {
-      return route.fulfill({ status: 200, headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' }, body: ': battement\n\n' })
+      this.liveOuverts++
+      // Événements notification.inapp-created.v1 en attente, remis au seul destinataire (sujet « notification »).
+      const evenements = this.evenementsNotification.splice(0).map((id) =>
+        `id: live-${id}-${this.liveOuverts}\ndata: ${JSON.stringify({ id: `live-${id}-${this.liveOuverts}`, type: 'notification.inapp-created.v1', subject: id, topic: 'notification' })}\n\n`).join('')
+      return route.fulfill({ status: 200, headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' }, body: `: battement\n\n${evenements}` })
     }
     if (chemin === '/bff/console/presence') return json({ enLigne: ['u-dg'], vusLe: {} })
     if (chemin === `${CM}/conversations/c-dg/saisie`) return vide()
@@ -405,6 +476,64 @@ export class Passerelle {
       return json(m, 201)
     }
     return refus(404, 'HTTP_404', `Route non simulée : ${methode} ${chemin}`)
+  }
+
+  /** Connexions au canal poussé de la console (/bff/console/live). */
+  liveOuverts = 0
+  /** Notifications de MS-NOTIFICATION (D-80, docs/lot1/notifications.md §2) : un message de la DG non lu, une tâche. */
+  notifications: NotificationE2E[] = [
+    { id: 'n-1', type: 'MESSAGE', titre: 'François Tchoumi Kamga', sousTitre: null, lien: '/des/messagerie?conversation=c-dg', reference: { service: 'collaboration', type: 'CONVERSATION', id: 'c-dg' },
+      acteur: { id: 'u-dg', nomAffiche: 'François Tchoumi Kamga' }, nombre: 1, creeLe: il(1), misAJourLe: il(1), lueLe: null },
+    { id: 'n-2', type: 'TACHE', titre: 'Tâche confiée par Carine Ebongue Ndjock', sousTitre: 'Échéance : 2026-10-09', lien: '/des/taches?tache=t-7', reference: { service: 'pilotage', type: 'TACHE', id: 't-7' },
+      acteur: { id: 'u-rssi', nomAffiche: 'Carine Ebongue Ndjock' }, nombre: 1, creeLe: il(3), misAJourLe: il(3), lueLe: null },
+  ]
+  preferencesNotifications = { systeme: true, son: false, types: { MESSAGE: true, TACHE: true, RAPPORT: true } }
+  /** Identifiants des notifications dont l'événement attend la prochaine connexion du canal poussé. */
+  evenementsNotification: string[] = []
+
+  /**
+   * Message reçu de la direction générale dans c-dg : la notification non lue de la conversation est regroupée
+   * (nombre incrémenté, remontée en tête), sinon une nouvelle est créée ; l'événement part par le canal poussé.
+   */
+  recevoirMessage(contenu: string) {
+    this.messages.push({ id: `m-${this.messages.length + 1}`, conversationId: 'c-dg', auteur: { id: 'u-dg', nom: 'François Tchoumi Kamga', fonction: 'Directeur général adjoint' }, moi: false, contenu, etiquettes: [], piecesJointes: [], envoyeLe: il(0) })
+    const le = new Date().toISOString()
+    const ouverte = this.notifications.find((n) => !n.lueLe && n.reference.id === 'c-dg')
+    if (ouverte) Object.assign(ouverte, { nombre: ouverte.nombre + 1, misAJourLe: le })
+    else this.notifications.push({ ...this.notifications[0], id: `n-${this.notifications.length + 1}`, nombre: 1, creeLe: le, misAJourLe: le, lueLe: null })
+    this.evenementsNotification.push((ouverte ?? this.notifications.at(-1)!).id)
+  }
+
+  private servirNotifications(c: string, methode: string, q: URLSearchParams, corps: { type?: string; reference?: { service: string; type: string; id: string } } | undefined,
+    json: (b: unknown, status?: number) => Promise<void>, refus: (status: number, code: string, message: string) => Promise<void>, vide: () => Promise<void>) {
+    const triees = () => [...this.notifications].sort((a, b) => b.misAJourLe.localeCompare(a.misAJourLe))
+    if (c === '/notifications' && methode === 'GET') {
+      const page = Number(q.get('page') ?? 0)
+      const taille = Number(q.get('taille') ?? 20)
+      const l = triees().filter((n) => q.get('etat') !== 'non-lues' || !n.lueLe)
+      return json({ contenu: l.slice(page * taille, (page + 1) * taille), total: l.length, page, taille })
+    }
+    if (c === '/notifications/compteur') return json({ nonLues: this.notifications.filter((n) => !n.lueLe).length })
+    const une = /^\/notifications\/([^/]+)\/lecture$/.exec(c)
+    if (une && methode === 'POST') {
+      const n = this.notifications.find((x) => x.id === une[1])
+      if (!n) return refus(404, 'NOT_NOTIFICATION_INTROUVABLE', 'Notification introuvable')
+      n.lueLe ??= new Date().toISOString()
+      return vide()
+    }
+    if (c === '/notifications/lecture' && methode === 'POST') {
+      const r = corps?.reference
+      this.notifications.filter((n) => !n.lueLe && (!corps?.type || n.type === corps.type) && (!r || (n.reference.service === r.service && n.reference.type === r.type && n.reference.id === r.id)))
+        .forEach((n) => (n.lueLe = new Date().toISOString()))
+      return vide()
+    }
+    if (c === '/preferences' && methode === 'GET') return json(this.preferencesNotifications)
+    if (c === '/preferences' && methode === 'PUT') {
+      const p = corps as Partial<typeof this.preferencesNotifications>
+      this.preferencesNotifications = { ...this.preferencesNotifications, ...p, types: { ...this.preferencesNotifications.types, ...p.types } }
+      return json(this.preferencesNotifications)
+    }
+    return refus(404, 'HTTP_404', `Route non simulée : ${methode} ${c}`)
   }
 
   /** Dépôt fragmenté en cours (D-74), parties reçues, tickets portés par les messages. */

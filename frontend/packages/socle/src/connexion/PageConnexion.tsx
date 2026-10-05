@@ -10,6 +10,9 @@ import { usePreferences } from '../enveloppe/usePreferences'
 import { Preferences } from '../enveloppe/Preferences'
 import { Cernes, Marque, NOM_PLATEFORME } from './Decor'
 import { navigation, retourSur } from '../session/deconnexion'
+import { adresseApplication, adresseConnexionApplication, applicationApresRefus, applicationDe } from '../session/aiguillage'
+import { reglageAiguillage } from '../session/Aiguillage'
+import { lireSessionDemo } from '../session/demo'
 import { useConnexion } from './contexte'
 import type { ServiceConnexion } from './modele'
 import { ListeViolations, RappelPolitique } from './MotDePasse'
@@ -70,14 +73,24 @@ function FormulaireConnexion({ service, couche, destination, erreurApplication }
   const [parametres] = useSearchParams()
   const message = useErreurConnexion()
   const [etape, setEtape] = useState<'IDENTIFIANTS' | 'CODE'>('IDENTIFIANTS')
-  const [identifiant, setIdentifiant] = useState('')
+  // Identifiant prérempli quand une autre application y conduit le compte (aiguillage, D-79).
+  const [identifiant, setIdentifiant] = useState(() => parametres.get('identifiant') ?? '')
   const [motDePasse, setMotDePasse] = useState('')
   const [code, setCode] = useState('')
   const [champs, setChamps] = useState<{ identifiant?: string; motDePasse?: string; code?: string }>({})
   const [erreur, setErreur] = useState<Erreur | null>(erreurApplication ? { texte: erreurApplication.message, correlationId: erreurApplication.correlationId } : null)
   const [enCours, setEnCours] = useState(false)
+  // Départ vers l'application du compte (D-79) : message bref, puis changement d'application.
+  const [aiguillage, setAiguillage] = useState<{ texte: string; adresse: string } | null>(null)
   const motif = parametres.get('motif')
+  const depuis = parametres.get('depuis')
   const minutes = Number(parametres.get('minutes')) || 30
+
+  useEffect(() => {
+    if (!aiguillage) return
+    const id = window.setTimeout(() => navigation.vers(aiguillage.adresse), reglageAiguillage.delaiMs)
+    return () => window.clearTimeout(id)
+  }, [aiguillage])
 
   const recommencer = () => {
     setEtape('IDENTIFIANTS')
@@ -110,8 +123,22 @@ function FormulaireConnexion({ service, couche, destination, erreurApplication }
       // CONNECTE, ou PREMIER_ACCES (session restreinte : l'assistant s'ouvre sur la page demandée).
       setMotDePasse('')
       setCode('')
+      // Compte connecté hors de son application (compte interne sans permission de console sur la console) :
+      // conduit vers son tableau de bord, la session de la passerelle étant commune aux trois applications.
+      const cible = r.etat === 'CONNECTE' ? applicationDe(r.session, couche) : couche
+      if (cible !== couche) {
+        setAiguillage({ texte: t(`aiguillage.${couche}.${cible}`, { defaultValue: t(`aiguillage.vers.${cible}`) }), adresse: adresseApplication(cible, undefined, lireSessionDemo()) })
+        return
+      }
       navigation.vers(destination)
     } catch (x) {
+      // Couche refusée par la passerelle : le compte relève d'une autre application, ouverte sur son écran de connexion.
+      if (estApiError(x) && x.code === 'CNX_COUCHE_REFUSEE') {
+        const cible = applicationApresRefus(couche)
+        setMotDePasse('')
+        setAiguillage({ texte: t(`aiguillage.refus.${cible}`), adresse: adresseConnexionApplication(cible, { identifiant, depuis: couche }) })
+        return
+      }
       setErreur(message(x, etape === 'CODE' ? 'connexion.erreur.code' : 'connexion.erreur'))
       if (etape === 'CODE') setCode('')
       else setMotDePasse('')
@@ -122,7 +149,15 @@ function FormulaireConnexion({ service, couche, destination, erreurApplication }
 
   return (
     <form className="gm-col gm-acces-formulaire" onSubmit={(e) => void soumettre(e)} noValidate aria-label={t('connexion.titre')}>
-      {motif && !erreur ? <InlineAlert level={motif === 'deconnexion' ? 'info' : 'warn'} title={t(`connexion.motif.${motif}`, { minutes, defaultValue: '' }) || undefined} /> : null}
+      {aiguillage ? (
+        <InlineAlert level="info" title={aiguillage.texte}>
+          <Link href={aiguillage.adresse}>{t('aiguillage.continuer')}</Link>
+        </InlineAlert>
+      ) : null}
+      {motif && !erreur && !aiguillage ? (
+        <InlineAlert level={motif === 'deconnexion' || motif === 'aiguillage' ? 'info' : 'warn'}
+          title={t(motif === 'aiguillage' && depuis ? `connexion.motif.aiguillage.${depuis}` : `connexion.motif.${motif}`, { minutes, defaultValue: '' }) || undefined} />
+      ) : null}
       <Alerte erreur={erreur} />
       {etape === 'IDENTIFIANTS' ? (
         <>

@@ -52,7 +52,8 @@ public class SecurityConfiguration {
                     .requestMatchers("/api/authenticate").permitAll()
                     .requestMatchers("/api/auth-info").permitAll()
                     .requestMatchers("/api/admin/**").hasAuthority(AuthoritiesConstants.ADMIN)
-                    // Routes internes (PI-GIMAC-01 §0.6) : jeton de service seulement ; aucune n'est encore exposée.
+                    // Routes internes (PI-GIMAC-01 §0.6, §0.7) : jeton de service portant INTERNAL_COLLABORATION_READ
+                    // (client notification-service, D-80) ; GET /api/v1/interne/conversations/{id}.
                     .requestMatchers("/api/v1/interne/**").hasAuthority("INTERNAL_COLLABORATION_READ")
                     // D-61, D-64 : messagerie et routes métier réservées aux jetons à deux facteurs (acr 2 ou 3) ;
                     // la permission COL_MESSAGE_* est vérifiée ensuite, route par route (@PreAuthorize).

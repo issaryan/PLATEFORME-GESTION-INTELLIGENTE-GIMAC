@@ -68,6 +68,14 @@ La variable `GIMAC_PASSERELLE` change l'adresse de la passerelle en développeme
 
 Exécutions parallèles sur un même poste : `GIMAC_E2E_PORT` (base des six ports de prévisualisation, 5200 par défaut), `GIMAC_E2E_SORTIE` (suffixe des dossiers `dist-e2e*` et `e2e/resultats*`), `GIMAC_E2E_NYC` (dossier de recueil de la couverture) ; `GIMAC_CAPTURES=<dossier>` enregistre les captures des scénarios de la coquille, des modales et de l'administration.
 
+Preuves de l'aiguillage et des tableaux de bord par permissions (D-79) : `e2e/specs/roles-redirections.spec.ts` connecte
+chaque profil interne et le correspondant sur chacune des trois applications, vérifie l'application d'arrivée, la barre
+latérale et les widgets du tableau de bord, et enregistre toujours une capture plein écran en clair et en sombre du
+tableau de bord d'arrivée : `e2e/captures/roles/<profil>-<application de connexion>-<clair|sombre>.png` (profil sans
+`ROLE_`, en minuscules : `admin-systeme-console-sombre.png`). `e2e/specs/infrastructure.spec.ts` enregistre l'écran
+« Infrastructure » (D-78) de l'administrateur système et du RSSI (lecture seule) dans `e2e/captures/infrastructure/`.
+Avec `GIMAC_CAPTURES`, ces captures vont dans `$GIMAC_CAPTURES/roles` et `$GIMAC_CAPTURES/infrastructure`.
+
 ## Coquille, modales et administration (30/09/2026)
 
 - **Coquille fixe** (`Enveloppe` du socle, classes `gm-shell-*` de `11-enveloppe.css`) : la page ne défile pas ; barre supérieure fixe ; navigation latérale sur toute la hauteur disponible, à défilement propre, jamais étirée par le contenu, sans nom de couche sous le logo ; zone de contenu seule à défiler, pied de page en bas de cette zone ; au clic d'une entrée, seule la zone de contenu change et revient en haut ; tiroir sous 1 280 px. Aucune hauteur calculée en JavaScript.

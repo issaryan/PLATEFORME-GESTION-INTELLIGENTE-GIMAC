@@ -4,6 +4,7 @@ import { dateHeure } from '@gimac/compte'
 import { useConfigurationPlateforme } from '../hooks'
 import type { RouteVue } from '../modele/plateforme'
 import { Donnees, Section } from '../composants/communs'
+import { useChemins } from '../services/useServicesConsole'
 
 // Configuration effective de la plateforme (D-61, PLATFORM_CONFIG_READ) : routes de la passerelle et,
 // pour chaque service, profils actifs et propriétés d'exploitation. Les secrets sont masqués par la
@@ -11,6 +12,7 @@ import { Donnees, Section } from '../composants/communs'
 export default function ConfigurationPlateformePage() {
   const { t, i18n } = useTranslation()
   const configuration = useConfigurationPlateforme()
+  const { plateforme } = useChemins()
   const colonnes: Column<RouteVue>[] = [
     { key: 'id', header: t('console.config.route'), render: (r) => <span className="gm-mono">{r.id}</span> },
     { key: 'uri', header: t('console.config.destination'), render: (r) => <span className="gm-mono">{r.uri}</span> },
@@ -32,7 +34,7 @@ export default function ConfigurationPlateformePage() {
               {c.services.map((s) => (
                 <Card key={s.nom} title={<span className="gm-mono">{s.nom}</span>}
                   actions={<StatusBadge status={s.lue ? 'ok' : 'warn'} label={t(s.lue ? 'console.config.lue' : 'console.config.nonLue')} />}
-                  footer={<Link href={`/console/plateforme/journalisation?service=${encodeURIComponent(s.nom)}`}>{t('console.config.versJournalisation')}</Link>}>
+                  footer={<Link href={`${plateforme}/journalisation?service=${encodeURIComponent(s.nom)}`}>{t('console.config.versJournalisation')}</Link>}>
                   <div className="gm-col">
                     {!s.lue ? <InlineAlert level="warn" title={t('console.config.injoignable')}>{s.erreur}</InlineAlert> : null}
                     <KeyValueList

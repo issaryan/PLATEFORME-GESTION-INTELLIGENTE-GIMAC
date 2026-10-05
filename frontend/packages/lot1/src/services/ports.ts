@@ -2,7 +2,7 @@ import type { SignPurpose } from '@gimac/socle'
 import type { EvenementChronologie, ListQuery, Option, Page } from '../modele/commun'
 import type {
   Attribution, CampaignResult, ClotureOperation, Conducteur, ControleResultat, DepotResultat, EtatReprise, ExportPreuves, Graphe, ImpactMigration,
-  Liaison, LiaisonPilotage, OperationInstance, OuvertureLiaison, PointGrille, PreuveVersion, ReferenceOperation, ReferentielVersion,
+  CatalogueModelisateur, GrapheReferentiel, Liaison, LiaisonPilotage, OperationInstance, OuvertureLiaison, PointGrille, PreuveVersion, ReferenceOperation, ReferentielVersion, SaisieOperation,
   ScenarioInconnu, ServiceCouvert,
 } from '../modele/homologation'
 import type {
@@ -12,6 +12,10 @@ import type {
 import type { PortailCertification, PortailLiaison, PortailOperation } from '../modele/portail'
 import type { EtatPresence, OptionsTeleversement, Televersement } from '@gimac/socle'
 import type { Conversation, Correspondant, Envoi, FilMessages, Message, NouvelleConversation, PageMessagerie } from '../modele/messagerie'
+import type {
+  Activite, EntreeActivite, EntreeEvenement, EntreeRapport, EntreeTache, EtatRapport, EtatTache, Evenement, MembreEquipe, PagePilotage, Rapport, Rattachement,
+  ReponseInvitation, StatutActivite, Synthese, Tache, TypeRapport, Unite, VueRapports, VueTaches,
+} from '../modele/pilotage'
 import type {
   Candidature, ConditionsAdhesion, DossierInstitution, FiltreInstitutions, IndicateursDdrm, Institution, PieceAdhesion, Prerequis,
   StatutInstitution, TransitionStatut,
@@ -37,11 +41,30 @@ export interface ServiceHomologation {
   controlerReferentiel(id: string): Promise<ControleResultat>
   simulerMigration(id: string): Promise<ImpactMigration[]>
   liaisonsImpactees(versionId: string): Promise<{ total: number }>
-  creerBrouillon(entree: { typeProjet: string; libelle: string }): Promise<ReferentielVersion>
+  /** Brouillon ; pilote facultatif (par défaut le créateur, D-77 §5). */
+  creerBrouillon(entree: { typeProjet: string; libelle: string; piloteId?: string }): Promise<ReferentielVersion>
   deriverBrouillon(versionSourceId: string): Promise<ReferentielVersion>
   publierReferentiel(id: string): Promise<void>
   migrerLiaisons(id: string, liaisonsRetenues: string[]): Promise<void>
   historiqueReferentiel(id: string): Promise<EvenementChronologie[]>
+
+  // Modélisateur de processus (D-77, §4) : toute écriture hors brouillon est refusée (409 HOM_REFERENTIAL_FROZEN).
+  /** Graphe étendu : nœuds complets, couches, échéances au plus tôt, chemin critique, anomalies. */
+  grapheReferentiel(id: string): Promise<GrapheReferentiel>
+  /** Listes fermées du modélisateur et pilotes possibles d'un brouillon. */
+  catalogueReferentiels(): Promise<CatalogueModelisateur>
+  /** Création d'une opération au code fourni (409 HOM_OPERATION_CODE_DUPLICATE, 422 HOM_OPERATION_CODE_INVALID). */
+  creerOperation(id: string, operation: SaisieOperation & { code: string }): Promise<ReferenceOperation>
+  /** Enregistrement complet d'une opération ; position et particularité absentes sont conservées. */
+  enregistrerOperation(id: string, code: string, operation: SaisieOperation): Promise<ReferenceOperation>
+  /** Retrait d'une opération ; son code disparaît des prédécesseurs des autres. */
+  supprimerOperation(id: string, code: string): Promise<void>
+  /** Positions des opérations dans le canevas. */
+  placerOperations(id: string, positions: { code: string; x: number; y: number }[]): Promise<void>
+  /** Arc de → vers ajouté ou retiré (409 HOM_REFERENTIAL_CYCLE) ; rend l'opération « vers ». */
+  arcReferentiel(id: string, arc: { de: string; vers: string; present: boolean }): Promise<ReferenceOperation>
+  /** Pilote du brouillon (422 HOM_PILOTE_NOT_ELIGIBLE) ; rend la version. */
+  designerPilote(id: string, compteId: string): Promise<ReferentielVersion>
 
   // Liaisons (HOM-04 à HOM-06, HOM-20, HOM-22) et cadrage (étape 3 du parcours, D-57, D-58)
   /** Filtres du service : etat, typeProjet, institutionId, mesProjets ; recherche libre ; pagination. */
@@ -240,6 +263,52 @@ export interface ServiceMessagerie {
   signalerSaisie(conversationId: string): Promise<void>
 }
 
+/**
+ * Mon activité (D-76, docs/lot1/mon-activite.md) : MS-PILOTAGE derrière /bff/des/pilotage (agenda, activités,
+ * tâches, rapports, équipe, synthèse) et l'organisation de MS-IAM (/bff/des/iam/organisation) pour les
+ * libellés des unités et le rattachement de l'utilisateur. Le sujet du jeton est l'auteur ; les règles
+ * d'équipe, de transition et de destinataire sont décidées par les services.
+ */
+export interface ServicePilotage {
+  // Agenda (§2.1) : intervalle de jours inclus ; collaborateur : un membre de l'équipe (PIL_TEAM_READ).
+  agenda(du: string, au: string, collaborateur?: string): Promise<Evenement[]>
+  creerEvenement(e: EntreeEvenement): Promise<Evenement>
+  modifierEvenement(id: string, e: EntreeEvenement): Promise<Evenement>
+  supprimerEvenement(id: string): Promise<void>
+  repondre(id: string, reponse: Exclude<ReponseInvitation, 'EN_ATTENTE'>): Promise<Evenement>
+  // Activités du jour (§2.2)
+  activites(du: string, au: string, collaborateur?: string): Promise<Activite[]>
+  creerActivite(a: EntreeActivite): Promise<Activite>
+  modifierActivite(id: string, a: EntreeActivite): Promise<Activite>
+  /** Statut ; REPORTEE avec reporteeAu crée une copie A_FAIRE au jour indiqué. */
+  changerStatut(id: string, statut: StatutActivite, reporteeAu?: string): Promise<Activite>
+  supprimerActivite(id: string): Promise<void>
+  // Tâches (§2.3), pagination à partir de 0 comme le service.
+  taches(q: { vue: VueTaches; etat?: EtatTache; page?: number; taille?: number }): Promise<PagePilotage<Tache>>
+  tache(id: string): Promise<Tache>
+  creerTache(t: EntreeTache): Promise<Tache>
+  modifierTache(id: string, t: EntreeTache): Promise<Tache>
+  transition(id: string, etat: EtatTache, motif?: string): Promise<Tache>
+  // Rapports (§2.4)
+  rapports(q: { vue: VueRapports; type?: TypeRapport; etat?: EtatRapport; page?: number; taille?: number }): Promise<PagePilotage<Rapport>>
+  rapport(id: string): Promise<Rapport>
+  /** Contenu proposé à partir des activités et tâches de la période ; rien n'est enregistré. */
+  preremplir(type: TypeRapport, periode: string): Promise<{ contenu: string }>
+  creerRapport(r: EntreeRapport): Promise<Rapport>
+  modifierRapport(id: string, r: EntreeRapport): Promise<Rapport>
+  soumettre(id: string): Promise<Rapport>
+  viser(id: string, commentaire: string): Promise<Rapport>
+  documentRapport(id: string): Promise<{ blob: Blob; empreinte: string | null }>
+  /** Dépôt fragmenté du document (D-74, finalité RAPPORT_ACTIVITE, référence : l'identifiant du rapport). */
+  deposerDocument(fichier: File, rapportId: string, o?: OptionsTeleversement): Promise<Televersement>
+  // Équipe et synthèse (§2.5, §2.6)
+  equipe(jour: string): Promise<MembreEquipe[]>
+  synthese(jour: string): Promise<Synthese>
+  // Organisation (MS-IAM, §1.3)
+  unites(): Promise<Unite[]>
+  organisation(): Promise<Rattachement>
+}
+
 export interface Services {
   participant: ServiceParticipant
   parcours: ServiceParcours
@@ -250,4 +319,5 @@ export interface Services {
   portail: ServicePortail
   reauth: ServiceReauthentification
   messagerie: ServiceMessagerie
+  pilotage: ServicePilotage
 }

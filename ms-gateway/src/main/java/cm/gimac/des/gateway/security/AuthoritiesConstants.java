@@ -20,5 +20,11 @@ public final class AuthoritiesConstants {
     /** Supervision de la plateforme : changement à chaud des niveaux de journalisation. */
     public static final String PLATFORM_CONFIG_EDIT = "PLATFORM_CONFIG_EDIT";
 
+    /** Exploitation de l'infrastructure (D-78) : charges de travail, journaux récents, historique des opérations. */
+    public static final String PLATFORM_OPS_READ = "PLATFORM_OPS_READ";
+
+    /** Exploitation de l'infrastructure (D-78) : redémarrer, arrêter, démarrer, mettre à l'échelle (avec FIDO2). */
+    public static final String PLATFORM_OPS_EXECUTE = "PLATFORM_OPS_EXECUTE";
+
     private AuthoritiesConstants() {}
 }

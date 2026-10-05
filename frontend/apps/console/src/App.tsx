@@ -4,11 +4,11 @@ import { Navigate, Route, Routes, useLocation } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { EmptyState, Skeleton } from '@gimac/design-system'
 import {
-  ConnexionProvider, Enveloppe, GardeSession, PageConnexion, PageDeconnexion, SessionActive, aPermission, adresseConnexion, configureHttp, connexionHttp, lirePreference,
-  lireSessionDemo, openLiveChannel, surNonAutorise, type EtatCanal, type Session,
+  Aiguillage, ConnexionProvider, Enveloppe, GardeSession, NotificationsPage, NotificationsProvider, PageConnexion, PageDeconnexion, SessionActive, aPermission, adresseConnexion, configureHttp,
+  connexionHttp, lirePreference, lireSessionDemo, notificationsHttp, openLiveChannel, surNonAutorise, type EtatCanal, type LecteurApercu, type LiveTopic, type ServiceNotifications, type Session,
 } from '@gimac/socle'
 import { GardePremierAcces, MonComptePage, useMonAvatar, monCompteHttp, monCompteSimule } from '@gimac/compte'
-import { PERM, servicesHttp, servicesSimules, useNonLus, useSourcesRecherche } from '@gimac/lot1'
+import { PERM, lecteurApercu, notificationsDemo, servicesHttp, servicesSimules, useNonLus, useSourcesRecherche } from '@gimac/lot1'
 import { Fournisseurs, creerClientRequetes, servicesConsoleHttp, servicesConsoleSimules, useSourceComptes } from '@gimac/administration'
 import { CLE_PREMIER_ACCES_DEMO, CLE_PROFIL_DEMO, NAVIGATION_CONSOLE, PROFILS_DEMO } from './navigation'
 import { connexionDemo } from './connexionDemo'
@@ -29,6 +29,8 @@ const MessagerieInstantanee = lazy(() => import('@gimac/lot1/pages/des/messageri
 const ProfilsPage = lazy(() => import('@gimac/administration/pages/ProfilsPage'))
 const ConfigurationPlateformePage = lazy(() => import('@gimac/administration/pages/ConfigurationPlateformePage'))
 const JournalisationPage = lazy(() => import('@gimac/administration/pages/JournalisationPage'))
+// Exploitation de l'infrastructure (D-78) : charges, journaux, gestes confirmés par la clé de sécurité.
+const InfrastructurePage = lazy(() => import('@gimac/administration/pages/InfrastructurePage'))
 
 const VERSION = import.meta.env.VITE_VERSION ?? '0.1.0'
 
@@ -54,18 +56,26 @@ function Autorise({ permissions, exigee, children }: { permissions: string[]; ex
   return aPermission(permissions, exigee) ? <>{children}</> : <EmptyState icon="lock" title={t('console.refuse.titre')} text={t('console.refuse.texte')} />
 }
 
-/** Canal poussé de la console (services réels) : nouveaux messages de la messagerie instantanée (D-64). */
-function CanalMessagerie({ actif, onEtat }: { actif: boolean; onEtat: (e: EtatCanal) => void }) {
+/**
+ * Canal poussé de la console (services réels) : nouveaux messages de la messagerie instantanée (D-64) et
+ * notifications de la plateforme (D-80, sujet « notification », remis au seul destinataire).
+ */
+function CanalMessagerie({ sujets, onEtat }: { sujets: LiveTopic[]; onEtat: (e: EtatCanal) => void }) {
   const qc = useQueryClient()
-  useEffect(() => (actif ? openLiveChannel('console', ['collaboration', 'presence'], qc, onEtat, { baseMs: 1000, maxMs: 30_000 }) : undefined), [actif, qc, onEtat])
+  const cle = sujets.join(',')
+  useEffect(() => (cle ? openLiveChannel('console', cle.split(',') as LiveTopic[], qc, onEtat, { baseMs: 1000, maxMs: 30_000 }) : undefined), [cle, qc, onEtat])
   return null
 }
 
-function Pages({ session, correlationId }: { session: Session; correlationId?: string }) {
+/** Notifications de la plateforme (D-80) : MS-NOTIFICATION (ou sa simulation) et l'aperçu lu auprès de la messagerie. */
+type Notifications = { service: ServiceNotifications; apercu: LecteurApercu }
+
+function Pages({ session, correlationId, notifications }: { session: Session; correlationId?: string; notifications: Notifications }) {
   // Photo de profil du titulaire (docs/lot1/mon-compte.md §4) : menu utilisateur de la barre du haut.
   const moi = useMonAvatar()
   const p = session.permissions
   const messagerie = aPermission(p, PERM.messageLire)
+  const avecNotifications = aPermission(p, PERM.notificationsLire)
   const [etatCanal, setEtatCanal] = useState<EtatCanal | undefined>()
   // Messages non lus (D-64) : pastille de l'entrée « Messagerie », rafraîchie par le canal poussé.
   const nonLus = useNonLus(messagerie)
@@ -76,9 +86,12 @@ function Pages({ session, correlationId }: { session: Session; correlationId?: s
   return (
     <GardePremierAcces>
       {(assistant) => (
+        // Cloche, fenêtres surgissantes et page des notifications (D-80) : NOT_INBOX_READ, hors premier accès.
+        <NotificationsProvider service={notifications.service} couche="console" actif={!assistant && avecNotifications} apercu={notifications.apercu}>
         <Enveloppe avatar={moi?.src} fonction={moi?.fonction} couche="console" navigation={assistant ? [] : NAVIGATION_CONSOLE} permissions={p} utilisateur={session.nom} version={VERSION}
           badges={{ messagerie: nonLus.data?.total ?? 0 }} etatCanal={etatCanal} correlationId={correlationId} espacePersonnel="/console" recherche={assistant ? undefined : recherche}>
-          <CanalMessagerie actif={messagerie && !assistant && import.meta.env.VITE_SERVICES !== 'simule'} onEtat={setEtatCanal} />
+          <CanalMessagerie onEtat={setEtatCanal}
+            sujets={assistant || import.meta.env.VITE_SERVICES === 'simule' ? [] : [...(messagerie ? ['collaboration', 'presence'] as const : []), ...(avecNotifications ? ['notification'] as const : [])]} />
           <Suspense fallback={<Skeleton height={32} />}>
             <Routes>
               <Route path="deconnexion" element={<PageDeconnexion />} />
@@ -94,9 +107,11 @@ function Pages({ session, correlationId }: { session: Session; correlationId?: s
                   <Route path="profils" element={<Autorise permissions={p} exigee="IAM_ACCOUNT_READ"><ProfilsPage /></Autorise>} />
                   <Route path="politique-securite" element={<Autorise permissions={p} exigee="PLATFORM_SECURITY_POLICY_READ"><PolitiqueSecuritePage /></Autorise>} />
                   <Route path="messagerie" element={<Autorise permissions={p} exigee={PERM.messageLire}><MessagerieInstantanee couche="console" /></Autorise>} />
+                  <Route path="notifications" element={<Autorise permissions={p} exigee={PERM.notificationsLire}><NotificationsPage /></Autorise>} />
                   <Route path="plateforme/courriels" element={<Autorise permissions={p} exigee="PLATFORM_MESSAGING_EDIT"><CourrielsPage /></Autorise>} />
                   <Route path="plateforme/configuration" element={<Autorise permissions={p} exigee="PLATFORM_CONFIG_READ"><ConfigurationPlateformePage /></Autorise>} />
                   <Route path="plateforme/journalisation" element={<Autorise permissions={p} exigee="PLATFORM_CONFIG_READ"><JournalisationPage /></Autorise>} />
+                  <Route path="plateforme/infrastructure" element={<Autorise permissions={p} exigee="PLATFORM_OPS_READ"><InfrastructurePage /></Autorise>} />
                   <Route path="mon-compte" element={<MonComptePage />} />
                   <Route path="*" element={<Navigate to="/console/tableau-de-bord" replace />} />
                 </>
@@ -104,6 +119,7 @@ function Pages({ session, correlationId }: { session: Session; correlationId?: s
             </Routes>
           </Suspense>
         </Enveloppe>
+        </NotificationsProvider>
       )}
     </GardePremierAcces>
   )
@@ -117,9 +133,11 @@ function AvecSession({ children }: { children: (s: Session) => ReactNode }) {
     // Connexion simulée (D-65) : sans session de démonstration, écran de connexion.
     if (!lireSessionDemo()) return <Navigate to={adresseConnexion({ retour: ici.pathname + ici.search })} replace />
     const s = sessionDemo()
-    return <SessionActive session={s} prolonger={async () => undefined}>{children(s)}</SessionActive>
+    return <SessionActive session={s} prolonger={async () => undefined}><Aiguillage session={s} couche="console">{children(s)}</Aiguillage></SessionActive>
   }
-  return <GardeSession>{children}</GardeSession>
+  // Aiguillage (D-79) : la console n'accueille que les comptes portant une permission de console ; les autres
+  // comptes internes sont conduits vers l'application interne, les comptes d'institution vers le portail.
+  return <GardeSession>{(s) => <Aiguillage session={s} couche="console">{children(s)}</Aiguillage>}</GardeSession>
 }
 
 export default function App() {
@@ -129,12 +147,18 @@ export default function App() {
     const p = profilDemo()
     return servicesConsoleSimules({ acteur: { id: p.sujet, nom: p.nom, permissions: p.permissions } })
   }, [reels])
-  // Messagerie instantanée (D-64) : /bff/console/collaboration, ou annuaire et conversations simulés.
-  const messagerie = useMemo(() => {
-    if (reels) return servicesHttp('console')
+  const client = useMemo(() => creerClientRequetes(), [])
+  // Messagerie instantanée (D-64) : /bff/console/collaboration, ou annuaire et conversations simulés ; notifications
+  // de la plateforme (D-80) : /bff/console/notification, ou MS-NOTIFICATION simulé branché sur la messagerie simulée.
+  const { messagerie, notifications } = useMemo(() => {
+    if (reels) {
+      const m = servicesHttp('console')
+      return { messagerie: m, notifications: { service: notificationsHttp('console'), apercu: lecteurApercu(m) } }
+    }
     const p = profilDemo()
-    return servicesSimules({ utilisateur: { id: p.sujet, nom: p.nom } })
-  }, [reels])
+    const m = servicesSimules({ utilisateur: { id: p.sujet, nom: p.nom } })
+    return { messagerie: m, notifications: { service: notificationsDemo(m, { qc: client, moi: p.sujet }), apercu: lecteurApercu(m) } }
+  }, [reels, client])
   const compte = useMemo(() => {
     if (reels) return monCompteHttp('console')
     const p = profilDemo()
@@ -149,7 +173,6 @@ export default function App() {
     })
   }, [reels])
   const connexion = useMemo(() => (reels ? connexionHttp() : connexionDemo()), [reels])
-  const client = useMemo(() => creerClientRequetes(), [])
   const [correlationId, setCorrelationId] = useState<string | undefined>()
   useEffect(() => {
     // Session absente ou close par la passerelle (401, CNX_SESSION_EXPIREE) : retour à la connexion (D-65).
@@ -163,7 +186,7 @@ export default function App() {
       <ConnexionProvider service={connexion} couche="console">
       <Routes>
         <Route path="/connexion/*" element={<PageConnexion couche="console" />} />
-        <Route path="/console/*" element={<AvecSession>{(s) => <Pages session={s} correlationId={correlationId} />}</AvecSession>} />
+        <Route path="/console/*" element={<AvecSession>{(s) => <Pages session={s} correlationId={correlationId} notifications={notifications} />}</AvecSession>} />
         <Route path="*" element={<Navigate to="/console/tableau-de-bord" replace />} />
       </Routes>
       </ConnexionProvider>

@@ -81,3 +81,16 @@ export async function signerCle(page: Page) {
   await d.getByRole('button', { name: 'Continuer' }).click()
   await expect(d).toHaveCount(0)
 }
+
+/**
+ * Capture plein écran d'une page dont le contenu défile dans l'enveloppe (et non dans le document) : la fenêtre
+ * est agrandie à la hauteur du plus haut conteneur défilant le temps de la capture, puis rétablie.
+ */
+export async function capturePleinePage(page: Page, chemin: string) {
+  const taille = page.viewportSize() ?? { width: 1440, height: 900 }
+  const hauteur = await page.evaluate(() => Math.max(...Array.from(document.querySelectorAll('body, body *')).map((e) => e.scrollHeight)))
+  await page.setViewportSize({ width: taille.width, height: Math.min(Math.max(hauteur, taille.height), 8000) })
+  await page.waitForTimeout(300)
+  await page.screenshot({ path: chemin, fullPage: true })
+  await page.setViewportSize(taille)
+}

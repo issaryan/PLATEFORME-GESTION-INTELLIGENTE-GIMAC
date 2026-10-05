@@ -11,6 +11,7 @@ export const cles = {
   homologation: ['homologation'] as const,
   certification: ['certification'] as const,
   referentiels: () => ['homologation', 'referentiels'] as const,
+  catalogueReferentiels: () => ['homologation', 'referentiels-catalogue'] as const,
   referentiel: (id: string, sous?: string) => ['homologation', 'referentiel', id, ...(sous ? [sous] : [])] as const,
   liaisons: (q?: ListQuery) => ['homologation', 'liaisons', ...(q ? [q] : [])] as const,
   pilotage: (q?: ListQuery) => ['homologation', 'pilotage', ...(q ? [q] : [])] as const,

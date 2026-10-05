@@ -1,5 +1,5 @@
 import type { CleSecurite } from '@gimac/socle'
-import type { Appareil, ChangementMotDePasse, ConfirmationTotp, EnrolementTotp, FichePersonnelle, Moi, PageHistorique, PremiereConfiguration, SessionCompte, VersionPhoto } from '../modele'
+import type { Appareil, ChangementMotDePasse, ConfirmationTotp, EnrolementTotp, FichePersonnelle, Moi, PageHistorique, PremiereConfiguration, RattachementCompte, SessionCompte, VersionPhoto } from '../modele'
 
 // Port de « Mon compte » (D-62, D-65) : seul contrat entre les écrans et les données. Implémentations :
 // HTTP (/bff/<couche>/iam/moi, relayé par la passerelle vers MS-IAM) et simulée (développement).
@@ -34,4 +34,9 @@ export interface ServiceMonCompte {
   fermerAutresAppareils(): Promise<void>
   /** Historique des connexions (90 jours), page à partir de 0. */
   historique(page: number, taille: number): Promise<PageHistorique>
+  /**
+   * Rattachement organisationnel du titulaire (D-76) : GET /bff/des/iam/organisation/moi, couche interne
+   * seulement ; absent ailleurs (portail, console), où l'unité et le responsable ne sont pas affichés.
+   */
+  organisation?(): Promise<RattachementCompte>
 }

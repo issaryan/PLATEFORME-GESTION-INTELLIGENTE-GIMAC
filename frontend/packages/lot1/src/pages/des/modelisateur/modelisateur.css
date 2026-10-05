@@ -1,0 +1,117 @@
+/* Modélisateur de processus (DES-12, D-77 §6) : canevas @xyflow/react habillé par les seuls jetons --gm-*, d'où
+   le mode clair et le mode sombre. Angles droits, aucune ombre ; les variables --xy-* de la bibliothèque sont
+   toutes ramenées aux jetons du système de conception. */
+.gm-mod-canevas {
+  height: 640px; min-height: 420px; border: var(--gm-border-1) solid var(--gm-color-border); background: var(--gm-color-surface-sunken);
+  --xy-background-color: var(--gm-color-surface-sunken);
+  --xy-background-pattern-color: var(--gm-color-border);
+  --xy-edge-stroke: var(--gm-color-border-strong);
+  --xy-edge-stroke-selected: var(--gm-color-action);
+  --xy-edge-stroke-width: 1.5;
+  --xy-connectionline-stroke: var(--gm-color-action);
+  --xy-connectionline-stroke-width: 2;
+  --xy-handle-background-color: var(--gm-color-action);
+  --xy-handle-border-color: var(--gm-color-surface);
+  --xy-node-background-color: transparent;
+  --xy-node-border: none;
+  --xy-node-border-radius: 0;
+  --xy-node-color: var(--gm-color-text-primary);
+  --xy-node-boxshadow-hover: none;
+  --xy-node-boxshadow-selected: none;
+  --xy-node-group-background-color: transparent;
+  --xy-minimap-background-color: var(--gm-color-surface);
+  --xy-minimap-mask-background-color: var(--gm-color-overlay);
+  --xy-minimap-mask-stroke-color: var(--gm-color-action);
+  --xy-minimap-mask-stroke-width: 1;
+  --xy-minimap-node-background-color: var(--gm-color-border-strong);
+  --xy-minimap-node-stroke-color: transparent;
+  --xy-minimap-node-stroke-width: 0;
+  --xy-controls-button-background-color: var(--gm-color-surface);
+  --xy-controls-button-background-color-hover: var(--gm-color-action-subtle);
+  --xy-controls-button-color: var(--gm-color-text-primary);
+  --xy-controls-button-color-hover: var(--gm-color-action);
+  --xy-controls-button-border-color: var(--gm-color-border);
+  --xy-controls-box-shadow: none;
+  --xy-edge-label-background-color: var(--gm-color-surface);
+  --xy-edge-label-color: var(--gm-color-text-primary);
+  --xy-attribution-background-color: transparent;
+  --xy-selection-background-color: var(--gm-color-action-subtle);
+  --xy-selection-border: var(--gm-border-1) dashed var(--gm-color-action);
+  --xy-resize-background-color: var(--gm-color-action);
+}
+.gm-mod-canevas .react-flow { background: var(--gm-color-surface-sunken); color: var(--gm-color-text-primary); }
+.gm-mod-canevas .react-flow__controls { border: var(--gm-border-1) solid var(--gm-color-border); }
+.gm-mod-canevas .react-flow__minimap { border: var(--gm-border-1) solid var(--gm-color-border); }
+.gm-mod-canevas .react-flow__node { padding: 0; border: none; border-radius: 0; background: transparent; box-shadow: none; }
+.gm-mod-canevas .react-flow__node:focus-visible { outline: 2px solid var(--gm-color-focus); outline-offset: 2px; }
+.gm-mod-canevas .react-flow__node.gm-mod-couloir-noeud { pointer-events: none; }
+.gm-mod-mini-carte { fill: var(--gm-color-action); }
+.gm-mod-mini-couloir { fill: transparent; }
+
+/* Couloirs : colonnes d'étape et bandes de segment, sous les cartes. */
+.gm-mod-couloir { box-sizing: border-box; pointer-events: none; }
+.gm-mod-couloir-etape { border-left: var(--gm-border-1) dashed var(--gm-color-border-strong); border-right: var(--gm-border-1) dashed var(--gm-color-border-strong); }
+.gm-mod-couloir-segment { background: var(--gm-color-surface); border: var(--gm-border-1) solid var(--gm-color-border); }
+.gm-mod-couloir-titre { display: block; padding: var(--gm-space-1) var(--gm-space-2); font-size: 12px; font-weight: 600; color: var(--gm-color-text-secondary); text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
+.gm-mod-couloir-segment .gm-mod-couloir-titre { position: absolute; right: var(--gm-space-2); bottom: 0; color: var(--gm-color-text-muted); }
+
+/* Carte d'opération. */
+.gm-mod-carte {
+  position: relative; box-sizing: border-box; width: 232px; height: 128px; padding: var(--gm-space-2) var(--gm-space-3); overflow: hidden; display: flex; flex-direction: column; gap: 2px;
+  background: var(--gm-color-surface-raised); color: var(--gm-color-text-primary); border: var(--gm-border-1) solid var(--gm-color-border-strong);
+  border-left: var(--gm-border-4) solid var(--gm-color-action); font-size: 12px; line-height: 1.35;
+}
+.react-flow__node.selected .gm-mod-carte { outline: 2px solid var(--gm-color-focus); outline-offset: 1px; }
+.gm-mod-carte p { margin: 0; }
+.gm-mod-carte-tete { display: flex; align-items: center; justify-content: space-between; gap: var(--gm-space-1); }
+.gm-mod-carte-code { font-weight: 700; font-size: 13px; }
+.gm-mod-carte-libelle { font-weight: 600; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.gm-mod-carte-ligne { color: var(--gm-color-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gm-mod-carte-ligne abbr { text-decoration: none; font-weight: 700; color: var(--gm-color-text-primary); }
+.gm-mod-carte-critique { border-left-color: var(--gm-color-brand-accent); border-left-width: 6px; }
+.gm-mod-critique-marque { color: var(--gm-color-brand-accent); font-weight: 700; }
+.gm-mod-carte-anomalie { border-color: var(--gm-color-status-crit-fg); background: var(--gm-color-status-crit-bg); }
+.gm-mod-carte-anomalies { color: var(--gm-color-status-crit-fg); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gm-mod-carte-surlignee { outline: 3px solid var(--gm-color-status-crit-fg); outline-offset: 2px; }
+.gm-mod-carte-modifier {
+  position: absolute; right: var(--gm-space-2); bottom: var(--gm-space-2); padding: 0 var(--gm-space-2); height: 22px; font: inherit; font-size: 11px; font-weight: 600; cursor: pointer;
+  border: var(--gm-border-1) solid var(--gm-color-border); background: var(--gm-color-surface); color: var(--gm-color-action);
+}
+.gm-mod-carte-modifier:hover { background: var(--gm-color-action-subtle); }
+.gm-mod-carte-modifier:focus-visible { outline: 2px solid var(--gm-color-focus); outline-offset: 1px; }
+.gm-mod-pastilles { display: inline-flex; gap: 2px; min-width: 0; overflow: hidden; }
+.gm-mod-pastille {
+  display: inline-block; max-width: 120px; padding: 0 var(--gm-space-1); font-size: 10px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  border: var(--gm-border-1) solid var(--gm-color-border); background: var(--gm-color-surface-sunken); color: var(--gm-color-text-secondary);
+}
+.gm-mod-pastille-jalon { border-color: var(--gm-color-status-ok-fg); background: var(--gm-color-status-ok-bg); color: var(--gm-color-status-ok-fg); }
+.gm-mod-pastille-evenement { border-color: var(--gm-color-status-info-fg); background: var(--gm-color-action-subtle); color: var(--gm-color-status-info-fg); }
+/* Poignées dans la carte (qui rogne son contenu) : entièrement visibles et saisissables, zone de saisie élargie. */
+.gm-mod-carte .react-flow__handle { width: 12px; height: 12px; border-radius: 0; }
+.gm-mod-carte .react-flow__handle-left { left: 0; transform: translate(0, -50%); }
+.gm-mod-carte .react-flow__handle-right { right: 0; transform: translate(0, -50%); }
+.gm-mod-carte .react-flow__handle::after { content: ''; position: absolute; inset: -6px; }
+
+/* Arcs : chemin critique épaissi dans la couleur d'accent. */
+.gm-mod-arc-critique .react-flow__edge-path { stroke: var(--gm-color-brand-accent); stroke-width: 2.5; }
+
+/* Barre d'outils, panneau des anomalies, vue liste. */
+.gm-mod-outils { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--gm-space-2); }
+.gm-mod-outils .gm-field { margin: 0; min-width: 220px; }
+.gm-mod-resume { display: flex; flex-wrap: wrap; gap: var(--gm-space-4); color: var(--gm-color-text-secondary); font-size: 14px; }
+.gm-mod-anomalies-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--gm-space-1); }
+.gm-mod-anomalie-lien {
+  width: 100%; text-align: left; font: inherit; cursor: pointer; padding: var(--gm-space-2) var(--gm-space-3); color: var(--gm-color-status-crit-fg);
+  background: var(--gm-color-status-crit-bg); border: var(--gm-border-1) solid var(--gm-color-status-crit-fg);
+}
+.gm-mod-anomalie-lien:focus-visible { outline: 2px solid var(--gm-color-focus); outline-offset: 2px; }
+.gm-mod-ligne-surlignee td { background: var(--gm-color-status-crit-bg); }
+.gm-mod-livrable { border: var(--gm-border-1) solid var(--gm-color-border); padding: var(--gm-space-3); margin: 0; display: flex; flex-direction: column; gap: var(--gm-space-2); }
+.gm-mod-grille { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.gm-mod-large { grid-column: 1 / -1; }
+.gm-mod-modale { gap: var(--gm-space-3); }
+@media (max-width: 720px) {
+  .gm-mod-grille { grid-template-columns: minmax(0, 1fr); }
+  .gm-mod-canevas { height: 480px; }
+}
+.gm-mod-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

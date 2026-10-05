@@ -6,10 +6,19 @@ import cm.gimac.des.homologation.domain.ReferentialVersion;
 import cm.gimac.des.homologation.domain.enumeration.EtatVersionReferentiel;
 import cm.gimac.des.homologation.domain.enumeration.NatureCouverture;
 import cm.gimac.des.homologation.domain.enumeration.Partie;
-import cm.gimac.des.homologation.domain.enumeration.Segment;
 import cm.gimac.des.homologation.domain.enumeration.TypeProjet;
 import cm.gimac.des.homologation.domain.service.ReferentialCompletenessChecker;
 import cm.gimac.des.homologation.domain.service.ReferentialGraphValidator;
+import cm.gimac.des.homologation.domain.parcours.EtapeCode;
+import cm.gimac.des.homologation.domain.parcours.Fonction;
+import cm.gimac.des.homologation.domain.parcours.Geste;
+import cm.gimac.des.homologation.domain.parcours.GrainPreuve;
+import cm.gimac.des.homologation.domain.parcours.Jalon;
+import cm.gimac.des.homologation.domain.parcours.Livrable;
+import cm.gimac.des.homologation.domain.parcours.Particularite;
+import cm.gimac.des.homologation.domain.parcours.PlateformeExecution;
+import cm.gimac.des.homologation.domain.parcours.Position;
+import cm.gimac.des.homologation.domain.parcours.SegmentParcours;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -23,7 +32,8 @@ public final class ReferentialViews {
 
     private ReferentialViews() {}
 
-    public record CreateDraftRequest(@NotNull TypeProjet typeProjet, @NotBlank @Size(max = 200) String libelle, UUID versionSourceId) {}
+    /** Brouillon ou dérivation ; {@code piloteId} facultatif : le créateur pilote par défaut (D-77, §5). */
+    public record CreateDraftRequest(@NotNull TypeProjet typeProjet, @NotBlank @Size(max = 200) String libelle, UUID versionSourceId, UUID piloteId) {}
 
     public record VersionVue(
         UUID id,
@@ -37,7 +47,8 @@ public final class ReferentialViews {
         UUID versionActiveId,
         int nombreOperations,
         List<String> ordreTopologique,
-        List<String> actionsPermises
+        List<String> actionsPermises,
+        UUID piloteId
     ) {
         public static VersionVue de(ReferentialVersion v) {
             return de(v, v.getEtat() == EtatVersionReferentiel.PUBLIEE ? v.getId() : null);
@@ -57,39 +68,95 @@ public final class ReferentialViews {
                 versionActiveId,
                 v.getOperations().size(),
                 v.ordreTopologiqueListe(),
-                v.actionsPermises()
+                v.actionsPermises(),
+                v.getPiloteId()
             );
         }
     }
 
+    /**
+     * Opération du référentiel (D-77, §1) : modèle complet du modélisateur (segment renommé AMONT, BRANCHE, AVAL ;
+     * successeurs déduits des prédécesseurs) et attributs historiques de couverture (HOM-01).
+     */
     public record OperationVue(
         UUID id,
         String code,
         String libelle,
+        String description,
+        EtapeCode etape,
         String phase,
-        Segment segment,
+        SegmentParcours segment,
+        Integer ordre,
+        Fonction responsable,
+        Fonction validateur,
+        List<Fonction> consultes,
+        List<Fonction> informes,
+        List<Fonction> externes,
+        List<String> predecesseurs,
+        List<String> successeurs,
+        Integer delaiJours,
+        GrainPreuve grain,
+        PlateformeExecution plateforme,
+        boolean cle,
+        boolean secret,
+        boolean oubliSansSymptome,
+        boolean pivot,
+        String valeurReference,
+        List<Livrable> livrables,
+        Geste geste,
+        Jalon jalon,
+        String declencheur,
+        Position position,
+        Particularite particularite,
         Partie partie,
         String serviceCode,
         NatureCouverture natureCouverture,
         Map<String, Object> preuveAttendue,
         String idScenario,
-        List<String> predecesseurs,
         String fonctionResponsable,
         Map<String, Object> grille
     ) {
         public static OperationVue de(ReferenceOperation o) {
+            List<ReferenceOperation> soeurs = o.getVersion() == null ? List.of(o) : o.getVersion().getOperations();
+            return de(o, soeurs.stream().filter(x -> x.predecesseursListe().contains(o.getCode())).map(ReferenceOperation::getCode).sorted().toList());
+        }
+
+        public static OperationVue de(ReferenceOperation o, List<String> successeurs) {
             return new OperationVue(
                 o.getId(),
                 o.getCode(),
                 o.getLibelle(),
+                o.getDescription(),
+                o.getEtape(),
                 o.getPhase(),
-                o.getSegment(),
+                o.getSegment() == null ? null : o.getSegment().parcours(),
+                o.getOrdre(),
+                o.getResponsable(),
+                o.getValidateur(),
+                o.getConsultes(),
+                o.getInformes(),
+                o.getExternes(),
+                o.predecesseursListe(),
+                successeurs,
+                o.getDelaiJours(),
+                o.getGrain(),
+                o.getPlateforme(),
+                o.isCle(),
+                o.isSecret(),
+                o.isOubliSansSymptome(),
+                o.isPivot(),
+                o.getValeurReference(),
+                o.getLivrables(),
+                o.getGeste(),
+                o.getJalon(),
+                o.getDeclencheur(),
+                o.getPosition(),
+                o.getParticularite(),
                 o.getPartie(),
                 o.getServiceCode(),
                 o.getNatureCouverture(),
                 JsonTexte.objet(o.getPreuveAttendue()),
                 o.getIdScenario(),
-                o.predecesseursListe(),
                 o.getFonctionResponsable(),
                 JsonTexte.objet(o.getGrille())
             );
@@ -124,7 +191,7 @@ public final class ReferentialViews {
                 .anomalies()
                 .stream()
                 .filter(a -> a.type() != ReferentialGraphValidator.TypeAnomalie.CYCLE)
-                .map(a -> new Incoherence(a.codes().get(0), a.codes().size() > 1 ? a.codes().get(1) : "", a.motif()))
+                .map(a -> new Incoherence(a.codes().isEmpty() ? "" : a.codes().get(0), a.codes().size() > 1 ? a.codes().get(1) : "", a.motif()))
                 .toList();
             return new ControleVue(cycle.isEmpty(), r.ordre(), cycle, incoherences, manquants, r.anomalies(), r.conforme() && manquants.isEmpty());
         }
@@ -137,10 +204,71 @@ public final class ReferentialViews {
     /** Événement de l'historique d'une version (chronologie de DES-12). */
     public record EvenementVue(String event, Instant at, String actor, String correlationId) {}
 
-    /** Graphe par couches pour la vue DagView de DES-12 (HOM-02 A3). */
-    public record GrapheVue(List<Noeud> noeuds, List<Arc> arcs, List<ReferentialGraphValidator.Anomalie> anomalies) {
-        public record Noeud(String code, String libelle, Segment segment, Integer couche) {}
+    /**
+     * Graphe étendu du modélisateur (D-77, §4) : chaque nœud porte l'opération complète (champs à plat), sa couche
+     * de Kahn, son début et sa fin au plus tôt en jours depuis le démarrage, son appartenance au chemin critique et
+     * les types d'anomalies qui le concernent ; arcs (marqués critiques), anomalies, chemin critique et durée totale.
+     */
+    public record GrapheVue(
+        UUID versionId,
+        TypeProjet typeProjet,
+        Integer numero,
+        EtatVersionReferentiel etat,
+        UUID piloteId,
+        List<Noeud> noeuds,
+        List<Arc> arcs,
+        List<ReferentialGraphValidator.Anomalie> anomalies,
+        List<ReferentialCompletenessChecker.MissingAttributes> manquants,
+        CheminCritique cheminCritique,
+        List<String> actionsPermises
+    ) {
+        public record Noeud(
+            @com.fasterxml.jackson.annotation.JsonUnwrapped OperationVue operation,
+            Integer couche,
+            Integer debutAuPlusTot,
+            Integer finAuPlusTot,
+            boolean critique,
+            List<String> anomalies
+        ) {}
 
-        public record Arc(String de, String vers) {}
+        public record Arc(String de, String vers, boolean critique) {}
+
+        public record CheminCritique(List<String> codes, int dureeJours) {}
     }
+
+    /** Élément d'un catalogue : code, libellé français et précisions facultatives. */
+    @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+    public record Entree(String code, String libelle, List<String> profils, Boolean externe, Boolean dedie, Integer rang) {
+        static Entree de(String code, String libelle) {
+            return new Entree(code, libelle, null, null, null, null);
+        }
+    }
+
+    public record Pilote(String id, String nom) {}
+
+    /**
+     * Catalogue du modélisateur (D-77, §4) : fonctions (libellés, profils, externes), gestes (dédiés ou non),
+     * jalons dans leur ordre, déclencheurs connus, étapes, segments, plateformes, grains, natures de livrable,
+     * particularités, types de pièces usuels et pilotes possibles d'un brouillon.
+     */
+    public record CatalogueVue(
+        List<Entree> fonctions,
+        List<Entree> gestes,
+        List<Entree> jalons,
+        List<Entree> declencheurs,
+        List<Entree> etapes,
+        List<Entree> segments,
+        List<Entree> plateformes,
+        List<Entree> grains,
+        List<Entree> naturesLivrable,
+        List<Entree> particularites,
+        List<String> typesPieces,
+        List<Pilote> pilotes
+    ) {}
+
+    public record PositionRequest(@NotBlank String code, double x, double y) {}
+
+    public record ArcRequest(@NotBlank String de, @NotBlank String vers, boolean present) {}
+
+    public record PiloteRequest(@NotNull UUID compteId) {}
 }

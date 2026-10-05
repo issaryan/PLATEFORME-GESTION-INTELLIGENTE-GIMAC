@@ -23,6 +23,8 @@ creer gimac-clients-keycloak \
   --from-literal=iam-service="$(openssl rand -hex 24)" \
   --from-literal=gateway-supervision="$(openssl rand -hex 24)" \
   --from-literal=collaboration-service="$(openssl rand -hex 24)" \
+  --from-literal=pilotage-service="$(openssl rand -hex 24)" \
+  --from-literal=notification-service="$(openssl rand -hex 24)" \
   --from-literal=internal="$(openssl rand -hex 24)" \
   --from-literal=connexion="$(openssl rand -hex 24)" \
   --from-literal=web-app="$(openssl rand -hex 24)" \

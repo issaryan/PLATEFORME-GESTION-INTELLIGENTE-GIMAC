@@ -3,6 +3,7 @@ import { comptesHttp as fabriqueComptes } from './comptes'
 import { configurationHttp as fabriqueConfiguration } from './configuration'
 import { ouvrirFlux, plateformeHttp } from './plateforme'
 import { servicesConsoleHttp } from './index'
+import { infrastructureHttp } from './infrastructure'
 
 // Adaptateurs HTTP de l'administration : routes /bff/console/iam ou /bff/des/iam (MS-IAM, D-69) et
 // /api/plateforme (MS-GATEWAY).
@@ -231,6 +232,64 @@ describe('flux temps réel /api/plateforme/flux', () => {
     }
     expect(FauxFlux.instances).toHaveLength(4)
     expect(FauxFlux.instances[0].url).toBe('/x')
+    fermer()
+    vi.unstubAllGlobals()
+  })
+})
+
+// Exploitation de l'infrastructure (D-78) : InfrastructureResource de MS-GATEWAY.
+describe('infrastructure /api/plateforme/infrastructure', () => {
+  const charge = { nom: 'iam', orchestrateur: 'KUBERNETES', etat: 'EN_COURS', sante: 'SAINE', repliques: { voulues: 1, pretes: 1 }, redemarrages: 0, image: 'iam:1', demarreeLe: null, protegee: false, gestes: [] }
+  const avecEntete = (corps: unknown, orchestrateur?: string) =>
+    new Response(JSON.stringify(corps), { status: 200, headers: { 'Content-Type': 'application/json', ...(orchestrateur ? { 'X-Orchestrateur': orchestrateur } : {}) } })
+
+  it('charges : orchestrateur de l’en-tête X-Orchestrateur ; AUCUN : liste vide ; en-tête absent : déduit des charges', async () => {
+    const spy = vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(avecEntete([charge], 'KUBERNETES'))
+      .mockResolvedValueOnce(avecEntete([], 'AUCUN'))
+      .mockResolvedValueOnce(avecEntete([charge]))
+      .mockResolvedValueOnce(avecEntete([]))
+    expect(await infrastructureHttp.charges()).toEqual({ orchestrateur: 'KUBERNETES', charges: [charge] })
+    expect(await infrastructureHttp.charges()).toEqual({ orchestrateur: 'AUCUN', charges: [] })
+    expect((await infrastructureHttp.charges()).orchestrateur).toBe('KUBERNETES')
+    expect(await infrastructureHttp.charges()).toEqual({ orchestrateur: 'AUCUN', charges: [] })
+    expect(appels(spy)[0]).toBe('GET /api/plateforme/infrastructure/charges')
+  })
+
+  it('journaux, historique paginé et gestes : routes, corps, assertion FIDO2 dans X-Reauth-Assertion', async () => {
+    const spy = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => json({}, 200))
+    await infrastructureHttp.journaux('iam', 200, 'PT10M')
+    await infrastructureHttp.operations(2, 20)
+    await infrastructureHttp.executer('iam', 'REDEMARRER', { motif: 'Motif suffisant' }, 'YXNz')
+    await infrastructureHttp.executer('iam', 'ARRETER', { motif: 'Motif suffisant' }, 'YXNz')
+    await infrastructureHttp.executer('iam', 'DEMARRER', { motif: 'Motif suffisant' }, 'YXNz')
+    await infrastructureHttp.executer('iam', 'ECHELLE', { motif: 'Motif suffisant', repliques: 3 }, 'YXNz')
+    expect(appels(spy)).toEqual([
+      'GET /api/plateforme/infrastructure/charges/iam/journaux?lignes=200&depuis=PT10M',
+      'GET /api/plateforme/infrastructure/operations?page=2&taille=20',
+      'POST /api/plateforme/infrastructure/charges/iam/redemarrage',
+      'POST /api/plateforme/infrastructure/charges/iam/arret',
+      'POST /api/plateforme/infrastructure/charges/iam/demarrage',
+      'PUT /api/plateforme/infrastructure/charges/iam/repliques',
+    ])
+    expect(entete(spy, 2, 'X-Reauth-Assertion')).toBe('YXNz')
+    expect(JSON.parse(String((spy.mock.calls[2][1] as RequestInit).body))).toEqual({ motif: 'Motif suffisant' })
+    expect(JSON.parse(String((spy.mock.calls[5][1] as RequestInit).body))).toEqual({ motif: 'Motif suffisant', repliques: 3 })
+  })
+
+  it('flux : opérations « operation-infrastructure » ; événement illisible ignoré', () => {
+    FauxFlux.instances = []
+    vi.stubGlobal('EventSource', FauxFlux)
+    const ops: string[] = []
+    const etats: string[] = []
+    const fermer = infrastructureHttp.flux({ onEtat: (e) => etats.push(e), onOperation: (o) => ops.push(o.id) })
+    const f = FauxFlux.instances[0]
+    f.onopen?.()
+    f.emettre('operation-infrastructure', JSON.stringify({ id: 'op-1' }))
+    f.emettre('operation-infrastructure', '{illisible')
+    f.emettre('plateforme', JSON.stringify({ sequence: 1 }))
+    expect(ops).toEqual(['op-1'])
+    expect(etats).toEqual(['connexion', 'connecte'])
     fermer()
     vi.unstubAllGlobals()
   })

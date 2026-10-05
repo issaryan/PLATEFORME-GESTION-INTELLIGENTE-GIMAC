@@ -80,7 +80,16 @@ services:
         condition: service_completed_successfully
       stockage-objet-init:
         condition: service_completed_successfully
-  notification: *application
+  # Notifications de la plateforme (D-80) : noms de l'annuaire de MS-IAM et nom des groupes de MS-COLLABORATION
+  # par le jeton du client notification-service (INTERNAL_IAM_READ, INTERNAL_COLLABORATION_READ).
+  notification:
+    <<: *application
+    environment:
+      <<: *emetteur-gimac
+      GIMAC_SERVICE_CLIENT_ID: notification-service
+      GIMAC_SERVICE_CLIENT_SECRET: ${GIMAC_SECRET_NOTIFICATION_SERVICE:?à définir dans .env}
+      GIMAC_SERVICES_IAM_URL: http://iam:8081
+      GIMAC_SERVICES_COLLABORATION_URL: http://collaboration:8093
   participant:
     <<: *application
     environment:
@@ -102,7 +111,16 @@ services:
   incident: *application
   monitoring: *application
   rapprochement: *application
-  pilotage: *application
+  # Mon activité (D-76) : organisation de MS-IAM et documents des rapports de MS-DOCUMENT par le jeton
+  # du client pilotage-service (INTERNAL_IAM_READ, INTERNAL_DOCUMENT_READ).
+  pilotage:
+    <<: *application
+    environment:
+      <<: *emetteur-gimac
+      GIMAC_SERVICE_CLIENT_ID: pilotage-service
+      GIMAC_SERVICE_CLIENT_SECRET: ${GIMAC_SECRET_PILOTAGE_SERVICE:?à définir dans .env}
+      GIMAC_SERVICES_IAM_URL: http://iam:8081
+      GIMAC_SERVICES_DOCUMENT_URL: http://document:8083
   reporting: *application
   # Messagerie de travail (D-64) : annuaire de MS-IAM et dépôt de MS-DOCUMENT par le jeton du client
   # collaboration-service ; clé de chiffrement au repos des messages hors base (.env).
@@ -210,6 +228,8 @@ services:
       - GIMAC_SECRET_WEB_APP=${GIMAC_SECRET_WEB_APP:?à définir dans .env}
       - GIMAC_SECRET_GATEWAY_SERVICE=${GIMAC_SECRET_GATEWAY_SERVICE:?à définir dans .env}
       - GIMAC_SECRET_COLLABORATION_SERVICE=${GIMAC_SECRET_COLLABORATION_SERVICE:?à définir dans .env}
+      - GIMAC_SECRET_PILOTAGE_SERVICE=${GIMAC_SECRET_PILOTAGE_SERVICE:?à définir dans .env}
+      - GIMAC_SECRET_NOTIFICATION_SERVICE=${GIMAC_SECRET_NOTIFICATION_SERVICE:?à définir dans .env}
       - GIMAC_SECRET_INTERNAL=${GIMAC_SECRET_INTERNAL:?à définir dans .env}
 
   prometheus:
@@ -264,7 +284,9 @@ services:
       args:
         APPLICATION: departement
         SERVICES: http
-        # Liens « Administration » vers la console (D-62), publiée sur l'hôte au port de frontend-console.
+        # Liens « Administration » vers la console (D-62) et aiguillage (D-79) : adresses publiées sur l'hôte.
+        URL_DES: http://localhost:${GIMAC_PORT_FRONTEND_DEPARTEMENT:-4200}
+        URL_PORTAIL: http://localhost:${GIMAC_PORT_FRONTEND_PORTAIL:-4201}
         URL_CONSOLE: http://localhost:${GIMAC_PORT_FRONTEND_CONSOLE:-4202}
     environment:
       GIMAC_PASSERELLE: http://gateway:8080
@@ -282,6 +304,10 @@ services:
       args:
         APPLICATION: portail
         SERVICES: http
+        # Aiguillage des comptes entre les trois applications (D-79) : adresses publiées sur l'hôte.
+        URL_DES: http://localhost:${GIMAC_PORT_FRONTEND_DEPARTEMENT:-4200}
+        URL_PORTAIL: http://localhost:${GIMAC_PORT_FRONTEND_PORTAIL:-4201}
+        URL_CONSOLE: http://localhost:${GIMAC_PORT_FRONTEND_CONSOLE:-4202}
     environment:
       GIMAC_PASSERELLE: http://gateway:8080
     ports:
@@ -298,8 +324,11 @@ services:
       args:
         APPLICATION: console
         SERVICES: http
-        # Retour au département (D-69), publié sur l'hôte au port de frontend-departement.
+        # Retour au département (D-69) et aiguillage (D-79), publiés sur l'hôte.
         URL_DEPARTEMENT: http://localhost:${GIMAC_PORT_FRONTEND_DEPARTEMENT:-4200}
+        URL_DES: http://localhost:${GIMAC_PORT_FRONTEND_DEPARTEMENT:-4200}
+        URL_PORTAIL: http://localhost:${GIMAC_PORT_FRONTEND_PORTAIL:-4201}
+        URL_CONSOLE: http://localhost:${GIMAC_PORT_FRONTEND_CONSOLE:-4202}
     environment:
       GIMAC_PASSERELLE: http://gateway:8080
     ports:

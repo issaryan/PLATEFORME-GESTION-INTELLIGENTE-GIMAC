@@ -35,11 +35,18 @@ services:
   frontend-departement:
     build:
       args:
+        URL_DES: ${GIMAC_URL_DES:?à définir dans .env}
+        URL_PORTAIL: ${GIMAC_URL_PORTAIL:?à définir dans .env}
         URL_CONSOLE: ${GIMAC_URL_CONSOLE:?à définir dans .env}
     ports: !override
       - 0.0.0.0:${GIMAC_PORT_FRONTEND_DEPARTEMENT:-4200}:8080
 
   frontend-portail:
+    build:
+      args:
+        URL_DES: ${GIMAC_URL_DES:?à définir dans .env}
+        URL_PORTAIL: ${GIMAC_URL_PORTAIL:?à définir dans .env}
+        URL_CONSOLE: ${GIMAC_URL_CONSOLE:?à définir dans .env}
     ports: !override
       - 0.0.0.0:${GIMAC_PORT_FRONTEND_PORTAIL:-4201}:8080
 
@@ -47,8 +54,73 @@ services:
     build:
       args:
         URL_DEPARTEMENT: ${GIMAC_URL_DES:?à définir dans .env}
+        URL_DES: ${GIMAC_URL_DES:?à définir dans .env}
+        URL_PORTAIL: ${GIMAC_URL_PORTAIL:?à définir dans .env}
+        URL_CONSOLE: ${GIMAC_URL_CONSOLE:?à définir dans .env}
     ports: !override
       - 0.0.0.0:${GIMAC_PORT_FRONTEND_CONSOLE:-4202}:8080
+
+  # Exploitation de l'infrastructure depuis la console (D-78, docs/exploitation/operations-infrastructure.md) :
+  # la passerelle voit et pilote les conteneurs du projet gimac-des par le mandataire du moteur Docker,
+  # jamais par le socket. Mandataire sur un réseau interne (aucun port publié, aucune sortie), socket en
+  # lecture seule, liste fermée de l'API (exploitation/docker-socket-proxy.cfg) : liste, inspection et
+  # journaux des conteneurs, start, stop, restart ; ni exec, ni création, ni suppression, ni images,
+  # volumes, réseaux ou construction.
+  docker-socket-proxy:
+    image: tecnativa/docker-socket-proxy:0.3.0
+    restart: unless-stopped
+    environment:
+      - CONTAINERS=1
+      - POST=1
+      - ALLOW_START=1
+      - ALLOW_STOP=1
+      - ALLOW_RESTARTS=1
+      - PING=1
+      # Écoute en IPv4 seulement (réseau interne du projet sans IPv6 ; sinon échec de l'écoute sur [::]).
+      - DISABLE_IPV6=1
+      - EVENTS=0
+      - VERSION=0
+      - INFO=0
+      - IMAGES=0
+      - EXEC=0
+      - VOLUMES=0
+      - NETWORKS=0
+      - BUILD=0
+      - COMMIT=0
+      - CONFIGS=0
+      - DISTRIBUTION=0
+      - GRPC=0
+      - NODES=0
+      - PLUGINS=0
+      - SECRETS=0
+      - SERVICES=0
+      - SESSION=0
+      - SWARM=0
+      - SYSTEM=0
+      - TASKS=0
+      - AUTH=0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./exploitation/docker-socket-proxy.cfg:/usr/local/etc/haproxy/haproxy.cfg.template:ro
+    networks:
+      - exploitation
+    security_opt:
+      - no-new-privileges:true
+
+  # Passerelle : exploitation par le mandataire (réseau exploitation en plus du réseau du projet).
+  gateway:
+    environment:
+      - GIMAC_ORCHESTRATEUR_TYPE=docker
+      - GIMAC_ORCHESTRATEUR_DOCKER_URL=http://docker-socket-proxy:2375
+      - GIMAC_ORCHESTRATEUR_DOCKER_PROJET=gimac-des
+    networks:
+      - default
+      - exploitation
+
+networks:
+  # Réseau interne : ni accès extérieur ni port publié ; seuls la passerelle et le mandataire y sont.
+  exploitation:
+    internal: true
 
 volumes:
   keycloak_donnees:

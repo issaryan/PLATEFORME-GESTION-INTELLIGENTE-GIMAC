@@ -108,3 +108,25 @@ management:
   health:
     mail:
       enabled: false
+
+---
+# Notifications de la plateforme (D-80) : adaptateurs de substitution, outbox relayée explicitement par les
+# tests vers le Kafka de Testcontainers, consommateur démarré par le test qui l'exerce.
+spring:
+  kafka:
+    bootstrap-servers: ${spring.cloud.stream.kafka.binder.brokers:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+gimac:
+  adapters:
+    annuaire: stub
+    conversations: stub
+  consommateurs:
+    demarrage-automatique: false

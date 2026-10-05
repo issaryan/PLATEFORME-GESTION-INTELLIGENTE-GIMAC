@@ -63,6 +63,11 @@ valider_compose() {
   controler "docker-compose.yml + docker-compose.gimac.yml (fusion de gimac-dev.sh)" \
     docker compose --project-directory "$COMPOSE" --env-file "$env_factice" \
       -f "$COMPOSE/docker-compose.yml" -f "$COMPOSE/docker-compose.gimac.yml" config -q
+  # Surcouche du serveur de démonstration (deployer-serveur.sh) : Keycloak persistant, mandataire du
+  # moteur Docker de l'exploitation depuis la console (D-78).
+  controler "docker-compose.yml + docker-compose.gimac.yml + docker-compose.serveur.yml (deployer-serveur.sh)" \
+    docker compose --project-name gimac-des --project-directory "$COMPOSE" --env-file "$env_factice" \
+      -f "$COMPOSE/docker-compose.yml" -f "$COMPOSE/docker-compose.gimac.yml" -f "$COMPOSE/docker-compose.serveur.yml" config -q
   fin_section
 }
 

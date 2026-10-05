@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState, type R
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router'
 import { AttachmentViewer, Avatar, Button, ConfirmDialog, ConversationList, Dialog, EmptyState, Icon, IconButton, InlineAlert, Link, MessageComposer, MessageThread, PageHeader, type EnvoiPiece, Pagination, Presence, SearchInput, SearchSelect, Skeleton, Tag, TextField, type ThreadMessage, Note } from '@gimac/design-system'
-import { aPermission, urlAvatar, useEnLigne, usePermissions, usePresence, useSaisies, useSession, type ApiError } from '@gimac/socle'
+import { aPermission, urlAvatar, useEnLigne, useLectureConversation, usePermissions, usePresence, useSaisies, useSession, type ApiError } from '@gimac/socle'
 import type { Conversation, Correspondant, EtiquetteLiaison, EvenementGroupe, Message, PieceJointe } from '../../../modele/messagerie'
 import { LIMITES_MESSAGERIE, MOTIF_LIAISON } from '../../../modele/messagerie'
 import { useAjouterMembres, useAnnuaire, useConversation, useConversations, useDemarrer, useEnvoyer, useFil, useMarquerLu, usePresenceMessagerie, useRenommerGroupe, useRetirerMembre, useSignalerSaisie, useTelechargerPiece, useTransferer } from '../../../hooks/messagerie'
@@ -133,7 +133,7 @@ export function useTexteEvenement() {
  * Annuaire de la plateforme (D-68) : comptes internes actifs, réels (MS-IAM), cherchés par nom ou fonction,
  * avec photo et fonction ; choix d'une personne (message direct) ou de plusieurs (groupe).
  */
-function Annuaire({ choisis, onChoisis, multiple, exclus = [] }: { choisis: Correspondant[]; onChoisis: (c: Correspondant[]) => void; multiple: boolean; exclus?: string[] }) {
+export function Annuaire({ choisis, onChoisis, multiple, exclus = [] }: { choisis: Correspondant[]; onChoisis: (c: Correspondant[]) => void; multiple: boolean; exclus?: string[] }) {
   const { t } = useTranslation()
   const photo = usePhoto()
   const erreur = useMessageErreur()
@@ -373,6 +373,9 @@ function Fil({ id, peutEcrire, onQuitte, onAller }: { id: string; peutEcrire: bo
     if (nonLus > 0 && dernier) lu.mutate(id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, nonLus, dernier])
+  // Notifications de la plateforme (D-80) : ouvrir la conversation marque ses notifications lues, et de
+  // nouveau à chaque message reçu pendant qu'elle est ouverte (POST /notifications/lecture, référence de la conversation).
+  useLectureConversation(id, dernier)
   if (conversation.isError) return <InlineAlert level="crit">{erreur(conversation.error)}</InlineAlert>
   if (!conversation.data || !fil.data) return <Skeleton height={320} />
   const c = conversation.data

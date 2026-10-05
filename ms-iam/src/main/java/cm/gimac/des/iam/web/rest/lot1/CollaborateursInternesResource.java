@@ -22,10 +22,24 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/interne/collaborateurs")
 public class CollaborateursInternesResource {
 
-    /** « avatarVersion » : version de la photo de profil, nulle sans photo (docs/lot1/mon-compte.md §1). */
-    public record Collaborateur(String id, String nomAffiche, Set<String> profils, String institutionId, boolean actif, String fonction, String avatarVersion) {
+    /**
+     * « avatarVersion » : version de la photo de profil, nulle sans photo (docs/lot1/mon-compte.md §1) ;
+     * « unite » (code) et « responsableId » : rattachement organisationnel, nuls sans rattachement
+     * (docs/lot1/mon-activite.md §1.2).
+     */
+    public record Collaborateur(
+        String id,
+        String nomAffiche,
+        Set<String> profils,
+        String institutionId,
+        boolean actif,
+        String fonction,
+        String avatarVersion,
+        String unite,
+        String responsableId
+    ) {
         static Collaborateur de(Compte c, String avatarVersion) {
-            return new Collaborateur(c.id(), c.nomAffiche(), c.profils(), c.institutionId(), c.actif(), c.fonction(), avatarVersion);
+            return new Collaborateur(c.id(), c.nomAffiche(), c.profils(), c.institutionId(), c.actif(), c.fonction(), avatarVersion, c.unite(), c.responsableId());
         }
     }
 

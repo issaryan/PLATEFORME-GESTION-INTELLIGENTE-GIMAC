@@ -24,6 +24,9 @@ public final class SecurityUtils {
 
     public static final String CLAIMS_NAMESPACE = "https://www.jhipster.tech/";
 
+    /** Permission métier : majuscules, chiffres et tirets bas (par exemple NOT_INBOX_READ). */
+    private static final java.util.regex.Pattern PERMISSION = java.util.regex.Pattern.compile("^[A-Z][A-Z0-9]*(_[A-Z0-9]+)+$");
+
     private SecurityUtils() {}
 
     /**
@@ -117,6 +120,12 @@ public final class SecurityUtils {
     }
 
     private static List<GrantedAuthority> mapRolesToGrantedAuthorities(Collection<String> roles) {
-        return roles.stream().filter(role -> role.startsWith("ROLE_")).map(SimpleGrantedAuthority::new).collect(Collectors.toList());
+        return roles
+            .stream()
+            // Rôles ROLE_* et permissions métier (NOT_*, INTERNAL_*... : PI-GIMAC-01 §0.6) ;
+            // les rôles techniques de Keycloak, en minuscules, sont écartés.
+            .filter(role -> role.startsWith("ROLE_") || PERMISSION.matcher(role).matches())
+            .<GrantedAuthority>map(SimpleGrantedAuthority::new)
+            .collect(Collectors.toList());
     }
 }

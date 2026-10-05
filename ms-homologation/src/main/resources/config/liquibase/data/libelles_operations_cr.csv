@@ -1,0 +1,97 @@
+code;libelle;preuve;valeur
+1;Prise de contact;Enregistrement du candidat;
+2;Collecte des pièces administratives;Dossier d'adhésion complet;
+3;Arrêt du périmètre des services;Périmètre contractualisé, service par service;
+4;Désignation de la banque partenaire, le cas échéant;Déclaration de portage, ou mention expresse de son absence;
+5;Arrêt des conditions tarifaires et des commissions d'interchange;Grille de frais convenue;
+6;Affectation des ressources du projet;Désignation du conducteur de projet et des responsables;
+7;Réunion de lancement;Compte rendu de la réunion;
+8;Atelier de cadrage fonctionnel et de périmètre;Compte rendu et périmètre fonctionnel convenu;
+9;Atelier réseau et matrice des flux;Compte rendu, paramètres convenus et matrice des flux;
+10;Atelier interfaces de programmation;Compte rendu et périmètre technique convenu;
+11;Atelier comptabilisation;Compte rendu;
+12;Communication de l'adresse et du port d'essai;Fiche des coordonnées techniques;Adresse et port d'essai
+13;Contrôle d'atteignabilité du port;Résultat du contrôle;
+14;Établissement du lien d'essai;Confirmation de raccordement;
+15;Paramétrage d'essai;Document de paramétrage, livrable unique et imposé de la phase;
+16;Essais service par service;Corps envoyé et corps reçu, pour chaque service;
+17;Constat de la couverture du périmètre;Couverture calculée sur le périmètre contractualisé;
+18;Établissement du procès-verbal;Procès-verbal de certification;
+19;Signature du procès-verbal;Procès-verbal signé des deux parties;
+20;Constitution du dossier de changement;Dossier de changement;
+21;Fourniture des attestations de sécurité;ISO 27001, PCI DSS ou GSMA, selon l'activité;
+22;Justification de la conformité réglementaire;Élément établissant la conformité COBAC;
+23;Vérification et archivage;Dossier archivé;
+24;Approbation du changement;Approbation formelle;
+25;Réception du document de paramétrage;Accusé de réception;
+26;Ouverture de la fiche de changement;Référence de la fiche;
+C1;Cérémonie de clés : clé maîtresse de zone en trois composantes;Procès-verbal de cérémonie et codes de contrôle des composantes;
+C2;Création du membre sur le switch interbancaire;Capture portant le code du membre créé;Code du membre
+C3;Ajout du numéro d'identification bancaire sur le switch interbancaire;Capture de la création;Numéro d'identification bancaire
+C4;Création de l'interface du membre;Trace de création;
+C5;Paramétrage du routage sur le switch interbancaire;Capture du routage;
+C6;Création du script de démarrage de l'interface;Trace de création du script;
+C7;Ouverture de session et échange de clés avec le système du participant;Trace de l'ouverture de session et de l'échange;
+C8;Surveillance des transactions;Relevé des transactions observées;
+C9;Création du répertoire de dépôt des fichiers sur le switch interbancaire;Trace de création;
+C10;Traitement de fin de journée et génération du fichier d'états;Fichier engendré et déposé;
+M1;Communication des points de terminaison de production du GIMAC;Accusé de transmission;
+M2;Création du membre sur la plateforme mobile;Capture portant le code du membre;Code du membre
+M3;Génération du mot de passe du membre;Trace de génération, hors valeur;
+M4;Création du compte du membre;Capture de la création;
+M5;Liaison du compte au membre;Capture de la liaison;
+M6;Autorisation de l'adresse du participant sur le serveur;Trace de la déclaration et du redémarrage;
+M7;Remise des identifiants de connexion au participant;Trace de remise, hors valeurs;
+M8;Déclaration des points de terminaison du participant et de leur authentification;Capture portant les adresses déclarées;Adresses des points de terminaison
+M9;Chiffrement des mots de passe portés par la configuration;Trace de l'opération, hors valeurs;
+M10;Définition du routage vers le point de terminaison du membre;Capture du routage;
+M11;Contrôle de connectivité vers le participant;Résultat du contrôle;
+M12;Récupération du certificat du participant;Certificat récupéré et horodaté;
+M13;Vérification du certificat, nom commun et noms alternatifs;Relevé des noms portés par le certificat;
+M14;Association du nom de domaine à l'adresse, le cas échéant;Trace de l'association;
+M15;Mise en cohérence des adresses déclarées avec les noms du certificat;Capture des adresses corrigées;Adresses corrigées
+M16;Sauvegarde du magasin de confiance et import du certificat;Trace de sauvegarde et d'import;
+M17;Redémarrage du service et essai d'appel des points de terminaison;Résultat de l'essai d'appel;
+D1;Planification de la mise en production avec le participant et son personnalisateur;Calendrier arrêté;
+D2;Transmission des clés carte par le personnalisateur à la sécurité;Trace de la transmission;
+D3;Saisie des clés dans le module matériel de sécurité;Codes de contrôle, à l'exclusion de toute valeur de clé;
+D4;Établissement de la matrice des flux de production;Matrice des flux;
+D5;Fourniture des fichiers du premier lot de cartes;Fichiers reçus;
+D6;Communication des adresses des guichets automatiques à créer;Liste des guichets;
+D7;Création du membre sur le switch délégataire;Capture portant le code du membre;Code du membre
+D8;Création des agences, dont l'agence principale;Capture de chaque création;
+D9;Création des utilisateurs;Capture de la création;
+D10;Création des produits client;Capture de chaque création;
+D11;Création des produits compte;Capture de chaque création;
+D12;Création des produits carte avec leurs clés chiffrées;Capture de la configuration, hors valeurs de clés;
+D13;Création du promoteur dans l'écran des partenaires;Capture de la création;
+D14;Création du répertoire du membre dans la base délégataire;Trace de création;
+D15;Intégration des fichiers clients, comptes et demandes de carte;Compte rendu d'intégration;
+D16;Liaison du membre à son personnalisateur;Capture de la liaison;
+D17;Génération du fichier de personnalisation;Trace de génération et de remise;
+D18;Création de la table de correspondance des codes réponse du système bancaire;Capture de la table;
+D19;Création de l'interface vers le système bancaire et essai de connexion;Trace de création et résultat de l'essai;
+D20;Ouverture du port de l'interface des guichets sur le serveur frontal;Trace de l'ouverture;
+D21;Création de l'interface des guichets automatiques et essai depuis un guichet;Trace de création et résultat de l'essai;
+D22;Création de la configuration globale des guichets automatiques;Capture de la configuration;
+D23;Création des guichets automatiques;Capture de chaque création;
+D24;Ajout du numéro d'identification bancaire sur le switch délégataire;Capture de la création;Numéro d'identification bancaire
+D25;Paramétrage du routage propriétaire sur le switch délégataire;Capture du routage;
+D26;Passage en service des guichets automatiques;Capture de la mise en service;
+D27;Contrôle des clés carte avant intégration du fichier retour;Résultat du contrôle;
+D28;Intégration du fichier retour, acheminement et activation des cartes;Compte rendu d'activation;
+D29;Création du membre sur le switch interbancaire, au titre de sa banque partenaire;Capture portant le code et, s'il y a lieu, la banque partenaire;Code du membre
+D30;Surveillance des transactions privatives;Relevé des transactions observées;
+D31;Ajout du numéro d'identification bancaire sur le switch interbancaire;Capture de la création;Numéro d'identification bancaire
+D32;Configuration du routage du numéro d'identification bancaire;Capture du routage;
+D33;Affectation de la configuration des frais et des commissions d'interchange;Capture de la configuration;
+D34;Déclaration du chemin du répertoire de dépôt sur le switch délégataire;Trace de la déclaration;
+27;Création du répertoire de dépôt du participant;Trace de création du partage;
+28;Mise à jour du script de dépôt des fichiers;Trace de la mise à jour;
+29;Création des identifiants de connexion au serveur de transfert;Trace de création, hors valeurs;
+30;Tests de transaction en production;Résultat des transactions;
+31;Rapport de mise en production;Rapport consolidé;
+32;Renseignement de la fiche de suivi des services;Fiche de suivi complète;
+33;Constat des services effectivement ouverts;Couverture de mise en service;
+34;Suivi de l'exploitation;Se poursuit tant que la liaison existe;
+35;Ouverture d'un service supplémentaire;Rouvre le parcours au cadrage, sur une nouvelle liaison;

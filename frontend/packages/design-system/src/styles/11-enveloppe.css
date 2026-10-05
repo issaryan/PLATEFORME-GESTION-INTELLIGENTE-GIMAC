@@ -71,3 +71,28 @@
 .gm-topbar-menu-identite { display: flex; flex-direction: column; min-width: 0; }
 .gm-topbar-menu-nom { color: var(--gm-color-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gm-topbar-menu-detail { font-size: 12px; line-height: 18px; color: var(--gm-color-text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Cloche des notifications (D-80) : pastille des non-lues posée sur le bouton, panneau ancré de 400 px. */
+.gm-topbar-pastille { position: absolute; top: 2px; right: 0; min-width: 18px; height: 18px; padding: 0 var(--gm-space-1); display: inline-flex; align-items: center; justify-content: center; background: var(--gm-color-status-crit-fg); color: var(--gm-color-text-inverse); font-size: 11px; line-height: 18px; font-weight: 700; pointer-events: none; }
+/* Double classe : l'emporte sur la largeur et la marge du popover générique (12-saisie-avancee.css). */
+.gm-topbar-pop.gm-topbar-notif { width: 400px; max-width: calc(100vw - 2 * var(--gm-space-4)); padding: 0; gap: 0; }
+.gm-cloche-tete { display: flex; align-items: center; gap: var(--gm-space-2); padding: var(--gm-space-2) var(--gm-space-3); border-bottom: var(--gm-border-1) solid var(--gm-color-border); }
+.gm-cloche-tete > * { white-space: nowrap; }
+.gm-cloche-liste { list-style: none; margin: 0; padding: 0; max-height: min(480px, calc(100vh - 200px)); overflow-y: auto; overscroll-behavior: contain; }
+.gm-cloche-item { all: unset; box-sizing: border-box; width: 100%; display: flex; gap: var(--gm-space-3); padding: var(--gm-space-3); border-bottom: var(--gm-border-1) solid var(--gm-color-border); cursor: pointer; align-items: flex-start; color: var(--gm-color-text-primary); }
+.gm-cloche-item:hover { background: var(--gm-color-surface-sunken); }
+.gm-cloche-item:focus-visible { outline: var(--gm-border-2) solid var(--gm-color-focus); outline-offset: -2px; }
+.gm-cloche-item > .gm-icon { color: var(--gm-color-text-secondary); flex: none; margin-top: 2px; }
+.gm-cloche-item.gm-notif-unread { background: var(--gm-color-action-subtle); box-shadow: inset 3px 0 0 var(--gm-color-action); }
+.gm-cloche-corps { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.gm-cloche-ligne { display: flex; align-items: baseline; gap: var(--gm-space-2); }
+.gm-cloche-titre { font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gm-cloche-apercu { color: var(--gm-color-text-secondary); font-size: 13px; line-height: 18px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.gm-cloche-depuis { color: var(--gm-color-text-muted); font-size: 12px; line-height: 16px; white-space: nowrap; }
+.gm-cloche-pied { display: flex; justify-content: space-between; align-items: center; gap: var(--gm-space-2); padding: var(--gm-space-2) var(--gm-space-3); }
+.gm-cloche-vide { padding: var(--gm-space-5) var(--gm-space-3); text-align: center; color: var(--gm-color-text-secondary); }
+/* Fenêtres surgissantes des notifications reçues : titre, aperçu sur deux lignes, « Ouvrir ». */
+.gm-toast-notif { min-width: 0; width: 360px; max-width: calc(100vw - 2 * var(--gm-space-5)); align-items: flex-start; border-left: var(--gm-border-2) solid var(--gm-color-action); }
+.gm-toast-notif > .gm-icon { color: var(--gm-color-action); margin-top: 2px; }
+.gm-toast-titre { display: block; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gm-toast-texte { color: var(--gm-color-text-secondary); font-size: 13px; line-height: 18px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.gm-cloche-liste.gm-notifications-page { max-height: none; overflow: visible; }

@@ -157,6 +157,21 @@ class DepotFragmenteServiceTest {
     }
 
     @Test
+    @DisplayName("Permission selon la finalité : RAPPORT_ACTIVITE exige PIL_ACTIVITY_OWN (D-76), ni COL_MESSAGE_SEND ni une permission du dépôt direct ; 403 sinon")
+    void permissionRapportActivite() {
+        Ouverture rapport = ouverture("RAPPORT_ACTIVITE", 10L);
+        erreur(() -> service.ouvrir(rapport, new Demandeur(AGENT, null, Set.of("DOC_DEPOSIT"))), 403, "DOC_PURPOSE_FORBIDDEN");
+        erreur(() -> service.ouvrir(rapport, new Demandeur(AGENT, null, Set.of("COL_MESSAGE_SEND"))), 403, "DOC_PURPOSE_FORBIDDEN");
+        assertThat(service.ouvrir(rapport, new Demandeur(AGENT, null, Set.of("PIL_ACTIVITY_OWN"))).etat()).isEqualTo(EtatDepotFragmente.OUVERT);
+
+        Ouverture adhesion = ouverture("ADHESION", 10L);
+        erreur(() -> service.ouvrir(adhesion, new Demandeur(AGENT, null, Set.of("PIL_ACTIVITY_OWN"))), 403, "DOC_PURPOSE_FORBIDDEN");
+        Ouverture messagerie = ouverture("MESSAGERIE", 10L);
+        erreur(() -> service.ouvrir(messagerie, new Demandeur(AGENT, null, Set.of("PIL_ACTIVITY_OWN"))), 403, "DOC_PURPOSE_FORBIDDEN");
+        assertThat(stockage.envoisEnCours()).isEqualTo(1);
+    }
+
+    @Test
     @DisplayName("Admission : taille absente, négative ou nulle (400), au-delà du maximum (413), finalité et référence (400) ; rien n'est ouvert")
     void admission() {
         erreur(() -> service.ouvrir(ouverture("ADHESION", null), DEMANDEUR), 400, "DOC_SIZE_INVALID");

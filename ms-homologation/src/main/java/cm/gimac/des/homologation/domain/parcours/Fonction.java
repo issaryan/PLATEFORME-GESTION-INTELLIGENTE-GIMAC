@@ -40,6 +40,28 @@ public enum Fonction {
         return profils;
     }
 
+    /** Libellé français de la fonction (catalogue du modélisateur, tâches). */
+    public String libelle() {
+        return switch (this) {
+            case DDRM -> "Développement du Réseau et du Marché";
+            case CHEF_DDRM -> "Chef du département DDRM";
+            case CHEF_DES -> "Chef du département DES";
+            case CHEFS_DEPARTEMENT -> "Chefs des deux départements";
+            case CONDUCTEUR -> "Conducteur de projet";
+            case SNA -> "Normes et Agréments";
+            case PRODUCTION_MONETIQUE -> "Production monétique";
+            case POLE_RESEAU -> "Pôle réseau";
+            case POLE_SYSTEME -> "Pôle système";
+            case RSSI -> "Sécurité des systèmes d'information";
+            case CONFORMITE -> "Conformité";
+            case DG -> "Direction générale";
+            case EXPLOITATION -> "Exploitation et Supervision";
+            case PARTICIPANT -> "Participant";
+            case BANQUE_PARTENAIRE -> "Banque partenaire";
+            case PERSONNALISATEUR -> "Personnalisateur";
+        };
+    }
+
     /** Fonction tenue par un tiers : le participant, sa banque partenaire, le personnalisateur. */
     public boolean externe() {
         return this == PARTICIPANT || this == BANQUE_PARTENAIRE || this == PERSONNALISATEUR;

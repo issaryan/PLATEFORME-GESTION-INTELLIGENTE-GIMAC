@@ -27,6 +27,16 @@ const GRAINES: Graine[] = [
   ['u-sans-2fa', 'b.hamadou', 'Bachir', 'Hamadou Ali', 'Ingénieur système', ['ROLE_POLE_SYSTEME'], { secondFacteur: false }],
 ]
 
+/**
+ * Rattachement de démonstration (D-76, docs/lot1/mon-activite.md §1.2) : unité la plus fine et responsable (n+1).
+ * Le super administrateur, le correspondant (compte d'institution) et l'ingénieur système n'en ont pas.
+ */
+const RATTACHEMENTS: Record<string, [unite: string, responsableId: string | null]> = {
+  'u-dg': ['DG', null], 'u-chef-des': ['DES', 'u-dg'], 'u-chef-ddrm': ['DDRM', 'u-dg'], 'u-rssi': ['SSI', 'u-dg'], 'u-conformite': ['CONFORMITE', 'u-dg'],
+  'u-charge-ddrm': ['DDRM', 'u-chef-ddrm'], 'u-ingenieur': ['SNA', 'u-chef-des'], 'u-sna': ['SNA', 'u-chef-des'], 'u-inactif': ['POLE_RESEAU', 'u-chef-des'],
+  'u-premier-acces': ['PROD_MONETIQUE', 'u-chef-des'],
+}
+
 /** Comptes qui ont déposé une photo de profil (démonstration, docs/lot1/mon-compte.md) ; les autres gardent leurs initiales. */
 export const PHOTOS_DEMO = ['u-rssi', 'u-chef-des', 'u-chef-ddrm', 'u-conformite', 'u-correspondant', 'u-sna', 'u-dg']
 
@@ -36,7 +46,8 @@ export function comptesInitiaux(): Compte[] {
     const c: Compte = {
       id, identifiant, prenom, nom, nomAffiche: `${prenom} ${nom}`, email: `${identifiant}@gimac-afr.org`,
       emailVerifie: true, actif: true, creeLe: il(24 * (200 - i * 12)), telephone: `+237 6${(90 + i).toString()} ${(10 + i).toString()} ${(20 + i).toString()} ${(30 + i).toString()}`,
-      fonction, langue: 'fr', institutionId: null, profilComplet: true, premierAccesEnAttente: false, profils, actionsRequises: [], secondFacteur: true, avatarVersion: avatarsSimules.version(id), ...o,
+      fonction, langue: 'fr', institutionId: null, profilComplet: true, premierAccesEnAttente: false, profils, actionsRequises: [], secondFacteur: true, avatarVersion: avatarsSimules.version(id),
+      unite: RATTACHEMENTS[id]?.[0] ?? null, responsableId: RATTACHEMENTS[id]?.[1] ?? null, ...o,
     }
     c.premierAccesEnAttente = !c.profilComplet || c.actionsRequises.length > 0
     return c

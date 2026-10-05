@@ -10,6 +10,9 @@ import java.util.Set;
  * des identités et des facteurs) le décrit. Aucun mot de passe ni secret n'y figure (RG-65).
  *
  * @param profilComplet vrai quand l'utilisateur a terminé sa configuration de premier accès
+ * @param unite code de l'unité organisationnelle de rattachement (la plus fine), nul sans rattachement
+ *     (D-76, docs/lot1/mon-activite.md §1.2)
+ * @param responsableId identifiant du compte responsable (n+1), nul sans responsable
  */
 public record Compte(
     String id,
@@ -27,11 +30,45 @@ public record Compte(
     boolean profilComplet,
     Set<String> profils,
     List<ActionRequise> actionsRequises,
-    boolean secondFacteur
+    boolean secondFacteur,
+    String unite,
+    String responsableId
 ) {
     public Compte {
         profils = profils == null ? Set.of() : Set.copyOf(profils);
         actionsRequises = actionsRequises == null ? List.of() : List.copyOf(actionsRequises);
+    }
+
+    /** Compte sans rattachement organisationnel (unité et responsable nuls). */
+    public Compte(
+        String id,
+        String identifiant,
+        String prenom,
+        String nom,
+        String email,
+        boolean emailVerifie,
+        boolean actif,
+        Instant creeLe,
+        String telephone,
+        String fonction,
+        String langue,
+        String institutionId,
+        boolean profilComplet,
+        Set<String> profils,
+        List<ActionRequise> actionsRequises,
+        boolean secondFacteur
+    ) {
+        this(id, identifiant, prenom, nom, email, emailVerifie, actif, creeLe, telephone, fonction, langue, institutionId, profilComplet, profils, actionsRequises, secondFacteur, null, null);
+    }
+
+    /** Compte interne du GIMAC : sans institution (un correspondant porte celle de son participant). */
+    public boolean interne() {
+        return institutionId == null || institutionId.isBlank();
+    }
+
+    /** Même compte avec un autre rattachement organisationnel. */
+    public Compte avecRattachement(String nouvelleUnite, String nouveauResponsable) {
+        return new Compte(id, identifiant, prenom, nom, email, emailVerifie, actif, creeLe, telephone, fonction, langue, institutionId, profilComplet, profils, actionsRequises, secondFacteur, nouvelleUnite, nouveauResponsable);
     }
 
     public String nomAffiche() {

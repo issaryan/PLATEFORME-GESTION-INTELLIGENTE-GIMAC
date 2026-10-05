@@ -14,8 +14,9 @@ import tools.jackson.databind.json.JsonMapper;
 /**
  * Lecture d'une enveloppe CloudEvents 1.0 en mode structuré (PI §0.4 : specversion, id, source,
  * type, subject, time, correlationid, institutionid, data) publiée sur un sujet Kafka. Seuls
- * l'identifiant, le type, le sujet, l'institution et, pour la collaboration, les destinataires
- * sont retenus ; le reste de « data » n'est jamais lu ni relayé.
+ * l'identifiant, le type, le sujet, l'institution et, pour la collaboration et les notifications de la
+ * plateforme (D-80), les destinataires et l'auteur ou l'acteur sont retenus ; le reste de « data » n'est
+ * jamais lu ni relayé.
  */
 public class LectureCloudEvent {
 
@@ -49,9 +50,10 @@ public class LectureCloudEvent {
         }
         String topic = topic(sujetKafka);
         boolean collaboration = EvenementLive.COLLABORATION.equals(topic);
-        JsonNode data = collaboration ? donnees(ce.get("data")) : null;
-        Set<String> destinataires = collaboration ? destinataires(data) : Set.of();
-        String acteur = data != null ? texte(data, "auteurId") : null;
+        boolean notification = EvenementLive.NOTIFICATION.equals(topic);
+        JsonNode data = collaboration || notification ? donnees(ce.get("data")) : null;
+        Set<String> destinataires = data != null ? destinataires(data) : Set.of();
+        String acteur = data == null ? null : texte(data, collaboration ? "auteurId" : "acteurId");
         return Optional.of(new EvenementLive(id, type, texte(ce, "subject"), topic, texte(ce, "institutionid"), destinataires, acteur));
     }
 

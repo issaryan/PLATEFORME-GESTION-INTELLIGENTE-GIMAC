@@ -34,4 +34,25 @@ export {
   SurveillanceInactivite, dureeInactivite, prolongerSession, signalerActivite, minutesSecondes, INACTIVITE_MAX_MS, PREAVIS_MS, CANAL_SESSION, type SurveillanceInactiviteProps,
 } from './session/inactivite'
 export { PageDeconnexion } from './session/PageDeconnexion'
+export {
+  satisfait, PERMISSIONS_CONSOLE, ADRESSES_APPLICATIONS, FRAGMENT_SESSION_DEMO, estCompteInstitution, ouvreConsole, applicationDe, applicationApresRefus, adresseApplication,
+  adresseConnexionApplication, reprendreSessionDemo, type Predicat,
+} from './session/aiguillage'
+export { Aiguillage, MessageAiguillage, reglageAiguillage } from './session/Aiguillage'
 export { LangueComposants } from './i18n/LangueComposants'
+// Notifications de la plateforme (D-80, docs/lot1/notifications.md) : cloche, page, fenêtres surgissantes, système.
+export {
+  TYPES_NOTIFICATION, referenceConversation, type NotificationPlateforme, type TypeNotification, type ReferenceNotification, type EtatNotifications, type PageNotifications,
+  type PreferencesNotifications, type FiltreLecture, type ServiceNotifications,
+} from './notifications/modele'
+export { notificationsHttp } from './notifications/http'
+export { notificationsSimulees, type ServiceNotificationsSimule, type ArriveeNotification, type OptionsNotificationsSimulees } from './notifications/simule'
+export {
+  NotificationsProvider, useContexteNotifications, useNotificationsDisponibles, useCompteurNotifications, useListeNotifications, useNotificationsRecentes, useMarquerNotificationLue,
+  useToutMarquerLu, usePreferencesNotifications, useEnregistrerPreferencesNotifications, useApercuNotification, useOuvrirNotification, useLectureConversation, lienDansCouche,
+  conversationOuverte, clesNotifications, SONDAGE_NOTIFICATIONS, TAILLE_RECENTES, type CoucheNotifications, type LecteurApercu,
+} from './notifications/contexte'
+export { etatNotificationSysteme, demanderNotificationSysteme, notifierSysteme, jouerSon, type EtatSysteme } from './notifications/systeme'
+export { PanneauNotifications, ElementNotification, ICONES_NOTIFICATION, depuis } from './notifications/Cloche'
+export { NotificationsSurgissantes, DUREE_SURGISSANTE_MS, SURGISSANTES_MAX } from './notifications/Surgissantes'
+export { NotificationsPage, TAILLE_PAGE_NOTIFICATIONS } from './notifications/NotificationsPage'

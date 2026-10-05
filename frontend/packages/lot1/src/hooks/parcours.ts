@@ -17,7 +17,7 @@ export const useDossierLiaison = (id: string) => useLecture(cles.parcoursDossier
 export const useOperationsParcours = (id: string, filtre?: { etape?: string; fonction?: Fonction }) =>
   useLecture(cles.parcoursDossier(id, `operations:${filtre?.etape ?? ''}:${filtre?.fonction ?? ''}`), (s) => s.parcours.operations(id, filtre), { enabled: Boolean(id) })
 export const useTableauActeur = (fonctions: Fonction[], actif = true) =>
-  useLecture(cles.parcoursActeur(fonctions), (s) => s.parcours.tableauActeur(fonctions), { enabled: actif && fonctions.length > 0 })
+  useLecture(cles.parcoursActeur(fonctions), (s) => s.parcours.tableauActeur(fonctions), { enabled: actif })
 export const usePilotage = (actif = true) => useLecture(cles.parcoursPilotage(), (s) => s.parcours.pilotage(), { enabled: actif })
 export const useProcesVerbal = (id: string) => useLecture(cles.parcoursDossier(id, 'pv'), (s) => s.decision.procesVerbal(id), { enabled: Boolean(id) })
 export const useApprobation = (id: string) => useLecture(cles.parcoursDossier(id, 'approbation'), (s) => s.decision.approbation(id), { enabled: Boolean(id) })

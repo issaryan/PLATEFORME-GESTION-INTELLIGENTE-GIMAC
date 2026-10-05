@@ -1,5 +1,6 @@
 package cm.gimac.des.collaboration.application.usecase;
 
+import cm.gimac.des.collaboration.application.port.in.ConsulterConversationInterneUseCase;
 import cm.gimac.des.collaboration.application.port.in.ConsulterMessagerieUseCase;
 import cm.gimac.des.collaboration.application.port.out.ChiffrementPort;
 import cm.gimac.des.collaboration.application.port.out.CollaboratorDirectoryPort;
@@ -35,7 +36,7 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 @Transactional(readOnly = true)
-public class MessagerieQueries implements ConsulterMessagerieUseCase {
+public class MessagerieQueries implements ConsulterMessagerieUseCase, ConsulterConversationInterneUseCase {
 
     private static final Logger LOG = LoggerFactory.getLogger(MessagerieQueries.class);
     static final int TAILLE_MAX = 100;
@@ -64,6 +65,19 @@ public class MessagerieQueries implements ConsulterMessagerieUseCase {
         this.documents = documents;
         this.chiffrement = chiffrement;
         this.regles = regles;
+    }
+
+    @Override
+    public ConversationInterne conversationInterne(UUID conversationId) {
+        Conversation c = conversations
+            .findById(conversationId)
+            .orElseThrow(() -> CollaborationException.introuvable("COL_CONVERSATION_NOT_FOUND", conversationId));
+        return new ConversationInterne(
+            c.getId(),
+            c.getType().name(),
+            c.estGroupe() ? c.getTitre() : null,
+            c.getMembres().stream().map(cm.gimac.des.collaboration.domain.messagerie.ConversationMembre::getMembreId).toList()
+        );
     }
 
     @Override

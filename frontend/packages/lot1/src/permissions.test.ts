@@ -4,6 +4,8 @@ import { FONCTION_DU_ROLE, PERM, PERMISSIONS_NOUVELLES, PROFILS, fonctionsDe } f
 // Matrice des rôles du parcours (D-58, D-61) : invariants attendus du domaine Keycloak `gimac`
 // (infra/keycloak/generer-realm-gimac.py) et des permissions nouvelles du modèle hybride (D-56).
 const detenteurs = (permission: string) => Object.keys(PROFILS).filter((r) => PROFILS[r].includes(permission)).sort()
+/** Profils de « Mon activité » sans fonction métier dans la plateforme (D-76 §4). */
+const SANS_FONCTION = ['ROLE_COLLABORATEUR', 'ROLE_RESPONSABLE_SERVICE', 'ROLE_ADMIN_SYSTEME']
 const LECTURE_DES = ['HOM_REFERENTIEL_READ', 'HOM_LIAISON_READ', 'HOM_LIAISON_LIST', 'HOM_DASHBOARD_READ', 'CER_CIRCUIT_READ', 'CER_DOSSIER_READ', 'CER_REGISTER_READ', 'PAR_INSTITUTION_READ']
 
 describe('matrice des rôles (PROFILS)', () => {
@@ -30,13 +32,30 @@ describe('matrice des rôles (PROFILS)', () => {
     const signatures = [PERM.pvSignerGimac, PERM.visaConformite, PERM.visaDg, PERM.securiteVerifier]
     Object.values(PROFILS).forEach((ps) => expect(signatures.filter((s) => ps.includes(s)).length).toBeLessThanOrEqual(1))
   })
-  it('profils internes : lecture du DES commune ; correspondant : portail seul, sans lecture interne', () => {
-    Object.entries(PROFILS).filter(([r]) => r !== 'ROLE_CORRESPONDANT').forEach(([, ps]) => expect(ps).toEqual(expect.arrayContaining(LECTURE_DES)))
+  it('profils internes : lecture du DES commune (sauf collaborateur et responsable de service, D-76) ; correspondant : portail seul, sans lecture interne', () => {
+    Object.entries(PROFILS).filter(([r]) => !['ROLE_CORRESPONDANT', ...SANS_FONCTION].includes(r)).forEach(([, ps]) => expect(ps).toEqual(expect.arrayContaining(LECTURE_DES)))
+    SANS_FONCTION.forEach((r) => expect(PROFILS[r].some((p) => LECTURE_DES.includes(p))).toBe(false))
     expect(PROFILS.ROLE_CORRESPONDANT).toEqual([PERM.portailLire, PERM.portailDeposer, PERM.portailCertification, PERM.portailSigner])
     expect(PROFILS.ROLE_CORRESPONDANT.some((p) => LECTURE_DES.includes(p))).toBe(false)
   })
   it('conduite des étapes 4 à 10 : départements et conducteur, jamais les services exécutants', () => {
     expect(detenteurs(PERM.etapeConduire)).toEqual(['ROLE_CHARGE_DDRM', 'ROLE_CHEF_DDRM', 'ROLE_CHEF_DES', 'ROLE_CONDUCTEUR_PROJET'])
+  })
+  it('Mon activité (D-76 §4) : tout profil interne ; équipe et tâches confiées aux seuls responsables', () => {
+    expect(detenteurs(PERM.activitePropre)).toEqual(Object.keys(PROFILS).filter((r) => r !== 'ROLE_CORRESPONDANT').sort())
+    const responsables = ['ROLE_CHEF_DDRM', 'ROLE_CHEF_DES', 'ROLE_CONFORMITE', 'ROLE_DG', 'ROLE_RESPONSABLE_SERVICE', 'ROLE_RSSI']
+    expect(detenteurs(PERM.equipeLire)).toEqual(responsables)
+    expect(detenteurs(PERM.tacheConfier)).toEqual(responsables)
+    expect(PROFILS.ROLE_COLLABORATEUR).toEqual([PERM.messageLire, PERM.messageEnvoyer, PERM.activitePropre, PERM.notificationsLire])
+  })
+  it('notifications de la plateforme (D-80) : NOT_INBOX_READ pour tout profil interne, jamais pour le correspondant', () => {
+    expect(PERM.notificationsLire).toBe('NOT_INBOX_READ')
+    expect(detenteurs(PERM.notificationsLire)).toEqual(Object.keys(PROFILS).filter((r) => r !== 'ROLE_CORRESPONDANT').sort())
+  })
+  it('exploitation de l’infrastructure (D-78) : lecture pour le super administrateur, l’administrateur système et le RSSI ; gestes sans le RSSI', () => {
+    expect(detenteurs(PERM.exploitationLire)).toEqual(['ROLE_ADMIN_SYSTEME', 'ROLE_RSSI', 'ROLE_SUPER_ADMIN'])
+    expect(detenteurs(PERM.exploitationExecuter)).toEqual(['ROLE_ADMIN_SYSTEME', 'ROLE_SUPER_ADMIN'])
+    expect(PROFILS.ROLE_ADMIN_SYSTEME.some((p) => p.startsWith('IAM_'))).toBe(false)
   })
   it('permissions nouvelles du modèle hybride, toutes attribuées, sans doublon dans un profil', () => {
     expect([...PERMISSIONS_NOUVELLES]).toEqual(['HOM_STEP_MANAGE', 'CER_PV_ESTABLISH', 'CER_SECURITY_VERIFY', 'CER_PORTAL_SIGN'])
@@ -46,8 +65,8 @@ describe('matrice des rôles (PROFILS)', () => {
 })
 
 describe('fonctions du parcours', () => {
-  it('chaque profil métier porte une fonction (le super administrateur n’en a aucune) ; l’ingénieur d’homologation relève du SNA', () => {
-    expect(Object.keys(FONCTION_DU_ROLE).sort()).toEqual(Object.keys(PROFILS).filter((r) => r !== 'ROLE_SUPER_ADMIN').sort())
+  it('chaque profil métier porte une fonction (ni le super administrateur ni les profils de « Mon activité ») ; l’ingénieur d’homologation relève du SNA', () => {
+    expect(Object.keys(FONCTION_DU_ROLE).sort()).toEqual(Object.keys(PROFILS).filter((r) => r !== 'ROLE_SUPER_ADMIN' && !SANS_FONCTION.includes(r)).sort())
     expect(FONCTION_DU_ROLE.ROLE_INGENIEUR_HOMOLOGATION).toBe('SNA')
     expect(FONCTION_DU_ROLE.ROLE_CORRESPONDANT).toBe('PARTICIPANT')
     expect(FONCTION_DU_ROLE.ROLE_CONDUCTEUR_PROJET).toBe('CONDUCTEUR')

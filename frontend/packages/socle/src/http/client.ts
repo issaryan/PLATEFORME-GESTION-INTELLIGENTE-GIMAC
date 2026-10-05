@@ -120,6 +120,11 @@ export function reprDigestToHex(h: string | null): string | null {
 
 export const http = {
   get: <R>(path: string, o: RequestOptions = {}) => send('GET', path, o).then((r) => json<R>(r)),
+  /** Lecture avec les en-têtes de la réponse (indicateurs portés par un en-tête, par exemple X-Orchestrateur). */
+  getAvecEntetes: async <R>(path: string, o: RequestOptions = {}): Promise<{ donnees: R; entetes: Headers }> => {
+    const r = await send('GET', path, o)
+    return { donnees: await json<R>(r), entetes: r.headers }
+  },
   post: <R>(path: string, o: RequestOptions = {}) => send('POST', path, o).then((r) => json<R>(r)),
   put: <R>(path: string, o: RequestOptions = {}) => send('PUT', path, o).then((r) => json<R>(r)),
   patch: <R>(path: string, o: RequestOptions = {}) => send('PATCH', path, o).then((r) => json<R>(r)),

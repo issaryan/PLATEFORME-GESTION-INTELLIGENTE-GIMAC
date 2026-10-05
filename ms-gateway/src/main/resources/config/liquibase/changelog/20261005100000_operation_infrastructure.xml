@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- MS-GATEWAY : journal des opérations d'exploitation de l'infrastructure (D-78,
+     docs/exploitation/operations-infrastructure.md §2) : acteur, charge, geste, motif, avant, après,
+     résultat, horodatage. Le motif est masqué comme les journaux ; aucun secret. -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="gateway-operation-infrastructure" author="d78">
+        <createTable tableName="operation_infrastructure">
+            <column name="id" type="uuid"><constraints primaryKey="true" nullable="false" primaryKeyName="pk_operation_infrastructure"/></column>
+            <column name="charge" type="varchar(100)"><constraints nullable="false"/></column>
+            <column name="geste" type="varchar(20)"><constraints nullable="false"/></column>
+            <column name="motif" type="varchar(1000)"><constraints nullable="false"/></column>
+            <column name="acteur_id" type="varchar(100)"><constraints nullable="false"/></column>
+            <column name="acteur_nom" type="varchar(200)"/>
+            <column name="avant" type="varchar(30)"/>
+            <column name="apres" type="varchar(30)"/>
+            <column name="repliques_avant" type="integer"/>
+            <column name="repliques_apres" type="integer"/>
+            <column name="resultat" type="varchar(20)"><constraints nullable="false"/></column>
+            <column name="erreur" type="varchar(1000)"/>
+            <column name="demandee_le" type="timestamptz"><constraints nullable="false"/></column>
+            <column name="terminee_le" type="timestamptz"/>
+        </createTable>
+        <createIndex tableName="operation_infrastructure" indexName="idx_operation_infrastructure_demandee"><column name="demandee_le" descending="true"/></createIndex>
+        <createIndex tableName="operation_infrastructure" indexName="idx_operation_infrastructure_charge"><column name="charge"/><column name="demandee_le" descending="true"/></createIndex>
+        <sql>ALTER TABLE operation_infrastructure ADD CONSTRAINT ck_operation_infrastructure_geste CHECK (geste IN ('REDEMARRER', 'ARRETER', 'DEMARRER', 'ECHELLE'));</sql>
+        <sql>ALTER TABLE operation_infrastructure ADD CONSTRAINT ck_operation_infrastructure_resultat CHECK (resultat IN ('EN_COURS', 'REUSSIE', 'ECHOUEE'));</sql>
+    </changeSet>
+</databaseChangeLog>

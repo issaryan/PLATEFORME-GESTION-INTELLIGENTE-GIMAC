@@ -1,0 +1,40 @@
+# Exploitation de l'infrastructure depuis la console (D-78, docs/exploitation/operations-infrastructure.md §2) :
+# compte de service « gateway » limité à l'espace de noms gimac-des. Lecture des pods et de leurs journaux ;
+# lecture et patch des déploiements (redémarrage par annotation du gabarit, arrêt et démarrage par le
+# nombre de répliques) et de leur sous-ressource scale. Ni création, ni suppression, ni exec, ni secrets.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: gateway
+  namespace: gimac-des
+automountServiceAccountToken: true
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: gateway-exploitation
+  namespace: gimac-des
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/log"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "watch", "patch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments/scale"]
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: gateway-exploitation
+  namespace: gimac-des
+subjects:
+  - kind: ServiceAccount
+    name: gateway
+    namespace: gimac-des
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: gateway-exploitation

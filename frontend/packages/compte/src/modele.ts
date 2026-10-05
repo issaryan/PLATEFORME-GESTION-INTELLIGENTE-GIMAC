@@ -46,6 +46,25 @@ export type Compte = {
   secondFacteur: boolean
   /** Version de la photo de profil (empreinte courte de MS-IAM), null sans photo (docs/lot1/mon-compte.md §1). */
   avatarVersion?: string | null
+  /** Rattachement organisationnel (D-76, docs/lot1/mon-activite.md §1.2) : code de l'unité la plus fine, null sans unité. */
+  unite?: string | null
+  /** Identifiant du compte responsable (n+1), null sans responsable. */
+  responsableId?: string | null
+}
+
+/**
+ * Rattachement du titulaire (GET /bff/des/iam/organisation/moi, D-76 §1.3) : unité et son chemin, responsable,
+ * chaîne des responsables et nombre de comptes dont il est le n+1. Lu par « Mon compte » pour les libellés.
+ */
+export type UniteRattachement = { code: string; libelle: string; type: string; parent: string | null; active: boolean }
+export type RattachementCompte = {
+  id: string
+  nomAffiche: string
+  unite: UniteRattachement | null
+  chemin: UniteRattachement[]
+  responsable: { id: string; nomAffiche: string; fonction: string | null } | null
+  chaine: string[]
+  equipeDirecte: number
 }
 
 /** GET /moi : compte, clés de sécurité, sessions ouvertes et étapes de premier accès restantes. */

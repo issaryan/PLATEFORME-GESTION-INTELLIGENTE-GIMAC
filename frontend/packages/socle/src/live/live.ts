@@ -6,7 +6,9 @@ import { appliquerSignal } from './signaux'
 // chaque événement invalide les requêtes dont la clé commence par son sujet ([sujet, ressource, id]).
 // Signaux éphémères (présence, « écrit… », D-72) : appliqués au magasin des signaux, sans invalidation
 // ni identifiant de reprise ; à chaque (re)connexion, l'état de la présence (clé ['presence']) est relu.
-export type LiveTopic = 'homologation' | 'certification' | 'collaboration' | 'presence'
+// Notifications de la plateforme (D-80) : sujet « notification », remis au seul destinataire, à la création
+// d'une notification et à chaque regroupement ; il invalide la cloche, la liste et le compteur (clés ['notification', …]).
+export type LiveTopic = 'homologation' | 'certification' | 'collaboration' | 'presence' | 'notification'
 export type LiveEvent = { id: string; type: string; subject: string; topic: LiveTopic; acteur?: string | null }
 export type EtatCanal = 'connected' | 'lost'
 const ALIAS: Partial<Record<LiveTopic, string[]>> = { homologation: ['parcours'], certification: ['parcours'] }

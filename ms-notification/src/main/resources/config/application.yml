@@ -265,3 +265,74 @@ jhipster:
 # ===================================================================
 
 # application:
+
+---
+# ---------------------------------------------------------------------------
+# Notifications de la plateforme (D-80, docs/lot1/notifications.md) : jeton de service du client
+# notification-service, adaptateurs MS-IAM et MS-COLLABORATION, consommateur des événements
+# collaboration.message, pilotage.task et pilotage.report, outbox de notification.inapp-created.v1.
+# ---------------------------------------------------------------------------
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          # Jeton de service (PI §0.7) : client Keycloak notification-service (INTERNAL_IAM_READ,
+          # INTERNAL_COLLABORATION_READ), secret fourni par l'environnement, jamais dans le dépôt.
+          service-token:
+            provider: oidc
+            client-id: ${GIMAC_SERVICE_CLIENT_ID:notification-service}
+            client-secret: ${GIMAC_SERVICE_CLIENT_SECRET:}
+            authorization-grant-type: client_credentials
+            scope: openid
+  kafka:
+    # Producteur de l'outbox et consommateur : même courtier que le binder Spring Cloud Stream.
+    bootstrap-servers: ${spring.cloud.stream.kafka.binder.brokers:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      properties:
+        enable.idempotence: true
+    # Consommateur des événements (@KafkaListener) : chaînes, lecture depuis le début d'un sujet pour un
+    # nouveau groupe (aucun événement perdu au premier démarrage).
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+gimac:
+  outbox:
+    delay: 500
+  # Sélection des adaptateurs, un port à la fois (PI §0.8) : real | stub.
+  adapters:
+    # Noms affichés de l'annuaire interne de MS-IAM.
+    annuaire: stub
+    # Nom des conversations de groupe de MS-COLLABORATION.
+    conversations: stub
+  # Services joints par les adaptateurs réels (surchargés par l'environnement).
+  services:
+    iam:
+      url: http://localhost:8081
+    collaboration:
+      url: http://localhost:8093
+  notification:
+    # Noms affichés mis en cache 5 min, conversations 60 s (un groupe renommé apparaît vite).
+    cache-noms-secondes: 300
+    cache-conversations-secondes: 60
+    # Purge des notifications de plus de 90 jours (§2), chaque nuit (UTC).
+    purge:
+      cron: '0 17 3 * * *'
+  kafka:
+    rebut:
+      actif: true
+      nombre-tentatives: 3
+      intervalle-ms: 1000
+      # Sujets consommés : leur file de rebut (.dlt) est créée au démarrage.
+      topics-surveilles:
+        - collaboration.message
+        - pilotage.task
+        - pilotage.report
+  consommateurs:
+    notification:
+      sujets: collaboration.message,pilotage.task,pilotage.report

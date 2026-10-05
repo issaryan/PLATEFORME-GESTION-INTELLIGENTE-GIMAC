@@ -216,6 +216,39 @@ spring:
               filters:
                 - OpaAuthorize
                 - RewritePath=/bff/des/iam/(?<p>.*), /api/v1/${p}
+            # Organisation du GIMAC (D-76, docs/lot1/mon-activite.md §1.3) : catalogue des unités et rattachement
+            # du titulaire, depuis le département et la console ; comptes internes seulement (OPA).
+            - id: iam-organisation
+              uri: ${gimac.services.iam}
+              predicates:
+                - Path=/bff/des/iam/organisation/**,/bff/console/iam/organisation/**
+              filters:
+                - OpaAuthorize
+                - RewritePath=/bff/(?<couche>des|console)/iam/organisation/(?<p>.*), /api/v1/organisation/${p}
+            # MS-PILOTAGE, « Mon activité » (D-76, docs/lot1/mon-activite.md §2) : agenda, activités, tâches,
+            # rapports et équipe de tout membre interne ; corps JSON seulement (documents par dépôts fragmentés).
+            - id: des-pilotage
+              uri: ${gimac.services.pilotage}
+              predicates:
+                - Path=/bff/des/pilotage/**
+              filters:
+                - OpaAuthorize
+                - name: RequestSize
+                  args:
+                    maxSize: 1MB
+                - RewritePath=/bff/des/pilotage/(?<p>.*), /api/v1/${p}
+            # MS-NOTIFICATION, notifications de la plateforme (D-80, docs/lot1/notifications.md §3) : cloche et
+            # préférences de chacun, depuis le département et la console ; comptes internes seulement (OPA).
+            - id: notification-boite
+              uri: ${gimac.services.notification}
+              predicates:
+                - Path=/bff/des/notification/**,/bff/console/notification/**
+              filters:
+                - OpaAuthorize
+                - name: RequestSize
+                  args:
+                    maxSize: 64KB
+                - RewritePath=/bff/(?<couche>des|console)/notification/(?<p>.*), /api/v1/${p}
             # MS-DOCUMENT : dépôt direct d'une pièce (empreinte calculée par le service).
             - id: depot-document
               uri: ${gimac.services.document}
@@ -513,6 +546,8 @@ gimac:
       - certification.proces-verbal
       - certification.approbation
       - collaboration.message
+      # Notifications de la plateforme (D-80) : remises au seul destinataire (data.destinataires).
+      - notification.inapp
   # Connexion sur la plateforme (D-65) : MS-IAM (routes internes), délai des appels, limitation.
   connexion:
     iam-url: ${gimac.services.iam}
@@ -537,3 +572,35 @@ gimac:
     prometheus-url: http://localhost:9090
     alertmanager-url: http://localhost:9093
     keycloak-sante-url: http://localhost:9990/health/ready
+  # Exploitation de l'infrastructure depuis la console (D-78, docs/exploitation/operations-infrastructure.md) :
+  # orchestrateur docker (mandataire docker-socket-proxy), kubernetes (compte de service du pod) ou aucun.
+  # Variables : GIMAC_ORCHESTRATEUR_TYPE, GIMAC_ORCHESTRATEUR_DOCKER_URL, GIMAC_ORCHESTRATEUR_DOCKER_PROJET,
+  # GIMAC_ORCHESTRATEUR_KUBERNETES_ESPACE. Chaque geste est vérifié par MS-IAM (FIDO2, gimac.connexion.iam-url).
+  orchestrateur:
+    type: aucun
+    delai-lecture: 10s
+    delai-geste: 90s
+    finalite-reauthentification: ADMIN_SENSITIVE
+    charges-protegees:
+      - gateway
+      - frontend-console
+      - docker-socket-proxy
+      - '*-postgresql'
+      - keycloak*
+      - kafka
+      - '*-kafka'
+      - stockage-objet*
+      - minio*
+      - '*-redis'
+      - '*-valkey'
+      - valkey*
+      - redis*
+    docker:
+      url: http://localhost:2375
+      projet: gimac-des
+      delai-arret: 10
+    kubernetes:
+      url: https://kubernetes.default.svc
+      espace: gimac-des
+      jeton: /var/run/secrets/kubernetes.io/serviceaccount/token
+      autorite: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt

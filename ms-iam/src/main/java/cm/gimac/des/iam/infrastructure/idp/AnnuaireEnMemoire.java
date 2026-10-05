@@ -116,7 +116,8 @@ public class AnnuaireEnMemoire implements Annuaire {
         Compte c = exiger(id);
         remplacer(new Compte(c.id(), c.identifiant(), val(f.prenom(), c.prenom()), val(f.nom(), c.nom()), val(f.email(), c.email()),
             f.email() == null || f.email().equalsIgnoreCase(c.email()) ? c.emailVerifie() : false, c.actif(), c.creeLe(), val(f.telephone(), c.telephone()),
-            val(f.fonction(), c.fonction()), val(f.langue(), c.langue()), val(f.institutionId(), c.institutionId()), c.profilComplet(), c.profils(), c.actionsRequises(), c.secondFacteur()));
+            val(f.fonction(), c.fonction()), val(f.langue(), c.langue()), val(f.institutionId(), c.institutionId()), c.profilComplet(), c.profils(), c.actionsRequises(), c.secondFacteur(),
+            c.unite(), c.responsableId()));
     }
 
     @Override
@@ -221,7 +222,18 @@ public class AnnuaireEnMemoire implements Annuaire {
     public void marquerEmailVerifie(String id) {
         Compte c = exiger(id);
         remplacer(new Compte(c.id(), c.identifiant(), c.prenom(), c.nom(), c.email(), true, c.actif(), c.creeLe(), c.telephone(), c.fonction(), c.langue(),
-            c.institutionId(), c.profilComplet(), c.profils(), c.actionsRequises(), c.secondFacteur()));
+            c.institutionId(), c.profilComplet(), c.profils(), c.actionsRequises(), c.secondFacteur(), c.unite(), c.responsableId()));
+    }
+
+    @Override
+    public void definirRattachement(String id, String unite, String responsableId) {
+        Compte c = exiger(id);
+        remplacer(c.avecRattachement(vide(unite), vide(responsableId)));
+    }
+
+    @Override
+    public List<Compte> parResponsable(String responsableId) {
+        return comptes.values().stream().filter(c -> responsableId.equals(c.responsableId())).sorted((a, b) -> a.identifiant().compareTo(b.identifiant())).toList();
     }
 
     @Override
@@ -303,7 +315,11 @@ public class AnnuaireEnMemoire implements Annuaire {
 
     private static Compte avec(Compte c, boolean actif, boolean complet, Set<String> profils, List<ActionRequise> actions, boolean secondFacteur) {
         return new Compte(c.id(), c.identifiant(), c.prenom(), c.nom(), c.email(), c.emailVerifie(), actif, c.creeLe(), c.telephone(), c.fonction(), c.langue(),
-            c.institutionId(), complet, profils, actions, secondFacteur);
+            c.institutionId(), complet, profils, actions, secondFacteur, c.unite(), c.responsableId());
+    }
+
+    private static String vide(String v) {
+        return v == null || v.isBlank() ? null : v.trim();
     }
 
     private static String val(String nouveau, String ancien) {

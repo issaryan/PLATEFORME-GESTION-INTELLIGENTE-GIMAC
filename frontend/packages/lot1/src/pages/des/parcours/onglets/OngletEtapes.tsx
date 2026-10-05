@@ -9,6 +9,7 @@ import { PERM } from '../../../../permissions'
 import { Donnees } from '../../liaisons/communs'
 import { Echeance, Jour, tonEtape, useRetour, Valeur } from '../communs'
 import { DialogueLivrable } from '../DialogueLivrable'
+import { libelleOperation } from '../../../../adaptateurs/modelisateur'
 
 // Onglet « Étapes » du dossier (CR §7.1, D-59) : les dix étapes du parcours et le verrou « approbation
 // de la sécurité », chacune avec ses six éléments (responsable, actions, livrables, validation, preuve,
@@ -68,7 +69,7 @@ function OperationsConduite({ dossier, etape }: { dossier: DossierLiaison; etape
       key: 'libelle', header: t('parcoursEtapes.operation'),
       render: (o) => (
         <span className="gm-col" style={{ gap: 0 }}>
-          <span>{t(`parcours.op.${o.rang}`)}</span>
+          <span>{libelleOperation(t, o)}</span>
           <span className="gm-field-help">{t(`parcours.preuveAttendue.${o.rang}`)}</span>
         </span>
       ),

@@ -9,6 +9,7 @@ import { PERM } from '../../../../permissions'
 import { ChampFichier } from '../../../commun/ChampFichier'
 import { useActionsOperation } from './actions'
 import { lireCodeControle } from './regles'
+import { libelleOperation } from '../../../../adaptateurs/modelisateur'
 
 // Formulaires d'exécution d'une opération, dans le tiroir : dépôt de preuve (valeur de référence, code
 // de contrôle, cérémonie de clés), dépôt de livrable de phase, validation par le validateur, attribution
@@ -71,7 +72,7 @@ export function FormulairePreuve({ op }: { op: OperationParcours }) {
       codeControle: op.cle && !ceremonie ? kcv : undefined,
       ceremonie: ceremonie ? { tenueLe: dateIso(tenueLe), porteurs: porteurs.map((p) => p.trim()), codesControle: kcvs } : undefined,
     }
-    executeur.lancer(preuve, { ...op, saisie }, `${op.rang} · ${t(`parcours.op.${op.rang}`)}`, SUJET)
+    executeur.lancer(preuve, { ...op, saisie }, `${op.rang} · ${libelleOperation(t, op)}`, SUJET)
   }
   return (
     <div className="gm-col">
@@ -143,7 +144,7 @@ export function FormulaireLivrable({ op }: { op: OperationParcours }) {
           icon="upload"
           onClick={() => {
             setTente(true)
-            if (fichier) executeur.lancer(livrable, { ...op, saisie: { fichier, commentaire } }, `${op.rang} · ${t(`parcours.op.${op.rang}`)}`, SUJET)
+            if (fichier) executeur.lancer(livrable, { ...op, saisie: { fichier, commentaire } }, `${op.rang} · ${libelleOperation(t, op)}`, SUJET)
           }}
         >
           {t(livrable.label)}
@@ -161,7 +162,7 @@ export function BlocValidation({ op }: { op: OperationParcours }) {
     <div className="gm-col">
       <InlineAlert level="info" title={t('parcoursOps.valider.titre')}>{t('parcoursOps.valider.regle')}</InlineAlert>
       <div className="gm-row">
-        <Button variant="primary" icon="pen-line" onClick={() => executeur.lancer(validation, op, `${op.rang} · ${t(`parcours.op.${op.rang}`)}`, SUJET)}>{t(validation.label)}</Button>
+        <Button variant="primary" icon="pen-line" onClick={() => executeur.lancer(validation, op, `${op.rang} · ${libelleOperation(t, op)}`, SUJET)}>{t(validation.label)}</Button>
       </div>
     </div>
   )
@@ -215,7 +216,7 @@ export function FormulaireAttribution({ op }: { op: OperationParcours }) {
           icon="users"
           onClick={() => {
             setTente(true)
-            if (choix) executeur.lancer(attribution, { ...op, saisie: { qualite, personneId: choix.id, personneNom: choix.nom } }, `${op.rang} · ${t(`parcours.op.${op.rang}`)}`, SUJET)
+            if (choix) executeur.lancer(attribution, { ...op, saisie: { qualite, personneId: choix.id, personneNom: choix.nom } }, `${op.rang} · ${libelleOperation(t, op)}`, SUJET)
           }}
         >
           {t(attribution.label)}

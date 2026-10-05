@@ -49,7 +49,7 @@ class LiveConfigurationTest {
     void proprietes() {
         LiveProperties p = new LiveProperties();
         assertThat(p.isActif()).isTrue();
-        assertThat(p.getSujets()).contains("homologation.liaison", "certification.quitus", "collaboration.message");
+        assertThat(p.getSujets()).contains("homologation.liaison", "certification.quitus", "collaboration.message", "notification.inapp");
         assertThat(p.getTailleTampon()).isEqualTo(500);
         assertThat(p.getDureeTampon()).isEqualTo(Duration.ofMinutes(5));
         assertThat(p.getBattement()).isEqualTo(Duration.ofSeconds(25));

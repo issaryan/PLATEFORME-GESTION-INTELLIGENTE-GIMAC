@@ -73,6 +73,10 @@ public class ReferentialVersion implements Serializable {
     @OrderBy("code")
     private List<ReferenceOperation> operations = new ArrayList<>();
 
+    /** Pilote du brouillon (D-77, §5) : compte qui complète et publie la version, destinataire de la tâche. */
+    @Column(name = "pilote_id")
+    private UUID piloteId;
+
     // jhipster-needle-entity-add-field - JHipster will add fields here
 
     public UUID getId() {
@@ -233,8 +237,78 @@ public class ReferentialVersion implements Serializable {
         }
     }
 
+    /** Code d'opération (§1) : 1 à 40 caractères, majuscules, chiffres, tiret et souligné, unique dans la version. */
+    public static final java.util.regex.Pattern CODE = java.util.regex.Pattern.compile("^[A-Z0-9][A-Z0-9_-]{0,39}$");
+
+    public UUID getPiloteId() {
+        return piloteId;
+    }
+
+    public void designerPilote(UUID compteId) {
+        assertModifiable();
+        this.piloteId = compteId;
+    }
+
+    /** Contrôle de la saisie d'une opération : code bien formé, secret sans valeur de référence (D-59). */
+    static void verifierSaisie(String code, ReferenceOperationData data) {
+        if (code == null || !CODE.matcher(code).matches()) {
+            throw HomologationException.unprocessable("HOM_OPERATION_CODE_INVALID", "Le code d'une opération compte 1 à 40 majuscules, chiffres, tirets ou soulignés.");
+        }
+        if (Boolean.TRUE.equals(data.secret()) && data.valeurReference() != null && !data.valeurReference().isBlank()) {
+            throw HomologationException.unprocessable("HOM_OPERATION_SECRET_VALUE", "Une opération secrète ne relève aucune valeur de référence (code de contrôle seulement).");
+        }
+        if (data.predecesseurs() != null && data.predecesseurs().contains(code)) {
+            throw HomologationException.unprocessable("HOM_OPERATION_SELF_PREDECESSOR", "Une opération ne peut pas se précéder elle-même.");
+        }
+    }
+
+    public java.util.Optional<ReferenceOperation> operation(String code) {
+        return operations.stream().filter(o -> o.getCode().equals(code)).findFirst();
+    }
+
+    private ReferenceOperation exiger(String code) {
+        return operation(code).orElseThrow(() -> HomologationException.notFound("HOM_OPERATION_NOT_FOUND", "Opération introuvable dans la version.", code));
+    }
+
+    /** Création d'une opération au code fourni (modélisateur) ; un code déjà pris est refusé. */
+    public ReferenceOperation creerOperation(String code, ReferenceOperationData data) {
+        assertModifiable();
+        if (operation(code).isPresent()) {
+            throw HomologationException.conflict("HOM_OPERATION_CODE_DUPLICATE", "Ce code est déjà pris dans la version.", Map.of("code", String.valueOf(code)));
+        }
+        return upsertOperation(code, data);
+    }
+
+    /** Retrait d'une opération : son code disparaît aussi des prédécesseurs des autres opérations. */
+    public ReferenceOperation retirerOperation(String code) {
+        assertModifiable();
+        ReferenceOperation op = exiger(code);
+        operations.remove(op);
+        operations.forEach(o -> o.retirerPredecesseur(code));
+        return op;
+    }
+
+    /** Placement des opérations dans le canevas du modélisateur. */
+    public void placer(Map<String, cm.gimac.des.homologation.domain.parcours.Position> positions) {
+        assertModifiable();
+        positions.forEach((code, p) -> exiger(code).placer(p));
+    }
+
+    /** Ajout ou retrait d'un arc : {@code de} devient (ou cesse d'être) prédécesseur de {@code vers}. */
+    public ReferenceOperation arc(String de, String vers, boolean present) {
+        assertModifiable();
+        ReferenceOperation cible = exiger(vers);
+        exiger(de);
+        if (de.equals(vers)) {
+            throw HomologationException.unprocessable("HOM_OPERATION_SELF_PREDECESSOR", "Une opération ne peut pas se précéder elle-même.");
+        }
+        cible.basculerPredecesseur(de, present);
+        return cible;
+    }
+
     public ReferenceOperation upsertOperation(String code, ReferenceOperationData data) {
         assertModifiable();
+        verifierSaisie(code, data);
         ReferenceOperation op = operations
             .stream()
             .filter(o -> o.getCode().equals(code))

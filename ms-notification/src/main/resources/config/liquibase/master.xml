@@ -28,5 +28,7 @@
     <include file="config/liquibase/changelog/20260928140054_added_entity_constraints_Escalation.xml" relativeToChangelogFile="false"/>
     <include file="config/liquibase/changelog/20260928140154_added_entity_constraints_ConsolidationWindow.xml" relativeToChangelogFile="false"/>
     <!-- jhipster-needle-liquibase-add-constraints-changelog - JHipster will add liquibase constraints changelogs here -->
+    <!-- Notifications de la plateforme (D-80), écrit à la main. -->
+    <include file="config/liquibase/changelog/20261005120000_not_notifications_plateforme.xml" relativeToChangelogFile="false"/>
     <!-- jhipster-needle-liquibase-add-incremental-changelog - JHipster will add incremental liquibase changelogs here -->
 </databaseChangeLog>

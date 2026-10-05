@@ -3,7 +3,11 @@
 # 30 jours) et file de rebut .dlq de chaque sujet consommé. collaboration.message porte
 # collaboration.message-sent.v1 (D-64), clé = conversation, sans contenu de message.
 # certification.proces-verbal et certification.approbation portent les verrous de la décision (D-56),
-# consommés par MS-HOMOLOGATION (docs/lot1/parcours-backend.md §3).
+# consommés par MS-HOMOLOGATION (docs/lot1/parcours-backend.md §3). pilotage.task et pilotage.report portent
+# les événements de Mon activité (D-76, docs/lot1/mon-activite.md §5), clé = tâche ou rapport, sans contenu.
+# notification.inapp porte notification.inapp-created.v1 (D-80, docs/lot1/notifications.md), clé = notification,
+# relayé par la passerelle au seul destinataire ; collaboration.message, pilotage.task et pilotage.report sont
+# consommés par MS-NOTIFICATION.
 #   KAFKA_BOOTSTRAP  courtier (défaut : kafka:9092, réseau Docker gimac-des_default)
 #   REPLICATION      facteur de réplication (défaut 3 ; 1 sur le poste de développement)
 #   KAFKA_TOPICS     commande kafka-topics.sh ; par défaut, l'image officielle Apache Kafka
@@ -30,11 +34,11 @@ for t in homologation.referential homologation.liaison homologation.operation ho
          homologation.notification certification.circuit certification.quitus certification.dossier certification.attestation \
          certification.notification certification.proces-verbal certification.approbation \
          participant.institution participant.adhesion participant.transition \
-         collaboration.message; do
+         collaboration.message pilotage.task pilotage.report notification.inapp; do
   creer "$t" 6 --config retention.ms=2592000000 --config min.insync.replicas="$MIN_ISR"
 done
 for t in participant.subscription participant.status document.document iam.user iam.role homologation.liaison \
          homologation.operation homologation.coverage certification.quitus certification.dossier certification.attestation \
-         certification.proces-verbal certification.approbation; do
+         certification.proces-verbal certification.approbation collaboration.message pilotage.task pilotage.report; do
   creer "$t.dlq" 3
 done

@@ -2,14 +2,18 @@ package cm.gimac.des.homologation.domain.service;
 
 import cm.gimac.des.homologation.domain.parcours.Acteur;
 import cm.gimac.des.homologation.domain.parcours.CatalogueServices;
+import cm.gimac.des.homologation.domain.parcours.Declencheurs;
 import cm.gimac.des.homologation.domain.parcours.EtapeCode;
 import cm.gimac.des.homologation.domain.parcours.EtatApprobation;
 import cm.gimac.des.homologation.domain.parcours.EtatFicheSuivi;
 import cm.gimac.des.homologation.domain.parcours.EtatOperationParcours;
 import cm.gimac.des.homologation.domain.parcours.EtatProcesVerbal;
 import cm.gimac.des.homologation.domain.parcours.Fonction;
+import cm.gimac.des.homologation.domain.parcours.Geste;
+import cm.gimac.des.homologation.domain.parcours.Jalon;
 import cm.gimac.des.homologation.domain.parcours.OperationParcours;
 import cm.gimac.des.homologation.domain.parcours.Parcours;
+import cm.gimac.des.homologation.domain.parcours.Particularite;
 import cm.gimac.des.homologation.domain.parcours.Qualite;
 import cm.gimac.des.homologation.domain.parcours.SegmentParcours;
 import cm.gimac.des.homologation.domain.parcours.ServiceParcours;
@@ -28,12 +32,14 @@ import java.util.Objects;
 import java.util.OptionalDouble;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.BiPredicate;
 import java.util.function.Predicate;
 
 /**
  * Tableaux de bord par fonction (D-58, CR §3.6, vision diapositive 14) et pilotage (CR §7.3, annexe B) :
  * compteurs, tâches, liaisons et blocages visibles, calculés par le service ; le participant ne voit que
- * les liaisons de son institution. Service de domaine pur.
+ * les liaisons de son institution. Les compteurs désignent les opérations par leur modèle (étape, geste, jalon,
+ * déclencheur, particularité, fonction responsable), jamais par leur rang. Service de domaine pur.
  */
 public class TableauDeBordCalculateur {
 
@@ -63,28 +69,29 @@ public class TableauDeBordCalculateur {
             c.add(compteur("liaisonsAmont", aEtape(actives, EtapeCode.CADRAGE, EtapeCode.LANCEMENT, EtapeCode.ATELIERS).size(), "info", "/des/parcours?etape=CADRAGE,LANCEMENT,ATELIERS"));
         }
         if (f.contains(Fonction.DDRM) || f.contains(Fonction.CHEF_DDRM)) {
-            var ateliers = ops(actives, o -> "8".equals(o.getRang()) && o.getEtat() == EtatOperationParcours.A_FAIRE);
-            var perimetres = ops(actives, o -> Set.of("3", "4", "5").contains(o.getRang()) && o.getEtat() == EtatOperationParcours.A_FAIRE);
+            // Ateliers à tenir : première opération de l'étape des ateliers ouverte ; périmètres : opérations du cadrage ouvertes.
+            var ateliers = ops(actives, (p, o) -> p.premiereDeLEtape(EtapeCode.ATELIERS).map(x -> x == o).orElse(false) && o.getEtat() == EtatOperationParcours.A_FAIRE);
+            var perimetres = ops(actives, o -> o.getEtape() == EtapeCode.CADRAGE && o.getEtat() == EtatOperationParcours.A_FAIRE);
             c.add(compteur("ateliersATenir", ateliers.size(), "warn", versOps(ateliers, "ATELIERS")));
             c.add(compteur("perimetresAArreter", perimetres.size(), "warn", versOps(perimetres, "CADRAGE")));
         }
         if (f.contains(Fonction.CHEF_DES)) {
-            var ressources = actives.stream().filter(p -> p.operationDansEtat("6", EtatOperationParcours.A_FAIRE)).toList();
+            var ressources = actives.stream().filter(p -> !p.operations(o -> o.porte(Geste.AFFECTER_RESSOURCES) && o.getEtat() == EtatOperationParcours.A_FAIRE).isEmpty()).toList();
             var pv = actives.stream().filter(p -> p.etat().getEtatPv() == EtatProcesVerbal.ETABLI || p.etat().getEtatPv() == EtatProcesVerbal.SIGNE_PARTICIPANT).toList();
             c.add(compteur("ressourcesAAffecter", ressources.size(), "warn", versLiaisons(ressources, "etapes", "CADRAGE,LANCEMENT")));
             c.add(compteur("enIntegrationTests", aEtape(actives, EtapeCode.INTEGRATION, EtapeCode.TESTS).size(), "info", "/des/parcours?etape=INTEGRATION,TESTS"));
             c.add(compteur("pvASigner", pv.size(), "warn", versLiaisons(pv, "decision", "CERTIFICATION")));
         }
         if (f.contains(Fonction.CONDUCTEUR)) {
-            var aEtablir = actives.stream().filter(p -> p.operationDansEtat("18", EtatOperationParcours.A_FAIRE)).toList();
+            var aEtablir = actives.stream().filter(p -> p.parDeclencheur(Declencheurs.PV_ETABLI).stream().anyMatch(o -> o.getEtat() == EtatOperationParcours.A_FAIRE)).toList();
             c.add(compteur("mesProjets", actives.stream().filter(miens).count(), "info", "/des/parcours?mesProjets=1"));
             c.add(compteur("pvAEtablir", aEtablir.size(), "warn", versLiaisons(aEtablir, "decision", "CERTIFICATION")));
         }
         if (f.contains(Fonction.SNA)) {
             Predicate<OperationParcours> engagee = o -> !o.faite() && o.getEtat() != EtatOperationParcours.VERROUILLEE;
-            var o15 = ops(actives, o -> "15".equals(o.getRang()) && engagee.test(o));
-            var o16 = ops(actives, o -> "16".equals(o.getRang()) && engagee.test(o));
-            var o17 = ops(actives, o -> "17".equals(o.getRang()) && o.getEtat() == EtatOperationParcours.A_FAIRE);
+            var o15 = ops(actives, o -> o.getParticularite() == Particularite.ENTREE_ESSAIS && engagee.test(o));
+            var o16 = ops(actives, o -> o.getParticularite() == Particularite.FIN_ESSAIS && engagee.test(o));
+            var o17 = ops(actives, o -> o.porte(Geste.CONSTATER_COUVERTURE) && o.getEtat() == EtatOperationParcours.A_FAIRE);
             var constats = actives.stream().filter(p -> p.etat().getFicheEtat() == EtatFicheSuivi.RENSEIGNEE).toList();
             c.add(compteur("essaisEnCours", aEtape(actives, EtapeCode.TESTS).size(), "info", versOps(o16, "TESTS")));
             c.add(compteur("documentsParametrage", o15.size(), "warn", versOps(o15, "INTEGRATION")));
@@ -94,25 +101,28 @@ public class TableauDeBordCalculateur {
         if (f.contains(Fonction.PRODUCTION_MONETIQUE)) {
             var dossiers = actives.stream().filter(p -> p.etat().getEtatApprobation() == EtatApprobation.EN_ATTENTE_DOSSIER && p.etat().getEtatPv() == EtatProcesVerbal.SIGNE).toList();
             var branche = ops(actives, o -> o.getSegment() == SegmentParcours.BRANCHE && o.fonctionR() == Fonction.PRODUCTION_MONETIQUE && o.getEtat() == EtatOperationParcours.A_FAIRE);
-            var o31 = ops(actives, o -> "31".equals(o.getRang()) && o.getEtat() == EtatOperationParcours.A_FAIRE);
+            var o31 = ops(actives, o -> o.getJalon() == Jalon.EN_PRODUCTION && o.getEtat() == EtatOperationParcours.A_FAIRE);
             c.add(compteur("dossiersChangement", dossiers.size(), "warn", dossiers.size() == 1 ? "/des/parcours/" + dossiers.get(0).id() + "?onglet=decision" : "/des/parcours?etape=APPROBATION_SECURITE"));
             c.add(compteur("operationsBranche", branche.size(), "info", versOps(branche, "MISE_EN_PRODUCTION")));
             c.add(compteur("rapportsAConsolider", o31.size(), "warn", versOps(o31, "MISE_EN_PRODUCTION")));
         }
         if (f.contains(Fonction.POLE_RESEAU)) {
-            var liens = ops(actives, o -> Set.of("13", "14").contains(o.getRang()) && !o.faite() && o.getEtat() != EtatOperationParcours.VERROUILLEE);
+            // Liens d'essai : opérations de l'intégration tenues par le pôle réseau, engagées.
+            var liens = ops(actives, o -> o.getEtape() == EtapeCode.INTEGRATION && o.getResponsable() == Fonction.POLE_RESEAU && !o.faite() && o.getEtat() != EtatOperationParcours.VERROUILLEE);
             c.add(compteur("liensEssai", liens.size(), "warn", versOps(liens, "INTEGRATION")));
             c.add(compteur("operationsReseau", taches.size(), "info", taches.size() == 1 ? taches.get(0).lien() : null));
         }
         if (f.contains(Fonction.POLE_SYSTEME)) {
-            var o28 = ops(actives, o -> "28".equals(o.getRang()) && !o.faite() && o.getEtat() != EtatOperationParcours.VERROUILLEE);
+            // Scripts de dépôt : opérations du tronc aval dont l'oubli est sans symptôme, engagées.
+            var o28 = ops(actives, o -> o.getSegment() == SegmentParcours.AVAL && o.isOubliSansSymptome() && !o.faite() && o.getEtat() != EtatOperationParcours.VERROUILLEE);
             c.add(compteur("scriptsDepot", o28.size(), "crit", versOps(o28, "MISE_EN_PRODUCTION")));
             c.add(compteur("operationsSysteme", taches.size(), "info", taches.size() == 1 ? taches.get(0).lien() : null));
         }
         if (f.contains(Fonction.RSSI)) {
             c.add(compteur("attestationsAVerifier", actives.stream().mapToLong(p -> p.etat().getAttestationsDeposees().size()).sum(), "warn", null));
             c.add(compteur("approbationsEnAttente", actives.stream().filter(p -> Set.of(EtatApprobation.DOSSIER_CONSTITUE, EtatApprobation.EN_VERIFICATION, EtatApprobation.VERIFIE_ARCHIVE).contains(p.etat().getEtatApprobation())).count(), "warn", null));
-            c.add(compteur("ceremoniesCles", ops(actives, o -> Set.of("C1", "D3").contains(o.getRang()) && o.getEtat() == EtatOperationParcours.A_FAIRE).size(), "warn", null));
+            // Cérémonies de clés : opérations sur une clé tenues par la sécurité, ouvertes.
+            c.add(compteur("ceremoniesCles", ops(actives, o -> o.isCle() && o.getResponsable() == Fonction.RSSI && o.getEtat() == EtatOperationParcours.A_FAIRE).size(), "warn", null));
         }
         if (f.contains(Fonction.CONFORMITE)) {
             c.add(compteur("visasAttendus", actives.stream().filter(p -> p.etat().getVisasAttendus().contains("CONFORMITE")).count(), "warn", null));
@@ -196,7 +206,11 @@ public class TableauDeBordCalculateur {
     private record OpDe(Parcours p, OperationParcours o) {}
 
     private static List<OpDe> ops(List<Parcours> actives, Predicate<OperationParcours> filtre) {
-        return actives.stream().flatMap(p -> p.operations().stream().filter(filtre).map(o -> new OpDe(p, o))).toList();
+        return ops(actives, (p, o) -> filtre.test(o));
+    }
+
+    private static List<OpDe> ops(List<Parcours> actives, BiPredicate<Parcours, OperationParcours> filtre) {
+        return actives.stream().flatMap(p -> p.operations().stream().filter(o -> filtre.test(p, o)).map(o -> new OpDe(p, o))).toList();
     }
 
     /** Lien d'un compteur : l'opération même s'il n'en compte qu'une, sinon la liste des liaisons de l'étape. */
@@ -240,13 +254,13 @@ public class TableauDeBordCalculateur {
             actives.stream().mapToLong(p -> p.tachesEnRetard(aujourdhui)).sum(),
             actives.stream().flatMap(p -> p.operations().stream()).filter(o -> Parcours.sla(o, aujourdhui) == Sla.ECHEANCE_PROCHE).count(),
             repartition,
-            moyenne(actives.stream().map(p -> delai(p.etat().getDateDemarrage(), p.operation("19").map(OperationParcours::getFaiteLe).orElse(null))).toList()),
+            moyenne(actives.stream().map(p -> delai(p.etat().getDateDemarrage(), p.parJalon(Jalon.CERTIFIEE).map(OperationParcours::getFaiteLe).orElse(null))).toList()),
             tauxRespect(actives),
             new Vues.Questions(
                 actives.stream().filter(p -> Set.of(EtapeCode.INTEGRATION, EtapeCode.TESTS, EtapeCode.CERTIFICATION).contains(p.etat().getEtapeCourante())).count(),
                 tri.stream().limit(4).map(e -> new Vues.ServiceNombre(e.getKey(), CatalogueServices.libelle(e.getKey()), e.getValue())).toList(),
                 servicesPlusLongs(actives),
-                moyenne(actives.stream().map(p -> delai(p.etat().getDateDemarrage(), p.operation("31").map(OperationParcours::getFaiteLe).orElse(null))).toList()),
+                moyenne(actives.stream().map(p -> delai(p.etat().getDateDemarrage(), p.parJalon(Jalon.EN_PRODUCTION).map(OperationParcours::getFaiteLe).orElse(null))).toList()),
                 bloques,
                 lancements.entrySet().stream().sorted(Map.Entry.<String, Long>comparingByValue().reversed().thenComparing(Map.Entry.comparingByKey())).map(e -> new Vues.ServiceNombre(e.getKey(), CatalogueServices.libelle(e.getKey()), e.getValue())).toList()
             )

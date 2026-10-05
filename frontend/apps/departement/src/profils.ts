@@ -1,6 +1,5 @@
 import { lirePreference, lireSessionDemo, type Session } from '@gimac/socle'
-import { ANNUAIRE, PROFILS } from '@gimac/lot1'
-import { PROFILS_DEMO as PROFILS_ADMINISTRATION } from '@gimac/administration'
+import { PROFILS_INTERNES_DEMO } from '@gimac/lot1'
 
 // Profils de démonstration de l'application du département (services simulés seulement), d'après les
 // profils du domaine « gimac » (infra/keycloak/generer-realm-gimac.py, D-57, D-58, D-61) : les chefs du
@@ -11,23 +10,9 @@ export const CLE_PROFIL_DEMO = 'gm.profilDemo'
 
 export type ProfilDemo = { identifiant: string; nom: string; sujet: string; permissions: string[] }
 
-// Un profil de démonstration par profil interne du domaine « gimac » (matrice PROFILS de @gimac/lot1,
-// reflet de generer-realm-gimac.py) ; noms et identifiants de l'annuaire simulé de la messagerie (D-64).
-const identifiant = (nom: string) => {
-  const [prenom, ...reste] = nom.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().split(' ')
-  return `${prenom[0]}.${reste[0] ?? prenom}`
-}
-export const PROFILS_DEMO: Record<string, ProfilDemo> = Object.fromEntries(
-  Object.entries(PROFILS)
-    .filter(([role]) => role !== 'ROLE_CORRESPONDANT')
-    .map(([role, permissions]) => {
-      // Super administrateur (D-69) : même identité que dans la console, hors annuaire de la messagerie.
-      const admin = PROFILS_ADMINISTRATION[role]
-      if (admin && !ANNUAIRE.some((x) => x.profils?.includes(role))) return [role, { identifiant: admin.identifiant, nom: admin.nom, sujet: admin.sujet, permissions }]
-      const p = ANNUAIRE.find((x) => x.profils?.includes(role)) ?? ANNUAIRE[0]
-      return [role, { identifiant: identifiant(p.nom), nom: p.nom, sujet: p.id, permissions }]
-    }),
-)
+// Un profil de démonstration par profil interne du domaine « gimac » (comptes internes communs aux trois
+// applications, @gimac/lot1 profilsDemo.ts) : noms et identifiants de l'annuaire simulé de la messagerie (D-64).
+export const PROFILS_DEMO: Record<string, ProfilDemo> = PROFILS_INTERNES_DEMO
 
 /**
  * Profil de la session de démonstration ouverte par la connexion simulée (D-65), sinon demandé dans

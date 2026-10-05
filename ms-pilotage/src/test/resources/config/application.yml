@@ -108,3 +108,18 @@ management:
   health:
     mail:
       enabled: false
+
+---
+# Mon activité (D-76) : adaptateurs de substitution (organisation, documents), outbox relayée
+# explicitement par les tests vers le Kafka de Testcontainers.
+spring:
+  kafka:
+    bootstrap-servers: ${spring.cloud.stream.kafka.binder.brokers:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+gimac:
+  adaptateurs:
+    organisation: stub
+    documents: stub

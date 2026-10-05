@@ -18,8 +18,8 @@ export const ADRESSES = {
   departementHttp: `http://localhost:${BASE + 10}`,
   portail: `http://localhost:${BASE + 1}`,
   portailHttp: `http://localhost:${BASE + 11}`,
-  /** Console telle que l'application du département la lie (VITE_URL_CONSOLE, défaut http://localhost:4202). */
-  consoleLiee: process.env.VITE_URL_CONSOLE ?? 'http://localhost:4202',
+  /** Console telle que l'application du département la lie (VITE_URL_CONSOLE de la construction, construire.mjs). */
+  consoleLiee: `http://localhost:${BASE + 2}`,
 }
 
 function ecrire(couverture: string | null) {
@@ -35,7 +35,8 @@ export async function recueillirCouverture(page: Page) {
 
 /** Profils de démonstration : console (D-62) et application du département (D-57, D-58). */
 export type ProfilDemo = 'ROLE_SUPER_ADMIN' | 'ROLE_RSSI' | 'ROLE_CHEF_DDRM' | 'ROLE_CHARGE_DDRM' | 'ROLE_CHEF_DES' | 'ROLE_INGENIEUR_HOMOLOGATION' | 'ROLE_CONDUCTEUR_PROJET' | 'ROLE_SNA'
-  | 'ROLE_PRODUCTION_MONETIQUE' | 'ROLE_POLE_RESEAU' | 'ROLE_POLE_SYSTEME' | 'ROLE_CONFORMITE' | 'ROLE_DG'
+  | 'ROLE_PRODUCTION_MONETIQUE' | 'ROLE_POLE_RESEAU' | 'ROLE_POLE_SYSTEME' | 'ROLE_CONFORMITE' | 'ROLE_DG' | 'ROLE_COLLABORATEUR' | 'ROLE_RESPONSABLE_SERVICE'
+  | 'ROLE_ADMIN_SYSTEME'
 
 /** Démonstration en services simulés : profil (gm.profilDemo) et premier accès (gm.premierAccesDemo). */
 export async function demo(page: Page, o: { profil?: ProfilDemo; premierAcces?: boolean; theme?: 'light' | 'dark' } = {}) {

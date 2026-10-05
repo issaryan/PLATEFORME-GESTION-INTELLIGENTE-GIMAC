@@ -4,20 +4,23 @@ import cm.gimac.des.gateway.domain.supervision.ChangementJournalisation;
 import cm.gimac.des.gateway.domain.supervision.ConfigurationPlateforme;
 import cm.gimac.des.gateway.domain.supervision.EtatAlertes;
 import cm.gimac.des.gateway.domain.supervision.EtatServeurs;
-import cm.gimac.des.gateway.domain.supervision.ImpulsionPlateforme;
 import cm.gimac.des.gateway.domain.supervision.InstantanePlateforme;
 import cm.gimac.des.gateway.domain.supervision.NiveauxJournalisation;
 import cm.gimac.des.gateway.domain.supervision.ServiceInconnuException;
 import cm.gimac.des.gateway.security.AuthoritiesConstants;
+import cm.gimac.des.gateway.service.exploitation.ExploitationInfrastructureService;
 import cm.gimac.des.gateway.service.supervision.SupervisionPlateformeService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import java.security.Principal;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -50,10 +53,20 @@ public class PlateformeResource {
         @NotBlank @Size(min = 5, max = 500) String motif
     ) {}
 
+    /** Événement du flux temps réel portant une opération d'exploitation de l'infrastructure (D-78). */
+    static final String EVENEMENT_OPERATION = "operation-infrastructure";
+
     private final SupervisionPlateformeService supervision;
+    private final ObjectProvider<ExploitationInfrastructureService> exploitation;
 
     public PlateformeResource(SupervisionPlateformeService supervision) {
+        this(supervision, null);
+    }
+
+    @Autowired
+    public PlateformeResource(SupervisionPlateformeService supervision, ObjectProvider<ExploitationInfrastructureService> exploitation) {
         this.supervision = supervision;
+        this.exploitation = exploitation;
     }
 
     /** État de chaque service (santé, latence, construction, métriques), de Keycloak et synthèse. */
@@ -106,13 +119,29 @@ public class PlateformeResource {
             .onErrorMap(PlateformeResource::traduire);
     }
 
-    /** Flux temps réel (Server-Sent Events) : instantané des services et nombre d'alertes, à intervalle régulier. */
+    /**
+     * Flux temps réel (Server-Sent Events) : instantané des services et nombre d'alertes, à intervalle
+     * régulier (événement « plateforme ») ; pour qui porte PLATFORM_OPS_READ, opérations d'exploitation
+     * de l'infrastructure demandées et terminées (événement « operation-infrastructure », D-78).
+     */
     @GetMapping(value = "/flux", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @PreAuthorize(LECTURE_SUPERVISION)
-    public Flux<ServerSentEvent<ImpulsionPlateforme>> flux() {
-        return supervision
+    public Flux<ServerSentEvent<Object>> flux(Authentication auth) {
+        Flux<ServerSentEvent<Object>> impulsions = supervision
             .flux()
-            .map(impulsion -> ServerSentEvent.builder(impulsion).id(Long.toString(impulsion.sequence())).event("plateforme").build());
+            .map(impulsion -> ServerSentEvent.<Object>builder(impulsion).id(Long.toString(impulsion.sequence())).event("plateforme").build());
+        ExploitationInfrastructureService ops = exploitation == null ? null : exploitation.getIfAvailable();
+        if (ops == null || !autorise(auth, AuthoritiesConstants.PLATFORM_OPS_READ)) {
+            return impulsions;
+        }
+        Flux<ServerSentEvent<Object>> operations = ops
+            .diffusion()
+            .map(op -> ServerSentEvent.<Object>builder(op).id(op.id() + "-" + op.resultat()).event(EVENEMENT_OPERATION).build());
+        return Flux.merge(impulsions, operations);
+    }
+
+    static boolean autorise(Authentication auth, String permission) {
+        return auth != null && auth.getAuthorities().stream().anyMatch(a -> permission.equals(a.getAuthority()));
     }
 
     static Throwable traduire(Throwable e) {

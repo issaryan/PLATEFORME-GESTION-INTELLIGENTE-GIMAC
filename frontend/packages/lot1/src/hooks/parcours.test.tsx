@@ -67,7 +67,7 @@ describe('hooks du parcours : lectures', () => {
       H.useProcesVerbalPortail('')
       H.useApprobationPortail('')
       H.useFicheSuiviPortail('')
-      H.useTableauActeur([])
+      H.useTableauActeur(['SNA'], false)
       H.useTableauActeur(['SNA'], false)
       H.useConducteurs(false)
       H.usePersonnes('SNA', false)

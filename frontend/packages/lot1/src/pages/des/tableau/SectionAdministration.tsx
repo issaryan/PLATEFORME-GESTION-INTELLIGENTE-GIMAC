@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 import { ActionBar, Button, PageSection } from '@gimac/design-system'
 import { aPermission, usePermissions } from '@gimac/socle'
-import { ADMINISTRATION, versConsole } from '../../../navigation'
+import { ADMINISTRATION, versConsole } from '../../../fonctionnalites'
 import { PERM } from '../../../permissions'
 
 // Administration et sécurité des comptes (D-62, D-69), sur le tableau de bord des porteurs de IAM_ACCOUNT_READ

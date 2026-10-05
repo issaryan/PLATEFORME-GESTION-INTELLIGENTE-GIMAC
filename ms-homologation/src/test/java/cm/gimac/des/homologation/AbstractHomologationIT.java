@@ -61,7 +61,7 @@ public abstract class AbstractHomologationIT {
     public static void effacer(JdbcTemplate jdbc) {
         jdbc.execute((org.springframework.jdbc.core.ConnectionCallback<Void>) c -> {
             try (var st = c.createStatement()) {
-                st.execute("truncate table liaison, referential_version, outbox_event cascade");
+                st.execute("truncate table liaison, referential_version, outbox_event, demande_tache_pilotage cascade");
             }
             if (!c.getAutoCommit()) {
                 c.commit();

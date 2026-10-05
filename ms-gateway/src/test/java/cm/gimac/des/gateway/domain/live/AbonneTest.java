@@ -3,6 +3,7 @@ package cm.gimac.des.gateway.domain.live;
 import static cm.gimac.des.gateway.domain.live.EvenementLive.CERTIFICATION;
 import static cm.gimac.des.gateway.domain.live.EvenementLive.COLLABORATION;
 import static cm.gimac.des.gateway.domain.live.EvenementLive.HOMOLOGATION;
+import static cm.gimac.des.gateway.domain.live.EvenementLive.NOTIFICATION;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Set;
@@ -28,9 +29,9 @@ class AbonneTest {
         assertThat(Couche.depuis("console")).contains(Couche.CONSOLE);
         assertThat(Couche.depuis("autre")).isEmpty();
         assertThat(Couche.depuis(null)).isEmpty();
-        assertThat(Couche.DES.sujets()).containsExactlyInAnyOrder(HOMOLOGATION, CERTIFICATION, COLLABORATION, EvenementLive.PRESENCE);
-        assertThat(Couche.PORTAIL.sujets()).doesNotContain(COLLABORATION, EvenementLive.PRESENCE);
-        assertThat(Couche.CONSOLE.sujets()).containsExactlyInAnyOrder(HOMOLOGATION, CERTIFICATION, COLLABORATION, EvenementLive.PRESENCE);
+        assertThat(Couche.DES.sujets()).containsExactlyInAnyOrder(HOMOLOGATION, CERTIFICATION, COLLABORATION, EvenementLive.PRESENCE, NOTIFICATION);
+        assertThat(Couche.PORTAIL.sujets()).doesNotContain(COLLABORATION, EvenementLive.PRESENCE, NOTIFICATION);
+        assertThat(Couche.CONSOLE.sujets()).containsExactlyInAnyOrder(HOMOLOGATION, CERTIFICATION, COLLABORATION, EvenementLive.PRESENCE, NOTIFICATION);
     }
 
     @Test
@@ -75,6 +76,22 @@ class AbonneTest {
         assertThat(Abonne.de(Couche.PORTAIL, "u1", "I1", "collaboration").recoit(message("u1"))).isFalse();
         assertThat(Abonne.de(Couche.CONSOLE, "u1", "", "collaboration").recoit(message("u1", "u2"))).isTrue();
         assertThat(Abonne.de(Couche.CONSOLE, "u3", "", null).recoit(message("u1", "u2"))).isFalse();
+    }
+
+    @Test
+    @DisplayName("Notification de la plateforme (D-80) : sujet « notification » accepté, remise au seul destinataire, jamais au portail")
+    void notification() {
+        EvenementLive n = new EvenementLive("n1", "notification.inapp-created.v1", "n-1", NOTIFICATION, null, Set.of("u1"), "u2");
+        assertThat(Abonne.de(Couche.DES, "u1", "", "collaboration,notification").sujets()).containsExactlyInAnyOrder(COLLABORATION, NOTIFICATION);
+        assertThat(Abonne.de(Couche.DES, "u1", "", "notification").recoit(n)).isTrue();
+        assertThat(Abonne.de(Couche.CONSOLE, "u1", "", null).recoit(n)).isTrue();
+        assertThat(Abonne.de(Couche.DES, "u2", "", null).recoit(n)).isFalse();
+        assertThat(Abonne.de(Couche.DES, "", "", null).recoit(n)).isFalse();
+        assertThat(Abonne.de(Couche.DES, "u1", "", "collaboration").recoit(n)).isFalse();
+        assertThat(Abonne.de(Couche.PORTAIL, "u1", "I1", "notification").sujets()).isEmpty();
+        assertThat(Abonne.de(Couche.PORTAIL, "u1", "I1", null).recoit(n)).isFalse();
+        assertThat(n.ephemere()).isFalse();
+        assertThat(n.vue()).isEqualTo(new VueEvenement("n1", "notification.inapp-created.v1", "n-1", NOTIFICATION, "u2"));
     }
 
     @Test

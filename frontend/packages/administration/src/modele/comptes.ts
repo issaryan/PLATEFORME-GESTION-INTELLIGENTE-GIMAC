@@ -66,3 +66,6 @@ export type EntreeJournal = {
 export type FiltreJournal = { page: number; taille: number; compte?: string }
 
 export type { ActionRequise, Compte }
+
+/** PUT …/comptes/{id}/rattachement (D-76, docs/lot1/mon-activite.md §1.2) : null retire l'unité ou le responsable. */
+export type DemandeRattachement = { unite: string | null; responsableId: string | null }

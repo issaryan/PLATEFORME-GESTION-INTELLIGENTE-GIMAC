@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Notifications de la plateforme (D-80, docs/lot1/notifications.md) : notification par destinataire avec
+     consolidation par conversation, préférences par compte, outbox transactionnelle et événements consommés.
+     Écrit à la main, à côté des tables générées par JHipster (inutilisées). -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="not-notifications-plateforme" author="lot1">
+        <createTable tableName="notification_utilisateur" remarks="Notification remise à un destinataire (§2), sans contenu de message.">
+            <column name="id" type="uuid"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="destinataire_id" type="varchar(80)"><constraints nullable="false"/></column>
+            <column name="type" type="varchar(16)"><constraints nullable="false"/></column>
+            <column name="titre" type="varchar(200)"><constraints nullable="false"/></column>
+            <column name="sous_titre" type="varchar(200)"/>
+            <column name="lien" type="varchar(500)"><constraints nullable="false"/></column>
+            <column name="reference_service" type="varchar(40)"><constraints nullable="false"/></column>
+            <column name="reference_type" type="varchar(40)"><constraints nullable="false"/></column>
+            <column name="reference_id" type="varchar(80)"><constraints nullable="false"/></column>
+            <column name="acteur_id" type="varchar(80)"/>
+            <column name="acteur_nom" type="varchar(200)"/>
+            <column name="nombre" type="integer" defaultValueNumeric="1"><constraints nullable="false"/></column>
+            <column name="cree_le" type="timestamptz"><constraints nullable="false"/></column>
+            <column name="mis_a_jour_le" type="timestamptz"><constraints nullable="false"/></column>
+            <column name="lue_le" type="timestamptz"/>
+            <column name="version" type="bigint" defaultValueNumeric="0"><constraints nullable="false"/></column>
+        </createTable>
+        <sql>ALTER TABLE notification_utilisateur ADD CONSTRAINT ck_notification_utilisateur_type CHECK (type IN ('MESSAGE', 'TACHE', 'RAPPORT'));</sql>
+        <sql>ALTER TABLE notification_utilisateur ADD CONSTRAINT ck_notification_utilisateur_nombre CHECK (nombre &gt;= 1);</sql>
+        <createIndex tableName="notification_utilisateur" indexName="ix_notification_utilisateur_boite">
+            <column name="destinataire_id"/>
+            <column name="mis_a_jour_le" descending="true"/>
+        </createIndex>
+        <!-- Compteur des non-lues (§3). -->
+        <sql>CREATE INDEX ix_notification_utilisateur_non_lues ON notification_utilisateur (destinataire_id) WHERE lue_le IS NULL;</sql>
+        <!-- Consolidation (§1) : une seule notification de message non lue par destinataire et conversation. -->
+        <sql>CREATE UNIQUE INDEX ux_notification_utilisateur_consolidation ON notification_utilisateur (destinataire_id, reference_service, reference_type, reference_id) WHERE lue_le IS NULL AND type = 'MESSAGE';</sql>
+        <!-- Purge à 90 jours (§2). -->
+        <createIndex tableName="notification_utilisateur" indexName="ix_notification_utilisateur_purge">
+            <column name="mis_a_jour_le"/>
+        </createIndex>
+
+        <createTable tableName="preference_notification" remarks="Préférences de notification d'un compte (§3) ; absente : valeurs par défaut.">
+            <column name="compte_id" type="varchar(80)"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="systeme" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
+            <column name="son" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+            <column name="type_message" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
+            <column name="type_tache" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
+            <column name="type_rapport" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
+            <column name="modifie_le" type="timestamptz"><constraints nullable="false"/></column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="not-notifications-plateforme-outbox" author="lot1">
+        <createTable tableName="outbox_event" remarks="Outbox transactionnelle (PI-GIMAC-01 §0.4) : notification.inapp-created.v1.">
+            <column name="id" type="uuid"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="aggregate_type" type="varchar(60)"><constraints nullable="false"/></column>
+            <column name="aggregate_id" type="varchar(80)"><constraints nullable="false"/></column>
+            <column name="event_type" type="varchar(120)"><constraints nullable="false"/></column>
+            <column name="payload" type="jsonb"><constraints nullable="false"/></column>
+            <column name="created_at" type="timestamptz"><constraints nullable="false"/></column>
+            <column name="status" type="varchar(16)"><constraints nullable="false"/></column>
+            <column name="sent_at" type="timestamptz"/>
+            <column name="attempts" type="integer" defaultValueNumeric="0"><constraints nullable="false"/></column>
+            <column name="correlation_id" type="varchar(80)"/>
+            <column name="institution_id" type="varchar(80)"/>
+        </createTable>
+        <sql>CREATE INDEX idx_outbox_pending ON outbox_event (created_at) WHERE status = 'PENDING';</sql>
+
+        <createTable tableName="processed_event" remarks="Événements déjà traités par un groupe de consommateurs (RG-15, RG-35).">
+            <column name="id" type="uuid"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="event_id" type="varchar(80)"><constraints nullable="false"/></column>
+            <column name="consumer_group" type="varchar(120)"><constraints nullable="false"/></column>
+            <column name="processed_at" type="timestamptz"><constraints nullable="false"/></column>
+        </createTable>
+        <addUniqueConstraint tableName="processed_event" columnNames="event_id, consumer_group" constraintName="uk_processed_event_group"/>
+    </changeSet>
+
+</databaseChangeLog>

@@ -3,10 +3,11 @@ package cm.gimac.des.homologation.domain;
 import cm.gimac.des.homologation.domain.enumeration.NatureCouverture;
 import cm.gimac.des.homologation.domain.enumeration.Partie;
 import cm.gimac.des.homologation.domain.enumeration.Segment;
+import cm.gimac.des.homologation.domain.parcours.Fonction;
 import java.util.List;
 import java.util.Map;
 
-/** Saisies d'opérations de test (HOM-01, HOM-02). */
+/** Saisies d'opérations de test (HOM-01, HOM-02) ; qualités R et V renseignées (contrôle du modèle, D-77). */
 public final class ReferenceOperationSamples {
 
     private ReferenceOperationSamples() {}
@@ -26,22 +27,22 @@ public final class ReferenceOperationSamples {
                 List.of(),
                 "DIRECTION",
                 null
-            )
+            ).avecQualites(Fonction.DDRM, Fonction.CONDUCTEUR)
         );
     }
 
     /** Saisie modifiable par petites touches, pour les cas d'incomplétude. */
     public record Saisie(ReferenceOperationData data) {
         public Saisie sansPartie() {
-            return new Saisie(copie(d -> new ReferenceOperationData(d.libelle(), d.phase(), d.segment(), null, d.serviceCode(), d.natureCouverture(), d.preuveAttendue(), d.idScenario(), d.predecesseurs(), d.fonctionResponsable(), d.grille())));
+            return new Saisie(copie(d -> new ReferenceOperationData(d.libelle(), d.phase(), d.segment(), null, d.serviceCode(), d.natureCouverture(), d.preuveAttendue(), d.idScenario(), d.predecesseurs(), d.fonctionResponsable(), d.grille()).avecQualites(d.responsable(), d.validateur())));
         }
 
         public Saisie sansPreuveAttendue() {
-            return new Saisie(copie(d -> new ReferenceOperationData(d.libelle(), d.phase(), d.segment(), d.partie(), d.serviceCode(), d.natureCouverture(), null, d.idScenario(), d.predecesseurs(), d.fonctionResponsable(), d.grille())));
+            return new Saisie(copie(d -> new ReferenceOperationData(d.libelle(), d.phase(), d.segment(), d.partie(), d.serviceCode(), d.natureCouverture(), null, d.idScenario(), d.predecesseurs(), d.fonctionResponsable(), d.grille()).avecQualites(d.responsable(), d.validateur())));
         }
 
         public Saisie avecPredecesseurs(String... codes) {
-            return new Saisie(copie(d -> new ReferenceOperationData(d.libelle(), d.phase(), d.segment(), d.partie(), d.serviceCode(), d.natureCouverture(), d.preuveAttendue(), d.idScenario(), List.of(codes), d.fonctionResponsable(), d.grille())));
+            return new Saisie(copie(d -> new ReferenceOperationData(d.libelle(), d.phase(), d.segment(), d.partie(), d.serviceCode(), d.natureCouverture(), d.preuveAttendue(), d.idScenario(), List.of(codes), d.fonctionResponsable(), d.grille()).avecQualites(d.responsable(), d.validateur())));
         }
 
         private ReferenceOperationData copie(java.util.function.UnaryOperator<ReferenceOperationData> f) {

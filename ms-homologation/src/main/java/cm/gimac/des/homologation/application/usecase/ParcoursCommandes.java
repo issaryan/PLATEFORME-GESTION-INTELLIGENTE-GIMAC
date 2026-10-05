@@ -16,6 +16,7 @@ import cm.gimac.des.homologation.domain.parcours.CatalogueServices;
 import cm.gimac.des.homologation.domain.parcours.Ceremonie;
 import cm.gimac.des.homologation.domain.parcours.Couverture;
 import cm.gimac.des.homologation.domain.parcours.Fonction;
+import cm.gimac.des.homologation.domain.parcours.Geste;
 import cm.gimac.des.homologation.domain.parcours.OperationParcours;
 import cm.gimac.des.homologation.domain.parcours.Parcours;
 import cm.gimac.des.homologation.domain.parcours.Personne;
@@ -45,9 +46,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Conduite du parcours, étapes 4 à 10 (docs/lot1/parcours-backend.md §1) : ressources (rang 6), livrables,
- * preuves, validation par réauthentification forte, qualités, blocages datés, constat de la couverture
- * (rang 17), service supplémentaire (rang 35), fiche de suivi (rangs 32 et 33) ; gestes du participant
+ * Conduite du parcours, étapes 4 à 10 (docs/lot1/parcours-backend.md §1) : affectation des ressources, livrables,
+ * preuves, validation par réauthentification forte, qualités, blocages datés, constat de la couverture,
+ * service supplémentaire, fiche de suivi et son constat (gestes lus sur les opérations, D-77) ; gestes du participant
  * sur le portail, cloisonnés à l'institution du jeton. Chaque écriture verrouille la liaison.
  */
 @Service
@@ -63,7 +64,7 @@ public class ParcoursCommandes {
     /** Pièce déposée dans MS-DOCUMENT par l'interface, rattachée par référence et empreinte. */
     public record Piece(UUID documentId, String empreinte, String nom, String commentaire) {}
 
-    /** Affectation d'une ressource à une fonction (rang 6). */
+    /** Affectation d'une ressource à une fonction (geste AFFECTER_RESSOURCES). */
     public record Affectation(Fonction fonction, String personneId) {}
 
     private final ParcoursDepot depot;
@@ -159,10 +160,10 @@ public class ParcoursCommandes {
 
     // ------------------------------------------------------------------ DES
 
-    /** Affectation des ressources (rang 6). */
+    /** Affectation des ressources (geste AFFECTER_RESSOURCES). */
     public void affecterRessources(UUID liaisonId, List<Affectation> affectations, Acteur a) {
         Parcours p = charger(liaisonId);
-        if (!p.operation("6").map(o -> o.getEtat().ouverte()).orElse(false)) {
+        if (p.operations(o -> o.porte(Geste.AFFECTER_RESSOURCES) && o.getEtat().ouverte()).isEmpty()) {
             p.affecterRessources(List.of(), null, aujourdhui());
         }
         List<Personne> personnes = new ArrayList<>();
@@ -232,7 +233,7 @@ public class ParcoursCommandes {
         p.leverBlocage(p.blocage(blocageId).orElseThrow(), commentaire, aujourdhui());
     }
 
-    /** Constat de la couverture (rang 17) : publie homologation.coverage-established.v1 pour MS-CERTIFICATION. */
+    /** Constat de la couverture (geste CONSTATER_COUVERTURE) : publie homologation.coverage-established.v1 pour MS-CERTIFICATION. */
     public Couverture constaterCouverture(UUID liaisonId, Acteur a) {
         Parcours p = charger(liaisonId);
         Couverture c = p.constaterCouverture(preuveInterne("COUV", p, "constat-couverture", p.id() + ":" + p.servicesCouverts(), a), aujourdhui());
@@ -247,7 +248,7 @@ public class ParcoursCommandes {
     }
 
     /**
-     * Service supplémentaire (rang 35) : nouvelle liaison au cadrage sur la même institution, sans repasser
+     * Service supplémentaire : nouvelle liaison au cadrage sur la même institution, sans repasser
      * par l'adhésion, hors unicité de la liaison principale ; le conducteur est à désigner.
      */
     public Liaison ouvrirServiceSupplementaire(UUID liaisonId, List<String> services, Acteur a) {
@@ -289,7 +290,7 @@ public class ParcoursCommandes {
         charger(liaisonId).remettreFiche();
     }
 
-    /** Constat de mise en service (rang 33), sur la fiche renseignée par le participant. */
+    /** Constat de mise en service (fiche de suivi, responsable interne), sur la fiche renseignée par le participant. */
     public void constaterMiseEnService(UUID liaisonId, Acteur a) {
         Parcours p = charger(liaisonId);
         p.constaterMiseEnService(preuveInterne("CST", p, "constat-mise-en-service", p.id() + ":" + p.couvertureMiseEnService(), a), aujourdhui());
@@ -307,7 +308,7 @@ public class ParcoursCommandes {
 
     // ------------------------------------------------------------------ portail
 
-    /** Coordonnées techniques d'essai (rang 12), communiquées par le participant. */
+    /** Coordonnées techniques d'essai (geste COORDONNEES_TECHNIQUES), communiquées par le participant. */
     public void communiquerCoordonnees(UUID liaisonId, String adresse, String port, String pointsTerminaison, Acteur a) {
         Parcours p = sienne(charger(liaisonId), a);
         Preuve piece = preuveInterne("COORD", p, "fiche-coordonnees-techniques", adresse + ":" + port, a);
@@ -330,7 +331,7 @@ public class ParcoursCommandes {
         LOG.info("Livrable du participant déposé sur l'opération {} de la liaison {} ({})", o.getRang(), p.id(), commentaire == null ? "" : commentaire.length() + " caractères de commentaire");
     }
 
-    /** Fiche de suivi renseignée par le participant (rang 32). */
+    /** Fiche de suivi renseignée par le participant (geste FICHE_SUIVI, responsable externe). */
     public void renseignerFiche(UUID liaisonId, List<Parcours.LigneFiche> lignes, Acteur a) {
         Parcours p = sienne(charger(liaisonId), a);
         p.renseignerFiche(lignes == null ? List.of() : lignes, preuveInterne("FSS", p, "fiche-suivi-services", p.id() + ":" + lignes, a), aujourdhui());

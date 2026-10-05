@@ -2,6 +2,7 @@ import { ApiError } from '@gimac/socle'
 import type { CoverageValue, TypeProjet } from '../../modele/commun'
 import { ETAPES, type ApprobationSecurite, type Blocage, type DossierLiaison, type EtapeCode, type EtapeParcours, type EtatOperationParcours, type FicheSuiviServices, type Fonction, type IndicateursPilotage, type LiaisonResume, type OperationParcours, type Personne, type ProcesVerbalCertification, type ServicePerimetre, type Sla, type StatutParcours, type TableauActeur, type TacheActeur, type TypeAttestation } from '../../modele/parcours'
 import { referentielDe, type OperationReferentiel } from '../../modele/referentielCR'
+import { actionDuGeste, codesDeclenches, estDedie, gesteDe, versionCR } from './referentiels'
 import type { ServiceDecision, ServiceParcours, ServicePortailParcours } from '../ports'
 
 // Serveur de substitution du parcours (étapes 3 à 10, D-56 à D-59) : il tient l'état en mémoire et
@@ -106,14 +107,20 @@ type Etat = {
   conducteur: Personne | null
 }
 
+/** Opérations de la liaison closes par un sujet d'événement : déclencheur lu sur le référentiel simulé (D-77, §3). */
+const declenchees = (e: Etat, sujet: string) => { const codes = codesDeclenches(e.s.typeProjet, sujet); return e.ops.filter((o) => codes.includes(o.rang)) }
+const declenchee = (e: Etat, sujet: string) => declenchees(e, sujet)[0]
+
 /** Geste attendu sur une opération ouverte : livrable pour les pièces de phase et les comptes rendus (rangs 7 à 11). */
-const actionOuverte = (o: { grain: string; rang: string }) => (o.rang === '17' ? 'CONSTATER_COUVERTURE' : o.grain === 'PHASE' || ['7', '8', '9', '10', '11'].includes(o.rang) ? 'DEPOSER_LIVRABLE' : 'DEPOSER_PREUVE')
+// Geste lu sur l'opération de la version 1 simulée du référentiel (D-77, §3) : plus de rang codé en dur ici.
+const actionOuverte = (o: { grain: string; rang: string }) => actionDuGeste(gesteDe({ rang: o.rang, grain: o.grain as OperationReferentiel['grain'] }))
 /** Actions d'une opération ouverte : son geste, et l'attribution des qualités tant qu'elle n'est pas faite. */
 /**
  * Rangs dont le geste a sa route propre (affectation des ressources, verrous de la décision tenus par
  * MS-CERTIFICATION, fiche de suivi et constat) : jamais clos par une pièce libre (D-56), comme MS-HOMOLOGATION.
  */
-export const GESTES_DEDIES = ['6', '18', '19', '20', '21', '22', '23', '24', '25', '32', '33']
+export const GESTES_DEDIES = (['CARTE_INTERBANCAIRE', 'PAIEMENT_MOBILE', 'DELEGATAIRE'] as TypeProjet[])
+  .flatMap((t) => versionCR(t)).filter((o) => estDedie(o.geste)).map((o) => o.code).filter((c, i, l) => l.indexOf(c) === i)
 const actionsOuvertes = (o: { grain: string; rang: string }) => (GESTES_DEDIES.includes(o.rang) ? ['ATTRIBUER'] : [actionOuverte(o), 'ATTRIBUER'])
 const refuserGesteLibre = (o: { rang: string }) => {
   if (GESTES_DEDIES.includes(o.rang)) throw refus(409, 'HOM_OPERATION_DEDICATED_GESTURE', 'Cette opération se réalise par son geste propre (affectation, verrous de la décision ou fiche de suivi), jamais par une pièce libre.')
@@ -595,7 +602,7 @@ export function parcoursSimule(attendre: Attendre, institutionPortail: string, n
     procesVerbal: (id) => attendre(() => {
       const e = trouver(id)
       const o17 = e.ops.find((o) => o.rang === '17')
-      const o18 = e.ops.find((o) => o.rang === '18')
+      const o18 = declenchee(e, 'certification.pv-established.v1')
       const actions: string[] = []
       if (e.pv.etat === 'NON_ETABLI' && o17?.etat === 'FAITE' && o18?.etat === 'A_FAIRE') actions.push(e.pv.couverture.taux === 100 ? 'ETABLIR' : 'ETABLIR_BLOQUE')
       if (e.pv.etat === 'ETABLI' || e.pv.etat === 'SIGNE_PARTICIPANT') actions.push('SIGNER_GIMAC')
@@ -604,7 +611,7 @@ export function parcoursSimule(attendre: Attendre, institutionPortail: string, n
     etablirProcesVerbal: (id) => attendre(() => {
       const e = trouver(id)
       if (e.pv.couverture.taux !== 100) throw refus(409, 'CER_COVERAGE_INCOMPLETE', `La couverture de certification est de ${e.pv.couverture.taux ?? 0} % : le procès-verbal exige 100 %.`)
-      const o = e.ops.find((x) => x.rang === '18')
+      const o = declenchee(e, 'certification.pv-established.v1')
       if (!o || o.etat !== 'A_FAIRE') throw refus(409, 'CER_PV_NOT_READY', 'Le constat de la couverture doit précéder le procès-verbal.')
       e.pv = { ...e.pv, etat: 'ETABLI', etabliPar: e.conducteur?.nom ?? null, etabliLe: jour(0), empreinte: hex(`pv-${id}-${Date.now()}`) }
       terminer(e, o, { documentRef: `PV-${id.slice(-3)}`, nom: `proces-verbal-certification-${id}.pdf`, empreinte: e.pv.empreinte ?? '', deposeLe: jour(0), deposePar: e.conducteur?.nom ?? '' })
@@ -617,7 +624,7 @@ export function parcoursSimule(attendre: Attendre, institutionPortail: string, n
       e.pv = { ...e.pv, signatureGimac: sig, etat: e.pv.signatureParticipant ? 'SIGNE' : 'SIGNE_GIMAC' }
       if (e.pv.etat === 'SIGNE') {
         e.s.statut = 'CERTIFIEE'
-        const o = e.ops.find((x) => x.rang === '19')
+        const o = declenchee(e, 'certification.pv-signed.v1')
         if (o) terminer(e, o, { documentRef: `PV-SIG-${id.slice(-3)}`, nom: 'proces-verbal-signe.pdf', empreinte: e.pv.empreinte ?? '', deposeLe: jour(0), deposePar: sig.signataire })
       }
     }),
@@ -640,14 +647,14 @@ export function parcoursSimule(attendre: Attendre, institutionPortail: string, n
       const e = trouver(id)
       if (e.pv.etat !== 'SIGNE') throw refus(409, 'CER_PV_NOT_SIGNED', 'Le procès-verbal de certification doit être signé des deux parties.')
       e.approbation = { ...e.approbation, etat: 'DOSSIER_CONSTITUE', dossierChangement: { documentRef: `CHG-DOS-${id.slice(-3)}`, nom: fichier.name, empreinte: hex(fichier.name + fichier.size), deposeLe: jour(0), deposePar: personne('PRODUCTION_MONETIQUE').nom } }
-      const o = e.ops.find((x) => x.rang === '20')
+      const o = declenchee(e, 'certification.change-record-constituted.v1')
       if (o && o.etat !== 'FAITE') terminer(e, o, e.approbation.dossierChangement)
     }),
     referencerFicheChangement: (id, reference) => attendre(() => {
       if (!/^[A-Z]{2,5}-\d{4}-\d{1,6}$/.test(reference)) throw refus(422, 'CER_CHANGE_RECORD_INVALID', 'Référence de fiche de changement invalide (exemple : CHG-2026-0412).')
       const e = trouver(id)
       e.approbation = { ...e.approbation, ficheChangement: { reference, etatApprobation: 'EN_EXAMEN', lueLe: jour(0), aRelire: false } }
-      const o = e.ops.find((x) => x.rang === '26')
+      const o = declenchee(e, 'certification.change-record-referenced.v1')
       if (o && o.etat === 'A_FAIRE') terminer(e, o, { documentRef: reference, nom: reference, empreinte: hex(reference), deposeLe: jour(0), deposePar: personne('PRODUCTION_MONETIQUE').nom })
     }),
     relireFicheChangement: (id) => attendre(() => {
@@ -661,9 +668,9 @@ export function parcoursSimule(attendre: Attendre, institutionPortail: string, n
       e.approbation = { ...e.approbation, ficheChangement: { ...f, lueLe: jour(0), aRelire: false, etatApprobation: approuvee ? 'APPROUVEE' : f.etatApprobation }, etat: approuvee ? 'APPROUVEE' : e.approbation.etat, approuveeLe: approuvee ? jour(0) : e.approbation.approuveeLe }
       if (approuvee) {
         e.s.statut = 'APPROUVEE_SECURITE'
-        ;['23', '24', '25'].forEach((r) => { const o = e.ops.find((x) => x.rang === r); if (o && o.etat !== 'FAITE') { o.etat = 'A_FAIRE'; terminer(e, o, { documentRef: `SSI-${r}`, nom: `approbation-${r}`, empreinte: hex(`ssi-${id}-${r}`), deposeLe: jour(0), deposePar: personne('RSSI').nom }) } })
+        ;declenchees(e, 'certification.security-approved.v1').forEach((o) => { const r = o.rang; if (o.etat !== 'FAITE') { o.etat = 'A_FAIRE'; terminer(e, o, { documentRef: `SSI-${r}`, nom: `approbation-${r}`, empreinte: hex(`ssi-${id}-${r}`), deposeLe: jour(0), deposePar: personne('RSSI').nom }) } })
         // Rang 26 ouvert après l'approbation : la fiche, déjà référencée et lue, en est la preuve (comme MS-HOMOLOGATION).
-        const o26 = e.ops.find((x) => x.rang === '26')
+        const o26 = declenchee(e, 'certification.change-record-referenced.v1')
         if (o26 && o26.etat === 'A_FAIRE') terminer(e, o26, { documentRef: f.reference, nom: f.reference, empreinte: hex(f.reference), deposeLe: jour(0), deposePar: personne('PRODUCTION_MONETIQUE').nom })
       }
     }),
@@ -682,7 +689,7 @@ export function parcoursSimule(attendre: Attendre, institutionPortail: string, n
       e.approbation.etat = 'VERIFIE_ARCHIVE'
       // Rangs 21 et 22 (pièces du participant) : clos par l'archivage des attestations vérifiées, qui en sont la preuve.
       const piece = e.approbation.attestations[0]?.preuve
-      ;['21', '22'].forEach((r) => { const o = e.ops.find((x) => x.rang === r); if (o && o.etat !== 'FAITE') { o.etat = 'A_FAIRE'; terminer(e, o, piece ?? { documentRef: `ATT-${r}`, nom: `attestations-${r}`, empreinte: hex(`att-${id}-${r}`), deposeLe: jour(0), deposePar: personne('RSSI').nom }) } })
+      ;declenchees(e, 'certification.attestations-archived.v1').forEach((o) => { const r = o.rang; if (o.etat !== 'FAITE') { o.etat = 'A_FAIRE'; terminer(e, o, piece ?? { documentRef: `ATT-${r}`, nom: `attestations-${r}`, empreinte: hex(`att-${id}-${r}`), deposeLe: jour(0), deposePar: personne('RSSI').nom }) } })
     }),
     signerVisa: (id, nature, favorable, motif, assertion) => attendre(() => {
       if (!assertion) throw refus(401, 'IAM_REAUTH_REQUIRED', 'Réauthentification exigée.')
@@ -755,7 +762,7 @@ export function parcoursSimule(attendre: Attendre, institutionPortail: string, n
       e.pv = { ...e.pv, signatureParticipant: sig, etat: e.pv.signatureGimac ? 'SIGNE' : 'SIGNE_PARTICIPANT' }
       if (e.pv.etat === 'SIGNE') {
         e.s.statut = 'CERTIFIEE'
-        const o = e.ops.find((x) => x.rang === '19')
+        const o = declenchee(e, 'certification.pv-signed.v1')
         if (o && o.etat !== 'FAITE') terminer(e, o, { documentRef: `PV-SIG-${id.slice(-3)}`, nom: 'proces-verbal-signe.pdf', empreinte: e.pv.empreinte ?? '', deposeLe: jour(0), deposePar: sig.signataire })
       }
     }),

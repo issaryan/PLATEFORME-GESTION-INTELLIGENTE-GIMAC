@@ -602,3 +602,169 @@ test_depots_fragmentes_formes_non_prevues_refusees if {
 		}
 	}
 }
+
+# D-76 : Mon activité (docs/lot1/mon-activite.md §2), tout membre interne ; équipe des responsables.
+routes_pilotage := [
+	["GET", "/bff/des/pilotage/agenda", "PIL_ACTIVITY_OWN"],
+	["POST", "/bff/des/pilotage/agenda", "PIL_ACTIVITY_OWN"],
+	["PUT", "/bff/des/pilotage/agenda/e1", "PIL_ACTIVITY_OWN"],
+	["DELETE", "/bff/des/pilotage/agenda/e1", "PIL_ACTIVITY_OWN"],
+	["POST", "/bff/des/pilotage/agenda/e1/reponse", "PIL_ACTIVITY_OWN"],
+	["GET", "/bff/des/pilotage/activites", "PIL_ACTIVITY_OWN"],
+	["POST", "/bff/des/pilotage/activites", "PIL_ACTIVITY_OWN"],
+	["PUT", "/bff/des/pilotage/activites/a1", "PIL_ACTIVITY_OWN"],
+	["POST", "/bff/des/pilotage/activites/a1/statut", "PIL_ACTIVITY_OWN"],
+	["DELETE", "/bff/des/pilotage/activites/a1", "PIL_ACTIVITY_OWN"],
+	["GET", "/bff/des/pilotage/taches", "PIL_ACTIVITY_OWN"],
+	["GET", "/bff/des/pilotage/taches/t1", "PIL_ACTIVITY_OWN"],
+	["POST", "/bff/des/pilotage/taches", "PIL_ACTIVITY_OWN"],
+	["PUT", "/bff/des/pilotage/taches/t1", "PIL_ACTIVITY_OWN"],
+	["POST", "/bff/des/pilotage/taches/t1/transition", "PIL_ACTIVITY_OWN"],
+	["GET", "/bff/des/pilotage/rapports", "PIL_ACTIVITY_OWN"],
+	["GET", "/bff/des/pilotage/rapports/r1", "PIL_ACTIVITY_OWN"],
+	["GET", "/bff/des/pilotage/rapports/r1/document", "PIL_ACTIVITY_OWN"],
+	["POST", "/bff/des/pilotage/rapports", "PIL_ACTIVITY_OWN"],
+	["POST", "/bff/des/pilotage/rapports/preremplissage", "PIL_ACTIVITY_OWN"],
+	["PUT", "/bff/des/pilotage/rapports/r1", "PIL_ACTIVITY_OWN"],
+	["POST", "/bff/des/pilotage/rapports/r1/soumission", "PIL_ACTIVITY_OWN"],
+	["POST", "/bff/des/pilotage/rapports/r1/visa", "PIL_ACTIVITY_OWN"],
+	["GET", "/bff/des/pilotage/moi/synthese", "PIL_ACTIVITY_OWN"],
+	["GET", "/bff/des/pilotage/equipe", "PIL_TEAM_READ"],
+	["GET", "/bff/des/iam/organisation/moi", "PIL_ACTIVITY_OWN"],
+	["POST", "/bff/des/iam/organisation/unites", "IAM_ACCOUNT_EDIT"],
+	["PUT", "/bff/console/iam/organisation/unites/DES", "IAM_ACCOUNT_EDIT"],
+	["PUT", "/bff/des/iam/comptes/c1/rattachement", "IAM_ACCOUNT_EDIT"],
+]
+
+test_pilotage_avec_permission if {
+	every r in routes_pilotage {
+		authz.allow with input as {"method": r[0], "path": r[1], "permissions": [r[2]], "authentifie": true, "acr": "2"}
+	}
+}
+
+test_pilotage_sans_permission if {
+	every r in routes_pilotage {
+		not authz.allow with input as {"method": r[0], "path": r[1], "permissions": ["COL_MESSAGE_READ"], "authentifie": true, "acr": "2"}
+	}
+}
+
+# Pilotage et organisation : jamais pour un compte d'institution (le rattachement relève de l'administration).
+routes_reservees_internes := [r | some r in routes_pilotage; not contains(r[1], "/comptes/")]
+
+test_pilotage_compte_externe_refuse if {
+	every r in routes_reservees_internes {
+		not authz.allow with input as {
+			"method": r[0], "path": r[1], "permissions": [r[2]], "institution_id": "INST-0042",
+			"authentifie": true, "acr": "2",
+		}
+	}
+}
+
+test_pilotage_equipe_exige_sa_permission if not authz.allow with input as {
+	"method": "GET", "path": "/bff/des/pilotage/equipe", "permissions": ["PIL_ACTIVITY_OWN"], "authentifie": true, "acr": "2",
+}
+
+# Chemin ou méthode hors contrat : refusé, sans repli sur @PreAuthorize.
+test_pilotage_chemin_non_liste_refuse if not authz.allow with input as {
+	"method": "GET", "path": "/bff/des/pilotage/boards", "permissions": ["PIL_ACTIVITY_OWN"], "authentifie": true, "acr": "2",
+}
+
+test_pilotage_suppression_tache_refusee if not authz.allow with input as {
+	"method": "DELETE", "path": "/bff/des/pilotage/taches/t1", "permissions": ["PIL_ACTIVITY_OWN"], "authentifie": true, "acr": "2",
+}
+
+test_pilotage_sans_second_facteur_refuse if not authz.allow with input as {
+	"method": "GET", "path": "/bff/des/pilotage/agenda", "permissions": ["PIL_ACTIVITY_OWN"], "authentifie": true, "acr": "1",
+}
+
+test_pilotage_interne_jamais_relaye if not authz.allow with input as {
+	"method": "POST", "path": "/bff/des/pilotage/interne/taches", "permissions": ["PIL_ACTIVITY_OWN", "INTERNAL_PILOTAGE_TASK_CREATE"],
+	"authentifie": true, "acr": "2",
+}
+
+test_unites_lecture_membre_interne if authz.allow with input as {
+	"method": "GET", "path": "/bff/des/iam/organisation/unites", "permissions": ["PIL_ACTIVITY_OWN"], "authentifie": true, "acr": "2",
+}
+
+test_unites_lecture_administration_console if authz.allow with input as {
+	"method": "GET", "path": "/bff/console/iam/organisation/unites", "permissions": ["IAM_ACCOUNT_READ"], "authentifie": true, "acr": "2",
+}
+
+test_unites_lecture_sans_permission if not authz.allow with input as {
+	"method": "GET", "path": "/bff/des/iam/organisation/unites", "permissions": ["COL_MESSAGE_READ"], "authentifie": true, "acr": "2",
+}
+
+test_unites_lecture_compte_externe if not authz.allow with input as {
+	"method": "GET", "path": "/bff/des/iam/organisation/unites", "permissions": ["PIL_ACTIVITY_OWN"], "institution_id": "INST-0042",
+	"authentifie": true, "acr": "2",
+}
+
+test_depot_rapport_activite if authz.allow with input as {
+	"method": "POST", "path": "/bff/des/document/depots", "permissions": ["PIL_ACTIVITY_OWN"], "authentifie": true, "acr": "2",
+}
+
+# D-77 : modélisateur de processus, écriture des brouillons et migration des liaisons.
+routes_modelisateur := [
+	["POST", "/bff/des/homologation/referentiels", "HOM_REFERENTIEL_EDIT"],
+	["POST", "/bff/des/homologation/referentiels/v1/operations", "HOM_REFERENTIEL_EDIT"],
+	["POST", "/bff/des/homologation/referentiels/v1/controle", "HOM_REFERENTIEL_EDIT"],
+	["PUT", "/bff/des/homologation/referentiels/v1/operations/C1", "HOM_REFERENTIEL_EDIT"],
+	["PUT", "/bff/des/homologation/referentiels/v1/positions", "HOM_REFERENTIEL_EDIT"],
+	["PUT", "/bff/des/homologation/referentiels/v1/arcs", "HOM_REFERENTIEL_EDIT"],
+	["PUT", "/bff/des/homologation/referentiels/v1/pilote", "HOM_REFERENTIEL_EDIT"],
+	["DELETE", "/bff/des/homologation/referentiels/v1/operations/C1", "HOM_REFERENTIEL_EDIT"],
+	["POST", "/bff/des/homologation/referentiels/v1/migrations", "HOM_REFERENTIEL_MIGRATE"],
+	["POST", "/bff/des/homologation/referentiels/v1/migrations/simulation", "HOM_REFERENTIEL_MIGRATE"],
+	["POST", "/bff/des/homologation/referentiels/v1/publication", "HOM_REFERENTIEL_PUBLISH"],
+]
+
+test_modelisateur_avec_permission if {
+	every r in routes_modelisateur {
+		authz.allow with input as {"method": r[0], "path": r[1], "permissions": [r[2]], "authentifie": true, "acr": "2"}
+	}
+}
+
+test_modelisateur_sans_permission if {
+	every r in routes_modelisateur {
+		not authz.allow with input as {"method": r[0], "path": r[1], "permissions": ["HOM_REFERENTIEL_READ"], "authentifie": true, "acr": "2"}
+	}
+}
+
+test_modelisateur_lecture_graphe if authz.allow with input as {
+	"method": "GET", "path": "/bff/des/homologation/referentiels/v1/graphe", "permissions": ["HOM_REFERENTIEL_READ"], "authentifie": true, "acr": "2",
+}
+
+# D-80 : notifications de la plateforme, comptes internes seulement.
+routes_notifications := [
+	["GET", "/bff/des/notification/notifications"],
+	["GET", "/bff/console/notification/notifications/compteur"],
+	["POST", "/bff/des/notification/notifications/n1/lecture"],
+	["POST", "/bff/console/notification/notifications/lecture"],
+	["GET", "/bff/des/notification/preferences"],
+	["PUT", "/bff/des/notification/preferences"],
+]
+
+test_notifications_avec_permission if {
+	every r in routes_notifications {
+		authz.allow with input as {"method": r[0], "path": r[1], "permissions": ["NOT_INBOX_READ"], "authentifie": true, "acr": "2"}
+	}
+}
+
+test_notifications_sans_permission if {
+	every r in routes_notifications {
+		not authz.allow with input as {"method": r[0], "path": r[1], "permissions": ["COL_MESSAGE_READ"], "authentifie": true, "acr": "2"}
+	}
+}
+
+test_notifications_compte_externe_refuse if {
+	every r in routes_notifications {
+		not authz.allow with input as {
+			"method": r[0], "path": r[1], "permissions": ["NOT_INBOX_READ"], "institution_id": "INST-0042",
+			"authentifie": true, "acr": "2",
+		}
+	}
+}
+
+test_notifications_chemin_non_liste_refuse if not authz.allow with input as {
+	"method": "DELETE", "path": "/bff/des/notification/notifications/n1", "permissions": ["NOT_INBOX_READ"], "authentifie": true, "acr": "2",
+}

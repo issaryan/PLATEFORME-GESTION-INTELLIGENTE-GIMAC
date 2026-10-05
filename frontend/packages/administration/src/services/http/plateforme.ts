@@ -1,5 +1,6 @@
 import { http } from '@gimac/socle'
 import type { EtatFlux, ImpulsionPlateforme } from '../../modele/plateforme'
+import type { Operation } from '../../modele/infrastructure'
 import type { EcouteurFlux, ServicePlateforme } from '../ports'
 
 // Implémentation HTTP de la supervision : routes /api/plateforme de MS-GATEWAY (PlateformeResource),
@@ -37,6 +38,17 @@ export function ouvrirFlux(e: EcouteurFlux, o: OptionsFlux = {}): () => void {
         /* événement illisible : ignoré, le suivant rétablit l'état */
       }
     })
+    // Exploitation de l'infrastructure (D-78) : opérations poussées aux porteurs de PLATFORM_OPS_READ.
+    const operation = e.onOperation
+    if (operation) {
+      source.addEventListener('operation-infrastructure', (m) => {
+        try {
+          operation(JSON.parse((m as MessageEvent<string>).data) as Operation)
+        } catch {
+          /* événement illisible : ignoré */
+        }
+      })
+    }
     source.onerror = () => {
       source?.close()
       if (ferme) return

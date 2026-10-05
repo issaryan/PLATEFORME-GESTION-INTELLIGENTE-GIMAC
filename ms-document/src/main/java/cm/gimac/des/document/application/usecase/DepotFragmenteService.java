@@ -52,6 +52,9 @@ public class DepotFragmenteService implements DepotFragmenteUseCase {
     );
     static final String FINALITE_MESSAGERIE = "MESSAGERIE";
     static final String PERMISSION_MESSAGERIE = "COL_MESSAGE_SEND";
+    /** Rapport d'activité déposé en mode DOCUMENT (D-76, docs/lot1/mon-activite.md §2.4), référence = identifiant du rapport. */
+    static final String FINALITE_RAPPORT_ACTIVITE = "RAPPORT_ACTIVITE";
+    static final String PERMISSION_RAPPORT_ACTIVITE = "PIL_ACTIVITY_OWN";
     private static final int LOT = 100;
 
     private final StockageObjet stockage;
@@ -237,11 +240,19 @@ public class DepotFragmenteService implements DepotFragmenteUseCase {
         }
     }
 
-    /** MESSAGERIE exige COL_MESSAGE_SEND ; toute autre finalité, l'une des permissions du dépôt direct. */
+    /**
+     * MESSAGERIE exige COL_MESSAGE_SEND ; RAPPORT_ACTIVITE exige PIL_ACTIVITY_OWN (D-76) ; toute autre
+     * finalité, l'une des permissions du dépôt direct.
+     */
     static void autoriser(String finalite, Set<String> permissions) {
-        boolean autorise = FINALITE_MESSAGERIE.equals(finalite)
-            ? permissions.contains(PERMISSION_MESSAGERIE)
-            : permissions.stream().anyMatch(PERMISSIONS_DEPOT::contains);
+        boolean autorise;
+        if (FINALITE_MESSAGERIE.equals(finalite)) {
+            autorise = permissions.contains(PERMISSION_MESSAGERIE);
+        } else if (FINALITE_RAPPORT_ACTIVITE.equals(finalite)) {
+            autorise = permissions.contains(PERMISSION_RAPPORT_ACTIVITE);
+        } else {
+            autorise = permissions.stream().anyMatch(PERMISSIONS_DEPOT::contains);
+        }
         if (!autorise) {
             throw DocumentException.interdit("DOC_PURPOSE_FORBIDDEN", "Dépôt non autorisé pour cette finalité");
         }

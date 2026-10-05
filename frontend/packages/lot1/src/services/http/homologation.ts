@@ -40,13 +40,24 @@ export const homologationHttp: ServiceHomologation = {
     const p = await http.get<Page<unknown>>(L, { query: { versionId, actives: true, taille: 1 } })
     return { total: p.total }
   },
-  creerBrouillon: (entree) => http.post(R, { body: entree }),
+  // Pilote facultatif : omis, le créateur pilote le brouillon.
+  creerBrouillon: (entree) => http.post(R, { body: entree.piloteId ? entree : { typeProjet: entree.typeProjet, libelle: entree.libelle } }),
   deriverBrouillon: (versionSourceId) => http.post(R, { body: { versionSourceId } }),
   publierReferentiel: (id) => http.post(`${R}/${id}/publication`),
   migrerLiaisons: (id, liaisonsRetenues) => http.post(`${R}/${id}/migrations`, { body: { liaisonsRetenues } }),
   // Chronologie servie avec des instants ISO-8601 : affichés à la minute, à l'heure de Douala.
   historiqueReferentiel: async (id) =>
     (await http.get<EvenementChronologie[]>(`${R}/${id}/historique`)).map((e) => ({ ...e, at: horodatage(e.at), actor: e.actor ?? undefined, correlationId: e.correlationId ?? undefined })),
+
+  // Modélisateur (D-77, §4) : graphe étendu, catalogue, opérations, positions, arcs et pilote du brouillon.
+  grapheReferentiel: (id) => http.get(`${R}/${id}/graphe`),
+  catalogueReferentiels: () => http.get(`${R}/catalogue`),
+  creerOperation: (id, operation) => http.post(`${R}/${id}/operations`, { body: operation }),
+  enregistrerOperation: (id, code, operation) => http.put(`${R}/${id}/operations/${encodeURIComponent(code)}`, { body: operation }),
+  supprimerOperation: (id, code) => http.delete(`${R}/${id}/operations/${encodeURIComponent(code)}`),
+  placerOperations: (id, positions) => http.put(`${R}/${id}/positions`, { body: positions }),
+  arcReferentiel: (id, arc) => http.put(`${R}/${id}/arcs`, { body: arc }),
+  designerPilote: (id, compteId) => http.put(`${R}/${id}/pilote`, { body: { compteId } }),
 
   listerLiaisons: (q) => http.get(L, { query: requeteLiaisons(q) }),
   tableauDeBordLiaisons: (q) => http.get(`${H}/tableau-de-bord/liaisons`, { query: requete(q) }),

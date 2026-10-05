@@ -114,6 +114,8 @@ gimac:
     # INTERNAL_DOCUMENT_DEPOSIT), validation après réauthentification forte vérifiée par MS-IAM (INTERNAL_IAM_READ).
     document-deposit: real
     reauthentication: real
+    # Tâches de MS-PILOTAGE (D-77) : jeton du client homologation-service, INTERNAL_PILOTAGE_TASK_CREATE.
+    pilotage-tasks: real
   services:
     participant:
       url: http://participant:8085
@@ -123,3 +125,5 @@ gimac:
       url: http://iam:8081
     audit:
       url: http://audit:8082
+    pilotage:
+      url: http://pilotage:8091

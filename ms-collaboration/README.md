@@ -48,6 +48,14 @@ Collaboration entre les acteurs du GIMAC. Premier incrément livré (D-64) : la 
 
 Refus : 401 sans jeton ; 403 sans second facteur (`acr` 2 ou 3) ou sans la permission ; 404 hors appartenance. Erreurs en `application/problem+json` avec `code` : ceux du contrat (`COL_RECIPIENT_REQUIRED`, `COL_RECIPIENT_UNKNOWN`, `COL_RECIPIENT_SELF`, `COL_TOO_MANY_RECIPIENTS`, `COL_MESSAGE_EMPTY`, `COL_MESSAGE_TOO_LONG`, `COL_TAG_INVALID`, `COL_TOO_MANY_TAGS`, `COL_ATTACHMENT_TOO_LARGE`, `COL_ATTACHMENT_TYPE`, `COL_TOO_MANY_ATTACHMENTS`, `COL_CONVERSATION_NOT_FOUND`, `COL_ATTACHMENT_NOT_FOUND`, `COL_DOCUMENT_INVALID`), plus `COL_MESSAGE_NOT_FOUND` (curseur `avant` inconnu), `COL_ATTACHMENT_REJECTED` (400, refus du dépôt par MS-DOCUMENT, par exemple BNF-16), `COL_DIRECTORY_UNAVAILABLE` et `COL_DOCUMENT_UNAVAILABLE` (503, tiers injoignable), `COL_USER_TOKEN_REQUIRED` (403).
 
+### Interface interne (D-80)
+
+| Méthode et chemin | Permission | Réponse |
+|---|---|---|
+| `GET /api/v1/interne/conversations/{id}` | `INTERNAL_COLLABORATION_READ` (jeton de service du client `notification-service`, règle `/api/v1/interne/**` puis `@PreAuthorize`) | `{ id, type: DIRECTE\|GROUPE, nom (groupe, sinon null), membres: [identifiants] }`, jamais de message ; 404 `COL_CONVERSATION_NOT_FOUND` |
+
+`collaboration.message-sent.v1` porte désormais `evenement` : nom de l'événement de groupe (D-68), `null` pour un vrai message ; MS-NOTIFICATION ne notifie que les vrais messages. Aucun événement de lecture d'une conversation n'est publié (l'interface marque lues les notifications par `POST /notifications/lecture` de MS-NOTIFICATION).
+
 ### Dépendances (jeton de service `client_credentials`, client `collaboration-service`)
 
 | Service | Route | Permission | État |
@@ -121,6 +129,7 @@ Copié et adapté (paquet `cm.gimac.des.collaboration`), aligné sur MS-HOMOLOGA
 | 2026-09-29 | — | `.gitignore` : exception `!src/**/out/`, pour que les ports sortants `application/port/out` soient versionnés |
 | 2026-09-30 | — | Régénération en JHipster 9.4.0 (D-43, D-55 : Spring Boot 4.1, Java 21, sans cache, Cucumber ; `ProcessedEvent` remplacée par la déduplication du consommateur idempotent) ; socle du lot 1 repris de MS-HOMOLOGATION (outbox, relais, rebut `.dlq`, jeton de service, second facteur, ArchUnit, JaCoCo). Messagerie de travail (D-64) : conversations directes et de groupe, RG-52, chiffrement AES-256-GCM au repos, étiquettes, pièces jointes via MS-DOCUMENT, non-lus, événement `collaboration.message-sent.v1`. 184 tests unitaires et de sécurité, 442 d'intégration et de recette réussis ; couverture fusionnée du service 88,8 % en lignes et 86,4 % en méthodes (hors MapStruct), code de la messagerie 96,8 % en lignes et 93,6 % en branches. |
 | 2026-10-01 | — | Photo de profil (docs/lot1/mon-compte.md §1) : `avatarVersion` dans l'annuaire, les membres des conversations et l'auteur des messages (versions lues par lot sur MS-IAM, annuaire injoignable sans échec). `./mvnw -ntp -B verify` : 188 tests unitaires et de sécurité, 443 d'intégration et de recette réussis ; couverture fusionnée hors MapStruct 88,9 % en lignes, 86,6 % en méthodes. |
+| 2026-10-05 | - | Notifications de la plateforme (D-80) : route interne `GET /api/v1/interne/conversations/{id}` (`INTERNAL_COLLABORATION_READ`, client `notification-service`) → `{ id, type, nom, membres }` ; champ `evenement` (événement de groupe, `null` pour un message) dans `collaboration.message-sent.v1`. `./mvnw -q verify` : 240 tests unitaires et de sécurité, 446 d'intégration et de recette réussis. |
 <!-- GIMAC:FIN -->
 
 # collaboration

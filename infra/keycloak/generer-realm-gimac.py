@@ -40,10 +40,21 @@ PERMISSIONS = {
     "IAM": ["ACCOUNT_READ", "ACCOUNT_CREATE", "ACCOUNT_EDIT", "ACCOUNT_ROLES", "ACCOUNT_STATUS", "ACCOUNT_DELETE",
             "ACCOUNT_SECURITY", "JOURNAL_READ", "PROFILE_EDIT", "ROLE_PRIVILEGED_GRANT"],
     "PLATFORM": ["SUPERVISION_READ", "CONFIG_READ", "CONFIG_EDIT", "SECURITY_POLICY_READ", "SECURITY_POLICY_EDIT",
-                 "MESSAGING_EDIT"],
+                 "MESSAGING_EDIT",
+                 # Exploitation de l'infrastructure depuis la console (D-78) : lecture, gestes Docker et Kubernetes.
+                 "OPS_READ", "OPS_EXECUTE"],
     # Messagerie instantanée de travail entre acteurs internes (D-64, docs/lot1/messagerie.md).
     "COL": ["MESSAGE_READ", "MESSAGE_SEND"],
-    "INTERNAL": ["HOMOLOGATION_READ", "CERTIFICATION_READ", "PARTICIPANT_READ", "DOCUMENT_READ", "DOCUMENT_DEPOSIT", "IAM_READ"],
+    # Mon activité (D-76, docs/lot1/mon-activite.md) : agenda, activités, tâches et rapports de chacun ;
+    # équipe (lecture, visa des rapports) et tâches confiées aux membres de son équipe.
+    "PIL": ["ACTIVITY_OWN", "TEAM_READ", "TASK_ASSIGN"],
+    # Notifications de la plateforme (D-80, docs/lot1/notifications.md) : cloche et préférences de chacun.
+    "NOT": ["INBOX_READ"],
+    "INTERNAL": ["HOMOLOGATION_READ", "CERTIFICATION_READ", "PARTICIPANT_READ", "DOCUMENT_READ", "DOCUMENT_DEPOSIT", "IAM_READ",
+                 # Tâches créées par un autre service dans MS-PILOTAGE (D-76 §2.3, D-77).
+                 "PILOTAGE_TASK_CREATE",
+                 # Titre d'une conversation pour une notification (D-80 §2).
+                 "COLLABORATION_READ"],
 }
 TOUTES = [f"{d}_{p}" for d, ps in PERMISSIONS.items() for p in ps]
 
@@ -66,7 +77,7 @@ PROFILS = {
         + [f"PLATFORM_{p}" for p in PERMISSIONS["PLATFORM"]],
     "ROLE_RSSI": LECTURE_DES + ["CER_QUITUS_SECURITE_SIGN", "CER_SECURITY_VERIFY", "HOM_EVIDENCE_SUBMIT"] + [f"IAM_{p}" for p in PERMISSIONS["IAM"] if p != "ROLE_PRIVILEGED_GRANT"]
         + ["PLATFORM_SUPERVISION_READ", "PLATFORM_CONFIG_READ", "PLATFORM_SECURITY_POLICY_READ", "PLATFORM_SECURITY_POLICY_EDIT",
-           "PLATFORM_MESSAGING_EDIT"],
+           "PLATFORM_MESSAGING_EDIT", "PLATFORM_OPS_READ"],
     "ROLE_CONFORMITE": LECTURE_DES + ["CER_QUITUS_CONFORMITE_SIGN", "CER_CHANGE_RECORD_LINK"],
     "ROLE_DG": LECTURE_DES + ["CER_QUITUS_DG_SIGN", "CER_ATTESTATION_STATUS_APPROVE"],
     "ROLE_CORRESPONDANT": ["HOM_PORTAL_READ", "HOM_PORTAL_SUBMIT", "CER_PORTAL_READ", "CER_PORTAL_SIGN"],
@@ -80,6 +91,13 @@ PROFILS = {
     "ROLE_PRODUCTION_MONETIQUE": LECTURE_DES + ["HOM_EVIDENCE_SUBMIT", "CER_CHANGE_RECORD_LINK", "CER_GOLIVE_REPORT_SUBMIT"],
     "ROLE_POLE_RESEAU": LECTURE_DES + ["HOM_EVIDENCE_SUBMIT"],
     "ROLE_POLE_SYSTEME": LECTURE_DES + ["HOM_EVIDENCE_SUBMIT"],
+    # D-76 : tout employé du GIMAC sans fonction métier dans la plateforme, et responsable d'une unité
+    # (service, pôle, cellule) ; « Mon activité » et la messagerie leur sont ajoutées ci-dessous.
+    "ROLE_COLLABORATEUR": [],
+    # Administrateur système (D-78) : exploitation de la plateforme depuis la console (supervision, charges
+    # de travail Docker et Kubernetes) ; n'administre pas les comptes.
+    "ROLE_ADMIN_SYSTEME": ["PLATFORM_SUPERVISION_READ", "PLATFORM_CONFIG_READ", "PLATFORM_OPS_READ", "PLATFORM_OPS_EXECUTE"],
+    "ROLE_RESPONSABLE_SERVICE": [],
     "ROLE_CONDUCTEUR_PROJET": LECTURE_DES + ["HOM_OPERATION_ASSIGN", "HOM_EVIDENCE_SUBMIT", "HOM_EVIDENCE_FILE_EXPORT",
         "HOM_OPERATION_VALIDATE", "HOM_STEP_MANAGE", "CER_PV_ESTABLISH"],
 }
@@ -87,9 +105,14 @@ PROFILS = {
 # participant (profil externe, porteur d'une institution).
 PROFILS_EXTERNES = {"ROLE_CORRESPONDANT"}
 MESSAGERIE = ["COL_MESSAGE_READ", "COL_MESSAGE_SEND"]
+# Mon activité (D-76 §4) : tout profil interne ; équipe et tâches confiées pour les responsables.
+MON_ACTIVITE = ["PIL_ACTIVITY_OWN", "NOT_INBOX_READ"]
+RESPONSABLES = {"ROLE_CHEF_DES", "ROLE_CHEF_DDRM", "ROLE_DG", "ROLE_RSSI", "ROLE_CONFORMITE", "ROLE_RESPONSABLE_SERVICE"}
 for _profil in PROFILS:
     if _profil not in PROFILS_EXTERNES:
-        PROFILS[_profil] = PROFILS[_profil] + MESSAGERIE
+        PROFILS[_profil] = PROFILS[_profil] + MESSAGERIE + MON_ACTIVITE
+        if _profil in RESPONSABLES:
+            PROFILS[_profil] = PROFILS[_profil] + ["PIL_TEAM_READ", "PIL_TASK_ASSIGN"]
 # Institutions fictives du jeu de données de référence (D-30).
 UTILISATEURS = [
     ("test-ingenieur-homologation", "Ingénieur", "Homologation", "ROLE_INGENIEUR_HOMOLOGATION", None),
@@ -107,15 +130,23 @@ UTILISATEURS = [
     ("test-pole-reseau", "Agent", "Pôle réseau", "ROLE_POLE_RESEAU", None),
     ("test-pole-systeme", "Agent", "Pôle système", "ROLE_POLE_SYSTEME", None),
     ("test-conducteur-projet", "Conducteur", "Projet", "ROLE_CONDUCTEUR_PROJET", None),
+    ("test-collaborateur", "Agent", "GIMAC", "ROLE_COLLABORATEUR", None),
+    ("test-responsable-service", "Responsable", "Service", "ROLE_RESPONSABLE_SERVICE", None),
+    ("test-admin-systeme", "Administrateur", "Système", "ROLE_ADMIN_SYSTEME", None),
 ]
 SERVICES = {
     # Livrables du portail déposés pour le correspondant dans MS-DOCUMENT (étapes 4 à 10).
-    "homologation-service": ["INTERNAL_PARTICIPANT_READ", "INTERNAL_DOCUMENT_READ", "INTERNAL_DOCUMENT_DEPOSIT", "INTERNAL_IAM_READ"],
+    "homologation-service": ["INTERNAL_PARTICIPANT_READ", "INTERNAL_DOCUMENT_READ", "INTERNAL_DOCUMENT_DEPOSIT", "INTERNAL_IAM_READ",
+                             "INTERNAL_PILOTAGE_TASK_CREATE"],
     # Attestations du participant déposées pour son compte dans MS-DOCUMENT (verrou 2).
     "certification-service": ["INTERNAL_HOMOLOGATION_READ", "INTERNAL_DOCUMENT_READ", "INTERNAL_DOCUMENT_DEPOSIT", "INTERNAL_IAM_READ"],
     "participant-service": ["INTERNAL_DOCUMENT_READ", "INTERNAL_IAM_READ"],
     # Messagerie (D-64) : annuaire des comptes internes (MS-IAM), dépôt et lecture des pièces jointes (MS-DOCUMENT).
     "collaboration-service": ["INTERNAL_IAM_READ", "INTERNAL_DOCUMENT_READ", "INTERNAL_DOCUMENT_DEPOSIT"],
+    # Mon activité (D-76) : rattachements et équipes (MS-IAM), documents des rapports (MS-DOCUMENT).
+    "pilotage-service": ["INTERNAL_IAM_READ", "INTERNAL_DOCUMENT_READ"],
+    # Notifications (D-80) : noms des comptes (MS-IAM) et titre des conversations (MS-COLLABORATION).
+    "notification-service": ["INTERNAL_IAM_READ", "INTERNAL_COLLABORATION_READ"],
     # MS-IAM administre le realm par l'API d'administration (D-62) : rôles de realm-management ci-dessous.
     "iam-service": [],
     # Connexion sur la plateforme (D-65) : la passerelle lit l'état de connexion du compte sur MS-IAM.
@@ -147,6 +178,10 @@ PROFIL_UTILISATEUR = {
         {"name": "institution_id", "displayName": "Institution", "permissions": ADMIN_SEUL, "multivalued": False},
         {"name": "phone_number", "displayName": "Téléphone", "permissions": ADMIN_SEUL, "multivalued": False},
         {"name": "fonction", "displayName": "Fonction", "permissions": ADMIN_SEUL, "multivalued": False},
+        # Rattachement organisationnel (D-76, docs/lot1/mon-activite.md §1.2) : code de l'unité la plus fine
+        # (catalogue unite_organisationnelle de MS-IAM) et identifiant du compte responsable (n+1).
+        {"name": "unite", "displayName": "Unité organisationnelle", "permissions": ADMIN_SEUL, "multivalued": False},
+        {"name": "responsable_id", "displayName": "Responsable (n+1)", "permissions": ADMIN_SEUL, "multivalued": False},
         {"name": "profil_complet", "displayName": "Premier accès terminé", "permissions": ADMIN_SEUL, "multivalued": False},
         {"name": "langKey", "displayName": "Langue", "permissions": ADMIN_SEUL, "multivalued": False},
         {"name": "login", "displayName": "Identifiant", "permissions": ADMIN_SEUL, "multivalued": False},

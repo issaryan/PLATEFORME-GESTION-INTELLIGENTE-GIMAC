@@ -20,6 +20,7 @@ import cm.gimac.des.iam.application.usecase.AvatarService;
 import cm.gimac.des.iam.application.usecase.ConfigurationAuthentificationService;
 import cm.gimac.des.iam.application.usecase.ConnexionService;
 import cm.gimac.des.iam.application.usecase.MonCompteService;
+import cm.gimac.des.iam.application.usecase.OrganisationService;
 import cm.gimac.des.iam.application.usecase.ReauthentificationService;
 import cm.gimac.des.iam.config.SecurityConfiguration;
 import cm.gimac.des.iam.config.TestSecurityConfiguration;
@@ -143,6 +144,9 @@ class IamRoutesSecurityTest {
     @MockitoBean
     AvatarService avatars;
 
+    @MockitoBean
+    OrganisationService organisation;
+
     Compte compte;
 
     @BeforeEach
@@ -160,6 +164,7 @@ class IamRoutesSecurityTest {
         when(comptes.sessions(ID)).thenReturn(List.of(session));
         when(comptes.creer(any(), any(), anyBoolean(), anyBoolean())).thenReturn(new AdministrationComptesService.Creation(compte, true, null));
         when(comptes.modifier(any(), eq(ID), any())).thenReturn(compte);
+        when(organisation.rattacher(any(), eq(ID), any(), any())).thenReturn(compte);
         when(comptes.definirProfils(any(), eq(ID), any(), anyString())).thenReturn(compte);
         when(comptes.definirActif(any(), eq(ID), anyBoolean(), anyString())).thenReturn(compte);
         when(comptes.exigerActions(any(), eq(ID), any(), anyBoolean(), anyString())).thenReturn(compte);
@@ -202,6 +207,7 @@ class IamRoutesSecurityTest {
             Arguments.of(HttpMethod.GET, c + "/" + ID + "/sessions", null, "IAM_ACCOUNT_READ", 200),
             Arguments.of(HttpMethod.POST, c, CREATION, "IAM_ACCOUNT_CREATE", 201),
             Arguments.of(HttpMethod.PUT, c + "/" + ID, FICHE, "IAM_ACCOUNT_EDIT", 200),
+            Arguments.of(HttpMethod.PUT, c + "/" + ID + "/rattachement", "{\"unite\":\"POLE_RESEAU\",\"responsableId\":null}", "IAM_ACCOUNT_EDIT", 200),
             Arguments.of(HttpMethod.PUT, c + "/" + ID + "/profils", PROFILS, "IAM_ACCOUNT_ROLES", 200),
             Arguments.of(HttpMethod.POST, c + "/" + ID + "/activation", MOTIF, "IAM_ACCOUNT_STATUS", 200),
             Arguments.of(HttpMethod.POST, c + "/" + ID + "/desactivation", MOTIF, "IAM_ACCOUNT_STATUS", 200),

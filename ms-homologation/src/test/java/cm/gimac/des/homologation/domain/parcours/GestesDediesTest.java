@@ -46,9 +46,9 @@ class GestesDediesTest {
         // Une opération ordinaire garde son geste.
         assertThat(Parcours.gesteDedie(op(p, "26"))).isFalse();
         // Onglet du geste : le suivi de l'exploitation (34) se prouve dans l'onglet des opérations.
-        assertThat(ParcoursProjection.ongletDuRang("34")).isEqualTo("operations");
-        assertThat(ParcoursProjection.ongletDuRang("33")).isEqualTo("mise-en-service");
-        assertThat(ParcoursProjection.ongletDuRang("35")).isEqualTo("mise-en-service");
+        assertThat(ParcoursProjection.onglet(op(p, "34"))).isEqualTo("operations");
+        assertThat(ParcoursProjection.onglet(op(p, "33"))).isEqualTo("mise-en-service");
+        assertThat(ParcoursProjection.onglet(op(p, "35"))).isEqualTo("mise-en-service");
     }
 
     @Test

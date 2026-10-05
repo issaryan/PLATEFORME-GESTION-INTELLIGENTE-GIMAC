@@ -2,7 +2,9 @@ import { P, type ResourceDescriptorLot1 } from '@gimac/socle'
 import type { ReferentielVersion } from '../modele/homologation'
 import type { Services } from '../services/ports'
 import { etatReferentiel } from '../dictionnaires'
-import { ImpactPublication, OngletComparaison, OngletControle, OngletMigration, OngletOperations } from '../pages/des/compositions/referentiel'
+import { OngletComparaison, OngletControle, OngletMigration, OngletOperations } from '../pages/des/compositions/referentiel'
+import { OngletModelisateur } from '../pages/des/modelisateur/Modelisateur'
+import { actionPublier } from './referentielPublication'
 
 // DES-12 : version d'un référentiel d'opérations (HOM-01 à HOM-03). Les actions ne sont proposées que si
 // actionsPermises les contient : l'interface ne sait pas qu'une version publiée est figée, elle constate
@@ -25,6 +27,8 @@ export const referentielOperationsDescriptor: ResourceDescriptorLot1<Referentiel
     { name: 'dateCreation', label: 'commun.dateCreation', kind: 'datetime', inDetail: true, readOnly: true },
     { name: 'datePublication', label: 'referentiel.datePublication', kind: 'datetime', inList: true, inDetail: true, readOnly: true },
     { name: 'versionSourceId', label: 'referentiel.versionSource', kind: 'mono', inDetail: true, readOnly: true },
+    // Pilote du brouillon (D-77, §5) : facultatif à la création, le créateur pilote par défaut ; options du catalogue.
+    { name: 'piloteId', label: 'referentiel.pilote', kind: 'select', inForm: 'create', help: 'referentiel.aidePilote', options: [] },
   ],
   actions: [
     { key: 'creer', label: 'referentiel.action.creer', icon: 'plus', variant: 'primary', scope: 'page', permission: 'HOM_REFERENTIEL_EDIT', confirm: 'none', run: ({ openForm }) => openForm('create') },
@@ -37,18 +41,12 @@ export const referentielOperationsDescriptor: ResourceDescriptorLot1<Referentiel
       },
     },
     { key: 'controler', label: 'referentiel.action.controler', icon: 'shield-check', scope: 'row', permission: 'HOM_REFERENTIEL_EDIT', confirm: 'none', isAllowed: (r) => r.actionsPermises.includes('CONTROLER'), run: ({ openTab }) => openTab('controle') },
-    {
-      key: 'publier', label: 'referentiel.action.publier', icon: 'check', variant: 'primary', scope: 'row', permission: 'HOM_REFERENTIEL_PUBLISH', confirm: 'confirm',
-      isAllowed: (r) => r.actionsPermises.includes('PUBLIER'),
-      consequences: (r) => <ImpactPublication versionId={r.versionActiveId ?? r.id} />,
-      run: async ({ row, services, invalidate }) => {
-        await services.homologation.publierReferentiel(row.id)
-        invalidate()
-      },
-    },
+    actionPublier,
     { key: 'simuler', label: 'referentiel.action.simulerMigration', icon: 'route', scope: 'row', permission: 'HOM_REFERENTIEL_MIGRATE', confirm: 'none', isAllowed: (r) => r.actionsPermises.includes('MIGRER'), run: ({ openTab }) => openTab('migration') },
   ],
   tabs: [
+    // Modélisateur graphique (D-77, §6) : édition sur un brouillon, lecture sur une version publiée ou retirée.
+    { key: 'modelisateur', label: 'referentiel.onglet.modelisateur', render: (r) => <OngletModelisateur version={r} /> },
     { key: 'operations', label: 'referentiel.onglet.operations', render: (r) => <OngletOperations versionId={r.id} /> },
     { key: 'comparaison', label: 'referentiel.onglet.comparaison', render: (r) => <OngletComparaison version={r} /> },
     { key: 'controle', label: 'referentiel.onglet.controle', permission: 'HOM_REFERENTIEL_EDIT', render: (r) => <OngletControle versionId={r.id} /> },

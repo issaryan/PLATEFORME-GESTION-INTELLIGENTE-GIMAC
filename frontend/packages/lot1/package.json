@@ -6,7 +6,9 @@
   "description": "Lot 1 (PI-GIMAC-01) : ports et services homologation, certification et portail, hooks de données, descripteurs, pages DES-08 à DES-12 et POR-03",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
-  "sideEffects": false,
+  "sideEffects": [
+    "**/*.css"
+  ],
   "exports": {
     ".": "./src/index.ts",
     "./pages/*": "./src/pages/*.tsx"
@@ -24,6 +26,7 @@
     "@gimac/design-system": "1.0.0",
     "@gimac/socle": "0.1.0",
     "@tanstack/react-query": "5.104.0",
+    "@xyflow/react": "12.12.0",
     "i18next": "26.4.2",
     "react-i18next": "17.0.15",
     "react-router": "8.4.0"

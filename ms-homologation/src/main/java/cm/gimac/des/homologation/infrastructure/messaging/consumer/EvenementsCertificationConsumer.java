@@ -16,9 +16,9 @@ import tools.jackson.databind.JsonNode;
 
 /**
  * Événements de MS-CERTIFICATION (docs/lot1/parcours-backend.md §3), sujets certification.proces-verbal et
- * certification.approbation : procès-verbal établi et signé (rangs 18, 19, CERTIFIEE), dossier de
- * changement (rang 20), fiche de changement référencée (rang 26), attestations archivées (rangs 21, 22),
- * sécurité approuvée (rangs 23 à 25, APPROUVEE_SECURITE). Événements facultatifs tolérés pour la
+ * certification.approbation : procès-verbal établi et signé (jalon CERTIFIEE), dossier de changement, fiche de
+ * changement référencée, attestations archivées, sécurité approuvée (jalon APPROUVEE_SECURITE) ; chaque sujet
+ * clôt les opérations du référentiel publié qui le portent comme déclencheur (D-77). Événements facultatifs tolérés pour la
  * projection des compteurs : attestation déposée ou vérifiée, visas attendus ou signés. Consommation
  * idempotente (RG-15, RG-35) ; un message illisible part en rebut par le gestionnaire d'erreurs commun.
  */

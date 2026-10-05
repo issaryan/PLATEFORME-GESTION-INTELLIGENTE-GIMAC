@@ -15,7 +15,18 @@ Notifications multicanal : urgence et trace de remise, préférences, escalade s
 
 ## État
 
-Squelette généré en JHipster 8.11.0 ; régénération en 9.4.0 prévue lors du passage au gabarit hexagonal (D-43). Code JHipster brut : domaine JPA, DTO MapStruct, services, ressources REST, changelogs Liquibase, messages fr et en. L'architecture hexagonale, l'outbox, l'inbox et les algorithmes du CC restent à écrire (SOC-01, SOC-05).
+Squelette généré en JHipster 8.11.0 (domaine JPA, DTO MapStruct, services, ressources REST et changelogs du JDL, laissés en place et inutilisés). Les notifications de la plateforme (D-80, contrat `docs/lot1/notifications.md`) sont écrites en architecture hexagonale, sur le modèle de MS-COLLABORATION et de MS-PILOTAGE :
+
+| Couche | Paquet | Contenu |
+|---|---|---|
+| Domaine | `domain/boite`, `domain/service`, `domain/event`, `domain/exception` | `NotificationUtilisateur` (une notification par destinataire, consolidation par conversation : une seule non lue par destinataire et conversation, `nombre` incrémenté), `PreferencesNotification` (défauts systeme=true, son=false, tous les types actifs), `ReglesNotifications` (destinataires sans l'auteur ni l'acteur, titres, liens, pagination, conservation de 90 jours), `NotificationCreeePayload`, `NotificationException` (codes `NOT_*`) |
+| Application | `application/port/in`, `application/port/out`, `application/usecase` | `BoiteNotificationsUseCase`, `RecevoirEvenementsUseCase` ; `AnnuairePort`, `ConversationsPort` ; `BoiteNotificationsService` |
+| Adaptateurs | `infrastructure/client` | `IamAnnuaireAdapter` (`GET /api/v1/interne/collaborateurs/{id}` de MS-IAM, cache 300 s) et `CollaborationConversationsAdapter` (`GET /api/v1/interne/conversations/{id}` de MS-COLLABORATION, cache 60 s), jeton de service `client_credentials` du client `notification-service` ; substituts `AnnuaireStubAdapter`, `ConversationsStubAdapter` (`gimac.adapters.annuaire` et `gimac.adapters.conversations` : `real` en profil prod, `stub` sinon) |
+| Messagerie | `infrastructure/messaging` | Consommateur idempotent `EvenementsNotificationsConsumer` (groupe `notification-inapp`, table `processed_event`) des sujets `collaboration.message` (`collaboration.message-sent.v1`, événements de groupe ignorés), `pilotage.task` (`pilotage.task-assigned.v1`) et `pilotage.report` (`pilotage.report-submitted.v1`) ; outbox CloudEvents 1.0 de `notification.inapp-created.v1` sur `notification.inapp` (`destinataires: [id]`, sans contenu) ; files de rebut `.dlt` |
+| Planification | `infrastructure/planification` | `PurgeNotifications` : purge nocturne des notifications de plus de 90 jours |
+| REST | `web/rest/boite` | `/api/v1/notifications`, `/api/v1/notifications/compteur`, `/api/v1/notifications/{id}/lecture`, `/api/v1/notifications/lecture`, `/api/v1/preferences` (GET, PUT) : jeton à deux facteurs (`acr` 2 ou 3) puis `@PreAuthorize("hasAuthority('NOT_INBOX_READ')")` ; 404 sur la notification d'un autre ; `/api/v1/interne/**` refusé |
+
+Tables (Liquibase `20261005120000_not_notifications_plateforme.xml`) : `notification_utilisateur` (index unique partiel de consolidation), `preference_notification`, `outbox_event`, `processed_event`. Les canaux courriel, SMS, l'escalade et les modèles du CC restent à écrire (SOC-01, SOC-05).
 
 ## Lancer
 
@@ -57,6 +68,7 @@ Copié et adapté (paquet `cm.gimac.des.notification`) ; chaque bean est inactif
 | 2026-09-28 | — | Écarts comblés (liaison au certificat, masquage Luhn 6+4) et 1 classes reprises d'afriland : ServiceTokenProvider (D-53). |
 | 2026-09-29 | — | Masquage des journaux activé (logback, `%maskedMsg`) ; 89 tests unitaires et 343 tests d'intégration réussis, image Jib construite (D-54). |
 | 2026-09-29 | — | Ports sortants `application/port/out` versionnés : la règle `out/` du `.gitignore` généré par JHipster les ignorait, le dépôt distant ne compilait pas ; exception `!src/**/out/` ajoutée ; adaptateurs `infrastructure/adapter/out` (SMTP, SMS) enfin versionnés |
+| 2026-10-05 | - | Notifications de la plateforme (D-80, `docs/lot1/notifications.md`) : domaine hexagonal, consolidation par conversation, préférences, purge à 90 jours, consommateur idempotent de `collaboration.message`, `pilotage.task` et `pilotage.report`, outbox de `notification.inapp-created.v1` (sujet `notification.inapp`), routes `/api/v1/notifications/**` et `/api/v1/preferences` (`NOT_INBOX_READ`), adaptateurs MS-IAM et MS-COLLABORATION. `./mvnw verify` : 111 tests unitaires (un dépassement de délai de `WebConfigurerTest` généré, sous la charge de la machine, réussi au rejeu), 348 d'intégration réussis. |
 <!-- GIMAC:FIN -->
 
 # notification

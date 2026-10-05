@@ -1,5 +1,5 @@
 import type { DiffLine, TreeNode } from '@gimac/design-system'
-import type { Segment } from '../modele/commun'
+import type { SegmentParcours } from '../modele/parcours'
 import type { ReferenceOperation, ReferentielVersion } from '../modele/homologation'
 
 // Adaptateurs DES-12. Regroupements et mises en forme d'affichage uniquement, aucune règle métier :
@@ -27,17 +27,21 @@ export function versArbre(versions: ReferentielVersion[], t: Traduire): TreeNode
 }
 
 /** Opérations regroupées par segment, dans l'ordre du parcours (tronc amont, branche, tronc aval). */
-export const SEGMENTS: Segment[] = ['TRONC_COMMUN_AMONT', 'BRANCHE', 'TRONC_COMMUN_AVAL']
-export function parSegment(ops: ReferenceOperation[]): { segment: Segment; operations: ReferenceOperation[] }[] {
+export const SEGMENTS: SegmentParcours[] = ['AMONT', 'BRANCHE', 'AVAL']
+export function parSegment(ops: ReferenceOperation[]): { segment: SegmentParcours; operations: ReferenceOperation[] }[] {
   return SEGMENTS.map((segment) => ({ segment, operations: ops.filter((o) => o.segment === segment) })).filter((g) => g.operations.length > 0)
 }
 
 const valeur = (o: ReferenceOperation, c: keyof ReferenceOperation) => {
   const v = o[c]
-  return Array.isArray(v) ? v.join(', ') : v === null || v === undefined ? '' : String(v)
+  if (Array.isArray(v)) return v.map((x) => (typeof x === 'object' ? JSON.stringify(x) : String(x))).join(', ')
+  return v === null || v === undefined ? '' : typeof v === 'object' ? JSON.stringify(v) : String(v)
 }
 // Égalité sur tous les champs significatifs ; affichage court pour que les deux colonnes tiennent.
-const CHAMPS: (keyof ReferenceOperation)[] = ['libelle', 'phase', 'segment', 'partie', 'serviceCode', 'predecesseurs', 'idScenario', 'natureCouverture']
+const CHAMPS: (keyof ReferenceOperation)[] = [
+  'libelle', 'description', 'etape', 'segment', 'responsable', 'validateur', 'consultes', 'informes', 'externes', 'predecesseurs', 'delaiJours', 'grain', 'plateforme',
+  'cle', 'secret', 'valeurReference', 'livrables', 'geste', 'jalon', 'declencheur', 'particularite', 'partie', 'serviceCode', 'idScenario', 'natureCouverture',
+]
 const signature = (o: ReferenceOperation) => CHAMPS.map((c) => valeur(o, c)).join('|')
 const ligne = (o: ReferenceOperation) => [o.code.padEnd(7), o.libelle, `← ${valeur(o, 'predecesseurs') || '∅'}`].join('  ')
 

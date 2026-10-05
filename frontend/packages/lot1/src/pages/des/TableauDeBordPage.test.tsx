@@ -5,12 +5,13 @@ import TableauDeBordPage from './TableauDeBordPage'
 import { rendrePage, sessionTest } from '../../test/rendu'
 import { servicesSimules } from '../../services/simule'
 import type { Services } from '../../services/ports'
+import { PROFILS } from '../../permissions'
 
 afterEach(cleanup)
 const LECTURE = ['PAR_INSTITUTION_READ']
 const CHARGE = [...LECTURE, 'PAR_INSTITUTION_CREATE', 'PAR_ADHESION_INSTRUCT', 'PAR_TRANSITION_REQUEST']
 const CHEF = [...CHARGE, 'PAR_TRANSITION_APPROVE']
-const INGENIEUR = [...LECTURE, 'HOM_LIAISON_LIST', 'HOM_DASHBOARD_READ', 'HOM_REFERENTIEL_READ']
+const INGENIEUR = [...LECTURE, 'HOM_LIAISON_LIST', 'HOM_DASHBOARD_READ', 'HOM_REFERENTIEL_READ', 'HOM_EVIDENCE_SUBMIT']
 const page = (permissions: string[], roles: string[] = [], o: { langue?: 'fr' | 'en' | 'es'; services?: Services } = {}) =>
   rendrePage(<TableauDeBordPage />, { chemin: '/des/tableau-de-bord', motif: '/des/tableau-de-bord', session: sessionTest(permissions, roles), ...o })
 
@@ -59,5 +60,30 @@ describe('DES-01 Tableau de bord par acteur', () => {
     const { container } = page(CHEF, ['ROLE_CHEF_DDRM'], { langue })
     await screen.findByText(langue === 'en' ? 'Proposals to decide' : 'Propuestas por decidir')
     expect(container.textContent).not.toMatch(/\b(tableau|profil|nav)\.[a-zA-Z]/)
+  })
+
+  // D-79 : widgets dérivés du registre des fonctionnalités et des permissions, jamais du nom du rôle.
+  it('« Mon travail » ouvert par les permissions seules, sans rôle de fonction ; la lecture seule n’y suffit pas', async () => {
+    page(INGENIEUR, [])
+    expect(await screen.findByRole('region', { name: 'Mon travail' })).toBeTruthy()
+    cleanup()
+    page([...LECTURE, 'HOM_LIAISON_LIST', 'HOM_DASHBOARD_READ'], ['ROLE_CHEF_DES'])
+    expect(await screen.findByRole('region', { name: 'Mes accès' })).toBeTruthy()
+    expect(screen.queryByRole('region', { name: 'Mon travail' })).toBeNull()
+  })
+  it('administrateur système : « Ma journée », supervision et infrastructure (raccourcis sans widget fourni), sans « Mes accès »', async () => {
+    page(PROFILS.ROLE_ADMIN_SYSTEME, ['ROLE_ADMIN_SYSTEME'])
+    expect(await screen.findByRole('region', { name: 'Ma journée' })).toBeTruthy()
+    expect(screen.getByRole('region', { name: 'Supervision' })).toBeTruthy()
+    expect(screen.getByRole('region', { name: 'Infrastructure' })).toBeTruthy()
+    expect(screen.getAllByRole('link', { name: 'Ouvrir' }).map((l) => l.getAttribute('href'))).toEqual(['/des/plateforme/supervision', '/des/plateforme/infrastructure'])
+    expect(screen.queryByRole('region', { name: 'Mes accès' })).toBeNull()
+  })
+  it('collaborateur : « Ma journée » puis les raccourcis de ses fonctionnalités (messagerie, Mon activité)', async () => {
+    page(PROFILS.ROLE_COLLABORATEUR, ['ROLE_COLLABORATEUR'])
+    const acces = await screen.findByRole('region', { name: 'Mes accès' })
+    expect(acces.textContent).toContain('Messagerie')
+    expect(acces.textContent).toContain('Agenda')
+    expect(screen.getByRole('region', { name: 'Ma journée' })).toBeTruthy()
   })
 })

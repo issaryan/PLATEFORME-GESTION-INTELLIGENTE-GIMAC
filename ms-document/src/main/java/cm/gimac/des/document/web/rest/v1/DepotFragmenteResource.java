@@ -31,7 +31,8 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * Dépôts fragmentés (claim check, D-74, docs/lot1/depots-fragmentes.md §3), exposés sous
  * /bff/{des|console|portail}/document/depots (corps de 17 Mio au plus, borné par la passerelle).
- * Toutes les routes exigent l'une des permissions du dépôt direct ou COL_MESSAGE_SEND ; la
+ * Toutes les routes exigent l'une des permissions du dépôt direct, COL_MESSAGE_SEND ou PIL_ACTIVITY_OWN
+ * (rapport d'activité, D-76) ; la
  * permission propre à la finalité est contrôlée à l'ouverture. Seul le compte qui a ouvert un
  * dépôt y a accès (sujet du jeton), 404 DOC_UPLOAD_NOT_FOUND pour tout autre.
  */
@@ -46,7 +47,7 @@ public class DepotFragmenteResource {
     }
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasAnyAuthority('PAR_ADHESION_INSTRUCT', 'HOM_EVIDENCE_SUBMIT', 'HOM_STEP_MANAGE', 'CER_CHANGE_RECORD_LINK', 'HOM_PORTAL_SUBMIT', 'DOC_DEPOSIT', 'COL_MESSAGE_SEND')")
+    @PreAuthorize("hasAnyAuthority('PAR_ADHESION_INSTRUCT', 'HOM_EVIDENCE_SUBMIT', 'HOM_STEP_MANAGE', 'CER_CHANGE_RECORD_LINK', 'HOM_PORTAL_SUBMIT', 'DOC_DEPOSIT', 'COL_MESSAGE_SEND', 'PIL_ACTIVITY_OWN')")
     public ResponseEntity<DepotVue> ouvrir(@RequestBody OuvertureDepotRequete requete, Authentication auth) {
         Deposant deposant = DocumentDepotResource.deposant(auth);
         Set<String> permissions = auth.getAuthorities().stream().map(GrantedAuthority::getAuthority).collect(Collectors.toUnmodifiableSet());
@@ -57,7 +58,7 @@ public class DepotFragmenteResource {
 
     /** Partie {@code numero} (à partir de 1) en octets bruts ; renvoyer une partie la remplace. */
     @PutMapping(path = "/{id}/parties/{numero}", consumes = MediaType.APPLICATION_OCTET_STREAM_VALUE)
-    @PreAuthorize("hasAnyAuthority('PAR_ADHESION_INSTRUCT', 'HOM_EVIDENCE_SUBMIT', 'HOM_STEP_MANAGE', 'CER_CHANGE_RECORD_LINK', 'HOM_PORTAL_SUBMIT', 'DOC_DEPOSIT', 'COL_MESSAGE_SEND')")
+    @PreAuthorize("hasAnyAuthority('PAR_ADHESION_INSTRUCT', 'HOM_EVIDENCE_SUBMIT', 'HOM_STEP_MANAGE', 'CER_CHANGE_RECORD_LINK', 'HOM_PORTAL_SUBMIT', 'DOC_DEPOSIT', 'COL_MESSAGE_SEND', 'PIL_ACTIVITY_OWN')")
     public ResponseEntity<Void> partie(@PathVariable UUID id, @PathVariable int numero, HttpServletRequest requete, Authentication auth) {
         String deposant = DocumentDepotResource.deposant(auth).id();
         // Corps lu en flux par le cas d'utilisation, borné à la taille attendue de la partie.
@@ -70,19 +71,19 @@ public class DepotFragmenteResource {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('PAR_ADHESION_INSTRUCT', 'HOM_EVIDENCE_SUBMIT', 'HOM_STEP_MANAGE', 'CER_CHANGE_RECORD_LINK', 'HOM_PORTAL_SUBMIT', 'DOC_DEPOSIT', 'COL_MESSAGE_SEND')")
+    @PreAuthorize("hasAnyAuthority('PAR_ADHESION_INSTRUCT', 'HOM_EVIDENCE_SUBMIT', 'HOM_STEP_MANAGE', 'CER_CHANGE_RECORD_LINK', 'HOM_PORTAL_SUBMIT', 'DOC_DEPOSIT', 'COL_MESSAGE_SEND', 'PIL_ACTIVITY_OWN')")
     public DepotVue etat(@PathVariable UUID id, Authentication auth) {
         return DepotVue.de(useCase.etat(id, DocumentDepotResource.deposant(auth).id()));
     }
 
     @PostMapping("/{id}/fin")
-    @PreAuthorize("hasAnyAuthority('PAR_ADHESION_INSTRUCT', 'HOM_EVIDENCE_SUBMIT', 'HOM_STEP_MANAGE', 'CER_CHANGE_RECORD_LINK', 'HOM_PORTAL_SUBMIT', 'DOC_DEPOSIT', 'COL_MESSAGE_SEND')")
+    @PreAuthorize("hasAnyAuthority('PAR_ADHESION_INSTRUCT', 'HOM_EVIDENCE_SUBMIT', 'HOM_STEP_MANAGE', 'CER_CHANGE_RECORD_LINK', 'HOM_PORTAL_SUBMIT', 'DOC_DEPOSIT', 'COL_MESSAGE_SEND', 'PIL_ACTIVITY_OWN')")
     public ResponseEntity<DepotVue> terminer(@PathVariable UUID id, Authentication auth) {
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(DepotVue.de(useCase.terminer(id, DocumentDepotResource.deposant(auth).id())));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('PAR_ADHESION_INSTRUCT', 'HOM_EVIDENCE_SUBMIT', 'HOM_STEP_MANAGE', 'CER_CHANGE_RECORD_LINK', 'HOM_PORTAL_SUBMIT', 'DOC_DEPOSIT', 'COL_MESSAGE_SEND')")
+    @PreAuthorize("hasAnyAuthority('PAR_ADHESION_INSTRUCT', 'HOM_EVIDENCE_SUBMIT', 'HOM_STEP_MANAGE', 'CER_CHANGE_RECORD_LINK', 'HOM_PORTAL_SUBMIT', 'DOC_DEPOSIT', 'COL_MESSAGE_SEND', 'PIL_ACTIVITY_OWN')")
     public ResponseEntity<Void> abandonner(@PathVariable UUID id, Authentication auth) {
         useCase.abandonner(id, DocumentDepotResource.deposant(auth).id());
         return ResponseEntity.noContent().build();

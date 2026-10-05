@@ -57,8 +57,11 @@ class ParcoursTest {
             Parcours p = parcours(TypeProjet.CARTE_INTERBANCAIRE, "RETRAIT", "PAIEMENT");
             assertThat(op(p, "3").getEtat()).isEqualTo(EtatOperationParcours.A_FAIRE);
             assertThat(p.operations().stream().filter(o -> o.getEtat() == EtatOperationParcours.A_FAIRE)).hasSize(1);
-            assertThat(op(p, "3").getEcheance()).isEqualTo(ParcoursSamples.DEBUT.plusDays(4));
-            assertThat(op(p, "4").getEcheance()).isEqualTo(ParcoursSamples.DEBUT.plusDays(7));
+            // Échéances au plus tôt sur le graphe depuis le démarrage (D-77, §3) : le rang 3, sans prédécesseur
+            // instancié, finit au jour 3 ; le rang 4, qui le suit, au jour 6 (auparavant : un jour de décalage puis
+            // cumul des délais dans l'ordre du référentiel, soit les jours 4 et 7).
+            assertThat(op(p, "3").getEcheance()).isEqualTo(ParcoursSamples.DEBUT.plusDays(3));
+            assertThat(op(p, "4").getEcheance()).isEqualTo(ParcoursSamples.DEBUT.plusDays(6));
             assertThat(p.predecesseursNonFaits(op(p, "30"))).containsExactly("28", "29");
             assertThat(p.etapeCourante()).isEqualTo(EtapeCode.CADRAGE);
             assertThat(p.etat().getStatut()).isEqualTo(StatutParcours.CADREE);

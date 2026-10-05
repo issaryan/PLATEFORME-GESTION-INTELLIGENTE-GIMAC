@@ -3,14 +3,16 @@ package cm.gimac.des.homologation.domain.service;
 import cm.gimac.des.homologation.domain.enumeration.TypeProjet;
 import cm.gimac.des.homologation.domain.parcours.Acteur;
 import cm.gimac.des.homologation.domain.parcours.BlocageParcours;
+import cm.gimac.des.homologation.domain.parcours.Declencheurs;
 import cm.gimac.des.homologation.domain.parcours.EtapeCode;
 import cm.gimac.des.homologation.domain.parcours.EtatFicheSuivi;
 import cm.gimac.des.homologation.domain.parcours.EtatOperationParcours;
 import cm.gimac.des.homologation.domain.parcours.EtatProcesVerbal;
 import cm.gimac.des.homologation.domain.parcours.Fonction;
-import cm.gimac.des.homologation.domain.parcours.GrainPreuve;
+import cm.gimac.des.homologation.domain.parcours.Geste;
 import cm.gimac.des.homologation.domain.parcours.OperationParcours;
 import cm.gimac.des.homologation.domain.parcours.Parcours;
+import cm.gimac.des.homologation.domain.parcours.Particularite;
 import cm.gimac.des.homologation.domain.parcours.Permissions;
 import cm.gimac.des.homologation.domain.parcours.Personne;
 import cm.gimac.des.homologation.domain.parcours.Preuve;
@@ -24,7 +26,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.regex.Pattern;
 
 /**
  * Projection du parcours en représentations de l'interface (dossier, opérations, étapes à six éléments,
@@ -37,9 +38,6 @@ public class ParcoursProjection {
     /** Données tenues hors de l'agrégat : conducteur (annuaire), banque partenaire (registre), version du référentiel. */
     public record Contexte(Personne conducteur, String banquePartenaireNom, Integer versionReferentiel) {}
 
-    private static final Pattern RANGS_DECISION = Pattern.compile("^(1[89]|2[0-6])$");
-    // Fiche de suivi (32, 33) et service supplémentaire (35) ; le suivi de l'exploitation (34) se prouve dans l'onglet des opérations.
-    private static final Pattern RANGS_MISE_EN_SERVICE = Pattern.compile("^3[235]$");
     private static final String CONDUCTEUR_GIMAC = "Conducteur de projet GIMAC";
 
     // ------------------------------------------------------------------ opérations
@@ -49,6 +47,7 @@ public class ParcoursProjection {
             o.getId().toString(),
             p.id().toString(),
             o.getRang(),
+            o.getLibelle(),
             o.getEtape(),
             o.getSegment(),
             o.getPlateforme(),
@@ -66,7 +65,11 @@ public class ParcoursProjection {
             o.isPivot(),
             p.predecesseursNonFaits(o),
             List.of(),
-            actions(o, a)
+            actions(o, a),
+            o.getGeste(),
+            o.getJalon(),
+            o.getDeclencheur(),
+            o.getLivrables()
         );
     }
 
@@ -106,16 +109,20 @@ public class ParcoursProjection {
         return l;
     }
 
-    /** Onglet du dossier où se réalise le geste d'une opération : décision (verrous), mise en service (étape 10), opérations. */
-    public static String ongletDuRang(String rang) {
-        if (RANGS_DECISION.matcher(rang).matches()) {
+    /**
+     * Onglet du dossier où se réalise le geste d'une opération : décision pour une opération close par un
+     * événement de MS-CERTIFICATION (verrous), mise en service pour la fiche de suivi et le service
+     * supplémentaire, opérations sinon.
+     */
+    public static String onglet(OperationParcours o) {
+        if (o.getDeclencheur() != null) {
             return "decision";
         }
-        return RANGS_MISE_EN_SERVICE.matcher(rang).matches() ? "mise-en-service" : "operations";
+        return o.porte(Geste.FICHE_SUIVI) || o.getParticularite() == Particularite.SERVICE_SUPPLEMENTAIRE ? "mise-en-service" : "operations";
     }
 
     public static String lienOperation(Parcours p, OperationParcours o) {
-        return "/des/parcours/" + p.id() + "?onglet=" + ongletDuRang(o.getRang()) + "&operation=" + o.getId();
+        return "/des/parcours/" + p.id() + "?onglet=" + onglet(o) + "&operation=" + o.getId();
     }
 
     // ------------------------------------------------------------------ étapes, périmètre, blocages
@@ -171,7 +178,7 @@ public class ParcoursProjection {
                     el,
                     (int) faites,
                     ops.size(),
-                    ops.stream().filter(o -> o.getGrain() == GrainPreuve.PHASE || o.isPivot()).map(o -> new Vues.Livrable("parcours.op." + o.getRang(), o.faite())).toList(),
+                    ops.stream().filter(o -> !o.getLivrables().isEmpty()).map(o -> new Vues.Livrable("parcours.op." + o.getRang(), o.faite())).toList(),
                     premier == null ? null : premier.getRaci().v(),
                     closeLe,
                     debut,
@@ -241,10 +248,10 @@ public class ParcoursProjection {
         if (p.etat().getStatut() == StatutParcours.EN_PRODUCTION && a.peut(Permissions.LIAISON_OPEN, Permissions.STEP_MANAGE)) {
             actions.add("OUVRIR_SERVICE_SUPPLEMENTAIRE");
         }
-        if (p.operationDansEtat("6", EtatOperationParcours.A_FAIRE) && a.peut(Permissions.STEP_MANAGE)) {
+        if (!p.operations(o -> o.porte(Geste.AFFECTER_RESSOURCES) && o.getEtat() == EtatOperationParcours.A_FAIRE).isEmpty() && a.peut(Permissions.STEP_MANAGE)) {
             actions.add("AFFECTER_RESSOURCES");
         }
-        if (p.operation("17").map(o -> o.getEtat().ouverte()).orElse(false) && a.peut(Permissions.DOSSIER_VERIFY)) {
+        if (!p.operations(o -> o.porte(Geste.CONSTATER_COUVERTURE) && o.getEtat().ouverte()).isEmpty() && a.peut(Permissions.DOSSIER_VERIFY)) {
             actions.add("CONSTATER_COUVERTURE");
         }
         var l = p.liaison();
@@ -259,8 +266,8 @@ public class ParcoursProjection {
             p.etat().getStatut(),
             p.etat().getEtapeCourante(),
             conducteur ? ctx.conducteur() : null,
-            p.operation("3").map(o -> o.getRaci().r()).orElse(null),
-            p.operation("10").or(() -> p.operation("15")).map(o -> o.getRaci().r()).orElse(null),
+            p.premiereDuResponsable(Fonction.DDRM).map(o -> o.getRaci().r()).orElse(null),
+            p.premiereDuResponsable(Fonction.SNA).map(o -> o.getRaci().r()).orElse(null),
             p.etat().getDateDemarrage(),
             p.dateCibleProduction(),
             ctx.versionReferentiel(),
@@ -277,10 +284,10 @@ public class ParcoursProjection {
         );
     }
 
-    /** Coordonnées techniques d'essai communiquées au rang 12, relisibles. */
+    /** Coordonnées techniques d'essai communiquées (geste COORDONNEES_TECHNIQUES), relisibles. */
     public Vues.Coordonnees coordonnees(Parcours p) {
         return p
-            .operation("12")
+            .parGeste(Geste.COORDONNEES_TECHNIQUES)
             .filter(OperationParcours::faite)
             .map(o -> {
                 Preuve pr = o.getPreuve();
@@ -411,30 +418,39 @@ public class ParcoursProjection {
         String base = "/portail/liaisons/" + p.id();
         boolean ouverte = o.getEtat().ouverte();
         EtatProcesVerbal pv = p.etat().getEtatPv();
-        switch (o.getRang()) {
-            case "12":
-                return new GesteParticipant(base + "/coordonnees", ouverte ? List.of("COMMUNIQUER_COORDONNEES") : List.of());
-            case "19":
-                return new GesteParticipant(base + "/proces-verbal", pv == EtatProcesVerbal.ETABLI || pv == EtatProcesVerbal.SIGNE_GIMAC ? List.of("SIGNER_PROCES_VERBAL") : List.of());
-            case "21", "22":
-                return new GesteParticipant(base + "/attestations", ouverte && !p.attestationsAFournir().isEmpty() ? List.of("DEPOSER_ATTESTATION") : List.of());
-            case "32":
-                return new GesteParticipant(base + "/fiche-suivi", p.etat().getFicheEtat() == EtatFicheSuivi.REMISE ? List.of("RENSEIGNER_FICHE_SUIVI") : List.of());
-            default:
-                if (livrableParticipant(o) && ouverte) {
-                    return new GesteParticipant(base + "/livrables/" + o.getId(), List.of("DEPOSER_LIVRABLE"));
-                }
-                return new GesteParticipant(base, List.of());
+        if (o.porte(Geste.COORDONNEES_TECHNIQUES)) {
+            return new GesteParticipant(base + "/coordonnees", ouverte ? List.of("COMMUNIQUER_COORDONNEES") : List.of());
         }
+        if (Declencheurs.PV_SIGNE.equals(o.getDeclencheur())) {
+            return new GesteParticipant(base + "/proces-verbal", pv == EtatProcesVerbal.ETABLI || pv == EtatProcesVerbal.SIGNE_GIMAC ? List.of("SIGNER_PROCES_VERBAL") : List.of());
+        }
+        if (Declencheurs.ATTESTATIONS_ARCHIVEES.equals(o.getDeclencheur())) {
+            return new GesteParticipant(base + "/attestations", ouverte && !p.attestationsAFournir().isEmpty() ? List.of("DEPOSER_ATTESTATION") : List.of());
+        }
+        if (o.porte(Geste.FICHE_SUIVI) && Parcours.ficheDuParticipant(o)) {
+            return new GesteParticipant(base + "/fiche-suivi", p.etat().getFicheEtat() == EtatFicheSuivi.REMISE ? List.of("RENSEIGNER_FICHE_SUIVI") : List.of());
+        }
+        if (livrableParticipant(o) && ouverte) {
+            return new GesteParticipant(base + "/livrables/" + o.getId(), List.of("DEPOSER_LIVRABLE"));
+        }
+        return new GesteParticipant(base, List.of());
     }
 
-    /** Livrables qui reviennent au participant : contributions aux ateliers, paramétrage d'essai, ses propres pièces. */
+    /**
+     * Livrables qui reviennent au participant, déposés depuis le portail : pièce libre (livrable ou preuve, hors
+     * clé, valeur de référence et opération close par un événement) dont il est responsable, dont un livrable
+     * attendu est déposé par une fonction externe, ou contribution à un livrable de phase (atelier, paramétrage
+     * d'essai) dont il est partie externe.
+     */
     public static boolean livrableParticipant(OperationParcours o) {
-        if (Set.of("12", "17", "19", "21", "22", "32").contains(o.getRang()) || o.isCle() || o.isValeurReference()) {
+        if ((!o.porte(Geste.DEPOSER_LIVRABLE) && !o.porte(Geste.DEPOSER_PREUVE)) || o.getDeclencheur() != null || o.isCle() || o.isValeurReference()) {
             return false;
         }
         Personne r = o.getRaci().r();
-        return o.getGrain() == GrainPreuve.PHASE || Set.of("8", "9", "10", "11").contains(o.getRang()) || (r != null && r.fonction() == Fonction.PARTICIPANT);
+        if ((r != null && r.fonction() == Fonction.PARTICIPANT) || o.getLivrables().stream().anyMatch(l -> l.deposant() != null && l.deposant().externe())) {
+            return true;
+        }
+        return o.porte(Geste.DEPOSER_LIVRABLE) && o.getRaci().e().stream().anyMatch(x -> x.fonction() == Fonction.PARTICIPANT);
     }
 
     public record GesteParticipant(String lien, List<String> actionsPermises) {}

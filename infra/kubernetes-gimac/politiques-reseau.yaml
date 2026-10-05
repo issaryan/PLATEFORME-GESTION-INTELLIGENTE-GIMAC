@@ -118,6 +118,25 @@ spec:
         - { protocol: TCP, port: 80 }
         - { protocol: TCP, port: 443 }
 ---
+# Exploitation de l'infrastructure depuis la console (D-78) : la passerelle joint l'API du cluster
+# (kubernetes.default.svc, 443, ou le serveur d'API, 6443) avec son compte de service, limité par le Role
+# gateway-exploitation. Le serveur d'API n'est pas un pod sélectionnable : à resserrer au déploiement par
+# un ipBlock sur ses adresses (comme la supervision, qui joint les mêmes ports).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: sortie-passerelle-api-kubernetes
+  namespace: gimac-des
+spec:
+  podSelector:
+    matchLabels:
+      gimac.cm/segment: dmz
+  policyTypes: [Egress]
+  egress:
+    - ports:
+        - { protocol: TCP, port: 443 }
+        - { protocol: TCP, port: 6443 }
+---
 # Persistance : aucun accès direct hors des services habilités (CC 5.6.1, zone de persistance).
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy

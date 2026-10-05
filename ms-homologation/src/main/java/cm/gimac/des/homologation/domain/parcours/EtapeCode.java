@@ -27,4 +27,26 @@ public enum EtapeCode {
     public Integer rang() {
         return rang;
     }
+
+    /** Libellé français de l'étape (catalogue du modélisateur). */
+    public String libelle() {
+        return switch (this) {
+            case PRISE_CONTACT -> "Prise de contact";
+            case ADHESION -> "Adhésion";
+            case CADRAGE -> "Cadrage";
+            case LANCEMENT -> "Lancement";
+            case ATELIERS -> "Ateliers";
+            case INTEGRATION -> "Intégration";
+            case TESTS -> "Tests";
+            case CERTIFICATION -> "Certification";
+            case APPROBATION_SECURITE -> "Approbation de la sécurité";
+            case MISE_EN_PRODUCTION -> "Mise en production";
+            case SUIVI -> "Suivi post-production";
+        };
+    }
+
+    /** Étapes 1 et 2, tenues par MS-PARTICIPANT et closes à l'ouverture de la liaison : jamais instanciées. */
+    public boolean horsParcours() {
+        return this == PRISE_CONTACT || this == ADHESION;
+    }
 }

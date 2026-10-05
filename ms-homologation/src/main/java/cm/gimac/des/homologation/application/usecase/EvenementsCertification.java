@@ -14,8 +14,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Effets des événements de MS-CERTIFICATION sur le parcours (docs/lot1/parcours-backend.md §3) : clôture
- * des rangs 18 à 26, statuts CERTIFIEE et APPROUVEE_SECURITE, projection de l'état des verrous lue par les
+ * Effets des événements de MS-CERTIFICATION sur le parcours (docs/lot1/parcours-backend.md §3) : clôture des
+ * opérations dont le déclencheur est le sujet reçu (D-77 : lu sur l'opération, aucun rang codé en dur), jalons
+ * CERTIFIEE et APPROUVEE_SECURITE, projection de l'état des verrous lue par les
  * tableaux de bord et les tâches du portail. Appelé par le consommateur idempotent ; une liaison inconnue est ignorée.
  */
 @Service

@@ -97,3 +97,7 @@ management:
   health:
     mail:
       enabled: false
+gimac:
+  taches:
+    # Relais des demandes de tâches vers MS-PILOTAGE déclenché à la main par les tests (D-77).
+    delai-initial: 86400000

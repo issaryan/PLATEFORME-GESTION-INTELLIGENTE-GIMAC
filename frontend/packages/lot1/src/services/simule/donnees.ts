@@ -1,7 +1,7 @@
 import type { CoverageValue } from '../../modele/commun'
 import type {
-  CampaignResult, ElementKey, ElementState, Graphe, Intervenant, Liaison, OperationInstance, OperationNodeData, ReferenceOperation,
-  ReferentielVersion, ScenarioInconnu, ServiceCouvert,
+  CampaignResult, ElementKey, ElementState, Graphe, Intervenant, Liaison, OperationInstance, OperationNodeData, ScenarioInconnu,
+  ServiceCouvert,
 } from '../../modele/homologation'
 import type { Attestation, Circuit, Condition, Dossier, EntreeRegistre, FicheLue, Horodatage } from '../../modele/certification'
 
@@ -59,35 +59,7 @@ export const cov = (numerateur: number, denominateur: number): CoverageValue => 
   motifNonCalculable: denominateur ? undefined : 'aucun service souscrit',
 })
 
-// Référentiels d'opérations (HOM-01)
-export const referentiels: ReferentielVersion[] = [
-  { id: 'REF-CI-3', typeProjet: 'CARTE_INTERBANCAIRE', numero: 3, libelle: 'Carte interbancaire, version 3', etat: 'PUBLIEE', dateCreation: '02/06/2026 09:10', datePublication: '15/06/2026 16:40', versionSourceId: 'REF-CI-2', versionActiveId: 'REF-CI-3', transitionsPermises: [], actionsPermises: ['DERIVER', 'CONTROLER'] },
-  { id: 'REF-CI-4', typeProjet: 'CARTE_INTERBANCAIRE', numero: null, libelle: 'Carte interbancaire, brouillon 4', etat: 'BROUILLON', dateCreation: '22/09/2026 11:02', datePublication: null, versionSourceId: 'REF-CI-3', versionActiveId: 'REF-CI-3', transitionsPermises: ['PUBLIEE'], actionsPermises: ['CONTROLER', 'PUBLIER', 'MODIFIER', 'MIGRER'] },
-  { id: 'REF-CI-2', typeProjet: 'CARTE_INTERBANCAIRE', numero: 2, libelle: 'Carte interbancaire, version 2', etat: 'RETIREE', dateCreation: '10/01/2026 08:30', datePublication: '20/01/2026 10:00', versionSourceId: null, versionActiveId: 'REF-CI-3', transitionsPermises: [], actionsPermises: [] },
-  { id: 'REF-PM-2', typeProjet: 'PAIEMENT_MOBILE', numero: 2, libelle: 'Paiement mobile, version 2', etat: 'PUBLIEE', dateCreation: '04/05/2026 14:00', datePublication: '12/05/2026 09:15', versionSourceId: null, versionActiveId: 'REF-PM-2', transitionsPermises: [], actionsPermises: ['DERIVER', 'CONTROLER'] },
-]
-
-const op = (versionId: string, code: string, libelle: string, phase: string, segment: ReferenceOperation['segment'], partie: ReferenceOperation['partie'], predecesseurs: string[], serviceCode = 'RETRAIT', idScenario: string | null = null): ReferenceOperation => ({
-  versionId, code, libelle, phase, segment, partie, serviceCode, natureCouverture: idScenario ? 'CERTIFICATION' : 'AUCUNE', idScenario, predecesseurs,
-  fonctionResponsable: partie === 'DES' ? 'Ingénieur d\'homologation' : 'Correspondant technique', preuveAttendue: { rapport: 'Rapport de tests signé' },
-  transitionsPermises: [], actionsPermises: versionId === 'REF-CI-4' ? ['MODIFIER'] : [],
-})
-const opsCarte = (v: string, brouillon: boolean): ReferenceOperation[] => [
-  op(v, 'OP-E01', 'Personnalisation et clés', 'Raccordement', 'TRONC_COMMUN_AMONT', 'PARTICIPANT', []),
-  op(v, 'OP-E02', 'Scénarios de litige émetteur', 'Certification', 'BRANCHE', 'PARTICIPANT', ['OP-E01'], 'RETRAIT', 'SC-LIT-01'),
-  ...(brouillon ? [op(v, 'OP-E05', 'Simulation des autorisations', 'Certification', 'BRANCHE', 'DES', ['OP-E01', 'OP-E02'], 'PAIEMENT', 'SC-AUT-02')] : [op(v, 'OP-E04', 'Rapprochement à blanc', 'Certification', 'BRANCHE', 'DES', ['OP-E02'])]),
-  op(v, 'OP-E03', 'Bascule émetteur', 'Mise en service', 'TRONC_COMMUN_AVAL', 'DES', brouillon ? ['OP-E05'] : ['OP-E04']),
-]
-export const operationsReferentiel: Record<string, ReferenceOperation[]> = {
-  'REF-CI-3': opsCarte('REF-CI-3', false),
-  'REF-CI-4': opsCarte('REF-CI-4', true),
-  'REF-CI-2': opsCarte('REF-CI-2', false).slice(0, 3),
-  'REF-PM-2': [
-    op('REF-PM-2', 'OP-M01', 'Raccordement du portefeuille', 'Raccordement', 'TRONC_COMMUN_AMONT', 'PARTICIPANT', [], 'TRANSFERT'),
-    op('REF-PM-2', 'OP-M02', 'Transferts de bout en bout', 'Certification', 'BRANCHE', 'PARTICIPANT', ['OP-M01'], 'TRANSFERT', 'SC-TRF-01'),
-    op('REF-PM-2', 'OP-M03', 'Bascule en production', 'Mise en service', 'TRONC_COMMUN_AVAL', 'DES', ['OP-M02'], 'TRANSFERT'),
-  ],
-}
+// Référentiels d'opérations (HOM-01) et modélisateur (D-77) : voir referentiels.ts.
 
 // Liaisons (HOM-04)
 

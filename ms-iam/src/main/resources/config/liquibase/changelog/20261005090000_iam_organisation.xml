@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- MS-IAM : catalogue des unités organisationnelles du GIMAC (D-76, docs/lot1/mon-activite.md §1.1) et
+     jeu initial (CR p.13-14, CCT p.19-21), complétable par l'administration sans évolution logicielle. -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="iam-unite-organisationnelle" author="lot1">
+        <createTable tableName="unite_organisationnelle">
+            <column name="code" type="varchar(32)"><constraints primaryKey="true" nullable="false" primaryKeyName="pk_unite_organisationnelle"/></column>
+            <column name="libelle" type="varchar(120)"><constraints nullable="false"/></column>
+            <column name="type" type="varchar(20)"><constraints nullable="false"/></column>
+            <column name="parent" type="varchar(32)">
+                <constraints nullable="true" foreignKeyName="fk_unite_organisationnelle_parent" references="unite_organisationnelle(code)"/>
+            </column>
+            <column name="active" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
+        </createTable>
+        <sql>ALTER TABLE unite_organisationnelle ADD CONSTRAINT ck_unite_organisationnelle_type CHECK (type IN ('DIRECTION', 'DEPARTEMENT', 'SERVICE', 'POLE', 'CELLULE'));</sql>
+        <sql>ALTER TABLE unite_organisationnelle ADD CONSTRAINT ck_unite_organisationnelle_code CHECK (code ~ '^[A-Z][A-Z0-9_]{1,31}$');</sql>
+        <sql>ALTER TABLE unite_organisationnelle ADD CONSTRAINT ck_unite_organisationnelle_direction CHECK (type &lt;&gt; 'DIRECTION' OR parent IS NULL);</sql>
+        <sql>ALTER TABLE unite_organisationnelle ADD CONSTRAINT ck_unite_organisationnelle_parent CHECK (parent IS NULL OR parent &lt;&gt; code);</sql>
+        <createIndex tableName="unite_organisationnelle" indexName="ix_unite_organisationnelle_parent">
+            <column name="parent"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="iam-unite-organisationnelle-jeu-initial" author="lot1">
+        <insert tableName="unite_organisationnelle"><column name="code" value="DG"/><column name="libelle" value="Direction Générale"/><column name="type" value="DIRECTION"/><column name="active" valueBoolean="true"/></insert>
+        <insert tableName="unite_organisationnelle"><column name="code" value="DES"/><column name="libelle" value="Département Exploitation et Supervision"/><column name="type" value="DEPARTEMENT"/><column name="parent" value="DG"/><column name="active" valueBoolean="true"/></insert>
+        <insert tableName="unite_organisationnelle"><column name="code" value="SNA"/><column name="libelle" value="Service Normes et Agréments"/><column name="type" value="SERVICE"/><column name="parent" value="DES"/><column name="active" valueBoolean="true"/></insert>
+        <insert tableName="unite_organisationnelle"><column name="code" value="PROD_MONETIQUE"/><column name="libelle" value="Service Production monétique"/><column name="type" value="SERVICE"/><column name="parent" value="DES"/><column name="active" valueBoolean="true"/></insert>
+        <insert tableName="unite_organisationnelle"><column name="code" value="PROD_INFO"/><column name="libelle" value="Service Production informatique"/><column name="type" value="SERVICE"/><column name="parent" value="DES"/><column name="active" valueBoolean="true"/></insert>
+        <insert tableName="unite_organisationnelle"><column name="code" value="POLE_RESEAU"/><column name="libelle" value="Pôle réseau"/><column name="type" value="POLE"/><column name="parent" value="PROD_INFO"/><column name="active" valueBoolean="true"/></insert>
+        <insert tableName="unite_organisationnelle"><column name="code" value="POLE_SYSTEME"/><column name="libelle" value="Pôle système"/><column name="type" value="POLE"/><column name="parent" value="PROD_INFO"/><column name="active" valueBoolean="true"/></insert>
+        <insert tableName="unite_organisationnelle"><column name="code" value="DDRM"/><column name="libelle" value="Département Développement du Réseau et du Marché"/><column name="type" value="DEPARTEMENT"/><column name="parent" value="DG"/><column name="active" valueBoolean="true"/></insert>
+        <insert tableName="unite_organisationnelle"><column name="code" value="SSI"/><column name="libelle" value="Sécurité des systèmes d'information"/><column name="type" value="SERVICE"/><column name="parent" value="DG"/><column name="active" valueBoolean="true"/></insert>
+        <insert tableName="unite_organisationnelle"><column name="code" value="CONFORMITE"/><column name="libelle" value="Conformité"/><column name="type" value="SERVICE"/><column name="parent" value="DG"/><column name="active" valueBoolean="true"/></insert>
+    </changeSet>
+</databaseChangeLog>

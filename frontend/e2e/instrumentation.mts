@@ -10,7 +10,7 @@ import type { PluginOption } from 'vite'
 // (tableau de bord par acteur, registre et dossier des institutions, cadrage et liaisons), leurs
 // descripteurs et l'exécuteur d'actions (D-57, D-58, D-61) ; le parcours de certification des étapes 3
 // à 10 (tableau de bord « Mon travail » et pilotage, liste et dossier numérique des liaisons, décision et
-// mise en service, D-56 à D-59), la messagerie (D-64) et le portail du participant. Les services (HTTP et
+// mise en service, D-56 à D-59), la messagerie (D-64), « Mon activité » (D-76) et le portail du participant. Les services (HTTP et
 // simulés) sont couverts par les tests de contrat de Vitest. Les tests Playwright recueillent
 // window.__coverage__ ; nyc impose 80 %.
 const racine = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -32,6 +32,8 @@ export const PERIMETRE_E2E = [
   'packages/lot1/src/pages/des/tableau/**',
   'packages/lot1/src/pages/des/parcours/**',
   'packages/lot1/src/pages/des/messagerie/**',
+  // Mon activité (D-76) : journée, agenda, tâches, rapports, équipe.
+  'packages/lot1/src/pages/des/activite/**',
   'packages/lot1/src/pages/portail/**',
   'apps/portail/src/App.tsx',
   'packages/compte/src/**',

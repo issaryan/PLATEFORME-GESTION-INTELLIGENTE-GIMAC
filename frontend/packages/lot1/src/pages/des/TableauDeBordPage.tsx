@@ -2,18 +2,20 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 import { Card, EmptyState, Link, LinkList, PageHeader, PageSection, Skeleton, StatGrid, StatusBadge, type StatCardProps } from '@gimac/design-system'
-import { aPermission, usePermissions, useSession, type GroupeNavigation } from '@gimac/socle'
+import { aPermission, usePermissions, useSession } from '@gimac/socle'
 import { useIndicateursDdrm, useInstitutions } from '../../hooks/participant'
 import { etatInstitution } from '../../dictionnaires'
-import { NAVIGATION_DES } from '../../navigation'
-import { fonctionsDe } from '../../permissions'
+import { fonctionnalitesOuvertes, widgetsOuverts, type CleWidget, type Fonctionnalite } from '../../fonctionnalites'
+import { PERM, fonctionsDe } from '../../permissions'
 import { SectionActeur } from './tableau/SectionActeur'
 import { SectionCockpit } from './tableau/SectionCockpit'
 import { SectionAdministration } from './tableau/SectionAdministration'
+import { SectionMaJournee } from './tableau/SectionMaJournee'
 import { useExtensionsTableauDeBord } from './tableau/extensions'
 
-// DES-01 Tableau de bord (/des/tableau-de-bord, gabarit G1 ; D-58, D-61) : chaque acteur voit son
-// tableau de bord, composé des seules sections que la matrice des rôles de son jeton ouvre. Les
+// DES-01 Tableau de bord (/des/tableau-de-bord, gabarit G1 ; D-58, D-61, D-79) : chaque acteur voit son
+// tableau de bord, composé des widgets des fonctionnalités que les permissions de son jeton ouvrent (registre
+// fonctionnalites.ts) ; jamais vide : à défaut de widget, les raccourcis des fonctionnalités ouvertes. Les
 // compteurs viennent des services ; l'interface n'en calcule aucun. Composition du catalogue (D-63) :
 // PageHeader, PageSection, StatGrid, LinkList.
 
@@ -78,17 +80,23 @@ function SectionDdrm({ approbateur, instructeur }: { approbateur: boolean; instr
   )
 }
 
-/** Raccourcis vers les écrans que la matrice des rôles ouvre (navigation filtrée par permission). */
-function MesAcces({ permissions }: { permissions: string[] | undefined }) {
+/** Raccourcis vers les écrans que les permissions ouvrent (registre des fonctionnalités), hors tableau de bord. */
+function MesAcces({ fonctionnalites }: { fonctionnalites: Fonctionnalite[] }) {
   const { t } = useTranslation()
-  const entrees = (NAVIGATION_DES as GroupeNavigation[])
-    .flatMap((g) => g.entrees)
-    .filter((e) => e.cle !== 'tableauDeBord' && aPermission(permissions, ...(e.permission ? [e.permission] : [])))
-  if (entrees.length === 0) return null
   return (
     <PageSection title={t('tableau.acces.titre')}>
-      <LinkList label={t('tableau.acces.titre')} items={entrees.map((e) => ({ key: e.cle, href: e.chemin, label: t(e.libelleKey) }))} />
+      <LinkList label={t('tableau.acces.titre')} items={fonctionnalites.map((f) => ({ key: f.cle, href: f.chemin, label: t(f.libelleKey) }))} />
     </PageSection>
+  )
+}
+
+/** Widget de plateforme sans composant fourni par l'application : raccourci vers son écran. */
+function Raccourci({ fonctionnalite }: { fonctionnalite?: Fonctionnalite }) {
+  const { t } = useTranslation()
+  if (!fonctionnalite) return null
+  return (
+    <PageSection title={t(fonctionnalite.libelleKey)} description={t(`tableau.widget.${fonctionnalite.cle}`)}
+      actions={<Link href={fonctionnalite.chemin}>{t('tableau.widget.ouvrir')}</Link>} />
   )
 }
 
@@ -96,20 +104,19 @@ export default function TableauDeBordPage() {
   const { t } = useTranslation()
   const session = useSession()
   const permissions = usePermissions()
-  const lecteurRegistre = aPermission(permissions, 'PAR_INSTITUTION_READ')
-  const instructeur = lecteurRegistre && aPermission(permissions, 'PAR_ADHESION_INSTRUCT')
-  const approbateur = lecteurRegistre && aPermission(permissions, 'PAR_TRANSITION_APPROVE')
-  const ddrm = instructeur || approbateur
-  const pilotage = aPermission(permissions, 'HOM_DASHBOARD_READ')
   const profils = (session?.roles ?? []).filter((r) => r !== 'ROLE_USER')
+  // Registre des fonctionnalités (D-79) : chaque widget s'affiche selon les permissions du jeton, jamais le rôle.
+  const ouvertes = fonctionnalitesOuvertes(permissions)
+  const widgets = widgetsOuverts(permissions)
+  const a = (w: CleWidget) => widgets.includes(w)
+  const extensions = useExtensionsTableauDeBord()
+  const fonctionnalite = (cle: string) => ouvertes.find((f) => f.cle === cle)
+  // Fonctions du parcours portées par la session : paramètre du tableau d'acteur de MS-HOMOLOGATION.
   const fonctions = fonctionsDe(session?.roles ?? [])
-  // « Mon travail » (étapes 3 à 10) couvre le cadrage, « Mes projets » et les gestes de chaque fonction.
-  const travail = fonctions.length > 0 && aPermission(permissions, 'HOM_LIAISON_LIST')
-  const cockpit = pilotage && fonctions.some((f) => f === 'DG' || f === 'CHEF_DES' || f === 'CHEF_DDRM')
-  // Administration des comptes (D-62) : liens vers la console pour les porteurs de IAM_ACCOUNT_READ (RSSI).
-  const administration = aPermission(permissions, 'IAM_ACCOUNT_READ')
-  const { administration: TableauAdministration } = useExtensionsTableauDeBord()
-  const rien = !ddrm && !travail && !cockpit && !lecteurRegistre && !administration
+  const raccourcis = ouvertes.filter((f) => f.cle !== 'tableauDeBord')
+  // Jamais vide : sans autre widget que « Ma journée », les raccourcis des fonctionnalités ouvertes.
+  const sansWidget = widgets.every((w) => w === 'maJournee')
+  const { administration: Administration, supervision: Supervision, infrastructure: Infrastructure } = extensions
   return (
     <div className="gm-col">
       <PageHeader
@@ -117,14 +124,18 @@ export default function TableauDeBordPage() {
         subtitle={t('tableau.sousTitre')}
         user={session ? { name: session.nom, roles: profils.map((r) => t(`profil.${r}`, { defaultValue: r })) } : undefined}
       />
+      {/* « Ma journée » (D-76 §6) : tout porteur de PIL_ACTIVITY_OWN, avant les widgets métier. */}
+      {a('maJournee') ? <SectionMaJournee equipe={aPermission(permissions, PERM.equipeLire)} /> : null}
       {/* Administration des comptes (D-69) : indicateurs et actions de l'application, sinon section d'actions. */}
-      {administration ? (TableauAdministration ? <TableauAdministration /> : <SectionAdministration />) : null}
-      {ddrm ? <SectionDdrm approbateur={approbateur} instructeur={instructeur} /> : null}
-      {cockpit ? <SectionCockpit /> : null}
-      {travail ? <SectionActeur fonctions={fonctions} /> : null}
-      {/* Raccourcis seulement pour un profil sans aucune section (lecture seule) : la navigation les porte déjà. */}
-      {!travail && !ddrm && !cockpit && !administration ? <MesAcces permissions={permissions} /> : null}
-      {rien ? <EmptyState icon="gauge" title={t('tableau.vide.titre')} text={t('tableau.vide.texte')} /> : null}
+      {a('administration') ? (Administration ? <Administration /> : <SectionAdministration />) : null}
+      {/* Plateforme (D-79) : résumé de la supervision et charges en erreur, fournis par l'application. */}
+      {a('supervision') ? (Supervision ? <Supervision /> : <Raccourci fonctionnalite={fonctionnalite('supervision')} />) : null}
+      {a('infrastructure') ? (Infrastructure ? <Infrastructure /> : <Raccourci fonctionnalite={fonctionnalite('infrastructure')} />) : null}
+      {a('ddrm') ? <SectionDdrm approbateur={aPermission(permissions, PERM.transitionApprouver)} instructeur={aPermission(permissions, PERM.adhesionInstruire)} /> : null}
+      {a('cockpit') ? <SectionCockpit /> : null}
+      {a('monTravail') ? <SectionActeur fonctions={fonctions} /> : null}
+      {sansWidget && raccourcis.length > 0 ? <MesAcces fonctionnalites={raccourcis} /> : null}
+      {sansWidget && raccourcis.length === 0 ? <EmptyState icon="gauge" title={t('tableau.vide.titre')} text={t('tableau.vide.texte')} /> : null}
     </div>
   )
 }

@@ -285,6 +285,8 @@ gimac:
     timestamp-authority: stub
     key-vault-signing: stub
     change-record-reader: stub
+    # Tâches de MS-PILOTAGE (D-77) : demandes relayées avec réessai.
+    pilotage-tasks: stub
   # Services joints par les adaptateurs réels (surchargés en prod).
   services:
     participant:
@@ -295,7 +297,16 @@ gimac:
       url: http://localhost:8081
     audit:
       url: http://localhost:8082
+    pilotage:
+      url: http://localhost:8091
+  # Relais des demandes de tâches vers MS-PILOTAGE (D-77, docs/lot1/modelisateur-processus.md §5).
+  taches:
+    delai: 2000
+    delai-initial: 10000
   homologation:
+    # Profils dont un compte peut piloter un brouillon de référentiel (HOM_REFERENTIEL_EDIT, D-77).
+    referentiel:
+      profils-pilote: ROLE_INGENIEUR_HOMOLOGATION
     replay: {period: PT5M, failure-threshold: 5, half-open-after: PT2M}
     deadlines: {warning-days: 5, overdue-repeat-days: 7}
   kafka:

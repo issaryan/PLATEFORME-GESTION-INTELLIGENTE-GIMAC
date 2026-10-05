@@ -27,6 +27,8 @@ spec:
                         - gateway
                 topologyKey: kubernetes.io/hostname
               weight: 100
+      # Compte de service de l'exploitation depuis la console (D-78, gateway-rbac.yml).
+      serviceAccountName: gateway
       initContainers:
         - name: init-ds
           image: busybox:latest
@@ -93,6 +95,14 @@ spec:
               value: web_app
             - name: SERVER_SHUTDOWN
               value: graceful
+            # Exploitation de l'infrastructure depuis la console (D-78) : API du cluster avec le jeton et
+            # l'autorité du compte de service montés, déploiements de l'espace gimac-des seulement.
+            - name: GIMAC_ORCHESTRATEUR_TYPE
+              value: kubernetes
+            - name: GIMAC_ORCHESTRATEUR_KUBERNETES_ESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
           resources:
             requests:
               memory: "512Mi"

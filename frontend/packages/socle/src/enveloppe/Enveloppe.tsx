@@ -9,8 +9,21 @@ import type { EtatCanal } from '../live/live'
 import { Preferences } from './Preferences'
 import { RechercheGlobale, type SourceRecherche } from './RechercheGlobale'
 import { usePreferences } from './usePreferences'
+import { satisfait, type Predicat } from '../session/aiguillage'
+import { useCompteurNotifications, useContexteNotifications } from '../notifications/contexte'
+import { PanneauNotifications } from '../notifications/Cloche'
+import { NotificationsSurgissantes } from '../notifications/Surgissantes'
 
-export type EntreeNavigation = { cle: string; libelleKey: string; icone: IconName; chemin: string; permission?: string }
+type Cloche = { nonLues: number; panneau: (fermer: () => void) => ReactNode }
+
+/** Cloche des notifications (D-80) : compteur des non-lues et panneau, quand la couche les sert. */
+function AvecCloche({ children }: { children: (cloche: Cloche) => ReactNode }) {
+  const compteur = useCompteurNotifications()
+  return <>{children({ nonLues: compteur.data?.nonLues ?? 0, panneau: (fermer) => <PanneauNotifications fermer={fermer} /> })}</>
+}
+
+/** Entrée de navigation : visible si la session porte `permission` et satisfait `predicat` (D-79), quand ils sont donnés. */
+export type EntreeNavigation = { cle: string; libelleKey: string; icone: IconName; chemin: string; permission?: string; predicat?: Predicat }
 export type GroupeNavigation = { libelleKey?: string; entrees: EntreeNavigation[] }
 
 export type EnveloppeProps = {
@@ -117,7 +130,7 @@ export function Enveloppe(p: EnveloppeProps) {
         },
       ]
     : p.navigation
-  const autorisee = (e: EntreeNavigation) => !e.permission || !p.permissions || p.permissions.includes(e.permission)
+  const autorisee = (e: EntreeNavigation) => !p.permissions || ((!e.permission || p.permissions.includes(e.permission)) && satisfait(p.permissions, e.predicat))
   const groupes = navigation
     .map((g) => ({ label: g.libelleKey ? t(g.libelleKey) : undefined, items: g.entrees.filter(autorisee).map((e) => ({ key: e.cle, label: t(e.libelleKey), icon: e.icone, href: e.chemin, badge: p.badges?.[e.cle] })) }))
     .filter((g) => g.items.length > 0)
@@ -139,37 +152,44 @@ export function Enveloppe(p: EnveloppeProps) {
       void navigate(href)
     }
   }
+  // Notifications de la plateforme (D-80) : cloche active et fenêtres surgissantes dans les couches internes.
+  const notifications = useContexteNotifications()
   // Logo principal blanc, fondu dans le dégradé bleu de la navigation (dans les deux thèmes).
   const nav = <SideNav current={courante?.cle ?? ''} groups={groupes} height="100%" logo={logoBlanc} couche={p.couche} />
+
+  const barre = (cloche?: Cloche) => (
+    <TopBar
+      notifications={cloche}
+      avatar={p.avatar}
+      userDetail={p.fonction ?? undefined}
+      userMenu={
+        p.espacePersonnel
+          ? [
+              { key: 'monCompte', label: t('nav.monCompte'), icon: 'user', onClick: () => void navigate(`${p.espacePersonnel}/mon-compte`) },
+              { key: 'deconnexion', label: t('nav.deconnexion'), icon: 'log-out', onClick: () => void navigate(`${p.espacePersonnel}/deconnexion`) },
+            ]
+          : undefined
+      }
+      layer={p.couche}
+      logo={theme === 'dark' ? logoBlanc : logoCouleur}
+      sansMarque={!etroit}
+      breadcrumb={p.fil}
+      user={p.utilisateur}
+      institution={p.institution}
+      live={p.etatCanal !== 'lost'}
+      clock={heure}
+      preferences={<Preferences />}
+      onMenu={etroit ? () => setNavOuverte((v) => !v) : undefined}
+      onRecherche={avecRecherche ? () => setRechercheOuverte(true) : undefined}
+    />
+  )
 
   return (
     <div className="gm-root gm-shell" onClick={intercepter}>
       {etroit ? null : <div className="gm-shell-nav">{nav}</div>}
       <div className="gm-shell-colonne">
       <div className="gm-shell-top">
-        <TopBar
-          avatar={p.avatar}
-          userDetail={p.fonction ?? undefined}
-          userMenu={
-            p.espacePersonnel
-              ? [
-                  { key: 'monCompte', label: t('nav.monCompte'), icon: 'user', onClick: () => void navigate(`${p.espacePersonnel}/mon-compte`) },
-                  { key: 'deconnexion', label: t('nav.deconnexion'), icon: 'log-out', onClick: () => void navigate(`${p.espacePersonnel}/deconnexion`) },
-                ]
-              : undefined
-          }
-          layer={p.couche}
-          logo={theme === 'dark' ? logoBlanc : logoCouleur}
-          sansMarque={!etroit}
-          breadcrumb={p.fil}
-          user={p.utilisateur}
-          institution={p.institution}
-          live={p.etatCanal !== 'lost'}
-          clock={heure}
-          preferences={<Preferences />}
-          onMenu={etroit ? () => setNavOuverte((v) => !v) : undefined}
-          onRecherche={avecRecherche ? () => setRechercheOuverte(true) : undefined}
-        />
+        {notifications ? <AvecCloche>{barre}</AvecCloche> : barre()}
         {p.etatCanal === 'lost' ? <Banner level="info">{t('live.perdu')}</Banner> : null}
       </div>
       <div className="gm-shell-corps">
@@ -185,6 +205,7 @@ export function Enveloppe(p: EnveloppeProps) {
         ) : null}
       </div>
       </div>
+      {notifications ? <NotificationsSurgissantes /> : null}
       {rechercheOuverte ? <RechercheGlobale ecrans={ecrans} sources={p.recherche ?? []} onOuvrir={ouvrir} onFermer={() => setRechercheOuverte(false)} /> : null}
     </div>
   )

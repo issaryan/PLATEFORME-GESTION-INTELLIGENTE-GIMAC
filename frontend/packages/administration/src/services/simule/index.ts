@@ -2,9 +2,12 @@ import { ReauthCancelled } from '@gimac/socle'
 import { creerSimulateur, type Compte, type SessionCompte } from '@gimac/compte'
 import type { EntreeJournal } from '../../modele/comptes'
 import { ALGORITHMES_OTP, type PolitiqueSecurite, type Profil } from '../../modele/configuration'
-import type { ServiceComptes, ServiceConfiguration, ServicePlateforme, ServicesConsole } from '../ports'
+import { UNITES_DEMO, type Unite } from '@gimac/lot1'
+import type { ServiceComptes, ServiceConfiguration, ServiceOrganisation, ServicePlateforme, ServicesConsole } from '../ports'
 import { PERMISSIONS_REALM, PRIVILEGIES, PROFILS_REALM } from './catalogue'
 import * as D from './donnees'
+import { infrastructureSimulee } from './infrastructure'
+import type { Orchestrateur } from '../../modele/infrastructure'
 
 // Serveur de substitution de MS-IAM et de la supervision de MS-GATEWAY pour la console : mêmes formes
 // de réponse et mêmes codes de refus que les services ; ses « règles » ne sont qu'une imitation.
@@ -17,6 +20,10 @@ export type OptionsConsoleSimulee = {
   reauth?: 'ok' | 'annulee' | 'sansCle'
   /** Période du flux temps réel simulé, en millisecondes. */
   periodeFluxMs?: number
+  /** Orchestrateur simulé de l'infrastructure (D-78) : Kubernetes par défaut ; AUCUN : exploitation non configurée. */
+  orchestrateur?: Orchestrateur
+  /** Durée d'un geste d'exploitation simulé avant son issue, en millisecondes. */
+  dureeGesteMs?: number
 }
 
 const IDENTIFIANT = /^[a-z][a-z0-9._-]{2,49}$/
@@ -234,6 +241,73 @@ export function servicesConsoleSimules(o: OptionsConsoleSimulee = {}): ServicesC
       }),
   }
 
+  // Organisation (D-76) : mêmes règles et mêmes refus que ReglesOrganisation de MS-IAM.
+  let unites: Unite[] = UNITES_DEMO.map((u) => ({ ...u }))
+  const CODE_UNITE = /^[A-Z][A-Z0-9_]{1,31}$/
+  const normaliser = (u: Unite): Unite => {
+    if (!CODE_UNITE.test(u.code ?? '')) throw refus(400, 'ORG_UNITE_INVALIDE', "Code d'unité invalide : majuscules, chiffres ou souligné, 2 à 32 caractères", { champ: 'code' })
+    const libelle = (u.libelle ?? '').trim()
+    if (!libelle || libelle.length > 120) throw refus(400, 'ORG_UNITE_INVALIDE', 'Libellé obligatoire, 120 caractères au plus', { champ: 'libelle' })
+    const parent = u.parent?.trim() || null
+    if (u.type === 'DIRECTION' && parent) throw refus(400, 'ORG_UNITE_INVALIDE', "Une direction n'a pas d'unité parente", { champ: 'parent' })
+    return { code: u.code, libelle, type: u.type, parent, active: u.active }
+  }
+  const verifierPlace = (u: Unite) => {
+    if (u.parent) {
+      const parent = unites.find((x) => x.code === u.parent)
+      if (!parent || (u.active && !parent.active)) throw refus(422, 'ORG_UNITE_INCONNUE', 'Unité parente inconnue ou inactive', { parent: u.parent })
+      for (let p: Unite | undefined = parent; p; p = unites.find((x) => x.code === p!.parent)) {
+        if (p.code === u.code) throw refus(409, 'ORG_CYCLE', "L'unité ne peut être placée sous l'une de ses sous-unités", { code: u.code })
+      }
+    }
+    const actives = unites.filter((x) => x.active && x.parent === u.code).map((x) => x.code)
+    if (!u.active && actives.length) throw refus(409, 'ORG_UNITE_SOUS_UNITES_ACTIVES', "Désactiver d'abord les sous-unités actives", { sousUnites: actives })
+  }
+  const organisation: ServiceOrganisation = {
+    unites: () => attendre(() => unites),
+    creerUnite: (x) =>
+      attendre(() => {
+        const u = normaliser(x)
+        if (unites.some((y) => y.code === u.code)) throw refus(409, 'ORG_UNITE_EXISTANTE', 'Une unité porte déjà ce code', { code: u.code })
+        verifierPlace(u)
+        unites = [...unites, u]
+        tracer('CONFIGURATION_UNITE_ORGANISATIONNELLE', { id: null, libelle: u.code }, null, ['CREATION'])
+        return u
+      }),
+    modifierUnite: (code, x) =>
+      attendre(() => {
+        if (!unites.some((y) => y.code === code)) throw refus(404, 'ORG_UNITE_INTROUVABLE', 'Ressource introuvable', { id: code })
+        const u = normaliser({ ...x, code })
+        verifierPlace(u)
+        unites = unites.map((y) => (y.code === code ? u : y))
+        tracer('CONFIGURATION_UNITE_ORGANISATIONNELLE', { id: null, libelle: code }, null, [u.active ? 'MODIFICATION' : 'DESACTIVATION'])
+        return u
+      }),
+    rattacher: (id, r) =>
+      attendre(() => {
+        const c = trouver(id)
+        const unite = r.unite?.trim() || null
+        const responsableId = r.responsableId?.trim() || null
+        if (c.institutionId && (unite || responsableId)) throw refus(422, 'ORG_COMPTE_EXTERNE', "Un compte d'institution n'a ni unité ni responsable", { id })
+        const u = unites.find((x) => x.code === unite)
+        if (unite && (!u || (!u.active && unite !== c.unite))) throw refus(422, 'ORG_UNITE_INCONNUE', 'Unité inconnue ou inactive', { unite })
+        if (responsableId) {
+          const resp = comptes.find((x) => x.id === responsableId)
+          if (!resp || resp.id === id || !resp.actif || resp.institutionId) {
+            throw refus(422, 'ORG_RESPONSABLE_INVALIDE', 'Le responsable doit être un compte interne actif, distinct du titulaire', { responsableId })
+          }
+          const vus = new Set<string>()
+          for (let x: Compte | undefined = resp; x?.responsableId && !vus.has(x.id); x = comptes.find((y) => y.id === x!.responsableId)) {
+            vus.add(x.id)
+            if (x.responsableId === id) throw refus(409, 'ORG_CYCLE', 'Le titulaire figure dans la chaîne de ses propres responsables', { responsableId })
+          }
+        }
+        tracer('COMPTE_RATTACHEMENT_MODIFIE', { id, libelle: c.identifiant }, null, [`avant: unite=${c.unite ?? null} responsable=${c.responsableId ?? null}`, `après: unite=${unite} responsable=${responsableId}`])
+        Object.assign(c, { unite, responsableId })
+        return c
+      }),
+  }
+
   // Planchers de PolitiqueMotDePasse.verifier, en table : [champ, minimum, maximum, règle affichée].
   const BORNES: [keyof PolitiqueSecurite, number, number, string][] = [
     ['longueurMinimale', 12, 128, '12 à 128'], ['historique', 0, 24, '0 à 24'], ['expirationJours', 0, 365, '0 à 365'], ['otpPeriodeSecondes', 30, 60, '30 à 60'],
@@ -327,8 +401,12 @@ export function servicesConsoleSimules(o: OptionsConsoleSimulee = {}): ServicesC
 
   return {
     comptes: comptesSimules,
+    organisation,
     configuration,
     plateforme,
+    infrastructure: infrastructureSimulee({
+      attendre, refus, acteur, assertionValide: (a) => a === ASSERTION_SIMULEE, orchestrateur: o.orchestrateur, dureeGesteMs: o.dureeGesteMs, latenceMs: o.latenceMs,
+    }),
     // Clé de sécurité simulée : confirmation après un délai ; annulation ou absence de clé à la demande.
     reauth: {
       assertion: () =>

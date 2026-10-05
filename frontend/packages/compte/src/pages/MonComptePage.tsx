@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Button, Card, DataTable, KeyValueList, Select, StatusBadge, Tag, TextField, type Column, Note, PageHeader } from '@gimac/design-system'
 import { EtatsRequete, type CleSecurite } from '@gimac/socle'
 import { LANGUES_COMPTE, type LangueCompte, type Moi } from '../modele'
-import { useEnrolerCle, useMesCles, useModifierFiche, useMoi, useSupprimerCle } from '../hooks'
+import { useEnrolerCle, useMesCles, useModifierFiche, useMoi, useMonRattachement, useSupprimerCle } from '../hooks'
 import { dateHeure, useLibelleProfil, useMessageErreur } from '../outils'
 import { ModaleCompte, type ErreurModale } from '../composants/ModaleSaisie'
 import { Annonce, type Retour } from '../composants/Annonce'
@@ -11,6 +11,7 @@ import { useSaisieMotDePasse } from '../composants/saisieMotDePasse'
 import { useSaisieTotp } from '../composants/saisieTotp'
 import { Photo } from './monCompte/Photo'
 import { Appareils, Historique } from './monCompte/Appareils'
+import { PreferencesNotificationsSection } from './monCompte/Notifications'
 
 // Mon compte (D-62, D-65, docs/lot1/mon-compte.md), commun aux trois couches : photo de profil, fiche
 // personnelle, mot de passe et code TOTP, clés de sécurité FIDO2, appareils connectés, historique des connexions. Toute modification se fait dans une fenêtre modale, sur la
@@ -110,6 +111,37 @@ function Fiche({ moi }: { moi: Moi }) {
         <DialogueFiche moi={moi} onFermer={() => setOuvert(false)}
           onFait={() => { setOuvert(false); setRetour({ niveau: 'info', message: { texte: t('compte.fiche.enregistree') } }) }} />
       ) : null}
+    </Card>
+  )
+}
+
+/**
+ * Rattachement organisationnel (D-76, docs/lot1/mon-activite.md §1.2), en lecture : unité et responsable (n+1)
+ * fixés par l'administration ; libellés lus sur MS-IAM (organisation/moi), codes à défaut.
+ */
+function Rattachement({ moi }: { moi: Moi }) {
+  const { t } = useTranslation()
+  const c = moi.compte
+  const present = !!(c.unite || c.responsableId)
+  const r = useMonRattachement(present)
+  if (!present) return null
+  const unite = r.data?.chemin.length ? r.data.chemin.map((u) => u.libelle).join(' › ') : c.unite
+  const responsable = r.data?.responsable
+  return (
+    <Card title={t('compte.rattachement.titre')}>
+      <div className="gm-col">
+        <KeyValueList
+          items={[
+            { key: t('compte.rattachement.unite'), value: unite || t('compte.rattachement.aucune') },
+            {
+              key: t('compte.rattachement.responsable'),
+              value: responsable ? [responsable.nomAffiche, responsable.fonction].filter(Boolean).join(', ') : c.responsableId ? <span className="gm-mono">{c.responsableId}</span> : t('compte.rattachement.aucun'),
+            },
+            ...(r.data && r.data.equipeDirecte > 0 ? [{ key: t('compte.rattachement.equipe'), value: t('compte.rattachement.equipeTexte', { count: r.data.equipeDirecte }) }] : []),
+          ]}
+        />
+        <Note>{t('compte.rattachement.administration')}</Note>
+      </div>
     </Card>
   )
 }
@@ -235,8 +267,10 @@ export default function MonComptePage() {
           <>
             <Photo moi={m} />
             <Fiche moi={m} />
+            <Rattachement moi={m} />
             <Securite moi={m} />
             <Cles />
+            <PreferencesNotificationsSection />
             <Appareils />
             <Historique />
           </>

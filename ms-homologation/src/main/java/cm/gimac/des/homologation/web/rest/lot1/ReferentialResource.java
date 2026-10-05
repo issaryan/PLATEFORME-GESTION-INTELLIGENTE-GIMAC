@@ -12,7 +12,6 @@ import cm.gimac.des.homologation.domain.enumeration.TypeProjet;
 import cm.gimac.des.homologation.domain.service.ReferentialCompletenessChecker;
 import cm.gimac.des.homologation.infrastructure.messaging.outbox.OutboxEvent;
 import cm.gimac.des.homologation.infrastructure.messaging.outbox.OutboxEventRepository;
-import cm.gimac.des.homologation.domain.service.NoeudReferentiel;
 import cm.gimac.des.homologation.domain.service.ReferentialGraphValidator;
 import cm.gimac.des.homologation.repository.ReferentialVersionRepository;
 import cm.gimac.des.homologation.web.rest.lot1.ReferentialViews.ControleVue;
@@ -20,7 +19,6 @@ import cm.gimac.des.homologation.web.rest.lot1.ReferentialViews.CreateDraftReque
 import cm.gimac.des.homologation.web.rest.lot1.ReferentialViews.EvenementVue;
 import cm.gimac.des.homologation.web.rest.lot1.ReferentialViews.MigrationRequest;
 import cm.gimac.des.homologation.web.rest.lot1.ReferentialViews.MigrationVue;
-import cm.gimac.des.homologation.web.rest.lot1.ReferentialViews.GrapheVue;
 import cm.gimac.des.homologation.web.rest.lot1.ReferentialViews.OperationVue;
 import cm.gimac.des.homologation.web.rest.lot1.ReferentialViews.VersionVue;
 import jakarta.validation.Valid;
@@ -41,7 +39,8 @@ import org.springframework.web.bind.annotation.*;
 
 /**
  * Référentiel d'opérations (HOM-01 A5, HOM-02 A3), exposé par la passerelle sous
- * /bff/des/homologation/referentiels.
+ * /bff/des/homologation/referentiels. Le graphe étendu, le catalogue et les gestes du modélisateur (D-77) sont
+ * servis par {@link ModelisateurResource}.
  */
 @RestController
 @RequestMapping("/api/v1/referentiels")
@@ -72,13 +71,14 @@ public class ReferentialResource {
 
     @PostMapping
     @PreAuthorize("hasAuthority('HOM_REFERENTIEL_EDIT')")
-    public ResponseEntity<VersionVue> creer(@Valid @RequestBody CreateDraftRequest req) {
-        ReferentialVersion v = useCase.creerBrouillon(req.typeProjet(), req.libelle(), req.versionSourceId());
+    public ResponseEntity<VersionVue> creer(@Valid @RequestBody CreateDraftRequest req, Authentication auth) {
+        ReferentialVersion v = useCase.creerBrouillon(req.typeProjet(), req.libelle(), req.versionSourceId(), ActeurCourant.de(auth).id(), req.piloteId());
         return ResponseEntity.created(URI.create("/api/v1/referentiels/" + v.getId())).body(vue(v, actives()));
     }
 
     @PutMapping("/{id}/operations/{code}")
     @PreAuthorize("hasAuthority('HOM_REFERENTIEL_EDIT')")
+    @Transactional
     public OperationVue enregistrer(@PathVariable UUID id, @PathVariable String code, @Valid @RequestBody ReferenceOperationData data) {
         return OperationVue.de(useCase.enregistrerOperation(id, code, data));
     }
@@ -157,20 +157,6 @@ public class ReferentialResource {
     public ControleVue controler(@PathVariable UUID id) {
         ReferentialVersion v = charger(id);
         return ControleVue.de(validator.controler(v.noeuds()), completude.check(v.getOperations()));
-    }
-
-    /** HOM-02 : graphe par couches (couche nulle si le graphe est cyclique). */
-    @GetMapping("/{id}/graphe")
-    @PreAuthorize("hasAuthority('HOM_REFERENTIEL_READ')")
-    @Transactional(readOnly = true)
-    public GrapheVue graphe(@PathVariable UUID id) {
-        List<NoeudReferentiel> noeuds = charger(id).noeuds();
-        var rapport = validator.controler(noeuds);
-        return new GrapheVue(
-            noeuds.stream().map(n -> new GrapheVue.Noeud(n.code(), n.libelle(), n.segment(), rapport.couches().get(n.code()))).toList(),
-            noeuds.stream().flatMap(n -> n.predecesseurs().stream().map(p -> new GrapheVue.Arc(p, n.code()))).toList(),
-            rapport.anomalies()
-        );
     }
 
     private Map<TypeProjet, UUID> actives() {

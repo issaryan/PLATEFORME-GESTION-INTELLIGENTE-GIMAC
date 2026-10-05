@@ -25,6 +25,9 @@ export const ANNUAIRE: Correspondant[] = [
   { id: 'u-rssi', nom: 'Hervé Kamga Tchoupo', fonction: 'Responsable de la sécurité des systèmes d’information', profils: ['ROLE_RSSI'] },
   { id: 'u-conf', nom: 'Mireille Obame Nze', fonction: 'Conformité', profils: ['ROLE_CONFORMITE'] },
   { id: 'u-dg', nom: 'Jean-Baptiste Ella Mintsa', fonction: 'Direction générale', profils: ['ROLE_DG'] },
+  // Mon activité (D-76) : responsable d'un service et collaborateur sans fonction métier dans la plateforme.
+  { id: 'u-resp-info', nom: 'Gaston Ndzana Ebode', fonction: 'Chef du service Production informatique', profils: ['ROLE_RESPONSABLE_SERVICE'] },
+  { id: 'u-collab', nom: 'Nadège Mvondo Assiga', fonction: 'Technicienne réseau', profils: ['ROLE_COLLABORATEUR'] },
 ]
 
 /** Comptes de l'annuaire qui ont déposé une photo de profil (démonstration) ; les autres gardent leurs initiales. */
@@ -81,7 +84,20 @@ export function pdfDemo(lignes: string[]): Blob {
 
 type EtatConversation = Omit<Conversation, 'dernierMessage' | 'nonLus'> & { messages: Message[]; lus: Map<string, number> }
 
-export function messagerieSimulee(attendre: Attendre, refus: Refus, moi: Correspondant = ANNUAIRE[0]): ServiceMessagerie {
+/** Message reçu d'un autre membre (démonstration des notifications, D-80) : ce que MS-COLLABORATION publierait. */
+export type ReceptionDemo = { conversation: Conversation; message: Message; nonLus: number }
+
+/** Messagerie simulée : le port, plus la réception d'un message d'un autre membre (démonstration, D-80). */
+export type MessagerieSimulee = ServiceMessagerie & {
+  /** Un autre membre écrit dans la conversation donnée (par défaut : le premier échange direct). */
+  recevoirDemo(o?: { conversationId?: string; contenu?: string }): ReceptionDemo
+  /** Conversations portant des messages non lus de l'utilisateur, avec leur dernier message. */
+  nonLuesDemo(): ReceptionDemo[]
+  /** Abonnement aux messages reçus ; rend la fonction de désabonnement. */
+  surReception(rappel: (r: ReceptionDemo) => void): () => void
+}
+
+export function messagerieSimulee(attendre: Attendre, refus: Refus, moi: Correspondant = ANNUAIRE[0]): MessagerieSimulee {
   let sequence = 0
   PHOTOS_DEMO.forEach((p) => avatarsSimules.demo(p))
   const id = (prefixe: string) => `${prefixe}-${(++sequence).toString().padStart(4, '0')}`
@@ -196,8 +212,26 @@ export function messagerieSimulee(attendre: Attendre, refus: Refus, moi: Corresp
     return c
   }
   const miennes = () => conversations.filter((c) => c.membres.some((m) => m.id === moi.id)).sort((a, b) => b.misAJourLe.localeCompare(a.misAJourLe))
+  const receptions = new Set<(r: ReceptionDemo) => void>()
+  const reception = (c: EtatConversation): ReceptionDemo => {
+    const v = vue(c)
+    return { conversation: v, message: structuredClone(c.messages[c.messages.length - 1]), nonLus: v.nonLus }
+  }
 
   return {
+    recevoirDemo: (o = {}) => {
+      const c = o.conversationId ? sienne(o.conversationId) : miennes().find((x) => x.type === 'DIRECTE') ?? miennes()[0]
+      const auteur = c.membres.find((m) => m.id !== moi.id)!
+      ajouterMessage(c, auteur, o.contenu ?? 'Pouvez-vous relire le procès-verbal avant 17 h ? Merci.', new Date().toISOString())
+      const r = reception(c)
+      receptions.forEach((f) => f(r))
+      return r
+    },
+    nonLuesDemo: () => miennes().filter((c) => nonLusDe(c) > 0).map(reception),
+    surReception: (rappel) => {
+      receptions.add(rappel)
+      return () => receptions.delete(rappel)
+    },
     annuaire: (recherche, page = 0, taille = 20) => attendre(() => {
       const r = recherche.trim().toLowerCase()
       const l = ANNUAIRE.filter((p) => p.id !== moi.id && (!r || `${p.nom} ${p.fonction ?? ''}`.toLowerCase().includes(r)))

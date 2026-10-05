@@ -13,7 +13,9 @@ import cm.gimac.des.homologation.infrastructure.messaging.outbox.OutboxPublisher
 import cm.gimac.des.homologation.repository.LiaisonRepository;
 import cm.gimac.des.homologation.repository.ReferentialMigrationRepository;
 import cm.gimac.des.homologation.repository.ReferentialVersionRepository;
+import cm.gimac.des.homologation.domain.parcours.Parcours;
 import java.time.Clock;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
@@ -30,8 +32,9 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Migration des liaisons vers la version en vigueur du référentiel (HOM-03) : simulation par liaison
  * (opérations conservées, ajoutées, retirées, modifiées ; liaison close exclue), puis rattachement des
- * liaisons retenues à la version cible, tracé (migration APPROUVEE, événement par l'outbox). Le parcours
- * des étapes 3 à 10 (D-57) n'est pas réinstancié : il suit le référentiel de l'annexe A.
+ * liaisons retenues à la version cible, tracé (migration APPROUVEE, événement par l'outbox). Le parcours de
+ * chaque liaison migrée reçoit le différentiel (docs/lot1/modelisateur-processus.md §3) : opérations ajoutées,
+ * retirées (supprimées ou sans objet), modifiées ; aucun état d'exécution d'une opération faite ne change.
  */
 @Service
 @Transactional
@@ -46,19 +49,25 @@ public class ReferentialMigrationService {
     private final ReferentialMigrationRepository migrations;
     private final OutboxPublisher outbox;
     private final Clock clock;
+    private final ParcoursDepot depot;
+    private final ParcoursInstanciation instanciation;
 
     public ReferentialMigrationService(
         ReferentialVersionRepository versions,
         LiaisonRepository liaisons,
         ReferentialMigrationRepository migrations,
         OutboxPublisher outbox,
-        Clock clock
+        Clock clock,
+        ParcoursDepot depot,
+        ParcoursInstanciation instanciation
     ) {
         this.versions = versions;
         this.liaisons = liaisons;
         this.migrations = migrations;
         this.outbox = outbox;
         this.clock = clock;
+        this.depot = depot;
+        this.instanciation = instanciation;
     }
 
     /** Simulation sans effet sur les liaisons : liaisons du même type rattachées à une autre version. */
@@ -89,7 +98,18 @@ public class ReferentialMigrationService {
             rapport.add(i);
         }
         UUID source = parId.get(ids.iterator().next()).getVersion().getId();
-        ids.forEach(id -> parId.get(id).setVersion(cible));
+        LocalDate aujourdhui = LocalDate.now(clock);
+        for (UUID id : ids) {
+            Liaison l = parId.get(id);
+            l.setVersion(cible);
+            depot
+                .trouver(id, true)
+                .ifPresent(p -> {
+                    Parcours.Differentiel d = p.migrer(cible.getId(), cible.getNumero(), cible.getOperations(), instanciation.designation(l, p.etat().getRessources()), aujourdhui);
+                    d.supprimees().forEach(depot::supprimer);
+                    d.ajoutees().forEach(depot::ajouter);
+                });
+        }
         ReferentialMigration m = new ReferentialMigration()
             .versionSourceId(source)
             .versionCibleId(cible.getId())
@@ -148,6 +168,26 @@ public class ReferentialMigrationService {
 
     private static boolean identiques(ReferenceOperation a, ReferenceOperation b) {
         return (
+            Objects.equals(a.getDescription(), b.getDescription()) &&
+            a.getEtape() == b.getEtape() &&
+            a.getResponsable() == b.getResponsable() &&
+            a.getValidateur() == b.getValidateur() &&
+            Objects.equals(a.getConsultes(), b.getConsultes()) &&
+            Objects.equals(a.getInformes(), b.getInformes()) &&
+            Objects.equals(a.getExternes(), b.getExternes()) &&
+            Objects.equals(a.getDelaiJours(), b.getDelaiJours()) &&
+            a.getGrain() == b.getGrain() &&
+            a.getPlateforme() == b.getPlateforme() &&
+            a.isCle() == b.isCle() &&
+            a.isSecret() == b.isSecret() &&
+            a.isOubliSansSymptome() == b.isOubliSansSymptome() &&
+            a.isPivot() == b.isPivot() &&
+            Objects.equals(a.getValeurReference(), b.getValeurReference()) &&
+            Objects.equals(a.getLivrables(), b.getLivrables()) &&
+            a.getGeste() == b.getGeste() &&
+            a.getJalon() == b.getJalon() &&
+            Objects.equals(a.getDeclencheur(), b.getDeclencheur()) &&
+            a.getParticularite() == b.getParticularite() &&
             Objects.equals(a.getLibelle(), b.getLibelle()) &&
             Objects.equals(a.getPhase(), b.getPhase()) &&
             a.getSegment() == b.getSegment() &&

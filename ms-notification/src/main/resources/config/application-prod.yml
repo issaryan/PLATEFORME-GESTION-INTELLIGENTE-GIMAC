@@ -112,3 +112,14 @@ jhipster:
 # ===================================================================
 
 # application:
+
+# Notifications de la plateforme (D-80) : annuaire de MS-IAM et conversations de MS-COLLABORATION réels.
+gimac:
+  adapters:
+    annuaire: real
+    conversations: real
+  services:
+    iam:
+      url: http://iam:8081
+    collaboration:
+      url: http://collaboration:8093

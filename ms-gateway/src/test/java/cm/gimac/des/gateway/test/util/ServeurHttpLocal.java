@@ -18,12 +18,12 @@ import java.util.concurrent.Executors;
  */
 public final class ServeurHttpLocal implements AutoCloseable {
 
-    /** Requête reçue. */
-    public record Recue(String methode, String chemin, String requete, String autorisation, String corps) {}
+    /** Requête reçue ; typeContenu : en-tête Content-Type de la requête. */
+    public record Recue(String methode, String chemin, String requete, String autorisation, String corps, String typeContenu) {}
 
-    private record Reponse(int statut, String typeContenu, String corps, long delaiMs, Map<String, String> entetes) {
+    private record Reponse(int statut, String typeContenu, byte[] corps, long delaiMs, Map<String, String> entetes) {
         Reponse(int statut, String typeContenu, String corps, long delaiMs) {
-            this(statut, typeContenu, corps, delaiMs, Map.of());
+            this(statut, typeContenu, corps.getBytes(StandardCharsets.UTF_8), delaiMs, Map.of());
         }
     }
 
@@ -57,7 +57,13 @@ public final class ServeurHttpLocal implements AutoCloseable {
 
     /** Réponse portant des en-têtes supplémentaires (signal d'un service à la passerelle). */
     public ServeurHttpLocal repondre(String chemin, int statut, String typeContenu, String corps, Map<String, String> entetes) {
-        reponses.put(chemin, new Reponse(statut, typeContenu, corps, 0, Map.copyOf(entetes)));
+        reponses.put(chemin, new Reponse(statut, typeContenu, corps.getBytes(StandardCharsets.UTF_8), 0, Map.copyOf(entetes)));
+        return this;
+    }
+
+    /** Réponse binaire (flux multiplexé des journaux du moteur Docker). */
+    public ServeurHttpLocal binaire(String chemin, int statut, String typeContenu, byte[] corps) {
+        reponses.put(chemin, new Reponse(statut, typeContenu, corps.clone(), 0, Map.of()));
         return this;
     }
 
@@ -74,7 +80,8 @@ public final class ServeurHttpLocal implements AutoCloseable {
                 chemin,
                 echange.getRequestURI().getRawQuery(),
                 echange.getRequestHeaders().getFirst("Authorization"),
-                corpsRecu
+                corpsRecu,
+                echange.getRequestHeaders().getFirst("Content-Type")
             )
         );
         Reponse r = reponses.getOrDefault(chemin, new Reponse(404, "application/json", "{}", 0));
@@ -85,7 +92,7 @@ public final class ServeurHttpLocal implements AutoCloseable {
                 Thread.currentThread().interrupt();
             }
         }
-        byte[] corps = r.corps().getBytes(StandardCharsets.UTF_8);
+        byte[] corps = r.corps();
         echange.getResponseHeaders().add("Content-Type", r.typeContenu());
         r.entetes().forEach((k, v) -> echange.getResponseHeaders().add(k, v));
         try {

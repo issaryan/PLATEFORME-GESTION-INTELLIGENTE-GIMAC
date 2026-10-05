@@ -160,6 +160,7 @@ describe('Enveloppe : recherche globale', () => {
             { cle: 'tb', libelleKey: 'x.tableau', icone: 'gauge', chemin: '/des/tableau-de-bord' },
             { cle: 'li', libelleKey: 'x.liaisons', icone: 'route', chemin: '/des/parcours' },
             { cle: 'adm', libelleKey: 'x.admin', icone: 'users', chemin: '/des/administration/comptes', permission: 'IAM_ACCOUNT_READ' },
+            { cle: 'inf', libelleKey: 'x.infra', icone: 'monitor', chemin: '/des/plateforme/infrastructure', predicat: { any: ['PLATFORM_OPS_READ'] } },
           ] }]} permissions={[]} espacePersonnel="/des" recherche={SOURCES}>
             <Routes><Route path="*" element={<Ici />} /></Routes>
           </Enveloppe>

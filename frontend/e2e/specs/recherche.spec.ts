@@ -23,6 +23,9 @@ for (const theme of ['light', 'dark'] as const) {
     await expect(page.getByRole('region', { name: 'Mon travail' })).toBeVisible()
     await test.step('Quand il ouvre la recherche par le bouton de la barre supérieure', async () => {
       await page.getByRole('button', { name: 'Recherche globale (Ctrl+K)' }).click()
+      // Écrans permis, dans l'ordre de la navigation (« Mon activité » d'abord, D-76) : un terme les filtre.
+      await expect(palette(page).getByRole('option', { name: 'Ma journée' })).toBeVisible()
+      await palette(page).getByRole('combobox').fill('liaisons')
       await expect(palette(page).getByRole('option', { name: 'Liaisons et parcours' })).toBeVisible()
     })
     await test.step('Et qu’il tape une référence de liaison', async () => {

@@ -41,7 +41,7 @@ class KafkaSourceEvenementsIT {
         .withStartupAttempts(3)
         .withEnv("KAFKA_LISTENERS", "PLAINTEXT://:9092,BROKER://:9093,CONTROLLER://:9094");
 
-    static final List<String> SUJETS = List.of("homologation.liaison", "certification.quitus", "collaboration.message");
+    static final List<String> SUJETS = List.of("homologation.liaison", "certification.quitus", "collaboration.message", "notification.inapp");
 
     static KafkaSourceEvenements source;
     static CanalDirectService canal;
@@ -122,6 +122,27 @@ class KafkaSourceEvenementsIT {
             .recordWith(java.util.ArrayList::new)
             .expectNextCount(3)
             .consumeRecordedWith(recus -> assertThat(recus).containsExactlyInAnyOrder("u1:m-1", "u1:h-1", "u3:h-1"))
+            .verifyComplete();
+    }
+
+    @Test
+    @DisplayName("Notification de la plateforme (D-80) : sujet notification, remise au seul destinataire du DES ou de la console")
+    void notification() {
+        Flux<VueEvenement> destinataire = evenements(Abonne.de(Couche.CONSOLE, "u1", "", "notification"));
+        Flux<VueEvenement> autre = evenements(Abonne.de(Couche.DES, "u3", "", "notification,homologation"));
+        StepVerifier.create(Flux.merge(destinataire.map(v -> "u1:" + v.id() + ":" + v.topic()), autre.map(v -> "u3:" + v.id())).take(2))
+            .then(() -> {
+                publier(
+                    "notification.inapp",
+                    "n-1",
+                    "{\"specversion\":\"1.0\",\"id\":\"o-1\",\"source\":\"/gimac/des/notification\",\"type\":\"notification.inapp-created.v1\"," +
+                    "\"subject\":\"n-1\",\"data\":{\"notificationId\":\"n-1\",\"type\":\"MESSAGE\",\"destinataires\":[\"u1\"],\"acteurId\":\"u2\",\"nombre\":1}}"
+                );
+                publier("homologation.liaison", "l-2", "{\"specversion\":\"1.0\",\"id\":\"h-2\",\"type\":\"homologation.liaison-opened.v1\",\"subject\":\"l-2\"}");
+            })
+            .recordWith(java.util.ArrayList::new)
+            .expectNextCount(2)
+            .consumeRecordedWith(recus -> assertThat(recus).containsExactlyInAnyOrder("u1:o-1:notification", "u3:h-2"))
             .verifyComplete();
     }
 

@@ -5,6 +5,7 @@ import type { OperationParcours } from '../../../modele/parcours'
 import { useDeposerLivrable } from '../../../hooks/parcours'
 import { ChampFichier } from '../../commun/ChampFichier'
 import { useErreurService } from '../liaisons/communs'
+import { libelleOperation } from '../../../adaptateurs/modelisateur'
 
 // Étapes 4 et 5 (rangs 7 à 11) : dépôt du compte rendu de la réunion de lancement ou d'un atelier. Le
 // fichier part au dépôt documentaire (empreinte revérifiée par le service), puis l'opération est close.
@@ -27,7 +28,7 @@ export function DialogueLivrable({ operation, onFermer, onDepose }: { operation:
       context="create"
       id="gm-livrable"
       title={t('parcoursLivrable.titre')}
-      description={t(`parcours.op.${operation.rang}`)}
+      description={libelleOperation(t, operation)}
       onClose={onFermer}
       onSubmit={soumettre}
       submitLabel={t('parcoursLivrable.deposer')}
