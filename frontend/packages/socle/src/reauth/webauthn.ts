@@ -17,6 +17,22 @@ export const b64u = (b: ArrayBuffer | ArrayBufferView): string => {
 /** Décodage base64url (avec ou sans remplissage). */
 export const fromB64u = (s: string): Uint8Array<ArrayBuffer> => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0))
 
+/**
+ * Clé de sécurité inutilisable dans ce navigateur : WebAuthn n'existe que dans un contexte sécurisé
+ * (HTTPS ou localhost). Servie en http par une adresse IP, la plateforme ne peut ni enrôler une clé ni
+ * signer un acte sensible ; elle le dit au lieu d'échouer sur une propriété absente.
+ */
+export class CleSecuriteIndisponible extends Error {
+  constructor() {
+    super('Les clés de sécurité ne fonctionnent que sur une connexion sécurisée (HTTPS). Ouvrez la plateforme par son adresse https, puis recommencez.')
+    this.name = 'CleSecuriteIndisponible'
+  }
+}
+
+/** Vrai si le navigateur peut utiliser une clé de sécurité (contexte sécurisé et WebAuthn présents). */
+export const cleSecuriteDisponible = (): boolean =>
+  typeof window !== 'undefined' && window.isSecureContext !== false && typeof navigator !== 'undefined' && Boolean(navigator.credentials) && typeof PublicKeyCredential !== 'undefined'
+
 /** L'utilisateur a annulé ou laissé expirer la demande de sa clé de sécurité. */
 export class ReauthCancelled extends Error {
   constructor() {
@@ -29,6 +45,7 @@ export class ReauthCancelled extends Error {
 export const estAnnulation = (e: unknown): boolean => e instanceof DOMException && (e.name === 'NotAllowedError' || e.name === 'AbortError')
 
 export async function getReauthAssertion(layer: Couche, purpose: SignPurpose): Promise<string> {
+  if (!cleSecuriteDisponible()) throw new CleSecuriteIndisponible()
   const ch = await http.post<Challenge>(`${prefixeIam(layer)}/reauthentification/defi`, { body: { purpose } })
   let cred: Credential | null
   try {

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { comptesHttp as fabriqueComptes } from './comptes'
 import { configurationHttp as fabriqueConfiguration } from './configuration'
 import { ouvrirFlux, plateformeHttp } from './plateforme'
@@ -19,9 +19,16 @@ const appels = (spy: Espion) =>
   })
 const entete = (spy: Espion, i: number, nom: string) => new Headers((spy.mock.calls[i][1] as RequestInit).headers).get(nom)
 
+// WebAuthn n'existe que dans un contexte sécurisé : jsdom n'expose pas PublicKeyCredential.
+beforeEach(() => {
+  vi.stubGlobal('PublicKeyCredential', class {})
+  vi.stubGlobal('isSecureContext', true)
+  if (!navigator.credentials) Object.defineProperty(navigator, 'credentials', { value: {}, configurable: true })
+})
 afterEach(() => {
   vi.restoreAllMocks()
   vi.useRealTimers()
+  vi.unstubAllGlobals()
 })
 
 describe('comptes (MS-IAM)', () => {

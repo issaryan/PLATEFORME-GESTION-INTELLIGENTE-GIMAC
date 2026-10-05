@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ConfirmDialog, InlineAlert, Link, SignDialog, type KeyValueItem } from '@gimac/design-system'
 import { useMessageErreur, type MessageErreur } from '@gimac/compte'
+import { sha256Hex } from '@gimac/socle'
 import { useChemins, useServicesConsole } from '../services/useServicesConsole'
 
 // Exécution des actes de la console, toujours composés du design system :
@@ -26,9 +27,7 @@ export type ActeSensible = Commun & { contenu: unknown; executer: (motif: string
 
 /** Empreinte SHA-256 (hexadécimal) du contenu de l'acte, affichée dans le dialogue de signature. */
 export async function empreinte(contenu: unknown): Promise<string> {
-  const octets = new TextEncoder().encode(JSON.stringify(contenu ?? null))
-  const d = await crypto.subtle.digest('SHA-256', octets)
-  return Array.from(new Uint8Array(d), (b) => b.toString(16).padStart(2, '0')).join('')
+  return sha256Hex(new TextEncoder().encode(JSON.stringify(contenu ?? null)))
 }
 
 export function useActes() {

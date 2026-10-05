@@ -1,6 +1,6 @@
 import { http } from '../http/client'
 import { prefixeIam, type Couche } from '../http/prefixes'
-import { b64u, estAnnulation, fromB64u, ReauthCancelled } from './webauthn'
+import { b64u, CleSecuriteIndisponible, cleSecuriteDisponible, estAnnulation, fromB64u, ReauthCancelled } from './webauthn'
 
 // Enrôlement d'une clé de sécurité FIDO2 depuis « Mon compte » (D-62, IAM-07) : options obtenues auprès
 // de MS-IAM, création de la clé par navigator.credentials.create, attestation renvoyée en base64url.
@@ -38,6 +38,7 @@ export function optionsCreation(o: OptionsEnrolement): PublicKeyCredentialCreati
  * Lève ReauthCancelled si l'utilisateur annule ou laisse expirer la demande.
  */
 export async function enrolerCleSecurite(couche: Couche, nom: string): Promise<CleSecurite> {
+  if (!cleSecuriteDisponible()) throw new CleSecuriteIndisponible()
   const base = `${prefixeIam(couche)}/moi/cles-securite`
   const options = await http.post<OptionsEnrolement>(`${base}/defi`)
   let cred: Credential | null

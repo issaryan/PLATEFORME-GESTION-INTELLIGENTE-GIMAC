@@ -1,4 +1,4 @@
-import { http, P } from '@gimac/socle'
+import { http, P, sha256Hex } from '@gimac/socle'
 import type { FiltreInstitutions } from '../../modele/participant'
 import type { ServiceParticipant } from '../ports'
 
@@ -18,8 +18,7 @@ const requete = (f: FiltreInstitutions) => ({
 
 /** Empreinte SHA-256 du fichier, en hexadécimal minuscule, calculée dans le navigateur. */
 export async function empreinteSha256(fichier: Blob): Promise<string> {
-  const d = await crypto.subtle.digest('SHA-256', await fichier.arrayBuffer())
-  return Array.from(new Uint8Array(d), (b) => b.toString(16).padStart(2, '0')).join('')
+  return sha256Hex(fichier)
 }
 
 export const participantHttp: ServiceParticipant = {

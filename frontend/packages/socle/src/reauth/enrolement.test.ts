@@ -1,6 +1,6 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { enrolerCleSecurite, optionsCreation, type OptionsEnrolement } from './enrolement'
-import { ReauthCancelled } from './webauthn'
+import { CleSecuriteIndisponible, ReauthCancelled } from './webauthn'
 
 // D-62 : enrôlement d'une clé de sécurité depuis « Mon compte » (navigator.credentials.create simulé).
 const json = (corps: object, status = 200) => new Response(JSON.stringify(corps), { status, headers: { 'Content-Type': 'application/json' } })
@@ -11,7 +11,15 @@ const OPTIONS: OptionsEnrolement = {
 }
 const credentials = (create: () => Promise<unknown>) => Object.defineProperty(navigator, 'credentials', { value: { create }, configurable: true })
 
-afterEach(() => vi.restoreAllMocks())
+// WebAuthn n'existe que dans un contexte sécurisé : jsdom n'expose pas PublicKeyCredential.
+beforeEach(() => {
+  vi.stubGlobal('PublicKeyCredential', class {})
+  vi.stubGlobal('isSecureContext', true)
+})
+afterEach(() => {
+  vi.restoreAllMocks()
+  vi.unstubAllGlobals()
+})
 
 describe('enrôlement d’une clé de sécurité', () => {
   it('options : défi, identifiant d’utilisateur et clés exclues décodés, vérification exigée', () => {
@@ -49,5 +57,15 @@ describe('enrôlement d’une clé de sécurité', () => {
     credentials(async () => { throw new TypeError('non pris en charge') })
     await expect(enrolerCleSecurite('console', 'Clé')).rejects.toBeInstanceOf(TypeError)
     expect(spy).toHaveBeenCalledTimes(3)
+  })
+
+  it('http sans contexte sécurisé : message explicite, aucun défi demandé', async () => {
+    const spy = vi.spyOn(globalThis, 'fetch')
+    vi.stubGlobal('isSecureContext', false)
+    await expect(enrolerCleSecurite('console', 'Clé')).rejects.toBeInstanceOf(CleSecuriteIndisponible)
+    vi.stubGlobal('isSecureContext', true)
+    vi.stubGlobal('PublicKeyCredential', undefined)
+    await expect(enrolerCleSecurite('console', 'Clé')).rejects.toThrow(/HTTPS/)
+    expect(spy).not.toHaveBeenCalled()
   })
 })

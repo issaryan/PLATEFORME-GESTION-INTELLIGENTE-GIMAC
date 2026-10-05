@@ -1,13 +1,21 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../http/errors'
-import { b64u, fromB64u, getReauthAssertion, ReauthCancelled, refusReauth } from './webauthn'
+import { b64u, CleSecuriteIndisponible, fromB64u, getReauthAssertion, ReauthCancelled, refusReauth } from './webauthn'
 
 // IAM-07, D-62 : défi sur /bff/<couche>/iam/reauthentification/defi, assertion pour X-Reauth-Assertion.
 const json = (corps: object, status = 200) => new Response(JSON.stringify(corps), { status, headers: { 'Content-Type': 'application/json' } })
 const octets = (...v: number[]) => new Uint8Array(v).buffer
 const credentials = (get: () => Promise<unknown>) => Object.defineProperty(navigator, 'credentials', { value: { get }, configurable: true })
 
-afterEach(() => vi.restoreAllMocks())
+// WebAuthn n'existe que dans un contexte sécurisé : jsdom n'expose pas PublicKeyCredential.
+beforeEach(() => {
+  vi.stubGlobal('PublicKeyCredential', class {})
+  vi.stubGlobal('isSecureContext', true)
+})
+afterEach(() => {
+  vi.restoreAllMocks()
+  vi.unstubAllGlobals()
+})
 
 describe('réauthentification FIDO2', () => {
   it('base64url : aller-retour sans remplissage', () => {
@@ -59,5 +67,12 @@ describe('réauthentification FIDO2', () => {
     expect(refusReauth(new ApiError(409, 'IAM_NO_SECURITY_KEY', '', ''))).toBe('SANS_CLE')
     expect(refusReauth(new ApiError(409, 'IAM_ACCOUNT_CONFLICT', '', ''))).toBeNull()
     expect(refusReauth(new Error('x'))).toBeNull()
+  })
+
+  it('http sans contexte sécurisé : message explicite au lieu d’une propriété absente', async () => {
+    const spy = vi.spyOn(globalThis, 'fetch')
+    vi.stubGlobal('isSecureContext', false)
+    await expect(getReauthAssertion('des', 'OPERATION_VALIDATE')).rejects.toBeInstanceOf(CleSecuriteIndisponible)
+    expect(spy).not.toHaveBeenCalled()
   })
 })
