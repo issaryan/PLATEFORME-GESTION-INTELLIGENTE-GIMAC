@@ -1,0 +1,26 @@
+# Diagnostic à la demande du serveur de démonstration (10.20.36.214) : état des conteneurs, ressources,
+# santé de la passerelle et dernières erreurs (infra/ci/diagnostiquer-serveur.sh). Lecture seule : rien
+# n'est reconstruit ni redémarré. Exécuté par l'exécuteur auto-hébergé du serveur.
+name: Diagnostic du serveur de démonstration
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploiement-serveur
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  diagnostic:
+    name: Diagnostic de gimac-214
+    runs-on: [self-hosted, gimac-214]
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          clean: false
+      - name: État de la plateforme
+        run: bash infra/ci/diagnostiquer-serveur.sh

@@ -8,6 +8,10 @@ name: Déploiement du serveur de démonstration
 on:
   push:
     branches: [main]
+    # Le diagnostic à la demande ne redéploie rien.
+    paths-ignore:
+      - .github/workflows/diagnostic-serveur.yml
+      - infra/ci/diagnostiquer-serveur.sh
   workflow_dispatch:
 
 # Une seule mise à jour à la fois ; une poussée plus récente remplace celle en attente.
