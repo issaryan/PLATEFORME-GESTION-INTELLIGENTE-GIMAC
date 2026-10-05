@@ -82,6 +82,44 @@ configurer_env() {
   definir GIMAC_KEYCLOAK_DB_PASSWORD "$(openssl rand -hex 20)"
 }
 
+# Publication (D-75, infra/serveur/publication.env) : en mode mixte ou https, les adresses publiques,
+# les origines des clés de sécurité et le témoin de session suivent les noms HTTPS du GIMAC. En mode
+# http, le .env reste tel quel (adresse IP et ports).
+fixer() {
+  if grep -q "^$1=" "$ENV"; then sed -i "s|^$1=.*|$1=$2|" "$ENV"; else echo "$1=$2" >> "$ENV"; fi
+}
+appliquer_publication() {
+  local pub="$RACINE/infra/serveur/publication.env" mode domaine port suffixe hote interne portail console
+  [ -f "$pub" ] || return 0
+  mode="$(sed -n 's/^GIMAC_PUBLICATION=//p' "$pub")"
+  case "$mode" in
+    http) return 0 ;;
+    mixte | https) ;;
+    *) echo "ERREUR : GIMAC_PUBLICATION doit valoir http, mixte ou https ($mode)" >&2; exit 1 ;;
+  esac
+  domaine="$(sed -n 's/^GIMAC_DOMAINE=//p' "$pub")"
+  port="$(sed -n 's/^GIMAC_PORT_HTTPS=//p' "$pub")"
+  suffixe=""; [ "${port:-443}" = 443 ] || suffixe=":$port"
+  interne="https://$(sed -n 's/^GIMAC_NOM_INTERNE=//p' "$pub").$domaine$suffixe"
+  portail="https://$(sed -n 's/^GIMAC_NOM_PORTAIL=//p' "$pub").$domaine$suffixe"
+  console="https://$(sed -n 's/^GIMAC_NOM_CONSOLE=//p' "$pub").$domaine$suffixe"
+  hote="$(sed -n 's/^GIMAC_HOTE_PUBLIC=//p' "$ENV")"
+  etape "Publication $mode : $interne, $portail, $console"
+  fixer GIMAC_URL_DES "$interne"
+  fixer GIMAC_URL_PORTAIL "$portail"
+  fixer GIMAC_URL_CONSOLE "$console"
+  # Clés de sécurité liées au domaine du GIMAC : valables sur les trois noms.
+  fixer GIMAC_WEBAUTHN_RP_ID "$domaine"
+  if [ "$mode" = mixte ]; then
+    fixer GIMAC_WEBAUTHN_ORIGINES "$interne,$portail,$console,http://$hote:4200,http://$hote:4201,http://$hote:4202"
+    # L'accès par l'adresse IP en http reste possible : témoin non Secure pendant la transition.
+    fixer GIMAC_SESSION_TEMOIN_SECURISE false
+  else
+    fixer GIMAC_WEBAUTHN_ORIGINES "$interne,$portail,$console"
+    fixer GIMAC_SESSION_TEMOIN_SECURISE true
+  fi
+}
+
 compose() {
   docker compose --project-name gimac-des -f "$COMPOSE_DIR/docker-compose.yml" \
     -f "$COMPOSE_DIR/docker-compose.gimac.yml" -f "$GIMAC_COMPOSE_SUPPLEMENT" --env-file "$ENV" "$@"
@@ -160,6 +198,7 @@ actualiser_configurations_montees() {
 
 outils
 configurer_env "${1:-}"
+appliquer_publication
 
 etape "Images des 14 microservices et extension Keycloak"
 "$COMPOSE_DIR/gimac-dev.sh" images

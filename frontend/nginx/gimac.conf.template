@@ -1,5 +1,13 @@
 # Service d'une couche de présentation. Seules ${GIMAC_PASSERELLE} et ${GIMAC_RESOLVEUR}
 # sont substituées au démarrage par l'image nginx ; les autres variables sont celles de nginx.
+# Protocole d'origine (D-75) : derrière le relais HTTPS du serveur (nginx de l'hôte), celui qu'il
+# transmet, pour que la passerelle pose ses témoins Secure et forme ses adresses en https ; à défaut,
+# celui de la requête reçue.
+map $http_x_forwarded_proto $proto_origine {
+    default $http_x_forwarded_proto;
+    ''      $scheme;
+}
+
 server {
     listen 8080;
     server_name _;
@@ -27,7 +35,7 @@ server {
         proxy_http_version 1.1;
         proxy_set_header Connection "";
         proxy_set_header Host $host;
-        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Proto $proto_origine;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_buffering off;
         proxy_cache off;
@@ -39,7 +47,7 @@ server {
         proxy_http_version 1.1;
         proxy_set_header Connection "";
         proxy_set_header Host $host;
-        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Proto $proto_origine;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_buffering off;
         proxy_cache off;
@@ -58,7 +66,7 @@ server {
         proxy_request_buffering off;
         proxy_pass $passerelle;
         proxy_set_header Host $host;
-        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Proto $proto_origine;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_buffering off;
         proxy_read_timeout 1h;

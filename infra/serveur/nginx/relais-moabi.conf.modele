@@ -1,0 +1,15 @@
+# Relais HTTPS de la plateforme Moabi sur le nginx de l'hôte 10.20.36.214 (D-75), produit par
+# infra/serveur/installer-relais-https.sh à partir de infra/serveur/publication.env. Un bloc par nom,
+# certificat générique *.@DOMAINE@ déjà présent sur le serveur, chaque nom relayé vers son interface
+# publiée en local : interne vers 4200, portail vers 4201, console vers 4202. Les blocs existants du
+# fichier default.conf (simulateur, payway, paygateproxy, iso8583, webssh) ne sont pas touchés : le choix
+# du bloc se fait par le nom demandé (SNI).
+
+# Canal temps réel (Server-Sent Events) et envois volumineux par morceaux (D-74) : ni tampon de
+# réponse ni de requête, connexions longues, corps jusqu'à 110 Mo.
+map $http_upgrade $moabi_connexion {
+    default upgrade;
+    ''      '';
+}
+
+@BLOCS@
