@@ -1,51 +1,76 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, CrudDialog, DateField, InlineAlert, KeyValueList, Link, Select, Skeleton, TextArea, TextField, Timeline } from '@gimac/design-system'
+import {
+  Button, CheckboxGroup, CrudDialog, DataTable, DateField, InlineAlert, KeyValueList, Link, ProgressRing, RadioGroup, Select, Skeleton, TextArea, TextField, Timeline, type Column,
+} from '@gimac/design-system'
 import { useSession } from '@gimac/socle'
-import { PRIORITES, TRANSITIONS_TACHE, motifExige, type EtatTache, type PersonneActivite, type Priorite, type Tache } from '../../../modele/pilotage'
+import { LIMITES_GROUPE, PRIORITES, TRANSITIONS_TACHE, motifExige, type EtatTache, type PersonneActivite, type Priorite, type Tache } from '../../../modele/pilotage'
+import { couverts, couvreUnites, rangPortee, type MesPouvoirs } from '../../../modele/pouvoirs'
 import { depuisSaisie, versSaisie } from '../../../modele/jours'
-import { useCreerTache, useModifierTache, useTache, useTransition } from '../../../hooks/pilotage'
-import { BadgePriorite, BadgeTache, pourDialogue, useDates, useErreur } from './communs'
+import {
+  useAttribuer, useCreerGroupe, useCreerTache, useGroupe, useModifierTache, usePrendre, useRelancer, useTache, useTransition, useUnites,
+} from '../../../hooks/pilotage'
+import { BadgePriorite, BadgeTache, pourDialogue, useDates, useErreur, useLibelleUnite } from './communs'
 
-// Tâches (D-76 §2.3, CP PIL-04 et PIL-08) : création pour soi ou, avec PIL_TASK_ASSIGN, pour un membre de son
-// équipe ; modification (créateur ou responsable) et réaffectation (créateur) ; transitions motivées quand
-// le cycle de vie l'exige ; fiche avec l'origine (lien vers l'objet qui l'a fait naître) et l'historique.
+// Tâches (D-76 §2.3, CP PIL-04 et PIL-08 ; D-81 §6) : création pour soi ou, avec PIL_TASK_ASSIGN et selon la
+// matrice des pouvoirs (TACHE_CONFIER), pour une personne, plusieurs personnes ou une unité de sa portée ;
+// modification (créateur ou responsable) et réaffectation (créateur) ; transitions motivées quand le cycle de vie
+// l'exige ; tâche à prendre (prise, attribution) ; relance ; fiche avec l'origine et l'historique.
 
-export function DialogueTache({ tache, membres, peutConfier, onFermer, onFait }: {
-  tache?: Tache; membres: PersonneActivite[]; peutConfier: boolean; onFermer: () => void; onFait: (message: string) => void
+/** Destination d'une nouvelle tâche (D-81 §6) : une personne (soi compris), plusieurs personnes ou une unité. */
+export type Destination = 'personne' | 'plusieurs' | 'unite'
+
+export function DialogueTache({ tache, pouvoirs, peutConfier, initiale: preremplie, onFermer, onFait }: {
+  tache?: Tache; pouvoirs?: MesPouvoirs; peutConfier: boolean; initiale?: { destination?: Destination; responsableId?: string; uniteCible?: string }
+  onFermer: () => void; onFait: (message: string) => void
 }) {
   const { t } = useTranslation()
   const session = useSession()
   const erreur = useErreur()
+  const libelleUnite = useLibelleUnite()
   const creer = useCreerTache()
+  const creerGroupe = useCreerGroupe()
   const modifier = useModifierTache()
-  const geste = tache ? modifier : creer
   const moi = session?.sujet ?? ''
-  const reaffectable = peutConfier && (!tache || tache.createur.id === moi)
+  const membres = couverts(pouvoirs, 'TACHE_CONFIER').filter((m) => m.actif && m.id !== moi)
+  const unites = peutConfier && couvreUnites(pouvoirs, 'TACHE_CONFIER') ? pouvoirs?.unitesDirigees ?? [] : []
+  const reaffectable = peutConfier && (!tache || (tache.createur.id === moi && !!tache.responsable))
+  const destinations: Destination[] = !tache && peutConfier ? ['personne', ...(membres.length >= 2 ? ['plusieurs' as const] : []), ...(unites.length ? ['unite' as const] : [])] : ['personne']
   const [initiale] = useState(() => ({
     titre: tache?.titre ?? '', description: tache?.description ?? '', echeance: tache?.echeance ? versSaisie(tache.echeance) : '', priorite: tache?.priorite ?? 'NORMALE' as Priorite,
-    responsableId: tache?.responsable.id ?? moi,
+    responsableId: tache?.responsable?.id ?? preremplie?.responsableId ?? moi, destination: preremplie?.destination ?? 'personne' as Destination,
+    responsables: [] as string[], uniteCible: preremplie?.uniteCible ?? '',
   }))
   const [v, setV] = useState(initiale)
   const [tente, setTente] = useState(false)
-  const champ = (k: keyof typeof v) => (x: string) => setV((o) => ({ ...o, [k]: x }))
+  const champ = (k: keyof typeof v) => (x: string | string[]) => setV((o) => ({ ...o, [k]: x }))
   const echeance = v.echeance.trim() ? depuisSaisie(v.echeance) : null
+  const destination = destinations.includes(v.destination) ? v.destination : 'personne'
   const erreurs = {
     titre: !v.titre.trim() ? t('act.tache.erreur.titre') : undefined,
     echeance: v.echeance.trim() && !echeance ? t('act.erreur.date') : undefined,
+    responsables: destination === 'plusieurs' && (v.responsables.length < LIMITES_GROUPE.min || v.responsables.length > LIMITES_GROUPE.max)
+      ? t('pvr.tache.erreur.plusieurs', { min: LIMITES_GROUPE.min, max: LIMITES_GROUPE.max }) : undefined,
+    uniteCible: destination === 'unite' && !v.uniteCible ? t('pvr.tache.erreur.unite') : undefined,
   }
+  const geste = tache ? modifier : destination === 'plusieurs' ? creerGroupe : creer
   const soumettre = () => {
     setTente(true)
     if (Object.values(erreurs).some(Boolean)) return
-    const entree = {
-      titre: v.titre.trim(), description: v.description.trim() || null, echeance, priorite: v.priorite,
-      ...(reaffectable && v.responsableId !== (tache?.responsable.id ?? moi) ? { responsableId: v.responsableId } : {}),
+    const base = { titre: v.titre.trim(), description: v.description.trim() || null, echeance, priorite: v.priorite }
+    if (tache) {
+      const entree = { ...base, ...(reaffectable && v.responsableId !== tache.responsable?.id ? { responsableId: v.responsableId } : {}) }
+      modifier.mutate({ id: tache.id, t: entree }, { onSuccess: () => onFait(t('act.tache.modifiee')) })
+    } else if (destination === 'plusieurs') {
+      creerGroupe.mutate({ ...base, responsables: v.responsables }, { onSuccess: (g) => onFait(t('pvr.tache.confieeGroupe', { count: g.taches.length })) })
+    } else if (destination === 'unite') {
+      creer.mutate({ ...base, uniteCible: v.uniteCible }, { onSuccess: () => onFait(t('pvr.tache.confieeUnite', { unite: libelleUnite(v.uniteCible) })) })
+    } else {
+      creer.mutate({ ...base, ...(reaffectable && v.responsableId !== moi ? { responsableId: v.responsableId } : {}) }, { onSuccess: () => onFait(t(v.responsableId !== moi ? 'act.tache.confiee' : 'act.tache.creee')) })
     }
-    if (tache) modifier.mutate({ id: tache.id, t: entree }, { onSuccess: () => onFait(t('act.tache.modifiee')) })
-    else creer.mutate(entree, { onSuccess: () => onFait(t(v.responsableId !== moi ? 'act.tache.confiee' : 'act.tache.creee')) })
   }
-  const personnes = [{ id: moi, nomAffiche: t('act.tache.moiMeme') }, ...membres.filter((m) => m.id !== moi)]
-  if (tache && !personnes.some((p) => p.id === tache.responsable.id)) personnes.push(tache.responsable)
+  const personnes: PersonneActivite[] = [{ id: moi, nomAffiche: t('act.tache.moiMeme') }, ...membres]
+  if (tache?.responsable && !personnes.some((p) => p.id === tache.responsable!.id)) personnes.push(tache.responsable)
   const e = (k: keyof typeof erreurs) => (tente ? erreurs[k] : undefined)
   return (
     <CrudDialog
@@ -67,13 +92,105 @@ export function DialogueTache({ tache, membres, peutConfier, onFermer, onFait }:
         <div className="gm-form-field">
           <Select name="priorite" label={t('act.tache.priorite')} value={v.priorite} onChange={champ('priorite')} options={PRIORITES.map((p) => ({ value: p, label: t(`act.priorite.${p}`) }))} />
         </div>
-        {reaffectable ? (
-          <div className="gm-form-field">
-            <Select name="responsableId" label={t('act.tache.responsable')} help={t('act.tache.responsableAide')} value={v.responsableId} onChange={champ('responsableId')}
-              options={personnes.map((p) => ({ value: p.id, label: p.nomAffiche }))} />
-          </div>
-        ) : null}
       </div>
+      {destinations.length > 1 ? (
+        <RadioGroup name="destination" label={t('pvr.tache.destination')} value={destination} onChange={champ('destination')}
+          options={destinations.map((d) => ({ value: d, label: t(`pvr.tache.destination.${d}`) }))} />
+      ) : null}
+      {reaffectable && destination === 'personne' ? (
+        <Select name="responsableId" label={t('act.tache.responsable')} help={t(tache ? 'act.tache.responsableAide' : 'pvr.tache.portee')} value={v.responsableId} onChange={champ('responsableId')}
+          options={personnes.map((p) => ({ value: p.id, label: p.nomAffiche }))} />
+      ) : null}
+      {destination === 'plusieurs' ? (
+        <CheckboxGroup id="gm-tache-responsables" label={t('pvr.tache.responsables')} value={v.responsables} onChange={champ('responsables')} error={e('responsables')}
+          options={membres.map((m) => ({ value: m.id, label: `${m.nomAffiche}${m.unite ? ` · ${libelleUnite(m.unite)}` : ''}` }))} />
+      ) : null}
+      {destination === 'unite' ? (
+        <Select name="uniteCible" label={t('pvr.tache.unite')} help={t('pvr.tache.uniteAide')} required value={v.uniteCible} onChange={champ('uniteCible')} error={e('uniteCible')}
+          options={[{ value: '', label: t('pvr.tache.choisirUnite') }, ...unites.map((u) => ({ value: u, label: libelleUnite(u) }))]} />
+      ) : null}
+    </CrudDialog>
+  )
+}
+
+/** Attribution d'une tâche à prendre à un membre de l'unité (créateur ou responsable de l'unité, D-81 §6). */
+export function DialogueAttribution({ tache, pouvoirs, onFermer, onFait }: { tache: Tache; pouvoirs?: MesPouvoirs; onFermer: () => void; onFait: (message: string) => void }) {
+  const { t } = useTranslation()
+  const erreur = useErreur()
+  const unites = useUnites()
+  const attribuer = useAttribuer()
+  const [choix, setChoix] = useState('')
+  const [tente, setTente] = useState(false)
+  const sous = (code: string): string[] => [code, ...(unites.data ?? []).filter((u) => u.parent === code).flatMap((u) => sous(u.code))]
+  const perimetre = tache.uniteCible ? sous(tache.uniteCible) : []
+  const membres = couverts(pouvoirs, 'TACHE_CONFIER').filter((m) => m.actif && m.unite && perimetre.includes(m.unite))
+  return (
+    <CrudDialog
+      context="edit"
+      id="gm-dlg-attribution"
+      title={t('pvr.tache.attribuer')}
+      subject={tache.titre}
+      description={t('pvr.tache.attribuerTexte')}
+      onClose={onFermer}
+      onSubmit={() => {
+        setTente(true)
+        if (choix) attribuer.mutate({ id: tache.id, responsableId: choix }, { onSuccess: (x) => onFait(t('pvr.tache.attribuee', { nom: x.responsable?.nomAffiche ?? '' })) })
+      }}
+      submitLabel={t('pvr.tache.attribuer')}
+      submitting={attribuer.isPending}
+      dirty={!!choix}
+      error={pourDialogue(erreur(attribuer.error))}
+    >
+      <Select name="responsableId" label={t('act.tache.responsable')} required value={choix} onChange={setChoix} error={tente && !choix ? t('pvr.tache.erreur.membre') : undefined}
+        options={[{ value: '', label: t('pvr.tache.choisirMembre') }, ...membres.map((m) => ({ value: m.id, label: m.nomAffiche }))]} />
+    </CrudDialog>
+  )
+}
+
+/** Suivi d'un groupe de tâches confiées à plusieurs personnes : avancement et relance de chacune. */
+export function DialogueGroupe({ groupeId, onFermer }: { groupeId: string; onFermer: () => void }) {
+  const { t } = useTranslation()
+  const dates = useDates()
+  const erreur = useErreur()
+  const groupe = useGroupe(groupeId)
+  const relancer = useRelancer()
+  const [relancee, setRelancee] = useState<string | null>(null)
+  const g = groupe.data
+  const pourcent = g && g.avancement.total ? Math.round((g.avancement.terminees / g.avancement.total) * 100) : 0
+  const colonnes: Column<Tache>[] = [
+    { key: 'responsable', header: t('act.tache.responsable'), render: (x) => x.responsable?.nomAffiche ?? '' },
+    { key: 'etat', header: t('act.tache.etat'), render: (x) => <BadgeTache etat={x.etat} enRetard={x.enRetard} /> },
+    { key: 'echeance', header: t('act.tache.echeance'), render: (x) => (x.echeance ? dates.jour(x.echeance) : t('act.tache.sansEcheance')) },
+    {
+      key: 'actions', header: '', type: 'actions', render: (x) => (x.etat === 'TERMINEE' || x.etat === 'ANNULEE' ? null : (
+        <Button size="sm" variant="secondary" icon="bell-ring" aria-label={t('pvr.tache.relancerQui', { nom: x.responsable?.nomAffiche ?? '' })}
+          onClick={() => relancer.mutate(x.id, { onSuccess: () => setRelancee(x.responsable?.nomAffiche ?? '') })}>{t('pvr.tache.relancer')}</Button>
+      )),
+    },
+  ]
+  return (
+    <CrudDialog
+      context="detail"
+      size="lg"
+      id="gm-dlg-groupe"
+      title={g ? t('pvr.groupe.titre', { titre: g.titre }) : t('pvr.groupe.suivi')}
+      subject={g ? t('pvr.groupe.creePar', { nom: g.createur.nomAffiche }) : undefined}
+      onClose={onFermer}
+      error={pourDialogue(erreur(relancer.error))}
+    >
+      {groupe.isError ? <InlineAlert level="crit" correlationId={groupe.error.correlationId || undefined}>{erreur(groupe.error)?.titre}</InlineAlert> : !g ? <Skeleton height={160} /> : (
+        <>
+          {relancee !== null ? <InlineAlert level="info">{t('pvr.tache.relanceeA', { nom: relancee })}</InlineAlert> : null}
+          <div className="gm-row" style={{ gap: 'var(--gm-space-4)', alignItems: 'center', flexWrap: 'wrap' }}>
+            <ProgressRing label={t('pvr.groupe.avancement')} value={pourcent} size={72} status={g.avancement.enRetard ? 'warn' : 'ok'} />
+            <KeyValueList items={[
+              { key: t('pvr.groupe.terminees'), value: t('pvr.groupe.sur', { faites: g.avancement.terminees, total: g.avancement.total }) },
+              { key: t('pvr.groupe.enRetard'), value: String(g.avancement.enRetard) },
+            ]} />
+          </div>
+          <DataTable columns={colonnes} rows={g.taches} rowKey={(x) => x.id} density="compact" pagination={false} />
+        </>
+      )}
     </CrudDialog>
   )
 }
@@ -103,17 +220,30 @@ export function DialogueTransition({ tache, vers, onFermer, onFait }: { tache: T
 }
 
 /** Fiche d'une tâche : état, échéance, responsable, origine, historique ; transitions et modification permises. */
-export function DetailTache({ id, onFermer, onModifier, onTransition }: { id: string; onFermer: () => void; onModifier: (t: Tache) => void; onTransition: (t: Tache, vers: EtatTache) => void }) {
+export function DetailTache({ id, pouvoirs, onFermer, onModifier, onTransition, onAttribuer, onGroupe, onFait }: {
+  id: string; pouvoirs?: MesPouvoirs; onFermer: () => void; onModifier: (t: Tache) => void; onTransition: (t: Tache, vers: EtatTache) => void
+  onAttribuer?: (t: Tache) => void; onGroupe?: (groupeId: string) => void; onFait?: (message: string) => void
+}) {
   const { t } = useTranslation()
   const dates = useDates()
   const erreur = useErreur()
+  const libelleUnite = useLibelleUnite()
   const session = useSession()
   const tache = useTache(id)
+  const prendre = usePrendre()
+  const relancer = useRelancer()
   const x = tache.data
   const moi = session?.sujet
-  const responsable = x?.responsable.id === moi
+  const responsable = !!x?.responsable && x.responsable.id === moi
   const createur = x?.createur.id === moi
-  const transitions = x ? TRANSITIONS_TACHE[x.etat].filter((v) => responsable || (createur && v === 'ANNULEE')) : []
+  // Tâche d'une étape de processus (D-87 §5.3) : elle suit l'étape, ni terminée ni annulée à la main.
+  const deProcessus = x?.origine.type === 'PROCESSUS'
+  const transitions = x ? TRANSITIONS_TACHE[x.etat].filter((v) => (responsable || (createur && v === 'ANNULEE')) && !(deProcessus && (v === 'TERMINEE' || v === 'ANNULEE'))) : []
+  const aPrendre = x?.etat === 'A_PRENDRE'
+  // Attribution : le créateur ou le responsable de l'unité visée ; relance : le créateur ou TACHE_SUIVRE (le service décide).
+  const attribuable = aPrendre && (createur || (!!x?.uniteCible && !!pouvoirs?.unitesDirigees.includes(x.uniteCible)))
+  const relancable = !!x?.responsable && !responsable && x.etat !== 'TERMINEE' && x.etat !== 'ANNULEE' && (createur || rangPortee(pouvoirs?.actions.TACHE_SUIVRE) > 0)
+  const geste = prendre.error ? prendre : relancer
   return (
     <CrudDialog
       context="detail"
@@ -121,12 +251,17 @@ export function DetailTache({ id, onFermer, onModifier, onTransition }: { id: st
       title={x?.titre ?? t('act.tache.fiche')}
       subject={x ? t('act.tache.creeePar', { nom: x.createur.nomAffiche, quand: dates.instant(x.creeeLe) }) : undefined}
       onClose={onFermer}
+      error={pourDialogue(erreur(geste.error))}
       extraActions={x ? (
         <>
+          {x.groupeId && onGroupe ? <Button variant="ghost" icon="users" onClick={() => onGroupe(x.groupeId!)}>{t('pvr.groupe.suivi')}</Button> : null}
+          {relancable ? <Button variant="secondary" icon="bell-ring" disabled={relancer.isPending} onClick={() => relancer.mutate(x.id, { onSuccess: () => onFait?.(t('pvr.tache.relanceeA', { nom: x.responsable!.nomAffiche })) })}>{t('pvr.tache.relancer')}</Button> : null}
+          {aPrendre && !createur ? <Button variant="primary" icon="check" disabled={prendre.isPending} onClick={() => prendre.mutate(x.id, { onSuccess: () => onFait?.(t('pvr.tache.prise')) })}>{t('pvr.tache.prendre')}</Button> : null}
+          {attribuable && onAttribuer ? <Button variant="secondary" icon="user" onClick={() => onAttribuer(x)}>{t('pvr.tache.attribuer')}</Button> : null}
           {transitions.map((v) => (
             <Button key={v} variant={v === 'ANNULEE' ? 'danger' : 'secondary'} onClick={() => onTransition(x, v)}>{t(`act.tache.vers.${v}`)}</Button>
           ))}
-          {responsable || createur ? <Button variant="primary" icon="pen-line" onClick={() => onModifier(x)}>{t('act.tache.modifier')}</Button> : null}
+          {(responsable || createur) && !aPrendre ? <Button variant="primary" icon="pen-line" onClick={() => onModifier(x)}>{t('act.tache.modifier')}</Button> : null}
         </>
       ) : undefined}
     >
@@ -137,7 +272,9 @@ export function DetailTache({ id, onFermer, onModifier, onTransition }: { id: st
               { key: t('act.tache.etat'), value: <BadgeTache etat={x.etat} enRetard={x.enRetard} /> },
               { key: t('act.tache.priorite'), value: <BadgePriorite priorite={x.priorite} /> },
               { key: t('act.tache.echeance'), value: x.echeance ? dates.jourLong(x.echeance) : t('act.tache.sansEcheance') },
-              { key: t('act.tache.responsable'), value: x.responsable.nomAffiche },
+              { key: t('act.tache.responsable'), value: x.responsable?.nomAffiche ?? t('pvr.tache.aPrendreUnite', { unite: libelleUnite(x.uniteCible) }) },
+              ...(x.uniteCible ? [{ key: t('pvr.tache.unite'), value: libelleUnite(x.uniteCible) }] : []),
+              ...(x.profilRequis ? [{ key: t('proc.tache.profilRequis'), value: t(`compte.profil.${x.profilRequis}`, { defaultValue: x.profilRequis }) }] : []),
               { key: t('act.tache.origine'), value: (
                 <span className="gm-row" style={{ gap: 'var(--gm-space-2)' }}>
                   <span>{t(`act.tache.origine.${x.origine.type}`)}</span>

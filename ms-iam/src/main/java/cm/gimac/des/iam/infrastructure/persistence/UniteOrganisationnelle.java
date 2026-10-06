@@ -31,6 +31,10 @@ public class UniteOrganisationnelle {
     @Column(name = "active", nullable = false)
     private boolean active;
 
+    /** Responsable de l'unité (D-81, docs/lot1/pouvoirs-hierarchiques.md §2) : compte interne actif, ou nul. */
+    @Column(name = "responsable_id", length = 36)
+    private String responsableId;
+
     protected UniteOrganisationnelle() {}
 
     public UniteOrganisationnelle(String code) {
@@ -42,9 +46,10 @@ public class UniteOrganisationnelle {
         this.type = u.type();
         this.parent = u.parent();
         this.active = u.active();
+        this.responsableId = u.responsableId();
     }
 
     public Unite versDomaine() {
-        return new Unite(code, libelle, type, parent, active);
+        return new Unite(code, libelle, type, parent, active, responsableId);
     }
 }

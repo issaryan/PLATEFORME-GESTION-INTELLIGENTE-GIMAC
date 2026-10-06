@@ -56,7 +56,54 @@ public final class ReglesOrganisation {
         if (u.type() == TypeUnite.DIRECTION && parent != null) {
             throw invalide("Une direction n'a pas d'unité parente", "parent", parent);
         }
-        return new Unite(u.code(), libelle, u.type(), parent, u.active());
+        String responsable = u.responsableId() == null || u.responsableId().isBlank() ? null : u.responsableId().trim();
+        return new Unite(u.code(), libelle, u.type(), parent, u.active(), responsable);
+    }
+
+    /**
+     * Vérifie le responsable d'une unité (D-81, docs/lot1/pouvoirs-hierarchiques.md §2) : compte interne
+     * actif, sinon 422 ORG_RESPONSABLE_INVALIDE. Nul : l'unité n'a pas de responsable.
+     */
+    public static void verifierResponsableUnite(String responsableId, Function<String, Optional<Compte>> lecteur) {
+        if (responsableId == null) {
+            return;
+        }
+        lecteur.apply(responsableId).filter(r -> r.interne() && r.actif()).orElseThrow(() ->
+            IamException.nonTraitable("ORG_RESPONSABLE_INVALIDE", "Le responsable d'une unité doit être un compte interne actif", Map.of("responsableId", responsableId))
+        );
+    }
+
+    /**
+     * Unités dirigées par un compte (§1, §2) : celles dont il est le responsable, et toutes leurs
+     * sous-unités ; codes triés, sans doublon.
+     */
+    public static List<String> unitesDirigees(String compteId, Collection<Unite> catalogue) {
+        Set<String> r = new java.util.TreeSet<>();
+        java.util.Deque<String> a = new java.util.ArrayDeque<>();
+        catalogue.stream().filter(u -> compteId != null && compteId.equals(u.responsableId())).map(Unite::code).forEach(a::add);
+        while (!a.isEmpty()) {
+            String code = a.poll();
+            if (r.add(code)) {
+                catalogue.stream().filter(u -> code.equals(u.parent())).map(Unite::code).forEach(a::add);
+            }
+        }
+        return List.copyOf(r);
+    }
+
+    /**
+     * Une unité et toutes ses sous-unités, actives ou non (D-86, membres d'une unité pour le moteur de
+     * processus) ; codes triés, l'unité elle-même comprise, sans cycle.
+     */
+    public static List<String> sousUnites(String code, Collection<Unite> catalogue) {
+        Set<String> r = new java.util.TreeSet<>();
+        java.util.Deque<String> a = new java.util.ArrayDeque<>(List.of(code));
+        while (!a.isEmpty()) {
+            String c = a.poll();
+            if (r.add(c)) {
+                catalogue.stream().filter(u -> c.equals(u.parent())).map(Unite::code).forEach(a::add);
+            }
+        }
+        return List.copyOf(r);
     }
 
     /**

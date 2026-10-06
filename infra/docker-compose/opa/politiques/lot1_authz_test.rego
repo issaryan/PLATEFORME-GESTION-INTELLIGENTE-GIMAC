@@ -682,6 +682,85 @@ test_pilotage_interne_jamais_relaye if not authz.allow with input as {
 	"authentifie": true, "acr": "2",
 }
 
+# D-87 : processus d'unité (docs/lot1/processus-unite.md §5.1), toutes les méthodes et tous les chemins du contrat.
+routes_processus := [
+	["GET", "/bff/des/pilotage/processus"],
+	["POST", "/bff/des/pilotage/processus"],
+	["GET", "/bff/des/pilotage/processus/p1"],
+	["PUT", "/bff/des/pilotage/processus/p1"],
+	["DELETE", "/bff/des/pilotage/processus/p1"],
+	["POST", "/bff/des/pilotage/processus/p1/controle"],
+	["POST", "/bff/des/pilotage/processus/p1/publication"],
+	["POST", "/bff/des/pilotage/processus/p1/nouvelle-version"],
+	["POST", "/bff/des/pilotage/processus/p1/retrait"],
+	["POST", "/bff/des/pilotage/processus/p1/instances"],
+	["GET", "/bff/des/pilotage/processus/instances"],
+	["GET", "/bff/des/pilotage/processus/instances/i1"],
+	["POST", "/bff/des/pilotage/processus/instances/i1/etapes/ANALYSE/livrables"],
+	["PUT", "/bff/des/pilotage/processus/instances/i1/etapes/ANALYSE/champs"],
+	["POST", "/bff/des/pilotage/processus/instances/i1/etapes/RECETTE/signature"],
+	["POST", "/bff/des/pilotage/processus/instances/i1/etapes/ANALYSE/fin"],
+	["POST", "/bff/des/pilotage/processus/instances/i1/etapes/ANALYSE/validation"],
+	["POST", "/bff/des/pilotage/processus/instances/i1/etapes/ANALYSE/reaffectation"],
+	["POST", "/bff/des/pilotage/processus/instances/i1/suspension"],
+	["POST", "/bff/des/pilotage/processus/instances/i1/reprise"],
+	["POST", "/bff/des/pilotage/processus/instances/i1/annulation"],
+]
+
+test_processus_avec_permission if {
+	every r in routes_processus {
+		authz.allow with input as {"method": r[0], "path": r[1], "permissions": ["PIL_ACTIVITY_OWN"], "authentifie": true, "acr": "2"}
+	}
+}
+
+test_processus_sans_permission if {
+	every r in routes_processus {
+		not authz.allow with input as {
+			"method": r[0], "path": r[1], "permissions": ["PIL_TEAM_READ", "TACHE_CONFIER", "IAM_PROFILE_EDIT", "COL_MESSAGE_READ"],
+			"authentifie": true, "acr": "2",
+		}
+	}
+}
+
+test_processus_compte_externe_refuse if {
+	every r in routes_processus {
+		not authz.allow with input as {
+			"method": r[0], "path": r[1], "permissions": ["PIL_ACTIVITY_OWN"], "institution_id": "INST-0042",
+			"authentifie": true, "acr": "2",
+		}
+	}
+}
+
+test_processus_sans_second_facteur_refuse if {
+	every r in routes_processus {
+		not authz.allow with input as {"method": r[0], "path": r[1], "permissions": ["PIL_ACTIVITY_OWN"], "authentifie": true, "acr": "1"}
+	}
+}
+
+test_processus_session_restreinte_refusee if not authz.allow with input as {
+	"method": "GET", "path": "/bff/des/pilotage/processus", "permissions": ["PIL_ACTIVITY_OWN"], "authentifie": true, "acr": "2",
+	"restreinte": true,
+}
+
+# Méthode ou chemin hors contrat : refusé, sans repli sur @PreAuthorize ; ni console ni portail.
+test_processus_hors_contrat_refuse if {
+	every r in [
+		["PATCH", "/bff/des/pilotage/processus/p1"],
+		["DELETE", "/bff/des/pilotage/processus/instances/i1"],
+		["PUT", "/bff/des/pilotage/processus/instances/i1/etapes/E/signature"],
+		["POST", "/bff/des/pilotage/processus/p1/autre"],
+		["POST", "/bff/des/pilotage/processus/instances/i1/etapes/E/autre"],
+		["GET", "/bff/des/pilotage/processus/instances/i1/etapes/E"],
+		["GET", "/bff/des/pilotage/processus/p1/publication/x"],
+		["POST", "/bff/des/pilotage/processus/instances/i1/cloture"],
+		["GET", "/bff/console/pilotage/processus"],
+		["GET", "/bff/portail/pilotage/processus"],
+		["POST", "/bff/des/pilotage/processus/interne/x"],
+	] {
+		not authz.allow with input as {"method": r[0], "path": r[1], "permissions": ["PIL_ACTIVITY_OWN"], "authentifie": true, "acr": "2"}
+	}
+}
+
 test_unites_lecture_membre_interne if authz.allow with input as {
 	"method": "GET", "path": "/bff/des/iam/organisation/unites", "permissions": ["PIL_ACTIVITY_OWN"], "authentifie": true, "acr": "2",
 }
@@ -734,6 +813,42 @@ test_modelisateur_lecture_graphe if authz.allow with input as {
 	"method": "GET", "path": "/bff/des/homologation/referentiels/v1/graphe", "permissions": ["HOM_REFERENTIEL_READ"], "authentifie": true, "acr": "2",
 }
 
+# D-89 : étapes configurables d'un brouillon (ajout, renommage, ordre, retrait) ; lecture filtrée par le service.
+routes_etapes_referentiel := [
+	["POST", "/bff/des/homologation/referentiels/v1/etapes"],
+	["PUT", "/bff/des/homologation/referentiels/v1/etapes/REVUE_JURIDIQUE"],
+	["PUT", "/bff/des/homologation/referentiels/v1/etapes/ordre"],
+	["DELETE", "/bff/des/homologation/referentiels/v1/etapes/REVUE_JURIDIQUE"],
+]
+
+test_etapes_referentiel_editeur if {
+	every r in routes_etapes_referentiel {
+		authz.allow with input as {"method": r[0], "path": r[1], "permissions": ["HOM_REFERENTIEL_EDIT"], "authentifie": true, "acr": "2"}
+	}
+}
+
+test_etapes_referentiel_lecteur_refuse if {
+	every r in routes_etapes_referentiel {
+		not authz.allow with input as {"method": r[0], "path": r[1], "permissions": ["HOM_REFERENTIEL_READ", "HOM_REFERENTIEL_READ_ALL"], "authentifie": true, "acr": "2"}
+	}
+}
+
+test_etapes_referentiel_un_facteur_refuse if {
+	not authz.allow with input as {
+		"method": "POST", "path": "/bff/des/homologation/referentiels/v1/etapes", "permissions": ["HOM_REFERENTIEL_EDIT"], "authentifie": true, "acr": "1",
+	}
+}
+
+test_etapes_referentiel_chemin_imbrique_non_couvert if {
+	not authz.required_permission with input as {"method": "DELETE", "path": "/bff/des/homologation/referentiels/v1/etapes/A/B"}
+}
+
+test_referentiel_lecture_filtree if {
+	every chemin in ["/bff/des/homologation/referentiels/v1/etapes", "/bff/des/homologation/referentiels/v1/export", "/bff/des/homologation/referentiels/catalogue"] {
+		authz.allow with input as {"method": "GET", "path": chemin, "permissions": ["HOM_REFERENTIEL_READ"], "authentifie": true, "acr": "2"}
+	}
+}
+
 # D-80 : notifications de la plateforme, comptes internes seulement.
 routes_notifications := [
 	["GET", "/bff/des/notification/notifications"],
@@ -767,4 +882,188 @@ test_notifications_compte_externe_refuse if {
 
 test_notifications_chemin_non_liste_refuse if not authz.allow with input as {
 	"method": "DELETE", "path": "/bff/des/notification/notifications/n1", "permissions": ["NOT_INBOX_READ"], "authentifie": true, "acr": "2",
+}
+
+# D-81 : pouvoirs des chefs, demandes à l'administration, profils créés, tâches confiées.
+routes_pouvoirs := [
+	["GET", "/bff/des/iam/pouvoirs/matrice", "IAM_ACCOUNT_READ"],
+	["PUT", "/bff/console/iam/pouvoirs/matrice/ROLE_CHEF_DES", "IAM_PROFILE_EDIT"],
+	["GET", "/bff/des/iam/pouvoirs/moi", "PIL_ACTIVITY_OWN"],
+	["PUT", "/bff/des/iam/pouvoirs/subordonnes/u1/rattachement", "PIL_ACTIVITY_OWN"],
+	["POST", "/bff/des/iam/demandes", "PIL_ACTIVITY_OWN"],
+	["GET", "/bff/des/iam/demandes", "PIL_ACTIVITY_OWN"],
+	["GET", "/bff/console/iam/demandes/d1", "PIL_ACTIVITY_OWN"],
+	["POST", "/bff/des/iam/demandes/d1/annulation", "PIL_ACTIVITY_OWN"],
+	["POST", "/bff/des/iam/demandes/d1/acceptation", "IAM_ACCOUNT_CREATE"],
+	["POST", "/bff/console/iam/demandes/d1/refus", "IAM_ACCOUNT_READ"],
+	["POST", "/bff/des/iam/configuration/profils", "IAM_PROFILE_EDIT"],
+	["DELETE", "/bff/console/iam/configuration/profils/ROLE_OPERATEUR_RESEAU", "IAM_PROFILE_EDIT"],
+	["GET", "/bff/des/pilotage/taches/groupes/g1", "PIL_ACTIVITY_OWN"],
+	["POST", "/bff/des/pilotage/taches/t1/prise", "PIL_ACTIVITY_OWN"],
+	["POST", "/bff/des/pilotage/taches/t1/attribution", "PIL_ACTIVITY_OWN"],
+	["POST", "/bff/des/pilotage/taches/t1/relance", "PIL_ACTIVITY_OWN"],
+]
+
+test_pouvoirs_avec_permission if {
+	every r in routes_pouvoirs {
+		authz.allow with input as {"method": r[0], "path": r[1], "permissions": [r[2]], "authentifie": true, "acr": "2"}
+	}
+}
+
+test_pouvoirs_sans_permission if {
+	every r in routes_pouvoirs {
+		not authz.allow with input as {"method": r[0], "path": r[1], "permissions": ["COL_MESSAGE_READ"], "authentifie": true, "acr": "2"}
+	}
+}
+
+routes_pouvoirs_reservees := [r | some r in routes_pouvoirs; not contains(r[1], "/configuration/")]
+
+test_pouvoirs_compte_externe_refuse if {
+	every r in routes_pouvoirs_reservees {
+		not authz.allow with input as {
+			"method": r[0], "path": r[1], "permissions": [r[2]], "institution_id": "INST-0042",
+			"authentifie": true, "acr": "2",
+		}
+	}
+}
+
+# Rattachement d'un subordonné : PUT sur le département seulement, avec PIL_ACTIVITY_OWN ; la route
+# d'administration du rattachement reste réservée à IAM_ACCOUNT_EDIT.
+# D-86 : libellé et description d'un profil (PUT), sans ouvrir la recomposition ni la création à IAM_ACCOUNT_READ.
+routes_profils_organisation := [
+	["PUT", "/bff/console/iam/configuration/profils/ROLE_POLE_RESEAU"],
+	["PUT", "/bff/des/iam/configuration/profils/ROLE_OPERATEUR_RESEAU"],
+]
+
+test_profil_presentation_avec_permission if {
+	every r in routes_profils_organisation {
+		authz.allow with input as {"method": r[0], "path": r[1], "permissions": ["IAM_PROFILE_EDIT"], "authentifie": true, "acr": "2"}
+	}
+}
+
+test_profil_presentation_sans_permission if {
+	every r in routes_profils_organisation {
+		not authz.allow with input as {"method": r[0], "path": r[1], "permissions": ["IAM_ACCOUNT_READ"], "authentifie": true, "acr": "2"}
+	}
+}
+
+# Sur la console (pas de repli vers @PreAuthorize), seuls les chemins listés sont ouverts.
+test_profil_presentation_chemins_voisins if {
+	authz.allow with input as {"method": "PUT", "path": "/bff/console/iam/configuration/profils/ROLE_SNA/permissions", "permissions": ["IAM_PROFILE_EDIT"], "authentifie": true, "acr": "2"}
+	not authz.allow with input as {"method": "PUT", "path": "/bff/console/iam/configuration/profils/ROLE_SNA/autre", "permissions": ["IAM_PROFILE_EDIT"], "authentifie": true, "acr": "2"}
+	not authz.allow with input as {"method": "PUT", "path": "/bff/console/iam/configuration/profils", "permissions": ["IAM_PROFILE_EDIT"], "authentifie": true, "acr": "2"}
+	not authz.allow with input as {"method": "PATCH", "path": "/bff/console/iam/configuration/profils/ROLE_SNA", "permissions": ["IAM_PROFILE_EDIT"], "authentifie": true, "acr": "2"}
+	not authz.allow with input as {"method": "PUT", "path": "/bff/portail/iam/configuration/profils/ROLE_SNA", "permissions": ["IAM_PROFILE_EDIT"], "institution_id": "INST-0042", "authentifie": true, "acr": "2"}
+}
+
+# Sans double facteur, refusé même avec la permission.
+test_profil_presentation_sans_double_facteur if not authz.allow with input as {
+	"method": "PUT", "path": "/bff/console/iam/configuration/profils/ROLE_SNA", "permissions": ["IAM_PROFILE_EDIT"], "authentifie": true, "acr": "1",
+}
+
+test_rattachement_subordonne_avec_permission if authz.allow with input as {
+	"method": "PUT", "path": "/bff/des/iam/pouvoirs/subordonnes/u1/rattachement", "permissions": ["PIL_ACTIVITY_OWN"],
+	"authentifie": true, "acr": "2",
+}
+
+test_rattachement_subordonne_sans_permission if not authz.allow with input as {
+	"method": "PUT", "path": "/bff/des/iam/pouvoirs/subordonnes/u1/rattachement", "permissions": ["IAM_ACCOUNT_EDIT"],
+	"authentifie": true, "acr": "2",
+}
+
+test_rattachement_subordonne_autres_formes_refusees if {
+	not authz.allow with input as {
+		"method": "POST", "path": "/bff/des/iam/pouvoirs/subordonnes/u1/rattachement", "permissions": ["PIL_ACTIVITY_OWN"],
+		"authentifie": true, "acr": "2",
+	}
+	not authz.allow with input as {
+		"method": "PUT", "path": "/bff/console/iam/pouvoirs/subordonnes/u1/rattachement", "permissions": ["PIL_ACTIVITY_OWN"],
+		"authentifie": true, "acr": "2",
+	}
+	not authz.allow with input as {
+		"method": "PUT", "path": "/bff/des/iam/pouvoirs/subordonnes/u1/x/rattachement", "permissions": ["PIL_ACTIVITY_OWN"],
+		"authentifie": true, "acr": "2",
+	}
+	not authz.allow with input as {
+		"method": "PUT", "path": "/bff/des/iam/comptes/u1/rattachement", "permissions": ["PIL_ACTIVITY_OWN"],
+		"authentifie": true, "acr": "2",
+	}
+}
+
+test_pouvoirs_interne_jamais_relaye if not authz.allow with input as {
+	"method": "GET", "path": "/bff/des/iam/interne/pouvoirs/u1", "permissions": ["PIL_ACTIVITY_OWN", "INTERNAL_IAM_READ"],
+	"authentifie": true, "acr": "2",
+}
+
+# Aperçu des documents bureautiques (D-83, docs/lot1/apercu-bureautique.md §2) : POST seulement, département et
+# console, PIL_ACTIVITY_OWN, comptes internes seulement.
+test_apercus_des_et_console if {
+	every couche in ["des", "console"] {
+		authz.allow with input as {
+			"method": "POST", "path": sprintf("/bff/%s/document/apercus", [couche]), "permissions": ["PIL_ACTIVITY_OWN"],
+			"authentifie": true, "acr": "2",
+		}
+	}
+}
+
+test_apercus_acr_3 if authz.allow with input as {
+	"method": "POST", "path": "/bff/console/document/apercus", "permissions": ["PIL_ACTIVITY_OWN"],
+	"institution_id": "", "authentifie": true, "acr": "3",
+}
+
+test_apercus_sans_permission_refuse if not authz.allow with input as {
+	"method": "POST", "path": "/bff/des/document/apercus",
+	"permissions": ["DOC_DEPOSIT", "COL_MESSAGE_SEND", "COL_MESSAGE_READ"], "authentifie": true, "acr": "2",
+}
+
+test_apercus_sans_second_facteur_refuse if not authz.allow with input as {
+	"method": "POST", "path": "/bff/des/document/apercus", "permissions": ["PIL_ACTIVITY_OWN"],
+	"authentifie": true, "acr": "1",
+}
+
+test_apercus_compte_externe_refuse if {
+	every couche in ["des", "console"] {
+		not authz.allow with input as {
+			"method": "POST", "path": sprintf("/bff/%s/document/apercus", [couche]), "permissions": ["PIL_ACTIVITY_OWN"],
+			"institution_id": "INST-0042", "authentifie": true, "acr": "2",
+		}
+	}
+}
+
+test_apercus_portail_refuse if not authz.allow with input as {
+	"method": "POST", "path": "/bff/portail/document/apercus", "permissions": ["PIL_ACTIVITY_OWN", "HOM_PORTAL_SUBMIT"],
+	"institution_id": "INST-0042", "authentifie": true, "acr": "2",
+}
+
+test_apercus_autres_methodes_et_chemins_refuses if {
+	every r in [
+		["GET", "/bff/des/document/apercus"],
+		["PUT", "/bff/des/document/apercus"],
+		["DELETE", "/bff/console/document/apercus"],
+		["POST", "/bff/des/document/apercus/a1"],
+		["GET", "/bff/des/document/apercus/a1"],
+	] {
+		not authz.allow with input as {
+			"method": r[0], "path": r[1], "permissions": ["PIL_ACTIVITY_OWN", "DOC_DEPOSIT"],
+			"authentifie": true, "acr": "2",
+		}
+	}
+}
+
+test_apercus_session_restreinte_refuse if not authz.allow with input as {
+	"method": "POST", "path": "/bff/des/document/apercus", "permissions": ["PIL_ACTIVITY_OWN"],
+	"authentifie": true, "acr": "2", "restreinte": true,
+}
+
+test_acceptation_demande_sans_creation_refusee if {
+	not authz.allow with input as {"method": "POST", "path": "/bff/des/iam/demandes/d1/acceptation", "permissions": ["IAM_ACCOUNT_READ"], "authentifie": true, "acr": "2"}
+}
+
+# D-88 : détail « Lu par » d'un de mes messages.
+test_lectures_message_avec_permission if {
+	authz.allow with input as {"method": "GET", "path": "/bff/des/collaboration/messagerie/conversations/c1/messages/m1/lectures", "permissions": ["COL_MESSAGE_READ"], "authentifie": true, "acr": "2"}
+}
+
+test_lectures_message_sans_permission if {
+	not authz.allow with input as {"method": "GET", "path": "/bff/des/collaboration/messagerie/conversations/c1/messages/m1/lectures", "permissions": ["PIL_ACTIVITY_OWN"], "authentifie": true, "acr": "2"}
 }

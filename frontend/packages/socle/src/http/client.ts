@@ -19,6 +19,12 @@ export type RequestOptions = {
   fond?: boolean
   /** Route publique (connexion) : un 401 est une réponse du formulaire, jamais une session expirée. */
   anonyme?: boolean
+  /** Corps binaire (Blob) : son type, sinon celui du Blob, sinon application/octet-stream. */
+  contentType?: string
+  /** En-têtes propres à la route (X-Nom-Fichier de l'aperçu bureautique, D-83). */
+  entetes?: Record<string, string>
+  /** Réponse lue comme un Blob (PDF de l'aperçu bureautique, D-83) plutôt qu'en JSON. */
+  binaire?: boolean
 }
 
 export type HttpHooks = {
@@ -63,7 +69,10 @@ async function send(method: string, path: string, o: RequestOptions, rejoue = fa
     if (v !== undefined) url.searchParams.set(k, String(v))
   })
   const headers = new Headers({ Accept: o.accept ?? 'application/json' })
-  if (o.body !== undefined && !(o.body instanceof FormData)) headers.set('Content-Type', 'application/json')
+  const binaire = o.body instanceof Blob
+  if (binaire) headers.set('Content-Type', o.contentType || (o.body as Blob).type || 'application/octet-stream')
+  else if (o.body !== undefined && !(o.body instanceof FormData)) headers.set('Content-Type', 'application/json')
+  Object.entries(o.entetes ?? {}).forEach(([k, v]) => headers.set(k, v))
   if (o.reauthAssertion) headers.set('X-Reauth-Assertion', o.reauthAssertion)
   if (o.fond) headers.set('X-Gimac-Fond', '1')
   if (csrf && MUTATIONS.has(method)) {
@@ -78,7 +87,7 @@ async function send(method: string, path: string, o: RequestOptions, rejoue = fa
       headers,
       credentials: 'same-origin',
       signal: o.signal,
-      body: o.body === undefined ? undefined : o.body instanceof FormData ? o.body : JSON.stringify(o.body),
+      body: o.body === undefined ? undefined : o.body instanceof FormData || binaire ? (o.body as BodyInit) : JSON.stringify(o.body),
     })
   } catch (e) {
     if (e instanceof DOMException && e.name === 'AbortError') throw e
@@ -125,7 +134,7 @@ export const http = {
     const r = await send('GET', path, o)
     return { donnees: await json<R>(r), entetes: r.headers }
   },
-  post: <R>(path: string, o: RequestOptions = {}) => send('POST', path, o).then((r) => json<R>(r)),
+  post: <R>(path: string, o: RequestOptions = {}) => send('POST', path, o).then((r) => (o.binaire ? (r.blob() as Promise<R>) : json<R>(r))),
   put: <R>(path: string, o: RequestOptions = {}) => send('PUT', path, o).then((r) => json<R>(r)),
   patch: <R>(path: string, o: RequestOptions = {}) => send('PATCH', path, o).then((r) => json<R>(r)),
   delete: <R = void>(path: string, o: RequestOptions = {}) => send('DELETE', path, o).then((r) => json<R>(r)),

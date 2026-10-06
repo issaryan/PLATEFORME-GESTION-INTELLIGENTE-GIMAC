@@ -172,6 +172,21 @@ class DepotFragmenteServiceTest {
     }
 
     @Test
+    @DisplayName("D-87 : PROCESSUS_UNITE exige PIL_ACTIVITY_OWN, ni COL_MESSAGE_SEND ni une permission du dépôt direct ; référence = identifiant de l'instance")
+    void permissionProcessusUnite() {
+        String instance = UUID.randomUUID().toString();
+        Ouverture livrable = new Ouverture("note.pdf", "application/pdf", 10L, "processus_unite", instance);
+        erreur(() -> service.ouvrir(livrable, new Demandeur(AGENT, null, Set.of("DOC_DEPOSIT"))), 403, "DOC_PURPOSE_FORBIDDEN");
+        erreur(() -> service.ouvrir(livrable, new Demandeur(AGENT, null, Set.of("COL_MESSAGE_SEND"))), 403, "DOC_PURPOSE_FORBIDDEN");
+        erreur(() -> service.ouvrir(livrable, new Demandeur(AGENT, null, Set.of("HOM_STEP_MANAGE", "PAR_ADHESION_INSTRUCT"))), 403, "DOC_PURPOSE_FORBIDDEN");
+        var ouvert = service.ouvrir(livrable, new Demandeur(AGENT, null, Set.of("PIL_ACTIVITY_OWN")));
+        assertThat(ouvert.etat()).isEqualTo(EtatDepotFragmente.OUVERT);
+        assertThat(base.depot(ouvert.id()).getFinalite()).isEqualTo("PROCESSUS_UNITE");
+        assertThat(base.depot(ouvert.id()).getReference()).isEqualTo(instance);
+        assertThat(stockage.envoisEnCours()).isEqualTo(1);
+    }
+
+    @Test
     @DisplayName("Admission : taille absente, négative ou nulle (400), au-delà du maximum (413), finalité et référence (400) ; rien n'est ouvert")
     void admission() {
         erreur(() -> service.ouvrir(ouverture("ADHESION", null), DEMANDEUR), 400, "DOC_SIZE_INVALID");

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react'
 import { useLocation, useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { Banner, Footer, SideNav, TopBar, type IconName } from '@gimac/design-system'
@@ -13,6 +13,7 @@ import { satisfait, type Predicat } from '../session/aiguillage'
 import { useCompteurNotifications, useContexteNotifications } from '../notifications/contexte'
 import { PanneauNotifications } from '../notifications/Cloche'
 import { NotificationsSurgissantes } from '../notifications/Surgissantes'
+import { ContexteBarreLaterale } from './barreLaterale'
 
 type Cloche = { nonLues: number; panneau: (fermer: () => void) => ReactNode }
 
@@ -80,6 +81,9 @@ export function Enveloppe(p: EnveloppeProps) {
   // Sous 1 280 px (--gm-bp-lg), la navigation devient un tiroir ouvert par le bouton de menu (§6.2, §10.2).
   const [etroit, setEtroit] = useState(() => window.innerWidth < 1280)
   const [navOuverte, setNavOuverte] = useState(false)
+  // Mode icônes de la barre latérale (D-84), demandé par un écran (messagerie élargie).
+  const [reduite, setReduite] = useState(false)
+  const barreLaterale = useMemo(() => ({ reduite, reduire: setReduite, active: !etroit }), [reduite, etroit])
   const [rechercheOuverte, setRechercheOuverte] = useState(false)
   const avecRecherche = p.recherche !== undefined && p.couche !== 'portail'
 
@@ -156,6 +160,7 @@ export function Enveloppe(p: EnveloppeProps) {
   const notifications = useContexteNotifications()
   // Logo principal blanc, fondu dans le dégradé bleu de la navigation (dans les deux thèmes).
   const nav = <SideNav current={courante?.cle ?? ''} groups={groupes} height="100%" logo={logoBlanc} couche={p.couche} />
+  const navLaterale = <SideNav current={courante?.cle ?? ''} groups={groupes} height="100%" logo={logoBlanc} couche={p.couche} reduite={reduite} />
 
   const barre = (cloche?: Cloche) => (
     <TopBar
@@ -186,7 +191,7 @@ export function Enveloppe(p: EnveloppeProps) {
 
   return (
     <div className="gm-root gm-shell" onClick={intercepter}>
-      {etroit ? null : <div className="gm-shell-nav">{nav}</div>}
+      {etroit ? null : <div className="gm-shell-nav">{navLaterale}</div>}
       <div className="gm-shell-colonne">
       <div className="gm-shell-top">
         {notifications ? <AvecCloche>{barre}</AvecCloche> : barre()}
@@ -194,7 +199,7 @@ export function Enveloppe(p: EnveloppeProps) {
       </div>
       <div className="gm-shell-corps">
         <div ref={contenu} className="gm-shell-contenu" data-testid="gm-shell-contenu">
-          <main className="gm-shell-main">{p.children}</main>
+          <main className="gm-shell-main"><ContexteBarreLaterale.Provider value={barreLaterale}>{p.children}</ContexteBarreLaterale.Provider></main>
           <Footer version={p.version} documentation={p.documentation} correlationId={p.correlationId} />
         </div>
         {etroit && navOuverte ? (

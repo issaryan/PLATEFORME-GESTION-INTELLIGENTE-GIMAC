@@ -34,6 +34,8 @@
     <include file="config/liquibase/changelog/20260930090000_iam_connexion.xml" relativeToChangelogFile="false"/>
     <include file="config/liquibase/changelog/20261001090000_iam_avatar.xml" relativeToChangelogFile="false"/>
     <include file="config/liquibase/changelog/20261005090000_iam_organisation.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261006090000_iam_pouvoirs_hierarchiques.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261006170000_iam_profils_organisation.xml" relativeToChangelogFile="false"/>
     <!-- jhipster-needle-liquibase-add-constraints-changelog - JHipster will add liquibase constraints changelogs here -->
     <!-- jhipster-needle-liquibase-add-incremental-changelog - JHipster will add incremental liquibase changelogs here -->
 </databaseChangeLog>

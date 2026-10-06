@@ -43,6 +43,7 @@ Collaboration entre les acteurs du GIMAC. Premier incrément livré (D-64) : la 
 | `GET /conversations/{id}/messages?avant=&taille=50` | `COL_MESSAGE_READ` | `{contenu, plusAnciens}`, du plus ancien au plus récent, pagination vers le passé |
 | `POST /conversations/{id}/messages` (multipart) | `COL_MESSAGE_SEND` | 201, message créé |
 | `POST /conversations/{id}/lu` | `COL_MESSAGE_READ` | 204 |
+| `GET /conversations/{id}/messages/{messageId}/lectures` | `COL_MESSAGE_READ` | « Lu par » (D-88), auteur seulement, sinon 404 |
 | `GET /non-lus` | `COL_MESSAGE_READ` | `{ "total": n }` |
 | `GET /pieces/{pieceId}` | `COL_MESSAGE_READ` | Contenu de la pièce (membre seulement, 404 sinon) |
 
@@ -54,7 +55,7 @@ Refus : 401 sans jeton ; 403 sans second facteur (`acr` 2 ou 3) ou sans la permi
 |---|---|---|
 | `GET /api/v1/interne/conversations/{id}` | `INTERNAL_COLLABORATION_READ` (jeton de service du client `notification-service`, règle `/api/v1/interne/**` puis `@PreAuthorize`) | `{ id, type: DIRECTE\|GROUPE, nom (groupe, sinon null), membres: [identifiants] }`, jamais de message ; 404 `COL_CONVERSATION_NOT_FOUND` |
 
-`collaboration.message-sent.v1` porte désormais `evenement` : nom de l'événement de groupe (D-68), `null` pour un vrai message ; MS-NOTIFICATION ne notifie que les vrais messages. Aucun événement de lecture d'une conversation n'est publié (l'interface marque lues les notifications par `POST /notifications/lecture` de MS-NOTIFICATION).
+`collaboration.message-sent.v1` porte désormais `evenement` : nom de l'événement de groupe (D-68), `null` pour un vrai message ; MS-NOTIFICATION ne notifie que les vrais messages. Accusés de lecture (D-88, `docs/lot1/accuses-lecture.md`) : `POST /lu` publie `collaboration.conversation-read.v1` (sujet `collaboration.message`) quand la position de lecture avance ; les messages de l'appelant portent `lecture { etat, lus, destinataires }`.
 
 ### Dépendances (jeton de service `client_credentials`, client `collaboration-service`)
 
@@ -130,6 +131,7 @@ Copié et adapté (paquet `cm.gimac.des.collaboration`), aligné sur MS-HOMOLOGA
 | 2026-09-30 | — | Régénération en JHipster 9.4.0 (D-43, D-55 : Spring Boot 4.1, Java 21, sans cache, Cucumber ; `ProcessedEvent` remplacée par la déduplication du consommateur idempotent) ; socle du lot 1 repris de MS-HOMOLOGATION (outbox, relais, rebut `.dlq`, jeton de service, second facteur, ArchUnit, JaCoCo). Messagerie de travail (D-64) : conversations directes et de groupe, RG-52, chiffrement AES-256-GCM au repos, étiquettes, pièces jointes via MS-DOCUMENT, non-lus, événement `collaboration.message-sent.v1`. 184 tests unitaires et de sécurité, 442 d'intégration et de recette réussis ; couverture fusionnée du service 88,8 % en lignes et 86,4 % en méthodes (hors MapStruct), code de la messagerie 96,8 % en lignes et 93,6 % en branches. |
 | 2026-10-01 | — | Photo de profil (docs/lot1/mon-compte.md §1) : `avatarVersion` dans l'annuaire, les membres des conversations et l'auteur des messages (versions lues par lot sur MS-IAM, annuaire injoignable sans échec). `./mvnw -ntp -B verify` : 188 tests unitaires et de sécurité, 443 d'intégration et de recette réussis ; couverture fusionnée hors MapStruct 88,9 % en lignes, 86,6 % en méthodes. |
 | 2026-10-05 | - | Notifications de la plateforme (D-80) : route interne `GET /api/v1/interne/conversations/{id}` (`INTERNAL_COLLABORATION_READ`, client `notification-service`) → `{ id, type, nom, membres }` ; champ `evenement` (événement de groupe, `null` pour un message) dans `collaboration.message-sent.v1`. `./mvnw -q verify` : 240 tests unitaires et de sécurité, 446 d'intégration et de recette réussis. |
+| 2026-10-06 | - | Réponse à un message et mentions (D-82) : `reponseA` et `mentions` dans les parties JSON de l'envoi et de la création (422 `COL_REPONSE_INVALIDE`, `COL_MENTION_INVALIDE`), colonne `message.reponse_a_id` sans clé étrangère et table `message_mention` (changelog `20261006090000_col_reponses_mentions.xml`) ; fil : `reponseA` (extrait de 120 caractères, `supprime` si purgé), `mentions`, `mentionneMoi`, citations d'une page lues en une requête ; `reponseAAuteurId` et `mentionnes` dans `collaboration.message-sent.v1`. `mvn -o -ntp -B verify` : 254 tests unitaires et de sécurité, 447 d'intégration et de recette réussis. |
 <!-- GIMAC:FIN -->
 
 # collaboration

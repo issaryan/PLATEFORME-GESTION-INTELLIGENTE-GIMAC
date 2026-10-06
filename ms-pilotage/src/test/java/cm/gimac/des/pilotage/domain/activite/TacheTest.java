@@ -4,8 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import cm.gimac.des.pilotage.domain.exception.PilotageException;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -30,6 +33,7 @@ class TacheTest {
                 t.transiter(EtatTache.TERMINEE, null, RESPONSABLE, LE);
             }
             case ANNULEE -> t.transiter(EtatTache.ANNULEE, "abandon", RESPONSABLE, LE);
+            case A_PRENDRE -> throw new IllegalArgumentException("tâche d'unité : aPrendre()");
         }
         return t;
     }
@@ -146,5 +150,96 @@ class TacheTest {
             assertThat(avant).isNull();
             assertThat(t.getEtat()).isEqualTo(depuis);
         }
+    }
+
+    // ------------------------------------------------------------------ tâches confiées (D-81 §6)
+
+    private static Tache aPrendre() {
+        Tache t = Tache.pourUnite(CREATEUR, "POLE_RESEAU", LE);
+        t.decrire("Renouveler les certificats", null, LocalDate.of(2026, 10, 10), PrioriteTache.HAUTE, LE);
+        return t;
+    }
+
+    @Test
+    @DisplayName("Tâche d'unité : à prendre, sans responsable ; prise ou attribution vers OUVERTE, une seule fois (409)")
+    void aPrendreVersOuverte() {
+        Tache t = aPrendre();
+        assertThat(t.getEtat()).isEqualTo(EtatTache.A_PRENDRE);
+        assertThat(t.getResponsableId()).isNull();
+        assertThat(t.getUniteCible()).isEqualTo("POLE_RESEAU");
+        assertThat(t.enRetard(LocalDate.of(2026, 10, 11))).isTrue();
+        assertThat(EtatTache.A_PRENDRE.peutPasserA(EtatTache.OUVERTE)).isTrue();
+        assertThat(EtatTache.A_PRENDRE.peutPasserA(EtatTache.ANNULEE)).isTrue();
+        assertThat(EtatTache.A_PRENDRE.peutPasserA(EtatTache.EN_COURS)).isFalse();
+        assertThat(EtatTache.OUVERTE.peutPasserA(EtatTache.A_PRENDRE)).isFalse();
+
+        Instant prise = LE.plusSeconds(60);
+        t.confierA(RESPONSABLE, prise);
+        assertThat(t.getEtat()).isEqualTo(EtatTache.OUVERTE);
+        assertThat(t.getResponsableId()).isEqualTo(RESPONSABLE);
+        assertThat(t.getModifieLe()).isEqualTo(prise);
+        assertThatThrownBy(() -> t.confierA("autre", prise)).isInstanceOfSatisfying(PilotageException.class, e -> {
+            assertThat(e.status()).isEqualTo(409);
+            assertThat(e.code()).isEqualTo("PIL_TRANSITION_INTERDITE");
+        });
+        assertThat(t.getResponsableId()).isEqualTo(RESPONSABLE);
+        t.transiter(EtatTache.EN_COURS, null, RESPONSABLE, prise);
+        assertThat(t.getEtat()).isEqualTo(EtatTache.EN_COURS);
+    }
+
+    @Test
+    @DisplayName("Tâche à prendre : seul le créateur l'annule (motif exigé) ; ni la transition OUVERTE ni une autre ; annulée, elle ne se prend plus")
+    void aPrendreTransitions() {
+        Tache t = aPrendre();
+        assertThatThrownBy(() -> t.transiter(EtatTache.OUVERTE, null, "membre", LE)).isInstanceOfSatisfying(PilotageException.class, e ->
+            assertThat(e.code()).isEqualTo("PIL_ACTION_RESERVEE")
+        );
+        assertThatThrownBy(() -> t.transiter(EtatTache.OUVERTE, null, CREATEUR, LE)).isInstanceOfSatisfying(PilotageException.class, e ->
+            assertThat(e.code()).isEqualTo("PIL_ACTION_RESERVEE")
+        );
+        assertThatThrownBy(() -> t.transiter(EtatTache.ANNULEE, "x", "membre", LE)).isInstanceOfSatisfying(PilotageException.class, e ->
+            assertThat(e.status()).isEqualTo(403)
+        );
+        assertThatThrownBy(() -> t.transiter(EtatTache.ANNULEE, " ", CREATEUR, LE)).isInstanceOfSatisfying(PilotageException.class, e ->
+            assertThat(e.code()).isEqualTo("PIL_MOTIF_OBLIGATOIRE")
+        );
+        assertThatThrownBy(() -> t.confierA(" ", LE)).isInstanceOf(PilotageException.class);
+        t.transiter(EtatTache.ANNULEE, "plus nécessaire", CREATEUR, LE);
+        assertThat(t.getEtat()).isEqualTo(EtatTache.ANNULEE);
+        assertThat(t.getResponsableId()).isNull();
+        assertThatThrownBy(() -> t.confierA(RESPONSABLE, LE)).isInstanceOfSatisfying(PilotageException.class, e -> assertThat(e.status()).isEqualTo(409));
+    }
+
+    @Test
+    @DisplayName("Relance : une par 24 h (429 PIL_RELANCE_RECENTE avec la prochaine date) ; tâche à prendre ou close : 409")
+    void relance() {
+        Tache t = tache(EtatTache.EN_COURS);
+        t.relancer(LE);
+        assertThat(t.getRelanceeLe()).isEqualTo(LE);
+        assertThatThrownBy(() -> t.relancer(LE.plus(Duration.ofHours(23)))).isInstanceOfSatisfying(PilotageException.class, e -> {
+            assertThat(e.status()).isEqualTo(429);
+            assertThat(e.code()).isEqualTo("PIL_RELANCE_RECENTE");
+            assertThat(e.details()).containsEntry("prochaineRelance", LE.plus(Tache.DELAI_RELANCE).toString());
+        });
+        assertThat(t.getRelanceeLe()).isEqualTo(LE);
+        t.relancer(LE.plus(Duration.ofHours(24)));
+        assertThat(t.getRelanceeLe()).isEqualTo(LE.plus(Duration.ofHours(24)));
+
+        for (Tache close : List.of(aPrendre(), tache(EtatTache.TERMINEE), tache(EtatTache.ANNULEE))) {
+            assertThatThrownBy(() -> close.relancer(LE)).isInstanceOfSatisfying(PilotageException.class, e -> {
+                assertThat(e.status()).isEqualTo(409);
+                assertThat(e.code()).isEqualTo("PIL_RELANCE_IMPOSSIBLE");
+            });
+        }
+    }
+
+    @Test
+    @DisplayName("Envoi à plusieurs personnes : chaque tâche porte le groupe")
+    void groupe() {
+        Tache t = tache(EtatTache.OUVERTE);
+        assertThat(t.getGroupeId()).isNull();
+        UUID g = UUID.randomUUID();
+        t.rattacherAuGroupe(g);
+        assertThat(t.getGroupeId()).isEqualTo(g);
     }
 }

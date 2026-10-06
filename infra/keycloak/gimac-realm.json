@@ -137,6 +137,12 @@
         "clientRole": false
       },
       {
+        "name": "HOM_REFERENTIEL_READ_ALL",
+        "description": "Permission du lot 1",
+        "composite": false,
+        "clientRole": false
+      },
+      {
         "name": "HOM_LIAISON_OPEN",
         "description": "Permission du lot 1",
         "composite": false,
@@ -564,7 +570,7 @@
       },
       {
         "name": "ROLE_INGENIEUR_HOMOLOGATION",
-        "description": "Profil du lot 1",
+        "description": "Conduit les opérations d'homologation des liaisons (référentiel, preuves, validation) et prépare la certification.",
         "composite": true,
         "clientRole": false,
         "composites": {
@@ -596,11 +602,16 @@
             "PIL_ACTIVITY_OWN",
             "NOT_INBOX_READ"
           ]
+        },
+        "attributes": {
+          "gimac_libelle": [
+            "Ingénieur d'homologation"
+          ]
         }
       },
       {
         "name": "ROLE_CHEF_DES",
-        "description": "Profil du lot 1",
+        "description": "Dirige le Département Exploitation et Supervision : ouvre les liaisons, désigne les conducteurs de projet et signe le quitus technique.",
         "composite": true,
         "clientRole": false,
         "composites": {
@@ -626,6 +637,9 @@
             "CER_REGISTER_EXPORT",
             "CER_ATTESTATION_STATUS_REQUEST",
             "HOM_STEP_MANAGE",
+            "HOM_REFERENTIEL_EDIT",
+            "HOM_REFERENTIEL_PUBLISH",
+            "HOM_REFERENTIEL_READ_ALL",
             "COL_MESSAGE_READ",
             "COL_MESSAGE_SEND",
             "PIL_ACTIVITY_OWN",
@@ -633,11 +647,16 @@
             "PIL_TEAM_READ",
             "PIL_TASK_ASSIGN"
           ]
+        },
+        "attributes": {
+          "gimac_libelle": [
+            "Chef du DES"
+          ]
         }
       },
       {
         "name": "ROLE_SUPER_ADMIN",
-        "description": "Profil du lot 1",
+        "description": "Administre la plateforme, les comptes et les profils ; seul habilité à attribuer un profil privilégié.",
         "composite": true,
         "clientRole": false,
         "composites": {
@@ -670,16 +689,23 @@
             "PLATFORM_MESSAGING_EDIT",
             "PLATFORM_OPS_READ",
             "PLATFORM_OPS_EXECUTE",
+            "HOM_REFERENTIEL_EDIT",
+            "HOM_REFERENTIEL_PUBLISH",
             "COL_MESSAGE_READ",
             "COL_MESSAGE_SEND",
             "PIL_ACTIVITY_OWN",
             "NOT_INBOX_READ"
           ]
+        },
+        "attributes": {
+          "gimac_libelle": [
+            "Super administrateur"
+          ]
         }
       },
       {
         "name": "ROLE_RSSI",
-        "description": "Profil du lot 1",
+        "description": "Responsable de la sécurité des systèmes d'information : vérifie la sécurité des liaisons, signe le quitus sécurité et administre les comptes.",
         "composite": true,
         "clientRole": false,
         "composites": {
@@ -711,6 +737,7 @@
             "PLATFORM_SECURITY_POLICY_EDIT",
             "PLATFORM_MESSAGING_EDIT",
             "PLATFORM_OPS_READ",
+            "HOM_REFERENTIEL_READ_ALL",
             "COL_MESSAGE_READ",
             "COL_MESSAGE_SEND",
             "PIL_ACTIVITY_OWN",
@@ -718,11 +745,16 @@
             "PIL_TEAM_READ",
             "PIL_TASK_ASSIGN"
           ]
+        },
+        "attributes": {
+          "gimac_libelle": [
+            "Sécurité des SI"
+          ]
         }
       },
       {
         "name": "ROLE_CONFORMITE",
-        "description": "Profil du lot 1",
+        "description": "Contrôle la conformité des dossiers de certification, rattache les changements et signe le quitus conformité.",
         "composite": true,
         "clientRole": false,
         "composites": {
@@ -738,6 +770,7 @@
             "PAR_INSTITUTION_READ",
             "CER_QUITUS_CONFORMITE_SIGN",
             "CER_CHANGE_RECORD_LINK",
+            "HOM_REFERENTIEL_READ_ALL",
             "COL_MESSAGE_READ",
             "COL_MESSAGE_SEND",
             "PIL_ACTIVITY_OWN",
@@ -745,11 +778,16 @@
             "PIL_TEAM_READ",
             "PIL_TASK_ASSIGN"
           ]
+        },
+        "attributes": {
+          "gimac_libelle": [
+            "Conformité"
+          ]
         }
       },
       {
         "name": "ROLE_DG",
-        "description": "Profil du lot 1",
+        "description": "Direction générale du GIMAC : signe le quitus final et approuve les changements de statut des attestations.",
         "composite": true,
         "clientRole": false,
         "composites": {
@@ -765,6 +803,7 @@
             "PAR_INSTITUTION_READ",
             "CER_QUITUS_DG_SIGN",
             "CER_ATTESTATION_STATUS_APPROVE",
+            "HOM_REFERENTIEL_READ_ALL",
             "COL_MESSAGE_READ",
             "COL_MESSAGE_SEND",
             "PIL_ACTIVITY_OWN",
@@ -772,11 +811,16 @@
             "PIL_TEAM_READ",
             "PIL_TASK_ASSIGN"
           ]
+        },
+        "attributes": {
+          "gimac_libelle": [
+            "Direction générale"
+          ]
         }
       },
       {
         "name": "ROLE_CORRESPONDANT",
-        "description": "Profil du lot 1",
+        "description": "Représente une institution membre sur le portail : suit l'homologation de sa liaison, dépose les livrables et signe.",
         "composite": true,
         "clientRole": false,
         "composites": {
@@ -787,11 +831,16 @@
             "CER_PORTAL_READ",
             "CER_PORTAL_SIGN"
           ]
+        },
+        "attributes": {
+          "gimac_libelle": [
+            "Correspondant du participant"
+          ]
         }
       },
       {
         "name": "ROLE_CHARGE_DDRM",
-        "description": "Profil du lot 1",
+        "description": "Instruit les dossiers des institutions membres (adhésion, transitions) et propose les décisions au chef de la DDRM.",
         "composite": true,
         "clientRole": false,
         "composites": {
@@ -815,11 +864,16 @@
             "PIL_ACTIVITY_OWN",
             "NOT_INBOX_READ"
           ]
+        },
+        "attributes": {
+          "gimac_libelle": [
+            "Chargé de la DDRM"
+          ]
         }
       },
       {
         "name": "ROLE_CHEF_DDRM",
-        "description": "Profil du lot 1",
+        "description": "Dirige la DDRM : prononce les décisions sur les institutions membres, ouvre les liaisons et désigne les conducteurs de projet.",
         "composite": true,
         "clientRole": false,
         "composites": {
@@ -841,6 +895,9 @@
             "PAR_TRANSITION_REQUEST",
             "PAR_TRANSITION_APPROVE",
             "HOM_STEP_MANAGE",
+            "HOM_REFERENTIEL_EDIT",
+            "HOM_REFERENTIEL_PUBLISH",
+            "HOM_REFERENTIEL_READ_ALL",
             "COL_MESSAGE_READ",
             "COL_MESSAGE_SEND",
             "PIL_ACTIVITY_OWN",
@@ -848,11 +905,16 @@
             "PIL_TEAM_READ",
             "PIL_TASK_ASSIGN"
           ]
+        },
+        "attributes": {
+          "gimac_libelle": [
+            "Chef de la DDRM"
+          ]
         }
       },
       {
         "name": "ROLE_SNA",
-        "description": "Profil du lot 1",
+        "description": "Service Normes et Agréments : vérifie le respect des normes, dépose et valide les preuves d'homologation.",
         "composite": true,
         "clientRole": false,
         "composites": {
@@ -874,11 +936,16 @@
             "PIL_ACTIVITY_OWN",
             "NOT_INBOX_READ"
           ]
+        },
+        "attributes": {
+          "gimac_libelle": [
+            "Normes et Agréments"
+          ]
         }
       },
       {
         "name": "ROLE_PRODUCTION_MONETIQUE",
-        "description": "Profil du lot 1",
+        "description": "Met en production les liaisons homologuées : preuves, rattachement des changements et rapport de mise en production.",
         "composite": true,
         "clientRole": false,
         "composites": {
@@ -900,11 +967,16 @@
             "PIL_ACTIVITY_OWN",
             "NOT_INBOX_READ"
           ]
+        },
+        "attributes": {
+          "gimac_libelle": [
+            "Production monétique"
+          ]
         }
       },
       {
         "name": "ROLE_POLE_RESEAU",
-        "description": "Profil du lot 1",
+        "description": "Réalise les opérations réseau des liaisons et en dépose les preuves d'homologation.",
         "composite": true,
         "clientRole": false,
         "composites": {
@@ -923,12 +995,17 @@
             "COL_MESSAGE_SEND",
             "PIL_ACTIVITY_OWN",
             "NOT_INBOX_READ"
+          ]
+        },
+        "attributes": {
+          "gimac_libelle": [
+            "Pôle réseau"
           ]
         }
       },
       {
         "name": "ROLE_POLE_SYSTEME",
-        "description": "Profil du lot 1",
+        "description": "Réalise les opérations système des liaisons et en dépose les preuves d'homologation.",
         "composite": true,
         "clientRole": false,
         "composites": {
@@ -948,11 +1025,16 @@
             "PIL_ACTIVITY_OWN",
             "NOT_INBOX_READ"
           ]
+        },
+        "attributes": {
+          "gimac_libelle": [
+            "Pôle système"
+          ]
         }
       },
       {
         "name": "ROLE_COLLABORATEUR",
-        "description": "Profil du lot 1",
+        "description": "Employé du GIMAC sans fonction métier dans la plateforme : messagerie, Mon activité et notifications.",
         "composite": true,
         "clientRole": false,
         "composites": {
@@ -963,11 +1045,16 @@
             "PIL_ACTIVITY_OWN",
             "NOT_INBOX_READ"
           ]
+        },
+        "attributes": {
+          "gimac_libelle": [
+            "Collaborateur"
+          ]
         }
       },
       {
         "name": "ROLE_ADMIN_SYSTEME",
-        "description": "Profil du lot 1",
+        "description": "Exploite l'infrastructure de la plateforme (supervision, opérations Docker et Kubernetes) sans administrer les comptes.",
         "composite": true,
         "clientRole": false,
         "composites": {
@@ -982,16 +1069,23 @@
             "PIL_ACTIVITY_OWN",
             "NOT_INBOX_READ"
           ]
+        },
+        "attributes": {
+          "gimac_libelle": [
+            "Administrateur système"
+          ]
         }
       },
       {
         "name": "ROLE_RESPONSABLE_SERVICE",
-        "description": "Profil du lot 1",
+        "description": "Dirige un service, un pôle ou une cellule : confie et suit les tâches de son équipe, lit ses activités et vise ses rapports.",
         "composite": true,
         "clientRole": false,
         "composites": {
           "realm": [
             "ROLE_USER",
+            "HOM_REFERENTIEL_READ",
+            "HOM_REFERENTIEL_EDIT",
             "COL_MESSAGE_READ",
             "COL_MESSAGE_SEND",
             "PIL_ACTIVITY_OWN",
@@ -999,11 +1093,16 @@
             "PIL_TEAM_READ",
             "PIL_TASK_ASSIGN"
           ]
+        },
+        "attributes": {
+          "gimac_libelle": [
+            "Responsable de service"
+          ]
         }
       },
       {
         "name": "ROLE_CONDUCTEUR_PROJET",
-        "description": "Profil du lot 1",
+        "description": "Conduit le projet de liaison qui lui est confié : affecte les opérations, valide les preuves et établit le procès-verbal.",
         "composite": true,
         "clientRole": false,
         "composites": {
@@ -1027,6 +1126,11 @@
             "COL_MESSAGE_SEND",
             "PIL_ACTIVITY_OWN",
             "NOT_INBOX_READ"
+          ]
+        },
+        "attributes": {
+          "gimac_libelle": [
+            "Conducteur de projet"
           ]
         }
       }

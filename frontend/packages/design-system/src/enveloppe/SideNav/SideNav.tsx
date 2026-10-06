@@ -15,6 +15,11 @@ export interface SideNavProps {
   height?: number | string
   /** Navigation de l'application (routeur) : appelée au clic d'une entrée, à la place du lien natif. */
   onNavigate?: (href: string) => void
+  /**
+   * Mode réduit aux pictogrammes (D-84, élargissement de la messagerie) : libellés lus par les technologies
+   * d'assistance et en infobulle, groupes séparés par un filet, pastilles réduites à un point chiffré.
+   */
+  reduite?: boolean
 }
 
 // Navigation latérale de 264 px (DS-GIMAC-01 §6.2) : fond uni (bleu institutionnel en clair, gris
@@ -24,7 +29,7 @@ export interface SideNavProps {
 export function SideNav(p: SideNavProps) {
   const t = useLibelle()
   return (
-    <nav className="gm-sidenav" aria-label={t('sidenav.label')} style={{ height: p.height || 480 }}>
+    <nav className={p.reduite ? 'gm-sidenav gm-sidenav-reduite' : 'gm-sidenav'} aria-label={t('sidenav.label')} style={{ height: p.height || 480 }}>
       {p.logo ? (
         <div className="gm-sidenav-marque">
           <img src={p.logo} alt="GIMAC" />
@@ -33,17 +38,18 @@ export function SideNav(p: SideNavProps) {
       <div className="gm-sidenav-entrees">
         {(p.groups || []).map((g, gi) => (
           <div key={gi}>
-            {g.label ? <div className="gm-sidenav-group">{g.label}</div> : null}
+            {g.label ? <div className="gm-sidenav-group" aria-hidden={p.reduite || undefined}>{g.label}</div> : null}
             <ul>
               {g.items.map((it) => (
                 <li key={it.key}>
                   <a
                     href={it.href || '#'}
                     aria-current={it.key === p.current ? 'page' : undefined}
+                    title={p.reduite ? it.label : undefined}
                     onClick={p.onNavigate ? (e) => { e.preventDefault(); p.onNavigate!(it.href || '#') } : undefined}
                   >
                     <Icon name={it.icon} size={20} />
-                    {it.label}
+                    <span className="gm-sidenav-libelle">{it.label}</span>
                     {it.badge ? <span className="gm-sidenav-badge" aria-label={t('messagerie.nonLus', { n: it.badge })}>{it.badge > 99 ? '99+' : it.badge}</span> : null}
                   </a>
                 </li>

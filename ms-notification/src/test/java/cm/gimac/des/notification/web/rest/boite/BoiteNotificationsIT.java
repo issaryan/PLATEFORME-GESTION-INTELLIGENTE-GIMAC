@@ -12,9 +12,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import cm.gimac.des.notification.AbstractNotificationIT;
 import cm.gimac.des.notification.application.port.in.RecevoirEvenementsUseCase;
+import cm.gimac.des.notification.application.port.in.RecevoirEvenementsUseCase.EvenementProcessus;
 import cm.gimac.des.notification.application.port.in.RecevoirEvenementsUseCase.MessageEnvoye;
 import cm.gimac.des.notification.application.port.in.RecevoirEvenementsUseCase.RapportSoumis;
 import cm.gimac.des.notification.application.port.in.RecevoirEvenementsUseCase.TacheAffectee;
+import cm.gimac.des.notification.domain.service.ReglesNotifications.FaitsProcessus;
+import cm.gimac.des.notification.domain.service.ReglesNotifications.NatureProcessus;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -168,6 +171,105 @@ class BoiteNotificationsIT extends AbstractNotificationIT {
             .perform(put("/api/v1/preferences").contentType(MediaType.APPLICATION_JSON).content("{\"types\":{\"COURRIEL\":true}}").with(interne(CONDUCTEUR)))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.code").value("NOT_REQUETE_INVALIDE"));
+    }
+
+    @Test
+    @DisplayName("Mentions et réponses (D-82) : forme exacte, en plus du message, non regroupées, préférences, lues à l'ouverture de la conversation")
+    void mentionsEtReponses() throws Exception {
+        conversations.groupe("c-d82", "Groupe Cadrage L-12", List.of(CHEF_DES, CONDUCTEUR, INGENIEUR));
+        // Paul répond à Aminata et mentionne Serge ; puis Serge mentionne Aminata en répondant à son message (une seule MENTION).
+        evenements.messageEnvoye(new MessageEnvoye("c-d82", "m-1", CHEF_DES, List.of(CONDUCTEUR, INGENIEUR), T, null, CONDUCTEUR, List.of(INGENIEUR)));
+        evenements.messageEnvoye(new MessageEnvoye("c-d82", "m-2", INGENIEUR, List.of(CONDUCTEUR, CHEF_DES), T.plusSeconds(60), null, CONDUCTEUR, List.of(CONDUCTEUR)));
+        // Événement de groupe : rien.
+        evenements.messageEnvoye(new MessageEnvoye("c-d82", "m-3", CHEF_DES, List.of(CONDUCTEUR), T.plusSeconds(90), "MEMBRES_AJOUTES", CONDUCTEUR, List.of(CONDUCTEUR)));
+
+        mvc
+            .perform(get("/api/v1/notifications").with(interne(CONDUCTEUR)))
+            .andExpect(status().isOk())
+            // Message regroupé (2), mention de m-2, réponse de m-1.
+            .andExpect(jsonPath("$.total").value(3))
+            .andExpect(jsonPath("$.contenu[?(@.type == 'MESSAGE')].nombre").value(org.hamcrest.Matchers.contains(2)))
+            .andExpect(jsonPath("$.contenu[?(@.type == 'MESSAGE')].conversationId").value(org.hamcrest.Matchers.contains("c-d82")))
+            .andExpect(jsonPath("$.contenu[?(@.type == 'MENTION')].titre").value(org.hamcrest.Matchers.contains("Serge Ndzana vous a mentionné")))
+            .andExpect(jsonPath("$.contenu[?(@.type == 'MENTION')].sousTitre").value(org.hamcrest.Matchers.contains("Groupe Cadrage L-12")))
+            .andExpect(jsonPath("$.contenu[?(@.type == 'MENTION')].lien").value(org.hamcrest.Matchers.contains("/des/messagerie?conversation=c-d82&message=m-2")))
+            .andExpect(jsonPath("$.contenu[?(@.type == 'MENTION')].reference.service").value(org.hamcrest.Matchers.contains("collaboration")))
+            .andExpect(jsonPath("$.contenu[?(@.type == 'MENTION')].reference.type").value(org.hamcrest.Matchers.contains("MESSAGE")))
+            .andExpect(jsonPath("$.contenu[?(@.type == 'MENTION')].reference.id").value(org.hamcrest.Matchers.contains("m-2")))
+            .andExpect(jsonPath("$.contenu[?(@.type == 'MENTION')].conversationId").value(org.hamcrest.Matchers.contains("c-d82")))
+            .andExpect(jsonPath("$.contenu[?(@.type == 'MENTION')].acteur.id").value(org.hamcrest.Matchers.contains(INGENIEUR)))
+            .andExpect(jsonPath("$.contenu[?(@.type == 'MENTION')].nombre").value(org.hamcrest.Matchers.contains(1)))
+            .andExpect(jsonPath("$.contenu[?(@.type == 'REPONSE')].titre").value(org.hamcrest.Matchers.contains("Paul Mbarga Atangana a répondu à votre message")))
+            .andExpect(jsonPath("$.contenu[?(@.type == 'REPONSE')].lien").value(org.hamcrest.Matchers.contains("/des/messagerie?conversation=c-d82&message=m-1")));
+        mvc
+            .perform(get("/api/v1/notifications").with(interne(INGENIEUR)))
+            .andExpect(jsonPath("$.total").value(2))
+            .andExpect(jsonPath("$.contenu[?(@.type == 'MENTION')].titre").value(org.hamcrest.Matchers.contains("Paul Mbarga Atangana vous a mentionné")));
+        // Jamais pour l'auteur : Paul n'a que le message de Serge.
+        assertThat(compter("select count(*) from notification_utilisateur where destinataire_id = ? and type in ('MENTION', 'REPONSE')", CHEF_DES)).isZero();
+
+        // Ouvrir la conversation (référence de la conversation, sans type) lit message, mention et réponse.
+        mvc
+            .perform(
+                post("/api/v1/notifications/lecture")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"reference\":{\"service\":\"collaboration\",\"type\":\"CONVERSATION\",\"id\":\"c-d82\"}}")
+                    .with(interne(CONDUCTEUR))
+            )
+            .andExpect(status().isNoContent());
+        mvc.perform(get("/api/v1/notifications/compteur").with(interne(CONDUCTEUR))).andExpect(jsonPath("$.nonLues").value(0));
+        mvc.perform(get("/api/v1/notifications/compteur").with(interne(INGENIEUR))).andExpect(jsonPath("$.nonLues").value(2));
+
+        // Préférences : MENTION et REPONSE actives par défaut, désactivables ; un type désactivé ne crée rien.
+        mvc
+            .perform(get("/api/v1/preferences").with(interne(INGENIEUR)))
+            .andExpect(jsonPath("$.types.MENTION").value(true))
+            .andExpect(jsonPath("$.types.REPONSE").value(true));
+        mvc
+            .perform(put("/api/v1/preferences").contentType(MediaType.APPLICATION_JSON).content("{\"types\":{\"MENTION\":false}}").with(interne(INGENIEUR)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.types.MENTION").value(false))
+            .andExpect(jsonPath("$.types.REPONSE").value(true))
+            .andExpect(jsonPath("$.types.MESSAGE").value(true));
+        evenements.messageEnvoye(new MessageEnvoye("c-d82", "m-4", CHEF_DES, List.of(CONDUCTEUR, INGENIEUR), T.plusSeconds(120), null, INGENIEUR, List.of(INGENIEUR)));
+        assertThat(compter("select count(*) from notification_utilisateur where destinataire_id = ? and reference_id = 'm-4'", INGENIEUR)).isZero();
+        assertThat(compter("select count(*) from notification_utilisateur where destinataire_id = ? and type = 'MESSAGE' and lue_le is null", INGENIEUR)).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("D-87 : PROCESSUS en base (contrainte CHECK, préférence type_processus) : liste, lecture par référence de l'instance, préférence active par défaut puis désactivée")
+    void processus() throws Exception {
+        String instance = UUID.randomUUID().toString();
+        String lien = "/des/processus/instances/" + instance + "?etape=ANALYSE";
+        FaitsProcessus faits = new FaitsProcessus(NatureProcessus.ETAPE_SOUMISE, "OUVERTURE_FLUX_RESEAU", "Flux vers la banque X", "ANALYSE", "Analyse de la demande", "VALIDATION", false, false, null);
+        mvc.perform(get("/api/v1/preferences").with(interne(CONDUCTEUR))).andExpect(status().isOk()).andExpect(jsonPath("$.types.PROCESSUS").value(true));
+        assertThat(evenements.evenementProcessus(new EvenementProcessus(instance, faits, INGENIEUR, null, List.of(CONDUCTEUR, INGENIEUR), lien, T))).isEqualTo(1);
+        assertThat(evenements.evenementProcessus(new EvenementProcessus(instance, faits, INGENIEUR, null, List.of(CONDUCTEUR), lien, T.plusSeconds(1)))).isEqualTo(1);
+        mvc
+            .perform(get("/api/v1/notifications").with(interne(CONDUCTEUR)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.total").value(2))
+            .andExpect(jsonPath("$.contenu[0].type").value("PROCESSUS"))
+            .andExpect(jsonPath("$.contenu[0].titre").value("Validation attendue : Analyse de la demande"))
+            .andExpect(jsonPath("$.contenu[0].sousTitre").value("Flux vers la banque X, soumise par Serge Ndzana"))
+            .andExpect(jsonPath("$.contenu[0].lien").value(lien))
+            .andExpect(jsonPath("$.contenu[0].nombre").value(1));
+        mvc
+            .perform(
+                post("/api/v1/notifications/lecture")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"reference\":{\"service\":\"pilotage\",\"type\":\"PROCESSUS\",\"id\":\"" + instance + "\"}}")
+                    .with(interne(CONDUCTEUR))
+            )
+            .andExpect(status().is2xxSuccessful());
+        assertThat(compter("select count(*) from notification_utilisateur where destinataire_id = ? and type = 'PROCESSUS' and lue_le is null", CONDUCTEUR)).isZero();
+        mvc
+            .perform(put("/api/v1/preferences").contentType(MediaType.APPLICATION_JSON).content("{\"types\":{\"PROCESSUS\":false}}").with(interne(CONDUCTEUR)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.types.PROCESSUS").value(false))
+            .andExpect(jsonPath("$.types.MESSAGE").value(true));
+        assertThat(evenements.evenementProcessus(new EvenementProcessus(instance, faits, INGENIEUR, null, List.of(CONDUCTEUR), lien, T.plusSeconds(2)))).isZero();
+        assertThat(compter("select count(*) from notification_utilisateur where destinataire_id = ? and type = 'PROCESSUS'", CONDUCTEUR)).isEqualTo(2);
     }
 
     @Test

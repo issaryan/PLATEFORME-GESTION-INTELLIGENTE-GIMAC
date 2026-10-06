@@ -133,6 +133,8 @@ DOMAINE="$RACINE/infra/keycloak/gimac-realm.json"
 ECHANGE=""
 trap 'rm -rf "${ECHANGE:-/nonexistent}"' EXIT
 EMPREINTE="$HOME/.local/state/gimac-des/gimac-realm.sha256"
+# Domaine du dépôt déployé la fois précédente : base de la fusion à trois voies des rôles (fusionner-domaine.py).
+DOMAINE_PRECEDENT="$HOME/.local/state/gimac-des/gimac-realm.precedent.json"
 
 actualiser_domaine() {
   local nouvelle
@@ -153,7 +155,9 @@ actualiser_domaine() {
   fi
   compose run --rm --no-deps --user "$(id -u):0" -v "$ECHANGE:/echange" keycloak \
     export --dir /echange --realm gimac --users realm_file
-  python3 "$RACINE/infra/ci/fusionner-domaine.py" "$DOMAINE" "$ECHANGE/gimac-realm.json" > "$ECHANGE/import/gimac-realm.json"
+  local base=()
+  [ -s "$DOMAINE_PRECEDENT" ] && base=("$DOMAINE_PRECEDENT")
+  python3 "$RACINE/infra/ci/fusionner-domaine.py" "$DOMAINE" "$ECHANGE/gimac-realm.json" "${base[@]}" > "$ECHANGE/import/gimac-realm.json"
   compose run --rm --no-deps --user "$(id -u):0" -v "$ECHANGE/import:/echange" keycloak \
     import --dir /echange --override true
 }
@@ -217,6 +221,7 @@ etape "Démarrage"
 actualiser_configurations_montees
 mkdir -p "$(dirname "$EMPREINTE")"
 sha256sum "$DOMAINE" | cut -d' ' -f1 > "$EMPREINTE"
+cp "$DOMAINE" "$DOMAINE_PRECEDENT"
 
 # Secrets des clients de service : alignés sur le .env (un client ajouté au domaine réimporté gardait un
 # secret différent de celui du service, invalid_client_credentials). Idempotent, aucun secret affiché.

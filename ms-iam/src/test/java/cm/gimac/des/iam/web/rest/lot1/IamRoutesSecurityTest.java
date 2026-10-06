@@ -21,6 +21,7 @@ import cm.gimac.des.iam.application.usecase.ConfigurationAuthentificationService
 import cm.gimac.des.iam.application.usecase.ConnexionService;
 import cm.gimac.des.iam.application.usecase.MonCompteService;
 import cm.gimac.des.iam.application.usecase.OrganisationService;
+import cm.gimac.des.iam.application.usecase.ProfilsService;
 import cm.gimac.des.iam.application.usecase.ReauthentificationService;
 import cm.gimac.des.iam.config.SecurityConfiguration;
 import cm.gimac.des.iam.config.TestSecurityConfiguration;
@@ -146,6 +147,9 @@ class IamRoutesSecurityTest {
 
     @MockitoBean
     OrganisationService organisation;
+
+    @MockitoBean
+    ProfilsService profilsCrees;
 
     Compte compte;
 
@@ -429,6 +433,23 @@ class IamRoutesSecurityTest {
             .perform(req(HttpMethod.POST, "/api/v1/interne/reauthentifications/verification", corps).with(jwt().authorities(new SimpleGrantedAuthority("INTERNAL_IAM_READ"))))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.valide").value(true));
+    }
+
+    @Test
+    @DisplayName("D-87 : finalité SIGNATURE_PROCESSUS admise au défi (jeton à deux facteurs) et à la vérification interne (jeton du client pilotage-service)")
+    void signatureProcessus() throws Exception {
+        mvc
+            .perform(req(HttpMethod.POST, "/api/v1/reauthentification/defi", "{\"purpose\":\"SIGNATURE_PROCESSUS\"}").with(jeton("2")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.challengeId").value("c"));
+        verify(reauth).defi(any(), eq("SIGNATURE_PROCESSUS"));
+        String corps = "{\"assertion\":\"valide\",\"sujet\":\"chef\",\"finalite\":\"SIGNATURE_PROCESSUS\"}";
+        mvc
+            .perform(req(HttpMethod.POST, "/api/v1/interne/reauthentifications/verification", corps).with(service("pilotage-service", "INTERNAL_IAM_READ")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.valide").value(true));
+        verify(reauth).verifier("valide", "chef", "SIGNATURE_PROCESSUS");
+        mvc.perform(req(HttpMethod.POST, "/api/v1/interne/reauthentifications/verification", corps).with(service("pilotage-service"))).andExpect(status().isForbidden());
     }
 
     @Test

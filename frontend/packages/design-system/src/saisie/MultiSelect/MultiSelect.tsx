@@ -65,7 +65,7 @@ export function MultiSelect(p: MultiSelectProps) {
     <FieldWrapper id={id} label={p.label} required={p.required} help={p.help} error={p.error} className={p.className}>
       <div className="gm-multi">
         {value.map((v) => (
-          <Tag key={v} avatar={avatar(v)} onRemove={() => p.onChange?.(value.filter((x) => x !== v))}>
+          <Tag key={v} tronque avatar={avatar(v)} onRemove={() => p.onChange?.(value.filter((x) => x !== v))}>
             {libelle(v)}
           </Tag>
         ))}

@@ -6,6 +6,7 @@ import cm.gimac.des.pilotage.application.port.in.RapportsUseCase;
 import cm.gimac.des.pilotage.application.port.out.DocumentPort;
 import cm.gimac.des.pilotage.application.port.out.OrganisationPort.Membre;
 import cm.gimac.des.pilotage.application.port.out.OrganisationPort.Personne;
+import cm.gimac.des.pilotage.application.port.out.OrganisationPort.Pouvoir;
 import cm.gimac.des.pilotage.application.port.out.OrganisationPort.Rattachement;
 import cm.gimac.des.pilotage.domain.activite.Activite;
 import cm.gimac.des.pilotage.domain.activite.EtatRapport;
@@ -41,7 +42,7 @@ import org.springframework.transaction.annotation.Transactional;
  * Rapports quotidiens et hebdomadaires (§2.4) : un seul par (auteur, type, période), période future
  * refusée, préremplissage, document déposé dans MS-DOCUMENT (finalité RAPPORT_ACTIVITE, ticket
  * vérifié), soumission au n+1 du moment, visa par le destinataire ou la chaîne hiérarchique
- * (PIL_TEAM_READ) ; événements pilotage.report-* par l'outbox, jamais le contenu.
+ * (PIL_TEAM_READ et RAPPORT_VISER couvrant l'auteur, D-81) ; événements pilotage.report-* par l'outbox, jamais le contenu.
  */
 @Service
 @Transactional
@@ -86,7 +87,7 @@ public class RapportService implements RapportsUseCase {
         switch (vue == null || vue.isBlank() ? "moi" : vue.strip()) {
             case "moi" -> r = rapports.deAuteur(appelant.id(), t, e, p);
             case "recus" -> {
-                List<String> equipe = appelant.litEquipe() ? equipes.membres(appelant.id()).stream().map(Membre::id).toList() : List.of();
+                List<String> equipe = appelant.litEquipe() ? equipes.membres(appelant, Pouvoir.RAPPORT_VISER).stream().map(Membre::id).toList() : List.of();
                 // Liste jamais vide dans la clause « in » : un identifiant impossible la remplace.
                 r = rapports.recus(appelant.id(), equipe.isEmpty() ? List.of("") : equipe, TRANSMIS, t, e, p);
             }
@@ -170,7 +171,7 @@ public class RapportService implements RapportsUseCase {
     public RapportLu viser(Appelant appelant, UUID id, String commentaire) {
         Rapport r = trouver(id);
         boolean destinataire = appelant.id().equals(r.getDestinataireId());
-        boolean chaine = !appelant.id().equals(r.getAuteurId()) && appelant.litEquipe() && equipes.membre(appelant.id(), r.getAuteurId()).isPresent();
+        boolean chaine = !appelant.id().equals(r.getAuteurId()) && appelant.litEquipe() && equipes.couvert(appelant, Pouvoir.RAPPORT_VISER, r.getAuteurId()).isPresent();
         if (!destinataire && !chaine) {
             if (appelant.id().equals(r.getAuteurId())) {
                 throw PilotageException.reservee("L'auteur ne vise pas son propre rapport");
@@ -261,13 +262,13 @@ public class RapportService implements RapportsUseCase {
         );
     }
 
-    /** Lecture : l'auteur ; une fois soumis, le destinataire et la chaîne hiérarchique (PIL_TEAM_READ). */
+    /** Lecture : l'auteur ; une fois soumis, le destinataire et les responsables dont RAPPORT_VISER couvre l'auteur (PIL_TEAM_READ). */
     private void exigerLecture(Appelant appelant, Rapport r) {
         if (appelant.id().equals(r.getAuteurId())) {
             return;
         }
         boolean transmis = r.getEtat() != EtatRapport.BROUILLON;
-        if (transmis && (appelant.id().equals(r.getDestinataireId()) || equipes.peutLire(appelant, r.getAuteurId()))) {
+        if (transmis && (appelant.id().equals(r.getDestinataireId()) || equipes.peutLire(appelant, Pouvoir.RAPPORT_VISER, r.getAuteurId()))) {
             return;
         }
         throw PilotageException.horsEquipe();
@@ -276,7 +277,7 @@ public class RapportService implements RapportsUseCase {
     private Rapport auteur(Appelant appelant, UUID id) {
         Rapport r = trouver(id);
         if (!appelant.id().equals(r.getAuteurId())) {
-            boolean lisible = r.getEtat() != EtatRapport.BROUILLON && (appelant.id().equals(r.getDestinataireId()) || equipes.peutLire(appelant, r.getAuteurId()));
+            boolean lisible = r.getEtat() != EtatRapport.BROUILLON && (appelant.id().equals(r.getDestinataireId()) || equipes.peutLire(appelant, Pouvoir.RAPPORT_VISER, r.getAuteurId()));
             if (lisible) {
                 throw PilotageException.reservee("Seul l'auteur modifie ou soumet son rapport");
             }

@@ -13,6 +13,7 @@ import cm.gimac.des.homologation.domain.service.ReferentialCompletenessChecker;
 import cm.gimac.des.homologation.infrastructure.messaging.outbox.OutboxEvent;
 import cm.gimac.des.homologation.infrastructure.messaging.outbox.OutboxEventRepository;
 import cm.gimac.des.homologation.domain.service.ReferentialGraphValidator;
+import cm.gimac.des.homologation.domain.service.VisibiliteReferentiel;
 import cm.gimac.des.homologation.repository.ReferentialVersionRepository;
 import cm.gimac.des.homologation.web.rest.lot1.ReferentialViews.ControleVue;
 import cm.gimac.des.homologation.web.rest.lot1.ReferentialViews.CreateDraftRequest;
@@ -93,17 +94,23 @@ public class ReferentialResource {
     @GetMapping
     @PreAuthorize("hasAuthority('HOM_REFERENTIEL_READ')")
     @Transactional(readOnly = true)
-    public List<VersionVue> lister(@RequestParam(name = "type", required = false) TypeProjet type) {
+    public List<VersionVue> lister(@RequestParam(name = "type", required = false) TypeProjet type, Authentication auth) {
         Map<TypeProjet, UUID> actives = actives();
         List<TypeProjet> types = type == null ? Arrays.asList(TypeProjet.values()) : List.of(type);
-        return types.stream().flatMap(t -> versions.findByTypeProjetOrderByDateCreationDesc(t).stream()).map(v -> vue(v, actives)).toList();
+        var permissions = ActeurCourant.de(auth).permissions();
+        return types
+            .stream()
+            .flatMap(t -> versions.findByTypeProjetOrderByDateCreationDesc(t).stream())
+            .map(v -> VersionVue.de(v, actives.get(v.getTypeProjet()), VisibiliteReferentiel.pour(permissions, v.getOperations())))
+            .toList();
     }
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('HOM_REFERENTIEL_READ')")
     @Transactional(readOnly = true)
-    public VersionVue lire(@PathVariable UUID id) {
-        return vue(charger(id), actives());
+    public VersionVue lire(@PathVariable UUID id, Authentication auth) {
+        ReferentialVersion v = charger(id);
+        return VersionVue.de(v, actives().get(v.getTypeProjet()), VisibiliteReferentiel.pour(ActeurCourant.de(auth).permissions(), v.getOperations()));
     }
 
     /** Chronologie d'une version : création, publication, puis événements publiés (outbox), du plus récent au plus ancien. */
@@ -143,11 +150,79 @@ public class ReferentialResource {
         return new MigrationVue(m.getId(), m.getVersionSourceId(), m.getVersionCibleId(), m.getEtat().name(), JsonTexte.listeDeTextes(m.getLiaisonsRetenues()));
     }
 
+    /**
+     * Opérations de la version. Lecteur concerné (D-89) : ses opérations et leurs voisines directes en fantômes
+     * ({@code fantome: true}, code et libellé) ; l'en-tête {@value #EN_TETE_FILTRE} vaut CONCERNE ou COMPLET.
+     */
     @GetMapping("/{id}/operations")
     @PreAuthorize("hasAuthority('HOM_REFERENTIEL_READ')")
     @Transactional(readOnly = true)
-    public List<OperationVue> operations(@PathVariable UUID id) {
-        return charger(id).getOperations().stream().map(OperationVue::de).toList();
+    public ResponseEntity<List<OperationVue>> operations(@PathVariable UUID id, Authentication auth) {
+        ReferentialVersion v = charger(id);
+        VisibiliteReferentiel.Vue vue = VisibiliteReferentiel.pour(ActeurCourant.de(auth).permissions(), v.getOperations());
+        return ResponseEntity.ok().header(EN_TETE_FILTRE, vue.filtre().name()).body(operationsRetenues(v, vue));
+    }
+
+    /**
+     * Export CSV (séparateur point-virgule, UTF-8) des opérations de la version, filtré comme la liste (D-89) ; la
+     * dernière colonne marque les fantômes.
+     */
+    @GetMapping(value = "/{id}/export", produces = "text/csv")
+    @PreAuthorize("hasAuthority('HOM_REFERENTIEL_READ')")
+    @Transactional(readOnly = true)
+    public ResponseEntity<String> exporter(@PathVariable UUID id, Authentication auth) {
+        ReferentialVersion v = charger(id);
+        VisibiliteReferentiel.Vue vue = VisibiliteReferentiel.pour(ActeurCourant.de(auth).permissions(), v.getOperations());
+        StringBuilder csv = new StringBuilder("code;libelle;etape;segment;responsable;validateur;consultes;informes;externes;predecesseurs;delaiJours;fantome\n");
+        for (OperationVue o : operationsRetenues(v, vue)) {
+            csv
+                .append(String.join(
+                    ";",
+                    cellule(o.code()),
+                    cellule(o.libelle()),
+                    cellule(o.etape()),
+                    cellule(o.segment()),
+                    cellule(o.responsable()),
+                    cellule(o.validateur()),
+                    cellule(o.consultes()),
+                    cellule(o.informes()),
+                    cellule(o.externes()),
+                    cellule(o.predecesseurs()),
+                    cellule(o.delaiJours()),
+                    String.valueOf(o.fantome())
+                ))
+                .append('\n');
+        }
+        String nom = "referentiel-" + v.getTypeProjet().name().toLowerCase(java.util.Locale.ROOT) + "-" + (v.getNumero() == null ? "brouillon" : "v" + v.getNumero()) + ".csv";
+        return ResponseEntity.ok()
+            .header(EN_TETE_FILTRE, vue.filtre().name())
+            .header("Content-Disposition", "attachment; filename=\"" + nom + "\"")
+            .contentType(new org.springframework.http.MediaType("text", "csv", java.nio.charset.StandardCharsets.UTF_8))
+            .body(csv.toString());
+    }
+
+    /** En-tête de la lecture filtrée (D-89) : CONCERNE ou COMPLET. */
+    public static final String EN_TETE_FILTRE = "X-Gimac-Filtre";
+
+    private static List<OperationVue> operationsRetenues(ReferentialVersion v, VisibiliteReferentiel.Vue vue) {
+        return v
+            .getOperations()
+            .stream()
+            .filter(o -> vue.retenue(o.getCode()))
+            .map(o -> vue.fantome(o.getCode()) ? OperationVue.fantome(o) : OperationVue.de(o))
+            .toList();
+    }
+
+    private static String cellule(Object valeur) {
+        if (valeur == null) {
+            return "";
+        }
+        String t = valeur instanceof java.util.Collection<?> c ? String.join("|", c.stream().map(String::valueOf).toList()) : String.valueOf(valeur);
+        // Formules neutralisées (injection CSV) et guillemets doublés.
+        if (!t.isEmpty() && "=+-@".indexOf(t.charAt(0)) >= 0) {
+            t = "'" + t;
+        }
+        return t.contains(";") || t.contains("\"") || t.contains("\n") ? "\"" + t.replace("\"", "\"\"") + "\"" : t;
     }
 
     /** HOM-02 : contrôle à blanc, sans effet, y compris sur une version publiée. */

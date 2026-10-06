@@ -23,6 +23,8 @@ CIBLE_PRODUCTION = RACINE / "infra/keycloak/gimac-realm-production.json"
 
 PERMISSIONS = {
     "HOM": ["PROJECT_DESIGNATE", "REFERENTIEL_READ", "REFERENTIEL_EDIT", "REFERENTIEL_PUBLISH", "REFERENTIEL_MIGRATE", "LIAISON_READ", "LIAISON_LIST",
+            # Lecture de tout le référentiel des opérations, hors éditeurs (D-89, docs/lot1/referentiel-droits-etapes.md §1).
+            "REFERENTIEL_READ_ALL",
             "LIAISON_OPEN", "LIAISON_UNFREEZE", "OPERATION_ASSIGN", "EVIDENCE_SUBMIT", "OPERATION_VALIDATE", "OPERATION_REOPEN",
             "GRID_EDIT", "REPLAY_ADMIN", "SCENARIO_QUALIFY", "DASHBOARD_READ", "DEADLINE_CONFIG", "EVIDENCE_FILE_EXPORT",
             "PORTAL_READ", "PORTAL_SUBMIT",
@@ -101,6 +103,47 @@ PROFILS = {
     "ROLE_CONDUCTEUR_PROJET": LECTURE_DES + ["HOM_OPERATION_ASSIGN", "HOM_EVIDENCE_SUBMIT", "HOM_EVIDENCE_FILE_EXPORT",
         "HOM_OPERATION_VALIDATE", "HOM_STEP_MANAGE", "CER_PV_ESTABLISH"],
 }
+# Libellé (attribut gimac_libelle du rôle) et mission (description du rôle) de chaque profil livré (D-86,
+# docs/lot1/profils-organisation.md §2) : modifiables ensuite depuis la console, repris partout où un profil
+# est affiché. Libellés repris de l'interface (frontend/packages/lot1/src/i18n/ecrans/par.ts).
+PRESENTATIONS = {
+    "ROLE_INGENIEUR_HOMOLOGATION": ("Ingénieur d'homologation",
+        "Conduit les opérations d'homologation des liaisons (référentiel, preuves, validation) et prépare la certification."),
+    "ROLE_CHEF_DES": ("Chef du DES",
+        "Dirige le Département Exploitation et Supervision : ouvre les liaisons, désigne les conducteurs de projet et signe le quitus technique."),
+    "ROLE_SUPER_ADMIN": ("Super administrateur",
+        "Administre la plateforme, les comptes et les profils ; seul habilité à attribuer un profil privilégié."),
+    "ROLE_RSSI": ("Sécurité des SI",
+        "Responsable de la sécurité des systèmes d'information : vérifie la sécurité des liaisons, signe le quitus sécurité et administre les comptes."),
+    "ROLE_CONFORMITE": ("Conformité",
+        "Contrôle la conformité des dossiers de certification, rattache les changements et signe le quitus conformité."),
+    "ROLE_DG": ("Direction générale",
+        "Direction générale du GIMAC : signe le quitus final et approuve les changements de statut des attestations."),
+    "ROLE_CORRESPONDANT": ("Correspondant du participant",
+        "Représente une institution membre sur le portail : suit l'homologation de sa liaison, dépose les livrables et signe."),
+    "ROLE_CHARGE_DDRM": ("Chargé de la DDRM",
+        "Instruit les dossiers des institutions membres (adhésion, transitions) et propose les décisions au chef de la DDRM."),
+    "ROLE_CHEF_DDRM": ("Chef de la DDRM",
+        "Dirige la DDRM : prononce les décisions sur les institutions membres, ouvre les liaisons et désigne les conducteurs de projet."),
+    "ROLE_SNA": ("Normes et Agréments",
+        "Service Normes et Agréments : vérifie le respect des normes, dépose et valide les preuves d'homologation."),
+    "ROLE_PRODUCTION_MONETIQUE": ("Production monétique",
+        "Met en production les liaisons homologuées : preuves, rattachement des changements et rapport de mise en production."),
+    "ROLE_POLE_RESEAU": ("Pôle réseau",
+        "Réalise les opérations réseau des liaisons et en dépose les preuves d'homologation."),
+    "ROLE_POLE_SYSTEME": ("Pôle système",
+        "Réalise les opérations système des liaisons et en dépose les preuves d'homologation."),
+    "ROLE_COLLABORATEUR": ("Collaborateur",
+        "Employé du GIMAC sans fonction métier dans la plateforme : messagerie, Mon activité et notifications."),
+    "ROLE_ADMIN_SYSTEME": ("Administrateur système",
+        "Exploite l'infrastructure de la plateforme (supervision, opérations Docker et Kubernetes) sans administrer les comptes."),
+    "ROLE_RESPONSABLE_SERVICE": ("Responsable de service",
+        "Dirige un service, un pôle ou une cellule : confie et suit les tâches de son équipe, lit ses activités et vise ses rapports."),
+    "ROLE_CONDUCTEUR_PROJET": ("Conducteur de projet",
+        "Conduit le projet de liaison qui lui est confié : affecte les opérations, valide les preuves et établit le procès-verbal."),
+}
+assert set(PRESENTATIONS) == set(PROFILS), "libellé et mission de chaque profil livré"
+assert all(1 <= len(l) <= 80 and len(d) <= 500 and "\u2014" not in l + d for l, d in PRESENTATIONS.values())
 # Messagerie de travail (D-64) : tous les profils internes du GIMAC, jamais le correspondant d'un
 # participant (profil externe, porteur d'une institution).
 PROFILS_EXTERNES = {"ROLE_CORRESPONDANT"}
@@ -108,6 +151,18 @@ MESSAGERIE = ["COL_MESSAGE_READ", "COL_MESSAGE_SEND"]
 # Mon activité (D-76 §4) : tout profil interne ; équipe et tâches confiées pour les responsables.
 MON_ACTIVITE = ["PIL_ACTIVITY_OWN", "NOT_INBOX_READ"]
 RESPONSABLES = {"ROLE_CHEF_DES", "ROLE_CHEF_DDRM", "ROLE_DG", "ROLE_RSSI", "ROLE_CONFORMITE", "ROLE_RESPONSABLE_SERVICE"}
+# Référentiel des opérations (D-89, docs/lot1/referentiel-droits-etapes.md §1) : éditeurs (ingénieur d'homologation,
+# chefs de département, chef de service, super administrateur), publieurs, lecture complète (DG, conformité, RSSI,
+# chefs de département) ; tout autre lecteur ne reçoit que les opérations qui le concernent (MS-HOMOLOGATION).
+REFERENTIEL_EDITEURS = {"ROLE_INGENIEUR_HOMOLOGATION", "ROLE_CHEF_DES", "ROLE_CHEF_DDRM", "ROLE_RESPONSABLE_SERVICE", "ROLE_SUPER_ADMIN"}
+REFERENTIEL_PUBLIEURS = {"ROLE_INGENIEUR_HOMOLOGATION", "ROLE_CHEF_DES", "ROLE_CHEF_DDRM", "ROLE_SUPER_ADMIN"}
+REFERENTIEL_LECTURE_COMPLETE = {"ROLE_DG", "ROLE_CONFORMITE", "ROLE_RSSI", "ROLE_CHEF_DES", "ROLE_CHEF_DDRM"}
+for _profil, _ajouts in (
+    *((p, ["HOM_REFERENTIEL_READ", "HOM_REFERENTIEL_EDIT"]) for p in sorted(REFERENTIEL_EDITEURS)),
+    *((p, ["HOM_REFERENTIEL_PUBLISH"]) for p in sorted(REFERENTIEL_PUBLIEURS)),
+    *((p, ["HOM_REFERENTIEL_READ_ALL"]) for p in sorted(REFERENTIEL_LECTURE_COMPLETE)),
+):
+    PROFILS[_profil] = PROFILS[_profil] + [x for x in _ajouts if x not in PROFILS[_profil]]
 for _profil in PROFILS:
     if _profil not in PROFILS_EXTERNES:
         PROFILS[_profil] = PROFILS[_profil] + MESSAGERIE + MON_ACTIVITE
@@ -143,7 +198,9 @@ SERVICES = {
     "participant-service": ["INTERNAL_DOCUMENT_READ", "INTERNAL_IAM_READ"],
     # Messagerie (D-64) : annuaire des comptes internes (MS-IAM), dépôt et lecture des pièces jointes (MS-DOCUMENT).
     "collaboration-service": ["INTERNAL_IAM_READ", "INTERNAL_DOCUMENT_READ", "INTERNAL_DOCUMENT_DEPOSIT"],
-    # Mon activité (D-76) : rattachements et équipes (MS-IAM), documents des rapports (MS-DOCUMENT).
+    # Mon activité (D-76) : rattachements et équipes (MS-IAM), documents des rapports (MS-DOCUMENT). Processus d'unité
+    # (D-87) : unités et membres, pouvoirs, vérification des assertions FIDO2 SIGNATURE_PROCESSUS (MS-IAM, routes
+    # /api/v1/interne/** sous INTERNAL_IAM_READ), livrables PROCESSUS_UNITE (GET /api/v1/interne/documents/{id}).
     "pilotage-service": ["INTERNAL_IAM_READ", "INTERNAL_DOCUMENT_READ"],
     # Notifications (D-80) : noms des comptes (MS-IAM) et titre des conversations (MS-COLLABORATION).
     "notification-service": ["INTERNAL_IAM_READ", "INTERNAL_COLLABORATION_READ"],
@@ -308,10 +365,12 @@ def uid(nom):
     return str(uuid.uuid5(uuid.NAMESPACE_URL, "gimac:" + nom))
 
 
-def role(nom, description, composites=None):
+def role(nom, description, composites=None, attributs=None):
     r = {"id": uid("role:" + nom), "name": nom, "description": description, "composite": bool(composites), "clientRole": False}
     if composites:
         r["composites"] = {"realm": composites}
+    if attributs:
+        r["attributes"] = attributs
     return r
 
 
@@ -357,7 +416,8 @@ def main():
         realm["defaultRole"]["name"] = "default-roles-gimac"
 
     realm["roles"]["realm"] += [role(p, "Permission du lot 1") for p in TOUTES]
-    realm["roles"]["realm"] += [role(n, "Profil du lot 1", ["ROLE_USER"] + ps) for n, ps in PROFILS.items()]
+    realm["roles"]["realm"] += [role(n, PRESENTATIONS[n][1], ["ROLE_USER"] + ps, {"gimac_libelle": [PRESENTATIONS[n][0]]})
+                                for n, ps in PROFILS.items()]
 
     # Claim institution_id (RG-59), porté par le client scope jhipster déjà servi aux applications.
     for cs in realm["clientScopes"]:
@@ -505,6 +565,10 @@ def main():
     assert all(realm[k] == v for k, v in {**SESSIONS, **FORCE_BRUTE, **POLITIQUE_OTP}.items())
     assert realm["passwordPolicy"] == POLITIQUE_MOTS_DE_PASSE
     assert realm["resetPasswordAllowed"] is False and "gimac_actions_requises" in texte
+    # D-86 : chaque profil livré porte son libellé et sa mission, plus aucun « Profil du lot 1 ».
+    profils_realm = {r["name"]: r for r in realm["roles"]["realm"] if r["name"] in PROFILS}
+    assert all(r["attributes"]["gimac_libelle"] == [PRESENTATIONS[n][0]] and r["description"] == PRESENTATIONS[n][1]
+               for n, r in profils_realm.items()) and "Profil du lot 1" not in texte
     CIBLE.write_text(texte + "\n", encoding="utf-8")
     production = dict(realm, users=[u for u in realm["users"] if u.get("serviceAccountClientId")])
     assert not any(u["username"].startswith("test-") for u in production["users"]) and production["users"], "domaine de production"

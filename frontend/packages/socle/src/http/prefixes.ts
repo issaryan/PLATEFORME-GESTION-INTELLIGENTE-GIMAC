@@ -7,6 +7,8 @@ export const P = {
   portailCertification: '/bff/portail/certification',
   desParticipant: '/bff/des/participant',
   desDocument: '/bff/des/document',
+  // Aperçu bureautique (D-83) : la console convertit aussi les pièces de sa messagerie.
+  consoleDocument: '/bff/console/document',
   // Messagerie instantanée de travail (D-64), MS-COLLABORATION : tout membre interne, DES et console.
   desCollaboration: '/bff/des/collaboration',
   consoleCollaboration: '/bff/console/collaboration',

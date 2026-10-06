@@ -14,6 +14,8 @@
 .gm-dialog-sujet { display: block; margin-top: var(--gm-space-1); font-size: 13px; line-height: 20px; font-weight: 400; color: var(--gm-color-text-secondary); }
 .gm-dialog-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--gm-space-3); padding: var(--gm-space-5) var(--gm-space-6) var(--gm-space-4); border-bottom: var(--gm-border-1) solid var(--gm-color-border); }
 .gm-dialog-head .gm-card-title { font-size: 18px; line-height: 26px; font-weight: 500; }
+/* Pictogramme devant le titre (type du document dans l’aperçu, D-83) : aligné sur la première ligne, couleur d’action. */
+.gm-dialog-icone { vertical-align: -3px; margin-right: var(--gm-space-2); color: var(--gm-color-action); }
 .gm-dialog-desc { margin: 0; padding: var(--gm-space-4) var(--gm-space-6) 0; color: var(--gm-color-text-secondary); }
 .gm-dialog-body { padding: var(--gm-space-5) var(--gm-space-6); overflow: auto; }
 .gm-dialog-body .gm-form-grid { gap: var(--gm-space-4) var(--gm-space-5); align-items: start; }

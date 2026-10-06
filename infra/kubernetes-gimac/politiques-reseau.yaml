@@ -1,6 +1,7 @@
 # Refus par défaut et matrice des flux autorisés par segment (CC 5.6.1, D-45, D-49, RG-24, RG-60).
 # Segments : dmz (passerelle), socle, referentiels, exploitation, pilotage (zone applicative),
-# persistance, identite (Keycloak), supervision (Prometheus, Grafana).
+# persistance, identite (Keycloak), supervision (Prometheus, Grafana), conversion (aperçu bureautique, D-83),
+# politiques (OPA, joint par la passerelle seule), alertes (Alertmanager).
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -175,6 +176,21 @@ spec:
               kubernetes.io/metadata.name: ingress-nginx
       ports:
         - { protocol: TCP, port: 8080 }
+    # Santé sur le port de gestion (/health/ready), lue par la supervision de la passerelle (D-61).
+    - from:
+        - podSelector:
+            matchLabels:
+              gimac.cm/segment: dmz
+      ports:
+        - { protocol: TCP, port: 9990 }
+    # Grappe des deux répliques (KC_CACHE_STACK=kubernetes) : JGroups (7800) et détection des pannes (57800).
+    - from:
+        - podSelector:
+            matchLabels:
+              gimac.cm/segment: identite
+      ports:
+        - { protocol: TCP, port: 7800 }
+        - { protocol: TCP, port: 57800 }
   egress:
     - to:
         - podSelector:
@@ -182,6 +198,13 @@ spec:
               app: keycloak-postgresql
       ports:
         - { protocol: TCP, port: 5432 }
+    - to:
+        - podSelector:
+            matchLabels:
+              gimac.cm/segment: identite
+      ports:
+        - { protocol: TCP, port: 7800 }
+        - { protocol: TCP, port: 57800 }
 ---
 # Supervision : Prometheus lit les métriques ; Grafana lit Prometheus ; l'opérateur joint l'API Kubernetes.
 apiVersion: networking.k8s.io/v1
@@ -232,10 +255,11 @@ spec:
       app.kubernetes.io/name: prometheus
   policyTypes: [Ingress, Egress]
   ingress:
+    # Grafana, et la passerelle (supervision de la plateforme, D-61 : cibles, hôtes, conteneurs).
     - from:
         - podSelector:
-            matchLabels:
-              gimac.cm/segment: supervision
+            matchExpressions:
+              - { key: gimac.cm/segment, operator: In, values: [supervision, dmz] }
       ports:
         - { protocol: TCP, port: 9090 }
   egress:
@@ -245,6 +269,18 @@ spec:
               - { key: gimac.cm/segment, operator: In, values: [dmz, socle, referentiels, exploitation, pilotage] }
       ports:
         - { protocol: TCP, port: 8080, endPort: 8093 }
+    # Envoi des alertes à Alertmanager.
+    - to:
+        - podSelector:
+            matchLabels:
+              gimac.cm/segment: alertes
+      ports:
+        - { protocol: TCP, port: 9093 }
+    # Découverte des cibles des ServiceMonitor par l'API Kubernetes (rôle jhipster-prometheus-role) ; à resserrer
+    # par un ipBlock sur les adresses du serveur d'API, comme sortie-passerelle-api-kubernetes.
+    - ports:
+        - { protocol: TCP, port: 443 }
+        - { protocol: TCP, port: 6443 }
 ---
 # Couches de présentation : reçues du contrôleur d'entrée, ne joignent que la passerelle (BFF).
 apiVersion: networking.k8s.io/v1
@@ -271,3 +307,210 @@ spec:
               gimac.cm/segment: dmz
       ports:
         - { protocol: TCP, port: 8080 }
+---
+# Aperçu des documents bureautiques (D-83) : le moteur de conversion n'est joint que par MS-DOCUMENT, sur son
+# port 3000, et ne joint rien (aucune règle de sortie hors résolution DNS).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: conversion-documents
+  namespace: gimac-des
+spec:
+  podSelector:
+    matchLabels:
+      gimac.cm/segment: conversion
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: document
+      ports:
+        - { protocol: TCP, port: 3000 }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: sortie-document-conversion
+  namespace: gimac-des
+spec:
+  podSelector:
+    matchLabels:
+      app: document
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              gimac.cm/segment: conversion
+      ports:
+        - { protocol: TCP, port: 3000 }
+---
+# Politiques d'accès (IAM-19, RG-24) : OPA n'est joint que par la passerelle (filtre OpaAuthorize) et ne joint
+# rien (aucune règle de sortie hors résolution DNS).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: opa
+  namespace: gimac-des
+spec:
+  podSelector:
+    matchLabels:
+      gimac.cm/segment: politiques
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              gimac.cm/segment: dmz
+      ports:
+        - { protocol: TCP, port: 8181 }
+---
+# Alertmanager : reçoit les alertes de Prometheus, lu par la passerelle (alertes actives) et par Grafana. Aucune
+# sortie : le récepteur réel (messagerie, astreinte) et sa règle de sortie sont à ajouter à la mise en production.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: alertmanager
+  namespace: gimac-des
+spec:
+  podSelector:
+    matchLabels:
+      gimac.cm/segment: alertes
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+        - podSelector:
+            matchExpressions:
+              - { key: gimac.cm/segment, operator: In, values: [dmz, supervision] }
+      ports:
+        - { protocol: TCP, port: 9093 }
+---
+# Supervision et autorisation par la passerelle (D-61, IAM-19) : OPA, Prometheus, Alertmanager et la santé de
+# Keycloak sur son port de gestion.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: sortie-passerelle-plateforme
+  namespace: gimac-des
+spec:
+  podSelector:
+    matchLabels:
+      gimac.cm/segment: dmz
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              gimac.cm/segment: politiques
+      ports:
+        - { protocol: TCP, port: 8181 }
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+      ports:
+        - { protocol: TCP, port: 9090 }
+    - to:
+        - podSelector:
+            matchLabels:
+              gimac.cm/segment: alertes
+      ports:
+        - { protocol: TCP, port: 9093 }
+    - to:
+        - podSelector:
+            matchLabels:
+              gimac.cm/segment: identite
+      ports:
+        - { protocol: TCP, port: 9990 }
+---
+# Création des sujets Kafka (kafka-sujets.yaml) : le Job ne joint que le courtier.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: kafka-sujets-init
+  namespace: gimac-des
+spec:
+  podSelector:
+    matchLabels:
+      app: kafka-sujets-init
+  policyTypes: [Ingress, Egress]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: jhipster-kafka
+      ports:
+        - { protocol: TCP, port: 9092 }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: entree-kafka-sujets-init
+  namespace: gimac-des
+spec:
+  podSelector:
+    matchLabels:
+      app: jhipster-kafka
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: kafka-sujets-init
+      ports:
+        - { protocol: TCP, port: 9092 }
+---
+# Sorties vers les dispositifs extérieurs à la grappe, dont l'adresse n'est connue qu'au déploiement : ports
+# seuls, à resserrer par un ipBlock sur les adresses fournies par l'exploitant (comme l'API Kubernetes).
+# MS-DOCUMENT : passerelle S3 de Ceph RGW (D-50), point d'accès du Secret gimac-stockage-objet (443 ou 7480).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: sortie-document-stockage-objet
+  namespace: gimac-des
+spec:
+  podSelector:
+    matchLabels:
+      app: document
+  policyTypes: [Egress]
+  egress:
+    - ports:
+        - { protocol: TCP, port: 443 }
+        - { protocol: TCP, port: 7480 }
+---
+# MS-IAM : courriels de la plateforme par SMTP (D-65), serveur réglé dans la console (25, 465 ou 587).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: sortie-iam-courriel
+  namespace: gimac-des
+spec:
+  podSelector:
+    matchLabels:
+      app: iam
+  policyTypes: [Egress]
+  egress:
+    - ports:
+        - { protocol: TCP, port: 25 }
+        - { protocol: TCP, port: 465 }
+        - { protocol: TCP, port: 587 }
+---
+# MS-CERTIFICATION : dispositif de gestion des changements (GIMAC_GESTION_CHANGEMENTS_URL, ConfigMap
+# gimac-dispositifs-externes), en HTTPS.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: sortie-certification-gestion-changements
+  namespace: gimac-des
+spec:
+  podSelector:
+    matchLabels:
+      app: certification
+  policyTypes: [Egress]
+  egress:
+    - ports:
+        - { protocol: TCP, port: 443 }

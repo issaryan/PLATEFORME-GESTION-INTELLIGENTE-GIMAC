@@ -112,6 +112,47 @@ Codes d'erreur (`application/problem+json`, champ `code`) : `COL_RECIPIENT_REQUI
 `COL_MEMBER_NOT_FOUND` (404), `COL_ATTACHMENT_REJECTED` (400, refus de MS-DOCUMENT, par exemple un numéro de
 carte en clair), `COL_DIRECTORY_UNAVAILABLE` et `COL_DOCUMENT_UNAVAILABLE` (503), `COL_USER_TOKEN_REQUIRED`.
 
+### Réponse à un message et mentions (D-82)
+
+Comme dans WhatsApp, un message peut **répondre à un message précis** de la même conversation et
+**mentionner** des membres avec « @ ». Parties JSON de l'envoi et de la création, champs facultatifs :
+`"reponseA": "<uuid du message cité>"` et `"mentions": ["<id IAM>", …]`.
+
+Règles : `reponseA` désigne un message de la **même conversation** (sinon 422 `COL_REPONSE_INVALIDE`) ; un
+message d'événement (groupe) ne peut être cité ; on peut citer un message de n'importe quel auteur, y compris
+soi-même. `mentions` : 0 à 20 identifiants, chacun **membre de la conversation** et distinct de l'auteur
+(sinon 422 `COL_MENTION_INVALIDE`) ; le texte porte la mention sous la forme `@Prénom Nom` (l'interface
+l'insère depuis la liste des membres ; le service ne déduit jamais une mention du texte seul). Une citation
+d'un message dont l'auteur a quitté le groupe reste lisible.
+
+Mise en œuvre (MS-COLLABORATION, 06/10/2026) :
+- Une mention répétée est dédoublonnée (ordre de la première occurrence conservé) ; la limite de 20 porte sur
+  les identifiants distincts. Un identifiant vide ou nul répond aussi `COL_MENTION_INVALIDE`.
+- `COL_REPONSE_INVALIDE` ne distingue pas un message inconnu d'un message d'une autre conversation (rien
+  n'est révélé) ; `details.id` reprend l'identifiant fourni. Les deux erreurs sont levées avant toute
+  écriture.
+- Création : la réponse n'a de sens que si la conversation directe existante est réutilisée ; dans une
+  nouvelle conversation (ou un nouveau groupe), toute citation répond 422 `COL_REPONSE_INVALIDE`. Les
+  mentions sont vérifiées contre les membres de la conversation retenue (destinataires et créateur).
+- Stockage : colonne `message.reponse_a_id` **sans clé étrangère** (la purge de conservation RG-53 peut
+  supprimer le message cité sans toucher à la réponse, immuable) et table `message_mention` (membre, nom à
+  l'envoi, rang), immuable comme le message.
+- Lecture : les messages cités d'une page du fil sont lus en **une seule requête** (avec leur nombre de
+  pièces jointes), les mentions par lots. Un message cité purgé ou indéchiffrable est rendu
+  `{ "id", "auteur": null, "extrait": "", "piecesJointes": 0, "envoyeLe": null, "supprime": true }` ;
+  sinon `supprime` vaut `false`.
+- Extrait du message cité : espaces et sauts de ligne réduits à une espace ; au-delà de 120 caractères,
+  coupé à la dernière espace des 30 derniers caractères (sinon à 119, jamais au milieu d'un émoji) puis
+  terminé par « … » (120 caractères au plus en tout).
+- `mentionneMoi` : lecteur mentionné ou auteur du message cité (encore lisible), jamais pour son propre
+  message.
+
+Mise en œuvre (MS-NOTIFICATION, 06/10/2026, détail dans `docs/lot1/notifications.md` §7) : notifications `MENTION` et
+`REPONSE` non regroupées, référence `collaboration/MESSAGE/{messageId}`, lien
+`/des/messagerie?conversation={id}&message={messageId}`, seulement pour les destinataires du message ; un compte
+mentionné et cité n'en reçoit qu'une (`MENTION`) ; ouvrir la conversation (`POST /notifications/lecture` avec sa
+référence) les marque lues avec la notification de message ; préférences `types.MENTION` et `types.REPONSE`.
+
 ## 2. Représentations
 
 ```jsonc
@@ -135,7 +176,12 @@ carte en clair), `COL_DIRECTORY_UNAVAILABLE` et `COL_DOCUMENT_UNAVAILABLE` (503)
   "contenu": "…", "envoyeLe": "ISO-8601",
   "evenement": { "type": "GROUPE_CREE" | "GROUPE_RENOMME" | "MEMBRES_AJOUTES" | "MEMBRE_RETIRE" | "MEMBRE_PARTI", "cibles": ["…"] } | null,
   "etiquettes": [ { "liaisonId": "uuid", "reference": "LIA-2026-027" } ],
-  "piecesJointes": [ { "id": "uuid", "nom": "rapport.pdf", "taille": 12345, "typeMime": "application/pdf", "empreinte": "sha256 hex" } ]
+  "piecesJointes": [ { "id": "uuid", "nom": "rapport.pdf", "taille": 12345, "typeMime": "application/pdf", "empreinte": "sha256 hex" } ],
+  // D-82 : message cité (extrait de 120 caractères ; « piecesJointes » : nombre) et membres mentionnés
+  // « supprime » : message cité purgé ou illisible (auteur et envoyeLe nuls, extrait vide)
+  "reponseA": { "id": "uuid", "auteur": { "id": "…", "nom": "…" } | null, "extrait": "…", "piecesJointes": 0, "envoyeLe": "ISO-8601" | null, "supprime": false } | null,
+  "mentions": [ { "id": "…", "nom": "…" } ],
+  "mentionneMoi": false            // vrai si le lecteur est mentionné ou si le message répond à l'un des siens
 }
 ```
 
@@ -158,6 +204,14 @@ messages : `{ "contenu": [...], "plusAnciens": true|false }`.
 ## 4. Événements (outbox, CloudEvents 1.0)
 
 Sujet Kafka `collaboration.message`, type `collaboration.message-sent.v1`, clé = identifiant de conversation.
+D-82 : la donnée gagne `reponseAAuteurId` (auteur du message cité, ou null) et `mentionnes` (identifiants) ;
+MS-NOTIFICATION en tire une notification **non regroupée** de type `MENTION` (« X vous a mentionné ») ou
+`REPONSE` (« X a répondu à votre message »), en plus de la notification de message habituelle, jamais pour
+l'auteur ; préférence propre (`types.MENTION`, `types.REPONSE`, actifs par défaut).
+`reponseAAuteurId` est null sans réponse, quand l'auteur répond à son propre message ou quand l'auteur
+cité n'est plus membre de la conversation ; `mentionnes` est une liste (vide sans mention, et pour les
+événements de groupe), jamais l'auteur. Le canal temps réel (§5) ne transporte que l'enveloppe
+`{ id, type, subject, topic, acteur }` : le frontend relit le fil, qui porte `reponseA` et `mentions`.
 Donnée : `{ "conversationId", "messageId", "auteurId", "destinataires": ["<id>", …], "envoyeLe" }` ;
 **aucun contenu de message** dans l'événement. Les événements de groupe (D-68) passent par le même type ;
 leurs `destinataires` comprennent aussi la personne retirée, pour que sa liste se mette à jour.
@@ -166,7 +220,7 @@ Champ `evenement` (D-80, ajout compatible) : nom de l'événement de groupe (`GR
 que les vrais messages. Interface interne pour les autres services : `GET /api/v1/interne/conversations/{id}`
 → `{ "id", "type": "DIRECTE"|"GROUPE", "nom" (groupe, sinon null), "membres": ["<id>", …] }`, jeton de service
 portant `INTERNAL_COLLABORATION_READ` (client `notification-service`), 404 `COL_CONVERSATION_NOT_FOUND` ;
-MS-COLLABORATION ne publie aucun événement de lecture d'une conversation.
+MS-COLLABORATION publie `collaboration.conversation-read.v1` quand la position de lecture d'un membre avance (D-88, `docs/lot1/accuses-lecture.md`).
 
 ## 4 bis. Interface (frontend, D-68)
 
@@ -175,9 +229,26 @@ MS-COLLABORATION ne publie aucun événement de lecture d'une conversation.
   personne, un groupe plusieurs.
 - **Groupe** : « Nouveau groupe » (nom et membres) ; « Membres et réglages » dans le fil (renommer, ajouter,
   retirer avec confirmation, quitter) ; les autres membres voient la liste en lecture seule.
-- **Pièces jointes** : un clic ouvre une fenêtre d'aperçu (PDF dans un cadre, image, texte et CSV en clair ;
+- **Pièces jointes** : un clic ouvre une fenêtre d'aperçu (PDF dessiné par pdf.js, image, texte et CSV en clair ;
+  documents Word, PowerPoint et Excel convertis en PDF par MS-DOCUMENT, D-83, `docs/lot1/apercu-bureautique.md` ;
   autres formats : invitation à télécharger) avec un bouton « Télécharger ». L'en-tête CSP de nginx
   autorise à cet effet `frame-src 'self' blob:` et `img-src 'self' data: blob:`.
+- **Réponse et mentions (D-82)** : bouton « Répondre » (pictogramme de réponse) dans la ligne d'auteur de chaque
+  bulle, visible au survol ou au focus (toujours visible sur écran tactile), balayage vers la droite sur mobile.
+  La citation s'affiche au-dessus du champ (auteur, extrait, croix ; Échap l'annule) et part en `reponseA`. Dans
+  la bulle, le bloc cité (filet coloré, auteur, extrait sur deux lignes, trombone si le message portait des pièces)
+  mène au message d'origine, chargé page après page si besoin (dix pages au plus, sinon « Message plus ancien non
+  chargé »), puis surligné deux secondes ; `supprime: true` affiche « Message supprimé », sans auteur ni lien.
+  « @ » ouvre la liste des membres de la conversation (sans l'utilisateur), filtrée sans casse ni accents, au
+  clavier (flèches, Entrée ou Tab, Échap) ; le champ porte `aria-autocomplete="list"`, `aria-controls` et
+  `aria-activedescendant`, la liste `role="listbox"`, le nombre de propositions est annoncé. Le choix insère
+  `@Prénom Nom` et mémorise l'identifiant ; à l'envoi, `mentions` ne garde que les identifiants dont le texte
+  `@Nom` figure encore (dédoublonnés, 20 au plus). Les mentions sont mises en évidence dans la bulle par des nœuds
+  texte (jamais de HTML interprété), la sienne plus marquée ; un message où `mentionneMoi` est vrai porte un filet
+  d'action et le pictogramme « @ » (« Vous concerne »). `COL_REPONSE_INVALIDE` et `COL_MENTION_INVALIDE` sont
+  traduits. Le lien `?conversation={id}&message={messageId}` (notification de mention ou de réponse) ouvre le fil
+  sur le message, relu une fois si le fil venait du cache.
+- **Largeur du fil (D-84)** : `docs/lot1/messagerie-espace.md`.
 
 ## 5. Temps réel
 

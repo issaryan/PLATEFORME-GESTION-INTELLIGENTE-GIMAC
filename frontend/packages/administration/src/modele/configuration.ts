@@ -50,8 +50,28 @@ export type ConfigurationMessagerie = {
   motDePasseDefini: boolean
 }
 
-/** Profil par fonction (rôle composite) et ses permissions (D-58). */
-export type Profil = { code: string; description: string | null; permissions: string[]; privilegie: boolean; titulaires: number }
+/**
+ * Profil par fonction (rôle composite) et ses permissions (D-58) ; libellé (1 à 80, attribut gimac_libelle, le code à
+ * défaut) et description (0 à 500) modifiables (D-86 §2), dernière modification depuis la console (null sinon).
+ */
+export type Profil = {
+  code: string
+  libelle?: string
+  description: string | null
+  modifieLe?: string | null
+  modifiePar?: { id: string; nomAffiche: string } | null
+  permissions: string[]
+  privilegie: boolean
+  titulaires: number
+  /** Profil créé par l'administration (D-81 §5), supprimable sans titulaire ; les profils livrés ne le sont pas. */
+  cree?: boolean
+}
 
-/** Domaines de permissions présentés dans la console (INTERNAL, réservé aux services, exclu). */
-export const DOMAINES_PERMISSIONS = ['HOM', 'CER', 'PAR', 'IAM', 'PLATFORM'] as const
+/** Bornes de la présentation d'un profil (D-86 §5), après retrait des espaces de tête et de fin. */
+export const LIMITES_PROFIL = { libelleMax: 80, descriptionMax: 500 } as const
+
+/**
+ * Domaines de permissions présentés dans la console (INTERNAL, réservé aux services, exclu) ; Mon activité (PIL),
+ * messagerie (COL) et notifications (NOT) depuis la vue avancée de la composition par fonctionnalité (D-90).
+ */
+export const DOMAINES_PERMISSIONS = ['HOM', 'CER', 'PAR', 'PIL', 'COL', 'NOT', 'IAM', 'PLATFORM'] as const

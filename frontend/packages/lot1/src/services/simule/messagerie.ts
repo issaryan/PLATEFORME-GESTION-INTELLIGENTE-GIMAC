@@ -1,6 +1,6 @@
 import { ApiError, avatarsSimules, type OptionsTeleversement, type Televersement } from '@gimac/socle'
 import type { Conversation, Correspondant, EtiquetteLiaison, Message, PieceJointe, TypeEvenementGroupe } from '../../modele/messagerie'
-import { LIMITES_MESSAGERIE } from '../../modele/messagerie'
+import { LIMITES_MESSAGERIE, extraitCitation } from '../../modele/messagerie'
 import type { ServiceMessagerie } from '../ports'
 
 // Messagerie simulée (D-64) : mêmes formes de réponse et mêmes codes de refus que MS-COLLABORATION
@@ -87,10 +87,15 @@ type EtatConversation = Omit<Conversation, 'dernierMessage' | 'nonLus'> & { mess
 /** Message reçu d'un autre membre (démonstration des notifications, D-80) : ce que MS-COLLABORATION publierait. */
 export type ReceptionDemo = { conversation: Conversation; message: Message; nonLus: number }
 
+export type OptionsReceptionDemo = { conversationId?: string; contenu?: string; mention?: boolean; reponse?: boolean }
+
 /** Messagerie simulée : le port, plus la réception d'un message d'un autre membre (démonstration, D-80). */
 export type MessagerieSimulee = ServiceMessagerie & {
-  /** Un autre membre écrit dans la conversation donnée (par défaut : le premier échange direct). */
-  recevoirDemo(o?: { conversationId?: string; contenu?: string }): ReceptionDemo
+  /**
+   * Un autre membre écrit dans la conversation donnée (par défaut : le premier échange direct) ; `mention` :
+   * il mentionne l'utilisateur, `reponse` : il répond au dernier message de l'utilisateur (D-82).
+   */
+  recevoirDemo(o?: OptionsReceptionDemo): ReceptionDemo
   /** Conversations portant des messages non lus de l'utilisateur, avec leur dernier message. */
   nonLuesDemo(): ReceptionDemo[]
   /** Abonnement aux messages reçus ; rend la fonction de désabonnement. */
@@ -108,23 +113,30 @@ export function messagerieSimulee(attendre: Attendre, refus: Refus, moi: Corresp
   const documents = new Map<string, { nom: string; taille: number; typeMime: string; blob: Blob; empreinte: string; deposant: string }>()
   type Source = { nom: string; taille: number; typeMime: string; blob: Blob; empreinte: string }
   const conversations: EtatConversation[] = []
+  /** Réponses (D-82) : message → identifiant du message cité, sans lien fort (le cité peut être purgé). */
+  const citations = new Map<string, string>()
 
   const depuisFichier = (f: File): Source => ({ nom: f.name, taille: f.size, typeMime: f.type || 'application/octet-stream', blob: f, empreinte: `sim${f.size.toString(16).padStart(8, '0')}` })
-  const ajouterMessage = (c: EtatConversation, auteur: Correspondant, contenu: string, envoyeLe: string, etiquettes: EtiquetteLiaison[] = [], fichiers: File[] = [], autres: Source[] = []): Message => {
+  const ajouterMessage = (c: EtatConversation, auteur: Correspondant, contenu: string, envoyeLe: string, etiquettes: EtiquetteLiaison[] = [], fichiers: File[] = [], autres: Source[] = [],
+    d82: { reponseA?: string | null; mentions?: string[] } = {}): Message => {
     const m: Message = {
       id: id('MSG'), conversationId: c.id, auteur, moi: auteur.id === moi.id, contenu: masquerNumerosCarte(contenu.trim()), envoyeLe, etiquettes,
+      mentions: [...new Set(d82.mentions ?? [])].map((mid) => ({ id: mid, nom: c.membres.find((x) => x.id === mid)?.nom ?? personne(mid)?.nom ?? mid })),
       piecesJointes: [...fichiers.map(depuisFichier), ...autres].map((f) => {
         const piece: PieceJointe = { id: id('PJ'), nom: f.nom, taille: f.taille, typeMime: f.typeMime, empreinte: f.empreinte }
         pieces.set(piece.id, { piece, blob: f.blob, conversationId: c.id })
         return piece
       }),
     }
+    if (d82.reponseA) citations.set(m.id, d82.reponseA)
     c.messages.push(m)
     c.misAJourLe = envoyeLe
     // L'auteur a lu son propre message.
     c.lus.set(auteur.id, c.messages.length)
     return m
   }
+  /** Conversation à venir (création) : seulement ses membres, pour vérifier les mentions. */
+  const creerFictive = (membres: Correspondant[]): EtatConversation => ({ id: '', type: 'GROUPE', titre: null, liaison: null, membres, messages: [], lus: new Map(), misAJourLe: '', creeeLe: '' })
   const creer = (membres: Correspondant[], titre: string | null, liaison: EtiquetteLiaison | null, creeeLe: string, groupe = false): EtatConversation => {
     const type = !groupe && membres.length === 2 && !titre && !liaison ? 'DIRECTE' : 'GROUPE'
     // Le créateur (premier membre) administre le groupe (D-68).
@@ -156,15 +168,46 @@ export function messagerieSimulee(attendre: Attendre, refus: Refus, moi: Corresp
         'rapport-essais-LIA-2026-030.pdf', { type: 'application/pdf' }),
       new File(['opération;statut;code réponse\nachat;réussi;00\nretrait;échec;05\nconsultation de solde;réussi;00\n'], 'journal-essais.csv', { type: 'text/csv' }),
     ])
-  ajouterMessage(g1, rssi, 'Je prends contact avec le correspondant pour la nouvelle cérémonie.', ilYA(120))
+  // Réponse au message des essais, avec une mention de l'utilisateur (D-82).
+  const essais = g1.messages[1].id
+  ajouterMessage(g1, rssi, `@${moi.nom} je prends contact avec le correspondant pour la nouvelle cérémonie.`, ilYA(120), [], [], [], { reponseA: essais, mentions: [moi.id] })
   ajouterMessage(g1, sna, 'Le blocage est déclaré sur la liaison ; échéance de levée au 27 septembre.', ilYA(20))
   const d2 = creer([moi, rssi], null, null, ilYA(4000))
-  ajouterMessage(d2, moi, 'Pouvez-vous confirmer les attestations PCI DSS attendues pour LIA-2026-019 ?', ilYA(3990), [{ liaisonId: 'LIA-2026-019', reference: 'LIA-2026-019' }])
-  ajouterMessage(d2, rssi, 'Attestation reçue et en cours de vérification.', ilYA(3000))
+  // Documents bureautiques (D-83) : aperçu converti en PDF par le service.
+  const bureautique = (nom: string, type: string) => new File([Uint8Array.from([0x50, 0x4b, 0x03, 0x04, 0x14, 0x00])], nom, { type })
+  ajouterMessage(d2, moi, 'Pouvez-vous confirmer les attestations PCI DSS attendues pour LIA-2026-019 ?', ilYA(3990), [{ liaisonId: 'LIA-2026-019', reference: 'LIA-2026-019' }], [
+    bureautique('note-attestations-PCI-DSS.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'),
+    bureautique('revue-securite-LIA-2026-019.pptx', 'application/vnd.openxmlformats-officedocument.presentationml.presentation'),
+  ])
+  // Réponse à un message purgé par la conservation (RG-53) : citée « Message supprimé ».
+  ajouterMessage(d2, rssi, 'Attestation reçue et en cours de vérification.', ilYA(3000), [], [], [], { reponseA: 'MSG-PURGE' })
   // Non-lus de démonstration : le dernier message de d1 et les deux derniers de g1.
   d1.lus.set(moi.id, 2)
   g1.lus.set(moi.id, 2)
   d2.lus.set(moi.id, 2)
+
+  /** Vue d'un message pour l'utilisateur (D-82) : message cité, mentions, « vous concerne ». */
+  const vueMessage = (c: EtatConversation, m: Message): Message => {
+    const citeId = citations.get(m.id)
+    const cite = citeId ? c.messages.find((x) => x.id === citeId) : undefined
+    const reponseA = !citeId ? null : cite
+      ? { id: cite.id, auteur: { id: cite.auteur.id, nom: cite.auteur.nom }, extrait: extraitCitation(cite.contenu), piecesJointes: cite.piecesJointes.length, envoyeLe: cite.envoyeLe, supprime: false }
+      : { id: citeId, auteur: null, extrait: '', piecesJointes: 0, envoyeLe: null, supprime: true }
+    const copie = structuredClone(m)
+    const mentions = copie.mentions ?? []
+    return {
+      ...copie, auteur: avecPhoto(copie.auteur), reponseA, mentions,
+      mentionneMoi: !m.moi && (mentions.some((x) => x.id === moi.id) || cite?.auteur.id === moi.id),
+    }
+  }
+  /** Réponse et mentions d'un envoi (D-82) : message de la conversation, membres distincts de l'auteur, 20 au plus. */
+  const validerD82 = (c: EtatConversation | undefined, reponseA?: string | null, mentions: string[] = []) => {
+    if (reponseA && !c?.messages.some((m) => m.id === reponseA && !m.evenement)) throw refus(422, 'COL_REPONSE_INVALIDE', 'Le message cité n’appartient pas à cette conversation.')
+    const distinctes = [...new Set(mentions)]
+    if (distinctes.length > LIMITES_MESSAGERIE.mentionsMax || distinctes.some((x) => !x || x === moi.id || !c?.membres.some((m) => m.id === x))) {
+      throw refus(422, 'COL_MENTION_INVALIDE', 'Une personne mentionnée n’est pas membre de la conversation.')
+    }
+  }
 
   const nonLusDe = (c: EtatConversation) => c.messages.length - Math.min(c.lus.get(moi.id) ?? 0, c.messages.length)
   const vue = (c: EtatConversation): Conversation => {
@@ -215,14 +258,16 @@ export function messagerieSimulee(attendre: Attendre, refus: Refus, moi: Corresp
   const receptions = new Set<(r: ReceptionDemo) => void>()
   const reception = (c: EtatConversation): ReceptionDemo => {
     const v = vue(c)
-    return { conversation: v, message: structuredClone(c.messages[c.messages.length - 1]), nonLus: v.nonLus }
+    return { conversation: v, message: vueMessage(c, c.messages[c.messages.length - 1]), nonLus: v.nonLus }
   }
 
   return {
     recevoirDemo: (o = {}) => {
       const c = o.conversationId ? sienne(o.conversationId) : miennes().find((x) => x.type === 'DIRECTE') ?? miennes()[0]
       const auteur = c.membres.find((m) => m.id !== moi.id)!
-      ajouterMessage(c, auteur, o.contenu ?? 'Pouvez-vous relire le procès-verbal avant 17 h ? Merci.', new Date().toISOString())
+      const texte = o.contenu ?? 'Pouvez-vous relire le procès-verbal avant 17 h ? Merci.'
+      const mien = o.reponse ? [...c.messages].reverse().find((m) => m.auteur.id === moi.id && !m.evenement) : undefined
+      ajouterMessage(c, auteur, o.mention ? `@${moi.nom} ${texte}` : texte, new Date().toISOString(), [], [], [], { reponseA: mien?.id, mentions: o.mention ? [moi.id] : [] })
       const r = reception(c)
       receptions.forEach((f) => f(r))
       return r
@@ -251,7 +296,7 @@ export function messagerieSimulee(attendre: Attendre, refus: Refus, moi: Corresp
       const c = sienne(cid)
       const fin = avant ? c.messages.findIndex((m) => m.id === avant) : c.messages.length
       const debut = Math.max(0, fin - 50)
-      return { contenu: structuredClone(c.messages.slice(debut, fin)).map((m) => ({ ...m, auteur: avecPhoto(m.auteur) })), plusAnciens: debut > 0 }
+      return { contenu: c.messages.slice(debut, fin).map((m) => vueMessage(c, m)), plusAnciens: debut > 0 }
     }),
     demarrer: (n) => attendre(() => {
       const destinataires = [...new Set(n.destinataires)]
@@ -274,18 +319,20 @@ export function messagerieSimulee(attendre: Attendre, refus: Refus, moi: Corresp
       const existante = !n.groupe && !titre && !liaison && membres.length === 1
         ? conversations.find((c) => c.type === 'DIRECTE' && c.membres.some((m) => m.id === moi.id) && c.membres.some((m) => m.id === membres[0].id))
         : undefined
+      // Une citation n'a de sens que dans la conversation directe réutilisée ; mentions parmi les membres retenus.
+      validerD82(existante ?? creerFictive([moi, ...membres]), n.reponseA, n.mentions)
       const maintenant = new Date().toISOString()
       const c = existante ?? creer([moi, ...membres], titre, liaison, maintenant, n.groupe)
       if (n.groupe) evenement(c, moi, 'GROUPE_CREE', [titre!], maintenant)
-      if (avecMessage) ajouterMessage(c, moi, n.contenu, new Date().toISOString(), n.etiquettes, n.fichiers, autres)
+      if (avecMessage) ajouterMessage(c, moi, n.contenu, new Date().toISOString(), n.etiquettes, n.fichiers, autres, { reponseA: n.reponseA, mentions: n.mentions })
       return vue(c)
     }),
     envoyer: (cid, e) => attendre(() => {
       const c = sienne(cid)
       const autres = sources(e.documents, e.transferts)
       valider(e.contenu, e.etiquettes, e.fichiers, autres)
-      const m = structuredClone(ajouterMessage(c, moi, e.contenu, new Date().toISOString(), e.etiquettes, e.fichiers, autres))
-      return { ...m, auteur: avecPhoto(m.auteur) }
+      validerD82(c, e.reponseA, e.mentions)
+      return vueMessage(c, ajouterMessage(c, moi, e.contenu, new Date().toISOString(), e.etiquettes, e.fichiers, autres, { reponseA: e.reponseA, mentions: e.mentions }))
     }),
     marquerLu: (cid) => attendre(() => {
       const c = sienne(cid)

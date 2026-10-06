@@ -1,0 +1,1418 @@
+{
+ "resumes": [
+  {
+   "id": "PRC-0002",
+   "code": "ACCES_VPN_PARTICIPANT",
+   "version": 1,
+   "etat": "BROUILLON",
+   "unite": "POLE_RESEAU",
+   "libelle": "Accès VPN d’un participant",
+   "description": "Ouverture d’un accès VPN de recette pour une institution membre.",
+   "categorie": "Réseau",
+   "delaiCibleJours": 5,
+   "nombreEtapes": 2,
+   "publieeLe": null,
+   "modifieLe": null,
+   "modifiePar": null,
+   "droits": {
+    "modifier": true,
+    "publier": true,
+    "lancer": false,
+    "retirer": false
+   }
+  },
+  {
+   "id": "PRC-0001",
+   "code": "OUVERTURE_FLUX_RESEAU",
+   "version": 1,
+   "etat": "PUBLIEE",
+   "unite": "POLE_RESEAU",
+   "libelle": "Ouverture d’un flux réseau",
+   "description": "Demande, analyse de sécurité, mise en œuvre et recette d’un flux entre la plateforme et un participant.",
+   "categorie": "Réseau",
+   "delaiCibleJours": 10,
+   "nombreEtapes": 4,
+   "publieeLe": "2026-09-16T10:00:00+01:00",
+   "modifieLe": null,
+   "modifiePar": null,
+   "droits": {
+    "modifier": false,
+    "publier": false,
+    "lancer": true,
+    "retirer": true
+   }
+  }
+ ],
+ "definitions": [
+  {
+   "id": "PRC-0002",
+   "code": "ACCES_VPN_PARTICIPANT",
+   "version": 1,
+   "etat": "BROUILLON",
+   "unite": "POLE_RESEAU",
+   "libelle": "Accès VPN d’un participant",
+   "description": "Ouverture d’un accès VPN de recette pour une institution membre.",
+   "categorie": "Réseau",
+   "delaiCibleJours": 5,
+   "etapes": [
+    {
+     "code": "DEMANDE",
+     "libelle": "Demande d’accès",
+     "action": "Décrire l’accès demandé.",
+     "intervenant": {
+      "mode": "LANCEUR"
+     },
+     "validateur": null,
+     "predecesseurs": [],
+     "delaiJours": 1,
+     "livrables": [],
+     "signatures": [],
+     "champs": [
+      {
+       "code": "INSTITUTION",
+       "libelle": "Institution",
+       "type": "TEXTE",
+       "choix": [],
+       "obligatoire": true
+      }
+     ],
+     "position": {
+      "x": 0,
+      "y": 80
+     }
+    },
+    {
+     "code": "CONFIGURATION",
+     "libelle": "Configuration du VPN",
+     "action": "Créer le tunnel et transmettre les paramètres.",
+     "intervenant": {
+      "mode": "PERSONNE",
+      "personneId": "u-res",
+      "remplacement": null
+     },
+     "validateur": {
+      "mode": "CHEF_UNITE",
+      "unite": null
+     },
+     "predecesseurs": [
+      "DEMANDE"
+     ],
+     "delaiJours": 2,
+     "livrables": [
+      {
+       "code": "FICHE_VPN",
+       "libelle": "Fiche de paramètres",
+       "typesPieces": [
+        "application/pdf"
+       ],
+       "obligatoire": true,
+       "modele": null
+      }
+     ],
+     "signatures": [],
+     "champs": [],
+     "position": {
+      "x": 300,
+      "y": 80
+     }
+    }
+   ],
+   "creeLe": "2026-10-06T13:40:09.349Z",
+   "creePar": {
+    "id": "U-001",
+    "nomAffiche": "Paul Mbarga Atangana"
+   },
+   "modifieLe": null,
+   "modifiePar": null,
+   "publieeLe": null,
+   "publieePar": null,
+   "motifPublication": null,
+   "avertissementsLeves": false,
+   "retireeLe": null,
+   "retireePar": null,
+   "motifRetrait": null,
+   "droits": {
+    "modifier": true,
+    "publier": true,
+    "lancer": false,
+    "retirer": false
+   },
+   "versions": [
+    {
+     "id": "PRC-0002",
+     "version": 1,
+     "etat": "BROUILLON"
+    }
+   ],
+   "avertissements": [],
+   "personnes": {
+    "u-res": "Idriss Mahamat Saleh"
+   },
+   "historique": [
+    {
+     "quand": "2026-10-06T13:40:09.349Z",
+     "acteur": {
+      "id": "U-001",
+      "nomAffiche": "Paul Mbarga Atangana"
+     },
+     "action": "CREE",
+     "etape": null,
+     "detail": null
+    }
+   ]
+  },
+  {
+   "id": "PRC-0001",
+   "code": "OUVERTURE_FLUX_RESEAU",
+   "version": 1,
+   "etat": "PUBLIEE",
+   "unite": "POLE_RESEAU",
+   "libelle": "Ouverture d’un flux réseau",
+   "description": "Demande, analyse de sécurité, mise en œuvre et recette d’un flux entre la plateforme et un participant.",
+   "categorie": "Réseau",
+   "delaiCibleJours": 10,
+   "etapes": [
+    {
+     "code": "DEMANDE",
+     "libelle": "Demande d’ouverture du flux",
+     "action": "Décrire le flux à ouvrir : source, destination, port, protocole et date souhaitée.",
+     "intervenant": {
+      "mode": "LANCEUR"
+     },
+     "validateur": null,
+     "predecesseurs": [],
+     "delaiJours": 1,
+     "livrables": [],
+     "signatures": [],
+     "position": {
+      "x": 0,
+      "y": 80
+     },
+     "champs": [
+      {
+       "code": "SOURCE",
+       "libelle": "Adresse source",
+       "type": "TEXTE",
+       "choix": [],
+       "obligatoire": true
+      },
+      {
+       "code": "DESTINATION",
+       "libelle": "Adresse de destination",
+       "type": "TEXTE",
+       "choix": [],
+       "obligatoire": true
+      },
+      {
+       "code": "PORT",
+       "libelle": "Port",
+       "type": "NOMBRE",
+       "choix": [],
+       "obligatoire": true
+      },
+      {
+       "code": "PROTOCOLE",
+       "libelle": "Protocole",
+       "type": "CHOIX",
+       "choix": [
+        "TCP",
+        "UDP"
+       ],
+       "obligatoire": true
+      },
+      {
+       "code": "DATE_SOUHAITEE",
+       "libelle": "Date souhaitée",
+       "type": "DATE",
+       "choix": [],
+       "obligatoire": false
+      }
+     ]
+    },
+    {
+     "code": "ANALYSE",
+     "libelle": "Analyse de sécurité du flux",
+     "action": "Vérifier la conformité du flux à la politique de filtrage et rédiger la note d’analyse.",
+     "intervenant": {
+      "mode": "PROFIL",
+      "profil": "ROLE_POLE_RESEAU",
+      "unite": null
+     },
+     "validateur": {
+      "mode": "CHEF_UNITE",
+      "unite": null
+     },
+     "predecesseurs": [
+      "DEMANDE"
+     ],
+     "delaiJours": 2,
+     "position": {
+      "x": 300,
+      "y": 80
+     },
+     "livrables": [
+      {
+       "code": "NOTE_ANALYSE",
+       "libelle": "Note d’analyse",
+       "typesPieces": [
+        "application/pdf"
+       ],
+       "obligatoire": true,
+       "modele": null
+      }
+     ],
+     "signatures": [],
+     "champs": []
+    },
+    {
+     "code": "MISE_EN_OEUVRE",
+     "libelle": "Mise en œuvre sur les équipements",
+     "action": "Appliquer la règle sur les pare-feu et joindre la configuration appliquée.",
+     "intervenant": {
+      "mode": "AU_LANCEMENT",
+      "remplacement": "ROLE_POLE_RESEAU",
+      "unite": null
+     },
+     "validateur": null,
+     "predecesseurs": [
+      "ANALYSE"
+     ],
+     "delaiJours": 3,
+     "position": {
+      "x": 600,
+      "y": 80
+     },
+     "livrables": [
+      {
+       "code": "CONFIGURATION",
+       "libelle": "Configuration appliquée",
+       "typesPieces": [
+        "text/plain",
+        "application/pdf"
+       ],
+       "obligatoire": true,
+       "modele": null
+      }
+     ],
+     "signatures": [],
+     "champs": [
+      {
+       "code": "EQUIPEMENTS",
+       "libelle": "Équipements modifiés",
+       "type": "TEXTE",
+       "choix": [],
+       "obligatoire": false
+      }
+     ]
+    },
+    {
+     "code": "RECETTE",
+     "libelle": "Recette du flux",
+     "action": "Tester le flux de bout en bout, rédiger le procès-verbal de recette et le faire signer par le chef d’unité.",
+     "intervenant": {
+      "mode": "PROFIL",
+      "profil": "ROLE_POLE_RESEAU",
+      "unite": null
+     },
+     "validateur": null,
+     "predecesseurs": [
+      "MISE_EN_OEUVRE"
+     ],
+     "delaiJours": 2,
+     "position": {
+      "x": 900,
+      "y": 80
+     },
+     "livrables": [
+      {
+       "code": "PV_RECETTE",
+       "libelle": "Procès-verbal de recette",
+       "typesPieces": [
+        "application/pdf"
+       ],
+       "obligatoire": true,
+       "modele": null
+      }
+     ],
+     "signatures": [
+      {
+       "code": "SIGNATURE_RECETTE",
+       "libelle": "Signature du procès-verbal",
+       "signataire": {
+        "mode": "CHEF_UNITE",
+        "unite": null
+       },
+       "porte": [
+        "PV_RECETTE",
+        "NOTE_ANALYSE"
+       ],
+       "ordre": 1
+      }
+     ],
+     "champs": [
+      {
+       "code": "RESULTAT",
+       "libelle": "Résultat des tests",
+       "type": "CHOIX",
+       "choix": [
+        "Conforme",
+        "Non conforme"
+       ],
+       "obligatoire": true
+      }
+     ]
+    }
+   ],
+   "creeLe": "2026-10-06T13:40:09.349Z",
+   "creePar": {
+    "id": "u-resp-info",
+    "nomAffiche": "Gaston Ndzana Ebode"
+   },
+   "modifieLe": null,
+   "modifiePar": null,
+   "publieeLe": "2026-09-16T10:00:00+01:00",
+   "publieePar": {
+    "id": "u-resp-info",
+    "nomAffiche": "Gaston Ndzana Ebode"
+   },
+   "motifPublication": null,
+   "avertissementsLeves": false,
+   "retireeLe": null,
+   "retireePar": null,
+   "motifRetrait": null,
+   "droits": {
+    "modifier": false,
+    "publier": false,
+    "lancer": true,
+    "retirer": true
+   },
+   "versions": [
+    {
+     "id": "PRC-0001",
+     "version": 1,
+     "etat": "PUBLIEE"
+    }
+   ],
+   "avertissements": [],
+   "personnes": {},
+   "historique": [
+    {
+     "quand": "2026-10-06T13:40:09.349Z",
+     "acteur": {
+      "id": "u-resp-info",
+      "nomAffiche": "Gaston Ndzana Ebode"
+     },
+     "action": "CREE",
+     "etape": null,
+     "detail": null
+    },
+    {
+     "quand": "2026-09-16T10:00:00+01:00",
+     "acteur": {
+      "id": "u-resp-info",
+      "nomAffiche": "Gaston Ndzana Ebode"
+     },
+     "action": "PUBLIE",
+     "etape": null,
+     "detail": null
+    }
+   ]
+  }
+ ],
+ "resumesInstances": [
+  {
+   "id": "INS-0007",
+   "processus": {
+    "id": "PRC-0001",
+    "code": "OUVERTURE_FLUX_RESEAU",
+    "version": 1,
+    "libelle": "Ouverture d’un flux réseau"
+   },
+   "unite": "POLE_RESEAU",
+   "intitule": "Ouverture du port 443 pour la supervision",
+   "etat": "EN_COURS",
+   "lanceur": {
+    "id": "u-collab",
+    "nomAffiche": "Nadège Mvondo Assiga"
+   },
+   "lanceeLe": "2026-10-06T13:40:09.352Z",
+   "closeLe": null,
+   "avancement": {
+    "total": 4,
+    "terminees": 1
+   },
+   "etapesEnCours": [
+    {
+     "code": "ANALYSE",
+     "libelle": "Analyse de sécurité du flux",
+     "etat": "ACTIVE",
+     "echeance": "2026-10-08"
+    }
+   ]
+  },
+  {
+   "id": "INS-0003",
+   "processus": {
+    "id": "PRC-0001",
+    "code": "OUVERTURE_FLUX_RESEAU",
+    "version": 1,
+    "libelle": "Ouverture d’un flux réseau"
+   },
+   "unite": "POLE_RESEAU",
+   "intitule": "Flux SFTP vers la Banque de Libreville",
+   "etat": "EN_COURS",
+   "lanceur": {
+    "id": "u-res",
+    "nomAffiche": "Idriss Mahamat Saleh"
+   },
+   "lanceeLe": "2026-10-06T13:40:09.350Z",
+   "closeLe": null,
+   "avancement": {
+    "total": 4,
+    "terminees": 3
+   },
+   "etapesEnCours": [
+    {
+     "code": "RECETTE",
+     "libelle": "Recette du flux",
+     "etat": "A_SIGNER",
+     "echeance": "2026-10-08"
+    }
+   ]
+  }
+ ],
+ "instances": [
+  {
+   "id": "INS-0007",
+   "processus": {
+    "id": "PRC-0001",
+    "code": "OUVERTURE_FLUX_RESEAU",
+    "version": 1,
+    "libelle": "Ouverture d’un flux réseau"
+   },
+   "unite": "POLE_RESEAU",
+   "intitule": "Ouverture du port 443 pour la supervision",
+   "etat": "EN_COURS",
+   "lanceur": {
+    "id": "u-collab",
+    "nomAffiche": "Nadège Mvondo Assiga"
+   },
+   "lanceeLe": "2026-10-06T13:40:09.352Z",
+   "closeLe": null,
+   "motif": null,
+   "designations": {
+    "MISE_EN_OEUVRE": {
+     "id": "u-collab",
+     "nomAffiche": "Nadège Mvondo Assiga"
+    }
+   },
+   "avancement": {
+    "total": 4,
+    "terminees": 1
+   },
+   "historique": [
+    {
+     "quand": "2026-10-06T13:40:09.352Z",
+     "acteur": {
+      "id": "u-collab",
+      "nomAffiche": "Nadège Mvondo Assiga"
+     },
+     "action": "INSTANCE_LANCEE",
+     "etape": null,
+     "detail": null
+    },
+    {
+     "quand": "2026-10-06T13:40:09.352Z",
+     "acteur": {
+      "id": "u-collab",
+      "nomAffiche": "Nadège Mvondo Assiga"
+     },
+     "action": "ETAPE_ACTIVEE",
+     "etape": "DEMANDE",
+     "detail": "Nadège Mvondo Assiga"
+    },
+    {
+     "quand": "2026-10-06T13:40:09.352Z",
+     "acteur": {
+      "id": "u-collab",
+      "nomAffiche": "Nadège Mvondo Assiga"
+     },
+     "action": "ETAPE_TERMINEE",
+     "etape": "DEMANDE",
+     "detail": null
+    },
+    {
+     "quand": "2026-10-06T13:40:09.352Z",
+     "acteur": {
+      "id": "u-collab",
+      "nomAffiche": "Nadège Mvondo Assiga"
+     },
+     "action": "ETAPE_ACTIVEE",
+     "etape": "ANALYSE",
+     "detail": "À prendre : ROLE_POLE_RESEAU"
+    }
+   ],
+   "etapes": [
+    {
+     "code": "DEMANDE",
+     "libelle": "Demande d’ouverture du flux",
+     "action": "Décrire le flux à ouvrir : source, destination, port, protocole et date souhaitée.",
+     "predecesseurs": [],
+     "position": {
+      "x": 0,
+      "y": 80
+     },
+     "delaiJours": 1,
+     "etat": "TERMINEE",
+     "activeeLe": "2026-10-06T13:40:09.352Z",
+     "echeance": "2026-10-07",
+     "soumiseLe": "2026-10-06T13:40:09.352Z",
+     "termineeLe": "2026-10-06T13:40:09.352Z",
+     "enRetard": false,
+     "renvois": 0,
+     "tacheId": "TCH-0222",
+     "executant": {
+      "id": "u-collab",
+      "nomAffiche": "Nadège Mvondo Assiga"
+     },
+     "aPrendre": null,
+     "validateur": null,
+     "livrables": [],
+     "champs": [
+      {
+       "code": "SOURCE",
+       "libelle": "Adresse source",
+       "type": "TEXTE",
+       "choix": [],
+       "obligatoire": true,
+       "valeur": "10.20.6.2"
+      },
+      {
+       "code": "DESTINATION",
+       "libelle": "Adresse de destination",
+       "type": "TEXTE",
+       "choix": [],
+       "obligatoire": true,
+       "valeur": "10.30.1.9"
+      },
+      {
+       "code": "PORT",
+       "libelle": "Port",
+       "type": "NOMBRE",
+       "choix": [],
+       "obligatoire": true,
+       "valeur": 443
+      },
+      {
+       "code": "PROTOCOLE",
+       "libelle": "Protocole",
+       "type": "CHOIX",
+       "choix": [
+        "TCP",
+        "UDP"
+       ],
+       "obligatoire": true,
+       "valeur": "TCP"
+      },
+      {
+       "code": "DATE_SOUHAITEE",
+       "libelle": "Date souhaitée",
+       "type": "DATE",
+       "choix": [],
+       "obligatoire": false,
+       "valeur": null
+      }
+     ],
+     "signatures": [],
+     "moi": {
+      "executer": false,
+      "prendre": false,
+      "signer": [],
+      "valider": false,
+      "reaffecter": false
+     }
+    },
+    {
+     "code": "ANALYSE",
+     "libelle": "Analyse de sécurité du flux",
+     "action": "Vérifier la conformité du flux à la politique de filtrage et rédiger la note d’analyse.",
+     "predecesseurs": [
+      "DEMANDE"
+     ],
+     "position": {
+      "x": 300,
+      "y": 80
+     },
+     "delaiJours": 2,
+     "etat": "ACTIVE",
+     "activeeLe": "2026-10-06T13:40:09.352Z",
+     "echeance": "2026-10-08",
+     "soumiseLe": null,
+     "termineeLe": null,
+     "enRetard": false,
+     "renvois": 0,
+     "tacheId": "TCH-0223",
+     "executant": null,
+     "aPrendre": {
+      "unite": "POLE_RESEAU",
+      "profil": "ROLE_POLE_RESEAU"
+     },
+     "validateur": {
+      "personne": {
+       "id": "u-resp-info",
+       "nomAffiche": "Gaston Ndzana Ebode"
+      },
+      "profil": null,
+      "unite": "POLE_RESEAU"
+     },
+     "livrables": [
+      {
+       "code": "NOTE_ANALYSE",
+       "libelle": "Note d’analyse",
+       "typesPieces": [
+        "application/pdf"
+       ],
+       "obligatoire": true,
+       "modele": null,
+       "depot": null
+      }
+     ],
+     "champs": [],
+     "signatures": [],
+     "moi": {
+      "executer": false,
+      "prendre": false,
+      "signer": [],
+      "valider": false,
+      "reaffecter": true
+     }
+    },
+    {
+     "code": "MISE_EN_OEUVRE",
+     "libelle": "Mise en œuvre sur les équipements",
+     "action": "Appliquer la règle sur les pare-feu et joindre la configuration appliquée.",
+     "predecesseurs": [
+      "ANALYSE"
+     ],
+     "position": {
+      "x": 600,
+      "y": 80
+     },
+     "delaiJours": 3,
+     "etat": "EN_ATTENTE",
+     "activeeLe": null,
+     "echeance": null,
+     "soumiseLe": null,
+     "termineeLe": null,
+     "enRetard": false,
+     "renvois": 0,
+     "tacheId": null,
+     "executant": null,
+     "aPrendre": null,
+     "validateur": null,
+     "livrables": [
+      {
+       "code": "CONFIGURATION",
+       "libelle": "Configuration appliquée",
+       "typesPieces": [
+        "text/plain",
+        "application/pdf"
+       ],
+       "obligatoire": true,
+       "modele": null,
+       "depot": null
+      }
+     ],
+     "champs": [
+      {
+       "code": "EQUIPEMENTS",
+       "libelle": "Équipements modifiés",
+       "type": "TEXTE",
+       "choix": [],
+       "obligatoire": false,
+       "valeur": null
+      }
+     ],
+     "signatures": [],
+     "moi": {
+      "executer": false,
+      "prendre": false,
+      "signer": [],
+      "valider": false,
+      "reaffecter": false
+     }
+    },
+    {
+     "code": "RECETTE",
+     "libelle": "Recette du flux",
+     "action": "Tester le flux de bout en bout, rédiger le procès-verbal de recette et le faire signer par le chef d’unité.",
+     "predecesseurs": [
+      "MISE_EN_OEUVRE"
+     ],
+     "position": {
+      "x": 900,
+      "y": 80
+     },
+     "delaiJours": 2,
+     "etat": "EN_ATTENTE",
+     "activeeLe": null,
+     "echeance": null,
+     "soumiseLe": null,
+     "termineeLe": null,
+     "enRetard": false,
+     "renvois": 0,
+     "tacheId": null,
+     "executant": null,
+     "aPrendre": null,
+     "validateur": null,
+     "livrables": [
+      {
+       "code": "PV_RECETTE",
+       "libelle": "Procès-verbal de recette",
+       "typesPieces": [
+        "application/pdf"
+       ],
+       "obligatoire": true,
+       "modele": null,
+       "depot": null
+      }
+     ],
+     "champs": [
+      {
+       "code": "RESULTAT",
+       "libelle": "Résultat des tests",
+       "type": "CHOIX",
+       "choix": [
+        "Conforme",
+        "Non conforme"
+       ],
+       "obligatoire": true,
+       "valeur": null
+      }
+     ],
+     "signatures": [],
+     "moi": {
+      "executer": false,
+      "prendre": false,
+      "signer": [],
+      "valider": false,
+      "reaffecter": false
+     }
+    }
+   ],
+   "droits": {
+    "suspendre": true,
+    "reprendre": false,
+    "annuler": true,
+    "reaffecter": true
+   }
+  },
+  {
+   "id": "INS-0003",
+   "processus": {
+    "id": "PRC-0001",
+    "code": "OUVERTURE_FLUX_RESEAU",
+    "version": 1,
+    "libelle": "Ouverture d’un flux réseau"
+   },
+   "unite": "POLE_RESEAU",
+   "intitule": "Flux SFTP vers la Banque de Libreville",
+   "etat": "EN_COURS",
+   "lanceur": {
+    "id": "u-res",
+    "nomAffiche": "Idriss Mahamat Saleh"
+   },
+   "lanceeLe": "2026-10-06T13:40:09.350Z",
+   "closeLe": null,
+   "motif": null,
+   "designations": {
+    "MISE_EN_OEUVRE": {
+     "id": "u-collab",
+     "nomAffiche": "Nadège Mvondo Assiga"
+    }
+   },
+   "avancement": {
+    "total": 4,
+    "terminees": 3
+   },
+   "historique": [
+    {
+     "quand": "2026-10-06T13:40:09.350Z",
+     "acteur": {
+      "id": "u-res",
+      "nomAffiche": "Idriss Mahamat Saleh"
+     },
+     "action": "INSTANCE_LANCEE",
+     "etape": null,
+     "detail": null
+    },
+    {
+     "quand": "2026-10-06T13:40:09.350Z",
+     "acteur": {
+      "id": "u-res",
+      "nomAffiche": "Idriss Mahamat Saleh"
+     },
+     "action": "ETAPE_ACTIVEE",
+     "etape": "DEMANDE",
+     "detail": "Idriss Mahamat Saleh"
+    },
+    {
+     "quand": "2026-10-06T13:40:09.350Z",
+     "acteur": {
+      "id": "u-res",
+      "nomAffiche": "Idriss Mahamat Saleh"
+     },
+     "action": "ETAPE_TERMINEE",
+     "etape": "DEMANDE",
+     "detail": null
+    },
+    {
+     "quand": "2026-10-06T13:40:09.350Z",
+     "acteur": {
+      "id": "u-res",
+      "nomAffiche": "Idriss Mahamat Saleh"
+     },
+     "action": "ETAPE_ACTIVEE",
+     "etape": "ANALYSE",
+     "detail": "À prendre : ROLE_POLE_RESEAU"
+    },
+    {
+     "quand": "2026-10-06T13:40:09.351Z",
+     "acteur": {
+      "id": "u-res",
+      "nomAffiche": "Idriss Mahamat Saleh"
+     },
+     "action": "LIVRABLE_DEPOSE",
+     "etape": "ANALYSE",
+     "detail": "NOTE_ANALYSE : note-analyse-flux-sftp.pdf"
+    },
+    {
+     "quand": "2026-10-06T13:40:09.351Z",
+     "acteur": {
+      "id": "u-resp-info",
+      "nomAffiche": "Gaston Ndzana Ebode"
+     },
+     "action": "ETAPE_VALIDEE",
+     "etape": "ANALYSE",
+     "detail": null
+    },
+    {
+     "quand": "2026-10-06T13:40:09.351Z",
+     "acteur": {
+      "id": "u-resp-info",
+      "nomAffiche": "Gaston Ndzana Ebode"
+     },
+     "action": "ETAPE_TERMINEE",
+     "etape": "ANALYSE",
+     "detail": null
+    },
+    {
+     "quand": "2026-10-06T13:40:09.351Z",
+     "acteur": {
+      "id": "u-resp-info",
+      "nomAffiche": "Gaston Ndzana Ebode"
+     },
+     "action": "ETAPE_ACTIVEE",
+     "etape": "MISE_EN_OEUVRE",
+     "detail": "Nadège Mvondo Assiga"
+    },
+    {
+     "quand": "2026-10-06T13:40:09.351Z",
+     "acteur": {
+      "id": "u-collab",
+      "nomAffiche": "Nadège Mvondo Assiga"
+     },
+     "action": "LIVRABLE_DEPOSE",
+     "etape": "MISE_EN_OEUVRE",
+     "detail": "CONFIGURATION : regles-pare-feu-sftp.txt"
+    },
+    {
+     "quand": "2026-10-06T13:40:09.351Z",
+     "acteur": {
+      "id": "u-collab",
+      "nomAffiche": "Nadège Mvondo Assiga"
+     },
+     "action": "ETAPE_TERMINEE",
+     "etape": "MISE_EN_OEUVRE",
+     "detail": null
+    },
+    {
+     "quand": "2026-10-06T13:40:09.352Z",
+     "acteur": {
+      "id": "u-collab",
+      "nomAffiche": "Nadège Mvondo Assiga"
+     },
+     "action": "ETAPE_ACTIVEE",
+     "etape": "RECETTE",
+     "detail": "À prendre : ROLE_POLE_RESEAU"
+    },
+    {
+     "quand": "2026-10-06T13:40:09.352Z",
+     "acteur": {
+      "id": "u-res",
+      "nomAffiche": "Idriss Mahamat Saleh"
+     },
+     "action": "LIVRABLE_DEPOSE",
+     "etape": "RECETTE",
+     "detail": "PV_RECETTE : pv-recette-flux-sftp.pdf"
+    }
+   ],
+   "etapes": [
+    {
+     "code": "DEMANDE",
+     "libelle": "Demande d’ouverture du flux",
+     "action": "Décrire le flux à ouvrir : source, destination, port, protocole et date souhaitée.",
+     "predecesseurs": [],
+     "position": {
+      "x": 0,
+      "y": 80
+     },
+     "delaiJours": 1,
+     "etat": "TERMINEE",
+     "activeeLe": "2026-10-06T13:40:09.350Z",
+     "echeance": "2026-10-07",
+     "soumiseLe": "2026-10-06T13:40:09.350Z",
+     "termineeLe": "2026-10-06T13:40:09.350Z",
+     "enRetard": false,
+     "renvois": 0,
+     "tacheId": "TCH-0218",
+     "executant": {
+      "id": "u-res",
+      "nomAffiche": "Idriss Mahamat Saleh"
+     },
+     "aPrendre": null,
+     "validateur": null,
+     "livrables": [],
+     "champs": [
+      {
+       "code": "SOURCE",
+       "libelle": "Adresse source",
+       "type": "TEXTE",
+       "choix": [],
+       "obligatoire": true,
+       "valeur": "10.20.4.15"
+      },
+      {
+       "code": "DESTINATION",
+       "libelle": "Adresse de destination",
+       "type": "TEXTE",
+       "choix": [],
+       "obligatoire": true,
+       "valeur": "172.16.8.40"
+      },
+      {
+       "code": "PORT",
+       "libelle": "Port",
+       "type": "NOMBRE",
+       "choix": [],
+       "obligatoire": true,
+       "valeur": 22
+      },
+      {
+       "code": "PROTOCOLE",
+       "libelle": "Protocole",
+       "type": "CHOIX",
+       "choix": [
+        "TCP",
+        "UDP"
+       ],
+       "obligatoire": true,
+       "valeur": "TCP"
+      },
+      {
+       "code": "DATE_SOUHAITEE",
+       "libelle": "Date souhaitée",
+       "type": "DATE",
+       "choix": [],
+       "obligatoire": false,
+       "valeur": "2026-10-09"
+      }
+     ],
+     "signatures": [],
+     "moi": {
+      "executer": false,
+      "prendre": false,
+      "signer": [],
+      "valider": false,
+      "reaffecter": false
+     }
+    },
+    {
+     "code": "ANALYSE",
+     "libelle": "Analyse de sécurité du flux",
+     "action": "Vérifier la conformité du flux à la politique de filtrage et rédiger la note d’analyse.",
+     "predecesseurs": [
+      "DEMANDE"
+     ],
+     "position": {
+      "x": 300,
+      "y": 80
+     },
+     "delaiJours": 2,
+     "etat": "TERMINEE",
+     "activeeLe": "2026-10-06T13:40:09.350Z",
+     "echeance": "2026-10-08",
+     "soumiseLe": "2026-10-06T13:40:09.351Z",
+     "termineeLe": "2026-10-06T13:40:09.351Z",
+     "enRetard": false,
+     "renvois": 0,
+     "tacheId": "TCH-0219",
+     "executant": {
+      "id": "u-res",
+      "nomAffiche": "Idriss Mahamat Saleh"
+     },
+     "aPrendre": null,
+     "validateur": {
+      "personne": {
+       "id": "u-resp-info",
+       "nomAffiche": "Gaston Ndzana Ebode"
+      },
+      "profil": null,
+      "unite": "POLE_RESEAU"
+     },
+     "livrables": [
+      {
+       "code": "NOTE_ANALYSE",
+       "libelle": "Note d’analyse",
+       "typesPieces": [
+        "application/pdf"
+       ],
+       "obligatoire": true,
+       "modele": null,
+       "depot": {
+        "documentId": "DOC-0004",
+        "nomFichier": "note-analyse-flux-sftp.pdf",
+        "typeMime": "application/pdf",
+        "taille": 74000,
+        "sha256": "cc12b00d18e414a2cc5cee16a46471a5b46956e1527cfdda1c30711aae2b626d",
+        "deposePar": {
+         "id": "u-res",
+         "nomAffiche": "Idriss Mahamat Saleh"
+        },
+        "deposeLe": "2026-10-06T13:40:09.351Z"
+       }
+      }
+     ],
+     "champs": [],
+     "signatures": [],
+     "moi": {
+      "executer": false,
+      "prendre": false,
+      "signer": [],
+      "valider": false,
+      "reaffecter": false
+     }
+    },
+    {
+     "code": "MISE_EN_OEUVRE",
+     "libelle": "Mise en œuvre sur les équipements",
+     "action": "Appliquer la règle sur les pare-feu et joindre la configuration appliquée.",
+     "predecesseurs": [
+      "ANALYSE"
+     ],
+     "position": {
+      "x": 600,
+      "y": 80
+     },
+     "delaiJours": 3,
+     "etat": "TERMINEE",
+     "activeeLe": "2026-10-06T13:40:09.351Z",
+     "echeance": "2026-10-09",
+     "soumiseLe": "2026-10-06T13:40:09.351Z",
+     "termineeLe": "2026-10-06T13:40:09.351Z",
+     "enRetard": false,
+     "renvois": 0,
+     "tacheId": "TCH-0220",
+     "executant": {
+      "id": "u-collab",
+      "nomAffiche": "Nadège Mvondo Assiga"
+     },
+     "aPrendre": null,
+     "validateur": null,
+     "livrables": [
+      {
+       "code": "CONFIGURATION",
+       "libelle": "Configuration appliquée",
+       "typesPieces": [
+        "text/plain",
+        "application/pdf"
+       ],
+       "obligatoire": true,
+       "modele": null,
+       "depot": {
+        "documentId": "DOC-0005",
+        "nomFichier": "regles-pare-feu-sftp.txt",
+        "typeMime": "text/plain",
+        "taille": 72000,
+        "sha256": "dca4b0bdc9a18832f83ede521ca86d45d22540f118fe2aba08e1475eee835205",
+        "deposePar": {
+         "id": "u-collab",
+         "nomAffiche": "Nadège Mvondo Assiga"
+        },
+        "deposeLe": "2026-10-06T13:40:09.351Z"
+       }
+      }
+     ],
+     "champs": [
+      {
+       "code": "EQUIPEMENTS",
+       "libelle": "Équipements modifiés",
+       "type": "TEXTE",
+       "choix": [],
+       "obligatoire": false,
+       "valeur": "FW-CORE-01, FW-CORE-02"
+      }
+     ],
+     "signatures": [],
+     "moi": {
+      "executer": false,
+      "prendre": false,
+      "signer": [],
+      "valider": false,
+      "reaffecter": false
+     }
+    },
+    {
+     "code": "RECETTE",
+     "libelle": "Recette du flux",
+     "action": "Tester le flux de bout en bout, rédiger le procès-verbal de recette et le faire signer par le chef d’unité.",
+     "predecesseurs": [
+      "MISE_EN_OEUVRE"
+     ],
+     "position": {
+      "x": 900,
+      "y": 80
+     },
+     "delaiJours": 2,
+     "etat": "A_SIGNER",
+     "activeeLe": "2026-10-06T13:40:09.351Z",
+     "echeance": "2026-10-08",
+     "soumiseLe": "2026-10-06T13:40:09.352Z",
+     "termineeLe": null,
+     "enRetard": false,
+     "renvois": 0,
+     "tacheId": "TCH-0221",
+     "executant": {
+      "id": "u-res",
+      "nomAffiche": "Idriss Mahamat Saleh"
+     },
+     "aPrendre": null,
+     "validateur": null,
+     "livrables": [
+      {
+       "code": "PV_RECETTE",
+       "libelle": "Procès-verbal de recette",
+       "typesPieces": [
+        "application/pdf"
+       ],
+       "obligatoire": true,
+       "modele": null,
+       "depot": {
+        "documentId": "DOC-0006",
+        "nomFichier": "pv-recette-flux-sftp.pdf",
+        "typeMime": "application/pdf",
+        "taille": 72000,
+        "sha256": "2b55a960b621f344423f9811660d82f5c20438dcee380acc2fbc54f51f771395",
+        "deposePar": {
+         "id": "u-res",
+         "nomAffiche": "Idriss Mahamat Saleh"
+        },
+        "deposeLe": "2026-10-06T13:40:09.352Z"
+       }
+      }
+     ],
+     "champs": [
+      {
+       "code": "RESULTAT",
+       "libelle": "Résultat des tests",
+       "type": "CHOIX",
+       "choix": [
+        "Conforme",
+        "Non conforme"
+       ],
+       "obligatoire": true,
+       "valeur": "Conforme"
+      }
+     ],
+     "signatures": [
+      {
+       "code": "SIGNATURE_RECETTE",
+       "libelle": "Signature du procès-verbal",
+       "ordre": 1,
+       "porte": [
+        "PV_RECETTE",
+        "NOTE_ANALYSE"
+       ],
+       "attendu": {
+        "personne": {
+         "id": "u-resp-info",
+         "nomAffiche": "Gaston Ndzana Ebode"
+        },
+        "profil": null,
+        "unite": "POLE_RESEAU"
+       },
+       "etat": "ATTENDUE",
+       "signePar": null,
+       "signeLe": null,
+       "empreinte": null,
+       "documents": []
+      }
+     ],
+     "moi": {
+      "executer": false,
+      "prendre": false,
+      "signer": [
+       "SIGNATURE_RECETTE"
+      ],
+      "valider": false,
+      "reaffecter": true
+     }
+    }
+   ],
+   "droits": {
+    "suspendre": true,
+    "reprendre": false,
+    "annuler": true,
+    "reaffecter": true
+   }
+  }
+ ],
+ "controle": {
+  "publiable": false,
+  "anomalies": [
+   {
+    "code": "REMPLACEMENT_ABSENT",
+    "gravite": "BLOQUANTE",
+    "etape": "CONFIGURATION",
+    "element": "intervenant.remplacement",
+    "message": "Profil de remplacement obligatoire."
+   },
+   {
+    "code": "CHEF_ABSENT",
+    "gravite": "LEVABLE",
+    "etape": "CONFIGURATION",
+    "element": "validateur",
+    "message": "L’unité n’a pas de responsable."
+   }
+  ]
+ },
+ "annuaire": [
+  {
+   "id": "U-001",
+   "nom": "Paul Mbarga Atangana",
+   "fonction": "Chef du département DES",
+   "profils": [
+    "ROLE_CHEF_DES"
+   ],
+   "avatarVersion": null
+  },
+  {
+   "id": "U-020",
+   "nom": "Bertrand Nguema Obiang",
+   "fonction": "Chef de la DDRM",
+   "profils": [
+    "ROLE_CHEF_DDRM"
+   ],
+   "avatarVersion": "sim1ga"
+  },
+  {
+   "id": "sim-charge",
+   "nom": "Fatimé Abakar Hissein",
+   "fonction": "Chargée de la DDRM",
+   "profils": [
+    "ROLE_CHARGE_DDRM"
+   ],
+   "avatarVersion": "sim2ga"
+  },
+  {
+   "id": "U-201",
+   "nom": "Aïcha Mahamat Nour",
+   "fonction": "Conductrice de projet",
+   "profils": [
+    "ROLE_CONDUCTEUR_PROJET"
+   ],
+   "avatarVersion": "sim3gb"
+  },
+  {
+   "id": "U-101",
+   "nom": "Joël Ekotto Mballa",
+   "fonction": "Ingénieur d’homologation",
+   "profils": [
+    "ROLE_INGENIEUR_HOMOLOGATION"
+   ],
+   "avatarVersion": null
+  },
+  {
+   "id": "u-sna",
+   "nom": "Rachel Biyong Mengue",
+   "fonction": "Normes et Agréments",
+   "profils": [
+    "ROLE_SNA"
+   ],
+   "avatarVersion": "sim4gb"
+  },
+  {
+   "id": "u-prod",
+   "nom": "Serge Ondoua Essomba",
+   "fonction": "Production monétique",
+   "profils": [
+    "ROLE_PRODUCTION_MONETIQUE"
+   ],
+   "avatarVersion": null
+  },
+  {
+   "id": "u-res",
+   "nom": "Idriss Mahamat Saleh",
+   "fonction": "Pôle réseau",
+   "profils": [
+    "ROLE_POLE_RESEAU"
+   ],
+   "avatarVersion": null
+  },
+  {
+   "id": "u-sys",
+   "nom": "Chantal Ngo Bassong",
+   "fonction": "Pôle système",
+   "profils": [
+    "ROLE_POLE_SYSTEME"
+   ],
+   "avatarVersion": null
+  },
+  {
+   "id": "u-rssi",
+   "nom": "Hervé Kamga Tchoupo",
+   "fonction": "Responsable de la sécurité des systèmes d’information",
+   "profils": [
+    "ROLE_RSSI"
+   ],
+   "avatarVersion": "sim5gb"
+  },
+  {
+   "id": "u-conf",
+   "nom": "Mireille Obame Nze",
+   "fonction": "Conformité",
+   "profils": [
+    "ROLE_CONFORMITE"
+   ],
+   "avatarVersion": "sim6ga"
+  },
+  {
+   "id": "u-dg",
+   "nom": "Jean-Baptiste Ella Mintsa",
+   "fonction": "Direction générale",
+   "profils": [
+    "ROLE_DG"
+   ],
+   "avatarVersion": "sim7gb"
+  },
+  {
+   "id": "u-collab",
+   "nom": "Nadège Mvondo Assiga",
+   "fonction": "Technicienne réseau",
+   "profils": [
+    "ROLE_COLLABORATEUR"
+   ],
+   "avatarVersion": null
+  }
+ ]
+}

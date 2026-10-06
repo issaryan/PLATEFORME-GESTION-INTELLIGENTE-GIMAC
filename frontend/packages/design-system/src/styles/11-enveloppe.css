@@ -27,6 +27,17 @@
 /* Logo principal blanc posé sur le dégradé de la navigation, sans cartouche ni bande des drapeaux. */
 .gm-sidenav-marque { display: flex; align-items: center; justify-content: center; padding: var(--gm-space-5) var(--gm-space-5) var(--gm-space-4); }
 .gm-sidenav-marque img { width: 100%; max-width: 148px; height: auto; display: block; }
+/* Navigation réduite aux pictogrammes (D-84) : largeur d'une icône et de ses marges, libellés masqués à la vue
+   seulement (lus et en infobulle), groupes séparés par un filet, pastille en coin de l'icône. */
+.gm-sidenav { transition: width var(--gm-motion-fast) var(--gm-motion-ease); }
+.gm-sidenav-reduite { width: 72px; }
+.gm-sidenav-reduite .gm-sidenav-marque { padding: var(--gm-space-4) var(--gm-space-2) var(--gm-space-3); }
+.gm-sidenav-reduite .gm-sidenav-marque img { max-width: 48px; }
+.gm-sidenav-reduite .gm-sidenav-group { height: 0; padding: 0; margin: var(--gm-space-2) var(--gm-space-3); overflow: hidden; border-top: var(--gm-border-1) solid var(--gm-color-nav-separateur); }
+.gm-sidenav-reduite a { position: relative; justify-content: center; padding: 0; }
+.gm-sidenav-reduite .gm-sidenav-libelle { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.gm-sidenav-reduite .gm-sidenav-badge { position: absolute; top: 2px; right: 6px; margin: 0; min-width: 16px; height: 16px; padding: 0 4px; font-size: 10px; }
+@media (prefers-reduced-motion: reduce) { .gm-sidenav { transition: none; } }
 /* Coquille applicative (§6.2) : la page elle-même ne défile pas. La navigation latérale occupe toute la
    hauteur de la fenêtre, du haut jusqu'en bas, défile seule si ses entrées dépassent et ne s'étire
    jamais avec le contenu. À sa droite, une colonne porte la barre supérieure, fixe en haut, puis la zone

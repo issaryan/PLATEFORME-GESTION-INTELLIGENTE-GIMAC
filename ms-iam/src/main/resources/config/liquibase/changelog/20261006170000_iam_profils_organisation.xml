@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- MS-IAM : profils, permissions et organisation entièrement configurables (D-86,
+     docs/lot1/profils-organisation.md) : modifications des profils par l'administration (§2), actions des
+     processus d'unité dans la matrice des pouvoirs (§4). Ensembles idempotents (préconditions, ON CONFLICT). -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- Dernière modification d'un profil par l'administration ; libellé et description fixés depuis la console
+         (nuls si seule la composition a changé), réappliqués au fournisseur d'identité après un réimport du domaine. -->
+    <changeSet id="iam-profil-presentation" author="lot1">
+        <preConditions onFail="MARK_RAN">
+            <not><tableExists tableName="profil_presentation"/></not>
+        </preConditions>
+        <createTable tableName="profil_presentation">
+            <column name="code" type="varchar(60)"><constraints primaryKey="true" nullable="false" primaryKeyName="pk_profil_presentation"/></column>
+            <column name="libelle" type="varchar(80)"/>
+            <column name="description" type="varchar(500)"/>
+            <column name="modifie_le" type="timestamptz"/>
+            <column name="modifie_par_id" type="varchar(100)"/>
+            <column name="modifie_par_nom" type="varchar(255)"/>
+        </createTable>
+    </changeSet>
+
+    <!-- Description d'un profil créé : 500 caractères, comme celle de tout profil (§2). -->
+    <changeSet id="iam-profil-cree-description-500" author="lot1">
+        <modifyDataType tableName="profil_cree" columnName="description" newDataType="varchar(500)"/>
+    </changeSet>
+
+    <!-- Actions PROCESSUS_DEFINIR et PROCESSUS_LANCER (§4, D-87) ; portée UNITES par défaut pour les six profils
+         responsables. Une ligne déjà réglée par l'administration n'est pas modifiée. -->
+    <changeSet id="iam-matrice-actions-processus" author="lot1">
+        <sql>ALTER TABLE pouvoir_profil DROP CONSTRAINT IF EXISTS ck_pouvoir_profil_action;</sql>
+        <sql>ALTER TABLE pouvoir_profil ADD CONSTRAINT ck_pouvoir_profil_action CHECK (action IN ('TACHE_CONFIER', 'TACHE_SUIVRE', 'ACTIVITE_LIRE', 'RAPPORT_VISER', 'RATTACHEMENT_MODIFIER', 'COMPTE_DEMANDER', 'PROFIL_DEMANDER', 'STATUT_DEMANDER', 'PROCESSUS_DEFINIR', 'PROCESSUS_LANCER'));</sql>
+        <sql>
+            INSERT INTO pouvoir_profil (profil, action, portee)
+            SELECT p.profil, a.action, 'UNITES'
+            FROM (VALUES ('ROLE_CHEF_DES'), ('ROLE_CHEF_DDRM'), ('ROLE_DG'), ('ROLE_RSSI'), ('ROLE_CONFORMITE'), ('ROLE_RESPONSABLE_SERVICE')) AS p (profil)
+            CROSS JOIN (VALUES ('PROCESSUS_DEFINIR'), ('PROCESSUS_LANCER')) AS a (action)
+            ON CONFLICT (profil, action) DO NOTHING;
+        </sql>
+    </changeSet>
+</databaseChangeLog>

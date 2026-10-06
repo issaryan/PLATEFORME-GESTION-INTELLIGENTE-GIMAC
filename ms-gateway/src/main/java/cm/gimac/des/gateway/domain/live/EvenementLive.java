@@ -10,10 +10,21 @@ import java.util.Set;
  *
  * @param institutionId institution portée par l'enveloppe (claim « institutionid »), null si aucune
  * @param destinataires identifiants IAM des destinataires ; vide si l'événement n'en désigne pas
- * @param acteur compte à l'origine de l'événement (auteur d'un message, compte qui écrit, compte
- *        dont la présence change), null si l'événement n'en désigne pas
+ * @param acteur compte à l'origine de l'événement (auteur d'un message, compte qui écrit, lecteur d'une
+ *        conversation, compte dont la présence change), null si l'événement n'en désigne pas
+ * @param luJusquA accusé de lecture (D-88) : instant d'envoi du dernier message lu (ISO-8601), null pour
+ *        tout autre événement
  */
-public record EvenementLive(String id, String type, String subject, String topic, String institutionId, Set<String> destinataires, String acteur) {
+public record EvenementLive(
+    String id,
+    String type,
+    String subject,
+    String topic,
+    String institutionId,
+    Set<String> destinataires,
+    String acteur,
+    String luJusquA
+) {
     public static final String HOMOLOGATION = "homologation";
     public static final String CERTIFICATION = "certification";
     public static final String COLLABORATION = "collaboration";
@@ -24,11 +35,17 @@ public record EvenementLive(String id, String type, String subject, String topic
 
     /** « En train d'écrire » (D-72), signal de MS-COLLABORATION. */
     public static final String SAISIE = "collaboration.message-typing.v1";
+    /** Accusé de lecture (D-88), MS-COLLABORATION : la position de lecture d'un membre a avancé. */
+    public static final String LECTURE = "collaboration.conversation-read.v1";
     public static final String EN_LIGNE = "presence.account-online.v1";
     public static final String HORS_LIGNE = "presence.account-offline.v1";
 
     public EvenementLive {
         destinataires = destinataires == null ? Set.of() : Set.copyOf(destinataires);
+    }
+
+    public EvenementLive(String id, String type, String subject, String topic, String institutionId, Set<String> destinataires, String acteur) {
+        this(id, type, subject, topic, institutionId, destinataires, acteur, null);
     }
 
     public EvenementLive(String id, String type, String subject, String topic, String institutionId, Set<String> destinataires) {
@@ -45,6 +62,6 @@ public record EvenementLive(String id, String type, String subject, String topic
 
     /** Représentation remise au navigateur, sans institution ni destinataires. */
     public VueEvenement vue() {
-        return new VueEvenement(id, type, subject, topic, acteur);
+        return new VueEvenement(id, type, subject, topic, acteur, luJusquA);
     }
 }

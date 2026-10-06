@@ -1,9 +1,16 @@
 package cm.gimac.des.notification.infrastructure.messaging.consumer;
 
 import cm.gimac.des.notification.application.port.in.RecevoirEvenementsUseCase;
+import cm.gimac.des.notification.application.port.in.RecevoirEvenementsUseCase.DemandeDecidee;
+import cm.gimac.des.notification.application.port.in.RecevoirEvenementsUseCase.DemandeSoumise;
+import cm.gimac.des.notification.application.port.in.RecevoirEvenementsUseCase.EvenementProcessus;
 import cm.gimac.des.notification.application.port.in.RecevoirEvenementsUseCase.MessageEnvoye;
 import cm.gimac.des.notification.application.port.in.RecevoirEvenementsUseCase.RapportSoumis;
 import cm.gimac.des.notification.application.port.in.RecevoirEvenementsUseCase.TacheAffectee;
+import cm.gimac.des.notification.application.port.in.RecevoirEvenementsUseCase.TacheOfferte;
+import cm.gimac.des.notification.application.port.in.RecevoirEvenementsUseCase.TacheRelancee;
+import cm.gimac.des.notification.domain.service.ReglesNotifications.FaitsProcessus;
+import cm.gimac.des.notification.domain.service.ReglesNotifications.NatureProcessus;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -19,9 +26,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Événements transformés en notifications (docs/lot1/notifications.md §1), enveloppes CloudEvents 1.0 :
- * collaboration.message-sent.v1 (sujet collaboration.message), pilotage.task-assigned.v1 (sujet
- * pilotage.task) et pilotage.report-submitted.v1 (sujet pilotage.report) ; les autres types de ces sujets
- * sont ignorés. Consommation idempotente par identifiant d'événement (table processed_event, RG-15,
+ * collaboration.message-sent.v1 (sujet collaboration.message), pilotage.task-assigned.v1,
+ * pilotage.task-offered.v1 et pilotage.task-reminded.v1 (sujet pilotage.task), pilotage.report-submitted.v1
+ * (sujet pilotage.report), iam.request-submitted.v1 et iam.request-decided.v1 (sujet iam.request,
+ * docs/lot1/pouvoirs-hierarchiques.md §4), et les six événements à destinataires des processus d'unité (sujet
+ * pilotage.process, D-87, docs/lot1/processus-unite.md §5.5 : process-instance-started, process-step-activated,
+ * process-step-submitted, process-step-signed, process-step-reassigned, process-instance-closed) ; les autres
+ * types de ces sujets (dont pilotage.process-published.v1) sont ignorés. Consommation idempotente par identifiant d'événement (table processed_event, RG-15,
  * RG-35) ; un message illisible part en rebut par le gestionnaire d'erreurs commun.
  */
 @Component
@@ -31,6 +42,16 @@ public class EvenementsNotificationsConsumer {
     public static final String MESSAGE_ENVOYE = "collaboration.message-sent.v1";
     public static final String TACHE_AFFECTEE = "pilotage.task-assigned.v1";
     public static final String RAPPORT_SOUMIS = "pilotage.report-submitted.v1";
+    public static final String TACHE_OFFERTE = "pilotage.task-offered.v1";
+    public static final String TACHE_RELANCEE = "pilotage.task-reminded.v1";
+    public static final String DEMANDE_SOUMISE = "iam.request-submitted.v1";
+    public static final String DEMANDE_DECIDEE = "iam.request-decided.v1";
+    public static final String INSTANCE_LANCEE = "pilotage.process-instance-started.v1";
+    public static final String ETAPE_ACTIVEE = "pilotage.process-step-activated.v1";
+    public static final String ETAPE_SOUMISE = "pilotage.process-step-submitted.v1";
+    public static final String ETAPE_SIGNEE = "pilotage.process-step-signed.v1";
+    public static final String ETAPE_REAFFECTEE = "pilotage.process-step-reassigned.v1";
+    public static final String INSTANCE_CLOSE = "pilotage.process-instance-closed.v1";
 
     private static final Logger LOG = LoggerFactory.getLogger(EvenementsNotificationsConsumer.class);
 
@@ -46,7 +67,7 @@ public class EvenementsNotificationsConsumer {
 
     @KafkaListener(
         id = GROUPE,
-        topics = "#{'${gimac.consommateurs.notification.sujets:collaboration.message,pilotage.task,pilotage.report}'.split(',')}",
+        topics = "#{'${gimac.consommateurs.notification.sujets:collaboration.message,pilotage.task,pilotage.report,iam.request,pilotage.process}'.split(',')}",
         groupId = GROUPE,
         autoStartup = "${gimac.consommateurs.demarrage-automatique:true}"
     )
@@ -77,7 +98,17 @@ public class EvenementsNotificationsConsumer {
         return switch (type) {
             case MESSAGE_ENVOYE -> () ->
                 evenements.messageEnvoye(
-                    new MessageEnvoye(texte(d, "conversationId"), texte(d, "messageId"), texte(d, "auteurId"), textes(d.path("destinataires")), instant(d, "envoyeLe"), texte(d, "evenement"))
+                    new MessageEnvoye(
+                        texte(d, "conversationId"),
+                        texte(d, "messageId"),
+                        texte(d, "auteurId"),
+                        textes(d.path("destinataires")),
+                        instant(d, "envoyeLe"),
+                        texte(d, "evenement"),
+                        // D-82 : champs facultatifs, absents des événements antérieurs.
+                        texte(d, "reponseAAuteurId"),
+                        textes(d.path("mentionnes"))
+                    )
                 );
             case TACHE_AFFECTEE -> () ->
                 evenements.tacheAffectee(new TacheAffectee(texte(d, "tacheId"), texte(d, "responsableId"), texte(d, "acteurId"), instant(d, "le"), texte(d, "titre"), texte(d, "echeance")));
@@ -93,8 +124,51 @@ public class EvenementsNotificationsConsumer {
                         instant(d, "le")
                     )
                 );
+            case TACHE_OFFERTE -> () ->
+                evenements.tacheOfferte(
+                    new TacheOfferte(texte(d, "tacheId"), texte(d, "titre"), texte(d, "uniteCible"), textes(d.path("destinataires")), texte(d, "acteurId"), instant(d, "le"))
+                );
+            case TACHE_RELANCEE -> () ->
+                evenements.tacheRelancee(new TacheRelancee(texte(d, "tacheId"), texte(d, "titre"), texte(d, "responsableId"), texte(d, "acteurId"), instant(d, "le")));
+            case DEMANDE_SOUMISE -> () ->
+                evenements.demandeSoumise(
+                    new DemandeSoumise(texte(d, "demandeId"), texte(d, "type"), texte(d, "demandeurId"), textes(d.path("destinataires")), instant(d, "le"))
+                );
+            case DEMANDE_DECIDEE -> () ->
+                evenements.demandeDecidee(
+                    new DemandeDecidee(texte(d, "demandeId"), texte(d, "type"), texte(d, "etat"), texte(d, "acteurId"), textes(d.path("destinataires")), instant(d, "le"))
+                );
+            case INSTANCE_LANCEE -> processus(d, NatureProcessus.INSTANCE_LANCEE, null, texte(d, "lanceurId"));
+            case ETAPE_ACTIVEE -> processus(d, NatureProcessus.ETAPE_ACTIVEE, null, null);
+            case ETAPE_SOUMISE -> processus(d, NatureProcessus.ETAPE_SOUMISE, texte(d, "attente"), texte(d, "acteurId"));
+            case ETAPE_SIGNEE -> processus(d, NatureProcessus.ETAPE_SIGNEE, texte(d, "etatEtape"), texte(d, "signataireId"));
+            case ETAPE_REAFFECTEE -> processus(d, NatureProcessus.ETAPE_REAFFECTEE, texte(d, "cause"), texte(d, "acteurId"));
+            case INSTANCE_CLOSE -> processus(d, NatureProcessus.INSTANCE_CLOSE, texte(d, "etat"), texte(d, "acteurId"));
             default -> null;
         };
+    }
+
+    /**
+     * Événement à destinataires d'un processus d'unité (D-87) : l'acteur (lanceur, exécutant, signataire, chef)
+     * n'est jamais notifié ; une étape activée sans exécutant est à prendre par les porteurs du profil.
+     */
+    private Runnable processus(JsonNode d, NatureProcessus nature, String precision, String acteurId) {
+        FaitsProcessus faits = new FaitsProcessus(
+            nature,
+            texte(d, "code"),
+            texte(d, "intitule"),
+            texte(d, "etape"),
+            texte(d, "libelleEtape"),
+            precision,
+            d.path("renvoi").asBoolean(false),
+            nature == NatureProcessus.ETAPE_ACTIVEE && texte(d, "executantId") == null,
+            texte(d, "echeance")
+        );
+        String ancienId = nature == NatureProcessus.ETAPE_REAFFECTEE && "DEPART".equals(precision) ? texte(d, "ancienId") : null;
+        return () ->
+            evenements.evenementProcessus(
+                new EvenementProcessus(texte(d, "instanceId"), faits, acteurId, ancienId, textes(d.path("destinataires")), texte(d, "lien"), instant(d, "le"))
+            );
     }
 
     private static String texte(JsonNode n, String champ) {

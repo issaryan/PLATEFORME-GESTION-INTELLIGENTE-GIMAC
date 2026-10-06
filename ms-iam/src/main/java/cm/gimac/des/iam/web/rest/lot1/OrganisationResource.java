@@ -30,21 +30,94 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/organisation")
 public class OrganisationResource {
 
-    /** Création d'une unité ; le code est fixé à la création. */
+    /**
+     * Création d'une unité ; le code est fixé à la création. Responsable (D-81 §2) : compte interne actif,
+     * facultatif.
+     */
     public record UniteRequest(
         @NotBlank @Size(max = 32) String code,
         @NotBlank @Size(max = 120) String libelle,
         @NotNull TypeUnite type,
         @Size(max = 32) String parent,
-        Boolean active
+        Boolean active,
+        @Size(max = 36) String responsableId
     ) {
         Unite unite() {
-            return new Unite(code.trim(), libelle, type, parent, active == null || active);
+            return new Unite(code.trim(), libelle, type, parent, active == null || active, responsableId);
         }
     }
 
-    /** Modification d'une unité : libellé, type, parent, état ; le code est celui du chemin. */
-    public record ModificationUniteRequest(@NotBlank @Size(max = 120) String libelle, @NotNull TypeUnite type, @Size(max = 32) String parent, @NotNull Boolean active) {}
+    /**
+     * Modification d'une unité : libellé, type, parent, état, responsable ; le code est celui du chemin.
+     * {@code responsableId} absent : responsable actuel conservé ; null : retiré ; identifiant : compte
+     * interne actif (D-81 §2). Classe à accesseurs (et non record) pour distinguer « absent » de « null ».
+     */
+    public static final class ModificationUniteRequest {
+
+        @NotBlank
+        @Size(max = 120)
+        private String libelle;
+
+        @NotNull
+        private TypeUnite type;
+
+        @Size(max = 32)
+        private String parent;
+
+        @NotNull
+        private Boolean active;
+
+        @Size(max = 36)
+        private String responsableId;
+
+        private boolean responsableFourni;
+
+        public String getLibelle() {
+            return libelle;
+        }
+
+        public void setLibelle(String libelle) {
+            this.libelle = libelle;
+        }
+
+        public TypeUnite getType() {
+            return type;
+        }
+
+        public void setType(TypeUnite type) {
+            this.type = type;
+        }
+
+        public String getParent() {
+            return parent;
+        }
+
+        public void setParent(String parent) {
+            this.parent = parent;
+        }
+
+        public Boolean getActive() {
+            return active;
+        }
+
+        public void setActive(Boolean active) {
+            this.active = active;
+        }
+
+        public String getResponsableId() {
+            return responsableId;
+        }
+
+        /** Appelé pour toute valeur présente dans le corps, null compris. */
+        public void setResponsableId(String responsableId) {
+            this.responsableId = responsableId;
+            this.responsableFourni = true;
+        }
+
+        boolean responsableFourni() {
+            return responsableFourni;
+        }
+    }
 
     private final OrganisationService service;
 
@@ -69,7 +142,8 @@ public class OrganisationResource {
     @PutMapping("/unites/{code}")
     @PreAuthorize("hasAuthority('IAM_ACCOUNT_EDIT')")
     public Unite modifier(@PathVariable String code, @Valid @RequestBody ModificationUniteRequest r, Authentication auth) {
-        return service.modifierUnite(ActeurCourant.de(auth), code, new Unite(code, r.libelle(), r.type(), r.parent(), r.active()));
+        Unite u = new Unite(code, r.getLibelle(), r.getType(), r.getParent(), r.getActive(), r.getResponsableId());
+        return service.modifierUnite(ActeurCourant.de(auth), code, u, !r.responsableFourni());
     }
 
     /** Rattachement du compte connecté (sujet du jeton). */

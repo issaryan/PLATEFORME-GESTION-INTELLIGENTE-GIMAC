@@ -2,8 +2,15 @@
 // MS-NOTIFICATION derrière la passerelle (/bff/{des,console}/notification). Aucun contenu de message n'y
 // figure : l'aperçu d'un message est lu par l'interface auprès de la messagerie (membres seulement).
 
-export type TypeNotification = 'MESSAGE' | 'TACHE' | 'RAPPORT'
-export const TYPES_NOTIFICATION: readonly TypeNotification[] = ['MESSAGE', 'TACHE', 'RAPPORT']
+/**
+ * MENTION et REPONSE (D-82) : « X vous a mentionné », « X a répondu à votre message », jamais regroupées.
+ * DEMANDE (D-81) : demande adressée à l'administration, soumise ou décidée ; PROCESSUS (D-87) : étape d'un processus
+ * d'unité activée, à signer ou à valider, instance close. Leur lien est rendu tel quel (préfixe console comme les autres).
+ */
+export type TypeNotification = 'MESSAGE' | 'TACHE' | 'RAPPORT' | 'MENTION' | 'REPONSE' | 'DEMANDE' | 'PROCESSUS'
+export const TYPES_NOTIFICATION: readonly TypeNotification[] = ['MESSAGE', 'TACHE', 'RAPPORT', 'MENTION', 'REPONSE', 'DEMANDE', 'PROCESSUS']
+/** Types qui portent sur la messagerie : leur lien mène à une conversation. */
+export const TYPES_MESSAGERIE: readonly TypeNotification[] = ['MESSAGE', 'MENTION', 'REPONSE']
 
 /** Objet visé : une conversation de MS-COLLABORATION, une tâche ou un rapport de MS-PILOTAGE. */
 export type ReferenceNotification = { service: string; type: string; id: string }
@@ -18,6 +25,8 @@ export type NotificationPlateforme = {
   /** Chemin relatif dans la couche interne (/des/…) ; la console le transpose (liensNotification.ts). */
   lien: string
   reference: ReferenceNotification
+  /** Conversation concernée (MESSAGE, MENTION, REPONSE, D-82) ; null pour une tâche ou un rapport. */
+  conversationId?: string | null
   acteur: { id: string; nomAffiche: string } | null
   /** Messages regroupés dans cette notification (consolidation par conversation). */
   nombre: number
@@ -31,6 +40,16 @@ export type PageNotifications = { contenu: NotificationPlateforme[]; total: numb
 export type PreferencesNotifications = { systeme: boolean; son: boolean; types: Record<TypeNotification, boolean> }
 /** Corps de POST /notifications/lecture : toutes les notifications, celles d'un type ou celles d'un objet. */
 export type FiltreLecture = { type?: TypeNotification; reference?: ReferenceNotification }
+
+/**
+ * Conversation d'une notification de la messagerie : `conversationId` (D-82), sinon la référence d'une
+ * notification de message (antérieure à D-82) ; null hors messagerie.
+ */
+export function conversationDe(n: Pick<NotificationPlateforme, 'type' | 'reference' | 'conversationId'>): string | null {
+  if (!TYPES_MESSAGERIE.includes(n.type)) return null
+  if (n.conversationId) return n.conversationId
+  return n.type === 'MESSAGE' && n.reference.type === 'CONVERSATION' ? n.reference.id : null
+}
 
 /** Référence d'une conversation de la messagerie (D-64), telle que MS-NOTIFICATION la porte. */
 export const referenceConversation = (id: string): ReferenceNotification => ({ service: 'collaboration', type: 'CONVERSATION', id })

@@ -1,5 +1,5 @@
 import { ADRESSES, demo, expect, test } from '../fixtures'
-import { confirmer, naviguer, signer, signerEtTerminer } from './outils'
+import { confirmer, naviguer, ongletSelectionne, signer, signerEtTerminer } from './outils'
 
 // Fonctionnalité : le RSSI pilote la posture de sécurité des comptes ; il n'octroie jamais de profil
 // privilégié et ne change pas les niveaux de journalisation (D-62).
@@ -35,6 +35,7 @@ test.describe('Fonctionnalité : console du RSSI', () => {
     await naviguer(page, 'Profils et permissions')
     await page.getByRole('row', { name: /ROLE_SUPER_ADMIN/ }).getByRole('button', { name: 'Voir la composition' }).click()
     await expect(page.getByRole('dialog').getByText('Consultation seule.')).toBeVisible()
+    await ongletSelectionne(page.getByRole('dialog'), 'Droits')
     await expect(page.getByRole('dialog').getByLabel('IAM_ACCOUNT_READ')).toBeDisabled()
     await page.getByRole('dialog').getByRole('button', { name: 'Fermer' }).last().click()
   })

@@ -25,6 +25,22 @@ Squelette généré en JHipster 8.11.0 ; régénération en 9.4.0 prévue lors d
 - Événements `pilotage.task-created.v1`, `pilotage.task-assigned.v1`, `pilotage.task-completed.v1`, `pilotage.report-submitted.v1`, `pilotage.report-visaed.v1` par l'outbox (CloudEvents 1.0, sujets `pilotage.task` et `pilotage.report`), sans contenu de rapport.
 - Tests : unitaires du domaine (transitions, périodes, rapports, préremplissage), des adaptateurs, et d'intégration REST (`web/rest/activite/*IT`, PostgreSQL et Kafka par Testcontainers).
 
+**Tâches confiées et pouvoirs des chefs (D-81, `docs/lot1/pouvoirs-hierarchiques.md` §6)** :
+
+- Matrice des pouvoirs lue sur MS-IAM avec le jeton du client `pilotage-service` : `GET /api/v1/interne/pouvoirs/{id}` (`actions` par portée `AUCUNE` < `DIRECTS` < `EQUIPE` < `UNITES`, `profilsDemandables`, `subordonnes`, `unitesDirigees`) et `GET /api/v1/interne/organisation/{id}/perimetre?portee=` (`comptes`, `unites`), cache de 60 s ; le chemin des unités du rattachement (`chemin`) dit si un compte est membre d'une unité ou d'une sous-unité. L'adaptateur simulé (`OrganisationStubAdapter`) porte les unités du jeu initial, leurs responsables et la matrice par défaut des responsables ; les tests la changent compte par compte.
+- `POST /api/v1/taches` : `responsableId` (une personne), `responsables` (2 à 50, une tâche par personne liées par `groupeId` ; réponse 201 : le groupe) ou `uniteCible` (tâche `A_PRENDRE`, sans responsable, visible des membres de l'unité et des sous-unités et de ceux qui la dirigent) ; `GET /api/v1/taches/groupes/{groupeId}` (tâches visibles et avancement `{ total, terminees, enRetard }`, annulées hors total) ; `POST /api/v1/taches/{id}/prise` (membre de l'unité), `/attribution` (`{ responsableId }`, responsable de l'unité ou créateur), `/relance` (créateur ou `TACHE_SUIVRE`, une par 24 h, sinon 429 `PIL_RELANCE_RECENTE`) ; vue `GET /api/v1/taches?vue=unite` (à prendre par défaut, `etat=` pour les autres).
+- Contrôles : confier, réaffecter, attribuer : `PIL_TASK_ASSIGN` et `TACHE_CONFIER` couvrant la personne (ou, pour une unité, portée `UNITES` et unité dirigée) ; vue `equipe`, lecture des tâches d'un subordonné, relance : `PIL_TEAM_READ` et `TACHE_SUIVRE` ; agenda, activités et `/equipe` : `PIL_TEAM_READ` et `ACTIVITE_LIRE` ; rapports reçus, lecture et visa : `PIL_TEAM_READ` et `RAPPORT_VISER` (le destinataire vise toujours). La permission du jeton reste une condition nécessaire : le profil ouvre la fonction, la matrice en règle la portée ; hors portée : 403 `PIL_HORS_EQUIPE`.
+- Changelog `20261006090000_pil_taches_confiees.xml` : `responsable_id` facultatif, colonnes `groupe_id`, `unite_cible`, `relancee_le`, contrainte `ck_tache_responsable` (sans responsable : à prendre, ou annulée avant d'avoir été prise).
+- Événements `pilotage.task-offered.v1` (`{ tacheId, titre, uniteCible, destinataires, acteurId, le }`, membres actifs de l'unité et des sous-unités dans la portée du créateur), `pilotage.task-reminded.v1` (`{ tacheId, titre, responsableId, acteurId, le }`), et `pilotage.task-assigned.v1` (avec `titre` et `echeance`) pour chaque tâche d'un groupe, chaque prise et chaque attribution ; `pilotage.task-created.v1` gagne `groupeId` et `uniteCible`.
+
+**Processus d'unité (D-87, `docs/lot1/processus-unite.md`, mise en œuvre §5)** : définitions versionnées
+(BROUILLON, PUBLIEE, RETIREE) d'une unité, graphe d'étapes (intervenants PROFIL, PERSONNE, AU_LANCEMENT, CHEF_UNITE,
+LANCEUR, N_PLUS_1_LANCEUR avec profil de remplacement), contrôle de publication (Kahn…), instances : tâches d'origine
+`PROCESSUS` (à prendre réservées au profil), livrables MS-DOCUMENT (SHA-256), champs, signatures FIDO2 vérifiées par
+MS-IAM (`SIGNATURE_PROCESSUS`), validation et renvoi, réaffectation, suspension, annulation ; départ d'un compte
+(`iam.account-administered.v1`, sujet `iam.account`) ; routes `/api/v1/processus/**`, événements `pilotage.process-*`.
+Démonstration (profil dev) : `OUVERTURE_FLUX_RESEAU` du pôle réseau.
+
 ## Lancer
 
 - Service seul, en développement : `./mvnw` (dépendances : `docker compose -f src/main/docker/services.yml up -d`).
@@ -57,6 +73,8 @@ Copié et adapté (paquet `cm.gimac.des.pilotage`) ; chaque bean est inactif tan
 | 2026-09-29 | — | Masquage des journaux activé (logback, `%maskedMsg`) ; 151 tests unitaires et 735 tests d'intégration réussis, image Jib construite ; `@DecimalMax("0")` généré pour `max(0.9)` rétabli à `0.9` sur le coefficient de maîtrise (Risk, RiskAssessment) ; tests ajustés (D-54). |
 | 2026-09-29 | — | `.gitignore` : exception `!src/**/out/`, pour que les ports sortants `application/port/out` soient versionnés |
 | 2026-10-05 | - | Mon activité (D-76) : agenda, activités du jour, tâches, rapports, équipe et synthèse ; jeton de service `pilotage-service` vers MS-IAM et MS-DOCUMENT ; outbox des événements `pilotage.*` ; permissions métier (`PIL_*`, `INTERNAL_*`) conservées dans les autorités du jeton |
+| 2026-10-06 | - | Tâches confiées (D-81 §6) : à plusieurs personnes (groupe), à une unité (à prendre, prise, attribution), relance ; contrôles par la matrice des pouvoirs de MS-IAM (`TACHE_CONFIER`, `TACHE_SUIVRE`, `ACTIVITE_LIRE`, `RAPPORT_VISER`) ; événements `pilotage.task-offered.v1` et `pilotage.task-reminded.v1` |
+| 2026-10-07 | - | Processus d'unité (D-87) : définitions, contrôle, publication, versions ; moteur d'exécution, tâches liées, signatures FIDO2, départ d'un compte ; changelog `20261007090000_pil_processus_unite.xml` |
 <!-- GIMAC:FIN -->
 
 # pilotage

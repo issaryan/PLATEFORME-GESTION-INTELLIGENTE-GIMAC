@@ -28,6 +28,11 @@ public class CollaborationException extends RuntimeException {
         return new CollaborationException(code, 400, message, details);
     }
 
+    /** 422 : requête bien formée mais contraire à la conversation visée (D-82 : réponse ou mention invalide). */
+    public static CollaborationException nonTraitable(String code, String message, Map<String, Object> details) {
+        return new CollaborationException(code, 422, message, details);
+    }
+
     /** 404 : ressource absente ou hors de portée de l'appelant (on ne révèle pas son existence). */
     public static CollaborationException introuvable(String code, Object id) {
         return new CollaborationException(code, 404, "Ressource introuvable", Map.of("id", String.valueOf(id)));

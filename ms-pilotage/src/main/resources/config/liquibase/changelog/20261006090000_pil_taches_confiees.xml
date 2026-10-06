@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Tâches confiées (D-81, docs/lot1/pouvoirs-hierarchiques.md §6) : tâche à plusieurs personnes (groupe),
+     tâche confiée à une unité (à prendre, sans responsable), relance au plus une par 24 h. Écrit à la main. -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="pil-taches-confiees" author="lot1">
+        <!-- Une tâche à prendre n'a pas encore de responsable. -->
+        <dropNotNullConstraint tableName="tache" columnName="responsable_id" columnDataType="varchar(80)"/>
+        <addColumn tableName="tache">
+            <column name="groupe_id" type="uuid" remarks="Tâches d'un même envoi à plusieurs personnes."/>
+            <column name="unite_cible" type="varchar(32)" remarks="Unité (code MS-IAM) à laquelle la tâche a été confiée."/>
+            <column name="relancee_le" type="timestamptz" remarks="Dernière relance du responsable (une par 24 h)."/>
+        </addColumn>
+        <!-- À prendre : sans responsable, avec une unité ; sans responsable ailleurs : seulement une tâche
+             d'unité annulée avant d'avoir été prise. -->
+        <sql>
+            ALTER TABLE tache ADD CONSTRAINT ck_tache_responsable CHECK (
+                (etat = 'A_PRENDRE' AND responsable_id IS NULL AND unite_cible IS NOT NULL)
+                OR (etat &lt;&gt; 'A_PRENDRE' AND (responsable_id IS NOT NULL OR (etat = 'ANNULEE' AND unite_cible IS NOT NULL)))
+            );
+        </sql>
+        <createIndex tableName="tache" indexName="ix_tache_groupe">
+            <column name="groupe_id"/>
+        </createIndex>
+        <createIndex tableName="tache" indexName="ix_tache_unite">
+            <column name="unite_cible"/>
+            <column name="etat"/>
+        </createIndex>
+    </changeSet>
+</databaseChangeLog>

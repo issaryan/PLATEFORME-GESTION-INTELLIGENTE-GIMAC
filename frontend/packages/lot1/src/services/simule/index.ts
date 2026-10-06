@@ -7,7 +7,10 @@ import * as D from './donnees'
 import { participantSimule } from './participant'
 import { messagerieSimulee, type MessagerieSimulee } from './messagerie'
 import { parcoursSimule } from './parcours'
-import { pilotageSimule } from './pilotage'
+import { pilotageSimule, type PontTachesProcessus } from './pilotage'
+import { processusSimule } from './processus'
+import { magasinPouvoirs, pouvoirsSimules, type MagasinPouvoirs } from './pouvoirs'
+import { apercuSimule } from './apercu'
 import { referentielsSimules } from './referentiels'
 
 // Implémentation simulée des ports, pour développer les écrans sans la passerelle : un serveur fictif en
@@ -18,14 +21,19 @@ export type OptionsSimulation = {
   latenceMs?: number
   echecs?: boolean
   /** Utilisateur de la démonstration, membre des conversations simulées (messagerie, D-64) et auteur de « Mon activité » (D-76). */
-  utilisateur?: { id: string; nom: string; fonction?: string | null }
+  utilisateur?: { id: string; nom: string; fonction?: string | null; profils?: string[] }
+  /**
+   * Magasin de MS-IAM simulé pour les pouvoirs (D-81) : partagé avec l'administration simulée de la même page
+   * (matrice, demandes à traiter) ; un magasin propre à défaut.
+   */
+  pouvoirs?: MagasinPouvoirs
 }
 
 let compteur = 0
 const correlation = () => `sim-${Date.now().toString(36)}-${(++compteur).toString(36)}`
 const clone = <T>(v: T): T => structuredClone(v)
 const maintenant = () => new Date().toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }).replace(',', '')
-const refus = (status: number, code: string, message: string) => new ApiError(status, code, message, correlation())
+const refus = (status: number, code: string, message: string, details?: Record<string, unknown>) => new ApiError(status, code, message, correlation(), details)
 
 function pagine<T>(lignes: T[], q: ListQuery, champs: (keyof T)[]): Page<T> {
   const r = (q.recherche ?? '').toLowerCase()
@@ -302,7 +310,13 @@ export function servicesSimules(o: OptionsSimulation = {}): ServicesSimules {
     telechargerAttestation: () => certification.telechargerAttestation('ATT-2026-0007'),
   }
 
+  const magasin = o.pouvoirs ?? magasinPouvoirs()
+  if (o.utilisateur?.profils) magasin.definirProfils(o.utilisateur.id, o.utilisateur.profils)
   const { parcours, decision, portailParcours } = parcoursSimule(attendre, INSTITUTION_PORTAIL, (id) => participant.dossier(id).then((d) => d.institution.nom, () => undefined))
+
+  // Tâches d'origine PROCESSUS (D-87) : le moteur simulé des processus les crée dans « Mon activité ».
+  let pont: PontTachesProcessus | undefined
+  const pilotage = pilotageSimule(attendre, refus, o.utilisateur ? { id: o.utilisateur.id, nom: o.utilisateur.nom } : undefined, magasin, (p) => { pont = p })
 
   return {
     participant,
@@ -314,7 +328,13 @@ export function servicesSimules(o: OptionsSimulation = {}): ServicesSimules {
     portail,
     messagerie: messagerieSimulee(attendre, refus, o.utilisateur ? { id: o.utilisateur.id, nom: o.utilisateur.nom, fonction: o.utilisateur.fonction ?? null } : undefined),
     // Mon activité (D-76) : agenda, activités, tâches, rapports et équipe de l'utilisateur de la démonstration.
-    pilotage: pilotageSimule(attendre, refus, o.utilisateur ? { id: o.utilisateur.id, nom: o.utilisateur.nom } : undefined),
+    pilotage,
+    // Processus d'unité (D-87) : définitions, instances et tâches d'étapes ; jeu de démonstration du pôle réseau.
+    processus: processusSimule(attendre, refus, o.utilisateur?.id ?? 'U-001', magasin, pont),
+    // Pouvoirs hiérarchiques et demandes à l'administration (D-81) : MS-IAM simulé.
+    pouvoirs: pouvoirsSimules(attendre, refus, magasin, o.utilisateur?.id ?? 'U-001'),
+    // Aperçu bureautique (D-83) : conversion simulée en un petit PDF de démonstration.
+    apercu: apercuSimule(attendre, refus),
     // Clé de sécurité simulée : confirme après un délai ; l'option echecs simule une annulation.
     reauth: {
       assertion: () => new Promise((res, rej) => window.setTimeout(() => (o.echecs ? rej(new ReauthCancelled()) : res(btoa('assertion-simulee'))), 900)),

@@ -37,6 +37,7 @@ import cm.gimac.des.collaboration.domain.messagerie.Conversation;
 import cm.gimac.des.collaboration.domain.messagerie.Etiquette;
 import cm.gimac.des.collaboration.domain.messagerie.EvenementGroupe;
 import cm.gimac.des.collaboration.domain.messagerie.FichierJoint;
+import cm.gimac.des.collaboration.domain.messagerie.Lecture;
 import cm.gimac.des.collaboration.domain.messagerie.Message;
 import cm.gimac.des.collaboration.domain.messagerie.PieceJointe;
 import cm.gimac.des.collaboration.domain.messagerie.TypeConversation;
@@ -126,6 +127,9 @@ class MessagerieResourceSecurityTest {
         when(lecture.messages(anyString(), eq(cid), any(), anyInt())).thenReturn(new PageMessages(List.of(lu), true));
         when(lecture.message(anyString(), eq(MESSAGE.getId()))).thenReturn(lu);
         when(lecture.nonLus(anyString())).thenReturn(3L);
+        when(lecture.lectures(anyString(), eq(cid), eq(MESSAGE.getId()))).thenReturn(
+            List.of(new ConsulterMessagerieUseCase.LectureMembre("aminata", "Aminata Ngono", true, T.plusSeconds(60)))
+        );
         when(lecture.piece(anyString(), eq(PIECE.getId()))).thenAnswer(i ->
             new PieceATelecharger(PIECE, new ContenuDocument(new ByteArrayInputStream(new byte[] { 'a', 'b', 'c' }), 3))
         );
@@ -154,6 +158,8 @@ class MessagerieResourceSecurityTest {
             Arguments.of(HttpMethod.GET, c + "/messages?taille=20", null, "COL_MESSAGE_READ", 200),
             Arguments.of(HttpMethod.POST, c + "/messages", ENVOI, "COL_MESSAGE_SEND", 201),
             Arguments.of(HttpMethod.POST, c + "/lu", null, "COL_MESSAGE_READ", 204),
+            // Détail « Lu par » (D-88).
+            Arguments.of(HttpMethod.GET, c + "/messages/" + MESSAGE.getId() + "/lectures", null, "COL_MESSAGE_READ", 200),
             // « En train d'écrire » (D-72) : relève de l'envoi.
             Arguments.of(HttpMethod.POST, c + "/saisie", null, "COL_MESSAGE_SEND", 204),
             Arguments.of(HttpMethod.GET, "/api/v1/messagerie/non-lus", null, "COL_MESSAGE_READ", 200),
@@ -483,5 +489,108 @@ class MessagerieResourceSecurityTest {
         mvc
             .perform(request(HttpMethod.GET, "/api/v1/messagerie/conversations/" + cid + "/messages").with(jeton("2", "COL_MESSAGE_READ")))
             .andExpect(jsonPath("$.contenu[0].auteur.avatarVersion").value(org.hamcrest.Matchers.nullValue()));
+    }
+
+    @Test
+    @DisplayName("D-82 : reponseA et mentions transmis au cas d'utilisation ; fil : citation, citation supprimée, mentions, mentionneMoi ; 422 en problem+json")
+    @SuppressWarnings("unchecked")
+    void reponsesEtMentions() throws Exception {
+        UUID cid = CONVERSATION.getId();
+        UUID cite = UUID.randomUUID();
+        String corps = "{\"contenu\":\"@Aminata Ngono oui\",\"reponseA\":\"" + cite + "\",\"mentions\":[\"aminata\"]}";
+        mvc
+            .perform(requete(HttpMethod.POST, "/api/v1/messagerie/conversations/" + cid + "/messages", corps).get().with(jeton("2", "COL_MESSAGE_SEND")))
+            .andExpect(status().isCreated());
+        ArgumentCaptor<EnvoyerMessageUseCase.NouveauMessage> n = ArgumentCaptor.forClass(EnvoyerMessageUseCase.NouveauMessage.class);
+        verify(envoi).envoyer(any(), eq(cid), n.capture(), any());
+        assertThat(n.getValue().reponseA()).isEqualTo(cite);
+        assertThat(n.getValue().mentions()).containsExactly("aminata");
+        String creation = CREATION.replaceFirst("\\{", "{\"reponseA\":\"" + cite + "\",\"mentions\":[\"aminata\"],");
+        mvc.perform(requete(HttpMethod.POST, "/api/v1/messagerie/conversations", creation).get().with(jeton("2", "COL_MESSAGE_SEND"))).andExpect(status().isCreated());
+        ArgumentCaptor<EnvoyerMessageUseCase.NouvelleConversation> d = ArgumentCaptor.forClass(EnvoyerMessageUseCase.NouvelleConversation.class);
+        verify(envoi).creerConversation(any(), d.capture(), any());
+        assertThat(d.getValue().reponseA()).isEqualTo(cite);
+        assertThat(d.getValue().mentions()).containsExactly("aminata");
+        // Sans les champs : pas de réponse, liste de mentions vide.
+        mvc.perform(requete(HttpMethod.POST, "/api/v1/messagerie/conversations/" + cid + "/messages", ENVOI).get().with(jeton("2", "COL_MESSAGE_SEND")));
+        verify(envoi, org.mockito.Mockito.times(2)).envoyer(any(), eq(cid), n.capture(), any());
+        assertThat(n.getValue().reponseA()).isNull();
+        assertThat(n.getValue().mentions()).isEmpty();
+
+        Message deAminata = new Message(UUID.randomUUID(), CONVERSATION, AMINATA, new byte[] { 2 }, T.plusSeconds(5));
+        var citation = new ConsulterMessagerieUseCase.CitationLue(MESSAGE.getId(), MOI, "Paul Mbarga Atangana", "Bonjour", 1, T, false);
+        var reponse = new MessageLu(deAminata, "@Paul oui", List.of(), List.of(), citation, List.of(new ConsulterMessagerieUseCase.MentionLue(MOI, "Paul Mbarga Atangana")));
+        var orpheline = new MessageLu(deAminata, "Et ceci", List.of(), List.of(), ConsulterMessagerieUseCase.CitationLue.supprimee(cite), List.of());
+        when(lecture.messages(anyString(), eq(cid), any(), anyInt())).thenReturn(new PageMessages(List.of(reponse, orpheline), false));
+        mvc
+            .perform(request(HttpMethod.GET, "/api/v1/messagerie/conversations/" + cid + "/messages").with(jeton("2", "COL_MESSAGE_READ")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.contenu[0].reponseA.id").value(MESSAGE.getId().toString()))
+            .andExpect(jsonPath("$.contenu[0].reponseA.auteur.id").value(MOI))
+            .andExpect(jsonPath("$.contenu[0].reponseA.auteur.nom").value("Paul Mbarga Atangana"))
+            .andExpect(jsonPath("$.contenu[0].reponseA.extrait").value("Bonjour"))
+            .andExpect(jsonPath("$.contenu[0].reponseA.piecesJointes").value(1))
+            .andExpect(jsonPath("$.contenu[0].reponseA.envoyeLe").isNotEmpty())
+            .andExpect(jsonPath("$.contenu[0].reponseA.supprime").value(false))
+            .andExpect(jsonPath("$.contenu[0].mentions[0].id").value(MOI))
+            .andExpect(jsonPath("$.contenu[0].mentions[0].nom").value("Paul Mbarga Atangana"))
+            .andExpect(jsonPath("$.contenu[0].mentionneMoi").value(true))
+            .andExpect(jsonPath("$.contenu[1].reponseA.id").value(cite.toString()))
+            .andExpect(jsonPath("$.contenu[1].reponseA.auteur").value(org.hamcrest.Matchers.nullValue()))
+            .andExpect(jsonPath("$.contenu[1].reponseA.extrait").value(""))
+            .andExpect(jsonPath("$.contenu[1].reponseA.supprime").value(true))
+            .andExpect(jsonPath("$.contenu[1].mentions.length()").value(0))
+            .andExpect(jsonPath("$.contenu[1].mentionneMoi").value(false));
+
+        when(envoi.envoyer(any(), eq(cid), any(), any())).thenThrow(
+            CollaborationException.nonTraitable("COL_MENTION_INVALIDE", "x", Map.of("id", "intrus"))
+        );
+        mvc
+            .perform(requete(HttpMethod.POST, "/api/v1/messagerie/conversations/" + cid + "/messages", corps).get().with(jeton("2", "COL_MESSAGE_SEND")))
+            .andExpect(status().isUnprocessableEntity())
+            .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+            .andExpect(jsonPath("$.code").value("COL_MENTION_INVALIDE"))
+            .andExpect(jsonPath("$.details.id").value("intrus"));
+    }
+
+    @Test
+    @DisplayName("D-88 : « lecture » sur mes messages (fil, dernier message), absente sinon ; détail « Lu par » ; 404 indistinct")
+    void accusesDeLecture() throws Exception {
+        UUID cid = CONVERSATION.getId();
+        Lecture lue = new Lecture(Lecture.EtatLecture.LU_PAR_CERTAINS, 1, 2);
+        Message deAminata = new Message(UUID.randomUUID(), CONVERSATION, AMINATA, new byte[] { 2 }, T.plusSeconds(5));
+        var mien = new MessageLu(MESSAGE, "Bonjour", List.of(), List.of(), null, List.of(), lue);
+        var autre = new MessageLu(deAminata, "Oui", List.of(), List.of());
+        when(lecture.messages(anyString(), eq(cid), any(), anyInt())).thenReturn(new PageMessages(List.of(mien, autre), false));
+        mvc
+            .perform(request(HttpMethod.GET, "/api/v1/messagerie/conversations/" + cid + "/messages").with(jeton("2", "COL_MESSAGE_READ")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.contenu[0].lecture.etat").value("LU_PAR_CERTAINS"))
+            .andExpect(jsonPath("$.contenu[0].lecture.lus").value(1))
+            .andExpect(jsonPath("$.contenu[0].lecture.destinataires").value(2))
+            .andExpect(jsonPath("$.contenu[1].lecture").doesNotExist());
+        var dernier = new DernierMessage(MESSAGE.getId(), "Paul Mbarga Atangana", "Bonjour", T, 0, null, List.of(), new Lecture(Lecture.EtatLecture.LU, 1, 1));
+        when(lecture.conversation(anyString(), eq(cid))).thenReturn(new ConversationLue(CONVERSATION, CONVERSATION.getMembres(), dernier, 0));
+        mvc
+            .perform(request(HttpMethod.GET, "/api/v1/messagerie/conversations/" + cid).with(jeton("2", "COL_MESSAGE_READ")))
+            .andExpect(jsonPath("$.dernierMessage.lecture.etat").value("LU"));
+        mvc
+            .perform(request(HttpMethod.GET, "/api/v1/messagerie/conversations").with(jeton("2", "COL_MESSAGE_READ")))
+            .andExpect(jsonPath("$.contenu[0].dernierMessage.lecture").doesNotExist());
+
+        mvc
+            .perform(request(HttpMethod.GET, "/api/v1/messagerie/conversations/" + cid + "/messages/" + MESSAGE.getId() + "/lectures").with(jeton("2", "COL_MESSAGE_READ")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].membre.id").value("aminata"))
+            .andExpect(jsonPath("$[0].membre.nom").value("Aminata Ngono"))
+            .andExpect(jsonPath("$[0].lu").value(true))
+            .andExpect(jsonPath("$[0].luLe").value("2026-09-30T08:01:00Z"));
+        verify(lecture).lectures(MOI, cid, MESSAGE.getId());
+        UUID inconnu = UUID.randomUUID();
+        when(lecture.lectures(anyString(), eq(cid), eq(inconnu))).thenThrow(CollaborationException.introuvable("COL_MESSAGE_NOT_FOUND", inconnu));
+        mvc
+            .perform(request(HttpMethod.GET, "/api/v1/messagerie/conversations/" + cid + "/messages/" + inconnu + "/lectures").with(jeton("2", "COL_MESSAGE_READ")))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.code").value("COL_MESSAGE_NOT_FOUND"));
     }
 }

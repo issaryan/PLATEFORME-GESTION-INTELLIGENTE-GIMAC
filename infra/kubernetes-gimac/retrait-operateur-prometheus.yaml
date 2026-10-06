@@ -1,0 +1,33 @@
+# Retrait de l'opérateur Prometheus généré par JHipster (monitoring-k8s/jhipster-prometheus-crd.yml) :
+# quay.io/coreos/prometheus-operator v0.42.1 (2020) et son ClusterRole en rbac.authorization.k8s.io/v1beta1,
+# version retirée depuis Kubernetes 1.22 (refusée par le serveur d'API). Il n'installe pas non plus les
+# définitions de ressources (CRD) Prometheus, ServiceMonitor, PrometheusRule dont dépend le reste de la
+# supervision. Prérequis de la grappe à la place : opérateur Prometheus à jour et ses CRD (bundle officiel
+# de prometheus-operator ou kube-prometheus-stack), qui gère la ressource Prometheus jhipster-prometheus.
+---
+$patch: delete
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jhipster-prometheus-operator
+  namespace: gimac-des
+---
+$patch: delete
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: jhipster-prometheus-operator-sa
+  namespace: gimac-des
+---
+$patch: delete
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRole
+metadata:
+  name: jhipster-prometheus-operator-cr
+---
+$patch: delete
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: jhipster-prometheus-operator-rb
+  namespace: gimac-des

@@ -131,7 +131,11 @@
   "notifications.fermer": "Fermer la notification",
   "notifications.filtre.nonLues": "Non lues",
   "notifications.filtre.toutes": "Toutes",
-  "notifications.page.sousTitre": "Messages reçus, tâches confiées et rapports soumis, les plus récents d’abord.",
+  "notifications.page.sousTitre": "Messages reçus, mentions et réponses, tâches confiées et rapports soumis, les plus récents d’abord.",
   "notifications.instant": "à l’instant",
-  "notifications.surgissantes": "Notifications reçues"
+  "notifications.surgissantes": "Notifications reçues",
+  "notifications.type.MENTION": "Mention",
+  "notifications.type.REPONSE": "Réponse",
+  "notifications.type.DEMANDE": "Demande",
+  "notifications.type.PROCESSUS": "Processus"
 }

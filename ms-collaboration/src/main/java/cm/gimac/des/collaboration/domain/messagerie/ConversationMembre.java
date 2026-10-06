@@ -61,12 +61,18 @@ public class ConversationMembre extends EntiteMessagerie {
         this.administrateur = true;
     }
 
-    /** La marque ne recule jamais : lire un message plus ancien ne rend pas les suivants non lus. */
-    public void marquerLu(UUID messageId, Instant envoyeLe) {
+    /**
+     * La marque ne recule jamais : lire un message plus ancien ne rend pas les suivants non lus. Vrai si la
+     * position avance (D-88 : accusé de lecture publié), faux si elle reste au même instant ou plus loin.
+     */
+    public boolean marquerLu(UUID messageId, Instant envoyeLe) {
         if (dernierLuLe == null || !envoyeLe.isBefore(dernierLuLe)) {
+            boolean avance = dernierLuLe == null || envoyeLe.isAfter(dernierLuLe);
             this.dernierLuMessageId = messageId;
             this.dernierLuLe = envoyeLe;
+            return avance;
         }
+        return false;
     }
 
     public Conversation getConversation() {

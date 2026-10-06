@@ -10,16 +10,16 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 
 /** Lecture du jeton : l'appelant est le sujet ({@code sub}) ; ses permissions sont celles du jeton. */
-final class Jetons {
+public final class Jetons {
 
     /** Permissions de Mon activité (docs/lot1/mon-activite.md §4), contrôlées route par route. */
-    static final String ACTIVITE = "hasAuthority('PIL_ACTIVITY_OWN')";
+    public static final String ACTIVITE = "hasAuthority('PIL_ACTIVITY_OWN')";
     static final String EQUIPE = "hasAuthority('PIL_TEAM_READ')";
     static final String CREATION_INTERNE = "hasAuthority('INTERNAL_PILOTAGE_TASK_CREATE')";
 
     private Jetons() {}
 
-    static Appelant appelant(Authentication auth) {
+    public static Appelant appelant(Authentication auth) {
         if (auth instanceof JwtAuthenticationToken jwt && jwt.getToken().getSubject() != null && !jwt.getToken().getSubject().isBlank()) {
             String nom = jwt.getToken().getClaimAsString("name");
             if (nom == null || nom.isBlank()) {

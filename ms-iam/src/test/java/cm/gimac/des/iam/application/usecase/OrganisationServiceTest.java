@@ -89,7 +89,7 @@ class OrganisationServiceTest {
 
         Unite pole = service.creerUnite(RSSI, new Unite("POLE_SYSTEME", " Pôle système ", TypeUnite.POLE, "PROD_INFO", true));
         assertThat(pole).isEqualTo(new Unite("POLE_SYSTEME", "Pôle système", TypeUnite.POLE, "PROD_INFO", true));
-        verify(journal).configuration(eq(RSSI), eq("UNITE_ORGANISATIONNELLE"), isNull(), eq(List.of("CREATION", "code=POLE_SYSTEME", "type=POLE", "parent=PROD_INFO", "active=true")));
+        verify(journal).configuration(eq(RSSI), eq("UNITE_ORGANISATIONNELLE"), isNull(), eq(List.of("CREATION", "code=POLE_SYSTEME", "type=POLE", "parent=PROD_INFO", "active=true", "responsable=null")));
         refus(() -> service.creerUnite(RSSI, new Unite("POLE_SYSTEME", "x", TypeUnite.POLE, "PROD_INFO", true)), "ORG_UNITE_EXISTANTE", 409);
         refus(() -> service.creerUnite(RSSI, new Unite("POLE_X", "x", TypeUnite.POLE, "ANCIEN", true)), "ORG_UNITE_INCONNUE", 422);
 
@@ -100,7 +100,7 @@ class OrganisationServiceTest {
         refus(() -> service.modifierUnite(RSSI, "DES", new Unite(null, "x", TypeUnite.DEPARTEMENT, "POLE_RESEAU", true)), "ORG_CYCLE", 409);
         refus(() -> service.modifierUnite(RSSI, "PROD_INFO", new Unite(null, "x", TypeUnite.SERVICE, "DES", false)), "ORG_UNITE_SOUS_UNITES_ACTIVES", 409);
         service.modifierUnite(RSSI, "POLE_SYSTEME", new Unite(null, "Pôle systèmes", TypeUnite.POLE, "PROD_INFO", false));
-        verify(journal).configuration(eq(RSSI), eq("UNITE_ORGANISATIONNELLE"), isNull(), eq(List.of("DESACTIVATION", "code=POLE_SYSTEME", "type=POLE", "parent=PROD_INFO", "active=false")));
+        verify(journal).configuration(eq(RSSI), eq("UNITE_ORGANISATIONNELLE"), isNull(), eq(List.of("DESACTIVATION", "code=POLE_SYSTEME", "type=POLE", "parent=PROD_INFO", "active=false", "responsable=null")));
         assertThat(service.unites(true)).extracting(Unite::code).doesNotContain("POLE_SYSTEME");
     }
 
@@ -201,5 +201,58 @@ class OrganisationServiceTest {
             annuaire.definirRattachement(id, null, chef);
         }
         assertThat(service.equipe(chef)).hasSize(500);
+    }
+
+    @Test
+    @DisplayName("D-86 : membres d'une unité (sous-unités comprises ou non), comptes internes actifs, filtre par profil, profils de chacun, unité inconnue 404")
+    void membresUnite() {
+        annuaire = new AnnuaireEnMemoire(AnnuaireEnMemoire.catalogueParDefaut(Set.of("ROLE_POLE_RESEAU", "ROLE_COLLABORATEUR", "ROLE_RESPONSABLE_SERVICE")), Set.of());
+        service = new OrganisationService(catalogue, annuaire, journal);
+        String chef = annuaire.creer(new NouveauCompte("chef.prod", "Paul", "Ekane", "chef@gimac.test", null, "Chef de service", null, Set.of("ROLE_RESPONSABLE_SERVICE")), List.of());
+        String bob = annuaire.creer(new NouveauCompte("bob", "Bob", "Ndi", "bob@gimac.test", null, "Technicien", null, Set.of("ROLE_POLE_RESEAU", "ROLE_COLLABORATEUR")), List.of());
+        String awa = annuaire.creer(new NouveauCompte("awa", "Awa", "Atangana", "awa@gimac.test", null, "Technicienne", null, Set.of("ROLE_POLE_RESEAU")), List.of());
+        String inactif = annuaire.creer(new NouveauCompte("parti", "Jean", "Parti", "parti@gimac.test", null, "Ancien", null, Set.of("ROLE_POLE_RESEAU")), List.of());
+        String externe = annuaire.creer(new NouveauCompte("corr", "Corr", "Ext", "corr@banque.test", null, "Correspondant", "INST-0042", Set.of("ROLE_POLE_RESEAU")), List.of());
+        annuaire.definirRattachement(chef, "PROD_INFO", null);
+        annuaire.definirRattachement(bob, "POLE_RESEAU", chef);
+        annuaire.definirRattachement(awa, "POLE_RESEAU", chef);
+        annuaire.definirRattachement(inactif, "POLE_RESEAU", chef);
+        annuaire.definirRattachement(externe, "POLE_RESEAU", null);
+        annuaire.definirActif(inactif, false);
+
+        var tous = service.membresUnite("PROD_INFO", null, true);
+        assertThat(tous).extracting(OrganisationService.MembreUnite::id).containsExactly(awa, bob, chef);
+        assertThat(tous.get(1)).satisfies(m -> {
+            assertThat(m.nomAffiche()).isEqualTo("Bob Ndi");
+            assertThat(m.fonction()).isEqualTo("Technicien");
+            assertThat(m.unite()).isEqualTo("POLE_RESEAU");
+            assertThat(m.responsableId()).isEqualTo(chef);
+            assertThat(m.actif()).isTrue();
+            assertThat(m.profils()).containsExactly("ROLE_COLLABORATEUR", "ROLE_POLE_RESEAU");
+        });
+        assertThat(service.membresUnite("PROD_INFO", null, false)).extracting(OrganisationService.MembreUnite::id).containsExactly(chef);
+        assertThat(service.membresUnite("PROD_INFO", "ROLE_POLE_RESEAU", true)).extracting(OrganisationService.MembreUnite::id).containsExactly(awa, bob);
+        assertThat(service.membresUnite("DG", " ROLE_RESPONSABLE_SERVICE ", true)).extracting(OrganisationService.MembreUnite::id).containsExactly(chef);
+        assertThat(service.membresUnite("POLE_RESEAU", "ROLE_INCONNU", true)).isEmpty();
+        assertThat(service.membresUnite("ANCIEN", null, true)).isEmpty();
+        refus(() -> service.membresUnite("INCONNUE", null, true), "ORG_UNITE_INTROUVABLE", 404);
+    }
+
+    @Test
+    @DisplayName("D-87 : une unité par son code, active ou non, avec son responsable ; unité inconnue 404")
+    void uniteParCode() {
+        String chef = creer("chef.reseau", "Brice", null);
+        catalogue.enregistrer(catalogue.unites.get("POLE_RESEAU").avecResponsable(chef));
+        assertThat(service.unite("POLE_RESEAU")).satisfies(u -> {
+            assertThat(u.code()).isEqualTo("POLE_RESEAU");
+            assertThat(u.libelle()).isEqualTo("Pôle réseau");
+            assertThat(u.type()).isEqualTo(TypeUnite.POLE);
+            assertThat(u.parent()).isEqualTo("PROD_INFO");
+            assertThat(u.active()).isTrue();
+            assertThat(u.responsableId()).isEqualTo(chef);
+        });
+        assertThat(service.unite("ANCIEN").active()).isFalse();
+        assertThat(service.unite("ANCIEN").responsableId()).isNull();
+        refus(() -> service.unite("INCONNUE"), "ORG_UNITE_INTROUVABLE", 404);
     }
 }

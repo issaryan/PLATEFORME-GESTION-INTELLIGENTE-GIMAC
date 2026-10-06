@@ -304,9 +304,9 @@ gimac:
     delai: 2000
     delai-initial: 10000
   homologation:
-    # Profils dont un compte peut piloter un brouillon de référentiel (HOM_REFERENTIEL_EDIT, D-77).
+    # Profils dont un compte peut piloter un brouillon de référentiel (HOM_REFERENTIEL_EDIT, D-77, D-89).
     referentiel:
-      profils-pilote: ROLE_INGENIEUR_HOMOLOGATION
+      profils-pilote: ROLE_INGENIEUR_HOMOLOGATION,ROLE_CHEF_DES,ROLE_CHEF_DDRM,ROLE_RESPONSABLE_SERVICE,ROLE_SUPER_ADMIN
     replay: {period: PT5M, failure-threshold: 5, half-open-after: PT2M}
     deadlines: {warning-days: 5, overdue-repeat-days: 7}
   kafka:

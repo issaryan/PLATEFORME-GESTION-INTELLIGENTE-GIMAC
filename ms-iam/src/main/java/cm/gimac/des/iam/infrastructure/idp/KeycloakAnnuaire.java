@@ -8,6 +8,7 @@ import cm.gimac.des.iam.domain.compte.ConfigurationMessagerie;
 import cm.gimac.des.iam.domain.compte.FicheCompte;
 import cm.gimac.des.iam.domain.compte.NouveauCompte;
 import cm.gimac.des.iam.domain.compte.PolitiqueSecurite;
+import cm.gimac.des.iam.domain.compte.PresentationProfil;
 import cm.gimac.des.iam.domain.compte.Profil;
 import cm.gimac.des.iam.domain.compte.SessionCompte;
 import cm.gimac.des.iam.domain.service.PolitiqueMotDePasse;
@@ -72,6 +73,10 @@ public class KeycloakAnnuaire implements Annuaire {
     static final String PROFIL_COMPLET = "profil_complet";
     /** Actions exigées par la plateforme (D-65), attribut multivalué déclaré par le profil utilisateur. */
     static final String ACTIONS = "gimac_actions_requises";
+    /** Attribut d'un rôle composite créé par l'administration (D-81). */
+    static final String PROFIL_CREE = "gimac_profil_cree";
+    /** Libellé d'un profil (D-86, docs/lot1/profils-organisation.md §2), attribut du rôle composite. */
+    static final String LIBELLE = "gimac_libelle";
     private static final Pattern ERREUR = Pattern.compile("\"error\"\\s*:\\s*\"([^\"]+)\"");
     private static final Pattern CODE_EXTENSION = Pattern.compile("\"code\"\\s*:\\s*\"([^\"]+)\"");
     private static final Pattern JETON_RAFRAICHISSEMENT = Pattern.compile("\"refresh_token\"\\s*:\\s*\"([^\"]+)\"");
@@ -278,6 +283,18 @@ public class KeycloakAnnuaire implements Annuaire {
             r().users().searchByAttributes(0, EQUIPE_MAX, null, true, false, RESPONSABLE + ":" + responsableId).stream()
                 .filter(u -> u.getServiceAccountClientId() == null && !u.getUsername().startsWith("service-account-"))
                 .filter(u -> u.getAttributes() != null && responsableId.equals(premier(u.getAttributes(), RESPONSABLE)))
+                .map(u -> vers(u, Set.of(), false))
+                .toList()
+        );
+    }
+
+    /** Recherche par attribut (q=unite:X, correspondance exacte), comme {@link #parResponsable(String)}. */
+    @Override
+    public List<Compte> parUnite(String unite) {
+        return appel(() ->
+            r().users().searchByAttributes(0, EQUIPE_MAX, null, true, false, UNITE + ":" + unite).stream()
+                .filter(u -> u.getServiceAccountClientId() == null && !u.getUsername().startsWith("service-account-"))
+                .filter(u -> u.getAttributes() != null && unite.equals(premier(u.getAttributes(), UNITE)))
                 .map(u -> vers(u, Set.of(), false))
                 .toList()
         );
@@ -631,13 +648,13 @@ public class KeycloakAnnuaire implements Annuaire {
     @Override
     public List<Profil> profils() {
         return appel(() ->
-            r().roles().list().stream()
-                .filter(role -> role.getName().startsWith("ROLE_") && Boolean.TRUE.equals(role.isComposite()))
+            r().roles().list(false).stream()
+                .filter(KeycloakAnnuaire::estProfil)
                 .map(role -> {
                     Set<String> permissions = new java.util.TreeSet<>();
                     r().roles().get(role.getName()).getRoleComposites().stream().map(RoleRepresentation::getName).filter(n -> PERMISSION.matcher(n).matches() && !n.startsWith("ROLE_")).forEach(permissions::add);
                     long titulaires = r().roles().get(role.getName()).getUserMembers(0, 1000).size();
-                    return new Profil(role.getName(), role.getDescription(), permissions, privilegies.contains(role.getName()), titulaires);
+                    return new Profil(role.getName(), libelle(role), role.getDescription(), permissions, privilegies.contains(role.getName()), titulaires, false);
                 })
                 .toList()
         );
@@ -663,6 +680,103 @@ public class KeycloakAnnuaire implements Annuaire {
         });
     }
 
+    /**
+     * Rôle composite du realm (D-81) : description, attribut gimac_profil_cree (repère lisible dans le
+     * realm ; l'autorité reste la table profil_cree de MS-IAM), permissions et ROLE_USER s'il existe
+     * (comme les profils livrés).
+     */
+    @Override
+    public void creerProfil(String code, String libelle, String description, Set<String> permissions) {
+        faire(() -> {
+            boolean existe = r().roles().list().stream().anyMatch(role -> role.getName().equals(code));
+            if (existe) {
+                throw IamException.conflit("IAM_PROFIL_EXISTANT", "Un profil porte déjà ce code", Map.of("code", code));
+            }
+            RoleRepresentation rep = new RoleRepresentation(code, description, false);
+            Map<String, List<String>> attributs = new HashMap<>();
+            attributs.put(PROFIL_CREE, List.of("true"));
+            if (libelle != null && !libelle.isBlank()) {
+                attributs.put(LIBELLE, List.of(libelle));
+            }
+            rep.setAttributes(attributs);
+            r().roles().create(rep);
+            List<RoleRepresentation> composites = new ArrayList<>();
+            for (String p : new TreeSet<>(permissions)) {
+                composites.add(r().roles().get(p).toRepresentation());
+            }
+            r().roles().list().stream().filter(role -> "ROLE_USER".equals(role.getName())).findFirst().ifPresent(composites::add);
+            if (!composites.isEmpty()) {
+                r().roles().get(code).addComposites(composites);
+            }
+        });
+    }
+
+    @Override
+    public void supprimerProfil(String code) {
+        faire(() -> r().roles().deleteRole(code));
+    }
+
+    /**
+     * Libellé et description du rôle (D-86) : représentation complète relue (attributs compris), puis
+     * mise à jour ; les autres attributs (gimac_profil_cree) sont conservés.
+     */
+    @Override
+    public void definirPresentationProfil(String code, String libelle, String description) {
+        try {
+            faire(() -> {
+                var role = r().roles().get(code);
+                RoleRepresentation rep = role.toRepresentation();
+                Map<String, List<String>> attributs = new HashMap<>(rep.getAttributes() == null ? Map.of() : rep.getAttributes());
+                if (libelle == null || libelle.isBlank()) {
+                    attributs.remove(LIBELLE);
+                } else {
+                    attributs.put(LIBELLE, List.of(libelle));
+                }
+                rep.setAttributes(attributs);
+                rep.setDescription(description);
+                role.update(rep);
+            });
+        } catch (IamException e) {
+            if ("IAM_ACCOUNT_NOT_FOUND".equals(e.code())) {
+                throw IamException.introuvable("IAM_PROFILE_NOT_FOUND", code);
+            }
+            throw e;
+        }
+    }
+
+    @Override
+    public Map<String, PresentationProfil> presentationsProfils() {
+        return appel(() -> {
+            Map<String, PresentationProfil> m = new java.util.TreeMap<>();
+            r().roles().list(false).stream().filter(KeycloakAnnuaire::estProfil).forEach(role -> m.put(role.getName(), PresentationProfil.lue(role.getName(), libelle(role), role.getDescription())));
+            return m;
+        });
+    }
+
+    @Override
+    public Map<String, Set<String>> profilsParCompte() {
+        return appel(() -> {
+            Map<String, Set<String>> m = new HashMap<>();
+            for (RoleRepresentation role : r().roles().list()) {
+                if (estProfil(role) && !"ROLE_USER".equals(role.getName())) {
+                    r().roles().get(role.getName()).getUserMembers(0, 5000).forEach(u -> m.computeIfAbsent(u.getId(), k -> new java.util.TreeSet<>()).add(role.getName()));
+                }
+            }
+            return m;
+        });
+    }
+
+    private static boolean estProfil(RoleRepresentation role) {
+        return role.getName().startsWith("ROLE_") && Boolean.TRUE.equals(role.isComposite());
+    }
+
+    /** Attribut gimac_libelle du rôle ; nul s'il est absent ou vide. */
+    static String libelle(RoleRepresentation role) {
+        Map<String, List<String>> a = role.getAttributes();
+        String v = a == null ? null : premier(a, LIBELLE);
+        return v == null || v.isBlank() ? null : v;
+    }
+
     // ------------------------------------------------------------------ outils
 
     static Map<String, String> smtp(ConfigurationMessagerie c, Map<String, String> ancien) {
@@ -681,16 +795,6 @@ public class KeycloakAnnuaire implements Annuaire {
             if (mdp != null) s.put("password", mdp);
         }
         return s;
-    }
-
-    private Map<String, Set<String>> profilsParCompte() {
-        Map<String, Set<String>> m = new HashMap<>();
-        for (RoleRepresentation role : r().roles().list()) {
-            if (role.getName().startsWith("ROLE_") && Boolean.TRUE.equals(role.isComposite())) {
-                r().roles().get(role.getName()).getUserMembers(0, 5000).forEach(u -> m.computeIfAbsent(u.getId(), k -> new java.util.TreeSet<>()).add(role.getName()));
-            }
-        }
-        return m;
     }
 
     private Set<String> profilsDirects(UserResource u) {

@@ -1,0 +1,52 @@
+/* Processus d'unité (D-87) : cartes d'étape du canevas générique (modélisateur et suivi d'une instance), panneau de
+   l'étape, liste des anomalies. Jetons --gm-* seulement : mode clair et mode sombre. Angles droits, aucune ombre. */
+.gm-proc-carte {
+  position: relative; box-sizing: border-box; width: 240px; height: 136px; padding: var(--gm-space-2) var(--gm-space-3); overflow: hidden; display: flex; flex-direction: column; gap: 2px;
+  background: var(--gm-color-surface-raised); color: var(--gm-color-text-primary); border: var(--gm-border-1) solid var(--gm-color-border-strong);
+  border-left: var(--gm-border-4) solid var(--gm-color-action); font-size: 12px; line-height: 1.35;
+}
+.react-flow__node.selected .gm-proc-carte { outline: 2px solid var(--gm-color-focus); outline-offset: 1px; }
+.gm-proc-carte p { margin: 0; }
+.gm-proc-carte-tete { display: flex; align-items: center; justify-content: space-between; gap: var(--gm-space-1); }
+.gm-proc-carte-code { font-weight: 700; font-size: 12px; font-family: var(--font-mono); }
+.gm-proc-carte-libelle { font-weight: 600; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.gm-proc-carte-ligne { color: var(--gm-color-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gm-proc-carte-anomalie { border-color: var(--gm-color-status-crit-fg); background: var(--gm-color-status-crit-bg); }
+.gm-proc-carte-surlignee { outline: 3px solid var(--gm-color-status-crit-fg); outline-offset: 2px; }
+.gm-proc-carte-ouvrir {
+  position: absolute; right: var(--gm-space-2); bottom: var(--gm-space-2); padding: 0 var(--gm-space-2); height: 22px; font: inherit; font-size: 11px; font-weight: 600; cursor: pointer;
+  border: var(--gm-border-1) solid var(--gm-color-border); background: var(--gm-color-surface); color: var(--gm-color-action);
+}
+.gm-proc-carte-ouvrir:hover { background: var(--gm-color-action-subtle); }
+.gm-proc-carte-ouvrir:focus-visible { outline: 2px solid var(--gm-color-focus); outline-offset: 1px; }
+.gm-proc-carte .react-flow__handle { width: 12px; height: 12px; border-radius: 0; }
+.gm-proc-carte .react-flow__handle-left { left: 0; transform: translate(0, -50%); }
+.gm-proc-carte .react-flow__handle-right { right: 0; transform: translate(0, -50%); }
+.gm-proc-carte .react-flow__handle::after { content: ''; position: absolute; inset: -6px; }
+
+/* Suivi d'une instance : couleur de la carte selon l'état de l'étape. */
+.gm-proc-etat-EN_ATTENTE { border-left-color: var(--gm-color-border-strong); color: var(--gm-color-text-secondary); background: var(--gm-color-surface-sunken); }
+.gm-proc-etat-ACTIVE { border-left-color: var(--gm-color-status-info-fg); background: var(--gm-color-action-subtle); }
+.gm-proc-etat-A_SIGNER, .gm-proc-etat-A_VALIDER { border-left-color: var(--gm-color-status-warn-fg); background: var(--gm-color-status-warn-bg); }
+.gm-proc-etat-TERMINEE { border-left-color: var(--gm-color-status-ok-fg); background: var(--gm-color-status-ok-bg); }
+.gm-proc-etat-ANNULEE { border-left-color: var(--gm-color-border); color: var(--gm-color-text-muted); text-decoration: line-through; }
+.gm-proc-choisie { outline: 3px solid var(--gm-color-focus); outline-offset: 2px; }
+
+/* Mise en page du suivi : graphe et panneau de l'étape. */
+.gm-proc-suivi { display: grid; grid-template-columns: minmax(0, 7fr) minmax(300px, 5fr); gap: var(--gm-space-5); align-items: start; }
+.gm-proc-graphe .gm-mod-canevas { height: 300px; min-height: 260px; }
+.gm-proc-legende { display: flex; flex-wrap: wrap; gap: var(--gm-space-2); }
+.gm-proc-bloc { border: var(--gm-border-1) solid var(--gm-color-border); padding: var(--gm-space-3); display: flex; flex-direction: column; gap: var(--gm-space-2); background: var(--gm-color-surface); }
+.gm-proc-bloc > h3 { margin: 0; font-size: 14px; font-weight: 600; }
+.gm-proc-hash { font-family: var(--font-mono); font-size: 11px; word-break: break-all; color: var(--gm-color-text-secondary); }
+.gm-proc-element { border: var(--gm-border-1) solid var(--gm-color-border); padding: var(--gm-space-3); margin: 0; display: flex; flex-direction: column; gap: var(--gm-space-2); }
+.gm-proc-anomalies { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--gm-space-1); }
+.gm-proc-anomalie {
+  width: 100%; text-align: left; font: inherit; cursor: pointer; padding: var(--gm-space-2) var(--gm-space-3); display: flex; gap: var(--gm-space-2); align-items: center; flex-wrap: wrap;
+  background: var(--gm-color-surface); color: var(--gm-color-text-primary); border: var(--gm-border-1) solid var(--gm-color-border);
+}
+.gm-proc-anomalie:focus-visible { outline: 2px solid var(--gm-color-focus); outline-offset: 2px; }
+.gm-proc-groupe { display: flex; flex-direction: column; gap: var(--gm-space-2); }
+@media (max-width: 960px) {
+  .gm-proc-suivi { grid-template-columns: minmax(0, 1fr); }
+}

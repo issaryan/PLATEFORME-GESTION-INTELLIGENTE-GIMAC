@@ -112,6 +112,9 @@ class RoutesPresentationTest {
             Arguments.of("/bff/des/document/depots/d1", "${gimac.services.document}", "/api/v1/depots/d1"),
             Arguments.of("/bff/console/document/depots/d1/parties/12", "${gimac.services.document}", "/api/v1/depots/d1/parties/12"),
             Arguments.of("/bff/portail/document/depots/d1/fin", "${gimac.services.document}", "/api/v1/depots/d1/fin"),
+            // Aperçu des documents bureautiques (D-83, docs/lot1/apercu-bureautique.md §2) : département et console.
+            Arguments.of("/bff/des/document/apercus", "${gimac.services.document}", "/api/v1/apercus"),
+            Arguments.of("/bff/console/document/apercus", "${gimac.services.document}", "/api/v1/apercus"),
             Arguments.of("/bff/des/collaboration/messagerie/annuaire", "${gimac.services.collaboration}", "/api/v1/messagerie/annuaire"),
             Arguments.of(
                 "/bff/des/collaboration/messagerie/conversations",
@@ -135,8 +138,47 @@ class RoutesPresentationTest {
                 "${gimac.services.collaboration}",
                 "/api/v1/messagerie/conversations/c1/messages"
             ),
-            Arguments.of("/bff/console/collaboration/messagerie/non-lus", "${gimac.services.collaboration}", "/api/v1/messagerie/non-lus")
+            Arguments.of("/bff/console/collaboration/messagerie/non-lus", "${gimac.services.collaboration}", "/api/v1/messagerie/non-lus"),
+            // Processus d'unité (D-87, docs/lot1/processus-unite.md §5.1) : définitions et instances.
+            Arguments.of("/bff/des/pilotage/processus", "${gimac.services.pilotage}", "/api/v1/processus"),
+            Arguments.of("/bff/des/pilotage/processus/p1", "${gimac.services.pilotage}", "/api/v1/processus/p1"),
+            Arguments.of("/bff/des/pilotage/processus/p1/publication", "${gimac.services.pilotage}", "/api/v1/processus/p1/publication"),
+            Arguments.of("/bff/des/pilotage/processus/p1/instances", "${gimac.services.pilotage}", "/api/v1/processus/p1/instances"),
+            Arguments.of("/bff/des/pilotage/processus/instances", "${gimac.services.pilotage}", "/api/v1/processus/instances"),
+            Arguments.of(
+                "/bff/des/pilotage/processus/instances/i1/etapes/RECETTE/signature",
+                "${gimac.services.pilotage}",
+                "/api/v1/processus/instances/i1/etapes/RECETTE/signature"
+            ),
+            Arguments.of("/bff/des/pilotage/processus/instances/i1/annulation", "${gimac.services.pilotage}", "/api/v1/processus/instances/i1/annulation")
         );
+    }
+
+    @Test
+    @DisplayName("D-87 : processus d'unité par la route MS-PILOTAGE (une seule route, sans prédicat de méthode, OPA d'abord) ; aucun filtre ne retire X-Reauth-Assertion")
+    @SuppressWarnings("unchecked")
+    void processusUnite() throws Exception {
+        for (String chemin : new String[] { "/bff/des/pilotage/processus", "/bff/des/pilotage/processus/instances/i1/etapes/E/signature" }) {
+            List<Route> r = correspondantes(chemin);
+            assertThat(r).hasSize(1);
+            assertThat(r.get(0).id()).isEqualTo("des-pilotage");
+            assertThat(r.get(0).filtres()).startsWith("OpaAuthorize");
+            assertThat(r.get(0).filtres()).noneMatch(f -> f.contains("RemoveRequestHeader") || f.contains("Reauth") || f.contains("SetRequestHeader"));
+        }
+        assertThat(correspondantes("/bff/console/pilotage/processus")).isEmpty();
+        assertThat(correspondantes("/bff/portail/pilotage/processus")).isEmpty();
+        try (InputStream in = java.nio.file.Files.newInputStream(java.nio.file.Path.of("src/main/resources/config/application.yml"))) {
+            for (Object doc : new Yaml().loadAll(in)) {
+                if (!(doc instanceof Map<?, ?> racine)) continue;
+                Object liste = chemin(racine, "spring", "cloud", "gateway", "server", "webflux", "routes");
+                if (!(liste instanceof List<?> l)) continue;
+                Map<String, Object> route = l.stream().map(o -> (Map<String, Object>) o).filter(m -> "des-pilotage".equals(m.get("id"))).findFirst().orElseThrow();
+                // Aucune restriction de méthode : GET, POST, PUT et DELETE atteignent OPA, qui tranche.
+                assertThat((List<Object>) route.get("predicates")).noneMatch(p -> p.toString().startsWith("Method"));
+                Object defauts = chemin(racine, "spring", "cloud", "gateway", "server", "webflux", "default-filters");
+                assertThat((List<Object>) defauts).noneMatch(f -> f.toString().contains("RemoveRequestHeader"));
+            }
+        }
     }
 
     @ParameterizedTest(name = "{0}")
@@ -171,8 +213,33 @@ class RoutesPresentationTest {
         }
     }
 
+    @Test
+    @DisplayName("Aperçu bureautique (D-83) : fichier de 20 Mo admis, corps borné à 20 Mo, délai de réponse d'au moins 70 s")
+    @SuppressWarnings("unchecked")
+    void apercuBureautique() throws Exception {
+        for (String couche : new String[] { "des", "console" }) {
+            Route r = correspondantes("/bff/" + couche + "/document/apercus").get(0);
+            assertThat(r.id()).isEqualTo("document-apercus");
+            String taille = r.filtres().stream().filter(f -> f.contains("RequestSize")).findFirst().orElseThrow();
+            assertThat(DataSize.parse(taille.replaceAll(".*maxSize=([^,}]+).*", "$1")).toBytes()).isEqualTo(20L * 1024 * 1024);
+        }
+        try (InputStream in = java.nio.file.Files.newInputStream(java.nio.file.Path.of("src/main/resources/config/application.yml"))) {
+            for (Object doc : new Yaml().loadAll(in)) {
+                if (!(doc instanceof Map<?, ?> racine)) continue;
+                Object liste = chemin(racine, "spring", "cloud", "gateway", "server", "webflux", "routes");
+                if (!(liste instanceof List<?> l)) continue;
+                Map<String, Object> route = l.stream().map(o -> (Map<String, Object>) o).filter(m -> "document-apercus".equals(m.get("id"))).findFirst().orElseThrow();
+                Object delai = ((Map<String, Object>) route.get("metadata")).get("response-timeout");
+                assertThat(Long.parseLong(delai.toString())).isGreaterThanOrEqualTo(70_000L);
+            }
+        }
+    }
+
     static Stream<String> fermes() {
         return Stream.of(
+            // Aperçu bureautique : ni portail, ni chemin voisin.
+            "/bff/portail/document/apercus",
+            "/bff/des/document/apercus/1",
             // Dépôts fragmentés : ni autre service, ni chemin voisin.
             "/bff/des/document/depotsx",
             "/bff/portail/document/interne/documents/1",

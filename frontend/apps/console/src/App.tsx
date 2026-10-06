@@ -27,6 +27,12 @@ const CourrielsPage = lazy(() => import('@gimac/administration/pages/MessagerieP
 // Messagerie instantanée de travail (D-64), commune au DES : tout membre interne, dont le RSSI et le super administrateur.
 const MessagerieInstantanee = lazy(() => import('@gimac/lot1/pages/des/messagerie/MessageriePage'))
 const ProfilsPage = lazy(() => import('@gimac/administration/pages/ProfilsPage'))
+// Pouvoirs hiérarchiques (D-81) : demandes des chefs à traiter, matrice des pouvoirs, organisation (responsable d'unité).
+const DemandesPage = lazy(() => import('@gimac/administration/pages/DemandesPage'))
+const MatricePouvoirsPage = lazy(() => import('@gimac/administration/pages/MatricePouvoirsPage'))
+const OrganisationPage = lazy(() => import('@gimac/administration/pages/OrganisationPage'))
+// Organigramme (D-86 §3) : unités, chefs, membres et n+1, pouvoirs effectifs ; gestes par glisser-déposer ou au clavier.
+const OrganigrammePage = lazy(() => import('@gimac/administration/pages/OrganigrammePage'))
 const ConfigurationPlateformePage = lazy(() => import('@gimac/administration/pages/ConfigurationPlateformePage'))
 const JournalisationPage = lazy(() => import('@gimac/administration/pages/JournalisationPage'))
 // Exploitation de l'infrastructure (D-78) : charges, journaux, gestes confirmés par la clé de sécurité.
@@ -105,6 +111,10 @@ function Pages({ session, correlationId, notifications }: { session: Session; co
                   <Route path="comptes/:id" element={<Autorise permissions={p} exigee="IAM_ACCOUNT_READ"><ComptePage /></Autorise>} />
                   <Route path="journal" element={<Autorise permissions={p} exigee="IAM_JOURNAL_READ"><JournalPage /></Autorise>} />
                   <Route path="profils" element={<Autorise permissions={p} exigee="IAM_ACCOUNT_READ"><ProfilsPage /></Autorise>} />
+                  <Route path="demandes" element={<Autorise permissions={p} exigee="IAM_ACCOUNT_READ"><DemandesPage /></Autorise>} />
+                  <Route path="matrice-pouvoirs" element={<Autorise permissions={p} exigee="IAM_ACCOUNT_READ"><MatricePouvoirsPage /></Autorise>} />
+                  <Route path="organisation" element={<Autorise permissions={p} exigee="IAM_ACCOUNT_READ"><OrganisationPage /></Autorise>} />
+                  <Route path="organigramme" element={<Autorise permissions={p} exigee="IAM_ACCOUNT_READ"><OrganigrammePage /></Autorise>} />
                   <Route path="politique-securite" element={<Autorise permissions={p} exigee="PLATFORM_SECURITY_POLICY_READ"><PolitiqueSecuritePage /></Autorise>} />
                   <Route path="messagerie" element={<Autorise permissions={p} exigee={PERM.messageLire}><MessagerieInstantanee couche="console" /></Autorise>} />
                   <Route path="notifications" element={<Autorise permissions={p} exigee={PERM.notificationsLire}><NotificationsPage /></Autorise>} />

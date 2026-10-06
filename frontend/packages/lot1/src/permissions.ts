@@ -58,6 +58,8 @@ export const PERM = {
   // département n'y renvoie que par des liens (groupe « Administration » de la navigation).
   comptesLire: 'IAM_ACCOUNT_READ',
   compteCreer: 'IAM_ACCOUNT_CREATE',
+  /** Composition des profils et matrice des pouvoirs (D-81). */
+  profilEditer: 'IAM_PROFILE_EDIT',
   journalAdministrationLire: 'IAM_JOURNAL_READ',
   politiqueLire: 'PLATFORM_SECURITY_POLICY_READ',
   configurationLire: 'PLATFORM_CONFIG_READ',

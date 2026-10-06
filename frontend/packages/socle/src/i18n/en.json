@@ -131,7 +131,11 @@
   "notifications.fermer": "Close the notification",
   "notifications.filtre.nonLues": "Unread",
   "notifications.filtre.toutes": "All",
-  "notifications.page.sousTitre": "Messages received, tasks assigned and reports submitted, most recent first.",
+  "notifications.page.sousTitre": "Messages received, mentions and replies, tasks assigned and reports submitted, most recent first.",
   "notifications.instant": "just now",
-  "notifications.surgissantes": "Notifications received"
+  "notifications.surgissantes": "Notifications received",
+  "notifications.type.MENTION": "Mention",
+  "notifications.type.REPONSE": "Reply",
+  "notifications.type.DEMANDE": "Request",
+  "notifications.type.PROCESSUS": "Process"
 }

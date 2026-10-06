@@ -15,8 +15,8 @@ import tools.jackson.databind.json.JsonMapper;
  * Lecture d'une enveloppe CloudEvents 1.0 en mode structuré (PI §0.4 : specversion, id, source,
  * type, subject, time, correlationid, institutionid, data) publiée sur un sujet Kafka. Seuls
  * l'identifiant, le type, le sujet, l'institution et, pour la collaboration et les notifications de la
- * plateforme (D-80), les destinataires et l'auteur ou l'acteur sont retenus ; le reste de « data » n'est
- * jamais lu ni relayé.
+ * plateforme (D-80), les destinataires et l'auteur ou l'acteur sont retenus ; pour un accusé de lecture
+ * (D-88), le lecteur et l'instant « luJusquA ». Le reste de « data » n'est jamais lu ni relayé.
  */
 public class LectureCloudEvent {
 
@@ -53,8 +53,18 @@ public class LectureCloudEvent {
         boolean notification = EvenementLive.NOTIFICATION.equals(topic);
         JsonNode data = collaboration || notification ? donnees(ce.get("data")) : null;
         Set<String> destinataires = data != null ? destinataires(data) : Set.of();
-        String acteur = data == null ? null : texte(data, collaboration ? "auteurId" : "acteurId");
-        return Optional.of(new EvenementLive(id, type, texte(ce, "subject"), topic, texte(ce, "institutionid"), destinataires, acteur));
+        boolean lecture = collaboration && EvenementLive.LECTURE.equals(type);
+        String acteur = data == null ? null : texte(data, champActeur(collaboration, lecture));
+        String luJusquA = lecture && data != null ? texte(data, "luJusquA") : null;
+        return Optional.of(new EvenementLive(id, type, texte(ce, "subject"), topic, texte(ce, "institutionid"), destinataires, acteur, luJusquA));
+    }
+
+    /** Champ de « data » qui désigne l'acteur : lecteur (D-88), auteur (messagerie) ou acteur (notification). */
+    private static String champActeur(boolean collaboration, boolean lecture) {
+        if (lecture) {
+            return "lecteurId";
+        }
+        return collaboration ? "auteurId" : "acteurId";
     }
 
     /** Sujet fonctionnel : premier segment du sujet Kafka (homologation.liaison → homologation). */

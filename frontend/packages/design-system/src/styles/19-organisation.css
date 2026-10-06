@@ -1,0 +1,92 @@
+/*
+ * Profils et organisation (D-86, D-90) : fiche d'un profil en grande modale, arbre des fonctionnalités à cases,
+ * aperçu de la barre latérale, comparaison de deux profils, organigramme (unités, membres, glisser-déposer).
+ * Uniquement des jetons --gm-* : mode clair et mode sombre. Angles droits, aucune ombre.
+ */
+.gm-dialog.gm-dialog-xl { width: 1120px; }
+
+/* Case à trois états (fonctionnalité partiellement cochée). */
+.gm-check input[type="checkbox"]:indeterminate { background: var(--gm-color-action); border-color: var(--gm-color-action); }
+.gm-check input[type="checkbox"]:indeterminate::before { content: ""; width: 10px; height: 2px; background: var(--gm-color-text-inverse); }
+.gm-check input:focus-visible { outline: 2px solid var(--gm-color-focus); outline-offset: 2px; }
+
+/* Arbre des fonctionnalités. */
+.gm-fct { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: var(--gm-space-5); align-items: start; }
+.gm-fct-modules { display: flex; flex-direction: column; gap: var(--gm-space-3); min-width: 0; }
+.gm-fct-module { border: var(--gm-border-1) solid var(--gm-color-border); background: var(--gm-color-surface); }
+.gm-fct-module > h3 { margin: 0; padding: var(--gm-space-2) var(--gm-space-3); font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--gm-color-text-secondary); background: var(--gm-color-surface-sunken); border-bottom: var(--gm-border-1) solid var(--gm-color-border); }
+.gm-fct-liste { list-style: none; margin: 0; padding: 0; }
+.gm-fct-item { border-top: var(--gm-border-1) solid var(--gm-color-border); }
+.gm-fct-item:first-child { border-top: none; }
+.gm-fct-ligne { display: flex; align-items: center; gap: var(--gm-space-2); padding: var(--gm-space-2) var(--gm-space-3); }
+.gm-fct-ligne .gm-check { flex: 1; min-width: 0; }
+.gm-fct-ligne .gm-icon { color: var(--gm-color-text-secondary); }
+.gm-fct-compte { font-size: 12px; color: var(--gm-color-text-secondary); white-space: nowrap; }
+.gm-fct-ouvrir { border: none; background: transparent; color: var(--gm-color-action); cursor: pointer; padding: var(--gm-space-1); display: inline-flex; }
+.gm-fct-ouvrir:focus-visible { outline: 2px solid var(--gm-color-focus); outline-offset: 1px; }
+.gm-fct-ouvrir[aria-expanded="true"] .gm-icon { transform: rotate(90deg); }
+.gm-fct-droits { list-style: none; margin: 0; padding: 0 var(--gm-space-3) var(--gm-space-2) calc(var(--gm-space-3) + 26px); display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--gm-space-1) var(--gm-space-4); }
+.gm-fct-droit { display: flex; align-items: flex-start; gap: var(--gm-space-2); font-size: 13px; }
+.gm-fct-droit .gm-check { align-items: flex-start; }
+.gm-fct-droit .gm-check > span { display: flex; flex-direction: column; }
+.gm-fct-nature { font-weight: 600; }
+.gm-fct-code { font-family: var(--font-mono); font-size: 11px; color: var(--gm-color-text-secondary); }
+
+/* Aperçu de la barre latérale d'un profil. */
+.gm-nav-apercu { border: var(--gm-border-1) solid var(--gm-color-border); background: var(--gm-color-surface-sunken); padding: var(--gm-space-3); position: sticky; top: 0; }
+.gm-nav-apercu h3 { margin: 0 0 var(--gm-space-2); font-size: 13px; font-weight: 600; }
+.gm-nav-apercu ul { list-style: none; margin: 0; padding: 0; }
+.gm-nav-apercu-groupe { margin: var(--gm-space-2) 0 var(--gm-space-1); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--gm-color-text-secondary); }
+.gm-nav-apercu li { display: flex; align-items: center; gap: var(--gm-space-2); padding: var(--gm-space-1) var(--gm-space-2); font-size: 13px; color: var(--gm-color-text-primary); border-left: var(--gm-border-2) solid transparent; }
+.gm-nav-apercu li.gm-nav-apercu-nouveau { border-left-color: var(--gm-color-status-ok-fg); background: var(--gm-color-status-ok-bg); }
+.gm-nav-apercu li.gm-nav-apercu-retire { border-left-color: var(--gm-color-status-crit-fg); background: var(--gm-color-status-crit-bg); text-decoration: line-through; }
+
+/* Comparaison de deux profils. */
+.gm-cmp-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.gm-cmp-table th, .gm-cmp-table td { padding: var(--gm-space-1) var(--gm-space-2); border-bottom: var(--gm-border-1) solid var(--gm-color-border); text-align: left; vertical-align: top; }
+.gm-cmp-table thead th { position: sticky; top: 0; background: var(--gm-color-surface-raised); font-weight: 600; }
+.gm-cmp-table th[scope="rowgroup"] { background: var(--gm-color-surface-sunken); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--gm-color-text-secondary); }
+.gm-cmp-table td.gm-cmp-oui { color: var(--gm-color-status-ok-fg); font-weight: 600; }
+.gm-cmp-table td.gm-cmp-non { color: var(--gm-color-text-secondary); }
+.gm-cmp-table tr.gm-cmp-diff td:first-child { border-left: var(--gm-border-2) solid var(--gm-color-status-warn-fg); }
+
+/* Organigramme : arbre des unités. */
+.gm-org { display: grid; grid-template-columns: minmax(320px, 5fr) minmax(0, 7fr); gap: var(--gm-space-4); align-items: start; }
+.gm-org-arbre, .gm-org-arbre ul { list-style: none; margin: 0; padding: 0; }
+.gm-org-arbre ul { margin-left: var(--gm-space-5); padding-left: var(--gm-space-3); border-left: var(--gm-border-1) dashed var(--gm-color-border-strong); }
+.gm-org-arbre li { margin-top: var(--gm-space-2); }
+.gm-org-unite {
+  display: flex; align-items: flex-start; gap: var(--gm-space-2); width: 100%; box-sizing: border-box; text-align: left; font: inherit; cursor: pointer;
+  padding: var(--gm-space-2) var(--gm-space-3); background: var(--gm-color-surface-raised); color: var(--gm-color-text-primary);
+  border: var(--gm-border-1) solid var(--gm-color-border-strong); border-left: var(--gm-border-4) solid var(--gm-color-action);
+}
+.gm-org-unite:hover { background: var(--gm-color-action-subtle); }
+.gm-org-unite:focus-visible { outline: 2px solid var(--gm-color-focus); outline-offset: 2px; }
+.gm-org-unite[aria-current="true"] { outline: 2px solid var(--gm-color-action); outline-offset: 1px; background: var(--gm-color-action-subtle); }
+.gm-org-unite-inactive { border-left-color: var(--gm-color-border-strong); color: var(--gm-color-text-secondary); }
+.gm-org-unite-corps { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.gm-org-unite-titre { display: flex; align-items: center; gap: var(--gm-space-2); flex-wrap: wrap; font-weight: 600; }
+.gm-org-unite-ligne { font-size: 12px; color: var(--gm-color-text-secondary); }
+.gm-org-poignee { color: var(--gm-color-text-muted); cursor: grab; flex: none; padding-top: 2px; }
+.gm-org-cible { outline: 2px dashed var(--gm-color-status-ok-fg) !important; outline-offset: 2px; background: var(--gm-color-status-ok-bg) !important; }
+.gm-org-tire { opacity: 0.55; }
+.gm-org-zone { border: var(--gm-border-1) dashed var(--gm-color-border-strong); padding: var(--gm-space-3); color: var(--gm-color-text-secondary); font-size: 13px; background: var(--gm-color-surface); }
+
+/* Membres d'une unité : arbre des n+1. */
+.gm-org-membres, .gm-org-membres ul { list-style: none; margin: 0; padding: 0; }
+.gm-org-membres ul { margin-left: var(--gm-space-5); padding-left: var(--gm-space-3); border-left: var(--gm-border-1) solid var(--gm-color-border); }
+.gm-org-membres li { margin-top: var(--gm-space-1); }
+.gm-org-membre {
+  display: flex; align-items: center; gap: var(--gm-space-2); padding: var(--gm-space-1) var(--gm-space-2); background: var(--gm-color-surface);
+  border: var(--gm-border-1) solid var(--gm-color-border); color: var(--gm-color-text-primary);
+}
+.gm-org-membre-nom { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.gm-org-membre-nom > span:last-child { font-size: 12px; color: var(--gm-color-text-secondary); }
+.gm-org-membre-chef { border-left: var(--gm-border-4) solid var(--gm-color-brand-accent); }
+.gm-org-membre-inactif { color: var(--gm-color-text-secondary); background: var(--gm-color-surface-sunken); }
+.gm-org-portee { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--gm-space-1) var(--gm-space-3); align-items: center; font-size: 13px; }
+
+@media (max-width: 960px) {
+  .gm-fct, .gm-org { grid-template-columns: minmax(0, 1fr); }
+  .gm-nav-apercu { position: static; }
+}

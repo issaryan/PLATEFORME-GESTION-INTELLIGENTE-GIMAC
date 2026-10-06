@@ -435,4 +435,299 @@ class MessagerieIT extends AbstractCollaborationIT {
             annuaire.enregistrer(serge);
         }
     }
+
+    ResultActions envoyerJson(String qui, String conversation, String corps, MockMultipartFile... fichiers) throws Exception {
+        MockMultipartHttpServletRequestBuilder r = multipart(BASE + "/conversations/" + conversation + "/messages").file(json(corps));
+        for (MockMultipartFile f : fichiers) {
+            r.file(f);
+        }
+        return mvc.perform(r.with(utilisateur(qui, MESSAGERIE)));
+    }
+
+    @Test
+    @DisplayName("D-82 : réponse à un message précis et mentions ; fil, mentionneMoi, refus 422, citation purgée, événement de l'outbox")
+    void reponseEtMentions() throws Exception {
+        String groupe = JsonPath.read(
+            creer(PAUL, "{\"groupe\":true,\"destinataires\":[\"" + AMINATA + "\",\"" + SERGE + "\"],\"titre\":\"Recette\",\"contenu\":\"\"}")
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString(),
+            "$.id"
+        );
+        String evenementCree = JsonPath.read(
+            mvc.perform(get(BASE + "/conversations/" + groupe + "/messages").with(utilisateur(PAUL, MESSAGERIE))).andReturn().getResponse().getContentAsString(),
+            "$.contenu[0].id"
+        );
+        String long_ = "Le procès-verbal de la recette est prêt ; ".repeat(5);
+        String cite = JsonPath.read(
+            envoyerJson(AMINATA, groupe, "{\"contenu\":\"" + long_ + "\"}", new MockMultipartFile("fichiers", "pv.pdf", "application/pdf", "%PDF-1.7".getBytes(StandardCharsets.UTF_8)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.reponseA").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$.mentions.length()").value(0))
+                .andExpect(jsonPath("$.mentionneMoi").value(false))
+                .andReturn()
+                .getResponse()
+                .getContentAsString(),
+            "$.id"
+        );
+
+        // Réponse de Paul citant Aminata et mentionnant Serge (deux fois : dédoublonné).
+        String reponse = JsonPath.read(
+            envoyerJson(
+                PAUL,
+                groupe,
+                "{\"contenu\":\"@Serge Ndzana peux-tu relire ?\",\"reponseA\":\"" + cite + "\",\"mentions\":[\"" + SERGE + "\",\"" + SERGE + "\"]}"
+            )
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.reponseA.id").value(cite))
+                .andExpect(jsonPath("$.reponseA.auteur.id").value(AMINATA))
+                .andExpect(jsonPath("$.reponseA.auteur.nom").value("Aminata Ngono"))
+                .andExpect(jsonPath("$.reponseA.extrait").value(org.hamcrest.Matchers.allOf(org.hamcrest.Matchers.startsWith("Le procès-verbal"), org.hamcrest.Matchers.endsWith("…"))))
+                .andExpect(jsonPath("$.reponseA.piecesJointes").value(1))
+                .andExpect(jsonPath("$.reponseA.envoyeLe").isNotEmpty())
+                .andExpect(jsonPath("$.reponseA.supprime").value(false))
+                .andExpect(jsonPath("$.mentions.length()").value(1))
+                .andExpect(jsonPath("$.mentions[0].id").value(SERGE))
+                .andExpect(jsonPath("$.mentions[0].nom").isNotEmpty())
+                .andExpect(jsonPath("$.mentionneMoi").value(false))
+                .andReturn()
+                .getResponse()
+                .getContentAsString(),
+            "$.id"
+        );
+        String extrait = JsonPath.read(
+            mvc.perform(get(BASE + "/conversations/" + groupe + "/messages").with(utilisateur(PAUL, MESSAGERIE))).andReturn().getResponse().getContentAsString(),
+            "$.contenu[2].reponseA.extrait"
+        );
+        assertThat(extrait.length()).isLessThanOrEqualTo(120);
+
+        // Fil : Aminata (citée) et Serge (mentionné) sont concernés ; Paul, auteur, ne l'est pas.
+        String fil = BASE + "/conversations/" + groupe + "/messages";
+        mvc
+            .perform(get(fil).with(utilisateur(AMINATA, MESSAGERIE)))
+            .andExpect(jsonPath("$.contenu[2].id").value(reponse))
+            .andExpect(jsonPath("$.contenu[2].reponseA.id").value(cite))
+            .andExpect(jsonPath("$.contenu[2].mentionneMoi").value(true))
+            .andExpect(jsonPath("$.contenu[1].mentionneMoi").value(false));
+        mvc.perform(get(fil).with(utilisateur(SERGE, MESSAGERIE))).andExpect(jsonPath("$.contenu[2].mentionneMoi").value(true));
+        mvc.perform(get(fil).with(utilisateur(PAUL, MESSAGERIE))).andExpect(jsonPath("$.contenu[2].mentionneMoi").value(false));
+
+        // Refus : message d'une autre conversation, événement du groupe, inconnu ; mention hors membres ou de soi.
+        String directe = directe(PAUL, CLARISSE, "Bonjour");
+        String ailleurs = JsonPath.read(
+            mvc.perform(get(BASE + "/conversations/" + directe + "/messages").with(utilisateur(PAUL, MESSAGERIE))).andReturn().getResponse().getContentAsString(),
+            "$.contenu[0].id"
+        );
+        for (String invalide : List.of(ailleurs, evenementCree, UUID.randomUUID().toString())) {
+            envoyerJson(PAUL, groupe, "{\"contenu\":\"Oui\",\"reponseA\":\"" + invalide + "\"}")
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.code").value("COL_REPONSE_INVALIDE"));
+        }
+        for (String mention : List.of(CLARISSE, PAUL)) {
+            envoyerJson(PAUL, groupe, "{\"contenu\":\"@x\",\"mentions\":[\"" + mention + "\"]}")
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.code").value("COL_MENTION_INVALIDE"));
+        }
+        assertThat(jdbc.queryForObject("select count(*) from message where conversation_id = ?::uuid", Integer.class, groupe)).isEqualTo(3);
+        assertThat(jdbc.queryForObject("select count(*) from message_mention", Integer.class)).isEqualTo(1);
+
+        // Événement de l'outbox : auteur cité et mentionnés, toujours sans contenu.
+        String charge = jdbc.queryForObject(
+            "select payload::text from outbox_event where event_type = 'collaboration.message-sent.v1' and payload ->> 'messageId' = ?",
+            String.class,
+            reponse
+        );
+        assertThat((String) JsonPath.read(charge, "$.reponseAAuteurId")).isEqualTo(AMINATA);
+        assertThat((List<String>) JsonPath.read(charge, "$.mentionnes")).containsExactly(SERGE);
+        assertThat((List<String>) JsonPath.read(charge, "$.destinataires")).containsExactlyInAnyOrder(AMINATA, SERGE);
+        assertThat(charge).doesNotContain("relire", "procès-verbal");
+        String chargeCite = jdbc.queryForObject(
+            "select payload::text from outbox_event where event_type = 'collaboration.message-sent.v1' and payload ->> 'messageId' = ?",
+            String.class,
+            cite
+        );
+        assertThat((Object) JsonPath.read(chargeCite, "$.reponseAAuteurId")).isNull();
+        assertThat((List<String>) JsonPath.read(chargeCite, "$.mentionnes")).isEmpty();
+        relais.relayerJusquaEnvoi(groupe);
+        assertThat(relais.lire("collaboration.message", groupe))
+            .extracting(r -> r.value())
+            .anySatisfy(v -> {
+                assertThat((String) JsonPath.read(v, "$.data.messageId")).isEqualTo(reponse);
+                assertThat((String) JsonPath.read(v, "$.data.reponseAAuteurId")).isEqualTo(AMINATA);
+                assertThat((List<String>) JsonPath.read(v, "$.data.mentionnes")).containsExactly(SERGE);
+            });
+
+        // Purge du message cité (RG-53) : la réponse, immuable, reste ; la citation est marquée supprimée.
+        // Réserve de connexions sans validation automatique : suppression validée explicitement.
+        jdbc.execute((org.springframework.jdbc.core.ConnectionCallback<Void>) cx -> {
+            try (var st = cx.createStatement()) {
+                st.execute("delete from piece_jointe where message_id = '" + cite + "'");
+                st.execute("delete from message where id = '" + cite + "'");
+            }
+            if (!cx.getAutoCommit()) {
+                cx.commit();
+            }
+            return null;
+        });
+        mvc
+            .perform(get(fil).with(utilisateur(SERGE, MESSAGERIE)))
+            .andExpect(jsonPath("$.contenu[1].id").value(reponse))
+            .andExpect(jsonPath("$.contenu[1].reponseA.id").value(cite))
+            .andExpect(jsonPath("$.contenu[1].reponseA.supprime").value(true))
+            .andExpect(jsonPath("$.contenu[1].reponseA.extrait").value(""))
+            .andExpect(jsonPath("$.contenu[1].reponseA.auteur").value(org.hamcrest.Matchers.nullValue()))
+            .andExpect(jsonPath("$.contenu[1].mentionneMoi").value(true));
+    }
+
+    // D-88 : accusés de lecture (docs/lot1/accuses-lecture.md).
+
+    ResultActions fil(String qui, String conversation) throws Exception {
+        return mvc.perform(get(BASE + "/conversations/" + conversation + "/messages").with(utilisateur(qui, MESSAGERIE))).andExpect(status().isOk());
+    }
+
+    void lu(String qui, String conversation) throws Exception {
+        mvc.perform(post(BASE + "/conversations/" + conversation + "/lu").with(utilisateur(qui, MESSAGERIE))).andExpect(status().isNoContent());
+    }
+
+    ResultActions lectures(String qui, String conversation, String message) throws Exception {
+        return mvc.perform(get(BASE + "/conversations/" + conversation + "/messages/" + message + "/lectures").with(utilisateur(qui, MESSAGERIE)));
+    }
+
+    int accuses(String conversation) {
+        return jdbc.queryForObject(
+            "select count(*) from outbox_event where aggregate_id = ? and event_type = 'collaboration.conversation-read.v1'",
+            Integer.class,
+            conversation
+        );
+    }
+
+    @Test
+    @DisplayName("D-88 direct : ENVOYE puis LU, sur le fil et le dernier message ; accusé publié une fois ; « Lu par » ; 404 indistinct")
+    void accusesDeLectureDirects() throws Exception {
+        String id = directe(PAUL, AMINATA, "Bonjour");
+        String messageId = JsonPath.read(fil(PAUL, id).andReturn().getResponse().getContentAsString(), "$.contenu[0].id");
+        fil(PAUL, id)
+            .andExpect(jsonPath("$.contenu[0].lecture.etat").value("ENVOYE"))
+            .andExpect(jsonPath("$.contenu[0].lecture.lus").value(0))
+            .andExpect(jsonPath("$.contenu[0].lecture.destinataires").value(1));
+        fil(AMINATA, id).andExpect(jsonPath("$.contenu[0].lecture").doesNotExist());
+        mvc.perform(get(BASE + "/conversations").with(utilisateur(PAUL, MESSAGERIE))).andExpect(jsonPath("$.contenu[0].dernierMessage.lecture.etat").value("ENVOYE"));
+        mvc.perform(get(BASE + "/conversations").with(utilisateur(AMINATA, MESSAGERIE))).andExpect(jsonPath("$.contenu[0].dernierMessage.lecture").doesNotExist());
+        lectures(PAUL, id, messageId)
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.length()").value(1))
+            .andExpect(jsonPath("$[0].membre.id").value(AMINATA))
+            .andExpect(jsonPath("$[0].lu").value(false))
+            .andExpect(jsonPath("$[0].luLe").value(org.hamcrest.Matchers.nullValue()));
+
+        lu(AMINATA, id);
+        lu(AMINATA, id);
+        assertThat(accuses(id)).isEqualTo(1);
+
+        fil(PAUL, id)
+            .andExpect(jsonPath("$.contenu[0].lecture.etat").value("LU"))
+            .andExpect(jsonPath("$.contenu[0].lecture.lus").value(1));
+        mvc
+            .perform(get(BASE + "/conversations/" + id).with(utilisateur(PAUL, MESSAGERIE)))
+            .andExpect(jsonPath("$.dernierMessage.lecture.etat").value("LU"))
+            .andExpect(jsonPath("$.dernierMessage.lecture.destinataires").value(1));
+        lectures(PAUL, id, messageId)
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].membre.nom").value("Aminata Ngono"))
+            .andExpect(jsonPath("$[0].lu").value(true))
+            .andExpect(jsonPath("$[0].luLe").isNotEmpty());
+
+        // Auteur seulement ; message inconnu, conversation d'un autre : même 404.
+        lectures(AMINATA, id, messageId).andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("COL_MESSAGE_NOT_FOUND"));
+        lectures(CLARISSE, id, messageId).andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("COL_MESSAGE_NOT_FOUND"));
+        lectures(PAUL, id, UUID.randomUUID().toString()).andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("COL_MESSAGE_NOT_FOUND"));
+        String autre = directe(PAUL, SERGE, "Salut");
+        lectures(PAUL, autre, messageId).andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("COL_MESSAGE_NOT_FOUND"));
+
+        // Événement relayé sur collaboration.message, clé = conversation, sans contenu.
+        relais.relayerJusquaEnvoi(id);
+        for (int i = 0; i < 5 && jdbc.queryForObject("select count(*) from outbox_event where status = 'PENDING'", Integer.class) > 0; i++) {
+            relais.relayer();
+        }
+        String evenement = relais
+            .lire("collaboration.message", id)
+            .stream()
+            .map(r -> r.value())
+            .filter(v -> v.contains("collaboration.conversation-read.v1"))
+            .findFirst()
+            .orElseThrow();
+        assertThat((String) JsonPath.read(evenement, "$.type")).isEqualTo("collaboration.conversation-read.v1");
+        assertThat((String) JsonPath.read(evenement, "$.data.conversationId")).isEqualTo(id);
+        assertThat((String) JsonPath.read(evenement, "$.data.lecteurId")).isEqualTo(AMINATA);
+        assertThat((String) JsonPath.read(evenement, "$.data.luJusquA")).isNotBlank();
+        assertThat((List<String>) JsonPath.read(evenement, "$.data.destinataires")).containsExactly(PAUL);
+        assertThat(evenement).doesNotContain("Bonjour");
+    }
+
+    @Test
+    @DisplayName("D-88 groupe : LU_PAR_CERTAINS puis LU ; membre parti ne compte plus, membre ajouté après ignoré ; événements sans état")
+    void accusesDeLectureEnGroupe() throws Exception {
+        String id = JsonPath.read(
+            creer(PAUL, "{\"groupe\":true,\"destinataires\":[\"" + AMINATA + "\",\"" + SERGE + "\",\"" + CLARISSE + "\"],\"titre\":\"Comité\",\"contenu\":\"Ordre du jour\"}")
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString(),
+            "$.id"
+        );
+        String messageId = JsonPath.read(fil(PAUL, id).andReturn().getResponse().getContentAsString(), "$.contenu[1].id");
+        fil(PAUL, id)
+            .andExpect(jsonPath("$.contenu[0].evenement.type").value("GROUPE_CREE"))
+            .andExpect(jsonPath("$.contenu[0].lecture").doesNotExist())
+            .andExpect(jsonPath("$.contenu[1].lecture.etat").value("ENVOYE"))
+            .andExpect(jsonPath("$.contenu[1].lecture.destinataires").value(3));
+
+        lu(AMINATA, id);
+        fil(PAUL, id)
+            .andExpect(jsonPath("$.contenu[1].lecture.etat").value("LU_PAR_CERTAINS"))
+            .andExpect(jsonPath("$.contenu[1].lecture.lus").value(1))
+            .andExpect(jsonPath("$.contenu[1].lecture.destinataires").value(3));
+        lu(SERGE, id);
+        fil(PAUL, id).andExpect(jsonPath("$.contenu[1].lecture.lus").value(2));
+        lectures(PAUL, id, messageId)
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.length()").value(3))
+            .andExpect(jsonPath("$[0].lu").value(true))
+            .andExpect(jsonPath("$[1].lu").value(true))
+            .andExpect(jsonPath("$[2].membre.id").value(CLARISSE))
+            .andExpect(jsonPath("$[2].lu").value(false));
+
+        // Clarisse retirée sans avoir lu : le message est lu par tous les membres restants.
+        mvc.perform(delete(BASE + "/conversations/" + id + "/membres/" + CLARISSE).with(utilisateur(PAUL, MESSAGERIE))).andExpect(status().isNoContent());
+        fil(PAUL, id)
+            .andExpect(jsonPath("$.contenu[1].lecture.etat").value("LU"))
+            .andExpect(jsonPath("$.contenu[1].lecture.lus").value(2))
+            .andExpect(jsonPath("$.contenu[1].lecture.destinataires").value(2))
+            .andExpect(jsonPath("$.contenu[2].evenement.type").value("MEMBRE_RETIRE"))
+            .andExpect(jsonPath("$.contenu[2].lecture").doesNotExist());
+        // Réintégrée après l'envoi : elle ne compte pas pour ce message.
+        mvc
+            .perform(post(BASE + "/conversations/" + id + "/membres").contentType(MediaType.APPLICATION_JSON).content("{\"membres\":[\"" + CLARISSE + "\"]}").with(utilisateur(PAUL, MESSAGERIE)))
+            .andExpect(status().isOk());
+        fil(PAUL, id).andExpect(jsonPath("$.contenu[1].lecture.etat").value("LU")).andExpect(jsonPath("$.contenu[1].lecture.destinataires").value(2));
+        lectures(PAUL, id, messageId).andExpect(jsonPath("$.length()").value(2));
+        // Un nouveau message la compte : envoyé, lu par personne.
+        envoyer(PAUL, id, "Suite")
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.lecture.etat").value("ENVOYE"))
+            .andExpect(jsonPath("$.lecture.destinataires").value(3));
+        // Les accusés vont aux autres membres, jamais au lecteur.
+        assertThat(accuses(id)).isEqualTo(2);
+        String donnee = jdbc.queryForObject(
+            "select payload from outbox_event where aggregate_id = ? and event_type = 'collaboration.conversation-read.v1' order by created_at, id limit 1",
+            String.class,
+            id
+        );
+        assertThat((String) JsonPath.read(donnee, "$.lecteurId")).isEqualTo(AMINATA);
+        assertThat((List<String>) JsonPath.read(donnee, "$.destinataires")).containsExactlyInAnyOrder(PAUL, SERGE, CLARISSE);
+    }
 }
+

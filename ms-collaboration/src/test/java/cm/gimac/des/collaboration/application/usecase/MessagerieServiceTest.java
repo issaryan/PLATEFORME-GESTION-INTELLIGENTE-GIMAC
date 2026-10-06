@@ -20,6 +20,7 @@ import cm.gimac.des.collaboration.application.port.out.CollaboratorDirectoryPort
 import cm.gimac.des.collaboration.application.port.out.DocumentStoragePort;
 import cm.gimac.des.collaboration.application.port.out.DocumentStoragePort.DocumentDepose;
 import cm.gimac.des.collaboration.application.port.out.DocumentStoragePort.MetadonneesDocument;
+import cm.gimac.des.collaboration.domain.event.ConversationLuePayload;
 import cm.gimac.des.collaboration.domain.event.MessageEnvoyePayload;
 import cm.gimac.des.collaboration.domain.exception.CollaborationException;
 import cm.gimac.des.collaboration.domain.messagerie.Collaborateur;
@@ -27,6 +28,7 @@ import cm.gimac.des.collaboration.domain.messagerie.Conversation;
 import cm.gimac.des.collaboration.domain.messagerie.ConversationMembre;
 import cm.gimac.des.collaboration.domain.messagerie.Etiquette;
 import cm.gimac.des.collaboration.domain.messagerie.FichierJoint;
+import cm.gimac.des.collaboration.domain.messagerie.LectureConversation;
 import cm.gimac.des.collaboration.domain.messagerie.Message;
 import cm.gimac.des.collaboration.domain.messagerie.PieceJointe;
 import cm.gimac.des.collaboration.domain.messagerie.TypeConversation;
@@ -35,6 +37,7 @@ import cm.gimac.des.collaboration.domain.service.ReglesMessagerie;
 import cm.gimac.des.collaboration.infrastructure.messaging.outbox.OutboxPublisher;
 import cm.gimac.des.collaboration.repository.ConversationMembreRepository;
 import cm.gimac.des.collaboration.repository.ConversationRepository;
+import cm.gimac.des.collaboration.repository.LectureConversationRepository;
 import cm.gimac.des.collaboration.repository.MessageRepository;
 import cm.gimac.des.collaboration.repository.PieceJointeRepository;
 import java.io.ByteArrayInputStream;
@@ -92,6 +95,9 @@ class MessagerieServiceTest {
     @Mock
     OutboxPublisher outbox;
 
+    @Mock
+    LectureConversationRepository lectures;
+
     MessagerieService service;
 
     @BeforeEach
@@ -100,6 +106,7 @@ class MessagerieServiceTest {
             conversations,
             membres,
             messages,
+            lectures,
             piecesJointes,
             annuaire,
             documents,
@@ -524,23 +531,163 @@ class MessagerieServiceTest {
     void marquerLu() {
         Conversation c = new Conversation(TypeConversation.DIRECTE, null, null, null, "aminata|moi", "aminata", T);
         ConversationMembre moi = c.ajouterMembre(MOI, T);
+        c.ajouterMembre(AMINATA, T);
         Message dernier = new Message(UUID.randomUUID(), c, AMINATA, new byte[] { 1 }, T);
         when(membres.findByConversationIdAndMembreId(c.getId(), "moi")).thenReturn(Optional.of(moi));
-        when(messages.findFirstByConversationIdOrderByEnvoyeLeDescIdDesc(c.getId())).thenReturn(Optional.of(dernier), Optional.empty());
+        when(messages.findFirstByConversationIdOrderByEnvoyeLeDescIdDesc(c.getId())).thenReturn(Optional.of(dernier), Optional.of(dernier), Optional.empty());
 
         service.marquerLu("moi", c.getId());
         assertThat(moi.getDernierLuMessageId()).isEqualTo(dernier.getId());
         assertThat(moi.getDernierLuLe()).isEqualTo(T);
         service.marquerLu("moi", c.getId());
+        service.marquerLu("moi", c.getId());
         assertThat(moi.getDernierLuMessageId()).isEqualTo(dernier.getId());
 
         // La marque ne recule pas.
-        moi.marquerLu(UUID.randomUUID(), T.minusSeconds(5));
+        assertThat(moi.marquerLu(UUID.randomUUID(), T.minusSeconds(5))).isFalse();
         assertThat(moi.getDernierLuMessageId()).isEqualTo(dernier.getId());
 
         UUID id = c.getId();
         assertThatThrownBy(() -> service.marquerLu("intrus", id)).isInstanceOfSatisfying(CollaborationException.class, e ->
             assertThat(e.code()).isEqualTo("COL_CONVERSATION_NOT_FOUND")
         );
+    }
+
+    @Test
+    @DisplayName("D-88 : avancée de la position gardée avec son heure ; accusé de lecture aux autres membres, une seule fois")
+    void accuseDeLecture() {
+        Conversation c = groupeConnu();
+        ConversationMembre moi = c.membre("moi").orElseThrow();
+        Message dernier = new Message(UUID.randomUUID(), c, AMINATA, new byte[] { 1 }, T.minusSeconds(10));
+        when(membres.findByConversationIdAndMembreId(c.getId(), "moi")).thenReturn(Optional.of(moi));
+        when(messages.findFirstByConversationIdOrderByEnvoyeLeDescIdDesc(c.getId())).thenReturn(Optional.of(dernier));
+
+        service.marquerLu("moi", c.getId());
+        service.marquerLu("moi", c.getId());
+
+        ArgumentCaptor<ConversationLuePayload> p = ArgumentCaptor.forClass(ConversationLuePayload.class);
+        verify(outbox, times(1)).publish(eq("conversation"), eq(c.getId()), eq("collaboration.conversation-read.v1"), p.capture());
+        assertThat(p.getValue().conversationId()).isEqualTo(c.getId());
+        assertThat(p.getValue().lecteurId()).isEqualTo("moi");
+        assertThat(p.getValue().luJusquA()).isEqualTo(T.minusSeconds(10));
+        assertThat(p.getValue().destinataires()).containsExactlyInAnyOrderElementsOf(
+            c.getMembres().stream().map(ConversationMembre::getMembreId).filter(m -> !m.equals("moi")).toList()
+        );
+        ArgumentCaptor<LectureConversation> l = ArgumentCaptor.forClass(LectureConversation.class);
+        verify(lectures, times(1)).save(l.capture());
+        assertThat(l.getValue().getMembreId()).isEqualTo("moi");
+        assertThat(l.getValue().getLuJusquA()).isEqualTo(T.minusSeconds(10));
+        assertThat(l.getValue().getLuLe()).isEqualTo(T_BASE);
+        assertThat(l.getValue().getConversation()).isSameAs(c);
+    }
+
+    // D-82 : réponse à un message précis et mentions.
+
+    static NouveauMessage reponse(String contenu, UUID reponseA, List<String> mentions) {
+        return new NouveauMessage(contenu, List.of(), List.of(), List.of(), reponseA, mentions);
+    }
+
+    @Test
+    @DisplayName("D-82 : réponse et mentions enregistrées ; événement portant l'auteur cité et les mentionnés, sans contenu")
+    void reponseEtMentions() {
+        Conversation c = groupeConnu();
+        Message cite = new Message(UUID.randomUUID(), c, AMINATA, new byte[] { 9 }, T.minusSeconds(30));
+        when(messages.findById(cite.getId())).thenReturn(Optional.of(cite));
+
+        var r = service.envoyer(EXP, c.getId(), reponse("@Serge Ndzana d'accord", cite.getId(), List.of("serge", "aminata", "serge")), List.of());
+
+        ArgumentCaptor<Message> m = ArgumentCaptor.forClass(Message.class);
+        verify(messages).save(m.capture());
+        assertThat(m.getValue().getReponseAId()).isEqualTo(cite.getId());
+        assertThat(m.getValue().getMentionnes()).containsExactly("serge", "aminata");
+        assertThat(m.getValue().getMentions().get(0).getNom()).isEqualTo("Serge Ndzana");
+        ArgumentCaptor<Object> p = ArgumentCaptor.forClass(Object.class);
+        verify(outbox).publish(eq("conversation"), eq(c.getId()), eq("collaboration.message-sent.v1"), p.capture());
+        assertThat(p.getValue()).isEqualTo(
+            new MessageEnvoyePayload(c.getId(), r.messageId(), "moi", List.of("aminata", "serge"), T_BASE, null, "aminata", List.of("serge", "aminata"))
+        );
+    }
+
+    @Test
+    @DisplayName("D-82 : réponse à soi-même ou à un membre parti : pas d'auteur cité à prévenir")
+    void reponseSansAuteurAPrevenir() {
+        Conversation c = groupeConnu();
+        Message mien = new Message(UUID.randomUUID(), c, MOI, new byte[] { 9 }, T.minusSeconds(30));
+        Collaborateur parti = new Collaborateur("parti", "Ancien membre", null, Set.of(), null, true);
+        Message dUnParti = new Message(UUID.randomUUID(), c, parti, new byte[] { 9 }, T.minusSeconds(20));
+        when(messages.findById(mien.getId())).thenReturn(Optional.of(mien));
+        when(messages.findById(dUnParti.getId())).thenReturn(Optional.of(dUnParti));
+
+        service.envoyer(EXP, c.getId(), reponse("Je complète", mien.getId(), List.of()), List.of());
+        service.envoyer(EXP, c.getId(), reponse("Je réponds", dUnParti.getId(), null), List.of());
+
+        ArgumentCaptor<Object> p = ArgumentCaptor.forClass(Object.class);
+        verify(outbox, times(2)).publish(eq("conversation"), eq(c.getId()), eq("collaboration.message-sent.v1"), p.capture());
+        assertThat(p.getAllValues()).allSatisfy(e -> {
+            assertThat(((MessageEnvoyePayload) e).reponseAAuteurId()).isNull();
+            assertThat(((MessageEnvoyePayload) e).mentionnes()).isEmpty();
+        });
+        ArgumentCaptor<Message> m = ArgumentCaptor.forClass(Message.class);
+        verify(messages, times(2)).save(m.capture());
+        assertThat(m.getAllValues()).extracting(Message::getReponseAId).containsExactly(mien.getId(), dUnParti.getId());
+    }
+
+    @Test
+    @DisplayName("D-82 : message cité inconnu, d'une autre conversation ou événement de groupe : 422 COL_REPONSE_INVALIDE, rien n'est écrit")
+    void reponseInvalide() {
+        Conversation c = groupeConnu();
+        Conversation autre = new Conversation(TypeConversation.DIRECTE, null, null, null, "x|y", "x", T);
+        Message ailleurs = new Message(UUID.randomUUID(), autre, AMINATA, new byte[] { 1 }, T);
+        Message evenement = Message.evenement(UUID.randomUUID(), c, MOI, new byte[] { 1 }, T, cm.gimac.des.collaboration.domain.messagerie.EvenementGroupe.GROUPE_CREE, List.of("Atelier"));
+        UUID inconnu = UUID.randomUUID();
+        when(messages.findById(inconnu)).thenReturn(Optional.empty());
+        when(messages.findById(ailleurs.getId())).thenReturn(Optional.of(ailleurs));
+        when(messages.findById(evenement.getId())).thenReturn(Optional.of(evenement));
+        UUID id = c.getId();
+        for (UUID cite : List.of(inconnu, ailleurs.getId(), evenement.getId())) {
+            erreurMetier(() -> service.envoyer(EXP, id, reponse("Oui", cite, List.of()), List.of()), "COL_REPONSE_INVALIDE", 422);
+        }
+        verify(messages, never()).save(any());
+        verifyNoInteractions(outbox);
+    }
+
+    @Test
+    @DisplayName("D-82 : mention d'un non-membre, de l'auteur ou au-delà de 20 : 422 COL_MENTION_INVALIDE, rien n'est écrit")
+    void mentionInvalide() {
+        Conversation c = groupeConnu();
+        UUID id = c.getId();
+        erreurMetier(() -> service.envoyer(EXP, id, reponse("@x", null, List.of("intrus")), List.of()), "COL_MENTION_INVALIDE", 422);
+        erreurMetier(() -> service.envoyer(EXP, id, reponse("@moi", null, List.of("moi")), List.of()), "COL_MENTION_INVALIDE", 422);
+        verify(messages, never()).save(any());
+        verifyNoInteractions(outbox);
+    }
+
+    @Test
+    @DisplayName("D-82 : création réutilisant la conversation directe, avec réponse et mention ; nouvelle conversation : réponse refusée, rien n'est créé")
+    void creationAvecReponse() {
+        Conversation existante = new Conversation(TypeConversation.DIRECTE, null, null, null, "aminata|moi", "moi", T.minusSeconds(60));
+        existante.ajouterMembre(MOI, T.minusSeconds(60));
+        existante.ajouterMembre(AMINATA, T.minusSeconds(60));
+        when(conversations.findByCleDirecte("aminata|moi")).thenReturn(Optional.of(existante));
+        Message cite = new Message(UUID.randomUUID(), existante, AMINATA, new byte[] { 9 }, T.minusSeconds(30));
+        when(messages.findById(cite.getId())).thenReturn(Optional.of(cite));
+
+        var demande = new NouvelleConversation(List.of("aminata"), null, null, null, "Bien reçu", List.of(), false, List.of(), List.of(), cite.getId(), List.of("aminata"));
+        var r = service.creerConversation(EXP, demande, List.of());
+        assertThat(r.creee()).isFalse();
+        ArgumentCaptor<Object> p = ArgumentCaptor.forClass(Object.class);
+        verify(outbox).publish(eq("conversation"), eq(existante.getId()), eq("collaboration.message-sent.v1"), p.capture());
+        assertThat(((MessageEnvoyePayload) p.getValue()).reponseAAuteurId()).isEqualTo("aminata");
+        assertThat(((MessageEnvoyePayload) p.getValue()).mentionnes()).containsExactly("aminata");
+
+        // Un nouveau groupe ne contient encore aucun message : toute citation est refusée avant l'écriture.
+        var groupe = new NouvelleConversation(List.of("aminata", "serge"), "Atelier", null, null, "Suite", List.of(), true, List.of(), List.of(), cite.getId(), List.of());
+        erreurMetier(() -> service.creerConversation(EXP, groupe, List.of()), "COL_REPONSE_INVALIDE", 422);
+        // Mention d'une personne qui n'est pas destinataire.
+        when(conversations.findByCleDirecte("moi|serge")).thenReturn(Optional.empty());
+        var horsMembres = new NouvelleConversation(List.of("serge"), null, null, null, "@Aminata", List.of(), false, List.of(), List.of(), null, List.of("aminata"));
+        erreurMetier(() -> service.creerConversation(EXP, horsMembres, List.of()), "COL_MENTION_INVALIDE", 422);
+        verify(conversations, never()).save(any());
+        verify(messages, times(1)).save(any());
     }
 }

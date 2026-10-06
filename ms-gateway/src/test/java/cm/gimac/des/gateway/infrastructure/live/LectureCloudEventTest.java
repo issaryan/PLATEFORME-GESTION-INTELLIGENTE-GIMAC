@@ -109,4 +109,31 @@ class LectureCloudEventTest {
         assertThat(e).isPresent();
         assertThat(e.orElseThrow().subject()).isNull();
     }
+
+    @Test
+    @DisplayName("Accusé de lecture (D-88) : lecteur en acteur, luJusquA et destinataires ; luJusquA ignoré ailleurs")
+    void accuseDeLecture() {
+        String ce =
+            "{\"specversion\":\"1.0\",\"id\":\"r-1\",\"type\":\"collaboration.conversation-read.v1\",\"subject\":\"c-1\"," +
+            "\"data\":{\"conversationId\":\"c-1\",\"lecteurId\":\"u2\",\"luJusquA\":\"2026-10-06T08:00:00.123456Z\",\"destinataires\":[\"u1\",\"u3\"]}}";
+        EvenementLive e = lecture.lire("collaboration.message", ce).orElseThrow();
+        assertThat(e).isEqualTo(
+            new EvenementLive(
+                "r-1",
+                EvenementLive.LECTURE,
+                "c-1",
+                EvenementLive.COLLABORATION,
+                null,
+                java.util.Set.of("u1", "u3"),
+                "u2",
+                "2026-10-06T08:00:00.123456Z"
+            )
+        );
+        assertThat(e.ephemere()).isFalse();
+        assertThat(e.vue().luJusquA()).isEqualTo("2026-10-06T08:00:00.123456Z");
+        String autre = "{\"id\":\"m\",\"type\":\"collaboration.message-sent.v1\",\"data\":{\"auteurId\":\"u2\",\"lecteurId\":\"u9\",\"luJusquA\":\"x\"}}";
+        EvenementLive m = lecture.lire("collaboration.message", autre).orElseThrow();
+        assertThat(m.acteur()).isEqualTo("u2");
+        assertThat(m.luJusquA()).isNull();
+    }
 }

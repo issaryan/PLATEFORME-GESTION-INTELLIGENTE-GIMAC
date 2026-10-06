@@ -17,6 +17,27 @@ spec:
               $patch: delete
             - name: KEYCLOAK_ADMIN_PASSWORD
               $patch: delete
+            # Options de nom d'hôte et de mandataire de la v1 (KC_HOSTNAME_URL, KC_HOSTNAME_ADMIN_URL, KC_PROXY),
+            # retirées de Keycloak 26 : remplacées par celles de la v2. En mode « start », Keycloak exige un nom
+            # d'hôte et refuse le HTTP sans KC_HTTP_ENABLED (TLS terminé au contrôleur d'entrée).
+            - name: KC_PROXY
+              $patch: delete
+            - name: KC_HOSTNAME_URL
+              $patch: delete
+            - name: KC_HOSTNAME_ADMIN_URL
+              $patch: delete
+            - name: KC_HOSTNAME
+              value: http://keycloak.gimac-des.des.gimac.local
+            - name: KC_HTTP_ENABLED
+              value: "true"
+            - name: KC_PROXY_HEADERS
+              value: xforwarded
+            # Sonde de santé sur le port de gestion, comme Docker Compose (KC_HTTP_MANAGEMENT_PORT=9990) : lue par
+            # la supervision de la passerelle (gimac.supervision.keycloak-sante-url).
+            - name: KC_HEALTH_ENABLED
+              value: "true"
+            - name: KC_HTTP_MANAGEMENT_PORT
+              value: "9990"
             - name: KC_BOOTSTRAP_ADMIN_USERNAME
               value: gimac-admin
             - name: KC_BOOTSTRAP_ADMIN_PASSWORD
@@ -95,6 +116,9 @@ spec:
                 secretKeyRef:
                   name: gimac-clients-keycloak
                   key: gateway-service
+          ports:
+            - name: management
+              containerPort: 9990
           volumeMounts:
             - name: keycloak-volume
               mountPath: /opt/keycloak/data/import

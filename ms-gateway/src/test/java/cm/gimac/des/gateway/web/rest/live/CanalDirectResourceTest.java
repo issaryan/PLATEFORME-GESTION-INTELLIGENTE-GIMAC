@@ -250,4 +250,26 @@ class CanalDirectResourceTest {
             .thenCancel()
             .verify(DELAI);
     }
+
+    @Test
+    @DisplayName("Accusé de lecture (D-88) : remis au destinataire avec identifiant de reprise, lecteur et luJusquA ; pas au lecteur")
+    void accuseDeLecture() {
+        EvenementLive l = new EvenementLive("lu-1", EvenementLive.LECTURE, "c-1", EvenementLive.COLLABORATION, null, Set.of("u1"), "u2", "2026-10-06T08:00:00Z");
+        StepVerifier.create(ouvrir(session("u1", "2", null), "/bff/des/live?sujets=collaboration"))
+            .then(() -> emettre(l))
+            .assertNext(e -> {
+                assertThat(e.id()).isEqualTo("lu-1");
+                assertThat(e.data()).isEqualTo(
+                    "{\"id\":\"lu-1\",\"type\":\"collaboration.conversation-read.v1\",\"subject\":\"c-1\",\"topic\":\"collaboration\"," +
+                    "\"acteur\":\"u2\",\"luJusquA\":\"2026-10-06T08:00:00Z\"}"
+                );
+            })
+            .thenCancel()
+            .verify(DELAI);
+        StepVerifier.create(ouvrir(session("u2", "2", null), "/bff/des/live?sujets=collaboration,homologation"))
+            .then(() -> emettre(l, homologation("h-lu", null)))
+            .assertNext(e -> assertThat(e.id()).isEqualTo("h-lu"))
+            .thenCancel()
+            .verify(DELAI);
+    }
 }

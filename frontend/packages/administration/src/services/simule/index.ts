@@ -2,8 +2,9 @@ import { ReauthCancelled } from '@gimac/socle'
 import { creerSimulateur, type Compte, type SessionCompte } from '@gimac/compte'
 import type { EntreeJournal } from '../../modele/comptes'
 import { ALGORITHMES_OTP, type PolitiqueSecurite, type Profil } from '../../modele/configuration'
-import { UNITES_DEMO, type Unite } from '@gimac/lot1'
-import type { ServiceComptes, ServiceConfiguration, ServiceOrganisation, ServicePlateforme, ServicesConsole } from '../ports'
+import { MOTIF_DEMANDE, PRESENTATIONS_PROFILS, UNITES_DEMO, estCreation, estProfils, magasinPouvoirs, type Demande, type MagasinPouvoirs, type Unite } from '@gimac/lot1'
+import type { NouveauCompte } from '../../modele/comptes'
+import type { ServiceComptes, ServiceConfiguration, ServiceOrganisation, ServicePlateforme, ServicePouvoirsAdministration, ServicesConsole } from '../ports'
 import { PERMISSIONS_REALM, PRIVILEGIES, PROFILS_REALM } from './catalogue'
 import * as D from './donnees'
 import { infrastructureSimulee } from './infrastructure'
@@ -24,7 +25,18 @@ export type OptionsConsoleSimulee = {
   orchestrateur?: Orchestrateur
   /** Durée d'un geste d'exploitation simulé avant son issue, en millisecondes. */
   dureeGesteMs?: number
+  /** Magasin des pouvoirs hiérarchiques (D-81) partagé avec l'application interne simulée de la même page. */
+  pouvoirs?: MagasinPouvoirs
 }
+
+/** Responsables d'unité de l'annuaire de la console simulée (D-81 §2). */
+const RESPONSABLES_UNITES: Record<string, string> = { DG: 'u-dg', DES: 'u-chef-des', DDRM: 'u-chef-ddrm', SSI: 'u-rssi', CONFORMITE: 'u-conformite' }
+/** Permissions de tout profil interne créé (D-81 §5) : messagerie, Mon activité, notifications. */
+const INTERNE = ['COL_MESSAGE_READ', 'COL_MESSAGE_SEND', 'PIL_ACTIVITY_OWN', 'NOT_INBOX_READ']
+const CODE_PROFIL = /^ROLE_[A-Z][A-Z0-9_]{2,40}$/
+const privilegiee = (p: string) => /^(IAM|PLATFORM|INTERNAL)_/.test(p)
+/** Permissions du domaine servies par GET /configuration/permissions : le catalogue généré et la messagerie (D-64). */
+const PERMISSIONS_DOMAINE = [...PERMISSIONS_REALM, 'COL_MESSAGE_READ', 'COL_MESSAGE_SEND']
 
 const IDENTIFIANT = /^[a-z][a-z0-9._-]{2,49}$/
 const TELEPHONE = /^\+?[0-9 ]{8,20}$/
@@ -39,7 +51,13 @@ export function servicesConsoleSimules(o: OptionsConsoleSimulee = {}): ServicesC
   const journal: EntreeJournal[] = D.journalInitial()
   let politique = D.politiqueInitiale()
   let messagerie = D.messagerieInitiale()
-  const profils = PROFILS_REALM.map((p) => ({ ...p, permissions: [...p.permissions] }))
+  // Présentation des profils (D-86 §2) : libellé et mission du jeu initial, dernière modification depuis la console.
+  type ProfilSimule = { code: string; libelle: string; description: string; permissions: string[]; cree?: boolean; modifieLe: string | null; modifiePar: { id: string; nomAffiche: string } | null }
+  const profils: ProfilSimule[] = PROFILS_REALM.map((p) => ({
+    ...p, libelle: PRESENTATIONS_PROFILS[p.code]?.libelle ?? p.code, description: PRESENTATIONS_PROFILS[p.code]?.description ?? p.description, permissions: [...p.permissions],
+    modifieLe: null, modifiePar: null,
+  }))
+  const magasin = o.pouvoirs ?? magasinPouvoirs()
   const sessions = new Map<string, SessionCompte[]>()
   let n = 0
 
@@ -72,7 +90,7 @@ export function servicesConsoleSimules(o: OptionsConsoleSimulee = {}): ServicesC
     const inconnus = demandes.filter((p) => !profils.some((x) => x.code === p))
     if (inconnus.length) throw refus(400, 'IAM_PROFILE_UNKNOWN', 'Profil inconnu du catalogue', { profils: inconnus })
     const changes = [...demandes.filter((p) => !actuels.includes(p)), ...actuels.filter((p) => !demandes.includes(p))]
-    if (changes.some((p) => PRIVILEGIES.includes(p)) && !peutPrivilegie) {
+    if (changes.some(estPrivilegie) && !peutPrivilegie) {
       throw refus(403, 'IAM_PRIVILEGED_PROFILE', "L'attribution d'un profil privilégié est réservée au super administrateur")
     }
   }
@@ -83,15 +101,48 @@ export function servicesConsoleSimules(o: OptionsConsoleSimulee = {}): ServicesC
   }
   const filtreEtat = (c: Compte, etat?: string) =>
     !etat || (etat === 'ACTIF' ? c.actif : etat === 'INACTIF' ? !c.actif : etat === 'PREMIER_ACCES' ? c.actif && c.premierAccesEnAttente : c.actif && !c.secondFacteur)
+  const estPrivilegie = (code: string) => PRIVILEGIES.includes(code) || !!profils.find((x) => x.code === code && x.cree && x.permissions.some(privilegiee))
   const vueProfil = (p: (typeof profils)[number]): Profil => ({
-    code: p.code, description: p.description, permissions: [...p.permissions].sort(), privilegie: PRIVILEGIES.includes(p.code), titulaires: comptes.filter((c) => c.profils.includes(p.code)).length,
+    code: p.code, libelle: p.libelle, description: p.description, permissions: [...p.permissions].sort(), privilegie: estPrivilegie(p.code),
+    titulaires: comptes.filter((c) => c.profils.includes(p.code)).length, cree: !!p.cree, modifieLe: p.modifieLe, modifiePar: p.modifiePar,
   })
+  const modification = () => ({ modifieLe: new Date().toISOString(), modifiePar: { id: acteur.id, nomAffiche: acteur.nom } })
+  /** Libellé 1 à 80 et description 0 à 500 après retrait des espaces (400 IAM_PROFIL_INVALIDE, détail champ). */
+  const presentation = (libelle: string | undefined | null, description: string | undefined | null, code: string) => {
+    const l = (libelle ?? code).trim()
+    const d = (description ?? '').trim()
+    if (!l || l.length > 80) throw refus(400, 'IAM_PROFIL_INVALIDE', 'Libellé obligatoire, 80 caractères au plus', { champ: 'libelle' })
+    if (d.length > 500) throw refus(400, 'IAM_PROFIL_INVALIDE', 'Description de 500 caractères au plus', { champ: 'description' })
+    return { libelle: l, description: d }
+  }
   const sessionsDe = (id: string) => {
     if (!sessions.has(id)) {
       const c = trouver(id)
       sessions.set(id, c.actif && !c.premierAccesEnAttente ? [{ id: `s-${id}-1`, adresseIp: '10.20.3.41', debut: new Date(Date.now() - 5_400_000).toISOString(), dernierAcces: new Date(Date.now() - 300_000).toISOString(), applications: ['gateway'] }] : [])
     }
     return sessions.get(id)!
+  }
+
+  /** Création d'un compte (POST /comptes), reprise par l'acceptation d'une demande de création (D-81 §4). */
+  const creerCompte = (x: NouveauCompte) => {
+    const identifiant = x.identifiant.trim().toLowerCase()
+    if (!IDENTIFIANT.test(identifiant)) throw refus(400, 'IAM_USERNAME_INVALID', 'Identifiant invalide', { identifiant })
+    telephone(x.telephone)
+    if (!x.email?.trim()) throw refus(400, 'IAM_EMAIL_REQUIRED', 'Courriel obligatoire')
+    if (!x.envoyerInvitation && !x.motDePasseProvisoire) throw refus(400, 'IAM_ONBOARDING_REQUIRED', "Choisir l'invitation par courriel ou un mot de passe provisoire")
+    if (!x.profils.length) throw refus(400, 'IAM_PROFILE_UNKNOWN', 'Au moins un profil', { profils: [] })
+    verifierProfils([], x.profils)
+    if (comptes.some((c) => c.identifiant === identifiant || c.email?.toLowerCase() === x.email.trim().toLowerCase())) {
+      throw refus(409, 'IAM_ACCOUNT_CONFLICT', 'Identifiant ou courriel déjà utilisé')
+    }
+    const c = recalculer({
+      id: `u-sim-${++n}`, identifiant, prenom: x.prenom.trim(), nom: x.nom.trim(), nomAffiche: '', email: x.email.trim(), emailVerifie: false, actif: true,
+      creeLe: new Date().toISOString(), telephone: x.telephone || null, fonction: x.fonction || null, langue: 'fr', institutionId: x.institutionId || null,
+      profilComplet: false, premierAccesEnAttente: true, profils: [...x.profils].sort(), actionsRequises: ['MOT_DE_PASSE', 'SECOND_FACTEUR', 'FICHE', 'VERIFIER_COURRIEL'], secondFacteur: false,
+    })
+    comptes = [...comptes, c]
+    tracer('CREATION', { id: c.id, libelle: identifiant }, null, c.profils)
+    return { compte: c, invitationEnvoyee: x.envoyerInvitation, motDePasseProvisoire: x.motDePasseProvisoire ? 'Kp7#vQ2m!Lx9Tz4w' : null }
   }
 
   const comptesSimules: ServiceComptes = {
@@ -129,27 +180,7 @@ export function servicesConsoleSimules(o: OptionsConsoleSimulee = {}): ServicesC
       }),
     lire: (id) => attendre(() => trouver(id)),
     sessions: (id) => attendre(() => sessionsDe(id)),
-    creer: (x) =>
-      attendre(() => {
-        const identifiant = x.identifiant.trim().toLowerCase()
-        if (!IDENTIFIANT.test(identifiant)) throw refus(400, 'IAM_USERNAME_INVALID', 'Identifiant invalide', { identifiant })
-        telephone(x.telephone)
-        if (!x.email?.trim()) throw refus(400, 'IAM_EMAIL_REQUIRED', 'Courriel obligatoire')
-        if (!x.envoyerInvitation && !x.motDePasseProvisoire) throw refus(400, 'IAM_ONBOARDING_REQUIRED', "Choisir l'invitation par courriel ou un mot de passe provisoire")
-        if (!x.profils.length) throw refus(400, 'IAM_PROFILE_UNKNOWN', 'Au moins un profil', { profils: [] })
-        verifierProfils([], x.profils)
-        if (comptes.some((c) => c.identifiant === identifiant || c.email?.toLowerCase() === x.email.trim().toLowerCase())) {
-          throw refus(409, 'IAM_ACCOUNT_CONFLICT', 'Identifiant ou courriel déjà utilisé')
-        }
-        const c = recalculer({
-          id: `u-sim-${++n}`, identifiant, prenom: x.prenom.trim(), nom: x.nom.trim(), nomAffiche: '', email: x.email.trim(), emailVerifie: false, actif: true,
-          creeLe: new Date().toISOString(), telephone: x.telephone || null, fonction: x.fonction || null, langue: 'fr', institutionId: x.institutionId || null,
-          profilComplet: false, premierAccesEnAttente: true, profils: [...x.profils].sort(), actionsRequises: ['MOT_DE_PASSE', 'SECOND_FACTEUR', 'FICHE', 'VERIFIER_COURRIEL'], secondFacteur: false,
-        })
-        comptes = [...comptes, c]
-        tracer('CREATION', { id: c.id, libelle: identifiant }, null, c.profils)
-        return { compte: c, invitationEnvoyee: x.envoyerInvitation, motDePasseProvisoire: x.motDePasseProvisoire ? 'Kp7#vQ2m!Lx9Tz4w' : null }
-      }),
+    creer: (x) => attendre(() => creerCompte(x)),
     modifier: (id, f) =>
       attendre(() => {
         const c = trouver(id)
@@ -242,7 +273,7 @@ export function servicesConsoleSimules(o: OptionsConsoleSimulee = {}): ServicesC
   }
 
   // Organisation (D-76) : mêmes règles et mêmes refus que ReglesOrganisation de MS-IAM.
-  let unites: Unite[] = UNITES_DEMO.map((u) => ({ ...u }))
+  let unites: Unite[] = UNITES_DEMO.map((u) => ({ ...u, responsableId: RESPONSABLES_UNITES[u.code] ?? null }))
   const CODE_UNITE = /^[A-Z][A-Z0-9_]{1,31}$/
   const normaliser = (u: Unite): Unite => {
     if (!CODE_UNITE.test(u.code ?? '')) throw refus(400, 'ORG_UNITE_INVALIDE', "Code d'unité invalide : majuscules, chiffres ou souligné, 2 à 32 caractères", { champ: 'code' })
@@ -250,7 +281,13 @@ export function servicesConsoleSimules(o: OptionsConsoleSimulee = {}): ServicesC
     if (!libelle || libelle.length > 120) throw refus(400, 'ORG_UNITE_INVALIDE', 'Libellé obligatoire, 120 caractères au plus', { champ: 'libelle' })
     const parent = u.parent?.trim() || null
     if (u.type === 'DIRECTION' && parent) throw refus(400, 'ORG_UNITE_INVALIDE', "Une direction n'a pas d'unité parente", { champ: 'parent' })
-    return { code: u.code, libelle, type: u.type, parent, active: u.active }
+    // Responsable de l'unité (D-81 §2) : compte interne actif, ou null.
+    const responsableId = u.responsableId?.trim() || null
+    if (responsableId) {
+      const r = comptes.find((x) => x.id === responsableId)
+      if (!r || !r.actif || r.institutionId) throw refus(422, 'ORG_RESPONSABLE_INVALIDE', 'Le responsable doit être un compte interne actif', { responsableId })
+    }
+    return { code: u.code, libelle, type: u.type, parent, active: u.active, responsableId }
   }
   const verifierPlace = (u: Unite) => {
     if (u.parent) {
@@ -351,7 +388,7 @@ export function servicesConsoleSimules(o: OptionsConsoleSimulee = {}): ServicesC
         if (!COURRIEL.test(d ?? '')) throw refus(400, 'IAM_SMTP_INVALID', 'Adresse de destination invalide')
       }),
     profils: () => attendre(() => profils.map(vueProfil)),
-    permissions: () => attendre(() => PERMISSIONS_REALM),
+    permissions: () => attendre(() => PERMISSIONS_DOMAINE),
     definirPermissions: (code, permissions, m, assertion) =>
       attendre(() => {
         reauth(assertion)
@@ -359,11 +396,142 @@ export function servicesConsoleSimules(o: OptionsConsoleSimulee = {}): ServicesC
         const p = profils.find((x) => x.code === code)
         if (!p) throw refus(404, 'IAM_PROFILE_NOT_FOUND', 'Ressource introuvable', { id: code })
         if (PRIVILEGIES.includes(code) && !peutPrivilegie) throw refus(403, 'IAM_PRIVILEGED_PROFILE', 'La modification d’un profil privilégié est réservée au super administrateur')
-        const inconnues = permissions.filter((x) => !PERMISSIONS_REALM.includes(x))
+        const inconnues = permissions.filter((x) => !PERMISSIONS_DOMAINE.includes(x))
         if (inconnues.length) throw refus(400, 'IAM_PERMISSION_UNKNOWN', 'Permission inconnue', { permissions: inconnues })
         p.permissions = [...permissions]
+        Object.assign(p, modification())
         tracer(`CONFIGURATION_PROFIL_${code}`, { id: null, libelle: `PROFIL_${code}` }, m, [...permissions].sort())
         return vueProfil(p)
+      }),
+    creerProfil: (x, m, assertion) =>
+      attendre(() => {
+        reauth(assertion)
+        motif(m)
+        if (!acteur.permissions.includes('IAM_PROFILE_EDIT') && !peutPrivilegie) throw refus(403, 'IAM_PERMISSION_REQUISE', 'Permission IAM_PROFILE_EDIT requise')
+        const code = (x.code ?? '').trim()
+        if (!CODE_PROFIL.test(code)) throw refus(400, 'IAM_PROFIL_CODE_INVALIDE', 'Code de profil invalide', { code })
+        if (profils.some((y) => y.code === code)) throw refus(409, 'IAM_PROFIL_EXISTANT', 'Un profil porte déjà ce code', { code })
+        if (!x.description?.trim()) throw refus(400, 'IAM_PROFIL_INVALIDE', 'Description obligatoire', { champ: 'description' })
+        const presente = presentation(x.libelle, x.description, code)
+        if (x.permissions.some((y) => y.startsWith('INTERNAL_'))) throw refus(422, 'IAM_PROFIL_PERMISSION_INTERNE', 'Permission interne interdite à un profil de personne')
+        const inconnues = x.permissions.filter((y) => !PERMISSIONS_DOMAINE.includes(y))
+        if (inconnues.length) throw refus(400, 'IAM_PERMISSION_UNKNOWN', 'Permission inconnue', { permissions: inconnues })
+        if (x.permissions.some(privilegiee) && !peutPrivilegie) throw refus(403, 'IAM_PRIVILEGED_PROFILE', 'La création d’un profil privilégié est réservée au super administrateur')
+        const p: ProfilSimule = { code, ...presente, permissions: [...new Set([...x.permissions, ...INTERNE])].sort(), cree: true, ...modification() }
+        profils.push(p)
+        magasin.ajouterProfil(code, p.libelle)
+        tracer('PROFIL_CREE', { id: null, libelle: `PROFIL_${code}` }, m, p.permissions)
+        return vueProfil(p)
+      }),
+    supprimerProfil: (code, m, assertion) =>
+      attendre(() => {
+        reauth(assertion)
+        motif(m)
+        const i = profils.findIndex((y) => y.code === code)
+        if (i < 0) throw refus(404, 'IAM_PROFILE_NOT_FOUND', 'Ressource introuvable', { id: code })
+        if (!profils[i].cree) throw refus(409, 'IAM_PROFIL_SYSTEME', 'Profil livré avec le domaine : non supprimable', { code })
+        if (comptes.some((c) => c.profils.includes(code))) throw refus(409, 'IAM_PROFIL_TITULAIRES', 'Profil encore attribué', { code })
+        if (estPrivilegie(code) && !peutPrivilegie) throw refus(403, 'IAM_PRIVILEGED_PROFILE', 'La suppression d’un profil privilégié est réservée au super administrateur')
+        profils.splice(i, 1)
+        magasin.retirerProfil(code)
+        tracer('PROFIL_SUPPRIME', { id: null, libelle: `PROFIL_${code}` }, m)
+      }),
+    // Libellé et description (D-86 §2) : mêmes refus que MS-IAM ; un profil livré se modifie aussi.
+    modifierProfil: (code, x, m, assertion) =>
+      attendre(() => {
+        reauth(assertion)
+        motif(m)
+        if (!acteur.permissions.includes('IAM_PROFILE_EDIT') && !peutPrivilegie) throw refus(403, 'IAM_PERMISSION_REQUISE', 'Permission IAM_PROFILE_EDIT requise')
+        const p = profils.find((y) => y.code === code)
+        if (!p) throw refus(404, 'IAM_PROFILE_NOT_FOUND', 'Ressource introuvable', { id: code })
+        if (estPrivilegie(code) && !peutPrivilegie) throw refus(403, 'IAM_PRIVILEGED_PROFILE', 'La modification d’un profil privilégié est réservée au super administrateur')
+        const avant = `libelle=${p.libelle} ; description=${p.description}`
+        Object.assign(p, presentation(x.libelle, x.description, code), modification())
+        magasin.renommerProfil(code, p.libelle)
+        tracer('CONFIGURATION_PROFIL_MODIFIE', { id: null, libelle: code }, m, [`avant: ${avant}`, `après: libelle=${p.libelle} ; description=${p.description}`])
+        return vueProfil(p)
+      }),
+  }
+
+  // Pouvoirs hiérarchiques (D-81 §3, §4) : matrice et demandes des chefs, partagées avec l'application interne.
+  const ACTE: Record<Demande['type'], string> = { CREATION_COMPTE: 'IAM_ACCOUNT_CREATE', PROFILS: 'IAM_ACCOUNT_ROLES', STATUT: 'IAM_ACCOUNT_STATUS' }
+  const demandeEnAttente = (id: string) => {
+    const d = magasin.demandes.find((x) => x.id === id)
+    if (!d) throw refus(404, 'ORG_DEMANDE_INTROUVABLE', 'Demande introuvable', { id })
+    if (d.etat !== 'EN_ATTENTE') throw refus(409, 'ORG_DEMANDE_TRAITEE', 'Cette demande n’est plus en attente', { id })
+    return d
+  }
+  const decider = (d: Demande, etat: 'ACCEPTEE' | 'REFUSEE', m: string | null) =>
+    Object.assign(d, { etat, decision: { par: { id: acteur.id, nomAffiche: acteur.nom }, motif: m, le: new Date().toISOString() } })
+  const executer = (d: Demande) => {
+    if (estCreation(d)) {
+      const c = d.contenu
+      const { compte } = creerCompte({ identifiant: c.identifiant, prenom: c.prenom, nom: c.nom, email: c.email, telephone: c.telephone ?? null, fonction: c.fonction, profils: c.profils, envoyerInvitation: true, motDePasseProvisoire: false })
+      Object.assign(compte, { unite: c.unite, responsableId: c.responsableId })
+      magasin.organisation.push({ id: compte.id, nomAffiche: compte.nomAffiche, fonction: c.fonction, unite: c.unite, responsableId: c.responsableId, actif: true })
+      magasin.definirProfils(compte.id, c.profils)
+      return
+    }
+    const cible = d.cible!.id
+    const compte = comptes.find((x) => x.id === cible)
+    if (estProfils(d)) {
+      const avant = compte?.profils ?? magasin.profilsDe(cible)
+      const apres = [...new Set([...avant.filter((p) => !d.contenu.retirer.includes(p)), ...d.contenu.ajouter])].sort()
+      verifierProfils(avant, apres)
+      if (compte) compte.profils = apres
+      magasin.definirProfils(cible, apres)
+      tracer('PROFILS', { id: cible, libelle: compte?.identifiant ?? d.cible!.nomAffiche }, d.motif, apres)
+      return
+    }
+    const actif = (d.contenu as { actif: boolean }).actif
+    if (compte) {
+      if (!actif) dernierSuperAdmin(compte)
+      compte.actif = actif
+    }
+    const membre = magasin.organisation.find((x) => x.id === cible)
+    if (membre) membre.actif = actif
+    tracer(actif ? 'ACTIVATION' : 'DESACTIVATION', { id: cible, libelle: compte?.identifiant ?? d.cible!.nomAffiche }, d.motif)
+  }
+  const pouvoirs: ServicePouvoirsAdministration = {
+    matrice: () => attendre(() => ({ profils: magasin.matrice })),
+    modifierMatrice: (profil, e, m, assertion) =>
+      attendre(() => {
+        reauth(assertion)
+        motif(m)
+        if (!acteur.permissions.includes('IAM_PROFILE_EDIT')) throw refus(403, 'IAM_PERMISSION_REQUISE', 'Permission IAM_PROFILE_EDIT requise')
+        const avant = JSON.stringify(magasin.matrice.find((x) => x.profil === profil) ?? null)
+        const l = magasin.modifierMatrice(refus, profil, e)
+        tracer('MATRICE_POUVOIRS_MODIFIEE', { id: null, libelle: profil }, m, [`avant: ${avant}`, `après: ${JSON.stringify(l)}`])
+        return l
+      }),
+    demandes: (q) =>
+      attendre(() => {
+        const ordre = (d: Demande) => (d.etat === 'EN_ATTENTE' ? 0 : 1)
+        const l = magasin.demandes.filter((d) => !q.etat || d.etat === q.etat).sort((a, b) => ordre(a) - ordre(b) || b.creeeLe.localeCompare(a.creeeLe))
+        return { contenu: l.slice(q.page * q.taille, (q.page + 1) * q.taille), total: l.length, page: q.page, taille: q.taille }
+      }),
+    demande: (id) =>
+      attendre(() => {
+        const d = magasin.demandes.find((x) => x.id === id)
+        if (!d) throw refus(404, 'ORG_DEMANDE_INTROUVABLE', 'Demande introuvable', { id })
+        return d
+      }),
+    accepter: (id, m, assertion) =>
+      attendre(() => {
+        reauth(assertion)
+        const d = demandeEnAttente(id)
+        if (!acteur.permissions.includes(ACTE[d.type])) throw refus(403, 'ORG_DEMANDE_INTERDITE', `Permission exigée : ${ACTE[d.type]}`, { permission: ACTE[d.type] })
+        executer(d)
+        tracer('DEMANDE_ACCEPTEE', { id: d.cible?.id ?? null, libelle: d.id }, m || null, [d.type])
+        return decider(d, 'ACCEPTEE', m?.trim() || null)
+      }),
+    refuser: (id, m) =>
+      attendre(() => {
+        const t = (m ?? '').trim()
+        if (t.length < MOTIF_DEMANDE.min || t.length > MOTIF_DEMANDE.max) throw refus(400, 'ORG_DEMANDE_INVALIDE', 'Motif obligatoire, 5 à 500 caractères')
+        const d = demandeEnAttente(id)
+        tracer('DEMANDE_REFUSEE', { id: d.cible?.id ?? null, libelle: d.id }, t, [d.type])
+        return decider(d, 'REFUSEE', t)
       }),
   }
 
@@ -403,6 +571,7 @@ export function servicesConsoleSimules(o: OptionsConsoleSimulee = {}): ServicesC
     comptes: comptesSimules,
     organisation,
     configuration,
+    pouvoirs,
     plateforme,
     infrastructure: infrastructureSimulee({
       attendre, refus, acteur, assertionValide: (a) => a === ASSERTION_SIMULEE, orchestrateur: o.orchestrateur, dureeGesteMs: o.dureeGesteMs, latenceMs: o.latenceMs,

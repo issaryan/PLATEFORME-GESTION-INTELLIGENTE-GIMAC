@@ -77,6 +77,8 @@ export const FONCTIONNALITES: Fonctionnalite[] = [
   { cle: 'taches', libelleKey: 'nav.taches', icone: 'kanban', chemin: '/des/taches', groupe: 'monActivite', predicat: tient(PERM.activitePropre) },
   { cle: 'rapports', libelleKey: 'nav.rapports', icone: 'file-text', chemin: '/des/rapports', groupe: 'monActivite', predicat: tient(PERM.activitePropre) },
   { cle: 'equipe', libelleKey: 'nav.equipe', icone: 'users', chemin: '/des/equipe', groupe: 'monActivite', predicat: tient(PERM.equipeLire) },
+  // Processus de l'unité (D-87) : catalogue, modélisateur, lancement et suivi ; tout membre interne (droits fins vérifiés par MS-PILOTAGE).
+  { cle: 'processus', libelleKey: 'nav.processus', icone: 'workflow', chemin: '/des/processus', groupe: 'monActivite', predicat: tient(PERM.activitePropre) },
   // Registre des institutions (étapes 1 et 2).
   { cle: 'institutions', libelleKey: 'nav.institutions', icone: 'landmark', chemin: '/des/institutions', groupe: 'registre', predicat: tient(PERM.institutionLire), widgets: [{ cle: 'ddrm', predicat: PREDICAT_DDRM }] },
   // Étapes 3 à 10 : liste et dossier numérique des liaisons (D-57), cockpit de pilotage et « Mon travail ».
@@ -89,9 +91,14 @@ export const FONCTIONNALITES: Fonctionnalite[] = [
   { cle: 'referentiels', libelleKey: 'nav.referentiels', icone: 'kanban', chemin: '/des/referentiels/operations', groupe: 'homologation', predicat: tient(PERM.referentielLire) },
   // Administration des comptes (D-62, D-69), servie dans l'application interne.
   { cle: 'adminComptes', libelleKey: 'nav.admin.comptes', icone: 'users', chemin: `${ADMINISTRATION}/comptes`, groupe: 'administration', predicat: tient(PERM.comptesLire), widgets: [{ cle: 'administration' }] },
+  // Pouvoirs hiérarchiques (D-81) : demandes des chefs à traiter (IAM_ACCOUNT_READ), matrice des pouvoirs (IAM_PROFILE_EDIT).
+  { cle: 'adminDemandes', libelleKey: 'nav.admin.demandes', icone: 'inbox', chemin: `${ADMINISTRATION}/demandes`, groupe: 'administration', predicat: tient(PERM.comptesLire) },
   { cle: 'adminProfils', libelleKey: 'nav.admin.profils', icone: 'shield-check', chemin: `${ADMINISTRATION}/profils`, groupe: 'administration', predicat: tient(PERM.comptesLire) },
+  { cle: 'adminMatrice', libelleKey: 'nav.admin.matrice', icone: 'scale', chemin: `${ADMINISTRATION}/matrice-pouvoirs`, groupe: 'administration', predicat: tient(PERM.profilEditer) },
   // Catalogue des unités organisationnelles (D-76 §1.1) : lecture IAM_ACCOUNT_READ, édition IAM_ACCOUNT_EDIT.
   { cle: 'adminOrganisation', libelleKey: 'nav.admin.organisation', icone: 'landmark', chemin: `${ADMINISTRATION}/organisation`, groupe: 'administration', predicat: tient(PERM.comptesLire) },
+  // Organigramme (D-86 §3) : unités, chefs, membres et n+1 en arbre, gestes par glisser-déposer ou au clavier.
+  { cle: 'adminOrganigramme', libelleKey: 'nav.admin.organigramme', icone: 'network', chemin: `${ADMINISTRATION}/organigramme`, groupe: 'administration', predicat: tient(PERM.comptesLire) },
   { cle: 'adminJournal', libelleKey: 'nav.admin.journal', icone: 'scroll-text', chemin: `${ADMINISTRATION}/journal`, groupe: 'administration', predicat: tient(PERM.journalAdministrationLire) },
   { cle: 'adminPolitique', libelleKey: 'nav.admin.politique', icone: 'lock', chemin: `${ADMINISTRATION}/politique-securite`, groupe: 'administration', predicat: tient(PERM.politiqueLire) },
   // Plateforme (D-79) : les écrans de la console servis aussi dans l'application interne ; la console reste à part.

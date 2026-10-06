@@ -49,6 +49,44 @@ public class JournalActes {
         outbox.publish("avatar", compteId, AvatarModifiePayload.TYPE, new AvatarModifiePayload(compteId, identifiant, action, version, acteur.id()));
     }
 
+    /**
+     * Matrice des pouvoirs modifiée pour un profil (D-81 §3) : entrée MATRICE_POUVOIRS_MODIFIEE (avant,
+     * après) et événement de configuration vers l'audit.
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void matrice(Acteur acteur, String profil, String motif, String avant, String apres) {
+        String details = tronquer("avant: " + avant + ", après: " + apres, 2000);
+        journal.save(new JournalAdministration(clock.instant(), acteur.id(), acteur.nom(), "MATRICE_POUVOIRS_MODIFIEE", null, profil, motif, details, CorrelationContext.current()));
+        outbox.publish("configuration", "MATRICE_POUVOIRS", ConfigurationModifieePayload.TYPE, new ConfigurationModifieePayload("MATRICE_POUVOIRS", acteur.id(), motif, List.of(profil)));
+    }
+
+    /**
+     * Demande à l'administration soumise, acceptée, refusée ou annulée (D-81 §4) : entrée du journal
+     * (cible : la demande) ; les événements iam.request-* partent par ailleurs.
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void demande(Acteur acteur, String action, String demandeId, String libelle, String motif, List<String> details) {
+        journal.save(
+            new JournalAdministration(clock.instant(), acteur.id(), acteur.nom(), action, demandeId, libelle, motif == null ? null : tronquer(motif, 1000), tronquer(String.join(", ", details), 2000), CorrelationContext.current())
+        );
+    }
+
+    /**
+     * Libellé ou description d'un profil modifiés (D-86, docs/lot1/profils-organisation.md §2) : entrée
+     * CONFIGURATION_PROFIL_MODIFIE (cible : le code du profil ; détails : avant, après) et événement de
+     * configuration vers l'audit.
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void profil(Acteur acteur, String code, String motif, String avant, String apres) {
+        String details = tronquer("avant: " + avant + ", après: " + apres, 2000);
+        journal.save(new JournalAdministration(clock.instant(), acteur.id(), acteur.nom(), "CONFIGURATION_PROFIL_MODIFIE", null, code, motif == null ? null : tronquer(motif, 1000), details, CorrelationContext.current()));
+        outbox.publish("configuration", "PROFIL_MODIFIE", ConfigurationModifieePayload.TYPE, new ConfigurationModifieePayload("PROFIL_MODIFIE", acteur.id(), motif, List.of(code, "libelle", "description")));
+    }
+
+    private static String tronquer(String s, int max) {
+        return s.length() <= max ? s : s.substring(0, max);
+    }
+
     @Transactional(propagation = Propagation.MANDATORY)
     public void configuration(Acteur acteur, String objet, String motif, List<String> champs) {
         journal.save(new JournalAdministration(clock.instant(), acteur.id(), acteur.nom(), "CONFIGURATION_" + objet, null, objet, motif, String.join(", ", champs), CorrelationContext.current()));

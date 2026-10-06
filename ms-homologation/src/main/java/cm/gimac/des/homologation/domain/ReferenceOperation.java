@@ -101,9 +101,9 @@ public class ReferenceOperation implements Serializable {
     @Column(name = "description", length = 4000)
     private String description;
 
-    @Enumerated(EnumType.STRING)
+    /** Code d'une étape de la version (D-89) ; la progression passe par son étape canonique. */
     @Column(name = "etape", length = 40)
-    private EtapeCode etape;
+    private String etape;
 
     @Column(name = "ordre")
     private Integer ordre;
@@ -427,7 +427,7 @@ public class ReferenceOperation implements Serializable {
     /** Attributs historiques (couverture, HOM-01) déduits du modèle quand la saisie ne les porte pas. */
     private void deriverAttributsHistoriques() {
         if (phase == null || phase.isBlank()) {
-            phase = etape.name();
+            phase = etape;
         }
         if (partie == null && responsable != null) {
             partie = responsable.externe() ? Partie.PARTICIPANT : Partie.DES;
@@ -553,7 +553,8 @@ public class ReferenceOperation implements Serializable {
         return description;
     }
 
-    public EtapeCode getEtape() {
+    /** Code de l'étape de la version où l'opération est rangée. */
+    public String getEtape() {
         return etape;
     }
 
@@ -655,10 +656,16 @@ public class ReferenceOperation implements Serializable {
         }
     }
 
-    /** Étape saisie, sinon la phase quand elle nomme une étape, sinon l'étape du segment. */
+    /**
+     * Étape canonique de la progression (D-89) : celle de l'étape saisie dans sa version (ou de l'étape qui la
+     * précède), sinon la phase quand elle nomme une étape, sinon l'étape du segment.
+     */
     public EtapeCode etapeEffective() {
         if (etape != null) {
-            return etape;
+            java.util.Optional<EtapeCode> c = version != null ? version.canoniqueDe(etape) : EtapeCode.de(etape);
+            if (c.isPresent()) {
+                return c.orElseThrow();
+            }
         }
         if (phase != null) {
             try {

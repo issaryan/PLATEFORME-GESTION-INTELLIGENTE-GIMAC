@@ -6,8 +6,11 @@
 # consommés par MS-HOMOLOGATION (docs/lot1/parcours-backend.md §3). pilotage.task et pilotage.report portent
 # les événements de Mon activité (D-76, docs/lot1/mon-activite.md §5), clé = tâche ou rapport, sans contenu.
 # notification.inapp porte notification.inapp-created.v1 (D-80, docs/lot1/notifications.md), clé = notification,
-# relayé par la passerelle au seul destinataire ; collaboration.message, pilotage.task et pilotage.report sont
-# consommés par MS-NOTIFICATION.
+# relayé par la passerelle au seul destinataire. iam.request porte iam.request-submitted.v1 et iam.request-decided.v1
+# (demandes à l'administration, D-81, docs/lot1/pouvoirs-hierarchiques.md §4), clé = demande, sans contenu.
+# collaboration.message, pilotage.task, pilotage.report et iam.request sont consommés par MS-NOTIFICATION.
+# iam.account porte iam.account-administered.v1 (activation, désactivation… : D-87, remplacement des intervenants partis) ;
+# pilotage.process porte les événements des processus d'unité (D-87), consommés par MS-NOTIFICATION.
 #   KAFKA_BOOTSTRAP  courtier (défaut : kafka:9092, réseau Docker gimac-des_default)
 #   REPLICATION      facteur de réplication (défaut 3 ; 1 sur le poste de développement)
 #   KAFKA_TOPICS     commande kafka-topics.sh ; par défaut, l'image officielle Apache Kafka
@@ -34,11 +37,12 @@ for t in homologation.referential homologation.liaison homologation.operation ho
          homologation.notification certification.circuit certification.quitus certification.dossier certification.attestation \
          certification.notification certification.proces-verbal certification.approbation \
          participant.institution participant.adhesion participant.transition \
-         collaboration.message pilotage.task pilotage.report notification.inapp; do
+         collaboration.message pilotage.task pilotage.report pilotage.process notification.inapp iam.request iam.account; do
   creer "$t" 6 --config retention.ms=2592000000 --config min.insync.replicas="$MIN_ISR"
 done
 for t in participant.subscription participant.status document.document iam.user iam.role homologation.liaison \
          homologation.operation homologation.coverage certification.quitus certification.dossier certification.attestation \
-         certification.proces-verbal certification.approbation collaboration.message pilotage.task pilotage.report; do
+         certification.proces-verbal certification.approbation collaboration.message pilotage.task pilotage.report pilotage.process \
+         iam.request iam.account; do
   creer "$t.dlq" 3
 done

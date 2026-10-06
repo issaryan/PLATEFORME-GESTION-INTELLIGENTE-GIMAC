@@ -1,5 +1,5 @@
 import { ADRESSES, expect, test } from '../fixtures'
-import { confirmer, naviguer, signer, signerEtTerminer } from './outils'
+import { confirmer, naviguer, ongletSelectionne, signer, signerEtTerminer } from './outils'
 import { Passerelle, PERMISSIONS_SUPER_ADMIN } from './passerelle'
 
 // Fonctionnalité : chaque acte d'administration de la console atteint la route attendue de la passerelle
@@ -82,6 +82,7 @@ test.describe('Fonctionnalité : administration par la passerelle', () => {
 
     await naviguer(page, 'Profils et permissions')
     await page.getByRole('button', { name: 'Modifier la composition' }).click()
+    await ongletSelectionne(page.getByRole('dialog'), 'Droits')
     await page.getByRole('dialog').getByLabel('HOM_REPLAY_ADMIN').check()
     await page.getByRole('button', { name: 'Continuer vers la signature' }).click()
     await signerEtTerminer(page, 'Rejeu confié au service Normes et Agréments')

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation } from 'react-router'
 import { Button, IconButton, Toast, ToastRegion } from '@gimac/design-system'
-import type { NotificationPlateforme } from './modele'
+import { TYPES_MESSAGERIE, type NotificationPlateforme } from './modele'
 import { ICONES_NOTIFICATION } from './Cloche'
 import {
   conversationOuverte, useApercuNotification, useContexteNotifications, useMarquerNotificationLue, useNotificationsRecentes, useOuvrirNotification, usePreferencesNotifications,
@@ -29,7 +29,8 @@ function Surgissante({ n, onFermer, onOuvrir }: { n: NotificationPlateforme; onF
     const minuterie = window.setTimeout(() => fermer.current(), DUREE_SURGISSANTE_MS)
     return () => window.clearTimeout(minuterie)
   }, [])
-  const texte = n.type === 'MESSAGE' ? apercu.data : n.sousTitre
+  const messagerie = TYPES_MESSAGERIE.includes(n.type)
+  const texte = messagerie ? apercu.data : n.sousTitre
   return (
     <Toast className="gm-toast-notif" icon={n.type === 'MESSAGE' ? 'message-square' : ICONES_NOTIFICATION[n.type]}
       action={
@@ -39,7 +40,7 @@ function Surgissante({ n, onFermer, onOuvrir }: { n: NotificationPlateforme; onF
         </span>
       }>
       <span className="gm-toast-titre">{n.nombre > 1 ? `${n.titre} (${n.nombre})` : n.titre}</span>
-      {n.type === 'MESSAGE' && n.sousTitre ? <span className="gm-toast-texte">{n.sousTitre}</span> : null}
+      {messagerie && n.sousTitre ? <span className="gm-toast-texte">{n.sousTitre}</span> : null}
       {texte ? <span className="gm-toast-texte">{texte}</span> : null}
     </Toast>
   )
@@ -74,7 +75,7 @@ export function NotificationsSurgissantes() {
     for (const n of arrivees) {
       if (document.hidden) {
         if (prefs?.systeme) {
-          void Promise.resolve(n.type === 'MESSAGE' && c.apercu ? c.apercu(n).catch(() => null) : n.sousTitre)
+          void Promise.resolve(TYPES_MESSAGERIE.includes(n.type) && c.apercu ? c.apercu(n).catch(() => null) : n.sousTitre)
             .then((corps) => notifierSysteme({ titre: n.titre, corps, etiquette: n.id, ouvrir: () => ouvrir(n) }))
         }
       } else if (conversationOuverte(n, c.couche, emplacement)) {

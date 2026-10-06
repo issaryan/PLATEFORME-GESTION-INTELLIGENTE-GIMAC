@@ -64,6 +64,16 @@ public class PilotageException extends RuntimeException {
         return regle(code, message, Map.of());
     }
 
+    /** 428 : acte engageant sans réauthentification forte (en-tête X-Reauth-Assertion absent, IAM-07). */
+    public static PilotageException preconditionRequise(String code, String message) {
+        return new PilotageException(code, 428, message, Map.of());
+    }
+
+    /** 429 : acte répété trop tôt (relance d'une tâche, une par 24 h). */
+    public static PilotageException tropTot(String code, String message, Map<String, Object> details) {
+        return new PilotageException(code, 429, message, details);
+    }
+
     /** 503 : service tiers indisponible, sans valeur supposée. */
     public static PilotageException indisponible(String code, String message) {
         return new PilotageException(code, 503, message, Map.of());

@@ -1,0 +1,71 @@
+# Sujets Kafka du lot 1 (PI-GIMAC-01 §0.5) : équivalent du conteneur kafka-sujets-init de
+# docker-compose.gimac.yml. Même image (apache/kafka, outils inclus, absents de l'image native du courtier),
+# même script (partages/kafka/creer-sujets-lot1.sh, copie de infra/kafka/creer-sujets-lot1.sh tenue par
+# synchroniser-partages.sh), idempotent : un sujet existant n'est ni recréé ni modifié. Réplication 1 : le
+# courtier généré (messagebroker-k8s) est mono-nœud.
+# Le Job est supprimé 10 minutes après sa fin : le « kubectl apply -k . » suivant le recrée et crée les sujets
+# ajoutés au script entre-temps. Les services ne l'attendent pas (pas de dépendance d'ordre en Kubernetes) : le
+# Job s'achève en quelques secondes après la disponibilité du courtier, bien avant le démarrage des services.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kafka-sujets-init
+  namespace: gimac-des
+spec:
+  backoffLimit: 6
+  ttlSecondsAfterFinished: 600
+  template:
+    metadata:
+      labels:
+        app: kafka-sujets-init
+    spec:
+      restartPolicy: OnFailure
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: sujets
+          image: apache/kafka:4.3.1
+          command:
+            - /bin/bash
+            - -c
+            - |
+              for i in $(seq 60); do
+                /opt/kafka/bin/kafka-topics.sh --bootstrap-server "$KAFKA_BOOTSTRAP" --list >/dev/null 2>&1 && exec /bin/bash /scripts/creer-sujets-lot1.sh
+                echo "courtier $KAFKA_BOOTSTRAP indisponible ($i/60)"; sleep 2
+              done
+              exit 1
+          env:
+            - name: KAFKA_BOOTSTRAP
+              value: jhipster-kafka.gimac-des.svc.cluster.local:9092
+            - name: REPLICATION
+              value: "1"
+            - name: KAFKA_TOPICS
+              value: /opt/kafka/bin/kafka-topics.sh
+            # Journaux des outils hors de l'image (racine en lecture seule).
+            - name: LOG_DIR
+              value: /tmp/journaux
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ['ALL']
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { cpu: 500m, memory: 512Mi }
+          volumeMounts:
+            - name: script
+              mountPath: /scripts
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: script
+          configMap:
+            name: kafka-sujets-script
+        - name: tmp
+          emptyDir: { sizeLimit: 64Mi }

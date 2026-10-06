@@ -38,6 +38,27 @@ const instantaneDegrade = () => {
 type NotificationE2E = {
   id: string; type: string; titre: string; sousTitre: string | null; lien: string; reference: { service: string; type: string; id: string }
   acteur: { id: string; nomAffiche: string } | null; nombre: number; creeLe: string; misAJourLe: string; lueLe: string | null
+  /** Conversation (D-82) : messages, mentions et réponses. */
+  conversationId?: string | null
+}
+
+/** PDF d'une page, valide, rendu par pdf.js (aperçu bureautique converti, D-83). */
+export function pdfE2E(lignes: string[]): Buffer {
+  const texte = lignes.map((l, i) => `BT /F1 ${i === 0 ? 16 : 11} Tf 56 ${780 - i * 22} Td (${l.replace(/[()\\]/g, '')}) Tj ET`).join('\n')
+  const objets = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>',
+    `<< /Length ${texte.length} >>\nstream\n${texte}\nendstream`,
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>',
+  ]
+  let pdf = '%PDF-1.4\n'
+  const positions: number[] = []
+  objets.forEach((o, i) => { positions.push(pdf.length); pdf += `${i + 1} 0 obj\n${o}\nendobj\n` })
+  const xref = pdf.length
+  pdf += `xref\n0 ${objets.length + 1}\n0000000000 65535 f \n${positions.map((x) => `${String(x).padStart(10, '0')} 00000 n \n`).join('')}`
+  pdf += `trailer\n<< /Size ${objets.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`
+  return Buffer.from(pdf, 'latin1')
 }
 
 export type OptionsPasserelle = {
@@ -158,7 +179,9 @@ export class Passerelle {
     const multipart = (req.headers()['content-type'] ?? '').startsWith('multipart/form-data')
     // Parties d'un dépôt fragmenté (D-74) : octets bruts, jamais lus comme du JSON.
     const octets = (req.headers()['content-type'] ?? '').startsWith('application/octet-stream')
-    const corps = brut && !multipart && !octets ? JSON.parse(brut) : undefined
+    // Corps JSON seulement : l'aperçu bureautique (D-83) envoie les octets du document sous leur propre type.
+    const typeCorps = req.headers()['content-type'] ?? ''
+    const corps = brut && !multipart && !octets && (typeCorps.includes('json') || typeCorps === '') ? JSON.parse(brut) : undefined
     this.appels.push({ methode, chemin, recherche: url.search, entetes: req.headers(), corps })
     const json = (b: unknown, status = 200) => route.fulfill({ status, json: b, headers: { 'X-Correlation-Id': `e2e-${this.appels.length}` } })
     const refus = (status: number, code: string, message: string, details: Record<string, unknown> = {}) => json({ code, message, details, correlationId: `e2e-${code}` }, status)
@@ -459,6 +482,18 @@ export class Passerelle {
       if (this.depot!.etat === 'EN_VERIFICATION' && ++this.relectures >= 2) Object.assign(this.depot!, { etat: 'DISPONIBLE', documentId: 'doc-1', sha256: 'b'.repeat(64), dedoublonne: false })
       return json(this.depot)
     }
+    // Aperçu bureautique (D-83) : octets du document reçus tels quels, nom dans X-Nom-Fichier ; PDF converti, ou
+    // refus du contrat selon le nom (« protegee » : 422, « limite » : 429 avec reessayerDans).
+    if (chemin === '/bff/console/document/apercus' && methode === 'POST') {
+      const nom = decodeURIComponent(req.headers()['x-nom-fichier'] ?? '')
+      this.apercus.push({ nom, type: typeCorps, octets: req.postDataBuffer()?.length ?? 0, accept: req.headers()['accept'] ?? '' })
+      if (/protegee/.test(nom)) return refus(422, 'DOC_APERCU_ILLISIBLE', 'Document illisible')
+      if (/limite/.test(nom)) return refus(429, 'DOC_APERCU_LIMITE', 'Trop de conversions', { reessayerDans: 42, limiteParMinute: 30 })
+      return route.fulfill({ status: 200, headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': 'inline' }, body: pdfE2E([`Aperçu de ${nom}`, 'Document converti par MS-DOCUMENT (simulation de la passerelle).']) })
+    }
+    if (/^\/bff\/console\/collaboration\/messagerie\/pieces\/pj-(docx|pptx|protegee)$/.test(chemin)) {
+      return route.fulfill({ status: 200, headers: { 'Content-Type': 'application/octet-stream' }, body: Buffer.from([0x50, 0x4b, 0x03, 0x04, 0x14, 0x00]) })
+    }
     // Pièce volumineuse (4 Go) : téléchargée par lien direct, en flux.
     if (chemin === `${CM}/pieces/pj-gros`) return route.fulfill({ status: 200, headers: { 'Content-Type': 'video/mp4', 'Content-Disposition': 'attachment; filename="atelier-revue.mp4"' }, body: 'video' })
     if (chemin === `${CM}/non-lus`) return json({ total: this.messages.length === 1 ? 1 : 0 })
@@ -467,15 +502,44 @@ export class Passerelle {
     if (chemin === `${CM}/conversations/c-dg/messages` && methode === 'GET') return json({ contenu: this.messages.slice().reverse(), plusAnciens: false })
     if (chemin === `${CM}/conversations/c-dg/lu` && methode === 'POST') return vide()
     if (chemin === `${CM}/conversations/c-dg/messages` && methode === 'POST') {
-      const contenu = /"contenu":"([^"]*)"/.exec(brut ?? '')?.[1] ?? ''
+      // Partie JSON « message » du corps multipart, lue en entier (D-82 : reponseA et mentions).
+      const partie = JSON.parse((brut ?? '').split(/\r?\n/).find((l) => l.startsWith('{"contenu"')) ?? '{}') as { contenu?: string; reponseA?: string; mentions?: string[] }
+      this.messagesRecus.push(partie)
+      const contenu = partie.contenu ?? ''
+      const cite = partie.reponseA ? this.messages.find((x) => x.id === partie.reponseA) as { id: string; auteur: { id: string; nom: string }; contenu: string; envoyeLe: string } | undefined : undefined
       const documents = JSON.parse(/"documents":(\[[^\]]*\])/.exec(brut ?? '')?.[1] ?? '[]') as string[]
       this.documentsRecus.push(...documents)
       const piecesJointes = documents.map((d) => ({ id: `pj-${d}`, nom: this.depot?.nomFichier ?? d, taille: this.depot?.taille ?? 0, typeMime: this.depot?.typeMime ?? 'application/octet-stream', empreinte: 'b'.repeat(64) }))
-      const m = { id: `m-${this.messages.length + 1}`, conversationId: 'c-dg', auteur: { id: 'u-super-admin', nom: 'Serge Mouelle Kombi', fonction: null }, moi: true, contenu, etiquettes: [], piecesJointes, envoyeLe: il(0) }
+      const m = { id: `m-${this.messages.length + 1}`, conversationId: 'c-dg', auteur: { id: 'u-super-admin', nom: 'Serge Mouelle Kombi', fonction: null }, moi: true, contenu, etiquettes: [], piecesJointes, envoyeLe: il(0),
+        reponseA: cite ? { id: cite.id, auteur: { id: cite.auteur.id, nom: cite.auteur.nom }, extrait: cite.contenu.slice(0, 120), piecesJointes: 0, envoyeLe: cite.envoyeLe, supprime: false } : null,
+        mentions: (partie.mentions ?? []).map((id) => ({ id, nom: id === 'u-dg' ? 'François Tchoumi Kamga' : id })), mentionneMoi: false }
       this.messages.push(m)
       return json(m, 201)
     }
     return refus(404, 'HTTP_404', `Route non simulée : ${methode} ${chemin}`)
+  }
+
+  /** Conversions demandées à l'aperçu bureautique (D-83) ; parties JSON des messages envoyés (D-82). */
+  apercus: { nom: string; type: string; octets: number; accept: string }[] = []
+  messagesRecus: { contenu?: string; reponseA?: string; mentions?: string[] }[] = []
+
+  /**
+   * La direction générale répond au dernier message du super administrateur en le mentionnant (D-82) : message
+   * portant reponseA et mentions, notification MENTION (conversationId, lien vers le message) poussée par le canal.
+   */
+  recevoirMention(contenu: string) {
+    const mien = [...this.messages].reverse().find((x) => (x as { moi: boolean }).moi) as { id: string; contenu: string; envoyeLe: string } | undefined
+    const id = `m-${this.messages.length + 1}`
+    this.messages.push({ id, conversationId: 'c-dg', auteur: { id: 'u-dg', nom: 'François Tchoumi Kamga', fonction: 'Directeur général adjoint' }, moi: false,
+      contenu: `@Serge Mouelle Kombi ${contenu}`, etiquettes: [], piecesJointes: [], envoyeLe: il(0),
+      reponseA: mien ? { id: mien.id, auteur: { id: 'u-super-admin', nom: 'Serge Mouelle Kombi' }, extrait: mien.contenu.slice(0, 120), piecesJointes: 0, envoyeLe: mien.envoyeLe, supprime: false } : null,
+      mentions: [{ id: 'u-super-admin', nom: 'Serge Mouelle Kombi' }], mentionneMoi: true })
+    const le = new Date().toISOString()
+    const n = { id: `n-${this.notifications.length + 1}`, type: 'MENTION', titre: 'François Tchoumi Kamga vous a mentionné', sousTitre: null, lien: `/des/messagerie?conversation=c-dg&message=${id}`,
+      reference: { service: 'collaboration', type: 'MESSAGE', id }, conversationId: 'c-dg', acteur: { id: 'u-dg', nomAffiche: 'François Tchoumi Kamga' }, nombre: 1, creeLe: le, misAJourLe: le, lueLe: null }
+    this.notifications.push(n)
+    this.evenementsNotification.push(n.id)
+    return id
   }
 
   /** Connexions au canal poussé de la console (/bff/console/live). */
@@ -487,7 +551,7 @@ export class Passerelle {
     { id: 'n-2', type: 'TACHE', titre: 'Tâche confiée par Carine Ebongue Ndjock', sousTitre: 'Échéance : 2026-10-09', lien: '/des/taches?tache=t-7', reference: { service: 'pilotage', type: 'TACHE', id: 't-7' },
       acteur: { id: 'u-rssi', nomAffiche: 'Carine Ebongue Ndjock' }, nombre: 1, creeLe: il(3), misAJourLe: il(3), lueLe: null },
   ]
-  preferencesNotifications = { systeme: true, son: false, types: { MESSAGE: true, TACHE: true, RAPPORT: true } }
+  preferencesNotifications = { systeme: true, son: false, types: { MESSAGE: true, TACHE: true, RAPPORT: true, MENTION: true, REPONSE: true } }
   /** Identifiants des notifications dont l'événement attend la prochaine connexion du canal poussé. */
   evenementsNotification: string[] = []
 
@@ -523,7 +587,9 @@ export class Passerelle {
     }
     if (c === '/notifications/lecture' && methode === 'POST') {
       const r = corps?.reference
-      this.notifications.filter((n) => !n.lueLe && (!corps?.type || n.type === corps.type) && (!r || (n.reference.service === r.service && n.reference.type === r.type && n.reference.id === r.id)))
+      // Référence d'une conversation : ses messages, et ses mentions et réponses (conversationId, D-82).
+      this.notifications.filter((n) => !n.lueLe && (!corps?.type || n.type === corps.type)
+        && (!r || (n.reference.service === r.service && n.reference.type === r.type && n.reference.id === r.id) || (r.type === 'CONVERSATION' && n.conversationId === r.id)))
         .forEach((n) => (n.lueLe = new Date().toISOString()))
       return vide()
     }
@@ -547,7 +613,11 @@ export class Passerelle {
   messages: Record<string, unknown>[] = [{
     id: 'm-1', conversationId: 'c-dg', auteur: { id: 'u-dg', nom: 'François Tchoumi Kamga', fonction: 'Directeur général adjoint' }, moi: false,
     contenu: 'Pouvez-vous me confirmer la revue des habilitations avant vendredi ?', etiquettes: [],
-    piecesJointes: [{ id: 'pj-gros', nom: 'atelier-revue.mp4', taille: 4 * 1024 ** 3, typeMime: 'video/mp4', empreinte: 'c'.repeat(64) }], envoyeLe: il(1),
+    piecesJointes: [{ id: 'pj-gros', nom: 'atelier-revue.mp4', taille: 4 * 1024 ** 3, typeMime: 'video/mp4', empreinte: 'c'.repeat(64) },
+      // Documents bureautiques (D-83) : aperçu converti par MS-DOCUMENT ; le tableur protégé est refusé (422).
+      { id: 'pj-docx', nom: 'note-habilitations.docx', taille: 6, typeMime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', empreinte: 'd'.repeat(64) },
+      { id: 'pj-protegee', nom: 'grille-protegee.xlsx', taille: 6, typeMime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', empreinte: 'e'.repeat(64) }],
+    envoyeLe: il(1), reponseA: null, mentions: [], mentionneMoi: false,
   }]
 
   private conversation() {

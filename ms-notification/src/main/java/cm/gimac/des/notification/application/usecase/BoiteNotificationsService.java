@@ -19,6 +19,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -34,7 +35,11 @@ import org.springframework.transaction.annotation.Transactional;
  * Notifications de la plateforme (D-80, docs/lot1/notifications.md) : réception des événements de
  * MS-COLLABORATION et de MS-PILOTAGE, une notification par destinataire selon ses préférences,
  * consolidation par conversation, publication de notification.inapp-created.v1 par l'outbox ; boîte du
- * compte appelant (liste, compteur, lecture) et préférences. Aucun contenu de message n'est lu ni conservé.
+ * compte appelant (liste, compteur, lecture) et préférences. Demandes à l'administration de MS-IAM
+ * (type DEMANDE) et tâches à prendre ou relancées (type TACHE), docs/lot1/pouvoirs-hierarchiques.md. Mentions et
+ * réponses de la messagerie (types MENTION et REPONSE, D-82), jamais regroupées. Processus d'unité de MS-PILOTAGE
+ * (type PROCESSUS, D-87), jamais regroupés. Aucun contenu de message, de document ni valeur de champ n'est lu ni
+ * conservé.
  */
 @Service
 @Transactional
@@ -78,7 +83,18 @@ public class BoiteNotificationsService implements BoiteNotificationsUseCase, Rec
             return 0;
         }
         List<String> destinataires = acceptants(regles.destinataires(e.destinataires(), e.auteurId()), TypeNotification.MESSAGE);
-        if (destinataires.isEmpty()) {
+        // D-82 : mentions et réponse (sans identifiant de message, rien à désigner), selon les préférences.
+        Map<String, TypeNotification> propres = new LinkedHashMap<>();
+        if (!vide(e.messageId())) {
+            regles
+                .mentionsEtReponse(e.destinataires(), e.mentionnes(), e.reponseAAuteurId(), e.auteurId())
+                .forEach((d, type) -> {
+                    if (accepte(d, type)) {
+                        propres.put(d, type);
+                    }
+                });
+        }
+        if (destinataires.isEmpty() && propres.isEmpty()) {
             return 0;
         }
         Noms noms = new Noms();
@@ -106,9 +122,24 @@ public class BoiteNotificationsService implements BoiteNotificationsUseCase, Rec
                         le
                     )
                 );
-            publier(notifications.save(n));
+            publier(notifications.save(n.dansConversation(e.conversationId())));
         }
-        return destinataires.size();
+        // D-82 : mention ou réponse, en plus de la notification de message ; une par message, jamais regroupée.
+        propres.forEach((d, type) -> {
+            NotificationUtilisateur n = new NotificationUtilisateur(
+                d,
+                type,
+                type == TypeNotification.MENTION ? regles.titreMention(auteur) : regles.titreReponse(auteur),
+                sousTitre,
+                regles.lienMessage(e.conversationId(), e.messageId()),
+                Reference.message(e.messageId()),
+                e.auteurId(),
+                auteur,
+                le
+            ).dansConversation(e.conversationId());
+            publier(notifications.save(n));
+        });
+        return destinataires.size() + propres.size();
     }
 
     @Override
@@ -160,6 +191,136 @@ public class BoiteNotificationsService implements BoiteNotificationsUseCase, Rec
         );
         publier(notifications.save(n));
         return 1;
+    }
+
+    @Override
+    public int tacheOfferte(TacheOfferte e) {
+        List<String> destinataires = acceptants(regles.destinataires(e.destinataires(), e.acteurId()), TypeNotification.TACHE);
+        if (destinataires.isEmpty() || vide(e.tacheId())) {
+            return 0;
+        }
+        String acteur = new Noms().de(e.acteurId());
+        Instant le = instant(e.le());
+        for (String d : destinataires) {
+            NotificationUtilisateur n = new NotificationUtilisateur(
+                d,
+                TypeNotification.TACHE,
+                regles.titreTacheOfferte(e.titre()),
+                regles.sousTitreTacheOfferte(e.uniteCible()),
+                regles.lienTachesAPrendre(),
+                Reference.tache(e.tacheId()),
+                e.acteurId(),
+                acteur,
+                le
+            );
+            publier(notifications.save(n));
+        }
+        return destinataires.size();
+    }
+
+    @Override
+    public int tacheRelancee(TacheRelancee e) {
+        String responsable = e.responsableId();
+        if (vide(responsable) || vide(e.tacheId()) || responsable.equals(e.acteurId()) || !accepte(responsable, TypeNotification.TACHE)) {
+            return 0;
+        }
+        String acteur = new Noms().de(e.acteurId());
+        NotificationUtilisateur n = new NotificationUtilisateur(
+            responsable,
+            TypeNotification.TACHE,
+            regles.titreRelance(e.titre()),
+            regles.sousTitreRelance(acteur),
+            regles.lienTache(e.tacheId()),
+            Reference.tache(e.tacheId()),
+            e.acteurId(),
+            acteur,
+            instant(e.le())
+        );
+        publier(notifications.save(n));
+        return 1;
+    }
+
+    @Override
+    public int demandeSoumise(DemandeSoumise e) {
+        List<String> destinataires = acceptants(regles.destinataires(e.destinataires(), e.demandeurId()), TypeNotification.DEMANDE);
+        if (destinataires.isEmpty() || vide(e.demandeId())) {
+            return 0;
+        }
+        String demandeur = new Noms().de(e.demandeurId());
+        Instant le = instant(e.le());
+        for (String d : destinataires) {
+            NotificationUtilisateur n = new NotificationUtilisateur(
+                d,
+                TypeNotification.DEMANDE,
+                regles.titreDemandeSoumise(demandeur),
+                regles.libelleDemande(e.type()),
+                regles.lienDemandeATraiter(e.demandeId()),
+                Reference.demande(e.demandeId()),
+                e.demandeurId(),
+                demandeur,
+                le
+            );
+            publier(notifications.save(n));
+        }
+        return destinataires.size();
+    }
+
+    @Override
+    public int demandeDecidee(DemandeDecidee e) {
+        List<String> destinataires = acceptants(regles.destinataires(e.destinataires(), e.acteurId()), TypeNotification.DEMANDE);
+        if (destinataires.isEmpty() || vide(e.demandeId())) {
+            return 0;
+        }
+        String acteur = new Noms().de(e.acteurId());
+        Instant le = instant(e.le());
+        for (String d : destinataires) {
+            NotificationUtilisateur n = new NotificationUtilisateur(
+                d,
+                TypeNotification.DEMANDE,
+                regles.titreDemandeDecidee(e.etat()),
+                regles.libelleDemande(e.type()),
+                regles.lienDemandeDecidee(e.demandeId()),
+                Reference.demande(e.demandeId()),
+                e.acteurId(),
+                acteur,
+                le
+            );
+            publier(notifications.save(n));
+        }
+        return destinataires.size();
+    }
+
+    @Override
+    public int evenementProcessus(EvenementProcessus e) {
+        if (vide(e.instanceId()) || e.faits() == null || e.faits().nature() == null) {
+            return 0;
+        }
+        List<String> destinataires = acceptants(regles.destinataires(e.destinataires(), e.acteurId()), TypeNotification.PROCESSUS);
+        if (destinataires.isEmpty()) {
+            return 0;
+        }
+        Noms noms = new Noms();
+        String acteur = noms.de(e.acteurId());
+        String titre = regles.titreProcessus(e.faits());
+        String sousTitre = regles.sousTitreProcessus(e.faits(), acteur, noms.de(e.ancienId()));
+        String lien = regles.lienProcessus(e.lien(), e.instanceId());
+        Instant le = instant(e.le());
+        for (String d : destinataires) {
+            // Une notification par événement (étape, signature, réaffectation…) : jamais regroupée.
+            NotificationUtilisateur n = new NotificationUtilisateur(
+                d,
+                TypeNotification.PROCESSUS,
+                titre,
+                sousTitre,
+                lien,
+                Reference.processus(e.instanceId()),
+                e.acteurId(),
+                acteur,
+                le
+            );
+            publier(notifications.save(n));
+        }
+        return destinataires.size();
     }
 
     @Override
@@ -282,12 +443,23 @@ public class BoiteNotificationsService implements BoiteNotificationsUseCase, Rec
         }
         Instant le = horloge.instant();
         int marquees = 0;
-        for (NotificationUtilisateur n : notifications.findByDestinataireIdAndLueLeIsNull(compte)) {
-            if ((t == null || n.getType() == t) && (r == null || r.equals(n.getReference())) && n.marquerLue(le)) {
+        List<NotificationUtilisateur> nonLues = r != null && r.estConversation()
+            ? notifications.findByDestinataireIdAndConversationIdAndLueLeIsNull(compte, r.getId())
+            : notifications.findByDestinataireIdAndLueLeIsNull(compte);
+        for (NotificationUtilisateur n : nonLues) {
+            if ((t == null || n.getType() == t) && (r == null || designe(r, n)) && n.marquerLue(le)) {
                 marquees++;
             }
         }
         return marquees;
+    }
+
+    /**
+     * La référence désigne la notification : même objet, ou conversation de la notification (les mentions
+     * et réponses, D-82, désignent un message mais sont lues à l'ouverture de leur conversation).
+     */
+    private static boolean designe(Reference r, NotificationUtilisateur n) {
+        return r.equals(n.getReference()) || (r.estConversation() && r.getId().equals(n.getConversationId()));
     }
 
     @Override

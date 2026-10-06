@@ -270,7 +270,8 @@ jhipster:
 # ---------------------------------------------------------------------------
 # Notifications de la plateforme (D-80, docs/lot1/notifications.md) : jeton de service du client
 # notification-service, adaptateurs MS-IAM et MS-COLLABORATION, consommateur des événements
-# collaboration.message, pilotage.task et pilotage.report, outbox de notification.inapp-created.v1.
+# collaboration.message, pilotage.task, pilotage.report et iam.request (demandes à l'administration,
+# docs/lot1/pouvoirs-hierarchiques.md §4), outbox de notification.inapp-created.v1.
 # ---------------------------------------------------------------------------
 spring:
   security:
@@ -333,6 +334,9 @@ gimac:
         - collaboration.message
         - pilotage.task
         - pilotage.report
+        - iam.request
+        - pilotage.process
   consommateurs:
     notification:
-      sujets: collaboration.message,pilotage.task,pilotage.report
+      # pilotage.process : processus d'unité (D-87, type PROCESSUS).
+      sujets: collaboration.message,pilotage.task,pilotage.report,iam.request,pilotage.process

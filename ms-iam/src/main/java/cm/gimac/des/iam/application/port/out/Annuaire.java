@@ -6,9 +6,11 @@ import cm.gimac.des.iam.domain.compte.ConfigurationMessagerie;
 import cm.gimac.des.iam.domain.compte.FicheCompte;
 import cm.gimac.des.iam.domain.compte.NouveauCompte;
 import cm.gimac.des.iam.domain.compte.PolitiqueSecurite;
+import cm.gimac.des.iam.domain.compte.PresentationProfil;
 import cm.gimac.des.iam.domain.compte.Profil;
 import cm.gimac.des.iam.domain.compte.SessionCompte;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -50,6 +52,12 @@ public interface Annuaire {
      * allégés : profils et second facteur n'y sont pas renseignés.
      */
     List<Compte> parResponsable(String responsableId);
+
+    /**
+     * Comptes rattachés à cette unité (attribut unite), 500 au plus (D-81, membres des unités dirigées).
+     * Comptes allégés, comme {@link #parResponsable(String)}.
+     */
+    List<Compte> parUnite(String unite);
 
     void definirProfils(String id, Set<String> profils);
 
@@ -120,4 +128,40 @@ public interface Annuaire {
     List<String> permissions();
 
     void definirPermissionsProfil(String profil, Set<String> permissions);
+
+    /**
+     * Crée un profil : rôle composite du realm (code ROLE_*), avec sa description et ses permissions
+     * (D-81, docs/lot1/pouvoirs-hierarchiques.md §5). IamException 409 IAM_PROFIL_EXISTANT si un rôle
+     * porte déjà ce nom.
+     */
+    default void creerProfil(String code, String description, Set<String> permissions) {
+        creerProfil(code, null, description, permissions);
+    }
+
+    /**
+     * Crée un profil avec son libellé (D-86, docs/lot1/profils-organisation.md §2 : attribut gimac_libelle
+     * du rôle ; nul, non renseigné).
+     */
+    void creerProfil(String code, String libelle, String description, Set<String> permissions);
+
+    /** Supprime le rôle composite d'un profil créé. */
+    void supprimerProfil(String code);
+
+    /**
+     * Libellé (attribut gimac_libelle) et description du rôle composite d'un profil (D-86 §2) ; un libellé
+     * nul retire l'attribut. IamException 404 IAM_PROFILE_NOT_FOUND si le rôle n'existe pas.
+     */
+    void definirPresentationProfil(String code, String libelle, String description);
+
+    /**
+     * Libellé (nul s'il n'est pas renseigné) et description de chaque profil (rôle composite ROLE_*), par
+     * code, en une lecture légère (sans composition ni titulaires).
+     */
+    Map<String, PresentationProfil> presentationsProfils();
+
+    /**
+     * Profils (rôles composites ROLE_*, hors ROLE_USER) de chaque compte qui en porte, par identifiant de
+     * compte (D-86, membres d'une unité pour le moteur de processus).
+     */
+    Map<String, Set<String>> profilsParCompte();
 }

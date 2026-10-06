@@ -13,9 +13,13 @@ public class Reference {
 
     public static final String COLLABORATION = "collaboration";
     public static final String PILOTAGE = "pilotage";
+    public static final String IAM = "iam";
     public static final String CONVERSATION = "CONVERSATION";
+    public static final String MESSAGE = "MESSAGE";
     public static final String TACHE = "TACHE";
     public static final String RAPPORT = "RAPPORT";
+    public static final String DEMANDE = "DEMANDE";
+    public static final String PROCESSUS = "PROCESSUS";
 
     @Column(name = "reference_service", nullable = false, length = 40)
     private String service;
@@ -38,12 +42,32 @@ public class Reference {
         return new Reference(COLLABORATION, CONVERSATION, id);
     }
 
+    /** Message précis d'une conversation (mention ou réponse, D-82). */
+    public static Reference message(String id) {
+        return new Reference(COLLABORATION, MESSAGE, id);
+    }
+
+    /** Vrai si la référence désigne une conversation de la messagerie. */
+    public boolean estConversation() {
+        return COLLABORATION.equals(service) && CONVERSATION.equals(type);
+    }
+
     public static Reference tache(String id) {
         return new Reference(PILOTAGE, TACHE, id);
     }
 
     public static Reference rapport(String id) {
         return new Reference(PILOTAGE, RAPPORT, id);
+    }
+
+    /** Demande à l'administration (MS-IAM, docs/lot1/pouvoirs-hierarchiques.md §4). */
+    public static Reference demande(String id) {
+        return new Reference(IAM, DEMANDE, id);
+    }
+
+    /** Instance d'un processus d'unité (MS-PILOTAGE, D-87). */
+    public static Reference processus(String instanceId) {
+        return new Reference(PILOTAGE, PROCESSUS, instanceId);
     }
 
     public String getService() {

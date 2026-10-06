@@ -1,17 +1,44 @@
 # Complément propre au projet GIMAC du dossier généré par « jhipster kubernetes »
 # (../kubernetes, jamais modifié à la main : on le régénère). Décisions D-45, D-48, D-49.
 #
-#   ./creer-secrets.sh          crée les secrets absents (mots de passe aléatoires)
-#   kubectl apply -k .          applique les déclarations générées et ce complément
+#   ./creer-secrets.sh                     crée les secrets absents (mots de passe aléatoires)
+#   ./synchroniser-partages.sh --verifier  copies des fichiers partagés avec Docker Compose à jour
+#   kubectl apply -k .                     applique les déclarations générées et ce complément
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
   - ../kubernetes
   - valkey.yaml
+  - conversion-documents.yaml
   - frontend.yaml
   - politiques-reseau.yaml
   - kyverno-images-signees.yaml
+  # Équivalents des services de docker-compose.gimac.yml absents de la génération JHipster.
+  - opa.yaml
+  - alertmanager.yaml
+  - regles-alertes.yaml
+  - kafka-sujets.yaml
+
+# Fichiers partagés avec Docker Compose (copies de partages/, tenues par synchroniser-partages.sh : Kustomize
+# ne lit aucun fichier hors de ce dossier). Le suffixe de contenu relance les pods à chaque changement.
+configMapGenerator:
+  # Politiques OPA, hors tests (infra/docker-compose/opa/politiques).
+  - name: opa-politiques
+    namespace: gimac-des
+    files:
+      - partages/opa/gimac.rego
+      - partages/opa/lot1_authz.rego
+  # Configuration d'Alertmanager (infra/docker-compose/alertmanager-conf/config.yml).
+  - name: alertmanager-configuration
+    namespace: gimac-des
+    files:
+      - partages/alertmanager/config.yml
+  # Sujets Kafka du lot 1 (infra/kafka/creer-sujets-lot1.sh).
+  - name: kafka-sujets-script
+    namespace: gimac-des
+    files:
+      - partages/kafka/creer-sujets-lot1.sh
 
 patches:
   # Profil de sécurité des pods (D-49) : baseline imposé, restricted signalé.
@@ -47,6 +74,9 @@ patches:
   # Secrets générés par JHipster retirés : aucun secret dans le dépôt (BNF-07, D-44).
   # Ils sont créés au déploiement par creer-secrets.sh, puis par OpenBao (SOC-06).
   - path: retrait-secrets-generes.yaml
+
+  # Opérateur Prometheus généré (v0.42.1, RBAC v1beta1) retiré : opérateur à jour prérequis de la grappe.
+  - path: retrait-operateur-prometheus.yaml
 
   # Segments de la zone applicative et de la DMZ (CC 5.6.1), portés par les pods.
   - target:
@@ -100,7 +130,7 @@ patches:
         value: identite
   - target:
       kind: Deployment
-      name: ^jhipster-(grafana|prometheus-operator)$
+      name: ^jhipster-grafana$
     patch: |-
       - op: add
         path: /spec/template/metadata/labels/gimac.cm~1segment
@@ -157,6 +187,96 @@ patches:
         path: /spec/template/spec/containers/0/args
         value: ['start', '--import-realm']
 
+  # Ports des Services applicatifs : le Service expose le port du conteneur (8080 à 8093), comme Docker
+  # Compose, au lieu du port 80 généré. Les adresses de production (application-prod.yml : http://iam:8081,
+  # gimac.services.* de la passerelle) et GIMAC_PASSERELLE des couches de présentation (gateway:8080) sont
+  # ainsi justes dans la grappe ; l'entrée désigne les ports par leur nom (http), inchangé. Le « test »
+  # échoue au rendu si une régénération change le port cible.
+  - target:
+      kind: Service
+      name: ^gateway$
+    patch: |-
+      - { op: test, path: /spec/ports/0/targetPort, value: 8080 }
+      - { op: replace, path: /spec/ports/0/port, value: 8080 }
+  - target:
+      kind: Service
+      name: ^iam$
+    patch: |-
+      - { op: test, path: /spec/ports/0/targetPort, value: 8081 }
+      - { op: replace, path: /spec/ports/0/port, value: 8081 }
+  - target:
+      kind: Service
+      name: ^audit$
+    patch: |-
+      - { op: test, path: /spec/ports/0/targetPort, value: 8082 }
+      - { op: replace, path: /spec/ports/0/port, value: 8082 }
+  - target:
+      kind: Service
+      name: ^document$
+    patch: |-
+      - { op: test, path: /spec/ports/0/targetPort, value: 8083 }
+      - { op: replace, path: /spec/ports/0/port, value: 8083 }
+  - target:
+      kind: Service
+      name: ^notification$
+    patch: |-
+      - { op: test, path: /spec/ports/0/targetPort, value: 8084 }
+      - { op: replace, path: /spec/ports/0/port, value: 8084 }
+  - target:
+      kind: Service
+      name: ^participant$
+    patch: |-
+      - { op: test, path: /spec/ports/0/targetPort, value: 8085 }
+      - { op: replace, path: /spec/ports/0/port, value: 8085 }
+  - target:
+      kind: Service
+      name: ^homologation$
+    patch: |-
+      - { op: test, path: /spec/ports/0/targetPort, value: 8086 }
+      - { op: replace, path: /spec/ports/0/port, value: 8086 }
+  - target:
+      kind: Service
+      name: ^certification$
+    patch: |-
+      - { op: test, path: /spec/ports/0/targetPort, value: 8087 }
+      - { op: replace, path: /spec/ports/0/port, value: 8087 }
+  - target:
+      kind: Service
+      name: ^incident$
+    patch: |-
+      - { op: test, path: /spec/ports/0/targetPort, value: 8088 }
+      - { op: replace, path: /spec/ports/0/port, value: 8088 }
+  - target:
+      kind: Service
+      name: ^monitoring$
+    patch: |-
+      - { op: test, path: /spec/ports/0/targetPort, value: 8089 }
+      - { op: replace, path: /spec/ports/0/port, value: 8089 }
+  - target:
+      kind: Service
+      name: ^rapprochement$
+    patch: |-
+      - { op: test, path: /spec/ports/0/targetPort, value: 8090 }
+      - { op: replace, path: /spec/ports/0/port, value: 8090 }
+  - target:
+      kind: Service
+      name: ^pilotage$
+    patch: |-
+      - { op: test, path: /spec/ports/0/targetPort, value: 8091 }
+      - { op: replace, path: /spec/ports/0/port, value: 8091 }
+  - target:
+      kind: Service
+      name: ^reporting$
+    patch: |-
+      - { op: test, path: /spec/ports/0/targetPort, value: 8092 }
+      - { op: replace, path: /spec/ports/0/port, value: 8092 }
+  - target:
+      kind: Service
+      name: ^collaboration$
+    patch: |-
+      - { op: test, path: /spec/ports/0/targetPort, value: 8093 }
+      - { op: replace, path: /spec/ports/0/port, value: 8093 }
+
   # Job d'import du tableau de bord Grafana : segment de supervision.
   - target:
       kind: Job
@@ -167,6 +287,190 @@ patches:
         value:
           gimac.cm/segment: supervision
 
+
+  # ------------------------------------------------ Équivalence avec Docker Compose (docker-compose*.yml)
+  # Courtier Kafka : adresse lue par les liaisons Spring Cloud Stream (spring.cloud.stream.kafka.binder.brokers)
+  # et par les clients Kafka des services (bootstrap-servers par défaut sur cette propriété). Les variables
+  # KAFKA_CONSUMER_* / KAFKA_PRODUCER_* générées ne sont lues par aucun service : sans ce complément, tous
+  # visent localhost:9092. Docker Compose : SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS=kafka:9092.
+  - target:
+      kind: Deployment
+      name: ^(gateway|iam|audit|document|notification|participant|homologation|certification|incident|monitoring|rapprochement|pilotage|reporting|collaboration)$
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS
+          value: jhipster-kafka.gimac-des.svc.cluster.local:9092
+
+  # Secret du client de service « internal » des services générés (registration OAuth2 des application.yml,
+  # ${GIMAC_SECRET_INTERNAL}) : Docker Compose le donne à tous les services sauf la passerelle (x-emetteur-gimac).
+  - target:
+      kind: Deployment
+      name: ^(iam|audit|document|notification|participant|homologation|certification|incident|monitoring|rapprochement|pilotage|reporting|collaboration)$
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: GIMAC_SECRET_INTERNAL
+          valueFrom:
+            secretKeyRef:
+              name: gimac-clients-keycloak
+              key: internal
+
+  # Passerelle (docker-compose.gimac.yml) : canal poussé et journal de la connexion sur Kafka (spring.kafka),
+  # journal d'audit des connexions activé ; politiques d'accès (OPA, opa.yaml) et supervision de la plateforme
+  # (D-61) : Prometheus de l'opérateur (Service jhipster-prometheus), Alertmanager (alertmanager.yaml), santé de
+  # Keycloak sur son port de gestion (9990, domaine-gimac/keycloak.yaml). Les adresses par défaut de
+  # application-prod.yml (http://opa:8181, http://prometheus:9090...) sont celles des noms Docker Compose.
+  - target:
+      kind: Deployment
+      name: ^gateway$
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: SPRING_KAFKA_BOOTSTRAP_SERVERS
+          value: jhipster-kafka.gimac-des.svc.cluster.local:9092
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: GIMAC_PASSERELLE_JOURNALDECISIONS_ACTIF
+          value: "true"
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: GIMAC_OPA_URL
+          value: http://opa.gimac-des.svc.cluster.local:8181
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: GIMAC_SUPERVISION_PROMETHEUSURL
+          value: http://jhipster-prometheus.gimac-des.svc.cluster.local:9090
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: GIMAC_SUPERVISION_ALERTMANAGERURL
+          value: http://alertmanager.gimac-des.svc.cluster.local:9093
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: GIMAC_SUPERVISION_KEYCLOAKSANTEURL
+          value: http://keycloak.gimac-des.svc.cluster.local:9990/health/ready
+
+  # Keycloak : port de gestion (santé) publié par le Service sans tête, comme 9990 sous Docker Compose.
+  - target:
+      kind: Service
+      name: ^keycloak$
+    patch: |-
+      - op: add
+        path: /spec/ports/-
+        value:
+          name: management
+          port: 9990
+          targetPort: 9990
+
+  # Courtier Kafka mono-nœud : réplication 1 des sujets internes (transactions, partage), comme
+  # docker-compose.gimac.yml ; sans elle, ces sujets ne sont jamais créés sur un seul courtier.
+  - target:
+      kind: Deployment
+      name: ^jhipster-kafka$
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value: { name: KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR, value: "1" }
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value: { name: KAFKA_TRANSACTION_STATE_LOG_MIN_ISR, value: "1" }
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value: { name: KAFKA_SHARE_COORDINATOR_STATE_TOPIC_REPLICATION_FACTOR, value: "1" }
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value: { name: KAFKA_SHARE_COORDINATOR_STATE_TOPIC_MIN_ISR, value: "1" }
+
+  # Dispositif de gestion des changements de MS-CERTIFICATION (lecture des fiches, change-record-reader réel) :
+  # aucun simulacre en Kubernetes (celui de Docker Compose déclare toute fiche APPROUVE). Adresse du dispositif
+  # réel fournie par l'exploitant (ConfigMap gimac-dispositifs-externes, creer-secrets.sh) ; sans elle, le pod
+  # ne démarre pas (CreateContainerConfigError) au lieu de viser l'adresse Compose http://gestion-changements:8080.
+  - target:
+      kind: Deployment
+      name: ^certification$
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: GIMAC_GESTION_CHANGEMENTS_URL
+          valueFrom:
+            configMapKeyRef:
+              name: gimac-dispositifs-externes
+              key: gestion-changements-url
+
+  # ------------------------------------------------ Supervision (opérateur Prometheus)
+  # ServiceMonitor générés : port « web » et chemin « /prometheusMetrics » inexistants ; les Services n'ont qu'un
+  # port « http » et Spring Boot expose /management/prometheus (permitAll dans chaque SecurityConfiguration,
+  # comme le job « prometheus » de prometheus.yml). Collecte toutes les 5 s, comme ce job.
+  - target:
+      kind: ServiceMonitor
+    patch: |-
+      - { op: test, path: /spec/endpoints/0/port, value: web }
+      - { op: replace, path: /spec/endpoints/0/port, value: http }
+      - { op: replace, path: /spec/endpoints/0/path, value: /management/prometheus }
+      - { op: add, path: /spec/endpoints/0/interval, value: 5s }
+
+  # RBAC de la ressource Prometheus générée en rbac.authorization.k8s.io/v1beta1 (retirée depuis 1.22).
+  - target:
+      group: rbac.authorization.k8s.io
+      version: v1beta1
+    patch: |-
+      - op: replace
+        path: /apiVersion
+        value: rbac.authorization.k8s.io/v1
+
+  # Prometheus : même version que Docker Compose, règles d'alerte de alert_rules.yml (regles-alertes.yaml) et
+  # envoi des alertes à Alertmanager (alertmanager.yaml), comme prometheus.yml.
+  - target:
+      kind: Prometheus
+      name: ^jhipster-prometheus$
+    patch: |-
+      - op: add
+        path: /spec/version
+        value: v3.14.0
+      - op: add
+        path: /spec/image
+        value: prom/prometheus:v3.14.0
+      - op: add
+        path: /spec/scrapeInterval
+        value: 15s
+      - op: add
+        path: /spec/evaluationInterval
+        value: 15s
+      - op: add
+        path: /spec/ruleSelector
+        value:
+          matchLabels:
+            team: gimac-des
+      - op: add
+        path: /spec/alerting
+        value:
+          alertmanagers:
+            - namespace: gimac-des
+              name: alertmanager
+              port: http
+              apiVersion: v2
+
+  # ------------------------------------------------ Entrée de la passerelle
+  # L'entrée générée publie la passerelle (gateway.gimac-des.des.gimac.local) et, sous /services/<service>/,
+  # chaque service sans la passerelle ni OPA. Docker Compose (serveur) ne publie que les trois couches de
+  # présentation, qui joignent la passerelle dans la grappe : la règle de la passerelle est retirée (dont
+  # /management/prometheus, ouvert sans authentification). Reste la règle de Keycloak (émetteur des jetons).
+  - target:
+      kind: Ingress
+      name: ^gateway$
+    patch: |-
+      - { op: test, path: /spec/rules/0/host, value: gateway.gimac-des.des.gimac.local }
+      - { op: remove, path: /spec/rules/0 }
+      - { op: test, path: /spec/rules/0/host, value: keycloak.gimac-des.des.gimac.local }
 # Version épinglée de l'image des conteneurs d'initialisation générés (busybox:latest).
 images:
   - name: busybox

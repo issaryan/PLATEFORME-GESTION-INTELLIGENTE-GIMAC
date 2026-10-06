@@ -25,7 +25,13 @@ export const NAVIGATION_CONSOLE: GroupeNavigation[] = [
     libelleKey: 'console.nav.groupe.comptes',
     entrees: [
       { cle: 'comptes', libelleKey: 'console.nav.comptes', icone: 'users', chemin: '/console/comptes', permission: 'IAM_ACCOUNT_READ' },
+      // Pouvoirs hiérarchiques (D-81) : demandes des chefs (IAM_ACCOUNT_READ), matrice des pouvoirs (IAM_PROFILE_EDIT).
+      { cle: 'demandes', libelleKey: 'console.nav.demandes', icone: 'inbox', chemin: '/console/demandes', permission: 'IAM_ACCOUNT_READ' },
       { cle: 'profils', libelleKey: 'console.nav.profils', icone: 'shield-check', chemin: '/console/profils', permission: 'IAM_ACCOUNT_READ' },
+      { cle: 'matrice', libelleKey: 'console.nav.matrice', icone: 'scale', chemin: '/console/matrice-pouvoirs', permission: 'IAM_PROFILE_EDIT' },
+      { cle: 'organisation', libelleKey: 'console.nav.organisation', icone: 'landmark', chemin: '/console/organisation', permission: 'IAM_ACCOUNT_READ' },
+      // Organigramme (D-86 §3) : arbre des unités et des n+1, panneau « Pouvoirs » d'un compte.
+      { cle: 'organigramme', libelleKey: 'console.nav.organigramme', icone: 'network', chemin: '/console/organigramme', permission: 'IAM_ACCOUNT_READ' },
       { cle: 'journal', libelleKey: 'console.nav.journal', icone: 'scroll-text', chemin: '/console/journal', permission: 'IAM_JOURNAL_READ' },
     ],
   },

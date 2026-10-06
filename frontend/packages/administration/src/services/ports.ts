@@ -1,6 +1,6 @@
 import type { SessionCompte } from '@gimac/compte'
 import type { SignPurpose } from '@gimac/socle'
-import type { Unite } from '@gimac/lot1'
+import type { Demande, EntreePouvoirs, EtatDemande, MatricePouvoirs, PageDemandes, PouvoirsProfil, Unite } from '@gimac/lot1'
 import type { ActionRequise, Compte, Creation, DemandeRattachement, EntreeJournal, FicheCompte, FiltreComptes, FiltreJournal, IndicateursComptes, NouveauCompte, Page } from '../modele/comptes'
 import type { ConfigurationMessagerie, PolitiqueSecurite, Profil } from '../modele/configuration'
 import type { DemandeGeste, EtatInfrastructure, Geste, JournauxCharge, Operation, PageOperations } from '../modele/infrastructure'
@@ -61,6 +61,40 @@ export interface ServiceConfiguration {
   permissions(): Promise<string[]>
   /** Acte sensible : réauthentification forte exigée (ADMIN_SENSITIVE). */
   definirPermissions(code: string, permissions: string[], motif: string, assertion: Assertion): Promise<Profil>
+  /**
+   * Profil créé par l'administration (D-81 §5) : code ^ROLE_[A-Z][A-Z0-9_]{2,40}$, privilégié s'il porte une
+   * permission IAM_*, PLATFORM_* ou INTERNAL_*. Acte sensible (IAM_PROFILE_EDIT, ADMIN_SENSITIVE).
+   */
+  creerProfil(p: NouveauProfil, motif: string, assertion: Assertion): Promise<Profil>
+  /** Profil créé, sans titulaire ; un profil livré est refusé (409 IAM_PROFIL_SYSTEME). Acte sensible. */
+  supprimerProfil(code: string, motif: string, assertion: Assertion): Promise<void>
+  /**
+   * Libellé (1 à 80) et description (0 à 500) d'un profil, livré ou créé (D-86 §2, PUT /configuration/profils/{code}) :
+   * IAM_PROFILE_EDIT, motif obligatoire et réauthentification FIDO2 ; profil privilégié : IAM_ROLE_PRIVILEGED_GRANT.
+   */
+  modifierProfil(code: string, p: PresentationProfil, motif: string, assertion: Assertion): Promise<Profil>
+}
+
+/** POST /configuration/profils (D-81 §5) ; libellé facultatif (D-86 §5, le code à défaut). */
+export type NouveauProfil = { code: string; libelle?: string; description: string; permissions: string[] }
+/** PUT /configuration/profils/{code} (D-86 §2), sans le motif. */
+export type PresentationProfil = { libelle: string; description: string }
+
+/**
+ * Pouvoirs hiérarchiques côté administration (D-81 §3 et §4) : matrice des pouvoirs (lecture IAM_ACCOUNT_READ,
+ * modification IAM_PROFILE_EDIT et FIDO2) et demandes des chefs à traiter (acceptation avec la permission de l'acte
+ * et FIDO2, refus motivé). Refus : ORG_DEMANDE_TRAITEE, ORG_DEMANDE_INTERDITE, IAM_PRIVILEGED_PROFILE, IAM_REAUTH_*…
+ */
+export interface ServicePouvoirsAdministration {
+  matrice(): Promise<MatricePouvoirs>
+  /** Acte sensible : réauthentification forte exigée (ADMIN_SENSITIVE). */
+  modifierMatrice(profil: string, e: EntreePouvoirs, motif: string, assertion: Assertion): Promise<PouvoirsProfil>
+  /** Vue « a-traiter » ; pages à partir de 0 comme le service. */
+  demandes(q: { etat?: EtatDemande; page: number; taille: number }): Promise<PageDemandes>
+  demande(id: string): Promise<Demande>
+  /** Acte sensible : l'acte demandé est exécuté par MS-IAM avec ses règles habituelles. */
+  accepter(id: string, motif: string, assertion: Assertion): Promise<Demande>
+  refuser(id: string, motif: string): Promise<Demande>
 }
 
 export type EcouteurFlux = {
@@ -105,6 +139,7 @@ export interface ServicesConsole {
   comptes: ServiceComptes
   organisation: ServiceOrganisation
   configuration: ServiceConfiguration
+  pouvoirs: ServicePouvoirsAdministration
   plateforme: ServicePlateforme
   infrastructure: ServiceInfrastructure
   reauth: ServiceReauthentification

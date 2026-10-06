@@ -85,6 +85,49 @@ test.describe('Fonctionnalité : accessibilité des écrans D-62', () => {
     })
   }
 
+  // Profils, organigramme, rôles par fonctionnalité et processus d'unité (D-86, D-87, D-90).
+  for (const theme of ['light', 'dark'] as const) {
+    test(`Scénario : profils, organigramme et processus d’unité (thème ${theme})`, async ({ page }) => {
+      test.slow()
+      await demo(page, { profil: 'ROLE_SUPER_ADMIN', theme })
+      await page.goto(`${ADRESSES.console}/console/organigramme`)
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText('Organigramme')
+      await page.locator('[data-unite="SNA"]').click()
+      await expect(page.getByRole('group', { name: 'Membres de Service Normes et Agréments' })).toBeVisible()
+      await auditer(page)
+      await page.getByRole('button', { name: 'Liste' }).click()
+      await auditer(page)
+      await page.goto(`${ADRESSES.console}/console/matrice-pouvoirs`)
+      await expect(page.getByRole('columnheader', { name: /Processus : lancer/ })).toBeVisible()
+      await auditer(page)
+      await page.goto(`${ADRESSES.console}/console/profils`)
+      await page.getByRole('row').filter({ hasText: 'ROLE_SNA' }).getByRole('button', { name: 'Modifier la composition' }).click()
+      await expect(page.getByRole('complementary', { name: 'Aperçu de la barre latérale' })).toBeVisible()
+      await auditer(page, '[role="dialog"]')
+      await page.getByRole('dialog').getByRole('button', { name: 'Annuler' }).click()
+      await page.getByRole('button', { name: 'Comparer deux profils' }).click()
+      await page.getByRole('dialog').getByLabel('Second profil').selectOption('ROLE_CHEF_DES')
+      await auditer(page, '[role="dialog"]')
+
+      await demo(page, { profil: 'ROLE_RESPONSABLE_SERVICE', theme })
+      await page.goto(`${ADRESSES.departement}/des/processus`)
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText('Processus de l’unité')
+      await page.waitForLoadState('networkidle')
+      await auditer(page)
+      await page.getByRole('button', { name: 'Ouverture d’un flux réseau', exact: true }).first().click()
+      await expect(page.getByTestId('processus-canevas')).toBeVisible()
+      await auditer(page)
+      await page.getByRole('button', { name: 'Consulter RECETTE' }).click()
+      await auditer(page, '[role="dialog"]')
+      await page.getByRole('dialog').getByRole('button', { name: 'Fermer' }).last().click()
+      await page.goto(`${ADRESSES.departement}/des/processus?vue=instances`)
+      await page.getByRole('combobox', { name: 'Instances' }).selectOption('unite')
+      await page.getByRole('button', { name: 'Flux SFTP vers la Banque de Libreville' }).click()
+      await expect(page.getByRole('complementary', { name: /Recette du flux/ })).toBeVisible()
+      await auditer(page)
+    })
+  }
+
   test('Scénario : tableau de bord du conducteur de projet (thème sombre)', async ({ page }) => {
     await demo(page, { profil: 'ROLE_CONDUCTEUR_PROJET', theme: 'dark' })
     await page.goto(`${ADRESSES.departement}/des/tableau-de-bord`)

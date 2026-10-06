@@ -169,7 +169,7 @@ public class ReferentialMigrationService {
     private static boolean identiques(ReferenceOperation a, ReferenceOperation b) {
         return (
             Objects.equals(a.getDescription(), b.getDescription()) &&
-            a.getEtape() == b.getEtape() &&
+            Objects.equals(a.getEtape(), b.getEtape()) &&
             a.getResponsable() == b.getResponsable() &&
             a.getValidateur() == b.getValidateur() &&
             Objects.equals(a.getConsultes(), b.getConsultes()) &&

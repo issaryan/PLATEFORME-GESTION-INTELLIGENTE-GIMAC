@@ -2,13 +2,18 @@ package cm.gimac.des.iam.application.usecase;
 
 import cm.gimac.des.iam.application.IamProprietes;
 import cm.gimac.des.iam.application.port.out.Annuaire;
+import cm.gimac.des.iam.application.port.out.PresentationsProfils;
+import cm.gimac.des.iam.application.port.out.ProfilsCrees;
 import cm.gimac.des.iam.domain.IamException;
 import cm.gimac.des.iam.domain.compte.Acteur;
 import cm.gimac.des.iam.domain.compte.ConfigurationMessagerie;
 import cm.gimac.des.iam.domain.compte.PolitiqueSecurite;
+import cm.gimac.des.iam.domain.compte.PresentationProfil;
 import cm.gimac.des.iam.domain.compte.Profil;
+import cm.gimac.des.iam.domain.compte.ProfilCree;
 import cm.gimac.des.iam.domain.service.PolitiqueMotDePasse;
 import cm.gimac.des.iam.domain.service.ReglesAdministration;
+import cm.gimac.des.iam.domain.service.ReglesProfils;
 import cm.gimac.des.iam.infrastructure.persistence.ParametreChiffre;
 import cm.gimac.des.iam.infrastructure.persistence.ParametreChiffreRepository;
 import cm.gimac.des.iam.infrastructure.securite.ChiffrementSecrets;
@@ -19,6 +24,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.regex.Pattern;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,11 +41,48 @@ public class ConfigurationAuthentificationService {
 
     private final Annuaire annuaire;
     private final JournalActes journal;
-    private final IamProprietes proprietes;
     private final ParametreChiffreRepository parametres;
     private final ChiffrementSecrets chiffrement;
     private final Clock clock;
+    private final CatalogueProfils catalogue;
+    private final ProfilsCrees crees;
+    private final PresentationsProfils presentations;
 
+    @Autowired
+    public ConfigurationAuthentificationService(
+        Annuaire annuaire,
+        JournalActes journal,
+        ParametreChiffreRepository parametres,
+        ChiffrementSecrets chiffrement,
+        Clock clock,
+        CatalogueProfils catalogue,
+        ProfilsCrees crees,
+        PresentationsProfils presentations
+    ) {
+        this.annuaire = annuaire;
+        this.journal = journal;
+        this.parametres = parametres;
+        this.chiffrement = chiffrement;
+        this.clock = clock;
+        this.catalogue = catalogue;
+        this.crees = crees;
+        this.presentations = presentations;
+    }
+
+    /** Service sans trace des modifications de profils (tests). */
+    public ConfigurationAuthentificationService(
+        Annuaire annuaire,
+        JournalActes journal,
+        ParametreChiffreRepository parametres,
+        ChiffrementSecrets chiffrement,
+        Clock clock,
+        CatalogueProfils catalogue,
+        ProfilsCrees crees
+    ) {
+        this(annuaire, journal, parametres, chiffrement, clock, catalogue, crees, null);
+    }
+
+    /** Service limité aux profils de la configuration (sans profil créé). */
     public ConfigurationAuthentificationService(
         Annuaire annuaire,
         JournalActes journal,
@@ -48,12 +91,7 @@ public class ConfigurationAuthentificationService {
         ChiffrementSecrets chiffrement,
         Clock clock
     ) {
-        this.annuaire = annuaire;
-        this.journal = journal;
-        this.proprietes = proprietes;
-        this.parametres = parametres;
-        this.chiffrement = chiffrement;
-        this.clock = clock;
+        this(annuaire, journal, parametres, chiffrement, clock, CatalogueProfils.configuration(proprietes), null, null);
     }
 
     @Transactional(readOnly = true)
@@ -103,10 +141,20 @@ public class ConfigurationAuthentificationService {
         annuaire.testerMessagerie(destinataire);
     }
 
+    /**
+     * Profils attribuables (configuration ∪ profils créés, D-81 §5), qualifiés par le catalogue de MS-IAM :
+     * privilégié, créé ; libellé et description (D-86 §2), date et auteur de la dernière modification.
+     */
     @Transactional(readOnly = true)
     public List<Profil> profils() {
-        Set<String> attribuables = proprietes.profils().attribuables();
-        return annuaire.profils().stream().filter(p -> attribuables.contains(p.code())).toList();
+        Set<String> attribuables = catalogue.attribuables();
+        Set<String> privilegies = catalogue.privilegies();
+        Set<String> livres = catalogue.livres();
+        Map<String, PresentationProfil> traces = presentations == null ? Map.of() : presentations.toutes();
+        return annuaire.profils().stream()
+            .filter(p -> attribuables.contains(p.code()))
+            .map(p -> p.qualifie(privilegies.contains(p.code()), !livres.contains(p.code())).modifie(traces.get(p.code())))
+            .toList();
     }
 
     @Transactional(readOnly = true)
@@ -114,14 +162,24 @@ public class ConfigurationAuthentificationService {
         return annuaire.permissions();
     }
 
-    /** Recompose un profil ; modifier un profil privilégié exige le droit d'octroi privilégié. */
+    /**
+     * Recompose un profil ; modifier un profil privilégié exige le droit d'octroi privilégié. Profil créé
+     * (D-81 §5) : mêmes règles qu'à sa création (aucune permission INTERNAL_*, permissions communes
+     * gardées, privilégié s'il porte une permission IAM_* ou PLATFORM_*).
+     */
     public Profil definirPermissions(Acteur acteur, String profil, Set<String> permissions, String motif) {
         ReglesAdministration.exigerMotif(motif);
-        if (!proprietes.profils().attribuables().contains(profil)) {
+        if (!catalogue.attribuables().contains(profil)) {
             throw IamException.introuvable("IAM_PROFILE_NOT_FOUND", profil);
         }
-        if (proprietes.profils().privilegies().contains(profil) && !acteur.peut(ReglesAdministration.OCTROI_PRIVILEGIE)) {
+        if (catalogue.privilegies().contains(profil) && !acteur.peut(ReglesAdministration.OCTROI_PRIVILEGIE)) {
             throw IamException.interdit("IAM_PRIVILEGED_PROFILE", "La modification d'un profil privilégié est réservée au super administrateur");
+        }
+        if (crees != null && !catalogue.livres().contains(profil)) {
+            ProfilCree cree = crees.lire(profil).orElseThrow(() -> IamException.introuvable("IAM_PROFILE_NOT_FOUND", profil));
+            permissions = ReglesProfils.avecCommunes(permissions);
+            ReglesProfils.verifierComposition(acteur, permissions, annuaire.permissions());
+            crees.enregistrer(new ProfilCree(profil, cree.description(), ReglesProfils.privilegie(permissions), cree.creePar(), cree.creeLe()));
         }
         Set<String> connues = new TreeSet<>(annuaire.permissions());
         Set<String> inconnues = new TreeSet<>(permissions);
@@ -130,6 +188,9 @@ public class ConfigurationAuthentificationService {
             throw IamException.invalide("IAM_PERMISSION_UNKNOWN", "Permission inconnue", Map.of("permissions", List.copyOf(inconnues)));
         }
         annuaire.definirPermissionsProfil(profil, permissions);
+        if (presentations != null) {
+            presentations.toucher(profil, clock.instant(), acteur.id(), acteur.nom());
+        }
         journal.configuration(acteur, "PROFIL_" + profil, motif, List.copyOf(new TreeSet<>(permissions)));
         return profils().stream().filter(p -> p.code().equals(profil)).findFirst().orElseThrow();
     }

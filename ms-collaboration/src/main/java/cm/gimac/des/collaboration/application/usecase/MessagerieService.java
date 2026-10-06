@@ -7,6 +7,7 @@ import cm.gimac.des.collaboration.application.port.out.CollaboratorDirectoryPort
 import cm.gimac.des.collaboration.application.port.out.DocumentStoragePort;
 import cm.gimac.des.collaboration.application.port.out.DocumentStoragePort.DocumentDepose;
 import cm.gimac.des.collaboration.application.port.out.DocumentStoragePort.MetadonneesDocument;
+import cm.gimac.des.collaboration.domain.event.ConversationLuePayload;
 import cm.gimac.des.collaboration.domain.event.MessageEnvoyePayload;
 import cm.gimac.des.collaboration.domain.exception.CollaborationException;
 import cm.gimac.des.collaboration.domain.messagerie.Collaborateur;
@@ -15,6 +16,7 @@ import cm.gimac.des.collaboration.domain.messagerie.ConversationMembre;
 import cm.gimac.des.collaboration.domain.messagerie.Etiquette;
 import cm.gimac.des.collaboration.domain.messagerie.EvenementGroupe;
 import cm.gimac.des.collaboration.domain.messagerie.FichierJoint;
+import cm.gimac.des.collaboration.domain.messagerie.LectureConversation;
 import cm.gimac.des.collaboration.domain.messagerie.Message;
 import cm.gimac.des.collaboration.domain.messagerie.PieceJointe;
 import cm.gimac.des.collaboration.domain.messagerie.TypeConversation;
@@ -23,6 +25,7 @@ import cm.gimac.des.collaboration.domain.service.ReglesMessagerie;
 import cm.gimac.des.collaboration.infrastructure.messaging.outbox.OutboxPublisher;
 import cm.gimac.des.collaboration.repository.ConversationMembreRepository;
 import cm.gimac.des.collaboration.repository.ConversationRepository;
+import cm.gimac.des.collaboration.repository.LectureConversationRepository;
 import cm.gimac.des.collaboration.repository.MessageRepository;
 import cm.gimac.des.collaboration.repository.PieceJointeRepository;
 import java.time.Clock;
@@ -36,6 +39,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -47,7 +51,10 @@ import org.springframework.transaction.annotation.Transactional;
  * pièces déposées dans MS-DOCUMENT, événement collaboration.message-sent.v1 par l'outbox. Groupes de
  * discussion (D-68) : création explicite, administrateur, nom, membres ajoutés ou retirés, départ.
  * Dépôts fragmentés (D-74, docs/lot1/depots-fragmentes.md §5) : tickets de documents déjà déposés par
- * l'expéditeur et pièces repartagées, joints sans nouvel envoi ni copie.
+ * l'expéditeur et pièces repartagées, joints sans nouvel envoi ni copie. Réponses et mentions (D-82) :
+ * message cité de la même conversation, membres mentionnés, signalés à MS-NOTIFICATION par l'événement.
+ * Accusés de lecture (D-88) : chaque avancée de la position de lecture est gardée (heure du « Lu par ») ;
+ * celle de POST /lu publie collaboration.conversation-read.v1 aux autres membres.
  */
 @Service
 @Transactional
@@ -58,6 +65,7 @@ public class MessagerieService implements EnvoyerMessageUseCase, GererGroupeUseC
     private final ConversationRepository conversations;
     private final ConversationMembreRepository membres;
     private final MessageRepository messages;
+    private final LectureConversationRepository lectures;
     private final PieceJointeRepository piecesJointes;
     private final CollaboratorDirectoryPort annuaire;
     private final DocumentStoragePort documents;
@@ -71,6 +79,7 @@ public class MessagerieService implements EnvoyerMessageUseCase, GererGroupeUseC
         ConversationRepository conversations,
         ConversationMembreRepository membres,
         MessageRepository messages,
+        LectureConversationRepository lectures,
         PieceJointeRepository piecesJointes,
         CollaboratorDirectoryPort annuaire,
         DocumentStoragePort documents,
@@ -83,6 +92,7 @@ public class MessagerieService implements EnvoyerMessageUseCase, GererGroupeUseC
         this.conversations = conversations;
         this.membres = membres;
         this.messages = messages;
+        this.lectures = lectures;
         this.piecesJointes = piecesJointes;
         this.annuaire = annuaire;
         this.documents = documents;
@@ -128,6 +138,11 @@ public class MessagerieService implements EnvoyerMessageUseCase, GererGroupeUseC
                 createur.nommerAdministrateur();
             }
             destinataires.forEach(d -> conversation.ajouterMembre(d, maintenant));
+        }
+        // Réponse et mentions (D-82) vérifiées avant toute écriture : une réponse ne vise qu'un message
+        // d'une conversation directe existante, réutilisée ; les mentions, les membres de la conversation.
+        Annexes annexes = annexes(conversation, auteur.id(), demande.reponseA(), demande.mentions());
+        if (creee) {
             conversations.save(conversation);
         }
         UUID messageId = null;
@@ -137,7 +152,7 @@ public class MessagerieService implements EnvoyerMessageUseCase, GererGroupeUseC
             le = le.plus(1, ChronoUnit.MICROS);
         }
         if (avecMessage) {
-            messageId = ajouterMessage(conversation, auteur, contenu, etiquettes, pieces, existantes, le);
+            messageId = ajouterMessage(conversation, auteur, contenu, etiquettes, pieces, existantes, annexes, le);
         }
         return new Envoi(conversation.getId(), messageId, creee);
     }
@@ -235,6 +250,7 @@ public class MessagerieService implements EnvoyerMessageUseCase, GererGroupeUseC
         List<PieceExistante> existantes = existantes(expediteur, demande.documents(), demande.transferts(), pieces.size());
         String contenu = regles.contenu(demande.contenu(), pieces.size() + existantes.size());
         List<Etiquette> etiquettes = regles.etiquettes(demande.etiquettes());
+        Annexes annexes = annexes(conversation, expediteur.id(), demande.reponseA(), demande.mentions());
         UUID messageId = ajouterMessage(
             conversation,
             membreAuteur(conversation, expediteur),
@@ -242,6 +258,7 @@ public class MessagerieService implements EnvoyerMessageUseCase, GererGroupeUseC
             etiquettes,
             pieces,
             existantes,
+            annexes,
             maintenant()
         );
         return new Envoi(conversationId, messageId, false);
@@ -252,7 +269,33 @@ public class MessagerieService implements EnvoyerMessageUseCase, GererGroupeUseC
         ConversationMembre membre = membres
             .findByConversationIdAndMembreId(conversationId, membreId)
             .orElseThrow(() -> CollaborationException.introuvable("COL_CONVERSATION_NOT_FOUND", conversationId));
-        messages.findFirstByConversationIdOrderByEnvoyeLeDescIdDesc(conversationId).ifPresent(m -> membre.marquerLu(m.getId(), m.getEnvoyeLe()));
+        Message dernier = messages.findFirstByConversationIdOrderByEnvoyeLeDescIdDesc(conversationId).orElse(null);
+        if (dernier == null || !avancer(membre, membre.getConversation(), dernier.getId(), dernier.getEnvoyeLe())) {
+            return;
+        }
+        // D-88 : accusé de lecture aux autres membres, seulement quand la position avance.
+        List<String> destinataires = membre
+            .getConversation()
+            .getMembres()
+            .stream()
+            .map(ConversationMembre::getMembreId)
+            .filter(id -> !id.equals(membreId))
+            .toList();
+        outbox.publish(
+            "conversation",
+            conversationId,
+            ConversationLuePayload.TYPE,
+            new ConversationLuePayload(conversationId, membreId, membre.getDernierLuLe(), destinataires)
+        );
+    }
+
+    /** Avance la position de lecture du membre ; l'avancée est gardée avec son heure (D-88). Vrai si elle avance. */
+    private boolean avancer(ConversationMembre membre, Conversation conversation, UUID messageId, Instant envoyeLe) {
+        if (!membre.marquerLu(messageId, envoyeLe)) {
+            return false;
+        }
+        lectures.save(new LectureConversation(conversation, membre.getMembreId(), envoyeLe, maintenant()));
+        return true;
     }
 
     private UUID ajouterMessage(
@@ -262,6 +305,7 @@ public class MessagerieService implements EnvoyerMessageUseCase, GererGroupeUseC
         List<Etiquette> etiquettes,
         List<FichierJoint> pieces,
         List<PieceExistante> existantes,
+        Annexes annexes,
         Instant envoyeLe
     ) {
         UUID id = UUID.randomUUID();
@@ -277,9 +321,48 @@ public class MessagerieService implements EnvoyerMessageUseCase, GererGroupeUseC
         }
         // Ticket ou transfert (D-74) : la pièce référence le document existant, rien n'est envoyé ni copié.
         existantes.forEach(p -> message.joindre(p.documentRef(), p.nom(), p.taille(), p.typeMime(), p.empreinte()));
+        // Réponse et mentions (D-82).
+        String reponseAAuteurId = null;
+        if (annexes.cite() != null) {
+            message.repondreA(annexes.cite());
+            String citeAuteur = annexes.cite().getAuteurId();
+            // Prévenu d'une réponse : l'auteur cité, sauf s'il répond à lui-même ou a quitté la conversation.
+            if (!citeAuteur.equals(auteur.id()) && conversation.membre(citeAuteur).isPresent()) {
+                reponseAAuteurId = citeAuteur;
+            }
+        }
+        annexes.mentionnes().forEach(message::mentionner);
         messages.save(message);
-        enregistrer(conversation, auteur, id, envoyeLe, List.of(), null);
+        enregistrer(conversation, auteur, id, envoyeLe, List.of(), null, reponseAAuteurId, message.getMentionnes());
         return id;
+    }
+
+    /** Message cité (nul hors réponse) et membres mentionnés d'un nouveau message (D-82), déjà vérifiés. */
+    private record Annexes(Message cite, List<ConversationMembre> mentionnes) {}
+
+    /**
+     * Réponse et mentions (D-82) : message cité de la même conversation et pas un événement de groupe
+     * (sinon 422 COL_REPONSE_INVALIDE) ; 0 à 20 membres distincts de l'auteur (sinon 422 COL_MENTION_INVALIDE).
+     */
+    private Annexes annexes(Conversation conversation, String auteurId, UUID reponseA, List<String> mentions) {
+        Message cite = null;
+        if (reponseA != null) {
+            Optional<Message> trouve = messages.findById(reponseA);
+            regles.citation(
+                reponseA,
+                conversation.getId(),
+                trouve.map(m -> m.getConversation().getId()).orElse(null),
+                trouve.map(m -> m.getEvenement() != null).orElse(false)
+            );
+            cite = trouve.orElseThrow();
+        }
+        Set<String> ids = conversation.getMembres().stream().map(ConversationMembre::getMembreId).collect(Collectors.toSet());
+        List<ConversationMembre> mentionnes = regles
+            .mentions(mentions, auteurId, ids)
+            .stream()
+            .map(id -> conversation.membre(id).orElseThrow())
+            .toList();
+        return new Annexes(cite, mentionnes);
     }
 
     /** Pièce dont le document est déjà dans MS-DOCUMENT (ticket d'un dépôt fragmenté ou pièce repartagée, D-74). */
@@ -333,13 +416,14 @@ public class MessagerieService implements EnvoyerMessageUseCase, GererGroupeUseC
     private UUID evenement(Conversation c, Collaborateur auteur, EvenementGroupe e, List<String> cibles, Instant le, Collection<String> aussiPrevenir) {
         UUID id = UUID.randomUUID();
         messages.save(Message.evenement(id, c, auteur, chiffrement.chiffrer("", id), le, e, cibles));
-        enregistrer(c, auteur, id, le, aussiPrevenir, e);
+        enregistrer(c, auteur, id, le, aussiPrevenir, e, null, List.of());
         return id;
     }
 
     /**
      * Dernier message de la conversation, lu par son auteur ; collaboration.message-sent.v1 aux autres membres,
-     * avec l'événement de groupe éventuel (null pour un vrai message, D-80).
+     * avec l'événement de groupe éventuel (null pour un vrai message, D-80), l'auteur cité et les membres
+     * mentionnés (D-82).
      */
     private void enregistrer(
         Conversation conversation,
@@ -347,10 +431,12 @@ public class MessagerieService implements EnvoyerMessageUseCase, GererGroupeUseC
         UUID id,
         Instant envoyeLe,
         Collection<String> aussiPrevenir,
-        EvenementGroupe evenement
+        EvenementGroupe evenement,
+        String reponseAAuteurId,
+        List<String> mentionnes
     ) {
         conversation.messageAjoute(id, envoyeLe);
-        conversation.membre(auteur.id()).ifPresent(m -> m.marquerLu(id, envoyeLe));
+        conversation.membre(auteur.id()).ifPresent(m -> avancer(m, conversation, id, envoyeLe));
         List<String> destinataires = new ArrayList<>(
             conversation.getMembres().stream().map(ConversationMembre::getMembreId).filter(m -> !m.equals(auteur.id())).toList()
         );
@@ -365,7 +451,9 @@ public class MessagerieService implements EnvoyerMessageUseCase, GererGroupeUseC
                 auteur.id(),
                 List.copyOf(destinataires),
                 envoyeLe,
-                evenement == null ? null : evenement.name()
+                evenement == null ? null : evenement.name(),
+                reponseAAuteurId,
+                mentionnes
             )
         );
     }

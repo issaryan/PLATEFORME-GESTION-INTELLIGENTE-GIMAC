@@ -6,8 +6,12 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import cm.gimac.des.collaboration.application.port.in.ConsulterMessagerieUseCase.CitationLue;
+import cm.gimac.des.collaboration.application.port.in.ConsulterMessagerieUseCase.LectureMembre;
+import cm.gimac.des.collaboration.application.port.in.ConsulterMessagerieUseCase.MentionLue;
 import cm.gimac.des.collaboration.application.port.out.ChiffrementPort;
 import cm.gimac.des.collaboration.application.port.out.CollaboratorDirectoryPort;
 import cm.gimac.des.collaboration.application.port.out.CollaboratorDirectoryPort.PageAnnuaire;
@@ -17,11 +21,14 @@ import cm.gimac.des.collaboration.domain.exception.CollaborationException;
 import cm.gimac.des.collaboration.domain.messagerie.Collaborateur;
 import cm.gimac.des.collaboration.domain.messagerie.Conversation;
 import cm.gimac.des.collaboration.domain.messagerie.Etiquette;
+import cm.gimac.des.collaboration.domain.messagerie.Lecture;
 import cm.gimac.des.collaboration.domain.messagerie.Message;
 import cm.gimac.des.collaboration.domain.messagerie.PieceJointe;
 import cm.gimac.des.collaboration.domain.messagerie.TypeConversation;
 import cm.gimac.des.collaboration.domain.service.ReglesMessagerie;
 import cm.gimac.des.collaboration.repository.ConversationRepository;
+import cm.gimac.des.collaboration.repository.LectureConversationRepository;
+import cm.gimac.des.collaboration.repository.MessageCite;
 import cm.gimac.des.collaboration.repository.MessageRepository;
 import cm.gimac.des.collaboration.repository.PieceJointeRepository;
 import java.io.ByteArrayInputStream;
@@ -59,6 +66,9 @@ class MessagerieQueriesTest {
     MessageRepository messages;
 
     @Mock
+    LectureConversationRepository lectures;
+
+    @Mock
     PieceJointeRepository pieces;
 
     @Mock
@@ -75,7 +85,7 @@ class MessagerieQueriesTest {
 
     @BeforeEach
     void init() {
-        queries = new MessagerieQueries(conversations, messages, pieces, annuaire, documents, chiffrement, new ReglesMessagerie());
+        queries = new MessagerieQueries(conversations, messages, lectures, pieces, annuaire, documents, chiffrement, new ReglesMessagerie());
         conversation = new Conversation(TypeConversation.GROUPE, "Recette", UUID.randomUUID(), "LIA-2026-027", null, "moi", T);
         conversation.ajouterMembre(MOI, T);
         conversation.ajouterMembre(AMINATA, T);
@@ -241,4 +251,140 @@ class MessagerieQueriesTest {
         assertThat(queries.versionsAvatar(java.util.Set.of())).isEmpty();
         assertThat(queries.versionsAvatar(null)).isEmpty();
     }
+
+    @Test
+    @DisplayName("D-82 : messages cités d'une page lus en une requête ; extrait, pièces, auteur ; purgé ou illisible : « supprime » ; mentions et mentionneMoi")
+    void citationsEtMentions() {
+        UUID id = conversation.getId();
+        Message cite = message(1);
+        Message reponse1 = new Message(UUID.randomUUID(), conversation, MOI, "2".getBytes(), T.plusSeconds(2));
+        reponse1.repondreA(cite);
+        reponse1.mentionner(conversation.membre("aminata").orElseThrow());
+        Message purge = message(9);
+        Message reponse2 = new Message(UUID.randomUUID(), conversation, AMINATA, "3".getBytes(), T.plusSeconds(3));
+        reponse2.repondreA(purge);
+        Message illisible = message(8);
+        Message reponse3 = new Message(UUID.randomUUID(), conversation, AMINATA, "4".getBytes(), T.plusSeconds(4));
+        reponse3.repondreA(illisible);
+        when(messages.plusRecents(eq(id), any())).thenReturn(List.of(reponse3, reponse2, reponse1, cite));
+        when(messages.cites(any())).thenReturn(
+            List.of(
+                new MessageCite(cite.getId(), id, "aminata", "Aminata Ngono", "x".repeat(150).getBytes(), cite.getEnvoyeLe(), null, 2),
+                new MessageCite(illisible.getId(), id, "aminata", "Aminata Ngono", "KO".getBytes(), illisible.getEnvoyeLe(), null, 0)
+            )
+        );
+        org.mockito.Mockito.doAnswer(i -> {
+            String brut = new String((byte[]) i.getArgument(0));
+            if ("KO".equals(brut)) {
+                throw new IllegalStateException("étiquette GCM invalide");
+            }
+            return "clair-" + brut;
+        })
+            .when(chiffrement)
+            .dechiffrer(any(), any());
+
+        var p = queries.messages("moi", id, null, 50);
+
+        ArgumentCaptor<java.util.Collection<UUID>> ids = ArgumentCaptor.forClass(java.util.Collection.class);
+        verify(messages, org.mockito.Mockito.times(1)).cites(ids.capture());
+        assertThat(ids.getValue()).containsExactlyInAnyOrder(cite.getId(), purge.getId(), illisible.getId());
+        var lu1 = p.contenu().get(1);
+        assertThat(lu1.reponseA()).satisfies(c -> {
+            assertThat(c.id()).isEqualTo(cite.getId());
+            assertThat(c.auteurId()).isEqualTo("aminata");
+            assertThat(c.auteurNom()).isEqualTo("Aminata Ngono");
+            assertThat(c.extrait()).hasSize(120).startsWith("clair-x").endsWith("…");
+            assertThat(c.piecesJointes()).isEqualTo(2);
+            assertThat(c.supprime()).isFalse();
+        });
+        assertThat(lu1.mentions()).containsExactly(new MentionLue("aminata", "Aminata Ngono"));
+        // Aminata est mentionnée et citée ; l'auteur du message n'est jamais « concerné » par le sien.
+        assertThat(lu1.concerne("aminata")).isTrue();
+        assertThat(lu1.concerne("moi")).isFalse();
+        assertThat(p.contenu().get(2).reponseA()).isEqualTo(CitationLue.supprimee(purge.getId()));
+        assertThat(p.contenu().get(3).reponseA().supprime()).isTrue();
+        assertThat(p.contenu().get(3).reponseA().extrait()).isEmpty();
+        assertThat(p.contenu().get(0).reponseA()).isNull();
+        assertThat(p.contenu().get(0).mentions()).isEmpty();
+        assertThat(p.contenu().get(0).concerne("moi")).isFalse();
+    }
+
+    // D-88 : accusés de lecture.
+
+    static final Collaborateur SERGE = new Collaborateur("serge", "Serge Ndzana", "Ingénieur", Set.of(), null, true);
+
+    Message demoi(int n) {
+        return new Message(UUID.randomUUID(), conversation, MOI, ("moi" + n).getBytes(), T.plusSeconds(n));
+    }
+
+    @Test
+    @DisplayName("D-88 : état de lecture sur mes messages du fil seulement, sans requête par message")
+    void lectureDansLeFil() {
+        UUID id = conversation.getId();
+        conversation.ajouterMembre(SERGE, T);
+        Message m1 = demoi(1);
+        Message m2 = demoi(2);
+        Message deux = message(3);
+        conversation.membre("aminata").orElseThrow().marquerLu(m2.getId(), m2.getEnvoyeLe());
+        conversation.membre("serge").orElseThrow().marquerLu(m1.getId(), m1.getEnvoyeLe());
+        when(messages.plusRecents(eq(id), any())).thenReturn(List.of(deux, m2, m1));
+
+        var p = queries.messages("moi", id, null, 10);
+
+        assertThat(p.contenu().get(0).lecture()).isEqualTo(new Lecture(Lecture.EtatLecture.LU, 2, 2));
+        assertThat(p.contenu().get(1).lecture()).isEqualTo(new Lecture(Lecture.EtatLecture.LU_PAR_CERTAINS, 1, 2));
+        assertThat(p.contenu().get(2).lecture()).isNull();
+        verifyNoInteractions(lectures);
+    }
+
+    @Test
+    @DisplayName("D-88 : dernierMessage.lecture pour mon dernier message, absente pour celui d'un autre")
+    void lectureDuDernierMessage() {
+        Message mien = demoi(1);
+        conversation.messageAjoute(mien.getId(), mien.getEnvoyeLe());
+        when(messages.findById(mien.getId())).thenReturn(Optional.of(mien));
+        assertThat(queries.conversation("moi", conversation.getId()).dernierMessage().lecture()).isEqualTo(new Lecture(Lecture.EtatLecture.ENVOYE, 0, 1));
+        Message autre = message(2);
+        conversation.messageAjoute(autre.getId(), autre.getEnvoyeLe());
+        when(messages.findById(autre.getId())).thenReturn(Optional.of(autre));
+        assertThat(queries.conversation("moi", conversation.getId()).dernierMessage().lecture()).isNull();
+    }
+
+    @Test
+    @DisplayName("D-88 : « Lu par » : lecteurs d'abord avec l'heure (inconnue avant D-88), puis les autres ; 404 indistinct")
+    void lectures() {
+        UUID id = conversation.getId();
+        conversation.ajouterMembre(SERGE, T);
+        Collaborateur fatime = new Collaborateur("fatime", "Fatime Oumarou", null, Set.of(), null, true);
+        conversation.ajouterMembre(fatime, T);
+        Collaborateur tard = new Collaborateur("tard", "Arrivé Tard", null, Set.of(), null, true);
+        Message mien = demoi(5);
+        conversation.ajouterMembre(tard, T.plusSeconds(10));
+        conversation.membre("aminata").orElseThrow().marquerLu(UUID.randomUUID(), T.plusSeconds(8));
+        conversation.membre("serge").orElseThrow().marquerLu(UUID.randomUUID(), T.plusSeconds(5));
+        conversation.membre("tard").orElseThrow().marquerLu(UUID.randomUUID(), T.plusSeconds(20));
+        when(messages.findById(mien.getId())).thenReturn(Optional.of(mien));
+        when(lectures.premieresLectures(id, mien.getEnvoyeLe())).thenReturn(
+            List.of(new LectureConversationRepository.PremiereLecture("serge", T.plusSeconds(100)), new LectureConversationRepository.PremiereLecture("tard", T.plusSeconds(30)))
+        );
+
+        var l = queries.lectures("moi", id, mien.getId());
+
+        assertThat(l).containsExactly(
+            new LectureMembre("serge", "Serge Ndzana", true, T.plusSeconds(100)),
+            new LectureMembre("aminata", "Aminata Ngono", true, null),
+            new LectureMembre("fatime", "Fatime Oumarou", false, null)
+        );
+
+        Message autre = message(6);
+        when(messages.findById(autre.getId())).thenReturn(Optional.of(autre));
+        introuvable(() -> queries.lectures("moi", id, autre.getId()), "COL_MESSAGE_NOT_FOUND");
+        UUID inconnu = UUID.randomUUID();
+        introuvable(() -> queries.lectures("moi", id, inconnu), "COL_MESSAGE_NOT_FOUND");
+        introuvable(() -> queries.lectures("intrus", id, mien.getId()), "COL_MESSAGE_NOT_FOUND");
+        Conversation ailleurs = new Conversation(TypeConversation.DIRECTE, null, null, null, "x|moi", "moi", T);
+        when(conversations.pourMembre(ailleurs.getId(), "moi")).thenReturn(Optional.of(ailleurs));
+        introuvable(() -> queries.lectures("moi", ailleurs.getId(), mien.getId()), "COL_MESSAGE_NOT_FOUND");
+    }
 }
+

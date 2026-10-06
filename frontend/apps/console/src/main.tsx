@@ -5,14 +5,15 @@ import '@gimac/design-system/reset.css'
 import '@gimac/design-system/styles.css'
 import { initI18n, langueInitiale, reprendreSessionDemo } from '@gimac/socle'
 import { catalogueCompte } from '@gimac/compte'
-import { catalogueMessagerie } from '@gimac/lot1'
+import { catalogues as cataloguesLot1 } from '@gimac/lot1'
 import { cataloguesAdministration } from '@gimac/administration'
 import App from './App.tsx'
 
 // Démonstration (services simulés) : session apportée par une autre application dans le fragment d'adresse (D-79).
 if (import.meta.env.VITE_SERVICES === 'simule') reprendreSessionDemo()
 
-initI18n([catalogueCompte, catalogueMessagerie, ...cataloguesAdministration], langueInitiale())
+// Catalogues du lot 1 (messagerie, droits par fonctionnalité D-90, libellés de la barre latérale) avant ceux du compte et de l'administration.
+initI18n([...cataloguesLot1, catalogueCompte, ...cataloguesAdministration], langueInitiale())
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

@@ -282,6 +282,17 @@ gimac:
       bail-verification: PT1H
       delai-nouvelle-tentative: PT1M
       intervalle-expiration: PT10M
+  # Aperçu des documents bureautiques (D-83, docs/lot1/apercu-bureautique.md) : conversion en PDF par le moteur
+  # Gotenberg du conteneur interne conversion-documents (GIMAC_APERCU_URL dans le Compose et Kubernetes).
+  apercu:
+    url: http://localhost:3000
+    # Au-delà des 60 s que le moteur s'accorde (--api-timeout=60s) : son refus arrive le premier.
+    delai: 65s
+    delai-connexion: 5s
+    taille-max: 20MB
+    cache-duree: 24h
+    cache-taille-max: 500MB
+    limite-par-minute: 30
   stockage:
     s3:
       point-acces: http://localhost:7480

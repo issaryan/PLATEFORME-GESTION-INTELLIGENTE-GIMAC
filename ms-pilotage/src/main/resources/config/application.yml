@@ -300,8 +300,10 @@ gimac:
   adaptateurs:
     # Organisation (rattachement, équipe, collaborateurs) de MS-IAM.
     organisation: stub
-    # Documents des rapports (mode DOCUMENT) dans MS-DOCUMENT.
+    # Documents des rapports (mode DOCUMENT) et livrables des processus d'unité dans MS-DOCUMENT.
     documents: stub
+    # Réauthentification FIDO2 des signatures de processus (MS-IAM, D-87).
+    reauthentification: stub
   # Services joints par les adaptateurs réels (surchargés par l'environnement).
   services:
     iam:
@@ -311,3 +313,10 @@ gimac:
   organisation:
     # Équipe, rattachement et noms affichés mis en cache 60 s (§3).
     cache-secondes: 60
+  # Jeu de démonstration des processus d'unité (D-87) : pôle réseau et processus publié, profil dev seulement.
+  demonstration:
+    processus: false
+  consommateurs:
+    # Départ ou désactivation d'un compte (MS-IAM, iam.account-administered.v1) : processus d'unité (D-87).
+    comptes:
+      sujet: iam.account

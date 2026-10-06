@@ -9,6 +9,8 @@ import jakarta.validation.constraints.*;
 import java.io.Serial;
 import java.io.Serializable;
 import java.time.Instant;
+import cm.gimac.des.homologation.domain.parcours.CouleurEtape;
+import cm.gimac.des.homologation.domain.parcours.EtapeCode;
 import cm.gimac.des.homologation.domain.service.NoeudReferentiel;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -73,9 +75,18 @@ public class ReferentialVersion implements Serializable {
     @OrderBy("code")
     private List<ReferenceOperation> operations = new ArrayList<>();
 
-    /** Pilote du brouillon (D-77, §5) : compte qui complète et publie la version, destinataire de la tâche. */
+    /** Pilote du brouillon (D-77, §5) : responsable affiché et notifié (tâche) ; ne verrouille rien (D-89). */
     @Column(name = "pilote_id")
     private UUID piloteId;
+
+    /**
+     * Étapes de la version (D-89, §2), dans leur ordre. Cascade limitée à la persistance, comme les opérations :
+     * une étape retirée est supprimée explicitement. Vide pour une version créée hors du cycle de vie : les onze
+     * étapes canoniques s'appliquent alors (voir {@link #etapes()}).
+     */
+    @OneToMany(mappedBy = "version", cascade = CascadeType.PERSIST)
+    @OrderBy("ordre")
+    private List<EtapeReferentiel> etapes = new ArrayList<>();
 
     // jhipster-needle-entity-add-field - JHipster will add fields here
 
@@ -210,6 +221,9 @@ public class ReferentialVersion implements Serializable {
         v.libelle = libelle;
         v.etat = EtatVersionReferentiel.BROUILLON;
         v.dateCreation = instant;
+        for (EtapeCode e : EtapeCode.values()) {
+            v.etapes.add(EtapeReferentiel.canonique(v, e));
+        }
         return v;
     }
 
@@ -217,6 +231,8 @@ public class ReferentialVersion implements Serializable {
     public static ReferentialVersion deriverDe(ReferentialVersion source, String libelle, Instant instant) {
         ReferentialVersion v = nouveauBrouillon(source.typeProjet, libelle, instant);
         v.versionSourceId = source.id;
+        v.etapes.clear();
+        source.etapes().forEach(e -> v.etapes.add(e.copierVers(v)));
         source.operations.forEach(op -> v.operations.add(op.copierVers(v)));
         return v;
     }
@@ -309,6 +325,9 @@ public class ReferentialVersion implements Serializable {
     public ReferenceOperation upsertOperation(String code, ReferenceOperationData data) {
         assertModifiable();
         verifierSaisie(code, data);
+        if (data.etape() != null && etape(data.etape()).isEmpty()) {
+            throw HomologationException.unprocessable("HOM_ETAPE_INCONNUE", "L'étape « " + data.etape() + " » n'existe pas dans cette version du référentiel.");
+        }
         ReferenceOperation op = operations
             .stream()
             .filter(o -> o.getCode().equals(code))
@@ -345,13 +364,174 @@ public class ReferentialVersion implements Serializable {
         return JsonTexte.listeDeTextes(ordreTopologique);
     }
 
-    /** Actions proposées à l'interface (DES-12) selon l'état : l'écran ne recalcule pas la règle. */
+    /**
+     * Actions proposées à l'interface (DES-12) selon l'état : l'écran ne recalcule pas la règle. Un brouillon est
+     * modifiable par tout éditeur, pilote ou non (D-89) : {@code MODIFIER} est le nom lu par l'interface (descripteur
+     * DES-12 et modélisateur), {@code EDITER} celui du plan (PI-GIMAC-01 HOM-01), conservé.
+     */
     public List<String> actionsPermises() {
         if (etat == EtatVersionReferentiel.BROUILLON) {
-            return List.of("EDITER", "CONTROLER", "PUBLIER");
+            return List.of("MODIFIER", "EDITER", "CONTROLER", "PUBLIER");
         }
         // Version en vigueur : cible d'une migration des liaisons ouvertes sur une version antérieure (HOM-03).
         return etat == EtatVersionReferentiel.PUBLIEE ? List.of("DERIVER", "MIGRER") : List.of("DERIVER");
+    }
+
+    // ------------------------------------------------------------------ D-89 : étapes configurables
+
+    /** Étapes de la version dans leur ordre ; à défaut d'étapes enregistrées, les onze étapes canoniques. */
+    public List<EtapeReferentiel> etapes() {
+        if (etapes.isEmpty()) {
+            return java.util.Arrays.stream(EtapeCode.values()).map(e -> EtapeReferentiel.canonique(this, e)).toList();
+        }
+        return etapes.stream().sorted(java.util.Comparator.comparingInt(EtapeReferentiel::getOrdre)).toList();
+    }
+
+    public java.util.Optional<EtapeReferentiel> etape(String code) {
+        return etapes().stream().filter(e -> e.getCode().equals(code)).findFirst();
+    }
+
+    /**
+     * Étape canonique d'une étape de la version, pour la progression des liaisons : la sienne, sinon celle de
+     * l'étape qui la précède ; une étape placée avant le cadrage sans canonique est rattachée à la première étape
+     * canonique instanciée qui la suit (les étapes 1 et 2 ne sont jamais instanciées). Code inconnu de la
+     * version : l'étape canonique de ce nom, le cas échéant.
+     */
+    public java.util.Optional<EtapeCode> canoniqueDe(String code) {
+        List<EtapeReferentiel> l = etapes();
+        int i = 0;
+        while (i < l.size() && !l.get(i).getCode().equals(code)) {
+            i++;
+        }
+        if (i == l.size()) {
+            return EtapeCode.de(code);
+        }
+        if (l.get(i).getCanonique() != null) {
+            return java.util.Optional.of(l.get(i).getCanonique());
+        }
+        for (int j = i - 1; j >= 0; j--) {
+            EtapeCode c = l.get(j).getCanonique();
+            if (c != null) {
+                if (!c.horsParcours()) {
+                    return java.util.Optional.of(c);
+                }
+                break;
+            }
+        }
+        for (int j = i + 1; j < l.size(); j++) {
+            EtapeCode c = l.get(j).getCanonique();
+            if (c != null && !c.horsParcours()) {
+                return java.util.Optional.of(c);
+            }
+        }
+        return java.util.Optional.of(EtapeCode.CADRAGE);
+    }
+
+    /** Opérations de la version rangées dans une étape. */
+    public long nombreOperations(String etapeCode) {
+        return operations.stream().filter(o -> etapeCode.equals(o.getEtape())).count();
+    }
+
+    /** Les étapes canoniques deviennent des données de la version avant sa première modification. */
+    private void materialiserEtapes() {
+        if (etapes.isEmpty()) {
+            etapes.addAll(etapes());
+        }
+    }
+
+    private EtapeReferentiel exigerEtape(String code) {
+        return etape(code).orElseThrow(() -> HomologationException.notFound("HOM_ETAPE_NOT_FOUND", "Étape introuvable dans la version.", code));
+    }
+
+    private static String libelleEtape(String libelle) {
+        String l = libelle == null ? "" : libelle.trim();
+        if (l.isEmpty() || l.length() > 120) {
+            throw HomologationException.unprocessable("HOM_ETAPE_LIBELLE_INVALIDE", "Le libellé d'une étape compte 1 à 120 caractères.");
+        }
+        return l;
+    }
+
+    /** Ajout d'une étape à la position {@code ordre} (1 = première ; absente ou hors bornes : à la fin). */
+    public EtapeReferentiel ajouterEtape(String code, String libelle, CouleurEtape couleur, EtapeCode canonique, Integer ordre) {
+        assertModifiable();
+        if (code == null || !EtapeReferentiel.CODE.matcher(code).matches()) {
+            throw HomologationException.unprocessable("HOM_ETAPE_CODE_INVALIDE", "Le code d'une étape compte 2 à 40 majuscules, chiffres ou soulignés et commence par une lettre.");
+        }
+        materialiserEtapes();
+        if (etape(code).isPresent()) {
+            throw HomologationException.conflict("HOM_ETAPE_CODE_DUPLIQUE", "Ce code d'étape est déjà pris dans la version.", Map.of("code", code));
+        }
+        List<EtapeReferentiel> l = new ArrayList<>(etapes());
+        int position = ordre == null || ordre < 1 || ordre > l.size() ? l.size() : ordre - 1;
+        EtapeReferentiel e = new EtapeReferentiel(this, code, libelleEtape(libelle), position + 1, couleur == null ? CouleurEtape.NEUTRE : couleur, canonique);
+        l.add(position, e);
+        etapes.add(e);
+        renumeroter(l);
+        return e;
+    }
+
+    /** Renommage, couleur et canonique d'une étape ; une étape protégée garde sa canonique (409 HOM_ETAPE_CANONIQUE). */
+    public EtapeReferentiel modifierEtape(String code, String libelle, CouleurEtape couleur, EtapeCode canonique) {
+        assertModifiable();
+        materialiserEtapes();
+        EtapeReferentiel e = exigerEtape(code);
+        if (e.protegee() && canonique != e.getCanonique()) {
+            throw etapeCanonique(e);
+        }
+        e.modifier(libelleEtape(libelle), couleur == null ? e.getCouleur() : couleur, canonique);
+        return e;
+    }
+
+    /**
+     * Retrait d'une étape vide (409 HOM_ETAPE_NON_VIDE sinon) qui n'est pas liée à une étape canonique porteuse
+     * d'un jalon ou du verrou 2 (409 HOM_ETAPE_CANONIQUE) ; rend l'étape retirée, à supprimer.
+     */
+    public EtapeReferentiel retirerEtape(String code) {
+        assertModifiable();
+        materialiserEtapes();
+        EtapeReferentiel e = exigerEtape(code);
+        if (e.protegee()) {
+            throw etapeCanonique(e);
+        }
+        long n = nombreOperations(code);
+        if (n > 0) {
+            throw HomologationException.conflict(
+                "HOM_ETAPE_NON_VIDE",
+                "L'étape « " + e.getLibelle() + " » contient " + n + " opération(s) : déplacez-les avant de la supprimer.",
+                Map.of("code", code, "operations", n)
+            );
+        }
+        etapes.remove(e);
+        renumeroter(etapes());
+        return e;
+    }
+
+    /** Nouvel ordre des étapes : permutation exacte des codes de la version (422 HOM_ETAPE_ORDRE_INVALIDE sinon). */
+    public List<EtapeReferentiel> ordonnerEtapes(List<String> codes) {
+        assertModifiable();
+        materialiserEtapes();
+        List<EtapeReferentiel> actuelles = etapes();
+        if (codes == null || codes.size() != actuelles.size() || !new java.util.HashSet<>(codes).equals(actuelles.stream().map(EtapeReferentiel::getCode).collect(java.util.stream.Collectors.toSet()))) {
+            throw HomologationException.unprocessable("HOM_ETAPE_ORDRE_INVALIDE", "Le nouvel ordre doit citer chaque étape de la version une fois et une seule.");
+        }
+        renumeroter(codes.stream().map(this::exigerEtape).toList());
+        return etapes();
+    }
+
+    private static void renumeroter(List<EtapeReferentiel> ordonnees) {
+        for (int i = 0; i < ordonnees.size(); i++) {
+            if (ordonnees.get(i).getOrdre() != i + 1) {
+                ordonnees.get(i).ordonner(i + 1);
+            }
+        }
+    }
+
+    private static HomologationException etapeCanonique(EtapeReferentiel e) {
+        return HomologationException.conflict(
+            "HOM_ETAPE_CANONIQUE",
+            "L'étape « " + e.getLibelle() + " » porte un jalon ou le verrou 2 du parcours : elle ne se supprime pas et garde son étape canonique.",
+            Map.of("code", e.getCode(), "canonique", e.getCanonique().name())
+        );
     }
 
     @Override

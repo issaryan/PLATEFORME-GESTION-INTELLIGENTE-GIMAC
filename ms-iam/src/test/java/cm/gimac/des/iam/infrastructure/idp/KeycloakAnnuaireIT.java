@@ -253,10 +253,85 @@ class KeycloakAnnuaireIT {
         assertThat(annuaire.parResponsable(chef)).extracting(Compte::id).containsExactly(agent);
         assertThat(annuaire.parResponsable(chef)).extracting(Compte::fonction).containsExactly("Technicien réseau");
         assertThat(annuaire.parResponsable(agent)).isEmpty();
+        // D-81 : membres d'une unité, recherche par attribut (correspondance exacte).
+        String cellule = "CELLULE_" + UUID.randomUUID().toString().substring(0, 6).toUpperCase(java.util.Locale.ROOT).replace('-', '_');
+        annuaire.definirRattachement(autre, cellule, null);
+        assertThat(annuaire.parUnite(cellule)).extracting(Compte::id).containsExactly(autre);
+        assertThat(annuaire.parUnite(cellule + "_BIS")).isEmpty();
         annuaire.definirRattachement(agent, null, null);
         assertThat(annuaire.lire(agent).orElseThrow().unite()).isNull();
         assertThat(annuaire.lire(agent).orElseThrow().responsableId()).isNull();
         assertThat(annuaire.parResponsable(chef)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("D-81 : profil créé (rôle composite, description, permissions, repère gimac_profil_cree), attribuable, refus du doublon, suppression")
+    void profilsCrees() {
+        String code = "ROLE_IT_" + UUID.randomUUID().toString().substring(0, 6).toUpperCase(java.util.Locale.ROOT).replace('-', '_');
+        Set<String> permissions = Set.of("HOM_DASHBOARD_READ", "COL_MESSAGE_READ", "COL_MESSAGE_SEND", "PIL_ACTIVITY_OWN", "NOT_INBOX_READ");
+        annuaire.creerProfil(code, "Profil d'essai", permissions);
+        Profil p = annuaire.profils().stream().filter(x -> x.code().equals(code)).findFirst().orElseThrow();
+        assertThat(p.description()).isEqualTo("Profil d'essai");
+        assertThat(p.permissions()).containsExactlyInAnyOrderElementsOf(permissions);
+        assertThat(p.titulaires()).isZero();
+        assertThat(client.realm("gimac").roles().get(code).toRepresentation().getAttributes()).containsEntry("gimac_profil_cree", List.of("true"));
+        assertThat(client.realm("gimac").roles().get(code).getRoleComposites()).extracting(org.keycloak.representations.idm.RoleRepresentation::getName).contains("ROLE_USER");
+        assertThatThrownBy(() -> annuaire.creerProfil(code, "Doublon", Set.of())).isInstanceOfSatisfying(IamException.class, e -> assertThat(e.code()).isEqualTo("IAM_PROFIL_EXISTANT"));
+
+        String titulaire = annuaire.creer(nouveau(unique("titulaire"), code), List.of());
+        assertThat(annuaire.lire(titulaire).orElseThrow().profils()).contains(code);
+        assertThat(annuaire.profils().stream().filter(x -> x.code().equals(code)).findFirst().orElseThrow().titulaires()).isEqualTo(1);
+        annuaire.supprimer(titulaire);
+        annuaire.supprimerProfil(code);
+        assertThat(annuaire.profils()).extracting(Profil::code).doesNotContain(code);
+    }
+
+    @Test
+    @DisplayName("D-86 : libellé (attribut gimac_libelle) et mission des profils livrés importés ; modification du libellé et de la description, attributs conservés ; profils par compte")
+    void presentationDesProfils() {
+        var presentations = annuaire.presentationsProfils();
+        assertThat(presentations.get("ROLE_POLE_RESEAU").libelle()).isEqualTo("Pôle réseau");
+        assertThat(presentations.get("ROLE_DG").libelle()).isEqualTo("Direction générale");
+        assertThat(presentations.values()).allSatisfy(p -> assertThat(p.description()).isNotEqualTo("Profil du lot 1"));
+        assertThat(annuaire.profils()).filteredOn(p -> p.code().equals("ROLE_CHEF_DES")).singleElement().satisfies(p -> {
+            assertThat(p.libelle()).isEqualTo("Chef du DES");
+            assertThat(p.description()).startsWith("Dirige le Département Exploitation et Supervision");
+            assertThat(p.permissions()).contains("PIL_ACTIVITY_OWN");
+        });
+
+        // Profil créé avec son libellé, puis renommé : le repère gimac_profil_cree reste.
+        String code = "ROLE_IT_" + UUID.randomUUID().toString().substring(0, 6).toUpperCase(java.util.Locale.ROOT).replace('-', '_');
+        annuaire.creerProfil(code, "Cellule d'essai", "Profil d'essai", Set.of("COL_MESSAGE_READ"));
+        assertThat(annuaire.presentationsProfils().get(code).libelle()).isEqualTo("Cellule d'essai");
+        annuaire.definirPresentationProfil(code, "Cellule renommée", "Nouvelle mission");
+        var role = client.realm("gimac").roles().get(code).toRepresentation();
+        assertThat(role.getDescription()).isEqualTo("Nouvelle mission");
+        assertThat(role.getAttributes()).containsEntry("gimac_libelle", List.of("Cellule renommée")).containsEntry("gimac_profil_cree", List.of("true"));
+        assertThat(annuaire.profils()).filteredOn(p -> p.code().equals(code)).singleElement().satisfies(p -> {
+            assertThat(p.libelle()).isEqualTo("Cellule renommée");
+            assertThat(p.description()).isEqualTo("Nouvelle mission");
+            assertThat(p.permissions()).contains("COL_MESSAGE_READ");
+        });
+        // Libellé retiré : le code en tient lieu ; description vidée.
+        annuaire.definirPresentationProfil(code, null, "");
+        assertThat(annuaire.presentationsProfils().get(code).libelle()).isNull();
+        assertThat(annuaire.profils()).filteredOn(p -> p.code().equals(code)).singleElement().extracting(Profil::libelle).isEqualTo(code);
+        assertThatThrownBy(() -> annuaire.definirPresentationProfil("ROLE_INEXISTANT_IT", "X", "")).isInstanceOfSatisfying(IamException.class, e -> assertThat(e.code()).isEqualTo("IAM_PROFILE_NOT_FOUND"));
+
+        // Profils par compte (membres d'une unité).
+        String titulaire = annuaire.creer(nouveau(unique("presentation"), code), List.of());
+        assertThat(annuaire.profilsParCompte().get(titulaire)).containsExactly(code);
+        annuaire.supprimer(titulaire);
+        annuaire.supprimerProfil(code);
+        assertThat(annuaire.presentationsProfils()).doesNotContainKey(code);
+
+        // Profil livré : modification puis retour à la valeur importée.
+        var avant = annuaire.presentationsProfils().get("ROLE_SNA");
+        annuaire.definirPresentationProfil("ROLE_SNA", "Normes, agréments et qualité", "Mission modifiée");
+        assertThat(annuaire.presentationsProfils().get("ROLE_SNA").libelle()).isEqualTo("Normes, agréments et qualité");
+        assertThat(client.realm("gimac").roles().get("ROLE_SNA").getRoleComposites()).isNotEmpty();
+        annuaire.definirPresentationProfil("ROLE_SNA", avant.libelle(), avant.description());
+        assertThat(annuaire.presentationsProfils().get("ROLE_SNA")).isEqualTo(avant);
     }
 
     @Test

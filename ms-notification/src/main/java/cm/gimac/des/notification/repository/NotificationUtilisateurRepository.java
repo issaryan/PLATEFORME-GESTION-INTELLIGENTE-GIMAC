@@ -40,6 +40,12 @@ public interface NotificationUtilisateurRepository extends JpaRepository<Notific
     /** Non-lues du destinataire (marquage en lecture, §3 POST /notifications/lecture). */
     java.util.List<NotificationUtilisateur> findByDestinataireIdAndLueLeIsNull(String destinataireId);
 
+    /**
+     * Non-lues d'une conversation (messages, mentions et réponses, D-82) : ouvrir la conversation les lit
+     * (index partiel ix_notification_utilisateur_conversation).
+     */
+    java.util.List<NotificationUtilisateur> findByDestinataireIdAndConversationIdAndLueLeIsNull(String destinataireId, String conversationId);
+
     /** Purge (§2) : notifications dont la dernière mise à jour précède la limite de conservation. */
     @Modifying
     @Query("delete from NotificationUtilisateur n where n.misAJourLe < :limite")

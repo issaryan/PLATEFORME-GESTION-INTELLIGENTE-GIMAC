@@ -34,3 +34,6 @@ spec:
             # incomplets abandonnés après 1 jour), comme init-compartiments.sh en développement.
             - name: GIMAC_S3_COMPARTIMENT_DEPOTS
               value: gimac-depots
+            # Aperçu des documents bureautiques (D-83) : moteur de conversion interne (conversion-documents.yaml).
+            - name: GIMAC_APERCU_URL
+              value: http://conversion-documents.gimac-des.svc.cluster.local:3000

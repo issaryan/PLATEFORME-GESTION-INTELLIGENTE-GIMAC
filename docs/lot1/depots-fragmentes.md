@@ -71,7 +71,8 @@ Règles :
 - `taille` : de 1 octet à `gimac.document.depot.taille-max-fragmente` (20 Go par défaut) ; sinon 413
   `DOC_FILE_TOO_LARGE`. `taillePartie` : 16 Mio (configurable, au moins 5 Mio, minimum S3).
 - Permission selon la finalité : `MESSAGERIE` exige `COL_MESSAGE_SEND` ; `RAPPORT_ACTIVITE` (rapport d'activité
-  déposé, D-76, `docs/lot1/mon-activite.md` §2.4) exige `PIL_ACTIVITY_OWN`, qui ne vaut pour aucune autre finalité ; les autres finalités exigent l'une
+  déposé, D-76, `docs/lot1/mon-activite.md` §2.4) et `PROCESSUS_UNITE` (livrable d'une étape de processus d'unité, D-87,
+  `docs/lot1/processus-unite.md` §5.3, référence = identifiant de l'instance) exigent `PIL_ACTIVITY_OWN`, qui ne vaut pour aucune autre finalité ; les autres finalités exigent l'une
   des permissions du dépôt direct (`PAR_ADHESION_INSTRUCT`, `HOM_EVIDENCE_SUBMIT`, `HOM_STEP_MANAGE`,
   `CER_CHANGE_RECORD_LINK`, `HOM_PORTAL_SUBMIT`, `DOC_DEPOSIT`). Sinon 403.
 - Seul le compte qui a ouvert le dépôt le lit, l'alimente, le termine ou l'abandonne (404 sinon, sans

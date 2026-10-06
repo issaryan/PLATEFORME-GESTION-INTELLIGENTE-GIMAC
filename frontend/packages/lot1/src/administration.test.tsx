@@ -39,6 +39,8 @@ describe('navigation : groupe « Mon activité » (D-76)', () => {
       ['/des/taches', 'PIL_ACTIVITY_OWN'],
       ['/des/rapports', 'PIL_ACTIVITY_OWN'],
       ['/des/equipe', 'PIL_TEAM_READ'],
+      // Processus de l'unité (D-87) : tout membre interne.
+      ['/des/processus', 'PIL_ACTIVITY_OWN'],
     ])
   })
 })
@@ -50,9 +52,14 @@ describe('navigation : groupe « Administration » dans le département', () => 
     const groupe = NAVIGATION_DES.find((g) => g.libelleKey === 'nav.groupe.administration')!
     expect(groupe.entrees.map((e) => [e.chemin, e.predicat?.any?.[0]])).toEqual([
       ['/des/administration/comptes', 'IAM_ACCOUNT_READ'],
+      // Pouvoirs hiérarchiques (D-81) : demandes des chefs à traiter, matrice des pouvoirs.
+      ['/des/administration/demandes', 'IAM_ACCOUNT_READ'],
       ['/des/administration/profils', 'IAM_ACCOUNT_READ'],
+      ['/des/administration/matrice-pouvoirs', 'IAM_PROFILE_EDIT'],
       // Catalogue des unités organisationnelles (D-76).
       ['/des/administration/organisation', 'IAM_ACCOUNT_READ'],
+      // Organigramme (D-86 §3).
+      ['/des/administration/organigramme', 'IAM_ACCOUNT_READ'],
       ['/des/administration/journal', 'IAM_JOURNAL_READ'],
       ['/des/administration/politique-securite', 'PLATFORM_SECURITY_POLICY_READ'],
     ])

@@ -27,6 +27,10 @@ public final class ReglesMessagerie {
     public static final int PIECES_MAX = 5;
     public static final long PIECE_TAILLE_MAX = 20L * 1024 * 1024;
     public static final int TITRE_MAX = 200;
+    /** Mentions par message (D-82). */
+    public static final int MENTIONS_MAX = 20;
+    /** Longueur de l'extrait d'un message cité (D-82), points de suspension compris. */
+    public static final int EXTRAIT_CITATION_MAX = 120;
 
     private static final Pattern REFERENCE_LIAISON = Pattern.compile("^LIA-\\d{4}-\\d{3,6}$");
     private static final String OCTETS = "application/octet-stream";
@@ -238,6 +242,78 @@ public final class ReglesMessagerie {
             return "";
         }
         return contenu.length() <= 120 ? contenu : contenu.substring(0, 120);
+    }
+
+    /**
+     * Mentions d'un message (D-82) : identifiants distincts (une mention répétée est dédoublonnée), dans
+     * l'ordre donné, 20 au plus, chacun membre de la conversation et distinct de l'auteur ; sinon 422
+     * COL_MENTION_INVALIDE. Le service ne déduit jamais une mention du texte.
+     */
+    public List<String> mentions(List<String> bruts, String auteurId, Set<String> membres) {
+        if (bruts == null || bruts.isEmpty()) {
+            return List.of();
+        }
+        Set<String> distinctes = new LinkedHashSet<>();
+        for (String brut : bruts) {
+            String id = brut == null ? "" : brut.strip();
+            if (id.isEmpty() || id.equals(auteurId) || !membres.contains(id)) {
+                throw CollaborationException.nonTraitable(
+                    "COL_MENTION_INVALIDE",
+                    id.equals(auteurId) ? "L'auteur ne peut pas se mentionner lui-même" : "Seul un membre de la conversation peut être mentionné",
+                    Map.of("id", id)
+                );
+            }
+            distinctes.add(id);
+        }
+        if (distinctes.size() > MENTIONS_MAX) {
+            throw CollaborationException.nonTraitable(
+                "COL_MENTION_INVALIDE",
+                "Au plus " + MENTIONS_MAX + " mentions par message",
+                Map.of("nombre", distinctes.size(), "maximum", MENTIONS_MAX)
+            );
+        }
+        return List.copyOf(distinctes);
+    }
+
+    /**
+     * Message cité par une réponse (D-82) : connu, de la même conversation et pas un événement de groupe ;
+     * sinon 422 COL_REPONSE_INVALIDE, sans révéler si le message existe ailleurs.
+     *
+     * @param conversationCitee conversation du message cité, nulle s'il est inconnu
+     */
+    public void citation(UUID reponseA, UUID conversationId, UUID conversationCitee, boolean evenementCite) {
+        if (conversationCitee == null || !conversationCitee.equals(conversationId) || evenementCite) {
+            throw CollaborationException.nonTraitable(
+                "COL_REPONSE_INVALIDE",
+                evenementCite && conversationId.equals(conversationCitee)
+                    ? "Un événement du groupe ne peut pas être cité"
+                    : "Le message cité n'appartient pas à cette conversation",
+                Map.of("id", String.valueOf(reponseA))
+            );
+        }
+    }
+
+    /**
+     * Extrait d'un message cité (D-82) : espaces et sauts de ligne réduits à une espace, 120 caractères
+     * au plus. Un texte plus long est coupé proprement : à la dernière espace des 30 derniers caractères
+     * s'il y en a une, jamais au milieu d'un caractère hors du plan de base (émoji), suivi de « … ».
+     */
+    public String extraitCitation(String contenu) {
+        if (contenu == null) {
+            return "";
+        }
+        String c = contenu.strip().replaceAll("\\s+", " ");
+        if (c.length() <= EXTRAIT_CITATION_MAX) {
+            return c;
+        }
+        int fin = EXTRAIT_CITATION_MAX - 1;
+        int espace = c.lastIndexOf(' ', fin);
+        if (espace >= fin - 30) {
+            fin = espace;
+        } else if (Character.isHighSurrogate(c.charAt(fin - 1))) {
+            fin--;
+        }
+        return c.substring(0, fin).stripTrailing() + "…";
     }
 
     private static String typeAdmis(Map<String, List<String>> formats, String message, String nom, String declare, long taille) {

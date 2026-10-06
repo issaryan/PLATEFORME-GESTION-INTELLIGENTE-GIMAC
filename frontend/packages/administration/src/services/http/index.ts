@@ -5,6 +5,7 @@ import { configurationHttp } from './configuration'
 import { plateformeHttp } from './plateforme'
 import { infrastructureHttp } from './infrastructure'
 import { organisationHttp } from './organisation'
+import { pouvoirsAdministrationHttp } from './pouvoirs'
 
 /**
  * Services réels de l'administration, par la passerelle : /bff/console/iam pour la console, /bff/des/iam
@@ -16,6 +17,8 @@ export function servicesConsoleHttp(couche: Extract<Couche, 'console' | 'des'> =
     comptes: comptesHttp(couche),
     organisation: organisationHttp(couche),
     configuration: configurationHttp(couche),
+    // Matrice des pouvoirs et demandes des chefs à traiter (D-81).
+    pouvoirs: pouvoirsAdministrationHttp(couche),
     plateforme: plateformeHttp,
     // Plateforme et infrastructure (D-78, D-79) : /api/plateforme, servi par la passerelle depuis toute couche.
     infrastructure: infrastructureHttp,

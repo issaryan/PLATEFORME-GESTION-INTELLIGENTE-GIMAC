@@ -5,7 +5,8 @@ export interface SearchInputProps {
   label?: string
   value?: string
   onChange?: (v: string) => void
-  width?: number
+  /** Largeur en pixels, ou valeur CSS (« 100% » dans une colonne redimensionnable, D-84). */
+  width?: number | string
 }
 
 // Recherche avec pictogramme (§7.2).

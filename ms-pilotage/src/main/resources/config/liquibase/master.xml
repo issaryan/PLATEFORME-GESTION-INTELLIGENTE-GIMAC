@@ -45,5 +45,9 @@
     <!-- jhipster-needle-liquibase-add-constraints-changelog - JHipster will add liquibase constraints changelogs here -->
     <!-- Mon activité (D-76), écrit à la main. -->
     <include file="config/liquibase/changelog/20261005090000_pil_mon_activite.xml" relativeToChangelogFile="false"/>
+    <!-- Tâches confiées (D-81 §6), écrit à la main. -->
+    <include file="config/liquibase/changelog/20261006090000_pil_taches_confiees.xml" relativeToChangelogFile="false"/>
+    <!-- Processus d'unité (D-87), écrit à la main. -->
+    <include file="config/liquibase/changelog/20261007090000_pil_processus_unite.xml" relativeToChangelogFile="false"/>
     <!-- jhipster-needle-liquibase-add-incremental-changelog - JHipster will add incremental liquibase changelogs here -->
 </databaseChangeLog>

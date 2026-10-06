@@ -13,7 +13,15 @@ export const TYPES_UNITE = ['DIRECTION', 'DEPARTEMENT', 'SERVICE', 'POLE', 'CELL
 export type TypeUnite = (typeof TYPES_UNITE)[number]
 
 /** Unité organisationnelle du catalogue de MS-IAM. */
-export type Unite = { code: string; libelle: string; type: TypeUnite; parent: string | null; active: boolean }
+export type Unite = {
+  code: string
+  libelle: string
+  type: TypeUnite
+  parent: string | null
+  active: boolean
+  /** Responsable de l'unité (D-81 §2) : compte interne actif, ou null ; absent des représentations antérieures. */
+  responsableId?: string | null
+}
 
 /** Rattachement d'un compte (GET organisation/moi) : unité, chemin, responsable et chaîne hiérarchique. */
 export type Rattachement = {
@@ -27,6 +35,8 @@ export type Rattachement = {
   chaine: string[]
   /** Nombre de comptes dont il est le n+1. */
   equipeDirecte: number
+  /** Unités dont il est le responsable, sous-unités comprises (D-81 §2). */
+  unitesDirigees?: string[]
 }
 
 // ------------------------------------------------------------------ Agenda (§2.1)
@@ -88,13 +98,16 @@ export type EntreeActivite = { jour: string; titre: string; description: string 
 
 // ------------------------------------------------------------------ Tâches (§2.3)
 
-export const ETATS_TACHE = ['OUVERTE', 'EN_COURS', 'BLOQUEE', 'TERMINEE', 'ANNULEE'] as const
+/** A_PRENDRE (D-81 §6) : tâche confiée à une unité, sans responsable, qu'un membre prend. */
+export const ETATS_TACHE = ['A_PRENDRE', 'OUVERTE', 'EN_COURS', 'BLOQUEE', 'TERMINEE', 'ANNULEE'] as const
 export type EtatTache = (typeof ETATS_TACHE)[number]
 export const PRIORITES = ['BASSE', 'NORMALE', 'HAUTE', 'URGENTE'] as const
 export type Priorite = (typeof PRIORITES)[number]
-export type TypeOrigine = 'INTERNE' | 'OPERATION' | 'REFERENTIEL' | 'DECISION' | 'TICKET' | 'FICHE_ACTION' | 'RISQUE' | 'INDICATEUR'
-export type ActionHistorique = 'CREEE' | 'MODIFIEE' | 'REAFFECTEE' | 'TRANSITION'
-export type VueTaches = 'moi' | 'creees' | 'equipe'
+/** PROCESSUS (D-87) : étape d'un processus d'unité ; la tâche suit l'étape (terminée ou annulée avec elle). */
+export type TypeOrigine = 'INTERNE' | 'OPERATION' | 'REFERENTIEL' | 'DECISION' | 'TICKET' | 'FICHE_ACTION' | 'RISQUE' | 'INDICATEUR' | 'PROCESSUS'
+export type ActionHistorique = 'CREEE' | 'MODIFIEE' | 'REAFFECTEE' | 'TRANSITION' | 'PRISE' | 'ATTRIBUEE' | 'RELANCEE'
+/** unite (D-81 §6) : tâches à prendre de mes unités. */
+export type VueTaches = 'moi' | 'creees' | 'equipe' | 'unite'
 
 export type Tache = {
   id: string
@@ -103,8 +116,15 @@ export type Tache = {
   echeance: string | null
   priorite: Priorite
   etat: EtatTache
-  responsable: PersonneActivite
+  /** Null pour une tâche à prendre (A_PRENDRE). */
+  responsable: PersonneActivite | null
   createur: PersonneActivite
+  /** Tâches confiées ensemble à plusieurs personnes (D-81 §6). */
+  groupeId?: string | null
+  /** Unité à laquelle la tâche a été confiée (D-81 §6). */
+  uniteCible?: string | null
+  /** Profil exigé pour prendre une tâche à prendre (D-87 §5.3) : seuls ses porteurs la voient et la prennent. */
+  profilRequis?: string | null
   origine: { type: TypeOrigine; reference: string | null; service: string | null; lien: string | null }
   enRetard: boolean
   creeeLe: string
@@ -112,14 +132,39 @@ export type Tache = {
   historique?: { quand: string; acteur: PersonneActivite; action: ActionHistorique; detail: string | null }[]
 }
 
-/** POST /taches et PUT /taches/{id} ; responsableId absent : pour soi (création) ou inchangé (modification). */
-export type EntreeTache = { titre: string; description: string | null; echeance: string | null; priorite: Priorite; responsableId?: string }
+/**
+ * POST /taches et PUT /taches/{id} ; responsableId absent : pour soi (création) ou inchangé (modification).
+ * Création seulement (D-81 §6) : responsables (2 à 50, une tâche par personne liées par un groupeId) ou
+ * uniteCible (tâche à prendre), exclusifs du responsable.
+ */
+export type EntreeTache = {
+  titre: string
+  description: string | null
+  echeance: string | null
+  priorite: Priorite
+  responsableId?: string
+  responsables?: string[]
+  uniteCible?: string
+}
+
+/** GET /taches/groupes/{groupeId} (D-81 §6). */
+export type GroupeTaches = {
+  groupeId: string
+  titre: string
+  createur: PersonneActivite
+  taches: Tache[]
+  avancement: { total: number; terminees: number; enRetard: number }
+}
+
+/** Bornes d'une tâche confiée à plusieurs personnes. */
+export const LIMITES_GROUPE = { min: 2, max: 50 } as const
 
 /**
  * Transitions offertes par l'interface (CC p.238, p.245) ; le service les refait (409 PIL_TRANSITION_INTERDITE).
  * BLOQUEE et ANNULEE exigent un motif, comme la réouverture d'une tâche terminée.
  */
 export const TRANSITIONS_TACHE: Record<EtatTache, EtatTache[]> = {
+  A_PRENDRE: ['ANNULEE'],
   OUVERTE: ['EN_COURS', 'BLOQUEE', 'ANNULEE'],
   EN_COURS: ['BLOQUEE', 'TERMINEE', 'ANNULEE'],
   BLOQUEE: ['EN_COURS', 'ANNULEE'],

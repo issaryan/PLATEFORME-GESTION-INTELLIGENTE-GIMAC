@@ -22,9 +22,25 @@ public interface TacheRepository extends JpaRepository<Tache, UUID> {
         countQuery = "select count(t) from Tache t where t.responsableId in :responsables and (:etat is null or t.etat = :etat)")
     Page<Tache> deResponsables(@Param("responsables") Collection<String> responsables, @Param("etat") EtatTache etat, Pageable page);
 
-    @Query(value = "select t from Tache t where t.createurId = :createur and t.responsableId <> :createur and (:etat is null or t.etat = :etat)" + TRI,
-        countQuery = "select count(t) from Tache t where t.createurId = :createur and t.responsableId <> :createur and (:etat is null or t.etat = :etat)")
+    /** Tâches confiées à d'autres, à plusieurs ou à une unité (y compris à prendre, sans responsable). */
+    @Query(value = "select t from Tache t where t.createurId = :createur and (t.responsableId is null or t.responsableId <> :createur) and (:etat is null or t.etat = :etat)" + TRI,
+        countQuery = "select count(t) from Tache t where t.createurId = :createur and (t.responsableId is null or t.responsableId <> :createur) and (:etat is null or t.etat = :etat)")
     Page<Tache> confiees(@Param("createur") String createur, @Param("etat") EtatTache etat, Pageable page);
+
+    /**
+     * Tâches confiées aux unités données, dans l'état donné (vue unite : à prendre, D-81 §6), sans profil exigé ou
+     * réservées à l'un des profils donnés (étapes de processus, D-87).
+     */
+    @Query(value = "select t from Tache t where t.uniteCible in :unites and t.etat = :etat and (t.profilRequis is null or t.profilRequis in :profils)" + TRI,
+        countQuery = "select count(t) from Tache t where t.uniteCible in :unites and t.etat = :etat and (t.profilRequis is null or t.profilRequis in :profils)")
+    Page<Tache> deUnites(@Param("unites") Collection<String> unites, @Param("etat") EtatTache etat, @Param("profils") Collection<String> profils, Pageable page);
+
+    /** Tâches d'étapes de processus encore ouvertes dont le compte est responsable (départ d'une personne, D-87). */
+    @Query("select t from Tache t where t.responsableId = :responsable and t.origineType = cm.gimac.des.pilotage.domain.activite.TypeOrigine.PROCESSUS and t.etat in :etats")
+    List<Tache> processusOuvertesDe(@Param("responsable") String responsable, @Param("etats") Collection<EtatTache> etats);
+
+    /** Tâches d'un envoi à plusieurs personnes. */
+    List<Tache> findByGroupeIdOrderByCreeLeAsc(UUID groupeId);
 
     /** Tâches nées d'une origine (clôture et réouverture par le service qui les a créées, D-77). */
     List<Tache> findByOrigineReferenceOrderByCreeLe(String origineReference);

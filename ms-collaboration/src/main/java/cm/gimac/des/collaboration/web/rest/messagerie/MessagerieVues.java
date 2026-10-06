@@ -1,13 +1,17 @@
 package cm.gimac.des.collaboration.web.rest.messagerie;
 
+import cm.gimac.des.collaboration.application.port.in.ConsulterMessagerieUseCase.CitationLue;
 import cm.gimac.des.collaboration.application.port.in.ConsulterMessagerieUseCase.ConversationLue;
+import cm.gimac.des.collaboration.application.port.in.ConsulterMessagerieUseCase.LectureMembre;
 import cm.gimac.des.collaboration.application.port.in.ConsulterMessagerieUseCase.MessageLu;
 import cm.gimac.des.collaboration.domain.messagerie.Collaborateur;
 import cm.gimac.des.collaboration.domain.messagerie.Conversation;
 import cm.gimac.des.collaboration.domain.messagerie.ConversationMembre;
 import cm.gimac.des.collaboration.domain.messagerie.Etiquette;
 import cm.gimac.des.collaboration.domain.messagerie.EvenementGroupe;
+import cm.gimac.des.collaboration.domain.messagerie.Lecture;
 import cm.gimac.des.collaboration.domain.messagerie.PieceJointe;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -21,7 +25,7 @@ public final class MessagerieVues {
 
     /**
      * « groupe » (D-68) : groupe de discussion nommé ; absent ou faux, conduite d'avant (directe si possible).
-     * « documents » et « transferts » (D-74) : voir {@link EnvoiRequest}.
+     * « documents » et « transferts » (D-74), « reponseA » et « mentions » (D-82) : voir {@link EnvoiRequest}.
      */
     public record CreationRequest(
         List<String> destinataires,
@@ -32,7 +36,9 @@ public final class MessagerieVues {
         List<Etiquette> etiquettes,
         Boolean groupe,
         List<UUID> documents,
-        List<UUID> transferts
+        List<UUID> transferts,
+        UUID reponseA,
+        List<String> mentions
     ) {}
 
     /** Nouveau nom d'un groupe (D-68). */
@@ -43,9 +49,10 @@ public final class MessagerieVues {
 
     /**
      * Nouveau message. « documents » (D-74) : tickets de documents déposés par envoi fragmenté ;
-     * « transferts » : identifiants de pièces jointes existantes à repartager. Facultatifs.
+     * « transferts » : identifiants de pièces jointes existantes à repartager. « reponseA » (D-82) : message
+     * cité ; « mentions » : identifiants des membres mentionnés avec « @ ». Facultatifs.
      */
-    public record EnvoiRequest(String contenu, List<Etiquette> etiquettes, List<UUID> documents, List<UUID> transferts) {}
+    public record EnvoiRequest(String contenu, List<Etiquette> etiquettes, List<UUID> documents, List<UUID> transferts, UUID reponseA, List<String> mentions) {}
 
     public record PageVue<T>(List<T> contenu, long total, int page, int taille) {}
 
@@ -75,7 +82,33 @@ public final class MessagerieVues {
 
     public record LiaisonVue(UUID liaisonId, String reference) {}
 
-    public record DernierMessageVue(UUID id, String auteurNom, String extrait, Instant envoyeLe, int piecesJointes, EvenementVue evenement) {}
+    /**
+     * État de lecture d'un message de l'appelant (D-88, docs/lot1/accuses-lecture.md §1) : ENVOYE, LU_PAR_CERTAINS
+     * ou LU ; « lus » sur « destinataires » (membres présents à l'envoi, hors auteur, encore membres).
+     */
+    public record LectureVue(String etat, int lus, int destinataires) {
+        static LectureVue de(Lecture l) {
+            return l == null ? null : new LectureVue(l.etat().name(), l.lus(), l.destinataires());
+        }
+    }
+
+    /** Destinataire du détail « Lu par » (D-88) : « luLe » nul s'il n'a pas lu ou si l'heure n'est pas connue. */
+    public record LectureMembreVue(PersonneCiteeVue membre, boolean lu, Instant luLe) {
+        static LectureMembreVue de(LectureMembre l) {
+            return new LectureMembreVue(new PersonneCiteeVue(l.id(), l.nom()), l.lu(), l.luLe());
+        }
+    }
+
+    /** « lecture » (D-88) : présent seulement pour un message de l'appelant (absent sinon et pour un événement). */
+    public record DernierMessageVue(
+        UUID id,
+        String auteurNom,
+        String extrait,
+        Instant envoyeLe,
+        int piecesJointes,
+        EvenementVue evenement,
+        @JsonInclude(JsonInclude.Include.NON_NULL) LectureVue lecture
+    ) {}
 
     public record ConversationVue(
         UUID id,
@@ -97,7 +130,17 @@ public final class MessagerieVues {
                 c.getTitre(),
                 c.getLiaisonId() == null ? null : new LiaisonVue(c.getLiaisonId(), c.getLiaisonReference()),
                 l.membres().stream().map(m -> MembreVue.de(m, avatars)).toList(),
-                d == null ? null : new DernierMessageVue(d.id(), d.auteurNom(), d.extrait(), d.envoyeLe(), d.piecesJointes(), EvenementVue.de(d.evenement(), d.cibles())),
+                d == null
+                    ? null
+                    : new DernierMessageVue(
+                        d.id(),
+                        d.auteurNom(),
+                        d.extrait(),
+                        d.envoyeLe(),
+                        d.piecesJointes(),
+                        EvenementVue.de(d.evenement(), d.cibles()),
+                        LectureVue.de(d.lecture())
+                    ),
                 l.nonLus(),
                 c.getMisAJourLe(),
                 c.getCreeeLe()
@@ -111,6 +154,34 @@ public final class MessagerieVues {
         }
     }
 
+    /** Personne citée ou mentionnée (D-82) : identifiant et nom. */
+    public record PersonneCiteeVue(String id, String nom) {}
+
+    /**
+     * Message cité (D-82) : extrait de 120 caractères, nombre de pièces jointes. « supprime » : message
+     * cité purgé ou illisible ; seuls l'identifiant et l'extrait vide restent (auteur et date nuls).
+     */
+    public record ReponseAVue(UUID id, PersonneCiteeVue auteur, String extrait, int piecesJointes, Instant envoyeLe, boolean supprime) {
+        static ReponseAVue de(CitationLue c) {
+            if (c == null) {
+                return null;
+            }
+            return new ReponseAVue(
+                c.id(),
+                c.supprime() ? null : new PersonneCiteeVue(c.auteurId(), c.auteurNom()),
+                c.extrait(),
+                c.piecesJointes(),
+                c.envoyeLe(),
+                c.supprime()
+            );
+        }
+    }
+
+    /**
+     * « reponseA », « mentions » et « mentionneMoi » (D-82) : message cité, membres mentionnés ; vrai si le
+     * lecteur est mentionné ou auteur du message cité, jamais pour son propre message. « lecture » (D-88) :
+     * état de lecture, présent seulement pour un vrai message de l'appelant.
+     */
     public record MessageVue(
         UUID id,
         UUID conversationId,
@@ -120,7 +191,11 @@ public final class MessagerieVues {
         Instant envoyeLe,
         List<Etiquette> etiquettes,
         List<PieceVue> piecesJointes,
-        EvenementVue evenement
+        EvenementVue evenement,
+        ReponseAVue reponseA,
+        List<PersonneCiteeVue> mentions,
+        boolean mentionneMoi,
+        @JsonInclude(JsonInclude.Include.NON_NULL) LectureVue lecture
     ) {
         static MessageVue de(MessageLu l, String appelantId, Map<String, String> avatars) {
             var m = l.message();
@@ -133,7 +208,11 @@ public final class MessagerieVues {
                 m.getEnvoyeLe(),
                 l.etiquettes(),
                 l.piecesJointes().stream().map(PieceVue::de).toList(),
-                EvenementVue.de(m.getEvenement(), m.getEvenementCibles())
+                EvenementVue.de(m.getEvenement(), m.getEvenementCibles()),
+                ReponseAVue.de(l.reponseA()),
+                l.mentions().stream().map(x -> new PersonneCiteeVue(x.id(), x.nom())).toList(),
+                l.concerne(appelantId),
+                LectureVue.de(l.lecture())
             );
         }
     }

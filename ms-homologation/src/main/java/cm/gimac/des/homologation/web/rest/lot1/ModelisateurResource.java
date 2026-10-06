@@ -1,7 +1,10 @@
 package cm.gimac.des.homologation.web.rest.lot1;
 
+import cm.gimac.des.homologation.application.port.in.GererEtapesReferentielUseCase;
 import cm.gimac.des.homologation.application.port.in.ManageReferentialUseCase;
 import cm.gimac.des.homologation.application.port.out.CollaboratorDirectoryPort;
+import cm.gimac.des.homologation.application.usecase.ReferentialLifecycleService;
+import cm.gimac.des.homologation.domain.EtapeReferentiel;
 import cm.gimac.des.homologation.domain.HomologationException;
 import cm.gimac.des.homologation.domain.ReferenceOperation;
 import cm.gimac.des.homologation.domain.ReferenceOperationData;
@@ -9,6 +12,7 @@ import cm.gimac.des.homologation.domain.ReferentialVersion;
 import cm.gimac.des.homologation.domain.cadrage.CollaboratorView;
 import cm.gimac.des.homologation.domain.enumeration.EtatVersionReferentiel;
 import cm.gimac.des.homologation.domain.parcours.CalendrierDag;
+import cm.gimac.des.homologation.domain.parcours.CouleurEtape;
 import cm.gimac.des.homologation.domain.parcours.Declencheurs;
 import cm.gimac.des.homologation.domain.parcours.EtapeCode;
 import cm.gimac.des.homologation.domain.parcours.Fonction;
@@ -22,9 +26,15 @@ import cm.gimac.des.homologation.domain.parcours.Position;
 import cm.gimac.des.homologation.domain.parcours.SegmentParcours;
 import cm.gimac.des.homologation.domain.service.ReferentialCompletenessChecker;
 import cm.gimac.des.homologation.domain.service.ReferentialGraphValidator;
+import cm.gimac.des.homologation.domain.service.VisibiliteReferentiel;
 import cm.gimac.des.homologation.repository.ReferentialVersionRepository;
 import cm.gimac.des.homologation.web.rest.lot1.ReferentialViews.ArcRequest;
 import cm.gimac.des.homologation.web.rest.lot1.ReferentialViews.CatalogueVue;
+import cm.gimac.des.homologation.web.rest.lot1.ReferentialViews.CouleurVue;
+import cm.gimac.des.homologation.web.rest.lot1.ReferentialViews.EtapeCanoniqueVue;
+import cm.gimac.des.homologation.web.rest.lot1.ReferentialViews.EtapeRequest;
+import cm.gimac.des.homologation.web.rest.lot1.ReferentialViews.EtapeVue;
+import cm.gimac.des.homologation.web.rest.lot1.ReferentialViews.OrdreEtapesRequest;
 import cm.gimac.des.homologation.web.rest.lot1.ReferentialViews.Entree;
 import cm.gimac.des.homologation.web.rest.lot1.ReferentialViews.GrapheVue;
 import cm.gimac.des.homologation.web.rest.lot1.ReferentialViews.OperationVue;
@@ -55,14 +65,16 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
  * Modélisateur de processus (D-77, docs/lot1/modelisateur-processus.md §4), exposé par la passerelle sous
  * /bff/des/homologation/referentiels : création et retrait d'opérations, positions, arcs, graphe étendu (chemin
- * critique, échéances au plus tôt, anomalies par nœud), catalogue et pilote du brouillon. Toute écriture sur une
- * version qui n'est pas un brouillon est refusée par 409 HOM_REFERENTIAL_FROZEN.
+ * critique, échéances au plus tôt, anomalies par nœud), catalogue et pilote du brouillon ; étapes configurables
+ * et lecture filtrée des personnes concernées (D-89, docs/lot1/referentiel-droits-etapes.md). Toute écriture sur
+ * une version qui n'est pas un brouillon est refusée par 409 HOM_REFERENTIAL_FROZEN.
  */
 @RestController
 @RequestMapping("/api/v1/referentiels")
@@ -79,6 +91,7 @@ public class ModelisateurResource {
     );
 
     private final ManageReferentialUseCase useCase;
+    private final GererEtapesReferentielUseCase etapesUseCase;
     private final ReferentialVersionRepository versions;
     private final ReferentialGraphValidator validator;
     private final ReferentialCompletenessChecker completude;
@@ -87,13 +100,15 @@ public class ModelisateurResource {
 
     public ModelisateurResource(
         ManageReferentialUseCase useCase,
+        GererEtapesReferentielUseCase etapesUseCase,
         ReferentialVersionRepository versions,
         ReferentialGraphValidator validator,
         ReferentialCompletenessChecker completude,
         CollaboratorDirectoryPort annuaire,
-        @Value("${gimac.homologation.referentiel.profils-pilote:ROLE_INGENIEUR_HOMOLOGATION}") List<String> profilsPilote
+        @Value("${gimac.homologation.referentiel.profils-pilote:" + ReferentialLifecycleService.PROFILS_EDITION + "}") List<String> profilsPilote
     ) {
         this.useCase = useCase;
+        this.etapesUseCase = etapesUseCase;
         this.versions = versions;
         this.validator = validator;
         this.completude = completude;
@@ -145,12 +160,17 @@ public class ModelisateurResource {
         return VersionVue.de(v, versions.findFirstByTypeProjetAndEtat(v.getTypeProjet(), EtatVersionReferentiel.PUBLIEE).map(ReferentialVersion::getId).orElse(null));
     }
 
-    /** Graphe étendu : nœuds complets, positions, couches, échéances au plus tôt, chemin critique, anomalies. */
+    /**
+     * Graphe étendu : nœuds complets, positions, couches, échéances au plus tôt, chemin critique, anomalies, étapes
+     * de la version. Lecteur concerné (D-89) : ses opérations, leurs voisines directes en fantômes, les arcs qui
+     * touchent une opération visible ; anomalies, attributs manquants et chemin critique réduits à ses opérations.
+     */
     @GetMapping("/{id}/graphe")
     @PreAuthorize("hasAuthority('HOM_REFERENTIEL_READ')")
     @Transactional(readOnly = true)
-    public GrapheVue graphe(@PathVariable UUID id) {
+    public GrapheVue graphe(@PathVariable UUID id, Authentication auth) {
         ReferentialVersion v = versions.findById(id).orElseThrow(() -> HomologationException.notFound("HOM_REFERENTIAL_NOT_FOUND", id));
+        VisibiliteReferentiel.Vue vue = VisibiliteReferentiel.pour(ActeurCourant.de(auth).permissions(), v.getOperations());
         List<ReferenceOperation> ops = v
             .getOperations()
             .stream()
@@ -173,8 +193,11 @@ public class ModelisateurResource {
         }
         List<GrapheVue.Noeud> noeuds = ops
             .stream()
+            .filter(o -> vue.retenue(o.getCode()))
             .map(o ->
-                new GrapheVue.Noeud(
+                vue.fantome(o.getCode())
+                    ? new GrapheVue.Noeud(OperationVue.fantome(o), null, null, null, false, List.of())
+                    : new GrapheVue.Noeud(
                     OperationVue.de(o, succ.getOrDefault(o.getCode(), List.of())),
                     rapport.couches().get(o.getCode()),
                     cal.debuts().get(o.getCode()),
@@ -186,7 +209,13 @@ public class ModelisateurResource {
             .toList();
         List<GrapheVue.Arc> arcs = ops
             .stream()
-            .flatMap(o -> o.predecesseursListe().stream().map(p -> new GrapheVue.Arc(p, o.getCode(), arcsCritiques.contains(p + ">" + o.getCode()))))
+            .flatMap(o ->
+                o
+                    .predecesseursListe()
+                    .stream()
+                    .filter(p -> vue.visible(p) ? vue.retenue(o.getCode()) : vue.fantome(p) && vue.visible(o.getCode()))
+                    .map(p -> new GrapheVue.Arc(p, o.getCode(), arcsCritiques.contains(p + ">" + o.getCode())))
+            )
             .toList();
         return new GrapheVue(
             v.getId(),
@@ -196,23 +225,35 @@ public class ModelisateurResource {
             v.getPiloteId(),
             noeuds,
             arcs,
-            rapport.anomalies(),
-            completude.check(v.getOperations()),
-            new GrapheVue.CheminCritique(chemin, cal.dureeTotale()),
-            v.actionsPermises()
+            rapport.anomalies().stream().filter(a -> vue.complete() || (!a.codes().isEmpty() && a.codes().stream().allMatch(vue::visible))).toList(),
+            completude.check(v.getOperations()).stream().filter(m -> vue.visible(m.code())).toList(),
+            new GrapheVue.CheminCritique(vue.complete() ? chemin : chemin.stream().filter(vue::visible).toList(), cal.dureeTotale()),
+            v.actionsPermises(),
+            EtapeVue.de(v),
+            vue.filtre()
         );
     }
 
-    /** Catalogue du modélisateur : listes fermées et pilotes possibles (annuaire injoignable : liste vide). */
+    /**
+     * Catalogue du modélisateur : listes fermées et pilotes possibles (annuaire injoignable : liste vide). Avec
+     * {@code version} (D-89), {@code etapes} liste les étapes de cette version (rang : leur ordre) et
+     * {@code etapesVersion} leur détail ; sans elle, les onze étapes canoniques (rang : celui du CR).
+     */
     @GetMapping("/catalogue")
     @PreAuthorize("hasAuthority('HOM_REFERENTIEL_READ')")
-    public CatalogueVue catalogue() {
+    @Transactional(readOnly = true)
+    public CatalogueVue catalogue(@RequestParam(name = "version", required = false) UUID versionId) {
+        ReferentialVersion version = versionId == null
+            ? null
+            : versions.findById(versionId).orElseThrow(() -> HomologationException.notFound("HOM_REFERENTIAL_NOT_FOUND", versionId));
         return new CatalogueVue(
             Arrays.stream(Fonction.values()).map(f -> new Entree(f.name(), f.libelle(), f.profils(), f.externe(), null, null)).toList(),
             Arrays.stream(Geste.values()).map(x -> new Entree(x.name(), x.libelle(), null, null, x.dedie(), null)).toList(),
             Arrays.stream(Jalon.values()).map(x -> new Entree(x.name(), x.libelle(), null, null, null, x.ordinal() + 1)).toList(),
             Declencheurs.CONNUS.entrySet().stream().map(e -> Entree.de(e.getKey(), e.getValue())).toList(),
-            Arrays.stream(EtapeCode.values()).map(e -> new Entree(e.name(), e.libelle(), null, null, null, e.rang())).toList(),
+            version == null
+                ? Arrays.stream(EtapeCode.values()).map(e -> new Entree(e.name(), e.libelle(), null, null, null, e.rang())).toList()
+                : version.etapes().stream().map(e -> new Entree(e.getCode(), e.getLibelle(), null, null, null, e.getOrdre())).toList(),
             List.of(
                 Entree.de(SegmentParcours.AMONT.name(), "Tronc commun amont"),
                 Entree.de(SegmentParcours.BRANCHE.name(), "Branche du type de projet"),
@@ -223,8 +264,55 @@ public class ModelisateurResource {
             List.of(Entree.de(NatureLivrable.LIVRABLE.name(), "Livrable"), Entree.de(NatureLivrable.PREUVE.name(), "Preuve")),
             Arrays.stream(Particularite.values()).map(x -> Entree.de(x.name(), x.libelle())).toList(),
             TYPES_PIECES,
-            pilotes()
+            pilotes(),
+            Arrays.stream(EtapeCode.values()).map(e -> new EtapeCanoniqueVue(e.name(), e.libelle(), e.rang(), e.protegee())).toList(),
+            Arrays.stream(CouleurEtape.values()).map(c -> new CouleurVue(c.name(), c.libelle(), c.jeton())).toList(),
+            version == null ? null : EtapeVue.de(version)
         );
+    }
+
+    // ------------------------------------------------------------------ étapes configurables (D-89, §2)
+
+    /** Étapes de la version, dans leur ordre. */
+    @GetMapping("/{id}/etapes")
+    @PreAuthorize("hasAuthority('HOM_REFERENTIEL_READ')")
+    @Transactional(readOnly = true)
+    public List<EtapeVue> etapes(@PathVariable UUID id) {
+        return EtapeVue.de(versions.findById(id).orElseThrow(() -> HomologationException.notFound("HOM_REFERENTIAL_NOT_FOUND", id)));
+    }
+
+    /** Ajout d'une étape au brouillon (code exigé ; à la fin par défaut). */
+    @PostMapping("/{id}/etapes")
+    @PreAuthorize("hasAuthority('HOM_REFERENTIEL_EDIT')")
+    @Transactional
+    public ResponseEntity<EtapeVue> ajouterEtape(@PathVariable UUID id, @Valid @RequestBody EtapeRequest r) {
+        EtapeReferentiel e = etapesUseCase.ajouter(id, r.code(), r.libelle(), r.couleur(), r.canonique(), r.ordre());
+        return ResponseEntity.created(URI.create("/api/v1/referentiels/" + id + "/etapes/" + e.getCode())).body(EtapeVue.de(e, e.getVersion()));
+    }
+
+    /** Nouvel ordre des étapes ({@code {codes: [...]}}) ; rend les étapes dans cet ordre. */
+    @PutMapping("/{id}/etapes/ordre")
+    @PreAuthorize("hasAuthority('HOM_REFERENTIEL_EDIT')")
+    @Transactional
+    public List<EtapeVue> ordonnerEtapes(@PathVariable UUID id, @Valid @RequestBody OrdreEtapesRequest r) {
+        return EtapeVue.de(etapesUseCase.ordonner(id, r.codes()));
+    }
+
+    /** Renommage, couleur et étape canonique ({@code code} et {@code ordre} du corps ignorés). */
+    @PutMapping("/{id}/etapes/{code}")
+    @PreAuthorize("hasAuthority('HOM_REFERENTIEL_EDIT')")
+    @Transactional
+    public EtapeVue modifierEtape(@PathVariable UUID id, @PathVariable String code, @Valid @RequestBody EtapeRequest r) {
+        EtapeReferentiel e = etapesUseCase.modifier(id, code, r.libelle(), r.couleur(), r.canonique());
+        return EtapeVue.de(e, e.getVersion());
+    }
+
+    /** Retrait d'une étape vide et non protégée. */
+    @DeleteMapping("/{id}/etapes/{code}")
+    @PreAuthorize("hasAuthority('HOM_REFERENTIEL_EDIT')")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void supprimerEtape(@PathVariable UUID id, @PathVariable String code) {
+        etapesUseCase.supprimer(id, code);
     }
 
     private List<Pilote> pilotes() {

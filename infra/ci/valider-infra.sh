@@ -96,6 +96,10 @@ valider_opa() {
 # ---------------------------------------------------------------- 4. Kubernetes
 valider_kubernetes() {
   section "Kubernetes (kustomize build, kubeconform)"
+  # Copies des politiques OPA, d'Alertmanager et du script des sujets Kafka (kustomize ne lit pas hors de
+  # son dossier) : elles doivent rester identiques à leurs sources.
+  controler "copies partagées de kubernetes-gimac conformes à leurs sources" \
+    bash "$INFRA/kubernetes-gimac/synchroniser-partages.sh" --verifier
   exiger_outil kustomize "rendu Kustomize de kubernetes-gimac" || { fin_section; return 0; }
   local rendu="$DOSSIER_TRAVAIL/kubernetes-gimac.yaml"
   if kustomize build "$INFRA/kubernetes-gimac" > "$rendu"; then

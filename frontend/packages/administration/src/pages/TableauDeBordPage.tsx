@@ -1,11 +1,11 @@
 import { useTranslation } from 'react-i18next'
 import { EmptyState, Link, PageHeader, PageSection } from '@gimac/design-system'
 import { aPermission, usePermissions, useSession } from '@gimac/socle'
-import { useLibelleProfil } from '@gimac/compte'
 import { SectionActes, SectionGestionUtilisateurs } from '../composants/sectionsTableau'
 import { SectionSupervision } from '../composants/supervision'
 import { WidgetChargesEnErreur } from '../composants/widgetsPlateforme'
 import { useChemins } from '../services/useServicesConsole'
+import { useLibelleProfil } from '../hooks'
 
 // Tableau de bord de la console (D-61, D-62, D-79), composé selon les permissions de la session, jamais selon le
 // nom du rôle ; la gestion des utilisateurs (actions directes et indicateurs cliquables) vient en tête :

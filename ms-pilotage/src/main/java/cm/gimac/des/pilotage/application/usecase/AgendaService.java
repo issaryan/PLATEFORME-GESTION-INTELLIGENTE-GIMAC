@@ -2,6 +2,7 @@ package cm.gimac.des.pilotage.application.usecase;
 
 import cm.gimac.des.pilotage.application.port.in.AgendaUseCase;
 import cm.gimac.des.pilotage.application.port.in.Appelant;
+import cm.gimac.des.pilotage.application.port.out.OrganisationPort.Pouvoir;
 import cm.gimac.des.pilotage.domain.activite.CategorieEvenement;
 import cm.gimac.des.pilotage.domain.activite.EvenementAgenda;
 import cm.gimac.des.pilotage.domain.activite.ParticipantEvenement;
@@ -47,7 +48,7 @@ public class AgendaService implements AgendaUseCase {
         LocalDate fin = ReglesActivite.lireJour("au", au);
         ReglesActivite.intervalle(debut, fin, ReglesActivite.AGENDA_JOURS_MAX);
         String compte = collaborateur == null || collaborateur.isBlank() ? appelant.id() : collaborateur.strip();
-        equipes.exigerLecture(appelant, compte);
+        equipes.exigerLecture(appelant, Pouvoir.ACTIVITE_LIRE, compte);
         List<EvenementAgenda> liste = evenements.agenda(compte, ReglesActivite.debutJour(debut), ReglesActivite.debutJour(fin.plusDays(1)));
         Map<String, String> noms = equipes.noms(liste.stream().flatMap(AgendaService::comptes).toList());
         return liste.stream().map(e -> new EvenementLu(e, relation(e, appelant.id()), noms)).toList();
@@ -91,7 +92,7 @@ public class AgendaService implements AgendaUseCase {
     private EvenementAgenda proprietaire(Appelant appelant, UUID id) {
         EvenementAgenda e = evenements.findById(id).orElseThrow(() -> PilotageException.introuvable("PIL_EVENEMENT_INTROUVABLE", id));
         if (!e.getProprietaireId().equals(appelant.id())) {
-            if (e.participant(appelant.id()).isPresent() || equipes.peutLire(appelant, e.getProprietaireId())) {
+            if (e.participant(appelant.id()).isPresent() || equipes.peutLire(appelant, Pouvoir.ACTIVITE_LIRE, e.getProprietaireId())) {
                 throw PilotageException.reservee("Seul le propriétaire modifie ou supprime l'événement");
             }
             throw PilotageException.horsEquipe();
@@ -100,7 +101,7 @@ public class AgendaService implements AgendaUseCase {
     }
 
     private PilotageException invisible(Appelant appelant, EvenementAgenda e) {
-        if (e.getProprietaireId().equals(appelant.id()) || equipes.peutLire(appelant, e.getProprietaireId())) {
+        if (e.getProprietaireId().equals(appelant.id()) || equipes.peutLire(appelant, Pouvoir.ACTIVITE_LIRE, e.getProprietaireId())) {
             return PilotageException.reservee("Seul un participant invité répond à l'événement");
         }
         return PilotageException.horsEquipe();

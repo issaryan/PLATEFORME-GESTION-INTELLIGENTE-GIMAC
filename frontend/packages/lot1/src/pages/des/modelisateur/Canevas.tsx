@@ -1,10 +1,7 @@
-import { memo, useCallback, useEffect, useMemo, useRef } from 'react'
+import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  Background, Controls, Handle, MarkerType, MiniMap, Position, ReactFlow, useNodesState, type Connection, type Edge, type Node, type NodeProps,
-} from '@xyflow/react'
-import '@xyflow/react/dist/style.css'
-import './modelisateur.css'
+import { Handle, MarkerType, Position, type Edge, type Node, type NodeProps } from '@xyflow/react'
+import { CanevasGraphe } from '../../../composants/graphe/CanevasGraphe'
 import { cx } from '@gimac/design-system'
 import type { CatalogueModelisateur, GrapheReferentiel, NoeudGraphe, PositionNoeud } from '../../../modele/homologation'
 import { CARTE, couloirs } from '../../../adaptateurs/modelisateur'
@@ -19,8 +16,9 @@ type NoeudCarte = Node<DonneesCarte, 'operation'>
 type NoeudCouloir = Node<DonneesCouloir, 'couloir'>
 type NoeudFlux = NoeudCarte | NoeudCouloir
 
-/** Délai de regroupement des positions avant PUT /positions (ms). */
-export const DELAI_POSITIONS = 400
+/** Délai de regroupement des positions avant PUT /positions (ms), celui du canevas générique. */
+export { DELAI_POSITIONS } from '../../../composants/graphe/CanevasGraphe'
+const CARTES = ['operation']
 
 const Carte = memo(function Carte({ data }: NodeProps<NoeudCarte>) {
   const { t } = useTranslation()
@@ -104,8 +102,6 @@ export function Canevas(p: CanevasProps) {
       })),
     ]
   }, [p.graphe.noeuds, p.positions, p.catalogue, p.lecture, p.surlignes, onOuvrir, t])
-  const [noeuds, setNoeuds, onNodesChange] = useNodesState<NoeudFlux>(calcules)
-  useEffect(() => setNoeuds(calcules), [calcules, setNoeuds])
 
   const arcs = useMemo<Edge[]>(
     () =>
@@ -117,62 +113,10 @@ export function Canevas(p: CanevasProps) {
     [p.graphe.arcs, p.lecture, t],
   )
 
-  // Positions regroupées : un seul PUT /positions après une rafale de déplacements.
-  const enAttente = useRef(new Map<string, { code: string; x: number; y: number }>())
-  const minuteur = useRef<number | undefined>(undefined)
-  useEffect(() => () => window.clearTimeout(minuteur.current), [])
-  const deplace = useCallback(
-    (_: unknown, __: unknown, deplaces: Node[]) => {
-      deplaces.filter((n) => n.type === 'operation').forEach((n) => enAttente.current.set(n.id, { code: n.id, x: Math.round(n.position.x), y: Math.round(n.position.y) }))
-      window.clearTimeout(minuteur.current)
-      minuteur.current = window.setTimeout(() => {
-        const l = [...enAttente.current.values()]
-        enAttente.current.clear()
-        if (l.length) onPlacer(l)
-      }, DELAI_POSITIONS)
-    },
-    [onPlacer],
-  )
-
+  // Canevas générique partagé avec les processus d'unité (D-87) : positions regroupées (PUT /positions), arcs.
   return (
-    <div className="gm-mod-canevas" data-testid="modelisateur-canevas">
-      <ReactFlow<NoeudFlux, Edge>
-        nodes={noeuds}
-        edges={arcs}
-        nodeTypes={TYPES}
-        onNodesChange={onNodesChange}
-        onNodeDragStop={deplace}
-        onNodeDoubleClick={(_, n) => (n.type === 'operation' ? onOuvrir(n.id) : undefined)}
-        onConnect={(c: Connection) => (c.source && c.target && c.source !== c.target ? onRelier(c.source, c.target) : undefined)}
-        isValidConnection={(c) => c.source !== c.target}
-        onBeforeDelete={async ({ edges }) => ({ nodes: [], edges })}
-        onEdgesDelete={(l) => l.forEach((e) => onDelier(e.source, e.target))}
-        nodesDraggable={!p.lecture}
-        nodesConnectable={!p.lecture}
-        deleteKeyCode={p.lecture ? null : ['Delete', 'Backspace']}
-        fitView
-        fitViewOptions={{ padding: 0.1 }}
-        minZoom={0.15}
-        maxZoom={2}
-        proOptions={{ hideAttribution: true }}
-        ariaLabelConfig={{
-          'node.a11yDescription.default': t('modelisateur.canevas.aideNoeud'),
-          'node.a11yDescription.keyboardDisabled': t('modelisateur.canevas.aideNoeud'),
-          'node.a11yDescription.ariaLiveMessage': ({ direction, x, y }) => t('modelisateur.canevas.deplace', { direction, x, y }),
-          'handle.ariaLabel': t('modelisateur.canevas.poignee'),
-          'edge.a11yDescription.default': t('modelisateur.canevas.aideArc'),
-          'controls.ariaLabel': t('modelisateur.canevas.controles'),
-          'controls.zoomIn.ariaLabel': t('modelisateur.canevas.zoomAvant'),
-          'controls.zoomOut.ariaLabel': t('modelisateur.canevas.zoomArriere'),
-          'controls.fitView.ariaLabel': t('modelisateur.canevas.ajuster'),
-          'controls.interactive.ariaLabel': t('modelisateur.canevas.verrou'),
-          'minimap.ariaLabel': t('modelisateur.canevas.miniCarte'),
-        }}
-      >
-        <Background gap={24} />
-        <Controls showInteractive={false} />
-        <MiniMap pannable zoomable nodeClassName={(n) => (n.type === 'couloir' ? 'gm-mod-mini-couloir' : 'gm-mod-mini-carte')} />
-      </ReactFlow>
-    </div>
+    <CanevasGraphe<NoeudFlux> noeuds={calcules} arcs={arcs} types={TYPES as never} lecture={p.lecture} typesCartes={CARTES} prefixeAria="modelisateur.canevas"
+      testId="modelisateur-canevas" onOuvrir={onOuvrir} onRelier={onRelier} onDelier={onDelier} onPlacer={onPlacer}
+      classeMiniCarte={(n) => (n.type === 'couloir' ? 'gm-mod-mini-couloir' : 'gm-mod-mini-carte')} />
   )
 }

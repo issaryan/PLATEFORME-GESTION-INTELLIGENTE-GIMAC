@@ -11,6 +11,7 @@ import { useRetour } from '../parcours/communs'
 import { etatListe } from '../liaisons/communs'
 import { BadgeActivite, BadgeRapport, BadgeTache, NavigationPeriode, TagCategorie, jourDemande, useDates, useErreur } from './communs'
 import { DialogueActivite, DialogueReport } from './dialoguesActivite'
+import { MesEtapes } from '../processus/MesEtapes'
 import { ConsultationRapport, DialogueRapport } from './dialoguesRapport'
 
 // Ma journée (D-76, /des/activite) : activités du jour (ajout, modification, statut, report, ordre),
@@ -146,6 +147,8 @@ export default function MaJourneePage() {
           </Card>
         )}
       </div>
+      {/* Processus d'unité (D-87) : étapes qui m'attendent (exécuter, prendre, signer, valider). */}
+      {lecture ? null : <MesEtapes />}
       {lecture ? null : (
         <Card title={t('act.journee.rapport')}>
           <div className="gm-row" style={{ gap: 'var(--gm-space-3)', flexWrap: 'wrap' }}>

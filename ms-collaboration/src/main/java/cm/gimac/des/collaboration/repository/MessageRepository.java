@@ -28,6 +28,14 @@ public interface MessageRepository extends JpaRepository<Message, UUID> {
     )
     List<Message> anterieurs(@Param("conversation") UUID conversationId, @Param("le") Instant le, @Param("id") UUID id, Pageable limite);
 
+    /** Messages cités par une page du fil (D-82), en une requête, avec leur nombre de pièces jointes. */
+    @Query(
+        "select new cm.gimac.des.collaboration.repository.MessageCite(m.id, m.conversation.id, m.auteurId, m.auteurNom, " +
+        "m.contenuChiffre, m.envoyeLe, m.evenement, (select count(p) from PieceJointe p where p.message = m)) " +
+        "from Message m where m.id in :ids"
+    )
+    List<MessageCite> cites(@Param("ids") Collection<UUID> ids);
+
     Optional<Message> findFirstByConversationIdOrderByEnvoyeLeDescIdDesc(UUID conversationId);
 
     @Query("select count(m) " + NON_LUS)

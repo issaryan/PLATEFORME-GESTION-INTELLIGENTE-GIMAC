@@ -3,7 +3,6 @@ package cm.gimac.des.homologation.domain;
 import cm.gimac.des.homologation.domain.enumeration.NatureCouverture;
 import cm.gimac.des.homologation.domain.enumeration.Partie;
 import cm.gimac.des.homologation.domain.enumeration.Segment;
-import cm.gimac.des.homologation.domain.parcours.EtapeCode;
 import cm.gimac.des.homologation.domain.parcours.Fonction;
 import cm.gimac.des.homologation.domain.parcours.Geste;
 import cm.gimac.des.homologation.domain.parcours.GrainPreuve;
@@ -24,7 +23,8 @@ import java.util.Map;
  * §1). Tous les attributs sont facultatifs pour qu'un brouillon se remplisse progressivement ; la complétude et
  * la cohérence sont contrôlées à la publication. Les attributs historiques (phase, partie, service, nature de
  * couverture, preuve attendue, fonction responsable) sont dérivés du modèle quand l'étape est saisie sans eux.
- * {@code code} ne sert qu'à la création ({@code POST /referentiels/{id}/operations}).
+ * {@code code} ne sert qu'à la création ({@code POST /referentiels/{id}/operations}) ; {@code etape} est le code
+ * d'une étape de la version (D-89).
  */
 public record ReferenceOperationData(
     @Size(max = 300) String libelle,
@@ -40,7 +40,7 @@ public record ReferenceOperationData(
     Map<String, Object> grille,
     @Size(max = 40) String code,
     @Size(max = 4000) String description,
-    EtapeCode etape,
+    @Size(max = 40) String etape,
     Integer ordre,
     Fonction responsable,
     Fonction validateur,

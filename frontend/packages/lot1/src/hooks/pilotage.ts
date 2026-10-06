@@ -16,6 +16,7 @@ export const clesPilotage = {
   tache: (id: string) => ['pilotage', 'tache', id] as const,
   rapports: (q: object) => ['pilotage', 'rapports', q] as const,
   rapport: (id: string) => ['pilotage', 'rapport', id] as const,
+  groupe: (id: string) => ['pilotage', 'groupe', id] as const,
   equipe: (jour: string) => ['pilotage', 'equipe', jour] as const,
   synthese: (jour: string) => ['pilotage', 'synthese', jour] as const,
   unites: () => ['organisation', 'unites'] as const,
@@ -28,6 +29,8 @@ export const useActivites = (du: string, au: string, collaborateur?: string) =>
   useLecture(clesPilotage.activites(du, au, collaborateur), (s) => s.pilotage.activites(du, au, collaborateur || undefined))
 export const useTaches = (q: { vue: VueTaches; etat?: EtatTache; page?: number; taille?: number }, actif = true) =>
   useLecture(clesPilotage.taches(q), (s) => s.pilotage.taches(q), { enabled: actif, placeholderData: keepPreviousData })
+/** Suivi d'un groupe de tâches confiées à plusieurs personnes (D-81 §6). */
+export const useGroupe = (id: string | undefined) => useLecture(clesPilotage.groupe(id ?? ''), (s) => s.pilotage.groupe(id!), { enabled: !!id })
 export const useTache = (id: string | undefined) => useLecture(clesPilotage.tache(id ?? ''), (s) => s.pilotage.tache(id!), { enabled: !!id })
 export const useRapports = (q: { vue: VueRapports; page?: number; taille?: number }, actif = true) =>
   useLecture(clesPilotage.rapports(q), (s) => s.pilotage.rapports(q), { enabled: actif, placeholderData: keepPreviousData })
@@ -63,6 +66,10 @@ export const useEchangerActivites = () =>
 
 export const useCreerTache = () => useGeste((s, t: EntreeTache) => s.pilotage.creerTache(t))
 export const useModifierTache = () => useGeste((s, v: { id: string; t: EntreeTache }) => s.pilotage.modifierTache(v.id, v.t))
+export const useCreerGroupe = () => useGeste((s, t: EntreeTache & { responsables: string[] }) => s.pilotage.creerGroupe(t))
+export const usePrendre = () => useGeste((s, id: string) => s.pilotage.prendre(id))
+export const useAttribuer = () => useGeste((s, v: { id: string; responsableId: string }) => s.pilotage.attribuer(v.id, v.responsableId))
+export const useRelancer = () => useGeste((s, id: string) => s.pilotage.relancer(id))
 export const useTransition = () => useGeste((s, v: { id: string; etat: EtatTache; motif?: string }) => s.pilotage.transition(v.id, v.etat, v.motif))
 
 export const usePreremplir = () => {

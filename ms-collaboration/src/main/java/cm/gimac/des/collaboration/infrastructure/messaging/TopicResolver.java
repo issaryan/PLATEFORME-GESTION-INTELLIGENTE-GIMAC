@@ -1,13 +1,24 @@
 package cm.gimac.des.collaboration.infrastructure.messaging;
 
+import java.util.Map;
 import org.springframework.stereotype.Component;
 
 /** Sujet d'agrégat d'un type d'événement (PI §0.4 et §0.5). */
 @Component
 public class TopicResolver {
 
+    /**
+     * Types publiés hors du sujet de leur agrégat nominal : l'accusé de lecture (D-88) suit les messages de
+     * la conversation sur collaboration.message (même clé, même ordre, relayé par la passerelle).
+     */
+    private static final Map<String, String> EXCEPTIONS = Map.of("collaboration.conversation-read.v1", "collaboration.message");
+
     /** collaboration.message-sent.v1 vers collaboration.message ; homologation.operation-closed.v1 vers homologation.operation. */
     public String topicFor(String eventType) {
+        String exception = EXCEPTIONS.get(eventType);
+        if (exception != null) {
+            return exception;
+        }
         String[] parts = eventType.split("\\.");
         if (parts.length < 3 || parts[1].indexOf('-') < 0) {
             throw new IllegalArgumentException("Type d'événement mal formé : " + eventType);

@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router'
 import type { ApiError } from '../http/errors'
 import { adresseApplication } from '../session/aiguillage'
 import { lireSessionDemo } from '../session/demo'
-import { referenceConversation, type EtatNotifications, type FiltreLecture, type NotificationPlateforme, type PreferencesNotifications, type ServiceNotifications } from './modele'
+import { TYPES_MESSAGERIE, conversationDe, referenceConversation, type EtatNotifications, type FiltreLecture, type NotificationPlateforme, type PreferencesNotifications, type ServiceNotifications } from './modele'
 
 // Notifications de la plateforme (D-80) dans une couche interne : service injecté, hooks de données et
 // ouverture d'une notification. Clés de requête sous le sujet « notification » : l'événement
@@ -113,14 +113,14 @@ export function useEnregistrerPreferencesNotifications() {
   })
 }
 
-/** Aperçu d'un message (MESSAGE seulement, si la couche sait le lire) ; null pour une tâche ou un rapport. */
+/** Aperçu d'un message (message, mention ou réponse, si la couche sait le lire) ; null pour une tâche ou un rapport. */
 export function useApercuNotification(n: NotificationPlateforme) {
   const c = useContext(Ctx)
   const lire = c?.apercu
   return useQuery({
     queryKey: clesNotifications.apercu(n.id, n.misAJourLe),
     queryFn: () => lire!(n),
-    enabled: n.type === 'MESSAGE' && !!lire,
+    enabled: TYPES_MESSAGERIE.includes(n.type) && !!lire,
     staleTime: Infinity,
     retry: false,
   })
@@ -133,7 +133,7 @@ export function useApercuNotification(n: NotificationPlateforme) {
  */
 export function lienDansCouche(n: Pick<NotificationPlateforme, 'type' | 'lien'>, couche: CoucheNotifications): string {
   if (couche === 'des') return n.lien
-  if (n.type === 'MESSAGE' && /^\/des(\/|$|\?)/.test(n.lien)) return `/console${n.lien.slice(4)}`
+  if (TYPES_MESSAGERIE.includes(n.type) && /^\/des(\/|$|\?)/.test(n.lien)) return `/console${n.lien.slice(4)}`
   return adresseApplication('des', n.lien, lireSessionDemo())
 }
 
@@ -141,10 +141,12 @@ export function lienDansCouche(n: Pick<NotificationPlateforme, 'type' | 'lien'>,
  * Vrai si la notification porte sur la conversation actuellement ouverte dans la messagerie de la couche
  * (/{couche}/messagerie?conversation=<id>) : pas de fenêtre surgissante pour elle.
  */
-export function conversationOuverte(n: Pick<NotificationPlateforme, 'type' | 'reference'>, couche: CoucheNotifications, emplacement: { pathname: string; search: string }): boolean {
-  if (n.type !== 'MESSAGE' || n.reference.type !== 'CONVERSATION') return false
+export function conversationOuverte(n: Pick<NotificationPlateforme, 'type' | 'reference' | 'conversationId'>, couche: CoucheNotifications, emplacement: { pathname: string; search: string }): boolean {
+  // Message, mention ou réponse (D-82) : comparaison sur la conversation de la notification.
+  const conversation = conversationDe(n)
+  if (!conversation) return false
   if (emplacement.pathname.replace(/\/+$/, '') !== `/${couche}/messagerie`) return false
-  return new URLSearchParams(emplacement.search).get('conversation') === n.reference.id
+  return new URLSearchParams(emplacement.search).get('conversation') === conversation
 }
 
 /** Ouvre une notification : marquée lue si elle ne l'est pas, puis son lien (routeur, ou adresse d'une autre application). */

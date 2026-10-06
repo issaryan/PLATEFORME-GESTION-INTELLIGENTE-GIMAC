@@ -52,8 +52,9 @@ function Preferences({ p }: { p: PreferencesNotifications }) {
     <div className="gm-col">
       <div className="gm-col" role="group" aria-label={t('compte.notifications.types')} style={{ gap: 'var(--gm-space-2)' }}>
         <strong>{t('compte.notifications.types')}</strong>
+        {/* Un service antérieur ne renvoie ni MENTION, REPONSE (D-82), DEMANDE (D-81) ni PROCESSUS (D-87) : actifs par défaut, comme le contrat. */}
         {TYPES_NOTIFICATION.map((type) => (
-          <Switch key={type} label={t(`compte.notifications.type.${type}`)} checked={p.types[type]} disabled={enregistrer.isPending}
+          <Switch key={type} label={t(`compte.notifications.type.${type}`)} checked={p.types[type] ?? true} disabled={enregistrer.isPending}
             onChange={(v) => changer({ types: { ...p.types, [type]: v } })} />
         ))}
         <span className="gm-field-help">{t('compte.notifications.types.aide')}</span>

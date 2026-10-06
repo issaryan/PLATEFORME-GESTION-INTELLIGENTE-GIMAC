@@ -4,6 +4,7 @@ import cm.gimac.des.pilotage.application.port.in.AgendaUseCase.EvenementLu;
 import cm.gimac.des.pilotage.application.port.in.Appelant;
 import cm.gimac.des.pilotage.application.port.in.EquipeUseCase;
 import cm.gimac.des.pilotage.application.port.out.OrganisationPort.Membre;
+import cm.gimac.des.pilotage.application.port.out.OrganisationPort.Pouvoir;
 import cm.gimac.des.pilotage.domain.activite.CategorieEvenement;
 import cm.gimac.des.pilotage.domain.activite.EtatRapport;
 import cm.gimac.des.pilotage.domain.activite.EtatTache;
@@ -31,8 +32,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Vue d'équipe (§2.5, PIL_TEAM_READ) et synthèse du tableau de bord (§2.6). Les comptes sont lus par
- * requêtes groupées sur toute l'équipe (500 membres au plus), jamais un par un.
+ * Vue d'équipe (§2.5, PIL_TEAM_READ) et synthèse du tableau de bord (§2.6). Les membres sont les comptes
+ * couverts par la portée de ACTIVITE_LIRE de l'appelant (matrice des pouvoirs, D-81 §6) ; leurs données
+ * sont lues par requêtes groupées (500 membres au plus), jamais une par une.
  */
 @Service
 @Transactional(readOnly = true)
@@ -69,7 +71,7 @@ public class EquipeService implements EquipeUseCase {
     @Override
     public List<MembreDuJour> equipe(Appelant appelant, String jour) {
         LocalDate j = jour(jour);
-        List<Membre> membres = equipes.membres(appelant.id());
+        List<Membre> membres = equipes.membres(appelant, Pouvoir.ACTIVITE_LIRE);
         if (membres.isEmpty()) {
             return List.of();
         }

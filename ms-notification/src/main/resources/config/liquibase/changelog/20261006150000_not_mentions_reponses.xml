@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Mentions et réponses de la messagerie (D-82, docs/lot1/messagerie.md §4) : types MENTION et REPONSE,
+     préférences correspondantes (actives par défaut) et conversation de la notification, interrogeable,
+     pour marquer lues les mentions et réponses à l'ouverture de la conversation. -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="not-notifications-mentions-reponses" author="lot1">
+        <sql>ALTER TABLE notification_utilisateur DROP CONSTRAINT ck_notification_utilisateur_type;</sql>
+        <sql>ALTER TABLE notification_utilisateur ADD CONSTRAINT ck_notification_utilisateur_type CHECK (type IN ('MESSAGE', 'TACHE', 'RAPPORT', 'DEMANDE', 'MENTION', 'REPONSE'));</sql>
+        <addColumn tableName="notification_utilisateur">
+            <column name="conversation_id" type="varchar(80)" remarks="Conversation de la messagerie (MESSAGE, MENTION, REPONSE), sinon null."/>
+        </addColumn>
+        <!-- Notifications de message existantes : leur conversation est leur référence. -->
+        <sql>UPDATE notification_utilisateur SET conversation_id = reference_id WHERE reference_service = 'collaboration' AND reference_type = 'CONVERSATION';</sql>
+        <!-- Non-lues d'une conversation (POST /notifications/lecture avec la référence de la conversation). -->
+        <sql>CREATE INDEX ix_notification_utilisateur_conversation ON notification_utilisateur (destinataire_id, conversation_id) WHERE lue_le IS NULL AND conversation_id IS NOT NULL;</sql>
+        <addColumn tableName="preference_notification">
+            <column name="type_mention" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
+            <column name="type_reponse" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>

@@ -2,6 +2,7 @@ package cm.gimac.des.pilotage.application.usecase;
 
 import cm.gimac.des.pilotage.application.port.in.ActivitesUseCase;
 import cm.gimac.des.pilotage.application.port.in.Appelant;
+import cm.gimac.des.pilotage.application.port.out.OrganisationPort.Pouvoir;
 import cm.gimac.des.pilotage.domain.activite.Activite;
 import cm.gimac.des.pilotage.domain.activite.StatutActivite;
 import cm.gimac.des.pilotage.domain.activite.Tache;
@@ -46,7 +47,7 @@ public class ActiviteService implements ActivitesUseCase {
         LocalDate fin = ReglesActivite.lireJour("au", au);
         ReglesActivite.intervalle(debut, fin, ReglesActivite.ACTIVITES_JOURS_MAX);
         String compte = collaborateur == null || collaborateur.isBlank() ? appelant.id() : collaborateur.strip();
-        equipes.exigerLecture(appelant, compte);
+        equipes.exigerLecture(appelant, Pouvoir.ACTIVITE_LIRE, compte);
         String nom = equipes.noms(List.of(compte)).get(compte);
         return activites.findByAuteurIdAndJourBetweenOrderByJourAscOrdreAscCreeLeAsc(compte, debut, fin).stream().map(a -> new ActiviteLue(a, nom)).toList();
     }
@@ -101,7 +102,7 @@ public class ActiviteService implements ActivitesUseCase {
     private Activite auteur(Appelant appelant, UUID id) {
         Activite a = activites.findById(id).orElseThrow(() -> PilotageException.introuvable("PIL_ACTIVITE_INTROUVABLE", id));
         if (!a.getAuteurId().equals(appelant.id())) {
-            if (equipes.peutLire(appelant, a.getAuteurId())) {
+            if (equipes.peutLire(appelant, Pouvoir.ACTIVITE_LIRE, a.getAuteurId())) {
                 throw PilotageException.reservee("Seul l'auteur modifie son activité");
             }
             throw PilotageException.horsEquipe();

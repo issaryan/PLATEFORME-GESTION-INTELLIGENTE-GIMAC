@@ -7,6 +7,7 @@ import cm.gimac.des.pilotage.application.port.in.EquipeUseCase.MembreDuJour;
 import cm.gimac.des.pilotage.application.port.in.EquipeUseCase.Synthese;
 import cm.gimac.des.pilotage.application.port.in.Page;
 import cm.gimac.des.pilotage.application.port.in.RapportsUseCase.RapportLu;
+import cm.gimac.des.pilotage.application.port.in.TachesUseCase.GroupeLu;
 import cm.gimac.des.pilotage.application.port.in.TachesUseCase.TacheLue;
 import cm.gimac.des.pilotage.domain.activite.Activite;
 import cm.gimac.des.pilotage.domain.activite.EtatRapport;
@@ -134,6 +135,7 @@ final class Vues {
 
     record HistoriqueVue(String quand, PersonneVue acteur, String action, String detail) {}
 
+    /** Tâche ; D-81 §6 : {@code groupeId} (envoi à plusieurs), {@code uniteCible} (unité visée), {@code relanceeLe}. */
     record TacheVue(
         UUID id,
         String titre,
@@ -147,7 +149,11 @@ final class Vues {
         boolean enRetard,
         String creeeLe,
         String termineeLe,
-        List<HistoriqueVue> historique
+        UUID groupeId,
+        String uniteCible,
+        String relanceeLe,
+        List<HistoriqueVue> historique,
+        String profilRequis
     ) {
         static TacheVue de(TacheLue l) {
             Tache t = l.tache();
@@ -165,16 +171,38 @@ final class Vues {
                 l.enRetard(),
                 ReglesActivite.horodatage(t.getCreeLe()),
                 ReglesActivite.horodatage(t.getTermineeLe()),
+                t.getGroupeId(),
+                t.getUniteCible(),
+                ReglesActivite.horodatage(t.getRelanceeLe()),
                 l
                     .historique()
                     .stream()
                     .map(h -> new HistoriqueVue(ReglesActivite.horodatage(h.getQuand()), PersonneVue.de(h.getActeurId(), noms), h.getAction().name(), h.getDetail()))
-                    .toList()
+                    .toList(),
+                t.getProfilRequis()
             );
         }
     }
 
-    record TacheRequete(String titre, String description, String echeance, String priorite, String responsableId) {}
+    /** Création ou modification ; à la création, {@code responsableId}, {@code responsables} (2 à 50) ou {@code uniteCible}. */
+    record TacheRequete(String titre, String description, String echeance, String priorite, String responsableId, List<String> responsables, String uniteCible) {}
+
+    record AttributionRequete(String responsableId) {}
+
+    record AvancementVue(int total, int terminees, int enRetard) {}
+
+    /** Envoi à plusieurs personnes (D-81 §6) : tâches visibles de l'appelant et leur avancement. */
+    record GroupeVue(UUID groupeId, String titre, PersonneVue createur, List<TacheVue> taches, AvancementVue avancement) {
+        static GroupeVue de(GroupeLu g) {
+            return new GroupeVue(
+                g.groupeId(),
+                g.titre(),
+                PersonneVue.de(g.createurId(), g.noms()),
+                g.taches().stream().map(TacheVue::de).toList(),
+                new AvancementVue(g.avancement().total(), g.avancement().terminees(), g.avancement().enRetard())
+            );
+        }
+    }
 
     record TransitionRequete(String etat, String motif) {}
 

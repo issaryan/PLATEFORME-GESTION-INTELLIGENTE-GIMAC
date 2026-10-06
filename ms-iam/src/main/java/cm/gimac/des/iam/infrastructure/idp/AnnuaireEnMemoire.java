@@ -8,6 +8,7 @@ import cm.gimac.des.iam.domain.compte.ConfigurationMessagerie;
 import cm.gimac.des.iam.domain.compte.FicheCompte;
 import cm.gimac.des.iam.domain.compte.NouveauCompte;
 import cm.gimac.des.iam.domain.compte.PolitiqueSecurite;
+import cm.gimac.des.iam.domain.compte.PresentationProfil;
 import cm.gimac.des.iam.domain.compte.Profil;
 import cm.gimac.des.iam.domain.compte.SessionCompte;
 import cm.gimac.des.iam.domain.service.PolitiqueMotDePasse;
@@ -38,6 +39,9 @@ public class AnnuaireEnMemoire implements Annuaire {
     private final Map<String, Compte> comptes = new ConcurrentHashMap<>();
     private final Map<String, List<SessionCompte>> sessions = new ConcurrentHashMap<>();
     private final Map<String, Set<String>> profils = new TreeMap<>();
+    /** Libellé (attribut gimac_libelle) et description de chaque profil (D-86). */
+    private final Map<String, String> libelles = new TreeMap<>();
+    private final Map<String, String> descriptions = new TreeMap<>();
     private final Set<String> privilegies;
     /** Mots de passe du substitut (le plus récent en tête), jamais exposés. */
     private final Map<String, Deque<String>> motsDePasse = new ConcurrentHashMap<>();
@@ -48,6 +52,11 @@ public class AnnuaireEnMemoire implements Annuaire {
     public AnnuaireEnMemoire(Map<String, Set<String>> catalogue, Set<String> privilegies) {
         this.privilegies = Set.copyOf(privilegies);
         catalogue.forEach((k, v) -> profils.put(k, new TreeSet<>(v)));
+        profils.keySet().forEach(k -> {
+            if (LIBELLES_PAR_PROFIL.containsKey(k)) {
+                libelles.put(k, LIBELLES_PAR_PROFIL.get(k));
+            }
+        });
         Instant t = Instant.parse("2026-09-01T08:00:00Z");
         ajouter(new Compte("demo-super-admin", "super.admin", "Super", "Administrateur", "super.admin@gimac.test", true, true, t, "+237600000001", "Administrateur de la plateforme", "fr", null, true, Set.of("ROLE_SUPER_ADMIN"), List.of(), true));
         ajouter(new Compte("demo-rssi", "rssi", "Responsable", "Sécurité", "rssi@gimac.test", true, true, t, "+237600000002", "RSSI", "fr", null, true, Set.of("ROLE_RSSI"), List.of(), true));
@@ -292,17 +301,75 @@ public class AnnuaireEnMemoire implements Annuaire {
     }
 
     @Override
-    public List<Profil> profils() {
+    public List<Compte> parUnite(String unite) {
+        return comptes.values().stream().filter(c -> unite.equals(c.unite())).sorted((a, b) -> a.identifiant().compareTo(b.identifiant())).toList();
+    }
+
+    @Override
+    public synchronized void creerProfil(String code, String libelle, String description, Set<String> permissions) {
+        if (profils.containsKey(code)) {
+            throw IamException.conflit("IAM_PROFIL_EXISTANT", "Un profil porte déjà ce code", Map.of("code", code));
+        }
+        profils.put(code, new TreeSet<>(permissions));
+        presenter(code, libelle, description);
+    }
+
+    @Override
+    public synchronized void supprimerProfil(String code) {
+        profils.remove(code);
+        libelles.remove(code);
+        descriptions.remove(code);
+    }
+
+    @Override
+    public synchronized void definirPresentationProfil(String code, String libelle, String description) {
+        if (!profils.containsKey(code)) {
+            throw IamException.introuvable("IAM_PROFILE_NOT_FOUND", code);
+        }
+        presenter(code, libelle, description);
+    }
+
+    private void presenter(String code, String libelle, String description) {
+        if (libelle == null || libelle.isBlank()) {
+            libelles.remove(code);
+        } else {
+            libelles.put(code, libelle);
+        }
+        if (description == null) {
+            descriptions.remove(code);
+        } else {
+            descriptions.put(code, description);
+        }
+    }
+
+    @Override
+    public synchronized Map<String, PresentationProfil> presentationsProfils() {
+        Map<String, PresentationProfil> m = new TreeMap<>();
+        profils.keySet().forEach(code -> m.put(code, PresentationProfil.lue(code, libelles.get(code), descriptions.get(code))));
+        return m;
+    }
+
+    @Override
+    public synchronized Map<String, Set<String>> profilsParCompte() {
+        Map<String, Set<String>> m = new TreeMap<>();
+        comptes.values().forEach(c -> c.profils().stream().filter(profils::containsKey).forEach(p -> m.computeIfAbsent(c.id(), k -> new TreeSet<>()).add(p)));
+        return m;
+    }
+
+    @Override
+    public synchronized List<Profil> profils() {
         List<Profil> l = new ArrayList<>();
         profils.forEach((code, perms) ->
-            l.add(new Profil(code, null, perms, privilegies.contains(code), comptes.values().stream().filter(c -> c.profils().contains(code)).count()))
+            l.add(new Profil(code, libelles.get(code), descriptions.get(code), perms, privilegies.contains(code), comptes.values().stream().filter(c -> c.profils().contains(code)).count(), false))
         );
         return l;
     }
 
     @Override
-    public List<String> permissions() {
-        return profils.values().stream().flatMap(Set::stream).distinct().sorted().toList();
+    public synchronized List<String> permissions() {
+        Set<String> s = new TreeSet<>(PERMISSIONS_CONNUES);
+        profils.values().forEach(s::addAll);
+        return List.copyOf(s);
     }
 
     @Override
@@ -326,10 +393,73 @@ public class AnnuaireEnMemoire implements Annuaire {
         return nouveau == null ? ancien : nouveau;
     }
 
-    /** Catalogue minimal des profils, quand la configuration n'en fournit pas. */
+    /**
+     * Catalogue des profils du substitut : profils attribuables de la configuration, avec les principales
+     * permissions du realm (infra/keycloak/generer-realm-gimac.py) pour les profils connus, vides sinon.
+     */
     public static Map<String, Set<String>> catalogueParDefaut(Set<String> profilsAttribuables) {
         Map<String, Set<String>> m = new LinkedHashMap<>();
-        profilsAttribuables.forEach(p -> m.put(p, Set.of()));
+        profilsAttribuables.stream().sorted().forEach(p -> m.put(p, PERMISSIONS_PAR_PROFIL.getOrDefault(p, Set.of())));
         return m;
     }
+
+    private static final Set<String> COMMUNES = Set.of("COL_MESSAGE_READ", "COL_MESSAGE_SEND", "NOT_INBOX_READ", "PIL_ACTIVITY_OWN");
+    private static final Set<String> IAM = Set.of(
+        "IAM_ACCOUNT_READ", "IAM_ACCOUNT_CREATE", "IAM_ACCOUNT_EDIT", "IAM_ACCOUNT_ROLES", "IAM_ACCOUNT_STATUS", "IAM_ACCOUNT_DELETE",
+        "IAM_ACCOUNT_SECURITY", "IAM_JOURNAL_READ", "IAM_PROFILE_EDIT", "PLATFORM_SECURITY_POLICY_READ", "PLATFORM_SECURITY_POLICY_EDIT", "PLATFORM_MESSAGING_EDIT"
+    );
+    private static final Set<String> CHEF = Set.of("PIL_TEAM_READ", "PIL_TASK_ASSIGN");
+
+    private static Set<String> union(Set<?>... ensembles) {
+        Set<String> s = new TreeSet<>();
+        for (Set<?> e : ensembles) {
+            e.forEach(x -> s.add((String) x));
+        }
+        return s;
+    }
+
+    /** Permissions principales des profils livrés (extrait du realm du lot 1). */
+    static final Map<String, Set<String>> PERMISSIONS_PAR_PROFIL = Map.ofEntries(
+        Map.entry("ROLE_SUPER_ADMIN", union(COMMUNES, IAM, Set.of("IAM_ROLE_PRIVILEGED_GRANT", "PLATFORM_CONFIG_READ", "PLATFORM_CONFIG_EDIT"))),
+        Map.entry("ROLE_RSSI", union(COMMUNES, IAM, CHEF)),
+        Map.entry("ROLE_CHEF_DES", union(COMMUNES, CHEF, Set.of("HOM_DASHBOARD_READ"))),
+        Map.entry("ROLE_CHEF_DDRM", union(COMMUNES, CHEF, Set.of("PAR_INSTITUTION_READ"))),
+        Map.entry("ROLE_DG", union(COMMUNES, CHEF, Set.of("CER_QUITUS_DG_SIGN"))),
+        Map.entry("ROLE_CONFORMITE", union(COMMUNES, CHEF, Set.of("CER_QUITUS_CONFORMITE_SIGN"))),
+        Map.entry("ROLE_RESPONSABLE_SERVICE", union(COMMUNES, CHEF)),
+        Map.entry("ROLE_ADMIN_SYSTEME", union(COMMUNES, Set.of("PLATFORM_OPS_READ", "PLATFORM_OPS_EXECUTE"))),
+        Map.entry("ROLE_COLLABORATEUR", COMMUNES),
+        Map.entry("ROLE_INGENIEUR_HOMOLOGATION", union(COMMUNES, Set.of("HOM_DASHBOARD_READ", "HOM_OPERATION_VALIDATE"))),
+        Map.entry("ROLE_SNA", union(COMMUNES, Set.of("HOM_DASHBOARD_READ"))),
+        Map.entry("ROLE_PRODUCTION_MONETIQUE", union(COMMUNES, Set.of("HOM_DASHBOARD_READ"))),
+        Map.entry("ROLE_POLE_RESEAU", union(COMMUNES, Set.of("HOM_DASHBOARD_READ"))),
+        Map.entry("ROLE_POLE_SYSTEME", union(COMMUNES, Set.of("HOM_DASHBOARD_READ"))),
+        Map.entry("ROLE_CHARGE_DDRM", union(COMMUNES, Set.of("PAR_INSTITUTION_READ"))),
+        Map.entry("ROLE_CONDUCTEUR_PROJET", union(COMMUNES, Set.of("HOM_DASHBOARD_READ"))),
+        Map.entry("ROLE_CORRESPONDANT", Set.of("HOM_PORTAL_READ", "HOM_PORTAL_SUBMIT"))
+    );
+
+    /** Libellés des profils livrés (infra/keycloak/generer-realm-gimac.py, attribut gimac_libelle). */
+    static final Map<String, String> LIBELLES_PAR_PROFIL = Map.ofEntries(
+        Map.entry("ROLE_SUPER_ADMIN", "Super administrateur"),
+        Map.entry("ROLE_RSSI", "Sécurité des SI"),
+        Map.entry("ROLE_CHEF_DES", "Chef du DES"),
+        Map.entry("ROLE_CHEF_DDRM", "Chef de la DDRM"),
+        Map.entry("ROLE_DG", "Direction générale"),
+        Map.entry("ROLE_CONFORMITE", "Conformité"),
+        Map.entry("ROLE_RESPONSABLE_SERVICE", "Responsable de service"),
+        Map.entry("ROLE_ADMIN_SYSTEME", "Administrateur système"),
+        Map.entry("ROLE_COLLABORATEUR", "Collaborateur"),
+        Map.entry("ROLE_INGENIEUR_HOMOLOGATION", "Ingénieur d'homologation"),
+        Map.entry("ROLE_SNA", "Normes et Agréments"),
+        Map.entry("ROLE_PRODUCTION_MONETIQUE", "Production monétique"),
+        Map.entry("ROLE_POLE_RESEAU", "Pôle réseau"),
+        Map.entry("ROLE_POLE_SYSTEME", "Pôle système"),
+        Map.entry("ROLE_CHARGE_DDRM", "Chargé de la DDRM"),
+        Map.entry("ROLE_CONDUCTEUR_PROJET", "Conducteur de projet"),
+        Map.entry("ROLE_CORRESPONDANT", "Correspondant du participant")
+    );
+
+    /** Permissions connues du substitut, même sans profil qui les porte (dont les permissions internes). */
+    static final Set<String> PERMISSIONS_CONNUES = Set.of("INTERNAL_IAM_READ", "PAR_INSTITUTION_READ", "HOM_DASHBOARD_READ");
 }

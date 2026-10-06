@@ -1,0 +1,89 @@
+# Alertes de la supervision (D-61) : Alertmanager, comme le service alertmanager de docker-compose.yml (même
+# image, même configuration : partages/alertmanager/config.yml, copie de infra/docker-compose/alertmanager-conf/
+# config.yml tenue par synchroniser-partages.sh). Reçoit les alertes de jhipster-prometheus (alerting de la
+# ressource Prometheus, kustomization.yaml) ; la passerelle lit les alertes actives (/api/plateforme/alertes).
+# Le récepteur « webhook » de la configuration partagée est un exemple (webhook.site) : aucune sortie n'est
+# ouverte (politique réseau « alertmanager »), les alertes restent consultables dans la console ; le récepteur
+# réel et sa règle de sortie sont à fixer à la mise en production.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alertmanager
+  namespace: gimac-des
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: alertmanager
+  template:
+    metadata:
+      labels:
+        app: alertmanager
+        gimac.cm/segment: alertes
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: alertmanager
+          image: prom/alertmanager:v0.34.1
+          args:
+            - --config.file=/etc/alertmanager/config.yml
+            - --storage.path=/alertmanager
+            # Une seule réplique : pas de grappe d'Alertmanager (port 9094 fermé).
+            - --cluster.listen-address=
+          ports:
+            - name: http
+              containerPort: 9093
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ['ALL']
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { cpu: 200m, memory: 256Mi }
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          volumeMounts:
+            - name: configuration
+              mountPath: /etc/alertmanager
+              readOnly: true
+            - name: donnees
+              mountPath: /alertmanager
+      volumes:
+        - name: configuration
+          configMap:
+            name: alertmanager-configuration
+        - name: donnees
+          emptyDir: { sizeLimit: 256Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: alertmanager
+  namespace: gimac-des
+  labels:
+    app: alertmanager
+spec:
+  type: ClusterIP
+  selector:
+    app: alertmanager
+  ports:
+    - name: http
+      port: 9093
+      targetPort: 9093

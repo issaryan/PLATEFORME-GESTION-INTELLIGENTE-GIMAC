@@ -24,6 +24,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -68,7 +69,28 @@ public class AdministrationComptesService {
     private final IamProprietes proprietes;
     private final LiensCourriel liens;
     private final Clock clock;
+    private final CatalogueProfils catalogue;
 
+    @Autowired
+    public AdministrationComptesService(
+        Annuaire annuaire,
+        JournalActes journal,
+        JournalAdministrationRepository entrees,
+        IamProprietes proprietes,
+        LiensCourriel liens,
+        Clock clock,
+        CatalogueProfils catalogue
+    ) {
+        this.annuaire = annuaire;
+        this.journal = journal;
+        this.entrees = entrees;
+        this.proprietes = proprietes;
+        this.liens = liens;
+        this.clock = clock;
+        this.catalogue = catalogue;
+    }
+
+    /** Service limité aux profils de la configuration (sans profil créé). */
     public AdministrationComptesService(
         Annuaire annuaire,
         JournalActes journal,
@@ -77,12 +99,7 @@ public class AdministrationComptesService {
         LiensCourriel liens,
         Clock clock
     ) {
-        this.annuaire = annuaire;
-        this.journal = journal;
-        this.entrees = entrees;
-        this.proprietes = proprietes;
-        this.liens = liens;
-        this.clock = clock;
+        this(annuaire, journal, entrees, proprietes, liens, clock, CatalogueProfils.configuration(proprietes));
     }
 
     // ------------------------------------------------------------------ lectures
@@ -139,7 +156,7 @@ public class AdministrationComptesService {
         Instant il30Jours = clock.instant().minus(Duration.ofDays(30));
         Map<String, Long> parProfil = new java.util.TreeMap<>();
         l.forEach(c -> c.profils().forEach(p -> parProfil.merge(p, 1L, Long::sum)));
-        Set<String> privilegies = proprietes.profils().privilegies();
+        Set<String> privilegies = catalogue.privilegies();
         return new Indicateurs(
             l.size(),
             l.stream().filter(Compte::actif).count(),
@@ -164,7 +181,7 @@ public class AdministrationComptesService {
         if (!envoyerInvitation && !motDePasseProvisoire) {
             throw IamException.invalide("IAM_ONBOARDING_REQUIRED", "Choisir l'invitation par courriel ou un mot de passe provisoire", Map.of());
         }
-        ReglesAdministration.verifierProfils(acteur, Set.of(), n.profils(), proprietes.profils().attribuables(), proprietes.profils().privilegies());
+        ReglesAdministration.verifierProfils(acteur, Set.of(), n.profils(), catalogue.attribuables(), catalogue.privilegies());
         if (annuaire.parIdentifiant(n.identifiant()).isPresent() || annuaire.emailPris(n.email(), null)) {
             throw IamException.conflit("IAM_ACCOUNT_CONFLICT", "Identifiant ou courriel déjà utilisé", Map.of());
         }
@@ -215,7 +232,7 @@ public class AdministrationComptesService {
         ReglesAdministration.verifierPasSoiMeme(acteur, id);
         ReglesAdministration.exigerMotif(motif);
         Compte c = lire(id);
-        ReglesAdministration.verifierProfils(acteur, c.profils(), profils, proprietes.profils().attribuables(), proprietes.profils().privilegies());
+        ReglesAdministration.verifierProfils(acteur, c.profils(), profils, catalogue.attribuables(), catalogue.privilegies());
         if (c.profils().contains(ReglesAdministration.SUPER_ADMIN) && !profils.contains(ReglesAdministration.SUPER_ADMIN)) {
             ReglesAdministration.verifierDernierSuperAdmin(c.actif(), superAdminsActifs());
         }

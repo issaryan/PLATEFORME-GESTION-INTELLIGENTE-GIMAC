@@ -182,7 +182,7 @@ test.describe('Fonctionnalité : notifications de la console sur la passerelle (
       await expect(section.getByRole('switch', { name: 'Rapports qui me sont soumis' })).not.toBeChecked()
       await expect(section.getByText('Préférences de notification enregistrées.')).toBeVisible()
       const put = appels('/bff/console/notification/preferences').filter((a) => a.methode === 'PUT')
-      expect(put.map((a) => a.corps)).toEqual([{ types: { MESSAGE: true, TACHE: true, RAPPORT: false } }])
+      expect(put.map((a) => a.corps)).toEqual([{ types: { MESSAGE: true, TACHE: true, RAPPORT: false, MENTION: true, REPONSE: true } }])
       expect(gw.preferencesNotifications.types.RAPPORT).toBe(false)
     })
   })

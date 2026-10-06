@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Étapes configurables du référentiel (D-89, docs/lot1/referentiel-droits-etapes.md §2).
+     1. Table des étapes d'une version : code unique dans la version, libellé, ordre, couleur (jeton du design
+        system), étape canonique (EtapeCode) par laquelle passe la progression des liaisons.
+     2. Reprise : chaque version existante (brouillons, publiées, retirées, dont la version 1 reprise de l'annexe A)
+        reçoit les onze étapes actuelles, chacune liée à son étape canonique ; les opérations gardent leur colonne
+        etape, qui devient le code d'une étape de leur version (mêmes valeurs : aucune donnée ne change). -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="d89-etapes-table" author="homologation">
+        <createTable tableName="referential_etape" remarks="Étapes d'une version du référentiel (D-89).">
+            <column name="id" type="uuid"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="version_id" type="uuid">
+                <constraints nullable="false" foreignKeyName="fk_referential_etape_version" referencedTableName="referential_version" referencedColumnNames="id"/>
+            </column>
+            <column name="code" type="varchar(40)"><constraints nullable="false"/></column>
+            <column name="libelle" type="varchar(120)"><constraints nullable="false"/></column>
+            <column name="ordre" type="integer"><constraints nullable="false"/></column>
+            <column name="couleur" type="varchar(20)"><constraints nullable="false"/></column>
+            <column name="canonique" type="varchar(40)"/>
+        </createTable>
+        <addUniqueConstraint tableName="referential_etape" columnNames="version_id, code" constraintName="ux_referential_etape_code"/>
+        <sql>ALTER TABLE referential_etape ADD CONSTRAINT ck_referential_etape_code CHECK (code ~ '^[A-Z][A-Z0-9_]{1,39}$');</sql>
+    </changeSet>
+
+    <changeSet id="d89-etapes-reprise" author="homologation">
+        <sql>
+            INSERT INTO referential_etape (id, version_id, code, libelle, ordre, couleur, canonique)
+            SELECT gen_random_uuid(), v.id, e.code, e.libelle, e.ordre, e.couleur, e.code
+            FROM referential_version v
+            CROSS JOIN (VALUES
+                ('PRISE_CONTACT', 'Prise de contact', 1, 'NEUTRE'),
+                ('ADHESION', 'Adhésion', 2, 'NEUTRE'),
+                ('CADRAGE', 'Cadrage', 3, 'INFO'),
+                ('LANCEMENT', 'Lancement', 4, 'INFO'),
+                ('ATELIERS', 'Ateliers', 5, 'ACTION'),
+                ('INTEGRATION', 'Intégration', 6, 'ACTION'),
+                ('TESTS', 'Tests', 7, 'ALERTE'),
+                ('CERTIFICATION', 'Certification', 8, 'SUCCES'),
+                ('APPROBATION_SECURITE', 'Approbation de la sécurité', 9, 'CRITIQUE'),
+                ('MISE_EN_PRODUCTION', 'Mise en production', 10, 'SUCCES'),
+                ('SUIVI', 'Suivi post-production', 11, 'NEUTRE')
+            ) AS e(code, libelle, ordre, couleur)
+            WHERE NOT EXISTS (SELECT 1 FROM referential_etape x WHERE x.version_id = v.id);
+        </sql>
+    </changeSet>
+</databaseChangeLog>

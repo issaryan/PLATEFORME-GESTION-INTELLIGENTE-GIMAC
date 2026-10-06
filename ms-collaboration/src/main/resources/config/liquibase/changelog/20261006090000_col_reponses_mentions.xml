@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- D-82 : réponse à un message précis et mentions « @ » (docs/lot1/messagerie.md §1), écrite à la main.
+     « reponse_a_id » désigne le message cité, de la même conversation (vérifié par le service). Sans clé
+     étrangère à dessein : la purge de conservation (RG-53) peut supprimer le message cité sans toucher
+     à la réponse, immuable ; la lecture rend alors une citation marquée « supprime ».
+     « message_mention » : membres mentionnés, avec leur nom à l'envoi (instantané, comme l'auteur). -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="col-reponses-message" author="d82">
+        <addColumn tableName="message">
+            <column name="reponse_a_id" type="uuid"/>
+        </addColumn>
+        <createIndex tableName="message" indexName="idx_message_reponse_a"><column name="reponse_a_id"/></createIndex>
+    </changeSet>
+
+    <changeSet id="col-mentions-message" author="d82">
+        <createTable tableName="message_mention">
+            <column name="id" type="uuid"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="message_id" type="uuid">
+                <constraints nullable="false" foreignKeyName="fk_mention_message" references="message(id)"/>
+            </column>
+            <column name="membre_id" type="varchar(64)"><constraints nullable="false"/></column>
+            <column name="nom" type="varchar(200)"><constraints nullable="false"/></column>
+            <!-- Ordre des mentions tel que demandé par l'expéditeur. -->
+            <column name="rang" type="int"><constraints nullable="false"/></column>
+        </createTable>
+        <addUniqueConstraint tableName="message_mention" columnNames="message_id, membre_id" constraintName="uk_mention_message"/>
+        <createIndex tableName="message_mention" indexName="idx_mention_membre"><column name="membre_id"/></createIndex>
+        <!-- Immuabilité (D-64) : comme le message, ses mentions ne sont jamais modifiées. -->
+        <sql>CREATE TRIGGER trg_mention_immuable BEFORE UPDATE ON message_mention FOR EACH ROW EXECUTE FUNCTION col_message_immuable();</sql>
+    </changeSet>
+</databaseChangeLog>

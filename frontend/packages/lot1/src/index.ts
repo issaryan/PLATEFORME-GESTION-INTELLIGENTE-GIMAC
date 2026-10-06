@@ -5,6 +5,7 @@ export type * from './modele/certification'
 export type * from './modele/portail'
 export type * from './modele/participant'
 export type * from './modele/pilotage'
+export type * from './modele/pouvoirs'
 // Noms déjà pris par les modèles de la certification, de l'homologation et du participant : renommés.
 export type { EtapeCode, StatutParcours, SegmentParcours, GrainPreuve, PlateformeExecution, Fonction, Qualite, Personne as PersonneParcours, Raci, Sla, Preuve, EtatOperationParcours, OperationParcours, ElementEtape, EtatEtape, EtapeParcours, EtatServicePerimetre, ServicePerimetre, Blocage, EtatProcesVerbal, Signature, ProcesVerbalCertification, TypeAttestation, Attestation as AttestationParcours, EtatApprobation, Visa, ApprobationSecurite, FicheSuiviServices, DossierLiaison, LiaisonResume, TacheActeur, IndicateursPilotage, TableauActeur, OuvertureLiaison as OuvertureLiaisonParcours } from './modele/parcours'
 export type * as Parcours from './modele/parcours'
@@ -12,7 +13,7 @@ export { ETAPES } from './modele/parcours'
 export { referentielDe, type OperationReferentiel } from './modele/referentielCR'
 export { PERM, PROFILS, PERMISSIONS_NOUVELLES, FONCTION_DU_ROLE, fonctionsDe } from './permissions'
 export * from './dictionnaires'
-export type { Services, ServicePilotage, ServiceParticipant, ServiceHomologation, ServiceCertification, ServicePortail, ServiceReauthentification, ServiceParcours, ServiceDecision, ServicePortailParcours, FiltreLiaisons, Assertion } from './services/ports'
+export type { Services, ServicePilotage, ServicePouvoirs, ServiceParticipant, ServiceHomologation, ServiceCertification, ServicePortail, ServiceReauthentification, ServiceParcours, ServiceDecision, ServicePortailParcours, FiltreLiaisons, Assertion } from './services/ports'
 export { ServicesProvider, useServices } from './services/ServicesProvider'
 export { servicesHttp } from './services/http'
 export { catalogue as catalogueMessagerie } from './i18n/ecrans/messagerie'
@@ -31,10 +32,20 @@ export { ANNUAIRE } from './services/simule/messagerie'
 export { PROFILS_INTERNES_DEMO, IDENTITES_HORS_ANNUAIRE, identifiantDemo, type ProfilInterneDemo } from './profilsDemo'
 // Mon activité (D-76) : organisation de démonstration (unités, rattachements), reprise par « Mon compte » et l'administration simulés.
 export { ORGANISATION_DEMO, UNITES_DEMO, rattachementDemo } from './services/simule/pilotage'
-export { TYPES_UNITE } from './modele/pilotage'
+export { TYPES_UNITE, LIMITES_GROUPE } from './modele/pilotage'
+// Pouvoirs hiérarchiques (D-81) : matrice, portées, demandes ; MS-IAM simulé partagé avec l'administration.
+export { ACTIONS_POUVOIR, PORTEES, AUCUN_POUVOIR, completerActions, TYPES_DEMANDE, ETATS_DEMANDE, MOTIF_DEMANDE, rangPortee, couvre, couvreUnites, couverts, estCreation, estProfils } from './modele/pouvoirs'
+export { magasinPouvoirs, pouvoirsParDefaut, PROFILS_PRIVILEGIES, PROFILS_RESPONSABLES, RESPONSABLES_UNITES_DEMO, type MagasinPouvoirs } from './services/simule/pouvoirs'
+// Profils et organisation (D-86) : libellé et mission des profils livrés, pour les services simulés.
+export { PRESENTATIONS_PROFILS, type PresentationProfil } from './services/simule/presentations'
 export { catalogues } from './i18n'
 export { NAVIGATION_DES, NAVIGATION_PORTAIL } from './navigation'
 export {
   FONCTIONNALITES, GROUPES, WIDGETS, PREDICAT_COCKPIT, PREDICAT_DDRM, PREDICAT_MON_TRAVAIL, ADMINISTRATION, PLATEFORME, URL_CONSOLE, versConsole, estOuverte,
   fonctionnalitesOuvertes, widgetsOuverts, navigationDepuis, type Fonctionnalite, type CleWidget, type WidgetTableau, type GroupeFonctionnalites,
 } from './fonctionnalites'
+// Rôles composés par fonctionnalité (D-90) : catalogue Module > Fonctionnalité > Droit dérivé du registre.
+export {
+  CATALOGUE_DROITS, DROITS_REGISTRE, MODULES_DROITS, NATURES_DROIT, catalogueDroits, permissionsCatalogue, permissionPrivilegiee, etatFonctionnalite, basculerDroit,
+  basculerFonctionnalite, comparerCompositions, type Droit, type NatureDroit, type FonctionnaliteDroits, type ModuleDroits,
+} from './droits'

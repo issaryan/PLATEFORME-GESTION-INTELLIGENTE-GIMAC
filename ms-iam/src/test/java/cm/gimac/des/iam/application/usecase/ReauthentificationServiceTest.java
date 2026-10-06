@@ -185,6 +185,16 @@ class ReauthentificationServiceTest {
     }
 
     @Test
+    @DisplayName("D-87 : signature d'une étape de processus, finalité SIGNATURE_PROCESSUS liée au défi ; autre finalité refusée ; audit publié")
+    void signatureProcessus() {
+        enroler(CHEF);
+        assertThat(service.verifier(assertion(CHEF, "SIGNATURE_PROCESSUS"), "chef-ddrm", "SIGNATURE_PROCESSUS")).isTrue();
+        verify(outbox).publish(eq("reauthentication"), eq("chef-ddrm"), eq(ReauthentificationPayload.TYPE), eq(new ReauthentificationPayload("chef-ddrm", "SIGNATURE_PROCESSUS", true, null)));
+        assertThat(service.verifier(assertion(CHEF, "SIGNATURE_PROCESSUS"), "chef-ddrm", "STATUS_APPROVE")).isFalse();
+        assertThat(service.verifier(assertion(CHEF, "STATUS_APPROVE"), "chef-ddrm", "SIGNATURE_PROCESSUS")).isFalse();
+    }
+
+    @Test
     @DisplayName("Défi refusé sans clé enrôlée ou avec une finalité invalide ; enrôlement invalide refusé")
     void preconditions() {
         refus(() -> service.defi(CHEF, "STATUS_APPROVE"), "IAM_NO_SECURITY_KEY");

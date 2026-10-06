@@ -29,6 +29,7 @@ import cm.gimac.des.collaboration.domain.service.ReglesMessagerie;
 import cm.gimac.des.collaboration.infrastructure.messaging.outbox.OutboxPublisher;
 import cm.gimac.des.collaboration.repository.ConversationMembreRepository;
 import cm.gimac.des.collaboration.repository.ConversationRepository;
+import cm.gimac.des.collaboration.repository.LectureConversationRepository;
 import cm.gimac.des.collaboration.repository.MessageRepository;
 import cm.gimac.des.collaboration.repository.PieceJointeRepository;
 import java.time.Clock;
@@ -80,6 +81,9 @@ class GroupesServiceTest {
     @Mock
     OutboxPublisher outbox;
 
+    @Mock
+    LectureConversationRepository lectures;
+
     MessagerieService service;
 
     @BeforeEach
@@ -88,6 +92,7 @@ class GroupesServiceTest {
             conversations,
             membres,
             messages,
+            lectures,
             piecesJointes,
             annuaire,
             documents,

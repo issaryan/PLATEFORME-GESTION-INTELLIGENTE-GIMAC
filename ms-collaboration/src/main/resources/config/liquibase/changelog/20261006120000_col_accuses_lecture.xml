@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- D-88 : accusés de lecture (docs/lot1/accuses-lecture.md), écrit à la main. La position de lecture
+     courante reste dans conversation_membre (dernier_lu_le) ; « conversation_lecture » garde chaque avancée
+     (jusqu'où, quand) pour l'heure du « Lu par » d'un message. En ajout seulement. -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="col-conversation-lecture" author="d88">
+        <createTable tableName="conversation_lecture">
+            <column name="id" type="uuid"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="conversation_id" type="uuid">
+                <constraints nullable="false" foreignKeyName="fk_lecture_conversation" references="conversation(id)"/>
+            </column>
+            <column name="membre_id" type="varchar(64)"><constraints nullable="false"/></column>
+            <!-- Instant d'envoi du dernier message lu (position atteinte). -->
+            <column name="lu_jusqu_a" type="timestamptz"><constraints nullable="false"/></column>
+            <column name="lu_le" type="timestamptz"><constraints nullable="false"/></column>
+        </createTable>
+        <createIndex tableName="conversation_lecture" indexName="idx_lecture_conversation">
+            <column name="conversation_id"/><column name="lu_jusqu_a"/>
+        </createIndex>
+    </changeSet>
+</databaseChangeLog>

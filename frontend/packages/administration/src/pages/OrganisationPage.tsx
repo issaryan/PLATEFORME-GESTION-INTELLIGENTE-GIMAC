@@ -1,90 +1,20 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Card, ConfirmDialog, CrudDialog, EmptyState, KeyValueList, PageHeader, Select, StatusBadge, TextField, TreeView, type TreeNode } from '@gimac/design-system'
+import { Button, Card, ConfirmDialog, EmptyState, KeyValueList, PageHeader, StatusBadge, TreeView, type TreeNode } from '@gimac/design-system'
 import { aPermission, usePermissions } from '@gimac/socle'
-import { useMessageErreur, type MessageErreur } from '@gimac/compte'
-import { TYPES_UNITE, type TypeUnite, type Unite } from '@gimac/lot1'
+import { useMessageErreur } from '@gimac/compte'
+import type { Unite } from '@gimac/lot1'
 import { useEffet, useUnitesOrganisation } from '../hooks'
 import { Annonce } from '../composants/Annonce'
 import type { Retour } from '../composants/actes'
 import { Donnees } from '../composants/communs'
-import { enArbre } from '../composants/rattachement'
+import { DialogueUnite, useResponsables } from '../composants/unites'
 
 // Organisation du GIMAC (D-76, docs/lot1/mon-activite.md §1.1, /des/administration/organisation) : catalogue
 // des unités organisationnelles de MS-IAM en arbre (direction, départements, services, pôles, cellules),
 // lu avec IAM_ACCOUNT_READ ; création, modification et désactivation en fenêtre modale avec IAM_ACCOUNT_EDIT.
 // Une unité désactivée n'est plus proposée au rattachement ; ses rattachements restent lisibles.
-
-const CHAMPS_UNITE: Record<string, keyof Unite> = { code: 'code', libelle: 'libelle', parent: 'parent', type: 'type' }
-
-function DialogueUnite({ unite, unites, onFermer, onFait }: { unite?: Unite; unites: Unite[]; onFermer: () => void; onFait: (u: Unite) => void }) {
-  const { t } = useTranslation()
-  const message = useMessageErreur()
-  const enregistrer = useEffet((s, u: Unite) => (unite ? s.organisation.modifierUnite(unite.code, u) : s.organisation.creerUnite(u)))
-  const [initiale] = useState(() => ({ code: unite?.code ?? '', libelle: unite?.libelle ?? '', type: unite?.type ?? 'SERVICE' as TypeUnite, parent: unite?.parent ?? '' }))
-  const [v, setV] = useState(initiale)
-  const [erreurs, setErreurs] = useState<Record<string, string>>({})
-  const [erreur, setErreur] = useState<MessageErreur | null>(null)
-  const champ = (k: keyof typeof v) => (x: string) => setV((o) => ({ ...o, [k]: x }))
-  // Parent : une unité active, ni l'unité elle-même ni l'une de ses sous-unités ; aucun pour une direction.
-  const descendants = (code: string): string[] => unites.filter((u) => u.parent === code).flatMap((u) => [u.code, ...descendants(u.code)])
-  const exclus = unite ? [unite.code, ...descendants(unite.code)] : []
-  const parents = enArbre(unites.filter((u) => u.active && !exclus.includes(u.code)))
-  const soumettre = async () => {
-    setErreurs({})
-    setErreur(null)
-    const code = v.code.trim().toUpperCase()
-    const local: Record<string, string> = {}
-    if (!/^[A-Z][A-Z0-9_]{1,31}$/.test(code)) local.code = t('console.org.unite.erreur.code')
-    if (!v.libelle.trim()) local.libelle = t('console.org.unite.erreur.libelle')
-    if (v.type !== 'DIRECTION' && !v.parent) local.parent = t('console.org.unite.erreur.parent')
-    if (Object.keys(local).length) return setErreurs(local)
-    try {
-      onFait(await enregistrer.mutateAsync({ code, libelle: v.libelle.trim(), type: v.type, parent: v.type === 'DIRECTION' ? null : v.parent || null, active: unite?.active ?? true }))
-    } catch (x) {
-      const m = message(x)
-      const details = (x as { details?: { champ?: string } }).details
-      const c = m.code === 'ORG_UNITE_INVALIDE' ? CHAMPS_UNITE[details?.champ ?? ''] : m.code === 'ORG_UNITE_EXISTANTE' ? 'code' : m.code === 'ORG_UNITE_INCONNUE' || m.code === 'ORG_CYCLE' ? 'parent' : undefined
-      if (c) setErreurs({ [c]: m.texte })
-      else setErreur(m)
-    }
-  }
-  return (
-    <CrudDialog
-      context={unite ? 'edit' : 'create'}
-      size="md"
-      id="gm-dlg-unite"
-      title={t(unite ? 'console.org.unite.modifier' : 'console.org.unite.nouvelle')}
-      subject={unite ? <span className="gm-mono">{unite.code}</span> : undefined}
-      description={t('console.org.unite.texte')}
-      onClose={onFermer}
-      onSubmit={() => void soumettre()}
-      submitLabel={t(unite ? 'console.org.unite.enregistrer' : 'console.org.unite.creer')}
-      submitting={enregistrer.isPending}
-      dirty={JSON.stringify(v) !== JSON.stringify(initiale)}
-      error={erreur ? { title: erreur.texte, correlationId: erreur.correlationId } : undefined}
-    >
-      <div className="gm-form-grid">
-        <div className="gm-form-field">
-          <TextField name="code" label={t('console.org.unite.code')} help={t('console.org.unite.codeAide')} mono required maxLength={32} readOnly={!!unite}
-            value={v.code} onChange={(x) => champ('code')(x.toUpperCase())} error={erreurs.code} />
-        </div>
-        <div className="gm-form-field">
-          <Select name="type" label={t('console.org.unite.type')} value={v.type} onChange={champ('type')} options={TYPES_UNITE.map((x) => ({ value: x, label: t(`console.org.type.${x}`) }))} />
-        </div>
-        <div className="gm-form-field gm-form-wide">
-          <TextField name="libelle" label={t('console.org.unite.libelle')} required maxLength={120} value={v.libelle} onChange={champ('libelle')} error={erreurs.libelle} />
-        </div>
-        {v.type !== 'DIRECTION' ? (
-          <div className="gm-form-field gm-form-wide">
-            <Select name="parent" label={t('console.org.unite.parent')} required value={v.parent} onChange={champ('parent')} error={erreurs.parent}
-              options={[{ value: '', label: t('console.org.unite.choisirParent') }, ...parents.map(({ unite: u, profondeur }) => ({ value: u.code, label: `${'  '.repeat(profondeur)}${u.libelle}` }))]} />
-          </div>
-        ) : null}
-      </div>
-    </CrudDialog>
-  )
-}
+// D-81 §2 : responsable de l'unité (compte interne actif, ou aucun), qui dirige l'unité et ses sous-unités.
 
 export default function OrganisationPage() {
   const { t } = useTranslation()
@@ -92,6 +22,7 @@ export default function OrganisationPage() {
   const permissions = usePermissions()
   const edition = aPermission(permissions, 'IAM_ACCOUNT_EDIT')
   const unites = useUnitesOrganisation()
+  const responsables = useResponsables()
   const etat = useEffet((s, u: Unite) => s.organisation.modifierUnite(u.code, u))
   const [choisie, setChoisie] = useState<string | undefined>()
   const [dialogue, setDialogue] = useState<'nouvelle' | 'modifier' | 'etat' | null>(null)
@@ -140,6 +71,7 @@ export default function OrganisationPage() {
                         { key: t('console.org.unite.parent'), value: l.find((x) => x.code === u.parent)?.libelle ?? t('console.org.unite.sansParent') },
                         { key: t('console.org.unite.etat'), value: <StatusBadge status={u.active ? 'ok' : 'neutral'} label={t(u.active ? 'console.org.active' : 'console.org.inactive')} /> },
                         { key: t('console.org.unite.sousUnites'), value: l.filter((x) => x.parent === u.code).length },
+                        { key: t('console.org.unite.responsable'), value: u.responsableId ? responsables.find((c) => c.id === u.responsableId)?.nomAffiche ?? u.responsableId : t('console.org.unite.sansResponsable') },
                       ]}
                     />
                   ) : <EmptyState icon="landmark" title={t('console.org.choisir')} text={t('console.org.choisirTexte')} />}

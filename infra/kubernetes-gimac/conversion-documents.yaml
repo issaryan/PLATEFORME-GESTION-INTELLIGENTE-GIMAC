@@ -1,0 +1,89 @@
+# Aperçu des documents bureautiques (D-83, docs/lot1/apercu-bureautique.md) : moteur de conversion Gotenberg 8
+# (LibreOffice sans interface), joint par MS-DOCUMENT seulement (politique réseau « conversion-documents »),
+# sans aucune sortie. Routes de Chromium et des moteurs PDF, webhooks, téléchargement d'URL et métriques
+# désactivés ; délai de conversion 60 s ; mémoire bornée à 1 Gio ; profil restricted, racine en lecture seule.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: conversion-documents
+  namespace: gimac-des
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: conversion-documents
+  template:
+    metadata:
+      labels:
+        app: conversion-documents
+        gimac.cm/segment: conversion
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: gotenberg
+          image: gotenberg/gotenberg:8.37.0
+          args:
+            - gotenberg
+            - --chromium-disable-routes=true
+            - --webhook-disable=true
+            - --api-timeout=60s
+            - --api-disable-download-from=true
+            - --api-body-limit=21MB
+            - --pdfengines-disable-routes=true
+            - --prometheus-disable-collect=true
+            - --libreoffice-auto-start=true
+            - --libreoffice-max-queue-size=20
+          ports:
+            - name: http
+              containerPort: 3000
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ['ALL']
+          resources:
+            requests: { cpu: 250m, memory: 512Mi }
+            limits: { cpu: '1', memory: 1Gi }
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: profil
+              mountPath: /home/gotenberg
+      volumes:
+        - name: tmp
+          emptyDir: { sizeLimit: 512Mi }
+        - name: profil
+          emptyDir: { sizeLimit: 64Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: conversion-documents
+  namespace: gimac-des
+spec:
+  type: ClusterIP
+  selector:
+    app: conversion-documents
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000

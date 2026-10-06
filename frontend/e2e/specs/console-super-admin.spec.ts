@@ -1,5 +1,5 @@
 import { ADRESSES, demo, expect, test } from '../fixtures'
-import { confirmer, naviguer, signer, signerEtTerminer } from './outils'
+import { confirmer, naviguer, ongletSelectionne, signer, signerEtTerminer } from './outils'
 
 // Fonctionnalité : le super administrateur configure la plateforme depuis la console, sans ouvrir la
 // console du fournisseur d'identité (D-62). Services simulés (VITE_SERVICES absent).
@@ -169,6 +169,7 @@ test.describe('Fonctionnalité : console du super administrateur', () => {
     await page.goto(`${ADRESSES.console}/console/profils`)
     await page.getByRole('row', { name: /ROLE_SNA/ }).getByRole('button', { name: 'Modifier la composition' }).click()
     const d = page.getByRole('dialog')
+    await ongletSelectionne(d, 'Droits')
     await expect(d.getByText('Homologation (HOM)')).toBeVisible()
     await expect(d.getByText(/INTERNAL_/)).toHaveCount(0)
     await d.getByLabel('HOM_REPLAY_ADMIN').check()

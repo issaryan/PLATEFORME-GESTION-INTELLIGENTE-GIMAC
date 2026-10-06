@@ -36,6 +36,18 @@ public class PreferencesNotification {
     @Column(name = "type_rapport", nullable = false)
     private boolean rapport = true;
 
+    @Column(name = "type_demande", nullable = false)
+    private boolean demande = true;
+
+    @Column(name = "type_mention", nullable = false)
+    private boolean mention = true;
+
+    @Column(name = "type_reponse", nullable = false)
+    private boolean reponse = true;
+
+    @Column(name = "type_processus", nullable = false)
+    private boolean processus = true;
+
     @Column(name = "modifie_le", nullable = false)
     private Instant modifieLe;
 
@@ -72,6 +84,10 @@ public class PreferencesNotification {
             case MESSAGE -> message;
             case TACHE -> tache;
             case RAPPORT -> rapport;
+            case DEMANDE -> demande;
+            case MENTION -> mention;
+            case REPONSE -> reponse;
+            case PROCESSUS -> processus;
         };
     }
 
@@ -80,6 +96,10 @@ public class PreferencesNotification {
             case MESSAGE -> message = actif;
             case TACHE -> tache = actif;
             case RAPPORT -> rapport = actif;
+            case DEMANDE -> demande = actif;
+            case MENTION -> mention = actif;
+            case REPONSE -> reponse = actif;
+            case PROCESSUS -> processus = actif;
         }
     }
 

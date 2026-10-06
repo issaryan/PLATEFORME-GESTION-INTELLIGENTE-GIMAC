@@ -64,6 +64,7 @@ describe('réauthentification FIDO2', () => {
     expect(refusReauth(new ApiError(428, 'IAM_REAUTH_REQUIRED', '', ''))).toBe('REQUISE')
     expect(refusReauth(new ApiError(428, 'HTTP_428', '', ''))).toBe('REQUISE')
     expect(refusReauth(new ApiError(403, 'IAM_REAUTH_INVALID', '', ''))).toBe('INVALIDE')
+    expect(refusReauth(new ApiError(403, 'PIL_PROCESSUS_REAUTH_REFUSEE', '', ''))).toBe('INVALIDE')
     expect(refusReauth(new ApiError(409, 'IAM_NO_SECURITY_KEY', '', ''))).toBe('SANS_CLE')
     expect(refusReauth(new ApiError(409, 'IAM_ACCOUNT_CONFLICT', '', ''))).toBeNull()
     expect(refusReauth(new Error('x'))).toBeNull()

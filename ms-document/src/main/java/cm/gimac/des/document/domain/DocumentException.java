@@ -78,6 +78,21 @@ public class DocumentException extends RuntimeException {
         return new DocumentException(code, 503, message, Map.of());
     }
 
+    /** 413 avec un code propre à la route (aperçu bureautique : DOC_APERCU_TROP_VOLUMINEUX). */
+    public static DocumentException tropVolumineux(String code, long taille, long tailleMax) {
+        return new DocumentException(code, 413, "Le fichier dépasse la taille maximale admise", Map.of("taille", taille, "tailleMax", tailleMax));
+    }
+
+    /** 415 : format de fichier non pris en charge (extension hors liste ou signature incohérente). */
+    public static DocumentException nonPrisEnCharge(String code, String message) {
+        return new DocumentException(code, 415, message, Map.of());
+    }
+
+    /** 429 : limite de débit atteinte pour ce compte. */
+    public static DocumentException limiteAtteinte(String code, String message, Map<String, Object> details) {
+        return new DocumentException(code, 429, message, details);
+    }
+
     public String code() {
         return code;
     }

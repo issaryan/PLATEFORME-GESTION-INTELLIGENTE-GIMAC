@@ -107,9 +107,18 @@ describe('Application du département', () => {
     ['/des/liaisons/LIA-2026-017/operations/OPI-017-3/cloture', /OP-E04/],
     ['/des/referentiels/operations', 'Référentiels d\'opérations'],
     ['/des/messagerie?conversation=CONV-0001', 'Messagerie'],
+    // Processus d'unité (D-87) : catalogue et modélisateur d'une version publiée.
+    ['/des/processus', 'Processus de l’unité'],
   ])('route %s : écran chargé à la demande', async (chemin, titre) => {
     monter(chemin)
     expect(await screen.findByRole('heading', { level: 1, name: titre }, { timeout: 8000 })).toBeTruthy()
+  })
+  it.each([
+    ['/des/processus/INCONNU', 'Le processus n’a pas pu être lu.'],
+    ['/des/processus/instances/INCONNUE', 'L’instance n’a pas pu être lue.'],
+  ])('processus d’unité (D-87) : %s chargé à la demande', async (chemin, message) => {
+    monter(chemin)
+    expect(await screen.findByText(message, {}, { timeout: 8000 })).toBeTruthy()
   })
   it('administration (D-69) : le RSSI gère les comptes dans le département, sans quitter son application', async () => {
     localStorage.setItem(CLE_PROFIL_DEMO, 'ROLE_RSSI')
@@ -133,6 +142,13 @@ describe('Application du département', () => {
     ['/des/administration/journal', 'Journal d’administration'],
     ['/des/administration/profils', 'Profils et permissions'],
     ['/des/administration/politique-securite', 'Politique de sécurité'],
+    ['/des/administration/organigramme', 'Organigramme'],
+    ['/des/administration/demandes', /./],
+    ['/des/administration/matrice-pouvoirs', /./],
+    ['/des/administration/organisation', /./],
+    ['/des/plateforme/configuration', /./],
+    ['/des/plateforme/journalisation', /./],
+    ['/des/plateforme/courriels', /./],
   ])('administration, super administrateur : %s', async (chemin, titre) => {
     localStorage.setItem(CLE_PROFIL_DEMO, 'ROLE_SUPER_ADMIN')
     monter(chemin)

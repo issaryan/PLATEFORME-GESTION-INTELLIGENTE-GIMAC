@@ -18,5 +18,10 @@ export function configurationHttp(couche: 'des' | 'console'): ServiceConfigurati
     permissions: () => http.get(`${C}/permissions`),
     definirPermissions: (code, permissions, motif, assertion) =>
       http.put(`${C}/profils/${encodeURIComponent(code)}/permissions`, { body: { permissions, motif }, reauthAssertion: assertion }),
+    // Profils créés par l'administration (D-81 §5) : création et suppression, actes sensibles.
+    creerProfil: (p, motif, assertion) => http.post(`${C}/profils`, { body: { ...p, motif }, reauthAssertion: assertion }),
+    supprimerProfil: (code, motif, assertion) => http.delete(`${C}/profils/${encodeURIComponent(code)}`, { query: { motif }, reauthAssertion: assertion }),
+    // Libellé et description d'un profil (D-86 §2) : acte sensible, motif obligatoire.
+    modifierProfil: (code, p, motif, assertion) => http.put(`${C}/profils/${encodeURIComponent(code)}`, { body: { libelle: p.libelle, description: p.description, motif }, reauthAssertion: assertion }),
   }
 }

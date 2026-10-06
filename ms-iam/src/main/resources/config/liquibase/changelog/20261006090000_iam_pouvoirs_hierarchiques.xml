@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- MS-IAM : pouvoirs des chefs sur leurs subordonnés (D-81, docs/lot1/pouvoirs-hierarchiques.md) :
+     responsable d'une unité (§2), matrice des pouvoirs et profils demandables (§3), demandes à
+     l'administration (§4), profils créés par l'administration (§5). -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="iam-unite-responsable" author="lot1">
+        <addColumn tableName="unite_organisationnelle">
+            <column name="responsable_id" type="varchar(36)"/>
+        </addColumn>
+        <createIndex tableName="unite_organisationnelle" indexName="ix_unite_organisationnelle_responsable">
+            <column name="responsable_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="iam-matrice-pouvoirs" author="lot1">
+        <!-- Portée d'une action pour un profil ; une portée absente vaut AUCUNE. -->
+        <createTable tableName="pouvoir_profil">
+            <column name="profil" type="varchar(60)"><constraints nullable="false"/></column>
+            <column name="action" type="varchar(40)"><constraints nullable="false"/></column>
+            <column name="portee" type="varchar(10)"><constraints nullable="false"/></column>
+        </createTable>
+        <addPrimaryKey tableName="pouvoir_profil" columnNames="profil, action" constraintName="pk_pouvoir_profil"/>
+        <sql>ALTER TABLE pouvoir_profil ADD CONSTRAINT ck_pouvoir_profil_action CHECK (action IN ('TACHE_CONFIER', 'TACHE_SUIVRE', 'ACTIVITE_LIRE', 'RAPPORT_VISER', 'RATTACHEMENT_MODIFIER', 'COMPTE_DEMANDER', 'PROFIL_DEMANDER', 'STATUT_DEMANDER'));</sql>
+        <sql>ALTER TABLE pouvoir_profil ADD CONSTRAINT ck_pouvoir_profil_portee CHECK (portee IN ('AUCUNE', 'DIRECTS', 'EQUIPE', 'UNITES'));</sql>
+        <!-- Profils qu'un titulaire du profil peut demander pour un subordonné (jamais un profil privilégié). -->
+        <createTable tableName="profil_demandable">
+            <column name="profil" type="varchar(60)"><constraints nullable="false"/></column>
+            <column name="profil_demandable" type="varchar(60)"><constraints nullable="false"/></column>
+        </createTable>
+        <addPrimaryKey tableName="profil_demandable" columnNames="profil, profil_demandable" constraintName="pk_profil_demandable"/>
+    </changeSet>
+
+    <!-- Jeu par défaut du contrat (§3) pour les profils responsables : chef du DES, chef de la DDRM, DG, RSSI,
+         conformité, responsable de service ; les autres profils : AUCUNE partout. Profils demandables : les
+         profils non privilégiés du domaine de chaque responsable (voir le README de MS-IAM). -->
+    <changeSet id="iam-matrice-pouvoirs-defaut" author="lot1">
+        <insert tableName="pouvoir_profil"><column name="profil" value="ROLE_CHEF_DES"/><column name="action" value="TACHE_CONFIER"/><column name="portee" value="UNITES"/></insert>
+        <insert tableName="pouvoir_profil"><column name="profil" value="ROLE_CHEF_DES"/><column name="action" value="TACHE_SUIVRE"/><column name="portee" value="UNITES"/></insert>
+        <insert tableName="pouvoir_profil"><column name="profil" value="ROLE_CHEF_DES"/><column name="action" value="ACTIVITE_LIRE"/><column name="portee" value="EQUIPE"/></insert>
+        <insert tableName="pouvoir_profil"><column name="profil" value="ROLE_CHEF_DES"/><column name="action" value="RAPPORT_VISER"/><column name="portee" value="EQUIPE"/></insert>
+        <insert tableName="pouvoir_profil"><column name="profil" value="ROLE_CHEF_DES"/><column name="action" value="RATTACHEMENT_MODIFIER"/><column name="portee" value="DIRECTS"/></insert>
+        <insert tableName="pouvoir_profil"><column name="profil" value="ROLE_CHEF_DES"/><column name="action" value="COMPTE_DEMANDER"/><column name="portee" value="UNITES"/></insert>
+        <insert tableName="pouvoir_profil"><column name="profil" value="ROLE_CHEF_DES"/><column name="action" value="PROFIL_DEMANDER"/><column name="portee" value="EQUIPE"/></insert>
+        <insert tableName="pouvoir_profil"><column name="profil" value="ROLE_CHEF_DES"/><column name="action" value="STATUT_DEMANDER"/><column name="portee" value="EQUIPE"/></insert>
+        <insert tableName="pouvoir_profil"><column name="profil" value="ROLE_CHEF_DDRM"/><column name="action" value="TACHE_CONFIER"/><column name="portee" value="UNITES"/></insert>
+        <insert tableName="pouvoir_profil"><column name="profil" value="ROLE_CHEF_DDRM"/><column name="action" value="TACHE_SUIVRE"/><column name="portee" value="UNITES"/></insert>
+        <insert tableName="pouvoir_profil"><column name="profil" value="ROLE_CHEF_DDRM"/><column name="action" value="ACTIVITE_LIRE"/><column name="portee" value="EQUIPE"/></insert>
+        <insert tableName="pouvoir_profil"><column name="profil" value="ROLE_CHEF_DDRM"/><column name="action" value="RAPPORT_VISER"/><column name="portee" value="EQUIPE"/></insert>
+        <insert tableName="pouvoir_profil"><column name="profil" value="ROLE_CHEF_DDRM"/><column name="action" value="RATTACHEMENT_MODIFIER"/><column name="portee" value="DIRECTS"/></insert>
+        <insert tableName="pouvoir_profil"><column name="profil" value="ROLE_CHEF_DDRM"/><column name="action" value="COMPTE_DEMANDER"/><column name="portee" value="UNITES"/></insert>
+        <insert tableName="pouvoir_profil"><column name="profil" value="ROLE_CHEF_DDRM"/><column name="action" value="PROFIL_DEMANDER"/><column name="portee" value="EQUIPE"/></insert>
+        <insert tableName="pouvoir_profil"><column name="profil" value="ROLE_CHEF_DDRM"/><column name="action" value="STATUT_DEMANDER"/><column name="portee" value="EQUIPE"/></insert>
+        <insert tableName="pouvoir_profil"><column name="profil" value="ROLE_DG"/><column name="action" value="TACHE_CONFIER"/><column name="portee" value="UNITES"/></insert>
+        <insert tableName="pouvoir_profil"><column name="profil" value="ROLE_DG"/><column name="action" value="TACHE_SUIVRE"/><column name="portee" value="UNITES"/></insert>
+        <insert tableName="pouvoir_profil"><column name="profil" value="ROLE_DG"/><column name="action" value="ACTIVITE_LIRE"/><column name="portee" value="EQUIPE"/></insert>
+        <insert tableName="pouvoir_profil"><column name="profil" value="ROLE_DG"/><column name="action" value="RAPPORT_VISER"/><column name="portee" value="EQUIPE"/></insert>
+        <insert tableName="pouvoir_profil"><column name="profil" value="ROLE_DG"/><column name="action" value="RATTACHEMENT_MODIFIER"/><column name="portee" value="DIRECTS"/></insert>
+        <insert tableName="pouvoir_profil"><column name="profil" value="ROLE_DG"/><column name="action" value="COMPTE_DEMANDER"/><column name="portee" value="UNITES"/></insert>
+        <insert tableName="pouvoir_profil"><column name="profil" value="ROLE_DG"/><column name="action" value="PROFIL_DEMANDER"/><column name="portee" value="EQUIPE"/></insert>
+        <insert tableName="pouvoir_profil"><column name="profil" value="ROLE_DG"/><column name="action" value="STATUT_DEMANDER"/><column name="portee" value="EQUIPE"/></insert>
+        <insert tableName="pouvoir_profil"><column name="profil" value="ROLE_RSSI"/><column name="action" value="TACHE_CONFIER"/><column name="portee" value="UNITES"/></insert>
+        <insert tableName="pouvoir_profil"><column name="profil" value="ROLE_RSSI"/><column name="action" value="TACHE_SUIVRE"/><column name="portee" value="UNITES"/></insert>
+        <insert tableName="pouvoir_profil"><column name="profil" value="ROLE_RSSI"/><column name="action" value="ACTIVITE_LIRE"/><column name="portee" value="EQUIPE"/></insert>
+        <insert tableName="pouvoir_profil"><column name="profil" value="ROLE_RSSI"/><column name="action" value="RAPPORT_VISER"/><column name="portee" value="EQUIPE"/></insert>
+        <insert tableName="pouvoir_profil"><column name="profil" value="ROLE_RSSI"/><column name="action" value="RATTACHEMENT_MODIFIER"/><column name="portee" value="DIRECTS"/></insert>
+        <insert tableName="pouvoir_profil"><column name="profil" value="ROLE_RSSI"/><column name="action" value="COMPTE_DEMANDER"/><column name="portee" value="UNITES"/></insert>
+        <insert tableName="pouvoir_profil"><column name="profil" value="ROLE_RSSI"/><column name="action" value="PROFIL_DEMANDER"/><column name="portee" value="EQUIPE"/></insert>
+        <insert tableName="pouvoir_profil"><column name="profil" value="ROLE_RSSI"/><column name="action" value="STATUT_DEMANDER"/><column name="portee" value="EQUIPE"/></insert>
+        <insert tableName="pouvoir_profil"><column name="profil" value="ROLE_CONFORMITE"/><column name="action" value="TACHE_CONFIER"/><column name="portee" value="UNITES"/></insert>
+        <insert tableName="pouvoir_profil"><column name="profil" value="ROLE_CONFORMITE"/><column name="action" value="TACHE_SUIVRE"/><column name="portee" value="UNITES"/></insert>
+        <insert tableName="pouvoir_profil"><column name="profil" value="ROLE_CONFORMITE"/><column name="action" value="ACTIVITE_LIRE"/><column name="portee" value="EQUIPE"/></insert>
+        <insert tableName="pouvoir_profil"><column name="profil" value="ROLE_CONFORMITE"/><column name="action" value="RAPPORT_VISER"/><column name="portee" value="EQUIPE"/></insert>
+        <insert tableName="pouvoir_profil"><column name="profil" value="ROLE_CONFORMITE"/><column name="action" value="RATTACHEMENT_MODIFIER"/><column name="portee" value="DIRECTS"/></insert>
+        <insert tableName="pouvoir_profil"><column name="profil" value="ROLE_CONFORMITE"/><column name="action" value="COMPTE_DEMANDER"/><column name="portee" value="UNITES"/></insert>
+        <insert tableName="pouvoir_profil"><column name="profil" value="ROLE_CONFORMITE"/><column name="action" value="PROFIL_DEMANDER"/><column name="portee" value="EQUIPE"/></insert>
+        <insert tableName="pouvoir_profil"><column name="profil" value="ROLE_CONFORMITE"/><column name="action" value="STATUT_DEMANDER"/><column name="portee" value="EQUIPE"/></insert>
+        <insert tableName="pouvoir_profil"><column name="profil" value="ROLE_RESPONSABLE_SERVICE"/><column name="action" value="TACHE_CONFIER"/><column name="portee" value="UNITES"/></insert>
+        <insert tableName="pouvoir_profil"><column name="profil" value="ROLE_RESPONSABLE_SERVICE"/><column name="action" value="TACHE_SUIVRE"/><column name="portee" value="UNITES"/></insert>
+        <insert tableName="pouvoir_profil"><column name="profil" value="ROLE_RESPONSABLE_SERVICE"/><column name="action" value="ACTIVITE_LIRE"/><column name="portee" value="EQUIPE"/></insert>
+        <insert tableName="pouvoir_profil"><column name="profil" value="ROLE_RESPONSABLE_SERVICE"/><column name="action" value="RAPPORT_VISER"/><column name="portee" value="EQUIPE"/></insert>
+        <insert tableName="pouvoir_profil"><column name="profil" value="ROLE_RESPONSABLE_SERVICE"/><column name="action" value="RATTACHEMENT_MODIFIER"/><column name="portee" value="DIRECTS"/></insert>
+        <insert tableName="pouvoir_profil"><column name="profil" value="ROLE_RESPONSABLE_SERVICE"/><column name="action" value="COMPTE_DEMANDER"/><column name="portee" value="UNITES"/></insert>
+        <insert tableName="pouvoir_profil"><column name="profil" value="ROLE_RESPONSABLE_SERVICE"/><column name="action" value="PROFIL_DEMANDER"/><column name="portee" value="EQUIPE"/></insert>
+        <insert tableName="pouvoir_profil"><column name="profil" value="ROLE_RESPONSABLE_SERVICE"/><column name="action" value="STATUT_DEMANDER"/><column name="portee" value="EQUIPE"/></insert>
+        <insert tableName="profil_demandable"><column name="profil" value="ROLE_DG"/><column name="profil_demandable" value="ROLE_CHEF_DES"/></insert>
+        <insert tableName="profil_demandable"><column name="profil" value="ROLE_DG"/><column name="profil_demandable" value="ROLE_CHEF_DDRM"/></insert>
+        <insert tableName="profil_demandable"><column name="profil" value="ROLE_DG"/><column name="profil_demandable" value="ROLE_CONFORMITE"/></insert>
+        <insert tableName="profil_demandable"><column name="profil" value="ROLE_DG"/><column name="profil_demandable" value="ROLE_RESPONSABLE_SERVICE"/></insert>
+        <insert tableName="profil_demandable"><column name="profil" value="ROLE_DG"/><column name="profil_demandable" value="ROLE_COLLABORATEUR"/></insert>
+        <insert tableName="profil_demandable"><column name="profil" value="ROLE_DG"/><column name="profil_demandable" value="ROLE_INGENIEUR_HOMOLOGATION"/></insert>
+        <insert tableName="profil_demandable"><column name="profil" value="ROLE_DG"/><column name="profil_demandable" value="ROLE_SNA"/></insert>
+        <insert tableName="profil_demandable"><column name="profil" value="ROLE_DG"/><column name="profil_demandable" value="ROLE_PRODUCTION_MONETIQUE"/></insert>
+        <insert tableName="profil_demandable"><column name="profil" value="ROLE_DG"/><column name="profil_demandable" value="ROLE_POLE_RESEAU"/></insert>
+        <insert tableName="profil_demandable"><column name="profil" value="ROLE_DG"/><column name="profil_demandable" value="ROLE_POLE_SYSTEME"/></insert>
+        <insert tableName="profil_demandable"><column name="profil" value="ROLE_DG"/><column name="profil_demandable" value="ROLE_CHARGE_DDRM"/></insert>
+        <insert tableName="profil_demandable"><column name="profil" value="ROLE_DG"/><column name="profil_demandable" value="ROLE_CONDUCTEUR_PROJET"/></insert>
+        <insert tableName="profil_demandable"><column name="profil" value="ROLE_CHEF_DES"/><column name="profil_demandable" value="ROLE_RESPONSABLE_SERVICE"/></insert>
+        <insert tableName="profil_demandable"><column name="profil" value="ROLE_CHEF_DES"/><column name="profil_demandable" value="ROLE_COLLABORATEUR"/></insert>
+        <insert tableName="profil_demandable"><column name="profil" value="ROLE_CHEF_DES"/><column name="profil_demandable" value="ROLE_INGENIEUR_HOMOLOGATION"/></insert>
+        <insert tableName="profil_demandable"><column name="profil" value="ROLE_CHEF_DES"/><column name="profil_demandable" value="ROLE_SNA"/></insert>
+        <insert tableName="profil_demandable"><column name="profil" value="ROLE_CHEF_DES"/><column name="profil_demandable" value="ROLE_PRODUCTION_MONETIQUE"/></insert>
+        <insert tableName="profil_demandable"><column name="profil" value="ROLE_CHEF_DES"/><column name="profil_demandable" value="ROLE_POLE_RESEAU"/></insert>
+        <insert tableName="profil_demandable"><column name="profil" value="ROLE_CHEF_DES"/><column name="profil_demandable" value="ROLE_POLE_SYSTEME"/></insert>
+        <insert tableName="profil_demandable"><column name="profil" value="ROLE_CHEF_DES"/><column name="profil_demandable" value="ROLE_CONDUCTEUR_PROJET"/></insert>
+        <insert tableName="profil_demandable"><column name="profil" value="ROLE_CHEF_DDRM"/><column name="profil_demandable" value="ROLE_RESPONSABLE_SERVICE"/></insert>
+        <insert tableName="profil_demandable"><column name="profil" value="ROLE_CHEF_DDRM"/><column name="profil_demandable" value="ROLE_COLLABORATEUR"/></insert>
+        <insert tableName="profil_demandable"><column name="profil" value="ROLE_CHEF_DDRM"/><column name="profil_demandable" value="ROLE_CHARGE_DDRM"/></insert>
+        <insert tableName="profil_demandable"><column name="profil" value="ROLE_CHEF_DDRM"/><column name="profil_demandable" value="ROLE_CONDUCTEUR_PROJET"/></insert>
+        <insert tableName="profil_demandable"><column name="profil" value="ROLE_RSSI"/><column name="profil_demandable" value="ROLE_COLLABORATEUR"/></insert>
+        <insert tableName="profil_demandable"><column name="profil" value="ROLE_CONFORMITE"/><column name="profil_demandable" value="ROLE_COLLABORATEUR"/></insert>
+        <insert tableName="profil_demandable"><column name="profil" value="ROLE_RESPONSABLE_SERVICE"/><column name="profil_demandable" value="ROLE_COLLABORATEUR"/></insert>
+        <insert tableName="profil_demandable"><column name="profil" value="ROLE_RESPONSABLE_SERVICE"/><column name="profil_demandable" value="ROLE_SNA"/></insert>
+        <insert tableName="profil_demandable"><column name="profil" value="ROLE_RESPONSABLE_SERVICE"/><column name="profil_demandable" value="ROLE_PRODUCTION_MONETIQUE"/></insert>
+        <insert tableName="profil_demandable"><column name="profil" value="ROLE_RESPONSABLE_SERVICE"/><column name="profil_demandable" value="ROLE_POLE_RESEAU"/></insert>
+        <insert tableName="profil_demandable"><column name="profil" value="ROLE_RESPONSABLE_SERVICE"/><column name="profil_demandable" value="ROLE_POLE_SYSTEME"/></insert>
+        <insert tableName="profil_demandable"><column name="profil" value="ROLE_RESPONSABLE_SERVICE"/><column name="profil_demandable" value="ROLE_INGENIEUR_HOMOLOGATION"/></insert>
+    </changeSet>
+
+    <changeSet id="iam-demande-administration" author="lot1">
+        <createTable tableName="demande_administration">
+            <column name="id" type="uuid"><constraints primaryKey="true" nullable="false" primaryKeyName="pk_demande_administration"/></column>
+            <column name="type" type="varchar(20)"><constraints nullable="false"/></column>
+            <column name="demandeur_id" type="varchar(36)"><constraints nullable="false"/></column>
+            <column name="demandeur_nom" type="varchar(255)"/>
+            <column name="cible_id" type="varchar(36)"/>
+            <column name="cible_nom" type="varchar(255)"/>
+            <column name="cle_cible" type="varchar(120)"><constraints nullable="false"/></column>
+            <column name="contenu" type="varchar(4000)"><constraints nullable="false"/></column>
+            <column name="motif" type="varchar(500)"><constraints nullable="false"/></column>
+            <column name="etat" type="varchar(12)"><constraints nullable="false"/></column>
+            <column name="decision_par_id" type="varchar(36)"/>
+            <column name="decision_par_nom" type="varchar(255)"/>
+            <column name="decision_motif" type="varchar(500)"/>
+            <column name="decision_le" type="timestamptz"/>
+            <column name="creee_le" type="timestamptz"><constraints nullable="false"/></column>
+            <column name="version" type="bigint" defaultValueNumeric="0"><constraints nullable="false"/></column>
+        </createTable>
+        <sql>ALTER TABLE demande_administration ADD CONSTRAINT ck_demande_administration_type CHECK (type IN ('CREATION_COMPTE', 'PROFILS', 'STATUT'));</sql>
+        <sql>ALTER TABLE demande_administration ADD CONSTRAINT ck_demande_administration_etat CHECK (etat IN ('EN_ATTENTE', 'ACCEPTEE', 'REFUSEE', 'ANNULEE'));</sql>
+        <!-- Une seule demande en attente par cible et par type (409 ORG_DEMANDE_EXISTANTE). -->
+        <sql>CREATE UNIQUE INDEX ux_demande_administration_en_attente ON demande_administration (type, cle_cible) WHERE etat = 'EN_ATTENTE';</sql>
+        <createIndex tableName="demande_administration" indexName="ix_demande_administration_demandeur">
+            <column name="demandeur_id"/>
+            <column name="creee_le"/>
+        </createIndex>
+        <createIndex tableName="demande_administration" indexName="ix_demande_administration_etat">
+            <column name="etat"/>
+            <column name="creee_le"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="iam-profil-cree" author="lot1">
+        <createTable tableName="profil_cree">
+            <column name="code" type="varchar(60)"><constraints primaryKey="true" nullable="false" primaryKeyName="pk_profil_cree"/></column>
+            <column name="description" type="varchar(255)"><constraints nullable="false"/></column>
+            <column name="privilegie" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+            <column name="cree_par" type="varchar(100)"><constraints nullable="false"/></column>
+            <column name="cree_le" type="timestamptz"><constraints nullable="false"/></column>
+        </createTable>
+        <sql>ALTER TABLE profil_cree ADD CONSTRAINT ck_profil_cree_code CHECK (code ~ '^ROLE_[A-Z][A-Z0-9_]{2,40}$');</sql>
+    </changeSet>
+</databaseChangeLog>

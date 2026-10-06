@@ -19,6 +19,9 @@ const envoi = (e: Envoi) => ({
   // Tickets (D-74) : documents déposés par morceaux, pièces repartagées ; absents s'il n'y en a pas.
   ...(e.documents?.length ? { documents: e.documents } : {}),
   ...(e.transferts?.length ? { transferts: e.transferts } : {}),
+  // Réponse et mentions (D-82) : absentes sans citation ni mention.
+  ...(e.reponseA ? { reponseA: e.reponseA } : {}),
+  ...(e.mentions?.length ? { mentions: e.mentions } : {}),
 })
 const nouvelle = (c: NouvelleConversation) => ({ ...envoi(c), destinataires: c.destinataires, titre: c.titre, liaisonId: c.liaisonId, ...(c.groupe ? { groupe: true } : {}) })
 

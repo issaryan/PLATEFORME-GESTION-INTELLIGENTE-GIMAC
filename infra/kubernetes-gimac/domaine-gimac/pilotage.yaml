@@ -1,5 +1,6 @@
 # Domaine Keycloak « gimac » du lot 1 (D-61, D-62) : émetteur des jetons ; Mon activité (D-76) : client de
-# service pilotage-service, organisation de MS-IAM et documents de MS-DOCUMENT.
+# service pilotage-service, organisation de MS-IAM et documents de MS-DOCUMENT. Processus d'unité (D-87) : profil prod
+# (manifeste de base), adaptateurs organisation, documents et reauthentification « real » (application-prod.yml).
 apiVersion: apps/v1
 kind: Deployment
 metadata:

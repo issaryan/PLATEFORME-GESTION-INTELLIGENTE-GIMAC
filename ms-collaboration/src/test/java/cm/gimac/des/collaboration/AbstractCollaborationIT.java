@@ -59,7 +59,7 @@ public abstract class AbstractCollaborationIT {
     public static void effacer(JdbcTemplate jdbc) {
         jdbc.execute((org.springframework.jdbc.core.ConnectionCallback<Void>) c -> {
             try (var st = c.createStatement()) {
-                st.execute("truncate table piece_jointe, message_etiquette, message, conversation_membre, conversation, outbox_event cascade");
+                st.execute("truncate table piece_jointe, message_etiquette, message_mention, message, conversation_lecture, conversation_membre, conversation, outbox_event cascade");
             }
             if (!c.getAutoCommit()) {
                 c.commit();

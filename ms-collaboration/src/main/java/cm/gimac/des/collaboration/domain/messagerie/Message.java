@@ -66,6 +66,16 @@ public class Message extends EntiteMessagerie {
     @BatchSize(size = 50)
     private List<PieceJointe> piecesJointes = new ArrayList<>();
 
+    /** Message cité (D-82), de la même conversation ; nul hors réponse. Sans clé étrangère : la purge (RG-53) peut l'avoir supprimé. */
+    @Column(name = "reponse_a_id")
+    private UUID reponseAId;
+
+    /** Membres mentionnés (D-82), dans l'ordre de l'expéditeur. */
+    @OneToMany(mappedBy = "message", cascade = CascadeType.PERSIST, fetch = FetchType.LAZY)
+    @OrderBy("rang ASC")
+    @BatchSize(size = 50)
+    private List<MessageMention> mentions = new ArrayList<>();
+
     protected Message() {}
 
     public Message(UUID id, Conversation conversation, Collaborateur auteur, byte[] contenuChiffre, Instant envoyeLe) {
@@ -102,6 +112,46 @@ public class Message extends EntiteMessagerie {
         PieceJointe p = new PieceJointe(this, documentRef, nom, taille, typeMime, empreinte);
         piecesJointes.add(p);
         return p;
+    }
+
+    /**
+     * Réponse à un message précis (D-82) : le message cité doit être de la même conversation et ne pas
+     * être un événement de groupe ; la vérification de portée revient au service (règles de messagerie).
+     */
+    public void repondreA(Message cite) {
+        if (evenement != null) {
+            throw new IllegalStateException("Un événement de groupe ne répond à aucun message");
+        }
+        if (cite.getEvenement() != null || !cite.getConversation().getId().equals(conversation.getId()) || cite.getId().equals(getId())) {
+            throw new IllegalArgumentException("Message cité hors de la conversation ou événement de groupe");
+        }
+        this.reponseAId = cite.getId();
+    }
+
+    /** Mention d'un membre de la conversation (D-82) ; une mention répétée est ignorée, l'auteur n'est jamais mentionné. */
+    public void mentionner(ConversationMembre membre) {
+        if (evenement != null) {
+            throw new IllegalStateException("Un événement de groupe ne mentionne personne");
+        }
+        if (!membre.getConversation().getId().equals(conversation.getId()) || membre.getMembreId().equals(auteurId)) {
+            throw new IllegalArgumentException("Mention hors des membres de la conversation, ou de l'auteur");
+        }
+        if (mentions.stream().noneMatch(m -> m.getMembreId().equals(membre.getMembreId()))) {
+            mentions.add(new MessageMention(this, membre.getMembreId(), membre.getNom(), mentions.size()));
+        }
+    }
+
+    public UUID getReponseAId() {
+        return reponseAId;
+    }
+
+    public List<MessageMention> getMentions() {
+        return List.copyOf(mentions);
+    }
+
+    /** Identifiants des membres mentionnés, dans l'ordre. */
+    public List<String> getMentionnes() {
+        return mentions.stream().map(MessageMention::getMembreId).toList();
     }
 
     public Conversation getConversation() {

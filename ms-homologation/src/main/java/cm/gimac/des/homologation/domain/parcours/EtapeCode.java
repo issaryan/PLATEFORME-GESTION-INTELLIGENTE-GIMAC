@@ -49,4 +49,37 @@ public enum EtapeCode {
     public boolean horsParcours() {
         return this == PRISE_CONTACT || this == ADHESION;
     }
+
+    /**
+     * Étape canonique porteuse d'un jalon (apte à la certification et certifiée, en production) ou du verrou 2
+     * (D-89) : une étape configurée qui lui est liée ne se supprime pas et ne change pas de canonique.
+     */
+    public boolean protegee() {
+        return this == CERTIFICATION || this == APPROBATION_SECURITE || this == MISE_EN_PRODUCTION;
+    }
+
+    /** Couleur par défaut de l'étape dans le modélisateur (version 1 et nouveaux brouillons, D-89). */
+    public CouleurEtape couleur() {
+        return switch (this) {
+            case PRISE_CONTACT, ADHESION, SUIVI -> CouleurEtape.NEUTRE;
+            case CADRAGE, LANCEMENT -> CouleurEtape.INFO;
+            case ATELIERS, INTEGRATION -> CouleurEtape.ACTION;
+            case TESTS -> CouleurEtape.ALERTE;
+            case CERTIFICATION, MISE_EN_PRODUCTION -> CouleurEtape.SUCCES;
+            case APPROBATION_SECURITE -> CouleurEtape.CRITIQUE;
+        };
+    }
+
+    /** Étape canonique de ce code, le cas échéant (code d'une étape configurée, phase historique). */
+    public static java.util.Optional<EtapeCode> de(String code) {
+        if (code == null) {
+            return java.util.Optional.empty();
+        }
+        for (EtapeCode e : values()) {
+            if (e.name().equals(code.trim())) {
+                return java.util.Optional.of(e);
+            }
+        }
+        return java.util.Optional.empty();
+    }
 }

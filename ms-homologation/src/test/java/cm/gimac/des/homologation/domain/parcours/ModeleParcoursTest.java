@@ -42,7 +42,7 @@ class ModeleParcoursTest {
             null,
             null,
             "Actions attendues",
-            etape,
+            etape.name(),
             null,
             r,
             v,

@@ -1,0 +1,359 @@
+# Politique d'accès du lot 1 (PI-GIMAC-01 §0.6), évaluée par la passerelle (filtre OpaAuthorize)
+# puis doublée par @PreAuthorize dans chaque service. Refus par défaut (RG-24).
+# Écart au plan : sa première règle allow acceptait aussi le portail sans institution ;
+# ici, un chemin du portail n'est autorisé que si le jeton porte institution_id (RG-59).
+# D-61 : toute route /bff exige un jeton issu d'une authentification à deux facteurs (acr 2 ou 3).
+# D-65 : seule exception, la session restreinte du premier accès (acr 1, règle premier_acces), limitée
+# à l'assistant de configuration du compte sur MS-IAM ; une session restreinte n'ouvre rien d'autre.
+package gimac.authz
+
+import rego.v1
+
+default allow := false
+
+regles := [
+	{"m": "POST", "re": `^/bff/des/homologation/referentiels/[^/]+/publication$`, "p": "HOM_REFERENTIEL_PUBLISH"},
+	# Modélisateur de processus (D-77, docs/lot1/modelisateur-processus.md §4) : édition des brouillons,
+	# migration des liaisons ; la lecture reste au @PreAuthorize (HOM_REFERENTIEL_READ).
+	{"m": "POST", "re": `^/bff/des/homologation/referentiels/[^/]+/migrations(/simulation)?$`, "p": "HOM_REFERENTIEL_MIGRATE"},
+	{"m": "POST", "re": `^/bff/des/homologation/referentiels(/[^/]+/(operations|controle))?$`, "p": "HOM_REFERENTIEL_EDIT"},
+	{"m": "PUT", "re": `^/bff/des/homologation/referentiels/[^/]+/(operations/[^/]+|positions|arcs|pilote)$`, "p": "HOM_REFERENTIEL_EDIT"},
+	{"m": "DELETE", "re": `^/bff/des/homologation/referentiels/[^/]+/operations/[^/]+$`, "p": "HOM_REFERENTIEL_EDIT"},
+	# Étapes configurables d'un brouillon (D-89, docs/lot1/referentiel-droits-etapes.md §2) : ajout, renommage,
+	# ordre et retrait ; la lecture filtrée du référentiel (graphe, liste, export) reste au @PreAuthorize.
+	{"m": "POST", "re": `^/bff/des/homologation/referentiels/[^/]+/etapes(/[^/]+|/ordre)?$`, "p": "HOM_REFERENTIEL_EDIT"},
+	{"m": "PUT", "re": `^/bff/des/homologation/referentiels/[^/]+/etapes(/[^/]+|/ordre)?$`, "p": "HOM_REFERENTIEL_EDIT"},
+	{"m": "DELETE", "re": `^/bff/des/homologation/referentiels/[^/]+/etapes(/[^/]+|/ordre)?$`, "p": "HOM_REFERENTIEL_EDIT"},
+	{"m": "POST", "re": `^/bff/des/homologation/liaisons$`, "p": "HOM_LIAISON_OPEN"},
+	# Cadrage (étape 3, D-58) : désignation du conducteur de projet par un chef de département.
+	{"m": "PUT", "re": `^/bff/des/homologation/liaisons/[^/]+/chef-de-projet$`, "p": "HOM_PROJECT_DESIGNATE"},
+	{"m": "POST", "re": `^/bff/des/homologation/operations/[^/]+/validation$`, "p": "HOM_OPERATION_VALIDATE"},
+	{"m": "POST", "re": `^/bff/des/homologation/operations/[^/]+/reouverture$`, "p": "HOM_OPERATION_REOPEN"},
+	# Parcours, étapes 4 à 10 (docs/lot1/parcours-backend.md §1) : gestes à permission unique. Les gestes
+	# ouverts à plusieurs permissions (livrable, intervenants, services supplémentaires) restent au @PreAuthorize.
+	{"m": "POST", "re": `^/bff/des/homologation/parcours/operations/[^/]+/validation$`, "p": "HOM_OPERATION_VALIDATE"},
+	{"m": "POST", "re": `^/bff/des/homologation/parcours/operations/[^/]+/preuves$`, "p": "HOM_EVIDENCE_SUBMIT"},
+	{"m": "PUT", "re": `^/bff/des/homologation/liaisons/[^/]+/ressources$`, "p": "HOM_STEP_MANAGE"},
+	{"m": "POST", "re": `^/bff/des/homologation/(liaisons/[^/]+/blocages|blocages/[^/]+/levee)$`, "p": "HOM_STEP_MANAGE"},
+	# Remise de la fiche de suivi : conducteur (HOM_STEP_MANAGE) ou Normes et Agréments (CER_DOSSIER_VERIFY), au @PreAuthorize.
+	{"m": "POST", "re": `^/bff/des/homologation/liaisons/[^/]+/(couverture|fiche-suivi)/constat$`, "p": "CER_DOSSIER_VERIFY"},
+	{"m": "GET", "re": `^/bff/des/homologation/tableaux-de-bord/(acteur|pilotage)$`, "p": "HOM_DASHBOARD_READ"},
+	{"m": "POST", "re": `^/bff/des/certification/circuits/[^/]+/quitus/technique$`, "p": "CER_QUITUS_TECHNIQUE_SIGN"},
+	{"m": "POST", "re": `^/bff/des/certification/circuits/[^/]+/quitus/securite$`, "p": "CER_QUITUS_SECURITE_SIGN"},
+	{"m": "POST", "re": `^/bff/des/certification/circuits/[^/]+/quitus/conformite$`, "p": "CER_QUITUS_CONFORMITE_SIGN"},
+	{"m": "POST", "re": `^/bff/des/certification/circuits/[^/]+/quitus/direction-generale$`, "p": "CER_QUITUS_DG_SIGN"},
+	# Verrous de la décision (D-56) : procès-verbal et approbation de la sécurité (MS-CERTIFICATION).
+	{"m": "POST", "re": `^/bff/des/certification/liaisons/[^/]+/proces-verbal$`, "p": "CER_PV_ESTABLISH"},
+	{"m": "POST", "re": `^/bff/des/certification/liaisons/[^/]+/proces-verbal/signature-gimac$`, "p": "CER_QUITUS_TECHNIQUE_SIGN"},
+	{"m": "POST", "re": `^/bff/des/certification/liaisons/[^/]+/approbation-securite/dossier$`, "p": "CER_CHANGE_RECORD_LINK"},
+	{"m": "PUT", "re": `^/bff/des/certification/liaisons/[^/]+/approbation-securite/fiche$`, "p": "CER_CHANGE_RECORD_LINK"},
+	{"m": "POST", "re": `^/bff/des/certification/liaisons/[^/]+/approbation-securite/(attestations/[^/]+/verification|archivage)$`, "p": "CER_SECURITY_VERIFY"},
+	{"m": "POST", "re": `^/bff/des/certification/liaisons/[^/]+/approbation-securite/visas/CONFORMITE$`, "p": "CER_QUITUS_CONFORMITE_SIGN"},
+	{"m": "POST", "re": `^/bff/des/certification/liaisons/[^/]+/approbation-securite/visas/DIRECTION_GENERALE$`, "p": "CER_QUITUS_DG_SIGN"},
+	# Portail (qualité Externe) : gestes du participant sur sa liaison, cloisonnés par l'institution du jeton.
+	{"m": "PUT", "re": `^/bff/portail/homologation/liaisons/[^/]+/(coordonnees-techniques|fiche-suivi)$`, "p": "HOM_PORTAL_SUBMIT"},
+	{"m": "POST", "re": `^/bff/portail/homologation/operations/[^/]+/livrable$`, "p": "HOM_PORTAL_SUBMIT"},
+	{"m": "POST", "re": `^/bff/portail/certification/liaisons/[^/]+/proces-verbal/signature$`, "p": "CER_PORTAL_SIGN"},
+	{"m": "POST", "re": `^/bff/portail/certification/liaisons/[^/]+/attestations/[^/]+$`, "p": "HOM_PORTAL_SUBMIT"},
+	{"m": "GET", "re": `^/bff/portail/homologation/`, "p": "HOM_PORTAL_READ"},
+	{"m": "POST", "re": `^/bff/portail/homologation/operations/[^/]+/preuves$`, "p": "HOM_PORTAL_SUBMIT"},
+	{"m": "GET", "re": `^/bff/portail/certification/`, "p": "CER_PORTAL_READ"},
+	# Registre des institutions, étapes 1 et 2 du parcours (D-57).
+	{"m": "GET", "re": `^/bff/des/participant/institutions(/.*)?$`, "p": "PAR_INSTITUTION_READ"},
+	{"m": "POST", "re": `^/bff/des/participant/institutions$`, "p": "PAR_INSTITUTION_CREATE"},
+	{"m": "PUT", "re": `^/bff/des/participant/institutions/[^/]+(/conditions-adhesion)?$`, "p": "PAR_INSTITUTION_EDIT"},
+	{"m": "POST", "re": `^/bff/des/participant/institutions/[^/]+/pieces/[^/]+/(depot|validation|rejet)$`, "p": "PAR_ADHESION_INSTRUCT"},
+	{"m": "POST", "re": `^/bff/des/participant/institutions/[^/]+/transitions$`, "p": "PAR_TRANSITION_REQUEST"},
+	{"m": "POST", "re": `^/bff/des/participant/institutions/[^/]+/transitions/[^/]+/(approbation|rejet)$`, "p": "PAR_TRANSITION_APPROVE"},
+	# Pièces déposées par le correspondant depuis le portail (MS-DOCUMENT).
+	{"m": "POST", "re": `^/bff/portail/document/documents$`, "p": "HOM_PORTAL_SUBMIT"},
+	# Dépôts fragmentés depuis le portail (D-74, docs/lot1/depots-fragmentes.md §3) : ouverture, parties,
+	# état, fin et abandon ; institution exigée comme pour toute route du portail.
+	{"m": "POST", "re": `^/bff/portail/document/depots$`, "p": "HOM_PORTAL_SUBMIT"},
+	{"m": "PUT", "re": `^/bff/portail/document/depots/[^/]+/parties/[^/]+$`, "p": "HOM_PORTAL_SUBMIT"},
+	{"m": "GET", "re": `^/bff/portail/document/depots/[^/]+$`, "p": "HOM_PORTAL_SUBMIT"},
+	{"m": "POST", "re": `^/bff/portail/document/depots/[^/]+/fin$`, "p": "HOM_PORTAL_SUBMIT"},
+	{"m": "DELETE", "re": `^/bff/portail/document/depots/[^/]+$`, "p": "HOM_PORTAL_SUBMIT"},
+	# Administration (D-62, D-69) : comptes, journal, politique de sécurité et profils depuis la console et
+	# depuis le département (RSSI, super administrateur) ; serveur de courriels depuis la console seulement.
+	# La première règle correspondante s'applique : les chemins les plus précis viennent d'abord.
+	{"m": "GET", "re": `^/bff/(des|console)/iam/comptes/journal$`, "p": "IAM_JOURNAL_READ"},
+	{"m": "GET", "re": `^/bff/(des|console)/iam/comptes(/.*)?$`, "p": "IAM_ACCOUNT_READ"},
+	{"m": "POST", "re": `^/bff/(des|console)/iam/comptes$`, "p": "IAM_ACCOUNT_CREATE"},
+	{"m": "PUT", "re": `^/bff/(des|console)/iam/comptes/[^/]+/profils$`, "p": "IAM_ACCOUNT_ROLES"},
+	# Rattachement d'un compte à une unité et à son responsable (D-76, docs/lot1/mon-activite.md §1.3).
+	{"m": "PUT", "re": `^/bff/(des|console)/iam/comptes/[^/]+/rattachement$`, "p": "IAM_ACCOUNT_EDIT"},
+	{"m": "PUT", "re": `^/bff/(des|console)/iam/comptes/[^/]+$`, "p": "IAM_ACCOUNT_EDIT"},
+	{"m": "POST", "re": `^/bff/(des|console)/iam/comptes/[^/]+/(activation|desactivation)$`, "p": "IAM_ACCOUNT_STATUS"},
+	{"m": "DELETE", "re": `^/bff/(des|console)/iam/comptes/[^/]+$`, "p": "IAM_ACCOUNT_DELETE"},
+	{"m": "POST", "re": `^/bff/(des|console)/iam/comptes/[^/]+/(actions-requises|second-facteur/reinitialisation|mot-de-passe-provisoire|sessions/fermeture)$`, "p": "IAM_ACCOUNT_SECURITY"},
+	{"m": "GET", "re": `^/bff/(des|console)/iam/configuration/politique-securite$`, "p": "PLATFORM_SECURITY_POLICY_READ"},
+	{"m": "PUT", "re": `^/bff/(des|console)/iam/configuration/politique-securite$`, "p": "PLATFORM_SECURITY_POLICY_EDIT"},
+	{"m": "GET", "re": `^/bff/console/iam/configuration/messagerie$`, "p": "PLATFORM_MESSAGING_EDIT"},
+	{"m": "PUT", "re": `^/bff/console/iam/configuration/messagerie$`, "p": "PLATFORM_MESSAGING_EDIT"},
+	{"m": "POST", "re": `^/bff/console/iam/configuration/messagerie/test$`, "p": "PLATFORM_MESSAGING_EDIT"},
+	{"m": "GET", "re": `^/bff/(des|console)/iam/configuration/(profils|permissions)$`, "p": "IAM_ACCOUNT_READ"},
+	{"m": "PUT", "re": `^/bff/(des|console)/iam/configuration/profils/[^/]+/permissions$`, "p": "IAM_PROFILE_EDIT"},
+	# Profils créés par l'administration (D-81 §5).
+	{"m": "POST", "re": `^/bff/(des|console)/iam/configuration/profils$`, "p": "IAM_PROFILE_EDIT"},
+	{"m": "DELETE", "re": `^/bff/(des|console)/iam/configuration/profils/[^/]+$`, "p": "IAM_PROFILE_EDIT"},
+	# Libellé et description d'un profil (D-86 §2) ; MS-IAM vérifie le profil privilégié et la réauthentification.
+	{"m": "PUT", "re": `^/bff/(des|console)/iam/configuration/profils/[^/]+$`, "p": "IAM_PROFILE_EDIT"},
+	# Matrice des pouvoirs et demandes à l'administration (D-81 §3, §4) ; MS-IAM vérifie la portée, l'acte
+	# exécuté à l'acceptation et la réauthentification.
+	{"m": "GET", "re": `^/bff/(des|console)/iam/pouvoirs/matrice$`, "p": "IAM_ACCOUNT_READ"},
+	{"m": "PUT", "re": `^/bff/(des|console)/iam/pouvoirs/matrice/[^/]+$`, "p": "IAM_PROFILE_EDIT"},
+	{"m": "GET", "re": `^/bff/des/iam/pouvoirs/moi$`, "p": "PIL_ACTIVITY_OWN"},
+	# Rattachement d'un subordonné par son chef (action RATTACHEMENT_MODIFIER, D-81 §3) ; MS-IAM vérifie la
+	# portée, l'unité et le n+1 proposés.
+	{"m": "PUT", "re": `^/bff/des/iam/pouvoirs/subordonnes/[^/]+/rattachement$`, "p": "PIL_ACTIVITY_OWN"},
+	{"m": "POST", "re": `^/bff/des/iam/demandes(/[^/]+/annulation)?$`, "p": "PIL_ACTIVITY_OWN"},
+	{"m": "GET", "re": `^/bff/(des|console)/iam/demandes(/[^/]+)?$`, "p": "PIL_ACTIVITY_OWN"},
+	{"m": "POST", "re": `^/bff/(des|console)/iam/demandes/[^/]+/acceptation$`, "p": "IAM_ACCOUNT_CREATE"},
+	{"m": "POST", "re": `^/bff/(des|console)/iam/demandes/[^/]+/refus$`, "p": "IAM_ACCOUNT_READ"},
+	# Messagerie instantanée de travail (D-64, docs/lot1/messagerie.md §1) : tout membre interne du
+	# GIMAC, depuis le DES et depuis la console (RSSI, super administrateur).
+	{"m": "GET", "re": `^/bff/(des|console)/collaboration/messagerie/(annuaire|non-lus|conversations(/[^/]+(/messages(/[^/]+/lectures)?)?)?|pieces/[^/]+)$`, "p": "COL_MESSAGE_READ"},
+	{"m": "POST", "re": `^/bff/(des|console)/collaboration/messagerie/conversations/[^/]+/lu$`, "p": "COL_MESSAGE_READ"},
+	{"m": "POST", "re": `^/bff/(des|console)/collaboration/messagerie/conversations(/[^/]+/messages)?$`, "p": "COL_MESSAGE_SEND"},
+	# Groupes de discussion (D-68) : nom, membres ajoutés, retrait ou départ ; l'administration du groupe
+	# est vérifiée par MS-COLLABORATION.
+	{"m": "PATCH", "re": `^/bff/(des|console)/collaboration/messagerie/conversations/[^/]+$`, "p": "COL_MESSAGE_SEND"},
+	{"m": "POST", "re": `^/bff/(des|console)/collaboration/messagerie/conversations/[^/]+/membres$`, "p": "COL_MESSAGE_SEND"},
+	{"m": "DELETE", "re": `^/bff/(des|console)/collaboration/messagerie/conversations/[^/]+/membres/[^/]+$`, "p": "COL_MESSAGE_SEND"},
+	# « En train d'écrire » (D-72) : signal éphémère ; l'appartenance est vérifiée par MS-COLLABORATION.
+	{"m": "POST", "re": `^/bff/(des|console)/collaboration/messagerie/conversations/[^/]+/saisie$`, "p": "COL_MESSAGE_SEND"},
+	# Organisation (D-76 §1.3) : catalogue des unités (édition par l'administration des comptes) et
+	# rattachement du titulaire ; lecture du catalogue : tout membre interne (département), l'administration
+	# des comptes (console).
+	{"m": "POST", "re": `^/bff/(des|console)/iam/organisation/unites$`, "p": "IAM_ACCOUNT_EDIT"},
+	{"m": "PUT", "re": `^/bff/(des|console)/iam/organisation/unites/[^/]+$`, "p": "IAM_ACCOUNT_EDIT"},
+	{"m": "GET", "re": `^/bff/des/iam/organisation/(moi|unites)$`, "p": "PIL_ACTIVITY_OWN"},
+	{"m": "GET", "re": `^/bff/console/iam/organisation/unites$`, "p": "IAM_ACCOUNT_READ"},
+	# Notifications de la plateforme (D-80, docs/lot1/notifications.md §3) : les siennes seulement (MS-NOTIFICATION).
+	{"m": "GET", "re": `^/bff/(des|console)/notification/(notifications(/compteur)?|preferences)$`, "p": "NOT_INBOX_READ"},
+	{"m": "POST", "re": `^/bff/(des|console)/notification/notifications(/[^/]+)?/lecture$`, "p": "NOT_INBOX_READ"},
+	{"m": "PUT", "re": `^/bff/(des|console)/notification/preferences$`, "p": "NOT_INBOX_READ"},
+	# Mon activité (D-76 §2) : agenda, activités, tâches, rapports de chacun ; équipe des responsables.
+	# Les droits fins (propriétaire, équipe, destinataire) sont vérifiés par MS-PILOTAGE.
+	{"m": "GET", "re": `^/bff/des/pilotage/equipe$`, "p": "PIL_TEAM_READ"},
+	{"m": "GET", "re": `^/bff/des/pilotage/(agenda|activites|taches(/groupes)?(/[^/]+)?|rapports(/[^/]+(/document)?)?|moi/synthese)$`, "p": "PIL_ACTIVITY_OWN"},
+	{"m": "POST", "re": `^/bff/des/pilotage/(agenda(/[^/]+/reponse)?|activites(/[^/]+/statut)?|taches(/[^/]+/(transition|prise|attribution|relance))?|rapports(/preremplissage|/[^/]+/(soumission|visa))?)$`, "p": "PIL_ACTIVITY_OWN"},
+	{"m": "PUT", "re": `^/bff/des/pilotage/(agenda|activites|taches|rapports)/[^/]+$`, "p": "PIL_ACTIVITY_OWN"},
+	{"m": "DELETE", "re": `^/bff/des/pilotage/(agenda|activites)/[^/]+$`, "p": "PIL_ACTIVITY_OWN"},
+	# Processus d'unité (D-87, docs/lot1/processus-unite.md §5.1) : définitions et instances, tout membre interne ;
+	# droits fins (unité, pouvoirs D-81/D-86, intervenant, signataire, validateur) vérifiés par MS-PILOTAGE.
+	{"m": "GET", "re": `^/bff/des/pilotage/processus(/[^/]+|/instances/[^/]+)?$`, "p": "PIL_ACTIVITY_OWN"},
+	{"m": "POST", "re": `^/bff/des/pilotage/processus(/[^/]+/(controle|publication|nouvelle-version|retrait|instances))?$`, "p": "PIL_ACTIVITY_OWN"},
+	{"m": "POST", "re": `^/bff/des/pilotage/processus/instances/[^/]+/(suspension|reprise|annulation)$`, "p": "PIL_ACTIVITY_OWN"},
+	{"m": "POST", "re": `^/bff/des/pilotage/processus/instances/[^/]+/etapes/[^/]+/(livrables|signature|fin|validation|reaffectation)$`, "p": "PIL_ACTIVITY_OWN"},
+	{"m": "PUT", "re": `^/bff/des/pilotage/processus/([^/]+|instances/[^/]+/etapes/[^/]+/champs)$`, "p": "PIL_ACTIVITY_OWN"},
+	{"m": "DELETE", "re": `^/bff/des/pilotage/processus/[^/]+$`, "p": "PIL_ACTIVITY_OWN"},
+	# Aperçu des documents bureautiques (D-83, docs/lot1/apercu-bureautique.md §2) : conversion en PDF par
+	# MS-DOCUMENT, tout membre interne (qui a déjà le contenu à afficher) ; jamais un compte d'institution.
+	{"m": "POST", "re": `^/bff/(des|console)/document/apercus$`, "p": "PIL_ACTIVITY_OWN"},
+]
+
+# Routes internes des services (jeton de service) : jamais relayées depuis une couche de présentation.
+interne if regex.match(`^/bff/[^/]+/[^/]+/interne(/|$)`, input.path)
+
+# Messagerie (D-64) : seuls les chemins listés dans « regles » sont relayés ; tout autre chemin ou
+# méthode sous /bff/{des,console}/collaboration/messagerie est refusé (pas de repli sur @PreAuthorize).
+messagerie if regex.match(`^/bff/(des|console)/collaboration/messagerie(/|$)`, input.path)
+
+# Les correspondants des institutions (jeton portant une institution) n'ont jamais accès à la messagerie.
+compte_externe if input.institution_id != ""
+
+messagerie_externe if {
+	messagerie
+	compte_externe
+}
+
+# Mon activité et organisation (D-76) : comme la messagerie, seuls les chemins listés dans « regles »
+# sont relayés, et jamais pour un compte d'institution.
+pilotage if regex.match(`^/bff/des/pilotage(/|$)`, input.path)
+
+organisation if regex.match(`^/bff/(des|console)/iam/(organisation|pouvoirs|demandes)(/|$)`, input.path)
+
+boite_notifications if regex.match(`^/bff/(des|console|portail)/notification(/|$)`, input.path)
+
+reserve_interne_externe if {
+	boite_notifications
+	compte_externe
+}
+
+reserve_interne_externe if {
+	pilotage
+	compte_externe
+}
+
+reserve_interne_externe if {
+	organisation
+	compte_externe
+}
+
+# Aperçu bureautique (D-83) : seule la route listée dans « regles » est relayée, et jamais pour un compte
+# d'institution ; le portail n'y a pas accès (aucune règle).
+apercus if regex.match(`^/bff/(des|console|portail)/document/apercus(/|$)`, input.path)
+
+reserve_interne_externe if {
+	apercus
+	compte_externe
+}
+
+# La collaboration est réservée aux acteurs internes : aucun chemin du portail n'est relayé.
+collaboration_portail if regex.match(`^/bff/portail/collaboration(/|$)`, input.path)
+
+# « Mon compte » et défi de réauthentification (D-62) : tout utilisateur à deux facteurs, depuis
+# chacune des trois couches ; MS-IAM n'y expose que le compte du titulaire du jeton.
+libre_service if regex.match(`^/bff/(des|portail|console)/iam/(moi(/.*)?|reauthentification/defi)$`, input.path)
+
+# Photos de profil des collègues (docs/lot1/mon-compte.md §1) : DES et console, lecture seule, tout
+# utilisateur à deux facteurs ; le portail n'y a pas accès (seulement à la sienne, sous /iam/moi/avatar).
+avatars if regex.match(`^/bff/(des|console)/iam/avatars(/|$)`, input.path)
+
+avatar_collegue if {
+	input.method == "GET"
+	regex.match(`^/bff/(des|console)/iam/avatars/[^/]+$`, input.path)
+}
+
+# Dépôt d'une pièce depuis le DES : l'une des permissions d'instruction ou de soumission.
+permissions_depot_document := {"PAR_ADHESION_INSTRUCT", "HOM_EVIDENCE_SUBMIT", "HOM_STEP_MANAGE", "CER_CHANGE_RECORD_LINK", "DOC_DEPOSIT"}
+
+depot_document_des if {
+	input.method == "POST"
+	input.path == "/bff/des/document/documents"
+}
+
+# Dépôts fragmentés (D-74, docs/lot1/depots-fragmentes.md §3) : seuls les chemins et méthodes du contrat
+# sont relayés ; tout autre chemin ou méthode sous …/document/depots est refusé (pas de repli sur
+# @PreAuthorize). Portail : règles de « regles » (HOM_PORTAL_SUBMIT et institution).
+depots_fragmentes if regex.match(`^/bff/(des|console|portail)/document/depots(/|$)`, input.path)
+
+# DES et console : l'une des permissions du dépôt direct, COL_MESSAGE_SEND (pièces jointes de la
+# messagerie) ou PIL_ACTIVITY_OWN (rapports d'activité déposés, D-76 ; livrables des processus d'unité,
+# finalité PROCESSUS_UNITE, D-87) ; MS-DOCUMENT exige ensuite la permission propre à la finalité.
+permissions_depot_fragmente := permissions_depot_document | {"COL_MESSAGE_SEND", "PIL_ACTIVITY_OWN"}
+
+route_depot_fragmente if {
+	input.method == "POST"
+	regex.match(`^/bff/(des|console)/document/depots(/[^/]+/fin)?$`, input.path)
+}
+
+route_depot_fragmente if {
+	input.method == "PUT"
+	regex.match(`^/bff/(des|console)/document/depots/[^/]+/parties/[^/]+$`, input.path)
+}
+
+route_depot_fragmente if {
+	input.method in {"GET", "DELETE"}
+	regex.match(`^/bff/(des|console)/document/depots/[^/]+$`, input.path)
+}
+
+# Session restreinte du premier accès (D-65, docs/lot1/connexion.md §2), transmise par la passerelle.
+restreinte if input.restreinte == true
+
+# Assistant de premier accès : GET|POST /bff/{couche}/iam/moi, …/premiere-configuration,
+# …/mot-de-passe et …/second-facteur/**.
+chemin_premier_acces if regex.match(
+	`^/bff/(des|portail|console)/iam/moi(/premiere-configuration|/mot-de-passe|/second-facteur(/.*)?)?$`,
+	input.path,
+)
+
+premier_acces if {
+	restreinte
+	input.authentifie == true
+	input.acr == "1"
+	input.method in {"GET", "POST"}
+	chemin_premier_acces
+}
+
+allow if premier_acces
+
+# Second facteur (D-61) : niveaux d'assurance acceptés.
+niveaux_double_facteur := {"2", "3"}
+
+double_facteur if input.acr in niveaux_double_facteur
+
+# Permission exigée par la première règle correspondant à la méthode et au chemin.
+correspondances := [i |
+	some i, regle in regles
+	regle.m == input.method
+	regex.match(regle.re, input.path)
+]
+
+required_permission := regles[min(correspondances)].p if count(correspondances) > 0
+
+portail if startswith(input.path, "/bff/portail/")
+
+# Chemins du DES et de la console : la permission suffit (messagerie : comptes internes seulement).
+allow if {
+	not restreinte
+	not interne
+	not portail
+	not messagerie_externe
+	not reserve_interne_externe
+	double_facteur
+	required_permission in input.permissions
+}
+
+# Chemins du portail : permission et institution dans le jeton.
+allow if {
+	not restreinte
+	not interne
+	portail
+	not collaboration_portail
+	double_facteur
+	required_permission in input.permissions
+	input.institution_id != ""
+}
+
+# Chemins du lot non listés : l'accès est laissé au contrôle @PreAuthorize du service,
+# à condition d'être authentifié (liste d'autorisations explicites du plan, extrait).
+allow if {
+	not restreinte
+	not interne
+	not required_permission
+	not portail
+	not messagerie
+	not pilotage
+	not organisation
+	not boite_notifications
+	not avatars
+	not depots_fragmentes
+	not apercus
+	startswith(input.path, "/bff/des/")
+	input.authentifie == true
+	double_facteur
+}
+
+allow if {
+	not restreinte
+	not interne
+	libre_service
+	input.authentifie == true
+	double_facteur
+}
+
+allow if {
+	not restreinte
+	depot_document_des
+	double_facteur
+	some p in input.permissions
+	p in permissions_depot_document
+}
+
+allow if {
+	not restreinte
+	route_depot_fragmente
+	double_facteur
+	some p in input.permissions
+	p in permissions_depot_fragmente
+}
+
+allow if {
+	not restreinte
+	avatar_collegue
+	input.authentifie == true
+	double_facteur
+}

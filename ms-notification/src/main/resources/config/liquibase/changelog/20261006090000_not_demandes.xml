@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Notifications des demandes à l'administration (D-81, docs/lot1/pouvoirs-hierarchiques.md §4) : type
+     DEMANDE (iam.request-submitted.v1, iam.request-decided.v1) et préférence correspondante (active par défaut). -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="not-notifications-demandes" author="lot1">
+        <sql>ALTER TABLE notification_utilisateur DROP CONSTRAINT ck_notification_utilisateur_type;</sql>
+        <sql>ALTER TABLE notification_utilisateur ADD CONSTRAINT ck_notification_utilisateur_type CHECK (type IN ('MESSAGE', 'TACHE', 'RAPPORT', 'DEMANDE'));</sql>
+        <addColumn tableName="preference_notification">
+            <column name="type_demande" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>

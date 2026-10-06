@@ -15,6 +15,7 @@ export * from './ressource/types'
 export { QueryBoundary, EtatsRequete, type QueryBoundaryProps } from './requete/QueryBoundary'
 export { initI18n, LANGUES, type Langue, type Catalogue } from './i18n/i18n'
 export { Enveloppe, type EnveloppeProps, type EntreeNavigation, type GroupeNavigation } from './enveloppe/Enveloppe'
+export { useBarreLaterale, ContexteBarreLaterale, type BarreLaterale } from './enveloppe/barreLaterale'
 export { Preferences } from './enveloppe/Preferences'
 export { RechercheGlobale, type ResultatRecherche, type SourceRecherche, type EcranRecherche } from './enveloppe/RechercheGlobale'
 export { usePreferences, langueInitiale, lirePreference, CLE_THEME, CLE_LANGUE } from './enveloppe/usePreferences'
@@ -42,7 +43,7 @@ export { Aiguillage, MessageAiguillage, reglageAiguillage } from './session/Aigu
 export { LangueComposants } from './i18n/LangueComposants'
 // Notifications de la plateforme (D-80, docs/lot1/notifications.md) : cloche, page, fenêtres surgissantes, système.
 export {
-  TYPES_NOTIFICATION, referenceConversation, type NotificationPlateforme, type TypeNotification, type ReferenceNotification, type EtatNotifications, type PageNotifications,
+  TYPES_NOTIFICATION, TYPES_MESSAGERIE, conversationDe, referenceConversation, type NotificationPlateforme, type TypeNotification, type ReferenceNotification, type EtatNotifications, type PageNotifications,
   type PreferencesNotifications, type FiltreLecture, type ServiceNotifications,
 } from './notifications/modele'
 export { notificationsHttp } from './notifications/http'

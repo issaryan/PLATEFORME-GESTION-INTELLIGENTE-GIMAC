@@ -17,6 +17,7 @@ import cm.gimac.des.iam.config.TestSecurityConfiguration;
 import cm.gimac.des.iam.domain.IamException;
 import cm.gimac.des.iam.domain.organisation.TypeUnite;
 import cm.gimac.des.iam.domain.organisation.Unite;
+import cm.gimac.des.iam.domain.pouvoir.Portee;
 import cm.gimac.des.iam.web.rest.errors.IamExceptionHandler;
 import java.util.List;
 import java.util.Map;
@@ -66,7 +67,7 @@ class OrganisationRoutesTest {
     void init() {
         when(service.unites(anyBoolean())).thenReturn(List.of(DG, DES, RESEAU));
         when(service.creerUnite(any(), any())).thenReturn(RESEAU);
-        when(service.modifierUnite(any(), eq("POLE_RESEAU"), any())).thenReturn(RESEAU);
+        when(service.modifierUnite(any(), eq("POLE_RESEAU"), any(), anyBoolean())).thenReturn(RESEAU);
         var rattachement = new OrganisationService.Rattachement(
             ID,
             "Awa Mballa",
@@ -74,7 +75,15 @@ class OrganisationRoutesTest {
             List.of(DG, DES, RESEAU),
             new OrganisationService.Responsable(CHEF, "Chef Mballa", "Chef du pôle"),
             List.of(CHEF, "dg"),
-            3
+            3,
+            List.of("POLE_RESEAU")
+        );
+        when(service.perimetre(ID, Portee.UNITES)).thenReturn(
+            new OrganisationService.Perimetre(
+                Portee.UNITES,
+                List.of(new OrganisationService.MembreEquipe("m1", "Bob Ndi", "Technicien", "POLE_RESEAU", ID, 1, true), new OrganisationService.MembreEquipe("m2", "Eva Ngo", "Technicienne", "POLE_RESEAU", "autre", 0, true)),
+                List.of("POLE_RESEAU")
+            )
         );
         when(service.rattachement(ID)).thenReturn(rattachement);
         when(service.equipe(ID)).thenReturn(List.of(new OrganisationService.MembreEquipe("m1", "Bob Ndi", "Technicien", "POLE_RESEAU", ID, 1, true)));
@@ -122,7 +131,14 @@ class OrganisationRoutesTest {
             .andExpect(jsonPath("$.code").value("POLE_RESEAU"));
         verify(service).creerUnite(any(), eq(RESEAU));
         mvc.perform(req(HttpMethod.PUT, u + "/POLE_RESEAU", MODIFICATION).with(jeton(ID, "IAM_ACCOUNT_EDIT"))).andExpect(status().isOk());
-        verify(service).modifierUnite(any(), eq("POLE_RESEAU"), eq(new Unite("POLE_RESEAU", "Pôle réseau", TypeUnite.POLE, "PROD_INFO", false)));
+        verify(service).modifierUnite(any(), eq("POLE_RESEAU"), eq(new Unite("POLE_RESEAU", "Pôle réseau", TypeUnite.POLE, "PROD_INFO", false)), eq(true));
+        // D-81 §2 : responsable fourni (valeur ou null) : appliqué ; absent : conservé.
+        String avecResponsable = MODIFICATION.replace("}", ",\"responsableId\":\"" + CHEF + "\"}");
+        mvc.perform(req(HttpMethod.PUT, u + "/POLE_RESEAU", avecResponsable).with(jeton(ID, "IAM_ACCOUNT_EDIT"))).andExpect(status().isOk());
+        verify(service).modifierUnite(any(), eq("POLE_RESEAU"), eq(new Unite("POLE_RESEAU", "Pôle réseau", TypeUnite.POLE, "PROD_INFO", false, CHEF)), eq(false));
+        String sansResponsable = MODIFICATION.replace("}", ",\"responsableId\":null}");
+        mvc.perform(req(HttpMethod.PUT, u + "/POLE_RESEAU", sansResponsable).with(jeton(ID, "IAM_ACCOUNT_EDIT"))).andExpect(status().isOk());
+        verify(service).modifierUnite(any(), eq("POLE_RESEAU"), eq(new Unite("POLE_RESEAU", "Pôle réseau", TypeUnite.POLE, "PROD_INFO", false)), eq(false));
         mvc.perform(req(HttpMethod.POST, u, "{\"code\":\"X\",\"type\":\"POLE\"}").with(jeton(ID, "IAM_ACCOUNT_EDIT"))).andExpect(status().isBadRequest());
         mvc.perform(req(HttpMethod.PUT, u + "/POLE_RESEAU", "{\"libelle\":\"x\",\"type\":\"POLE\"}").with(jeton(ID, "IAM_ACCOUNT_EDIT"))).andExpect(status().isBadRequest());
     }
@@ -130,7 +146,7 @@ class OrganisationRoutesTest {
     @Test
     @DisplayName("Erreurs du contrat en problem+json : ORG_CYCLE 409, ORG_UNITE_INCONNUE 422")
     void erreurs() throws Exception {
-        when(service.modifierUnite(any(), eq("DES"), any())).thenThrow(IamException.conflit("ORG_CYCLE", "Cycle", Map.of()));
+        when(service.modifierUnite(any(), eq("DES"), any(), anyBoolean())).thenThrow(IamException.conflit("ORG_CYCLE", "Cycle", Map.of()));
         when(service.creerUnite(any(), eq(new Unite("POLE_X", "x", TypeUnite.POLE, "ANCIEN", true)))).thenThrow(IamException.nonTraitable("ORG_UNITE_INCONNUE", "Inconnue", Map.of()));
         mvc
             .perform(req(HttpMethod.PUT, "/api/v1/organisation/unites/DES", MODIFICATION).with(jeton(ID, "IAM_ACCOUNT_EDIT")))
@@ -160,14 +176,15 @@ class OrganisationRoutesTest {
             .andExpect(jsonPath("$.responsable.nomAffiche").value("Chef Mballa"))
             .andExpect(jsonPath("$.responsable.fonction").value("Chef du pôle"))
             .andExpect(jsonPath("$.chaine[0]").value(CHEF))
-            .andExpect(jsonPath("$.equipeDirecte").value(3));
+            .andExpect(jsonPath("$.equipeDirecte").value(3))
+            .andExpect(jsonPath("$.unitesDirigees[0]").value("POLE_RESEAU"));
     }
 
     @Test
     @DisplayName("Routes internes : jeton de service INTERNAL_IAM_READ seulement ; rattachement et équipe avec niveau")
     void interne() throws Exception {
         String u = "/api/v1/interne/organisation/" + ID;
-        for (String uri : List.of(u, u + "/equipe")) {
+        for (String uri : List.of(u, u + "/equipe", u + "/perimetre?portee=UNITES")) {
             mvc.perform(req(HttpMethod.GET, uri, null)).andExpect(status().isUnauthorized());
             mvc.perform(req(HttpMethod.GET, uri, null).with(jeton(ID, "PIL_ACTIVITY_OWN", "IAM_ACCOUNT_READ", "PIL_TEAM_READ"))).andExpect(status().isForbidden());
         }
@@ -183,5 +200,73 @@ class OrganisationRoutesTest {
             .andExpect(jsonPath("$[0].responsableId").value(ID))
             .andExpect(jsonPath("$[0].niveau").value(1))
             .andExpect(jsonPath("$[0].actif").value(true));
+        // D-81 §2 : périmètre pour une portée.
+        mvc
+            .perform(req(HttpMethod.GET, u + "/perimetre?portee=UNITES", null).with(service))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.portee").value("UNITES"))
+            .andExpect(jsonPath("$.comptes.length()").value(2))
+            .andExpect(jsonPath("$.comptes[1].id").value("m2"))
+            .andExpect(jsonPath("$.comptes[1].niveau").value(0))
+            .andExpect(jsonPath("$.comptes[1].nomAffiche").value("Eva Ngo"))
+            .andExpect(jsonPath("$.comptes[1].fonction").value("Technicienne"))
+            .andExpect(jsonPath("$.comptes[1].unite").value("POLE_RESEAU"))
+            .andExpect(jsonPath("$.comptes[1].responsableId").value("autre"))
+            .andExpect(jsonPath("$.comptes[1].actif").value(true))
+            .andExpect(jsonPath("$.unites[0]").value("POLE_RESEAU"));
+        mvc.perform(req(HttpMethod.GET, u + "/perimetre?portee=TOUT", null).with(service)).andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("D-86 : membres actifs d'une unité pour le moteur de processus ; jeton de service ; profil et sous-unités transmis ; unité inconnue 404")
+    void membresUnite() throws Exception {
+        String u = "/api/v1/interne/organisation/unites/POLE_RESEAU/membres";
+        var membre = new OrganisationService.MembreUnite("m1", "Bob Ndi", "Technicien", "POLE_RESEAU", CHEF, true, java.util.Set.of("ROLE_POLE_RESEAU"));
+        when(service.membresUnite("POLE_RESEAU", "ROLE_POLE_RESEAU", true)).thenReturn(List.of(membre));
+        when(service.membresUnite("POLE_RESEAU", null, false)).thenReturn(List.of());
+        when(service.membresUnite(eq("INCONNUE"), any(), anyBoolean())).thenThrow(cm.gimac.des.iam.domain.IamException.introuvable("ORG_UNITE_INTROUVABLE", "INCONNUE"));
+        mvc.perform(req(HttpMethod.GET, u, null)).andExpect(status().isUnauthorized());
+        mvc.perform(req(HttpMethod.GET, u, null).with(jeton(ID, "PIL_ACTIVITY_OWN", "IAM_ACCOUNT_READ"))).andExpect(status().isForbidden());
+        var jetonService = jwt().jwt(j -> j.subject("service-account-pilotage-service")).authorities(new SimpleGrantedAuthority("INTERNAL_IAM_READ"));
+        mvc
+            .perform(req(HttpMethod.GET, u + "?profil=ROLE_POLE_RESEAU&sousUnites=true", null).with(jetonService))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.length()").value(1))
+            .andExpect(jsonPath("$[0].id").value("m1"))
+            .andExpect(jsonPath("$[0].nomAffiche").value("Bob Ndi"))
+            .andExpect(jsonPath("$[0].fonction").value("Technicien"))
+            .andExpect(jsonPath("$[0].unite").value("POLE_RESEAU"))
+            .andExpect(jsonPath("$[0].responsableId").value(CHEF))
+            .andExpect(jsonPath("$[0].actif").value(true))
+            .andExpect(jsonPath("$[0].profils[0]").value("ROLE_POLE_RESEAU"));
+        // Sans profil : tous les membres ; sous-unités comprises par défaut.
+        mvc.perform(req(HttpMethod.GET, u + "?profil=ROLE_POLE_RESEAU", null).with(jetonService)).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1));
+        mvc.perform(req(HttpMethod.GET, u + "?sousUnites=false", null).with(jetonService)).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
+        verify(service).membresUnite("POLE_RESEAU", null, false);
+        mvc.perform(req(HttpMethod.GET, "/api/v1/interne/organisation/unites/INCONNUE/membres", null).with(jetonService)).andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("D-87 : une unité par son code (responsable compris) ; jeton de service INTERNAL_IAM_READ seulement ; unité inconnue 404")
+    void uniteParCode() throws Exception {
+        String u = "/api/v1/interne/organisation/unites/POLE_RESEAU";
+        when(service.unite("POLE_RESEAU")).thenReturn(RESEAU.avecResponsable(CHEF));
+        when(service.unite("INCONNUE")).thenThrow(cm.gimac.des.iam.domain.IamException.introuvable("ORG_UNITE_INTROUVABLE", "INCONNUE"));
+        mvc.perform(req(HttpMethod.GET, u, null)).andExpect(status().isUnauthorized());
+        mvc.perform(req(HttpMethod.GET, u, null).with(jeton(ID, "PIL_ACTIVITY_OWN", "IAM_ACCOUNT_READ"))).andExpect(status().isForbidden());
+        var jetonService = jwt().jwt(j -> j.subject("service-account-pilotage-service")).authorities(new SimpleGrantedAuthority("INTERNAL_IAM_READ"));
+        mvc
+            .perform(req(HttpMethod.GET, u, null).with(jetonService))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.code").value("POLE_RESEAU"))
+            .andExpect(jsonPath("$.libelle").value("Pôle réseau"))
+            .andExpect(jsonPath("$.type").value("POLE"))
+            .andExpect(jsonPath("$.parent").value("PROD_INFO"))
+            .andExpect(jsonPath("$.active").value(true))
+            .andExpect(jsonPath("$.responsableId").value(CHEF));
+        mvc
+            .perform(req(HttpMethod.GET, "/api/v1/interne/organisation/unites/INCONNUE", null).with(jetonService))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.code").value("ORG_UNITE_INTROUVABLE"));
     }
 }

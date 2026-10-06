@@ -19,6 +19,11 @@ regles := [
 	{"m": "POST", "re": `^/bff/des/homologation/referentiels(/[^/]+/(operations|controle))?$`, "p": "HOM_REFERENTIEL_EDIT"},
 	{"m": "PUT", "re": `^/bff/des/homologation/referentiels/[^/]+/(operations/[^/]+|positions|arcs|pilote)$`, "p": "HOM_REFERENTIEL_EDIT"},
 	{"m": "DELETE", "re": `^/bff/des/homologation/referentiels/[^/]+/operations/[^/]+$`, "p": "HOM_REFERENTIEL_EDIT"},
+	# Étapes configurables d'un brouillon (D-89, docs/lot1/referentiel-droits-etapes.md §2) : ajout, renommage,
+	# ordre et retrait ; la lecture filtrée du référentiel (graphe, liste, export) reste au @PreAuthorize.
+	{"m": "POST", "re": `^/bff/des/homologation/referentiels/[^/]+/etapes(/[^/]+|/ordre)?$`, "p": "HOM_REFERENTIEL_EDIT"},
+	{"m": "PUT", "re": `^/bff/des/homologation/referentiels/[^/]+/etapes(/[^/]+|/ordre)?$`, "p": "HOM_REFERENTIEL_EDIT"},
+	{"m": "DELETE", "re": `^/bff/des/homologation/referentiels/[^/]+/etapes(/[^/]+|/ordre)?$`, "p": "HOM_REFERENTIEL_EDIT"},
 	{"m": "POST", "re": `^/bff/des/homologation/liaisons$`, "p": "HOM_LIAISON_OPEN"},
 	# Cadrage (étape 3, D-58) : désignation du conducteur de projet par un chef de département.
 	{"m": "PUT", "re": `^/bff/des/homologation/liaisons/[^/]+/chef-de-projet$`, "p": "HOM_PROJECT_DESIGNATE"},
@@ -89,9 +94,26 @@ regles := [
 	{"m": "POST", "re": `^/bff/console/iam/configuration/messagerie/test$`, "p": "PLATFORM_MESSAGING_EDIT"},
 	{"m": "GET", "re": `^/bff/(des|console)/iam/configuration/(profils|permissions)$`, "p": "IAM_ACCOUNT_READ"},
 	{"m": "PUT", "re": `^/bff/(des|console)/iam/configuration/profils/[^/]+/permissions$`, "p": "IAM_PROFILE_EDIT"},
+	# Profils créés par l'administration (D-81 §5).
+	{"m": "POST", "re": `^/bff/(des|console)/iam/configuration/profils$`, "p": "IAM_PROFILE_EDIT"},
+	{"m": "DELETE", "re": `^/bff/(des|console)/iam/configuration/profils/[^/]+$`, "p": "IAM_PROFILE_EDIT"},
+	# Libellé et description d'un profil (D-86 §2) ; MS-IAM vérifie le profil privilégié et la réauthentification.
+	{"m": "PUT", "re": `^/bff/(des|console)/iam/configuration/profils/[^/]+$`, "p": "IAM_PROFILE_EDIT"},
+	# Matrice des pouvoirs et demandes à l'administration (D-81 §3, §4) ; MS-IAM vérifie la portée, l'acte
+	# exécuté à l'acceptation et la réauthentification.
+	{"m": "GET", "re": `^/bff/(des|console)/iam/pouvoirs/matrice$`, "p": "IAM_ACCOUNT_READ"},
+	{"m": "PUT", "re": `^/bff/(des|console)/iam/pouvoirs/matrice/[^/]+$`, "p": "IAM_PROFILE_EDIT"},
+	{"m": "GET", "re": `^/bff/des/iam/pouvoirs/moi$`, "p": "PIL_ACTIVITY_OWN"},
+	# Rattachement d'un subordonné par son chef (action RATTACHEMENT_MODIFIER, D-81 §3) ; MS-IAM vérifie la
+	# portée, l'unité et le n+1 proposés.
+	{"m": "PUT", "re": `^/bff/des/iam/pouvoirs/subordonnes/[^/]+/rattachement$`, "p": "PIL_ACTIVITY_OWN"},
+	{"m": "POST", "re": `^/bff/des/iam/demandes(/[^/]+/annulation)?$`, "p": "PIL_ACTIVITY_OWN"},
+	{"m": "GET", "re": `^/bff/(des|console)/iam/demandes(/[^/]+)?$`, "p": "PIL_ACTIVITY_OWN"},
+	{"m": "POST", "re": `^/bff/(des|console)/iam/demandes/[^/]+/acceptation$`, "p": "IAM_ACCOUNT_CREATE"},
+	{"m": "POST", "re": `^/bff/(des|console)/iam/demandes/[^/]+/refus$`, "p": "IAM_ACCOUNT_READ"},
 	# Messagerie instantanée de travail (D-64, docs/lot1/messagerie.md §1) : tout membre interne du
 	# GIMAC, depuis le DES et depuis la console (RSSI, super administrateur).
-	{"m": "GET", "re": `^/bff/(des|console)/collaboration/messagerie/(annuaire|non-lus|conversations(/[^/]+(/messages)?)?|pieces/[^/]+)$`, "p": "COL_MESSAGE_READ"},
+	{"m": "GET", "re": `^/bff/(des|console)/collaboration/messagerie/(annuaire|non-lus|conversations(/[^/]+(/messages(/[^/]+/lectures)?)?)?|pieces/[^/]+)$`, "p": "COL_MESSAGE_READ"},
 	{"m": "POST", "re": `^/bff/(des|console)/collaboration/messagerie/conversations/[^/]+/lu$`, "p": "COL_MESSAGE_READ"},
 	{"m": "POST", "re": `^/bff/(des|console)/collaboration/messagerie/conversations(/[^/]+/messages)?$`, "p": "COL_MESSAGE_SEND"},
 	# Groupes de discussion (D-68) : nom, membres ajoutés, retrait ou départ ; l'administration du groupe
@@ -115,10 +137,21 @@ regles := [
 	# Mon activité (D-76 §2) : agenda, activités, tâches, rapports de chacun ; équipe des responsables.
 	# Les droits fins (propriétaire, équipe, destinataire) sont vérifiés par MS-PILOTAGE.
 	{"m": "GET", "re": `^/bff/des/pilotage/equipe$`, "p": "PIL_TEAM_READ"},
-	{"m": "GET", "re": `^/bff/des/pilotage/(agenda|activites|taches(/[^/]+)?|rapports(/[^/]+(/document)?)?|moi/synthese)$`, "p": "PIL_ACTIVITY_OWN"},
-	{"m": "POST", "re": `^/bff/des/pilotage/(agenda(/[^/]+/reponse)?|activites(/[^/]+/statut)?|taches(/[^/]+/transition)?|rapports(/preremplissage|/[^/]+/(soumission|visa))?)$`, "p": "PIL_ACTIVITY_OWN"},
+	{"m": "GET", "re": `^/bff/des/pilotage/(agenda|activites|taches(/groupes)?(/[^/]+)?|rapports(/[^/]+(/document)?)?|moi/synthese)$`, "p": "PIL_ACTIVITY_OWN"},
+	{"m": "POST", "re": `^/bff/des/pilotage/(agenda(/[^/]+/reponse)?|activites(/[^/]+/statut)?|taches(/[^/]+/(transition|prise|attribution|relance))?|rapports(/preremplissage|/[^/]+/(soumission|visa))?)$`, "p": "PIL_ACTIVITY_OWN"},
 	{"m": "PUT", "re": `^/bff/des/pilotage/(agenda|activites|taches|rapports)/[^/]+$`, "p": "PIL_ACTIVITY_OWN"},
 	{"m": "DELETE", "re": `^/bff/des/pilotage/(agenda|activites)/[^/]+$`, "p": "PIL_ACTIVITY_OWN"},
+	# Processus d'unité (D-87, docs/lot1/processus-unite.md §5.1) : définitions et instances, tout membre interne ;
+	# droits fins (unité, pouvoirs D-81/D-86, intervenant, signataire, validateur) vérifiés par MS-PILOTAGE.
+	{"m": "GET", "re": `^/bff/des/pilotage/processus(/[^/]+|/instances/[^/]+)?$`, "p": "PIL_ACTIVITY_OWN"},
+	{"m": "POST", "re": `^/bff/des/pilotage/processus(/[^/]+/(controle|publication|nouvelle-version|retrait|instances))?$`, "p": "PIL_ACTIVITY_OWN"},
+	{"m": "POST", "re": `^/bff/des/pilotage/processus/instances/[^/]+/(suspension|reprise|annulation)$`, "p": "PIL_ACTIVITY_OWN"},
+	{"m": "POST", "re": `^/bff/des/pilotage/processus/instances/[^/]+/etapes/[^/]+/(livrables|signature|fin|validation|reaffectation)$`, "p": "PIL_ACTIVITY_OWN"},
+	{"m": "PUT", "re": `^/bff/des/pilotage/processus/([^/]+|instances/[^/]+/etapes/[^/]+/champs)$`, "p": "PIL_ACTIVITY_OWN"},
+	{"m": "DELETE", "re": `^/bff/des/pilotage/processus/[^/]+$`, "p": "PIL_ACTIVITY_OWN"},
+	# Aperçu des documents bureautiques (D-83, docs/lot1/apercu-bureautique.md §2) : conversion en PDF par
+	# MS-DOCUMENT, tout membre interne (qui a déjà le contenu à afficher) ; jamais un compte d'institution.
+	{"m": "POST", "re": `^/bff/(des|console)/document/apercus$`, "p": "PIL_ACTIVITY_OWN"},
 ]
 
 # Routes internes des services (jeton de service) : jamais relayées depuis une couche de présentation.
@@ -140,7 +173,7 @@ messagerie_externe if {
 # sont relayés, et jamais pour un compte d'institution.
 pilotage if regex.match(`^/bff/des/pilotage(/|$)`, input.path)
 
-organisation if regex.match(`^/bff/(des|console)/iam/organisation(/|$)`, input.path)
+organisation if regex.match(`^/bff/(des|console)/iam/(organisation|pouvoirs|demandes)(/|$)`, input.path)
 
 boite_notifications if regex.match(`^/bff/(des|console|portail)/notification(/|$)`, input.path)
 
@@ -156,6 +189,15 @@ reserve_interne_externe if {
 
 reserve_interne_externe if {
 	organisation
+	compte_externe
+}
+
+# Aperçu bureautique (D-83) : seule la route listée dans « regles » est relayée, et jamais pour un compte
+# d'institution ; le portail n'y a pas accès (aucune règle).
+apercus if regex.match(`^/bff/(des|console|portail)/document/apercus(/|$)`, input.path)
+
+reserve_interne_externe if {
+	apercus
 	compte_externe
 }
 
@@ -189,8 +231,8 @@ depot_document_des if {
 depots_fragmentes if regex.match(`^/bff/(des|console|portail)/document/depots(/|$)`, input.path)
 
 # DES et console : l'une des permissions du dépôt direct, COL_MESSAGE_SEND (pièces jointes de la
-# messagerie) ou PIL_ACTIVITY_OWN (rapports d'activité déposés, D-76) ; MS-DOCUMENT exige ensuite la
-# permission propre à la finalité.
+# messagerie) ou PIL_ACTIVITY_OWN (rapports d'activité déposés, D-76 ; livrables des processus d'unité,
+# finalité PROCESSUS_UNITE, D-87) ; MS-DOCUMENT exige ensuite la permission propre à la finalité.
 permissions_depot_fragmente := permissions_depot_document | {"COL_MESSAGE_SEND", "PIL_ACTIVITY_OWN"}
 
 route_depot_fragmente if {
@@ -279,6 +321,7 @@ allow if {
 	not boite_notifications
 	not avatars
 	not depots_fragmentes
+	not apercus
 	startswith(input.path, "/bff/des/")
 	input.authentifie == true
 	double_facteur

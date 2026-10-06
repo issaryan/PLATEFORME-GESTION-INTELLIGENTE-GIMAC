@@ -169,4 +169,15 @@ class ReglesOrganisationTest {
         Compte q = compte("q", null, true, null, "p");
         assertThat(ReglesOrganisation.chaine(p, lecteur(p, q))).containsExactly("q");
     }
+
+    @Test
+    @DisplayName("D-86 : une unité et toutes ses sous-unités (inactives comprises), triées, sans cycle")
+    void sousUnites() {
+        assertThat(ReglesOrganisation.sousUnites("DES", catalogue().values())).containsExactly("DES", "POLE_RESEAU", "PROD_INFO");
+        assertThat(ReglesOrganisation.sousUnites("DG", catalogue().values())).containsExactly("ANCIEN", "DES", "DG", "POLE_RESEAU", "PROD_INFO");
+        assertThat(ReglesOrganisation.sousUnites("POLE_RESEAU", catalogue().values())).containsExactly("POLE_RESEAU");
+        Map<String, Unite> boucle = catalogue();
+        boucle.put("DG", new Unite("DG", "Direction Générale", TypeUnite.DIRECTION, "POLE_RESEAU", true));
+        assertThat(ReglesOrganisation.sousUnites("DES", boucle.values())).containsExactly("ANCIEN", "DES", "DG", "POLE_RESEAU", "PROD_INFO");
+    }
 }

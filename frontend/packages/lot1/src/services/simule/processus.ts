@@ -1,0 +1,650 @@
+import { ApiError, type OptionsTeleversement, type Televersement } from '@gimac/socle'
+import type { PersonneActivite } from '../../modele/pilotage'
+import {
+  LIMITES_PROCESSUS, MODES_REMPLACEMENT, cleDesignation, designationsAttendues, intervenantNormalise, type AnomalieProcessus, type Attendu, type ControleProcessus, type EtapeInstance,
+  type EtapeProcessus, type HistoriqueProcessus, type InstanceProcessus, type Intervenant, type Processus, type ResumeInstance, type SaisieProcessus,
+} from '../../modele/processus'
+import { ajouterJours, aujourdhui } from '../../modele/jours'
+import type { ServiceProcessus } from '../ports'
+import type { MagasinPouvoirs } from './pouvoirs'
+import { DUREE_ETAPE_DOCUMENT_MS, type PontTachesProcessus } from './pilotage'
+import { PRESENTATIONS_PROFILS } from './presentations'
+
+// MS-PILOTAGE simulé pour les processus d'unité (D-87, docs/lot1/processus-unite.md §5) : mêmes formes et mêmes codes de
+// refus que le service ; ses règles ne sont qu'une imitation (contrôle de publication, versions, résolution des
+// intervenants, ordre des signatures, validation et renvoi, tâches d'origine PROCESSUS de « Mon activité »). Jeu de
+// démonstration : processus publié « Ouverture d'un flux réseau » du pôle réseau, un brouillon et deux instances.
+
+type Attendre = <T>(v: T | (() => T)) => Promise<T>
+type Refus = (status: number, code: string, message: string, details?: Record<string, unknown>) => ApiError
+
+type Document = { nomFichier: string; typeMime: string; taille: number; sha256: string }
+type EtapeSim = EtapeInstance & { def: EtapeProcessus }
+type InstanceSim = Omit<InstanceProcessus, 'etapes' | 'droits'> & { etapes: EtapeSim[] }
+
+/** Empreinte hexadécimale de démonstration (64 caractères), stable pour un même texte. */
+export function empreinteDemo(texte: string): string {
+  let h = 2166136261
+  let s = ''
+  for (let tour = 0; tour < 8; tour++) {
+    for (let i = 0; i < texte.length; i++) h = Math.imul(h ^ texte.charCodeAt(i), 16777619) >>> 0
+    h = Math.imul(h ^ tour, 16777619) >>> 0
+    s += h.toString(16).padStart(8, '0')
+  }
+  return s
+}
+
+const pos = (x: number, y: number) => ({ x, y })
+
+/** Processus publié de la démonstration (§5.3) : quatre étapes, un validateur, une signature du chef d'unité. */
+export function definitionDemo(): EtapeProcessus[] {
+  return [
+    {
+      code: 'DEMANDE', libelle: 'Demande d’ouverture du flux', action: 'Décrire le flux à ouvrir : source, destination, port, protocole et date souhaitée.',
+      intervenant: { mode: 'LANCEUR' }, validateur: null, predecesseurs: [], delaiJours: 1, livrables: [], signatures: [], position: pos(0, 80),
+      champs: [
+        { code: 'SOURCE', libelle: 'Adresse source', type: 'TEXTE', choix: [], obligatoire: true },
+        { code: 'DESTINATION', libelle: 'Adresse de destination', type: 'TEXTE', choix: [], obligatoire: true },
+        { code: 'PORT', libelle: 'Port', type: 'NOMBRE', choix: [], obligatoire: true },
+        { code: 'PROTOCOLE', libelle: 'Protocole', type: 'CHOIX', choix: ['TCP', 'UDP'], obligatoire: true },
+        { code: 'DATE_SOUHAITEE', libelle: 'Date souhaitée', type: 'DATE', choix: [], obligatoire: false },
+      ],
+    },
+    {
+      code: 'ANALYSE', libelle: 'Analyse de sécurité du flux', action: 'Vérifier la conformité du flux à la politique de filtrage et rédiger la note d’analyse.',
+      intervenant: { mode: 'PROFIL', profil: 'ROLE_POLE_RESEAU' }, validateur: { mode: 'CHEF_UNITE' }, predecesseurs: ['DEMANDE'], delaiJours: 2, position: pos(300, 80),
+      livrables: [{ code: 'NOTE_ANALYSE', libelle: 'Note d’analyse', typesPieces: ['application/pdf'], obligatoire: true, modele: null }], signatures: [], champs: [],
+    },
+    {
+      code: 'MISE_EN_OEUVRE', libelle: 'Mise en œuvre sur les équipements', action: 'Appliquer la règle sur les pare-feu et joindre la configuration appliquée.',
+      intervenant: { mode: 'AU_LANCEMENT', remplacement: 'ROLE_POLE_RESEAU' }, validateur: null, predecesseurs: ['ANALYSE'], delaiJours: 3, position: pos(600, 80),
+      livrables: [{ code: 'CONFIGURATION', libelle: 'Configuration appliquée', typesPieces: ['text/plain', 'application/pdf'], obligatoire: true, modele: null }], signatures: [],
+      champs: [{ code: 'EQUIPEMENTS', libelle: 'Équipements modifiés', type: 'TEXTE', choix: [], obligatoire: false }],
+    },
+    {
+      code: 'RECETTE', libelle: 'Recette du flux', action: 'Tester le flux de bout en bout, rédiger le procès-verbal de recette et le faire signer par le chef d’unité.',
+      intervenant: { mode: 'PROFIL', profil: 'ROLE_POLE_RESEAU' }, validateur: null, predecesseurs: ['MISE_EN_OEUVRE'], delaiJours: 2, position: pos(900, 80),
+      livrables: [{ code: 'PV_RECETTE', libelle: 'Procès-verbal de recette', typesPieces: ['application/pdf'], obligatoire: true, modele: null }],
+      signatures: [{ code: 'SIGNATURE_RECETTE', libelle: 'Signature du procès-verbal', signataire: { mode: 'CHEF_UNITE' }, porte: ['PV_RECETTE', 'NOTE_ANALYSE'], ordre: 1 }],
+      champs: [{ code: 'RESULTAT', libelle: 'Résultat des tests', type: 'CHOIX', choix: ['Conforme', 'Non conforme'], obligatoire: true }],
+    },
+  ]
+}
+
+type EtatSimule = { definitions: Processus[]; instances: InstanceSim[]; documents: Map<string, Document>; sequence: number }
+/** État partagé par les services simulés d'un même magasin des pouvoirs (organisation commune, plusieurs personnes). */
+const ETATS = new WeakMap<MagasinPouvoirs, EtatSimule>()
+
+export function processusSimule(attendre: Attendre, refus: Refus, moiId: string, magasin: MagasinPouvoirs, pont?: PontTachesProcessus): ServiceProcessus {
+  const existant = ETATS.get(magasin)
+  const etat: EtatSimule = existant ?? { definitions: [], instances: [], documents: new Map(), sequence: 0 }
+  ETATS.set(magasin, etat)
+  const id = (prefixe: string) => `${prefixe}-${(++etat.sequence).toString().padStart(4, '0')}`
+  const maintenant = () => new Date().toISOString()
+  const personne = (pid: string): PersonneActivite => magasin.personne(pid)
+  const moi = () => personne(moiId)
+  const membre = (pid: string) => magasin.organisation.find((m) => m.id === pid)
+  const profils = (pid: string) => magasin.profilsDe(pid)
+  const admin = () => profils(moiId).includes('ROLE_SUPER_ADMIN')
+  /** Responsable d'une unité, à défaut celui de la plus proche unité parente qui en a un. */
+  const chefDe = (code: string): string | null => {
+    for (let u = magasin.unites.find((x) => x.code === code); u; u = magasin.unites.find((x) => x.code === u!.parent)) if (u.responsableId) return u.responsableId
+    return null
+  }
+  const membreDe = (pid: string, unite: string) => {
+    const m = membre(pid)
+    return !!m?.unite && magasin.sousUnites(unite).includes(m.unite)
+  }
+  const peutDefinir = (unite: string) => admin() || magasin.couvreUnite(moiId, 'PROCESSUS_DEFINIR', unite)
+  const peutLancer = (unite: string) => membreDe(moiId, unite) || magasin.couvreUnite(moiId, 'PROCESSUS_LANCER', unite) || admin()
+  const peutLire = (unite: string) => peutDefinir(unite) || peutLancer(unite) || magasin.unitesDirigees(moiId).some((u) => magasin.sousUnites(u).includes(unite))
+  const peutPiloter = (unite: string) => admin() || magasin.unitesDirigees(moiId).includes(unite) || magasin.couvreUnite(moiId, 'TACHE_CONFIER', unite)
+  const documents = etat.documents
+
+  // ---------------------------------------------------------------- définitions
+  const definitions = etat.definitions
+  // Acteur des gestes du jeu de démonstration (préparé au démarrage), sinon l'utilisateur.
+  let acteurForce: PersonneActivite | null = null
+  const historiser = (h: HistoriqueProcessus[], action: string, detail: string | null = null, etape: string | null = null, acteur: PersonneActivite | null = acteurForce ?? moi()) =>
+    h.push({ quand: maintenant(), acteur, action, etape, detail })
+  const nouvelle = (s: SaisieProcessus, auteur: string, o: Partial<Processus> = {}): Processus => {
+    const p: Processus = {
+      id: id('PRC'), code: s.code, version: 1, etat: 'BROUILLON', unite: s.unite, libelle: s.libelle, description: s.description, categorie: s.categorie, delaiCibleJours: s.delaiCibleJours,
+      etapes: s.etapes.map(normaliserEtape), creeLe: maintenant(), creePar: personne(auteur), modifieLe: null, modifiePar: null, publieeLe: null, publieePar: null, motifPublication: null,
+      avertissementsLeves: false, retireeLe: null, retireePar: null, motifRetrait: null, droits: { modifier: false, publier: false, lancer: false, retirer: false }, versions: [],
+      avertissements: [], personnes: {}, historique: [{ quand: maintenant(), acteur: personne(auteur), action: 'CREE', etape: null, detail: null }], ...o,
+    }
+    definitions.push(p)
+    return p
+  }
+  const normaliserEtape = (e: EtapeProcessus): EtapeProcessus => ({
+    ...e, code: e.code.trim(), libelle: e.libelle.trim(), action: e.action ?? '', intervenant: intervenantNormalise(e.intervenant), validateur: e.validateur ? intervenantNormalise(e.validateur) : null,
+    livrables: e.livrables.map((l) => ({ ...l, obligatoire: l.obligatoire ?? true, modele: l.modele || null })), signatures: e.signatures.map((s) => ({ ...s, signataire: intervenantNormalise(s.signataire), ordre: s.ordre || 1 })),
+    champs: e.champs.map((c) => ({ ...c, obligatoire: c.obligatoire ?? false, choix: c.type === 'CHOIX' ? c.choix : [] })),
+  })
+  const vue = (p: Processus): Processus => {
+    const versions = definitions.filter((x) => x.code === p.code).sort((a, b) => b.version - a.version).map((x) => ({ id: x.id, version: x.version, etat: x.etat }))
+    const personnes = Object.fromEntries(p.etapes.flatMap((e) => [e.intervenant, e.validateur, ...e.signatures.map((s) => s.signataire)]).filter((i): i is Intervenant => !!i?.personneId).map((i) => [i.personneId!, personne(i.personneId!).nomAffiche]))
+    const definir = peutDefinir(p.unite)
+    return structuredClone({
+      ...p, versions, personnes,
+      droits: { modifier: definir && p.etat === 'BROUILLON', publier: definir && p.etat === 'BROUILLON', lancer: p.etat === 'PUBLIEE' && peutLancer(p.unite), retirer: definir && p.etat === 'PUBLIEE' },
+    })
+  }
+  const trouver = (pid: string) => {
+    const p = definitions.find((x) => x.id === pid)
+    if (!p || !peutLire(p.unite) || (p.etat === 'BROUILLON' && !peutDefinir(p.unite))) throw refus(404, 'PIL_PROCESSUS_INTROUVABLE', 'Processus introuvable.')
+    return p
+  }
+  const exigerDefinir = (unite: string) => {
+    if (!peutDefinir(unite)) throw refus(403, 'PIL_PROCESSUS_INTERDIT', 'Définir les processus de cette unité exige le pouvoir PROCESSUS_DEFINIR.')
+  }
+  const verifierSaisie = (s: SaisieProcessus) => {
+    const champ = (c: string, m: string) => refus(400, 'PIL_REQUETE_INVALIDE', m, { champ: c })
+    if (!LIMITES_PROCESSUS.code.test(s.code ?? '')) throw champ('code', 'Code invalide.')
+    if (!s.libelle?.trim() || s.libelle.length > LIMITES_PROCESSUS.libelle) throw champ('libelle', 'Libellé obligatoire, 200 caractères au plus.')
+    if ((s.description ?? '').length > LIMITES_PROCESSUS.description) throw champ('description', 'Description de 4000 caractères au plus.')
+    if (s.delaiCibleJours !== null && (s.delaiCibleJours < 0 || s.delaiCibleJours > LIMITES_PROCESSUS.delai)) throw champ('delaiCibleJours', 'Délai de 0 à 365 jours.')
+    if (s.etapes.length > LIMITES_PROCESSUS.etapes) throw champ('etapes', 'Cent étapes au plus.')
+    s.etapes.forEach((e, i) => {
+      if (!LIMITES_PROCESSUS.codeEtape.test(e.code ?? '')) throw champ(`etapes[${i}].code`, 'Code d’étape invalide.')
+      if (e.delaiJours < 0 || e.delaiJours > LIMITES_PROCESSUS.delai) throw champ(`etapes[${i}].delaiJours`, 'Délai de 0 à 365 jours.')
+      if (!e.intervenant?.mode) throw champ(`etapes[${i}].intervenant.mode`, 'Mode d’intervenant obligatoire.')
+    })
+    if (!magasin.unites.some((u) => u.code === s.unite)) throw refus(422, 'PIL_PROCESSUS_UNITE_INCONNUE', 'Unité inconnue.')
+  }
+
+  /** Contrôle de publication (§5.1) : graphe, intervenants, livrables, signatures, champs, couverture des profils. */
+  const controler = (p: Processus): AnomalieProcessus[] => {
+    const a: AnomalieProcessus[] = []
+    const ajouter = (code: string, gravite: AnomalieProcessus['gravite'], etape: string | null, element: string | null, message: string) => a.push({ code, gravite, etape, element, message })
+    const codes = p.etapes.map((e) => e.code)
+    if (!p.etapes.length) ajouter('AUCUNE_ETAPE', 'BLOQUANTE', null, null, 'Le processus n’a aucune étape.')
+    codes.filter((c, i) => codes.indexOf(c) !== i).forEach((c) => ajouter('CODE_DUPLIQUE', 'BLOQUANTE', c, null, `Code d’étape en double : ${c}.`))
+    p.etapes.forEach((e) => e.predecesseurs.filter((x) => !codes.includes(x)).forEach((x) => ajouter('PREDECESSEUR_INCONNU', 'BLOQUANTE', e.code, x, `Prédécesseur inconnu : ${x}.`)))
+    if (p.etapes.length && !p.etapes.some((e) => !e.predecesseurs.length)) ajouter('AUCUNE_ETAPE_INITIALE', 'BLOQUANTE', null, null, 'Aucune étape sans prédécesseur.')
+    // Kahn : les étapes jamais libérées forment un cycle.
+    const degres = new Map(p.etapes.map((e) => [e.code, e.predecesseurs.filter((x) => codes.includes(x)).length]))
+    const file = p.etapes.filter((e) => degres.get(e.code) === 0).map((e) => e.code)
+    const vus = new Set<string>()
+    while (file.length) {
+      const c = file.shift()!
+      vus.add(c)
+      p.etapes.filter((e) => e.predecesseurs.includes(c)).forEach((e) => {
+        degres.set(e.code, (degres.get(e.code) ?? 1) - 1)
+        if (degres.get(e.code) === 0) file.push(e.code)
+      })
+    }
+    const cycle = codes.filter((c) => !vus.has(c))
+    if (cycle.length && p.etapes.some((e) => !e.predecesseurs.length)) ajouter('CYCLE', 'BLOQUANTE', cycle[0], cycle.join(','), `Cycle entre les étapes ${cycle.join(', ')}.`)
+    const livrablesVus: string[] = []
+    const intervenant = (e: EtapeProcessus, i: Intervenant | null, element: string) => {
+      if (!i) return
+      if (i.mode === 'PROFIL' && !i.profil) ajouter('INTERVENANT_INCOMPLET', 'BLOQUANTE', e.code, element, 'Profil de l’intervenant absent.')
+      if (i.mode === 'PERSONNE' && !i.personneId) ajouter('INTERVENANT_INCOMPLET', 'BLOQUANTE', e.code, element, 'Personne de l’intervenant absente.')
+      if (i.mode === 'PERSONNE' && i.personneId && !membre(i.personneId)) ajouter('PERSONNE_INCONNUE', 'BLOQUANTE', e.code, element, 'Personne inconnue.')
+      if (i.mode === 'PERSONNE' && i.personneId && membre(i.personneId) && !membre(i.personneId)!.actif) ajouter('PERSONNE_INACTIVE', 'BLOQUANTE', e.code, element, 'Personne désactivée.')
+      if (MODES_REMPLACEMENT.includes(i.mode) && !i.remplacement) ajouter('REMPLACEMENT_ABSENT', 'BLOQUANTE', e.code, `${element}.remplacement`, 'Profil de remplacement obligatoire.')
+      const unite = i.unite || p.unite
+      const couvre = (profil: string) => magasin.organisation.some((m) => m.actif && m.unite && magasin.sousUnites(unite).includes(m.unite) && profils(m.id).includes(profil))
+      if (i.mode === 'PROFIL' && i.profil && !couvre(i.profil)) ajouter('COUVERTURE_PROFIL', 'LEVABLE', e.code, element, `Aucune personne active ne porte ${i.profil} dans l’unité.`)
+      if (i.remplacement && !couvre(i.remplacement)) ajouter('COUVERTURE_PROFIL', 'LEVABLE', e.code, `${element}.remplacement`, `Aucune personne active ne porte ${i.remplacement} dans l’unité.`)
+      if (i.mode === 'CHEF_UNITE' && !magasin.unites.find((u) => u.code === unite)?.responsableId) ajouter('CHEF_ABSENT', 'LEVABLE', e.code, element, 'L’unité n’a pas de responsable.')
+    }
+    p.etapes.forEach((e) => {
+      if (!e.intervenant?.mode) ajouter('INTERVENANT_ABSENT', 'BLOQUANTE', e.code, 'intervenant', 'Intervenant absent.')
+      intervenant(e, e.intervenant, 'intervenant')
+      intervenant(e, e.validateur, 'validateur')
+      if (e.validateur?.mode === 'PERSONNE' && e.intervenant.mode === 'PERSONNE' && e.validateur.personneId && e.validateur.personneId === e.intervenant.personneId) {
+        ajouter('VALIDATEUR_IDENTIQUE', 'BLOQUANTE', e.code, 'validateur', 'Le validateur est l’intervenant.')
+      }
+      e.livrables.forEach((l) => {
+        if (livrablesVus.includes(l.code)) ajouter('LIVRABLE_CODE_DUPLIQUE', 'BLOQUANTE', e.code, l.code, `Livrable en double : ${l.code}.`)
+      })
+      const sigs = e.signatures.map((s) => s.code)
+      sigs.filter((c, i) => sigs.indexOf(c) !== i).forEach((c) => ajouter('SIGNATURE_CODE_DUPLIQUE', 'BLOQUANTE', e.code, `signature.${c}`, `Signature en double : ${c}.`))
+      const champs = e.champs.map((c) => c.code)
+      champs.filter((c, i) => champs.indexOf(c) !== i).forEach((c) => ajouter('CHAMP_CODE_DUPLIQUE', 'BLOQUANTE', e.code, c, `Champ en double : ${c}.`))
+      e.champs.filter((c) => c.type === 'CHOIX' && !c.choix.length).forEach((c) => ajouter('CHAMP_CHOIX_ABSENT', 'BLOQUANTE', e.code, c.code, 'Liste de choix vide.'))
+      // Livrables portables : ceux de l'étape et des étapes antérieures (ancêtres).
+      const ancetres = new Set<string>()
+      const remonter = (c: string) => p.etapes.find((x) => x.code === c)?.predecesseurs.forEach((x) => { if (!ancetres.has(x)) { ancetres.add(x); remonter(x) } })
+      remonter(e.code)
+      const portables = [...e.livrables.map((l) => l.code), ...p.etapes.filter((x) => ancetres.has(x.code)).flatMap((x) => x.livrables.map((l) => l.code))]
+      e.signatures.forEach((s) => {
+        intervenant(e, s.signataire, `signature.${s.code}`)
+        if (!s.porte.length) ajouter('SIGNATURE_SANS_LIVRABLE', 'BLOQUANTE', e.code, `signature.${s.code}`, 'La signature ne porte sur aucun livrable.')
+        s.porte.filter((x) => !portables.includes(x)).forEach((x) => ajouter('SIGNATURE_PORTEE_INVALIDE', 'BLOQUANTE', e.code, `signature.${s.code}`, `Livrable hors de portée : ${x}.`))
+      })
+      livrablesVus.push(...e.livrables.map((l) => l.code))
+    })
+    return a
+  }
+
+  // ---------------------------------------------------------------- instances
+  const instances = etat.instances
+  const lien = (inst: InstanceSim, etape?: string) => `/des/processus/instances/${inst.id}${etape ? `?etape=${encodeURIComponent(etape)}` : ''}`
+  /** Personne résolue d'un intervenant, ou à prendre par un profil de l'unité. */
+  const resoudre = (inst: InstanceSim, i: Intervenant, cle: string): Attendu => {
+    const unite = i.unite || inst.unite
+    const actif = (pid: string | null | undefined) => (pid && membre(pid)?.actif !== false ? personne(pid) : null)
+    const parRemplacement = (p: PersonneActivite | null): Attendu => (p ? { personne: p, profil: null, unite } : { personne: null, profil: i.remplacement ?? null, unite })
+    switch (i.mode) {
+      case 'PROFIL': return { personne: null, profil: i.profil ?? null, unite }
+      case 'PERSONNE': return parRemplacement(actif(i.personneId))
+      case 'AU_LANCEMENT': return parRemplacement(actif(inst.designations[cle]?.id))
+      case 'CHEF_UNITE': return parRemplacement(actif(chefDe(unite)))
+      case 'LANCEUR': return parRemplacement(actif(inst.lanceur.id))
+      default: return parRemplacement(actif(membre(inst.lanceur.id)?.responsableId))
+    }
+  }
+  const peutAgir = (a: Attendu | null) => !!a && (a.personne ? a.personne.id === moiId : !!a.profil && profils(moiId).includes(a.profil) && membreDe(moiId, a.unite ?? ''))
+  const activer = (inst: InstanceSim, e: EtapeSim, acteur: PersonneActivite) => {
+    const r = resoudre(inst, e.def.intervenant, cleDesignation.executant(e.code))
+    Object.assign(e, {
+      etat: 'ACTIVE', activeeLe: maintenant(), echeance: ajouterJours(aujourdhui(), e.delaiJours), executant: r.personne, aPrendre: r.personne ? null : { unite: r.unite!, profil: r.profil },
+      validateur: e.def.validateur ? resoudre(inst, e.def.validateur, cleDesignation.validateur(e.code)) : null,
+      signatures: e.def.signatures.map((s) => ({ code: s.code, libelle: s.libelle, ordre: s.ordre, porte: s.porte, attendu: resoudre(inst, s.signataire, cleDesignation.signature(e.code, s.code)), etat: 'ATTENDUE', signePar: null, signeLe: null, empreinte: null, documents: [] })),
+    })
+    e.tacheId = pont?.creer({
+      titre: `${inst.intitule} : ${e.libelle}`, description: e.action || null, responsable: r.personne?.id ?? null, uniteCible: r.personne ? null : r.unite, profilRequis: r.personne ? null : r.profil,
+      createur: inst.lanceur.id, echeance: e.echeance, reference: `${inst.id}/${e.code}`, lien: lien(inst, e.code),
+    }) ?? null
+    historiser(inst.historique, 'ETAPE_ACTIVEE', r.personne ? r.personne.nomAffiche : `À prendre : ${r.profil ? (PRESENTATIONS_PROFILS[r.profil]?.libelle ?? r.profil) : r.unite}`, e.code, acteur)
+  }
+  const terminerEtape = (inst: InstanceSim, e: EtapeSim) => {
+    Object.assign(e, { etat: 'TERMINEE', termineeLe: maintenant() })
+    if (e.tacheId) pont?.terminer(e.tacheId)
+    historiser(inst.historique, 'ETAPE_TERMINEE', null, e.code)
+    inst.etapes.filter((x) => x.etat === 'EN_ATTENTE' && x.predecesseurs.every((c) => inst.etapes.find((y) => y.code === c)?.etat === 'TERMINEE')).forEach((x) => activer(inst, x, acteurForce ?? moi()))
+    inst.avancement = { total: inst.etapes.length, terminees: inst.etapes.filter((x) => x.etat === 'TERMINEE').length }
+    if (inst.etapes.every((x) => x.etat === 'TERMINEE')) {
+      Object.assign(inst, { etat: 'CLOSE', closeLe: maintenant() })
+      historiser(inst.historique, 'INSTANCE_CLOSE')
+    }
+  }
+  const apresSoumission = (inst: InstanceSim, e: EtapeSim) => {
+    if (e.signatures.some((s) => s.etat === 'ATTENDUE')) e.etat = 'A_SIGNER'
+    else if (e.validateur) e.etat = 'A_VALIDER'
+    else terminerEtape(inst, e)
+  }
+  const vueInstance = (inst: InstanceSim): InstanceProcessus => {
+    const piloter = peutPiloter(inst.unite)
+    const encours = inst.etat === 'EN_COURS'
+    return structuredClone({
+      ...inst,
+      etapes: inst.etapes.map(({ def: _d, ...e }) => {
+        const minOrdre = Math.min(...e.signatures.filter((s) => s.etat === 'ATTENDUE').map((s) => s.ordre))
+        return {
+          ...e,
+          moi: {
+            executer: encours && e.etat === 'ACTIVE' && e.executant?.id === moiId,
+            prendre: encours && e.etat === 'ACTIVE' && !e.executant && peutAgir(e.aPrendre ? { personne: null, ...e.aPrendre } : null),
+            signer: encours && e.etat === 'A_SIGNER' ? e.signatures.filter((s) => s.etat === 'ATTENDUE' && s.ordre === minOrdre && peutAgir(s.attendu)).map((s) => s.code) : [],
+            valider: encours && e.etat === 'A_VALIDER' && peutAgir(e.validateur) && e.executant?.id !== moiId,
+            reaffecter: encours && piloter && ['ACTIVE', 'A_SIGNER', 'A_VALIDER'].includes(e.etat),
+          },
+        }
+      }),
+      droits: { suspendre: piloter && encours, reprendre: piloter && inst.etat === 'SUSPENDUE', annuler: piloter && ['EN_COURS', 'SUSPENDUE'].includes(inst.etat), reaffecter: piloter && encours },
+    })
+  }
+  const lisibleInstance = (inst: InstanceSim) => peutLire(inst.unite) || peutPiloter(inst.unite) || inst.lanceur.id === moiId
+    || inst.etapes.some((e) => e.executant?.id === moiId || e.validateur?.personne?.id === moiId || e.signatures.some((s) => s.attendu.personne?.id === moiId || s.signePar?.id === moiId))
+  const trouverInstance = (iid: string) => {
+    const inst = instances.find((x) => x.id === iid)
+    if (!inst || !lisibleInstance(inst)) throw refus(404, 'PIL_PROCESSUS_INSTANCE_INTROUVABLE', 'Instance introuvable.')
+    return inst
+  }
+  const enCours = (inst: InstanceSim) => {
+    if (inst.etat !== 'EN_COURS') throw refus(409, 'PIL_PROCESSUS_INSTANCE_ETAT', 'L’instance n’est pas en cours.')
+  }
+  const etapeDe = (inst: InstanceSim, code: string) => {
+    const e = inst.etapes.find((x) => x.code === code)
+    if (!e) throw refus(404, 'PIL_PROCESSUS_ETAPE_INCONNUE', 'Étape inconnue.')
+    return e
+  }
+  const exigerEtat = (e: EtapeSim, attendu: EtapeSim['etat']) => {
+    if (e.etat !== attendu) throw refus(409, 'PIL_PROCESSUS_ETAPE_ETAT', 'L’étape n’est pas dans l’état attendu.', { etat: e.etat, attendu })
+  }
+  const exigerExecutant = (e: EtapeSim) => {
+    if (e.executant?.id !== moiId) throw refus(403, 'PIL_PROCESSUS_NON_INTERVENANT', 'Seul l’exécutant de l’étape agit sur elle.')
+  }
+  const motifObligatoire = (m: string | undefined) => {
+    if (!m?.trim() || m.trim().length > LIMITES_PROCESSUS.motif) throw refus(400, 'PIL_REQUETE_INVALIDE', 'Motif obligatoire.', { champ: 'motif' })
+    return m.trim()
+  }
+  const lancer = (p: Processus, l: { intitule: string; champs: Record<string, string | number | null>; designations: Record<string, string> }, lanceur: string): InstanceSim => {
+    const manquantes = designationsAttendues(p.etapes).map((d) => d.cle).filter((c) => !l.designations[c])
+    if (manquantes.length) throw refus(422, 'PIL_PROCESSUS_DESIGNATION_MANQUANTE', 'Désignations manquantes.', { cles: manquantes })
+    if (Object.values(l.designations).some((pid) => !membre(pid) || membre(pid)!.actif === false)) throw refus(422, 'PIL_PROCESSUS_DESIGNATION_INVALIDE', 'Personne désignée invalide.')
+    if (!l.intitule?.trim()) throw refus(400, 'PIL_REQUETE_INVALIDE', 'Intitulé obligatoire.', { champ: 'intitule' })
+    const inst: InstanceSim = {
+      id: id('INS'), processus: { id: p.id, code: p.code, version: p.version, libelle: p.libelle }, unite: p.unite, intitule: l.intitule.trim(), etat: 'EN_COURS', lanceur: personne(lanceur),
+      lanceeLe: maintenant(), closeLe: null, motif: null, designations: Object.fromEntries(Object.entries(l.designations).map(([k, v]) => [k, personne(v)])),
+      avancement: { total: p.etapes.length, terminees: 0 }, historique: [],
+      etapes: p.etapes.map((def) => ({
+        def, code: def.code, libelle: def.libelle, action: def.action, predecesseurs: def.predecesseurs, position: def.position, delaiJours: def.delaiJours, etat: 'EN_ATTENTE', activeeLe: null,
+        echeance: null, soumiseLe: null, termineeLe: null, enRetard: false, renvois: 0, tacheId: null, executant: null, aPrendre: null, validateur: null,
+        livrables: def.livrables.map((x) => ({ ...x, depot: null })),
+        champs: def.champs.map((c) => ({ ...c, valeur: def.predecesseurs.length ? null : (l.champs[c.code] ?? null) })),
+        signatures: [], moi: { executer: false, prendre: false, signer: [], valider: false, reaffecter: false },
+      })),
+    }
+    instances.unshift(inst)
+    historiser(inst.historique, 'INSTANCE_LANCEE', null, null, personne(lanceur))
+    inst.etapes.filter((e) => !e.predecesseurs.length).forEach((e) => activer(inst, e, personne(lanceur)))
+    return inst
+  }
+  const deposer = (inst: InstanceSim, e: EtapeSim, livrable: string, documentId: string, par: string) => {
+    const l = e.livrables.find((x) => x.code === livrable)
+    if (!l) throw refus(404, 'PIL_PROCESSUS_LIVRABLE_INCONNU', 'Livrable inconnu.')
+    const d = documents.get(documentId)
+    if (!d) throw refus(422, 'PIL_PROCESSUS_DOCUMENT_INVALIDE', 'Document inconnu de MS-DOCUMENT.')
+    const admis = (t: string) => t === d.typeMime || (t.endsWith('/*') && d.typeMime.startsWith(t.slice(0, -1)))
+    if (l.typesPieces.length && !l.typesPieces.some(admis)) throw refus(422, 'PIL_PROCESSUS_TYPE_PIECE', 'Type de pièce non admis pour ce livrable.')
+    l.depot = { documentId, ...d, deposePar: personne(par), deposeLe: maintenant() }
+    historiser(inst.historique, 'LIVRABLE_DEPOSE', `${l.code} : ${d.nomFichier}`, e.code, personne(par))
+  }
+  const documentDemo = (nom: string, typeMime: string) => {
+    const ticket = id('DOC')
+    documents.set(ticket, { nomFichier: nom, typeMime, taille: 48_000 + nom.length * 1000, sha256: empreinteDemo(nom) })
+    return ticket
+  }
+  /** Empreinte signée (§5.3) : lignes CODE:documentId:sha256 des livrables portés déposés, dans l'ordre de porte. */
+  const empreinteSignature = (inst: InstanceSim, porte: string[]) => {
+    const docs = porte.map((c) => inst.etapes.flatMap((e) => e.livrables).find((l) => l.code === c && l.depot)).filter((l) => !!l).map((l) => ({ livrable: l!.code, documentId: l!.depot!.documentId, sha256: l!.depot!.sha256 }))
+    return { docs, empreinte: empreinteDemo(docs.map((x) => `${x.livrable}:${x.documentId}:${x.sha256}\n`).join('')) }
+  }
+
+  // ---------------------------------------------------------------- jeu de démonstration (une fois par état partagé)
+  const demonstration = () => {
+    const flux = nouvelle({ code: 'OUVERTURE_FLUX_RESEAU', unite: 'POLE_RESEAU', libelle: 'Ouverture d’un flux réseau', description: 'Demande, analyse de sécurité, mise en œuvre et recette d’un flux entre la plateforme et un participant.', categorie: 'Réseau', delaiCibleJours: 10, etapes: definitionDemo() }, 'u-resp-info')
+    Object.assign(flux, { etat: 'PUBLIEE', publieeLe: `${ajouterJours(aujourdhui(), -20)}T10:00:00+01:00`, publieePar: personne('u-resp-info'), motifPublication: null })
+    flux.historique.push({ quand: flux.publieeLe!, acteur: personne('u-resp-info'), action: 'PUBLIE', etape: null, detail: null })
+    nouvelle({
+      code: 'ACCES_VPN_PARTICIPANT', unite: 'POLE_RESEAU', libelle: 'Accès VPN d’un participant', description: 'Ouverture d’un accès VPN de recette pour une institution membre.', categorie: 'Réseau', delaiCibleJours: 5,
+      etapes: [
+        { code: 'DEMANDE', libelle: 'Demande d’accès', action: 'Décrire l’accès demandé.', intervenant: { mode: 'LANCEUR' }, validateur: null, predecesseurs: [], delaiJours: 1, livrables: [], signatures: [], champs: [{ code: 'INSTITUTION', libelle: 'Institution', type: 'TEXTE', choix: [], obligatoire: true }], position: pos(0, 80) },
+        { code: 'CONFIGURATION', libelle: 'Configuration du VPN', action: 'Créer le tunnel et transmettre les paramètres.', intervenant: { mode: 'PERSONNE', personneId: 'u-res' }, validateur: { mode: 'CHEF_UNITE' }, predecesseurs: ['DEMANDE'], delaiJours: 2, livrables: [{ code: 'FICHE_VPN', libelle: 'Fiche de paramètres', typesPieces: ['application/pdf'], obligatoire: true, modele: null }], signatures: [], champs: [], position: pos(300, 80) },
+      ],
+    }, 'U-001')
+    // Instance arrivée à la signature du procès-verbal de recette par le chef d'unité.
+    const instA = lancer(flux, { intitule: 'Flux SFTP vers la Banque de Libreville', champs: { SOURCE: '10.20.4.15', DESTINATION: '172.16.8.40', PORT: 22, PROTOCOLE: 'TCP', DATE_SOUHAITEE: ajouterJours(aujourdhui(), 3) }, designations: { MISE_EN_OEUVRE: 'u-collab' } }, 'u-res')
+    const derouler = (inst: InstanceSim, code: string, executant: string, livrables: [string, string, string][], valeurs: Record<string, string | number> = {}) => {
+      acteurForce = personne(executant)
+      const e = etapeDe(inst, code)
+      if (!e.executant) {
+        e.executant = personne(executant)
+        e.aPrendre = null
+        if (e.tacheId) pont?.affecter(e.tacheId, executant)
+      }
+      livrables.forEach(([l, nom, type]) => deposer(inst, e, l, documentDemo(nom, type), executant))
+      e.champs.forEach((c) => { if (valeurs[c.code] !== undefined) c.valeur = valeurs[c.code] })
+      e.soumiseLe = maintenant()
+      return e
+    }
+    terminerEtape(instA, derouler(instA, 'DEMANDE', 'u-res', []))
+    const analyse = derouler(instA, 'ANALYSE', 'u-res', [['NOTE_ANALYSE', 'note-analyse-flux-sftp.pdf', 'application/pdf']])
+    analyse.etat = 'A_VALIDER'
+    acteurForce = personne('u-resp-info')
+    historiser(instA.historique, 'ETAPE_VALIDEE', null, 'ANALYSE')
+    terminerEtape(instA, analyse)
+    terminerEtape(instA, derouler(instA, 'MISE_EN_OEUVRE', 'u-collab', [['CONFIGURATION', 'regles-pare-feu-sftp.txt', 'text/plain']], { EQUIPEMENTS: 'FW-CORE-01, FW-CORE-02' }))
+    apresSoumission(instA, derouler(instA, 'RECETTE', 'u-res', [['PV_RECETTE', 'pv-recette-flux-sftp.pdf', 'application/pdf']], { RESULTAT: 'Conforme' }))
+    // Instance à l'analyse : tâche à prendre par les porteurs du profil « Pôle réseau ».
+    const instB = lancer(flux, { intitule: 'Ouverture du port 443 pour la supervision', champs: { SOURCE: '10.20.6.2', DESTINATION: '10.30.1.9', PORT: 443, PROTOCOLE: 'TCP' }, designations: { MISE_EN_OEUVRE: 'u-collab' } }, 'u-collab')
+    terminerEtape(instB, derouler(instB, 'DEMANDE', 'u-collab', []))
+    acteurForce = null
+  }
+  if (!existant) demonstration()
+
+  // La prise d'une tâche d'étape (Mon activité) désigne l'exécutant de l'étape (§5.3).
+  if (pont) {
+    pont.surPrise = (tid, p) => {
+      const inst = instances.find((i) => i.etapes.some((e) => e.tacheId === tid))
+      const e = inst?.etapes.find((x) => x.tacheId === tid)
+      if (!inst || !e) return
+      Object.assign(e, { executant: p, aPrendre: null })
+      historiser(inst.historique, 'ETAPE_PRISE', p.nomAffiche, e.code, p)
+    }
+  }
+
+  const resumeInstance = (inst: InstanceSim): ResumeInstance => ({
+    id: inst.id, processus: inst.processus, unite: inst.unite, intitule: inst.intitule, etat: inst.etat, lanceur: inst.lanceur, lanceeLe: inst.lanceeLe, closeLe: inst.closeLe, avancement: inst.avancement,
+    etapesEnCours: inst.etapes.filter((e) => ['ACTIVE', 'A_SIGNER', 'A_VALIDER'].includes(e.etat)).map((e) => ({ code: e.code, libelle: e.libelle, etat: e.etat, echeance: e.echeance })),
+  })
+  const implique = (inst: InstanceSim) => inst.etapes.some((e) => e.executant?.id === moiId || e.validateur?.personne?.id === moiId
+    || e.signatures.some((s) => s.attendu.personne?.id === moiId || s.signePar?.id === moiId) || (e.etat === 'ACTIVE' && !e.executant && peutAgir(e.aPrendre ? { personne: null, ...e.aPrendre } : null))
+    || (e.etat === 'A_SIGNER' && e.signatures.some((s) => s.etat === 'ATTENDUE' && peutAgir(s.attendu))))
+
+  return {
+    lister: (q) => attendre(() => definitions
+      .filter((p) => peutLire(p.unite) && (p.etat !== 'BROUILLON' || peutDefinir(p.unite)))
+      .filter((p) => (!q.unite || p.unite === q.unite) && (!q.etat || p.etat === q.etat) && (!q.q?.trim() || `${p.code} ${p.libelle} ${p.categorie}`.toLowerCase().includes(q.q.trim().toLowerCase())))
+      .sort((a, b) => a.libelle.localeCompare(b.libelle, 'fr') || b.version - a.version)
+      .map((p) => {
+        const v = vue(p)
+        return {
+          id: v.id, code: v.code, version: v.version, etat: v.etat, unite: v.unite, libelle: v.libelle, description: v.description, categorie: v.categorie, delaiCibleJours: v.delaiCibleJours,
+          nombreEtapes: v.etapes.length, publieeLe: v.publieeLe, modifieLe: v.modifieLe, modifiePar: v.modifiePar, droits: v.droits,
+        }
+      })),
+    lire: (pid) => attendre(() => vue(trouver(pid))),
+    creer: (s) => attendre(() => {
+      verifierSaisie(s)
+      exigerDefinir(s.unite)
+      if (definitions.some((p) => p.code === s.code)) throw refus(409, 'PIL_PROCESSUS_CODE_PRIS', 'Un processus porte déjà ce code.')
+      return vue(nouvelle(s, moiId))
+    }),
+    modifier: (pid, s) => attendre(() => {
+      const p = trouver(pid)
+      exigerDefinir(p.unite)
+      if (p.etat !== 'BROUILLON') throw refus(409, 'PIL_PROCESSUS_ETAT', 'Seul un brouillon se modifie.')
+      verifierSaisie({ ...s, code: p.code, unite: p.unite })
+      Object.assign(p, { libelle: s.libelle.trim(), description: s.description ?? '', categorie: s.categorie ?? '', delaiCibleJours: s.delaiCibleJours, etapes: s.etapes.map(normaliserEtape), modifieLe: maintenant(), modifiePar: moi() })
+      historiser(p.historique, 'MODIFIE')
+      return vue(p)
+    }),
+    supprimer: (pid) => attendre(() => {
+      const p = trouver(pid)
+      exigerDefinir(p.unite)
+      if (p.etat !== 'BROUILLON') throw refus(409, 'PIL_PROCESSUS_ETAT', 'Seul un brouillon se supprime.')
+      definitions.splice(definitions.indexOf(p), 1)
+    }),
+    controler: (pid) => attendre((): ControleProcessus => {
+      const a = controler(trouver(pid))
+      return { publiable: !a.some((x) => x.gravite !== 'AVERTISSEMENT'), anomalies: a }
+    }),
+    publier: (pid, o) => attendre(() => {
+      const p = trouver(pid)
+      exigerDefinir(p.unite)
+      if (p.etat !== 'BROUILLON') throw refus(409, 'PIL_PROCESSUS_ETAT', 'Seul un brouillon se publie.')
+      const a = controler(p)
+      if (a.some((x) => x.gravite === 'BLOQUANTE')) throw refus(422, 'PIL_PROCESSUS_ANOMALIES', 'Le processus présente des anomalies bloquantes.', { anomalies: a })
+      const levables = a.filter((x) => x.gravite === 'LEVABLE')
+      if (levables.length && !o.leverAvertissements) throw refus(422, 'PIL_PROCESSUS_AVERTISSEMENTS', 'Des avertissements doivent être levés.', { anomalies: levables })
+      const motif = o.leverAvertissements ? motifObligatoire(o.motif) : o.motif?.trim() || null
+      const ancienne = definitions.find((x) => x.code === p.code && x.etat === 'PUBLIEE')
+      if (ancienne) Object.assign(ancienne, { etat: 'RETIREE', retireeLe: maintenant(), retireePar: moi(), motifRetrait: `Remplacée par la version ${p.version}` })
+      Object.assign(p, { etat: 'PUBLIEE', publieeLe: maintenant(), publieePar: moi(), motifPublication: motif, avertissementsLeves: !!levables.length })
+      historiser(p.historique, 'PUBLIE', motif)
+      return vue(p)
+    }),
+    nouvelleVersion: (pid) => attendre(() => {
+      const p = trouver(pid)
+      exigerDefinir(p.unite)
+      if (p.etat === 'BROUILLON') throw refus(409, 'PIL_PROCESSUS_ETAT', 'Le processus est déjà un brouillon.')
+      if (definitions.some((x) => x.code === p.code && x.etat === 'BROUILLON')) throw refus(409, 'PIL_PROCESSUS_BROUILLON_EXISTANT', 'Un brouillon existe déjà pour ce processus.')
+      const version = Math.max(...definitions.filter((x) => x.code === p.code).map((x) => x.version)) + 1
+      return vue(nouvelle({ ...p, etapes: structuredClone(p.etapes) }, moiId, { version }))
+    }),
+    retirer: (pid, m) => attendre(() => {
+      const p = trouver(pid)
+      exigerDefinir(p.unite)
+      const motif = motifObligatoire(m)
+      if (p.etat !== 'PUBLIEE') throw refus(409, 'PIL_PROCESSUS_ETAT', 'Seule une version publiée se retire.')
+      Object.assign(p, { etat: 'RETIREE', retireeLe: maintenant(), retireePar: moi(), motifRetrait: motif })
+      historiser(p.historique, 'RETIRE', motif)
+      return vue(p)
+    }),
+
+    instances: (q) => attendre(() => {
+      const l = instances
+        .filter((i) => (q.vue === 'miennes' ? implique(i) : q.vue === 'lancees' ? i.lanceur.id === moiId : lisibleInstance(i) && (peutLire(i.unite) || peutPiloter(i.unite))))
+        .filter((i) => !q.etat || i.etat === q.etat)
+        .map(resumeInstance)
+      const page = q.page ?? 0
+      const taille = Math.min(q.taille ?? 20, 100)
+      return { contenu: l.slice(page * taille, (page + 1) * taille), total: l.length, page, taille }
+    }),
+    lancer: (pid, l) => attendre(() => {
+      const p = trouver(pid)
+      if (p.etat !== 'PUBLIEE') throw refus(409, 'PIL_PROCESSUS_NON_PUBLIE', 'Seule une version publiée se lance.')
+      if (!peutLancer(p.unite)) throw refus(403, 'PIL_PROCESSUS_INTERDIT', 'Lancer un processus de cette unité exige d’en être membre ou le pouvoir PROCESSUS_LANCER.')
+      return vueInstance(lancer(p, l, moiId))
+    }),
+    instance: (iid) => attendre(() => vueInstance(trouverInstance(iid))),
+    // Dépôt fragmenté simulé (D-74), finalité PROCESSUS_UNITE : progression en dix étapes, vérification, ticket.
+    televerserLivrable: async (fichier: File, _instanceId: string, o: OptionsTeleversement = {}): Promise<Televersement> => {
+      const pause = (ms: number) => new Promise<void>((ok, ko) => {
+        const t = window.setTimeout(ok, ms)
+        o.signal?.addEventListener('abort', () => {
+          window.clearTimeout(t)
+          ko(new DOMException('Envoi annulé', 'AbortError'))
+        })
+      })
+      const total = fichier.size
+      for (let i = 0; i <= 10; i++) {
+        o.surProgression?.({ phase: 'envoi', envoye: Math.round((total * i) / 10), total })
+        if (i < 10) await pause(DUREE_ETAPE_DOCUMENT_MS / 4)
+      }
+      o.surProgression?.({ phase: 'verification', envoye: total, total })
+      await pause(DUREE_ETAPE_DOCUMENT_MS / 4)
+      const ticket = id('DOC')
+      const sha256 = empreinteDemo(`${fichier.name}:${total}`)
+      documents.set(ticket, { nomFichier: fichier.name, typeMime: fichier.type || 'application/octet-stream', taille: total, sha256 })
+      o.surProgression?.({ phase: 'pret', envoye: total, total })
+      return { documentId: ticket, sha256, dedoublonne: false, depotId: id('DEPOT') }
+    },
+    deposerLivrable: (iid, code, livrable, documentId) => attendre(() => {
+      const inst = trouverInstance(iid)
+      enCours(inst)
+      const e = etapeDe(inst, code)
+      exigerEtat(e, 'ACTIVE')
+      exigerExecutant(e)
+      deposer(inst, e, livrable, documentId, moiId)
+      return vueInstance(inst)
+    }),
+    saisirChamps: (iid, code, valeurs) => attendre(() => {
+      const inst = trouverInstance(iid)
+      enCours(inst)
+      const e = etapeDe(inst, code)
+      exigerEtat(e, 'ACTIVE')
+      exigerExecutant(e)
+      Object.entries(valeurs).forEach(([c, v]) => {
+        const champ = e.champs.find((x) => x.code === c)
+        const invalide = !champ || (v !== null && ((champ.type === 'NOMBRE' && Number.isNaN(Number(v))) || (champ.type === 'DATE' && !/^\d{4}-\d{2}-\d{2}$/.test(String(v)))
+          || (champ.type === 'CHOIX' && !champ.choix.includes(String(v))) || String(v).length > LIMITES_PROCESSUS.texte))
+        if (invalide) throw refus(422, 'PIL_PROCESSUS_CHAMP_INVALIDE', `Valeur invalide pour ${c}.`, { champ: c })
+        champ.valeur = v === null || v === '' ? null : champ.type === 'NOMBRE' ? Number(v) : v
+      })
+      historiser(inst.historique, 'CHAMPS_SAISIS', null, e.code)
+      return vueInstance(inst)
+    }),
+    signer: (iid, code, signature, assertion) => attendre(() => {
+      const inst = trouverInstance(iid)
+      enCours(inst)
+      const e = etapeDe(inst, code)
+      exigerEtat(e, 'A_SIGNER')
+      const s = e.signatures.find((x) => x.code === signature)
+      if (!s) throw refus(404, 'PIL_PROCESSUS_SIGNATURE_INCONNUE', 'Signature inconnue.')
+      if (s.etat === 'SIGNEE') throw refus(409, 'PIL_PROCESSUS_DEJA_SIGNEE', 'Signature déjà apposée.')
+      if (!peutAgir(s.attendu)) throw refus(403, 'PIL_PROCESSUS_NON_SIGNATAIRE', 'Vous n’êtes pas le signataire attendu.')
+      if (e.signatures.some((x) => x.etat === 'ATTENDUE' && x.ordre < s.ordre)) throw refus(409, 'PIL_PROCESSUS_SIGNATURE_ORDRE', 'Une signature précédente est attendue.')
+      if (!assertion) throw refus(428, 'PIL_PROCESSUS_REAUTH_REQUISE', 'Réauthentification forte exigée.')
+      const { docs, empreinte } = empreinteSignature(inst, s.porte)
+      Object.assign(s, { etat: 'SIGNEE', signePar: moi(), signeLe: maintenant(), empreinte, documents: docs })
+      historiser(inst.historique, 'ETAPE_SIGNEE', s.libelle, e.code)
+      if (!e.signatures.some((x) => x.etat === 'ATTENDUE')) {
+        if (e.validateur) e.etat = 'A_VALIDER'
+        else terminerEtape(inst, e)
+      }
+      return vueInstance(inst)
+    }),
+    terminer: (iid, code) => attendre(() => {
+      const inst = trouverInstance(iid)
+      enCours(inst)
+      const e = etapeDe(inst, code)
+      exigerEtat(e, 'ACTIVE')
+      exigerExecutant(e)
+      const livrables = e.livrables.filter((l) => l.obligatoire && !l.depot).map((l) => l.code)
+      if (livrables.length) throw refus(422, 'PIL_PROCESSUS_LIVRABLES_MANQUANTS', 'Des livrables obligatoires manquent.', { livrables })
+      const champs = e.champs.filter((c) => c.obligatoire && (c.valeur === null || c.valeur === '')).map((c) => c.code)
+      if (champs.length) throw refus(422, 'PIL_PROCESSUS_CHAMPS_MANQUANTS', 'Des champs obligatoires manquent.', { champs })
+      e.soumiseLe = maintenant()
+      historiser(inst.historique, 'ETAPE_SOUMISE', null, e.code)
+      apresSoumission(inst, e)
+      return vueInstance(inst)
+    }),
+    valider: (iid, code, decision, motif) => attendre(() => {
+      const inst = trouverInstance(iid)
+      enCours(inst)
+      const e = etapeDe(inst, code)
+      exigerEtat(e, 'A_VALIDER')
+      if (!peutAgir(e.validateur) || e.executant?.id === moiId) throw refus(403, 'PIL_PROCESSUS_NON_VALIDATEUR', 'Vous n’êtes pas le validateur de cette étape.')
+      if (decision === 'RENVOYER') {
+        const m = motifObligatoire(motif)
+        Object.assign(e, { etat: 'ACTIVE', renvois: e.renvois + 1, signatures: e.signatures.map((s) => ({ ...s, etat: 'ATTENDUE', signePar: null, signeLe: null, empreinte: null, documents: [] })) })
+        historiser(inst.historique, 'ETAPE_RENVOYEE', m, e.code)
+      } else {
+        historiser(inst.historique, 'ETAPE_VALIDEE', motif?.trim() || null, e.code)
+        terminerEtape(inst, e)
+      }
+      return vueInstance(inst)
+    }),
+    reaffecter: (iid, code, personneId, m) => attendre(() => {
+      const inst = trouverInstance(iid)
+      enCours(inst)
+      if (!peutPiloter(inst.unite)) throw refus(403, 'PIL_PROCESSUS_INTERDIT', 'Réaffecter exige de diriger l’unité ou le pouvoir TACHE_CONFIER.')
+      const motif = motifObligatoire(m)
+      const e = etapeDe(inst, code)
+      if (!['ACTIVE', 'A_SIGNER', 'A_VALIDER'].includes(e.etat)) throw refus(409, 'PIL_PROCESSUS_ETAPE_ETAT', 'L’étape n’est pas active.', { etat: e.etat, attendu: 'ACTIVE' })
+      if (!membre(personneId) || membre(personneId)!.actif === false) throw refus(422, 'PIL_PROCESSUS_PERSONNE_INVALIDE', 'Personne invalide.')
+      Object.assign(e, { executant: personne(personneId), aPrendre: null })
+      if (e.tacheId) pont?.affecter(e.tacheId, personneId)
+      historiser(inst.historique, 'ETAPE_REAFFECTEE', `${personne(personneId).nomAffiche} : ${motif}`, e.code)
+      return vueInstance(inst)
+    }),
+    suspendre: (iid, m) => attendre(() => {
+      const inst = trouverInstance(iid)
+      if (!peutPiloter(inst.unite)) throw refus(403, 'PIL_PROCESSUS_INTERDIT', 'Suspendre exige de diriger l’unité.')
+      const motif = motifObligatoire(m)
+      enCours(inst)
+      Object.assign(inst, { etat: 'SUSPENDUE', motif })
+      historiser(inst.historique, 'INSTANCE_SUSPENDUE', motif)
+      return vueInstance(inst)
+    }),
+    reprendre: (iid, m) => attendre(() => {
+      const inst = trouverInstance(iid)
+      if (!peutPiloter(inst.unite)) throw refus(403, 'PIL_PROCESSUS_INTERDIT', 'Reprendre exige de diriger l’unité.')
+      if (inst.etat !== 'SUSPENDUE') throw refus(409, 'PIL_PROCESSUS_INSTANCE_ETAT', 'L’instance n’est pas suspendue.')
+      Object.assign(inst, { etat: 'EN_COURS', motif: m?.trim() || null })
+      historiser(inst.historique, 'INSTANCE_REPRISE', m?.trim() || null)
+      return vueInstance(inst)
+    }),
+    annuler: (iid, m) => attendre(() => {
+      const inst = trouverInstance(iid)
+      if (!peutPiloter(inst.unite)) throw refus(403, 'PIL_PROCESSUS_INTERDIT', 'Annuler exige de diriger l’unité.')
+      const motif = motifObligatoire(m)
+      if (!['EN_COURS', 'SUSPENDUE'].includes(inst.etat)) throw refus(409, 'PIL_PROCESSUS_INSTANCE_ETAT', 'L’instance est close.')
+      inst.etapes.filter((e) => e.etat !== 'TERMINEE').forEach((e) => {
+        if (e.etat !== 'EN_ATTENTE' && e.tacheId) pont?.annuler(e.tacheId)
+        e.etat = 'ANNULEE'
+      })
+      Object.assign(inst, { etat: 'ANNULEE', closeLe: maintenant(), motif })
+      historiser(inst.historique, 'INSTANCE_ANNULEE', motif)
+      return vueInstance(inst)
+    }),
+  }
+}

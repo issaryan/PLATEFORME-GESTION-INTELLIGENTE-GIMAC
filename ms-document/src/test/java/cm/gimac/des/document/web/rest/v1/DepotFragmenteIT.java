@@ -214,6 +214,55 @@ class DepotFragmenteIT {
     }
 
     @Test
+    @DisplayName("D-87 : livrable de processus (PROCESSUS_UNITE, PIL_ACTIVITY_OWN, référence = instance) relu par MS-PILOTAGE (jeton pilotage-service) : finalité, référence, déposant, type, empreinte")
+    void livrableProcessus() throws Exception {
+        byte[] contenu = fichier(77);
+        String instance = UUID.randomUUID().toString();
+        String ouverture = json.writeValueAsString(
+            Map.of("nomFichier", "configuration.bin", "typeMime", "application/octet-stream", "taille", contenu.length, "finalite", "PROCESSUS_UNITE", "reference", instance)
+        );
+        mvc
+            .perform(post("/api/v1/depots").contentType(MediaType.APPLICATION_JSON).content(ouverture).with(utilisateur(AGENT, "COL_MESSAGE_SEND", "DOC_DEPOSIT")))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.code").value("DOC_PURPOSE_FORBIDDEN"));
+        String corps = mvc
+            .perform(post("/api/v1/depots").contentType(MediaType.APPLICATION_JSON).content(ouverture).with(utilisateur(AGENT, "PIL_ACTIVITY_OWN")))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.etat").value("OUVERT"))
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+        UUID id = UUID.fromString(json.readTree(corps).get("id").asText());
+        for (int n = 1; n <= 3; n++) {
+            byte[] partie = Arrays.copyOfRange(contenu, (n - 1) * PARTIE, Math.min(n * PARTIE, contenu.length));
+            mvc
+                .perform(put("/api/v1/depots/" + id + "/parties/" + n).contentType(MediaType.APPLICATION_OCTET_STREAM).content(partie).with(utilisateur(AGENT, "PIL_ACTIVITY_OWN")))
+                .andExpect(status().isNoContent());
+        }
+        mvc.perform(post("/api/v1/depots/" + id + "/fin").with(utilisateur(AGENT, "PIL_ACTIVITY_OWN"))).andExpect(status().isAccepted());
+        verification.verifierEnAttente();
+        JsonNode e = json.readTree(
+            mvc.perform(get("/api/v1/depots/" + id).with(utilisateur(AGENT, "PIL_ACTIVITY_OWN"))).andExpect(status().isOk()).andReturn().getResponse().getContentAsString()
+        );
+        assertThat(e.get("etat").asText()).isEqualTo("DISPONIBLE");
+        String document = e.get("documentId").asText();
+        RequestPostProcessor pilotage = jwt()
+            .jwt(j -> j.subject(UUID.randomUUID().toString()).claim("azp", "pilotage-service").claim("preferred_username", "service-account-pilotage-service"))
+            .authorities(new SimpleGrantedAuthority("INTERNAL_DOCUMENT_READ"));
+        mvc
+            .perform(get("/api/v1/interne/documents/" + document).with(pilotage))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(document))
+            .andExpect(jsonPath("$.nomFichier").value("configuration.bin"))
+            .andExpect(jsonPath("$.taille").value(contenu.length))
+            .andExpect(jsonPath("$.typeMime").value("application/octet-stream"))
+            .andExpect(jsonPath("$.sha256").value(EmpreinteSha256.de(contenu)))
+            .andExpect(jsonPath("$.finalite").value("PROCESSUS_UNITE"))
+            .andExpect(jsonPath("$.reference").value(instance))
+            .andExpect(jsonPath("$.deposant").value(AGENT));
+    }
+
+    @Test
     @DisplayName("Déduplication : même contenu par un autre compte, nouveau document vers le même objet WORM (index simple sur cle_objet)")
     void deduplication() throws Exception {
         byte[] contenu = fichier(75);

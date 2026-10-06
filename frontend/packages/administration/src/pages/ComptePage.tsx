@@ -6,8 +6,8 @@ import {
   type Column,
 } from '@gimac/design-system'
 import { aPermission, urlAvatar, usePermissions, useSession } from '@gimac/socle'
-import { ACTIONS_REQUISES, LANGUES_COMPTE, dateHeure, useLibelleProfil, useMessageErreur, type ActionRequise, type Compte, type MessageErreur, type SessionCompte } from '@gimac/compte'
-import { useCompte, useEffet, useJournal, useProfils, useSessionsCompte } from '../hooks'
+import { ACTIONS_REQUISES, LANGUES_COMPTE, dateHeure, useMessageErreur, type ActionRequise, type Compte, type MessageErreur, type SessionCompte } from '@gimac/compte'
+import { useCompte, useEffet, useJournal, useLibelleProfil, useProfils, useSessionsCompte } from '../hooks'
 import type { EntreeJournal, FicheCompte } from '../modele/comptes'
 import { Annonce } from '../composants/Annonce'
 import { useActes } from '../composants/actes'
@@ -318,7 +318,7 @@ export default function ComptePage() {
               <DialogueProfils compte={c} privilegie={privilegie} onFermer={() => setDialogue(null)} onContinuer={(profils) => {
                 setDialogue(null)
                 actes.sensible({
-                  titre: t('console.compte.modifierProfils'), objet: [...objet, { key: t('compte.profils'), value: profils.map(libelleProfil).join(', ') }],
+                  titre: t('console.compte.modifierProfils'), objet: [...objet, { key: t('compte.profils'), value: profils.map((p) => libelleProfil(p)).join(', ') }],
                   contenu: { compte: c.id, profils }, succes: t('console.compte.profilsModifies'),
                   executer: (motif, assertion) => s.profils.mutateAsync({ profils, motif, assertion }),
                 })

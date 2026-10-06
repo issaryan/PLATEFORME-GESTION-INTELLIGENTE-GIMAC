@@ -104,7 +104,7 @@ class ModelisateurIT extends AbstractHomologationIT {
         mvc.perform(json(put(base + "/operations/E").with(edition), "{\"secret\":true,\"valeurReference\":\"Code\"}")).andExpect(status().isUnprocessableEntity()).andExpect(jsonPath("$.code").value("HOM_OPERATION_SECRET_VALUE"));
 
         mvc
-            .perform(get(base + "/graphe").with(utilisateur(INGENIEUR, "HOM_REFERENTIEL_READ")))
+            .perform(get(base + "/graphe").with(utilisateur(INGENIEUR, "HOM_REFERENTIEL_READ", "HOM_REFERENTIEL_READ_ALL")))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.versionId").value(id))
             .andExpect(jsonPath("$.etat").value("BROUILLON"))
@@ -136,7 +136,7 @@ class ModelisateurIT extends AbstractHomologationIT {
         mvc.perform(delete(base + "/operations/B").with(edition)).andExpect(status().isNoContent());
         mvc.perform(delete(base + "/operations/B").with(edition)).andExpect(status().isNotFound());
         mvc
-            .perform(get(base + "/operations").with(utilisateur(INGENIEUR, "HOM_REFERENTIEL_READ")))
+            .perform(get(base + "/operations").with(utilisateur(INGENIEUR, "HOM_REFERENTIEL_READ", "HOM_REFERENTIEL_READ_ALL")))
             .andExpect(jsonPath("$[?(@.code=='C')].predecesseurs[*]").value(contains("A")))
             .andExpect(jsonPath("$[?(@.code=='D')].predecesseurs[*]").value(contains("C")));
 
@@ -205,7 +205,7 @@ class ModelisateurIT extends AbstractHomologationIT {
     void grapheDeLaVersion1() throws Exception {
         UUID v1 = fixtures.referentielPublie(TypeProjet.PAIEMENT_MOBILE);
         mvc
-            .perform(get("/api/v1/referentiels/" + v1 + "/graphe").with(utilisateur(INGENIEUR, "HOM_REFERENTIEL_READ")))
+            .perform(get("/api/v1/referentiels/" + v1 + "/graphe").with(utilisateur(INGENIEUR, "HOM_REFERENTIEL_READ", "HOM_REFERENTIEL_READ_ALL")))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.noeuds.length()").value(49))
             .andExpect(jsonPath("$.anomalies").isEmpty())

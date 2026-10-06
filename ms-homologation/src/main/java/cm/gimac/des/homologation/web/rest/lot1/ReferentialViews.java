@@ -1,5 +1,6 @@
 package cm.gimac.des.homologation.web.rest.lot1;
 
+import cm.gimac.des.homologation.domain.EtapeReferentiel;
 import cm.gimac.des.homologation.domain.JsonTexte;
 import cm.gimac.des.homologation.domain.ReferenceOperation;
 import cm.gimac.des.homologation.domain.ReferentialVersion;
@@ -9,6 +10,8 @@ import cm.gimac.des.homologation.domain.enumeration.Partie;
 import cm.gimac.des.homologation.domain.enumeration.TypeProjet;
 import cm.gimac.des.homologation.domain.service.ReferentialCompletenessChecker;
 import cm.gimac.des.homologation.domain.service.ReferentialGraphValidator;
+import cm.gimac.des.homologation.domain.service.VisibiliteReferentiel;
+import cm.gimac.des.homologation.domain.parcours.CouleurEtape;
 import cm.gimac.des.homologation.domain.parcours.EtapeCode;
 import cm.gimac.des.homologation.domain.parcours.Fonction;
 import cm.gimac.des.homologation.domain.parcours.Geste;
@@ -48,7 +51,8 @@ public final class ReferentialViews {
         int nombreOperations,
         List<String> ordreTopologique,
         List<String> actionsPermises,
-        UUID piloteId
+        UUID piloteId,
+        VisibiliteReferentiel.Filtre filtre
     ) {
         public static VersionVue de(ReferentialVersion v) {
             return de(v, v.getEtat() == EtatVersionReferentiel.PUBLIEE ? v.getId() : null);
@@ -56,6 +60,11 @@ public final class ReferentialViews {
 
         /** {@code versionActiveId} : version publiée en vigueur du même type (comparaison, impact de la publication). */
         public static VersionVue de(ReferentialVersion v, UUID versionActiveId) {
+            return de(v, versionActiveId, VisibiliteReferentiel.Vue.complete(v.getOperations()));
+        }
+
+        /** Lecteur concerné (D-89) : nombre d'opérations et ordre de référence réduits à ses opérations visibles. */
+        public static VersionVue de(ReferentialVersion v, UUID versionActiveId, VisibiliteReferentiel.Vue vue) {
             return new VersionVue(
                 v.getId(),
                 v.getTypeProjet(),
@@ -66,10 +75,11 @@ public final class ReferentialViews {
                 v.getDatePublication(),
                 v.getVersionSourceId(),
                 versionActiveId,
-                v.getOperations().size(),
-                v.ordreTopologiqueListe(),
+                vue.complete() ? v.getOperations().size() : vue.visibles().size(),
+                vue.complete() ? v.ordreTopologiqueListe() : v.ordreTopologiqueListe().stream().filter(vue::visible).toList(),
                 v.actionsPermises(),
-                v.getPiloteId()
+                v.getPiloteId(),
+                vue.filtre()
             );
         }
     }
@@ -83,7 +93,7 @@ public final class ReferentialViews {
         String code,
         String libelle,
         String description,
-        EtapeCode etape,
+        String etape,
         String phase,
         SegmentParcours segment,
         Integer ordre,
@@ -114,8 +124,20 @@ public final class ReferentialViews {
         Map<String, Object> preuveAttendue,
         String idScenario,
         String fonctionResponsable,
-        Map<String, Object> grille
+        Map<String, Object> grille,
+        boolean fantome
     ) {
+        /**
+         * Fantôme (D-89) : prédécesseur ou successeur direct d'une opération qui concerne le lecteur, réduit à son
+         * code et à son libellé pour garder la chronologie lisible.
+         */
+        public static OperationVue fantome(ReferenceOperation o) {
+            return new OperationVue(
+                null, o.getCode(), o.getLibelle(), null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
+                false, false, false, false, null, null, null, null, null, null, null, null, null, null, null, null, null, null, true
+            );
+        }
+
         public static OperationVue de(ReferenceOperation o) {
             List<ReferenceOperation> soeurs = o.getVersion() == null ? List.of(o) : o.getVersion().getOperations();
             return de(o, soeurs.stream().filter(x -> x.predecesseursListe().contains(o.getCode())).map(ReferenceOperation::getCode).sorted().toList());
@@ -158,7 +180,8 @@ public final class ReferentialViews {
                 JsonTexte.objet(o.getPreuveAttendue()),
                 o.getIdScenario(),
                 o.getFonctionResponsable(),
-                JsonTexte.objet(o.getGrille())
+                JsonTexte.objet(o.getGrille()),
+                false
             );
         }
     }
@@ -220,7 +243,9 @@ public final class ReferentialViews {
         List<ReferentialGraphValidator.Anomalie> anomalies,
         List<ReferentialCompletenessChecker.MissingAttributes> manquants,
         CheminCritique cheminCritique,
-        List<String> actionsPermises
+        List<String> actionsPermises,
+        List<EtapeVue> etapes,
+        VisibiliteReferentiel.Filtre filtre
     ) {
         public record Noeud(
             @com.fasterxml.jackson.annotation.JsonUnwrapped OperationVue operation,
@@ -244,6 +269,63 @@ public final class ReferentialViews {
         }
     }
 
+    /**
+     * Étape d'une version (D-89, §2) : code, libellé, ordre, couleur (jeton du design system), étape canonique
+     * saisie ({@code null} : rattachée à celle de l'étape précédente) et canonique retenue pour la progression ;
+     * {@code protegee} : liée à une canonique porteuse d'un jalon ou du verrou 2 ; {@code supprimable} : vide et
+     * non protégée, sur un brouillon.
+     */
+    public record EtapeVue(
+        String code,
+        String libelle,
+        int ordre,
+        CouleurEtape couleur,
+        String jeton,
+        EtapeCode canonique,
+        EtapeCode canoniqueEffective,
+        boolean protegee,
+        long nombreOperations,
+        boolean supprimable
+    ) {
+        public static EtapeVue de(EtapeReferentiel e, ReferentialVersion v) {
+            long n = v.nombreOperations(e.getCode());
+            return new EtapeVue(
+                e.getCode(),
+                e.getLibelle(),
+                e.getOrdre(),
+                e.getCouleur(),
+                e.getCouleur().jeton(),
+                e.getCanonique(),
+                v.canoniqueDe(e.getCode()).orElse(null),
+                e.protegee(),
+                n,
+                v.getEtat() == EtatVersionReferentiel.BROUILLON && n == 0 && !e.protegee()
+            );
+        }
+
+        public static List<EtapeVue> de(ReferentialVersion v) {
+            return v.etapes().stream().map(e -> de(e, v)).toList();
+        }
+    }
+
+    /** Création ({@code code} exigé) ou modification d'une étape ; {@code ordre} : position (1 = première), à la fin par défaut. */
+    public record EtapeRequest(
+        @Size(max = 40) String code,
+        @NotBlank @Size(max = 120) String libelle,
+        CouleurEtape couleur,
+        EtapeCode canonique,
+        Integer ordre
+    ) {}
+
+    /** Nouvel ordre des étapes : chaque code de la version une fois. */
+    public record OrdreEtapesRequest(@NotNull List<@NotBlank String> codes) {}
+
+    /** Étape canonique du parcours (CR) : rang, protection (jalon ou verrou 2). */
+    public record EtapeCanoniqueVue(String code, String libelle, Integer rang, boolean protegee) {}
+
+    /** Couleur proposée pour une étape : code, libellé, variable CSS du design system. */
+    public record CouleurVue(String code, String libelle, String jeton) {}
+
     public record Pilote(String id, String nom) {}
 
     /**
@@ -263,7 +345,10 @@ public final class ReferentialViews {
         List<Entree> naturesLivrable,
         List<Entree> particularites,
         List<String> typesPieces,
-        List<Pilote> pilotes
+        List<Pilote> pilotes,
+        List<EtapeCanoniqueVue> etapesCanoniques,
+        List<CouleurVue> couleurs,
+        @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL) List<EtapeVue> etapesVersion
     ) {}
 
     public record PositionRequest(@NotBlank String code, double x, double y) {}

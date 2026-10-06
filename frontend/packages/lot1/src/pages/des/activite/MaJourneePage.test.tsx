@@ -121,7 +121,7 @@ describe('Ma journée', () => {
 
   it('refus du service : journée hors équipe, changement de statut refusé', async () => {
     page(`/des/activite?collaborateur=U-001`, { u: RESP, role: 'ROLE_RESPONSABLE_SERVICE' })
-    expect(await screen.findByText('Ce collaborateur n’est pas dans votre équipe.', {}, { timeout: 4000 })).toBeTruthy()
+    expect(await screen.findByText('Cette personne ou cette unité est hors de votre portée selon la matrice des pouvoirs.', {}, { timeout: 4000 })).toBeTruthy()
     cleanup()
     const s = services()
     vi.spyOn(s.pilotage, 'changerStatut').mockRejectedValue(new ApiError(409, 'PIL_TRANSITION_INTERDITE', 'x', 'cid-1'))

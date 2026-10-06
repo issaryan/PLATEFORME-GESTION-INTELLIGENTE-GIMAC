@@ -27,8 +27,14 @@ export const pilotageHttp: ServicePilotage = {
   taches: (q) => http.get(`${PILOTAGE}/taches`, { query: { vue: q.vue, etat: q.etat, page: q.page ?? 0, taille: q.taille ?? 20 } }),
   tache: (id) => http.get(un('taches', id)),
   creerTache: (t) => http.post(`${PILOTAGE}/taches`, { body: t }),
+  creerGroupe: (t) => http.post(`${PILOTAGE}/taches`, { body: t }),
   modifierTache: (id, t) => http.put(un('taches', id), { body: t }),
   transition: (id, etat, motif) => http.post(`${un('taches', id)}/transition`, { body: motif ? { etat, motif } : { etat } }),
+  // Tâches confiées (D-81 §6) : groupe, prise d'une tâche à prendre, attribution, relance.
+  groupe: (groupeId) => http.get(un('taches/groupes', groupeId)),
+  prendre: (id) => http.post(`${un('taches', id)}/prise`),
+  attribuer: (id, responsableId) => http.post(`${un('taches', id)}/attribution`, { body: { responsableId } }),
+  relancer: (id) => http.post(`${un('taches', id)}/relance`),
 
   rapports: (q) => http.get(`${PILOTAGE}/rapports`, { query: { vue: q.vue, type: q.type, etat: q.etat, page: q.page ?? 0, taille: q.taille ?? 20 } }),
   rapport: (id) => http.get(un('rapports', id)),

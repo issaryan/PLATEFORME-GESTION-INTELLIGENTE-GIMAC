@@ -213,4 +213,74 @@ class ReglesMessagerieTest {
             refuse(() -> regles.pieces(List.of(fichier("vide.pdf", "application/pdf", 0))), "COL_ATTACHMENT_TYPE");
         }
     }
+
+    @Nested
+    class ReponsesEtMentions {
+
+        static final UUID CONVERSATION = UUID.randomUUID();
+        static final Set<String> MEMBRES = Set.of("moi", "aminata", "serge");
+
+        static void nonTraitable(ThrowingCallable appel, String code) {
+            assertThatThrownBy(appel).isInstanceOfSatisfying(CollaborationException.class, e -> {
+                assertThat(e.code()).isEqualTo(code);
+                assertThat(e.status()).isEqualTo(422);
+            });
+        }
+
+        @Test
+        @DisplayName("D-82 : mentions facultatives, dédoublonnées dans l'ordre donné, espaces retirés")
+        void mentionsAdmises() {
+            assertThat(regles.mentions(null, "moi", MEMBRES)).isEmpty();
+            assertThat(regles.mentions(List.of(), "moi", MEMBRES)).isEmpty();
+            assertThat(regles.mentions(List.of("serge", " aminata ", "serge"), "moi", MEMBRES)).containsExactly("serge", "aminata");
+        }
+
+        @Test
+        @DisplayName("D-82 : mention de l'auteur, d'un non-membre, vide ou au-delà de 20 : 422 COL_MENTION_INVALIDE")
+        void mentionsRefusees() {
+            nonTraitable(() -> regles.mentions(List.of("moi"), "moi", MEMBRES), "COL_MENTION_INVALIDE");
+            nonTraitable(() -> regles.mentions(List.of("aminata", "intrus"), "moi", MEMBRES), "COL_MENTION_INVALIDE");
+            nonTraitable(() -> regles.mentions(Arrays.asList("aminata", null), "moi", MEMBRES), "COL_MENTION_INVALIDE");
+            nonTraitable(() -> regles.mentions(List.of(" "), "moi", MEMBRES), "COL_MENTION_INVALIDE");
+            Set<String> nombreux = new java.util.HashSet<>(IntStream.rangeClosed(1, 21).mapToObj(i -> "m" + i).toList());
+            nombreux.add("moi");
+            List<String> vingt = IntStream.rangeClosed(1, 20).mapToObj(i -> "m" + i).toList();
+            assertThat(regles.mentions(vingt, "moi", nombreux)).hasSize(20);
+            List<String> vingtEtUn = IntStream.rangeClosed(1, 21).mapToObj(i -> "m" + i).toList();
+            nonTraitable(() -> regles.mentions(vingtEtUn, "moi", nombreux), "COL_MENTION_INVALIDE");
+            // Doublons : comptés une fois.
+            List<String> doublons = new ArrayList<>(vingt);
+            doublons.addAll(vingt);
+            assertThat(regles.mentions(doublons, "moi", nombreux)).hasSize(20);
+        }
+
+        @Test
+        @DisplayName("D-82 : citation d'un message de la même conversation ; inconnu, d'ailleurs ou événement de groupe : 422 COL_REPONSE_INVALIDE")
+        void citation() {
+            UUID cite = UUID.randomUUID();
+            regles.citation(cite, CONVERSATION, CONVERSATION, false);
+            nonTraitable(() -> regles.citation(cite, CONVERSATION, null, false), "COL_REPONSE_INVALIDE");
+            nonTraitable(() -> regles.citation(cite, CONVERSATION, UUID.randomUUID(), false), "COL_REPONSE_INVALIDE");
+            nonTraitable(() -> regles.citation(cite, CONVERSATION, CONVERSATION, true), "COL_REPONSE_INVALIDE");
+        }
+
+        @Test
+        @DisplayName("D-82 : extrait du message cité, 120 caractères au plus, coupé proprement à une espace ou hors d'un émoji")
+        void extraitCitation() {
+            assertThat(regles.extraitCitation(null)).isEmpty();
+            assertThat(regles.extraitCitation("  Bonjour\n\n  à tous  ")).isEqualTo("Bonjour à tous");
+            String juste = "x".repeat(120);
+            assertThat(regles.extraitCitation(juste)).isEqualTo(juste);
+            String phrase = "Le compte rendu de la recette ".repeat(6);
+            String e = regles.extraitCitation(phrase);
+            assertThat(e).hasSizeLessThanOrEqualTo(120).endsWith("…").doesNotContain("  ");
+            assertThat(e.substring(0, e.length() - 1)).isEqualTo(phrase.substring(0, e.length() - 1)).doesNotEndWith(" ");
+            assertThat(phrase.charAt(e.length() - 1)).isEqualTo(' ');
+            // Sans espace : coupé à 119 caractères, jamais au milieu d'une paire de substitution.
+            String emojis = "a".repeat(118) + "😀😀";
+            String f = regles.extraitCitation(emojis);
+            assertThat(f).isEqualTo("a".repeat(118) + "…");
+            assertThat(regles.extraitCitation("b".repeat(200))).isEqualTo("b".repeat(119) + "…");
+        }
+    }
 }

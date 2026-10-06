@@ -154,7 +154,7 @@ public final class ConversionAnnexeA {
                         null,
                         rang,
                         lib.preuve().isBlank() ? null : "Preuve attendue : " + lib.preuve() + ".",
-                        o.getEtape(),
+                        o.getEtape().name(),
                         o.getOrdre(),
                         r,
                         r == Fonction.CONDUCTEUR ? Fonction.CHEF_DES : Fonction.CONDUCTEUR,

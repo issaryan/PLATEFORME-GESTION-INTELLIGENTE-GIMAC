@@ -12,6 +12,12 @@ import java.util.UUID;
 public interface DocumentPort {
     String FINALITE = "RAPPORT_ACTIVITE";
 
+    /**
+     * Finalité des livrables des processus d'unité (D-87) : dépôt fragmenté par l'exécutant de l'étape, référence =
+     * identifiant de l'instance.
+     */
+    String FINALITE_PROCESSUS = "PROCESSUS_UNITE";
+
     /** Métadonnées d'un document (depots-fragmentes.md §4), champs utiles seulement. */
     record Metadonnees(UUID id, String nomFichier, long taille, String typeMime, String sha256, String finalite, String reference, String deposant) {}
 

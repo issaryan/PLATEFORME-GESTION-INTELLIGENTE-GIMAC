@@ -176,3 +176,62 @@ button.gm-annuaire-personne:focus-visible { outline: var(--gm-border-2) solid va
 .gm-envoi-barre::-webkit-progress-bar { background: var(--gm-color-surface-sunken); }
 .gm-envoi-barre::-webkit-progress-value { background: var(--gm-color-action); }
 .gm-envoi-barre::-moz-progress-bar { background: var(--gm-color-action); }
+
+/* Réponse à un message et mentions (D-82). Citation : filet coloré à gauche, auteur en couleur d'action, extrait
+   sur deux lignes au plus ; dans une bulle, elle se détache sur la surface ; au-dessus du champ, elle annonce la
+   réponse en cours. Bouton « Répondre » au survol ou au focus de la bulle, toujours visible sur écran tactile. */
+.gm-citation { all: unset; box-sizing: border-box; display: flex; flex-direction: column; gap: 2px; min-width: 0; width: 100%; margin-bottom: var(--gm-space-1); padding: var(--gm-space-1) var(--gm-space-2); border-left: var(--gm-border-2) solid var(--gm-color-action); background: var(--gm-color-surface); color: var(--gm-color-text-secondary); font-size: 12px; line-height: 18px; text-align: left; }
+button.gm-citation { cursor: pointer; }
+button.gm-citation:hover { background: var(--gm-color-surface-raised); }
+button.gm-citation:focus-visible { outline: 2px solid var(--gm-color-focus); outline-offset: 1px; }
+.gm-citation-auteur { font-weight: 600; color: var(--gm-color-action); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gm-citation-extrait { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; color: var(--gm-color-text-primary); }
+.gm-citation-extrait .gm-icon { vertical-align: -2px; margin-right: var(--gm-space-1); }
+.gm-citation-supprime { font-style: italic; color: var(--gm-color-text-secondary); }
+.gm-msg-mine .gm-citation { align-self: stretch; }
+.gm-msg-meta .gm-msg-repondre { width: 24px; height: 24px; min-width: 24px; padding: 0; opacity: 0; transition: opacity var(--gm-motion-fast) var(--gm-motion-ease); }
+.gm-msg:hover .gm-msg-repondre, .gm-msg:focus-within .gm-msg-repondre { opacity: 1; }
+@media (hover: none) { .gm-msg-meta .gm-msg-repondre { opacity: 1; } }
+.gm-msg-pour-moi { display: inline-flex; color: var(--gm-color-action); }
+/* Message qui mentionne le lecteur ou répond à l'un des siens : filet d'action discret le long de la bulle. */
+.gm-msg-mentionne .gm-msg-body { box-shadow: inset var(--gm-border-2) 0 0 var(--gm-color-action); }
+/* Message atteint depuis une citation ou une notification : surligné un instant. */
+.gm-msg-evidence .gm-msg-body { outline: var(--gm-border-2) solid var(--gm-color-focus); outline-offset: 2px; animation: gm-evidence 2s var(--gm-motion-ease) 1; }
+@keyframes gm-evidence { 0%, 60% { background: var(--gm-color-status-warn-bg); } 100% { } }
+@media (prefers-reduced-motion: reduce) { .gm-msg-evidence .gm-msg-body { animation: none; } .gm-msg-meta .gm-msg-repondre { transition: none; } }
+/* Mentions dans le texte : nom mis en évidence, le sien plus marqué. */
+.gm-mention { color: var(--gm-color-action); font-weight: 600; }
+.gm-mention-moi { padding: 0 2px; background: var(--gm-color-action-subtle); box-shadow: inset 0 -1px 0 var(--gm-color-action); }
+.gm-fil-annonce { font-style: normal; }
+/* Réponse en cours de saisie, au-dessus du champ. */
+.gm-saisie-reponse { display: flex; align-items: flex-start; gap: var(--gm-space-2); padding: var(--gm-space-1) var(--gm-space-1) var(--gm-space-1) var(--gm-space-2); background: var(--gm-color-surface-sunken); color: var(--gm-color-action); }
+.gm-saisie-reponse > .gm-icon { flex: none; margin-top: var(--gm-space-1); }
+.gm-saisie-reponse .gm-citation { flex: 1; margin: 0; }
+/* Liste des membres après « @ » : au-dessus du champ, sur la largeur de la zone de saisie. */
+.gm-saisie-zone { position: relative; flex: 1; min-width: 0; display: flex; }
+.gm-saisie-zone .gm-saisie-texte { width: 100%; }
+.gm-mentions { position: absolute; left: 0; right: 0; bottom: calc(100% + var(--gm-space-1)); z-index: 20; max-height: 264px; }
+.gm-mention-option { height: auto; min-height: var(--gm-size-control-md); padding: var(--gm-space-1) var(--gm-space-3); }
+.gm-mention-identite { display: flex; flex-direction: column; min-width: 0; }
+.gm-mention-identite strong { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gm-mention-option.gm-option-sel .gm-mention-identite strong { font-weight: 600; }
+
+/* Aperçu d'un document bureautique (D-83) : « Préparation de l'aperçu… » pendant la conversion. */
+.gm-apercu-preparation { display: flex; flex-direction: column; gap: var(--gm-space-3); }
+.gm-apercu-preparation-texte { color: var(--gm-color-text-secondary); }
+
+/* Largeur du fil de discussion (D-84) : liste des conversations redimensionnable (240 à 480 px, variable
+   --gm-messagerie-liste posée par la page), séparateur déplaçable, liste repliable. Sous 960 px : une colonne. */
+.gm-messagerie-espace { grid-template-columns: var(--gm-messagerie-liste, 320px) 6px minmax(0, 1fr); }
+.gm-messagerie-espace.gm-messagerie-repliee { grid-template-columns: minmax(0, 1fr); }
+.gm-messagerie-repliee > .gm-messagerie-liste, .gm-messagerie-repliee > .gm-messagerie-separateur { display: none; }
+.gm-messagerie-espace > .gm-messagerie-liste { border-right: 0; min-width: 0; }
+.gm-messagerie-separateur { position: relative; cursor: col-resize; touch-action: none; background: var(--gm-color-border); border-left: 2px solid var(--gm-color-surface); border-right: 2px solid var(--gm-color-surface); }
+.gm-messagerie-separateur::after { content: ""; position: absolute; top: 50%; left: 50%; width: 2px; height: 32px; transform: translate(-50%, -50%); background: var(--gm-color-text-muted); }
+.gm-messagerie-separateur:hover, .gm-messagerie-separateur.gm-glisse { background: var(--gm-color-action); }
+.gm-messagerie-separateur:focus-visible { outline: 2px solid var(--gm-color-focus); outline-offset: 0; background: var(--gm-color-action); }
+@media (max-width: 960px) {
+  .gm-messagerie-espace, .gm-messagerie-espace.gm-messagerie-repliee { grid-template-columns: 1fr; }
+  .gm-messagerie-separateur, .gm-messagerie-commande { display: none; }
+  .gm-messagerie-repliee > .gm-messagerie-liste { display: flex; }
+}

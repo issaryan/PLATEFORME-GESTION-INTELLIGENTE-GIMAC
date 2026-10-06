@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * Adaptateur de substitution des documents (développement, tests) : dépôts fragmentés simulés,
- * conservés en mémoire avec leur finalité, leur référence et leur déposant.
+ * conservés en mémoire avec leur finalité, leur référence, leur déposant et leur empreinte SHA-256.
  */
 @Component
 @ConditionalOnProperty(name = "gimac.adaptateurs.documents", havingValue = "stub", matchIfMissing = true)
@@ -32,8 +32,16 @@ public class DocumentStubAdapter implements DocumentPort {
     @Override
     public Optional<Metadonnees> metadonnees(UUID documentId) {
         return Optional.ofNullable(documents.get(documentId)).map(d ->
-            new Metadonnees(documentId, d.nomFichier(), d.contenu().length, d.typeMime(), null, d.finalite(), d.reference(), d.deposant())
+            new Metadonnees(documentId, d.nomFichier(), d.contenu().length, d.typeMime(), sha256(d.contenu()), d.finalite(), d.reference(), d.deposant())
         );
+    }
+
+    private static String sha256(byte[] octets) {
+        try {
+            return java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(octets));
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 indisponible", e);
+        }
     }
 
     @Override

@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Processus d'unité (D-87, docs/lot1/processus-unite.md) : versions de processus (graphe d'étapes en JSONB),
+     instances, étapes d'instance (dépôts, valeurs, signatures en JSONB), historique en ajout seul ; tâche à
+     prendre réservée aux porteurs d'un profil. Écrit à la main. -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="pil-processus-tache-profil" author="lot1">
+        <addColumn tableName="tache">
+            <column name="profil_requis" type="varchar(80)" remarks="Profil exigé pour prendre la tâche (étape d'un processus confiée par profil)."/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="pil-processus-definitions" author="lot1">
+        <createTable tableName="processus" remarks="Version d'un processus d'unité : BROUILLON, PUBLIEE ou RETIREE (§1).">
+            <column name="id" type="uuid"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="code" type="varchar(40)"><constraints nullable="false"/></column>
+            <column name="version" type="integer"><constraints nullable="false"/></column>
+            <column name="etat" type="varchar(16)"><constraints nullable="false"/></column>
+            <column name="unite" type="varchar(32)" remarks="Unité propriétaire (code MS-IAM)."><constraints nullable="false"/></column>
+            <column name="libelle" type="varchar(200)"><constraints nullable="false"/></column>
+            <column name="description" type="varchar(4000)"/>
+            <column name="categorie" type="varchar(80)"/>
+            <column name="delai_cible_jours" type="integer"/>
+            <column name="etapes" type="jsonb" defaultValue="[]" remarks="Graphe des étapes (intervenants, livrables, signatures, champs, position)."><constraints nullable="false"/></column>
+            <column name="cree_le" type="timestamptz"><constraints nullable="false"/></column>
+            <column name="cree_par" type="varchar(80)"><constraints nullable="false"/></column>
+            <column name="modifie_le" type="timestamptz"><constraints nullable="false"/></column>
+            <column name="modifie_par" type="varchar(80)"><constraints nullable="false"/></column>
+            <column name="publiee_le" type="timestamptz"/>
+            <column name="publiee_par" type="varchar(80)"/>
+            <column name="motif_publication" type="varchar(1000)"/>
+            <column name="avertissements_leves" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+            <column name="retiree_le" type="timestamptz"/>
+            <column name="retiree_par" type="varchar(80)"/>
+            <column name="motif_retrait" type="varchar(1000)"/>
+            <column name="verrou" type="bigint" defaultValueNumeric="0"><constraints nullable="false"/></column>
+        </createTable>
+        <addUniqueConstraint tableName="processus" columnNames="code, version" constraintName="ux_processus_code_version"/>
+        <sql>ALTER TABLE processus ADD CONSTRAINT ck_processus_etat CHECK (etat IN ('BROUILLON', 'PUBLIEE', 'RETIREE'));</sql>
+        <sql>ALTER TABLE processus ADD CONSTRAINT ck_processus_version CHECK (version &gt;= 1);</sql>
+        <sql>ALTER TABLE processus ADD CONSTRAINT ck_processus_delai CHECK (delai_cible_jours IS NULL OR delai_cible_jours BETWEEN 0 AND 365);</sql>
+        <!-- Un seul brouillon et une seule version publiée par code. -->
+        <sql>CREATE UNIQUE INDEX ux_processus_brouillon ON processus (code) WHERE etat = 'BROUILLON';</sql>
+        <sql>CREATE UNIQUE INDEX ux_processus_publiee ON processus (code) WHERE etat = 'PUBLIEE';</sql>
+        <createIndex tableName="processus" indexName="ix_processus_unite">
+            <column name="unite"/>
+            <column name="etat"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="pil-processus-instances" author="lot1">
+        <createTable tableName="processus_instance" remarks="Instance lancée d'une version publiée (§2).">
+            <column name="id" type="uuid"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="processus_id" type="uuid"><constraints nullable="false" foreignKeyName="fk_processus_instance_processus" referencedTableName="processus" referencedColumnNames="id"/></column>
+            <column name="code" type="varchar(40)"><constraints nullable="false"/></column>
+            <column name="version_processus" type="integer"><constraints nullable="false"/></column>
+            <column name="unite" type="varchar(32)"><constraints nullable="false"/></column>
+            <column name="libelle" type="varchar(200)"><constraints nullable="false"/></column>
+            <column name="intitule" type="varchar(200)"><constraints nullable="false"/></column>
+            <column name="etat" type="varchar(16)"><constraints nullable="false"/></column>
+            <column name="lanceur_id" type="varchar(80)"><constraints nullable="false"/></column>
+            <column name="n_plus_1_lanceur_id" type="varchar(80)"/>
+            <column name="designations" type="jsonb" defaultValue="{}" remarks="Personnes désignées au lancement, par clé (CODE_ETAPE, CODE_ETAPE.validateur, CODE_ETAPE.signature.CODE)."><constraints nullable="false"/></column>
+            <column name="lancee_le" type="timestamptz"><constraints nullable="false"/></column>
+            <column name="close_le" type="timestamptz"/>
+            <column name="motif" type="varchar(1000)"/>
+            <column name="modifiee_le" type="timestamptz"><constraints nullable="false"/></column>
+            <column name="verrou" type="bigint" defaultValueNumeric="0"><constraints nullable="false"/></column>
+        </createTable>
+        <sql>ALTER TABLE processus_instance ADD CONSTRAINT ck_processus_instance_etat CHECK (etat IN ('EN_COURS', 'SUSPENDUE', 'CLOSE', 'ANNULEE'));</sql>
+        <createIndex tableName="processus_instance" indexName="ix_processus_instance_lanceur">
+            <column name="lanceur_id"/>
+            <column name="lancee_le"/>
+        </createIndex>
+        <createIndex tableName="processus_instance" indexName="ix_processus_instance_unite">
+            <column name="unite"/>
+            <column name="etat"/>
+        </createIndex>
+
+        <createTable tableName="processus_etape_instance" remarks="Étape d'une instance : état, tâche liée, dépôts, valeurs, signatures (§2).">
+            <column name="id" type="uuid"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="instance_id" type="uuid"><constraints nullable="false" foreignKeyName="fk_processus_etape_instance" referencedTableName="processus_instance" referencedColumnNames="id"/></column>
+            <column name="code" type="varchar(40)"><constraints nullable="false"/></column>
+            <column name="rang" type="integer"><constraints nullable="false"/></column>
+            <column name="etat" type="varchar(16)"><constraints nullable="false"/></column>
+            <column name="tache_id" type="uuid"><constraints foreignKeyName="fk_processus_etape_tache" referencedTableName="tache" referencedColumnNames="id"/></column>
+            <column name="validateur_id" type="varchar(80)" remarks="Validateur nommé (null : validateur par profil, ou aucun)."/>
+            <column name="validateur" type="jsonb" remarks="Validateur résolu : personne, ou profil et unité."/>
+            <column name="signatures" type="jsonb" defaultValue="[]"><constraints nullable="false"/></column>
+            <column name="depots" type="jsonb" defaultValue="[]"><constraints nullable="false"/></column>
+            <column name="valeurs" type="jsonb" defaultValue="{}"><constraints nullable="false"/></column>
+            <column name="activee_le" type="timestamptz"/>
+            <column name="echeance" type="date"/>
+            <column name="soumise_le" type="timestamptz"/>
+            <column name="terminee_le" type="timestamptz"/>
+            <column name="renvois" type="integer" defaultValueNumeric="0"><constraints nullable="false"/></column>
+            <column name="verrou" type="bigint" defaultValueNumeric="0"><constraints nullable="false"/></column>
+        </createTable>
+        <addUniqueConstraint tableName="processus_etape_instance" columnNames="instance_id, code" constraintName="ux_processus_etape_instance_code"/>
+        <sql>ALTER TABLE processus_etape_instance ADD CONSTRAINT ck_processus_etape_etat CHECK (etat IN ('EN_ATTENTE', 'ACTIVE', 'A_SIGNER', 'A_VALIDER', 'TERMINEE', 'ANNULEE'));</sql>
+        <createIndex tableName="processus_etape_instance" indexName="ix_processus_etape_tache">
+            <column name="tache_id"/>
+        </createIndex>
+        <createIndex tableName="processus_etape_instance" indexName="ix_processus_etape_validateur">
+            <column name="validateur_id"/>
+        </createIndex>
+
+        <createTable tableName="processus_historique" remarks="Historique d'un processus ou d'une instance, en ajout seul.">
+            <column name="id" type="uuid"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="processus_id" type="uuid"/>
+            <column name="instance_id" type="uuid"/>
+            <column name="etape" type="varchar(40)"/>
+            <column name="quand" type="timestamptz"><constraints nullable="false"/></column>
+            <column name="acteur_id" type="varchar(80)"><constraints nullable="false"/></column>
+            <column name="action" type="varchar(24)"><constraints nullable="false"/></column>
+            <column name="detail" type="varchar(1200)"/>
+        </createTable>
+        <createIndex tableName="processus_historique" indexName="ix_processus_historique_instance">
+            <column name="instance_id"/>
+            <column name="quand"/>
+        </createIndex>
+        <createIndex tableName="processus_historique" indexName="ix_processus_historique_processus">
+            <column name="processus_id"/>
+            <column name="quand"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Ajout seul : la base refuse toute modification ou suppression d'une ligne d'historique. -->
+    <changeSet id="pil-processus-historique-ajout-seul" author="lot1" dbms="postgresql">
+        <sql splitStatements="false">
+            CREATE OR REPLACE FUNCTION processus_historique_ajout_seul() RETURNS trigger AS $$
+            BEGIN
+                RAISE EXCEPTION 'processus_historique : ajout seul (ni modification ni suppression)';
+            END;
+            $$ LANGUAGE plpgsql;
+        </sql>
+        <sql>CREATE TRIGGER tr_processus_historique_ajout_seul BEFORE UPDATE OR DELETE ON processus_historique FOR EACH ROW EXECUTE FUNCTION processus_historique_ajout_seul();</sql>
+    </changeSet>
+</databaseChangeLog>

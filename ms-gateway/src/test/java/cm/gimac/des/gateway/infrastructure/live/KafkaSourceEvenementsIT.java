@@ -159,4 +159,25 @@ class KafkaSourceEvenementsIT {
             .expectComplete()
             .verify(Duration.ofSeconds(30));
     }
+
+    @Test
+    @DisplayName("Accusé de lecture (D-88) : relayé depuis collaboration.message aux seuls destinataires, avec lecteur et luJusquA")
+    void accuseDeLecture() {
+        Flux<VueEvenement> destinataire = evenements(Abonne.de(Couche.DES, "u1", "", "collaboration,homologation"));
+        Flux<VueEvenement> lecteur = evenements(Abonne.de(Couche.DES, "u2", "", "collaboration,homologation"));
+        StepVerifier.create(Flux.merge(destinataire.map(v -> "u1:" + v.id() + ":" + v.acteur() + ":" + v.luJusquA()), lecteur.map(v -> "u2:" + v.id())).take(3))
+            .then(() -> {
+                publier(
+                    "collaboration.message",
+                    "c-9",
+                    "{\"specversion\":\"1.0\",\"id\":\"r-9\",\"source\":\"/gimac/des/collaboration\",\"type\":\"collaboration.conversation-read.v1\"," +
+                    "\"subject\":\"c-9\",\"data\":{\"conversationId\":\"c-9\",\"lecteurId\":\"u2\",\"luJusquA\":\"2026-10-06T08:00:00Z\",\"destinataires\":[\"u1\"]}}"
+                );
+                publier("homologation.liaison", "l-9", "{\"specversion\":\"1.0\",\"id\":\"h-9\",\"type\":\"homologation.liaison-opened.v1\",\"subject\":\"l-9\"}");
+            })
+            .recordWith(java.util.ArrayList::new)
+            .expectNextCount(3)
+            .consumeRecordedWith(recus -> assertThat(recus).containsExactlyInAnyOrder("u1:r-9:u2:2026-10-06T08:00:00Z", "u1:h-9:null:null", "u2:h-9"))
+            .verifyComplete();
+    }
 }

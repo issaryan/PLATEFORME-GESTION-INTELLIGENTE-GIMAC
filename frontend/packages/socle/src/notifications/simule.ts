@@ -1,6 +1,6 @@
 import { ApiError } from '../http/errors'
 import type { FiltreLecture, NotificationPlateforme, PreferencesNotifications, ServiceNotifications, TypeNotification } from './modele'
-import { TYPES_NOTIFICATION } from './modele'
+import { TYPES_NOTIFICATION, conversationDe } from './modele'
 
 // Notifications simulées (D-80) : mêmes formes et mêmes codes que MS-NOTIFICATION (docs/lot1/notifications.md
 // §3, §6). Imitation des règles du service : consolidation par objet (une seule notification non lue par
@@ -22,7 +22,7 @@ export type OptionsNotificationsSimulees = {
   preferences?: Partial<PreferencesNotifications>
 }
 
-const PREFERENCES_DEFAUT: PreferencesNotifications = { systeme: true, son: false, types: { MESSAGE: true, TACHE: true, RAPPORT: true } }
+const PREFERENCES_DEFAUT: PreferencesNotifications = { systeme: true, son: false, types: { MESSAGE: true, TACHE: true, RAPPORT: true, MENTION: true, REPONSE: true, DEMANDE: true, PROCESSUS: true } }
 
 export function notificationsSimulees(o: OptionsNotificationsSimulees = {}): ServiceNotificationsSimule {
   const latence = o.latenceMs ?? 150
@@ -56,16 +56,19 @@ export function notificationsSimulees(o: OptionsNotificationsSimulees = {}): Ser
       Object.assign(existante, { titre: a.titre, sousTitre: a.sousTitre, acteur: a.acteur, nombre: existante.nombre + (nombre ?? 1), misAJourLe: le })
       return existante
     }
-    const n: NotificationPlateforme = { ...reste, id: `NOT-${(++sequence).toString().padStart(4, '0')}`, nombre: nombre ?? 1, creeLe: le, misAJourLe: le, lueLe: lueLe ?? null }
+    const n: NotificationPlateforme = { conversationId: null, ...reste, id: `NOT-${(++sequence).toString().padStart(4, '0')}`, nombre: nombre ?? 1, creeLe: le, misAJourLe: le, lueLe: lueLe ?? null }
     notifications.push(n)
     return n
   }
   ;(o.initiales ?? []).forEach(deposer)
 
+  // Référence d'une conversation : ses messages, et ses mentions et réponses (D-82, conversationId).
+  const vise = (n: NotificationPlateforme, r: NotificationPlateforme['reference']) =>
+    memeObjet(n, { reference: r }) || (r.service === 'collaboration' && r.type === 'CONVERSATION' && conversationDe(n) === r.id)
   const lire = (f: FiltreLecture = {}) => {
     const le = new Date().toISOString()
     notifications
-      .filter((n) => !n.lueLe && (!f.type || n.type === f.type) && (!f.reference || memeObjet(n, f as { reference: NotificationPlateforme['reference'] })))
+      .filter((n) => !n.lueLe && (!f.type || n.type === f.type) && (!f.reference || vise(n, f.reference)))
       .forEach((n) => (n.lueLe = le))
   }
 

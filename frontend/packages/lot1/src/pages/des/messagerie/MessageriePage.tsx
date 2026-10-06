@@ -1,9 +1,9 @@
-import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router'
-import { AttachmentViewer, Avatar, Button, ConfirmDialog, ConversationList, Dialog, EmptyState, Icon, IconButton, InlineAlert, Link, MessageComposer, MessageThread, PageHeader, type EnvoiPiece, Pagination, Presence, SearchInput, SearchSelect, Skeleton, Tag, TextField, type ThreadMessage, Note } from '@gimac/design-system'
-import { aPermission, urlAvatar, useEnLigne, useLectureConversation, usePermissions, usePresence, useSaisies, useSession, type ApiError } from '@gimac/socle'
-import type { Conversation, Correspondant, EtiquetteLiaison, EvenementGroupe, Message, PieceJointe } from '../../../modele/messagerie'
+import { AttachmentViewer, Avatar, Button, ConfirmDialog, ConversationList, Dialog, EmptyState, Icon, IconButton, InlineAlert, Link, MessageComposer, MessageThread, PageHeader, type EnvoiPiece, type MembreMention, Pagination, Presence, SearchInput, SearchSelect, Skeleton, Tag, TextField, type ThreadMessage, Note } from '@gimac/design-system'
+import { aPermission, urlAvatar, useBarreLaterale, useEnLigne, useLectureConversation, usePermissions, usePresence, useSaisies, useSession, type ApiError } from '@gimac/socle'
+import type { Conversation, Correspondant, EtiquetteLiaison, EvenementGroupe, MembreMentionne, Message, PieceJointe } from '../../../modele/messagerie'
 import { LIMITES_MESSAGERIE, MOTIF_LIAISON } from '../../../modele/messagerie'
 import { useAjouterMembres, useAnnuaire, useConversation, useConversations, useDemarrer, useEnvoyer, useFil, useMarquerLu, usePresenceMessagerie, useRenommerGroupe, useRetirerMembre, useSignalerSaisie, useTelechargerPiece, useTransferer } from '../../../hooks/messagerie'
 import { useLiaisonsParcours } from '../../../hooks/parcours'
@@ -84,16 +84,34 @@ function RefLiaison({ href, children }: { href: string; children: string }) {
   return useContext(Couche) === 'des' ? <Link href={href} mono>{children}</Link> : <span className="gm-mono">{children}</span>
 }
 
-/** Corps d'un message : les références de liaison citées deviennent des liens vers leur dossier. */
-export function CorpsMessage({ contenu, etiquettes }: { contenu: string; etiquettes: EtiquetteLiaison[] }) {
-  const morceaux: ReactNode[] = []
-  let dernier = 0
+/**
+ * Corps d'un message : les références de liaison citées deviennent des liens vers leur dossier ; les mentions
+ * (D-82) « @Prénom Nom » des membres mentionnés sont mises en évidence, la sienne plus marquée. Le texte n'est
+ * jamais interprété comme du HTML : seuls des nœuds texte et des éléments React sont produits.
+ */
+export function CorpsMessage({ contenu, etiquettes, mentions = [], moi }: { contenu: string; etiquettes: EtiquetteLiaison[]; mentions?: MembreMentionne[]; moi?: string }) {
+  type Repere = { debut: number; fin: number; rendu: (cle: number) => ReactNode }
+  const reperes: Repere[] = []
   for (const m of contenu.matchAll(MOTIF_LIAISON)) {
     const debut = m.index ?? 0
-    if (debut > dernier) morceaux.push(contenu.slice(dernier, debut))
     const e = etiquettes.find((x) => x.reference === m[0])
-    morceaux.push(<RefLiaison key={debut} href={e ? `/des/parcours/${encodeURIComponent(e.liaisonId)}` : `/des/parcours?q=${encodeURIComponent(m[0])}`}>{m[0]}</RefLiaison>)
-    dernier = debut + m[0].length
+    reperes.push({ debut, fin: debut + m[0].length, rendu: (cle) => <RefLiaison key={cle} href={e ? `/des/parcours/${encodeURIComponent(e.liaisonId)}` : `/des/parcours?q=${encodeURIComponent(m[0])}`}>{m[0]}</RefLiaison> })
+  }
+  // Noms les plus longs d'abord : « @Paul Mbarga Atangana » avant un éventuel « @Paul Mbarga ».
+  for (const p of [...mentions].sort((a, b) => b.nom.length - a.nom.length)) {
+    const texte = `@${p.nom}`
+    for (let i = contenu.indexOf(texte); i >= 0; i = contenu.indexOf(texte, i + texte.length)) {
+      if (reperes.some((r) => i < r.fin && i + texte.length > r.debut)) continue
+      reperes.push({ debut: i, fin: i + texte.length, rendu: (cle) => <span key={cle} className={p.id === moi ? 'gm-mention gm-mention-moi' : 'gm-mention'}>{texte}</span> })
+    }
+  }
+  reperes.sort((a, b) => a.debut - b.debut)
+  const morceaux: ReactNode[] = []
+  let dernier = 0
+  for (const r of reperes) {
+    if (r.debut > dernier) morceaux.push(contenu.slice(dernier, r.debut))
+    morceaux.push(r.rendu(r.debut))
+    dernier = r.fin
   }
   if (dernier < contenu.length) morceaux.push(contenu.slice(dernier))
   return <>{morceaux}</>
@@ -221,17 +239,25 @@ type PieceEnvoyee = { cle: string; fichier: File; phase: EnvoiPiece['phase']; en
  * « Envoyer » attend qu'elles soient prêtes, puis le message ne porte que leurs tickets (`documents`).
  * `reference` : la conversation, ou « nouvelle-conversation » avant sa création.
  */
-function Saisie({ envoi, erreur, onEnvoyer, onFrappe, reference, etiquettesInitiales = [] }: {
+function Saisie({ envoi, erreur, onEnvoyer, onFrappe, reference, etiquettesInitiales = [], reponse, onAnnulerReponse, membres = [] }: {
   envoi: boolean
   erreur?: string
-  onEnvoyer: (e: { contenu: string; fichiers: File[]; documents: string[]; etiquettes: EtiquetteLiaison[] }, vider: () => void) => void
+  onEnvoyer: (e: { contenu: string; fichiers: File[]; documents: string[]; etiquettes: EtiquetteLiaison[]; reponseA?: string | null; mentions?: string[] }, vider: () => void) => void
   /** Frappe dans le champ (D-72) : signal « en train d'écrire », limité par l'appelant. */
   onFrappe?: () => void
   reference: string
   etiquettesInitiales?: EtiquetteLiaison[]
+  /** Message auquel on répond (D-82) : cité au-dessus du champ, envoyé en « reponseA ». */
+  reponse?: Message | null
+  onAnnulerReponse?: () => void
+  /** Membres mentionnables avec « @ » (D-82), l'utilisateur exclu. */
+  membres?: Correspondant[]
 }) {
   const { t } = useTranslation()
   const services = useServices()
+  const photo = usePhoto()
+  // Mentions choisies dans la liste ; à l'envoi, seules restent celles dont « @Nom » figure encore au texte.
+  const [mentions, setMentions] = useState<MembreMentionne[]>([])
   const messageErreur = useMessageErreur()
   const [texte, setTexte] = useState('')
   const [pieces, setPieces] = useState<PieceEnvoyee[]>([])
@@ -277,7 +303,10 @@ function Saisie({ envoi, erreur, onEnvoyer, onFrappe, reference, etiquettesIniti
     setPieces([])
     setEtiquettes([])
     setCiter(false)
+    setMentions([])
+    onAnnulerReponse?.()
   }
+  const mentionsRetenues = [...new Set(mentions.filter((m) => texte.includes(`@${m.nom}`)).map((m) => m.id))].slice(0, LIMITES_MESSAGERIE.mentionsMax)
   return (
     <MessageComposer
       value={texte}
@@ -297,7 +326,20 @@ function Saisie({ envoi, erreur, onEnvoyer, onFrappe, reference, etiquettesIniti
       onAnnulerEnvoi={retirer}
       sending={envoi}
       error={erreur}
-      onSend={() => onEnvoyer({ contenu: texte, fichiers: [], documents: pieces.flatMap((p) => (p.documentId ? [p.documentId] : [])), etiquettes }, vider)}
+      onSend={() => onEnvoyer({
+        contenu: texte, fichiers: [], documents: pieces.flatMap((p) => (p.documentId ? [p.documentId] : [])), etiquettes,
+        ...(reponse ? { reponseA: reponse.id } : {}),
+        ...(mentionsRetenues.length ? { mentions: mentionsRetenues } : {}),
+      }, vider)}
+      reponse={reponse && onAnnulerReponse ? {
+        cle: reponse.id,
+        auteur: reponse.moi ? t('msg.vous') : reponse.auteur.nom,
+        extrait: reponse.contenu,
+        pieces: reponse.piecesJointes.length,
+        onAnnuler: onAnnulerReponse,
+      } : undefined}
+      membres={membres.map((m): MembreMention => ({ id: m.id, nom: m.nom, detail: m.fonction, avatar: photo(m) }))}
+      onMention={(m) => setMentions((l) => (l.some((x) => x.id === m.id) ? l : [...l, { id: m.id, nom: m.nom }]))}
       extras={
         <div className="gm-col" style={{ gap: 'var(--gm-space-1)' }}>
           {!citable ? null : citer ? <CiterLiaisons valeur={etiquettes} onChange={setEtiquettes} /> : (
@@ -343,8 +385,28 @@ function TransfererPiece({ piece, depuis, onFermer, onTransfere }: { piece: Piec
   )
 }
 
-function Fil({ id, peutEcrire, onQuitte, onAller }: { id: string; peutEcrire: boolean; onQuitte: () => void; onAller: (conversationId: string) => void }) {
+/** Pages plus anciennes chargées au plus pour retrouver un message cité ou désigné par un lien (D-82). */
+const PAGES_RECHERCHE_MAX = 10
+
+function Fil({ id, peutEcrire, onQuitte, onAller, cible, commandes }: {
+  id: string; peutEcrire: boolean; onQuitte: () => void; onAller: (conversationId: string) => void
+  /** Message à atteindre (lien d'une notification de mention ou de réponse, D-82). */
+  cible?: string | null
+  /** Commandes de l'espace (liste repliée, D-84), dans l'en-tête du fil. */
+  commandes?: ReactNode
+}) {
   const { t } = useTranslation()
+  const [reponse, setReponse] = useState<Message | null>(null)
+  // Message recherché (citation ouverte ou lien), puis mis en évidence un instant ; annonce s'il reste introuvable.
+  const [recherche, setRecherche] = useState<string | null>(cible ?? null)
+  const [evidence, setEvidence] = useState<string>()
+  const [annonce, setAnnonce] = useState<string>()
+  const pagesChargees = useRef(0)
+  // Fil gardé en cache d'une visite précédente : relu une fois avant de chercher dans les pages plus anciennes.
+  const relu = useRef(false)
+  useEffect(() => {
+    if (cible) setRecherche(cible)
+  }, [cible])
   const texteEvenement = useTexteEvenement()
   const [gestion, setGestion] = useState(false)
   const [apercu, setApercu] = useState<{ piece: PieceJointe; blob?: Blob; erreur?: string } | null>(null)
@@ -376,6 +438,40 @@ function Fil({ id, peutEcrire, onQuitte, onAller }: { id: string; peutEcrire: bo
   // Notifications de la plateforme (D-80) : ouvrir la conversation marque ses notifications lues, et de
   // nouveau à chaque message reçu pendant qu'elle est ouverte (POST /notifications/lecture, référence de la conversation).
   useLectureConversation(id, dernier)
+  const plusAnciensRestants = fil.data?.[fil.data.length - 1]?.plusAnciens ?? false
+  useEffect(() => {
+    // Relecture en cours (fil gardé en cache d'une visite précédente) : on attend le fil à jour.
+    if (!recherche || !fil.data || fil.isFetching) return
+    if (messages.some((m) => m.id === recherche)) {
+      setEvidence(recherche)
+      setRecherche(null)
+      pagesChargees.current = 0
+      relu.current = false
+    } else if (!relu.current) {
+      relu.current = true
+      void fil.refetch()
+    } else if (plusAnciensRestants && pagesChargees.current < PAGES_RECHERCHE_MAX) {
+      // Message plus ancien : les pages précédentes sont chargées jusqu'à le trouver.
+      pagesChargees.current += 1
+      void fil.fetchNextPage()
+    } else {
+      setAnnonce(t('msg.citation.nonCharge'))
+      setRecherche(null)
+      pagesChargees.current = 0
+      relu.current = false
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recherche, messages, plusAnciensRestants, fil.isFetching])
+  useEffect(() => {
+    if (!evidence) return undefined
+    const d = window.setTimeout(() => setEvidence(undefined), 2_000)
+    return () => window.clearTimeout(d)
+  }, [evidence])
+  useEffect(() => {
+    if (!annonce) return undefined
+    const d = window.setTimeout(() => setAnnonce(undefined), 4_000)
+    return () => window.clearTimeout(d)
+  }, [annonce])
   if (conversation.isError) return <InlineAlert level="crit">{erreur(conversation.error)}</InlineAlert>
   if (!conversation.data || !fil.data) return <Skeleton height={320} />
   const c = conversation.data
@@ -383,7 +479,19 @@ function Fil({ id, peutEcrire, onQuitte, onAller }: { id: string; peutEcrire: bo
     id: m.id, auteur: m.auteur.nom, quand: quand(m.envoyeLe), evenement: true, contenu: texteEvenement(m.evenement, m.auteur.nom, m.moi),
   } : ({
     id: m.id, auteur: m.auteur.nom, quand: quand(m.envoyeLe), mine: m.moi, avatar: photo(m.auteur),
-    contenu: <CorpsMessage contenu={m.contenu} etiquettes={m.etiquettes} />,
+    contenu: <CorpsMessage contenu={m.contenu} etiquettes={m.etiquettes} mentions={m.mentions} moi={session?.sujet} />,
+    mentionneMoi: m.mentionneMoi,
+    citation: m.reponseA ? {
+      auteur: m.reponseA.auteur?.nom ?? null,
+      mine: Boolean(m.reponseA.auteur) && m.reponseA.auteur?.id === session?.sujet,
+      extrait: m.reponseA.extrait,
+      pieces: m.reponseA.piecesJointes,
+      supprime: m.reponseA.supprime,
+      onOuvrir: () => {
+        setAnnonce(undefined)
+        setRecherche(m.reponseA!.id)
+      },
+    } : undefined,
     etiquettes: m.etiquettes.length ? <Etiquettes etiquettes={m.etiquettes} /> : undefined,
     pieces: m.piecesJointes.map((p) => ({ id: p.id, nom: p.nom, taille: taille(p.taille) })),
   }))
@@ -427,12 +535,16 @@ function Fil({ id, peutEcrire, onQuitte, onAller }: { id: string; peutEcrire: bo
         <>
           {c.liaison && couche === 'des' ? <Link href={`/des/parcours/${encodeURIComponent(c.liaison.liaisonId)}`}>{t('msg.ouvrirLiaison', { reference: c.liaison.reference })}</Link> : null}
           {c.type === 'GROUPE' ? <Button size="sm" variant="secondary" icon="users" onClick={() => setGestion(true)}>{t('msg.groupe.gerer')}</Button> : null}
+          {commandes}
         </>
       )}
       messages={vus}
       plusAnciens={derniere?.plusAnciens}
       onPlusAnciens={() => void fil.fetchNextPage()}
       onPiece={ouvrirPiece}
+      onRepondre={peutEcrire ? (mid) => setReponse(messages.find((m) => m.id === mid) ?? null) : undefined}
+      enEvidence={evidence}
+      annonce={annonce}
       onTransferer={peutEcrire ? (pid) => setTransfert(pieceDe(pid) ?? null) : undefined}
       saisie={peutEcrire ? (
         <Saisie
@@ -442,6 +554,9 @@ function Fil({ id, peutEcrire, onQuitte, onAller }: { id: string; peutEcrire: bo
           onEnvoyer={(e, vider) => envoyer.mutate(e, { onSuccess: vider })}
           onFrappe={frappe}
           reference={id}
+          reponse={reponse}
+          onAnnulerReponse={() => setReponse(null)}
+          membres={c.membres.filter((m) => m.id !== session?.sujet)}
         />
       ) : undefined}
     />
@@ -456,13 +571,14 @@ function Fil({ id, peutEcrire, onQuitte, onAller }: { id: string; peutEcrire: bo
         erreur={apercu.erreur}
         onClose={() => setApercu(null)}
         onTelecharger={() => (apercu.blob ? enregistrerFichier(apercu.blob, apercu.piece.nom) : undefined)}
+        convertir={services.apercu?.convertir}
       />
     ) : null}
     </>
   )
 }
 
-function NouveauMessage({ liaisonId, destinataire, onCree, onAnnuler }: { liaisonId: string | null; destinataire: string | null; onCree: (c: Conversation) => void; onAnnuler: () => void }) {
+function NouveauMessage({ liaisonId, destinataire, onCree, onAnnuler, commandes }: { liaisonId: string | null; destinataire: string | null; onCree: (c: Conversation) => void; onAnnuler: () => void; commandes?: ReactNode }) {
   const { t } = useTranslation()
   const [choisis, setChoisis] = useState<Correspondant[]>([])
   const demarrer = useDemarrer()
@@ -481,7 +597,7 @@ function NouveauMessage({ liaisonId, destinataire, onCree, onAnnuler }: { liaiso
     <section className="gm-chat gm-fil" aria-label={t('msg.nouveau.titre')} style={{ height: '100%' }}>
       <header className="gm-chat-head">
         <strong>{t('msg.nouveau.titre')}</strong>
-        <span style={{ marginLeft: 'auto' }}><Button size="sm" variant="ghost" icon="x" onClick={onAnnuler}>{t('msg.annuler')}</Button></span>
+        <span className="gm-row" style={{ marginLeft: 'auto' }}><Button size="sm" variant="ghost" icon="x" onClick={onAnnuler}>{t('msg.annuler')}</Button>{commandes}</span>
       </header>
       <div className="gm-col gm-pad" style={{ gap: 'var(--gm-space-3)', overflow: 'auto', flex: 1 }}>
         {personne ? (
@@ -506,6 +622,7 @@ function NouveauMessage({ liaisonId, destinataire, onCree, onAnnuler }: { liaiso
         <Saisie
           key={rattachee?.id ?? 'sans-liaison'}
           reference="nouvelle-conversation"
+          membres={[personne]}
           envoi={demarrer.isPending}
           erreur={demarrer.isError ? erreur(demarrer.error) : undefined}
           etiquettesInitiales={rattachee ? [{ liaisonId: rattachee.id, reference: rattachee.reference }] : []}
@@ -520,7 +637,7 @@ function NouveauMessage({ liaisonId, destinataire, onCree, onAnnuler }: { liaiso
 }
 
 /** Création d'un groupe de discussion nommé (D-68) : nom, membres choisis dans l'annuaire. */
-function NouveauGroupe({ liaisonId, onCree, onAnnuler }: { liaisonId: string | null; onCree: (c: Conversation) => void; onAnnuler: () => void }) {
+function NouveauGroupe({ liaisonId, onCree, onAnnuler, commandes }: { liaisonId: string | null; onCree: (c: Conversation) => void; onAnnuler: () => void; commandes?: ReactNode }) {
   const { t } = useTranslation()
   const [nom, setNom] = useState('')
   const [membres, setMembres] = useState<Correspondant[]>([])
@@ -540,7 +657,7 @@ function NouveauGroupe({ liaisonId, onCree, onAnnuler }: { liaisonId: string | n
       <header className="gm-chat-head">
         <Icon name="users" size={20} />
         <strong>{t('msg.groupe.titre')}</strong>
-        <span style={{ marginLeft: 'auto' }}><Button size="sm" variant="ghost" icon="x" onClick={onAnnuler}>{t('msg.annuler')}</Button></span>
+        <span className="gm-row" style={{ marginLeft: 'auto' }}><Button size="sm" variant="ghost" icon="x" onClick={onAnnuler}>{t('msg.annuler')}</Button>{commandes}</span>
       </header>
       <div className="gm-col gm-pad" style={{ gap: 'var(--gm-space-3)', overflow: 'auto', flex: 1 }}>
         <TextField name="nom-groupe" label={t('msg.groupe.nom')} help={t('msg.groupe.nomAide')} required value={nom} onChange={setNom} error={tente && !nom.trim() ? t('msg.erreur.COL_GROUP_TITLE_REQUIRED') : undefined} />
@@ -646,6 +763,129 @@ function GererGroupe({ c, onFermer, onQuitte }: { c: Conversation; onFermer: () 
   )
 }
 
+/** Préférences de l'espace (D-84), gardées par navigateur ; stockage indisponible (navigation privée) : défauts. */
+const CLES_ESPACE = { largeur: 'gm.messagerie.largeurListe', repliee: 'gm.messagerie.listeRepliee', elargie: 'gm.messagerie.elargie' } as const
+export const LARGEUR_LISTE = { min: 240, max: 480, defaut: 320, pas: 16 } as const
+
+function lirePreference(cle: string): string | null {
+  try {
+    return window.localStorage.getItem(cle)
+  } catch {
+    return null
+  }
+}
+function ecrirePreference(cle: string, valeur: string) {
+  try {
+    window.localStorage.setItem(cle, valeur)
+  } catch {
+    // Stockage refusé : la préférence vaut pour la visite seulement.
+  }
+}
+const borner = (n: number) => Math.min(LARGEUR_LISTE.max, Math.max(LARGEUR_LISTE.min, Math.round(n)))
+
+/** Écran assez large pour deux colonnes (au-delà, comportement d'origine : une colonne à la fois). */
+function useDeuxColonnes() {
+  const requete = '(min-width: 961px)'
+  const lire = () => (typeof window.matchMedia === 'function' ? window.matchMedia(requete).matches : true)
+  const [deux, setDeux] = useState(lire)
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return undefined
+    const m = window.matchMedia(requete)
+    const suivre = () => setDeux(m.matches)
+    m.addEventListener?.('change', suivre)
+    return () => m.removeEventListener?.('change', suivre)
+  }, [])
+  return deux
+}
+
+/**
+ * Largeur du fil (D-84, docs/lot1/messagerie-espace.md) : largeur de la liste (240 à 480 px), liste repliée,
+ * barre latérale de l'application réduite (« Élargir »), rendue à son état précédent en quittant la messagerie.
+ */
+function useEspace() {
+  const [largeur, setLargeur] = useState(() => {
+    const n = Number(lirePreference(CLES_ESPACE.largeur))
+    return n ? borner(n) : LARGEUR_LISTE.defaut
+  })
+  const [repliee, setRepliee] = useState(() => lirePreference(CLES_ESPACE.repliee) === '1')
+  const [elargie, setElargie] = useState(() => lirePreference(CLES_ESPACE.elargie) === '1')
+  const barre = useBarreLaterale()
+  const avant = useRef(barre.reduite)
+  const reduire = useRef(barre.reduire)
+  reduire.current = barre.reduire
+  useEffect(() => {
+    reduire.current(elargie || avant.current)
+  }, [elargie])
+  useEffect(() => () => reduire.current(avant.current), [])
+  return {
+    largeur, repliee, elargie, barreActive: barre.active,
+    changerLargeur: (n: number, garder = true) => {
+      const b = borner(n)
+      setLargeur(b)
+      if (garder) ecrirePreference(CLES_ESPACE.largeur, String(b))
+    },
+    garderLargeur: (n: number) => ecrirePreference(CLES_ESPACE.largeur, String(borner(n))),
+    replier: (v: boolean) => {
+      setRepliee(v)
+      ecrirePreference(CLES_ESPACE.repliee, v ? '1' : '0')
+    },
+    elargir: (v: boolean) => {
+      setElargie(v)
+      ecrirePreference(CLES_ESPACE.elargie, v ? '1' : '0')
+    },
+  }
+}
+
+/** Séparateur déplaçable (souris, doigt, flèches, Origine et Fin) ; double clic : largeur par défaut. */
+function Separateur({ largeur, onChange, onFin }: { largeur: number; onChange: (n: number, garder?: boolean) => void; onFin: (n: number) => void }) {
+  const { t } = useTranslation()
+  const glisse = useRef<{ x: number; largeur: number; derniere: number } | null>(null)
+  const [actif, setActif] = useState(false)
+  const touche = (e: KeyboardEvent<HTMLDivElement>) => {
+    const cible = e.key === 'ArrowLeft' ? largeur - LARGEUR_LISTE.pas : e.key === 'ArrowRight' ? largeur + LARGEUR_LISTE.pas
+      : e.key === 'Home' ? LARGEUR_LISTE.min : e.key === 'End' ? LARGEUR_LISTE.max : null
+    if (cible === null) return
+    e.preventDefault()
+    onChange(cible)
+  }
+  const fin = (e: PointerEvent<HTMLDivElement>) => {
+    const g = glisse.current
+    if (!g) return
+    glisse.current = null
+    setActif(false)
+    e.currentTarget.releasePointerCapture?.(e.pointerId)
+    onFin(g.derniere)
+  }
+  return (
+    <div
+      role="separator"
+      tabIndex={0}
+      aria-orientation="vertical"
+      aria-label={t('msg.espace.separateur')}
+      aria-valuenow={largeur}
+      aria-valuemin={LARGEUR_LISTE.min}
+      aria-valuemax={LARGEUR_LISTE.max}
+      className={actif ? 'gm-messagerie-separateur gm-glisse' : 'gm-messagerie-separateur'}
+      onKeyDown={touche}
+      onDoubleClick={() => onChange(LARGEUR_LISTE.defaut)}
+      onPointerDown={(e) => {
+        e.preventDefault()
+        e.currentTarget.setPointerCapture?.(e.pointerId)
+        glisse.current = { x: e.clientX, largeur, derniere: largeur }
+        setActif(true)
+      }}
+      onPointerMove={(e) => {
+        const g = glisse.current
+        if (!g) return
+        g.derniere = borner(g.largeur + e.clientX - g.x)
+        onChange(g.derniere, false)
+      }}
+      onPointerUp={fin}
+      onPointerCancel={fin}
+    />
+  )
+}
+
 export default function MessageriePage({ couche = 'des' }: { couche?: CoucheMessagerie }) {
   return <Couche.Provider value={couche}><Messagerie /></Couche.Provider>
 }
@@ -682,21 +922,40 @@ function Messagerie() {
     setParams(p)
   }
   const erreur = useMessageErreur()
+  const espace = useEspace()
+  const deuxColonnes = useDeuxColonnes()
+  // Liste repliée seulement quand un fil (ou un nouveau message) occupe l'écran : sinon rien ne la rouvrirait.
+  const repliee = deuxColonnes && espace.repliee && Boolean(ouverte || nouveau || nouveauGroupe)
+  const basculeListe = deuxColonnes ? (
+    <span className="gm-messagerie-commande">
+      <IconButton size="sm" variant="ghost" icon={repliee ? 'panel-left-open' : 'panel-left-close'} label={t(repliee ? 'msg.espace.deplier' : 'msg.espace.replier')}
+        aria-expanded={!repliee} onClick={() => espace.replier(!repliee)} />
+    </span>
+  ) : null
+  const elargir = espace.barreActive && deuxColonnes ? (
+    <span className="gm-messagerie-commande" title={espace.elargie ? undefined : t('msg.espace.elargirAide')}>
+      <Button variant="ghost" icon={espace.elargie ? 'minimize-2' : 'maximize-2'} onClick={() => espace.elargir(!espace.elargie)}>
+        {t(espace.elargie ? 'msg.espace.retablir' : 'msg.espace.elargir')}
+      </Button>
+    </span>
+  ) : null
   return (
     <div className="gm-col" style={{ gap: 'var(--gm-space-4)' }}>
       <PageHeader
         title={t('msg.titre')}
         meta={<span>{t('msg.sousTitre')}</span>}
-        actions={peutEcrire ? (
+        actions={elargir || peutEcrire ? (
           <>
-            <Button variant="secondary" icon="users" onClick={() => aller({ nouveau: 'groupe' })}>{t('msg.nouveauGroupe')}</Button>
-            <Button variant="primary" icon="plus" onClick={() => aller({ nouveau: '1' })}>{t('msg.nouveau')}</Button>
+            {elargir}
+            {peutEcrire ? <Button variant="secondary" icon="users" onClick={() => aller({ nouveau: 'groupe' })}>{t('msg.nouveauGroupe')}</Button> : null}
+            {peutEcrire ? <Button variant="primary" icon="plus" onClick={() => aller({ nouveau: '1' })}>{t('msg.nouveau')}</Button> : null}
           </>
         ) : undefined}
       />
-      <div className="gm-messagerie">
+      <div className={repliee ? 'gm-messagerie gm-messagerie-espace gm-messagerie-repliee' : 'gm-messagerie gm-messagerie-espace'}
+        style={{ '--gm-messagerie-liste': `${espace.largeur}px` } as CSSProperties}>
         <aside className="gm-messagerie-liste" aria-label={t('msg.titre')}>
-          <div className="gm-pad"><SearchInput label={t('msg.recherche')} value={saisie} onChange={setSaisie} /></div>
+          <div className="gm-pad"><SearchInput label={t('msg.recherche')} value={saisie} onChange={setSaisie} width="100%" /></div>
           <div className="gm-messagerie-defile">
             {liste.isPending ? <Skeleton height={240} /> : liste.isError ? <InlineAlert level="crit">{erreur(liste.error) ?? ''}</InlineAlert> : (
               <ConversationList
@@ -722,12 +981,14 @@ function Messagerie() {
           </div>
           <Pagination total={liste.data?.total ?? 0} page={page} pageSize={PAR_PAGE} onPage={setPage} />
         </aside>
+        {deuxColonnes ? <Separateur largeur={espace.largeur} onChange={espace.changerLargeur} onFin={espace.garderLargeur} /> : null}
         {/* État vide sur le fond texturé du fil (motif de trame atténué, D-66), le texte sur fond plein. */}
         <div className={nouveau || nouveauGroupe || ouverte ? 'gm-messagerie-fil' : 'gm-messagerie-fil gm-trame-fil'}>
           {nouveauGroupe ? (
-            <NouveauGroupe liaisonId={params.get('liaison')} onCree={(c) => aller({ conversation: c.id })} onAnnuler={() => aller({})} />
+            <NouveauGroupe commandes={basculeListe} liaisonId={params.get('liaison')} onCree={(c) => aller({ conversation: c.id })} onAnnuler={() => aller({})} />
           ) : nouveau ? (
             <NouveauMessage
+              commandes={basculeListe}
               key={`${params.get('liaison')}-${params.get('destinataire')}`}
               liaisonId={params.get('liaison')}
               destinataire={params.get('destinataire')}
@@ -735,7 +996,7 @@ function Messagerie() {
               onAnnuler={() => aller({})}
             />
           ) : ouverte ? (
-            <Fil key={ouverte} id={ouverte} peutEcrire={peutEcrire} onQuitte={() => aller({})} onAller={(cid) => aller({ conversation: cid })} />
+            <Fil key={ouverte} id={ouverte} cible={params.get('message')} commandes={basculeListe} peutEcrire={peutEcrire} onQuitte={() => aller({})} onAller={(cid) => aller({ conversation: cid })} />
           ) : (
             <EmptyState icon="messages-square" title={liste.data?.total === 0 ? t('msg.aucune') : t('msg.choisir')} text={liste.data?.total === 0 ? t('msg.aucuneAide') : t('msg.choisirAide')} />
           )}

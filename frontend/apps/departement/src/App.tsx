@@ -8,7 +8,8 @@ import {
 } from '@gimac/socle'
 import { CompteProvider, GardePremierAcces, MonComptePage, useMonAvatar, monCompteHttp, monCompteSimule } from '@gimac/compte'
 import {
-  ExtensionsTableauDeBordProvider, Fournisseurs, NAVIGATION_DES, ORGANISATION_DEMO, PERM, creerClientRequetes, lecteurApercu, notificationsDemo, rattachementDemo, servicesHttp, servicesSimules, useNonLus,
+  ExtensionsTableauDeBordProvider, Fournisseurs, NAVIGATION_DES, ORGANISATION_DEMO, PERM, creerClientRequetes, lecteurApercu, magasinPouvoirs, notificationsDemo, rattachementDemo, servicesHttp,
+  servicesSimules, useNonLus,
   useSourcesRecherche,
 } from '@gimac/lot1'
 import {
@@ -43,6 +44,10 @@ const AgendaPage = lazy(() => import('@gimac/lot1/pages/des/activite/AgendaPage'
 const TachesPage = lazy(() => import('@gimac/lot1/pages/des/activite/TachesPage'))
 const RapportsPage = lazy(() => import('@gimac/lot1/pages/des/activite/RapportsPage'))
 const EquipePage = lazy(() => import('@gimac/lot1/pages/des/activite/EquipePage'))
+// Processus d'unité (D-87, docs/lot1/processus-unite.md) : catalogue, modélisateur, suivi d'une instance.
+const ProcessusPage = lazy(() => import('@gimac/lot1/pages/des/processus/ProcessusPage'))
+const ModelisateurProcessusPage = lazy(() => import('@gimac/lot1/pages/des/processus/ModelisateurProcessusPage'))
+const InstanceProcessusPage = lazy(() => import('@gimac/lot1/pages/des/processus/InstancePage'))
 // Administration des comptes (D-69) : écrans de @gimac/administration servis sous /des/administration,
 // pour le RSSI et le super administrateur ; la console garde la supervision et la configuration.
 const ComptesPage = lazy(() => import('@gimac/administration/pages/ComptesPage'))
@@ -52,6 +57,11 @@ const JournalAdministrationPage = lazy(() => import('@gimac/administration/pages
 const ProfilsPage = lazy(() => import('@gimac/administration/pages/ProfilsPage'))
 const PolitiqueSecuritePage = lazy(() => import('@gimac/administration/pages/PolitiqueSecuritePage'))
 const OrganisationPage = lazy(() => import('@gimac/administration/pages/OrganisationPage'))
+// Organigramme (D-86 §3) : unités, chefs, membres et n+1, pouvoirs effectifs.
+const OrganigrammePage = lazy(() => import('@gimac/administration/pages/OrganigrammePage'))
+// Pouvoirs hiérarchiques (D-81) : demandes des chefs à traiter, matrice des pouvoirs.
+const DemandesPage = lazy(() => import('@gimac/administration/pages/DemandesPage'))
+const MatricePouvoirsPage = lazy(() => import('@gimac/administration/pages/MatricePouvoirsPage'))
 // Plateforme (D-79) : les écrans de la console servis aussi dans l'application interne, sous /des/plateforme ;
 // /api/plateforme est servi par la passerelle depuis toute couche (flux SSE compris).
 const SupervisionPage = lazy(() => import('@gimac/administration/pages/SupervisionPage'))
@@ -130,13 +140,20 @@ function Pages({ session, etatCanal, correlationId, notifications }: { session: 
                   <Route path="taches" element={<Autorise permissions={p} exigee="PIL_ACTIVITY_OWN"><TachesPage /></Autorise>} />
                   <Route path="rapports" element={<Autorise permissions={p} exigee="PIL_ACTIVITY_OWN"><RapportsPage /></Autorise>} />
                   <Route path="equipe" element={<Autorise permissions={p} exigee="PIL_TEAM_READ"><EquipePage /></Autorise>} />
+                  <Route path="equipe/demandes" element={<Autorise permissions={p} exigee="PIL_TEAM_READ"><EquipePage /></Autorise>} />
+                  <Route path="processus" element={<Autorise permissions={p} exigee="PIL_ACTIVITY_OWN"><ProcessusPage /></Autorise>} />
+                  <Route path="processus/instances/:id" element={<Autorise permissions={p} exigee="PIL_ACTIVITY_OWN"><InstanceProcessusPage /></Autorise>} />
+                  <Route path="processus/:id" element={<Autorise permissions={p} exigee="PIL_ACTIVITY_OWN"><ModelisateurProcessusPage /></Autorise>} />
                   <Route path="referentiels/operations" element={<ReferentielsOperationsPage />} />
                   <Route path="administration/comptes" element={<Autorise permissions={p} exigee="IAM_ACCOUNT_READ"><ComptesPage /></Autorise>} />
                   <Route path="administration/comptes/nouveau" element={<Autorise permissions={p} exigee="IAM_ACCOUNT_CREATE"><CreationComptePage /></Autorise>} />
                   <Route path="administration/comptes/:id" element={<Autorise permissions={p} exigee="IAM_ACCOUNT_READ"><ComptePage /></Autorise>} />
                   <Route path="administration/journal" element={<Autorise permissions={p} exigee="IAM_JOURNAL_READ"><JournalAdministrationPage /></Autorise>} />
                   <Route path="administration/profils" element={<Autorise permissions={p} exigee="IAM_ACCOUNT_READ"><ProfilsPage /></Autorise>} />
+                  <Route path="administration/demandes" element={<Autorise permissions={p} exigee="IAM_ACCOUNT_READ"><DemandesPage /></Autorise>} />
+                  <Route path="administration/matrice-pouvoirs" element={<Autorise permissions={p} exigee="IAM_ACCOUNT_READ"><MatricePouvoirsPage /></Autorise>} />
                   <Route path="administration/organisation" element={<Autorise permissions={p} exigee="IAM_ACCOUNT_READ"><OrganisationPage /></Autorise>} />
+                  <Route path="administration/organigramme" element={<Autorise permissions={p} exigee="IAM_ACCOUNT_READ"><OrganigrammePage /></Autorise>} />
                   <Route path="administration/politique-securite" element={<Autorise permissions={p} exigee="PLATFORM_SECURITY_POLICY_READ"><PolitiqueSecuritePage /></Autorise>} />
                   <Route path="plateforme/supervision" element={<Autorise permissions={p} exigee="PLATFORM_SUPERVISION_READ"><SupervisionPage /></Autorise>} />
                   <Route path="plateforme/infrastructure" element={<Autorise permissions={p} exigee="PLATFORM_OPS_READ"><InfrastructurePage /></Autorise>} />
@@ -171,6 +188,8 @@ function AvecSession({ children }: { children: (s: Session) => ReactNode }) {
 export default function App() {
   const reels = import.meta.env.VITE_SERVICES !== 'simule'
   const client = useMemo(() => creerClientRequetes(), [])
+  // Pouvoirs hiérarchiques simulés (D-81) : un magasin pour la page, commun à « Mon équipe » et à l'administration.
+  const pouvoirs = useMemo(() => (reels ? undefined : magasinPouvoirs()), [reels])
   // Notifications de la plateforme (D-80) : /bff/des/notification, ou MS-NOTIFICATION simulé branché sur la
   // messagerie simulée (un message reçu crée ou regroupe une notification).
   const { services, notifications } = useMemo(() => {
@@ -179,9 +198,9 @@ export default function App() {
       return { services: s, notifications: { service: notificationsHttp('des'), apercu: lecteurApercu(s) } }
     }
     const demo = sessionDemo()
-    const s = servicesSimules({ utilisateur: { id: demo.sujet, nom: demo.nom } })
+    const s = servicesSimules({ utilisateur: { id: demo.sujet, nom: demo.nom, profils: demo.roles }, pouvoirs })
     return { services: s, notifications: { service: notificationsDemo(s, { qc: client, moi: demo.sujet }), apercu: lecteurApercu(s) } }
-  }, [reels, client])
+  }, [reels, client, pouvoirs])
   // « Mon compte » (D-62) : /bff/des/iam/moi, ou service simulé au nom du profil de démonstration
   // (gm.premierAccesDemo = 1 : démonstration du premier accès).
   const compte = useMemo(() => {
@@ -205,8 +224,8 @@ export default function App() {
   const administration = useMemo(() => {
     if (reels) return servicesConsoleHttp('des')
     const s = sessionDemo()
-    return servicesConsoleSimules({ acteur: { id: s.sujet, nom: s.nom, permissions: s.permissions } })
-  }, [reels])
+    return servicesConsoleSimules({ acteur: { id: s.sujet, nom: s.nom, permissions: s.permissions }, pouvoirs })
+  }, [reels, pouvoirs])
   const connexion = useMemo(() => (reels ? connexionHttp() : connexionDemo()), [reels])
   const [correlationId, setCorrelationId] = useState<string | undefined>()
   useEffect(() => {

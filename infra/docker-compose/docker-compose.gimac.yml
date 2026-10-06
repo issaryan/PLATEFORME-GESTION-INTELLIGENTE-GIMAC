@@ -73,6 +73,8 @@ services:
       GIMAC_S3_CLE_SECRETE: ${GIMAC_S3_CLE_SECRETE:?à définir dans .env}
       # Dépôts fragmentés en cours (D-74) : compartiment sans verrouillage, créé par stockage-objet-init.
       GIMAC_S3_COMPARTIMENT_DEPOTS: gimac-depots
+      # Aperçu des documents bureautiques (D-83) : moteur de conversion du réseau interne « conversion ».
+      GIMAC_APERCU_URL: http://conversion-documents:3000
     depends_on:
       kafka:
         condition: service_started
@@ -80,6 +82,9 @@ services:
         condition: service_completed_successfully
       stockage-objet-init:
         condition: service_completed_successfully
+    networks:
+      - default
+      - conversion
   # Notifications de la plateforme (D-80) : noms de l'annuaire de MS-IAM et nom des groupes de MS-COLLABORATION
   # par le jeton du client notification-service (INTERNAL_IAM_READ, INTERNAL_COLLABORATION_READ).
   notification:
@@ -112,7 +117,9 @@ services:
   monitoring: *application
   rapprochement: *application
   # Mon activité (D-76) : organisation de MS-IAM et documents des rapports de MS-DOCUMENT par le jeton
-  # du client pilotage-service (INTERNAL_IAM_READ, INTERNAL_DOCUMENT_READ).
+  # du client pilotage-service (INTERNAL_IAM_READ, INTERNAL_DOCUMENT_READ). Processus d'unité (D-87) : profil prod
+  # (docker-compose.yml), donc adaptateurs organisation, documents et reauthentification « real » (application-prod.yml) :
+  # vérification FIDO2 SIGNATURE_PROCESSUS par MS-IAM, livrables PROCESSUS_UNITE relus dans MS-DOCUMENT.
   pilotage:
     <<: *application
     environment:
@@ -429,6 +436,41 @@ services:
     ports:
       - 127.0.0.1:8200:8200
 
+  # ------------------------------------------------ Aperçu des documents bureautiques (D-83)
+  # Gotenberg 8 (LibreOffice sans interface), docs/lot1/apercu-bureautique.md : seul MS-DOCUMENT le joint, par
+  # le réseau interne « conversion » (aucun port publié, aucun accès sortant). Routes de Chromium et des
+  # moteurs PDF, webhooks, téléchargement d'URL et métriques désactivés ; délai de conversion 60 s, corps de
+  # 21 Mo au plus, file d'attente bornée (au-delà, 429 : MS-DOCUMENT répond DOC_APERCU_INDISPONIBLE). Les
+  # macros ne sont jamais exécutées (réglage de LibreOffice dans l'image). Mémoire bornée à 1 Go.
+  conversion-documents:
+    image: gotenberg/gotenberg:8.37.0
+    command:
+      - gotenberg
+      - --chromium-disable-routes=true
+      - --webhook-disable=true
+      - --api-timeout=60s
+      - --api-disable-download-from=true
+      - --api-body-limit=21MB
+      - --pdfengines-disable-routes=true
+      - --prometheus-disable-collect=true
+      - --libreoffice-auto-start=true
+      - --libreoffice-max-queue-size=20
+    mem_limit: 1g
+    # Système de fichiers en lecture seule : LibreOffice n'écrit que dans /tmp et son profil, en mémoire.
+    read_only: true
+    tmpfs:
+      - /tmp:uid=1001,gid=1001
+      - /home/gotenberg:uid=1001,gid=1001
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - conversion
+    healthcheck:
+      test: ['CMD', 'curl', '-fsS', 'http://127.0.0.1:3000/health']
+      <<: *sante
+      start_period: 30s
+
   # ------------------------------------------------ Politiques d'accès (IAM-19, RG-24)
   opa:
     image: openpolicyagent/opa:1.21.0-static
@@ -493,6 +535,12 @@ services:
       - ./observabilite/tempo.yaml:/etc/tempo.yaml:ro
     ports:
       - 127.0.0.1:3200:3200
+
+networks:
+  # Réseau interne de l'aperçu bureautique (D-83) : MS-DOCUMENT et le moteur de conversion seulement, sans
+  # accès extérieur.
+  conversion:
+    internal: true
 
 volumes:
   stockage_objet_data: {}

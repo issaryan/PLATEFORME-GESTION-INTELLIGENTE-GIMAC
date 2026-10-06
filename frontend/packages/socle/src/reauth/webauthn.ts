@@ -6,7 +6,8 @@ import { prefixeIam, type Couche } from '../http/prefixes'
 // assertion sérialisée pour l'en-tête X-Reauth-Assertion (base64 d'un JSON challengeId, id, clientDataJSON,
 // authenticatorData, signature, userHandle). ADMIN_SENSITIVE : actes d'administration sensibles (D-62) ;
 // ACCOUNT_SENSITIVE : reconfiguration du code TOTP hors premier accès (D-65).
-export type SignPurpose = 'OPERATION_VALIDATE' | 'QUITUS_SIGN' | 'STATUS_APPROVE' | 'ADMIN_SENSITIVE' | 'ACCOUNT_SENSITIVE'
+/** SIGNATURE_PROCESSUS (D-87) : signature d'une étape d'un processus d'unité, vérifiée par MS-PILOTAGE auprès de MS-IAM. */
+export type SignPurpose = 'OPERATION_VALIDATE' | 'QUITUS_SIGN' | 'STATUS_APPROVE' | 'ADMIN_SENSITIVE' | 'ACCOUNT_SENSITIVE' | 'SIGNATURE_PROCESSUS'
 type Challenge = { challengeId: string; challenge: string; rpId: string; allowCredentials: string[]; timeoutMs: number }
 
 /** Encodage base64url sans remplissage (WebAuthn). */
@@ -87,7 +88,8 @@ export function refusReauth(e: unknown): RefusReauth | null {
   if (e instanceof ReauthCancelled) return 'ANNULEE'
   if (!estApiError(e)) return null
   if (e.status === 428 || e.code === 'IAM_REAUTH_REQUIRED') return 'REQUISE'
-  if (e.code === 'IAM_REAUTH_INVALID') return 'INVALIDE'
+  // MS-PILOTAGE (D-87) relaie le refus de MS-IAM pour la signature d'une étape de processus.
+  if (e.code === 'IAM_REAUTH_INVALID' || e.code === 'PIL_PROCESSUS_REAUTH_REFUSEE') return 'INVALIDE'
   if (e.code === 'IAM_NO_SECURITY_KEY') return 'SANS_CLE'
   return null
 }

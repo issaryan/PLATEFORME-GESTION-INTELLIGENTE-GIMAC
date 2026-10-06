@@ -15,6 +15,7 @@ import cm.gimac.des.collaboration.web.rest.messagerie.MessagerieVues.AjoutMembre
 import cm.gimac.des.collaboration.web.rest.messagerie.MessagerieVues.ConversationVue;
 import cm.gimac.des.collaboration.web.rest.messagerie.MessagerieVues.CreationRequest;
 import cm.gimac.des.collaboration.web.rest.messagerie.MessagerieVues.EnvoiRequest;
+import cm.gimac.des.collaboration.web.rest.messagerie.MessagerieVues.LectureMembreVue;
 import cm.gimac.des.collaboration.web.rest.messagerie.MessagerieVues.MessageVue;
 import cm.gimac.des.collaboration.web.rest.messagerie.MessagerieVues.NonLusVue;
 import cm.gimac.des.collaboration.web.rest.messagerie.MessagerieVues.PageMessagesVue;
@@ -124,7 +125,9 @@ public class MessagerieResource {
                 message.etiquettes(),
                 Boolean.TRUE.equals(message.groupe()),
                 vide(message.documents()),
-                vide(message.transferts())
+                vide(message.transferts()),
+                message.reponseA(),
+                vide(message.mentions())
             ),
             pieces(fichiers)
         );
@@ -196,12 +199,24 @@ public class MessagerieResource {
                 message.contenu(),
                 message.etiquettes(),
                 vide(message.documents()),
-                vide(message.transferts())
+                vide(message.transferts()),
+                message.reponseA(),
+                vide(message.mentions())
             ),
             pieces(fichiers)
         );
         var lu = lecture.message(moi.id(), r.messageId());
         return ResponseEntity.status(HttpStatus.CREATED).body(MessageVue.de(lu, moi.id(), lecture.versionsAvatar(Set.of(lu.message().getAuteurId()))));
+    }
+
+    /**
+     * Détail « Lu par » d'un message (D-88) : destinataires présents à l'envoi, lecteurs d'abord avec l'heure.
+     * Réservé à l'auteur ; sinon 404 COL_MESSAGE_NOT_FOUND, sans distinguer un message inconnu.
+     */
+    @GetMapping("/conversations/{id}/messages/{messageId}/lectures")
+    @PreAuthorize(LIRE)
+    public List<LectureMembreVue> lectures(@PathVariable UUID id, @PathVariable UUID messageId, Authentication auth) {
+        return lecture.lectures(appelant(auth).id(), id, messageId).stream().map(LectureMembreVue::de).toList();
     }
 
     @PostMapping("/conversations/{id}/lu")

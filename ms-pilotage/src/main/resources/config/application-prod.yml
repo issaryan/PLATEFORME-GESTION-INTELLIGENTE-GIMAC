@@ -118,6 +118,7 @@ gimac:
   adaptateurs:
     organisation: real
     documents: real
+    reauthentification: real
   services:
     iam:
       url: http://iam:8081

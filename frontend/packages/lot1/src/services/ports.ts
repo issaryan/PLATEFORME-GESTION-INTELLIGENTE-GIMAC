@@ -13,9 +13,13 @@ import type { PortailCertification, PortailLiaison, PortailOperation } from '../
 import type { EtatPresence, OptionsTeleversement, Televersement } from '@gimac/socle'
 import type { Conversation, Correspondant, Envoi, FilMessages, Message, NouvelleConversation, PageMessagerie } from '../modele/messagerie'
 import type {
-  Activite, EntreeActivite, EntreeEvenement, EntreeRapport, EntreeTache, EtatRapport, EtatTache, Evenement, MembreEquipe, PagePilotage, Rapport, Rattachement,
+  Activite, EntreeActivite, EntreeEvenement, EntreeRapport, EntreeTache, EtatRapport, EtatTache, Evenement, GroupeTaches, MembreEquipe, PagePilotage, Rapport, Rattachement,
   ReponseInvitation, StatutActivite, Synthese, Tache, TypeRapport, Unite, VueRapports, VueTaches,
 } from '../modele/pilotage'
+import type { Demande, EtatDemande, MesPouvoirs, NouvelleDemande, PageDemandes } from '../modele/pouvoirs'
+import type {
+  ControleProcessus, DecisionValidation, EtatInstance, EtatProcessus, InstanceProcessus, Lancement, PageInstances, Processus, ResumeProcessus, SaisieProcessus, VueInstances,
+} from '../modele/processus'
 import type {
   Candidature, ConditionsAdhesion, DossierInstitution, FiltreInstitutions, IndicateursDdrm, Institution, PieceAdhesion, Prerequis,
   StatutInstitution, TransitionStatut,
@@ -286,9 +290,18 @@ export interface ServicePilotage {
   // Tâches (§2.3), pagination à partir de 0 comme le service.
   taches(q: { vue: VueTaches; etat?: EtatTache; page?: number; taille?: number }): Promise<PagePilotage<Tache>>
   tache(id: string): Promise<Tache>
+  /** Une tâche pour soi, pour une personne ou, avec uniteCible, à prendre par une unité (D-81 §6). */
   creerTache(t: EntreeTache): Promise<Tache>
+  /** POST /taches avec responsables (2 à 50) : une tâche par personne, liées par le groupe rendu (D-81 §6). */
+  creerGroupe(t: EntreeTache & { responsables: string[] }): Promise<GroupeTaches>
   modifierTache(id: string, t: EntreeTache): Promise<Tache>
   transition(id: string, etat: EtatTache, motif?: string): Promise<Tache>
+  // Tâches confiées (D-81 §6) : suivi groupé, tâche à prendre (prise, attribution), relance.
+  groupe(groupeId: string): Promise<GroupeTaches>
+  prendre(id: string): Promise<Tache>
+  attribuer(id: string, responsableId: string): Promise<Tache>
+  /** Notification au responsable, une par 24 h au plus (429 PIL_RELANCE_RECENTE). */
+  relancer(id: string): Promise<void>
   // Rapports (§2.4)
   rapports(q: { vue: VueRapports; type?: TypeRapport; etat?: EtatRapport; page?: number; taille?: number }): Promise<PagePilotage<Rapport>>
   rapport(id: string): Promise<Rapport>
@@ -309,6 +322,67 @@ export interface ServicePilotage {
   organisation(): Promise<Rattachement>
 }
 
+/**
+ * Pouvoirs hiérarchiques (D-81, docs/lot1/pouvoirs-hierarchiques.md) : mes pouvoirs selon la matrice, demandes
+ * adressées à l'administration (création de compte, profils, statut) et rattachement d'un subordonné.
+ * Refus : ORG_HORS_PERIMETRE, ORG_PROFIL_NON_DEMANDABLE, ORG_DEMANDE_EXISTANTE, ORG_DEMANDE_TRAITEE, ORG_DEMANDE_INTERDITE…
+ */
+export interface ServicePouvoirs {
+  moi(): Promise<MesPouvoirs>
+  demander(d: NouvelleDemande): Promise<Demande>
+  demandes(q: { etat?: EtatDemande; page?: number; taille?: number }): Promise<PageDemandes>
+  demande(id: string): Promise<Demande>
+  annuler(id: string): Promise<Demande>
+  /** RATTACHEMENT_MODIFIER : unité (parmi les unités dirigées) et n+1 (dans l'équipe) d'un subordonné. */
+  /** Les deux valeurs sont toujours envoyées : une valeur nulle retire l'unité ou le n+1 (D-81). */
+  rattacher(id: string, r: { unite: string | null; responsableId: string | null; motif?: string | null }): Promise<unknown>
+}
+
+/**
+ * Processus d'unité (D-87, docs/lot1/processus-unite.md §3 et §5) : MS-PILOTAGE derrière /bff/des/pilotage/processus.
+ * Définitions versionnées (brouillon, contrôle, publication avec levée motivée, nouvelle version, retrait) et
+ * instances (lancement, livrables par le dépôt fragmenté de MS-DOCUMENT, champs, signatures FIDO2, validation,
+ * réaffectation, suspension, reprise, annulation). Refus PIL_PROCESSUS_* (§5.4).
+ */
+export interface ServiceProcessus {
+  lister(q: { unite?: string; etat?: EtatProcessus; q?: string }): Promise<ResumeProcessus[]>
+  lire(id: string): Promise<Processus>
+  creer(s: SaisieProcessus): Promise<Processus>
+  modifier(id: string, s: SaisieProcessus): Promise<Processus>
+  supprimer(id: string): Promise<void>
+  controler(id: string): Promise<ControleProcessus>
+  /** 422 PIL_PROCESSUS_ANOMALIES ou PIL_PROCESSUS_AVERTISSEMENTS (details.anomalies) ; levée : motif obligatoire. */
+  publier(id: string, o: { motif?: string; leverAvertissements?: boolean }): Promise<Processus>
+  nouvelleVersion(id: string): Promise<Processus>
+  retirer(id: string, motif: string): Promise<Processus>
+  instances(q: { vue: VueInstances; etat?: EtatInstance; page?: number; taille?: number }): Promise<PageInstances>
+  lancer(id: string, l: Lancement): Promise<InstanceProcessus>
+  instance(id: string): Promise<InstanceProcessus>
+  /**
+   * Dépôt fragmenté d'un livrable (D-74) : finalité PROCESSUS_UNITE, référence = identifiant de l'instance ; le ticket
+   * est ensuite rattaché à l'étape (deposerLivrable).
+   */
+  televerserLivrable(fichier: File, instanceId: string, o?: OptionsTeleversement): Promise<Televersement>
+  deposerLivrable(instanceId: string, etape: string, livrable: string, documentId: string): Promise<InstanceProcessus>
+  saisirChamps(instanceId: string, etape: string, valeurs: Record<string, string | number | null>): Promise<InstanceProcessus>
+  /** Acte signé : assertion FIDO2 de finalité SIGNATURE_PROCESSUS (X-Reauth-Assertion). */
+  signer(instanceId: string, etape: string, signature: string, assertion: Assertion): Promise<InstanceProcessus>
+  terminer(instanceId: string, etape: string): Promise<InstanceProcessus>
+  valider(instanceId: string, etape: string, decision: DecisionValidation, motif?: string): Promise<InstanceProcessus>
+  reaffecter(instanceId: string, etape: string, personneId: string, motif: string): Promise<InstanceProcessus>
+  suspendre(instanceId: string, motif: string): Promise<InstanceProcessus>
+  reprendre(instanceId: string, motif?: string): Promise<InstanceProcessus>
+  annuler(instanceId: string, motif: string): Promise<InstanceProcessus>
+}
+
+/**
+ * Aperçu des documents bureautiques (D-83, docs/lot1/apercu-bureautique.md) : MS-DOCUMENT convertit en PDF le
+ * contenu déjà téléchargé (POST /bff/{des|console}/document/apercus). Rejet : ApiError (413, 415, 422, 429, 503, 403).
+ */
+export interface ServiceApercu {
+  convertir(source: Blob, nom: string): Promise<Blob>
+}
+
 export interface Services {
   participant: ServiceParticipant
   parcours: ServiceParcours
@@ -320,4 +394,9 @@ export interface Services {
   reauth: ServiceReauthentification
   messagerie: ServiceMessagerie
   pilotage: ServicePilotage
+  pouvoirs: ServicePouvoirs
+  /** Processus d'unité (D-87), couche interne. */
+  processus: ServiceProcessus
+  /** Aperçu bureautique (D-83), couche interne ; absent, ces formats invitent au téléchargement. */
+  apercu?: ServiceApercu
 }

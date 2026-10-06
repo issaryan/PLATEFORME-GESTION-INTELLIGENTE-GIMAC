@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Notifications des processus d'unité (D-87, docs/lot1/processus-unite.md §5.5) : type PROCESSUS (sujet
+     pilotage.process : instance lancée, étape activée, soumise, signée ou réaffectée, instance close) et
+     préférence correspondante (active par défaut). -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="not-notifications-processus" author="lot1">
+        <sql>ALTER TABLE notification_utilisateur DROP CONSTRAINT ck_notification_utilisateur_type;</sql>
+        <sql>ALTER TABLE notification_utilisateur ADD CONSTRAINT ck_notification_utilisateur_type CHECK (type IN ('MESSAGE', 'TACHE', 'RAPPORT', 'DEMANDE', 'MENTION', 'REPONSE', 'PROCESSUS'));</sql>
+        <addColumn tableName="preference_notification">
+            <column name="type_processus" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>

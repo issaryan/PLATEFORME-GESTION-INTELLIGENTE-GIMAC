@@ -10,4 +10,7 @@ import org.springframework.stereotype.Repository;
  */
 @SuppressWarnings("unused")
 @Repository
-public interface ProcessedEventRepository extends JpaRepository<ProcessedEvent, UUID> {}
+public interface ProcessedEventRepository extends JpaRepository<ProcessedEvent, UUID> {
+    /** Événement déjà consommé (idempotence, RG-15). */
+    boolean existsByEventId(UUID eventId);
+}

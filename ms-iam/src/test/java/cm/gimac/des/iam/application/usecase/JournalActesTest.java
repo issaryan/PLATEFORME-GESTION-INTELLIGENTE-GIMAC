@@ -86,4 +86,25 @@ class JournalActesTest {
         assertThat(AvatarModifiePayload.TYPE).isEqualTo("iam.avatar-changed.v1");
         assertThat(new cm.gimac.des.iam.infrastructure.messaging.TopicResolver().topicFor(AvatarModifiePayload.TYPE)).isEqualTo("iam.avatar");
     }
+
+    @Test
+    @DisplayName("D-81 : MATRICE_POUVOIRS_MODIFIEE (avant, après) et événement de configuration ; demandes au journal (cible : la demande), sans événement d'audit")
+    void matriceEtDemandes() {
+        JournalActes j = new JournalActes(journal, outbox, Clock.fixed(T, ZoneOffset.UTC));
+        j.matrice(RSSI, "ROLE_CHEF_DES", "Revue", "AUCUNE demandables=", "TACHE_CONFIER=UNITES demandables=ROLE_SNA");
+        j.demande(RSSI, "DEMANDE_REFUSEE", "d-1", "PROFILS", "x".repeat(1200), List.of("demandeur=c1"));
+        ArgumentCaptor<JournalAdministration> e = ArgumentCaptor.forClass(JournalAdministration.class);
+        verify(journal, org.mockito.Mockito.times(2)).save(e.capture());
+        JournalAdministration m = e.getAllValues().get(0);
+        assertThat(m.getAction()).isEqualTo("MATRICE_POUVOIRS_MODIFIEE");
+        assertThat(m.getCibleLibelle()).isEqualTo("ROLE_CHEF_DES");
+        assertThat(m.getDetails()).isEqualTo("avant: AUCUNE demandables=, après: TACHE_CONFIER=UNITES demandables=ROLE_SNA");
+        JournalAdministration d = e.getAllValues().get(1);
+        assertThat(d.getAction()).isEqualTo("DEMANDE_REFUSEE");
+        assertThat(d.getCibleId()).isEqualTo("d-1");
+        assertThat(d.getMotif()).hasSize(1000);
+        verify(outbox).publish(eq("configuration"), eq("MATRICE_POUVOIRS"), eq(ConfigurationModifieePayload.TYPE), eq(new ConfigurationModifieePayload("MATRICE_POUVOIRS", "demo-rssi", "Revue", List.of("ROLE_CHEF_DES"))));
+        org.mockito.Mockito.verifyNoMoreInteractions(outbox);
+        assertThat(new cm.gimac.des.iam.infrastructure.messaging.TopicResolver().topicFor("iam.request-submitted.v1")).isEqualTo("iam.request");
+    }
 }

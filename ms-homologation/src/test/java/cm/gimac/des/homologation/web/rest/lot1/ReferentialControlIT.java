@@ -44,7 +44,7 @@ class ReferentialControlIT extends AbstractHomologationIT {
         UUID versionId = fixtures.brouillonComplet(TypeProjet.CARTE_INTERBANCAIRE);
 
         mvc
-            .perform(get("/api/v1/referentiels/{id}/graphe", versionId).with(utilisateur(INGENIEUR, "HOM_REFERENTIEL_READ")))
+            .perform(get("/api/v1/referentiels/{id}/graphe", versionId).with(utilisateur(INGENIEUR, "HOM_REFERENTIEL_READ", "HOM_REFERENTIEL_READ_ALL")))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.noeuds.length()").value(3))
             .andExpect(jsonPath("$.noeuds[?(@.code=='CI-AVAL-01')].couche").value(contains(2)))

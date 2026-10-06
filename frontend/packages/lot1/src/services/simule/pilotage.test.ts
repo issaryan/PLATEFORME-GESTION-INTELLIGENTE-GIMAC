@@ -103,7 +103,7 @@ describe('pilotageSimule', () => {
     expect(await code(chef.transition(autre.id, 'EN_COURS'))).toBe('422 PIL_MOTIF_OBLIGATOIRE')
     expect((await chef.transition(autre.id, 'EN_COURS', 'Relecture incomplète')).etat).toBe('EN_COURS')
     const modifiee = await chef.modifierTache(t.id, { titre: 'Préparer la maintenance', description: null, echeance: null, priorite: 'HAUTE', responsableId: 'u-res' })
-    expect(modifiee.responsable.id).toBe('u-res')
+    expect(modifiee.responsable?.id).toBe('u-res')
     expect(await code(chef.modifierTache(t.id, { titre: 'x', description: null, echeance: null, priorite: 'HAUTE', responsableId: 'u-dg' }))).toBe('403 PIL_HORS_EQUIPE')
     expect(await code(svc().modifierTache(t.id, { titre: 'x', description: null, echeance: null, priorite: 'HAUTE' }))).toBe('404 PIL_TACHE_INTROUVABLE')
     expect((await chef.tache(t.id)).historique?.map((h) => h.action)).toEqual(['CREEE', 'MODIFIEE', 'REAFFECTEE', 'MODIFIEE'])

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Crée dans l'espace de noms gimac-des les secrets retirés des déclarations générées.
+# Crée aussi la ConfigMap gimac-dispositifs-externes (adresses des dispositifs extérieurs à la grappe).
 # Valeurs aléatoires, jamais écrites sur disque ; un secret existant n'est pas modifié.
 # À partir d'INT, ces secrets sont délivrés par OpenBao (SOC-06, D-44).
 set -euo pipefail
@@ -39,4 +40,15 @@ if [ -n "${GIMAC_S3_POINT_ACCES:-}" ] && [ -n "${GIMAC_S3_CLE_ACCES:-}" ] && [ -
     --from-literal=cle-acces="$GIMAC_S3_CLE_ACCES" --from-literal=cle-secrete="$GIMAC_S3_CLE_SECRETE"
 else
   echo "à fournir : GIMAC_S3_POINT_ACCES, GIMAC_S3_CLE_ACCES et GIMAC_S3_CLE_SECRETE (secret gimac-stockage-objet, MS-DOCUMENT)" >&2
+fi
+# Dispositifs extérieurs (non secrets) : adresse du dispositif réel de gestion des changements, lue par
+# MS-CERTIFICATION (GIMAC_GESTION_CHANGEMENTS_URL). Aucun simulacre en Kubernetes : sans cette ConfigMap,
+# le pod de MS-CERTIFICATION ne démarre pas. Une ConfigMap existante n'est pas modifiée.
+if kubectl -n "$NS" get configmap gimac-dispositifs-externes >/dev/null 2>&1; then
+  echo "existant : gimac-dispositifs-externes"
+elif [ -n "${GIMAC_GESTION_CHANGEMENTS_URL:-}" ]; then
+  kubectl -n "$NS" create configmap gimac-dispositifs-externes \
+    --from-literal=gestion-changements-url="$GIMAC_GESTION_CHANGEMENTS_URL" >/dev/null && echo "créé : gimac-dispositifs-externes"
+else
+  echo "à fournir : GIMAC_GESTION_CHANGEMENTS_URL (ConfigMap gimac-dispositifs-externes, MS-CERTIFICATION)" >&2
 fi

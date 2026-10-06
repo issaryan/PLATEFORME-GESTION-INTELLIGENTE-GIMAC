@@ -34,11 +34,19 @@ import org.springframework.transaction.annotation.Transactional;
  * Publication d'une version du référentiel (HOM-01 A4) : verrou, complétude, contrôle du graphe et du modèle
  * (HOM-02, D-77 §2), retrait de la version publiée précédente, numérotation, événement par l'outbox dans la même
  * transaction. Modélisateur (D-77 §4) : création, retrait, placement des opérations, arcs, pilote du brouillon ;
- * la tâche du pilote (MS-PILOTAGE, §5) naît avec le brouillon et se termine à la publication.
+ * la tâche du pilote (MS-PILOTAGE, §5) naît avec le brouillon et se termine à la publication. Aucune écriture
+ * n'est réservée au pilote ni au créateur (D-89) : tout porteur de HOM_REFERENTIEL_EDIT modifie un brouillon.
  */
 @Service
 @Transactional
 public class ReferentialLifecycleService implements ManageReferentialUseCase {
+
+    /**
+     * Profils qui portent HOM_REFERENTIEL_EDIT (D-89, §1) : pilotes possibles d'un brouillon. Le pilote est le
+     * responsable affiché et notifié du brouillon ; il ne le verrouille pas : tout éditeur le modifie.
+     */
+    public static final String PROFILS_EDITION =
+        "ROLE_INGENIEUR_HOMOLOGATION,ROLE_CHEF_DES,ROLE_CHEF_DDRM,ROLE_RESPONSABLE_SERVICE,ROLE_SUPER_ADMIN";
 
     static final String AGREGAT = "catalog";
     static final String ORIGINE = "REFERENTIEL";
@@ -63,7 +71,7 @@ public class ReferentialLifecycleService implements ManageReferentialUseCase {
         ReferenceOperationRepository operations,
         CollaboratorDirectoryPort annuaire,
         DemandesTaches taches,
-        @Value("${gimac.homologation.referentiel.profils-pilote:ROLE_INGENIEUR_HOMOLOGATION}") List<String> profilsPilote
+        @Value("${gimac.homologation.referentiel.profils-pilote:" + PROFILS_EDITION + "}") List<String> profilsPilote
     ) {
         this.versions = versions;
         this.completeness = completeness;

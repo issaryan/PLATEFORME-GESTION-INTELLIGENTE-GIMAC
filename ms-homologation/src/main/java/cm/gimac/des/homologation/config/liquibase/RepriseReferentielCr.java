@@ -153,7 +153,7 @@ public class RepriseReferentielCr implements CustomTaskChange {
             ps.setString(i++, o.getGrille());
             ps.setObject(i++, versionId);
             ps.setString(i++, o.getDescription());
-            ps.setString(i++, nom(o.getEtape()));
+            ps.setString(i++, o.getEtape());
             if (o.getOrdre() == null) {
                 ps.setNull(i++, Types.INTEGER);
             } else {

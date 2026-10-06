@@ -39,5 +39,7 @@
     <include file="config/liquibase/changelog/20260930100000_lot1_post_generation.xml" relativeToChangelogFile="false"/>
     <include file="config/liquibase/changelog/20260930100100_col_messagerie.xml" relativeToChangelogFile="false"/>
     <include file="config/liquibase/changelog/20261002090000_col_groupes.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261006090000_col_reponses_mentions.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261006120000_col_accuses_lecture.xml" relativeToChangelogFile="false"/>
     <!-- jhipster-needle-liquibase-add-incremental-changelog - JHipster will add incremental liquibase changelogs here -->
 </databaseChangeLog>

@@ -170,6 +170,8 @@ export function ConsultationRapport({ id, onFermer, onFait }: { id: string; onFe
   const soumettre = useSoumettre()
   const viser = useViser()
   const telecharger = useDocumentRapport()
+  // Aperçu des documents bureautiques joints au rapport (D-83) : conversion en PDF par MS-DOCUMENT.
+  const convertir = useServices().apercu?.convertir
   const [commentaire, setCommentaire] = useState('')
   const [edition, setEdition] = useState(false)
   const [apercu, setApercu] = useState<{ blob?: Blob; erreur?: string } | null>(null)
@@ -241,6 +243,7 @@ export function ConsultationRapport({ id, onFermer, onFait }: { id: string; onFe
           erreur={apercu.erreur}
           onClose={() => setApercu(null)}
           onTelecharger={() => (apercu.blob ? enregistrerFichier(apercu.blob, r.document!.nom) : undefined)}
+          convertir={convertir}
         />
       ) : null}
     </>

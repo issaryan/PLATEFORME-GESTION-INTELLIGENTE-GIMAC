@@ -15,7 +15,9 @@ import java.util.UUID;
  * Notification remise à un destinataire (docs/lot1/notifications.md §2) : titre, sous-titre, lien dans la
  * couche, objet désigné, acteur, nombre d'événements regroupés et lecture. Aucun contenu de message n'est
  * conservé. Consolidation (entité ConsolidationWindow du JDL) : une seule notification de message non lue
- * par destinataire et conversation ; un nouveau message l'incrémente et la remonte en tête.
+ * par destinataire et conversation ; un nouveau message l'incrémente et la remonte en tête. Les mentions
+ * et les réponses (D-82) ne sont jamais regroupées ; elles portent, comme les messages, la conversation
+ * (colonne conversation_id) pour être marquées lues à l'ouverture de celle-ci.
  */
 @Entity
 @Table(name = "notification_utilisateur")
@@ -46,6 +48,10 @@ public class NotificationUtilisateur {
 
     @Embedded
     private Reference reference;
+
+    /** Conversation de la messagerie (MESSAGE, MENTION, REPONSE) ; null pour les autres types. */
+    @Column(name = "conversation_id", length = 80)
+    private String conversationId;
 
     @Column(name = "acteur_id", length = 80)
     private String acteurId;
@@ -94,6 +100,12 @@ public class NotificationUtilisateur {
         this.nombre = 1;
         this.creeLe = le;
         this.misAJourLe = le;
+    }
+
+    /** Notification de la messagerie : rattachée à sa conversation (marquage en lecture à l'ouverture). */
+    public NotificationUtilisateur dansConversation(String conversationId) {
+        this.conversationId = conversationId;
+        return this;
     }
 
     /** Nouvel événement regroupé dans cette notification non lue : nombre incrémenté, remontée en tête. */
@@ -155,6 +167,10 @@ public class NotificationUtilisateur {
 
     public Reference getReference() {
         return reference;
+    }
+
+    public String getConversationId() {
+        return conversationId;
     }
 
     public String getActeurId() {

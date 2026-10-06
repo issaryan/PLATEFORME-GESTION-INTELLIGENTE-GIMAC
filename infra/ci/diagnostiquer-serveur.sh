@@ -33,6 +33,18 @@ mapfile -t actifs < <(compose ps -q)
 etape "Passerelle vue depuis le conteneur du département"
 compose exec -T frontend-departement sh -c 'wget -q -S -O - http://gateway:8080/management/health 2>&1 | head -20' 2>&1 | masquer
 
+# Aperçu des documents bureautiques (D-83) : moteur de conversion sur le réseau interne « conversion », sans
+# port publié ; santé vue de l'intérieur du conteneur, puis depuis MS-DOCUMENT, son seul client.
+etape "Moteur de conversion des aperçus (conversion-documents) : état et santé"
+compose ps -a --format 'table {{.Service}}\t{{.Image}}\t{{.State}}\t{{.Status}}' conversion-documents 2>&1
+echo "-- santé vue du conteneur"
+compose exec -T conversion-documents curl -sS -m 10 http://127.0.0.1:3000/health 2>&1 | head -5
+echo
+echo "-- santé vue de MS-DOCUMENT"
+compose exec -T document curl -sS -m 10 -o /dev/null -w 'statut=%{http_code} duree=%{time_total}s\n' http://conversion-documents:3000/health 2>&1 | head -3
+echo "-- aperçus des 24 dernières heures (résultats)"
+compose logs --no-color --since 24h document 2>&1 | grep -o 'Aperçu bureautique : .*resultat=[A-Z_]*' | sed -E 's/.*resultat=//' | sort | uniq -c
+
 etape "Réponses de nginx (port 4200) sans session"
 hote="$(sed -n 's/^GIMAC_HOTE_PUBLIC=//p' "$ENV" 2>/dev/null)"
 for chemin in /api/session /api/auth-info /bff/des/collaboration/messagerie/non-lus; do
@@ -75,7 +87,7 @@ ss -s 2>/dev/null | head -5
 etape "Erreurs récentes de nginx (département)"
 compose logs --no-color --since 6h frontend-departement 2>&1 | grep -Ei 'error|upstream|refused|reset|timed out| 50[0-9] ' | tail -40 | masquer
 
-for s in gateway iam document keycloak pilotage notification homologation collaboration; do
+for s in gateway iam document keycloak pilotage notification homologation collaboration conversion-documents; do
   etape "Erreurs récentes : $s (6 dernières heures)"
   compose logs --no-color --since 6h "$s" 2>&1 | grep -E 'ERROR|WARN|Exception|OutOfMemory|Killed|refused|Caused by' | grep -Ev 'Not updating high watermark|HHH90006001|ConversionRuleAction' | tail -40 | masquer
 done

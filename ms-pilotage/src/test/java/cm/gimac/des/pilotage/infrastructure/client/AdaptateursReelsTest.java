@@ -13,6 +13,8 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 
 import cm.gimac.des.pilotage.application.port.out.DocumentPort;
 import cm.gimac.des.pilotage.application.port.out.OrganisationPort;
+import cm.gimac.des.pilotage.application.port.out.OrganisationPort.Portee;
+import cm.gimac.des.pilotage.application.port.out.OrganisationPort.Pouvoir;
 import cm.gimac.des.pilotage.domain.exception.PilotageException;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -87,6 +89,8 @@ class AdaptateursReelsTest {
         assertThat(r.unite()).isEqualTo("POLE_RESEAU");
         assertThat(r.responsable().id()).isEqualTo("r1");
         assertThat(r.chaine()).containsExactly("r1", "r2");
+        // Chemin vide dans la réponse : l'unité seule.
+        assertThat(r.chemin()).containsExactly("POLE_RESEAU");
         assertThat(iam.equipe("r1")).singleElement().satisfies(m -> {
             assertThat(m.id()).isEqualTo("a1");
             assertThat(m.niveau()).isEqualTo(1);
@@ -101,6 +105,61 @@ class AdaptateursReelsTest {
         // Cache de 60 s : aucune nouvelle requête.
         assertThat(iam.rattachement("a1")).isPresent();
         assertThat(iam.equipe("r1")).hasSize(1);
+        serveur.verify();
+    }
+
+    @Test
+    @DisplayName("D-81 : pouvoirs et périmètre lus avec le jeton de service, action ou portée inconnue ignorée, cache, 503")
+    void pouvoirs() {
+        serveur
+            .expect(requestTo(IAM + "/api/v1/interne/pouvoirs/c1"))
+            .andExpect(header("Authorization", "Bearer jeton-de-service"))
+            .andRespond(
+                withSuccess(
+                    "{\"actions\":{\"TACHE_CONFIER\":\"UNITES\",\"ACTIVITE_LIRE\":\"EQUIPE\",\"INCONNUE\":\"UNITES\",\"TACHE_SUIVRE\":\"BIZARRE\"}," +
+                    "\"profilsDemandables\":[\"ROLE_COLLABORATEUR\"],\"subordonnes\":[{\"id\":\"a1\",\"nomAffiche\":\"Serge\",\"unite\":\"POLE_RESEAU\",\"responsableId\":\"c1\",\"niveau\":1,\"actif\":true}]," +
+                    "\"unitesDirigees\":[\"PROD_INFO\",\"POLE_RESEAU\"]}",
+                    MediaType.APPLICATION_JSON
+                )
+            );
+        serveur
+            .expect(requestTo(IAM + "/api/v1/interne/organisation/c1/perimetre?portee=UNITES"))
+            .andExpect(header("Authorization", "Bearer jeton-de-service"))
+            .andRespond(
+                withSuccess(
+                    "{\"portee\":\"UNITES\",\"comptes\":[{\"id\":\"a1\",\"nomAffiche\":\"Serge\",\"fonction\":\"Ingénieur\",\"unite\":\"POLE_RESEAU\",\"responsableId\":\"c1\",\"niveau\":1,\"actif\":true}," +
+                    "{\"id\":\"a2\",\"nomAffiche\":\"Ingrid\",\"unite\":\"POLE_SYSTEME\",\"actif\":false}],\"unites\":[\"PROD_INFO\"]}",
+                    MediaType.APPLICATION_JSON
+                )
+            );
+        serveur.expect(requestTo(IAM + "/api/v1/interne/pouvoirs/inconnu")).andRespond(withStatus(HttpStatus.NOT_FOUND));
+        serveur.expect(requestTo(IAM + "/api/v1/interne/organisation/x/perimetre?portee=EQUIPE")).andRespond(withServerError());
+
+        IamOrganisationAdapter iam = new IamOrganisationAdapter(builder, jeton, IAM, 60);
+        OrganisationPort.Pouvoirs p = iam.pouvoirs("c1");
+        assertThat(p.portee(Pouvoir.TACHE_CONFIER)).isEqualTo(Portee.UNITES);
+        assertThat(p.portee(Pouvoir.ACTIVITE_LIRE)).isEqualTo(Portee.EQUIPE);
+        assertThat(p.portee(Pouvoir.TACHE_SUIVRE)).isEqualTo(Portee.AUCUNE);
+        assertThat(p.portee(Pouvoir.RAPPORT_VISER)).isEqualTo(Portee.AUCUNE);
+        assertThat(p.profilsDemandables()).containsExactly("ROLE_COLLABORATEUR");
+        assertThat(p.subordonnes()).singleElement().satisfies(m -> assertThat(m.id()).isEqualTo("a1"));
+        assertThat(p.dirige("POLE_RESEAU")).isTrue();
+        OrganisationPort.Perimetre u = iam.perimetre("c1", Portee.UNITES);
+        assertThat(u.portee()).isEqualTo(Portee.UNITES);
+        assertThat(u.comptes()).hasSize(2);
+        assertThat(u.membre("a2").orElseThrow().actif()).isFalse();
+        assertThat(u.membre("a2").orElseThrow().niveau()).isZero();
+        assertThat(u.unites()).containsExactly("PROD_INFO");
+        // AUCUNE : aucun appel ; compte inconnu : aucun pouvoir ; MS-IAM en erreur : 503.
+        assertThat(iam.perimetre("c1", Portee.AUCUNE).comptes()).isEmpty();
+        assertThat(iam.pouvoirs("inconnu").actions()).isEmpty();
+        assertThatThrownBy(() -> iam.perimetre("x", Portee.EQUIPE)).isInstanceOfSatisfying(PilotageException.class, e -> {
+            assertThat(e.status()).isEqualTo(503);
+            assertThat(e.code()).isEqualTo("PIL_ORGANISATION_INDISPONIBLE");
+        });
+        // Cache de 60 s : aucune nouvelle requête.
+        assertThat(iam.pouvoirs("c1").portee(Pouvoir.TACHE_CONFIER)).isEqualTo(Portee.UNITES);
+        assertThat(iam.perimetre("c1", Portee.UNITES).comptes()).hasSize(2);
         serveur.verify();
     }
 

@@ -118,4 +118,16 @@ class AbonneTest {
         assertThat(Couche.PORTAIL.interne()).isFalse();
         assertThat(enLigne.vue()).isEqualTo(new VueEvenement("p1", EvenementLive.EN_LIGNE, "u2", EvenementLive.PRESENCE, "u2"));
     }
+
+    @Test
+    @DisplayName("Accusé de lecture (D-88) : remis aux seuls destinataires internes, rejouable, luJusquA dans la vue")
+    void accuseDeLecture() {
+        EvenementLive l = new EvenementLive("r1", EvenementLive.LECTURE, "c1", COLLABORATION, null, Set.of("u1"), "u2", "2026-10-06T08:00:00Z");
+        assertThat(Abonne.de(Couche.DES, "u1", "", "collaboration").recoit(l)).isTrue();
+        assertThat(Abonne.de(Couche.CONSOLE, "u1", "", null).recoit(l)).isTrue();
+        assertThat(Abonne.de(Couche.DES, "u2", "", null).recoit(l)).isFalse();
+        assertThat(Abonne.de(Couche.PORTAIL, "u1", "I1", null).recoit(l)).isFalse();
+        assertThat(l.ephemere()).isFalse();
+        assertThat(l.vue()).isEqualTo(new VueEvenement("r1", EvenementLive.LECTURE, "c1", COLLABORATION, "u2", "2026-10-06T08:00:00Z"));
+    }
 }

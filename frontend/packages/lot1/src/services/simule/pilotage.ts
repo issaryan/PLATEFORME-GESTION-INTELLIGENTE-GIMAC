@@ -1,8 +1,9 @@
 import type { ApiError, OptionsTeleversement, Televersement } from '@gimac/socle'
 import type {
-  Activite, EntreeEvenement, EtatRapportDuJour, EtatTache, Evenement, MembreEquipe, PersonneActivite, Rapport, Rattachement, Tache, TypeRapport, Unite,
+  Activite, EntreeEvenement, EtatRapportDuJour, EtatTache, Evenement, GroupeTaches, MembreEquipe, PersonneActivite, Rapport, Rattachement, Tache, TypeRapport, Unite,
 } from '../../modele/pilotage'
-import { TRANSITIONS_TACHE, motifExige } from '../../modele/pilotage'
+import { LIMITES_GROUPE, TRANSITIONS_TACHE, motifExige } from '../../modele/pilotage'
+import { magasinPouvoirs, type MagasinPouvoirs } from './pouvoirs'
 import { ajouterJours, aujourdhui, instant, jourDe, jourOuvreSuivant, lundiDe, lundiDeSemaine, semaineIso } from '../../modele/jours'
 import type { ServicePilotage } from '../ports'
 import { pdfDemo } from './messagerie'
@@ -74,6 +75,18 @@ export function rattachementDemo(id: string, nomAffiche?: string): Rattachement 
   }
 }
 
+/**
+ * Pont des tâches d'étapes de processus (D-87 §5.3) : le moteur simulé des processus crée, réaffecte, termine et annule
+ * les tâches d'origine PROCESSUS de « Mon activité » ; la prise ou l'attribution d'une tâche lui est signalée.
+ */
+export type PontTachesProcessus = {
+  creer(t: { titre: string; description: string | null; responsable: string | null; uniteCible: string | null; profilRequis: string | null; createur: string; echeance: string | null; reference: string; lien: string }): string
+  affecter(tacheId: string, responsable: string | null, uniteCible?: string | null, profilRequis?: string | null): void
+  terminer(tacheId: string): void
+  annuler(tacheId: string): void
+  surPrise: ((tacheId: string, personne: PersonneActivite) => void) | null
+}
+
 /** Durée d'une étape du dépôt simulé d'un document de rapport (dix étapes d'envoi, une de vérification). */
 export const DUREE_ETAPE_DOCUMENT_MS = 80
 
@@ -81,8 +94,12 @@ type EtatEvenement = Omit<Evenement, 'moi'>
 type EtatTacheSim = Required<Tache>
 type EtatRapport = Rapport & { documentBlob?: Blob }
 
-export function pilotageSimule(attendre: Attendre, refus: Refus, utilisateur: { id: string; nom: string } = { id: 'U-001', nom: 'Paul Mbarga Atangana' }): ServicePilotage {
-  const unites = UNITES_DEMO.map((u) => ({ ...u }))
+export function pilotageSimule(
+  attendre: Attendre, refus: Refus, utilisateur: { id: string; nom: string } = { id: 'U-001', nom: 'Paul Mbarga Atangana' }, magasin: MagasinPouvoirs = magasinPouvoirs(),
+  relier?: (pont: PontTachesProcessus) => void,
+): ServicePilotage {
+  // Catalogue des unités avec leur responsable (D-81 §2), partagé avec le magasin des pouvoirs.
+  const unites = magasin.unites
   const organisation = ORGANISATION_DEMO.some((m) => m.id === utilisateur.id)
     ? ORGANISATION_DEMO
     : [...ORGANISATION_DEMO, { id: utilisateur.id, nomAffiche: utilisateur.nom, fonction: '', unite: null, responsableId: null }]
@@ -129,9 +146,10 @@ export function pilotageSimule(attendre: Attendre, refus: Refus, utilisateur: { 
     activites.push(a)
     return a
   }
-  const tache = (responsable: string, createur: string, titre: string, etat: EtatTache, echeance: string | null, o: Partial<Tache> = {}) => {
+  const tache = (responsable: string | null, createur: string, titre: string, etat: EtatTache, echeance: string | null, o: Partial<Tache> = {}) => {
     const t: EtatTacheSim = {
-      id: id('TCH'), titre, description: null, echeance, priorite: 'NORMALE', etat, responsable: personne(responsable), createur: personne(createur),
+      id: id('TCH'), titre, description: null, echeance, priorite: 'NORMALE', etat, responsable: responsable ? personne(responsable) : null, createur: personne(createur),
+      groupeId: null, uniteCible: null, profilRequis: null,
       origine: { type: 'INTERNE', reference: null, service: null, lien: null }, enRetard: false, creeeLe: `${ajouterJours(jour, -6)}T08:30:00+01:00`,
       termineeLe: etat === 'TERMINEE' ? `${hier}T16:10:00+01:00` : null,
       historique: [{ quand: `${ajouterJours(jour, -6)}T08:30:00+01:00`, acteur: personne(createur), action: 'CREEE', detail: null }],
@@ -190,6 +208,14 @@ export function pilotageSimule(attendre: Attendre, refus: Refus, utilisateur: { 
       if (m.id !== utilisateur.id && i % 3 === 1) rapports.push(base('QUOTIDIEN', jour, 'BROUILLON', { soumisLe: null, destinataire: null }))
     }
   })
+  // Tâches confiées (D-81 §6) : une tâche à prendre par le pôle réseau, un groupe confié à deux personnes.
+  if (organisation.some((m) => m.id === 'U-001')) {
+    tache(null, 'U-001', 'Vérifier la supervision des liens du participant', 'A_PRENDRE', ajouterJours(jour, 4), {
+      description: 'Contrôler les alarmes de supervision des deux liens avant la recette.', priorite: 'HAUTE', uniteCible: 'POLE_RESEAU',
+    })
+    tache('u-sna', 'U-001', 'Relire la grille d’essais de LIA-2026-030', 'EN_COURS', ajouterJours(jour, 2), { groupeId: 'GRP-0001' })
+    tache('U-101', 'U-001', 'Relire la grille d’essais de LIA-2026-030', 'TERMINEE', ajouterJours(jour, 2), { groupeId: 'GRP-0001' })
+  }
   // Rapport déposé en document (D-74) : le pôle réseau, soumis au chef de service.
   const parDocument = rapports.find((r) => r.auteur.id === 'u-res' && r.periode === hier)
   if (parDocument) {
@@ -215,10 +241,60 @@ export function pilotageSimule(attendre: Attendre, refus: Refus, utilisateur: { 
   // ---------------------------------------------------------------- règles imitées
   const ouverte = (t: Tache) => t.etat !== 'TERMINEE' && t.etat !== 'ANNULEE'
   const vueTache = (t: EtatTacheSim): Tache => ({ ...t, enRetard: ouverte(t) && !!t.echeance && t.echeance < aujourdhui() })
+  const membreDe = (qui: string) => organisation.find((m) => m.id === qui)?.unite ?? null
+  /** Unités dont les tâches à prendre me sont visibles : mon unité et ses parentes, mes unités dirigées. */
+  const unitesVisibles = () => {
+    const l = new Set(magasin.unitesDirigees(moi.id))
+    for (let u = unites.find((x) => x.code === membreDe(moi.id)); u; u = unites.find((x) => x.code === u!.parent)) l.add(u.code)
+    return l
+  }
+  const porteProfil = (t: Tache) => !t.profilRequis || magasin.profilsDe(moi.id).includes(t.profilRequis)
+  const aPrendreVisible = (t: Tache) => t.etat === 'A_PRENDRE' && !!t.uniteCible && unitesVisibles().has(t.uniteCible) && porteProfil(t)
   const trouverTache = (tid: string) => {
     const t = taches.find((x) => x.id === tid)
-    if (!t || (t.responsable.id !== moi.id && t.createur.id !== moi.id && !dansEquipe(t.responsable.id))) throw refus(404, 'PIL_TACHE_INTROUVABLE', 'Tâche introuvable.')
+    const r = t?.responsable?.id
+    if (!t || (r !== moi.id && t.createur.id !== moi.id && !(r && dansEquipe(r)) && !aPrendreVisible(t))) throw refus(404, 'PIL_TACHE_INTROUVABLE', 'Tâche introuvable.')
     return t
+  }
+  const confiable = (qui: string) => qui === moi.id || magasin.couvre(moi.id, 'TACHE_CONFIER', qui)
+  // Tâches d'étapes de processus (D-87) : créées et suivies par le moteur des processus.
+  const pont: PontTachesProcessus = {
+    creer: (x) => {
+      const t = tache(x.responsable, x.createur, x.titre, x.responsable ? 'OUVERTE' : 'A_PRENDRE', x.echeance, {
+        description: x.description, uniteCible: x.uniteCible, profilRequis: x.profilRequis, creeeLe: maintenant(), historique: [],
+        origine: { type: 'PROCESSUS', reference: x.reference, service: 'pilotage', lien: x.lien },
+      })
+      t.historique.push({ quand: maintenant(), acteur: personne(x.createur), action: 'CREEE', detail: null })
+      return t.id
+    },
+    affecter: (tid, responsable, uniteCible = null, profilRequis = null) => {
+      const t = taches.find((x) => x.id === tid)
+      if (!t) return
+      Object.assign(t, responsable ? { responsable: personne(responsable), etat: t.etat === 'A_PRENDRE' ? 'OUVERTE' : t.etat } : { responsable: null, etat: 'A_PRENDRE', uniteCible, profilRequis })
+      t.historique.push({ quand: maintenant(), acteur: moi, action: 'REAFFECTEE', detail: responsable ? `À ${personne(responsable).nomAffiche}` : null })
+    },
+    terminer: (tid) => {
+      const t = taches.find((x) => x.id === tid)
+      if (t && ouverte(t)) Object.assign(t, { etat: 'TERMINEE', termineeLe: maintenant() })
+    },
+    annuler: (tid) => {
+      const t = taches.find((x) => x.id === tid)
+      if (t && ouverte(t)) Object.assign(t, { etat: 'ANNULEE' })
+    },
+    surPrise: null,
+  }
+  relier?.(pont)
+  const deProcessus = (t: Tache) => t.origine.type === 'PROCESSUS'
+  const relances = new Map<string, number>()
+  const vueGroupe = (gid: string): GroupeTaches => {
+    const l = taches.filter((t) => t.groupeId === gid).map(vueTache)
+    if (!l.length || (l[0].createur.id !== moi.id && !l.some((t) => t.responsable?.id === moi.id || (t.responsable && dansEquipe(t.responsable.id))))) {
+      throw refus(404, 'PIL_GROUPE_INTROUVABLE', 'Groupe de tâches introuvable.')
+    }
+    return {
+      groupeId: gid, titre: l[0].titre, createur: l[0].createur, taches: l.map(({ historique: _h, ...t }) => t),
+      avancement: { total: l.length, terminees: l.filter((t) => t.etat === 'TERMINEE').length, enRetard: l.filter((t) => t.enRetard).length },
+    }
   }
   const vueEvenement = (e: EtatEvenement, collaborateur?: string): Evenement => {
     if (e.proprietaire.id === moi.id) return { ...e, moi: 'PROPRIETAIRE' }
@@ -252,14 +328,14 @@ export function pilotageSimule(attendre: Attendre, refus: Refus, utilisateur: { 
     return {
       activitesFaites: l.filter((a) => a.statut === 'FAITE').length, activitesPrevues: l.filter((a) => a.statut !== 'ANNULEE').length,
       minutes: l.reduce((s, a) => s + (a.dureeMinutes ?? 0), 0),
-      tachesTerminees: taches.filter((t) => t.responsable.id === qui && t.termineeLe && jourDe(t.termineeLe) >= du && jourDe(t.termineeLe) <= au).length,
+      tachesTerminees: taches.filter((t) => t.responsable?.id === qui && t.termineeLe && jourDe(t.termineeLe) >= du && jourDe(t.termineeLe) <= au).length,
     }
   }
   const duree = (m: number | null) => (!m ? '' : m < 60 ? ` (${m} min)` : ` (${Math.floor(m / 60)} h${m % 60 ? ` ${String(m % 60).padStart(2, '0')}` : ''})`)
   const rubriques = (du: string, au: string) => {
     const l = trier(minutesDuJour(moi.id, du, au))
     const liste = (x: string[]) => (x.length ? x.map((s) => `- ${s}`).join('\n') : '- Néant')
-    const terminees = taches.filter((t) => t.responsable.id === moi.id && t.termineeLe && jourDe(t.termineeLe) >= du && jourDe(t.termineeLe) <= au)
+    const terminees = taches.filter((t) => t.responsable?.id === moi.id && t.termineeLe && jourDe(t.termineeLe) >= du && jourDe(t.termineeLe) <= au)
     return [
       `## Réalisé\n${liste(l.filter((a) => a.statut === 'FAITE').map((a) => `${a.titre}${duree(a.dureeMinutes)}`))}`,
       `## En cours\n${liste(l.filter((a) => a.statut === 'EN_COURS').map((a) => a.titre))}`,
@@ -358,7 +434,8 @@ export function pilotageSimule(attendre: Attendre, refus: Refus, utilisateur: { 
     taches: (q) => attendre(() => {
       const equipe = equipeDe(moi.id).map((x) => x.membre.id)
       const l = taches
-        .filter((t) => (q.vue === 'moi' ? t.responsable.id === moi.id : q.vue === 'creees' ? t.createur.id === moi.id && t.responsable.id !== moi.id : equipe.includes(t.responsable.id)))
+        .filter((t) => (q.vue === 'moi' ? t.responsable?.id === moi.id : q.vue === 'creees' ? t.createur.id === moi.id && t.responsable?.id !== moi.id
+          : q.vue === 'unite' ? aPrendreVisible(t) : !!t.responsable && equipe.includes(t.responsable.id)))
         .filter((t) => !q.etat || t.etat === q.etat)
         .map(vueTache)
         .sort((a, b) => Number(!ouverte(a)) - Number(!ouverte(b)) || (a.echeance ?? '9999').localeCompare(b.echeance ?? '9999'))
@@ -366,22 +443,43 @@ export function pilotageSimule(attendre: Attendre, refus: Refus, utilisateur: { 
       return page(l, q.page, q.taille)
     }),
     tache: (tid) => attendre(() => vueTache(trouverTache(tid))),
-    creerTache: (x) => attendre(() => {
-      const responsable = x.responsableId ?? moi.id
-      if (responsable !== moi.id && !dansEquipe(responsable)) throw refus(403, 'PIL_HORS_EQUIPE', 'Ce compte n’est pas dans votre équipe.')
+    creerGroupe: (x) => attendre(() => {
       if (!x.titre.trim()) throw refus(400, 'PIL_REQUETE_INVALIDE', 'Intitulé obligatoire.')
-      const t = tache(responsable, moi.id, x.titre.trim(), 'OUVERTE', x.echeance, { description: x.description?.trim() || null, priorite: x.priorite, creeeLe: maintenant(), historique: [] })
+      const l = [...new Set(x.responsables)]
+      if (l.length < LIMITES_GROUPE.min || l.length > LIMITES_GROUPE.max) throw refus(400, 'PIL_REQUETE_INVALIDE', 'De 2 à 50 personnes.')
+      if (l.some((p) => !confiable(p))) throw refus(403, 'PIL_HORS_EQUIPE', 'Un compte n’est pas dans votre périmètre.')
+      const gid = id('GRP')
+      l.forEach((p) => {
+        const t = tache(p, moi.id, x.titre.trim(), 'OUVERTE', x.echeance, { description: x.description?.trim() || null, priorite: x.priorite, creeeLe: maintenant(), historique: [], groupeId: gid })
+        t.historique.push({ quand: maintenant(), acteur: moi, action: 'CREEE', detail: `Confiée à ${personne(p).nomAffiche}` })
+      })
+      return vueGroupe(gid)
+    }),
+    creerTache: (x) => attendre(() => {
+      if (!x.titre.trim()) throw refus(400, 'PIL_REQUETE_INVALIDE', 'Intitulé obligatoire.')
+      const commun = { description: x.description?.trim() || null, priorite: x.priorite, creeeLe: maintenant(), historique: [] }
+      if (x.uniteCible) {
+        // Tâche à prendre (D-81 §6) : sans responsable, visible des membres de l'unité.
+        if (!magasin.couvreUnite(moi.id, 'TACHE_CONFIER', x.uniteCible)) throw refus(403, 'PIL_HORS_EQUIPE', 'Cette unité n’est pas dans votre périmètre.')
+        const t = tache(null, moi.id, x.titre.trim(), 'A_PRENDRE', x.echeance, { ...commun, uniteCible: x.uniteCible })
+        t.historique.push({ quand: maintenant(), acteur: moi, action: 'CREEE', detail: `Confiée à l’unité ${unites.find((u) => u.code === x.uniteCible)?.libelle ?? x.uniteCible}` })
+        return vueTache(t)
+      }
+      const responsable = x.responsableId ?? moi.id
+      if (!confiable(responsable)) throw refus(403, 'PIL_HORS_EQUIPE', 'Ce compte n’est pas dans votre équipe.')
+      const t = tache(responsable, moi.id, x.titre.trim(), 'OUVERTE', x.echeance, commun)
       t.historique.push({ quand: maintenant(), acteur: moi, action: 'CREEE', detail: responsable !== moi.id ? `Confiée à ${personne(responsable).nomAffiche}` : null })
       return vueTache(t)
     }),
     modifierTache: (tid, x) => attendre(() => {
       const t = trouverTache(tid)
-      if (t.createur.id !== moi.id && t.responsable.id !== moi.id) throw refus(403, 'PIL_ACTION_RESERVEE', 'Seuls le créateur et le responsable modifient la tâche.')
+      if (t.createur.id !== moi.id && t.responsable?.id !== moi.id) throw refus(403, 'PIL_ACTION_RESERVEE', 'Seuls le créateur et le responsable modifient la tâche.')
       Object.assign(t, { titre: x.titre.trim(), description: x.description?.trim() || null, echeance: x.echeance, priorite: x.priorite })
       t.historique.push({ quand: maintenant(), acteur: moi, action: 'MODIFIEE', detail: null })
-      if (x.responsableId && x.responsableId !== t.responsable.id) {
+      if (x.responsableId && x.responsableId !== t.responsable?.id) {
+        if (deProcessus(t)) throw refus(409, 'PIL_TACHE_PROCESSUS', 'La tâche suit l’étape de son processus : réaffectez l’étape.')
         if (t.createur.id !== moi.id) throw refus(403, 'PIL_ACTION_RESERVEE', 'Seul le créateur réaffecte la tâche.')
-        if (x.responsableId !== moi.id && !dansEquipe(x.responsableId)) throw refus(403, 'PIL_HORS_EQUIPE', 'Ce compte n’est pas dans votre équipe.')
+        if (!confiable(x.responsableId)) throw refus(403, 'PIL_HORS_EQUIPE', 'Ce compte n’est pas dans votre équipe.')
         t.responsable = personne(x.responsableId)
         t.historique.push({ quand: maintenant(), acteur: moi, action: 'REAFFECTEE', detail: `À ${t.responsable.nomAffiche}` })
       }
@@ -389,12 +487,46 @@ export function pilotageSimule(attendre: Attendre, refus: Refus, utilisateur: { 
     }),
     transition: (tid, etat, motif) => attendre(() => {
       const t = trouverTache(tid)
-      const autorise = t.responsable.id === moi.id || (etat === 'ANNULEE' && t.createur.id === moi.id)
+      const autorise = t.responsable?.id === moi.id || (etat === 'ANNULEE' && t.createur.id === moi.id)
       if (!autorise || !TRANSITIONS_TACHE[t.etat].includes(etat)) throw refus(409, 'PIL_TRANSITION_INTERDITE', 'Transition non permise.')
+      if (deProcessus(t) && (etat === 'TERMINEE' || etat === 'ANNULEE')) throw refus(409, 'PIL_TACHE_PROCESSUS', 'La tâche suit l’étape de son processus.')
       if (motifExige(t.etat, etat) && !motif?.trim()) throw refus(422, 'PIL_MOTIF_OBLIGATOIRE', 'Motif obligatoire.')
       t.historique.push({ quand: maintenant(), acteur: moi, action: 'TRANSITION', detail: `${t.etat} → ${etat}${motif?.trim() ? ` : ${motif.trim()}` : ''}` })
       Object.assign(t, { etat, termineeLe: etat === 'TERMINEE' ? maintenant() : null })
       return vueTache(t)
+    }),
+    groupe: (gid) => attendre(() => vueGroupe(gid)),
+    prendre: (tid) => attendre(() => {
+      const t = trouverTache(tid)
+      if (t.etat !== 'A_PRENDRE') throw refus(409, 'PIL_TRANSITION_INTERDITE', 'La tâche n’est plus à prendre.')
+      const mienne = membreDe(moi.id)
+      if (!mienne || !magasin.sousUnites(t.uniteCible!).includes(mienne)) throw refus(403, 'PIL_HORS_EQUIPE', 'Vous n’êtes pas membre de cette unité.')
+      if (!porteProfil(t)) throw refus(403, 'PIL_PROFIL_REQUIS', 'Seuls les porteurs du profil requis prennent cette tâche.')
+      Object.assign(t, { responsable: moi, etat: 'OUVERTE' })
+      t.historique.push({ quand: maintenant(), acteur: moi, action: 'PRISE', detail: null })
+      pont.surPrise?.(t.id, moi)
+      return vueTache(t)
+    }),
+    attribuer: (tid, responsableId) => attendre(() => {
+      const t = trouverTache(tid)
+      if (t.etat !== 'A_PRENDRE') throw refus(409, 'PIL_TRANSITION_INTERDITE', 'La tâche n’est plus à prendre.')
+      if (t.createur.id !== moi.id && !magasin.unitesDirigees(moi.id).includes(t.uniteCible!)) throw refus(403, 'PIL_ACTION_RESERVEE', 'Seuls le créateur et le responsable de l’unité attribuent la tâche.')
+      const unite = membreDe(responsableId)
+      if (!unite || !magasin.sousUnites(t.uniteCible!).includes(unite)) throw refus(422, 'PIL_RESPONSABLE_INVALIDE', 'Le responsable doit être membre de l’unité.')
+      if (!confiable(responsableId)) throw refus(403, 'PIL_HORS_EQUIPE', 'Ce compte n’est pas dans votre périmètre.')
+      Object.assign(t, { responsable: personne(responsableId), etat: 'OUVERTE' })
+      t.historique.push({ quand: maintenant(), acteur: moi, action: 'ATTRIBUEE', detail: `À ${personne(responsableId).nomAffiche}` })
+      pont.surPrise?.(t.id, personne(responsableId))
+      return vueTache(t)
+    }),
+    relancer: (tid) => attendre(() => {
+      const t = trouverTache(tid)
+      if (!t.responsable || !ouverte(t) || t.responsable.id === moi.id) throw refus(409, 'PIL_RELANCE_IMPOSSIBLE', 'Seule une tâche confiée et encore ouverte se relance.')
+      if (t.createur.id !== moi.id && !magasin.couvre(moi.id, 'TACHE_SUIVRE', t.responsable.id)) throw refus(403, 'PIL_HORS_EQUIPE', 'Ce compte n’est pas dans votre périmètre.')
+      const derniere = relances.get(t.id)
+      if (derniere && Date.now() - derniere < 86_400_000) throw refus(429, 'PIL_RELANCE_RECENTE', 'Une relance a déjà été envoyée il y a moins de 24 heures.')
+      relances.set(t.id, Date.now())
+      t.historique.push({ quand: maintenant(), acteur: moi, action: 'RELANCEE', detail: null })
     }),
 
     rapports: (q) => attendre(() => {
@@ -473,7 +605,7 @@ export function pilotageSimule(attendre: Attendre, refus: Refus, utilisateur: { 
 
     equipe: (j) => attendre(() => equipeDe(moi.id).map(({ membre, niveau }): MembreEquipe => {
       const l = activites.filter((a) => a.auteur.id === membre.id && a.jour === j)
-      const ts = taches.filter((t) => t.responsable.id === membre.id).map(vueTache).filter(ouverte)
+      const ts = taches.filter((t) => t.responsable?.id === membre.id).map(vueTache).filter(ouverte)
       return {
         collaborateur: { id: membre.id, nomAffiche: membre.nomAffiche, fonction: membre.fonction, unite: membre.unite, niveau },
         activites: { prevues: l.filter((a) => a.statut !== 'ANNULEE' && a.statut !== 'REPORTEE').length, faites: l.filter((a) => a.statut === 'FAITE').length, enCours: l.filter((a) => a.statut === 'EN_COURS').length },
@@ -485,7 +617,7 @@ export function pilotageSimule(attendre: Attendre, refus: Refus, utilisateur: { 
     })),
     synthese: (j) => attendre(() => {
       const l = activites.filter((a) => a.auteur.id === moi.id && a.jour === j)
-      const ts = taches.filter((t) => t.responsable.id === moi.id).map(vueTache).filter(ouverte)
+      const ts = taches.filter((t) => t.responsable?.id === moi.id).map(vueTache).filter(ouverte)
       const limite = ajouterJours(j, 3)
       const prochains = evenements.filter((e) => concerne(e, moi.id) && new Date(e.fin).getTime() > Date.now()).sort((a, b) => a.debut.localeCompare(b.debut)).slice(0, 5).map((e) => vueEvenement(e))
       return {

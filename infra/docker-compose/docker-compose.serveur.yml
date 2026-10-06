@@ -107,6 +107,11 @@ services:
     security_opt:
       - no-new-privileges:true
 
+  # Aperçu des documents bureautiques (D-83) : moteur de conversion déclaré dans docker-compose.gimac.yml (réseau
+  # interne « conversion », aucun port publié, 1 Go de mémoire), relancé après un arrêt ou un redémarrage de l'hôte.
+  conversion-documents:
+    restart: unless-stopped
+
   # Passerelle : exploitation par le mandataire (réseau exploitation en plus du réseau du projet).
   # Conteneurs : CPU et mémoire par conteneur pour la supervision (job cadvisor de Prometheus). Optionnel
   # ailleurs (profil « conteneurs »), toujours actif sur le serveur ; aucun port publié, montages en lecture.

@@ -36,7 +36,7 @@ test.describe('Fonctionnalité : console sur la passerelle', () => {
     await d.getByRole('button', { name: 'Réessayer' }).click()
     await expect(d.getByText('Signature confirmée')).toBeVisible()
     await d.getByRole('button', { name: 'Continuer' }).click()
-    const appel = gw.appels.filter((a) => a.chemin.endsWith('/profils')).at(-1)!
+    const appel = gw.appels.filter((a) => a.methode === 'PUT' && a.chemin === '/bff/console/iam/comptes/u-sna/profils').at(-1)!
     expect(JSON.parse(Buffer.from(appel.entetes['x-reauth-assertion'], 'base64').toString())).toMatchObject({ challengeId: 'defi-1', id: 'cle-e2e', clientDataJSON: 'AQI' })
     expect(appel.corps).toEqual({ profils: ['ROLE_SNA'], motif: 'Revue annuelle des habilitations' })
     expect(gw.appels.filter((a) => a.chemin === '/bff/console/iam/reauthentification/defi').map((a) => a.corps)).toContainEqual({ purpose: 'ADMIN_SENSITIVE' })

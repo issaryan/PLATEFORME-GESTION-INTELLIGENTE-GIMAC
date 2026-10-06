@@ -155,4 +155,183 @@ class EvenementsNotificationsKafkaIT extends AbstractNotificationIT {
         Thread.sleep(1000);
         assertThat(compter("select count(*) from notification_utilisateur where reference_id = ?", autoAffectee)).isZero();
     }
+
+    @Test
+    @DisplayName("Demandes (iam.request) et tâches à prendre ou relancées (pilotage.task) : notifications DEMANDE et TACHE avec les liens du contrat")
+    void demandesEtTachesAPrendre() throws Exception {
+        String demande = UUID.randomUUID().toString();
+        String tache = UUID.randomUUID().toString();
+        publier(
+            "iam.request",
+            demande,
+            """
+            {"specversion":"1.0","id":"%s","type":"iam.request-submitted.v1","subject":"%s","data":{"demandeId":"%s","type":"CREATION_COMPTE","etat":"EN_ATTENTE","demandeurId":"%s","cibleId":null,"destinataires":["%s"],"le":"2026-10-06T08:00:00Z"}}"""
+                .formatted(UUID.randomUUID(), demande, demande, CHEF_DES, CONDUCTEUR),
+            """
+            {"specversion":"1.0","id":"%s","type":"iam.request-decided.v1","subject":"%s","data":{"demandeId":"%s","type":"CREATION_COMPTE","etat":"ACCEPTEE","demandeurId":"%s","acteurId":"%s","destinataires":["%s"],"le":"2026-10-06T09:00:00Z"}}"""
+                .formatted(UUID.randomUUID(), demande, demande, CHEF_DES, CONDUCTEUR, CHEF_DES)
+        );
+        publier(
+            "pilotage.task",
+            tache,
+            """
+            {"specversion":"1.0","id":"%s","type":"pilotage.task-offered.v1","subject":"%s","data":{"tacheId":"%s","titre":"Sauvegardes","uniteCible":"POLE_RESEAU","destinataires":["%s","%s"],"acteurId":"%s","le":"2026-10-06T08:00:00Z"}}"""
+                .formatted(UUID.randomUUID(), tache, tache, CONDUCTEUR, INGENIEUR, CHEF_DES),
+            """
+            {"specversion":"1.0","id":"%s","type":"pilotage.task-reminded.v1","subject":"%s","data":{"tacheId":"%s","titre":"Sauvegardes","responsableId":"%s","acteurId":"%s","le":"2026-10-06T10:00:00Z"}}"""
+                .formatted(UUID.randomUUID(), tache, tache, INGENIEUR, CHEF_DES)
+        );
+        consommateurs.getListenerContainer(EvenementsNotificationsConsumer.GROUPE).start();
+
+        assertThat(attendre("select count(*) from notification_utilisateur where reference_id = ?", 2, demande)).isEqualTo(2);
+        assertThat(attendre("select count(*) from notification_utilisateur where reference_id = ?", 3, tache)).isEqualTo(3);
+        assertThat(
+            jdbc.queryForObject("select lien from notification_utilisateur where reference_id = ? and destinataire_id = ?", String.class, demande, CONDUCTEUR)
+        ).isEqualTo("/des/administration/demandes?demande=" + demande);
+        assertThat(
+            jdbc.queryForObject("select lien from notification_utilisateur where reference_id = ? and destinataire_id = ?", String.class, demande, CHEF_DES)
+        ).isEqualTo("/des/equipe/demandes?demande=" + demande);
+        assertThat(compter("select count(*) from notification_utilisateur where reference_id = ? and type = 'DEMANDE'", demande)).isEqualTo(2);
+        assertThat(compter("select count(*) from notification_utilisateur where reference_id = ? and lien = '/des/taches?vue=unite'", tache)).isEqualTo(2);
+        assertThat(compter("select count(*) from notification_utilisateur where reference_id = ? and destinataire_id = ? and lien = ?", tache, INGENIEUR, "/des/taches?tache=" + tache)).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("Mentions et réponses (D-82) sur Kafka réel : MENTION et REPONSE en plus du message, cumul en une MENTION, auteur exclu, ancien événement sans champs, publication sur notification.inapp")
+    void mentionsEtReponses() throws Exception {
+        String conversation = UUID.randomUUID().toString();
+        String m1 = UUID.randomUUID().toString();
+        String m2 = UUID.randomUUID().toString();
+        String m3 = UUID.randomUUID().toString();
+        // m1 : Paul répond à Aminata et mentionne Serge ; m2 : Paul répond à Aminata en la mentionnant (une MENTION) ;
+        // m3 : ancien événement sans les champs D-82 ; événement de groupe avec champs : ignoré.
+        String reponseEtMention =
+            """
+            {"specversion":"1.0","id":"%s","type":"collaboration.message-sent.v1","subject":"%s",
+            "data":{"conversationId":"%s","messageId":"%s","auteurId":"%s","destinataires":["%s","%s"],"envoyeLe":"2026-10-06T08:00:00Z","evenement":null,"reponseAAuteurId":"%s","mentionnes":["%s"]}}"""
+                .formatted(UUID.randomUUID(), conversation, conversation, m1, CHEF_DES, CONDUCTEUR, INGENIEUR, CONDUCTEUR, INGENIEUR);
+        String cumul =
+            """
+            {"specversion":"1.0","id":"%s","type":"collaboration.message-sent.v1","subject":"%s",
+            "data":{"conversationId":"%s","messageId":"%s","auteurId":"%s","destinataires":["%s","%s"],"envoyeLe":"2026-10-06T08:00:01Z","evenement":null,"reponseAAuteurId":"%s","mentionnes":["%s"]}}"""
+                .formatted(UUID.randomUUID(), conversation, conversation, m2, CHEF_DES, CONDUCTEUR, INGENIEUR, CONDUCTEUR, CONDUCTEUR);
+        String ancien =
+            """
+            {"specversion":"1.0","id":"%s","type":"collaboration.message-sent.v1","subject":"%s",
+            "data":{"conversationId":"%s","messageId":"%s","auteurId":"%s","destinataires":["%s"],"envoyeLe":"2026-10-06T08:00:02Z"}}"""
+                .formatted(UUID.randomUUID(), conversation, conversation, m3, INGENIEUR, CHEF_DES);
+        String groupe =
+            """
+            {"specversion":"1.0","id":"%s","type":"collaboration.message-sent.v1","subject":"%s",
+            "data":{"conversationId":"%s","messageId":"%s","auteurId":"%s","destinataires":["%s"],"envoyeLe":"2026-10-06T08:00:03Z","evenement":"MEMBRE_RETIRE","reponseAAuteurId":null,"mentionnes":[]}}"""
+                .formatted(UUID.randomUUID(), conversation, conversation, UUID.randomUUID(), CHEF_DES, CONDUCTEUR);
+        publier("collaboration.message", conversation, reponseEtMention, reponseEtMention, cumul, ancien, groupe);
+        consommateurs.getListenerContainer(EvenementsNotificationsConsumer.GROUPE).start();
+
+        // Messages : Aminata et Serge (regroupés), Paul (m3) ; m1 : REPONSE Aminata, MENTION Serge ; m2 : MENTION Aminata.
+        assertThat(attendre("select count(*) from notification_utilisateur where conversation_id = ?", 6, conversation)).isEqualTo(6);
+        assertThat(attendre("select count(*) from notification_utilisateur where reference_id = ? and type = 'MESSAGE' and nombre = 2", 2, conversation)).isEqualTo(2);
+        Thread.sleep(1000);
+        assertThat(compter("select count(*) from notification_utilisateur where conversation_id = ?", conversation)).isEqualTo(6);
+        assertThat(compter("select count(*) from notification_utilisateur where reference_id = ?", m1)).isEqualTo(2);
+        assertThat(compter("select count(*) from notification_utilisateur where reference_id = ? and destinataire_id = ? and type = 'REPONSE'", m1, CONDUCTEUR)).isEqualTo(1);
+        assertThat(compter("select count(*) from notification_utilisateur where reference_id = ? and destinataire_id = ? and type = 'MENTION'", m1, INGENIEUR)).isEqualTo(1);
+        assertThat(compter("select count(*) from notification_utilisateur where reference_id = ?", m2)).isEqualTo(1);
+        assertThat(compter("select count(*) from notification_utilisateur where reference_id = ? and destinataire_id = ? and type = 'MENTION'", m2, CONDUCTEUR)).isEqualTo(1);
+        assertThat(compter("select count(*) from notification_utilisateur where reference_id = ?", m3)).isZero();
+        assertThat(compter("select count(*) from notification_utilisateur where conversation_id = ? and destinataire_id = ? and type <> 'MESSAGE'", conversation, CHEF_DES)).isZero();
+        assertThat(jdbc.queryForObject("select titre from notification_utilisateur where reference_id = ? and destinataire_id = ?", String.class, m1, INGENIEUR)).isEqualTo(
+            "Paul Mbarga Atangana vous a mentionné"
+        );
+        assertThat(jdbc.queryForObject("select lien from notification_utilisateur where reference_id = ? and destinataire_id = ?", String.class, m1, CONDUCTEUR)).isEqualTo(
+            "/des/messagerie?conversation=" + conversation + "&message=" + m1
+        );
+
+        String notification = jdbc.queryForObject(
+            "select id::text from notification_utilisateur where reference_id = ? and destinataire_id = ?",
+            String.class,
+            m1,
+            INGENIEUR
+        );
+        relais.relayerJusquaEnvoi(notification);
+        List<ConsumerRecord<String, String>> publies = relais.lire("notification.inapp", notification);
+        assertThat(publies).isNotEmpty();
+        JsonNode d = json.readTree(publies.get(0).value()).path("data");
+        assertThat(d.path("type").asText()).isEqualTo("MENTION");
+        assertThat(d.path("destinataires")).hasSize(1);
+        assertThat(d.path("destinataires").get(0).asText()).isEqualTo(INGENIEUR);
+        assertThat(d.path("referenceService").asText()).isEqualTo("collaboration");
+        assertThat(d.path("referenceType").asText()).isEqualTo("MESSAGE");
+        assertThat(d.path("referenceId").asText()).isEqualTo(m1);
+        assertThat(d.path("nombre").asInt()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("D-87 : processus d'unité (pilotage.process) sur Kafka réel : PROCESSUS par destinataire, jamais l'acteur, titres, lien tel quel, livraison en double consommée une fois, process-published ignoré, publication sur notification.inapp")
+    void processus() throws Exception {
+        String instance = UUID.randomUUID().toString();
+        String lien = "/des/processus/instances/" + instance;
+        String lancee =
+            """
+            {"specversion":"1.0","id":"%s","type":"pilotage.process-instance-started.v1","source":"/ms-pilotage","subject":"%s",
+            "data":{"instanceId":"%s","processusId":"%s","code":"OUVERTURE_FLUX_RESEAU","version":1,"unite":"POLE_RESEAU","intitule":"Flux vers la banque X","lanceurId":"%s","destinataires":["%s","%s"],"lien":"%s","le":"2026-10-07T08:00:00Z"}}"""
+                .formatted(UUID.randomUUID(), instance, instance, UUID.randomUUID(), CONDUCTEUR, CHEF_DES, CONDUCTEUR, lien);
+        String activee =
+            """
+            {"specversion":"1.0","id":"%s","type":"pilotage.process-step-activated.v1","source":"/ms-pilotage","subject":"%s",
+            "data":{"instanceId":"%s","processusId":"%s","code":"OUVERTURE_FLUX_RESEAU","intitule":"Flux vers la banque X","etape":"ANALYSE","libelleEtape":"Analyse de la demande","tacheId":"%s","executantId":null,"profil":"ROLE_POLE_RESEAU","unite":"POLE_RESEAU","echeance":"2026-10-09","renvoi":false,"motif":null,"destinataires":["%s"],"lien":"%s?etape=ANALYSE","le":"2026-10-07T08:00:01Z"}}"""
+                .formatted(UUID.randomUUID(), instance, instance, UUID.randomUUID(), UUID.randomUUID(), INGENIEUR, lien);
+        String signee =
+            """
+            {"specversion":"1.0","id":"%s","type":"pilotage.process-step-signed.v1","source":"/ms-pilotage","subject":"%s",
+            "data":{"instanceId":"%s","code":"OUVERTURE_FLUX_RESEAU","intitule":"Flux vers la banque X","etape":"RECETTE","signature":"PV","signataireId":"%s","empreinte":"ab","documents":[{"livrable":"PV_RECETTE","documentId":"%s","sha256":"cd"}],"etatEtape":"TERMINEE","destinataires":["%s"],"lien":"%s?etape=RECETTE","le":"2026-10-07T08:00:02Z"}}"""
+                .formatted(UUID.randomUUID(), instance, instance, CHEF_DES, UUID.randomUUID(), INGENIEUR, lien);
+        String close =
+            """
+            {"specversion":"1.0","id":"%s","type":"pilotage.process-instance-closed.v1","source":"/ms-pilotage","subject":"%s",
+            "data":{"instanceId":"%s","processusId":"%s","code":"OUVERTURE_FLUX_RESEAU","intitule":"Flux vers la banque X","etat":"CLOSE","lanceurId":"%s","acteurId":"%s","motif":null,"destinataires":["%s"],"lien":"%s","le":"2026-10-07T08:00:03Z"}}"""
+                .formatted(UUID.randomUUID(), instance, instance, UUID.randomUUID(), CONDUCTEUR, CHEF_DES, CONDUCTEUR, lien);
+        String publiee =
+            """
+            {"specversion":"1.0","id":"%s","type":"pilotage.process-published.v1","source":"/ms-pilotage","subject":"%s",
+            "data":{"processusId":"%s","code":"OUVERTURE_FLUX_RESEAU","version":1,"unite":"POLE_RESEAU","libelle":"Ouverture","acteurId":"%s","motif":null,"avertissementsLeves":false,"versionRetiree":null,"le":"2026-10-07T07:00:00Z"}}"""
+                .formatted(UUID.randomUUID(), instance, UUID.randomUUID(), CHEF_DES);
+        publier("pilotage.process", instance, publiee, lancee, lancee, activee, signee, close);
+        consommateurs.getListenerContainer(EvenementsNotificationsConsumer.GROUPE).start();
+
+        // Lancée : le chef (pas le lanceur) ; activée : Serge ; signée : Serge ; close : Aminata (lanceuse).
+        assertThat(attendre("select count(*) from notification_utilisateur where reference_id = ? and type = 'PROCESSUS'", 4, instance)).isEqualTo(4);
+        Thread.sleep(1000);
+        assertThat(compter("select count(*) from notification_utilisateur where reference_id = ?", instance)).isEqualTo(4);
+        assertThat(compter("select count(*) from notification_utilisateur where reference_id = ? and reference_service = 'pilotage' and reference_type = 'PROCESSUS' and nombre = 1", instance)).isEqualTo(4);
+        assertThat(compter("select count(*) from notification_utilisateur where reference_id = ? and destinataire_id = ?", instance, CHEF_DES)).isEqualTo(1);
+        assertThat(compter("select count(*) from notification_utilisateur where reference_id = ? and destinataire_id = ?", instance, INGENIEUR)).isEqualTo(2);
+        assertThat(
+            jdbc.queryForMap("select titre, sous_titre, lien from notification_utilisateur where reference_id = ? and destinataire_id = ?", instance, CHEF_DES)
+        ).containsEntry("titre", "Processus lancé : Flux vers la banque X").containsEntry("sous_titre", "OUVERTURE_FLUX_RESEAU, lancé par Aminata Ngono").containsEntry("lien", lien);
+        assertThat(
+            jdbc.queryForMap("select titre, sous_titre, lien from notification_utilisateur where reference_id = ? and destinataire_id = ? and titre like 'Étape à prendre%'", instance, INGENIEUR)
+        ).containsEntry("titre", "Étape à prendre : Analyse de la demande").containsEntry("sous_titre", "Flux vers la banque X, échéance 2026-10-09").containsEntry("lien", lien + "?etape=ANALYSE");
+        assertThat(
+            jdbc.queryForMap("select titre, sous_titre from notification_utilisateur where reference_id = ? and destinataire_id = ? and titre like 'Étape signée%'", instance, INGENIEUR)
+        ).containsEntry("titre", "Étape signée : RECETTE").containsEntry("sous_titre", "Flux vers la banque X, signée par Paul Mbarga Atangana");
+        assertThat(
+            jdbc.queryForMap("select titre, sous_titre from notification_utilisateur where reference_id = ? and destinataire_id = ?", instance, CONDUCTEUR)
+        ).containsEntry("titre", "Processus terminé : Flux vers la banque X").containsEntry("sous_titre", "OUVERTURE_FLUX_RESEAU");
+
+        String notification = jdbc.queryForObject(
+            "select id::text from notification_utilisateur where reference_id = ? and destinataire_id = ?",
+            String.class,
+            instance,
+            CONDUCTEUR
+        );
+        relais.relayerJusquaEnvoi(notification);
+        List<ConsumerRecord<String, String>> publies = relais.lire("notification.inapp", notification);
+        assertThat(publies).isNotEmpty();
+        JsonNode d = json.readTree(publies.get(0).value()).path("data");
+        assertThat(d.path("type").asText()).isEqualTo("PROCESSUS");
+        assertThat(d.path("destinataires").get(0).asText()).isEqualTo(CONDUCTEUR);
+        assertThat(d.path("referenceService").asText()).isEqualTo("pilotage");
+        assertThat(d.path("referenceId").asText()).isEqualTo(instance);
+    }
 }

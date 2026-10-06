@@ -225,8 +225,20 @@ spring:
               filters:
                 - OpaAuthorize
                 - RewritePath=/bff/(?<couche>des|console)/iam/organisation/(?<p>.*), /api/v1/organisation/${p}
+            # Pouvoirs des chefs et demandes à l'administration (D-81, docs/lot1/pouvoirs-hierarchiques.md §3, §4) :
+            # comptes internes seulement (OPA).
+            - id: iam-pouvoirs-demandes
+              uri: ${gimac.services.iam}
+              predicates:
+                - Path=/bff/des/iam/pouvoirs/**,/bff/console/iam/pouvoirs/**,/bff/des/iam/demandes,/bff/des/iam/demandes/**,/bff/console/iam/demandes,/bff/console/iam/demandes/**
+              filters:
+                - OpaAuthorize
+                - RewritePath=/bff/(?<couche>des|console)/iam/(?<p>.*), /api/v1/${p}
             # MS-PILOTAGE, « Mon activité » (D-76, docs/lot1/mon-activite.md §2) : agenda, activités, tâches,
             # rapports et équipe de tout membre interne ; corps JSON seulement (documents par dépôts fragmentés).
+            # Processus d'unité (D-87, docs/lot1/processus-unite.md §3 et §5) : /bff/des/pilotage/processus/** vers
+            # /api/v1/processus/** par cette même route (pas de route dédiée, qui doublerait celle-ci) ; méthodes GET,
+            # POST, PUT et DELETE filtrées par OPA ; l'en-tête X-Reauth-Assertion de la signature est relayé tel quel.
             - id: des-pilotage
               uri: ${gimac.services.pilotage}
               predicates:
@@ -271,6 +283,22 @@ spring:
                   args:
                     maxSize: 17MB
                 - RewritePath=/bff/(?<couche>des|console|portail)/document/depots(?<p>/.*)?, /api/v1/depots${p}
+            # MS-DOCUMENT, aperçu des documents bureautiques (D-83, docs/lot1/apercu-bureautique.md §2) : fichier en
+            # octets bruts converti en PDF, depuis le département et la console ; comptes internes seulement (OPA,
+            # PIL_ACTIVITY_OWN). Corps de 20 Mo au plus, 413 au-delà. Conversion de 60 s au plus par le moteur : délai
+            # de réponse de la route porté à 90 s (aucun délai global n'est imposé par la passerelle).
+            - id: document-apercus
+              uri: ${gimac.services.document}
+              predicates:
+                - Path=/bff/des/document/apercus,/bff/console/document/apercus
+              metadata:
+                response-timeout: 90000
+              filters:
+                - OpaAuthorize
+                - name: RequestSize
+                  args:
+                    maxSize: 20MB
+                - RewritePath=/bff/(?<couche>des|console)/document/apercus, /api/v1/apercus
             # MS-COLLABORATION, messagerie instantanée de travail (D-64, docs/lot1/messagerie.md §1) :
             # tout membre interne, depuis le DES et la console (OPA refuse les comptes d'institution). Envois multipart relayés en flux (5 pièces de 20 Mo au plus) : la
             # taille annoncée est bornée à 101 Mo (pièces, partie JSON et délimiteurs), au-delà 413.
@@ -585,6 +613,7 @@ gimac:
       - gateway
       - frontend-console
       - docker-socket-proxy
+      - opa # arrêter OPA bloquerait toutes les routes filtrées (OpaAuthorize refuse sans réponse)
       - '*-postgresql'
       - keycloak*
       - kafka

@@ -1,0 +1,92 @@
+# Politiques d'accès (IAM-19, RG-24) : moteur OPA interrogé par le filtre OpaAuthorize de la passerelle
+# (POST /v1/data/gimac/authz/allow) avant tout relais vers un service. OPA injoignable vaut refus : sans ce
+# Deployment, toutes les routes filtrées de la passerelle répondraient 403.
+# Même image et mêmes options que le conteneur opa de docker-compose.gimac.yml ; politiques lues dans la
+# ConfigMap opa-politiques, générée par kustomization.yaml depuis partages/opa (copie des politiques de
+# infra/docker-compose/opa/politiques, hors tests, tenue par synchroniser-partages.sh). Le changement d'une
+# politique change le suffixe de la ConfigMap, donc relance les pods.
+# Segment « politiques » : joint par la passerelle seule (politique réseau « opa »), aucune sortie.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: opa
+  namespace: gimac-des
+spec:
+  # Deux répliques : chaque requête filtrée de la passerelle dépend d'OPA (refus par défaut).
+  replicas: 2
+  selector:
+    matchLabels:
+      app: opa
+  template:
+    metadata:
+      labels:
+        app: opa
+        gimac.cm/segment: politiques
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: opa
+          image: openpolicyagent/opa:1.21.0-static
+          args:
+            - run
+            - --server
+            - --addr=0.0.0.0:8181
+            - --ignore=*_test.rego
+            # Entrées cachées du volume de ConfigMap (..data, ..<horodatage>) : sinon chaque politique est
+            # chargée deux fois et la compilation échoue (règles par défaut en double).
+            - --ignore=.*
+            # Aucune sortie autorisée (politique réseau) : pas de vérification de version (--disable-telemetry, obsolète).
+            - --skip-version-check
+            - /politiques
+          ports:
+            - name: http
+              containerPort: 8181
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ['ALL']
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 256Mi }
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          volumeMounts:
+            - name: politiques
+              mountPath: /politiques
+              readOnly: true
+      volumes:
+        - name: politiques
+          configMap:
+            name: opa-politiques
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: opa
+  namespace: gimac-des
+  labels:
+    app: opa
+spec:
+  type: ClusterIP
+  selector:
+    app: opa
+  ports:
+    - name: http
+      port: 8181
+      targetPort: 8181

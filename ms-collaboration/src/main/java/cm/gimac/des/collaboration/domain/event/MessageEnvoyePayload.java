@@ -11,11 +11,33 @@ import java.util.UUID;
  * @param evenement événement de groupe inscrit dans le fil (D-68 : GROUPE_CREE, GROUPE_RENOMME,
  *        MEMBRES_AJOUTES, MEMBRE_RETIRE, MEMBRE_PARTI), null pour un vrai message ; MS-NOTIFICATION
  *        ne notifie que les vrais messages (D-80, docs/lot1/notifications.md §1)
+ * @param reponseAAuteurId auteur du message cité (D-82), à prévenir d'une réponse ; null sans réponse,
+ *        quand il est l'auteur du message ou quand il n'est plus membre de la conversation
+ * @param mentionnes membres mentionnés (D-82), jamais l'auteur ; liste vide sans mention
  */
-public record MessageEnvoyePayload(UUID conversationId, UUID messageId, String auteurId, List<String> destinataires, Instant envoyeLe, String evenement) {
+public record MessageEnvoyePayload(
+    UUID conversationId,
+    UUID messageId,
+    String auteurId,
+    List<String> destinataires,
+    Instant envoyeLe,
+    String evenement,
+    String reponseAAuteurId,
+    List<String> mentionnes
+) {
     public static final String TYPE = "collaboration.message-sent.v1";
 
-    /** Vrai message (sans événement de groupe). */
+    public MessageEnvoyePayload {
+        destinataires = destinataires == null ? List.of() : List.copyOf(destinataires);
+        mentionnes = mentionnes == null ? List.of() : List.copyOf(mentionnes);
+    }
+
+    /** Message ou événement de groupe, sans réponse ni mention. */
+    public MessageEnvoyePayload(UUID conversationId, UUID messageId, String auteurId, List<String> destinataires, Instant envoyeLe, String evenement) {
+        this(conversationId, messageId, auteurId, destinataires, envoyeLe, evenement, null, List.of());
+    }
+
+    /** Vrai message (sans événement de groupe), sans réponse ni mention. */
     public MessageEnvoyePayload(UUID conversationId, UUID messageId, String auteurId, List<String> destinataires, Instant envoyeLe) {
         this(conversationId, messageId, auteurId, destinataires, envoyeLe, null);
     }

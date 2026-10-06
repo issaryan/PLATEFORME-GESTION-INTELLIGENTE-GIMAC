@@ -99,3 +99,9 @@ jhipster:
 # ===================================================================
 
 # application:
+
+# Processus d'unité (D-87) : pôle réseau de démonstration (adaptateur de substitution de l'organisation) et
+# processus publié « Ouverture d'un flux réseau ».
+gimac:
+  demonstration:
+    processus: true

@@ -55,6 +55,13 @@ public class DepotFragmenteService implements DepotFragmenteUseCase {
     /** Rapport d'activité déposé en mode DOCUMENT (D-76, docs/lot1/mon-activite.md §2.4), référence = identifiant du rapport. */
     static final String FINALITE_RAPPORT_ACTIVITE = "RAPPORT_ACTIVITE";
     static final String PERMISSION_RAPPORT_ACTIVITE = "PIL_ACTIVITY_OWN";
+    /**
+     * Livrable d'une étape de processus d'unité (D-87, docs/lot1/processus-unite.md §5.3), déposé par l'exécutant,
+     * référence = identifiant de l'instance ; MS-PILOTAGE le vérifie par GET /api/v1/interne/documents/{id}.
+     */
+    static final String FINALITE_PROCESSUS_UNITE = "PROCESSUS_UNITE";
+    /** Finalités réservées à l'activité interne (MS-PILOTAGE) : PIL_ACTIVITY_OWN seulement. */
+    static final Set<String> FINALITES_ACTIVITE = Set.of(FINALITE_RAPPORT_ACTIVITE, FINALITE_PROCESSUS_UNITE);
     private static final int LOT = 100;
 
     private final StockageObjet stockage;
@@ -241,14 +248,14 @@ public class DepotFragmenteService implements DepotFragmenteUseCase {
     }
 
     /**
-     * MESSAGERIE exige COL_MESSAGE_SEND ; RAPPORT_ACTIVITE exige PIL_ACTIVITY_OWN (D-76) ; toute autre
-     * finalité, l'une des permissions du dépôt direct.
+     * MESSAGERIE exige COL_MESSAGE_SEND ; RAPPORT_ACTIVITE (D-76) et PROCESSUS_UNITE (D-87) exigent
+     * PIL_ACTIVITY_OWN ; toute autre finalité, l'une des permissions du dépôt direct.
      */
     static void autoriser(String finalite, Set<String> permissions) {
         boolean autorise;
         if (FINALITE_MESSAGERIE.equals(finalite)) {
             autorise = permissions.contains(PERMISSION_MESSAGERIE);
-        } else if (FINALITE_RAPPORT_ACTIVITE.equals(finalite)) {
+        } else if (FINALITES_ACTIVITE.contains(finalite)) {
             autorise = permissions.contains(PERMISSION_RAPPORT_ACTIVITE);
         } else {
             autorise = permissions.stream().anyMatch(PERMISSIONS_DEPOT::contains);

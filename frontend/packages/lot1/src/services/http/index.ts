@@ -7,6 +7,9 @@ import { participantHttp } from './participant'
 import { decisionHttp, parcoursHttp, portailParcoursHttp } from './parcours'
 import { messagerieHttp, messagerieHttpPour } from './messagerie'
 import { pilotageHttp } from './pilotage'
+import { pouvoirsHttp } from './pouvoirs'
+import { apercuHttp } from './apercu'
+import { processusHttp } from './processus'
 
 /** Services réels, par la passerelle : à employer dès que les routes /bff du lot 1 sont opérationnelles. */
 export function servicesHttp(couche: Couche): Services {
@@ -22,5 +25,11 @@ export function servicesHttp(couche: Couche): Services {
     messagerie: couche === 'console' ? messagerieHttpPour('console') : messagerieHttp,
     // Mon activité (D-76) : couche interne seulement.
     pilotage: pilotageHttp,
+    // Pouvoirs hiérarchiques et demandes à l'administration (D-81) : MS-IAM, couche interne.
+    pouvoirs: pouvoirsHttp,
+    // Processus d'unité (D-87) : MS-PILOTAGE, couche interne.
+    processus: processusHttp,
+    // Aperçu bureautique (D-83) : MS-DOCUMENT par la couche de l'application ; jamais au portail.
+    apercu: couche === 'portail' ? undefined : apercuHttp(couche),
   }
 }

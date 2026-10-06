@@ -52,7 +52,7 @@ class ReferentialModelisateurTest {
             null,
             null,
             null,
-            EtapeCode.CADRAGE,
+            "CADRAGE",
             1,
             r,
             v,

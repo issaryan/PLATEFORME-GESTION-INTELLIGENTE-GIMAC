@@ -54,7 +54,7 @@ describe('registre des fonctionnalités', () => {
 
   it('plateforme : administrateur système sans administration des comptes ; RSSI en lecture de l’infrastructure', () => {
     const admin = cles(fonctionnalitesOuvertes(PROFILS.ROLE_ADMIN_SYSTEME))
-    expect(admin).toEqual(['tableauDeBord', 'messagerie', 'notifications', 'maJournee', 'agenda', 'taches', 'rapports', 'supervision', 'infrastructure', 'configuration', 'journalisation', 'adminConsole'])
+    expect(admin).toEqual(['tableauDeBord', 'messagerie', 'notifications', 'maJournee', 'agenda', 'taches', 'rapports', 'processus', 'supervision', 'infrastructure', 'configuration', 'journalisation', 'adminConsole'])
     expect(cles(fonctionnalitesOuvertes(PROFILS.ROLE_RSSI))).toEqual(expect.arrayContaining(['adminComptes', 'supervision', 'infrastructure', 'configuration', 'journalisation', 'courriels']))
   })
 
