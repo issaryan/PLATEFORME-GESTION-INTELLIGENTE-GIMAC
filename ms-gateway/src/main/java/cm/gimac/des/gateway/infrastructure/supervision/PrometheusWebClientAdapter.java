@@ -42,10 +42,27 @@ public class PrometheusWebClientAdapter implements SourceServeurs {
     static final String MEMOIRE_CONTENEUR = "sum by (name) (container_memory_working_set_bytes{name!=\"\"})";
 
     private final WebClient client;
+    private final String cpuConteneur;
+    private final String memoireConteneur;
 
     /** @param client client dont l'adresse de base est celle de Prometheus */
     public PrometheusWebClientAdapter(WebClient client) {
+        this(client, "");
+    }
+
+    /**
+     * @param client client dont l'adresse de base est celle de Prometheus
+     * @param projet projet Docker Compose dont les conteneurs sont restitués (étiquette
+     *     com.docker.compose.project exportée par cAdvisor) ; vide : tous les conteneurs de l'hôte. Le serveur
+     *     de démonstration héberge d'autres applications : seuls ceux de la plateforme y sont montrés.
+     */
+    public PrometheusWebClientAdapter(WebClient client, String projet) {
         this.client = client;
+        String selecteur = projet == null || projet.isBlank()
+            ? "name!=\"\""
+            : "name!=\"\",container_label_com_docker_compose_project=\"" + projet.replace("\"", "") + "\"";
+        this.cpuConteneur = CPU_CONTENEUR.replace("name!=\"\"", selecteur);
+        this.memoireConteneur = MEMOIRE_CONTENEUR.replace("name!=\"\"", selecteur);
     }
 
     @Override
@@ -112,7 +129,7 @@ public class PrometheusWebClientAdapter implements SourceServeurs {
 
     @Override
     public Mono<List<EtatConteneur>> conteneurs() {
-        return Mono.zip(requete(CPU_CONTENEUR, "name"), requete(MEMOIRE_CONTENEUR, "name")).map(t -> {
+        return Mono.zip(requete(cpuConteneur, "name"), requete(memoireConteneur, "name")).map(t -> {
             TreeSet<String> noms = new TreeSet<>(t.getT1().keySet());
             noms.addAll(t.getT2().keySet());
             return noms.stream().map(n -> new EtatConteneur(n, t.getT1().get(n), t.getT2().get(n))).toList();

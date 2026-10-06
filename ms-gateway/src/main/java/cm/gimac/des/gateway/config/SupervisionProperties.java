@@ -43,6 +43,8 @@ public class SupervisionProperties {
 
         /** API HTTP de Prometheus. */
         private String prometheusUrl = "http://localhost:9090";
+        /** Projet Docker Compose dont les conteneurs sont restitués ; vide : tous les conteneurs de l'hôte. */
+        private String projetConteneurs = "";
 
         /** API HTTP d'Alertmanager. */
         private String alertmanagerUrl = "http://localhost:9093";
@@ -80,6 +82,14 @@ public class SupervisionProperties {
 
         public void setPrometheusUrl(String prometheusUrl) {
             this.prometheusUrl = prometheusUrl;
+        }
+
+        public String getProjetConteneurs() {
+            return projetConteneurs;
+        }
+
+        public void setProjetConteneurs(String projetConteneurs) {
+            this.projetConteneurs = projetConteneurs;
         }
 
         public String getAlertmanagerUrl() {

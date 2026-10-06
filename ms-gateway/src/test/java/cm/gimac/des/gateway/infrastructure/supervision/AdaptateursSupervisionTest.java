@@ -210,6 +210,20 @@ class AdaptateursSupervisionTest {
     }
 
     @Test
+    @DisplayName("Conteneurs : filtre sur le projet Docker Compose quand il est configuré (serveur partagé)")
+    void conteneursDuProjet() {
+        prometheus.json(
+            "/api/v1/query",
+            200,
+            "{\"status\":\"success\",\"data\":{\"resultType\":\"vector\",\"result\":[{\"metric\":{\"name\":\"gimac-des-iam-1\"},\"value\":[1,\"0.5\"]}]}}"
+        );
+        new PrometheusWebClientAdapter(ClientsSupervision.webClient(DELAI, prometheus.url()), "gimac-des").conteneurs().block();
+        assertThat(prometheus.recues())
+            .allSatisfy(r -> assertThat(java.net.URLDecoder.decode(r.requete(), java.nio.charset.StandardCharsets.UTF_8))
+                .contains("container_label_com_docker_compose_project=\"gimac-des\""));
+    }
+
+    @Test
     @DisplayName("Alertmanager : alertes actives, les plus récentes d'abord")
     void alertmanager() {
         alertmanager.json(

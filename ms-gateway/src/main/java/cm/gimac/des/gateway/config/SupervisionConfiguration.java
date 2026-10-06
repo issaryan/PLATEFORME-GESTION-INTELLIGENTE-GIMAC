@@ -43,7 +43,7 @@ public class SupervisionConfiguration {
         return new SupervisionPlateformeService(
             parametres(proprietes),
             new ActuatorWebClientAdapter(ClientsSupervision.webClient(s.getDelai(), null), jeton),
-            new PrometheusWebClientAdapter(ClientsSupervision.webClient(s.getDelai(), s.getPrometheusUrl())),
+            new PrometheusWebClientAdapter(ClientsSupervision.webClient(s.getDelai(), s.getPrometheusUrl()), s.getProjetConteneurs()),
             new AlertmanagerWebClientAdapter(ClientsSupervision.webClient(s.getDelai(), s.getAlertmanagerUrl())),
             new RoutesPasserelleAdapter(routeLocator),
             Clock.systemUTC()
