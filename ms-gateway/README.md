@@ -250,6 +250,7 @@ Tests : `AppareilsDomaineTest`, `SuiviEtServiceAppareilsTest`, `FermetureAutresS
 | 2026-10-05 | - | Notifications de la plateforme (D-80) : sujet Kafka `notification.inapp` relayé sur le canal poussé (sujet logique `notification`, DES et console), remis au seul compte de `data.destinataires`, `acteur` lu dans `data.acteurId` ; `sujets=notification` accepté. `./mvnw verify` : 428 tests unitaires et 85 d'intégration réussis (`ConnexionIT`, en dépassement de délai sous la charge de la machine, réussi relancé seul) ; seuils JaCoCo, modernizer et checkstyle respectés. |
 | 2026-10-06 | — | Séries temporelles des graphiques de la supervision : `GET /api/plateforme/series` (métrique et période dans des listes fermées, jamais de PromQL libre ; cible validée ; mesures manquantes explicites ; séries triées ; Prometheus injoignable signalé sans erreur), permission PLATFORM_SUPERVISION_READ et second facteur ; tests de domaine, de service, d'adaptateur et de sécurité |
 | 2026-10-06 | — | Séries `CHARGE_CPU` et `CHARGE_MEMOIRE` : processeur et mémoire par charge de travail Docker (service Compose), pour les courbes de l'écran Infrastructure |
+| 2026-10-06 | — | Exploitation Kubernetes, lecture : pods et événements d'une charge, nœuds du cluster, jobs et cronjobs (`/api/plateforme/infrastructure/charges/{nom}/pods`, `…/evenements`, `/noeuds`, `/taches`), PLATFORM_OPS_READ ; Docker : 422 « Kubernetes seulement » ; tests de l'adaptateur face à un faux cluster, du service et de sécurité |
 <!-- GIMAC:FIN -->
 
 # gateway

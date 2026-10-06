@@ -12,6 +12,7 @@ resources:
   - frontend.yaml
   - politiques-reseau.yaml
   - kyverno-images-signees.yaml
+  - exploitation-rbac.yaml
 
 patches:
   # Profil de sécurité des pods (D-49) : baseline imposé, restricted signalé.

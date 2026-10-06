@@ -2,12 +2,16 @@ package cm.gimac.des.gateway.web.rest.plateforme;
 
 import cm.gimac.des.gateway.domain.exploitation.ActeurOperation;
 import cm.gimac.des.gateway.domain.exploitation.Charge;
-import cm.gimac.des.gateway.domain.exploitation.ExploitationException;
+import cm.gimac.des.gateway.domain.exploitation.EvenementCharge;
 import cm.gimac.des.gateway.domain.exploitation.ExploitationException.Cause;
+import cm.gimac.des.gateway.domain.exploitation.ExploitationException;
 import cm.gimac.des.gateway.domain.exploitation.Geste;
 import cm.gimac.des.gateway.domain.exploitation.JournauxCharge;
+import cm.gimac.des.gateway.domain.exploitation.NoeudCluster;
 import cm.gimac.des.gateway.domain.exploitation.Operation;
 import cm.gimac.des.gateway.domain.exploitation.PageOperations;
+import cm.gimac.des.gateway.domain.exploitation.PodCharge;
+import cm.gimac.des.gateway.domain.exploitation.TacheCluster;
 import cm.gimac.des.gateway.security.AuthoritiesConstants;
 import cm.gimac.des.gateway.security.RevendicationsSession;
 import cm.gimac.des.gateway.service.exploitation.ExploitationInfrastructureService;
@@ -77,6 +81,34 @@ public class InfrastructureResource {
         @RequestParam(name = "depuis", defaultValue = "PT10M") String depuis
     ) {
         return Mono.defer(() -> exploitation.journaux(nomValide(nom), lignes, duree(depuis)));
+    }
+
+    /** Pods d'une charge (Kubernetes ; sous Docker : 422 OPS_NON_PRIS_EN_CHARGE). */
+    @GetMapping("/charges/{nom}/pods")
+    @PreAuthorize(LECTURE)
+    public Mono<List<PodCharge>> pods(@PathVariable String nom) {
+        return Mono.defer(() -> exploitation.pods(nomValide(nom)));
+    }
+
+    /** Événements récents d'une charge et de ses pods, du plus récent au plus ancien (Kubernetes). */
+    @GetMapping("/charges/{nom}/evenements")
+    @PreAuthorize(LECTURE)
+    public Mono<List<EvenementCharge>> evenements(@PathVariable String nom) {
+        return Mono.defer(() -> exploitation.evenements(nomValide(nom)));
+    }
+
+    /** Nœuds du cluster (Kubernetes). */
+    @GetMapping("/noeuds")
+    @PreAuthorize(LECTURE)
+    public Mono<List<NoeudCluster>> noeuds() {
+        return exploitation.noeuds();
+    }
+
+    /** CronJobs et Jobs de l'espace de noms (Kubernetes). */
+    @GetMapping("/taches")
+    @PreAuthorize(LECTURE)
+    public Mono<List<TacheCluster>> taches() {
+        return exploitation.taches();
     }
 
     /** Historique des opérations, des plus récentes aux plus anciennes. */

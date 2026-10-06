@@ -122,3 +122,4 @@ infra/ci/valider-securite.sh                       # secrets (gitleaks) et vuln�
 | 2026-10-06 | — | Supervision en graphiques, lot 2 : séries temporelles des métriques servies par la passerelle (liste fermée, sécurisée), rétention Prometheus explicite |
 | 2026-10-06 | — | Supervision en graphiques, lot 3 : centre de contrôle dans la console du super administrateur et dans l'application interne |
 | 2026-10-06 | — | Supervision en graphiques, lot 4a : courbes de processeur et de mémoire par charge de travail dans l'écran Infrastructure |
+| 2026-10-06 | — | Exploitation Kubernetes depuis la console, lecture (lot 4b-1, partie serveur) : pods, événements, nœuds, tâches |
