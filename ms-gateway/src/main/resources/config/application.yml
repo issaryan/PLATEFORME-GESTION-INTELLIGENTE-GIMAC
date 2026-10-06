@@ -121,15 +121,14 @@ spring:
             pool:
               max-connections: 1000
           routes:
-            - id: gateway_route
-              uri: lb://gateway
-              predicates:
-                - Path=/services/gateway/**
-              filters:
-                - StripPrefix=2
-            # Routes déclarées vers les 13 microservices (GW-19) : JHipster ne les génère pas
-            # sans découverte de services, et la résolution lb:// n'y fonctionne pas.
-            # Adresses : propriétés gimac.services.* (localhost en DEV, nom du service en prod).
+            # Routes déclarées vers les microservices (GW-19). Adresses : propriétés gimac.services.*
+            # (localhost en DEV, nom du service en prod). Les routes JHipster /services/{service}/** (et
+            # /services/gateway/**) sont retirées : sans OpaAuthorize, elles ouvraient le CRUD généré des
+            # services (/api/**) et leurs points /management à tout jeton portant ROLE_ADMIN, hors OPA et
+            # hors règles métier. Aucun client ne les utilisait (couches : /bff/** et /api/** ; sondes,
+            # Prometheus et supervision : adresse directe du service). SecurityConfiguration refuse en
+            # outre /services/** (denyAll) ; toute route déclarée ici commence par OpaAuthorize
+            # (RoutesPresentationTest).
             # Couches de présentation du lot 1 (PI-GIMAC-01 §0.6) : OPA d'abord, sur le chemin
             # d'origine, puis réécriture vers l'API v1 du service. TokenRelay est un filtre par défaut.
             - id: des-homologation
@@ -312,84 +311,6 @@ spring:
                   args:
                     maxSize: 101MB
                 - RewritePath=/bff/(?<couche>des|console)/collaboration/messagerie/(?<p>.*), /api/v1/messagerie/${p}
-            - id: iam_route
-              uri: ${gimac.services.iam}
-              predicates:
-                - Path=/services/iam/**
-              filters:
-                - StripPrefix=2
-            - id: audit_route
-              uri: ${gimac.services.audit}
-              predicates:
-                - Path=/services/audit/**
-              filters:
-                - StripPrefix=2
-            - id: document_route
-              uri: ${gimac.services.document}
-              predicates:
-                - Path=/services/document/**
-              filters:
-                - StripPrefix=2
-            - id: notification_route
-              uri: ${gimac.services.notification}
-              predicates:
-                - Path=/services/notification/**
-              filters:
-                - StripPrefix=2
-            - id: participant_route
-              uri: ${gimac.services.participant}
-              predicates:
-                - Path=/services/participant/**
-              filters:
-                - StripPrefix=2
-            - id: homologation_route
-              uri: ${gimac.services.homologation}
-              predicates:
-                - Path=/services/homologation/**
-              filters:
-                - StripPrefix=2
-            - id: certification_route
-              uri: ${gimac.services.certification}
-              predicates:
-                - Path=/services/certification/**
-              filters:
-                - StripPrefix=2
-            - id: incident_route
-              uri: ${gimac.services.incident}
-              predicates:
-                - Path=/services/incident/**
-              filters:
-                - StripPrefix=2
-            - id: monitoring_route
-              uri: ${gimac.services.monitoring}
-              predicates:
-                - Path=/services/monitoring/**
-              filters:
-                - StripPrefix=2
-            - id: rapprochement_route
-              uri: ${gimac.services.rapprochement}
-              predicates:
-                - Path=/services/rapprochement/**
-              filters:
-                - StripPrefix=2
-            - id: pilotage_route
-              uri: ${gimac.services.pilotage}
-              predicates:
-                - Path=/services/pilotage/**
-              filters:
-                - StripPrefix=2
-            - id: reporting_route
-              uri: ${gimac.services.reporting}
-              predicates:
-                - Path=/services/reporting/**
-              filters:
-                - StripPrefix=2
-            - id: collaboration_route
-              uri: ${gimac.services.collaboration}
-              predicates:
-                - Path=/services/collaboration/**
-              filters:
-                - StripPrefix=2
           # See alternatives in https://github.com/spring-cloud/spring-cloud-gateway/issues/3818
           trusted-proxies: '.*'
   docker:

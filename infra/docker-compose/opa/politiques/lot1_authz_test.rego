@@ -1067,3 +1067,45 @@ test_lectures_message_avec_permission if {
 test_lectures_message_sans_permission if {
 	not authz.allow with input as {"method": "GET", "path": "/bff/des/collaboration/messagerie/conversations/c1/messages/m1/lectures", "permissions": ["PIL_ACTIVITY_OWN"], "authentifie": true, "acr": "2"}
 }
+
+# Routes JHipster /services/{service}/** (CRUD généré et points /management des services) : aucune règle ne
+# les couvre, OPA les refuse donc par défaut, même à un jeton d'administrateur portant toutes les permissions
+# des règles, ROLE_ADMIN et ROLE_SUPER_ADMIN, à deux facteurs, avec ou sans institution. La passerelle ne les
+# relaie plus et les refuse (denyAll) : ce refus est une barrière de plus.
+toutes_permissions := {r.p | some r in authz.regles} | {
+	"ROLE_ADMIN", "ROLE_SUPER_ADMIN", "IAM_ACCOUNT_MANAGE", "IAM_ROLE_PRIVILEGED_GRANT",
+	"PLATFORM_CONFIG_EDIT", "PAR_INSTITUTION_EDIT", "HOM_PORTAL_SUBMIT", "COL_MESSAGE_SEND",
+}
+
+test_services_refuses_meme_administrateur if {
+	every chemin in [
+		"/services/iam/api/collaborators",
+		"/services/iam/api/collaborators/1",
+		"/services/iam/api/admin/users",
+		"/services/participant/api/institutions",
+		"/services/homologation/api/liaisons",
+		"/services/document/api/documents",
+		"/services/collaboration/api/conversations",
+		"/services/certification/management/env",
+		"/services/pilotage/management/loggers/ROOT",
+		"/services/gateway/api/admin/users",
+	] {
+		every methode in ["GET", "POST", "PUT", "PATCH", "DELETE"] {
+			every institution in ["", "INST-0042"] {
+				not authz.allow with input as {
+					"method": methode, "path": chemin, "permissions": toutes_permissions,
+					"institution_id": institution, "authentifie": true, "acr": "2",
+				}
+			}
+		}
+	}
+}
+
+test_services_toute_permission_isolee_refusee if {
+	every p in toutes_permissions {
+		not authz.allow with input as {
+			"method": "GET", "path": "/services/iam/api/collaborators", "permissions": [p],
+			"authentifie": true, "acr": "3",
+		}
+	}
+}

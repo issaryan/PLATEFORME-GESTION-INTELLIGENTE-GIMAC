@@ -28,7 +28,6 @@ configMapGenerator:
   - name: opa-politiques
     namespace: gimac-des
     files:
-      - partages/opa/gimac.rego
       - partages/opa/lot1_authz.rego
   # Configuration d'Alertmanager (infra/docker-compose/alertmanager-conf/config.yml).
   - name: alertmanager-configuration

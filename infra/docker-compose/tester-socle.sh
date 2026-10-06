@@ -33,23 +33,31 @@ JETON=$($CURL -X POST http://keycloak:9080/realms/gimac/protocol/openid-connect/
 verifier "jeton Keycloak obtenu (client_credentials, portée openid pour userinfo)" "[ -n \"$JETON\" ]"
 # D-65 : sans session ni jeton, la passerelle répond 401 (plus de redirection vers Keycloak) ;
 # la délégation par redirection est retirée (404) ; aucune donnée n'est servie.
-verifier "API refusée sans jeton (401)" "[ \"\$($CURL -o /dev/null -w '%{http_code}' http://gateway:8080/services/iam/api/collaborators)\" = 401 ]"
+verifier "API refusée sans session (401)" "[ \"\$($CURL -o /dev/null -w '%{http_code}' http://gateway:8080/bff/des/iam/moi)\" = 401 ]"
 verifier "redirection vers Keycloak retirée (404)" "[ \"\$($CURL -o /dev/null -w '%{http_code}' http://gateway:8080/oauth2/authorization/oidc)\" = 404 ]"
-for cible in incident:tickets audit:audit-events; do
-  s=${cible%%:*}; r=${cible##*:}
-  verifier "API $s atteinte via la passerelle avec jeton (GET /api/$r = 200)" "[ \"\$($CURL -o /dev/null -w '%{http_code}' -H 'Authorization: Bearer $JETON' http://gateway:8080/services/$s/api/$r)\" = 200 ]"
+# Le CRUD généré des services n'est plus relayé par la passerelle (routes JHipster /services/** retirées,
+# /services/** refusé à tous) : il ne reste joignable que sur le réseau interne, par l'adresse du service.
+for cible in incident:8088:tickets audit:8082:audit-events; do
+  IFS=: read -r s port r <<<"$cible"
+  verifier "API $s servie sur le réseau interne avec jeton (GET /api/$r = 200)" "[ \"\$($CURL -o /dev/null -w '%{http_code}' -H 'Authorization: Bearer $JETON' http://$s:$port/api/$r)\" = 200 ]"
 done
-# D-62 : dans MS-IAM et MS-PARTICIPANT, le CRUD généré (/api/**) est réservé à l'administration.
-# Refus attendu pour un jeton sans ROLE_ADMIN ; accès avec le compte de service gateway-supervision,
-# qui le porte (lecture des points d'administration par la passerelle).
+# D-62 : dans MS-IAM et MS-PARTICIPANT, le CRUD généré (/api/**) est réservé à ROLE_ADMIN, que seul porte le
+# compte de service gateway-supervision (lecture des points /management par la passerelle) ; aucun profil
+# (pas même ROLE_SUPER_ADMIN) ne le porte. Refus attendu pour un jeton sans ROLE_ADMIN, accès avec lui.
 JETON_ADMIN=$($CURL -X POST http://keycloak:9080/realms/gimac/protocol/openid-connect/token \
   -d grant_type=client_credentials -d client_id=gateway-supervision -d "client_secret=${GIMAC_SECRET_GATEWAY_SUPERVISION}" -d scope=openid | sed -n 's/.*"access_token":"\([^"]*\)".*/\1/p')
-for cible in iam:collaborators participant:institutions; do
-  s=${cible%%:*}; r=${cible##*:}
-  verifier "CRUD $s refusé sans ROLE_ADMIN (GET /api/$r = 403)" "[ \"\$($CURL -o /dev/null -w '%{http_code}' -H 'Authorization: Bearer $JETON' http://gateway:8080/services/$s/api/$r)\" = 403 ]"
-  verifier "CRUD $s servi avec ROLE_ADMIN (GET /api/$r = 200)" "[ \"\$($CURL -o /dev/null -w '%{http_code}' -H 'Authorization: Bearer $JETON_ADMIN' http://gateway:8080/services/$s/api/$r)\" = 200 ]"
+for cible in iam:8081:collaborators participant:8085:institutions; do
+  IFS=: read -r s port r <<<"$cible"
+  verifier "CRUD $s refusé sans ROLE_ADMIN (GET /api/$r = 403)" "[ \"\$($CURL -o /dev/null -w '%{http_code}' -H 'Authorization: Bearer $JETON' http://$s:$port/api/$r)\" = 403 ]"
+  verifier "CRUD $s servi avec ROLE_ADMIN sur le réseau interne (GET /api/$r = 200)" "[ \"\$($CURL -o /dev/null -w '%{http_code}' -H 'Authorization: Bearer $JETON_ADMIN' http://$s:$port/api/$r)\" = 200 ]"
 done
-verifier "OPA refuse par défaut" "$CURL -X POST http://opa:8181/v1/data/gimac/autorisation/autorise -d '{\"input\":{}}' | grep -q '\"result\":false'"
+# Contournement d'OPA fermé : la passerelle refuse /services/** même au jeton portant ROLE_ADMIN.
+for cible in iam:collaborators participant:institutions incident:tickets audit:audit-events; do
+  s=${cible%%:*}; r=${cible##*:}
+  verifier "passerelle : /services/$s/api/$r refusé même avec ROLE_ADMIN (403)" "[ \"\$($CURL -o /dev/null -w '%{http_code}' -H 'Authorization: Bearer $JETON_ADMIN' http://gateway:8080/services/$s/api/$r)\" = 403 ]"
+done
+verifier "OPA refuse par défaut (gimac.authz)" "$CURL -X POST http://opa:8181/v1/data/gimac/authz/allow -d '{\"input\":{}}' | grep -q '\"result\":false'"
+verifier "OPA refuse /services/** à un administrateur (gimac.authz)" "$CURL -X POST http://opa:8181/v1/data/gimac/authz/allow -d '{\"input\":{\"method\":\"GET\",\"path\":\"/services/iam/api/collaborators\",\"permissions\":[\"ROLE_ADMIN\",\"IAM_ACCOUNT_MANAGE\"],\"authentifie\":true,\"acr\":\"2\"}}' | grep -q '\"result\":false'"
 
 echo "== Stockage WORM (Ceph RGW)"
 CLE="verification/$(date +%s).txt"

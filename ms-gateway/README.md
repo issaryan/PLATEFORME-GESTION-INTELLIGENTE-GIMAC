@@ -44,7 +44,7 @@ Copié et adapté (paquet `cm.gimac.des.gateway`) ; chaque bean est inactif tant
 
 ## Routes des couches de présentation (PI-GIMAC-01 §0.6)
 
-Déclarées dans `src/main/resources/config/application.yml` (`spring.cloud.gateway.server.webflux.routes`) et vérifiées par `RoutesPresentationTest`. Chaque route passe d'abord le filtre `OpaAuthorize` (politique `gimac.authz`, `infra/docker-compose/opa/politiques/lot1_authz.rego`) sur le chemin d'origine, puis est réécrite vers l'API v1 du service ; `TokenRelay` est un filtre par défaut. Toute route `/bff/**` exige une session (401 sinon) et un second facteur (`acr` 2 ou 3, D-61).
+Déclarées dans `src/main/resources/config/application.yml` (`spring.cloud.gateway.server.webflux.routes`) et vérifiées par `RoutesPresentationTest`. Chaque route passe d'abord le filtre `OpaAuthorize` (politique `gimac.authz`, `infra/docker-compose/opa/politiques/lot1_authz.rego`) sur le chemin d'origine, puis est réécrite vers l'API v1 du service ; `TokenRelay` est un filtre par défaut. Toute route `/bff/**` exige une session (401 sinon) et un second facteur (`acr` 2 ou 3, D-61). Les routes JHipster `/services/{service}/**` sont retirées (elles relayaient le CRUD généré des services, hors OPA, à tout jeton portant `ROLE_ADMIN`) et `/services/**` est refusé à tous (`denyAll`) : `RoutesPresentationTest` vérifie que toute route est une route `/bff` filtrée d'abord par `OpaAuthorize`, `CheminsServicesSecuriteTest` le refus de `/services/**` même avec `ROLE_ADMIN`.
 
 | Chemin public | Service | Chemin réécrit | Particularités |
 |---|---|---|---|
@@ -252,6 +252,7 @@ Tests : `AppareilsDomaineTest`, `SuiviEtServiceAppareilsTest`, `FermetureAutresS
 | 2026-10-06 | — | Séries `CHARGE_CPU` et `CHARGE_MEMOIRE` : processeur et mémoire par charge de travail Docker (service Compose), pour les courbes de l'écran Infrastructure |
 | 2026-10-06 | — | Exploitation Kubernetes, lecture : pods et événements d'une charge, nœuds du cluster, jobs et cronjobs (`/api/plateforme/infrastructure/charges/{nom}/pods`, `…/evenements`, `/noeuds`, `/taches`), PLATFORM_OPS_READ ; Docker : 422 « Kubernetes seulement » ; tests de l'adaptateur face à un faux cluster, du service et de sécurité |
 | 2026-10-06 | — | Geste RETABLIR (Kubernetes) : `POST /api/plateforme/infrastructure/charges/{nom}/retablissement`, PLATFORM_OPS_EXECUTE + FIDO2 ; cible = révision précédente d'image différente (révisions de simple redémarrage sautées), correctif JSON qui remplace le gabarit ; `imagePrecedente` sur la charge ; changeset Liquibase qui élargit la contrainte du journal ; tests |
+| 2026-10-06 | - | Contournement d'OPA fermé : routes JHipster `/services/{service}/**` et `/services/gateway/**` retirées (aucun client), `/services/**` en `denyAll`, CORS `/services/*/api/**` retiré ; tests `CheminsServicesSecuriteTest` (401 sans session, 403 avec jeton ou session portant `ROLE_ADMIN` et les permissions d'administration) et `RoutesPresentationTest` (aucune route hors `/bff`, `OpaAuthorize` en premier partout) |
 <!-- GIMAC:FIN -->
 
 # gateway
