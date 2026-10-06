@@ -124,3 +124,4 @@ infra/ci/valider-securite.sh                       # secrets (gitleaks) et vuln�
 | 2026-10-06 | — | Supervision en graphiques, lot 4a : courbes de processeur et de mémoire par charge de travail dans l'écran Infrastructure |
 | 2026-10-06 | — | Exploitation Kubernetes depuis la console, lecture (lot 4b-1, partie serveur) : pods, événements, nœuds, tâches |
 | 2026-10-06 | — | Exploitation Kubernetes depuis la console, lecture (lot 4b-1, écrans) : pods et événements par charge, nœuds du cluster, jobs et cronjobs |
+| 2026-10-06 | — | Exploitation Kubernetes depuis la console : retour à la version précédente d'un déploiement (geste RETABLIR signé, lot 4b-2), image cible affichée dans la confirmation |

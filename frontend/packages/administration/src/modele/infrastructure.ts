@@ -4,7 +4,7 @@
 export type Orchestrateur = 'DOCKER' | 'KUBERNETES' | 'AUCUN'
 export type EtatCharge = 'EN_COURS' | 'ARRETEE' | 'REDEMARRAGE' | 'EN_ERREUR' | 'PARTIELLE'
 export type SanteCharge = 'SAINE' | 'DEGRADEE' | 'INCONNUE'
-export type Geste = 'REDEMARRER' | 'ARRETER' | 'DEMARRER' | 'ECHELLE'
+export type Geste = 'REDEMARRER' | 'ARRETER' | 'DEMARRER' | 'ECHELLE' | 'RETABLIR'
 export type ResultatOperation = 'REUSSIE' | 'ECHOUEE' | 'EN_COURS'
 
 export type Charge = {
@@ -20,6 +20,8 @@ export type Charge = {
   protegee: boolean
   /** Gestes permis à cet instant ; vide pendant une opération. */
   gestes: Geste[]
+  /** Kubernetes : image de la version précédente à laquelle RETABLIR reviendrait ; null s'il n'y en a pas. */
+  imagePrecedente?: string | null
 }
 
 /** Liste des charges et orchestrateur configuré (en-tête X-Orchestrateur ; AUCUN : exploitation non configurée). */

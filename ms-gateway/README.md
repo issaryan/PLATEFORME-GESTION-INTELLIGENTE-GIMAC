@@ -251,6 +251,7 @@ Tests : `AppareilsDomaineTest`, `SuiviEtServiceAppareilsTest`, `FermetureAutresS
 | 2026-10-06 | — | Séries temporelles des graphiques de la supervision : `GET /api/plateforme/series` (métrique et période dans des listes fermées, jamais de PromQL libre ; cible validée ; mesures manquantes explicites ; séries triées ; Prometheus injoignable signalé sans erreur), permission PLATFORM_SUPERVISION_READ et second facteur ; tests de domaine, de service, d'adaptateur et de sécurité |
 | 2026-10-06 | — | Séries `CHARGE_CPU` et `CHARGE_MEMOIRE` : processeur et mémoire par charge de travail Docker (service Compose), pour les courbes de l'écran Infrastructure |
 | 2026-10-06 | — | Exploitation Kubernetes, lecture : pods et événements d'une charge, nœuds du cluster, jobs et cronjobs (`/api/plateforme/infrastructure/charges/{nom}/pods`, `…/evenements`, `/noeuds`, `/taches`), PLATFORM_OPS_READ ; Docker : 422 « Kubernetes seulement » ; tests de l'adaptateur face à un faux cluster, du service et de sécurité |
+| 2026-10-06 | — | Geste RETABLIR (Kubernetes) : `POST /api/plateforme/infrastructure/charges/{nom}/retablissement`, PLATFORM_OPS_EXECUTE + FIDO2 ; cible = révision précédente d'image différente (révisions de simple redémarrage sautées), correctif JSON qui remplace le gabarit ; `imagePrecedente` sur la charge ; changeset Liquibase qui élargit la contrainte du journal ; tests |
 <!-- GIMAC:FIN -->
 
 # gateway

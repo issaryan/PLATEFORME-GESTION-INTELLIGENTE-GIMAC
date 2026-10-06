@@ -19,6 +19,11 @@ describe('gestes permis', () => {
     expect(gestesPermis(base({ repliques: { voulues: 0, pretes: 0 } }), false)).toEqual(['DEMARRER', 'ECHELLE'])
     expect(gestesPermis(base({}), true)).toEqual([])
   })
+  it('Kubernetes : rétablir une charge active qui a une version précédente d’image différente, jamais sous Docker ni à zéro réplique', () => {
+    expect(gestesPermis(base({ imagePrecedente: 'x:1', protegee: true }), false)).toEqual(['REDEMARRER', 'ECHELLE', 'RETABLIR'])
+    expect(gestesPermis(base({ imagePrecedente: 'x:1', repliques: { voulues: 0, pretes: 0 } }), false)).toEqual(['DEMARRER', 'ECHELLE'])
+    expect(gestesPermis(base({ imagePrecedente: 'x:1', orchestrateur: 'DOCKER' }), false)).toEqual(['REDEMARRER', 'ARRETER'])
+  })
   it('Docker : redémarrer et arrêter une charge non arrêtée ; démarrer une charge arrêtée, partielle ou en erreur', () => {
     expect(gestesPermis(base({ orchestrateur: 'DOCKER' }), false)).toEqual(['REDEMARRER', 'ARRETER'])
     expect(gestesPermis(base({ orchestrateur: 'DOCKER', etat: 'ARRETEE' }), false)).toEqual(['DEMARRER'])
@@ -31,7 +36,7 @@ describe('service simulé', () => {
     const s = sim()
     const e = await s.charges()
     expect(e.orchestrateur).toBe('KUBERNETES')
-    expect(e.charges.find((c) => c.nom === 'gateway')).toMatchObject({ protegee: true, gestes: ['REDEMARRER', 'ECHELLE'] })
+    expect(e.charges.find((c) => c.nom === 'gateway')).toMatchObject({ protegee: true, gestes: ['REDEMARRER', 'ECHELLE', 'RETABLIR'], imagePrecedente: 'registre.gimac.local/gimac/gateway:1.3.0' })
     const j = await s.journaux('iam', 10, 'PT5M')
     expect(j.lignes).toHaveLength(10)
     expect(j.tronque).toBe(true)
@@ -107,5 +112,16 @@ describe('service simulé', () => {
     expect((await attendre(s.operations(0, 20))).total).toBe(10)
     expect(etats).toEqual(['connexion', 'connecte'])
     fermer()
+  })
+
+  it('retour à la version précédente : image rétablie, plus de version précédente ; sous Docker : 422', async () => {
+    const s = sim()
+    await s.executer('gateway', 'RETABLIR', { motif: 'Livraison 1.4.0 fautive' }, ASSERTION)
+    await new Promise((r) => setTimeout(r, 20))
+    expect((await s.charges()).charges.find((c) => c.nom === 'gateway')).toMatchObject({
+      image: 'registre.gimac.local/gimac/gateway:1.3.0', imagePrecedente: null, gestes: ['REDEMARRER', 'ECHELLE'],
+    })
+    await expect(s.executer('iam', 'RETABLIR', { motif: 'Sans version précédente' }, ASSERTION)).rejects.toMatchObject({ status: 409, code: 'OPS_GESTE_NON_PERMIS' })
+    await expect(sim({ orchestrateur: 'DOCKER' }).executer('iam', 'RETABLIR', { motif: 'Motif suffisant' }, ASSERTION)).rejects.toMatchObject({ status: 422, code: 'OPS_NON_PRIS_EN_CHARGE' })
   })
 })

@@ -13,6 +13,7 @@ const ROUTE_GESTE: Record<Geste, { methode: 'post' | 'put'; chemin: string }> = 
   ARRETER: { methode: 'post', chemin: 'arret' },
   DEMARRER: { methode: 'post', chemin: 'demarrage' },
   ECHELLE: { methode: 'put', chemin: 'repliques' },
+  RETABLIR: { methode: 'post', chemin: 'retablissement' },
 }
 const ORCHESTRATEURS: Orchestrateur[] = ['DOCKER', 'KUBERNETES', 'AUCUN']
 

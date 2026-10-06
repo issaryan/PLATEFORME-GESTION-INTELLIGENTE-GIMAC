@@ -119,6 +119,7 @@ class InfrastructureResourceSecurityTest {
             .avec("audit", EtatCharge.EN_COURS, 1)
             .avec("pilotage", EtatCharge.ARRETEE, 0)
             .avec("notification", EtatCharge.EN_COURS, 1)
+            .avec("referentiel", EtatCharge.EN_COURS, 1, "referentiel:1.0")
             .avec("gateway", EtatCharge.EN_COURS, 1);
         orchestrateur.lignes = List.of(new LigneJournal(Instant.parse("2026-10-05T09:59:00Z"), "stdout", "jeton eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJ1LTEyMzQ1In0.c2lnbmF0dXJl"));
         InstantanePlateforme instantane = new InstantanePlateforme(OrchestrateurSimule.T0, new EtatGlobal(EtatGlobal.OPERATIONNELLE, 0, 0, 0, 0), List.of(), null);
@@ -138,7 +139,8 @@ class InfrastructureResourceSecurityTest {
             Arguments.of(HttpMethod.POST, P + "/charges/iam/redemarrage", AuthoritiesConstants.PLATFORM_OPS_EXECUTE),
             Arguments.of(HttpMethod.POST, P + "/charges/audit/arret", AuthoritiesConstants.PLATFORM_OPS_EXECUTE),
             Arguments.of(HttpMethod.POST, P + "/charges/pilotage/demarrage", AuthoritiesConstants.PLATFORM_OPS_EXECUTE),
-            Arguments.of(HttpMethod.PUT, P + "/charges/notification/repliques", AuthoritiesConstants.PLATFORM_OPS_EXECUTE)
+            Arguments.of(HttpMethod.PUT, P + "/charges/notification/repliques", AuthoritiesConstants.PLATFORM_OPS_EXECUTE),
+            Arguments.of(HttpMethod.POST, P + "/charges/referentiel/retablissement", AuthoritiesConstants.PLATFORM_OPS_EXECUTE)
         );
     }
 

@@ -165,6 +165,17 @@ public class InfrastructureResource {
         return geste(nom, Geste.ECHELLE, corps, assertion, auth);
     }
 
+    @PostMapping("/charges/{nom}/retablissement")
+    @PreAuthorize(EXECUTION)
+    public Mono<ResponseEntity<Operation>> retablir(
+        @PathVariable String nom,
+        @RequestBody(required = false) DemandeGeste corps,
+        @RequestHeader(name = REAUTH, required = false) String assertion,
+        Authentication auth
+    ) {
+        return geste(nom, Geste.RETABLIR, corps, assertion, auth);
+    }
+
     private Mono<ResponseEntity<Operation>> geste(String nom, Geste geste, DemandeGeste corps, String assertion, Authentication auth) {
         return Mono.defer(() -> {
             DemandeGeste c = corps == null ? new DemandeGeste(null, null) : corps;

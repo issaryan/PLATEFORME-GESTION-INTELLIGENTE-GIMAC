@@ -155,11 +155,27 @@ describe('widgets de plateforme et supervision', () => {
     expect(await within(fiche).findByText('ScalingReplicaSet')).toBeTruthy()
   })
 
+  it('retour à la version précédente : image actuelle et image cible dans la confirmation signée, puis opération acceptée', async () => {
+    page(ADMIN, { services: simules({ dureeGesteMs: 60_000, acteur: { id: 'u-admin-systeme', nom: 'Admin', permissions: ADMIN } }) })
+    expect(within(await ligne('iam')).queryByRole('button', { name: /Rétablir/ })).toBeNull()
+    fireEvent.click(within(await ligne('homologation')).getByRole('button', { name: 'Rétablir la version précédente de homologation' }))
+    const d = await screen.findByRole('dialog', { name: 'Rétablir la version précédente de homologation' })
+    expect(within(d).getByText('registre.gimac.local/gimac/homologation:1.3.5')).toBeTruthy()
+    expect(within(d).getByText(/revient à l’image registre.gimac.local\/gimac\/homologation:1.3.5/)).toBeTruthy()
+    fireEvent.change(within(d).getByLabelText(/Motif/), { target: { value: 'Livraison 1.4.5 fautive' } })
+    fireEvent.click(within(d).getByRole('button', { name: 'Utiliser ma clé de sécurité' }))
+    expect(await within(d).findByText('Signature confirmée')).toBeTruthy()
+    fireEvent.click(within(d).getByRole('button', { name: 'Continuer' }))
+    expect(await screen.findByText(/Opération acceptée sur homologation/)).toBeTruthy()
+  })
+
   it('Docker : fiche réduite aux courbes, ni nœuds ni tâches', async () => {
     page(ADMIN, { services: simules({ orchestrateur: 'DOCKER' }) })
     fireEvent.click(await screen.findByRole('button', { name: 'Courbes de gateway' }))
     const fiche = await screen.findByRole('dialog')
     expect(within(fiche).queryByRole('tab', { name: 'Pods' })).toBeNull()
+    fireEvent.click(within(fiche).getByRole('button', { name: 'Fermer' }))
+    expect(within(await ligne('homologation')).queryByRole('button', { name: /Rétablir/ })).toBeNull()
     expect(screen.queryByText('Nœuds du cluster')).toBeNull()
     expect(screen.queryByText('Tâches (jobs et cronjobs)')).toBeNull()
   })

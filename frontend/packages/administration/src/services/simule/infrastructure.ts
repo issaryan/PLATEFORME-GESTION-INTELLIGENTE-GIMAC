@@ -37,10 +37,13 @@ const GRAINES: Graine[] = [
   ['kafka', 'EN_COURS', 'SAINE', 1, 1, 0, true],
 ]
 
-/** Gestes permis à cet instant (§5) ; aucun pendant une opération. */
+/** Charges simulées qui ont une version précédente d'image différente (geste RETABLIR, Kubernetes). */
+const VERSIONNEES = ['gateway', 'homologation', 'pilotage']
+
 /** Noms des charges simulées (séries CHARGE_* des graphiques). */
 export const NOMS_CHARGES_SIMULEES = (): string[] => GRAINES.map((g) => g[0])
 
+/** Gestes permis à cet instant (§5) ; aucun pendant une opération. */
 export function gestesPermis(c: Omit<Charge, 'gestes'>, enCours: boolean): Geste[] {
   if (enCours) return []
   const g: Geste[] = []
@@ -48,6 +51,7 @@ export function gestesPermis(c: Omit<Charge, 'gestes'>, enCours: boolean): Geste
     if (c.repliques.voulues > 0) g.push('REDEMARRER', ...(c.protegee ? [] : (['ARRETER'] as Geste[])))
     else g.push('DEMARRER')
     g.push('ECHELLE')
+    if (c.repliques.voulues > 0 && c.imagePrecedente) g.push('RETABLIR')
     return g
   }
   if (c.etat !== 'ARRETEE') g.push('REDEMARRER', ...(c.protegee ? [] : (['ARRETER'] as Geste[])))
@@ -77,6 +81,8 @@ export function infrastructureSimulee(o: OptionsInfrastructureSimulee): ServiceI
   const charges: Omit<Charge, 'gestes'>[] = orchestrateur === 'AUCUN' ? [] : GRAINES.map(([nom, etat, sante, voulues, pretes, redemarrages, protegee], i) => ({
     nom, orchestrateur, etat, sante, repliques: { voulues, pretes }, redemarrages, image: `registre.gimac.local/gimac/${nom}:1.4.${i}`,
     demarreeLe: etat === 'ARRETEE' ? null : il(60 * (i + 1)), protegee,
+    // Kubernetes : version précédente d'image différente pour les charges déjà livrées plusieurs fois.
+    imagePrecedente: orchestrateur === 'KUBERNETES' && VERSIONNEES.includes(nom) ? `registre.gimac.local/gimac/${nom}:1.3.${i}` : null,
   }))
   const acteurOp = { id: o.acteur.id, nomAffiche: o.acteur.nom }
   const historique: Operation[] = [
@@ -114,6 +120,7 @@ export function infrastructureSimulee(o: OptionsInfrastructureSimulee): ServiceI
       const voulues = op.geste === 'ECHELLE' ? repliques! : Math.max(1, c.repliques.voulues)
       Object.assign(c, { etat: 'EN_COURS', sante: 'SAINE', repliques: { voulues, pretes: voulues }, demarreeLe: new Date().toISOString() })
       if (op.geste === 'REDEMARRER') c.redemarrages += 1
+      if (op.geste === 'RETABLIR') Object.assign(c, { image: c.imagePrecedente ?? c.image, imagePrecedente: null })
     }
     Object.assign(op, {
       resultat: echec ? 'ECHOUEE' : 'REUSSIE', erreur: echec ? 'Délai de démarrage dépassé (90 s)' : null, apres: c.etat,
@@ -202,6 +209,7 @@ export function infrastructureSimulee(o: OptionsInfrastructureSimulee): ServiceI
           }
           if (c.protegee && r === 0) throw refus(409, 'OPS_CHARGE_PROTEGEE', 'Charge protégée : elle ne peut être arrêtée ni ramenée à zéro réplique.')
         }
+        if (geste === 'RETABLIR' && orchestrateur !== 'KUBERNETES') throw refus(422, 'OPS_NON_PRIS_EN_CHARGE', 'Retour à la version précédente : Kubernetes seulement')
         if (geste === 'ARRETER' && c.protegee) throw refus(409, 'OPS_CHARGE_PROTEGEE', 'Charge protégée : elle ne peut être arrêtée ni ramenée à zéro réplique.')
         if (enCours.has(nom)) throw refus(409, 'OPS_OPERATION_EN_COURS', 'Une opération est déjà en cours sur cette charge.')
         if (!gestesPermis(c, false).includes(geste)) throw refus(409, 'OPS_GESTE_NON_PERMIS', "Geste sans objet dans l'état actuel de la charge.")
@@ -210,7 +218,7 @@ export function infrastructureSimulee(o: OptionsInfrastructureSimulee): ServiceI
           repliquesApres: null, resultat: 'EN_COURS', erreur: null, demandeeLe: new Date().toISOString(), termineeLe: null,
         }
         enCours.add(nom)
-        if (geste === 'REDEMARRER' || geste === 'DEMARRER') c.etat = 'REDEMARRAGE'
+        if (geste === 'REDEMARRER' || geste === 'DEMARRER' || geste === 'RETABLIR') c.etat = 'REDEMARRAGE'
         historique.unshift(op)
         pousser(op)
         window.setTimeout(() => terminer(op, c, d.repliques), duree)
