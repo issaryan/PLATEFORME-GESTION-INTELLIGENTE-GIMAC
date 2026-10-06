@@ -1,5 +1,5 @@
 import type { IconName } from '@gimac/design-system'
-import { satisfait, type GroupeNavigation, type Predicat } from '@gimac/socle'
+import { adresseBaseApplication, satisfait, type GroupeNavigation, type Predicat } from '@gimac/socle'
 import { PERM } from './permissions'
 
 // Registre unique des fonctionnalités de l'application interne (D-79). Chaque fonctionnalité porte sa clé,
@@ -43,10 +43,13 @@ export const ADMINISTRATION = '/des/administration'
 /** Écrans de la plateforme servis dans l'application interne (D-79) : supervision, infrastructure, configuration. */
 export const PLATEFORME = '/des/plateforme'
 
-/** Adresse de la console d'administration (D-62) : VITE_URL_CONSOLE, http://localhost:4202 par défaut. */
-export const URL_CONSOLE = String(import.meta.env.VITE_URL_CONSOLE || 'http://localhost:4202').replace(/\/+$/, '')
+/**
+ * Adresse de la console d'administration (D-62) vue depuis la page : VITE_URL_CONSOLE sous les noms publics,
+ * même hôte et port direct (4202 par défaut) en accès par l'adresse IP (adressesApplications du socle).
+ */
+export const urlConsole = () => adresseBaseApplication('console')
 /** Adresse d'un écran de la console (chemin commençant par /console). */
-export const versConsole = (chemin: string) => `${URL_CONSOLE}${chemin}`
+export const versConsole = (chemin: string) => `${urlConsole()}${chemin}`
 
 const tient = (...any: string[]): Predicat => ({ any })
 

@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { cleanup, fireEvent, screen, within } from '@testing-library/react'
 import TableauDeBordPage from './pages/des/TableauDeBordPage'
 import { rendrePage, sessionTest } from './test/rendu'
-import { NAVIGATION_DES, URL_CONSOLE, versConsole } from './navigation'
+import { NAVIGATION_DES, urlConsole, versConsole } from './navigation'
 import { PROFILS } from './permissions'
 import { ExtensionsTableauDeBordProvider } from './pages/des/tableau/extensions'
 
@@ -45,7 +45,7 @@ describe('navigation : groupe « Mon activité » (D-76)', () => {
 
 describe('navigation : groupe « Administration » dans le département', () => {
   it('écrans sous /des/administration ; console de la plateforme par VITE_URL_CONSOLE (http://localhost:4202 par défaut)', () => {
-    expect(URL_CONSOLE).toBe('http://localhost:4202')
+    expect(urlConsole()).toBe('http://localhost:4202')
     expect(versConsole('/console/comptes')).toBe('http://localhost:4202/console/comptes')
     const groupe = NAVIGATION_DES.find((g) => g.libelleKey === 'nav.groupe.administration')!
     expect(groupe.entrees.map((e) => [e.chemin, e.predicat?.any?.[0]])).toEqual([

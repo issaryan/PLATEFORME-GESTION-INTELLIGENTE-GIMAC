@@ -28,14 +28,68 @@ export const PERMISSIONS_CONSOLE = [
 
 const sansBarreFinale = (u: unknown, defaut: string) => String(u || defaut).replace(/\/+$/, '')
 
+/** Port valide (1 à 65535) ou, à défaut, celui donné. */
+export function lirePort(valeur: unknown, defaut: number): number {
+  const n = Number(valeur)
+  return Number.isInteger(n) && n > 0 && n < 65536 ? n : defaut
+}
+
 /**
- * Adresses publiques des trois applications : VITE_URL_DES (ou VITE_URL_DEPARTEMENT), VITE_URL_PORTAIL et
- * VITE_URL_CONSOLE, fixées à la construction (arguments URL_DES, URL_PORTAIL et URL_CONSOLE de l'image).
+ * Adresses publiques configurées des trois applications : VITE_URL_DES (ou VITE_URL_DEPARTEMENT),
+ * VITE_URL_PORTAIL et VITE_URL_CONSOLE, fixées à la construction (arguments URL_DES, URL_PORTAIL et
+ * URL_CONSOLE de l'image). Ne pas les utiliser telles quelles pour un lien : voir adressesApplications.
  */
-export const ADRESSES_APPLICATIONS: Record<Couche, string> = {
+export const ADRESSES_CONFIGUREES: Readonly<Record<Couche, string>> = {
   des: sansBarreFinale(import.meta.env.VITE_URL_DES || import.meta.env.VITE_URL_DEPARTEMENT, 'http://localhost:4200'),
   portail: sansBarreFinale(import.meta.env.VITE_URL_PORTAIL, 'http://localhost:4201'),
   console: sansBarreFinale(import.meta.env.VITE_URL_CONSOLE, 'http://localhost:4202'),
+}
+
+/**
+ * Ports de l'accès direct aux applications (sans relais HTTPS) : VITE_PORT_DES, VITE_PORT_PORTAIL et
+ * VITE_PORT_CONSOLE (arguments PORT_DES, PORT_PORTAIL et PORT_CONSOLE de l'image), 4200, 4201 et 4202 par défaut.
+ */
+export const PORTS_DIRECTS: Readonly<Record<Couche, number>> = {
+  des: lirePort(import.meta.env.VITE_PORT_DES, 4200),
+  portail: lirePort(import.meta.env.VITE_PORT_PORTAIL, 4201),
+  console: lirePort(import.meta.env.VITE_PORT_CONSOLE, 4202),
+}
+
+/** Lieu de la page : protocole et nom d'hôte (sans port) de window.location. */
+export type LieuPage = Pick<Location, 'protocol' | 'hostname'>
+
+function hoteDe(adresse: string): string | null {
+  try {
+    return new URL(adresse).hostname.toLowerCase()
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Adresses des trois applications vues depuis la page (D-75, publication mixte) : la plateforme est servie
+ * sous ses noms publics (HTTPS, adresses configurées) et, en accès direct, par l'adresse IP du serveur sur
+ * les ports 4200, 4201 et 4202. Ouverte sous l'un des noms configurés, la page garde les adresses configurées ;
+ * ouverte sous un autre nom (adresse IP, localhost, autre nom), elle lie les autres applications sur le même
+ * protocole et le même hôte qu'elle, au port direct de chacune : un poste qui ne résout pas les noms publics
+ * reste sur l'accès qu'il utilise. Rien n'est lu de la requête : seul l'hôte de la page compte.
+ */
+export function adressesApplications(
+  lieu: LieuPage | null = typeof window === 'undefined' ? null : window.location,
+  configurees: Readonly<Record<Couche, string>> = ADRESSES_CONFIGUREES,
+  ports: Readonly<Record<Couche, number>> = PORTS_DIRECTS,
+): Record<Couche, string> {
+  const hote = lieu?.hostname?.toLowerCase()
+  if (!lieu || !hote || !/^https?:$/.test(lieu.protocol)) return { ...configurees }
+  const couches = Object.keys(configurees) as Couche[]
+  if (couches.some((c) => hoteDe(configurees[c]) === hote)) return { ...configurees }
+  const base = `${lieu.protocol}//${lieu.hostname}`
+  return Object.fromEntries(couches.map((c) => [c, `${base}:${ports[c]}`])) as Record<Couche, string>
+}
+
+/** Adresse (origine, sans barre finale) d'une application vue depuis la page courante. */
+export function adresseBaseApplication(couche: Couche, lieu?: LieuPage): string {
+  return adressesApplications(lieu)[couche]
 }
 
 /** Compte d'institution (correspondant d'un participant) : la session porte une institution. */
@@ -78,7 +132,7 @@ export const FRAGMENT_SESSION_DEMO = 'gm-session-demo'
  * de l'onglet est propre à chaque origine.
  */
 export function adresseApplication(couche: Couche, chemin = `/${couche}/tableau-de-bord`, demo?: SessionDemo | null): string {
-  const base = `${ADRESSES_APPLICATIONS[couche]}${chemin}`
+  const base = `${adresseBaseApplication(couche)}${chemin}`
   return demo ? `${base}#${FRAGMENT_SESSION_DEMO}=${encodeURIComponent(JSON.stringify(demo))}` : base
 }
 
@@ -86,7 +140,7 @@ export function adresseApplication(couche: Couche, chemin = `/${couche}/tableau-
 export function adresseConnexionApplication(couche: Couche, o: { identifiant?: string; depuis: Couche }): string {
   const q = new URLSearchParams({ motif: 'aiguillage', depuis: o.depuis })
   if (o.identifiant?.trim()) q.set('identifiant', o.identifiant.trim())
-  return `${ADRESSES_APPLICATIONS[couche]}${CONNEXION}?${q.toString()}`
+  return `${adresseBaseApplication(couche)}${CONNEXION}?${q.toString()}`
 }
 
 /**

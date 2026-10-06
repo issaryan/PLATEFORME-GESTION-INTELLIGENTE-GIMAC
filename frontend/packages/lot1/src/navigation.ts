@@ -1,7 +1,7 @@
 import type { GroupeNavigation } from '@gimac/socle'
 import { navigationDepuis } from './fonctionnalites'
 
-export { ADMINISTRATION, PLATEFORME, URL_CONSOLE, versConsole } from './fonctionnalites'
+export { ADMINISTRATION, PLATEFORME, urlConsole, versConsole } from './fonctionnalites'
 
 // Barre latérale de l'application interne (D-79) : dérivée du registre des fonctionnalités (fonctionnalites.ts),
 // chaque entrée visible selon le prédicat de permissions du jeton (DS-GIMAC-01 §6.2), jamais selon le rôle.

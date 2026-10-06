@@ -26,11 +26,12 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Keycloak simulé (domaine gimac) pour les tests de la connexion sur la plateforme (D-65) :
  * découverte OIDC, JWKS (clé RSA propre au test), point de jetons (octroi direct avec code TOTP en
- * paramètre otp, rafraîchissement, client_credentials), révocation. Les clients confidentiels
+ * paramètre otp, rafraîchissement, client_credentials), userinfo, révocation. Les clients confidentiels
  * posent leur niveau d'assurance (acr) ; web_app exige le code.
  */
 public final class KeycloakSimule implements AutoCloseable {
@@ -56,6 +57,12 @@ public final class KeycloakSimule implements AutoCloseable {
     private final List<String> revoques = new CopyOnWriteArrayList<>();
     private volatile long dureeAcces = 300;
     private volatile int panne;
+    private volatile int statutUserinfo = 403;
+    private volatile String corpsUserinfo = USERINFO_REFUSE;
+    private final AtomicInteger appelsUserinfo = new AtomicInteger();
+
+    /** Réponse de Keycloak à userinfo pour un jeton sans portée openid (compte de service). */
+    static final String USERINFO_REFUSE = "{\"error\":\"insufficient_scope\"}";
 
     public KeycloakSimule() {
         try {
@@ -104,6 +111,17 @@ public final class KeycloakSimule implements AutoCloseable {
         return this;
     }
 
+    /** Réponse du point userinfo (par défaut 403, comme Keycloak pour un jeton sans portée openid). */
+    public KeycloakSimule userinfo(int statut, String corps) {
+        this.statutUserinfo = statut;
+        this.corpsUserinfo = corps;
+        return this;
+    }
+
+    public int appelsUserinfo() {
+        return appelsUserinfo.get();
+    }
+
     public List<Octroi> octrois() {
         return octrois;
     }
@@ -118,6 +136,9 @@ public final class KeycloakSimule implements AutoCloseable {
         revoques.clear();
         panne = 0;
         dureeAcces = 300;
+        statutUserinfo = 403;
+        corpsUserinfo = USERINFO_REFUSE;
+        appelsUserinfo.set(0);
     }
 
     /** Jeton signé par la clé du domaine (ou par une autre clé si « etrangere »). */
@@ -150,6 +171,10 @@ public final class KeycloakSimule implements AutoCloseable {
                 case DOMAINE + "/.well-known/openid-configuration" -> repondre(e, 200, decouverte());
                 case DOMAINE + "/protocol/openid-connect/certs" -> repondre(e, 200, new JWKSet(cle.toPublicJWK()).toString());
                 case DOMAINE + "/protocol/openid-connect/token" -> jetons(e, formulaire(corps));
+                case DOMAINE + "/protocol/openid-connect/userinfo" -> {
+                    appelsUserinfo.incrementAndGet();
+                    repondre(e, statutUserinfo, corpsUserinfo);
+                }
                 case DOMAINE + "/protocol/openid-connect/revoke" -> {
                     revoques.add(formulaire(corps).get("token"));
                     repondre(e, 200, "");

@@ -45,12 +45,20 @@ ARG URL_CONSOLE=http://localhost:4202
 ARG URL_DEPARTEMENT=http://localhost:4200
 ARG URL_DES=$URL_DEPARTEMENT
 ARG URL_PORTAIL=http://localhost:4201
+# Ports de l'accès direct (sans relais HTTPS) : adresses des autres applications quand la page n'est pas
+# ouverte sous l'une des adresses ci-dessus (accès par l'adresse IP en publication mixte, D-75).
+ARG PORT_DES=4200
+ARG PORT_PORTAIL=4201
+ARG PORT_CONSOLE=4202
 ENV VITE_SERVICES=$SERVICES \
     VITE_VERSION=$VERSION \
     VITE_URL_CONSOLE=$URL_CONSOLE \
     VITE_URL_DEPARTEMENT=$URL_DEPARTEMENT \
     VITE_URL_DES=$URL_DES \
-    VITE_URL_PORTAIL=$URL_PORTAIL
+    VITE_URL_PORTAIL=$URL_PORTAIL \
+    VITE_PORT_DES=$PORT_DES \
+    VITE_PORT_PORTAIL=$PORT_PORTAIL \
+    VITE_PORT_CONSOLE=$PORT_CONSOLE
 RUN test -n "$APPLICATION" \
  && case "$SERVICES" in http|simule) ;; *) echo "SERVICES : http ou simule" >&2; exit 1 ;; esac \
  && npm run build -w "@gimac/app-$APPLICATION"

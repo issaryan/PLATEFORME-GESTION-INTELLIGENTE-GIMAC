@@ -20,6 +20,10 @@ export const ADRESSES = {
   portailHttp: `http://localhost:${BASE + 11}`,
   /** Console telle que l'application du département la lie (VITE_URL_CONSOLE de la construction, construire.mjs). */
   consoleLiee: `http://localhost:${BASE + 2}`,
+  /** Application du département ouverte par l'adresse IP (autre hôte que les adresses configurées, D-75). */
+  departementIp: `http://127.0.0.1:${BASE}`,
+  /** Console liée depuis une page ouverte par l'adresse IP : même hôte, port direct (VITE_PORT_CONSOLE). */
+  consoleIp: `http://127.0.0.1:${BASE + 2}`,
 }
 
 function ecrire(couverture: string | null) {

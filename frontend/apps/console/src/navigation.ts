@@ -1,9 +1,13 @@
-import { ADRESSES_APPLICATIONS, type GroupeNavigation } from '@gimac/socle'
+import { adresseBaseApplication, type GroupeNavigation } from '@gimac/socle'
 import { PROFILS_INTERNES_DEMO } from '@gimac/lot1'
 import { PROFILS_DEMO as PROFILS_ADMINISTRATION } from '@gimac/administration'
 
-/** Adresse de l'application interne (D-69, D-79) : VITE_URL_DES (ou VITE_URL_DEPARTEMENT), http://localhost:4200 par défaut. */
-export const URL_DEPARTEMENT = ADRESSES_APPLICATIONS.des
+/**
+ * Adresse de l'application interne (D-69, D-79) vue depuis la page : VITE_URL_DES (ou VITE_URL_DEPARTEMENT) sous
+ * les noms publics, même hôte et port direct (4200 par défaut) en accès par l'adresse IP. Évaluée au chargement :
+ * l'hôte de la page ne change pas au fil de la navigation dans l'application.
+ */
+export const URL_DEPARTEMENT = adresseBaseApplication('des')
 
 // Entrées de navigation de la console, avec la permission qui les rend visibles (DS-GIMAC-01 §6.2) :
 // une entrée non permise est absente du DOM. Le tableau de bord est composé selon les permissions.

@@ -35,7 +35,7 @@ export {
 } from './session/inactivite'
 export { PageDeconnexion } from './session/PageDeconnexion'
 export {
-  satisfait, PERMISSIONS_CONSOLE, ADRESSES_APPLICATIONS, FRAGMENT_SESSION_DEMO, estCompteInstitution, ouvreConsole, applicationDe, applicationApresRefus, adresseApplication,
+  satisfait, PERMISSIONS_CONSOLE, ADRESSES_CONFIGUREES, PORTS_DIRECTS, lirePort, adressesApplications, adresseBaseApplication, type LieuPage, FRAGMENT_SESSION_DEMO, estCompteInstitution, ouvreConsole, applicationDe, applicationApresRefus, adresseApplication,
   adresseConnexionApplication, reprendreSessionDemo, type Predicat,
 } from './session/aiguillage'
 export { Aiguillage, MessageAiguillage, reglageAiguillage } from './session/Aiguillage'

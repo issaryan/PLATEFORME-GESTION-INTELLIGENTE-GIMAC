@@ -7,12 +7,11 @@ import cm.gimac.des.gateway.security.AuthoritiesConstants;
 import cm.gimac.des.gateway.security.DoubleFacteurAuthorizationManager;
 import cm.gimac.des.gateway.security.SecurityUtils;
 import cm.gimac.des.gateway.security.oauth2.AudienceValidator;
+import cm.gimac.des.gateway.security.oauth2.EnrichissementJeton;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import java.time.Duration;
-import java.util.Arrays;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -136,7 +135,7 @@ public class SecurityConfiguration {
         return new HttpStatusServerEntryPoint(HttpStatus.UNAUTHORIZED);
     }
 
-    Converter<Jwt, Mono<AbstractAuthenticationToken>> jwtAuthenticationConverter() {
+    public Converter<Jwt, Mono<AbstractAuthenticationToken>> jwtAuthenticationConverter() {
         ReactiveJwtAuthenticationConverter jwtAuthenticationConverter = new ReactiveJwtAuthenticationConverter();
         jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(
             new Converter<Jwt, Flux<GrantedAuthority>>() {
@@ -173,54 +172,19 @@ public class SecurityConfiguration {
 
         jwtDecoder.setJwtValidator(withAudience);
 
-        return new ReactiveJwtDecoder() {
-            @Override
-            public Mono<Jwt> decode(String token) throws JwtException {
-                return jwtDecoder.decode(token).flatMap(jwt -> enrich(token, jwt));
-            }
-
-            private Mono<Jwt> enrich(String token, Jwt jwt) {
-                // Only look up user information if identity claims are missing
-                if (jwt.hasClaim("given_name") && jwt.hasClaim("family_name")) {
-                    return Mono.just(jwt);
-                }
-                // Get user info from `users` cache if present
-                return Optional.ofNullable(users.getIfPresent(jwt.getSubject())).orElseGet(() ->
-                    WebClient.create()
-                        .get()
-                        .uri(userInfoUri)
-                        .headers(headers -> headers.setBearerAuth(token))
-                        .retrieve()
-                        .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
-                        .map(userInfo ->
-                            Jwt.withTokenValue(jwt.getTokenValue())
-                                .subject(jwt.getSubject())
-                                .audience(jwt.getAudience())
-                                .headers(headers -> headers.putAll(jwt.getHeaders()))
-                                .claims(claims -> {
-                                    String username = userInfo.get("preferred_username").toString();
-                                    // special handling for Auth0
-                                    if (userInfo.get("sub").toString().contains("|") && username.contains("@")) {
-                                        userInfo.put("email", username);
-                                    }
-                                    // Allow full name in a name claim - happens with Auth0
-                                    if (userInfo.get("name") != null) {
-                                        String[] name = userInfo.get("name").toString().split("\\s+");
-                                        if (name.length > 0) {
-                                            userInfo.put("given_name", name[0]);
-                                            userInfo.put("family_name", String.join(" ", Arrays.copyOfRange(name, 1, name.length)));
-                                        }
-                                    }
-                                    claims.putAll(userInfo);
-                                })
-                                .claims(claims -> claims.putAll(jwt.getClaims()))
-                                .build()
-                        )
-                        // Retrieve user info from OAuth provider if not already loaded
-                        // Put user info into the `users` cache
-                        .doOnNext(newJwt -> users.put(jwt.getSubject(), Mono.just(newJwt)))
-                );
-            }
-        };
+        // Authentification d'un jeton porteur (comptes de service, supervision) : l'enrichissement par
+        // userinfo n'en est jamais une condition (EnrichissementJeton).
+        EnrichissementJeton enrichissement = new EnrichissementJeton(
+            jeton ->
+                WebClient.create()
+                    .get()
+                    .uri(userInfoUri)
+                    .headers(headers -> headers.setBearerAuth(jeton))
+                    .retrieve()
+                    .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {}),
+            users,
+            EnrichissementJeton.DELAI_USERINFO
+        );
+        return token -> jwtDecoder.decode(token).flatMap(enrichissement::enrichir);
     }
 }

@@ -294,6 +294,11 @@ services:
         URL_DES: http://localhost:${GIMAC_PORT_FRONTEND_DEPARTEMENT:-4200}
         URL_PORTAIL: http://localhost:${GIMAC_PORT_FRONTEND_PORTAIL:-4201}
         URL_CONSOLE: http://localhost:${GIMAC_PORT_FRONTEND_CONSOLE:-4202}
+        # Ports de l'accès direct : liens calculés sur l'hôte de la page quand elle n'est pas ouverte
+        # sous l'une des adresses ci-dessus (accès par l'adresse IP en publication mixte, D-75).
+        PORT_DES: ${GIMAC_PORT_FRONTEND_DEPARTEMENT:-4200}
+        PORT_PORTAIL: ${GIMAC_PORT_FRONTEND_PORTAIL:-4201}
+        PORT_CONSOLE: ${GIMAC_PORT_FRONTEND_CONSOLE:-4202}
     environment:
       GIMAC_PASSERELLE: http://gateway:8080
     ports:
@@ -314,6 +319,11 @@ services:
         URL_DES: http://localhost:${GIMAC_PORT_FRONTEND_DEPARTEMENT:-4200}
         URL_PORTAIL: http://localhost:${GIMAC_PORT_FRONTEND_PORTAIL:-4201}
         URL_CONSOLE: http://localhost:${GIMAC_PORT_FRONTEND_CONSOLE:-4202}
+        # Ports de l'accès direct : liens calculés sur l'hôte de la page quand elle n'est pas ouverte
+        # sous l'une des adresses ci-dessus (accès par l'adresse IP en publication mixte, D-75).
+        PORT_DES: ${GIMAC_PORT_FRONTEND_DEPARTEMENT:-4200}
+        PORT_PORTAIL: ${GIMAC_PORT_FRONTEND_PORTAIL:-4201}
+        PORT_CONSOLE: ${GIMAC_PORT_FRONTEND_CONSOLE:-4202}
     environment:
       GIMAC_PASSERELLE: http://gateway:8080
     ports:
@@ -335,6 +345,11 @@ services:
         URL_DES: http://localhost:${GIMAC_PORT_FRONTEND_DEPARTEMENT:-4200}
         URL_PORTAIL: http://localhost:${GIMAC_PORT_FRONTEND_PORTAIL:-4201}
         URL_CONSOLE: http://localhost:${GIMAC_PORT_FRONTEND_CONSOLE:-4202}
+        # Ports de l'accès direct : liens calculés sur l'hôte de la page quand elle n'est pas ouverte
+        # sous l'une des adresses ci-dessus (accès par l'adresse IP en publication mixte, D-75).
+        PORT_DES: ${GIMAC_PORT_FRONTEND_DEPARTEMENT:-4200}
+        PORT_PORTAIL: ${GIMAC_PORT_FRONTEND_PORTAIL:-4201}
+        PORT_CONSOLE: ${GIMAC_PORT_FRONTEND_CONSOLE:-4202}
     environment:
       GIMAC_PASSERELLE: http://gateway:8080
     ports:

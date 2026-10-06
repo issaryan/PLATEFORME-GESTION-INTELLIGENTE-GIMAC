@@ -6,7 +6,7 @@ import type { Session } from './session'
 import { navigation } from './deconnexion'
 import { lireSessionDemo, ouvrirSessionDemo } from './demo'
 import {
-  ADRESSES_APPLICATIONS, adresseApplication, adresseConnexionApplication, applicationApresRefus, applicationDe, estCompteInstitution, ouvreConsole, reprendreSessionDemo, satisfait,
+  ADRESSES_CONFIGUREES, PORTS_DIRECTS, adresseApplication, lirePort, adresseBaseApplication, adressesApplications, adresseConnexionApplication, applicationApresRefus, applicationDe, estCompteInstitution, ouvreConsole, reprendreSessionDemo, satisfait,
 } from './aiguillage'
 import { Aiguillage, reglageAiguillage } from './Aiguillage'
 
@@ -59,11 +59,64 @@ describe('application de la session', () => {
     expect(applicationApresRefus('console')).toBe('portail')
   })
   it('adresses : par défaut 4200, 4201 et 4202 ; session de démonstration dans le fragment', () => {
-    expect(ADRESSES_APPLICATIONS).toEqual({ des: 'http://localhost:4200', portail: 'http://localhost:4201', console: 'http://localhost:4202' })
+    expect(ADRESSES_CONFIGUREES).toEqual({ des: 'http://localhost:4200', portail: 'http://localhost:4201', console: 'http://localhost:4202' })
+    expect(PORTS_DIRECTS).toEqual({ des: 4200, portail: 4201, console: 4202 })
+    // Page de test (jsdom) sous localhost : nom configuré, adresses configurées.
+    expect(adressesApplications()).toEqual(ADRESSES_CONFIGUREES)
     expect(adresseApplication('des')).toBe('http://localhost:4200/des/tableau-de-bord')
     expect(adresseApplication('console', '/console/comptes')).toBe('http://localhost:4202/console/comptes')
     expect(adresseApplication('des', undefined, { identifiant: 'a', role: 'R' })).toBe(`http://localhost:4200/des/tableau-de-bord#gm-session-demo=${encodeURIComponent('{"identifiant":"a","role":"R"}')}`)
     expect(adresseConnexionApplication('portail', { depuis: 'des' })).toBe('http://localhost:4201/connexion?motif=aiguillage&depuis=des')
+  })
+})
+
+describe('adresses des applications calculées à l\'exécution (publication mixte, D-75)', () => {
+  const PUBLIQUES = {
+    des: 'https://moabi.gimac-afr.org:8463',
+    portail: 'https://moabi-portail.gimac-afr.org:8463',
+    console: 'https://moabi-console.gimac-afr.org:8463',
+  }
+  const PORTS = { des: 4200, portail: 4201, console: 4202 }
+  it('sous un nom public configuré (https) : adresses publiques configurées', () => {
+    expect(adressesApplications({ protocol: 'https:', hostname: 'moabi.gimac-afr.org' }, PUBLIQUES, PORTS)).toEqual(PUBLIQUES)
+    expect(adressesApplications({ protocol: 'https:', hostname: 'MOABI-CONSOLE.gimac-afr.org' }, PUBLIQUES, PORTS)).toEqual(PUBLIQUES)
+  })
+  it('par l\'adresse IP en http : même hôte, ports directs (jamais le nom public que le poste ne résout pas)', () => {
+    expect(adressesApplications({ protocol: 'http:', hostname: '10.20.36.214' }, PUBLIQUES, PORTS)).toEqual({
+      des: 'http://10.20.36.214:4200', portail: 'http://10.20.36.214:4201', console: 'http://10.20.36.214:4202',
+    })
+  })
+  it('sous localhost ou un autre nom : même protocole et même hôte que la page', () => {
+    expect(adressesApplications({ protocol: 'http:', hostname: 'localhost' }, PUBLIQUES, PORTS).console).toBe('http://localhost:4202')
+    expect(adressesApplications({ protocol: 'http:', hostname: 'serveur-gimac' }, PUBLIQUES, { des: 5200, portail: 5201, console: 5202 })).toEqual({
+      des: 'http://serveur-gimac:5200', portail: 'http://serveur-gimac:5201', console: 'http://serveur-gimac:5202',
+    })
+    expect(adressesApplications({ protocol: 'http:', hostname: '[::1]' }, PUBLIQUES, PORTS).des).toBe('http://[::1]:4200')
+  })
+  it('en mode http (adresses configurées sur l\'adresse IP) : adresses configurées', () => {
+    const ip = { des: 'http://10.20.36.214:4200', portail: 'http://10.20.36.214:4201', console: 'http://10.20.36.214:4202' }
+    expect(adressesApplications({ protocol: 'http:', hostname: '10.20.36.214' }, ip, PORTS)).toEqual(ip)
+  })
+  it('lieu inconnu, protocole non web ou adresse configurée illisible : adresses configurées, sans erreur', () => {
+    expect(adressesApplications(null, PUBLIQUES, PORTS)).toEqual(PUBLIQUES)
+    expect(adressesApplications({ protocol: 'file:', hostname: '' }, PUBLIQUES, PORTS)).toEqual(PUBLIQUES)
+    const illisible = { ...PUBLIQUES, console: 'pas une adresse' }
+    expect(adressesApplications({ protocol: 'http:', hostname: '10.20.36.214' }, illisible, PORTS).console).toBe('http://10.20.36.214:4202')
+  })
+  it('port direct inconnu ou invalide (VITE_PORT_*) : port par défaut ; page sur un port quelconque : ports directs', () => {
+    expect(lirePort(undefined, 4202)).toBe(4202)
+    expect(lirePort('', 4202)).toBe(4202)
+    expect(lirePort('abc', 4202)).toBe(4202)
+    expect(lirePort('70000', 4202)).toBe(4202)
+    expect(lirePort('0', 4202)).toBe(4202)
+    expect(lirePort('8202', 4202)).toBe(8202)
+    // Le port de la page n'entre pas dans le calcul : depuis 10.20.36.214:8080, la console reste sur 4202.
+    const page = new URL('http://10.20.36.214:8080/des/tableau-de-bord')
+    expect(adressesApplications(page, PUBLIQUES, PORTS).console).toBe('http://10.20.36.214:4202')
+  })
+  it('liens d\'aiguillage et de connexion sur la page courante (jsdom : localhost)', () => {
+    expect(adresseBaseApplication('console')).toBe('http://localhost:4202')
+    expect(adresseBaseApplication('des', { protocol: 'http:', hostname: '10.20.36.214' })).toBe('http://10.20.36.214:4200')
   })
 })
 
