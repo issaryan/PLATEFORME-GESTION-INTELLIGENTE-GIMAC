@@ -30,6 +30,10 @@ export const cles = {
   charges: () => ['plateforme', 'infrastructure', 'charges'] as const,
   journauxCharge: (nom: string, lignes: number, depuis: string) => ['plateforme', 'infrastructure', 'journaux', nom, lignes, depuis] as const,
   operations: (page: number, taille: number) => ['plateforme', 'infrastructure', 'operations', page, taille] as const,
+  pods: (nom: string) => ['plateforme', 'infrastructure', 'pods', nom] as const,
+  evenements: (nom: string) => ['plateforme', 'infrastructure', 'evenements', nom] as const,
+  noeuds: () => ['plateforme', 'infrastructure', 'noeuds'] as const,
+  taches: () => ['plateforme', 'infrastructure', 'taches'] as const,
 }
 
 export function useLecture<R>(cle: QueryKey, lire: (s: ServicesConsole) => Promise<R>, options?: Omit<UseQueryOptions<R, ApiError>, 'queryKey' | 'queryFn'>) {
@@ -91,6 +95,13 @@ export function useFluxPlateforme(actif = true): { impulsion: ImpulsionPlateform
 }
 
 // Exploitation de l'infrastructure (D-78) : charges, journaux à la demande, historique paginé, gestes.
+/** Lectures Kubernetes de l'écran Infrastructure : actives seulement sous Kubernetes (sinon 422). */
+export const usePodsCharge = (nom: string, actif = true) =>
+  useLecture(cles.pods(nom), (s) => s.infrastructure.pods(nom), { enabled: actif && !!nom, refetchInterval: 15_000 })
+export const useEvenementsCharge = (nom: string, actif = true) =>
+  useLecture(cles.evenements(nom), (s) => s.infrastructure.evenements(nom), { enabled: actif && !!nom, refetchInterval: 30_000 })
+export const useNoeuds = (actif = true) => useLecture(cles.noeuds(), (s) => s.infrastructure.noeuds(), { enabled: actif, refetchInterval: 30_000 })
+export const useTaches = (actif = true) => useLecture(cles.taches(), (s) => s.infrastructure.taches(), { enabled: actif, refetchInterval: 60_000 })
 export const useCharges = (actif = true) => useLecture(cles.charges(), (s) => s.infrastructure.charges(), { enabled: actif })
 export const useJournauxCharge = (nom: string, lignes: number, depuis: string) =>
   useLecture(cles.journauxCharge(nom, lignes, depuis), (s) => s.infrastructure.journaux(nom, lignes, depuis), { enabled: !!nom })

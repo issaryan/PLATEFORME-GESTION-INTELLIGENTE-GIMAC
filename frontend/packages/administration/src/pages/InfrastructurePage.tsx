@@ -2,42 +2,19 @@ import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router'
 import {
-  Button, Card, DataTable, Drawer, EmptyState, IconButton, InlineAlert, NumberField, PageHeader, Select, Skeleton, StatusBadge, Tag, type Column, type Status,
+  Button, Card, DataTable, EmptyState, IconButton, InlineAlert, NumberField, PageHeader, Select, Skeleton, StatusBadge, Tag, type Column, type Status,
 } from '@gimac/design-system'
 import { aPermission, usePermissions } from '@gimac/socle'
 import { dateHeure } from '@gimac/compte'
 import { useCharges, useFluxInfrastructure, useGesteInfrastructure, useJournauxCharge, useOperationsInfrastructure, useSeries } from '../hooks'
-import { GraphiqueMetrique, SelecteurPeriode, TendanceMetrique } from '../composants/graphiquesSupervision'
-import type { PeriodeSerie } from '../modele/plateforme'
+import { TendanceMetrique } from '../composants/graphiquesSupervision'
+import { CarteNoeuds, CarteTaches, FicheCharge } from '../composants/kubernetes'
 import { BORNES_INFRASTRUCTURE, DUREES_JOURNAUX, type Charge, type Geste, type Operation } from '../modele/infrastructure'
 import { useActes } from '../composants/actes'
 import { Annonce } from '../composants/Annonce'
 import { Donnees } from '../composants/communs'
 import { STATUT_CHARGE } from '../composants/widgetsPlateforme'
 
-/** Fiche des courbes d'une charge : processeur et mémoire, période propre à la fiche. */
-function CourbesCharge({ charge, fermer }: { charge: Charge; fermer: () => void }) {
-  const { t } = useTranslation()
-  const [periode, setPeriode] = useState<PeriodeSerie>('UNE_HEURE')
-  return (
-    <Drawer
-      type={t('infra.charge')}
-      reference={charge.nom}
-      status={STATUT_CHARGE[charge.etat]}
-      statusLabel={t(`infra.etat.${charge.etat}`)}
-      title={t('infra.courbes.titre', { nom: charge.nom })}
-      size="lg"
-      tabs={[{ key: 'courbes', label: t('graphiques.fiche.onglet') }]}
-      onClose={fermer}
-    >
-      <div className="gm-col" style={{ gap: 'var(--gm-space-4)' }}>
-        <SelecteurPeriode valeur={periode} onChange={setPeriode} />
-        <GraphiqueMetrique metrique="CHARGE_CPU" periode={periode} cible={charge.nom} titre={t('graphiques.court.CHARGE_CPU')} />
-        <GraphiqueMetrique metrique="CHARGE_MEMOIRE" periode={periode} cible={charge.nom} titre={t('graphiques.court.CHARGE_MEMOIRE')} />
-      </div>
-    </Drawer>
-  )
-}
 
 // Exploitation de l'infrastructure (D-78, docs/exploitation/operations-infrastructure.md §4) : charges de travail
 // Docker ou Kubernetes du périmètre (état, santé, répliques, redémarrages, image, démarrage, protection),
@@ -252,7 +229,9 @@ export default function InfrastructurePage() {
               state={charges.data.charges.length ? 'ok' : 'empty'} emptyText={t('infra.charges.vide')} />
           </Card>
           {choisie ? <Journaux key={choisie} nom={choisie} fermer={() => choisir('')} /> : null}
-          {courbes ? <CourbesCharge charge={courbes} fermer={() => setCourbes(null)} /> : null}
+          {courbes ? <FicheCharge charge={courbes} orchestrateur={charges.data.orchestrateur} fermer={() => setCourbes(null)} /> : null}
+          {charges.data.orchestrateur === 'KUBERNETES' ? <CarteNoeuds /> : null}
+          {charges.data.orchestrateur === 'KUBERNETES' ? <CarteTaches /> : null}
           <Historique />
         </>
       )}

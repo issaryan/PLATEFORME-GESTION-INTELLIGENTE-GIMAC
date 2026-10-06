@@ -26,6 +26,10 @@ export const infrastructureHttp: ServiceInfrastructure = {
   },
   journaux: (nom, lignes, depuis) => http.get(`${INFRASTRUCTURE}/charges/${encodeURIComponent(nom)}/journaux`, { query: { lignes, depuis } }),
   operations: (page, taille) => http.get(`${INFRASTRUCTURE}/operations`, { query: { page, taille } }),
+  pods: (nom) => http.get(`${INFRASTRUCTURE}/charges/${encodeURIComponent(nom)}/pods`),
+  evenements: (nom) => http.get(`${INFRASTRUCTURE}/charges/${encodeURIComponent(nom)}/evenements`),
+  noeuds: () => http.get(`${INFRASTRUCTURE}/noeuds`),
+  taches: () => http.get(`${INFRASTRUCTURE}/taches`),
   executer: (nom, geste, d, assertion) => {
     const r = ROUTE_GESTE[geste]
     const body = geste === 'ECHELLE' ? { motif: d.motif, repliques: d.repliques } : { motif: d.motif }

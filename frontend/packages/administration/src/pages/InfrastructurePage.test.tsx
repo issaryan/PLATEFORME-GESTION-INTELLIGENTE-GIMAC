@@ -139,4 +139,28 @@ describe('widgets de plateforme et supervision', () => {
     fireEvent.click(within(fiche).getByRole('button', { name: 'Fermer' }))
     expect(screen.queryByRole('dialog')).toBeNull()
   })
+
+  it('Kubernetes : pods et événements de la charge, nœuds prêts en anneau, jobs et cronjobs', async () => {
+    page(ADMIN)
+    expect(await screen.findByRole('img', { name: /^Nœuds prêts : 67 %/ })).toBeTruthy()
+    expect(screen.getByText('2 sur 3 prêts')).toBeTruthy()
+    expect(screen.getByText('non planifiable')).toBeTruthy()
+    expect(await screen.findByText('jhipster-grafana-dashboard')).toBeTruthy()
+    expect(screen.getByText('réussie')).toBeTruthy()
+    fireEvent.click(await screen.findByRole('button', { name: 'Courbes de gateway' }))
+    const fiche = await screen.findByRole('dialog')
+    fireEvent.click(within(fiche).getByRole('tab', { name: 'Pods' }))
+    expect((await within(fiche).findAllByText(/^gateway-/, { selector: '.gm-mono' })).length).toBeGreaterThan(0)
+    fireEvent.click(within(fiche).getByRole('tab', { name: 'Événements' }))
+    expect(await within(fiche).findByText('ScalingReplicaSet')).toBeTruthy()
+  })
+
+  it('Docker : fiche réduite aux courbes, ni nœuds ni tâches', async () => {
+    page(ADMIN, { services: simules({ orchestrateur: 'DOCKER' }) })
+    fireEvent.click(await screen.findByRole('button', { name: 'Courbes de gateway' }))
+    const fiche = await screen.findByRole('dialog')
+    expect(within(fiche).queryByRole('tab', { name: 'Pods' })).toBeNull()
+    expect(screen.queryByText('Nœuds du cluster')).toBeNull()
+    expect(screen.queryByText('Tâches (jobs et cronjobs)')).toBeNull()
+  })
 })

@@ -3,7 +3,7 @@ import type { SignPurpose } from '@gimac/socle'
 import type { Unite } from '@gimac/lot1'
 import type { ActionRequise, Compte, Creation, DemandeRattachement, EntreeJournal, FicheCompte, FiltreComptes, FiltreJournal, IndicateursComptes, NouveauCompte, Page } from '../modele/comptes'
 import type { ConfigurationMessagerie, PolitiqueSecurite, Profil } from '../modele/configuration'
-import type { DemandeGeste, EtatInfrastructure, Geste, JournauxCharge, Operation, PageOperations } from '../modele/infrastructure'
+import type { DemandeGeste, EtatInfrastructure, EvenementCharge, Geste, JournauxCharge, NoeudCluster, Operation, PageOperations, PodCharge, TacheCluster } from '../modele/infrastructure'
 import type {
   ChangementJournalisation, ConfigurationPlateforme, DemandeNiveau, EtatAlertes, EtatFlux, EtatServeurs, ImpulsionPlateforme, InstantanePlateforme,
   MetriqueSerie, NiveauxJournalisation, PeriodeSerie, SeriesMetriques,
@@ -96,6 +96,11 @@ export interface ServiceInfrastructure {
   executer(nom: string, geste: Geste, d: DemandeGeste, assertion: Assertion): Promise<Operation>
   /** Opérations poussées par le flux temps réel ; renvoie la fonction de fermeture. */
   flux(e: { onOperation: (o: Operation) => void; onEtat: (e: EtatFlux) => void }): () => void
+  /** Lectures Kubernetes (sous Docker : 422 OPS_NON_PRIS_EN_CHARGE). */
+  pods(nom: string): Promise<PodCharge[]>
+  evenements(nom: string): Promise<EvenementCharge[]>
+  noeuds(): Promise<NoeudCluster[]>
+  taches(): Promise<TacheCluster[]>
 }
 
 export interface ServiceReauthentification {
