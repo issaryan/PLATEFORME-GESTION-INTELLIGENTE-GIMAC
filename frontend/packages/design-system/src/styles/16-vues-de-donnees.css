@@ -148,3 +148,39 @@ rect.gm-data-8, circle.gm-data-8, .gm-chart-swatch.gm-data-8 { fill: var(--gm-da
 .gm-reglage-etat { align-self: center; display: inline-flex; }
 .gm-reglage-unite { font-family: var(--font-sans); font-size: 13px; line-height: 20px; font-weight: 400; color: var(--gm-color-text-secondary); }
 .gm-reglage-aide { font-size: 12px; line-height: 18px; color: var(--gm-color-text-secondary); }
+
+/* Graphiques de métriques (supervision, tableaux de bord) : séries gm-serie-1 à 4 dans l'ordre fixe validé,
+   « Autres » en gm-serie-autre. Traits de 2 px, aire en lavis à 10 %, barres de 24 px au plus à bout
+   arrondi, grille en filet plein et discret, texte toujours en encre (jamais dans la couleur de série). */
+.gm-serie-1 { --gm-serie: var(--gm-serie-1); }
+.gm-serie-2 { --gm-serie: var(--gm-serie-2); }
+.gm-serie-3 { --gm-serie: var(--gm-serie-3); }
+.gm-serie-4 { --gm-serie: var(--gm-serie-4); }
+.gm-serie-autre { --gm-serie: var(--gm-serie-autre); }
+.gm-serie-trait { fill: none; stroke: var(--gm-serie); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.gm-serie-aire { fill: var(--gm-serie); fill-opacity: 0.1; stroke: none; }
+.gm-serie-point { fill: var(--gm-serie); stroke: var(--gm-color-surface); stroke-width: 2; }
+.gm-serie-barre { fill: var(--gm-serie); }
+.gm-serie-barre:hover, .gm-serie-barre.gm-actif { fill-opacity: 0.8; }
+.gm-serie-cle { display: inline-block; width: 14px; height: 2px; background: var(--gm-serie); vertical-align: middle; }
+.gm-serie-pastille { display: inline-block; width: 10px; height: 10px; background: var(--gm-serie); }
+.gm-graphique-cadre { position: relative; width: 100%; }
+.gm-graphique-cadre.gm-rechargement { opacity: 0.55; transition: opacity var(--gm-motion-fast) var(--gm-motion-ease); }
+.gm-graphique-cadre svg { display: block; width: 100%; overflow: visible; }
+.gm-graphique-cadre svg:focus-visible { outline: 2px solid var(--gm-color-focus); outline-offset: 2px; }
+.gm-graphique-reticule { stroke: var(--gm-color-text-muted); stroke-width: 1; }
+.gm-graphique-infobulle { position: absolute; z-index: 2; pointer-events: none; min-width: 160px; max-width: 280px; padding: var(--gm-space-2) var(--gm-space-3); background: var(--gm-color-surface-raised); border: var(--gm-border-1) solid var(--gm-color-border); font-size: 12px; line-height: 18px; display: flex; flex-direction: column; gap: 2px; color: var(--gm-color-text-secondary); }
+.gm-graphique-infobulle strong.gm-graphique-valeur { color: var(--gm-color-text-primary); font-variant-numeric: tabular-nums; margin-left: auto; }
+.gm-graphique-vide { padding: var(--gm-space-6) var(--gm-space-4); text-align: center; color: var(--gm-color-text-muted); font-size: 13px; }
+.gm-sparkline-cadre { position: relative; display: block; width: 100%; }
+.gm-sparkline { display: block; width: 100%; overflow: visible; }
+.gm-sparkline-point { position: absolute; inset: 0; width: 100%; overflow: visible; pointer-events: none; }
+.gm-stat-tendance-courbe { margin-top: var(--gm-space-2); }
+.gm-barres-h { display: flex; flex-direction: column; gap: var(--gm-space-2); }
+.gm-barres-h-ligne { display: grid; grid-template-columns: minmax(96px, 34%) 1fr; align-items: center; gap: var(--gm-space-3); font-size: 13px; color: var(--gm-color-text-secondary); position: relative; }
+.gm-barres-h-libelle { overflow-wrap: anywhere; }
+.gm-barres-h-piste { display: flex; align-items: center; gap: var(--gm-space-2); min-height: 24px; }
+.gm-barres-h-fond { flex: 1 1 auto; display: block; height: 20px; }
+.gm-barres-h-barre { display: block; height: 100%; min-width: 2px; background: var(--gm-serie); border-radius: 0 4px 4px 0; }
+.gm-barres-h-barre.gm-actif { opacity: 0.8; }
+.gm-barres-h-valeur { color: var(--gm-color-text-primary); font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }

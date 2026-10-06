@@ -118,3 +118,4 @@ infra/ci/valider-securite.sh                       # secrets (gitleaks) et vuln�
 | 2026-10-05 | — | Publication HTTPS (D-75) : port retenu 8463 (`GIMAC_PORT_HTTPS=8463`), noms `moabi`, `moabi-portail`, `moabi-console`.gimac-afr.org ; procédure complétée (chemins du certificat ANTIC, contrôle du relais avant DNS) |
 | 2026-10-05 | — | Relais HTTPS de Moabi installé sur le nginx du serveur 214 (port 8463, trois noms) et vérifié ; en attente du DNS OVH et du pare-feu |
 | 2026-10-06 | — | Comptes : institution réservée au correspondant de participant (précision de D-62) ; `mettre-a-jour.sh` prépare les nouveaux secrets avant de construire |
+| 2026-10-06 | — | Supervision et tableaux de bord en graphiques, lot 1 : composants de graphiques de métriques du système de conception (D-63), palette de séries validée en clair et en sombre |

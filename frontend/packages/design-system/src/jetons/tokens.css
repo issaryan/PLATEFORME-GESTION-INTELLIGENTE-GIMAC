@@ -93,6 +93,11 @@
   --gm-data-6: #9e6a15;
   --gm-data-7: #5c6268;
   --gm-data-8: #7a3e1d;
+  --gm-serie-1: #15569e;
+  --gm-serie-2: #0b6938;
+  --gm-serie-3: #6a4fb8;
+  --gm-serie-4: #8a5a14;
+  --gm-serie-autre: #7d848c;
   /* spacing */
   --gm-space-1: 4px;
   --gm-space-2: 8px;
@@ -186,6 +191,11 @@
   --gm-data-6: #d9a64a;
   --gm-data-7: #b6bcc5;
   --gm-data-8: #d0966e;
+  --gm-serie-1: #4f93d6;
+  --gm-serie-2: #2a9257;
+  --gm-serie-3: #9a7ad8;
+  --gm-serie-4: #b8882b;
+  --gm-serie-autre: #8d949c;
 }
 
 /* Échelle typographique (14 rôles) */
