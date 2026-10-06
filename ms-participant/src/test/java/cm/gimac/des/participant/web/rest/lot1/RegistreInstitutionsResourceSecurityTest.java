@@ -110,7 +110,8 @@ class RegistreInstitutionsResourceSecurityTest {
             .state(TransitionState.PROPOSEE);
         t.setId(T);
         when(queries.lister(any(), anyInt(), anyInt())).thenReturn(new PageImpl<>(List.of(institution)));
-        when(queries.indicateurs()).thenReturn(new InstitutionRegistryQueries.Indicateurs(3, 2, 1, 4, 5, 0));
+        when(queries.indicateurs()).thenReturn(new InstitutionRegistryQueries.Indicateurs(3, 2, 1, 4, 5, 0,
+            List.of(new InstitutionRegistryQueries.FluxMensuel(java.time.YearMonth.of(2026, 10), 4, 1, 0))));
         when(queries.dossier(ID)).thenReturn(
             new InstitutionRegistryQueries.Dossier(
                 institution,
@@ -252,7 +253,10 @@ class RegistreInstitutionsResourceSecurityTest {
             .andExpect(jsonPath("$.transitionsPermises[0]").value("ADHERENT"));
         mvc
             .perform(req(HttpMethod.GET, "/api/v1/institutions/indicateurs", null).with(jeton("2", "PAR_INSTITUTION_READ")))
-            .andExpect(jsonPath("$.candidats").value(3));
+            .andExpect(jsonPath("$.candidats").value(3))
+            // Mois du flux en AAAA-MM, jamais en tableau : l'interface le découpe tel quel.
+            .andExpect(jsonPath("$.fluxParMois[0].mois").value("2026-10"))
+            .andExpect(jsonPath("$.fluxParMois[0].contacts").value(4));
     }
 
     @Test
