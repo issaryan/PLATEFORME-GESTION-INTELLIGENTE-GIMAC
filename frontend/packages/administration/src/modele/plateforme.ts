@@ -69,7 +69,7 @@ export type ChangementJournalisation = { service: string; logger: string; niveau
 
 /** Séries temporelles des graphiques de la supervision (GET /api/plateforme/series) : listes fermées. */
 export type MetriqueSerie =
-  | 'PLATEFORME_CPU' | 'CONTENEUR_CPU' | 'CONTENEUR_MEMOIRE' | 'HOTE_CPU' | 'HOTE_MEMOIRE' | 'HOTE_DISQUE'
+  | 'PLATEFORME_CPU' | 'CONTENEUR_CPU' | 'CONTENEUR_MEMOIRE' | 'CHARGE_CPU' | 'CHARGE_MEMOIRE' | 'HOTE_CPU' | 'HOTE_MEMOIRE' | 'HOTE_DISQUE'
   | 'SERVICE_DEBIT' | 'SERVICE_LATENCE_P95' | 'SERVICE_ERREURS' | 'SERVICE_TAS_JVM'
 export type PeriodeSerie = 'UNE_HEURE' | 'SIX_HEURES' | 'UN_JOUR' | 'SEPT_JOURS'
 export const PERIODES: PeriodeSerie[] = ['UNE_HEURE', 'SIX_HEURES', 'UN_JOUR', 'SEPT_JOURS']

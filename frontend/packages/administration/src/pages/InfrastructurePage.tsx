@@ -2,16 +2,42 @@ import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router'
 import {
-  Button, Card, DataTable, EmptyState, IconButton, InlineAlert, NumberField, PageHeader, Select, Skeleton, StatusBadge, Tag, type Column, type Status,
+  Button, Card, DataTable, Drawer, EmptyState, IconButton, InlineAlert, NumberField, PageHeader, Select, Skeleton, StatusBadge, Tag, type Column, type Status,
 } from '@gimac/design-system'
 import { aPermission, usePermissions } from '@gimac/socle'
 import { dateHeure } from '@gimac/compte'
-import { useCharges, useFluxInfrastructure, useGesteInfrastructure, useJournauxCharge, useOperationsInfrastructure } from '../hooks'
+import { useCharges, useFluxInfrastructure, useGesteInfrastructure, useJournauxCharge, useOperationsInfrastructure, useSeries } from '../hooks'
+import { GraphiqueMetrique, SelecteurPeriode, TendanceMetrique } from '../composants/graphiquesSupervision'
+import type { PeriodeSerie } from '../modele/plateforme'
 import { BORNES_INFRASTRUCTURE, DUREES_JOURNAUX, type Charge, type Geste, type Operation } from '../modele/infrastructure'
 import { useActes } from '../composants/actes'
 import { Annonce } from '../composants/Annonce'
 import { Donnees } from '../composants/communs'
 import { STATUT_CHARGE } from '../composants/widgetsPlateforme'
+
+/** Fiche des courbes d'une charge : processeur et mémoire, période propre à la fiche. */
+function CourbesCharge({ charge, fermer }: { charge: Charge; fermer: () => void }) {
+  const { t } = useTranslation()
+  const [periode, setPeriode] = useState<PeriodeSerie>('UNE_HEURE')
+  return (
+    <Drawer
+      type={t('infra.charge')}
+      reference={charge.nom}
+      status={STATUT_CHARGE[charge.etat]}
+      statusLabel={t(`infra.etat.${charge.etat}`)}
+      title={t('infra.courbes.titre', { nom: charge.nom })}
+      size="lg"
+      tabs={[{ key: 'courbes', label: t('graphiques.fiche.onglet') }]}
+      onClose={fermer}
+    >
+      <div className="gm-col" style={{ gap: 'var(--gm-space-4)' }}>
+        <SelecteurPeriode valeur={periode} onChange={setPeriode} />
+        <GraphiqueMetrique metrique="CHARGE_CPU" periode={periode} cible={charge.nom} titre={t('graphiques.court.CHARGE_CPU')} />
+        <GraphiqueMetrique metrique="CHARGE_MEMOIRE" periode={periode} cible={charge.nom} titre={t('graphiques.court.CHARGE_MEMOIRE')} />
+      </div>
+    </Drawer>
+  )
+}
 
 // Exploitation de l'infrastructure (D-78, docs/exploitation/operations-infrastructure.md §4) : charges de travail
 // Docker ou Kubernetes du périmètre (état, santé, répliques, redémarrages, image, démarrage, protection),
@@ -126,6 +152,8 @@ export default function InfrastructurePage() {
   const [parametres, setParametres] = useSearchParams()
   const choisie = parametres.get('charge') ?? ''
   const repliques = useRef('1')
+  const cpuCharges = useSeries('CHARGE_CPU', 'UNE_HEURE')
+  const [courbes, setCourbes] = useState<Charge | null>(null)
   const choisir = (nom: string) => setParametres((p) => {
     const q = new URLSearchParams(p)
     if (nom) q.set('charge', nom)
@@ -180,6 +208,7 @@ export default function InfrastructurePage() {
         </span>
       ),
     },
+    { key: 'tendance', header: t('graphiques.colonne.cpuCharge'), render: (c) => <TendanceMetrique series={cpuCharges.data} nom={c.nom} libelle={t('graphiques.metrique.CHARGE_CPU') + ' · ' + c.nom} /> },
     { key: 'repliques', header: t('infra.repliques.colonne'), type: 'number', render: (c) => `${c.repliques.pretes} / ${c.repliques.voulues}` },
     { key: 'redemarrages', header: t('infra.redemarrages'), type: 'number', render: (c) => c.redemarrages },
     { key: 'demarreeLe', header: t('infra.demarreeLe'), render: (c) => dateHeure(c.demarreeLe, i18n.language) },
@@ -188,6 +217,9 @@ export default function InfrastructurePage() {
       render: (c) => (
         // Boutons à pictogramme (nom accessible complet, info-bulle) : la colonne tient sans défilement horizontal.
         <span className="gm-row" style={{ gap: 'var(--gm-space-1)', flexWrap: 'nowrap' }}>
+          <span title={t('infra.courbes.voir', { nom: c.nom })}>
+            <IconButton size="sm" variant="ghost" icon="gauge" onClick={() => setCourbes(c)} label={t('infra.courbes.voir', { nom: c.nom })} />
+          </span>
           <span title={t('infra.journaux.voir', { nom: c.nom })}>
             <IconButton size="sm" variant="ghost" icon="file-text" onClick={() => choisir(c.nom)} label={t('infra.journaux.voir', { nom: c.nom })} />
           </span>
@@ -220,6 +252,7 @@ export default function InfrastructurePage() {
               state={charges.data.charges.length ? 'ok' : 'empty'} emptyText={t('infra.charges.vide')} />
           </Card>
           {choisie ? <Journaux key={choisie} nom={choisie} fermer={() => choisir('')} /> : null}
+          {courbes ? <CourbesCharge charge={courbes} fermer={() => setCourbes(null)} /> : null}
           <Historique />
         </>
       )}

@@ -13,6 +13,21 @@ public enum MetriqueSerie {
     CONTENEUR_CPU("100 * sum by (name) (rate(container_cpu_usage_seconds_total{S,F}[2m]))", "name", "%"),
     /** Mémoire résidente par conteneur, en Mo. */
     CONTENEUR_MEMOIRE("sum by (name) (container_memory_working_set_bytes{S,F}) / 1048576", "name", "Mo"),
+    /**
+     * Processeur par charge de travail Docker (service Compose, nom des charges de l'écran Infrastructure),
+     * en % d'un cœur, toutes répliques confondues.
+     */
+    CHARGE_CPU(
+        "100 * sum by (container_label_com_docker_compose_service) (rate(container_cpu_usage_seconds_total{S,F}[2m]))",
+        "container_label_com_docker_compose_service",
+        "%"
+    ),
+    /** Mémoire résidente par charge de travail Docker (service Compose), en Mo. */
+    CHARGE_MEMOIRE(
+        "sum by (container_label_com_docker_compose_service) (container_memory_working_set_bytes{S,F}) / 1048576",
+        "container_label_com_docker_compose_service",
+        "Mo"
+    ),
     /** Processeur des hôtes (node-exporter), en %. */
     HOTE_CPU("100 * (1 - avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\",F}[2m])))", "instance", "%"),
     /** Mémoire occupée des hôtes, en %. */

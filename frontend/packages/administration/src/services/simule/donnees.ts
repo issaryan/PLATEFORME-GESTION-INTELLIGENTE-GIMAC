@@ -1,4 +1,5 @@
 import { avatarsSimules } from '@gimac/socle'
+import { NOMS_CHARGES_SIMULEES } from './infrastructure'
 import type { Compte } from '@gimac/compte'
 import type { EntreeJournal } from '../../modele/comptes'
 import type { ConfigurationMessagerie, PolitiqueSecurite } from '../../modele/configuration'
@@ -174,11 +175,11 @@ export const journalisation = (service: string): NiveauxJournalisation => ({
 
 const DUREES: Record<PeriodeSerie, number> = { UNE_HEURE: 3600e3, SIX_HEURES: 6 * 3600e3, UN_JOUR: 86400e3, SEPT_JOURS: 7 * 86400e3 }
 const UNITES: Record<MetriqueSerie, string> = {
-  PLATEFORME_CPU: '%', CONTENEUR_CPU: '%', CONTENEUR_MEMOIRE: 'Mo', HOTE_CPU: '%', HOTE_MEMOIRE: '%', HOTE_DISQUE: '%',
+  PLATEFORME_CPU: '%', CONTENEUR_CPU: '%', CONTENEUR_MEMOIRE: 'Mo', CHARGE_CPU: '%', CHARGE_MEMOIRE: 'Mo', HOTE_CPU: '%', HOTE_MEMOIRE: '%', HOTE_DISQUE: '%',
   SERVICE_DEBIT: 'req/s', SERVICE_LATENCE_P95: 'ms', SERVICE_ERREURS: '%', SERVICE_TAS_JVM: 'Mo',
 }
 const BASES: Record<MetriqueSerie, number> = {
-  PLATEFORME_CPU: 120, CONTENEUR_CPU: 8, CONTENEUR_MEMOIRE: 420, HOTE_CPU: 35, HOTE_MEMOIRE: 62, HOTE_DISQUE: 71,
+  PLATEFORME_CPU: 120, CONTENEUR_CPU: 8, CONTENEUR_MEMOIRE: 420, CHARGE_CPU: 9, CHARGE_MEMOIRE: 450, HOTE_CPU: 35, HOTE_MEMOIRE: 62, HOTE_DISQUE: 71,
   SERVICE_DEBIT: 4, SERVICE_LATENCE_P95: 90, SERVICE_ERREURS: 0.4, SERVICE_TAS_JVM: 310,
 }
 
@@ -187,6 +188,7 @@ function nomsSeries(metrique: MetriqueSerie): string[] {
   if (metrique === 'PLATEFORME_CPU') return ['plateforme']
   if (metrique.startsWith('HOTE_')) return serveurs().hotes.map((h) => h.instance)
   if (metrique.startsWith('CONTENEUR_')) return serveurs().conteneurs.map((c) => c.nom)
+  if (metrique.startsWith('CHARGE_')) return NOMS_CHARGES_SIMULEES()
   return instantane().services.map((s) => s.nom)
 }
 

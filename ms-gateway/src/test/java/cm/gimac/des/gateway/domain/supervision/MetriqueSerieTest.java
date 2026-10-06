@@ -20,6 +20,10 @@ class MetriqueSerieTest {
         assertThat(MetriqueSerie.CONTENEUR_CPU.requete(SEL, null)).isEqualTo("100 * sum by (name) (rate(container_cpu_usage_seconds_total{" + SEL + "}[2m]))");
         assertThat(MetriqueSerie.CONTENEUR_MEMOIRE.requete(SEL, "gimac-des-iam-1"))
             .isEqualTo("sum by (name) (container_memory_working_set_bytes{" + SEL + ",name=\"gimac-des-iam-1\"}) / 1048576");
+        assertThat(MetriqueSerie.CHARGE_CPU.requete(SEL, "iam"))
+            .isEqualTo("100 * sum by (container_label_com_docker_compose_service) (rate(container_cpu_usage_seconds_total{" + SEL + ",container_label_com_docker_compose_service=\"iam\"}[2m]))");
+        assertThat(MetriqueSerie.CHARGE_MEMOIRE.requete(SEL, null)).isEqualTo("sum by (container_label_com_docker_compose_service) (container_memory_working_set_bytes{" + SEL + "}) / 1048576");
+        assertThat(MetriqueSerie.CHARGE_MEMOIRE.etiquette()).isEqualTo("container_label_com_docker_compose_service");
         assertThat(MetriqueSerie.PLATEFORME_CPU.etiquette()).isNull();
         assertThat(MetriqueSerie.CONTENEUR_MEMOIRE.unite()).isEqualTo("Mo");
     }

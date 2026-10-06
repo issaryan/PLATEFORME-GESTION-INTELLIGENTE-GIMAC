@@ -38,6 +38,9 @@ const GRAINES: Graine[] = [
 ]
 
 /** Gestes permis à cet instant (§5) ; aucun pendant une opération. */
+/** Noms des charges simulées (séries CHARGE_* des graphiques). */
+export const NOMS_CHARGES_SIMULEES = (): string[] => GRAINES.map((g) => g[0])
+
 export function gestesPermis(c: Omit<Charge, 'gestes'>, enCours: boolean): Geste[] {
   if (enCours) return []
   const g: Geste[] = []

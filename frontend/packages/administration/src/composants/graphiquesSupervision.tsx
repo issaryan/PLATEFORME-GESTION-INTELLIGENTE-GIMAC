@@ -58,7 +58,7 @@ export function GraphiqueMetrique(p: GraphiqueMetriqueProps) {
   const { t, i18n } = useTranslation()
   const r = useSeries(p.metrique, p.periode, p.cible)
   const d = r.data
-  const conteneurs = p.metrique === 'PLATEFORME_CPU' || p.metrique.startsWith('CONTENEUR_')
+  const conteneurs = p.metrique === 'PLATEFORME_CPU' || p.metrique.startsWith('CONTENEUR_') || p.metrique.startsWith('CHARGE_')
   const vide = d && !d.disponible ? t('graphiques.indisponible') : conteneurs ? t('graphiques.conteneursAbsents') : t('graphiques.aucuneMesure')
   return (
     <SerieTemporelle
