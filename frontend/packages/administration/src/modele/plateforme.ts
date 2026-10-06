@@ -66,3 +66,24 @@ export type NiveauLogger = { nom: string; niveauConfigure: string | null; niveau
 export type NiveauxJournalisation = { service: string; niveauxDisponibles: string[]; loggers: NiveauLogger[] }
 export type DemandeNiveau = { logger: string; niveau: string; motif: string }
 export type ChangementJournalisation = { service: string; logger: string; niveau: string; motif: string; auteur: string; horodatage: string }
+
+/** Séries temporelles des graphiques de la supervision (GET /api/plateforme/series) : listes fermées. */
+export type MetriqueSerie =
+  | 'PLATEFORME_CPU' | 'CONTENEUR_CPU' | 'CONTENEUR_MEMOIRE' | 'HOTE_CPU' | 'HOTE_MEMOIRE' | 'HOTE_DISQUE'
+  | 'SERVICE_DEBIT' | 'SERVICE_LATENCE_P95' | 'SERVICE_ERREURS' | 'SERVICE_TAS_JVM'
+export type PeriodeSerie = 'UNE_HEURE' | 'SIX_HEURES' | 'UN_JOUR' | 'SEPT_JOURS'
+export const PERIODES: PeriodeSerie[] = ['UNE_HEURE', 'SIX_HEURES', 'UN_JOUR', 'SEPT_JOURS']
+/** Mesure : instant en millisecondes, valeur nulle quand la mesure manque (trou, jamais zéro). */
+export type PointSerie = { t: number; v: number | null }
+export type SerieMetrique = { nom: string; points: PointSerie[] }
+/** Séries triées de la plus chargée à la moins chargée ; disponible=false : Prometheus injoignable. */
+export type SeriesMetriques = {
+  metrique: MetriqueSerie
+  unite: string
+  periode: PeriodeSerie
+  debut: string
+  fin: string
+  pasSecondes: number
+  disponible: boolean
+  series: SerieMetrique[]
+}

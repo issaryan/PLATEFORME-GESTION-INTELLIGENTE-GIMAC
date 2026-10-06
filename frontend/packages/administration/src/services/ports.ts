@@ -6,7 +6,7 @@ import type { ConfigurationMessagerie, PolitiqueSecurite, Profil } from '../mode
 import type { DemandeGeste, EtatInfrastructure, Geste, JournauxCharge, Operation, PageOperations } from '../modele/infrastructure'
 import type {
   ChangementJournalisation, ConfigurationPlateforme, DemandeNiveau, EtatAlertes, EtatFlux, EtatServeurs, ImpulsionPlateforme, InstantanePlateforme,
-  NiveauxJournalisation,
+  MetriqueSerie, NiveauxJournalisation, PeriodeSerie, SeriesMetriques,
 } from '../modele/plateforme'
 
 // Ports de la console (D-62) : seul contrat entre les écrans et les données. Implémentations : HTTP
@@ -79,6 +79,8 @@ export interface ServicePlateforme {
   modifierJournalisation(service: string, d: DemandeNiveau): Promise<ChangementJournalisation>
   /** Flux temps réel (SSE) : renvoie la fonction de fermeture. */
   flux(e: EcouteurFlux): () => void
+  /** Historique d'une métrique (graphiques) ; cible : service, conteneur ou hôte. */
+  series(metrique: MetriqueSerie, periode: PeriodeSerie, cible?: string): Promise<SeriesMetriques>
 }
 
 /**

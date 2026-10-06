@@ -381,6 +381,7 @@ export function servicesConsoleSimules(o: OptionsConsoleSimulee = {}): ServicesC
   let sequence = 0
   const plateforme: ServicePlateforme = {
     services: () => attendre(() => D.instantane()),
+    series: (metrique, periode, cible) => attendre(() => D.series(metrique, periode, cible)),
     serveurs: () => attendre(D.serveurs),
     alertes: () => attendre(D.alertes),
     configuration: () => attendre(D.configurationPlateforme),

@@ -38,6 +38,8 @@ export const NAVIGATION_CONSOLE: GroupeNavigation[] = [
   {
     libelleKey: 'console.nav.groupe.plateforme',
     entrees: [
+      // Centre de contrôle : état en temps réel et graphiques des métriques (services, serveurs, conteneurs).
+      { cle: 'supervision', libelleKey: 'console.nav.supervision', icone: 'gauge', chemin: '/console/plateforme/supervision', permission: 'PLATFORM_SUPERVISION_READ' },
       // Exploitation de l'infrastructure (D-78) : charges, journaux, gestes ; lecture seule sans PLATFORM_OPS_EXECUTE.
       { cle: 'infrastructure', libelleKey: 'console.nav.infrastructure', icone: 'rotate-ccw', chemin: '/console/plateforme/infrastructure', permission: 'PLATFORM_OPS_READ' },
       { cle: 'configuration', libelleKey: 'console.nav.configuration', icone: 'monitor', chemin: '/console/plateforme/configuration', permission: 'PLATFORM_CONFIG_READ' },

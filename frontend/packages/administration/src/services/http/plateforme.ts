@@ -72,4 +72,5 @@ export const plateformeHttp: ServicePlateforme = {
   journalisation: (service, filtre) => http.get(`${PLATEFORME}/journalisation/${encodeURIComponent(service)}`, { query: { filtre: filtre || undefined } }),
   modifierJournalisation: (service, d) => http.post(`${PLATEFORME}/journalisation/${encodeURIComponent(service)}`, { body: d }),
   flux: (e) => ouvrirFlux(e),
+  series: (metrique, periode, cible) => http.get(`${PLATEFORME}/series`, { query: { metrique, periode, cible: cible || undefined } }),
 }

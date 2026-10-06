@@ -184,3 +184,10 @@ rect.gm-data-8, circle.gm-data-8, .gm-chart-swatch.gm-data-8 { fill: var(--gm-da
 .gm-barres-h-barre { display: block; height: 100%; min-width: 2px; background: var(--gm-serie); border-radius: 0 4px 4px 0; }
 .gm-barres-h-barre.gm-actif { opacity: 0.8; }
 .gm-barres-h-valeur { color: var(--gm-color-text-primary); font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+/* Grille de graphiques d'un tableau de bord ou de la supervision : deux colonnes ou plus selon la largeur,
+   une seule sur écran étroit ; les cartes gardent la même hauteur sur une rangée. */
+.gm-graphiques-grille { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: var(--gm-space-4); align-items: stretch; }
+.gm-graphiques-grille > .gm-chartcard { margin: 0; }
+/* Légende des graphiques : les entrées passent à la ligne, jamais la clé de couleur et son libellé. */
+.gm-chart-legend { flex-wrap: wrap; row-gap: var(--gm-space-1); }
+.gm-chart-legend > span { flex-wrap: nowrap; white-space: nowrap; }

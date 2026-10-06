@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
-import { useMutation, useQuery, useQueryClient, type QueryKey, type UseQueryOptions } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryKey, type UseQueryOptions } from '@tanstack/react-query'
 import type { ApiError } from '@gimac/socle'
 import { useServicesConsole } from '../services/useServicesConsole'
 import type { ServicesConsole } from '../services/ports'
 import type { FiltreComptes, FiltreJournal } from '../modele/comptes'
-import type { EtatFlux, ImpulsionPlateforme } from '../modele/plateforme'
+import type { EtatFlux, ImpulsionPlateforme, MetriqueSerie, PeriodeSerie } from '../modele/plateforme'
 import type { DemandeGeste, Geste } from '../modele/infrastructure'
 
 // Hooks de données de la console : seuls points d'appel des ports injectés. Clés [sujet, ressource, …].
@@ -24,6 +24,7 @@ export const cles = {
   serveurs: () => ['plateforme', 'serveurs'] as const,
   alertes: () => ['plateforme', 'alertes'] as const,
   configuration: () => ['plateforme', 'configuration'] as const,
+  series: (metrique: MetriqueSerie, periode: PeriodeSerie, cible?: string) => ['plateforme', 'series', metrique, periode, cible ?? ''] as const,
   journalisation: (service: string, filtre?: string) => ['plateforme', 'journalisation', service, filtre ?? ''] as const,
   infrastructure: ['plateforme', 'infrastructure'] as const,
   charges: () => ['plateforme', 'infrastructure', 'charges'] as const,
@@ -60,6 +61,19 @@ export const useMessagerie = () => useLecture(cles.messagerie(), (s) => s.config
 export const useServicesPlateforme = (actif = true) => useLecture(cles.services(), (s) => s.plateforme.services(), { enabled: actif })
 export const useServeurs = (actif = true) => useLecture(cles.serveurs(), (s) => s.plateforme.serveurs(), { enabled: actif })
 export const useAlertes = (actif = true) => useLecture(cles.alertes(), (s) => s.plateforme.alertes(), { enabled: actif })
+/** Rafraîchissement des graphiques : rythme adapté à la période (le pas des mesures croît avec elle). */
+const RAFRAICHISSEMENT: Record<PeriodeSerie, number> = { UNE_HEURE: 30_000, SIX_HEURES: 90_000, UN_JOUR: 300_000, SEPT_JOURS: 600_000 }
+
+/**
+ * Historique d'une métrique pour un graphique. Pendant un rechargement ou un changement de période, la
+ * réponse précédente reste affichée (isPlaceholderData) : le graphique s'atténue, sans flash ni squelette.
+ */
+export const useSeries = (metrique: MetriqueSerie, periode: PeriodeSerie, cible?: string, actif = true) =>
+  useLecture(cles.series(metrique, periode, cible), (s) => s.plateforme.series(metrique, periode, cible), {
+    enabled: actif,
+    refetchInterval: RAFRAICHISSEMENT[periode],
+    placeholderData: keepPreviousData,
+  })
 export const useConfigurationPlateforme = () => useLecture(cles.configuration(), (s) => s.plateforme.configuration())
 export const useJournalisation = (service: string, filtre?: string) =>
   useLecture(cles.journalisation(service, filtre), (s) => s.plateforme.journalisation(service, filtre), { enabled: !!service })

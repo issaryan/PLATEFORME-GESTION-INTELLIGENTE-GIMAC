@@ -121,7 +121,7 @@ describe('widgets de plateforme et supervision', () => {
   })
   it('écran « Supervision » : en-tête et section de supervision', async () => {
     rendrePage(<SupervisionPage />, { chemin: '/des/plateforme/supervision', motif: '/des/plateforme/supervision', permissions: ADMIN })
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Supervision de la plateforme')
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Centre de contrôle')
     expect(await screen.findByRole('region', { name: 'État en temps réel' })).toBeTruthy()
   })
 })
