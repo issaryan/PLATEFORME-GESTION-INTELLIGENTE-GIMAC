@@ -48,7 +48,13 @@ export type IndicateursComptes = {
   creesDepuis30Jours: number
   actesDepuis24Heures: number
   parProfil: Record<string, number>
+  /** 30 derniers jours (aujourd'hui compris, fuseau de Douala), zéro les jours sans événement. */
+  creationsParJour?: ParJour[]
+  actesParJour?: ParJour[]
 }
+
+/** Compte d'un jour (date ISO AAAA-MM-JJ). */
+export type ParJour = { jour: string; nombre: number }
 
 export type EntreeJournal = {
   id: string

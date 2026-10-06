@@ -156,6 +156,21 @@ class AdministrationComptesServiceTest {
     }
 
     @Test
+    @DisplayName("Séries quotidiennes : 30 jours denses au fuseau de Douala, jours vides à zéro, hors fenêtre ignorés")
+    void seriesQuotidiennes() {
+        // 2026-09-28T23:30Z est déjà le 29 septembre à Douala (UTC+1) ; le 1er août sort de la fenêtre.
+        when(entrees.horodatagesDepuis(any())).thenReturn(List.of(
+            Instant.parse("2026-09-28T23:30:00Z"), Instant.parse("2026-09-29T07:00:00Z"), Instant.parse("2026-09-01T10:00:00Z"), Instant.parse("2026-08-01T10:00:00Z")));
+        var i = service.indicateurs();
+        assertThat(i.actesParJour()).hasSize(AdministrationComptesService.JOURS_SERIES);
+        assertThat(i.actesParJour().get(0).jour()).isEqualTo(java.time.LocalDate.parse("2026-08-31"));
+        assertThat(i.actesParJour().get(29)).isEqualTo(new AdministrationComptesService.ParJour(java.time.LocalDate.parse("2026-09-29"), 2));
+        assertThat(i.actesParJour().get(1).nombre()).isEqualTo(1);
+        assertThat(i.actesParJour().stream().mapToLong(AdministrationComptesService.ParJour::nombre).sum()).isEqualTo(3);
+        assertThat(i.creationsParJour()).hasSize(AdministrationComptesService.JOURS_SERIES);
+    }
+
+    @Test
     @DisplayName("Fiche, profils, activation, suppression, avec journal et motif")
     void cycleDeVie() {
         String id = service.creer(SUPER, nouveau("agent.ddrm", "ROLE_CHARGE_DDRM"), true, false).compte().id();

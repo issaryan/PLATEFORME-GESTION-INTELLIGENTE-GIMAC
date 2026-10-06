@@ -16,6 +16,8 @@ import cm.gimac.des.iam.infrastructure.persistence.JournalAdministrationReposito
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -59,8 +61,18 @@ public class AdministrationComptesService {
         long privilegies,
         long creesDepuis30Jours,
         long actesDepuis24Heures,
-        Map<String, Long> parProfil
+        Map<String, Long> parProfil,
+        List<ParJour> creationsParJour,
+        List<ParJour> actesParJour
     ) {}
+
+    /** Nombre d'événements d'un jour (fuseau de la plateforme). */
+    public record ParJour(LocalDate jour, long nombre) {}
+
+    /** Profondeur des séries quotidiennes des tableaux de bord. */
+    public static final int JOURS_SERIES = 30;
+    /** Fuseau des jours des séries : celui de la CEMAC (UTC+1, sans heure d'été). */
+    public static final ZoneId FUSEAU = ZoneId.of("Africa/Douala");
 
     private final Annuaire annuaire;
     private final JournalActes journal;
@@ -149,8 +161,29 @@ public class AdministrationComptesService {
             l.stream().filter(c -> c.profils().stream().anyMatch(privilegies::contains)).count(),
             l.stream().filter(c -> c.creeLe() != null && c.creeLe().isAfter(il30Jours)).count(),
             entrees.countByHorodatageAfter(clock.instant().minus(Duration.ofHours(24))),
-            parProfil
+            parProfil,
+            parJour(l.stream().map(Compte::creeLe).filter(java.util.Objects::nonNull).toList()),
+            parJour(entrees.horodatagesDepuis(debutSeries()))
         );
+    }
+
+    /** Premier instant de la fenêtre des séries : minuit du jour J-29, fuseau de la plateforme. */
+    private Instant debutSeries() {
+        return LocalDate.now(clock.withZone(FUSEAU)).minusDays(JOURS_SERIES - 1L).atStartOfDay(FUSEAU).toInstant();
+    }
+
+    /** Un point par jour sur les 30 derniers jours (aujourd'hui compris), zéro les jours sans événement. */
+    List<ParJour> parJour(List<Instant> instants) {
+        LocalDate fin = LocalDate.now(clock.withZone(FUSEAU));
+        LocalDate debut = fin.minusDays(JOURS_SERIES - 1L);
+        Map<LocalDate, Long> compte = new java.util.HashMap<>();
+        instants.forEach(i -> {
+            LocalDate j = LocalDate.ofInstant(i, FUSEAU);
+            if (!j.isBefore(debut) && !j.isAfter(fin)) {
+                compte.merge(j, 1L, Long::sum);
+            }
+        });
+        return debut.datesUntil(fin.plusDays(1)).map(j -> new ParJour(j, compte.getOrDefault(j, 0L))).toList();
     }
 
     // ------------------------------------------------------------------ écritures

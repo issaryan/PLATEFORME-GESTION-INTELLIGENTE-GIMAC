@@ -104,6 +104,32 @@ export function libelleInstant(t: number, langue = 'fr'): string {
   return new Intl.DateTimeFormat(locale(langue), { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).format(new Date(t))
 }
 
+/** Pas des points d'une série : mesures instantanées (supervision), comptes par jour ou par mois (tableaux de bord). */
+export type Granularite = 'instant' | 'jour' | 'mois'
+
+/** Libellé complet d'un point (infobulle, vue tableau) : instant, jour (« lun. 06/10 ») ou mois (« octobre 2026 »). */
+export function libellePeriode(t: number, granularite: Granularite, langue = 'fr'): string {
+  if (granularite === 'instant') return libelleInstant(t, langue)
+  const opts: Intl.DateTimeFormatOptions = granularite === 'jour' ? { weekday: 'short', day: '2-digit', month: '2-digit' } : { month: 'long', year: 'numeric' }
+  return new Intl.DateTimeFormat(locale(langue), opts).format(new Date(t))
+}
+
+/** Libellé d'une graduation de l'axe du temps selon la granularité (« 06/10 », « oct. 26 »). */
+export function libelleGraduation(t: number, granularite: Granularite, etendue: number, langue = 'fr'): string {
+  if (granularite === 'mois') return new Intl.DateTimeFormat(locale(langue), { month: 'short', year: '2-digit' }).format(new Date(t))
+  if (granularite === 'jour') return new Intl.DateTimeFormat(locale(langue), { day: '2-digit', month: '2-digit' }).format(new Date(t))
+  return libelleTemps(t, etendue, langue)
+}
+
+/** Graduations prises parmi les points eux-mêmes (mois de longueurs inégales) : un point sur k, le dernier compris. */
+export function graduationsPoints(instants: number[], cible = 5): number[] {
+  if (instants.length <= cible) return instants
+  const k = Math.ceil(instants.length / cible)
+  const r: number[] = []
+  for (let i = instants.length - 1; i >= 0; i -= k) r.unshift(instants[i])
+  return r
+}
+
 /** Classe de série : quatre teintes dans l'ordre fixe, puis « Autres ». */
 export function classeSerie(index: number): string {
   return index < 4 ? 'gm-serie-' + (index + 1) : 'gm-serie-autre'

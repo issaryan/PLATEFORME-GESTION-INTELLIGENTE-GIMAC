@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
-import { ActionBar, Button, Card, DataTable, Link, PageSection, StatGrid, Tag, type Column } from '@gimac/design-system'
+import { ActionBar, BarresHorizontales, Button, DataTable, Link, PageSection, SerieTemporelle, StatGrid, type Column } from '@gimac/design-system'
 import { aPermission, usePermissions } from '@gimac/socle'
 import { dateHeure, useLibelleProfil } from '@gimac/compte'
 import { useIndicateursComptes, useJournal } from '../hooks'
-import type { EntreeJournal } from '../modele/comptes'
+import type { EntreeJournal, IndicateursComptes, ParJour } from '../modele/comptes'
 import { useChemins } from '../services/useServicesConsole'
 import { Donnees, Section } from './communs'
 import { DialogueCreationCompte } from './DialogueCreationCompte'
@@ -57,18 +57,44 @@ export function SectionGestionUtilisateurs({ posture }: { posture: boolean }) {
                 { key: 'actes24', label: t('console.indicateur.actes24'), value: i.actesDepuis24Heures, ...(peut('IAM_JOURNAL_READ') ? { onClick: vers(`${base}/journal`) } : {}) },
               ]}
             />
-            {posture ? (
-              <Card title={t('console.indicateur.parProfil')}>
-                <span className="gm-row">
-                  {Object.entries(i.parProfil).map(([p, n]) => <Tag key={p}>{`${libelleProfil(p)} : ${n}`}</Tag>)}
-                </span>
-              </Card>
-            ) : null}
+            <div className="gm-graphiques-grille">
+              <BarresHorizontales
+                title={t('console.indicateur.parProfil')}
+                subtitle={t('console.indicateur.parProfil.aide')}
+                maximum={Object.keys(i.parProfil).length}
+                elements={Object.entries(i.parProfil).map(([p, n]) => ({ cle: p, libelle: libelleProfil(p), valeur: n, onClick: vers(`${base}/comptes?profil=${encodeURIComponent(p)}`) }))}
+                vide={t('console.indicateur.parProfil.vide')}
+              />
+              <ActiviteComptes i={i} />
+            </div>
           </div>
         )}
       </Donnees>
       {creation ? <DialogueCreationCompte onFermer={() => setCreation(false)} /> : null}
     </PageSection>
+  )
+}
+
+/** Jour ISO (AAAA-MM-JJ) en minuit local : un point par jour sur l'axe du temps. */
+const pointsJour = (l: ParJour[]) => l.map((x) => { const [a, m, j] = x.jour.split('-').map(Number); return { t: new Date(a, m - 1, j).getTime(), v: x.nombre } })
+
+/** Activité des 30 derniers jours : comptes créés et actes d'administration par jour (MS-IAM). */
+function ActiviteComptes({ i }: { i: IndicateursComptes }) {
+  const { t } = useTranslation()
+  if (!i.creationsParJour?.length && !i.actesParJour?.length) return null
+  return (
+    <SerieTemporelle
+      title={t('console.activite.titre')}
+      subtitle={t('console.activite.sousTitre')}
+      granularite="jour"
+      aire={false}
+      min={0}
+      format={(v) => (Number.isInteger(v) ? String(v) : '')}
+      series={[
+        { nom: t('console.activite.creations'), points: pointsJour(i.creationsParJour ?? []) },
+        { nom: t('console.activite.actes'), points: pointsJour(i.actesParJour ?? []) },
+      ]}
+    />
   )
 }
 

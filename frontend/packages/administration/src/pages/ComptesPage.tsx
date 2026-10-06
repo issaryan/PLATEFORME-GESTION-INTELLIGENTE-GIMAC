@@ -24,12 +24,14 @@ export default function ComptesPage({ creation = false }: { creation?: boolean }
   const [params] = useSearchParams()
   const etatDemande = params.get('etat') as EtatFiltre | null
   const etatValide = etatDemande && ETATS_FILTRE.includes(etatDemande) ? etatDemande : undefined
-  const [filtre, setFiltre] = useState<FiltreComptes>({ page: 1, taille: 25, etat: etatValide })
+  // Profil demandé (?profil=, barre « Comptes par profil » du tableau de bord).
+  const profilDemande = params.get('profil') || undefined
+  const [filtre, setFiltre] = useState<FiltreComptes>({ page: 1, taille: 25, etat: etatValide, profil: profilDemande })
   // Indicateur suivi depuis le tableau de bord alors que la liste est déjà affichée : le filtre suit l'adresse.
-  const [etatSuivi, setEtatSuivi] = useState(etatValide)
-  if (etatSuivi !== etatValide) {
-    setEtatSuivi(etatValide)
-    setFiltre((f) => ({ ...f, page: 1, etat: etatValide }))
+  const [suivi, setSuivi] = useState({ etat: etatValide, profil: profilDemande })
+  if (suivi.etat !== etatValide || suivi.profil !== profilDemande) {
+    setSuivi({ etat: etatValide, profil: profilDemande })
+    setFiltre((f) => ({ ...f, page: 1, etat: etatValide, profil: profilDemande }))
   }
   const [creer, setCreer] = useState(creation)
   const fermerCreation = () => {

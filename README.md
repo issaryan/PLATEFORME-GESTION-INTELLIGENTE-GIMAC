@@ -125,3 +125,4 @@ infra/ci/valider-securite.sh                       # secrets (gitleaks) et vuln�
 | 2026-10-06 | — | Exploitation Kubernetes depuis la console, lecture (lot 4b-1, partie serveur) : pods, événements, nœuds, tâches |
 | 2026-10-06 | — | Exploitation Kubernetes depuis la console, lecture (lot 4b-1, écrans) : pods et événements par charge, nœuds du cluster, jobs et cronjobs |
 | 2026-10-06 | — | Exploitation Kubernetes depuis la console : retour à la version précédente d'un déploiement (geste RETABLIR signé, lot 4b-2), image cible affichée dans la confirmation |
+| 2026-10-06 | — | Tableaux de bord métier en graphiques (lot 5) : comptes par profil et activité quotidienne (MS-IAM), répartition des institutions et flux mensuel de la DDRM (MS-PARTICIPANT) |

@@ -97,7 +97,12 @@ export type IndicateursDdrm = {
   adherents: number
   enHomologation: number
   closSansSuite: number
+  /** 12 derniers mois (mois courant compris, fuseau de Douala), zéro les mois sans mouvement. */
+  fluxParMois?: FluxMensuel[]
 }
+
+/** Flux d'un mois (AAAA-MM) : prises de contact, adhésions prononcées, clôtures sans suite. */
+export type FluxMensuel = { mois: string; contacts: number; adhesions: number; clotures: number }
 
 export type Candidature = {
   nom: string

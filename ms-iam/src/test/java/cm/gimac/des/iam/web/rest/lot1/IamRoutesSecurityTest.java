@@ -159,7 +159,7 @@ class IamRoutesSecurityTest {
         var session = new SessionCompte("s1", "10.0.0.1", Instant.EPOCH, Instant.EPOCH, List.of("web_app"));
         var cle = new ReauthentificationService.Cle(UUID.fromString(CLE), "Clé", Instant.EPOCH, null);
         when(comptes.lister(any(), anyInt(), anyInt())).thenReturn(new AdministrationComptesService.PageComptes(List.of(compte), 1));
-        when(comptes.indicateurs()).thenReturn(new AdministrationComptesService.Indicateurs(1, 1, 0, 1, 1, 0, 1, 2, Map.of("ROLE_CHARGE_DDRM", 1L)));
+        when(comptes.indicateurs()).thenReturn(new AdministrationComptesService.Indicateurs(1, 1, 0, 1, 1, 0, 1, 2, Map.of("ROLE_CHARGE_DDRM", 1L), List.of(), List.of()));
         when(comptes.lire(ID)).thenReturn(compte);
         when(comptes.sessions(ID)).thenReturn(List.of(session));
         when(comptes.creer(any(), any(), anyBoolean(), anyBoolean())).thenReturn(new AdministrationComptesService.Creation(compte, true, null));

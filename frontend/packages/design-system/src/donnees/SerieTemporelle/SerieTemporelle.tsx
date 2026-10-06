@@ -8,8 +8,10 @@ import {
   echelle,
   formatCompact,
   graduationsTemps,
-  libelleInstant,
-  libelleTemps,
+  graduationsPoints,
+  libelleGraduation,
+  libellePeriode,
+  type Granularite,
   type PointMesure,
 } from '../../lib/graphiques'
 import { IconButton } from '../../actions/IconButton/IconButton'
@@ -49,6 +51,8 @@ export interface SerieTemporelleProps {
   onExporter?: () => void
   /** Actions d'en-tête complémentaires (lien vers le détail…). */
   actions?: ReactNode
+  /** Pas des points : instants (défaut), jours ou mois (comptes des tableaux de bord) ; règle l'axe et les libellés. */
+  granularite?: Granularite
 }
 
 const MAX_IDENTITE = 4
@@ -125,7 +129,10 @@ export function SerieTemporelle(p: SerieTemporelleProps) {
     else if (e.key === 'Escape') setCurseur(null)
   }
 
-  const graduationsX = graduationsTemps(debut, fin, Math.max(2, Math.floor(iw / 110)))
+  const granularite = p.granularite ?? 'instant'
+  const cibleX = Math.max(2, Math.floor(iw / 110))
+  // Jours et mois : graduations prises parmi les points (une par jour ou par mois, la dernière comprise).
+  const graduationsX = granularite === 'instant' ? graduationsTemps(debut, fin, cibleX) : graduationsPoints(instants, cibleX)
   const tc = curseur !== null ? instants[curseur] : null
 
   const graphique = (
@@ -146,7 +153,7 @@ export function SerieTemporelle(p: SerieTemporelleProps) {
         </g>
       ))}
       {graduationsX.map((g) => (
-        <text key={'x' + g} className="gm-chart-tick" x={xs(g)} y={H - 6} textAnchor="middle">{libelleTemps(g, etendue, langue)}</text>
+        <text key={'x' + g} className="gm-chart-tick" x={xs(g)} y={H - 6} textAnchor="middle">{libelleGraduation(g, granularite, etendue, langue)}</text>
       ))}
       {p.seuil !== undefined ? (
         <g>
@@ -182,7 +189,7 @@ export function SerieTemporelle(p: SerieTemporelleProps) {
   const infobulle =
     tc !== null && vue === 'graphique' ? (
       <div className="gm-graphique-infobulle" role="status" style={xs(tc) > W - 200 ? { right: W - xs(tc) + 12, top: 0 } : { left: xs(tc) + 12, top: 0 }}>
-        <span>{libelleInstant(tc, langue)}</span>
+        <span>{libellePeriode(tc, granularite, langue)}</span>
         {series.map((s, i) => (
           <span key={s.nom} className="gm-row" style={{ gap: 'var(--gm-space-2)' }}>
             <span className={'gm-serie-cle ' + classeSerie(i)} />
@@ -198,7 +205,7 @@ export function SerieTemporelle(p: SerieTemporelleProps) {
       <table className="gm-table gm-table-compact">
         <thead>
           <tr>
-            <th scope="col">{t('graphique.instant')}</th>
+            <th scope="col">{t(granularite === 'instant' ? 'graphique.instant' : `graphique.${granularite}`)}</th>
             {series.map((s) => (
               <th key={s.nom} scope="col" className="gm-num">{s.nom}</th>
             ))}
@@ -207,7 +214,7 @@ export function SerieTemporelle(p: SerieTemporelleProps) {
         <tbody>
           {instants.map((tt) => (
             <tr key={tt}>
-              <td>{libelleInstant(tt, langue)}</td>
+              <td>{libellePeriode(tt, granularite, langue)}</td>
               {series.map((s) => (
                 <td key={s.nom} className="gm-num">{fmt(valeurA(s, tt))}</td>
               ))}

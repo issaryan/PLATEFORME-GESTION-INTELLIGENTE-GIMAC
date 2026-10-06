@@ -63,8 +63,8 @@ class CollaborateursInternesIT extends AbstractIamIT {
 
     private String creer(String identifiant, String fonction, String institution) throws Exception {
         String corps = """
-            {"identifiant":"%s","prenom":"Awa","nom":"Mballa","email":"%s@gimac.test","telephone":"+237600000009","fonction":"%s",%s"profils":["ROLE_CHARGE_DDRM"],"envoyerInvitation":true}"""
-            .formatted(identifiant, identifiant, fonction, institution == null ? "" : "\"institutionId\":\"" + institution + "\",");
+            {"identifiant":"%s","prenom":"Awa","nom":"Mballa","email":"%s@gimac.test","telephone":"+237600000009","fonction":"%s",%s"profils":["%s"],"envoyerInvitation":true}"""
+            .formatted(identifiant, identifiant, fonction, institution == null ? "" : "\"institutionId\":\"" + institution + "\",", institution == null ? "ROLE_CHARGE_DDRM" : "ROLE_CORRESPONDANT");
         String reponse = mvc
             .perform(post("/api/v1/comptes").with(utilisateur(SUPER_ADMIN, PERMISSIONS_SUPER_ADMIN)).contentType(MediaType.APPLICATION_JSON).content(corps))
             .andExpect(status().isCreated())

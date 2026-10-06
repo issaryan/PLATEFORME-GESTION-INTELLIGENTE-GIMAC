@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { BarresHorizontales, LangueProvider, SerieTemporelle, Sparkline, StatCard, type LangueDS } from '../src'
-import { cheminAire, cheminCourbe, classeSerie, echelle, formatCompact, graduationsTemps, libelleTemps, pasRond } from '../src/lib/graphiques'
+import { cheminAire, cheminCourbe, classeSerie, echelle, formatCompact, graduationsPoints, graduationsTemps, libelleGraduation, libellePeriode, libelleTemps, pasRond } from '../src/lib/graphiques'
 
 afterEach(cleanup)
 
@@ -208,6 +208,29 @@ describe('SerieTemporelle', () => {
     unmount()
     expect(deconnecte).toHaveBeenCalled()
     vi.unstubAllGlobals()
+  })
+})
+
+describe('Granularité jour et mois (tableaux de bord)', () => {
+  const mois = Array.from({ length: 12 }, (_, i) => new Date(2025, 10 + i, 1).getTime())
+  it('libellés de point et de graduation ; graduations prises parmi les points, la dernière comprise', () => {
+    expect(libellePeriode(new Date(2026, 9, 1).getTime(), 'mois', 'fr')).toBe('octobre 2026')
+    expect(libellePeriode(new Date(2026, 9, 6).getTime(), 'jour', 'fr')).toMatch(/^mar\.? 06\/10$/)
+    expect(libellePeriode(T0, 'instant', 'fr')).toMatch(/^06\/10/)
+    expect(libelleGraduation(new Date(2026, 9, 1).getTime(), 'mois', 0, 'en')).toBe('Oct 26')
+    expect(libelleGraduation(new Date(2026, 9, 6).getTime(), 'jour', 0, 'fr')).toBe('06/10')
+    expect(libelleGraduation(T0, 'instant', 3600e3, 'fr')).toBe(libelleTemps(T0, 3600e3, 'fr'))
+    const g = graduationsPoints(mois, 5)
+    expect(g.length).toBeLessThanOrEqual(6)
+    expect(g[g.length - 1]).toBe(mois[11])
+    expect(graduationsPoints(mois.slice(0, 3), 5)).toEqual(mois.slice(0, 3))
+  })
+  it('courbe mensuelle : axe en mois, vue tableau en colonne « Mois »', () => {
+    render(<SerieTemporelle title="Flux" granularite="mois" series={[{ nom: 'Contacts', points: mois.map((t, i) => ({ t, v: i })) }]} />)
+    expect(screen.getByText('oct. 26')).toBeTruthy()
+    fireEvent.click(screen.getByRole('tab', { name: 'Tableau' }))
+    expect(screen.getByRole('columnheader', { name: 'Mois' })).toBeTruthy()
+    expect(screen.getByText('novembre 2025')).toBeTruthy()
   })
 })
 

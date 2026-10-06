@@ -1,6 +1,6 @@
 import { ReauthCancelled } from '@gimac/socle'
 import { creerSimulateur, type Compte, type SessionCompte } from '@gimac/compte'
-import type { EntreeJournal } from '../../modele/comptes'
+import type { EntreeJournal, ParJour } from '../../modele/comptes'
 import { ALGORITHMES_OTP, type PolitiqueSecurite, type Profil } from '../../modele/configuration'
 import { UNITES_DEMO, type Unite } from '@gimac/lot1'
 import type { ServiceComptes, ServiceConfiguration, ServiceOrganisation, ServicePlateforme, ServicesConsole } from '../ports'
@@ -30,6 +30,18 @@ const IDENTIFIANT = /^[a-z][a-z0-9._-]{2,49}$/
 const TELEPHONE = /^\+?[0-9 ]{8,20}$/
 const COURRIEL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 const ASSERTION_SIMULEE = btoa('assertion-simulee')
+
+/** 30 jours denses (aujourd'hui compris) : événements réels du jour plus un fond fictif déterministe. */
+function parJour(instants: (string | null | undefined)[], fond: (i: number) => number): ParJour[] {
+  const cle = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  const reels = new Map<string, number>()
+  instants.forEach((x) => { if (x) { const k = cle(new Date(x)); reels.set(k, (reels.get(k) ?? 0) + 1) } })
+  const aujourdhui = new Date()
+  return Array.from({ length: 30 }, (_, n) => {
+    const d = new Date(aujourdhui.getFullYear(), aujourdhui.getMonth(), aujourdhui.getDate() - (29 - n))
+    return { jour: cle(d), nombre: fond(n) + (reels.get(cle(d)) ?? 0) }
+  })
+}
 
 export function servicesConsoleSimules(o: OptionsConsoleSimulee = {}): ServicesConsole {
   const { attendre, refus } = creerSimulateur({ latenceMs: o.latenceMs ?? 300 })
@@ -129,6 +141,9 @@ export function servicesConsoleSimules(o: OptionsConsoleSimulee = {}): ServicesC
           creesDepuis30Jours: comptes.filter((c) => c.creeLe && Date.parse(c.creeLe) > il30).length,
           actesDepuis24Heures: journal.filter((j) => Date.parse(j.horodatage) > Date.now() - 86_400_000).length,
           parProfil,
+          // Historique fictif déterministe, augmenté des créations et actes réels de la démonstration.
+          creationsParJour: parJour(comptes.map((c) => c.creeLe), (i) => (i * 7) % 5 === 0 ? 1 : 0),
+          actesParJour: parJour(journal.map((j) => j.horodatage), (i) => (new Date(Date.now() - (29 - i) * 86_400_000).getDay() % 6 === 0 ? 0 : 3 + Math.round(2 * Math.sin(i / 3)) + (i % 9 === 4 ? 4 : 0))),
         }
       }),
     journal: (f) =>
