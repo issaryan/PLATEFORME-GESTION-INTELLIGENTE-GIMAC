@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { cleanup, screen } from '@testing-library/react'
+import { cleanup, screen, within } from '@testing-library/react'
 import { ApiError } from '@gimac/socle'
 import TableauDeBordPage from './TableauDeBordPage'
 import { rendrePage, sessionTest } from '../../test/rendu'
@@ -20,8 +20,16 @@ describe('DES-01 Tableau de bord par acteur', () => {
   it('chef de la DDRM : propositions à trancher, compteurs du registre et profil affiché', async () => {
     page(CHEF, ['ROLE_CHEF_DDRM', 'ROLE_USER'])
     expect(await screen.findByText('Propositions à trancher')).toBeTruthy()
-    expect(screen.getByText('Candidats')).toBeTruthy()
-    expect(screen.getByText('Pièces à examiner')).toBeTruthy()
+    const compteurs = screen.getByRole('group', { name: 'Relations avec les membres (DDRM)' })
+    expect(within(compteurs).getByText('Candidats')).toBeTruthy()
+    expect(within(compteurs).getByText('Pièces à examiner')).toBeTruthy()
+    // Graphiques : répartition par statut dans l'ordre du cycle de vie (barres cliquables), flux sur 12 mois.
+    const repartition = screen.getByRole('region', { name: 'Institutions par statut' })
+    expect(within(repartition).getAllByRole('listitem').map((l) => l.getAttribute('aria-label')?.split(' : ')[0])).toEqual(['Candidats', 'Adhérents sans liaison', 'En homologation', 'Clos sans suite'])
+    const flux = screen.getByRole('region', { name: 'Flux des 12 derniers mois' })
+    expect(within(flux).getByText('Prises de contact')).toBeTruthy()
+    expect(within(flux).getByText('Adhésions')).toBeTruthy()
+    expect(within(repartition).getByRole('button', { name: 'En homologation' })).toBeTruthy()
     // Personne connectée et profil en texte simple, à droite du titre.
     expect(screen.getByText('Agent de test').parentElement?.textContent).toBe('Agent de test · Chef de la DDRM')
   })

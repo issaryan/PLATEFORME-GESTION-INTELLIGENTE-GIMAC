@@ -124,7 +124,7 @@ describe('D-90 : fiche d’un profil, fonctionnalités, comparaison', () => {
     fireEvent.click(within(d).getByRole('checkbox', { name: /HOM_REFERENTIEL_PUBLISH/ }))
     expect((within(d).getByRole('checkbox', { name: /HOM_REFERENTIEL_PUBLISH/ }) as HTMLInputElement).checked).toBe(true)
     // Décocher la consultation retire aussi les droits d'écriture.
-    fireEvent.click(within(d).getByRole('checkbox', { name: /HOM_REFERENTIEL_READ/ }))
+    fireEvent.click(within(d).getByRole('checkbox', { name: /\(HOM_REFERENTIEL_READ\)/ }))
     expect((within(d).getByRole('checkbox', { name: /HOM_REFERENTIEL_PUBLISH/ }) as HTMLInputElement).checked).toBe(false)
     fireEvent.click(within(d).getByRole('checkbox', { name: /HOM_REFERENTIEL_EDIT/ }))
     fireEvent.click(within(d).getByRole('tab', { name: 'Pouvoirs' }))

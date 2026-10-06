@@ -9,7 +9,30 @@ export type ReferentielVersion = Permitted & {
   /** Pilote du brouillon (D-77, §5) : compte qui reçoit la tâche « Compléter et publier ». */
   piloteId?: string | null
   nombreOperations?: number
+  /** Lecture filtrée (D-89) : CONCERNE pour un lecteur qui ne voit que ses opérations. */
+  filtre?: FiltreReferentiel
 }
+
+/** Lecture du référentiel (D-89 §1) : complète, ou réduite aux opérations qui concernent le lecteur. */
+export type FiltreReferentiel = 'CONCERNE' | 'COMPLET'
+/** Couleur d'une étape (D-89 §4) : jeton du design system, jamais une valeur libre. */
+export type CouleurEtape = 'NEUTRE' | 'INFO' | 'SUCCES' | 'ALERTE' | 'CRITIQUE' | 'ACTION' | 'ACCENT'
+/**
+ * Étape d'une version du référentiel (D-89 §2, EtapeVue) : `jeton` est la variable CSS de sa couleur ; `canonique`
+ * saisie (null : rattachée à celle de l'étape précédente), `canoniqueEffective` retenue pour la progression ;
+ * `protegee` : liée à une étape canonique porteuse d'un jalon ou du verrou 2 ; `supprimable` : vide, non protégée, brouillon.
+ */
+export type EtapeReferentiel = {
+  code: string; libelle: string; ordre: number; couleur: CouleurEtape; jeton: string; canonique: EtapeCode | null; canoniqueEffective: EtapeCode | null
+  protegee: boolean; nombreOperations: number; supprimable: boolean
+}
+/** Création (code exigé) ou modification d'une étape (code et ordre ignorés) ; ordre : position, 1 = première. */
+export type SaisieEtape = { code?: string; libelle: string; couleur: CouleurEtape | null; canonique: EtapeCode | null; ordre?: number | null }
+/** Étape canonique du parcours (catalogue) : rang, protection (jalon ou verrou 2). */
+export type EtapeCanonique = { code: EtapeCode; libelle: string; rang: number | null; protegee: boolean }
+export type CouleurCatalogue = { code: CouleurEtape; libelle: string; jeton: string }
+/** Opérations d'une version (GET …/operations) et lecture appliquée (en-tête X-Gimac-Filtre). */
+export type OperationsReferentiel = { operations: ReferenceOperation[]; filtre: FiltreReferentiel }
 
 // Modélisateur de processus (D-77, docs/lot1/modelisateur-processus.md §1) : formes servies par MS-HOMOLOGATION.
 export type Geste = 'DEPOSER_LIVRABLE' | 'DEPOSER_PREUVE' | 'CONSTATER_COUVERTURE' | 'AFFECTER_RESSOURCES' | 'COORDONNEES_TECHNIQUES' | 'FICHE_SUIVI' | 'EVENEMENT_EXTERNE' | 'AUCUN'
@@ -25,7 +48,8 @@ export type PositionNoeud = { x: number; y: number }
 
 /** Saisie d'une opération (corps de PUT ; POST y ajoute le code). Position et particularité absentes : conservées. */
 export type SaisieOperation = {
-  libelle: string; description: string | null; etape: EtapeCode | null; segment: SegmentParcours | null; ordre: number | null
+  /** Code d'une étape de la version (D-89 §2), plus une liste figée. */
+  libelle: string; description: string | null; etape: string | null; segment: SegmentParcours | null; ordre: number | null
   responsable: Fonction | null; validateur: Fonction | null; consultes: Fonction[]; informes: Fonction[]; externes: Fonction[]
   predecesseurs: string[]; delaiJours: number | null; grain: GrainPreuve | null; plateforme: PlateformeExecution | null
   cle: boolean; secret: boolean; oubliSansSymptome: boolean; pivot: boolean; valeurReference: string | null
@@ -39,6 +63,8 @@ export type SaisieOperation = {
 /** Opération du référentiel telle que servie (GET /referentiels/{id}/operations) : saisie complète et successeurs déduits. */
 export type ReferenceOperation = Partial<Permitted> & Omit<SaisieOperation, 'phase' | 'partie' | 'serviceCode' | 'natureCouverture' | 'preuveAttendue' | 'idScenario' | 'fonctionResponsable'> & {
   id?: string; versionId?: string; code: string; successeurs?: string[]
+  /** Fantôme (D-89 §1) : voisin direct d'une opération qui me concerne, réduit à son code et à son libellé. */
+  fantome?: boolean
   phase: string | null; partie: Partie | null; serviceCode: string | null
   natureCouverture: 'CERTIFICATION' | 'MISE_EN_SERVICE' | 'AUCUNE' | null; idScenario: string | null
   fonctionResponsable: string | null; preuveAttendue: Record<string, unknown> | null
@@ -51,6 +77,9 @@ export type GrapheReferentiel = {
   versionId: string; typeProjet: TypeProjet; numero: number | null; etat: ReferentielVersion['etat']; piloteId: string | null
   noeuds: NoeudGraphe[]; arcs: { de: string; vers: string; critique: boolean }[]; anomalies: AnomalieGraphe[]
   manquants: { code: string; attributs: string[] }[]; cheminCritique: { codes: string[]; dureeJours: number }; actionsPermises: string[]
+  /** Étapes de la version (D-89), dans leur ordre ; absentes d'un service antérieur. */
+  etapes?: EtapeReferentiel[]
+  filtre?: FiltreReferentiel
 }
 /** Élément d'un catalogue du modélisateur : code, libellé français, précisions facultatives. */
 export type EntreeCatalogue = { code: string; libelle: string; profils?: string[]; externe?: boolean; dedie?: boolean; rang?: number }
@@ -58,6 +87,8 @@ export type CatalogueModelisateur = {
   fonctions: EntreeCatalogue[]; gestes: EntreeCatalogue[]; jalons: EntreeCatalogue[]; declencheurs: EntreeCatalogue[]; etapes: EntreeCatalogue[]
   segments: EntreeCatalogue[]; plateformes: EntreeCatalogue[]; grains: EntreeCatalogue[]; naturesLivrable: EntreeCatalogue[]; particularites: EntreeCatalogue[]
   typesPieces: string[]; pilotes: { id: string; nom: string }[]
+  /** D-89 : étapes canoniques, couleurs proposées et, avec ?version=, les étapes de cette version. */
+  etapesCanoniques?: EtapeCanonique[]; couleurs?: CouleurCatalogue[]; etapesVersion?: EtapeReferentiel[]
 }
 export type ImpactMigration = {
   liaisonId: string; institutionNom: string; conservees: number; ajoutees: number; retirees: number; modifiees: number

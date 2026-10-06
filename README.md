@@ -117,3 +117,12 @@ infra/ci/valider-securite.sh                       # secrets (gitleaks) et vuln�
 | 2026-10-05 | — | `infra/docker-compose/mettre-a-jour.sh` : mise à jour et redéploiement d'un poste en une commande, sans perte des comptes |
 | 2026-10-05 | — | Publication HTTPS (D-75) : port retenu 8463 (`GIMAC_PORT_HTTPS=8463`), noms `moabi`, `moabi-portail`, `moabi-console`.gimac-afr.org ; procédure complétée (chemins du certificat ANTIC, contrôle du relais avant DNS) |
 | 2026-10-05 | — | Relais HTTPS de Moabi installé sur le nginx du serveur 214 (port 8463, trois noms) et vérifié ; en attente du DNS OVH et du pare-feu |
+| 2026-10-06 | — | Comptes : institution réservée au correspondant de participant (précision de D-62) ; `mettre-a-jour.sh` prépare les nouveaux secrets avant de construire |
+| 2026-10-06 | — | Supervision et tableaux de bord en graphiques, lot 1 : composants de graphiques de métriques du système de conception (D-63), palette de séries validée en clair et en sombre |
+| 2026-10-06 | — | Supervision en graphiques, lot 2 : séries temporelles des métriques servies par la passerelle (liste fermée, sécurisée), rétention Prometheus explicite |
+| 2026-10-06 | — | Supervision en graphiques, lot 3 : centre de contrôle dans la console du super administrateur et dans l'application interne |
+| 2026-10-06 | — | Supervision en graphiques, lot 4a : courbes de processeur et de mémoire par charge de travail dans l'écran Infrastructure |
+| 2026-10-06 | — | Exploitation Kubernetes depuis la console, lecture (lot 4b-1, partie serveur) : pods, événements, nœuds, tâches |
+| 2026-10-06 | — | Exploitation Kubernetes depuis la console, lecture (lot 4b-1, écrans) : pods et événements par charge, nœuds du cluster, jobs et cronjobs |
+| 2026-10-06 | — | Exploitation Kubernetes depuis la console : retour à la version précédente d'un déploiement (geste RETABLIR signé, lot 4b-2), image cible affichée dans la confirmation |
+| 2026-10-06 | — | Tableaux de bord métier en graphiques (lot 5) : comptes par profil et activité quotidienne (MS-IAM), répartition des institutions et flux mensuel de la DDRM (MS-PARTICIPANT) |

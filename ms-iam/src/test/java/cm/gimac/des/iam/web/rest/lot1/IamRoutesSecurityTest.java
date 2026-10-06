@@ -163,7 +163,8 @@ class IamRoutesSecurityTest {
         var session = new SessionCompte("s1", "10.0.0.1", Instant.EPOCH, Instant.EPOCH, List.of("web_app"));
         var cle = new ReauthentificationService.Cle(UUID.fromString(CLE), "Clé", Instant.EPOCH, null);
         when(comptes.lister(any(), anyInt(), anyInt())).thenReturn(new AdministrationComptesService.PageComptes(List.of(compte), 1));
-        when(comptes.indicateurs()).thenReturn(new AdministrationComptesService.Indicateurs(1, 1, 0, 1, 1, 0, 1, 2, Map.of("ROLE_CHARGE_DDRM", 1L)));
+        when(comptes.indicateurs()).thenReturn(new AdministrationComptesService.Indicateurs(1, 1, 0, 1, 1, 0, 1, 2, Map.of("ROLE_CHARGE_DDRM", 1L),
+            List.of(new AdministrationComptesService.ParJour(java.time.LocalDate.parse("2026-09-29"), 2)), List.of()));
         when(comptes.lire(ID)).thenReturn(compte);
         when(comptes.sessions(ID)).thenReturn(List.of(session));
         when(comptes.creer(any(), any(), anyBoolean(), anyBoolean())).thenReturn(new AdministrationComptesService.Creation(compte, true, null));
@@ -302,6 +303,17 @@ class IamRoutesSecurityTest {
         mvc.perform(req(m, uri, body).with(jeton("1"))).andExpect(status().is(ok));
         mvc.perform(req(m, uri, body).with(jeton("2"))).andExpect(status().is(ok));
         mvc.perform(req(m, uri, body).with(jeton("3"))).andExpect(status().is(ok));
+    }
+
+    @Test
+    @DisplayName("Indicateurs : jours des séries en date ISO (AAAA-MM-JJ), jamais en tableau")
+    void seriesEnDateIso() throws Exception {
+        mvc
+            .perform(req(HttpMethod.GET, "/api/v1/comptes/indicateurs", null).with(jeton("2", "IAM_ACCOUNT_READ")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.creationsParJour[0].jour").value("2026-09-29"))
+            .andExpect(jsonPath("$.creationsParJour[0].nombre").value(2))
+            .andExpect(jsonPath("$.actesParJour").isArray());
     }
 
     @Test

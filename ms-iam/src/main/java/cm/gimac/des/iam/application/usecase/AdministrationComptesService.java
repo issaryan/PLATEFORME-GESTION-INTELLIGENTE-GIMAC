@@ -16,6 +16,8 @@ import cm.gimac.des.iam.infrastructure.persistence.JournalAdministrationReposito
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -60,8 +62,18 @@ public class AdministrationComptesService {
         long privilegies,
         long creesDepuis30Jours,
         long actesDepuis24Heures,
-        Map<String, Long> parProfil
+        Map<String, Long> parProfil,
+        List<ParJour> creationsParJour,
+        List<ParJour> actesParJour
     ) {}
+
+    /** Nombre d'événements d'un jour (fuseau de la plateforme). */
+    public record ParJour(LocalDate jour, long nombre) {}
+
+    /** Profondeur des séries quotidiennes des tableaux de bord. */
+    public static final int JOURS_SERIES = 30;
+    /** Fuseau des jours des séries : celui de la CEMAC (UTC+1, sans heure d'été). */
+    public static final ZoneId FUSEAU = ZoneId.of("Africa/Douala");
 
     private final Annuaire annuaire;
     private final JournalActes journal;
@@ -166,8 +178,29 @@ public class AdministrationComptesService {
             l.stream().filter(c -> c.profils().stream().anyMatch(privilegies::contains)).count(),
             l.stream().filter(c -> c.creeLe() != null && c.creeLe().isAfter(il30Jours)).count(),
             entrees.countByHorodatageAfter(clock.instant().minus(Duration.ofHours(24))),
-            parProfil
+            parProfil,
+            parJour(l.stream().map(Compte::creeLe).filter(java.util.Objects::nonNull).toList()),
+            parJour(entrees.horodatagesDepuis(debutSeries()))
         );
+    }
+
+    /** Premier instant de la fenêtre des séries : minuit du jour J-29, fuseau de la plateforme. */
+    private Instant debutSeries() {
+        return LocalDate.now(clock.withZone(FUSEAU)).minusDays(JOURS_SERIES - 1L).atStartOfDay(FUSEAU).toInstant();
+    }
+
+    /** Un point par jour sur les 30 derniers jours (aujourd'hui compris), zéro les jours sans événement. */
+    List<ParJour> parJour(List<Instant> instants) {
+        LocalDate fin = LocalDate.now(clock.withZone(FUSEAU));
+        LocalDate debut = fin.minusDays(JOURS_SERIES - 1L);
+        Map<LocalDate, Long> compte = new java.util.HashMap<>();
+        instants.forEach(i -> {
+            LocalDate j = LocalDate.ofInstant(i, FUSEAU);
+            if (!j.isBefore(debut) && !j.isAfter(fin)) {
+                compte.merge(j, 1L, Long::sum);
+            }
+        });
+        return debut.datesUntil(fin.plusDays(1)).map(j -> new ParJour(j, compte.getOrDefault(j, 0L))).toList();
     }
 
     // ------------------------------------------------------------------ écritures
@@ -182,6 +215,7 @@ public class AdministrationComptesService {
             throw IamException.invalide("IAM_ONBOARDING_REQUIRED", "Choisir l'invitation par courriel ou un mot de passe provisoire", Map.of());
         }
         ReglesAdministration.verifierProfils(acteur, Set.of(), n.profils(), catalogue.attribuables(), catalogue.privilegies());
+        ReglesAdministration.verifierRattachement(n.profils(), n.institutionId());
         if (annuaire.parIdentifiant(n.identifiant()).isPresent() || annuaire.emailPris(n.email(), null)) {
             throw IamException.conflit("IAM_ACCOUNT_CONFLICT", "Identifiant ou courriel déjà utilisé", Map.of());
         }
@@ -220,6 +254,8 @@ public class AdministrationComptesService {
     public Compte modifier(Acteur acteur, String id, FicheCompte f) {
         Compte c = lire(id);
         ReglesAdministration.verifierTelephone(f.telephone());
+        // Institution inchangée quand elle est absente de la fiche (null) ; vide, elle est retirée.
+        ReglesAdministration.verifierRattachement(c.profils(), f.institutionId() != null ? f.institutionId() : c.institutionId());
         if (f.email() != null && !f.email().equalsIgnoreCase(c.email()) && annuaire.emailPris(f.email(), id)) {
             throw IamException.conflit("IAM_ACCOUNT_CONFLICT", "Identifiant ou courriel déjà utilisé", Map.of());
         }
@@ -233,6 +269,7 @@ public class AdministrationComptesService {
         ReglesAdministration.exigerMotif(motif);
         Compte c = lire(id);
         ReglesAdministration.verifierProfils(acteur, c.profils(), profils, catalogue.attribuables(), catalogue.privilegies());
+        ReglesAdministration.verifierRattachement(profils, c.institutionId());
         if (c.profils().contains(ReglesAdministration.SUPER_ADMIN) && !profils.contains(ReglesAdministration.SUPER_ADMIN)) {
             ReglesAdministration.verifierDernierSuperAdmin(c.actif(), superAdminsActifs());
         }

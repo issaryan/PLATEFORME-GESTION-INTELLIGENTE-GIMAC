@@ -1,5 +1,5 @@
-import { ApiError, avatarsSimules, type OptionsTeleversement, type Televersement } from '@gimac/socle'
-import type { Conversation, Correspondant, EtiquetteLiaison, Message, PieceJointe, TypeEvenementGroupe } from '../../modele/messagerie'
+import { ApiError, avatarsSimules, diffuserAccuseLecture, type AccuseLecture, type OptionsTeleversement, type Televersement } from '@gimac/socle'
+import type { Conversation, Correspondant, EtiquetteLiaison, LecteurMessage, LectureMessage, Message, PieceJointe, TypeEvenementGroupe } from '../../modele/messagerie'
 import { LIMITES_MESSAGERIE, extraitCitation } from '../../modele/messagerie'
 import type { ServiceMessagerie } from '../ports'
 
@@ -82,7 +82,17 @@ export function pdfDemo(lignes: string[]): Blob {
   return new Blob([Uint8Array.from(corps, (c) => (c === '’' ? 0x92 : c.charCodeAt(0) & 0xff))], { type: 'application/pdf' })
 }
 
-type EtatConversation = Omit<Conversation, 'dernierMessage' | 'nonLus'> & { messages: Message[]; lus: Map<string, number> }
+/**
+ * État simulé d'une conversation. Position de lecture par membre (`lus` : nombre de messages lus) et, pour les
+ * accusés de lecture (D-88), chaque avancée de cette position avec son heure (null : position antérieure à D-88,
+ * heure inconnue) ; `entres` : instant d'entrée de chaque membre (un message ne compte que les présents à l'envoi).
+ */
+type EtatConversation = Omit<Conversation, 'dernierMessage' | 'nonLus'> & {
+  messages: Message[]; lus: Map<string, number>; avancees: Map<string, { jusqua: number; le: string | null }[]>; entres: Map<string, string>
+}
+
+/** Un autre membre lit la conversation (démonstration des accusés de lecture, D-88). */
+export type OptionsLectureDemo = { conversationId?: string; lecteurId?: string }
 
 /** Message reçu d'un autre membre (démonstration des notifications, D-80) : ce que MS-COLLABORATION publierait. */
 export type ReceptionDemo = { conversation: Conversation; message: Message; nonLus: number }
@@ -100,6 +110,12 @@ export type MessagerieSimulee = ServiceMessagerie & {
   nonLuesDemo(): ReceptionDemo[]
   /** Abonnement aux messages reçus ; rend la fonction de désabonnement. */
   surReception(rappel: (r: ReceptionDemo) => void): () => void
+  /**
+   * Un autre membre (par défaut : le premier qui n'a pas tout lu) lit la conversation (par défaut : le premier
+   * échange direct) : sa position avance et l'accusé `collaboration.conversation-read.v1` est diffusé comme le
+   * canal poussé le ferait ; null si sa position n'avance pas (rien n'est publié, D-88 §4).
+   */
+  lireDemo(o?: OptionsLectureDemo): AccuseLecture | null
 }
 
 export function messagerieSimulee(attendre: Attendre, refus: Refus, moi: Correspondant = ANNUAIRE[0]): MessagerieSimulee {
@@ -131,16 +147,36 @@ export function messagerieSimulee(attendre: Attendre, refus: Refus, moi: Corresp
     if (d82.reponseA) citations.set(m.id, d82.reponseA)
     c.messages.push(m)
     c.misAJourLe = envoyeLe
-    // L'auteur a lu son propre message.
-    c.lus.set(auteur.id, c.messages.length)
+    // L'auteur a lu son propre message (l'envoi avance sa position, sans accusé).
+    avancer(c, auteur.id, c.messages.length, envoyeLe)
     return m
   }
+  /** Position de lecture d'un membre avancée (jamais reculée) ; vrai si elle a avancé. */
+  const avancer = (c: EtatConversation, membreId: string, jusqua: number, le: string | null): boolean => {
+    if (jusqua <= (c.lus.get(membreId) ?? 0)) return false
+    c.lus.set(membreId, jusqua)
+    c.avancees.set(membreId, [...(c.avancees.get(membreId) ?? []), { jusqua, le }])
+    return true
+  }
+  /** Destinataires d'un message (D-88 §4) : membres actuels, hors auteur, entrés au plus tard à l'envoi. */
+  const destinatairesDe = (c: EtatConversation, m: Message) =>
+    c.membres.filter((x) => x.id !== m.auteur.id && (c.entres.get(x.id) ?? '') <= m.envoyeLe)
+  const aLu = (c: EtatConversation, membreId: string, rang: number) => (c.lus.get(membreId) ?? 0) > rang
+  /** Accusé de lecture d'un de mes messages, absent pour les autres et les événements. */
+  const lectureDe = (c: EtatConversation, m: Message): LectureMessage | undefined => {
+    if (!m.moi || m.evenement) return undefined
+    const rang = c.messages.indexOf(m)
+    const destinataires = destinatairesDe(c, m)
+    const lus = destinataires.filter((x) => aLu(c, x.id, rang)).length
+    return { etat: destinataires.length && lus === destinataires.length ? 'LU' : lus > 0 ? 'LU_PAR_CERTAINS' : 'ENVOYE', lus, destinataires: destinataires.length }
+  }
   /** Conversation à venir (création) : seulement ses membres, pour vérifier les mentions. */
-  const creerFictive = (membres: Correspondant[]): EtatConversation => ({ id: '', type: 'GROUPE', titre: null, liaison: null, membres, messages: [], lus: new Map(), misAJourLe: '', creeeLe: '' })
+  const creerFictive = (membres: Correspondant[]): EtatConversation => ({ id: '', type: 'GROUPE', titre: null, liaison: null, membres, messages: [], lus: new Map(), avancees: new Map(), entres: new Map(), misAJourLe: '', creeeLe: '' })
   const creer = (membres: Correspondant[], titre: string | null, liaison: EtiquetteLiaison | null, creeeLe: string, groupe = false): EtatConversation => {
     const type = !groupe && membres.length === 2 && !titre && !liaison ? 'DIRECTE' : 'GROUPE'
     // Le créateur (premier membre) administre le groupe (D-68).
-    const c: EtatConversation = { id: id('CONV'), type, titre, liaison, membres: membres.map((m, i) => ({ ...m, administrateur: type === 'GROUPE' && i === 0 })), messages: [], lus: new Map(), misAJourLe: creeeLe, creeeLe }
+    const c: EtatConversation = { id: id('CONV'), type, titre, liaison, membres: membres.map((m, i) => ({ ...m, administrateur: type === 'GROUPE' && i === 0 })), messages: [], lus: new Map(), avancees: new Map(),
+      entres: new Map(membres.map((m) => [m.id, creeeLe])), misAJourLe: creeeLe, creeeLe }
     conversations.push(c)
     return c
   }
@@ -171,6 +207,10 @@ export function messagerieSimulee(attendre: Attendre, refus: Refus, moi: Corresp
   // Réponse au message des essais, avec une mention de l'utilisateur (D-82).
   const essais = g1.messages[1].id
   ajouterMessage(g1, rssi, `@${moi.nom} je prends contact avec le correspondant pour la nouvelle cérémonie.`, ilYA(120), [], [], [], { reponseA: essais, mentions: [moi.id] })
+  // Accusés de lecture (D-88) : mon message est lu par le RSSI (position antérieure à D-88, heure inconnue) et par
+  // Rachel (qui écrit ensuite), pas encore par Aïcha : « Lu par 2 sur 3 ».
+  ajouterMessage(g1, moi, 'Merci Hervé, tenez-nous informés de la date de la cérémonie.', ilYA(60))
+  avancer(g1, rssi.id, g1.messages.length, null)
   ajouterMessage(g1, sna, 'Le blocage est déclaré sur la liaison ; échéance de levée au 27 septembre.', ilYA(20))
   const d2 = creer([moi, rssi], null, null, ilYA(4000))
   // Documents bureautiques (D-83) : aperçu converti en PDF par le service.
@@ -185,6 +225,8 @@ export function messagerieSimulee(attendre: Attendre, refus: Refus, moi: Corresp
   d1.lus.set(moi.id, 2)
   g1.lus.set(moi.id, 2)
   d2.lus.set(moi.id, 2)
+  // Aïcha a ouvert l'échange direct après la réponse du chef : lu, à l'heure de son dernier message.
+  avancer(d1, cond.id, d1.messages.length, ilYA(44))
 
   /** Vue d'un message pour l'utilisateur (D-82) : message cité, mentions, « vous concerne ». */
   const vueMessage = (c: EtatConversation, m: Message): Message => {
@@ -195,9 +237,11 @@ export function messagerieSimulee(attendre: Attendre, refus: Refus, moi: Corresp
       : { id: citeId, auteur: null, extrait: '', piecesJointes: 0, envoyeLe: null, supprime: true }
     const copie = structuredClone(m)
     const mentions = copie.mentions ?? []
+    const lecture = lectureDe(c, m)
     return {
       ...copie, auteur: avecPhoto(copie.auteur), reponseA, mentions,
       mentionneMoi: !m.moi && (mentions.some((x) => x.id === moi.id) || cite?.auteur.id === moi.id),
+      ...(lecture ? { lecture } : {}),
     }
   }
   /** Réponse et mentions d'un envoi (D-82) : message de la conversation, membres distincts de l'auteur, 20 au plus. */
@@ -209,15 +253,17 @@ export function messagerieSimulee(attendre: Attendre, refus: Refus, moi: Corresp
     }
   }
 
-  const nonLusDe = (c: EtatConversation) => c.messages.length - Math.min(c.lus.get(moi.id) ?? 0, c.messages.length)
+  /** Non-lus : messages des autres au-delà de ma position (les miens ne comptent jamais). */
+  const nonLusDe = (c: EtatConversation) => c.messages.slice(Math.min(c.lus.get(moi.id) ?? 0, c.messages.length)).filter((m) => m.auteur.id !== moi.id).length
   const vue = (c: EtatConversation): Conversation => {
     const dernier = c.messages[c.messages.length - 1]
-    const { messages: _m, lus: _l, ...reste } = c
+    const { messages: _m, lus: _l, avancees: _a, entres: _e, ...reste } = c
+    const lecture = dernier ? lectureDe(c, dernier) : undefined
     const copie = structuredClone(reste)
     return {
       ...copie,
       membres: copie.membres.map(avecPhoto),
-      dernierMessage: dernier ? { id: dernier.id, auteurNom: dernier.auteur.nom, extrait: dernier.contenu.slice(0, 120), envoyeLe: dernier.envoyeLe, piecesJointes: dernier.piecesJointes.length, evenement: dernier.evenement ?? null } : null,
+      dernierMessage: dernier ? { id: dernier.id, auteurNom: dernier.auteur.nom, extrait: dernier.contenu.slice(0, 120), envoyeLe: dernier.envoyeLe, piecesJointes: dernier.piecesJointes.length, evenement: dernier.evenement ?? null, ...(lecture ? { lecture } : {}) } : null,
       nonLus: nonLusDe(c),
     }
   }
@@ -273,6 +319,15 @@ export function messagerieSimulee(attendre: Attendre, refus: Refus, moi: Corresp
       return r
     },
     nonLuesDemo: () => miennes().filter((c) => nonLusDe(c) > 0).map(reception),
+    lireDemo: (o = {}) => {
+      const c = o.conversationId ? sienne(o.conversationId) : miennes().find((x) => x.type === 'DIRECTE') ?? miennes()[0]
+      const lecteur = o.lecteurId ?? c.membres.find((m) => m.id !== moi.id && (c.lus.get(m.id) ?? 0) < c.messages.length)?.id
+      if (!lecteur || lecteur === moi.id || !c.membres.some((m) => m.id === lecteur) || !c.messages.length) return null
+      if (!avancer(c, lecteur, c.messages.length, new Date().toISOString())) return null
+      const accuse: AccuseLecture = { conversationId: c.id, lecteurId: lecteur, luJusquA: c.messages[c.messages.length - 1].envoyeLe }
+      diffuserAccuseLecture(accuse)
+      return accuse
+    },
     surReception: (rappel) => {
       receptions.add(rappel)
       return () => receptions.delete(rappel)
@@ -336,7 +391,22 @@ export function messagerieSimulee(attendre: Attendre, refus: Refus, moi: Corresp
     }),
     marquerLu: (cid) => attendre(() => {
       const c = sienne(cid)
-      c.lus.set(moi.id, c.messages.length)
+      avancer(c, moi.id, c.messages.length, new Date().toISOString())
+    }),
+    // Détail « Lu par » (D-88 §4) : mon message seulement (sinon 404 indistinct), lecteurs d'abord par heure
+    // (inconnue en dernier), puis les autres dans l'ordre d'entrée.
+    lectures: (cid, mid) => attendre(() => {
+      const c = conversations.find((x) => x.id === cid && x.membres.some((m) => m.id === moi.id))
+      const m = c?.messages.find((x) => x.id === mid)
+      if (!c || !m || !m.moi || m.evenement) throw refus(404, 'COL_MESSAGE_NOT_FOUND', 'Message introuvable.')
+      const rang = c.messages.indexOf(m)
+      const lignes: LecteurMessage[] = destinatairesDe(c, m).map((x) => {
+        const lu = aLu(c, x.id, rang)
+        const luLe = lu ? (c.avancees.get(x.id) ?? []).find((a) => a.jusqua > rang)?.le ?? null : null
+        return { membre: { id: x.id, nom: x.nom }, lu, luLe }
+      })
+      const lecteurs = lignes.filter((l) => l.lu).sort((a, b) => (a.luLe === b.luLe ? 0 : a.luLe === null ? 1 : b.luLe === null ? -1 : a.luLe.localeCompare(b.luLe)))
+      return [...lecteurs, ...lignes.filter((l) => !l.lu)]
     }),
     nonLus: () => attendre(() => ({ total: miennes().reduce((n, c) => n + nonLusDe(c), 0) })),
     renommerGroupe: (cid, titre) => attendre(() => {
@@ -358,6 +428,8 @@ export function messagerieSimulee(attendre: Attendre, refus: Refus, moi: Corresp
       })
       if (c.membres.length + nouveaux.length > LIMITES_MESSAGERIE.destinatairesMax + 1) throw refus(400, 'COL_TOO_MANY_RECIPIENTS', 'Cinquante et un membres au plus.')
       if (nouveaux.length) {
+        const maintenant = new Date().toISOString()
+        nouveaux.forEach((p) => c.entres.set(p.id, maintenant))
         c.membres.push(...nouveaux.map((p) => ({ ...p, administrateur: false })))
         evenement(c, moi, 'MEMBRES_AJOUTES', nouveaux.map((p) => p.nom), new Date().toISOString())
       }

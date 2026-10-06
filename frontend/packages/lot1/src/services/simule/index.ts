@@ -83,7 +83,7 @@ export function servicesSimules(o: OptionsSimulation = {}): ServicesSimules {
   const participant = participantSimule(attendre, refus)
   // Référentiels et modélisateur (D-77) : état propre à l'instance.
   const referentiels = referentielsSimules(attendre, refus, {
-    utilisateur: o.utilisateur?.id, maintenant, liaisonsActives: (versionId) => liaisons.filter((l) => l.versionId === versionId && l.etat !== 'CLOSE').length,
+    utilisateur: o.utilisateur?.id, profils: o.utilisateur?.profils, maintenant, liaisonsActives: (versionId) => liaisons.filter((l) => l.versionId === versionId && l.etat !== 'CLOSE').length,
   })
   let numeroLiaison = 40
 

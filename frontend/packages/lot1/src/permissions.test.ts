@@ -34,7 +34,8 @@ describe('matrice des rôles (PROFILS)', () => {
   })
   it('profils internes : lecture du DES commune (sauf collaborateur et responsable de service, D-76) ; correspondant : portail seul, sans lecture interne', () => {
     Object.entries(PROFILS).filter(([r]) => !['ROLE_CORRESPONDANT', ...SANS_FONCTION].includes(r)).forEach(([, ps]) => expect(ps).toEqual(expect.arrayContaining(LECTURE_DES)))
-    SANS_FONCTION.forEach((r) => expect(PROFILS[r].some((p) => LECTURE_DES.includes(p))).toBe(false))
+    // Le responsable de service édite le référentiel (D-89 §1) : sa seule lecture du DES est HOM_REFERENTIEL_READ.
+    SANS_FONCTION.forEach((r) => expect(PROFILS[r].filter((p) => LECTURE_DES.includes(p))).toEqual(r === 'ROLE_RESPONSABLE_SERVICE' ? ['HOM_REFERENTIEL_READ'] : []))
     expect(PROFILS.ROLE_CORRESPONDANT).toEqual([PERM.portailLire, PERM.portailDeposer, PERM.portailCertification, PERM.portailSigner])
     expect(PROFILS.ROLE_CORRESPONDANT.some((p) => LECTURE_DES.includes(p))).toBe(false)
   })
@@ -56,6 +57,11 @@ describe('matrice des rôles (PROFILS)', () => {
     expect(detenteurs(PERM.exploitationLire)).toEqual(['ROLE_ADMIN_SYSTEME', 'ROLE_RSSI', 'ROLE_SUPER_ADMIN'])
     expect(detenteurs(PERM.exploitationExecuter)).toEqual(['ROLE_ADMIN_SYSTEME', 'ROLE_SUPER_ADMIN'])
     expect(PROFILS.ROLE_ADMIN_SYSTEME.some((p) => p.startsWith('IAM_'))).toBe(false)
+  })
+  it('référentiel (D-89 §1, §4) : édition, publication et lecture complète', () => {
+    expect(detenteurs('HOM_REFERENTIEL_EDIT')).toEqual(['ROLE_CHEF_DDRM', 'ROLE_CHEF_DES', 'ROLE_INGENIEUR_HOMOLOGATION', 'ROLE_RESPONSABLE_SERVICE', 'ROLE_SUPER_ADMIN'])
+    expect(detenteurs('HOM_REFERENTIEL_PUBLISH')).toEqual(['ROLE_CHEF_DDRM', 'ROLE_CHEF_DES', 'ROLE_INGENIEUR_HOMOLOGATION', 'ROLE_SUPER_ADMIN'])
+    expect(detenteurs('HOM_REFERENTIEL_READ_ALL')).toEqual(['ROLE_CHEF_DDRM', 'ROLE_CHEF_DES', 'ROLE_CONFORMITE', 'ROLE_DG', 'ROLE_RSSI'])
   })
   it('permissions nouvelles du modèle hybride, toutes attribuées, sans doublon dans un profil', () => {
     expect([...PERMISSIONS_NOUVELLES]).toEqual(['HOM_STEP_MANAGE', 'CER_PV_ESTABLISH', 'CER_SECURITY_VERIFY', 'CER_PORTAL_SIGN'])

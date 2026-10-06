@@ -2,9 +2,9 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 import { Button, CheckboxGroup, CrudDialog, InlineAlert, KeyValueList, OneTimeSecret, RadioGroup, TextField } from '@gimac/design-system'
-import { aPermission, usePermissions } from '@gimac/socle'
+import { aPermission, usePermissions, useLibelleProfil } from '@gimac/socle'
 import { useMessageErreur, type MessageErreur } from '@gimac/compte'
-import { useEffet, useLibelleProfil, useProfils } from '../hooks'
+import { useEffet, useLibellesProfils, useProfils } from '../hooks'
 import type { Creation, NouveauCompte } from '../modele/comptes'
 import { Donnees } from './communs'
 import { useChemins } from '../services/useServicesConsole'
@@ -25,6 +25,7 @@ const VIDE: Valeurs = { identifiant: '', prenom: '', nom: '', email: '', telepho
 const CHAMP_DU_CODE: Record<string, string> = {
   IAM_USERNAME_INVALID: 'identifiant', IAM_PHONE_INVALID: 'telephone', IAM_EMAIL_REQUIRED: 'email', IAM_ACCOUNT_CONFLICT: 'identifiant',
   IAM_ONBOARDING_REQUIRED: 'accueil', IAM_PROFILE_UNKNOWN: 'profils', IAM_PRIVILEGED_PROFILE: 'profils',
+  IAM_INSTITUTION_INTERNAL_ACCOUNT: 'institutionId', IAM_INSTITUTION_REQUIRED: 'institutionId',
 }
 
 function Resultat({ creation, onAutre, onFermer }: { creation: Creation; onAutre: () => void; onFermer: () => void }) {
@@ -57,7 +58,7 @@ export function DialogueCreationCompte({ onFermer }: { onFermer: () => void }) {
   const { t } = useTranslation()
   const permissions = usePermissions()
   const message = useMessageErreur()
-  const libelleProfil = useLibelleProfil()
+  const libelleProfil = useLibelleProfil(useLibellesProfils())
   const profils = useProfils()
   const creer = useEffet((s, n: NouveauCompte) => s.comptes.creer(n))
   const [v, setV] = useState<Valeurs>(VIDE)

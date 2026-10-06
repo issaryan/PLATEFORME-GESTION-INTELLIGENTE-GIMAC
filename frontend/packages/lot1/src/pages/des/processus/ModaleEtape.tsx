@@ -7,7 +7,7 @@ import {
   type ModeIntervenant, type SignatureProcessus, type TypeChamp,
 } from '../../../modele/processus'
 import { useUnites } from '../../../hooks/pilotage'
-import { useLibelleProfil } from '../activite/dialoguesEquipe'
+import { useLibelleProfilEquipe } from '../activite/dialoguesEquipe'
 import { ChoixPersonne, PROFILS_INTERVENANTS, useErreurProcessus } from './communs'
 
 // Modale d'une étape du modélisateur des processus d'unité (D-87 §4) : six onglets (Général ; Intervenant et validateur ;
@@ -72,7 +72,7 @@ function ChampsIntervenant({ chemin, valeur, onChange, lecture, err, legende }: 
   chemin: string; valeur: Intervenant; onChange: (i: Intervenant) => void; lecture: boolean; err: (c: string) => string | undefined; legende: string
 }) {
   const { t } = useTranslation()
-  const libelleProfil = useLibelleProfil()
+  const libelleProfil = useLibelleProfilEquipe()
   const unites = useUnites()
   const profils = [{ value: '', label: t('proc.aucun') }, ...PROFILS_INTERVENANTS.map((p) => ({ value: p, label: libelleProfil(p) }))]
   const maj = (champs: Partial<Intervenant>) => onChange(intervenantNormalise({ ...valeur, ...champs }))

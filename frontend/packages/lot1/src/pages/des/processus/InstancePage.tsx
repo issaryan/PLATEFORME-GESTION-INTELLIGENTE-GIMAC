@@ -11,7 +11,7 @@ import { useActeInstance, useInstance } from '../../../hooks/processus'
 import { useEffet } from '../../../hooks/base'
 import { clesPilotage } from '../../../hooks/pilotage'
 import { useServices } from '../../../services/ServicesProvider'
-import { useLibelleProfil } from '../activite/dialoguesEquipe'
+import { useLibelleProfilEquipe } from '../activite/dialoguesEquipe'
 import { useDates, useLibelleUnite } from '../activite/communs'
 import { CanevasProcessus, type CarteEtape } from './CanevasProcessus'
 import { ChampValeur, erreurValeur, valeurEnvoyee, valeurSaisie } from './DialogueLancement'
@@ -169,7 +169,7 @@ function Suivi({ instance: i }: { instance: InstanceProcessus }) {
 function PanneauEtape({ instance: i, etape: e, onAnnonce }: { instance: InstanceProcessus; etape: EtapeInstance; onAnnonce: (m: string) => void }) {
   const { t } = useTranslation()
   const dates = useDates()
-  const libelleProfil = useLibelleProfil()
+  const libelleProfil = useLibelleProfilEquipe()
   const libelleUnite = useLibelleUnite()
   const erreur = useErreurProcessus()
   const [geste, setGeste] = useState<Geste | null>(null)

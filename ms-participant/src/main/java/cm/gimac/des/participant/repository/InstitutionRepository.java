@@ -57,4 +57,16 @@ public interface InstitutionRepository extends JpaRepository<Institution, UUID>,
     boolean existsByBeacBankCodeAndIdNot(String beacBankCode, UUID id);
 
     long countByStatus(InstitutionStatus status);
+
+    /** Prises de contact (création du dossier) depuis « depuis » : flux mensuel du tableau de bord de la DDRM. */
+    @Query("select i.createdAt from Institution i where i.createdAt >= :depuis")
+    List<java.time.Instant> creationsDepuis(@Param("depuis") java.time.Instant depuis);
+
+    /** Adhésions prononcées depuis « depuis ». */
+    @Query("select i.admittedAt from Institution i where i.admittedAt >= :depuis")
+    List<java.time.Instant> adhesionsDepuis(@Param("depuis") java.time.Instant depuis);
+
+    /** Clôtures (sans suite) depuis « depuis ». */
+    @Query("select i.closedAt from Institution i where i.closedAt >= :depuis")
+    List<java.time.Instant> cloturesDepuis(@Param("depuis") java.time.Instant depuis);
 }

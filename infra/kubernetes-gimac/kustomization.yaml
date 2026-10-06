@@ -14,6 +14,7 @@ resources:
   - frontend.yaml
   - politiques-reseau.yaml
   - kyverno-images-signees.yaml
+  - exploitation-rbac.yaml
   # Équivalents des services de docker-compose.gimac.yml absents de la génération JHipster.
   - opa.yaml
   - alertmanager.yaml

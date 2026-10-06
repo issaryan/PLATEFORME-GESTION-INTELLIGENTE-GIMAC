@@ -2,6 +2,7 @@
 # Environnement local de la plateforme Moabi du GIMAC en une commande (SOC-13, D-45).
 #
 #   ./gimac-dev.sh verifier                 contrôle les prérequis
+#   ./gimac-dev.sh preparer                 complète le .env des secrets locaux manquants
 #   ./gimac-dev.sh images                   construit les images des 14 services (Jib, JHipster)
 #   ./gimac-dev.sh demarrer [--socle]       démarre tout ; --socle : sans les 14 applications
 #   ./gimac-dev.sh arreter                  arrête les conteneurs
@@ -175,6 +176,7 @@ demarrer() {
 
 case "${1:-}" in
   verifier) verifier ;;
+  preparer) preparer_env ;;
   images) images ;;
   demarrer) shift; demarrer "$@" ;;
   arreter) compose stop ;;

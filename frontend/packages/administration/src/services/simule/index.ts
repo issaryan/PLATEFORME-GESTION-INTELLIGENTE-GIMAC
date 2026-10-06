@@ -1,6 +1,6 @@
 import { ReauthCancelled } from '@gimac/socle'
 import { creerSimulateur, type Compte, type SessionCompte } from '@gimac/compte'
-import type { EntreeJournal } from '../../modele/comptes'
+import type { EntreeJournal, ParJour } from '../../modele/comptes'
 import { ALGORITHMES_OTP, type PolitiqueSecurite, type Profil } from '../../modele/configuration'
 import { MOTIF_DEMANDE, PRESENTATIONS_PROFILS, UNITES_DEMO, estCreation, estProfils, magasinPouvoirs, type Demande, type MagasinPouvoirs, type Unite } from '@gimac/lot1'
 import type { NouveauCompte } from '../../modele/comptes'
@@ -42,6 +42,18 @@ const IDENTIFIANT = /^[a-z][a-z0-9._-]{2,49}$/
 const TELEPHONE = /^\+?[0-9 ]{8,20}$/
 const COURRIEL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 const ASSERTION_SIMULEE = btoa('assertion-simulee')
+
+/** 30 jours denses (aujourd'hui compris) : événements réels du jour plus un fond fictif déterministe. */
+function parJour(instants: (string | null | undefined)[], fond: (i: number) => number): ParJour[] {
+  const cle = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  const reels = new Map<string, number>()
+  instants.forEach((x) => { if (x) { const k = cle(new Date(x)); reels.set(k, (reels.get(k) ?? 0) + 1) } })
+  const aujourdhui = new Date()
+  return Array.from({ length: 30 }, (_, n) => {
+    const d = new Date(aujourdhui.getFullYear(), aujourdhui.getMonth(), aujourdhui.getDate() - (29 - n))
+    return { jour: cle(d), nombre: fond(n) + (reels.get(cle(d)) ?? 0) }
+  })
+}
 
 export function servicesConsoleSimules(o: OptionsConsoleSimulee = {}): ServicesConsole {
   const { attendre, refus } = creerSimulateur({ latenceMs: o.latenceMs ?? 300 })
@@ -94,6 +106,16 @@ export function servicesConsoleSimules(o: OptionsConsoleSimulee = {}): ServicesC
       throw refus(403, 'IAM_PRIVILEGED_PROFILE', "L'attribution d'un profil privilégié est réservée au super administrateur")
     }
   }
+  // Institution : réservée au correspondant de participant, et obligatoire pour lui (règle de MS-IAM).
+  const verifierRattachement = (demandes: string[], institutionId?: string | null) => {
+    const rattache = !!institutionId?.trim()
+    if (rattache && demandes.some((p) => p !== 'ROLE_CORRESPONDANT')) {
+      throw refus(400, 'IAM_INSTITUTION_INTERNAL_ACCOUNT', "Un compte interne du GIMAC n'est rattaché à aucune institution", { institutionId })
+    }
+    if (demandes.includes('ROLE_CORRESPONDANT') && !rattache) {
+      throw refus(400, 'IAM_INSTITUTION_REQUIRED', 'Un correspondant de participant est rattaché à son institution')
+    }
+  }
   const dernierSuperAdmin = (c: Compte) => {
     if (c.actif && c.profils.includes('ROLE_SUPER_ADMIN') && comptes.filter((x) => x.actif && x.profils.includes('ROLE_SUPER_ADMIN')).length <= 1) {
       throw refus(409, 'IAM_LAST_SUPER_ADMIN', 'La plateforme doit garder au moins un super administrateur actif')
@@ -132,6 +154,7 @@ export function servicesConsoleSimules(o: OptionsConsoleSimulee = {}): ServicesC
     if (!x.envoyerInvitation && !x.motDePasseProvisoire) throw refus(400, 'IAM_ONBOARDING_REQUIRED', "Choisir l'invitation par courriel ou un mot de passe provisoire")
     if (!x.profils.length) throw refus(400, 'IAM_PROFILE_UNKNOWN', 'Au moins un profil', { profils: [] })
     verifierProfils([], x.profils)
+    verifierRattachement(x.profils, x.institutionId)
     if (comptes.some((c) => c.identifiant === identifiant || c.email?.toLowerCase() === x.email.trim().toLowerCase())) {
       throw refus(409, 'IAM_ACCOUNT_CONFLICT', 'Identifiant ou courriel déjà utilisé')
     }
@@ -170,6 +193,9 @@ export function servicesConsoleSimules(o: OptionsConsoleSimulee = {}): ServicesC
           creesDepuis30Jours: comptes.filter((c) => c.creeLe && Date.parse(c.creeLe) > il30).length,
           actesDepuis24Heures: journal.filter((j) => Date.parse(j.horodatage) > Date.now() - 86_400_000).length,
           parProfil,
+          // Historique fictif déterministe, augmenté des créations et actes réels de la démonstration.
+          creationsParJour: parJour(comptes.map((c) => c.creeLe), (i) => (i * 7) % 5 === 0 ? 1 : 0),
+          actesParJour: parJour(journal.map((j) => j.horodatage), (i) => (new Date(Date.now() - (29 - i) * 86_400_000).getDay() % 6 === 0 ? 0 : 3 + Math.round(2 * Math.sin(i / 3)) + (i % 9 === 4 ? 4 : 0))),
         }
       }),
     journal: (f) =>
@@ -538,6 +564,7 @@ export function servicesConsoleSimules(o: OptionsConsoleSimulee = {}): ServicesC
   let sequence = 0
   const plateforme: ServicePlateforme = {
     services: () => attendre(() => D.instantane()),
+    series: (metrique, periode, cible) => attendre(() => D.series(metrique, periode, cible)),
     serveurs: () => attendre(D.serveurs),
     alertes: () => attendre(D.alertes),
     configuration: () => attendre(D.configurationPlateforme),

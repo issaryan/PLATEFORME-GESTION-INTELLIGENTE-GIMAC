@@ -34,6 +34,8 @@ export interface ConversationItem {
   enLigne?: boolean
   /** « Aminata écrit… » (D-72) : remplace l'extrait tant que quelqu'un écrit. */
   saisie?: string
+  /** Accusé de lecture de mon dernier message (D-88) : coches devant l'extrait. */
+  lecture?: ThreadLecture
 }
 
 /** Point « en ligne » (D-72) sur un avatar, annoncé aux technologies d'assistance. */
@@ -76,7 +78,9 @@ export function ConversationList(p: ConversationListProps) {
               </span>
               {c.sousTitre ? <span className="gm-conv-sous">{c.sousTitre}</span> : null}
               <span className="gm-conv-ligne">
-                {c.saisie ? <span className="gm-conv-extrait gm-conv-saisie">{c.saisie}</span> : <span className="gm-conv-extrait">{c.extrait}</span>}
+                {c.saisie ? <span className="gm-conv-extrait gm-conv-saisie">{c.saisie}</span> : (
+                  <span className="gm-conv-extrait">{c.lecture ? <Coches l={c.lecture} /> : null}{c.extrait}</span>
+                )}
                 {c.nonLus ? <span className="gm-conv-pastille" aria-label={t('messagerie.nonLus', { n: c.nonLus })}>{c.nonLus}</span> : null}
               </span>
             </span>
@@ -84,6 +88,65 @@ export function ConversationList(p: ConversationListProps) {
         </li>
       ))}
     </ul>
+  )
+}
+
+/**
+ * Accusé de lecture d'un de mes messages (D-88) : une coche grise (envoyé), deux coches grises (lu par certains,
+ * groupe), deux coches de couleur d'accent (lu par tous) ; texte accessible « Lu », « Lu par 2 sur 3 ».
+ */
+export interface ThreadLecture {
+  etat: 'ENVOYE' | 'LU_PAR_CERTAINS' | 'LU'
+  lus: number
+  destinataires: number
+  /** Détail « Lu par » (message de groupe) : monté à l'ouverture (survol, focus ou clic) seulement. */
+  detail?: ReactNode
+}
+
+function useTexteLecture() {
+  const t = useLibelle()
+  return (l: ThreadLecture) => (l.etat === 'ENVOYE' ? t('messagerie.lecture.envoye')
+    : l.etat === 'LU' ? t('messagerie.lecture.lu') : t('messagerie.lecture.luPar', { n: l.lus, total: l.destinataires }))
+}
+
+/** Coches seules, annoncées par leur texte. */
+function Coches({ l, decoratif }: { l: ThreadLecture; decoratif?: boolean }) {
+  const texte = useTexteLecture()(l)
+  return (
+    <span className={cx('gm-coches', l.etat === 'LU' && 'gm-coches-lu')} data-etat={l.etat} {...(decoratif ? { 'aria-hidden': true } : { role: 'img', 'aria-label': texte, title: texte })}>
+      <Icon name={l.etat === 'ENVOYE' ? 'check' : 'check-check'} size={14} />
+    </span>
+  )
+}
+
+/** Accusé sous la bulle ; pour un groupe, bouton qui ouvre la liste « Lu par » au survol, au focus ou au clic. */
+function Accuse({ l }: { l: ThreadLecture }) {
+  const t = useLibelle()
+  const texte = useTexteLecture()(l)
+  const id = useId()
+  const [survol, setSurvol] = useState(false)
+  const [epingle, setEpingle] = useState(false)
+  if (!l.detail) return <div className="gm-msg-lecture"><Coches l={l} /></div>
+  const ouvert = survol || epingle
+  const fermer = () => {
+    setEpingle(false)
+    setSurvol(false)
+  }
+  return (
+    <div className="gm-msg-lecture" onMouseEnter={() => setSurvol(true)} onMouseLeave={() => setSurvol(false)}
+      onKeyDown={(e) => { if (e.key === 'Escape' && ouvert) { e.stopPropagation(); fermer() } }}>
+      <button type="button" className="gm-msg-lecture-bouton" aria-expanded={ouvert} aria-controls={ouvert ? id : undefined}
+        aria-label={t('messagerie.lecture.detail', { etat: texte })} title={texte} onClick={() => setEpingle((v) => !v)}>
+        <Coches l={l} decoratif />
+        <span className="gm-num">{`${l.lus}/${l.destinataires}`}</span>
+      </button>
+      {ouvert ? (
+        <div id={id} role="dialog" aria-label={t('messagerie.lecture.titre')} className="gm-msg-lecture-detail">
+          <strong>{t('messagerie.lecture.titre')}</strong>
+          {l.detail}
+        </div>
+      ) : null}
+    </div>
   )
 }
 
@@ -111,6 +174,8 @@ export interface ThreadMessage {
   citation?: ThreadCitation
   /** Le lecteur y est mentionné, ou le message répond à l'un des siens (D-82) : bulle légèrement signalée. */
   mentionneMoi?: boolean
+  /** Accusé de lecture (D-88), sous mes messages seulement. */
+  lecture?: ThreadLecture
 }
 
 /** Message cité par une réponse (D-82), dans la bulle ou au-dessus de la zone de saisie. */
@@ -218,6 +283,7 @@ function Bulle({ m, enEvidence, onRepondre, children }: { m: ThreadMessage; enEv
         <div className="gm-msg-texte">{m.contenu}</div>
         {children}
       </div>
+      {m.mine && m.lecture ? <Accuse l={m.lecture} /> : null}
     </li>
   )
 }

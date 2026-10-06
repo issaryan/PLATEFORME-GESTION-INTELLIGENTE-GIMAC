@@ -1,12 +1,13 @@
 // Socle d'interface du lot 1 (PI-GIMAC-01 F0).
 export { P, SESSION, CONNEXION, DECONNEXION, API_CONNEXION, APPAREILS, HISTORIQUE_CONNEXIONS, prefixeIam, type Couche } from './http/prefixes'
 export { urlAvatar, avatarsSimules, photoDemo } from './avatar/avatar'
-export { ApiError, estApiError, type Problem } from './http/errors'
+export { ApiError, estApiError, champsRefuses, SAISIE_INVALIDE, type Problem, type FieldErrorProbleme } from './http/errors'
 export { http, configureHttp, reprDigestToHex, type RequestOptions, type HttpHooks, type CsrfConfig } from './http/client'
 export {
   televerser, depotsHttp, type ServiceDepots, type Depot, type EtatDepot, type OuvertureDepot, type Progression, type Televersement, type OptionsTeleversement,
 } from './http/televersement'
 export { openLiveChannel, type LiveTopic, type LiveEvent, type EtatCanal } from './live/live'
+export { ACCUSE_LECTURE, surAccuseLecture, diffuserAccuseLecture, accuseDe, type AccuseLecture } from './live/lectures'
 export { SIGNAL, DUREE_SAISIE_MS, initialiserPresence, appliquerSignal, viderSignaux, usePresence, useEnLigne, useSaisies, type EtatPresence } from './live/signaux'
 export { getReauthAssertion, ReauthCancelled, CleSecuriteIndisponible, cleSecuriteDisponible, refusReauth, estAnnulation, b64u, fromB64u, type SignPurpose, type RefusReauth } from './reauth/webauthn'
 export { sha256Hex } from './crypto/sha256'
@@ -36,11 +37,12 @@ export {
 } from './session/inactivite'
 export { PageDeconnexion } from './session/PageDeconnexion'
 export {
-  satisfait, PERMISSIONS_CONSOLE, ADRESSES_APPLICATIONS, FRAGMENT_SESSION_DEMO, estCompteInstitution, ouvreConsole, applicationDe, applicationApresRefus, adresseApplication,
+  satisfait, PERMISSIONS_CONSOLE, ADRESSES_CONFIGUREES, PORTS_DIRECTS, lirePort, adressesApplications, adresseBaseApplication, type LieuPage, FRAGMENT_SESSION_DEMO, estCompteInstitution, ouvreConsole, applicationDe, applicationApresRefus, adresseApplication,
   adresseConnexionApplication, reprendreSessionDemo, type Predicat,
 } from './session/aiguillage'
 export { Aiguillage, MessageAiguillage, reglageAiguillage } from './session/Aiguillage'
 export { LangueComposants } from './i18n/LangueComposants'
+export { useLibelleProfil, type LibellesProfils } from './i18n/libelleProfil'
 // Notifications de la plateforme (D-80, docs/lot1/notifications.md) : cloche, page, fenêtres surgissantes, système.
 export {
   TYPES_NOTIFICATION, TYPES_MESSAGERIE, conversationDe, referenceConversation, type NotificationPlateforme, type TypeNotification, type ReferenceNotification, type EtatNotifications, type PageNotifications,

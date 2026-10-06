@@ -78,7 +78,9 @@ invitation, journal, profils privilégiés) ou la **refuse** avec un motif.
 
 Règles : la cible (ou, pour une création, l'unité et le n+1 proposés) doit être dans la portée de l'action
 du demandeur (`COMPTE_DEMANDER`, `PROFIL_DEMANDER`, `STATUT_DEMANDER`), sinon 403 `ORG_HORS_PERIMETRE` ; les
-profils proposés doivent être dans ses `profilsDemandables`, sinon 422 `ORG_PROFIL_NON_DEMANDABLE` ; une seule
+profils proposés doivent être dans ses `profilsDemandables`, sinon 422 `ORG_PROFIL_NON_DEMANDABLE` ; la règle du
+rattachement à une institution s'applique dès la soumission (un compte créé par demande est interne, sans
+institution : 400 `IAM_INSTITUTION_REQUIRED` pour un correspondant de participant) ; une seule
 demande `EN_ATTENTE` par cible et par type (409 `ORG_DEMANDE_EXISTANTE`) ; le demandeur peut annuler la
 sienne tant qu'elle est en attente. Accepter exige la permission de l'acte (`IAM_ACCOUNT_CREATE`,
 `IAM_ACCOUNT_ROLES`, `IAM_ACCOUNT_STATUS`) et la réauthentification FIDO2 comme l'acte direct ; un profil

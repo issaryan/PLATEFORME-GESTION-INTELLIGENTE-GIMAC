@@ -1,21 +1,52 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Card, DataTable, InlineAlert, LiveStatGroup, Skeleton, StatCard, StatusBadge, type Column, type Status } from '@gimac/design-system'
+import { Card, DataTable, Drawer, InlineAlert, LiveStatGroup, ProgressRing, Skeleton, StatCard, StatusBadge, type Column, type Status } from '@gimac/design-system'
 import { dateHeure } from '@gimac/compte'
-import { useAlertes, useFluxPlateforme, useServeurs, useServicesPlateforme } from '../hooks'
-import type { Alerte, EtatConteneur, EtatHote, EtatPlateforme, EtatService } from '../modele/plateforme'
+import { useAlertes, useFluxPlateforme, useSeries, useServeurs, useServicesPlateforme } from '../hooks'
+import type { Alerte, EtatConteneur, EtatHote, EtatPlateforme, EtatService, PeriodeSerie } from '../modele/plateforme'
+import { GraphiqueMetrique, TendanceMetrique } from './graphiquesSupervision'
 import { Donnees, Section } from './communs'
 import { etatDirect, nombre, octets, pourcent } from './formats'
 
 // Supervision de la plateforme (D-61) : état en temps réel (flux SSE /api/plateforme/flux), services, serveurs
 // et alertes. Sur le tableau de bord de la console et sur l'écran « Supervision » de l'application interne (D-79).
+// Graphiques : anneau de disponibilité, tendances par service et par conteneur (mini-courbes), fiche d'un
+// service ouverte au clic avec ses courbes ; les tableaux de l'état instantané restent en place.
 
 export const STATUT_PLATEFORME: Record<EtatPlateforme, Status> = { OPERATIONNELLE: 'ok', DEGRADEE: 'warn', HORS_SERVICE: 'crit' }
 export const statutService = (e: EtatService['etat']): Status => (e === 'UP' ? 'ok' : e === 'INCONNU' ? 'neutral' : 'crit')
 const statutSeverite = (s: string | null): Status => (s === 'critical' ? 'crit' : s === 'warning' ? 'warn' : 'info')
 const SEVERITES = ['critical', 'warning', 'info'] as const
 
-export function SectionSupervision() {
+/** Fiche d'un service : ses quatre courbes sur la période choisie. */
+function FicheService({ service, periode, onClose }: { service: EtatService; periode: PeriodeSerie; onClose: () => void }) {
+  const { t } = useTranslation()
+  return (
+    <Drawer
+      type={t('console.plateforme.service')}
+      reference={service.nom}
+      status={statutService(service.etat)}
+      statusLabel={t(`console.plateforme.sante.${service.etat}`)}
+      title={t('graphiques.fiche.titre', { service: service.nom })}
+      size="lg"
+      tabs={[{ key: 'courbes', label: t('graphiques.fiche.onglet') }]}
+      onClose={onClose}
+    >
+      <div className="gm-col" style={{ gap: 'var(--gm-space-4)' }}>
+        <GraphiqueMetrique metrique="SERVICE_LATENCE_P95" periode={periode} cible={service.nom} titre={t('graphiques.court.SERVICE_LATENCE_P95')} />
+        <GraphiqueMetrique metrique="SERVICE_DEBIT" periode={periode} cible={service.nom} titre={t('graphiques.court.SERVICE_DEBIT')} />
+        <GraphiqueMetrique metrique="SERVICE_ERREURS" periode={periode} cible={service.nom} seuil={1} titre={t('graphiques.court.SERVICE_ERREURS')} />
+        <GraphiqueMetrique metrique="SERVICE_TAS_JVM" periode={periode} cible={service.nom} titre={t('graphiques.court.SERVICE_TAS_JVM')} />
+      </div>
+    </Drawer>
+  )
+}
+
+export function SectionSupervision({ periode = 'UNE_HEURE' }: { periode?: PeriodeSerie }) {
   const { t, i18n } = useTranslation()
+  const [fiche, setFiche] = useState<EtatService | null>(null)
+  const latences = useSeries('SERVICE_LATENCE_P95', periode)
+  const cpuConteneurs = useSeries('CONTENEUR_CPU', periode)
   const flux = useFluxPlateforme()
   const services = useServicesPlateforme()
   const serveurs = useServeurs()
@@ -27,6 +58,7 @@ export function SectionSupervision() {
     { key: 'nom', header: t('console.plateforme.service'), render: (s) => <span className="gm-mono">{s.nom}</span> },
     { key: 'etat', header: t('console.plateforme.etat'), render: (s) => <StatusBadge status={statutService(s.etat)} label={t(`console.plateforme.sante.${s.etat}`)} /> },
     { key: 'latenceMs', header: t('console.plateforme.latence'), type: 'number', render: (s) => (s.latenceMs === null ? '—' : `${s.latenceMs} ms`) },
+    { key: 'tendance', header: t('graphiques.colonne.latence'), render: (s) => <TendanceMetrique series={latences.data} nom={s.nom} libelle={t('graphiques.metrique.SERVICE_LATENCE_P95') + ' · ' + s.nom} /> },
     { key: 'version', header: t('console.plateforme.version'), render: (s) => <span className="gm-mono">{s.info?.version ?? '—'}</span> },
     { key: 'cpu', header: t('console.plateforme.cpu'), type: 'number', render: (s) => pourcent(s.metriques?.cpuProcessus, 100) },
     { key: 'tas', header: t('console.plateforme.tas'), type: 'number', render: (s) => pourcent(s.metriques?.memoireTasPourcent) },
@@ -46,6 +78,7 @@ export function SectionSupervision() {
     { key: 'nom', header: t('console.plateforme.conteneur'), render: (c) => <span className="gm-mono">{c.nom}</span> },
     { key: 'cpuCoeurs', header: t('console.plateforme.cpuCoeurs'), type: 'number', render: (c) => nombre(c.cpuCoeurs, 2) },
     { key: 'memoireOctets', header: t('console.plateforme.memoire'), type: 'number', render: (c) => octets(c.memoireOctets) },
+    { key: 'tendance', header: t('graphiques.colonne.cpu'), render: (c) => <TendanceMetrique series={cpuConteneurs.data} nom={c.nom} libelle={t('graphiques.metrique.CONTENEUR_CPU') + ' · ' + c.nom} /> },
   ]
   const colAlertes: Column<Alerte>[] = [
     { key: 'severite', header: t('console.alertes.severite'), render: (a) => <StatusBadge status={statutSeverite(a.severite)} label={t(`console.alertes.severite.${a.severite ?? 'info'}`, { defaultValue: a.severite ?? '' })} /> },
@@ -59,6 +92,15 @@ export function SectionSupervision() {
     <Section titre={t('console.supervision.titre')} id="gm-supervision">
       {flux.etat === 'perdu' ? <InlineAlert level="warn" title={t('console.flux.perdu.texte')} /> : null}
       {instantane ? (
+        <div className="gm-row" style={{ alignItems: 'center', flexWrap: 'wrap', gap: 'var(--gm-space-6)' }}>
+        <ProgressRing
+          label={t('graphiques.disponibilite')}
+          value={instantane.global.total ? Math.round((instantane.global.up * 100) / instantane.global.total) : null}
+          size={96}
+          status={STATUT_PLATEFORME[instantane.global.etat]}
+          statusLabel={t('graphiques.disponibilite.libelle', { up: instantane.global.up, total: instantane.global.total })}
+        />
+        <div style={{ flex: '1 1 480px', minWidth: 0 }}>
         <LiveStatGroup
           title={t('console.plateforme.etatTitre')}
           level={3}
@@ -77,6 +119,8 @@ export function SectionSupervision() {
               : []),
           ]}
         />
+        </div>
+        </div>
       ) : services.isError ? (
         <InlineAlert level="crit" title={t('commun.erreur.titre')} correlationId={services.error?.correlationId || undefined}>{services.error?.message}</InlineAlert>
       ) : (
@@ -84,7 +128,7 @@ export function SectionSupervision() {
       )}
       {instantane ? (
         <Card title={t('console.plateforme.services')}>
-          <DataTable columns={colServices} rows={instantane.services} rowKey={(s) => s.nom} density="compact" />
+          <DataTable columns={colServices} rows={instantane.services} rowKey={(s) => s.nom} density="compact" onRowOpen={setFiche} />
         </Card>
       ) : null}
       <Card title={t('console.plateforme.serveurs')}>
@@ -118,6 +162,7 @@ export function SectionSupervision() {
           }
         </Donnees>
       </Card>
+      {fiche ? <FicheService service={fiche} periode={periode} onClose={() => setFiche(null)} /> : null}
     </Section>
   )
 }

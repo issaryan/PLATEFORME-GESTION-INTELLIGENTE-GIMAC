@@ -2,10 +2,10 @@ import { useMemo, useRef, useState, type DragEvent, type ReactNode } from 'react
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 import { Button, Card, ConfirmDialog, CrudDialog, DataTable, EmptyState, Icon, KeyValueList, PageHeader, Select, StatusBadge, Tag, cx, type Column } from '@gimac/design-system'
-import { aPermission, usePermissions } from '@gimac/socle'
+import { aPermission, usePermissions, useLibelleProfil } from '@gimac/socle'
 import { useMessageErreur, type Compte } from '@gimac/compte'
 import type { Unite } from '@gimac/lot1'
-import { cles, useEffet, useLibelleProfil, useMatricePouvoirs, useTousComptes, useUnitesOrganisation } from '../hooks'
+import { cles, useEffet, useLibellesProfils, useMatricePouvoirs, useTousComptes, useUnitesOrganisation } from '../hooks'
 import { Annonce } from '../composants/Annonce'
 import type { Retour } from '../composants/actes'
 import { Donnees } from '../composants/communs'
@@ -40,7 +40,7 @@ export default function OrganigrammePage() {
   const navigate = useNavigate()
   const { base } = useChemins()
   const edition = aPermission(usePermissions(), 'IAM_ACCOUNT_EDIT')
-  const libelleProfil = useLibelleProfil()
+  const libelleProfil = useLibelleProfil(useLibellesProfils())
   const unites = useUnitesOrganisation()
   const tous = useTousComptes()
   const matrice = useMatricePouvoirs()

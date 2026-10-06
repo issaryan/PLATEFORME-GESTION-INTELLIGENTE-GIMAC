@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react'
-import { keepPreviousData, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { initialiserPresence, type ApiError } from '@gimac/socle'
-import type { Envoi, FilMessages, NouvelleConversation } from '../modele/messagerie'
+import { keepPreviousData, useInfiniteQuery, useMutation, useQueryClient, type InfiniteData } from '@tanstack/react-query'
+import { initialiserPresence, surAccuseLecture, type ApiError } from '@gimac/socle'
+import type { Conversation, Envoi, FilMessages, LectureMessage, Message, NouvelleConversation, PageMessagerie } from '../modele/messagerie'
 import { useServices } from '../services/ServicesProvider'
 import { useLecture } from './base'
 
@@ -13,6 +13,8 @@ export const clesMessagerie = {
   conversations: (q: { recherche?: string; liaisonId?: string; page?: number }) => ['collaboration', 'conversations', q] as const,
   conversation: (id: string) => ['collaboration', 'conversation', id] as const,
   fil: (id: string) => ['collaboration', 'conversation', id, 'messages'] as const,
+  /** Détail « Lu par » (D-88) : sous le fil, relu avec lui. */
+  lectures: (id: string, messageId: string) => ['collaboration', 'conversation', id, 'messages', messageId, 'lectures'] as const,
   nonLus: () => ['collaboration', 'non-lus'] as const,
 }
 
@@ -47,6 +49,43 @@ export function useFil(id: string | undefined) {
     select: (d) => d.pages,
     refetchInterval: SONDAGE_MESSAGERIE,
   })
+}
+
+/** Détail « Lu par » d'un de mes messages de groupe (D-88), lu à l'ouverture seulement. */
+export const useLecturesMessage = (conversationId: string, messageId: string, actif = true) =>
+  useLecture(clesMessagerie.lectures(conversationId, messageId), (s) => s.messagerie.lectures(conversationId, messageId), { enabled: actif })
+
+/** Mon message envoyé jusqu'à `luJusquA` : lu par l'unique destinataire d'un échange direct. */
+const luEnDirect = <T extends { envoyeLe: string; lecture?: LectureMessage | null }>(m: T, luJusquA: number): T =>
+  m.lecture && m.lecture.etat !== 'LU' && Date.parse(m.envoyeLe) <= luJusquA ? { ...m, lecture: { etat: 'LU' as const, lus: m.lecture.destinataires, destinataires: m.lecture.destinataires } } : m
+
+/**
+ * Accusés de lecture reçus pour la conversation ouverte (D-88 §4) : en échange direct, mes messages envoyés
+ * jusqu'à `luJusquA` passent à LU dans le fil et dans la liste, sans rien relire ; en groupe, l'événement ne dit
+ * pas si ce lecteur était déjà compté : seuls le fil affiché et le détail « Lu par » ouvert sont relus. Jamais
+ * de relecture de la liste ni du compteur de non-lus.
+ */
+export function useAccusesLecture(conversation: Pick<Conversation, 'id' | 'type'> | undefined) {
+  const qc = useQueryClient()
+  const id = conversation?.id
+  const type = conversation?.type
+  useEffect(() => {
+    if (!id) return undefined
+    return surAccuseLecture((a) => {
+      if (a.conversationId !== id) return
+      if (type === 'GROUPE') {
+        void qc.invalidateQueries({ queryKey: clesMessagerie.fil(id) })
+        return
+      }
+      const jusqua = Date.parse(a.luJusquA)
+      qc.setQueryData<InfiniteData<FilMessages>>(clesMessagerie.fil(id), (d) => d && {
+        ...d, pages: d.pages.map((p) => ({ ...p, contenu: p.contenu.map((m): Message => (m.moi ? luEnDirect(m, jusqua) : m)) })),
+      })
+      qc.setQueriesData<PageMessagerie<Conversation>>({ queryKey: ['collaboration', 'conversations'] }, (l) => l && {
+        ...l, contenu: l.contenu.map((c) => (c.id === id && c.dernierMessage ? { ...c, dernierMessage: luEnDirect(c.dernierMessage, jusqua) } : c)),
+      })
+    })
+  }, [id, type, qc])
 }
 
 function useEcriture<V, R>(agir: (v: V) => Promise<R>) {

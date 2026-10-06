@@ -23,9 +23,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageConversionException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.ErrorResponse;
+import tools.jackson.core.JacksonException;
 import org.springframework.web.ErrorResponseException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -79,8 +81,40 @@ public class ExceptionTranslator extends ResponseEntityExceptionHandler {
         HttpStatusCode statusCode,
         WebRequest request
     ) {
+        if (ex instanceof HttpMessageNotReadableException illisible && champIllisible(illisible) instanceof FieldErrorVM champ) {
+            body = problemeDeChamp(champ, (NativeWebRequest) request);
+        }
         body = body == null ? wrapAndCustomizeProblem(ex, (NativeWebRequest) request) : body;
         return super.handleExceptionInternal(ex, body, headers, statusCode, request);
+    }
+
+    /**
+     * Valeur illisible pour son type (date au format JJ/MM/AAAA, énumération inconnue) : le champ en
+     * cause est rendu dans fieldErrors, comme une contrainte non respectée, pour que l'interface
+     * l'affiche sous le champ plutôt qu'un « Failed to read request » sans indication.
+     */
+    private static @Nullable FieldErrorVM champIllisible(HttpMessageNotReadableException ex) {
+        if (!(ex.getCause() instanceof JacksonException jackson)) return null;
+        String champ = jackson
+            .getPath()
+            .stream()
+            .map(JacksonException.Reference::getPropertyName)
+            .filter(StringUtils::isNotBlank)
+            .reduce((a, b) -> b)
+            .orElse(null);
+        return champ == null ? null : new FieldErrorVM("requete", champ, "invalid format");
+    }
+
+    private ProblemDetailWithCause problemeDeChamp(FieldErrorVM champ, NativeWebRequest request) {
+        return ProblemDetailWithCauseBuilder.instance()
+            .withStatus(HttpStatus.BAD_REQUEST.value())
+            .withType(ErrorConstants.CONSTRAINT_VIOLATION_TYPE)
+            .withTitle("Method argument not valid")
+            .withDetail("Unreadable value for field " + champ.getField())
+            .withProperty(MESSAGE_KEY, ErrorConstants.ERR_VALIDATION)
+            .withProperty(PATH_KEY, getPathValue(request))
+            .withProperty(FIELD_ERRORS_KEY, List.of(champ))
+            .build();
     }
 
     protected ProblemDetailWithCause wrapAndCustomizeProblem(Throwable ex, NativeWebRequest request) {

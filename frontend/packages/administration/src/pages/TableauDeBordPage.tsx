@@ -1,11 +1,11 @@
 import { useTranslation } from 'react-i18next'
 import { EmptyState, Link, PageHeader, PageSection } from '@gimac/design-system'
-import { aPermission, usePermissions, useSession } from '@gimac/socle'
+import { aPermission, usePermissions, useSession, useLibelleProfil } from '@gimac/socle'
 import { SectionActes, SectionGestionUtilisateurs } from '../composants/sectionsTableau'
 import { SectionSupervision } from '../composants/supervision'
 import { WidgetChargesEnErreur } from '../composants/widgetsPlateforme'
 import { useChemins } from '../services/useServicesConsole'
-import { useLibelleProfil } from '../hooks'
+import { useLibellesProfils } from '../hooks'
 
 // Tableau de bord de la console (D-61, D-62, D-79), composé selon les permissions de la session, jamais selon le
 // nom du rôle ; la gestion des utilisateurs (actions directes et indicateurs cliquables) vient en tête :
@@ -20,7 +20,7 @@ export default function TableauDeBordPage() {
   const { t } = useTranslation()
   const session = useSession()
   const permissions = usePermissions()
-  const libelleProfil = useLibelleProfil()
+  const libelleProfil = useLibelleProfil(useLibellesProfils())
   const { base } = useChemins()
   const peut = (p: string) => aPermission(permissions, p)
   const privilegie = peut('IAM_ROLE_PRIVILEGED_GRANT')

@@ -181,6 +181,13 @@ export const PLAN: EntreePlan[] = [
     "description": "Montant formaté avec espace fine et devise ISO après le nombre (1 250 000 XAF), chiffres tabulaires, aligné à droite en colonne (`gm-type-number`). DateTime affiche l'horodatage local (UTC+1) au format 28/09/2026 14:05 avec l'UTC en infobulle ; variante relative rafraîchie (« il y a 4 min »)."
   },
   {
+    "nom": "Sparkline",
+    "groupe": "Affichage",
+    "hauteur": 140,
+    "largeur": 420,
+    "description": "Mini-courbe (tuile de mesure, ligne de tableau de supervision) : sans axe ni grille, trait de 2 px dans la série `gm-serie-1` à `gm-serie-4` (ordre fixe validé en clair et en sombre) ou `gm-serie-autre` pour une courbe de contexte, point final cerclé de la surface, lavis d'aire à 10 % en option. Largeur fluide, hauteur fixe ; une mesure absente (`null`) laisse un trou, jamais un zéro. `role=\"img\"` avec un résumé accessible (« Processeur : de 12 % à 34 % ») ; la valeur courante reste lisible hors du graphique.\n\n**Le consommateur fournit** `points` (valeurs dans l'ordre du temps), `label`, `unit?`, `serie?` (0 à 3 ou `autre`), `aire?`, `min?`, `max?`, `hauteur?`."
+  },
+  {
     "nom": "ProgressRing",
     "groupe": "Affichage",
     "hauteur": 160,
@@ -206,7 +213,7 @@ export const PLAN: EntreePlan[] = [
     "groupe": "Affichage",
     "hauteur": 168,
     "largeur": null,
-    "description": "Carte d'indicateur (DS-GIMAC-01 §7.3) : surface plate, bordure de 1 px, angles droits, aucune ombre ni pictogramme décoratif. Libellé (`gm-type-small`), valeur (`gm-type-stat` : 32 px, 600, chiffres tabulaires), unité ; ligne de contexte : statut porté par le pictogramme réservé (§5.5) et le libellé, colorés, jamais par un fond ni une bande ; tendance (flèche et variation), seuil (« seuil 95 % »), `context` libre (échéance, période). `onClick` ouvre le détail ou l'écran filtré : bordure d'action et cartouche au survol, anneau de focus, Entrée et Espace. Rangée de 4 à 6 cartes en tête d'un tableau de bord (gabarit G1), grille régulière `gm-stat-grid`.\n\n**Le consommateur fournit** `label`, `value`, `unit?`, `trend?`, `threshold?`, `context?`, `status?`, `statusLabel?`, `onClick?`.\n\n**Interdits** : un pictogramme décoratif ; un statut porté par la seule couleur."
+    "description": "Carte d'indicateur (DS-GIMAC-01 §7.3) : surface plate, bordure de 1 px, angles droits, aucune ombre ni pictogramme décoratif. Libellé (`gm-type-small`), valeur (`gm-type-stat` : 32 px, 600, chiffres tabulaires), unité ; ligne de contexte : statut porté par le pictogramme réservé (§5.5) et le libellé, colorés, jamais par un fond ni une bande ; tendance (flèche et variation), seuil (« seuil 95 % »), `context` libre (échéance, période). `onClick` ouvre le détail ou l'écran filtré : bordure d'action et cartouche au survol, anneau de focus, Entrée et Espace. Rangée de 4 à 6 cartes en tête d'un tableau de bord (gabarit G1), grille régulière `gm-stat-grid`.\n\nTuile de mesure : avec `serie`, une mini-courbe (Sparkline) de l'évolution récente s'affiche sous la valeur.\n\n**Le consommateur fournit** `label`, `value`, `unit?`, `trend?`, `threshold?`, `context?`, `status?`, `statusLabel?`, `onClick?`, `serie?`, `serieLibelle?`.\n\n**Interdits** : un pictogramme décoratif ; un statut porté par la seule couleur."
   },
   {
     "nom": "StatusBadge",
@@ -368,6 +375,20 @@ export const PLAN: EntreePlan[] = [
     "hauteur": 760,
     "largeur": 980,
     "description": "Carte de graphique (cockpits, tableaux de bord) : courbe, barres ou jauge en SVG, palette de données `gm-data-1` à `gm-data-8` dans l'ordre fixe (validée pour la vision des couleurs en clair et en sombre), légende toujours présente dès deux séries, étiquettes directes en fin de courbe, seuil en pointillé critique, infobulle au survol (réticule sur les courbes, par barre sur les barres), onglet **Tableau** équivalent, export contrôlé. Une seule échelle par graphique, jamais deux axes. Le texte des graphiques reste en encre (jamais dans la couleur de série) ; les statuts sur un graphique passent par StatusBadge.\n\n**Le consommateur fournit** `title`, `subtitle?`, `type` (`line | bar | gauge`), `labels`, `series` (`{ name, data[] }`, au plus huit), `unit?`, `threshold?`, `min?` et `max?` (domaine : une courbe de disponibilité part de 90 %, pas de 0), `status?`, `width?`, `height?`."
+  },
+  {
+    "nom": "SerieTemporelle",
+    "groupe": "Données",
+    "hauteur": 1200,
+    "largeur": 980,
+    "description": "Courbe temporelle des métriques (supervision, tableaux de bord) : une seule échelle, axe du temps en heures ou en dates selon l'étendue, ou en jours ou en mois pour les comptes des tableaux de bord (`granularite`), largeur adaptative, trou pour une mesure absente. Quatre séries d'identité au plus (`gm-serie-1` à `gm-serie-4`, ordre fixe validé pour la vision des couleurs), les suivantes en gris et regroupées en « Autres (n) » dans la légende. Réticule et infobulle listant toutes les séries à l'instant visé, à la souris comme au clavier (flèches, Début, Fin, Échap) ; seuil ; lavis d'aire pour une série unique ; légende dès deux séries ; onglet **Tableau** équivalent ; rechargement sans flash (image précédente atténuée). L'export n'apparaît que si `onExporter` est fourni. Les filtres de période se placent au-dessus des graphiques, jamais dans la carte.\n\n**Le consommateur fournit** `title`, `subtitle?`, `series` (`{ nom, points: { t, v }[] }`), `unit?`, `format?`, `min?`, `max?`, `seuil?`, `aire?`, `hauteur?`, `status?`, `chargement?`, `rechargement?`, `vide?`, `onExporter?`, `actions?`, `granularite?` (`instant` par défaut, `jour`, `mois`)."
+  },
+  {
+    "nom": "BarresHorizontales",
+    "groupe": "Données",
+    "hauteur": 420,
+    "largeur": 980,
+    "description": "Barres horizontales de répartition (comptes par profil, liaisons par étape, causes d'anomalies) : une seule teinte (comparaison de grandeurs, pas d'identités), barres de 20 px à bout arrondi côté valeur, carrées sur la ligne de base, valeur au bout de la barre, survol par barre, libellés longs à gauche. Tri décroissant par défaut ou ordre fourni (étapes d'un parcours) ; au-delà de `maximum`, les plus petites catégories sont regroupées en « Autres (n) ». Une catégorie peut ouvrir la liste filtrée (`onClick`). Onglet **Tableau** équivalent.\n\n**Le consommateur fournit** `title`, `subtitle?`, `elements` (`{ libelle, valeur, cle?, onClick? }`), `unit?`, `format?`, `maximum?`, `trier?`, `vide?`, `actions?`."
   },
   {
     "nom": "DagView",

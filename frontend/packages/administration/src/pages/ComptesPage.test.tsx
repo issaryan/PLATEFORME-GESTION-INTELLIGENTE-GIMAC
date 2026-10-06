@@ -26,6 +26,11 @@ describe('Comptes : liste', () => {
     filtres.length = 0
     rendrePage(<ComptesPage />, { chemin: '/console/comptes?etat=INCONNU', motif: '/console/comptes', services })
     await waitFor(() => expect(filtres[0]).toEqual({ page: 1, taille: 25 }))
+    cleanup()
+    filtres.length = 0
+    // Barre « Comptes par profil » du tableau de bord : ?profil=.
+    rendrePage(<ComptesPage />, { chemin: '/console/comptes?profil=ROLE_RSSI', motif: '/console/comptes', services })
+    await waitFor(() => expect(filtres[0]).toMatchObject({ profil: 'ROLE_RSSI', page: 1 }))
   })
 
   it('liste, recherche, filtres de profil et d’état acceptés par MS-IAM, pagination, ouverture', async () => {

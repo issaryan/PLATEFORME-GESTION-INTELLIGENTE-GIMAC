@@ -19,7 +19,7 @@ test.describe('Fonctionnalité : décisions du chef de la DDRM et cadrage des li
       await expect(page.getByRole('region', { name: 'Pilotage des projets de certification' })).toBeVisible()
     })
     await test.step('Quand l’adhésion d’un dossier complet lui est proposée, il l’approuve avec sa clé de sécurité', async () => {
-      await page.getByRole('region', { name: 'Relations avec les membres (DDRM)' }).getByRole('button').filter({ hasText: 'Candidats' }).click()
+      await page.getByRole('region', { name: 'Relations avec les membres (DDRM)' }).getByRole('button', { name: /^Candidats \d+$/ }).click()
       await page.getByRole('link', { name: 'Banque de Libreville' }).click()
       await expect(page.getByRole('heading', { level: 1 })).toHaveText('Banque de Libreville')
       await page.getByRole('button', { name: 'Proposer l\'adhésion' }).click()
@@ -58,7 +58,7 @@ test.describe('Fonctionnalité : décisions du chef de la DDRM et cadrage des li
   test('Scénario : ouvrir la liaison d’un adhérent au cadrage et désigner son conducteur', async ({ page }) => {
     await page.goto(`${ADRESSES.departement}/des/tableau-de-bord`)
     await test.step('Quand il part du registre des adhérents', async () => {
-      await page.getByRole('region', { name: 'Relations avec les membres (DDRM)' }).getByRole('button').filter({ hasText: 'Adhérents' }).click()
+      await page.getByRole('region', { name: 'Relations avec les membres (DDRM)' }).getByRole('button', { name: /^Adhérents sans liaison \d+$/ }).click()
       await expect(page.getByRole('link', { name: 'Mobile Money Sanaga' })).toBeVisible()
       await page.getByRole('row', { name: /Mobile Money Sanaga/ }).getByRole('button', { name: 'Ouvrir une liaison (cadrage)' }).click()
     })

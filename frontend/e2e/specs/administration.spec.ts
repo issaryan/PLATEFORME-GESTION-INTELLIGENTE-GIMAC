@@ -46,6 +46,18 @@ for (const [profil, titre] of [['ROLE_SUPER_ADMIN', 'Tableau de bord du super ad
   })
 }
 
+test('Scénario : ouverte par l’adresse IP, l’application du département lie la console sur le même hôte (publication mixte, D-75)', async ({ page }) => {
+  await demo(page, { profil: 'ROLE_RSSI' })
+  await page.goto(`${ADRESSES.departementIp}/des/tableau-de-bord`)
+  const nav = page.getByRole('navigation', { name: 'Navigation principale' })
+  const lien = nav.getByRole('link', { name: 'Console de la plateforme' })
+  // Jamais l'adresse configurée (nom public que le poste ne résout pas) : même protocole, même hôte, port direct.
+  await expect(lien).toHaveAttribute('href', `${ADRESSES.consoleIp}/console/tableau-de-bord`)
+  await lien.click()
+  await expect(page).toHaveURL(`${ADRESSES.consoleIp}/console/tableau-de-bord`)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Tableau de bord de la sécurité des SI')
+})
+
 test('Scénario : le RSSI gère les comptes dans l’application du département, sans changer d’application ni de thème', async ({ page }) => {
   await demo(page, { profil: 'ROLE_RSSI', theme: 'dark' })
   await page.goto(`${ADRESSES.departement}/des/tableau-de-bord`)

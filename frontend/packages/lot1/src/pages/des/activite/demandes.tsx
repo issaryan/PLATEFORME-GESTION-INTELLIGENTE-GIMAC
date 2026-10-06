@@ -5,7 +5,7 @@ import { ETATS_DEMANDE, estCreation, estProfils, type Demande, type EtatDemande 
 import { useAnnulerDemande, useDemande, useMesDemandes } from '../../../hooks/pouvoirs'
 import { etatListe } from '../liaisons/communs'
 import { pourDialogue, useDates, useErreur, useLibelleUnite } from './communs'
-import { useLibelleProfil } from './dialoguesEquipe'
+import { useLibelleProfilEquipe } from './dialoguesEquipe'
 
 // « Mes demandes » (D-81 §4, /des/equipe/demandes) : demandes adressées à l'administration, leur état, la
 // décision et son motif ; annulation tant qu'elle est en attente. ?demande=<id> ouvre la fiche (lien des
@@ -29,8 +29,8 @@ export function useObjetDemande() {
 export function useContenuDemande() {
   const { t } = useTranslation()
   const libelleUnite = useLibelleUnite()
-  const libelleProfil = useLibelleProfil()
-  const profils = (l: string[]) => (l.length ? l.map(libelleProfil).join(', ') : t('pvr.aucun'))
+  const libelleProfil = useLibelleProfilEquipe()
+  const profils = (l: string[]) => (l.length ? l.map((p) => libelleProfil(p)).join(', ') : t('pvr.aucun'))
   return (d: Demande): KeyValueItem[] => {
     if (estCreation(d)) {
       const c = d.contenu

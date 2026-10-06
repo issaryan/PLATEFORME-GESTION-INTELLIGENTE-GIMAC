@@ -37,6 +37,7 @@ const ConfigurationPlateformePage = lazy(() => import('@gimac/administration/pag
 const JournalisationPage = lazy(() => import('@gimac/administration/pages/JournalisationPage'))
 // Exploitation de l'infrastructure (D-78) : charges, journaux, gestes confirmés par la clé de sécurité.
 const InfrastructurePage = lazy(() => import('@gimac/administration/pages/InfrastructurePage'))
+const SupervisionPage = lazy(() => import('@gimac/administration/pages/SupervisionPage'))
 
 const VERSION = import.meta.env.VITE_VERSION ?? '0.1.0'
 
@@ -121,6 +122,7 @@ function Pages({ session, correlationId, notifications }: { session: Session; co
                   <Route path="plateforme/courriels" element={<Autorise permissions={p} exigee="PLATFORM_MESSAGING_EDIT"><CourrielsPage /></Autorise>} />
                   <Route path="plateforme/configuration" element={<Autorise permissions={p} exigee="PLATFORM_CONFIG_READ"><ConfigurationPlateformePage /></Autorise>} />
                   <Route path="plateforme/journalisation" element={<Autorise permissions={p} exigee="PLATFORM_CONFIG_READ"><JournalisationPage /></Autorise>} />
+                  <Route path="plateforme/supervision" element={<Autorise permissions={p} exigee="PLATFORM_SUPERVISION_READ"><SupervisionPage /></Autorise>} />
                   <Route path="plateforme/infrastructure" element={<Autorise permissions={p} exigee="PLATFORM_OPS_READ"><InfrastructurePage /></Autorise>} />
                   <Route path="mon-compte" element={<MonComptePage />} />
                   <Route path="*" element={<Navigate to="/console/tableau-de-bord" replace />} />

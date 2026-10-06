@@ -7,6 +7,8 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     include: ['test/**/*.test.{ts,tsx}'],
+    // Feuilles lues comme texte (?raw) par les tests des règles CSS : traitées par Vite, sans node:fs.
+    css: { include: [/11-enveloppe\.css/] },
     coverage: {
       provider: 'v8',
       include: ['src/**/*.{ts,tsx}'],
@@ -22,6 +24,8 @@ export default defineConfig({
         '{src/affichage/QrCode/**,src/conteneurs/CrudDialog/**,src/conteneurs/ConfirmDialog/**,src/conteneurs/SignDialog/**,src/conteneurs/Dialog/**,src/enveloppe/SideNav/**,src/affichage/StatCard/**}': { statements: 80, branches: 80, functions: 80, lines: 80 },
         '{src/enveloppe/PageHeader/**,src/conteneurs/PageSection/**,src/conteneurs/ToastRegion/**,src/donnees/StatGrid/**,src/navigation/LinkList/**,src/actions/ActionBar/**}': { statements: 80, branches: 80, functions: 80, lines: 80 },
         // Photo de profil, recadrage et menu utilisateur (docs/lot1/mon-compte.md).
+        // Graphiques de métriques : supervision et tableaux de bord (demande du 06/10/2026).
+        '{src/affichage/Sparkline/**,src/donnees/SerieTemporelle/**,src/donnees/BarresHorizontales/**,src/lib/graphiques.ts}': { statements: 80, branches: 80, functions: 80, lines: 80 },
         '{src/affichage/Avatar/**,src/saisie/AvatarCropper/**,src/enveloppe/TopBar/**,src/domaine/Messagerie/**}': { statements: 80, branches: 80, functions: 80, lines: 80 },
       },
     },

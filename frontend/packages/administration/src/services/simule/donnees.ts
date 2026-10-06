@@ -1,8 +1,9 @@
 import { avatarsSimules } from '@gimac/socle'
+import { NOMS_CHARGES_SIMULEES } from './infrastructure'
 import type { Compte } from '@gimac/compte'
 import type { EntreeJournal } from '../../modele/comptes'
 import type { ConfigurationMessagerie, PolitiqueSecurite } from '../../modele/configuration'
-import type { EtatAlertes, EtatServeurs, EtatService, InstantanePlateforme, NiveauxJournalisation, ConfigurationPlateforme } from '../../modele/plateforme'
+import type { EtatAlertes, EtatServeurs, EtatService, InstantanePlateforme, MetriqueSerie, NiveauxJournalisation, ConfigurationPlateforme, PeriodeSerie, PointSerie, SeriesMetriques } from '../../modele/plateforme'
 
 // Données fictives de la console (développement) : comptes de démonstration super.admin et rssi, agents
 // des directions, supervision d'une plateforme de recette. Aucune donnée réelle.
@@ -169,3 +170,46 @@ export const journalisation = (service: string): NiveauxJournalisation => ({
   service, niveauxDisponibles: ['OFF', 'ERROR', 'WARN', 'INFO', 'DEBUG', 'TRACE'],
   loggers: LOGGERS.map(([nom, niveauConfigure, niveauEffectif]) => ({ nom: nom.replace('.iam.', `.${service}.`), niveauConfigure, niveauEffectif })),
 })
+
+// ------------------------------------------------------------------ Séries des graphiques (simulées)
+
+const DUREES: Record<PeriodeSerie, number> = { UNE_HEURE: 3600e3, SIX_HEURES: 6 * 3600e3, UN_JOUR: 86400e3, SEPT_JOURS: 7 * 86400e3 }
+const UNITES: Record<MetriqueSerie, string> = {
+  PLATEFORME_CPU: '%', CONTENEUR_CPU: '%', CONTENEUR_MEMOIRE: 'Mo', CHARGE_CPU: '%', CHARGE_MEMOIRE: 'Mo', HOTE_CPU: '%', HOTE_MEMOIRE: '%', HOTE_DISQUE: '%',
+  SERVICE_DEBIT: 'req/s', SERVICE_LATENCE_P95: 'ms', SERVICE_ERREURS: '%', SERVICE_TAS_JVM: 'Mo',
+}
+const BASES: Record<MetriqueSerie, number> = {
+  PLATEFORME_CPU: 120, CONTENEUR_CPU: 8, CONTENEUR_MEMOIRE: 420, CHARGE_CPU: 9, CHARGE_MEMOIRE: 450, HOTE_CPU: 35, HOTE_MEMOIRE: 62, HOTE_DISQUE: 71,
+  SERVICE_DEBIT: 4, SERVICE_LATENCE_P95: 90, SERVICE_ERREURS: 0.4, SERVICE_TAS_JVM: 310,
+}
+
+/** Noms des séries d'une métrique : services, hôtes ou conteneurs simulés ; une seule pour la plateforme. */
+function nomsSeries(metrique: MetriqueSerie): string[] {
+  if (metrique === 'PLATEFORME_CPU') return ['plateforme']
+  if (metrique.startsWith('HOTE_')) return serveurs().hotes.map((h) => h.instance)
+  if (metrique.startsWith('CONTENEUR_')) return serveurs().conteneurs.map((c) => c.nom)
+  if (metrique.startsWith('CHARGE_')) return NOMS_CHARGES_SIMULEES()
+  return instantane().services.map((s) => s.nom)
+}
+
+/** Séries déterministes (même entrée, même courbe) sur la période, environ 240 points, un trou par série. */
+export function series(metrique: MetriqueSerie, periode: PeriodeSerie, cible?: string, maintenant = Date.now()): SeriesMetriques {
+  const duree = DUREES[periode]
+  const pas = Math.max(15e3, Math.floor(duree / 240 / 1000) * 1000)
+  const fin = Math.floor(maintenant / pas) * pas
+  const debut = fin - duree
+  const noms = nomsSeries(metrique).filter((n) => !cible || n === cible)
+  const base = BASES[metrique]
+  const plafond = UNITES[metrique] === '%' && metrique !== 'PLATEFORME_CPU' && metrique !== 'CONTENEUR_CPU' ? 100 : Infinity
+  const liste = noms.map((nom, k) => {
+    const echelle = 1 / (1 + k * 0.35)
+    const points: PointSerie[] = []
+    for (let t = debut, i = 0; t <= fin; t += pas, i++) {
+      const trou = i >= 140 + k * 7 && i < 146 + k * 7
+      const v = base * echelle * (1 + 0.3 * Math.sin(i / 24 + k) + 0.05 * Math.sin(i / 5.3 + k * 2))
+      points.push({ t, v: trou ? null : Math.min(plafond, Math.round(v * 100) / 100) })
+    }
+    return { nom, points }
+  })
+  return { metrique, unite: UNITES[metrique], periode, debut: new Date(debut).toISOString(), fin: new Date(fin).toISOString(), pasSecondes: pas / 1000, disponible: true, series: liste }
+}

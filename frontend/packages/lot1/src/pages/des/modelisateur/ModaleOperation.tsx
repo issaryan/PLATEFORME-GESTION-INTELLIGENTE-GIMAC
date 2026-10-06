@@ -75,7 +75,10 @@ export function ModaleOperation(p: ModaleOperationProps) {
     return {
       aucun,
       fonctions: de(c.fonctions, 'parcours.fonction'),
-      etapes: de(c.etapes, 'parcours.etape'),
+      // Étapes de la version (catalogue ?version=, D-89), dans leur ordre ; liste du catalogue à défaut.
+      etapes: c.etapesVersion?.length
+        ? [...c.etapesVersion].sort((a, b) => a.ordre - b.ordre).map((e) => ({ value: e.code, label: e.libelle }))
+        : de(c.etapes, 'parcours.etape'),
       segments: de(c.segments, 'parcours.segment'),
       gestes: de(c.gestes, 'modelisateur.geste'),
       jalons: de(c.jalons, 'modelisateur.jalon'),
@@ -85,11 +88,11 @@ export function ModaleOperation(p: ModaleOperationProps) {
       grains: de(c.grains, 'parcours.grain'),
       natures: de(c.naturesLivrable, 'modelisateur.nature'),
       pieces: c.typesPieces.map((m) => ({ value: m, label: t(`modelisateur.piece.${m.replace(/[./+-]/g, '_')}`, { defaultValue: m }) })),
-      predecesseurs: p.noeuds.filter((n) => n.code !== o.code).map((n) => ({ value: n.code, label: `${n.code} · ${n.libelle}` })),
+      predecesseurs: p.noeuds.filter((n) => !n.fantome && n.code !== o.code).map((n) => ({ value: n.code, label: `${n.code} · ${n.libelle}` })),
     }
   }, [c, p.noeuds, o.code, t])
   const noeud = p.noeuds.find((n) => n.code === p.operation.code && !p.creation)
-  const successeurs = p.creation ? [] : (noeud?.successeurs ?? p.noeuds.filter((n) => n.predecesseurs.includes(o.code)).map((n) => n.code))
+  const successeurs = p.creation ? [] : (noeud?.successeurs ?? p.noeuds.filter((n) => (n.predecesseurs ?? []).includes(o.code)).map((n) => n.code))
 
   const enregistrer = () => {
     const e = erreursSaisie(o, p.creation, p.noeuds.map((n) => n.code))
@@ -146,7 +149,7 @@ export function ModaleOperation(p: ModaleOperationProps) {
               <TextArea name="description" label={t('modelisateur.champ.description')} help={t('modelisateur.aide.description')} value={o.description ?? ''} rows={3} readOnly={lecture}
                 error={err('description')} onChange={(v) => maj({ description: v || null })} className="gm-mod-large" />
               <Select name="etape" label={t('modelisateur.champ.etape')} value={o.etape ?? ''} required disabled={lecture} error={err('etape')} options={[options.aucun, ...options.etapes]}
-                onChange={(v) => maj({ etape: (v || null) as ReferenceOperation['etape'] })} />
+                onChange={(v) => maj({ etape: v || null })} />
               <Select name="segment" label={t('modelisateur.champ.segment')} value={o.segment ?? ''} required disabled={lecture} error={err('segment')} options={[options.aucun, ...options.segments]}
                 onChange={(v) => maj({ segment: (v || null) as ReferenceOperation['segment'] })} />
               <NumberField name="ordre" label={t('modelisateur.champ.ordre')} help={t('modelisateur.aide.ordre')} value={o.ordre === null ? '' : String(o.ordre)} min={0} readOnly={lecture}

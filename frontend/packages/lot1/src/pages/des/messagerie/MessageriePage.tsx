@@ -3,9 +3,9 @@ import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router'
 import { AttachmentViewer, Avatar, Button, ConfirmDialog, ConversationList, Dialog, EmptyState, Icon, IconButton, InlineAlert, Link, MessageComposer, MessageThread, PageHeader, type EnvoiPiece, type MembreMention, Pagination, Presence, SearchInput, SearchSelect, Skeleton, Tag, TextField, type ThreadMessage, Note } from '@gimac/design-system'
 import { aPermission, urlAvatar, useBarreLaterale, useEnLigne, useLectureConversation, usePermissions, usePresence, useSaisies, useSession, type ApiError } from '@gimac/socle'
-import type { Conversation, Correspondant, EtiquetteLiaison, EvenementGroupe, MembreMentionne, Message, PieceJointe } from '../../../modele/messagerie'
+import type { Conversation, Correspondant, EtiquetteLiaison, EvenementGroupe, LectureMessage, MembreMentionne, Message, PieceJointe } from '../../../modele/messagerie'
 import { LIMITES_MESSAGERIE, MOTIF_LIAISON } from '../../../modele/messagerie'
-import { useAjouterMembres, useAnnuaire, useConversation, useConversations, useDemarrer, useEnvoyer, useFil, useMarquerLu, usePresenceMessagerie, useRenommerGroupe, useRetirerMembre, useSignalerSaisie, useTelechargerPiece, useTransferer } from '../../../hooks/messagerie'
+import { useAccusesLecture, useAjouterMembres, useAnnuaire, useConversation, useConversations, useDemarrer, useEnvoyer, useFil, useLecturesMessage, useMarquerLu, usePresenceMessagerie, useRenommerGroupe, useRetirerMembre, useSignalerSaisie, useTelechargerPiece, useTransferer } from '../../../hooks/messagerie'
 import { useLiaisonsParcours } from '../../../hooks/parcours'
 import { PERM } from '../../../permissions'
 import { enregistrerFichier } from '../../../ressources/fichier'
@@ -385,6 +385,46 @@ function TransfererPiece({ piece, depuis, onFermer, onTransfere }: { piece: Piec
   )
 }
 
+/**
+ * Détail « Lu par » d'un de mes messages de groupe (D-88) : lecteurs avec l'heure de lecture (« heure inconnue »
+ * pour une lecture antérieure aux accusés), puis les membres qui ne l'ont pas encore lu. Monté à l'ouverture.
+ */
+function LuPar({ conversationId, messageId }: { conversationId: string; messageId: string }) {
+  const { t } = useTranslation()
+  const quand = useQuand()
+  const lectures = useLecturesMessage(conversationId, messageId)
+  if (lectures.isPending) return <Skeleton height={48} />
+  if (lectures.isError) return <span className="gm-field-help">{t('msg.lecture.erreur')}</span>
+  const lus = lectures.data.filter((l) => l.lu)
+  const autres = lectures.data.filter((l) => !l.lu)
+  return (
+    <>
+      {lus.length ? (
+        <ul className="gm-lu-par" aria-label={t('msg.lecture.lecteurs')}>
+          {lus.map((l) => (
+            <li key={l.membre.id}>
+              <span className="gm-lu-par-nom">{l.membre.nom}</span>
+              <span className="gm-lu-par-quand gm-num">{l.luLe ? quand(l.luLe) : t('msg.lecture.heureInconnue')}</span>
+            </li>
+          ))}
+        </ul>
+      ) : <span className="gm-field-help">{t('msg.lecture.personne')}</span>}
+      {autres.length ? (
+        <>
+          <span className="gm-lu-par-sous">{t('msg.lecture.pasEncore')}</span>
+          <ul className="gm-lu-par" aria-label={t('msg.lecture.pasEncore')}>
+            {autres.map((l) => <li key={l.membre.id}><span className="gm-lu-par-nom">{l.membre.nom}</span></li>)}
+          </ul>
+        </>
+      ) : null}
+    </>
+  )
+}
+
+/** Accusé de lecture d'un de mes messages pour le fil (D-88) : détail « Lu par » en groupe seulement. */
+const accuse = (l: LectureMessage | null | undefined, groupe: boolean, detail: () => ReactNode) =>
+  l ? { etat: l.etat, lus: l.lus, destinataires: l.destinataires, ...(groupe ? { detail: detail() } : {}) } : undefined
+
 /** Pages plus anciennes chargées au plus pour retrouver un message cité ou désigné par un lien (D-82). */
 const PAGES_RECHERCHE_MAX = 10
 
@@ -438,6 +478,8 @@ function Fil({ id, peutEcrire, onQuitte, onAller, cible, commandes }: {
   // Notifications de la plateforme (D-80) : ouvrir la conversation marque ses notifications lues, et de
   // nouveau à chaque message reçu pendant qu'elle est ouverte (POST /notifications/lecture, référence de la conversation).
   useLectureConversation(id, dernier)
+  // Accusés de lecture poussés pour cette conversation (D-88 §4).
+  useAccusesLecture(conversation.data)
   const plusAnciensRestants = fil.data?.[fil.data.length - 1]?.plusAnciens ?? false
   useEffect(() => {
     // Relecture en cours (fil gardé en cache d'une visite précédente) : on attend le fil à jour.
@@ -494,6 +536,7 @@ function Fil({ id, peutEcrire, onQuitte, onAller, cible, commandes }: {
     } : undefined,
     etiquettes: m.etiquettes.length ? <Etiquettes etiquettes={m.etiquettes} /> : undefined,
     pieces: m.piecesJointes.map((p) => ({ id: p.id, nom: p.nom, taille: taille(p.taille) })),
+    lecture: m.moi ? accuse(m.lecture, c.type === 'GROUPE', () => <LuPar conversationId={id} messageId={m.id} />) : undefined,
   }))
   const derniere = fil.data[fil.data.length - 1]
   const pieceDe = (pid: string) => messages.flatMap((m) => m.piecesJointes).find((x) => x.id === pid)
@@ -975,6 +1018,7 @@ function Messagerie() {
                   avatar: photo(interlocuteur(c, session?.sujet)),
                   enLigne: enLigne(interlocuteur(c, session?.sujet)?.id),
                   saisie: texteSaisie(c, session?.sujet, true),
+                  lecture: c.dernierMessage?.evenement ? undefined : accuse(c.dernierMessage?.lecture, false, () => null),
                 }))}
               />
             )}

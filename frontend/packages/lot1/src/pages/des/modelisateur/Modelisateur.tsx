@@ -10,14 +10,18 @@ import {
 import { useExecuteurActions } from '../../../ressources/actions'
 import { actionPublier } from '../../../ressources/referentielPublication'
 import type { CatalogueModelisateur, GrapheReferentiel, ReferenceOperation, ReferentielVersion } from '../../../modele/homologation'
-import { CARTE, dispositionAuto, operationVierge, positionsEffectives, saisieDe } from '../../../adaptateurs/modelisateur'
+import { CARTE, dispositionAuto, operationVierge, positionsEffectives, saisieDe, sourceEtapes } from '../../../adaptateurs/modelisateur'
+import { BandeauConcerne, BoutonExport } from '../compositions/referentiel'
+import { ModaleEtapes } from './ModaleEtapes'
 import { Canevas } from './Canevas'
 import { ModaleOperation } from './ModaleOperation'
 import { VueListe } from './VueListe'
 
 // Onglet « Modélisateur » de DES-12 (D-77, §6) : canevas ou vue liste équivalente, barre d'outils (ajouter,
 // disposition automatique, contrôler, comparer, publier, pilote du brouillon), modale de l'opération. Brouillon :
-// édition ; version publiée ou retirée : lecture seule (le service le dit par actionsPermises).
+// édition ; version publiée ou retirée : lecture seule (le service le dit par actionsPermises). D-89 : tout éditeur
+// (HOM_REFERENTIEL_EDIT) modifie un brouillon, le pilote n'est que le responsable affiché ; couloirs = étapes de la
+// version (ordre, couleur), modale « Étapes », lecture filtrée (fantômes grisés, bandeau), export CSV.
 
 type Modale = { creation: true } | { creation: false; code: string }
 
@@ -32,7 +36,8 @@ export function OngletModelisateur({ version }: { version: ReferentielVersion })
 function Modelisateur({ version }: { version: ReferentielVersion }) {
   const { t } = useTranslation()
   const graphe = useGrapheReferentiel(version.id)
-  const catalogue = useCatalogueReferentiels()
+  // Catalogue de la version (D-89) : ses étapes servent au sélecteur de la modale d'opération.
+  const catalogue = useCatalogueReferentiels(version.id)
   const etats = { emptyTitle: t('commun.vide'), errorTitle: t('commun.erreur.titre'), retryLabel: t('commun.reessayer') }
   return (
     <EtatsRequete etat={catalogue} {...etats}>
@@ -55,6 +60,7 @@ function Espace({ version, graphe, catalogue }: { version: ReferentielVersion; g
   const lecture = !graphe.actionsPermises.includes('MODIFIER') || !aPermission(permissions, 'HOM_REFERENTIEL_EDIT')
   const peutPublier = graphe.actionsPermises.includes('PUBLIER') && aPermission(permissions, actionPublier.permission ?? '')
   const [modale, setModale] = useState<Modale | null>(null)
+  const [etapesOuvertes, setEtapesOuvertes] = useState(false)
   const [controle, setControle] = useState(false)
   const [focus, setFocus] = useState<string | null>(null)
   const [erreur, setErreur] = useState<ApiError | null>(null)
@@ -66,8 +72,15 @@ function Espace({ version, graphe, catalogue }: { version: ReferentielVersion; g
   const placer = usePlacerOperations(version.id)
   const pilote = useDesignerPilote(version.id)
 
-  const auto = useMemo(() => dispositionAuto(graphe.noeuds, catalogue), [graphe.noeuds, catalogue])
-  const positions = useMemo(() => positionsEffectives(graphe.noeuds, auto), [graphe.noeuds, auto])
+  // Lecture concernée (D-89) : seuls les couloirs des étapes où figure une opération visible, fantômes à la suite.
+  const source = useMemo(() => {
+    const s = sourceEtapes(graphe.etapes, catalogue)
+    return graphe.filtre === 'CONCERNE' && s.version ? { ...s, etapes: s.etapes.filter((e) => graphe.noeuds.some((n) => n.etape === e.code)) } : s
+  }, [graphe.etapes, graphe.filtre, graphe.noeuds, catalogue])
+  const auto = useMemo(() => dispositionAuto(graphe.noeuds, source), [graphe.noeuds, source])
+  // Lecture concernée (D-89) : positions enregistrées pour le graphe complet ignorées, disposition automatique des
+  // opérations visibles et de leurs fantômes (couloirs alignés, cadrage serré).
+  const positions = useMemo(() => (graphe.filtre === 'CONCERNE' ? auto : positionsEffectives(graphe.noeuds, auto)), [graphe.filtre, graphe.noeuds, auto])
   const surlignes = useMemo(() => {
     const s = new Set<string>(controle ? graphe.anomalies.flatMap((a) => a.codes) : [])
     if (focus) s.add(focus)
@@ -75,7 +88,10 @@ function Espace({ version, graphe, catalogue }: { version: ReferentielVersion; g
   }, [controle, graphe.anomalies, focus])
 
   const echec = useCallback((e: ApiError) => setErreur(e), [])
-  const ouvrir = useCallback((code: string) => setModale({ creation: false, code }), [])
+  // Un fantôme (D-89) ne s'ouvre pas : il n'en est servi que le code et le libellé.
+  const ouvrir = useCallback((code: string) => {
+    if (!graphe.noeuds.find((n) => n.code === code)?.fantome) setModale({ creation: false, code })
+  }, [graphe.noeuds])
   const relier = useCallback((de: string, vers: string) => {
     setErreur(null)
     arc.mutate({ de, vers, present: true }, { onError: echec, onSuccess: () => setAnnonce(t('modelisateur.annonce.relie', { de, vers })) })
@@ -138,6 +154,8 @@ function Espace({ version, graphe, catalogue }: { version: ReferentielVersion; g
         {!lecture ? <Button size="sm" icon="refresh" loading={placer.isPending} onClick={disposer}>{t('modelisateur.action.disposer')}</Button> : null}
         <Button size="sm" icon="shield-check" aria-expanded={controle} onClick={() => setControle((x) => !x)}>{controle ? t('modelisateur.action.masquerControle') : t('modelisateur.action.controler')}</Button>
         <Button size="sm" icon="copy" onClick={comparer}>{t('modelisateur.action.comparer')}</Button>
+        {graphe.etapes?.length ? <Button size="sm" icon="kanban" onClick={() => setEtapesOuvertes(true)}>{t('modelisateur.action.etapes')}</Button> : null}
+        <BoutonExport versionId={version.id} />
         {peutPublier ? <Button size="sm" variant="primary" icon="check" onClick={() => executeur.lancer(actionPublier, version, version.libelle, 'homologation')}>{t(actionPublier.label)}</Button> : null}
         {!lecture && version.etat === 'BROUILLON' ? (
           <Select name="pilote" label={t('modelisateur.pilote')} help={t('modelisateur.aide.pilote')} value={graphe.piloteId ?? ''}
@@ -146,12 +164,13 @@ function Espace({ version, graphe, catalogue }: { version: ReferentielVersion; g
         ) : null}
       </div>
       <div className="gm-mod-resume">
-        <span>{t('modelisateur.resume.operations', { count: graphe.noeuds.length })}</span>
+        <span>{t('modelisateur.resume.operations', { count: graphe.noeuds.filter((n) => !n.fantome).length })}</span>
         <span>{t('modelisateur.resume.critique', { n: graphe.cheminCritique.dureeJours, count: graphe.cheminCritique.codes.length })}</span>
         <span>{t('modelisateur.resume.anomalies', { count: graphe.anomalies.length })}</span>
         {version.etat === 'BROUILLON' ? <span>{t('modelisateur.resume.pilote', { nom: nomPilote ?? t('modelisateur.aucun') })}</span> : null}
-        {lecture ? <span>{t('modelisateur.lectureSeule')}</span> : null}
+        {lecture ? <span>{t(graphe.actionsPermises.includes('MODIFIER') ? 'modelisateur.lectureDroits' : 'modelisateur.lectureSeule')}</span> : null}
       </div>
+      {graphe.filtre === 'CONCERNE' ? <BandeauConcerne /> : null}
       {erreur ? (
         <InlineAlert level="crit" title={t(`erreur.${erreur.code}`, { defaultValue: erreur.message })} correlationId={erreur.correlationId || undefined}
           action={<Button size="sm" variant="ghost" icon="x" onClick={() => setErreur(null)}>{t('commun.fermer')}</Button>} />
@@ -181,10 +200,13 @@ function Espace({ version, graphe, catalogue }: { version: ReferentielVersion; g
         </section>
       ) : null}
       {vue === 'canevas' ? (
-        <Canevas graphe={graphe} catalogue={catalogue} positions={positions} lecture={lecture} surlignes={surlignes} onOuvrir={ouvrir} onRelier={relier} onDelier={delier} onPlacer={placerPositions} />
+        <Canevas graphe={graphe} catalogue={catalogue} etapes={source} positions={positions} lecture={lecture} surlignes={surlignes} onOuvrir={ouvrir} onRelier={relier} onDelier={delier} onPlacer={placerPositions} />
       ) : (
-        <VueListe graphe={graphe} lecture={lecture} surlignes={surlignes} onOuvrir={ouvrir} onRelier={relier} onDelier={delier} />
+        <VueListe graphe={graphe} etapes={source} lecture={lecture} surlignes={surlignes} onOuvrir={ouvrir} onRelier={relier} onDelier={delier} />
       )}
+      {etapesOuvertes && graphe.etapes ? (
+        <ModaleEtapes versionId={version.id} etapes={graphe.etapes} catalogue={catalogue} lecture={lecture} onFermer={() => setEtapesOuvertes(false)} onAnnonce={setAnnonce} />
+      ) : null}
       {modale && operation ? (
         <ModaleOperation
           key={modale.creation ? 'creation' : modale.code}

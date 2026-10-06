@@ -41,6 +41,8 @@ export function messagerieHttpPour(couche: 'des' | 'console'): ServiceMessagerie
     demarrer: (c) => http.post(`${M}/conversations`, { body: multipart(nouvelle(c), c.fichiers) }),
     envoyer: (id, e) => http.post(`${M}/conversations/${encodeURIComponent(id)}/messages`, { body: multipart(envoi(e), e.fichiers) }),
     marquerLu: (id) => http.post(`${M}/conversations/${encodeURIComponent(id)}/lu`),
+    // Détail « Lu par » (D-88) : relu par le canal poussé quand il est ouvert, appel de fond.
+    lectures: (id, messageId) => http.get(`${M}/conversations/${encodeURIComponent(id)}/messages/${encodeURIComponent(messageId)}/lectures`, { fond: true }),
     // Compteur périodique : appel de fond, qui ne prolonge pas la session d'inactivité (D-65 §6).
     nonLus: () => http.get(`${M}/non-lus`, { fond: true }),
     telechargerPiece: (id) => http.blob(`${M}/pieces/${encodeURIComponent(id)}`, '*/*'),

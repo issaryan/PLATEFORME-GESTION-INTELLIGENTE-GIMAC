@@ -15,7 +15,8 @@ test.describe('Fonctionnalité : console du RSSI', () => {
     await expect(page.getByRole('region', { name: 'Gestion des utilisateurs' })).toBeVisible()
     await expect(page.getByRole('group', { name: 'Posture de sécurité des comptes' })).toBeVisible()
     await expect(page.getByText('Sans second facteur', { exact: true })).toBeVisible()
-    await expect(page.getByText('Super administrateur : 1')).toBeVisible()
+    // Comptes par profil en barres (tableaux de bord, lot 5) : libellé et nombre dans le nom de l'élément.
+    await expect(page.getByRole('listitem', { name: 'Super administrateur : 1' })).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Derniers actes d’administration' })).toBeVisible()
     await expect(page.getByRole('region', { name: 'État en temps réel' })).toBeVisible()
     await page.getByRole('link', { name: 'Consulter la politique de sécurité' }).click()

@@ -7,7 +7,7 @@ export { monCompteSimule, compteDemo, appareilsDemo, historiqueDemo, type Option
 export { creerSimulateur, type Simulateur, type OptionsSimulateur } from './services/simulateur'
 export { CompteProvider, useServiceCompte } from './contexte'
 export * from './hooks'
-export { useMessageErreur, dateHeure, useLibelleProfil, type MessageErreur } from './outils'
+export { useMessageErreur, dateHeure, type MessageErreur } from './outils'
 export { GardePremierAcces } from './GardePremierAcces'
 export { default as PremierAccesPage } from './pages/PremierAccesPage'
 export { default as MonComptePage } from './pages/MonComptePage'

@@ -1,4 +1,4 @@
-import type { CatalogueModelisateur, EntreeCatalogue, Livrable, NoeudGraphe, PositionNoeud, ReferenceOperation, SaisieOperation } from '../modele/homologation'
+import type { CatalogueModelisateur, EntreeCatalogue, EtapeReferentiel, Livrable, NoeudGraphe, PositionNoeud, ReferenceOperation, SaisieOperation } from '../modele/homologation'
 import type { SegmentParcours } from '../modele/parcours'
 
 // Adaptateurs du modélisateur de processus (DES-12, D-77 §6) : géométrie du canevas, saisie de la modale et
@@ -12,25 +12,38 @@ export const CARTE = { largeur: 232, hauteur: 128 }
 const PAS = { colonne: 264, ligne: 152, marge: 48, entete: 40 }
 export const SEGMENTS: SegmentParcours[] = ['AMONT', 'BRANCHE', 'AVAL']
 
-/** Rang d'affichage d'une étape : ordre du catalogue (APPROBATION_SECURITE, sans rang, garde sa place). */
-export function rangEtapes(catalogue: Pick<CatalogueModelisateur, 'etapes'>): Map<string, number> {
-  return new Map(catalogue.etapes.map((e, i) => [e.code, i]))
+/**
+ * Étapes des couloirs : celles de la version (D-89, `version`), dans leur ordre, avec leur libellé et la variable CSS
+ * de leur couleur ; à défaut, la liste du catalogue (libellés i18n parcours.etape.<code>).
+ */
+export type SourceEtapes = { etapes: { code: string; libelle?: string; jeton?: string | null }[]; version?: boolean }
+
+/** Source des couloirs : étapes du graphe triées par ordre (D-89), sinon le catalogue. */
+export function sourceEtapes(etapes: EtapeReferentiel[] | undefined, catalogue: Pick<CatalogueModelisateur, 'etapes'>): SourceEtapes {
+  return etapes?.length ? { etapes: [...etapes].sort((a, b) => a.ordre - b.ordre), version: true } : catalogue
+}
+
+/** Rang d'affichage d'une étape : ordre de la source (APPROBATION_SECURITE, sans rang, garde sa place). */
+export function rangEtapes(source: SourceEtapes): Map<string, number> {
+  return new Map(source.etapes.map((e, i) => [e.code, i]))
 }
 
 /**
  * Disposition automatique : colonnes par étape (rang du catalogue), sous-colonnes par couche de Kahn du graphe
  * (servie par le service), bandes par segment ; dans une case, ordre puis code.
  */
-export function dispositionAuto(noeuds: NoeudGraphe[], catalogue: Pick<CatalogueModelisateur, 'etapes'>): Map<string, PositionNoeud> {
-  const rang = rangEtapes(catalogue)
-  const etapes = [...new Set(noeuds.map((n) => n.etape ?? ''))].sort((a, b) => (rang.get(a) ?? 99) - (rang.get(b) ?? 99))
+export function dispositionAuto(noeuds: NoeudGraphe[], source: SourceEtapes): Map<string, PositionNoeud> {
+  const rang = rangEtapes(source)
+  // Étapes de la version (D-89) : une colonne réservée à chaque étape vide, pour que son couloir ait sa place.
+  const presentes = new Set(noeuds.map((n) => n.etape ?? ''))
+  const etapes = [...new Set([...(source.version ? source.etapes.map((e) => e.code) : []), ...presentes])].sort((a, b) => (rang.get(a) ?? 99) - (rang.get(b) ?? 99))
   // Sous-colonnes : couches présentes dans chaque étape, rangées.
   const colonnes = new Map<string, number>()
   let x = 0
   for (const e of etapes) {
     const couches = [...new Set(noeuds.filter((n) => (n.etape ?? '') === e).map((n) => n.couche ?? 0))].sort((a, b) => a - b)
     couches.forEach((c, i) => colonnes.set(`${e}|${c}`, x + i))
-    x += couches.length
+    x += Math.max(couches.length, 1)
   }
   // Bandes : hauteur de la plus haute case du segment.
   const cases = new Map<string, NoeudGraphe[]>()
@@ -60,10 +73,10 @@ export function positionsEffectives(noeuds: NoeudGraphe[], auto: Map<string, Pos
   return new Map(noeuds.map((n) => [n.code, n.position ?? auto.get(n.code) ?? { x: 0, y: 0 }]))
 }
 
-export type Couloir = { cle: string; libelle: string; x: number; y: number; largeur: number; hauteur: number }
+export type Couloir = { cle: string; libelle: string; x: number; y: number; largeur: number; hauteur: number; jeton?: string | null }
 
 /** Couloirs du canevas : une colonne par étape et une bande par segment, englobant les cartes qui s'y trouvent. */
-export function couloirs(noeuds: NoeudGraphe[], positions: Map<string, PositionNoeud>, catalogue: Pick<CatalogueModelisateur, 'etapes'>, t: Traduire): { etapes: Couloir[]; segments: Couloir[] } {
+export function couloirs(noeuds: NoeudGraphe[], positions: Map<string, PositionNoeud>, source: SourceEtapes, t: Traduire): { etapes: Couloir[]; segments: Couloir[] } {
   if (!noeuds.length) return { etapes: [], segments: [] }
   const pos = (n: NoeudGraphe) => positions.get(n.code) ?? { x: 0, y: 0 }
   const xs = noeuds.map((n) => pos(n).x)
@@ -72,18 +85,33 @@ export function couloirs(noeuds: NoeudGraphe[], positions: Map<string, PositionN
   const bas = Math.max(...ys) + CARTE.hauteur + 16
   const gauche = Math.min(...xs) - 24
   const droite = Math.max(...xs) + CARTE.largeur + 24
-  const rang = rangEtapes(catalogue)
-  const etapes = [...new Set(noeuds.map((n) => n.etape ?? ''))]
-    .sort((a, b) => (rang.get(a) ?? 99) - (rang.get(b) ?? 99))
-    .map((e) => {
-      const l = noeuds.filter((n) => (n.etape ?? '') === e).map((n) => pos(n).x)
-      const x = Math.min(...l) - 12
-      return { cle: `etape-${e || 'aucune'}`, libelle: e ? t(`parcours.etape.${e}`) : t('modelisateur.sansEtape'), x, y: haut, largeur: Math.max(...l) + CARTE.largeur + 12 - x, hauteur: bas - haut }
-    })
+  const rang = rangEtapes(source)
+  const parCode = new Map(source.etapes.map((e) => [e.code, e]))
+  const libelle = (e: string) => {
+    if (!e) return noeuds.every((n) => n.etape || n.fantome) && noeuds.some((n) => !n.etape && n.fantome) ? t('modelisateur.couloir.fantomes') : t('modelisateur.sansEtape')
+    return source.version ? parCode.get(e)?.libelle ?? e : t(`parcours.etape.${e}`, { defaultValue: parCode.get(e)?.libelle ?? e })
+  }
+  const codes = [...new Set([...(source.version ? source.etapes.map((e) => e.code) : []), ...noeuds.map((n) => n.etape ?? '')])].sort((a, b) => (rang.get(a) ?? 99) - (rang.get(b) ?? 99))
+  // Une étape vide de la version (D-89) prend place juste après le couloir précédent ; celles qui précèdent la
+  // première étape occupée se rangent à sa gauche (colonnes réservées par la disposition automatique).
+  const VIDE = CARTE.largeur + 24
+  const xs0 = codes.map((e) => noeuds.filter((n) => (n.etape ?? '') === e).map((n) => pos(n).x))
+  const premiere = xs0.findIndex((l) => l.length > 0)
+  let droitePrecedente = premiere > 0 ? Math.min(...xs0[premiere]) - 12 - premiere * (VIDE + 8) - 8 : gauche
+  const etapes = codes.map((e, i) => {
+    const l = xs0[i]
+    const x = l.length ? Math.min(...l) - 12 : droitePrecedente + 8
+    const largeur = l.length ? Math.max(...l) + CARTE.largeur + 12 - x : VIDE
+    droitePrecedente = x + largeur
+    return { cle: `etape-${e || 'aucune'}`, libelle: libelle(e), x, y: haut, largeur, hauteur: bas - haut, jeton: parCode.get(e)?.jeton ?? null }
+  })
+  // Bandes de segment sur toute la largeur des couloirs (étapes vides comprises).
+  const g = Math.min(gauche, ...etapes.map((e) => e.x))
+  const d = Math.max(droite, ...etapes.map((e) => e.x + e.largeur))
   const segments = SEGMENTS.filter((s) => noeuds.some((n) => n.segment === s)).map((s) => {
     const l = noeuds.filter((n) => n.segment === s).map((n) => pos(n).y)
     const y = Math.min(...l) - 12
-    return { cle: `segment-${s}`, libelle: t(`parcours.segment.${s}`), x: gauche, y, largeur: droite - gauche, hauteur: Math.max(...l) + CARTE.hauteur + 12 - y }
+    return { cle: `segment-${s}`, libelle: t(`parcours.segment.${s}`), x: g, y, largeur: d - g, hauteur: Math.max(...l) + CARTE.hauteur + 12 - y }
   })
   return { etapes, segments }
 }

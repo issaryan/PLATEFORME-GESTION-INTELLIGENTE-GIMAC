@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
-import { Card, EmptyState, Link, LinkList, PageHeader, PageSection, Skeleton, StatGrid, StatusBadge, type StatCardProps } from '@gimac/design-system'
+import { BarresHorizontales, Card, EmptyState, Link, LinkList, PageHeader, PageSection, SerieTemporelle, Skeleton, StatGrid, StatusBadge, type StatCardProps } from '@gimac/design-system'
 import { aPermission, usePermissions, useSession } from '@gimac/socle'
 import { useIndicateursDdrm, useInstitutions } from '../../hooks/participant'
 import { etatInstitution } from '../../dictionnaires'
+import type { IndicateursDdrm } from '../../modele/participant'
 import { fonctionnalitesOuvertes, widgetsOuverts, type CleWidget, type Fonctionnalite } from '../../fonctionnalites'
 import { PERM, fonctionsDe } from '../../permissions'
 import { SectionActeur } from './tableau/SectionActeur'
@@ -20,6 +21,47 @@ import { useExtensionsTableauDeBord } from './tableau/extensions'
 // PageHeader, PageSection, StatGrid, LinkList.
 
 type Tuile = StatCardProps & { key: string }
+
+/** Mois AAAA-MM au premier jour local : un point par mois sur l'axe du temps. */
+const pointMois = (mois: string) => { const [a, m] = mois.split('-').map(Number); return new Date(a, m - 1, 1).getTime() }
+
+/** Répartition des institutions par statut (ordre du cycle de vie) et flux des 12 derniers mois. */
+function GraphiquesDdrm({ i }: { i: IndicateursDdrm }) {
+  const { t } = useTranslation()
+  const navigate = useNavigate()
+  const vers = (statut: string) => () => void navigate(`/des/institutions?statut=${statut}`)
+  const flux = i.fluxParMois ?? []
+  return (
+    <div className="gm-graphiques-grille">
+      <BarresHorizontales
+        title={t('tableau.ddrm.repartition')}
+        subtitle={t('tableau.ddrm.repartition.aide')}
+        trier={false}
+        elements={[
+          { cle: 'CANDIDAT', libelle: t('tableau.ddrm.candidats'), valeur: i.candidats, onClick: vers('CANDIDAT') },
+          { cle: 'ADHERENT', libelle: t('tableau.ddrm.adherents'), valeur: i.adherents, onClick: vers('ADHERENT') },
+          { cle: 'EN_HOMOLOGATION', libelle: t('tableau.ddrm.enHomologation'), valeur: i.enHomologation, onClick: vers('EN_HOMOLOGATION') },
+          { cle: 'CLOS_SANS_SUITE', libelle: t('tableau.ddrm.closSansSuite'), valeur: i.closSansSuite, onClick: vers('CLOS_SANS_SUITE') },
+        ]}
+      />
+      {flux.length ? (
+        <SerieTemporelle
+          title={t('tableau.ddrm.flux')}
+          subtitle={t('tableau.ddrm.flux.aide')}
+          granularite="mois"
+          aire={false}
+          min={0}
+          format={(v) => (Number.isInteger(v) ? String(v) : '')}
+          series={[
+            { nom: t('tableau.ddrm.flux.contacts'), points: flux.map((f) => ({ t: pointMois(f.mois), v: f.contacts })) },
+            { nom: t('tableau.ddrm.flux.adhesions'), points: flux.map((f) => ({ t: pointMois(f.mois), v: f.adhesions })) },
+            { nom: t('tableau.ddrm.flux.clotures'), points: flux.map((f) => ({ t: pointMois(f.mois), v: f.clotures })) },
+          ]}
+        />
+      ) : null}
+    </div>
+  )
+}
 
 /** Chargé et chef de la DDRM : étapes 1 et 2 du parcours (prise de contact, adhésion). */
 function SectionDdrm({ approbateur, instructeur }: { approbateur: boolean; instructeur: boolean }) {
@@ -54,7 +96,10 @@ function SectionDdrm({ approbateur, instructeur }: { approbateur: boolean; instr
       ) : indicateurs.isError || !i ? (
         <StatusBadge status="crit" label={t('commun.erreur.titre')} />
       ) : (
-        <StatGrid label={t('tableau.ddrm.titre')} items={tuiles} />
+        <>
+          <StatGrid label={t('tableau.ddrm.titre')} items={tuiles} />
+          <GraphiquesDdrm i={i} />
+        </>
       )}
       {instructeur ? (
         <Card title={t('tableau.ddrm.mesDossiers')} actions={<Link href="/des/institutions?onglet=mesDossiers">{t('tableau.voirTout')}</Link>}>

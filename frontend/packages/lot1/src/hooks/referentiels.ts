@@ -1,7 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { ApiError } from '@gimac/socle'
 import { useServices } from '../services/ServicesProvider'
-import type { GrapheReferentiel, SaisieOperation } from '../modele/homologation'
+import type { GrapheReferentiel, SaisieEtape, SaisieOperation } from '../modele/homologation'
+import type { Telechargement } from '../modele/certification'
 import { useEffet, useLecture } from './base'
 import { cles } from './cles'
 
@@ -23,9 +24,21 @@ export const useMigrerLiaisons = (id: string) =>
 // Modélisateur de processus (D-77, §6) : graphe étendu, catalogue et écritures du brouillon. Chaque écriture
 // invalide la version (graphe, opérations, contrôle) et l'arbre des versions ; le service décide de tout.
 export const useGrapheReferentiel = (id: string) => useLecture(cles.referentiel(id, 'graphe'), (s) => s.homologation.grapheReferentiel(id), { enabled: !!id })
-export const useCatalogueReferentiels = () => useLecture(cles.catalogueReferentiels(), (s) => s.homologation.catalogueReferentiels(), { staleTime: 5 * 60_000 })
+/** Catalogue du modélisateur ; avec la version (D-89), ses étapes en plus (relues à chaque écriture de la version). */
+export const useCatalogueReferentiels = (versionId?: string) => useLecture(versionId ? cles.referentiel(versionId, 'catalogue') : cles.catalogueReferentiels(),
+  (s) => s.homologation.catalogueReferentiels(versionId), { staleTime: versionId ? 0 : 5 * 60_000 })
 
 const versionEtArbre = (id: string) => [cles.referentiel(id), cles.referentiels()]
+/** Export CSV (D-89) : lecture, sans invalidation. */
+export function useExporterReferentiel() {
+  const s = useServices()
+  return useMutation<Telechargement & { nom: string }, ApiError, string>({ mutationFn: (id) => s.homologation.exporterReferentiel(id) })
+}
+// Étapes configurables (D-89 §2) : chaque écriture relit la version (graphe, catalogue de la version) et l'arbre.
+export const useAjouterEtape = (id: string) => useEffet((s, e: SaisieEtape & { code: string }) => s.homologation.ajouterEtape(id, e), versionEtArbre(id))
+export const useModifierEtape = (id: string) => useEffet((s, v: { code: string; etape: SaisieEtape }) => s.homologation.modifierEtape(id, v.code, v.etape), versionEtArbre(id))
+export const useSupprimerEtape = (id: string) => useEffet((s, code: string) => s.homologation.supprimerEtape(id, code), versionEtArbre(id))
+export const useOrdonnerEtapes = (id: string) => useEffet((s, codes: string[]) => s.homologation.ordonnerEtapes(id, codes), versionEtArbre(id))
 export const useCreerOperation = (id: string) =>
   useEffet((s, op: SaisieOperation & { code: string }) => s.homologation.creerOperation(id, op), versionEtArbre(id))
 export const useEnregistrerOperation = (id: string) =>

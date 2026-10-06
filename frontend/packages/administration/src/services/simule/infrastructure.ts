@@ -1,5 +1,5 @@
 import type { ApiError } from '@gimac/socle'
-import { BORNES_INFRASTRUCTURE, type Charge, type EtatCharge, type Geste, type LigneJournal, type Operation, type Orchestrateur } from '../../modele/infrastructure'
+import { BORNES_INFRASTRUCTURE, type Charge, type EtatCharge, type EvenementCharge, type Geste, type LigneJournal, type NoeudCluster, type Operation, type Orchestrateur, type PodCharge, type TacheCluster } from '../../modele/infrastructure'
 import type { EtatFlux } from '../../modele/plateforme'
 import type { ServiceInfrastructure } from '../ports'
 
@@ -37,6 +37,12 @@ const GRAINES: Graine[] = [
   ['kafka', 'EN_COURS', 'SAINE', 1, 1, 0, true],
 ]
 
+/** Charges simulées qui ont une version précédente d'image différente (geste RETABLIR, Kubernetes). */
+const VERSIONNEES = ['gateway', 'homologation', 'pilotage']
+
+/** Noms des charges simulées (séries CHARGE_* des graphiques). */
+export const NOMS_CHARGES_SIMULEES = (): string[] => GRAINES.map((g) => g[0])
+
 /** Gestes permis à cet instant (§5) ; aucun pendant une opération. */
 export function gestesPermis(c: Omit<Charge, 'gestes'>, enCours: boolean): Geste[] {
   if (enCours) return []
@@ -45,6 +51,7 @@ export function gestesPermis(c: Omit<Charge, 'gestes'>, enCours: boolean): Geste
     if (c.repliques.voulues > 0) g.push('REDEMARRER', ...(c.protegee ? [] : (['ARRETER'] as Geste[])))
     else g.push('DEMARRER')
     g.push('ECHELLE')
+    if (c.repliques.voulues > 0 && c.imagePrecedente) g.push('RETABLIR')
     return g
   }
   if (c.etat !== 'ARRETEE') g.push('REDEMARRER', ...(c.protegee ? [] : (['ARRETER'] as Geste[])))
@@ -74,6 +81,8 @@ export function infrastructureSimulee(o: OptionsInfrastructureSimulee): ServiceI
   const charges: Omit<Charge, 'gestes'>[] = orchestrateur === 'AUCUN' ? [] : GRAINES.map(([nom, etat, sante, voulues, pretes, redemarrages, protegee], i) => ({
     nom, orchestrateur, etat, sante, repliques: { voulues, pretes }, redemarrages, image: `registre.gimac.local/gimac/${nom}:1.4.${i}`,
     demarreeLe: etat === 'ARRETEE' ? null : il(60 * (i + 1)), protegee,
+    // Kubernetes : version précédente d'image différente pour les charges déjà livrées plusieurs fois.
+    imagePrecedente: orchestrateur === 'KUBERNETES' && VERSIONNEES.includes(nom) ? `registre.gimac.local/gimac/${nom}:1.3.${i}` : null,
   }))
   const acteurOp = { id: o.acteur.id, nomAffiche: o.acteur.nom }
   const historique: Operation[] = [
@@ -111,6 +120,8 @@ export function infrastructureSimulee(o: OptionsInfrastructureSimulee): ServiceI
       const voulues = op.geste === 'ECHELLE' ? repliques! : Math.max(1, c.repliques.voulues)
       Object.assign(c, { etat: 'EN_COURS', sante: 'SAINE', repliques: { voulues, pretes: voulues }, demarreeLe: new Date().toISOString() })
       if (op.geste === 'REDEMARRER') c.redemarrages += 1
+      // Comme Kubernetes : la version rétablie devient la plus récente, la version quittée devient la précédente.
+      if (op.geste === 'RETABLIR') Object.assign(c, { image: c.imagePrecedente ?? c.image, imagePrecedente: c.image })
     }
     Object.assign(op, {
       resultat: echec ? 'ECHOUEE' : 'REUSSIE', erreur: echec ? 'Délai de démarrage dépassé (90 s)' : null, apres: c.etat,
@@ -119,7 +130,43 @@ export function infrastructureSimulee(o: OptionsInfrastructureSimulee): ServiceI
     pousser(op)
   }
 
+  // Lectures Kubernetes : jeu de démonstration ; sous Docker, 422 comme la passerelle.
+  const kubernetes = () => {
+    configuree()
+    if (orchestrateur !== 'KUBERNETES') throw refus(422, 'OPS_NON_PRIS_EN_CHARGE', 'Kubernetes seulement')
+  }
+  const podsDe = (c: Omit<Charge, 'gestes'>): PodCharge[] =>
+    Array.from({ length: Math.max(c.repliques.voulues, c.repliques.pretes) }, (_, k) => {
+      const pret = k < c.repliques.pretes
+      return {
+        nom: `${c.nom}-7d9f${k}c-${'abcde'[k % 5]}${k}x`, phase: pret ? 'Running' : 'Pending', pret, redemarrages: k === 0 ? c.redemarrages : 0,
+        noeud: `gimac-noeud-0${(k % 3) + 1}`, demarreLe: il(30 + k * 7), attente: pret ? null : c.etat === 'EN_ERREUR' ? 'CrashLoopBackOff' : 'ContainerCreating',
+      }
+    })
+  const evenementsDe = (c: Omit<Charge, 'gestes'>): EvenementCharge[] => {
+    const l: EvenementCharge[] = [
+      { instant: il(42), type: 'Normal', raison: 'ScalingReplicaSet', message: `Scaled up replica set ${c.nom}-7d9f to ${c.repliques.voulues}`, objet: `Deployment/${c.nom}`, nombre: 1 },
+      { instant: il(41), type: 'Normal', raison: 'Scheduled', message: `Successfully assigned gimac-des/${c.nom}-7d9f0c-a0x to gimac-noeud-01`, objet: `Pod/${c.nom}-7d9f0c-a0x`, nombre: 1 },
+      { instant: il(40), type: 'Normal', raison: 'Started', message: 'Started container', objet: `Pod/${c.nom}-7d9f0c-a0x`, nombre: 1 },
+    ]
+    if (c.etat === 'EN_ERREUR' || c.etat === 'PARTIELLE') {
+      l.push({ instant: il(2), type: 'Warning', raison: 'BackOff', message: 'Back-off restarting failed container', objet: `Pod/${c.nom}-7d9f1c-b1x`, nombre: c.redemarrages || 3 })
+    }
+    return l.sort((a, b) => (b.instant ?? '').localeCompare(a.instant ?? ''))
+  }
+  const NOEUDS: NoeudCluster[] = [
+    { nom: 'gimac-noeud-01', pret: true, roles: ['control-plane'], versionKubelet: 'v1.31.2', cpuAllouable: '7800m', memoireAllouableOctets: 31 * 2 ** 30, nonPlanifiable: false },
+    { nom: 'gimac-noeud-02', pret: true, roles: ['worker'], versionKubelet: 'v1.31.2', cpuAllouable: '7800m', memoireAllouableOctets: 31 * 2 ** 30, nonPlanifiable: false },
+    { nom: 'gimac-noeud-03', pret: false, roles: ['worker'], versionKubelet: 'v1.31.1', cpuAllouable: '3800m', memoireAllouableOctets: 15 * 2 ** 30, nonPlanifiable: true },
+  ]
+  const TACHES: TacheCluster[] = [
+    { nom: 'jhipster-grafana-dashboard', nature: 'JOB', planification: null, suspendue: null, etat: 'REUSSIE', debut: il(600), fin: il(599), origine: null },
+  ]
   return {
+    pods: (nom) => attendre(() => { kubernetes(); return podsDe(trouver(nom)) }),
+    evenements: (nom) => attendre(() => { kubernetes(); return evenementsDe(trouver(nom)) }),
+    noeuds: () => attendre(() => { kubernetes(); return NOEUDS }),
+    taches: () => attendre(() => { kubernetes(); return TACHES }),
     charges: () => attendre(() => ({ orchestrateur, charges: charges.map(vue) })),
     journaux: (nom, lignes, depuis) =>
       attendre(() => {
@@ -163,6 +210,7 @@ export function infrastructureSimulee(o: OptionsInfrastructureSimulee): ServiceI
           }
           if (c.protegee && r === 0) throw refus(409, 'OPS_CHARGE_PROTEGEE', 'Charge protégée : elle ne peut être arrêtée ni ramenée à zéro réplique.')
         }
+        if (geste === 'RETABLIR' && orchestrateur !== 'KUBERNETES') throw refus(422, 'OPS_NON_PRIS_EN_CHARGE', 'Retour à la version précédente : Kubernetes seulement')
         if (geste === 'ARRETER' && c.protegee) throw refus(409, 'OPS_CHARGE_PROTEGEE', 'Charge protégée : elle ne peut être arrêtée ni ramenée à zéro réplique.')
         if (enCours.has(nom)) throw refus(409, 'OPS_OPERATION_EN_COURS', 'Une opération est déjà en cours sur cette charge.')
         if (!gestesPermis(c, false).includes(geste)) throw refus(409, 'OPS_GESTE_NON_PERMIS', "Geste sans objet dans l'état actuel de la charge.")
@@ -171,7 +219,7 @@ export function infrastructureSimulee(o: OptionsInfrastructureSimulee): ServiceI
           repliquesApres: null, resultat: 'EN_COURS', erreur: null, demandeeLe: new Date().toISOString(), termineeLe: null,
         }
         enCours.add(nom)
-        if (geste === 'REDEMARRER' || geste === 'DEMARRER') c.etat = 'REDEMARRAGE'
+        if (geste === 'REDEMARRER' || geste === 'DEMARRER' || geste === 'RETABLIR') c.etat = 'REDEMARRAGE'
         historique.unshift(op)
         pousser(op)
         window.setTimeout(() => terminer(op, c, d.repliques), duree)

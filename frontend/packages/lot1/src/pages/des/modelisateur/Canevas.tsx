@@ -1,20 +1,23 @@
-import { memo, useMemo } from 'react'
+import { memo, useMemo, type CSSProperties } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Handle, MarkerType, Position, type Edge, type Node, type NodeProps } from '@xyflow/react'
 import { CanevasGraphe } from '../../../composants/graphe/CanevasGraphe'
 import { cx } from '@gimac/design-system'
 import type { CatalogueModelisateur, GrapheReferentiel, NoeudGraphe, PositionNoeud } from '../../../modele/homologation'
-import { CARTE, couloirs } from '../../../adaptateurs/modelisateur'
+import { CARTE, couloirs, type SourceEtapes } from '../../../adaptateurs/modelisateur'
 
 // Canevas du modélisateur sur @xyflow/react (MIT) : couloirs par étape (colonnes) et par segment (bandes),
 // une carte par opération, les prédécesseurs en arcs. Tirer d'une carte à l'autre crée un arc, supprimer un arc
 // (touche Suppr) le retire, déplacer une carte enregistre sa position après un court regroupement.
 
 export type DonneesCarte = { noeud: NoeudGraphe; lecture: boolean; surligne: boolean; ouvrir: (code: string) => void }
-export type DonneesCouloir = { libelle: string; largeur: number; hauteur: number; sens: 'etape' | 'segment' }
+export type DonneesCouloir = { libelle: string; largeur: number; hauteur: number; sens: 'etape' | 'segment'; jeton?: string | null }
+export type DonneesFantome = { noeud: NoeudGraphe }
 type NoeudCarte = Node<DonneesCarte, 'operation'>
 type NoeudCouloir = Node<DonneesCouloir, 'couloir'>
-type NoeudFlux = NoeudCarte | NoeudCouloir
+/** Fantôme (D-89) : voisin direct d'une opération qui me concerne ; ni déplacé, ni relié, ni ouvert. */
+type NoeudFantome = Node<DonneesFantome, 'fantome'>
+type NoeudFlux = NoeudCarte | NoeudCouloir | NoeudFantome
 
 /** Délai de regroupement des positions avant PUT /positions (ms), celui du canevas générique. */
 export { DELAI_POSITIONS } from '../../../composants/graphe/CanevasGraphe'
@@ -31,7 +34,8 @@ const Carte = memo(function Carte({ data }: NodeProps<NoeudCarte>) {
       aria-label={t('modelisateur.carte.aria', { code: n.code, libelle: n.libelle })}
       data-code={n.code}
     >
-      <Handle type="target" position={Position.Left} isConnectable={!data.lecture} aria-label={t('modelisateur.carte.entree', { code: n.code })} />
+      {/* Poignées de liaison décoratives (sans nom : un nom sans rôle est proscrit) ; au clavier, arcs dans la vue liste. */}
+      <Handle type="target" position={Position.Left} isConnectable={!data.lecture} />
       <header className="gm-mod-carte-tete">
         <span className="gm-mono gm-mod-carte-code">{n.code}</span>
         <span className="gm-mod-pastilles">
@@ -56,24 +60,44 @@ const Carte = memo(function Carte({ data }: NodeProps<NoeudCarte>) {
       <button type="button" className="nodrag gm-mod-carte-modifier" onClick={() => data.ouvrir(n.code)} aria-label={t(data.lecture ? 'modelisateur.action.consulterOp' : 'modelisateur.action.modifierOp', { code: n.code })}>
         {data.lecture ? t('modelisateur.action.consulter') : t('modelisateur.action.modifier')}
       </button>
-      <Handle type="source" position={Position.Right} isConnectable={!data.lecture} aria-label={t('modelisateur.carte.sortie', { code: n.code })} />
+      <Handle type="source" position={Position.Right} isConnectable={!data.lecture} />
+    </article>
+  )
+})
+
+const CarteFantome = memo(function CarteFantome({ data }: NodeProps<NoeudFantome>) {
+  const { t } = useTranslation()
+  const n = data.noeud
+  return (
+    <article className="gm-mod-carte gm-mod-carte-fantome" aria-label={t('modelisateur.fantome.aria', { code: n.code, libelle: n.libelle })} data-code={n.code} data-fantome="true">
+      <Handle type="target" position={Position.Left} isConnectable={false} />
+      <header className="gm-mod-carte-tete">
+        <span className="gm-mono gm-mod-carte-code">{n.code}</span>
+        <span className="gm-mod-pastilles"><span className="gm-mod-pastille">{t('modelisateur.fantome')}</span></span>
+      </header>
+      <p className="gm-mod-carte-libelle" title={n.libelle}>{n.libelle}</p>
+      <Handle type="source" position={Position.Right} isConnectable={false} />
     </article>
   )
 })
 
 function Couloir({ data }: NodeProps<NoeudCouloir>) {
+  // Couleur de l'étape (D-89) : variable CSS du design system servie par le service (jeton).
+  const couleur = data.jeton ? ({ '--gm-mod-couloir-couleur': `var(${data.jeton})` } as CSSProperties) : {}
   return (
-    <div className={cx('gm-mod-couloir', `gm-mod-couloir-${data.sens}`)} style={{ width: data.largeur, height: data.hauteur }} aria-hidden="true">
+    <div className={cx('gm-mod-couloir', `gm-mod-couloir-${data.sens}`, data.jeton && 'gm-mod-couloir-colore')} style={{ width: data.largeur, height: data.hauteur, ...couleur }} aria-hidden="true">
       <span className="gm-mod-couloir-titre">{data.libelle}</span>
     </div>
   )
 }
 
-const TYPES = { operation: Carte, couloir: Couloir }
+const TYPES = { operation: Carte, couloir: Couloir, fantome: CarteFantome }
 
 export type CanevasProps = {
   graphe: GrapheReferentiel
   catalogue: CatalogueModelisateur
+  /** Étapes des couloirs (D-89) : celles de la version, sinon le catalogue. */
+  etapes: SourceEtapes
   positions: Map<string, PositionNoeud>
   lecture: boolean
   surlignes: Set<string>
@@ -87,21 +111,25 @@ export function Canevas(p: CanevasProps) {
   const { t } = useTranslation()
   const { onPlacer, onOuvrir, onRelier, onDelier } = p
   const calcules = useMemo<NoeudFlux[]>(() => {
-    const { etapes, segments } = couloirs(p.graphe.noeuds, p.positions, p.catalogue, t)
+    const { etapes, segments } = couloirs(p.graphe.noeuds, p.positions, p.etapes, t)
     const fond = (c: (typeof etapes)[number], sens: 'etape' | 'segment', z: number): NoeudCouloir => ({
-      id: c.cle, type: 'couloir', position: { x: c.x, y: c.y }, data: { libelle: c.libelle, largeur: c.largeur, hauteur: c.hauteur, sens },
+      id: c.cle, type: 'couloir', position: { x: c.x, y: c.y }, data: { libelle: c.libelle, largeur: c.largeur, hauteur: c.hauteur, sens, jeton: sens === 'etape' ? c.jeton : null },
       draggable: false, selectable: false, connectable: false, focusable: false, deletable: false, zIndex: z, className: 'gm-mod-couloir-noeud',
     })
     return [
       ...segments.map((c) => fond(c, 'segment', -2)),
       ...etapes.map((c) => fond(c, 'etape', -1)),
-      ...p.graphe.noeuds.map((n): NoeudCarte => ({
+      ...p.graphe.noeuds.filter((n) => n.fantome).map((n): NoeudFantome => ({
+        id: n.code, type: 'fantome', position: p.positions.get(n.code) ?? { x: 0, y: 0 }, width: CARTE.largeur, height: CARTE.hauteur, data: { noeud: n },
+        draggable: false, deletable: false, connectable: false, selectable: false, ariaLabel: t('modelisateur.fantome.aria', { code: n.code, libelle: n.libelle }),
+      })),
+      ...p.graphe.noeuds.filter((n) => !n.fantome).map((n): NoeudCarte => ({
         id: n.code, type: 'operation', position: p.positions.get(n.code) ?? { x: 0, y: 0 }, width: CARTE.largeur, height: CARTE.hauteur,
         data: { noeud: n, lecture: p.lecture, surligne: p.surlignes.has(n.code), ouvrir: onOuvrir }, draggable: !p.lecture, deletable: false, connectable: !p.lecture,
         ariaLabel: `${n.code} · ${n.libelle}`,
       })),
     ]
-  }, [p.graphe.noeuds, p.positions, p.catalogue, p.lecture, p.surlignes, onOuvrir, t])
+  }, [p.graphe.noeuds, p.positions, p.etapes, p.lecture, p.surlignes, onOuvrir, t])
 
   const arcs = useMemo<Edge[]>(
     () =>

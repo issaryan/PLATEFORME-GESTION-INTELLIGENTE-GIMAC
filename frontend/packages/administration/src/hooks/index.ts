@@ -1,12 +1,11 @@
-import { useCallback, useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useEffect, useState } from 'react'
 import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryKey, type UseQueryOptions } from '@tanstack/react-query'
 import type { EtatDemande } from '@gimac/lot1'
 import { aPermission, usePermissions, type ApiError } from '@gimac/socle'
 import { useServicesConsole } from '../services/useServicesConsole'
 import type { ServicesConsole } from '../services/ports'
 import type { FiltreComptes, FiltreJournal } from '../modele/comptes'
-import type { EtatFlux, ImpulsionPlateforme } from '../modele/plateforme'
+import type { EtatFlux, ImpulsionPlateforme, MetriqueSerie, PeriodeSerie } from '../modele/plateforme'
 import type { DemandeGeste, Geste } from '../modele/infrastructure'
 
 // Hooks de données de la console : seuls points d'appel des ports injectés. Clés [sujet, ressource, …].
@@ -29,11 +28,16 @@ export const cles = {
   serveurs: () => ['plateforme', 'serveurs'] as const,
   alertes: () => ['plateforme', 'alertes'] as const,
   configuration: () => ['plateforme', 'configuration'] as const,
+  series: (metrique: MetriqueSerie, periode: PeriodeSerie, cible?: string) => ['plateforme', 'series', metrique, periode, cible ?? ''] as const,
   journalisation: (service: string, filtre?: string) => ['plateforme', 'journalisation', service, filtre ?? ''] as const,
   infrastructure: ['plateforme', 'infrastructure'] as const,
   charges: () => ['plateforme', 'infrastructure', 'charges'] as const,
   journauxCharge: (nom: string, lignes: number, depuis: string) => ['plateforme', 'infrastructure', 'journaux', nom, lignes, depuis] as const,
   operations: (page: number, taille: number) => ['plateforme', 'infrastructure', 'operations', page, taille] as const,
+  pods: (nom: string) => ['plateforme', 'infrastructure', 'pods', nom] as const,
+  evenements: (nom: string) => ['plateforme', 'infrastructure', 'evenements', nom] as const,
+  noeuds: () => ['plateforme', 'infrastructure', 'noeuds'] as const,
+  taches: () => ['plateforme', 'infrastructure', 'taches'] as const,
 }
 
 export function useLecture<R>(cle: QueryKey, lire: (s: ServicesConsole) => Promise<R>, options?: Omit<UseQueryOptions<R, ApiError>, 'queryKey' | 'queryFn'>) {
@@ -66,19 +70,11 @@ export const useCompte = (id: string, actif = true) => useLecture(cles.compte(id
 export const useSessionsCompte = (id: string) => useLecture(cles.compte(id, 'sessions'), (s) => s.comptes.sessions(id))
 export const useProfils = (actif = true) => useLecture(cles.profils(), (s) => s.configuration.profils(), { enabled: actif })
 /**
- * Libellé d'un profil (D-86 §2) : celui du serveur (GET /configuration/profils, lu avec IAM_ACCOUNT_READ), sinon le
- * catalogue de « Mon compte » (compte.profil.<code>), le code à défaut. Un libellé égal au code (attribut gimac_libelle
- * absent) cède aussi la place au catalogue.
+ * Source des libellés de profils de la console (D-86 §2) pour useLibelleProfil du socle : catalogue du serveur
+ * (GET /configuration/profils), lu seulement avec IAM_ACCOUNT_READ ; sans lui, repli i18n.
  */
-export function useLibelleProfil() {
-  const { t } = useTranslation()
-  const lecture = aPermission(usePermissions(), 'IAM_ACCOUNT_READ')
-  const profils = useProfils(lecture)
-  const donnees = profils.data
-  return useCallback((code: string, serveur?: string | null) => {
-    const l = serveur ?? donnees?.find((p) => p.code === code)?.libelle
-    return l && l !== code ? l : t(`compte.profil.${code}`, { defaultValue: code })
-  }, [donnees, t])
+export function useLibellesProfils() {
+  return useProfils(aPermission(usePermissions(), 'IAM_ACCOUNT_READ')).data
 }
 export const usePermissionsRealm = (actif = true) => useLecture(cles.permissions(), (s) => s.configuration.permissions(), { enabled: actif })
 /** Catalogue des unités organisationnelles (D-76). */
@@ -92,6 +88,19 @@ export const useMessagerie = () => useLecture(cles.messagerie(), (s) => s.config
 export const useServicesPlateforme = (actif = true) => useLecture(cles.services(), (s) => s.plateforme.services(), { enabled: actif })
 export const useServeurs = (actif = true) => useLecture(cles.serveurs(), (s) => s.plateforme.serveurs(), { enabled: actif })
 export const useAlertes = (actif = true) => useLecture(cles.alertes(), (s) => s.plateforme.alertes(), { enabled: actif })
+/** Rafraîchissement des graphiques : rythme adapté à la période (le pas des mesures croît avec elle). */
+const RAFRAICHISSEMENT: Record<PeriodeSerie, number> = { UNE_HEURE: 30_000, SIX_HEURES: 90_000, UN_JOUR: 300_000, SEPT_JOURS: 600_000 }
+
+/**
+ * Historique d'une métrique pour un graphique. Pendant un rechargement ou un changement de période, la
+ * réponse précédente reste affichée (isPlaceholderData) : le graphique s'atténue, sans flash ni squelette.
+ */
+export const useSeries = (metrique: MetriqueSerie, periode: PeriodeSerie, cible?: string, actif = true) =>
+  useLecture(cles.series(metrique, periode, cible), (s) => s.plateforme.series(metrique, periode, cible), {
+    enabled: actif,
+    refetchInterval: RAFRAICHISSEMENT[periode],
+    placeholderData: keepPreviousData,
+  })
 export const useConfigurationPlateforme = () => useLecture(cles.configuration(), (s) => s.plateforme.configuration())
 export const useJournalisation = (service: string, filtre?: string) =>
   useLecture(cles.journalisation(service, filtre), (s) => s.plateforme.journalisation(service, filtre), { enabled: !!service })
@@ -109,6 +118,13 @@ export function useFluxPlateforme(actif = true): { impulsion: ImpulsionPlateform
 }
 
 // Exploitation de l'infrastructure (D-78) : charges, journaux à la demande, historique paginé, gestes.
+/** Lectures Kubernetes de l'écran Infrastructure : actives seulement sous Kubernetes (sinon 422). */
+export const usePodsCharge = (nom: string, actif = true) =>
+  useLecture(cles.pods(nom), (s) => s.infrastructure.pods(nom), { enabled: actif && !!nom, refetchInterval: 15_000 })
+export const useEvenementsCharge = (nom: string, actif = true) =>
+  useLecture(cles.evenements(nom), (s) => s.infrastructure.evenements(nom), { enabled: actif && !!nom, refetchInterval: 30_000 })
+export const useNoeuds = (actif = true) => useLecture(cles.noeuds(), (s) => s.infrastructure.noeuds(), { enabled: actif, refetchInterval: 30_000 })
+export const useTaches = (actif = true) => useLecture(cles.taches(), (s) => s.infrastructure.taches(), { enabled: actif, refetchInterval: 60_000 })
 export const useCharges = (actif = true) => useLecture(cles.charges(), (s) => s.infrastructure.charges(), { enabled: actif })
 export const useJournauxCharge = (nom: string, lignes: number, depuis: string) =>
   useLecture(cles.journauxCharge(nom, lignes, depuis), (s) => s.infrastructure.journaux(nom, lignes, depuis), { enabled: !!nom })

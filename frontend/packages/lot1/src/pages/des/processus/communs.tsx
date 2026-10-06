@@ -4,7 +4,7 @@ import { estApiError } from '@gimac/socle'
 import { PROFILS } from '../../../permissions'
 import { useLecture } from '../../../hooks/base'
 import type { EtatEtape, EtatInstance, EtatProcessus, GraviteAnomalie, Intervenant } from '../../../modele/processus'
-import { useLibelleProfil } from '../activite/dialoguesEquipe'
+import { useLibelleProfilEquipe } from '../activite/dialoguesEquipe'
 import { useLibelleUnite } from '../activite/communs'
 import './processus.css'
 
@@ -40,7 +40,7 @@ export const PROFILS_INTERVENANTS = Object.keys(PROFILS).filter((p) => p !== 'RO
 /** Résumé lisible d'un intervenant (« Profil : Pôle réseau », « Chef de l'unité »…). */
 export function useResumeIntervenant() {
   const { t } = useTranslation()
-  const libelleProfil = useLibelleProfil()
+  const libelleProfil = useLibelleProfilEquipe()
   const libelleUnite = useLibelleUnite()
   return (i: Intervenant | null | undefined, personnes: Record<string, string> = {}) => {
     if (!i) return t('proc.intervenant.aucun')
@@ -76,7 +76,7 @@ export function ChoixPersonne({ name, label, value, onChange, profil, help, erro
 }) {
   const { t } = useTranslation()
   const annuaire = useAnnuaireProcessus()
-  const libelleProfil = useLibelleProfil()
+  const libelleProfil = useLibelleProfilEquipe()
   const l = (annuaire.data?.contenu ?? []).filter((p) => !exclure.includes(p.id))
   const porteurs = profil ? l.filter((p) => p.profils?.includes(profil)) : []
   const autres = l.filter((p) => !porteurs.includes(p))

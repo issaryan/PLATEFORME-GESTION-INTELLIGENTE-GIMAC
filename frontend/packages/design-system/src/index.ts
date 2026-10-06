@@ -3,6 +3,7 @@
 export * from './lib/types'
 export { cx } from './lib/cx'
 export { formatMoney } from './lib/format'
+export { formatCompact, libelleInstant, libellePeriode, libelleTemps, type Granularite, type PointMesure } from './lib/graphiques'
 export { useFieldId } from './lib/useFieldId'
 export { ICONS, type IconName } from './icones/icons'
 export { STATUS_ICON } from './icones/statusIcon'

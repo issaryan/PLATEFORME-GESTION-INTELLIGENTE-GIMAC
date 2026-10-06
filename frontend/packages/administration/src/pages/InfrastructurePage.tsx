@@ -6,12 +6,15 @@ import {
 } from '@gimac/design-system'
 import { aPermission, usePermissions } from '@gimac/socle'
 import { dateHeure } from '@gimac/compte'
-import { useCharges, useFluxInfrastructure, useGesteInfrastructure, useJournauxCharge, useOperationsInfrastructure } from '../hooks'
+import { useCharges, useFluxInfrastructure, useGesteInfrastructure, useJournauxCharge, useOperationsInfrastructure, useSeries } from '../hooks'
+import { TendanceMetrique } from '../composants/graphiquesSupervision'
+import { CarteNoeuds, CarteTaches, FicheCharge } from '../composants/kubernetes'
 import { BORNES_INFRASTRUCTURE, DUREES_JOURNAUX, type Charge, type Geste, type Operation } from '../modele/infrastructure'
 import { useActes } from '../composants/actes'
 import { Annonce } from '../composants/Annonce'
 import { Donnees } from '../composants/communs'
 import { STATUT_CHARGE } from '../composants/widgetsPlateforme'
+
 
 // Exploitation de l'infrastructure (D-78, docs/exploitation/operations-infrastructure.md §4) : charges de travail
 // Docker ou Kubernetes du périmètre (état, santé, répliques, redémarrages, image, démarrage, protection),
@@ -21,8 +24,8 @@ import { STATUT_CHARGE } from '../composants/widgetsPlateforme'
 
 const STATUT_SANTE: Record<Charge['sante'], Status> = { SAINE: 'ok', DEGRADEE: 'warn', INCONNUE: 'neutral' }
 const STATUT_RESULTAT: Record<Operation['resultat'], Status> = { REUSSIE: 'ok', ECHOUEE: 'crit', EN_COURS: 'info' }
-const ICONE_GESTE = { REDEMARRER: 'rotate-ccw', ARRETER: 'pause', DEMARRER: 'arrow-right', ECHELLE: 'users' } as const
-const ORDRE_GESTES: Geste[] = ['REDEMARRER', 'DEMARRER', 'ARRETER', 'ECHELLE']
+const ICONE_GESTE = { REDEMARRER: 'rotate-ccw', ARRETER: 'pause', DEMARRER: 'arrow-right', ECHELLE: 'users', RETABLIR: 'history' } as const
+const ORDRE_GESTES: Geste[] = ['REDEMARRER', 'DEMARRER', 'ARRETER', 'ECHELLE', 'RETABLIR']
 
 /** Nombre de répliques voulu, tenu par le champ lui-même (le dialogue garde l'élément tel qu'à son ouverture). */
 function ChampRepliques({ initial, surChangement }: { initial: number; surChangement: (v: string) => void }) {
@@ -126,6 +129,8 @@ export default function InfrastructurePage() {
   const [parametres, setParametres] = useSearchParams()
   const choisie = parametres.get('charge') ?? ''
   const repliques = useRef('1')
+  const cpuCharges = useSeries('CHARGE_CPU', 'UNE_HEURE')
+  const [courbes, setCourbes] = useState<Charge | null>(null)
   const choisir = (nom: string) => setParametres((p) => {
     const q = new URLSearchParams(p)
     if (nom) q.set('charge', nom)
@@ -141,12 +146,15 @@ export default function InfrastructurePage() {
         { key: t('infra.charge'), value: c.nom, mono: true },
         { key: t('infra.etat'), value: t(`infra.etat.${c.etat}`) },
         { key: t('infra.repliques.colonne'), value: t('infra.widget.repliques', { pretes: c.repliques.pretes, voulues: c.repliques.voulues }) },
+        ...(g === 'RETABLIR'
+          ? [{ key: t('infra.image'), value: c.image ?? '—', mono: true }, { key: t('infra.imagePrecedente'), value: c.imagePrecedente ?? '—', mono: true }]
+          : []),
       ],
       contenu: { charge: c.nom, geste: g },
       succes: t('infra.geste.accepte', { nom: c.nom }),
       extra: g === 'ECHELLE'
         ? <ChampRepliques initial={c.repliques.voulues} surChangement={(v) => { repliques.current = v }} />
-        : <InlineAlert level={g === 'ARRETER' ? 'warn' : 'info'}>{t(`infra.geste.${g}.texte`)}</InlineAlert>,
+        : <InlineAlert level={g === 'ARRETER' || g === 'RETABLIR' ? 'warn' : 'info'}>{t(`infra.geste.${g}.texte`, { image: c.imagePrecedente ?? '—' })}</InlineAlert>,
       executer: async (motif, assertion) => {
         if (motif.length > BORNES_INFRASTRUCTURE.motifMax) throw new Error(t('erreur.OPS_MOTIF_INVALIDE'))
         const r = Number(repliques.current)
@@ -180,6 +188,7 @@ export default function InfrastructurePage() {
         </span>
       ),
     },
+    { key: 'tendance', header: t('graphiques.colonne.cpuCharge'), render: (c) => <TendanceMetrique series={cpuCharges.data} nom={c.nom} libelle={t('graphiques.metrique.CHARGE_CPU') + ' · ' + c.nom} /> },
     { key: 'repliques', header: t('infra.repliques.colonne'), type: 'number', render: (c) => `${c.repliques.pretes} / ${c.repliques.voulues}` },
     { key: 'redemarrages', header: t('infra.redemarrages'), type: 'number', render: (c) => c.redemarrages },
     { key: 'demarreeLe', header: t('infra.demarreeLe'), render: (c) => dateHeure(c.demarreeLe, i18n.language) },
@@ -188,6 +197,9 @@ export default function InfrastructurePage() {
       render: (c) => (
         // Boutons à pictogramme (nom accessible complet, info-bulle) : la colonne tient sans défilement horizontal.
         <span className="gm-row" style={{ gap: 'var(--gm-space-1)', flexWrap: 'nowrap' }}>
+          <span title={t('infra.courbes.voir', { nom: c.nom })}>
+            <IconButton size="sm" variant="ghost" icon="gauge" onClick={() => setCourbes(c)} label={t('infra.courbes.voir', { nom: c.nom })} />
+          </span>
           <span title={t('infra.journaux.voir', { nom: c.nom })}>
             <IconButton size="sm" variant="ghost" icon="file-text" onClick={() => choisir(c.nom)} label={t('infra.journaux.voir', { nom: c.nom })} />
           </span>
@@ -220,6 +232,9 @@ export default function InfrastructurePage() {
               state={charges.data.charges.length ? 'ok' : 'empty'} emptyText={t('infra.charges.vide')} />
           </Card>
           {choisie ? <Journaux key={choisie} nom={choisie} fermer={() => choisir('')} /> : null}
+          {courbes ? <FicheCharge charge={courbes} orchestrateur={charges.data.orchestrateur} fermer={() => setCourbes(null)} /> : null}
+          {charges.data.orchestrateur === 'KUBERNETES' ? <CarteNoeuds /> : null}
+          {charges.data.orchestrateur === 'KUBERNETES' ? <CarteTaches /> : null}
           <Historique />
         </>
       )}

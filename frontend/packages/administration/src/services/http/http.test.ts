@@ -264,6 +264,7 @@ describe('infrastructure /api/plateforme/infrastructure', () => {
     await infrastructureHttp.executer('iam', 'ARRETER', { motif: 'Motif suffisant' }, 'YXNz')
     await infrastructureHttp.executer('iam', 'DEMARRER', { motif: 'Motif suffisant' }, 'YXNz')
     await infrastructureHttp.executer('iam', 'ECHELLE', { motif: 'Motif suffisant', repliques: 3 }, 'YXNz')
+    await infrastructureHttp.executer('iam', 'RETABLIR', { motif: 'Motif suffisant' }, 'YXNz')
     expect(appels(spy)).toEqual([
       'GET /api/plateforme/infrastructure/charges/iam/journaux?lignes=200&depuis=PT10M',
       'GET /api/plateforme/infrastructure/operations?page=2&taille=20',
@@ -271,6 +272,7 @@ describe('infrastructure /api/plateforme/infrastructure', () => {
       'POST /api/plateforme/infrastructure/charges/iam/arret',
       'POST /api/plateforme/infrastructure/charges/iam/demarrage',
       'PUT /api/plateforme/infrastructure/charges/iam/repliques',
+      'POST /api/plateforme/infrastructure/charges/iam/retablissement',
     ])
     expect(entete(spy, 2, 'X-Reauth-Assertion')).toBe('YXNz')
     expect(JSON.parse(String((spy.mock.calls[2][1] as RequestInit).body))).toEqual({ motif: 'Motif suffisant' })

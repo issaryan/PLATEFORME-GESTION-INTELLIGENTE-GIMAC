@@ -107,6 +107,7 @@ JaCoCo bloque la construction sous 80 % : à `test`, chaque classe du lot en lig
 | 2026-09-29 | — | Intégration verte (631 tests d'intégration et de recette), seuil global en lignes et fonctions hors MapStruct (D-61). |
 | 2026-09-29 | — | Étape 3 : passage automatique à `EN_HOMOLOGATION` à l'ouverture d'une liaison (consommateur Kafka idempotent), interface interne de lecture d'une institution et de ses services souscrits. |
 | 2026-09-29 | — | Ports sortants `application/port/out` versionnés : la règle `out/` du `.gitignore` généré par JHipster les ignorait, le dépôt distant ne compilait pas ; exception `!src/**/out/` ajoutée et ports `DocumentRegistry`, `StrongReauthVerifier` reconstitués d'après leurs adaptateurs |
+| 2026-10-06 | — | Tableaux de bord en graphiques (lot 5) : les indicateurs de la DDRM rendent aussi `fluxParMois` (prises de contact, adhésions, clôtures sans suite), 12 mois denses au fuseau de Douala |
 <!-- GIMAC:FIN -->
 
 

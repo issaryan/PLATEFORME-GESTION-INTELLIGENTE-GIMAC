@@ -51,10 +51,12 @@ describe('D-90 : catalogue Module > Fonctionnalité > Droit', () => {
     const r = fonctionnalite('referentiels')
     const publier = r.droits.find((d) => d.nature === 'PUBLIER')!
     const p = basculerDroit([], r, publier, true)
-    expect(p).toEqual(['HOM_REFERENTIEL_PUBLISH', 'HOM_REFERENTIEL_READ'])
+    // Consulter le référentiel : lecture des opérations qui me concernent et lecture complète (D-89).
+    expect(p).toEqual(['HOM_REFERENTIEL_PUBLISH', 'HOM_REFERENTIEL_READ', 'HOM_REFERENTIEL_READ_ALL'])
     expect(etatFonctionnalite(r, p)).toBe('partiel')
     const lire = r.droits.find((d) => d.nature === 'CONSULTER')!
-    expect(basculerDroit(p, r, lire, false)).toEqual([])
+    // La lecture des opérations décochée retire les écritures ; la lecture complète, autre consultation, reste.
+    expect(basculerDroit(p, r, lire, false)).toEqual(['HOM_REFERENTIEL_READ_ALL'])
     expect(basculerDroit(['X'], r, publier, false)).toEqual(['X'])
     expect(basculerDroit([], r, lire, true)).toEqual(['HOM_REFERENTIEL_READ'])
     expect(etatFonctionnalite(r, r.droits.map((d) => d.permission))).toBe('tout')

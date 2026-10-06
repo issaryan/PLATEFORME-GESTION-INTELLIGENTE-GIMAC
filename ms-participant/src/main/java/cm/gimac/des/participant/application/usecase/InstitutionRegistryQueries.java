@@ -14,8 +14,16 @@ import cm.gimac.des.participant.domain.service.PrerequisitesEvaluator.Prerequis;
 import cm.gimac.des.participant.repository.AdhesionPieceRepository;
 import cm.gimac.des.participant.repository.InstitutionRepository;
 import cm.gimac.des.participant.repository.StatusTransitionRepository;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.YearMonth;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -45,31 +53,47 @@ public class InstitutionRegistryQueries {
         Set<InstitutionStatus> transitionsPermises
     ) {}
 
-    /** Compteurs du tableau de bord de la DDRM. */
+    /** Compteurs du tableau de bord de la DDRM, et flux des 12 derniers mois (mois courant compris). */
     public record Indicateurs(
         long candidats,
         long piecesAExaminer,
         long propositionsEnAttente,
         long adherents,
         long enHomologation,
-        long closSansSuite
-    ) {}
+        long closSansSuite,
+        List<FluxMensuel> fluxParMois
+    ) {
+        public Indicateurs(long candidats, long piecesAExaminer, long propositionsEnAttente, long adherents, long enHomologation, long closSansSuite) {
+            this(candidats, piecesAExaminer, propositionsEnAttente, adherents, enHomologation, closSansSuite, List.of());
+        }
+    }
+
+    /** Flux d'un mois : prises de contact, adhésions prononcées, clôtures sans suite. */
+    public record FluxMensuel(YearMonth mois, long contacts, long adhesions, long clotures) {}
+
+    /** Profondeur du flux mensuel. */
+    public static final int MOIS_FLUX = 12;
+    /** Fuseau des mois : celui de la CEMAC (UTC+1). */
+    public static final ZoneId FUSEAU = ZoneId.of("Africa/Douala");
 
     private final InstitutionRepository institutions;
     private final AdhesionPieceRepository pieces;
     private final StatusTransitionRepository transitions;
     private final DossierSnapshots snapshots;
+    private final Clock clock;
 
     public InstitutionRegistryQueries(
         InstitutionRepository institutions,
         AdhesionPieceRepository pieces,
         StatusTransitionRepository transitions,
-        DossierSnapshots snapshots
+        DossierSnapshots snapshots,
+        Clock clock
     ) {
         this.institutions = institutions;
         this.pieces = pieces;
         this.transitions = transitions;
         this.snapshots = snapshots;
+        this.clock = clock;
     }
 
     public Page<Institution> lister(Filtre f, int page, int taille) {
@@ -95,8 +119,30 @@ public class InstitutionRegistryQueries {
             transitions.countByState(TransitionState.PROPOSEE),
             institutions.countByStatus(InstitutionStatus.ADHERENT),
             institutions.countByStatus(InstitutionStatus.EN_HOMOLOGATION),
-            institutions.countByStatus(InstitutionStatus.CLOS_SANS_SUITE)
+            institutions.countByStatus(InstitutionStatus.CLOS_SANS_SUITE),
+            fluxParMois()
         );
+    }
+
+    /** Un point par mois sur les 12 derniers mois, zéro les mois sans mouvement. */
+    List<FluxMensuel> fluxParMois() {
+        YearMonth fin = YearMonth.now(clock.withZone(FUSEAU));
+        YearMonth debut = fin.minusMonths(MOIS_FLUX - 1L);
+        Instant depuis = debut.atDay(1).atStartOfDay(FUSEAU).toInstant();
+        Map<YearMonth, Long> contacts = parMois(institutions.creationsDepuis(depuis));
+        Map<YearMonth, Long> adhesions = parMois(institutions.adhesionsDepuis(depuis));
+        Map<YearMonth, Long> clotures = parMois(institutions.cloturesDepuis(depuis));
+        List<FluxMensuel> l = new ArrayList<>(MOIS_FLUX);
+        for (YearMonth m = debut; !m.isAfter(fin); m = m.plusMonths(1)) {
+            l.add(new FluxMensuel(m, contacts.getOrDefault(m, 0L), adhesions.getOrDefault(m, 0L), clotures.getOrDefault(m, 0L)));
+        }
+        return l;
+    }
+
+    private static Map<YearMonth, Long> parMois(List<Instant> instants) {
+        Map<YearMonth, Long> m = new HashMap<>();
+        instants.stream().filter(Objects::nonNull).forEach(i -> m.merge(YearMonth.from(i.atZone(FUSEAU)), 1L, Long::sum));
+        return m;
     }
 
     static Specification<Institution> specification(Filtre f) {

@@ -1,9 +1,10 @@
 import type { ApiError } from '@gimac/socle'
 import type { TypeProjet } from '../../modele/commun'
 import type {
-  AnomalieGraphe, CatalogueModelisateur, ControleResultat, Geste, GrapheReferentiel, Jalon, Livrable, NoeudGraphe, Particularite, ReferenceOperation,
-  ReferentielVersion, SaisieOperation, TypeAnomalie,
+  AnomalieGraphe, CatalogueModelisateur, ControleResultat, CouleurCatalogue, CouleurEtape, EtapeCanonique, EtapeReferentiel, FiltreReferentiel, Geste, GrapheReferentiel, Jalon,
+  Livrable, NoeudGraphe, Particularite, ReferenceOperation, ReferentielVersion, SaisieOperation, TypeAnomalie,
 } from '../../modele/homologation'
+import { PROFILS } from '../../permissions'
 import { ETAPES, type EtapeCode, type Fonction } from '../../modele/parcours'
 import { referentielDe, type OperationReferentiel } from '../../modele/referentielCR'
 import type { ServiceHomologation } from '../ports'
@@ -120,6 +121,70 @@ export const CATALOGUE: CatalogueModelisateur = {
   pilotes: [{ id: 'U-101', nom: 'Ingénieur d\'homologation A' }, { id: 'U-102', nom: 'Ingénieur d\'homologation B' }],
 }
 
+// ---------------------------------------------------------------------------------- étapes configurables (D-89)
+
+/** Couleurs d'étape (CouleurEtape de MS-HOMOLOGATION) : variables CSS du design system. */
+export const COULEURS_ETAPE: CouleurCatalogue[] = ([
+  ['NEUTRE', 'Neutre', '--gm-color-status-neutral-fg'], ['INFO', 'Information', '--gm-color-status-info-fg'], ['SUCCES', 'Succès', '--gm-color-status-ok-fg'],
+  ['ALERTE', 'Alerte', '--gm-color-status-warn-fg'], ['CRITIQUE', 'Critique', '--gm-color-status-crit-fg'], ['ACTION', 'Action', '--gm-color-action'],
+  ['ACCENT', 'Accent', '--gm-color-brand-accent'],
+] as const).map(([code, libelle, jeton]) => ({ code, libelle, jeton }))
+/** Étapes canoniques porteuses d'un jalon ou du verrou 2 : ni retrait ni changement de canonique. */
+const PROTEGEES: EtapeCode[] = ['CERTIFICATION', 'APPROBATION_SECURITE', 'MISE_EN_PRODUCTION']
+export const ETAPES_CANONIQUES: EtapeCanonique[] = CATALOGUE.etapes.map((e) => ({ code: e.code as EtapeCode, libelle: e.libelle, rang: e.rang ?? null, protegee: PROTEGEES.includes(e.code as EtapeCode) }))
+const COULEUR_DEFAUT: Record<EtapeCode, CouleurEtape> = {
+  PRISE_CONTACT: 'NEUTRE', ADHESION: 'NEUTRE', CADRAGE: 'INFO', LANCEMENT: 'INFO', ATELIERS: 'ACTION', INTEGRATION: 'ACTION', TESTS: 'ALERTE',
+  CERTIFICATION: 'SUCCES', APPROBATION_SECURITE: 'CRITIQUE', MISE_EN_PRODUCTION: 'SUCCES', SUIVI: 'ACCENT',
+}
+type Etape = { code: string; libelle: string; couleur: CouleurEtape; canonique: EtapeCode | null }
+/** Version 1 des étapes d'une version : les onze étapes canoniques, chacune liée à elle-même. */
+const etapesInitiales = (): Etape[] => ETAPES_CANONIQUES.map((e) => ({ code: e.code, libelle: e.libelle, couleur: COULEUR_DEFAUT[e.code], canonique: e.code }))
+const CODE_ETAPE = /^[A-Z][A-Z0-9_]{1,39}$/
+
+/** Vue d'une étape (EtapeVue) : jeton, canonique effective (celle de l'étape précédente à défaut, le cadrage en tête). */
+export function vuesEtapes(etapes: Etape[], ops: ReferenceOperation[], brouillon: boolean): EtapeReferentiel[] {
+  let precedente: EtapeCode | null = null
+  return etapes.map((e, i) => {
+    const effective: EtapeCode = e.canonique ?? precedente ?? 'CADRAGE'
+    precedente = effective
+    const n = ops.filter((o) => o.etape === e.code).length
+    const protegee = !!e.canonique && PROTEGEES.includes(e.canonique)
+    return {
+      code: e.code, libelle: e.libelle, ordre: i + 1, couleur: e.couleur, jeton: COULEURS_ETAPE.find((c) => c.code === e.couleur)!.jeton, canonique: e.canonique,
+      canoniqueEffective: effective, protegee, nombreOperations: n, supprimable: brouillon && n === 0 && !protegee,
+    }
+  })
+}
+
+// ---------------------------------------------------------------------------------- lecture filtrée (D-89 §1)
+
+/** Lecture complète : READ_ALL ou un droit d'édition, de publication ou de migration. */
+const LECTURE_COMPLETE = ['HOM_REFERENTIEL_READ_ALL', 'HOM_REFERENTIEL_EDIT', 'HOM_REFERENTIEL_PUBLISH', 'HOM_REFERENTIEL_MIGRATE']
+/** Fonctions d'un lecteur : déduites de ses profils (catalogue), plus CHEFS_DEPARTEMENT pour un chef de département. */
+export function fonctionsDesProfils(profils: string[]): Fonction[] {
+  const f = CATALOGUE.fonctions.filter((x) => x.profils?.some((p) => profils.includes(p))).map((x) => x.code as Fonction)
+  if (profils.includes('ROLE_CHEF_DES') || profils.includes('ROLE_CHEF_DDRM')) f.push('CHEFS_DEPARTEMENT')
+  return [...new Set(f)]
+}
+const concerne = (o: ReferenceOperation, f: Fonction[]) =>
+  [o.responsable, o.validateur, ...(o.consultes ?? []), ...(o.informes ?? []), ...(o.externes ?? []), ...(o.livrables ?? []).map((l) => l.deposant)].some((x) => !!x && f.includes(x))
+/** Fantôme : code et libellé seulement (OperationVue.fantome). */
+const fantomeDe = (o: ReferenceOperation): ReferenceOperation => ({
+  code: o.code, libelle: o.libelle, description: null, etape: null, segment: null, ordre: null, responsable: null, validateur: null, consultes: [], informes: [], externes: [],
+  predecesseurs: [], delaiJours: null, grain: null, plateforme: null, cle: false, secret: false, oubliSansSymptome: false, pivot: false, valeurReference: null, livrables: [],
+  geste: null, jalon: null, declencheur: null, particularite: null, position: null, phase: null, partie: null, serviceCode: null, natureCouverture: null, idScenario: null,
+  fonctionResponsable: null, preuveAttendue: null, grille: null, fantome: true,
+})
+/** Opérations retenues pour le lecteur : toutes, ou les siennes et leurs voisines directes en fantômes. */
+export function visibles(ops: ReferenceOperation[], profils: string[] | undefined): { filtre: FiltreReferentiel; retenues: ReferenceOperation[]; codes: Set<string> } {
+  const permissions = new Set((profils ?? []).flatMap((p) => PROFILS[p] ?? []))
+  if (!profils?.length || LECTURE_COMPLETE.some((p) => permissions.has(p))) return { filtre: 'COMPLET', retenues: ops, codes: new Set(ops.map((o) => o.code)) }
+  const f = fonctionsDesProfils(profils)
+  const codes = new Set(ops.filter((o) => concerne(o, f)).map((o) => o.code))
+  const voisins = new Set(ops.filter((o) => codes.has(o.code)).flatMap((o) => [...o.predecesseurs, ...ops.filter((x) => x.predecesseurs.includes(o.code)).map((x) => x.code)]))
+  return { filtre: 'CONCERNE', codes, retenues: ops.filter((o) => codes.has(o.code) || voisins.has(o.code)).map((o) => (codes.has(o.code) ? o : fantomeDe(o))) }
+}
+
 type Rapport = { anomalies: AnomalieGraphe[]; ordre: string[]; couches: Map<string, number>; cycle: string[] }
 
 /** Contrôle du graphe (ReferentialGraphValidator) : Kahn, cycle, prédécesseurs, rôles, jalons, livrables, secrets. */
@@ -212,7 +277,26 @@ function manquants(ops: ReferenceOperation[]) {
 const avecSuccesseurs = (ops: ReferenceOperation[]) => ops.map((o) => ({ ...o, successeurs: ops.filter((x) => x.predecesseurs.includes(o.code)).map((x) => x.code).sort() }))
 
 /** Graphe étendu (GET /referentiels/{id}/graphe). */
-export function calculerGraphe(v: ReferentielVersion, ops: ReferenceOperation[]): GrapheReferentiel {
+export function calculerGraphe(v: ReferentielVersion, ops: ReferenceOperation[], d89: { etapes?: EtapeReferentiel[]; profils?: string[] } = {}): GrapheReferentiel {
+  const vue = visibles(ops, d89.profils)
+  const complet = calculerGrapheComplet(v, ops)
+  if (vue.filtre === 'COMPLET') return { ...complet, ...(d89.etapes ? { etapes: d89.etapes } : {}), filtre: 'COMPLET' }
+  // Lecture concernée : nœuds visibles et fantômes, arcs touchant une opération visible, contrôles réduits aux visibles.
+  const parCode = new Map(complet.noeuds.map((n) => [n.code, n]))
+  const garde = (codes: string[]) => codes.filter((c) => vue.codes.has(c))
+  return {
+    ...complet,
+    noeuds: vue.retenues.map((o) => (o.fantome ? { ...o, couche: null, debutAuPlusTot: null, finAuPlusTot: null, critique: false, anomalies: [] } : parCode.get(o.code)!)),
+    arcs: complet.arcs.filter((a) => (vue.codes.has(a.de) || vue.codes.has(a.vers)) && vue.retenues.some((o) => o.code === a.de) && vue.retenues.some((o) => o.code === a.vers)),
+    anomalies: complet.anomalies.filter((a) => a.codes.some((c) => vue.codes.has(c))),
+    manquants: complet.manquants.filter((m) => vue.codes.has(m.code)),
+    cheminCritique: { ...complet.cheminCritique, codes: garde(complet.cheminCritique.codes) },
+    ...(d89.etapes ? { etapes: d89.etapes } : {}),
+    filtre: 'CONCERNE',
+  }
+}
+
+function calculerGrapheComplet(v: ReferentielVersion, ops: ReferenceOperation[]): GrapheReferentiel {
   const r = controlerGraphe(ops)
   const parCode = new Map(ops.map((o) => [o.code, o]))
   const debut = new Map<string, number>()
@@ -295,8 +379,33 @@ type Attendre = <T>(v: T | (() => T)) => Promise<T>
 const CODE = /^[A-Z0-9][A-Z0-9_-]*$/
 
 /** Port des référentiels simulé, état propre à l'instance (versions, opérations, positions). */
-export function referentielsSimules(attendre: Attendre, refus: Refus, o: { utilisateur?: string; maintenant: () => string; liaisonsActives: (versionId: string) => number }) {
+export function referentielsSimules(attendre: Attendre, refus: Refus, o: { utilisateur?: string; profils?: string[]; maintenant: () => string; liaisonsActives: (versionId: string) => number }) {
   const { versions, operations } = versionsInitiales()
+  // Étapes de chaque version (D-89) : les onze étapes canoniques au départ.
+  const etapes: Record<string, Etape[]> = Object.fromEntries(versions.map((v) => [v.id, etapesInitiales()]))
+  const etapesDe = (id: string) => etapes[id] ?? (etapes[id] = etapesInitiales())
+  const vuesDe = (id: string) => vuesEtapes(etapesDe(id), operations[id] ?? [], version(id).etat === 'BROUILLON')
+  const etape = (id: string, code: string) => {
+    const e = etapesDe(id).find((x) => x.code === code)
+    if (!e) throw refus(404, 'HOM_ETAPE_NOT_FOUND', `Étape ${code} introuvable.`)
+    return e
+  }
+  const vueEtape = (id: string, code: string) => vuesDe(id).find((x) => x.code === code)!
+  const libelleEtape = (l: string) => {
+    const libelle = (l ?? '').trim()
+    if (!libelle || libelle.length > 120) throw refus(400, 'VALIDATION_ERROR', 'Libellé d\'étape : 1 à 120 caractères.')
+    return libelle
+  }
+  const etapeConnue = (id: string, s: SaisieOperation) => {
+    if (s.etape && !etapesDe(id).some((e) => e.code === s.etape)) throw refus(422, 'HOM_ETAPE_INCONNUE', `L'étape ${s.etape} n'existe pas dans cette version.`)
+  }
+  const lecture = (id: string) => visibles(operations[id] ?? [], o.profils)
+  /** Export CSV (séparateur point-virgule) : mêmes colonnes et même filtre que le service. */
+  const csv = (id: string) => {
+    const cellule = (v: unknown) => (v === null || v === undefined ? '' : Array.isArray(v) ? v.join(',') : String(v).replace(/[;\n]/g, ' '))
+    const lignes = avecSuccesseurs(lecture(id).retenues).map((x) => [x.code, x.libelle, x.etape, x.segment, x.responsable, x.validateur, x.consultes, x.informes, x.externes, x.predecesseurs, x.delaiJours, !!x.fantome].map(cellule).join(';'))
+    return ['code;libelle;etape;segment;responsable;validateur;consultes;informes;externes;predecesseurs;delaiJours;fantome', ...lignes].join('\n') + '\n'
+  }
   let numero = 0
   const nouvelId = () => `REF-${Date.now().toString(36).toUpperCase()}-${++numero}`
   const version = (id: string) => {
@@ -341,10 +450,49 @@ export function referentielsSimules(attendre: Attendre, refus: Refus, o: { utili
   const port: Pick<ServiceHomologation,
     'listerReferentiels' | 'lireReferentiel' | 'operationsReferentiel' | 'controlerReferentiel' | 'creerBrouillon' | 'deriverBrouillon' | 'publierReferentiel'
     | 'grapheReferentiel' | 'catalogueReferentiels' | 'creerOperation' | 'enregistrerOperation' | 'supprimerOperation' | 'placerOperations' | 'arcReferentiel' | 'designerPilote'
-    | 'liaisonsImpactees'> = {
-    listerReferentiels: () => attendre(() => versions.map((v) => ({ ...v, nombreOperations: (operations[v.id] ?? []).length }))),
-    lireReferentiel: (id) => attendre(() => version(id)),
-    operationsReferentiel: (id) => attendre(() => avecSuccesseurs(operations[id] ?? [])),
+    | 'liaisonsImpactees' | 'exporterReferentiel' | 'ajouterEtape' | 'modifierEtape' | 'supprimerEtape' | 'ordonnerEtapes'> = {
+    listerReferentiels: () => attendre(() => versions.map((v) => { const l = lecture(v.id); return { ...v, nombreOperations: l.codes.size, filtre: l.filtre } })),
+    lireReferentiel: (id) => attendre(() => { const v = version(id); const l = lecture(id); return { ...v, nombreOperations: l.codes.size, filtre: l.filtre } }),
+    operationsReferentiel: (id) => attendre(() => { const l = lecture(id); return { operations: avecSuccesseurs(l.retenues), filtre: l.filtre } }),
+    // Le Blob est construit après la latence simulée : la réponse est clonée, un Blob ne se clone pas.
+    exporterReferentiel: (id) => attendre(() => {
+      const v = version(id)
+      return { texte: csv(id), nom: `referentiel-${v.typeProjet.toLowerCase()}-${v.numero === null ? 'brouillon' : `v${v.numero}`}.csv` }
+    }).then((r) => ({ blob: new Blob([r.texte], { type: 'text/csv;charset=utf-8' }), empreinte: null, nom: r.nom })),
+    ajouterEtape: (id, e) => attendre(() => {
+      brouillon(id)
+      const l = etapesDe(id)
+      if (!CODE_ETAPE.test(e.code ?? '')) throw refus(422, 'HOM_ETAPE_CODE_INVALIDE', 'Code d\'étape invalide : majuscules, chiffres ou souligné, 2 à 40 caractères.')
+      if (l.some((x) => x.code === e.code)) throw refus(409, 'HOM_ETAPE_CODE_DUPLIQUE', `L'étape ${e.code} existe déjà dans cette version.`)
+      const nouvelle: Etape = { code: e.code, libelle: libelleEtape(e.libelle), couleur: e.couleur ?? 'NEUTRE', canonique: e.canonique ?? null }
+      const position = e.ordre && e.ordre >= 1 && e.ordre <= l.length ? e.ordre - 1 : l.length
+      l.splice(position, 0, nouvelle)
+      return vueEtape(id, e.code)
+    }),
+    modifierEtape: (id, code, e) => attendre(() => {
+      brouillon(id)
+      const x = etape(id, code)
+      const canonique = e.canonique ?? null
+      if (x.canonique && PROTEGEES.includes(x.canonique) && canonique !== x.canonique) throw refus(409, 'HOM_ETAPE_CANONIQUE', 'Cette étape porte un jalon ou le verrou 2 : son étape canonique ne change pas.')
+      Object.assign(x, { libelle: libelleEtape(e.libelle), couleur: e.couleur ?? x.couleur, canonique })
+      return vueEtape(id, code)
+    }),
+    supprimerEtape: (id, code) => attendre(() => {
+      const ops = brouillon(id)
+      const x = etape(id, code)
+      if (x.canonique && PROTEGEES.includes(x.canonique)) throw refus(409, 'HOM_ETAPE_CANONIQUE', 'Cette étape porte un jalon ou le verrou 2 : elle ne se retire pas.')
+      if (ops.some((op) => op.etape === code)) throw refus(409, 'HOM_ETAPE_NON_VIDE', 'Seule une étape sans opération se retire.')
+      etapes[id] = etapesDe(id).filter((y) => y.code !== code)
+    }),
+    ordonnerEtapes: (id, codes) => attendre(() => {
+      brouillon(id)
+      const l = etapesDe(id)
+      if (codes.length !== l.length || new Set(codes).size !== codes.length || !codes.every((c) => l.some((x) => x.code === c))) {
+        throw refus(422, 'HOM_ETAPE_ORDRE_INVALIDE', 'Le nouvel ordre doit citer chaque étape de la version une fois.')
+      }
+      etapes[id] = codes.map((c) => l.find((x) => x.code === c)!)
+      return vuesDe(id)
+    }),
     controlerReferentiel: (id) => attendre(() => controleDe(operations[id] ?? [])),
     liaisonsImpactees: (versionId) => attendre({ total: o.liaisonsActives(versionId) }),
     creerBrouillon: (e) => attendre(() => {
@@ -357,6 +505,7 @@ export function referentielsSimules(attendre: Attendre, refus: Refus, o: { utili
       }
       versions.push(v)
       operations[v.id] = []
+      etapes[v.id] = etapesInitiales()
       return v
     }),
     deriverBrouillon: (source) => attendre(() => {
@@ -368,6 +517,8 @@ export function referentielsSimules(attendre: Attendre, refus: Refus, o: { utili
       }
       versions.push(v)
       operations[v.id] = structuredClone(operations[s.id] ?? [])
+      // La dérivation copie les étapes (D-89 §4).
+      etapes[v.id] = structuredClone(etapesDe(s.id))
       return v
     }),
     publierReferentiel: (id) => attendre(() => {
@@ -386,13 +537,16 @@ export function referentielsSimules(attendre: Attendre, refus: Refus, o: { utili
       v.actionsPermises = ['DERIVER', 'CONTROLER']
       versions.filter((x) => x.typeProjet === v.typeProjet).forEach((x) => (x.versionActiveId = v.id))
     }),
-    grapheReferentiel: (id) => attendre(() => calculerGraphe(version(id), operations[id] ?? [])),
-    catalogueReferentiels: () => attendre(CATALOGUE),
+    grapheReferentiel: (id) => attendre(() => calculerGraphe(version(id), operations[id] ?? [], { etapes: vuesDe(id), profils: o.profils })),
+    catalogueReferentiels: (versionId) => attendre(() => ({
+      ...CATALOGUE, etapesCanoniques: ETAPES_CANONIQUES, couleurs: COULEURS_ETAPE, ...(versionId ? { etapesVersion: vuesDe(version(versionId).id) } : {}),
+    })),
     creerOperation: (id, s) => attendre(() => {
       const ops = brouillon(id)
       if (!CODE.test(s.code) || s.code.length > 40) throw refus(422, 'HOM_OPERATION_CODE_INVALID', 'Code d\'opération invalide.')
       if (ops.some((x) => x.code === s.code)) throw refus(409, 'HOM_OPERATION_CODE_DUPLICATE', `Le code ${s.code} existe déjà dans cette version.`)
       valider(s.code, s)
+      etapeConnue(id, s)
       const { code, ...saisie } = s
       ops.push(vers(code, { ...saisie, ordre: saisie.ordre ?? ops.length + 1 }))
       return avecSucc(ops, code)
@@ -401,6 +555,7 @@ export function referentielsSimules(attendre: Attendre, refus: Refus, o: { utili
       const ops = brouillon(id)
       const i = ops.indexOf(trouver(ops, code))
       valider(code, s)
+      etapeConnue(id, s)
       ops[i] = vers(code, s, ops[i])
       return avecSucc(ops, code)
     }),

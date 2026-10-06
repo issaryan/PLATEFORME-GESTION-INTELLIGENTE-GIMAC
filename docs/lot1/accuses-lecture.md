@@ -34,6 +34,16 @@ coches de couleur d'accent (lu par tous), avec texte accessible (« Lu », « Lu
 sur un message de groupe : liste « Lu par » avec l'heure. Respect de la vie privée : pas d'option de
 désactivation au lot 1 (messagerie professionnelle interne).
 
+Réalisé (06/10/2026) : `MessageThread` du système de conception porte `lecture` (coches `check` et `check-check`,
+gris `--gm-color-text-secondary`, accent `--gm-color-action`, texte accessible « Envoyé », « Lu », « Lu par 2 sur 3 »,
+libellés fr, en, es) ; pour un groupe, bouton « 2/3 » qui ouvre au survol, au focus ou au clic la liste « Lu par »
+(lecteurs avec l'heure ou « heure inconnue », puis « Pas encore lu »), fermée par Échap. `ConversationList` place les
+coches de `dernierMessage.lecture` devant l'extrait. Le canal poussé (`openLiveChannel`, socle) remet l'accusé aux
+fils abonnés (`surAccuseLecture`) sans invalider la messagerie ni le compteur de non-lus ; `useAccusesLecture`
+applique la règle du §4 (direct : `envoyeLe <= luJusquA` à `LU` dans le fil et la liste ; groupe : relecture du fil
+affiché et du détail ouvert). Services HTTP et simulé (`lectures`, démonstration `gmDemoNotifications.lireMessages`),
+scénarios `e2e/specs/accuses-lecture.spec.ts` (simulés et passerelle) et audit axe clair et sombre.
+
 ## 4. Mise en œuvre
 
 **MS-COLLABORATION.**

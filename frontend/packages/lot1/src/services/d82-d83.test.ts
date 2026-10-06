@@ -93,7 +93,9 @@ describe('notifications MENTION et REPONSE (D-82, notifications.md §7)', () => 
     const mention = liste.find((x) => x.type === 'MENTION')!
     expect(mention).toMatchObject({ titre: 'Aïcha Mahamat Nour vous a mentionné', conversationId: cid, reference: { service: 'collaboration', type: 'MESSAGE' }, nombre: 1 })
     expect(mention.lien).toMatch(new RegExp(`^/des/messagerie\\?conversation=${cid}&message=MSG-`))
-    expect(await lecteurApercu(s)(mention)).toBe('@Paul Mbarga Atangana Les deux à la fois.')
+    // Deux mentions reçues dans la même milliseconde : ordre non garanti, on vérifie l'ensemble des aperçus.
+    const apercus = await Promise.all(liste.filter((x) => x.type === 'MENTION').map((x) => lecteurApercu(s)(x)))
+    expect(apercus.sort()).toEqual(['@Paul Mbarga Atangana Les deux à la fois.', '@Paul Mbarga Atangana Pouvez-vous valider ?'])
     const reponse = liste.find((x) => x.type === 'REPONSE')!
     expect(reponse.titre).toBe('Aïcha Mahamat Nour a répondu à votre message')
     // Message introuvable dans la dernière page : pas d'aperçu.

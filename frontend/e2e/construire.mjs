@@ -16,6 +16,10 @@ const adresses = (decalage) => ({
   VITE_URL_DES: `http://localhost:${BASE + decalage}`,
   VITE_URL_PORTAIL: `http://localhost:${BASE + decalage + 1}`,
   VITE_URL_CONSOLE: `http://localhost:${BASE + decalage + 2}`,
+  // Ports de l'accès direct : liens calculés sur l'hôte de la page ouverte sous un autre nom (127.0.0.1).
+  VITE_PORT_DES: String(BASE + decalage),
+  VITE_PORT_PORTAIL: String(BASE + decalage + 1),
+  VITE_PORT_CONSOLE: String(BASE + decalage + 2),
 })
 const simule = { VITE_SERVICES: 'simule', ...adresses(0) }
 const passerelle = { VITE_SERVICES: 'http', ...adresses(10) }

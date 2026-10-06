@@ -19,6 +19,10 @@ export const PERM = {
   operationValider: 'HOM_OPERATION_VALIDATE',
   operationRouvrir: 'HOM_OPERATION_REOPEN',
   referentielLire: 'HOM_REFERENTIEL_READ',
+  /** Lecture complète du référentiel (D-89 §1) ; sans elle ni droit d'édition, seulement les opérations qui me concernent. */
+  referentielLireTout: 'HOM_REFERENTIEL_READ_ALL',
+  referentielModifier: 'HOM_REFERENTIEL_EDIT',
+  referentielPublier: 'HOM_REFERENTIEL_PUBLISH',
   /** Nouvelle (D-56, D-59) : conduite des étapes 4 à 10 (compte rendu de lancement, ateliers, blocages, jalons). */
   etapeConduire: 'HOM_STEP_MANAGE',
   // Verrou 1 : procès-verbal de certification (D-56)
@@ -81,6 +85,8 @@ const IAM_SANS_PRIVILEGE = ['IAM_ACCOUNT_READ', 'IAM_ACCOUNT_CREATE', 'IAM_ACCOU
 const INTERNE = [PERM.messageLire, PERM.messageEnvoyer, PERM.activitePropre, PERM.notificationsLire]
 /** Équipe et tâches confiées (D-76 §4) : chefs de département et de service, DG, RSSI, conformité. */
 const RESPONSABLE = [PERM.equipeLire, PERM.tacheConfier]
+/** Référentiel des opérations (D-89 §1, §4) : édition et publication, lecture complète. */
+const REFERENTIEL_EDITION = [PERM.referentielLire, PERM.referentielModifier]
 
 const COMMUN_DES = [PERM.institutionLire, PERM.liaisonLister, PERM.liaisonLire, PERM.pilotageLire, PERM.referentielLire, 'CER_CIRCUIT_READ', PERM.dossierLire, PERM.registreLire,
   ...INTERNE]
@@ -89,9 +95,10 @@ const COMMUN_DES = [PERM.institutionLire, PERM.liaisonLister, PERM.liaisonLire, 
 export const PROFILS: Record<string, string[]> = {
   ROLE_CHARGE_DDRM: [...COMMUN_DES, 'PAR_INSTITUTION_CREATE', 'PAR_INSTITUTION_EDIT', PERM.adhesionInstruire, 'PAR_TRANSITION_REQUEST', PERM.etapeConduire],
   ROLE_CHEF_DDRM: [...COMMUN_DES, 'PAR_INSTITUTION_CREATE', 'PAR_INSTITUTION_EDIT', PERM.adhesionInstruire, 'PAR_TRANSITION_REQUEST', PERM.transitionApprouver,
-    PERM.liaisonOuvrir, PERM.projetDesigner, PERM.etapeConduire, ...RESPONSABLE],
+    PERM.liaisonOuvrir, PERM.projetDesigner, PERM.etapeConduire, ...RESPONSABLE, PERM.referentielModifier, PERM.referentielPublier, PERM.referentielLireTout],
   ROLE_CHEF_DES: [...COMMUN_DES, PERM.liaisonOuvrir, PERM.projetDesigner, PERM.pvSignerGimac, 'HOM_LIAISON_UNFREEZE', 'HOM_DEADLINE_CONFIG', 'HOM_REFERENTIEL_MIGRATE',
-    PERM.operationValider, 'HOM_EVIDENCE_FILE_EXPORT', PERM.attestationEmettre, 'CER_ATTESTATION_STATUS_REQUEST', PERM.registreExporter, PERM.etapeConduire, ...RESPONSABLE],
+    PERM.operationValider, 'HOM_EVIDENCE_FILE_EXPORT', PERM.attestationEmettre, 'CER_ATTESTATION_STATUS_REQUEST', PERM.registreExporter, PERM.etapeConduire, ...RESPONSABLE,
+    PERM.referentielModifier, PERM.referentielPublier, PERM.referentielLireTout],
   ROLE_CONDUCTEUR_PROJET: [...COMMUN_DES, PERM.operationAttribuer, PERM.preuveDeposer, PERM.operationValider, 'HOM_EVIDENCE_FILE_EXPORT', PERM.etapeConduire, PERM.pvEtablir],
   ROLE_SNA: [...COMMUN_DES, PERM.preuveDeposer, PERM.operationValider, PERM.dossierVerifier],
   ROLE_PRODUCTION_MONETIQUE: [...COMMUN_DES, PERM.preuveDeposer, PERM.ficheChangementLier, PERM.pvMiseEnServiceDeposer],
@@ -100,20 +107,20 @@ export const PROFILS: Record<string, string[]> = {
   // RSSI (generer-realm-gimac.py) : vérification de la sécurité, administration des comptes sans octroi
   // privilégié, supervision et configuration en lecture, politique de sécurité et messagerie de la plateforme.
   ROLE_RSSI: [...COMMUN_DES, 'CER_QUITUS_SECURITE_SIGN', PERM.securiteVerifier, PERM.preuveDeposer, ...IAM_SANS_PRIVILEGE,
-    'PLATFORM_SUPERVISION_READ', 'PLATFORM_CONFIG_READ', 'PLATFORM_OPS_READ', 'PLATFORM_SECURITY_POLICY_READ', 'PLATFORM_SECURITY_POLICY_EDIT', 'PLATFORM_MESSAGING_EDIT', ...RESPONSABLE],
+    'PLATFORM_SUPERVISION_READ', 'PLATFORM_CONFIG_READ', 'PLATFORM_OPS_READ', 'PLATFORM_SECURITY_POLICY_READ', 'PLATFORM_SECURITY_POLICY_EDIT', 'PLATFORM_MESSAGING_EDIT', ...RESPONSABLE, PERM.referentielLireTout],
   // Super administrateur (generer-realm-gimac.py) : lecture du DES, toute l'administration des comptes dont
   // l'octroi privilégié, supervision et configuration de la plateforme (D-62, D-69).
   ROLE_SUPER_ADMIN: [...COMMUN_DES, ...IAM_SANS_PRIVILEGE, 'IAM_ROLE_PRIVILEGED_GRANT', 'PLATFORM_SUPERVISION_READ', 'PLATFORM_CONFIG_READ', 'PLATFORM_CONFIG_EDIT',
     'PLATFORM_OPS_READ', 'PLATFORM_OPS_EXECUTE',
-    'PLATFORM_SECURITY_POLICY_READ', 'PLATFORM_SECURITY_POLICY_EDIT', 'PLATFORM_MESSAGING_EDIT'],
-  ROLE_CONFORMITE: [...COMMUN_DES, PERM.visaConformite, PERM.ficheChangementLier, ...RESPONSABLE],
-  ROLE_DG: [...COMMUN_DES, PERM.visaDg, 'CER_ATTESTATION_STATUS_APPROVE', ...RESPONSABLE],
-  ROLE_INGENIEUR_HOMOLOGATION: [...COMMUN_DES, PERM.operationAttribuer, PERM.preuveDeposer, PERM.operationValider, PERM.operationRouvrir, 'HOM_REFERENTIEL_EDIT',
-    'HOM_REFERENTIEL_PUBLISH', 'HOM_GRID_EDIT', 'HOM_SCENARIO_QUALIFY', 'HOM_EVIDENCE_FILE_EXPORT', PERM.dossierVerifier, PERM.pvMiseEnServiceDeposer, PERM.attestationEmettre],
+    'PLATFORM_SECURITY_POLICY_READ', 'PLATFORM_SECURITY_POLICY_EDIT', 'PLATFORM_MESSAGING_EDIT', PERM.referentielModifier, PERM.referentielPublier],
+  ROLE_CONFORMITE: [...COMMUN_DES, PERM.visaConformite, PERM.ficheChangementLier, ...RESPONSABLE, PERM.referentielLireTout],
+  ROLE_DG: [...COMMUN_DES, PERM.visaDg, 'CER_ATTESTATION_STATUS_APPROVE', ...RESPONSABLE, PERM.referentielLireTout],
+  ROLE_INGENIEUR_HOMOLOGATION: [...COMMUN_DES, PERM.operationAttribuer, PERM.preuveDeposer, PERM.operationValider, PERM.operationRouvrir, PERM.referentielModifier,
+    PERM.referentielPublier, 'HOM_GRID_EDIT', 'HOM_SCENARIO_QUALIFY', 'HOM_EVIDENCE_FILE_EXPORT', PERM.dossierVerifier, PERM.pvMiseEnServiceDeposer, PERM.attestationEmettre],
   // D-76 §4 : employé sans fonction métier dans la plateforme (messagerie et « Mon activité », lecture de rien
   // d'autre) ; chef de service, de pôle ou de cellule (en plus : son équipe et les tâches qu'il lui confie).
   ROLE_COLLABORATEUR: [...INTERNE],
-  ROLE_RESPONSABLE_SERVICE: [...INTERNE, ...RESPONSABLE],
+  ROLE_RESPONSABLE_SERVICE: [...INTERNE, ...RESPONSABLE, ...REFERENTIEL_EDITION],
   // Administrateur système (D-78, generer-realm-gimac.py) : supervision, configuration en lecture et exploitation
   // de l'infrastructure (charges, journaux, gestes) ; messagerie et « Mon activité » ; n'administre pas les comptes.
   ROLE_ADMIN_SYSTEME: [...INTERNE, PERM.supervisionLire, PERM.configurationLire, PERM.exploitationLire, PERM.exploitationExecuter],

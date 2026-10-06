@@ -18,7 +18,12 @@ describe('participantSimule', () => {
     expect((await s.listerInstitutions({ page: 2, taille: 5 })).contenu).toHaveLength(4)
   })
   it('indicateurs de la DDRM', async () => {
-    expect(await svc().indicateurs()).toEqual({ candidats: 3, piecesAExaminer: 1, propositionsEnAttente: 0, adherents: 2, enHomologation: 2, closSansSuite: 0 })
+    const { fluxParMois, ...compteurs } = await svc().indicateurs()
+    expect(compteurs).toEqual({ candidats: 3, piecesAExaminer: 1, propositionsEnAttente: 0, adherents: 2, enHomologation: 2, closSansSuite: 0 })
+    // Flux des 12 derniers mois : denses, du plus ancien au mois courant.
+    expect(fluxParMois).toHaveLength(12)
+    const d = new Date()
+    expect(fluxParMois?.[11].mois).toBe(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
   })
   it('institutions engagées : historique des transitions, bascule automatique à l’ouverture d’une liaison', async () => {
     const s = svc()

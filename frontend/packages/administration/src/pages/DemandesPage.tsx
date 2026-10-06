@@ -2,10 +2,10 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router'
 import { Button, CrudDialog, DataTable, InlineAlert, KeyValueList, PageHeader, Select, Skeleton, StatusBadge, type Column, type KeyValueItem } from '@gimac/design-system'
-import { aPermission, usePermissions } from '@gimac/socle'
+import { aPermission, usePermissions, useLibelleProfil } from '@gimac/socle'
 import { dateHeure, useMessageErreur } from '@gimac/compte'
 import { ETATS_DEMANDE, estCreation, estProfils, type Demande, type EtatDemande } from '@gimac/lot1'
-import { useDemandeATraiter, useDemandesATraiter, useEffet, useLibelleProfil, useUnitesOrganisation } from '../hooks'
+import { useDemandeATraiter, useDemandesATraiter, useEffet, useLibellesProfils, useUnitesOrganisation } from '../hooks'
 import { Annonce } from '../composants/Annonce'
 import { useActes } from '../composants/actes'
 import { etatListe } from '../composants/formats'
@@ -27,7 +27,7 @@ function BadgeDemande({ etat }: { etat: EtatDemande }) {
 
 function useDescription() {
   const { t, i18n } = useTranslation()
-  const libelleProfil = useLibelleProfil()
+  const libelleProfil = useLibelleProfil(useLibellesProfils())
   const unites = useUnitesOrganisation()
   const unite = (code: string) => (unites.data ?? []).find((u) => u.code === code)?.libelle ?? code
   const profils = (l: string[]) => (l.length ? l.map((p) => libelleProfil(p)).join(', ') : t('console.demandes.aucun'))

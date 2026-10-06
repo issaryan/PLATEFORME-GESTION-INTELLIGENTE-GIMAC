@@ -31,7 +31,18 @@ export type Message = {
   mentions?: MembreMentionne[]
   /** Le lecteur est mentionné, ou le message répond à l'un des siens (jamais pour son propre message). */
   mentionneMoi?: boolean
+  /** Accusé de lecture (D-88) : seulement pour mes messages, absent pour ceux des autres et les événements. */
+  lecture?: LectureMessage | null
 }
+
+/**
+ * Accusé de lecture d'un de mes messages (D-88, docs/lot1/accuses-lecture.md §1) : ENVOYE (personne), LU_PAR_CERTAINS
+ * (groupe, au moins un mais pas tous), LU (tous les destinataires présents à l'envoi et encore membres).
+ */
+export type EtatLecture = 'ENVOYE' | 'LU_PAR_CERTAINS' | 'LU'
+export type LectureMessage = { etat: EtatLecture; lus: number; destinataires: number }
+/** Ligne du détail « Lu par » (GET …/messages/{messageId}/lectures) : `lu` sans `luLe` = lu, heure inconnue. */
+export type LecteurMessage = { membre: { id: string; nom: string }; lu: boolean; luLe: string | null }
 
 /** Message cité par une réponse (D-82, docs/lot1/messagerie.md §2) : extrait de 120 caractères, nombre de pièces. */
 export type MessageCite = { id: string; auteur: { id: string; nom: string } | null; extrait: string; piecesJointes: number; envoyeLe: string | null; supprime: boolean }
@@ -43,7 +54,7 @@ export type Conversation = {
   titre: string | null
   liaison: EtiquetteLiaison | null
   membres: Correspondant[]
-  dernierMessage: { id: string; auteurNom: string; extrait: string; envoyeLe: string; piecesJointes: number; evenement?: EvenementGroupe | null } | null
+  dernierMessage: { id: string; auteurNom: string; extrait: string; envoyeLe: string; piecesJointes: number; evenement?: EvenementGroupe | null; lecture?: LectureMessage | null } | null
   nonLus: number
   misAJourLe: string
   creeeLe: string

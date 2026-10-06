@@ -52,7 +52,7 @@ class InstitutionRegistryQueriesTest {
 
     @BeforeEach
     void init() {
-        queries = new InstitutionRegistryQueries(institutions, pieces, transitions, new DossierSnapshots(pieces));
+        queries = new InstitutionRegistryQueries(institutions, pieces, transitions, new DossierSnapshots(pieces), java.time.Clock.fixed(java.time.Instant.parse("2026-10-06T10:00:00Z"), java.time.ZoneOffset.UTC));
     }
 
     @Test
@@ -113,7 +113,26 @@ class InstitutionRegistryQueriesTest {
         when(institutions.countByStatus(InstitutionStatus.CLOS_SANS_SUITE)).thenReturn(1L);
         when(pieces.countByStateAndInstitutionStatus(AdhesionPieceState.RECUE, InstitutionStatus.CANDIDAT)).thenReturn(5L);
         when(transitions.countByState(TransitionState.PROPOSEE)).thenReturn(3L);
-        assertThat(queries.indicateurs()).isEqualTo(new InstitutionRegistryQueries.Indicateurs(7, 5, 3, 4, 2, 1));
+        var i = queries.indicateurs();
+        assertThat(new InstitutionRegistryQueries.Indicateurs(i.candidats(), i.piecesAExaminer(), i.propositionsEnAttente(), i.adherents(), i.enHomologation(), i.closSansSuite()))
+            .isEqualTo(new InstitutionRegistryQueries.Indicateurs(7, 5, 3, 4, 2, 1));
+        assertThat(i.fluxParMois()).hasSize(InstitutionRegistryQueries.MOIS_FLUX);
+    }
+
+    @Test
+    @DisplayName("Flux mensuel : 12 mois denses au fuseau de Douala, depuis le 1er novembre 2025, mois vides à zéro")
+    void fluxParMois() {
+        // 2026-09-30T23:30Z est déjà le 1er octobre à Douala (UTC+1).
+        when(institutions.creationsDepuis(java.time.Instant.parse("2025-10-31T23:00:00Z")))
+            .thenReturn(List.of(java.time.Instant.parse("2026-09-30T23:30:00Z"), java.time.Instant.parse("2026-10-02T09:00:00Z"), java.time.Instant.parse("2025-11-03T09:00:00Z")));
+        when(institutions.adhesionsDepuis(any())).thenReturn(java.util.Arrays.asList(java.time.Instant.parse("2026-09-15T09:00:00Z"), null));
+        when(institutions.cloturesDepuis(any())).thenReturn(List.of(java.time.Instant.parse("2026-03-10T09:00:00Z")));
+        var f = queries.fluxParMois();
+        assertThat(f).hasSize(12);
+        assertThat(f.get(0)).isEqualTo(new InstitutionRegistryQueries.FluxMensuel(java.time.YearMonth.of(2025, 11), 1, 0, 0));
+        assertThat(f.get(11)).isEqualTo(new InstitutionRegistryQueries.FluxMensuel(java.time.YearMonth.of(2026, 10), 2, 0, 0));
+        assertThat(f.get(10)).isEqualTo(new InstitutionRegistryQueries.FluxMensuel(java.time.YearMonth.of(2026, 9), 0, 1, 0));
+        assertThat(f.get(4).clotures()).isEqualTo(1);
         assertThat(new PageImpl<>(List.of()).getTotalElements()).isZero();
     }
 }

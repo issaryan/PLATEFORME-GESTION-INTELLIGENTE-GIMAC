@@ -4,6 +4,7 @@ import type { Status } from '../../lib/types'
 import { useLibelle } from '../../i18n/LangueProvider'
 import { Icon } from '../../icones/Icon/Icon'
 import { STATUS_ICON } from '../../icones/statusIcon'
+import { Sparkline } from '../Sparkline/Sparkline'
 
 export interface StatCardProps {
   label: ReactNode
@@ -18,12 +19,17 @@ export interface StatCardProps {
   statusLabel?: string
   onClick?: () => void
   className?: string
+  /** Tuile de mesure : mini-courbe de l'évolution récente (valeurs dans l'ordre du temps, null = trou). */
+  serie?: (number | null)[]
+  /** Nom de la mesure pour l'étiquette accessible de la mini-courbe (à défaut, le libellé s'il est textuel). */
+  serieLibelle?: string
 }
 
 // Carte d'indicateur (DS-GIMAC-01 §7.3) : libellé (small), valeur (stat, chiffres tabulaires), unité ;
 // ligne de contexte : statut sur pictogramme et libellé uniquement, tendance (flèche et variation),
 // seuil, échéance. Surface plate, bordure de 1 px, angles droits, aucune ombre ni pictogramme décoratif.
 // Carte cliquable : bordure d'action au survol, anneau de focus, activée au clavier (Entrée, Espace).
+// Tuile de mesure : avec `serie`, une mini-courbe de l'évolution récente s'affiche sous la valeur.
 export function StatCard(p: StatCardProps) {
   const t = useLibelle()
   const st = p.status
@@ -50,6 +56,11 @@ export function StatCard(p: StatCardProps) {
         {p.value}
         {p.unit ? <span className="gm-stat-unit">{p.unit}</span> : null}
       </div>
+      {p.serie && p.serie.length ? (
+        <div className="gm-stat-tendance-courbe">
+          <Sparkline points={p.serie} label={p.serieLibelle ?? (typeof p.label === 'string' ? p.label : '')} unit={p.unit} aire />
+        </div>
+      ) : null}
       {tendance || p.threshold || st || p.context ? (
         <div className="gm-stat-meta">
           {st ? (

@@ -41,7 +41,7 @@ export { PRESENTATIONS_PROFILS, type PresentationProfil } from './services/simul
 export { catalogues } from './i18n'
 export { NAVIGATION_DES, NAVIGATION_PORTAIL } from './navigation'
 export {
-  FONCTIONNALITES, GROUPES, WIDGETS, PREDICAT_COCKPIT, PREDICAT_DDRM, PREDICAT_MON_TRAVAIL, ADMINISTRATION, PLATEFORME, URL_CONSOLE, versConsole, estOuverte,
+  FONCTIONNALITES, GROUPES, WIDGETS, PREDICAT_COCKPIT, PREDICAT_DDRM, PREDICAT_MON_TRAVAIL, ADMINISTRATION, PLATEFORME, urlConsole, versConsole, estOuverte,
   fonctionnalitesOuvertes, widgetsOuverts, navigationDepuis, type Fonctionnalite, type CleWidget, type WidgetTableau, type GroupeFonctionnalites,
 } from './fonctionnalites'
 // Rôles composés par fonctionnalité (D-90) : catalogue Module > Fonctionnalité > Droit dérivé du registre.

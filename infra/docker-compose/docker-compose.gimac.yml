@@ -242,6 +242,12 @@ services:
   prometheus:
     ports: !override
       - 127.0.0.1:${GIMAC_PORT_PROMETHEUS:-9090}:9090
+    # Historique des graphiques de la supervision (/api/plateforme/series, périodes de 1 h à 7 jours) :
+    # rétention explicite de 15 jours, au-delà de la plus longue période affichée.
+    command: !override
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=15d"
 
   # ------------------------------------------------ État des serveurs (D-61)
   # Hôte : CPU, mémoire, disques, charge, collectés par Prometheus (job node-exporter) et
@@ -295,6 +301,11 @@ services:
         URL_DES: http://localhost:${GIMAC_PORT_FRONTEND_DEPARTEMENT:-4200}
         URL_PORTAIL: http://localhost:${GIMAC_PORT_FRONTEND_PORTAIL:-4201}
         URL_CONSOLE: http://localhost:${GIMAC_PORT_FRONTEND_CONSOLE:-4202}
+        # Ports de l'accès direct : liens calculés sur l'hôte de la page quand elle n'est pas ouverte
+        # sous l'une des adresses ci-dessus (accès par l'adresse IP en publication mixte, D-75).
+        PORT_DES: ${GIMAC_PORT_FRONTEND_DEPARTEMENT:-4200}
+        PORT_PORTAIL: ${GIMAC_PORT_FRONTEND_PORTAIL:-4201}
+        PORT_CONSOLE: ${GIMAC_PORT_FRONTEND_CONSOLE:-4202}
     environment:
       GIMAC_PASSERELLE: http://gateway:8080
     ports:
@@ -315,6 +326,11 @@ services:
         URL_DES: http://localhost:${GIMAC_PORT_FRONTEND_DEPARTEMENT:-4200}
         URL_PORTAIL: http://localhost:${GIMAC_PORT_FRONTEND_PORTAIL:-4201}
         URL_CONSOLE: http://localhost:${GIMAC_PORT_FRONTEND_CONSOLE:-4202}
+        # Ports de l'accès direct : liens calculés sur l'hôte de la page quand elle n'est pas ouverte
+        # sous l'une des adresses ci-dessus (accès par l'adresse IP en publication mixte, D-75).
+        PORT_DES: ${GIMAC_PORT_FRONTEND_DEPARTEMENT:-4200}
+        PORT_PORTAIL: ${GIMAC_PORT_FRONTEND_PORTAIL:-4201}
+        PORT_CONSOLE: ${GIMAC_PORT_FRONTEND_CONSOLE:-4202}
     environment:
       GIMAC_PASSERELLE: http://gateway:8080
     ports:
@@ -336,6 +352,11 @@ services:
         URL_DES: http://localhost:${GIMAC_PORT_FRONTEND_DEPARTEMENT:-4200}
         URL_PORTAIL: http://localhost:${GIMAC_PORT_FRONTEND_PORTAIL:-4201}
         URL_CONSOLE: http://localhost:${GIMAC_PORT_FRONTEND_CONSOLE:-4202}
+        # Ports de l'accès direct : liens calculés sur l'hôte de la page quand elle n'est pas ouverte
+        # sous l'une des adresses ci-dessus (accès par l'adresse IP en publication mixte, D-75).
+        PORT_DES: ${GIMAC_PORT_FRONTEND_DEPARTEMENT:-4200}
+        PORT_PORTAIL: ${GIMAC_PORT_FRONTEND_PORTAIL:-4201}
+        PORT_CONSOLE: ${GIMAC_PORT_FRONTEND_CONSOLE:-4202}
     environment:
       GIMAC_PASSERELLE: http://gateway:8080
     ports:

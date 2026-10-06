@@ -8,10 +8,10 @@ import cm.gimac.des.participant.domain.enumeration.InstitutionStatus;
 import cm.gimac.des.participant.domain.enumeration.MembershipMode;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.PastOrPresent;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
+import java.util.Locale;
 import java.util.UUID;
 
 /** Corps des requêtes de la DDRM, validés à l'entrée (mêmes contraintes que le JDL). */
@@ -26,10 +26,22 @@ final class InstitutionRequests {
         @NotNull InstitutionCategory categorie,
         @Pattern(regexp = "^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$") String codeIdentification,
         @Size(max = 10) @Pattern(regexp = "^[A-Z0-9]+$") String codeBanqueBeac,
-        @PastOrPresent LocalDate datePriseDeContact,
+        @JourPasseOuPresent LocalDate datePriseDeContact,
         @Size(max = 255) String originePriseDeContact,
         @Size(max = 1000) String projetEnvisage
     ) {
+        /**
+         * Saisie normalisée avant validation : codes BIC et BEAC en majuscules et sans espaces (copiés
+         * d'un courrier, « bdlg ga li »), champs facultatifs vides ramenés à l'absence de valeur.
+         */
+        CandidatureRequest {
+            sigle = vide(sigle);
+            codeIdentification = code(codeIdentification);
+            codeBanqueBeac = code(codeBanqueBeac);
+            originePriseDeContact = vide(originePriseDeContact);
+            projetEnvisage = vide(projetEnvisage);
+        }
+
         Candidature commande() {
             return new Candidature(
                 nom.trim(),
@@ -74,5 +86,10 @@ final class InstitutionRequests {
 
     private static String vide(String s) {
         return s == null || s.isBlank() ? null : s.trim();
+    }
+
+    private static String code(String s) {
+        String sansEspaces = s == null ? null : s.replaceAll("\\s+", "").toUpperCase(Locale.ROOT);
+        return sansEspaces == null || sansEspaces.isEmpty() ? null : sansEspaces;
     }
 }

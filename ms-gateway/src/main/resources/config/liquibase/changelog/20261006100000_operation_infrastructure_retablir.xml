@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- MS-GATEWAY : geste RETABLIR (retour à la version précédente d'un déploiement Kubernetes,
+     docs/exploitation/operations-infrastructure.md §3) admis au journal des opérations. Ajout : le
+     changeset d'origine reste tel quel, la contrainte est remplacée par une contrainte élargie. -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="gateway-operation-infrastructure-retablir" author="lot4b2">
+        <sql>ALTER TABLE operation_infrastructure DROP CONSTRAINT ck_operation_infrastructure_geste;</sql>
+        <sql>ALTER TABLE operation_infrastructure ADD CONSTRAINT ck_operation_infrastructure_geste CHECK (geste IN ('REDEMARRER', 'ARRETER', 'DEMARRER', 'ECHELLE', 'RETABLIR'));</sql>
+    </changeSet>
+</databaseChangeLog>

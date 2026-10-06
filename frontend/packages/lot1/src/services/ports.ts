@@ -2,7 +2,7 @@ import type { SignPurpose } from '@gimac/socle'
 import type { EvenementChronologie, ListQuery, Option, Page } from '../modele/commun'
 import type {
   Attribution, CampaignResult, ClotureOperation, Conducteur, ControleResultat, DepotResultat, EtatReprise, ExportPreuves, Graphe, ImpactMigration,
-  CatalogueModelisateur, GrapheReferentiel, Liaison, LiaisonPilotage, OperationInstance, OuvertureLiaison, PointGrille, PreuveVersion, ReferenceOperation, ReferentielVersion, SaisieOperation,
+  CatalogueModelisateur, EtapeReferentiel, GrapheReferentiel, Liaison, OperationsReferentiel, SaisieEtape, LiaisonPilotage, OperationInstance, OuvertureLiaison, PointGrille, PreuveVersion, ReferenceOperation, ReferentielVersion, SaisieOperation,
   ScenarioInconnu, ServiceCouvert,
 } from '../modele/homologation'
 import type {
@@ -11,7 +11,7 @@ import type {
 } from '../modele/certification'
 import type { PortailCertification, PortailLiaison, PortailOperation } from '../modele/portail'
 import type { EtatPresence, OptionsTeleversement, Televersement } from '@gimac/socle'
-import type { Conversation, Correspondant, Envoi, FilMessages, Message, NouvelleConversation, PageMessagerie } from '../modele/messagerie'
+import type { Conversation, Correspondant, Envoi, FilMessages, LecteurMessage, Message, NouvelleConversation, PageMessagerie } from '../modele/messagerie'
 import type {
   Activite, EntreeActivite, EntreeEvenement, EntreeRapport, EntreeTache, EtatRapport, EtatTache, Evenement, GroupeTaches, MembreEquipe, PagePilotage, Rapport, Rattachement,
   ReponseInvitation, StatutActivite, Synthese, Tache, TypeRapport, Unite, VueRapports, VueTaches,
@@ -41,7 +41,8 @@ export interface ServiceHomologation {
   // Référentiels d'opérations (HOM-01 à HOM-03)
   listerReferentiels(): Promise<ReferentielVersion[]>
   lireReferentiel(id: string): Promise<ReferentielVersion>
-  operationsReferentiel(id: string): Promise<ReferenceOperation[]>
+  /** Opérations de la version, filtrées pour un lecteur concerné (fantômes compris, D-89) ; filtre lu dans X-Gimac-Filtre. */
+  operationsReferentiel(id: string): Promise<OperationsReferentiel>
   controlerReferentiel(id: string): Promise<ControleResultat>
   simulerMigration(id: string): Promise<ImpactMigration[]>
   liaisonsImpactees(versionId: string): Promise<{ total: number }>
@@ -56,7 +57,14 @@ export interface ServiceHomologation {
   /** Graphe étendu : nœuds complets, couches, échéances au plus tôt, chemin critique, anomalies. */
   grapheReferentiel(id: string): Promise<GrapheReferentiel>
   /** Listes fermées du modélisateur et pilotes possibles d'un brouillon. */
-  catalogueReferentiels(): Promise<CatalogueModelisateur>
+  catalogueReferentiels(versionId?: string): Promise<CatalogueModelisateur>
+  /** Export CSV des opérations de la version, filtré comme la liste (D-89) ; nom du fichier du service. */
+  exporterReferentiel(id: string): Promise<Telechargement & { nom: string }>
+  // Étapes configurables (D-89 §2), brouillon seulement (HOM_REFERENTIEL_EDIT).
+  ajouterEtape(id: string, etape: SaisieEtape & { code: string }): Promise<EtapeReferentiel>
+  modifierEtape(id: string, code: string, etape: SaisieEtape): Promise<EtapeReferentiel>
+  supprimerEtape(id: string, code: string): Promise<void>
+  ordonnerEtapes(id: string, codes: string[]): Promise<EtapeReferentiel[]>
   /** Création d'une opération au code fourni (409 HOM_OPERATION_CODE_DUPLICATE, 422 HOM_OPERATION_CODE_INVALID). */
   creerOperation(id: string, operation: SaisieOperation & { code: string }): Promise<ReferenceOperation>
   /** Enregistrement complet d'une opération ; position et particularité absentes sont conservées. */
@@ -247,6 +255,8 @@ export interface ServiceMessagerie {
   demarrer(c: NouvelleConversation): Promise<Conversation>
   envoyer(conversationId: string, e: Envoi): Promise<Message>
   marquerLu(conversationId: string): Promise<void>
+  /** Détail « Lu par » d'un de mes messages (D-88) : destinataires présents à l'envoi, lecteurs d'abord. */
+  lectures(conversationId: string, messageId: string): Promise<LecteurMessage[]>
   nonLus(): Promise<{ total: number }>
   telechargerPiece(pieceId: string): Promise<{ blob: Blob; empreinte: string | null }>
   /** Groupes de discussion (D-68), réservés à l'administrateur du groupe ; le départ est ouvert à tout membre. */

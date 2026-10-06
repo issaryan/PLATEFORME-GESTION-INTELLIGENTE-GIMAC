@@ -235,3 +235,20 @@ button.gm-citation:focus-visible { outline: 2px solid var(--gm-color-focus); out
   .gm-messagerie-separateur, .gm-messagerie-commande { display: none; }
   .gm-messagerie-repliee > .gm-messagerie-liste { display: flex; }
 }
+
+/* Accusés de lecture (D-88) : sous mes messages, une coche grise (envoyé), deux coches grises (lu par certains),
+   deux coches de couleur d'accent (lu par tous). Groupe : bouton qui ouvre la liste « Lu par » avec l'heure. */
+.gm-coches { display: inline-flex; align-items: center; flex: none; color: var(--gm-color-text-secondary); }
+.gm-coches-lu { color: var(--gm-color-action); }
+.gm-conv-extrait .gm-coches { vertical-align: -2px; margin-right: var(--gm-space-1); }
+.gm-msg-lecture { position: relative; align-self: flex-end; display: inline-flex; margin-top: 2px; font-size: 12px; line-height: 18px; color: var(--gm-color-text-secondary); }
+.gm-trame-fil .gm-msg-lecture { padding: 0 var(--gm-space-1); background: var(--gm-color-surface); }
+.gm-msg-lecture-bouton { all: unset; box-sizing: border-box; display: inline-flex; align-items: center; gap: var(--gm-space-1); min-height: 24px; padding: 0 var(--gm-space-1); cursor: pointer; color: var(--gm-color-text-secondary); }
+.gm-msg-lecture-bouton:hover { background: var(--gm-color-surface-sunken); }
+.gm-msg-lecture-bouton:focus-visible { outline: 2px solid var(--gm-color-focus); outline-offset: 1px; }
+.gm-msg-lecture-detail { position: absolute; right: 0; bottom: 100%; z-index: 3; min-width: 300px; max-width: 360px; display: flex; flex-direction: column; gap: var(--gm-space-1); padding: var(--gm-space-2) var(--gm-space-3); border: var(--gm-border-1) solid var(--gm-color-border); background: var(--gm-color-surface-raised); color: var(--gm-color-text-primary); font-size: 13px; line-height: 20px; }
+.gm-lu-par { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--gm-space-1); }
+.gm-lu-par li { display: flex; align-items: center; gap: var(--gm-space-2); min-width: 0; }
+.gm-lu-par .gm-lu-par-nom { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gm-lu-par .gm-lu-par-quand { flex: none; color: var(--gm-color-text-secondary); font-size: 12px; }
+.gm-lu-par-sous { color: var(--gm-color-text-secondary); font-size: 12px; font-weight: 600; margin-top: var(--gm-space-1); }

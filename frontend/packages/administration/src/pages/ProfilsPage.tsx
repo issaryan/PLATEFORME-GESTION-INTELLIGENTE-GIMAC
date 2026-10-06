@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, CrudDialog, DataTable, InlineAlert, PageHeader, StatusBadge, TextArea, TextField, type Column } from '@gimac/design-system'
-import { aPermission, usePermissions } from '@gimac/socle'
+import { aPermission, usePermissions, useLibelleProfil } from '@gimac/socle'
 import { dateHeure } from '@gimac/compte'
 import { ArbreFonctionnalites, ApercuBarreLaterale, DialogueComparaison, DialoguePresentation, FicheProfil, compositionDe } from '../composants/profils'
-import { useEffet, useLibelleProfil, useProfils } from '../hooks'
+import { useEffet, useLibellesProfils, useProfils } from '../hooks'
 import { LIMITES_PROFIL, type Profil } from '../modele/configuration'
 import { Annonce } from '../composants/Annonce'
 import { useActes } from '../composants/actes'
@@ -69,7 +69,7 @@ function NouveauProfil({ onFermer, onContinuer }: { onFermer: () => void; onCont
 export default function ProfilsPage() {
   const { t, i18n } = useTranslation()
   const permissions = usePermissions()
-  const libelleProfil = useLibelleProfil()
+  const libelleProfil = useLibelleProfil(useLibellesProfils())
   const profils = useProfils()
   const actes = useActes()
   const definir = useEffet((s, v: { code: string; permissions: string[]; motif: string; assertion: string }) => s.configuration.definirPermissions(v.code, v.permissions, v.motif, v.assertion))

@@ -45,7 +45,7 @@ describe('messagerieSimulee', () => {
     expect(fil.plusAnciens).toBe(false)
     // Le groupe s'ouvre sur l'événement de sa création (D-68).
     expect(fil.contenu[0].evenement).toEqual({ type: 'GROUPE_CREE', cibles: ['Essais de LIA-2026-030'] })
-    expect(fil.contenu.slice(1).map((x) => x.auteur.nom)).toEqual(['Rachel Biyong Mengue', 'Hervé Kamga Tchoupo', 'Rachel Biyong Mengue'])
+    expect(fil.contenu.slice(1).map((x) => x.auteur.nom)).toEqual(['Rachel Biyong Mengue', 'Hervé Kamga Tchoupo', 'Paul Mbarga Atangana', 'Rachel Biyong Mengue'])
     const piece = fil.contenu[1].piecesJointes[0]
     expect(piece).toMatchObject({ nom: 'rapport-essais-LIA-2026-030.pdf', typeMime: 'application/pdf' })
     expect((await m.telechargerPiece(piece.id)).blob.size).toBeGreaterThan(0)

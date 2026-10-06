@@ -3,10 +3,10 @@ import type { SignPurpose } from '@gimac/socle'
 import type { Demande, EntreePouvoirs, EtatDemande, MatricePouvoirs, PageDemandes, PouvoirsProfil, Unite } from '@gimac/lot1'
 import type { ActionRequise, Compte, Creation, DemandeRattachement, EntreeJournal, FicheCompte, FiltreComptes, FiltreJournal, IndicateursComptes, NouveauCompte, Page } from '../modele/comptes'
 import type { ConfigurationMessagerie, PolitiqueSecurite, Profil } from '../modele/configuration'
-import type { DemandeGeste, EtatInfrastructure, Geste, JournauxCharge, Operation, PageOperations } from '../modele/infrastructure'
+import type { DemandeGeste, EtatInfrastructure, EvenementCharge, Geste, JournauxCharge, NoeudCluster, Operation, PageOperations, PodCharge, TacheCluster } from '../modele/infrastructure'
 import type {
   ChangementJournalisation, ConfigurationPlateforme, DemandeNiveau, EtatAlertes, EtatFlux, EtatServeurs, ImpulsionPlateforme, InstantanePlateforme,
-  NiveauxJournalisation,
+  MetriqueSerie, NiveauxJournalisation, PeriodeSerie, SeriesMetriques,
 } from '../modele/plateforme'
 
 // Ports de la console (D-62) : seul contrat entre les écrans et les données. Implémentations : HTTP
@@ -113,6 +113,8 @@ export interface ServicePlateforme {
   modifierJournalisation(service: string, d: DemandeNiveau): Promise<ChangementJournalisation>
   /** Flux temps réel (SSE) : renvoie la fonction de fermeture. */
   flux(e: EcouteurFlux): () => void
+  /** Historique d'une métrique (graphiques) ; cible : service, conteneur ou hôte. */
+  series(metrique: MetriqueSerie, periode: PeriodeSerie, cible?: string): Promise<SeriesMetriques>
 }
 
 /**
@@ -128,6 +130,11 @@ export interface ServiceInfrastructure {
   executer(nom: string, geste: Geste, d: DemandeGeste, assertion: Assertion): Promise<Operation>
   /** Opérations poussées par le flux temps réel ; renvoie la fonction de fermeture. */
   flux(e: { onOperation: (o: Operation) => void; onEtat: (e: EtatFlux) => void }): () => void
+  /** Lectures Kubernetes (sous Docker : 422 OPS_NON_PRIS_EN_CHARGE). */
+  pods(nom: string): Promise<PodCharge[]>
+  evenements(nom: string): Promise<EvenementCharge[]>
+  noeuds(): Promise<NoeudCluster[]>
+  taches(): Promise<TacheCluster[]>
 }
 
 export interface ServiceReauthentification {

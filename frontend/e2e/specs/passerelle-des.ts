@@ -28,6 +28,8 @@ export type OptionsPasserelleDes = {
   refusOuverture?: { status: number; code: string; details?: Record<string, unknown> }
   /** La liste des liaisons échoue (503). */
   listeEnErreur?: boolean
+  /** Premier enregistrement d'une prise de contact refusé par la validation du service : champ vers message. */
+  refusEnregistrement?: Record<string, string>
 }
 
 export class PasserelleDes {
@@ -49,10 +51,12 @@ export class PasserelleDes {
     operationsEnRetard: 0, etatsParcourus: ['OUVERTE'], transitionsPermises: [], actionsPermises: [],
   }]
   refusOuverture: OptionsPasserelleDes['refusOuverture']
+  refusEnregistrement: OptionsPasserelleDes['refusEnregistrement']
 
   constructor(o: OptionsPasserelleDes = {}) {
     this.o = o
     this.refusOuverture = o.refusOuverture
+    this.refusEnregistrement = o.refusEnregistrement
   }
 
   async brancher(page: Page) {
@@ -112,6 +116,26 @@ export class PasserelleDes {
 
     // ------------------------------------------------ MS-PARTICIPANT : registre des institutions
     const I = '/bff/des/participant/institutions'
+    if (chemin === I && methode === 'POST') {
+      // Refus de la validation d'entrée de MS-PARTICIPANT : problème JHipster (ExceptionTranslator) avec fieldErrors.
+      if (this.refusEnregistrement) {
+        const champs = this.refusEnregistrement
+        this.refusEnregistrement = undefined
+        return route.fulfill({
+          status: 400,
+          contentType: 'application/problem+json',
+          headers: { 'X-Correlation-Id': 'e2e-SAISIE_INVALIDE' },
+          body: JSON.stringify({
+            type: 'https://www.jhipster.tech/problem/constraint-violation', title: 'Method argument not valid', status: 400, message: 'error.validation', path: '/api/v1/institutions',
+            fieldErrors: Object.entries(champs).map(([field, message]) => ({ objectName: 'candidatureRequest', field, message })),
+          }),
+        })
+      }
+      const id = `i-${this.etats.length + 1}`
+      const nouvelle = { ...institution(id, corps.nom, 'CANDIDAT', corps.categorie), ...corps, statut: 'CANDIDAT', creeLe: il(0) }
+      this.etats.push({ institution: nouvelle, transitions: [] })
+      return json(nouvelle, 201)
+    }
     if (chemin === I) {
       const statuts = (url.searchParams.get('statut') ?? '').split(',').filter(Boolean)
       const l = this.etats.map((e) => e.institution).filter((i) => !statuts.length || statuts.includes(i.statut))

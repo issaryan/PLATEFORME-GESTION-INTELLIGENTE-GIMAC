@@ -5,9 +5,9 @@ import {
   ActionBar, Avatar, Button, Checkbox, CheckboxGroup, ConfirmDialog, CrudDialog, DataTable, InlineAlert, KeyValueList, OneTimeSecret, Select, StatusBadge, Tabs, Tag, TextField,
   type Column,
 } from '@gimac/design-system'
-import { aPermission, urlAvatar, usePermissions, useSession } from '@gimac/socle'
+import { aPermission, urlAvatar, usePermissions, useSession, useLibelleProfil } from '@gimac/socle'
 import { ACTIONS_REQUISES, LANGUES_COMPTE, dateHeure, useMessageErreur, type ActionRequise, type Compte, type MessageErreur, type SessionCompte } from '@gimac/compte'
-import { useCompte, useEffet, useJournal, useLibelleProfil, useProfils, useSessionsCompte } from '../hooks'
+import { useCompte, useEffet, useJournal, useLibellesProfils, useProfils, useSessionsCompte } from '../hooks'
 import type { EntreeJournal, FicheCompte } from '../modele/comptes'
 import { Annonce } from '../composants/Annonce'
 import { useActes } from '../composants/actes'
@@ -73,7 +73,7 @@ function DialogueFiche({ compte, onFermer, onEnregistre }: { compte: Compte; onF
 
 function DialogueProfils({ compte, privilegie, onFermer, onContinuer }: { compte: Compte; privilegie: boolean; onFermer: () => void; onContinuer: (profils: string[]) => void }) {
   const { t } = useTranslation()
-  const libelleProfil = useLibelleProfil()
+  const libelleProfil = useLibelleProfil(useLibellesProfils())
   const profils = useProfils()
   const [choix, setChoix] = useState<string[]>(compte.profils)
   return (
@@ -154,7 +154,7 @@ function Journal({ id }: { id: string }) {
 
 function Fiche({ compte }: { compte: Compte }) {
   const { t, i18n } = useTranslation()
-  const libelleProfil = useLibelleProfil()
+  const libelleProfil = useLibelleProfil(useLibellesProfils())
   const oui = (b: boolean) => t(b ? 'console.oui' : 'console.non')
   return (
     <KeyValueList
@@ -180,7 +180,7 @@ export default function ComptePage() {
   const navigate = useNavigate()
   const session = useSession()
   const permissions = usePermissions()
-  const libelleProfil = useLibelleProfil()
+  const libelleProfil = useLibelleProfil(useLibellesProfils())
   const message = useMessageErreur()
   const compte = useCompte(id)
   const actes = useActes()

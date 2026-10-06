@@ -40,6 +40,18 @@ ajout, renommage, couleur, suppression d'une étape vide). Liste et graphe en le
 personnes concernées (mention « Vous voyez les opérations qui vous concernent »). Le menu du référentiel
 reste visible de tous les porteurs de `HOM_REFERENTIEL_READ`.
 
+Réalisé (06/10/2026) : couloirs = `graphe.etapes` triées par `ordre`, teintés par leur `jeton` (variable CSS), une
+étape vide gardant son couloir ; bouton « Étapes » (modale : liste ordonnable par « Monter » et « Descendre »,
+`PUT …/etapes/ordre` ; ajout `POST …/etapes` ; libellé, couleur et canonique `PUT …/etapes/{code}` ; retrait confirmé
+d'une étape `supprimable` ; couleurs de `catalogue.couleurs`, canoniques de `etapesCanoniques`, refus `HOM_ETAPE_*`
+expliqués) ; sélecteur d'étape de la modale d'opération lu dans `catalogue?version=<id>` (`etape` est une chaîne) ;
+nœuds `fantome: true` grisés, ni déplacés ni reliés ni ouverts ; bandeau « Vous voyez les opérations qui vous
+concernent » si `filtre === "CONCERNE"` (graphe) ou `X-Gimac-Filtre: CONCERNE` (onglet Opérations, avec la section
+« Opérations voisines ») ; bouton « Exporter (CSV) » (`GET …/export`). L'édition dépend seulement de `MODIFIER` et de
+`HOM_REFERENTIEL_EDIT` (le pilote est affiché et notifié). Catalogues simulés, matrice des profils et catalogue des
+fonctionnalités D-90 portent `HOM_REFERENTIEL_READ_ALL` et les droits du §4 ; le super administrateur édite le
+référentiel dans l'application interne. Poignées du canevas décoratives (sans nom), comme pour les processus D-87.
+
 ## 4. Mise en œuvre (MS-HOMOLOGATION, OPA, Keycloak, 06/10/2026)
 
 - **Blocage constaté** : le service ne réservait aucune écriture au pilote ni au créateur, mais il annonçait un

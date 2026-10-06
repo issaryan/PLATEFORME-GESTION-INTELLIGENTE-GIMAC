@@ -4,7 +4,7 @@
 export type Orchestrateur = 'DOCKER' | 'KUBERNETES' | 'AUCUN'
 export type EtatCharge = 'EN_COURS' | 'ARRETEE' | 'REDEMARRAGE' | 'EN_ERREUR' | 'PARTIELLE'
 export type SanteCharge = 'SAINE' | 'DEGRADEE' | 'INCONNUE'
-export type Geste = 'REDEMARRER' | 'ARRETER' | 'DEMARRER' | 'ECHELLE'
+export type Geste = 'REDEMARRER' | 'ARRETER' | 'DEMARRER' | 'ECHELLE' | 'RETABLIR'
 export type ResultatOperation = 'REUSSIE' | 'ECHOUEE' | 'EN_COURS'
 
 export type Charge = {
@@ -20,6 +20,8 @@ export type Charge = {
   protegee: boolean
   /** Gestes permis à cet instant ; vide pendant une opération. */
   gestes: Geste[]
+  /** Kubernetes : image de la version précédente à laquelle RETABLIR reviendrait ; null s'il n'y en a pas. */
+  imagePrecedente?: string | null
 }
 
 /** Liste des charges et orchestrateur configuré (en-tête X-Orchestrateur ; AUCUN : exploitation non configurée). */
@@ -54,3 +56,13 @@ export type PageOperations = { contenu: Operation[]; total: number; page: number
 export const BORNES_INFRASTRUCTURE = { motifMin: 5, motifMax: 500, repliquesMin: 0, repliquesMax: 5, lignesMax: 500 } as const
 /** Durées de lecture des journaux proposées (ISO 8601, 30 minutes au plus). */
 export const DUREES_JOURNAUX = ['PT5M', 'PT10M', 'PT30M'] as const
+
+/** Pod d'une charge Kubernetes (GET /charges/{nom}/pods). */
+export type PodCharge = { nom: string; phase: string | null; pret: boolean; redemarrages: number; noeud: string | null; demarreLe: string | null; attente: string | null }
+/** Événement Kubernetes d'une charge (GET /charges/{nom}/evenements), le plus récent d'abord. */
+export type EvenementCharge = { instant: string | null; type: string | null; raison: string | null; message: string | null; objet: string; nombre: number }
+/** Nœud du cluster (GET /noeuds). */
+export type NoeudCluster = { nom: string; pret: boolean; roles: string[]; versionKubelet: string | null; cpuAllouable: string | null; memoireAllouableOctets: number | null; nonPlanifiable: boolean }
+export type EtatTache = 'EN_ATTENTE' | 'EN_COURS' | 'REUSSIE' | 'ECHEC'
+/** CronJob ou Job de l'espace de noms (GET /taches). */
+export type TacheCluster = { nom: string; nature: 'CRONJOB' | 'JOB'; planification: string | null; suspendue: boolean | null; etat: EtatTache | null; debut: string | null; fin: string | null; origine: string | null }

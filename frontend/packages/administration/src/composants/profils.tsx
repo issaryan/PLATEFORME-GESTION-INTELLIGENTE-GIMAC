@@ -4,13 +4,13 @@ import { useNavigate } from 'react-router'
 import {
   Button, Checkbox, CrudDialog, DataTable, Dialog, Icon, InlineAlert, KeyValueList, PermissionPicker, Select, StatusBadge, Tabs, TextArea, TextField, type Column, type PermissionGroup,
 } from '@gimac/design-system'
-import { satisfait } from '@gimac/socle'
+import { satisfait, useLibelleProfil } from '@gimac/socle'
 import {
   ACTIONS_POUVOIR, CATALOGUE_DROITS, FONCTIONNALITES, GROUPES, basculerDroit, basculerFonctionnalite, completerActions, etatFonctionnalite, permissionPrivilegiee,
   type FonctionnaliteDroits, type ModuleDroits, type Portee,
 } from '@gimac/lot1'
 import type { Compte } from '@gimac/compte'
-import { useComptes, useLibelleProfil, useMatricePouvoirs, usePermissionsRealm, useUnitesOrganisation } from '../hooks'
+import { useComptes, useLibellesProfils, useMatricePouvoirs, usePermissionsRealm, useUnitesOrganisation } from '../hooks'
 import { DOMAINES_PERMISSIONS, LIMITES_PROFIL, type Profil } from '../modele/configuration'
 import { useChemins } from '../services/useServicesConsole'
 import { libelleUnite } from './rattachement'
@@ -155,7 +155,7 @@ function OngletPouvoirs({ profil }: { profil: Profil }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { base } = useChemins()
-  const libelleProfil = useLibelleProfil()
+  const libelleProfil = useLibelleProfil(useLibellesProfils())
   const matrice = useMatricePouvoirs()
   const ligne = matrice.data?.profils.find((l) => l.profil === profil.code)
   if (matrice.isPending) return <p className="gm-field-help" role="status">{t('console.profils.chargement')}</p>
@@ -208,7 +208,7 @@ export function FicheProfil({ profil, modifiable, ongletInitial = 'fonctionnalit
   profil: Profil; modifiable: boolean; ongletInitial?: OngletFiche; onFermer: () => void; onContinuer: (p: string[]) => void
 }) {
   const { t } = useTranslation()
-  const libelleProfil = useLibelleProfil()
+  const libelleProfil = useLibelleProfil(useLibellesProfils())
   const realm = usePermissionsRealm()
   const initiale = useMemo(() => compositionDe(profil), [profil])
   const [choix, setChoix] = useState<string[]>(initiale)
@@ -262,7 +262,7 @@ export function FicheProfil({ profil, modifiable, ongletInitial = 'fonctionnalit
 /** « Modifier le profil » (D-86 §2) : libellé 1 à 80, description 0 à 500 ; motif et clé de sécurité ensuite. */
 export function DialoguePresentation({ profil, onFermer, onContinuer }: { profil: Profil; onFermer: () => void; onContinuer: (p: { libelle: string; description: string }) => void }) {
   const { t } = useTranslation()
-  const libelleProfil = useLibelleProfil()
+  const libelleProfil = useLibelleProfil(useLibellesProfils())
   const initiale = { libelle: libelleProfil(profil.code, profil.libelle), description: profil.description ?? '' }
   const [v, setV] = useState(initiale)
   const [tente, setTente] = useState(false)
@@ -294,7 +294,7 @@ export function DialoguePresentation({ profil, onFermer, onContinuer }: { profil
 /** Comparaison de deux profils côte à côte : droits du catalogue, permissions hors catalogue, barre latérale. */
 export function DialogueComparaison({ profils, onFermer }: { profils: Profil[]; onFermer: () => void }) {
   const { t } = useTranslation()
-  const libelleProfil = useLibelleProfil()
+  const libelleProfil = useLibelleProfil(useLibellesProfils())
   const [a, setA] = useState(profils[0]?.code ?? '')
   const [b, setB] = useState(profils[1]?.code ?? profils[0]?.code ?? '')
   const [differences, setDifferences] = useState(false)

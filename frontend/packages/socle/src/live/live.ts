@@ -1,6 +1,7 @@
 import type { QueryClient } from '@tanstack/react-query'
 import type { Couche } from '../http/prefixes'
 import { appliquerSignal } from './signaux'
+import { ACCUSE_LECTURE, accuseDe, diffuserAccuseLecture } from './lectures'
 
 // Canal poussé (F0 §A3) : un flux d'événements par couche, repris depuis le dernier identifiant reçu ;
 // chaque événement invalide les requêtes dont la clé commence par son sujet ([sujet, ressource, id]).
@@ -9,7 +10,11 @@ import { appliquerSignal } from './signaux'
 // Notifications de la plateforme (D-80) : sujet « notification », remis au seul destinataire, à la création
 // d'une notification et à chaque regroupement ; il invalide la cloche, la liste et le compteur (clés ['notification', …]).
 export type LiveTopic = 'homologation' | 'certification' | 'collaboration' | 'presence' | 'notification'
-export type LiveEvent = { id: string; type: string; subject: string; topic: LiveTopic; acteur?: string | null }
+export type LiveEvent = {
+  id: string; type: string; subject: string; topic: LiveTopic; acteur?: string | null
+  /** Accusé de lecture (D-88) seulement : instant jusqu'auquel le lecteur (acteur) a lu la conversation (subject). */
+  luJusquA?: string
+}
 export type EtatCanal = 'connected' | 'lost'
 const ALIAS: Partial<Record<LiveTopic, string[]>> = { homologation: ['parcours'], certification: ['parcours'] }
 
@@ -38,6 +43,12 @@ export function openLiveChannel(
       const ev = JSON.parse(m.data as string) as LiveEvent
       if (appliquerSignal(ev)) return
       lastId = ev.id
+      // Accusé de lecture (D-88) : remis aux fils ouverts, sans relire la liste ni le compteur de non-lus.
+      if (ev.type === ACCUSE_LECTURE) {
+        const a = accuseDe(ev)
+        if (a) diffuserAccuseLecture(a)
+        return
+      }
       void qc.invalidateQueries({ queryKey: [ev.topic] })
       // Le parcours de la liaison (étapes 3 à 10) se lit sous le sujet « parcours » : un événement
       // d'homologation ou de certification le rafraîchit aussi.

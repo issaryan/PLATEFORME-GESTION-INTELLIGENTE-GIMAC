@@ -2,10 +2,10 @@ import { useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { CheckboxGroup, IconButton, CrudDialog, DataTable, PageHeader, Select, type Column } from '@gimac/design-system'
-import { aPermission, usePermissions } from '@gimac/socle'
+import { aPermission, usePermissions, useLibelleProfil } from '@gimac/socle'
 import { ACTIONS_POUVOIR, PORTEES, completerActions, type ActionsPouvoir, type PouvoirsProfil, type Portee } from '@gimac/lot1'
 import { BadgePortee } from '../composants/profils'
-import { useEffet, useLibelleProfil, useMatricePouvoirs, useProfils } from '../hooks'
+import { useEffet, useLibellesProfils, useMatricePouvoirs, useProfils } from '../hooks'
 import { Annonce } from '../composants/Annonce'
 import { useActes } from '../composants/actes'
 import { etatListe } from '../composants/formats'
@@ -23,7 +23,7 @@ function DialogueLigne({ ligne, demandables, onFermer, onContinuer }: {
   ligne: PouvoirsProfil; demandables: string[]; onFermer: () => void; onContinuer: (e: { actions: ActionsPouvoir; profilsDemandables: string[] }) => void
 }) {
   const { t } = useTranslation()
-  const libelleProfil = useLibelleProfil()
+  const libelleProfil = useLibelleProfil(useLibellesProfils())
   const [actions, setActions] = useState<ActionsPouvoir>(completerActions(ligne.actions))
   const [profils, setProfils] = useState<string[]>(ligne.profilsDemandables)
   const dirty = JSON.stringify(actions) !== JSON.stringify(completerActions(ligne.actions)) || [...profils].sort().join() !== [...ligne.profilsDemandables].sort().join()
@@ -48,7 +48,7 @@ function DialogueLigne({ ligne, demandables, onFermer, onContinuer }: {
 export default function MatricePouvoirsPage() {
   const { t } = useTranslation()
   const permissions = usePermissions()
-  const libelleProfil = useLibelleProfil()
+  const libelleProfil = useLibelleProfil(useLibellesProfils())
   const matrice = useMatricePouvoirs()
   const profils = useProfils()
   const actes = useActes()

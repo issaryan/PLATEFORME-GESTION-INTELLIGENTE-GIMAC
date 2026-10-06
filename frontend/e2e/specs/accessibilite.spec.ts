@@ -128,6 +128,45 @@ test.describe('Fonctionnalité : accessibilité des écrans D-62', () => {
     })
   }
 
+  // Accusés de lecture (D-88) et référentiel aux étapes configurables (D-89) : coches et détail « Lu par »,
+  // modélisateur (couloirs colorés, poignées décoratives), modale « Étapes », vue filtrée d'un pôle (fantômes).
+  for (const theme of ['light', 'dark'] as const) {
+    test(`Scénario : accusés de lecture et référentiel D-89 (thème ${theme})`, async ({ page }) => {
+      test.slow()
+      await demo(page, { profil: 'ROLE_CHEF_DES', theme })
+      await page.goto(`${ADRESSES.departement}/des/messagerie`)
+      await page.getByRole('list', { name: 'Conversations' }).getByRole('button', { name: /Essais de LIA-2026-030/ }).click()
+      const lu = page.getByRole('button', { name: /^Lu par 2 sur 3/ })
+      await lu.click()
+      await expect(page.getByRole('dialog', { name: 'Lu par' }).getByText('heure inconnue')).toBeVisible()
+      await auditer(page)
+      await page.getByRole('list', { name: 'Conversations' }).getByRole('button', { name: /Aïcha Mahamat Nour/ }).click()
+      await expect(page.getByRole('region', { name: 'Aïcha Mahamat Nour' }).getByRole('img', { name: 'Lu' }).first()).toBeVisible()
+      await auditer(page)
+
+      await demo(page, { profil: 'ROLE_INGENIEUR_HOMOLOGATION', theme })
+      await page.goto(`${ADRESSES.departement}/des/referentiels/operations?version=REF-CI-4`)
+      await expect(page.getByTestId('modelisateur-canevas')).toBeVisible()
+      await page.waitForLoadState('networkidle')
+      await auditer(page)
+      await page.getByRole('toolbar', { name: 'Outils du modélisateur' }).getByRole('button', { name: 'Étapes' }).click()
+      const d = page.getByRole('dialog', { name: 'Étapes de la version' })
+      await d.getByRole('button', { name: 'Ajouter une étape' }).click()
+      await expect(d.getByRole('region', { name: 'Nouvelle étape' })).toBeVisible()
+      await auditer(page, '[role="dialog"]')
+      await d.getByRole('button', { name: 'Fermer' }).last().click()
+
+      await demo(page, { profil: 'ROLE_POLE_RESEAU', theme })
+      await page.goto(`${ADRESSES.departement}/des/referentiels/operations?version=REF-CI-4`)
+      await expect(page.getByText('Vous voyez les opérations qui vous concernent')).toBeVisible()
+      await expect(page.locator('.gm-mod-carte-fantome').first()).toBeVisible()
+      await auditer(page)
+      await page.goto(`${ADRESSES.departement}/des/referentiels/operations?version=REF-CI-4&onglet=operations`)
+      await expect(page.getByRole('heading', { name: 'Opérations voisines' })).toBeVisible()
+      await auditer(page)
+    })
+  }
+
   test('Scénario : tableau de bord du conducteur de projet (thème sombre)', async ({ page }) => {
     await demo(page, { profil: 'ROLE_CONDUCTEUR_PROJET', theme: 'dark' })
     await page.goto(`${ADRESSES.departement}/des/tableau-de-bord`)

@@ -99,7 +99,10 @@ describe('MessageriePage', () => {
       expect(derniers[derniers.length - 1]).toMatchObject({ moi: true, contenu: 'Point sur LIA-2026-027 demain.', etiquettes: [{ reference: 'LIA-2026-027' }] })
     })
     await waitFor(() => expect((within(fil).getByLabelText('Votre message') as HTMLTextAreaElement).value).toBe(''))
-    expect(await within(fil).findByText('Vous')).toBeTruthy()
+    // Ma bulle envoyée, sous laquelle l'accusé « Envoyé » (D-88) : une coche, personne ne l'a lue.
+    await waitFor(() => expect(within(fil).getAllByText('Vous')).toHaveLength(2))
+    const envoye = [...fil.querySelectorAll<HTMLElement>('li.gm-msg-mine')].at(-1)!
+    expect(within(envoye).getByRole('button', { name: 'Envoyé, voir qui l’a lu' })).toBeTruthy()
   })
   it('nouveau message : une personne choisie dans l’annuaire par son nom, liaison rattachée depuis l’adresse ; ouverture du fil créé', async () => {
     const s = services()

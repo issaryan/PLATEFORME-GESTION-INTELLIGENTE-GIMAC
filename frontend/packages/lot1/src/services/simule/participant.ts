@@ -1,6 +1,6 @@
 import { ApiError } from '@gimac/socle'
 import type {
-  Adhesion, Candidature, DossierInstitution, FiltreInstitutions, IndicateursDdrm, Institution, PieceAdhesion, Prerequis, StatutInstitution,
+  Adhesion, Candidature, DossierInstitution, FiltreInstitutions, FluxMensuel, IndicateursDdrm, Institution, PieceAdhesion, Prerequis, StatutInstitution,
   TransitionStatut,
 } from '../../modele/participant'
 import type { ServiceParticipant } from '../ports'
@@ -75,6 +75,18 @@ export type PontParticipant = {
   liaisonOuverte(institutionId: string, liaisonId: string): void
 }
 export type ParticipantSimule = ServiceParticipant & { pont: PontParticipant }
+
+/**
+ * 12 mois denses (mois courant compris), fond fictif déterministe : les institutions de démonstration sont
+ * toutes créées au chargement, leurs dates ne disent rien du flux.
+ */
+function fluxParMois(): FluxMensuel[] {
+  const maintenant = new Date()
+  return Array.from({ length: 12 }, (_, n) => {
+    const d = new Date(maintenant.getFullYear(), maintenant.getMonth() - (11 - n), 1)
+    return { mois: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`, contacts: 1 + ((n * 5) % 4), adhesions: n % 3 === 1 ? 1 : 0, clotures: n === 4 ? 1 : 0 }
+  })
+}
 
 export function participantSimule(attendre: <T>(v: T | (() => T)) => Promise<T>, refus: (s: number, c: string, m: string) => ApiError): ParticipantSimule {
   const base: Etat[] = [
@@ -162,6 +174,7 @@ export function participantSimule(attendre: <T>(v: T | (() => T)) => Promise<T>,
           adherents: compte('ADHERENT'),
           enHomologation: compte('EN_HOMOLOGATION'),
           closSansSuite: compte('CLOS_SANS_SUITE'),
+          fluxParMois: fluxParMois(),
         }
       }),
     dossier: (i) => attendre(() => dossier(trouver(i))),

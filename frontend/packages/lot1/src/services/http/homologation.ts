@@ -1,6 +1,7 @@
 import { http, P } from '@gimac/socle'
 import type { EvenementChronologie, ListQuery, Option, Page } from '../../modele/commun'
 import type { ServiceHomologation } from '../ports'
+import type { ReferenceOperation } from '../../modele/homologation'
 
 // Implémentation HTTP de ServiceHomologation : chemins de la cartographie des contrats (PI-GIMAC-01),
 // exposés par la passerelle sous /bff/des/homologation et réécrits vers /api/v1 du service.
@@ -32,7 +33,11 @@ const depot = (fichier: File, typePiece: string) => {
 export const homologationHttp: ServiceHomologation = {
   listerReferentiels: () => http.get(R),
   lireReferentiel: (id) => http.get(`${R}/${id}`),
-  operationsReferentiel: (id) => http.get(`${R}/${id}/operations`),
+  // Lecture filtrée (D-89) : X-Gimac-Filtre dit si la liste est réduite aux opérations qui me concernent.
+  operationsReferentiel: async (id) => {
+    const r = await http.getAvecEntetes<ReferenceOperation[]>(`${R}/${id}/operations`)
+    return { operations: r.donnees, filtre: r.entetes.get('X-Gimac-Filtre') === 'CONCERNE' ? 'CONCERNE' : 'COMPLET' }
+  },
   // Contrôle à blanc et simulation : sans effet, lus par POST (HOM-02, HOM-03).
   controlerReferentiel: (id) => http.post(`${R}/${id}/controle`),
   simulerMigration: (id) => http.post(`${R}/${id}/migrations/simulation`),
@@ -51,7 +56,16 @@ export const homologationHttp: ServiceHomologation = {
 
   // Modélisateur (D-77, §4) : graphe étendu, catalogue, opérations, positions, arcs et pilote du brouillon.
   grapheReferentiel: (id) => http.get(`${R}/${id}/graphe`),
-  catalogueReferentiels: () => http.get(`${R}/catalogue`),
+  // Avec la version (D-89) : ses étapes (etapesVersion), en plus des étapes canoniques et des couleurs.
+  catalogueReferentiels: (versionId) => http.get(`${R}/catalogue`, versionId ? { query: { version: versionId } } : {}),
+  exporterReferentiel: async (id) => {
+    const r = await http.blob(`${R}/${id}/export`, 'text/csv')
+    return { ...r, nom: `referentiel-${id}.csv` }
+  },
+  ajouterEtape: (id, etape) => http.post(`${R}/${id}/etapes`, { body: etape }),
+  modifierEtape: (id, code, etape) => http.put(`${R}/${id}/etapes/${encodeURIComponent(code)}`, { body: etape }),
+  supprimerEtape: (id, code) => http.delete(`${R}/${id}/etapes/${encodeURIComponent(code)}`),
+  ordonnerEtapes: (id, codes) => http.put(`${R}/${id}/etapes/ordre`, { body: { codes } }),
   creerOperation: (id, operation) => http.post(`${R}/${id}/operations`, { body: operation }),
   enregistrerOperation: (id, code, operation) => http.put(`${R}/${id}/operations/${encodeURIComponent(code)}`, { body: operation }),
   supprimerOperation: (id, code) => http.delete(`${R}/${id}/operations/${encodeURIComponent(code)}`),

@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import cm.gimac.des.iam.application.port.out.ProfilsCrees;
@@ -100,7 +101,7 @@ class DemandesEtProfilsServiceTest {
 
     @BeforeEach
     void init() {
-        annuaire = new AnnuaireEnMemoire(AnnuaireEnMemoire.catalogueParDefaut(Set.of("ROLE_SUPER_ADMIN", "ROLE_RSSI", "ROLE_CHEF_DES", "ROLE_SNA", "ROLE_COLLABORATEUR")), Set.of("ROLE_SUPER_ADMIN", "ROLE_RSSI"));
+        annuaire = new AnnuaireEnMemoire(AnnuaireEnMemoire.catalogueParDefaut(Set.of("ROLE_SUPER_ADMIN", "ROLE_RSSI", "ROLE_CHEF_DES", "ROLE_SNA", "ROLE_COLLABORATEUR", "ROLE_CORRESPONDANT")), Set.of("ROLE_SUPER_ADMIN", "ROLE_RSSI"));
         unites = new OrganisationServiceTest.CatalogueEnMemoire();
         unites.enregistrer(new Unite("DG", "DG", TypeUnite.DIRECTION, null, true));
         unites.enregistrer(new Unite("DES", "DES", TypeUnite.DEPARTEMENT, "DG", true));
@@ -110,11 +111,11 @@ class DemandesEtProfilsServiceTest {
         a.put(ActionPouvoir.COMPTE_DEMANDER, Portee.UNITES);
         a.put(ActionPouvoir.PROFIL_DEMANDER, Portee.EQUIPE);
         a.put(ActionPouvoir.STATUT_DEMANDER, Portee.EQUIPE);
-        matrice.enregistrer(new PouvoirsProfil("ROLE_CHEF_DES", a, Set.of("ROLE_SNA", "ROLE_COLLABORATEUR", "ROLE_RSSI")));
+        matrice.enregistrer(new PouvoirsProfil("ROLE_CHEF_DES", a, Set.of("ROLE_SNA", "ROLE_COLLABORATEUR", "ROLE_RSSI", "ROLE_CORRESPONDANT")));
         var proprietes = new cm.gimac.des.iam.application.IamProprietes(
             null,
             null,
-            new cm.gimac.des.iam.application.IamProprietes.Profils(Set.of("ROLE_SUPER_ADMIN", "ROLE_RSSI", "ROLE_CHEF_DES", "ROLE_SNA", "ROLE_COLLABORATEUR"), Set.of("ROLE_SUPER_ADMIN", "ROLE_RSSI")),
+            new cm.gimac.des.iam.application.IamProprietes.Profils(Set.of("ROLE_SUPER_ADMIN", "ROLE_RSSI", "ROLE_CHEF_DES", "ROLE_SNA", "ROLE_COLLABORATEUR", "ROLE_CORRESPONDANT"), Set.of("ROLE_SUPER_ADMIN", "ROLE_RSSI")),
             null,
             null,
             null,
@@ -158,6 +159,15 @@ class DemandesEtProfilsServiceTest {
 
     ContenuDemande creation(String identifiant, String unite) {
         return ContenuDemande.creation(identifiant, "Nouvel", "Agent", identifiant + "@gimac.test", null, "Technicien", unite, chef, Set.of("ROLE_COLLABORATEUR"));
+    }
+
+    @Test
+    @DisplayName("Soumission : rattachement à une institution vérifié dès la demande (compte interne sans institution, 400)")
+    void soumissionRattachementInstitution() {
+        ContenuDemande correspondant = ContenuDemande.creation("corresp", "Nouvel", "Correspondant", "corresp@gimac.test", null, "Technicien", "DES", chef, Set.of("ROLE_CORRESPONDANT"));
+        refus(() -> service.soumettre(chefActeur, TypeDemande.CREATION_COMPTE, null, correspondant, "Renfort de l'équipe"), "IAM_INSTITUTION_REQUIRED", 400);
+        refus(() -> service.soumettre(chefActeur, TypeDemande.PROFILS, agent, ContenuDemande.profils(Set.of("ROLE_CORRESPONDANT"), null), "Nouvelles missions"), "IAM_INSTITUTION_REQUIRED", 400);
+        verifyNoInteractions(outbox);
     }
 
     @Test

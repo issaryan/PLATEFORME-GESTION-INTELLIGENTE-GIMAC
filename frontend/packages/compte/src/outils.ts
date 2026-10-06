@@ -23,9 +23,3 @@ export function dateHeure(iso: string | null | undefined, langue: string): strin
   if (Number.isNaN(d.getTime())) return iso
   return d.toLocaleString(langue, { dateStyle: 'short', timeStyle: 'short', timeZone: 'Africa/Douala' })
 }
-
-/** Libellé d'un profil (rôle composite) : clé compte.profil.<code>, code brut à défaut. */
-export function useLibelleProfil() {
-  const { t } = useTranslation()
-  return (code: string) => t(`compte.profil.${code}`, { defaultValue: code })
-}

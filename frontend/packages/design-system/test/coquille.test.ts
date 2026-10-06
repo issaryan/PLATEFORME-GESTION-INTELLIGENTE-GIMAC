@@ -2,11 +2,9 @@
 // toute la hauteur disponible avec son propre défilement, zone de contenu seule à défiler. jsdom ne
 // calcule pas la mise en page : on vérifie les règles qui la portent (le rendu réel est vérifié par
 // Playwright, e2e/specs/coquille.spec.ts).
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-
-const css = readFileSync(resolve(__dirname, '../src/styles/11-enveloppe.css'), 'utf8')
+// Feuille lue comme texte par Vite (?raw), sans module node:* dans un test de paquet.
+import css from '../src/styles/11-enveloppe.css?raw'
 const regle = (selecteur: string) => css.match(new RegExp(`${selecteur.replace(/[.[\]]/g, '\\$&').replace(/>/g, '\\s*>\\s*')} \\{([^}]*)\\}`))?.[1] ?? ''
 
 describe('coquille applicative', () => {

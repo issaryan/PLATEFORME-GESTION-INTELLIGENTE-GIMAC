@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CheckboxGroup, CrudDialog, Select, TextArea, TextField } from '@gimac/design-system'
-import { useSession } from '@gimac/socle'
+import { useLibelleProfil, useSession } from '@gimac/socle'
 import { MOTIF_DEMANDE, couverts, type MesPouvoirs, type NouvelleDemande, type Subordonne } from '../../../modele/pouvoirs'
 import { useDemander, usePouvoirs, useRattacherSubordonne } from '../../../hooks/pouvoirs'
 import { pourDialogue, useErreur, useLibelleUnite } from './communs'
@@ -15,13 +15,10 @@ const IDENTIFIANT = /^[a-z][a-z0-9._-]{2,49}$/
 const COURRIEL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 
 /**
- * Libellé d'un profil : celui du serveur (libellesProfils de GET /pouvoirs/moi, D-86 §5), sinon le catalogue de
- * « Mon compte », le code à défaut.
+ * Libellé d'un profil (D-86 §5) : useLibelleProfil du socle nourri de libellesProfils de GET /pouvoirs/moi, repli i18n.
  */
-export function useLibelleProfil() {
-  const { t } = useTranslation()
-  const libelles = usePouvoirs().data?.libellesProfils
-  return (code: string) => libelles?.[code] || t(`compte.profil.${code}`, { defaultValue: code })
+export function useLibelleProfilEquipe() {
+  return useLibelleProfil(usePouvoirs().data?.libellesProfils)
 }
 
 /** Motif de la demande : 5 à 500 caractères. */
@@ -42,7 +39,7 @@ export function DialogueDemandeCompte({ pouvoirs, unite, onFermer, onFait }: { p
   const session = useSession()
   const erreur = useErreur()
   const libelleUnite = useLibelleUnite()
-  const libelleProfil = useLibelleProfil()
+  const libelleProfil = useLibelleProfilEquipe()
   const demander = useDemander()
   const m = useMotif()
   const moi = session?.sujet ?? ''
@@ -107,7 +104,7 @@ export function DialogueDemandeCompte({ pouvoirs, unite, onFermer, onFait }: { p
 export function DialogueDemandeProfils({ pouvoirs, personne, onFermer, onFait }: { pouvoirs: MesPouvoirs; personne: Subordonne; onFermer: () => void; onFait: (m: string) => void }) {
   const { t } = useTranslation()
   const erreur = useErreur()
-  const libelleProfil = useLibelleProfil()
+  const libelleProfil = useLibelleProfilEquipe()
   const demander = useDemander()
   const m = useMotif()
   const [ajouter, setAjouter] = useState<string[]>([])

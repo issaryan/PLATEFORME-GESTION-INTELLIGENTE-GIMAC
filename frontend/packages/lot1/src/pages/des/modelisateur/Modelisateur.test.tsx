@@ -24,7 +24,10 @@ describe('DES-12 : modélisateur', () => {
     expect(c11.className).toContain('gm-mod-carte-anomalie')
     expect(c11.textContent).toContain('Validateur absent')
     expect(container.querySelectorAll('.gm-mod-carte-critique').length).toBeGreaterThan(5)
-    expect(container.querySelector('.gm-mod-couloir-etape')?.textContent).toBe('Cadrage')
+    // Couloirs = étapes de la version (D-89), dans leur ordre, colorés par leur jeton ; les étapes vides gardent leur couloir.
+    const couloirs = [...container.querySelectorAll<HTMLElement>('.gm-mod-couloir-etape')]
+    expect(couloirs.map((c) => c.textContent).slice(0, 3)).toEqual(['Prise de contact', 'Adhésion', 'Cadrage'])
+    expect(couloirs[2].style.getPropertyValue('--gm-mod-couloir-couleur')).toBe('var(--gm-color-status-info-fg)')
     expect(container.querySelector('.gm-mod-carte[data-code="17"]')?.textContent).toContain('Apte à la certification')
     const outils = screen.getByRole('toolbar', { name: 'Outils du modélisateur' })
     for (const n of ['Ajouter une opération', 'Disposition automatique', 'Contrôler', 'Comparer', 'Publier la version']) expect(within(outils).getByRole('button', { name: n })).toBeTruthy()

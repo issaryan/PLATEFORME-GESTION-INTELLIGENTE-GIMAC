@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, type ComponentType } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Background, Controls, MiniMap, ReactFlow, useNodesState, type Connection, type Edge, type Node, type NodeProps } from '@xyflow/react'
+import { Background, Controls, MiniMap, ReactFlow, useNodesInitialized, useNodesState, useReactFlow, type Connection, type Edge, type Node, type NodeProps } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import '../../pages/des/modelisateur/modelisateur.css'
 
@@ -30,6 +30,23 @@ export type CanevasGrapheProps<N extends Node> = {
   classeMiniCarte?: (n: Node) => string
   /** Mini-carte (par défaut) ; inutile pour un petit graphe en lecture. */
   miniCarte?: boolean
+}
+
+/**
+ * Cadrage : à l'ouverture et chaque fois que l'ensemble des cartes change (autre version, lecture filtrée avec
+ * fantômes, D-89), la vue est ajustée sur toutes les cartes une fois leurs dimensions connues.
+ */
+function Cadrage({ cle }: { cle: string }) {
+  const flux = useReactFlow()
+  const prets = useNodesInitialized()
+  const fait = useRef('')
+  useEffect(() => {
+    if (!prets || !cle || fait.current === cle) return
+    fait.current = cle
+    // Cadrage sur les cartes seules (opérations et fantômes), sans les couloirs des étapes vides.
+    void flux.fitView({ nodes: cle.split('|').map((id) => ({ id })), padding: 0.15, maxZoom: 1 })
+  }, [prets, cle, flux])
+  return null
 }
 
 export function CanevasGraphe<N extends Node>(p: CanevasGrapheProps<N>) {
@@ -91,6 +108,7 @@ export function CanevasGraphe<N extends Node>(p: CanevasGrapheProps<N>) {
           'minimap.ariaLabel': a('miniCarte'),
         }}
       >
+        <Cadrage cle={p.noeuds.filter((n) => n.type !== 'couloir').map((n) => n.id).sort().join('|')} />
         <Background gap={24} />
         <Controls showInteractive={false} />
         {p.miniCarte === false ? null : <MiniMap pannable zoomable nodeClassName={p.classeMiniCarte ?? (() => 'gm-mod-mini-carte')} />}

@@ -1,6 +1,6 @@
 import type { QueryClient } from '@tanstack/react-query'
 import { notificationsSimulees, referenceConversation, type ArriveeNotification, type LecteurApercu, type ServiceNotificationsSimule } from '@gimac/socle'
-import type { OptionsReceptionDemo, ReceptionDemo } from './simule/messagerie'
+import type { OptionsLectureDemo, OptionsReceptionDemo, ReceptionDemo } from './simule/messagerie'
 import type { ServicesSimules } from './simule'
 import type { Services } from './ports'
 
@@ -64,7 +64,11 @@ export function arriveeMention(r: ReceptionDemo, moi: string): ArriveeNotificati
 }
 
 /** Accès de démonstration (tests de bout en bout) : un autre membre écrit dans une conversation. */
-export type DemoNotifications = { recevoirMessage(o?: OptionsReceptionDemo): string }
+export type DemoNotifications = {
+  recevoirMessage(o?: OptionsReceptionDemo): string
+  /** Un autre membre lit la conversation (D-88) : accusé diffusé comme par le canal poussé ; vrai s'il a avancé. */
+  lireMessages(o?: OptionsLectureDemo): boolean
+}
 
 /**
  * MS-NOTIFICATION simulé, branché sur la messagerie simulée : non-lus de démonstration (une notification
@@ -88,7 +92,7 @@ export function notificationsDemo(services: ServicesSimules, o: { qc?: QueryClie
     if (mention) notifications.recevoir(mention)
     void o.qc?.invalidateQueries({ queryKey: ['collaboration'] })
   })
-  const demo: DemoNotifications = { recevoirMessage: (x) => services.messagerie.recevoirDemo(x).conversation.id }
+  const demo: DemoNotifications = { recevoirMessage: (x) => services.messagerie.recevoirDemo(x).conversation.id, lireMessages: (x) => services.messagerie.lireDemo(x) !== null }
   ;(window as unknown as { gmDemoNotifications?: DemoNotifications }).gmDemoNotifications = demo
   return notifications
 }

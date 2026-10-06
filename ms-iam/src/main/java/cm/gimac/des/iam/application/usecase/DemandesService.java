@@ -14,6 +14,7 @@ import cm.gimac.des.iam.domain.event.DemandeDecideePayload;
 import cm.gimac.des.iam.domain.event.DemandeSoumisePayload;
 import cm.gimac.des.iam.domain.pouvoir.Portee;
 import cm.gimac.des.iam.domain.pouvoir.Pouvoirs;
+import cm.gimac.des.iam.domain.service.ReglesAdministration;
 import cm.gimac.des.iam.domain.service.ReglesDemandes;
 import cm.gimac.des.iam.domain.service.ReglesPouvoirs;
 import cm.gimac.des.iam.infrastructure.messaging.outbox.OutboxPublisher;
@@ -120,6 +121,7 @@ public class DemandesService {
             verifierChangement(type, compteCible, c);
         }
         ReglesPouvoirs.exigerDemandables(ReglesDemandes.profilsProposes(c), p.profilsDemandables());
+        verifierRattachementInstitution(type, compteCible, c);
 
         String cle = ReglesDemandes.cleCible(type, cible, c);
         if (depot.existsByTypeAndCleCibleAndEtat(type, cle, EtatDemande.EN_ATTENTE)) {
@@ -170,6 +172,22 @@ public class DemandesService {
         perimetre.comptes().stream().filter(x -> x.unite() != null).forEach(x -> unites.add(x.unite()));
         ReglesPouvoirs.exigerCouverture(responsables.contains(c.responsableId()) && unites.contains(c.unite()), ReglesDemandes.action(TypeDemande.CREATION_COMPTE));
         organisation.verifierRattachementNouveau(c.unite(), c.responsableId());
+    }
+
+    /**
+     * Rattachement à une institution (règle de l'administration des comptes) vérifié dès la soumission,
+     * pour ne pas accepter une demande que l'acceptation refuserait : un compte créé par demande est un
+     * compte interne du GIMAC, sans institution ; des profils demandés gardent la cohérence entre
+     * correspondant de participant et institution du compte visé.
+     */
+    private static void verifierRattachementInstitution(TypeDemande type, Compte cible, ContenuDemande c) {
+        switch (type) {
+            case CREATION_COMPTE -> ReglesAdministration.verifierRattachement(c.profils(), null);
+            case PROFILS -> ReglesAdministration.verifierRattachement(ReglesDemandes.profilsApres(cible.profils(), c), cible.institutionId());
+            case STATUT -> {
+                // Le statut ne change ni les profils ni l'institution.
+            }
+        }
     }
 
     /** Une demande de profils ou de statut doit changer quelque chose (400 ORG_DEMANDE_INVALIDE sinon). */
