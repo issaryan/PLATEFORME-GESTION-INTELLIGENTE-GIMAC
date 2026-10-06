@@ -76,6 +76,16 @@ export function servicesConsoleSimules(o: OptionsConsoleSimulee = {}): ServicesC
       throw refus(403, 'IAM_PRIVILEGED_PROFILE', "L'attribution d'un profil privilégié est réservée au super administrateur")
     }
   }
+  // Institution : réservée au correspondant de participant, et obligatoire pour lui (règle de MS-IAM).
+  const verifierRattachement = (demandes: string[], institutionId?: string | null) => {
+    const rattache = !!institutionId?.trim()
+    if (rattache && demandes.some((p) => p !== 'ROLE_CORRESPONDANT')) {
+      throw refus(400, 'IAM_INSTITUTION_INTERNAL_ACCOUNT', "Un compte interne du GIMAC n'est rattaché à aucune institution", { institutionId })
+    }
+    if (demandes.includes('ROLE_CORRESPONDANT') && !rattache) {
+      throw refus(400, 'IAM_INSTITUTION_REQUIRED', 'Un correspondant de participant est rattaché à son institution')
+    }
+  }
   const dernierSuperAdmin = (c: Compte) => {
     if (c.actif && c.profils.includes('ROLE_SUPER_ADMIN') && comptes.filter((x) => x.actif && x.profils.includes('ROLE_SUPER_ADMIN')).length <= 1) {
       throw refus(409, 'IAM_LAST_SUPER_ADMIN', 'La plateforme doit garder au moins un super administrateur actif')
@@ -138,6 +148,7 @@ export function servicesConsoleSimules(o: OptionsConsoleSimulee = {}): ServicesC
         if (!x.envoyerInvitation && !x.motDePasseProvisoire) throw refus(400, 'IAM_ONBOARDING_REQUIRED', "Choisir l'invitation par courriel ou un mot de passe provisoire")
         if (!x.profils.length) throw refus(400, 'IAM_PROFILE_UNKNOWN', 'Au moins un profil', { profils: [] })
         verifierProfils([], x.profils)
+        verifierRattachement(x.profils, x.institutionId)
         if (comptes.some((c) => c.identifiant === identifiant || c.email?.toLowerCase() === x.email.trim().toLowerCase())) {
           throw refus(409, 'IAM_ACCOUNT_CONFLICT', 'Identifiant ou courriel déjà utilisé')
         }

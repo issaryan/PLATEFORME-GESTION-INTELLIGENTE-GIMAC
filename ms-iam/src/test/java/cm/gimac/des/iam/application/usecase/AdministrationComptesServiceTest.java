@@ -39,7 +39,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class AdministrationComptesServiceTest {
 
-    static final Set<String> CATALOGUE = Set.of("ROLE_SUPER_ADMIN", "ROLE_RSSI", "ROLE_CHEF_DDRM", "ROLE_CHARGE_DDRM");
+    static final Set<String> CATALOGUE = Set.of("ROLE_SUPER_ADMIN", "ROLE_RSSI", "ROLE_CHEF_DDRM", "ROLE_CHARGE_DDRM", "ROLE_CORRESPONDANT");
     static final Set<String> PRIVILEGIES = Set.of("ROLE_SUPER_ADMIN", "ROLE_RSSI");
     static final Acteur SUPER = new Acteur("demo-super-admin", "Super", Set.of("IAM_ROLE_PRIVILEGED_GRANT"));
     static final Acteur RSSI = new Acteur("demo-rssi", "RSSI", Set.of());
@@ -114,12 +114,12 @@ class AdministrationComptesServiceTest {
         // Super administrateur invité sur la console ; correspondant sur le portail.
         service.creer(SUPER, nouveau("admin.deux", "ROLE_SUPER_ADMIN"), true, false);
         assertThat(courriels.dernierPour("admin.deux@gimac.test").orElseThrow().texte()).contains("https://console.gimac.test/connexion/");
-        service.creer(RSSI, new NouveauCompte("corr.a", "C", "A", "corr.a@banque.test", null, null, "INST-9", Set.of("ROLE_CHARGE_DDRM")), true, false);
+        service.creer(RSSI, new NouveauCompte("corr.a", "C", "A", "corr.a@banque.test", null, null, "INST-9", Set.of("ROLE_CORRESPONDANT")), true, false);
         assertThat(courriels.dernierPour("corr.a@banque.test").orElseThrow().texte()).contains("https://portail.gimac.test/connexion/");
     }
 
     @Test
-    @DisplayName("Création refusée : identifiant invalide, courriel absent, doublon, aucun mode d'accès, profil privilégié par le RSSI")
+    @DisplayName("Création refusée : identifiant invalide, courriel absent, doublon, aucun mode d'accès, profil privilégié par le RSSI, institution incohérente")
     void creationRefusee() {
         refus(() -> service.creer(RSSI, nouveau("Majuscules", "ROLE_CHARGE_DDRM"), true, false), "IAM_USERNAME_INVALID");
         refus(() -> service.creer(RSSI, new NouveauCompte("sans.courriel", "a", "b", " ", null, null, null, Set.of("ROLE_CHARGE_DDRM")), true, false), "IAM_EMAIL_REQUIRED");
@@ -127,6 +127,9 @@ class AdministrationComptesServiceTest {
         refus(() -> service.creer(RSSI, new NouveauCompte("autre", "a", "b", "rssi@gimac.test", null, null, null, Set.of("ROLE_CHARGE_DDRM")), true, false), "IAM_ACCOUNT_CONFLICT");
         refus(() -> service.creer(RSSI, nouveau("sans.acces", "ROLE_CHARGE_DDRM"), false, false), "IAM_ONBOARDING_REQUIRED");
         refus(() -> service.creer(RSSI, nouveau("futur.admin", "ROLE_SUPER_ADMIN"), true, false), "IAM_PRIVILEGED_PROFILE");
+        // Agent du GIMAC saisi avec une institution (ex. « GIMAC ») : il serait traité en compte externe.
+        refus(() -> service.creer(RSSI, new NouveauCompte("agent.systeme", "a", "b", "systeme@gimac.test", null, null, "GIMAC", Set.of("ROLE_CHARGE_DDRM")), true, false), "IAM_INSTITUTION_INTERNAL_ACCOUNT");
+        refus(() -> service.creer(RSSI, new NouveauCompte("corr.sans", "a", "b", "corr.sans@banque.test", null, null, null, Set.of("ROLE_CORRESPONDANT")), true, false), "IAM_INSTITUTION_REQUIRED");
         assertThat(service.creer(SUPER, nouveau("futur.admin", "ROLE_SUPER_ADMIN"), true, false).compte().profils()).containsExactly("ROLE_SUPER_ADMIN");
     }
 
@@ -236,7 +239,7 @@ class AdministrationComptesServiceTest {
     @DisplayName("D-64 : annuaire interne, comptes actifs sans institution, filtrés par nom, courriel ou fonction, paginés")
     void annuaireInterne() {
         String agent = service.creer(RSSI, nouveau("agent.ddrm", "ROLE_CHARGE_DDRM"), true, false).compte().id();
-        service.creer(RSSI, new NouveauCompte("correspondant", "Jeanne", "Owona", "jeanne@banque.test", "+237600000003", "Correspondante", "INST-1", Set.of("ROLE_CHARGE_DDRM")), true, false);
+        service.creer(RSSI, new NouveauCompte("correspondant", "Jeanne", "Owona", "jeanne@banque.test", "+237600000003", "Correspondante", "INST-1", Set.of("ROLE_CORRESPONDANT")), true, false);
         String parti = service.creer(RSSI, nouveau("ancien.agent", "ROLE_CHARGE_DDRM"), true, false).compte().id();
         service.definirActif(RSSI, parti, false, "départ");
 

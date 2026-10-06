@@ -165,6 +165,7 @@ public class AdministrationComptesService {
             throw IamException.invalide("IAM_ONBOARDING_REQUIRED", "Choisir l'invitation par courriel ou un mot de passe provisoire", Map.of());
         }
         ReglesAdministration.verifierProfils(acteur, Set.of(), n.profils(), proprietes.profils().attribuables(), proprietes.profils().privilegies());
+        ReglesAdministration.verifierRattachement(n.profils(), n.institutionId());
         if (annuaire.parIdentifiant(n.identifiant()).isPresent() || annuaire.emailPris(n.email(), null)) {
             throw IamException.conflit("IAM_ACCOUNT_CONFLICT", "Identifiant ou courriel déjà utilisé", Map.of());
         }
@@ -203,6 +204,8 @@ public class AdministrationComptesService {
     public Compte modifier(Acteur acteur, String id, FicheCompte f) {
         Compte c = lire(id);
         ReglesAdministration.verifierTelephone(f.telephone());
+        // Institution inchangée quand elle est absente de la fiche (null) ; vide, elle est retirée.
+        ReglesAdministration.verifierRattachement(c.profils(), f.institutionId() != null ? f.institutionId() : c.institutionId());
         if (f.email() != null && !f.email().equalsIgnoreCase(c.email()) && annuaire.emailPris(f.email(), id)) {
             throw IamException.conflit("IAM_ACCOUNT_CONFLICT", "Identifiant ou courriel déjà utilisé", Map.of());
         }
@@ -216,6 +219,7 @@ public class AdministrationComptesService {
         ReglesAdministration.exigerMotif(motif);
         Compte c = lire(id);
         ReglesAdministration.verifierProfils(acteur, c.profils(), profils, proprietes.profils().attribuables(), proprietes.profils().privilegies());
+        ReglesAdministration.verifierRattachement(profils, c.institutionId());
         if (c.profils().contains(ReglesAdministration.SUPER_ADMIN) && !profils.contains(ReglesAdministration.SUPER_ADMIN)) {
             ReglesAdministration.verifierDernierSuperAdmin(c.actif(), superAdminsActifs());
         }

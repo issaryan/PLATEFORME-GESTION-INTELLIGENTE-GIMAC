@@ -59,4 +59,18 @@ class ReglesAdministrationTest {
         refus(() -> ReglesAdministration.exigerMotif(" "), "IAM_REASON_REQUIRED");
         refus(() -> ReglesAdministration.exigerMotif(null), "IAM_REASON_REQUIRED");
     }
+
+    @Test
+    @DisplayName("Institution : réservée au correspondant de participant, et obligatoire pour lui")
+    void rattachement() {
+        assertThatCode(() -> ReglesAdministration.verifierRattachement(Set.of("ROLE_POLE_SYSTEME"), null)).doesNotThrowAnyException();
+        assertThatCode(() -> ReglesAdministration.verifierRattachement(Set.of("ROLE_POLE_SYSTEME"), " ")).doesNotThrowAnyException();
+        assertThatCode(() -> ReglesAdministration.verifierRattachement(Set.of("ROLE_CORRESPONDANT"), "INST-0042")).doesNotThrowAnyException();
+        assertThatCode(() -> ReglesAdministration.verifierRattachement(Set.of(), null)).doesNotThrowAnyException();
+        // Agent du GIMAC saisi avec l'institution « GIMAC » : il serait traité en compte externe.
+        refus(() -> ReglesAdministration.verifierRattachement(Set.of("ROLE_POLE_SYSTEME"), "GIMAC"), "IAM_INSTITUTION_INTERNAL_ACCOUNT");
+        refus(() -> ReglesAdministration.verifierRattachement(Set.of("ROLE_CORRESPONDANT", "ROLE_DG"), "INST-0042"), "IAM_INSTITUTION_INTERNAL_ACCOUNT");
+        refus(() -> ReglesAdministration.verifierRattachement(Set.of("ROLE_CORRESPONDANT"), null), "IAM_INSTITUTION_REQUIRED");
+        refus(() -> ReglesAdministration.verifierRattachement(Set.of("ROLE_CORRESPONDANT"), ""), "IAM_INSTITUTION_REQUIRED");
+    }
 }

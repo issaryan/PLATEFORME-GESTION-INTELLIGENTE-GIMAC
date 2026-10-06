@@ -25,6 +25,7 @@ const VIDE: Valeurs = { identifiant: '', prenom: '', nom: '', email: '', telepho
 const CHAMP_DU_CODE: Record<string, string> = {
   IAM_USERNAME_INVALID: 'identifiant', IAM_PHONE_INVALID: 'telephone', IAM_EMAIL_REQUIRED: 'email', IAM_ACCOUNT_CONFLICT: 'identifiant',
   IAM_ONBOARDING_REQUIRED: 'accueil', IAM_PROFILE_UNKNOWN: 'profils', IAM_PRIVILEGED_PROFILE: 'profils',
+  IAM_INSTITUTION_INTERNAL_ACCOUNT: 'institutionId', IAM_INSTITUTION_REQUIRED: 'institutionId',
 }
 
 function Resultat({ creation, onAutre, onFermer }: { creation: Creation; onAutre: () => void; onFermer: () => void }) {

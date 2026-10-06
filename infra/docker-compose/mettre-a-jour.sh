@@ -56,6 +56,9 @@ git -C "$RACINE" log --oneline -1
 
 etape "Images"
 "$ICI/gimac-dev.sh" verifier >/dev/null
+# Secrets ajoutés par les commits tirés (nouveaux clients de service…) : le Compose refuse d'interpoler
+# un secret absent, y compris pour construire les couches de présentation.
+"$ICI/gimac-dev.sh" preparer
 # Extension gimac-totp de Keycloak (D-65), montée par le Compose : quelques secondes, toujours reconstruite.
 (cd "$RACINE/infra/keycloak/extensions/gimac-totp" && mvn -q -ntp -B package -DskipTests)
 chmod -R a+rX "$RACINE/infra/keycloak/extensions/gimac-totp/target" 2>/dev/null || true

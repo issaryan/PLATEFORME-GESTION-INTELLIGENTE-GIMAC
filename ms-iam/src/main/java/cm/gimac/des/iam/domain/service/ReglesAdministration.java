@@ -17,12 +17,15 @@ import java.util.regex.Pattern;
  *   <li>Seuls les profils du catalogue sont attribuables ; un profil privilégié (super
  *       administrateur, RSSI) exige IAM_ROLE_PRIVILEGED_GRANT.</li>
  *   <li>La plateforme garde toujours au moins un super administrateur actif.</li>
+ *   <li>Seul un correspondant de participant est rattaché à une institution ; un agent du GIMAC
+ *       n'en a pas (sinon il serait traité en compte externe : portail, absent de la messagerie).</li>
  * </ul>
  */
 public final class ReglesAdministration {
 
     public static final String SUPER_ADMIN = "ROLE_SUPER_ADMIN";
     public static final String OCTROI_PRIVILEGIE = "IAM_ROLE_PRIVILEGED_GRANT";
+    public static final String CORRESPONDANT = "ROLE_CORRESPONDANT";
     private static final Pattern IDENTIFIANT = Pattern.compile("^[a-z][a-z0-9._-]{2,49}$");
     private static final Pattern TELEPHONE = Pattern.compile("^\\+?[0-9 ]{8,20}$");
 
@@ -66,6 +69,26 @@ public final class ReglesAdministration {
         boolean touchePrivilegie = changes.stream().anyMatch(privilegies::contains);
         if (touchePrivilegie && !acteur.peut(OCTROI_PRIVILEGIE)) {
             throw IamException.interdit("IAM_PRIVILEGED_PROFILE", "L'attribution d'un profil privilégié est réservée au super administrateur");
+        }
+    }
+
+    /**
+     * Rattachement à une institution : réservé au correspondant de participant, et obligatoire pour lui.
+     * Un compte interne du GIMAC n'a pas d'institution (le GIMAC n'en est pas une) : une valeur saisie
+     * par erreur l'enverrait vers le portail et le retirerait de l'annuaire interne de la messagerie.
+     */
+    public static void verifierRattachement(Set<String> profils, String institutionId) {
+        boolean rattache = institutionId != null && !institutionId.isBlank();
+        boolean correspondant = profils.contains(CORRESPONDANT);
+        if (rattache && profils.stream().anyMatch(p -> !CORRESPONDANT.equals(p))) {
+            throw IamException.invalide(
+                "IAM_INSTITUTION_INTERNAL_ACCOUNT",
+                "Un compte interne du GIMAC n'est rattaché à aucune institution : laisser l'institution vide",
+                Map.of("institutionId", institutionId)
+            );
+        }
+        if (correspondant && !rattache) {
+            throw IamException.invalide("IAM_INSTITUTION_REQUIRED", "Un correspondant de participant est rattaché à son institution", Map.of());
         }
     }
 
