@@ -114,12 +114,12 @@ describe('service simulé', () => {
     fermer()
   })
 
-  it('retour à la version précédente : image rétablie, plus de version précédente ; sous Docker : 422', async () => {
+  it('retour à la version précédente : image rétablie, la version quittée devient la précédente ; sous Docker : 422', async () => {
     const s = sim()
     await s.executer('gateway', 'RETABLIR', { motif: 'Livraison 1.4.0 fautive' }, ASSERTION)
     await new Promise((r) => setTimeout(r, 20))
     expect((await s.charges()).charges.find((c) => c.nom === 'gateway')).toMatchObject({
-      image: 'registre.gimac.local/gimac/gateway:1.3.0', imagePrecedente: null, gestes: ['REDEMARRER', 'ECHELLE'],
+      image: 'registre.gimac.local/gimac/gateway:1.3.0', imagePrecedente: 'registre.gimac.local/gimac/gateway:1.4.0', gestes: ['REDEMARRER', 'ECHELLE', 'RETABLIR'],
     })
     await expect(s.executer('iam', 'RETABLIR', { motif: 'Sans version précédente' }, ASSERTION)).rejects.toMatchObject({ status: 409, code: 'OPS_GESTE_NON_PERMIS' })
     await expect(sim({ orchestrateur: 'DOCKER' }).executer('iam', 'RETABLIR', { motif: 'Motif suffisant' }, ASSERTION)).rejects.toMatchObject({ status: 422, code: 'OPS_NON_PRIS_EN_CHARGE' })

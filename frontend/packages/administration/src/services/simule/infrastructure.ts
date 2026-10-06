@@ -120,7 +120,8 @@ export function infrastructureSimulee(o: OptionsInfrastructureSimulee): ServiceI
       const voulues = op.geste === 'ECHELLE' ? repliques! : Math.max(1, c.repliques.voulues)
       Object.assign(c, { etat: 'EN_COURS', sante: 'SAINE', repliques: { voulues, pretes: voulues }, demarreeLe: new Date().toISOString() })
       if (op.geste === 'REDEMARRER') c.redemarrages += 1
-      if (op.geste === 'RETABLIR') Object.assign(c, { image: c.imagePrecedente ?? c.image, imagePrecedente: null })
+      // Comme Kubernetes : la version rétablie devient la plus récente, la version quittée devient la précédente.
+      if (op.geste === 'RETABLIR') Object.assign(c, { image: c.imagePrecedente ?? c.image, imagePrecedente: c.image })
     }
     Object.assign(op, {
       resultat: echec ? 'ECHOUEE' : 'REUSSIE', erreur: echec ? 'Délai de démarrage dépassé (90 s)' : null, apres: c.etat,
