@@ -1,7 +1,7 @@
 // Socle d'interface du lot 1 (PI-GIMAC-01 F0).
 export { P, SESSION, CONNEXION, DECONNEXION, API_CONNEXION, APPAREILS, HISTORIQUE_CONNEXIONS, prefixeIam, type Couche } from './http/prefixes'
 export { urlAvatar, avatarsSimules, photoDemo } from './avatar/avatar'
-export { ApiError, estApiError, type Problem } from './http/errors'
+export { ApiError, estApiError, champsRefuses, SAISIE_INVALIDE, type Problem, type FieldErrorProbleme } from './http/errors'
 export { http, configureHttp, reprDigestToHex, type RequestOptions, type HttpHooks, type CsrfConfig } from './http/client'
 export {
   televerser, depotsHttp, type ServiceDepots, type Depot, type EtatDepot, type OuvertureDepot, type Progression, type Televersement, type OptionsTeleversement,

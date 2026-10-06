@@ -1,4 +1,4 @@
-import { ApiError, type Problem } from './errors'
+import { ApiError, SAISIE_INVALIDE, champsDe, type Problem } from './errors'
 
 // Client HTTP, seul point d'appel réseau de l'interface (PI-GIMAC-01 F0 §A2).
 // Le témoin de session HttpOnly part seul (credentials: "same-origin") : le client ne lit ni ne
@@ -92,8 +92,13 @@ async function send(method: string, path: string, o: RequestOptions, rejoue = fa
 
   const estJson = (res.headers.get('Content-Type') ?? '').includes('json')
   const p: Problem = estJson ? await res.json().catch(() => ({})) : {}
-  const details = p.details ?? (p.violations ? { violations: p.violations } : undefined)
-  const err = new ApiError(res.status, p.code ?? `HTTP_${res.status}`, p.message ?? p.detail ?? '', p.correlationId ?? correlationId, details)
+  // Validation de l'entrée (ExceptionTranslator JHipster) : fieldErrors repris dans details.champs, et
+  // la clé « error.validation » du service, qui n'est pas un message, remplacée par un code de la plateforme.
+  const champs = champsDe(p)
+  const details = champs ? { ...(p.details ?? {}), champs } : (p.details ?? (p.violations ? { violations: p.violations } : undefined))
+  const code = p.code ?? (champs ? SAISIE_INVALIDE : `HTTP_${res.status}`)
+  const message = champs && !p.code ? 'Saisie refusée par le service : champs à corriger.' : (p.message ?? p.detail ?? '')
+  const err = new ApiError(res.status, code, message, p.correlationId ?? correlationId, details)
   // Une requête portant une assertion FIDO2 n'est pas rejouée : le défi est à usage unique.
   if (res.status === 401 && !rejoue && !o.reauthAssertion && !o.anonyme) {
     if (await hooks.onUnauthorized(err)) return send(method, path, o, true)

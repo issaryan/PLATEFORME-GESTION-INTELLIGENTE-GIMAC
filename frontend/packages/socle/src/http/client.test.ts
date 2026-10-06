@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { configureHttp, http } from './client'
-import { ApiError } from './errors'
+import { ApiError, SAISIE_INVALIDE, champsRefuses } from './errors'
 
 const reply = (status: number, body: object | string, entetes: Record<string, string> = {}) =>
   vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
@@ -117,5 +117,40 @@ describe('F0 : client HTTP', () => {
     expect(onUnauthorized.mock.calls[0][0]).toMatchObject({ code: 'CNX_SESSION_EXPIREE' })
     reply(400, { code: 'IAM_PASSWORD_POLICY', violations: ['LONGUEUR'] })
     await expect(http.post('/api/connexion/nouveau-mot-de-passe', { anonyme: true })).rejects.toMatchObject({ details: { violations: ['LONGUEUR'] } })
+  })
+})
+
+describe('F0 : validation de l’entrée refusée champ par champ (fieldErrors)', () => {
+  const PROBLEME = {
+    type: 'https://www.jhipster.tech/problem/constraint-violation', title: 'Method argument not valid', status: 400, message: 'error.validation', path: '/api/v1/institutions',
+    fieldErrors: [
+      { objectName: 'candidatureRequest', field: 'codeIdentification', message: 'must match "^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$"' },
+      { objectName: 'candidatureRequest', field: 'datePriseDeContact', message: 'must be a date in the past or in the present (Africa/Douala)' },
+      { objectName: 'candidatureRequest', field: 'codeIdentification', message: 'second message ignoré' },
+    ],
+  }
+
+  it('fieldErrors repris dans details.champs, code SAISIE_INVALIDE et message lisible au lieu de « error.validation »', async () => {
+    reply(400, PROBLEME, { 'Content-Type': 'application/problem+json' })
+    const e = await http.post('/bff/des/participant/institutions', { body: {} }).catch((x: unknown) => x)
+    expect(e).toBeInstanceOf(ApiError)
+    expect(e).toMatchObject({ status: 400, code: SAISIE_INVALIDE, correlationId: 'cid-1' })
+    expect((e as ApiError).message).not.toBe('error.validation')
+    const attendus = { codeIdentification: PROBLEME.fieldErrors[0].message, datePriseDeContact: PROBLEME.fieldErrors[1].message }
+    expect((e as ApiError).details).toEqual({ champs: attendus })
+    expect(champsRefuses(e)).toEqual(attendus)
+  })
+
+  it('un code métier du service est conservé ; ses détails sont complétés des champs', async () => {
+    reply(400, { code: 'HOM_SAISIE', message: 'Refus', details: { liaison: 'L1' }, fieldErrors: [{ field: 'motif', message: 'must not be blank' }] })
+    await expect(http.put('/bff/des/homologation/liaisons/L1')).rejects.toMatchObject({ code: 'HOM_SAISIE', message: 'Refus', details: { liaison: 'L1', champs: { motif: 'must not be blank' } } })
+  })
+
+  it('sans fieldErrors : comportement inchangé (HTTP_400, détail du service) et aucun champ refusé', async () => {
+    reply(400, { title: 'Bad Request', detail: 'Failed to read request', fieldErrors: [] })
+    const e = await http.post('/bff/des/participant/institutions', { body: {} }).catch((x: unknown) => x)
+    expect(e).toMatchObject({ code: 'HTTP_400', message: 'Failed to read request' })
+    expect(champsRefuses(e)).toEqual({})
+    expect(champsRefuses(new Error('x'))).toEqual({})
   })
 })

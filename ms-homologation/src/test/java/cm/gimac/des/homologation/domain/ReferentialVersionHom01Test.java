@@ -57,7 +57,8 @@ class ReferentialVersionHom01Test {
         assertThat(derive.getVersionSourceId()).isEqualTo(publiee.getId());
         assertThat(derive.getOperations()).extracting(ReferenceOperation::getCode).containsExactly("DL-AMONT-01", "DL-BR-01", "DL-AVAL-01");
         assertThat(derive.getOperations()).allSatisfy(op -> assertThat(op.getVersion()).isSameAs(derive));
-        assertThat(derive.actionsPermises()).containsExactly("EDITER", "CONTROLER", "PUBLIER");
+        // MODIFIER ouvre l'édition dans le modélisateur (DES-12) ; sans lui, l'écran reste en lecture seule.
+        assertThat(derive.actionsPermises()).containsExactly("MODIFIER", "EDITER", "CONTROLER", "PUBLIER");
     }
 
     @Test

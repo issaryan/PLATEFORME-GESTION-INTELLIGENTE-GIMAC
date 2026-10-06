@@ -89,6 +89,44 @@ test.describe('Fonctionnalité : application du département sur la passerelle',
     })
   })
 
+  test('Scénario : prise de contact contrôlée avant envoi, refus du service sous le champ, puis enregistrement', async ({ page }) => {
+    const gw = new PasserelleDes({ refusEnregistrement: { codeIdentification: 'must match "^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$"' } })
+    await gw.brancher(page)
+    const enregistrements = () => gw.appels.filter((a) => a.methode === 'POST' && a.chemin === '/bff/des/participant/institutions')
+    await page.goto(`${ADRESSES.departementHttp}/des/institutions`)
+    await page.getByRole('button', { name: 'Enregistrer une prise de contact' }).click()
+    const d = page.getByRole('dialog')
+    await test.step('Quand il saisit un code BEAC avec un tiret, le champ est signalé sans appel au service', async () => {
+      await page.locator('input[name="nom"]').fill('Banque des Lagunes')
+      await page.locator('select[name="categorie"]').selectOption('BANQUE')
+      await page.locator('select[name="pays"]').selectOption('GA')
+      await page.locator('input[name="codeIdentification"]').fill('bdlg ga li')
+      await page.locator('input[name="codeBanqueBeac"]').fill('10005-001')
+      await page.locator('input[name="datePriseDeContact"]').fill('12/01/2026')
+      await d.getByRole('button', { name: 'Enregistrer une prise de contact' }).click()
+      await expect(d.getByText(/Code banque BEAC attendu : lettres et chiffres seulement/).first()).toBeVisible()
+      await expect(page.locator('input[name="codeBanqueBeac"]')).toHaveAttribute('aria-invalid', 'true')
+      expect(enregistrements()).toHaveLength(0)
+    })
+    await test.step('Alors, une fois corrigé, le refus du service (fieldErrors) s’affiche sous le champ concerné', async () => {
+      await page.locator('input[name="codeBanqueBeac"]').fill('10005 001')
+      await d.getByRole('button', { name: 'Enregistrer une prise de contact' }).click()
+      await expect(d.getByText(/Code BIC refusé par le service/).first()).toBeVisible()
+      await expect(d.getByText('Le service a refusé la saisie : corrigez les champs signalés.')).toBeVisible()
+      await expect(page.locator('input[name="codeIdentification"]')).toHaveAttribute('aria-invalid', 'true')
+      await expect(d.getByText('error.validation')).toHaveCount(0)
+      expect(enregistrements()[0].corps).toEqual({
+        nom: 'Banque des Lagunes', sigle: null, pays: 'GA', categorie: 'BANQUE', codeIdentification: 'BDLGGALI', codeBanqueBeac: '10005001',
+        datePriseDeContact: '2026-01-12', originePriseDeContact: null, projetEnvisage: null,
+      })
+    })
+    await test.step('Et une nouvelle soumission enregistre la prise de contact et ouvre la fiche', async () => {
+      await d.getByRole('button', { name: 'Enregistrer une prise de contact' }).click()
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText('Banque des Lagunes')
+      expect(enregistrements()).toHaveLength(2)
+    })
+  })
+
   test('Scénario : liste des liaisons indisponible, erreur expliquée avec son identifiant', async ({ page }) => {
     const gw = new PasserelleDes({ listeEnErreur: true })
     await gw.brancher(page)

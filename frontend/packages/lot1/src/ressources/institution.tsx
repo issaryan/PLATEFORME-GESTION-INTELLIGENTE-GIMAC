@@ -47,7 +47,7 @@ export function creerInstitutionDescriptor({ t, ouvertureLiaison }: OptionsInsti
       { name: 'statut', label: 'institution.statut', kind: 'status', inList: true, inDetail: true, filterable: true },
       { name: 'codeParticipant', label: 'institution.codeParticipant', kind: 'mono', inList: true, inDetail: true },
       { name: 'codeIdentification', label: 'institution.codeIdentification', kind: 'mono', inDetail: true, inForm: true, help: 'institution.codeIdentification.aide' },
-      { name: 'codeBanqueBeac', label: 'institution.codeBanqueBeac', kind: 'mono', inDetail: true, inForm: true },
+      { name: 'codeBanqueBeac', label: 'institution.codeBanqueBeac', kind: 'mono', inDetail: true, inForm: true, help: 'institution.codeBanqueBeac.aide' },
       { name: 'datePriseDeContact', label: 'institution.datePriseDeContact', kind: 'date', inList: true, inDetail: true, inForm: 'create', sortable: true },
       { name: 'originePriseDeContact', label: 'institution.origine', kind: 'text', inDetail: true, inForm: true, help: 'institution.origine.aide' },
       { name: 'projetEnvisage', label: 'institution.projetEnvisage', kind: 'textarea', inDetail: true, inForm: true, width: 2 },

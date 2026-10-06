@@ -32,6 +32,7 @@ import cm.gimac.des.participant.repository.StatusTransitionRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -94,6 +95,13 @@ public class InstitutionLifecycleService implements ManageInstitutionUseCase {
         this.clock = clock;
     }
 
+    /** Fuseau des agents du GIMAC (Africa/Douala, UTC+1) : le jour d'un acte est celui de Douala, pas celui du serveur (UTC). */
+    private static final ZoneId FUSEAU = ZoneId.of("Africa/Douala");
+
+    private LocalDate aujourdhui() {
+        return LocalDate.now(clock.withZone(FUSEAU));
+    }
+
     // ------------------------------------------------------------------ étape 1 : prise de contact
 
     @Override
@@ -110,7 +118,7 @@ public class InstitutionLifecycleService implements ManageInstitutionUseCase {
             .ddrmOfficerId(acteur.id())
             .ddrmOfficerName(acteur.nom());
         appliquerFiche(i, c);
-        i.setContactedOn(c.datePriseDeContact() != null ? c.datePriseDeContact() : LocalDate.now(clock));
+        i.setContactedOn(c.datePriseDeContact() != null ? c.datePriseDeContact() : aujourdhui());
         Institution enregistree = institutions.save(i);
         for (AdhesionProperties.PieceDefinition def : adhesion.pieces()) {
             pieces.save(
@@ -405,7 +413,7 @@ public class InstitutionLifecycleService implements ManageInstitutionUseCase {
                 i.setAdmittedAt(maintenant);
                 // Le prononcé revient à l'approbateur (chef de la DDRM), pas au chargé qui l'a proposé.
                 i.setAdmittedById(t.getSecondApproverId() != null ? t.getSecondApproverId() : t.getApproverId());
-                i.setJoinedOn(LocalDate.now(clock));
+                i.setJoinedOn(aujourdhui());
                 i.setComplianceState(ComplianceState.CONFORME);
             }
             case CLOS_SANS_SUITE -> {

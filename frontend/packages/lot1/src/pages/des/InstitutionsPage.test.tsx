@@ -20,6 +20,11 @@ const page = (o: { services?: Services; langue?: 'fr' | 'en' | 'es'; chemin?: st
     session: sessionTest(o.permissions ?? CHARGE),
   })
 
+const remplirObligatoires = (c: HTMLElement) => {
+  fireEvent.change(c.querySelector('select[name="pays"]')!, { target: { value: 'GA' } })
+  fireEvent.change(c.querySelector('select[name="categorie"]')!, { target: { value: 'BANQUE' } })
+}
+
 describe('DES-05 Registre des institutions', () => {
   it('nominal : liste les institutions, leur statut et leur catégorie', async () => {
     page()
@@ -63,6 +68,7 @@ describe('DES-05 Registre des institutions', () => {
     const { container } = page({ services, chemin: '/des/institutions?formulaire=nouvelle' })
     const form = await waitFor(() => { const f = container.querySelector('form'); if (!f) throw new Error('formulaire absent'); return f })
     fireEvent.change(container.querySelector('input[name="nom"]')!, { target: { value: 'Banque Z' } })
+    remplirObligatoires(container)
     fireEvent.submit(form)
     expect(await screen.findByText(/déjà attribué à une autre institution/)).toBeTruthy()
     expect(screen.getByText('RQ-PAR-409')).toBeTruthy()
@@ -75,6 +81,7 @@ describe('DES-05 Registre des institutions', () => {
     const form = await waitFor(() => { const f = container.querySelector('form'); if (!f) throw new Error('formulaire absent'); return f })
     fireEvent.change(container.querySelector('input[name="nom"]')!, { target: { value: '  Banque Nouvelle  ' } })
     fireEvent.change(container.querySelector('input[name="codeIdentification"]')!, { target: { value: 'bnouCMCX' } })
+    remplirObligatoires(container)
     fireEvent.submit(form)
     await waitFor(() => expect(recu).toMatchObject({ nom: 'Banque Nouvelle', codeIdentification: 'BNOUCMCX', sigle: null }))
   })
@@ -94,6 +101,60 @@ describe('DES-05 Registre des institutions', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Annuler' }))
     // Retour à la liste : la recherche en cours est conservée.
     expect(await screen.findByText('Banque de Libreville')).toBeTruthy()
+  })
+  it('prise de contact : BIC, code BEAC et date normalisés avant l’envoi (date ISO, majuscules, sans espaces)', async () => {
+    let recu: unknown
+    const base = servicesSimules({ latenceMs: 0 })
+    const services = avec({ enregistrer: async (c) => { recu = c; return base.participant.enregistrer(c) } })
+    const { container } = page({ services, chemin: '/des/institutions?formulaire=nouvelle' })
+    const form = await waitFor(() => { const f = container.querySelector('form'); if (!f) throw new Error('formulaire absent'); return f })
+    fireEvent.change(container.querySelector('input[name="nom"]')!, { target: { value: 'Banque des Lagunes' } })
+    remplirObligatoires(container)
+    fireEvent.change(container.querySelector('input[name="codeIdentification"]')!, { target: { value: 'bdlg ga li xxx' } })
+    fireEvent.change(container.querySelector('input[name="codeBanqueBeac"]')!, { target: { value: '10005 001' } })
+    fireEvent.change(container.querySelector('input[name="datePriseDeContact"]')!, { target: { value: '12/01/2026' } })
+    fireEvent.submit(form)
+    await waitFor(() => expect(recu).toMatchObject({ codeIdentification: 'BDLGGALIXXX', codeBanqueBeac: '10005001', datePriseDeContact: '2026-01-12', pays: 'GA', categorie: 'BANQUE' }))
+  })
+  it('prise de contact : saisie non conforme signalée sous le champ, sans appel au service', async () => {
+    let appels = 0
+    const services = avec({ enregistrer: async () => { appels++; throw new Error('inattendu') } })
+    const { container } = page({ services, chemin: '/des/institutions?formulaire=nouvelle' })
+    const form = await waitFor(() => { const f = container.querySelector('form'); if (!f) throw new Error('formulaire absent'); return f })
+    fireEvent.change(container.querySelector('input[name="nom"]')!, { target: { value: 'Banque des Lagunes' } })
+    remplirObligatoires(container)
+    fireEvent.change(container.querySelector('input[name="codeIdentification"]')!, { target: { value: 'BDLGGALIX' } })
+    fireEvent.change(container.querySelector('input[name="codeBanqueBeac"]')!, { target: { value: '10005-001' } })
+    fireEvent.change(container.querySelector('input[name="datePriseDeContact"]')!, { target: { value: '01/01/2999' } })
+    fireEvent.submit(form)
+    expect((await screen.findAllByText(/Code BIC attendu : 8 ou 11 caractères/)).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/Code banque BEAC attendu : lettres et chiffres seulement/).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/ne peut pas être postérieure à aujourd'hui/).length).toBeGreaterThan(0)
+    expect(container.querySelector('input[name="codeIdentification"]')!.getAttribute('aria-invalid')).toBe('true')
+    expect(appels).toBe(0)
+  })
+  it.each([
+    ['fr', 'Code BIC refusé par le service', 'Le service a refusé la saisie'],
+    ['en', 'BIC code rejected by the service', 'The service rejected the input'],
+    ['es', 'Código BIC rechazado por el servicio', 'El servicio rechazó los datos'],
+  ] as const)('prise de contact : refus du service par champ (fieldErrors) affiché sous le champ en %s', async (langue, sousLeChamp, titre) => {
+    const services = avec({
+      enregistrer: async () => {
+        throw new ApiError(400, 'SAISIE_INVALIDE', 'Saisie refusée', 'RQ-PAR-400', { champs: { codeIdentification: 'must match "^[A-Z]{4}…"' } })
+      },
+    })
+    const { container } = page({ services, langue, chemin: '/des/institutions?formulaire=nouvelle' })
+    const form = await waitFor(() => { const f = container.querySelector('form'); if (!f) throw new Error('formulaire absent'); return f })
+    fireEvent.change(container.querySelector('input[name="nom"]')!, { target: { value: 'Banque des Lagunes' } })
+    remplirObligatoires(container)
+    fireEvent.change(container.querySelector('input[name="codeIdentification"]')!, { target: { value: 'BDLGGALI' } })
+    fireEvent.submit(form)
+    expect((await screen.findAllByText(new RegExp(sousLeChamp))).length).toBeGreaterThan(0)
+    expect(screen.getByText(new RegExp(titre))).toBeTruthy()
+    expect(screen.getByText('RQ-PAR-400')).toBeTruthy()
+    const champ = container.querySelector('input[name="codeIdentification"]')!
+    expect(champ.getAttribute('aria-invalid')).toBe('true')
+    expect(container.textContent).not.toMatch(cleBrute)
   })
   it.each(['en', 'es'] as const)('rendu en %s sans clé brute', async (langue) => {
     const { container } = page({ langue })

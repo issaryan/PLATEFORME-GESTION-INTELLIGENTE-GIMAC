@@ -348,7 +348,8 @@ public class ReferentialVersion implements Serializable {
     /** Actions proposées à l'interface (DES-12) selon l'état : l'écran ne recalcule pas la règle. */
     public List<String> actionsPermises() {
         if (etat == EtatVersionReferentiel.BROUILLON) {
-            return List.of("EDITER", "CONTROLER", "PUBLIER");
+            // MODIFIER : action attendue par le modélisateur (DES-12) pour ouvrir l'édition ; EDITER conservé.
+            return List.of("MODIFIER", "EDITER", "CONTROLER", "PUBLIER");
         }
         // Version en vigueur : cible d'une migration des liaisons ouvertes sur une version antérieure (HOM-03).
         return etat == EtatVersionReferentiel.PUBLIEE ? List.of("DERIVER", "MIGRER") : List.of("DERIVER");

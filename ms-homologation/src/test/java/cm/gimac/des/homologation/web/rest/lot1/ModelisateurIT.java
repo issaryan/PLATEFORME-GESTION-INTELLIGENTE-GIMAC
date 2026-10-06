@@ -108,6 +108,8 @@ class ModelisateurIT extends AbstractHomologationIT {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.versionId").value(id))
             .andExpect(jsonPath("$.etat").value("BROUILLON"))
+            // Le modélisateur (Modelisateur.tsx) n'ouvre l'édition que si MODIFIER est annoncé.
+            .andExpect(jsonPath("$.actionsPermises").value(contains("MODIFIER", "EDITER", "CONTROLER", "PUBLIER")))
             .andExpect(jsonPath("$.piloteId").value(INGENIEUR.toString()))
             .andExpect(jsonPath("$.noeuds.length()").value(4))
             .andExpect(jsonPath("$.noeuds[?(@.code=='A')].successeurs[*]").value(contains("B", "C")))
