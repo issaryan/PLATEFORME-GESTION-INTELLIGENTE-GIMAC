@@ -5,10 +5,13 @@ import cm.gimac.des.gateway.infrastructure.supervision.ActuatorWebClientAdapter;
 import cm.gimac.des.gateway.infrastructure.supervision.AlertmanagerWebClientAdapter;
 import cm.gimac.des.gateway.infrastructure.supervision.ClientsSupervision;
 import cm.gimac.des.gateway.infrastructure.supervision.JetonServiceSupervision;
+import cm.gimac.des.gateway.infrastructure.supervision.PrometheusSeriesAdapter;
 import cm.gimac.des.gateway.infrastructure.supervision.PrometheusWebClientAdapter;
 import cm.gimac.des.gateway.infrastructure.supervision.RoutesPasserelleAdapter;
+import cm.gimac.des.gateway.service.supervision.SeriesMetriquesService;
 import cm.gimac.des.gateway.service.supervision.SupervisionPlateformeService;
 import java.time.Clock;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import org.springframework.beans.factory.ObjectProvider;
@@ -49,6 +52,23 @@ public class SupervisionConfiguration {
             Clock.systemUTC()
         );
     }
+
+    /**
+     * Séries temporelles des graphiques de la supervision : client Prometheus au délai élargi (une requête
+     * de plage sur sept jours dépasse le délai des sondes instantanées).
+     */
+    @Bean
+    public SeriesMetriquesService seriesMetriquesService(SupervisionProperties proprietes) {
+        SupervisionProperties.Supervision s = proprietes.getSupervision();
+        Duration delai = s.getDelai().compareTo(DELAI_SERIES) > 0 ? s.getDelai() : DELAI_SERIES;
+        return new SeriesMetriquesService(
+            new PrometheusSeriesAdapter(ClientsSupervision.webClient(delai, s.getPrometheusUrl())),
+            s.getProjetConteneurs(),
+            Clock.systemUTC()
+        );
+    }
+
+    static final Duration DELAI_SERIES = Duration.ofSeconds(10);
 
     /** Services supervisés : la passerelle d'abord, puis gimac.services dans l'ordre de la configuration. */
     static SupervisionPlateformeService.Parametres parametres(SupervisionProperties proprietes) {

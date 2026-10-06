@@ -296,4 +296,35 @@ class AdaptateursSupervisionTest {
         assertThat(ClientsSupervision.webClient(DELAI, " ")).isNotNull();
         assertThat(PrometheusWebClientAdapter.lireVecteur(Map.of(), "instance")).isEmpty();
     }
+
+    @Test
+    @DisplayName("Séries : requête de plage (début, fin, pas) et lecture tolérante de la matrice")
+    void series() {
+        prometheus.json(
+            "/api/v1/query_range",
+            200,
+            "{\"status\":\"success\",\"data\":{\"resultType\":\"matrix\",\"result\":[" +
+            "{\"metric\":{\"application\":\"iam\"},\"values\":[[1759744800,\"1.5\"],[1759744815,\"NaN\"],[1759744830,\"x\"],[1759744845],[1759744860,\"+Inf\"],[1759744875,\"2\"]]}," +
+            "{\"metric\":{},\"values\":[[1759744800,\"9\"]]}]}}"
+        );
+        var adaptateur = new cm.gimac.des.gateway.infrastructure.supervision.PrometheusSeriesAdapter(ClientsSupervision.webClient(DELAI, prometheus.url()));
+        var series = adaptateur
+            .plage("sum by (application) (rate(x[2m]))", "application", Instant.ofEpochSecond(1759744800), Instant.ofEpochSecond(1759748400), Duration.ofSeconds(15))
+            .block();
+        assertThat(series).singleElement().satisfies(s -> {
+            assertThat(s.nom()).isEqualTo("iam");
+            assertThat(s.points()).extracting(cm.gimac.des.gateway.domain.supervision.SerieMetrique.Point::v).containsExactly(1.5, 2.0);
+            assertThat(s.points().get(0).t()).isEqualTo(1759744800000L);
+        });
+        assertThat(prometheus.recues()).anySatisfy(r ->
+            assertThat(java.net.URLDecoder.decode(r.requete(), java.nio.charset.StandardCharsets.UTF_8))
+                .contains("start=1759744800").contains("end=1759748400").contains("step=15").contains("query=sum by (application)")
+        );
+        var unique = cm.gimac.des.gateway.infrastructure.supervision.PrometheusSeriesAdapter.lireMatrice(
+            java.util.Map.of("data", java.util.Map.of("result", java.util.List.of(java.util.Map.of("metric", java.util.Map.of(), "values", java.util.List.of(java.util.List.of(1, "3")))))),
+            null
+        );
+        assertThat(unique).singleElement().satisfies(s -> assertThat(s.nom()).isEqualTo("plateforme"));
+        assertThat(cm.gimac.des.gateway.infrastructure.supervision.PrometheusSeriesAdapter.lireMatrice(java.util.Map.of(), "application")).isEmpty();
+    }
 }
