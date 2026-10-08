@@ -1,4 +1,4 @@
-import type { CatalogueModelisateur, EntreeCatalogue, EtapeReferentiel, Livrable, NoeudGraphe, PositionNoeud, ReferenceOperation, SaisieOperation } from '../modele/homologation'
+import type { CatalogueModelisateur, EntreeCatalogue, EtapeReferentiel, Livrable, NoeudGraphe, PositionNoeud, ReferenceOperation, SaisieOperation, SignatureReferentiel } from '../modele/homologation'
 import type { SegmentParcours } from '../modele/parcours'
 
 // Adaptateurs du modélisateur de processus (DES-12, D-77 §6) : géométrie du canevas, saisie de la modale et
@@ -127,6 +127,10 @@ export function saisieDe(o: ReferenceOperation): SaisieOperation {
     declencheur: o.geste === 'EVENEMENT_EXTERNE' ? o.declencheur ?? null : null, particularite: o.particularite ?? null, position: o.position ?? null,
     phase: o.phase ?? null, partie: o.partie ?? null, serviceCode: o.serviceCode ?? null, natureCouverture: o.natureCouverture ?? null,
     preuveAttendue: o.preuveAttendue ?? null, idScenario: o.idScenario ?? null, fonctionResponsable: o.fonctionResponsable ?? null, grille: o.grille ?? null,
+    // D-91 : signatures (toujours envoyées : [] les retire) ; D-93 : vue et tâche aux consultés (absentes : conservées).
+    signatures: (o.signatures ?? []).map((x) => ({ ...x, porte: [...(x.porte ?? [])] })),
+    ...(o.vue !== undefined ? { vue: o.vue } : {}),
+    ...(o.consultesRecoiventTache !== undefined ? { consultesRecoiventTache: !!o.consultesRecoiventTache } : {}),
   }
 }
 
@@ -137,10 +141,15 @@ export function operationVierge(etape: ReferenceOperation['etape'] = null, segme
     predecesseurs: [], delaiJours: 3, grain: 'OPERATION', plateforme: null, cle: false, secret: false, oubliSansSymptome: false, pivot: false, valeurReference: null,
     livrables: [], geste: 'DEPOSER_PREUVE', jalon: null, declencheur: null, particularite: null, position: null,
     phase: null, partie: null, serviceCode: null, natureCouverture: null, idScenario: null, fonctionResponsable: null, preuveAttendue: null,
+    signatures: [], vue: null, consultesRecoiventTache: false,
   }
 }
 
 export const livrableVierge = (n: number, deposant: Livrable['deposant']): Livrable => ({ code: `L${n}`, libelle: '', nature: 'LIVRABLE', deposant, typesPieces: ['application/pdf'], obligatoire: true })
+/** Signature vierge (D-91) : code S<n>, ordre à la suite, livrables portés à choisir. */
+export const signatureVierge = (n: number): SignatureReferentiel => ({ code: `S${n}`, libelle: '', signataire: null, ordre: n, porte: [] })
+/** Code d'une signature (D-91 §5.4). */
+export const CODE_SIGNATURE = /^[A-Z][A-Z0-9_]{1,39}$/
 
 export const CODE_OPERATION = /^[A-Z0-9][A-Z0-9_-]*$/
 
@@ -169,6 +178,18 @@ export function erreursSaisie(o: ReferenceOperation, creation: boolean, codesExi
   if ((o.valeurReference ?? '').length > 120) e.valeurReference = 'modelisateur.erreur.long'
   if (o.code && o.predecesseurs.includes(o.code)) e.predecesseurs = 'erreur.HOM_OPERATION_SELF_PREDECESSOR'
   const codes = o.livrables.map((l) => l.code.trim())
+  const signatures = o.signatures ?? []
+  const codesSig = signatures.map((x) => x.code.trim())
+  signatures.forEach((x, i) => {
+    if (!x.code.trim()) e[`signatures.${i}.code`] = 'commun.champObligatoire'
+    else if (!CODE_SIGNATURE.test(x.code.trim())) e[`signatures.${i}.code`] = 'modelisateur.erreur.codeSignature'
+    else if (codesSig.indexOf(x.code.trim()) !== i) e[`signatures.${i}.code`] = 'modelisateur.erreur.signatureDupliquee'
+    if (!x.libelle.trim()) e[`signatures.${i}.libelle`] = 'commun.champObligatoire'
+    else if (x.libelle.length > 200) e[`signatures.${i}.libelle`] = 'modelisateur.erreur.long'
+    if (!x.signataire) e[`signatures.${i}.signataire`] = 'commun.champObligatoire'
+    if (!Number.isInteger(x.ordre) || x.ordre < 1 || x.ordre > 99) e[`signatures.${i}.ordre`] = 'modelisateur.erreur.ordreSignature'
+    if (!x.porte.length) e[`signatures.${i}.porte`] = 'modelisateur.erreur.signatureSansLivrable'
+  })
   o.livrables.forEach((l, i) => {
     if (!l.code.trim()) e[`livrables.${i}.code`] = 'commun.champObligatoire'
     else if (codes.indexOf(l.code.trim()) !== i) e[`livrables.${i}.code`] = 'modelisateur.erreur.livrableDuplique'
@@ -179,10 +200,11 @@ export function erreursSaisie(o: ReferenceOperation, creation: boolean, codesExi
 }
 
 /** Onglet de la modale qui porte un champ en erreur (pour y conduire l'utilisateur). */
-export function ongletDuChamp(champ: string): 'general' | 'roles' | 'livrables' | 'execution' | 'chronologie' {
+export function ongletDuChamp(champ: string): 'general' | 'roles' | 'livrables' | 'signatures' | 'execution' | 'chronologie' {
   if (champ.startsWith('livrables')) return 'livrables'
+  if (champ.startsWith('signatures')) return 'signatures'
   if (['responsable', 'validateur', 'consultes', 'informes', 'externes'].includes(champ)) return 'roles'
-  if (['geste', 'jalon', 'declencheur', 'particularite', 'plateforme', 'grain', 'valeurReference'].includes(champ)) return 'execution'
+  if (['geste', 'jalon', 'declencheur', 'particularite', 'plateforme', 'grain', 'valeurReference', 'vue'].includes(champ)) return 'execution'
   if (['predecesseurs', 'delaiJours'].includes(champ)) return 'chronologie'
   return 'general'
 }
@@ -192,7 +214,7 @@ export function libelleEntree(t: (cle: string, o?: Record<string, unknown>) => s
   return prefixe ? t(`${prefixe}.${e.code}`, { defaultValue: e.libelle }) : e.libelle
 }
 
-/** Libellé d'une opération du parcours : celui du service s'il est servi, sinon la clé parcours.op.<rang>. */
-export function libelleOperation(t: (cle: string, o?: Record<string, unknown>) => string, o: { rang: string; libelle?: string | null }): string {
-  return o.libelle || t(`parcours.op.${o.rang}`, { defaultValue: o.rang })
+/** Libellé d'une opération du parcours : celui que sert le référentiel publié (D-93), son code à défaut. */
+export function libelleOperation(_t: unknown, o: { rang: string; libelle?: string | null }): string {
+  return o.libelle || o.rang
 }

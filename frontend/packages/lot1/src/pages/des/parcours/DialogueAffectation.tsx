@@ -5,35 +5,23 @@ import type { DossierLiaison, Fonction } from '../../../modele/parcours'
 import { useAffecterRessources, usePersonnes } from '../../../hooks/parcours'
 import { useErreurService } from '../liaisons/communs'
 
-// Étape 4, rang 6 : affectation des ressources du projet par les chefs des deux départements, une personne
-// par fonction (CR §7.2.2 : responsable fonctionnel, responsable technique, et les intervenants des pôles).
-// Le conducteur est désigné à part (D-58). Le service vérifie l'ouverture de l'étape et les habilitations.
+// Affectation des ressources du projet (vue AFFECTATION, D-93) par les chefs des deux départements : une personne par
+// fonction interne que tient le RACI de la liaison (intervenants servis), sans liste figée de fonctions. Le conducteur
+// est désigné à part (D-58). Le service vérifie l'ouverture de l'étape et les habilitations.
 
-/** Fonctions affectées sur la liaison ; les deux premières sont les responsables exigés du dossier numérique. */
-const FONCTIONS: { fonction: Fonction; requise: boolean }[] = [
-  { fonction: 'DDRM', requise: true },
-  { fonction: 'SNA', requise: true },
-  { fonction: 'POLE_RESEAU', requise: false },
-  { fonction: 'POLE_SYSTEME', requise: false },
-  { fonction: 'PRODUCTION_MONETIQUE', requise: false },
-  { fonction: 'RSSI', requise: false },
-  { fonction: 'EXPLOITATION', requise: false },
-]
+/** Fonctions qui ne s'affectent pas ici (D-93 §8.1 : 422 HOM_FONCTION_NON_AFFECTABLE). */
+export const NON_AFFECTABLES = ['PARTICIPANT', 'CONDUCTEUR']
 
-function ChoixPersonne({ fonction, requise, valeur, erreur, onChange }: { fonction: Fonction; requise: boolean; valeur: string; erreur?: string; onChange: (v: string) => void }) {
+function ChoixPersonne({ fonction, libelle, valeur, onChange }: { fonction: Fonction; libelle: string; valeur: string; onChange: (v: string) => void }) {
   const { t } = useTranslation()
   const personnes = usePersonnes(fonction)
-  const role = fonction === 'DDRM' ? t('parcoursAffectation.responsableFonctionnel') : fonction === 'SNA' ? t('parcoursAffectation.responsableTechnique') : t(`parcours.fonction.${fonction}`)
   return (
     <Select
       name={`affectation-${fonction}`}
-      label={role}
-      required={requise}
-      help={fonction === 'DDRM' || fonction === 'SNA' ? t(`parcours.fonction.${fonction}`) : undefined}
+      label={libelle}
       value={valeur}
-      options={[{ value: '', label: t(requise ? 'parcoursOuverture.choisir' : 'parcoursAffectation.nonAffecte') }, ...(personnes.data ?? []).map((p) => ({ value: p.id, label: p.nom }))]}
+      options={[{ value: '', label: t('parcoursAffectation.nonAffecte') }, ...(personnes.data ?? []).map((p) => ({ value: p.id, label: p.nom }))]}
       disabled={personnes.isPending}
-      error={erreur}
       onChange={onChange}
     />
   )
@@ -43,17 +31,15 @@ export function DialogueAffectation({ dossier, onFermer, onAffecte }: { dossier:
   const { t } = useTranslation()
   const affecter = useAffecterRessources()
   const erreurService = useErreurService()
-  const [choix, setChoix] = useState<Partial<Record<Fonction, string>>>({
-    ...(dossier.responsableFonctionnel ? { DDRM: dossier.responsableFonctionnel.id } : {}),
-    ...(dossier.responsableTechnique ? { SNA: dossier.responsableTechnique.id } : {}),
-  })
+  // Fonctions internes du RACI de la liaison (D-93 §8.5), personne déjà désignée proposée d'emblée.
+  const fonctions = (dossier.intervenants ?? []).filter((i) => !i.externe && !NON_AFFECTABLES.includes(i.fonction))
+  const [choix, setChoix] = useState<Partial<Record<Fonction, string>>>(() => Object.fromEntries(fonctions.filter((i) => i.personne && !i.aAffecter).map((i) => [i.fonction, i.personne!.id])))
   const [tente, setTente] = useState(false)
-  const manquantes = FONCTIONS.filter((f) => f.requise && !choix[f.fonction]).map((f) => f.fonction)
+  const affectations = fonctions.flatMap(({ fonction }) => (choix[fonction] ? [{ fonction, personneId: choix[fonction] as string }] : []))
   const refus = erreurService(affecter.error)
   const soumettre = () => {
     setTente(true)
-    if (manquantes.length) return
-    const affectations = FONCTIONS.flatMap(({ fonction }) => (choix[fonction] ? [{ fonction, personneId: choix[fonction] as string }] : []))
+    if (!affectations.length) return
     affecter.mutate({ liaisonId: dossier.id, affectations }, { onSuccess: onAffecte })
   }
   return (
@@ -83,16 +69,12 @@ export function DialogueAffectation({ dossier, onFermer, onAffecte }: { dossier:
             {refus.message}
           </InlineAlert>
         ) : null}
+        {tente && !affectations.length ? <InlineAlert level="warn">{t('parcoursAffectation.erreur.aucune')}</InlineAlert> : null}
+        {fonctions.length ? null : <InlineAlert level="info">{t('parcoursAffectation.aucuneFonction')}</InlineAlert>}
         <div className="gm-row" style={{ alignItems: 'flex-start', gap: 'var(--gm-space-4)' }}>
-          {FONCTIONS.map(({ fonction, requise }) => (
+          {fonctions.map(({ fonction, libelle }) => (
             <div key={fonction} style={{ flex: '1 1 240px', minWidth: 0 }}>
-              <ChoixPersonne
-                fonction={fonction}
-                requise={requise}
-                valeur={choix[fonction] ?? ''}
-                erreur={tente && manquantes.includes(fonction) ? t('parcoursAffectation.erreur.requise') : undefined}
-                onChange={(v) => setChoix((c) => ({ ...c, [fonction]: v }))}
-              />
+              <ChoixPersonne fonction={fonction} libelle={libelle} valeur={choix[fonction] ?? ''} onChange={(v) => setChoix((c) => ({ ...c, [fonction]: v }))} />
             </div>
           ))}
         </div>

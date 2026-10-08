@@ -6,6 +6,8 @@ public enum EtatOperationParcours {
     A_FAIRE,
     EN_COURS,
     EN_VALIDATION,
+    /** Travail accompli et validé, en attente des signatures exigées (D-91), dans leur ordre. */
+    EN_SIGNATURE,
     FAITE,
     BLOQUEE,
     SANS_OBJET;
@@ -17,6 +19,6 @@ public enum EtatOperationParcours {
 
     /** Opération qui figure parmi les tâches d'un acteur. */
     public boolean enCours() {
-        return this == A_FAIRE || this == EN_COURS || this == BLOQUEE || this == EN_VALIDATION;
+        return this == A_FAIRE || this == EN_COURS || this == BLOQUEE || this == EN_VALIDATION || this == EN_SIGNATURE;
     }
 }

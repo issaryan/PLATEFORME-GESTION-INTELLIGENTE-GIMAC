@@ -12,6 +12,7 @@ import cm.gimac.des.iam.domain.compte.PresentationProfil;
 import cm.gimac.des.iam.domain.compte.Profil;
 import cm.gimac.des.iam.domain.compte.SessionCompte;
 import cm.gimac.des.iam.domain.service.PolitiqueMotDePasse;
+import cm.gimac.des.iam.domain.service.ReglesProfils;
 import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.ProcessingException;
 import jakarta.ws.rs.WebApplicationException;
@@ -77,6 +78,8 @@ public class KeycloakAnnuaire implements Annuaire {
     static final String PROFIL_CREE = "gimac_profil_cree";
     /** Libellé d'un profil (D-86, docs/lot1/profils-organisation.md §2), attribut du rôle composite. */
     static final String LIBELLE = "gimac_libelle";
+    /** Profil externe (D-94, docs/lot1/ecrans-par-configuration.md) : compte d'institution, portail. */
+    static final String EXTERNE = "gimac_externe";
     private static final Pattern ERREUR = Pattern.compile("\"error\"\\s*:\\s*\"([^\"]+)\"");
     private static final Pattern CODE_EXTENSION = Pattern.compile("\"code\"\\s*:\\s*\"([^\"]+)\"");
     private static final Pattern JETON_RAFRAICHISSEMENT = Pattern.compile("\"refresh_token\"\\s*:\\s*\"([^\"]+)\"");
@@ -96,7 +99,6 @@ public class KeycloakAnnuaire implements Annuaire {
     private final Keycloak keycloak;
     private final String url;
     private final String realm;
-    private final Set<String> privilegies;
     private final String clientConnexion;
     private final String secretConnexion;
     private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
@@ -107,11 +109,10 @@ public class KeycloakAnnuaire implements Annuaire {
      * @param clientConnexion client à octroi direct, mot de passe seul (gimac-connexion)
      * @param secretConnexion son secret, fourni par l'environnement
      */
-    public KeycloakAnnuaire(Keycloak keycloak, String url, String realm, Set<String> privilegies, String clientConnexion, String secretConnexion) {
+    public KeycloakAnnuaire(Keycloak keycloak, String url, String realm, String clientConnexion, String secretConnexion) {
         this.keycloak = keycloak;
         this.url = url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
         this.realm = realm;
-        this.privilegies = Set.copyOf(privilegies);
         this.clientConnexion = clientConnexion;
         this.secretConnexion = secretConnexion;
     }
@@ -160,6 +161,26 @@ public class KeycloakAnnuaire implements Annuaire {
                 for (UserRepresentation u : page) {
                     if (u.getServiceAccountClientId() == null && !u.getUsername().startsWith("service-account-")) {
                         comptes.add(vers(u, profilsParCompte.getOrDefault(u.getId(), Set.of()), secondFacteur(u.getId())));
+                    }
+                }
+                debut += page.size();
+            } while (page.size() == 200);
+            return comptes;
+        });
+    }
+
+    /** Comptes actifs, lus par pages de 200 sans profils ni second facteur (une requête par page). */
+    @Override
+    public List<Compte> actifs() {
+        return appel(() -> {
+            List<Compte> comptes = new ArrayList<>();
+            int debut = 0;
+            List<UserRepresentation> page;
+            do {
+                page = r().users().list(debut, 200);
+                for (UserRepresentation u : page) {
+                    if (Boolean.TRUE.equals(u.isEnabled()) && u.getServiceAccountClientId() == null && !u.getUsername().startsWith("service-account-")) {
+                        comptes.add(vers(u, Set.of(), false));
                     }
                 }
                 debut += page.size();
@@ -295,6 +316,18 @@ public class KeycloakAnnuaire implements Annuaire {
             r().users().searchByAttributes(0, EQUIPE_MAX, null, true, false, UNITE + ":" + unite).stream()
                 .filter(u -> u.getServiceAccountClientId() == null && !u.getUsername().startsWith("service-account-"))
                 .filter(u -> u.getAttributes() != null && unite.equals(premier(u.getAttributes(), UNITE)))
+                .map(u -> vers(u, Set.of(), false))
+                .toList()
+        );
+    }
+
+    /** Recherche par attribut (q=institution_id:X, correspondance exacte), comptes actifs seulement. */
+    @Override
+    public List<Compte> parInstitution(String institutionId) {
+        return appel(() ->
+            r().users().searchByAttributes(0, EQUIPE_MAX, true, true, false, INSTITUTION + ":" + institutionId).stream()
+                .filter(u -> u.getServiceAccountClientId() == null && !u.getUsername().startsWith("service-account-"))
+                .filter(u -> u.getAttributes() != null && institutionId.equals(premier(u.getAttributes(), INSTITUTION)))
                 .map(u -> vers(u, Set.of(), false))
                 .toList()
         );
@@ -645,19 +678,98 @@ public class KeycloakAnnuaire implements Annuaire {
         });
     }
 
+    /**
+     * Profils avec leurs permissions et leur nombre de titulaires ; privilégié par ses permissions (IAM_* ou
+     * PLATFORM_*), externe par son attribut gimac_externe ou à défaut une permission *_PORTAL_* (D-94).
+     */
     @Override
     public List<Profil> profils() {
         return appel(() ->
             r().roles().list(false).stream()
                 .filter(KeycloakAnnuaire::estProfil)
                 .map(role -> {
-                    Set<String> permissions = new java.util.TreeSet<>();
-                    r().roles().get(role.getName()).getRoleComposites().stream().map(RoleRepresentation::getName).filter(n -> PERMISSION.matcher(n).matches() && !n.startsWith("ROLE_")).forEach(permissions::add);
+                    Set<String> permissions = permissionsDuRole(role.getName());
                     long titulaires = r().roles().get(role.getName()).getUserMembers(0, 1000).size();
-                    return new Profil(role.getName(), libelle(role), role.getDescription(), permissions, privilegies.contains(role.getName()), titulaires, false);
+                    return new Profil(role.getName(), libelle(role), role.getDescription(), permissions, ReglesProfils.privilegie(permissions), titulaires, false, null, null, ReglesProfils.externe(attributExterne(role), permissions));
                 })
                 .toList()
         );
+    }
+
+    private Set<String> permissionsDuRole(String code) {
+        Set<String> permissions = new java.util.TreeSet<>();
+        r().roles().get(code).getRoleComposites().stream().map(RoleRepresentation::getName).filter(n -> PERMISSION.matcher(n).matches() && !n.startsWith("ROLE_")).forEach(permissions::add);
+        return permissions;
+    }
+
+    /** Compositions des profils, sans compter les titulaires (D-94). */
+    @Override
+    public Map<String, Set<String>> compositions() {
+        return appel(() -> {
+            Map<String, Set<String>> m = new java.util.TreeMap<>();
+            r().roles().list(false).stream().filter(KeycloakAnnuaire::estProfil).forEach(role -> m.put(role.getName(), permissionsDuRole(role.getName())));
+            return m;
+        });
+    }
+
+    /** Profils externes : attribut gimac_externe ; composition lue seulement pour les rôles sans l'attribut (repli). */
+    @Override
+    public Set<String> profilsExternes() {
+        return appel(() -> {
+            Set<String> s = new java.util.TreeSet<>();
+            r().roles().list(false).stream()
+                .filter(KeycloakAnnuaire::estProfil)
+                .filter(role -> {
+                    Boolean a = attributExterne(role);
+                    return a != null ? a : ReglesProfils.externe(null, permissionsDuRole(role.getName()));
+                })
+                .forEach(role -> s.add(role.getName()));
+            return s;
+        });
+    }
+
+    @Override
+    public Map<String, Boolean> attributsExternes() {
+        return appel(() -> {
+            Map<String, Boolean> m = new java.util.TreeMap<>();
+            r().roles().list(false).stream().filter(KeycloakAnnuaire::estProfil).forEach(role -> {
+                Boolean a = attributExterne(role);
+                if (a != null) {
+                    m.put(role.getName(), a);
+                }
+            });
+            return m;
+        });
+    }
+
+    /** Attribut gimac_externe du rôle (représentation complète relue), les autres attributs conservés. */
+    @Override
+    public void definirExterne(String code, boolean externe) {
+        try {
+            faire(() -> {
+                var role = r().roles().get(code);
+                RoleRepresentation rep = role.toRepresentation();
+                Map<String, List<String>> attributs = new HashMap<>(rep.getAttributes() == null ? Map.of() : rep.getAttributes());
+                attributs.put(EXTERNE, List.of(String.valueOf(externe)));
+                rep.setAttributes(attributs);
+                role.update(rep);
+            });
+        } catch (IamException e) {
+            if ("IAM_ACCOUNT_NOT_FOUND".equals(e.code())) {
+                throw IamException.introuvable("IAM_PROFILE_NOT_FOUND", code);
+            }
+            throw e;
+        }
+    }
+
+    /** Attribut gimac_externe du rôle : vrai ou faux s'il est posé (casse ignorée), nul sinon. */
+    static Boolean attributExterne(RoleRepresentation role) {
+        Map<String, List<String>> a = role.getAttributes();
+        String v = a == null ? null : premier(a, EXTERNE);
+        if (v == null || v.isBlank()) {
+            return null;
+        }
+        return "true".equalsIgnoreCase(v.strip());
     }
 
     @Override

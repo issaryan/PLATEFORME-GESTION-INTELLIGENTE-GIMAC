@@ -20,6 +20,8 @@ public enum ActionProcessus {
     ETAPE_TERMINEE,
     REAFFECTEE,
     DEPART,
+    /** Intervenant revu après un changement d'organisation (profil retiré, changement d'unité, nouveau chef, D-93). */
+    ORGANISATION,
     SUSPENDUE,
     REPRISE,
     ANNULEE,

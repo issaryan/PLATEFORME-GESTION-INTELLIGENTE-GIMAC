@@ -7,7 +7,6 @@ import cm.gimac.des.certification.domain.enumeration.EtatFicheChangement;
 import cm.gimac.des.certification.domain.enumeration.EtatVisa;
 import cm.gimac.des.certification.domain.enumeration.NatureVisa;
 import cm.gimac.des.certification.domain.enumeration.ObjetSignature;
-import cm.gimac.des.certification.domain.enumeration.RoleSignature;
 import cm.gimac.des.certification.domain.enumeration.TypeAttestation;
 import java.time.Instant;
 import java.util.List;
@@ -57,20 +56,21 @@ class EntitesDecisionTest {
     }
 
     @Test
-    @DisplayName("Signature : décision et scellement restitués ; fonction déduite de la qualité")
+    @DisplayName("Signature : décision et scellement restitués ; fonction et code lus dans l'étape du circuit")
     void signature() {
         UUID id = UUID.randomUUID();
         UUID jeton = UUID.randomUUID();
         UUID liaison = UUID.randomUUID();
         SignatureVerrou s = new SignatureVerrou(
             id,
-            new SignatureVerrou.Decision(liaison, ObjetSignature.VISA, RoleSignature.DIRECTION_GENERALE, "u", "DG", false, "Motif", T, "o"),
+            new SignatureVerrou.Decision(liaison, ObjetSignature.VISA, new EtapeSignature("DIRECTION_GENERALE", "Visa", "DG", 1, false), "u", "DG", false, "Motif", T, "o"),
             new SignatureVerrou.Scellement("d", "a", "c", T, jeton)
         );
         assertThat(s.getId()).isEqualTo(id);
         assertThat(s.getLiaisonId()).isEqualTo(liaison);
         assertThat(s.getSignataireId()).isEqualTo("u");
         assertThat(s.getFonction()).isEqualTo("DG");
+        assertThat(s.getEtape()).isEqualTo("DIRECTION_GENERALE");
         assertThat(s.isFavorable()).isFalse();
         assertThat(s.getMotif()).isEqualTo("Motif");
         assertThat(s.getHorodatage()).isEqualTo(T);
@@ -115,5 +115,26 @@ class EntitesDecisionTest {
         assertThat(at.estFournie()).isFalse();
         assertThat(at.getMotifRejet()).isEqualTo("Faux");
         assertThat(at.getVerifieeParNom()).isNull();
+    }
+
+    @Test
+    @DisplayName("D-94 : circuit repris par Liquibase lu par le convertisseur ; aller-retour JSON")
+    void circuitRepris() {
+        CircuitSignatureConverter c = new CircuitSignatureConverter();
+        String repris =
+            "[{\"code\":\"GIMAC\",\"libelle\":\"Signature du GIMAC (chef du DES)\",\"fonction\":\"CHEF_DES\",\"ordre\":1,\"portail\":false}," +
+            "{\"code\":\"PARTICIPANT\",\"libelle\":\"Signature du participant\",\"fonction\":\"PARTICIPANT\",\"ordre\":1,\"portail\":true}]";
+        java.util.List<EtapeSignature> circuit = c.convertToEntityAttribute(repris);
+        org.assertj.core.api.Assertions.assertThat(circuit).containsExactly(
+            new EtapeSignature("GIMAC", "Signature du GIMAC (chef du DES)", "CHEF_DES", 1, false),
+            new EtapeSignature("PARTICIPANT", "Signature du participant", "PARTICIPANT", 1, true)
+        );
+        org.assertj.core.api.Assertions.assertThat(c.convertToEntityAttribute(c.convertToDatabaseColumn(circuit))).isEqualTo(circuit);
+        org.assertj.core.api.Assertions.assertThat(c.convertToDatabaseColumn(java.util.List.of())).isNull();
+        org.assertj.core.api.Assertions.assertThat(c.convertToEntityAttribute(" ")).isEmpty();
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> c.convertToEntityAttribute("pas du json")).isInstanceOf(IllegalStateException.class);
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> c.convertToEntityAttribute("[{\"code\":\"x\",\"fonction\":\"DG\",\"ordre\":1}]")).isInstanceOf(
+            RuntimeException.class
+        );
     }
 }

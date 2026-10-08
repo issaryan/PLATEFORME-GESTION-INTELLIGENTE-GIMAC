@@ -24,15 +24,14 @@ public final class CatalogueServices {
         Map.entry("DELEGATAIRE", "Délégataire")
     );
 
-    /** Services offerts par type de projet (CR, annexe A ; délégataire : services carte), dans l'ordre d'affichage. */
-    private static final List<String> CARTE = List.of("RETRAIT", "PAIEMENT", "TRANSFERT", "COMMERCE_ELECTRONIQUE");
-    private static final List<String> MOBILE = List.of("PAIEMENT_MARCHAND", "REMITTANCE", "FACTURE", "CASH_IN");
-
     private CatalogueServices() {}
 
-    /** Catalogue du type de projet : périmètre par défaut au cadrage quand aucun service souscrit n'est connu. */
+    /**
+     * Catalogue d'un type repris : périmètre par défaut au cadrage quand aucun service souscrit n'est connu (porté
+     * par le modèle du type depuis D-91, {@link ModeleTypeProjet#catalogueServices()}).
+     */
     public static List<String> parType(TypeProjet type) {
-        return type == TypeProjet.PAIEMENT_MOBILE ? MOBILE : CARTE;
+        return ModeleTypeProjet.parDefaut(type).catalogueServices();
     }
 
     public static String libelle(String code) {

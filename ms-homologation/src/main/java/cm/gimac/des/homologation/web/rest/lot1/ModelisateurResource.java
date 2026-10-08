@@ -2,16 +2,18 @@ package cm.gimac.des.homologation.web.rest.lot1;
 
 import cm.gimac.des.homologation.application.port.in.GererEtapesReferentielUseCase;
 import cm.gimac.des.homologation.application.port.in.ManageReferentialUseCase;
-import cm.gimac.des.homologation.application.port.out.CollaboratorDirectoryPort;
+import cm.gimac.des.homologation.application.usecase.PorteursPermission;
 import cm.gimac.des.homologation.application.usecase.ReferentialLifecycleService;
+import cm.gimac.des.homologation.domain.DefinitionTypeProjet;
 import cm.gimac.des.homologation.domain.EtapeReferentiel;
 import cm.gimac.des.homologation.domain.HomologationException;
 import cm.gimac.des.homologation.domain.ReferenceOperation;
 import cm.gimac.des.homologation.domain.ReferenceOperationData;
 import cm.gimac.des.homologation.domain.ReferentialVersion;
-import cm.gimac.des.homologation.domain.cadrage.CollaboratorView;
 import cm.gimac.des.homologation.domain.enumeration.EtatVersionReferentiel;
 import cm.gimac.des.homologation.domain.parcours.CalendrierDag;
+import cm.gimac.des.homologation.domain.parcours.CatalogueFonctions;
+import cm.gimac.des.homologation.domain.parcours.ModeleTypeProjet;
 import cm.gimac.des.homologation.domain.parcours.CouleurEtape;
 import cm.gimac.des.homologation.domain.parcours.Declencheurs;
 import cm.gimac.des.homologation.domain.parcours.EtapeCode;
@@ -27,6 +29,7 @@ import cm.gimac.des.homologation.domain.parcours.SegmentParcours;
 import cm.gimac.des.homologation.domain.service.ReferentialCompletenessChecker;
 import cm.gimac.des.homologation.domain.service.ReferentialGraphValidator;
 import cm.gimac.des.homologation.domain.service.VisibiliteReferentiel;
+import cm.gimac.des.homologation.repository.DefinitionTypeProjetRepository;
 import cm.gimac.des.homologation.repository.ReferentialVersionRepository;
 import cm.gimac.des.homologation.web.rest.lot1.ReferentialViews.ArcRequest;
 import cm.gimac.des.homologation.web.rest.lot1.ReferentialViews.CatalogueVue;
@@ -52,7 +55,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -94,9 +96,16 @@ public class ModelisateurResource {
     private final GererEtapesReferentielUseCase etapesUseCase;
     private final ReferentialVersionRepository versions;
     private final ReferentialGraphValidator validator;
+    private cm.gimac.des.homologation.application.usecase.AttestationsTypeProjet attestations;
+
+    /** Attestations exigées par le modèle du type (gestes de certification attendus, §10.5). */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setAttestations(cm.gimac.des.homologation.application.usecase.AttestationsTypeProjet attestations) {
+        this.attestations = attestations;
+    }
     private final ReferentialCompletenessChecker completude;
-    private final CollaboratorDirectoryPort annuaire;
-    private final List<String> profilsPilote;
+    private final PorteursPermission porteurs;
+    private final DefinitionTypeProjetRepository typesProjet;
 
     public ModelisateurResource(
         ManageReferentialUseCase useCase,
@@ -104,21 +113,21 @@ public class ModelisateurResource {
         ReferentialVersionRepository versions,
         ReferentialGraphValidator validator,
         ReferentialCompletenessChecker completude,
-        CollaboratorDirectoryPort annuaire,
-        @Value("${gimac.homologation.referentiel.profils-pilote:" + ReferentialLifecycleService.PROFILS_EDITION + "}") List<String> profilsPilote
+        PorteursPermission porteurs,
+        DefinitionTypeProjetRepository typesProjet
     ) {
+        this.typesProjet = typesProjet;
         this.useCase = useCase;
         this.etapesUseCase = etapesUseCase;
         this.versions = versions;
         this.validator = validator;
         this.completude = completude;
-        this.annuaire = annuaire;
-        this.profilsPilote = List.copyOf(profilsPilote);
+        this.porteurs = porteurs;
     }
 
     /** Création d'une opération au code fourni dans le corps. */
     @PostMapping("/{id}/operations")
-    @PreAuthorize("hasAuthority('HOM_REFERENTIEL_EDIT')")
+    @PreAuthorize("hasAnyAuthority('HOM_REFERENTIEL_EDIT', 'REF_METIER_ADMIN')")
     @Transactional
     public ResponseEntity<OperationVue> creerOperation(@PathVariable UUID id, @Valid @RequestBody ReferenceOperationData data) {
         ReferenceOperation op = useCase.creerOperation(id, data.code(), data);
@@ -127,7 +136,7 @@ public class ModelisateurResource {
 
     /** Retrait d'une opération ; son code disparaît des prédécesseurs des autres. */
     @DeleteMapping("/{id}/operations/{code}")
-    @PreAuthorize("hasAuthority('HOM_REFERENTIEL_EDIT')")
+    @PreAuthorize("hasAnyAuthority('HOM_REFERENTIEL_EDIT', 'REF_METIER_ADMIN')")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void supprimerOperation(@PathVariable UUID id, @PathVariable String code) {
         useCase.supprimerOperation(id, code);
@@ -135,7 +144,7 @@ public class ModelisateurResource {
 
     /** Positions des opérations dans le canevas ({@code [{code, x, y}]}). */
     @PutMapping("/{id}/positions")
-    @PreAuthorize("hasAuthority('HOM_REFERENTIEL_EDIT')")
+    @PreAuthorize("hasAnyAuthority('HOM_REFERENTIEL_EDIT', 'REF_METIER_ADMIN')")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void placer(@PathVariable UUID id, @Valid @RequestBody List<@Valid PositionRequest> positions) {
         Map<String, Position> m = new LinkedHashMap<>();
@@ -145,7 +154,7 @@ public class ModelisateurResource {
 
     /** Arc {@code de} vers {@code vers} : ajouté ({@code present}) ou retiré ; rend l'opération {@code vers}. */
     @PutMapping("/{id}/arcs")
-    @PreAuthorize("hasAuthority('HOM_REFERENTIEL_EDIT')")
+    @PreAuthorize("hasAnyAuthority('HOM_REFERENTIEL_EDIT', 'REF_METIER_ADMIN')")
     @Transactional
     public OperationVue arc(@PathVariable UUID id, @Valid @RequestBody ArcRequest r) {
         return OperationVue.de(useCase.arc(id, r.de(), r.vers(), r.present()));
@@ -153,7 +162,7 @@ public class ModelisateurResource {
 
     /** Pilote du brouillon : compte portant HOM_REFERENTIEL_EDIT ; sa tâche suit (MS-PILOTAGE). */
     @PutMapping("/{id}/pilote")
-    @PreAuthorize("hasAuthority('HOM_REFERENTIEL_EDIT')")
+    @PreAuthorize("hasAnyAuthority('HOM_REFERENTIEL_EDIT', 'REF_METIER_ADMIN')")
     @Transactional
     public VersionVue pilote(@PathVariable UUID id, @Valid @RequestBody PiloteRequest r, Authentication auth) {
         ReferentialVersion v = useCase.designerPilote(id, r.compteId(), ActeurCourant.de(auth).id());
@@ -166,7 +175,7 @@ public class ModelisateurResource {
      * touchent une opération visible ; anomalies, attributs manquants et chemin critique réduits à ses opérations.
      */
     @GetMapping("/{id}/graphe")
-    @PreAuthorize("hasAuthority('HOM_REFERENTIEL_READ')")
+    @PreAuthorize("hasAnyAuthority('HOM_REFERENTIEL_READ', 'REF_METIER_ADMIN')")
     @Transactional(readOnly = true)
     public GrapheVue graphe(@PathVariable UUID id, Authentication auth) {
         ReferentialVersion v = versions.findById(id).orElseThrow(() -> HomologationException.notFound("HOM_REFERENTIAL_NOT_FOUND", id));
@@ -176,7 +185,7 @@ public class ModelisateurResource {
             .stream()
             .sorted(Comparator.comparingInt(ReferenceOperation::ordreEffectif).thenComparing(ReferenceOperation::getCode))
             .toList();
-        ReferentialGraphValidator.Rapport rapport = validator.controler(v.noeuds());
+        ReferentialGraphValidator.Rapport rapport = validator.controler(v.noeuds(), attestations == null || attestations.exigees(v.getTypeProjet()));
         Map<String, CalendrierDag.Tache> g = new LinkedHashMap<>();
         Map<String, List<String>> preds = new LinkedHashMap<>();
         ops.forEach(o -> {
@@ -240,14 +249,14 @@ public class ModelisateurResource {
      * {@code etapesVersion} leur détail ; sans elle, les onze étapes canoniques (rang : celui du CR).
      */
     @GetMapping("/catalogue")
-    @PreAuthorize("hasAuthority('HOM_REFERENTIEL_READ')")
+    @PreAuthorize("hasAnyAuthority('HOM_REFERENTIEL_READ', 'REF_METIER_ADMIN')")
     @Transactional(readOnly = true)
     public CatalogueVue catalogue(@RequestParam(name = "version", required = false) UUID versionId) {
         ReferentialVersion version = versionId == null
             ? null
             : versions.findById(versionId).orElseThrow(() -> HomologationException.notFound("HOM_REFERENTIAL_NOT_FOUND", versionId));
         return new CatalogueVue(
-            Arrays.stream(Fonction.values()).map(f -> new Entree(f.name(), f.libelle(), f.profils(), f.externe(), null, null)).toList(),
+            CatalogueFonctions.toutes().stream().map(f -> new Entree(f.code(), f.libelle(), f.profils(), f.externe(), null, null, f.actif())).toList(),
             Arrays.stream(Geste.values()).map(x -> new Entree(x.name(), x.libelle(), null, null, x.dedie(), null)).toList(),
             Arrays.stream(Jalon.values()).map(x -> new Entree(x.name(), x.libelle(), null, null, null, x.ordinal() + 1)).toList(),
             Declencheurs.CONNUS.entrySet().stream().map(e -> Entree.de(e.getKey(), e.getValue())).toList(),
@@ -267,7 +276,15 @@ public class ModelisateurResource {
             pilotes(),
             Arrays.stream(EtapeCode.values()).map(e -> new EtapeCanoniqueVue(e.name(), e.libelle(), e.rang(), e.protegee())).toList(),
             Arrays.stream(CouleurEtape.values()).map(c -> new CouleurVue(c.name(), c.libelle(), c.jeton())).toList(),
-            version == null ? null : EtapeVue.de(version)
+            version == null ? null : EtapeVue.de(version),
+            Arrays.stream(ModeleTypeProjet.values()).map(m -> Entree.de(m.name(), m.libelle())).toList(),
+            typesProjet
+                .findAll()
+                .stream()
+                .sorted(Comparator.comparing(DefinitionTypeProjet::type))
+                .map(t -> new Entree(t.getCode(), t.getLibelle(), null, null, null, null, t.isActif()))
+                .toList(),
+            Arrays.stream(cm.gimac.des.homologation.domain.parcours.VueOperation.values()).map(x -> Entree.de(x.name(), x.libelle())).toList()
         );
     }
 
@@ -275,7 +292,7 @@ public class ModelisateurResource {
 
     /** Étapes de la version, dans leur ordre. */
     @GetMapping("/{id}/etapes")
-    @PreAuthorize("hasAuthority('HOM_REFERENTIEL_READ')")
+    @PreAuthorize("hasAnyAuthority('HOM_REFERENTIEL_READ', 'REF_METIER_ADMIN')")
     @Transactional(readOnly = true)
     public List<EtapeVue> etapes(@PathVariable UUID id) {
         return EtapeVue.de(versions.findById(id).orElseThrow(() -> HomologationException.notFound("HOM_REFERENTIAL_NOT_FOUND", id)));
@@ -283,7 +300,7 @@ public class ModelisateurResource {
 
     /** Ajout d'une étape au brouillon (code exigé ; à la fin par défaut). */
     @PostMapping("/{id}/etapes")
-    @PreAuthorize("hasAuthority('HOM_REFERENTIEL_EDIT')")
+    @PreAuthorize("hasAnyAuthority('HOM_REFERENTIEL_EDIT', 'REF_METIER_ADMIN')")
     @Transactional
     public ResponseEntity<EtapeVue> ajouterEtape(@PathVariable UUID id, @Valid @RequestBody EtapeRequest r) {
         EtapeReferentiel e = etapesUseCase.ajouter(id, r.code(), r.libelle(), r.couleur(), r.canonique(), r.ordre());
@@ -292,7 +309,7 @@ public class ModelisateurResource {
 
     /** Nouvel ordre des étapes ({@code {codes: [...]}}) ; rend les étapes dans cet ordre. */
     @PutMapping("/{id}/etapes/ordre")
-    @PreAuthorize("hasAuthority('HOM_REFERENTIEL_EDIT')")
+    @PreAuthorize("hasAnyAuthority('HOM_REFERENTIEL_EDIT', 'REF_METIER_ADMIN')")
     @Transactional
     public List<EtapeVue> ordonnerEtapes(@PathVariable UUID id, @Valid @RequestBody OrdreEtapesRequest r) {
         return EtapeVue.de(etapesUseCase.ordonner(id, r.codes()));
@@ -300,7 +317,7 @@ public class ModelisateurResource {
 
     /** Renommage, couleur et étape canonique ({@code code} et {@code ordre} du corps ignorés). */
     @PutMapping("/{id}/etapes/{code}")
-    @PreAuthorize("hasAuthority('HOM_REFERENTIEL_EDIT')")
+    @PreAuthorize("hasAnyAuthority('HOM_REFERENTIEL_EDIT', 'REF_METIER_ADMIN')")
     @Transactional
     public EtapeVue modifierEtape(@PathVariable UUID id, @PathVariable String code, @Valid @RequestBody EtapeRequest r) {
         EtapeReferentiel e = etapesUseCase.modifier(id, code, r.libelle(), r.couleur(), r.canonique());
@@ -309,21 +326,19 @@ public class ModelisateurResource {
 
     /** Retrait d'une étape vide et non protégée. */
     @DeleteMapping("/{id}/etapes/{code}")
-    @PreAuthorize("hasAuthority('HOM_REFERENTIEL_EDIT')")
+    @PreAuthorize("hasAnyAuthority('HOM_REFERENTIEL_EDIT', 'REF_METIER_ADMIN')")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void supprimerEtape(@PathVariable UUID id, @PathVariable String code) {
         etapesUseCase.supprimer(id, code);
     }
 
+    /** Pilotes possibles : comptes internes actifs portant HOM_REFERENTIEL_EDIT ou REF_METIER_ADMIN (D-94 §3). */
     private List<Pilote> pilotes() {
         try {
-            return profilsPilote
+            return porteurs
+                .porteurs(ReferentialLifecycleService.PERMISSIONS_PILOTE)
                 .stream()
-                .flatMap(p -> annuaire.parProfil(p).stream())
-                .filter(CollaboratorView::actif)
                 .map(c -> new Pilote(c.id().toString(), c.nomAffiche()))
-                .distinct()
-                .sorted(Comparator.comparing(Pilote::nom, Comparator.nullsLast(Comparator.naturalOrder())))
                 .toList();
         } catch (HomologationException e) {
             return List.of();

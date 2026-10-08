@@ -101,11 +101,13 @@ Précisions apportées par la réalisation, sans changer le sens des §2 et §4.
   description fixés, date, auteur).
 - **Jeu initial** : `infra/keycloak/generer-realm-gimac.py` porte le libellé (repris de l'interface) et la mission de chaque
   profil livré ; « Profil du lot 1 » a disparu de `gimac-realm.json` et `gimac-realm-production.json`. Sur le serveur, le
-  domaine est réimporté par fusion (`infra/ci/fusionner-domaine.py`) quand `gimac-realm.json` change : les rôles du dépôt
-  (attributs et descriptions compris) remplacent ceux en service, le jeu initial est donc appliqué. La même fusion
-  écraserait une modification faite depuis la console : au démarrage, MS-IAM réapplique à Keycloak les libellés et
-  descriptions fixés par l'administration qui en diffèrent (idempotent ; sans effet si Keycloak est indisponible, la
-  réapplication se fera au démarrage suivant). Une recomposition seule (permissions) ne fixe ni libellé ni description.
+  domaine est réimporté par fusion à trois voies (`infra/ci/fusionner-domaine.py`, base : le domaine du dépôt déployé la
+  fois précédente) quand `gimac-realm.json` change : une évolution du dépôt est appliquée, une modification faite depuis
+  la console (libellé, description, composition, politique de mot de passe et OTP) est conservée ; la même règle vaut
+  pour `mettre-a-jour.sh` et pour Kubernetes (`actualiser-domaine-keycloak.sh`, docs/lot1/ecrans-par-configuration.md
+  §6.6). En complément, au démarrage, MS-IAM réapplique à Keycloak les libellés et descriptions fixés par
+  l'administration qui en diffèrent (idempotent ; sans effet si Keycloak est indisponible, la réapplication se fera au
+  démarrage suivant). Une recomposition seule (permissions) ne fixe ni libellé ni description.
 - **Libellés ailleurs** : chaque ligne de `GET /pouvoirs/matrice` et la réponse de `PUT /pouvoirs/matrice/{profil}`
   gagnent `libelle` ; `GET /pouvoirs/moi` et `GET /api/v1/interne/pouvoirs/{id}` gagnent `libellesProfils`
   (`{ "ROLE_…": "libellé" }` des profils demandables). Les comptes (`profils: [codes]`) et les demandes gardent les codes :

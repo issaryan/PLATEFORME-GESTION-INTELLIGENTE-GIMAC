@@ -306,6 +306,9 @@ gimac:
       validite-invitation: 24h
       validite-reinitialisation: 30m
       validite-enrolement-totp: 10m
+      # D-94 : les liens d'un compte mènent à la console quand ses profils composent l'une de ces permissions
+      # (même liste que PERMISSIONS_CONSOLE, frontend/packages/socle/src/session/aiguillage.ts).
+      permissions-console: [IAM_ACCOUNT_READ, PLATFORM_SUPERVISION_READ, PLATFORM_CONFIG_READ, PLATFORM_OPS_READ, PLATFORM_SECURITY_POLICY_READ, PLATFORM_MESSAGING_EDIT]
     # Client gimac-connexion (octroi direct, mot de passe seul) : vérification du mot de passe actuel ;
     # clients de service admis sur /api/v1/interne/connexion/** et l'état de connexion (la passerelle).
     connexion:
@@ -316,14 +319,15 @@ gimac:
     # SMTP) ; absente : clé éphémère (développement), à fournir en production.
     chiffrement:
       cle: ${GIMAC_IAM_CLE_CHIFFREMENT:}
-    # Profils attribuables (rôles composites du realm) ; les profils privilégiés exigent
-    # IAM_ROLE_PRIVILEGED_GRANT (réservé au super administrateur).
+    # Profils livrés attribuables (rôles composites du realm). D-94 (docs/lot1/ecrans-par-configuration.md) : aucune
+    # qualité n'est décrite par un nom de profil ; un profil est privilégié dès qu'il porte une permission IAM_* ou
+    # PLATFORM_* (attribution réservée à IAM_ROLE_PRIVILEGED_GRANT), externe selon son attribut gimac_externe.
+    # externes-initiaux : profils qui reçoivent gimac_externe=true au démarrage s'ils n'ont pas encore l'attribut.
     profils:
       attribuables: [ROLE_SUPER_ADMIN, ROLE_RSSI, ROLE_CHEF_DES, ROLE_INGENIEUR_HOMOLOGATION, ROLE_CONFORMITE, ROLE_DG, ROLE_CORRESPONDANT,
         ROLE_CHARGE_DDRM, ROLE_CHEF_DDRM, ROLE_SNA, ROLE_PRODUCTION_MONETIQUE, ROLE_POLE_RESEAU, ROLE_POLE_SYSTEME, ROLE_CONDUCTEUR_PROJET,
         ROLE_COLLABORATEUR, ROLE_RESPONSABLE_SERVICE, ROLE_ADMIN_SYSTEME]
-      # Administrateur système (D-78) : gestes d'exploitation de l'infrastructure, profil privilégié.
-      privilegies: [ROLE_SUPER_ADMIN, ROLE_RSSI, ROLE_ADMIN_SYSTEME]
+      externes-initiaux: [ROLE_CORRESPONDANT]
     # Réauthentification forte FIDO2 (IAM-07).
     webauthn:
       rp-id: ${GIMAC_WEBAUTHN_RP_ID:localhost}

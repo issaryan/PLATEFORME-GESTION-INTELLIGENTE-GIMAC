@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Notifications du parcours d'homologation (D-93, docs/lot1/effet-reel-referentiels.md §11) : type HOMOLOGATION
+     (sujets homologation.operation et homologation.liaison : opération ouverte ou en validation, jalon atteint) et
+     préférence correspondante (active par défaut). -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="not-notifications-homologation" author="lot1">
+        <sql>ALTER TABLE notification_utilisateur DROP CONSTRAINT ck_notification_utilisateur_type;</sql>
+        <sql>ALTER TABLE notification_utilisateur ADD CONSTRAINT ck_notification_utilisateur_type CHECK (type IN ('MESSAGE', 'TACHE', 'RAPPORT', 'DEMANDE', 'MENTION', 'REPONSE', 'PROCESSUS', 'HOMOLOGATION'));</sql>
+        <addColumn tableName="preference_notification">
+            <column name="type_homologation" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>

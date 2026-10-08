@@ -17,12 +17,20 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Départ ou désactivation d'un compte (processus d'unité, D-87 §2) : sujet iam.account de MS-IAM, type
+ * Changements de MS-IAM qui touchent les intervenants des processus d'unité (D-87 §2, D-93 §6).
+ *
+ * <p>Départ ou désactivation d'un compte : sujet iam.account de MS-IAM, type
  * iam.account-administered.v1 (charge {@code { action, compteId, identifiant, acteurId, motif, details }}) avec
  * l'action DESACTIVATION ou SUPPRESSION (clé et subject : identifiant du compte). Les étapes en cours du compte, ses signatures et validations attendues
  * passent au profil de remplacement. Consommation idempotente par l'identifiant CloudEvents (table
  * processed_event) ; un message illisible est journalisé et ignoré ; une erreur de traitement (MS-IAM
  * injoignable) remonte pour que Kafka le rejoue.
+ *
+ * <p>Même sujet, même type (D-93) : action PROFILS (profils du compte remplacés : retrait de profil) et
+ * COMPTE_RATTACHEMENT_MODIFIE (unité ou responsable changés) : les rôles que le compte tient sur des étapes en cours
+ * sont revus. Sujet iam.configuration ({@code gimac.consommateurs.configuration.sujet}), type
+ * iam.configuration-changed.v1, objet UNITE_ORGANISATIONNELLE (champs {@code code=…}, {@code responsable=…}) : les
+ * rôles CHEF_UNITE de l'unité passent à son chef actuel (groupe pilotage-processus-organisation).
  */
 @Component
 public class ComptesIamConsumer {
@@ -30,6 +38,11 @@ public class ComptesIamConsumer {
     static final String GROUPE = "pilotage-processus-comptes";
     static final String ADMINISTRE = "iam.account-administered.v1";
     static final Set<String> DEPARTS = Set.of("DESACTIVATION", "SUPPRESSION");
+    static final String PROFILS = "PROFILS";
+    static final String RATTACHEMENT = "COMPTE_RATTACHEMENT_MODIFIE";
+    static final String GROUPE_ORGANISATION = "pilotage-processus-organisation";
+    static final String CONFIGURATION = "iam.configuration-changed.v1";
+    static final String OBJET_UNITE = "UNITE_ORGANISATIONNELLE";
     private static final Logger LOG = LoggerFactory.getLogger(ComptesIamConsumer.class);
 
     private final InstancesProcessusUseCase processus;
@@ -61,8 +74,10 @@ public class ComptesIamConsumer {
             return;
         }
         String type = e.path("type").asText("");
-        Optional<String> compte = depart(type, e.path("data"));
-        if (compte.isEmpty()) {
+        JsonNode d = e.path("data");
+        Optional<String> compte = depart(type, d);
+        Optional<String> change = changement(type, d);
+        if (compte.isEmpty() && change.isEmpty()) {
             return;
         }
         Optional<UUID> id = uuid(e.path("id").asText(null));
@@ -70,9 +85,71 @@ public class ComptesIamConsumer {
             LOG.debug("Événement {} déjà traité", id.orElseThrow());
             return;
         }
-        int n = processus.traiterDepart(compte.orElseThrow(), texte(e.path("data"), "acteurId"));
+        if (compte.isPresent()) {
+            int n = processus.traiterDepart(compte.orElseThrow(), texte(d, "acteurId"));
+            LOG.info("Départ d'un compte : {} étape(s) de processus réaffectée(s)", n);
+        } else {
+            String cause = PROFILS.equals(texte(d, "action")) ? "PROFIL_RETIRE" : "CHANGEMENT_UNITE";
+            int n = processus.traiterChangementCompte(change.orElseThrow(), cause, texte(d, "acteurId"));
+            LOG.info("Compte modifié ({}) : {} étape(s) de processus revue(s)", cause, n);
+        }
         id.ifPresent(x -> traites.save(new ProcessedEvent().eventId(x).subject(type).processedAt(horloge.instant())));
-        LOG.info("Départ d'un compte : {} étape(s) de processus réaffectée(s)", n);
+    }
+
+    /** Unité modifiée (iam.configuration-changed.v1, objet UNITE_ORGANISATIONNELLE) : rôles CHEF_UNITE revus. */
+    @KafkaListener(
+        id = GROUPE_ORGANISATION,
+        topics = "${gimac.consommateurs.configuration.sujet:iam.configuration}",
+        groupId = GROUPE_ORGANISATION,
+        autoStartup = "${gimac.consommateurs.demarrage-automatique:true}",
+        properties = { "auto.offset.reset=earliest" }
+    )
+    @Transactional
+    public void recevoirConfiguration(String message) {
+        JsonNode e;
+        try {
+            e = json.readTree(message);
+        } catch (JsonProcessingException ex) {
+            LOG.warn("Message illisible sur le sujet de configuration : ignoré");
+            return;
+        }
+        String type = e.path("type").asText("");
+        Optional<String> unite = uniteModifiee(type, e.path("data"));
+        if (unite.isEmpty()) {
+            return;
+        }
+        Optional<UUID> id = uuid(e.path("id").asText(null));
+        if (id.isPresent() && traites.existsByEventId(id.orElseThrow())) {
+            LOG.debug("Événement {} déjà traité", id.orElseThrow());
+            return;
+        }
+        int n = processus.traiterChangementChef(unite.orElseThrow(), texte(e.path("data"), "acteurId"));
+        id.ifPresent(x -> traites.save(new ProcessedEvent().eventId(x).subject(type).processedAt(horloge.instant())));
+        LOG.info("Unité modifiée : {} étape(s) de processus revue(s)", n);
+    }
+
+    /** Profils remplacés ou rattachement modifié : compte dont les rôles sont à revoir. */
+    static Optional<String> changement(String type, JsonNode d) {
+        String compte = texte(d, "compteId");
+        String action = texte(d, "action");
+        if (compte != null && ADMINISTRE.equals(type) && (PROFILS.equals(action) || RATTACHEMENT.equals(action))) {
+            return Optional.of(compte);
+        }
+        return Optional.empty();
+    }
+
+    /** Code de l'unité modifiée, lu dans les champs {@code code=…} d'un changement de configuration d'unité. */
+    static Optional<String> uniteModifiee(String type, JsonNode d) {
+        if (!CONFIGURATION.equals(type) || !OBJET_UNITE.equals(texte(d, "objet"))) {
+            return Optional.empty();
+        }
+        for (JsonNode c : d.path("champs")) {
+            String v = c.asText("");
+            if (v.startsWith("code=") && v.length() > "code=".length()) {
+                return Optional.of(v.substring("code=".length()));
+            }
+        }
+        return Optional.empty();
     }
 
     /** Compte parti : désactivé ou supprimé par l'administration. */

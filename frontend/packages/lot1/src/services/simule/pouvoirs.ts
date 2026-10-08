@@ -1,7 +1,7 @@
 import type { ApiError } from '@gimac/socle'
 import type { PersonneActivite, Unite } from '../../modele/pilotage'
 import {
-  ACTIONS_POUVOIR, AUCUN_POUVOIR, MOTIF_DEMANDE, PORTEES, rangPortee, type ActionPouvoir, type ActionsPouvoir, type Demande, type EntreePouvoirs, type MesPouvoirs,
+  ACTIONS_POUVOIR, AUCUN_POUVOIR, MOTIF_DEMANDE, PORTEES, porteesAdmisesParDefaut, rangPortee, type ActionPouvoir, type ActionsPouvoir, type Demande, type EntreePouvoirs, type MesPouvoirs,
   type NouvelleDemande, type PouvoirsProfil, type Portee, type Subordonne,
 } from '../../modele/pouvoirs'
 import type { ServicePouvoirs } from '../ports'
@@ -15,7 +15,7 @@ import { PRESENTATIONS_PROFILS } from './presentations'
 // règles ne sont qu'une imitation de celles du service, avec les mêmes codes de refus.
 
 type Attendre = <T>(v: T | (() => T)) => Promise<T>
-type Refus = (status: number, code: string, message: string) => ApiError
+type Refus = (status: number, code: string, message: string, details?: Record<string, unknown>) => ApiError
 
 /** Responsables d'unité de l'organisation de démonstration (§2). */
 export const RESPONSABLES_UNITES_DEMO: Record<string, string> = {
@@ -65,8 +65,10 @@ export type MagasinPouvoirs = {
   pouvoirsDe(id: string): MesPouvoirs
   /** La portée de l'action du chef couvre-t-elle ce compte ? */
   couvre(chef: string, action: ActionPouvoir, cible: string): boolean
-  /** La portée de l'action du chef couvre-t-elle cette unité (UNITES et unité dirigée) ? */
+  /** La portée de l'action du chef couvre-t-elle cette unité (UNITES et unité dirigée, ou TOUTES) ? */
   couvreUnite(chef: string, action: ActionPouvoir, code: string): boolean
+  /** Portées de la matrice du compte, action par action (la plus large de ses profils). */
+  actionsDe(id: string): ActionsPouvoir
   /** Unité et ses sous-unités. */
   sousUnites(code: string): string[]
   /** Unités dirigées par un compte, sous-unités comprises. */
@@ -132,7 +134,8 @@ export function magasinPouvoirs(): MagasinPouvoirs {
     }
   }
   const couvreCompte = (chef: string, action: ActionPouvoir, cible: string) => perimetre(chef, actionsDe(chef)[action]).some((s) => s.id === cible)
-  const couvreUnite = (chef: string, action: ActionPouvoir, code: string) => actionsDe(chef)[action] === 'UNITES' && unitesDirigees(chef).includes(code)
+  // Portée TOUTES (D-92) : toutes les unités, actives ou non ; UNITES : unités dirigées.
+  const couvreUnite = (chef: string, action: ActionPouvoir, code: string) => actionsDe(chef)[action] === 'TOUTES' || (actionsDe(chef)[action] === 'UNITES' && unitesDirigees(chef).includes(code))
 
   const demandes: Demande[] = [
     {
@@ -201,6 +204,7 @@ export function magasinPouvoirs(): MagasinPouvoirs {
     pouvoirsDe,
     couvre: couvreCompte,
     couvreUnite,
+    actionsDe,
     sousUnites,
     unitesDirigees,
     deposer,
@@ -208,6 +212,9 @@ export function magasinPouvoirs(): MagasinPouvoirs {
       const l = matrice.find((x) => x.profil === profil)
       if (!l) throw refus(404, 'IAM_PROFILE_NOT_FOUND', 'Profil inconnu.')
       if (ACTIONS_POUVOIR.some((a) => !PORTEES.includes(e.actions?.[a]))) throw refus(400, 'IAM_POUVOIRS_INVALIDES', 'Une portée est attendue pour chaque action.')
+      // D-92 : TOUTES n'est admise que pour PROCESSUS_DEFINIR et PROCESSUS_LANCER (ActionPouvoir.admet de MS-IAM).
+      const refusees = ACTIONS_POUVOIR.filter((a) => !porteesAdmisesParDefaut(a).includes(e.actions[a]))
+      if (refusees.length) throw refus(422, 'ORG_PORTEE_NON_ADMISE', 'Portée non admise pour cette action.', { actions: refusees, portees: Object.fromEntries(refusees.map((a) => [a, e.actions[a]])) })
       if (e.profilsDemandables.some((x) => PROFILS_PRIVILEGIES.includes(x))) throw refus(422, 'IAM_PROFIL_PRIVILEGIE_NON_DEMANDABLE', 'Un profil privilégié n’est jamais demandable.')
       Object.assign(l, { actions: { ...e.actions }, profilsDemandables: [...new Set(e.profilsDemandables)].sort() })
       return l

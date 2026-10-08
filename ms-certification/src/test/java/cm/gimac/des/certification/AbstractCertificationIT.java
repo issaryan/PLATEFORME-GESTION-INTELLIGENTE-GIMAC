@@ -75,7 +75,7 @@ public abstract class AbstractCertificationIT {
             try (var st = c.createStatement()) {
                 // TRUNCATE ne déclenche pas le refus ligne à ligne des signatures immuables (DELETE, UPDATE).
                 st.execute(
-                    "truncate table visa_securite, attestation_securite, approbation_securite, signature_verrou, proces_verbal_certification, " +
+                    "truncate table visa_securite, attestation_securite, approbation_securite, signature_verrou, proces_verbal_certification, operation_liaison, " +
                     "outbox_event, processed_event cascade"
                 );
                 st.execute("delete from timestamp_token where objet_type = 'SIGNATURE'");

@@ -1,8 +1,9 @@
 import { ApiError, type OptionsTeleversement, type Televersement } from '@gimac/socle'
+import { PROFILS } from '../../permissions'
 import type { PersonneActivite } from '../../modele/pilotage'
 import {
   LIMITES_PROCESSUS, MODES_REMPLACEMENT, cleDesignation, designationsAttendues, intervenantNormalise, type AnomalieProcessus, type Attendu, type ControleProcessus, type EtapeInstance,
-  type EtapeProcessus, type HistoriqueProcessus, type InstanceProcessus, type Intervenant, type Processus, type ResumeInstance, type SaisieProcessus,
+  type EtapeProcessus, type HistoriqueProcessus, type InstanceProcessus, type Intervenant, type CandidatsProcessus, type Processus, type ResumeInstance, type SaisieProcessus,
 } from '../../modele/processus'
 import { ajouterJours, aujourdhui } from '../../modele/jours'
 import type { ServiceProcessus } from '../ports'
@@ -85,7 +86,11 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
   const moi = () => personne(moiId)
   const membre = (pid: string) => magasin.organisation.find((m) => m.id === pid)
   const profils = (pid: string) => magasin.profilsDe(pid)
-  const admin = () => profils(moiId).includes('ROLE_SUPER_ADMIN')
+  // D-92 : tous domaines par la permission REF_METIER_ADMIN (composition des profils simulés), jamais par un nom de profil.
+  const refMetier = () => profils(moiId).some((p) => (PROFILS[p] ?? []).includes('REF_METIER_ADMIN'))
+  const definirToutes = () => magasin.actionsDe(moiId).PROCESSUS_DEFINIR === 'TOUTES'
+  const lancerToutes = () => magasin.actionsDe(moiId).PROCESSUS_LANCER === 'TOUTES'
+  const admin = () => refMetier() || lancerToutes()
   /** Responsable d'une unité, à défaut celui de la plus proche unité parente qui en a un. */
   const chefDe = (code: string): string | null => {
     for (let u = magasin.unites.find((x) => x.code === code); u; u = magasin.unites.find((x) => x.code === u!.parent)) if (u.responsableId) return u.responsableId
@@ -95,11 +100,25 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
     const m = membre(pid)
     return !!m?.unite && magasin.sousUnites(unite).includes(m.unite)
   }
-  const peutDefinir = (unite: string) => admin() || magasin.couvreUnite(moiId, 'PROCESSUS_DEFINIR', unite)
+  const peutDefinir = (unite: string) => refMetier() || magasin.couvreUnite(moiId, 'PROCESSUS_DEFINIR', unite)
   const peutLancer = (unite: string) => membreDe(moiId, unite) || magasin.couvreUnite(moiId, 'PROCESSUS_LANCER', unite) || admin()
   const peutLire = (unite: string) => peutDefinir(unite) || peutLancer(unite) || magasin.unitesDirigees(moiId).some((u) => magasin.sousUnites(u).includes(unite))
   const peutPiloter = (unite: string) => admin() || magasin.unitesDirigees(moiId).includes(unite) || magasin.couvreUnite(moiId, 'TACHE_CONFIER', unite)
   const documents = etat.documents
+  // Désignation hors de l'unité : porteurs actifs d'un profil dans l'unité (sous-unités comprises), puis dans tout le
+  // GIMAC (unités actives ou sans rattachement), comme MS-PILOTAGE.
+  const porteursDans = (unite: string, profil: string) => magasin.organisation.filter((m) => m.actif && !!m.unite && magasin.sousUnites(unite).includes(m.unite) && profils(m.id).includes(profil))
+  const porteursPartout = (profil: string) => magasin.organisation.filter((m) => m.actif && profils(m.id).includes(profil) && (!m.unite || magasin.unites.find((u) => u.code === m.unite)?.active !== false))
+  const portePartout = (pid: string, profil: string | null | undefined) => !!profil && porteursPartout(profil).some((m) => m.id === pid)
+  const repartition = (l: { unite: string | null }[]) => Object.entries(l.reduce<Record<string, number>>((a, m) => ({ ...a, [m.unite ?? 'sans unité']: (a[m.unite ?? 'sans unité'] ?? 0) + 1 }), {}))
+    .sort(([a], [b]) => a.localeCompare(b)).map(([u, n]) => `${u} : ${n}`).join(', ')
+  const candidatsDe = (unite: string, profil: string | null): CandidatsProcessus => {
+    const vers = (m: { id: string; nomAffiche: string; fonction: string; unite: string | null }) => ({ id: m.id, nomAffiche: m.nomAffiche, fonction: m.fonction || null, unite: m.unite })
+    const tri = (a: { nomAffiche: string }, b: { nomAffiche: string }) => a.nomAffiche.localeCompare(b.nomAffiche, 'fr')
+    const dans = profil ? porteursDans(unite, profil) : magasin.organisation.filter((m) => m.actif && !!m.unite && magasin.sousUnites(unite).includes(m.unite))
+    const ailleurs = profil ? porteursPartout(profil).filter((m) => !dans.includes(m)) : []
+    return { unite, profil, dansUnite: dans.map(vers).sort(tri), ailleurs: ailleurs.map(vers).sort(tri) }
+  }
 
   // ---------------------------------------------------------------- définitions
   const definitions = etat.definitions
@@ -127,7 +146,7 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
     const personnes = Object.fromEntries(p.etapes.flatMap((e) => [e.intervenant, e.validateur, ...e.signatures.map((s) => s.signataire)]).filter((i): i is Intervenant => !!i?.personneId).map((i) => [i.personneId!, personne(i.personneId!).nomAffiche]))
     const definir = peutDefinir(p.unite)
     return structuredClone({
-      ...p, versions, personnes,
+      ...p, versions, personnes, avertissements: p.etat === 'PUBLIEE' ? controler(p).filter((a) => a.gravite === 'AVERTISSEMENT') : [],
       droits: { modifier: definir && p.etat === 'BROUILLON', publier: definir && p.etat === 'BROUILLON', lancer: p.etat === 'PUBLIEE' && peutLancer(p.unite), retirer: definir && p.etat === 'PUBLIEE' },
     })
   }
@@ -186,9 +205,15 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
       if (i.mode === 'PERSONNE' && i.personneId && membre(i.personneId) && !membre(i.personneId)!.actif) ajouter('PERSONNE_INACTIVE', 'BLOQUANTE', e.code, element, 'Personne désactivée.')
       if (MODES_REMPLACEMENT.includes(i.mode) && !i.remplacement) ajouter('REMPLACEMENT_ABSENT', 'BLOQUANTE', e.code, `${element}.remplacement`, 'Profil de remplacement obligatoire.')
       const unite = i.unite || p.unite
-      const couvre = (profil: string) => magasin.organisation.some((m) => m.actif && m.unite && magasin.sousUnites(unite).includes(m.unite) && profils(m.id).includes(profil))
-      if (i.mode === 'PROFIL' && i.profil && !couvre(i.profil)) ajouter('COUVERTURE_PROFIL', 'LEVABLE', e.code, element, `Aucune personne active ne porte ${i.profil} dans l’unité.`)
-      if (i.remplacement && !couvre(i.remplacement)) ajouter('COUVERTURE_PROFIL', 'LEVABLE', e.code, `${element}.remplacement`, `Aucune personne active ne porte ${i.remplacement} dans l’unité.`)
+      // Couverture : dans l'unité, sinon ailleurs dans le GIMAC (information), sinon nulle part (levable).
+      const couverture = (profil: string, el: string) => {
+        if (porteursDans(unite, profil).length) return
+        const ailleurs = porteursPartout(profil)
+        if (!ailleurs.length) ajouter('COUVERTURE_PROFIL', 'LEVABLE', e.code, el, `Aucune personne active ne porte ${profil} dans l’unité ${unite} ni ailleurs dans le GIMAC.`)
+        else ajouter('COUVERTURE_HORS_UNITE', 'AVERTISSEMENT', e.code, el, `Aucune personne active ne porte ${profil} dans l’unité ${unite} ; ${ailleurs.length} porteur${ailleurs.length > 1 ? 's' : ''} ailleurs dans le GIMAC (${repartition(ailleurs)}) : l’étape ${ailleurs.length > 1 ? 'leur sera offerte' : 'lui sera confiée'}.`)
+      }
+      if (i.mode === 'PROFIL' && i.profil) couverture(i.profil, element)
+      if (i.remplacement) couverture(i.remplacement, `${element}.remplacement`)
       if (i.mode === 'CHEF_UNITE' && !magasin.unites.find((u) => u.code === unite)?.responsableId) ajouter('CHEF_ABSENT', 'LEVABLE', e.code, element, 'L’unité n’a pas de responsable.')
     }
     p.etapes.forEach((e) => {
@@ -224,13 +249,28 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
   // ---------------------------------------------------------------- instances
   const instances = etat.instances
   const lien = (inst: InstanceSim, etape?: string) => `/des/processus/instances/${inst.id}${etape ? `?etape=${encodeURIComponent(etape)}` : ''}`
-  /** Personne résolue d'un intervenant, ou à prendre par un profil de l'unité. */
+  /**
+   * Résolution par profil (désignation hors de l'unité) : porteurs actifs dans l'unité, à défaut dans tout le GIMAC ; un
+   * seul : à lui ; plusieurs : à prendre (sans unité s'ils sont hors de l'unité) ; aucun : chef de l'unité, à défaut lanceur.
+   */
+  const parProfil = (inst: InstanceSim, profil: string | null, unite: string): Attendu => {
+    if (!profil) return { personne: null, profil: null, unite }
+    const dans = porteursDans(unite, profil)
+    if (dans.length === 1) return { personne: personne(dans[0].id), profil: null, unite }
+    if (dans.length > 1) return { personne: null, profil, unite }
+    const ailleurs = porteursPartout(profil)
+    if (ailleurs.length === 1) return { personne: personne(ailleurs[0].id), profil: null, unite }
+    if (ailleurs.length > 1) return { personne: null, profil, unite: null }
+    const chef = chefDe(unite)
+    return { personne: personne(chef && membre(chef)?.actif !== false ? chef : inst.lanceur.id), profil: null, unite }
+  }
+  /** Personne résolue d'un intervenant, sinon par son profil (ou son profil de remplacement). */
   const resoudre = (inst: InstanceSim, i: Intervenant, cle: string): Attendu => {
     const unite = i.unite || inst.unite
     const actif = (pid: string | null | undefined) => (pid && membre(pid)?.actif !== false ? personne(pid) : null)
-    const parRemplacement = (p: PersonneActivite | null): Attendu => (p ? { personne: p, profil: null, unite } : { personne: null, profil: i.remplacement ?? null, unite })
+    const parRemplacement = (p: PersonneActivite | null): Attendu => (p ? { personne: p, profil: null, unite } : parProfil(inst, i.remplacement ?? null, unite))
     switch (i.mode) {
-      case 'PROFIL': return { personne: null, profil: i.profil ?? null, unite }
+      case 'PROFIL': return parProfil(inst, i.profil ?? null, unite)
       case 'PERSONNE': return parRemplacement(actif(i.personneId))
       case 'AU_LANCEMENT': return parRemplacement(actif(inst.designations[cle]?.id))
       case 'CHEF_UNITE': return parRemplacement(actif(chefDe(unite)))
@@ -238,11 +278,16 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
       default: return parRemplacement(actif(membre(inst.lanceur.id)?.responsableId))
     }
   }
-  const peutAgir = (a: Attendu | null) => !!a && (a.personne ? a.personne.id === moiId : !!a.profil && profils(moiId).includes(a.profil) && membreDe(moiId, a.unite ?? ''))
+  const peutAgir = (a: Attendu | null) => !!a && (a.personne ? a.personne.id === moiId : !!a.profil && profils(moiId).includes(a.profil) && (a.unite ? membreDe(moiId, a.unite) : portePartout(moiId, a.profil)))
+  /** Le lanceur choisit l'exécutant d'une étape à prendre, ou de celle qui lui est revenue faute de porteur. */
+  const lanceurDesigne = (inst: InstanceSim, e: EtapeSim) => inst.lanceur.id === moiId && (!e.executant || e.executant.id === moiId)
+  const peutReaffecter = (inst: InstanceSim, e: EtapeSim) => peutPiloter(inst.unite) || lanceurDesigne(inst, e)
+  /** Profil exigé de l'exécutant : celui de l'étape à prendre, de l'intervenant PROFIL, à défaut son profil de remplacement. */
+  const profilExige = (e: EtapeSim) => e.aPrendre?.profil ?? (e.def.intervenant.mode === 'PROFIL' ? e.def.intervenant.profil : e.def.intervenant.remplacement) ?? null
   const activer = (inst: InstanceSim, e: EtapeSim, acteur: PersonneActivite) => {
     const r = resoudre(inst, e.def.intervenant, cleDesignation.executant(e.code))
     Object.assign(e, {
-      etat: 'ACTIVE', activeeLe: maintenant(), echeance: ajouterJours(aujourdhui(), e.delaiJours), executant: r.personne, aPrendre: r.personne ? null : { unite: r.unite!, profil: r.profil },
+      etat: 'ACTIVE', activeeLe: maintenant(), echeance: ajouterJours(aujourdhui(), e.delaiJours), executant: r.personne, aPrendre: r.personne ? null : { unite: r.unite, profil: r.profil },
       validateur: e.def.validateur ? resoudre(inst, e.def.validateur, cleDesignation.validateur(e.code)) : null,
       signatures: e.def.signatures.map((s) => ({ code: s.code, libelle: s.libelle, ordre: s.ordre, porte: s.porte, attendu: resoudre(inst, s.signataire, cleDesignation.signature(e.code, s.code)), etat: 'ATTENDUE', signePar: null, signeLe: null, empreinte: null, documents: [] })),
     })
@@ -282,7 +327,7 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
             prendre: encours && e.etat === 'ACTIVE' && !e.executant && peutAgir(e.aPrendre ? { personne: null, ...e.aPrendre } : null),
             signer: encours && e.etat === 'A_SIGNER' ? e.signatures.filter((s) => s.etat === 'ATTENDUE' && s.ordre === minOrdre && peutAgir(s.attendu)).map((s) => s.code) : [],
             valider: encours && e.etat === 'A_VALIDER' && peutAgir(e.validateur) && e.executant?.id !== moiId,
-            reaffecter: encours && piloter && ['ACTIVE', 'A_SIGNER', 'A_VALIDER'].includes(e.etat),
+            reaffecter: encours && (piloter || lanceurDesigne(inst, inst.etapes.find((x) => x.code === e.code)!)) && ['ACTIVE', 'A_SIGNER', 'A_VALIDER'].includes(e.etat),
           },
         }
       }),
@@ -419,6 +464,20 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
     || (e.etat === 'A_SIGNER' && e.signatures.some((s) => s.etat === 'ATTENDUE' && peutAgir(s.attendu))))
 
   return {
+    // D-92 : portée de l'appelant (GET /processus/portee).
+    portee: () => attendre(() => {
+      const tous = refMetier() || definirToutes() || lancerToutes()
+      const dirigees = magasin.unitesDirigees(moiId)
+      const lisibles = magasin.unites.map((u) => u.code).filter((u) => peutLire(u))
+      return {
+        portee: tous ? 'TOUS_DOMAINES' as const : 'MES_UNITES' as const,
+        definirToutesUnites: refMetier() || definirToutes(),
+        lancerToutesUnites: refMetier() || lancerToutes(),
+        auTitreDe: [...(refMetier() ? ['REF_METIER_ADMIN'] : []), ...(definirToutes() ? ['PROCESSUS_DEFINIR:TOUTES'] : []), ...(lancerToutes() ? ['PROCESSUS_LANCER:TOUTES'] : [])],
+        unites: tous ? [] : lisibles,
+        unitesDefinissables: tous ? [] : magasin.unites.filter((u) => u.active && magasin.couvreUnite(moiId, 'PROCESSUS_DEFINIR', u.code)).map((u) => u.code).filter((u) => dirigees.includes(u) || magasin.actionsDe(moiId).PROCESSUS_DEFINIR === 'TOUTES'),
+      }
+    }),
     lister: (q) => attendre(() => definitions
       .filter((p) => peutLire(p.unite) && (p.etat !== 'BROUILLON' || peutDefinir(p.unite)))
       .filter((p) => (!q.unite || p.unite === q.unite) && (!q.etat || p.etat === q.etat) && (!q.q?.trim() || `${p.code} ${p.libelle} ${p.categorie}`.toLowerCase().includes(q.q.trim().toLowerCase())))
@@ -502,6 +561,14 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
       const p = trouver(pid)
       if (p.etat !== 'PUBLIEE') throw refus(409, 'PIL_PROCESSUS_NON_PUBLIE', 'Seule une version publiée se lance.')
       if (!peutLancer(p.unite)) throw refus(403, 'PIL_PROCESSUS_INTERDIT', 'Lancer un processus de cette unité exige d’en être membre ou le pouvoir PROCESSUS_LANCER.')
+      // Personne désignée : active, et le lanceur lui-même, porteuse du profil de remplacement (dans l'unité ou ailleurs
+      // dans le GIMAC), ou dans la portée TACHE_CONFIER du lanceur.
+      for (const d of designationsAttendues(p.etapes)) {
+        const pid = l.designations[d.cle]
+        if (!pid) continue
+        const admis = membre(pid)?.actif !== false && !!membre(pid) && (pid === moiId || portePartout(pid, d.intervenant.remplacement) || magasin.couvre(moiId, 'TACHE_CONFIER', pid))
+        if (!admis) throw refus(422, 'PIL_PROCESSUS_DESIGNATION_INVALIDE', 'Personne désignée inactive, ou ne portant pas le profil requis, ni dans votre portée.', { cle: d.cle, personneId: pid })
+      }
       return vueInstance(lancer(p, l, moiId))
     }),
     instance: (iid) => attendre(() => vueInstance(trouverInstance(iid))),
@@ -606,15 +673,29 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
     reaffecter: (iid, code, personneId, m) => attendre(() => {
       const inst = trouverInstance(iid)
       enCours(inst)
-      if (!peutPiloter(inst.unite)) throw refus(403, 'PIL_PROCESSUS_INTERDIT', 'Réaffecter exige de diriger l’unité ou le pouvoir TACHE_CONFIER.')
-      const motif = motifObligatoire(m)
       const e = etapeDe(inst, code)
+      if (!peutReaffecter(inst, e)) throw refus(403, 'PIL_PROCESSUS_INTERDIT', 'Réaffecter exige de diriger l’unité, le pouvoir TACHE_CONFIER, ou d’être le lanceur d’une étape à prendre.')
+      const motif = motifObligatoire(m)
       if (!['ACTIVE', 'A_SIGNER', 'A_VALIDER'].includes(e.etat)) throw refus(409, 'PIL_PROCESSUS_ETAPE_ETAT', 'L’étape n’est pas active.', { etat: e.etat, attendu: 'ACTIVE' })
-      if (!membre(personneId) || membre(personneId)!.actif === false) throw refus(422, 'PIL_PROCESSUS_PERSONNE_INVALIDE', 'Personne invalide.')
+      const unite = e.def.intervenant.unite || inst.unite
+      const admis = !!membre(personneId) && membre(personneId)!.actif !== false
+        && (membreDe(personneId, unite) || portePartout(personneId, profilExige(e)) || magasin.couvre(moiId, 'TACHE_CONFIER', personneId))
+      if (!admis) throw refus(422, 'PIL_PROCESSUS_PERSONNE_INVALIDE', 'La personne doit être active, et membre de l’unité, porteuse du profil requis ou dans votre portée.', { personneId })
       Object.assign(e, { executant: personne(personneId), aPrendre: null })
       if (e.tacheId) pont?.affecter(e.tacheId, personneId)
       historiser(inst.historique, 'ETAPE_REAFFECTEE', `${personne(personneId).nomAffiche} : ${motif}`, e.code)
       return vueInstance(inst)
+    }),
+    candidats: (q) => attendre(() => {
+      if (!magasin.unites.some((u) => u.code === q.unite)) throw refus(422, 'PIL_PROCESSUS_UNITE_INCONNUE', 'Unité inconnue.', { unite: q.unite })
+      return candidatsDe(q.unite, q.profil || null)
+    }),
+    candidatsEtape: (iid, code) => attendre(() => {
+      const inst = trouverInstance(iid)
+      enCours(inst)
+      const e = etapeDe(inst, code)
+      if (!peutReaffecter(inst, e)) throw refus(403, 'PIL_PROCESSUS_INTERDIT', 'Réservé au chef de l’unité et au lanceur d’une étape à prendre.')
+      return candidatsDe(e.def.intervenant.unite || inst.unite, profilExige(e))
     }),
     suspendre: (iid, m) => attendre(() => {
       const inst = trouverInstance(iid)

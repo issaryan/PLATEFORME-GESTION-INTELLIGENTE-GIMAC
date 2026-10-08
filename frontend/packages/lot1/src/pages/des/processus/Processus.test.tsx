@@ -31,7 +31,17 @@ const PERSONNES = {
   membre: { id: 'u-res', nom: 'Idriss Mahamat Saleh', role: 'ROLE_POLE_RESEAU' },
 }
 type Qui = (typeof PERSONNES)[keyof typeof PERSONNES]
-const services = (q: Qui, magasin = magasinPouvoirs()) => servicesSimules({ latenceMs: 0, utilisateur: { id: q.id, nom: q.nom, profils: [q.role] }, pouvoirs: magasin })
+/**
+ * Organisation de démonstration et un second porteur de ROLE_POLE_RESEAU au pôle réseau : les étapes par profil y
+ * restent à prendre (avec un seul porteur, elles lui seraient confiées directement : désignation hors de l'unité).
+ */
+const magasinDeuxPorteurs = () => {
+  const m = magasinPouvoirs()
+  m.organisation.push({ id: 'u-res-bis', nomAffiche: 'Armel Nkoulou Beti', fonction: 'Technicien réseau', unite: 'POLE_RESEAU', responsableId: 'u-resp-info', actif: true })
+  m.definirProfils('u-res-bis', ['ROLE_POLE_RESEAU'])
+  return m
+}
+const services = (q: Qui, magasin = magasinDeuxPorteurs()) => servicesSimules({ latenceMs: 0, utilisateur: { id: q.id, nom: q.nom, profils: [q.role] }, pouvoirs: magasin })
 const session = (q: Qui) => ({ ...sessionTest(PROFILS[q.role], [q.role]), sujet: q.id, nom: q.nom })
 function Ici() {
   const l = useLocation()
@@ -134,12 +144,14 @@ describe('D-87 : catalogue', () => {
     fireEvent.change(within(d).getByLabelText(/^Date souhaitée/), { target: { value: '15/10/2026' } })
     const choix = within(d).getByLabelText(/^Intervenant de « Mise en œuvre/) as HTMLSelectElement
     await waitFor(() => expect(choix.options.length).toBeGreaterThan(3))
-    fireEvent.change(choix, { target: { value: 'u-collab' } })
+    // Porteurs du profil de remplacement groupés « Dans l'unité », puis l'annuaire.
+    expect([...choix.querySelectorAll('optgroup')].map((g) => g.label)).toEqual(['Dans l’unité', 'Autres personnes de l’annuaire'])
+    fireEvent.change(choix, { target: { value: 'u-res-bis' } })
     const lancer = vi.spyOn(s.processus, 'lancer')
     fireEvent.click(within(d).getByRole('button', { name: 'Lancer l’instance' }))
     await waitFor(() => expect(lancer).toHaveBeenCalled())
     expect(lancer.mock.calls[0][1]).toEqual({
-      intitule: 'Flux vers la BEAC', champs: { SOURCE: '10.1.1.1', DESTINATION: '10.2.2.2', PORT: 443, PROTOCOLE: 'TCP', DATE_SOUHAITEE: '2026-10-15' }, designations: { MISE_EN_OEUVRE: 'u-collab' },
+      intitule: 'Flux vers la BEAC', champs: { SOURCE: '10.1.1.1', DESTINATION: '10.2.2.2', PORT: 443, PROTOCOLE: 'TCP', DATE_SOUHAITEE: '2026-10-15' }, designations: { MISE_EN_OEUVRE: 'u-res-bis' },
     })
     await waitFor(() => expect(screen.getAllByTestId('ici').at(-1)!.textContent).toMatch(/^\/des\/processus\/instances\/INS-/))
     cleanup()
@@ -169,6 +181,8 @@ describe('D-87 : modélisateur', () => {
     fireEvent.change(within(d).getAllByLabelText(/^Profil de remplacement/)[0], { target: { value: 'ROLE_POLE_RESEAU' } })
     fireEvent.change(within(d).getAllByLabelText(/^Désignation/)[1], { target: { value: 'PROFIL' } })
     fireEvent.change(within(d).getAllByLabelText(/^Profil(?! de)/)[0], { target: { value: 'ROLE_RESPONSABLE_SERVICE' } })
+    // Couverture du profil : aucun porteur au pôle, un ailleurs dans le GIMAC.
+    expect(await within(d).findByText(/Aucun porteur dans l’unité ; 1 ailleurs dans le GIMAC/)).toBeTruthy()
     fireEvent.click(within(d).getByRole('tab', { name: 'Livrables' }))
     fireEvent.click(within(d).getByRole('button', { name: 'Ajouter un livrable' }))
     fireEvent.change(within(d).getAllByLabelText(/^Libellé/)[1], { target: { value: 'Journal de configuration' } })
@@ -217,12 +231,15 @@ describe('D-87 : modélisateur', () => {
     fireEvent.click(within(d).getByRole('button', { name: 'Enregistrer' }))
     expect(await screen.findByRole('heading', { level: 1, name: 'Accès VPN d’un participant (recette)' })).toBeTruthy()
     // Contrôle puis publication : avertissement levable, levée motivée.
+    // Validateur par un profil porté seulement hors de l'unité : simple information ; l'unité sans chef reste levable.
     fireEvent.click(screen.getByRole('button', { name: 'Contrôler' }))
-    expect(await screen.findByText('Profil non couvert dans l’unité')).toBeTruthy()
+    expect(await screen.findByText('Profil porté hors de l’unité')).toBeTruthy()
+    expect(screen.queryByText('Profil non couvert dans l’unité')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Publier' }))
     await confirmer('Publier', undefined, 'Publier le processus')
     const lever = await screen.findByRole('alertdialog', { name: 'Lever les avertissements' })
-    expect(within(lever).getAllByText(/Unité sans chef|Profil non couvert/).length).toBeGreaterThan(0)
+    expect(within(lever).getAllByText(/Unité sans chef/).length).toBeGreaterThan(0)
+    expect(within(lever).queryByText(/Profil porté hors de l’unité/)).toBeNull()
     await confirmer('Lever et publier', 'Validation par le chef du service en attendant', 'Lever les avertissements')
     expect(await screen.findByText('Version publiée ou retirée : lecture seule ; créez une nouvelle version pour la modifier.')).toBeTruthy()
     expect((await s.processus.lire(p.id))).toMatchObject({ etat: 'PUBLIEE', avertissementsLeves: true })
@@ -347,7 +364,7 @@ describe('D-87 : suivi d’une instance', () => {
   })
 
   it('membre du pôle : prise de l’étape, champs, livrable déposé par morceaux, fin refusée puis soumise ; validation et renvoi par le chef', async () => {
-    const magasin = magasinPouvoirs()
+    const magasin = magasinDeuxPorteurs()
     const s = services(PERSONNES.membre, magasin)
     const i = await ouvrirInstance(s, PERSONNES.membre, 'Ouverture du port 443', '?etape=ANALYSE')
     fireEvent.click(screen.getByRole('button', { name: 'Prendre l’étape' }))
@@ -381,7 +398,7 @@ describe('D-87 : suivi d’une instance', () => {
   it('exécutant : champs d’une étape (contrôle, enregistrement) ; refus restitué ; instance inconnue', async () => {
     const s = services(PERSONNES.membre)
     const l = (await s.processus.lister({ etat: 'PUBLIEE' }))[0]
-    const i = await s.processus.lancer(l.id, { intitule: 'Essai des champs', champs: {}, designations: { MISE_EN_OEUVRE: 'u-collab' } })
+    const i = await s.processus.lancer(l.id, { intitule: 'Essai des champs', champs: {}, designations: { MISE_EN_OEUVRE: 'u-res' } })
     rendrePage(<InstancePage />, { chemin: `/des/processus/instances/${i.id}`, motif: '/des/processus/instances/:id', services: s, session: session(PERSONNES.membre) })
     const panneau = await screen.findByRole('complementary', { name: /Demande d’ouverture du flux/ })
     expect((within(panneau).getByRole('button', { name: 'Enregistrer les champs' }) as HTMLButtonElement).disabled).toBe(true)
@@ -401,6 +418,43 @@ describe('D-87 : suivi d’une instance', () => {
     cleanup()
     rendrePage(<InstancePage />, { chemin: '/des/processus/instances/INCONNUE', motif: '/des/processus/instances/:id', services: s, session: session(PERSONNES.membre) })
     expect(await screen.findByText('L’instance n’a pas pu être lue.')).toBeTruthy()
+  })
+})
+
+describe('D-87 : désignation hors de l’unité', () => {
+  it('lancement : un seul porteur du profil de remplacement, choisi d’office', async () => {
+    const s = servicesSimules({ latenceMs: 0, utilisateur: { id: 'u-res', nom: 'Idriss Mahamat Saleh', profils: ['ROLE_POLE_RESEAU'] }, pouvoirs: magasinPouvoirs() })
+    catalogue(PERSONNES.membre, s)
+    fireEvent.click(await screen.findByRole('button', { name: 'Lancer le processus Ouverture d’un flux réseau' }))
+    const d = await screen.findByRole('dialog', { name: 'Lancer le processus' })
+    const choix = within(d).getByLabelText(/^Intervenant de « Mise en œuvre/) as HTMLSelectElement
+    await waitFor(() => expect(choix.value).toBe('u-res'))
+    expect(within(d).getByText(/Seul porteur du profil/)).toBeTruthy()
+  })
+
+  it('profil porté ailleurs : information publiée, étape offerte aux porteurs, candidats groupés à la réaffectation', async () => {
+    const magasin = magasinPouvoirs()
+    magasin.definirProfils('U-101', ['ROLE_INGENIEUR_HOMOLOGATION', 'ROLE_SNA'])
+    const s = services(PERSONNES.chef, magasin)
+    const p = await s.processus.creer({ code: 'AVIS_SNA', unite: 'POLE_RESEAU', libelle: 'Avis des normes', description: '', categorie: '', delaiCibleJours: null,
+      etapes: [{ ...etapeVierge(1), code: 'TRAITEMENT', libelle: 'Traitement', intervenant: { mode: 'PROFIL', profil: 'ROLE_SNA' } }] })
+    await s.processus.publier(p.id, {})
+    await ouvrirDefinition(s, PERSONNES.chef, 'AVIS_SNA')
+    expect(screen.getByText('Profil porté hors de l’unité').closest('.gm-alert, [role="status"], [role="alert"], div')).toBeTruthy()
+    cleanup()
+    const i = await s.processus.lancer(p.id, { intitule: 'Avis sur le terminal', champs: {}, designations: {} })
+    expect(i.etapes[0].aPrendre).toEqual({ unite: null, profil: 'ROLE_SNA' })
+    await ouvrirInstance(s, PERSONNES.chef, 'Avis sur le terminal', '?etape=TRAITEMENT')
+    expect(screen.getAllByText(/tout le GIMAC/).length).toBeGreaterThan(0)
+    fireEvent.click(screen.getByRole('button', { name: 'Réaffecter l’étape' }))
+    const d = await screen.findByRole('dialog', { name: 'Réaffecter l’étape' })
+    const choix = within(d).getByLabelText(/^Nouvel exécutant/) as HTMLSelectElement
+    await waitFor(() => expect([...choix.querySelectorAll('optgroup')].map((g) => g.label)).toContain('Ailleurs dans le GIMAC'))
+    expect(within(d).getByText(/Aucun porteur du profil .* dans l’unité/)).toBeTruthy()
+    fireEvent.change(choix, { target: { value: 'u-sna' } })
+    fireEvent.change(within(d).getByLabelText(/Motif/), { target: { value: 'Dossier connu' } })
+    fireEvent.click(within(d).getByRole('button', { name: 'Réaffecter l’étape' }))
+    await waitFor(async () => expect((await s.processus.instance(i.id)).etapes[0].executant?.id).toBe('u-sna'))
   })
 })
 

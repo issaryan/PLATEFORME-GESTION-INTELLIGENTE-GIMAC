@@ -63,9 +63,9 @@ class ReferentialModelisateurServiceTest {
             mock(OutboxPublisher.class),
             Clock.fixed(Instant.parse("2026-10-05T08:00:00Z"), ZoneOffset.UTC),
             operations,
-            annuaire,
-            taches,
-            List.of("ROLE_INGENIEUR_HOMOLOGATION")
+            // D-94 §3 : pilote par permission, porteurs lus dans MS-IAM (simulacre).
+            new PorteursPermission(annuaire),
+            taches
         );
         when(versions.save(any())).thenAnswer(i -> {
             ReferentialVersion v = i.getArgument(0);
@@ -76,6 +76,9 @@ class ReferentialModelisateurServiceTest {
         });
         lenient().when(versions.maxNumero(any())).thenReturn(Optional.of(2));
         lenient().when(annuaire.findCollaborator(INGENIEUR)).thenReturn(Optional.of(new CollaboratorView(INGENIEUR, "Ingénieure", Set.of("ROLE_INGENIEUR_HOMOLOGATION"), null, true)));
+        lenient()
+            .when(annuaire.parPermission("HOM_REFERENTIEL_EDIT"))
+            .thenReturn(List.of(new CollaboratorView(INGENIEUR, "Ingénieure", Set.of("ROLE_INGENIEUR_HOMOLOGATION"), null, true)));
         lenient().when(annuaire.findCollaborator(AUTRE)).thenReturn(Optional.of(new CollaboratorView(AUTRE, "Autre", Set.of("ROLE_SNA"), null, true)));
     }
 
@@ -100,8 +103,8 @@ class ReferentialModelisateurServiceTest {
         assertThatThrownBy(() -> service.creerBrouillon(TypeProjet.DELEGATAIRE, "D", null, CREATEUR, AUTRE))
             .isInstanceOfSatisfying(HomologationException.class, e -> assertThat(e.code()).isEqualTo("HOM_PILOTE_NOT_ELIGIBLE"));
         assertThat(service.creerBrouillon(TypeProjet.CARTE_INTERBANCAIRE, "C", null).getPiloteId()).isNull();
-        assertThat(ReferentialLifecycleService.libelle(TypeProjet.CARTE_INTERBANCAIRE)).isEqualTo("Carte interbancaire");
-        assertThat(ReferentialLifecycleService.libelle(TypeProjet.DELEGATAIRE)).isEqualTo("Délégataire");
+        assertThat(service.libelle(TypeProjet.CARTE_INTERBANCAIRE)).isEqualTo("Carte interbancaire");
+        assertThat(service.libelle(TypeProjet.DELEGATAIRE)).isEqualTo("Délégataire");
     }
 
     @Test

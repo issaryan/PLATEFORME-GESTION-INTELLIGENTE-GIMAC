@@ -13,6 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import cm.gimac.des.certification.application.port.in.Acteur;
 import cm.gimac.des.certification.application.usecase.ApprobationSecuriteService;
+import cm.gimac.des.certification.application.usecase.DecisionVues;
 import cm.gimac.des.certification.application.usecase.DecisionVues.ApprobationVue;
 import cm.gimac.des.certification.application.usecase.DecisionVues.CouvertureVue;
 import cm.gimac.des.certification.application.usecase.DecisionVues.ProcesVerbalVue;
@@ -183,7 +184,19 @@ class DecisionResourceSecurityTest {
                 new SignatureVue("Chef du DES", "CHEF_DES", LocalDate.parse("2026-09-30"), h),
                 null,
                 List.of(),
-                List.of()
+                List.of(),
+                List.of(
+                    new DecisionVues.EtapeCircuitVue(
+                        "GIMAC",
+                        "Signature du GIMAC",
+                        "CHEF_DES",
+                        1,
+                        false,
+                        "SIGNEE",
+                        new SignatureVue("Chef du DES", "CHEF_DES", LocalDate.parse("2026-09-30"), h)
+                    ),
+                    new DecisionVues.EtapeCircuitVue("PARTICIPANT", "Signature du participant", "PARTICIPANT", 1, true, "ATTENDUE", null)
+                )
             )
         );
         mvc
@@ -193,6 +206,10 @@ class DecisionResourceSecurityTest {
             .andExpect(jsonPath("$.couverture.calculable").value(true))
             .andExpect(jsonPath("$.etabliLe").value("2026-09-29"))
             .andExpect(jsonPath("$.signatureGimac.signeLe").value("2026-09-30"))
+            .andExpect(jsonPath("$.circuit[0].code").value("GIMAC"))
+            .andExpect(jsonPath("$.circuit[0].etat").value("SIGNEE"))
+            .andExpect(jsonPath("$.circuit[1].portail").value(true))
+            .andExpect(jsonPath("$.circuit[1].etat").value("ATTENDUE"))
             .andExpect(jsonPath("$.signatureGimac.horodatage").value("2026-09-30T09:15:00Z"))
             .andExpect(jsonPath("$.signatureParticipant").isEmpty())
             .andExpect(jsonPath("$.transitionsPermises").isArray())

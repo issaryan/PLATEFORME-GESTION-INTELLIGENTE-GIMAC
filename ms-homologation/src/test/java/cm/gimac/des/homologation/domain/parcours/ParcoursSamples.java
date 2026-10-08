@@ -90,13 +90,14 @@ public final class ParcoursSamples {
     /** Désignation de démonstration : le conducteur, le correspondant et une personne par fonction interne. */
     public static Parcours.Designation designation(Liaison l) {
         return f ->
-            switch (f) {
-                case CONDUCTEUR -> new Personne(CONDUCTEUR.toString(), "Conducteur de projet 1", Fonction.CONDUCTEUR);
-                case PARTICIPANT -> Personne.correspondant(l.getInstitutionId().toString(), l.getInstitutionNom());
-                case PERSONNALISATEUR -> new Personne("EXT-PERSONNALISATEUR", "Personnalisateur", Fonction.PERSONNALISATEUR);
-                case SNA -> new Personne(SNA.toString(), "Ingénieur SNA", Fonction.SNA);
-                case EXPLOITATION -> Personne.aAffecter(Fonction.EXPLOITATION);
-                case CHEFS_DEPARTEMENT -> new Personne("U-CHEF_DES", "Titulaire CHEF_DES", Fonction.CHEF_DES);
+            switch (f.name()) {
+                case "CONDUCTEUR" -> new Personne(CONDUCTEUR.toString(), "Conducteur de projet 1", Fonction.CONDUCTEUR);
+                case "PARTICIPANT" -> Personne.correspondant(l.getInstitutionId().toString(), l.getInstitutionNom());
+                // Plus de marqueur fictif (D-93 §1) : sans institution liée, le personnalisateur reste à affecter.
+                case "PERSONNALISATEUR" -> Personne.aAffecter(Fonction.PERSONNALISATEUR);
+                case "SNA" -> new Personne(SNA.toString(), "Ingénieur SNA", Fonction.SNA);
+                case "EXPLOITATION" -> Personne.aAffecter(Fonction.EXPLOITATION);
+                case "CHEFS_DEPARTEMENT" -> new Personne("U-CHEF_DES", "Titulaire CHEF_DES", Fonction.CHEF_DES);
                 default -> new Personne("U-" + f.name(), "Titulaire " + f.name(), f);
             };
     }

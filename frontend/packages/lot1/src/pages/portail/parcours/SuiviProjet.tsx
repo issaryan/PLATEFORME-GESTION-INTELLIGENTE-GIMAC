@@ -223,7 +223,7 @@ function Suivi({ d }: { d: DossierLiaison }) {
         titre={t('pp.suivi.titre', { reference: d.reference })}
         sousTitre={
           <span className="gm-row">
-            <span>{t(`parcours.typeProjet.${d.typeProjet}`)}</span>
+            <span>{t(`parcours.typeProjet.${d.typeProjet}`, { defaultValue: String(d.typeProjet) })}</span>
             <span aria-hidden="true">·</span>
             <span>{d.institutionNom}</span>
             {d.liaisonOrigineId ? <Tag>{t('pp.serviceSupplementaire', { origine: d.liaisonOrigineId })}</Tag> : null}

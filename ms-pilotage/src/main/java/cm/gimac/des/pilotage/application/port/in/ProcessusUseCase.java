@@ -9,9 +9,9 @@ import java.util.UUID;
 
 /**
  * Définitions des processus d'unité (D-87, docs/lot1/processus-unite.md §1) : catalogue, brouillon, contrôle,
- * publication, nouvelle version, retrait. Définir et publier : PROCESSUS_DEFINIR couvrant l'unité (D-86 §4) ou
- * IAM_PROFILE_EDIT (administration) ; lire : membres de l'unité, ceux qui la dirigent ou la couvrent,
- * l'administration.
+ * publication, nouvelle version, retrait. Définir et publier : PROCESSUS_DEFINIR couvrant l'unité (D-86 §4) ;
+ * lire : membres de l'unité, ceux qui la dirigent ou la couvrent. Toutes les unités (D-92) : REF_METIER_ADMIN, ou
+ * portée TOUTES de la matrice ; IAM_PROFILE_EDIT n'en ouvre aucune (D-94).
  */
 public interface ProcessusUseCase {
     record IntervenantSaisie(String mode, String profil, String personneId, String unite, String remplacement) {}
@@ -41,8 +41,28 @@ public interface ProcessusUseCase {
     /** Corps de POST /processus (code et unité) et de PUT /processus/{id} (code et unité immuables). */
     record ProcessusSaisie(String code, String unite, String libelle, String description, String categorie, Integer delaiCibleJours, List<EtapeSaisie> etapes) {}
 
-    /** Ce que l'appelant peut faire sur cette version. */
-    record Droits(boolean modifier, boolean publier, boolean lancer, boolean retirer) {}
+    /**
+     * Ce que l'appelant peut faire sur cette version : modifier, publier et supprimer un brouillon ; lancer et retirer
+     * une version publiée ; en tirer une nouvelle version (publiée ou retirée).
+     */
+    record Droits(boolean modifier, boolean publier, boolean lancer, boolean retirer, boolean supprimer, boolean nouvelleVersion) {}
+
+    /**
+     * Portée du catalogue (D-92 §3) : {@code portee} TOUS_DOMAINES (toutes les unités, actives ou non) ou MES_UNITES ;
+     * {@code definirToutesUnites} : création et administration des définitions dans n'importe quelle unité ;
+     * {@code lancerToutesUnites} : lancement et pilotage des instances dans n'importe quelle unité ; {@code auTitreDe} :
+     * droits qui ouvrent ces portées (REF_METIER_ADMIN, PROCESSUS_DEFINIR:TOUTES,
+     * PROCESSUS_LANCER:TOUTES) ; {@code unites} : unités lisibles (MES_UNITES seulement, vide sinon) ;
+     * {@code unitesDefinissables} : unités où créer (si definirToutesUnites est faux).
+     */
+    record PorteeCatalogue(
+        String portee,
+        boolean definirToutesUnites,
+        boolean lancerToutesUnites,
+        List<String> auTitreDe,
+        List<String> unites,
+        List<String> unitesDefinissables
+    ) {}
 
     record VersionResume(UUID id, int version, String etat) {}
 
@@ -51,7 +71,19 @@ public interface ProcessusUseCase {
 
     record Controle(boolean publiable, List<Anomalie> anomalies) {}
 
+    /** Porteur actif d'un profil proposé pour un intervenant : unité de rattachement (code, null sans rattachement). */
+    record Candidat(String id, String nomAffiche, String fonction, String unite) {}
+
+    /**
+     * Candidats d'un intervenant (désignation hors de l'unité) : porteurs actifs du profil dans l'unité (sous-unités
+     * comprises), puis ailleurs dans le GIMAC (unités actives) ; sans profil : membres actifs de l'unité seulement.
+     */
+    record Candidats(String unite, String profil, List<Candidat> dansUnite, List<Candidat> ailleurs) {}
+
     List<ProcessusLu> lister(Appelant appelant, String unite, String etat, String q);
+
+    /** Portée du catalogue pour l'appelant (GET /processus/portee). */
+    PorteeCatalogue portee(Appelant appelant);
 
     ProcessusLu lire(Appelant appelant, UUID id);
 
@@ -68,4 +100,10 @@ public interface ProcessusUseCase {
     ProcessusLu nouvelleVersion(Appelant appelant, UUID id);
 
     ProcessusLu retirer(Appelant appelant, UUID id, String motif);
+
+    /**
+     * Candidats d'un intervenant pour le modélisateur et le lancement : unité obligatoire (connue, 422
+     * PIL_PROCESSUS_UNITE_INCONNUE sinon), profil facultatif (400 s'il est mal formé).
+     */
+    Candidats candidats(Appelant appelant, String unite, String profil);
 }

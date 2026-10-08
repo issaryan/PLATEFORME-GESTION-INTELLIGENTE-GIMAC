@@ -49,5 +49,13 @@
     <include file="config/liquibase/changelog/20261006090000_pil_taches_confiees.xml" relativeToChangelogFile="false"/>
     <!-- Processus d'unité (D-87), écrit à la main. -->
     <include file="config/liquibase/changelog/20261007090000_pil_processus_unite.xml" relativeToChangelogFile="false"/>
+    <!-- Tâches à prendre offertes par un autre service (D-93), écrit à la main. -->
+    <include file="config/liquibase/changelog/20261008090000_pil_taches_a_prendre.xml" relativeToChangelogFile="false"/>
+    <!-- Tâches à prendre offertes par permission (D-93, D-94), écrit à la main. -->
+    <include file="config/liquibase/changelog/20261008100000_pil_taches_permissions.xml" relativeToChangelogFile="false"/>
+    <!-- Étapes de processus offertes hors de l'unité (D-87, désignation hors de l'unité), écrit à la main. -->
+    <include file="config/liquibase/changelog/20261008110000_pil_etapes_hors_unite.xml" relativeToChangelogFile="false"/>
+    <!-- Destinataire d'un rapport (§2.4 : n+1, chef d'unité, choix, dépôt au sommet), écrit à la main. -->
+    <include file="config/liquibase/changelog/20261008120000_pil_rapports_destinataire.xml" relativeToChangelogFile="false"/>
     <!-- jhipster-needle-liquibase-add-incremental-changelog - JHipster will add incremental liquibase changelogs here -->
 </databaseChangeLog>

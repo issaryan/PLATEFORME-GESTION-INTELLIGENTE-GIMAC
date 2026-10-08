@@ -7,8 +7,9 @@ import { joindre, naviguer, ongletSelectionne } from './outils'
 
 // Fonctionnalité : processus d'unité (D-87, docs/lot1/processus-unite.md), services simulés de l'application du
 // département. Le chef du DES modélise un processus (modale d'étape à onglets, contrôle, publication avec levée
-// motivée des avertissements) ; un membre du pôle réseau lance « Ouverture d'un flux réseau », prend l'étape d'analyse,
-// dépose sa note et la termine ; le chef du service signe le procès-verbal de recette avec sa clé de sécurité.
+// motivée des avertissements, profil porté hors de l'unité signalé pour information) ; un membre du pôle réseau lance
+// « Ouverture d'un flux réseau » (désignation remplie d'office : seul porteur du profil), reçoit d'office l'étape
+// d'analyse, dépose sa note et la termine ; le chef du service signe le procès-verbal de recette avec sa clé de sécurité.
 // Captures en thème clair et sombre dans e2e/captures/d86-d90 (ou $GIMAC_CAPTURES/d86-d90).
 
 const ICI = dirname(fileURLToPath(import.meta.url))
@@ -44,6 +45,11 @@ for (const theme of ['light', 'dark'] as const) {
         await d.getByLabel(/^Profil de remplacement/).first().selectOption('ROLE_POLE_RESEAU')
         await expect(d.getByLabel(/^Personne/)).toBeEnabled()
         await d.getByLabel(/^Personne/).selectOption('u-res')
+        await expect(d.locator('optgroup[label="Dans l’unité"]').first()).toHaveCount(1)
+        // Validateur par un profil que personne ne porte au pôle : les porteurs d'ailleurs dans le GIMAC sont annoncés.
+        await d.getByLabel(/^Désignation/).nth(1).selectOption('PROFIL')
+        await d.getByLabel(/^Profil(?! de)/).first().selectOption('ROLE_RESPONSABLE_SERVICE')
+        await expect(d.getByText(/Aucun porteur dans l’unité ; 1 ailleurs dans le GIMAC/)).toBeVisible()
         await capturer(page, `processus-etape-intervenant-${suffixe}`)
         await ongletSelectionne(d, 'Livrables')
         await capturer(page, `processus-etape-livrables-${suffixe}`)
@@ -64,7 +70,10 @@ for (const theme of ['light', 'dark'] as const) {
 
       await test.step('Alors le contrôle signale l’avertissement levable et la publication demande un motif', async () => {
         await page.getByRole('button', { name: 'Contrôler' }).click()
-        await expect(page.getByText('Profil non couvert dans l’unité').or(page.getByText('Unité sans chef')).first()).toBeVisible()
+        await expect(page.getByText('Unité sans chef').first()).toBeVisible()
+        // Profil porté hors de l'unité : simple information, qui ne bloque pas la publication.
+        await expect(page.getByText('Profil porté hors de l’unité').first()).toBeVisible()
+        await capturer(page, `processus-controle-hors-unite-${suffixe}`)
         await page.getByRole('button', { name: 'Publier' }).click()
         await page.getByRole('alertdialog', { name: 'Publier le processus' }).getByRole('button', { name: 'Publier' }).click()
         const lever = page.getByRole('alertdialog', { name: 'Lever les avertissements' })
@@ -74,7 +83,7 @@ for (const theme of ['light', 'dark'] as const) {
       })
     })
 
-    test('Scénario : un membre du pôle réseau lance un processus, prend l’étape d’analyse et la termine', async ({ page }) => {
+    test('Scénario : un membre du pôle réseau lance un processus, reçoit d’office l’étape d’analyse et la termine', async ({ page }) => {
       await demo(page, { profil: 'ROLE_POLE_RESEAU', theme })
       await page.goto(`${ADRESSES.departement}/des/processus`)
 
@@ -86,19 +95,21 @@ for (const theme of ['light', 'dark'] as const) {
         await d.getByLabel(/^Adresse de destination/).fill('172.16.8.12')
         await d.getByLabel(/^Port/).fill('161')
         await d.getByLabel(/^Protocole/).selectOption('UDP')
-        await d.getByLabel(/^Intervenant de « Mise en œuvre/).selectOption('u-collab')
+        // Seul porteur du profil de remplacement au pôle : la désignation est remplie d'office.
+        await expect(d.getByLabel(/^Intervenant de « Mise en œuvre/)).toHaveValue('u-res')
+        await expect(d.getByText(/Seul porteur du profil/)).toBeVisible()
         await capturer(page, `processus-lancement-${suffixe}`)
         await d.getByRole('button', { name: 'Lancer l’instance' }).click()
         await expect(page.getByRole('heading', { level: 1, name: 'Flux SNMP vers la supervision' })).toBeVisible()
       })
 
-      await test.step('Quand il prend l’étape d’analyse d’une autre instance, dépose sa note et termine l’étape', async () => {
+      await test.step('Quand il ouvre l’étape d’analyse d’une autre instance, confiée d’office au seul porteur du profil, dépose sa note et la termine', async () => {
         await page.goto(`${ADRESSES.departement}/des/processus?vue=instances`)
         await page.getByRole('combobox', { name: 'Instances' }).selectOption('unite')
         await page.getByRole('button', { name: 'Ouverture du port 443 pour la supervision' }).click()
         await page.getByRole('button', { name: 'Liste' }).click()
         await page.getByRole('button', { name: 'Ouvrir l’étape ANALYSE' }).click()
-        await page.getByRole('button', { name: 'Prendre l’étape' }).click()
+        await expect(page.getByRole('button', { name: 'Prendre l’étape' })).toHaveCount(0)
         await expect(page.getByRole('button', { name: 'Terminer l’étape' })).toBeVisible()
         const panneau = page.getByRole('complementary', { name: /Analyse de sécurité du flux/ })
         await joindre(panneau, 'note-analyse-port-443.pdf')

@@ -738,4 +738,67 @@ class InstitutionLifecycleServiceTest {
             assertThatThrownBy(() -> service.debuterHomologation(UUID.randomUUID(), liaison, "PAIEMENT_MOBILE")).isInstanceOf(ParticipantException.class);
         }
     }
+
+    @Nested
+    @DisplayName("Jalon EN_PRODUCTION d'une liaison (D-93 §4)")
+    class MiseEnProduction {
+
+        final UUID liaison = UUID.randomUUID();
+
+        @Test
+        @DisplayName("Une institution en homologation passe automatiquement à ACTIF, transition tracée, journalisée et publiée")
+        void enHomologationActive() {
+            banque.setStatus(InstitutionStatus.EN_HOMOLOGATION);
+            StatusTransition t = service.mettreEnProduction(banque.getId(), liaison, "LIA-2026-001", "CARTE_INTERBANCAIRE").orElseThrow();
+            assertThat(banque.getStatus()).isEqualTo(InstitutionStatus.ACTIF);
+            assertThat(t.getAutomaticTransition()).isTrue();
+            assertThat(t.getState()).isEqualTo(TransitionState.APPROUVEE);
+            assertThat(t.getFromStatus()).isEqualTo(InstitutionStatus.EN_HOMOLOGATION);
+            assertThat(t.getToStatus()).isEqualTo(InstitutionStatus.ACTIF);
+            assertThat(t.getReason()).contains("EN_PRODUCTION", "LIA-2026-001", "CARTE_INTERBANCAIRE");
+            assertThat(t.getRequesterId()).isEqualTo(InstitutionLifecycleService.SYSTEME.id());
+            ArgumentCaptor<Interaction> journal = ArgumentCaptor.forClass(Interaction.class);
+            verify(interactions).save(journal.capture());
+            assertThat(journal.getValue().getNature()).isEqualTo(InteractionNature.CHANGEMENT_STATUT);
+            ArgumentCaptor<StatusChangedPayload> charge = ArgumentCaptor.forClass(StatusChangedPayload.class);
+            verify(outbox).publish(eq("institution"), eq(banque.getId()), eq(StatusChangedPayload.TYPE), charge.capture());
+            assertThat(charge.getValue().ancienStatut()).isEqualTo("EN_HOMOLOGATION");
+            assertThat(charge.getValue().statut()).isEqualTo("ACTIF");
+        }
+
+        @Test
+        @DisplayName("Sans référence, le motif cite l'identifiant de la liaison")
+        void sansReference() {
+            banque.setStatus(InstitutionStatus.EN_HOMOLOGATION);
+            StatusTransition t = service.mettreEnProduction(banque.getId(), liaison, null, null).orElseThrow();
+            assertThat(t.getReason()).contains(liaison.toString()).doesNotContain("(");
+        }
+
+        @Test
+        @DisplayName("Idempotent : une institution déjà active (seconde liaison) reste en l'état, sans trace ni événement")
+        void dejaActive() {
+            banque.setStatus(InstitutionStatus.ACTIF);
+            assertThat(service.mettreEnProduction(banque.getId(), liaison, "LIA-2026-002", "PAIEMENT_MOBILE")).isEmpty();
+            verify(transitions, never()).save(any());
+            verifyNoInteractions(outbox);
+        }
+
+        @Test
+        @DisplayName("Institution suspendue, à régulariser ou adhérente : signalé, jamais appliqué")
+        void autreEtat() {
+            for (InstitutionStatus etat : List.of(InstitutionStatus.SUSPENDU, InstitutionStatus.A_REGULARISER, InstitutionStatus.ADHERENT)) {
+                banque.setStatus(etat);
+                assertThat(service.mettreEnProduction(banque.getId(), liaison, "LIA-2026-003", null)).isEmpty();
+                assertThat(banque.getStatus()).isEqualTo(etat);
+            }
+            verify(transitions, never()).save(any());
+            verifyNoInteractions(outbox);
+        }
+
+        @Test
+        void institutionInconnue() {
+            UUID inconnue = UUID.randomUUID();
+            assertThatThrownBy(() -> service.mettreEnProduction(inconnue, liaison, "LIA", null)).isInstanceOf(ParticipantException.class);
+        }
+    }
 }

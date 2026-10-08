@@ -12,7 +12,7 @@ const PERSONNES: Record<string, string> = { 'U-001': 'Paul Mbarga Atangana', 'u-
 /** Services de plusieurs personnes sur le même magasin des pouvoirs (organisation partagée). */
 function monde() {
   const magasin = magasinPouvoirs()
-  return (id: string) => servicesSimules({ latenceMs: 0, utilisateur: { id, nom: PERSONNES[id] ?? id }, pouvoirs: magasin })
+  return Object.assign((id: string) => servicesSimules({ latenceMs: 0, utilisateur: { id, nom: PERSONNES[id] ?? id }, pouvoirs: magasin }), { magasin })
 }
 const saisie = (etapes: EtapeProcessus[], o: Partial<SaisieProcessus> = {}): SaisieProcessus => ({ code: 'CHANGEMENT_PAREFEU', unite: 'POLE_RESEAU', libelle: 'Changement de règle pare-feu', description: '', categorie: 'Réseau', delaiCibleJours: 5, etapes, ...o })
 const fichier = (nom: string, type = 'application/pdf') => new File(['contenu'], nom, { type })
@@ -119,9 +119,11 @@ describe('D-87 : instances', () => {
     const base = { intitule: 'Flux de test', champs: { SOURCE: '10.0.0.1' }, designations: {} as Record<string, string> }
     expect(await code(membre.processus.lancer(flux.id, base))).toBe('422 PIL_PROCESSUS_DESIGNATION_MANQUANTE')
     expect(await code(membre.processus.lancer(flux.id, { ...base, designations: { MISE_EN_OEUVRE: 'inconnu' } }))).toBe('422 PIL_PROCESSUS_DESIGNATION_INVALIDE')
-    expect(await code(membre.processus.lancer(flux.id, { ...base, intitule: ' ', designations: { MISE_EN_OEUVRE: 'u-collab' } }))).toBe('400 PIL_REQUETE_INVALIDE')
-    const i = await membre.processus.lancer(flux.id, { ...base, designations: { MISE_EN_OEUVRE: 'u-collab' } })
-    expect(i).toMatchObject({ etat: 'EN_COURS', lanceur: { id: 'u-res' }, designations: { MISE_EN_OEUVRE: { nomAffiche: 'Nadège Mvondo Assiga' } } })
+    // Ni porteuse du profil de remplacement, ni dans la portée du lanceur : refusée.
+    expect(await code(membre.processus.lancer(flux.id, { ...base, designations: { MISE_EN_OEUVRE: 'u-collab' } }))).toBe('422 PIL_PROCESSUS_DESIGNATION_INVALIDE')
+    expect(await code(membre.processus.lancer(flux.id, { ...base, intitule: ' ', designations: { MISE_EN_OEUVRE: 'u-res' } }))).toBe('400 PIL_REQUETE_INVALIDE')
+    const i = await membre.processus.lancer(flux.id, { ...base, designations: { MISE_EN_OEUVRE: 'u-res' } })
+    expect(i).toMatchObject({ etat: 'EN_COURS', lanceur: { id: 'u-res' }, designations: { MISE_EN_OEUVRE: { nomAffiche: 'Idriss Mahamat Saleh' } } })
     const demande = i.etapes[0]
     expect(demande).toMatchObject({ code: 'DEMANDE', etat: 'ACTIVE', executant: { id: 'u-res' }, moi: { executer: true } })
     expect(demande.champs.find((c) => c.code === 'SOURCE')?.valeur).toBe('10.0.0.1')
@@ -136,9 +138,12 @@ describe('D-87 : instances', () => {
 
   it('étape : champs contrôlés, fin refusée sans champs ni livrables, tâche à prendre par profil, prise, livrable, validation, renvoi', async () => {
     const qui = monde()
+    // Deux porteurs du profil au pôle : l'analyse est à prendre (un seul porteur la recevrait directement).
+    qui.magasin.organisation.push({ id: 'u-res-bis', nomAffiche: 'Armel Nkoulou Beti', fonction: 'Technicien réseau', unite: 'POLE_RESEAU', responsableId: 'u-resp-info', actif: true })
+    qui.magasin.definirProfils('u-res-bis', ['ROLE_POLE_RESEAU'])
     const membre = qui('u-res')
     const flux = (await membre.processus.lister({ etat: 'PUBLIEE' }))[0]
-    let i = await membre.processus.lancer(flux.id, { intitule: 'Flux B', champs: {}, designations: { MISE_EN_OEUVRE: 'u-collab' } })
+    let i = await membre.processus.lancer(flux.id, { intitule: 'Flux B', champs: {}, designations: { MISE_EN_OEUVRE: 'u-res-bis' } })
     expect(await code(membre.processus.terminer(i.id, 'DEMANDE'))).toBe('422 PIL_PROCESSUS_CHAMPS_MANQUANTS')
     expect(await code(membre.processus.saisirChamps(i.id, 'DEMANDE', { PORT: 'abc' }))).toBe('422 PIL_PROCESSUS_CHAMP_INVALIDE')
     expect(await code(membre.processus.saisirChamps(i.id, 'DEMANDE', { PROTOCOLE: 'ICMP' }))).toBe('422 PIL_PROCESSUS_CHAMP_INVALIDE')
@@ -183,14 +188,52 @@ describe('D-87 : instances', () => {
     await membre.processus.terminer(i.id, 'ANALYSE')
     i = await chef.valider(i.id, 'ANALYSE', 'VALIDER')
     expect(i.etapes.map((e) => e.etat)).toEqual(['TERMINEE', 'TERMINEE', 'ACTIVE', 'EN_ATTENTE'])
-    expect(i.etapes[2].executant?.id).toBe('u-collab')
+    expect(i.etapes[2].executant?.id).toBe('u-res-bis')
     // Réaffectation par le chef, refusée au membre.
     expect(await code(membre.processus.reaffecter(i.id, 'MISE_EN_OEUVRE', 'u-res', 'Absence'))).toBe('403 PIL_PROCESSUS_INTERDIT')
     expect(await code(chef.reaffecter(i.id, 'MISE_EN_OEUVRE', 'inconnu', 'Absence'))).toBe('422 PIL_PROCESSUS_PERSONNE_INVALIDE')
     expect(await code(chef.reaffecter(i.id, 'DEMANDE', 'u-res', 'Absence'))).toBe('409 PIL_PROCESSUS_ETAPE_ETAT')
-    i = await chef.reaffecter(i.id, 'MISE_EN_OEUVRE', 'u-res', 'Absence de Nadège')
+    i = await chef.reaffecter(i.id, 'MISE_EN_OEUVRE', 'u-res', 'Absence d’Armel')
     expect(i.etapes[2].executant?.id).toBe('u-res')
     expect((await membre.pilotage.taches({ vue: 'moi' })).contenu.some((t) => t.id === i.etapes[2].tacheId)).toBe(true)
+  })
+
+  it('désignation hors de l’unité : contrôle informatif, un porteur ailleurs confié, plusieurs offerts, aucun au chef ; candidats', async () => {
+    const qui = monde()
+    const chef = qui('U-001')
+    const etape = (profil: string): EtapeProcessus => ({ ...etapeVierge(1), code: 'TRAITEMENT', libelle: 'Traitement', intervenant: { mode: 'PROFIL', profil } })
+    // ROLE_SNA : porté par une seule personne, au service SNA, hors du pôle réseau.
+    const p = await chef.processus.creer(saisie([etape('ROLE_SNA')], { code: 'AVIS_SNA' }))
+    const c = await chef.processus.controler(p.id)
+    expect(c.publiable).toBe(true)
+    expect(c.anomalies.map((a) => [a.code, a.gravite])).toEqual([['COUVERTURE_HORS_UNITE', 'AVERTISSEMENT']])
+    expect(c.anomalies[0].message).toContain('SNA : 1')
+    const publie = await chef.processus.publier(p.id, {})
+    expect(publie.avertissements.map((a) => a.code)).toEqual(['COUVERTURE_HORS_UNITE'])
+    expect(await chef.processus.candidats({ unite: 'POLE_RESEAU', profil: 'ROLE_SNA' })).toMatchObject({ dansUnite: [], ailleurs: [{ id: 'u-sna', unite: 'SNA' }] })
+    expect((await chef.processus.candidats({ unite: 'POLE_RESEAU' })).dansUnite.map((x) => x.id)).toEqual(expect.arrayContaining(['u-res', 'u-collab']))
+    expect(await code(chef.processus.candidats({ unite: 'FANTOME', profil: 'ROLE_SNA' }))).toBe('422 PIL_PROCESSUS_UNITE_INCONNUE')
+    let i = await chef.processus.lancer(p.id, { intitule: 'Avis 1', champs: {}, designations: {} })
+    expect(i.etapes[0]).toMatchObject({ etat: 'ACTIVE', executant: { id: 'u-sna' }, aPrendre: null })
+    // Deux porteurs ailleurs : étape offerte sans unité, prise par l'un d'eux ; le lanceur peut aussi choisir.
+    qui.magasin.definirProfils('U-101', ['ROLE_INGENIEUR_HOMOLOGATION', 'ROLE_SNA'])
+    i = await chef.processus.lancer(p.id, { intitule: 'Avis 2', champs: {}, designations: {} })
+    expect(i.etapes[0]).toMatchObject({ executant: null, aPrendre: { unite: null, profil: 'ROLE_SNA' }, moi: { reaffecter: true } })
+    expect((await chef.processus.candidatsEtape(i.id, 'TRAITEMENT')).ailleurs.map((x) => x.id)).toEqual(['U-101', 'u-sna'])
+    expect(await code(qui('u-res').processus.candidatsEtape(i.id, 'TRAITEMENT'))).toBe('403 PIL_PROCESSUS_INTERDIT')
+    const ingenieur = qui('U-101')
+    expect((await ingenieur.processus.instance(i.id)).etapes[0].moi.prendre).toBe(true)
+    // La tâche (à prendre sans unité) est dans l'état des tâches du lanceur : visible et prenable par un porteur.
+    const tache = (await chef.pilotage.taches({ vue: 'creees' })).contenu.find((t) => t.id === i.etapes[0].tacheId)!
+    expect(tache).toMatchObject({ etat: 'A_PRENDRE', uniteCible: null, profilRequis: 'ROLE_SNA' })
+    expect(await code(chef.processus.reaffecter(i.id, 'TRAITEMENT', 'u-conf', 'Essai'))).toBe('422 PIL_PROCESSUS_PERSONNE_INVALIDE')
+    i = await chef.processus.reaffecter(i.id, 'TRAITEMENT', 'u-sna', 'Dossier connu')
+    expect(i.etapes[0].executant?.id).toBe('u-sna')
+    // Personne ne porte le profil : contrôle levable ; au lancement, l'étape va au chef de l'unité pour désigner.
+    const vide = await chef.processus.creer(saisie([etape('ROLE_ADMIN_SYSTEME')], { code: 'AVIS_VIDE' }))
+    expect((await chef.processus.controler(vide.id)).anomalies.map((a) => [a.code, a.gravite])).toEqual([['COUVERTURE_PROFIL', 'LEVABLE']])
+    await chef.processus.publier(vide.id, { leverAvertissements: true, motif: 'Recrutement en cours' })
+    expect((await chef.processus.lancer(vide.id, { intitule: 'Avis 4', champs: {}, designations: {} })).etapes[0].executant?.id).toBe('u-resp-info')
   })
 
   it('signature : ordre, réauthentification exigée, signataire attendu ; instance close ; suspension, reprise, annulation', async () => {

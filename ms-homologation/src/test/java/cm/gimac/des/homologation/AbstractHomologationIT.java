@@ -62,12 +62,20 @@ public abstract class AbstractHomologationIT {
         jdbc.execute((org.springframework.jdbc.core.ConnectionCallback<Void>) c -> {
             try (var st = c.createStatement()) {
                 st.execute("truncate table liaison, referential_version, outbox_event, demande_tache_pilotage cascade");
+                // Types de projet et fonctions créés par un scénario (D-91) : seuls les enregistrements repris restent.
+                st.execute("delete from type_projet where code not in ('CARTE_INTERBANCAIRE', 'PAIEMENT_MOBILE', 'DELEGATAIRE')");
+                st.execute("update type_projet set actif = true where actif = false");
+                st.execute(
+                    "delete from referentiel_fonction where code not in ('DDRM', 'CHEF_DDRM', 'CHEF_DES', 'CHEFS_DEPARTEMENT', 'CONDUCTEUR', 'SNA', " +
+                    "'PRODUCTION_MONETIQUE', 'POLE_RESEAU', 'POLE_SYSTEME', 'RSSI', 'CONFORMITE', 'DG', 'EXPLOITATION', 'PARTICIPANT', 'BANQUE_PARTENAIRE', 'PERSONNALISATEUR')"
+                );
             }
             if (!c.getAutoCommit()) {
                 c.commit();
             }
             return null;
         });
+        cm.gimac.des.homologation.domain.parcours.CatalogueFonctions.invalider();
     }
 
     protected void relayerOutbox() {

@@ -161,10 +161,10 @@ class RapportIT extends AbstractPilotageIT {
     }
 
     @Test
-    @DisplayName("Soumission sans responsable (n+1) : 422 PIL_SANS_RESPONSABLE ; rapport vide : 422 PIL_RAPPORT_INCOMPLET")
+    @DisplayName("Soumission sans responsable nulle part : rapport déposé (plus de 422) ; rapport vide : 422 PIL_RAPPORT_INCOMPLET")
     void sansResponsable() throws Exception {
         String id = creer(SANS_RESPONSABLE, rapport("QUOTIDIEN", aujourdhui().toString(), "REDIGE", "Texte"));
-        mvc.perform(post("/api/v1/rapports/" + id + "/soumission").with(agent(SANS_RESPONSABLE))).andExpect(status().isUnprocessableEntity()).andExpect(jsonPath("$.code").value("PIL_SANS_RESPONSABLE"));
+        mvc.perform(post("/api/v1/rapports/" + id + "/soumission").with(agent(SANS_RESPONSABLE))).andExpect(status().isOk()).andExpect(jsonPath("$.etat").value("DEPOSE"));
         String vide = creer(AGENT, rapport("HEBDOMADAIRE", Periode.contenant(TypeRapport.HEBDOMADAIRE, aujourdhui()).texte(), "PREREMPLI", null));
         mvc.perform(post("/api/v1/rapports/" + vide + "/soumission").with(agent(AGENT))).andExpect(status().isUnprocessableEntity()).andExpect(jsonPath("$.code").value("PIL_RAPPORT_INCOMPLET"));
         mvc.perform(post("/api/v1/rapports/" + vide + "/soumission").with(agent(AGENT_BIS))).andExpect(status().isForbidden());

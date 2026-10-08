@@ -242,4 +242,68 @@ class TacheTest {
         t.rattacherAuGroupe(g);
         assertThat(t.getGroupeId()).isEqualTo(g);
     }
+
+    @Test
+    @DisplayName("D-93 : offre à des profils, prenable par l'un d'eux ; terminée sans prise puis rouverte à prendre")
+    void offreAuxProfils() {
+        Tache t = Tache.pourProfils(CREATEUR, null, List.of("ROLE_B", "ROLE_A"), LE);
+        assertThat(t.getEtat()).isEqualTo(EtatTache.A_PRENDRE);
+        assertThat(t.getResponsableId()).isNull();
+        assertThat(t.isOffreProfils()).isTrue();
+        assertThat(t.getProfilsRequis()).containsExactly("ROLE_A", "ROLE_B");
+        assertThat(t.prenableParProfils(List.of("ROLE_B"))).isTrue();
+        assertThat(t.prenableParProfils(List.of("ROLE_C"))).isFalse();
+        assertThat(t.terminerParService(LE)).isEqualTo(EtatTache.A_PRENDRE);
+        assertThat(t.prenableParProfils(List.of("ROLE_A"))).isFalse();
+        assertThat(t.rouvrirParService(LE)).isEqualTo(EtatTache.TERMINEE);
+        assertThat(t.getEtat()).isEqualTo(EtatTache.A_PRENDRE);
+        t.confierA("preneur", LE);
+        assertThat(t.getEtat()).isEqualTo(EtatTache.OUVERTE);
+        assertThat(t.prenableParProfils(List.of("ROLE_A"))).isFalse();
+    }
+
+    @Test
+    @DisplayName("D-94 : offre par permission, prenable par un porteur de l'une des permissions ; profils et permissions ensemble")
+    void offreParPermission() {
+        Tache t = Tache.pourOffre(CREATEUR, null, null, List.of("HOM_B", "HOM_A"), LE);
+        assertThat(t.isOffreProfils()).isTrue();
+        assertThat(t.getProfilsRequis()).isEmpty();
+        assertThat(t.getPermissionsRequises()).containsExactly("HOM_A", "HOM_B");
+        assertThat(t.prenablePar(List.of("ROLE_A"), List.of())).isFalse();
+        assertThat(t.prenablePar(List.of(), List.of("HOM_B"))).isTrue();
+        assertThat(t.prenableParProfils(List.of("HOM_B"))).isFalse();
+        Tache mixte = Tache.pourOffre(CREATEUR, "SNA", List.of("ROLE_A"), List.of("HOM_A"), LE);
+        assertThat(mixte.prenablePar(List.of("ROLE_A"), null)).isTrue();
+        assertThat(mixte.prenablePar(null, List.of("HOM_A"))).isTrue();
+        assertThat(mixte.prenablePar(List.of("ROLE_B"), List.of("HOM_B"))).isFalse();
+        mixte.confierA("preneur", LE);
+        assertThat(mixte.prenablePar(List.of("ROLE_A"), List.of("HOM_A"))).isFalse();
+        // Remise à prendre par le service : prise puis terminée, elle redevient à prendre sans responsable.
+        assertThat(mixte.terminerParService(LE)).isEqualTo(EtatTache.OUVERTE);
+        assertThat(mixte.remettreOffreAPrendre(LE)).isEqualTo(EtatTache.TERMINEE);
+        assertThat(mixte.getEtat()).isEqualTo(EtatTache.A_PRENDRE);
+        assertThat(mixte.getResponsableId()).isNull();
+        assertThat(mixte.remettreOffreAPrendre(LE)).isNull();
+        assertThat(new Tache(CREATEUR, "x", LE).remettreOffreAPrendre(LE)).isNull();
+    }
+
+    @Test
+    @DisplayName("D-87 : étape à prendre par profil, prenable par ce profil seulement ; réouverture d'une tâche d'attente")
+    void etapeEtAttente() {
+        Tache t = Tache.pourUniteEtProfil(CREATEUR, "POLE", "ROLE_A", LE);
+        assertThat(t.prenableParProfils(List.of("ROLE_A"))).isTrue();
+        assertThat(t.prenableParProfils(List.of("ROLE_B"))).isFalse();
+        assertThat(t.rouvrirPour("x", "POLE", null, LE)).isNull();
+        t.confierParService("validateur", LE);
+        t.terminerParService(LE);
+        assertThat(t.rouvrirPour(null, "POLE", "ROLE_B", LE)).isEqualTo(EtatTache.TERMINEE);
+        assertThat(t.getEtat()).isEqualTo(EtatTache.A_PRENDRE);
+        assertThat(t.getProfilRequis()).isEqualTo("ROLE_B");
+        assertThat(t.getResponsableId()).isNull();
+        t.annulerParService(LE);
+        assertThat(t.rouvrirPour("nouveau", "POLE", null, LE)).isEqualTo(EtatTache.ANNULEE);
+        assertThat(t.getEtat()).isEqualTo(EtatTache.OUVERTE);
+        assertThat(t.getResponsableId()).isEqualTo("nouveau");
+        assertThat(t.getTermineeLe()).isNull();
+    }
 }

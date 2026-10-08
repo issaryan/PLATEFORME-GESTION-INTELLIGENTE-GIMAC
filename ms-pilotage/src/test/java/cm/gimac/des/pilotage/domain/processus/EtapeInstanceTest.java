@@ -129,4 +129,21 @@ class EtapeInstanceTest {
         assertThat(i.getEtat()).isEqualTo(EtatInstance.ANNULEE);
         assertThatThrownBy(() -> i.annuler("m", LE)).isInstanceOf(PilotageException.class);
     }
+
+    @Test
+    @DisplayName("D-93 : signataire attendu remplacé (prise de la tâche, organisation) ; une signature apposée ne change plus")
+    void reaffecterSignature() {
+        Etape def = definition(List.of(new SignatureRequise("S1", "Visa", CHEF, List.of("L"), 1), new SignatureRequise("S2", "Visa 2", CHEF, List.of("L"), 2)));
+        EtapeInstance e = active(def, null);
+        remplir(e);
+        e.soumettre(def, LE);
+        e.reaffecterSignature("S1", Affectation.personne("preneur", "U"));
+        assertThat(e.signature("S1").attendu().personneId()).isEqualTo("preneur");
+        e.signer("S1", "preneur", "b".repeat(64), List.of(), LE);
+        e.reaffecterSignature("S1", Affectation.profil("ROLE_X", "U"));
+        assertThat(e.signature("S1").attendu().personneId()).isEqualTo("preneur");
+        e.reaffecterSignature("S2", Affectation.profil("ROLE_X", "U"));
+        assertThat(e.signature("S2").attendu().profil()).isEqualTo("ROLE_X");
+        assertThat(e.signaturesOuvertes()).extracting(SignatureInstance::code).containsExactly("S2");
+    }
 }

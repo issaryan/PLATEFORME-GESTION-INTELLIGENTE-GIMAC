@@ -25,7 +25,7 @@ public record IamProprietes(
     public IamProprietes {
         premiereConnexion = premiereConnexion == null ? new PremiereConnexion(null) : premiereConnexion;
         profils = profils == null ? new Profils(null, null) : profils;
-        liens = liens == null ? new Liens(null, null, null, null, null, null) : liens;
+        liens = liens == null ? new Liens(null, null, null, null, null, null, null) : liens;
         connexion = connexion == null ? new Connexion(null, null, null) : connexion;
         chiffrement = chiffrement == null ? new Chiffrement(null) : chiffrement;
     }
@@ -41,10 +41,16 @@ public record IamProprietes(
         }
     }
 
-    public record Profils(Set<String> attribuables, Set<String> privilegies) {
+    /**
+     * Profils livrés attribuables (rôles composites du realm). Aucune qualité n'y est décrite par nom (D-94) :
+     * un profil est privilégié par ses permissions (IAM_* ou PLATFORM_*) et externe par son attribut
+     * gimac_externe. {@code externesInitiaux} : profils qui reçoivent gimac_externe=true au démarrage quand
+     * l'attribut n'est pas encore posé (valeur de départ, modifiable ensuite depuis la console).
+     */
+    public record Profils(Set<String> attribuables, Set<String> externesInitiaux) {
         public Profils {
             attribuables = attribuables == null ? Set.of() : Set.copyOf(attribuables);
-            privilegies = privilegies == null ? Set.of() : Set.copyOf(privilegies);
+            externesInitiaux = externesInitiaux == null ? Set.of() : Set.copyOf(externesInitiaux);
         }
     }
 
@@ -58,10 +64,31 @@ public record IamProprietes(
     /**
      * Adresses publiques des couches, sur lesquelles se construisent les liens des courriels
      * ({@code /connexion/nouveau-mot-de-passe?jeton=…}), et durées de validité : invitation 24 h,
-     * réinitialisation 30 min, enrôlement TOTP 10 min.
+     * réinitialisation 30 min, enrôlement TOTP 10 min. {@code permissionsConsole} (D-94) : permissions dont
+     * l'une suffit pour que les liens d'un compte mènent à la console (même liste que PERMISSIONS_CONSOLE de
+     * l'interface, frontend/packages/socle/src/session/aiguillage.ts).
      */
-    public record Liens(String des, String portail, String console, Duration validiteInvitation, Duration validiteReinitialisation, Duration validiteEnrolementTotp) {
+    public record Liens(
+        String des,
+        String portail,
+        String console,
+        Duration validiteInvitation,
+        Duration validiteReinitialisation,
+        Duration validiteEnrolementTotp,
+        Set<String> permissionsConsole
+    ) {
+        /** Permissions qui ouvrent la console, par défaut (aiguillage.ts, PERMISSIONS_CONSOLE). */
+        public static final Set<String> PERMISSIONS_CONSOLE = Set.of(
+            "IAM_ACCOUNT_READ",
+            "PLATFORM_SUPERVISION_READ",
+            "PLATFORM_CONFIG_READ",
+            "PLATFORM_OPS_READ",
+            "PLATFORM_SECURITY_POLICY_READ",
+            "PLATFORM_MESSAGING_EDIT"
+        );
+
         public Liens {
+            permissionsConsole = permissionsConsole == null || permissionsConsole.isEmpty() ? PERMISSIONS_CONSOLE : Set.copyOf(permissionsConsole);
             des = des == null || des.isBlank() ? "http://localhost:4200" : des;
             portail = portail == null || portail.isBlank() ? "http://localhost:4201" : portail;
             console = console == null || console.isBlank() ? "http://localhost:4202" : console;

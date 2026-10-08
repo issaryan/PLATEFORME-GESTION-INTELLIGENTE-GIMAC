@@ -99,7 +99,10 @@ class PouvoirsDemandesRoutesTest {
     @BeforeEach
     void init() {
         var ligne = new PouvoirsService.LigneMatrice("ROLE_CHEF_DES", "Chef du DES", false, false, Map.of(ActionPouvoir.TACHE_CONFIER, Portee.UNITES, ActionPouvoir.PROCESSUS_DEFINIR, Portee.UNITES), Set.of("ROLE_SNA"));
-        when(pouvoirs.matrice()).thenReturn(new PouvoirsService.Matrice(Arrays.asList(ActionPouvoir.values()), Arrays.asList(Portee.values()), List.of(ligne)));
+        Map<ActionPouvoir, List<Portee>> admises = new java.util.EnumMap<>(ActionPouvoir.class);
+        Arrays.stream(ActionPouvoir.values()).forEach(a -> admises.put(a, a.porteesAdmises()));
+        var toutes = new PouvoirsService.LigneMatrice("ROLE_QUALITE", "Cellule qualité", false, true, Map.of(ActionPouvoir.PROCESSUS_DEFINIR, Portee.TOUTES, ActionPouvoir.PROCESSUS_LANCER, Portee.TOUTES), Set.of());
+        when(pouvoirs.matrice()).thenReturn(new PouvoirsService.Matrice(Arrays.asList(ActionPouvoir.values()), Arrays.asList(Portee.values()), admises, List.of(ligne, toutes)));
         when(pouvoirs.definir(any(), eq("ROLE_CHEF_DES"), any(), any(), any())).thenReturn(ligne);
         var vue = new PouvoirsService.VuePouvoirs(
             Map.of(ActionPouvoir.TACHE_CONFIER, Portee.UNITES, ActionPouvoir.PROCESSUS_LANCER, Portee.UNITES),
@@ -138,7 +141,7 @@ class PouvoirsDemandesRoutesTest {
             Instant.parse("2026-10-06T09:00:00Z"),
             new Profil.Auteur(ID, "Chef")
         );
-        when(profils.modifier(any(), eq("ROLE_POLE_RESEAU"), any(), any(), any())).thenReturn(modifie);
+        when(profils.modifier(any(), eq("ROLE_POLE_RESEAU"), any(), any(), any(), any())).thenReturn(modifie);
         when(configuration.profils()).thenReturn(List.of(modifie, new Profil("ROLE_SNA", null, Set.of(), false, 0)));
         when(reauth.verifier(eq("valide"), anyString(), anyString())).thenReturn(true);
     }
@@ -201,6 +204,45 @@ class PouvoirsDemandesRoutesTest {
             .andExpect(jsonPath("$.unitesDirigees[0]").value("POLE_RESEAU"))
             .andExpect(jsonPath("$.actions.PROCESSUS_LANCER").value("UNITES"))
             .andExpect(jsonPath("$.libellesProfils.ROLE_SNA").value("Normes et Agréments"));
+    }
+
+    @Test
+    @DisplayName("D-92 : portée TOUTES exposée (liste et portées admises par action), réglage refusé hors des processus (422 ORG_PORTEE_NON_ADMISE), pouvoirs TOUTES")
+    void porteeToutes() throws Exception {
+        String m = "/api/v1/pouvoirs/matrice";
+        mvc
+            .perform(req(HttpMethod.GET, m, null).with(jeton("IAM_ACCOUNT_READ")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.portees.length()").value(5))
+            .andExpect(jsonPath("$.portees[4]").value("TOUTES"))
+            .andExpect(jsonPath("$.porteesAdmises.PROCESSUS_DEFINIR.length()").value(5))
+            .andExpect(jsonPath("$.porteesAdmises.PROCESSUS_DEFINIR[4]").value("TOUTES"))
+            .andExpect(jsonPath("$.porteesAdmises.PROCESSUS_LANCER[4]").value("TOUTES"))
+            .andExpect(jsonPath("$.porteesAdmises.TACHE_CONFIER.length()").value(4))
+            .andExpect(jsonPath("$.porteesAdmises.TACHE_CONFIER[3]").value("UNITES"))
+            .andExpect(jsonPath("$.porteesAdmises.STATUT_DEMANDER[3]").value("UNITES"))
+            .andExpect(jsonPath("$.profils[1].profil").value("ROLE_QUALITE"))
+            .andExpect(jsonPath("$.profils[1].actions.PROCESSUS_DEFINIR").value("TOUTES"));
+
+        String toutes = "{\"actions\":{\"PROCESSUS_DEFINIR\":\"TOUTES\",\"PROCESSUS_LANCER\":\"TOUTES\"},\"profilsDemandables\":[],\"motif\":\"D-92\"}";
+        mvc.perform(req(HttpMethod.PUT, m + "/ROLE_CHEF_DES", toutes).with(jeton("IAM_PROFILE_EDIT")).header("X-Reauth-Assertion", "valide")).andExpect(status().isOk());
+        verify(pouvoirs).definir(any(), eq("ROLE_CHEF_DES"), eq(Map.of(ActionPouvoir.PROCESSUS_DEFINIR, Portee.TOUTES, ActionPouvoir.PROCESSUS_LANCER, Portee.TOUTES)), eq(Set.of()), eq("D-92"));
+        when(pouvoirs.definir(any(), eq("ROLE_SNA"), any(), any(), any())).thenThrow(
+            cm.gimac.des.iam.domain.IamException.nonTraitable("ORG_PORTEE_NON_ADMISE", "Portée non admise", Map.of("actions", List.of("TACHE_CONFIER"), "portees", Map.of("TACHE_CONFIER", "TOUTES")))
+        );
+        mvc
+            .perform(req(HttpMethod.PUT, m + "/ROLE_SNA", "{\"actions\":{\"TACHE_CONFIER\":\"TOUTES\"},\"profilsDemandables\":[]}").with(jeton("IAM_PROFILE_EDIT")).header("X-Reauth-Assertion", "valide"))
+            .andExpect(status().is(422))
+            .andExpect(jsonPath("$.code").value("ORG_PORTEE_NON_ADMISE"));
+        mvc.perform(req(HttpMethod.PUT, m + "/ROLE_CHEF_DES", "{\"actions\":{\"PROCESSUS_DEFINIR\":\"PARTOUT\"},\"profilsDemandables\":[]}").with(jeton("IAM_PROFILE_EDIT")).header("X-Reauth-Assertion", "valide")).andExpect(status().isBadRequest());
+
+        var vue = new PouvoirsService.VuePouvoirs(Map.of(ActionPouvoir.PROCESSUS_DEFINIR, Portee.TOUTES, ActionPouvoir.PROCESSUS_LANCER, Portee.TOUTES), Set.of(), List.of(), List.of(), Map.of());
+        when(pouvoirs.vue("ingenieur")).thenReturn(vue);
+        mvc
+            .perform(req(HttpMethod.GET, "/api/v1/interne/pouvoirs/ingenieur", null).with(jwt().jwt(j -> j.subject("service-account-pilotage-service")).authorities(new SimpleGrantedAuthority("INTERNAL_IAM_READ"))))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.actions.PROCESSUS_DEFINIR").value("TOUTES"))
+            .andExpect(jsonPath("$.actions.PROCESSUS_LANCER").value("TOUTES"));
     }
 
     @Test
@@ -291,7 +333,17 @@ class PouvoirsDemandesRoutesTest {
             .andExpect(jsonPath("$.modifieLe").value("2026-10-06T09:00:00Z"))
             .andExpect(jsonPath("$.modifiePar.id").value(ID))
             .andExpect(jsonPath("$.modifiePar.nomAffiche").value("Chef"));
-        verify(profils).modifier(any(), eq("ROLE_POLE_RESEAU"), eq("Pôle réseau et télécoms"), eq("Exploite le réseau"), eq("Réorganisation"));
+        verify(profils).modifier(any(), eq("ROLE_POLE_RESEAU"), eq("Pôle réseau et télécoms"), eq("Exploite le réseau"), isNull(), eq("Réorganisation"));
+        // D-94 : attribut externe modifiable par la même route, avec motif et clé de sécurité ; exposé dans la vue.
+        mvc
+            .perform(
+                req(HttpMethod.PUT, u, "{\"libelle\":\"Pôle réseau et télécoms\",\"description\":\"Exploite le réseau\",\"externe\":true,\"motif\":\"Ouverture aux partenaires\"}")
+                    .with(jeton("IAM_PROFILE_EDIT"))
+                    .header("X-Reauth-Assertion", "valide")
+            )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.externe").value(false));
+        verify(profils).modifier(any(), eq("ROLE_POLE_RESEAU"), eq("Pôle réseau et télécoms"), eq("Exploite le réseau"), eq(Boolean.TRUE), eq("Ouverture aux partenaires"));
         // Motif obligatoire ; libellé démesuré refusé dès la requête.
         mvc.perform(req(HttpMethod.PUT, u, "{\"libelle\":\"Pôle\",\"description\":\"\"}").with(jeton("IAM_PROFILE_EDIT")).header("X-Reauth-Assertion", "valide")).andExpect(status().isBadRequest());
         mvc.perform(req(HttpMethod.PUT, u, "{\"libelle\":\"" + "x".repeat(201) + "\",\"motif\":\"m\"}").with(jeton("IAM_PROFILE_EDIT")).header("X-Reauth-Assertion", "valide")).andExpect(status().isBadRequest());

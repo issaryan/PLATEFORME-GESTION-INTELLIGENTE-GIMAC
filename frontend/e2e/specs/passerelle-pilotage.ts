@@ -3,7 +3,7 @@ import type { Page, Route } from '@playwright/test'
 // Passerelle simulée de « Mon activité » (D-76, docs/lot1/mon-activite.md) pour l'application du département
 // construite avec VITE_SERVICES=http : MS-PILOTAGE (/bff/des/pilotage/**) et l'organisation de MS-IAM
 // (/bff/des/iam/organisation/**), aux formes du contrat. Session d'un collaborateur (PIL_ACTIVITY_OWN seul).
-// Le premier rapport soumis est refusé (422 PIL_SANS_RESPONSABLE), comme pour un compte sans n+1.
+// Le premier rapport soumis est refusé (422 PIL_RAPPORT_INCOMPLET, message du service rendu) ; le suivant est remis au n+1.
 
 const il = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString()
 const jour = () => new Date(Date.now() + 3_600_000).toISOString().slice(0, 10)
@@ -87,9 +87,14 @@ export class PasserellePilotage {
       if (!x) return refus(404, 'PIL_RAPPORT_INTROUVABLE', 'Rapport introuvable')
       if (!r[2] && methode === 'GET') return json(x)
       if (!r[2] && methode === 'PUT') return json(Object.assign(x, { mode: corps.mode, contenu: corps.contenu }))
+      // Destinataire annoncé avant la soumission (§2.4) : n+1, puis les chefs des unités au-dessus.
+      if (r[2] === '/destinataires' && methode === 'GET') {
+        return json({ destinataire: chef, motif: 'N_PLUS_UN', depot: false, choix: [{ ...chef, lien: 'N_PLUS_UN', unite: null }, { id: 'U-001', nomAffiche: 'Paul Mbarga Atangana', lien: 'CHEF_UNITE_PARENTE', unite: 'DES' }] })
+      }
       if (r[2] === '/soumission') {
-        if (this.soumissionsRefusees++ === 0) return refus(422, 'PIL_SANS_RESPONSABLE', 'Aucun responsable désigné')
-        return json(Object.assign(x, { etat: 'SOUMIS', destinataire: chef, soumisLe: il(0) }))
+        // Premier essai refusé : rapport vide côté service (422 expliqué, plus jamais muet).
+        if (this.soumissionsRefusees++ === 0) return refus(422, 'PIL_RAPPORT_INCOMPLET', 'Le rapport est vide')
+        return json(Object.assign(x, { etat: 'SOUMIS', destinataire: chef, destinataireMotif: 'N_PLUS_UN', soumisLe: il(0) }))
       }
     }
     return refus(404, 'HTTP_404', `Route non simulée : ${methode} ${chemin}`)

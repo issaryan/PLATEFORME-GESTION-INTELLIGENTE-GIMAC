@@ -3,11 +3,10 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams, useSearchParams } from 'react-router'
 import { ReactFlowProvider } from '@xyflow/react'
 import { Button, ConfirmDialog, CrudDialog, DataTable, Icon, InlineAlert, KeyValueList, NumberField, PageHeader, Select, TextArea, TextField, cx, type Column } from '@gimac/design-system'
-import { EtatsRequete, aPermission, usePermissions, type ApiError } from '@gimac/socle'
+import { EtatsRequete, type ApiError } from '@gimac/socle'
 import { LIMITES_PROCESSUS, etapeVierge, type AnomalieProcessus, type EtapeProcessus, type Processus, type SaisieProcessus } from '../../../modele/processus'
-import { useControleProcessus, useEcritureProcessus, useProcessus, useSupprimerProcessus } from '../../../hooks/processus'
+import { useControleProcessus, useEcritureProcessus, usePorteeProcessus, useProcessus, useSupprimerProcessus } from '../../../hooks/processus'
 import { usePouvoirs } from '../../../hooks/pouvoirs'
-import { PERM } from '../../../permissions'
 import { useDates, useLibelleUnite } from '../activite/communs'
 import { CanevasProcessus, type CarteEtape } from './CanevasProcessus'
 import { ModaleEtape, type OngletEtape } from './ModaleEtape'
@@ -68,12 +67,13 @@ function Espace({ processus: p }: { processus: Processus }) {
   const libelleUnite = useLibelleUnite()
   const resume = useResumeIntervenant()
   const erreur = useErreurProcessus()
-  const permissions = usePermissions()
   const pouvoirs = usePouvoirs()
   const [params, setParams] = useSearchParams()
   const vue = params.get('vue') === 'liste' ? 'liste' : 'canevas'
   const lecture = !p.droits.modifier
-  const peutDefinir = p.droits.modifier || p.droits.publier || p.droits.retirer || aPermission(permissions, PERM.profilEditer)
+  // D-92 : droits servis par MS-PILOTAGE, portée tous domaines, ou PROCESSUS_DEFINIR sur une unité dirigée.
+  const portee = usePorteeProcessus()
+  const peutDefinir = p.droits.modifier || p.droits.publier || p.droits.retirer || !!portee.data?.definirToutesUnites
     || (pouvoirs.data?.actions.PROCESSUS_DEFINIR === 'UNITES' && pouvoirs.data.unitesDirigees.includes(p.unite))
   const enregistrer = useEcritureProcessus((s, v: SaisieProcessus) => s.processus.modifier(p.id, v))
   const publier = useEcritureProcessus((s, v: { motif?: string; leverAvertissements?: boolean }) => s.processus.publier(p.id, v))
@@ -190,7 +190,7 @@ function Espace({ processus: p }: { processus: Processus }) {
       ]} />
       {p.description ? <p className="gm-field-help" style={{ margin: 0 }}>{p.description}</p> : null}
       {lecture ? <InlineAlert level="info">{t(p.etat === 'BROUILLON' ? 'proc.lectureSeule' : 'proc.lecturePubliee')}</InlineAlert> : null}
-      {p.avertissements.map((a, i) => <InlineAlert key={i} level="warn" title={t(`proc.anomalie.${a.code}`, { defaultValue: a.message })}>{a.etape ? `${a.etape} · ${a.message}` : a.message}</InlineAlert>)}
+      {p.avertissements.map((a, i) => <InlineAlert key={i} level={a.code === 'COUVERTURE_HORS_UNITE' ? 'info' : 'warn'} title={t(`proc.anomalie.${a.code}`, { defaultValue: a.message })}>{a.etape ? `${a.etape} · ${a.message}` : a.message}</InlineAlert>)}
       {refus ? (
         <InlineAlert level="crit" title={refus.titre} correlationId={refus.correlationId}
           action={<Button size="sm" variant="ghost" icon="x" onClick={() => setEchec(null)}>{t('commun.fermer')}</Button>} />
@@ -229,7 +229,7 @@ function Espace({ processus: p }: { processus: Processus }) {
       {!p.etapes.length && vue === 'canevas' ? <p className="gm-field-help" style={{ margin: 0 }}>{t('proc.etape.aucune')}</p> : null}
       {modale && (modale.creation || etape) ? (
         <ModaleEtape key={modale.creation ? 'creation' : modale.code} etape={modale.creation ? etapeVierge(p.etapes.length + 1) : etape!} creation={modale.creation} lecture={lecture}
-          etapes={p.etapes} enCours={enregistrer.isPending} erreurServeur={enregistrer.error} ongletInitial={modale.creation ? undefined : modale.onglet}
+          etapes={p.etapes} uniteProcessus={p.unite} enCours={enregistrer.isPending} erreurServeur={enregistrer.error} ongletInitial={modale.creation ? undefined : modale.onglet}
           onFermer={() => { setModale(null); enregistrer.reset() }}
           onEnregistrer={(e) => {
             const etapes = modale.creation ? [...p.etapes, e] : p.etapes.map((x) => (x.code === e.code ? e : x))

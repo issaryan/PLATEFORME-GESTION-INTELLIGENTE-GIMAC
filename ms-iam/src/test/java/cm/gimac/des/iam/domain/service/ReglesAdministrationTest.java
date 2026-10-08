@@ -14,6 +14,8 @@ class ReglesAdministrationTest {
 
     static final Set<String> CATALOGUE = Set.of("ROLE_SUPER_ADMIN", "ROLE_RSSI", "ROLE_CHEF_DDRM");
     static final Set<String> PRIVILEGIES = Set.of("ROLE_SUPER_ADMIN", "ROLE_RSSI");
+    /** Profils externes (attribut gimac_externe ou repli *_PORTAL_*), ici un correspondant et un profil créé. */
+    static final Set<String> EXTERNES = Set.of("ROLE_CORRESPONDANT", "ROLE_AUDITEUR_EXTERNE");
     static final Acteur RSSI = new Acteur("rssi", "RSSI", Set.of("IAM_ACCOUNT_ROLES"));
     static final Acteur SUPER = new Acteur("sa", "Super", Set.of("IAM_ACCOUNT_ROLES", "IAM_ROLE_PRIVILEGED_GRANT"));
 
@@ -51,26 +53,36 @@ class ReglesAdministrationTest {
     }
 
     @Test
-    @DisplayName("Le dernier super administrateur actif ne peut être retiré ; motif obligatoire")
+    @DisplayName("Le dernier porteur actif de IAM_ROLE_PRIVILEGED_GRANT ne peut être retiré ; motif obligatoire")
     void dernierSuperAdminEtMotif() {
-        refus(() -> ReglesAdministration.verifierDernierSuperAdmin(true, 1), "IAM_LAST_SUPER_ADMIN");
-        assertThatCode(() -> ReglesAdministration.verifierDernierSuperAdmin(true, 2)).doesNotThrowAnyException();
-        assertThatCode(() -> ReglesAdministration.verifierDernierSuperAdmin(false, 1)).doesNotThrowAnyException();
+        refus(() -> ReglesAdministration.verifierDernierPorteurOctroi(true, 1), "IAM_LAST_SUPER_ADMIN");
+        assertThatCode(() -> ReglesAdministration.verifierDernierPorteurOctroi(true, 2)).doesNotThrowAnyException();
+        assertThatCode(() -> ReglesAdministration.verifierDernierPorteurOctroi(false, 1)).doesNotThrowAnyException();
         refus(() -> ReglesAdministration.exigerMotif(" "), "IAM_REASON_REQUIRED");
         refus(() -> ReglesAdministration.exigerMotif(null), "IAM_REASON_REQUIRED");
     }
 
     @Test
-    @DisplayName("Institution : réservée au correspondant de participant, et obligatoire pour lui")
+    @DisplayName("Institution : réservée aux profils externes, et obligatoire pour eux")
     void rattachement() {
-        assertThatCode(() -> ReglesAdministration.verifierRattachement(Set.of("ROLE_POLE_SYSTEME"), null)).doesNotThrowAnyException();
-        assertThatCode(() -> ReglesAdministration.verifierRattachement(Set.of("ROLE_POLE_SYSTEME"), " ")).doesNotThrowAnyException();
-        assertThatCode(() -> ReglesAdministration.verifierRattachement(Set.of("ROLE_CORRESPONDANT"), "INST-0042")).doesNotThrowAnyException();
-        assertThatCode(() -> ReglesAdministration.verifierRattachement(Set.of(), null)).doesNotThrowAnyException();
+        assertThatCode(() -> ReglesAdministration.verifierRattachement(Set.of("ROLE_POLE_SYSTEME"), null, EXTERNES)).doesNotThrowAnyException();
+        assertThatCode(() -> ReglesAdministration.verifierRattachement(Set.of("ROLE_POLE_SYSTEME"), " ", EXTERNES)).doesNotThrowAnyException();
+        assertThatCode(() -> ReglesAdministration.verifierRattachement(Set.of("ROLE_CORRESPONDANT"), "INST-0042", EXTERNES)).doesNotThrowAnyException();
+        assertThatCode(() -> ReglesAdministration.verifierRattachement(Set.of(), null, EXTERNES)).doesNotThrowAnyException();
         // Agent du GIMAC saisi avec l'institution « GIMAC » : il serait traité en compte externe.
-        refus(() -> ReglesAdministration.verifierRattachement(Set.of("ROLE_POLE_SYSTEME"), "GIMAC"), "IAM_INSTITUTION_INTERNAL_ACCOUNT");
-        refus(() -> ReglesAdministration.verifierRattachement(Set.of("ROLE_CORRESPONDANT", "ROLE_DG"), "INST-0042"), "IAM_INSTITUTION_INTERNAL_ACCOUNT");
-        refus(() -> ReglesAdministration.verifierRattachement(Set.of("ROLE_CORRESPONDANT"), null), "IAM_INSTITUTION_REQUIRED");
-        refus(() -> ReglesAdministration.verifierRattachement(Set.of("ROLE_CORRESPONDANT"), ""), "IAM_INSTITUTION_REQUIRED");
+        refus(() -> ReglesAdministration.verifierRattachement(Set.of("ROLE_POLE_SYSTEME"), "GIMAC", EXTERNES), "IAM_INSTITUTION_INTERNAL_ACCOUNT");
+        refus(() -> ReglesAdministration.verifierRattachement(Set.of("ROLE_CORRESPONDANT", "ROLE_DG"), "INST-0042", EXTERNES), "IAM_INSTITUTION_INTERNAL_ACCOUNT");
+        refus(() -> ReglesAdministration.verifierRattachement(Set.of("ROLE_CORRESPONDANT"), null, EXTERNES), "IAM_INSTITUTION_REQUIRED");
+        refus(() -> ReglesAdministration.verifierRattachement(Set.of("ROLE_CORRESPONDANT"), "", EXTERNES), "IAM_INSTITUTION_REQUIRED");
+    }
+
+    @Test
+    @DisplayName("D-94 : un profil créé quelconque marqué externe s'attache à une institution ; un profil livré qui perd l'attribut ne le peut plus")
+    void rattachementSansNomDeProfil() {
+        assertThatCode(() -> ReglesAdministration.verifierRattachement(Set.of("ROLE_AUDITEUR_EXTERNE"), "INST-7", EXTERNES)).doesNotThrowAnyException();
+        refus(() -> ReglesAdministration.verifierRattachement(Set.of("ROLE_AUDITEUR_EXTERNE"), null, EXTERNES), "IAM_INSTITUTION_REQUIRED");
+        // ROLE_CORRESPONDANT n'est plus externe : il redevient un profil interne, sans institution.
+        refus(() -> ReglesAdministration.verifierRattachement(Set.of("ROLE_CORRESPONDANT"), "INST-0042", Set.of()), "IAM_INSTITUTION_INTERNAL_ACCOUNT");
+        assertThatCode(() -> ReglesAdministration.verifierRattachement(Set.of("ROLE_CORRESPONDANT"), null, Set.of())).doesNotThrowAnyException();
     }
 }

@@ -81,6 +81,15 @@ export class PasserelleProcessus {
     }
   }
 
+  /** Porteurs d'un profil (annuaire de démonstration) : ceux du pôle réseau dans l'unité, les autres ailleurs. */
+  private candidats(unite: string, profil: string | null) {
+    const DU_POLE = ['u-res', 'u-collab']
+    const vers = (p: Json) => ({ id: p.id, nomAffiche: p.nom, fonction: p.fonction ?? null, unite: DU_POLE.includes(p.id) ? 'POLE_RESEAU' : p.id === 'u-resp-info' ? 'PROD_INFO' : 'DES' })
+    const porteurs = [...this.annuaire, { id: this.moi.id, nom: this.moi.nomAffiche, fonction: this.moi.fonction, profils: [this.moi.profil] }]
+      .filter((p) => (profil ? (p.profils ?? []).includes(profil) : DU_POLE.includes(p.id)))
+    return { unite, profil, dansUnite: porteurs.filter((p) => DU_POLE.includes(p.id)).map(vers), ailleurs: porteurs.filter((p) => !DU_POLE.includes(p.id)).map(vers) }
+  }
+
   private historiser(i: Json, action: string, etape: string | null, detail: string | null = null) {
     i.historique.unshift({ quand: il(0), acteur: { id: this.moi.id, nomAffiche: this.moi.nomAffiche }, action, etape, detail })
   }
@@ -146,6 +155,8 @@ export class PasserelleProcessus {
 
     // ------------------------------------------------ MS-PILOTAGE : définitions
     const P = '/bff/des/pilotage/processus'
+    // Désignation hors de l'unité : candidats d'un intervenant (porteurs du profil dans l'unité, puis ailleurs).
+    if (chemin === `${P}/candidats` && methode === 'GET') return json(this.candidats(url.searchParams.get('unite') ?? '', url.searchParams.get('profil')))
     if (chemin === P && methode === 'GET') return json(this.definitions.map((p) => this.resume(p)))
     if (chemin === `${P}/instances` && methode === 'GET') {
       const l = this.instances.filter((i) => url.searchParams.get('vue') !== 'lancees' || i.lanceur.id === this.moi.id)
@@ -157,6 +168,11 @@ export class PasserelleProcessus {
       if (!i) return refus(404, 'PIL_PROCESSUS_INSTANCE_INTROUVABLE', 'Instance introuvable')
       const suite = inst[2] ?? ''
       if (!suite) return json(i)
+      const cand = suite.match(/^\/etapes\/([^/]+)\/candidats$/)
+      if (cand && methode === 'GET') {
+        const e = i.etapes.find((x: Json) => x.code === cand[1])
+        return json(this.candidats(e?.aPrendre?.unite ?? i.unite, e?.aPrendre?.profil ?? 'ROLE_POLE_RESEAU'))
+      }
       const ec = suite.match(/^\/etapes\/([^/]+)\/(livrables|signature|fin|validation|reaffectation|champs)$/)
       const e = ec ? i.etapes.find((x: Json) => x.code === ec[1]) : null
       if (ec && ec[2] === 'livrables') {

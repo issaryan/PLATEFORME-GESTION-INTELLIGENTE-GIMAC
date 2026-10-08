@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { poserCatalogue } from './specs/passerelle-catalogue'
 
 // Recueil de la couverture istanbul (window.__coverage__) dans e2e/.nyc_output : à la fin de chaque
 // scénario et à chaque déchargement de page (navigation complète : connexion, déconnexion), par une
@@ -64,6 +65,8 @@ export const test = base.extend<{ connecte: boolean }>({
         if (!sessionStorage.getItem('gm.sessionDemo')) sessionStorage.setItem('gm.sessionDemo', JSON.stringify({ identifiant: '' }))
       })
     }
+    // Catalogue des fonctionnalités de MS-IAM (D-94) pour les constructions sur la passerelle.
+    await poserCatalogue(page)
     await page.exposeFunction('__gmCouverture', (json: string) => ecrire(json))
     await page.addInitScript(() => {
       window.addEventListener('pagehide', () => {

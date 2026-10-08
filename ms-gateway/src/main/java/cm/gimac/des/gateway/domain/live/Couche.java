@@ -13,12 +13,12 @@ import java.util.Set;
 
 /**
  * Couche de présentation qui ouvre le canal (/bff/{couche}/live) et sujets qu'elle peut recevoir.
- * La collaboration, la présence et les notifications de la plateforme sont réservées aux acteurs internes
- * (D-64, D-72, D-80) : DES et console, jamais le portail.
+ * La collaboration et la présence sont réservées aux acteurs internes (D-64, D-72) : DES et console, jamais
+ * le portail. Les notifications de la plateforme (D-80) vont aussi au portail (D-93 §11.4), au seul destinataire.
  */
 public enum Couche {
     DES(Set.of(HOMOLOGATION, CERTIFICATION, COLLABORATION, PRESENCE, NOTIFICATION)),
-    PORTAIL(Set.of(HOMOLOGATION, CERTIFICATION)),
+    PORTAIL(Set.of(HOMOLOGATION, CERTIFICATION, NOTIFICATION)),
     CONSOLE(Set.of(HOMOLOGATION, CERTIFICATION, COLLABORATION, PRESENCE, NOTIFICATION));
 
     /** Couche des acteurs internes, seuls à figurer dans la présence (D-72). */

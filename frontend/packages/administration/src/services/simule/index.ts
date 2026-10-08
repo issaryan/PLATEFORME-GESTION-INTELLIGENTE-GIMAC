@@ -2,7 +2,7 @@ import { ReauthCancelled } from '@gimac/socle'
 import { creerSimulateur, type Compte, type SessionCompte } from '@gimac/compte'
 import type { EntreeJournal, ParJour } from '../../modele/comptes'
 import { ALGORITHMES_OTP, type PolitiqueSecurite, type Profil } from '../../modele/configuration'
-import { MOTIF_DEMANDE, PRESENTATIONS_PROFILS, UNITES_DEMO, estCreation, estProfils, magasinPouvoirs, type Demande, type MagasinPouvoirs, type Unite } from '@gimac/lot1'
+import { ACTIONS_POUVOIR, FONCTIONNALITES_DEMO, MOTIF_DEMANDE, PORTEES, porteesAdmisesParDefaut, PRESENTATIONS_PROFILS, UNITES_DEMO, estCreation, estProfils, magasinPouvoirs, type DefinitionFonctionnalite, type Demande, type MagasinPouvoirs, type Unite } from '@gimac/lot1'
 import type { NouveauCompte } from '../../modele/comptes'
 import type { ServiceComptes, ServiceConfiguration, ServiceOrganisation, ServicePlateforme, ServicePouvoirsAdministration, ServicesConsole } from '../ports'
 import { PERMISSIONS_REALM, PRIVILEGIES, PROFILS_REALM } from './catalogue'
@@ -64,11 +64,16 @@ export function servicesConsoleSimules(o: OptionsConsoleSimulee = {}): ServicesC
   let politique = D.politiqueInitiale()
   let messagerie = D.messagerieInitiale()
   // Présentation des profils (D-86 §2) : libellé et mission du jeu initial, dernière modification depuis la console.
-  type ProfilSimule = { code: string; libelle: string; description: string; permissions: string[]; cree?: boolean; modifieLe: string | null; modifiePar: { id: string; nomAffiche: string } | null }
+  type ProfilSimule = {
+    code: string; libelle: string; description: string; permissions: string[]; cree?: boolean; externe: boolean; modifieLe: string | null; modifiePar: { id: string; nomAffiche: string } | null
+  }
+  // Profil externe (D-94 §6.1) : valeur de départ gimac.iam.profils.externes-initiaux, puis attribut modifiable.
   const profils: ProfilSimule[] = PROFILS_REALM.map((p) => ({
     ...p, libelle: PRESENTATIONS_PROFILS[p.code]?.libelle ?? p.code, description: PRESENTATIONS_PROFILS[p.code]?.description ?? p.description, permissions: [...p.permissions],
-    modifieLe: null, modifiePar: null,
+    externe: p.code === 'ROLE_CORRESPONDANT', modifieLe: null, modifiePar: null,
   }))
+  // Catalogue des fonctionnalités (D-94 §6.2) : valeurs de départ de MS-IAM, modifiables par IAM_PROFILE_EDIT.
+  const fonctionnalites: DefinitionFonctionnalite[] = structuredClone(FONCTIONNALITES_DEMO)
   const magasin = o.pouvoirs ?? magasinPouvoirs()
   const sessions = new Map<string, SessionCompte[]>()
   let n = 0
@@ -126,7 +131,7 @@ export function servicesConsoleSimules(o: OptionsConsoleSimulee = {}): ServicesC
   const estPrivilegie = (code: string) => PRIVILEGIES.includes(code) || !!profils.find((x) => x.code === code && x.cree && x.permissions.some(privilegiee))
   const vueProfil = (p: (typeof profils)[number]): Profil => ({
     code: p.code, libelle: p.libelle, description: p.description, permissions: [...p.permissions].sort(), privilegie: estPrivilegie(p.code),
-    titulaires: comptes.filter((c) => c.profils.includes(p.code)).length, cree: !!p.cree, modifieLe: p.modifieLe, modifiePar: p.modifiePar,
+    titulaires: comptes.filter((c) => c.profils.includes(p.code)).length, cree: !!p.cree, externe: p.externe, modifieLe: p.modifieLe, modifiePar: p.modifiePar,
   })
   const modification = () => ({ modifieLe: new Date().toISOString(), modifiePar: { id: acteur.id, nomAffiche: acteur.nom } })
   /** Libellé 1 à 80 et description 0 à 500 après retrait des espaces (400 IAM_PROFIL_INVALIDE, détail champ). */
@@ -443,7 +448,7 @@ export function servicesConsoleSimules(o: OptionsConsoleSimulee = {}): ServicesC
         const inconnues = x.permissions.filter((y) => !PERMISSIONS_DOMAINE.includes(y))
         if (inconnues.length) throw refus(400, 'IAM_PERMISSION_UNKNOWN', 'Permission inconnue', { permissions: inconnues })
         if (x.permissions.some(privilegiee) && !peutPrivilegie) throw refus(403, 'IAM_PRIVILEGED_PROFILE', 'La création d’un profil privilégié est réservée au super administrateur')
-        const p: ProfilSimule = { code, ...presente, permissions: [...new Set([...x.permissions, ...INTERNE])].sort(), cree: true, ...modification() }
+        const p: ProfilSimule = { code, ...presente, permissions: [...new Set([...x.permissions, ...INTERNE])].sort(), cree: true, externe: false, ...modification() }
         profils.push(p)
         magasin.ajouterProfil(code, p.libelle)
         tracer('PROFIL_CREE', { id: null, libelle: `PROFIL_${code}` }, m, p.permissions)
@@ -471,11 +476,41 @@ export function servicesConsoleSimules(o: OptionsConsoleSimulee = {}): ServicesC
         const p = profils.find((y) => y.code === code)
         if (!p) throw refus(404, 'IAM_PROFILE_NOT_FOUND', 'Ressource introuvable', { id: code })
         if (estPrivilegie(code) && !peutPrivilegie) throw refus(403, 'IAM_PRIVILEGED_PROFILE', 'La modification d’un profil privilégié est réservée au super administrateur')
-        const avant = `libelle=${p.libelle} ; description=${p.description}`
-        Object.assign(p, presentation(x.libelle, x.description, code), modification())
+        // Profil externe (D-94 §6.1) : refusé tant que le profil a des titulaires (409 IAM_PROFIL_EXTERNE_TITULAIRES).
+        const externe = x.externe ?? p.externe
+        if (externe !== p.externe && comptes.some((c) => c.profils.includes(code))) {
+          throw refus(409, 'IAM_PROFIL_EXTERNE_TITULAIRES', 'Le caractère externe d’un profil ne change pas tant qu’il a des titulaires', { code, titulaires: comptes.filter((c) => c.profils.includes(code)).length })
+        }
+        const avant = `libelle=${p.libelle} ; description=${p.description} ; externe=${p.externe}`
+        Object.assign(p, presentation(x.libelle, x.description, code), { externe }, modification())
         magasin.renommerProfil(code, p.libelle)
-        tracer('CONFIGURATION_PROFIL_MODIFIE', { id: null, libelle: code }, m, [`avant: ${avant}`, `après: libelle=${p.libelle} ; description=${p.description}`])
+        tracer('CONFIGURATION_PROFIL_MODIFIE', { id: null, libelle: code }, m, [`avant: ${avant}`, `après: libelle=${p.libelle} ; description=${p.description} ; externe=${p.externe}`])
         return vueProfil(p)
+      }),
+    fonctionnalites: (application) => attendre(() => fonctionnalites.filter((f) => !application || f.application === application)
+      .sort((a, b) => a.application.localeCompare(b.application) || a.ordre - b.ordre || a.cle.localeCompare(b.cle))),
+    // Modification d'une fonctionnalité (D-94 §6.2) : mêmes refus que MS-IAM.
+    modifierFonctionnalite: (cle, f, m, assertion) =>
+      attendre(() => {
+        if (!acteur.permissions.includes('IAM_PROFILE_EDIT')) throw refus(403, 'IAM_PERMISSION_REQUISE', 'Permission IAM_PROFILE_EDIT requise')
+        reauth(assertion)
+        motif(m)
+        const i = fonctionnalites.findIndex((x) => x.cle === cle)
+        if (i < 0) throw refus(404, 'IAM_FONCTIONNALITE_INTROUVABLE', 'Fonctionnalité introuvable', { cle })
+        const avant = fonctionnalites[i]
+        if (f.application !== avant.application) throw refus(422, 'IAM_FONCTIONNALITE_APPLICATION_IMMUABLE', 'L’application d’une fonctionnalité ne change pas', { cle })
+        if (!f.libelle?.trim()) throw refus(400, 'IAM_FONCTIONNALITE_INVALIDE', 'Libellé obligatoire', { champ: 'libelle' })
+        if (!Number.isInteger(f.ordre) || f.ordre < 0) throw refus(400, 'IAM_FONCTIONNALITE_INVALIDE', 'Ordre invalide', { champ: 'ordre' })
+        const citees = [...f.permissions.tous, ...f.permissions.unDe, ...f.widgets.flatMap((w) => [...w.permissions.tous, ...w.permissions.unDe]), ...f.droits.map((d) => d.permission)]
+        if (citees.some((x) => x.startsWith('INTERNAL_'))) throw refus(422, 'IAM_FONCTIONNALITE_PERMISSION_INTERNE', 'Permission interne interdite', { cle })
+        const inconnues = citees.filter((x) => !PERMISSIONS_DOMAINE.includes(x))
+        if (inconnues.length) throw refus(400, 'IAM_PERMISSION_UNKNOWN', 'Permission inconnue', { permissions: inconnues })
+        const apres: DefinitionFonctionnalite = { ...structuredClone(f), cle, groupe: f.groupe || null, ...modification(), modifiePar: acteur.id }
+        const champs = (['libelle', 'groupe', 'ordre', 'icone', 'visible', 'permissions', 'module'] as const).filter((k) => JSON.stringify(avant[k]) !== JSON.stringify(apres[k]))
+        if (!champs.length) return avant
+        fonctionnalites[i] = apres
+        tracer('CONFIGURATION_FONCTIONNALITE_MODIFIEE', { id: null, libelle: cle }, m, champs.map((k) => `${k}: ${JSON.stringify(avant[k])} → ${JSON.stringify(apres[k])}`))
+        return apres
       }),
   }
 
@@ -519,7 +554,8 @@ export function servicesConsoleSimules(o: OptionsConsoleSimulee = {}): ServicesC
     tracer(actif ? 'ACTIVATION' : 'DESACTIVATION', { id: cible, libelle: compte?.identifiant ?? d.cible!.nomAffiche }, d.motif)
   }
   const pouvoirs: ServicePouvoirsAdministration = {
-    matrice: () => attendre(() => ({ profils: magasin.matrice })),
+    // D-92 : portées ordonnées et portées admises par action (TOUTES pour les seuls processus).
+    matrice: () => attendre(() => ({ profils: magasin.matrice, actions: [...ACTIONS_POUVOIR], portees: [...PORTEES], porteesAdmises: Object.fromEntries(ACTIONS_POUVOIR.map((a) => [a, porteesAdmisesParDefaut(a)])) })),
     modifierMatrice: (profil, e, m, assertion) =>
       attendre(() => {
         reauth(assertion)

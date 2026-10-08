@@ -6,6 +6,7 @@ import cm.gimac.des.pilotage.application.port.in.AgendaUseCase.Relation;
 import cm.gimac.des.pilotage.application.port.in.EquipeUseCase.MembreDuJour;
 import cm.gimac.des.pilotage.application.port.in.EquipeUseCase.Synthese;
 import cm.gimac.des.pilotage.application.port.in.Page;
+import cm.gimac.des.pilotage.application.port.in.RapportsUseCase;
 import cm.gimac.des.pilotage.application.port.in.RapportsUseCase.RapportLu;
 import cm.gimac.des.pilotage.application.port.in.TachesUseCase.GroupeLu;
 import cm.gimac.des.pilotage.application.port.in.TachesUseCase.TacheLue;
@@ -135,7 +136,12 @@ final class Vues {
 
     record HistoriqueVue(String quand, PersonneVue acteur, String action, String detail) {}
 
-    /** Tâche ; D-81 §6 : {@code groupeId} (envoi à plusieurs), {@code uniteCible} (unité visée), {@code relanceeLe}. */
+    /**
+     * Tâche ; D-81 §6 : {@code groupeId} (envoi à plusieurs), {@code uniteCible} (unité visée), {@code relanceeLe} ;
+     * D-87 : {@code profilRequis} (étape de processus) ; D-93 : {@code profilsRequis} (offre d'un autre service, vide
+     * sinon), {@code permissionsRequises} (offre par permission, D-94, vide sinon) et {@code aPrendre} (sans
+     * responsable, à prendre par sa prise).
+     */
     record TacheVue(
         UUID id,
         String titre,
@@ -153,7 +159,10 @@ final class Vues {
         String uniteCible,
         String relanceeLe,
         List<HistoriqueVue> historique,
-        String profilRequis
+        String profilRequis,
+        List<String> profilsRequis,
+        List<String> permissionsRequises,
+        boolean aPrendre
     ) {
         static TacheVue de(TacheLue l) {
             Tache t = l.tache();
@@ -179,7 +188,10 @@ final class Vues {
                     .stream()
                     .map(h -> new HistoriqueVue(ReglesActivite.horodatage(h.getQuand()), PersonneVue.de(h.getActeurId(), noms), h.getAction().name(), h.getDetail()))
                     .toList(),
-                t.getProfilRequis()
+                t.getProfilRequis(),
+                List.copyOf(t.getProfilsRequis()),
+                List.copyOf(t.getPermissionsRequises()),
+                t.getEtat() == cm.gimac.des.pilotage.domain.activite.EtatTache.A_PRENDRE
             );
         }
     }
@@ -209,7 +221,8 @@ final class Vues {
     record OrigineRequete(String type, String reference, String service, String lien) {}
 
     /** Clôture ou réouverture par un autre service (D-77) : origine (type facultatif, référence) et responsable facultatif. */
-    record CibleInterneRequete(OrigineRequete origine, String responsableId) {}
+    /** {@code aPrendre} vrai : l'offre de l'origine seule, remise à prendre à sa réouverture (D-94). */
+    record CibleInterneRequete(OrigineRequete origine, String responsableId, Boolean aPrendre) {}
 
     record TacheInterneRequete(
         String titre,
@@ -218,7 +231,10 @@ final class Vues {
         String priorite,
         String responsableId,
         String createurId,
-        OrigineRequete origine
+        OrigineRequete origine,
+        List<String> profilsRequis,
+        String uniteCible,
+        List<String> permissionsRequises
     ) {}
 
     // ------------------------------------------------------------------ rapports (§2.4)
@@ -246,7 +262,9 @@ final class Vues {
         String soumisLe,
         String viseLe,
         VisaVue visa,
-        IndicateursVue indicateurs
+        IndicateursVue indicateurs,
+        /** N_PLUS_UN, CHEF_UNITE, CHEF_UNITE_PARENTE, CHOISI ; nul pour un brouillon ou un rapport déposé. */
+        String destinataireMotif
     ) {
         static RapportVue de(RapportLu l) {
             Rapport r = l.rapport();
@@ -264,7 +282,25 @@ final class Vues {
                 ReglesActivite.horodatage(r.getSoumisLe()),
                 ReglesActivite.horodatage(r.getViseLe()),
                 r.getEtat() == EtatRapport.VISE ? new VisaVue(PersonneVue.de(r.getVisaParId(), noms), r.getVisaCommentaire()) : null,
-                IndicateursVue.de(l.indicateurs())
+                IndicateursVue.de(l.indicateurs()),
+                r.getDestinataireMotif() == null ? null : r.getDestinataireMotif().name()
+            );
+        }
+    }
+
+    /** Soumission : destinataire choisi par l'auteur dans sa chaîne hiérarchique (facultatif). */
+    record SoumissionRequete(String destinataireId) {}
+
+    record ChoixDestinataireVue(String id, String nomAffiche, String lien, String unite) {}
+
+    /** GET /rapports/{id}/destinataires : destinataire par défaut et motif (nuls avec {@code depot}), choix possibles. */
+    record DestinatairesVue(PersonneVue destinataire, String motif, boolean depot, List<ChoixDestinataireVue> choix) {
+        static DestinatairesVue de(RapportsUseCase.Destinataires d) {
+            return new DestinatairesVue(
+                PersonneVue.de(d.destinataireId(), d.noms()),
+                d.motif() == null ? null : d.motif().name(),
+                d.depot(),
+                d.choix().stream().map(c -> new ChoixDestinataireVue(c.id(), d.noms().get(c.id()), c.lien(), c.unite())).toList()
             );
         }
     }

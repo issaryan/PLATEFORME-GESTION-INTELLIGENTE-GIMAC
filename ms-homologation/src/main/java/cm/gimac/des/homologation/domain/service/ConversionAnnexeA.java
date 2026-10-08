@@ -10,6 +10,8 @@ import cm.gimac.des.homologation.domain.parcours.Geste;
 import cm.gimac.des.homologation.domain.parcours.GrainPreuve;
 import cm.gimac.des.homologation.domain.parcours.Jalon;
 import cm.gimac.des.homologation.domain.parcours.Livrable;
+import cm.gimac.des.homologation.domain.parcours.VueOperation;
+import cm.gimac.des.homologation.domain.parcours.ModeleTypeProjet;
 import cm.gimac.des.homologation.domain.parcours.NatureLivrable;
 import cm.gimac.des.homologation.domain.parcours.Particularite;
 import cm.gimac.des.homologation.domain.parcours.PlateformeExecution;
@@ -132,7 +134,7 @@ public final class ConversionAnnexeA {
             int ligne = lignesParEtape.merge(o.getEtape(), 1, Integer::sum) - 1;
             PlateformeExecution plateforme = o.getPlateforme();
             if ("15".equals(rang) || "16".equals(rang)) {
-                plateforme = type == TypeProjet.PAIEMENT_MOBILE ? PlateformeExecution.SIMULATEUR : null;
+                plateforme = ModeleTypeProjet.parDefaut(type).plateformeEssais();
             }
             List<Livrable> livrables = o.getGrain() == GrainPreuve.PHASE || o.isPivot()
                 ? List.of(new Livrable("L1", lib.preuve().isBlank() ? lib.libelle() : lib.preuve(), NatureLivrable.LIVRABLE, r, PDF, true))
@@ -175,7 +177,7 @@ public final class ConversionAnnexeA {
                         declencheur(rang),
                         new Position(o.getEtape().ordinal() * 300.0, ligne * 120.0 + o.getSegment().ordinal() * 40.0),
                         particularite(rang)
-                    )
+                    ).avecVue(VueOperation.duRang(rang))
                 )
             );
         }

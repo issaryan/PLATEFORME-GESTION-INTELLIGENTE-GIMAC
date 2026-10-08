@@ -185,7 +185,7 @@ describe('Profils et permissions', () => {
     fireEvent.click(within(ligne).getByRole('button', { name: 'Voir la composition' }))
     const d = await screen.findByRole('dialog')
     expect(within(d).getByText('Consultation seule.')).toBeTruthy()
-    expect((within(d).getByRole('checkbox', { name: 'Comptes utilisateurs' }) as HTMLInputElement).disabled).toBe(true)
+    expect((await within(d).findByRole('checkbox', { name: 'Comptes utilisateurs' }) as HTMLInputElement).disabled).toBe(true)
     fireEvent.click(within(d).getByRole('tab', { name: 'Droits' }))
     expect((await within(d).findByLabelText('IAM_ACCOUNT_READ') as HTMLInputElement).disabled).toBe(true)
     expect(within(d).queryByRole('button', { name: 'Continuer vers la signature' })).toBeNull()

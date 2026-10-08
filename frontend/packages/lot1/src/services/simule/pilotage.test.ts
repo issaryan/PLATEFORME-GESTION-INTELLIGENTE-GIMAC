@@ -142,10 +142,22 @@ describe('pilotageSimule', () => {
     expect(vise).toMatchObject({ etat: 'VISE', visa: { par: { id: 'u-resp-info' }, commentaire: 'Bien reçu.' } })
     expect(await code(chef.viser(aViser.id, ''))).toBe('409 PIL_TRANSITION_INTERDITE')
     expect(await code(chef.rapport('RAP-inconnu'))).toBe('404 PIL_RAPPORT_INTROUVABLE')
-    // Sans responsable : la soumission est refusée.
+    // Sommet de l'organisation : personne au-dessus, le rapport est déposé (plus de refus).
     const dg = svc('u-dg', 'Jean-Baptiste Ella Mintsa')
     const brouillon = await dg.creerRapport({ type: 'QUOTIDIEN', periode: '2026-10-06', mode: 'REDIGE', contenu: 'Comité' })
-    expect(await code(dg.soumettre(brouillon.id))).toBe('422 PIL_SANS_RESPONSABLE')
+    expect(await dg.destinatairesRapport(brouillon.id)).toEqual({ destinataire: null, motif: null, depot: true, choix: [] })
+    expect(await dg.soumettre(brouillon.id)).toMatchObject({ etat: 'DEPOSE', destinataire: null, destinataireMotif: null })
+    expect(await code(dg.viser(brouillon.id, ''))).toBe('409 PIL_TRANSITION_INTERDITE')
+  })
+  it('rapports : destinataire annoncé (n+1, chefs des unités au-dessus), choix dans la chaîne, refus hors de la chaîne', async () => {
+    const membre = svc('u-res', 'Idriss Mahamat Saleh')
+    const r = await membre.creerRapport({ type: 'QUOTIDIEN', periode: '2026-10-06', mode: 'REDIGE', contenu: 'Analyse des flux' })
+    const d = await membre.destinatairesRapport(r.id)
+    expect(d).toMatchObject({ destinataire: { id: 'u-resp-info' }, motif: 'N_PLUS_UN', depot: false })
+    expect(d.choix.map((c) => [c.id, c.lien])).toEqual([['u-resp-info', 'N_PLUS_UN'], ['U-001', 'CHEF_UNITE_PARENTE'], ['u-dg', 'CHEF_UNITE_PARENTE']])
+    expect(await code(svc('u-collab', 'Nadège Mvondo Assiga').destinatairesRapport(r.id))).toBe('404 PIL_RAPPORT_INTROUVABLE')
+    expect(await code(membre.soumettre(r.id, 'u-sna'))).toBe('422 PIL_DESTINATAIRE_INVALIDE')
+    expect(await membre.soumettre(r.id, 'U-001')).toMatchObject({ etat: 'SOUMIS', destinataire: { id: 'U-001' }, destinataireMotif: 'CHOISI' })
   })
   it('document d’un rapport : dépôt par morceaux avec progression, ticket vérifié, aperçu ; refus et annulation', async () => {
     vi.useRealTimers()

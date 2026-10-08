@@ -60,7 +60,7 @@ class OrganisationServiceTest {
 
     @BeforeEach
     void init() {
-        annuaire = new AnnuaireEnMemoire(Map.of(), Set.of());
+        annuaire = new AnnuaireEnMemoire(Map.of());
         catalogue = new CatalogueEnMemoire();
         catalogue.enregistrer(new Unite("DG", "Direction Générale", TypeUnite.DIRECTION, null, true));
         catalogue.enregistrer(new Unite("DES", "Département Exploitation et Supervision", TypeUnite.DEPARTEMENT, "DG", true));
@@ -206,7 +206,7 @@ class OrganisationServiceTest {
     @Test
     @DisplayName("D-86 : membres d'une unité (sous-unités comprises ou non), comptes internes actifs, filtre par profil, profils de chacun, unité inconnue 404")
     void membresUnite() {
-        annuaire = new AnnuaireEnMemoire(AnnuaireEnMemoire.catalogueParDefaut(Set.of("ROLE_POLE_RESEAU", "ROLE_COLLABORATEUR", "ROLE_RESPONSABLE_SERVICE")), Set.of());
+        annuaire = new AnnuaireEnMemoire(AnnuaireEnMemoire.catalogueParDefaut(Set.of("ROLE_POLE_RESEAU", "ROLE_COLLABORATEUR", "ROLE_RESPONSABLE_SERVICE")));
         service = new OrganisationService(catalogue, annuaire, journal);
         String chef = annuaire.creer(new NouveauCompte("chef.prod", "Paul", "Ekane", "chef@gimac.test", null, "Chef de service", null, Set.of("ROLE_RESPONSABLE_SERVICE")), List.of());
         String bob = annuaire.creer(new NouveauCompte("bob", "Bob", "Ndi", "bob@gimac.test", null, "Technicien", null, Set.of("ROLE_POLE_RESEAU", "ROLE_COLLABORATEUR")), List.of());

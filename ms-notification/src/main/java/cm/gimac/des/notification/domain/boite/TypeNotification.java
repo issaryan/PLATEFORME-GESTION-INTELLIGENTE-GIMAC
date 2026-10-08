@@ -29,4 +29,10 @@ public enum TypeNotification {
      * destinataire, jamais regroupée.
      */
     PROCESSUS,
+    /**
+     * Parcours d'homologation (D-93, docs/lot1/effet-reel-referentiels.md §8.2 et §11, sujets homologation.operation et
+     * homologation.liaison) : opération ouverte ou en validation (action attendue, avis demandé, information, escalade
+     * selon la qualité RACI), jalon atteint ; une notification par événement et par destinataire, jamais regroupée.
+     */
+    HOMOLOGATION,
 }

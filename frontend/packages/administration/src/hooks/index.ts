@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryKey, type UseQueryOptions } from '@tanstack/react-query'
-import type { EtatDemande } from '@gimac/lot1'
+import type { EtatDemande, SaisieFonctionnalite } from '@gimac/lot1'
 import { aPermission, usePermissions, type ApiError } from '@gimac/socle'
 import { useServicesConsole } from '../services/useServicesConsole'
 import type { ServicesConsole } from '../services/ports'
@@ -18,6 +18,7 @@ export const cles = {
   politique: () => ['iam', 'politique'] as const,
   messagerie: () => ['iam', 'messagerie'] as const,
   profils: () => ['iam', 'profils'] as const,
+  fonctionnalites: () => ['iam', 'fonctionnalites'] as const,
   permissions: () => ['iam', 'permissions'] as const,
   unites: () => ['iam', 'unites'] as const,
   matrice: () => ['iam', 'matrice'] as const,
@@ -68,6 +69,14 @@ export const useIndicateursComptes = (actif = true) => useLecture(cles.indicateu
 export const useJournal = (f: FiltreJournal, actif = true) => useLecture(cles.journal(f), (s) => s.comptes.journal(f), { enabled: actif })
 export const useCompte = (id: string, actif = true) => useLecture(cles.compte(id), (s) => s.comptes.lire(id), { enabled: actif && !!id })
 export const useSessionsCompte = (id: string) => useLecture(cles.compte(id, 'sessions'), (s) => s.comptes.sessions(id))
+/**
+ * Catalogue des fonctionnalités servi par MS-IAM (D-94) : toutes les applications, relu à chaque modification (clé
+ * sous « iam ») ; barre latérale, gardes, tableau de bord et éditeur de profil en dérivent.
+ */
+export const useFonctionnalites = (actif = true) =>
+  useLecture(cles.fonctionnalites(), (s) => s.configuration.fonctionnalites(), { enabled: actif, staleTime: 60_000, retry: 1 })
+export const useModifierFonctionnalite = () =>
+  useEffet((s, v: { cle: string; f: SaisieFonctionnalite; motif: string; assertion: string }) => s.configuration.modifierFonctionnalite(v.cle, v.f, v.motif, v.assertion), [cles.fonctionnalites()])
 export const useProfils = (actif = true) => useLecture(cles.profils(), (s) => s.configuration.profils(), { enabled: actif })
 /**
  * Source des libellés de profils de la console (D-86 §2) pour useLibelleProfil du socle : catalogue du serveur

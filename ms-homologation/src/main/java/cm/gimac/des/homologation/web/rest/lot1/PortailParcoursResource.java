@@ -90,6 +90,7 @@ public class PortailParcoursResource {
         @PathVariable UUID id,
         @RequestPart(name = "fichier", required = false) MultipartFile fichier,
         @RequestParam(name = "commentaire", required = false) String commentaire,
+        @RequestParam(name = "livrable", required = false) String livrable,
         Authentication auth
     ) {
         byte[] contenu;
@@ -100,6 +101,7 @@ public class PortailParcoursResource {
         }
         commandes.deposerLivrablePortail(
             id,
+            livrable,
             contenu,
             fichier == null ? null : fichier.getOriginalFilename(),
             fichier == null ? null : fichier.getContentType(),

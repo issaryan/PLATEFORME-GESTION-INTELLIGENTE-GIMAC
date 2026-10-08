@@ -10,13 +10,14 @@ import org.springframework.stereotype.Component;
 
 /**
  * Adaptateur de substitution de MS-PILOTAGE (développement, tests) : les tâches sont tenues en mémoire avec la
- * même idempotence que le service réel (origine.reference + responsable) ; une indisponibilité se simule.
+ * même idempotence que le service réel (origine.reference + responsable ; tâche à prendre : clé {@code reference|null},
+ * état A_PRENDRE) ; une indisponibilité se simule.
  */
 @Component
 @ConditionalOnProperty(name = "gimac.adapters.pilotage-tasks", havingValue = "stub", matchIfMissing = true)
 public class PilotageTachesStubAdapter implements PilotageTachesPort {
 
-    /** Tâche tenue par le substitut : la demande de création et son état (OUVERTE, TERMINEE). */
+    /** Tâche tenue par le substitut : la demande de création et son état (OUVERTE, A_PRENDRE, TERMINEE, EN_COURS). */
     public record TacheTenue(Tache tache, String etat) {}
 
     private final Map<String, TacheTenue> taches = new ConcurrentHashMap<>();
@@ -50,7 +51,7 @@ public class PilotageTachesStubAdapter implements PilotageTachesPort {
             return Resultat.INDISPONIBLE;
         }
         journal.add("CREER " + cle(t.origine().reference(), t.responsableId()));
-        taches.putIfAbsent(cle(t.origine().reference(), t.responsableId()), new TacheTenue(t, "OUVERTE"));
+        taches.putIfAbsent(cle(t.origine().reference(), t.responsableId()), new TacheTenue(t, t.responsableId() == null ? "A_PRENDRE" : "OUVERTE"));
         return Resultat.FAIT;
     }
 
@@ -61,7 +62,7 @@ public class PilotageTachesStubAdapter implements PilotageTachesPort {
 
     @Override
     public Resultat rouvrir(Designation d) {
-        return changer(d, "EN_COURS", "ROUVRIR ");
+        return changer(d, Boolean.TRUE.equals(d.aPrendre()) ? "A_PRENDRE" : "EN_COURS", "ROUVRIR ");
     }
 
     private Resultat changer(Designation d, String etat, String trace) {

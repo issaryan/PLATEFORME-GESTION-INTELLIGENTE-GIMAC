@@ -30,19 +30,56 @@ public interface TachesUseCase {
 
     record Origine(String type, String reference, String service, String lien) {}
 
-    /** Tâche demandée par un autre service (jeton de service INTERNAL_PILOTAGE_TASK_CREATE). */
-    record TacheInterne(String titre, String description, String echeance, String priorite, String responsableId, String createurId, Origine origine) {}
+    /**
+     * Tâche demandée par un autre service (jeton de service INTERNAL_PILOTAGE_TASK_CREATE) : à {@code responsableId},
+     * ou, sans responsable, à prendre par les porteurs de l'un des {@code profilsRequis} (1 à 20), dans
+     * {@code uniteCible} si elle est donnée, sinon dans toute l'organisation (D-93).
+     */
+    record TacheInterne(
+        String titre,
+        String description,
+        String echeance,
+        String priorite,
+        String responsableId,
+        String createurId,
+        Origine origine,
+        List<String> profilsRequis,
+        String uniteCible,
+        List<String> permissionsRequises
+    ) {
+        public TacheInterne(String titre, String description, String echeance, String priorite, String responsableId, String createurId, Origine origine) {
+            this(titre, description, echeance, priorite, responsableId, createurId, origine, null, null, null);
+        }
+
+        public TacheInterne(
+            String titre,
+            String description,
+            String echeance,
+            String priorite,
+            String responsableId,
+            String createurId,
+            Origine origine,
+            List<String> profilsRequis,
+            String uniteCible
+        ) {
+            this(titre, description, echeance, priorite, responsableId, createurId, origine, profilsRequis, uniteCible, null);
+        }
+    }
 
     record TacheLue(Tache tache, List<TacheHistorique> historique, Map<String, String> noms, boolean enRetard) {}
 
     /** Désignation par un autre service des tâches qu'il a créées : origine (type facultatif, référence) et responsable facultatif. */
-    record CibleInterne(Origine origine, String responsableId) {}
+    record CibleInterne(Origine origine, String responsableId, boolean aPrendre) {
+        public CibleInterne(Origine origine, String responsableId) {
+            this(origine, responsableId, false);
+        }
+    }
 
     /** {@code creee} faux : la tâche existait déjà pour cette origine et ce responsable (idempotence). */
     record Creation(TacheLue tache, boolean creee) {}
 
     /**
-     * {@code vue} : moi (responsable), creees (confiées par moi), equipe (PIL_TEAM_READ et TACHE_SUIVRE),
+     * {@code vue} : moi (responsable, et tâches à prendre que l'appelant peut prendre par ses profils, D-93), creees (confiées par moi), equipe (PIL_TEAM_READ et TACHE_SUIVRE),
      * unite (tâches de mes unités, à prendre par défaut).
      */
     Page<TacheLue> taches(Appelant appelant, String vue, String etat, Integer page, Integer taille);
@@ -56,7 +93,10 @@ public interface TachesUseCase {
 
     GroupeLu groupe(Appelant appelant, UUID groupeId);
 
-    /** Prise d'une tâche à prendre par un membre de l'unité visée (ou d'une sous-unité). */
+    /**
+     * Prise d'une tâche à prendre par un membre de l'unité visée (ou d'une sous-unité), porteur du profil exigé s'il
+     * y en a un ; offre d'un autre service : porteur de l'un des profils requis (D-93). Publie pilotage.task-taken.v1.
+     */
     TacheLue prendre(Appelant appelant, UUID id);
 
     /** Attribution d'une tâche à prendre à un membre de l'unité, par le responsable de l'unité ou le créateur. */

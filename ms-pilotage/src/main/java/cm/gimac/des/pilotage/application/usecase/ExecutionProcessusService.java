@@ -3,6 +3,7 @@ package cm.gimac.des.pilotage.application.usecase;
 import cm.gimac.des.pilotage.application.port.in.Appelant;
 import cm.gimac.des.pilotage.application.port.in.InstancesProcessusUseCase;
 import cm.gimac.des.pilotage.application.port.in.Page;
+import cm.gimac.des.pilotage.application.port.in.ProcessusUseCase;
 import cm.gimac.des.pilotage.application.port.out.DocumentPort;
 import cm.gimac.des.pilotage.application.port.out.DocumentPort.Metadonnees;
 import cm.gimac.des.pilotage.application.port.out.OrganisationPort.Pouvoir;
@@ -137,7 +138,7 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
             case "miennes" -> r = instances.miennes(appelant.id(), filtre == null ? null : filtre.name(), p);
             case "lancees" -> r = instances.lancees(appelant.id(), filtre, p);
             case "unite" -> {
-                boolean admin = acces.administration(appelant);
+                boolean admin = acces.litToutes(appelant);
                 List<String> unites = admin ? List.of("-") : acces.unitesLisibles(appelant);
                 r = unites.isEmpty() ? org.springframework.data.domain.Page.empty(p) : instances.deUnites(admin, unites, filtre, p);
             }
@@ -176,7 +177,7 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
     public InstanceLue lancer(Appelant appelant, UUID processusId, Lancement l) {
         Processus p = processus.findById(processusId).orElseThrow(() -> PilotageException.introuvable("PIL_PROCESSUS_INTROUVABLE", processusId));
         if (!acces.lance(appelant, p.getUnite())) {
-            throw AccesProcessus.interdit("Lancer un processus de l'unité " + p.getUnite() + " exige d'en être membre ou PROCESSUS_LANCER");
+            throw AccesProcessus.interdit("Lancer un processus de l'unité " + p.getUnite() + " exige d'en être membre, PROCESSUS_LANCER ou REF_METIER_ADMIN");
         }
         if (p.getEtat() != EtatProcessus.PUBLIEE) {
             throw PilotageException.conflit("PIL_PROCESSUS_NON_PUBLIE", "Seule une version publiée se lance", Map.of("etat", p.getEtat().name()));
@@ -202,7 +203,7 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
             etapes.save(ei);
             l2.add(ei);
         }
-        consigner(i, null, appelant.id(), ActionProcessus.LANCEE, "« " + intitule + " », " + p.getCode() + " version " + p.getVersion(), le);
+        consigner(i, null, appelant.id(), ActionProcessus.LANCEE, "« " + intitule + " », " + p.getCode() + " version " + p.getVersion() + acces.mention(appelant, p.getUnite(), AccesProcessus.Acte.LANCER), le);
         String chef = resolution.chef(p.getUnite());
         outbox.publish(
             AGREGAT,
@@ -221,8 +222,9 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
     /**
      * Désignations au lancement : une par intervenant AU_LANCEMENT (clé CODE_ETAPE, CODE_ETAPE.validateur,
      * CODE_ETAPE.signature.CODE) ; manquante : 422 PIL_PROCESSUS_DESIGNATION_MANQUANTE ; clé inconnue : 400 ;
-     * personne non interne active, ou ni porteuse du profil de remplacement dans l'unité, ni dans la portée du
-     * lanceur (TACHE_CONFIER), ni le lanceur : 422 PIL_PROCESSUS_DESIGNATION_INVALIDE.
+     * personne non interne active, ou ni porteuse du profil de remplacement (dans l'unité ou ailleurs dans le GIMAC,
+     * désignation hors de l'unité), ni dans la portée du lanceur (TACHE_CONFIER), ni le lanceur : 422
+     * PIL_PROCESSUS_DESIGNATION_INVALIDE.
      */
     private Map<String, String> designations(Appelant appelant, Processus p, Map<String, String> saisies) {
         Map<String, Intervenant> attendues = new LinkedHashMap<>();
@@ -248,12 +250,13 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
             boolean admissible =
                 equipes.interneActif(id) &&
                 (id.equals(appelant.id()) ||
-                    (intervenant.remplacement() != null && equipes.porteProfilDans(id, unite, intervenant.remplacement())) ||
+                    (intervenant.remplacement() != null &&
+                        (equipes.porteProfilDans(id, unite, intervenant.remplacement()) || resolution.portePartout(id, intervenant.remplacement()))) ||
                     equipes.couvert(appelant, Pouvoir.TACHE_CONFIER, id).isPresent());
             if (!admissible) {
                 throw PilotageException.regle(
                     "PIL_PROCESSUS_DESIGNATION_INVALIDE",
-                    "Personne désignée inactive, ou ni porteuse du profil de remplacement dans l'unité, ni dans votre portée",
+                    "Personne désignée inactive, ou ne portant pas le profil requis (dans l'unité ou ailleurs dans le GIMAC), ni dans votre portée",
                     Map.of("cle", cle, "personneId", id)
                 );
             }
@@ -329,9 +332,7 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
         );
         ei.activer(t.getId(), validateur, signatures, echeance, le);
         etapes.save(ei);
-        String detail = a.personneId() != null
-            ? "Confiée à " + nom(a.personneId())
-            : "À prendre par " + (a.profil() == null ? "les membres" : "les porteurs du profil " + a.profil()) + " de l'unité " + a.unite();
+        String detail = a.personneId() != null ? "Confiée à " + nom(a.personneId()) : "À prendre par " + aPrendrePar(a);
         consigner(i, ei.getCode(), acteur, ActionProcessus.ETAPE_ACTIVEE, detail + (r.note() == null ? "" : " (" + r.note() + ")"), le);
         outbox.publish(
             AGREGAT,
@@ -360,7 +361,7 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
             // Contrôle à l'activation : la personne prévue est partie, le chef de l'unité est averti.
             consigner(i, ei.getCode(), acteur, ActionProcessus.DEPART, r.note(), le);
             String chef = resolution.chef(a.unite());
-            publierReaffectation(i, def, "DEPART", List.of("EXECUTANT"), r.parti(), null, a, chef, acteur, null, avec(destinataires, chef), le);
+            publierReaffectation(i, def, "DEPART", List.of("EXECUTANT"), r.parti(), a.personneId(), a, chef, acteur, null, avec(destinataires, chef), le);
         }
     }
 
@@ -440,6 +441,7 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
             apresTerminee(c.i(), c.p(), c.ei(), appelant.id(), le);
         } else {
             publierAttente(c, appelant.id(), le);
+            synchroniserAttentes(c.i(), c.def(), c.ei(), appelant.id(), le);
         }
         return relire(appelant, c.i());
     }
@@ -494,6 +496,7 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
                 le
             )
         );
+        synchroniserAttentes(c.i(), c.def(), c.ei(), appelant.id(), le);
         if (c.ei().getEtat() == EtatEtape.TERMINEE) {
             apresTerminee(c.i(), c.p(), c.ei(), appelant.id(), le);
         }
@@ -518,6 +521,7 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
                 c.ei().valider(le);
                 enregistrer(c.ei());
                 consigner(c.i(), c.ei().getCode(), appelant.id(), ActionProcessus.VALIDEE, m, le);
+                synchroniserAttentes(c.i(), c.def(), c.ei(), appelant.id(), le);
                 apresTerminee(c.i(), c.p(), c.ei(), appelant.id(), le);
             }
             case "RENVOYER" -> {
@@ -525,6 +529,7 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
                 c.ei().renvoyer();
                 enregistrer(c.ei());
                 consigner(c.i(), c.ei().getCode(), appelant.id(), ActionProcessus.RENVOYEE, m, le);
+                synchroniserAttentes(c.i(), c.def(), c.ei(), appelant.id(), le);
                 Optional<Tache> t = taches.tacheEtape(c.ei().getTacheId());
                 String executant = t.map(Tache::getResponsableId).orElse(null);
                 outbox.publish(
@@ -561,19 +566,25 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
     @Override
     public InstanceLue reaffecter(Appelant appelant, UUID id, String etape, String personneId, String motif) {
         Contexte c = contexte(appelant, id, etape);
-        if (!acces.pilote(appelant, c.i().getUnite())) {
-            throw AccesProcessus.interdit("Réaffecter une étape est réservé au chef de l'unité (ou TACHE_CONFIER)");
-        }
+        exigerReaffectation(appelant, c);
         if (!c.ei().getEtat().enCours()) {
             c.ei().exigerEtat(EtatEtape.ACTIVE, EtatEtape.A_SIGNER, EtatEtape.A_VALIDER);
         }
         String personne = ReglesActivite.texteObligatoire("personneId", personneId, 80);
         String m = SaisieProcessus.motif(motif, true);
-        String unite = c.def().intervenant() == null ? c.p().getUnite() : c.def().intervenant().uniteOu(c.p().getUnite());
+        String unite = uniteEtape(c);
+        String profil = profilExige(c);
         boolean admissible =
-            equipes.interneActif(personne) && (equipes.porteProfilDans(personne, unite, null) || equipes.couvert(appelant, Pouvoir.TACHE_CONFIER, personne).isPresent());
+            equipes.interneActif(personne) &&
+            (equipes.porteProfilDans(personne, unite, null) ||
+                (profil != null && resolution.portePartout(personne, profil)) ||
+                equipes.couvert(appelant, Pouvoir.TACHE_CONFIER, personne).isPresent());
         if (!admissible) {
-            throw PilotageException.regle("PIL_PROCESSUS_PERSONNE_INVALIDE", "La personne doit être active et membre de l'unité, ou dans votre portée", Map.of("personneId", personne));
+            throw PilotageException.regle(
+                "PIL_PROCESSUS_PERSONNE_INVALIDE",
+                "La personne doit être active, et membre de l'unité, porteuse du profil requis (ailleurs dans le GIMAC compris) ou dans votre portée",
+                Map.of("personneId", personne)
+            );
         }
         String ancien = executant(c.ei()).orElse(null);
         if (personne.equals(ancien)) {
@@ -582,9 +593,50 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
         Instant le = horloge.instant();
         String detail = "Étape réaffectée " + (ancien == null ? "" : "de " + nom(ancien) + " ") + "à " + nom(personne) + " : " + m;
         taches.confierEtape(c.ei().getTacheId(), personne, appelant.id(), detail, le);
-        consigner(c.i(), c.ei().getCode(), appelant.id(), ActionProcessus.REAFFECTEE, detail, le);
+        consigner(c.i(), c.ei().getCode(), appelant.id(), ActionProcessus.REAFFECTEE, detail + titre(appelant, c.i()), le);
         publierReaffectation(c.i(), c.def(), "REAFFECTATION", List.of("EXECUTANT"), ancien, personne, null, null, appelant.id(), m, List.of(personne), le);
         return relire(appelant, c.i());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ProcessusUseCase.Candidats candidats(Appelant appelant, UUID id, String etape) {
+        Contexte c = contexte(appelant, id, etape);
+        exigerReaffectation(appelant, c);
+        return resolution.candidats(uniteEtape(c), profilExige(c));
+    }
+
+    /**
+     * Réaffecter une étape : chef de l'unité (ou TACHE_CONFIER, REF_METIER_ADMIN), ou lanceur de l'instance tant que
+     * l'étape est à prendre ou lui est confiée (désignation hors de l'unité : il choisit parmi les porteurs).
+     */
+    private void exigerReaffectation(Appelant appelant, Contexte c) {
+        if (!acces.pilote(appelant, c.i().getUnite()) && !lanceurDesigne(appelant.id(), c.i(), taches.tacheEtape(c.ei().getTacheId()).orElse(null))) {
+            throw AccesProcessus.interdit("Réaffecter une étape est réservé au chef de l'unité (ou TACHE_CONFIER, REF_METIER_ADMIN) et au lanceur pour une étape à prendre");
+        }
+    }
+
+    /** Le lanceur choisit l'exécutant d'une étape à prendre, ou de celle qui lui est revenue faute de porteur. */
+    private static boolean lanceurDesigne(String moi, InstanceProcessus i, Tache t) {
+        return moi.equals(i.getLanceurId()) && t != null && (t.getEtat() == EtatTache.A_PRENDRE || (t.getEtat().estOuvert() && moi.equals(t.getResponsableId())));
+    }
+
+    /** Unité de l'exécutant d'une étape : celle de l'intervenant, à défaut l'unité propriétaire. */
+    private static String uniteEtape(Contexte c) {
+        return c.def().intervenant() == null ? c.p().getUnite() : c.def().intervenant().uniteOu(c.p().getUnite());
+    }
+
+    /** Profil exigé de l'exécutant : celui de la tâche à prendre, de l'intervenant PROFIL, à défaut son profil de remplacement. */
+    private String profilExige(Contexte c) {
+        String requis = taches.tacheEtape(c.ei().getTacheId()).filter(t -> t.getEtat() == EtatTache.A_PRENDRE).map(Tache::getProfilRequis).orElse(null);
+        if (requis != null) {
+            return requis;
+        }
+        Intervenant i = c.def().intervenant();
+        if (i == null) {
+            return null;
+        }
+        return i.mode() == ModeIntervenant.PROFIL ? i.profil() : i.remplacement();
     }
 
     @Override
@@ -594,7 +646,7 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
         Instant le = horloge.instant();
         i.suspendre(m, le);
         enregistrer(i);
-        consigner(i, null, appelant.id(), ActionProcessus.SUSPENDUE, m, le);
+        consigner(i, null, appelant.id(), ActionProcessus.SUSPENDUE, motifTitre(m, appelant, i), le);
         return relire(appelant, i);
     }
 
@@ -605,7 +657,7 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
         Instant le = horloge.instant();
         i.reprendre(m, le);
         enregistrer(i);
-        consigner(i, null, appelant.id(), ActionProcessus.REPRISE, m, le);
+        consigner(i, null, appelant.id(), ActionProcessus.REPRISE, motifTitre(m, appelant, i), le);
         return relire(appelant, i);
     }
 
@@ -621,11 +673,12 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
                 if (ei.getTacheId() != null) {
                     taches.annulerPourEtape(ei.getTacheId(), appelant.id(), m, le);
                 }
+                annulerAttentes(i, ei, appelant.id(), m, le);
                 ei.annuler(le);
                 etapes.save(ei);
             }
         }
-        consigner(i, null, appelant.id(), ActionProcessus.ANNULEE, m, le);
+        consigner(i, null, appelant.id(), ActionProcessus.ANNULEE, motifTitre(m, appelant, i), le);
         publierCloture(i, appelant.id(), m, le);
         return relire(appelant, i);
     }
@@ -638,10 +691,12 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
             return 0;
         }
         String acteur = acteurId == null || acteurId.isBlank() ? SERVICE_IAM : acteurId;
+        equipes.rafraichir();
         Instant le = horloge.instant();
         Set<UUID> traitees = new LinkedHashSet<>();
         for (Tache t : taches.tachesEtapesOuvertesDe(compteId)) {
             Optional<EtapeInstance> oe = etapes.findByTacheId(t.getId());
+            // Seules les tâches d'exécution sont liées à l'étape ; celles d'attente suivent l'affectation, revue plus bas.
             if (oe.isEmpty() || !oe.orElseThrow().getEtat().enCours()) {
                 continue;
             }
@@ -653,13 +708,17 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
             Processus p = definition(i);
             Etape def = definitionEtape(p, ei.getCode());
             String unite = def.intervenant().uniteOu(p.getUnite());
-            String profil = def.intervenant().remplacement();
-            List<String> porteurs = resolution.porteurs(unite, profil, compteId);
-            String detail = "Départ de " + nom(compteId) + " : étape à prendre par " + (profil == null ? "les membres" : "les porteurs du profil " + profil) + " de l'unité " + unite;
-            taches.remettreEtapeAPrendre(t.getId(), unite, profil, acteur, detail, porteurs, le);
+            Affectation a = remplacement(i, def.intervenant().remplacement(), unite, compteId);
+            List<String> porteurs = resolution.destinataires(a, compteId);
+            String detail = "Départ de " + nom(compteId) + " : étape " + (a.personneId() != null ? "confiée à " + nom(a.personneId()) : "à prendre par " + aPrendrePar(a));
+            if (a.personneId() != null) {
+                taches.confierEtape(t.getId(), a.personneId(), acteur, detail, le);
+            } else {
+                taches.remettreEtapeAPrendre(t.getId(), a.unite(), a.profil(), acteur, detail, porteurs, le);
+            }
             consigner(i, ei.getCode(), acteur, ActionProcessus.DEPART, detail, le);
             String chef = resolution.chef(unite);
-            publierReaffectation(i, def, "DEPART", List.of("EXECUTANT"), compteId, null, Affectation.profil(profil, unite), chef, acteur, null, avec(porteurs, chef), le);
+            publierReaffectation(i, def, "DEPART", List.of("EXECUTANT"), compteId, a.personneId(), a, chef, acteur, null, avec(porteurs, chef), le);
             traitees.add(ei.getId());
         }
         for (EtapeInstance ei : etapes.attenduesDe(compteId)) {
@@ -672,7 +731,7 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
             List<String> roles = new ArrayList<>();
             Affectation remplacement = null;
             if (ei.getValidateur() != null && ei.getValidateur().nomme(compteId) && def.validateur() != null) {
-                remplacement = Affectation.profil(def.validateur().remplacement(), def.validateur().uniteOu(p.getUnite()));
+                remplacement = remplacement(i, def.validateur().remplacement(), def.validateur().uniteOu(p.getUnite()), compteId);
                 ei.affecterValidateur(remplacement);
                 roles.add("VALIDATEUR");
             }
@@ -680,40 +739,331 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
             List<String> codes = ei.reaffecterSignatures(compteId, s -> {
                 SignatureRequise sr = parCode.get(s.code());
                 Intervenant sig = sr == null ? null : sr.signataire();
-                return s.reaffectee(Affectation.profil(sig == null ? null : sig.remplacement(), sig == null ? p.getUnite() : sig.uniteOu(p.getUnite())));
+                return s.reaffectee(remplacement(i, sig == null ? null : sig.remplacement(), sig == null ? p.getUnite() : sig.uniteOu(p.getUnite()), compteId));
             });
             codes.forEach(code -> roles.add("SIGNATURE." + code));
             if (roles.isEmpty()) {
                 continue;
             }
             etapes.save(ei);
+            synchroniserAttentes(i, def, ei, acteur, le);
             String detail = "Départ de " + nom(compteId) + " : " + String.join(", ", roles) + " repris par profil de remplacement";
             consigner(i, ei.getCode(), acteur, ActionProcessus.DEPART, detail, le);
             Affectation cible = remplacement != null ? remplacement : codes.isEmpty() ? null : ei.signature(codes.get(0)).attendu();
-            String unite = cible == null ? p.getUnite() : cible.unite();
+            String unite = cible == null || cible.unite() == null ? p.getUnite() : cible.unite();
             String chef = resolution.chef(unite);
-            List<String> porteurs = cible == null ? List.of() : resolution.porteurs(cible.unite(), cible.profil(), compteId);
+            List<String> porteurs = cible == null ? List.of() : resolution.destinataires(cible, compteId);
             publierReaffectation(i, def, "DEPART", roles, compteId, null, cible, chef, acteur, null, avec(porteurs, chef), le);
             traitees.add(ei.getId());
         }
         return traitees.size();
     }
 
+    /**
+     * Remplaçant d'une personne partie : par le profil de remplacement (dans l'unité, à défaut ailleurs dans le GIMAC ;
+     * un seul porteur : à lui ; aucun : chef de l'unité, à défaut lanceur), jamais la personne partie elle-même.
+     */
+    private Affectation remplacement(InstanceProcessus i, String profil, String unite, String parti) {
+        Affectation a = resolution.parProfil(profil, unite, i.getLanceurId(), parti, null).affectation();
+        return parti.equals(a.personneId()) ? Affectation.profil(profil, unite) : a;
+    }
+
+    /** « les porteurs du profil P de l'unité U », « … dans tout le GIMAC », « les membres de l'unité U ». */
+    private static String aPrendrePar(Affectation a) {
+        String qui = a.profil() == null ? "les membres" : "les porteurs du profil " + a.profil();
+        return qui + (a.unite() == null ? " dans tout le GIMAC" : " de l'unité " + a.unite());
+    }
+
     /** Prise ou attribution de la tâche d'une étape par la voie des tâches : historisée dans l'instance. */
     @EventListener
     public void tacheConfiee(TacheProcessusConfiee e) {
-        etapes
-            .findByTacheId(e.tacheId())
-            .ifPresent(ei ->
-                consigner(
-                    trouver(ei.getInstanceId()),
-                    ei.getCode(),
-                    e.acteurId(),
-                    ActionProcessus.ETAPE_PRISE,
-                    (e.prise() ? "Prise par " : "Attribuée à ") + nom(e.responsableId()),
-                    horloge.instant()
-                )
-            );
+        Optional<EtapeInstance> execution = etapes.findByTacheId(e.tacheId());
+        if (execution.isPresent()) {
+            EtapeInstance ei = execution.orElseThrow();
+            consigner(trouver(ei.getInstanceId()), ei.getCode(), e.acteurId(), ActionProcessus.ETAPE_PRISE, (e.prise() ? "Prise par " : "Attribuée à ") + nom(e.responsableId()), horloge.instant());
+            return;
+        }
+        attente(e.reference()).ifPresent(a -> prendreAttente(a, e));
+    }
+
+    // ------------------------------------------------------------------ tâches d'attente : validateur et signataires (D-93)
+
+    static final String VALIDATION = "VALIDATION";
+    static final String SIGNATURE = "SIGNATURE";
+
+    /** Référence de la tâche d'une validation ({@code <instance>/<ETAPE>/VALIDATION}) ou d'une signature ({@code …/SIGNATURE/<CODE>}). */
+    static String referenceAttente(UUID instance, String etape, String signature) {
+        return instance + "/" + etape + "/" + (signature == null ? VALIDATION : SIGNATURE + "/" + signature);
+    }
+
+    /** Tâche d'attente reconnue à sa référence : instance, étape, signature (null : validation). */
+    private record Attente(UUID instance, String etape, String signature) {}
+
+    private static Optional<Attente> attente(String reference) {
+        String[] p = reference == null ? new String[0] : reference.split("/");
+        try {
+            if (p.length == 3 && VALIDATION.equals(p[2])) {
+                return Optional.of(new Attente(UUID.fromString(p[0]), p[1], null));
+            }
+            if (p.length == 4 && SIGNATURE.equals(p[2])) {
+                return Optional.of(new Attente(UUID.fromString(p[0]), p[1], p[3]));
+            }
+        } catch (IllegalArgumentException ex) {
+            return Optional.empty();
+        }
+        return Optional.empty();
+    }
+
+    /**
+     * Prise (ou attribution) de la tâche d'une validation ou d'une signature attendue d'un profil : la personne
+     * devient le validateur ou le signataire attendu (elle seule agit ensuite), historique ETAPE_PRISE.
+     */
+    private void prendreAttente(Attente a, TacheProcessusConfiee e) {
+        etapes.findByInstanceIdAndCode(a.instance(), a.etape()).ifPresent(ei -> {
+            String unite;
+            if (a.signature() == null) {
+                if (ei.getValidateur() == null || ei.getEtat() != EtatEtape.A_VALIDER) {
+                    return;
+                }
+                unite = ei.getValidateur().unite();
+                ei.affecterValidateur(Affectation.personne(e.responsableId(), unite));
+            } else {
+                SignatureInstance s = ei.signature(a.signature());
+                if (s == null || s.attendu() == null) {
+                    return;
+                }
+                ei.reaffecterSignature(a.signature(), Affectation.personne(e.responsableId(), s.attendu().unite()));
+            }
+            enregistrer(ei);
+            String quoi = a.signature() == null ? "Validation" : "Signature " + a.signature();
+            consigner(trouver(a.instance()), a.etape(), e.acteurId(), ActionProcessus.ETAPE_PRISE, quoi + (e.prise() ? " prise par " : " attribuée à ") + nom(e.responsableId()), horloge.instant());
+        });
+    }
+
+    /**
+     * Tâches d'attente alignées sur l'état de l'étape : à valider, une tâche au validateur (à prendre par son profil
+     * s'il n'est pas nommé) ; à signer, une tâche par signature ouverte (ordre minimal) au signataire attendu ;
+     * signature apposée : sa tâche terminée au nom du signataire ; validation ou renvoi décidé : tâche de validation
+     * terminée au nom de l'acteur.
+     */
+    private void synchroniserAttentes(InstanceProcessus i, Etape def, EtapeInstance ei, String acteur, Instant le) {
+        String validation = referenceAttente(i.getId(), ei.getCode(), null);
+        if (ei.getEtat() == EtatEtape.A_VALIDER && ei.getValidateur() != null) {
+            ouvrirAttente(i, def, ei, validation, ei.getValidateur(), "Valider", le);
+        } else {
+            taches.clore(validation, acteur, le);
+        }
+        Set<String> ouvertes = ei.signaturesOuvertes().stream().map(SignatureInstance::code).collect(Collectors.toSet());
+        for (SignatureInstance s : ei.getSignatures()) {
+            String ref = referenceAttente(i.getId(), ei.getCode(), s.code());
+            if (ouvertes.contains(s.code()) && s.attendu() != null) {
+                ouvrirAttente(i, def, ei, ref, s.attendu(), "Signer « " + s.libelle() + " »", le);
+            } else if (s.etat() == cm.gimac.des.pilotage.domain.processus.EtatSignature.SIGNEE) {
+                taches.clore(ref, s.signePar(), le);
+            }
+        }
+    }
+
+    private void ouvrirAttente(InstanceProcessus i, Etape def, EtapeInstance ei, String reference, Affectation a, String verbe, Instant le) {
+        taches.ouvrirAttente(
+            new TacheService.TacheEtape(
+                i.getLanceurId(),
+                a.personneId(),
+                a.unite(),
+                a.profil(),
+                verbe + " : " + def.libelle() + " : " + i.getIntitule(),
+                def.action(),
+                ei.getEcheance(),
+                reference,
+                lien(i, def.code()),
+                a.personneId() == null ? resolution.destinataires(a, null) : List.of()
+            ),
+            le
+        );
+    }
+
+    private void annulerAttentes(InstanceProcessus i, EtapeInstance ei, String acteur, String motif, Instant le) {
+        taches.annulerAttente(referenceAttente(i.getId(), ei.getCode(), null), acteur, motif, le);
+        ei.getSignatures().forEach(s -> taches.annulerAttente(referenceAttente(i.getId(), ei.getCode(), s.code()), acteur, motif, le));
+    }
+
+    // ------------------------------------------------------------------ changements d'organisation (D-93)
+
+    /** Rôle tenu sur une étape : clé de désignation, rôle (EXECUTANT, VALIDATEUR, SIGNATURE.CODE), unité effective, titulaire. */
+    private record Role(String cle, String role, Intervenant intervenant, String unite, String titulaire) {}
+
+    @Override
+    public int traiterChangementCompte(String compteId, String cause, String acteurId) {
+        if (compteId == null || compteId.isBlank()) {
+            return 0;
+        }
+        equipes.rafraichir();
+        String acteur = acteurId == null || acteurId.isBlank() ? SERVICE_IAM : acteurId;
+        Instant le = horloge.instant();
+        Map<UUID, EtapeInstance> visees = new LinkedHashMap<>();
+        for (Tache t : taches.tachesEtapesOuvertesDe(compteId)) {
+            etapes.findByTacheId(t.getId()).ifPresent(ei -> visees.put(ei.getId(), ei));
+        }
+        etapes.attenduesDe(compteId).forEach(ei -> visees.putIfAbsent(ei.getId(), ei));
+        int n = 0;
+        for (EtapeInstance ei : visees.values()) {
+            if (revoir(ei, r -> compteId.equals(r.titulaire()), cause, acteur, le)) {
+                n++;
+            }
+        }
+        return n;
+    }
+
+    @Override
+    public int traiterChangementChef(String unite, String acteurId) {
+        if (unite == null || unite.isBlank()) {
+            return 0;
+        }
+        equipes.rafraichir();
+        String acteur = acteurId == null || acteurId.isBlank() ? SERVICE_IAM : acteurId;
+        Instant le = horloge.instant();
+        int n = 0;
+        for (EtapeInstance ei : etapes.enCours()) {
+            if (revoir(ei, r -> r.intervenant().mode() == ModeIntervenant.CHEF_UNITE && unite.equals(r.unite()), "CHANGEMENT_CHEF", acteur, le)) {
+                n++;
+            }
+        }
+        return n;
+    }
+
+    /**
+     * Revue des rôles concernés d'une étape en cours : exécutant (étape active, sauf réaffectation par le chef
+     * d'unité, respectée), validateur et signataires attendus. Un rôle qui n'est plus tenu passe à la nouvelle
+     * affectation ; tâches alignées, historique ORGANISATION, pilotage.process-step-reassigned.v1 ({@code cause}).
+     *
+     * @return vrai si l'étape a changé.
+     */
+    private boolean revoir(EtapeInstance ei, java.util.function.Predicate<Role> concerne, String cause, String acteur, Instant le) {
+        InstanceProcessus i = trouver(ei.getInstanceId());
+        if (i.getEtat().estFinal() || !ei.getEtat().enCours()) {
+            return false;
+        }
+        Processus p = definition(i);
+        Etape def = definitionEtape(p, ei.getCode());
+        List<String> roles = new ArrayList<>();
+        List<String> details = new ArrayList<>();
+        List<Affectation> nouvelles = new ArrayList<>();
+        String ancien = null;
+        Optional<Tache> tache = taches.tacheEtape(ei.getTacheId());
+        boolean reaffecteeParLeChef = historique.existsByInstanceIdAndEtapeAndAction(i.getId(), ei.getCode(), ActionProcessus.REAFFECTEE);
+        if (ei.getEtat() == EtatEtape.ACTIVE && def.intervenant() != null && tache.filter(t -> t.getEtat().estOuvert()).isPresent() && !reaffecteeParLeChef) {
+            Tache t = tache.orElseThrow();
+            Role r = new Role(ResolutionIntervenants.cle(def.code(), ControleProcessus.INTERVENANT), "EXECUTANT", def.intervenant(), def.intervenant().uniteOu(p.getUnite()), t.getResponsableId());
+            Optional<Affectation> n = concerne.test(r) ? nouvelleAffectation(i, p, r) : Optional.empty();
+            if (n.isPresent()) {
+                Affectation a = n.orElseThrow();
+                String detail = "EXECUTANT : " + quitte(r.titulaire()) + vers(a);
+                if (a.personneId() != null) {
+                    taches.confierEtape(t.getId(), a.personneId(), acteur, detail, le);
+                } else {
+                    taches.remettreEtapeAPrendre(t.getId(), a.unite(), a.profil(), acteur, detail, resolution.porteurs(a.unite(), a.profil(), r.titulaire()), le);
+                }
+                roles.add(r.role());
+                details.add(detail);
+                nouvelles.add(a);
+                ancien = r.titulaire();
+            }
+        }
+        if (def.validateur() != null && ei.getValidateur() != null) {
+            Role r = new Role(ResolutionIntervenants.cle(def.code(), ControleProcessus.VALIDATEUR), "VALIDATEUR", def.validateur(), def.validateur().uniteOu(p.getUnite()), ei.getValidateur().personneId());
+            Optional<Affectation> n = concerne.test(r) ? nouvelleAffectation(i, p, r) : Optional.empty();
+            if (n.isPresent()) {
+                ei.affecterValidateur(n.orElseThrow());
+                roles.add(r.role());
+                details.add("VALIDATEUR : " + quitte(r.titulaire()) + vers(n.orElseThrow()));
+                nouvelles.add(n.orElseThrow());
+                ancien = ancien == null ? r.titulaire() : ancien;
+            }
+        }
+        Map<String, SignatureRequise> requises = def.signatures().stream().collect(Collectors.toMap(SignatureRequise::code, Function.identity(), (a, b) -> a));
+        for (SignatureInstance s : ei.getSignatures()) {
+            SignatureRequise sr = requises.get(s.code());
+            if (s.etat() != cm.gimac.des.pilotage.domain.processus.EtatSignature.ATTENDUE || s.attendu() == null || sr == null || sr.signataire() == null) {
+                continue;
+            }
+            Role r = new Role(ResolutionIntervenants.cle(def.code(), "signature." + s.code()), "SIGNATURE." + s.code(), sr.signataire(), sr.signataire().uniteOu(p.getUnite()), s.attendu().personneId());
+            Optional<Affectation> n = concerne.test(r) ? nouvelleAffectation(i, p, r) : Optional.empty();
+            if (n.isPresent()) {
+                ei.reaffecterSignature(s.code(), n.orElseThrow());
+                roles.add(r.role());
+                details.add(r.role() + " : " + quitte(r.titulaire()) + vers(n.orElseThrow()));
+                nouvelles.add(n.orElseThrow());
+                ancien = ancien == null ? r.titulaire() : ancien;
+            }
+        }
+        if (roles.isEmpty()) {
+            return false;
+        }
+        enregistrer(ei);
+        synchroniserAttentes(i, def, ei, acteur, le);
+        consigner(i, ei.getCode(), acteur, ActionProcessus.ORGANISATION, libelleCause(cause) + " : " + String.join(" ; ", details), le);
+        Affectation cible = nouvelles.get(0);
+        String chef = resolution.chef(cible.unite() == null ? p.getUnite() : cible.unite());
+        List<String> destinataires = nouvelles.stream().flatMap(a -> resolution.destinataires(a, null).stream()).distinct().toList();
+        publierReaffectation(i, def, cause, roles, ancien, cible.personneId(), cible, chef, acteur, null, avec(destinataires, chef), le);
+        return true;
+    }
+
+    /**
+     * Nouvelle affectation d'un rôle, ou rien s'il est encore tenu. Le titulaire tient le rôle s'il est la personne
+     * résolue (personne nommée, désignée au lancement, chef de l'unité, lanceur, n+1) ou, hors CHEF_UNITE, s'il porte
+     * dans l'unité le profil du rôle (PROFIL) ou son profil de remplacement (autres modes). Sinon : la personne
+     * résolue, à défaut tâche à prendre par ce profil. Rôle à prendre (sans titulaire) : confié à la personne résolue
+     * s'il y en a une (nouveau chef d'unité).
+     */
+    private Optional<Affectation> nouvelleAffectation(InstanceProcessus i, Processus p, Role r) {
+        ResolutionIntervenants.Resolution res = resolution.resoudre(r.intervenant(), p.getUnite(), i.getLanceurId(), i.getNPlus1LanceurId(), i.getDesignations(), r.cle());
+        Affectation a = res.affectation();
+        String x = r.titulaire();
+        if (x == null) {
+            return a.personneId() != null ? Optional.of(a) : Optional.empty();
+        }
+        if (a.personneId() != null) {
+            if (a.personneId().equals(x)) {
+                return Optional.empty();
+            }
+            if (r.intervenant().mode() == ModeIntervenant.CHEF_UNITE) {
+                return Optional.of(a);
+            }
+        }
+        String profil = r.intervenant().mode() == ModeIntervenant.PROFIL ? r.intervenant().profil() : r.intervenant().remplacement();
+        if (equipes.interneActif(x) && tient(x, r.unite(), profil)) {
+            return Optional.empty();
+        }
+        return Optional.of(a);
+    }
+
+    /**
+     * Le titulaire tient encore un rôle par profil : il le porte dans l'unité, ou, personne ne le portant dans l'unité,
+     * ailleurs dans le GIMAC (désignation hors de l'unité).
+     */
+    private boolean tient(String titulaire, String unite, String profil) {
+        if (equipes.porteProfilDans(titulaire, unite, profil)) {
+            return true;
+        }
+        return profil != null && resolution.porteurs(unite, profil, null).isEmpty() && resolution.portePartout(titulaire, profil);
+    }
+
+    private String quitte(String titulaire) {
+        return titulaire == null ? "à prendre" : nom(titulaire);
+    }
+
+    private String vers(Affectation a) {
+        return " vers " + (a.personneId() != null ? nom(a.personneId()) : "à prendre par " + aPrendrePar(a));
+    }
+
+    private static String libelleCause(String cause) {
+        return switch (cause == null ? "" : cause) {
+            case "PROFIL_RETIRE" -> "Profil retiré";
+            case "CHANGEMENT_UNITE" -> "Changement d'unité";
+            case "CHANGEMENT_CHEF" -> "Nouveau chef d'unité";
+            default -> "Organisation modifiée";
+        };
     }
 
     // ------------------------------------------------------------------ enchaînement
@@ -863,7 +1213,7 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
     private InstanceProcessus pilotable(Appelant appelant, UUID id) {
         InstanceProcessus i = trouver(id);
         if (!acces.pilote(appelant, i.getUnite())) {
-            throw AccesProcessus.interdit("Suspendre, reprendre ou annuler une instance est réservé au chef de l'unité (ou TACHE_CONFIER)");
+            throw AccesProcessus.interdit("Suspendre, reprendre ou annuler une instance est réservé au chef de l'unité (ou TACHE_CONFIER, REF_METIER_ADMIN)");
         }
         return i;
     }
@@ -925,10 +1275,12 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
             Tache tache = ei.getTacheId() == null ? null : t.get(ei.getTacheId());
             String executant = tache == null ? null : tache.getResponsableId();
             boolean executer = enCours && ei.getEtat() == EtatEtape.ACTIVE && appelant.id().equals(executant);
-            boolean prendre = enCours && tache != null && tache.getEtat() == EtatTache.A_PRENDRE && equipes.porteProfilDans(appelant.id(), tache.getUniteCible(), tache.getProfilRequis());
+            boolean prendre = enCours && tache != null && tache.getEtat() == EtatTache.A_PRENDRE &&
+                resolution.affecte(appelant.id(), new Affectation(null, tache.getProfilRequis(), tache.getUniteCible()));
             List<String> signer = enCours ? ei.signaturesOuvertes().stream().filter(s -> resolution.affecte(appelant.id(), s.attendu())).map(SignatureInstance::code).toList() : List.of();
             boolean valider = enCours && ei.getEtat() == EtatEtape.A_VALIDER && !appelant.id().equals(executant) && resolution.affecte(appelant.id(), ei.getValidateur());
-            moi.put(ei.getCode(), new MoiEtape(executer, prendre, signer, valider, enCours && pilote && ei.getEtat().enCours()));
+            boolean reaffecter = enCours && ei.getEtat().enCours() && (pilote || lanceurDesigne(appelant.id(), i, tache));
+            moi.put(ei.getCode(), new MoiEtape(executer, prendre, signer, valider, reaffecter));
         }
         DroitsInstance droits = new DroitsInstance(pilote && enCours, pilote && i.getEtat() == EtatInstance.SUSPENDUE, pilote && !i.getEtat().estFinal(), pilote && enCours);
         List<HistoriqueProcessus> h = historique.findByInstanceIdOrderByQuandAsc(i.getId());
@@ -994,6 +1346,19 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
         } catch (ObjectOptimisticLockingFailureException e) {
             throw PilotageException.conflit("PIL_PROCESSUS_CONCURRENCE", "L'instance a été modifiée entre-temps", Map.of("id", String.valueOf(i.getId())));
         }
+    }
+
+    /** Droit utilisé pour piloter l'instance quand la règle de l'unité ne suffit pas (D-92). */
+    private String titre(Appelant appelant, InstanceProcessus i) {
+        return acces.mention(appelant, i.getUnite(), AccesProcessus.Acte.PILOTER);
+    }
+
+    private String motifTitre(String motif, Appelant appelant, InstanceProcessus i) {
+        String t = titre(appelant, i);
+        if (t.isEmpty()) {
+            return motif;
+        }
+        return motif == null ? t.strip() : motif + t;
     }
 
     private void consigner(InstanceProcessus i, String etape, String acteur, ActionProcessus action, String detail, Instant le) {

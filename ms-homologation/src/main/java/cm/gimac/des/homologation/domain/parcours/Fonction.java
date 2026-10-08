@@ -1,91 +1,186 @@
 package cm.gimac.des.homologation.domain.parcours;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
+import java.io.Serial;
+import java.io.Serializable;
 import java.util.Collection;
-import java.util.EnumSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
- * Fonctions du parcours (CR chapitre 3, D-58) et profils Keycloak qui les portent
- * (frontend/packages/lot1/src/permissions.ts, FONCTION_DU_ROLE).
+ * Fonction du parcours (CR chapitre 3, D-58), tenue en qualité R, V, C, I, E ou déposant : code d'une entrée du
+ * catalogue des fonctions (D-91, {@link CatalogueFonctions}), qui porte son libellé, les profils Keycloak qui la
+ * confèrent et son caractère externe. Les seize fonctions reprises de l'ancienne énumération gardent leurs
+ * constantes et leurs codes (mêmes valeurs JSON et en base).
  */
-public enum Fonction {
-    DDRM("ROLE_CHARGE_DDRM"),
-    CHEF_DDRM("ROLE_CHEF_DDRM"),
-    CHEF_DES("ROLE_CHEF_DES"),
-    CHEFS_DEPARTEMENT("ROLE_CHEF_DES"),
-    CONDUCTEUR("ROLE_CONDUCTEUR_PROJET"),
-    SNA("ROLE_SNA", "ROLE_INGENIEUR_HOMOLOGATION"),
-    PRODUCTION_MONETIQUE("ROLE_PRODUCTION_MONETIQUE"),
-    POLE_RESEAU("ROLE_POLE_RESEAU"),
-    POLE_SYSTEME("ROLE_POLE_SYSTEME"),
-    RSSI("ROLE_RSSI"),
-    CONFORMITE("ROLE_CONFORMITE"),
-    DG("ROLE_DG"),
-    // Exploitation et supervision (CR §3) : tenue par la production monétique, aucun profil propre (D-58).
-    EXPLOITATION("ROLE_PRODUCTION_MONETIQUE"),
-    PARTICIPANT("ROLE_CORRESPONDANT"),
-    BANQUE_PARTENAIRE,
-    PERSONNALISATEUR;
+public final class Fonction implements Comparable<Fonction>, Serializable {
 
-    private final List<String> profils;
+    @Serial
+    private static final long serialVersionUID = 1L;
 
-    Fonction(String... profils) {
-        this.profils = List.of(profils);
+    /** Code d'une fonction : majuscule, puis 1 à 39 majuscules, chiffres ou soulignés. */
+    public static final Pattern CODE = Pattern.compile("^[A-Z][A-Z0-9_]{1,39}$");
+
+    public static final Fonction DDRM = new Fonction("DDRM");
+    public static final Fonction CHEF_DDRM = new Fonction("CHEF_DDRM");
+    public static final Fonction CHEF_DES = new Fonction("CHEF_DES");
+    public static final Fonction CHEFS_DEPARTEMENT = new Fonction("CHEFS_DEPARTEMENT");
+    public static final Fonction CONDUCTEUR = new Fonction("CONDUCTEUR");
+    public static final Fonction SNA = new Fonction("SNA");
+    public static final Fonction PRODUCTION_MONETIQUE = new Fonction("PRODUCTION_MONETIQUE");
+    public static final Fonction POLE_RESEAU = new Fonction("POLE_RESEAU");
+    public static final Fonction POLE_SYSTEME = new Fonction("POLE_SYSTEME");
+    public static final Fonction RSSI = new Fonction("RSSI");
+    public static final Fonction CONFORMITE = new Fonction("CONFORMITE");
+    public static final Fonction DG = new Fonction("DG");
+    public static final Fonction EXPLOITATION = new Fonction("EXPLOITATION");
+    public static final Fonction PARTICIPANT = new Fonction("PARTICIPANT");
+    public static final Fonction BANQUE_PARTENAIRE = new Fonction("BANQUE_PARTENAIRE");
+    public static final Fonction PERSONNALISATEUR = new Fonction("PERSONNALISATEUR");
+
+    /** Fonctions de l'ancienne énumération, dans leur ordre. */
+    static final List<Fonction> REPRISES = List.of(
+        DDRM,
+        CHEF_DDRM,
+        CHEF_DES,
+        CHEFS_DEPARTEMENT,
+        CONDUCTEUR,
+        SNA,
+        PRODUCTION_MONETIQUE,
+        POLE_RESEAU,
+        POLE_SYSTEME,
+        RSSI,
+        CONFORMITE,
+        DG,
+        EXPLOITATION,
+        PARTICIPANT,
+        BANQUE_PARTENAIRE,
+        PERSONNALISATEUR
+    );
+
+    private final String code;
+
+    private Fonction(String code) {
+        this.code = code;
+    }
+
+    /** Fonction de ce code (présente ou non au catalogue) ; un code mal formé est refusé. */
+    @JsonCreator
+    public static Fonction valueOf(String code) {
+        if (code == null || !CODE.matcher(code).matches()) {
+            throw new IllegalArgumentException("Code de fonction invalide : " + code);
+        }
+        for (Fonction f : REPRISES) {
+            if (f.code.equals(code)) {
+                return f;
+            }
+        }
+        return new Fonction(code);
+    }
+
+    /** Fonction de ce code si elle figure au catalogue (active ou non), sinon vide ; un code mal formé est vide aussi. */
+    public static Optional<Fonction> duCatalogue(String code) {
+        if (code == null || !CODE.matcher(code).matches()) {
+            return Optional.empty();
+        }
+        return CatalogueFonctions.trouver(code).map(d -> valueOf(d.code()));
+    }
+
+    /** La fonction figure au catalogue (active ou non). */
+    public boolean connue() {
+        return CatalogueFonctions.trouver(code).isPresent();
+    }
+
+    /** Fonctions du catalogue, actives ou non : les reprises dans leur ordre, puis les autres par code. */
+    public static Fonction[] values() {
+        return CatalogueFonctions.toutes().stream().map(d -> valueOf(d.code())).toArray(Fonction[]::new);
+    }
+
+    @JsonValue
+    public String name() {
+        return code;
+    }
+
+    public CatalogueFonctions.Definition definition() {
+        return CatalogueFonctions.definition(this);
     }
 
     /** Profils Keycloak qui confèrent la fonction ; le premier sert à chercher les intervenants dans l'annuaire. */
     public List<String> profils() {
-        return profils;
+        return definition().profils();
+    }
+
+    /**
+     * Permissions qui caractérisent la fonction (D-94) : ses porteurs, lus par permission dans MS-IAM, sont les
+     * candidats d'une fonction à affecter (tâche à prendre de MS-PILOTAGE) ; vide : aucune.
+     */
+    public List<String> permissions() {
+        return definition().permissions();
     }
 
     /** Libellé français de la fonction (catalogue du modélisateur, tâches). */
     public String libelle() {
-        return switch (this) {
-            case DDRM -> "Développement du Réseau et du Marché";
-            case CHEF_DDRM -> "Chef du département DDRM";
-            case CHEF_DES -> "Chef du département DES";
-            case CHEFS_DEPARTEMENT -> "Chefs des deux départements";
-            case CONDUCTEUR -> "Conducteur de projet";
-            case SNA -> "Normes et Agréments";
-            case PRODUCTION_MONETIQUE -> "Production monétique";
-            case POLE_RESEAU -> "Pôle réseau";
-            case POLE_SYSTEME -> "Pôle système";
-            case RSSI -> "Sécurité des systèmes d'information";
-            case CONFORMITE -> "Conformité";
-            case DG -> "Direction générale";
-            case EXPLOITATION -> "Exploitation et Supervision";
-            case PARTICIPANT -> "Participant";
-            case BANQUE_PARTENAIRE -> "Banque partenaire";
-            case PERSONNALISATEUR -> "Personnalisateur";
-        };
+        return definition().libelle();
     }
 
-    /** Fonction tenue par un tiers : le participant, sa banque partenaire, le personnalisateur. */
+    /** Fonction tenue par un tiers : le participant, sa banque partenaire, le personnalisateur, ou une fonction externe du catalogue. */
     public boolean externe() {
-        return this == PARTICIPANT || this == BANQUE_PARTENAIRE || this == PERSONNALISATEUR;
+        return definition().externe();
+    }
+
+    /** Fonction reprise de l'ancienne énumération. */
+    public boolean reprise() {
+        return REPRISES.contains(this);
     }
 
     /** Fonction d'un profil (ROLE_*), le cas échéant. CHEFS_DEPARTEMENT n'est porté par aucun profil propre. */
     public static Optional<Fonction> duProfil(String profil) {
-        for (Fonction f : values()) {
-            if (f != CHEFS_DEPARTEMENT && f.profils.contains(profil)) {
-                return Optional.of(f);
-            }
-        }
-        return Optional.empty();
+        return CatalogueFonctions.toutes()
+            .stream()
+            .filter(d -> !CHEFS_DEPARTEMENT.code.equals(d.code()) && d.profils().contains(profil))
+            .map(d -> valueOf(d.code()))
+            .findFirst();
     }
 
-    /** Fonctions portées par une session (un utilisateur peut détenir plusieurs profils). */
+    /** Fonctions portées par une session (un utilisateur peut détenir plusieurs profils), lues au catalogue. */
     public static Set<Fonction> desProfils(Collection<String> autorites) {
-        Set<Fonction> fonctions = EnumSet.noneOf(Fonction.class);
+        Set<Fonction> fonctions = new LinkedHashSet<>();
         // Un profil peut conférer plusieurs fonctions (production monétique : aussi l'exploitation).
-        for (Fonction f : values()) {
-            if (f != CHEFS_DEPARTEMENT && f.profils.stream().anyMatch(autorites::contains)) {
-                fonctions.add(f);
+        for (CatalogueFonctions.Definition d : CatalogueFonctions.toutes()) {
+            if (!CHEFS_DEPARTEMENT.code.equals(d.code()) && d.profils().stream().anyMatch(autorites::contains)) {
+                fonctions.add(valueOf(d.code()));
             }
         }
         return fonctions;
+    }
+
+    @Override
+    public String toString() {
+        return code;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        return this == o || (o instanceof Fonction f && f.code.equals(code));
+    }
+
+    @Override
+    public int hashCode() {
+        return code.hashCode();
+    }
+
+    /** Les fonctions reprises d'abord, dans leur ordre historique, puis les autres par code. */
+    @Override
+    public int compareTo(Fonction o) {
+        int a = REPRISES.indexOf(this);
+        int b = REPRISES.indexOf(o);
+        if (a >= 0 || b >= 0) {
+            return Integer.compare(a < 0 ? Integer.MAX_VALUE : a, b < 0 ? Integer.MAX_VALUE : b);
+        }
+        return code.compareTo(o.code);
     }
 }

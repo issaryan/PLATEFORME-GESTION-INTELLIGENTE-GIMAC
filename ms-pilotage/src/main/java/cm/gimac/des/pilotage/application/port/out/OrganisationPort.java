@@ -36,12 +36,17 @@ public interface OrganisationPort {
     /** Élément de GET /api/v1/interne/organisation/{id}/equipe (récursif, 500 au plus) et d'un périmètre. */
     record Membre(String id, String nomAffiche, String fonction, String unite, String responsableId, int niveau, boolean actif) {}
 
-    /** Portée d'un pouvoir (D-81 §1), de la plus étroite à la plus large ; UNITES = équipe et membres des unités dirigées. */
+    /**
+     * Portée d'un pouvoir (D-81 §1), de la plus étroite à la plus large ; UNITES = équipe et membres des unités
+     * dirigées ; TOUTES = toutes les unités, actives ou non (D-92 §2 bis), admise seulement pour PROCESSUS_DEFINIR et
+     * PROCESSUS_LANCER.
+     */
     enum Portee {
         AUCUNE,
         DIRECTS,
         EQUIPE,
-        UNITES;
+        UNITES,
+        TOUTES;
 
         /** Portée lue dans une réponse de MS-IAM ; une valeur inconnue ne donne aucun pouvoir. */
         public static Portee lire(String texte) {
@@ -69,17 +74,25 @@ public interface OrganisationPort {
         /** Créer et publier les processus d'une unité couverte (D-86 §4, D-87) ; absente de la réponse de MS-IAM : AUCUNE. */
         PROCESSUS_DEFINIR,
         /** Lancer un processus d'une unité couverte (D-86 §4, D-87) ; absente de la réponse de MS-IAM : AUCUNE. */
-        PROCESSUS_LANCER,
+        PROCESSUS_LANCER;
+
+        /** La portée TOUTES n'est admise que pour PROCESSUS_DEFINIR et PROCESSUS_LANCER (D-92 §2 bis). */
+        public boolean admetToutes() {
+            return this == PROCESSUS_DEFINIR || this == PROCESSUS_LANCER;
+        }
     }
 
-    /** GET /api/v1/interne/pouvoirs/{id} : portée de chaque action, profils demandables, subordonnés et unités dirigées. */
+    /**
+     * GET /api/v1/interne/pouvoirs/{id} : portée de chaque action, profils demandables, subordonnés et unités dirigées.
+     * TOUTES sur une action qui ne l'admet pas (MS-IAM la refuse) est ramenée à UNITES.
+     */
     record Pouvoirs(Map<Pouvoir, Portee> actions, List<String> profilsDemandables, List<Membre> subordonnes, List<String> unitesDirigees) {
         public Pouvoirs {
             EnumMap<Pouvoir, Portee> m = new EnumMap<>(Pouvoir.class);
             if (actions != null) {
                 actions.forEach((k, v) -> {
                     if (k != null && v != null) {
-                        m.put(k, v);
+                        m.put(k, v == Portee.TOUTES && !k.admetToutes() ? Portee.UNITES : v);
                     }
                 });
             }
@@ -95,6 +108,11 @@ public interface OrganisationPort {
 
         public Portee portee(Pouvoir p) {
             return actions.getOrDefault(p, Portee.AUCUNE);
+        }
+
+        /** L'action porte sur toutes les unités (portée TOUTES, D-92 §2 bis). */
+        public boolean toutes(Pouvoir p) {
+            return portee(p) == Portee.TOUTES;
         }
 
         /** L'unité (ou l'une de ses unités parentes) est dirigée par ce compte : {@code unitesDirigees} comprend les sous-unités. */
@@ -150,6 +168,28 @@ public interface OrganisationPort {
      * vide. Sert à résoudre les intervenants des processus d'unité (D-87).
      */
     Optional<UniteMembres> membresUnite(String unite, String profil);
+
+    /**
+     * Comptes internes actifs portant {@code profil}, toutes unités confondues (GET /api/v1/interne/collaborateurs?profil=,
+     * 100 au plus), avec leur unité de rattachement (null sans rattachement) : destinataires d'une tâche offerte sans
+     * unité (D-93), candidats d'un intervenant hors de son unité (D-87, désignation hors de l'unité).
+     */
+    List<MembreProfil> porteursProfil(String profil);
+
+    /**
+     * Comptes internes actifs dont un profil compose {@code permission}, toutes unités confondues
+     * (GET /api/v1/interne/collaborateurs?permission=, liste complète) : candidats d'une tâche offerte par permission
+     * (D-93, D-94). Permission inconnue ou portée par aucun profil : liste vide.
+     */
+    List<MembreProfil> porteursPermission(String permission);
+
+    /**
+     * Oublie les lectures mises en cache (profils, rattachements, unités, membres) : appelé à la réception d'un
+     * changement d'organisation ou de profils publié par MS-IAM (D-93), avant de réévaluer les intervenants.
+     */
+    default void rafraichir() {
+        // Sans cache : rien à oublier.
+    }
 
     /** Profils (ROLE_…) du compte ; compte inconnu : aucun. */
     Set<String> profilsDe(String compteId);

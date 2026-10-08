@@ -126,6 +126,21 @@ gimac:
     visas:
       conformite: DELEGATAIRE
       direction-generale: DELEGATAIRE
+    # Circuits de signature (D-94) : fonctions signataires en données (catalogue D-91), ordre croissant (même ordre :
+    # indifférent), portail = signature donnée par l'institution de la liaison. Le procès-verbal suit d'abord les
+    # signatures configurées de l'opération qui porte sa signature (événements de MS-HOMOLOGATION).
+    circuits:
+      finalite: SIGNATURE_OPERATION
+      proces-verbal:
+        - {code: GIMAC, libelle: "Signature du GIMAC (chef du DES)", fonction: CHEF_DES, ordre: 1}
+        - {code: PARTICIPANT, libelle: "Signature du participant", fonction: PARTICIPANT, ordre: 1, portail: true}
+      visas:
+        CONFORMITE: {code: CONFORMITE, libelle: "Visa de la conformité", fonction: CONFORMITE}
+        DIRECTION_GENERALE: {code: DIRECTION_GENERALE, libelle: "Visa de la Direction Générale", fonction: DG}
+    # Contrôle des gestes par l'opération du parcours (D-93 §4) : liaison sans projection admise (transitoire) ;
+    # le déclencheur de chaque opération est lu dans les événements de MS-HOMOLOGATION.
+    operations:
+      liaison-sans-projection: ADMETTRE
   kafka:
     rebut:
       actif: false

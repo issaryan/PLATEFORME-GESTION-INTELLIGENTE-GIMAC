@@ -38,6 +38,10 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>D-65 : les actions exigées sont celles de la plateforme (attribut gimac_actions_requises), jamais
  * celles de Keycloak ; invitations et rappels partent en courriels de la plateforme, avec un lien vers
  * l'application de la couche du compte.
+ *
+ * <p>D-94 : aucune règle sur un nom de profil. Le « dernier super administrateur » est le dernier compte actif
+ * portant IAM_ROLE_PRIVILEGED_GRANT par la composition de ses profils ; le rattachement à une institution suit
+ * l'attribut externe des profils ; la couche des liens suit les permissions de la console.
  */
 @Service
 @Transactional
@@ -111,7 +115,7 @@ public class AdministrationComptesService {
         LiensCourriel liens,
         Clock clock
     ) {
-        this(annuaire, journal, entrees, proprietes, liens, clock, CatalogueProfils.configuration(proprietes));
+        this(annuaire, journal, entrees, proprietes, liens, clock, CatalogueProfils.configuration(proprietes, annuaire));
     }
 
     // ------------------------------------------------------------------ lectures
@@ -149,6 +153,38 @@ public class AdministrationComptesService {
         int p = Math.max(page, 0);
         int debut = (int) Math.min((long) p * t, l.size());
         return new PageAnnuaire(l.subList(debut, Math.min(debut + t, l.size())), l.size(), p, t);
+    }
+
+    /**
+     * Comptes internes actifs dont un profil porte la permission (D-94 §3) : intervenants proposés par
+     * MS-HOMOLOGATION. Composition lue dans le fournisseur d'identité (profils créés et recompositions compris).
+     */
+    @Transactional(readOnly = true)
+    public List<Compte> porteursPermission(String permission) {
+        return PorteursPermission.lire(annuaire, permission);
+    }
+
+    /**
+     * Comptes actifs rattachés à une institution (D-93 §11) : destinataires des notifications d'une institution chez
+     * MS-NOTIFICATION. Profils complétés par la lecture des profils par compte ; triés par nom affiché ; identifiant
+     * nul ou blanc : aucun compte.
+     */
+    @Transactional(readOnly = true)
+    public List<Compte> comptesInstitution(String institutionId) {
+        if (institutionId == null || institutionId.isBlank()) {
+            return List.of();
+        }
+        String id = institutionId.strip();
+        List<Compte> l = annuaire.parInstitution(id).stream().filter(c -> c.actif() && id.equals(c.institutionId())).toList();
+        if (l.isEmpty()) {
+            return l;
+        }
+        Map<String, Set<String>> parCompte = annuaire.profilsParCompte();
+        return l
+            .stream()
+            .map(c -> c.avecProfils(parCompte.getOrDefault(c.id(), c.profils())))
+            .sorted(Comparator.comparing((Compte c) -> c.nomAffiche().toLowerCase(Locale.ROOT)).thenComparing(Compte::id))
+            .toList();
     }
 
     @Transactional(readOnly = true)
@@ -215,7 +251,7 @@ public class AdministrationComptesService {
             throw IamException.invalide("IAM_ONBOARDING_REQUIRED", "Choisir l'invitation par courriel ou un mot de passe provisoire", Map.of());
         }
         ReglesAdministration.verifierProfils(acteur, Set.of(), n.profils(), catalogue.attribuables(), catalogue.privilegies());
-        ReglesAdministration.verifierRattachement(n.profils(), n.institutionId());
+        ReglesAdministration.verifierRattachement(n.profils(), n.institutionId(), catalogue.externes());
         if (annuaire.parIdentifiant(n.identifiant()).isPresent() || annuaire.emailPris(n.email(), null)) {
             throw IamException.conflit("IAM_ACCOUNT_CONFLICT", "Identifiant ou courriel déjà utilisé", Map.of());
         }
@@ -246,16 +282,19 @@ public class AdministrationComptesService {
         }
     }
 
-    /** Couche où le compte se connecte : portail pour un correspondant, console pour un super administrateur, département sinon. */
-    static Couche couche(Compte c) {
-        return Couche.pour(c, c.profils().contains(ReglesAdministration.SUPER_ADMIN) ? Couche.CONSOLE : Couche.DES);
+    /**
+     * Couche où le compte se connecte (D-94) : portail pour un compte d'institution, console si ses profils
+     * composent une permission de la console, département sinon.
+     */
+    private Couche couche(Compte c) {
+        return catalogue.couche(c);
     }
 
     public Compte modifier(Acteur acteur, String id, FicheCompte f) {
         Compte c = lire(id);
         ReglesAdministration.verifierTelephone(f.telephone());
         // Institution inchangée quand elle est absente de la fiche (null) ; vide, elle est retirée.
-        ReglesAdministration.verifierRattachement(c.profils(), f.institutionId() != null ? f.institutionId() : c.institutionId());
+        ReglesAdministration.verifierRattachement(c.profils(), f.institutionId() != null ? f.institutionId() : c.institutionId(), catalogue.externes());
         if (f.email() != null && !f.email().equalsIgnoreCase(c.email()) && annuaire.emailPris(f.email(), id)) {
             throw IamException.conflit("IAM_ACCOUNT_CONFLICT", "Identifiant ou courriel déjà utilisé", Map.of());
         }
@@ -269,9 +308,10 @@ public class AdministrationComptesService {
         ReglesAdministration.exigerMotif(motif);
         Compte c = lire(id);
         ReglesAdministration.verifierProfils(acteur, c.profils(), profils, catalogue.attribuables(), catalogue.privilegies());
-        ReglesAdministration.verifierRattachement(profils, c.institutionId());
-        if (c.profils().contains(ReglesAdministration.SUPER_ADMIN) && !profils.contains(ReglesAdministration.SUPER_ADMIN)) {
-            ReglesAdministration.verifierDernierSuperAdmin(c.actif(), superAdminsActifs());
+        ReglesAdministration.verifierRattachement(profils, c.institutionId(), catalogue.externes());
+        Map<String, Set<String>> compositions = catalogue.compositions();
+        if (catalogue.porteOctroiPrivilegie(c.profils(), compositions) && !catalogue.porteOctroiPrivilegie(profils, compositions)) {
+            ReglesAdministration.verifierDernierPorteurOctroi(c.actif(), catalogue.porteursActifsOctroiPrivilegie(compositions));
         }
         annuaire.definirProfils(id, profils);
         journal.compte(acteur, "PROFILS", id, c.identifiant(), motif, List.copyOf(new TreeSet<>(profils)));
@@ -282,8 +322,9 @@ public class AdministrationComptesService {
         ReglesAdministration.verifierPasSoiMeme(acteur, id);
         ReglesAdministration.exigerMotif(motif);
         Compte c = lire(id);
-        if (!actif && c.profils().contains(ReglesAdministration.SUPER_ADMIN)) {
-            ReglesAdministration.verifierDernierSuperAdmin(c.actif(), superAdminsActifs());
+        Map<String, Set<String>> compositions = actif ? Map.of() : catalogue.compositions();
+        if (!actif && catalogue.porteOctroiPrivilegie(c.profils(), compositions)) {
+            ReglesAdministration.verifierDernierPorteurOctroi(c.actif(), catalogue.porteursActifsOctroiPrivilegie(compositions));
         }
         annuaire.definirActif(id, actif);
         journal.compte(acteur, actif ? "ACTIVATION" : "DESACTIVATION", id, c.identifiant(), motif, List.of());
@@ -294,8 +335,9 @@ public class AdministrationComptesService {
         ReglesAdministration.verifierPasSoiMeme(acteur, id);
         ReglesAdministration.exigerMotif(motif);
         Compte c = lire(id);
-        if (c.profils().contains(ReglesAdministration.SUPER_ADMIN)) {
-            ReglesAdministration.verifierDernierSuperAdmin(c.actif(), superAdminsActifs());
+        Map<String, Set<String>> compositions = catalogue.compositions();
+        if (catalogue.porteOctroiPrivilegie(c.profils(), compositions)) {
+            ReglesAdministration.verifierDernierPorteurOctroi(c.actif(), catalogue.porteursActifsOctroiPrivilegie(compositions));
         }
         annuaire.supprimer(id);
         journal.compte(acteur, "SUPPRESSION", id, c.identifiant(), motif, List.of());
@@ -354,10 +396,6 @@ public class AdministrationComptesService {
     }
 
     // ------------------------------------------------------------------ outils
-
-    private long superAdminsActifs() {
-        return annuaire.lister().stream().filter(c -> c.actif() && c.profils().contains(ReglesAdministration.SUPER_ADMIN)).count();
-    }
 
     private static boolean contient(String v, String r) {
         return v != null && v.toLowerCase(Locale.ROOT).contains(r);

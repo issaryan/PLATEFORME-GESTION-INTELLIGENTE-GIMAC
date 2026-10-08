@@ -8,7 +8,7 @@ import { useApercuNotification, useCompteurNotifications, useContexteNotificatio
 // (pictogramme du type, titre, sous-titre, aperçu d'un message, depuis, nombre regroupé), « Tout marquer
 // comme lu » et « Voir tout ». Un clic ouvre le lien de la notification et la marque lue.
 
-export const ICONES_NOTIFICATION: Record<TypeNotification, IconName> = { MESSAGE: 'messages-square', TACHE: 'square-check', RAPPORT: 'file-text', MENTION: 'at-sign', REPONSE: 'reply', DEMANDE: 'inbox', PROCESSUS: 'workflow' }
+export const ICONES_NOTIFICATION: Record<TypeNotification, IconName> = { MESSAGE: 'messages-square', TACHE: 'square-check', RAPPORT: 'file-text', MENTION: 'at-sign', REPONSE: 'reply', DEMANDE: 'inbox', PROCESSUS: 'workflow', HOMOLOGATION: 'route' }
 
 /** « à l'instant », « il y a 5 min », « hier »… dans la langue de l'interface. */
 export function depuis(iso: string, langue: string, maintenant = Date.now()): string | null {

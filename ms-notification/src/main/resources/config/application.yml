@@ -307,7 +307,7 @@ gimac:
     delay: 500
   # Sélection des adaptateurs, un port à la fois (PI §0.8) : real | stub.
   adapters:
-    # Noms affichés de l'annuaire interne de MS-IAM.
+    # Noms affichés de l'annuaire interne de MS-IAM, et comptes d'une institution (D-93).
     annuaire: stub
     # Nom des conversations de groupe de MS-COLLABORATION.
     conversations: stub
@@ -324,6 +324,11 @@ gimac:
     # Purge des notifications de plus de 90 jours (§2), chaque nuit (UTC).
     purge:
       cron: '0 17 3 * * *'
+    # Comptes d'une institution (MS-IAM) mis en cache 60 s (D-93).
+    cache-institutions-secondes: 60
+    homologation:
+      # Jalons notifiés aux comptes de l'institution de la liaison, sur le portail (D-93 §11).
+      jalons-portail: APTE_CERTIFICATION,CERTIFIEE,APPROUVEE_SECURITE,EN_PRODUCTION
   kafka:
     rebut:
       actif: true
@@ -336,7 +341,12 @@ gimac:
         - pilotage.report
         - iam.request
         - pilotage.process
+        - homologation.operation
+        - homologation.liaison
   consommateurs:
     notification:
       # pilotage.process : processus d'unité (D-87, type PROCESSUS).
       sujets: collaboration.message,pilotage.task,pilotage.report,iam.request,pilotage.process
+    homologation:
+      # Parcours d'homologation (D-93, type HOMOLOGATION), groupe notification-homologation.
+      sujets: homologation.operation,homologation.liaison

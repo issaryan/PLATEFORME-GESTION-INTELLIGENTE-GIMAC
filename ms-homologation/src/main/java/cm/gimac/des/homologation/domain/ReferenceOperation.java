@@ -13,6 +13,8 @@ import cm.gimac.des.homologation.domain.parcours.Particularite;
 import cm.gimac.des.homologation.domain.parcours.PlateformeExecution;
 import cm.gimac.des.homologation.domain.parcours.Position;
 import cm.gimac.des.homologation.domain.parcours.SegmentParcours;
+import cm.gimac.des.homologation.domain.parcours.SignatureOperation;
+import cm.gimac.des.homologation.domain.parcours.VueOperation;
 import jakarta.persistence.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
@@ -108,11 +110,11 @@ public class ReferenceOperation implements Serializable {
     @Column(name = "ordre")
     private Integer ordre;
 
-    @Enumerated(EnumType.STRING)
+    @jakarta.persistence.Convert(converter = ConvertisseursCodes.FonctionEnTexte.class)
     @Column(name = "responsable", length = 40)
     private Fonction responsable;
 
-    @Enumerated(EnumType.STRING)
+    @jakarta.persistence.Convert(converter = ConvertisseursCodes.FonctionEnTexte.class)
     @Column(name = "validateur", length = 40)
     private Fonction validateur;
 
@@ -178,6 +180,20 @@ public class ReferenceOperation implements Serializable {
     @Enumerated(EnumType.STRING)
     @Column(name = "particularite", length = 40)
     private Particularite particularite;
+
+    /** Signatures exigées à la clôture (D-91, §3). */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "signatures", columnDefinition = "jsonb")
+    private String signatures;
+
+    /** Écran spécialisé de l'opération (D-93 §5) ; absent : déduit du modèle. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "vue", length = 30)
+    private VueOperation vue;
+
+    /** Les consultés (C) internes désignés reçoivent une tâche (D-93 §1). */
+    @Column(name = "consultes_recoivent_tache", nullable = false)
+    private boolean consultesRecoiventTache;
 
     // jhipster-needle-entity-add-field - JHipster will add fields here
 
@@ -419,6 +435,15 @@ public class ReferenceOperation implements Serializable {
         if (data.particularite() != null) {
             this.particularite = data.particularite();
         }
+        if (data.signatures() != null) {
+            this.signatures = JsonTexte.ecrire(data.signatures());
+        }
+        if (data.vue() != null) {
+            this.vue = data.vue();
+        }
+        if (data.consultesRecoiventTache() != null) {
+            this.consultesRecoiventTache = data.consultesRecoiventTache();
+        }
         if (etape != null) {
             deriverAttributsHistoriques();
         }
@@ -499,6 +524,9 @@ public class ReferenceOperation implements Serializable {
         copie.declencheur = declencheur;
         copie.position = position;
         copie.particularite = particularite;
+        copie.signatures = signatures;
+        copie.vue = vue;
+        copie.consultesRecoiventTache = consultesRecoiventTache;
         return copie;
     }
 
@@ -542,7 +570,9 @@ public class ReferenceOperation implements Serializable {
                 secret,
                 valeurReference,
                 getLivrables().stream().map(Livrable::code).toList(),
-                delaiEffectif()
+                delaiEffectif(),
+                getSignatures(),
+                fonctionsCitees()
             )
         );
     }
@@ -638,6 +668,42 @@ public class ReferenceOperation implements Serializable {
         return particularite;
     }
 
+    /** Signatures exigées à la clôture (D-91), vides pour les opérations antérieures. */
+    public List<SignatureOperation> getSignatures() {
+        return signatures == null ? List.of() : JsonTexte.liste(signatures, SignatureOperation.class);
+    }
+
+    /** Vue saisie (D-93 §5), éventuellement absente. */
+    public VueOperation getVue() {
+        return vue;
+    }
+
+    /** Vue de l'opération : saisie, sinon déduite du geste, de la particularité et du déclencheur. */
+    public VueOperation vueEffective() {
+        return vue != null ? vue : VueOperation.deduite(gesteEffectif(), particularite, declencheur);
+    }
+
+    public boolean isConsultesRecoiventTache() {
+        return consultesRecoiventTache;
+    }
+
+    /** Fonctions citées par l'opération (R, V, C, I, E, déposants, signataires), contrôlées au catalogue à la publication. */
+    public List<Fonction> fonctionsCitees() {
+        java.util.Set<Fonction> f = new java.util.LinkedHashSet<>();
+        if (responsable != null) {
+            f.add(responsable);
+        }
+        if (validateur != null) {
+            f.add(validateur);
+        }
+        f.addAll(getConsultes());
+        f.addAll(getInformes());
+        f.addAll(getExternes());
+        getLivrables().stream().map(Livrable::deposant).filter(java.util.Objects::nonNull).forEach(f::add);
+        getSignatures().stream().map(SignatureOperation::signataire).filter(java.util.Objects::nonNull).forEach(f::add);
+        return List.copyOf(f);
+    }
+
     // ------------------------------------------------------------------ valeurs effectives (version antérieure au modèle)
 
     /** Attribut historique de la preuve attendue (jeu d'initialisation D-59), lu seulement quand l'étape n'est pas saisie. */
@@ -646,14 +712,7 @@ public class ReferenceOperation implements Serializable {
     }
 
     private Fonction fonctionResponsableConnue() {
-        if (fonctionResponsable == null) {
-            return null;
-        }
-        try {
-            return Fonction.valueOf(fonctionResponsable.trim());
-        } catch (IllegalArgumentException e) {
-            return null;
-        }
+        return fonctionResponsable == null ? null : Fonction.duCatalogue(fonctionResponsable.trim()).orElse(null);
     }
 
     /**

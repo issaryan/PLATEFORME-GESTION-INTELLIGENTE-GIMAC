@@ -34,6 +34,8 @@
     <include file="config/liquibase/changelog/20231212201246_added_entity_constraints_AttestationStatusDecision.xml" relativeToChangelogFile="false"/>
     <include file="config/liquibase/changelog/20261005000001_lot1_post_generation.xml" relativeToChangelogFile="false"/>
     <include file="config/liquibase/changelog/20261006000001_lot1_verrous_decision.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261010000001_types_projet_donnees.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261011000001_d93_d94_operations_circuits.xml" relativeToChangelogFile="false"/>
     <!-- jhipster-needle-liquibase-add-constraints-changelog - JHipster will add liquibase constraints changelogs here -->
     <!-- jhipster-needle-liquibase-add-incremental-changelog - JHipster will add incremental liquibase changelogs here -->
 </databaseChangeLog>

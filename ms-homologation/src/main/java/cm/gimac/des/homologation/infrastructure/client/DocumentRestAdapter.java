@@ -27,6 +27,8 @@ public class DocumentRestAdapter implements DocumentRegistryPort {
 
     record Depose(UUID id, String sha256, String nomFichier) {}
 
+    record Metadonnees(UUID id, String nomFichier, String typeMime, String sha256) {}
+
     private final RestClient client;
 
     public DocumentRestAdapter(RestClient.Builder builder, ServiceTokenInterceptor jeton, @Value("${gimac.services.document.url}") String url) {
@@ -46,6 +48,19 @@ public class DocumentRestAdapter implements DocumentRegistryPort {
                 return Verification.INCONNUE;
             }
             throw indisponible();
+        } catch (RestClientException ex) {
+            throw indisponible();
+        }
+    }
+
+    /** Type MIME inscrit par MS-DOCUMENT ({@code GET /api/v1/interne/documents/{id}}, INTERNAL_DOCUMENT_READ). */
+    @Override
+    public String typeMime(UUID documentId) {
+        try {
+            Metadonnees m = client.get().uri("/api/v1/interne/documents/{id}", documentId).retrieve().body(Metadonnees.class);
+            return m == null ? null : m.typeMime();
+        } catch (HttpClientErrorException ex) {
+            return null;
         } catch (RestClientException ex) {
             throw indisponible();
         }

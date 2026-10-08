@@ -53,6 +53,22 @@ public class IamCollaboratorAdapter implements CollaboratorDirectoryPort {
         }
     }
 
+    /**
+     * Porteurs d'une permission (D-94 §3), {@code GET /api/v1/interne/collaborateurs?permission=} (MS-IAM,
+     * docs/lot1/ecrans-par-configuration.md §6.6) : tableau de collaborateurs ; réponse vide : aucun porteur. Toute
+     * autre issue (MS-IAM injoignable, 5xx, refus 4xx du jeton de service, réponse qui n'est pas un tableau) : 503
+     * HOM_IAM_UNAVAILABLE, sans repli.
+     */
+    @Override
+    public List<CollaboratorView> parPermission(String permission) {
+        try {
+            Collaborateur[] l = client.get().uri(u -> u.path("/api/v1/interne/collaborateurs").queryParam("permission", permission).build()).retrieve().body(Collaborateur[].class);
+            return l == null ? List.of() : Arrays.stream(l).map(Collaborateur::vue).toList();
+        } catch (RestClientException | IllegalStateException e) {
+            throw indisponible();
+        }
+    }
+
     private static HomologationException indisponible() {
         return HomologationException.unavailable("HOM_IAM_UNAVAILABLE", "Annuaire des collaborateurs indisponible");
     }

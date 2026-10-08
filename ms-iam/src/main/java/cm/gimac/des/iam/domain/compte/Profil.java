@@ -1,5 +1,6 @@
 package cm.gimac.des.iam.domain.compte;
 
+import cm.gimac.des.iam.domain.service.ReglesProfils;
 import java.time.Instant;
 import java.util.Set;
 
@@ -13,6 +14,8 @@ import java.util.Set;
  * @param modifieLe dernière modification par l'administration (libellé, description, permissions,
  *     création), nulle si le profil n'a jamais été modifié depuis la console
  * @param modifiePar auteur de cette modification, nul de même
+ * @param externe profil d'un compte d'institution (portail) : attribut gimac_externe du rôle, ou à défaut une
+ *     permission du portail (*_PORTAL_*) (D-94, docs/lot1/ecrans-par-configuration.md)
  */
 public record Profil(
     String code,
@@ -23,7 +26,8 @@ public record Profil(
     long titulaires,
     boolean cree,
     Instant modifieLe,
-    Auteur modifiePar
+    Auteur modifiePar,
+    boolean externe
 ) {
     /** Auteur d'une modification : identifiant et nom affiché du compte. */
     public record Auteur(String id, String nomAffiche) {}
@@ -31,6 +35,21 @@ public record Profil(
     public Profil {
         permissions = permissions == null ? Set.of() : Set.copyOf(permissions);
         libelle = libelle == null || libelle.isBlank() ? code : libelle;
+    }
+
+    /** Profil sans attribut externe posé : règle de repli (permission *_PORTAL_*). */
+    public Profil(
+        String code,
+        String libelle,
+        String description,
+        Set<String> permissions,
+        boolean privilegie,
+        long titulaires,
+        boolean cree,
+        Instant modifieLe,
+        Auteur modifiePar
+    ) {
+        this(code, libelle, description, permissions, privilegie, titulaires, cree, modifieLe, modifiePar, ReglesProfils.externe(null, permissions));
     }
 
     /** Profil sans trace de modification. */
@@ -50,7 +69,7 @@ public record Profil(
 
     /** Même profil, qualifié par le catalogue de MS-IAM (privilégié, créé). */
     public Profil qualifie(boolean estPrivilegie, boolean estCree) {
-        return new Profil(code, libelle, description, permissions, estPrivilegie, titulaires, estCree, modifieLe, modifiePar);
+        return new Profil(code, libelle, description, permissions, estPrivilegie, titulaires, estCree, modifieLe, modifiePar, externe);
     }
 
     /** Même profil avec la trace de sa dernière modification (absente : inchangé). */
@@ -58,6 +77,6 @@ public record Profil(
         if (trace == null || trace.modifieLe() == null) {
             return this;
         }
-        return new Profil(code, libelle, description, permissions, privilegie, titulaires, cree, trace.modifieLe(), new Auteur(trace.modifieParId(), trace.modifieParNom()));
+        return new Profil(code, libelle, description, permissions, privilegie, titulaires, cree, trace.modifieLe(), new Auteur(trace.modifieParId(), trace.modifieParNom()), externe);
     }
 }

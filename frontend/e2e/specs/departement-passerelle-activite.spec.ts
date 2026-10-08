@@ -4,8 +4,8 @@ import { PasserellePilotage } from './passerelle-pilotage'
 
 // Fonctionnalité : « Mon activité » sur la passerelle (VITE_SERVICES=http), dont Playwright simule MS-PILOTAGE
 // et l'organisation de MS-IAM : chaque geste atteint la route exacte du contrat (docs/lot1/mon-activite.md §2),
-// avec son corps ; le refus 422 PIL_SANS_RESPONSABLE est expliqué et le rapport reste un brouillon, modifié
-// (jamais recréé) au nouvel essai.
+// avec son corps ; un refus 422 (PIL_RAPPORT_INCOMPLET) est expliqué, message traduit et détail du service, et le
+// rapport reste un brouillon, modifié (jamais recréé) au nouvel essai ; le destinataire et son motif sont annoncés.
 
 test('Scénario : un collaborateur tient sa journée et soumet son rapport par la passerelle', async ({ page }) => {
   const gw = new PasserellePilotage()
@@ -30,17 +30,18 @@ test('Scénario : un collaborateur tient sa journée et soumet son rapport par l
     expect(gw.appels.find((a) => a.chemin === '/bff/des/pilotage/activites/A-1/statut')!.corps).toEqual({ statut: 'FAITE' })
     expect(gw.appels.find((a) => a.methode === 'GET' && a.chemin === '/bff/des/pilotage/activites')!.recherche).toMatch(/^\?du=\d{4}-\d{2}-\d{2}&au=\d{4}-\d{2}-\d{2}$/)
   })
-  await test.step('Et il soumet son rapport prérempli : refusé sans responsable, puis accepté', async () => {
+  await test.step('Et il soumet son rapport prérempli : refus expliqué, puis remis à son n+1', async () => {
     await page.getByRole('button', { name: 'Rédiger mon rapport' }).click()
     const d = page.getByRole('dialog', { name: 'Nouveau rapport' })
     await expect(d.getByText('Le rapport soumis sera remis à Gaston Ndzana Ebode, votre responsable.')).toBeVisible()
     await d.getByRole('button', { name: 'Préremplir à partir de mes activités' }).click()
     await expect(d.getByLabel(/Contenu du rapport/)).toHaveValue(/## En cours/)
     await d.getByRole('button', { name: 'Enregistrer et soumettre' }).click()
-    await expect(d.getByText(/Aucun responsable \(n\+1\) n’est désigné pour votre compte/)).toBeVisible()
-    await expect(d.getByText('e2e-PIL_SANS_RESPONSABLE')).toBeVisible()
+    await expect(d.getByText(/Le rapport n’a ni texte ni document/)).toBeVisible()
+    await expect(d.getByText('Le rapport est vide')).toBeVisible()
+    await expect(d.getByText('e2e-PIL_RAPPORT_INCOMPLET')).toBeVisible()
     await d.getByRole('button', { name: 'Enregistrer et soumettre' }).click()
-    await expect(page.getByRole('status').filter({ hasText: 'Rapport soumis à votre responsable.' })).toBeVisible()
+    await expect(page.getByRole('status').filter({ hasText: 'Rapport remis à Gaston Ndzana Ebode (votre n+1).' })).toBeVisible()
     const ecritures = gw.appels.filter((a) => a.methode !== 'GET' && a.chemin.startsWith('/bff/des/pilotage/rapports')).map((a) => `${a.methode} ${a.chemin}`)
     expect(ecritures).toEqual([
       'POST /bff/des/pilotage/rapports/preremplissage',

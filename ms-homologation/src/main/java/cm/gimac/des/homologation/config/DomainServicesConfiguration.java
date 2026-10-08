@@ -23,9 +23,31 @@ public class DomainServicesConfiguration {
         return new TopologicalSorter();
     }
 
+    /**
+     * Contrôle du référentiel ; gestes de certification attendus par jalon lus en configuration
+     * ({@code gimac.homologation.referentiel.gestes-certification.toujours.<JALON>} et {@code .avec-attestations.<JALON>} :
+     * déclencheurs séparés par des virgules), docs/lot1/effet-reel-referentiels.md §10.5.
+     */
     @Bean
-    public ReferentialGraphValidator referentialGraphValidator(TopologicalSorter sorter) {
-        return new ReferentialGraphValidator(sorter);
+    public ReferentialGraphValidator referentialGraphValidator(TopologicalSorter sorter, org.springframework.core.env.Environment env) {
+        return new ReferentialGraphValidator(
+            sorter,
+            new ReferentialGraphValidator.ExigencesCertification(exigences(env, "toujours"), exigences(env, "avec-attestations"))
+        );
+    }
+
+    static java.util.Map<cm.gimac.des.homologation.domain.parcours.Jalon, java.util.List<String>> exigences(org.springframework.core.env.Environment env, String famille) {
+        java.util.Map<cm.gimac.des.homologation.domain.parcours.Jalon, java.util.List<String>> m = new java.util.EnumMap<>(cm.gimac.des.homologation.domain.parcours.Jalon.class);
+        org.springframework.boot.context.properties.bind.Binder.get(env)
+            .bind("gimac.homologation.referentiel.gestes-certification." + famille, org.springframework.boot.context.properties.bind.Bindable.mapOf(String.class, String.class))
+            .orElse(java.util.Map.of())
+            .forEach((jalon, liste) ->
+                m.put(
+                    cm.gimac.des.homologation.domain.parcours.Jalon.valueOf(jalon.trim()),
+                    java.util.Arrays.stream(liste.split(",")).map(String::trim).filter(x -> !x.isEmpty()).toList()
+                )
+            );
+        return m;
     }
 
     @Bean
@@ -39,8 +61,16 @@ public class DomainServicesConfiguration {
     }
 
     @Bean
-    public cm.gimac.des.homologation.domain.service.TableauDeBordCalculateur tableauDeBordCalculateur(cm.gimac.des.homologation.domain.service.ParcoursProjection projection) {
-        return new cm.gimac.des.homologation.domain.service.TableauDeBordCalculateur(projection);
+    public cm.gimac.des.homologation.domain.service.TableauDeBordCalculateur tableauDeBordCalculateur(
+        cm.gimac.des.homologation.domain.service.ParcoursProjection projection,
+        org.springframework.core.io.ResourceLoader chargeur,
+        @org.springframework.beans.factory.annotation.Value("${gimac.homologation.tableau.compteurs:classpath:config/tableau-acteur-compteurs.json}") String emplacement
+    ) throws java.io.IOException {
+        // Compteurs du tableau d'acteur décrits en données (D-94 §3) : fichier livré, ou fichier externe de l'exploitation.
+        try (var in = chargeur.getResource(emplacement).getInputStream()) {
+            String json = new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+            return new cm.gimac.des.homologation.domain.service.TableauDeBordCalculateur(projection, cm.gimac.des.homologation.domain.parcours.DefinitionCompteur.lire(json));
+        }
     }
 
     @Bean

@@ -114,7 +114,7 @@ test.describe('Fonctionnalité : conduite de projet de certification', () => {
   test('Scénario : filtrer les opérations d’une liaison et attribuer une qualité, motif à l’appui', async ({ page }) => {
     await page.goto(`${ADRESSES.departement}${cheminDossier('LIA-2026-005', 'operations')}`)
     await test.step('Étant donné les opérations de LIA-2026-005 et l’alerte permanente de l’opération 28', async () => {
-      await expect(page.getByRole('heading', { name: 'Étape 9 · Mise en production' })).toBeVisible()
+      await expect(page.getByRole('heading', { name: 'Mise en production', exact: true })).toBeVisible()
       await expect(page.getByText('Mise à jour du script de dépôt : à ne pas omettre')).toBeVisible()
       await expect(page.getByRole('heading', { name: 'Branche du type de projet · Switch interbancaire' })).toBeVisible()
     })
@@ -125,7 +125,7 @@ test.describe('Fonctionnalité : conduite de projet de certification', () => {
       await page.getByLabel('Afficher').selectOption('a-valider')
       await page.getByLabel('Afficher').selectOption('')
       await page.getByLabel('Étape', { exact: true }).selectOption('INTEGRATION')
-      await expect(page.getByRole('heading', { name: 'Étape 9 · Mise en production' })).toHaveCount(0)
+      await expect(page.getByRole('heading', { name: 'Mise en production', exact: true })).toHaveCount(0)
       await page.getByRole('switch', { name: 'Ma fonction seulement' }).click()
       await page.getByLabel('Rechercher (rang ou libellé)').fill('zzz')
       await expect(page.getByText('Aucune opération ne répond à ces filtres.')).toBeVisible()

@@ -38,7 +38,20 @@ const vue = (id: string, etat: string, statut: string, etape: string) => ({
   phaseCourante: etape, couvertureCertification: couverture(statut === 'CERTIFIEE' ? 1 : 0, 1), couvertureMiseEnService: couverture(0, 1), operationsEnRetard: 0, bloquee: false, prochaineEcheance: '2026-10-06', dateCibleProduction: null,
 })
 
-export type OptionsPasserellePortail = { permissions?: string[]; tachesEnErreur?: boolean }
+export type OptionsPasserellePortail = {
+  permissions?: string[]
+  tachesEnErreur?: boolean
+  /**
+   * Procès-verbal de LIA-2026-061 signé du GIMAC, attendu du participant, avec son circuit (MS-CERTIFICATION §10.5) ;
+   * `refus` : codes d'erreur rendus aux signatures successives avant l'acceptation (CER_*).
+   */
+  pvASigner?: { refus: string[] }
+}
+
+/** Statut HTTP de chaque refus de MS-CERTIFICATION sur la signature d'une opération (§10.5). */
+const STATUT_CER: Record<string, number> = {
+  CER_OPERATION_ABSENTE: 409, CER_OPERATION_NON_OUVERTE: 409, CER_OPERATION_INCONNUE: 409, CER_ACTEUR_NON_DESIGNE: 403, CER_SIGNATAIRE_NON_DESIGNE: 403, CER_SIGNATURE_ORDRE: 409,
+}
 
 export class PasserellePortail {
   appels: { methode: string; chemin: string; entetes: Record<string, string>; corps: string }[] = []
@@ -54,7 +67,21 @@ export class PasserellePortail {
     this.o = o
   }
 
+  pvSigne = false
+  /** Finalités des défis de réauthentification demandés (SIGNATURE_OPERATION pour le procès-verbal). */
+  finalites: string[] = []
+
   async brancher(page: Page) {
+    if (this.o.pvASigner) {
+      // Clé de sécurité simulée (WebAuthn) : assertion factice, sans authentificateur réel.
+      await page.addInitScript(() => {
+        const tampon = (...v: number[]) => new Uint8Array(v).buffer
+        Object.defineProperty(navigator, 'credentials', {
+          configurable: true,
+          value: { get: async () => ({ id: 'cle-portail', type: 'public-key', response: { clientDataJSON: tampon(1, 2), authenticatorData: tampon(3), signature: tampon(4), userHandle: tampon(5) } }) },
+        })
+      })
+    }
     await page.route(/\/(api|bff)\//, (r) => this.servir(r))
   }
 
@@ -114,6 +141,27 @@ export class PasserellePortail {
       return json({}, 201)
     }
 
+    if (chemin === '/bff/portail/iam/reauthentification/defi' && methode === 'POST') {
+      this.finalites.push(JSON.parse(brut || '{}').purpose)
+      return json({ challengeId: 'defi-portail', challenge: 'AQIDBA', rpId: 'localhost', allowCredentials: ['AQ'], timeoutMs: 60000 })
+    }
+    if (this.o.pvASigner && chemin === `${C}/LIA-2026-061/proces-verbal/signature` && methode === 'POST') {
+      if (!req.headers()['x-reauth-assertion']) return refus(401, 'REAUTH_REQUIRED', 'Confirmation par la clé de sécurité exigée.')
+      const code = this.o.pvASigner.refus.shift()
+      if (code) return refus(STATUT_CER[code] ?? 409, code, 'Refus de la certification')
+      this.pvSigne = true
+      return json({})
+    }
+    if (this.o.pvASigner && chemin === `${C}/LIA-2026-061/proces-verbal`) {
+      const sig = (f: string, signataire = f) => ({ signataire, fonction: f, signeLe: '2026-09-18', horodatage: '2026-09-18T10:15:00Z' })
+      return json({ liaisonId: 'LIA-2026-061', etat: this.pvSigne ? 'SIGNE' : 'SIGNE_GIMAC', couverture: couverture(1, 1), servicesCouverts: ['PAIEMENT_MARCHAND'], etabliPar: 'CONDUCTEUR',
+        etabliLe: '2026-09-15', empreinte: 'ab'.repeat(32), signatureGimac: sig('CHEF_DES'), signatureParticipant: this.pvSigne ? sig('PARTICIPANT', 'Représentant de Établissement de paiement A') : null,
+        circuit: [
+          { code: 'SIGNATURE_GIMAC', libelle: 'Signature du GIMAC', fonction: 'CHEF_DES', ordre: 1, portail: false, etat: 'SIGNEE' },
+          { code: 'SIGNATURE_PARTICIPANT', libelle: 'Signature du participant', fonction: 'PARTICIPANT', ordre: 2, portail: true, etat: this.pvSigne ? 'SIGNEE' : 'ATTENDUE' },
+        ],
+        transitionsPermises: [], actionsPermises: this.pvSigne ? [] : ['SIGNER_PARTICIPANT'] })
+    }
     const pv = chemin.match(/^\/bff\/portail\/certification\/liaisons\/(LIA-2026-06[01])\/proces-verbal$/)
     if (pv) {
       const signe = pv[1] === 'LIA-2026-060'

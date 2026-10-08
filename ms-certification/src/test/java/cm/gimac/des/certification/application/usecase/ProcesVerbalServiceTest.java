@@ -12,7 +12,6 @@ import cm.gimac.des.certification.application.port.in.Acteur;
 import cm.gimac.des.certification.application.usecase.DecisionVues.ProcesVerbalVue;
 import cm.gimac.des.certification.domain.CertificationException;
 import cm.gimac.des.certification.domain.decision.SignatureVerrou;
-import cm.gimac.des.certification.domain.enumeration.RoleSignature;
 import cm.gimac.des.certification.domain.event.DecisionEvenements;
 import cm.gimac.des.certification.infrastructure.client.ReauthentificationStubAdapter;
 import java.util.List;
@@ -113,7 +112,8 @@ class ProcesVerbalServiceTest {
         assertThat(v.signatureGimac().horodatage()).isEqualTo(banc.horloge.instant());
         assertThat(v.signatureParticipant()).isNull();
         SignatureVerrou s = banc.signaturesEnregistrees.get(0);
-        assertThat(s.getRole()).isEqualTo(RoleSignature.GIMAC);
+        assertThat(s.getEtape()).isEqualTo("GIMAC");
+        assertThat(s.getFonction()).isEqualTo("CHEF_DES");
         assertThat(s.getAssertion()).isEqualTo("assertion-webauthn");
         assertThat(s.getEmpreinteObjet()).isEqualTo(v.empreinte());
         assertThat(s.getEmpreinteDecision()).matches("[0-9a-f]{64}");

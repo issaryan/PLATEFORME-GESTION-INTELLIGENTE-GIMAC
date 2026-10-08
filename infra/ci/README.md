@@ -60,6 +60,8 @@ préparation ──┬── infra ─────┐
    être identique à `infra/keycloak/gimac-realm.json` et à `gimac-realm-production.json` (sans compte de
    test, retenu par `--build-arg DOMAINE=gimac-realm-production.json`) versionnés. Aucun client confidentiel ne
    doit porter de secret en clair (seulement des variables `${…}`).
+   Les tests de `fusionner-domaine.py` (`test_fusionner_domaine.py` : rôles, comptes, politique de sécurité)
+   s'exécutent dans cette section.
 8. **JSON et YAML** : syntaxe des JSON, `yamllint` (règles de `yamllint.yml`).
 9. **Chaîne** : `actionlint` sur `.github/workflows`.
 
@@ -131,5 +133,5 @@ Secrets à définir dans GitHub : `COSIGN_PRIVATE_KEY`, `COSIGN_PASSWORD` (dép�
 | `contrat/routes.mjs`, `contrat/ecarts-connus.txt` | contrôle du contrat des routes et écarts admis |
 | `valider-tout.sh` | toutes les validations sur le poste |
 | `construire-images.sh`, `deployer-recette.sh` | livraison et déploiement continus |
-| `deployer-serveur.sh`, `fusionner-domaine.py` | serveur de démonstration (10.20.36.214) : images construites sur place, démarrage par `gimac-dev.sh` avec `docker-compose.serveur.yml`, Keycloak persistant (domaine modifié réimporté en conservant comptes, mots de passe et TOTP), comptes nominatifs, configurations montées (politiques OPA, simulacres, observabilité) suivies par empreinte : un service dont la configuration a changé est redémarré puis attendu sain ; lancé par `.github/workflows/deploiement-serveur.yml` sur l'exécuteur auto-hébergé `gimac-214` à chaque poussée sur `main` |
+| `deployer-serveur.sh`, `fusionner-domaine.py`, `test_fusionner_domaine.py` | serveur de démonstration (10.20.36.214) : images construites sur place, démarrage par `gimac-dev.sh` avec `docker-compose.serveur.yml`, Keycloak persistant (domaine modifié réimporté par fusion à trois voies en conservant comptes, mots de passe, TOTP, profils créés, recompositions et politique de sécurité modifiée dans la console ; même fusion dans `mettre-a-jour.sh` et le Job Kubernetes `keycloak-domaine` ; tests lancés par `valider-infra.sh`), comptes nominatifs, configurations montées (politiques OPA, simulacres, observabilité) suivies par empreinte : un service dont la configuration a changé est redémarré puis attendu sain ; lancé par `.github/workflows/deploiement-serveur.yml` sur l'exécuteur auto-hébergé `gimac-214` à chaque poussée sur `main` |
 | `yamllint.yml`, `gitleaks.toml` | règles de yamllint et de gitleaks |

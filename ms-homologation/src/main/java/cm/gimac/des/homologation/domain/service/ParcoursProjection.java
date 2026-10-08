@@ -1,5 +1,6 @@
 package cm.gimac.des.homologation.domain.service;
 
+import cm.gimac.des.homologation.domain.EtapeReferentiel;
 import cm.gimac.des.homologation.domain.enumeration.TypeProjet;
 import cm.gimac.des.homologation.domain.parcours.Acteur;
 import cm.gimac.des.homologation.domain.parcours.BlocageParcours;
@@ -16,6 +17,8 @@ import cm.gimac.des.homologation.domain.parcours.Particularite;
 import cm.gimac.des.homologation.domain.parcours.Permissions;
 import cm.gimac.des.homologation.domain.parcours.Personne;
 import cm.gimac.des.homologation.domain.parcours.Preuve;
+import cm.gimac.des.homologation.domain.parcours.SignatureOperation;
+import cm.gimac.des.homologation.domain.parcours.SignatureRecueillie;
 import cm.gimac.des.homologation.domain.parcours.Sla;
 import cm.gimac.des.homologation.domain.parcours.StatutParcours;
 import cm.gimac.des.homologation.domain.parcours.Vues;
@@ -35,8 +38,15 @@ import java.util.Set;
  */
 public class ParcoursProjection {
 
-    /** Données tenues hors de l'agrégat : conducteur (annuaire), banque partenaire (registre), version du référentiel. */
-    public record Contexte(Personne conducteur, String banquePartenaireNom, Integer versionReferentiel) {}
+    /**
+     * Données tenues hors de l'agrégat : conducteur (annuaire), banque partenaire (registre), version du référentiel et
+     * ses étapes réelles (D-89, D-93 §5 ; absentes : les étapes canoniques).
+     */
+    public record Contexte(Personne conducteur, String banquePartenaireNom, Integer versionReferentiel, List<EtapeReferentiel> etapesVersion) {
+        public Contexte(Personne conducteur, String banquePartenaireNom, Integer versionReferentiel) {
+            this(conducteur, banquePartenaireNom, versionReferentiel, null);
+        }
+    }
 
     private static final String CONDUCTEUR_GIMAC = "Conducteur de projet GIMAC";
 
@@ -65,15 +75,117 @@ public class ParcoursProjection {
             o.isPivot(),
             p.predecesseursNonFaits(o),
             List.of(),
-            actions(o, a),
+            actionsAvecSignature(p, o, a),
             o.getGeste(),
             o.getJalon(),
             o.getDeclencheur(),
-            o.getLivrables()
+            o.getLivrables(),
+            signatures(p, o),
+            o.getEtapeCode(),
+            o.getVue(),
+            livrablesAttendus(p, o, a),
+            o.getRenvois()
         );
     }
 
-    /** Actions permises sur une opération : son geste quand elle est ouverte, la validation (jamais par R), l'attribution des qualités. */
+    /** Livrables attendus de l'opération, leur dépôt et le droit de l'acteur à les déposer maintenant (D-93 §3). */
+    public List<Vues.LivrableAttendu> livrablesAttendus(Parcours p, OperationParcours o, Acteur a) {
+        Set<Fonction> f = VisibiliteReferentiel.fonctions(a.permissions());
+        boolean ouverte = o.getEtat().ouverte() && !Parcours.gesteDedie(o);
+        return o
+            .getLivrables()
+            .stream()
+            .map(l ->
+                new Vues.LivrableAttendu(
+                    l.code(),
+                    l.libelle(),
+                    l.nature(),
+                    l.deposant(),
+                    l.deposant() == null ? null : l.deposant().libelle(),
+                    l.typesPieces(),
+                    l.obligatoire(),
+                    o.depot(l.code()).orElse(null),
+                    ouverte && p.droitDepot(o, l, a, f).isPresent()
+                )
+            )
+            .toList();
+    }
+
+    /** Signatures exigées de l'opération (D-91), attendues ou signées, dans leur ordre. */
+    public List<Vues.Signature> signatures(Parcours p, OperationParcours o) {
+        List<String> suivantes = o.signaturesSuivantes().stream().map(SignatureOperation::code).toList();
+        boolean enSignature = o.getEtat() == EtatOperationParcours.EN_SIGNATURE;
+        return o
+            .getSignatures()
+            .stream()
+            .map(s -> {
+                var r = o.recueillie(s.code());
+                return new Vues.Signature(
+                    s.code(),
+                    s.libelle(),
+                    s.ordreEffectif(),
+                    s.signataire(),
+                    s.signataire().libelle(),
+                    s.porte(),
+                    r.isPresent() ? "SIGNEE" : "ATTENDUE",
+                    enSignature && r.isEmpty() && suivantes.contains(s.code()),
+                    r.isPresent() ? null : p.titulaire(o, s.signataire()).orElse(null),
+                    r.map(SignatureRecueillie::signataireId).orElse(null),
+                    r.map(SignatureRecueillie::signataireNom).orElse(null),
+                    r.map(SignatureRecueillie::signeLe).orElse(null),
+                    r.map(SignatureRecueillie::empreinte).orElse(null)
+                );
+            })
+            .toList();
+    }
+
+    /**
+     * Actions de l'opération, plus SIGNER quand elle attend une signature que l'acteur peut donner maintenant : il
+     * est la personne désignée pour la fonction, ou, sans désignation, il porte la fonction (D-91).
+     */
+    List<String> actionsAvecSignature(Parcours p, OperationParcours o, Acteur a) {
+        List<String> l = new ArrayList<>(actions(p, o, a));
+        if (o.getEtat() == EtatOperationParcours.EN_SIGNATURE && a.id() != null) {
+            Set<Fonction> fonctions = VisibiliteReferentiel.fonctions(a.permissions());
+            boolean peutSigner = o
+                .signaturesSuivantes()
+                .stream()
+                .anyMatch(s -> p.titulaire(o, s.signataire()).map(a::est).orElse(fonctions.contains(s.signataire())));
+            if (peutSigner) {
+                l.add(0, "SIGNER");
+            }
+        }
+        return l;
+    }
+
+    /**
+     * Actions de l'opération pour la personne (D-93 §2) : celles que sa matrice de rôles permet, restreintes au RACI
+     * imposé : dépôt par le R désigné (porteur de sa fonction s'il est à affecter), un déposant, le conducteur ou en
+     * supervision ; validation et renvoi par le V désigné (porteur de sa fonction s'il est à affecter).
+     */
+    public List<String> actions(Parcours p, OperationParcours o, Acteur a) {
+        Set<Fonction> f = VisibiliteReferentiel.fonctions(a.permissions());
+        List<String> l = new ArrayList<>();
+        for (String x : actions(o, a)) {
+            switch (x) {
+                case "DEPOSER_PREUVE", "DEPOSER_LIVRABLE" -> {
+                    if (p.droitDepot(o, null, a, f).isPresent()) {
+                        l.add(x);
+                    }
+                }
+                case "VALIDER" -> {
+                    if (p.peutValider(o, a, f)) {
+                        l.add("VALIDER");
+                        l.add("RENVOYER");
+                    }
+                }
+                default -> l.add(x);
+            }
+        }
+        return l;
+    }
+
+    /** Actions permises par la matrice des rôles : son geste quand elle est ouverte, la validation (jamais par R), l'attribution des qualités. */
     public List<String> actions(OperationParcours o, Acteur a) {
         List<String> l = new ArrayList<>();
         boolean attribuer = a.peut(Permissions.OPERATION_ASSIGN, Permissions.STEP_MANAGE);
@@ -178,7 +290,7 @@ public class ParcoursProjection {
                     el,
                     (int) faites,
                     ops.size(),
-                    ops.stream().filter(o -> !o.getLivrables().isEmpty()).map(o -> new Vues.Livrable("parcours.op." + o.getRang(), o.faite())).toList(),
+                    livrablesEtape(ops),
                     premier == null ? null : premier.getRaci().v(),
                     closeLe,
                     debut,
@@ -189,6 +301,118 @@ public class ParcoursProjection {
             );
         }
         return l;
+    }
+
+    /** Livrables des opérations d'une étape (D-93 §5) : libellé, opération, code, obligatoire, fourni. */
+    static List<Vues.Livrable> livrablesEtape(List<OperationParcours> ops) {
+        List<Vues.Livrable> l = new ArrayList<>();
+        for (OperationParcours o : ops) {
+            for (cm.gimac.des.homologation.domain.parcours.Livrable x : o.getLivrables()) {
+                l.add(new Vues.Livrable(null, o.faite() || o.depot(x.code()).isPresent(), x.libelle(), o.getRang(), x.code(), x.obligatoire()));
+            }
+        }
+        return l;
+    }
+
+    /**
+     * Étapes réelles de la version (D-89, D-93 §5), dans leur ordre, avec l'état et les grandeurs de leurs opérations ;
+     * sans étapes connues, les étapes canoniques. Une étape hors parcours (tenue par MS-PARTICIPANT) est close.
+     */
+    public List<Vues.EtapeVersion> etapesVersion(Parcours p, List<EtapeReferentiel> etapes, LocalDate aujourdhui) {
+        List<EtapeReferentiel> l = etapes;
+        List<Vues.EtapeVersion> r = new ArrayList<>();
+        if (l == null || l.isEmpty()) {
+            for (EtapeCode e : EtapeCode.values()) {
+                r.add(etapeVersion(p, e.name(), e.libelle(), e.ordinal() + 1, e.couleur(), e, aujourdhui));
+            }
+            return r;
+        }
+        for (EtapeReferentiel e : l) {
+            r.add(etapeVersion(p, e.getCode(), e.getLibelle(), e.getOrdre(), e.getCouleur(), e.getCanonique(), aujourdhui));
+        }
+        return r;
+    }
+
+    private Vues.EtapeVersion etapeVersion(Parcours p, String code, String libelle, int ordre, cm.gimac.des.homologation.domain.parcours.CouleurEtape couleur, EtapeCode canonique, LocalDate aujourdhui) {
+        List<OperationParcours> ops = p.operations().stream().filter(o -> code.equals(o.getEtapeCode())).toList();
+        long faites = ops.stream().filter(OperationParcours::faite).count();
+        boolean close = !ops.isEmpty() && faites == ops.size();
+        boolean enCours = !close && (faites > 0 || ops.stream().anyMatch(o -> o.getEtat().enCours()));
+        boolean bloquee = ops.stream().anyMatch(o -> o.getEtat() == EtatOperationParcours.BLOQUEE);
+        String etat;
+        if (ops.isEmpty()) {
+            etat = canonique != null && canonique.horsParcours() ? "CLOSE" : "SANS_OBJET";
+        } else {
+            etat = close ? "CLOSE" : bloquee ? "BLOQUEE" : enCours ? "EN_COURS" : "A_VENIR";
+        }
+        OperationParcours premier = ops.isEmpty() ? null : ops.get(0);
+        OperationParcours dernier = ops.isEmpty() ? null : ops.get(ops.size() - 1);
+        Sla sla = close
+            ? null
+            : ops.stream().anyMatch(o -> Parcours.sla(o, aujourdhui) == Sla.DEPASSE)
+                ? Sla.DEPASSE
+                : ops.stream().anyMatch(o -> Parcours.sla(o, aujourdhui) == Sla.ECHEANCE_PROCHE) ? Sla.ECHEANCE_PROCHE : enCours ? Sla.DANS_LES_DELAIS : null;
+        return new Vues.EtapeVersion(
+            code,
+            libelle,
+            ordre,
+            couleur,
+            couleur == null ? null : couleur.jeton(),
+            canonique,
+            etat,
+            (int) faites,
+            ops.size(),
+            premier == null ? null : premier.getRaci().r(),
+            premier == null ? null : premier.getRaci().v(),
+            premier == null ? null : premier.getFaiteLe() != null ? premier.getFaiteLe() : enCours ? premier.getEcheance() : null,
+            close ? dernier.getFaiteLe() : null,
+            dernier == null ? null : dernier.getEcheance(),
+            sla,
+            livrablesEtape(ops)
+        );
+    }
+
+    /**
+     * Intervenants du dossier lus dans le RACI (D-93 §5) : chaque fonction tenue en R, V, C, I ou E sur une opération,
+     * dans l'ordre du référentiel, avec la personne désignée (première désignée sur une opération non faite, sinon
+     * celle qui tient la fonction sur la liaison) ou « à affecter ».
+     */
+    public List<Vues.IntervenantDossier> intervenants(Parcours p) {
+        Map<Fonction, Set<cm.gimac.des.homologation.domain.parcours.Qualite>> qualites = new LinkedHashMap<>();
+        Map<Fonction, Personne> personnes = new LinkedHashMap<>();
+        for (OperationParcours o : p.operations()) {
+            var raci = o.getRaci();
+            noter(qualites, personnes, cm.gimac.des.homologation.domain.parcours.Qualite.R, raci.r(), o);
+            noter(qualites, personnes, cm.gimac.des.homologation.domain.parcours.Qualite.V, raci.v(), o);
+            raci.c().forEach(x -> noter(qualites, personnes, cm.gimac.des.homologation.domain.parcours.Qualite.C, x, o));
+            raci.i().forEach(x -> noter(qualites, personnes, cm.gimac.des.homologation.domain.parcours.Qualite.I, x, o));
+            raci.e().forEach(x -> noter(qualites, personnes, cm.gimac.des.homologation.domain.parcours.Qualite.E, x, o));
+        }
+        List<Vues.IntervenantDossier> l = new ArrayList<>();
+        qualites.forEach((f, q) -> {
+            Personne x = personnes.get(f);
+            if (x == null) {
+                x = p.tenant(f).orElse(null);
+            }
+            l.add(new Vues.IntervenantDossier(f, f.libelle(), List.copyOf(q), x, x == null));
+        });
+        return l;
+    }
+
+    private static void noter(
+        Map<Fonction, Set<cm.gimac.des.homologation.domain.parcours.Qualite>> qualites,
+        Map<Fonction, Personne> personnes,
+        cm.gimac.des.homologation.domain.parcours.Qualite q,
+        Personne x,
+        OperationParcours o
+    ) {
+        if (x == null || x.fonction() == null) {
+            return;
+        }
+        qualites.computeIfAbsent(x.fonction(), k -> new java.util.TreeSet<>()).add(q);
+        if (x.affectee() && !o.faite()) {
+            personnes.putIfAbsent(x.fonction(), x);
+        }
     }
 
     private static Map<String, Boolean> elementsReunis() {
@@ -202,7 +426,7 @@ public class ParcoursProjection {
     /** Périmètre service par service : essais, certification, ouverture ; taux du simulateur repris pour le mobile. */
     public List<Vues.ServicePerimetre> perimetre(Parcours p) {
         boolean enTest = p.etat().getStatut() == StatutParcours.EN_TEST;
-        boolean mobile = p.liaison().getTypeProjet() == TypeProjet.PAIEMENT_MOBILE;
+        boolean mobile = p.liaison().modeleTypeProjet().avancementSimulateur();
         return p
             .services()
             .stream()
@@ -266,8 +490,9 @@ public class ParcoursProjection {
             p.etat().getStatut(),
             p.etat().getEtapeCourante(),
             conducteur ? ctx.conducteur() : null,
-            p.premiereDuResponsable(Fonction.DDRM).map(o -> o.getRaci().r()).orElse(null),
-            p.premiereDuResponsable(Fonction.SNA).map(o -> o.getRaci().r()).orElse(null),
+            // Responsables fonctionnel et technique figés (DDRM, SNA) supprimés (D-93 §5) : lire « intervenants ».
+            null,
+            null,
             p.etat().getDateDemarrage(),
             p.dateCibleProduction(),
             ctx.versionReferentiel(),
@@ -280,7 +505,9 @@ public class ParcoursProjection {
             p.etat().getLiaisonOrigineId() == null ? null : p.etat().getLiaisonOrigineId().toString(),
             coordonnees(p),
             List.of(),
-            actions
+            actions,
+            etapesVersion(p, ctx.etapesVersion(), aujourdhui),
+            intervenants(p)
         );
     }
 
@@ -344,7 +571,14 @@ public class ParcoursProjection {
             d.liaisonOrigineId(),
             d.coordonneesTechniques(),
             List.of(),
-            List.of()
+            List.of(),
+            d.etapesVersion()
+                .stream()
+                .map(e ->
+                    new Vues.EtapeVersion(e.code(), e.libelle(), e.ordre(), e.couleur(), e.jeton(), e.canonique(), e.etat(), e.actionsFaites(), e.actionsTotal(), parFonction(e.responsable()), parFonction(e.validateur()), e.debut(), e.closeLe(), e.echeance(), e.sla(), e.livrables())
+                )
+                .toList(),
+            d.intervenants().stream().map(i -> new Vues.IntervenantDossier(i.fonction(), i.libelle(), i.qualites(), parFonction(i.personne()), i.aAffecter())).toList()
         );
     }
 
@@ -407,7 +641,9 @@ public class ParcoursProjection {
             p.etat().isCouvertureConstatee(),
             p.servicesCouverts(),
             l.getChefDeProjetId(),
-            conducteurNom
+            conducteurNom,
+            l.modeleTypeProjet(),
+            l.modeleTypeProjet().attestationsExigees(p.etat().isFintech())
         );
     }
 

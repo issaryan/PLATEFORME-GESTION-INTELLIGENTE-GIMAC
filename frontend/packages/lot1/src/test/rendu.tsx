@@ -7,6 +7,9 @@ import { catalogues } from '../i18n'
 import { Fournisseurs, creerClientRequetes } from '../Fournisseurs'
 import { servicesSimules } from '../services/simule'
 import type { Services } from '../services/ports'
+import { CatalogueFonctionnalitesProvider } from '../catalogue'
+import type { EtatCatalogue } from '../fonctionnalites'
+import { FONCTIONNALITES_INITIALES } from '../services/simule/fonctionnalites'
 
 // Monte une page du lot 1 comme dans l'application : routeur, services (simulés sans latence par défaut),
 // requêtes sans réessai, thème et langue choisis. Aucun appel réseau.
@@ -18,7 +21,12 @@ export const sessionTest = (permissions: string[], roles: string[] = []): Sessio
 /** Routes supplémentaires (destination d'une navigation) : leur élément est rendu sous la même session. */
 type Autre = { motif: string; element: ReactElement }
 
-export function rendrePage(page: ReactElement, o: { chemin: string; motif: string; langue?: Langue; theme?: 'light' | 'dark'; services?: Services; session?: Session; autres?: Autre[] }) {
+/** Catalogue des fonctionnalités par défaut des tests : valeurs de départ de MS-IAM (D-94). */
+const CATALOGUE_TEST: EtatCatalogue = { etat: 'pret', fonctionnalites: FONCTIONNALITES_INITIALES }
+
+export function rendrePage(page: ReactElement, o: {
+  chemin: string; motif: string; langue?: Langue; theme?: 'light' | 'dark'; services?: Services; session?: Session; autres?: Autre[]; catalogue?: EtatCatalogue
+}) {
   if (!i18next.isInitialized) initI18n(catalogues, o.langue ?? 'fr')
   else void i18next.changeLanguage(o.langue ?? 'fr')
   document.documentElement.setAttribute('data-theme', o.theme ?? 'light')
@@ -26,13 +34,15 @@ export function rendrePage(page: ReactElement, o: { chemin: string; motif: strin
   client.setDefaultOptions({ queries: { retry: false, staleTime: 0 } })
   return render(
     <MemoryRouter initialEntries={[o.chemin]}>
-      <Fournisseurs couche="des" services={o.services ?? servicesSimules({ latenceMs: 0 })} canal={false} clientRequetes={client}>
+      <Fournisseurs couche="des" services={o.services ?? servicesSimules({ latenceMs: 0, ...(o.session?.roles.length ? { utilisateur: { id: 'U-TEST', nom: o.session.nom, profils: o.session.roles } } : {}) })} canal={false} clientRequetes={client}>
         {() => (
+          <CatalogueFonctionnalitesProvider valeur={o.catalogue ?? CATALOGUE_TEST}>
           <Routes>
             {[{ motif: o.motif, element: page }, ...(o.autres ?? [])].map((r) => (
               <Route key={r.motif} path={r.motif} element={o.session ? <SessionProvider session={o.session}>{r.element}</SessionProvider> : r.element} />
             ))}
           </Routes>
+          </CatalogueFonctionnalitesProvider>
         )}
       </Fournisseurs>
     </MemoryRouter>,

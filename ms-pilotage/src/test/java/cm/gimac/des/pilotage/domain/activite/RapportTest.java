@@ -27,18 +27,18 @@ class RapportTest {
     }
 
     @Test
-    @DisplayName("Soumission : contenu ou document exigé (422 PIL_RAPPORT_INCOMPLET), destinataire exigé (422 PIL_SANS_RESPONSABLE)")
+    @DisplayName("Soumission : contenu ou document exigé (422 PIL_RAPPORT_INCOMPLET), destinataire et motif gardés")
     void soumission() {
         Rapport vide = rapport(ModeRapport.REDIGE);
-        erreur(() -> vide.soumettre("n1", IND, LE), 422, "PIL_RAPPORT_INCOMPLET");
+        erreur(() -> vide.soumettre("n1", MotifDestinataire.N_PLUS_UN, IND, LE), 422, "PIL_RAPPORT_INCOMPLET");
         Rapport document = rapport(ModeRapport.DOCUMENT);
         document.rediger(ModeRapport.DOCUMENT, "Texte d'accompagnement", LE);
-        erreur(() -> document.soumettre("n1", IND, LE), 422, "PIL_RAPPORT_INCOMPLET");
+        erreur(() -> document.soumettre("n1", MotifDestinataire.N_PLUS_UN, IND, LE), 422, "PIL_RAPPORT_INCOMPLET");
         document.joindre(UUID.randomUUID(), "rapport.pdf", "application/pdf", 10, LE);
 
-        erreur(() -> document.soumettre(null, IND, LE), 422, "PIL_SANS_RESPONSABLE");
         assertThat(document.getEtat()).isEqualTo(EtatRapport.BROUILLON);
-        document.soumettre("n1", IND, LE);
+        document.soumettre("n1", MotifDestinataire.CHEF_UNITE, IND, LE);
+        assertThat(document.getDestinataireMotif()).isEqualTo(MotifDestinataire.CHEF_UNITE);
         assertThat(document.getEtat()).isEqualTo(EtatRapport.SOUMIS);
         assertThat(document.getDestinataireId()).isEqualTo("n1");
         assertThat(document.indicateursFiges()).isEqualTo(IND);
@@ -50,13 +50,27 @@ class RapportTest {
         Rapport r = rapport(ModeRapport.REDIGE);
         r.rediger(ModeRapport.REDIGE, "Réalisé : revue du dossier", LE);
         erreur(() -> r.viser("n1", null, LE), 409, "PIL_TRANSITION_INTERDITE");
-        r.soumettre("n1", IND, LE);
+        r.soumettre("n1", MotifDestinataire.N_PLUS_UN, IND, LE);
         erreur(() -> r.rediger(ModeRapport.REDIGE, "autre", LE), 409, "PIL_RAPPORT_NON_MODIFIABLE");
-        erreur(() -> r.soumettre("n1", IND, LE), 409, "PIL_RAPPORT_NON_MODIFIABLE");
+        erreur(() -> r.soumettre("n1", MotifDestinataire.N_PLUS_UN, IND, LE), 409, "PIL_RAPPORT_NON_MODIFIABLE");
         r.viser("n1", "Bien reçu", LE);
         assertThat(r.getEtat()).isEqualTo(EtatRapport.VISE);
         assertThat(r.getVisaCommentaire()).isEqualTo("Bien reçu");
         erreur(() -> r.viser("n2", null, LE), 409, "PIL_TRANSITION_INTERDITE");
         erreur(() -> r.joindre(UUID.randomUUID(), "x", "text/plain", 1, LE), 409, "PIL_RAPPORT_NON_MODIFIABLE");
+    }
+
+    @Test
+    @DisplayName("Sans destinataire (sommet de l'organisation) : rapport déposé, final, sans visa")
+    void sansDestinataire() {
+        Rapport r = rapport(ModeRapport.REDIGE);
+        r.rediger(ModeRapport.REDIGE, "Réalisé : arbitrages budgétaires", LE);
+        r.soumettre(null, MotifDestinataire.N_PLUS_UN, IND, LE);
+        assertThat(r.getEtat()).isEqualTo(EtatRapport.DEPOSE);
+        assertThat(r.getDestinataireId()).isNull();
+        assertThat(r.getDestinataireMotif()).isNull();
+        assertThat(r.indicateursFiges()).isEqualTo(IND);
+        erreur(() -> r.viser("n1", null, LE), 409, "PIL_TRANSITION_INTERDITE");
+        erreur(() -> r.rediger(ModeRapport.REDIGE, "autre", LE), 409, "PIL_RAPPORT_NON_MODIFIABLE");
     }
 }

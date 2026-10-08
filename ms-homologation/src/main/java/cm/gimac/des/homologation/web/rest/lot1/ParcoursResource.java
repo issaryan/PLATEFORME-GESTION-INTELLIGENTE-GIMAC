@@ -54,7 +54,14 @@ public class ParcoursResource {
 
     public record RessourcesRequest(@NotNull List<@Valid AffectationRequest> affectations) {}
 
-    public record LivrableRequest(@NotNull UUID documentId, @NotBlank String empreinte, @NotBlank @Size(max = 255) String nom, @Size(max = 2000) String commentaire) {}
+    /** {@code livrable} (D-93 §3) : code du livrable attendu ; absent : l'unique livrable de l'opération. */
+    public record LivrableRequest(
+        @NotNull UUID documentId,
+        @NotBlank String empreinte,
+        @NotBlank @Size(max = 255) String nom,
+        @Size(max = 2000) String commentaire,
+        @Size(max = 40) String livrable
+    ) {}
 
     /** Preuve : toute propriété hors contrat est refusée, pour qu'aucune valeur de clé ni de secret ne soit jamais reçue (D-59). */
     public record PreuveRequest(
@@ -64,8 +71,18 @@ public class ParcoursResource {
         @Size(max = 200) String valeurReference,
         @Size(max = 16) String codeControle,
         Ceremonie ceremonie,
+        @Size(max = 40) String livrable,
         @JsonAnySetter Map<String, Object> autres
     ) {}
+
+    /** Renvoi par le validateur (D-93 §2) : motif exigé. */
+    public record RenvoiRequest(@NotBlank @Size(max = 500) String motif) {}
+
+    /**
+     * Affectation d'une fonction sur la liaison (D-93 §1) : {@code personneId} pour une fonction interne,
+     * {@code institutionId} pour une fonction externe (banque partenaire, personnalisateur…).
+     */
+    public record AffectationFonctionRequest(String personneId, UUID institutionId, @Size(max = 500) String motif) {}
 
     public record IntervenantRequest(@NotNull Qualite qualite, @NotBlank String personneId, @Size(max = 500) String motif) {}
 
@@ -114,7 +131,7 @@ public class ParcoursResource {
     @PostMapping("/parcours/operations/{id}/livrable")
     @PreAuthorize("hasAnyAuthority('HOM_STEP_MANAGE', 'HOM_EVIDENCE_SUBMIT')")
     public ResponseEntity<Void> livrable(@PathVariable UUID id, @Valid @RequestBody LivrableRequest r, Authentication auth) {
-        commandes.deposerLivrable(id, new Piece(r.documentId(), r.empreinte(), r.nom(), r.commentaire()), ActeurCourant.de(auth));
+        commandes.deposerLivrable(id, r.livrable(), new Piece(r.documentId(), r.empreinte(), r.nom(), r.commentaire()), ActeurCourant.de(auth));
         return ResponseEntity.noContent().build();
     }
 
@@ -127,7 +144,7 @@ public class ParcoursResource {
                 "Une preuve ne porte que sa pièce, sa valeur de référence, un code de contrôle ou la cérémonie : aucune valeur de clé ni de secret."
             );
         }
-        commandes.deposerPreuve(id, new Piece(r.documentId(), r.empreinte(), r.nom(), null), r.valeurReference(), r.codeControle(), r.ceremonie(), ActeurCourant.de(auth));
+        commandes.deposerPreuve(id, r.livrable(), new Piece(r.documentId(), r.empreinte(), r.nom(), null), r.valeurReference(), r.codeControle(), r.ceremonie(), ActeurCourant.de(auth));
         return ResponseEntity.noContent().build();
     }
 
@@ -135,6 +152,40 @@ public class ParcoursResource {
     @PreAuthorize("hasAuthority('HOM_OPERATION_VALIDATE')")
     public ResponseEntity<Void> validation(@PathVariable UUID id, @RequestHeader(name = REAUTH_HEADER, required = false) String assertion, Authentication auth) {
         commandes.valider(id, assertion, ActeurCourant.de(auth));
+        return ResponseEntity.noContent().build();
+    }
+
+    /** Renvoi au responsable avec motif (D-93 §2) : réservé au validateur désigné, l'opération revient à faire. */
+    @PostMapping("/parcours/operations/{id}/renvoi")
+    @PreAuthorize("hasAuthority('HOM_OPERATION_VALIDATE')")
+    public ResponseEntity<Void> renvoi(@PathVariable UUID id, @Valid @RequestBody RenvoiRequest r, Authentication auth) {
+        commandes.renvoyer(id, r.motif(), ActeurCourant.de(auth));
+        return ResponseEntity.noContent().build();
+    }
+
+    /** Affectation d'une fonction à une personne ou à une institution liée, à tout moment du parcours (D-93 §1). */
+    @PutMapping("/liaisons/{id}/fonctions/{fonction}")
+    @PreAuthorize("hasAnyAuthority('HOM_STEP_MANAGE', 'HOM_OPERATION_ASSIGN')")
+    public ResponseEntity<Void> affecterFonction(@PathVariable UUID id, @PathVariable Fonction fonction, @Valid @RequestBody AffectationFonctionRequest r, Authentication auth) {
+        commandes.affecterFonction(id, fonction, r.personneId(), r.institutionId(), r.motif(), ActeurCourant.de(auth));
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Signature d'une opération en attente de signatures (D-91, docs/lot1/types-projet.md §3) : opération désignée par
+     * son code (rang) dans la liaison, signature par son code ; assertion FIDO2 de finalité SIGNATURE_OPERATION dans
+     * l'en-tête X-Reauth-Assertion. Le signataire attendu et l'ordre sont vérifiés par le service.
+     */
+    @PostMapping("/liaisons/{id}/operations/{code}/signatures/{signature}")
+    @PreAuthorize("hasAuthority('HOM_LIAISON_READ')")
+    public ResponseEntity<Void> signer(
+        @PathVariable UUID id,
+        @PathVariable String code,
+        @PathVariable String signature,
+        @RequestHeader(name = REAUTH_HEADER, required = false) String assertion,
+        Authentication auth
+    ) {
+        commandes.signer(id, code, signature, assertion, ActeurCourant.de(auth));
         return ResponseEntity.noContent().build();
     }
 

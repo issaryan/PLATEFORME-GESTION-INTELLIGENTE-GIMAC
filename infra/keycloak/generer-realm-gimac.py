@@ -29,7 +29,9 @@ PERMISSIONS = {
             "GRID_EDIT", "REPLAY_ADMIN", "SCENARIO_QUALIFY", "DASHBOARD_READ", "DEADLINE_CONFIG", "EVIDENCE_FILE_EXPORT",
             "PORTAL_READ", "PORTAL_SUBMIT",
             # Parcours de la liaison, étapes 4 à 10 (D-56 à D-59) : conduite des étapes.
-            "STEP_MANAGE"],
+            "STEP_MANAGE",
+            # Conduite d'un projet d'homologation (D-94 §3) : rend un compte désignable comme conducteur de liaison.
+            "PROJECT_CONDUCT"],
     "CER": ["CIRCUIT_READ", "QUITUS_TECHNIQUE_SIGN", "QUITUS_SECURITE_SIGN", "QUITUS_CONFORMITE_SIGN", "QUITUS_DG_SIGN",
             "DOSSIER_READ", "DOSSIER_VERIFY", "CHANGE_RECORD_LINK", "GOLIVE_REPORT_SUBMIT", "ATTESTATION_ISSUE", "REGISTER_READ",
             "REGISTER_EXPORT", "ATTESTATION_STATUS_REQUEST", "ATTESTATION_STATUS_APPROVE", "PORTAL_READ",
@@ -52,6 +54,9 @@ PERMISSIONS = {
     "PIL": ["ACTIVITY_OWN", "TEAM_READ", "TASK_ASSIGN"],
     # Notifications de la plateforme (D-80, docs/lot1/notifications.md) : cloche et préférences de chacun.
     "NOT": ["INBOX_READ"],
+    # Administration des référentiels métier de tous les domaines (D-92, docs/lot1/referentiels-metier-admin.md) :
+    # non privilégiée au sens d'IAM (ni IAM_ ni PLATFORM_).
+    "REF": ["METIER_ADMIN"],
     "INTERNAL": ["HOMOLOGATION_READ", "CERTIFICATION_READ", "PARTICIPANT_READ", "DOCUMENT_READ", "DOCUMENT_DEPOSIT", "IAM_READ",
                  # Tâches créées par un autre service dans MS-PILOTAGE (D-76 §2.3, D-77).
                  "PILOTAGE_TASK_CREATE",
@@ -82,7 +87,8 @@ PROFILS = {
            "PLATFORM_MESSAGING_EDIT", "PLATFORM_OPS_READ"],
     "ROLE_CONFORMITE": LECTURE_DES + ["CER_QUITUS_CONFORMITE_SIGN", "CER_CHANGE_RECORD_LINK"],
     "ROLE_DG": LECTURE_DES + ["CER_QUITUS_DG_SIGN", "CER_ATTESTATION_STATUS_APPROVE"],
-    "ROLE_CORRESPONDANT": ["HOM_PORTAL_READ", "HOM_PORTAL_SUBMIT", "CER_PORTAL_READ", "CER_PORTAL_SIGN"],
+    # Notifications du portail (D-93 §11.4) : boîte et préférences du correspondant.
+    "ROLE_CORRESPONDANT": ["HOM_PORTAL_READ", "HOM_PORTAL_SUBMIT", "CER_PORTAL_READ", "CER_PORTAL_SIGN", "NOT_INBOX_READ"],
     # DDRM : le chargé instruit et propose, le chef prononce (maker-checker, algorithme 6.25).
     "ROLE_CHARGE_DDRM": LECTURE_DES + ["PAR_INSTITUTION_CREATE", "PAR_INSTITUTION_EDIT", "PAR_ADHESION_INSTRUCT",
         "PAR_TRANSITION_REQUEST", "HOM_STEP_MANAGE"],
@@ -101,7 +107,7 @@ PROFILS = {
     "ROLE_ADMIN_SYSTEME": ["PLATFORM_SUPERVISION_READ", "PLATFORM_CONFIG_READ", "PLATFORM_OPS_READ", "PLATFORM_OPS_EXECUTE"],
     "ROLE_RESPONSABLE_SERVICE": [],
     "ROLE_CONDUCTEUR_PROJET": LECTURE_DES + ["HOM_OPERATION_ASSIGN", "HOM_EVIDENCE_SUBMIT", "HOM_EVIDENCE_FILE_EXPORT",
-        "HOM_OPERATION_VALIDATE", "HOM_STEP_MANAGE", "CER_PV_ESTABLISH"],
+        "HOM_OPERATION_VALIDATE", "HOM_STEP_MANAGE", "CER_PV_ESTABLISH", "HOM_PROJECT_CONDUCT"],
 }
 # Libellé (attribut gimac_libelle du rôle) et mission (description du rôle) de chaque profil livré (D-86,
 # docs/lot1/profils-organisation.md §2) : modifiables ensuite depuis la console, repris partout où un profil
@@ -157,8 +163,13 @@ RESPONSABLES = {"ROLE_CHEF_DES", "ROLE_CHEF_DDRM", "ROLE_DG", "ROLE_RSSI", "ROLE
 REFERENTIEL_EDITEURS = {"ROLE_INGENIEUR_HOMOLOGATION", "ROLE_CHEF_DES", "ROLE_CHEF_DDRM", "ROLE_RESPONSABLE_SERVICE", "ROLE_SUPER_ADMIN"}
 REFERENTIEL_PUBLIEURS = {"ROLE_INGENIEUR_HOMOLOGATION", "ROLE_CHEF_DES", "ROLE_CHEF_DDRM", "ROLE_SUPER_ADMIN"}
 REFERENTIEL_LECTURE_COMPLETE = {"ROLE_DG", "ROLE_CONFORMITE", "ROLE_RSSI", "ROLE_CHEF_DES", "ROLE_CHEF_DDRM"}
+# Administration des référentiels métier (D-92) : super administrateur et ingénieur d'homologation seulement ; le
+# super administrateur porte aussi tous les droits du référentiel des opérations (lecture complète, migration).
+REFERENTIELS_METIER_ADMIN = {"ROLE_SUPER_ADMIN", "ROLE_INGENIEUR_HOMOLOGATION"}
 for _profil, _ajouts in (
     *((p, ["HOM_REFERENTIEL_READ", "HOM_REFERENTIEL_EDIT"]) for p in sorted(REFERENTIEL_EDITEURS)),
+    *((p, ["REF_METIER_ADMIN"]) for p in sorted(REFERENTIELS_METIER_ADMIN)),
+    ("ROLE_SUPER_ADMIN", ["HOM_REFERENTIEL_READ_ALL", "HOM_REFERENTIEL_MIGRATE"]),
     *((p, ["HOM_REFERENTIEL_PUBLISH"]) for p in sorted(REFERENTIEL_PUBLIEURS)),
     *((p, ["HOM_REFERENTIEL_READ_ALL"]) for p in sorted(REFERENTIEL_LECTURE_COMPLETE)),
 ):
@@ -168,6 +179,16 @@ for _profil in PROFILS:
         PROFILS[_profil] = PROFILS[_profil] + MESSAGERIE + MON_ACTIVITE
         if _profil in RESPONSABLES:
             PROFILS[_profil] = PROFILS[_profil] + ["PIL_TEAM_READ", "PIL_TASK_ASSIGN"]
+# Libellés propres de certaines permissions (description du rôle Keycloak), à défaut « Permission du lot 1 ».
+LIBELLES_PERMISSIONS = {"REF_METIER_ADMIN": "Administration des référentiels métier, tous domaines",
+                        "HOM_PROJECT_CONDUCT": "Conduite des projets d'homologation (désignable comme conducteur de liaison)"}
+# D-94 §3 : le conducteur de projet est le porteur de HOM_PROJECT_CONDUCT, donnée par défaut au profil conducteur seul.
+assert [n for n, ps in PROFILS.items() if "HOM_PROJECT_CONDUCT" in ps] == ["ROLE_CONDUCTEUR_PROJET"]
+assert all(p in TOUTES for p in LIBELLES_PERMISSIONS)
+assert all("REF_METIER_ADMIN" in ps for n, ps in PROFILS.items() if n in REFERENTIELS_METIER_ADMIN)
+assert [n for n, ps in PROFILS.items() if "REF_METIER_ADMIN" in ps] == [n for n in PROFILS if n in REFERENTIELS_METIER_ADMIN]
+assert {"HOM_REFERENTIEL_READ", "HOM_REFERENTIEL_READ_ALL", "HOM_REFERENTIEL_EDIT", "HOM_REFERENTIEL_PUBLISH",
+        "HOM_REFERENTIEL_MIGRATE"} <= set(PROFILS["ROLE_SUPER_ADMIN"])
 # Institutions fictives du jeu de données de référence (D-30).
 UTILISATEURS = [
     ("test-ingenieur-homologation", "Ingénieur", "Homologation", "ROLE_INGENIEUR_HOMOLOGATION", None),
@@ -415,8 +436,8 @@ def main():
     if "defaultRole" in realm:
         realm["defaultRole"]["name"] = "default-roles-gimac"
 
-    realm["roles"]["realm"] += [role(p, "Permission du lot 1") for p in TOUTES]
-    realm["roles"]["realm"] += [role(n, PRESENTATIONS[n][1], ["ROLE_USER"] + ps, {"gimac_libelle": [PRESENTATIONS[n][0]]})
+    realm["roles"]["realm"] += [role(p, LIBELLES_PERMISSIONS.get(p, "Permission du lot 1")) for p in TOUTES]
+    realm["roles"]["realm"] += [role(n, PRESENTATIONS[n][1], ["ROLE_USER"] + ps, {"gimac_libelle": [PRESENTATIONS[n][0]], **({"gimac_externe": ["true"]} if n in PROFILS_EXTERNES else {})})
                                 for n, ps in PROFILS.items()]
 
     # Claim institution_id (RG-59), porté par le client scope jhipster déjà servi aux applications.
@@ -569,6 +590,8 @@ def main():
     profils_realm = {r["name"]: r for r in realm["roles"]["realm"] if r["name"] in PROFILS}
     assert all(r["attributes"]["gimac_libelle"] == [PRESENTATIONS[n][0]] and r["description"] == PRESENTATIONS[n][1]
                for n, r in profils_realm.items()) and "Profil du lot 1" not in texte
+    # D-94 : le caractère externe d'un profil est une donnée (attribut gimac_externe), plus un nom figé dans MS-IAM.
+    assert all((r["attributes"].get("gimac_externe") == ["true"]) == (n in PROFILS_EXTERNES) for n, r in profils_realm.items())
     CIBLE.write_text(texte + "\n", encoding="utf-8")
     production = dict(realm, users=[u for u in realm["users"] if u.get("serviceAccountClientId")])
     assert not any(u["username"].startswith("test-") for u in production["users"]) and production["users"], "domaine de production"

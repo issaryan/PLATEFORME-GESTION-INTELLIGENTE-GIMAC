@@ -29,4 +29,12 @@ public record Pouvoirs(Map<ActionPouvoir, Portee> actions, Set<String> profilsDe
     public Portee porteeMax() {
         return actions.values().stream().reduce(Portee.AUCUNE, Portee::max);
     }
+
+    /**
+     * Portée des comptes couverts (subordonnés de la vue « mes pouvoirs ») : la plus large, plafonnée à
+     * UNITES, car TOUTES (D-92) ne vise que les processus d'unité, pas les personnes.
+     */
+    public Portee porteeSubordonnes() {
+        return porteeMax().min(Portee.UNITES);
+    }
 }

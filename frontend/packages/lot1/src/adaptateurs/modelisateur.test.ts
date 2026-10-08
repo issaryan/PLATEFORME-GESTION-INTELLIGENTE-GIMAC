@@ -81,6 +81,6 @@ describe('Modélisateur : saisie', () => {
     expect(libelleEntree(t, 'parcours.fonction', { code: 'SNA', libelle: 'Normes' })).toBe('parcours.fonction.SNA|Normes')
     expect(libelleEntree(t, null, { code: 'SNA', libelle: 'Normes' })).toBe('Normes')
     expect(libelleOperation(t, { rang: '17', libelle: 'Constat' })).toBe('Constat')
-    expect(libelleOperation(t, { rang: '17', libelle: null })).toBe('parcours.op.17|17')
+    expect(libelleOperation(t, { rang: '17', libelle: null })).toBe('17')
   })
 })

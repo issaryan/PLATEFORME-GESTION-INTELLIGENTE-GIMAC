@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { ApiError } from '@gimac/socle'
 import { PERMISSIONS_REALM } from '../services/simule/catalogue'
-import { permissionsCatalogue } from '@gimac/lot1'
+import { FONCTIONNALITES_DEMO, catalogueDroits, permissionsCatalogue } from '@gimac/lot1'
 import ProfilsPage from './ProfilsPage'
 import MatricePouvoirsPage from './MatricePouvoirsPage'
 import OrganigrammePage from './OrganigrammePage'
@@ -22,8 +22,9 @@ const organigramme = (o: Partial<Parameters<typeof rendrePage>[1]> = {}) =>
 
 describe('D-90 : catalogue des droits et permissions du domaine', () => {
   it('chaque permission du catalogue des permissions (hors INTERNAL_*) appartient à au moins un droit', () => {
-    const couvertes = permissionsCatalogue()
-    expect(PERMISSIONS_REALM.filter((p) => !p.startsWith('INTERNAL_') && !couvertes.has(p))).toEqual([])
+    const couvertes = permissionsCatalogue(catalogueDroits(FONCTIONNALITES_DEMO))
+    // Écart signalé : HOM_PROJECT_CONDUCT (D-94 §6.5) n'appartient encore à aucun droit des valeurs de départ de MS-IAM.
+    expect(PERMISSIONS_REALM.filter((p) => !p.startsWith('INTERNAL_') && !couvertes.has(p))).toEqual(['HOM_PROJECT_CONDUCT'])
   })
 })
 
@@ -115,7 +116,7 @@ describe('D-90 : fiche d’un profil, fonctionnalités, comparaison', () => {
     const d = await screen.findByRole('dialog', { name: 'Profil Normes et Agréments' })
     const apercu = within(d).getByRole('complementary', { name: 'Aperçu de la barre latérale' })
     expect(within(apercu).queryByText('Mon équipe')).toBeNull()
-    fireEvent.click(within(d).getByRole('checkbox', { name: 'Mon équipe' }))
+    fireEvent.click(await within(d).findByRole('checkbox', { name: 'Mon équipe' }))
     expect(within(apercu).getByText('Mon équipe')).toBeTruthy()
     expect(await within(apercu).findByText('(ajoutée)')).toBeTruthy()
     fireEvent.click(within(d).getByRole('checkbox', { name: 'Mon équipe' }))

@@ -118,7 +118,7 @@ export function colonnesLiaisons(t: Traduire, date: (iso: string) => string, o: 
       render: (l) => (
         <span className="gm-col" style={{ gap: 0 }}>
           <span>{l.institutionNom}</span>
-          <span className="gm-field-help">{t(`parcours.typeProjet.${l.typeProjet}`)}</span>
+          <span className="gm-field-help">{t(`parcours.typeProjet.${l.typeProjet}`, { defaultValue: String(l.typeProjet) })}</span>
         </span>
       ),
     },

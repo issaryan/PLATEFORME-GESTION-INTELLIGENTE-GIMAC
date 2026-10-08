@@ -1,11 +1,12 @@
 import type { ApiError } from '@gimac/socle'
 import type { TypeProjet } from '../../modele/commun'
 import type {
-  AnomalieGraphe, CatalogueModelisateur, ControleResultat, CouleurCatalogue, CouleurEtape, EtapeCanonique, EtapeReferentiel, FiltreReferentiel, Geste, GrapheReferentiel, Jalon,
+  AnomalieGraphe, CatalogueModelisateur, CreationTypeProjet, FonctionCatalogue, ModeleTypeProjet, TypeProjetVue, ControleResultat, CouleurCatalogue, CouleurEtape, EtapeCanonique, EtapeReferentiel, FiltreReferentiel, Geste, GrapheReferentiel, Jalon,
   Livrable, NoeudGraphe, Particularite, ReferenceOperation, ReferentielVersion, SaisieOperation, TypeAnomalie,
 } from '../../modele/homologation'
 import { PROFILS } from '../../permissions'
-import { ETAPES, type EtapeCode, type Fonction } from '../../modele/parcours'
+import { ETAPES, type EtapeCode, type Fonction, type VueOperation } from '../../modele/parcours'
+import { MODELES_TYPE_PROJET } from '../../modele/homologation'
 import { referentielDe, type OperationReferentiel } from '../../modele/referentielCR'
 import type { ServiceHomologation } from '../ports'
 import { LIBELLES_CR } from './libellesCR'
@@ -48,6 +49,9 @@ const declencheurDe = (rang: string): string | null =>
   ({ 18: 'certification.pv-established.v1', 19: 'certification.pv-signed.v1', 20: 'certification.change-record-constituted.v1', 21: 'certification.attestations-archived.v1',
     22: 'certification.attestations-archived.v1', 23: 'certification.security-approved.v1', 24: 'certification.security-approved.v1', 25: 'certification.security-approved.v1',
     26: 'certification.change-record-referenced.v1' } as Record<string, string>)[rang] ?? null
+/** Vue spécialisée (D-93 §8.5) : reprise des versions existantes par les rangs, comme MS-HOMOLOGATION. */
+export const vueDe = (rang: string): VueOperation => (rang === '6' ? 'AFFECTATION' : rang === '12' ? 'COORDONNEES' : /^1[5-7]$/.test(rang) ? 'ESSAIS'
+  : /^(1[89]|20|2[3-6])$/.test(rang) ? 'DECISION' : /^2[12]$/.test(rang) ? 'ATTESTATIONS' : /^3[2-5]$/.test(rang) ? 'MISE_EN_SERVICE' : rang === 'C1' ? 'CEREMONIE' : 'AUCUNE')
 const particulariteDe = (rang: string): Particularite | null => ({ 15: 'ENTREE_ESSAIS', 16: 'FIN_ESSAIS', C1: 'CEREMONIE_CLES', 35: 'SERVICE_SUPPLEMENTAIRE' } as Record<string, Particularite>)[rang] ?? null
 
 /** Version 1 d'un type de projet, convertie de l'annexe A (rangs 3 et suivants, branche du type, tronc aval). */
@@ -74,6 +78,9 @@ export function versionCR(type: TypeProjet): ReferenceOperation[] {
       position: { x: ETAPES.indexOf(o.etape) * 300, y: ligne * 120 + SEGMENTS.indexOf(o.segment) * 40 },
       phase: null, partie: EXTERNES.includes(r) ? 'PARTICIPANT' : 'DES', serviceCode: 'TRANSVERSE', natureCouverture: 'AUCUNE', preuveAttendue: {}, idScenario: null,
       fonctionResponsable: r, grille: null,
+      vue: vueDe(o.rang), consultesRecoiventTache: false,
+      // D-91 : signatures de démonstration sur la réunion de lancement (rang 7) ; les autres opérations n'en ont pas.
+      signatures: o.rang === '7' ? [{ code: 'VISA_CONDUITE', libelle: 'Visa du conducteur sur le compte rendu', signataire: 'CONDUCTEUR', ordre: 1, porte: ['L1'] }] : [],
     }
   })
 }
@@ -84,6 +91,8 @@ export function codesDeclenches(type: TypeProjet, sujet: string): string[] {
   if (!parType.has(type)) parType.set(type, versionCR(type))
   return (parType.get(type) ?? []).filter((o) => o.declencheur === sujet).map((o) => o.code)
 }
+
+const MODELES_LIBELLES: [ModeleTypeProjet, string][] = [['CARTE_INTERBANCAIRE', 'Carte interbancaire'], ['PAIEMENT_MOBILE', 'Paiement mobile'], ['DELEGATAIRE', 'Délégataire'], ['GENERIQUE', 'Générique']]
 
 /** Catalogue du modélisateur (GET /referentiels/catalogue), aux libellés français du service. */
 export const CATALOGUE: CatalogueModelisateur = {
@@ -119,6 +128,11 @@ export const CATALOGUE: CatalogueModelisateur = {
   typesPieces: ['application/pdf', 'image/png', 'image/jpeg', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'text/csv', 'application/zip'],
   pilotes: [{ id: 'U-101', nom: 'Ingénieur d\'homologation A' }, { id: 'U-102', nom: 'Ingénieur d\'homologation B' }],
+  vuesOperation: ([
+    ['AUCUNE', 'Aucune vue spécialisée'], ['AFFECTATION', 'Affectation des intervenants'], ['COORDONNEES', 'Coordonnées techniques'], ['ESSAIS', 'Essais'],
+    ['DECISION', 'Décision de mise en production'], ['ATTESTATIONS', 'Attestations'], ['MISE_EN_SERVICE', 'Mise en service'], ['CEREMONIE', 'Cérémonie de clés'],
+  ] as const).map(([code, libelle]) => ({ code, libelle })),
+  modelesTypeProjet: MODELES_LIBELLES.map(([code, libelle]) => ({ code, libelle })),
 }
 
 // ---------------------------------------------------------------------------------- étapes configurables (D-89)
@@ -136,6 +150,8 @@ const COULEUR_DEFAUT: Record<EtapeCode, CouleurEtape> = {
   PRISE_CONTACT: 'NEUTRE', ADHESION: 'NEUTRE', CADRAGE: 'INFO', LANCEMENT: 'INFO', ATELIERS: 'ACTION', INTEGRATION: 'ACTION', TESTS: 'ALERTE',
   CERTIFICATION: 'SUCCES', APPROBATION_SECURITE: 'CRITIQUE', MISE_EN_PRODUCTION: 'SUCCES', SUIVI: 'ACCENT',
 }
+/** Couleur de départ d'une étape canonique et sa variable CSS (étapes réelles servies au dossier, D-93). */
+export const jetonEtape = (code: EtapeCode) => COULEURS_ETAPE.find((c) => c.code === COULEUR_DEFAUT[code])!.jeton
 type Etape = { code: string; libelle: string; couleur: CouleurEtape; canonique: EtapeCode | null }
 /** Version 1 des étapes d'une version : les onze étapes canoniques, chacune liée à elle-même. */
 const etapesInitiales = (): Etape[] => ETAPES_CANONIQUES.map((e) => ({ code: e.code, libelle: e.libelle, couleur: COULEUR_DEFAUT[e.code], canonique: e.code }))
@@ -374,12 +390,14 @@ export function versionsInitiales(): { versions: ReferentielVersion[]; operation
   }
 }
 
-type Refus = (status: number, code: string, message: string) => ApiError
+type Refus = (status: number, code: string, message: string, details?: Record<string, unknown>) => ApiError
 type Attendre = <T>(v: T | (() => T)) => Promise<T>
 const CODE = /^[A-Z0-9][A-Z0-9_-]*$/
 
 /** Port des référentiels simulé, état propre à l'instance (versions, opérations, positions). */
-export function referentielsSimules(attendre: Attendre, refus: Refus, o: { utilisateur?: string; profils?: string[]; maintenant: () => string; liaisonsActives: (versionId: string) => number }) {
+export function referentielsSimules(attendre: Attendre, refus: Refus, o: {
+  utilisateur?: string; profils?: string[]; maintenant: () => string; liaisonsActives: (versionId: string) => number; liaisonsDuType?: (type: string) => number
+}) {
   const { versions, operations } = versionsInitiales()
   // Étapes de chaque version (D-89) : les onze étapes canoniques au départ.
   const etapes: Record<string, Etape[]> = Object.fromEntries(versions.map((v) => [v.id, etapesInitiales()]))
@@ -408,6 +426,59 @@ export function referentielsSimules(attendre: Attendre, refus: Refus, o: { utili
   }
   let numero = 0
   const nouvelId = () => `REF-${Date.now().toString(36).toUpperCase()}-${++numero}`
+  // Types de projet et catalogue des fonctions (D-91) : données au lieu d'énumérations.
+  const types: Omit<TypeProjetVue, 'referentielActif' | 'brouillonId' | 'fige' | 'proposable' | 'nombreLiaisons' | 'libelleModele'>[] = MODELES_LIBELLES.filter(([c]) => c !== 'GENERIQUE')
+    .map(([code, libelle]) => ({ code, libelle, description: null, modele: code, actif: true, creeLe: '01/01/2026 08:00', creePar: 'U-001', modifieLe: null, modifiePar: null }))
+  // Permissions de départ (§8.8) : celle que seuls les profils de la fonction portent dans le domaine livré.
+  const PERMISSIONS_DEPART: Record<string, string[]> = {
+    CHEF_DDRM: ['PAR_TRANSITION_APPROVE'], CHEF_DES: ['CER_QUITUS_TECHNIQUE_SIGN'], CHEFS_DEPARTEMENT: ['PAR_TRANSITION_APPROVE', 'CER_QUITUS_TECHNIQUE_SIGN'],
+    CONDUCTEUR: ['HOM_PROJECT_CONDUCT'], SNA: ['CER_DOSSIER_VERIFY'], RSSI: ['CER_SECURITY_VERIFY'], CONFORMITE: ['CER_QUITUS_CONFORMITE_SIGN'], DG: ['CER_QUITUS_DG_SIGN'],
+  }
+  const fonctions: FonctionCatalogue[] = CATALOGUE.fonctions.map((f) => ({ code: f.code, libelle: f.libelle, profils: [...(f.profils ?? [])], permissions: [...(PERMISSIONS_DEPART[f.code] ?? [])], externe: !!f.externe, actif: true, reprise: true }))
+  const verifierPermissions = (l: string[] | undefined) => {
+    if (l && (l.length > 20 || l.some((p) => !/^[A-Z][A-Z0-9_]{1,79}$/.test(p)))) throw refus(422, 'HOM_FONCTION_PERMISSION_INVALIDE', 'Permission invalide : 20 codes au plus, majuscules, chiffres ou souligné.')
+  }
+  const vueType = (t: (typeof types)[number]): TypeProjetVue => {
+    const duType = versions.filter((v) => v.typeProjet === t.code)
+    const publiee = duType.find((v) => v.etat === 'PUBLIEE')
+    return {
+      ...t, libelleModele: MODELES_LIBELLES.find(([c]) => c === t.modele)?.[1], referentielActif: publiee ? { id: publiee.id, version: publiee.numero ?? 1 } : null,
+      brouillonId: duType.filter((v) => v.etat === 'BROUILLON').at(-1)?.id ?? null, fige: duType.some((v) => v.numero !== null), proposable: t.actif && !!publiee,
+      nombreLiaisons: o.liaisonsDuType?.(t.code) ?? 0,
+    }
+  }
+  const typeExistant = (code: string) => {
+    const t = types.find((x) => x.code === code)
+    if (!t) throw refus(404, 'HOM_TYPE_PROJET_INTROUVABLE', 'Type de projet introuvable.')
+    return t
+  }
+  const exigerMotif = (motif: string | undefined) => {
+    if (!motif?.trim() || motif.length > 500) throw refus(422, 'HOM_MOTIF_REQUIS', 'Un motif (1 à 500 caractères) est exigé.')
+  }
+  const creerType = (c: CreationTypeProjet): TypeProjetVue => {
+    if (!/^[A-Z][A-Z0-9_]{2,39}$/.test(c.code ?? '')) throw refus(422, 'HOM_TYPE_PROJET_CODE_INVALIDE', 'Code invalide : majuscules, chiffres ou souligné, 3 à 40 caractères.')
+    if (!c.libelle?.trim() || c.libelle.length > 120) throw refus(422, 'HOM_TYPE_PROJET_LIBELLE_INVALIDE', 'Libellé : 1 à 120 caractères.')
+    if ((c.description ?? '').length > 1000) throw refus(422, 'HOM_TYPE_PROJET_DESCRIPTION_INVALIDE', 'Description : 1000 caractères au plus.')
+    if (!MODELES_TYPE_PROJET.includes(c.modele)) throw refus(422, 'HOM_TYPE_PROJET_MODELE_INVALIDE', 'Modèle inconnu.')
+    if (!c.depart?.mode || (c.depart.mode === 'COPIE' && !c.depart.typeSource)) throw refus(422, 'HOM_TYPE_PROJET_DEPART_INVALIDE', 'Départ du référentiel : vierge, ou copie d\'un type existant.')
+    if (types.some((x) => x.code === c.code)) throw refus(409, 'HOM_TYPE_PROJET_CODE_PRIS', 'Ce code de type de projet existe déjà.')
+    let source: ReferentielVersion | undefined
+    if (c.depart.mode === 'COPIE') {
+      typeExistant(c.depart.typeSource!)
+      source = versions.find((v) => v.typeProjet === c.depart.typeSource && v.etat === 'PUBLIEE')
+      if (!source) throw refus(409, 'HOM_TYPE_PROJET_SOURCE_NON_PUBLIE', 'Le type source n\'a pas de version publiée.')
+    }
+    const t = { code: c.code, libelle: c.libelle.trim(), description: c.description?.trim() || null, modele: c.modele, actif: true, creeLe: o.maintenant(), creePar: o.utilisateur ?? 'U-001', modifieLe: null, modifiePar: null }
+    types.push(t)
+    const v: ReferentielVersion = {
+      id: nouvelId(), typeProjet: c.code, numero: null, libelle: `Référentiel ${t.libelle} (version 1)`, etat: 'BROUILLON', dateCreation: o.maintenant(), datePublication: null,
+      versionSourceId: null, versionActiveId: null, transitionsPermises: ['PUBLIEE'], actionsPermises: ['CONTROLER', 'PUBLIER', 'MODIFIER'], piloteId: o.utilisateur ?? 'U-101',
+    }
+    versions.push(v)
+    operations[v.id] = source ? structuredClone(operations[source.id] ?? []) : []
+    etapes[v.id] = source ? structuredClone(etapesDe(source.id)) : etapesInitiales()
+    return vueType(t)
+  }
   const version = (id: string) => {
     const v = versions.find((x) => x.id === id)
     if (!v) throw refus(404, 'HOM_REFERENTIAL_NOT_FOUND', 'Version introuvable.')
@@ -425,6 +496,10 @@ export function referentielsSimules(attendre: Attendre, refus: Refus, o: { utili
   }
   const valider = (code: string, s: SaisieOperation) => {
     if (s.secret && s.valeurReference) throw refus(422, 'HOM_OPERATION_SECRET_VALUE', 'Une opération secrète ne relève aucune valeur de référence.')
+    ;(s.signatures ?? []).forEach((x, i) => {
+      const champ = !/^[A-Z][A-Z0-9_]{1,39}$/.test(x.code) ? 'code' : !x.libelle?.trim() || x.libelle.length > 200 ? 'libelle' : !x.signataire ? 'signataire' : x.ordre < 1 || x.ordre > 99 ? 'ordre' : null
+      if (champ) throw refus(422, 'HOM_SIGNATURE_INVALIDE', 'Signature invalide.', { champ: `signatures[${i}].${champ}` })
+    })
     if (s.predecesseurs.includes(code)) throw refus(422, 'HOM_OPERATION_SELF_PREDECESSOR', 'Une opération ne peut pas se précéder elle-même.')
   }
   const vers = (code: string, s: SaisieOperation, avant?: ReferenceOperation): ReferenceOperation => ({
@@ -450,7 +525,44 @@ export function referentielsSimules(attendre: Attendre, refus: Refus, o: { utili
   const port: Pick<ServiceHomologation,
     'listerReferentiels' | 'lireReferentiel' | 'operationsReferentiel' | 'controlerReferentiel' | 'creerBrouillon' | 'deriverBrouillon' | 'publierReferentiel'
     | 'grapheReferentiel' | 'catalogueReferentiels' | 'creerOperation' | 'enregistrerOperation' | 'supprimerOperation' | 'placerOperations' | 'arcReferentiel' | 'designerPilote'
-    | 'liaisonsImpactees' | 'exporterReferentiel' | 'ajouterEtape' | 'modifierEtape' | 'supprimerEtape' | 'ordonnerEtapes'> = {
+    | 'liaisonsImpactees' | 'exporterReferentiel' | 'ajouterEtape' | 'modifierEtape' | 'supprimerEtape' | 'ordonnerEtapes'
+    | 'typesProjet' | 'creerTypeProjet' | 'modifierTypeProjet' | 'fonctionsReferentiel' | 'creerFonction' | 'modifierFonction'> = {
+    typesProjet: (actif) => attendre(() => types.filter((t) => actif === undefined || t.actif === actif).map(vueType)),
+    creerTypeProjet: (c) => attendre(() => creerType(c)),
+    modifierTypeProjet: (code, m) => attendre(() => {
+      const t = typeExistant(code)
+      exigerMotif(m.motif)
+      if (m.libelle !== undefined && (!m.libelle.trim() || m.libelle.length > 120)) throw refus(422, 'HOM_TYPE_PROJET_LIBELLE_INVALIDE', 'Libellé : 1 à 120 caractères.')
+      if (m.modele !== undefined && m.modele !== t.modele && vueType(t).fige) throw refus(409, 'HOM_TYPE_PROJET_FIGE', 'Une version a été publiée : le modèle est figé.')
+      Object.assign(t, {
+        ...(m.libelle !== undefined ? { libelle: m.libelle.trim() } : {}), ...(m.description !== undefined ? { description: m.description.trim() || null } : {}),
+        ...(m.modele !== undefined ? { modele: m.modele } : {}), ...(m.actif !== undefined ? { actif: m.actif } : {}), modifieLe: o.maintenant(), modifiePar: o.utilisateur ?? 'U-001',
+      })
+      return vueType(t)
+    }),
+    fonctionsReferentiel: (actif) => attendre(() => fonctions.filter((f) => actif === undefined || f.actif === actif)),
+    creerFonction: (c) => attendre(() => {
+      if (!/^[A-Z][A-Z0-9_]{1,39}$/.test(c.code ?? '')) throw refus(422, 'HOM_FONCTION_CODE_INVALIDE', 'Code invalide : majuscules, chiffres ou souligné, 2 à 40 caractères.')
+      if (!c.libelle?.trim() || c.libelle.length > 120) throw refus(422, 'HOM_FONCTION_LIBELLE_INVALIDE', 'Libellé : 1 à 120 caractères.')
+      if (c.profils.some((p) => !/^ROLE_[A-Z][A-Z0-9_]+$/.test(p)) || c.profils.length > 20) throw refus(422, 'HOM_FONCTION_PROFIL_INVALIDE', 'Profil invalide.')
+      if (!c.externe && !c.profils.length) throw refus(422, 'HOM_FONCTION_PROFIL_REQUIS', 'Une fonction interne est reliée à au moins un profil.')
+      verifierPermissions(c.permissions)
+      if (fonctions.some((f) => f.code === c.code)) throw refus(409, 'HOM_FONCTION_CODE_PRIS', 'Ce code de fonction existe déjà.')
+      const f: FonctionCatalogue = { code: c.code, libelle: c.libelle.trim(), profils: [...c.profils], permissions: [...(c.permissions ?? [])], externe: c.externe, actif: true, reprise: false, creeLe: o.maintenant(), creePar: o.utilisateur ?? 'U-001', modifieLe: null, modifiePar: null }
+      fonctions.push(f)
+      return f
+    }),
+    modifierFonction: (code, m) => attendre(() => {
+      const f = fonctions.find((x) => x.code === code)
+      if (!f) throw refus(404, 'HOM_FONCTION_INTROUVABLE', 'Fonction introuvable.')
+      exigerMotif(m.motif)
+      const profils = m.profils ?? f.profils
+      if (!(m.externe ?? f.externe) && !profils.length) throw refus(422, 'HOM_FONCTION_PROFIL_REQUIS', 'Une fonction interne est reliée à au moins un profil.')
+      verifierPermissions(m.permissions)
+      Object.assign(f, { ...(m.libelle !== undefined ? { libelle: m.libelle.trim() } : {}), profils: [...profils], ...(m.permissions !== undefined ? { permissions: [...m.permissions] } : {}), ...(m.externe !== undefined ? { externe: m.externe } : {}),
+        ...(m.actif !== undefined ? { actif: m.actif } : {}), modifieLe: o.maintenant(), modifiePar: o.utilisateur ?? 'U-001' })
+      return f
+    }),
     listerReferentiels: () => attendre(() => versions.map((v) => { const l = lecture(v.id); return { ...v, nombreOperations: l.codes.size, filtre: l.filtre } })),
     lireReferentiel: (id) => attendre(() => { const v = version(id); const l = lecture(id); return { ...v, nombreOperations: l.codes.size, filtre: l.filtre } }),
     operationsReferentiel: (id) => attendre(() => { const l = lecture(id); return { operations: avecSuccesseurs(l.retenues), filtre: l.filtre } }),
@@ -539,7 +651,9 @@ export function referentielsSimules(attendre: Attendre, refus: Refus, o: { utili
     }),
     grapheReferentiel: (id) => attendre(() => calculerGraphe(version(id), operations[id] ?? [], { etapes: vuesDe(id), profils: o.profils })),
     catalogueReferentiels: (versionId) => attendre(() => ({
-      ...CATALOGUE, etapesCanoniques: ETAPES_CANONIQUES, couleurs: COULEURS_ETAPE, ...(versionId ? { etapesVersion: vuesDe(version(versionId).id) } : {}),
+      ...CATALOGUE, fonctions: fonctions.map((f) => ({ code: f.code, libelle: f.libelle, profils: f.profils, externe: f.externe, actif: f.actif })),
+      typesProjet: types.map((t) => ({ code: t.code, libelle: t.libelle, actif: t.actif })),
+      etapesCanoniques: ETAPES_CANONIQUES, couleurs: COULEURS_ETAPE, ...(versionId ? { etapesVersion: vuesDe(version(versionId).id) } : {}),
     })),
     creerOperation: (id, s) => attendre(() => {
       const ops = brouillon(id)
@@ -591,5 +705,5 @@ export function referentielsSimules(attendre: Attendre, refus: Refus, o: { utili
       return v
     }),
   }
-  return { port, versions }
+  return { port, versions, fonctions, types: () => types.map(vueType) }
 }

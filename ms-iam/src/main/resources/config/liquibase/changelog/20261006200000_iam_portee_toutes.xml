@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- MS-IAM : portée TOUTES de la matrice des pouvoirs (D-92, docs/lot1/referentiels-metier-admin.md §2 bis) :
+     toutes les unités, actives ou non, admise seulement pour PROCESSUS_DEFINIR et PROCESSUS_LANCER. Aucune ligne
+     n'est ajoutée : l'administration la règle profil par profil. Ensemble idempotent. -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="iam-matrice-portee-toutes" author="lot1">
+        <sql>ALTER TABLE pouvoir_profil DROP CONSTRAINT IF EXISTS ck_pouvoir_profil_portee;</sql>
+        <sql>ALTER TABLE pouvoir_profil ADD CONSTRAINT ck_pouvoir_profil_portee CHECK (portee IN ('AUCUNE', 'DIRECTS', 'EQUIPE', 'UNITES', 'TOUTES'));</sql>
+        <sql>ALTER TABLE pouvoir_profil DROP CONSTRAINT IF EXISTS ck_pouvoir_profil_portee_toutes;</sql>
+        <sql>ALTER TABLE pouvoir_profil ADD CONSTRAINT ck_pouvoir_profil_portee_toutes CHECK (portee &lt;&gt; 'TOUTES' OR action IN ('PROCESSUS_DEFINIR', 'PROCESSUS_LANCER'));</sql>
+    </changeSet>
+</databaseChangeLog>

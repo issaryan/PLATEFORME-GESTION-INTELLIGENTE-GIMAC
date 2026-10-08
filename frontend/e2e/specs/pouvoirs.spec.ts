@@ -118,11 +118,13 @@ for (const theme of ['light', 'dark'] as const) {
       await f.getByRole('button', { name: 'Prendre la tâche' }).click()
       await expect(toast(page, 'Tâche prise : vous en êtes le responsable.')).toBeVisible()
       await f.getByRole('button', { name: 'Fermer' }).last().click()
-      // Reste à prendre l'étape de processus du pôle (D-87), réservée au profil requis.
+      // L'étape d'analyse du pôle (D-87) n'est plus à prendre : seul porteur du profil « Pôle réseau », il l'a reçue d'office
+      // (désignation hors de l'unité) ; elle figure avec la tâche prise dans « Mes tâches ».
       await expect(page.getByRole('button', { name: 'Vérifier la supervision des liens du participant' })).toHaveCount(0)
-      await expect(page.getByText('Profil requis : Pôle réseau')).toBeVisible()
+      await expect(page.getByText('Profil requis : Pôle réseau')).toHaveCount(0)
       await page.getByRole('tab', { name: 'Mes tâches' }).click()
       await expect(page.getByRole('button', { name: 'Vérifier la supervision des liens du participant' })).toBeVisible()
+      await expect(page.getByRole('button', { name: /Ouverture du port 443 pour la supervision : Analyse de sécurité du flux/ }).first()).toBeVisible()
     })
 
     test('Scénario : le super administrateur accepte une demande, modifie la matrice et crée un profil', async ({ page }) => {

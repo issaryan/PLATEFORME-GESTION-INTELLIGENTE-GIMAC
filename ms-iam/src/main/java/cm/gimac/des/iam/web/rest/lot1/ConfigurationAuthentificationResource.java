@@ -60,9 +60,10 @@ public class ConfigurationAuthentificationResource {
 
     /**
      * Libellé (1..80) et description (0..500) d'un profil (D-86 §2), motif obligatoire ; bornes vérifiées
-     * par le cas d'usage après normalisation (400 IAM_PROFIL_INVALIDE).
+     * par le cas d'usage après normalisation (400 IAM_PROFIL_INVALIDE). {@code externe} (D-94, facultatif, absent :
+     * inchangé) : profil d'un compte d'institution, attribut gimac_externe.
      */
-    public record PresentationRequest(@Size(max = 200) String libelle, @Size(max = 1000) String description, @NotBlank @Size(max = 1000) String motif) {}
+    public record PresentationRequest(@Size(max = 200) String libelle, @Size(max = 1000) String description, Boolean externe, @NotBlank @Size(max = 1000) String motif) {}
 
     private final ConfigurationAuthentificationService service;
     private final ProfilsService profils;
@@ -124,8 +125,9 @@ public class ConfigurationAuthentificationResource {
     }
 
     /**
-     * Libellé et description d'un profil livré ou créé (D-86, docs/lot1/profils-organisation.md §2) : le
-     * code est immuable ; un profil privilégié est réservé au droit d'octroi privilégié. Réponse : le profil.
+     * Libellé, description et attribut externe d'un profil livré ou créé (D-86, docs/lot1/profils-organisation.md
+     * §2 ; D-94) : le code est immuable ; un profil privilégié est réservé au droit d'octroi privilégié. Réponse :
+     * le profil.
      */
     @PutMapping("/profils/{code}")
     @PreAuthorize("hasAuthority('IAM_PROFILE_EDIT')")
@@ -137,7 +139,7 @@ public class ConfigurationAuthentificationResource {
     ) {
         Acteur a = ActeurCourant.de(auth);
         reauth.exiger(a, assertion);
-        return profils.modifier(a, code, r.libelle(), r.description(), r.motif());
+        return profils.modifier(a, code, r.libelle(), r.description(), r.externe(), r.motif());
     }
 
     /** Suppression d'un profil créé, sans titulaire (D-81 §5) ; un profil livré : 409 IAM_PROFIL_SYSTEME. */

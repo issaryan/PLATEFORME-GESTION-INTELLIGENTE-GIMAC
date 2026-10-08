@@ -10,6 +10,7 @@ import cm.gimac.des.homologation.domain.enumeration.EtatLiaison;
 import cm.gimac.des.homologation.domain.enumeration.EtatScopeItem;
 import cm.gimac.des.homologation.domain.enumeration.EtatVersionReferentiel;
 import cm.gimac.des.homologation.domain.event.CoverageEstablishedPayload;
+import cm.gimac.des.homologation.domain.event.OperationSignedPayload;
 import cm.gimac.des.homologation.domain.parcours.Acteur;
 import cm.gimac.des.homologation.domain.parcours.BlocageParcours;
 import cm.gimac.des.homologation.domain.parcours.CatalogueServices;
@@ -17,13 +18,17 @@ import cm.gimac.des.homologation.domain.parcours.Ceremonie;
 import cm.gimac.des.homologation.domain.parcours.Couverture;
 import cm.gimac.des.homologation.domain.parcours.Fonction;
 import cm.gimac.des.homologation.domain.parcours.Geste;
+import cm.gimac.des.homologation.domain.parcours.Livrable;
 import cm.gimac.des.homologation.domain.parcours.OperationParcours;
 import cm.gimac.des.homologation.domain.parcours.Parcours;
 import cm.gimac.des.homologation.domain.parcours.Personne;
 import cm.gimac.des.homologation.domain.parcours.Preuve;
 import cm.gimac.des.homologation.domain.parcours.Qualite;
+import cm.gimac.des.homologation.domain.parcours.SignatureOperation;
+import cm.gimac.des.homologation.domain.parcours.SignatureRecueillie;
 import cm.gimac.des.homologation.domain.parcours.StatutParcours;
 import cm.gimac.des.homologation.domain.service.ParcoursProjection;
+import cm.gimac.des.homologation.domain.service.VisibiliteReferentiel;
 import cm.gimac.des.homologation.infrastructure.messaging.outbox.OutboxPublisher;
 import cm.gimac.des.homologation.repository.ContractualScopeRepository;
 import cm.gimac.des.homologation.repository.LiaisonRepository;
@@ -58,6 +63,8 @@ public class ParcoursCommandes {
     private static final Logger LOG = LoggerFactory.getLogger(ParcoursCommandes.class);
     // Finalité du défi demandé par l'interface (SignPurpose du socle : OPERATION_VALIDATE), vérifiée par MS-IAM.
     static final String FINALITE_VALIDATION = "OPERATION_VALIDATE";
+    // Finalité du défi FIDO2 d'une signature d'opération (D-91), vérifiée par MS-IAM.
+    static final String FINALITE_SIGNATURE = "SIGNATURE_OPERATION";
     private static final Pattern SHA256 = Pattern.compile("^[0-9a-fA-F]{64}$");
     private static final Pattern CODE_SERVICE = Pattern.compile("^[A-Z0-9_]{2,40}$");
 
@@ -78,6 +85,13 @@ public class ParcoursCommandes {
     private final ContractualScopeRepository perimetres;
     private final ScopeItemRepository elements;
     private final Clock clock;
+    private cm.gimac.des.homologation.application.port.out.ParticipantDirectoryPort participants;
+
+    /** Registre des institutions (institution liée d'une fonction externe, D-93 §1). */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setParticipants(cm.gimac.des.homologation.application.port.out.ParticipantDirectoryPort participants) {
+        this.participants = participants;
+    }
 
     public ParcoursCommandes(
         ParcoursDepot depot,
@@ -175,26 +189,73 @@ public class ParcoursCommandes {
     }
 
     public void deposerLivrable(UUID operationId, Piece d, Acteur a) {
+        deposerLivrable(operationId, null, d, a);
+    }
+
+    /**
+     * Dépôt d'un livrable attendu (D-93 §2 et §3) : livrable désigné par son code (sans code : l'unique livrable),
+     * déposant contrôlé (R désigné, déposant du livrable, conducteur, sinon supervision HOM_STEP_MANAGE journalisée),
+     * pièce revérifiée et type contrôlé auprès de MS-DOCUMENT ; l'opération se clôt quand aucun livrable obligatoire
+     * ne manque.
+     */
+    public void deposerLivrable(UUID operationId, String livrable, Piece d, Acteur a) {
         Parcours p = depot.deLOperation(operationId);
         OperationParcours o = p.operation(operationId);
         if (!o.getEtat().ouverte()) {
             p.deposerLivrable(o, null, aujourdhui());
         }
-        p.deposerLivrable(o, piece(d, a, o), aujourdhui());
+        Livrable l = Parcours.livrableVise(o, livrable);
+        Parcours.DroitDepot droit = p.exigerDroitDepot(o, l, a, VisibiliteReferentiel.fonctions(a.permissions()));
+        Preuve piece = piece(d, a, o);
+        String type = typeControle(l, d.documentId());
+        p.deposerLivrable(o, l, piece, type, a.id() == null ? null : a.id().toString(), droit == Parcours.DroitDepot.SUPERVISION, aujourdhui());
+        journaliser(droit, o, p, a, l);
+    }
+
+    /** Type de la pièce, lu chez MS-DOCUMENT quand le livrable restreint les types admis (422 HOM_LIVRABLE_TYPE_REFUSE). */
+    private String typeControle(Livrable l, UUID documentId) {
+        if (l == null) {
+            return null;
+        }
+        String type = documents.typeMime(documentId);
+        Parcours.verifierType(l, type);
+        return type;
+    }
+
+    private static void journaliser(Parcours.DroitDepot droit, OperationParcours o, Parcours p, Acteur a, Livrable l) {
+        if (droit == Parcours.DroitDepot.SUPERVISION) {
+            LOG.warn(
+                "Supervision (HOM_STEP_MANAGE) : dépôt hors RACI sur l'opération {} de la liaison {} par {}, livrable {}",
+                o.getRang(),
+                p.id(),
+                a.id(),
+                l == null ? "-" : l.code()
+            );
+        }
     }
 
     public void deposerPreuve(UUID operationId, Piece d, String valeurReference, String codeControle, Ceremonie ceremonie, Acteur a) {
-        Parcours p = depot.deLOperation(operationId);
-        OperationParcours o = p.operation(operationId);
-        // Contrôles métier avant la revérification de la pièce : une preuve irrecevable n'appelle pas MS-DOCUMENT.
-        Preuve provisoire = Preuve.piece("", "", "", aujourdhui(), "");
-        p.deposerPreuve(o, provisoire, valeurReference, codeControle, ceremonie);
-        Preuve controlee = o.getPreuve();
-        Preuve reelle = piece(d, a, o);
-        o.setPreuve(new Preuve(reelle.documentRef(), reelle.nom(), reelle.empreinte(), reelle.deposeLe(), reelle.deposePar(), controlee.valeurReference(), controlee.codeControle(), controlee.ceremonie()));
+        deposerPreuve(operationId, null, d, valeurReference, codeControle, ceremonie, a);
     }
 
-    /** Validation (V) après réauthentification forte : jamais par le responsable (R) de l'opération. */
+    /** Preuve d'un livrable attendu (D-93 §3), même contrôle du déposant et du type que le livrable. */
+    public void deposerPreuve(UUID operationId, String livrable, Piece d, String valeurReference, String codeControle, Ceremonie ceremonie, Acteur a) {
+        Parcours p = depot.deLOperation(operationId);
+        OperationParcours o = p.operation(operationId);
+        Livrable l = o.getEtat().ouverte() ? Parcours.livrableVise(o, livrable) : null;
+        Parcours.DroitDepot droit = o.getEtat().ouverte() ? p.exigerDroitDepot(o, l, a, VisibiliteReferentiel.fonctions(a.permissions())) : null;
+        // Contrôles métier avant la revérification de la pièce : une preuve irrecevable n'appelle pas MS-DOCUMENT.
+        Preuve provisoire = Preuve.piece("", "", "", aujourdhui(), "");
+        p.deposerPreuve(o, l, provisoire, valeurReference, codeControle, ceremonie);
+        Preuve controlee = o.getPreuve();
+        Preuve reelle = piece(d, a, o);
+        String type = typeControle(l, d.documentId());
+        o.setPreuve(new Preuve(reelle.documentRef(), reelle.nom(), reelle.empreinte(), reelle.deposeLe(), reelle.deposePar(), controlee.valeurReference(), controlee.codeControle(), controlee.ceremonie()));
+        p.inscrirePreuve(o, l, type, a.id() == null ? null : a.id().toString(), droit == Parcours.DroitDepot.SUPERVISION);
+        journaliser(droit, o, p, a, l);
+    }
+
+    /** Validation (V) après réauthentification forte : le V désigné (ou un porteur de sa fonction s'il est à affecter), jamais R. */
     public void valider(UUID operationId, String assertion, Acteur a) {
         if (assertion == null || assertion.isBlank()) {
             throw HomologationException.reauthRequired();
@@ -204,10 +265,121 @@ public class ParcoursCommandes {
         }
         Parcours p = depot.deLOperation(operationId);
         OperationParcours o = p.operation(operationId);
-        if (o.getEtat() == cm.gimac.des.homologation.domain.parcours.EtatOperationParcours.EN_VALIDATION && !a.est(o.getRaci().r()) && !reauth.verifier(assertion, a.id(), FINALITE_VALIDATION)) {
-            throw HomologationException.forbidden("HOM_REAUTH_INVALID", "Réauthentification forte invalide");
+        if (o.getEtat() == cm.gimac.des.homologation.domain.parcours.EtatOperationParcours.EN_VALIDATION) {
+            p.exigerValidateur(o, a, VisibiliteReferentiel.fonctions(a.permissions()));
+            if (!a.est(o.getRaci().r()) && !reauth.verifier(assertion, a.id(), FINALITE_VALIDATION)) {
+                throw HomologationException.forbidden("HOM_REAUTH_INVALID", "Réauthentification forte invalide");
+            }
         }
         p.valider(o, a, aujourdhui());
+    }
+
+    /** Renvoi par le validateur avec motif (D-93 §2) : l'opération revient à faire, la tâche de R est rouverte. */
+    public void renvoyer(UUID operationId, String motif, Acteur a) {
+        if (a.id() == null) {
+            throw HomologationException.forbidden("HOM_USER_TOKEN_REQUIRED", "Jeton utilisateur exigé");
+        }
+        Parcours p = depot.deLOperation(operationId);
+        OperationParcours o = p.operation(operationId);
+        if (o.getEtat() == cm.gimac.des.homologation.domain.parcours.EtatOperationParcours.EN_VALIDATION) {
+            p.exigerValidateur(o, a, VisibiliteReferentiel.fonctions(a.permissions()));
+        }
+        p.renvoyer(o, a, motif, aujourdhui());
+        LOG.info("Opération {} de la liaison {} renvoyée par {}", o.getRang(), p.id(), a.id());
+    }
+
+    /**
+     * Affectation d'une fonction sur la liaison (D-93 §1), à tout moment : une personne de l'annuaire qui détient un
+     * profil de la fonction (fonction interne) ou une institution du registre (fonction externe : banque partenaire,
+     * personnalisateur…). Elle remplace la fonction à affecter et l'ancien titulaire sur les opérations non faites.
+     */
+    public void affecterFonction(UUID liaisonId, Fonction f, String personneId, UUID institutionId, String motif, Acteur a) {
+        if (Fonction.PARTICIPANT.equals(f) || Fonction.CONDUCTEUR.equals(f) || !f.connue()) {
+            throw HomologationException.unprocessable(
+                "HOM_FONCTION_NON_AFFECTABLE",
+                "Cette fonction ne s'affecte pas ainsi : le participant tient sa liaison, le conducteur est désigné par un chef de département."
+            );
+        }
+        Parcours p = charger(liaisonId);
+        Personne personne;
+        if (f.externe()) {
+            if (institutionId == null || participants == null) {
+                throw HomologationException.unprocessable("HOM_INSTITUTION_REQUISE", "Une fonction externe est tenue par une institution du registre.");
+            }
+            personne = Personne.institution(f, institutionId.toString(), participants.getInstitution(institutionId).nom());
+        } else {
+            personne = intervenants.pourFonction(personneId, f);
+        }
+        p.affecterFonction(f, personne);
+        LOG.info("Fonction {} affectée sur la liaison {} par {} : {} ({})", f, p.id(), a.id(), personne.id(), motif);
+    }
+
+    /**
+     * Signature d'une opération en attente de signatures (D-91, docs/lot1/types-projet.md §3) : le signataire est la
+     * personne qui tient la fonction attendue sur l'opération ou la liaison, à défaut un porteur de cette fonction ;
+     * l'ordre est contrôlé avant la réauthentification forte (finalité SIGNATURE_OPERATION, vérifiée et consommée par
+     * MS-IAM) ; l'événement homologation.operation-signed.v1 est scellé par le registre d'audit.
+     */
+    public SignatureRecueillie signer(UUID liaisonId, String rang, String code, String assertion, Acteur a) {
+        if (assertion == null || assertion.isBlank()) {
+            throw HomologationException.reauthRequired();
+        }
+        if (a.id() == null) {
+            throw HomologationException.forbidden("HOM_USER_TOKEN_REQUIRED", "Jeton utilisateur exigé");
+        }
+        Parcours p = charger(liaisonId);
+        OperationParcours o = p.operation(rang).orElseThrow(() -> HomologationException.notFound("HOM_OPERATION_NOT_FOUND", "Opération introuvable dans ce parcours.", rang));
+        SignatureOperation s = Parcours.signature(o, code);
+        p.verifierSignable(o, code);
+        Personne signataire = signataire(p, o, s, a);
+        if (!reauth.verifier(assertion, a.id(), FINALITE_SIGNATURE)) {
+            throw HomologationException.forbidden("HOM_REAUTH_INVALID", "Réauthentification forte invalide");
+        }
+        SignatureRecueillie r = p.signer(o, code, signataire, clock.instant(), aujourdhui());
+        outbox.publish(
+            OpenLiaisonService.AGREGAT,
+            p.id(),
+            OperationSignedPayload.TYPE,
+            new OperationSignedPayload(
+                p.id(),
+                p.etat().getReference(),
+                p.liaison().getInstitutionId(),
+                o.getId(),
+                o.getRang(),
+                o.getLibelle(),
+                s.code(),
+                s.libelle(),
+                s.ordreEffectif(),
+                s.signataire().name(),
+                r.signataireId(),
+                r.signataireNom(),
+                r.empreinte(),
+                r.documents(),
+                o.signaturesAttendues().stream().map(SignatureOperation::code).toList(),
+                o.faite(),
+                ParcoursProjection.lienOperation(p, o),
+                r.signeLe()
+            ),
+            p.liaison().getInstitutionId().toString()
+        );
+        LOG.info("Signature {} de l'opération {} de la liaison {} donnée par {}", code, o.getRang(), p.id(), a.id());
+        return r;
+    }
+
+    /** Signataire admis : la personne désignée pour la fonction, sinon un porteur de la fonction (403 HOM_SIGNATURE_NON_SIGNATAIRE). */
+    private static Personne signataire(Parcours p, OperationParcours o, SignatureOperation s, Acteur a) {
+        String nom = a.nom() == null || a.nom().isBlank() ? s.signataire().libelle() : a.nom();
+        java.util.Optional<Personne> designe = p.titulaire(o, s.signataire());
+        boolean admis = designe.isPresent()
+            ? a.est(designe.orElseThrow())
+            : cm.gimac.des.homologation.domain.service.VisibiliteReferentiel.fonctions(a.permissions()).contains(s.signataire());
+        if (!admis) {
+            throw HomologationException.forbidden(
+                "HOM_SIGNATURE_NON_SIGNATAIRE",
+                "Cette signature revient à " + designe.map(Personne::nom).orElse("un porteur de la fonction " + s.signataire().libelle()) + "."
+            );
+        }
+        return new Personne(a.id().toString(), nom, s.signataire());
     }
 
     /** Attribution d'une qualité (R, C, V, I, E) à une personne de l'annuaire ou au correspondant du participant. */
@@ -271,7 +443,8 @@ public class ParcoursCommandes {
             .dateOuverture(clock.instant())
             .cycleAptitude(0)
             .version(versions.findFirstByTypeProjetAndEtat(o.getTypeProjet(), EtatVersionReferentiel.PUBLIEE).orElse(o.getVersion()))
-            .liaisonOrigineId(o.getId());
+            .liaisonOrigineId(o.getId())
+            .definitionTypeProjet(o.getDefinitionTypeProjet());
         n = liaisons.saveAndFlush(n);
         ContractualScope scope = perimetres.save(new ContractualScope().dateDerivation(clock.instant()).sourceEventId("service-supplementaire:" + o.getId()).liaison(n));
         List<String> perimetre = new ArrayList<>();
@@ -317,6 +490,11 @@ public class ParcoursCommandes {
 
     /** Livrable du participant (multipart) : déposé dans MS-DOCUMENT pour son compte, puis rattaché. */
     public void deposerLivrablePortail(UUID operationId, byte[] contenu, String nomFichier, String typeMime, String commentaire, Acteur a) {
+        deposerLivrablePortail(operationId, null, contenu, nomFichier, typeMime, commentaire, a);
+    }
+
+    /** Livrable du participant désigné par son code (D-93 §3), type contrôlé avant le dépôt dans MS-DOCUMENT. */
+    public void deposerLivrablePortail(UUID operationId, String livrable, byte[] contenu, String nomFichier, String typeMime, String commentaire, Acteur a) {
         Parcours p = sienne(depot.deLOperation(operationId), a);
         OperationParcours o = p.operation(operationId);
         if (!ParcoursProjection.livrableParticipant(o) || !o.getEtat().ouverte()) {
@@ -325,9 +503,11 @@ public class ParcoursCommandes {
         if (contenu == null || contenu.length == 0 || nomFichier == null || nomFichier.isBlank()) {
             throw HomologationException.unprocessable("HOM_DOCUMENT_INVALID", "Le livrable doit porter un fichier non vide.");
         }
+        Livrable l = Parcours.livrableVise(o, livrable);
+        Parcours.verifierType(l, typeMime);
         DocumentRegistryPort.Depot d = documents.deposer(contenu, nomFichier, typeMime, "LIVRABLE", operationId.toString(), a.id());
         String par = a.nom() == null || a.nom().isBlank() ? Personne.correspondant(p.liaison().getInstitutionId().toString(), p.liaison().getInstitutionNom()).nom() : a.nom();
-        p.deposerLivrable(o, Preuve.piece(d.id().toString(), d.nomFichier(), d.sha256(), aujourdhui(), par), aujourdhui());
+        p.deposerLivrable(o, l, Preuve.piece(d.id().toString(), d.nomFichier(), d.sha256(), aujourdhui(), par), typeMime, a.id() == null ? null : a.id().toString(), false, aujourdhui());
         LOG.info("Livrable du participant déposé sur l'opération {} de la liaison {} ({})", o.getRang(), p.id(), commentaire == null ? "" : commentaire.length() + " caractères de commentaire");
     }
 

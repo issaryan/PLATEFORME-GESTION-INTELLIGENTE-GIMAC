@@ -9,6 +9,9 @@ const H = P.desHomologation
 const R = `${H}/referentiels`
 const L = `${H}/liaisons`
 const O = `${H}/operations`
+/** Types de projet (D-91) et catalogue des fonctions du référentiel. */
+const TP = `${H}/types-projet`
+const FN = `${R}/fonctions`
 
 /** Instant ISO-8601 en « jj/mm/aaaa hh:mm » (Afrique centrale) ; une valeur absente ou déjà lisible est gardée. */
 export const horodatage = (iso: string | null | undefined): string => {
@@ -72,6 +75,13 @@ export const homologationHttp: ServiceHomologation = {
   placerOperations: (id, positions) => http.put(`${R}/${id}/positions`, { body: positions }),
   arcReferentiel: (id, arc) => http.put(`${R}/${id}/arcs`, { body: arc }),
   designerPilote: (id, compteId) => http.put(`${R}/${id}/pilote`, { body: { compteId } }),
+  // Types de projet et fonctions (D-91, docs/lot1/types-projet.md §5.2 et §5.3).
+  typesProjet: (actif) => http.get(TP, actif === undefined ? {} : { query: { actif } }),
+  creerTypeProjet: (c) => http.post(TP, { body: c }),
+  modifierTypeProjet: (code, m) => http.put(`${TP}/${encodeURIComponent(code)}`, { body: m }),
+  fonctionsReferentiel: (actif) => http.get(FN, actif === undefined ? {} : { query: { actif } }),
+  creerFonction: (c) => http.post(FN, { body: c }),
+  modifierFonction: (code, m) => http.put(`${FN}/${encodeURIComponent(code)}`, { body: m }),
 
   listerLiaisons: (q) => http.get(L, { query: requeteLiaisons(q) }),
   tableauDeBordLiaisons: (q) => http.get(`${H}/tableau-de-bord/liaisons`, { query: requete(q) }),

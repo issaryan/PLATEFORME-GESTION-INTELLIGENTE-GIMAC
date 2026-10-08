@@ -15,9 +15,15 @@ export const ACTIONS_POUVOIR = [
 ] as const
 export type ActionPouvoir = (typeof ACTIONS_POUVOIR)[number]
 
-/** Portées, de la plus étroite à la plus large (§1) : UNITES = équipe et membres des unités dirigées. */
-export const PORTEES = ['AUCUNE', 'DIRECTS', 'EQUIPE', 'UNITES'] as const
+/**
+ * Portées, de la plus étroite à la plus large (§1) : UNITES = équipe et membres des unités dirigées ; TOUTES (D-92) :
+ * toutes les unités, actives ou non, admise seulement pour PROCESSUS_DEFINIR et PROCESSUS_LANCER.
+ */
+export const PORTEES = ['AUCUNE', 'DIRECTS', 'EQUIPE', 'UNITES', 'TOUTES'] as const
 export type Portee = (typeof PORTEES)[number]
+/** Portées admises par action quand la matrice servie ne les donne pas (`porteesAdmises`, D-92). */
+export const porteesAdmisesParDefaut = (a: ActionPouvoir): Portee[] =>
+  a === 'PROCESSUS_DEFINIR' || a === 'PROCESSUS_LANCER' ? [...PORTEES] : PORTEES.filter((p) => p !== 'TOUTES')
 
 export type ActionsPouvoir = Record<ActionPouvoir, Portee>
 
@@ -27,8 +33,8 @@ export type ActionsPouvoir = Record<ActionPouvoir, Portee>
  */
 export type PouvoirsProfil = { profil: string; libelle?: string; actions: ActionsPouvoir; profilsDemandables: string[] }
 
-/** GET /pouvoirs/matrice. */
-export type MatricePouvoirs = { profils: PouvoirsProfil[] }
+/** GET /pouvoirs/matrice ; `porteesAdmises` (D-92) : pour chaque action, les portées que l'interface peut proposer. */
+export type MatricePouvoirs = { profils: PouvoirsProfil[]; actions?: ActionPouvoir[]; portees?: Portee[]; porteesAdmises?: Partial<Record<ActionPouvoir, Portee[]>> }
 
 /** PUT /pouvoirs/matrice/{profil}. */
 export type EntreePouvoirs = { actions: ActionsPouvoir; profilsDemandables: string[] }
@@ -71,8 +77,8 @@ export function couvre(p: Pick<MesPouvoirs, 'actions'> | undefined, action: Acti
   return true
 }
 
-/** Vrai si la portée de l'action couvre les unités dirigées (UNITES). */
-export const couvreUnites = (p: Pick<MesPouvoirs, 'actions'> | undefined, action: ActionPouvoir) => rangPortee(p?.actions[action]) === rangPortee('UNITES')
+/** Vrai si la portée de l'action couvre les unités dirigées (UNITES, ou TOUTES qui l'englobe). */
+export const couvreUnites = (p: Pick<MesPouvoirs, 'actions'> | undefined, action: ActionPouvoir) => rangPortee(p?.actions[action]) >= rangPortee('UNITES')
 
 /** Comptes couverts par une action, dans l'ordre du périmètre. */
 export const couverts = (p: MesPouvoirs | undefined, action: ActionPouvoir) => (p?.subordonnes ?? []).filter((s) => couvre(p, action, s))

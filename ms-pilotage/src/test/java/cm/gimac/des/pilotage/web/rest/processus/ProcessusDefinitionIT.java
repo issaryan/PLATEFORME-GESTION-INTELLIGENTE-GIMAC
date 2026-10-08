@@ -52,6 +52,14 @@ class ProcessusDefinitionIT extends AbstractProcessusIT {
         // Le chef du DES couvre le pôle réseau (sous-unité) ; l'administration aussi.
         mvc.perform(get(BASE + "/" + id).with(chef(CHEF_DES))).andExpect(status().isOk()).andExpect(jsonPath("$.droits.modifier").value(true));
         mvc.perform(get(BASE + "/" + id).with(administration(AGENT))).andExpect(status().isOk());
+        // D-94 : l'administration des comptes (IAM_PROFILE_EDIT) seule n'ouvre pas les processus des autres unités.
+        mvc.perform(get(BASE + "/" + id).with(administrationDesComptes(AGENT))).andExpect(status().isForbidden());
+        mvc.perform(get(BASE).with(administrationDesComptes(AGENT))).andExpect(jsonPath("$.length()").value(0));
+        mvc.perform(json(post(BASE).with(administrationDesComptes(AGENT)), definition("PAR_LE_RSSI"))).andExpect(status().isForbidden());
+        mvc
+            .perform(get(BASE + "/portee").with(administrationDesComptes(AGENT)))
+            .andExpect(jsonPath("$.portee").value("MES_UNITES"))
+            .andExpect(jsonPath("$.auTitreDe.length()").value(0));
         // Brouillon : invisible des simples membres.
         mvc.perform(get(BASE + "/" + id).with(agent(TECHNICIEN_RESEAU))).andExpect(status().isForbidden());
         mvc.perform(get(BASE).with(agent(TECHNICIEN_RESEAU))).andExpect(jsonPath("$.length()").value(0));

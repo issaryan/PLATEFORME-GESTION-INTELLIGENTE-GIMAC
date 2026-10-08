@@ -2,16 +2,15 @@ import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { Banner, Button, DataTable, Drawer, InlineAlert, Select, StatCard, StatusBadge, Switch, TextField, type Column } from '@gimac/design-system'
-import { useSession } from '@gimac/socle'
-import { useOperationsParcours } from '../../../../hooks/parcours'
+import { useMesFonctions, useOperationsParcours } from '../../../../hooks/parcours'
+import { useFonctionsCatalogue } from '../../../../hooks/referentiels'
 import { ETAPES, type DossierLiaison, type OperationParcours } from '../../../../modele/parcours'
-import { fonctionsDe } from '../../../../permissions'
 import { Donnees } from '../../liaisons/communs'
 import { Alertes, Couverture, Essais, Essentiel, GesteAilleurs, InfosOperation, PreuveDeposee, Raci } from '../operations/Detail'
-import { BlocValidation, FormulaireAttribution, FormulaireLivrable, FormulairePreuve, usePermis } from '../operations/Execution'
+import { BlocValidation, FormulaireAttribution, FormulaireLivrable, FormulairePreuve, LivrablesAttendus, Renvois, Signatures, usePermis } from '../operations/Execution'
 import { useActionsOperation } from '../operations/actions'
 import { useExecuteurActions } from '../../../../ressources/actions'
-import { compter, externe, filtrer, grouper, ongletDuGeste, plateformes, TON_ETAT, VUES, type Filtres, type Vue } from '../operations/regles'
+import { compter, etapeDe, externe, filtrer, grouper, ongletDuGeste, plateformes, TON_ETAT, VUES, type Filtres, type Vue } from '../operations/regles'
 import { tonEtape, tonSla, useFormatDate } from '../communs'
 import { libelleOperation } from '../../../../adaptateurs/modelisateur'
 
@@ -31,8 +30,9 @@ export function OngletOperations({ dossier }: { dossier: DossierLiaison }) {
 
 function Vue({ dossier, ops }: { dossier: DossierLiaison; ops: OperationParcours[] }) {
   const { t } = useTranslation()
-  const session = useSession()
-  const fonctions = useMemo(() => fonctionsDe(session?.roles ?? []), [session])
+  // Fonctions de l'utilisateur servies par MS-HOMOLOGATION (D-94 §6.5).
+  const mes = useMesFonctions()
+  const fonctions = useMemo(() => (mes.data ?? []).map((f) => f.code), [mes.data])
   const [params, setParams] = useSearchParams()
   const [dernier, setDernier] = useState<string | null>(null)
   const [deplies, setDeplies] = useState<string[]>([])
@@ -52,7 +52,11 @@ function Vue({ dossier, ops }: { dossier: DossierLiaison; ops: OperationParcours
   }
   const libelle = (o: OperationParcours) => libelleOperation(t, o)
   const visibles = filtrer(ops, filtres, fonctions, libelle)
-  const groupes = grouper(visibles)
+  // Étapes réelles de la version (D-93) : ordre et libellés configurés ; les onze étapes canoniques à défaut.
+  const etapesVersion = useMemo(() => [...(dossier.etapesVersion ?? [])].sort((a, b) => a.ordre - b.ordre), [dossier.etapesVersion])
+  const ordre = etapesVersion.length ? etapesVersion.map((e) => e.code) : ETAPES
+  const libelleEtape = (code: string) => etapesVersion.find((e) => e.code === code)?.libelle ?? t(`parcours.etape.${code}`, { defaultValue: code })
+  const groupes = grouper(visibles, ordre)
   const n = compter(ops)
   const opId = params.get('operation')
   const ouverte = opId ? ops.find((o) => o.id === opId) ?? null : null
@@ -66,7 +70,7 @@ function Vue({ dossier, ops }: { dossier: DossierLiaison; ops: OperationParcours
     maj('operation', null)
   }
   const o28 = ops.find((o) => o.oubliSansSymptome && o.etat !== 'FAITE')
-  const etapesPresentes = ETAPES.filter((e) => ops.some((o) => o.etape === e))
+  const etapesPresentes = [...ordre, ...ops.map(etapeDe).filter((e) => !ordre.includes(e))].filter((e, i, l) => l.indexOf(e) === i && ops.some((o) => etapeDe(o) === e))
   const filtre = Boolean(filtres.vue || filtres.etape || filtres.miennes || filtres.recherche)
 
   return (
@@ -100,7 +104,7 @@ function Vue({ dossier, ops }: { dossier: DossierLiaison; ops: OperationParcours
           <Select label={t('parcoursOps.filtre.vue')} value={filtres.vue} onChange={(v) => maj('vue', v)} options={[{ value: '', label: t('parcoursOps.vue.toutes') }, ...VUES.map((v) => ({ value: v, label: t(`parcoursOps.vue.${v}`) }))]} />
         </div>
         <div style={{ flex: '0 1 220px' }}>
-          <Select label={t('parcoursOps.filtre.etape')} value={filtres.etape} onChange={(v) => maj('etape', v)} options={[{ value: '', label: t('parcoursOps.etape.toutes') }, ...etapesPresentes.map((e) => ({ value: e, label: t(`parcours.etape.${e}`) }))]} />
+          <Select label={t('parcoursOps.filtre.etape')} value={filtres.etape} onChange={(v) => maj('etape', v)} options={[{ value: '', label: t('parcoursOps.etape.toutes') }, ...etapesPresentes.map((e) => ({ value: e, label: libelleEtape(e) }))]} />
         </div>
         {fonctions.length ? <Switch label={t('parcoursOps.filtre.miennes')} checked={filtres.miennes} onChange={(v) => maj('miennes', v ? '1' : null)} /> : null}
         {filtre ? (
@@ -113,7 +117,8 @@ function Vue({ dossier, ops }: { dossier: DossierLiaison; ops: OperationParcours
 
       {groupes.length === 0 ? <InlineAlert level="info">{t('parcoursOps.aucunResultat')}</InlineAlert> : null}
       {groupes.map((g) => {
-        const etape = dossier.etapes.find((e) => e.code === g.etape)
+        const etape = etapesVersion.find((e) => e.code === g.etape) ?? dossier.etapes.find((e) => e.code === g.etape)
+        const rangEtape = dossier.etapes.find((e) => e.code === g.etape)?.rang
         // Une étape close est repliée par défaut (sauf filtre actif ou opération ouverte) : l'attention va aux étapes en cours.
         const repliee = etape?.etat === 'CLOSE' && !filtre && !deplies.includes(g.etape) && !g.segments.some((x) => x.operations.some((o) => o.id === opId || o.id === dernier))
         const nb = g.segments.reduce((k, x) => k + x.operations.length, 0)
@@ -121,7 +126,7 @@ function Vue({ dossier, ops }: { dossier: DossierLiaison; ops: OperationParcours
           <section key={g.etape} className="gm-col" style={{ gap: 'var(--gm-space-3)' }} aria-labelledby={`ops-${g.etape}`}>
             <div className="gm-row" style={{ justifyContent: 'space-between' }}>
               <h3 id={`ops-${g.etape}`} className="gm-type-h3" style={{ margin: 0 }}>
-                {etape?.rang ? t('parcoursOps.etapeN', { n: etape.rang, etape: t(`parcours.etape.${g.etape}`) }) : t(`parcours.etape.${g.etape}`)}
+                {etapesVersion.length ? libelleEtape(g.etape) : rangEtape ? t('parcoursOps.etapeN', { n: rangEtape, etape: libelleEtape(g.etape) }) : libelleEtape(g.etape)}
               </h3>
               {etape ? (
                 <span className="gm-row">
@@ -152,7 +157,7 @@ function Vue({ dossier, ops }: { dossier: DossierLiaison; ops: OperationParcours
         )
       })}
 
-      {ouverte ? <Tiroir key={ouverte.id} op={ouverte} dossier={dossier} onFermer={fermer} onOuvrirRang={ouvrirRang} /> : null}
+      {ouverte ? <Tiroir key={ouverte.id} op={ouverte} dossier={dossier} onFermer={fermer} onOuvrirRang={ouvrirRang} libelleDe={(r) => { const x = ops.find((o) => o.rang === r); return x ? libelle(x) : r }} /> : null}
     </div>
   )
 }
@@ -160,6 +165,7 @@ function Vue({ dossier, ops }: { dossier: DossierLiaison; ops: OperationParcours
 function TableOperations({ operations, selection, onOuvrir }: { operations: OperationParcours[]; selection: string | null; onOuvrir: (id: string) => void }) {
   const { t } = useTranslation()
   const date = useFormatDate()
+  const fonctions = useFonctionsCatalogue()
   const colonnes: Column<OperationParcours>[] = [
     {
       key: 'rang',
@@ -187,7 +193,10 @@ function TableOperations({ operations, selection, onOuvrir }: { operations: Oper
       ),
     },
     { key: 'plateforme', header: t('parcoursOps.col.plateforme'), width: 170, render: (o) => (o.plateforme ? t(`parcours.plateforme.${o.plateforme}`) : '—') },
-    { key: 'responsable', header: t('parcours.qualite.R'), width: 190, render: (o) => (o.raci.R ? t(`parcours.fonction.${o.raci.R.fonction}`) : t('parcoursOps.nonDesigne')) },
+    {
+      key: 'responsable', header: t('parcours.qualite.R'), width: 190,
+      render: (o) => (o.raci.R ? <span className="gm-col" style={{ gap: 2, alignItems: 'flex-start' }}><span>{fonctions.libelle(o.raci.R.fonction)}</span>{o.raci.R.aAffecter ? <StatusBadge status="warn" label={t('parcoursOps.aAffecterCourt')} /> : null}</span> : t('parcoursOps.nonDesigne')),
+    },
     {
       key: 'etat',
       header: t('parcoursOps.col.etat'),
@@ -217,7 +226,7 @@ function TableOperations({ operations, selection, onOuvrir }: { operations: Oper
   return <DataTable columns={colonnes} rows={operations} rowKey={(o) => o.id} selected={selection ? [selection] : []} onRowOpen={(o) => onOuvrir(o.id)} density="compact" />
 }
 
-function Tiroir({ op, dossier, onFermer, onOuvrirRang }: { op: OperationParcours; dossier: DossierLiaison; onFermer: () => void; onOuvrirRang: (rang: string) => void }) {
+function Tiroir({ op, dossier, onFermer, onOuvrirRang, libelleDe }: { op: OperationParcours; dossier: DossierLiaison; onFermer: () => void; onOuvrirRang: (rang: string) => void; libelleDe: (rang: string) => string }) {
   const { t } = useTranslation()
   const onglets = [
     { key: 'execution', label: t('parcoursOps.tiroir.execution') },
@@ -238,12 +247,12 @@ function Tiroir({ op, dossier, onFermer, onOuvrirRang }: { op: OperationParcours
       onClose={onFermer}
       render={(onglet) => (
         <div className="gm-col">
-          {onglet === 'execution' ? <Execution op={op} dossier={dossier} onOuvrirRang={onOuvrirRang} /> : null}
+          {onglet === 'execution' ? <Execution op={op} dossier={dossier} onOuvrirRang={onOuvrirRang} libelleDe={libelleDe} /> : null}
           {onglet === 'detail' ? (
             <>
-              <InfosOperation op={op} onOuvrir={onOuvrirRang} />
-              {op.rang === '16' ? <Essais op={op} dossier={dossier} /> : null}
-              {op.rang === '17' ? <Couverture dossier={dossier} /> : null}
+              <InfosOperation op={op} onOuvrir={onOuvrirRang} libelleDe={libelleDe} />
+              {finEssais(op) ? <Essais op={op} dossier={dossier} /> : null}
+              {op.geste === 'CONSTATER_COUVERTURE' ? <Couverture dossier={dossier} /> : null}
             </>
           ) : null}
           {onglet === 'raci' ? <Raci op={op} /> : null}
@@ -254,28 +263,34 @@ function Tiroir({ op, dossier, onFermer, onOuvrirRang }: { op: OperationParcours
   )
 }
 
-function Execution({ op, dossier, onOuvrirRang }: { op: OperationParcours; dossier: DossierLiaison; onOuvrirRang: (rang: string) => void }) {
+/** Fin des essais (vue ESSAIS, particularité FIN_ESSAIS, D-93) : état des essais service par service. */
+const finEssais = (op: OperationParcours) => op.vue === 'ESSAIS' && op.particularite === 'FIN_ESSAIS'
+
+function Execution({ op, dossier, onOuvrirRang, libelleDe }: { op: OperationParcours; dossier: DossierLiaison; onOuvrirRang: (rang: string) => void; libelleDe: (rang: string) => string }) {
   const { t } = useTranslation()
   const date = useFormatDate()
   const permis = usePermis(op)
   const executeur = useExecuteurActions()
   const { constat } = useActionsOperation()
-  const ailleurs = ongletDuGeste(op.rang) !== null || externe(op)
+  const fonctions = useFonctionsCatalogue()
+  const ailleurs = ongletDuGeste(op) !== null || externe(op, fonctions.externes)
   const geste = !ailleurs && (permis.preuve || permis.livrable || permis.constater)
   const blocages = dossier.blocages.filter((b) => !b.leveLe)
   return (
     <div className="gm-col">
       <Alertes op={op} />
       <Essentiel op={op} />
+      <Renvois op={op} />
       {ailleurs ? <GesteAilleurs op={op} /> : null}
-      {op.rang === '12' && op.preuve?.valeurReference ? <PreuveDeposee op={op} /> : null}
-      {op.etat === 'VERROUILLEE' ? <InfosOperation op={{ ...op, oubliSansSymptome: false, pivot: false }} onOuvrir={onOuvrirRang} /> : null}
+      {op.vue === 'COORDONNEES' && op.preuve?.valeurReference ? <PreuveDeposee op={op} /> : null}
+      {op.etat === 'VERROUILLEE' ? <InfosOperation op={{ ...op, oubliSansSymptome: false, pivot: false }} onOuvrir={onOuvrirRang} libelleDe={libelleDe} /> : null}
       {op.etat === 'BLOQUEE' ? (
         <InlineAlert level="crit" title={t('parcoursOps.bloquee.titre')}>
           {blocages.length ? blocages.map((b) => t('parcoursOps.bloquee.texte', { motif: b.motif, action: b.prochaineAction, echeance: date(b.echeanceLevee) })).join(' ') : t('parcoursOps.bloquee.sansDetail')}
         </InlineAlert>
       ) : null}
-      {!ailleurs && op.rang === '16' ? <Essais op={op} dossier={dossier} /> : null}
+      {!ailleurs && finEssais(op) ? <Essais op={op} dossier={dossier} /> : null}
+      <LivrablesAttendus op={op} />
       {!ailleurs && permis.constater ? (
         <>
           <Couverture dossier={dossier} />
@@ -289,12 +304,14 @@ function Execution({ op, dossier, onOuvrirRang }: { op: OperationParcours; dossi
       {op.etat === 'EN_VALIDATION' ? (
         <>
           <PreuveDeposee op={op} />
-          {permis.valider ? <BlocValidation op={op} /> : <InlineAlert level="info">{t('parcoursOps.enValidation', { qui: op.raci.V ? `${op.raci.V.nom} · ${t(`parcours.fonction.${op.raci.V.fonction}`)}` : t('parcoursOps.nonDesigne') })}</InlineAlert>}
+          {permis.valider ? <BlocValidation op={op} renvoyer={permis.renvoyer} /> : <InlineAlert level="info">{t('parcoursOps.enValidation', { qui: op.raci.V ? (op.raci.V.aAffecter ? t('parcoursOps.aAffecter', { fonction: fonctions.libelle(op.raci.V.fonction) }) : `${op.raci.V.nom} · ${fonctions.libelle(op.raci.V.fonction)}`) : t('parcoursOps.nonDesigne') })}</InlineAlert>}
         </>
       ) : null}
+      {op.etat === 'EN_SIGNATURE' ? <PreuveDeposee op={op} /> : null}
+      <Signatures op={op} />
       {op.etat === 'FAITE' ? <InlineAlert level="info" title={t('parcours.etatOp.FAITE')}>{t('parcoursOps.faite', { date: date(op.faiteLe) })}</InlineAlert> : null}
       {!ailleurs && !geste && !permis.valider && ['A_FAIRE', 'EN_COURS'].includes(op.etat) ? (
-        <InlineAlert level="info">{t('parcoursOps.aucuneAction', { qui: op.raci.R ? t(`parcours.fonction.${op.raci.R.fonction}`) : t('parcoursOps.nonDesigne') })}</InlineAlert>
+        <InlineAlert level="info">{t('parcoursOps.aucuneAction', { qui: op.raci.R ? fonctions.libelle(op.raci.R.fonction) : t('parcoursOps.nonDesigne') })}</InlineAlert>
       ) : null}
       {permis.attribuer ? (
         <section className="gm-col" aria-labelledby={`attr-${op.id}`} style={{ borderTop: 'var(--gm-border-1) solid var(--gm-color-border)', paddingTop: 'var(--gm-space-4)' }}>

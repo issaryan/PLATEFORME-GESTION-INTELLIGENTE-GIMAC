@@ -15,7 +15,9 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Relais des demandes de tâches vers MS-PILOTAGE (docs/lot1/modelisateur-processus.md §5) : dans l'ordre
  * d'écriture ; un échec transitoire repousse la demande (délai croissant) et retient les suivantes de la même
- * tâche, pour qu'une clôture ne devance jamais la création ; un refus définitif (4xx) est consigné sans réessai.
+ * tâche, pour qu'une clôture ne devance jamais la création ; un refus définitif (4xx) est consigné sans réessai. Une
+ * création refusée (PIL_RESPONSABLE_INVALIDE : compte inactif ou inconnu) qui porte un compte de remontée devient une
+ * tâche de réaffectation pour ce compte, le conducteur de la liaison (D-93 §1) : le travail n'est jamais perdu.
  */
 @Component
 public class RelaisTachesPilotage {
@@ -59,6 +61,7 @@ public class RelaisTachesPilotage {
                 case REFUSE -> {
                     d.traitee(DemandeTache.Statut.REFUSEE, maintenant);
                     LOG.warn("Demande de tâche {} ({}) refusée par MS-PILOTAGE ; clé {}", d.getNumero(), d.getNature(), d.getCle());
+                    remonter(d, maintenant);
                 }
                 case INDISPONIBLE -> {
                     d.echec("MS-PILOTAGE indisponible", maintenant, MAXIMUM);
@@ -66,6 +69,35 @@ public class RelaisTachesPilotage {
                 }
             }
         }
+    }
+
+    /** Remontée au conducteur d'une création refusée : tâche « Réaffecter » (même lien, référence suffixée /REFUS). */
+    void remonter(DemandeTache d, Instant maintenant) {
+        if (d.getNature() != DemandeTache.Nature.CREER || d.getEscaladeVers() == null) {
+            return;
+        }
+        PilotageTachesPort.Tache t = JsonTexte.lire(d.getCorps(), PilotageTachesPort.Tache.class);
+        if (d.getEscaladeVers().equals(t.responsableId())) {
+            return;
+        }
+        PilotageTachesPort.Origine o = new PilotageTachesPort.Origine(t.origine().type(), t.origine().reference() + "/REFUS", t.origine().service(), t.origine().lien());
+        String titre = "Réaffecter : " + t.titre();
+        String description = t.responsableId() == null
+            ? "MS-PILOTAGE a refusé la tâche à prendre (permissions " + t.permissionsRequises() + "). Désigner la personne qui tient la fonction " +
+            "concernée. Tâche d'origine : " + t.description()
+            : "MS-PILOTAGE a refusé la tâche destinée au compte " + t.responsableId() + " (compte inactif ou inconnu). Désigner une autre " +
+            "personne pour la fonction concernée. Tâche d'origine : " + t.description();
+        PilotageTachesPort.Tache r = new PilotageTachesPort.Tache(
+            titre.length() > 200 ? titre.substring(0, 199) + "…" : titre,
+            description.length() > 2000 ? description.substring(0, 1999) + "…" : description,
+            t.echeance(),
+            "HAUTE",
+            d.getEscaladeVers(),
+            t.createurId(),
+            o
+        );
+        demandes.save(new DemandeTache(DemandeTache.Nature.CREER, o.reference() + "|" + d.getEscaladeVers(), JsonTexte.ecrire(r), maintenant));
+        LOG.info("Tâche refusée {} remontée au conducteur {}", d.getCle(), d.getEscaladeVers());
     }
 
     private PilotageTachesPort.Resultat envoyer(DemandeTache d) {

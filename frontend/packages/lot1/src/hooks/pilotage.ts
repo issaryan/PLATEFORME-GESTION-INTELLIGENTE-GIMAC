@@ -78,7 +78,10 @@ export const usePreremplir = () => {
 }
 export const useCreerRapport = () => useGeste((s, r: EntreeRapport) => s.pilotage.creerRapport(r))
 export const useModifierRapport = () => useGeste((s, v: { id: string; r: EntreeRapport }) => s.pilotage.modifierRapport(v.id, v.r))
-export const useSoumettre = () => useGeste((s, id: string) => s.pilotage.soumettre(id))
+export const useSoumettre = () => useGeste((s, v: string | { id: string; destinataireId?: string }) => (typeof v === 'string' ? s.pilotage.soumettre(v) : s.pilotage.soumettre(v.id, v.destinataireId)))
+/** Destinataire du rapport et choix possibles avant la soumission (§2.4). */
+export const useDestinatairesRapport = (id: string | undefined, actif = true) =>
+  useLecture([...clesPilotage.rapport(id ?? ''), 'destinataires'], (s) => s.pilotage.destinatairesRapport(id!), { enabled: actif && !!id })
 export const useViser = () => useGeste((s, v: { id: string; commentaire: string }) => s.pilotage.viser(v.id, v.commentaire))
 export const useDocumentRapport = () => {
   const s = useServices()

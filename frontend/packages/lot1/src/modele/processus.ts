@@ -136,7 +136,8 @@ export type EtapeInstance = {
   renvois: number
   tacheId: string | null
   executant: PersonneActivite | null
-  aPrendre: { unite: string; profil: string | null } | null
+  /** Étape à prendre : unité nulle si elle est offerte hors de l'unité, à tous les porteurs du profil dans le GIMAC. */
+  aPrendre: { unite: string | null; profil: string | null } | null
   validateur: Attendu | null
   livrables: (Omit<LivrableProcessus, 'modele'> & { modele: string | null; depot: DepotLivrable | null })[]
   champs: (ChampProcessus & { valeur: string | number | null })[]
@@ -192,6 +193,14 @@ export type Lancement = { intitule: string; champs: Record<string, string | numb
 
 export type DecisionValidation = 'VALIDER' | 'RENVOYER'
 
+/** Porteur actif d'un profil proposé pour un intervenant (désignation hors de l'unité) ; `unite` : code, null sans rattachement. */
+export type CandidatProcessus = { id: string; nomAffiche: string; fonction: string | null; unite: string | null }
+/**
+ * Candidats d'un intervenant (GET /processus/candidats, GET …/etapes/{code}/candidats) : porteurs actifs du profil dans
+ * l'unité (sous-unités comprises), puis ailleurs dans le GIMAC ; sans profil : membres actifs de l'unité seulement.
+ */
+export type CandidatsProcessus = { unite: string; profil: string | null; dansUnite: CandidatProcessus[]; ailleurs: CandidatProcessus[] }
+
 /** Bornes du contrat (§5.1), annoncées avant l'envoi ; le service refait tout. */
 export const LIMITES_PROCESSUS = {
   code: /^[A-Z][A-Z0-9_-]{1,39}$/,
@@ -241,4 +250,18 @@ export function intervenantNormalise(i: Intervenant): Intervenant {
   if (i.mode === 'AU_LANCEMENT') return { ...base, remplacement: i.remplacement ?? null, unite: i.unite || null }
   if (i.mode === 'CHEF_UNITE') return { ...base, unite: i.unite || null }
   return base
+}
+
+/**
+ * Portée de l'appelant sur les processus d'unité (GET /processus/portee, D-92) : TOUS_DOMAINES (REF_METIER_ADMIN, ou
+ * PROCESSUS_DEFINIR / PROCESSUS_LANCER à la portée TOUTES) ou MES_UNITES ; `unites` et `unitesDefinissables` ne sont
+ * remplies qu'en MES_UNITES.
+ */
+export type PorteeProcessus = {
+  portee: 'TOUS_DOMAINES' | 'MES_UNITES'
+  definirToutesUnites: boolean
+  lancerToutesUnites: boolean
+  auTitreDe: string[]
+  unites: string[]
+  unitesDefinissables: string[]
 }

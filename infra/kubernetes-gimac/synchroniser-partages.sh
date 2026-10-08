@@ -3,8 +3,9 @@
 #
 # Kustomize refuse de lire un fichier hors de son dossier (restriction de chargement, que ni
 # « kubectl apply -k » ni infra/ci/valider-infra.sh ne lèvent) : les politiques OPA, la configuration
-# d'Alertmanager, les règles d'alerte de Prometheus et le script des sujets Kafka, dont Docker Compose
-# est la source, sont donc recopiés dans partages/ (et regles-alertes.yaml), sans aucune retouche.
+# d'Alertmanager, les règles d'alerte de Prometheus, le script des sujets Kafka et la fusion du domaine
+# Keycloak (infra/ci/fusionner-domaine.py), dont Docker Compose et la CI sont la source, sont donc
+# recopiés dans partages/ (et regles-alertes.yaml), sans aucune retouche.
 #
 #   ./synchroniser-partages.sh             recopie les sources dans partages/ et regles-alertes.yaml
 #   ./synchroniser-partages.sh --verifier  échoue (code 1) si une copie diffère de sa source
@@ -28,6 +29,7 @@ for f in "$POLITIQUES"/*.rego; do
 done
 paires+=("$INFRA/docker-compose/alertmanager-conf/config.yml" "$ICI/partages/alertmanager/config.yml")
 paires+=("$INFRA/kafka/creer-sujets-lot1.sh" "$ICI/partages/kafka/creer-sujets-lot1.sh")
+paires+=("$INFRA/ci/fusionner-domaine.py" "$ICI/partages/keycloak/fusionner-domaine.py")
 
 # Règles d'alerte : la ressource PrometheusRule porte, sous « spec », le contenu de alert_rules.yml.
 regles_attendues() {

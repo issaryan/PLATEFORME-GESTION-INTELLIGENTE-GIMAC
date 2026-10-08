@@ -1,7 +1,6 @@
 package cm.gimac.des.certification.domain.decision;
 
 import cm.gimac.des.certification.domain.enumeration.ObjetSignature;
-import cm.gimac.des.certification.domain.enumeration.RoleSignature;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -15,7 +14,7 @@ import org.hibernate.annotations.Immutable;
 /**
  * Signature d'un verrou (D-35) : assertion WebAuthn personnelle vérifiée par MS-IAM, conservée, puis cachet
  * de la plateforme horodaté sur l'empreinte de la décision canonique. Immuable : aucune colonne n'est
- * modifiable (entité en lecture seule après insertion, déclencheur en base, unicité liaison-objet-qualité).
+ * modifiable (entité en lecture seule après insertion, déclencheur en base, unicité liaison-objet-étape).
  */
 @Entity
 @Immutable
@@ -33,9 +32,9 @@ public class SignatureVerrou {
     @Column(name = "objet", length = 20, nullable = false)
     private ObjetSignature objet;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "role", length = 30, nullable = false)
-    private RoleSignature role;
+    /** Code de la signature dans le circuit (D-94) ; reprise : GIMAC, PARTICIPANT, CONFORMITE, DIRECTION_GENERALE. */
+    @Column(name = "etape", length = 40, nullable = false)
+    private String etape;
 
     @Column(name = "signataire_id", length = 80, nullable = false)
     private String signataireId;
@@ -43,7 +42,7 @@ public class SignatureVerrou {
     @Column(name = "signataire_nom", length = 200, nullable = false)
     private String signataireNom;
 
-    @Column(name = "fonction", length = 30, nullable = false)
+    @Column(name = "fonction", length = 40, nullable = false)
     private String fonction;
 
     @Column(name = "favorable", nullable = false)
@@ -75,11 +74,11 @@ public class SignatureVerrou {
 
     protected SignatureVerrou() {}
 
-    /** Décision signée : objet, qualité, signataire, sens et motif, instant et empreinte de l'objet. */
+    /** Décision signée : objet, étape du circuit, signataire, sens et motif, instant et empreinte de l'objet. */
     public record Decision(
         UUID liaisonId,
         ObjetSignature objet,
-        RoleSignature role,
+        EtapeSignature etape,
         String signataireId,
         String signataireNom,
         boolean favorable,
@@ -95,10 +94,10 @@ public class SignatureVerrou {
         this.id = id;
         this.liaisonId = d.liaisonId();
         this.objet = d.objet();
-        this.role = d.role();
+        this.etape = d.etape().code();
         this.signataireId = d.signataireId();
         this.signataireNom = d.signataireNom();
-        this.fonction = d.role().fonction();
+        this.fonction = d.etape().fonction();
         this.favorable = d.favorable();
         this.motif = d.motif();
         this.signeLe = d.signeLe();
@@ -122,8 +121,8 @@ public class SignatureVerrou {
         return objet;
     }
 
-    public RoleSignature getRole() {
-        return role;
+    public String getEtape() {
+        return etape;
     }
 
     public String getSignataireId() {

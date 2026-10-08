@@ -46,14 +46,35 @@ public class TableauxDeBordResource {
         return lectures.intervenants(fonction);
     }
 
+    /**
+     * Fonction du catalogue (D-91) portée par l'appelant : {@code profils} du jeton qui la lui confèrent (une fonction
+     * collective, comme les chefs de département, découle d'une autre fonction et n'en a aucun).
+     */
+    public record FonctionAppelant(String code, String libelle, boolean externe, List<String> profils) {}
+
+    /**
+     * Fonctions de l'appelant (D-94 §3), déduites du catalogue des fonctions et des profils de son jeton : l'interface
+     * n'a plus de table profil vers fonction.
+     */
+    @GetMapping("/moi/fonctions")
+    @PreAuthorize("isAuthenticated()")
+    public List<FonctionAppelant> mesFonctions(Authentication auth) {
+        var autorites = ActeurCourant.de(auth).permissions();
+        return cm.gimac.des.homologation.domain.service.VisibiliteReferentiel.fonctions(autorites)
+            .stream()
+            .sorted()
+            .map(f -> new FonctionAppelant(f.name(), f.libelle(), f.externe(), f.profils().stream().filter(autorites::contains).toList()))
+            .toList();
+    }
+
     static List<Fonction> fonctions(String liste) {
         if (liste == null || liste.isBlank()) {
             return List.of();
         }
-        try {
-            return Arrays.stream(liste.split(",")).map(String::trim).filter(s -> !s.isEmpty()).map(Fonction::valueOf).toList();
-        } catch (IllegalArgumentException e) {
-            throw HomologationException.unprocessable("HOM_FUNCTION_UNKNOWN", "Fonction inconnue.");
-        }
+        return Arrays.stream(liste.split(","))
+            .map(String::trim)
+            .filter(s -> !s.isEmpty())
+            .map(s -> Fonction.duCatalogue(s).orElseThrow(() -> HomologationException.unprocessable("HOM_FUNCTION_UNKNOWN", "Fonction inconnue.")))
+            .toList();
     }
 }

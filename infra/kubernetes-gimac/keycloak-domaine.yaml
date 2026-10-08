@@ -1,0 +1,19 @@
+# Mise à jour du domaine « gimac » en conservant l'administration faite dans la plateforme (D-62, D-81, D-86,
+# D-94) : comptes (mots de passe hachés, codes TOTP), profils créés, recompositions, politique de mot de passe,
+# OTP, sessions et force brute modifiées dans la console. Équivalent de actualiser_domaine de
+# infra/ci/deployer-serveur.sh ; procédure : actualiser-domaine-keycloak.sh, Job keycloak-domaine-job.yaml.
+#
+# Le volume garde le domaine du dépôt importé la fois précédente (gimac-realm.precedent.json) : base de la
+# fusion à trois voies de fusionner-domaine.py. Il n'est monté que par le Job (ReadWriteOnce suffit).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: keycloak-domaine-etat
+  namespace: gimac-des
+  labels:
+    app: keycloak-domaine
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 16Mi

@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { MultiSelect, SearchSelect } from '../src'
+import { MultiSelect, SearchSelect, Select } from '../src'
 
 afterEach(cleanup)
 const OPTIONS = [
@@ -82,5 +82,24 @@ describe('MultiSelect avec suggestions', () => {
     rerender(<MultiSelect label="D" value={['u1']} options={OPTIONS} />)
     fireEvent.focus(screen.getByLabelText('D'))
     expect(screen.queryByRole('listbox')).toBeNull()
+  })
+})
+
+describe('Select groupé', () => {
+  it('réunit les options consécutives d’un même groupe sous son titre, les autres restent seules', () => {
+    const choisir = vi.fn()
+    render(<Select label="Personne" value="" onChange={choisir} options={[
+      { value: '', label: 'Choisir' },
+      { value: 'u1', label: 'Aïcha', group: 'Dans l’unité' },
+      { value: 'u2', label: 'Rachel', group: 'Ailleurs' },
+      { value: 'u3', label: 'Hervé', group: 'Ailleurs' },
+    ]} />)
+    const liste = screen.getByRole('combobox', { name: 'Personne' })
+    const groupes = liste.querySelectorAll('optgroup')
+    expect([...groupes].map((g) => g.label)).toEqual(['Dans l’unité', 'Ailleurs'])
+    expect(groupes[1].querySelectorAll('option')).toHaveLength(2)
+    expect(liste.querySelectorAll('option')).toHaveLength(4)
+    fireEvent.change(liste, { target: { value: 'u3' } })
+    expect(choisir).toHaveBeenCalledWith('u3')
   })
 })

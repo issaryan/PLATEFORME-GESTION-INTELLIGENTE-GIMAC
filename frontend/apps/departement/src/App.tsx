@@ -1,19 +1,18 @@
 import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router'
-import { EmptyState, Skeleton } from '@gimac/design-system'
-import { useTranslation } from 'react-i18next'
+import { Skeleton } from '@gimac/design-system'
 import {
   Aiguillage, ConnexionProvider, Enveloppe, aPermission, GardeSession, NotificationsPage, NotificationsProvider, PageConnexion, PageDeconnexion, SessionActive, adresseConnexion, configureHttp,
   connexionHttp, lirePreference, lireSessionDemo, notificationsHttp, surNonAutorise, type EtatCanal, type LecteurApercu, type ServiceNotifications, type Session,
 } from '@gimac/socle'
 import { CompteProvider, GardePremierAcces, MonComptePage, useMonAvatar, monCompteHttp, monCompteSimule } from '@gimac/compte'
 import {
-  ExtensionsTableauDeBordProvider, Fournisseurs, NAVIGATION_DES, ORGANISATION_DEMO, PERM, creerClientRequetes, lecteurApercu, magasinPouvoirs, notificationsDemo, rattachementDemo, servicesHttp,
-  servicesSimules, useNonLus,
-  useSourcesRecherche,
+  CatalogueFonctionnalitesProvider, ECRANS_DES, ExtensionsTableauDeBordProvider, Fournisseurs, GardeFonctionnalite, ORGANISATION_DEMO, PERM, creerClientRequetes, lecteurApercu,
+  magasinPouvoirs, navigationDepuis, navigationRepli, notificationsDemo, rattachementDemo, servicesHttp, servicesSimules, useNonLus, useSourcesRecherche, useTraduire,
+  type EtatCatalogue,
 } from '@gimac/lot1'
 import {
-  ServicesConsoleProvider, TableauAdministrationComptes, WidgetChargesEnErreur, WidgetSupervision, servicesConsoleHttp, servicesConsoleSimules, useSourceComptes,
+  ServicesConsoleProvider, TableauAdministrationComptes, WidgetChargesEnErreur, WidgetSupervision, servicesConsoleHttp, servicesConsoleSimules, useFonctionnalites, useSourceComptes,
 } from '@gimac/administration'
 import { PROFILS_DEMO, roleDemo, sessionDemo } from './profils'
 import { connexionDemo } from './connexionDemo'
@@ -37,6 +36,8 @@ const DossierMiseEnServicePage = lazy(() => import('@gimac/lot1/pages/des/Dossie
 const ParcoursPage = lazy(() => import('@gimac/lot1/pages/des/parcours/ParcoursPage'))
 const DossierLiaisonPage = lazy(() => import('@gimac/lot1/pages/des/parcours/DossierLiaisonPage'))
 const ReferentielsOperationsPage = lazy(() => import('@gimac/lot1/pages/des/ReferentielsOperationsPage'))
+// Types de projet et catalogue des fonctions (D-91).
+const TypesProjetPage = lazy(() => import('@gimac/lot1/pages/des/referentiels/TypesProjetPage'))
 const MessageriePage = lazy(() => import('@gimac/lot1/pages/des/messagerie/MessageriePage'))
 // Mon activité (D-76, docs/lot1/mon-activite.md) : journée, agenda, tâches, rapports et équipe de chacun.
 const MaJourneePage = lazy(() => import('@gimac/lot1/pages/des/activite/MaJourneePage'))
@@ -74,10 +75,17 @@ const CHEMINS_ADMINISTRATION = { base: '/des/administration', espace: '/des', pl
 // des comptes (D-69), résumé de la supervision et charges de travail en erreur (D-78, D-79).
 const EXTENSIONS_TABLEAU = { administration: TableauAdministrationComptes, supervision: WidgetSupervision, infrastructure: WidgetChargesEnErreur }
 
-/** Écran réservé à une permission : sans elle, accès refusé explicite (la passerelle refait le contrôle). */
-function Autorise({ permissions, exigee, children }: { permissions: string[]; exigee: string; children: ReactNode }) {
-  const { t } = useTranslation()
-  return aPermission(permissions, exigee) ? <>{children}</> : <EmptyState icon="lock" title={t('console.refuse.titre')} text={t('console.refuse.texte')} />
+/**
+ * Écran d'une fonctionnalité du catalogue servi par MS-IAM (D-94) : ouvert si la configuration le rend visible et que
+ * les permissions satisfont son prédicat (et détiennent `droit`) ; refus explicite, la passerelle refait le contrôle.
+ */
+const G = (cle: string, page: ReactNode, droit?: string) => <GardeFonctionnalite cle={cle} droit={droit}>{page}</GardeFonctionnalite>
+
+/** État du catalogue des fonctionnalités : lu sur /bff/des/iam/configuration/fonctionnalites ; échec : repli prudent. */
+function useEtatCatalogue(actif: boolean): EtatCatalogue {
+  const q = useFonctionnalites(actif)
+  // Réponse qui n'est pas une liste : tenue pour indisponible (repli prudent), comme un échec.
+  return useMemo(() => (Array.isArray(q.data) ? { etat: 'pret', fonctionnalites: q.data } : q.isError || q.data ? { etat: 'indisponible', fonctionnalites: [] } : { etat: 'chargement', fonctionnalites: [] }), [q.data, q.isError])
 }
 
 const VERSION = import.meta.env.VITE_VERSION ?? '0.1.0'
@@ -97,7 +105,12 @@ function Pages({ session, etatCanal, correlationId, notifications }: { session: 
   const objets = useSourcesRecherche(p, '/des')
   const comptes = useSourceComptes(p)
   const recherche = useMemo(() => [...objets, ...comptes], [objets, comptes])
+  // Barre latérale dérivée du catalogue servi (D-94) ; l'accueil seul tant qu'il n'est pas servi.
+  const catalogue = useEtatCatalogue(!session.restreinte)
+  const tr = useTraduire()
+  const navigation = useMemo(() => (catalogue.etat === 'pret' ? navigationDepuis(catalogue.fonctionnalites, 'des', ECRANS_DES, tr, 'nav.groupe.') : navigationRepli('des')), [catalogue, tr])
   return (
+    <CatalogueFonctionnalitesProvider valeur={catalogue}>
     <GardePremierAcces>
       {(assistant) => (
         // Cloche, fenêtres surgissantes et page des notifications (D-80) : NOT_INBOX_READ, hors premier accès.
@@ -106,7 +119,7 @@ function Pages({ session, etatCanal, correlationId, notifications }: { session: 
           avatar={moi?.src}
           fonction={moi?.fonction}
           couche="des"
-          navigation={assistant ? [] : NAVIGATION_DES}
+          navigation={assistant ? [] : navigation}
           permissions={session.permissions}
           badges={{ messagerie: nonLus.data?.total ?? 0 }}
           utilisateur={session.nom}
@@ -125,41 +138,42 @@ function Pages({ session, etatCanal, correlationId, notifications }: { session: 
                 <>
                   <Route path="mon-compte" element={<MonComptePage />} />
                   <Route path="tableau-de-bord" element={<TableauDeBordPage />} />
-                  <Route path="institutions" element={<InstitutionsPage />} />
-                  <Route path="institutions/:id" element={<InstitutionPage />} />
-                  <Route path="liaisons" element={<LiaisonsPage />} />
-                  <Route path="liaisons/:id" element={<LiaisonPage />} />
-                  <Route path="liaisons/:id/operations/:op/cloture" element={<ClotureOperationPage />} />
-                  <Route path="liaisons/:id/mise-en-service" element={<DossierMiseEnServicePage />} />
-                  <Route path="parcours" element={<ParcoursPage />} />
-                  <Route path="parcours/:id" element={<DossierLiaisonPage />} />
-                  <Route path="messagerie" element={<MessageriePage />} />
-                  <Route path="notifications" element={<Autorise permissions={p} exigee={PERM.notificationsLire}><NotificationsPage /></Autorise>} />
-                  <Route path="activite" element={<Autorise permissions={p} exigee="PIL_ACTIVITY_OWN"><MaJourneePage /></Autorise>} />
-                  <Route path="agenda" element={<Autorise permissions={p} exigee="PIL_ACTIVITY_OWN"><AgendaPage /></Autorise>} />
-                  <Route path="taches" element={<Autorise permissions={p} exigee="PIL_ACTIVITY_OWN"><TachesPage /></Autorise>} />
-                  <Route path="rapports" element={<Autorise permissions={p} exigee="PIL_ACTIVITY_OWN"><RapportsPage /></Autorise>} />
-                  <Route path="equipe" element={<Autorise permissions={p} exigee="PIL_TEAM_READ"><EquipePage /></Autorise>} />
-                  <Route path="equipe/demandes" element={<Autorise permissions={p} exigee="PIL_TEAM_READ"><EquipePage /></Autorise>} />
-                  <Route path="processus" element={<Autorise permissions={p} exigee="PIL_ACTIVITY_OWN"><ProcessusPage /></Autorise>} />
-                  <Route path="processus/instances/:id" element={<Autorise permissions={p} exigee="PIL_ACTIVITY_OWN"><InstanceProcessusPage /></Autorise>} />
-                  <Route path="processus/:id" element={<Autorise permissions={p} exigee="PIL_ACTIVITY_OWN"><ModelisateurProcessusPage /></Autorise>} />
-                  <Route path="referentiels/operations" element={<ReferentielsOperationsPage />} />
-                  <Route path="administration/comptes" element={<Autorise permissions={p} exigee="IAM_ACCOUNT_READ"><ComptesPage /></Autorise>} />
-                  <Route path="administration/comptes/nouveau" element={<Autorise permissions={p} exigee="IAM_ACCOUNT_CREATE"><CreationComptePage /></Autorise>} />
-                  <Route path="administration/comptes/:id" element={<Autorise permissions={p} exigee="IAM_ACCOUNT_READ"><ComptePage /></Autorise>} />
-                  <Route path="administration/journal" element={<Autorise permissions={p} exigee="IAM_JOURNAL_READ"><JournalAdministrationPage /></Autorise>} />
-                  <Route path="administration/profils" element={<Autorise permissions={p} exigee="IAM_ACCOUNT_READ"><ProfilsPage /></Autorise>} />
-                  <Route path="administration/demandes" element={<Autorise permissions={p} exigee="IAM_ACCOUNT_READ"><DemandesPage /></Autorise>} />
-                  <Route path="administration/matrice-pouvoirs" element={<Autorise permissions={p} exigee="IAM_ACCOUNT_READ"><MatricePouvoirsPage /></Autorise>} />
-                  <Route path="administration/organisation" element={<Autorise permissions={p} exigee="IAM_ACCOUNT_READ"><OrganisationPage /></Autorise>} />
-                  <Route path="administration/organigramme" element={<Autorise permissions={p} exigee="IAM_ACCOUNT_READ"><OrganigrammePage /></Autorise>} />
-                  <Route path="administration/politique-securite" element={<Autorise permissions={p} exigee="PLATFORM_SECURITY_POLICY_READ"><PolitiqueSecuritePage /></Autorise>} />
-                  <Route path="plateforme/supervision" element={<Autorise permissions={p} exigee="PLATFORM_SUPERVISION_READ"><SupervisionPage /></Autorise>} />
-                  <Route path="plateforme/infrastructure" element={<Autorise permissions={p} exigee="PLATFORM_OPS_READ"><InfrastructurePage /></Autorise>} />
-                  <Route path="plateforme/configuration" element={<Autorise permissions={p} exigee="PLATFORM_CONFIG_READ"><ConfigurationPlateformePage /></Autorise>} />
-                  <Route path="plateforme/journalisation" element={<Autorise permissions={p} exigee="PLATFORM_CONFIG_READ"><JournalisationPage /></Autorise>} />
-                  <Route path="plateforme/courriels" element={<Autorise permissions={p} exigee="PLATFORM_MESSAGING_EDIT"><CourrielsPage /></Autorise>} />
+                  <Route path="institutions" element={G('institutions', <InstitutionsPage />)} />
+                  <Route path="institutions/:id" element={G('institutions', <InstitutionPage />)} />
+                  <Route path="liaisons" element={G('liaisons', <LiaisonsPage />)} />
+                  <Route path="liaisons/:id" element={G('liaisons', <LiaisonPage />)} />
+                  <Route path="liaisons/:id/operations/:op/cloture" element={G('liaisons', <ClotureOperationPage />)} />
+                  <Route path="liaisons/:id/mise-en-service" element={G('liaisons', <DossierMiseEnServicePage />)} />
+                  <Route path="parcours" element={G('liaisons', <ParcoursPage />)} />
+                  <Route path="parcours/:id" element={G('liaisons', <DossierLiaisonPage />)} />
+                  <Route path="messagerie" element={G('messagerie', <MessageriePage />)} />
+                  <Route path="notifications" element={G('notifications', <NotificationsPage />)} />
+                  <Route path="activite" element={G('maJournee', <MaJourneePage />)} />
+                  <Route path="agenda" element={G('agenda', <AgendaPage />)} />
+                  <Route path="taches" element={G('taches', <TachesPage />)} />
+                  <Route path="rapports" element={G('rapports', <RapportsPage />)} />
+                  <Route path="equipe" element={G('equipe', <EquipePage />)} />
+                  <Route path="equipe/demandes" element={G('equipe', <EquipePage />)} />
+                  <Route path="processus" element={G('processus', <ProcessusPage />)} />
+                  <Route path="processus/instances/:id" element={G('processus', <InstanceProcessusPage />)} />
+                  <Route path="processus/:id" element={G('processus', <ModelisateurProcessusPage />)} />
+                  <Route path="referentiels/operations" element={G('referentiels', <ReferentielsOperationsPage />)} />
+                  <Route path="referentiels/types-projet" element={G('referentiels', <TypesProjetPage />)} />
+                  <Route path="administration/comptes" element={G('adminComptes', <ComptesPage />)} />
+                  <Route path="administration/comptes/nouveau" element={G('adminComptes', <CreationComptePage />, 'IAM_ACCOUNT_CREATE')} />
+                  <Route path="administration/comptes/:id" element={G('adminComptes', <ComptePage />)} />
+                  <Route path="administration/journal" element={G('adminJournal', <JournalAdministrationPage />)} />
+                  <Route path="administration/profils" element={G('adminProfils', <ProfilsPage />)} />
+                  <Route path="administration/demandes" element={G('adminDemandes', <DemandesPage />)} />
+                  <Route path="administration/matrice-pouvoirs" element={G('adminMatrice', <MatricePouvoirsPage />)} />
+                  <Route path="administration/organisation" element={G('adminOrganisation', <OrganisationPage />)} />
+                  <Route path="administration/organigramme" element={G('adminOrganigramme', <OrganigrammePage />)} />
+                  <Route path="administration/politique-securite" element={G('adminPolitique', <PolitiqueSecuritePage />)} />
+                  <Route path="plateforme/supervision" element={G('supervision', <SupervisionPage />)} />
+                  <Route path="plateforme/infrastructure" element={G('infrastructure', <InfrastructurePage />)} />
+                  <Route path="plateforme/configuration" element={G('configuration', <ConfigurationPlateformePage />)} />
+                  <Route path="plateforme/journalisation" element={G('journalisation', <JournalisationPage />)} />
+                  <Route path="plateforme/courriels" element={G('courriels', <CourrielsPage />)} />
                   <Route path="*" element={<Navigate to="/des/tableau-de-bord" replace />} />
                 </>
               )}
@@ -169,6 +183,7 @@ function Pages({ session, etatCanal, correlationId, notifications }: { session: 
         </NotificationsProvider>
       )}
     </GardePremierAcces>
+    </CatalogueFonctionnalitesProvider>
   )
 }
 

@@ -132,7 +132,7 @@ export function TopBar(p: TopBarProps) {
         </span>
         {p.notifications ? (
           <span ref={ancreCloche} className="gm-topbar-ancre">
-            <IconButton variant="ghost" icon="bell-ring" label={nonLues > 0 ? t('notif.clocheN', { n: pastilleCompteur(nonLues) }) : t('notif.titre')} aria-haspopup="dialog" aria-expanded={cloche}
+            <IconButton variant="ghost" icon="bell-ring" label={nonLues === 1 ? t('notif.clocheUne') : nonLues > 0 ? t('notif.clocheN', { n: pastilleCompteur(nonLues) }) : t('notif.titre')} aria-haspopup="dialog" aria-expanded={cloche}
               onClick={() => { setCloche(!cloche); setOuvert(false); setMenu(false) }} />
             {nonLues > 0 ? <span className="gm-topbar-pastille gm-num" aria-hidden="true">{pastilleCompteur(nonLues)}</span> : null}
             {cloche ? (

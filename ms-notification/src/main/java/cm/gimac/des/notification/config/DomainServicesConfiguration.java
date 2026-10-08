@@ -1,5 +1,6 @@
 package cm.gimac.des.notification.config;
 
+import cm.gimac.des.notification.domain.service.ReglesHomologation;
 import cm.gimac.des.notification.domain.service.ReglesNotifications;
 import java.time.Clock;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -19,5 +20,11 @@ public class DomainServicesConfiguration {
     @Bean
     public ReglesNotifications reglesNotifications() {
         return new ReglesNotifications();
+    }
+
+    /** Notifications du parcours d'homologation (D-93). */
+    @Bean
+    public ReglesHomologation reglesHomologation() {
+        return new ReglesHomologation();
     }
 }

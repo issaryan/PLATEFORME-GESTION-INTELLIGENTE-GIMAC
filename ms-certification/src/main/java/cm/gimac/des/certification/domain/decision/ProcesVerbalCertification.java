@@ -40,8 +40,12 @@ public class ProcesVerbalCertification {
     @Column(name = "institution_nom", length = 200)
     private String institutionNom;
 
-    @Column(name = "type_projet", length = 30)
+    @Column(name = "type_projet", length = 40)
     private String typeProjet;
+
+    /** Modèle du type de projet (D-91), figé à l'établissement : il fixe les attestations exigées. */
+    @Column(name = "modele_type_projet", length = 30)
+    private String modeleTypeProjet;
 
     @Column(name = "fintech", nullable = false)
     private boolean fintech;
@@ -78,6 +82,11 @@ public class ProcesVerbalCertification {
     @Column(name = "empreinte", length = 64)
     private String empreinte;
 
+    /** Circuit de signature (D-94), figé à la première signature ; vide avant. */
+    @Convert(converter = CircuitSignatureConverter.class)
+    @Column(name = "circuit", columnDefinition = "text")
+    private List<EtapeSignature> circuit = new ArrayList<>();
+
     @Version
     @Column(name = "version", nullable = false)
     private int version;
@@ -102,6 +111,7 @@ public class ProcesVerbalCertification {
         this.institutionId = identite.institutionId();
         this.institutionNom = identite.institutionNom();
         this.typeProjet = identite.typeProjet();
+        this.modeleTypeProjet = identite.modeleTypeProjet();
         this.fintech = identite.fintech();
         this.couvertureTaux = couverture.taux();
         this.couvertureNumerateur = couverture.numerateur();
@@ -116,7 +126,12 @@ public class ProcesVerbalCertification {
     }
 
     /** Identité de la liaison figée sur le procès-verbal. */
-    public record Identite(String reference, String institutionId, String institutionNom, String typeProjet, boolean fintech) {}
+    public record Identite(String reference, String institutionId, String institutionNom, String typeProjet, boolean fintech, String modeleTypeProjet) {
+        /** Identité sans modèle : celui du type repris de même code, sinon générique (D-91). */
+        public Identite(String reference, String institutionId, String institutionNom, String typeProjet, boolean fintech) {
+            this(reference, institutionId, institutionNom, typeProjet, fintech, null);
+        }
+    }
 
     /** Couverture de certification du périmètre, calculée par MS-HOMOLOGATION (HOM-17). */
     public record Couverture(Integer taux, int numerateur, int denominateur) {}
@@ -151,6 +166,11 @@ public class ProcesVerbalCertification {
 
     public boolean isFintech() {
         return fintech;
+    }
+
+    /** Modèle du type de projet (D-91) ; procès-verbal antérieur sans modèle : déduit du code du type. */
+    public String getModeleTypeProjet() {
+        return cm.gimac.des.certification.domain.service.ApprobationPolicy.modele(modeleTypeProjet, typeProjet);
     }
 
     public EtatProcesVerbal getEtat() {
@@ -191,6 +211,17 @@ public class ProcesVerbalCertification {
 
     public Instant getEtabliLe() {
         return etabliLe;
+    }
+
+    public List<EtapeSignature> getCircuit() {
+        return circuit == null ? List.of() : List.copyOf(circuit);
+    }
+
+    /** Fige le circuit de signature (une seule fois, à la première signature). */
+    public void figerCircuit(List<EtapeSignature> etapes) {
+        if (circuit == null || circuit.isEmpty()) {
+            this.circuit = new ArrayList<>(etapes);
+        }
     }
 
     public String getEmpreinte() {

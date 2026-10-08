@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.stream.Stream;
 import org.springframework.stereotype.Component;
 
@@ -62,10 +63,10 @@ public class Equipes {
         return perimetre(appelant, pouvoir).membre(autre);
     }
 
-    /** L'unité est couverte par {@code pouvoir} : portée UNITES et unité dirigée (sous-unités comprises). */
+    /** L'unité est couverte par {@code pouvoir} : portée TOUTES (D-92), ou portée UNITES et unité dirigée (sous-unités comprises). */
     public boolean couvreUnite(Appelant appelant, Pouvoir pouvoir, String unite) {
         Pouvoirs p = pouvoirs(appelant.id());
-        return p.portee(pouvoir) == Portee.UNITES && p.dirige(unite);
+        return p.toutes(pouvoir) || (p.portee(pouvoir) == Portee.UNITES && p.dirige(unite));
     }
 
     /** Lecture des données d'un autre compte : soi-même, ou un compte couvert par {@code pouvoir}, avec PIL_TEAM_READ. */
@@ -159,5 +160,54 @@ public class Equipes {
     /** Le compte, actif, est membre de l'unité (ou d'une sous-unité) et porte le profil. */
     public boolean porteProfilDans(String compteId, String unite, String profil) {
         return membresUnite(unite, profil).map(u -> u.actifs().stream().anyMatch(m -> m.id().equals(compteId))).orElse(false);
+    }
+
+    /**
+     * Porteurs actifs de {@code profil} dans tout le GIMAC (désignation hors de l'unité, D-87) : comptes internes actifs,
+     * rattachés à une unité active ou sans rattachement ; un compte d'une unité inactive ou inconnue est écarté.
+     */
+    public List<OrganisationPort.MembreProfil> porteursActifs(String profil) {
+        if (profil == null || profil.isBlank()) {
+            return List.of();
+        }
+        Map<String, Boolean> actives = new HashMap<>();
+        return organisation
+            .porteursProfil(profil)
+            .stream()
+            .filter(OrganisationPort.MembreProfil::actif)
+            .filter(m -> m.unite() == null || actives.computeIfAbsent(m.unite(), u -> organisation.membresUnite(u, null).map(OrganisationPort.UniteMembres::active).orElse(false)))
+            .toList();
+    }
+
+    /** Comptes internes actifs portant l'un des profils, toutes unités confondues (offre sans unité, D-93). */
+    public List<String> porteursProfils(Collection<String> codes) {
+        return codes.stream().flatMap(p -> organisation.porteursProfil(p).stream()).filter(OrganisationPort.MembreProfil::actif).map(OrganisationPort.MembreProfil::id).distinct().toList();
+    }
+
+    /** Comptes internes actifs portant l'une des permissions, toutes unités confondues (offre par permission, D-94). */
+    public List<String> porteursPermissions(Collection<String> codes) {
+        return codes.stream().flatMap(p -> organisation.porteursPermission(p).stream()).filter(OrganisationPort.MembreProfil::actif).map(OrganisationPort.MembreProfil::id).distinct().toList();
+    }
+
+    /**
+     * Permissions, parmi {@code candidates}, que porte le compte (lu par permission dans MS-IAM, cache court).
+     * Annuaire injoignable : 503 PIL_ORGANISATION_INDISPONIBLE.
+     */
+    public Set<String> permissionsDe(String compteId, Collection<String> candidates) {
+        if (compteId == null || candidates == null || candidates.isEmpty()) {
+            return Set.of();
+        }
+        Set<String> portees = new TreeSet<>();
+        for (String p : candidates) {
+            if (organisation.porteursPermission(p).stream().anyMatch(m -> m.actif() && compteId.equals(m.id()))) {
+                portees.add(p);
+            }
+        }
+        return portees;
+    }
+
+    /** Oublie les lectures de l'organisation mises en cache (changement publié par MS-IAM, D-93). */
+    public void rafraichir() {
+        organisation.rafraichir();
     }
 }

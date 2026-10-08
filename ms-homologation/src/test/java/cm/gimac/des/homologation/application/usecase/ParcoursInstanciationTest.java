@@ -51,7 +51,6 @@ class ParcoursInstanciationTest {
     void init() {
         instanciation = new ParcoursInstanciation(versions, elements, depot, intervenants, Clock.fixed(Instant.parse("2026-10-06T09:00:00Z"), ZoneOffset.UTC));
         when(depot.prochainNumero()).thenReturn(7L);
-        when(intervenants.titulaire(any())).thenAnswer(i -> Personne.aAffecter(i.getArgument(0)));
     }
 
     @Test
@@ -67,7 +66,27 @@ class ParcoursInstanciationTest {
         assertThat(p.operation("D1").orElseThrow().getRaci().r().nom()).isEqualTo("Conducteur de projet");
         assertThat(p.operation("D1").orElseThrow().getRaci().e()).extracting(Personne::fonction).containsExactly(Fonction.PERSONNALISATEUR);
         assertThat(p.operation("3").orElseThrow().getRaci().e()).extracting(Personne::fonction).containsExactly(Fonction.PARTICIPANT);
-        assertThat(p.operation("6").orElseThrow().getRaci().r()).isEqualTo(Personne.aAffecter(Fonction.CHEF_DES));
+        assertThat(p.operation("6").orElseThrow().getRaci().r()).isEqualTo(Personne.aAffecter(Fonction.CHEFS_DEPARTEMENT));
+        // D-93 §1 : plus de marqueur fictif, plus de premier titulaire ; le personnalisateur reste à affecter.
+        assertThat(p.operation("D1").orElseThrow().getRaci().e()).containsExactly(Personne.aAffecter(Fonction.PERSONNALISATEUR));
+        assertThat(p.operations()).allSatisfy(o -> assertThat(o.getRaci().toutes()).noneMatch(x -> x.id().startsWith("EXT-") && !x.institutionnelle()));
+    }
+
+    @Test
+    @DisplayName("D-93 : la banque partenaire déclarée à l'ouverture tient sa fonction (institution liée, nom lu au registre)")
+    void banquePartenaire() {
+        Liaison l = ParcoursSamples.liaison(TypeProjet.CARTE_INTERBANCAIRE);
+        UUID banque = UUID.randomUUID();
+        l.banquePartenaireId(banque);
+        var participants = org.mockito.Mockito.mock(cm.gimac.des.homologation.application.port.out.ParticipantDirectoryPort.class);
+        when(participants.getInstitution(banque)).thenReturn(new cm.gimac.des.homologation.domain.cadrage.InstitutionView(banque, "Banque B", "ACTIF", "BANQUE", List.of()));
+        instanciation.setParticipants(participants);
+        Parcours p = instanciation.instancier(l, List.of("RETRAIT"), false, null, false);
+        assertThat(p.etat().getInstitutionsLiees().get(Fonction.BANQUE_PARTENAIRE).nom()).isEqualTo("Banque B");
+        assertThat(p.tenant(Fonction.BANQUE_PARTENAIRE)).contains(Personne.institution(Fonction.BANQUE_PARTENAIRE, banque.toString(), "Banque B"));
+        Personne tenue = instanciation.designation(l, java.util.Map.of()).pour(Fonction.BANQUE_PARTENAIRE);
+        assertThat(tenue.institutionId()).isEqualTo(banque.toString());
+        assertThat(instanciation.designation(l, java.util.Map.of()).pour(Fonction.SNA)).isEqualTo(Personne.aAffecter(Fonction.SNA));
     }
 
     @Test

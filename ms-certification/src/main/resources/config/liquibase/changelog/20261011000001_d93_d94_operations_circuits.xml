@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- D-93 §4 et D-94 (docs/lot1/effet-reel-referentiels.md §10) : projection des opérations du parcours de
+     MS-HOMOLOGATION, qui fonde le contrôle des gestes de certification ; circuit de signature en données au lieu des
+     qualités figées (colonne role devenue etape, code de la signature dans le circuit). Reprise : les codes repris
+     (GIMAC, PARTICIPANT, CONFORMITE, DIRECTION_GENERALE) sont ceux du circuit par défaut ; un procès-verbal déjà en
+     signature fige ce circuit par défaut. Le renommage et le changement de type ne déclenchent pas le déclencheur
+     d'immuabilité des signatures (aucune ligne n'est modifiée). -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="d93-operation-liaison" author="certification">
+        <createTable tableName="operation_liaison" remarks="Opérations du parcours projetées depuis les événements de MS-HOMOLOGATION (D-93 §4).">
+            <column name="id" type="uuid" remarks="Identifiant de l'opération dans MS-HOMOLOGATION."><constraints primaryKey="true" nullable="false"/></column>
+            <column name="liaison_id" type="uuid"><constraints nullable="false"/></column>
+            <column name="code" type="varchar(40)"/>
+            <column name="libelle" type="varchar(300)"/>
+            <column name="geste" type="varchar(40)"/>
+            <column name="vue" type="varchar(30)"/>
+            <column name="jalon" type="varchar(30)"/>
+            <column name="declencheur" type="varchar(120)"/>
+            <column name="etat" type="varchar(20)"><constraints nullable="false"/></column>
+            <column name="intervenants" type="text"/>
+            <column name="institutions_concernees" type="text"/>
+            <column name="signatures" type="text"/>
+            <column name="evenement_le" type="timestamptz"><constraints nullable="false"/></column>
+            <column name="version" type="integer" defaultValueNumeric="0"><constraints nullable="false"/></column>
+        </createTable>
+        <createIndex tableName="operation_liaison" indexName="idx_operation_liaison_liaison">
+            <column name="liaison_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="d94-signature-etape" author="certification">
+        <renameColumn tableName="signature_verrou" oldColumnName="role" newColumnName="etape" columnDataType="varchar(30)"/>
+        <modifyDataType tableName="signature_verrou" columnName="etape" newDataType="varchar(40)"/>
+        <modifyDataType tableName="signature_verrou" columnName="fonction" newDataType="varchar(40)"/>
+    </changeSet>
+
+    <changeSet id="d94-proces-verbal-circuit" author="certification">
+        <addColumn tableName="proces_verbal_certification">
+            <column name="circuit" type="text" remarks="Circuit de signature figé à la première signature (D-94)."/>
+        </addColumn>
+        <sql>
+            UPDATE proces_verbal_certification
+            SET circuit = '[{"code":"GIMAC","libelle":"Signature du GIMAC (chef du DES)","fonction":"CHEF_DES","ordre":1,"portail":false},{"code":"PARTICIPANT","libelle":"Signature du participant","fonction":"PARTICIPANT","ordre":1,"portail":true}]'
+            WHERE etat IN ('SIGNE_GIMAC', 'SIGNE_PARTICIPANT', 'SIGNE');
+        </sql>
+    </changeSet>
+</databaseChangeLog>

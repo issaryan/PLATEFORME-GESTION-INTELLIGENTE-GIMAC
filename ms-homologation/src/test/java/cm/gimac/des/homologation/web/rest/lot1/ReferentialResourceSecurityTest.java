@@ -80,7 +80,7 @@ class ReferentialResourceSecurityTest {
         when(versions.findById(ID)).thenReturn(Optional.of(v));
         when(versions.findByTypeProjetOrderByDateCreationDesc(any())).thenReturn(List.of(v));
         when(versions.findFirstByTypeProjetAndEtat(TypeProjet.CARTE_INTERBANCAIRE, EtatVersionReferentiel.PUBLIEE)).thenReturn(Optional.of(v));
-        when(validateur.controler(anyList())).thenReturn(new ReferentialGraphValidator.Rapport(List.of(), List.of("A"), java.util.Map.of("A", 0)));
+        when(validateur.controler(anyList(), org.mockito.ArgumentMatchers.anyBoolean())).thenReturn(new ReferentialGraphValidator.Rapport(List.of(), List.of("A"), java.util.Map.of("A", 0)));
         when(completude.check(any())).thenReturn(List.of());
         when(evenements.findByAggregateIdOrderByCreatedAtAsc(ID.toString())).thenReturn(List.of());
         when(migrations.simuler(ID)).thenReturn(List.of(new ReferentialMigrationService.Impact(LIAISON, "EP A", 3, 0, 0, 0, false, null)));

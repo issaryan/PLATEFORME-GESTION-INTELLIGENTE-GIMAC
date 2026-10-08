@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Tâches à prendre offertes par permission (D-93, D-94, docs/lot1/effet-reel-referentiels.md §9.1) : une offre d'un
+     autre service peut être réservée aux porteurs de l'une des permissions requises (porteurs lus dans MS-IAM),
+     en plus ou à la place des profils requis. Écrit à la main. -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="pil-taches-permissions" author="lot1">
+        <createTable tableName="tache_permission_requise" remarks="Permissions dont l'une suffit pour prendre une tâche offerte (D-93, D-94).">
+            <column name="tache_id" type="uuid">
+                <constraints nullable="false" foreignKeyName="fk_tache_permission_requise_tache" referencedTableName="tache" referencedColumnNames="id" deleteCascade="true"/>
+            </column>
+            <column name="permission" type="varchar(80)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addPrimaryKey tableName="tache_permission_requise" columnNames="tache_id, permission" constraintName="pk_tache_permission_requise"/>
+        <createIndex tableName="tache_permission_requise" indexName="ix_tache_permission_requise_permission">
+            <column name="permission"/>
+        </createIndex>
+    </changeSet>
+</databaseChangeLog>

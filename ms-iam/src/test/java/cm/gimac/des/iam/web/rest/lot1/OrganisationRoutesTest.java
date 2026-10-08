@@ -215,6 +215,21 @@ class OrganisationRoutesTest {
             .andExpect(jsonPath("$.comptes[1].actif").value(true))
             .andExpect(jsonPath("$.unites[0]").value("POLE_RESEAU"));
         mvc.perform(req(HttpMethod.GET, u + "/perimetre?portee=TOUT", null).with(service)).andExpect(status().isBadRequest());
+        // D-92 : portée TOUTES, toutes les unités (actives ou non) et les comptes internes actifs.
+        when(this.service.perimetre(ID, Portee.TOUTES)).thenReturn(
+            new OrganisationService.Perimetre(
+                Portee.TOUTES,
+                List.of(new OrganisationService.MembreEquipe("m3", "Ali Oumarou", "Analyste", "SNA", null, 0, true)),
+                List.of("DES", "DG", "POLE_RESEAU", "SNA")
+            )
+        );
+        mvc
+            .perform(req(HttpMethod.GET, u + "/perimetre?portee=TOUTES", null).with(service))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.portee").value("TOUTES"))
+            .andExpect(jsonPath("$.comptes[0].id").value("m3"))
+            .andExpect(jsonPath("$.comptes[0].niveau").value(0))
+            .andExpect(jsonPath("$.unites.length()").value(4));
     }
 
     @Test

@@ -4,15 +4,17 @@ import {
   Button, Checkbox, ConfirmDialog, Dialog, InlineAlert, KeyValueList, MultiSelect, NumberField, Select, Tabs, Tag, TextArea, TextField, type Option,
 } from '@gimac/design-system'
 import type { ApiError } from '@gimac/socle'
-import type { CatalogueModelisateur, Livrable, NoeudGraphe, ReferenceOperation } from '../../../modele/homologation'
-import { erreursSaisie, libelleEntree, livrableVierge, ongletDuChamp } from '../../../adaptateurs/modelisateur'
+import type { CatalogueModelisateur, Livrable, NoeudGraphe, ReferenceOperation, SignatureReferentiel } from '../../../modele/homologation'
+import { erreursSaisie, libelleEntree, livrableVierge, ongletDuChamp, signatureVierge } from '../../../adaptateurs/modelisateur'
 
-// Modale de l'opération du modélisateur (D-77, §6) : cinq onglets (Général ; Rôles R, V, C, I, E ; Livrables et
-// preuves ; Exécution ; Chronologie). Contrôles de forme avant envoi (V ≠ R, déclencheur d'un événement externe,
+// Modale de l'opération du modélisateur (D-77, §6) : six onglets (Général ; Rôles R, V, C, I, E ; Livrables et
+// preuves ; Signatures, D-91 ; Exécution, avec la vue spécialisée D-93 ; Chronologie). Fonctions lues au catalogue des
+// fonctions (D-91), « Nouvelle fonction » depuis l'onglet des rôles. Contrôles de forme avant envoi (V ≠ R, déclencheur d'un événement externe,
 // secret sans valeur de référence) ; le service refait tout et ses refus HOM_* sont restitués lisiblement.
 
-type Onglet = 'general' | 'roles' | 'livrables' | 'execution' | 'chronologie'
-const ONGLETS: Onglet[] = ['general', 'roles', 'livrables', 'execution', 'chronologie']
+type Onglet = 'general' | 'roles' | 'livrables' | 'signatures' | 'execution' | 'chronologie'
+const ONGLETS: Onglet[] = ['general', 'roles', 'livrables', 'signatures', 'execution', 'chronologie']
+const VUES_PAR_DEFAUT = ['AUCUNE', 'AFFECTATION', 'COORDONNEES', 'ESSAIS', 'DECISION', 'ATTESTATIONS', 'MISE_EN_SERVICE', 'CEREMONIE']
 
 export type ModaleOperationProps = {
   /** Opération à modifier, ou opération vierge (création). */
@@ -27,6 +29,8 @@ export type ModaleOperationProps = {
   onEnregistrer: (o: ReferenceOperation) => void
   onSupprimer?: () => void
   onFermer: () => void
+  /** « Nouvelle fonction » (D-91) : ouvre la création d'une fonction du catalogue ; absent, le bouton n'est pas proposé. */
+  onNouvelleFonction?: () => void
 }
 
 /** Choix multiple par jetons, avec suggestions filtrées par la saisie. */
@@ -74,7 +78,15 @@ export function ModaleOperation(p: ModaleOperationProps) {
     const de = (l: typeof c.fonctions, prefixe: string | null) => l.map((e) => ({ value: e.code, label: libelleEntree(t, prefixe, e) }))
     return {
       aucun,
-      fonctions: de(c.fonctions, 'parcours.fonction'),
+      // Fonctions actives du catalogue (D-91) : libellé servi pour une fonction créée.
+      fonctions: de(c.fonctions.filter((f) => f.actif !== false), 'parcours.fonction'),
+      internes: de(c.fonctions.filter((f) => !f.externe && f.actif !== false), 'parcours.fonction'),
+      vues: (c.vuesOperation?.length ? c.vuesOperation : VUES_PAR_DEFAUT.map((code) => ({ code, libelle: code }))).map((e) => ({ value: e.code, label: libelleEntree(t, 'modelisateur.vue', e) })),
+      // Livrables portés par une signature : ceux de l'opération (L1), puis ceux des autres opérations (CODE/L1).
+      portes: [
+        ...o.livrables.filter((l) => l.code.trim()).map((l) => ({ value: l.code, label: `${l.code} · ${l.libelle}` })),
+        ...p.noeuds.filter((n) => !n.fantome && n.code !== o.code).flatMap((n) => (n.livrables ?? []).map((l) => ({ value: `${n.code}/${l.code}`, label: `${n.code}/${l.code} · ${l.libelle}` }))),
+      ],
       // Étapes de la version (catalogue ?version=, D-89), dans leur ordre ; liste du catalogue à défaut.
       etapes: c.etapesVersion?.length
         ? [...c.etapesVersion].sort((a, b) => a.ordre - b.ordre).map((e) => ({ value: e.code, label: e.libelle }))
@@ -105,6 +117,8 @@ export function ModaleOperation(p: ModaleOperationProps) {
     p.onEnregistrer(o)
   }
   const majLivrable = (i: number, champs: Partial<Livrable>) => maj({ livrables: o.livrables.map((l, j) => (j === i ? { ...l, ...champs } : l)) })
+  const signatures = o.signatures ?? []
+  const majSignature = (i: number, champs: Partial<SignatureReferentiel>) => maj({ signatures: signatures.map((x, j) => (j === i ? { ...x, ...champs } : x)) })
   const fermer = p.onFermer
   const titre = p.creation ? t('modelisateur.modale.creer') : t('modelisateur.modale.titre', { code: p.operation.code })
   const serveur = p.erreurServeur
@@ -166,6 +180,42 @@ export function ModaleOperation(p: ModaleOperationProps) {
               <ChoixMultiple name="informes" label={t('modelisateur.champ.informes')} options={options.fonctions} value={o.informes} lectureSeule={lecture} onChange={(v) => maj({ informes: v as ReferenceOperation['informes'] })} />
               <ChoixMultiple name="externes" label={t('modelisateur.champ.externes')} help={t('modelisateur.aide.externes')} options={options.fonctions.filter((f) => c.fonctions.find((x) => x.code === f.value)?.externe)}
                 value={o.externes} lectureSeule={lecture} onChange={(v) => maj({ externes: v as ReferenceOperation['externes'] })} />
+              <Checkbox name="consultesRecoiventTache" label={t('modelisateur.champ.consultesRecoiventTache')}
+                checked={!!o.consultesRecoiventTache} disabled={lecture} onChange={(v) => maj({ consultesRecoiventTache: v })} />
+              {!lecture && p.onNouvelleFonction ? (
+                <div className="gm-mod-large"><Button size="sm" icon="plus" onClick={p.onNouvelleFonction}>{t('typesProjet.fonction.nouvelle')}</Button></div>
+              ) : null}
+            </div>
+          ) : null}
+          {onglet === 'signatures' ? (
+            <div className="gm-col">
+              <p className="gm-field-help" style={{ margin: 0 }}>{t('modelisateur.signature.aide')}</p>
+              {signatures.length ? null : <p className="gm-field-help" style={{ margin: 0 }}>{t('modelisateur.signature.aucune')}</p>}
+              {signatures.map((x, i) => (
+                <fieldset key={i} className="gm-mod-livrable" aria-label={t('modelisateur.signature.n', { n: i + 1 })}>
+                  <legend className="gm-type-body-strong">{t('modelisateur.signature.n', { n: i + 1 })}</legend>
+                  <div className="gm-form-grid gm-mod-grille">
+                    <TextField name={`signatures.${i}.code`} label={t('modelisateur.signature.code')} value={x.code} mono required readOnly={lecture} maxLength={40} error={err(`signatures.${i}.code`)}
+                      onChange={(v) => majSignature(i, { code: v.toUpperCase() })} />
+                    <TextField name={`signatures.${i}.libelle`} label={t('modelisateur.signature.libelle')} value={x.libelle} required readOnly={lecture} maxLength={200} error={err(`signatures.${i}.libelle`)}
+                      onChange={(v) => majSignature(i, { libelle: v })} />
+                    <Select name={`signatures.${i}.signataire`} label={t('modelisateur.signature.signataire')} help={t('modelisateur.signature.signataireAide')} value={x.signataire ?? ''} required
+                      disabled={lecture} error={err(`signatures.${i}.signataire`)} options={[options.aucun, ...options.internes]} onChange={(v) => majSignature(i, { signataire: v || null })} />
+                    <NumberField name={`signatures.${i}.ordre`} label={t('modelisateur.signature.ordre')} help={t('modelisateur.signature.ordreAide')} value={String(x.ordre)} min={1} max={99} required
+                      readOnly={lecture} error={err(`signatures.${i}.ordre`)} onChange={(v) => majSignature(i, { ordre: v === '' ? 0 : Number(v) })} />
+                    <ChoixMultiple name={`signatures.${i}.porte`} label={t('modelisateur.signature.porte')} help={t('modelisateur.signature.porteAide')} options={options.portes} value={x.porte}
+                      lectureSeule={lecture} error={err(`signatures.${i}.porte`)} onChange={(v) => majSignature(i, { porte: v })} />
+                  </div>
+                  {!lecture ? (
+                    <div className="gm-row" style={{ justifyContent: 'flex-end' }}>
+                      <Button size="sm" variant="ghost" icon="trash" onClick={() => maj({ signatures: signatures.filter((_, j) => j !== i) })}>{t('modelisateur.signature.retirer', { n: i + 1 })}</Button>
+                    </div>
+                  ) : null}
+                </fieldset>
+              ))}
+              {!lecture ? (
+                <div><Button size="sm" icon="plus" onClick={() => maj({ signatures: [...signatures, signatureVierge(signatures.length + 1)] })}>{t('modelisateur.signature.ajouter')}</Button></div>
+              ) : null}
             </div>
           ) : null}
           {onglet === 'livrables' ? (
@@ -211,6 +261,8 @@ export function ModaleOperation(p: ModaleOperationProps) {
                 disabled={lecture || o.geste !== 'EVENEMENT_EXTERNE'} error={err('declencheur')} options={[options.aucun, ...options.declencheurs]} onChange={(v) => maj({ declencheur: v || null })} />
               <Select name="jalon" label={t('modelisateur.champ.jalon')} help={t('modelisateur.aide.jalon')} value={o.jalon ?? ''} disabled={lecture} options={[options.aucun, ...options.jalons]}
                 onChange={(v) => maj({ jalon: (v || null) as ReferenceOperation['jalon'] })} />
+              <Select name="vue" label={t('modelisateur.champ.vue')} help={t('modelisateur.aide.vue')} value={o.vue ?? ''} disabled={lecture} options={[options.aucun, ...options.vues]}
+                onChange={(v) => maj({ vue: (v || null) as ReferenceOperation['vue'] })} />
               <Select name="particularite" label={t('modelisateur.champ.particularite')} value={o.particularite ?? ''} disabled={lecture} options={[options.aucun, ...options.particularites]}
                 onChange={(v) => maj({ particularite: (v || null) as ReferenceOperation['particularite'] })} />
               <Select name="plateforme" label={t('modelisateur.champ.plateforme')} value={o.plateforme ?? ''} disabled={lecture} options={[options.aucun, ...options.plateformes]}

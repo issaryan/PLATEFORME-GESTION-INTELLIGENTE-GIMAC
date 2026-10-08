@@ -1,16 +1,18 @@
 import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Navigate, Route, Routes, useLocation } from 'react-router'
-import { useTranslation } from 'react-i18next'
-import { EmptyState, Skeleton } from '@gimac/design-system'
+import { Skeleton } from '@gimac/design-system'
 import {
   Aiguillage, ConnexionProvider, Enveloppe, GardeSession, NotificationsPage, NotificationsProvider, PageConnexion, PageDeconnexion, SessionActive, aPermission, adresseConnexion, configureHttp,
   connexionHttp, lirePreference, lireSessionDemo, notificationsHttp, openLiveChannel, surNonAutorise, type EtatCanal, type LecteurApercu, type LiveTopic, type ServiceNotifications, type Session,
 } from '@gimac/socle'
 import { GardePremierAcces, MonComptePage, useMonAvatar, monCompteHttp, monCompteSimule } from '@gimac/compte'
-import { PERM, lecteurApercu, notificationsDemo, servicesHttp, servicesSimules, useNonLus, useSourcesRecherche } from '@gimac/lot1'
-import { Fournisseurs, creerClientRequetes, servicesConsoleHttp, servicesConsoleSimules, useSourceComptes } from '@gimac/administration'
-import { CLE_PREMIER_ACCES_DEMO, CLE_PROFIL_DEMO, NAVIGATION_CONSOLE, PROFILS_DEMO } from './navigation'
+import {
+  CatalogueFonctionnalitesProvider, GardeFonctionnalite, PERM, lecteurApercu, navigationDepuis, navigationRepli, notificationsDemo, servicesHttp, servicesSimules, useNonLus,
+  useSourcesRecherche, useTraduire, type EtatCatalogue,
+} from '@gimac/lot1'
+import { Fournisseurs, creerClientRequetes, servicesConsoleHttp, servicesConsoleSimules, useFonctionnalites, useSourceComptes } from '@gimac/administration'
+import { CLE_PREMIER_ACCES_DEMO, CLE_PROFIL_DEMO, ECRANS_CONSOLE, PROFILS_DEMO } from './navigation'
 import { connexionDemo } from './connexionDemo'
 
 // Console d'administration et d'audit (couche « console », D-46, D-61, D-62) : le super administrateur,
@@ -57,10 +59,17 @@ function sessionDemo(): Session {
   }
 }
 
-/** Écran réservé à une permission : sans elle, accès refusé explicite (la passerelle refait le contrôle). */
-function Autorise({ permissions, exigee, children }: { permissions: string[]; exigee: string; children: ReactNode }) {
-  const { t } = useTranslation()
-  return aPermission(permissions, exigee) ? <>{children}</> : <EmptyState icon="lock" title={t('console.refuse.titre')} text={t('console.refuse.texte')} />
+/**
+ * Écran d'une fonctionnalité du catalogue servi par MS-IAM (D-94) : ouvert si la configuration le rend visible et que
+ * les permissions satisfont son prédicat (et détiennent `droit`) ; refus explicite, la passerelle refait le contrôle.
+ */
+const G = (cle: string, page: ReactNode, droit?: string) => <GardeFonctionnalite cle={cle} droit={droit}>{page}</GardeFonctionnalite>
+
+/** État du catalogue des fonctionnalités : lu sur /bff/console/iam/configuration/fonctionnalites ; échec : repli prudent. */
+function useEtatCatalogue(actif: boolean): EtatCatalogue {
+  const q = useFonctionnalites(actif)
+  // Réponse qui n'est pas une liste : tenue pour indisponible (repli prudent), comme un échec.
+  return useMemo(() => (Array.isArray(q.data) ? { etat: 'pret', fonctionnalites: q.data } : q.isError || q.data ? { etat: 'indisponible', fonctionnalites: [] } : { etat: 'chargement', fonctionnalites: [] }), [q.data, q.isError])
 }
 
 /**
@@ -90,13 +99,18 @@ function Pages({ session, correlationId, notifications }: { session: Session; co
   const comptes = useSourceComptes(p)
   const conversations = useSourcesRecherche(p, '/console')
   const recherche = useMemo(() => [...comptes, ...conversations], [comptes, conversations])
+  // Navigation de la console dérivée du catalogue servi (D-94) ; l'accueil seul tant qu'il n'est pas servi.
+  const catalogue = useEtatCatalogue(!session.restreinte)
+  const tr = useTraduire()
+  const navigation = useMemo(() => (catalogue.etat === 'pret' ? navigationDepuis(catalogue.fonctionnalites, 'console', ECRANS_CONSOLE, tr, 'console.nav.groupe.') : navigationRepli('console')), [catalogue, tr])
   return (
+    <CatalogueFonctionnalitesProvider valeur={catalogue}>
     <GardePremierAcces>
       {(assistant) => (
         // Cloche, fenêtres surgissantes et page des notifications (D-80) : NOT_INBOX_READ, hors premier accès.
         <NotificationsProvider service={notifications.service} couche="console" actif={!assistant && avecNotifications} apercu={notifications.apercu}>
-        <Enveloppe avatar={moi?.src} fonction={moi?.fonction} couche="console" navigation={assistant ? [] : NAVIGATION_CONSOLE} permissions={p} utilisateur={session.nom} version={VERSION}
-          badges={{ messagerie: nonLus.data?.total ?? 0 }} etatCanal={etatCanal} correlationId={correlationId} espacePersonnel="/console" recherche={assistant ? undefined : recherche}>
+        <Enveloppe avatar={moi?.src} fonction={moi?.fonction} couche="console" navigation={assistant ? [] : navigation} permissions={p} utilisateur={session.nom} version={VERSION}
+          badges={{ consoleMessagerie: nonLus.data?.total ?? 0 }} etatCanal={etatCanal} correlationId={correlationId} espacePersonnel="/console" recherche={assistant ? undefined : recherche}>
           <CanalMessagerie onEtat={setEtatCanal}
             sujets={assistant || import.meta.env.VITE_SERVICES === 'simule' ? [] : [...(messagerie ? ['collaboration', 'presence'] as const : []), ...(avecNotifications ? ['notification'] as const : [])]} />
           <Suspense fallback={<Skeleton height={32} />}>
@@ -107,23 +121,23 @@ function Pages({ session, correlationId, notifications }: { session: Session; co
               ) : (
                 <>
                   <Route path="tableau-de-bord" element={<TableauDeBordPage />} />
-                  <Route path="comptes" element={<Autorise permissions={p} exigee="IAM_ACCOUNT_READ"><ComptesPage /></Autorise>} />
-                  <Route path="comptes/nouveau" element={<Autorise permissions={p} exigee="IAM_ACCOUNT_CREATE"><CreationComptePage /></Autorise>} />
-                  <Route path="comptes/:id" element={<Autorise permissions={p} exigee="IAM_ACCOUNT_READ"><ComptePage /></Autorise>} />
-                  <Route path="journal" element={<Autorise permissions={p} exigee="IAM_JOURNAL_READ"><JournalPage /></Autorise>} />
-                  <Route path="profils" element={<Autorise permissions={p} exigee="IAM_ACCOUNT_READ"><ProfilsPage /></Autorise>} />
-                  <Route path="demandes" element={<Autorise permissions={p} exigee="IAM_ACCOUNT_READ"><DemandesPage /></Autorise>} />
-                  <Route path="matrice-pouvoirs" element={<Autorise permissions={p} exigee="IAM_ACCOUNT_READ"><MatricePouvoirsPage /></Autorise>} />
-                  <Route path="organisation" element={<Autorise permissions={p} exigee="IAM_ACCOUNT_READ"><OrganisationPage /></Autorise>} />
-                  <Route path="organigramme" element={<Autorise permissions={p} exigee="IAM_ACCOUNT_READ"><OrganigrammePage /></Autorise>} />
-                  <Route path="politique-securite" element={<Autorise permissions={p} exigee="PLATFORM_SECURITY_POLICY_READ"><PolitiqueSecuritePage /></Autorise>} />
-                  <Route path="messagerie" element={<Autorise permissions={p} exigee={PERM.messageLire}><MessagerieInstantanee couche="console" /></Autorise>} />
-                  <Route path="notifications" element={<Autorise permissions={p} exigee={PERM.notificationsLire}><NotificationsPage /></Autorise>} />
-                  <Route path="plateforme/courriels" element={<Autorise permissions={p} exigee="PLATFORM_MESSAGING_EDIT"><CourrielsPage /></Autorise>} />
-                  <Route path="plateforme/configuration" element={<Autorise permissions={p} exigee="PLATFORM_CONFIG_READ"><ConfigurationPlateformePage /></Autorise>} />
-                  <Route path="plateforme/journalisation" element={<Autorise permissions={p} exigee="PLATFORM_CONFIG_READ"><JournalisationPage /></Autorise>} />
-                  <Route path="plateforme/supervision" element={<Autorise permissions={p} exigee="PLATFORM_SUPERVISION_READ"><SupervisionPage /></Autorise>} />
-                  <Route path="plateforme/infrastructure" element={<Autorise permissions={p} exigee="PLATFORM_OPS_READ"><InfrastructurePage /></Autorise>} />
+                  <Route path="comptes" element={G('consoleComptes', <ComptesPage />)} />
+                  <Route path="comptes/nouveau" element={G('consoleComptes', <CreationComptePage />, 'IAM_ACCOUNT_CREATE')} />
+                  <Route path="comptes/:id" element={G('consoleComptes', <ComptePage />)} />
+                  <Route path="journal" element={G('consoleJournal', <JournalPage />)} />
+                  <Route path="profils" element={G('consoleProfils', <ProfilsPage />)} />
+                  <Route path="demandes" element={G('consoleDemandes', <DemandesPage />)} />
+                  <Route path="matrice-pouvoirs" element={G('consoleMatrice', <MatricePouvoirsPage />)} />
+                  <Route path="organisation" element={G('consoleOrganisation', <OrganisationPage />)} />
+                  <Route path="organigramme" element={G('consoleOrganigramme', <OrganigrammePage />)} />
+                  <Route path="politique-securite" element={G('consolePolitique', <PolitiqueSecuritePage />)} />
+                  <Route path="messagerie" element={G('consoleMessagerie', <MessagerieInstantanee couche="console" />)} />
+                  <Route path="notifications" element={G('consoleNotifications', <NotificationsPage />)} />
+                  <Route path="plateforme/courriels" element={G('consoleCourriels', <CourrielsPage />)} />
+                  <Route path="plateforme/configuration" element={G('consoleConfiguration', <ConfigurationPlateformePage />)} />
+                  <Route path="plateforme/journalisation" element={G('consoleJournalisation', <JournalisationPage />)} />
+                  <Route path="plateforme/supervision" element={G('consoleSupervision', <SupervisionPage />)} />
+                  <Route path="plateforme/infrastructure" element={G('consoleInfrastructure', <InfrastructurePage />)} />
                   <Route path="mon-compte" element={<MonComptePage />} />
                   <Route path="*" element={<Navigate to="/console/tableau-de-bord" replace />} />
                 </>
@@ -134,6 +148,7 @@ function Pages({ session, correlationId, notifications }: { session: Session; co
         </NotificationsProvider>
       )}
     </GardePremierAcces>
+    </CatalogueFonctionnalitesProvider>
   )
 }
 

@@ -14,12 +14,15 @@ public class Reference {
     public static final String COLLABORATION = "collaboration";
     public static final String PILOTAGE = "pilotage";
     public static final String IAM = "iam";
+    public static final String HOMOLOGATION = "homologation";
     public static final String CONVERSATION = "CONVERSATION";
     public static final String MESSAGE = "MESSAGE";
     public static final String TACHE = "TACHE";
     public static final String RAPPORT = "RAPPORT";
     public static final String DEMANDE = "DEMANDE";
     public static final String PROCESSUS = "PROCESSUS";
+    public static final String OPERATION = "OPERATION";
+    public static final String LIAISON = "LIAISON";
 
     @Column(name = "reference_service", nullable = false, length = 40)
     private String service;
@@ -68,6 +71,16 @@ public class Reference {
     /** Instance d'un processus d'unité (MS-PILOTAGE, D-87). */
     public static Reference processus(String instanceId) {
         return new Reference(PILOTAGE, PROCESSUS, instanceId);
+    }
+
+    /** Opération du parcours d'une liaison (MS-HOMOLOGATION, D-93). */
+    public static Reference operationHomologation(String operationId) {
+        return new Reference(HOMOLOGATION, OPERATION, operationId);
+    }
+
+    /** Liaison d'homologation (jalon atteint, MS-HOMOLOGATION, D-93). */
+    public static Reference liaisonHomologation(String liaisonId) {
+        return new Reference(HOMOLOGATION, LIAISON, liaisonId);
     }
 
     public String getService() {

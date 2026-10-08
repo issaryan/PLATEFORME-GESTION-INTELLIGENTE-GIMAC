@@ -10,6 +10,8 @@ export { ServicesConsoleProvider } from './services/ServicesConsole'
 export { CHEMINS_CONSOLE, type CheminsAdministration } from './services/contexte'
 export { useChemins, useServicesConsole } from './services/useServicesConsole'
 export { useSourceComptes } from './recherche'
+export { useFonctionnalites, useModifierFonctionnalite } from './hooks'
+export { CatalogueFonctionnalites } from './composants/fonctionnalites'
 export { TableauAdministrationComptes, SectionGestionUtilisateurs, SectionActes } from './composants/sectionsTableau'
 // Widgets de plateforme des tableaux de bord (D-79) : résumé de la supervision et charges en erreur (D-78).
 export { WidgetSupervision, WidgetChargesEnErreur } from './composants/widgetsPlateforme'

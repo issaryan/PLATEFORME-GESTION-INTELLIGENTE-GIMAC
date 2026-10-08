@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { MemoryRouter } from 'react-router'
 import i18next from 'i18next'
 import { MOT_DE_PASSE_DEMO, initI18n } from '@gimac/socle'
-import { catalogues } from '@gimac/lot1'
+import { FONCTIONNALITES_DEMO, catalogues } from '@gimac/lot1'
 import { catalogueCompte } from '@gimac/compte'
 import { cataloguesAdministration } from '@gimac/administration'
 import App from './App'
@@ -181,12 +181,23 @@ describe('Application du département', () => {
       if (chemin === '/api/session') return reponse({ sujet: 'u-7', nom: 'Agent SNA', identifiant: 'sna', roles: ['ROLE_SNA'], permissions: ['HOM_LIAISON_LIST'], institutionId: '', acr: '2', doubleFacteur: true })
       if (chemin === '/bff/des/iam/moi') return reponse({ compte: { id: 'u-7', nomAffiche: 'Agent SNA', profils: ['ROLE_SNA'], actionsRequises: [], profilComplet: true }, clesSecurite: 1, sessions: 1, etapesRestantes: [] })
       if (chemin.endsWith('/liaisons')) return reponse({ contenu: [], total: 0 })
+      // Catalogue des fonctionnalités servi par MS-IAM (D-94) : barre latérale et gardes en dérivent.
+      if (chemin === '/bff/des/iam/configuration/fonctionnalites') return servi ? reponse(FONCTIONNALITES_DEMO) : reponse({ code: 'IAM_INDISPONIBLE' }, 503)
       return reponse({}, 404)
     })
+    let servi = true
     monter('/des/liaisons')
     expect(await screen.findByRole('heading', { level: 1, name: 'Liaisons et parcours' }, { timeout: 8000 })).toBeTruthy()
     await waitFor(() => expect(spy.mock.calls.map(([u]) => new URL(String(u)).pathname)).toContain('/bff/des/homologation/liaisons'))
     expect(spy.mock.calls.map(([u]) => new URL(String(u)).pathname)).toContain('/bff/des/iam/moi')
+    expect(screen.getByRole('link', { name: 'Liaisons et parcours' })).toBeTruthy()
+    // Catalogue non servi : repli prudent, l'accueil seul et un message clair.
+    cleanup()
+    servi = false
+    monter('/des/liaisons')
+    expect(await screen.findByText('Catalogue des fonctionnalités indisponible', {}, { timeout: 8000 })).toBeTruthy()
+    expect(screen.queryByRole('link', { name: 'Liaisons et parcours' })).toBeNull()
+    expect(screen.getByRole('link', { name: 'Tableau de bord' })).toBeTruthy()
   })
   it('services réels par défaut : sans VITE_SERVICES, la session vient de la passerelle et aucun profil de démonstration ne sert', async () => {
     vi.stubEnv('VITE_SERVICES', '')

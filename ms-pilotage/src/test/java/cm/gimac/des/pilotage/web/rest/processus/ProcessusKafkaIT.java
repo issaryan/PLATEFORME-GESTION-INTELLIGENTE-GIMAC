@@ -99,7 +99,7 @@ class ProcessusKafkaIT extends AbstractProcessusIT {
     }
 
     @Test
-    @DisplayName("Départ d'un compte : étapes en cours remises à prendre par le profil de remplacement, chef averti, idempotent")
+    @DisplayName("Départ d'un compte : étapes en cours reprises par le profil de remplacement (seule porteuse : à elle), chef averti, idempotent")
     void depart() throws Exception {
         String id = instanceAvecMiseEnOeuvre();
         // DEMANDE (lanceur) terminée par la voie normale serait longue : on fait partir le lanceur, exécutant de DEMANDE.
@@ -111,14 +111,16 @@ class ProcessusKafkaIT extends AbstractProcessusIT {
         attendre("select count(*) from processed_event where event_id = ?::uuid", evenement, 1);
 
         JsonNode i = lire(mvc.perform(get(INSTANCES + "/" + id).with(chef(CHEF_RESEAU))).andExpect(status().isOk()).andReturn());
+        // Seule porteuse active restante du profil de remplacement dans l'unité : l'étape lui est confiée.
         JsonNode demande = etape(i, "DEMANDE");
-        assertThat(demande.get("executant").isNull()).isTrue();
-        assertThat(demande.at("/aPrendre/profil").asText()).isEqualTo("ROLE_POLE_RESEAU");
-        mvc.perform(get("/api/v1/taches/" + demande.get("tacheId").asText()).with(chef(CHEF_RESEAU))).andExpect(jsonPath("$.etat").value("A_PRENDRE"));
+        assertThat(demande.at("/executant/id").asText()).isEqualTo(INGENIEUR_RESEAU);
+        assertThat(demande.get("aPrendre").isNull()).isTrue();
+        mvc.perform(get("/api/v1/taches/" + demande.get("tacheId").asText()).with(chef(CHEF_RESEAU))).andExpect(jsonPath("$.responsable.id").value(INGENIEUR_RESEAU));
         JsonNode reaffectee = charge("pilotage.process-step-reassigned.v1", id);
         assertThat(reaffectee.get("cause").asText()).isEqualTo("DEPART");
         assertThat(reaffectee.get("libelleEtape").asText()).isEqualTo(etape(i, reaffectee.get("etape").asText()).get("libelle").asText()).isNotBlank();
         assertThat(reaffectee.get("ancienId").asText()).isEqualTo(TECHNICIEN_RESEAU);
+        assertThat(reaffectee.get("executantId").asText()).isEqualTo(INGENIEUR_RESEAU);
         assertThat(reaffectee.get("chefId").asText()).isEqualTo(CHEF_RESEAU);
         assertThat(textes(reaffectee.get("destinataires"))).containsExactlyInAnyOrder(INGENIEUR_RESEAU, CHEF_RESEAU);
 
@@ -127,9 +129,38 @@ class ProcessusKafkaIT extends AbstractProcessusIT {
         Thread.sleep(2000);
         assertThat(compter("select count(*) from processus_historique where instance_id = ?::uuid and action = 'DEPART'", id)).isEqualTo(1);
 
-        // L'ingénieure prend l'étape et poursuit.
-        mvc.perform(post("/api/v1/taches/" + demande.get("tacheId").asText() + "/prise").with(agent(INGENIEUR_RESEAU))).andExpect(status().isOk());
+        // L'ingénieure poursuit l'étape.
         i = lire(mvc.perform(get(INSTANCES + "/" + id).with(agent(INGENIEUR_RESEAU))).andExpect(status().isOk()).andReturn());
-        assertThat(etape(i, "DEMANDE").at("/executant/id").asText()).isEqualTo(INGENIEUR_RESEAU);
+        assertThat(etape(i, "DEMANDE").at("/moi/executer").asBoolean()).isTrue();
+    }
+
+    @Test
+    @DisplayName("D-93 : profils remplacés (iam.account) et unité modifiée (iam.configuration) consommés une fois")
+    void changementsOrganisationConsommes() throws Exception {
+        String id = instanceAvecMiseEnOeuvre();
+        String profils = UUID.randomUUID().toString();
+        envoyer(profils, "PROFILS", TECHNICIEN_RESEAU);
+        attendre("select count(*) from processed_event where event_id = ?::uuid", profils, 1);
+        String unite = UUID.randomUUID().toString();
+        String message = json.writeValueAsString(
+            Map.of(
+                "specversion",
+                "1.0",
+                "id",
+                unite,
+                "source",
+                "/gimac/des/iam",
+                "type",
+                "iam.configuration-changed.v1",
+                "subject",
+                "UNITE_ORGANISATIONNELLE",
+                "data",
+                Map.of("objet", "UNITE_ORGANISATIONNELLE", "acteurId", "admin-1", "champs", List.of("MODIFICATION", "code=POLE_RESEAU", "responsable=" + CHEF_RESEAU))
+            )
+        );
+        kafka.send("iam.configuration", "UNITE_ORGANISATIONNELLE", message).get(10, TimeUnit.SECONDS);
+        attendre("select count(*) from processed_event where event_id = ?::uuid", unite, 1);
+        // Le lanceur reste exécutant de DEMANDE (désigné par son rôle de lanceur) : aucune réaffectation.
+        assertThat(compter("select count(*) from processus_historique where instance_id = ?::uuid and action = 'ORGANISATION'", id)).isZero();
     }
 }

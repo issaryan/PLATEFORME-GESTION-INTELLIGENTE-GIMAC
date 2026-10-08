@@ -1,8 +1,8 @@
 package cm.gimac.des.homologation.application.usecase;
 
 import cm.gimac.des.homologation.application.port.in.ManageReferentialUseCase;
-import cm.gimac.des.homologation.application.port.out.CollaboratorDirectoryPort;
 import cm.gimac.des.homologation.application.port.out.PilotageTachesPort;
+import cm.gimac.des.homologation.domain.DefinitionTypeProjet;
 import cm.gimac.des.homologation.domain.HomologationException;
 import cm.gimac.des.homologation.domain.ReferenceOperation;
 import cm.gimac.des.homologation.domain.ReferenceOperationData;
@@ -14,6 +14,7 @@ import cm.gimac.des.homologation.domain.parcours.Position;
 import cm.gimac.des.homologation.domain.service.ReferentialCompletenessChecker;
 import cm.gimac.des.homologation.domain.service.ReferentialGraphValidator;
 import cm.gimac.des.homologation.infrastructure.messaging.outbox.OutboxPublisher;
+import cm.gimac.des.homologation.repository.DefinitionTypeProjetRepository;
 import cm.gimac.des.homologation.repository.ReferenceOperationRepository;
 import cm.gimac.des.homologation.repository.ReferentialVersionRepository;
 import java.time.Clock;
@@ -26,7 +27,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,11 +42,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class ReferentialLifecycleService implements ManageReferentialUseCase {
 
     /**
-     * Profils qui portent HOM_REFERENTIEL_EDIT (D-89, §1) : pilotes possibles d'un brouillon. Le pilote est le
-     * responsable affiché et notifié du brouillon ; il ne le verrouille pas : tout éditeur le modifie.
+     * Permissions d'un pilote possible d'un brouillon (D-94 §3) : HOM_REFERENTIEL_EDIT ou REF_METIER_ADMIN, lues dans
+     * l'annuaire par permission (aucun nom de profil). Le pilote est le responsable affiché et notifié du brouillon ;
+     * il ne le verrouille pas : tout éditeur le modifie.
      */
-    public static final String PROFILS_EDITION =
-        "ROLE_INGENIEUR_HOMOLOGATION,ROLE_CHEF_DES,ROLE_CHEF_DDRM,ROLE_RESPONSABLE_SERVICE,ROLE_SUPER_ADMIN";
+    public static final String[] PERMISSIONS_PILOTE = { "HOM_REFERENTIEL_EDIT", "REF_METIER_ADMIN" };
 
     static final String AGREGAT = "catalog";
     static final String ORIGINE = "REFERENTIEL";
@@ -57,9 +57,16 @@ public class ReferentialLifecycleService implements ManageReferentialUseCase {
     private final OutboxPublisher outboxPublisher;
     private final Clock clock;
     private final ReferenceOperationRepository operations;
-    private final CollaboratorDirectoryPort annuaire;
+    private final PorteursPermission porteurs;
     private final DemandesTaches taches;
-    private final Set<String> profilsPilote;
+    private final DefinitionTypeProjetRepository typesProjet;
+    private AttestationsTypeProjet attestations;
+
+    /** Attestations exigées par le modèle du type (gestes de certification attendus à la publication). */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setAttestations(AttestationsTypeProjet attestations) {
+        this.attestations = attestations;
+    }
 
     @Autowired
     public ReferentialLifecycleService(
@@ -69,9 +76,9 @@ public class ReferentialLifecycleService implements ManageReferentialUseCase {
         OutboxPublisher outboxPublisher,
         Clock clock,
         ReferenceOperationRepository operations,
-        CollaboratorDirectoryPort annuaire,
+        PorteursPermission porteurs,
         DemandesTaches taches,
-        @Value("${gimac.homologation.referentiel.profils-pilote:" + PROFILS_EDITION + "}") List<String> profilsPilote
+        DefinitionTypeProjetRepository typesProjet
     ) {
         this.versions = versions;
         this.completeness = completeness;
@@ -79,9 +86,23 @@ public class ReferentialLifecycleService implements ManageReferentialUseCase {
         this.outboxPublisher = outboxPublisher;
         this.clock = clock;
         this.operations = operations;
-        this.annuaire = annuaire;
+        this.porteurs = porteurs;
         this.taches = taches;
-        this.profilsPilote = Set.copyOf(profilsPilote);
+        this.typesProjet = typesProjet;
+    }
+
+    /** Sans dépôt des types de projet (tests du modélisateur) : tout type est admis, libellé par son modèle. */
+    public ReferentialLifecycleService(
+        ReferentialVersionRepository versions,
+        ReferentialCompletenessChecker completeness,
+        ReferentialGraphValidator graphValidator,
+        OutboxPublisher outboxPublisher,
+        Clock clock,
+        ReferenceOperationRepository operations,
+        PorteursPermission porteurs,
+        DemandesTaches taches
+    ) {
+        this(versions, completeness, graphValidator, outboxPublisher, clock, operations, porteurs, taches, null);
     }
 
     /** Publication seule (tests du cycle de vie) : ni annuaire, ni tâches. */
@@ -92,7 +113,7 @@ public class ReferentialLifecycleService implements ManageReferentialUseCase {
         OutboxPublisher outboxPublisher,
         Clock clock
     ) {
-        this(versions, completeness, graphValidator, outboxPublisher, clock, null, null, null, List.of("ROLE_INGENIEUR_HOMOLOGATION"));
+        this(versions, completeness, graphValidator, outboxPublisher, clock, null, null, null);
     }
 
     @Override
@@ -102,6 +123,7 @@ public class ReferentialLifecycleService implements ManageReferentialUseCase {
 
     @Override
     public ReferentialVersion creerBrouillon(TypeProjet type, String libelle, UUID versionSourceId, UUID createurId, UUID piloteId) {
+        exigerType(type);
         Instant now = clock.instant();
         ReferentialVersion brouillon = versionSourceId == null
             ? ReferentialVersion.nouveauBrouillon(type, libelle, now)
@@ -116,6 +138,39 @@ public class ReferentialLifecycleService implements ManageReferentialUseCase {
             demanderTache(brouillon, pilote, createurId);
         }
         return brouillon;
+    }
+
+    @Override
+    public ReferentialVersion copierVers(UUID versionSourceId, TypeProjet cible, String libelle, UUID createurId) {
+        exigerType(cible);
+        ReferentialVersion brouillon = ReferentialVersion.copierVers(charger(versionSourceId), cible, libelle, clock.instant());
+        if (createurId != null) {
+            brouillon.designerPilote(createurId);
+        }
+        brouillon = versions.save(brouillon);
+        if (createurId != null) {
+            demanderTache(brouillon, createurId, createurId);
+        }
+        return brouillon;
+    }
+
+    @Override
+    public void supprimerBrouillon(UUID versionId) {
+        ReferentialVersion v = verrouiller(versionId);
+        v.assertModifiable();
+        if (taches != null && v.getPiloteId() != null) {
+            taches.cloturer(new PilotageTachesPort.Designation(origine(v), v.getPiloteId().toString()));
+        }
+        versions.supprimerOperations(versionId);
+        versions.supprimerEtapes(versionId);
+        versions.delete(v);
+    }
+
+    /** Type de projet connu (D-91) : 404 HOM_TYPE_PROJET_INTROUVABLE sinon. */
+    private void exigerType(TypeProjet type) {
+        if (typesProjet != null && type != null && !typesProjet.existsById(type.name())) {
+            throw HomologationException.notFound("HOM_TYPE_PROJET_INTROUVABLE", "Type de projet inconnu.", type.name());
+        }
     }
 
     @Override
@@ -187,13 +242,12 @@ public class ReferentialLifecycleService implements ManageReferentialUseCase {
         return v;
     }
 
-    /** Le pilote porte HOM_REFERENTIEL_EDIT : le demandeur lui-même, ou un compte actif d'un profil d'édition. */
+    /** Le pilote porte HOM_REFERENTIEL_EDIT ou REF_METIER_ADMIN (D-94 §3) : le demandeur lui-même, ou un compte interne actif qui la porte. */
     private void verifierPilote(UUID compteId, UUID demandeurId) {
-        if (annuaire == null || compteId.equals(demandeurId)) {
+        if (porteurs == null || compteId.equals(demandeurId)) {
             return;
         }
-        boolean eligible = annuaire.findCollaborator(compteId).filter(c -> c.actif() && c.profils().stream().anyMatch(profilsPilote::contains)).isPresent();
-        if (!eligible) {
+        if (!porteurs.porte(compteId, PERMISSIONS_PILOTE)) {
             throw HomologationException.unprocessable("HOM_PILOTE_NOT_ELIGIBLE", "Le pilote doit être un compte actif autorisé à éditer le référentiel.");
         }
     }
@@ -220,12 +274,15 @@ public class ReferentialLifecycleService implements ManageReferentialUseCase {
         return new PilotageTachesPort.Origine(ORIGINE, "referentiel/" + v.getId(), DemandesTaches.SERVICE, "/des/referentiels/operations?version=" + v.getId());
     }
 
-    static String libelle(TypeProjet t) {
-        return switch (t) {
-            case CARTE_INTERBANCAIRE -> "Carte interbancaire";
-            case PAIEMENT_MOBILE -> "Paiement mobile";
-            case DELEGATAIRE -> "Délégataire";
-        };
+    /** Libellé du type de projet (données, D-91) ; à défaut celui du modèle d'un type repris, sinon le code. */
+    String libelle(TypeProjet t) {
+        if (typesProjet != null) {
+            java.util.Optional<String> l = typesProjet.findById(t.name()).map(DefinitionTypeProjet::getLibelle);
+            if (l.isPresent()) {
+                return l.orElseThrow();
+            }
+        }
+        return t.repris() ? cm.gimac.des.homologation.domain.parcours.ModeleTypeProjet.parDefaut(t).libelle() : t.name();
     }
 
     @Override
@@ -236,7 +293,8 @@ public class ReferentialLifecycleService implements ManageReferentialUseCase {
         if (!manquants.isEmpty()) {
             throw HomologationException.conflict("HOM_REFERENTIAL_INCOMPLETE", "Publication refusée : opérations incomplètes", Map.of("operations", manquants));
         }
-        List<String> ordre = graphValidator.validate(v.noeuds()); // lève HOM_REFERENTIAL_GRAPH_INVALID
+        // Lève HOM_REFERENTIAL_GRAPH_INVALID (dont GESTE_CERTIFICATION_ABSENT, §10.5).
+        List<String> ordre = graphValidator.validate(v.noeuds(), attestations == null || attestations.exigees(v.getTypeProjet()));
         versions.findFirstByTypeProjetAndEtat(v.getTypeProjet(), EtatVersionReferentiel.PUBLIEE).ifPresent(ReferentialVersion::retirer);
         int numero = versions.maxNumero(v.getTypeProjet()).orElse(0) + 1;
         v.publier(numero, clock.instant(), ordre);

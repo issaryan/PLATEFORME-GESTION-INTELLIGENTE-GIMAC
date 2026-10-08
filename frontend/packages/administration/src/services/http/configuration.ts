@@ -22,6 +22,10 @@ export function configurationHttp(couche: 'des' | 'console'): ServiceConfigurati
     creerProfil: (p, motif, assertion) => http.post(`${C}/profils`, { body: { ...p, motif }, reauthAssertion: assertion }),
     supprimerProfil: (code, motif, assertion) => http.delete(`${C}/profils/${encodeURIComponent(code)}`, { query: { motif }, reauthAssertion: assertion }),
     // Libellé et description d'un profil (D-86 §2) : acte sensible, motif obligatoire.
-    modifierProfil: (code, p, motif, assertion) => http.put(`${C}/profils/${encodeURIComponent(code)}`, { body: { libelle: p.libelle, description: p.description, motif }, reauthAssertion: assertion }),
+    modifierProfil: (code, p, motif, assertion) =>
+      http.put(`${C}/profils/${encodeURIComponent(code)}`, { body: { libelle: p.libelle, description: p.description, ...(p.externe !== undefined ? { externe: p.externe } : {}), motif }, reauthAssertion: assertion }),
+    // Catalogue des fonctionnalités (D-94) : lecture par tout compte interne, modification IAM_PROFILE_EDIT (motif, FIDO2).
+    fonctionnalites: (application) => http.get(`${C}/fonctionnalites`, application ? { query: { application } } : {}),
+    modifierFonctionnalite: (cle, f, motif, assertion) => http.put(`${C}/fonctionnalites/${encodeURIComponent(cle)}`, { body: { ...f, cle, motif }, reauthAssertion: assertion }),
   }
 }

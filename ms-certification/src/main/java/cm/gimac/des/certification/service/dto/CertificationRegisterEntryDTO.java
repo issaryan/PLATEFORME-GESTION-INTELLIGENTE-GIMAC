@@ -24,7 +24,7 @@ public class CertificationRegisterEntryDTO implements Serializable {
     @NotNull
     private UUID institutionId;
 
-    @Size(max = 30)
+    @Size(max = 40)
     private String typeProjet;
 
     @Lob

@@ -24,8 +24,9 @@ function AvecCloche({ children }: { children: (cloche: Cloche) => ReactNode }) {
 }
 
 /** Entrée de navigation : visible si la session porte `permission` et satisfait `predicat` (D-79), quand ils sont donnés. */
-export type EntreeNavigation = { cle: string; libelleKey: string; icone: IconName; chemin: string; permission?: string; predicat?: Predicat }
-export type GroupeNavigation = { libelleKey?: string; entrees: EntreeNavigation[] }
+/** `libelle` : texte déjà résolu (libellé servi par la configuration, D-94), prioritaire sur la clé de traduction. */
+export type EntreeNavigation = { cle: string; libelleKey: string; libelle?: string; icone: IconName; chemin: string; permission?: string; predicat?: Predicat }
+export type GroupeNavigation = { libelleKey?: string; libelle?: string; entrees: EntreeNavigation[] }
 
 export type EnveloppeProps = {
   couche: Couche
@@ -136,11 +137,11 @@ export function Enveloppe(p: EnveloppeProps) {
     : p.navigation
   const autorisee = (e: EntreeNavigation) => !p.permissions || ((!e.permission || p.permissions.includes(e.permission)) && satisfait(p.permissions, e.predicat))
   const groupes = navigation
-    .map((g) => ({ label: g.libelleKey ? t(g.libelleKey) : undefined, items: g.entrees.filter(autorisee).map((e) => ({ key: e.cle, label: t(e.libelleKey), icon: e.icone, href: e.chemin, badge: p.badges?.[e.cle] })) }))
+    .map((g) => ({ label: g.libelle ?? (g.libelleKey ? t(g.libelleKey) : undefined), items: g.entrees.filter(autorisee).map((e) => ({ key: e.cle, label: e.libelle ?? t(e.libelleKey), icon: e.icone, href: e.chemin, badge: p.badges?.[e.cle] })) }))
     .filter((g) => g.items.length > 0)
   const courante = navigation.flatMap((g) => g.entrees).filter((e) => pathname.startsWith(e.chemin)).sort((a, b) => b.chemin.length - a.chemin.length)[0]
 
-  const ecrans = navigation.flatMap((g) => g.entrees.filter(autorisee).filter((e) => e.cle !== 'deconnexion').map((e) => ({ cle: e.cle, libelle: t(e.libelleKey), href: e.chemin })))
+  const ecrans = navigation.flatMap((g) => g.entrees.filter(autorisee).filter((e) => e.cle !== 'deconnexion').map((e) => ({ cle: e.cle, libelle: e.libelle ?? t(e.libelleKey), href: e.chemin })))
   const ouvrir = (href: string) => {
     setRechercheOuverte(false)
     if (href.startsWith('/')) void navigate(href)

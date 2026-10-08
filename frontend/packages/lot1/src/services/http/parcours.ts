@@ -105,9 +105,10 @@ export const parcoursHttp: ServiceParcours = {
   dossier: (id) => http.get(`${L}/${id}/dossier`),
   operations: (id, f) => http.get(`${L}/${id}/parcours/operations`, { query: { etape: f?.etape, fonction: f?.fonction } }),
   affecterRessources: (id, affectations) => http.put(`${L}/${id}/ressources`, { body: { affectations } }),
-  deposerLivrable: async (opId, fichier, commentaire) => {
+  // Dépôt par code de livrable (D-93 §8.4) : `livrable` absent, l'unique livrable de l'opération.
+  deposerLivrable: async (opId, fichier, commentaire, livrable) => {
     const d = await deposer(fichier, 'LIVRABLE', opId)
-    await http.post(`${H}/parcours/operations/${opId}/livrable`, { body: { ...d, commentaire } })
+    await http.post(`${H}/parcours/operations/${opId}/livrable`, { body: { ...d, commentaire, ...(livrable ? { livrable } : {}) } })
   },
   attribuer: (opId, qualite, personneId, motif) => http.put(`${H}/parcours/operations/${opId}/intervenants`, { body: { qualite, personneId, motif } }),
   deposerPreuve: async (opId, fichier, complement) => {
@@ -115,6 +116,15 @@ export const parcoursHttp: ServiceParcours = {
     await http.post(`${H}/parcours/operations/${opId}/preuves`, { body: { ...d, ...complement } })
   },
   validerOperation: (opId, assertion) => http.post(`${H}/parcours/operations/${opId}/validation`, { body: {}, reauthAssertion: assertion }),
+  // D-93 : renvoi motivé par le validateur, sans réauthentification.
+  renvoyer: (opId, motif) => http.post(`${H}/parcours/operations/${opId}/renvoi`, { body: { motif } }),
+  // D-91 : signature d'une opération (sans corps, clé de sécurité de finalité SIGNATURE_OPERATION).
+  signerOperation: (id, code, signature, assertion) =>
+    http.post(`${L}/${id}/operations/${encodeURIComponent(code)}/signatures/${encodeURIComponent(signature)}`, { reauthAssertion: assertion }),
+  // D-93 : affectation d'une fonction « à affecter » (personne interne ou institution externe), motif facultatif.
+  affecterFonction: (id, fonction, a) => http.put(`${L}/${id}/fonctions/${encodeURIComponent(fonction)}`, { body: a }),
+  // D-94 §6.5 : fonctions de l'appelant, servies par MS-HOMOLOGATION.
+  mesFonctions: () => http.get(`${H}/moi/fonctions`),
   declarerBlocage: (id, b) => http.post(`${L}/${id}/blocages`, { body: b }),
   leverBlocage: (bid, commentaire) => http.post(`${H}/blocages/${bid}/levee`, { body: { commentaire } }),
   constaterCouverture: (id) => http.post(`${L}/${id}/couverture/constat`, { body: {} }),

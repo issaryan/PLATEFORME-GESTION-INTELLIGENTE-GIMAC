@@ -164,7 +164,7 @@ export const TRONC_AVAL: OperationReferentiel[] = [
   op('35', 'SUIVI', 'AVAL', ['DDRM'], ['34']),
 ]
 
-const BRANCHES: Record<TypeProjet, OperationReferentiel[]> = {
+const BRANCHES: Record<string, OperationReferentiel[]> = {
   CARTE_INTERBANCAIRE: BRANCHE_CARTE,
   PAIEMENT_MOBILE: BRANCHE_MOBILE,
   DELEGATAIRE: BRANCHE_DELEGATAIRE,
@@ -172,6 +172,11 @@ const BRANCHES: Record<TypeProjet, OperationReferentiel[]> = {
 
 /** Suite d'opérations d'une liaison : tronc amont, sa seule branche, tronc aval (CR §5.2.3). */
 export function referentielDe(type: TypeProjet): OperationReferentiel[] {
-  const aval = TRONC_AVAL.map((o) => (o.rang === '27' ? { ...o, predecesseurs: [BRANCHES[type][BRANCHES[type].length - 1].rang] } : o))
-  return [...TRONC_AMONT.filter((o) => o.types.includes(type)), ...BRANCHES[type], ...aval]
+  // Type créé (D-91, modèle GENERIQUE) : tronc commun seul, sans branche.
+  const repris = type in BRANCHES
+  const branche = BRANCHES[type] ?? []
+  const amont = TRONC_AMONT.filter((o) => (repris ? o.types.includes(type) : o.types.length === TOUS.length))
+  const avantAval = branche.at(-1)?.rang ?? amont.at(-1)?.rang
+  const aval = TRONC_AVAL.map((o) => (o.rang === '27' && avantAval ? { ...o, predecesseurs: [avantAval] } : o))
+  return [...amont, ...branche, ...aval]
 }

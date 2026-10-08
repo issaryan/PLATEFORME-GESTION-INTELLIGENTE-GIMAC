@@ -20,7 +20,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * Tâche créée par un autre service (§2.3 ; D-77 : homologation-service), hors passerelle : jeton de
- * service portant INTERNAL_PILOTAGE_TASK_CREATE. Idempotente par origine.reference + responsableId :
+ * service portant INTERNAL_PILOTAGE_TASK_CREATE. Avec {@code profilsRequis} ou {@code permissionsRequises} (et
+ * {@code uniteCible} facultative) et sans {@code responsableId}, la tâche naît à prendre par les porteurs de l'un
+ * des profils ou de l'une des permissions (D-93, D-94), idempotente par
+ * origine.reference seule. Sinon idempotente par origine.reference + responsableId :
  * 201 à la création, 200 avec la tâche existante ensuite. Le même service termine ou rouvre les tâches qu'il
  * a créées ({@code /cloture}, {@code /reouverture}, D-77) : 200 avec les tâches visées, éventuellement aucune.
  */
@@ -47,7 +50,10 @@ public class TacheInterneResource {
                 r.priorite(),
                 r.responsableId(),
                 r.createurId(),
-                r.origine() == null ? null : new Origine(r.origine().type(), r.origine().reference(), r.origine().service(), r.origine().lien())
+                r.origine() == null ? null : new Origine(r.origine().type(), r.origine().reference(), r.origine().service(), r.origine().lien()),
+                r.profilsRequis(),
+                r.uniteCible(),
+                r.permissionsRequises()
             );
         TachesUseCase.Creation c = taches.creerPourService(client, demande);
         TacheVue vue = TacheVue.de(c.tache());
@@ -71,6 +77,6 @@ public class TacheInterneResource {
     private static CibleInterne cible(CibleInterneRequete r) {
         return r == null
             ? null
-            : new CibleInterne(r.origine() == null ? null : new Origine(r.origine().type(), r.origine().reference(), r.origine().service(), r.origine().lien()), r.responsableId());
+            : new CibleInterne(r.origine() == null ? null : new Origine(r.origine().type(), r.origine().reference(), r.origine().service(), r.origine().lien()), r.responsableId(), Boolean.TRUE.equals(r.aPrendre()));
     }
 }

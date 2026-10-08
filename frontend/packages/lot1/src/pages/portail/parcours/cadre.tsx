@@ -23,7 +23,7 @@ export function CadreAction({ id, titre, etat, children }: { id: string; titre: 
               <span className="gm-row">
                 <span className="gm-mono">{d.reference}</span>
                 <span aria-hidden="true">·</span>
-                <span>{t(`parcours.typeProjet.${d.typeProjet}`)}</span>
+                <span>{t(`parcours.typeProjet.${d.typeProjet}`, { defaultValue: String(d.typeProjet) })}</span>
                 <StatusBadge status={tonStatut[d.statut]} label={t(`parcours.statut.${d.statut}`)} />
               </span>
             }

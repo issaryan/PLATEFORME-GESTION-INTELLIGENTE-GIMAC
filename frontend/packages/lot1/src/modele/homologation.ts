@@ -1,5 +1,5 @@
 import type { CoverageValue, Partie, Permitted, Segment, TypeProjet } from './commun'
-import type { EtapeCode, Fonction, GrainPreuve, PlateformeExecution, SegmentParcours } from './parcours'
+import type { EtapeCode, Fonction, GrainPreuve, PlateformeExecution, SegmentParcours, VueOperation } from './parcours'
 
 // MS-HOMOLOGATION : référentiels (HOM-01 à HOM-03), liaisons (HOM-04 à HOM-24).
 
@@ -42,9 +42,38 @@ export type NatureLivrable = 'LIVRABLE' | 'PREUVE'
 export type TypeAnomalie =
   | 'CODE_DUPLIQUE' | 'PREDECESSEUR_INCONNU' | 'SEGMENT_INCOHERENT' | 'CYCLE' | 'RESPONSABLE_ABSENT' | 'VALIDATEUR_ABSENT' | 'VALIDATEUR_EGAL_RESPONSABLE'
   | 'DECLENCHEUR_INCONNU' | 'JALON_DUPLIQUE' | 'JALON_DESORDONNE' | 'SANS_ENTREE' | 'LIVRABLE_DUPLIQUE' | 'SECRET_AVEC_VALEUR'
+  | 'SIGNATURE_DUPLIQUEE' | 'SIGNATAIRE_INCONNU' | 'SIGNATAIRE_EXTERNE' | 'SIGNATURE_SANS_LIVRABLE' | 'SIGNATURE_PORTEE_INVALIDE' | 'FONCTION_INCONNUE'
 /** Livrable ou preuve attendu d'une opération, avec la fonction qui le dépose (externe : depuis le portail). */
 export type Livrable = { code: string; libelle: string; nature: NatureLivrable; deposant: Fonction | null; typesPieces: string[]; obligatoire: boolean }
 export type PositionNoeud = { x: number; y: number }
+
+/**
+ * Signature d'une opération du référentiel (D-91 §3) : code unique, signataire (fonction du catalogue), ordre (1 à 99),
+ * livrables portés (`L1` de l'opération, ou `CODE_OPERATION/CODE_LIVRABLE` d'une opération antérieure).
+ */
+export type SignatureReferentiel = { code: string; libelle: string; signataire: Fonction | null; ordre: number; porte: string[] }
+
+/** Modèle d'un type de projet (D-91 §1) : comportements hérités (attestations, services, plateforme d'essai). */
+export type ModeleTypeProjet = 'CARTE_INTERBANCAIRE' | 'PAIEMENT_MOBILE' | 'DELEGATAIRE' | 'GENERIQUE'
+export const MODELES_TYPE_PROJET: ModeleTypeProjet[] = ['CARTE_INTERBANCAIRE', 'PAIEMENT_MOBILE', 'DELEGATAIRE', 'GENERIQUE']
+/** Type de projet servi (GET /types-projet, D-91 §5.2). */
+export type TypeProjetVue = {
+  code: string; libelle: string; description: string | null; modele: ModeleTypeProjet; libelleModele?: string; actif: boolean
+  referentielActif: { id: string; version: number } | null; brouillonId: string | null; fige: boolean; proposable: boolean; nombreLiaisons: number
+  creeLe?: string; creePar?: string; modifieLe?: string | null; modifiePar?: string | null
+}
+/** POST /types-projet : départ vierge (onze étapes canoniques) ou copie de la version active d'un type existant. */
+export type CreationTypeProjet = { code: string; libelle: string; description: string; modele: ModeleTypeProjet; depart: { mode: 'VIERGE' | 'COPIE'; typeSource?: string } }
+/** PUT /types-projet/{code} : champs absents gardés ; motif exigé. */
+export type ModificationTypeProjet = { libelle?: string; description?: string; modele?: ModeleTypeProjet; actif?: boolean; motif: string }
+/** Fonction du catalogue des rôles R, V, C, I, E et déposants (D-91 §5.3). */
+/** `permissions` (§8.8) : 0 à 20 codes dont les porteurs peuvent tenir la fonction (offre des tâches à prendre). */
+export type FonctionCatalogue = {
+  code: string; libelle: string; profils: string[]; permissions?: string[]; externe: boolean; actif: boolean; reprise?: boolean
+  creeLe?: string; creePar?: string; modifieLe?: string | null; modifiePar?: string | null
+}
+export type CreationFonction = { code: string; libelle: string; profils: string[]; permissions?: string[]; externe: boolean }
+export type ModificationFonction = { libelle?: string; profils?: string[]; permissions?: string[]; externe?: boolean; actif?: boolean; motif: string }
 
 /** Saisie d'une opération (corps de PUT ; POST y ajoute le code). Position et particularité absentes : conservées. */
 export type SaisieOperation = {
@@ -55,6 +84,10 @@ export type SaisieOperation = {
   cle: boolean; secret: boolean; oubliSansSymptome: boolean; pivot: boolean; valeurReference: string | null
   livrables: Livrable[]; geste: Geste | null; jalon: Jalon | null; declencheur: string | null; particularite: Particularite | null
   position?: PositionNoeud | null
+  /** D-91 : signatures (absentes : conservées ; [] : retirées) ; D-93 : vue spécialisée (absente : conservée) et tâche aux consultés. */
+  signatures?: SignatureReferentiel[]
+  vue?: VueOperation | null
+  consultesRecoiventTache?: boolean
   // Attributs historiques de couverture (HOM-01), renvoyés tels quels pour ne pas être effacés.
   phase?: string | null; partie?: Partie | null; serviceCode?: string | null; natureCouverture?: 'CERTIFICATION' | 'MISE_EN_SERVICE' | 'AUCUNE' | null
   preuveAttendue?: Record<string, unknown> | null; idScenario?: string | null; fonctionResponsable?: string | null; grille?: Record<string, unknown> | null
@@ -82,13 +115,15 @@ export type GrapheReferentiel = {
   filtre?: FiltreReferentiel
 }
 /** Élément d'un catalogue du modélisateur : code, libellé français, précisions facultatives. */
-export type EntreeCatalogue = { code: string; libelle: string; profils?: string[]; externe?: boolean; dedie?: boolean; rang?: number }
+export type EntreeCatalogue = { code: string; libelle: string; profils?: string[]; externe?: boolean; dedie?: boolean; rang?: number; actif?: boolean }
 export type CatalogueModelisateur = {
   fonctions: EntreeCatalogue[]; gestes: EntreeCatalogue[]; jalons: EntreeCatalogue[]; declencheurs: EntreeCatalogue[]; etapes: EntreeCatalogue[]
   segments: EntreeCatalogue[]; plateformes: EntreeCatalogue[]; grains: EntreeCatalogue[]; naturesLivrable: EntreeCatalogue[]; particularites: EntreeCatalogue[]
   typesPieces: string[]; pilotes: { id: string; nom: string }[]
   /** D-89 : étapes canoniques, couleurs proposées et, avec ?version=, les étapes de cette version. */
   etapesCanoniques?: EtapeCanonique[]; couleurs?: CouleurCatalogue[]; etapesVersion?: EtapeReferentiel[]
+  /** D-91 : modèles et types de projet ; D-93 : vues spécialisées d'une opération. */
+  modelesTypeProjet?: EntreeCatalogue[]; typesProjet?: { code: string; libelle: string; actif: boolean }[]; vuesOperation?: EntreeCatalogue[]
 }
 export type ImpactMigration = {
   liaisonId: string; institutionNom: string; conservees: number; ajoutees: number; retirees: number; modifiees: number

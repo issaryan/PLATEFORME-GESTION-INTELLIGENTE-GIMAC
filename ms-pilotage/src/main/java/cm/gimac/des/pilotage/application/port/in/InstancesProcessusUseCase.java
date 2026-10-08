@@ -55,6 +55,13 @@ public interface InstancesProcessusUseCase {
 
     InstanceLue reaffecter(Appelant appelant, UUID id, String etape, String personneId, String motif);
 
+    /**
+     * Candidats à l'exécution d'une étape en cours (réaffectation) : porteurs du profil exigé (profil de la tâche à
+     * prendre, de l'intervenant PROFIL, à défaut son profil de remplacement) dans l'unité puis ailleurs. Réservé à qui
+     * peut réaffecter l'étape (403 PIL_PROCESSUS_INTERDIT).
+     */
+    ProcessusUseCase.Candidats candidats(Appelant appelant, UUID id, String etape);
+
     InstanceLue suspendre(Appelant appelant, UUID id, String motif);
 
     InstanceLue reprendre(Appelant appelant, UUID id, String motif);
@@ -67,4 +74,19 @@ public interface InstancesProcessusUseCase {
      * prendre), le chef de l'unité est notifié. @return nombre d'étapes réaffectées.
      */
     int traiterDepart(String compteId, String acteurId);
+
+    /**
+     * Profils retirés ou unité changée pour un compte (iam.account-administered.v1 PROFILS ou
+     * COMPTE_RATTACHEMENT_MODIFIE, D-93) : chaque rôle que le compte tient sur une étape en cours (exécutant, validateur,
+     * signataire attendu) est revu selon le mode de désignation ; s'il ne le tient plus, l'étape est réaffectée à la
+     * personne résolue ou repasse à prendre. {@code cause} : PROFIL_RETIRE ou CHANGEMENT_UNITE. @return étapes revues.
+     */
+    int traiterChangementCompte(String compteId, String cause, String acteurId);
+
+    /**
+     * Nouveau chef d'unité (iam.configuration-changed.v1, objet UNITE_ORGANISATIONNELLE, D-93) : les rôles CHEF_UNITE
+     * de cette unité sur les étapes en cours passent au nouveau chef (ou au profil de remplacement s'il n'y en a
+     * plus). @return étapes revues.
+     */
+    int traiterChangementChef(String unite, String acteurId);
 }

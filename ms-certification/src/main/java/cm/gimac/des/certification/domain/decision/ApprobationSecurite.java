@@ -42,7 +42,7 @@ public class ApprobationSecurite {
     @Column(name = "institution_id", length = 80)
     private String institutionId;
 
-    @Column(name = "type_projet", length = 30)
+    @Column(name = "type_projet", length = 40)
     private String typeProjet;
 
     @Column(name = "fintech", nullable = false)

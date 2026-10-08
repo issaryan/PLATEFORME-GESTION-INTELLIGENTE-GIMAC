@@ -10,7 +10,7 @@ import { TYPES_MESSAGERIE, conversationDe, referenceConversation, type EtatNotif
 // ouverture d'une notification. Clés de requête sous le sujet « notification » : l'événement
 // notification.inapp-created.v1 du canal poussé (et, en services simulés, `ecouter`) les invalide.
 
-export type CoucheNotifications = 'des' | 'console'
+export type CoucheNotifications = 'des' | 'console' | 'portail'
 
 /** Aperçu d'un message (dernier message de la conversation référencée), lu auprès de la messagerie. */
 export type LecteurApercu = (n: NotificationPlateforme) => Promise<string | null>
@@ -132,7 +132,8 @@ export function useApercuNotification(n: NotificationPlateforme) {
  * de l'application interne pour une tâche ou un rapport, qui n'existent que là.
  */
 export function lienDansCouche(n: Pick<NotificationPlateforme, 'type' | 'lien'>, couche: CoucheNotifications): string {
-  if (couche === 'des') return n.lien
+  // Application interne et portail : le lien servi est un chemin de la couche (MS-NOTIFICATION §11).
+  if (couche === 'des' || couche === 'portail') return n.lien
   if (TYPES_MESSAGERIE.includes(n.type) && /^\/des(\/|$|\?)/.test(n.lien)) return `/console${n.lien.slice(4)}`
   return adresseApplication('des', n.lien, lireSessionDemo())
 }

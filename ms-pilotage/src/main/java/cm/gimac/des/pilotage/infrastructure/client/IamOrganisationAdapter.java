@@ -42,7 +42,7 @@ public class IamOrganisationAdapter implements OrganisationPort {
 
     record MembreIam(String id, String nomAffiche, String fonction, String unite, String responsableId, Integer niveau, Boolean actif) {}
 
-    record CollaborateurIam(String id, String nomAffiche, Set<String> profils, String institutionId, Boolean actif, String fonction) {}
+    record CollaborateurIam(String id, String nomAffiche, Set<String> profils, String institutionId, Boolean actif, String fonction, String unite) {}
 
     record PouvoirsIam(Map<String, String> actions, List<String> profilsDemandables, List<MembreIam> subordonnes, List<String> unitesDirigees) {}
 
@@ -57,6 +57,7 @@ public class IamOrganisationAdapter implements OrganisationPort {
     private record CleMembres(String unite, String profil) {}
 
     private static final ParameterizedTypeReference<List<MembreIam>> EQUIPE = new ParameterizedTypeReference<>() {};
+    private static final ParameterizedTypeReference<List<CollaborateurIam>> COLLABORATEURS = new ParameterizedTypeReference<>() {};
 
     private final RestClient client;
     private final CacheExpirant<String, Optional<Rattachement>> rattachements;
@@ -67,6 +68,8 @@ public class IamOrganisationAdapter implements OrganisationPort {
     private final CacheExpirant<CleMembres, Optional<List<MembreProfil>>> membresUnites;
     private final CacheExpirant<String, Optional<UniteIam>> unites;
     private final CacheExpirant<String, Set<String>> profils;
+    private final CacheExpirant<String, List<MembreProfil>> porteursPermissions;
+    private final CacheExpirant<String, List<MembreProfil>> porteursProfils;
 
     public IamOrganisationAdapter(
         RestClient.Builder builder,
@@ -84,6 +87,8 @@ public class IamOrganisationAdapter implements OrganisationPort {
         this.membresUnites = new CacheExpirant<>(duree);
         this.unites = new CacheExpirant<>(duree);
         this.profils = new CacheExpirant<>(duree);
+        this.porteursPermissions = new CacheExpirant<>(duree);
+        this.porteursProfils = new CacheExpirant<>(duree);
     }
 
     /**
@@ -110,6 +115,79 @@ public class IamOrganisationAdapter implements OrganisationPort {
         String libelle = u.libelle() == null || u.libelle().isBlank() ? unite : u.libelle();
         String chef = u.responsableId() == null || u.responsableId().isBlank() ? null : u.responsableId();
         return Optional.of(new UniteMembres(unite, libelle, chef, Boolean.TRUE.equals(u.active()), true, membres.orElseThrow()));
+    }
+
+    /**
+     * GET /api/v1/interne/collaborateurs?profil= : comptes actifs du profil (100 au plus), internes seulement, avec leur
+     * unité de rattachement (désignation hors de l'unité) ; mis en cache comme les autres lectures.
+     */
+    @Override
+    public List<MembreProfil> porteursProfil(String profil) {
+        if (profil == null || profil.isBlank()) {
+            return List.of();
+        }
+        return porteursProfils.lire(profil, this::lirePorteursProfil);
+    }
+
+    private List<MembreProfil> lirePorteursProfil(String profil) {
+        try {
+            List<CollaborateurIam> l = client.get().uri("/api/v1/interne/collaborateurs?profil={profil}", profil).retrieve().body(COLLABORATEURS);
+            return l == null
+                ? List.of()
+                : l
+                    .stream()
+                    .filter(c -> c != null && c.id() != null && Boolean.TRUE.equals(c.actif()) && (c.institutionId() == null || c.institutionId().isBlank()))
+                    .map(c -> new MembreProfil(c.id(), c.nomAffiche(), c.fonction(), vide(c.unite()), true, c.profils() == null ? Set.of() : Set.copyOf(sansVides(List.copyOf(c.profils())))))
+                    .toList();
+        } catch (HttpClientErrorException.NotFound e) {
+            return List.of();
+        } catch (RestClientException | IllegalStateException e) {
+            throw indisponible();
+        }
+    }
+
+    /**
+     * GET /api/v1/interne/collaborateurs?permission= : comptes actifs dont un profil compose la permission (D-94),
+     * internes seulement ; mis en cache comme les autres lectures. 404 : aucun porteur ; autre erreur : 503.
+     */
+    @Override
+    public List<MembreProfil> porteursPermission(String permission) {
+        if (permission == null || permission.isBlank()) {
+            return List.of();
+        }
+        return porteursPermissions.lire(permission, this::lirePorteursPermission);
+    }
+
+    private List<MembreProfil> lirePorteursPermission(String permission) {
+        try {
+            List<CollaborateurIam> l = client.get().uri("/api/v1/interne/collaborateurs?permission={permission}", permission).retrieve().body(COLLABORATEURS);
+            return l == null
+                ? List.of()
+                : l
+                    .stream()
+                    .filter(c -> c != null && c.id() != null && Boolean.TRUE.equals(c.actif()) && (c.institutionId() == null || c.institutionId().isBlank()))
+                    .map(c -> new MembreProfil(c.id(), c.nomAffiche(), c.fonction(), vide(c.unite()), true, c.profils() == null ? Set.of() : Set.copyOf(sansVides(List.copyOf(c.profils())))))
+                    .toList();
+        } catch (HttpClientErrorException.NotFound e) {
+            return List.of();
+        } catch (RestClientException | IllegalStateException e) {
+            throw indisponible();
+        }
+    }
+
+    /** Changement d'organisation ou de profils reçu de MS-IAM (D-93) : toutes les lectures en cache sont oubliées. */
+    @Override
+    public void rafraichir() {
+        rattachements.vider();
+        equipes.vider();
+        collaborateurs.vider();
+        pouvoirs.vider();
+        perimetres.vider();
+        membresUnites.vider();
+        unites.vider();
+        profils.vider();
+        porteursPermissions.vider();
+        porteursProfils.vider();
     }
 
     @Override
@@ -237,6 +315,10 @@ public class IamOrganisationAdapter implements OrganisationPort {
         } catch (IllegalArgumentException e) {
             return Optional.empty();
         }
+    }
+
+    private static String vide(String s) {
+        return s == null || s.isBlank() ? null : s;
     }
 
     private static List<String> sansVides(List<String> l) {

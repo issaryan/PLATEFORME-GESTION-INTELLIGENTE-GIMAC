@@ -172,6 +172,10 @@ public final class Parcours {
                 if (!avant.equals(o.signature())) {
                     modifiees++;
                 }
+                if (o.getEtat() == EtatOperationParcours.EN_SIGNATURE && o.signaturesAttendues().isEmpty()) {
+                    // Plus aucune signature attendue dans la nouvelle version (D-91) : l'opération se clôt.
+                    clore(o, o.getPreuve(), aujourdhui);
+                }
             }
         }
         List<OperationParcours> ajoutees = new ArrayList<>();
@@ -278,7 +282,7 @@ public final class Parcours {
 
     /** Première opération (dans l'ordre du référentiel) dont la fonction responsable de référence est donnée. */
     public Optional<OperationParcours> premiereDuResponsable(Fonction f) {
-        return operations.stream().filter(o -> o.getResponsable() == f).findFirst();
+        return operations.stream().filter(o -> f.equals(o.getResponsable())).findFirst();
     }
 
     public OperationParcours operation(UUID id) {
@@ -387,7 +391,7 @@ public final class Parcours {
             return List.of();
         }
         List<TypeAttestation> deposees = etat.getAttestationsDeposees();
-        return TypeAttestation.exigees(liaison.getTypeProjet(), etat.isFintech()).stream().filter(t -> !deposees.contains(t)).toList();
+        return liaison.modeleTypeProjet().attestationsExigees(etat.isFintech()).stream().filter(t -> !deposees.contains(t)).toList();
     }
 
     /** Recalcule les champs dénormalisés (statut, étape courante, blocage) et projette l'automate technique (D-57). */
@@ -420,6 +424,21 @@ public final class Parcours {
      * dont tous les prédécesseurs sont faits.
      */
     public void terminer(OperationParcours o, Preuve preuve, LocalDate aujourdhui) {
+        if (o.getEtat() == EtatOperationParcours.EN_SIGNATURE) {
+            return;
+        }
+        if (!o.signaturesAttendues().isEmpty()) {
+            // Signatures exigées (D-91) : l'opération ne se clôt qu'après elles, dans leur ordre.
+            o.setPreuve(preuve);
+            o.setEtat(EtatOperationParcours.EN_SIGNATURE);
+            rafraichir();
+            return;
+        }
+        clore(o, preuve, aujourdhui);
+    }
+
+    /** Clôture effective : opération faite, particularité appliquée, suivantes ouvertes. */
+    private void clore(OperationParcours o, Preuve preuve, LocalDate aujourdhui) {
         o.setEtat(EtatOperationParcours.FAITE);
         o.setFaiteLe(aujourdhui);
         o.setPreuve(preuve);
@@ -431,6 +450,136 @@ public final class Parcours {
         }
         ouvrirSuivantes(aujourdhui);
         rafraichir();
+    }
+
+    // ------------------------------------------------------------------ signatures (D-91, docs/lot1/types-projet.md §3)
+
+    /** Empreinte signée et documents des livrables portés déposés. */
+    public record Empreinte(String empreinte, List<SignatureRecueillie.DocumentSigne> documents) {}
+
+    /** Signature exigée de l'opération (404 HOM_SIGNATURE_INCONNUE). */
+    public static SignatureOperation signature(OperationParcours o, String code) {
+        return o
+            .getSignatures()
+            .stream()
+            .filter(s -> s.code().equals(code))
+            .findFirst()
+            .orElseThrow(() -> HomologationException.notFound("HOM_SIGNATURE_INCONNUE", "Signature inconnue de cette opération.", code));
+    }
+
+    /**
+     * Personne attendue pour une fonction sur une opération : celle qui tient la fonction dans les qualités de
+     * l'opération (R, V, C, I, E), sinon la ressource affectée à la liaison, sinon le conducteur ; vide si
+     * personne n'est désigné (tout porteur de la fonction peut alors signer).
+     */
+    public Optional<Personne> titulaire(OperationParcours o, Fonction f) {
+        Raci r = o.getRaci();
+        List<Personne> qualites = new ArrayList<>();
+        qualites.add(r.r());
+        qualites.add(r.v());
+        qualites.addAll(r.c());
+        qualites.addAll(r.i());
+        qualites.addAll(r.e());
+        Optional<Personne> p = qualites.stream().filter(x -> x != null && x.affectee() && f.equals(x.fonction())).findFirst();
+        if (p.isPresent()) {
+            return p;
+        }
+        return tenant(f);
+    }
+
+    /**
+     * Personne qui tient une fonction sur la liaison, hors qualités d'une opération : ressource affectée, institution
+     * liée (fonction externe), conducteur ; vide si la fonction est à affecter (D-93 §1).
+     */
+    public Optional<Personne> tenant(Fonction f) {
+        Personne ressource = etat.getRessources().get(f);
+        if (ressource != null && ressource.affectee()) {
+            return Optional.of(ressource);
+        }
+        InstitutionLiee i = etat.getInstitutionsLiees().get(f);
+        if (i != null) {
+            return Optional.of(Personne.institution(f, i.id(), i.nom()));
+        }
+        if (Fonction.CONDUCTEUR.equals(f)) {
+            return Optional.ofNullable(conducteur());
+        }
+        return Optional.empty();
+    }
+
+    /** Conducteur de la liaison, s'il est désigné. */
+    public Personne conducteur() {
+        if (liaison.getChefDeProjetId() == null || etat.isConducteurADesigner()) {
+            return null;
+        }
+        return new Personne(liaison.getChefDeProjetId().toString(), "Conducteur de projet", Fonction.CONDUCTEUR);
+    }
+
+    /** L'acteur conduit cette liaison (conducteur désigné). */
+    public boolean conduitePar(Acteur a) {
+        Personne c = conducteur();
+        return c != null && a.est(c);
+    }
+
+    /**
+     * Empreinte SHA-256 (hexadécimal) des lignes {@code REFERENCE:documentId:sha256\n} des livrables portés déposés,
+     * dans l'ordre de {@code porte} : un livrable de l'opération est sa pièce déposée, un livrable {@code OP/L}
+     * celle de l'opération OP.
+     */
+    public Empreinte empreinte(OperationParcours o, SignatureOperation s) {
+        List<SignatureRecueillie.DocumentSigne> docs = new ArrayList<>();
+        StringBuilder lignes = new StringBuilder();
+        for (String ref : s.porte()) {
+            String code = SignatureOperation.operationDe(ref);
+            Optional<OperationParcours> porteur = code == null ? Optional.of(o) : operation(code);
+            Preuve piece = porteur.map(OperationParcours::getPreuve).orElse(null);
+            if (piece != null && piece.documentRef() != null && !piece.documentRef().isBlank()) {
+                docs.add(new SignatureRecueillie.DocumentSigne(ref, piece.documentRef(), piece.empreinte()));
+                lignes.append(ref).append(':').append(piece.documentRef()).append(':').append(piece.empreinte()).append('\n');
+            }
+        }
+        return new Empreinte(empreinte(lignes.toString()), List.copyOf(docs));
+    }
+
+    /**
+     * Signature d'une opération en attente de signatures (D-91) : dans l'ordre croissant (même ordre : indifférent),
+     * une fois chacune ; la dernière clôt l'opération. Le droit du signataire et l'assertion FIDO2 sont vérifiés par
+     * l'appelant. Rend la signature recueillie.
+     */
+    public SignatureRecueillie signer(OperationParcours o, String code, Personne signataire, java.time.Instant instant, LocalDate aujourdhui) {
+        SignatureOperation s = verifierSignable(o, code);
+        Empreinte e = empreinte(o, s);
+        SignatureRecueillie r = new SignatureRecueillie(code, signataire.id(), signataire.nom(), s.signataire(), instant, e.empreinte(), e.documents());
+        o.ajouterSignature(r);
+        if (o.signaturesAttendues().isEmpty()) {
+            clore(o, o.getPreuve(), aujourdhui);
+        }
+        return r;
+    }
+
+    /**
+     * La signature peut être donnée maintenant : opération EN_SIGNATURE (409 HOM_SIGNATURE_ETAT), signature pas encore
+     * donnée (409 HOM_SIGNATURE_DEJA_SIGNEE) et du plus petit ordre restant (409 HOM_SIGNATURE_ORDRE).
+     */
+    public SignatureOperation verifierSignable(OperationParcours o, String code) {
+        SignatureOperation s = signature(o, code);
+        if (o.getEtat() != EtatOperationParcours.EN_SIGNATURE) {
+            throw HomologationException.conflict(
+                "HOM_SIGNATURE_ETAT",
+                "L'opération n'attend pas de signature.",
+                Map.of("etat", o.getEtat().name(), "attendu", EtatOperationParcours.EN_SIGNATURE.name())
+            );
+        }
+        if (o.recueillie(code).isPresent()) {
+            throw HomologationException.conflict("HOM_SIGNATURE_DEJA_SIGNEE", "Cette signature est déjà donnée.", Map.of("signature", code));
+        }
+        if (o.signaturesSuivantes().stream().noneMatch(x -> x.code().equals(code))) {
+            throw HomologationException.conflict(
+                "HOM_SIGNATURE_ORDRE",
+                "Les signatures se donnent dans leur ordre : d'autres sont attendues avant celle-ci.",
+                Map.of("signature", code, "attendues", o.signaturesSuivantes().stream().map(SignatureOperation::code).toList())
+            );
+        }
+        return s;
     }
 
     /** Clôture imposée par un événement ou un constat : sans effet si l'opération est faite. */
@@ -522,11 +671,96 @@ public final class Parcours {
 
     /** Livrable (compte rendu, document de paramétrage…) : clôt l'opération ouverte ; jamais sur une clé ni une valeur de référence. */
     public void deposerLivrable(OperationParcours o, Preuve preuve, LocalDate aujourdhui) {
+        deposerLivrable(o, livrableUnique(o), preuve, null, null, false, aujourdhui);
+    }
+
+    /** Livrable unique de l'opération, sinon null (dépôt sans code, antérieur à D-93). */
+    static Livrable livrableUnique(OperationParcours o) {
+        List<Livrable> l = o.getLivrables();
+        return l.size() == 1 ? l.get(0) : null;
+    }
+
+    /**
+     * Dépôt d'un livrable attendu (D-93 §3) : {@code livrable} est l'entrée du référentiel (null pour une opération sans
+     * livrable déclaré, comportement antérieur : la pièce clôt l'opération). Le dépôt est inscrit ; l'opération se clôt
+     * quand plus aucun livrable obligatoire ne manque, sinon elle passe EN_COURS.
+     */
+    public void deposerLivrable(OperationParcours o, Livrable livrable, Preuve preuve, String typeMime, String deposantId, boolean supervision, LocalDate aujourdhui) {
         refuserGesteLibre(o);
         if (!o.getEtat().ouverte() || o.porte(Geste.CONSTATER_COUVERTURE) || o.isCle() || o.isValeurReference()) {
             throw HomologationException.conflict("HOM_OPERATION_NOT_OPEN", "Cette opération n'attend pas de livrable.", Map.of("etat", o.getEtat().name(), "rang", o.getRang()));
         }
-        terminer(o, preuve, aujourdhui);
+        if (livrable == null) {
+            terminer(o, preuve, aujourdhui);
+            return;
+        }
+        inscrire(o, livrable, preuve, typeMime, deposantId, supervision);
+        if (o.livrablesManquants().isEmpty()) {
+            terminer(o, preuve, aujourdhui);
+        } else {
+            o.setPreuve(preuve);
+            o.setEtat(EtatOperationParcours.EN_COURS);
+        }
+    }
+
+    private static void inscrire(OperationParcours o, Livrable l, Preuve p, String typeMime, String deposantId, boolean supervision) {
+        o.deposer(new DepotLivrable(l.code(), p.documentRef(), p.nom(), p.empreinte(), typeMime, p.deposeLe(), p.deposePar(), deposantId, supervision ? Boolean.TRUE : null, null));
+    }
+
+    /**
+     * Livrable visé par un dépôt (D-93 §3) : le code donné ; sans code, l'unique livrable de l'opération ; aucun livrable
+     * déclaré : null (pièce libre). 422 HOM_LIVRABLE_REQUIS (plusieurs livrables, aucun code), HOM_LIVRABLE_INCONNU.
+     */
+    public static Livrable livrableVise(OperationParcours o, String code) {
+        List<Livrable> l = o.getLivrables();
+        if (code == null || code.isBlank()) {
+            if (l.size() > 1) {
+                throw HomologationException.unprocessableDetails(
+                    "HOM_LIVRABLE_REQUIS",
+                    "Cette opération attend plusieurs livrables : préciser le livrable déposé.",
+                    Map.of("attendus", l.stream().map(Livrable::code).toList())
+                );
+            }
+            return l.isEmpty() ? null : l.get(0);
+        }
+        return l
+            .stream()
+            .filter(x -> x.code().equals(code.trim()))
+            .findFirst()
+            .orElseThrow(() ->
+                HomologationException.unprocessableDetails(
+                    "HOM_LIVRABLE_INCONNU",
+                    "Ce livrable n'est pas attendu sur cette opération.",
+                    Map.of("livrable", code, "attendus", l.stream().map(Livrable::code).toList())
+                )
+            );
+    }
+
+    /** Type de pièce admis par le livrable (types déclarés au référentiel ; aucun : tout type), 422 HOM_LIVRABLE_TYPE_REFUSE. */
+    public static void verifierType(Livrable l, String typeMime) {
+        if (l == null || l.typesPieces().isEmpty()) {
+            return;
+        }
+        String t = typeMime == null ? "" : typeMime.split(";")[0].trim().toLowerCase(java.util.Locale.ROOT);
+        if (l.typesPieces().stream().noneMatch(x -> x.equalsIgnoreCase(t))) {
+            throw HomologationException.unprocessableDetails(
+                "HOM_LIVRABLE_TYPE_REFUSE",
+                "Le type de la pièce n'est pas admis pour ce livrable.",
+                Map.of("livrable", l.code(), "type", t, "admis", l.typesPieces())
+            );
+        }
+    }
+
+    /** Clôture refusée tant qu'un livrable obligatoire manque (D-93 §3), 409 HOM_LIVRABLE_MANQUANT. */
+    public static void exigerLivrables(OperationParcours o) {
+        List<Livrable> manquants = o.livrablesManquants();
+        if (!manquants.isEmpty()) {
+            throw HomologationException.conflict(
+                "HOM_LIVRABLE_MANQUANT",
+                "Un livrable obligatoire manque : l'opération ne peut pas être close.",
+                Map.of("manquants", manquants.stream().map(Livrable::code).toList())
+            );
+        }
     }
 
     /**
@@ -537,6 +771,14 @@ public final class Parcours {
      * en validation.
      */
     public void deposerPreuve(OperationParcours o, Preuve piece, String valeurReference, String codeControle, Ceremonie ceremonie) {
+        deposerPreuve(o, livrableUnique(o), piece, valeurReference, codeControle, ceremonie);
+    }
+
+    /**
+     * Preuve d'un livrable attendu (D-93 §3) : le dépôt est inscrit ; l'opération ne passe en validation qu'une fois
+     * tous ses livrables obligatoires déposés (sinon EN_COURS). {@code livrable} null : preuve unique (antérieur).
+     */
+    public void deposerPreuve(OperationParcours o, Livrable livrable, Preuve piece, String valeurReference, String codeControle, Ceremonie ceremonie) {
         refuserGesteLibre(o);
         if (!o.getEtat().ouverte() || o.porte(Geste.CONSTATER_COUVERTURE)) {
             throw HomologationException.conflict("HOM_OPERATION_NOT_OPEN", "Cette opération n'est pas ouverte.", Map.of("etat", o.getEtat().name(), "rang", o.getRang()));
@@ -562,7 +804,18 @@ public final class Parcours {
             p = p.avecCle(code, c);
         }
         o.setPreuve(p);
-        o.setEtat(EtatOperationParcours.EN_VALIDATION);
+        if (livrable != null) {
+            inscrire(o, livrable, p, null, null, false);
+        }
+        o.setEtat(o.livrablesManquants().isEmpty() ? EtatOperationParcours.EN_VALIDATION : EtatOperationParcours.EN_COURS);
+    }
+
+    /** Réinscrit le dépôt de la preuve d'un livrable attendu avec la pièce revérifiée et son déposant (D-93 §3). */
+    public void inscrirePreuve(OperationParcours o, Livrable livrable, String typeMime, String deposantId, boolean supervision) {
+        Preuve p = o.getPreuve();
+        if (livrable != null && p != null) {
+            inscrire(o, livrable, p, typeMime, deposantId, supervision);
+        }
     }
 
     private static Ceremonie ceremonieControlee(Ceremonie c) {
@@ -601,7 +854,167 @@ public final class Parcours {
         if (acteur.est(o.getRaci().r())) {
             throw validateurResponsable();
         }
+        exigerLivrables(o);
         terminer(o, o.getPreuve(), aujourdhui);
+    }
+
+    /**
+     * Renvoi par le validateur (D-93 §2) : l'opération en validation revient à faire (bloquée si un blocage est actif),
+     * sa preuve et ses dépôts restent consultables, le motif est inscrit ; la tâche de R est rouverte.
+     */
+    public Renvoi renvoyer(OperationParcours o, Acteur acteur, String motif, LocalDate aujourdhui) {
+        if (o.getEtat() != EtatOperationParcours.EN_VALIDATION) {
+            throw HomologationException.conflict("HOM_OPERATION_NOT_IN_VALIDATION", "L'opération n'attend pas de validation.", Map.of("etat", o.getEtat().name()));
+        }
+        String m = motif == null ? "" : motif.trim();
+        if (m.isEmpty() || m.length() > 500) {
+            throw HomologationException.unprocessable("HOM_MOTIF_REQUIS", "Le motif du renvoi est exigé (500 caractères au plus).");
+        }
+        if (acteur.est(o.getRaci().r())) {
+            throw validateurResponsable();
+        }
+        Renvoi r = new Renvoi(m, acteur.id() == null ? null : acteur.id().toString(), acteur.nom(), aujourdhui);
+        o.ajouterRenvoi(r);
+        o.setEtat(bloquee() ? EtatOperationParcours.BLOQUEE : EtatOperationParcours.A_FAIRE);
+        rafraichir();
+        return r;
+    }
+
+    // ------------------------------------------------------------------ RACI à l'exécution (D-93 §2)
+
+    /** Titre auquel un acteur dépose un livrable ou une preuve. */
+    public enum DroitDepot {
+        /** Responsable (R) désigné. */
+        RESPONSABLE,
+        /** R à affecter : porteur de sa fonction. */
+        PORTEUR,
+        /** Déposant du livrable (désigné, ou porteur de la fonction déposante sans désignation). */
+        DEPOSANT,
+        /** Conducteur de la liaison. */
+        CONDUCTEUR,
+        /** HOM_STEP_MANAGE, hors RACI : supervision journalisée. */
+        SUPERVISION,
+    }
+
+    /**
+     * Droit de dépôt sur une opération (D-93 §2) : R désigné (ou porteur de sa fonction s'il est à affecter), déposant
+     * du livrable visé (ou de l'un d'eux sans code), conducteur de la liaison, sinon supervision par HOM_STEP_MANAGE ;
+     * vide : refus.
+     */
+    public Optional<DroitDepot> droitDepot(OperationParcours o, Livrable livrable, Acteur a, Set<Fonction> fonctions) {
+        if (a.id() == null) {
+            return Optional.empty();
+        }
+        Personne r = o.getRaci().r();
+        if (a.est(r)) {
+            return Optional.of(DroitDepot.RESPONSABLE);
+        }
+        if (r != null && !r.affectee() && fonctions.contains(r.fonction())) {
+            return Optional.of(DroitDepot.PORTEUR);
+        }
+        List<Livrable> vises = livrable != null ? List.of(livrable) : o.getLivrables();
+        for (Livrable l : vises) {
+            if (l.deposant() != null && titulaire(o, l.deposant()).map(a::est).orElse(fonctions.contains(l.deposant()))) {
+                return Optional.of(DroitDepot.DEPOSANT);
+            }
+        }
+        if (conduitePar(a)) {
+            return Optional.of(DroitDepot.CONDUCTEUR);
+        }
+        return a.peut(Permissions.STEP_MANAGE) ? Optional.of(DroitDepot.SUPERVISION) : Optional.empty();
+    }
+
+    /** Dépôt admis, sinon 403 HOM_DEPOT_NON_AUTORISE (D-93 §2). */
+    public DroitDepot exigerDroitDepot(OperationParcours o, Livrable livrable, Acteur a, Set<Fonction> fonctions) {
+        return droitDepot(o, livrable, a, fonctions).orElseThrow(() ->
+            HomologationException.forbidden(
+                "HOM_DEPOT_NON_AUTORISE",
+                "Ce dépôt revient au responsable désigné (" + nomOuFonction(o.getRaci().r()) + "), au déposant du livrable ou au conducteur de la liaison."
+            )
+        );
+    }
+
+    /** Validateur admis : le V désigné ; V à affecter : un porteur de sa fonction (D-93 §2). */
+    public boolean peutValider(OperationParcours o, Acteur a, Set<Fonction> fonctions) {
+        Personne v = o.getRaci().v();
+        if (a.id() == null || v == null || a.est(o.getRaci().r())) {
+            return false;
+        }
+        return v.affectee() ? a.est(v) : fonctions.contains(v.fonction());
+    }
+
+    /** Validation ou renvoi admis, sinon 403 HOM_VALIDATION_NON_VALIDATEUR. */
+    public void exigerValidateur(OperationParcours o, Acteur a, Set<Fonction> fonctions) {
+        if (!a.est(o.getRaci().r()) && !peutValider(o, a, fonctions)) {
+            throw HomologationException.forbidden("HOM_VALIDATION_NON_VALIDATEUR", "Cette validation revient au validateur désigné (" + nomOuFonction(o.getRaci().v()) + ").");
+        }
+    }
+
+    private static String nomOuFonction(Personne p) {
+        if (p == null) {
+            return "non désigné";
+        }
+        return p.affectee() ? p.nom() : "un porteur de la fonction " + p.fonction().libelle();
+    }
+
+    // ------------------------------------------------------------------ affectation et départ (D-93 §1)
+
+    /**
+     * Affecte une personne (fonction interne) ou une institution liée (fonction externe) à une fonction sur la liaison :
+     * elle remplace, sur les opérations non faites, la fonction à affecter et la personne qui la tenait jusque-là.
+     */
+    public void affecterFonction(Fonction f, Personne p) {
+        if (p.institutionnelle()) {
+            etat.lierInstitution(f, new InstitutionLiee(p.institutionId(), p.nom()));
+        } else {
+            Map<Fonction, Personne> ressources = new LinkedHashMap<>(etat.getRessources());
+            ressources.put(f, p);
+            etat.setRessources(ressources);
+        }
+        operations
+            .stream()
+            .filter(o -> !o.faite() && o.getEtat() != EtatOperationParcours.SANS_OBJET)
+            .forEach(o -> o.setRaci(o.getRaci().remplacerSi(x -> f.equals(x.fonction()), x -> p)));
+    }
+
+    /**
+     * Départ d'un compte (désactivation, suppression) : ses qualités sur les opérations non faites repassent « à
+     * affecter », ses ressources sont retirées ; conducteur parti : conducteur à désigner. Rend les fonctions libérées.
+     */
+    public Set<Fonction> retirerCompte(String compteId) {
+        Set<Fonction> liberees = new java.util.LinkedHashSet<>();
+        Map<Fonction, Personne> ressources = new LinkedHashMap<>(etat.getRessources());
+        ressources.entrySet().removeIf(e -> {
+            boolean lui = compteId.equals(e.getValue().id());
+            if (lui) {
+                liberees.add(e.getKey());
+            }
+            return lui;
+        });
+        etat.setRessources(ressources);
+        for (OperationParcours o : operations) {
+            if (o.faite() || o.getEtat() == EtatOperationParcours.SANS_OBJET) {
+                continue;
+            }
+            o.getRaci().toutes().stream().filter(x -> compteId.equals(x.id())).forEach(x -> liberees.add(x.fonction()));
+            o.setRaci(o.getRaci().remplacerSi(x -> compteId.equals(x.id()), x -> Personne.aAffecter(x.fonction())));
+        }
+        if (liaison.getChefDeProjetId() != null && compteId.equals(liaison.getChefDeProjetId().toString()) && !etat.isConducteurADesigner()) {
+            etat.setConducteurADesigner(true);
+            liberees.add(Fonction.CONDUCTEUR);
+        }
+        return liberees;
+    }
+
+    /** Le compte tient une qualité sur une opération non faite, une ressource ou la conduite de la liaison. */
+    public boolean implique(String compteId) {
+        if (etat.getRessources().values().stream().anyMatch(p -> compteId.equals(p.id()))) {
+            return true;
+        }
+        if (liaison.getChefDeProjetId() != null && compteId.equals(liaison.getChefDeProjetId().toString()) && !etat.isConducteurADesigner()) {
+            return true;
+        }
+        return operations.stream().filter(o -> !o.faite()).anyMatch(o -> o.getRaci().toutes().stream().anyMatch(x -> compteId.equals(x.id())));
     }
 
     private static HomologationException validateurResponsable() {
@@ -762,6 +1175,36 @@ public final class Parcours {
             etat.setEtatPv(g ? EtatProcesVerbal.SIGNE_GIMAC : EtatProcesVerbal.SIGNE_PARTICIPANT);
         }
         rafraichir();
+    }
+
+    /**
+     * certification.pv-signed.v1 (D-91, D-94) : les signatures configurées des opérations de ce déclencheur que le
+     * circuit de MS-CERTIFICATION a recueillies (même code de signature) sont tenues pour recueillies, avec leur
+     * signataire, leur date et l'empreinte du procès-verbal, origine {@code certification.pv-signed.v1} : elles ne sont
+     * jamais redemandées (pas de double signature). Une opération en attente de signatures qui n'en attend plus est
+     * close. Rend les signatures reprises ({@code <code opération>/<code signature>}).
+     */
+    public List<String> recueillirSignaturesProcesVerbal(List<SignatureRecueillie> signees, LocalDate aujourdhui) {
+        List<String> reprises = new ArrayList<>();
+        for (OperationParcours o : parDeclencheur(Declencheurs.PV_SIGNE)) {
+            if (o.faite() || o.getEtat() == EtatOperationParcours.SANS_OBJET) {
+                continue;
+            }
+            for (SignatureOperation s : o.signaturesAttendues()) {
+                signees
+                    .stream()
+                    .filter(x -> s.code().equals(x.code()))
+                    .findFirst()
+                    .ifPresent(x -> {
+                        o.ajouterSignature(new SignatureRecueillie(s.code(), x.signataireId(), x.signataireNom(), s.signataire(), x.signeLe(), x.empreinte(), List.of(), Declencheurs.PV_SIGNE));
+                        reprises.add(o.getRang() + "/" + s.code());
+                    });
+            }
+            if (o.getEtat() == EtatOperationParcours.EN_SIGNATURE && o.signaturesAttendues().isEmpty()) {
+                clore(o, o.getPreuve(), aujourdhui);
+            }
+        }
+        return reprises;
     }
 
     /** certification.change-record-constituted.v1 : opérations de ce déclencheur closes. */

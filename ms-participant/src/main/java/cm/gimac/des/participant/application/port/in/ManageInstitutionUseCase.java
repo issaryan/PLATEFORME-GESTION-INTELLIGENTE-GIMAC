@@ -72,4 +72,13 @@ public interface ManageInstitutionUseCase {
      * @return la transition automatique enregistrée, vide si aucun changement n'est dû
      */
     java.util.Optional<StatusTransition> debuterHomologation(UUID institutionId, UUID liaisonId, String typeProjet);
+
+    /**
+     * Jalon EN_PRODUCTION d'une liaison atteint dans MS-HOMOLOGATION (homologation.liaison-milestone-reached.v1,
+     * D-93 §4) : une institution EN_HOMOLOGATION passe automatiquement à ACTIF ; une institution déjà active reste en
+     * l'état, tout autre état est signalé sans transition.
+     *
+     * @return la transition automatique enregistrée, vide si aucun changement n'est dû
+     */
+    java.util.Optional<StatusTransition> mettreEnProduction(UUID institutionId, UUID liaisonId, String reference, String typeProjet);
 }

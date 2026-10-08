@@ -72,6 +72,11 @@ public class ParcoursLiaison {
     @Column(name = "ressources", columnDefinition = "jsonb")
     private String ressources;
 
+    /** Institutions liées qui tiennent les fonctions externes (D-93 §1), par code de fonction. */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "institutions_liees", columnDefinition = "jsonb")
+    private String institutionsLiees;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "fiche_etat", nullable = false)
     private EtatFicheSuivi ficheEtat = EtatFicheSuivi.A_REMETTRE;
@@ -211,6 +216,26 @@ public class ParcoursLiaison {
 
     public void setRessources(Map<Fonction, Personne> r) {
         this.ressources = JsonTexte.ecrire(new ArrayList<>(r.values()));
+    }
+
+    /** Institutions liées déclarées sur la liaison (fonctions externes, D-93 §1), par fonction. */
+    public Map<Fonction, InstitutionLiee> getInstitutionsLiees() {
+        Map<Fonction, InstitutionLiee> m = new LinkedHashMap<>();
+        if (institutionsLiees != null && !institutionsLiees.isBlank()) {
+            JsonTexte.objet(institutionsLiees).forEach((k, v) -> {
+                if (v instanceof Map<?, ?> x && x.get("id") != null) {
+                    m.put(Fonction.valueOf(k), new InstitutionLiee(x.get("id").toString(), x.get("nom") == null ? null : x.get("nom").toString()));
+                }
+            });
+        }
+        return m;
+    }
+
+    public void lierInstitution(Fonction f, InstitutionLiee i) {
+        Map<String, InstitutionLiee> m = new LinkedHashMap<>();
+        getInstitutionsLiees().forEach((k, v) -> m.put(k.name(), v));
+        m.put(f.name(), i);
+        this.institutionsLiees = JsonTexte.ecrire(m);
     }
 
     public EtatFicheSuivi getFicheEtat() {

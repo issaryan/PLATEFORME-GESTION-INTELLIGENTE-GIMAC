@@ -140,7 +140,8 @@ class ReglesNotificationsTest {
             Map.entry(TypeNotification.DEMANDE, true),
             Map.entry(TypeNotification.MENTION, true),
             Map.entry(TypeNotification.REPONSE, true),
-            Map.entry(TypeNotification.PROCESSUS, true)
+            Map.entry(TypeNotification.PROCESSUS, true),
+            Map.entry(TypeNotification.HOMOLOGATION, true)
         );
         p.modifier(null, true, Map.of(TypeNotification.TACHE, false), T.plusSeconds(1));
         assertThat(p.isSysteme()).isTrue();
@@ -206,6 +207,17 @@ class ReglesNotificationsTest {
         assertThat(regles.sousTitreProcessus(faits(NatureProcessus.ETAPE_REAFFECTEE, "REAFFECTATION", false, false, null), "Brice Onana", null)).isEqualTo("Flux vers la banque X, réaffectée par Brice Onana");
         assertThat(regles.sousTitreProcessus(faits(NatureProcessus.ETAPE_REAFFECTEE, "DEPART", false, false, null), null, "Jean Parti")).isEqualTo("Flux vers la banque X, après le départ de Jean Parti");
         assertThat(regles.sousTitreProcessus(faits(NatureProcessus.ETAPE_REAFFECTEE, "DEPART", false, false, null), null, null)).isEqualTo("Flux vers la banque X, après un départ");
+        // D-93 §9.3 : changements d'organisation.
+        assertThat(regles.titreProcessus(faits(NatureProcessus.ETAPE_REAFFECTEE, "PROFIL_RETIRE", false, false, null))).isEqualTo("Étape à reprendre : Analyse de la demande");
+        assertThat(regles.titreProcessus(faits(NatureProcessus.ETAPE_REAFFECTEE, "CHANGEMENT_UNITE", false, false, null))).isEqualTo("Étape à reprendre : Analyse de la demande");
+        assertThat(regles.titreProcessus(faits(NatureProcessus.ETAPE_REAFFECTEE, "CHANGEMENT_CHEF", false, false, null))).isEqualTo("Étape réaffectée : Analyse de la demande");
+        assertThat(regles.sousTitreProcessus(faits(NatureProcessus.ETAPE_REAFFECTEE, "PROFIL_RETIRE", false, false, null), null, "Jean Parti")).isEqualTo(
+            "Flux vers la banque X, après le retrait d'un profil de Jean Parti"
+        );
+        assertThat(regles.sousTitreProcessus(faits(NatureProcessus.ETAPE_REAFFECTEE, "CHANGEMENT_UNITE", false, false, null), null, null)).isEqualTo("Flux vers la banque X, après un changement d'unité");
+        assertThat(regles.sousTitreProcessus(faits(NatureProcessus.ETAPE_REAFFECTEE, "CHANGEMENT_CHEF", false, false, null), "Brice Onana", null)).isEqualTo(
+            "Flux vers la banque X, après un changement de chef d'unité"
+        );
         assertThat(regles.sousTitreProcessus(faits(NatureProcessus.INSTANCE_CLOSE, "ANNULEE", false, false, null), "Brice Onana", null)).isEqualTo("OUVERTURE_FLUX_RESEAU, annulé par Brice Onana");
         assertThat(regles.sousTitreProcessus(faits(NatureProcessus.INSTANCE_CLOSE, "CLOSE", false, false, null), "Bob Ndi", null)).isEqualTo("OUVERTURE_FLUX_RESEAU");
         // Instance sans intitulé : le code nomme déjà l'instance dans le titre.

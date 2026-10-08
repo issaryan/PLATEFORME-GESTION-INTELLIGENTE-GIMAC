@@ -22,7 +22,7 @@ public class AttestationDTO implements Serializable {
 
     private UUID institutionId;
 
-    @Size(max = 30)
+    @Size(max = 40)
     private String typeProjet;
 
     @Lob

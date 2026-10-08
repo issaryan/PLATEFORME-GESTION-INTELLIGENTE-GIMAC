@@ -22,7 +22,7 @@ export type OptionsNotificationsSimulees = {
   preferences?: Partial<PreferencesNotifications>
 }
 
-const PREFERENCES_DEFAUT: PreferencesNotifications = { systeme: true, son: false, types: { MESSAGE: true, TACHE: true, RAPPORT: true, MENTION: true, REPONSE: true, DEMANDE: true, PROCESSUS: true } }
+const PREFERENCES_DEFAUT: PreferencesNotifications = { systeme: true, son: false, types: { MESSAGE: true, TACHE: true, RAPPORT: true, MENTION: true, REPONSE: true, DEMANDE: true, PROCESSUS: true, HOMOLOGATION: true } }
 
 export function notificationsSimulees(o: OptionsNotificationsSimulees = {}): ServiceNotificationsSimule {
   const latence = o.latenceMs ?? 150

@@ -187,7 +187,7 @@ public class MonCompteService {
     /** Courriel d'information « mot de passe modifié », lien vers « Mon compte » de la couche du compte. */
     private void informer(Compte c) {
         try {
-            Couche couche = CourrielsPlateforme.coucheDe(c);
+            Couche couche = CatalogueProfils.couche(c, annuaire.compositions(), proprietes);
             courriels.envoyer(c, CourrielsPlateforme.Modele.MOT_DE_PASSE_MODIFIE, CourrielsPlateforme.lienMonCompte(proprietes, couche), null);
         } catch (RuntimeException e) {
             LOG.warn("Courriel d'information (mot de passe modifié) non envoyé : {}", e.getMessage());

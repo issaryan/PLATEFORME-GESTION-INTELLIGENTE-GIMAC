@@ -91,4 +91,28 @@ class RelaisTachesPilotageTest {
         k.echec("x".repeat(600), t, 100);
         assertThat(k.getDerniereErreur()).hasSize(500);
     }
+
+    @Test
+    @DisplayName("D-93 : création refusée (compte inactif) avec remontée : tâche « Réaffecter » au conducteur ; sans remontée : rien")
+    void remontee() {
+        DemandeTache refusee = creation("parti");
+        refusee.escaladerVers("conducteur");
+        DemandeTache sans = creation("autre");
+        when(demandes.verrouillerEnAttente(RelaisTachesPilotage.LOT)).thenReturn(List.of(refusee, sans));
+        when(pilotage.creer(any())).thenReturn(Resultat.REFUSE);
+        new RelaisTachesPilotage(demandes, pilotage, Clock.fixed(T, ZoneOffset.UTC)).relayer();
+        org.mockito.ArgumentCaptor<DemandeTache> c = org.mockito.ArgumentCaptor.forClass(DemandeTache.class);
+        org.mockito.Mockito.verify(demandes).save(c.capture());
+        Tache t = JsonTexte.lire(c.getValue().getCorps(), Tache.class);
+        assertThat(t.responsableId()).isEqualTo("conducteur");
+        assertThat(t.titre()).isEqualTo("Réaffecter : t");
+        assertThat(t.origine().reference()).isEqualTo("LIA/3/R/REFUS");
+        assertThat(t.description()).contains("parti");
+        assertThat(c.getValue().getCle()).isEqualTo("LIA/3/R/REFUS|conducteur");
+        DemandeTache soi = creation("conducteur");
+        soi.escaladerVers("conducteur");
+        new RelaisTachesPilotage(demandes, pilotage, Clock.fixed(T, ZoneOffset.UTC)).remonter(soi, T);
+        new RelaisTachesPilotage(demandes, pilotage, Clock.fixed(T, ZoneOffset.UTC)).remonter(cloture("a"), T);
+        org.mockito.Mockito.verify(demandes).save(any());
+    }
 }

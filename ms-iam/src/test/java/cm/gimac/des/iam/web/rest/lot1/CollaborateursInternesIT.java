@@ -61,6 +61,70 @@ class CollaborateursInternesIT extends AbstractIamIT {
         mvc.perform(get("/api/v1/interne/collaborateurs").with(utilisateur(SUPER_ADMIN, PERMISSIONS_SUPER_ADMIN))).andExpect(status().isForbidden());
     }
 
+    @Test
+    @DisplayName("D-94 §3 : porteurs d'une permission par la composition des profils ; externe et désactivé exclus")
+    void parPermission() throws Exception {
+        String suffixe = UUID.randomUUID().toString().substring(0, 6);
+        String interne = creer("porteur." + suffixe, "Porteur " + suffixe, null);
+        creer("externe." + suffixe, "Correspondant " + suffixe, "INST-0042");
+        String parti = creer("parti." + suffixe, "Agent parti " + suffixe, null);
+        mvc
+            .perform(
+                post("/api/v1/comptes/{id}/desactivation", parti)
+                    .with(utilisateur(SUPER_ADMIN, PERMISSIONS_SUPER_ADMIN))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"motif\":\"Départ\"}")
+            )
+            .andExpect(status().isOk());
+        mvc
+            .perform(get("/api/v1/interne/collaborateurs?permission=PAR_INSTITUTION_READ").with(SERVICE))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[*].id", Matchers.hasItem(interne)))
+            .andExpect(jsonPath("$[*].id", Matchers.not(Matchers.hasItem(parti))))
+            .andExpect(jsonPath("$[*].institutionId", Matchers.everyItem(Matchers.nullValue())))
+            .andExpect(jsonPath("$[*].actif", Matchers.everyItem(Matchers.is(true))));
+        mvc
+            .perform(get("/api/v1/interne/collaborateurs?permission=HOM_PORTAL_READ").with(SERVICE))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.length()").value(0));
+        mvc.perform(get("/api/v1/interne/collaborateurs?permission=PERMISSION_INCONNUE").with(SERVICE)).andExpect(jsonPath("$.length()").value(0));
+        mvc
+            .perform(get("/api/v1/interne/collaborateurs?permission=PAR_INSTITUTION_READ").with(utilisateur(SUPER_ADMIN, PERMISSIONS_SUPER_ADMIN)))
+            .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("D-93 §11 : comptes actifs d'une institution ; autre institution, compte interne et compte désactivé exclus")
+    void parInstitution() throws Exception {
+        String suffixe = UUID.randomUUID().toString().substring(0, 6);
+        String institution = "INST-" + suffixe;
+        String correspondant = creer("corr." + suffixe, "Correspondant " + suffixe, institution);
+        String parti = creer("corrparti." + suffixe, "Correspondant parti " + suffixe, institution);
+        creer("autre." + suffixe, "Correspondant " + suffixe, institution + "-B");
+        creer("interne." + suffixe, "Agent " + suffixe, null);
+        mvc
+            .perform(
+                post("/api/v1/comptes/{id}/desactivation", parti)
+                    .with(utilisateur(SUPER_ADMIN, PERMISSIONS_SUPER_ADMIN))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"motif\":\"Départ\"}")
+            )
+            .andExpect(status().isOk());
+        mvc
+            .perform(get("/api/v1/interne/collaborateurs?institution=" + institution).with(SERVICE))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.length()").value(1))
+            .andExpect(jsonPath("$[0].id").value(correspondant))
+            .andExpect(jsonPath("$[0].institutionId").value(institution))
+            .andExpect(jsonPath("$[0].actif").value(true))
+            .andExpect(jsonPath("$[0].profils[0]").value("ROLE_CORRESPONDANT"))
+            .andExpect(jsonPath("$[0].email").doesNotExist());
+        mvc.perform(get("/api/v1/interne/collaborateurs?institution=INST-INCONNUE").with(SERVICE)).andExpect(jsonPath("$.length()").value(0));
+        mvc
+            .perform(get("/api/v1/interne/collaborateurs?institution=" + institution).with(utilisateur(SUPER_ADMIN, PERMISSIONS_SUPER_ADMIN)))
+            .andExpect(status().isForbidden());
+    }
+
     private String creer(String identifiant, String fonction, String institution) throws Exception {
         String corps = """
             {"identifiant":"%s","prenom":"Awa","nom":"Mballa","email":"%s@gimac.test","telephone":"+237600000009","fonction":"%s",%s"profils":["%s"],"envoyerInvitation":true}"""

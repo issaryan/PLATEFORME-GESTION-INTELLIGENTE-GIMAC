@@ -1,8 +1,12 @@
 package cm.gimac.des.iam.domain.pouvoir;
 
+import java.util.Arrays;
+import java.util.List;
+
 /**
  * Actions de la matrice des pouvoirs (D-81, docs/lot1/pouvoirs-hierarchiques.md §3 ; D-86,
- * docs/lot1/profils-organisation.md §4 pour les processus d'unité).
+ * docs/lot1/profils-organisation.md §4 pour les processus d'unité). La portée TOUTES (D-92,
+ * docs/lot1/referentiels-metier-admin.md §2 bis) n'est admise que pour PROCESSUS_DEFINIR et PROCESSUS_LANCER.
  */
 public enum ActionPouvoir {
     /** Confier une tâche à un subordonné ou à une unité dirigée, la réaffecter. */
@@ -24,5 +28,15 @@ public enum ActionPouvoir {
     /** Créer et publier les processus des unités couvertes (D-86 §4, D-87). */
     PROCESSUS_DEFINIR,
     /** Lancer un processus d'une unité couverte (D-86 §4, D-87) ; un membre lance ceux de son unité sans pouvoir. */
-    PROCESSUS_LANCER,
+    PROCESSUS_LANCER;
+
+    /** Vrai si cette action admet la portée (TOUTES : processus d'unité seulement ; nulle : non). */
+    public boolean admet(Portee portee) {
+        return portee != null && (portee != Portee.TOUTES || this == PROCESSUS_DEFINIR || this == PROCESSUS_LANCER);
+    }
+
+    /** Portées admises pour cette action, de la plus étroite à la plus large. */
+    public List<Portee> porteesAdmises() {
+        return Arrays.stream(Portee.values()).filter(this::admet).toList();
+    }
 }

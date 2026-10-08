@@ -13,8 +13,9 @@ import java.util.UUID;
 
 /**
  * Rapport quotidien ou hebdomadaire d'un compte interne à son responsable (§2.4) : un seul par
- * (auteur, type, période) ; BROUILLON modifiable, SOUMIS au destinataire (n+1 au moment de la
- * soumission), VISE final. Le contenu n'est jamais publié dans un événement.
+ * (auteur, type, période) ; BROUILLON modifiable, SOUMIS au destinataire (résolu à la soumission : n+1, chef de
+ * l'unité, chef d'une unité parente, ou choisi par l'auteur ; {@code destinataireMotif}), VISE final ; DEPOSE (aucun
+ * destinataire au sommet de l'organisation) final, sans visa. Le contenu n'est jamais publié dans un événement.
  */
 @Entity
 @Table(name = "rapport")
@@ -58,6 +59,10 @@ public class Rapport extends EntitePilotage {
 
     @Column(name = "destinataire_id", length = 80)
     private String destinataireId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "destinataire_motif", length = 24)
+    private MotifDestinataire destinataireMotif;
 
     @Column(name = "soumis_le")
     private Instant soumisLe;
@@ -135,9 +140,9 @@ public class Rapport extends EntitePilotage {
 
     /**
      * Soumission au destinataire : brouillon seulement (409), contenu ou document selon le mode (422
-     * PIL_RAPPORT_INCOMPLET), destinataire présent (422 PIL_SANS_RESPONSABLE).
+     * PIL_RAPPORT_INCOMPLET). Sans destinataire (sommet de l'organisation) : rapport DEPOSE, final, sans visa.
      */
-    public void soumettre(String destinataireId, Indicateurs indicateurs, Instant le) {
+    public void soumettre(String destinataireId, MotifDestinataire motif, Indicateurs indicateurs, Instant le) {
         exigerBrouillon();
         boolean texte = contenu != null && !contenu.isBlank();
         if (mode == ModeRapport.DOCUMENT ? documentId == null : !texte) {
@@ -147,15 +152,14 @@ public class Rapport extends EntitePilotage {
                 Map.of("mode", mode.name())
             );
         }
-        if (destinataireId == null || destinataireId.isBlank()) {
-            throw PilotageException.regle("PIL_SANS_RESPONSABLE", "Aucun responsable (n+1) à qui soumettre le rapport");
-        }
-        this.destinataireId = destinataireId;
+        boolean sansDestinataire = destinataireId == null || destinataireId.isBlank();
+        this.destinataireId = sansDestinataire ? null : destinataireId;
+        this.destinataireMotif = sansDestinataire ? null : motif;
         this.indActivitesFaites = indicateurs.activitesFaites();
         this.indActivitesPrevues = indicateurs.activitesPrevues();
         this.indMinutes = indicateurs.minutes();
         this.indTachesTerminees = indicateurs.tachesTerminees();
-        this.etat = EtatRapport.SOUMIS;
+        this.etat = sansDestinataire ? EtatRapport.DEPOSE : EtatRapport.SOUMIS;
         this.soumisLe = le;
         this.modifieLe = le;
     }
@@ -183,7 +187,7 @@ public class Rapport extends EntitePilotage {
         if (etat != EtatRapport.BROUILLON) {
             throw PilotageException.conflit(
                 "PIL_RAPPORT_NON_MODIFIABLE",
-                "Un rapport soumis ou visé n'est plus modifiable",
+                "Un rapport soumis, visé ou déposé n'est plus modifiable",
                 Map.of("etat", etat.name())
             );
         }
@@ -243,6 +247,10 @@ public class Rapport extends EntitePilotage {
 
     public String getDestinataireId() {
         return destinataireId;
+    }
+
+    public MotifDestinataire getDestinataireMotif() {
+        return destinataireMotif;
     }
 
     public Instant getSoumisLe() {

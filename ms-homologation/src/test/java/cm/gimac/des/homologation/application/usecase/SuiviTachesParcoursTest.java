@@ -62,7 +62,7 @@ class SuiviTachesParcoursTest {
 
     List<PilotageTachesPort.Tache> creees() {
         ArgumentCaptor<PilotageTachesPort.Tache> c = ArgumentCaptor.forClass(PilotageTachesPort.Tache.class);
-        verify(demandes, org.mockito.Mockito.atLeast(0)).creer(c.capture());
+        verify(demandes, org.mockito.Mockito.atLeast(0)).creer(c.capture(), any());
         return c.getAllValues();
     }
 
@@ -172,7 +172,7 @@ class SuiviTachesParcoursTest {
         suivi.emettre(new Parcours(p.liaison(), p.etat(), restantes, p.services(), p.blocages()), photo2);
         assertThat(closes()).extracting(d -> d.origine().reference()).contains("LIA-2026-001/4/V");
 
-        doThrow(new IllegalStateException("base")).when(demandes).creer(any());
+        doThrow(new IllegalStateException("base")).when(demandes).creer(any(), any());
         suivi.observerNouveau(parcours(TypeProjet.PAIEMENT_MOBILE, "REMITTANCE"));
         valider(false);
         assertThat(SuiviTachesParcours.interne(null)).isNull();

@@ -59,6 +59,23 @@ public interface Annuaire {
      */
     List<Compte> parUnite(String unite);
 
+    /**
+     * Comptes rattachés à cette institution (attribut institution_id, correspondance exacte), 500 au plus
+     * (D-93 §11, destinataires des notifications d'une institution). Comptes allégés, comme
+     * {@link #parResponsable(String)}.
+     */
+    default List<Compte> parInstitution(String institutionId) {
+        return lister().stream().filter(c -> institutionId.equals(c.institutionId())).toList();
+    }
+
+    /**
+     * Comptes actifs, hors comptes de service (D-92, périmètre de la portée TOUTES). Comptes allégés, comme
+     * {@link #parResponsable(String)} : ni profils ni second facteur.
+     */
+    default List<Compte> actifs() {
+        return lister().stream().filter(Compte::actif).toList();
+    }
+
     void definirProfils(String id, Set<String> profils);
 
     void definirActif(String id, boolean actif);
@@ -123,6 +140,35 @@ public interface Annuaire {
 
     /** Profils (rôles composites ROLE_*) avec leurs permissions et leur nombre de titulaires. */
     List<Profil> profils();
+
+    /**
+     * Permissions de chaque profil (rôle composite ROLE_*), par code (D-94 : qualités d'un compte déduites de
+     * la composition de ses profils). Lecture sans titulaires.
+     */
+    default Map<String, Set<String>> compositions() {
+        Map<String, Set<String>> m = new java.util.TreeMap<>();
+        profils().forEach(p -> m.put(p.code(), p.permissions()));
+        return m;
+    }
+
+    /**
+     * Codes des profils externes (D-94) : attribut gimac_externe du rôle, ou à défaut une permission du portail
+     * (*_PORTAL_*).
+     */
+    default Set<String> profilsExternes() {
+        Set<String> s = new java.util.TreeSet<>();
+        profils().stream().filter(Profil::externe).forEach(p -> s.add(p.code()));
+        return s;
+    }
+
+    /** Attribut gimac_externe des profils qui le portent (vrai ou faux), par code ; absent : non posé. */
+    Map<String, Boolean> attributsExternes();
+
+    /**
+     * Pose l'attribut gimac_externe d'un profil (D-94) ; les autres attributs sont conservés. IamException 404
+     * IAM_PROFILE_NOT_FOUND si le rôle n'existe pas.
+     */
+    void definirExterne(String code, boolean externe);
 
     /** Permissions connues du realm (rôles en majuscules non préfixés par ROLE_). */
     List<String> permissions();

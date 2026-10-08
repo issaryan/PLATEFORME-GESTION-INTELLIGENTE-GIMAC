@@ -1,0 +1,6 @@
+/* Étapes réelles de la version (D-93) : bande d'étapes à liseré de couleur configurée (jetons du thème, clair et sombre). */
+.gm-etapes-version { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: var(--gm-space-2); list-style: none; margin: 0; padding: 0; }
+.gm-etape-version {
+  display: flex; flex-direction: column; gap: var(--gm-space-1); align-items: flex-start; padding: var(--gm-space-2) var(--gm-space-3);
+  background: var(--gm-color-surface); border: var(--gm-border-1) solid var(--gm-color-border); border-left: 4px solid var(--gm-color-border); border-radius: var(--gm-radius);
+}

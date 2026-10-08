@@ -29,6 +29,11 @@ public class HomologationException extends RuntimeException {
         return new HomologationException(code, 422, message, Map.of());
     }
 
+    /** 422 avec détails (champ en cause). */
+    public static HomologationException unprocessableDetails(String code, String message, Map<String, Object> details) {
+        return new HomologationException(code, 422, message, details);
+    }
+
     /** 428 : décision engageante sans réauthentification forte (IAM-07, en-tête X-Reauth-Assertion). */
     public static HomologationException reauthRequired() {
         return new HomologationException("IAM_REAUTH_REQUIRED", 428, "Réauthentification forte exigée", Map.of());

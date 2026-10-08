@@ -186,6 +186,10 @@ public class RepriseReferentielCr implements CustomTaskChange {
         return e == null ? null : e.name();
     }
 
+    private static String nom(cm.gimac.des.homologation.domain.parcours.Fonction f) {
+        return f == null ? null : f.name();
+    }
+
     private static int entier(Connection c, String sql, Object... parametres) throws SQLException {
         try (PreparedStatement ps = c.prepareStatement(sql)) {
             for (int i = 0; i < parametres.length; i++) {

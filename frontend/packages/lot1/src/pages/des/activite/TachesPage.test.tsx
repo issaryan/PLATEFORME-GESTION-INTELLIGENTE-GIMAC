@@ -148,8 +148,10 @@ describe('Tâches', () => {
     fireEvent.click(await within(f).findByRole('button', { name: 'Prendre la tâche' }))
     expect(await screen.findByText('Tâche prise : vous en êtes le responsable.')).toBeTruthy()
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Vérifier la supervision des liens du participant' })).toBeNull())
-    // Reste l'étape d'un processus d'unité (D-87), à prendre par les porteurs du profil « Pôle réseau ».
-    expect(await screen.findByText(/Profil requis :/)).toBeTruthy()
+    // L'étape d'analyse du processus d'unité (D-87) est confiée d'office au seul porteur du profil « Pôle réseau » (désignation
+    // hors de l'unité) : plus rien à prendre.
+    expect(await screen.findByText(/Aucune tâche|Rien à prendre|aucune tâche/i)).toBeTruthy()
+    expect(screen.queryByText(/Profil requis :/)).toBeNull()
     cleanup()
     const CHEF = { id: 'U-001', nom: 'Paul Mbarga Atangana' }
     page('/des/taches?unite=POLE_SYSTEME', { u: CHEF, role: 'ROLE_CHEF_DES' })

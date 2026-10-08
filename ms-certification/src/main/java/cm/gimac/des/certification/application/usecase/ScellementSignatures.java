@@ -6,11 +6,11 @@ import cm.gimac.des.certification.application.port.out.CachetPlateformePort.Cach
 import cm.gimac.des.certification.application.port.out.ReauthentificationPort;
 import cm.gimac.des.certification.domain.CertificationException;
 import cm.gimac.des.certification.domain.TimestampToken;
+import cm.gimac.des.certification.domain.decision.EtapeSignature;
 import cm.gimac.des.certification.domain.decision.SignatureVerrou;
 import cm.gimac.des.certification.domain.decision.SignatureVerrou.Decision;
 import cm.gimac.des.certification.domain.decision.SignatureVerrou.Scellement;
 import cm.gimac.des.certification.domain.enumeration.ObjetSignature;
-import cm.gimac.des.certification.domain.enumeration.RoleSignature;
 import cm.gimac.des.certification.domain.service.DecisionCanonique;
 import cm.gimac.des.certification.repository.SignatureVerrouRepository;
 import cm.gimac.des.certification.repository.TimestampTokenRepository;
@@ -21,7 +21,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * Signature d'un verrou en deux actes (D-35) : 1. assertion WebAuthn personnelle, vérifiée et consommée par
- * MS-IAM, conservée avec la décision ; 2. cachet de la plateforme sur l'empreinte de la décision canonique et
+ * MS-IAM pour la finalité des signatures (SIGNATURE_OPERATION, D-91 §5.4 et D-94), conservée avec la décision ; 2. cachet de la plateforme sur l'empreinte de la décision canonique et
  * de l'assertion, horodaté (jeton conservé dans timestamp_token, objet SIGNATURE). La ligne enregistrée est
  * immuable.
  */
@@ -35,14 +35,17 @@ public class ScellementSignatures {
     private final SignatureVerrouRepository signatures;
     private final TimestampTokenRepository jetons;
     private final Clock clock;
+    private final String finalite;
 
     public ScellementSignatures(
         ReauthentificationPort reauth,
         CachetPlateformePort cachets,
         SignatureVerrouRepository signatures,
         TimestampTokenRepository jetons,
-        Clock clock
+        Clock clock,
+        CircuitsSignature circuits
     ) {
+        this.finalite = circuits.finalite();
         this.reauth = reauth;
         this.cachets = cachets;
         this.signatures = signatures;
@@ -60,7 +63,7 @@ public class ScellementSignatures {
     public SignatureVerrou signer(
         UUID liaisonId,
         ObjetSignature objet,
-        RoleSignature role,
+        EtapeSignature etape,
         Acteur acteur,
         boolean favorable,
         String motif,
@@ -68,15 +71,15 @@ public class ScellementSignatures {
         String assertion
     ) {
         exigerAssertion(assertion);
-        if (!reauth.verifier(assertion, acteur.id(), ReauthentificationPort.FINALITE_SIGNATURE)) {
+        if (!reauth.verifier(assertion, acteur.id(), finalite)) {
             throw CertificationException.interdit("CER_REAUTH_INVALID", "Réauthentification forte invalide ou expirée.");
         }
         Instant le = clock.instant();
-        Decision decision = new Decision(liaisonId, objet, role, acteur.id(), acteur.nom(), favorable, motif, le, empreinteObjet);
+        Decision decision = new Decision(liaisonId, objet, etape, acteur.id(), acteur.nom(), favorable, motif, le, empreinteObjet);
         String empreinteDecision = DecisionCanonique.de("SIGNATURE_VERROU")
             .avec("liaison", liaisonId)
             .avec("objet", objet)
-            .avec("qualite", role)
+            .avec("qualite", etape.code())
             .avec("empreinteObjet", empreinteObjet)
             .avec("decision", favorable ? "FAVORABLE" : "DEFAVORABLE")
             .avec("motif", motif)

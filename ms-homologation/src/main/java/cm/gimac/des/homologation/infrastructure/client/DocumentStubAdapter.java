@@ -23,6 +23,17 @@ public class DocumentStubAdapter implements DocumentRegistryPort {
 
     private static final Pattern SHA256 = Pattern.compile("^[0-9a-fA-F]{64}$");
     private final Map<UUID, Optional<String>> pieces = new ConcurrentHashMap<>();
+    private final Map<UUID, String> types = new ConcurrentHashMap<>();
+
+    /** Type d'une pièce (par défaut application/pdf, comme les livrables de l'annexe A). */
+    public void typer(UUID id, String typeMime) {
+        types.put(id, typeMime);
+    }
+
+    @Override
+    public String typeMime(UUID documentId) {
+        return types.getOrDefault(documentId, "application/pdf");
+    }
 
     /** Enregistre une pièce et son empreinte, comme MS-DOCUMENT après un dépôt. */
     public void enregistrer(UUID id, String sha256) {
@@ -48,6 +59,9 @@ public class DocumentStubAdapter implements DocumentRegistryPort {
         UUID id = UUID.randomUUID();
         String empreinte = sha256(contenu);
         enregistrer(id, empreinte);
+        if (typeMime != null) {
+            typer(id, typeMime);
+        }
         return new Depot(id, empreinte, nomFichier);
     }
 

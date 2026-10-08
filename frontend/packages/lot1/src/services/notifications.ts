@@ -83,6 +83,10 @@ export function notificationsDemo(services: ServicesSimules, o: { qc?: QueryClie
     { type: 'RAPPORT', titre: 'Rapport de Joël Ekotto Mballa', sousTitre: 'Rapport quotidien', lien: '/des/rapports?vue=recus', reference: { service: 'pilotage', type: 'RAPPORT', id: 'RAP-DEMO' },
       acteur: { id: 'U-101', nomAffiche: 'Joël Ekotto Mballa' }, le: il(26 * 60), lueLe: il(20 * 60) },
     { type: 'TACHE', titre: `Tâche confiée par ${chef.nomAffiche}`, sousTitre: null, lien: '/des/taches', reference: { service: 'pilotage', type: 'TACHE', id: 'TCH-DEMO' }, acteur: chef, le: il(90) },
+    // Parcours d'homologation (MS-NOTIFICATION §11) : action attendue sur une opération, lien profond vers l'onglet Opérations.
+    { type: 'HOMOLOGATION', titre: 'Action attendue : Atelier comptabilisation', sousTitre: 'LIA-2026-036 (Établissement de microfinance C)',
+      lien: '/des/parcours/LIA-2026-036?onglet=operations&operation=LIA-2026-036%3A11', reference: { service: 'homologation', type: 'OPERATION', id: 'LIA-2026-036:11' },
+      acteur: null, le: il(40 * 60), lueLe: il(39 * 60) },
     ...services.messagerie.nonLuesDemo().map((r) => ({ ...arriveeMessage(r), nombre: r.nonLus })),
   ]
   const notifications = notificationsSimulees({ initiales })
@@ -95,4 +99,20 @@ export function notificationsDemo(services: ServicesSimules, o: { qc?: QueryClie
   const demo: DemoNotifications = { recevoirMessage: (x) => services.messagerie.recevoirDemo(x).conversation.id, lireMessages: (x) => services.messagerie.lireDemo(x) !== null }
   ;(window as unknown as { gmDemoNotifications?: DemoNotifications }).gmDemoNotifications = demo
   return notifications
+}
+
+/**
+ * Notifications du portail de démonstration (MS-NOTIFICATION §11) : le jalon et l'action attendue de l'institution, liens
+ * profonds du portail (`/portail/liaisons/<id>` et `/portail/liaisons/<id>/livrables/<op>`).
+ */
+export function notificationsPortailDemo(): ServiceNotificationsSimule {
+  const il = (minutes: number) => new Date(Date.now() - minutes * 60_000).toISOString()
+  return notificationsSimulees({
+    initiales: [
+      { type: 'HOMOLOGATION', titre: 'Action attendue : Paramétrage d’essai', sousTitre: 'LIA-2026-030 (Établissement de paiement A)',
+        lien: '/portail/liaisons/LIA-2026-030/livrables/LIA-2026-030%3A15', reference: { service: 'homologation', type: 'OPERATION', id: 'LIA-2026-030:15' }, acteur: null, le: il(30) },
+      { type: 'HOMOLOGATION', titre: 'Jalon atteint : En production', sousTitre: 'LIA-2025-088 (Établissement de paiement A)',
+        lien: '/portail/liaisons/LIA-2025-088', reference: { service: 'homologation', type: 'LIAISON', id: 'LIA-2025-088' }, acteur: null, le: il(26 * 60), lueLe: il(20 * 60) },
+    ],
+  })
 }

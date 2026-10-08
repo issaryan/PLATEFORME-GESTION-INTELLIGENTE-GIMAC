@@ -16,7 +16,7 @@ afterEach(cleanup)
 const LECTURE = ['PAR_INSTITUTION_READ', 'HOM_LIAISON_LIST', 'HOM_LIAISON_READ', 'HOM_DASHBOARD_READ', 'HOM_REFERENTIEL_READ', 'CER_DOSSIER_READ']
 const CHEF_DES = [...LECTURE, 'HOM_LIAISON_OPEN', 'HOM_PROJECT_DESIGNATE', 'HOM_LIAISON_UNFREEZE', 'HOM_EVIDENCE_FILE_EXPORT']
 const CHEF_DDRM = [...LECTURE, 'PAR_INSTITUTION_CREATE', 'PAR_INSTITUTION_EDIT', 'PAR_ADHESION_INSTRUCT', 'PAR_TRANSITION_REQUEST', 'PAR_TRANSITION_APPROVE', 'HOM_LIAISON_OPEN', 'HOM_PROJECT_DESIGNATE']
-const CONDUCTEUR = [...LECTURE, 'HOM_OPERATION_ASSIGN', 'HOM_EVIDENCE_SUBMIT', 'HOM_EVIDENCE_FILE_EXPORT']
+const CONDUCTEUR = [...LECTURE, 'HOM_PROJECT_CONDUCT', 'HOM_OPERATION_ASSIGN', 'HOM_EVIDENCE_SUBMIT', 'HOM_EVIDENCE_FILE_EXPORT']
 const SNA = [...LECTURE, 'HOM_EVIDENCE_SUBMIT', 'HOM_OPERATION_VALIDATE']
 
 const avec = (surcharge: Partial<Services['homologation']>): Services => {
@@ -34,7 +34,7 @@ const liste = (o: { permissions?: string[]; roles?: string[]; chemin?: string; s
     autres: [{ motif: '/des/institutions', element: <InstitutionsPage /> }],
   })
 const tableau = (permissions: string[], roles: string[], services?: Services) =>
-  rendrePage(<TableauDeBordPage />, { chemin: '/des/tableau-de-bord', motif: '/des/tableau-de-bord', services, session: sessionTest(permissions, roles) })
+  rendrePage(<TableauDeBordPage />, { chemin: '/des/tableau-de-bord', motif: '/des/tableau-de-bord', services: services ?? servicesSimules({ latenceMs: 0, utilisateur: { id: 'U-TEST', nom: 'Agent de test', profils: roles } }), session: sessionTest(permissions, roles) })
 const resume = () => screen.getByRole('heading', { name: 'Cadrage de la liaison' }).closest('section')!
 
 describe('Liaison au cadrage : résumé et désignation du conducteur', () => {

@@ -164,7 +164,8 @@ public class EvenementsNotificationsConsumer {
             nature == NatureProcessus.ETAPE_ACTIVEE && texte(d, "executantId") == null,
             texte(d, "echeance")
         );
-        String ancienId = nature == NatureProcessus.ETAPE_REAFFECTEE && "DEPART".equals(precision) ? texte(d, "ancienId") : null;
+        // Personne remplacée : départ, retrait de profil ou changement d'unité (D-93 §9.3).
+        String ancienId = nature == NatureProcessus.ETAPE_REAFFECTEE && precision != null && !"REAFFECTATION".equals(precision) ? texte(d, "ancienId") : null;
         return () ->
             evenements.evenementProcessus(
                 new EvenementProcessus(texte(d, "instanceId"), faits, acteurId, ancienId, textes(d.path("destinataires")), texte(d, "lien"), instant(d, "le"))

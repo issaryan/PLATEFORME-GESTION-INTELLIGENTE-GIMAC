@@ -120,6 +120,18 @@ public class ParcoursStepDefs {
         return JsonPath.read(lire("/api/v1/liaisons/" + liaison + "/parcours/operations", conducteur()), "$");
     }
 
+    /**
+     * Validateur admis par le RACI imposé (D-93 §2) : le V désigné (conducteur ou ingénieur SNA), sinon un porteur de la
+     * fonction V à affecter (chef du DES).
+     */
+    private RequestPostProcessor validateurPour(String opId) throws Exception {
+        Object v = operations().stream().filter(o -> opId.equals(o.get("id"))).findFirst().map(o -> JsonPath.read(o, "$.raci.V.id")).orElse(null);
+        if (CollaboratorStubAdapter.CONDUCTEUR_1.toString().equals(v)) {
+            return conducteur();
+        }
+        return SNA.toString().equals(v) ? sna() : validateur();
+    }
+
     private Map<String, Object> operation(String rang) throws Exception {
         return operations().stream().filter(o -> rang.equals(o.get("rang"))).findFirst().orElseThrow();
     }
@@ -179,7 +191,7 @@ public class ParcoursStepDefs {
                 default -> {
                     if (Boolean.TRUE.equals(o.get("valeurReference"))) {
                         preuve(id, "\"valeurReference\":\"REF-" + rang + "\"");
-                        valider(id, validateur(), true);
+                        valider(id, validateurPour(id), true);
                     } else {
                         livrable(id, conducteur());
                     }
@@ -262,7 +274,7 @@ public class ParcoursStepDefs {
             if (!"FAITE".equals(o.get("etat"))) {
                 String id = (String) o.get("id");
                 assertThat(statut(preuve(id, ""))).isEqualTo(204);
-                assertThat(statut(valider(id, validateur(), true))).isEqualTo(204);
+                assertThat(statut(valider(id, validateurPour(id), true))).isEqualTo(204);
             }
         }
     }
@@ -279,7 +291,7 @@ public class ParcoursStepDefs {
     public void lesEssaisSontProuves() throws Exception {
         String o16 = opId("16");
         assertThat(statut(preuve(o16, ""))).isEqualTo(204);
-        assertThat(statut(valider(o16, validateur(), true))).isEqualTo(204);
+        assertThat(statut(valider(o16, validateurPour(o16), true))).isEqualTo(204);
     }
 
     @Et("l'ingénieur Normes et Agréments constate la couverture")

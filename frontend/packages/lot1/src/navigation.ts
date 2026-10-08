@@ -1,11 +1,9 @@
 import type { GroupeNavigation } from '@gimac/socle'
-import { navigationDepuis } from './fonctionnalites'
 
 export { ADMINISTRATION, PLATEFORME, urlConsole, versConsole } from './fonctionnalites'
 
-// Barre latérale de l'application interne (D-79) : dérivée du registre des fonctionnalités (fonctionnalites.ts),
-// chaque entrée visible selon le prédicat de permissions du jeton (DS-GIMAC-01 §6.2), jamais selon le rôle.
-export const NAVIGATION_DES: GroupeNavigation[] = navigationDepuis()
+// Barre latérale de l'application interne (D-94) : dérivée du catalogue servi par MS-IAM (useNavigationCatalogue).
+// Le portail garde la sienne : un compte d'institution ne lit pas le catalogue (403 IAM_COMPTE_INTERNE_EXIGE).
 
 // Portail du participant (D-58) : son tableau de bord, puis ses liaisons et le suivi de chacune.
 export const NAVIGATION_PORTAIL: GroupeNavigation[] = [

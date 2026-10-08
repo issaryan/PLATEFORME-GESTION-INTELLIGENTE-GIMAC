@@ -16,6 +16,7 @@ import { ModaleEtapes } from './ModaleEtapes'
 import { Canevas } from './Canevas'
 import { ModaleOperation } from './ModaleOperation'
 import { VueListe } from './VueListe'
+import { DialogueFonction } from '../referentiels/TypesProjetPage'
 
 // Onglet « Modélisateur » de DES-12 (D-77, §6) : canevas ou vue liste équivalente, barre d'outils (ajouter,
 // disposition automatique, contrôler, comparer, publier, pilote du brouillon), modale de l'opération. Brouillon :
@@ -61,6 +62,7 @@ function Espace({ version, graphe, catalogue }: { version: ReferentielVersion; g
   const peutPublier = graphe.actionsPermises.includes('PUBLIER') && aPermission(permissions, actionPublier.permission ?? '')
   const [modale, setModale] = useState<Modale | null>(null)
   const [etapesOuvertes, setEtapesOuvertes] = useState(false)
+  const [nouvelleFonction, setNouvelleFonction] = useState(false)
   const [controle, setControle] = useState(false)
   const [focus, setFocus] = useState<string | null>(null)
   const [erreur, setErreur] = useState<ApiError | null>(null)
@@ -223,8 +225,11 @@ function Espace({ version, graphe, catalogue }: { version: ReferentielVersion; g
             else enregistrer.mutate({ code: o.code, operation: saisieDe(o) }, { onSuccess: () => { fermerModale(); setAnnonce(t('modelisateur.annonce.enregistree', { code: o.code })) } })
           }}
           onSupprimer={() => supprimer.mutate(operation.code, { onSuccess: () => { fermerModale(); setAnnonce(t('modelisateur.annonce.supprimee', { code: operation.code })) } })}
+          onNouvelleFonction={() => setNouvelleFonction(true)}
         />
       ) : null}
+      {/* « Nouvelle fonction » (D-91) : créée au catalogue, aussitôt proposée dans les sélecteurs (catalogue relu). */}
+      {nouvelleFonction ? <DialogueFonction onFermer={() => setNouvelleFonction(false)} onFait={(f) => { setNouvelleFonction(false); setAnnonce(t('typesProjet.fonction.fait', { libelle: f.libelle })) }} /> : null}
     </div>
   )
 }

@@ -1,5 +1,6 @@
 package cm.gimac.des.iam.domain.compte;
 
+import java.util.Collection;
 import java.util.Locale;
 
 /**
@@ -32,5 +33,17 @@ public enum Couche {
             return PORTAIL;
         }
         return demandee == PORTAIL ? DES : demandee;
+    }
+
+    /**
+     * Couche du lien d'un courriel (D-94) : portail pour un compte d'institution ; console si le compte porte
+     * l'une des permissions qui ouvrent la console (gimac.iam.liens.permissions-console, comme
+     * PERMISSIONS_CONSOLE de l'interface) ; département sinon. Aucun nom de profil n'intervient.
+     *
+     * @param permissionsDuCompte réunion des compositions des profils du compte
+     */
+    public static Couche duLien(Compte compte, Collection<String> permissionsDuCompte, Collection<String> permissionsConsole) {
+        boolean console = permissionsDuCompte.stream().anyMatch(permissionsConsole::contains);
+        return pour(compte, console ? CONSOLE : DES);
     }
 }

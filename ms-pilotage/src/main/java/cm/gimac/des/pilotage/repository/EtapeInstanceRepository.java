@@ -19,6 +19,14 @@ public interface EtapeInstanceRepository extends JpaRepository<EtapeInstance, UU
 
     Optional<EtapeInstance> findByTacheId(UUID tacheId);
 
+    /** Étapes en cours (active, à signer, à valider) des instances en cours ou suspendues (nouveau chef d'unité, D-93). */
+    @Query(
+        value = "select e.* from processus_etape_instance e join processus_instance i on i.id = e.instance_id " +
+        "where e.etat in ('ACTIVE', 'A_SIGNER', 'A_VALIDER') and i.etat in ('EN_COURS', 'SUSPENDUE')",
+        nativeQuery = true
+    )
+    List<EtapeInstance> enCours();
+
     /** Étapes non terminées où le compte est validateur nommé ou signataire attendu (départ d'une personne). */
     @Query(
         value = "select e.* from processus_etape_instance e where e.etat in ('EN_ATTENTE', 'ACTIVE', 'A_SIGNER', 'A_VALIDER') and (e.validateur_id = :compte or " +

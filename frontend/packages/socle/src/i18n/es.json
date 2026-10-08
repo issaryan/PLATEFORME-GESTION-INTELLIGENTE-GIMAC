@@ -137,5 +137,6 @@
   "notifications.type.MENTION": "Mención",
   "notifications.type.REPONSE": "Respuesta",
   "notifications.type.DEMANDE": "Solicitud",
-  "notifications.type.PROCESSUS": "Proceso"
+  "notifications.type.PROCESSUS": "Proceso",
+  "notifications.type.HOMOLOGATION": "Homologación"
 }

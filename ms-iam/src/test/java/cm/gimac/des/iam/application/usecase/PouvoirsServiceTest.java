@@ -86,9 +86,7 @@ class PouvoirsServiceTest {
     @BeforeEach
     void init() {
         annuaire = new AnnuaireEnMemoire(
-            AnnuaireEnMemoire.catalogueParDefaut(AdministrationComptesServiceTest.CATALOGUE),
-            AdministrationComptesServiceTest.PRIVILEGIES
-        );
+            AnnuaireEnMemoire.catalogueParDefaut(AdministrationComptesServiceTest.CATALOGUE));
         unites = new OrganisationServiceTest.CatalogueEnMemoire();
         unites.enregistrer(new Unite("DG", "Direction Générale", TypeUnite.DIRECTION, null, true));
         unites.enregistrer(new Unite("DES", "DES", TypeUnite.DEPARTEMENT, "DG", true));
@@ -101,7 +99,7 @@ class PouvoirsServiceTest {
         chefs.put(ActionPouvoir.RATTACHEMENT_MODIFIER, Portee.DIRECTS);
         matrice.enregistrer(new PouvoirsProfil("ROLE_CHEF_DDRM", chefs, Set.of("ROLE_CHARGE_DDRM", "ROLE_RSSI")));
         organisation = new OrganisationService(unites, annuaire, journal);
-        service = new PouvoirsService(matrice, CatalogueProfils.configuration(AdministrationComptesServiceTest.proprietes()), annuaire, organisation, journal);
+        service = new PouvoirsService(matrice, CatalogueProfils.configuration(AdministrationComptesServiceTest.proprietes(), annuaire), annuaire, organisation, journal);
 
         // dg → chef → agent → technicien ; horsChaine et stagiaire rattachés au pôle réseau, sous un autre responsable.
         dg = creer("dg", Set.of("ROLE_CHEF_DDRM"));
@@ -187,7 +185,7 @@ class PouvoirsServiceTest {
     void reglage() {
         var m = service.matrice();
         assertThat(m.actions()).hasSize(10).endsWith(ActionPouvoir.PROCESSUS_DEFINIR, ActionPouvoir.PROCESSUS_LANCER);
-        assertThat(m.portees()).containsExactly(Portee.AUCUNE, Portee.DIRECTS, Portee.EQUIPE, Portee.UNITES);
+        assertThat(m.portees()).containsExactly(Portee.AUCUNE, Portee.DIRECTS, Portee.EQUIPE, Portee.UNITES, Portee.TOUTES);
         assertThat(m.profils()).extracting(PouvoirsService.LigneMatrice::profil).containsExactlyElementsOf(new java.util.TreeSet<>(AdministrationComptesServiceTest.CATALOGUE));
         var rssi = m.profils().stream().filter(l -> l.profil().equals("ROLE_RSSI")).findFirst().orElseThrow();
         assertThat(rssi.privilegie()).isTrue();
@@ -232,5 +230,66 @@ class PouvoirsServiceTest {
         assertThat(service.perimetre(chef, ActionPouvoir.RATTACHEMENT_MODIFIER).comptes()).extracting(OrganisationService.MembreEquipe::id).containsExactly(agent);
         // Règles habituelles : un subordonné ne devient pas son propre n+1.
         refus(() -> service.rattacherSubordonne(leChef, agent, "POLE_RESEAU", agent, null), "ORG_RESPONSABLE_INVALIDE", 422);
+    }
+
+    @Test
+    @DisplayName("D-92 : TOUTES admise pour les processus et refusée ailleurs (422, rien d'enregistré) ; exposée ; pouvoirs et cumul ; périmètre de toutes les unités et des comptes internes actifs ; subordonnés plafonnés à UNITES")
+    void porteeToutes() {
+        var m = service.matrice();
+        assertThat(m.porteesAdmises()).hasSize(ActionPouvoir.values().length);
+        assertThat(m.porteesAdmises().get(ActionPouvoir.PROCESSUS_DEFINIR)).containsExactly(Portee.AUCUNE, Portee.DIRECTS, Portee.EQUIPE, Portee.UNITES, Portee.TOUTES);
+        assertThat(m.porteesAdmises().get(ActionPouvoir.PROCESSUS_LANCER)).endsWith(Portee.TOUTES);
+        assertThat(m.porteesAdmises().get(ActionPouvoir.TACHE_CONFIER)).containsExactly(Portee.AUCUNE, Portee.DIRECTS, Portee.EQUIPE, Portee.UNITES);
+
+        refus(() -> service.definir(ADMIN, "ROLE_CHARGE_DDRM", Map.of(ActionPouvoir.PROCESSUS_DEFINIR, Portee.TOUTES, ActionPouvoir.TACHE_CONFIER, Portee.TOUTES), Set.of(), null), "ORG_PORTEE_NON_ADMISE", 422);
+        assertThat(matrice.lire("ROLE_CHARGE_DDRM").portee(ActionPouvoir.PROCESSUS_DEFINIR)).isEqualTo(Portee.AUCUNE);
+        verify(journal, never()).matrice(any(), eq("ROLE_CHARGE_DDRM"), any(), any(), any());
+
+        var ligne = service.definir(ADMIN, "ROLE_CHARGE_DDRM", Map.of(ActionPouvoir.PROCESSUS_DEFINIR, Portee.TOUTES, ActionPouvoir.PROCESSUS_LANCER, Portee.TOUTES), Set.of(), "D-92");
+        assertThat(ligne.actions().get(ActionPouvoir.PROCESSUS_DEFINIR)).isEqualTo(Portee.TOUTES);
+        verify(journal).matrice(eq(ADMIN), eq("ROLE_CHARGE_DDRM"), eq("D-92"), eq("AUCUNE demandables="), eq("PROCESSUS_DEFINIR=TOUTES PROCESSUS_LANCER=TOUTES demandables="));
+        assertThat(service.matrice().profils()).filteredOn(l -> l.profil().equals("ROLE_CHARGE_DDRM")).singleElement().satisfies(l -> assertThat(l.actions().get(ActionPouvoir.PROCESSUS_LANCER)).isEqualTo(Portee.TOUTES));
+
+        // Pouvoirs d'un titulaire : TOUTES pour les processus ; la vue ne liste pas tout le monde comme subordonnés.
+        var p = service.pouvoirs(agent);
+        assertThat(p.portee(ActionPouvoir.PROCESSUS_DEFINIR)).isEqualTo(Portee.TOUTES);
+        assertThat(p.portee(ActionPouvoir.TACHE_CONFIER)).isEqualTo(Portee.AUCUNE);
+        var vue = service.vue(agent);
+        assertThat(vue.actions().get(ActionPouvoir.PROCESSUS_LANCER)).isEqualTo(Portee.TOUTES);
+        assertThat(vue.subordonnes()).extracting(OrganisationService.MembreEquipe::id).containsExactly(technicien);
+
+        // Cumul : un compte qui porte aussi un profil à UNITES garde TOUTES.
+        Map<ActionPouvoir, Portee> chefs = new EnumMap<>(matrice.lire("ROLE_CHEF_DDRM").actions());
+        chefs.put(ActionPouvoir.PROCESSUS_DEFINIR, Portee.UNITES);
+        matrice.enregistrer(new PouvoirsProfil("ROLE_CHEF_DDRM", chefs, Set.of()));
+        String cumul = creer("cumul", Set.of("ROLE_CHEF_DDRM", "ROLE_CHARGE_DDRM"));
+        var pc = service.pouvoirs(cumul);
+        assertThat(pc.portee(ActionPouvoir.PROCESSUS_DEFINIR)).isEqualTo(Portee.TOUTES);
+        assertThat(pc.portee(ActionPouvoir.TACHE_CONFIER)).isEqualTo(Portee.UNITES);
+        assertThat(service.pouvoirs(chef).portee(ActionPouvoir.PROCESSUS_DEFINIR)).isEqualTo(Portee.UNITES);
+
+        // Périmètre TOUTES : toutes les unités (inactives comprises), comptes internes actifs sauf soi-même.
+        unites.enregistrer(new Unite("CELLULE_FERMEE", "Cellule fermée", TypeUnite.CELLULE, "DES", false));
+        String externe = annuaire.creer(new NouveauCompte("corr", "Corr", "Ndi", "corr@gimac.test", null, null, "INST-1", Set.of()), List.of());
+        annuaire.definirActif(stagiaire, false);
+        var perimetre = service.perimetre(agent, ActionPouvoir.PROCESSUS_DEFINIR);
+        assertThat(perimetre.portee()).isEqualTo(Portee.TOUTES);
+        assertThat(perimetre.unites()).containsExactly("CELLULE_FERMEE", "DES", "DG", "POLE_RESEAU", "PROD_INFO");
+        assertThat(perimetre.comptes()).extracting(OrganisationService.MembreEquipe::id).contains(dg, chef, technicien, horsChaine, cumul).doesNotContain(agent, stagiaire, externe);
+        assertThat(perimetre.comptes()).extracting(OrganisationService.MembreEquipe::niveau).containsOnly(0);
+        assertThat(perimetre.comptes()).extracting(OrganisationService.MembreEquipe::actif).containsOnly(true);
+        assertThat(perimetre.comptes()).extracting(OrganisationService.MembreEquipe::nomAffiche).isSortedAccordingTo(java.util.Comparator.comparing(n -> n.toLowerCase(java.util.Locale.ROOT)));
+        assertThat(service.perimetre(agent, ActionPouvoir.TACHE_CONFIER).comptes()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("D-92 : périmètre TOUTES limité à 500 comptes")
+    void porteeToutesLimite() {
+        for (int i = 0; i < 510; i++) {
+            creer("membre%03d".formatted(i), Set.of());
+        }
+        var perimetre = organisation.perimetre(dg, Portee.TOUTES);
+        assertThat(perimetre.comptes()).hasSize(500);
+        assertThat(perimetre.comptes()).extracting(OrganisationService.MembreEquipe::id).doesNotContain(dg);
     }
 }

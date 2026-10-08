@@ -52,6 +52,11 @@ class ProcessusExecutionIT extends AbstractProcessusIT {
         return lire(mvc.perform(get(INSTANCES + "/" + id).with(agent(qui))).andExpect(status().isOk()).andReturn());
     }
 
+    /** État et responsable de la tâche d'attente (validation, signature) de cette référence (D-93). */
+    private Map<String, Object> attente(String reference) {
+        return jdbc.queryForMap("select etat, responsable_id, profil_requis, unite_cible from tache where origine_type = 'PROCESSUS' and origine_reference = ?", reference);
+    }
+
     private String tache(JsonNode instance, String etape) {
         return etape(instance, etape).get("tacheId").asText();
     }
@@ -183,6 +188,11 @@ class ProcessusExecutionIT extends AbstractProcessusIT {
         mvc.perform(json(put(url(id, "ANALYSE", "champs")).with(agent(INGENIEUR_RESEAU)), Map.of("valeurs", Map.of("AVIS", "FAVORABLE")))).andExpect(status().isOk());
         i = lire(mvc.perform(post(url(id, "ANALYSE", "fin")).with(agent(INGENIEUR_RESEAU))).andExpect(status().isOk()).andReturn());
         assertThat(etape(i, "ANALYSE").get("etat").asText()).isEqualTo("A_VALIDER");
+        // Tâche au validateur (D-93), dans « Mes tâches » du chef d'unité.
+        assertThat(attente(id + "/ANALYSE/VALIDATION")).containsEntry("etat", "OUVERTE").containsEntry("responsable_id", CHEF_RESEAU);
+        mvc
+            .perform(get("/api/v1/taches").param("vue", "moi").with(chef(CHEF_RESEAU)))
+            .andExpect(jsonPath("$.contenu[*].origine.reference", Matchers.hasItem(id + "/ANALYSE/VALIDATION")));
         assertThat(charge("pilotage.process-step-submitted.v1", id).get("attente").asText()).isEqualTo("VALIDATION");
         assertThat(textes(charge("pilotage.process-step-submitted.v1", id).get("destinataires"))).containsExactly(CHEF_RESEAU);
 
@@ -200,6 +210,7 @@ class ProcessusExecutionIT extends AbstractProcessusIT {
         );
         assertThat(etape(i, "ANALYSE").get("etat").asText()).isEqualTo("ACTIVE");
         assertThat(etape(i, "ANALYSE").get("renvois").asInt()).isEqualTo(1);
+        assertThat(attente(id + "/ANALYSE/VALIDATION")).containsEntry("etat", "TERMINEE");
         JsonNode renvoi = charge("pilotage.process-step-activated.v1", id);
         assertThat(renvoi.get("renvoi").asBoolean()).isTrue();
         assertThat(textes(renvoi.get("destinataires"))).containsExactly(INGENIEUR_RESEAU);
@@ -266,6 +277,7 @@ class ProcessusExecutionIT extends AbstractProcessusIT {
         JsonNode recette = etape(i, "RECETTE");
         assertThat(recette.get("etat").asText()).isEqualTo("A_SIGNER");
         assertThat(recette.at("/signatures/0/attendu/personne/id").asText()).isEqualTo(CHEF_RESEAU);
+        assertThat(attente(id + "/RECETTE/SIGNATURE/VISA_CHEF")).containsEntry("etat", "OUVERTE").containsEntry("responsable_id", CHEF_RESEAU);
         JsonNode attente = charge("pilotage.process-step-submitted.v1", id);
         assertThat(attente.get("attente").asText()).isEqualTo("SIGNATURE");
         assertThat(textes(attente.get("destinataires"))).containsExactly(CHEF_RESEAU);
@@ -321,7 +333,10 @@ class ProcessusExecutionIT extends AbstractProcessusIT {
         assertThat(charges("pilotage.process-instance-started.v1", id)).hasSize(1);
         assertThat(charges("pilotage.process-step-activated.v1", id)).hasSize(5);
         assertThat(compter("select count(*) from outbox_event where aggregate_type = 'process' and aggregate_id = ?", processus)).isEqualTo(1);
-        assertThat(compter("select count(*) from tache where origine_type = 'PROCESSUS' and etat = 'TERMINEE'")).isEqualTo(4);
+        assertThat(compter("select count(*) from tache where origine_type = 'PROCESSUS' and etat = 'TERMINEE' and origine_reference not like '%/VALIDATION' and origine_reference not like '%/SIGNATURE/%'")).isEqualTo(4);
+        // Tâches d'attente (D-93) : une par validation (rouverte après le renvoi) et par signature, terminées au nom de l'acteur.
+        assertThat(attente(id + "/ANALYSE/VALIDATION")).containsEntry("etat", "TERMINEE").containsEntry("responsable_id", CHEF_RESEAU);
+        assertThat(attente(id + "/RECETTE/SIGNATURE/VISA_CHEF")).containsEntry("etat", "TERMINEE").containsEntry("responsable_id", CHEF_RESEAU);
 
         // Vues : miennes (intervenant), lancées, unité ; hors unité : refus.
         mvc.perform(get(INSTANCES).param("vue", "miennes").with(agent(INGENIEUR_RESEAU))).andExpect(jsonPath("$.total").value(1)).andExpect(jsonPath("$.contenu[0].id").value(id));
@@ -358,7 +373,7 @@ class ProcessusExecutionIT extends AbstractProcessusIT {
     }
 
     @Test
-    @DisplayName("Personne nommée partie : à l'activation, l'étape passe au profil de remplacement et le chef est averti")
+    @DisplayName("Personne nommée partie : à l'activation, l'étape passe au profil de remplacement (seul porteur : à lui) et le chef est averti")
     void personnePartieALActivation() throws Exception {
         Map<String, Object> d = new HashMap<>(json.convertValue(definition("NOMMEE"), Map.class));
         Map<String, Object> etape = new HashMap<>();
@@ -373,15 +388,17 @@ class ProcessusExecutionIT extends AbstractProcessusIT {
         );
         mvc.perform(get(BASE + "/" + processus).with(chef(CHEF_RESEAU))).andExpect(jsonPath("$.avertissements[0].code").value("PERSONNE_PARTIE"));
         JsonNode i = lire(mvc.perform(json(post(BASE + "/" + processus + "/instances").with(agent(TECHNICIEN_RESEAU)), Map.of("intitule", "Essai"))).andExpect(status().isCreated()).andReturn());
+        // Seul porteur actif restant du profil de remplacement dans l'unité : l'étape lui est confiée (désignation hors de l'unité).
         JsonNode e = etape(i, "UNIQUE");
-        assertThat(e.get("executant").isNull()).isTrue();
-        assertThat(e.at("/aPrendre/profil").asText()).isEqualTo("ROLE_POLE_RESEAU");
+        assertThat(e.at("/executant/id").asText()).isEqualTo(TECHNICIEN_RESEAU);
+        assertThat(e.get("aPrendre").isNull()).isTrue();
         String id = i.get("id").asText();
         JsonNode depart = charge("pilotage.process-step-reassigned.v1", id);
         assertThat(depart.get("cause").asText()).isEqualTo("DEPART");
         assertThat(depart.get("etape").asText()).isEqualTo("UNIQUE");
         assertThat(depart.get("libelleEtape").asText()).isEqualTo("Étape nommée");
         assertThat(depart.get("ancienId").asText()).isEqualTo(INGENIEUR_RESEAU);
+        assertThat(depart.get("executantId").asText()).isEqualTo(TECHNICIEN_RESEAU);
         assertThat(depart.get("chefId").asText()).isEqualTo(CHEF_RESEAU);
         assertThat(textes(depart.get("destinataires"))).containsExactlyInAnyOrder(TECHNICIEN_RESEAU, CHEF_RESEAU);
         assertThat(i.get("historique").findValuesAsText("action")).contains("DEPART");

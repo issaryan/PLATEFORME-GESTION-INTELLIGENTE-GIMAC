@@ -22,8 +22,8 @@ import org.springframework.stereotype.Component;
 /**
  * Adaptateur de substitution de l'organisation (développement, tests) : une petite hiérarchie du GIMAC
  * (DG, chef du DES, chef de service et ses agents, chef de la DDRM), un compte sans responsable, un
- * compte désactivé et un correspondant d'institution ; les unités du jeu initial et leurs responsables
- * (D-81 §2) ; la matrice des pouvoirs par défaut (D-81 §3) : portées des responsables pour les chefs
+ * compte désactivé, un correspondant d'institution et un super administrateur sans unité (D-92) ; les unités
+ * du jeu initial et leurs responsables (D-81 §2) ; la matrice des pouvoirs par défaut (D-81 §3) : portées des responsables pour les chefs
  * (DG, chef du DES, cheffe de service, chef de la DDRM), AUCUNE pour les autres ; PROCESSUS_DEFINIR et
  * PROCESSUS_LANCER à UNITES pour les responsables (D-86 §4). Chaque compte porte ses profils (ROLE_…), qui
  * servent aux processus d'unité (D-87). Jeu de démonstration du pôle réseau (chef, deux ingénieurs réseau
@@ -44,6 +44,11 @@ public class OrganisationStubAdapter implements OrganisationPort {
     public static final String SANS_RESPONSABLE = "00000000-0000-4000-8000-0000000d0007";
     public static final String INACTIF = "00000000-0000-4000-8000-0000000d0008";
     public static final String CORRESPONDANT = "00000000-0000-4000-8000-0000000d0009";
+    /**
+     * Super administrateur (D-92) : compte interne sans unité ni responsable, sans aucun pouvoir de matrice ; ses
+     * droits sur les processus de toutes les unités viennent seulement de la permission REF_METIER_ADMIN du jeton.
+     */
+    public static final String SUPER_ADMIN = "00000000-0000-4000-8000-0000000d0010";
     /** Jeu de démonstration du pôle réseau (processus d'unité, D-87). */
     public static final String CHEF_RESEAU = "00000000-0000-4000-8000-0000000d0011";
     public static final String INGENIEUR_RESEAU = "00000000-0000-4000-8000-0000000d0012";
@@ -112,6 +117,8 @@ public class OrganisationStubAdapter implements OrganisationPort {
     private final Map<String, Unite> unites = new ConcurrentHashMap<>();
     private final Map<String, Map<Pouvoir, Portee>> matrices = new ConcurrentHashMap<>();
     private final Map<String, Set<String>> profils = new ConcurrentHashMap<>();
+    /** Composition des profils en permissions (D-94) : vide au départ, définie par les tests. */
+    private final Map<String, Set<String>> compositions = new ConcurrentHashMap<>();
     private final boolean demonstration;
 
     public OrganisationStubAdapter() {
@@ -130,6 +137,7 @@ public class OrganisationStubAdapter implements OrganisationPort {
         unites.clear();
         matrices.clear();
         profils.clear();
+        compositions.clear();
         enregistrerUnite(new Unite("DG", null, DG));
         enregistrerUnite(new Unite("DES", "DG", CHEF_DES));
         enregistrerUnite(new Unite("SNA", "DES", CHEF_SERVICE));
@@ -152,6 +160,7 @@ public class OrganisationStubAdapter implements OrganisationPort {
         enregistrer(new Compte(SANS_RESPONSABLE, "Jean Essomba", "Chargé de mission", null, null, true, true));
         enregistrer(new Compte(INACTIF, "Compte Désactivé", "Ancien agent", "SNA", CHEF_SERVICE, false, true));
         enregistrer(new Compte(CORRESPONDANT, "Jeanne Owona", "Correspondante", null, null, true, false));
+        enregistrer(new Compte(SUPER_ADMIN, "Administrateur de la plateforme", "Super administrateur", null, null, true, true));
         attribuerProfils(DG, "ROLE_DG");
         attribuerProfils(CHEF_DES, "ROLE_CHEF_DES");
         attribuerProfils(CHEF_SERVICE, "ROLE_RESPONSABLE_SERVICE");
@@ -160,6 +169,7 @@ public class OrganisationStubAdapter implements OrganisationPort {
         attribuerProfils(CHEF_DDRM, "ROLE_CHEF_DDRM");
         attribuerProfils(SANS_RESPONSABLE, "ROLE_COLLABORATEUR");
         attribuerProfils(INACTIF, "ROLE_SNA");
+        attribuerProfils(SUPER_ADMIN, "ROLE_SUPER_ADMIN");
         if (demonstration) {
             chargerDemonstrationReseau();
         }
@@ -185,6 +195,26 @@ public class OrganisationStubAdapter implements OrganisationPort {
         profils.put(compteId, Set.of(codes));
     }
 
+    /** Permissions qui composent le profil (remplace les précédentes), comme une composition de Keycloak (D-94). */
+    public void composerProfil(String profil, String... permissions) {
+        compositions.put(profil, Set.of(permissions));
+    }
+
+    /** Comptes internes actifs dont un profil compose la permission, comme GET /api/v1/interne/collaborateurs?permission=. */
+    @Override
+    public List<MembreProfil> porteursPermission(String permission) {
+        if (permission == null || permission.isBlank()) {
+            return List.of();
+        }
+        return comptes
+            .values()
+            .stream()
+            .filter(c -> c.interne() && c.actif() && profilsDe(c.id()).stream().anyMatch(p -> compositions.getOrDefault(p, Set.of()).contains(permission)))
+            .sorted(Comparator.comparing(Compte::id))
+            .map(c -> new MembreProfil(c.id(), c.nomAffiche(), c.fonction(), c.unite(), c.actif(), profilsDe(c.id())))
+            .toList();
+    }
+
     @Override
     public Set<String> profilsDe(String compteId) {
         return compteId == null ? Set.of() : profils.getOrDefault(compteId, Set.of());
@@ -208,6 +238,21 @@ public class OrganisationStubAdapter implements OrganisationPort {
             .limit(EQUIPE_MAX)
             .toList();
         return Optional.of(new UniteMembres(u.code(), u.code(), u.responsableId(), true, connu, membres));
+    }
+
+    @Override
+    public List<MembreProfil> porteursProfil(String profil) {
+        if (profil == null || profil.isBlank()) {
+            return List.of();
+        }
+        return comptes
+            .values()
+            .stream()
+            .filter(c -> c.interne() && c.actif() && profilsDe(c.id()).contains(profil))
+            .sorted(Comparator.comparing(Compte::id))
+            .map(c -> new MembreProfil(c.id(), c.nomAffiche(), c.fonction(), c.unite(), c.actif(), profilsDe(c.id())))
+            .limit(100)
+            .toList();
     }
 
     public void enregistrer(Compte c) {
@@ -255,7 +300,7 @@ public class OrganisationStubAdapter implements OrganisationPort {
                     .forEach(c -> couverts.putIfAbsent(c.id(), new Membre(c.id(), c.nomAffiche(), c.fonction(), c.unite(), c.responsableId(), 0, c.actif())));
             }
         }
-        List<String> codes = portee == Portee.UNITES ? unitesDirigees(compteId) : List.of();
+        List<String> codes = portee == Portee.UNITES || portee == Portee.TOUTES ? unitesDirigees(compteId) : List.of();
         return new Perimetre(portee, couverts.values().stream().limit(EQUIPE_MAX).toList(), codes);
     }
 

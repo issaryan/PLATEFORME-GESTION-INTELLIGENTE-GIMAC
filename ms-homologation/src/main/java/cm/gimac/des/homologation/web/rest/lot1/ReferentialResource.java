@@ -25,9 +25,7 @@ import cm.gimac.des.homologation.web.rest.lot1.ReferentialViews.VersionVue;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Comparator;
-import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -50,6 +48,13 @@ public class ReferentialResource {
     private final ManageReferentialUseCase useCase;
     private final ReferentialVersionRepository versions;
     private final ReferentialGraphValidator validator;
+    private cm.gimac.des.homologation.application.usecase.AttestationsTypeProjet attestations;
+
+    /** Attestations exigées par le modèle du type (contrôle à blanc des gestes de certification, §10.5). */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setAttestations(cm.gimac.des.homologation.application.usecase.AttestationsTypeProjet attestations) {
+        this.attestations = attestations;
+    }
     private final ReferentialCompletenessChecker completude;
     private final ReferentialMigrationService migrations;
     private final OutboxEventRepository evenements;
@@ -71,51 +76,60 @@ public class ReferentialResource {
     }
 
     @PostMapping
-    @PreAuthorize("hasAuthority('HOM_REFERENTIEL_EDIT')")
+    @PreAuthorize("hasAnyAuthority('HOM_REFERENTIEL_EDIT', 'REF_METIER_ADMIN')")
     public ResponseEntity<VersionVue> creer(@Valid @RequestBody CreateDraftRequest req, Authentication auth) {
         ReferentialVersion v = useCase.creerBrouillon(req.typeProjet(), req.libelle(), req.versionSourceId(), ActeurCourant.de(auth).id(), req.piloteId());
-        return ResponseEntity.created(URI.create("/api/v1/referentiels/" + v.getId())).body(vue(v, actives()));
+        return ResponseEntity.created(URI.create("/api/v1/referentiels/" + v.getId())).body(VersionVue.de(v, active(v.getTypeProjet()).orElse(null)));
+    }
+
+    /** Suppression d'un brouillon (D-92) ; une version publiée ou retirée se retire, elle ne se supprime pas (409). */
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('HOM_REFERENTIEL_EDIT', 'REF_METIER_ADMIN')")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void supprimer(@PathVariable UUID id) {
+        useCase.supprimerBrouillon(id);
     }
 
     @PutMapping("/{id}/operations/{code}")
-    @PreAuthorize("hasAuthority('HOM_REFERENTIEL_EDIT')")
+    @PreAuthorize("hasAnyAuthority('HOM_REFERENTIEL_EDIT', 'REF_METIER_ADMIN')")
     @Transactional
     public OperationVue enregistrer(@PathVariable UUID id, @PathVariable String code, @Valid @RequestBody ReferenceOperationData data) {
         return OperationVue.de(useCase.enregistrerOperation(id, code, data));
     }
 
     @PostMapping("/{id}/publication")
-    @PreAuthorize("hasAuthority('HOM_REFERENTIEL_PUBLISH')")
+    @PreAuthorize("hasAnyAuthority('HOM_REFERENTIEL_PUBLISH', 'REF_METIER_ADMIN')")
     public VersionVue publier(@PathVariable UUID id) {
         return VersionVue.de(useCase.publier(id));
     }
 
     /** Versions d'un type, ou de tous les types (arbre de DES-12), les plus récentes d'abord. */
     @GetMapping
-    @PreAuthorize("hasAuthority('HOM_REFERENTIEL_READ')")
+    @PreAuthorize("hasAnyAuthority('HOM_REFERENTIEL_READ', 'REF_METIER_ADMIN')")
     @Transactional(readOnly = true)
     public List<VersionVue> lister(@RequestParam(name = "type", required = false) TypeProjet type, Authentication auth) {
-        Map<TypeProjet, UUID> actives = actives();
-        List<TypeProjet> types = type == null ? Arrays.asList(TypeProjet.values()) : List.of(type);
+        Map<TypeProjet, java.util.Optional<UUID>> actives = new java.util.HashMap<>();
         var permissions = ActeurCourant.de(auth).permissions();
-        return types
+        List<ReferentialVersion> liste = type == null
+            ? versions.findAllByOrderByDateCreationDesc().stream().sorted(Comparator.comparing(ReferentialVersion::getTypeProjet)).toList()
+            : versions.findByTypeProjetOrderByDateCreationDesc(type);
+        return liste
             .stream()
-            .flatMap(t -> versions.findByTypeProjetOrderByDateCreationDesc(t).stream())
-            .map(v -> VersionVue.de(v, actives.get(v.getTypeProjet()), VisibiliteReferentiel.pour(permissions, v.getOperations())))
+            .map(v -> VersionVue.de(v, actives.computeIfAbsent(v.getTypeProjet(), this::active).orElse(null), VisibiliteReferentiel.pour(permissions, v.getOperations())))
             .toList();
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('HOM_REFERENTIEL_READ')")
+    @PreAuthorize("hasAnyAuthority('HOM_REFERENTIEL_READ', 'REF_METIER_ADMIN')")
     @Transactional(readOnly = true)
     public VersionVue lire(@PathVariable UUID id, Authentication auth) {
         ReferentialVersion v = charger(id);
-        return VersionVue.de(v, actives().get(v.getTypeProjet()), VisibiliteReferentiel.pour(ActeurCourant.de(auth).permissions(), v.getOperations()));
+        return VersionVue.de(v, active(v.getTypeProjet()).orElse(null), VisibiliteReferentiel.pour(ActeurCourant.de(auth).permissions(), v.getOperations()));
     }
 
     /** Chronologie d'une version : création, publication, puis événements publiés (outbox), du plus récent au plus ancien. */
     @GetMapping("/{id}/historique")
-    @PreAuthorize("hasAuthority('HOM_REFERENTIEL_READ')")
+    @PreAuthorize("hasAnyAuthority('HOM_REFERENTIEL_READ', 'REF_METIER_ADMIN')")
     @Transactional(readOnly = true)
     public List<EvenementVue> historique(@PathVariable UUID id) {
         ReferentialVersion v = charger(id);
@@ -136,14 +150,14 @@ public class ReferentialResource {
 
     /** HOM-03 : simulation de la migration des liaisons vers cette version (sans effet). */
     @PostMapping("/{id}/migrations/simulation")
-    @PreAuthorize("hasAuthority('HOM_REFERENTIEL_MIGRATE')")
+    @PreAuthorize("hasAnyAuthority('HOM_REFERENTIEL_MIGRATE', 'REF_METIER_ADMIN')")
     public List<ReferentialMigrationService.Impact> simuler(@PathVariable UUID id) {
         return migrations.simuler(id);
     }
 
     /** HOM-03 : rattachement des liaisons retenues à cette version. */
     @PostMapping("/{id}/migrations")
-    @PreAuthorize("hasAuthority('HOM_REFERENTIEL_MIGRATE')")
+    @PreAuthorize("hasAnyAuthority('HOM_REFERENTIEL_MIGRATE', 'REF_METIER_ADMIN')")
     @ResponseStatus(HttpStatus.ACCEPTED)
     public MigrationVue migrer(@PathVariable UUID id, @Valid @RequestBody MigrationRequest req, Authentication auth) {
         ReferentialMigration m = migrations.migrer(id, req.liaisonsRetenues(), ActeurCourant.de(auth).id());
@@ -155,7 +169,7 @@ public class ReferentialResource {
      * ({@code fantome: true}, code et libellé) ; l'en-tête {@value #EN_TETE_FILTRE} vaut CONCERNE ou COMPLET.
      */
     @GetMapping("/{id}/operations")
-    @PreAuthorize("hasAuthority('HOM_REFERENTIEL_READ')")
+    @PreAuthorize("hasAnyAuthority('HOM_REFERENTIEL_READ', 'REF_METIER_ADMIN')")
     @Transactional(readOnly = true)
     public ResponseEntity<List<OperationVue>> operations(@PathVariable UUID id, Authentication auth) {
         ReferentialVersion v = charger(id);
@@ -168,12 +182,12 @@ public class ReferentialResource {
      * dernière colonne marque les fantômes.
      */
     @GetMapping(value = "/{id}/export", produces = "text/csv")
-    @PreAuthorize("hasAuthority('HOM_REFERENTIEL_READ')")
+    @PreAuthorize("hasAnyAuthority('HOM_REFERENTIEL_READ', 'REF_METIER_ADMIN')")
     @Transactional(readOnly = true)
     public ResponseEntity<String> exporter(@PathVariable UUID id, Authentication auth) {
         ReferentialVersion v = charger(id);
         VisibiliteReferentiel.Vue vue = VisibiliteReferentiel.pour(ActeurCourant.de(auth).permissions(), v.getOperations());
-        StringBuilder csv = new StringBuilder("code;libelle;etape;segment;responsable;validateur;consultes;informes;externes;predecesseurs;delaiJours;fantome\n");
+        StringBuilder csv = new StringBuilder("code;libelle;etape;segment;responsable;validateur;consultes;informes;externes;predecesseurs;delaiJours;fantome;signatures\n");
         for (OperationVue o : operationsRetenues(v, vue)) {
             csv
                 .append(String.join(
@@ -189,7 +203,8 @@ public class ReferentialResource {
                     cellule(o.externes()),
                     cellule(o.predecesseurs()),
                     cellule(o.delaiJours()),
-                    String.valueOf(o.fantome())
+                    String.valueOf(o.fantome()),
+                    cellule(o.signatures() == null ? null : o.signatures().stream().map(x -> x.code() + ":" + x.signataire() + ":" + x.ordreEffectif() + ":" + String.join(",", x.porte())).toList())
                 ))
                 .append('\n');
         }
@@ -227,23 +242,16 @@ public class ReferentialResource {
 
     /** HOM-02 : contrôle à blanc, sans effet, y compris sur une version publiée. */
     @PostMapping("/{id}/controle")
-    @PreAuthorize("hasAuthority('HOM_REFERENTIEL_EDIT')")
+    @PreAuthorize("hasAnyAuthority('HOM_REFERENTIEL_EDIT', 'REF_METIER_ADMIN')")
     @Transactional(readOnly = true)
     public ControleVue controler(@PathVariable UUID id) {
         ReferentialVersion v = charger(id);
-        return ControleVue.de(validator.controler(v.noeuds()), completude.check(v.getOperations()));
+        return ControleVue.de(validator.controler(v.noeuds(), attestations == null || attestations.exigees(v.getTypeProjet())), completude.check(v.getOperations()));
     }
 
-    private Map<TypeProjet, UUID> actives() {
-        Map<TypeProjet, UUID> m = new EnumMap<>(TypeProjet.class);
-        for (TypeProjet t : TypeProjet.values()) {
-            versions.findFirstByTypeProjetAndEtat(t, EtatVersionReferentiel.PUBLIEE).ifPresent(v -> m.put(t, v.getId()));
-        }
-        return m;
-    }
-
-    private static VersionVue vue(ReferentialVersion v, Map<TypeProjet, UUID> actives) {
-        return VersionVue.de(v, actives.get(v.getTypeProjet()));
+    /** Version publiée en vigueur du type. */
+    private java.util.Optional<UUID> active(TypeProjet t) {
+        return versions.findFirstByTypeProjetAndEtat(t, EtatVersionReferentiel.PUBLIEE).map(ReferentialVersion::getId);
     }
 
     private static String libelle(String type, ReferentialVersion v) {

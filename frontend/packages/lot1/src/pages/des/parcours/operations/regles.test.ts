@@ -40,6 +40,15 @@ describe('onglet Opérations : règles de présentation', () => {
     expect(concerne(op({ raci: { R: null, C: [], V: null, I: [], E: [] } }), ['SNA'])).toBe(false)
   })
 
+  it('étapes de la version (D-93) : ordre configuré, étape hors liste à la suite ; à signer comptée à valider', () => {
+    const ops = [op({ rang: 'A', etapeCode: 'RECETTE' }), op({ rang: 'B', etapeCode: 'CADRAGE_ETENDU' }), op({ rang: 'C', etapeCode: 'AUTRE', etat: 'EN_SIGNATURE' })]
+    expect(grouper(ops, ['CADRAGE_ETENDU', 'RECETTE']).map((g) => g.etape)).toEqual(['CADRAGE_ETENDU', 'RECETTE', 'AUTRE'])
+    const base = { vue: '' as const, etape: '', miennes: false, recherche: '' }
+    expect(filtrer(ops, { ...base, etape: 'RECETTE' }, [], () => '').map((o) => o.rang)).toEqual(['A'])
+    expect(filtrer(ops, { ...base, vue: 'a-valider' }, [], () => '').map((o) => o.rang)).toEqual(['C'])
+    expect(compter(ops).aValider).toBe(1)
+  })
+
   it('regroupement par étape du parcours puis par segment ; plateformes distinctes', () => {
     const ops = [
       op({ rang: '27', etape: 'MISE_EN_PRODUCTION', segment: 'AVAL', plateforme: null }),
@@ -54,14 +63,15 @@ describe('onglet Opérations : règles de présentation', () => {
     expect(compter([...ops, op({ etat: 'FAITE' }), op({ etat: 'EN_VALIDATION', sla: 'DEPASSE' })])).toEqual({ total: 6, faites: 1, aFaire: 4, aValider: 1, retard: 1 })
   })
 
-  it('geste ailleurs : affectation, décision, mise en service ; opérations externes', () => {
-    expect(['6', '18', '26', '32', '35', '17', '27', 'C1'].map(ongletDuGeste)).toEqual(['affectation', 'decision', 'decision', 'mise-en-service', 'mise-en-service', null, null, null])
-    // Suivi de l'exploitation (34) : prouvé dans l'onglet des opérations (sinon aucun geste ne le clôt).
-    expect(ongletDuGeste('34')).toBeNull()
+  it('geste ailleurs lu sur la vue de l’opération (D-93), jamais sur son rang ; opérations externes du catalogue', () => {
+    const vues = ['AFFECTATION', 'DECISION', 'ATTESTATIONS', 'MISE_EN_SERVICE', 'ESSAIS', 'AUCUNE', 'CEREMONIE', undefined] as const
+    expect(vues.map((vue) => ongletDuGeste({ vue }))).toEqual(['affectation', 'decision', 'decision', 'mise-en-service', null, null, null, null])
     expect(lienDuGeste('affectation', { liaisonId: 'L', id: 'L:6' })).toBe('/des/parcours/L?onglet=etapes&action=affecter')
     expect(lienDuGeste('decision', { liaisonId: 'L', id: 'L:20' })).toBe('/des/parcours/L?onglet=decision&operation=L%3A20')
-    expect(externe(op({ raci: { R: P('PARTICIPANT'), C: [], V: null, I: [], E: [] } }))).toBe(true)
-    expect(externe(op({ raci: { R: P('PERSONNALISATEUR'), C: [], V: null, I: [], E: [] } }))).toBe(true)
-    expect(externe(op({}))).toBe(false)
+    const externes = ['PARTICIPANT', 'PERSONNALISATEUR', 'JURISTE_EXTERNE']
+    expect(externe(op({ raci: { R: P('PARTICIPANT'), C: [], V: null, I: [], E: [] } }), externes)).toBe(true)
+    expect(externe(op({ raci: { R: P('JURISTE_EXTERNE'), C: [], V: null, I: [], E: [] } }), externes)).toBe(true)
+    expect(externe(op({}), externes)).toBe(false)
+    expect(externe(op({ raci: { R: null, C: [], V: null, I: [], E: [] } }), externes)).toBe(false)
   })
 })

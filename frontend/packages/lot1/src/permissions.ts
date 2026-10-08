@@ -1,5 +1,3 @@
-import type { Fonction } from './modele/parcours'
-
 // Matrice des rôles du parcours (D-58, D-61) : l'interface n'affiche un tableau de bord ou une action que
 // si le jeton porte la permission ; la passerelle (OPA) et les services refont le contrôle à chaque appel.
 
@@ -23,6 +21,10 @@ export const PERM = {
   referentielLireTout: 'HOM_REFERENTIEL_READ_ALL',
   referentielModifier: 'HOM_REFERENTIEL_EDIT',
   referentielPublier: 'HOM_REFERENTIEL_PUBLISH',
+  /** Conduite des projets d'homologation (D-94 §6.5) : un conducteur de projet est un porteur de cette permission. */
+  projetConduire: 'HOM_PROJECT_CONDUCT',
+  /** Administration des référentiels métier, tous domaines (D-92). */
+  referentielsMetierAdmin: 'REF_METIER_ADMIN',
   /** Nouvelle (D-56, D-59) : conduite des étapes 4 à 10 (compte rendu de lancement, ateliers, blocages, jalons). */
   etapeConduire: 'HOM_STEP_MANAGE',
   // Verrou 1 : procès-verbal de certification (D-56)
@@ -99,7 +101,7 @@ export const PROFILS: Record<string, string[]> = {
   ROLE_CHEF_DES: [...COMMUN_DES, PERM.liaisonOuvrir, PERM.projetDesigner, PERM.pvSignerGimac, 'HOM_LIAISON_UNFREEZE', 'HOM_DEADLINE_CONFIG', 'HOM_REFERENTIEL_MIGRATE',
     PERM.operationValider, 'HOM_EVIDENCE_FILE_EXPORT', PERM.attestationEmettre, 'CER_ATTESTATION_STATUS_REQUEST', PERM.registreExporter, PERM.etapeConduire, ...RESPONSABLE,
     PERM.referentielModifier, PERM.referentielPublier, PERM.referentielLireTout],
-  ROLE_CONDUCTEUR_PROJET: [...COMMUN_DES, PERM.operationAttribuer, PERM.preuveDeposer, PERM.operationValider, 'HOM_EVIDENCE_FILE_EXPORT', PERM.etapeConduire, PERM.pvEtablir],
+  ROLE_CONDUCTEUR_PROJET: [...COMMUN_DES, PERM.projetConduire, PERM.operationAttribuer, PERM.preuveDeposer, PERM.operationValider, 'HOM_EVIDENCE_FILE_EXPORT', PERM.etapeConduire, PERM.pvEtablir],
   ROLE_SNA: [...COMMUN_DES, PERM.preuveDeposer, PERM.operationValider, PERM.dossierVerifier],
   ROLE_PRODUCTION_MONETIQUE: [...COMMUN_DES, PERM.preuveDeposer, PERM.ficheChangementLier, PERM.pvMiseEnServiceDeposer],
   ROLE_POLE_RESEAU: [...COMMUN_DES, PERM.preuveDeposer],
@@ -112,11 +114,12 @@ export const PROFILS: Record<string, string[]> = {
   // l'octroi privilégié, supervision et configuration de la plateforme (D-62, D-69).
   ROLE_SUPER_ADMIN: [...COMMUN_DES, ...IAM_SANS_PRIVILEGE, 'IAM_ROLE_PRIVILEGED_GRANT', 'PLATFORM_SUPERVISION_READ', 'PLATFORM_CONFIG_READ', 'PLATFORM_CONFIG_EDIT',
     'PLATFORM_OPS_READ', 'PLATFORM_OPS_EXECUTE',
-    'PLATFORM_SECURITY_POLICY_READ', 'PLATFORM_SECURITY_POLICY_EDIT', 'PLATFORM_MESSAGING_EDIT', PERM.referentielModifier, PERM.referentielPublier],
+    'PLATFORM_SECURITY_POLICY_READ', 'PLATFORM_SECURITY_POLICY_EDIT', 'PLATFORM_MESSAGING_EDIT', PERM.referentielModifier, PERM.referentielPublier,
+    PERM.referentielLireTout, 'HOM_REFERENTIEL_MIGRATE', PERM.referentielsMetierAdmin],
   ROLE_CONFORMITE: [...COMMUN_DES, PERM.visaConformite, PERM.ficheChangementLier, ...RESPONSABLE, PERM.referentielLireTout],
   ROLE_DG: [...COMMUN_DES, PERM.visaDg, 'CER_ATTESTATION_STATUS_APPROVE', ...RESPONSABLE, PERM.referentielLireTout],
   ROLE_INGENIEUR_HOMOLOGATION: [...COMMUN_DES, PERM.operationAttribuer, PERM.preuveDeposer, PERM.operationValider, PERM.operationRouvrir, PERM.referentielModifier,
-    PERM.referentielPublier, 'HOM_GRID_EDIT', 'HOM_SCENARIO_QUALIFY', 'HOM_EVIDENCE_FILE_EXPORT', PERM.dossierVerifier, PERM.pvMiseEnServiceDeposer, PERM.attestationEmettre],
+    PERM.referentielPublier, 'HOM_GRID_EDIT', 'HOM_SCENARIO_QUALIFY', 'HOM_EVIDENCE_FILE_EXPORT', PERM.dossierVerifier, PERM.pvMiseEnServiceDeposer, PERM.attestationEmettre, PERM.referentielsMetierAdmin],
   // D-76 §4 : employé sans fonction métier dans la plateforme (messagerie et « Mon activité », lecture de rien
   // d'autre) ; chef de service, de pôle ou de cellule (en plus : son équipe et les tâches qu'il lui confie).
   ROLE_COLLABORATEUR: [...INTERNE],
@@ -125,26 +128,4 @@ export const PROFILS: Record<string, string[]> = {
   // de l'infrastructure (charges, journaux, gestes) ; messagerie et « Mon activité » ; n'administre pas les comptes.
   ROLE_ADMIN_SYSTEME: [...INTERNE, PERM.supervisionLire, PERM.configurationLire, PERM.exploitationLire, PERM.exploitationExecuter],
   ROLE_CORRESPONDANT: [PERM.portailLire, PERM.portailDeposer, PERM.portailCertification, PERM.portailSigner],
-}
-
-/** Fonction du parcours portée par un profil : sert à composer son tableau de bord. */
-export const FONCTION_DU_ROLE: Record<string, Fonction> = {
-  ROLE_CHARGE_DDRM: 'DDRM',
-  ROLE_CHEF_DDRM: 'CHEF_DDRM',
-  ROLE_CHEF_DES: 'CHEF_DES',
-  ROLE_CONDUCTEUR_PROJET: 'CONDUCTEUR',
-  ROLE_SNA: 'SNA',
-  ROLE_PRODUCTION_MONETIQUE: 'PRODUCTION_MONETIQUE',
-  ROLE_POLE_RESEAU: 'POLE_RESEAU',
-  ROLE_POLE_SYSTEME: 'POLE_SYSTEME',
-  ROLE_RSSI: 'RSSI',
-  ROLE_CONFORMITE: 'CONFORMITE',
-  ROLE_DG: 'DG',
-  ROLE_INGENIEUR_HOMOLOGATION: 'SNA',
-  ROLE_CORRESPONDANT: 'PARTICIPANT',
-}
-
-/** Fonctions portées par une session (un utilisateur peut détenir plusieurs profils). */
-export function fonctionsDe(roles: string[]): Fonction[] {
-  return [...new Set(roles.map((r) => FONCTION_DU_ROLE[r]).filter((f): f is Fonction => Boolean(f)))]
 }

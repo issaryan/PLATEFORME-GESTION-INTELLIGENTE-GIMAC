@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Types de projet en données (D-91, docs/lot1/types-projet.md §5) : les colonnes type_projet restent du texte et
+     acceptent les codes de MS-HOMOLOGATION (40 caractères) ; le procès-verbal fige le modèle du type, qui porte les
+     attestations exigées (reprise : le modèle des trois types repris est leur code). -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="d91-type-projet-texte" author="certification">
+        <modifyDataType tableName="attestation" columnName="type_projet" newDataType="varchar(40)"/>
+        <modifyDataType tableName="certification_register_entry" columnName="type_projet" newDataType="varchar(40)"/>
+        <modifyDataType tableName="proces_verbal_certification" columnName="type_projet" newDataType="varchar(40)"/>
+        <modifyDataType tableName="approbation_securite" columnName="type_projet" newDataType="varchar(40)"/>
+    </changeSet>
+
+    <changeSet id="d91-modele-type-projet" author="certification">
+        <addColumn tableName="proces_verbal_certification">
+            <column name="modele_type_projet" type="varchar(30)" remarks="Modèle du type de projet (D-91), figé à l'établissement."/>
+        </addColumn>
+        <sql>
+            UPDATE proces_verbal_certification SET modele_type_projet = type_projet
+            WHERE type_projet IN ('CARTE_INTERBANCAIRE', 'PAIEMENT_MOBILE', 'DELEGATAIRE');
+        </sql>
+    </changeSet>
+</databaseChangeLog>

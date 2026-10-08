@@ -14,6 +14,7 @@ import cm.gimac.des.pilotage.domain.activite.TypeOrigine;
 import cm.gimac.des.pilotage.domain.event.TacheAffecteePayload;
 import cm.gimac.des.pilotage.domain.event.TacheCreeePayload;
 import cm.gimac.des.pilotage.domain.event.TacheOffertePayload;
+import cm.gimac.des.pilotage.domain.event.TachePrisePayload;
 import cm.gimac.des.pilotage.domain.event.TacheRelanceePayload;
 import cm.gimac.des.pilotage.domain.event.TacheTermineePayload;
 import cm.gimac.des.pilotage.domain.exception.PilotageException;
@@ -25,11 +26,13 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -61,6 +64,10 @@ public class TacheService implements TachesUseCase {
     static final int GROUPE_MAX = 50;
     private static final Pattern UNITE = Pattern.compile("^[A-Z][A-Z0-9_]{1,31}$");
     private static final Pattern SERVICE = Pattern.compile("^[a-z][a-z0-9-]{1,59}$");
+    private static final Pattern PROFIL = Pattern.compile("^[A-Za-z][A-Za-z0-9_.-]*$");
+    private static final Pattern PERMISSION = Pattern.compile("^[A-Z][A-Z0-9_]*$");
+    /** Nombre de profils requis d'une offre (D-93). */
+    static final int PROFILS_MAX = 20;
 
     private final TacheRepository taches;
     private final TacheHistoriqueRepository historique;
@@ -92,7 +99,14 @@ public class TacheService implements TachesUseCase {
         PageRequest p = PageRequest.of(ReglesActivite.page(page), ReglesActivite.taille(taille));
         org.springframework.data.domain.Page<Tache> r;
         switch (vue == null || vue.isBlank() ? "moi" : vue.strip()) {
-            case "moi" -> r = taches.deResponsables(List.of(appelant.id()), filtre, p);
+            case "moi" -> r = taches.miennes(
+                appelant.id(),
+                auMoinsUn(equipes.unitesDe(appelant.id())),
+                auMoinsUn(equipes.profilsDe(appelant.id())),
+                auMoinsUn(permissionsOffertesPortees(appelant.id())),
+                filtre,
+                p
+            );
             case "creees" -> r = taches.confiees(appelant.id(), filtre, p);
             case "equipe" -> {
                 if (!appelant.litEquipe()) {
@@ -103,20 +117,47 @@ public class TacheService implements TachesUseCase {
             }
             case "unite" -> {
                 List<String> unites = equipes.unitesDe(appelant.id());
-                List<String> profils = new ArrayList<>(equipes.profilsDe(appelant.id()));
-                if (profils.isEmpty()) {
-                    // Liste vide interdite dans « in » : aucun profil ne s'appelle ainsi.
-                    profils.add("-");
-                }
                 r = unites.isEmpty()
                     ? org.springframework.data.domain.Page.empty(p)
-                    : taches.deUnites(unites, filtre == null ? EtatTache.A_PRENDRE : filtre, profils, p);
+                    : taches.deUnites(unites, filtre == null ? EtatTache.A_PRENDRE : filtre, auMoinsUn(equipes.profilsDe(appelant.id())), p);
             }
             default -> throw PilotageException.champ("vue", "Vue moi, creees, equipe ou unite attendue");
         }
         LocalDate jour = ReglesActivite.aujourdhui(horloge);
         Map<String, String> noms = equipes.noms(r.getContent().stream().flatMap(t -> Stream.of(t.getResponsableId(), t.getCreateurId())).filter(Objects::nonNull).toList());
         return new Page<>(r.getContent().stream().map(t -> new TacheLue(t, List.of(), noms, t.enRetard(jour))).toList(), r.getTotalElements(), p.getPageNumber(), p.getPageSize());
+    }
+
+    /**
+     * Permissions des offres encore à prendre que porte le compte (D-94) ; annuaire injoignable : aucune (« Mes tâches »
+     * ne montre alors que les offres par profil), sans échec de la lecture.
+     */
+    private Set<String> permissionsOffertesPortees(String compteId) {
+        try {
+            return equipes.permissionsDe(compteId, taches.permissionsOffertes());
+        } catch (PilotageException e) {
+            return java.util.Set.of();
+        }
+    }
+
+    /**
+     * Le compte peut prendre l'offre : il porte l'un des profils requis ou l'une des permissions requises (porteurs lus
+     * dans MS-IAM, D-94) ; l'unité visée se vérifie à part. Annuaire injoignable : 503 PIL_ORGANISATION_INDISPONIBLE.
+     */
+    private boolean candidat(Tache t, String compteId) {
+        return t.prenablePar(equipes.profilsDe(compteId), equipes.permissionsDe(compteId, t.getPermissionsRequises()));
+    }
+
+    /** Requis d'une offre, pour les messages : profils puis permissions. */
+    private static String requis(Tache t) {
+        List<String> l = new ArrayList<>(t.getProfilsRequis());
+        l.addAll(t.getPermissionsRequises());
+        return String.join(", ", l);
+    }
+
+    /** Liste vide interdite dans « in » : un code qu'aucune unité ni aucun profil ne porte la remplace. */
+    private static List<String> auMoinsUn(java.util.Collection<String> codes) {
+        return codes.isEmpty() ? List.of("-") : List.copyOf(codes);
     }
 
     @Override
@@ -214,14 +255,20 @@ public class TacheService implements TachesUseCase {
     @Override
     public TacheLue prendre(Appelant appelant, UUID id) {
         Tache t = trouver(id);
+        if (t.isOffreProfils()) {
+            return prendreOffre(appelant, t);
+        }
         String unite = t.getUniteCible();
-        if (unite == null || !equipes.dansUnite(appelant.id(), unite)) {
+        if (!horsUnite(t) && (unite == null || !equipes.dansUnite(appelant.id(), unite))) {
             if (peutLire(t, appelant)) {
                 throw PilotageException.reservee("Seul un membre de l'unité visée prend la tâche");
             }
             throw PilotageException.horsEquipe();
         }
         if (t.getProfilRequis() != null && t.getEtat() == EtatTache.A_PRENDRE && !equipes.profilsDe(appelant.id()).contains(t.getProfilRequis())) {
+            if (horsUnite(t) && !peutLire(t, appelant)) {
+                throw PilotageException.horsEquipe();
+            }
             throw PilotageException.interdit("PIL_PROFIL_REQUIS", "Seuls les porteurs du profil " + t.getProfilRequis() + " prennent cette tâche");
         }
         Instant le = horloge.instant();
@@ -229,8 +276,61 @@ public class TacheService implements TachesUseCase {
         enregistrer(t);
         consigner(t, appelant.id(), ActionHistorique.PRISE, "Prise par " + nom(appelant.id()), le);
         publierAffectation(t, null, appelant.id(), le);
+        publierPrise(t, appelant.id(), true, le);
         signalerProcessus(t, appelant.id(), true);
         return lue(t);
+    }
+
+    /**
+     * Prise d'une offre d'un autre service (D-93) : déjà prise, terminée ou annulée : 409 PIL_TRANSITION_INTERDITE (403
+     * PIL_HORS_EQUIPE pour qui ne porte aucun des profils et ne lit pas la tâche) ;
+     * appelant hors de l'unité visée : 403 PIL_ACTION_RESERVEE ; sans l'un des profils ni l'une des permissions requis :
+     * 403 PIL_PROFIL_REQUIS.
+     */
+    private TacheLue prendreOffre(Appelant appelant, Tache t) {
+        if (t.getEtat() != EtatTache.A_PRENDRE) {
+            boolean candidat = t.getProfilsRequis().stream().anyMatch(equipes.profilsDe(appelant.id())::contains)
+                || !equipes.permissionsDe(appelant.id(), t.getPermissionsRequises()).isEmpty();
+            if (!candidat && !peutLire(t, appelant)) {
+                throw PilotageException.horsEquipe();
+            }
+            throw PilotageException.conflit("PIL_TRANSITION_INTERDITE", "La tâche n'est plus à prendre", Map.of("de", t.getEtat().name(), "vers", EtatTache.OUVERTE.name()));
+        }
+        if (t.getUniteCible() != null && !equipes.dansUnite(appelant.id(), t.getUniteCible())) {
+            throw PilotageException.reservee("Seul un membre de l'unité visée prend la tâche");
+        }
+        if (!candidat(t, appelant.id())) {
+            throw PilotageException.interdit("PIL_PROFIL_REQUIS", "Seuls les porteurs de l'un des profils ou de l'une des permissions " + requis(t) + " prennent cette tâche");
+        }
+        Instant le = horloge.instant();
+        t.confierA(appelant.id(), le);
+        enregistrer(t);
+        consigner(t, appelant.id(), ActionHistorique.PRISE, "Prise par " + nom(appelant.id()), le);
+        publierAffectation(t, null, appelant.id(), le);
+        publierPrise(t, appelant.id(), true, le);
+        return lue(t);
+    }
+
+    /** pilotage.task-taken.v1 : la tâche à prendre a trouvé son responsable (prise ou attribution, D-93). */
+    private void publierPrise(Tache t, String acteur, boolean prise, Instant le) {
+        outbox.publish(
+            AGREGAT,
+            t.getId(),
+            TachePrisePayload.TYPE,
+            new TachePrisePayload(
+                t.getId(),
+                new TachePrisePayload.Origine(t.getOrigineType().name(), t.getOrigineReference(), t.getOrigineService(), t.getOrigineLien()),
+                t.getResponsableId(),
+                acteur,
+                prise ? "PRISE" : "ATTRIBUTION",
+                List.copyOf(t.getProfilsRequis()),
+                t.getProfilRequis(),
+                t.getUniteCible(),
+                t.getTitre(),
+                le,
+                List.copyOf(t.getPermissionsRequises())
+            )
+        );
     }
 
     @Override
@@ -303,11 +403,19 @@ public class TacheService implements TachesUseCase {
         if (!equipes.dansUnite(cible, t.getUniteCible())) {
             throw PilotageException.regle("PIL_RESPONSABLE_INVALIDE", "Le responsable doit être membre de l'unité visée", Map.of("responsableId", cible, "uniteCible", t.getUniteCible()));
         }
+        if (t.isOffreProfils() && !candidat(t, cible)) {
+            throw PilotageException.regle(
+                "PIL_RESPONSABLE_INVALIDE",
+                "Le responsable doit porter l'un des profils ou l'une des permissions requis",
+                Map.of("responsableId", cible, "profilsRequis", List.copyOf(t.getProfilsRequis()), "permissionsRequises", List.copyOf(t.getPermissionsRequises()))
+            );
+        }
         Instant le = horloge.instant();
         t.confierA(cible, le);
         enregistrer(t);
         consigner(t, appelant.id(), ActionHistorique.ATTRIBUEE, "Attribuée à " + nom(cible), le);
         publierAffectation(t, null, appelant.id(), le);
+        publierPrise(t, appelant.id(), false, le);
         signalerProcessus(t, appelant.id(), false);
         return lue(t);
     }
@@ -352,10 +460,33 @@ public class TacheService implements TachesUseCase {
             return true;
         }
         String unite = t.getUniteCible();
+        if (t.isOffreProfils() && candidatTolerant(t, appelant.id()) && (unite == null || equipes.dansUnite(appelant.id(), unite))) {
+            return true;
+        }
+        if (horsUnite(t) && t.getEtat() == EtatTache.A_PRENDRE && equipes.profilsDe(appelant.id()).contains(t.getProfilRequis())) {
+            return true;
+        }
         if (unite != null && (equipes.dansUnite(appelant.id(), unite) || equipes.pouvoirs(appelant.id()).dirige(unite))) {
             return true;
         }
         return t.getResponsableId() != null && equipes.peutLire(appelant, Pouvoir.TACHE_SUIVRE, t.getResponsableId());
+    }
+
+    /**
+     * Étape de processus offerte hors de l'unité (désignation hors de l'unité, D-87) : à prendre sans unité visée par
+     * tout porteur du profil, où qu'il soit dans le GIMAC.
+     */
+    private static boolean horsUnite(Tache t) {
+        return !t.isOffreProfils() && t.getUniteCible() == null && t.getProfilRequis() != null && t.getOrigineType() == TypeOrigine.PROCESSUS;
+    }
+
+    /** {@link #candidat} sans échec : annuaire injoignable, seuls les profils comptent (lecture d'une tâche). */
+    private boolean candidatTolerant(Tache t, String compteId) {
+        try {
+            return candidat(t, compteId);
+        } catch (PilotageException e) {
+            return t.prenableParProfils(equipes.profilsDe(compteId));
+        }
     }
 
     private static String texte(String s) {
@@ -460,6 +591,15 @@ public class TacheService implements TachesUseCase {
             // Lien relatif à l'interface seulement : aucune redirection vers un autre site.
             throw PilotageException.champ("origine.lien", "Chemin relatif de l'interface attendu (par exemple /des/parcours/…)");
         }
+        if (d.profilsRequis() != null || d.permissionsRequises() != null || texte(d.uniteCible()) != null) {
+            if (texte(d.responsableId()) != null) {
+                throw PilotageException.champ(
+                    d.profilsRequis() == null && d.permissionsRequises() != null ? "permissionsRequises" : "profilsRequis",
+                    "Une tâche se confie à un responsable ou se propose à des profils ou des permissions, pas les deux"
+                );
+            }
+            return offrirPourService(client, d, type, reference, service, lien);
+        }
         String responsable = ReglesActivite.texteObligatoire("responsableId", d.responsableId(), 80);
         Optional<Tache> existante = taches.findFirstByOrigineReferenceAndResponsableId(reference, responsable);
         if (existante.isPresent()) {
@@ -482,6 +622,114 @@ public class TacheService implements TachesUseCase {
         consigner(t, createur, ActionHistorique.CREEE, "Créée par le service " + (service == null ? client : service), le);
         publierCreation(t, createur, le);
         return new Creation(lue(t), true);
+    }
+
+    /**
+     * Offre d'un autre service (D-93, D-94) : 1 à 20 profils (codes de MS-IAM) et/ou 1 à 20 permissions (l'un des deux
+     * au moins ; l'un des profils ou l'une des permissions suffit), unité facultative et connue ; idempotente par
+     * origine.reference seule ; pilotage.task-created.v1 puis pilotage.task-offered.v1 aux porteurs actifs des profils et
+     * des permissions (dans l'unité si elle est donnée).
+     */
+    private Creation offrirPourService(String client, TacheInterne d, TypeOrigine type, String reference, String service, String lien) {
+        if (d.profilsRequis() == null && d.permissionsRequises() == null) {
+            throw PilotageException.champ("profilsRequis", "Une tâche à prendre exige des profils requis ou des permissions requises");
+        }
+        List<String> profils = d.profilsRequis() == null ? List.of() : profilsRequis(d.profilsRequis());
+        List<String> permissions = d.permissionsRequises() == null ? List.of() : permissionsRequises(d.permissionsRequises());
+        String unite = texte(d.uniteCible());
+        if (unite != null && !UNITE.matcher(unite).matches()) {
+            throw PilotageException.champ("uniteCible", "Code d'unité attendu (par exemple POLE_RESEAU)");
+        }
+        Optional<Tache> existante = taches.findFirstByOrigineReferenceAndOffreProfilsTrue(reference);
+        if (existante.isPresent()) {
+            return new Creation(lue(existante.orElseThrow()), false);
+        }
+        if (unite != null && equipes.membresUnite(unite, null).isEmpty()) {
+            throw PilotageException.regle("PIL_UNITE_INCONNUE", "Unité inconnue de l'organisation", Map.of("uniteCible", unite));
+        }
+        String createur = d.createurId() == null || d.createurId().isBlank() ? client : d.createurId().strip();
+        Instant le = horloge.instant();
+        Tache t = Tache.pourOffre(createur, unite, profils, permissions, le);
+        decrire(t, new TacheSaisie(d.titre(), d.description(), d.echeance(), d.priorite(), null), le);
+        t.provenirDe(type, reference, service, lien);
+        try {
+            taches.saveAndFlush(t);
+        } catch (DataIntegrityViolationException e) {
+            throw PilotageException.conflit("PIL_TACHE_EXISTANTE", "Tâche déjà créée pour cette origine", Map.of("reference", reference));
+        }
+        consigner(
+            t,
+            createur,
+            ActionHistorique.CREEE,
+            "Créée par le service " + (service == null ? client : service) + ", à prendre par les porteurs de " + requis(t) + (unite == null ? "" : " (unité " + unite + ")"),
+            le
+        );
+        publierCreation(t, createur, le);
+        List<String> destinataires = destinatairesOffre(unite, profils, permissions);
+        outbox.publish(AGREGAT, t.getId(), TacheOffertePayload.TYPE, new TacheOffertePayload(t.getId(), t.getTitre(), unite, destinataires, createur, le));
+        return new Creation(lue(t), true);
+    }
+
+    /**
+     * Destinataires de pilotage.task-offered.v1 d'une offre : porteurs actifs des profils et des permissions, dans
+     * l'unité (sous-unités comprises) si elle est donnée.
+     */
+    private List<String> destinatairesOffre(String unite, List<String> profils, List<String> permissions) {
+        LinkedHashSet<String> ids = new LinkedHashSet<>();
+        if (unite == null) {
+            ids.addAll(equipes.porteursProfils(profils));
+            ids.addAll(equipes.porteursPermissions(permissions));
+            return List.copyOf(ids);
+        }
+        profils.stream().flatMap(p -> equipes.membresUnite(unite, p).map(u -> u.actifs()).orElse(List.of()).stream()).map(m -> m.id()).forEach(ids::add);
+        if (!permissions.isEmpty()) {
+            Set<String> membres = new HashSet<>();
+            equipes.membresUnite(unite, null).map(u -> u.actifs()).orElse(List.of()).forEach(m -> membres.add(m.id()));
+            equipes.porteursPermissions(permissions).stream().filter(membres::contains).forEach(ids::add);
+        }
+        return List.copyOf(ids);
+    }
+
+    /** Permissions requises : 1 à 20 codes distincts (majuscule, puis majuscules, chiffres ou « _ »), 80 caractères au plus. */
+    static List<String> permissionsRequises(List<String> saisies) {
+        LinkedHashSet<String> codes = new LinkedHashSet<>();
+        for (String c : saisies) {
+            String v = texte(c);
+            if (v == null || v.length() > 80 || !PERMISSION.matcher(v).matches()) {
+                throw PilotageException.champ("permissionsRequises", "Code de permission invalide : " + c);
+            }
+            codes.add(v);
+        }
+        if (codes.isEmpty() || codes.size() > PROFILS_MAX) {
+            throw PilotageException.invalide(
+                "PIL_REQUETE_INVALIDE",
+                "De 1 à " + PROFILS_MAX + " permissions requises attendues",
+                Map.of("champ", "permissionsRequises", "nombre", codes.size())
+            );
+        }
+        return List.copyOf(codes);
+    }
+
+    /** Profils requis : 1 à 20 codes distincts (lettres, chiffres, « _ », « - », « . »), 80 caractères au plus. */
+    static List<String> profilsRequis(List<String> saisis) {
+        LinkedHashSet<String> codes = new LinkedHashSet<>();
+        if (saisis != null) {
+            for (String c : saisis) {
+                String v = texte(c);
+                if (v == null || v.length() > 80 || !PROFIL.matcher(v).matches()) {
+                    throw PilotageException.champ("profilsRequis", "Code de profil invalide : " + c);
+                }
+                codes.add(v);
+            }
+        }
+        if (codes.isEmpty() || codes.size() > PROFILS_MAX) {
+            throw PilotageException.invalide(
+                "PIL_REQUETE_INVALIDE",
+                "De 1 à " + PROFILS_MAX + " profils requis attendus",
+                Map.of("champ", "profilsRequis", "nombre", codes.size())
+            );
+        }
+        return List.copyOf(codes);
     }
 
     @Override
@@ -508,17 +756,43 @@ public class TacheService implements TachesUseCase {
         Instant le = horloge.instant();
         List<Tache> visees = visees(cible);
         for (Tache t : visees) {
+            if (cible.aPrendre()) {
+                remettreOffre(t, client, le);
+                continue;
+            }
             EtatTache avant = t.rouvrirParService(le);
             if (avant != null) {
-                consigner(t, client, ActionHistorique.TRANSITION, "TERMINEE vers EN_COURS : rouverte par le service " + serviceDe(t, client), le);
+                consigner(t, client, ActionHistorique.TRANSITION, "TERMINEE vers " + t.getEtat().name() + " : rouverte par le service " + serviceDe(t, client), le);
             }
         }
         return visees.stream().map(this::lue).toList();
     }
 
     /**
+     * Offre remise à prendre (D-94) : sans responsable, pilotage.task-offered.v1 de nouveau aux porteurs des profils et
+     * des permissions (dans l'unité si elle est donnée).
+     */
+    private void remettreOffre(Tache t, String client, Instant le) {
+        String ancien = t.getResponsableId();
+        EtatTache avant = t.remettreOffreAPrendre(le);
+        if (avant == null) {
+            return;
+        }
+        enregistrer(t);
+        consigner(
+            t,
+            client,
+            ActionHistorique.TRANSITION,
+            avant.name() + " vers A_PRENDRE : remise à prendre par le service " + serviceDe(t, client) + (ancien == null ? "" : " (retirée à " + nom(ancien) + ")"),
+            le
+        );
+        List<String> destinataires = destinatairesOffre(t.getUniteCible(), List.copyOf(t.getProfilsRequis()), List.copyOf(t.getPermissionsRequises()));
+        outbox.publish(AGREGAT, t.getId(), TacheOffertePayload.TYPE, new TacheOffertePayload(t.getId(), t.getTitre(), t.getUniteCible(), destinataires, t.getCreateurId(), le));
+    }
+
+    /**
      * Tâches visées par un autre service : celles de l'origine (référence, et type s'il est donné), créées par un
-     * service (jamais une tâche INTERNE), restreintes au responsable s'il est donné.
+     * service (jamais une tâche INTERNE), restreintes au responsable s'il est donné ; {@code aPrendre} : l'offre seule.
      */
     private List<Tache> visees(CibleInterne c) {
         if (c == null || c.origine() == null) {
@@ -532,7 +806,7 @@ public class TacheService implements TachesUseCase {
             .stream()
             .filter(t -> t.getOrigineType() != TypeOrigine.INTERNE)
             .filter(t -> type == null || t.getOrigineType() == type)
-            .filter(t -> responsable == null || responsable.equals(t.getResponsableId()))
+            .filter(t -> c.aPrendre() ? t.isOffreProfils() : responsable == null || responsable.equals(t.getResponsableId()))
             .toList();
     }
 
@@ -661,7 +935,7 @@ public class TacheService implements TachesUseCase {
             t,
             d.createur(),
             ActionHistorique.CREEE,
-            d.responsable() == null ? "Étape à prendre (unité " + d.unite() + (d.profil() == null ? "" : ", profil " + d.profil()) + ")" : "Étape confiée à " + nom(d.responsable()),
+            d.responsable() == null ? "Étape à prendre (" + cible(d.unite(), d.profil()) + ")" : "Étape confiée à " + nom(d.responsable()),
             le
         );
         publierCreation(t, d.createur(), le);
@@ -684,9 +958,13 @@ public class TacheService implements TachesUseCase {
         return taches.processusOuvertesDe(compte, EtatTache.OUVERTS);
     }
 
-    /** L'étape est terminée : sa tâche aussi (pilotage.task-completed.v1). */
+    /** L'étape est terminée : sa tâche aussi (pilotage.task-completed.v1), au nom de l'acteur si elle était à prendre. */
     public void terminerPourEtape(UUID id, String acteur, Instant le) {
         tacheEtape(id).ifPresent(t -> {
+            if (t.getResponsableId() == null && t.getEtat() == EtatTache.A_PRENDRE && acteur != null) {
+                // Remise à prendre pendant les signatures ou la validation (départ) : terminée au nom de l'acteur.
+                t.confierParService(acteur, le);
+            }
             EtatTache avant = t.terminerParService(le);
             if (avant != null) {
                 consigner(t, acteur, ActionHistorique.TRANSITION, avant.name() + " vers TERMINEE : étape du processus terminée", le);
@@ -730,6 +1008,83 @@ public class TacheService implements TachesUseCase {
                 outbox.publish(AGREGAT, t.getId(), TacheOffertePayload.TYPE, new TacheOffertePayload(t.getId(), t.getTitre(), unite, destinataires, acteur, le));
             }
         });
+    }
+
+    // ------------------------------------------------------------------ tâches d'attente : validation et signatures (D-93)
+
+    /** Tâche d'une étape (origine PROCESSUS) portant cette référence, la plus récente. */
+    public Optional<Tache> tacheEtapeParReference(String reference) {
+        List<Tache> l = taches.findByOrigineReferenceOrderByCreeLe(reference).stream().filter(t -> t.getOrigineType() == TypeOrigine.PROCESSUS).toList();
+        return l.isEmpty() ? Optional.empty() : Optional.of(l.get(l.size() - 1));
+    }
+
+    /**
+     * Tâche d'attente (validation ou signature d'une étape, D-93) ouverte pour l'affectation demandée : créée si
+     * elle n'existe pas, rouverte si elle était terminée ou annulée, réalignée si elle est ouverte pour une autre
+     * affectation (confiée à la personne, ou remise à prendre par le profil). Une seule tâche par référence.
+     */
+    public Tache ouvrirAttente(TacheEtape d, Instant le) {
+        Optional<Tache> existante = tacheEtapeParReference(d.reference());
+        if (existante.isEmpty()) {
+            return creerPourEtape(d, le);
+        }
+        Tache t = existante.orElseThrow();
+        EtatTache rouverte = t.rouvrirPour(d.responsable(), d.unite(), d.profil(), le);
+        if (rouverte != null) {
+            t.decrire(t.getTitre(), t.getDescription(), d.echeance(), t.getPriorite(), le);
+            enregistrer(t);
+            consigner(t, d.createur(), ActionHistorique.TRANSITION, rouverte.name() + " vers " + t.getEtat().name() + " : nouvelle attente de l'étape", le);
+            publierAttente(t, null, d, le);
+            return t;
+        }
+        if (d.responsable() != null) {
+            if (!d.responsable().equals(t.getResponsableId())) {
+                String ancien = t.getResponsableId();
+                t.confierParService(d.responsable(), le);
+                enregistrer(t);
+                consigner(t, d.createur(), ActionHistorique.REAFFECTEE, "Confiée à " + nom(d.responsable()), le);
+                publierAffectation(t, ancien, d.createur(), le);
+            }
+        } else if (t.getResponsableId() != null || !Objects.equals(t.getProfilRequis(), d.profil()) || !Objects.equals(t.getUniteCible(), d.unite())) {
+            String ancien = t.getResponsableId();
+            if (t.remettreAPrendre(d.unite(), d.profil(), le) != null) {
+                enregistrer(t);
+                consigner(t, d.createur(), ActionHistorique.REAFFECTEE, (ancien == null ? "" : "Retirée à " + nom(ancien) + " : ") + "à prendre (" + cible(d.unite(), d.profil()) + ")", le);
+                outbox.publish(AGREGAT, t.getId(), TacheOffertePayload.TYPE, new TacheOffertePayload(t.getId(), t.getTitre(), d.unite(), d.destinatairesOffre(), d.createur(), le));
+            }
+        }
+        return t;
+    }
+
+    private void publierAttente(Tache t, String ancien, TacheEtape d, Instant le) {
+        if (t.getResponsableId() != null) {
+            publierAffectation(t, ancien, d.createur(), le);
+        } else {
+            outbox.publish(AGREGAT, t.getId(), TacheOffertePayload.TYPE, new TacheOffertePayload(t.getId(), t.getTitre(), d.unite(), d.destinatairesOffre(), d.createur(), le));
+        }
+    }
+
+    /**
+     * Attente satisfaite (signature apposée, validation ou renvoi décidé) : la tâche encore ouverte est confiée à
+     * l'acteur si elle était à prendre ou à un autre, puis terminée (pilotage.task-completed.v1).
+     */
+    public void clore(String reference, String acteur, Instant le) {
+        tacheEtapeParReference(reference).filter(t -> t.getEtat().estOuvert()).ifPresent(t -> {
+            if (acteur != null && !acteur.equals(t.getResponsableId())) {
+                t.confierParService(acteur, le);
+            }
+            terminerPourEtape(t.getId(), acteur, le);
+        });
+    }
+
+    /** Attente sans objet (instance annulée) : la tâche encore ouverte est annulée. */
+    public void annulerAttente(String reference, String acteur, String motif, Instant le) {
+        tacheEtapeParReference(reference).ifPresent(t -> annulerPourEtape(t.getId(), acteur, motif, le));
+    }
+
+    /** « unité U, profil P », ou « tout le GIMAC, profil P » pour une étape offerte hors de l'unité. */
+    private static String cible(String unite, String profil) {
+        return (unite == null ? "tout le GIMAC" : "unité " + unite) + (profil == null ? "" : ", profil " + profil);
     }
 
     private static String tronquer(String s, int max) {

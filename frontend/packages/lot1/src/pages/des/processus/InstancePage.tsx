@@ -7,7 +7,7 @@ import {
 } from '@gimac/design-system'
 import { EtatsRequete, cleSecuriteDisponible, refusReauth, sha256Hex, type Progression } from '@gimac/socle'
 import { ETATS_ETAPE, type EtapeInstance, type InstanceProcessus } from '../../../modele/processus'
-import { useActeInstance, useInstance } from '../../../hooks/processus'
+import { useActeInstance, useCandidatsEtape, useInstance } from '../../../hooks/processus'
 import { useEffet } from '../../../hooks/base'
 import { clesPilotage } from '../../../hooks/pilotage'
 import { useServices } from '../../../services/ServicesProvider'
@@ -183,7 +183,7 @@ function PanneauEtape({ instance: i, etape: e, onAnnonce }: { instance: Instance
   const [valeurs, setValeurs] = useState<Record<string, string>>(() => Object.fromEntries(e.champs.map((c) => [c.code, valeurSaisie(c, c.valeur)])))
   const [tenteChamps, setTenteChamps] = useState(false)
   const attendu = (a: { personne: { nomAffiche: string } | null; profil: string | null; unite: string | null } | null) =>
-    !a ? t('proc.aucun') : a.personne ? a.personne.nomAffiche : t('proc.suivi.aPrendre', { profil: a.profil ? libelleProfil(a.profil) : t('proc.suivi.toutMembre'), unite: libelleUnite(a.unite) })
+    !a ? t('proc.aucun') : a.personne ? a.personne.nomAffiche : t('proc.suivi.aPrendre', { profil: a.profil ? libelleProfil(a.profil) : t('proc.suivi.toutMembre'), unite: a.unite ? libelleUnite(a.unite) : t('proc.suivi.toutLeGimac') })
   const ok = (message: string) => () => { setEchec(null); onAnnonce(message) }
   const refus = erreur(echec)
   const details = (echec as { details?: { livrables?: string[]; champs?: string[] } } | null)?.details
@@ -283,7 +283,7 @@ function PanneauEtape({ instance: i, etape: e, onAnnonce }: { instance: Instance
         onConfirm={() => { setGeste(null); valider.mutate({ decision: 'VALIDER' }, { onSuccess: ok(t('proc.annonce.validee')), onError: setEchec }) }} /> : null}
       {geste === 'renvoyer' ? <ConfirmDialog open reason title={t('proc.suivi.renvoyer')} description={t('proc.suivi.renvoyerTexte')} confirmLabel={t('proc.suivi.renvoyer')} onClose={() => setGeste(null)}
         onConfirm={(motif) => { setGeste(null); valider.mutate({ decision: 'RENVOYER', motif }, { onSuccess: ok(t('proc.annonce.renvoyee')), onError: setEchec }) }} /> : null}
-      {geste === 'reaffecter' ? <DialogueReaffectation etape={e} enCours={reaffecter.isPending} onFermer={() => setGeste(null)}
+      {geste === 'reaffecter' ? <DialogueReaffectation instanceId={i.id} etape={e} enCours={reaffecter.isPending} onFermer={() => setGeste(null)}
         onValider={(v) => reaffecter.mutate(v, { onSuccess: () => { setGeste(null); ok(t('proc.annonce.reaffectee'))() }, onError: (x) => { setGeste(null); setEchec(x) } })} /> : null}
       {signature ? <DialogueSignature instance={i} etape={e} code={signature} onFermer={() => setSignature(null)} onSignee={() => onAnnonce(t('proc.annonce.signee'))} /> : null}
     </aside>
@@ -328,15 +328,22 @@ function DepotLivrable({ instanceId, etape, livrable, onDepose, onEchec }: {
   )
 }
 
-/** Réaffectation d'une étape active à une personne de l'annuaire, motif obligatoire. */
-function DialogueReaffectation({ etape, enCours, onFermer, onValider }: { etape: EtapeInstance; enCours: boolean; onFermer: () => void; onValider: (v: { personneId: string; motif: string }) => void }) {
+/**
+ * Réaffectation d'une étape en cours, motif obligatoire : candidats de l'étape (porteurs du profil exigé dans l'unité, puis
+ * ailleurs dans le GIMAC), puis l'annuaire.
+ */
+function DialogueReaffectation({ instanceId, etape, enCours, onFermer, onValider }: {
+  instanceId: string; etape: EtapeInstance; enCours: boolean; onFermer: () => void; onValider: (v: { personneId: string; motif: string }) => void
+}) {
   const { t } = useTranslation()
   const [personne, setPersonne] = useState('')
+  const candidats = useCandidatsEtape(instanceId, etape.code)
   return (
     <CrudDialog context="edit" size="md" id="gm-dlg-reaffectation" title={t('proc.suivi.reaffecter')} subject={`${etape.code} · ${etape.libelle}`} description={t('proc.suivi.reaffecterTexte')} reason
       onClose={onFermer} submitLabel={t('proc.suivi.reaffecter')} submitting={enCours} submitDisabled={!personne} submitDisabledReason={t('proc.personne.choisir')}
       onSubmit={(motif) => onValider({ personneId: personne, motif })}>
-      <ChoixPersonne name="personne" label={t('proc.suivi.nouvelExecutant')} required value={personne} onChange={setPersonne} profil={etape.aPrendre?.profil} exclure={etape.executant ? [etape.executant.id] : []} />
+      <ChoixPersonne name="personne" label={t('proc.suivi.nouvelExecutant')} required value={personne} onChange={setPersonne} profil={candidats.data?.profil ?? etape.aPrendre?.profil}
+        candidats={candidats.data} chargement={candidats.isPending} exclure={etape.executant ? [etape.executant.id] : []} />
     </CrudDialog>
   )
 }

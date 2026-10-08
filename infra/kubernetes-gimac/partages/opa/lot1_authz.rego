@@ -12,6 +12,19 @@ import rego.v1
 default allow := false
 
 regles := [
+	# Types de projet et catalogue des fonctions (D-91, docs/lot1/types-projet.md §1 et §2) : lecture par
+	# HOM_REFERENTIEL_READ, création et modification par HOM_REFERENTIEL_EDIT ; aucune suppression.
+	{"m": "GET", "re": `^/bff/des/homologation/types-projet(/[^/]+)?$`, "p": "HOM_REFERENTIEL_READ"},
+	{"m": "POST", "re": `^/bff/des/homologation/types-projet$`, "p": "HOM_REFERENTIEL_EDIT"},
+	{"m": "PUT", "re": `^/bff/des/homologation/types-projet/[^/]+$`, "p": "HOM_REFERENTIEL_EDIT"},
+	{"m": "GET", "re": `^/bff/des/homologation/referentiels/fonctions(/[^/]+)?$`, "p": "HOM_REFERENTIEL_READ"},
+	{"m": "POST", "re": `^/bff/des/homologation/referentiels/fonctions$`, "p": "HOM_REFERENTIEL_EDIT"},
+	{"m": "PUT", "re": `^/bff/des/homologation/referentiels/fonctions/[^/]+$`, "p": "HOM_REFERENTIEL_EDIT"},
+	# Suppression d'un brouillon du référentiel (D-92) ; une version publiée ne se supprime pas (MS-HOMOLOGATION).
+	{"m": "DELETE", "re": `^/bff/des/homologation/referentiels/[^/]+$`, "p": "HOM_REFERENTIEL_EDIT"},
+	# Signature d'une opération d'une liaison (D-91 §3) : tout membre interne qui lit les liaisons ; MS-HOMOLOGATION
+	# vérifie le signataire attendu (fonction du catalogue), l'ordre et l'assertion FIDO2 (SIGNATURE_OPERATION).
+	{"m": "POST", "re": `^/bff/des/homologation/liaisons/[^/]+/operations/[^/]+/signatures/[^/]+$`, "p": "HOM_LIAISON_READ"},
 	{"m": "POST", "re": `^/bff/des/homologation/referentiels/[^/]+/publication$`, "p": "HOM_REFERENTIEL_PUBLISH"},
 	# Modélisateur de processus (D-77, docs/lot1/modelisateur-processus.md §4) : édition des brouillons,
 	# migration des liaisons ; la lecture reste au @PreAuthorize (HOM_REFERENTIEL_READ).
@@ -32,6 +45,10 @@ regles := [
 	# Parcours, étapes 4 à 10 (docs/lot1/parcours-backend.md §1) : gestes à permission unique. Les gestes
 	# ouverts à plusieurs permissions (livrable, intervenants, services supplémentaires) restent au @PreAuthorize.
 	{"m": "POST", "re": `^/bff/des/homologation/parcours/operations/[^/]+/validation$`, "p": "HOM_OPERATION_VALIDATE"},
+	# Renvoi au responsable par le validateur (D-93 §2) ; le service vérifie le validateur désigné. L'affectation d'une
+	# fonction (PUT liaisons/{id}/fonctions/{fonction}, HOM_STEP_MANAGE ou HOM_OPERATION_ASSIGN) et GET moi/fonctions
+	# (tout compte) restent au @PreAuthorize.
+	{"m": "POST", "re": `^/bff/des/homologation/parcours/operations/[^/]+/renvoi$`, "p": "HOM_OPERATION_VALIDATE"},
 	{"m": "POST", "re": `^/bff/des/homologation/parcours/operations/[^/]+/preuves$`, "p": "HOM_EVIDENCE_SUBMIT"},
 	{"m": "PUT", "re": `^/bff/des/homologation/liaisons/[^/]+/ressources$`, "p": "HOM_STEP_MANAGE"},
 	{"m": "POST", "re": `^/bff/des/homologation/(liaisons/[^/]+/blocages|blocages/[^/]+/levee)$`, "p": "HOM_STEP_MANAGE"},
@@ -99,6 +116,10 @@ regles := [
 	{"m": "DELETE", "re": `^/bff/(des|console)/iam/configuration/profils/[^/]+$`, "p": "IAM_PROFILE_EDIT"},
 	# Libellé et description d'un profil (D-86 §2) ; MS-IAM vérifie le profil privilégié et la réauthentification.
 	{"m": "PUT", "re": `^/bff/(des|console)/iam/configuration/profils/[^/]+$`, "p": "IAM_PROFILE_EDIT"},
+	# Catalogue des fonctionnalités (D-94, docs/lot1/ecrans-par-configuration.md §6) : modification par
+	# l'administration des profils ; MS-IAM exige le motif et la réauthentification. Lecture : règle
+	# « catalogue_fonctionnalites » plus bas (tout compte interne).
+	{"m": "PUT", "re": `^/bff/(des|console)/iam/configuration/fonctionnalites/[^/]+$`, "p": "IAM_PROFILE_EDIT"},
 	# Matrice des pouvoirs et demandes à l'administration (D-81 §3, §4) ; MS-IAM vérifie la portée, l'acte
 	# exécuté à l'acceptation et la réauthentification.
 	{"m": "GET", "re": `^/bff/(des|console)/iam/pouvoirs/matrice$`, "p": "IAM_ACCOUNT_READ"},
@@ -131,19 +152,21 @@ regles := [
 	{"m": "GET", "re": `^/bff/des/iam/organisation/(moi|unites)$`, "p": "PIL_ACTIVITY_OWN"},
 	{"m": "GET", "re": `^/bff/console/iam/organisation/unites$`, "p": "IAM_ACCOUNT_READ"},
 	# Notifications de la plateforme (D-80, docs/lot1/notifications.md §3) : les siennes seulement (MS-NOTIFICATION).
-	{"m": "GET", "re": `^/bff/(des|console)/notification/(notifications(/compteur)?|preferences)$`, "p": "NOT_INBOX_READ"},
-	{"m": "POST", "re": `^/bff/(des|console)/notification/notifications(/[^/]+)?/lecture$`, "p": "NOT_INBOX_READ"},
-	{"m": "PUT", "re": `^/bff/(des|console)/notification/preferences$`, "p": "NOT_INBOX_READ"},
+	# Portail (D-93 §11.4) : mêmes routes pour un compte d'institution (règle allow du portail : institution exigée).
+	{"m": "GET", "re": `^/bff/(des|console|portail)/notification/(notifications(/compteur)?|preferences)$`, "p": "NOT_INBOX_READ"},
+	{"m": "POST", "re": `^/bff/(des|console|portail)/notification/notifications(/[^/]+)?/lecture$`, "p": "NOT_INBOX_READ"},
+	{"m": "PUT", "re": `^/bff/(des|console|portail)/notification/preferences$`, "p": "NOT_INBOX_READ"},
 	# Mon activité (D-76 §2) : agenda, activités, tâches, rapports de chacun ; équipe des responsables.
 	# Les droits fins (propriétaire, équipe, destinataire) sont vérifiés par MS-PILOTAGE.
 	{"m": "GET", "re": `^/bff/des/pilotage/equipe$`, "p": "PIL_TEAM_READ"},
-	{"m": "GET", "re": `^/bff/des/pilotage/(agenda|activites|taches(/groupes)?(/[^/]+)?|rapports(/[^/]+(/document)?)?|moi/synthese)$`, "p": "PIL_ACTIVITY_OWN"},
+	{"m": "GET", "re": `^/bff/des/pilotage/(agenda|activites|taches(/groupes)?(/[^/]+)?|rapports(/[^/]+(/document|/destinataires)?)?|moi/synthese)$`, "p": "PIL_ACTIVITY_OWN"},
 	{"m": "POST", "re": `^/bff/des/pilotage/(agenda(/[^/]+/reponse)?|activites(/[^/]+/statut)?|taches(/[^/]+/(transition|prise|attribution|relance))?|rapports(/preremplissage|/[^/]+/(soumission|visa))?)$`, "p": "PIL_ACTIVITY_OWN"},
 	{"m": "PUT", "re": `^/bff/des/pilotage/(agenda|activites|taches|rapports)/[^/]+$`, "p": "PIL_ACTIVITY_OWN"},
 	{"m": "DELETE", "re": `^/bff/des/pilotage/(agenda|activites)/[^/]+$`, "p": "PIL_ACTIVITY_OWN"},
 	# Processus d'unité (D-87, docs/lot1/processus-unite.md §5.1) : définitions et instances, tout membre interne ;
 	# droits fins (unité, pouvoirs D-81/D-86, intervenant, signataire, validateur) vérifiés par MS-PILOTAGE.
-	{"m": "GET", "re": `^/bff/des/pilotage/processus(/[^/]+|/instances/[^/]+)?$`, "p": "PIL_ACTIVITY_OWN"},
+	# Candidats d'un intervenant (désignation hors de l'unité) : /processus/candidats et …/etapes/{code}/candidats.
+	{"m": "GET", "re": `^/bff/des/pilotage/processus(/[^/]+|/instances/[^/]+(/etapes/[^/]+/candidats)?)?$`, "p": "PIL_ACTIVITY_OWN"},
 	{"m": "POST", "re": `^/bff/des/pilotage/processus(/[^/]+/(controle|publication|nouvelle-version|retrait|instances))?$`, "p": "PIL_ACTIVITY_OWN"},
 	{"m": "POST", "re": `^/bff/des/pilotage/processus/instances/[^/]+/(suspension|reprise|annulation)$`, "p": "PIL_ACTIVITY_OWN"},
 	{"m": "POST", "re": `^/bff/des/pilotage/processus/instances/[^/]+/etapes/[^/]+/(livrables|signature|fin|validation|reaffectation)$`, "p": "PIL_ACTIVITY_OWN"},
@@ -212,6 +235,16 @@ libre_service if regex.match(`^/bff/(des|portail|console)/iam/(moi(/.*)?|reauthe
 # utilisateur à deux facteurs ; le portail n'y a pas accès (seulement à la sienne, sous /iam/moi/avatar).
 avatars if regex.match(`^/bff/(des|console)/iam/avatars(/|$)`, input.path)
 
+# Catalogue des fonctionnalités (D-94) : lu par l'application interne et la console pour construire la barre
+# latérale, les gardes et les tableaux de bord ; tout compte interne à deux facteurs, jamais un compte
+# d'institution ni le portail.
+catalogue_fonctionnalites if regex.match(`^/bff/(des|console)/iam/configuration/fonctionnalites(/|$)`, input.path)
+
+lecture_catalogue_fonctionnalites if {
+	input.method == "GET"
+	regex.match(`^/bff/(des|console)/iam/configuration/fonctionnalites$`, input.path)
+}
+
 avatar_collegue if {
 	input.method == "GET"
 	regex.match(`^/bff/(des|console)/iam/avatars/[^/]+$`, input.path)
@@ -275,6 +308,24 @@ niveaux_double_facteur := {"2", "3"}
 
 double_facteur if input.acr in niveaux_double_facteur
 
+# Administration des référentiels métier, tous domaines (D-92, docs/lot1/referentiels-metier-admin.md) :
+# REF_METIER_ADMIN vaut chacune des permissions du référentiel des opérations, des étapes, des types de projet
+# et des fonctions.
+permissions_equivalentes := {
+	"HOM_REFERENTIEL_READ": {"REF_METIER_ADMIN"},
+	"HOM_REFERENTIEL_EDIT": {"REF_METIER_ADMIN"},
+	"HOM_REFERENTIEL_PUBLISH": {"REF_METIER_ADMIN"},
+	"HOM_REFERENTIEL_MIGRATE": {"REF_METIER_ADMIN"},
+}
+
+# La permission exigée, ou une permission qui la vaut.
+permission_accordee if required_permission in input.permissions
+
+permission_accordee if {
+	some p in input.permissions
+	p in permissions_equivalentes[required_permission]
+}
+
 # Permission exigée par la première règle correspondant à la méthode et au chemin.
 correspondances := [i |
 	some i, regle in regles
@@ -294,7 +345,7 @@ allow if {
 	not messagerie_externe
 	not reserve_interne_externe
 	double_facteur
-	required_permission in input.permissions
+	permission_accordee
 }
 
 # Chemins du portail : permission et institution dans le jeton.
@@ -320,6 +371,7 @@ allow if {
 	not organisation
 	not boite_notifications
 	not avatars
+	not catalogue_fonctionnalites
 	not depots_fragmentes
 	not apercus
 	startswith(input.path, "/bff/des/")
@@ -349,6 +401,14 @@ allow if {
 	double_facteur
 	some p in input.permissions
 	p in permissions_depot_fragmente
+}
+
+allow if {
+	not restreinte
+	lecture_catalogue_fonctionnalites
+	not compte_externe
+	input.authentifie == true
+	double_facteur
 }
 
 allow if {

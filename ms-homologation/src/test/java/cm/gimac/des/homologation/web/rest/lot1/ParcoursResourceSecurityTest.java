@@ -120,6 +120,9 @@ class ParcoursResourceSecurityTest {
             Arguments.of(HttpMethod.POST, o + "/livrable", PIECE, List.of("HOM_STEP_MANAGE", "HOM_EVIDENCE_SUBMIT"), 204),
             Arguments.of(HttpMethod.POST, o + "/preuves", PREUVE, List.of("HOM_EVIDENCE_SUBMIT"), 204),
             Arguments.of(HttpMethod.POST, o + "/validation", "{}", List.of("HOM_OPERATION_VALIDATE"), 204),
+            // D-93 §2 : renvoi au responsable avec motif ; §1 : affectation d'une fonction à tout moment.
+            Arguments.of(HttpMethod.POST, o + "/renvoi", "{\"motif\":\"Pièce illisible\"}", List.of("HOM_OPERATION_VALIDATE"), 204),
+            Arguments.of(HttpMethod.PUT, l + "/fonctions/SNA", "{\"personneId\":\"u\",\"motif\":\"m\"}", List.of("HOM_STEP_MANAGE", "HOM_OPERATION_ASSIGN"), 204),
             Arguments.of(HttpMethod.PUT, o + "/intervenants", "{\"qualite\":\"V\",\"personneId\":\"u\",\"motif\":\"m\"}", List.of("HOM_OPERATION_ASSIGN", "HOM_STEP_MANAGE"), 204),
             Arguments.of(HttpMethod.POST, l + "/blocages", BLOCAGE, List.of("HOM_STEP_MANAGE"), 201),
             Arguments.of(HttpMethod.POST, "/api/v1/blocages/" + ID + "/levee", "{\"commentaire\":\"levé\"}", List.of("HOM_STEP_MANAGE"), 204),

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Désignation hors de l'unité (D-87, docs/lot1/processus-unite.md « Désignation hors de l'unité ») : l'étape d'un
+     processus dont le profil n'est porté par personne dans l'unité désignée mais par plusieurs personnes ailleurs dans
+     le GIMAC est offerte à tous ces porteurs. Sa tâche est à prendre sans unité visée (unite_cible nulle), réservée au
+     profil (profil_requis). Écrit à la main. -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="pil-etapes-hors-unite" author="lot1">
+        <sql>
+            ALTER TABLE tache DROP CONSTRAINT ck_tache_responsable;
+            ALTER TABLE tache ADD CONSTRAINT ck_tache_responsable CHECK (
+                (etat = 'A_PRENDRE' AND responsable_id IS NULL AND (unite_cible IS NOT NULL OR offre_profils OR profil_requis IS NOT NULL))
+                OR (etat &lt;&gt; 'A_PRENDRE' AND (responsable_id IS NOT NULL
+                    OR (etat = 'ANNULEE' AND (unite_cible IS NOT NULL OR profil_requis IS NOT NULL))
+                    OR (etat IN ('TERMINEE', 'ANNULEE') AND offre_profils)))
+            );
+        </sql>
+    </changeSet>
+</databaseChangeLog>

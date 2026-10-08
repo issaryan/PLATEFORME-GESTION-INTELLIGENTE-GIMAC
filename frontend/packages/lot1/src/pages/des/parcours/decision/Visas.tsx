@@ -27,7 +27,7 @@ export function CarteVisas({ dossier, approbation, pv }: { dossier: DossierLiais
     permission: PERMISSION_GESTE[geste][0],
     label: favorable ? 'decision.visa.action.favorable' : 'decision.visa.action.defavorable',
     icon: favorable ? 'check' : 'x', variant: favorable ? 'primary' : 'danger', scope: 'row', confirm: 'sign', reason: true,
-    sign: { purpose: 'QUITUS_SIGN', empreinte: () => empreinte },
+    sign: { purpose: 'SIGNATURE_OPERATION', empreinte: () => empreinte },
     consequences: (v) => <p style={{ margin: 0 }}>{t(favorable ? 'decision.visa.favorable.consequence' : 'decision.visa.defavorable.consequence', { visa: t(`parcours.visa.${v.nature}`) })}</p>,
     run: ({ row, motif, assertion }) => signer.mutateAsync({ liaisonId: approbation.liaisonId, nature: row.nature, favorable, motif: motif ?? '', assertion: assertion ?? '' }),
   })

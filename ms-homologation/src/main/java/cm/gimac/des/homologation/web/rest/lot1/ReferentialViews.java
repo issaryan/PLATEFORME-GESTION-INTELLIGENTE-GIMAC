@@ -22,6 +22,7 @@ import cm.gimac.des.homologation.domain.parcours.Particularite;
 import cm.gimac.des.homologation.domain.parcours.PlateformeExecution;
 import cm.gimac.des.homologation.domain.parcours.Position;
 import cm.gimac.des.homologation.domain.parcours.SegmentParcours;
+import cm.gimac.des.homologation.domain.parcours.SignatureOperation;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -125,7 +126,10 @@ public final class ReferentialViews {
         String idScenario,
         String fonctionResponsable,
         Map<String, Object> grille,
-        boolean fantome
+        boolean fantome,
+        List<SignatureOperation> signatures,
+        cm.gimac.des.homologation.domain.parcours.VueOperation vue,
+        Boolean consultesRecoiventTache
     ) {
         /**
          * Fantôme (D-89) : prédécesseur ou successeur direct d'une opération qui concerne le lecteur, réduit à son
@@ -134,7 +138,7 @@ public final class ReferentialViews {
         public static OperationVue fantome(ReferenceOperation o) {
             return new OperationVue(
                 null, o.getCode(), o.getLibelle(), null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
-                false, false, false, false, null, null, null, null, null, null, null, null, null, null, null, null, null, null, true
+                false, false, false, false, null, null, null, null, null, null, null, null, null, null, null, null, null, null, true, null, null, null
             );
         }
 
@@ -181,7 +185,10 @@ public final class ReferentialViews {
                 o.getIdScenario(),
                 o.getFonctionResponsable(),
                 JsonTexte.objet(o.getGrille()),
-                false
+                false,
+                o.getSignatures(),
+                o.vueEffective(),
+                o.isConsultesRecoiventTache()
             );
         }
     }
@@ -263,9 +270,13 @@ public final class ReferentialViews {
 
     /** Élément d'un catalogue : code, libellé français et précisions facultatives. */
     @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
-    public record Entree(String code, String libelle, List<String> profils, Boolean externe, Boolean dedie, Integer rang) {
+    public record Entree(String code, String libelle, List<String> profils, Boolean externe, Boolean dedie, Integer rang, Boolean actif) {
+        Entree(String code, String libelle, List<String> profils, Boolean externe, Boolean dedie, Integer rang) {
+            this(code, libelle, profils, externe, dedie, rang, null);
+        }
+
         static Entree de(String code, String libelle) {
-            return new Entree(code, libelle, null, null, null, null);
+            return new Entree(code, libelle, null, null, null, null, null);
         }
     }
 
@@ -348,7 +359,10 @@ public final class ReferentialViews {
         List<Pilote> pilotes,
         List<EtapeCanoniqueVue> etapesCanoniques,
         List<CouleurVue> couleurs,
-        @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL) List<EtapeVue> etapesVersion
+        @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL) List<EtapeVue> etapesVersion,
+        List<Entree> modelesTypeProjet,
+        List<Entree> typesProjet,
+        List<Entree> vuesOperation
     ) {}
 
     public record PositionRequest(@NotBlank String code, double x, double y) {}

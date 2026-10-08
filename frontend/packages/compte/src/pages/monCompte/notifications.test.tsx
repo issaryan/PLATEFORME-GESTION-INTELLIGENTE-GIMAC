@@ -32,7 +32,7 @@ describe('Mon compte : notifications', () => {
     const tache = await screen.findByRole('switch', { name: 'Tâches qui me sont confiées' })
     expect((tache as HTMLInputElement).checked).toBe(true)
     fireEvent.click(tache)
-    await waitFor(() => expect(put).toHaveBeenCalledWith({ types: { MESSAGE: true, TACHE: false, RAPPORT: true, MENTION: true, REPONSE: true, DEMANDE: true, PROCESSUS: true } }))
+    await waitFor(() => expect(put).toHaveBeenCalledWith({ types: { MESSAGE: true, TACHE: false, RAPPORT: true, MENTION: true, REPONSE: true, DEMANDE: true, PROCESSUS: true, HOMOLOGATION: true } }))
     expect(await screen.findByText('Préférences de notification enregistrées.')).toBeTruthy()
     await waitFor(() => expect((screen.getByRole('switch', { name: 'Tâches qui me sont confiées' }) as HTMLInputElement).checked).toBe(false))
     // Mentions et réponses (D-82) : interrupteurs propres.
@@ -44,6 +44,10 @@ describe('Mon compte : notifications', () => {
     expect(screen.getByRole('switch', { name: 'Demandes à l’administration : soumises ou décidées' })).toBeTruthy()
     fireEvent.click(screen.getByRole('switch', { name: 'Processus d’unité : étapes à exécuter, à signer ou à valider' }))
     await waitFor(() => expect(put).toHaveBeenLastCalledWith({ types: expect.objectContaining({ PROCESSUS: false, DEMANDE: true }) }))
+    // Homologation (§11) : types.HOMOLOGATION.
+    await waitFor(() => expect(screen.getByRole('switch', { name: 'Homologation : opérations des liaisons à mener, valider ou signer' }).hasAttribute('disabled')).toBe(false))
+    fireEvent.click(screen.getByRole('switch', { name: 'Homologation : opérations des liaisons à mener, valider ou signer' }))
+    await waitFor(() => expect(put).toHaveBeenLastCalledWith({ types: expect.objectContaining({ HOMOLOGATION: false, PROCESSUS: false }) }))
     await waitFor(() => expect(screen.getByRole('switch', { name: 'Son discret à l’arrivée d’une notification' }).hasAttribute('disabled')).toBe(false))
     fireEvent.click(screen.getByRole('switch', { name: 'Son discret à l’arrivée d’une notification' }))
     await waitFor(() => expect(put).toHaveBeenLastCalledWith({ son: true }))

@@ -9,7 +9,7 @@ import { PERM, useDate, useFonction, useGeste, usePermissionPortail } from './co
 
 // Signature du procès-verbal de certification par le participant (rang 19, verrou 1, D-56) : couverture,
 // services couverts, empreinte de ce qui est signé, signature du GIMAC déjà apposée ou non. La signature
-// passe par le SignDialog avec réauthentification FIDO2 (finalité QUITUS_SIGN). Pièce pivot : signé des
+// passe par le SignDialog avec réauthentification FIDO2 (finalité SIGNATURE_OPERATION, MS-CERTIFICATION §10.5). Pièce pivot : signé des
 // deux parties, il déclenche le raccordement de production.
 
 const tonPv = (e: ProcesVerbalCertification['etat']) => (e === 'SIGNE' ? 'ok' : e === 'NON_ETABLI' ? 'neutral' : 'warn')
@@ -38,7 +38,7 @@ function Pv({ d, pv }: { d: DossierLiaison; pv: ProcesVerbalCertification }) {
     geste<ProcesVerbalCertification>(
       {
         key: 'signerPv', label: 'pp.pv.signer', icon: 'pen-line', variant: 'primary', permission: PERM.signer, confirm: 'sign',
-        sign: { purpose: 'QUITUS_SIGN', empreinte: (p) => p.empreinte ?? '' },
+        sign: { purpose: 'SIGNATURE_OPERATION', empreinte: (p) => p.empreinte ?? '' },
         consequences: () => (
           <div className="gm-col" style={{ gap: 'var(--gm-space-2)' }}>
             <span>{t('pp.pv.consequence', { n: couv.numerateur, total: couv.denominateur })}</span>
@@ -72,6 +72,22 @@ function Pv({ d, pv }: { d: DossierLiaison; pv: ProcesVerbalCertification }) {
           { key: t('pp.pv.signatureParticipant'), value: signature(pv.signatureParticipant, false) },
         ]} />
       </Card>
+      {/* Circuit de signature en données (D-94) : étapes, ordre, côté et état. */}
+      {pv.circuit?.length ? (
+        <Card title={t('decision.circuit.titre')}>
+          <ol className="gm-col" style={{ gap: 'var(--gm-space-2)', margin: 0, paddingLeft: 'var(--gm-space-5)' }}>
+            {[...pv.circuit].sort((a, b) => a.ordre - b.ordre).map((e) => (
+              <li key={e.code}>
+                <span className="gm-row" style={{ gap: 'var(--gm-space-2)' }}>
+                  <span className="gm-type-body-strong">{e.libelle}</span>
+                  <span className="gm-field-help">{`${t(e.portail ? 'decision.circuit.portail' : 'decision.circuit.gimac')} · ${t('decision.circuit.ordreN', { n: e.ordre })}`}</span>
+                  <StatusBadge status={e.etat === 'SIGNEE' ? 'ok' : 'warn'} label={t(e.etat === 'SIGNEE' ? 'decision.circuit.signee' : 'decision.circuit.attendue')} />
+                </span>
+              </li>
+            ))}
+          </ol>
+        </Card>
+      ) : null}
       <InlineAlert level="info">{t('parcours.alerte.pivot')}</InlineAlert>
       {attendue && couv.taux !== 100 ? <InlineAlert level="crit">{t('pp.pv.couvertureIncomplete')}</InlineAlert> : null}
       {attendue ? (

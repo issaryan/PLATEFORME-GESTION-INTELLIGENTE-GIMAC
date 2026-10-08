@@ -5,13 +5,14 @@ import cm.gimac.des.pilotage.application.port.in.Page;
 import cm.gimac.des.pilotage.application.port.in.RapportsUseCase;
 import cm.gimac.des.pilotage.application.port.out.DocumentPort;
 import cm.gimac.des.pilotage.application.port.out.OrganisationPort.Membre;
-import cm.gimac.des.pilotage.application.port.out.OrganisationPort.Personne;
 import cm.gimac.des.pilotage.application.port.out.OrganisationPort.Pouvoir;
 import cm.gimac.des.pilotage.application.port.out.OrganisationPort.Rattachement;
+import cm.gimac.des.pilotage.application.port.out.OrganisationPort.UniteMembres;
 import cm.gimac.des.pilotage.domain.activite.Activite;
 import cm.gimac.des.pilotage.domain.activite.EtatRapport;
 import cm.gimac.des.pilotage.domain.activite.Indicateurs;
 import cm.gimac.des.pilotage.domain.activite.ModeRapport;
+import cm.gimac.des.pilotage.domain.activite.MotifDestinataire;
 import cm.gimac.des.pilotage.domain.activite.Periode;
 import cm.gimac.des.pilotage.domain.activite.Rapport;
 import cm.gimac.des.pilotage.domain.activite.StatutActivite;
@@ -29,6 +30,8 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -41,7 +44,8 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Rapports quotidiens et hebdomadaires (§2.4) : un seul par (auteur, type, période), période future
  * refusée, préremplissage, document déposé dans MS-DOCUMENT (finalité RAPPORT_ACTIVITE, ticket
- * vérifié), soumission au n+1 du moment, visa par le destinataire ou la chaîne hiérarchique
+ * vérifié), soumission au destinataire résolu (n+1 actif, chef de l'unité, chef d'une unité parente) ou choisi dans la
+ * chaîne hiérarchique, dépôt sans destinataire au sommet de l'organisation, visa par le destinataire ou la chaîne hiérarchique
  * (PIL_TEAM_READ et RAPPORT_VISER couvrant l'auteur, D-81) ; événements pilotage.report-* par l'outbox, jamais le contenu.
  */
 @Service
@@ -49,7 +53,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class RapportService implements RapportsUseCase {
 
     static final String AGREGAT = "rapport";
-    private static final List<EtatRapport> TRANSMIS = List.of(EtatRapport.SOUMIS, EtatRapport.VISE);
+    private static final List<EtatRapport> TRANSMIS = List.of(EtatRapport.SOUMIS, EtatRapport.VISE, EtatRapport.DEPOSE);
+    static final String CHAINE = "CHAINE";
 
     private final RapportRepository rapports;
     private final ActiviteRepository activites;
@@ -152,19 +157,101 @@ public class RapportService implements RapportsUseCase {
     }
 
     @Override
-    public RapportLu soumettre(Appelant appelant, UUID id) {
+    public RapportLu soumettre(Appelant appelant, UUID id, String destinataireId) {
         Rapport r = auteur(appelant, id);
         r.exigerBrouillon();
-        String destinataire = equipes.rattachement(appelant.id()).map(Rattachement::responsable).map(Personne::id).orElse(null);
+        List<ChoixDestinataire> chaine = chaine(appelant.id());
+        String choisi = destinataireId == null || destinataireId.isBlank() ? null : destinataireId.strip();
+        String destinataire;
+        MotifDestinataire motif;
+        if (choisi != null) {
+            if (chaine.stream().noneMatch(c -> c.id().equals(choisi))) {
+                throw PilotageException.regle(
+                    "PIL_DESTINATAIRE_INVALIDE",
+                    "Le destinataire choisi doit appartenir à votre chaîne hiérarchique (n+1, chefs des unités au-dessus de vous)",
+                    Map.of("destinataireId", choisi)
+                );
+            }
+            destinataire = choisi;
+            motif = chaine.get(0).id().equals(choisi) ? motif(chaine.get(0)) : MotifDestinataire.CHOISI;
+        } else {
+            destinataire = chaine.isEmpty() ? null : chaine.get(0).id();
+            motif = chaine.isEmpty() ? null : motif(chaine.get(0));
+        }
         Instant le = horloge.instant();
-        r.soumettre(destinataire, calculer(r.getAuteurId(), r.periode()), le);
+        r.soumettre(destinataire, motif, calculer(r.getAuteurId(), r.periode()), le);
         outbox.publish(
             AGREGAT,
             r.getId(),
             RapportSoumisPayload.TYPE,
-            new RapportSoumisPayload(r.getId(), r.getType().name(), r.getPeriode(), r.getEtat().name(), r.getAuteurId(), destinataire, appelant.id(), le)
+            new RapportSoumisPayload(
+                r.getId(),
+                r.getType().name(),
+                r.getPeriode(),
+                r.getEtat().name(),
+                r.getAuteurId(),
+                r.getDestinataireId(),
+                appelant.id(),
+                le,
+                r.getDestinataireMotif() == null ? null : r.getDestinataireMotif().name()
+            )
         );
         return lu(r);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Destinataires destinataires(Appelant appelant, UUID id) {
+        Rapport r = auteur(appelant, id);
+        List<ChoixDestinataire> chaine = chaine(r.getAuteurId());
+        ChoixDestinataire defaut = chaine.isEmpty() ? null : chaine.get(0);
+        return new Destinataires(
+            defaut == null ? null : defaut.id(),
+            defaut == null ? null : motif(defaut),
+            defaut == null,
+            chaine,
+            equipes.noms(chaine.stream().map(ChoixDestinataire::id).toList())
+        );
+    }
+
+    /**
+     * Chaîne hiérarchique de l'auteur, dans l'ordre de résolution du destinataire (§2.4) : n+1 du rattachement s'il est
+     * actif ; chefs des unités du chemin, de l'unité de l'auteur vers le sommet (chefs actifs, jamais l'auteur) ; puis
+     * les autres responsables de la chaîne. Le premier est le destinataire par défaut ; vide au sommet de l'organisation.
+     */
+    List<ChoixDestinataire> chaine(String auteur) {
+        Map<String, ChoixDestinataire> l = new LinkedHashMap<>();
+        Rattachement r = equipes.rattachement(auteur).orElse(null);
+        if (r == null) {
+            return List.of();
+        }
+        String n1 = r.responsable() == null ? null : r.responsable().id();
+        if (admissible(n1, auteur)) {
+            l.put(n1, new ChoixDestinataire(n1, MotifDestinataire.N_PLUS_UN.name(), null));
+        }
+        List<String> chemin = new ArrayList<>(r.chemin());
+        Collections.reverse(chemin);
+        for (int i = 0; i < chemin.size(); i++) {
+            String unite = chemin.get(i);
+            String chef = equipes.membresUnite(unite, null).map(UniteMembres::responsableId).orElse(null);
+            if (admissible(chef, auteur)) {
+                l.putIfAbsent(chef, new ChoixDestinataire(chef, (i == 0 ? MotifDestinataire.CHEF_UNITE : MotifDestinataire.CHEF_UNITE_PARENTE).name(), unite));
+            }
+        }
+        for (String id : r.chaine()) {
+            if (admissible(id, auteur)) {
+                l.putIfAbsent(id, new ChoixDestinataire(id, CHAINE, null));
+            }
+        }
+        return List.copyOf(l.values());
+    }
+
+    private boolean admissible(String id, String auteur) {
+        return id != null && !id.isBlank() && !id.equals(auteur) && equipes.interneActif(id);
+    }
+
+    private static MotifDestinataire motif(ChoixDestinataire c) {
+        return CHAINE.equals(c.lien()) ? MotifDestinataire.CHOISI : MotifDestinataire.valueOf(c.lien());
     }
 
     @Override
@@ -262,7 +349,10 @@ public class RapportService implements RapportsUseCase {
         );
     }
 
-    /** Lecture : l'auteur ; une fois soumis, le destinataire et les responsables dont RAPPORT_VISER couvre l'auteur (PIL_TEAM_READ). */
+    /**
+     * Lecture : l'auteur ; une fois soumis ou déposé, le destinataire et les responsables dont RAPPORT_VISER couvre
+     * l'auteur (PIL_TEAM_READ) : un rapport déposé sans destinataire devient ainsi lisible du chef rattaché plus tard.
+     */
     private void exigerLecture(Appelant appelant, Rapport r) {
         if (appelant.id().equals(r.getAuteurId())) {
             return;

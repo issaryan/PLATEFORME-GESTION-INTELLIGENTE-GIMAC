@@ -31,10 +31,11 @@ public final class ReferentialVersionSamples {
     }
 
     public static String prefixe(TypeProjet type) {
-        return switch (type) {
-            case CARTE_INTERBANCAIRE -> "CI";
-            case PAIEMENT_MOBILE -> "PM";
-            case DELEGATAIRE -> "DL";
+        return switch (type.name()) {
+            case "CARTE_INTERBANCAIRE" -> "CI";
+            case "PAIEMENT_MOBILE" -> "PM";
+            case "DELEGATAIRE" -> "DL";
+            default -> type.name().substring(0, 2);
         };
     }
 }

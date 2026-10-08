@@ -54,7 +54,7 @@ class ConnexionServiceTest {
 
     @BeforeEach
     void init() {
-        annuaire = new AnnuaireEnMemoire(AnnuaireEnMemoire.catalogueParDefaut(Set.of("ROLE_SNA")), Set.of());
+        annuaire = new AnnuaireEnMemoire(AnnuaireEnMemoire.catalogueParDefaut(Set.of("ROLE_SNA")));
         courriels = new CourrielsEnMemoire();
         jetons = new ArrayList<>();
         maintenant = new AtomicReference<>(DEBUT);

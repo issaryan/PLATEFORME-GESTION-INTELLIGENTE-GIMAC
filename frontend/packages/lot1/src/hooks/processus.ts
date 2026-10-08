@@ -17,9 +17,17 @@ export const clesProcessus = {
 
 export const useCatalogueProcessus = (q: { unite?: string; etat?: EtatProcessus; q?: string }) =>
   useLecture(clesProcessus.liste(q), (s) => s.processus.lister(q), { placeholderData: keepPreviousData })
+/** D-92 : portée de l'appelant (tous domaines ou ses unités), servie par MS-PILOTAGE. */
+export const usePorteeProcessus = () => useLecture(['pilotage', 'processus', 'portee'], (s) => s.processus.portee(), { staleTime: 60_000 })
 export const useProcessus = (id: string | undefined) => useLecture(clesProcessus.definition(id ?? ''), (s) => s.processus.lire(id!), { enabled: !!id })
 export const useInstances = (q: { vue: VueInstances; etat?: EtatInstance; page?: number; taille?: number }, actif = true) =>
   useLecture(clesProcessus.instances(q), (s) => s.processus.instances(q), { enabled: actif, placeholderData: keepPreviousData })
+/** Candidats d'un intervenant (désignation hors de l'unité) : dans l'unité, puis ailleurs dans le GIMAC. */
+export const useCandidatsProcessus = (unite: string | null | undefined, profil: string | null | undefined, actif = true) =>
+  useLecture(['pilotage', 'processus', 'candidats', unite ?? '', profil ?? ''], (s) => s.processus.candidats({ unite: unite!, profil }), { enabled: actif && !!unite, staleTime: 60_000 })
+/** Candidats à l'exécution d'une étape en cours (réaffectation). */
+export const useCandidatsEtape = (instanceId: string, etape: string, actif = true) =>
+  useLecture(['pilotage', 'processus', 'candidats', 'etape', instanceId, etape], (s) => s.processus.candidatsEtape(instanceId, etape), { enabled: actif, staleTime: 30_000 })
 export const useInstance = (id: string | undefined) => useLecture(clesProcessus.instance(id ?? ''), (s) => s.processus.instance(id!), { enabled: !!id })
 
 const TOUT = [clesPilotage.tout]

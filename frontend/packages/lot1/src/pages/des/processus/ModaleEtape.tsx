@@ -7,6 +7,8 @@ import {
   type ModeIntervenant, type SignatureProcessus, type TypeChamp,
 } from '../../../modele/processus'
 import { useUnites } from '../../../hooks/pilotage'
+import { useCandidatsProcessus } from '../../../hooks/processus'
+import { useLibelleUnite } from '../activite/communs'
 import { useLibelleProfilEquipe } from '../activite/dialoguesEquipe'
 import { ChoixPersonne, PROFILS_INTERVENANTS, useErreurProcessus } from './communs'
 
@@ -68,12 +70,21 @@ export function erreursEtape(e: EtapeProcessus, autres: string[]): Record<string
 }
 
 /** Intervenant : mode, puis les seuls attributs du mode (profil, personne, unité, profil de remplacement). */
-function ChampsIntervenant({ chemin, valeur, onChange, lecture, err, legende }: {
-  chemin: string; valeur: Intervenant; onChange: (i: Intervenant) => void; lecture: boolean; err: (c: string) => string | undefined; legende: string
+function ChampsIntervenant({ chemin, valeur, onChange, lecture, err, legende, uniteProcessus }: {
+  chemin: string; valeur: Intervenant; onChange: (i: Intervenant) => void; lecture: boolean; err: (c: string) => string | undefined; legende: string; uniteProcessus?: string
 }) {
   const { t } = useTranslation()
   const libelleProfil = useLibelleProfilEquipe()
+  const libelleUnite = useLibelleUnite()
   const unites = useUnites()
+  // Désignation hors de l'unité : porteurs du profil (ou du profil de remplacement) dans l'unité, puis ailleurs.
+  const uniteEffective = valeur.unite || uniteProcessus || null
+  const profilCherche = valeur.mode === 'PROFIL' ? valeur.profil : valeur.mode === 'PERSONNE' ? valeur.remplacement : null
+  const candidats = useCandidatsProcessus(uniteEffective, profilCherche, !lecture && !!profilCherche)
+  const couverture = valeur.mode !== 'PROFIL' || !valeur.profil || !candidats.data ? undefined
+    : candidats.data.dansUnite.length ? t('proc.couverture.dansUnite', { n: candidats.data.dansUnite.length })
+      : candidats.data.ailleurs.length ? t('proc.couverture.ailleurs', { n: candidats.data.ailleurs.length, unites: [...new Set(candidats.data.ailleurs.map((c) => (c.unite ? libelleUnite(c.unite) : t('proc.suivi.toutLeGimac'))))].join(', ') })
+        : t('proc.couverture.aucun')
   const profils = [{ value: '', label: t('proc.aucun') }, ...PROFILS_INTERVENANTS.map((p) => ({ value: p, label: libelleProfil(p) }))]
   const maj = (champs: Partial<Intervenant>) => onChange(intervenantNormalise({ ...valeur, ...champs }))
   const uniteChamp = (
@@ -86,10 +97,11 @@ function ChampsIntervenant({ chemin, valeur, onChange, lecture, err, legende }: 
       <div className="gm-form-grid gm-mod-grille">
         <Select name={`${chemin}.mode`} label={t('proc.intervenant.mode')} value={valeur.mode} disabled={lecture} onChange={(v) => maj({ mode: v as ModeIntervenant })}
           options={MODES_INTERVENANT.map((m) => ({ value: m, label: t(`proc.mode.${m}`) }))} />
-        {valeur.mode === 'PROFIL' ? <Select name={`${chemin}.profil`} label={t('proc.intervenant.profil')} required value={valeur.profil ?? ''} disabled={lecture} error={err(`${chemin}.profil`)} options={profils} onChange={(v) => maj({ profil: v || null })} /> : null}
+        {valeur.mode === 'PROFIL' ? <Select name={`${chemin}.profil`} label={t('proc.intervenant.profil')} required value={valeur.profil ?? ''} disabled={lecture} error={err(`${chemin}.profil`)} options={profils} help={couverture} onChange={(v) => maj({ profil: v || null })} /> : null}
         {valeur.mode === 'PERSONNE' ? (
           lecture ? <TextField name={`${chemin}.personneId`} label={t('proc.intervenant.personne')} value={valeur.personneId ?? ''} readOnly />
-            : <ChoixPersonne name={`${chemin}.personneId`} label={t('proc.intervenant.personne')} required value={valeur.personneId ?? ''} error={err(`${chemin}.personneId`)} onChange={(v) => maj({ personneId: v || null })} />
+            : <ChoixPersonne name={`${chemin}.personneId`} label={t('proc.intervenant.personne')} required value={valeur.personneId ?? ''} error={err(`${chemin}.personneId`)} profil={valeur.remplacement}
+              candidats={candidats.data} chargement={!!profilCherche && candidats.isPending} onChange={(v) => maj({ personneId: v || null })} />
         ) : null}
         {valeur.mode === 'PROFIL' || valeur.mode === 'AU_LANCEMENT' || valeur.mode === 'CHEF_UNITE' ? uniteChamp : null}
         {MODES_REMPLACEMENT.includes(valeur.mode) ? (
@@ -108,6 +120,8 @@ export type ModaleEtapeProps = {
   lecture: boolean
   /** Toutes les étapes du processus (prédécesseurs possibles, livrables des étapes antérieures). */
   etapes: EtapeProcessus[]
+  /** Unité propriétaire du processus : unité des intervenants sans unité propre (candidats). */
+  uniteProcessus?: string
   enCours?: boolean
   erreurServeur?: ApiError | null
   ongletInitial?: OngletEtape
@@ -172,10 +186,10 @@ export function ModaleEtape(p: ModaleEtapeProps) {
           ) : null}
           {onglet === 'intervenants' ? (
             <div className="gm-col">
-              <ChampsIntervenant chemin="intervenant" legende={t('proc.intervenant.executant')} valeur={e.intervenant} lecture={lecture} err={err} onChange={(i) => maj({ intervenant: i })} />
+              <ChampsIntervenant chemin="intervenant" legende={t('proc.intervenant.executant')} valeur={e.intervenant} lecture={lecture} err={err} uniteProcessus={p.uniteProcessus} onChange={(i) => maj({ intervenant: i })} />
               <Checkbox name="avecValidateur" label={t('proc.intervenant.avecValidateur')} checked={!!e.validateur} disabled={lecture}
                 onChange={(v) => maj({ validateur: v ? { mode: 'CHEF_UNITE' } : null })} />
-              {e.validateur ? <ChampsIntervenant chemin="validateur" legende={t('proc.intervenant.validateur')} valeur={e.validateur} lecture={lecture} err={err} onChange={(i) => maj({ validateur: i })} /> : null}
+              {e.validateur ? <ChampsIntervenant chemin="validateur" legende={t('proc.intervenant.validateur')} valeur={e.validateur} lecture={lecture} err={err} uniteProcessus={p.uniteProcessus} onChange={(i) => maj({ validateur: i })} /> : null}
             </div>
           ) : null}
           {onglet === 'livrables' ? (
@@ -210,7 +224,7 @@ export function ModaleEtape(p: ModaleEtapeProps) {
                     <NumberField name={`signatures.${i}.ordre`} label={t('proc.signature.ordre')} help={t('proc.signature.ordreAide')} value={String(s.ordre)} min={1} max={99} readOnly={lecture} error={err(`signatures.${i}.ordre`)}
                       onChange={(v) => majListe('signatures', i, { ordre: Number(v) || 0 })} />
                   </div>
-                  <ChampsIntervenant chemin={`signatures.${i}.signataire`} legende={t('proc.signature.signataire')} valeur={s.signataire} lecture={lecture} err={err} onChange={(x) => majListe('signatures', i, { signataire: x })} />
+                  <ChampsIntervenant chemin={`signatures.${i}.signataire`} legende={t('proc.signature.signataire')} valeur={s.signataire} lecture={lecture} err={err} uniteProcessus={p.uniteProcessus} onChange={(x) => majListe('signatures', i, { signataire: x })} />
                   <CheckboxGroup id={`gm-signature-${i}-porte`} label={t('proc.signature.porte')} value={s.porte} disabled={lecture} error={err(`signatures.${i}.porte`)}
                     options={portables.map((l) => ({ value: l.code, label: `${l.code} · ${l.libelle}` }))} onChange={(v) => majListe('signatures', i, { porte: v })} />
                   {!lecture ? <div className="gm-row" style={{ justifyContent: 'flex-end' }}><Button size="sm" variant="ghost" icon="trash" onClick={() => retirer('signatures', i)}>{t('proc.signature.retirer', { n: i + 1 })}</Button></div> : null}

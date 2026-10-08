@@ -12,7 +12,10 @@ import java.util.TreeMap;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
-/** Adaptateur JDBC des modifications de profils par l'administration (D-86, table profil_presentation). */
+/**
+ * Adaptateur JDBC des modifications de profils par l'administration (D-86, table profil_presentation) ; attribut
+ * externe fixé depuis la console (D-94, colonne externe, nulle s'il n'a jamais été modifié).
+ */
 @Component
 public class PresentationsProfilsJdbc implements PresentationsProfils {
 
@@ -67,6 +70,29 @@ public class PresentationsProfilsJdbc implements PresentationsProfils {
         int n = jdbc.update("update profil_presentation set modifie_le = ?, modifie_par_id = ?, modifie_par_nom = ? where code = ?", Timestamp.from(le), parId, parNom, code);
         if (n == 0) {
             jdbc.update("insert into profil_presentation (code, modifie_le, modifie_par_id, modifie_par_nom) values (?, ?, ?, ?)", code, Timestamp.from(le), parId, parNom);
+        }
+    }
+
+    @Override
+    public Map<String, Boolean> externes() {
+        Map<String, Boolean> m = new TreeMap<>();
+        jdbc.query("select code, externe from profil_presentation where externe is not null", rs -> {
+            m.put(rs.getString("code"), rs.getBoolean("externe"));
+        });
+        return m;
+    }
+
+    @Override
+    public void fixerExterne(String code, boolean externe, Instant le, String parId, String parNom) {
+        int n = jdbc.update(
+            "update profil_presentation set externe = ?, modifie_le = ?, modifie_par_id = ?, modifie_par_nom = ? where code = ?",
+            externe, Timestamp.from(le), parId, parNom, code
+        );
+        if (n == 0) {
+            jdbc.update(
+                "insert into profil_presentation (code, externe, modifie_le, modifie_par_id, modifie_par_nom) values (?, ?, ?, ?, ?)",
+                code, externe, Timestamp.from(le), parId, parNom
+            );
         }
     }
 

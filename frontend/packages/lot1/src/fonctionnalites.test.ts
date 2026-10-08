@@ -1,34 +1,36 @@
 import { describe, expect, it } from 'vitest'
 import { satisfait } from '@gimac/socle'
-import { FONCTIONNALITES, GROUPES, WIDGETS, fonctionnalitesOuvertes, navigationDepuis, widgetsOuverts, type Fonctionnalite } from './fonctionnalites'
+import {
+  ACCUEIL, ECRANS_DES, WIDGETS, accesFonctionnalite, fonctionnalitesOuvertes, libelleGroupe, libelleServi, navigationDepuis, navigationRepli, predicatDe, widgetsOuverts,
+  type DefinitionFonctionnalite,
+} from './fonctionnalites'
+import { FONCTIONNALITES_INITIALES as CATALOGUE } from './services/simule/fonctionnalites'
 import { PROFILS } from './permissions'
 
-// D-79 : registre unique des fonctionnalités de l'application interne ; barre latérale et tableau de bord
-// dérivés des permissions du jeton. Matrice attendue pour chaque profil interne du domaine « gimac ».
+// D-94 : catalogue des fonctionnalités servi par MS-IAM ; barre latérale, gardes et tableau de bord en dérivent, le code
+// ne garde que la correspondance clé → écran. Matrice attendue pour chaque profil interne du domaine « gimac ».
 
-const cles = (fs: Fonctionnalite[]) => fs.map((f) => f.cle)
+const cles = (fs: DefinitionFonctionnalite[]) => fs.map((f) => f.cle)
 const INTERNES = Object.keys(PROFILS).filter((r) => r !== 'ROLE_CORRESPONDANT')
+const ouvertes = (p: string[]) => cles(fonctionnalitesOuvertes(CATALOGUE, 'des', p))
+const widgets = (p: string[]) => widgetsOuverts(CATALOGUE, p)
+const tr = { t: (k: string) => `«${k}»`, existe: (k: string) => k.startsWith('nav.') }
 
-describe('registre des fonctionnalités', () => {
-  it('clés uniques, groupes connus, chemins internes sous /des (sauf le lien vers la console)', () => {
-    expect(new Set(cles(FONCTIONNALITES)).size).toBe(FONCTIONNALITES.length)
-    const groupes = GROUPES.map((g) => g.cle)
-    for (const f of FONCTIONNALITES) {
-      expect(groupes).toContain(f.groupe)
-      expect(f.chemin.startsWith('/des/') || f.cle === 'adminConsole').toBe(true)
-      for (const w of f.widgets ?? []) expect(WIDGETS).toContain(w.cle)
-    }
+describe('catalogue des fonctionnalités (valeurs de départ de MS-IAM)', () => {
+  it('clés uniques ; chaque entrée de barre latérale de l’application interne a un écran ; widgets connus', () => {
+    expect(new Set(cles(CATALOGUE)).size).toBe(CATALOGUE.length)
+    for (const f of CATALOGUE.filter((x) => x.application === 'des' && x.groupe)) expect(ECRANS_DES[f.cle], f.cle).toBeTruthy()
+    for (const f of CATALOGUE) for (const w of f.widgets) expect(WIDGETS).toContain(w.cle)
+    expect(Object.values(ECRANS_DES).every((e) => e.chemin.startsWith('/des/') || e.chemin.includes('/console/'))).toBe(true)
   })
 
-  it('tout profil interne : tableau de bord, messagerie et Mon activité ; jamais d’entrée sans permission', () => {
+  it('tout profil interne : tableau de bord, messagerie et Mon activité ; correspondant : l’accueil seul', () => {
     for (const role of INTERNES) {
-      const ouvertes = cles(fonctionnalitesOuvertes(PROFILS[role]))
-      expect(ouvertes, role).toEqual(expect.arrayContaining(['tableauDeBord', 'messagerie', 'notifications', 'maJournee', 'agenda', 'taches', 'rapports']))
-      expect(widgetsOuverts(PROFILS[role])[0], role).toBe('maJournee')
+      expect(ouvertes(PROFILS[role]), role).toEqual(expect.arrayContaining(['tableauDeBord', 'notifications', 'maJournee', 'agenda', 'taches', 'rapports']))
+      expect(widgets(PROFILS[role])[0], role).toBe('maJournee')
     }
-    // Correspondant (compte d'institution) : rien de l'application interne hormis l'accueil.
-    expect(cles(fonctionnalitesOuvertes(PROFILS.ROLE_CORRESPONDANT))).toEqual(['tableauDeBord'])
-    expect(widgetsOuverts(PROFILS.ROLE_CORRESPONDANT)).toEqual([])
+    expect(ouvertes(PROFILS.ROLE_CORRESPONDANT)).toEqual(['tableauDeBord'])
+    expect(widgets(PROFILS.ROLE_CORRESPONDANT)).toEqual([])
   })
 
   it.each([
@@ -43,30 +45,45 @@ describe('registre des fonctionnalités', () => {
     ['ROLE_INGENIEUR_HOMOLOGATION', ['maJournee', 'monTravail']],
     ['ROLE_CONDUCTEUR_PROJET', ['maJournee', 'monTravail']],
     ['ROLE_SNA', ['maJournee', 'monTravail']],
-    ['ROLE_PRODUCTION_MONETIQUE', ['maJournee', 'monTravail']],
-    ['ROLE_POLE_RESEAU', ['maJournee', 'monTravail']],
-    ['ROLE_POLE_SYSTEME', ['maJournee', 'monTravail']],
     ['ROLE_COLLABORATEUR', ['maJournee']],
     ['ROLE_RESPONSABLE_SERVICE', ['maJournee']],
   ])('%s : widgets %j', (role, attendus) => {
-    expect(widgetsOuverts(PROFILS[role])).toEqual(attendus)
+    expect(widgets(PROFILS[role])).toEqual(attendus)
   })
 
-  it('plateforme : administrateur système sans administration des comptes ; RSSI en lecture de l’infrastructure', () => {
-    const admin = cles(fonctionnalitesOuvertes(PROFILS.ROLE_ADMIN_SYSTEME))
-    expect(admin).toEqual(['tableauDeBord', 'messagerie', 'notifications', 'maJournee', 'agenda', 'taches', 'rapports', 'processus', 'supervision', 'infrastructure', 'configuration', 'journalisation', 'adminConsole'])
-    expect(cles(fonctionnalitesOuvertes(PROFILS.ROLE_RSSI))).toEqual(expect.arrayContaining(['adminComptes', 'supervision', 'infrastructure', 'configuration', 'journalisation', 'courriels']))
+  it('configuration : une fonctionnalité masquée ou dont la permission change suit sans nouvelle construction', () => {
+    const masque = CATALOGUE.map((f) => (f.cle === 'messagerie' ? { ...f, visible: false } : f))
+    expect(cles(fonctionnalitesOuvertes(masque, 'des', PROFILS.ROLE_SNA))).not.toContain('messagerie')
+    const autre = CATALOGUE.map((f) => (f.cle === 'referentiels' ? { ...f, permissions: { tous: [], unDe: ['PIL_TEAM_READ'] } } : f))
+    expect(cles(fonctionnalitesOuvertes(autre, 'des', PROFILS.ROLE_SNA))).not.toContain('referentiels')
+    expect(cles(fonctionnalitesOuvertes(autre, 'des', PROFILS.ROLE_CHEF_DES))).toContain('referentiels')
   })
 
-  it('barre latérale : groupes non vides dans l’ordre du registre, prédicats repris', () => {
-    const nav = navigationDepuis()
+  it('gardes : chargement, indisponible (repli prudent), ouvert, refusé, droit exigé', () => {
+    const pret = { etat: 'pret' as const, fonctionnalites: CATALOGUE }
+    expect(accesFonctionnalite({ etat: 'chargement', fonctionnalites: [] }, 'liaisons', PROFILS.ROLE_SNA)).toBe('chargement')
+    expect(accesFonctionnalite({ etat: 'indisponible', fonctionnalites: [] }, 'liaisons', PROFILS.ROLE_SNA)).toBe('indisponible')
+    expect(accesFonctionnalite(pret, 'liaisons', PROFILS.ROLE_SNA)).toBe('ouvert')
+    expect(accesFonctionnalite(pret, 'adminComptes', PROFILS.ROLE_SNA)).toBe('refuse')
+    expect(accesFonctionnalite(pret, 'inconnue', PROFILS.ROLE_SNA)).toBe('refuse')
+    expect(accesFonctionnalite(pret, 'adminComptes', PROFILS.ROLE_RSSI, 'IAM_ACCOUNT_CREATE')).toBe('ouvert')
+    expect(accesFonctionnalite(pret, 'adminComptes', ['IAM_ACCOUNT_READ'], 'IAM_ACCOUNT_CREATE')).toBe('refuse')
+    expect(predicatDe(null)).toEqual({ all: [], any: [] })
+  })
+
+  it('barre latérale : groupes dans l’ordre de leur première fonctionnalité, libellés servis, prédicats repris ; repli : l’accueil', () => {
+    const nav = navigationDepuis(CATALOGUE, 'des', ECRANS_DES, tr, 'nav.groupe.')
     expect(nav.map((g) => g.libelleKey ?? '')).toEqual(['', 'nav.groupe.monActivite', 'nav.groupe.registre', 'nav.groupe.homologation', 'nav.groupe.administration', 'nav.groupe.plateforme'])
     const entrees = nav.flatMap((g) => g.entrees)
-    expect(entrees.map((e) => e.cle)).toEqual(cles(FONCTIONNALITES))
-    expect(entrees.filter((e) => satisfait(PROFILS.ROLE_ADMIN_SYSTEME, e.predicat)).map((e) => e.cle)).toEqual(cles(fonctionnalitesOuvertes(PROFILS.ROLE_ADMIN_SYSTEME)))
-    expect(navigationDepuis([{ cle: 'x', libelleKey: 'x', icone: 'gauge', chemin: '/des/x', groupe: 'plateforme' }])).toEqual([
-      { libelleKey: 'nav.groupe.plateforme', entrees: [{ cle: 'x', libelleKey: 'x', icone: 'gauge', chemin: '/des/x', predicat: undefined }] },
-    ])
+    expect(entrees.filter((e) => satisfait(PROFILS.ROLE_ADMIN_SYSTEME, e.predicat)).map((e) => e.cle)).toEqual(ouvertes(PROFILS.ROLE_ADMIN_SYSTEME).filter((c) => ECRANS_DES[c]))
+    expect(entrees[0]).toMatchObject({ cle: 'tableauDeBord', libelle: '«nav.tableauDeBord»', chemin: '/des/tableau-de-bord' })
+    // Groupe et libellé créés par la configuration : texte tel quel.
+    const cree = navigationDepuis([{ ...CATALOGUE[1], groupe: 'pilotage', libelle: 'Échanges : équipe' }], 'des', ECRANS_DES, tr, 'nav.groupe.')
+    expect(cree).toEqual([{ libelleKey: 'nav.groupe.pilotage', libelle: '«nav.groupe.pilotage»', entrees: [expect.objectContaining({ libelle: 'Échanges : équipe' })] }])
+    expect(libelleServi({ t: (k) => k, existe: () => false }, 'Texte')).toBe('Texte')
+    expect(libelleGroupe({ t: (k) => k, existe: () => false }, 'nav.groupe.', 'pilotage')).toBe('pilotage')
+    expect(navigationRepli('des')).toEqual([{ entrees: [ACCUEIL.des] }])
+    expect(navigationRepli('console')).toEqual([{ entrees: [ACCUEIL.console] }])
   })
 })
 

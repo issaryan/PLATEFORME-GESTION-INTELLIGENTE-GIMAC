@@ -74,6 +74,11 @@ class TableauDeBordCalculateurTest {
         tous = List.of(cadrage, ateliers, essais, constat, pv, approbation, production, autre);
     }
 
+    /** Compteur réduit à sa clé, sa valeur, son ton et son lien (le libellé et la fonction viennent des données, D-94). */
+    static Vues.Compteur sans(Vues.Compteur c) {
+        return new Vues.Compteur(c.cle(), c.valeur(), c.ton(), c.lien());
+    }
+
     Map<String, Vues.Compteur> compteurs(List<Fonction> f) {
         return calcul.tableau(tous, f, CONDUCTEUR, null, Map.of(), J).compteurs().stream().collect(Collectors.toMap(Vues.Compteur::cle, c -> c, (a, b) -> a));
     }
@@ -82,16 +87,16 @@ class TableauDeBordCalculateurTest {
     @DisplayName("Chefs de département et DDRM : conducteurs à désigner, liaisons en amont, ateliers, périmètres, ressources, procès-verbaux à signer")
     void chefs() {
         Map<String, Vues.Compteur> c = compteurs(List.of(Fonction.CHEF_DDRM, Fonction.CHEF_DES));
-        assertThat(c.get("conducteursADesigner")).isEqualTo(new Vues.Compteur("conducteursADesigner", 1, "warn", "/des/parcours?sansConducteur=1"));
+        assertThat(sans(c.get("conducteursADesigner"))).isEqualTo(new Vues.Compteur("conducteursADesigner", 1, "warn", "/des/parcours?sansConducteur=1"));
         assertThat(c.get("liaisonsAmont").valeur()).isEqualTo(2);
         assertThat(c.get("ateliersATenir")).satisfies(x -> {
             assertThat(x.valeur()).isEqualTo(1);
             assertThat(x.lien()).isEqualTo(ParcoursProjection.lienOperation(ateliers, ateliers.operation("8").orElseThrow()));
         });
-        assertThat(c.get("perimetresAArreter")).isEqualTo(new Vues.Compteur("perimetresAArreter", 1, "warn", ParcoursProjection.lienOperation(cadrage, cadrage.operation("3").orElseThrow())));
-        assertThat(c.get("ressourcesAAffecter")).isEqualTo(new Vues.Compteur("ressourcesAAffecter", 0, "ok", "/des/parcours?etape=CADRAGE,LANCEMENT"));
+        assertThat(sans(c.get("perimetresAArreter"))).isEqualTo(new Vues.Compteur("perimetresAArreter", 1, "warn", ParcoursProjection.lienOperation(cadrage, cadrage.operation("3").orElseThrow())));
+        assertThat(sans(c.get("ressourcesAAffecter"))).isEqualTo(new Vues.Compteur("ressourcesAAffecter", 0, "ok", "/des/parcours?etape=CADRAGE,LANCEMENT"));
         assertThat(c.get("enIntegrationTests").valeur()).isEqualTo(1);
-        assertThat(c.get("pvASigner")).isEqualTo(new Vues.Compteur("pvASigner", 1, "warn", "/des/parcours/" + pv.id() + "?onglet=decision"));
+        assertThat(sans(c.get("pvASigner"))).isEqualTo(new Vues.Compteur("pvASigner", 1, "warn", "/des/parcours/" + pv.id() + "?onglet=decision"));
     }
 
     @Test
@@ -112,17 +117,20 @@ class TableauDeBordCalculateurTest {
     void sna() {
         Map<String, Vues.Compteur> c = compteurs(List.of(Fonction.SNA));
         assertThat(c.get("essaisEnCours").valeur()).isEqualTo(1);
-        assertThat(c.get("essaisEnCours").lien()).isEqualTo(ParcoursProjection.lienOperation(essais, essais.operation("16").orElseThrow()));
-        assertThat(c.get("documentsParametrage")).isEqualTo(new Vues.Compteur("documentsParametrage", 0, "ok", "/des/parcours?etape=INTEGRATION"));
+        // Compteur décrit en données (D-94 §3) : liaisons à l'étape des essais.
+        assertThat(c.get("essaisEnCours").lien()).isEqualTo("/des/parcours?etape=TESTS");
+        assertThat(c.get("essaisEnCours").libelle()).isEqualTo("Essais en cours");
+        assertThat(c.get("essaisEnCours").fonction()).isEqualTo("SNA");
+        assertThat(sans(c.get("documentsParametrage"))).isEqualTo(new Vues.Compteur("documentsParametrage", 0, "ok", "/des/parcours?etape=INTEGRATION"));
         assertThat(c.get("couverturesAConstater").valeur()).isEqualTo(1);
-        assertThat(c.get("constatsMiseEnService")).isEqualTo(new Vues.Compteur("constatsMiseEnService", 1, "warn", "/des/parcours/" + production.id() + "?onglet=mise-en-service"));
+        assertThat(sans(c.get("constatsMiseEnService"))).isEqualTo(new Vues.Compteur("constatsMiseEnService", 1, "warn", "/des/parcours/" + production.id() + "?onglet=mise-en-service"));
     }
 
     @Test
     @DisplayName("Production monétique, réseau, système, sécurité, conformité, direction générale")
     void fonctionsTechniques() {
         Map<String, Vues.Compteur> pm = compteurs(List.of(Fonction.PRODUCTION_MONETIQUE));
-        assertThat(pm.get("dossiersChangement")).isEqualTo(new Vues.Compteur("dossiersChangement", 1, "warn", "/des/parcours/" + approbation.id() + "?onglet=decision"));
+        assertThat(sans(pm.get("dossiersChangement"))).isEqualTo(new Vues.Compteur("dossiersChangement", 1, "warn", "/des/parcours/" + approbation.id() + "?onglet=decision"));
         assertThat(pm.get("operationsBranche").valeur()).isZero();
         assertThat(pm.get("rapportsAConsolider").valeur()).isZero();
         Map<String, Vues.Compteur> res = compteurs(List.of(Fonction.POLE_RESEAU));
@@ -139,7 +147,7 @@ class TableauDeBordCalculateurTest {
         assertThat(rssi.get("ceremoniesCles").valeur()).isZero();
         Map<String, Vues.Compteur> conf = compteurs(List.of(Fonction.CONFORMITE));
         assertThat(conf.get("visasAttendus").valeur()).isEqualTo(1);
-        assertThat(conf.get("fintechsCobac")).isEqualTo(new Vues.Compteur("fintechsCobac", 1, "info", null));
+        assertThat(sans(conf.get("fintechsCobac"))).isEqualTo(new Vues.Compteur("fintechsCobac", 1, "info", null));
         assertThat(compteurs(List.of(Fonction.DG)).get("visasAttendus").valeur()).isEqualTo(1);
         assertThat(approbation.etat().getEtatApprobation()).isEqualTo(EtatApprobation.DOSSIER_CONSTITUE);
     }
@@ -149,17 +157,28 @@ class TableauDeBordCalculateurTest {
     void taches() {
         Parcours p = parcours(TypeProjet.CARTE_INTERBANCAIRE, "RETRAIT");
         avancer(p, "27", J);
-        Vues.TableauActeur t = calcul.tableau(List.of(p), List.of(Fonction.POLE_SYSTEME), CONDUCTEUR, null, Map.of(), J);
+        // D-93 §5 : « mes tâches » par personne désignée ; R à affecter : tâche à prendre par les porteurs de la fonction.
+        Acteur porteur = new Acteur(UUID.randomUUID(), "Porteur", Set.of("ROLE_POLE_SYSTEME"), null);
+        p.operations().stream().filter(o -> !o.faite()).forEach(o -> o.setRaci(o.getRaci().remplacerSi(x -> x.fonction() == Fonction.POLE_SYSTEME, x -> Personne.aAffecter(Fonction.POLE_SYSTEME))));
+        Vues.TableauActeur aPrendre = calcul.tableau(List.of(p), List.of(Fonction.POLE_SYSTEME), porteur, null, Map.of(), J);
+        assertThat(aPrendre.taches()).extracting(Vues.Tache::rang).containsExactly("28", "29");
+        assertThat(aPrendre.taches()).extracting(Vues.Tache::aPrendre).containsOnly(Boolean.TRUE);
+        UUID sys = UUID.randomUUID();
+        p.affecterFonction(Fonction.POLE_SYSTEME, new Personne(sys.toString(), "Pôle système", Fonction.POLE_SYSTEME));
+        Acteur systeme = new Acteur(sys, "Pôle système", Set.of("ROLE_POLE_SYSTEME", "HOM_EVIDENCE_SUBMIT"), null);
+        assertThat(calcul.tableau(List.of(p), List.of(Fonction.POLE_SYSTEME), porteur, null, Map.of(), J).taches()).isEmpty();
+        Vues.TableauActeur t = calcul.tableau(List.of(p), List.of(Fonction.POLE_SYSTEME), systeme, null, Map.of(), J);
         assertThat(t.taches()).extracting(Vues.Tache::rang).containsExactly("28", "29");
         assertThat(t.taches()).extracting(Vues.Tache::qualite).containsOnly(Qualite.R);
         assertThat(t.taches().get(0).oubliSansSymptome()).isTrue();
-        assertThat(t.taches().get(0).actionsPermises()).isNull();
+        assertThat(t.taches().get(0).libelle()).isEqualTo(p.operation("28").orElseThrow().getLibelle());
+        assertThat(t.taches().get(0).actionsPermises()).contains("DEPOSER_PREUVE");
         assertThat(t.compteurs()).filteredOn(c -> c.cle().equals("scriptsDepot")).singleElement().satisfies(c -> assertThat(c.ton()).isEqualTo("crit"));
         p.deposerPreuve(p.operation("28").orElseThrow(), cm.gimac.des.homologation.domain.parcours.Preuve.piece("d", "n", "e", J, "x"), null, null, null);
         Vues.TableauActeur v = calcul.tableau(List.of(p), List.of(Fonction.CONDUCTEUR), CONDUCTEUR, null, Map.of(), J);
         assertThat(v.taches()).extracting(Vues.Tache::qualite).containsExactly(Qualite.V);
-        Vues.TableauActeur retard = calcul.tableau(List.of(p), List.of(Fonction.POLE_SYSTEME), CONDUCTEUR, null, Map.of(), J.plusYears(1));
-        assertThat(retard.compteurs()).filteredOn(c -> c.cle().equals("tachesEnRetard")).singleElement().satisfies(c -> assertThat(c.valeur()).isEqualTo(2));
+        Vues.TableauActeur retard = calcul.tableau(List.of(p), List.of(Fonction.POLE_SYSTEME), systeme, null, Map.of(), J.plusYears(1));
+        assertThat(retard.compteurs()).filteredOn(c -> c.cle().equals("tachesEnRetard")).singleElement().satisfies(c -> assertThat(c.valeur()).isEqualTo(1));
         Vues.TableauActeur chefs = calcul.tableau(List.of(parcours(TypeProjet.CARTE_INTERBANCAIRE, "RETRAIT")), List.of(Fonction.CHEFS_DEPARTEMENT), CONDUCTEUR, null, Map.of(), J);
         assertThat(chefs.taches()).isEmpty();
         assertThat(calcul.tableau(List.of(), List.of(), CONDUCTEUR, null, Map.of(), J).fonction()).isEqualTo(Fonction.DDRM);

@@ -22,6 +22,9 @@ public interface LiaisonRepository extends JpaRepository<Liaison, UUID>, JpaSpec
     /** Unicité des liaisons actives par institution et type de projet (index partiel uk_liaison_active). */
     boolean existsByInstitutionIdAndTypeProjetAndEtatNot(UUID institutionId, TypeProjet typeProjet, EtatLiaison etat);
 
+    /** Liaisons d'un type de projet (D-91). */
+    long countByTypeProjet(TypeProjet typeProjet);
+
     /** Liaison principale active (un service supplémentaire, rang 35, est sans effet sur l'unicité). */
     boolean existsByInstitutionIdAndTypeProjetAndEtatNotAndLiaisonOrigineIdIsNull(UUID institutionId, TypeProjet typeProjet, EtatLiaison etat);
 

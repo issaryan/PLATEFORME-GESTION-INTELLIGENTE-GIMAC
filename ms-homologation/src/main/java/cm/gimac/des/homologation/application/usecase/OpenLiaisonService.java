@@ -4,6 +4,7 @@ import cm.gimac.des.homologation.application.port.in.OpenLiaisonUseCase;
 import cm.gimac.des.homologation.application.port.out.CollaboratorDirectoryPort;
 import cm.gimac.des.homologation.application.port.out.ParticipantDirectoryPort;
 import cm.gimac.des.homologation.domain.ContractualScope;
+import cm.gimac.des.homologation.domain.DefinitionTypeProjet;
 import cm.gimac.des.homologation.domain.HomologationException;
 import cm.gimac.des.homologation.domain.Liaison;
 import cm.gimac.des.homologation.domain.ReferentialVersion;
@@ -17,6 +18,7 @@ import cm.gimac.des.homologation.domain.event.ProjectLeadDesignatedPayload;
 import cm.gimac.des.homologation.domain.service.LiaisonOpeningPolicy;
 import cm.gimac.des.homologation.infrastructure.messaging.outbox.OutboxPublisher;
 import cm.gimac.des.homologation.repository.ContractualScopeRepository;
+import cm.gimac.des.homologation.repository.DefinitionTypeProjetRepository;
 import cm.gimac.des.homologation.repository.LiaisonRepository;
 import cm.gimac.des.homologation.repository.ReferentialVersionRepository;
 import cm.gimac.des.homologation.repository.ScopeItemRepository;
@@ -55,7 +57,39 @@ public class OpenLiaisonService implements OpenLiaisonUseCase {
     private final Clock clock;
     private final ParcoursInstanciation parcours;
     private final ParcoursCommandes conduite;
+    private final DefinitionTypeProjetRepository typesProjet;
+    private PorteursPermission porteurs;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    public OpenLiaisonService(
+        ParticipantDirectoryPort participants,
+        CollaboratorDirectoryPort collaborateurs,
+        LiaisonOpeningPolicy politique,
+        LiaisonRepository liaisons,
+        ReferentialVersionRepository versions,
+        ContractualScopeRepository perimetres,
+        ScopeItemRepository elements,
+        OutboxPublisher outbox,
+        Clock clock,
+        ParcoursInstanciation parcours,
+        ParcoursCommandes conduite,
+        DefinitionTypeProjetRepository typesProjet
+    ) {
+        this.participants = participants;
+        this.collaborateurs = collaborateurs;
+        this.politique = politique;
+        this.liaisons = liaisons;
+        this.versions = versions;
+        this.perimetres = perimetres;
+        this.elements = elements;
+        this.outbox = outbox;
+        this.clock = clock;
+        this.parcours = parcours;
+        this.conduite = conduite;
+        this.typesProjet = typesProjet;
+    }
+
+    /** Sans dépôt des types de projet (tests unitaires) : le modèle du type repris de même nom. */
     public OpenLiaisonService(
         ParticipantDirectoryPort participants,
         CollaboratorDirectoryPort collaborateurs,
@@ -69,17 +103,7 @@ public class OpenLiaisonService implements OpenLiaisonUseCase {
         ParcoursInstanciation parcours,
         ParcoursCommandes conduite
     ) {
-        this.participants = participants;
-        this.collaborateurs = collaborateurs;
-        this.politique = politique;
-        this.liaisons = liaisons;
-        this.versions = versions;
-        this.perimetres = perimetres;
-        this.elements = elements;
-        this.outbox = outbox;
-        this.clock = clock;
-        this.parcours = parcours;
-        this.conduite = conduite;
+        this(participants, collaborateurs, politique, liaisons, versions, perimetres, elements, outbox, clock, parcours, conduite, null);
     }
 
     @Override
@@ -88,9 +112,10 @@ public class OpenLiaisonService implements OpenLiaisonUseCase {
             // Le conducteur est désigné par un chef de département (rang 6, D-58).
             throw HomologationException.forbidden("HOM_PROJECT_DESIGNATION_FORBIDDEN", "La désignation du conducteur de projet revient à un chef de département");
         }
+        DefinitionTypeProjet definition = definition(cmd.typeProjet());
         InstitutionView institution = participants.getInstitution(cmd.institutionId());
         InstitutionView porteur = cmd.banquePartenaireId() == null ? null : participants.getInstitution(cmd.banquePartenaireId());
-        politique.verifier(institution, porteur, collaborateurs.findCollaborator(cmd.chefDeProjetId()).orElse(null));
+        politique.verifier(institution, porteur, collaborateurs.findCollaborator(cmd.chefDeProjetId()).orElse(null), porteConduite(cmd.chefDeProjetId()));
         if (liaisons.existsByInstitutionIdAndTypeProjetAndEtatNotAndLiaisonOrigineIdIsNull(cmd.institutionId(), cmd.typeProjet(), EtatLiaison.CLOSE)) {
             throw doublon(cmd);
         }
@@ -109,7 +134,8 @@ public class OpenLiaisonService implements OpenLiaisonUseCase {
             .banquePartenaireId(cmd.banquePartenaireId())
             .dateOuverture(maintenant)
             .cycleAptitude(0)
-            .version(enVigueur);
+            .version(enVigueur)
+            .definitionTypeProjet(definition);
         try {
             l = liaisons.saveAndFlush(l);
         } catch (DataIntegrityViolationException e) {
@@ -123,7 +149,7 @@ public class OpenLiaisonService implements OpenLiaisonUseCase {
             AGREGAT,
             l.getId(),
             LiaisonOpenedPayload.TYPE,
-            new LiaisonOpenedPayload(l.getId(), l.getInstitutionId(), l.getTypeProjet().name(), enVigueur.getId(), enVigueur.getNumero(), l.getChefDeProjetId(), l.getBanquePartenaireId(), perimetre, acteur.id())
+            new LiaisonOpenedPayload(l.getId(), l.getInstitutionId(), l.getTypeProjet().name(), enVigueur.getId(), enVigueur.getNumero(), l.getChefDeProjetId(), l.getBanquePartenaireId(), perimetre, acteur.id(), l.modeleTypeProjet().name())
         );
         return l;
     }
@@ -133,7 +159,7 @@ public class OpenLiaisonService implements OpenLiaisonUseCase {
         if (!acteur.peutDesigner()) {
             throw HomologationException.forbidden("HOM_PROJECT_DESIGNATION_FORBIDDEN", "La désignation du conducteur de projet revient à un chef de département");
         }
-        politique.verifierConducteur(collaborateurs.findCollaborator(chefDeProjetId).orElse(null));
+        politique.verifierConducteur(collaborateurs.findCollaborator(chefDeProjetId).orElse(null), porteConduite(chefDeProjetId));
         Liaison l = liaisons.findByIdForUpdate(liaisonId).orElseThrow(() -> HomologationException.notFound("HOM_LIAISON_NOT_FOUND", liaisonId));
         if (l.getEtat() == EtatLiaison.CLOSE) {
             throw HomologationException.conflict("HOM_LIAISON_CLOSED", "La liaison est close", Map.of("etat", l.getEtat().name()));
@@ -154,6 +180,34 @@ public class OpenLiaisonService implements OpenLiaisonUseCase {
         return l;
     }
 
+    /** Le compte porte HOM_PROJECT_CONDUCT (D-94 §3) ; sans lecteur par permission (tests unitaires) : admis. */
+    private boolean porteConduite(UUID compte) {
+        return porteurs == null || porteurs.porte(compte, LiaisonOpeningPolicy.PERMISSION_CONDUITE);
+    }
+
+    /** Lecteur des porteurs d'une permission (D-94 §3). */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setPorteurs(PorteursPermission porteurs) {
+        this.porteurs = porteurs;
+    }
+
+    /**
+     * Définition du type de projet (D-91) : un type inconnu est introuvable (404 HOM_TYPE_PROJET_INTROUVABLE), un
+     * type désactivé n'est plus proposé aux liaisons (409 HOM_TYPE_PROJET_INACTIF). Sans dépôt (tests) : aucune.
+     */
+    private DefinitionTypeProjet definition(cm.gimac.des.homologation.domain.enumeration.TypeProjet type) {
+        if (typesProjet == null) {
+            return null;
+        }
+        DefinitionTypeProjet d = typesProjet
+            .findById(type.name())
+            .orElseThrow(() -> HomologationException.notFound("HOM_TYPE_PROJET_INTROUVABLE", "Type de projet inconnu.", type.name()));
+        if (!d.isActif()) {
+            throw HomologationException.conflict("HOM_TYPE_PROJET_INACTIF", "Ce type de projet est désactivé : il n'est plus proposé aux liaisons.", Map.of("typeProjet", type.name()));
+        }
+        return d;
+    }
+
     /** Participant fintech : conformité COBAC exigée (rang 22, D-56). */
     static boolean estFintech(InstitutionView i) {
         return i.categorie() != null && i.categorie().toUpperCase(java.util.Locale.ROOT).contains("FINTECH");
@@ -165,18 +219,23 @@ public class OpenLiaisonService implements OpenLiaisonUseCase {
      * simulateur de l'interface) : une liaison n'est jamais ouverte sans service à certifier.
      */
     static List<String> perimetre(cm.gimac.des.homologation.domain.enumeration.TypeProjet type, InstitutionView institution) {
+        return perimetre(cm.gimac.des.homologation.domain.parcours.ModeleTypeProjet.parDefaut(type), institution);
+    }
+
+    /** Périmètre selon le modèle du type (D-91) : le modèle générique n'a pas de catalogue de services. */
+    static List<String> perimetre(cm.gimac.des.homologation.domain.parcours.ModeleTypeProjet modele, InstitutionView institution) {
         List<String> codes = new ArrayList<>();
         codes.add(TRANSVERSE);
         institution.servicesSouscrits().stream().map(InstitutionView.ServiceSouscrit::code).filter(c -> c != null && !c.isBlank() && !TRANSVERSE.equals(c)).distinct().forEach(codes::add);
         if (codes.size() == 1) {
-            codes.addAll(cm.gimac.des.homologation.domain.parcours.CatalogueServices.parType(type));
+            codes.addAll(modele.catalogueServices());
         }
         return codes;
     }
 
     private List<String> deriverPerimetre(Liaison l, InstitutionView institution, Instant maintenant) {
         ContractualScope p = perimetres.save(new ContractualScope().dateDerivation(maintenant).sourceEventId("ouverture:" + l.getId()).liaison(l));
-        List<String> codes = perimetre(l.getTypeProjet(), institution);
+        List<String> codes = perimetre(l.modeleTypeProjet(), institution);
         for (String code : codes) {
             elements.save(new ScopeItem().serviceCode(code).serviceLibelle(code).etat(EtatScopeItem.A_ENGAGER).scope(p));
         }

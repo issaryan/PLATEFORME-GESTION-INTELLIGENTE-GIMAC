@@ -5,7 +5,6 @@ import cm.gimac.des.iam.application.port.out.ServiceCourriel;
 import cm.gimac.des.iam.domain.compte.Compte;
 import cm.gimac.des.iam.domain.compte.Couche;
 import cm.gimac.des.iam.domain.compte.Courriel;
-import cm.gimac.des.iam.domain.service.ReglesAdministration;
 import java.time.Duration;
 import java.util.Locale;
 import java.util.ResourceBundle;
@@ -17,7 +16,8 @@ import org.springframework.web.util.HtmlUtils;
  * Courriels envoyés par MS-IAM (D-65) : invitation, réinitialisation du mot de passe oublié, rappel
  * des actions exigées ; informations de sécurité (docs/lot1/mon-compte.md §2 et §3) : mot de passe
  * modifié, connexion depuis un nouvel appareil. Gabarits en français, anglais et espagnol ({@code i18n/courriels*.properties}),
- * choisis selon la langue du compte ; le lien mène à l'application de la couche du compte.
+ * choisis selon la langue du compte ; le lien mène à l'application de la couche du compte, choisie par les
+ * permissions de ses profils (D-94, {@link CatalogueProfils#couche(Compte)}).
  */
 @Component
 public class CourrielsPlateforme {
@@ -54,11 +54,6 @@ public class CourrielsPlateforme {
         ResourceBundle m = gabarits(compte.langue());
         String description = remplacer(m.getString("nouvel_appareil.detail"), navigateur, systeme, adresseIp, le);
         service.envoyer(composer(compte, Modele.NOUVEL_APPAREIL, lien, null, description));
-    }
-
-    /** Couche du compte : portail pour un correspondant, console pour un super administrateur, département sinon. */
-    public static Couche coucheDe(Compte c) {
-        return Couche.pour(c, c.profils().contains(ReglesAdministration.SUPER_ADMIN) ? Couche.CONSOLE : Couche.DES);
     }
 
     /** Lien vers « Mon compte » dans l'application de la couche. */

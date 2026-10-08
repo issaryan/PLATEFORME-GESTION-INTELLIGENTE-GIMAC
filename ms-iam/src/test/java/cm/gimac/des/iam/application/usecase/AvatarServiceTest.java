@@ -50,7 +50,7 @@ class AvatarServiceTest {
 
     @BeforeEach
     void init() {
-        annuaire = new AnnuaireEnMemoire(Map.of("ROLE_CHARGE_DDRM", Set.of("PAR_INSTITUTION_READ")), Set.of());
+        annuaire = new AnnuaireEnMemoire(Map.of("ROLE_CHARGE_DDRM", Set.of("PAR_INSTITUTION_READ")));
         String id = annuaire.creer(new NouveauCompte("agent", "A", "B", "agent@gimac.test", null, null, null, Set.of("ROLE_CHARGE_DDRM")), List.of());
         titulaire = new Acteur(id, "Agent", Set.of());
         service = new AvatarService(depot, annuaire, journal, Clock.fixed(MAINTENANT, ZoneOffset.UTC));

@@ -1,18 +1,20 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AttachmentViewer, Button, CrudDialog, DateField, FileDropzone, InlineAlert, KeyValueList, Note, RadioGroup, Select, Skeleton, TextArea } from '@gimac/design-system'
-import { useSession, type ApiError, type Progression } from '@gimac/socle'
+import { estApiError, useSession, type ApiError, type Progression } from '@gimac/socle'
 import { LIMITES_RAPPORT, type ModeRapport, type Rapport, type TypeRapport } from '../../../modele/pilotage'
 import { ajouterJours, aujourdhui, depuisSaisie, semaineIso, versSaisie } from '../../../modele/jours'
-import { useCreerRapport, useDocumentRapport, useModifierRapport, useOrganisation, usePreremplir, useRapport, useSoumettre, useViser } from '../../../hooks/pilotage'
+import { useCreerRapport, useDestinatairesRapport, useDocumentRapport, useModifierRapport, useOrganisation, usePreremplir, useRapport, useSoumettre, useViser } from '../../../hooks/pilotage'
 import { useServices } from '../../../services/ServicesProvider'
 import { enregistrerFichier } from '../../../ressources/fichier'
 import { BadgeRapport, TexteRapport, pourDialogue, useDates, useErreur } from './communs'
 
 // Rapports quotidiens et hebdomadaires (D-76 §2.4) : création en fenêtre modale selon trois modes,
 // préremplissage proposé par le service puis librement modifié, texte rédigé (Markdown simple), document
-// déposé par morceaux (D-74, finalité RAPPORT_ACTIVITE) avec sa progression ; brouillon, soumission au
-// responsable (n+1) ; consultation, aperçu du document et visa du destinataire.
+// déposé par morceaux (D-74, finalité RAPPORT_ACTIVITE) avec sa progression ; brouillon, soumission au destinataire
+// annoncé avant l'envoi (n+1, chef de l'unité, chef d'une unité au-dessus, ou choisi dans la chaîne hiérarchique ;
+// personne au-dessus : rapport déposé) ; consultation, aperçu du document et visa du destinataire. Tout refus est
+// expliqué (message traduit par code, détail du service).
 
 const MODES: ModeRapport[] = ['PREREMPLI', 'REDIGE', 'DOCUMENT']
 const taille = (octets: number) => (octets < 1024 * 1024 ? `${Math.max(1, Math.round(octets / 1024))} Ko` : `${(octets / 1024 / 1024).toFixed(1).replace('.', ',')} Mo`)
@@ -21,6 +23,24 @@ const taille = (octets: number) => (octets < 1024 * 1024 ? `${Math.max(1, Math.r
 const semaines = () => Array.from({ length: 8 }, (_, i) => semaineIso(ajouterJours(aujourdhui(), -7 * i)))
 
 type Fait = (r: Rapport, message: string) => void
+
+/** Refus du service pour la fenêtre : message traduit par code, et le détail rendu par le service s'il apporte plus. */
+function useRefusRapport() {
+  const erreur = useErreur()
+  return (e: unknown) => {
+    const r = erreur(e)
+    if (!r) return undefined
+    const detail = estApiError(e) && e.message && e.message !== r.titre ? e.message : undefined
+    return { title: r.titre, correlationId: r.correlationId, text: detail }
+  }
+}
+
+/** Annonce d'une soumission : remis à qui et pourquoi, ou déposé. */
+function useAnnonceSoumission() {
+  const { t } = useTranslation()
+  return (r: Rapport) => (r.etat === 'DEPOSE' ? t('act.rapport.depose')
+    : r.destinataire ? t('act.rapport.remis', { nom: r.destinataire.nomAffiche, motif: t(`act.rapport.motif.${r.destinataireMotif ?? 'N_PLUS_UN'}`) }) : t('act.rapport.soumis'))
+}
 
 /**
  * Nouveau rapport, ou modification d'un brouillon (`rapport`) : type et période, mode, contenu ou document ;
@@ -32,7 +52,8 @@ export function DialogueRapport({ rapport, type: typeInitial = 'QUOTIDIEN', peri
 }) {
   const { t } = useTranslation()
   const dates = useDates()
-  const erreur = useErreur()
+  const erreur = useRefusRapport()
+  const annonce = useAnnonceSoumission()
   const services = useServices()
   const organisation = useOrganisation()
   const creer = useCreerRapport()
@@ -78,7 +99,7 @@ export function DialogueRapport({ rapport, type: typeInitial = 'QUOTIDIEN', peri
       }
       setCree(r)
       if (etSoumettre) r = await soumettre.mutateAsync(r.id)
-      onFait(r, t(etSoumettre ? 'act.rapport.soumis' : 'act.rapport.enregistre'))
+      onFait(r, etSoumettre ? annonce(r) : t('act.rapport.enregistre'))
     } catch (e) {
       if (!(e instanceof DOMException && e.name === 'AbortError')) setEchec(e)
     } finally {
@@ -105,7 +126,7 @@ export function DialogueRapport({ rapport, type: typeInitial = 'QUOTIDIEN', peri
       submitIcon="send"
       submitting={enCours}
       dirty={!rapport && (contenu.trim() !== '' || !!fichier)}
-      error={refus ? { title: refus.titre, correlationId: refus.correlationId } : undefined}
+      error={refus}
       extraActions={<Button variant="secondary" icon="file-text" disabled={enCours} onClick={() => void enregistrer(false)}>{t('act.rapport.enregistrerBrouillon')}</Button>}
     >
       {!cree ? (
@@ -165,6 +186,8 @@ export function ConsultationRapport({ id, onFermer, onFait }: { id: string; onFe
   const { t } = useTranslation()
   const dates = useDates()
   const erreur = useErreur()
+  const refusRapport = useRefusRapport()
+  const annonce = useAnnonceSoumission()
   const session = useSession()
   const rapport = useRapport(id)
   const soumettre = useSoumettre()
@@ -176,6 +199,13 @@ export function ConsultationRapport({ id, onFermer, onFait }: { id: string; onFe
   const [edition, setEdition] = useState(false)
   const [apercu, setApercu] = useState<{ blob?: Blob; erreur?: string } | null>(null)
   const r = rapport.data
+  const brouillonAuteur = !!r && r.auteur.id === session?.sujet && r.etat === 'BROUILLON'
+  // Avant la soumission : destinataire trouvé d'office et choix dans la chaîne hiérarchique (§2.4).
+  const destinataires = useDestinatairesRapport(id, brouillonAuteur)
+  const [choisi, setChoisi] = useState('')
+  const defaut = destinataires.data?.destinataire?.id ?? ''
+  const cible = choisi || defaut
+  const motifCible = destinataires.data ? (cible === defaut ? destinataires.data.motif : 'CHOISI') : null
   if (edition && r) return <DialogueRapport rapport={r} onFermer={() => setEdition(false)} onFait={onFait} />
   const auteur = r?.auteur.id === session?.sujet
   const brouillon = auteur && r?.etat === 'BROUILLON'
@@ -198,11 +228,11 @@ export function ConsultationRapport({ id, onFermer, onFait }: { id: string; onFe
         submitLabel={brouillon ? t('act.rapport.soumettre') : aViser ? t('act.rapport.viser') : undefined}
         submitIcon={brouillon ? 'send' : 'check'}
         onSubmit={() => {
-          if (brouillon) soumettre.mutate(id, { onSuccess: (x) => onFait(x, t('act.rapport.soumis')) })
+          if (brouillon) soumettre.mutate({ id, destinataireId: cible && cible !== defaut ? cible : undefined }, { onSuccess: (x) => onFait(x, annonce(x)) })
           else viser.mutate({ id, commentaire }, { onSuccess: (x) => onFait(x, t('act.rapport.vise')) })
         }}
         submitting={geste.isPending}
-        error={pourDialogue(erreur(geste.error))}
+        error={brouillon ? refusRapport(geste.error) : pourDialogue(erreur(geste.error))}
         extraActions={brouillon ? <Button variant="secondary" icon="pen-line" onClick={() => setEdition(true)}>{t('act.rapport.modifier')}</Button> : undefined}
       >
         {rapport.isError ? <InlineAlert level="crit" correlationId={rapport.error.correlationId || undefined}>{erreur(rapport.error)?.titre}</InlineAlert> : !r ? <Skeleton height={240} /> : (
@@ -211,12 +241,29 @@ export function ConsultationRapport({ id, onFermer, onFait }: { id: string; onFe
               items={[
                 { key: t('act.rapport.etat'), value: <BadgeRapport etat={r.etat} /> },
                 { key: t('act.rapport.auteur'), value: r.auteur.nomAffiche },
-                { key: t('act.rapport.destinataireLibelle'), value: r.destinataire?.nomAffiche ?? t('act.rapport.pasEncore') },
+                {
+                  key: t('act.rapport.destinataireLibelle'),
+                  value: r.etat === 'DEPOSE' ? t('act.rapport.aucunDestinataire') : r.destinataire
+                    ? `${r.destinataire.nomAffiche}${r.destinataireMotif ? ` (${t(`act.rapport.motif.${r.destinataireMotif}`)})` : ''}` : t('act.rapport.pasEncore'),
+                },
                 { key: t('act.rapport.mode'), value: t(`act.rapport.modeValeur.${r.mode}`) },
                 ...(r.soumisLe ? [{ key: t('act.rapport.soumisLe'), value: dates.instant(r.soumisLe) }] : []),
                 { key: t('act.rapport.indicateurs'), value: t('act.rapport.indicateursTexte', { faites: r.indicateurs.activitesFaites, prevues: r.indicateurs.activitesPrevues, duree: dates.duree(r.indicateurs.minutes) || '0 min', taches: r.indicateurs.tachesTerminees }) },
               ]}
             />
+            {brouillon && destinataires.data ? (
+              destinataires.data.depot ? <InlineAlert level="info">{t('act.rapport.seraDepose')}</InlineAlert> : (
+                <div className="gm-col" style={{ gap: 'var(--gm-space-2)' }}>
+                  <InlineAlert level="info">
+                    {t('act.rapport.seraRemis', { nom: destinataires.data.choix.find((c) => c.id === cible)?.nomAffiche ?? destinataires.data.destinataire?.nomAffiche ?? cible, motif: t(`act.rapport.motif.${motifCible ?? 'N_PLUS_UN'}`) })}
+                  </InlineAlert>
+                  {destinataires.data.choix.length > 1 ? (
+                    <Select name="destinataire" label={t('act.rapport.choixDestinataire')} help={t('act.rapport.choixAide')} value={cible} onChange={setChoisi}
+                      options={destinataires.data.choix.map((c) => ({ value: c.id, label: `${c.nomAffiche ?? c.id} · ${t(`act.rapport.motif.${c.lien}`)}` }))} />
+                  ) : null}
+                </div>
+              )
+            ) : brouillon && destinataires.isError ? <InlineAlert level="warn">{erreur(destinataires.error)?.titre}</InlineAlert> : null}
             {r.visa ? (
               <Note icon="circle-check" title={t('act.rapport.viseLe', { nom: r.visa.par.nomAffiche, quand: r.viseLe ? dates.instant(r.viseLe) : '' })}>
                 {r.visa.commentaire ?? t('act.rapport.sansCommentaire')}

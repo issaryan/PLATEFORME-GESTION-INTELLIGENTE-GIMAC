@@ -21,7 +21,7 @@ function Banc() {
 }
 type O = { role?: string; services?: Services; langue?: 'fr' | 'en' | 'es'; theme?: 'light' | 'dark' }
 const ouvrir = (chemin: string, o: O = {}) =>
-  rendrePage(<Banc />, { chemin, motif: '/des/parcours/:id', langue: o.langue, theme: o.theme, services: o.services ?? servicesSimules({ latenceMs: 0 }), session: sessionTest(PROFILS[o.role ?? 'ROLE_SNA'], [o.role ?? 'ROLE_SNA']) })
+  rendrePage(<Banc />, { chemin, motif: '/des/parcours/:id', langue: o.langue, theme: o.theme, services: o.services ?? servicesSimules({ latenceMs: 0, utilisateur: { id: 'U-TEST', nom: 'Agent de test', profils: [o.role ?? 'ROLE_SNA'] } }), session: sessionTest(PROFILS[o.role ?? 'ROLE_SNA'], [o.role ?? 'ROLE_SNA']) })
 const url = (liaison: string, rang?: string, extra = '') => `/des/parcours/${liaison}?onglet=operations${rang ? `&operation=${encodeURIComponent(`${liaison}:${rang}`)}` : ''}${extra}`
 const tiroir = () => screen.findByRole('dialog', { name: /^(Opération|Operation|Operación) / })
 const signatureRapide = (s: Services): Services => ({ ...s, reauth: { assertion: () => Promise.resolve('YXNzZXJ0aW9u') } })
@@ -29,8 +29,8 @@ const signatureRapide = (s: Services): Services => ({ ...s, reauth: { assertion:
 describe('Onglet Opérations : vue de la liaison', () => {
   it('groupes par étape et par segment, compteurs, plateforme, marques ; alerte permanente de l\'opération 28', async () => {
     ouvrir(url('LIA-2026-005'), { role: 'ROLE_POLE_SYSTEME' })
-    expect(await screen.findByRole('heading', { name: 'Étape 9 · Mise en production' })).toBeTruthy()
-    expect(screen.getByRole('heading', { name: 'Étape 6 · Intégration' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'Mise en production' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Intégration' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'Branche du type de projet · Switch interbancaire' })).toBeTruthy()
     expect(screen.getAllByRole('heading', { name: 'Tronc commun aval' })).toHaveLength(2)
     const banniere = screen.getByText('Mise à jour du script de dépôt : à ne pas omettre').closest('[role]')!
@@ -40,7 +40,7 @@ describe('Onglet Opérations : vue de la liaison', () => {
     // La bannière reste visible quels que soient les filtres.
     fireEvent.change(screen.getByLabelText('Étape'), { target: { value: 'INTEGRATION' } })
     expect(screen.getByText('Mise à jour du script de dépôt : à ne pas omettre')).toBeTruthy()
-    expect(screen.queryByRole('heading', { name: 'Étape 9 · Mise en production' })).toBeNull()
+    expect(screen.queryByRole('heading', { name: 'Mise en production' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Ouvrir l\'opération 28' }))
     const d = await tiroir()
     expect(within(d).getByText('Mise à jour du script de dépôt des fichiers')).toBeTruthy()
@@ -208,7 +208,7 @@ describe('Onglet Opérations : exécution', () => {
     fireEvent.click(within(d).getByRole('button', { name: 'Déposer le livrable' }))
     const conf = await screen.findByRole('alertdialog', { name: 'Déposer le livrable' })
     fireEvent.click(within(conf).getByRole('button', { name: 'Déposer le livrable' }))
-    await waitFor(() => expect(livrable).toHaveBeenCalledWith('LIA-2026-041:7', expect.any(File), 'relu'))
+    await waitFor(() => expect(livrable).toHaveBeenCalledWith('LIA-2026-041:7', expect.any(File), 'relu', undefined))
   })
 
   it('attribution d\'une qualité, motivée', async () => {

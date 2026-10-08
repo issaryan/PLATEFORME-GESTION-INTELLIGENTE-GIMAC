@@ -376,13 +376,37 @@ public class InstitutionLifecycleService implements ManageInstitutionUseCase {
             LOG.warn("Liaison {} ouverte sur l'institution {} à l'état {} : aucune transition automatique", liaisonId, institutionId, i.getStatus());
             return java.util.Optional.empty();
         }
-        InstitutionLifecycle.verifierTransition(i.getStatus(), InstitutionStatus.EN_HOMOLOGATION);
+        return java.util.Optional.of(
+            transitionAutomatique(i, InstitutionStatus.EN_HOMOLOGATION, "Ouverture de la liaison " + liaisonId + " (" + typeProjet + ")", liaisonId)
+        );
+    }
+
+    @Override
+    public java.util.Optional<StatusTransition> mettreEnProduction(UUID institutionId, UUID liaisonId, String reference, String typeProjet) {
+        Institution i = verrouiller(institutionId);
+        if (i.getStatus() != InstitutionStatus.EN_HOMOLOGATION) {
+            // Déjà active (seconde liaison, rang 35), à régulariser, suspendue ou retirée : le jalon ne change rien,
+            // un écart est signalé, jamais appliqué (le statut ne revient pas à ACTIF sans décision humaine).
+            if (i.getStatus() == InstitutionStatus.ACTIF) {
+                LOG.debug("Liaison {} en production : l'institution {} est déjà active", liaisonId, institutionId);
+            } else {
+                LOG.warn("Liaison {} en production sur l'institution {} à l'état {} : aucune transition automatique", liaisonId, institutionId, i.getStatus());
+            }
+            return java.util.Optional.empty();
+        }
+        String libelle = reference == null || reference.isBlank() ? liaisonId.toString() : reference;
+        String motif = "Jalon EN_PRODUCTION de la liaison " + libelle + (typeProjet == null || typeProjet.isBlank() ? "" : " (" + typeProjet + ")");
+        return java.util.Optional.of(transitionAutomatique(i, InstitutionStatus.ACTIF, motif, liaisonId));
+    }
+
+    /** Transition décidée par le système sur événement de MS-HOMOLOGATION : tracée, journalisée, publiée (outbox). */
+    private StatusTransition transitionAutomatique(Institution i, InstitutionStatus vers, String motif, UUID liaisonId) {
+        InstitutionLifecycle.verifierTransition(i.getStatus(), vers);
         Instant maintenant = clock.instant();
-        String motif = "Ouverture de la liaison " + liaisonId + " (" + typeProjet + ")";
         StatusTransition t = transitions.save(
             new StatusTransition()
                 .fromStatus(i.getStatus())
-                .toStatus(InstitutionStatus.EN_HOMOLOGATION)
+                .toStatus(vers)
                 .reason(motif)
                 .requesterId(SYSTEME.id())
                 .requestedAt(maintenant)
@@ -401,7 +425,7 @@ public class InstitutionLifecycleService implements ManageInstitutionUseCase {
             StatusChangedPayload.TYPE,
             new StatusChangedPayload(i.getId(), i.getParticipantCode(), t.getFromStatus().name(), i.getStatus().name(), motif, t.getId(), maintenant)
         );
-        return java.util.Optional.of(t);
+        return t;
     }
 
     // ------------------------------------------------------------------ outils

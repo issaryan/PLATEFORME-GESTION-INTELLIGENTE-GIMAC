@@ -95,7 +95,8 @@ class LiaisonQueriesTest {
         var p = q.lister(new LiaisonQueries.Filtre(EtatLiaison.OUVERTE, TypeProjet.PAIEMENT_MOBILE, UUID.randomUUID(), "ep", conducteur), 0, 25, Set.of());
         assertThat(p.getContent()).hasSize(2).allMatch(f -> f.chefDeProjetNom() == null && f.perimetre().isEmpty());
         assertThat(p.getContent().get(0).banquePartenaireNom()).isNull();
-        when(collaborateurs.parProfil(eq("ROLE_CONDUCTEUR_PROJET"))).thenReturn(List.of(new CollaboratorView(conducteur, "A", Set.of(), null, true)));
+        // D-94 §3 : conducteurs désignables lus par permission (HOM_PROJECT_CONDUCT), plus par profil.
+        when(collaborateurs.parPermission(eq("HOM_PROJECT_CONDUCT"))).thenReturn(List.of(new CollaboratorView(conducteur, "A", Set.of(), null, true)));
         assertThat(q.conducteurs()).hasSize(1);
         when(liaisons.findAll(any(Specification.class), any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
         assertThat(q.lister(new LiaisonQueries.Filtre(null, null, null, null, null), -1, 500, Set.of()).getContent()).isEmpty();

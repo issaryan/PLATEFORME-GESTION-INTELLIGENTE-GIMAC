@@ -4,7 +4,13 @@ export type { Permitted } from '@gimac/socle'
 /** Taux de couverture calculé par MS-HOMOLOGATION (HOM-17) ; jamais recalculé par l'interface. */
 export type CoverageValue = { taux: number | null; numerateur: number; denominateur: number; calculable: boolean; motifNonCalculable?: string }
 
-export type TypeProjet = 'CARTE_INTERBANCAIRE' | 'PAIEMENT_MOBILE' | 'DELEGATAIRE'
+/**
+ * Type de projet (D-91) : code d'un enregistrement du catalogue des types de projet de MS-HOMOLOGATION
+ * (^[A-Z][A-Z0-9_]{2,39}$), plus une énumération ; les trois types repris gardent leurs codes.
+ */
+export type TypeProjet = string
+/** Les trois types repris (données de démonstration et libellés de repli) ; la liste réelle est servie. */
+export const TYPES_PROJET_REPRIS = ['CARTE_INTERBANCAIRE', 'PAIEMENT_MOBILE', 'DELEGATAIRE'] as const
 export type Segment = 'TRONC_COMMUN_AMONT' | 'BRANCHE' | 'TRONC_COMMUN_AVAL'
 export type Partie = 'DES' | 'PARTICIPANT'
 

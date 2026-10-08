@@ -52,14 +52,31 @@ class CourrielsPlateformeTest {
     }
 
     @Test
-    @DisplayName("Couche du compte et lien vers « Mon compte »")
+    @DisplayName("D-94 : couche du compte choisie par les permissions de la console, jamais par un nom de profil ; lien vers « Mon compte »")
     void lienMonCompte() {
         var p = AdministrationComptesServiceTest.proprietes();
-        assertThat(CourrielsPlateforme.coucheDe(compte("fr", "A"))).isEqualTo(cm.gimac.des.iam.domain.compte.Couche.DES);
+        var compositions = java.util.Map.of(
+            "ROLE_GARDIEN", Set.of("PLATFORM_OPS_READ"),
+            "ROLE_SUPER_ADMIN", Set.of("HOM_LIAISON_READ"),
+            "ROLE_AUDIT", Set.of("IAM_ACCOUNT_READ")
+        );
+        assertThat(CatalogueProfils.couche(compte("fr", "A"), compositions, p)).isEqualTo(cm.gimac.des.iam.domain.compte.Couche.DES);
+        // Un profil créé quelconque qui reçoit une permission de la console mène à la console.
+        Compte gardien = new Compte("id", "gardien", "A", "B", "g@gimac.test", true, true, null, null, null, "fr", null, true, Set.of("ROLE_GARDIEN"), List.of(), true);
+        assertThat(CatalogueProfils.couche(gardien, compositions, p)).isEqualTo(cm.gimac.des.iam.domain.compte.Couche.CONSOLE);
+        // Le profil livré ROLE_SUPER_ADMIN privé de toute permission de la console mène au département.
         Compte superAdmin = new Compte("id", "admin", "A", "B", "a@gimac.test", true, true, null, null, null, "fr", null, true, Set.of("ROLE_SUPER_ADMIN"), List.of(), true);
-        assertThat(CourrielsPlateforme.coucheDe(superAdmin)).isEqualTo(cm.gimac.des.iam.domain.compte.Couche.CONSOLE);
-        Compte correspondant = new Compte("id", "corr", "A", "B", "c@gimac.test", true, true, null, null, null, "fr", "INST-1", true, Set.of(), List.of(), true);
-        assertThat(CourrielsPlateforme.coucheDe(correspondant)).isEqualTo(cm.gimac.des.iam.domain.compte.Couche.PORTAIL);
+        assertThat(CatalogueProfils.couche(superAdmin, compositions, p)).isEqualTo(cm.gimac.des.iam.domain.compte.Couche.DES);
+        // Liste configurable : IAM_ACCOUNT_READ mène à la console par défaut, au département si la liste ne la porte pas.
+        Compte audit = new Compte("id", "audit", "A", "B", "x@gimac.test", true, true, null, null, null, "fr", null, true, Set.of("ROLE_AUDIT"), List.of(), true);
+        assertThat(CatalogueProfils.couche(audit, compositions, p)).isEqualTo(cm.gimac.des.iam.domain.compte.Couche.CONSOLE);
+        var l = p.liens();
+        var restreinte = new cm.gimac.des.iam.application.IamProprietes(p.keycloak(), p.premiereConnexion(), p.profils(), p.webauthn(),
+            new cm.gimac.des.iam.application.IamProprietes.Liens(l.des(), l.portail(), l.console(), null, null, null, Set.of("PLATFORM_OPS_READ")), p.connexion(), p.chiffrement());
+        assertThat(CatalogueProfils.couche(audit, compositions, restreinte)).isEqualTo(cm.gimac.des.iam.domain.compte.Couche.DES);
+        assertThat(CatalogueProfils.couche(gardien, compositions, restreinte)).isEqualTo(cm.gimac.des.iam.domain.compte.Couche.CONSOLE);
+        Compte correspondant = new Compte("id", "corr", "A", "B", "c@gimac.test", true, true, null, null, null, "fr", "INST-1", true, Set.of("ROLE_GARDIEN"), List.of(), true);
+        assertThat(CatalogueProfils.couche(correspondant, compositions, p)).isEqualTo(cm.gimac.des.iam.domain.compte.Couche.PORTAIL);
         assertThat(CourrielsPlateforme.lienMonCompte(p, cm.gimac.des.iam.domain.compte.Couche.PORTAIL)).endsWith("/portail/mon-compte").startsWith(p.liens().adresse(cm.gimac.des.iam.domain.compte.Couche.PORTAIL));
     }
 }

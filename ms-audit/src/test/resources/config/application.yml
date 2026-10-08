@@ -89,3 +89,8 @@ management:
   health:
     mail:
       enabled: false
+
+gimac:
+  consommateurs:
+    # Consommateurs Kafka démarrés à la main par les tests qui en ont besoin (registre d'audit, D-93).
+    demarrage-automatique: false

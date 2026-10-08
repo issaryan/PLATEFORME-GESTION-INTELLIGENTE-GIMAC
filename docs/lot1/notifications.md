@@ -176,3 +176,15 @@ MS-COLLABORATION ci-dessus).
   caractère de contrôle ni `..`, 500 caractères au plus ; sinon `/des/processus/instances/{instanceId}`.
 - **Événement publié** `notification.inapp-created.v1` comme les autres types (`type` `PROCESSUS`, `referenceService`
   `pilotage`, `referenceType` `PROCESSUS`, `referenceId` = instanceId, `nombre` 1).
+
+## 9. Parcours d'homologation (D-93, docs/lot1/effet-reel-referentiels.md §11)
+
+- **Source** : sujets `homologation.operation` et `homologation.liaison` (groupe `notification-homologation`), types
+  `homologation.operation-activated.v1`, `homologation.operation-validation-requested.v1`,
+  `homologation.liaison-milestone-reached.v1`.
+- **Type** `HOMOLOGATION`, jamais regroupé, préférence `types.HOMOLOGATION` (active par défaut, colonne
+  `type_homologation`). Référence `{ "service": "homologation", "type": "OPERATION" | "LIAISON", "id": … }`.
+- **Destinataires et titres** selon la qualité RACI (action attendue, avis demandé, information, escalade), comptes de
+  l'institution sur le portail, fonctions à affecter jamais nommées : voir docs/lot1/effet-reel-referentiels.md §11.1.
+- **Liens** : `/des/parcours/<liaison>?onglet=operations&operation=<id>`, `/des/parcours/<liaison>` ; portail
+  `/portail/liaisons/<liaison>` et `/portail/liaisons/<liaison>/livrables/<operation>`.

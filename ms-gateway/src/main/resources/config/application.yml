@@ -209,10 +209,11 @@ spring:
                 - OpaAuthorize
                 - RewritePath=/bff/console/iam/(?<p>.*), /api/v1/${p}
             # Administration dans le département (D-69) : RSSI et super administrateur, mêmes permissions (OPA).
+            # Catalogue des fonctionnalités (D-94) : lecture par tout compte interne, modification par IAM_PROFILE_EDIT (OPA).
             - id: des-iam-administration
               uri: ${gimac.services.iam}
               predicates:
-                - Path=/bff/des/iam/comptes,/bff/des/iam/comptes/**,/bff/des/iam/configuration/politique-securite,/bff/des/iam/configuration/profils,/bff/des/iam/configuration/profils/**,/bff/des/iam/configuration/permissions
+                - Path=/bff/des/iam/comptes,/bff/des/iam/comptes/**,/bff/des/iam/configuration/politique-securite,/bff/des/iam/configuration/profils,/bff/des/iam/configuration/profils/**,/bff/des/iam/configuration/permissions,/bff/des/iam/configuration/fonctionnalites,/bff/des/iam/configuration/fonctionnalites/**
               filters:
                 - OpaAuthorize
                 - RewritePath=/bff/des/iam/(?<p>.*), /api/v1/${p}
@@ -250,17 +251,18 @@ spring:
                     maxSize: 1MB
                 - RewritePath=/bff/des/pilotage/(?<p>.*), /api/v1/${p}
             # MS-NOTIFICATION, notifications de la plateforme (D-80, docs/lot1/notifications.md §3) : cloche et
-            # préférences de chacun, depuis le département et la console ; comptes internes seulement (OPA).
+            # préférences de chacun, depuis le département et la console (comptes internes) et le portail (comptes
+            # d'institution, D-93 §11.4) ; routes et comptes filtrés par OPA.
             - id: notification-boite
               uri: ${gimac.services.notification}
               predicates:
-                - Path=/bff/des/notification/**,/bff/console/notification/**
+                - Path=/bff/des/notification/**,/bff/console/notification/**,/bff/portail/notification/**
               filters:
                 - OpaAuthorize
                 - name: RequestSize
                   args:
                     maxSize: 64KB
-                - RewritePath=/bff/(?<couche>des|console)/notification/(?<p>.*), /api/v1/${p}
+                - RewritePath=/bff/(?<couche>des|console|portail)/notification/(?<p>.*), /api/v1/${p}
             # MS-DOCUMENT : dépôt direct d'une pièce (empreinte calculée par le service).
             - id: depot-document
               uri: ${gimac.services.document}

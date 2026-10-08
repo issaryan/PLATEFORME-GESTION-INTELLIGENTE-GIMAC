@@ -84,9 +84,7 @@ class MonCompteEtConfigurationTest {
     @BeforeEach
     void init() {
         annuaire = new AnnuaireEnMemoire(
-            Map.of("ROLE_SUPER_ADMIN", Set.of("IAM_ACCOUNT_READ"), "ROLE_RSSI", Set.of("IAM_ACCOUNT_READ"), "ROLE_CHARGE_DDRM", Set.of("PAR_INSTITUTION_READ")),
-            Set.of("ROLE_SUPER_ADMIN", "ROLE_RSSI")
-        );
+            Map.of("ROLE_SUPER_ADMIN", Set.of("IAM_ACCOUNT_READ"), "ROLE_RSSI", Set.of("IAM_ACCOUNT_READ"), "ROLE_CHARGE_DDRM", Set.of("PAR_INSTITUTION_READ")));
         Clock clock = Clock.fixed(MAINTENANT, ZoneOffset.UTC);
         moi = new MonCompteService(
             annuaire,
@@ -193,7 +191,10 @@ class MonCompteEtConfigurationTest {
     void profils() {
         assertThat(configuration.profils()).extracting("code").contains("ROLE_CHARGE_DDRM", "ROLE_RSSI");
         assertThat(configuration.permissions()).contains("IAM_ACCOUNT_READ", "PAR_INSTITUTION_READ");
-        assertThat(configuration.definirPermissions(RSSI, "ROLE_CHARGE_DDRM", Set.of("PAR_INSTITUTION_READ", "IAM_ACCOUNT_READ"), "revue").permissions()).hasSize(2);
+        assertThat(configuration.definirPermissions(RSSI, "ROLE_CHARGE_DDRM", Set.of("PAR_INSTITUTION_READ", "HOM_DASHBOARD_READ"), "revue").permissions()).hasSize(2);
+        // D-94 : un profil livré qui reçoit une permission IAM_* ou PLATFORM_* devient privilégié : octroi privilégié exigé.
+        refus(() -> configuration.definirPermissions(RSSI, "ROLE_CHARGE_DDRM", Set.of("PAR_INSTITUTION_READ", "IAM_ACCOUNT_READ"), "revue"), "IAM_PRIVILEGED_PROFILE");
+        assertThat(configuration.definirPermissions(SUPER, "ROLE_CHARGE_DDRM", Set.of("PAR_INSTITUTION_READ", "IAM_ACCOUNT_READ"), "revue").privilegie()).isTrue();
         refus(() -> configuration.definirPermissions(RSSI, "ROLE_RSSI", Set.of(), "x"), "IAM_PRIVILEGED_PROFILE");
         refus(() -> configuration.definirPermissions(SUPER, "ROLE_INCONNU", Set.of(), "x"), "IAM_PROFILE_NOT_FOUND");
         refus(() -> configuration.definirPermissions(SUPER, "ROLE_RSSI", Set.of("PERM_INEXISTANTE"), "x"), "IAM_PERMISSION_UNKNOWN");

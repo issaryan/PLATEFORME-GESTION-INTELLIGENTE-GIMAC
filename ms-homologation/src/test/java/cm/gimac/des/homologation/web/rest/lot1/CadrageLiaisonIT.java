@@ -14,6 +14,7 @@ import cm.gimac.des.homologation.infrastructure.client.CollaboratorStubAdapter;
 import cm.gimac.des.homologation.infrastructure.client.ParticipantStubAdapter;
 import com.jayway.jsonpath.JsonPath;
 import java.time.Duration;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -102,10 +103,13 @@ class CadrageLiaisonIT extends AbstractHomologationIT {
             .perform(put("/api/v1/liaisons/{id}/chef-de-projet", id).with(chefDes()).contentType(MediaType.APPLICATION_JSON).content(designation))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.chefDeProjetNom").value("Paul Essomba"));
-        assertThat(jdbc.queryForList("select event_type from outbox_event where aggregate_id = ? order by created_at", String.class, id)).containsExactly(
+        // D-93 : les opérations ouvertes à l'instanciation émettent aussi homologation.operation-activated.v1.
+        List<String> types = jdbc.queryForList("select event_type from outbox_event where aggregate_id = ? order by created_at", String.class, id);
+        assertThat(types).filteredOn(t -> !t.startsWith("homologation.operation-")).containsExactly(
             "homologation.liaison-opened.v1",
             "homologation.liaison-lead-designated.v1"
         );
+        assertThat(types).contains("homologation.operation-activated.v1");
     }
 
     @Test

@@ -10,7 +10,9 @@ import cm.gimac.des.homologation.domain.parcours.Jalon;
 import cm.gimac.des.homologation.domain.parcours.Livrable;
 import cm.gimac.des.homologation.domain.parcours.Particularite;
 import cm.gimac.des.homologation.domain.parcours.PlateformeExecution;
+import cm.gimac.des.homologation.domain.parcours.SignatureOperation;
 import cm.gimac.des.homologation.domain.parcours.Position;
+import cm.gimac.des.homologation.domain.parcours.VueOperation;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -24,7 +26,9 @@ import java.util.Map;
  * la cohérence sont contrôlées à la publication. Les attributs historiques (phase, partie, service, nature de
  * couverture, preuve attendue, fonction responsable) sont dérivés du modèle quand l'étape est saisie sans eux.
  * {@code code} ne sert qu'à la création ({@code POST /referentiels/{id}/operations}) ; {@code etape} est le code
- * d'une étape de la version (D-89).
+ * d'une étape de la version (D-89). {@code signatures} (D-91) : absentes, celles de l'opération sont conservées ;
+ * une liste vide les retire. {@code vue} (D-93 §5) : écran spécialisé de l'opération, déduit du modèle quand il est
+ * absent ; {@code consultesRecoiventTache} (D-93 §1) : les consultés (C) internes désignés reçoivent une tâche.
  */
 public record ReferenceOperationData(
     @Size(max = 300) String libelle,
@@ -60,8 +64,166 @@ public record ReferenceOperationData(
     Jalon jalon,
     @Size(max = 120) String declencheur,
     Position position,
-    Particularite particularite
+    Particularite particularite,
+    List<SignatureOperation> signatures,
+    VueOperation vue,
+    Boolean consultesRecoiventTache
 ) {
+    /** Saisie antérieure à D-93 : sans vue ni réglage des tâches des consultés (déduits, conservés). */
+    public ReferenceOperationData(
+        String libelle,
+        String phase,
+        Segment segment,
+        Partie partie,
+        String serviceCode,
+        NatureCouverture natureCouverture,
+        Map<String, Object> preuveAttendue,
+        String idScenario,
+        List<String> predecesseurs,
+        String fonctionResponsable,
+        Map<String, Object> grille,
+        String code,
+        String description,
+        String etape,
+        Integer ordre,
+        Fonction responsable,
+        Fonction validateur,
+        List<Fonction> consultes,
+        List<Fonction> informes,
+        List<Fonction> externes,
+        Integer delaiJours,
+        GrainPreuve grain,
+        PlateformeExecution plateforme,
+        Boolean cle,
+        Boolean secret,
+        Boolean oubliSansSymptome,
+        Boolean pivot,
+        String valeurReference,
+        List<Livrable> livrables,
+        Geste geste,
+        Jalon jalon,
+        String declencheur,
+        Position position,
+        Particularite particularite,
+        List<SignatureOperation> signatures
+    ) {
+        this(
+            libelle,
+            phase,
+            segment,
+            partie,
+            serviceCode,
+            natureCouverture,
+            preuveAttendue,
+            idScenario,
+            predecesseurs,
+            fonctionResponsable,
+            grille,
+            code,
+            description,
+            etape,
+            ordre,
+            responsable,
+            validateur,
+            consultes,
+            informes,
+            externes,
+            delaiJours,
+            grain,
+            plateforme,
+            cle,
+            secret,
+            oubliSansSymptome,
+            pivot,
+            valeurReference,
+            livrables,
+            geste,
+            jalon,
+            declencheur,
+            position,
+            particularite,
+            signatures,
+            null,
+            null
+        );
+    }
+
+    /** Saisie sans signatures (D-77) : les signatures de l'opération sont conservées. */
+    public ReferenceOperationData(
+        String libelle,
+        String phase,
+        Segment segment,
+        Partie partie,
+        String serviceCode,
+        NatureCouverture natureCouverture,
+        Map<String, Object> preuveAttendue,
+        String idScenario,
+        List<String> predecesseurs,
+        String fonctionResponsable,
+        Map<String, Object> grille,
+        String code,
+        String description,
+        String etape,
+        Integer ordre,
+        Fonction responsable,
+        Fonction validateur,
+        List<Fonction> consultes,
+        List<Fonction> informes,
+        List<Fonction> externes,
+        Integer delaiJours,
+        GrainPreuve grain,
+        PlateformeExecution plateforme,
+        Boolean cle,
+        Boolean secret,
+        Boolean oubliSansSymptome,
+        Boolean pivot,
+        String valeurReference,
+        List<Livrable> livrables,
+        Geste geste,
+        Jalon jalon,
+        String declencheur,
+        Position position,
+        Particularite particularite
+    ) {
+        this(
+            libelle,
+            phase,
+            segment,
+            partie,
+            serviceCode,
+            natureCouverture,
+            preuveAttendue,
+            idScenario,
+            predecesseurs,
+            fonctionResponsable,
+            grille,
+            code,
+            description,
+            etape,
+            ordre,
+            responsable,
+            validateur,
+            consultes,
+            informes,
+            externes,
+            delaiJours,
+            grain,
+            plateforme,
+            cle,
+            secret,
+            oubliSansSymptome,
+            pivot,
+            valeurReference,
+            livrables,
+            geste,
+            jalon,
+            declencheur,
+            position,
+            particularite,
+            null
+        );
+    }
+
     /** Saisie historique (HOM-01) : attributs de couverture seulement. */
     public ReferenceOperationData(
         String libelle,
@@ -150,7 +312,53 @@ public record ReferenceOperationData(
             jalon,
             declencheur,
             position,
-            particularite
+            particularite,
+            signatures,
+            vue,
+            consultesRecoiventTache
+        );
+    }
+
+    /** Même saisie, vue de l'opération renseignée (D-93 §5). */
+    public ReferenceOperationData avecVue(VueOperation v) {
+        return new ReferenceOperationData(
+            libelle,
+            phase,
+            segment,
+            partie,
+            serviceCode,
+            natureCouverture,
+            preuveAttendue,
+            idScenario,
+            predecesseurs,
+            fonctionResponsable,
+            grille,
+            code,
+            description,
+            etape,
+            ordre,
+            responsable,
+            validateur,
+            consultes,
+            informes,
+            externes,
+            delaiJours,
+            grain,
+            plateforme,
+            cle,
+            secret,
+            oubliSansSymptome,
+            pivot,
+            valeurReference,
+            livrables,
+            geste,
+            jalon,
+            declencheur,
+            position,
+            particularite,
+            signatures,
+            v,
+            consultesRecoiventTache
         );
     }
 }

@@ -21,6 +21,10 @@ import java.util.regex.Pattern;
  *   <li>Tout profil créé reçoit la messagerie, Mon activité et les notifications.</li>
  *   <li>Libellé de 1 à 80 caractères, description de 0 à 500 (D-86, docs/lot1/profils-organisation.md §2) ;
  *       le code est immuable.</li>
+ *   <li>D-94 (docs/lot1/ecrans-par-configuration.md) : un profil est privilégié dès qu'il porte une permission
+ *       IAM_* ou PLATFORM_*, livré ou créé ; il est externe (compte d'institution, portail) selon son attribut
+ *       gimac_externe, ou à défaut s'il porte une permission du portail (*_PORTAL_*) ; un compte porte l'octroi
+ *       privilégié quand l'un de ses profils compose IAM_ROLE_PRIVILEGED_GRANT. Aucun nom de profil.</li>
  * </ul>
  */
 public final class ReglesProfils {
@@ -37,9 +41,52 @@ public final class ReglesProfils {
         }
     }
 
+    /** Repère d'une permission du portail des participants (HOM_PORTAL_*, CER_PORTAL_*…). */
+    public static final String REPERE_PORTAIL = "_PORTAL_";
+
     /** Un profil portant une permission IAM_* ou PLATFORM_* est privilégié. */
     public static boolean privilegie(Collection<String> permissions) {
         return permissions.stream().anyMatch(p -> p.startsWith("IAM_") || p.startsWith("PLATFORM_"));
+    }
+
+    /**
+     * Profil externe (D-94) : la valeur de son attribut gimac_externe quand il est posé ; à défaut (attribut
+     * absent), règle de repli : le profil porte une permission du portail (*_PORTAL_*).
+     */
+    public static boolean externe(Boolean attribut, Collection<String> permissions) {
+        if (attribut != null) {
+            return attribut;
+        }
+        return permissions != null && permissions.stream().anyMatch(p -> p.contains(REPERE_PORTAIL));
+    }
+
+    /**
+     * Profils dont la composition porte cette permission (D-94 §3, porteurs d'une permission) ; vide pour une
+     * permission nulle ou blanche.
+     */
+    public static Set<String> profilsPortant(String permission, Map<String, Set<String>> compositions) {
+        Set<String> s = new TreeSet<>();
+        if (permission == null || permission.isBlank()) {
+            return s;
+        }
+        compositions.forEach((profil, permissions) -> {
+            if (permissions != null && permissions.contains(permission)) {
+                s.add(profil);
+            }
+        });
+        return s;
+    }
+
+    /** Permissions d'un compte : réunion des compositions de ses profils (profil inconnu : aucune). */
+    public static Set<String> permissionsDe(Collection<String> profils, Map<String, Set<String>> compositions) {
+        Set<String> s = new TreeSet<>();
+        profils.forEach(p -> s.addAll(compositions.getOrDefault(p, Set.of())));
+        return s;
+    }
+
+    /** Le compte porte l'octroi des profils privilégiés (IAM_ROLE_PRIVILEGED_GRANT) par l'un de ses profils. */
+    public static boolean porteOctroiPrivilegie(Collection<String> profils, Map<String, Set<String>> compositions) {
+        return profils.stream().anyMatch(p -> compositions.getOrDefault(p, Set.of()).contains(ReglesAdministration.OCTROI_PRIVILEGIE));
     }
 
     /**

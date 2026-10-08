@@ -71,6 +71,10 @@ public class DemandeTache {
     @Column(name = "derniere_erreur", length = 500)
     private String derniereErreur;
 
+    /** Compte qui reçoit la remontée d'un refus de création (le conducteur de la liaison, D-93 §1). */
+    @Column(name = "escalade_vers", length = 80)
+    private String escaladeVers;
+
     protected DemandeTache() {}
 
     public DemandeTache(Nature nature, String cle, String corps, Instant le) {
@@ -115,6 +119,14 @@ public class DemandeTache {
 
     public String getDerniereErreur() {
         return derniereErreur;
+    }
+
+    public String getEscaladeVers() {
+        return escaladeVers;
+    }
+
+    public void escaladerVers(String compte) {
+        this.escaladeVers = compte;
     }
 
     public void traitee(Statut s, Instant le) {

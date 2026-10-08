@@ -32,7 +32,18 @@ public class DemandesTaches {
 
     @Transactional(propagation = Propagation.MANDATORY)
     public void creer(PilotageTachesPort.Tache t) {
-        demandes.save(new DemandeTache(DemandeTache.Nature.CREER, cle(t.origine(), t.responsableId()), JsonTexte.ecrire(t), clock.instant()));
+        creer(t, null);
+    }
+
+    /**
+     * Création avec remontée (D-93 §1) : si MS-PILOTAGE refuse la tâche (PIL_RESPONSABLE_INVALIDE : compte inactif ou
+     * inconnu), le relais crée une tâche de réaffectation pour {@code escalade} (le conducteur de la liaison).
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void creer(PilotageTachesPort.Tache t, String escalade) {
+        DemandeTache d = new DemandeTache(DemandeTache.Nature.CREER, cle(t.origine(), t.responsableId()), JsonTexte.ecrire(t), clock.instant());
+        d.escaladerVers(escalade == null || escalade.equals(t.responsableId()) ? null : escalade);
+        demandes.save(d);
     }
 
     @Transactional(propagation = Propagation.MANDATORY)

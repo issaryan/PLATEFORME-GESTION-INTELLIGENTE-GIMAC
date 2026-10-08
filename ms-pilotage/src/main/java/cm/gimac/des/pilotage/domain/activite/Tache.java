@@ -1,17 +1,25 @@
 package cm.gimac.des.pilotage.domain.activite;
 
 import cm.gimac.des.pilotage.domain.exception.PilotageException;
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.UUID;
 
 /**
@@ -23,6 +31,10 @@ import java.util.UUID;
  * Processus d'unité (D-87) : une tâche à prendre peut être réservée aux porteurs d'un profil
  * ({@code profilRequis}) ; la tâche d'une étape (origine PROCESSUS) suit son étape : le service la confie, la
  * remet à prendre, la termine ou l'annule.
+ * Tâches à prendre d'un autre service (D-93) : créées sans responsable pour les porteurs de l'un des profils
+ * {@code profilsRequis} ou de l'une des permissions {@code permissionsRequises} ({@code offreProfils} vrai), dans
+ * l'unité cible si elle est donnée, sinon dans toute l'organisation ; elles peuvent être terminées ou annulées sans
+ * avoir été prises.
  */
 @Entity
 @Table(name = "tache")
@@ -94,6 +106,22 @@ public class Tache extends EntitePilotage {
     @Column(name = "profil_requis", length = 80)
     private String profilRequis;
 
+    /** Tâche à prendre d'un autre service, réservée aux porteurs de l'un des profils requis (D-93). */
+    @Column(name = "offre_profils", nullable = false)
+    private boolean offreProfils;
+
+    /** Profils dont l'un suffit pour prendre une tâche offerte par un autre service (D-93). */
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "tache_profil_requis", joinColumns = @JoinColumn(name = "tache_id"))
+    @Column(name = "profil", length = 80, nullable = false)
+    private Set<String> profilsRequis = new TreeSet<>();
+
+    /** Permissions dont l'une suffit pour prendre une tâche offerte par un autre service (D-93, D-94). */
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "tache_permission_requise", joinColumns = @JoinColumn(name = "tache_id"))
+    @Column(name = "permission", length = 80, nullable = false)
+    private Set<String> permissionsRequises = new TreeSet<>();
+
     @Version
     @Column(name = "version", nullable = false)
     private long version;
@@ -123,6 +151,52 @@ public class Tache extends EntitePilotage {
     }
 
     /**
+     * Tâche à prendre offerte par un autre service (D-93) : sans responsable, réservée aux porteurs de l'un des
+     * {@code profils}, dans {@code unite} (sous-unités comprises) ou, sans unité, dans toute l'organisation.
+     */
+    public static Tache pourProfils(String createurId, String unite, Collection<String> profils, Instant le) {
+        return pourOffre(createurId, unite, profils, null, le);
+    }
+
+    /**
+     * Tâche à prendre offerte par un autre service (D-93, D-94) : sans responsable, réservée aux porteurs de l'un des
+     * {@code profils} ou de l'une des {@code permissions} (l'une des listes peut être vide, pas les deux), dans
+     * {@code unite} (sous-unités comprises) ou, sans unité, dans toute l'organisation.
+     */
+    public static Tache pourOffre(String createurId, String unite, Collection<String> profils, Collection<String> permissions, Instant le) {
+        Tache t = new Tache(createurId, null, le);
+        t.uniteCible = unite;
+        t.etat = EtatTache.A_PRENDRE;
+        t.offreProfils = true;
+        t.profilsRequis = profils == null ? new TreeSet<>() : new TreeSet<>(profils);
+        t.permissionsRequises = permissions == null ? new TreeSet<>() : new TreeSet<>(permissions);
+        return t;
+    }
+
+    /**
+     * La tâche est à prendre et réservée à des profils (étape de processus ou offre d'un autre service) dont
+     * {@code profils} porte l'un ; l'appartenance à l'unité cible se vérifie à part.
+     */
+    public boolean prenableParProfils(Collection<String> profils) {
+        return prenablePar(profils, null);
+    }
+
+    /**
+     * La tâche est à prendre et son candidat porte l'un de ses profils requis ({@code profils}) ou, pour une offre,
+     * l'une de ses permissions requises ({@code permissions} : celles du candidat parmi les permissions requises) ;
+     * l'appartenance à l'unité cible se vérifie à part.
+     */
+    public boolean prenablePar(Collection<String> profils, Collection<String> permissions) {
+        if (etat != EtatTache.A_PRENDRE) {
+            return false;
+        }
+        if (offreProfils) {
+            return (profils != null && profilsRequis.stream().anyMatch(profils::contains)) || (permissions != null && permissionsRequises.stream().anyMatch(permissions::contains));
+        }
+        return profilRequis != null && profils != null && profils.contains(profilRequis);
+    }
+
+    /**
      * Remise à prendre par le service (départ du responsable, D-87) : la tâche encore ouverte perd son
      * responsable et redevient à prendre par les membres de {@code unite} portant {@code profil}.
      *
@@ -137,6 +211,31 @@ public class Tache extends EntitePilotage {
         this.uniteCible = unite;
         this.profilRequis = profil;
         this.etat = EtatTache.A_PRENDRE;
+        this.modifieLe = le;
+        return avant;
+    }
+
+    /**
+     * Réouverture par le service d'une tâche d'attente (validation ou signature d'une étape, D-93) : terminée ou
+     * annulée, elle redevient OUVERTE à {@code responsable}, ou A_PRENDRE par les membres de {@code unite} portant
+     * {@code profil} si aucun responsable n'est donné.
+     *
+     * @return l'état quitté, ou null si la tâche était encore ouverte (inchangée).
+     */
+    public EtatTache rouvrirPour(String responsable, String unite, String profil, Instant le) {
+        if (etat.estOuvert()) {
+            return null;
+        }
+        EtatTache avant = etat;
+        this.responsableId = responsable;
+        if (responsable == null) {
+            this.uniteCible = unite;
+            this.profilRequis = profil;
+            this.etat = EtatTache.A_PRENDRE;
+        } else {
+            this.etat = EtatTache.OUVERTE;
+        }
+        this.termineeLe = null;
         this.modifieLe = le;
         return avant;
     }
@@ -284,7 +383,8 @@ public class Tache extends EntitePilotage {
 
     /**
      * Réouverture demandée par le service qui a créé la tâche (D-77) : une tâche terminée reprend EN_COURS
-     * (transition de réouverture du CC) ; ouverte ou annulée, elle reste inchangée.
+     * (transition de réouverture du CC), ou A_PRENDRE si elle n'avait pas été prise (D-93) ; ouverte ou
+     * annulée, elle reste inchangée.
      *
      * @return l'état quitté, ou null si la tâche n'a pas changé.
      */
@@ -292,10 +392,29 @@ public class Tache extends EntitePilotage {
         if (etat != EtatTache.TERMINEE) {
             return null;
         }
-        etat = EtatTache.EN_COURS;
+        // Terminée sans avoir été prise (offre d'un autre service) : elle redevient à prendre.
+        etat = responsableId == null ? EtatTache.A_PRENDRE : EtatTache.EN_COURS;
         termineeLe = null;
         modifieLe = le;
         return EtatTache.TERMINEE;
+    }
+
+    /**
+     * Remise à prendre d'une offre par le service qui l'a créée (D-94 : la fonction qu'elle pourvoit est de nouveau
+     * vacante) : prise ou terminée, elle redevient A_PRENDRE sans responsable ; à prendre ou annulée, inchangée.
+     *
+     * @return l'état quitté, ou null si la tâche n'a pas changé.
+     */
+    public EtatTache remettreOffreAPrendre(Instant le) {
+        if (!offreProfils || etat == EtatTache.A_PRENDRE || etat == EtatTache.ANNULEE) {
+            return null;
+        }
+        EtatTache avant = etat;
+        etat = EtatTache.A_PRENDRE;
+        responsableId = null;
+        termineeLe = null;
+        modifieLe = le;
+        return avant;
     }
 
     /** En retard : échéance dépassée (fuseau Africa/Douala) et tâche encore ouverte. */
@@ -373,5 +492,19 @@ public class Tache extends EntitePilotage {
 
     public String getProfilRequis() {
         return profilRequis;
+    }
+
+    public boolean isOffreProfils() {
+        return offreProfils;
+    }
+
+    /** Profils requis d'une offre d'un autre service, triés ; vide pour toute autre tâche. */
+    public Set<String> getProfilsRequis() {
+        return Collections.unmodifiableSet(new TreeSet<>(profilsRequis));
+    }
+
+    /** Permissions requises d'une offre d'un autre service, triées ; vide pour toute autre tâche. */
+    public Set<String> getPermissionsRequises() {
+        return Collections.unmodifiableSet(new TreeSet<>(permissionsRequises));
     }
 }

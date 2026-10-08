@@ -168,7 +168,7 @@ export function FicheAttestation({ attestation: a, telecharger }: { attestation:
         items={[
           { key: t('attestation.numero'), value: a.numero, mono: true },
           { key: t('dossier.institution'), value: a.institutionNom },
-          { key: t('registre.typeProjet'), value: t(`typeProjet.${a.typeProjet}`) },
+          { key: t('registre.typeProjet'), value: t(`typeProjet.${a.typeProjet}`, { defaultValue: String(a.typeProjet) }) },
           { key: t('registre.services'), value: a.servicesCertifies.join(', ') },
           { key: t('registre.dateEmission'), value: a.dateEmission },
           { key: t('registre.etat'), value: <StatusBadge status={a.etat === 'EN_VIGUEUR' ? 'ok' : a.etat === 'REVOQUEE' ? 'crit' : 'warn'} label={t(`attestation.etat.${a.etat}`)} /> },

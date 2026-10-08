@@ -127,4 +127,22 @@ class ReglesDemandesEtProfilsTest {
         refus(() -> ReglesProfils.description("d".repeat(501), false), "IAM_PROFIL_INVALIDE", 400);
         refus(() -> ReglesProfils.description(" ", true), "IAM_PROFIL_INVALIDE", 400);
     }
+
+    @Test
+    @DisplayName("D-94 : externe par attribut ou repli *_PORTAL_* ; permissions et octroi privilégié par la composition des profils")
+    void qualitesParComposition() {
+        assertThat(ReglesProfils.externe(null, Set.of("HOM_PORTAL_READ"))).isTrue();
+        assertThat(ReglesProfils.externe(null, Set.of("CER_PORTAL_SIGN"))).isTrue();
+        assertThat(ReglesProfils.externe(null, Set.of("HOM_LIAISON_READ"))).isFalse();
+        assertThat(ReglesProfils.externe(false, Set.of("HOM_PORTAL_READ"))).isFalse();
+        assertThat(ReglesProfils.externe(true, Set.of())).isTrue();
+        java.util.Map<String, Set<String>> compositions = java.util.Map.of(
+            "ROLE_GARDIEN", Set.of("IAM_ROLE_PRIVILEGED_GRANT", "IAM_ACCOUNT_READ"),
+            "ROLE_AUTRE", Set.of("HOM_LIAISON_READ")
+        );
+        assertThat(ReglesProfils.porteOctroiPrivilegie(Set.of("ROLE_AUTRE", "ROLE_GARDIEN"), compositions)).isTrue();
+        assertThat(ReglesProfils.porteOctroiPrivilegie(Set.of("ROLE_AUTRE", "ROLE_SUPER_ADMIN"), compositions)).isFalse();
+        assertThat(ReglesProfils.permissionsDe(Set.of("ROLE_AUTRE", "ROLE_GARDIEN", "ROLE_INCONNU"), compositions))
+            .containsExactly("HOM_LIAISON_READ", "IAM_ACCOUNT_READ", "IAM_ROLE_PRIVILEGED_GRANT");
+    }
 }

@@ -2,6 +2,7 @@ package cm.gimac.des.pilotage.application.usecase;
 
 import cm.gimac.des.pilotage.application.port.in.Appelant;
 import cm.gimac.des.pilotage.application.port.in.ProcessusUseCase;
+import cm.gimac.des.pilotage.application.port.out.OrganisationPort.MembreProfil;
 import cm.gimac.des.pilotage.application.port.out.OrganisationPort.UniteMembres;
 import cm.gimac.des.pilotage.domain.event.ProcessusPubliePayload;
 import cm.gimac.des.pilotage.domain.exception.PilotageException;
@@ -39,7 +40,8 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Définitions des processus d'unité (D-87 §1) : brouillon (création, modification, suppression), contrôle de
  * publication (structure : ControleProcessus ; organisation : unité connue, profil existant, personne interne
- * active, au moins une personne active couvrant chaque profil exigé, chef d'unité désigné), publication (la
+ * active, au moins une personne active couvrant chaque profil exigé dans l'unité ou, à défaut, ailleurs dans le GIMAC,
+ * chef d'unité désigné), candidats d'un intervenant, publication (la
  * version publiée précédente est retirée), nouvelle version, retrait. Historique en ajout seul ; événement
  * pilotage.process-published.v1 par l'outbox.
  */
@@ -53,6 +55,7 @@ public class ProcessusService implements ProcessusUseCase {
     private final HistoriqueProcessusRepository historique;
     private final Equipes equipes;
     private final AccesProcessus acces;
+    private final ResolutionIntervenants resolution;
     private final OutboxPublisher outbox;
     private final Clock horloge;
 
@@ -61,6 +64,7 @@ public class ProcessusService implements ProcessusUseCase {
         HistoriqueProcessusRepository historique,
         Equipes equipes,
         AccesProcessus acces,
+        ResolutionIntervenants resolution,
         OutboxPublisher outbox,
         Clock horloge
     ) {
@@ -68,6 +72,7 @@ public class ProcessusService implements ProcessusUseCase {
         this.historique = historique;
         this.equipes = equipes;
         this.acces = acces;
+        this.resolution = resolution;
         this.outbox = outbox;
         this.horloge = horloge;
     }
@@ -75,7 +80,7 @@ public class ProcessusService implements ProcessusUseCase {
     @Override
     @Transactional(readOnly = true)
     public List<ProcessusLu> lister(Appelant appelant, String unite, String etat, String q) {
-        boolean admin = acces.administration(appelant);
+        boolean admin = acces.litToutes(appelant);
         EtatProcessus filtre = etat == null || etat.isBlank() ? null : ReglesActivite.valeur("etat", EtatProcessus.class, etat, null);
         String u = unite == null || unite.isBlank() ? null : SaisieProcessus.unite("unite", unite);
         List<String> unites = u != null ? List.of(u) : admin ? List.of("-") : new ArrayList<>(acces.unitesLisibles(appelant));
@@ -114,6 +119,12 @@ public class ProcessusService implements ProcessusUseCase {
 
     @Override
     @Transactional(readOnly = true)
+    public PorteeCatalogue portee(Appelant appelant) {
+        return acces.portee(appelant);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public ProcessusLu lire(Appelant appelant, UUID id) {
         Processus p = trouver(id);
         exigerLecture(appelant, p);
@@ -128,7 +139,7 @@ public class ProcessusService implements ProcessusUseCase {
         String code = SaisieProcessus.codeProcessus(s.code());
         String unite = SaisieProcessus.unite("unite", s.unite());
         if (!acces.definit(appelant, unite)) {
-            throw AccesProcessus.interdit("Définir les processus de l'unité " + unite + " exige PROCESSUS_DEFINIR couvrant l'unité");
+            throw AccesProcessus.interdit("Définir les processus de l'unité " + unite + " exige PROCESSUS_DEFINIR couvrant l'unité ou REF_METIER_ADMIN");
         }
         if (equipes.membresUnite(unite, null).isEmpty()) {
             throw PilotageException.regle("PIL_PROCESSUS_UNITE_INCONNUE", "Unité inconnue", Map.of("unite", unite));
@@ -144,7 +155,7 @@ public class ProcessusService implements ProcessusUseCase {
         } catch (DataIntegrityViolationException e) {
             throw PilotageException.conflit("PIL_PROCESSUS_CODE_PRIS", "Ce code de processus est déjà pris", Map.of("code", code));
         }
-        consigner(p, appelant.id(), ActionProcessus.CREE, "Brouillon v1 de " + code + " (unité " + unite + ")", le);
+        consigner(p, appelant.id(), ActionProcessus.CREE, "Brouillon v1 de " + code + " (unité " + unite + ")" + titre(appelant, p), le);
         return lu(appelant, p);
     }
 
@@ -165,7 +176,7 @@ public class ProcessusService implements ProcessusUseCase {
         Instant le = horloge.instant();
         decrire(p, s, appelant, le);
         processus.save(p);
-        consigner(p, appelant.id(), ActionProcessus.MODIFIE, p.getEtapes().size() + " étape(s)", le);
+        consigner(p, appelant.id(), ActionProcessus.MODIFIE, p.getEtapes().size() + " étape(s)" + titre(appelant, p), le);
         return lu(appelant, p);
     }
 
@@ -174,7 +185,7 @@ public class ProcessusService implements ProcessusUseCase {
         Processus p = trouver(id);
         exigerDefinition(appelant, p);
         p.exigerBrouillon();
-        consigner(p, appelant.id(), ActionProcessus.SUPPRIME, "Brouillon v" + p.getVersion() + " supprimé", horloge.instant());
+        consigner(p, appelant.id(), ActionProcessus.SUPPRIME, "Brouillon v" + p.getVersion() + " supprimé" + titre(appelant, p), horloge.instant());
         processus.delete(p);
     }
 
@@ -213,7 +224,7 @@ public class ProcessusService implements ProcessusUseCase {
             Processus v = precedente.orElseThrow();
             v.retirer(appelant.id(), "Remplacée par la version " + p.getVersion(), le);
             processus.saveAndFlush(v);
-            consigner(v, appelant.id(), ActionProcessus.RETIRE, "Remplacée par la version " + p.getVersion(), le);
+            consigner(v, appelant.id(), ActionProcessus.RETIRE, "Remplacée par la version " + p.getVersion() + titre(appelant, p), le);
             retiree = v.getId();
         }
         p.publier(appelant.id(), m, !levables.isEmpty(), le);
@@ -222,7 +233,7 @@ public class ProcessusService implements ProcessusUseCase {
             p,
             appelant.id(),
             ActionProcessus.PUBLIE,
-            "Version " + p.getVersion() + " publiée" + (m == null ? "" : " : " + m) + (levables.isEmpty() ? "" : " (" + levables.size() + " avertissement(s) levé(s))"),
+            "Version " + p.getVersion() + " publiée" + (m == null ? "" : " : " + m) + (levables.isEmpty() ? "" : " (" + levables.size() + " avertissement(s) levé(s))") + titre(appelant, p),
             le
         );
         outbox.publish(
@@ -244,7 +255,7 @@ public class ProcessusService implements ProcessusUseCase {
         Instant le = horloge.instant();
         Processus v = p.nouvelleVersion(processus.derniereVersion(p.getCode()) + 1, appelant.id(), le);
         processus.saveAndFlush(v);
-        consigner(v, appelant.id(), ActionProcessus.VERSION_CREEE, "Brouillon v" + v.getVersion() + " depuis la version " + p.getVersion(), le);
+        consigner(v, appelant.id(), ActionProcessus.VERSION_CREEE, "Brouillon v" + v.getVersion() + " depuis la version " + p.getVersion() + titre(appelant, p), le);
         return lu(appelant, v);
     }
 
@@ -256,8 +267,19 @@ public class ProcessusService implements ProcessusUseCase {
         Instant le = horloge.instant();
         p.retirer(appelant.id(), m, le);
         processus.save(p);
-        consigner(p, appelant.id(), ActionProcessus.RETIRE, "Version " + p.getVersion() + " retirée : " + m, le);
+        consigner(p, appelant.id(), ActionProcessus.RETIRE, "Version " + p.getVersion() + " retirée : " + m + titre(appelant, p), le);
         return lu(appelant, p);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Candidats candidats(Appelant appelant, String unite, String profil) {
+        String u = SaisieProcessus.unite("unite", unite);
+        String p = profil == null || profil.isBlank() ? null : SaisieProcessus.profil("profil", profil);
+        if (equipes.membresUnite(u, null).isEmpty()) {
+            throw PilotageException.regle("PIL_PROCESSUS_UNITE_INCONNUE", "Unité inconnue", Map.of("unite", u));
+        }
+        return resolution.candidats(u, p);
     }
 
     // ------------------------------------------------------------------ contrôle de publication (§1)
@@ -301,6 +323,11 @@ public class ProcessusService implements ProcessusUseCase {
         return cache.computeIfAbsent(unite + "|" + profil, k -> equipes.membresUnite(unite, profil));
     }
 
+    /**
+     * Couverture d'un profil exigé (désignation hors de l'unité) : porteurs actifs dans l'unité, sinon ailleurs dans le
+     * GIMAC (simple information COUVERTURE_HORS_UNITE, avec leur nombre et leurs unités), sinon nulle part
+     * (COUVERTURE_PROFIL, levable par motif).
+     */
     private void profil(Map<String, Optional<UniteMembres>> cache, List<Anomalie> a, ControleProcessus.Role r, String unite, String profil, String element) {
         Optional<UniteMembres> u = membres(cache, unite, profil);
         if (u.isEmpty()) {
@@ -309,7 +336,15 @@ public class ProcessusService implements ProcessusUseCase {
         if (!u.orElseThrow().profilConnu()) {
             a.add(Anomalie.bloquante("PROFIL_INCONNU", r.etape(), element, "Profil inconnu : " + profil));
         } else if (u.orElseThrow().actifs().isEmpty()) {
-            a.add(Anomalie.levable("COUVERTURE_PROFIL", r.etape(), element, "Aucune personne active ne porte le profil " + profil + " dans l'unité " + unite));
+            List<MembreProfil> ailleurs = equipes.porteursActifs(profil);
+            String absent = "Aucune personne active ne porte le profil " + profil + " dans l'unité " + unite;
+            if (ailleurs.isEmpty()) {
+                a.add(Anomalie.levable("COUVERTURE_PROFIL", r.etape(), element, absent + " ni ailleurs dans le GIMAC"));
+            } else {
+                String suite = ailleurs.size() == 1 ? " porteur ailleurs dans le GIMAC (" + ResolutionIntervenants.repartition(ailleurs) + ") : l'étape lui sera confiée"
+                    : " porteurs ailleurs dans le GIMAC (" + ResolutionIntervenants.repartition(ailleurs) + ") : l'étape leur sera offerte";
+                a.add(Anomalie.avertissement("COUVERTURE_HORS_UNITE", r.etape(), element, absent + " ; " + ailleurs.size() + suite));
+            }
         }
     }
 
@@ -335,10 +370,11 @@ public class ProcessusService implements ProcessusUseCase {
             .filter(v -> v.getEtat() != EtatProcessus.BROUILLON || acces.definit(appelant, v.getUnite()))
             .map(v -> new VersionResume(v.getId(), v.getVersion(), v.getEtat().name()))
             .toList();
+        // Version publiée : informations (personne partie, profil porté seulement hors de l'unité).
         List<Anomalie> avertissements = List.of();
         if (p.getEtat() == EtatProcessus.PUBLIEE) {
             try {
-                avertissements = anomaliesPersonnes(p);
+                avertissements = anomalies(p).stream().filter(x -> x.gravite() == GraviteAnomalie.AVERTISSEMENT).toList();
             } catch (PilotageException e) {
                 // Annuaire injoignable : la définition reste lisible, sans avertissement.
                 avertissements = List.of();
@@ -352,20 +388,10 @@ public class ProcessusService implements ProcessusUseCase {
         return new ProcessusLu(p, noms, droits(p, acces.definit(appelant, p.getUnite()), acces.lance(appelant, p.getUnite())), versions, avertissements, h);
     }
 
-    /** Personnes nommées parties d'une version publiée : « personne partie, remplacement par profil ». */
-    private List<Anomalie> anomaliesPersonnes(Processus p) {
-        List<Anomalie> a = new ArrayList<>();
-        for (ControleProcessus.Role r : ControleProcessus.roles(p.getEtapes())) {
-            if (r.intervenant() != null && r.intervenant().mode() == ModeIntervenant.PERSONNE && r.intervenant().personneId() != null) {
-                personne(a, r, r.intervenant().personneId(), false);
-            }
-        }
-        return a;
-    }
-
     private static Droits droits(Processus p, boolean definit, boolean lance) {
         boolean brouillon = p.getEtat() == EtatProcessus.BROUILLON;
-        return new Droits(definit && brouillon, definit && brouillon, lance && p.getEtat() == EtatProcessus.PUBLIEE, definit && p.getEtat() == EtatProcessus.PUBLIEE);
+        boolean publiee = p.getEtat() == EtatProcessus.PUBLIEE;
+        return new Droits(definit && brouillon, definit && brouillon, lance && publiee, definit && publiee, definit && brouillon, definit && !brouillon);
     }
 
     private void decrire(Processus p, ProcessusSaisie s, Appelant appelant, Instant le) {
@@ -385,12 +411,17 @@ public class ProcessusService implements ProcessusUseCase {
 
     private void exigerDefinition(Appelant appelant, Processus p) {
         if (!acces.definit(appelant, p.getUnite())) {
-            throw AccesProcessus.interdit("Définir les processus de l'unité exige PROCESSUS_DEFINIR couvrant l'unité");
+            throw AccesProcessus.interdit("Définir les processus de l'unité exige PROCESSUS_DEFINIR couvrant l'unité ou REF_METIER_ADMIN");
         }
     }
 
     Processus trouver(UUID id) {
         return processus.findById(id).orElseThrow(() -> PilotageException.introuvable("PIL_PROCESSUS_INTROUVABLE", id));
+    }
+
+    /** Droit utilisé quand la règle de l'unité ne suffit pas (D-92 : REF_METIER_ADMIN, portée TOUTES, administration). */
+    private String titre(Appelant appelant, Processus p) {
+        return acces.mention(appelant, p.getUnite(), AccesProcessus.Acte.DEFINIR);
     }
 
     private void consigner(Processus p, String acteur, ActionProcessus action, String detail, Instant le) {

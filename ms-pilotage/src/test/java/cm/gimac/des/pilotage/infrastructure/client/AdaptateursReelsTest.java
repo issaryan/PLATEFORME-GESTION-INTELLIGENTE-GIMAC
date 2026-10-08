@@ -109,6 +109,30 @@ class AdaptateursReelsTest {
     }
 
     @Test
+    @DisplayName("D-94 : porteurs d'une permission lus par permission (internes actifs), servis par le cache, vidés par rafraîchir, 503")
+    void porteursPermission() {
+        serveur
+            .expect(requestTo(IAM + "/api/v1/interne/collaborateurs?permission=HOM_TEST"))
+            .andExpect(header("Authorization", "Bearer jeton-de-service"))
+            .andRespond(
+                withSuccess(
+                    "[{\"id\":\"a1\",\"nomAffiche\":\"Serge\",\"profils\":[\"P1\"],\"actif\":true}," +
+                    "{\"id\":\"e1\",\"nomAffiche\":\"Externe\",\"profils\":[],\"institutionId\":\"i1\",\"actif\":true}," +
+                    "{\"id\":\"d1\",\"nomAffiche\":\"Parti\",\"profils\":[],\"actif\":false}]",
+                    MediaType.APPLICATION_JSON
+                )
+            );
+        serveur.expect(requestTo(IAM + "/api/v1/interne/collaborateurs?permission=HOM_TEST")).andRespond(withServerError());
+        IamOrganisationAdapter iam = new IamOrganisationAdapter(builder, jeton, IAM, 60);
+        assertThat(iam.porteursPermission("HOM_TEST")).extracting(OrganisationPort.MembreProfil::id).containsExactly("a1");
+        assertThat(iam.porteursPermission("HOM_TEST")).hasSize(1);
+        assertThat(iam.porteursPermission(" ")).isEmpty();
+        iam.rafraichir();
+        assertThatThrownBy(() -> iam.porteursPermission("HOM_TEST")).isInstanceOfSatisfying(PilotageException.class, e -> assertThat(e.code()).isEqualTo("PIL_ORGANISATION_INDISPONIBLE"));
+        serveur.verify();
+    }
+
+    @Test
     @DisplayName("D-81 : pouvoirs et périmètre lus avec le jeton de service, action ou portée inconnue ignorée, cache, 503")
     void pouvoirs() {
         serveur
@@ -116,7 +140,7 @@ class AdaptateursReelsTest {
             .andExpect(header("Authorization", "Bearer jeton-de-service"))
             .andRespond(
                 withSuccess(
-                    "{\"actions\":{\"TACHE_CONFIER\":\"UNITES\",\"ACTIVITE_LIRE\":\"EQUIPE\",\"INCONNUE\":\"UNITES\",\"TACHE_SUIVRE\":\"BIZARRE\"}," +
+                    "{\"actions\":{\"TACHE_CONFIER\":\"UNITES\",\"ACTIVITE_LIRE\":\"EQUIPE\",\"INCONNUE\":\"UNITES\",\"TACHE_SUIVRE\":\"BIZARRE\",\"PROCESSUS_DEFINIR\":\"TOUTES\",\"RATTACHEMENT_MODIFIER\":\"toutes\"}," +
                     "\"profilsDemandables\":[\"ROLE_COLLABORATEUR\"],\"subordonnes\":[{\"id\":\"a1\",\"nomAffiche\":\"Serge\",\"unite\":\"POLE_RESEAU\",\"responsableId\":\"c1\",\"niveau\":1,\"actif\":true}]," +
                     "\"unitesDirigees\":[\"PROD_INFO\",\"POLE_RESEAU\"]}",
                     MediaType.APPLICATION_JSON
@@ -141,6 +165,11 @@ class AdaptateursReelsTest {
         assertThat(p.portee(Pouvoir.ACTIVITE_LIRE)).isEqualTo(Portee.EQUIPE);
         assertThat(p.portee(Pouvoir.TACHE_SUIVRE)).isEqualTo(Portee.AUCUNE);
         assertThat(p.portee(Pouvoir.RAPPORT_VISER)).isEqualTo(Portee.AUCUNE);
+        // D-92 : portée TOUTES lue pour PROCESSUS_DEFINIR ; ailleurs (non admise), ramenée à UNITES.
+        assertThat(p.portee(Pouvoir.PROCESSUS_DEFINIR)).isEqualTo(Portee.TOUTES);
+        assertThat(p.toutes(Pouvoir.PROCESSUS_DEFINIR)).isTrue();
+        assertThat(p.portee(Pouvoir.RATTACHEMENT_MODIFIER)).isEqualTo(Portee.UNITES);
+        assertThat(p.toutes(Pouvoir.PROCESSUS_LANCER)).isFalse();
         assertThat(p.profilsDemandables()).containsExactly("ROLE_COLLABORATEUR");
         assertThat(p.subordonnes()).singleElement().satisfies(m -> assertThat(m.id()).isEqualTo("a1"));
         assertThat(p.dirige("POLE_RESEAU")).isTrue();

@@ -66,6 +66,9 @@ export default function TachesPage() {
           <button type="button" className="gm-link" style={{ background: 'none', border: 0, padding: 0, font: 'inherit', textAlign: 'left', cursor: 'pointer' }} onClick={() => aller({ tache: x.id })}>{x.titre}</button>
           {x.origine.type !== 'INTERNE' ? <span className="gm-field-help">{t(`act.tache.origine.${x.origine.type}`)}{x.origine.reference ? ` · ${x.origine.reference}` : ''}</span> : null}
           {x.profilRequis ? <span className="gm-field-help">{t('proc.tache.profilRequisDe', { profil: t(`compte.profil.${x.profilRequis}`, { defaultValue: x.profilRequis }) })}</span> : null}
+          {/* Tâche offerte par permission ou par profils (§8.8) : libellés lisibles des permissions et profils requis. */}
+          {x.permissionsRequises?.length ? <span className="gm-field-help">{t('pvr.tache.permissionsRequises', { liste: x.permissionsRequises.map((p) => t(`droits.permission.${p}`, { defaultValue: p })).join(', ') })}</span> : null}
+          {x.profilsRequis?.length ? <span className="gm-field-help">{t('pvr.tache.profilsRequis', { liste: x.profilsRequis.map((p) => t(`compte.profil.${p}`, { defaultValue: p })).join(', ') })}</span> : null}
         </span>
       ),
     },
@@ -85,7 +88,7 @@ export default function TachesPage() {
           </span>
         ),
       },
-    ...(vue === 'unite' ? [{ key: 'unite', header: t('pvr.tache.unite'), render: (x: Tache) => libelleUnite(x.uniteCible) }] : []),
+    ...(vue === 'unite' ? [{ key: 'unite', header: t('pvr.tache.unite'), render: (x: Tache) => (x.uniteCible ? libelleUnite(x.uniteCible) : t('pvr.tache.offreFonction')) }] : []),
   ]
   return (
     <div className="gm-col">

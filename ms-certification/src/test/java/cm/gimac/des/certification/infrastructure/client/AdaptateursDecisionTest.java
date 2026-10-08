@@ -83,7 +83,8 @@ class AdaptateursDecisionTest {
             {"liaisonId":"%s","reference":"LIA-2026-041","institutionId":"INST-0042","institutionNom":"Banque A",
              "typeProjet":"PAIEMENT_MOBILE","fintech":true,"statut":"EN_TEST",
              "couvertureCertification":{"taux":100,"numerateur":3,"denominateur":3},"couvertureConstatee":true,
-             "servicesCouverts":["CASH_IN","CASH_OUT","PAIEMENT"],"conducteurId":"c1","conducteurNom":"Conducteur"}""".formatted(LIAISON);
+             "servicesCouverts":["CASH_IN","CASH_OUT","PAIEMENT"],"conducteurId":"c1","conducteurNom":"Conducteur",
+             "modeleTypeProjet":"PAIEMENT_MOBILE","attestationsExigees":["ISO_27001","GSMA","COBAC"]}""".formatted(LIAISON);
         serveur.expect(requestTo(uri)).andExpect(header("Authorization", "Bearer jeton-service")).andRespond(withSuccess(corps, MediaType.APPLICATION_JSON));
         serveur.expect(requestTo(uri)).andRespond(withSuccess("{\"liaisonId\":\"" + LIAISON + "\"}", MediaType.APPLICATION_JSON));
         serveur.expect(requestTo(uri)).andRespond(withSuccess("{\"liaisonId\":\"" + LIAISON + "\",\"couvertureCertification\":{\"taux\":50}}", MediaType.APPLICATION_JSON));
@@ -94,10 +95,14 @@ class AdaptateursDecisionTest {
         assertThat(c.couvertureConstatee()).isTrue();
         assertThat(c.couvertureCertification()).isEqualTo(new Couverture(100, 3, 3));
         assertThat(c.servicesCouverts()).containsExactly("CASH_IN", "CASH_OUT", "PAIEMENT");
+        assertThat(c.modele()).isEqualTo("PAIEMENT_MOBILE");
+        assertThat(c.attestationsExigees()).containsExactly("ISO_27001", "GSMA", "COBAC");
         ContexteCertification vide = a.contexte(LIAISON).orElseThrow();
         assertThat(vide.fintech()).isFalse();
         assertThat(vide.couvertureCertification()).isEqualTo(new Couverture(null, 0, 0));
         assertThat(vide.servicesCouverts()).isEmpty();
+        assertThat(vide.modeleTypeProjet()).isNull();
+        assertThat(vide.attestationsExigees()).isNull();
         assertThat(a.contexte(LIAISON).orElseThrow().couvertureCertification()).isEqualTo(new Couverture(50, 0, 0));
         assertThat(a.contexte(LIAISON)).isEmpty();
         indisponible(() -> a.contexte(LIAISON), "CER_HOMOLOGATION_UNAVAILABLE");

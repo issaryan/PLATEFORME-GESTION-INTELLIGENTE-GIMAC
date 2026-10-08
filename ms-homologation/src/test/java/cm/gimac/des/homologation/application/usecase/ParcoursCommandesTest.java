@@ -64,7 +64,8 @@ class ParcoursCommandesTest {
     static final Instant T = Instant.parse("2026-10-06T09:00:00Z");
     static final LocalDate J = LocalDate.parse("2026-10-06");
     static final String SHA = "e".repeat(64);
-    static final Acteur ACTEUR = new Acteur(UUID.randomUUID(), "Conducteur de projet 1", Set.of(), null);
+    /** Conducteur de la liaison (D-93 §2 : il dépose pour toute opération et tient V quand R n'est pas le conducteur). */
+    static final Acteur ACTEUR = new Acteur(cm.gimac.des.homologation.domain.parcours.ParcoursSamples.CONDUCTEUR, "Conducteur de projet 1", Set.of(), null);
 
     @Mock
     ParcoursDepot depot;
@@ -137,7 +138,7 @@ class ParcoursCommandesTest {
         refus(() -> commandes.deposerLivrable(o3, piece(), ACTEUR), "HOM_DOCUMENT_UNKNOWN");
         refus(() -> commandes.deposerLivrable(o3, piece(), ACTEUR), "HOM_DOCUMENT_HASH_MISMATCH");
         Piece d = piece();
-        commandes.deposerLivrable(o3, d, new Acteur(null, " ", Set.of(), null));
+        commandes.deposerLivrable(o3, d, new Acteur(ACTEUR.id(), " ", Set.of(), null));
         assertThat(op("3").getPreuve().documentRef()).isEqualTo(d.documentId().toString());
         assertThat(op("3").getPreuve().deposePar()).isEqualTo("Titulaire DDRM");
         refus(() -> commandes.deposerLivrable(o3, piece(), ACTEUR), "HOM_OPERATION_NOT_OPEN");

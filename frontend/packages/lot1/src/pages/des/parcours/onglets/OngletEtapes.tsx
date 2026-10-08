@@ -10,6 +10,8 @@ import { Donnees } from '../../liaisons/communs'
 import { Echeance, Jour, tonEtape, useRetour, Valeur } from '../communs'
 import { DialogueLivrable } from '../DialogueLivrable'
 import { libelleOperation } from '../../../../adaptateurs/modelisateur'
+import { preuveAttendue } from '../operations/Detail'
+import '../parcours-d93.css'
 
 // Onglet « Étapes » du dossier (CR §7.1, D-59) : les dix étapes du parcours et le verrou « approbation
 // de la sécurité », chacune avec ses six éléments (responsable, actions, livrables, validation, preuve,
@@ -34,9 +36,10 @@ function DetailElement({ etape, element }: { etape: EtapeParcours; element: Elem
       return etape.livrables.length ? (
         <ul className="gm-col" style={{ gap: 'var(--gm-space-1)', listStyle: 'none', margin: 0, padding: 0 }}>
           {etape.livrables.map((l) => (
-            <li key={l.libelleKey} className="gm-row" style={{ gap: 'var(--gm-space-2)' }}>
+            <li key={`${l.operation ?? ''}${l.code ?? ''}${l.libelleKey ?? l.libelle}`} className="gm-row" style={{ gap: 'var(--gm-space-2)' }}>
               <StatusBadge status={l.fourni ? 'ok' : 'neutral'} label={t(l.fourni ? 'parcoursEtapes.fourni' : 'parcoursEtapes.attendu')} />
-              <span>{t(l.libelleKey)}</span>
+              {/* Libellé servi (D-93) ; clé de traduction seulement pour les étapes 1 et 2. */}
+              <span>{l.libelle ?? (l.libelleKey ? t(l.libelleKey) : '')}</span>
             </li>
           ))}
         </ul>
@@ -70,7 +73,7 @@ function OperationsConduite({ dossier, etape }: { dossier: DossierLiaison; etape
       render: (o) => (
         <span className="gm-col" style={{ gap: 0 }}>
           <span>{libelleOperation(t, o)}</span>
-          <span className="gm-field-help">{t(`parcours.preuveAttendue.${o.rang}`)}</span>
+          <span className="gm-field-help">{preuveAttendue(o, t)}</span>
         </span>
       ),
     },
@@ -100,12 +103,33 @@ function OperationsConduite({ dossier, etape }: { dossier: DossierLiaison; etape
           onFermer={() => setDepot(null)}
           onDepose={() => {
             setDepot(null)
-            annoncer(t('parcoursLivrable.fait', { operation: t(`parcours.op.${depot.rang}`) }))
+            annoncer(t('parcoursLivrable.fait', { operation: libelleOperation(t, depot) }))
           }}
         />
       ) : null}
       {retour}
     </Card>
+  )
+}
+
+/** Étapes réelles de la version du référentiel de la liaison (D-93) : libellé et couleur configurés, avancement servi. */
+function EtapesVersion({ dossier }: { dossier: DossierLiaison }) {
+  const { t } = useTranslation()
+  const l = [...(dossier.etapesVersion ?? [])].sort((a, b) => a.ordre - b.ordre)
+  if (!l.length) return null
+  return (
+    <section aria-labelledby={`etv-${dossier.id}`} className="gm-col" style={{ gap: 'var(--gm-space-2)' }}>
+      <h3 id={`etv-${dossier.id}`} className="gm-type-h3" style={{ margin: 0 }}>{t('parcoursEtapes.version.titre')}</h3>
+      <ol className="gm-etapes-version">
+        {l.map((e) => (
+          <li key={e.code} className="gm-etape-version" style={e.jeton ? { borderLeftColor: `var(${e.jeton})` } : undefined}>
+            <span className="gm-type-body-strong">{e.libelle}</span>
+            <StatusBadge status={tonEtape[e.etat]} label={t(`parcours.etatEtape.${e.etat}`)} />
+            <span className="gm-field-help">{t('parcoursEtapes.actions', { n: e.actionsFaites, total: e.actionsTotal })}</span>
+          </li>
+        ))}
+      </ol>
+    </section>
   )
 }
 
@@ -129,6 +153,7 @@ export function OngletEtapes({ dossier, onAffecter }: { dossier: DossierLiaison;
   ]
   return (
     <div className="gm-col">
+      <EtapesVersion dossier={dossier} />
       <DataTable
         columns={colonnes}
         rows={dossier.etapes}
@@ -158,7 +183,7 @@ export function OngletEtapes({ dossier, onAffecter }: { dossier: DossierLiaison;
           />
           {choisie.code === 'LANCEMENT' && onAffecter ? (
             <InlineAlert level="warn" title={t('parcoursAffectation.attendue')} action={<Button size="sm" variant="primary" icon="users" onClick={onAffecter}>{t('parcoursAffectation.titre')}</Button>}>
-              {t('parcours.preuveAttendue.6')}
+              {t('parcoursAffectation.attendueTexte')}
             </InlineAlert>
           ) : null}
           {!CONDUITE.includes(choisie.code) && choisie.code !== 'APPROBATION_SECURITE' && choisie.actionsTotal > 0 ? (

@@ -98,11 +98,11 @@ describe('Ma journée', () => {
     fireEvent.click(within(d).getByRole('button', { name: 'Préremplir à partir de mes activités' }))
     await waitFor(() => expect((within(d).getByLabelText(/Contenu du rapport/) as HTMLTextAreaElement).value).toContain('## Réalisé'))
     fireEvent.click(within(d).getByRole('button', { name: 'Enregistrer et soumettre' }))
-    expect(await screen.findByText('Rapport soumis à votre responsable.')).toBeTruthy()
+    expect(await screen.findByText(/^Rapport remis à .+ \(votre n\+1\)\.$/)).toBeTruthy()
     expect(await screen.findByText('Votre rapport est soumis à votre responsable.')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Ouvrir mon rapport' }))
     const c = await dialogue(/Rapport quotidien de Nadège Mvondo Assiga/)
-    expect(await within(c).findByText('Gaston Ndzana Ebode')).toBeTruthy()
+    expect(await within(c).findByText('Gaston Ndzana Ebode (votre n+1)')).toBeTruthy()
     expect(within(c).getByRole('heading', { name: 'Réalisé' })).toBeTruthy()
   })
 

@@ -157,7 +157,8 @@ exigent un motif. Le responsable fait les transitions ; le créateur peut annule
 | POST | `/rapports/preremplissage` | `{ "type", "periode" }` → `{ "contenu": "…markdown…" }`, rien n'est enregistré |
 | POST | `/rapports` | créer un brouillon (201) ; un seul rapport par (auteur, type, période) : sinon 409 `PIL_RAPPORT_EXISTANT` |
 | PUT | `/rapports/{id}` | modifier le brouillon |
-| POST | `/rapports/{id}/soumission` | soumettre au destinataire (n+1 au moment de la soumission) |
+| GET | `/rapports/{id}/destinataires` | destinataire qui recevra le rapport s'il est soumis maintenant, motif et choix possibles (auteur seul) |
+| POST | `/rapports/{id}/soumission` | `{ "destinataireId"? }` : soumettre au destinataire résolu, ou choisi dans la chaîne hiérarchique (voir « Destinataire du rapport ») |
 | POST | `/rapports/{id}/visa` | `{ "commentaire": "…" }` (destinataire seul, ou chaîne hiérarchique avec `PIL_TEAM_READ`) |
 | GET | `/rapports/{id}/document` | flux du document joint (auteur, destinataire, chaîne) |
 
@@ -166,8 +167,9 @@ exigent un motif. Le responsable fait les transitions ; le créateur peut annule
   "mode": "PREREMPLI" | "REDIGE" | "DOCUMENT",
   "contenu": "…markdown, 20 000 caractères au plus…" | null,
   "document": { "ticket": "…", "nom": "rapport.pdf", "typeMime": "application/pdf", "taille": 123456 } | null,
-  "etat": "BROUILLON" | "SOUMIS" | "VISE",
+  "etat": "BROUILLON" | "SOUMIS" | "VISE" | "DEPOSE",
   "auteur": { "id", "nomAffiche" }, "destinataire": { "id", "nomAffiche" } | null,
+  "destinataireMotif": "N_PLUS_UN" | "CHEF_UNITE" | "CHEF_UNITE_PARENTE" | "CHOISI" | null,
   "soumisLe": null, "viseLe": null, "visa": { "par": { "id", "nomAffiche" }, "commentaire": "…" } | null,
   "indicateurs": { "activitesFaites": 4, "activitesPrevues": 6, "minutes": 380, "tachesTerminees": 2 } }
 ```
@@ -175,13 +177,58 @@ Modes : **PREREMPLI** (contenu proposé par le service à partir des activités 
 librement modifié), **REDIGE** (texte libre), **DOCUMENT** (fichier déposé dans MS-DOCUMENT par la voie des
 dépôts fragmentés, `docs/lot1/depots-fragmentes.md`, finalité `RAPPORT_ACTIVITE`, référence = identifiant
 du rapport ; le ticket est vérifié auprès de MS-DOCUMENT avec le jeton du client `pilotage-service`). Un mode
-DOCUMENT peut porter aussi un texte d'accompagnement. Soumission sans destinataire (aucun n+1) : 422
-`PIL_SANS_RESPONSABLE`. Un rapport SOUMIS n'est plus modifiable ; VISE est final. Période future : 422
-`PIL_PERIODE_FUTURE`.
+DOCUMENT peut porter aussi un texte d'accompagnement. Un rapport SOUMIS n'est plus modifiable ; VISE est final ;
+DEPOSE (aucun destinataire) est final, sans visa. Période future : 422 `PIL_PERIODE_FUTURE` ; rapport sans texte ni
+document : 422 `PIL_RAPPORT_INCOMPLET` (l'interface traduit le code et affiche le détail rendu par le service).
 
 Contenu prérempli (quotidien) : titre, « Réalisé » (activités FAITE avec durée), « En cours », « Reporté »,
 « Tâches terminées », « Prévu demain » (activités du jour ouvré suivant) ; hebdomadaire : les mêmes rubriques
 regroupées par jour, plus le total des heures.
+
+#### Destinataire du rapport (08/10/2026)
+
+Signalement : un compte sans n+1 ne pouvait pas soumettre (422 `PIL_SANS_RESPONSABLE`, sans explication à
+l'écran). Le destinataire est désormais **résolu à la soumission**, dans cet ordre :
+
+1. le n+1 du rattachement (MS-IAM) s'il est un compte interne actif : motif `N_PLUS_UN` ;
+2. sinon le chef de l'unité de l'auteur, si ce n'est pas l'auteur lui-même : `CHEF_UNITE` ;
+3. sinon le chef d'une unité parente, en remontant l'organigramme (chemin des unités de MS-IAM) jusqu'au premier chef
+   actif différent de l'auteur : `CHEF_UNITE_PARENTE`.
+
+Chaque rapport garde ce motif (`destinataireMotif`, colonne `rapport.destinataire_motif`, changelog
+`20261008120000_pil_rapports_destinataire.xml` ; les rapports déjà soumis prennent `N_PLUS_UN`), et
+`pilotage.report-submitted.v1` le porte (champ `destinataireMotif`, ajouté en fin de charge).
+
+**Choix de l'auteur** : `POST /rapports/{id}/soumission` accepte `{ "destinataireId" }` facultatif, pris dans sa
+chaîne hiérarchique : n+1 actif, chefs actifs des unités de son chemin (de la sienne vers le sommet), puis les autres
+responsables actifs de la chaîne des responsables ; motif `CHOISI` (ou le motif d'origine si l'auteur garde le
+destinataire trouvé d'office). Hors de cette chaîne : 422 `PIL_DESTINATAIRE_INVALIDE` (`details.destinataireId`).
+
+**Sommet de l'organisation** (aucun responsable nulle part : directeur général, compte sans unité ni n+1) : la
+soumission n'échoue plus ; le rapport passe à l'état **DEPOSE**, final, sans destinataire ni visa (409
+`PIL_TRANSITION_INTERDITE` au visa). Choix documenté : aucune permission de lecture de tous les rapports n'existe dans
+le domaine ; un rapport déposé est lisible de son auteur et, par la règle commune de lecture (`PIL_TEAM_READ` et portée
+`RAPPORT_VISER` couvrant l'auteur), du responsable qui lui sera rattaché plus tard ; il figure alors dans sa vue
+`recus`. Aucun nom de profil n'est codé.
+
+**Lecture avant la soumission** : `GET /rapports/{id}/destinataires` (auteur seul, sinon 403 ; passerelle et OPA :
+même règle que les autres routes de rapports, `PIL_ACTIVITY_OWN`) :
+
+```jsonc
+{ "destinataire": { "id", "nomAffiche" } | null,     // nul : le rapport sera déposé
+  "motif": "N_PLUS_UN" | "CHEF_UNITE" | "CHEF_UNITE_PARENTE" | null,
+  "depot": false,
+  "choix": [ { "id", "nomAffiche", "lien": "N_PLUS_UN" | "CHEF_UNITE" | "CHEF_UNITE_PARENTE" | "CHAINE", "unite": "DES" | null } ] }
+```
+
+Interface (écran des rapports) : à l'ouverture d'un brouillon, « Sera remis à : … (votre n+1, chef de votre unité,
+chef d'une unité au-dessus de la vôtre, choisi par vous) » et la liste « Remettre à » de la chaîne hiérarchique ; au
+sommet, « Personne n'est au-dessus de vous dans l'organisation : le rapport sera déposé ». Après la soumission :
+« Rapport remis à … (motif) » ou « Rapport déposé ». Tout refus (422 `PIL_DESTINATAIRE_INVALIDE`,
+`PIL_RAPPORT_INCOMPLET`, `PIL_PERIODE_FUTURE`) est affiché avec son message traduit et le détail du service ; l'état
+DEPOSE a son badge (« Déposé ») et son libellé dans « Ma journée ». Service simulé aligné. Tests : `RapportTest`,
+`RapportDestinataireIT`, `RapportIT`, tests du service simulé et de l'écran, E2E `rapports-destinataire`,
+`mon-activite`, `departement-passerelle-activite`.
 
 ### 2.5 Équipe
 

@@ -75,13 +75,13 @@ for (const theme of ['light', 'dark'] as const) {
       await expect(d.getByLabel(/Contenu du rapport/)).toHaveValue(/## Réalisé[\s\S]*Configurer le VPN du participant/)
       await capturer(page, `mon-activite-rapport-${suffixe(theme)}`)
       await d.getByRole('button', { name: 'Enregistrer et soumettre' }).click()
-      await expect(toast(page, 'Rapport soumis à votre responsable.')).toBeVisible()
+      await expect(toast(page, 'Rapport remis à Gaston Ndzana Ebode (votre n+1).')).toBeVisible()
       await expect(page.getByText('Votre rapport est soumis à votre responsable.')).toBeVisible()
     })
     await test.step('Alors son rapport se relit, rendu, avec son destinataire', async () => {
       await page.getByRole('button', { name: 'Ouvrir mon rapport' }).click()
       const c = page.getByRole('dialog', { name: /Rapport quotidien de Nadège Mvondo Assiga/ })
-      await expect(c.getByText('Gaston Ndzana Ebode')).toBeVisible()
+      await expect(c.getByText('Gaston Ndzana Ebode (votre n+1)')).toBeVisible()
       await expect(c.getByRole('heading', { name: 'Réalisé' })).toBeVisible()
       await c.getByRole('button', { name: 'Fermer' }).last().click()
       await page.getByRole('button', { name: 'Jour suivant' }).click()
@@ -192,7 +192,7 @@ test('Scénario : le collaborateur mène ses tâches et dépose un rapport hebdo
   const e = page.getByRole('dialog', { name: 'Modifier le brouillon' })
   await e.getByLabel(/Texte d’accompagnement/).fill('Rapport de la semaine, signé et complété.')
   await e.getByRole('button', { name: 'Enregistrer et soumettre' }).click()
-  await expect(toast(page, 'Rapport soumis à votre responsable.')).toBeVisible()
+  await expect(toast(page, 'Rapport remis à Gaston Ndzana Ebode (votre n+1).')).toBeVisible()
 })
 
 for (const theme of ['light', 'dark'] as const) {

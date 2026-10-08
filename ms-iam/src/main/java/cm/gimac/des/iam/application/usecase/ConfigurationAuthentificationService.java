@@ -91,7 +91,7 @@ public class ConfigurationAuthentificationService {
         ChiffrementSecrets chiffrement,
         Clock clock
     ) {
-        this(annuaire, journal, parametres, chiffrement, clock, CatalogueProfils.configuration(proprietes), null, null);
+        this(annuaire, journal, parametres, chiffrement, clock, CatalogueProfils.configuration(proprietes, annuaire), null, null);
     }
 
     @Transactional(readOnly = true)
@@ -165,7 +165,9 @@ public class ConfigurationAuthentificationService {
     /**
      * Recompose un profil ; modifier un profil privilégié exige le droit d'octroi privilégié. Profil créé
      * (D-81 §5) : mêmes règles qu'à sa création (aucune permission INTERNAL_*, permissions communes
-     * gardées, privilégié s'il porte une permission IAM_* ou PLATFORM_*).
+     * gardées, privilégié s'il porte une permission IAM_* ou PLATFORM_*). D-94 : retirer IAM_ROLE_PRIVILEGED_GRANT
+     * d'une composition qui laisserait la plateforme sans compte actif portant cette permission est refusé (409
+     * IAM_LAST_SUPER_ADMIN), quel que soit le nom du profil.
      */
     public Profil definirPermissions(Acteur acteur, String profil, Set<String> permissions, String motif) {
         ReglesAdministration.exigerMotif(motif);
@@ -187,12 +189,31 @@ public class ConfigurationAuthentificationService {
         if (!inconnues.isEmpty()) {
             throw IamException.invalide("IAM_PERMISSION_UNKNOWN", "Permission inconnue", Map.of("permissions", List.copyOf(inconnues)));
         }
+        // D-94 : une composition privilégiée (IAM_* ou PLATFORM_*) l'est pour tout profil, livré ou créé.
+        if (ReglesProfils.privilegie(permissions) && !acteur.peut(ReglesAdministration.OCTROI_PRIVILEGIE)) {
+            throw IamException.interdit("IAM_PRIVILEGED_PROFILE", "Un profil privilégié est réservé au super administrateur");
+        }
+        verifierOctroiConserve(profil, permissions);
         annuaire.definirPermissionsProfil(profil, permissions);
         if (presentations != null) {
             presentations.toucher(profil, clock.instant(), acteur.id(), acteur.nom());
         }
         journal.configuration(acteur, "PROFIL_" + profil, motif, List.copyOf(new TreeSet<>(permissions)));
         return profils().stream().filter(p -> p.code().equals(profil)).findFirst().orElseThrow();
+    }
+
+    /** La plateforme garde au moins un compte actif portant IAM_ROLE_PRIVILEGED_GRANT après la recomposition. */
+    private void verifierOctroiConserve(String profil, Set<String> permissions) {
+        Map<String, Set<String>> avant = catalogue.compositions();
+        if (!avant.getOrDefault(profil, Set.of()).contains(ReglesAdministration.OCTROI_PRIVILEGIE) || permissions.contains(ReglesAdministration.OCTROI_PRIVILEGIE)) {
+            return;
+        }
+        Map<String, Set<String>> apres = new java.util.HashMap<>(avant);
+        apres.put(profil, Set.copyOf(permissions));
+        long porteurs = catalogue.porteursActifsOctroiPrivilegie(apres);
+        if (porteurs == 0) {
+            ReglesAdministration.verifierDernierPorteurOctroi(true, 0);
+        }
     }
 
     static List<String> differences(PolitiqueSecurite a, PolitiqueSecurite b) {

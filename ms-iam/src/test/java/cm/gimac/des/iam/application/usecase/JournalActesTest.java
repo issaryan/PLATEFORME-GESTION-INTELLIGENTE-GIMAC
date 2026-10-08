@@ -107,4 +107,30 @@ class JournalActesTest {
         org.mockito.Mockito.verifyNoMoreInteractions(outbox);
         assertThat(new cm.gimac.des.iam.infrastructure.messaging.TopicResolver().topicFor("iam.request-submitted.v1")).isEqualTo("iam.request");
     }
+
+    @Test
+    @DisplayName("D-86 et D-94 : CONFIGURATION_PROFIL_MODIFIE et CONFIGURATION_FONCTIONNALITE_MODIFIEE (cible : le code ou la clé ; avant, après), événement de configuration")
+    void profilEtFonctionnalite() {
+        JournalActes j = new JournalActes(journal, outbox, Clock.fixed(T, ZoneOffset.UTC));
+        j.profil(RSSI, "ROLE_SNA", "Renommage", "libelle=A ; description=", "libelle=B ; description=");
+        j.fonctionnalite(RSSI, "liaisons", "x".repeat(1200), "ordre=110", "a".repeat(2100));
+        j.fonctionnalite(RSSI, "agenda", null, "visible=true", "visible=false");
+        ArgumentCaptor<JournalAdministration> e = ArgumentCaptor.forClass(JournalAdministration.class);
+        verify(journal, org.mockito.Mockito.times(3)).save(e.capture());
+        assertThat(e.getAllValues().get(0).getAction()).isEqualTo("CONFIGURATION_PROFIL_MODIFIE");
+        JournalAdministration f = e.getAllValues().get(1);
+        assertThat(f.getAction()).isEqualTo("CONFIGURATION_FONCTIONNALITE_MODIFIEE");
+        assertThat(f.getCibleLibelle()).isEqualTo("liaisons");
+        assertThat(f.getCibleId()).isNull();
+        assertThat(f.getMotif()).hasSize(1000);
+        assertThat(f.getDetails()).hasSize(2000).startsWith("avant: ordre=110, après: aaa");
+        assertThat(e.getAllValues().get(2).getMotif()).isNull();
+        assertThat(e.getAllValues().get(2).getDetails()).isEqualTo("avant: visible=true, après: visible=false");
+        verify(outbox).publish(
+            eq("configuration"),
+            eq("FONCTIONNALITE_MODIFIEE"),
+            eq(ConfigurationModifieePayload.TYPE),
+            eq(new ConfigurationModifieePayload("FONCTIONNALITE_MODIFIEE", "demo-rssi", null, List.of("agenda")))
+        );
+    }
 }

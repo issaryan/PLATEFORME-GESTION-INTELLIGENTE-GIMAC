@@ -83,6 +83,20 @@ public class JournalActes {
         outbox.publish("configuration", "PROFIL_MODIFIE", ConfigurationModifieePayload.TYPE, new ConfigurationModifieePayload("PROFIL_MODIFIE", acteur.id(), motif, List.of(code, "libelle", "description")));
     }
 
+    /**
+     * Fonctionnalité modifiée depuis la plateforme (D-94, docs/lot1/ecrans-par-configuration.md §2) : entrée
+     * CONFIGURATION_FONCTIONNALITE_MODIFIEE (cible : la clé ; détails : avant, après, champs modifiés seulement)
+     * et événement de configuration vers l'audit.
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void fonctionnalite(Acteur acteur, String cle, String motif, String avant, String apres) {
+        String details = tronquer("avant: " + avant + ", après: " + apres, 2000);
+        journal.save(
+            new JournalAdministration(clock.instant(), acteur.id(), acteur.nom(), "CONFIGURATION_FONCTIONNALITE_MODIFIEE", null, cle, motif == null ? null : tronquer(motif, 1000), details, CorrelationContext.current())
+        );
+        outbox.publish("configuration", "FONCTIONNALITE_MODIFIEE", ConfigurationModifieePayload.TYPE, new ConfigurationModifieePayload("FONCTIONNALITE_MODIFIEE", acteur.id(), motif, List.of(cle)));
+    }
+
     private static String tronquer(String s, int max) {
         return s.length() <= max ? s : s.substring(0, max);
     }

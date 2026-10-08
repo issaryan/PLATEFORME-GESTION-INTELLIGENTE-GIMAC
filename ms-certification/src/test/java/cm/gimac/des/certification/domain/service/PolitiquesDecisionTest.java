@@ -5,12 +5,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import cm.gimac.des.certification.domain.CertificationException;
 import cm.gimac.des.certification.domain.decision.ApprobationSecurite;
+import cm.gimac.des.certification.domain.decision.EtapeSignature;
 import cm.gimac.des.certification.domain.decision.ListeCodesConverter;
 import cm.gimac.des.certification.domain.enumeration.EtatApprobation;
 import cm.gimac.des.certification.domain.enumeration.EtatFicheChangement;
 import cm.gimac.des.certification.domain.enumeration.EtatProcesVerbal;
 import cm.gimac.des.certification.domain.enumeration.NatureVisa;
-import cm.gimac.des.certification.domain.enumeration.RoleSignature;
 import cm.gimac.des.certification.domain.enumeration.TypeAttestation;
 import java.time.Duration;
 import java.time.Instant;
@@ -37,38 +37,60 @@ class PolitiquesDecisionTest {
         PermissionsDecision.PORTAIL_DEPOSER
     );
 
-    @ParameterizedTest(name = "{0} {1} : {2}")
+    static final EtapeSignature GIMAC = new EtapeSignature("GIMAC", "GIMAC", "CHEF_DES", 1, false);
+    static final EtapeSignature PARTICIPANT = new EtapeSignature("PARTICIPANT", "Participant", "PARTICIPANT", 1, true);
+    static final List<EtapeSignature> PAR_DEFAUT = List.of(GIMAC, PARTICIPANT);
+
+    @ParameterizedTest(name = "{0} : {1}")
     @CsvSource(
         {
-            "ETABLI, GIMAC, SIGNE_GIMAC",
-            "SIGNE_PARTICIPANT, GIMAC, SIGNE",
-            "ETABLI, PARTICIPANT, SIGNE_PARTICIPANT",
-            "SIGNE_GIMAC, PARTICIPANT, SIGNE",
+            "'', ETABLI",
+            "GIMAC, SIGNE_GIMAC",
+            "PARTICIPANT, SIGNE_PARTICIPANT",
+            "GIMAC;PARTICIPANT, SIGNE",
         }
     )
-    @DisplayName("Signatures du procès-verbal dans un ordre quelconque")
-    void signatures(EtatProcesVerbal avant, RoleSignature role, EtatProcesVerbal apres) {
-        assertThat(ProcesVerbalPolicy.apresSignature(avant, role)).isEqualTo(apres);
-        assertThat(ProcesVerbalPolicy.attendSignature(avant, role)).isTrue();
+    @DisplayName("D-94 : état du procès-verbal selon les signatures recueillies du circuit par défaut (ordre quelconque)")
+    void etatSelonCircuit(String signees, EtatProcesVerbal attendu) {
+        Set<String> s = signees.isBlank() ? Set.of() : Set.of(signees.split(";"));
+        assertThat(ProcesVerbalPolicy.etat(PAR_DEFAUT, s)).isEqualTo(attendu);
     }
 
-    @ParameterizedTest(name = "{0} {1}")
-    @CsvSource(
-        {
-            "NON_ETABLI, GIMAC",
-            "SIGNE_GIMAC, GIMAC",
-            "SIGNE, GIMAC",
-            "NON_ETABLI, PARTICIPANT",
-            "SIGNE_PARTICIPANT, PARTICIPANT",
-            "SIGNE, PARTICIPANT",
-            "ETABLI, CONFORMITE",
-        }
-    )
-    @DisplayName("Signature hors de propos : CER_PV_NOT_SIGNABLE ; une signature ne se refait pas")
-    void nonSignable(EtatProcesVerbal etat, RoleSignature role) {
-        assertThat(ProcesVerbalPolicy.attendSignature(etat, role)).isFalse();
-        assertThatThrownBy(() -> ProcesVerbalPolicy.apresSignature(etat, role))
-            .isInstanceOfSatisfying(CertificationException.class, e -> assertThat(e.code()).isEqualTo("CER_PV_NOT_SIGNABLE"));
+    @Test
+    @DisplayName("D-94 : circuit ordonné, même ordre indifférent ; CER_SIGNATURE_ORDRE puis CER_PV_NOT_SIGNABLE")
+    void circuitOrdonne() {
+        EtapeSignature ddrm = new EtapeSignature("DDRM", "Visa DDRM", "DDRM", 1, false);
+        EtapeSignature dg = new EtapeSignature("DG", "Direction générale", "DG", 2, false);
+        EtapeSignature part = new EtapeSignature("PARTICIPANT", null, "PARTICIPANT", 3, true);
+        List<EtapeSignature> circuit = List.of(dg, ddrm, part);
+        assertThat(part.libelle()).isEqualTo("PARTICIPANT");
+        assertThat(ProcesVerbalPolicy.signables(circuit, Set.of(), false)).containsExactly(ddrm);
+        assertThat(ProcesVerbalPolicy.signables(circuit, Set.of(), true)).isEmpty();
+        assertThatThrownBy(() -> {
+            throw ProcesVerbalPolicy.nonSignable(circuit, Set.of(), true);
+        }).isInstanceOfSatisfying(CertificationException.class, e -> {
+            assertThat(e.code()).isEqualTo("CER_SIGNATURE_ORDRE");
+            assertThat(e.details()).containsEntry("attendues", List.of("DDRM"));
+        });
+        assertThat(ProcesVerbalPolicy.signables(circuit, Set.of("DDRM"), false)).containsExactly(dg);
+        assertThat(ProcesVerbalPolicy.etat(circuit, Set.of("DDRM", "DG"))).isEqualTo(EtatProcesVerbal.SIGNE_GIMAC);
+        assertThat(ProcesVerbalPolicy.signables(circuit, Set.of("DDRM", "DG"), true)).containsExactly(part);
+        assertThatThrownBy(() -> {
+            throw ProcesVerbalPolicy.nonSignable(circuit, Set.of("DDRM", "DG"), false);
+        }).isInstanceOfSatisfying(CertificationException.class, e -> assertThat(e.code()).isEqualTo("CER_PV_NOT_SIGNABLE"));
+        assertThat(ProcesVerbalPolicy.etat(circuit, Set.of("DDRM", "DG", "PARTICIPANT"))).isEqualTo(EtatProcesVerbal.SIGNE);
+        // Circuit sans signature du portail : signé dès la dernière signature du DES.
+        assertThat(ProcesVerbalPolicy.etat(List.of(ddrm), Set.of("DDRM"))).isEqualTo(EtatProcesVerbal.SIGNE);
+        assertThat(ProcesVerbalPolicy.etat(List.of(ddrm, dg), Set.of("DDRM"))).isEqualTo(EtatProcesVerbal.ETABLI);
+    }
+
+    @Test
+    @DisplayName("D-94 : une étape de circuit mal formée est refusée")
+    void etapeInvalide() {
+        assertThatThrownBy(() -> new EtapeSignature("gimac", null, "CHEF_DES", 1, false)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new EtapeSignature("GIMAC", null, "ROLE chef", 1, false)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new EtapeSignature("GIMAC", null, "CHEF_DES", 0, false)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new EtapeSignature("GIMAC", null, "CHEF_DES", 100, false)).isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
@@ -80,10 +102,12 @@ class PolitiquesDecisionTest {
         assertThatThrownBy(() -> ProcesVerbalPolicy.verifierEtablissement(100, true, EtatProcesVerbal.ETABLI))
             .isInstanceOfSatisfying(CertificationException.class, e -> assertThat(e.code()).isEqualTo("CER_PV_NOT_READY"));
         ProcesVerbalPolicy.verifierEtablissement(100, true, EtatProcesVerbal.NON_ETABLI);
-        assertThat(ProcesVerbalPolicy.actionsDes(EtatProcesVerbal.NON_ETABLI, true, null, TOUTES)).containsExactly("ETABLIR_BLOQUE");
-        assertThat(ProcesVerbalPolicy.actionsDes(EtatProcesVerbal.SIGNE, true, 100, TOUTES)).isEmpty();
-        assertThat(ProcesVerbalPolicy.actionsPortail(EtatProcesVerbal.ETABLI, TOUTES)).containsExactly("SIGNER_PARTICIPANT");
-        assertThat(ProcesVerbalPolicy.actionsPortail(EtatProcesVerbal.SIGNE_PARTICIPANT, TOUTES)).isEmpty();
+        assertThat(ProcesVerbalPolicy.actionsDes(EtatProcesVerbal.NON_ETABLI, true, null, TOUTES, false)).containsExactly("ETABLIR_BLOQUE");
+        assertThat(ProcesVerbalPolicy.actionsDes(EtatProcesVerbal.SIGNE, true, 100, TOUTES, false)).isEmpty();
+        assertThat(ProcesVerbalPolicy.actionsDes(EtatProcesVerbal.ETABLI, true, 100, TOUTES, true)).containsExactly("SIGNER_GIMAC");
+        assertThat(ProcesVerbalPolicy.actionsDes(EtatProcesVerbal.ETABLI, true, 100, Set.of(), true)).isEmpty();
+        assertThat(ProcesVerbalPolicy.actionsPortail(true, TOUTES)).containsExactly("SIGNER_PARTICIPANT");
+        assertThat(ProcesVerbalPolicy.actionsPortail(false, TOUTES)).isEmpty();
     }
 
     @Test
@@ -97,6 +121,26 @@ class PolitiquesDecisionTest {
             TypeAttestation.GSMA,
             TypeAttestation.COBAC
         );
+    }
+
+    @Test
+    @DisplayName("D-91 : attestations selon le modèle du type de projet ; type créé sans modèle connu : générique, aucune attestation imposée")
+    void attestationsParModele() {
+        assertThat(ApprobationPolicy.attestationsExigees("GENERIQUE", false)).isEmpty();
+        assertThat(ApprobationPolicy.attestationsExigees("GENERIQUE", true)).containsExactly(TypeAttestation.COBAC);
+        assertThat(ApprobationPolicy.attestationsExigees("MONNAIE_ELECTRONIQUE", false)).isEmpty();
+        assertThat(ApprobationPolicy.attestationsExigees(null, false)).containsExactly(TypeAttestation.PCI_DSS);
+        assertThat(ApprobationPolicy.modele("PAIEMENT_MOBILE", "MONNAIE_ELECTRONIQUE")).isEqualTo("PAIEMENT_MOBILE");
+        assertThat(ApprobationPolicy.modele(null, "DELEGATAIRE")).isEqualTo("DELEGATAIRE");
+        assertThat(ApprobationPolicy.modele("INCONNU", "AGREGATEUR")).isEqualTo("GENERIQUE");
+        assertThat(ApprobationPolicy.modele(null, null)).isEqualTo("CARTE_INTERBANCAIRE");
+        var pv = new cm.gimac.des.certification.domain.decision.ProcesVerbalCertification(UUID.randomUUID());
+        assertThat(pv.getModeleTypeProjet()).isEqualTo("CARTE_INTERBANCAIRE");
+        var c = new cm.gimac.des.certification.application.port.out.ContexteCertificationPort.ContexteCertification(
+            UUID.randomUUID(), "LIA-1", "I", "Agrégateur", "AGREGATEUR", false, "CERTIFIEE", null, true, null, null, null, "PAIEMENT_MOBILE", List.of("ISO_27001", "GSMA")
+        );
+        assertThat(c.modele()).isEqualTo("PAIEMENT_MOBILE");
+        assertThat(c.attestationsExigees()).containsExactly("ISO_27001", "GSMA");
     }
 
     @Test

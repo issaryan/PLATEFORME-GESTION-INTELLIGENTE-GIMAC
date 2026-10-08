@@ -15,7 +15,8 @@ test.describe('Fonctionnalité : phase amont conduite par la DDRM', () => {
       for (const c of ['Conducteurs à désigner', 'Liaisons en phase amont', 'Ateliers à tenir', 'Périmètres à arrêter']) await expect(compteurs.getByText(c, { exact: true })).toBeVisible()
       await expect(carte(page, 'Liaison sans conducteur (1)')).toBeVisible()
       await expect(carte(page, /^Liaisons en phase amont \(\d\)$/).getByRole('link', { name: 'LIA-2026-041' })).toBeVisible()
-      await expect(carte(page, 'Ma tâche (0)').getByRole('heading', { name: 'Aucune tâche à réaliser' })).toBeVisible()
+      // Le chef tient aussi la fonction des chefs de département (D-93 §6.5) : affectation des ressources à mener.
+      await expect(carte(page, /^Mes tâches \(\d+\)$/).getByText('Affectation des ressources du projet').first()).toBeVisible()
       await expect(page.getByRole('region', { name: 'Pilotage des projets de certification' })).toBeVisible()
     })
     await test.step('Quand il ouvre toutes les liaisons en phase amont', async () => {

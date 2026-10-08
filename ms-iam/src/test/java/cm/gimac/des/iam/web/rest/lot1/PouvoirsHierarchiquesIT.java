@@ -125,7 +125,7 @@ class PouvoirsHierarchiquesIT extends AbstractIamIT {
             .andExpect(jsonPath("$.actions[8]").value("PROCESSUS_DEFINIR"))
             .andExpect(jsonPath("$.actions[9]").value("PROCESSUS_LANCER"))
             .andExpect(jsonPath("$.profils[?(@.profil == 'ROLE_CHEF_DES')].libelle").value(Matchers.contains("Chef du DES")))
-            .andExpect(jsonPath("$.portees", Matchers.contains("AUCUNE", "DIRECTS", "EQUIPE", "UNITES")))
+            .andExpect(jsonPath("$.portees", Matchers.contains("AUCUNE", "DIRECTS", "EQUIPE", "UNITES", "TOUTES")))
             .andExpect(jsonPath("$.profils[?(@.profil == 'ROLE_CHEF_DES')].actions.TACHE_CONFIER").value(Matchers.contains("UNITES")))
             .andExpect(jsonPath("$.profils[?(@.profil == 'ROLE_CHEF_DES')].actions.ACTIVITE_LIRE").value(Matchers.contains("EQUIPE")))
             .andExpect(jsonPath("$.profils[?(@.profil == 'ROLE_CHEF_DES')].actions.RATTACHEMENT_MODIFIER").value(Matchers.contains("DIRECTS")))

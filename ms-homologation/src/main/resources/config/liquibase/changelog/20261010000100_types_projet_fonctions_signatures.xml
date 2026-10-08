@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Types de projet, fonctions et signatures configurables (D-91, docs/lot1/types-projet.md).
+     1. Table type_projet : les trois types de l'ancienne énumération deviennent les trois premiers enregistrements
+        (mêmes codes, modèle de même nom) ; les colonnes type_projet de liaison et referential_version restent du
+        texte, désormais clés étrangères vers type_projet (aucune valeur ne change).
+     2. Table referentiel_fonction : les seize fonctions de l'ancienne énumération (profils, caractère externe,
+        libellés) ; les colonnes de fonction gardent leurs codes.
+     3. Signatures d'une opération : modèle (reference_operation.signatures) et exécution (parcours_operation :
+        modèle recopié et signatures recueillies) ; vides pour l'existant (comportement inchangé). -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="d91-type-projet" author="homologation">
+        <createTable tableName="type_projet" remarks="Types de projet (D-91).">
+            <column name="code" type="varchar(40)"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="libelle" type="varchar(120)"><constraints nullable="false"/></column>
+            <column name="description" type="varchar(1000)"/>
+            <column name="modele" type="varchar(30)"><constraints nullable="false"/></column>
+            <column name="actif" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
+            <column name="cree_le" type="${datetimeType}"><constraints nullable="false"/></column>
+            <column name="cree_par" type="uuid"/>
+            <column name="modifie_le" type="${datetimeType}"/>
+            <column name="modifie_par" type="uuid"/>
+            <column name="version" type="bigint" defaultValueNumeric="0"><constraints nullable="false"/></column>
+        </createTable>
+        <sql>ALTER TABLE type_projet ADD CONSTRAINT ck_type_projet_code CHECK (code ~ '^[A-Z][A-Z0-9_]{2,39}$');</sql>
+        <sql>ALTER TABLE type_projet ADD CONSTRAINT ck_type_projet_modele CHECK (modele IN ('CARTE_INTERBANCAIRE', 'PAIEMENT_MOBILE', 'DELEGATAIRE', 'GENERIQUE'));</sql>
+        <sql>
+            INSERT INTO type_projet (code, libelle, description, modele, actif, cree_le, version) VALUES
+            ('CARTE_INTERBANCAIRE', 'Carte interbancaire', 'Type repris de l''énumération historique (CR-CERT-GIMAC-01, annexe A).', 'CARTE_INTERBANCAIRE', true, TIMESTAMP '2026-10-10 00:00:00', 0),
+            ('PAIEMENT_MOBILE', 'Paiement mobile', 'Type repris de l''énumération historique (CR-CERT-GIMAC-01, annexe A).', 'PAIEMENT_MOBILE', true, TIMESTAMP '2026-10-10 00:00:00', 0),
+            ('DELEGATAIRE', 'Délégataire', 'Type repris de l''énumération historique (CR-CERT-GIMAC-01, annexe A).', 'DELEGATAIRE', true, TIMESTAMP '2026-10-10 00:00:00', 0);
+        </sql>
+    </changeSet>
+
+    <changeSet id="d91-type-projet-cles" author="homologation">
+        <modifyDataType tableName="liaison" columnName="type_projet" newDataType="varchar(40)"/>
+        <modifyDataType tableName="referential_version" columnName="type_projet" newDataType="varchar(40)"/>
+        <addForeignKeyConstraint baseTableName="liaison" baseColumnNames="type_projet" constraintName="fk_liaison_type_projet"
+                                 referencedTableName="type_projet" referencedColumnNames="code"/>
+        <addForeignKeyConstraint baseTableName="referential_version" baseColumnNames="type_projet" constraintName="fk_referential_version_type_projet"
+                                 referencedTableName="type_projet" referencedColumnNames="code"/>
+    </changeSet>
+
+    <changeSet id="d91-referentiel-fonction" author="homologation">
+        <createTable tableName="referentiel_fonction" remarks="Catalogue des fonctions des rôles R, V, C, I, E et des déposants (D-91).">
+            <column name="code" type="varchar(40)"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="libelle" type="varchar(120)"><constraints nullable="false"/></column>
+            <column name="profils" type="jsonb" defaultValue="[]"><constraints nullable="false"/></column>
+            <column name="externe" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+            <column name="actif" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
+            <column name="cree_le" type="${datetimeType}"><constraints nullable="false"/></column>
+            <column name="cree_par" type="uuid"/>
+            <column name="modifie_le" type="${datetimeType}"/>
+            <column name="modifie_par" type="uuid"/>
+            <column name="version" type="bigint" defaultValueNumeric="0"><constraints nullable="false"/></column>
+        </createTable>
+        <sql>ALTER TABLE referentiel_fonction ADD CONSTRAINT ck_referentiel_fonction_code CHECK (code ~ '^[A-Z][A-Z0-9_]{1,39}$');</sql>
+        <sql>
+            INSERT INTO referentiel_fonction (code, libelle, profils, externe, actif, cree_le, version) VALUES
+            ('DDRM', 'Développement du Réseau et du Marché', '["ROLE_CHARGE_DDRM"]'::jsonb, false, true, TIMESTAMP '2026-10-10 00:00:00', 0),
+            ('CHEF_DDRM', 'Chef du département DDRM', '["ROLE_CHEF_DDRM"]'::jsonb, false, true, TIMESTAMP '2026-10-10 00:00:00', 0),
+            ('CHEF_DES', 'Chef du département DES', '["ROLE_CHEF_DES"]'::jsonb, false, true, TIMESTAMP '2026-10-10 00:00:00', 0),
+            ('CHEFS_DEPARTEMENT', 'Chefs des deux départements', '["ROLE_CHEF_DES"]'::jsonb, false, true, TIMESTAMP '2026-10-10 00:00:00', 0),
+            ('CONDUCTEUR', 'Conducteur de projet', '["ROLE_CONDUCTEUR_PROJET"]'::jsonb, false, true, TIMESTAMP '2026-10-10 00:00:00', 0),
+            ('SNA', 'Normes et Agréments', '["ROLE_SNA", "ROLE_INGENIEUR_HOMOLOGATION"]'::jsonb, false, true, TIMESTAMP '2026-10-10 00:00:00', 0),
+            ('PRODUCTION_MONETIQUE', 'Production monétique', '["ROLE_PRODUCTION_MONETIQUE"]'::jsonb, false, true, TIMESTAMP '2026-10-10 00:00:00', 0),
+            ('POLE_RESEAU', 'Pôle réseau', '["ROLE_POLE_RESEAU"]'::jsonb, false, true, TIMESTAMP '2026-10-10 00:00:00', 0),
+            ('POLE_SYSTEME', 'Pôle système', '["ROLE_POLE_SYSTEME"]'::jsonb, false, true, TIMESTAMP '2026-10-10 00:00:00', 0),
+            ('RSSI', 'Sécurité des systèmes d''information', '["ROLE_RSSI"]'::jsonb, false, true, TIMESTAMP '2026-10-10 00:00:00', 0),
+            ('CONFORMITE', 'Conformité', '["ROLE_CONFORMITE"]'::jsonb, false, true, TIMESTAMP '2026-10-10 00:00:00', 0),
+            ('DG', 'Direction générale', '["ROLE_DG"]'::jsonb, false, true, TIMESTAMP '2026-10-10 00:00:00', 0),
+            ('EXPLOITATION', 'Exploitation et Supervision', '["ROLE_PRODUCTION_MONETIQUE"]'::jsonb, false, true, TIMESTAMP '2026-10-10 00:00:00', 0),
+            ('PARTICIPANT', 'Participant', '["ROLE_CORRESPONDANT"]'::jsonb, true, true, TIMESTAMP '2026-10-10 00:00:00', 0),
+            ('BANQUE_PARTENAIRE', 'Banque partenaire', '[]'::jsonb, true, true, TIMESTAMP '2026-10-10 00:00:00', 0),
+            ('PERSONNALISATEUR', 'Personnalisateur', '[]'::jsonb, true, true, TIMESTAMP '2026-10-10 00:00:00', 0);
+        </sql>
+    </changeSet>
+
+    <changeSet id="d91-signatures-operation" author="homologation">
+        <addColumn tableName="reference_operation">
+            <column name="signatures" type="jsonb" remarks="Signatures exigées à la clôture (D-91, §3)."/>
+        </addColumn>
+        <addColumn tableName="parcours_operation">
+            <column name="signatures" type="jsonb" remarks="Signatures exigées, recopiées de la version (D-91)."/>
+            <column name="signatures_recueillies" type="jsonb" remarks="Signatures recueillies : code, signataire, date, empreinte (D-91)."/>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>

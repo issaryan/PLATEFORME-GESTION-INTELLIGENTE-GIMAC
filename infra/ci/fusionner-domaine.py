@@ -20,9 +20,51 @@ nouveau domaine du dépôt. Pour chaque rôle :
 Sans base (premier déploiement de cette règle), composition = en service + dépôt (rien n'est perdu ; un
 retrait fait dans la plateforme d'une permission encore présente dans le dépôt est alors rétabli une fois).
 Les rôles et groupes disparus sont retirés des comptes, sans quoi l'import échouerait.
+
+Politique de sécurité (PLATFORM_SECURITY_POLICY_EDIT, console) : politique de mot de passe (passwordPolicy),
+paramètres OTP (otpPolicy*), durées de session (ssoSession*) et protection contre la force brute. Fusion à
+trois voies par paramètre : la valeur en service si elle diffère de la base (modifiée dans la console), sinon
+celle du dépôt. Sans base, la valeur en service est conservée (rien n'est perdu) ; un paramètre absent du
+domaine en service prend la valeur du dépôt.
 """
 import json
 import sys
+
+
+# Paramètres du domaine administrés depuis la console (écran Politique de sécurité de MS-IAM).
+PARAMETRES_POLITIQUE = (
+    "passwordPolicy",
+    "ssoSessionIdleTimeout", "ssoSessionMaxLifespan",
+    "ssoSessionIdleTimeoutRememberMe", "ssoSessionMaxLifespanRememberMe",
+    "bruteForceProtected", "permanentLockout", "maxTemporaryLockouts", "bruteForceStrategy",
+    "maxFailureWaitSeconds", "minimumQuickLoginWaitSeconds", "waitIncrementSeconds",
+    "quickLoginCheckMilliSeconds", "maxDeltaTimeSeconds", "failureFactor",
+)
+ABSENT = object()
+
+
+def parametres_politique(*domaines):
+    noms = set(PARAMETRES_POLITIQUE)
+    for d in domaines:
+        noms.update(k for k in (d or {}) if k.startswith("otpPolicy"))
+    return sorted(noms)
+
+
+def fusionner_politique(domaine, en_service, base):
+    """Fusion à trois voies des paramètres de la politique de sécurité ; renvoie les paramètres conservés."""
+    conserves = []
+    for cle in parametres_politique(domaine, en_service, base):
+        s = en_service.get(cle, ABSENT)
+        if s is ABSENT:
+            continue
+        if base is None:
+            garder = True
+        else:
+            garder = s != base.get(cle, ABSENT)
+        if garder and s != domaine.get(cle, ABSENT):
+            domaine[cle] = s
+            conserves.append(cle)
+    return conserves
 
 
 def chemins(groupes, parent=""):
@@ -93,6 +135,10 @@ def main(depot, export, precedent=None):
     en_service = json.load(open(export, encoding="utf-8"))
     base = json.load(open(precedent, encoding="utf-8")) if precedent else None
     roles = fusionner_roles(domaine, en_service, base)
+    conserves = fusionner_politique(domaine, en_service, base)
+    if conserves:
+        # Noms des paramètres seulement, jamais leurs valeurs.
+        print("Politique de sécurité conservée (modifiée dans la console) : " + ", ".join(conserves), file=sys.stderr)
     roles_clients = {c: {r["name"] for r in liste} for c, liste in domaine.get("roles", {}).get("client", {}).items()}
     groupes = set(chemins(domaine.get("groups", [])))
 

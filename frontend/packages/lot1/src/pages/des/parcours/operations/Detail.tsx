@@ -1,14 +1,20 @@
 import { useTranslation } from 'react-i18next'
 import { Button, DataTable, Hash, InlineAlert, KeyValueList, Link, StatusBadge, type Column, Note } from '@gimac/design-system'
 import type { DossierLiaison, OperationParcours, Personne, ServicePerimetre } from '../../../../modele/parcours'
+import { useFonctionsCatalogue } from '../../../../hooks/referentiels'
 import { tonService, tonSla, useFormatDate } from '../communs'
 import { externe, lienDuGeste, ongletDuGeste } from './regles'
 
 // Lecture d'une opération dans le tiroir : ce qu'elle attend, où elle s'exécute, son verrou, sa RACI+E,
-// la preuve déposée (empreinte, valeur de référence relisible, code de contrôle, cérémonie), et pour les
-// rangs 16 et 17 l'état des essais et la couverture calculés par le service.
+// la preuve déposée (empreinte, valeur de référence relisible, code de contrôle, cérémonie), et pour les opérations
+// de vue ESSAIS l'état des essais et la couverture calculés par le service (D-93 : vue, geste, particularité servis).
 
-const qui = (p: Personne | null, t: (k: string) => string) => (p ? `${p.nom} · ${t(`parcours.fonction.${p.fonction}`)}` : t('parcoursOps.nonDesigne'))
+/** Personne tenant une fonction ; une fonction encore à affecter (D-93) le dit. */
+const qui = (p: Personne | null, t: (k: string, o?: Record<string, unknown>) => string, libelle: (f: string) => string = (f) => t(`parcours.fonction.${f}`)) =>
+  (p ? (p.aAffecter ? t('parcoursOps.aAffecter', { fonction: libelle(p.fonction) }) : `${p.nom} · ${libelle(p.fonction)}`) : t('parcoursOps.nonDesigne'))
+/** Ce qu'attend l'opération : ses livrables attendus servis (D-93), sinon sa description. */
+export const preuveAttendue = (op: OperationParcours, t: (k: string) => string) =>
+  op.livrablesAttendus?.length ? op.livrablesAttendus.map((l) => l.libelle).join(' ; ') : op.description || t('parcoursOps.preuve.nonPrecisee')
 
 /** Alertes permanentes attachées à l'opération (oubli sans symptôme, clé, secret, pièce pivot). */
 export function Alertes({ op }: { op: OperationParcours }) {
@@ -26,10 +32,11 @@ export function Alertes({ op }: { op: OperationParcours }) {
 export function Essentiel({ op }: { op: OperationParcours }) {
   const { t } = useTranslation()
   const date = useFormatDate()
+  const f = useFonctionsCatalogue()
   return (
     <KeyValueList
       items={[
-        { key: t('parcours.qualite.R'), value: qui(op.raci.R, t) },
+        { key: t('parcours.qualite.R'), value: qui(op.raci.R, t, f.libelle) },
         ...(op.etat !== 'FAITE'
           ? [{ key: t('parcoursOps.echeance'), value: <span className="gm-row" style={{ gap: 'var(--gm-space-2)' }}><span>{op.echeance ? date(op.echeance) : t('parcoursOps.sansEcheance')}</span>{op.sla ? <StatusBadge status={tonSla[op.sla]} label={t(`parcours.sla.${op.sla}`)} /> : null}</span> }]
           : []),
@@ -39,19 +46,20 @@ export function Essentiel({ op }: { op: OperationParcours }) {
   )
 }
 
-export function InfosOperation({ op, onOuvrir }: { op: OperationParcours; onOuvrir: (rang: string) => void }) {
+export function InfosOperation({ op, onOuvrir, libelleDe }: { op: OperationParcours; onOuvrir: (rang: string) => void; libelleDe?: (rang: string) => string }) {
   const { t } = useTranslation()
   const date = useFormatDate()
+  const f = useFonctionsCatalogue()
   return (
     <div className="gm-col">
       <Alertes op={op} />
       <KeyValueList
         items={[
           { key: t('parcoursOps.col.etape'), value: `${t(`parcours.etape.${op.etape}`)} · ${t(`parcours.segment.${op.segment}`)}` },
-          { key: t('parcoursOps.preuveAttendue'), value: t(`parcours.preuveAttendue.${op.rang}`) },
+          { key: t('parcoursOps.preuveAttendue'), value: preuveAttendue(op, t) },
           { key: t('parcoursOps.plateformeExecution'), value: op.plateforme ? t(`parcours.plateforme.${op.plateforme}`) : t('parcoursOps.plateforme.aucune') },
           { key: t('parcoursOps.grain'), value: t(`parcours.grain.${op.grain}`) },
-          { key: t('parcours.qualite.R'), value: qui(op.raci.R, t) },
+          { key: t('parcours.qualite.R'), value: qui(op.raci.R, t, f.libelle) },
           { key: t('parcoursOps.echeance'), value: op.echeance ? date(op.echeance) : t('parcoursOps.sansEcheance') },
           ...(op.sla ? [{ key: t('parcoursOps.sla'), value: <StatusBadge status={tonSla[op.sla]} label={t(`parcours.sla.${op.sla}`)} /> }] : []),
           ...(op.faiteLe ? [{ key: t('parcoursOps.faiteLe'), value: date(op.faiteLe) }] : []),
@@ -63,7 +71,7 @@ export function InfosOperation({ op, onOuvrir }: { op: OperationParcours; onOuvr
             <span>{t('parcoursOps.verrou.texte')}</span>
             <span className="gm-row">
               {op.predecesseursNonFaits.map((r) => (
-                <Button key={r} size="sm" variant="secondary" onClick={() => onOuvrir(r)}>{`${r} · ${t(`parcours.op.${r}`)}`}</Button>
+                <Button key={r} size="sm" variant="secondary" onClick={() => onOuvrir(r)}>{libelleDe ? `${r} · ${libelleDe(r)}` : r}</Button>
               ))}
             </span>
           </span>
@@ -75,13 +83,14 @@ export function InfosOperation({ op, onOuvrir }: { op: OperationParcours; onOuvr
 
 export function Raci({ op }: { op: OperationParcours }) {
   const { t } = useTranslation()
-  const liste = (l: Personne[]) => (l.length ? l.map((p) => qui(p, t)).join(' ; ') : t('parcoursOps.aucun'))
+  const f = useFonctionsCatalogue()
+  const liste = (l: Personne[]) => (l.length ? l.map((p) => qui(p, t, f.libelle)).join(' ; ') : t('parcoursOps.aucun'))
   return (
     <div className="gm-col">
       <KeyValueList
         items={[
-          { key: t('parcours.qualite.R'), value: qui(op.raci.R, t) },
-          { key: t('parcours.qualite.V'), value: qui(op.raci.V, t) },
+          { key: t('parcours.qualite.R'), value: qui(op.raci.R, t, f.libelle) },
+          { key: t('parcours.qualite.V'), value: qui(op.raci.V, t, f.libelle) },
           { key: t('parcours.qualite.C'), value: liste(op.raci.C) },
           { key: t('parcours.qualite.I'), value: liste(op.raci.I) },
           { key: t('parcours.qualite.E'), value: liste(op.raci.E) },
@@ -107,7 +116,7 @@ export function PreuveDeposee({ op }: { op: OperationParcours }) {
           { key: t('parcoursOps.preuve.deposeeLe'), value: date(p.deposeLe) },
           { key: t('parcoursOps.preuve.deposeePar'), value: p.deposePar },
           { key: t('parcoursOps.preuve.reference'), value: p.documentRef, mono: true },
-          ...(p.valeurReference ? [{ key: t(p.valeurReference.libelle), value: p.valeurReference.valeur, mono: true }] : []),
+          ...(p.valeurReference ? [{ key: t(p.valeurReference.libelle, { defaultValue: t('parcoursOps.valeur.libelle') }), value: p.valeurReference.valeur, mono: true }] : []),
           ...(p.codeControle ? [{ key: t('parcoursOps.preuve.codeControle'), value: p.codeControle, mono: true }] : []),
         ]}
       />
@@ -128,7 +137,7 @@ export function PreuveDeposee({ op }: { op: OperationParcours }) {
   )
 }
 
-/** Rang 16 : essais service par service ; sur le simulateur, le taux est repris tel quel, jamais recalculé. */
+/** Vue ESSAIS, fin des essais : essais service par service ; sur le simulateur, le taux est repris tel quel, jamais recalculé. */
 export function Essais({ op, dossier }: { op: OperationParcours; dossier: DossierLiaison }) {
   const { t } = useTranslation()
   const date = useFormatDate()
@@ -151,7 +160,7 @@ export function Essais({ op, dossier }: { op: OperationParcours; dossier: Dossie
   )
 }
 
-/** Rang 17 : couverture calculée par le service ; non calculable, son motif est affiché (jamais 0 %). */
+/** Geste CONSTATER_COUVERTURE : couverture calculée par le service ; non calculable, son motif est affiché (jamais 0 %). */
 export function Couverture({ dossier }: { dossier: DossierLiaison }) {
   const { t } = useTranslation()
   const c = dossier.couvertureCertification
@@ -176,7 +185,8 @@ export function Couverture({ dossier }: { dossier: DossierLiaison }) {
 /** Opération dont le geste appartient à un autre onglet du dossier, ou au participant (portail). */
 export function GesteAilleurs({ op }: { op: OperationParcours }) {
   const { t } = useTranslation()
-  const onglet = ongletDuGeste(op.rang)
+  const f = useFonctionsCatalogue()
+  const onglet = ongletDuGeste(op)
   if (onglet)
     return (
       <InlineAlert level="info" title={t(`parcoursOps.ailleurs.${onglet}.titre`)}>
@@ -186,6 +196,8 @@ export function GesteAilleurs({ op }: { op: OperationParcours }) {
         </span>
       </InlineAlert>
     )
-  if (externe(op)) return <InlineAlert level="info" title={t('parcoursOps.externe.titre')}>{t(`parcoursOps.externe.${op.raci.R?.fonction}`)}</InlineAlert>
+  if (externe(op, f.externes)) {
+    return <InlineAlert level="info" title={t('parcoursOps.externe.titre')}>{t(`parcoursOps.externe.${op.raci.R?.fonction}`, { defaultValue: t('parcoursOps.externe.autre', { fonction: f.libelle(op.raci.R?.fonction ?? '') }) })}</InlineAlert>
+  }
   return null
 }

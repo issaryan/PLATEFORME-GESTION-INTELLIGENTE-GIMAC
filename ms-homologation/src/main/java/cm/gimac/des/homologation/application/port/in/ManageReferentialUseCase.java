@@ -17,6 +17,15 @@ public interface ManageReferentialUseCase {
         return creerBrouillon(type, libelle, versionSourceId);
     }
 
+    /**
+     * Brouillon v1 d'un nouveau type de projet copié de la version active d'un autre type (D-91) : étapes,
+     * opérations, rôles, livrables et signatures.
+     */
+    ReferentialVersion copierVers(UUID versionSourceId, TypeProjet cible, String libelle, UUID createurId);
+
+    /** Suppression d'un brouillon (D-92) ; une version publiée ou retirée ne se supprime jamais (409 HOM_REFERENTIAL_FROZEN). */
+    void supprimerBrouillon(UUID versionId);
+
     ReferenceOperation enregistrerOperation(UUID versionId, String code, ReferenceOperationData data);
 
     ReferentialVersion publier(UUID versionId);

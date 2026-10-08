@@ -71,6 +71,61 @@ class ReglesPouvoirsTest {
     }
 
     @Test
+    @DisplayName("D-92 : TOUTES, la plus large ; admise seulement pour PROCESSUS_DEFINIR et PROCESSUS_LANCER")
+    void porteeToutes() {
+        assertThat(Portee.values()).containsExactly(Portee.AUCUNE, Portee.DIRECTS, Portee.EQUIPE, Portee.UNITES, Portee.TOUTES);
+        assertThat(Portee.UNITES.max(Portee.TOUTES)).isEqualTo(Portee.TOUTES);
+        assertThat(Portee.TOUTES.max(Portee.UNITES)).isEqualTo(Portee.TOUTES);
+        assertThat(Portee.TOUTES.couvre(Portee.UNITES)).isTrue();
+        assertThat(Portee.UNITES.couvre(Portee.TOUTES)).isFalse();
+        assertThat(Portee.TOUTES.min(Portee.UNITES)).isEqualTo(Portee.UNITES);
+        assertThat(Portee.DIRECTS.min(Portee.UNITES)).isEqualTo(Portee.DIRECTS);
+        assertThat(Portee.DIRECTS.min(null)).isEqualTo(Portee.DIRECTS);
+        for (ActionPouvoir a : ActionPouvoir.values()) {
+            boolean processus = a == ActionPouvoir.PROCESSUS_DEFINIR || a == ActionPouvoir.PROCESSUS_LANCER;
+            assertThat(a.admet(Portee.TOUTES)).as(a.name()).isEqualTo(processus);
+            assertThat(a.admet(Portee.UNITES)).isTrue();
+            assertThat(a.admet(null)).isFalse();
+            assertThat(a.porteesAdmises()).hasSize(processus ? 5 : 4).startsWith(Portee.AUCUNE);
+        }
+
+        ReglesPouvoirs.verifierLigne(
+            new PouvoirsProfil("ROLE_SNA", Map.of(ActionPouvoir.PROCESSUS_DEFINIR, Portee.TOUTES, ActionPouvoir.PROCESSUS_LANCER, Portee.TOUTES, ActionPouvoir.TACHE_CONFIER, Portee.UNITES), Set.of()),
+            ATTRIBUABLES,
+            PRIVILEGIES
+        );
+        for (ActionPouvoir a : List.of(ActionPouvoir.TACHE_CONFIER, ActionPouvoir.TACHE_SUIVRE, ActionPouvoir.ACTIVITE_LIRE, ActionPouvoir.RAPPORT_VISER, ActionPouvoir.RATTACHEMENT_MODIFIER, ActionPouvoir.COMPTE_DEMANDER, ActionPouvoir.PROFIL_DEMANDER, ActionPouvoir.STATUT_DEMANDER)) {
+            refus(() -> ReglesPouvoirs.verifierLigne(new PouvoirsProfil("ROLE_SNA", Map.of(a, Portee.TOUTES), Set.of()), ATTRIBUABLES, PRIVILEGIES), "ORG_PORTEE_NON_ADMISE", 422);
+        }
+        assertThatThrownBy(() ->
+            ReglesPouvoirs.verifierLigne(new PouvoirsProfil("ROLE_SNA", Map.of(ActionPouvoir.PROCESSUS_DEFINIR, Portee.TOUTES, ActionPouvoir.TACHE_SUIVRE, Portee.TOUTES), Set.of("ROLE_RSSI")), ATTRIBUABLES, PRIVILEGIES)
+        ).isInstanceOfSatisfying(IamException.class, e -> {
+            assertThat(e.code()).isEqualTo("ORG_PORTEE_NON_ADMISE");
+            assertThat(e.details()).containsEntry("actions", List.of("TACHE_SUIVRE"));
+        });
+    }
+
+    @Test
+    @DisplayName("D-92 : cumul de profils, la portée la plus large l'emporte (TOUTES sur UNITES) ; portée non admise lue en base ramenée à UNITES")
+    void cumulToutes() {
+        Map<String, PouvoirsProfil> matrice = Map.of(
+            "ROLE_CHEF_DES",
+            new PouvoirsProfil("ROLE_CHEF_DES", Map.of(ActionPouvoir.PROCESSUS_DEFINIR, Portee.UNITES, ActionPouvoir.PROCESSUS_LANCER, Portee.UNITES, ActionPouvoir.TACHE_CONFIER, Portee.UNITES), Set.of()),
+            "ROLE_SNA",
+            new PouvoirsProfil("ROLE_SNA", Map.of(ActionPouvoir.PROCESSUS_DEFINIR, Portee.TOUTES, ActionPouvoir.TACHE_SUIVRE, Portee.TOUTES), Set.of())
+        );
+        Pouvoirs p = ReglesPouvoirs.calculer(List.of("ROLE_CHEF_DES", "ROLE_SNA"), matrice, ATTRIBUABLES, PRIVILEGIES);
+        assertThat(p.portee(ActionPouvoir.PROCESSUS_DEFINIR)).isEqualTo(Portee.TOUTES);
+        assertThat(p.portee(ActionPouvoir.PROCESSUS_LANCER)).isEqualTo(Portee.UNITES);
+        assertThat(p.portee(ActionPouvoir.TACHE_CONFIER)).isEqualTo(Portee.UNITES);
+        assertThat(p.portee(ActionPouvoir.TACHE_SUIVRE)).isEqualTo(Portee.UNITES);
+        assertThat(p.porteeMax()).isEqualTo(Portee.TOUTES);
+        assertThat(p.porteeSubordonnes()).isEqualTo(Portee.UNITES);
+        assertThat(ReglesPouvoirs.calculer(List.of("ROLE_SNA", "ROLE_CHEF_DES"), matrice, ATTRIBUABLES, PRIVILEGIES)).isEqualTo(p);
+        assertThat(ReglesPouvoirs.calculer(List.of("ROLE_COLLABORATEUR"), matrice, ATTRIBUABLES, PRIVILEGIES).porteeSubordonnes()).isEqualTo(Portee.AUCUNE);
+    }
+
+    @Test
     @DisplayName("Ligne de la matrice : résumé pour le journal ; ligne vide : AUCUNE")
     void resume() {
         assertThat(PouvoirsProfil.aucun("ROLE_X").resume()).isEqualTo("AUCUNE demandables=");

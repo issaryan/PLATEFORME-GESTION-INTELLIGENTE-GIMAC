@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Scellement des signatures au registre d'audit (D-93, docs/lot1/effet-reel-referentiels.md §11) : un nœud de
+     l'arbre de Merkle est unique par niveau et position (sous-arbre complet), garde contre un double calcul. -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="aud-noeud-unique-niveau-position" author="lot1">
+        <addUniqueConstraint tableName="merkle_node" columnNames="level, position" constraintName="ux_merkle_node__level_position"/>
+    </changeSet>
+</databaseChangeLog>

@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Effet réel des référentiels (D-93, docs/lot1/effet-reel-referentiels.md) et écrans pilotés par la configuration (D-94).
+     1. Vue de l'opération (écran spécialisé) et réglage des tâches des consultés, au modèle (reference_operation) et à
+        l'exécution (parcours_operation) ; reprise des versions existantes : vue déduite des rangs de l'annexe A (ceux que
+        l'interface codait en dur), à défaut du geste, de la particularité et du déclencheur.
+     2. Exécution : code de l'étape de la version, dépôts par livrable, renvois ; reprise des dépôts existants (la pièce
+        unique d'une opération qui déclare des livrables devient le dépôt de son premier livrable).
+     3. Fin des marqueurs fictifs : EXT-BANQUE, EXT-PERSONNALISATEUR et EXT-<CODE> deviennent « à affecter », sauf la banque
+        partenaire déclarée sur la liaison, qui devient l'institution liée.
+     4. Remontée au conducteur d'une tâche refusée par MS-PILOTAGE. -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="d93-vue-operation" author="homologation">
+        <addColumn tableName="reference_operation">
+            <column name="vue" type="varchar(30)"/>
+            <column name="consultes_recoivent_tache" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+        </addColumn>
+        <addColumn tableName="parcours_operation">
+            <column name="vue" type="varchar(30)"/>
+            <column name="consultes_recoivent_tache" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+            <column name="etape_code" type="varchar(40)"/>
+            <column name="depots" type="jsonb"/>
+            <column name="renvois" type="jsonb"/>
+        </addColumn>
+        <sql>
+            UPDATE reference_operation SET vue = CASE
+                WHEN code = '6' THEN 'AFFECTATION'
+                WHEN code = '12' THEN 'COORDONNEES'
+                WHEN code IN ('15', '16', '17') THEN 'ESSAIS'
+                WHEN code IN ('18', '19', '20', '23', '24', '25', '26') THEN 'DECISION'
+                WHEN code IN ('21', '22') THEN 'ATTESTATIONS'
+                WHEN code IN ('32', '33', '34', '35') THEN 'MISE_EN_SERVICE'
+                WHEN code = 'C1' THEN 'CEREMONIE'
+                WHEN geste = 'AFFECTER_RESSOURCES' THEN 'AFFECTATION'
+                WHEN geste = 'COORDONNEES_TECHNIQUES' THEN 'COORDONNEES'
+                WHEN geste = 'CONSTATER_COUVERTURE' OR particularite IN ('ENTREE_ESSAIS', 'FIN_ESSAIS') THEN 'ESSAIS'
+                WHEN geste = 'FICHE_SUIVI' OR particularite = 'SERVICE_SUPPLEMENTAIRE' THEN 'MISE_EN_SERVICE'
+                WHEN particularite = 'CEREMONIE_CLES' THEN 'CEREMONIE'
+                WHEN declencheur = 'certification.attestations-archived.v1' THEN 'ATTESTATIONS'
+                WHEN declencheur IS NOT NULL THEN 'DECISION'
+                ELSE 'AUCUNE' END
+            WHERE vue IS NULL;
+        </sql>
+        <sql>
+            UPDATE parcours_operation po SET vue = ro.vue, etape_code = COALESCE(ro.etape, po.etape), consultes_recoivent_tache = ro.consultes_recoivent_tache
+            FROM reference_operation ro WHERE ro.version_id = po.version_id AND ro.code = po.rang;
+        </sql>
+        <sql>UPDATE parcours_operation SET etape_code = etape WHERE etape_code IS NULL;</sql>
+        <sql>ALTER TABLE reference_operation ADD CONSTRAINT ck_reference_operation_vue CHECK (vue IS NULL OR vue IN ('AUCUNE', 'AFFECTATION', 'COORDONNEES', 'ESSAIS', 'DECISION', 'ATTESTATIONS', 'MISE_EN_SERVICE', 'CEREMONIE'));</sql>
+    </changeSet>
+
+    <changeSet id="d93-depots-repris" author="homologation">
+        <sql>
+            UPDATE parcours_operation SET depots = jsonb_build_array(jsonb_build_object(
+                'livrable', livrables -> 0 ->> 'code',
+                'documentRef', preuve ->> 'documentRef',
+                'nom', preuve ->> 'nom',
+                'empreinte', preuve ->> 'empreinte',
+                'deposeLe', preuve ->> 'deposeLe',
+                'deposePar', preuve ->> 'deposePar',
+                'repris', true))
+            WHERE depots IS NULL AND preuve IS NOT NULL
+              AND COALESCE(preuve ->> 'documentRef', '') ~ '^[0-9a-fA-F-]{36}$'
+              AND jsonb_typeof(livrables) = 'array' AND jsonb_array_length(livrables) &gt; 0;
+        </sql>
+    </changeSet>
+
+    <changeSet id="d93-marqueurs-fictifs" author="homologation">
+        <addColumn tableName="parcours_liaison">
+            <column name="institutions_liees" type="jsonb"/>
+        </addColumn>
+        <sql>
+            UPDATE parcours_liaison pl SET institutions_liees = jsonb_build_object('BANQUE_PARTENAIRE', jsonb_build_object('id', l.banque_partenaire_id::text))
+            FROM liaison l WHERE l.id = pl.liaison_id AND l.banque_partenaire_id IS NOT NULL;
+        </sql>
+        <sql>
+            UPDATE parcours_operation SET raci = regexp_replace(raci::text,
+                '"id": "EXT-[A-Z][A-Z0-9_]*", "nom": "[^"]*", "fonction": "([A-Z][A-Z0-9_]*)"',
+                '"id": "A_AFFECTER:\1", "nom": "Non affecté (\1)", "fonction": "\1"', 'g')::jsonb
+            WHERE raci::text ~ '"id": "EXT-[A-Z]';
+        </sql>
+        <sql>
+            UPDATE parcours_operation po SET raci = replace(po.raci::text,
+                '"id": "A_AFFECTER:BANQUE_PARTENAIRE", "nom": "Non affecté (BANQUE_PARTENAIRE)"',
+                '"id": "EXT-' || l.banque_partenaire_id::text || '", "nom": "Banque partenaire"')::jsonb
+            FROM liaison l WHERE l.id = po.liaison_id AND l.banque_partenaire_id IS NOT NULL AND po.raci::text LIKE '%A_AFFECTER:BANQUE_PARTENAIRE%';
+        </sql>
+    </changeSet>
+
+    <changeSet id="d93-remontee-taches" author="homologation">
+        <addColumn tableName="demande_tache_pilotage">
+            <column name="escalade_vers" type="varchar(80)"/>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>

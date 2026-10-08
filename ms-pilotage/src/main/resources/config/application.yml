@@ -318,5 +318,9 @@ gimac:
     processus: false
   consommateurs:
     # Départ ou désactivation d'un compte (MS-IAM, iam.account-administered.v1) : processus d'unité (D-87).
+    # Même sujet (D-93) : PROFILS et COMPTE_RATTACHEMENT_MODIFIE font revoir les intervenants des étapes en cours.
     comptes:
       sujet: iam.account
+    # Unité modifiée (iam.configuration-changed.v1, objet UNITE_ORGANISATIONNELLE) : rôles CHEF_UNITE revus (D-93).
+    configuration:
+      sujet: iam.configuration

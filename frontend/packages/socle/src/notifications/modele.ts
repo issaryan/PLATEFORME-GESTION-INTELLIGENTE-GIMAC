@@ -7,8 +7,9 @@
  * DEMANDE (D-81) : demande adressée à l'administration, soumise ou décidée ; PROCESSUS (D-87) : étape d'un processus
  * d'unité activée, à signer ou à valider, instance close. Leur lien est rendu tel quel (préfixe console comme les autres).
  */
-export type TypeNotification = 'MESSAGE' | 'TACHE' | 'RAPPORT' | 'MENTION' | 'REPONSE' | 'DEMANDE' | 'PROCESSUS'
-export const TYPES_NOTIFICATION: readonly TypeNotification[] = ['MESSAGE', 'TACHE', 'RAPPORT', 'MENTION', 'REPONSE', 'DEMANDE', 'PROCESSUS']
+/** HOMOLOGATION (MS-NOTIFICATION §11) : action attendue, avis, validation ou jalon d'une opération du parcours d'homologation. */
+export type TypeNotification = 'MESSAGE' | 'TACHE' | 'RAPPORT' | 'MENTION' | 'REPONSE' | 'DEMANDE' | 'PROCESSUS' | 'HOMOLOGATION'
+export const TYPES_NOTIFICATION: readonly TypeNotification[] = ['MESSAGE', 'TACHE', 'RAPPORT', 'MENTION', 'REPONSE', 'DEMANDE', 'PROCESSUS', 'HOMOLOGATION']
 /** Types qui portent sur la messagerie : leur lien mène à une conversation. */
 export const TYPES_MESSAGERIE: readonly TypeNotification[] = ['MESSAGE', 'MENTION', 'REPONSE']
 

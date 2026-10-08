@@ -19,3 +19,30 @@ spring:
         kafkaProducer-out-0:
           content-type: text/plain
           group: audit
+  # Consommateurs @KafkaListener du registre (D-93 §11) : même courtier que le binder, chaînes, lecture depuis le début
+  # d'un sujet pour un nouveau groupe (aucune signature perdue au premier démarrage).
+  kafka:
+    bootstrap-servers: ${spring.cloud.stream.kafka.binder.brokers:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      auto-offset-reset: earliest
+
+gimac:
+  kafka:
+    rebut:
+      actif: true
+      nombre-tentatives: 3
+      intervalle-ms: 1000
+      # Sujets consommés : leur file de rebut (.dlt) est créée au démarrage.
+      topics-surveilles:
+        - pilotage.process
+        - homologation.operation
+  consommateurs:
+    signatures:
+      # Signatures de processus d'unité (pilotage.process-step-signed.v1) et d'opérations d'homologation
+      # (homologation.operation-signed.v1), scellées au registre (groupe audit-signatures).
+      sujets: pilotage.process,homologation.operation

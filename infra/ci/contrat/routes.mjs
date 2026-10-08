@@ -348,6 +348,8 @@ function opa(methode, chemin) {
   if (r) return { decision: 'PERMISSION', permission: r.permission }
   if (/^\/bff\/[^/]+\/[^/]+\/interne(\/|$)/.test(ex)) return { decision: 'REFUS', motif: 'route interne' }
   if (/^\/bff\/(des|portail|console)\/iam\/(moi(\/.*)?|reauthentification\/defi)$/.test(ex)) return { decision: 'LIBRE_SERVICE' }
+  // Catalogue des fonctionnalités (D-94) : règle lecture_catalogue_fonctionnalites, tout compte interne à deux facteurs.
+  if (methode === 'GET' && /^\/bff\/(des|console)\/iam\/configuration\/fonctionnalites$/.test(ex)) return { decision: 'COMPTE_INTERNE' }
   if (ex === '/bff/des/document/documents' && methode === 'POST') return { decision: 'DEPOT', permission: 'PAR_ADHESION_INSTRUCT|HOM_EVIDENCE_SUBMIT|DOC_DEPOSIT' }
   // Dépôts fragmentés (D-74) depuis le DES et la console : règle route_depot_fragmente (permissions du dépôt ou COL_MESSAGE_SEND).
   if (
@@ -438,6 +440,7 @@ const permission = (l) => {
   if (!l.opa) return l.controleur?.permissions.join(' ou ') || (l.controleur ? 'session' : '')
   if (l.opa.decision === 'PERMISSION') return l.opa.permission
   if (l.opa.decision === 'LIBRE_SERVICE') return 'titulaire (2 facteurs)'
+  if (l.opa.decision === 'COMPTE_INTERNE') return 'compte interne (2 facteurs)'
   if (l.opa.decision === 'DEPOT') return l.opa.permission.split('|').join(' ou ')
   if (l.opa.decision === 'PREAUTHORIZE') return l.controleur?.permissions.join(' ou ') || '2 facteurs'
   return '—'

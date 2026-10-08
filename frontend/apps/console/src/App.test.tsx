@@ -4,14 +4,14 @@ import { MemoryRouter } from 'react-router'
 import i18next from 'i18next'
 import { MOT_DE_PASSE_DEMO, initI18n } from '@gimac/socle'
 import { catalogueCompte } from '@gimac/compte'
-import { catalogueMessagerie } from '@gimac/lot1'
+import { FONCTIONNALITES_DEMO, catalogues as cataloguesLot1 } from '@gimac/lot1'
 import App from './App'
 import { cataloguesAdministration as catalogues } from '@gimac/administration'
 
 // Application console : session de démonstration par profil, navigation élaguée selon les permissions,
 // premier accès avant tout écran, écrans réservés, session réelle par la passerelle.
 beforeAll(() => {
-  if (!i18next.isInitialized) initI18n([catalogueCompte, catalogueMessagerie, ...catalogues], 'fr')
+  if (!i18next.isInitialized) initI18n([...cataloguesLot1, catalogueCompte, ...catalogues], 'fr')
   Object.defineProperty(window, 'innerWidth', { value: 1400, configurable: true })
 })
 // Session de démonstration ouverte (connexion simulée, D-65) ; retirée par les scénarios de connexion.
@@ -78,11 +78,13 @@ describe('Console', () => {
       const chemin = new URL(String(u)).pathname
       if (chemin === '/api/session') return reponse({ sujet: 'u-9', nom: 'Auditeur', identifiant: 'auditeur', roles: [], permissions: ['IAM_ACCOUNT_READ'], institutionId: '', acr: '2', doubleFacteur: true })
       if (chemin === '/bff/console/iam/moi') return reponse({ compte: { id: 'u-9', nomAffiche: 'Auditeur', profils: [], actionsRequises: [] }, clesSecurite: 1, sessions: 1, etapesRestantes: [] })
+      if (chemin === '/bff/console/iam/configuration/fonctionnalites') return reponse(FONCTIONNALITES_DEMO)
       return reponse({})
     })
     monter('/console/comptes/nouveau')
     expect(await screen.findByText('Accès refusé', {}, { timeout: 8000 })).toBeTruthy()
     expect(screen.queryByRole('link', { name: 'Journalisation' })).toBeNull()
+    expect(screen.getByRole('link', { name: 'Comptes' })).toBeTruthy()
     expect(spy.mock.calls.map(([u]) => new URL(String(u)).pathname)).toContain('/bff/console/iam/moi')
   })
 

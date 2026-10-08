@@ -18,9 +18,16 @@ import org.springframework.stereotype.Component;
 public class Intervenants {
 
     private final CollaboratorDirectoryPort annuaire;
+    private PorteursPermission porteurs;
 
     public Intervenants(CollaboratorDirectoryPort annuaire) {
         this.annuaire = annuaire;
+    }
+
+    /** Porteurs d'une permission (D-94) : une personne qui porte l'une des permissions de la fonction peut la tenir. */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setPorteurs(PorteursPermission porteurs) {
+        this.porteurs = porteurs;
     }
 
     /** Collaborateurs actifs qui tiennent une fonction, par le premier profil qui la confère. */
@@ -38,15 +45,6 @@ public class Intervenants {
             .toList();
     }
 
-    /** Première personne d'une fonction, ou la fonction elle-même en attendant l'affectation ; annuaire injoignable : la fonction. */
-    public Personne titulaire(Fonction f) {
-        try {
-            return deFonction(f).stream().findFirst().orElse(Personne.aAffecter(f));
-        } catch (HomologationException e) {
-            return Personne.aAffecter(f);
-        }
-    }
-
     /** Personne désignée par son identifiant ; sa fonction est celle de son premier profil connu. */
     public Personne personne(String personneId) {
         CollaboratorView c = collaborateur(personneId);
@@ -54,10 +52,14 @@ public class Intervenants {
         return new Personne(c.id().toString(), c.nomAffiche(), f);
     }
 
-    /** Personne affectée à une fonction (rang 6) : elle doit détenir un profil qui la confère. */
+    /**
+     * Personne affectée à une fonction (rang 6) : elle doit détenir un profil qui la confère ou porter l'une des
+     * permissions qui la caractérisent (D-94, lues dans MS-IAM).
+     */
     public Personne pourFonction(String personneId, Fonction f) {
         CollaboratorView c = collaborateur(personneId);
-        if (f.profils().stream().noneMatch(c.profils()::contains)) {
+        boolean parProfil = f.profils().stream().anyMatch(c.profils()::contains);
+        if (!parProfil && (porteurs == null || f.permissions().isEmpty() || !porteurs.porte(c.id(), f.permissions()))) {
             throw nonEligible();
         }
         return new Personne(c.id().toString(), c.nomAffiche(), f);

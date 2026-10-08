@@ -10,6 +10,7 @@
 # (demandes à l'administration, D-81, docs/lot1/pouvoirs-hierarchiques.md §4), clé = demande, sans contenu.
 # collaboration.message, pilotage.task, pilotage.report et iam.request sont consommés par MS-NOTIFICATION.
 # iam.account porte iam.account-administered.v1 (activation, désactivation… : D-87, remplacement des intervenants partis) ;
+# iam.configuration porte iam.configuration-changed.v1 (unité modifiée : MS-PILOTAGE revoit les rôles CHEF_UNITE, D-93) ;
 # pilotage.process porte les événements des processus d'unité (D-87), consommés par MS-NOTIFICATION.
 #   KAFKA_BOOTSTRAP  courtier (défaut : kafka:9092, réseau Docker gimac-des_default)
 #   REPLICATION      facteur de réplication (défaut 3 ; 1 sur le poste de développement)
@@ -33,16 +34,26 @@ creer() { # sujet partitions [options...]
   echo "sujet prêt : $sujet"
 }
 
+# D-93 : homologation.operation porte aussi operation-activated.v1 et operation-validation-requested.v1, homologation.liaison
+# porte liaison-milestone-reached.v1 (MS-NOTIFICATION, MS-PARTICIPANT, audit) ; iam.account est aussi consommé par
+# MS-HOMOLOGATION (départ d'un intervenant). MS-CERTIFICATION lit les deux sujets (groupe certification-operations,
+# contrôle des gestes) et MS-PARTICIPANT le jalon EN_PRODUCTION (groupe participant-jalon-liaison). Aucun sujet nouveau.
+# MS-NOTIFICATION lit homologation.operation et homologation.liaison (groupe notification-homologation, type HOMOLOGATION) ;
+# MS-AUDIT scelle pilotage.process-step-signed.v1 et homologation.operation-signed.v1 (groupe audit-signatures).
+# D-91 : types de projet (homologation.project) et catalogue des fonctions (homologation.function), journalisés par l'audit.
+# D-94 : pilotage.task est aussi consommé par MS-HOMOLOGATION (groupe homologation-taches, pilotage.task-taken.v1 : prise
+# d'une fonction à affecter) ; homologation.operation porte aussi operation-closed.v1. Aucun sujet nouveau.
 for t in homologation.referential homologation.liaison homologation.operation homologation.campaign homologation.coverage \
+         homologation.project homologation.function \
          homologation.notification certification.circuit certification.quitus certification.dossier certification.attestation \
          certification.notification certification.proces-verbal certification.approbation \
          participant.institution participant.adhesion participant.transition \
-         collaboration.message pilotage.task pilotage.report pilotage.process notification.inapp iam.request iam.account; do
+         collaboration.message pilotage.task pilotage.report pilotage.process notification.inapp iam.request iam.account iam.configuration; do
   creer "$t" 6 --config retention.ms=2592000000 --config min.insync.replicas="$MIN_ISR"
 done
 for t in participant.subscription participant.status document.document iam.user iam.role homologation.liaison \
          homologation.operation homologation.coverage certification.quitus certification.dossier certification.attestation \
          certification.proces-verbal certification.approbation collaboration.message pilotage.task pilotage.report pilotage.process \
-         iam.request iam.account; do
+         iam.request iam.account iam.configuration; do
   creer "$t.dlq" 3
 done

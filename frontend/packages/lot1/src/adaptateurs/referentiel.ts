@@ -12,7 +12,7 @@ export function versArbre(versions: ReferentielVersion[], t: Traduire): TreeNode
   const types = [...new Set(versions.map((v) => v.typeProjet))]
   return types.map((type) => ({
     key: `type:${type}`,
-    label: t(`typeProjet.${type}`),
+    label: t(`typeProjet.${type}`, { defaultValue: String(type) }),
     icon: 'kanban' as const,
     count: versions.filter((v) => v.typeProjet === type).length,
     children: versions

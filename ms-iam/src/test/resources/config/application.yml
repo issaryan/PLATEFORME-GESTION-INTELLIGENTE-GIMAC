@@ -127,6 +127,7 @@ gimac:
       validite-invitation: 24h
       validite-reinitialisation: 30m
       validite-enrolement-totp: 10m
+      permissions-console: [IAM_ACCOUNT_READ, PLATFORM_SUPERVISION_READ, PLATFORM_CONFIG_READ, PLATFORM_OPS_READ, PLATFORM_SECURITY_POLICY_READ, PLATFORM_MESSAGING_EDIT]
     connexion:
       client-id: gimac-connexion
       client-secret: test
@@ -135,7 +136,8 @@ gimac:
       attribuables: [ROLE_SUPER_ADMIN, ROLE_RSSI, ROLE_CHEF_DES, ROLE_INGENIEUR_HOMOLOGATION, ROLE_CONFORMITE, ROLE_DG, ROLE_CORRESPONDANT,
         ROLE_CHARGE_DDRM, ROLE_CHEF_DDRM, ROLE_SNA, ROLE_PRODUCTION_MONETIQUE, ROLE_POLE_RESEAU, ROLE_POLE_SYSTEME, ROLE_CONDUCTEUR_PROJET,
         ROLE_COLLABORATEUR, ROLE_RESPONSABLE_SERVICE, ROLE_ADMIN_SYSTEME]
-      privilegies: [ROLE_SUPER_ADMIN, ROLE_RSSI, ROLE_ADMIN_SYSTEME]
+      # D-94 : privilégié par les permissions (IAM_*, PLATFORM_*) ; externe par l'attribut gimac_externe.
+      externes-initiaux: [ROLE_CORRESPONDANT]
     webauthn:
       rp-id: localhost
       rp-nom: Plateforme Moabi du GIMAC

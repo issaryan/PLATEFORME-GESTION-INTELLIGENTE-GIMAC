@@ -35,8 +35,8 @@ public class Attestation implements Serializable {
     @Column(name = "institution_id")
     private UUID institutionId;
 
-    @Size(max = 30)
-    @Column(name = "type_projet", length = 30)
+    @Size(max = 40)
+    @Column(name = "type_projet", length = 40)
     private String typeProjet;
 
     @JdbcTypeCode(SqlTypes.JSON)

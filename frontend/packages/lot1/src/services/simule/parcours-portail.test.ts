@@ -7,7 +7,7 @@ import { servicesSimules } from './index'
 const svc = () => servicesSimules({ latenceMs: 0 })
 const refus = (code: string) => expect.objectContaining({ code })
 const fichier = (nom: string) => new File(['contenu'], nom, { type: 'application/pdf' })
-const INTERNES = /Conducteur de projet \d|Chargé DDRM|Ingénieur|Opérateur production|Chef du département|"U-/
+const INTERNES = /Conducteur de projet \d|Chargé DDRM|Ingénieur|Opérateur production|"nom":"Chef du département|"U-/
 
 describe('parcoursSimule : portail du participant', () => {
   it('tâches cloisonnées à l’institution du jeton, chacune avec son geste et son écran', async () => {

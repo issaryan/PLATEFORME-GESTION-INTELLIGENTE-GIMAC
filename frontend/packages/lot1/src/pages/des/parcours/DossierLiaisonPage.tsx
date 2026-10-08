@@ -60,7 +60,7 @@ function Dossier({ dossier }: { dossier: DossierLiaison }) {
   const identification = [
     { key: t('parcoursDossier.reference'), value: dossier.reference, mono: true },
     { key: t('parcoursDossier.institution'), value: dossier.institutionNom },
-    { key: t('parcoursDossier.type'), value: t(`parcours.typeProjet.${dossier.typeProjet}`) },
+    { key: t('parcoursDossier.type'), value: t(`parcours.typeProjet.${dossier.typeProjet}`, { defaultValue: dossier.typeProjet }) },
     { key: t('parcoursDossier.banque'), value: dossier.banquePartenaireNom ?? <span className="gm-field-help">{t('parcoursDossier.sansBanque')}</span> },
     ...(dossier.personnalisateurNom ? [{ key: t('parcoursDossier.personnalisateur'), value: dossier.personnalisateurNom }] : []),
     { key: t('parcoursDossier.versionReferentiel'), value: <Valeur>{dossier.versionReferentiel === null ? null : t('parcoursDossier.version', { v: dossier.versionReferentiel })}</Valeur> },
@@ -70,8 +70,12 @@ function Dossier({ dossier }: { dossier: DossierLiaison }) {
   ]
   const pilotage = [
     { key: t('parcoursDossier.conducteur'), value: dossier.conducteur?.nom ?? <StatusBadge status="warn" label={t('parcoursListe.aDesigner')} /> },
-    { key: t('parcoursDossier.responsableFonctionnel'), value: <Valeur>{dossier.responsableFonctionnel?.nom}</Valeur> },
-    { key: t('parcoursDossier.responsableTechnique'), value: <Valeur>{dossier.responsableTechnique?.nom}</Valeur> },
+    // D-93 : responsables lus du RACI ; une fonction à affecter le signale.
+    ...(dossier.responsableFonctionnel ? [{ key: t('parcoursDossier.responsableFonctionnel'), value: <Valeur>{dossier.responsableFonctionnel.nom}</Valeur> }] : []),
+    ...(dossier.responsableTechnique ? [{ key: t('parcoursDossier.responsableTechnique'), value: <Valeur>{dossier.responsableTechnique.nom}</Valeur> }] : []),
+    ...((dossier.intervenants ?? []).some((i) => i.aAffecter)
+      ? [{ key: t('parcoursDossier.aAffecter'), value: <Link href={`/des/parcours/${dossier.id}?onglet=gouvernance`}>{t('parcoursDossier.aAffecterN', { count: (dossier.intervenants ?? []).filter((i) => i.aAffecter).length })}</Link> }]
+      : []),
     { key: t('parcoursDossier.demarrage'), value: <Jour iso={dossier.dateDemarrage} /> },
     { key: t('parcoursDossier.cible'), value: <Jour iso={dossier.dateCibleProduction} /> },
   ]
@@ -99,7 +103,7 @@ function Dossier({ dossier }: { dossier: DossierLiaison }) {
         meta={<>
           <span className="gm-mono">{dossier.reference}</span>
           <BadgeStatut statut={dossier.statut} />
-          <span className="gm-pagehead-user">{t('parcoursDossier.etapeCourante', { etape: t(`parcours.etape.${dossier.etapeCourante}`) })}</span>
+          <span className="gm-pagehead-user">{t('parcoursDossier.etapeCourante', { etape: dossier.etapesVersion?.find((e) => e.code === dossier.etapeCourante)?.libelle ?? t(`parcours.etape.${dossier.etapeCourante}`) })}</span>
           {blocagesEnCours > 0 ? <StatusBadge status="crit" label={t('parcoursListe.bloquee')} /> : null}
         </>}
         actions={<>

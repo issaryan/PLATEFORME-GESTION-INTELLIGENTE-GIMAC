@@ -52,6 +52,10 @@ final class SaisieProcessus {
         return format(champ, unite, UNITE, "Code d'unité attendu (par exemple POLE_RESEAU)");
     }
 
+    static String profil(String champ, String profil) {
+        return format(champ, profil, PROFIL, "Profil ROLE_… attendu");
+    }
+
     static Integer delaiCible(Integer d) {
         if (d != null && (d < 0 || d > DELAI_MAX)) {
             throw PilotageException.champ("delaiCibleJours", "Délai de 0 à " + DELAI_MAX + " jours");

@@ -37,7 +37,11 @@ const formulaire = (c: HTMLElement) => waitFor(() => {
   return f
 })
 const choisir = async (c: HTMLElement, o: { type?: string; conducteur?: string; banque?: string }) => {
-  if (o.type) fireEvent.click(c.querySelector(`input[type="radio"][value="${o.type}"]`)!)
+  if (o.type) {
+    // Types de projet servis par le référentiel (D-91) : options chargées après le formulaire.
+    await waitFor(() => expect(c.querySelector(`input[type="radio"][value="${o.type}"]`)).toBeTruthy())
+    fireEvent.click(c.querySelector(`input[type="radio"][value="${o.type}"]`)!)
+  }
   if (o.conducteur) {
     await waitFor(() => expect(c.querySelector(`select[name="chefDeProjetId"] option[value="${o.conducteur}"]`)).toBeTruthy())
     fireEvent.change(c.querySelector('select[name="chefDeProjetId"]')!, { target: { value: o.conducteur } })

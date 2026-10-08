@@ -109,7 +109,9 @@ class ParcoursProjectionTest {
         assertThat(lancement.debut()).isEqualTo(op(p, "6").getEcheance());
         assertThat(lancement.sla()).isNotNull();
         assertThat(e.get(4).etat()).isEqualTo("A_VENIR");
-        assertThat(e.get(7).livrables()).extracting(Vues.Livrable::libelleKey).containsExactly("parcours.op.19");
+        // D-93 §5 : le livrable de l'étape porte son libellé, son opération et son code, plus de clé parcours.op.<rang>.
+        assertThat(e.get(7).livrables()).extracting(Vues.Livrable::operation, Vues.Livrable::code).containsExactly(org.assertj.core.groups.Tuple.tuple("19", "L1"));
+        assertThat(e.get(7).livrables().get(0).libelle()).isNotBlank();
         p.declarerBlocage("m", "a", new Personne("u", "n", Fonction.DDRM), J, null, J);
         assertThat(projection.etapes(p, J).get(3).etat()).isEqualTo("BLOQUEE");
         assertThat(projection.etapes(p, op(p, "6").getEcheance().plusDays(1)).get(3).sla()).isEqualTo(Sla.DEPASSE);

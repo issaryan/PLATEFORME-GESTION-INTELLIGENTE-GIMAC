@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Destinataire d'un rapport (docs/lot1/mon-activite.md §2.4, « Destinataire du rapport ») : façon dont il a été
+     trouvé à la soumission (N_PLUS_UN, CHEF_UNITE, CHEF_UNITE_PARENTE, CHOISI) ; état DEPOSE (aucun destinataire au
+     sommet de l'organisation), dans la colonne etat existante. Écrit à la main. -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="pil-rapports-destinataire" author="lot1">
+        <addColumn tableName="rapport">
+            <column name="destinataire_motif" type="varchar(24)" remarks="N_PLUS_UN, CHEF_UNITE, CHEF_UNITE_PARENTE ou CHOISI ; nul sans destinataire."/>
+        </addColumn>
+        <sql>UPDATE rapport SET destinataire_motif = 'N_PLUS_UN' WHERE destinataire_id IS NOT NULL;</sql>
+    </changeSet>
+</databaseChangeLog>

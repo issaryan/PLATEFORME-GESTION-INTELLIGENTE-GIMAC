@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * Préférences de notification du compte appelant (docs/lot1/notifications.md §3) :
- * { systeme, son, types: { MESSAGE, TACHE, RAPPORT, DEMANDE, MENTION, REPONSE, PROCESSUS } } ; défauts systeme=true, son=false, tous les types
+ * { systeme, son, types: { MESSAGE, TACHE, RAPPORT, DEMANDE, MENTION, REPONSE, PROCESSUS, HOMOLOGATION } } ; défauts systeme=true, son=false, tous les types
  * actifs. NOT_INBOX_READ.
  */
 @RestController

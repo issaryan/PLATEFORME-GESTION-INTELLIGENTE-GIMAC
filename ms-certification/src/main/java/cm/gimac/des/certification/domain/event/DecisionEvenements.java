@@ -36,11 +36,13 @@ public final class DecisionEvenements {
 
     public record ProcesVerbalEtabli(UUID liaisonId, String etabliPar, String etabliParId, String empreinte) {}
 
-    public record SignatureResume(String fonction, String signataire, Instant signeLe) {}
+    /** Signature du procès-verbal : fonction signataire, nom, instant et code de la signature du circuit (D-94). */
+    public record SignatureResume(String fonction, String signataire, Instant signeLe, String signature) {}
 
     public record ProcesVerbalSigne(UUID liaisonId, List<SignatureResume> signatures, String empreinte) {}
 
-    public record SignatureProcesVerbalEnregistree(UUID liaisonId, String fonction, Instant signeLe, String etat) {}
+    /** Signature enregistrée : fonction, instant, état du procès-verbal qui en résulte et code de la signature (D-94). */
+    public record SignatureProcesVerbalEnregistree(UUID liaisonId, String fonction, Instant signeLe, String etat, String signature) {}
 
     public record DossierChangementConstitue(UUID liaisonId, String documentRef, String nom, String empreinte) {}
 

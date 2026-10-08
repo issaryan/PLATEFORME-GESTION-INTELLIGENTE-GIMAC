@@ -4,7 +4,9 @@ import static cm.gimac.des.pilotage.web.rest.activite.Jetons.appelant;
 
 import cm.gimac.des.pilotage.application.port.in.InstancesProcessusUseCase;
 import cm.gimac.des.pilotage.application.port.in.ProcessusUseCase;
+import cm.gimac.des.pilotage.application.port.in.ProcessusUseCase.Candidats;
 import cm.gimac.des.pilotage.application.port.in.ProcessusUseCase.Controle;
+import cm.gimac.des.pilotage.application.port.in.ProcessusUseCase.PorteeCatalogue;
 import cm.gimac.des.pilotage.application.port.in.ProcessusUseCase.ProcessusSaisie;
 import cm.gimac.des.pilotage.web.rest.activite.Jetons;
 import cm.gimac.des.pilotage.web.rest.processus.VuesProcessus.ControleVue;
@@ -32,7 +34,9 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * Définitions des processus d'unité (docs/lot1/processus-unite.md §3, passerelle /bff/des/pilotage/processus/**
  * vers /api/v1/processus/**), PIL_ACTIVITY_OWN sur chaque route ; le cas d'utilisation contrôle les droits fins
- * (PROCESSUS_DEFINIR couvrant l'unité ou IAM_PROFILE_EDIT ; lecture par l'unité ; 403 PIL_PROCESSUS_INTERDIT).
+ * (PROCESSUS_DEFINIR couvrant l'unité ; lecture par l'unité ; toutes les unités avec
+ * REF_METIER_ADMIN ou la portée TOUTES, D-92 ; 403 PIL_PROCESSUS_INTERDIT). GET /processus/portee rend la portée du
+ * catalogue ; GET /processus/candidats les candidats d'un intervenant (désignation hors de l'unité).
  * Le lancement (POST /processus/{id}/instances) rend l'instance créée.
  */
 @RestController
@@ -56,6 +60,27 @@ public class ProcessusResource {
         Authentication auth
     ) {
         return processus.lister(appelant(auth), unite, etat, q).stream().map(ProcessusResumeVue::de).toList();
+    }
+
+    /** Portée du catalogue (D-92 §3) : TOUS_DOMAINES ou MES_UNITES, et les droits qui l'ouvrent. */
+    @GetMapping("/portee")
+    @PreAuthorize(Jetons.ACTIVITE)
+    public PorteeCatalogue portee(Authentication auth) {
+        return processus.portee(appelant(auth));
+    }
+
+    /**
+     * Candidats d'un intervenant (désignation hors de l'unité) : porteurs actifs du profil dans l'unité, puis ailleurs
+     * dans le GIMAC avec leur unité ; sans profil : membres actifs de l'unité. Modélisateur et lancement.
+     */
+    @GetMapping("/candidats")
+    @PreAuthorize(Jetons.ACTIVITE)
+    public Candidats candidats(
+        @RequestParam(name = "unite", required = false) String unite,
+        @RequestParam(name = "profil", required = false) String profil,
+        Authentication auth
+    ) {
+        return processus.candidats(appelant(auth), unite, profil);
     }
 
     @PostMapping

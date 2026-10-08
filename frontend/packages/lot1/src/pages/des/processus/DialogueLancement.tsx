@@ -2,13 +2,14 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CrudDialog, DateField, NumberField, Note, Select, TextArea, TextField } from '@gimac/design-system'
 import { LIMITES_PROCESSUS, champsDeLancement, designationsAttendues, type ChampProcessus, type InstanceProcessus, type Processus } from '../../../modele/processus'
-import { useActeInstance } from '../../../hooks/processus'
+import { useActeInstance, useCandidatsProcessus } from '../../../hooks/processus'
 import { depuisSaisie, versSaisie } from '../../../modele/jours'
 import { ChoixPersonne, useErreurProcessus } from './communs'
 
 // Lancement d'un processus publié (D-87 §2, §5.1) en fenêtre modale : intitulé, valeurs des champs des étapes initiales,
 // une personne pour chaque intervenant AU_LANCEMENT (clés CODE_ETAPE, CODE_ETAPE.validateur, CODE_ETAPE.signature.CODE),
-// les porteurs du profil de remplacement proposés d'abord. MS-PILOTAGE vérifie chaque désignation.
+// les porteurs du profil de remplacement proposés d'abord (dans l'unité, puis ailleurs dans le GIMAC ; un seul : choisi
+// d'office). MS-PILOTAGE vérifie chaque désignation.
 
 /** Champ de saisie d'une valeur selon son type (texte, nombre, date, choix). */
 export function ChampValeur({ c, valeur, onChange, erreur, lecture, prefixe = 'champs' }: {
@@ -35,6 +36,12 @@ export function erreurValeur(c: ChampProcessus, v: string, t: (k: string) => str
   if (c.type === 'NOMBRE' && v.trim() && Number.isNaN(Number(v.replace(',', '.')))) return t('proc.erreur.nombre')
   if (c.type === 'DATE' && v.trim() && !depuisSaisie(v)) return t('proc.erreur.date')
   return undefined
+}
+
+/** Désignation au lancement : porteurs du profil de remplacement dans l'unité, puis ailleurs dans le GIMAC (un seul : choisi). */
+function Designation({ unite, profil, onChange, ...p }: { name: string; label: string; unite: string; profil?: string | null; value: string; onChange: (v: string) => void; error?: string }) {
+  const candidats = useCandidatsProcessus(unite, profil, !!profil)
+  return <ChoixPersonne {...p} required profil={profil} candidats={candidats.data} chargement={!!profil && candidats.isPending} onChange={onChange} />
 }
 
 export function DialogueLancement({ processus, onFermer, onLance }: { processus: Processus; onFermer: () => void; onLance: (i: InstanceProcessus) => void }) {
@@ -82,7 +89,7 @@ export function DialogueLancement({ processus, onFermer, onLance }: { processus:
           <legend className="gm-type-body-strong">{t('proc.lancement.designations')}</legend>
           <Note>{t('proc.lancement.designationsAide')}</Note>
           {designations.map((d) => (
-            <ChoixPersonne key={d.cle} name={`designations.${d.cle}`} required profil={d.intervenant.remplacement}
+            <Designation key={d.cle} name={`designations.${d.cle}`} unite={d.intervenant.unite || processus.unite} profil={d.intervenant.remplacement}
               label={d.role === 'executant' ? t('proc.lancement.executant', { etape: d.etape.libelle }) : d.role === 'validateur' ? t('proc.lancement.validateur', { etape: d.etape.libelle })
                 : t('proc.lancement.signataire', { etape: d.etape.libelle, signature: d.signature!.libelle })}
               value={choix[d.cle] ?? ''} onChange={(v) => setChoix((o) => ({ ...o, [d.cle]: v }))} error={tente ? erreurs[`designation.${d.cle}`] : undefined} />

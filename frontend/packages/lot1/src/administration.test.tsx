@@ -2,7 +2,12 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { cleanup, fireEvent, screen, within } from '@testing-library/react'
 import TableauDeBordPage from './pages/des/TableauDeBordPage'
 import { rendrePage, sessionTest } from './test/rendu'
-import { NAVIGATION_DES, urlConsole, versConsole } from './navigation'
+import { urlConsole, versConsole } from './navigation'
+import { ECRANS_DES, navigationDepuis } from './fonctionnalites'
+import { FONCTIONNALITES_INITIALES } from './services/simule/fonctionnalites'
+
+const tr = { t: (k: string) => k, existe: () => true }
+const NAVIGATION_DES = navigationDepuis(FONCTIONNALITES_INITIALES, 'des', ECRANS_DES, tr, 'nav.groupe.')
 import { PROFILS } from './permissions'
 import { ExtensionsTableauDeBordProvider } from './pages/des/tableau/extensions'
 
@@ -55,7 +60,8 @@ describe('navigation : groupe « Administration » dans le département', () => 
       // Pouvoirs hiérarchiques (D-81) : demandes des chefs à traiter, matrice des pouvoirs.
       ['/des/administration/demandes', 'IAM_ACCOUNT_READ'],
       ['/des/administration/profils', 'IAM_ACCOUNT_READ'],
-      ['/des/administration/matrice-pouvoirs', 'IAM_PROFILE_EDIT'],
+      // Matrice des pouvoirs (D-94 §6.2) : IAM_ACCOUNT_READ et IAM_PROFILE_EDIT exigées (tous).
+      ['/des/administration/matrice-pouvoirs', undefined],
       // Catalogue des unités organisationnelles (D-76).
       ['/des/administration/organisation', 'IAM_ACCOUNT_READ'],
       // Organigramme (D-86 §3).

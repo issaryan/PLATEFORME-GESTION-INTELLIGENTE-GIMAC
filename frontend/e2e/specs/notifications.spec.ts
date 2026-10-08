@@ -106,7 +106,9 @@ for (const theme of ['light', 'dark'] as const) {
         const liste = page.getByRole('list', { name: 'Notifications', exact: true })
         await expect(liste.getByRole('button')).toHaveCount(1)
         await page.getByRole('tab', { name: 'Toutes' }).click()
-        await expect(liste.getByRole('button')).toHaveCount(7)
+        // Sept notifications de la plateforme et une d'homologation (MS-NOTIFICATION §11), lue, avec son pictogramme.
+        await expect(liste.getByRole('button')).toHaveCount(8)
+        await expect(liste.getByRole('button', { name: /^Homologation : Action attendue : Atelier comptabilisation/ })).toBeVisible()
         await liste.getByRole('button', { name: /^Message : Aïcha Mahamat Nour, non lue/ }).click()
         await expect(page).toHaveURL(new RegExp(`/des/messagerie\\?conversation=${conversation}$`))
         await expect(pastille(page)).toHaveCount(0)
@@ -124,6 +126,10 @@ for (const theme of ['light', 'dark'] as const) {
         await expect(section.getByText('Préférences de notification enregistrées.')).toBeVisible()
         await section.getByRole('switch', { name: 'Tâches qui me sont confiées' }).click()
         await expect(section.getByRole('switch', { name: 'Tâches qui me sont confiées' })).not.toBeChecked()
+        // Homologation (MS-NOTIFICATION §11) : types.HOMOLOGATION, actif par défaut.
+        await expect(section.getByRole('switch', { name: 'Homologation : opérations des liaisons à mener, valider ou signer' })).toBeChecked()
+        await section.getByRole('switch', { name: 'Homologation : opérations des liaisons à mener, valider ou signer' }).click()
+        await expect(section.getByRole('switch', { name: 'Homologation : opérations des liaisons à mener, valider ou signer' })).not.toBeChecked()
         await section.scrollIntoViewIfNeeded()
         await section.screenshot({ path: join(CAPTURES, `preferences-${suffixe}.png`) })
       })

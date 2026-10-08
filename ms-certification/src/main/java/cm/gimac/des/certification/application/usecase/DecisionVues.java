@@ -43,8 +43,15 @@ public final class DecisionVues {
         SignatureVue signatureGimac,
         SignatureVue signatureParticipant,
         List<String> transitionsPermises,
-        List<String> actionsPermises
+        List<String> actionsPermises,
+        List<EtapeCircuitVue> circuit
     ) {}
+
+    /**
+     * Étape du circuit de signature du procès-verbal (D-94) : code, libellé, fonction signataire, ordre, côté portail,
+     * état ATTENDUE ou SIGNEE et, si elle est donnée, sa signature.
+     */
+    public record EtapeCircuitVue(String code, String libelle, String fonction, int ordre, boolean portail, String etat, SignatureVue signature) {}
 
     public record PreuveVue(String documentRef, String nom, String empreinte, LocalDate deposeLe, String deposePar) {}
 

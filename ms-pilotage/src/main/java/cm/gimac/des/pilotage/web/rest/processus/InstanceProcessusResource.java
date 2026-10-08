@@ -3,6 +3,7 @@ package cm.gimac.des.pilotage.web.rest.processus;
 import static cm.gimac.des.pilotage.web.rest.activite.Jetons.appelant;
 
 import cm.gimac.des.pilotage.application.port.in.InstancesProcessusUseCase;
+import cm.gimac.des.pilotage.application.port.in.ProcessusUseCase;
 import cm.gimac.des.pilotage.web.rest.activite.Jetons;
 import cm.gimac.des.pilotage.web.rest.processus.VuesProcessus.ChampsRequete;
 import cm.gimac.des.pilotage.web.rest.processus.VuesProcessus.InstanceResumeVue;
@@ -101,6 +102,13 @@ public class InstanceProcessusResource {
     @PreAuthorize(Jetons.ACTIVITE)
     public InstanceVue reaffecter(@PathVariable UUID id, @PathVariable String code, @RequestBody(required = false) ReaffectationRequete r, Authentication auth) {
         return InstanceVue.de(instances.reaffecter(appelant(auth), id, code, r == null ? null : r.personneId(), r == null ? null : r.motif()));
+    }
+
+    /** Candidats à l'exécution d'une étape en cours (réaffectation) : dans l'unité, puis ailleurs dans le GIMAC. */
+    @GetMapping("/{id}/etapes/{code}/candidats")
+    @PreAuthorize(Jetons.ACTIVITE)
+    public ProcessusUseCase.Candidats candidats(@PathVariable UUID id, @PathVariable String code, Authentication auth) {
+        return instances.candidats(appelant(auth), id, code);
     }
 
     @PostMapping("/{id}/suspension")

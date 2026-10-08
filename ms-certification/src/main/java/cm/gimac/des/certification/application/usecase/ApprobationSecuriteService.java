@@ -24,9 +24,11 @@ import cm.gimac.des.certification.domain.enumeration.EtatApprobation;
 import cm.gimac.des.certification.domain.enumeration.EtatVisa;
 import cm.gimac.des.certification.domain.enumeration.NatureVisa;
 import cm.gimac.des.certification.domain.enumeration.ObjetSignature;
-import cm.gimac.des.certification.domain.enumeration.RoleSignature;
 import cm.gimac.des.certification.domain.enumeration.TypeAttestation;
+import cm.gimac.des.certification.domain.decision.EtapeSignature;
 import cm.gimac.des.certification.domain.event.DecisionEvenements;
+import cm.gimac.des.certification.domain.operation.GesteCertification;
+import cm.gimac.des.certification.domain.operation.OperationLiaison;
 import cm.gimac.des.certification.domain.service.ApprobationPolicy;
 import cm.gimac.des.certification.infrastructure.messaging.outbox.OutboxPublisher;
 import cm.gimac.des.certification.repository.ApprobationSecuriteRepository;
@@ -54,8 +56,9 @@ import org.springframework.transaction.annotation.Transactional;
  * Verrou 2 (D-56, rangs 20 à 26) : approbation du changement par la sécurité des SI. Dossier de changement
  * (production monétique), fiche de changement référencée et lue sur le dispositif existant, attestations
  * déposées au portail, vérifiées avec rejet motivé puis archivées (sécurité des SI), visas optionnels
- * (conformité, Direction Générale) signés avec réauthentification forte. Chaque acte émet son événement par
- * l'outbox (sujet certification.approbation).
+ * (conformité, Direction Générale) signés avec réauthentification forte, par la fonction signataire du circuit
+ * configuré (D-94). Chaque geste exige l'opération du parcours qui le porte ouverte et un acteur désigné (D-93 §4,
+ * {@link OperationsLiaison}). Chaque acte émet son événement par l'outbox (sujet certification.approbation).
  */
 @Service
 @Transactional
@@ -77,6 +80,8 @@ public class ApprobationSecuriteService {
     private final Duration fraicheurFiche;
     private final Set<String> visaConformite;
     private final Set<String> visaDg;
+    private final OperationsLiaison operations;
+    private final CircuitsSignature circuits;
 
     public ApprobationSecuriteService(
         ApprobationSecuriteRepository approbations,
@@ -90,8 +95,12 @@ public class ApprobationSecuriteService {
         Clock clock,
         @Value("${gimac.certification.change-record.freshness:PT15M}") Duration fraicheurFiche,
         @Value("${gimac.certification.visas.conformite:}") Set<String> visaConformite,
-        @Value("${gimac.certification.visas.direction-generale:}") Set<String> visaDg
+        @Value("${gimac.certification.visas.direction-generale:}") Set<String> visaDg,
+        OperationsLiaison operations,
+        CircuitsSignature circuits
     ) {
+        this.operations = operations;
+        this.circuits = circuits;
         this.approbations = approbations;
         this.pvs = pvs;
         this.signatures = signatures;
@@ -131,7 +140,7 @@ public class ApprobationSecuriteService {
                 pv.getInstitutionId(),
                 pv.getTypeProjet(),
                 pv.isFintech(),
-                ApprobationPolicy.attestationsExigees(pv.getTypeProjet(), pv.isFintech()),
+                ApprobationPolicy.attestationsExigees(pv.getModeleTypeProjet(), pv.isFintech()),
                 visas
             )
         );
@@ -164,7 +173,7 @@ public class ApprobationSecuriteService {
                 p.getInstitutionId(),
                 p.getTypeProjet(),
                 p.isFintech(),
-                ApprobationPolicy.attestationsExigees(p.getTypeProjet(), p.isFintech()),
+                ApprobationPolicy.attestationsExigees(p.getModeleTypeProjet(), p.isFintech()),
                 visasActifs(p.getTypeProjet())
             );
         }
@@ -174,7 +183,7 @@ public class ApprobationSecuriteService {
             c.institutionId(),
             c.typeProjet(),
             c.fintech(),
-            ApprobationPolicy.attestationsExigees(c.typeProjet(), c.fintech()),
+            ApprobationPolicy.attestationsExigees(c.modele(), c.fintech()),
             visasActifs(c.typeProjet())
         );
     }
@@ -188,6 +197,7 @@ public class ApprobationSecuriteService {
         if (a.aDossier()) {
             throw CertificationException.conflit("CER_CHANGE_DOSSIER_ALREADY_CONSTITUTED", "Le dossier de changement est déjà constitué.");
         }
+        exiger(liaisonId, GesteCertification.CONSTITUER_DOSSIER, acteur);
         if (documentId == null || empreinte == null || !documents.empreinteConforme(documentId, empreinte.toLowerCase(Locale.ROOT))) {
             throw CertificationException.irrecevable("CER_DOCUMENT_INVALID", "La pièce déposée est introuvable ou son empreinte diffère.");
         }
@@ -206,6 +216,7 @@ public class ApprobationSecuriteService {
         ApprobationPolicy.verifierReferenceFiche(reference);
         ApprobationSecurite a = ouverte(liaisonId);
         ApprobationPolicy.verifierOuverte(a);
+        exiger(liaisonId, GesteCertification.REFERENCER_FICHE, acteur);
         a.referencerFiche(reference, fiches.lire(reference), clock.instant());
         publier(a, DecisionEvenements.FICHE_CHANGEMENT_REFERENCEE, new DecisionEvenements.FicheChangementReferencee(liaisonId, reference));
         tenterApprobation(a);
@@ -223,6 +234,7 @@ public class ApprobationSecuriteService {
             throw CertificationException.conflit("CER_CHANGE_RECORD_MISSING", "Aucune fiche de changement n'est référencée.");
         }
         if (!a.estApprouvee()) {
+            exiger(liaisonId, GesteCertification.RELIRE_FICHE, acteur);
             a.lireFiche(fiches.lire(a.getFicheReference()), clock.instant());
             tenterApprobation(a);
         }
@@ -239,6 +251,7 @@ public class ApprobationSecuriteService {
             throw CertificationException.conflit("CER_ATTESTATION_MISSING", "L'attestation n'a pas été fournie par le participant.");
         }
         ApprobationPolicy.verifierMotif(conforme, motif, "Un rejet doit être motivé.");
+        exiger(liaisonId, GesteCertification.VERIFIER_ATTESTATION, acteur);
         if (conforme) {
             at.verifierConforme(clock.instant(), acteur.id(), acteur.nom());
         } else {
@@ -263,6 +276,7 @@ public class ApprobationSecuriteService {
                 "Toutes les attestations exigées doivent être vérifiées avant l'archivage."
             );
         }
+        exiger(liaisonId, GesteCertification.ARCHIVER_ATTESTATIONS, acteur);
         a.archiver(clock.instant());
         publier(
             a,
@@ -288,11 +302,15 @@ public class ApprobationSecuriteService {
         ApprobationPolicy.verifierMotif(favorable, motif, "Un avis défavorable doit être motivé.");
         ApprobationPolicy.verifierOuverte(a);
         String motifRetenu = motif == null || motif.isBlank() ? null : motif.trim();
-        RoleSignature role = nature == NatureVisa.CONFORMITE ? RoleSignature.CONFORMITE : RoleSignature.DIRECTION_GENERALE;
+        EtapeSignature etape = circuits.visa(nature);
+        List<OperationLiaison> ouvertes = operations.ouvertes(liaisonId, GesteCertification.SIGNER_VISA);
+        if (!operations.admetSignataire(ouvertes, etape, acteur, () -> acces.contexte(liaisonId).conducteurId())) {
+            throw OperationsLiaison.signataireNonDesigne(etape);
+        }
         String empreinteObjet = a.getDossierEmpreinte() != null
             ? a.getDossierEmpreinte()
             : pvs.findByLiaisonId(liaisonId).map(ProcesVerbalCertification::getEmpreinte).orElse(null);
-        SignatureVerrou s = scellement.signer(liaisonId, ObjetSignature.VISA, role, acteur, favorable, motifRetenu, empreinteObjet, assertion);
+        SignatureVerrou s = scellement.signer(liaisonId, ObjetSignature.VISA, etape, acteur, favorable, motifRetenu, empreinteObjet, assertion);
         v.signer(favorable, motifRetenu, s.getId());
         publier(a, DecisionEvenements.VISA_SIGNE, new DecisionEvenements.VisaSigne(liaisonId, nature.name(), favorable));
         return vueDes(enregistrer(a), acteur);
@@ -331,6 +349,7 @@ public class ApprobationSecuriteService {
         if (at.estVerifiee()) {
             throw CertificationException.conflit("CER_ATTESTATION_ALREADY_VERIFIED", "Cette attestation est déjà vérifiée conforme.");
         }
+        exiger(liaisonId, GesteCertification.DEPOSER_ATTESTATION, acteur);
         DocumentDepose depot = documents.deposer(fichier, FINALITE_DOCUMENT, liaisonId + "/" + at.getType().name(), acteur.id());
         at.deposer(depot.id(), fichier.nom(), depot.sha256(), clock.instant(), acteur.nom());
         publier(a, DecisionEvenements.ATTESTATION_DEPOSEE, new DecisionEvenements.AttestationDeposee(liaisonId, at.getType().name(), depot.id()));
@@ -354,6 +373,11 @@ public class ApprobationSecuriteService {
                 }
                 return pvNonSigne("Le procès-verbal de certification doit être signé des deux parties.");
             });
+    }
+
+    /** Opération du parcours qui porte le geste ouverte, acteur désigné ou conducteur (D-93 §4). */
+    private void exiger(UUID liaisonId, GesteCertification geste, Acteur acteur) {
+        operations.exiger(liaisonId, geste, acteur, () -> acces.contexte(liaisonId).conducteurId());
     }
 
     private static CertificationException pvNonSigne(String message) {

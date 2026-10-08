@@ -5,13 +5,13 @@ import { CrudDialog, Icon, InlineAlert, RadioGroup, Select } from '@gimac/design
 import type { TypeProjet } from '../../../modele/commun'
 import { useInstitutions } from '../../../hooks/participant'
 import { useConducteurs, useOuvrirLiaison } from '../../../hooks/parcours'
+import { useOptionsTypesProjet } from '../../../hooks/referentiels'
 import { useErreurService } from '../liaisons/communs'
 
 // Étape 3, cadrage (D-57, D-58) : un chef de département ouvre la liaison sur une institution adhérente et
 // désigne le conducteur de projet dans le même acte. La banque partenaire (rang 4) est déclarée, ou son
 // absence expressément mentionnée. Le service décide (doublon, éligibilité) ; le dialogue affiche son refus.
 
-const TYPES: TypeProjet[] = ['CARTE_INTERBANCAIRE', 'PAIEMENT_MOBILE', 'DELEGATAIRE']
 
 /** Erreur d'un groupe de boutons radio : même anatomie que celle des champs du catalogue. */
 function ErreurGroupe({ texte }: { texte?: string }) {
@@ -34,6 +34,8 @@ export function DialogueOuverture({ onFermer }: { onFermer: () => void }) {
   const erreurService = useErreurService()
   const [institutionId, setInstitution] = useState('')
   const [typeProjet, setType] = useState('')
+  // Types proposés au cadrage (D-91) : actifs, référentiel publié, servis par MS-HOMOLOGATION.
+  const types = useOptionsTypesProjet(true)
   const [portage, setPortage] = useState('')
   const [banqueId, setBanque] = useState('')
   const [conducteurId, setConducteur] = useState('')
@@ -98,7 +100,8 @@ export function DialogueOuverture({ onFermer }: { onFermer: () => void }) {
           onChange={setInstitution}
         />
         <div className="gm-col" style={{ gap: 'var(--gm-space-1)' }}>
-          <RadioGroup name="typeProjet" label={t('parcoursOuverture.type')} value={typeProjet} options={TYPES.map((v) => ({ value: v, label: t(`parcours.typeProjet.${v}`) }))} onChange={setType} />
+          <RadioGroup name="typeProjet" label={t('parcoursOuverture.type')} value={typeProjet} options={types.options} onChange={setType} />
+          {types.pret && !types.options.length ? <InlineAlert level="info">{t('parcoursOuverture.aucunType')}</InlineAlert> : null}
           <ErreurGroupe texte={e('typeProjet')} />
         </div>
         <div className="gm-col" style={{ gap: 'var(--gm-space-1)' }}>

@@ -275,6 +275,8 @@ export function DetailTache({ id, pouvoirs, onFermer, onModifier, onTransition, 
               { key: t('act.tache.responsable'), value: x.responsable?.nomAffiche ?? t('pvr.tache.aPrendreUnite', { unite: libelleUnite(x.uniteCible) }) },
               ...(x.uniteCible ? [{ key: t('pvr.tache.unite'), value: libelleUnite(x.uniteCible) }] : []),
               ...(x.profilRequis ? [{ key: t('proc.tache.profilRequis'), value: t(`compte.profil.${x.profilRequis}`, { defaultValue: x.profilRequis }) }] : []),
+              ...(x.permissionsRequises?.length ? [{ key: t('pvr.tache.permissionsRequisesCle'), value: x.permissionsRequises.map((p) => t(`droits.permission.${p}`, { defaultValue: p })).join(', ') }] : []),
+              ...(x.profilsRequis?.length ? [{ key: t('pvr.tache.profilsRequisCle'), value: x.profilsRequis.map((p) => t(`compte.profil.${p}`, { defaultValue: p })).join(', ') }] : []),
               { key: t('act.tache.origine'), value: (
                 <span className="gm-row" style={{ gap: 'var(--gm-space-2)' }}>
                   <span>{t(`act.tache.origine.${x.origine.type}`)}</span>

@@ -15,8 +15,9 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * Annuaire des collaborateurs pour les autres services (IAM-04), jeton de service INTERNAL_IAM_READ :
  * MS-HOMOLOGATION y vérifie l'habilitation du conducteur de projet désigné (D-58) et y liste les
- * détenteurs du rôle CONDUCTEUR_PROJET ; MS-COLLABORATION y cherche les destinataires de la
- * messagerie (D-64), comptes internes actifs. Aucune donnée de contact ni de sécurité n'y figure.
+ * détenteurs d'un profil ou d'une permission (D-94) ; MS-COLLABORATION y cherche les destinataires de la
+ * messagerie (D-64), comptes internes actifs ; MS-NOTIFICATION y lit les comptes d'une institution
+ * (D-93 §11). Aucune donnée de contact ni de sécurité n'y figure.
  */
 @RestController
 @RequestMapping("/api/v1/interne/collaborateurs")
@@ -80,6 +81,26 @@ public class CollaborateursInternesResource {
     @GetMapping(params = "profil")
     public List<Collaborateur> parProfil(@RequestParam("profil") String profil) {
         return vues(comptes.lister(new AdministrationComptesService.Filtre(null, profil, null), 0, 100).contenu().stream().filter(Compte::actif).toList());
+    }
+
+    /**
+     * Comptes internes actifs dont un profil porte la permission (D-94 §3, docs/lot1/ecrans-par-configuration.md
+     * §6.6), triés par nom affiché : intervenants proposés par MS-HOMOLOGATION. Liste complète, non paginée ;
+     * permission inconnue ou blanche : liste vide.
+     */
+    @GetMapping(params = { "permission", "!profil" })
+    public List<Collaborateur> parPermission(@RequestParam("permission") String permission) {
+        return vues(comptes.porteursPermission(permission.trim()));
+    }
+
+    /**
+     * Comptes actifs rattachés à une institution (attribut institution_id, D-93 §11), même forme que
+     * {@code ?permission=} : destinataires des notifications d'une institution chez MS-NOTIFICATION. Institution
+     * inconnue ou blanche : liste vide ; 500 comptes au plus.
+     */
+    @GetMapping(params = { "institution", "!profil", "!permission" })
+    public List<Collaborateur> parInstitution(@RequestParam("institution") String institution) {
+        return vues(comptes.comptesInstitution(institution));
     }
 
     /** Comptes internes actifs (sans institution), filtrés par nom, courriel ou fonction, paginés (D-64). */

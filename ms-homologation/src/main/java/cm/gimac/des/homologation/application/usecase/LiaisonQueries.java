@@ -101,6 +101,7 @@ public class LiaisonQueries {
     private final CollaboratorDirectoryPort collaborateurs;
     private final ParticipantDirectoryPort participants;
     private final ParcoursLectures parcours;
+    private PorteursPermission porteurs;
 
     public LiaisonQueries(LiaisonRepository liaisons, ScopeItemRepository elements, CollaboratorDirectoryPort collaborateurs, ParticipantDirectoryPort participants, ParcoursLectures parcours) {
         this.liaisons = liaisons;
@@ -137,9 +138,18 @@ public class LiaisonQueries {
         return r == null ? f : new Fiche(f.liaison(), f.chefDeProjetNom(), f.banquePartenaireNom(), f.perimetre(), f.intervenants(), f.actionsPermises(), r);
     }
 
-    /** Collaborateurs désignables comme conducteur de projet (rôle CONDUCTEUR_PROJET). */
+    /** Collaborateurs désignables comme conducteur de projet : porteurs de HOM_PROJECT_CONDUCT (D-94 §3). */
     public List<CollaboratorView> conducteurs() {
-        return collaborateurs.parProfil(LiaisonOpeningPolicy.PROFIL_CONDUCTEUR);
+        if (porteurs == null) {
+            return collaborateurs.parPermission(LiaisonOpeningPolicy.PERMISSION_CONDUITE);
+        }
+        return porteurs.porteurs(LiaisonOpeningPolicy.PERMISSION_CONDUITE);
+    }
+
+    /** Lecteur des porteurs d'une permission (D-94 §3). */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setPorteurs(PorteursPermission porteurs) {
+        this.porteurs = porteurs;
     }
 
     private Fiche fiche(Liaison l, Map<UUID, String> noms, Set<String> permissions) {

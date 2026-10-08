@@ -122,9 +122,42 @@ public class OperationParcours {
     @Column(name = "delai_jours")
     private Integer delaiJours;
 
-    @Enumerated(EnumType.STRING)
+    @jakarta.persistence.Convert(converter = cm.gimac.des.homologation.domain.ConvertisseursCodes.FonctionEnTexte.class)
     @Column(name = "responsable", length = 40)
     private Fonction responsable;
+
+    /** Signatures exigées, recopiées de la version (D-91). */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "signatures", columnDefinition = "jsonb")
+    private String signatures;
+
+    /** Signatures recueillies (D-91). */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "signatures_recueillies", columnDefinition = "jsonb")
+    private String signaturesRecueillies;
+
+    /** Code de l'étape de la version (D-89), recopié : l'interface affiche les vraies étapes (D-93 §5). */
+    @Column(name = "etape_code", length = 40)
+    private String etapeCode;
+
+    /** Écran spécialisé de l'opération (D-93 §5), recopié de la version. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "vue", length = 30)
+    private VueOperation vue;
+
+    /** Les consultés internes désignés reçoivent une tâche (D-93 §1), recopié de la version. */
+    @Column(name = "consultes_recoivent_tache", nullable = false)
+    private boolean consultesRecoiventTache;
+
+    /** Dépôts des livrables attendus, par code de livrable (D-93 §3). */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "depots", columnDefinition = "jsonb")
+    private String depots;
+
+    /** Renvois par le validateur, du plus ancien au plus récent (D-93 §2). */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "renvois", columnDefinition = "jsonb")
+    private String renvois;
 
     protected OperationParcours() {}
 
@@ -159,6 +192,11 @@ public class OperationParcours {
         this.livrables = JsonTexte.ecrire(ref.getLivrables());
         this.delaiJours = ref.delaiEffectif();
         this.responsable = ref.responsableEffectif();
+        List<SignatureOperation> sig = ref.getSignatures();
+        this.signatures = sig.isEmpty() ? null : JsonTexte.ecrire(sig);
+        this.etapeCode = ref.getEtape() != null && !ref.getEtape().isBlank() ? ref.getEtape() : this.etape.name();
+        this.vue = ref.vueEffective();
+        this.consultesRecoiventTache = ref.isConsultesRecoiventTache();
     }
 
     public void setOrdre(int ordre) {
@@ -227,8 +265,112 @@ public class OperationParcours {
             particularite,
             getLivrables(),
             getDelaiJours(),
-            responsable
+            responsable,
+            getSignatures(),
+            getEtapeCode(),
+            getVue(),
+            consultesRecoiventTache
         );
+    }
+
+    // ------------------------------------------------------------------ D-93 : étape de la version, vue, livrables, renvois
+
+    /** Code de l'étape de la version ; une opération antérieure à D-93 sans code repris : son étape canonique. */
+    public String getEtapeCode() {
+        return etapeCode != null ? etapeCode : etape == null ? null : etape.name();
+    }
+
+    /** Écran spécialisé ; une opération antérieure à D-93 sans vue reprise : déduite de son modèle. */
+    public VueOperation getVue() {
+        return vue != null ? vue : VueOperation.deduite(getGeste(), particularite, declencheur);
+    }
+
+    public boolean isConsultesRecoiventTache() {
+        return consultesRecoiventTache;
+    }
+
+    public List<DepotLivrable> getDepots() {
+        return depots == null ? List.of() : JsonTexte.liste(depots, DepotLivrable.class);
+    }
+
+    /** Dépôt d'un livrable attendu, le plus récent. */
+    public java.util.Optional<DepotLivrable> depot(String livrable) {
+        List<DepotLivrable> l = getDepots();
+        for (int i = l.size() - 1; i >= 0; i--) {
+            if (livrable.equals(l.get(i).livrable())) {
+                return java.util.Optional.of(l.get(i));
+            }
+        }
+        return java.util.Optional.empty();
+    }
+
+    /** Ajoute un dépôt ; un nouveau dépôt du même livrable remplace le précédent. */
+    void deposer(DepotLivrable d) {
+        List<DepotLivrable> l = new java.util.ArrayList<>(getDepots().stream().filter(x -> !x.livrable().equals(d.livrable())).toList());
+        l.add(d);
+        this.depots = JsonTexte.ecrire(l);
+    }
+
+    /** Livrables obligatoires du référentiel pas encore déposés. */
+    public List<Livrable> livrablesManquants() {
+        return getLivrables().stream().filter(Livrable::obligatoire).filter(l -> depot(l.code()).isEmpty()).toList();
+    }
+
+    public List<Renvoi> getRenvois() {
+        return renvois == null ? List.of() : JsonTexte.liste(renvois, Renvoi.class);
+    }
+
+    void ajouterRenvoi(Renvoi r) {
+        List<Renvoi> l = new java.util.ArrayList<>(getRenvois());
+        l.add(r);
+        this.renvois = JsonTexte.ecrire(l);
+    }
+
+    // ------------------------------------------------------------------ signatures (D-91)
+
+    /** Signatures exigées à la clôture, dans leur ordre (ordre, puis code). */
+    public List<SignatureOperation> getSignatures() {
+        if (signatures == null) {
+            return List.of();
+        }
+        return JsonTexte.liste(signatures, SignatureOperation.class)
+            .stream()
+            .sorted(java.util.Comparator.comparingInt(SignatureOperation::ordreEffectif).thenComparing(SignatureOperation::code))
+            .toList();
+    }
+
+    public List<SignatureRecueillie> getSignaturesRecueillies() {
+        return signaturesRecueillies == null ? List.of() : JsonTexte.liste(signaturesRecueillies, SignatureRecueillie.class);
+    }
+
+    public java.util.Optional<SignatureRecueillie> recueillie(String code) {
+        return getSignaturesRecueillies().stream().filter(r -> r.code().equals(code)).findFirst();
+    }
+
+    /** Signatures exigées et pas encore recueillies, dans leur ordre. */
+    public List<SignatureOperation> signaturesAttendues() {
+        return getSignatures().stream().filter(s -> recueillie(s.code()).isEmpty()).toList();
+    }
+
+    /** Signatures attendues du plus petit ordre restant : celles qui peuvent être données maintenant. */
+    public List<SignatureOperation> signaturesSuivantes() {
+        List<SignatureOperation> attendues = signaturesAttendues();
+        if (attendues.isEmpty()) {
+            return List.of();
+        }
+        int ordre = attendues.get(0).ordreEffectif();
+        return attendues.stream().filter(s -> s.ordreEffectif() == ordre).toList();
+    }
+
+    void ajouterSignature(SignatureRecueillie r) {
+        List<SignatureRecueillie> l = new java.util.ArrayList<>(getSignaturesRecueillies());
+        l.add(r);
+        this.signaturesRecueillies = JsonTexte.ecrire(l);
+    }
+
+    /** Signatures remises en attente (opération rouverte). */
+    void effacerSignatures() {
+        this.signaturesRecueillies = null;
     }
 
     public boolean porte(Geste g) {

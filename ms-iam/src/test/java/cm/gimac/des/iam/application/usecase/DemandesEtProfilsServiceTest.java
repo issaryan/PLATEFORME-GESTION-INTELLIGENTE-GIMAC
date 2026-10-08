@@ -101,7 +101,7 @@ class DemandesEtProfilsServiceTest {
 
     @BeforeEach
     void init() {
-        annuaire = new AnnuaireEnMemoire(AnnuaireEnMemoire.catalogueParDefaut(Set.of("ROLE_SUPER_ADMIN", "ROLE_RSSI", "ROLE_CHEF_DES", "ROLE_SNA", "ROLE_COLLABORATEUR", "ROLE_CORRESPONDANT")), Set.of("ROLE_SUPER_ADMIN", "ROLE_RSSI"));
+        annuaire = new AnnuaireEnMemoire(AnnuaireEnMemoire.catalogueParDefaut(Set.of("ROLE_SUPER_ADMIN", "ROLE_RSSI", "ROLE_CHEF_DES", "ROLE_SNA", "ROLE_COLLABORATEUR", "ROLE_CORRESPONDANT")));
         unites = new OrganisationServiceTest.CatalogueEnMemoire();
         unites.enregistrer(new Unite("DG", "DG", TypeUnite.DIRECTION, null, true));
         unites.enregistrer(new Unite("DES", "DES", TypeUnite.DEPARTEMENT, "DG", true));
@@ -115,14 +115,14 @@ class DemandesEtProfilsServiceTest {
         var proprietes = new cm.gimac.des.iam.application.IamProprietes(
             null,
             null,
-            new cm.gimac.des.iam.application.IamProprietes.Profils(Set.of("ROLE_SUPER_ADMIN", "ROLE_RSSI", "ROLE_CHEF_DES", "ROLE_SNA", "ROLE_COLLABORATEUR", "ROLE_CORRESPONDANT"), Set.of("ROLE_SUPER_ADMIN", "ROLE_RSSI")),
+            new cm.gimac.des.iam.application.IamProprietes.Profils(Set.of("ROLE_SUPER_ADMIN", "ROLE_RSSI", "ROLE_CHEF_DES", "ROLE_SNA", "ROLE_COLLABORATEUR", "ROLE_CORRESPONDANT"), Set.of("ROLE_CORRESPONDANT")),
             null,
             null,
             null,
             null
         );
         organisation = new OrganisationService(unites, annuaire, journal);
-        PouvoirsService pouvoirs = new PouvoirsService(matrice, CatalogueProfils.configuration(proprietes), annuaire, organisation, journal);
+        PouvoirsService pouvoirs = new PouvoirsService(matrice, CatalogueProfils.configuration(proprietes, annuaire), annuaire, organisation, journal);
         service = new DemandesService(depot, pouvoirs, organisation, comptes, annuaire, journal, outbox, JsonMapper.builder().findAndAddModules().build(), Clock.fixed(T, ZoneOffset.UTC));
 
         chef = creer("chef", Set.of("ROLE_CHEF_DES"));
@@ -301,7 +301,7 @@ class DemandesEtProfilsServiceTest {
     void profilsCrees() {
         ProfilsCreesEnMemoire crees = new ProfilsCreesEnMemoire();
         var proprietes = AdministrationComptesServiceTest.proprietes();
-        CatalogueProfils catalogue = new CatalogueProfils(proprietes, crees);
+        CatalogueProfils catalogue = new CatalogueProfils(proprietes, crees, annuaire);
         ProfilsService profils = new ProfilsService(annuaire, crees, catalogue, matrice, journal, Clock.fixed(T, ZoneOffset.UTC));
         Acteur rssi = new Acteur("rssi", "RSSI", Set.of());
 
@@ -351,9 +351,89 @@ class DemandesEtProfilsServiceTest {
         verify(journal).configuration(eq(ADMIN), eq("PROFIL_SUPPRIME"), eq("Abandon"), any());
 
         // Catalogue de la seule configuration : aucun profil créé, écriture refusée.
-        CatalogueProfils config = CatalogueProfils.configuration(proprietes);
+        CatalogueProfils config = CatalogueProfils.configuration(proprietes, annuaire);
         assertThat(config.cree("ROLE_X")).isFalse();
         assertThat(config.privilegies()).containsExactlyInAnyOrderElementsOf(AdministrationComptesServiceTest.PRIVILEGIES);
         assertThat(config.attribuables()).containsExactlyInAnyOrderElementsOf(AdministrationComptesServiceTest.CATALOGUE);
+    }
+
+    @Test
+    @DisplayName("D-92 : REF_METIER_ADMIN, permission ordinaire non privilégiée ; reçue par un profil créé dès sa création, ajoutée puis retirée d'un profil livré sans droit d'octroi privilégié")
+    void referentielsMetierAdmin() {
+        ProfilsCreesEnMemoire crees = new ProfilsCreesEnMemoire();
+        var proprietes = new cm.gimac.des.iam.application.IamProprietes(
+            null,
+            null,
+            new cm.gimac.des.iam.application.IamProprietes.Profils(Set.of("ROLE_SUPER_ADMIN", "ROLE_RSSI", "ROLE_CHEF_DES", "ROLE_SNA", "ROLE_COLLABORATEUR", "ROLE_CORRESPONDANT"), Set.of("ROLE_CORRESPONDANT")),
+            null,
+            null,
+            null,
+            null
+        );
+        CatalogueProfils catalogue = new CatalogueProfils(proprietes, crees, annuaire);
+        ProfilsService profils = new ProfilsService(annuaire, crees, catalogue, matrice, journal, Clock.fixed(T, ZoneOffset.UTC));
+        ConfigurationAuthentificationService configuration = new ConfigurationAuthentificationService(annuaire, journal, null, null, Clock.fixed(T, ZoneOffset.UTC), catalogue, crees);
+        // Administrateur sans droit d'octroi privilégié : REF_METIER_ADMIN ne l'exige pas.
+        Acteur administrateur = new Acteur("admin-ordinaire", "Admin", Set.of("IAM_PROFILE_EDIT"));
+
+        assertThat(cm.gimac.des.iam.domain.service.ReglesProfils.privilegie(Set.of("REF_METIER_ADMIN"))).isFalse();
+        assertThat(annuaire.permissions()).contains("REF_METIER_ADMIN");
+
+        var cree = profils.creer(administrateur, "ROLE_REFERENTIELS", "Référentiels", Set.of("REF_METIER_ADMIN"), "D-92");
+        assertThat(cree.permissions()).contains("REF_METIER_ADMIN", "PIL_ACTIVITY_OWN");
+        assertThat(cree.privilegie()).isFalse();
+        assertThat(catalogue.privilegies()).doesNotContain("ROLE_REFERENTIELS");
+        assertThat(annuaire.profils()).filteredOn(x -> x.code().equals("ROLE_REFERENTIELS")).singleElement().satisfies(x -> assertThat(x.permissions()).contains("REF_METIER_ADMIN"));
+
+        // Profil livré (D-62) : ajout puis retrait par la composition, journalisés.
+        Set<String> sna = new java.util.TreeSet<>(annuaire.profils().stream().filter(x -> x.code().equals("ROLE_SNA")).findFirst().orElseThrow().permissions());
+        assertThat(sna).doesNotContain("REF_METIER_ADMIN");
+        Set<String> avec = new java.util.TreeSet<>(sna);
+        avec.add("REF_METIER_ADMIN");
+        var ajoute = configuration.definirPermissions(administrateur, "ROLE_SNA", avec, "Administration des référentiels confiée au SNA");
+        assertThat(ajoute.permissions()).contains("REF_METIER_ADMIN");
+        assertThat(ajoute.privilegie()).isFalse();
+        assertThat(ajoute.cree()).isFalse();
+        verify(journal).configuration(eq(administrateur), eq("PROFIL_ROLE_SNA"), eq("Administration des référentiels confiée au SNA"), any());
+        var retire = configuration.definirPermissions(administrateur, "ROLE_SNA", sna, "Retour à la composition livrée");
+        assertThat(retire.permissions()).doesNotContain("REF_METIER_ADMIN").containsAll(sna);
+        // Profil créé recomposé sans la permission : toujours non privilégié.
+        assertThat(configuration.definirPermissions(administrateur, "ROLE_REFERENTIELS", Set.of(), "Retrait").permissions()).doesNotContain("REF_METIER_ADMIN");
+        assertThat(crees.lire("ROLE_REFERENTIELS").orElseThrow().privilegie()).isFalse();
+    }
+
+    @Test
+    @DisplayName("D-94 : profil livré privilégié par sa composition ; la recomposition ne retire pas l'octroi privilégié au dernier porteur actif")
+    void privilegeEtOctroiParComposition() {
+        ProfilsCreesEnMemoire crees = new ProfilsCreesEnMemoire();
+        var proprietes = new cm.gimac.des.iam.application.IamProprietes(
+            null,
+            null,
+            new cm.gimac.des.iam.application.IamProprietes.Profils(Set.of("ROLE_SUPER_ADMIN", "ROLE_RSSI", "ROLE_SNA", "ROLE_CORRESPONDANT"), Set.of("ROLE_CORRESPONDANT")),
+            null,
+            null,
+            null,
+            null
+        );
+        CatalogueProfils catalogue = new CatalogueProfils(proprietes, crees, annuaire);
+        ConfigurationAuthentificationService configuration = new ConfigurationAuthentificationService(annuaire, journal, null, null, Clock.fixed(T, ZoneOffset.UTC), catalogue, crees);
+        Acteur rssi = new Acteur("rssi", "RSSI", Set.of("IAM_PROFILE_EDIT"));
+        // ROLE_SNA (livré, non privilégié) qui reçoit PLATFORM_CONFIG_READ devient privilégié : octroi exigé.
+        refus(() -> configuration.definirPermissions(rssi, "ROLE_SNA", Set.of("PLATFORM_CONFIG_READ"), "x"), "IAM_PRIVILEGED_PROFILE", 403);
+        assertThat(configuration.definirPermissions(ADMIN, "ROLE_SNA", Set.of("PLATFORM_CONFIG_READ"), "Exploitation").privilegie()).isTrue();
+        assertThat(catalogue.privilegies()).contains("ROLE_SNA");
+        // Retirer l'octroi au profil du seul porteur actif : refusé, quel que soit le nom du profil.
+        Set<String> sansOctroi = new java.util.TreeSet<>(annuaire.compositions().get("ROLE_SUPER_ADMIN"));
+        sansOctroi.remove("IAM_ROLE_PRIVILEGED_GRANT");
+        refus(() -> configuration.definirPermissions(ADMIN, "ROLE_SUPER_ADMIN", sansOctroi, "x"), "IAM_LAST_SUPER_ADMIN", 409);
+        // Un autre compte actif porte l'octroi par un autre profil : le retrait est admis.
+        Set<String> avecOctroi = new java.util.TreeSet<>(annuaire.compositions().get("ROLE_SNA"));
+        avecOctroi.add("IAM_ROLE_PRIVILEGED_GRANT");
+        configuration.definirPermissions(ADMIN, "ROLE_SNA", avecOctroi, "Gardien de l'octroi");
+        creer("gardien.octroi", Set.of("ROLE_SNA"));
+        assertThat(configuration.definirPermissions(ADMIN, "ROLE_SUPER_ADMIN", sansOctroi, "Octroi confié au gardien").permissions()).doesNotContain("IAM_ROLE_PRIVILEGED_GRANT");
+        var compositions = annuaire.compositions();
+        assertThat(catalogue.porteursActifsOctroiPrivilegie(compositions)).isEqualTo(annuaire.lister().stream().filter(c -> c.actif() && c.profils().contains("ROLE_SNA")).count());
+        assertThat(catalogue.porteOctroiPrivilegie(annuaire.lire("demo-super-admin").orElseThrow().profils(), compositions)).isFalse();
     }
 }

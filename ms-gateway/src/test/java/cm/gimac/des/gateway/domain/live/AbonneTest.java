@@ -30,7 +30,7 @@ class AbonneTest {
         assertThat(Couche.depuis("autre")).isEmpty();
         assertThat(Couche.depuis(null)).isEmpty();
         assertThat(Couche.DES.sujets()).containsExactlyInAnyOrder(HOMOLOGATION, CERTIFICATION, COLLABORATION, EvenementLive.PRESENCE, NOTIFICATION);
-        assertThat(Couche.PORTAIL.sujets()).doesNotContain(COLLABORATION, EvenementLive.PRESENCE, NOTIFICATION);
+        assertThat(Couche.PORTAIL.sujets()).containsExactlyInAnyOrder(HOMOLOGATION, CERTIFICATION, NOTIFICATION);
         assertThat(Couche.CONSOLE.sujets()).containsExactlyInAnyOrder(HOMOLOGATION, CERTIFICATION, COLLABORATION, EvenementLive.PRESENCE, NOTIFICATION);
     }
 
@@ -79,7 +79,7 @@ class AbonneTest {
     }
 
     @Test
-    @DisplayName("Notification de la plateforme (D-80) : sujet « notification » accepté, remise au seul destinataire, jamais au portail")
+    @DisplayName("Notification de la plateforme (D-80) : sujet « notification » accepté, remise au seul destinataire, portail compris (D-93 §11.4)")
     void notification() {
         EvenementLive n = new EvenementLive("n1", "notification.inapp-created.v1", "n-1", NOTIFICATION, null, Set.of("u1"), "u2");
         assertThat(Abonne.de(Couche.DES, "u1", "", "collaboration,notification").sujets()).containsExactlyInAnyOrder(COLLABORATION, NOTIFICATION);
@@ -88,8 +88,12 @@ class AbonneTest {
         assertThat(Abonne.de(Couche.DES, "u2", "", null).recoit(n)).isFalse();
         assertThat(Abonne.de(Couche.DES, "", "", null).recoit(n)).isFalse();
         assertThat(Abonne.de(Couche.DES, "u1", "", "collaboration").recoit(n)).isFalse();
-        assertThat(Abonne.de(Couche.PORTAIL, "u1", "I1", "notification").sujets()).isEmpty();
-        assertThat(Abonne.de(Couche.PORTAIL, "u1", "I1", null).recoit(n)).isFalse();
+        assertThat(Abonne.de(Couche.PORTAIL, "u1", "I1", "notification").sujets()).containsExactly(NOTIFICATION);
+        // Portail : notification personnelle, sans institution dans l'enveloppe ; destinataire seul, institution exigée.
+        assertThat(Abonne.de(Couche.PORTAIL, "u1", "I1", null).recoit(n)).isTrue();
+        assertThat(Abonne.de(Couche.PORTAIL, "u3", "I1", null).recoit(n)).isFalse();
+        assertThat(Abonne.de(Couche.PORTAIL, "u1", "", null).recoit(n)).isFalse();
+        assertThat(Abonne.de(Couche.PORTAIL, "u1", "I1", "homologation").recoit(n)).isFalse();
         assertThat(n.ephemere()).isFalse();
         assertThat(n.vue()).isEqualTo(new VueEvenement("n1", "notification.inapp-created.v1", "n-1", NOTIFICATION, "u2"));
     }

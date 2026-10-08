@@ -87,8 +87,15 @@ public class RapportResource {
 
     @PostMapping("/{id}/soumission")
     @PreAuthorize(Jetons.ACTIVITE)
-    public RapportVue soumettre(@PathVariable UUID id, Authentication auth) {
-        return RapportVue.de(rapports.soumettre(appelant(auth), id));
+    public RapportVue soumettre(@PathVariable UUID id, @RequestBody(required = false) Vues.SoumissionRequete requete, Authentication auth) {
+        return RapportVue.de(rapports.soumettre(appelant(auth), id, requete == null ? null : requete.destinataireId()));
+    }
+
+    /** Destinataire qui recevra le rapport s'il est soumis maintenant, et choix possibles dans la chaîne hiérarchique (auteur). */
+    @GetMapping("/{id}/destinataires")
+    @PreAuthorize(Jetons.ACTIVITE)
+    public Vues.DestinatairesVue destinataires(@PathVariable UUID id, Authentication auth) {
+        return Vues.DestinatairesVue.de(rapports.destinataires(appelant(auth), id));
     }
 
     @PostMapping("/{id}/visa")

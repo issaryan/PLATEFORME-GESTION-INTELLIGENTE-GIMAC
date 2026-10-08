@@ -1,0 +1,1620 @@
+{
+  "source": "Transcription du registre de l'interface (frontend/packages/lot1/src/fonctionnalites.ts, droits.ts, frontend/apps/console/src/navigation.ts, frontend/packages/lot1/src/navigation.ts), D-94 ; à régénérer depuis le registre.",
+  "fonctionnalites": [
+    {
+      "cle": "tableauDeBord",
+      "application": "des",
+      "module": "accueil",
+      "libelle": "nav.tableauDeBord",
+      "groupe": "accueil",
+      "ordre": 10,
+      "icone": "gauge",
+      "visible": true,
+      "permissions": {
+        "tous": [],
+        "unDe": []
+      },
+      "widgets": [],
+      "droits": []
+    },
+    {
+      "cle": "messagerie",
+      "application": "des",
+      "module": "messagerie",
+      "libelle": "nav.messagerie",
+      "groupe": "accueil",
+      "ordre": 20,
+      "icone": "messages-square",
+      "visible": true,
+      "permissions": {
+        "tous": [],
+        "unDe": [
+          "COL_MESSAGE_READ"
+        ]
+      },
+      "widgets": [],
+      "droits": [
+        {
+          "cle": "COL_MESSAGE_READ",
+          "nature": "CONSULTER",
+          "permission": "COL_MESSAGE_READ",
+          "libelle": "droits.permission.COL_MESSAGE_READ"
+        },
+        {
+          "cle": "COL_MESSAGE_SEND",
+          "nature": "CREER",
+          "permission": "COL_MESSAGE_SEND",
+          "libelle": "droits.permission.COL_MESSAGE_SEND"
+        }
+      ]
+    },
+    {
+      "cle": "notifications",
+      "application": "des",
+      "module": "accueil",
+      "libelle": "nav.notifications",
+      "groupe": "accueil",
+      "ordre": 30,
+      "icone": "bell-ring",
+      "visible": true,
+      "permissions": {
+        "tous": [],
+        "unDe": [
+          "NOT_INBOX_READ"
+        ]
+      },
+      "widgets": [],
+      "droits": [
+        {
+          "cle": "NOT_INBOX_READ",
+          "nature": "CONSULTER",
+          "permission": "NOT_INBOX_READ",
+          "libelle": "droits.permission.NOT_INBOX_READ"
+        }
+      ]
+    },
+    {
+      "cle": "maJournee",
+      "application": "des",
+      "module": "monActivite",
+      "libelle": "nav.maJournee",
+      "groupe": "monActivite",
+      "ordre": 40,
+      "icone": "square-check",
+      "visible": true,
+      "permissions": {
+        "tous": [],
+        "unDe": [
+          "PIL_ACTIVITY_OWN"
+        ]
+      },
+      "widgets": [
+        {
+          "cle": "maJournee",
+          "permissions": {
+            "tous": [],
+            "unDe": []
+          }
+        }
+      ],
+      "droits": [
+        {
+          "cle": "PIL_ACTIVITY_OWN",
+          "nature": "CONSULTER",
+          "permission": "PIL_ACTIVITY_OWN",
+          "libelle": "droits.permission.PIL_ACTIVITY_OWN"
+        }
+      ]
+    },
+    {
+      "cle": "agenda",
+      "application": "des",
+      "module": "monActivite",
+      "libelle": "nav.agenda",
+      "groupe": "monActivite",
+      "ordre": 50,
+      "icone": "calendar",
+      "visible": true,
+      "permissions": {
+        "tous": [],
+        "unDe": [
+          "PIL_ACTIVITY_OWN"
+        ]
+      },
+      "widgets": [],
+      "droits": [
+        {
+          "cle": "PIL_ACTIVITY_OWN",
+          "nature": "CONSULTER",
+          "permission": "PIL_ACTIVITY_OWN",
+          "libelle": "droits.permission.PIL_ACTIVITY_OWN"
+        }
+      ]
+    },
+    {
+      "cle": "taches",
+      "application": "des",
+      "module": "monActivite",
+      "libelle": "nav.taches",
+      "groupe": "monActivite",
+      "ordre": 60,
+      "icone": "kanban",
+      "visible": true,
+      "permissions": {
+        "tous": [],
+        "unDe": [
+          "PIL_ACTIVITY_OWN"
+        ]
+      },
+      "widgets": [],
+      "droits": [
+        {
+          "cle": "PIL_ACTIVITY_OWN",
+          "nature": "CONSULTER",
+          "permission": "PIL_ACTIVITY_OWN",
+          "libelle": "droits.permission.PIL_ACTIVITY_OWN"
+        },
+        {
+          "cle": "PIL_TASK_ASSIGN",
+          "nature": "CREER",
+          "permission": "PIL_TASK_ASSIGN",
+          "libelle": "droits.permission.PIL_TASK_ASSIGN"
+        }
+      ]
+    },
+    {
+      "cle": "rapports",
+      "application": "des",
+      "module": "monActivite",
+      "libelle": "nav.rapports",
+      "groupe": "monActivite",
+      "ordre": 70,
+      "icone": "file-text",
+      "visible": true,
+      "permissions": {
+        "tous": [],
+        "unDe": [
+          "PIL_ACTIVITY_OWN"
+        ]
+      },
+      "widgets": [],
+      "droits": [
+        {
+          "cle": "PIL_ACTIVITY_OWN",
+          "nature": "CONSULTER",
+          "permission": "PIL_ACTIVITY_OWN",
+          "libelle": "droits.permission.PIL_ACTIVITY_OWN"
+        }
+      ]
+    },
+    {
+      "cle": "equipe",
+      "application": "des",
+      "module": "monActivite",
+      "libelle": "nav.equipe",
+      "groupe": "monActivite",
+      "ordre": 80,
+      "icone": "users",
+      "visible": true,
+      "permissions": {
+        "tous": [],
+        "unDe": [
+          "PIL_TEAM_READ"
+        ]
+      },
+      "widgets": [],
+      "droits": [
+        {
+          "cle": "PIL_TEAM_READ",
+          "nature": "CONSULTER",
+          "permission": "PIL_TEAM_READ",
+          "libelle": "droits.permission.PIL_TEAM_READ"
+        },
+        {
+          "cle": "PIL_TASK_ASSIGN",
+          "nature": "CREER",
+          "permission": "PIL_TASK_ASSIGN",
+          "libelle": "droits.permission.PIL_TASK_ASSIGN"
+        }
+      ]
+    },
+    {
+      "cle": "processus",
+      "application": "des",
+      "module": "processus",
+      "libelle": "nav.processus",
+      "groupe": "monActivite",
+      "ordre": 90,
+      "icone": "workflow",
+      "visible": true,
+      "permissions": {
+        "tous": [],
+        "unDe": [
+          "PIL_ACTIVITY_OWN"
+        ]
+      },
+      "widgets": [],
+      "droits": [
+        {
+          "cle": "PIL_ACTIVITY_OWN",
+          "nature": "CONSULTER",
+          "permission": "PIL_ACTIVITY_OWN",
+          "libelle": "droits.permission.PIL_ACTIVITY_OWN"
+        }
+      ]
+    },
+    {
+      "cle": "institutions",
+      "application": "des",
+      "module": "participants",
+      "libelle": "nav.institutions",
+      "groupe": "registre",
+      "ordre": 100,
+      "icone": "landmark",
+      "visible": true,
+      "permissions": {
+        "tous": [],
+        "unDe": [
+          "PAR_INSTITUTION_READ"
+        ]
+      },
+      "widgets": [
+        {
+          "cle": "ddrm",
+          "permissions": {
+            "tous": [
+              "PAR_INSTITUTION_READ"
+            ],
+            "unDe": [
+              "PAR_ADHESION_INSTRUCT",
+              "PAR_TRANSITION_APPROVE"
+            ]
+          }
+        }
+      ],
+      "droits": [
+        {
+          "cle": "PAR_INSTITUTION_READ",
+          "nature": "CONSULTER",
+          "permission": "PAR_INSTITUTION_READ",
+          "libelle": "droits.permission.PAR_INSTITUTION_READ"
+        },
+        {
+          "cle": "PAR_INSTITUTION_CREATE",
+          "nature": "CREER",
+          "permission": "PAR_INSTITUTION_CREATE",
+          "libelle": "droits.permission.PAR_INSTITUTION_CREATE"
+        },
+        {
+          "cle": "PAR_TRANSITION_REQUEST",
+          "nature": "CREER",
+          "permission": "PAR_TRANSITION_REQUEST",
+          "libelle": "droits.permission.PAR_TRANSITION_REQUEST"
+        },
+        {
+          "cle": "PAR_INSTITUTION_EDIT",
+          "nature": "MODIFIER",
+          "permission": "PAR_INSTITUTION_EDIT",
+          "libelle": "droits.permission.PAR_INSTITUTION_EDIT"
+        },
+        {
+          "cle": "PAR_ADHESION_INSTRUCT",
+          "nature": "VALIDER",
+          "permission": "PAR_ADHESION_INSTRUCT",
+          "libelle": "droits.permission.PAR_ADHESION_INSTRUCT"
+        },
+        {
+          "cle": "PAR_TRANSITION_APPROVE",
+          "nature": "VALIDER",
+          "permission": "PAR_TRANSITION_APPROVE",
+          "libelle": "droits.permission.PAR_TRANSITION_APPROVE"
+        }
+      ]
+    },
+    {
+      "cle": "liaisons",
+      "application": "des",
+      "module": "homologation",
+      "libelle": "nav.liaisons",
+      "groupe": "homologation",
+      "ordre": 110,
+      "icone": "route",
+      "visible": true,
+      "permissions": {
+        "tous": [],
+        "unDe": [
+          "HOM_LIAISON_LIST"
+        ]
+      },
+      "widgets": [
+        {
+          "cle": "cockpit",
+          "permissions": {
+            "tous": [
+              "HOM_DASHBOARD_READ"
+            ],
+            "unDe": [
+              "HOM_PROJECT_DESIGNATE",
+              "CER_QUITUS_DG_SIGN",
+              "CER_ATTESTATION_STATUS_APPROVE"
+            ]
+          }
+        },
+        {
+          "cle": "monTravail",
+          "permissions": {
+            "tous": [
+              "HOM_DASHBOARD_READ",
+              "HOM_LIAISON_LIST"
+            ],
+            "unDe": [
+              "HOM_EVIDENCE_SUBMIT",
+              "HOM_OPERATION_VALIDATE",
+              "HOM_OPERATION_ASSIGN",
+              "HOM_STEP_MANAGE",
+              "HOM_PROJECT_DESIGNATE",
+              "CER_PV_ESTABLISH",
+              "CER_QUITUS_TECHNIQUE_SIGN",
+              "CER_QUITUS_SECURITE_SIGN",
+              "CER_QUITUS_CONFORMITE_SIGN",
+              "CER_QUITUS_DG_SIGN",
+              "CER_SECURITY_VERIFY",
+              "CER_DOSSIER_VERIFY",
+              "CER_CHANGE_RECORD_LINK",
+              "CER_GOLIVE_REPORT_SUBMIT"
+            ]
+          }
+        }
+      ],
+      "droits": [
+        {
+          "cle": "HOM_LIAISON_LIST",
+          "nature": "CONSULTER",
+          "permission": "HOM_LIAISON_LIST",
+          "libelle": "droits.permission.HOM_LIAISON_LIST"
+        },
+        {
+          "cle": "HOM_LIAISON_READ",
+          "nature": "CONSULTER",
+          "permission": "HOM_LIAISON_READ",
+          "libelle": "droits.permission.HOM_LIAISON_READ"
+        },
+        {
+          "cle": "HOM_DASHBOARD_READ",
+          "nature": "CONSULTER",
+          "permission": "HOM_DASHBOARD_READ",
+          "libelle": "droits.permission.HOM_DASHBOARD_READ"
+        },
+        {
+          "cle": "HOM_LIAISON_OPEN",
+          "nature": "CREER",
+          "permission": "HOM_LIAISON_OPEN",
+          "libelle": "droits.permission.HOM_LIAISON_OPEN"
+        },
+        {
+          "cle": "HOM_EVIDENCE_SUBMIT",
+          "nature": "CREER",
+          "permission": "HOM_EVIDENCE_SUBMIT",
+          "libelle": "droits.permission.HOM_EVIDENCE_SUBMIT"
+        },
+        {
+          "cle": "HOM_PROJECT_DESIGNATE",
+          "nature": "MODIFIER",
+          "permission": "HOM_PROJECT_DESIGNATE",
+          "libelle": "droits.permission.HOM_PROJECT_DESIGNATE"
+        },
+        {
+          "cle": "HOM_OPERATION_ASSIGN",
+          "nature": "MODIFIER",
+          "permission": "HOM_OPERATION_ASSIGN",
+          "libelle": "droits.permission.HOM_OPERATION_ASSIGN"
+        },
+        {
+          "cle": "HOM_OPERATION_REOPEN",
+          "nature": "MODIFIER",
+          "permission": "HOM_OPERATION_REOPEN",
+          "libelle": "droits.permission.HOM_OPERATION_REOPEN"
+        },
+        {
+          "cle": "HOM_STEP_MANAGE",
+          "nature": "MODIFIER",
+          "permission": "HOM_STEP_MANAGE",
+          "libelle": "droits.permission.HOM_STEP_MANAGE"
+        },
+        {
+          "cle": "HOM_GRID_EDIT",
+          "nature": "MODIFIER",
+          "permission": "HOM_GRID_EDIT",
+          "libelle": "droits.permission.HOM_GRID_EDIT"
+        },
+        {
+          "cle": "HOM_OPERATION_VALIDATE",
+          "nature": "VALIDER",
+          "permission": "HOM_OPERATION_VALIDATE",
+          "libelle": "droits.permission.HOM_OPERATION_VALIDATE"
+        },
+        {
+          "cle": "HOM_SCENARIO_QUALIFY",
+          "nature": "VALIDER",
+          "permission": "HOM_SCENARIO_QUALIFY",
+          "libelle": "droits.permission.HOM_SCENARIO_QUALIFY"
+        },
+        {
+          "cle": "HOM_EVIDENCE_FILE_EXPORT",
+          "nature": "EXPORTER",
+          "permission": "HOM_EVIDENCE_FILE_EXPORT",
+          "libelle": "droits.permission.HOM_EVIDENCE_FILE_EXPORT"
+        },
+        {
+          "cle": "HOM_LIAISON_UNFREEZE",
+          "nature": "ADMINISTRER",
+          "permission": "HOM_LIAISON_UNFREEZE",
+          "libelle": "droits.permission.HOM_LIAISON_UNFREEZE"
+        },
+        {
+          "cle": "HOM_DEADLINE_CONFIG",
+          "nature": "ADMINISTRER",
+          "permission": "HOM_DEADLINE_CONFIG",
+          "libelle": "droits.permission.HOM_DEADLINE_CONFIG"
+        },
+        {
+          "cle": "HOM_REPLAY_ADMIN",
+          "nature": "ADMINISTRER",
+          "permission": "HOM_REPLAY_ADMIN",
+          "libelle": "droits.permission.HOM_REPLAY_ADMIN"
+        }
+      ]
+    },
+    {
+      "cle": "mesProjets",
+      "application": "des",
+      "module": "homologation",
+      "libelle": "nav.mesProjets",
+      "groupe": "homologation",
+      "ordre": 120,
+      "icone": "user",
+      "visible": true,
+      "permissions": {
+        "tous": [
+          "HOM_LIAISON_LIST",
+          "CER_PV_ESTABLISH"
+        ],
+        "unDe": []
+      },
+      "widgets": [],
+      "droits": [
+        {
+          "cle": "HOM_LIAISON_LIST",
+          "nature": "CONSULTER",
+          "permission": "HOM_LIAISON_LIST",
+          "libelle": "droits.permission.HOM_LIAISON_LIST"
+        },
+        {
+          "cle": "CER_PV_ESTABLISH",
+          "nature": "CREER",
+          "permission": "CER_PV_ESTABLISH",
+          "libelle": "droits.permission.CER_PV_ESTABLISH"
+        }
+      ]
+    },
+    {
+      "cle": "referentiels",
+      "application": "des",
+      "module": "homologation",
+      "libelle": "nav.referentiels",
+      "groupe": "homologation",
+      "ordre": 130,
+      "icone": "kanban",
+      "visible": true,
+      "permissions": {
+        "tous": [],
+        "unDe": [
+          "HOM_REFERENTIEL_READ"
+        ]
+      },
+      "widgets": [],
+      "droits": [
+        {
+          "cle": "HOM_REFERENTIEL_READ",
+          "nature": "CONSULTER",
+          "permission": "HOM_REFERENTIEL_READ",
+          "libelle": "droits.permission.HOM_REFERENTIEL_READ"
+        },
+        {
+          "cle": "HOM_REFERENTIEL_READ_ALL",
+          "nature": "CONSULTER",
+          "permission": "HOM_REFERENTIEL_READ_ALL",
+          "libelle": "droits.permission.HOM_REFERENTIEL_READ_ALL"
+        },
+        {
+          "cle": "HOM_REFERENTIEL_EDIT",
+          "nature": "MODIFIER",
+          "permission": "HOM_REFERENTIEL_EDIT",
+          "libelle": "droits.permission.HOM_REFERENTIEL_EDIT"
+        },
+        {
+          "cle": "HOM_REFERENTIEL_PUBLISH",
+          "nature": "PUBLIER",
+          "permission": "HOM_REFERENTIEL_PUBLISH",
+          "libelle": "droits.permission.HOM_REFERENTIEL_PUBLISH"
+        },
+        {
+          "cle": "HOM_REFERENTIEL_MIGRATE",
+          "nature": "ADMINISTRER",
+          "permission": "HOM_REFERENTIEL_MIGRATE",
+          "libelle": "droits.permission.HOM_REFERENTIEL_MIGRATE"
+        }
+      ]
+    },
+    {
+      "cle": "adminComptes",
+      "application": "des",
+      "module": "administration",
+      "libelle": "nav.admin.comptes",
+      "groupe": "administration",
+      "ordre": 140,
+      "icone": "users",
+      "visible": true,
+      "permissions": {
+        "tous": [],
+        "unDe": [
+          "IAM_ACCOUNT_READ"
+        ]
+      },
+      "widgets": [
+        {
+          "cle": "administration",
+          "permissions": {
+            "tous": [],
+            "unDe": []
+          }
+        }
+      ],
+      "droits": [
+        {
+          "cle": "IAM_ACCOUNT_READ",
+          "nature": "CONSULTER",
+          "permission": "IAM_ACCOUNT_READ",
+          "libelle": "droits.permission.IAM_ACCOUNT_READ"
+        },
+        {
+          "cle": "IAM_ACCOUNT_CREATE",
+          "nature": "CREER",
+          "permission": "IAM_ACCOUNT_CREATE",
+          "libelle": "droits.permission.IAM_ACCOUNT_CREATE"
+        },
+        {
+          "cle": "IAM_ACCOUNT_EDIT",
+          "nature": "MODIFIER",
+          "permission": "IAM_ACCOUNT_EDIT",
+          "libelle": "droits.permission.IAM_ACCOUNT_EDIT"
+        },
+        {
+          "cle": "IAM_ACCOUNT_ROLES",
+          "nature": "ADMINISTRER",
+          "permission": "IAM_ACCOUNT_ROLES",
+          "libelle": "droits.permission.IAM_ACCOUNT_ROLES"
+        },
+        {
+          "cle": "IAM_ACCOUNT_STATUS",
+          "nature": "ADMINISTRER",
+          "permission": "IAM_ACCOUNT_STATUS",
+          "libelle": "droits.permission.IAM_ACCOUNT_STATUS"
+        },
+        {
+          "cle": "IAM_ACCOUNT_SECURITY",
+          "nature": "ADMINISTRER",
+          "permission": "IAM_ACCOUNT_SECURITY",
+          "libelle": "droits.permission.IAM_ACCOUNT_SECURITY"
+        },
+        {
+          "cle": "IAM_ACCOUNT_DELETE",
+          "nature": "ADMINISTRER",
+          "permission": "IAM_ACCOUNT_DELETE",
+          "libelle": "droits.permission.IAM_ACCOUNT_DELETE"
+        }
+      ]
+    },
+    {
+      "cle": "adminDemandes",
+      "application": "des",
+      "module": "administration",
+      "libelle": "nav.admin.demandes",
+      "groupe": "administration",
+      "ordre": 150,
+      "icone": "inbox",
+      "visible": true,
+      "permissions": {
+        "tous": [],
+        "unDe": [
+          "IAM_ACCOUNT_READ"
+        ]
+      },
+      "widgets": [],
+      "droits": [
+        {
+          "cle": "IAM_ACCOUNT_READ",
+          "nature": "CONSULTER",
+          "permission": "IAM_ACCOUNT_READ",
+          "libelle": "droits.permission.IAM_ACCOUNT_READ"
+        }
+      ]
+    },
+    {
+      "cle": "adminProfils",
+      "application": "des",
+      "module": "administration",
+      "libelle": "nav.admin.profils",
+      "groupe": "administration",
+      "ordre": 160,
+      "icone": "shield-check",
+      "visible": true,
+      "permissions": {
+        "tous": [],
+        "unDe": [
+          "IAM_ACCOUNT_READ"
+        ]
+      },
+      "widgets": [],
+      "droits": [
+        {
+          "cle": "IAM_ACCOUNT_READ",
+          "nature": "CONSULTER",
+          "permission": "IAM_ACCOUNT_READ",
+          "libelle": "droits.permission.IAM_ACCOUNT_READ"
+        },
+        {
+          "cle": "IAM_PROFILE_EDIT",
+          "nature": "MODIFIER",
+          "permission": "IAM_PROFILE_EDIT",
+          "libelle": "droits.permission.IAM_PROFILE_EDIT"
+        },
+        {
+          "cle": "IAM_ROLE_PRIVILEGED_GRANT",
+          "nature": "ADMINISTRER",
+          "permission": "IAM_ROLE_PRIVILEGED_GRANT",
+          "libelle": "droits.permission.IAM_ROLE_PRIVILEGED_GRANT"
+        }
+      ]
+    },
+    {
+      "cle": "adminMatrice",
+      "application": "des",
+      "module": "administration",
+      "libelle": "nav.admin.matrice",
+      "groupe": "administration",
+      "ordre": 170,
+      "icone": "scale",
+      "visible": true,
+      "permissions": {
+        "tous": [
+          "IAM_ACCOUNT_READ",
+          "IAM_PROFILE_EDIT"
+        ],
+        "unDe": []
+      },
+      "widgets": [],
+      "droits": [
+        {
+          "cle": "IAM_ACCOUNT_READ",
+          "nature": "CONSULTER",
+          "permission": "IAM_ACCOUNT_READ",
+          "libelle": "droits.permission.IAM_ACCOUNT_READ"
+        },
+        {
+          "cle": "IAM_PROFILE_EDIT",
+          "nature": "MODIFIER",
+          "permission": "IAM_PROFILE_EDIT",
+          "libelle": "droits.permission.IAM_PROFILE_EDIT"
+        }
+      ]
+    },
+    {
+      "cle": "adminOrganisation",
+      "application": "des",
+      "module": "administration",
+      "libelle": "nav.admin.organisation",
+      "groupe": "administration",
+      "ordre": 180,
+      "icone": "landmark",
+      "visible": true,
+      "permissions": {
+        "tous": [],
+        "unDe": [
+          "IAM_ACCOUNT_READ"
+        ]
+      },
+      "widgets": [],
+      "droits": [
+        {
+          "cle": "IAM_ACCOUNT_READ",
+          "nature": "CONSULTER",
+          "permission": "IAM_ACCOUNT_READ",
+          "libelle": "droits.permission.IAM_ACCOUNT_READ"
+        },
+        {
+          "cle": "IAM_ACCOUNT_EDIT",
+          "nature": "MODIFIER",
+          "permission": "IAM_ACCOUNT_EDIT",
+          "libelle": "droits.permission.IAM_ACCOUNT_EDIT"
+        }
+      ]
+    },
+    {
+      "cle": "adminOrganigramme",
+      "application": "des",
+      "module": "administration",
+      "libelle": "nav.admin.organigramme",
+      "groupe": "administration",
+      "ordre": 190,
+      "icone": "network",
+      "visible": true,
+      "permissions": {
+        "tous": [],
+        "unDe": [
+          "IAM_ACCOUNT_READ"
+        ]
+      },
+      "widgets": [],
+      "droits": [
+        {
+          "cle": "IAM_ACCOUNT_READ",
+          "nature": "CONSULTER",
+          "permission": "IAM_ACCOUNT_READ",
+          "libelle": "droits.permission.IAM_ACCOUNT_READ"
+        },
+        {
+          "cle": "IAM_ACCOUNT_EDIT",
+          "nature": "MODIFIER",
+          "permission": "IAM_ACCOUNT_EDIT",
+          "libelle": "droits.permission.IAM_ACCOUNT_EDIT"
+        }
+      ]
+    },
+    {
+      "cle": "adminJournal",
+      "application": "des",
+      "module": "administration",
+      "libelle": "nav.admin.journal",
+      "groupe": "administration",
+      "ordre": 200,
+      "icone": "scroll-text",
+      "visible": true,
+      "permissions": {
+        "tous": [],
+        "unDe": [
+          "IAM_JOURNAL_READ"
+        ]
+      },
+      "widgets": [],
+      "droits": [
+        {
+          "cle": "IAM_JOURNAL_READ",
+          "nature": "CONSULTER",
+          "permission": "IAM_JOURNAL_READ",
+          "libelle": "droits.permission.IAM_JOURNAL_READ"
+        }
+      ]
+    },
+    {
+      "cle": "adminPolitique",
+      "application": "des",
+      "module": "administration",
+      "libelle": "nav.admin.politique",
+      "groupe": "administration",
+      "ordre": 210,
+      "icone": "lock",
+      "visible": true,
+      "permissions": {
+        "tous": [],
+        "unDe": [
+          "PLATFORM_SECURITY_POLICY_READ"
+        ]
+      },
+      "widgets": [],
+      "droits": [
+        {
+          "cle": "PLATFORM_SECURITY_POLICY_READ",
+          "nature": "CONSULTER",
+          "permission": "PLATFORM_SECURITY_POLICY_READ",
+          "libelle": "droits.permission.PLATFORM_SECURITY_POLICY_READ"
+        },
+        {
+          "cle": "PLATFORM_SECURITY_POLICY_EDIT",
+          "nature": "MODIFIER",
+          "permission": "PLATFORM_SECURITY_POLICY_EDIT",
+          "libelle": "droits.permission.PLATFORM_SECURITY_POLICY_EDIT"
+        }
+      ]
+    },
+    {
+      "cle": "supervision",
+      "application": "des",
+      "module": "exploitation",
+      "libelle": "nav.plateforme.supervision",
+      "groupe": "plateforme",
+      "ordre": 220,
+      "icone": "eye",
+      "visible": true,
+      "permissions": {
+        "tous": [],
+        "unDe": [
+          "PLATFORM_SUPERVISION_READ"
+        ]
+      },
+      "widgets": [
+        {
+          "cle": "supervision",
+          "permissions": {
+            "tous": [],
+            "unDe": []
+          }
+        }
+      ],
+      "droits": [
+        {
+          "cle": "PLATFORM_SUPERVISION_READ",
+          "nature": "CONSULTER",
+          "permission": "PLATFORM_SUPERVISION_READ",
+          "libelle": "droits.permission.PLATFORM_SUPERVISION_READ"
+        }
+      ]
+    },
+    {
+      "cle": "infrastructure",
+      "application": "des",
+      "module": "exploitation",
+      "libelle": "nav.plateforme.infrastructure",
+      "groupe": "plateforme",
+      "ordre": 230,
+      "icone": "rotate-ccw",
+      "visible": true,
+      "permissions": {
+        "tous": [],
+        "unDe": [
+          "PLATFORM_OPS_READ"
+        ]
+      },
+      "widgets": [
+        {
+          "cle": "infrastructure",
+          "permissions": {
+            "tous": [],
+            "unDe": []
+          }
+        }
+      ],
+      "droits": [
+        {
+          "cle": "PLATFORM_OPS_READ",
+          "nature": "CONSULTER",
+          "permission": "PLATFORM_OPS_READ",
+          "libelle": "droits.permission.PLATFORM_OPS_READ"
+        },
+        {
+          "cle": "PLATFORM_OPS_EXECUTE",
+          "nature": "ADMINISTRER",
+          "permission": "PLATFORM_OPS_EXECUTE",
+          "libelle": "droits.permission.PLATFORM_OPS_EXECUTE"
+        }
+      ]
+    },
+    {
+      "cle": "configuration",
+      "application": "des",
+      "module": "exploitation",
+      "libelle": "nav.plateforme.configuration",
+      "groupe": "plateforme",
+      "ordre": 240,
+      "icone": "monitor",
+      "visible": true,
+      "permissions": {
+        "tous": [],
+        "unDe": [
+          "PLATFORM_CONFIG_READ"
+        ]
+      },
+      "widgets": [],
+      "droits": [
+        {
+          "cle": "PLATFORM_CONFIG_READ",
+          "nature": "CONSULTER",
+          "permission": "PLATFORM_CONFIG_READ",
+          "libelle": "droits.permission.PLATFORM_CONFIG_READ"
+        },
+        {
+          "cle": "PLATFORM_CONFIG_EDIT",
+          "nature": "MODIFIER",
+          "permission": "PLATFORM_CONFIG_EDIT",
+          "libelle": "droits.permission.PLATFORM_CONFIG_EDIT"
+        }
+      ]
+    },
+    {
+      "cle": "journalisation",
+      "application": "des",
+      "module": "exploitation",
+      "libelle": "nav.plateforme.journalisation",
+      "groupe": "plateforme",
+      "ordre": 250,
+      "icone": "file-text",
+      "visible": true,
+      "permissions": {
+        "tous": [],
+        "unDe": [
+          "PLATFORM_CONFIG_READ"
+        ]
+      },
+      "widgets": [],
+      "droits": [
+        {
+          "cle": "PLATFORM_CONFIG_READ",
+          "nature": "CONSULTER",
+          "permission": "PLATFORM_CONFIG_READ",
+          "libelle": "droits.permission.PLATFORM_CONFIG_READ"
+        },
+        {
+          "cle": "PLATFORM_CONFIG_EDIT",
+          "nature": "MODIFIER",
+          "permission": "PLATFORM_CONFIG_EDIT",
+          "libelle": "droits.permission.PLATFORM_CONFIG_EDIT"
+        }
+      ]
+    },
+    {
+      "cle": "courriels",
+      "application": "des",
+      "module": "exploitation",
+      "libelle": "nav.plateforme.courriels",
+      "groupe": "plateforme",
+      "ordre": 260,
+      "icone": "send",
+      "visible": true,
+      "permissions": {
+        "tous": [],
+        "unDe": [
+          "PLATFORM_MESSAGING_EDIT"
+        ]
+      },
+      "widgets": [],
+      "droits": [
+        {
+          "cle": "PLATFORM_MESSAGING_EDIT",
+          "nature": "MODIFIER",
+          "permission": "PLATFORM_MESSAGING_EDIT",
+          "libelle": "droits.permission.PLATFORM_MESSAGING_EDIT"
+        }
+      ]
+    },
+    {
+      "cle": "adminConsole",
+      "application": "des",
+      "module": "exploitation",
+      "libelle": "nav.admin.console",
+      "groupe": "plateforme",
+      "ordre": 270,
+      "icone": "arrow-right",
+      "visible": true,
+      "permissions": {
+        "tous": [],
+        "unDe": [
+          "PLATFORM_CONFIG_READ"
+        ]
+      },
+      "widgets": [],
+      "droits": [
+        {
+          "cle": "PLATFORM_CONFIG_READ",
+          "nature": "CONSULTER",
+          "permission": "PLATFORM_CONFIG_READ",
+          "libelle": "droits.permission.PLATFORM_CONFIG_READ"
+        }
+      ]
+    },
+    {
+      "cle": "dossierCertification",
+      "application": "des",
+      "module": "certification",
+      "libelle": "droits.fct.dossierCertification",
+      "groupe": null,
+      "ordre": 280,
+      "icone": "shield-check",
+      "visible": true,
+      "permissions": {
+        "tous": [],
+        "unDe": [
+          "CER_DOSSIER_READ",
+          "CER_CIRCUIT_READ"
+        ]
+      },
+      "widgets": [],
+      "droits": [
+        {
+          "cle": "CER_DOSSIER_READ",
+          "nature": "CONSULTER",
+          "permission": "CER_DOSSIER_READ",
+          "libelle": "droits.permission.CER_DOSSIER_READ"
+        },
+        {
+          "cle": "CER_CIRCUIT_READ",
+          "nature": "CONSULTER",
+          "permission": "CER_CIRCUIT_READ",
+          "libelle": "droits.permission.CER_CIRCUIT_READ"
+        },
+        {
+          "cle": "CER_GOLIVE_REPORT_SUBMIT",
+          "nature": "CREER",
+          "permission": "CER_GOLIVE_REPORT_SUBMIT",
+          "libelle": "droits.permission.CER_GOLIVE_REPORT_SUBMIT"
+        },
+        {
+          "cle": "CER_CHANGE_RECORD_LINK",
+          "nature": "MODIFIER",
+          "permission": "CER_CHANGE_RECORD_LINK",
+          "libelle": "droits.permission.CER_CHANGE_RECORD_LINK"
+        },
+        {
+          "cle": "CER_DOSSIER_VERIFY",
+          "nature": "VALIDER",
+          "permission": "CER_DOSSIER_VERIFY",
+          "libelle": "droits.permission.CER_DOSSIER_VERIFY"
+        },
+        {
+          "cle": "CER_SECURITY_VERIFY",
+          "nature": "VALIDER",
+          "permission": "CER_SECURITY_VERIFY",
+          "libelle": "droits.permission.CER_SECURITY_VERIFY"
+        }
+      ]
+    },
+    {
+      "cle": "quitus",
+      "application": "des",
+      "module": "certification",
+      "libelle": "droits.fct.quitus",
+      "groupe": null,
+      "ordre": 290,
+      "icone": "key-round",
+      "visible": true,
+      "permissions": {
+        "tous": [],
+        "unDe": [
+          "CER_DOSSIER_READ"
+        ]
+      },
+      "widgets": [],
+      "droits": [
+        {
+          "cle": "CER_DOSSIER_READ",
+          "nature": "CONSULTER",
+          "permission": "CER_DOSSIER_READ",
+          "libelle": "droits.permission.CER_DOSSIER_READ"
+        },
+        {
+          "cle": "CER_QUITUS_TECHNIQUE_SIGN",
+          "nature": "SIGNER",
+          "permission": "CER_QUITUS_TECHNIQUE_SIGN",
+          "libelle": "droits.permission.CER_QUITUS_TECHNIQUE_SIGN"
+        },
+        {
+          "cle": "CER_QUITUS_SECURITE_SIGN",
+          "nature": "SIGNER",
+          "permission": "CER_QUITUS_SECURITE_SIGN",
+          "libelle": "droits.permission.CER_QUITUS_SECURITE_SIGN"
+        },
+        {
+          "cle": "CER_QUITUS_CONFORMITE_SIGN",
+          "nature": "SIGNER",
+          "permission": "CER_QUITUS_CONFORMITE_SIGN",
+          "libelle": "droits.permission.CER_QUITUS_CONFORMITE_SIGN"
+        },
+        {
+          "cle": "CER_QUITUS_DG_SIGN",
+          "nature": "SIGNER",
+          "permission": "CER_QUITUS_DG_SIGN",
+          "libelle": "droits.permission.CER_QUITUS_DG_SIGN"
+        }
+      ]
+    },
+    {
+      "cle": "attestations",
+      "application": "des",
+      "module": "certification",
+      "libelle": "droits.fct.attestations",
+      "groupe": null,
+      "ordre": 300,
+      "icone": "file-text",
+      "visible": true,
+      "permissions": {
+        "tous": [],
+        "unDe": [
+          "CER_REGISTER_READ"
+        ]
+      },
+      "widgets": [],
+      "droits": [
+        {
+          "cle": "CER_REGISTER_READ",
+          "nature": "CONSULTER",
+          "permission": "CER_REGISTER_READ",
+          "libelle": "droits.permission.CER_REGISTER_READ"
+        },
+        {
+          "cle": "CER_ATTESTATION_ISSUE",
+          "nature": "CREER",
+          "permission": "CER_ATTESTATION_ISSUE",
+          "libelle": "droits.permission.CER_ATTESTATION_ISSUE"
+        },
+        {
+          "cle": "CER_ATTESTATION_STATUS_REQUEST",
+          "nature": "CREER",
+          "permission": "CER_ATTESTATION_STATUS_REQUEST",
+          "libelle": "droits.permission.CER_ATTESTATION_STATUS_REQUEST"
+        },
+        {
+          "cle": "CER_ATTESTATION_STATUS_APPROVE",
+          "nature": "VALIDER",
+          "permission": "CER_ATTESTATION_STATUS_APPROVE",
+          "libelle": "droits.permission.CER_ATTESTATION_STATUS_APPROVE"
+        }
+      ]
+    },
+    {
+      "cle": "registre",
+      "application": "des",
+      "module": "certification",
+      "libelle": "droits.fct.registre",
+      "groupe": null,
+      "ordre": 310,
+      "icone": "scroll-text",
+      "visible": true,
+      "permissions": {
+        "tous": [],
+        "unDe": [
+          "CER_REGISTER_READ"
+        ]
+      },
+      "widgets": [],
+      "droits": [
+        {
+          "cle": "CER_REGISTER_READ",
+          "nature": "CONSULTER",
+          "permission": "CER_REGISTER_READ",
+          "libelle": "droits.permission.CER_REGISTER_READ"
+        },
+        {
+          "cle": "CER_REGISTER_EXPORT",
+          "nature": "EXPORTER",
+          "permission": "CER_REGISTER_EXPORT",
+          "libelle": "droits.permission.CER_REGISTER_EXPORT"
+        }
+      ]
+    },
+    {
+      "cle": "referentielsMetierAdmin",
+      "application": "des",
+      "module": "referentielsMetier",
+      "libelle": "Administration de tous les domaines",
+      "groupe": null,
+      "ordre": 320,
+      "icone": "workflow",
+      "visible": true,
+      "permissions": {
+        "tous": [],
+        "unDe": [
+          "REF_METIER_ADMIN"
+        ]
+      },
+      "widgets": [],
+      "droits": [
+        {
+          "cle": "REF_METIER_ADMIN",
+          "nature": "ADMINISTRER",
+          "permission": "REF_METIER_ADMIN",
+          "libelle": "Administration des référentiels métier, tous domaines"
+        }
+      ]
+    },
+    {
+      "cle": "consoleDepartement",
+      "application": "console",
+      "module": "accueil",
+      "libelle": "console.nav.departement",
+      "groupe": "accueil",
+      "ordre": 10,
+      "icone": "arrow-left",
+      "visible": true,
+      "permissions": {
+        "tous": [],
+        "unDe": []
+      },
+      "widgets": [],
+      "droits": []
+    },
+    {
+      "cle": "consoleTableauDeBord",
+      "application": "console",
+      "module": "accueil",
+      "libelle": "console.nav.tableauDeBord",
+      "groupe": "accueil",
+      "ordre": 20,
+      "icone": "gauge",
+      "visible": true,
+      "permissions": {
+        "tous": [],
+        "unDe": []
+      },
+      "widgets": [],
+      "droits": []
+    },
+    {
+      "cle": "consoleMessagerie",
+      "application": "console",
+      "module": "messagerie",
+      "libelle": "console.nav.messagerie",
+      "groupe": "accueil",
+      "ordre": 30,
+      "icone": "messages-square",
+      "visible": true,
+      "permissions": {
+        "tous": [],
+        "unDe": [
+          "COL_MESSAGE_READ"
+        ]
+      },
+      "widgets": [],
+      "droits": []
+    },
+    {
+      "cle": "consoleNotifications",
+      "application": "console",
+      "module": "accueil",
+      "libelle": "console.nav.notifications",
+      "groupe": "accueil",
+      "ordre": 40,
+      "icone": "bell-ring",
+      "visible": true,
+      "permissions": {
+        "tous": [],
+        "unDe": [
+          "NOT_INBOX_READ"
+        ]
+      },
+      "widgets": [],
+      "droits": []
+    },
+    {
+      "cle": "consoleMonActivite",
+      "application": "console",
+      "module": "monActivite",
+      "libelle": "console.nav.monActivite",
+      "groupe": "accueil",
+      "ordre": 50,
+      "icone": "square-check",
+      "visible": true,
+      "permissions": {
+        "tous": [],
+        "unDe": [
+          "PIL_ACTIVITY_OWN"
+        ]
+      },
+      "widgets": [],
+      "droits": []
+    },
+    {
+      "cle": "consoleComptes",
+      "application": "console",
+      "module": "administration",
+      "libelle": "console.nav.comptes",
+      "groupe": "comptes",
+      "ordre": 60,
+      "icone": "users",
+      "visible": true,
+      "permissions": {
+        "tous": [],
+        "unDe": [
+          "IAM_ACCOUNT_READ"
+        ]
+      },
+      "widgets": [],
+      "droits": []
+    },
+    {
+      "cle": "consoleDemandes",
+      "application": "console",
+      "module": "administration",
+      "libelle": "console.nav.demandes",
+      "groupe": "comptes",
+      "ordre": 70,
+      "icone": "inbox",
+      "visible": true,
+      "permissions": {
+        "tous": [],
+        "unDe": [
+          "IAM_ACCOUNT_READ"
+        ]
+      },
+      "widgets": [],
+      "droits": []
+    },
+    {
+      "cle": "consoleProfils",
+      "application": "console",
+      "module": "administration",
+      "libelle": "console.nav.profils",
+      "groupe": "comptes",
+      "ordre": 80,
+      "icone": "shield-check",
+      "visible": true,
+      "permissions": {
+        "tous": [],
+        "unDe": [
+          "IAM_ACCOUNT_READ"
+        ]
+      },
+      "widgets": [],
+      "droits": []
+    },
+    {
+      "cle": "consoleMatrice",
+      "application": "console",
+      "module": "administration",
+      "libelle": "console.nav.matrice",
+      "groupe": "comptes",
+      "ordre": 90,
+      "icone": "scale",
+      "visible": true,
+      "permissions": {
+        "tous": [
+          "IAM_ACCOUNT_READ",
+          "IAM_PROFILE_EDIT"
+        ],
+        "unDe": []
+      },
+      "widgets": [],
+      "droits": []
+    },
+    {
+      "cle": "consoleOrganisation",
+      "application": "console",
+      "module": "administration",
+      "libelle": "console.nav.organisation",
+      "groupe": "comptes",
+      "ordre": 100,
+      "icone": "landmark",
+      "visible": true,
+      "permissions": {
+        "tous": [],
+        "unDe": [
+          "IAM_ACCOUNT_READ"
+        ]
+      },
+      "widgets": [],
+      "droits": []
+    },
+    {
+      "cle": "consoleOrganigramme",
+      "application": "console",
+      "module": "administration",
+      "libelle": "console.nav.organigramme",
+      "groupe": "comptes",
+      "ordre": 110,
+      "icone": "network",
+      "visible": true,
+      "permissions": {
+        "tous": [],
+        "unDe": [
+          "IAM_ACCOUNT_READ"
+        ]
+      },
+      "widgets": [],
+      "droits": []
+    },
+    {
+      "cle": "consoleJournal",
+      "application": "console",
+      "module": "administration",
+      "libelle": "console.nav.journal",
+      "groupe": "comptes",
+      "ordre": 120,
+      "icone": "scroll-text",
+      "visible": true,
+      "permissions": {
+        "tous": [],
+        "unDe": [
+          "IAM_JOURNAL_READ"
+        ]
+      },
+      "widgets": [],
+      "droits": []
+    },
+    {
+      "cle": "consolePolitique",
+      "application": "console",
+      "module": "administration",
+      "libelle": "console.nav.politique",
+      "groupe": "securite",
+      "ordre": 130,
+      "icone": "lock",
+      "visible": true,
+      "permissions": {
+        "tous": [],
+        "unDe": [
+          "PLATFORM_SECURITY_POLICY_READ"
+        ]
+      },
+      "widgets": [],
+      "droits": []
+    },
+    {
+      "cle": "consoleSupervision",
+      "application": "console",
+      "module": "exploitation",
+      "libelle": "console.nav.supervision",
+      "groupe": "plateforme",
+      "ordre": 140,
+      "icone": "gauge",
+      "visible": true,
+      "permissions": {
+        "tous": [],
+        "unDe": [
+          "PLATFORM_SUPERVISION_READ"
+        ]
+      },
+      "widgets": [],
+      "droits": []
+    },
+    {
+      "cle": "consoleInfrastructure",
+      "application": "console",
+      "module": "exploitation",
+      "libelle": "console.nav.infrastructure",
+      "groupe": "plateforme",
+      "ordre": 150,
+      "icone": "rotate-ccw",
+      "visible": true,
+      "permissions": {
+        "tous": [],
+        "unDe": [
+          "PLATFORM_OPS_READ"
+        ]
+      },
+      "widgets": [],
+      "droits": []
+    },
+    {
+      "cle": "consoleConfiguration",
+      "application": "console",
+      "module": "exploitation",
+      "libelle": "console.nav.configuration",
+      "groupe": "plateforme",
+      "ordre": 160,
+      "icone": "monitor",
+      "visible": true,
+      "permissions": {
+        "tous": [],
+        "unDe": [
+          "PLATFORM_CONFIG_READ"
+        ]
+      },
+      "widgets": [],
+      "droits": []
+    },
+    {
+      "cle": "consoleJournalisation",
+      "application": "console",
+      "module": "exploitation",
+      "libelle": "console.nav.journalisation",
+      "groupe": "plateforme",
+      "ordre": 170,
+      "icone": "file-text",
+      "visible": true,
+      "permissions": {
+        "tous": [],
+        "unDe": [
+          "PLATFORM_CONFIG_READ"
+        ]
+      },
+      "widgets": [],
+      "droits": []
+    },
+    {
+      "cle": "consoleCourriels",
+      "application": "console",
+      "module": "exploitation",
+      "libelle": "console.nav.courriels",
+      "groupe": "plateforme",
+      "ordre": 180,
+      "icone": "send",
+      "visible": true,
+      "permissions": {
+        "tous": [],
+        "unDe": [
+          "PLATFORM_MESSAGING_EDIT"
+        ]
+      },
+      "widgets": [],
+      "droits": []
+    },
+    {
+      "cle": "tableauDeBordPortail",
+      "application": "portail",
+      "module": "portail",
+      "libelle": "pp.nav.tableauDeBord",
+      "groupe": "accueil",
+      "ordre": 10,
+      "icone": "gauge",
+      "visible": true,
+      "permissions": {
+        "tous": [],
+        "unDe": [
+          "HOM_PORTAL_READ"
+        ]
+      },
+      "widgets": [],
+      "droits": []
+    },
+    {
+      "cle": "maLiaison",
+      "application": "portail",
+      "module": "portail",
+      "libelle": "pp.nav.mesLiaisons",
+      "groupe": "accueil",
+      "ordre": 20,
+      "icone": "route",
+      "visible": true,
+      "permissions": {
+        "tous": [],
+        "unDe": [
+          "HOM_PORTAL_READ"
+        ]
+      },
+      "widgets": [],
+      "droits": []
+    },
+    {
+      "cle": "portail",
+      "application": "portail",
+      "module": "portail",
+      "libelle": "droits.fct.portail",
+      "groupe": null,
+      "ordre": 30,
+      "icone": "globe",
+      "visible": true,
+      "permissions": {
+        "tous": [],
+        "unDe": [
+          "HOM_PORTAL_READ",
+          "CER_PORTAL_READ"
+        ]
+      },
+      "widgets": [],
+      "droits": [
+        {
+          "cle": "HOM_PORTAL_READ",
+          "nature": "CONSULTER",
+          "permission": "HOM_PORTAL_READ",
+          "libelle": "droits.permission.HOM_PORTAL_READ"
+        },
+        {
+          "cle": "CER_PORTAL_READ",
+          "nature": "CONSULTER",
+          "permission": "CER_PORTAL_READ",
+          "libelle": "droits.permission.CER_PORTAL_READ"
+        },
+        {
+          "cle": "HOM_PORTAL_SUBMIT",
+          "nature": "CREER",
+          "permission": "HOM_PORTAL_SUBMIT",
+          "libelle": "droits.permission.HOM_PORTAL_SUBMIT"
+        },
+        {
+          "cle": "CER_PORTAL_SIGN",
+          "nature": "SIGNER",
+          "permission": "CER_PORTAL_SIGN",
+          "libelle": "droits.permission.CER_PORTAL_SIGN"
+        }
+      ]
+    }
+  ]
+}

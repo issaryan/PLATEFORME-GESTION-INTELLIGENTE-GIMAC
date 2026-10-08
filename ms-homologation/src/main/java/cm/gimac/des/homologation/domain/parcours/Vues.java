@@ -42,10 +42,93 @@ public final class Vues {
         Geste geste,
         Jalon jalon,
         String declencheur,
-        List<cm.gimac.des.homologation.domain.parcours.Livrable> livrables
+        List<cm.gimac.des.homologation.domain.parcours.Livrable> livrables,
+        List<Signature> signatures,
+        String etapeCode,
+        VueOperation vue,
+        List<LivrableAttendu> livrablesAttendus,
+        List<Renvoi> renvois
     ) {}
 
-    public record Livrable(String libelleKey, boolean fourni) {}
+    /**
+     * Livrable attendu d'une opération (D-93 §3, §5) : modèle du référentiel (libellé, nature, déposant, types admis,
+     * obligatoire), dépôt éventuel, et {@code peutDeposer} : l'acteur peut le déposer maintenant (RACI imposé).
+     */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record LivrableAttendu(
+        String code,
+        String libelle,
+        NatureLivrable nature,
+        Fonction deposant,
+        String libelleDeposant,
+        List<String> typesPieces,
+        boolean obligatoire,
+        DepotLivrable depot,
+        boolean peutDeposer
+    ) {}
+
+    /**
+     * Étape réelle de la version du référentiel (D-89, D-93 §5) : code, libellé, ordre, couleur et jeton du design
+     * system, étape canonique ; état et grandeurs calculés comme pour les étapes canoniques.
+     */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record EtapeVersion(
+        String code,
+        String libelle,
+        int ordre,
+        CouleurEtape couleur,
+        String jeton,
+        EtapeCode canonique,
+        String etat,
+        int actionsFaites,
+        int actionsTotal,
+        Personne responsable,
+        Personne validateur,
+        LocalDate debut,
+        LocalDate closeLe,
+        LocalDate echeance,
+        Sla sla,
+        List<Livrable> livrables
+    ) {}
+
+    /**
+     * Intervenant du dossier lu dans le RACI des opérations (D-93 §5) : fonction, qualités tenues (R, V, C, I, E),
+     * personne désignée (ou institution), {@code aAffecter} : la fonction n'est tenue par personne.
+     */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record IntervenantDossier(Fonction fonction, String libelle, List<Qualite> qualites, Personne personne, boolean aAffecter) {}
+
+    /**
+     * Signature exigée d'une opération (D-91) : attendue ou signée ; {@code attendu} : personne désignée pour la
+     * fonction (sinon tout porteur de la fonction) ; {@code suivante} : peut être donnée maintenant.
+     */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record Signature(
+        String code,
+        String libelle,
+        int ordre,
+        Fonction signataire,
+        String libelleSignataire,
+        List<String> porte,
+        String etat,
+        boolean suivante,
+        Personne attendu,
+        String signePar,
+        String signeParNom,
+        java.time.Instant signeLe,
+        String empreinte
+    ) {}
+
+    /**
+     * Livrable d'une étape : {@code libelleKey} pour les étapes 1 et 2 (tenues par MS-PARTICIPANT) ; pour une opération,
+     * son libellé, l'opération (code) et le code du livrable du référentiel (D-93 §5 : plus de clé parcours.op.&lt;rang&gt;).
+     */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record Livrable(String libelleKey, boolean fourni, String libelle, String operation, String code, Boolean obligatoire) {
+        public Livrable(String libelleKey, boolean fourni) {
+            this(libelleKey, fourni, null, null, null, null);
+        }
+    }
 
     public record Etape(
         EtapeCode code,
@@ -119,7 +202,9 @@ public final class Vues {
         String liaisonOrigineId,
         Coordonnees coordonneesTechniques,
         List<String> transitionsPermises,
-        List<String> actionsPermises
+        List<String> actionsPermises,
+        List<EtapeVersion> etapesVersion,
+        List<IntervenantDossier> intervenants
     ) {}
 
     public record LiaisonResume(
@@ -151,10 +236,18 @@ public final class Vues {
         Sla sla,
         boolean oubliSansSymptome,
         String lien,
-        List<String> actionsPermises
+        List<String> actionsPermises,
+        String libelle,
+        Boolean aPrendre,
+        String signature
     ) {}
 
-    public record Compteur(String cle, long valeur, String ton, String lien) {}
+    /** Compteur du tableau d'acteur (D-94 §3) : décrit en données ({@code libelle}, {@code fonction} : celle qui l'ouvre). */
+    public record Compteur(String cle, long valeur, String ton, String lien, String libelle, String fonction) {
+        public Compteur(String cle, long valeur, String ton, String lien) {
+            this(cle, valeur, ton, lien, null, null);
+        }
+    }
 
     public record TableauActeur(Fonction fonction, List<Compteur> compteurs, List<Tache> taches, List<LiaisonResume> liaisons, List<Blocage> blocages) {}
 
@@ -200,7 +293,10 @@ public final class Vues {
 
     public record CouvertureSimple(Integer taux, int numerateur, int denominateur) {}
 
-    /** Contexte servi à MS-CERTIFICATION (docs/lot1/parcours-backend.md §2). */
+    /**
+     * Contexte servi à MS-CERTIFICATION (docs/lot1/parcours-backend.md §2) ; {@code modeleTypeProjet} et
+     * {@code attestationsExigees} (D-91) portent les comportements du type, que MS-CERTIFICATION ne connaît pas.
+     */
     public record ContexteCertification(
         UUID liaisonId,
         String reference,
@@ -213,6 +309,8 @@ public final class Vues {
         boolean couvertureConstatee,
         List<String> servicesCouverts,
         UUID conducteurId,
-        String conducteurNom
+        String conducteurNom,
+        ModeleTypeProjet modeleTypeProjet,
+        List<TypeAttestation> attestationsExigees
     ) {}
 }

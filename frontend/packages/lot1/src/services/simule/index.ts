@@ -84,6 +84,7 @@ export function servicesSimules(o: OptionsSimulation = {}): ServicesSimules {
   // Référentiels et modélisateur (D-77) : état propre à l'instance.
   const referentiels = referentielsSimules(attendre, refus, {
     utilisateur: o.utilisateur?.id, profils: o.utilisateur?.profils, maintenant, liaisonsActives: (versionId) => liaisons.filter((l) => l.versionId === versionId && l.etat !== 'CLOSE').length,
+    liaisonsDuType: (type) => liaisons.filter((l) => l.typeProjet === type).length,
   })
   let numeroLiaison = 40
 
@@ -117,7 +118,7 @@ export function servicesSimules(o: OptionsSimulation = {}): ServicesSimules {
       id: `LIA-2026-${n}`, typeProjet: e.typeProjet, institutionId: inst.id, institutionNom: inst.nom, etat: 'OUVERTE', chefDeProjetId: chef.id, chefDeProjetNom: chef.nom,
       banquePartenaireId: banque?.id ?? null, banquePartenaireNom: banque?.nom ?? null, dateOuverture: maintenant().slice(0, 10), motifEtat: null,
       versionId: version.id, versionNumero: version.numero ?? 1, phaseCourante: 'CADRAGE', couvertureCertification: D.cov(0, 3), couvertureMiseEnService: D.cov(0, 2),
-      operationsEnRetard: 0, etatsParcourus: [], transitionsPermises: ['EN_HOMOLOGATION'], actionsPermises: ['DESIGNER_CHEF_DE_PROJET'], perimetre: D.PERIMETRES[e.typeProjet],
+      operationsEnRetard: 0, etatsParcourus: [], transitionsPermises: ['EN_HOMOLOGATION'], actionsPermises: ['DESIGNER_CHEF_DE_PROJET'], perimetre: D.PERIMETRES[e.typeProjet] ?? ['TRANSVERSE'],
     }
     const l = { ...base, intervenants: D.intervenantsDe(base) }
     liaisons.push(l)
@@ -312,7 +313,8 @@ export function servicesSimules(o: OptionsSimulation = {}): ServicesSimules {
 
   const magasin = o.pouvoirs ?? magasinPouvoirs()
   if (o.utilisateur?.profils) magasin.definirProfils(o.utilisateur.id, o.utilisateur.profils)
-  const { parcours, decision, portailParcours } = parcoursSimule(attendre, INSTITUTION_PORTAIL, (id) => participant.dossier(id).then((d) => d.institution.nom, () => undefined))
+  const { parcours, decision, portailParcours } = parcoursSimule(attendre, INSTITUTION_PORTAIL, (id) => participant.dossier(id).then((d) => d.institution.nom, () => undefined),
+    { profils: o.utilisateur?.profils, fonctions: () => referentiels.fonctions })
 
   // Tâches d'origine PROCESSUS (D-87) : le moteur simulé des processus les crée dans « Mon activité ».
   let pont: PontTachesProcessus | undefined

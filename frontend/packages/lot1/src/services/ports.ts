@@ -2,7 +2,7 @@ import type { SignPurpose } from '@gimac/socle'
 import type { EvenementChronologie, ListQuery, Option, Page } from '../modele/commun'
 import type {
   Attribution, CampaignResult, ClotureOperation, Conducteur, ControleResultat, DepotResultat, EtatReprise, ExportPreuves, Graphe, ImpactMigration,
-  CatalogueModelisateur, EtapeReferentiel, GrapheReferentiel, Liaison, OperationsReferentiel, SaisieEtape, LiaisonPilotage, OperationInstance, OuvertureLiaison, PointGrille, PreuveVersion, ReferenceOperation, ReferentielVersion, SaisieOperation,
+  CatalogueModelisateur, CreationFonction, CreationTypeProjet, FonctionCatalogue, ModificationFonction, ModificationTypeProjet, TypeProjetVue, EtapeReferentiel, GrapheReferentiel, Liaison, OperationsReferentiel, SaisieEtape, LiaisonPilotage, OperationInstance, OuvertureLiaison, PointGrille, PreuveVersion, ReferenceOperation, ReferentielVersion, SaisieOperation,
   ScenarioInconnu, ServiceCouvert,
 } from '../modele/homologation'
 import type {
@@ -13,19 +13,19 @@ import type { PortailCertification, PortailLiaison, PortailOperation } from '../
 import type { EtatPresence, OptionsTeleversement, Televersement } from '@gimac/socle'
 import type { Conversation, Correspondant, Envoi, FilMessages, LecteurMessage, Message, NouvelleConversation, PageMessagerie } from '../modele/messagerie'
 import type {
-  Activite, EntreeActivite, EntreeEvenement, EntreeRapport, EntreeTache, EtatRapport, EtatTache, Evenement, GroupeTaches, MembreEquipe, PagePilotage, Rapport, Rattachement,
+  Activite, DestinatairesRapport, EntreeActivite, EntreeEvenement, EntreeRapport, EntreeTache, EtatRapport, EtatTache, Evenement, GroupeTaches, MembreEquipe, PagePilotage, Rapport, Rattachement,
   ReponseInvitation, StatutActivite, Synthese, Tache, TypeRapport, Unite, VueRapports, VueTaches,
 } from '../modele/pilotage'
 import type { Demande, EtatDemande, MesPouvoirs, NouvelleDemande, PageDemandes } from '../modele/pouvoirs'
 import type {
-  ControleProcessus, DecisionValidation, EtatInstance, EtatProcessus, InstanceProcessus, Lancement, PageInstances, Processus, ResumeProcessus, SaisieProcessus, VueInstances,
+  CandidatsProcessus, ControleProcessus, DecisionValidation, EtatInstance, EtatProcessus, InstanceProcessus, Lancement, PageInstances, PorteeProcessus, Processus, ResumeProcessus, SaisieProcessus, VueInstances,
 } from '../modele/processus'
 import type {
   Candidature, ConditionsAdhesion, DossierInstitution, FiltreInstitutions, IndicateursDdrm, Institution, PieceAdhesion, Prerequis,
   StatutInstitution, TransitionStatut,
 } from '../modele/participant'
 import type {
-  ApprobationSecurite, Blocage, DossierLiaison, Fonction, FicheSuiviServices, IndicateursPilotage, LiaisonResume, OperationParcours,
+  ApprobationSecurite, Blocage, DossierLiaison, Fonction, FonctionUtilisateur, FicheSuiviServices, IndicateursPilotage, LiaisonResume, OperationParcours,
   Ceremonie, OuvertureLiaison as OuvertureCadrage, Personne, ProcesVerbalCertification, TableauActeur, TypeAttestation,
 } from '../modele/parcours'
 
@@ -77,6 +77,13 @@ export interface ServiceHomologation {
   arcReferentiel(id: string, arc: { de: string; vers: string; present: boolean }): Promise<ReferenceOperation>
   /** Pilote du brouillon (422 HOM_PILOTE_NOT_ELIGIBLE) ; rend la version. */
   designerPilote(id: string, compteId: string): Promise<ReferentielVersion>
+  // Types de projet et catalogue des fonctions (D-91) : lecture HOM_REFERENTIEL_READ, écriture HOM_REFERENTIEL_EDIT.
+  typesProjet(actif?: boolean): Promise<TypeProjetVue[]>
+  creerTypeProjet(c: CreationTypeProjet): Promise<TypeProjetVue>
+  modifierTypeProjet(code: string, m: ModificationTypeProjet): Promise<TypeProjetVue>
+  fonctionsReferentiel(actif?: boolean): Promise<FonctionCatalogue[]>
+  creerFonction(c: CreationFonction): Promise<FonctionCatalogue>
+  modifierFonction(code: string, m: ModificationFonction): Promise<FonctionCatalogue>
 
   // Liaisons (HOM-04 à HOM-06, HOM-20, HOM-22) et cadrage (étape 3 du parcours, D-57, D-58)
   /** Filtres du service : etat, typeProjet, institutionId, mesProjets ; recherche libre ; pagination. */
@@ -188,12 +195,20 @@ export interface ServiceParcours {
   operations(liaisonId: string, filtre?: { etape?: string; fonction?: Fonction }): Promise<OperationParcours[]>
   // Étapes 4 et 5 : lancement et ateliers
   affecterRessources(liaisonId: string, affectations: { fonction: Fonction; personneId: string }[]): Promise<void>
-  /** Clôt une opération à livrable (compte rendu de réunion ou d'atelier, document de paramétrage…). */
-  deposerLivrable(operationId: string, fichier: File, commentaire: string): Promise<void>
+  /** Clôt une opération à livrable ; `livrable` (D-93) : code du livrable attendu visé (absent : l'unique livrable). */
+  deposerLivrable(operationId: string, fichier: File, commentaire: string, livrable?: string): Promise<void>
   attribuer(operationId: string, qualite: 'R' | 'C' | 'V' | 'I' | 'E', personneId: string, motif: string): Promise<void>
   // Exécution des opérations (preuve au grain de l'opération en production)
-  deposerPreuve(operationId: string, fichier: File, complement: { valeurReference?: string; codeControle?: string; ceremonie?: Ceremonie }): Promise<void>
+  deposerPreuve(operationId: string, fichier: File, complement: { valeurReference?: string; codeControle?: string; ceremonie?: Ceremonie; livrable?: string }): Promise<void>
   validerOperation(operationId: string, assertion?: Assertion): Promise<void>
+  /** D-93 : renvoi motivé par le validateur (l'opération revient à faire, tâche rouverte à R). */
+  renvoyer(operationId: string, motif: string): Promise<void>
+  /** D-91 : signature attendue d'une opération (finalité SIGNATURE_OPERATION) ; `codeOperation` : code de l'opération du référentiel. */
+  signerOperation(liaisonId: string, codeOperation: string, signature: string, assertion: Assertion): Promise<void>
+  /** D-93 : affectation d'une fonction de la liaison à une personne (interne) ou une institution (externe). */
+  affecterFonction(liaisonId: string, fonction: Fonction, a: { personneId?: string; institutionId?: string; motif?: string }): Promise<void>
+  /** D-94 §6.5 : fonctions du catalogue que confèrent les profils du jeton (remplace toute table rôle → fonction). */
+  mesFonctions(): Promise<FonctionUtilisateur[]>
   // Blocages datés (CR annexe B)
   declarerBlocage(liaisonId: string, b: { motif: string; prochaineAction: string; responsableId: string; echeanceLevee: string }): Promise<Blocage>
   leverBlocage(blocageId: string, commentaire: string): Promise<void>
@@ -319,7 +334,13 @@ export interface ServicePilotage {
   preremplir(type: TypeRapport, periode: string): Promise<{ contenu: string }>
   creerRapport(r: EntreeRapport): Promise<Rapport>
   modifierRapport(id: string, r: EntreeRapport): Promise<Rapport>
-  soumettre(id: string): Promise<Rapport>
+  /**
+   * Soumission au destinataire résolu (n+1 actif, chef de l'unité, chef d'une unité parente) ou choisi dans la chaîne
+   * hiérarchique (`destinataireId`, sinon 422 PIL_DESTINATAIRE_INVALIDE) ; personne au-dessus : rapport DEPOSE.
+   */
+  soumettre(id: string, destinataireId?: string): Promise<Rapport>
+  /** Destinataire et choix possibles avant la soumission (auteur seul). */
+  destinatairesRapport(id: string): Promise<DestinatairesRapport>
   viser(id: string, commentaire: string): Promise<Rapport>
   documentRapport(id: string): Promise<{ blob: Blob; empreinte: string | null }>
   /** Dépôt fragmenté du document (D-74, finalité RAPPORT_ACTIVITE, référence : l'identifiant du rapport). */
@@ -356,6 +377,8 @@ export interface ServicePouvoirs {
  */
 export interface ServiceProcessus {
   lister(q: { unite?: string; etat?: EtatProcessus; q?: string }): Promise<ResumeProcessus[]>
+  /** D-92 : portée de l'appelant sur les processus (tous domaines ou ses unités) et ce qui la fonde. */
+  portee(): Promise<PorteeProcessus>
   lire(id: string): Promise<Processus>
   creer(s: SaisieProcessus): Promise<Processus>
   modifier(id: string, s: SaisieProcessus): Promise<Processus>
@@ -380,6 +403,13 @@ export interface ServiceProcessus {
   terminer(instanceId: string, etape: string): Promise<InstanceProcessus>
   valider(instanceId: string, etape: string, decision: DecisionValidation, motif?: string): Promise<InstanceProcessus>
   reaffecter(instanceId: string, etape: string, personneId: string, motif: string): Promise<InstanceProcessus>
+  /**
+   * Candidats d'un intervenant (modélisateur, lancement) : porteurs du profil dans l'unité, puis ailleurs dans le GIMAC
+   * (désignation hors de l'unité) ; 422 PIL_PROCESSUS_UNITE_INCONNUE.
+   */
+  candidats(q: { unite: string; profil?: string | null }): Promise<CandidatsProcessus>
+  /** Candidats à l'exécution d'une étape en cours (réaffectation) ; 403 PIL_PROCESSUS_INTERDIT sans le droit de réaffecter. */
+  candidatsEtape(instanceId: string, etape: string): Promise<CandidatsProcessus>
   suspendre(instanceId: string, motif: string): Promise<InstanceProcessus>
   reprendre(instanceId: string, motif?: string): Promise<InstanceProcessus>
   annuler(instanceId: string, motif: string): Promise<InstanceProcessus>

@@ -23,4 +23,13 @@ public interface PresentationsProfils {
     void toucher(String code, Instant le, String parId, String parNom);
 
     void supprimer(String code);
+
+    /**
+     * Attribut externe (gimac_externe) fixé par l'administration depuis la console (D-94), par code ; un profil
+     * absent n'a jamais été modifié sur ce point. Réappliqué au fournisseur d'identité après un réimport.
+     */
+    Map<String, Boolean> externes();
+
+    /** Fixe l'attribut externe d'un profil, avec la date et l'auteur ; libellé et description inchangés. */
+    void fixerExterne(String code, boolean externe, Instant le, String parId, String parNom);
 }

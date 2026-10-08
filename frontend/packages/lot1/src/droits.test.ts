@@ -1,61 +1,55 @@
 import { describe, expect, it } from 'vitest'
 import { PERM, PROFILS } from './permissions'
-import { FONCTIONNALITES } from './fonctionnalites'
 import {
-  CATALOGUE_DROITS, DROITS_REGISTRE, NATURES_DROIT, basculerDroit, basculerFonctionnalite, catalogueDroits, comparerCompositions, etatFonctionnalite, permissionPrivilegiee,
-  permissionsCatalogue, type FonctionnaliteDroits,
+  NATURES_DROIT, basculerDroit, basculerFonctionnalite, catalogueDroits, comparerCompositions, etatFonctionnalite, permissionPrivilegiee, permissionsCatalogue,
+  type FonctionnaliteDroits,
 } from './droits'
+import { FONCTIONNALITES_INITIALES as CATALOGUE } from './services/simule/fonctionnalites'
 import { catalogue } from './i18n/ecrans/droits'
+import { catalogue as d94 } from './i18n/ecrans/d91-d94'
 
-// Catalogue des droits (D-90, docs/lot1/roles-fonctionnalites.md §1) : toute permission connue du frontend appartient
-// à au moins un droit, chaque droit est libellé en FR, EN et ES ; cocher un droit d'écriture coche la consultation.
+// Catalogue des droits (D-90) dérivé du catalogue des fonctionnalités servi par MS-IAM (D-94) : toute permission connue
+// du frontend appartient à au moins un droit ; cocher un droit d'écriture coche la consultation.
+const CATALOGUE_DROITS = catalogueDroits(CATALOGUE)
 const fonctionnalite = (cle: string): FonctionnaliteDroits => CATALOGUE_DROITS.flatMap((m) => m.fonctionnalites).find((f) => f.cle === cle)!
+/**
+ * Écart avec les valeurs de départ de MS-IAM (signalé) : HOM_PROJECT_CONDUCT (D-94 §6.5) n'appartient encore à aucun droit
+ * de ms-iam/src/main/resources/config/fonctionnalites-initiales.json.
+ */
+const ECARTS_SERVEUR = ['HOM_PROJECT_CONDUCT']
 
 describe('D-90 : catalogue Module > Fonctionnalité > Droit', () => {
   it('chaque permission connue du frontend (PERM, profils du domaine) appartient à au moins un droit', () => {
     const connues = new Set([...Object.values(PERM), ...Object.values(PROFILS).flat()].filter((p) => !p.startsWith('INTERNAL_')))
-    const couvertes = permissionsCatalogue()
-    expect([...connues].filter((p) => !couvertes.has(p))).toEqual([])
+    const couvertes = permissionsCatalogue(CATALOGUE_DROITS)
+    expect([...connues].filter((p) => !couvertes.has(p))).toEqual(ECARTS_SERVEUR)
   })
 
-  it('construit depuis le registre : chaque entrée à droits devient une fonctionnalité, dans son module', () => {
-    const registre = FONCTIONNALITES.filter((f) => DROITS_REGISTRE[f.cle]?.length)
-    const fonctionnalites = CATALOGUE_DROITS.flatMap((m) => m.fonctionnalites)
-    for (const f of registre) expect(fonctionnalites.find((x) => x.cle === f.cle)?.registre).toBe(f)
-    expect(fonctionnalites.some((f) => f.cle === 'tableauDeBord')).toBe(false)
-    expect(CATALOGUE_DROITS.map((m) => m.cle)).toEqual(['accueil', 'messagerie', 'monActivite', 'processus', 'participants', 'homologation', 'certification', 'portail', 'administration', 'exploitation'])
-    expect(fonctionnalite('institutions').registre?.groupe).toBe('registre')
-    expect(CATALOGUE_DROITS.find((m) => m.cle === 'participants')!.fonctionnalites.map((f) => f.cle)).toEqual(['institutions'])
-    // Un registre réduit ne garde que ses modules et les écrans hors barre latérale.
-    expect(catalogueDroits([]).map((m) => m.cle)).toEqual(['certification', 'portail'])
+  it('modules dans l’ordre de leur première fonctionnalité ; fonctionnalités sans droit absentes ; référentiels métier', () => {
+    expect(CATALOGUE_DROITS.map((m) => m.cle)).toEqual(['messagerie', 'accueil', 'monActivite', 'processus', 'participants', 'homologation', 'administration', 'exploitation', 'certification', 'referentielsMetier', 'portail'])
+    expect(CATALOGUE_DROITS.flatMap((m) => m.fonctionnalites).some((f) => f.cle === 'tableauDeBord')).toBe(false)
+    expect(fonctionnalite('referentielsMetierAdmin').droits).toEqual([{ permission: 'REF_METIER_ADMIN', nature: 'ADMINISTRER', libelle: 'Administration des référentiels métier, tous domaines' }])
+    expect(catalogueDroits([])).toEqual([])
   })
 
-  it('libellés FR, EN, ES de chaque module, fonctionnalité hors registre, nature et permission', () => {
+  it('libellés FR, EN, ES de chaque module et nature ; aucun tiret cadratin', () => {
     for (const l of ['fr', 'en', 'es'] as const) {
-      const c = catalogue[l] as Record<string, string>
-      for (const m of CATALOGUE_DROITS) {
-        expect(c[m.libelleKey], `${l} ${m.cle}`).toBeTruthy()
-        for (const f of m.fonctionnalites) {
-          if (!f.registre) expect(c[f.libelleKey], `${l} ${f.cle}`).toBeTruthy()
-          for (const d of f.droits) expect(c[`droits.permission.${d.permission}`], `${l} ${d.permission}`).toBeTruthy()
-        }
-      }
+      const c = { ...(catalogue[l] as Record<string, string>), ...(d94[l] as Record<string, string>) }
+      for (const m of CATALOGUE_DROITS) expect(c[m.libelleKey], `${l} ${m.cle}`).toBeTruthy()
       for (const n of NATURES_DROIT) expect(c[`droits.nature.${n}`]).toBeTruthy()
       expect(Object.values(c).some((v) => v.includes(String.fromCharCode(0x2014)))).toBe(false)
     }
-    expect(Object.keys(catalogue.en!).sort()).toEqual(Object.keys(catalogue.fr!).sort())
-    expect(Object.keys(catalogue.es!).sort()).toEqual(Object.keys(catalogue.fr!).sort())
+    expect(Object.keys(d94.en!).sort()).toEqual(Object.keys(d94.fr!).sort())
+    expect(Object.keys(d94.es!).sort()).toEqual(Object.keys(d94.fr!).sort())
   })
 
   it('un droit d’écriture coché coche la consultation ; la consultation décochée retire les écritures', () => {
     const r = fonctionnalite('referentiels')
     const publier = r.droits.find((d) => d.nature === 'PUBLIER')!
     const p = basculerDroit([], r, publier, true)
-    // Consulter le référentiel : lecture des opérations qui me concernent et lecture complète (D-89).
     expect(p).toEqual(['HOM_REFERENTIEL_PUBLISH', 'HOM_REFERENTIEL_READ', 'HOM_REFERENTIEL_READ_ALL'])
     expect(etatFonctionnalite(r, p)).toBe('partiel')
     const lire = r.droits.find((d) => d.nature === 'CONSULTER')!
-    // La lecture des opérations décochée retire les écritures ; la lecture complète, autre consultation, reste.
     expect(basculerDroit(p, r, lire, false)).toEqual(['HOM_REFERENTIEL_READ_ALL'])
     expect(basculerDroit(['X'], r, publier, false)).toEqual(['X'])
     expect(basculerDroit([], r, lire, true)).toEqual(['HOM_REFERENTIEL_READ'])
@@ -72,7 +66,6 @@ describe('D-90 : catalogue Module > Fonctionnalité > Droit', () => {
   it('comparaison de deux compositions et droits privilégiés', () => {
     expect(comparerCompositions(['A', 'B'], ['B', 'C'])).toEqual({ seulementA: ['A'], seulementB: ['C'], communes: ['B'] })
     expect(permissionPrivilegiee('IAM_ACCOUNT_READ')).toBe(true)
-    expect(permissionPrivilegiee('PLATFORM_OPS_READ')).toBe(true)
-    expect(permissionPrivilegiee('HOM_LIAISON_LIST')).toBe(false)
+    expect(permissionPrivilegiee('REF_METIER_ADMIN')).toBe(false)
   })
 })

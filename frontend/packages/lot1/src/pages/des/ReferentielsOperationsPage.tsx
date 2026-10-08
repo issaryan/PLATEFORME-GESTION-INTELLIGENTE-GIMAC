@@ -4,7 +4,8 @@ import { useTranslation } from 'react-i18next'
 import { Button, Card, EmptyState, ResourceDetail, ResourceForm, TreeView, type ResourceDescriptor, PageHeader } from '@gimac/design-system'
 import { EtatsRequete, aPermission, usePermissions } from '@gimac/socle'
 import { useEffet } from '../../hooks/base'
-import { useCatalogueReferentiels, useHistoriqueReferentiel, useReferentiel, useReferentiels } from '../../hooks/referentiels'
+import { useNavigate } from 'react-router'
+import { useCatalogueReferentiels, useHistoriqueReferentiel, useOptionsTypesProjet, useReferentiel, useReferentiels } from '../../hooks/referentiels'
 import { useDescripteurDS } from '../../ressources/descripteur'
 import { useExecuteurActions } from '../../ressources/actions'
 import { referentielOperationsDescriptor } from '../../ressources/referentiel'
@@ -20,6 +21,7 @@ export default function ReferentielsOperationsPage() {
   const onglet = params.get('onglet') ?? 'modelisateur'
   const [creation, setCreation] = useState(false)
   const executeur = useExecuteurActions()
+  const navigate = useNavigate()
   const versions = useReferentiels()
   const creer = referentielOperationsDescriptor.actions.find((a) => a.key === 'creer')!
   // « Nouveau brouillon » : seulement avec la permission de l'action (HOM_REFERENTIEL_EDIT), sinon 403 du service.
@@ -34,9 +36,13 @@ export default function ReferentielsOperationsPage() {
 
   return (
     <div className="gm-col" style={{ gap: 'var(--gm-space-5)' }}>
-      <PageHeader title={t('referentiel.titre')} actions={peutCreer ? <Button variant="primary" icon="plus" onClick={() => executeur.lancer(creer, null as unknown as ReferentielVersion, t('referentiel.pluriel'), 'homologation', { openForm: ouvrirFormulaire })}>
+      <PageHeader title={t('referentiel.titre')} actions={<>
+        {/* Types de projet et catalogue des fonctions (D-91). */}
+        <Button variant="secondary" icon="workflow" onClick={() => navigate('/des/referentiels/types-projet')}>{t('typesProjet.titre')}</Button>
+        {peutCreer ? <Button variant="primary" icon="plus" onClick={() => executeur.lancer(creer, null as unknown as ReferentielVersion, t('referentiel.pluriel'), 'homologation', { openForm: ouvrirFormulaire })}>
           {t(creer.label)}
-        </Button> : undefined} />
+        </Button> : null}
+      </>} />
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(240px, 320px) minmax(0, 1fr)', gap: 'var(--gm-space-5)', alignItems: 'start' }}>
         <Card title={t('referentiel.arbre')}>
           <EtatsRequete
@@ -73,12 +79,13 @@ function Version({ id, onglet, ouvrirOnglet, ouvrirFormulaire }: { id: string; o
   const pilotes = useMemo(() => ({ openTab: ouvrirOnglet, openForm: ouvrirFormulaire }), [ouvrirOnglet, ouvrirFormulaire])
   const desc = useDescripteurDS(referentielOperationsDescriptor, pilotes)
   const permissions = usePermissions()
+  const types = useOptionsTypesProjet()
   return (
     <EtatsRequete etat={q} emptyTitle={t('erreur.introuvable')} errorTitle={t('commun.erreur.titre')} retryLabel={t('commun.reessayer')}>
       {(v) => (
         <ResourceDetail<ReferentielVersion>
           descriptor={desc}
-          row={v}
+          row={{ ...v, libelle: titreVersion(v, t, types.libelle) }}
           mode="page"
           tab={onglet}
           permissions={permissions}
@@ -90,16 +97,27 @@ function Version({ id, onglet, ouvrirOnglet, ouvrirFormulaire }: { id: string; o
   )
 }
 
+/**
+ * Titre de la version : le libellé d'un brouillon ; une version publiée ou retirée est titrée par son type et son numéro,
+ * jamais par l'ancien libellé du brouillon (« …, brouillon 4 ») qui restait affiché après la publication.
+ */
+export function titreVersion(v: ReferentielVersion, t: (k: string, o?: Record<string, unknown>) => string, type: (code: string) => string) {
+  return v.etat === 'BROUILLON' || v.numero === null ? v.libelle : t('referentiel.titrePublie', { type: type(v.typeProjet), n: v.numero })
+}
+
 /** Création d'un brouillon : formulaire du catalogue piloté par le descripteur (champs inForm « create »). */
 function FormulaireBrouillon({ onFin }: { onFin: (id?: string) => void }) {
   const { t } = useTranslation()
   const base = useDescripteurDS(referentielOperationsDescriptor)
   // Pilote facultatif : comptes du catalogue du modélisateur (D-77, §5) ; vide, le créateur pilote.
   const catalogue = useCatalogueReferentiels()
+  // Types de projet servis (D-91), plus une liste figée.
+  const types = useOptionsTypesProjet()
   const desc = useMemo(() => ({
     ...base,
-    fields: base.fields.map((f) => (f.name === 'piloteId' ? { ...f, options: [{ value: '', label: t('referentiel.piloteParDefaut') }, ...(catalogue.data?.pilotes ?? []).map((x) => ({ value: x.id, label: x.nom }))] } : f)),
-  }), [base, catalogue.data, t])
+    fields: base.fields.map((f) => (f.name === 'piloteId' ? { ...f, options: [{ value: '', label: t('referentiel.piloteParDefaut') }, ...(catalogue.data?.pilotes ?? []).map((x) => ({ value: x.id, label: x.nom }))] }
+      : f.name === 'typeProjet' ? { ...f, options: types.options } : f)),
+  }), [base, catalogue.data, t, types.options])
   const creer = useEffet((s, v: { typeProjet: string; libelle: string; piloteId?: string }) => s.homologation.creerBrouillon(v), [['homologation']])
   const [erreurs, setErreurs] = useState<Record<string, string>>({})
   return (

@@ -7,6 +7,8 @@ export interface Option {
   label: string
   /** Option désignant une personne : avatar (photo ou initiales) affiché avec le libellé. */
   avatar?: { name: string; src?: string | null }
+  /** Groupe de la liste (Select) : les options consécutives d'un même groupe sont réunies sous son titre (optgroup). */
+  group?: string
 }
 
 // Propriétés communes exposées par tous les composants (§7 : className et data-testid).

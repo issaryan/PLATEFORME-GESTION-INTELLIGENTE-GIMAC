@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * Fidélité de la version 1 (D-77, §1 et §3) : pour chaque type de projet, les opérations, prédécesseurs et qualités
@@ -91,7 +91,7 @@ class ConversionAnnexeATest {
     }
 
     @ParameterizedTest(name = "{0}")
-    @EnumSource(TypeProjet.class)
+    @ValueSource(strings = { "CARTE_INTERBANCAIRE", "PAIEMENT_MOBILE", "DELEGATAIRE" })
     @DisplayName("Version 1 : mêmes opérations, ordre, attributs, prédécesseurs et qualités que l'ancien chemin du CSV")
     void fideliteAuCsv(TypeProjet type) {
         Parcours p = ParcoursSamples.parcours(type, "RETRAIT");
@@ -138,7 +138,7 @@ class ConversionAnnexeATest {
     }
 
     @ParameterizedTest(name = "{0}")
-    @EnumSource(TypeProjet.class)
+    @ValueSource(strings = { "CARTE_INTERBANCAIRE", "PAIEMENT_MOBILE", "DELEGATAIRE" })
     @DisplayName("Version 1 : complète et conforme au contrôle de publication (graphe et modèle)")
     void publiable(TypeProjet type) {
         ReferentialVersion v = ParcoursSamples.version1(type);

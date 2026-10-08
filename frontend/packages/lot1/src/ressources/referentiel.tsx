@@ -1,5 +1,6 @@
 import { P, type ResourceDescriptorLot1 } from '@gimac/socle'
 import type { ReferentielVersion } from '../modele/homologation'
+import { TYPES_PROJET_REPRIS } from '../modele/commun'
 import type { Services } from '../services/ports'
 import { etatReferentiel } from '../dictionnaires'
 import { OngletComparaison, OngletControle, OngletMigration, OngletOperations } from '../pages/des/compositions/referentiel'
@@ -10,7 +11,8 @@ import { actionPublier } from './referentielPublication'
 // actionsPermises les contient : l'interface ne sait pas qu'une version publiée est figée, elle constate
 // que PUBLIER ou MODIFIER est absent.
 const R = `${P.desHomologation}/referentiels`
-const TYPES = ['CARTE_INTERBANCAIRE', 'PAIEMENT_MOBILE', 'DELEGATAIRE']
+// Types repris (D-91) : options par défaut, remplacées dans le formulaire par les types servis.
+const TYPES = TYPES_PROJET_REPRIS
 
 export const referentielOperationsDescriptor: ResourceDescriptorLot1<ReferentielVersion, Services> = {
   key: 'referentielOperations',

@@ -20,6 +20,9 @@ FRONTENDS=(frontend-departement frontend-portail frontend-console)
 ETAT="$HOME/.local/state/gimac-des"
 DOMAINE="$RACINE/infra/keycloak/gimac-realm.json"
 EMPREINTE_DOMAINE="$ETAT/gimac-realm.sha256"
+# Domaine du dépôt déployé la fois précédente : base de la fusion à trois voies (fusionner-domaine.py),
+# mis à jour après un démarrage réussi, comme DOMAINE_PRECEDENT de infra/ci/deployer-serveur.sh.
+DOMAINE_PRECEDENT="$ETAT/gimac-realm.precedent.json"
 
 tout=false; pull=true
 for a in "$@"; do
@@ -80,7 +83,9 @@ echo "Reconstruit : ${construits[*]:-rien}"
 
 # Keycloak persistant : --import-realm ignore un domaine existant. Quand gimac-realm.json change, le domaine
 # en service est exporté avec ses comptes (mots de passe hachés et codes TOTP compris), fusionné avec la
-# version du dépôt (infra/ci/fusionner-domaine.py), puis réimporté.
+# version du dépôt (infra/ci/fusionner-domaine.py, à trois voies avec le domaine déployé la fois précédente :
+# profils créés, recompositions, politique de mot de passe et OTP modifiés dans la console conservés), puis
+# réimporté.
 actualiser_domaine() {
   local nouvelle
   nouvelle="$(sha256sum "$DOMAINE" | cut -d' ' -f1)"
@@ -95,7 +100,10 @@ actualiser_domaine() {
       "select 1 from realm where name = 'gimac'" 2>/dev/null)" ]; then
     compose run --rm --no-deps --user "$(id -u):0" -v "$ECHANGE:/echange" keycloak \
       export --dir /echange --realm gimac --users realm_file
-    python3 "$RACINE/infra/ci/fusionner-domaine.py" "$DOMAINE" "$ECHANGE/gimac-realm.json" > "$ECHANGE/import/gimac-realm.json"
+    local base=()
+    [ -s "$DOMAINE_PRECEDENT" ] && base=("$DOMAINE_PRECEDENT")
+    python3 "$RACINE/infra/ci/fusionner-domaine.py" "$DOMAINE" "$ECHANGE/gimac-realm.json" "${base[@]}" \
+      > "$ECHANGE/import/gimac-realm.json"
     compose run --rm --no-deps --user "$(id -u):0" -v "$ECHANGE/import:/echange" keycloak \
       import --dir /echange --override true
   fi
@@ -106,6 +114,7 @@ etape "Démarrage"
 "$ICI/gimac-dev.sh" demarrer >/dev/null
 mkdir -p "$ETAT"
 sha256sum "$DOMAINE" | cut -d' ' -f1 > "$EMPREINTE_DOMAINE"
+cp "$DOMAINE" "$DOMAINE_PRECEDENT"
 
 # Configurations montées en lecture seule, lues au démarrage de leur conteneur, que « compose up » ne recrée
 # pas quand seul le contenu du dossier change : redémarrage des services concernés.

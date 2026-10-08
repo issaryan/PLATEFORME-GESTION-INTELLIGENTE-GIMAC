@@ -53,7 +53,7 @@ public class OrganisationService {
     /**
      * Périmètre d'un compte pour une portée (D-81 §2) : comptes couverts (niveau 1 pour ses comptes
      * directs, 2 pour les leurs, etc. ; 0 pour un membre d'une unité dirigée hors de sa chaîne) et unités
-     * couvertes (unités dirigées pour la portée UNITES, aucune sinon).
+     * couvertes (unités dirigées pour la portée UNITES, toutes les unités pour TOUTES, aucune sinon).
      */
     public record Perimetre(Portee portee, List<MembreEquipe> comptes, List<String> unites) {}
 
@@ -222,8 +222,9 @@ public class OrganisationService {
     /**
      * Périmètre d'un compte pour une portée (D-81 §1, §2) : DIRECTS, ses comptes directs ; EQUIPE, son
      * équipe (chaîne des responsables) ; UNITES, son équipe et les membres de ses unités dirigées et de
-     * leurs sous-unités (niveau 0 hors de la chaîne) ; AUCUNE, rien. Jamais le compte lui-même ; 500 comptes
-     * au plus.
+     * leurs sous-unités (niveau 0 hors de la chaîne) ; TOUTES (D-92, processus d'unité), toutes les unités du
+     * catalogue, actives ou non, et tous les comptes internes actifs (niveau 0, triés par nom) ; AUCUNE,
+     * rien. Jamais le compte lui-même ; 500 comptes au plus (les suivants, dans l'ordre des noms, sont omis).
      */
     @Transactional(readOnly = true)
     public Perimetre perimetre(String id, Portee portee) {
@@ -243,7 +244,19 @@ public class OrganisationService {
             );
             case EQUIPE -> new Perimetre(p, equipe(id), List.of());
             case UNITES -> perimetreUnites(id);
+            case TOUTES -> perimetreToutes(id);
         };
+    }
+
+    private Perimetre perimetreToutes(String id) {
+        List<String> unites = catalogue.toutes().stream().map(Unite::code).sorted().toList();
+        List<MembreEquipe> comptes = annuaire.actifs().stream()
+            .filter(c -> c.actif() && c.interne() && !c.id().equals(id))
+            .map(c -> membre(c, 0))
+            .sorted(Comparator.comparing((MembreEquipe m) -> String.valueOf(m.nomAffiche()).toLowerCase(Locale.ROOT)).thenComparing(MembreEquipe::id))
+            .limit(ReglesOrganisation.EQUIPE_MAX)
+            .toList();
+        return new Perimetre(Portee.TOUTES, comptes, unites);
     }
 
     private Perimetre perimetreUnites(String id) {

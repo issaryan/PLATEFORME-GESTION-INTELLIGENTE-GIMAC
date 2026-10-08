@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { FONCTION_DU_ROLE, PERM, PERMISSIONS_NOUVELLES, PROFILS, fonctionsDe } from './permissions'
+import { PERM, PERMISSIONS_NOUVELLES, PROFILS } from './permissions'
 
 // Matrice des rôles du parcours (D-58, D-61) : invariants attendus du domaine Keycloak `gimac`
 // (infra/keycloak/generer-realm-gimac.py) et des permissions nouvelles du modèle hybride (D-56).
@@ -61,7 +61,7 @@ describe('matrice des rôles (PROFILS)', () => {
   it('référentiel (D-89 §1, §4) : édition, publication et lecture complète', () => {
     expect(detenteurs('HOM_REFERENTIEL_EDIT')).toEqual(['ROLE_CHEF_DDRM', 'ROLE_CHEF_DES', 'ROLE_INGENIEUR_HOMOLOGATION', 'ROLE_RESPONSABLE_SERVICE', 'ROLE_SUPER_ADMIN'])
     expect(detenteurs('HOM_REFERENTIEL_PUBLISH')).toEqual(['ROLE_CHEF_DDRM', 'ROLE_CHEF_DES', 'ROLE_INGENIEUR_HOMOLOGATION', 'ROLE_SUPER_ADMIN'])
-    expect(detenteurs('HOM_REFERENTIEL_READ_ALL')).toEqual(['ROLE_CHEF_DDRM', 'ROLE_CHEF_DES', 'ROLE_CONFORMITE', 'ROLE_DG', 'ROLE_RSSI'])
+    expect(detenteurs('HOM_REFERENTIEL_READ_ALL')).toEqual(['ROLE_CHEF_DDRM', 'ROLE_CHEF_DES', 'ROLE_CONFORMITE', 'ROLE_DG', 'ROLE_RSSI', 'ROLE_SUPER_ADMIN'])
   })
   it('permissions nouvelles du modèle hybride, toutes attribuées, sans doublon dans un profil', () => {
     expect([...PERMISSIONS_NOUVELLES]).toEqual(['HOM_STEP_MANAGE', 'CER_PV_ESTABLISH', 'CER_SECURITY_VERIFY', 'CER_PORTAL_SIGN'])
@@ -70,17 +70,9 @@ describe('matrice des rôles (PROFILS)', () => {
   })
 })
 
-describe('fonctions du parcours', () => {
-  it('chaque profil métier porte une fonction (ni le super administrateur ni les profils de « Mon activité ») ; l’ingénieur d’homologation relève du SNA', () => {
-    expect(Object.keys(FONCTION_DU_ROLE).sort()).toEqual(Object.keys(PROFILS).filter((r) => r !== 'ROLE_SUPER_ADMIN' && !SANS_FONCTION.includes(r)).sort())
-    expect(FONCTION_DU_ROLE.ROLE_INGENIEUR_HOMOLOGATION).toBe('SNA')
-    expect(FONCTION_DU_ROLE.ROLE_CORRESPONDANT).toBe('PARTICIPANT')
-    expect(FONCTION_DU_ROLE.ROLE_CONDUCTEUR_PROJET).toBe('CONDUCTEUR')
-  })
-  it('fonctionsDe : dédoublonnées, rôles techniques ignorés, ordre des rôles conservé', () => {
-    expect(fonctionsDe(['ROLE_SNA', 'ROLE_INGENIEUR_HOMOLOGATION', 'ROLE_USER', 'offline_access', 'ROLE_RSSI'])).toEqual(['SNA', 'RSSI'])
-    expect(fonctionsDe(['ROLE_CHEF_DES', 'ROLE_CONDUCTEUR_PROJET'])).toEqual(['CHEF_DES', 'CONDUCTEUR'])
-    expect(fonctionsDe([])).toEqual([])
-    expect(fonctionsDe(['ROLE_SUPER_ADMIN'])).toEqual([])
+describe('qualités par permission (D-94)', () => {
+  it('aucune table rôle → fonction : le conducteur porte HOM_PROJECT_CONDUCT, l’administration de tous les domaines REF_METIER_ADMIN', () => {
+    expect(Object.keys(PROFILS).filter((r) => PROFILS[r].includes('HOM_PROJECT_CONDUCT'))).toEqual(['ROLE_CONDUCTEUR_PROJET'])
+    expect(Object.keys(PROFILS).filter((r) => PROFILS[r].includes('REF_METIER_ADMIN')).sort()).toEqual(['ROLE_INGENIEUR_HOMOLOGATION', 'ROLE_SUPER_ADMIN'])
   })
 })

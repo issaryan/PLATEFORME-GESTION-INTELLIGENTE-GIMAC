@@ -33,6 +33,9 @@ function Paginee<T extends object>({ lignes, colonnes, cle, vide, aide }: { lign
   )
 }
 
+/** Libellé d'un compteur : servi par MS-HOMOLOGATION (compteurs décrits en données, D-94 §6.5), sinon traduit par sa clé. */
+const libelleCompteur = (t: (k: string, o?: Record<string, unknown>) => string, c: TableauActeur['compteurs'][number]) => c.libelle || t(`parcours.compteur.${c.cle}`, { defaultValue: c.cle })
+
 /** Pictogramme de chaque compteur de « Mon travail » (le compteur sans pictogramme connu n'en porte pas). */
 function Compteurs({ tableau }: { tableau: TableauActeur }) {
   const { t } = useTranslation()
@@ -41,7 +44,7 @@ function Compteurs({ tableau }: { tableau: TableauActeur }) {
       {tableau.compteurs.map((c) => (
         <StatCard
           key={c.cle}
-          label={c.lien ? <Link href={c.lien}>{t(`parcours.compteur.${c.cle}`)}</Link> : t(`parcours.compteur.${c.cle}`)}
+          label={c.lien ? <Link href={c.lien}>{libelleCompteur(t, c)}</Link> : libelleCompteur(t, c)}
           value={c.valeur}
           status={c.ton}
           statusLabel={t(LIBELLE_TON[c.ton])}
@@ -58,10 +61,17 @@ function Taches({ taches }: { taches: TacheActeur[] }) {
       key: 'operation', header: t('parcoursActeur.operation'),
       render: (x) => (
         <span className="gm-col" style={{ gap: 0 }}>
-          <Link href={x.lien}>{t(`parcours.op.${x.rang}`)}</Link>
+          {/* Libellé servi (D-93), le code de l'opération à défaut ; badges « à prendre » et « signature ». */}
+          <Link href={x.lien}>{x.libelle || x.rang}</Link>
           <span className="gm-field-help">
-            <span className="gm-mono">{x.rang}</span> · {t(`parcours.etape.${x.etape}`)}
+            <span className="gm-mono">{x.rang}</span> · {t(`parcours.etape.${x.etape}`, { defaultValue: x.etape })}
           </span>
+          {x.aPrendre || x.signature ? (
+            <span className="gm-row" style={{ gap: 'var(--gm-space-1)' }}>
+              {x.aPrendre ? <StatusBadge status="warn" label={t('parcoursActeur.aPrendre')} /> : null}
+              {x.signature ? <StatusBadge status="info" icon="pen-line" label={t('parcoursActeur.signature')} /> : null}
+            </span>
+          ) : null}
         </span>
       ),
     },
@@ -108,19 +118,21 @@ function Blocages({ blocages }: { blocages: Blocage[] }) {
   )
 }
 
-function MonTravail({ tableau, fonctions }: { tableau: TableauActeur; fonctions: Fonction[] }) {
+function MonTravail({ tableau }: { tableau: TableauActeur }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const permissions = usePermissions()
-  const conducteur = fonctions.includes('CONDUCTEUR')
+  // Qualités lues dans les permissions du jeton (D-94), jamais dans un nom de fonction ou de profil.
+  const conducteur = aPermission(permissions, PERM.projetConduire)
   const chef = aPermission(permissions, PERM.projetDesigner)
-  const ddrm = fonctions.includes('CHEF_DDRM') || fonctions.includes('DDRM')
+  const ddrm = aPermission(permissions, PERM.adhesionInstruire)
   const sansConducteur = tableau.liaisons.filter((l) => !l.conducteurNom)
   const amont = tableau.liaisons.filter((l) => AMONT.includes(l.etapeCourante))
   const designer = (l: LiaisonResume) => (
     <Button size="sm" variant="secondary" icon="user" onClick={() => void navigate(`/des/parcours/${l.id}?action=designer`)}>{t('parcoursConducteur.designer')}</Button>
   )
-  const pv = tableau.taches.filter((x) => x.rang === '18')
+  // Procès-verbaux à établir : tâches du conducteur dont le geste se réalise dans l'onglet de la décision (lien servi).
+  const pv = conducteur && aPermission(permissions, PERM.pvEtablir) ? tableau.taches.filter((x) => x.qualite === 'R' && x.lien.includes('onglet=decision')) : []
   const formatDate = useFormatDate()
   return (
     <div className="gm-col" style={{ gap: 'var(--gm-space-5)' }}>
@@ -177,7 +189,7 @@ export function SectionActeur({ fonctions }: { fonctions: Fonction[] }) {
       >
         {t('parcoursActeur.titre')}
       </Titre>
-      <Donnees requete={tableau}>{(tb) => <MonTravail tableau={tb} fonctions={fonctions} />}</Donnees>
+      <Donnees requete={tableau}>{(tb) => <MonTravail tableau={tb} />}</Donnees>
     </section>
   )
 }

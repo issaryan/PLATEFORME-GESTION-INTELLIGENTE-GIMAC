@@ -77,7 +77,7 @@ public class ParcoursLectures {
                 banque = null;
             }
         }
-        return new ParcoursProjection.Contexte(conducteur, banque, l.getVersion() == null ? null : l.getVersion().getNumero());
+        return new ParcoursProjection.Contexte(conducteur, banque, l.getVersion() == null ? null : l.getVersion().getNumero(), l.getVersion() == null ? null : l.getVersion().etapes());
     }
 
     public Vues.Dossier dossier(UUID liaisonId, Acteur a) {
@@ -92,7 +92,7 @@ public class ParcoursLectures {
             .operations()
             .stream()
             .filter(o -> etape == null || o.getEtape() == etape)
-            .filter(o -> fonction == null || o.fonctionR() == fonction)
+            .filter(o -> fonction == null || java.util.Objects.equals(o.fonctionR(), fonction))
             .map(o -> projection.operation(p, o, a, aujourdhui()))
             .toList();
     }

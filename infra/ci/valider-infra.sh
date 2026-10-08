@@ -136,6 +136,10 @@ valider_kubernetes() {
       -schema-location default \
       -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
       "$rendu"
+  # Job de mise à jour du domaine Keycloak, appliqué hors de Kustomize par actualiser-domaine-keycloak.sh.
+  controler "kubeconform (keycloak-domaine-job.yaml, hors Kustomize)" \
+    kubeconform -strict -summary -kubernetes-version "$VERSION_K8S" -schema-location default \
+      "$INFRA/kubernetes-gimac/keycloak-domaine-job.yaml"
   fin_section
 }
 
@@ -205,6 +209,10 @@ PY
   else
     reussi "gimac-realm.json : secrets des clients confidentiels sous forme de variables \${…}"
   fi
+  # Fusion à trois voies du domaine en service (deployer-serveur.sh, mettre-a-jour.sh, Job Kubernetes) :
+  # comptes, profils créés, recompositions et politique de sécurité modifiée dans la console conservés.
+  controler "fusionner-domaine.py : tests de la fusion à trois voies" \
+    python3 -m unittest -q "$INFRA/ci/test_fusionner_domaine.py"
   fin_section
 }
 

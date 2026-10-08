@@ -35,7 +35,9 @@ public class HomologationContexteAdapter implements ContexteCertificationPort {
         Boolean couvertureConstatee,
         List<String> servicesCouverts,
         String conducteurId,
-        String conducteurNom
+        String conducteurNom,
+        String modeleTypeProjet,
+        List<String> attestationsExigees
     ) {
         ContexteCertification vers() {
             CouvertureRecue c = couvertureCertification == null ? new CouvertureRecue(null, 0, 0) : couvertureCertification;
@@ -51,7 +53,9 @@ public class HomologationContexteAdapter implements ContexteCertificationPort {
                 Boolean.TRUE.equals(couvertureConstatee),
                 servicesCouverts,
                 conducteurId,
-                conducteurNom
+                conducteurNom,
+                modeleTypeProjet,
+                attestationsExigees
             );
         }
     }

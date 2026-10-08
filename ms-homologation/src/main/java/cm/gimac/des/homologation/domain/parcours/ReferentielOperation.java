@@ -90,8 +90,8 @@ public class ReferentielOperation implements Serializable {
         this.ordre = ordre;
         this.etape = etape.name();
         this.segment = segment.name();
-        this.porteurs = String.join("|", porteurs.stream().map(Enum::name).toList());
-        this.types = String.join("|", types.stream().map(Enum::name).toList());
+        this.porteurs = String.join("|", porteurs.stream().map(Fonction::name).toList());
+        this.types = String.join("|", types.stream().map(TypeProjet::name).toList());
         this.grain = GrainPreuve.OPERATION.name();
         this.predecesseurs = String.join("|", predecesseurs);
         this.delaiJours = 3;

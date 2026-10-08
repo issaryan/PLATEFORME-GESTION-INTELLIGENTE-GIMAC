@@ -32,34 +32,34 @@ class LiaisonOpeningPolicyTest {
     @ValueSource(strings = { "ADHERENT", "EN_HOMOLOGATION" })
     @DisplayName("Ouverture possible sur un adhérent ou une institution déjà en homologation")
     void eligible(String statut) {
-        assertThatCode(() -> politique.verifier(institution(statut, "BANQUE"), null, CONDUCTEUR)).doesNotThrowAnyException();
+        assertThatCode(() -> politique.verifier(institution(statut, "BANQUE"), null, CONDUCTEUR, true)).doesNotThrowAnyException();
     }
 
     @ParameterizedTest
     @ValueSource(strings = { "CANDIDAT", "CLOS_SANS_SUITE", "SUSPENDU", "RETIRE", "ACTIF" })
     @DisplayName("Institution non adhérente : HOM_LIAISON_INSTITUTION_NOT_ELIGIBLE")
     void nonEligible(String statut) {
-        refus(() -> politique.verifier(institution(statut, "BANQUE"), null, CONDUCTEUR), "HOM_LIAISON_INSTITUTION_NOT_ELIGIBLE");
+        refus(() -> politique.verifier(institution(statut, "BANQUE"), null, CONDUCTEUR, true), "HOM_LIAISON_INSTITUTION_NOT_ELIGIBLE");
     }
 
     @Test
     @DisplayName("Porteur : une banque distincte de l'institution")
     void porteur() {
         InstitutionView ep = institution("ADHERENT", "ETABLISSEMENT_PAIEMENT");
-        assertThatCode(() -> politique.verifier(ep, institution("ADHERENT", "BANQUE"), CONDUCTEUR)).doesNotThrowAnyException();
-        refus(() -> politique.verifier(ep, institution("ADHERENT", "MICROFINANCE"), CONDUCTEUR), "HOM_LIAISON_CARRIER_NOT_BANK");
-        refus(() -> politique.verifier(ep, ep, CONDUCTEUR), "HOM_LIAISON_CARRIER_INVALID");
+        assertThatCode(() -> politique.verifier(ep, institution("ADHERENT", "BANQUE"), CONDUCTEUR, true)).doesNotThrowAnyException();
+        refus(() -> politique.verifier(ep, institution("ADHERENT", "MICROFINANCE"), CONDUCTEUR, true), "HOM_LIAISON_CARRIER_NOT_BANK");
+        refus(() -> politique.verifier(ep, ep, CONDUCTEUR, true), "HOM_LIAISON_CARRIER_INVALID");
     }
 
     @Test
-    @DisplayName("Conducteur : actif, du GIMAC, portant le rôle CONDUCTEUR_PROJET")
+    @DisplayName("Conducteur : actif, du GIMAC, portant la permission HOM_PROJECT_CONDUCT (D-94), quel que soit son profil")
     void conducteur() {
         InstitutionView i = institution("ADHERENT", "BANQUE");
         UUID id = UUID.randomUUID();
-        refus(() -> politique.verifier(i, null, null), "HOM_LIAISON_PROJECT_LEAD_NOT_HABILITATED");
-        refus(() -> politique.verifier(i, null, new CollaboratorView(id, "x", Set.of("ROLE_CONDUCTEUR_PROJET"), null, false)), "HOM_LIAISON_PROJECT_LEAD_NOT_HABILITATED");
-        refus(() -> politique.verifier(i, null, new CollaboratorView(id, "x", Set.of("ROLE_SNA"), null, true)), "HOM_LIAISON_PROJECT_LEAD_NOT_HABILITATED");
-        refus(() -> politique.verifier(i, null, new CollaboratorView(id, "x", Set.of("ROLE_CONDUCTEUR_PROJET"), "INST-0042", true)), "HOM_LIAISON_PROJECT_LEAD_NOT_HABILITATED");
-        assertThatCode(() -> politique.verifierConducteur(new CollaboratorView(id, "x", Set.of("ROLE_CONDUCTEUR_PROJET"), " ", true))).doesNotThrowAnyException();
+        refus(() -> politique.verifier(i, null, null, true), "HOM_LIAISON_PROJECT_LEAD_NOT_HABILITATED");
+        refus(() -> politique.verifier(i, null, new CollaboratorView(id, "x", Set.of("ROLE_CONDUCTEUR_PROJET"), null, false), true), "HOM_LIAISON_PROJECT_LEAD_NOT_HABILITATED");
+        refus(() -> politique.verifier(i, null, new CollaboratorView(id, "x", Set.of("ROLE_CONDUCTEUR_PROJET"), null, true), false), "HOM_LIAISON_PROJECT_LEAD_NOT_HABILITATED");
+        refus(() -> politique.verifier(i, null, new CollaboratorView(id, "x", Set.of("ROLE_CONDUCTEUR_PROJET"), "INST-0042", true), true), "HOM_LIAISON_PROJECT_LEAD_NOT_HABILITATED");
+        assertThatCode(() -> politique.verifierConducteur(new CollaboratorView(id, "x", Set.of("ROLE_PROFIL_CREE"), " ", true), true)).doesNotThrowAnyException();
     }
 }

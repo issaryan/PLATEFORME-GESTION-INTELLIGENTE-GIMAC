@@ -1,6 +1,6 @@
 import type { SessionCompte } from '@gimac/compte'
 import type { SignPurpose } from '@gimac/socle'
-import type { Demande, EntreePouvoirs, EtatDemande, MatricePouvoirs, PageDemandes, PouvoirsProfil, Unite } from '@gimac/lot1'
+import type { Application, DefinitionFonctionnalite, Demande, EntreePouvoirs, EtatDemande, MatricePouvoirs, PageDemandes, PouvoirsProfil, SaisieFonctionnalite, Unite } from '@gimac/lot1'
 import type { ActionRequise, Compte, Creation, DemandeRattachement, EntreeJournal, FicheCompte, FiltreComptes, FiltreJournal, IndicateursComptes, NouveauCompte, Page } from '../modele/comptes'
 import type { ConfigurationMessagerie, PolitiqueSecurite, Profil } from '../modele/configuration'
 import type { DemandeGeste, EtatInfrastructure, EvenementCharge, Geste, JournauxCharge, NoeudCluster, Operation, PageOperations, PodCharge, TacheCluster } from '../modele/infrastructure'
@@ -73,12 +73,19 @@ export interface ServiceConfiguration {
    * IAM_PROFILE_EDIT, motif obligatoire et réauthentification FIDO2 ; profil privilégié : IAM_ROLE_PRIVILEGED_GRANT.
    */
   modifierProfil(code: string, p: PresentationProfil, motif: string, assertion: Assertion): Promise<Profil>
+  /**
+   * Catalogue des fonctionnalités (D-94, GET /configuration/fonctionnalites) : tout compte interne ; `application`
+   * absente : toutes les applications.
+   */
+  fonctionnalites(application?: Application): Promise<DefinitionFonctionnalite[]>
+  /** PUT /configuration/fonctionnalites/{cle} : IAM_PROFILE_EDIT, motif et réauthentification FIDO2. */
+  modifierFonctionnalite(cle: string, f: SaisieFonctionnalite, motif: string, assertion: Assertion): Promise<DefinitionFonctionnalite>
 }
 
 /** POST /configuration/profils (D-81 §5) ; libellé facultatif (D-86 §5, le code à défaut). */
 export type NouveauProfil = { code: string; libelle?: string; description: string; permissions: string[] }
-/** PUT /configuration/profils/{code} (D-86 §2), sans le motif. */
-export type PresentationProfil = { libelle: string; description: string }
+/** PUT /configuration/profils/{code} (D-86 §2), sans le motif ; `externe` (D-94) : absent, inchangé. */
+export type PresentationProfil = { libelle: string; description: string; externe?: boolean }
 
 /**
  * Pouvoirs hiérarchiques côté administration (D-81 §3 et §4) : matrice des pouvoirs (lecture IAM_ACCOUNT_READ,

@@ -327,4 +327,74 @@ class ParcoursDdrmIT extends AbstractParticipantIT {
             .andExpect(jsonPath("$.transitions[0].institutionId").value(id));
         assertThat(jdbc.queryForList("select event_type from outbox_event where aggregate_id = ? order by created_at", String.class, id)).last().isEqualTo("participant.status-changed.v1");
     }
+
+    /** Envoie les événements sur homologation.liaison, démarre le consommateur et attend le statut voulu. */
+    String livrerEtAttendre(String groupe, String id, String attendu, String... evenements) throws Exception {
+        var props = new java.util.HashMap<String, Object>();
+        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, String.join(",", kafka.getBootstrapServers()));
+        try (var producteur = new KafkaProducer<>(props, new StringSerializer(), new StringSerializer())) {
+            for (String e : evenements) {
+                producteur.send(new ProducerRecord<>("homologation.liaison", id, e)).get();
+            }
+        }
+        consommateurs.getListenerContainer(groupe).start();
+        try {
+            String statut = null;
+            for (int essai = 0; essai < 60 && !attendu.equals(statut); essai++) {
+                Thread.sleep(500);
+                statut = jdbc.queryForObject("select status from institution where id = ?::uuid", String.class, id);
+            }
+            Thread.sleep(1500);
+            return statut;
+        } finally {
+            consommateurs.getListenerContainer(groupe).stop();
+        }
+    }
+
+    static String jalon(String eventId, String liaison, String institution, String jalon) {
+        return """
+            {"specversion":"1.0","id":"%s","source":"/ms-homologation","type":"homologation.liaison-milestone-reached.v1","subject":"%s",\
+            "datacontenttype":"application/json","data":{"liaisonId":"%s","reference":"LIA-2026-077","institutionId":"%s",\
+            "typeProjet":"CARTE_INTERBANCAIRE","jalon":"%s","statut":"%s"}}"""
+            .formatted(eventId, liaison, liaison, institution, jalon, jalon);
+    }
+
+    @Test
+    @org.junit.jupiter.api.Timeout(value = 2, unit = java.util.concurrent.TimeUnit.MINUTES)
+    @DisplayName("D-93 §4 : le jalon EN_PRODUCTION (Kafka) fait passer l'institution à ACTIF, une seule fois ; les autres jalons sont sans effet")
+    void miseEnProduction() throws Exception {
+        String id = adherent("Banque Production", "BPRODCMX", "BQ-PRD-001");
+        String liaison = UUID.randomUUID().toString();
+        String ouverture = """
+            {"specversion":"1.0","id":"%s","source":"/ms-homologation","type":"homologation.liaison-opened.v1","subject":"%s",\
+            "datacontenttype":"application/json","data":{"liaisonId":"%s","institutionId":"%s","typeProjet":"CARTE_INTERBANCAIRE"}}"""
+            .formatted(UUID.randomUUID(), liaison, liaison, id);
+        assertThat(livrerEtAttendre("participant-liaison-ouverte", id, "EN_HOMOLOGATION", ouverture)).isEqualTo("EN_HOMOLOGATION");
+
+        String production = jalon(UUID.randomUUID().toString(), liaison, id, "EN_PRODUCTION");
+        String statut = livrerEtAttendre(
+            "participant-jalon-liaison",
+            id,
+            "ACTIF",
+            jalon(UUID.randomUUID().toString(), liaison, id, "CERTIFIEE"),
+            jalon(UUID.randomUUID().toString(), liaison, id, "APPROUVEE_SECURITE"),
+            // Livré deux fois : le consommateur idempotent n'applique la transition qu'une fois.
+            production,
+            production
+        );
+        assertThat(statut).isEqualTo("ACTIF");
+        assertThat(
+            jdbc.queryForObject("select count(*) from status_transition where institution_id = ?::uuid and to_status = 'ACTIF' and automatic_transition", Integer.class, id)
+        ).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select count(*) from processed_event where consumer_group = 'participant-jalon-liaison'", Integer.class)).isEqualTo(1);
+        assertThat(
+            jdbc.queryForObject("select count(*) from interaction where institution_id = ?::uuid and nature = 'CHANGEMENT_STATUT' and summary like '%EN_PRODUCTION%'", Integer.class, id)
+        ).isEqualTo(1);
+        mvc
+            .perform(get("/api/v1/institutions/{id}", id).with(chef()))
+            .andExpect(jsonPath("$.institution.statut").value("ACTIF"))
+            .andExpect(jsonPath("$.transitions[0].vers").value("ACTIF"))
+            .andExpect(jsonPath("$.transitions[0].automatique").value(true));
+        assertThat(jdbc.queryForList("select event_type from outbox_event where aggregate_id = ? order by created_at", String.class, id)).last().isEqualTo("participant.status-changed.v1");
+    }
 }

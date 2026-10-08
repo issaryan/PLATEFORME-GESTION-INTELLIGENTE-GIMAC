@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, CrudDialog, DataTable, InlineAlert, PageHeader, StatusBadge, TextArea, TextField, type Column } from '@gimac/design-system'
+import { useSearchParams } from 'react-router'
+import { Button, CrudDialog, DataTable, InlineAlert, PageHeader, StatusBadge, Tabs, TextArea, TextField, type Column } from '@gimac/design-system'
 import { aPermission, usePermissions, useLibelleProfil } from '@gimac/socle'
 import { dateHeure } from '@gimac/compte'
 import { ArbreFonctionnalites, ApercuBarreLaterale, DialogueComparaison, DialoguePresentation, FicheProfil, compositionDe } from '../composants/profils'
 import { useEffet, useLibellesProfils, useProfils } from '../hooks'
 import { LIMITES_PROFIL, type Profil } from '../modele/configuration'
 import { Annonce } from '../composants/Annonce'
+import { CatalogueFonctionnalites } from '../composants/fonctionnalites'
 import { useActes } from '../composants/actes'
 import { etatListe } from '../composants/formats'
 
@@ -76,8 +78,11 @@ export default function ProfilsPage() {
   const creer = useEffet((s, v: Nouveau & { motif: string; assertion: string }) =>
     s.configuration.creerProfil({ code: v.code, ...(v.libelle ? { libelle: v.libelle } : {}), description: v.description, permissions: v.permissions }, v.motif, v.assertion))
   const supprimer = useEffet((s, v: { code: string; motif: string; assertion: string }) => s.configuration.supprimerProfil(v.code, v.motif, v.assertion))
-  const presenter = useEffet((s, v: { code: string; libelle: string; description: string; motif: string; assertion: string }) =>
-    s.configuration.modifierProfil(v.code, { libelle: v.libelle, description: v.description }, v.motif, v.assertion))
+  const presenter = useEffet((s, v: { code: string; libelle: string; description: string; externe?: boolean; motif: string; assertion: string }) =>
+    s.configuration.modifierProfil(v.code, { libelle: v.libelle, description: v.description, ...(v.externe !== undefined ? { externe: v.externe } : {}) }, v.motif, v.assertion))
+  // D-94 : catalogue des fonctionnalités, second onglet de l'écran (?vue=fonctionnalites).
+  const [params, setParams] = useSearchParams()
+  const vue = params.get('vue') === 'fonctionnalites' ? 'fonctionnalites' : 'profils'
   const [ouvert, setOuvert] = useState<Profil | null>(null)
   const [presente, setPresente] = useState<Profil | null>(null)
   const [nouveau, setNouveau] = useState(false)
@@ -91,7 +96,15 @@ export default function ProfilsPage() {
   const colonnes: Column<Profil>[] = [
     { key: 'code', header: t('console.profils.libelle'), render: (p) => <span className="gm-col" style={{ gap: 0 }}><span>{nom(p)}</span><span className="gm-mono gm-type-small">{p.code}</span></span> },
     { key: 'description', header: t('console.profils.description'), render: (p) => p.description ?? '' },
-    { key: 'privilegie', header: t('console.profils.nature'), render: (p) => (p.privilegie ? <StatusBadge status="warn" icon="lock" label={t('console.profils.privilegie')} /> : <StatusBadge status="neutral" label={t('console.profils.standard')} />) },
+    {
+      key: 'privilegie', header: t('console.profils.nature'),
+      render: (p) => (
+        <span className="gm-col" style={{ gap: 2, alignItems: 'flex-start' }}>
+          {p.privilegie ? <StatusBadge status="warn" icon="lock" label={t('console.profils.privilegie')} /> : <StatusBadge status="neutral" label={t('console.profils.standard')} />}
+          {p.externe ? <StatusBadge status="info" icon="landmark" label={t('console.profils.externe')} /> : null}
+        </span>
+      ),
+    },
     { key: 'titulaires', header: t('console.profils.titulaires'), type: 'number' },
     { key: 'permissions', header: t('console.profils.permissions'), type: 'number', render: (p) => compositionDe(p).length },
     {
@@ -125,14 +138,20 @@ export default function ProfilsPage() {
   return (
     <div className="gm-col">
       <PageHeader title={t('console.profils.titre')} subtitle={t('console.profils.texte')}
-        actions={(
+        actions={vue === 'profils' ? (
           <span className="gm-row" style={{ gap: 'var(--gm-space-2)' }}>
             <Button icon="git-compare" disabled={lignes.length < 2} onClick={() => setComparer(true)}>{t('console.profils.cmp.ouvrir')}</Button>
             {edition ? <Button variant="primary" icon="plus" onClick={() => setNouveau(true)}>{t('console.profils.nouveau')}</Button> : null}
           </span>
-        )} />
-      <Annonce retour={actes.retour} />
-      <DataTable columns={colonnes} rows={lignes} rowKey={(p) => p.code} pageSize={25} onRetry={() => void profils.refetch()} emptyText={t('console.profils.aucun')} {...etatListe(profils, lignes)} />
+        ) : undefined} />
+      <Tabs items={[{ key: 'profils', label: t('console.profils.onglet.liste') }, { key: 'fonctionnalites', label: t('console.fct.titre') }]} value={vue}
+        onChange={(k) => setParams(k === 'fonctionnalites' ? { vue: 'fonctionnalites' } : {})} />
+      {vue === 'fonctionnalites' ? <CatalogueFonctionnalites /> : (
+        <>
+          <Annonce retour={actes.retour} />
+          <DataTable columns={colonnes} rows={lignes} rowKey={(p) => p.code} pageSize={25} onRetry={() => void profils.refetch()} emptyText={t('console.profils.aucun')} {...etatListe(profils, lignes)} />
+        </>
+      )}
       {ouvert ? (
         <FicheProfil profil={ouvert} modifiable={modifiable(ouvert)} onFermer={() => setOuvert(null)} onContinuer={(choix) => {
           const p = ouvert
@@ -156,6 +175,7 @@ export default function ProfilsPage() {
               { key: t('console.profils.profil'), value: p.code, mono: true },
               { key: t('console.profils.libelle'), value: x.libelle === nom(p) ? x.libelle : `${nom(p)} → ${x.libelle}` },
               ...(x.description !== (p.description ?? '') ? [{ key: t('console.profils.description'), value: x.description || t('console.profils.sansDescription') }] : []),
+              ...(x.externe !== undefined && x.externe !== !!p.externe ? [{ key: t('console.profils.externe'), value: t(x.externe ? 'console.profils.externeOui' : 'console.profils.externeNon') }] : []),
             ],
             contenu: { profil: p.code, ...x },
             succes: t('console.profils.presentation.fait', { profil: x.libelle }),

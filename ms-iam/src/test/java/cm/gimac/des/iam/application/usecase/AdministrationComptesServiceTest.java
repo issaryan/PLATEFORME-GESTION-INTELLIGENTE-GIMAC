@@ -59,9 +59,9 @@ class AdministrationComptesServiceTest {
         return new IamProprietes(
             new IamProprietes.Keycloak("http://kc", "gimac", "iam-service", "s"),
             new IamProprietes.PremiereConnexion(List.of(ActionRequise.MOT_DE_PASSE, ActionRequise.SECOND_FACTEUR, ActionRequise.FICHE, ActionRequise.CHARTE)),
-            new IamProprietes.Profils(CATALOGUE, PRIVILEGIES),
+            new IamProprietes.Profils(CATALOGUE, Set.of("ROLE_CORRESPONDANT")),
             new IamProprietes.Webauthn("localhost", "GIMAC", List.of("http://localhost"), Duration.ofMinutes(2)),
-            new IamProprietes.Liens("https://des.gimac.test", "https://portail.gimac.test", "https://console.gimac.test/", null, null, null),
+            new IamProprietes.Liens("https://des.gimac.test", "https://portail.gimac.test", "https://console.gimac.test/", null, null, null, null),
             new IamProprietes.Connexion("gimac-connexion", "s", null),
             null
         );
@@ -69,7 +69,7 @@ class AdministrationComptesServiceTest {
 
     @BeforeEach
     void init() {
-        annuaire = new AnnuaireEnMemoire(AnnuaireEnMemoire.catalogueParDefaut(CATALOGUE), PRIVILEGIES);
+        annuaire = new AnnuaireEnMemoire(AnnuaireEnMemoire.catalogueParDefaut(CATALOGUE));
         courriels = new CourrielsEnMemoire();
         jetons = new ArrayList<>();
         Clock clock = Clock.fixed(Instant.parse("2026-09-29T08:00:00Z"), ZoneOffset.UTC);
@@ -83,6 +83,22 @@ class AdministrationComptesServiceTest {
 
     static void refus(Runnable r, String code) {
         assertThatThrownBy(r::run).isInstanceOfSatisfying(IamException.class, e -> assertThat(e.code()).isEqualTo(code));
+    }
+
+    @Test
+    @DisplayName("D-93 §11 : comptes actifs d'une institution, avec leurs profils, triés par nom ; autre institution, désactivé et interne exclus")
+    void comptesInstitution() {
+        String b = annuaire.creer(new NouveauCompte("corr.b", "Bertin", "Ngono", "b@gimac.test", null, null, "INST-1", Set.of("ROLE_CORRESPONDANT")), List.of());
+        String a = annuaire.creer(new NouveauCompte("corr.a", "Aminata", "Ngono", "a@gimac.test", null, null, "INST-1", Set.of("ROLE_CORRESPONDANT")), List.of());
+        String parti = annuaire.creer(new NouveauCompte("corr.p", "Paul", "Ndi", "p@gimac.test", null, null, "INST-1", Set.of("ROLE_CORRESPONDANT")), List.of());
+        annuaire.creer(new NouveauCompte("corr.x", "Xavier", "Ndi", "x@gimac.test", null, null, "INST-2", Set.of("ROLE_CORRESPONDANT")), List.of());
+        annuaire.creer(nouveau("interne", "ROLE_CHARGE_DDRM"), List.of());
+        annuaire.definirActif(parti, false);
+        assertThat(service.comptesInstitution(" INST-1 ")).extracting(Compte::id).containsExactly(a, b);
+        assertThat(service.comptesInstitution("INST-1").get(0).profils()).containsExactly("ROLE_CORRESPONDANT");
+        assertThat(service.comptesInstitution("INST-INCONNUE")).isEmpty();
+        assertThat(service.comptesInstitution(" ")).isEmpty();
+        assertThat(service.comptesInstitution(null)).isEmpty();
     }
 
     @Test
@@ -196,6 +212,47 @@ class AdministrationComptesServiceTest {
         refus(() -> service.definirProfils(autreSuper, "demo-super-admin", Set.of("ROLE_RSSI"), "x"), "IAM_LAST_SUPER_ADMIN");
         service.creer(SUPER, nouveau("second.admin", "ROLE_SUPER_ADMIN"), true, false);
         assertThat(service.definirActif(RSSI, "demo-super-admin", false, "rotation").actif()).isFalse();
+    }
+
+    @Test
+    @DisplayName("D-94 : dernier porteur de IAM_ROLE_PRIVILEGED_GRANT par la composition des profils, jamais par le nom ROLE_SUPER_ADMIN")
+    void dernierPorteurParComposition() {
+        // Un profil créé quelconque qui reçoit l'octroi privilégié compte comme porteur.
+        annuaire.creerProfil("ROLE_GARDIEN", "Gardien", "Garde l'octroi", Set.of("IAM_ROLE_PRIVILEGED_GRANT", "IAM_ACCOUNT_READ"));
+        String gardien = service.creer(SUPER, nouveau("gardien", "ROLE_CHARGE_DDRM"), true, false).compte().id();
+        annuaire.definirProfils(gardien, Set.of("ROLE_GARDIEN"));
+        assertThat(service.definirActif(RSSI, "demo-super-admin", false, "rotation").actif()).isFalse();
+        // Le gardien est désormais le dernier porteur actif.
+        refus(() -> service.definirActif(RSSI, gardien, false, "x"), "IAM_LAST_SUPER_ADMIN");
+        refus(() -> service.supprimer(RSSI, gardien, "x"), "IAM_LAST_SUPER_ADMIN");
+        refus(() -> service.definirProfils(SUPER, gardien, Set.of("ROLE_CHARGE_DDRM"), "x"), "IAM_LAST_SUPER_ADMIN");
+        // Le profil livré ROLE_SUPER_ADMIN privé de l'octroi ne protège plus : son titulaire n'est plus porteur.
+        assertThat(service.definirActif(RSSI, "demo-super-admin", true, "retour").actif()).isTrue();
+        annuaire.definirPermissionsProfil("ROLE_SUPER_ADMIN", Set.of("IAM_ACCOUNT_READ"));
+        assertThat(service.definirActif(RSSI, "demo-super-admin", false, "sans octroi").actif()).isFalse();
+        // Un compte inactif ou sans l'octroi se désactive librement.
+        assertThat(service.definirActif(RSSI, "demo-super-admin", true, "retour").actif()).isTrue();
+    }
+
+    @Test
+    @DisplayName("D-94 : institution selon l'attribut externe du profil ; invitation vers la console selon les permissions de la console")
+    void externeEtCoucheParConfiguration() {
+        // ROLE_CHARGE_DDRM marqué externe (attribut gimac_externe) : rattaché à une institution, invité sur le portail.
+        annuaire.definirExterne("ROLE_CHARGE_DDRM", true);
+        refus(() -> service.creer(RSSI, nouveau("charge.sans", "ROLE_CHARGE_DDRM"), true, false), "IAM_INSTITUTION_REQUIRED");
+        service.creer(RSSI, new NouveauCompte("charge.ext", "C", "E", "charge.ext@banque.test", null, null, "INST-3", Set.of("ROLE_CHARGE_DDRM")), true, false);
+        assertThat(courriels.dernierPour("charge.ext@banque.test").orElseThrow().texte()).contains("https://portail.gimac.test/connexion/");
+        // ROLE_CORRESPONDANT qui perd l'attribut (posé à faux) redevient interne : plus d'institution.
+        annuaire.definirExterne("ROLE_CORRESPONDANT", false);
+        refus(() -> service.creer(RSSI, new NouveauCompte("corr.b", "C", "B", "corr.b@banque.test", null, null, "INST-9", Set.of("ROLE_CORRESPONDANT")), true, false), "IAM_INSTITUTION_INTERNAL_ACCOUNT");
+        // Profil créé portant une permission de la console : invitation vers la console, sans nom de profil.
+        annuaire.creerProfil("ROLE_VEILLE", "Veille", "Supervision", Set.of("PLATFORM_SUPERVISION_READ"));
+        String veille = annuaire.creer(nouveau("veille", "ROLE_VEILLE"), List.of());
+        service.exigerActions(RSSI, veille, Set.of(ActionRequise.MOT_DE_PASSE), true, "invitation");
+        assertThat(courriels.dernierPour("veille@gimac.test").orElseThrow().texte()).contains("https://console.gimac.test/connexion/nouveau-mot-de-passe");
+        // Rappel des actions par courriel : même couche.
+        service.exigerActions(RSSI, veille, Set.of(ActionRequise.FICHE), true, "rappel");
+        assertThat(courriels.dernierPour("veille@gimac.test").orElseThrow().texte()).contains("https://console.gimac.test/");
     }
 
     @Test

@@ -178,12 +178,12 @@ public class DemandesService {
      * Rattachement à une institution (règle de l'administration des comptes) vérifié dès la soumission,
      * pour ne pas accepter une demande que l'acceptation refuserait : un compte créé par demande est un
      * compte interne du GIMAC, sans institution ; des profils demandés gardent la cohérence entre
-     * correspondant de participant et institution du compte visé.
+     * profil externe (attribut gimac_externe, D-94) et institution du compte visé.
      */
-    private static void verifierRattachementInstitution(TypeDemande type, Compte cible, ContenuDemande c) {
+    private void verifierRattachementInstitution(TypeDemande type, Compte cible, ContenuDemande c) {
         switch (type) {
-            case CREATION_COMPTE -> ReglesAdministration.verifierRattachement(c.profils(), null);
-            case PROFILS -> ReglesAdministration.verifierRattachement(ReglesDemandes.profilsApres(cible.profils(), c), cible.institutionId());
+            case CREATION_COMPTE -> ReglesAdministration.verifierRattachement(c.profils(), null, annuaire.profilsExternes());
+            case PROFILS -> ReglesAdministration.verifierRattachement(ReglesDemandes.profilsApres(cible.profils(), c), cible.institutionId(), annuaire.profilsExternes());
             case STATUT -> {
                 // Le statut ne change ni les profils ni l'institution.
             }

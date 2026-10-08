@@ -233,6 +233,12 @@
         "clientRole": false
       },
       {
+        "name": "HOM_PROJECT_CONDUCT",
+        "description": "Conduite des projets d'homologation (désignable comme conducteur de liaison)",
+        "composite": false,
+        "clientRole": false
+      },
+      {
         "name": "CER_CIRCUIT_READ",
         "description": "Permission du lot 1",
         "composite": false,
@@ -521,6 +527,12 @@
         "clientRole": false
       },
       {
+        "name": "REF_METIER_ADMIN",
+        "description": "Administration des référentiels métier, tous domaines",
+        "composite": false,
+        "clientRole": false
+      },
+      {
         "name": "INTERNAL_HOMOLOGATION_READ",
         "description": "Permission du lot 1",
         "composite": false,
@@ -597,6 +609,7 @@
             "CER_DOSSIER_VERIFY",
             "CER_GOLIVE_REPORT_SUBMIT",
             "CER_ATTESTATION_ISSUE",
+            "REF_METIER_ADMIN",
             "COL_MESSAGE_READ",
             "COL_MESSAGE_SEND",
             "PIL_ACTIVITY_OWN",
@@ -690,6 +703,9 @@
             "PLATFORM_OPS_READ",
             "PLATFORM_OPS_EXECUTE",
             "HOM_REFERENTIEL_EDIT",
+            "REF_METIER_ADMIN",
+            "HOM_REFERENTIEL_READ_ALL",
+            "HOM_REFERENTIEL_MIGRATE",
             "HOM_REFERENTIEL_PUBLISH",
             "COL_MESSAGE_READ",
             "COL_MESSAGE_SEND",
@@ -829,12 +845,16 @@
             "HOM_PORTAL_READ",
             "HOM_PORTAL_SUBMIT",
             "CER_PORTAL_READ",
-            "CER_PORTAL_SIGN"
+            "CER_PORTAL_SIGN",
+            "NOT_INBOX_READ"
           ]
         },
         "attributes": {
           "gimac_libelle": [
             "Correspondant du participant"
+          ],
+          "gimac_externe": [
+            "true"
           ]
         }
       },
@@ -1122,6 +1142,7 @@
             "HOM_OPERATION_VALIDATE",
             "HOM_STEP_MANAGE",
             "CER_PV_ESTABLISH",
+            "HOM_PROJECT_CONDUCT",
             "COL_MESSAGE_READ",
             "COL_MESSAGE_SEND",
             "PIL_ACTIVITY_OWN",

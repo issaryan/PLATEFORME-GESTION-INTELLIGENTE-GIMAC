@@ -125,6 +125,11 @@ export type Tache = {
   uniteCible?: string | null
   /** Profil exigé pour prendre une tâche à prendre (D-87 §5.3) : seuls ses porteurs la voient et la prennent. */
   profilRequis?: string | null
+  /** Tâche offerte par MS-HOMOLOGATION (§8.8) : profils ou permissions dont les porteurs la voient et la prennent. */
+  profilsRequis?: string[] | null
+  permissionsRequises?: string[] | null
+  /** Vrai pour une tâche à prendre (sans responsable). */
+  aPrendre?: boolean
   origine: { type: TypeOrigine; reference: string | null; service: string | null; lien: string | null }
   enRetard: boolean
   creeeLe: string
@@ -177,7 +182,22 @@ export const motifExige = (de: EtatTache, vers: EtatTache) => vers === 'BLOQUEE'
 
 export type TypeRapport = 'QUOTIDIEN' | 'HEBDOMADAIRE'
 export type ModeRapport = 'PREREMPLI' | 'REDIGE' | 'DOCUMENT'
-export type EtatRapport = 'BROUILLON' | 'SOUMIS' | 'VISE'
+/** DEPOSE : transmis sans destinataire (aucun responsable au-dessus de l'auteur), final, sans visa (§2.4). */
+export type EtatRapport = 'BROUILLON' | 'SOUMIS' | 'VISE' | 'DEPOSE'
+/** Façon dont le destinataire a été trouvé à la soumission (§2.4, « Destinataire du rapport »). */
+export type MotifDestinataire = 'N_PLUS_UN' | 'CHEF_UNITE' | 'CHEF_UNITE_PARENTE' | 'CHOISI'
+/** Lien d'un destinataire possible avec l'auteur : n+1, chef de son unité, chef d'une unité parente, autre responsable de la chaîne. */
+export type LienDestinataire = 'N_PLUS_UN' | 'CHEF_UNITE' | 'CHEF_UNITE_PARENTE' | 'CHAINE'
+/**
+ * GET /rapports/{id}/destinataires : destinataire qui recevra le rapport s'il est soumis maintenant (nul avec `depot` :
+ * rapport déposé) et choix possibles dans la chaîne hiérarchique de l'auteur.
+ */
+export type DestinatairesRapport = {
+  destinataire: PersonneActivite | null
+  motif: MotifDestinataire | null
+  depot: boolean
+  choix: { id: string; nomAffiche: string | null; lien: LienDestinataire; unite: string | null }[]
+}
 export type VueRapports = 'moi' | 'recus'
 
 export type DocumentRapport = { ticket: string; nom: string; typeMime: string; taille: number }
@@ -193,6 +213,8 @@ export type Rapport = {
   etat: EtatRapport
   auteur: PersonneActivite
   destinataire: PersonneActivite | null
+  /** Nul pour un brouillon ou un rapport déposé. */
+  destinataireMotif?: MotifDestinataire | null
   soumisLe: string | null
   viseLe: string | null
   visa: { par: PersonneActivite; commentaire: string | null } | null

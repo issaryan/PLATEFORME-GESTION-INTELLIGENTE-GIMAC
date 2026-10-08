@@ -304,9 +304,21 @@ gimac:
     delai: 2000
     delai-initial: 10000
   homologation:
-    # Profils dont un compte peut piloter un brouillon de référentiel (HOM_REFERENTIEL_EDIT, D-77, D-89).
     referentiel:
-      profils-pilote: ROLE_INGENIEUR_HOMOLOGATION,ROLE_CHEF_DES,ROLE_CHEF_DDRM,ROLE_RESPONSABLE_SERVICE,ROLE_SUPER_ADMIN
+      # Gestes de certification attendus à la publication d'une version (D-93 §4, effet-reel-referentiels.md §10.5) :
+      # pour chaque jalon porté par la version, déclencheurs (événements de MS-CERTIFICATION) qu'au moins une opération
+      # doit porter, sinon anomalie GESTE_CERTIFICATION_ABSENT (409 HOM_REFERENTIAL_GRAPH_INVALID). « avec-attestations »
+      # s'ajoute quand le modèle du type de projet exige des attestations. Liste alignée sur les gestes de MS-CERTIFICATION
+      # (GesteCertification, gimac.certification.operations.declencheurs-par-code).
+      gestes-certification:
+        toujours:
+          CERTIFIEE: certification.pv-established.v1,certification.pv-signed.v1
+          APPROUVEE_SECURITE: certification.security-approved.v1
+        avec-attestations:
+          APPROUVEE_SECURITE: certification.change-record-constituted.v1,certification.attestations-archived.v1
+    # Compteurs du tableau de bord d'acteur, décrits en données (D-94 §3) : classpath par défaut, ou fichier externe.
+    tableau:
+      compteurs: classpath:config/tableau-acteur-compteurs.json
     replay: {period: PT5M, failure-threshold: 5, half-open-after: PT2M}
     deadlines: {warning-days: 5, overdue-repeat-days: 7}
   kafka:
@@ -318,6 +330,16 @@ gimac:
       topics-surveilles:
         - certification.proces-verbal
         - certification.approbation
+        - iam.account
+        - pilotage.task
   consommateurs:
     certification:
       sujets: certification.proces-verbal,certification.approbation
+    # Départ d'un compte (MS-IAM, iam.account-administered.v1, DESACTIVATION ou SUPPRESSION) : ses rôles sur les
+    # liaisons ouvertes repassent « à affecter » (D-93 §1).
+    comptes:
+      sujet: iam.account
+    # Prise d'une tâche à prendre (MS-PILOTAGE, pilotage.task-taken.v1) : la personne qui prend la tâche
+    # <réf.>/AFFECTER/<FONCTION> est affectée à la fonction sur la liaison (D-94, effet-reel-referentiels.md §8.8).
+    taches:
+      sujet: pilotage.task

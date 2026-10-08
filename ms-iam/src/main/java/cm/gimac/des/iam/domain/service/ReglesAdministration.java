@@ -14,18 +14,18 @@ import java.util.regex.Pattern;
  * <ul>
  *   <li>Séparation des pouvoirs : un administrateur n'agit pas sur son propre compte (profils,
  *       activation, suppression, second facteur) ; il passe par un pair.</li>
- *   <li>Seuls les profils du catalogue sont attribuables ; un profil privilégié (super
- *       administrateur, RSSI) exige IAM_ROLE_PRIVILEGED_GRANT.</li>
- *   <li>La plateforme garde toujours au moins un super administrateur actif.</li>
- *   <li>Seul un correspondant de participant est rattaché à une institution ; un agent du GIMAC
- *       n'en a pas (sinon il serait traité en compte externe : portail, absent de la messagerie).</li>
+ *   <li>Seuls les profils du catalogue sont attribuables ; un profil privilégié (permission IAM_* ou
+ *       PLATFORM_*) exige IAM_ROLE_PRIVILEGED_GRANT.</li>
+ *   <li>La plateforme garde toujours au moins un compte actif portant IAM_ROLE_PRIVILEGED_GRANT par la
+ *       composition de ses profils (D-94 : « dernier super administrateur » sans nom de profil).</li>
+ *   <li>Seul un compte dont tous les profils sont externes (attribut gimac_externe, D-94) est rattaché à une
+ *       institution, et il l'est obligatoirement ; un agent du GIMAC n'en a pas (sinon il serait traité en
+ *       compte externe : portail, absent de la messagerie).</li>
  * </ul>
  */
 public final class ReglesAdministration {
 
-    public static final String SUPER_ADMIN = "ROLE_SUPER_ADMIN";
     public static final String OCTROI_PRIVILEGIE = "IAM_ROLE_PRIVILEGED_GRANT";
-    public static final String CORRESPONDANT = "ROLE_CORRESPONDANT";
     private static final Pattern IDENTIFIANT = Pattern.compile("^[a-z][a-z0-9._-]{2,49}$");
     private static final Pattern TELEPHONE = Pattern.compile("^\\+?[0-9 ]{8,20}$");
 
@@ -73,29 +73,38 @@ public final class ReglesAdministration {
     }
 
     /**
-     * Rattachement à une institution : réservé au correspondant de participant, et obligatoire pour lui.
-     * Un compte interne du GIMAC n'a pas d'institution (le GIMAC n'en est pas une) : une valeur saisie
+     * Rattachement à une institution (D-94) : réservé aux comptes dont les profils sont externes, et obligatoire
+     * pour eux. Un compte interne du GIMAC n'a pas d'institution (le GIMAC n'en est pas une) : une valeur saisie
      * par erreur l'enverrait vers le portail et le retirerait de l'annuaire interne de la messagerie.
+     *
+     * @param externes codes des profils externes (attribut gimac_externe, ou repli *_PORTAL_*)
      */
-    public static void verifierRattachement(Set<String> profils, String institutionId) {
+    public static void verifierRattachement(Set<String> profils, String institutionId, Set<String> externes) {
         boolean rattache = institutionId != null && !institutionId.isBlank();
-        boolean correspondant = profils.contains(CORRESPONDANT);
-        if (rattache && profils.stream().anyMatch(p -> !CORRESPONDANT.equals(p))) {
+        boolean externe = profils.stream().anyMatch(externes::contains);
+        if (rattache && profils.stream().anyMatch(p -> !externes.contains(p))) {
             throw IamException.invalide(
                 "IAM_INSTITUTION_INTERNAL_ACCOUNT",
                 "Un compte interne du GIMAC n'est rattaché à aucune institution : laisser l'institution vide",
                 Map.of("institutionId", institutionId)
             );
         }
-        if (correspondant && !rattache) {
-            throw IamException.invalide("IAM_INSTITUTION_REQUIRED", "Un correspondant de participant est rattaché à son institution", Map.of());
+        if (externe && !rattache) {
+            throw IamException.invalide("IAM_INSTITUTION_REQUIRED", "Un compte de profil externe est rattaché à son institution", Map.of());
         }
     }
 
-    /** Refuse de retirer ou de désactiver le dernier super administrateur actif. */
-    public static void verifierDernierSuperAdmin(boolean cibleEstSuperAdminActif, long superAdminsActifs) {
-        if (cibleEstSuperAdminActif && superAdminsActifs <= 1) {
-            throw IamException.conflit("IAM_LAST_SUPER_ADMIN", "La plateforme doit garder au moins un super administrateur actif", Map.of());
+    /**
+     * Refuse de retirer ou de désactiver le dernier compte actif portant l'octroi des profils privilégiés
+     * (IAM_ROLE_PRIVILEGED_GRANT par la composition de ses profils) : 409 IAM_LAST_SUPER_ADMIN.
+     */
+    public static void verifierDernierPorteurOctroi(boolean ciblePorteActif, long porteursActifs) {
+        if (ciblePorteActif && porteursActifs <= 1) {
+            throw IamException.conflit(
+                "IAM_LAST_SUPER_ADMIN",
+                "La plateforme doit garder au moins un compte actif portant " + OCTROI_PRIVILEGIE,
+                Map.of("permission", OCTROI_PRIVILEGIE)
+            );
         }
     }
 

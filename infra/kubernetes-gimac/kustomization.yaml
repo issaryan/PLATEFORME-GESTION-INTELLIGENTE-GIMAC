@@ -20,6 +20,8 @@ resources:
   - alertmanager.yaml
   - regles-alertes.yaml
   - kafka-sujets.yaml
+  # Volume de la base de fusion du domaine Keycloak (actualiser-domaine-keycloak.sh, keycloak-domaine-job.yaml).
+  - keycloak-domaine.yaml
 
 # Fichiers partagés avec Docker Compose (copies de partages/, tenues par synchroniser-partages.sh : Kustomize
 # ne lit aucun fichier hors de ce dossier). Le suffixe de contenu relance les pods à chaque changement.
@@ -40,6 +42,14 @@ configMapGenerator:
     namespace: gimac-des
     files:
       - partages/kafka/creer-sujets-lot1.sh
+  # Fusion à trois voies du domaine Keycloak (infra/ci/fusionner-domaine.py), lue par le Job
+  # keycloak-domaine-job.yaml, appliqué hors de Kustomize : nom sans suffixe de contenu.
+  - name: keycloak-fusion-domaine
+    namespace: gimac-des
+    files:
+      - partages/keycloak/fusionner-domaine.py
+    options:
+      disableNameSuffixHash: true
 
 patches:
   # Profil de sécurité des pods (D-49) : baseline imposé, restricted signalé.

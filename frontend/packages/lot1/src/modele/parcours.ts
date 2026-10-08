@@ -1,5 +1,5 @@
 import type { CoverageValue, Permitted, TypeProjet } from './commun'
-import type { Geste, Jalon, Livrable } from './homologation'
+import type { Geste, Jalon, Livrable, Particularite } from './homologation'
 
 // Parcours d'une liaison, étapes 3 à 10 (CR-CERT-GIMAC-01, D-56 à D-59). L'objet suivi est la liaison,
 // non le participant. Tout ce qui est calculé (étape courante, couvertures, SLA, compteurs, actions
@@ -20,14 +20,18 @@ export type SegmentParcours = 'AMONT' | 'BRANCHE' | 'AVAL'
 export type GrainPreuve = 'PHASE' | 'OPERATION'
 export type PlateformeExecution = 'SWITCH_INTERBANCAIRE' | 'SWITCH_DELEGATAIRE' | 'PLATEFORME_MOBILE' | 'SIMULATEUR'
 
-/** Fonctions du parcours (CR chapitre 3) : départements, services, sécurité, participant et tiers. */
-export type Fonction =
-  | 'DDRM' | 'CHEF_DDRM' | 'CHEF_DES' | 'CHEFS_DEPARTEMENT' | 'CONDUCTEUR' | 'SNA' | 'PRODUCTION_MONETIQUE' | 'POLE_RESEAU' | 'POLE_SYSTEME'
-  | 'RSSI' | 'CONFORMITE' | 'DG' | 'EXPLOITATION' | 'PARTICIPANT' | 'BANQUE_PARTENAIRE' | 'PERSONNALISATEUR'
+/**
+ * Fonction du parcours (D-91) : code du catalogue des fonctions de MS-HOMOLOGATION (^[A-Z][A-Z0-9_]{1,39}$), plus une
+ * énumération ; les seize fonctions reprises (DDRM, CHEF_DES, CONDUCTEUR, SNA, PARTICIPANT…) gardent leurs codes.
+ */
+export type Fonction = string
+/** Fonction de l'utilisateur courant (GET /moi/fonctions, D-94 §6.5) : conférée par les profils de son jeton. */
+export type FonctionUtilisateur = { code: string; libelle: string; externe: boolean; profils: string[] }
 
 /** Qualités d'un intervenant sur une tâche (CR §3.6.1) : un seul responsable principal. */
 export type Qualite = 'R' | 'C' | 'V' | 'I' | 'E'
-export type Personne = { id: string; nom: string; fonction: Fonction }
+/** Personne tenant une fonction ; `aAffecter` (D-93) : fonction encore à affecter sur la liaison (identifiant A_AFFECTER:<FONCTION>). */
+export type Personne = { id: string; nom: string; fonction: Fonction; aAffecter?: boolean }
 export type Raci = { R: Personne | null; C: Personne[]; V: Personne | null; I: Personne[]; E: Personne[] }
 
 export type Sla = 'DANS_LES_DELAIS' | 'ECHEANCE_PROCHE' | 'DEPASSE'
@@ -46,7 +50,24 @@ export type Preuve = {
 }
 export type Ceremonie = { tenueLe: string; porteurs: string[]; codesControle: string[] }
 
-export type EtatOperationParcours = 'VERROUILLEE' | 'A_FAIRE' | 'EN_COURS' | 'EN_VALIDATION' | 'FAITE' | 'BLOQUEE' | 'SANS_OBJET'
+/** EN_SIGNATURE (D-91) : geste abouti, signatures attendues dans l'ordre avant la clôture. */
+export type EtatOperationParcours = 'VERROUILLEE' | 'A_FAIRE' | 'EN_COURS' | 'EN_VALIDATION' | 'EN_SIGNATURE' | 'FAITE' | 'BLOQUEE' | 'SANS_OBJET'
+/** Vue spécialisée d'une opération (D-93 §8.5) : attribut de l'opération, jamais déduit de son rang. */
+export type VueOperation = 'AUCUNE' | 'AFFECTATION' | 'COORDONNEES' | 'ESSAIS' | 'DECISION' | 'ATTESTATIONS' | 'MISE_EN_SERVICE' | 'CEREMONIE'
+/** Livrable attendu d'une opération à l'exécution (D-93 §8.5) et son dépôt. */
+export type LivrableAttendu = {
+  code: string; libelle: string; nature: 'LIVRABLE' | 'PREUVE'; deposant: Fonction | null; libelleDeposant?: string | null; typesPieces: string[]; obligatoire: boolean
+  depot?: { documentRef: string; nom: string; empreinte?: string; deposeLe: string; deposePar: string; supervision?: boolean } | null
+  peutDeposer: boolean
+}
+/** Renvoi d'une opération par son validateur (D-93 §8.3). */
+export type Renvoi = { motif: string; parId: string; parNom: string; le: string }
+/** Signature attendue ou donnée d'une opération (D-91 §5.4). */
+export type SignatureOperation = {
+  code: string; libelle: string; ordre: number; signataire: Fonction; libelleSignataire?: string | null; porte: string[]
+  etat: 'ATTENDUE' | 'SIGNEE'; suivante: boolean; attendu?: { id: string; nom: string; fonction: Fonction } | null
+  signePar?: string | null; signeParNom?: string | null; signeLe?: string | null; empreinte?: string | null
+}
 export type OperationParcours = Permitted & {
   id: string
   liaisonId: string
@@ -74,6 +95,14 @@ export type OperationParcours = Permitted & {
   jalon?: Jalon | null
   declencheur?: string | null
   livrables?: Livrable[]
+  /** D-93 : étape de la version (code configuré, D-89), vue spécialisée, livrables attendus, renvois ; D-91 : signatures. */
+  description?: string | null
+  particularite?: Particularite | null
+  etapeCode?: string | null
+  vue?: VueOperation | null
+  livrablesAttendus?: LivrableAttendu[]
+  renvois?: Renvoi[]
+  signatures?: SignatureOperation[]
 }
 
 /** Workflow d'une étape : six éléments, l'étape n'est close que s'ils sont tous réunis (CR §7.1). */
@@ -88,7 +117,8 @@ export type EtapeParcours = {
   elements: Record<ElementEtape, boolean>
   actionsFaites: number
   actionsTotal: number
-  livrables: { libelleKey: string; fourni: boolean }[]
+  /** Livrables de l'étape : libellé servi (D-93), `libelleKey` seulement pour les étapes 1 et 2. */
+  livrables: { libelleKey?: string; libelle?: string; operation?: string; code?: string; obligatoire?: boolean; fourni: boolean }[]
   validateur: Personne | null
   valideeLe: string | null
   debut: string | null
@@ -135,7 +165,13 @@ export type ProcesVerbalCertification = Permitted & {
   empreinte: string | null
   signatureGimac: Signature | null
   signatureParticipant: Signature | null
+  /**
+   * Circuit de signature en données (D-94, MS-CERTIFICATION §10.3) : étapes configurées de l'opération qui porte la
+   * signature du procès-verbal, ordre croissant (même ordre : indifférent) ; `portail` : signée par l'institution.
+   */
+  circuit?: EtapeCircuit[]
 }
+export type EtapeCircuit = { code: string; libelle: string; fonction: Fonction; ordre: number; portail: boolean; etat: 'ATTENDUE' | 'SIGNEE'; signature?: Signature | null }
 
 /** Verrou 2 : approbation du changement par la sécurité, lue sur la fiche de changement (D-56, rangs 20 à 26). */
 export type TypeAttestation = 'ISO_27001' | 'PCI_DSS' | 'GSMA' | 'COBAC'
@@ -172,6 +208,15 @@ export type FicheSuiviServices = Permitted & {
   constateeLe: string | null
 }
 
+/** Étape réelle de la version du référentiel de la liaison (D-93 §8.5), dans son ordre configuré. */
+export type EtapeVersion = {
+  code: string; libelle: string; ordre: number; couleur?: string | null; jeton?: string | null; canonique?: EtapeCode | null; etat: EtatEtape
+  actionsFaites: number; actionsTotal: number; responsable: Personne | null; validateur: Personne | null; debut: string | null; closeLe: string | null
+  echeance: string | null; sla: Sla | null; livrables: EtapeParcours['livrables']
+}
+/** Intervenant de la liaison lu du RACI (D-93 §8.5) : fonction, qualités tenues, personne désignée ou à affecter. */
+export type IntervenantLiaison = { fonction: Fonction; libelle: string; qualites: Qualite[]; personne: Personne | null; aAffecter: boolean; externe?: boolean }
+
 /** Dossier numérique de la liaison (CR Fig. 7.3) : l'écran principal est l'état du périmètre. */
 export type DossierLiaison = Permitted & {
   id: string
@@ -184,8 +229,12 @@ export type DossierLiaison = Permitted & {
   statut: StatutParcours
   etapeCourante: EtapeCode
   conducteur: Personne | null
-  responsableFonctionnel: Personne | null
-  responsableTechnique: Personne | null
+  /** Plus renseignés depuis D-93 (DDRM et SNA figés) : les intervenants viennent du RACI. */
+  responsableFonctionnel?: Personne | null
+  responsableTechnique?: Personne | null
+  /** D-93 : étapes réelles de la version et intervenants lus du RACI. */
+  etapesVersion?: EtapeVersion[]
+  intervenants?: IntervenantLiaison[]
   dateDemarrage: string
   dateCibleProduction: string | null
   versionReferentiel: number | null
@@ -233,6 +282,10 @@ export type TacheActeur = {
   lien: string
   /** Portail : gestes que le participant peut accomplir sur cette tâche, calculés par le service. */
   actionsPermises?: string[]
+  /** D-93 : libellé de l'opération, tâche à prendre (fonction à affecter), signature attendue (code). */
+  libelle?: string | null
+  aPrendre?: boolean
+  signature?: string | null
 }
 
 /** Pilotage (CR §7.3, vision diapositives 11 et 12) : tous les chiffres viennent du service. */
@@ -257,7 +310,8 @@ export type IndicateursPilotage = {
 /** Tableau de bord d'un acteur : compteurs calculés par le service pour sa fonction et son périmètre. */
 export type TableauActeur = {
   fonction: Fonction
-  compteurs: { cle: string; valeur: number; ton: 'ok' | 'warn' | 'crit' | 'info' | 'neutral'; lien: string | null }[]
+  /** Compteurs décrits en données (D-94 §6.5) : libellé et fonction servis. */
+  compteurs: { cle: string; valeur: number; ton: 'ok' | 'warn' | 'crit' | 'info' | 'neutral'; lien: string | null; libelle?: string | null; fonction?: Fonction | null }[]
   taches: TacheActeur[]
   liaisons: LiaisonResume[]
   blocages: Blocage[]

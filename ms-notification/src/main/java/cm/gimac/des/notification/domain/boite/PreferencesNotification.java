@@ -48,6 +48,9 @@ public class PreferencesNotification {
     @Column(name = "type_processus", nullable = false)
     private boolean processus = true;
 
+    @Column(name = "type_homologation", nullable = false)
+    private boolean homologation = true;
+
     @Column(name = "modifie_le", nullable = false)
     private Instant modifieLe;
 
@@ -88,6 +91,7 @@ public class PreferencesNotification {
             case MENTION -> mention;
             case REPONSE -> reponse;
             case PROCESSUS -> processus;
+            case HOMOLOGATION -> homologation;
         };
     }
 
@@ -100,6 +104,7 @@ public class PreferencesNotification {
             case MENTION -> mention = actif;
             case REPONSE -> reponse = actif;
             case PROCESSUS -> processus = actif;
+            case HOMOLOGATION -> homologation = actif;
         }
     }
 

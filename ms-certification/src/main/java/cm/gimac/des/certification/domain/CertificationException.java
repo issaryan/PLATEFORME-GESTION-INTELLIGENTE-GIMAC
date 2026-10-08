@@ -50,6 +50,11 @@ public class CertificationException extends RuntimeException {
         return new CertificationException(code, 403, message, Map.of());
     }
 
+    /** 403 avec détails. */
+    public static CertificationException interdit(String code, String message, Map<String, Object> details) {
+        return new CertificationException(code, 403, message, details);
+    }
+
     /** 503 : service tiers indisponible, sans valeur par défaut. */
     public static CertificationException indisponible(String code, String message) {
         return new CertificationException(code, 503, message, Map.of());

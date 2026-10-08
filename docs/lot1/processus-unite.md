@@ -347,3 +347,74 @@ Les tâches liées émettent aussi `pilotage.task-created.v1`, `task-assigned`, 
 - **Configuration** : `gimac.adaptateurs.reauthentification` (`stub` par défaut, `real` en production),
   `gimac.consommateurs.comptes.sujet` (`iam.account`), `gimac.demonstration.processus`.
 
+
+## 6. Désignation hors de l'unité (08/10/2026)
+
+Signalement : affecter une étape à un profil que personne ne porte dans l'unité désignée échouait toujours
+(« aucune personne active ne porte le profil … dans l'unité … »), alors que des porteurs existaient ailleurs dans
+le GIMAC. Cause : MS-PILOTAGE ne cherchait les porteurs que dans l'unité de l'intervenant (contrôle de publication,
+résolution à l'activation, désignation au lancement, réaffectation). Le moteur cherche désormais partout.
+
+**Résolution d'un intervenant par profil** (mode `PROFIL`, ou profil de remplacement d'une personne nommée, désignée,
+chef, lanceur ou n+1 absents ou partis) :
+
+1. porteurs actifs du profil dans l'unité de l'intervenant (sous-unités comprises) ;
+2. à défaut, porteurs actifs dans tout le GIMAC (`GET /api/v1/interne/collaborateurs?profil=` de MS-IAM, unité de
+   rattachement lue dans la réponse ; un compte d'une unité inactive est écarté, un compte sans rattachement est
+   gardé) ;
+3. **un seul porteur** (dans l'unité ou ailleurs) : l'étape lui est confiée d'office (tâche `OUVERTE`) ;
+   **plusieurs** : tâche à prendre, dans l'unité (`uniteCible` = l'unité) ou, s'ils sont hors de l'unité, sans
+   unité visée (`uniteCible` nulle, `profilRequis` = le profil) : chacun la voit dans « Mes tâches » et la prend ;
+   le chef de l'unité (ou `TACHE_CONFIER`) et le **lanceur** peuvent aussi choisir la personne (réaffectation) ;
+4. **aucun porteur nulle part** : le lancement n'échoue pas ; l'étape est confiée au chef de l'unité, à défaut au
+   lanceur, pour désigner une personne (historique : « Aucune personne active ne porte le profil … dans le GIMAC :
+   étape confiée au chef de l'unité … pour désigner une personne »).
+
+Les validateurs et signataires suivent la même règle ; leur tâche d'attente hors de l'unité est à prendre sans unité
+visée. L'historique de l'instance dit chaque fois ce qui a été fait (« confiée à …, seul porteur actif du profil …,
+hors de l'unité … », « à prendre par les 3 porteurs du profil …, hors de l'unité … (SNA : 2, DDRM : 1) »). La revue
+d'organisation (D-93 §9.3) garde le titulaire qui porte le profil ailleurs tant que personne ne le porte dans l'unité.
+
+**Contrôle de publication** : `COUVERTURE_PROFIL` (levable) seulement si personne ne porte le profil dans tout le
+GIMAC ; si des porteurs existent hors de l'unité, nouvelle anomalie `COUVERTURE_HORS_UNITE`, gravité `AVERTISSEMENT`
+(information, ne bloque pas la publication et n'exige pas de motif), message avec le nombre de porteurs et leurs
+unités. Une version publiée rend ces informations dans `avertissements` (avec `PERSONNE_PARTIE`).
+
+**Désignation au lancement et réaffectation** : sont admises, en plus des règles du §5.1 (lanceur lui-même, membre de
+l'unité, personne de la portée `TACHE_CONFIER`), toutes les personnes actives qui portent le profil requis, même hors
+de l'unité : profil de remplacement pour une désignation au lancement ; pour une réaffectation, profil de la tâche à
+prendre, à défaut celui de l'intervenant `PROFIL`, à défaut son profil de remplacement. Personne inactive, ou sans le
+profil et hors de ces règles : refus inchangé (422 `PIL_PROCESSUS_DESIGNATION_INVALIDE`,
+`PIL_PROCESSUS_PERSONNE_INVALIDE`). Le **lanceur** peut réaffecter une étape de son instance tant qu'elle est à prendre
+ou qu'elle lui est revenue faute de porteur (`moi.reaffecter`).
+
+**Routes des candidats** (passerelle `/bff/des/pilotage/processus/**`, `PIL_ACTIVITY_OWN`, OPA :
+`GET …/processus/candidats` et `GET …/processus/instances/{id}/etapes/{code}/candidats`) :
+
+| Méthode | Chemin | Objet |
+|---|---|---|
+| GET | `/processus/candidats?unite=&profil=` | candidats d'un intervenant (modélisateur, lancement) ; unité obligatoire (422 `PIL_PROCESSUS_UNITE_INCONNUE`), profil facultatif (400 s'il est mal formé ; sans profil : membres actifs de l'unité) |
+| GET | `/processus/instances/{id}/etapes/{code}/candidats` | candidats à l'exécution d'une étape en cours ; réservé à qui peut la réaffecter (403 `PIL_PROCESSUS_INTERDIT`) |
+
+```jsonc
+{ "unite": "POLE_RESEAU", "profil": "ROLE_…" | null,
+  "dansUnite": [ { "id", "nomAffiche", "fonction", "unite" } ],   // triés par nom
+  "ailleurs":  [ { "id", "nomAffiche", "fonction", "unite" } ] }  // porteurs hors de l'unité, avec leur unité
+```
+
+Instance : `aPrendre.unite` est nul pour une étape offerte hors de l'unité. Stockage : contrainte `ck_tache_responsable`
+élargie (tâche à prendre sans unité mais avec `profil_requis`, changelog `20261008110000_pil_etapes_hors_unite.xml`).
+
+**Interface** : le sélecteur de personne (personne nommée dans le modélisateur, désignation au lancement, réaffectation)
+propose les candidats groupés « Dans l'unité » puis « Ailleurs dans le GIMAC » (avec leur unité), puis les autres
+personnes de l'annuaire ; il se remplit d'office quand il n'y a qu'un candidat et l'annonce (« Seul porteur du
+profil … : choisi automatiquement ») ; sans porteur, il le dit (« le chef de l'unité désignera »). Pour un intervenant
+`PROFIL`, le modélisateur annonce la couverture (porteurs dans l'unité, ailleurs avec leurs unités, ou personne).
+L'anomalie `COUVERTURE_HORS_UNITE` (« Profil porté hors de l'unité ») s'affiche comme information, en clair et en
+sombre. Le service simulé suit la même règle (démonstration : le pôle réseau n'ayant qu'un porteur de
+`ROLE_POLE_RESEAU`, l'étape d'analyse lui est confiée d'office).
+
+Tests : `ResolutionIntervenantsTest` (hors de l'unité, seul porteur), `ProcessusDesignationIT` (publication,
+seul porteur ailleurs, plusieurs porteurs ailleurs avec prise et choix du chef ou du lanceur, aucun porteur,
+candidats, revue d'organisation), tests du service simulé et des écrans, E2E `processus-unite` et
+`departement-passerelle-processus`.

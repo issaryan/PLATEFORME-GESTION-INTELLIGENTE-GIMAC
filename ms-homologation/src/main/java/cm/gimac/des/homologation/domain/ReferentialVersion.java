@@ -35,7 +35,7 @@ public class ReferentialVersion implements Serializable {
     private UUID id;
 
     @NotNull
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = ConvertisseursCodes.TypeProjetEnTexte.class)
     @Column(name = "type_projet", nullable = false)
     private TypeProjet typeProjet;
 
@@ -237,6 +237,18 @@ public class ReferentialVersion implements Serializable {
         return v;
     }
 
+    /**
+     * Brouillon v1 d'un autre type de projet copié d'une version (D-91, départ COPIE) : étapes, opérations, rôles,
+     * livrables et signatures ; la version source n'est pas reprise comme origine (autre type).
+     */
+    public static ReferentialVersion copierVers(ReferentialVersion source, TypeProjet cible, String libelle, Instant instant) {
+        ReferentialVersion v = nouveauBrouillon(cible, libelle, instant);
+        v.etapes.clear();
+        source.etapes().forEach(e -> v.etapes.add(e.copierVers(v)));
+        source.operations.forEach(op -> v.operations.add(op.copierVers(v)));
+        return v;
+    }
+
     /** Garde unique : seule une version à l'état BROUILLON accepte une écriture. */
     public void assertModifiable() {
         if (etat != EtatVersionReferentiel.BROUILLON) {
@@ -276,6 +288,44 @@ public class ReferentialVersion implements Serializable {
         if (data.predecesseurs() != null && data.predecesseurs().contains(code)) {
             throw HomologationException.unprocessable("HOM_OPERATION_SELF_PREDECESSOR", "Une opération ne peut pas se précéder elle-même.");
         }
+        verifierSignatures(data.signatures());
+    }
+
+    /**
+     * Forme des signatures saisies (D-91) : 30 au plus ; code (majuscule puis 1 à 39 majuscules, chiffres ou
+     * soulignés), libellé 1..200, signataire, ordre 1..99, 30 livrables portés au plus (422 HOM_SIGNATURE_INVALIDE,
+     * {@code details.champ}). L'unicité, le catalogue et les livrables portés sont contrôlés à la publication.
+     */
+    static void verifierSignatures(List<cm.gimac.des.homologation.domain.parcours.SignatureOperation> signatures) {
+        if (signatures == null) {
+            return;
+        }
+        if (signatures.size() > 30) {
+            throw signatureInvalide("signatures", "Une opération porte 30 signatures au plus.");
+        }
+        for (int i = 0; i < signatures.size(); i++) {
+            var s = signatures.get(i);
+            String champ = "signatures[" + i + "]";
+            if (s == null || s.code() == null || !cm.gimac.des.homologation.domain.parcours.SignatureOperation.CODE.matcher(s.code()).matches()) {
+                throw signatureInvalide(champ + ".code", "Le code d'une signature compte 2 à 40 majuscules, chiffres ou soulignés et commence par une lettre.");
+            }
+            if (s.libelle() == null || s.libelle().isBlank() || s.libelle().length() > 200) {
+                throw signatureInvalide(champ + ".libelle", "Le libellé d'une signature compte 1 à 200 caractères.");
+            }
+            if (s.signataire() == null) {
+                throw signatureInvalide(champ + ".signataire", "Le signataire d'une signature est une fonction du catalogue.");
+            }
+            if (s.ordre() != null && (s.ordre() < 1 || s.ordre() > cm.gimac.des.homologation.domain.parcours.SignatureOperation.ORDRE_MAX)) {
+                throw signatureInvalide(champ + ".ordre", "L'ordre d'une signature va de 1 à 99.");
+            }
+            if (s.porte().size() > 30 || s.porte().stream().anyMatch(r -> r == null || r.isBlank() || r.length() > 81)) {
+                throw signatureInvalide(champ + ".porte", "Une signature porte au plus 30 livrables, désignés par leur code.");
+            }
+        }
+    }
+
+    private static HomologationException signatureInvalide(String champ, String message) {
+        return HomologationException.unprocessableDetails("HOM_SIGNATURE_INVALIDE", message, Map.of("champ", champ));
     }
 
     public java.util.Optional<ReferenceOperation> operation(String code) {

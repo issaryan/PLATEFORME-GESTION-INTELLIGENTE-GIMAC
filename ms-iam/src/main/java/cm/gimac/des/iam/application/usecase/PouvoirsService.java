@@ -11,6 +11,7 @@ import cm.gimac.des.iam.domain.pouvoir.Pouvoirs;
 import cm.gimac.des.iam.domain.pouvoir.PouvoirsProfil;
 import cm.gimac.des.iam.domain.service.ReglesPouvoirs;
 import java.util.Arrays;
+import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -32,12 +33,16 @@ public class PouvoirsService {
     /** Ligne de la matrice pour un profil attribuable, avec son libellé (D-86 §2 ; absent : le code). */
     public record LigneMatrice(String profil, String libelle, boolean privilegie, boolean cree, Map<ActionPouvoir, Portee> actions, Set<String> profilsDemandables) {}
 
-    /** Matrice complète : actions et portées dans leur ordre, une ligne par profil attribuable. */
-    public record Matrice(List<ActionPouvoir> actions, List<Portee> portees, List<LigneMatrice> profils) {}
+    /**
+     * Matrice complète : actions et portées dans leur ordre, portées admises par action (D-92 : TOUTES pour
+     * PROCESSUS_DEFINIR et PROCESSUS_LANCER seulement), une ligne par profil attribuable.
+     */
+    public record Matrice(List<ActionPouvoir> actions, List<Portee> portees, Map<ActionPouvoir, List<Portee>> porteesAdmises, List<LigneMatrice> profils) {}
 
     /**
-     * Pouvoirs d'un compte (GET /pouvoirs/moi, /interne/pouvoirs/{id}) : portée de chaque action, profils
-     * demandables, comptes couverts par sa portée la plus large, unités dirigées ; libellé de chaque profil
+     * Pouvoirs d'un compte (GET /pouvoirs/moi, /interne/pouvoirs/{id}) : portée de chaque action (TOUTES
+     * comprise, D-92), profils demandables, comptes couverts par sa portée la plus large plafonnée à UNITES
+     * (TOUTES ne vise que les processus d'unité), unités dirigées ; libellé de chaque profil
      * demandable (D-86 §2, par code).
      */
     public record VuePouvoirs(
@@ -73,12 +78,16 @@ public class PouvoirsService {
         List<LigneMatrice> l = catalogue.attribuables().stream()
             .map(p -> ligne(lignes.getOrDefault(p, PouvoirsProfil.aucun(p)), privilegies, livres, libelles))
             .toList();
-        return new Matrice(Arrays.asList(ActionPouvoir.values()), Arrays.asList(Portee.values()), l);
+        Map<ActionPouvoir, List<Portee>> admises = new EnumMap<>(ActionPouvoir.class);
+        for (ActionPouvoir a : ActionPouvoir.values()) {
+            admises.put(a, a.porteesAdmises());
+        }
+        return new Matrice(Arrays.asList(ActionPouvoir.values()), Arrays.asList(Portee.values()), admises, l);
     }
 
     /**
-     * Règle la ligne d'un profil : portée de chaque action (absente : AUCUNE) et profils demandables
-     * (attribuables, jamais privilégiés). Journal MATRICE_POUVOIRS_MODIFIEE (avant, après).
+     * Règle la ligne d'un profil : portée de chaque action (absente : AUCUNE ; admise par l'action, sinon 422
+     * ORG_PORTEE_NON_ADMISE) et profils demandables (attribuables, jamais privilégiés). Journal MATRICE_POUVOIRS_MODIFIEE (avant, après).
      */
     public LigneMatrice definir(Acteur acteur, String profil, Map<ActionPouvoir, Portee> actions, Set<String> profilsDemandables, String motif) {
         Set<String> attribuables = catalogue.attribuables();
@@ -129,7 +138,7 @@ public class PouvoirsService {
             Map<String, String> libelles = libelles();
             p.profilsDemandables().forEach(code -> libellesDemandables.put(code, libelles.getOrDefault(code, code)));
         }
-        return new VuePouvoirs(p.actions(), p.profilsDemandables(), organisation.perimetre(compteId, p.porteeMax()).comptes(), organisation.unitesDirigees(compteId), libellesDemandables);
+        return new VuePouvoirs(p.actions(), p.profilsDemandables(), organisation.perimetre(compteId, p.porteeSubordonnes()).comptes(), organisation.unitesDirigees(compteId), libellesDemandables);
     }
 
     // ------------------------------------------------------------------ rattachement d'un subordonné

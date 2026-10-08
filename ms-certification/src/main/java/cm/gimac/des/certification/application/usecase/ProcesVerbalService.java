@@ -8,12 +8,15 @@ import cm.gimac.des.certification.application.usecase.DecisionVues.CouvertureVue
 import cm.gimac.des.certification.application.usecase.DecisionVues.ProcesVerbalVue;
 import cm.gimac.des.certification.application.usecase.DecisionVues.SignatureVue;
 import cm.gimac.des.certification.domain.CertificationException;
+import cm.gimac.des.certification.application.usecase.DecisionVues.EtapeCircuitVue;
+import cm.gimac.des.certification.domain.decision.EtapeSignature;
 import cm.gimac.des.certification.domain.decision.ProcesVerbalCertification;
 import cm.gimac.des.certification.domain.decision.SignatureVerrou;
 import cm.gimac.des.certification.domain.enumeration.EtatProcesVerbal;
 import cm.gimac.des.certification.domain.enumeration.ObjetSignature;
-import cm.gimac.des.certification.domain.enumeration.RoleSignature;
 import cm.gimac.des.certification.domain.event.DecisionEvenements;
+import cm.gimac.des.certification.domain.operation.GesteCertification;
+import cm.gimac.des.certification.domain.operation.OperationLiaison;
 import cm.gimac.des.certification.domain.service.DecisionCanonique;
 import cm.gimac.des.certification.domain.service.ProcesVerbalPolicy;
 import cm.gimac.des.certification.infrastructure.messaging.outbox.OutboxPublisher;
@@ -22,9 +25,13 @@ import cm.gimac.des.certification.repository.SignatureVerrouRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -33,9 +40,11 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Verrou 1 (D-56, rangs 17 à 19) : procès-verbal de certification. Établi par le conducteur de projet quand
  * la couverture de certification vaut 100 % et que son constat est fait (contexte de MS-HOMOLOGATION ou
- * événement homologation.coverage-established.v1), signé par le GIMAC (chef du DES) et par le participant
- * au portail, chacun avec réauthentification forte puis cachet horodaté (D-35). Signé des deux parties, il
- * ouvre le verrou 2 et la liaison passe à CERTIFIEE côté MS-HOMOLOGATION (certification.pv-signed.v1).
+ * événement homologation.coverage-established.v1), puis signé selon le circuit de signature configuré (D-94 :
+ * signatures de l'opération du parcours, sinon circuit par défaut, côté DES et côté portail), chaque signature avec
+ * réauthentification forte puis cachet horodaté (D-35). Signé de tout le circuit, il ouvre le verrou 2 et la
+ * liaison passe à CERTIFIEE côté MS-HOMOLOGATION (certification.pv-signed.v1). Chaque geste exige l'opération du
+ * parcours qui le porte ouverte et un acteur désigné (D-93 §4, {@link OperationsLiaison}).
  */
 @Service
 @Transactional
@@ -51,6 +60,8 @@ public class ProcesVerbalService {
     private final ApprobationSecuriteService approbations;
     private final OutboxPublisher outbox;
     private final Clock clock;
+    private final OperationsLiaison operations;
+    private final CircuitsSignature circuits;
 
     public ProcesVerbalService(
         ProcesVerbalCertificationRepository pvs,
@@ -59,8 +70,12 @@ public class ProcesVerbalService {
         ScellementSignatures scellement,
         ApprobationSecuriteService approbations,
         OutboxPublisher outbox,
-        Clock clock
+        Clock clock,
+        OperationsLiaison operations,
+        CircuitsSignature circuits
     ) {
+        this.operations = operations;
+        this.circuits = circuits;
         this.pvs = pvs;
         this.signatures = signatures;
         this.acces = acces;
@@ -79,7 +94,7 @@ public class ProcesVerbalService {
             return vue(pv.orElseThrow(), acteur, false);
         }
         ContexteCertification c = acces.contexte(liaisonId);
-        return nonEtabli(c, constatee(c, pv), ProcesVerbalPolicy.actionsDes(EtatProcesVerbal.NON_ETABLI, constatee(c, pv), c.couvertureCertification().taux(), acteur.permissions()));
+        return nonEtabli(c, constatee(c, pv), ProcesVerbalPolicy.actionsDes(EtatProcesVerbal.NON_ETABLI, constatee(c, pv), c.couvertureCertification().taux(), acteur.permissions(), false));
     }
 
     /** Rang 18 : établissement, à 100 % de couverture après le constat ; couverture et identité figées, empreinte. */
@@ -88,6 +103,7 @@ public class ProcesVerbalService {
         Optional<ProcesVerbalCertification> existant = pvs.findByLiaisonId(liaisonId);
         ProcesVerbalCertification pv = existant.orElseGet(() -> new ProcesVerbalCertification(liaisonId));
         ProcesVerbalPolicy.verifierEtablissement(c.couvertureCertification().taux(), constatee(c, existant), pv.getEtat());
+        operations.exiger(liaisonId, GesteCertification.ETABLIR_PV, acteur, c::conducteurId);
         Instant le = clock.instant();
         var couverture = new ProcesVerbalCertification.Couverture(
             c.couvertureCertification().taux(),
@@ -105,7 +121,7 @@ public class ProcesVerbalService {
             .avec("etabliLe", le)
             .empreinte();
         pv.etablir(
-            new ProcesVerbalCertification.Identite(c.reference(), c.institutionId(), c.institutionNom(), c.typeProjet(), c.fintech()),
+            new ProcesVerbalCertification.Identite(c.reference(), c.institutionId(), c.institutionNom(), c.typeProjet(), c.fintech(), c.modele()),
             couverture,
             c.servicesCouverts(),
             acteur.id(),
@@ -124,11 +140,11 @@ public class ProcesVerbalService {
         return vue(pv, acteur, false);
     }
 
-    /** Rang 19 : signature GIMAC (chef du DES), assertion FIDO2 puis cachet horodaté. */
+    /** Signature du DES : la prochaine signature du circuit que l'acteur tient, assertion FIDO2 puis cachet horodaté. */
     public ProcesVerbalVue signerGimac(UUID liaisonId, Acteur acteur, String assertion) {
         ScellementSignatures.exigerAssertion(assertion);
         ProcesVerbalCertification pv = etabli(liaisonId);
-        signer(pv, RoleSignature.GIMAC, acteur, assertion);
+        signer(pv, false, acteur, assertion);
         return vue(pv, acteur, false);
     }
 
@@ -146,7 +162,7 @@ public class ProcesVerbalService {
         return nonEtabli(c, constatee(c, pv), List.of());
     }
 
-    /** Rang 19 : signature du participant au portail, assertion FIDO2 puis cachet horodaté. */
+    /** Signature du portail : la prochaine signature du circuit côté participant, assertion FIDO2 puis cachet horodaté. */
     public ProcesVerbalVue signerParticipant(UUID liaisonId, Acteur acteur, String assertion) {
         ScellementSignatures.exigerAssertion(assertion);
         Optional<ProcesVerbalCertification> trouve = pvs.findByLiaisonId(liaisonId).filter(ProcesVerbalCertification::estEtabli);
@@ -156,7 +172,7 @@ public class ProcesVerbalService {
         }
         ProcesVerbalCertification pv = trouve.orElseThrow();
         AccesLiaison.verifierInstitution(pv.getInstitutionId(), acteur);
-        signer(pv, RoleSignature.PARTICIPANT, acteur, assertion);
+        signer(pv, true, acteur, assertion);
         return vue(pv, acteur, true);
     }
 
@@ -188,23 +204,44 @@ public class ProcesVerbalService {
             });
     }
 
-    private void signer(ProcesVerbalCertification pv, RoleSignature role, Acteur acteur, String assertion) {
-        EtatProcesVerbal suivant = ProcesVerbalPolicy.apresSignature(pv.getEtat(), role);
-        SignatureVerrou s = scellement.signer(pv.getLiaisonId(), ObjetSignature.PROCES_VERBAL, role, acteur, true, null, pv.getEmpreinte(), assertion);
+    private void signer(ProcesVerbalCertification pv, boolean portail, Acteur acteur, String assertion) {
+        UUID liaisonId = pv.getLiaisonId();
+        if (pv.getEtat() == EtatProcesVerbal.SIGNE) {
+            throw CertificationException.conflit("CER_PV_NOT_SIGNABLE", "Le procès-verbal est déjà signé.");
+        }
+        List<OperationLiaison> ouvertes = operations.ouvertes(liaisonId, GesteCertification.SIGNER_PV);
+        List<EtapeSignature> circuit = pv.getCircuit().isEmpty() ? circuits.procesVerbal(ouvertes) : pv.getCircuit();
+        Set<String> signees = signeesDe(liaisonId);
+        List<EtapeSignature> signables = ProcesVerbalPolicy.signables(circuit, signees, portail);
+        if (signables.isEmpty()) {
+            throw ProcesVerbalPolicy.nonSignable(circuit, signees, portail);
+        }
+        Supplier<String> conducteur = conducteur(liaisonId);
+        EtapeSignature etape = portail
+            ? signables.get(0)
+            : signables
+                .stream()
+                .filter(e -> operations.admetSignataire(ouvertes, e, acteur, conducteur))
+                .findFirst()
+                .orElseThrow(() -> OperationsLiaison.signataireNonDesigne(signables.get(0)));
+        pv.figerCircuit(circuit);
+        SignatureVerrou s = scellement.signer(liaisonId, ObjetSignature.PROCES_VERBAL, etape, acteur, true, null, pv.getEmpreinte(), assertion);
+        signees.add(etape.code());
+        EtatProcesVerbal suivant = ProcesVerbalPolicy.etat(circuit, signees);
         pv.setEtat(suivant);
         pvs.save(pv);
         outbox.publish(
             AGREGAT,
             pv.getLiaisonId(),
             DecisionEvenements.PV_SIGNATURE_ENREGISTREE,
-            new DecisionEvenements.SignatureProcesVerbalEnregistree(pv.getLiaisonId(), s.getFonction(), s.getSigneLe(), suivant.name()),
+            new DecisionEvenements.SignatureProcesVerbalEnregistree(pv.getLiaisonId(), s.getFonction(), s.getSigneLe(), suivant.name(), s.getEtape()),
             pv.getInstitutionId()
         );
         if (suivant == EtatProcesVerbal.SIGNE) {
             List<DecisionEvenements.SignatureResume> resume = signaturesDe(pv.getLiaisonId())
                 .stream()
                 .sorted(Comparator.comparing(SignatureVerrou::getSigneLe))
-                .map(x -> new DecisionEvenements.SignatureResume(x.getFonction(), x.getSignataireNom(), x.getSigneLe()))
+                .map(x -> new DecisionEvenements.SignatureResume(x.getFonction(), x.getSignataireNom(), x.getSigneLe(), x.getEtape()))
                 .toList();
             outbox.publish(
                 AGREGAT,
@@ -219,6 +256,37 @@ public class ProcesVerbalService {
 
     private List<SignatureVerrou> signaturesDe(UUID liaisonId) {
         return signatures.findByLiaisonIdAndObjet(liaisonId, ObjetSignature.PROCES_VERBAL);
+    }
+
+    private Set<String> signeesDe(UUID liaisonId) {
+        return signaturesDe(liaisonId).stream().map(SignatureVerrou::getEtape).collect(Collectors.toCollection(HashSet::new));
+    }
+
+    /** Conducteur de la liaison, lu dans MS-HOMOLOGATION seulement si le contrôle en a besoin (une fois). */
+    private Supplier<String> conducteur(UUID liaisonId) {
+        String[] lu = new String[1];
+        boolean[] fait = new boolean[1];
+        return () -> {
+            if (!fait[0]) {
+                lu[0] = acces.contexte(liaisonId).conducteurId();
+                fait[0] = true;
+            }
+            return lu[0];
+        };
+    }
+
+    /** Circuit affiché : figé, sinon celui que donneraient les opérations ouvertes connues. */
+    private List<EtapeSignature> circuitDe(ProcesVerbalCertification pv, List<OperationLiaison> ouvertes) {
+        return pv.getCircuit().isEmpty() ? circuits.procesVerbal(ouvertes) : pv.getCircuit();
+    }
+
+    /** Opérations ouvertes de la signature, sans refus (lecture) : vide si aucune ou si le geste est refusé. */
+    private List<OperationLiaison> ouvertesSansRefus(UUID liaisonId) {
+        try {
+            return operations.ouvertes(liaisonId, GesteCertification.SIGNER_PV);
+        } catch (CertificationException e) {
+            return null;
+        }
     }
 
     private static boolean constatee(ContexteCertification c, Optional<ProcesVerbalCertification> pv) {
@@ -238,24 +306,47 @@ public class ProcesVerbalService {
             null,
             null,
             List.of(),
-            actions
+            actions,
+            List.of()
         );
     }
 
     /** Représentation ; au portail, l'établissement et la signature du GIMAC sont désignés par la fonction. */
     private ProcesVerbalVue vue(ProcesVerbalCertification pv, Acteur acteur, boolean portail) {
+        List<OperationLiaison> ouvertes = ouvertesSansRefus(pv.getLiaisonId());
+        List<EtapeSignature> circuit = circuitDe(pv, ouvertes == null ? List.of() : ouvertes);
+        List<SignatureVerrou> donnees = signaturesDe(pv.getLiaisonId()).stream().sorted(Comparator.comparing(SignatureVerrou::getSigneLe)).toList();
+        Set<String> signees = donnees.stream().map(SignatureVerrou::getEtape).collect(Collectors.toCollection(HashSet::new));
+        Set<String> codesPortail = circuit.stream().filter(EtapeSignature::portail).map(EtapeSignature::code).collect(Collectors.toSet());
         SignatureVue gimac = null;
         SignatureVue participant = null;
-        for (SignatureVerrou s : signaturesDe(pv.getLiaisonId())) {
-            if (s.getRole() == RoleSignature.GIMAC) {
-                gimac = new SignatureVue(portail ? s.getFonction() : s.getSignataireNom(), s.getFonction(), jour(s.getSigneLe()), s.getHorodatage());
-            } else if (s.getRole() == RoleSignature.PARTICIPANT) {
-                participant = new SignatureVue(s.getSignataireNom(), s.getFonction(), jour(s.getSigneLe()), s.getHorodatage());
+        List<EtapeCircuitVue> etapes = new java.util.ArrayList<>();
+        for (EtapeSignature e : circuit) {
+            SignatureVerrou s = donnees.stream().filter(x -> e.code().equals(x.getEtape())).findFirst().orElse(null);
+            SignatureVue sv = s == null ? null : signatureVue(s, portail && !e.portail());
+            etapes.add(new EtapeCircuitVue(e.code(), e.libelle(), e.fonction(), e.ordre(), e.portail(), s == null ? "ATTENDUE" : "SIGNEE", sv));
+        }
+        for (SignatureVerrou s : donnees) {
+            boolean cotePortail = codesPortail.contains(s.getEtape());
+            if (cotePortail && participant == null) {
+                participant = signatureVue(s, false);
+            } else if (!cotePortail && gimac == null) {
+                gimac = signatureVue(s, portail);
             }
         }
-        List<String> actions = portail
-            ? ProcesVerbalPolicy.actionsPortail(pv.getEtat(), acteur.permissions())
-            : ProcesVerbalPolicy.actionsDes(pv.getEtat(), pv.isCouvertureConstatee(), pv.getCouvertureTaux(), acteur.permissions());
+        boolean signable = ouvertes != null && pv.getEtat() != EtatProcesVerbal.SIGNE;
+        List<String> actions;
+        if (portail) {
+            actions = ProcesVerbalPolicy.actionsPortail(signable && !ProcesVerbalPolicy.signables(circuit, signees, true).isEmpty(), acteur.permissions());
+        } else {
+            List<EtapeSignature> des = signable ? ProcesVerbalPolicy.signables(circuit, signees, false) : List.of();
+            Supplier<String> conducteur = conducteur(pv.getLiaisonId());
+            boolean signableDes =
+                !des.isEmpty() &&
+                acteur.permissions().contains(cm.gimac.des.certification.domain.service.PermissionsDecision.SIGNER_PV_GIMAC) &&
+                des.stream().anyMatch(e -> operations.admetSignataire(ouvertes, e, acteur, conducteur));
+            actions = ProcesVerbalPolicy.actionsDes(pv.getEtat(), pv.isCouvertureConstatee(), pv.getCouvertureTaux(), acteur.permissions(), signableDes);
+        }
         return new ProcesVerbalVue(
             pv.getLiaisonId(),
             pv.getEtat().name(),
@@ -267,7 +358,13 @@ public class ProcesVerbalService {
             gimac,
             participant,
             List.of(),
-            actions
+            actions,
+            etapes
         );
+    }
+
+    /** Au portail, une signature du GIMAC est désignée par sa fonction, jamais par le nom de la personne. */
+    private static SignatureVue signatureVue(SignatureVerrou s, boolean parFonction) {
+        return new SignatureVue(parFonction ? s.getFonction() : s.getSignataireNom(), s.getFonction(), jour(s.getSigneLe()), s.getHorodatage());
     }
 }

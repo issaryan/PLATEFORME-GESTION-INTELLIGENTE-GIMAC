@@ -54,7 +54,37 @@ describe('Rapports', () => {
     const m = await screen.findByRole('dialog', { name: 'Modifier le brouillon' })
     fireEvent.change(within(m).getByLabelText(/Contenu du rapport/), { target: { value: '# Bilan complété' } })
     fireEvent.click(within(m).getByRole('button', { name: 'Enregistrer et soumettre' }))
-    expect(await screen.findByText('Rapport soumis à votre responsable.')).toBeTruthy()
+    expect(await screen.findByText(/^Rapport remis à .+ \(votre n\+1\)\.$/)).toBeTruthy()
+  })
+
+  it('destinataire annoncé avant la soumission, choix dans la chaîne hiérarchique ; refus expliqué ; dépôt au sommet', async () => {
+    const s = services()
+    const r = await s.pilotage.creerRapport({ type: 'QUOTIDIEN', periode: aujourdhui(), mode: 'REDIGE', contenu: 'Supervision des liens' })
+    page(`/des/rapports?rapport=${r.id}`, { s })
+    const c = await screen.findByRole('dialog', { name: /Rapport quotidien de Nadège Mvondo Assiga/ })
+    expect(await within(c).findByText('Sera remis à : Gaston Ndzana Ebode (votre n+1)')).toBeTruthy()
+    const choix = within(c).getByLabelText(/^Remettre à/) as HTMLSelectElement
+    expect([...choix.options].map((o) => o.value)).toEqual(['u-resp-info', 'U-001', 'u-dg'])
+    fireEvent.change(choix, { target: { value: 'U-001' } })
+    expect(within(c).getByText('Sera remis à : Paul Mbarga Atangana (choisi par vous)')).toBeTruthy()
+    // Refus du service : message traduit et détail rendu, jamais un 422 muet.
+    vi.spyOn(s.pilotage, 'soumettre').mockRejectedValueOnce(new ApiError(422, 'PIL_DESTINATAIRE_INVALIDE', 'Hors de la chaîne hiérarchique de l’auteur', 'cid-d'))
+    fireEvent.click(within(c).getByRole('button', { name: 'Enregistrer et soumettre' }))
+    expect(await within(c).findByText(/n’est pas dans votre chaîne hiérarchique/)).toBeTruthy()
+    expect(within(c).getByText('Hors de la chaîne hiérarchique de l’auteur')).toBeTruthy()
+    fireEvent.click(within(c).getByRole('button', { name: 'Enregistrer et soumettre' }))
+    expect(await screen.findByText('Rapport remis à Paul Mbarga Atangana (choisi par vous).')).toBeTruthy()
+    cleanup()
+    // Sommet de l'organisation : le rapport est déposé.
+    const DG = { id: 'u-dg', nom: 'Jean-Baptiste Ella Mintsa' }
+    const sd = services(DG)
+    const rd = await sd.pilotage.creerRapport({ type: 'QUOTIDIEN', periode: aujourdhui(), mode: 'REDIGE', contenu: 'Comité de direction' })
+    page(`/des/rapports?rapport=${rd.id}`, { s: sd, u: DG, role: 'ROLE_DG' })
+    const cd = await screen.findByRole('dialog', { name: /Rapport quotidien de Jean-Baptiste Ella Mintsa/ })
+    expect(await within(cd).findByText(/Personne n’est au-dessus de vous dans l’organisation/)).toBeTruthy()
+    fireEvent.click(within(cd).getByRole('button', { name: 'Enregistrer et soumettre' }))
+    expect(await screen.findByText('Rapport déposé : personne n’est au-dessus de vous, il reste consultable.')).toBeTruthy()
+    expect((await sd.pilotage.rapport(rd.id)).etat).toBe('DEPOSE')
   })
 
   it('rapport hebdomadaire prérempli ; refus de la période future', async () => {
@@ -66,11 +96,11 @@ describe('Rapports', () => {
     fireEvent.click(within(d).getByLabelText('Hebdomadaire'))
     fireEvent.change(within(d).getByLabelText('Semaine'), { target: { value: semaineIso(aujourdhui()) } })
     fireEvent.click(within(d).getByRole('button', { name: 'Préremplir à partir de mes activités' }))
-    expect(await within(d).findByText('La période n’est pas encore commencée.')).toBeTruthy()
+    expect(await within(d).findByText(/La période n’a pas encore commencé/)).toBeTruthy()
     fireEvent.click(within(d).getByRole('button', { name: 'Préremplir à partir de mes activités' }))
     await waitFor(() => expect((within(d).getByLabelText(/Contenu du rapport/) as HTMLTextAreaElement).value).toContain('## Total des heures'))
     fireEvent.click(within(d).getByRole('button', { name: 'Enregistrer et soumettre' }))
-    expect(await screen.findByText('Rapport soumis à votre responsable.')).toBeTruthy()
+    expect(await screen.findByText(/^Rapport remis à .+ \(votre n\+1\)\.$/)).toBeTruthy()
   })
 
   it('déposer un document : choix obligatoire, progression, puis soumission ; refus de la vérification', async () => {
@@ -89,7 +119,7 @@ describe('Rapports', () => {
     fireEvent.change(within(d).getByLabelText(/Texte d’accompagnement/), { target: { value: 'Rapport signé joint.' } })
     fireEvent.click(within(d).getByRole('button', { name: 'Enregistrer et soumettre' }))
     expect(await within(d).findByRole('progressbar')).toBeTruthy()
-    expect(await screen.findByText('Rapport soumis à votre responsable.', {}, { timeout: 5000 })).toBeTruthy()
+    expect(await screen.findByText(/^Rapport remis à .+ \(votre n\+1\)\.$/, {}, { timeout: 5000 })).toBeTruthy()
     const c = await screen.findByRole('dialog', { name: /Rapport quotidien de Nadège/ })
     expect(await within(c).findByText('rapport-du-jour.pdf')).toBeTruthy()
   })

@@ -83,7 +83,7 @@ describe('hooks du parcours : actions', () => {
     ['useOuvrirLiaison', H.useOuvrirLiaison, { institutionId: 'I', typeProjet: 'DELEGATAIRE', chefDeProjetId: 'U' }, 'parcours', 'ouvrirLiaison', [{ institutionId: 'I', typeProjet: 'DELEGATAIRE', chefDeProjetId: 'U' }]],
     ['useDesignerConducteur', H.useDesignerConducteur, { liaisonId: 'L1', conducteurId: 'U2', motif: 'm' }, 'parcours', 'designerConducteur', ['L1', 'U2', 'm']],
     ['useAffecterRessources', H.useAffecterRessources, { liaisonId: 'L1', affectations: [{ fonction: 'SNA', personneId: 'U' }] }, 'parcours', 'affecterRessources', ['L1', [{ fonction: 'SNA', personneId: 'U' }]]],
-    ['useDeposerLivrable', H.useDeposerLivrable, { operationId: 'L1:7', fichier, commentaire: 'c' }, 'parcours', 'deposerLivrable', ['L1:7', fichier, 'c']],
+    ['useDeposerLivrable', H.useDeposerLivrable, { operationId: 'L1:7', fichier, commentaire: 'c' }, 'parcours', 'deposerLivrable', ['L1:7', fichier, 'c', undefined]],
     ['useAttribuer', H.useAttribuer, { operationId: 'L1:7', qualite: 'C', personneId: 'U', motif: 'm' }, 'parcours', 'attribuer', ['L1:7', 'C', 'U', 'm']],
     ['useDeposerPreuveParcours', H.useDeposerPreuveParcours, { operationId: 'L1:C1', fichier, codeControle: 'ABCD' }, 'parcours', 'deposerPreuve', ['L1:C1', fichier, { valeurReference: undefined, codeControle: 'ABCD' }]],
     ['useValiderOperationParcours', H.useValiderOperationParcours, { operationId: 'L1:C1', assertion: 'a' }, 'parcours', 'validerOperation', ['L1:C1', 'a']],

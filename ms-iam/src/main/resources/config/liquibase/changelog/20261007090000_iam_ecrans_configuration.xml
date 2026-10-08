@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- MS-IAM : écrans pilotés par la configuration (D-94, docs/lot1/ecrans-par-configuration.md) : catalogue des
+     fonctionnalités servi et configurable (§2) ; attribut externe d'un profil fixé depuis la console (§3), gardé pour
+     être réappliqué après un réimport du domaine. Ensembles idempotents (préconditions). -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- Une ligne par fonctionnalité : définition au format servi (JSON, sans trace) ; modifie_le nul pour une valeur
+         de départ du registre, renseigné dès qu'elle est modifiée depuis la plateforme (jamais écrasée ensuite). -->
+    <changeSet id="iam-fonctionnalite" author="lot1">
+        <preConditions onFail="MARK_RAN">
+            <not><tableExists tableName="fonctionnalite"/></not>
+        </preConditions>
+        <createTable tableName="fonctionnalite">
+            <column name="cle" type="varchar(60)"><constraints primaryKey="true" nullable="false" primaryKeyName="pk_fonctionnalite"/></column>
+            <column name="application" type="varchar(20)"><constraints nullable="false"/></column>
+            <column name="ordre" type="integer"><constraints nullable="false"/></column>
+            <column name="definition" type="text"><constraints nullable="false"/></column>
+            <column name="modifie_le" type="timestamptz"/>
+            <column name="modifie_par_id" type="varchar(100)"/>
+            <column name="modifie_par_nom" type="varchar(255)"/>
+        </createTable>
+        <sql>ALTER TABLE fonctionnalite ADD CONSTRAINT ck_fonctionnalite_application CHECK (application IN ('des', 'console', 'portail'));</sql>
+        <createIndex tableName="fonctionnalite" indexName="idx_fonctionnalite_application"><column name="application"/><column name="ordre"/></createIndex>
+    </changeSet>
+
+    <!-- Attribut externe (gimac_externe) fixé depuis la console ; nul : jamais modifié par l'administration. -->
+    <changeSet id="iam-profil-presentation-externe" author="lot1">
+        <preConditions onFail="MARK_RAN">
+            <not><columnExists tableName="profil_presentation" columnName="externe"/></not>
+        </preConditions>
+        <addColumn tableName="profil_presentation">
+            <column name="externe" type="boolean"/>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>

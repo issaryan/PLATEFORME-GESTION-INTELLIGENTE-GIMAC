@@ -1,8 +1,14 @@
 import { ApiError } from '@gimac/socle'
 import type { CoverageValue, TypeProjet } from '../../modele/commun'
-import { ETAPES, type ApprobationSecurite, type Blocage, type DossierLiaison, type EtapeCode, type EtapeParcours, type EtatOperationParcours, type FicheSuiviServices, type Fonction, type IndicateursPilotage, type LiaisonResume, type OperationParcours, type Personne, type ProcesVerbalCertification, type ServicePerimetre, type Sla, type StatutParcours, type TableauActeur, type TacheActeur, type TypeAttestation } from '../../modele/parcours'
+import {
+  ETAPES, type ApprobationSecurite, type Blocage, type DossierLiaison, type EtapeCode, type EtapeParcours, type EtapeVersion, type EtatOperationParcours, type FicheSuiviServices, type Fonction,
+  type FonctionUtilisateur, type IndicateursPilotage, type IntervenantLiaison, type LiaisonResume, type LivrableAttendu, type OperationParcours, type Personne, type ProcesVerbalCertification,
+  type Qualite, type ServicePerimetre, type SignatureOperation, type Sla, type StatutParcours, type TableauActeur, type TacheActeur, type TypeAttestation,
+} from '../../modele/parcours'
+import type { FonctionCatalogue } from '../../modele/homologation'
 import { referentielDe, type OperationReferentiel } from '../../modele/referentielCR'
-import { actionDuGeste, codesDeclenches, estDedie, gesteDe, versionCR } from './referentiels'
+import { CATALOGUE, ETAPES_CANONIQUES, actionDuGeste, codesDeclenches, estDedie, gesteDe, jetonEtape, versionCR, vueDe } from './referentiels'
+import { LIBELLES_CR } from './libellesCR'
 import type { ServiceDecision, ServiceParcours, ServicePortailParcours } from '../ports'
 
 // Serveur de substitution du parcours (étapes 3 à 10, D-56 à D-59) : il tient l'état en mémoire et
@@ -42,6 +48,14 @@ export const PERSONNES: Personne[] = [
   P('U-RES-1', 'Ingénieur pôle réseau', 'POLE_RESEAU'), P('U-SYS-1', 'Ingénieur pôle système', 'POLE_SYSTEME'), P('U-RSSI', 'RSSI', 'RSSI'),
   P('U-CONF', 'Responsable conformité', 'CONFORMITE'), P('U-DG', 'Directeur général', 'DG'), P('U-EXP', 'Exploitation et supervision', 'EXPLOITATION'),
 ]
+/** Circuit de signature du procès-verbal par défaut de MS-CERTIFICATION (§10.3) : le GIMAC (CHEF_DES) et le participant, ordre 1. */
+const circuitDe = (pv: ProcesVerbalCertification) => [
+  { code: 'GIMAC', libelle: 'Signature du GIMAC', fonction: 'CHEF_DES', ordre: 1, portail: false, etat: pv.signatureGimac ? 'SIGNEE' as const : 'ATTENDUE' as const, signature: pv.signatureGimac },
+  { code: 'PARTICIPANT', libelle: 'Signature du participant', fonction: 'PARTICIPANT', ordre: 1, portail: true, etat: pv.signatureParticipant ? 'SIGNEE' as const : 'ATTENDUE' as const, signature: pv.signatureParticipant },
+]
+
+/** Fonction à affecter (D-93) : identifiant A_AFFECTER:<FONCTION>, tenue par personne tant que le conducteur ne l'a pas affectée. */
+const aAffecter = (f: Fonction): Personne => ({ id: `A_AFFECTER:${f}`, nom: 'À affecter', fonction: f, aAffecter: true })
 const personne = (f: Fonction, i = 0): Personne => {
   if (f === 'CHEFS_DEPARTEMENT') return personne('CHEF_DES')
   const l = PERSONNES.filter((p) => p.fonction === f)
@@ -72,14 +86,22 @@ type Scenario = {
   attestationsFournies?: boolean
   /** État forcé de la fiche de suivi d'une liaison en production (démonstration de la remise et du constat). */
   fiche?: 'A_REMETTRE' | 'RENSEIGNEE'
+  /** D-93 : fonctions encore « à affecter » sur la liaison (aucune attribution arbitraire). */
+  aAffecter?: Fonction[]
+  /** D-91 : opération faite en attente de ses signatures, dans l'ordre (démonstration de « Signer »). */
+  enSignature?: { rang: string; signatures: Pick<SignatureOperation, 'code' | 'libelle' | 'signataire' | 'ordre' | 'porte'>[] }
 }
 const SERVICES_CARTE = [{ code: 'RETRAIT', libelle: 'Retrait' }, { code: 'PAIEMENT', libelle: 'Paiement marchand' }, { code: 'TRANSFERT', libelle: 'Transfert' }, { code: 'COMMERCE_ELECTRONIQUE', libelle: 'Commerce électronique' }]
 const SERVICES_MOBILE = [{ code: 'PAIEMENT_MARCHAND', libelle: 'Paiement marchand mobile' }, { code: 'REMITTANCE', libelle: 'Rémittence entrante' }, { code: 'FACTURE', libelle: 'Paiement de facture' }, { code: 'CASH_IN', libelle: 'Cash-in agent' }]
 const perimetre = (base: typeof SERVICES_CARTE, exclus: string[]) => base.map((s) => ({ ...s, inclus: !exclus.includes(s.code) }))
 
 const SCENARIOS: Scenario[] = [
-  { id: 'LIA-2026-041', institutionId: 'INST-0105', institutionNom: 'Fintech F', typeProjet: 'PAIEMENT_MOBILE', banque: 'Banque B', personnalisateur: null, fintech: true, avancement: '6', statut: 'CADREE', conducteur: 0, debut: -12, cible: 110, services: perimetre(SERVICES_MOBILE, ['CASH_IN']) },
-  { id: 'LIA-2026-036', institutionId: 'INST-0088', institutionNom: 'Établissement de microfinance C', typeProjet: 'PAIEMENT_MOBILE', banque: null, personnalisateur: null, fintech: false, avancement: '9', statut: 'CADREE', conducteur: 1, debut: -35, cible: 70, services: perimetre(SERVICES_MOBILE, []) },
+  { id: 'LIA-2026-041', institutionId: 'INST-0105', institutionNom: 'Fintech F', typeProjet: 'PAIEMENT_MOBILE', banque: 'Banque B', personnalisateur: null, fintech: true, avancement: '6', statut: 'CADREE', conducteur: 0, debut: -12, cible: 110, services: perimetre(SERVICES_MOBILE, ['CASH_IN']), aAffecter: ['POLE_RESEAU'] },
+  { id: 'LIA-2026-036', institutionId: 'INST-0088', institutionNom: 'Établissement de microfinance C', typeProjet: 'PAIEMENT_MOBILE', banque: null, personnalisateur: null, fintech: false, avancement: '9', statut: 'CADREE', conducteur: 1, debut: -35, cible: 70, services: perimetre(SERVICES_MOBILE, []),
+    enSignature: { rang: '11', signatures: [
+      { code: 'VISA_NORMES', libelle: 'Visa des normes sur le compte rendu', signataire: 'SNA', ordre: 1, porte: ['L1'] },
+      { code: 'VISA_CONDUITE', libelle: 'Visa du conducteur de projet', signataire: 'CONDUCTEUR', ordre: 2, porte: ['L1'] },
+    ] } },
   { id: 'LIA-2026-030', institutionId: 'INST-0042', institutionNom: 'Établissement de paiement A', typeProjet: 'CARTE_INTERBANCAIRE', banque: 'Banque B', personnalisateur: null, fintech: false, avancement: '13', statut: 'EN_INTEGRATION', conducteur: 0, debut: -58, cible: 32, services: perimetre(SERVICES_CARTE, ['COMMERCE_ELECTRONIQUE']) },
   { id: 'LIA-2026-022', institutionId: 'INST-0017', institutionNom: 'Banque B', typeProjet: 'CARTE_INTERBANCAIRE', banque: null, personnalisateur: null, fintech: false, avancement: '16', statut: 'EN_TEST', conducteur: 1, debut: -80, cible: 12, services: perimetre(SERVICES_CARTE, []) },
   { id: 'LIA-2026-019', institutionId: 'INST-0120', institutionNom: 'Banque G', typeProjet: 'DELEGATAIRE', banque: 'Banque D', personnalisateur: 'Personnalisateur P', fintech: false, avancement: '20', statut: 'CERTIFIEE', conducteur: 0, debut: -96, cible: 20, services: perimetre(SERVICES_CARTE, ['TRANSFERT']), visas: true, attestationsFournies: true },
@@ -108,6 +130,9 @@ type Etat = {
 }
 
 /** Opérations de la liaison closes par un sujet d'événement : déclencheur lu sur le référentiel simulé (D-77, §3). */
+/** Déclencheur de l'opération (D-77 §3), lu sur la version simulée du référentiel. */
+const codesDeclenchesParRang = (type: string, rang: string) => ['certification.pv-established.v1', 'certification.pv-signed.v1', 'certification.change-record-constituted.v1',
+  'certification.attestations-archived.v1', 'certification.security-approved.v1', 'certification.change-record-referenced.v1'].find((d) => codesDeclenches(type, d).includes(rang)) ?? null
 const declenchees = (e: Etat, sujet: string) => { const codes = codesDeclenches(e.s.typeProjet, sujet); return e.ops.filter((o) => codes.includes(o.rang)) }
 const declenchee = (e: Etat, sujet: string) => declenchees(e, sujet)[0]
 
@@ -126,8 +151,9 @@ const refuserGesteLibre = (o: { rang: string }) => {
   if (GESTES_DEDIES.includes(o.rang)) throw refus(409, 'HOM_OPERATION_DEDICATED_GESTURE', 'Cette opération se réalise par son geste propre (affectation, verrous de la décision ou fiche de suivi), jamais par une pièce libre.')
 }
 /** Onglet du dossier où se réalise le geste d'une opération : décision (verrous 1 et 2), mise en service (étape 10), sinon opérations. */
-export const ongletDuRang = (rang: string) => (/^(1[89]|2[0-6])$/.test(rang) ? 'decision' : /^3[235]$/.test(rang) ? 'mise-en-service' : 'operations')
-const lienOperation = (o: { liaisonId: string; id: string; rang: string }) => `/des/parcours/${o.liaisonId}?onglet=${ongletDuRang(o.rang)}&operation=${encodeURIComponent(o.id)}`
+// D-93 : l'onglet suit la vue de l'opération (attribut servi), jamais son rang.
+export const ongletDeLaVue = (vue: OperationParcours['vue']) => (vue === 'DECISION' || vue === 'ATTESTATIONS' ? 'decision' : vue === 'MISE_EN_SERVICE' ? 'mise-en-service' : 'operations')
+const lienOperation = (o: Pick<OperationParcours, 'liaisonId' | 'id' | 'vue'>) => `/des/parcours/${o.liaisonId}?onglet=${ongletDeLaVue(o.vue)}&operation=${encodeURIComponent(o.id)}`
 
 const couv = (n: number, d: number): CoverageValue => ({ taux: d ? Math.round((n / d) * 100) : null, numerateur: n, denominateur: d, calculable: d > 0, motifNonCalculable: d ? undefined : 'aucun service inclus' })
 
@@ -141,14 +167,27 @@ function construire(s: Scenario): Etat {
     const courant = !fait && enAttente.length === 0
     const echeance = jour(s.debut + 4 + i * 3)
     const etat: EtatOperationParcours = fait ? 'FAITE' : courant ? 'A_FAIRE' : 'VERROUILLEE'
-    const R = o.porteurs[0] === 'PARTICIPANT' ? P(`EXT-${s.institutionId}`, `Correspondant ${s.institutionNom}`, 'PARTICIPANT') : o.porteurs[0] === 'CONDUCTEUR' ? conducteur : o.porteurs[0] === 'PERSONNALISATEUR' ? P('EXT-PERSO', s.personnalisateur ?? 'Personnalisateur', 'PERSONNALISATEUR') : personne(o.porteurs[0])
-    const autres = o.porteurs.slice(1).map((f) => (f === 'PARTICIPANT' ? P(`EXT-${s.institutionId}`, `Correspondant ${s.institutionNom}`, 'PARTICIPANT') : personne(f)))
+    // D-93 : une fonction encore à affecter n'est pas attribuée au premier titulaire de l'annuaire.
+    const tenue = (f: Fonction) => (s.aAffecter?.includes(f) ? aAffecter(f) : personne(f))
+    const R = o.porteurs[0] === 'PARTICIPANT' ? P(`EXT-${s.institutionId}`, `Correspondant ${s.institutionNom}`, 'PARTICIPANT') : o.porteurs[0] === 'CONDUCTEUR' ? conducteur : o.porteurs[0] === 'PERSONNALISATEUR' ? P('EXT-PERSO', s.personnalisateur ?? 'Personnalisateur', 'PERSONNALISATEUR') : tenue(o.porteurs[0])
+    const autres = o.porteurs.slice(1).map((f) => (f === 'PARTICIPANT' ? P(`EXT-${s.institutionId}`, `Correspondant ${s.institutionNom}`, 'PARTICIPANT') : tenue(f)))
     const sla: Sla | null = fait ? null : courant ? (Date.parse(echeance) < AUJOURDHUI.getTime() ? 'DEPASSE' : joursEntre(AUJOURDHUI.toISOString(), echeance) <= 5 ? 'ECHEANCE_PROCHE' : 'DANS_LES_DELAIS') : null
+    const geste = gesteDe(o)
     return {
       id: `${s.id}:${o.rang}`,
       liaisonId: s.id,
       rang: o.rang,
       etape: o.etape,
+      // D-93 : libellé, étape de la version, vue spécialisée, geste et particularité lus sur l'opération du référentiel publié.
+      libelle: LIBELLES_CR[o.rang]?.[0] ?? o.rang,
+      description: LIBELLES_CR[o.rang]?.[1] || null,
+      etapeCode: o.etape,
+      vue: vueDe(o.rang),
+      geste,
+      declencheur: codesDeclenchesParRang(s.typeProjet, o.rang),
+      particularite: o.rang === '15' ? 'ENTREE_ESSAIS' : o.rang === '16' ? 'FIN_ESSAIS' : o.rang === 'C1' ? 'CEREMONIE_CLES' : o.rang === '35' ? 'SERVICE_SUPPLEMENTAIRE' : null,
+      renvois: [],
+      signatures: [],
       segment: o.segment,
       plateforme: o.rang === '15' || o.rang === '16' ? (s.typeProjet === 'PAIEMENT_MOBILE' ? 'SIMULATEUR' : null) : o.plateforme,
       grain: o.grain,
@@ -241,6 +280,16 @@ function construire(s: Scenario): Etat {
       ? [{ id: 'BLQ-0007', liaisonId: s.id, motif: 'Élément de sécurité du participant à renouveler avant la reprise des essais', depuis: jour(-9), prochaineAction: 'Obtenir le nouvel élément auprès du participant', responsable: personne('POLE_RESEAU'), echeanceLevee: jour(-2), leveLe: null, etape: 'INTEGRATION', transitionsPermises: [], actionsPermises: ['LEVER'] }]
       : []
   if (blocages.length) ops.filter((o) => o.etat === 'A_FAIRE').forEach((o) => { o.etat = 'BLOQUEE'; o.actionsPermises = ['ATTRIBUER'] })
+  // D-91 : opération dont le geste a abouti, en attente de ses signatures dans l'ordre.
+  const sig = s.enSignature ? ops.find((o) => o.rang === s.enSignature!.rang) : undefined
+  if (sig && s.enSignature) {
+    sig.etat = 'EN_SIGNATURE'
+    sig.sla = null
+    sig.predecesseursNonFaits = []
+    sig.preuve = { documentRef: `DOC-${s.id.slice(-3)}-${sig.rang}`, nom: `compte-rendu-${sig.rang}.pdf`, empreinte: hex(`${s.id}-${sig.rang}`), deposeLe: jour(-1), deposePar: sig.raci.R?.nom ?? '' }
+    sig.signatures = s.enSignature.signatures.map((x) => ({ ...x, libelleSignataire: CATALOGUE.fonctions.find((f) => f.code === x.signataire)?.libelle ?? x.signataire, etat: 'ATTENDUE', suivante: false }))
+    sig.actionsPermises = ['ATTRIBUER']
+  }
   return { s, ops, blocages, pv, approbation, fiche, conducteur }
 }
 
@@ -266,7 +315,7 @@ function etapesDe(e: Etat): EtapeParcours[] {
       elements: { RESPONSABLE: Boolean(premier?.raci.R), ACTIONS: close, LIVRABLES: close, VALIDATION: close, PREUVE: ops.every((o) => o.etat !== 'FAITE' || o.preuve !== null) && faites > 0, DATE: close },
       actionsFaites: faites,
       actionsTotal: ops.length,
-      livrables: ops.filter((o) => o.grain === 'PHASE' || o.pivot).map((o) => ({ libelleKey: `parcours.op.${o.rang}`, fourni: o.etat === 'FAITE' })),
+      livrables: ops.filter((o) => o.grain === 'PHASE' || o.pivot).map((o) => ({ libelle: o.libelle ?? o.rang, operation: o.rang, code: 'L1', obligatoire: true, fourni: o.etat === 'FAITE' })),
       validateur: premier?.raci.V ?? null,
       valideeLe: close ? (dernier?.faiteLe ?? null) : null,
       debut: premier?.faiteLe ?? (enCours ? premier?.echeance ?? null : null),
@@ -323,12 +372,13 @@ function resume(e: Etat): LiaisonResume {
 function gesteParticipant(e: Etat, o: OperationParcours): { lien: string; actionsPermises: string[] } {
   const base = `/portail/liaisons/${e.s.id}`
   const ouverte = o.etat === 'A_FAIRE' || o.etat === 'EN_COURS'
-  if (o.rang === '12') return { lien: `${base}/coordonnees`, actionsPermises: ouverte ? ['COMMUNIQUER_COORDONNEES'] : [] }
-  if (o.rang === '19') return { lien: `${base}/proces-verbal`, actionsPermises: e.pv.etat === 'ETABLI' || e.pv.etat === 'SIGNE_GIMAC' ? ['SIGNER_PROCES_VERBAL'] : [] }
-  if (o.rang === '21' || o.rang === '22') return { lien: `${base}/attestations`, actionsPermises: ouverte && e.pv.etat === 'SIGNE' && e.approbation.attestations.some((a) => !a.preuve) ? ['DEPOSER_ATTESTATION'] : [] }
-  if (o.rang === '32') return { lien: `${base}/fiche-suivi`, actionsPermises: e.fiche.etat === 'REMISE' ? ['RENSEIGNER_FICHE_SUIVI'] : [] }
+  // Écran du portail selon la vue et le geste de l'opération (D-93), jamais selon son rang.
+  if (o.vue === 'COORDONNEES') return { lien: `${base}/coordonnees`, actionsPermises: ouverte ? ['COMMUNIQUER_COORDONNEES'] : [] }
+  if (o.vue === 'DECISION' && o.declencheur === 'certification.pv-signed.v1') return { lien: `${base}/proces-verbal`, actionsPermises: e.pv.etat === 'ETABLI' || e.pv.etat === 'SIGNE_GIMAC' ? ['SIGNER_PROCES_VERBAL'] : [] }
+  if (o.vue === 'ATTESTATIONS') return { lien: `${base}/attestations`, actionsPermises: ouverte && e.pv.etat === 'SIGNE' && e.approbation.attestations.some((a) => !a.preuve) ? ['DEPOSER_ATTESTATION'] : [] }
+  if (o.vue === 'MISE_EN_SERVICE' && o.geste === 'FICHE_SUIVI' && o.raci.R?.fonction === 'PARTICIPANT') return { lien: `${base}/fiche-suivi`, actionsPermises: e.fiche.etat === 'REMISE' ? ['RENSEIGNER_FICHE_SUIVI'] : [] }
   // Livrables qui reviennent au participant : ses contributions aux ateliers, le paramétrage d'essai, ses propres pièces.
-  const livrable = o.grain === 'PHASE' || ['8', '9', '10', '11'].includes(o.rang) || o.raci.R?.fonction === 'PARTICIPANT'
+  const livrable = o.grain === 'PHASE' || o.geste === 'DEPOSER_LIVRABLE' || o.raci.R?.fonction === 'PARTICIPANT'
   if (livrable && ouverte && o.actionsPermises.some((a) => a === 'DEPOSER_LIVRABLE' || a === 'DEPOSER_PREUVE')) return { lien: `${base}/livrables/${encodeURIComponent(o.id)}`, actionsPermises: ['DEPOSER_LIVRABLE'] }
   return { lien: base, actionsPermises: [] }
 }
@@ -337,25 +387,93 @@ function tachesDe(etats: Etat[], fonctions: Fonction[]): TacheActeur[] {
   const participant = fonctions.includes('PARTICIPANT')
   return etats.flatMap((e) =>
     e.ops
-      .filter((o) => o.etat === 'A_FAIRE' || o.etat === 'EN_COURS' || o.etat === 'BLOQUEE' || o.etat === 'EN_VALIDATION')
+      .filter((o) => o.etat === 'A_FAIRE' || o.etat === 'EN_COURS' || o.etat === 'BLOQUEE' || o.etat === 'EN_VALIDATION' || o.etat === 'EN_SIGNATURE')
       .flatMap((o): TacheActeur[] => {
         const r = o.raci.R?.fonction
-        const estR = r !== undefined && (fonctions.includes(r) || (r === 'CHEF_DES' && fonctions.includes('CHEFS_DEPARTEMENT')))
-        const estE = participant && (r === 'PARTICIPANT' || o.raci.E.some((p) => p.fonction === 'PARTICIPANT'))
+        const estR = o.etat !== 'EN_SIGNATURE' && r !== undefined && (fonctions.includes(r) || (r === 'CHEF_DES' && fonctions.includes('CHEFS_DEPARTEMENT')))
+        const estE = o.etat !== 'EN_SIGNATURE' && participant && (r === 'PARTICIPANT' || o.raci.E.some((p) => p.fonction === 'PARTICIPANT'))
         const estV = o.etat === 'EN_VALIDATION' && o.raci.V !== null && fonctions.includes(o.raci.V.fonction)
-        if (!estR && !estE && !estV) return []
+        // D-91 : signature attendue (plus petit ordre restant) dont la fonction est tenue par l'acteur.
+        const signature = o.etat === 'EN_SIGNATURE' ? suivantes(o).find((x) => fonctions.includes(x.signataire)) : undefined
+        if (!estR && !estE && !estV && !signature) return []
         return [{
           operationId: o.id, liaisonId: e.s.id, liaisonReference: e.s.id, institutionNom: e.s.institutionNom, rang: o.rang, etape: o.etape,
-          qualite: estV ? 'V' : estE && !estR ? 'E' : 'R', echeance: o.echeance, sla: o.sla, oubliSansSymptome: o.oubliSansSymptome,
+          qualite: signature || estV ? 'V' : estE && !estR ? 'E' : 'R', echeance: o.echeance, sla: o.sla, oubliSansSymptome: o.oubliSansSymptome,
+          // D-93 : libellé servi, tâche à prendre (fonction à affecter), signature attendue.
+          libelle: signature ? `Signer : ${signature.libelle}` : o.libelle ?? o.rang, aPrendre: estR && !!o.raci.R?.aAffecter, signature: signature?.code ?? null,
           ...(participant ? gesteParticipant(e, o) : { lien: lienOperation(o) }),
         }]
       }),
   )
 }
 
+/** Signatures restantes du plus petit ordre (D-91 : même ordre, indifférent). */
+function suivantes(o: OperationParcours): SignatureOperation[] {
+  const restantes = (o.signatures ?? []).filter((x) => x.etat === 'ATTENDUE')
+  const ordre = Math.min(...restantes.map((x) => x.ordre))
+  return restantes.filter((x) => x.ordre === ordre)
+}
+
 /** nomInstitution : nom tenu par le registre (MS-PARTICIPANT simulé), pour que la liaison ouverte porte le nom de l'adhérent choisi. */
-export function parcoursSimule(attendre: Attendre, institutionPortail: string, nomInstitution?: (id: string) => Promise<string | undefined>): { parcours: ServiceParcours; decision: ServiceDecision; portailParcours: ServicePortailParcours } {
+export function parcoursSimule(attendre: Attendre, institutionPortail: string, nomInstitution?: (id: string) => Promise<string | undefined>,
+  u: { profils?: string[]; fonctions?: () => FonctionCatalogue[] } = {}): { parcours: ServiceParcours; decision: ServiceDecision; portailParcours: ServicePortailParcours } {
   const etats = new Map(SCENARIOS.map((s) => [s.id, construire(structuredClone(s))]))
+  // Fonctions du catalogue (D-91), et celles que confèrent les profils de l'utilisateur (GET /moi/fonctions, D-94 §6.5).
+  const catalogueFonctions = (): FonctionCatalogue[] => u.fonctions?.() ?? CATALOGUE.fonctions.map((f) => ({ code: f.code, libelle: f.libelle, profils: f.profils ?? [], externe: !!f.externe, actif: true }))
+  const libelleFonction = (f: Fonction) => catalogueFonctions().find((x) => x.code === f)?.libelle ?? f
+  const mesFonctions = (): FonctionUtilisateur[] => {
+    const profils = u.profils ?? []
+    const l = catalogueFonctions().filter((f) => f.actif && f.profils.some((p) => profils.includes(p))).map((f) => ({ code: f.code, libelle: f.libelle, externe: f.externe, profils: f.profils.filter((p) => profils.includes(p)) }))
+    // Un chef de département tient aussi CHEFS_DEPARTEMENT (§6.5).
+    const chef = profils.filter((p) => p === 'ROLE_CHEF_DES' || p === 'ROLE_CHEF_DDRM')
+    if (chef.length && !l.some((f) => f.code === 'CHEFS_DEPARTEMENT')) l.push({ code: 'CHEFS_DEPARTEMENT', libelle: libelleFonction('CHEFS_DEPARTEMENT'), externe: false, profils: chef })
+    return l
+  }
+  const codesMiens = () => mesFonctions().map((f) => f.code)
+  /** Vue servie d'une opération (D-93 §8.5) : livrables attendus, signatures suivantes, actions calculées pour la personne. */
+  const vueOperation = (o: OperationParcours): OperationParcours => {
+    const miens = codesMiens()
+    const ouverte = o.etat === 'A_FAIRE' || o.etat === 'EN_COURS'
+    const deposer = o.actionsPermises.some((a) => a === 'DEPOSER_LIVRABLE' || a === 'DEPOSER_PREUVE')
+    const livrablesAttendus: LivrableAttendu[] = estDedie(o.geste ?? null) || o.geste === 'AUCUN' ? [] : [{
+      code: 'L1', libelle: o.description || o.libelle || o.rang, nature: o.geste === 'DEPOSER_LIVRABLE' ? 'LIVRABLE' : 'PREUVE', deposant: o.raci.R?.fonction ?? null,
+      libelleDeposant: o.raci.R ? libelleFonction(o.raci.R.fonction) : null, typesPieces: [], obligatoire: true,
+      depot: o.preuve ? { documentRef: o.preuve.documentRef, nom: o.preuve.nom, empreinte: o.preuve.empreinte, deposeLe: o.preuve.deposeLe, deposePar: o.preuve.deposePar } : null,
+      peutDeposer: ouverte && deposer,
+    }]
+    const suivante = o.etat === 'EN_SIGNATURE' ? suivantes(o) : []
+    const signatures = (o.signatures ?? []).map((x) => ({ ...x, suivante: suivante.includes(x), attendu: x.etat === 'ATTENDUE' ? { id: personne(x.signataire).id, nom: personne(x.signataire).nom, fonction: x.signataire } : null }))
+    const actions = [...o.actionsPermises, ...(o.etat === 'EN_SIGNATURE' && suivante.some((x) => miens.includes(x.signataire)) ? ['SIGNER'] : [])]
+    return { ...o, livrablesAttendus, signatures, actionsPermises: actions }
+  }
+  /** Intervenants de la liaison lus du RACI (D-93 §8.5) : fonction, qualités, personne désignée ou à affecter. */
+  const intervenantsDe = (e: Etat): IntervenantLiaison[] => {
+    const parFonction = new Map<Fonction, IntervenantLiaison>()
+    const ajouter = (q: Qualite, p: Personne | null) => {
+      if (!p) return
+      const i = parFonction.get(p.fonction) ?? { fonction: p.fonction, libelle: libelleFonction(p.fonction), qualites: [], personne: null, aAffecter: false, externe: catalogueFonctions().find((f) => f.code === p.fonction)?.externe ?? false }
+      if (!i.qualites.includes(q)) i.qualites.push(q)
+      if (p.aAffecter) i.aAffecter = true
+      else if (!i.personne) i.personne = p
+      parFonction.set(p.fonction, i)
+    }
+    e.ops.filter((o) => o.etat !== 'FAITE').forEach((o) => {
+      ajouter('R', o.raci.R)
+      ajouter('V', o.raci.V)
+      o.raci.C.forEach((p) => ajouter('C', p))
+      o.raci.I.forEach((p) => ajouter('I', p))
+      o.raci.E.forEach((p) => ajouter('E', p))
+    })
+    return [...parFonction.values()].sort((a, b) => Number(b.aAffecter) - Number(a.aAffecter) || a.libelle.localeCompare(b.libelle, 'fr'))
+  }
+  /** Étapes réelles de la version (D-93 §8.5) : libellé et couleur configurés, avancement calculé. */
+  const etapesVersionDe = (e: Etat): EtapeVersion[] => etapesDe(e).filter((x) => x.code !== 'PRISE_CONTACT' && x.code !== 'ADHESION').map((x, i) => {
+    const c = ETAPES_CANONIQUES.find((k) => k.code === x.code)
+    return {
+      code: x.code, libelle: c?.libelle ?? x.code, ordre: i + 1, jeton: jetonEtape(x.code), canonique: x.code, etat: x.etat, actionsFaites: x.actionsFaites, actionsTotal: x.actionsTotal,
+      responsable: x.responsable, validateur: x.validateur, debut: x.debut, closeLe: x.closeLe, echeance: x.echeance, sla: x.sla, livrables: x.livrables,
+    }
+  })
   const tous = () => [...etats.values()]
   const trouver = (id: string) => {
     const e = etats.get(id)
@@ -369,8 +487,15 @@ export function parcoursSimule(attendre: Attendre, institutionPortail: string, n
     if (!o) throw refus(404, 'HOM_OPERATION_NOT_FOUND', 'Opération introuvable.')
     return { e, o }
   }
-  /** Clôt une opération puis ouvre les suivantes dont tous les prédécesseurs sont faits. */
+  /** Clôt une opération (après ses signatures, D-91) puis ouvre les suivantes dont tous les prédécesseurs sont faits. */
   const terminer = (e: Etat, o: OperationParcours, preuve: OperationParcours['preuve']) => {
+    if ((o.signatures ?? []).some((x) => x.etat === 'ATTENDUE')) {
+      o.etat = 'EN_SIGNATURE'
+      o.sla = null
+      o.preuve = preuve
+      o.actionsPermises = ['ATTRIBUER']
+      return
+    }
     o.etat = 'FAITE'
     o.faiteLe = jour(0)
     o.sla = null
@@ -390,7 +515,7 @@ export function parcoursSimule(attendre: Attendre, institutionPortail: string, n
     return {
       id: e.s.id, reference: e.s.id, institutionId: e.s.institutionId, institutionNom: e.s.institutionNom, typeProjet: e.s.typeProjet,
       banquePartenaireNom: e.s.banque, personnalisateurNom: e.s.personnalisateur, statut: e.s.statut, etapeCourante: r.etapeCourante,
-      conducteur: e.conducteur, responsableFonctionnel: personne('DDRM'), responsableTechnique: personne('SNA'),
+      conducteur: e.conducteur, etapesVersion: etapesVersionDe(e), intervenants: intervenantsDe(e),
       dateDemarrage: jour(e.s.debut), dateCibleProduction: r.dateCibleProduction, versionReferentiel: e.s.typeProjet === 'PAIEMENT_MOBILE' ? 2 : 4,
       perimetre: perimetreDe(e), couvertureCertification: r.couvertureCertification, couvertureMiseEnService: r.couvertureMiseEnService,
       etapes: etapesDe(e), blocages: e.blocages, interlocuteursParticipant: [{ nom: `Correspondant technique ${e.s.institutionNom}`, fonction: 'Responsable technique' }, { nom: `Correspondant fonctionnel ${e.s.institutionNom}`, fonction: 'Responsable fonctionnel' }],
@@ -398,6 +523,8 @@ export function parcoursSimule(attendre: Attendre, institutionPortail: string, n
       transitionsPermises: [],
       actionsPermises: [
         ...(peutConduire ? ['DECLARER_BLOCAGE'] : []),
+        // D-93 : affectation d'une fonction de la liaison (HOM_STEP_MANAGE ou HOM_OPERATION_ASSIGN).
+        'AFFECTER_FONCTION',
         'DESIGNER_CONDUCTEUR',
         ...(e.s.statut === 'EN_PRODUCTION' ? ['OUVRIR_SERVICE_SUPPLEMENTAIRE'] : []),
         ...(e.ops.some((o) => o.rang === '6' && o.etat === 'A_FAIRE') ? ['AFFECTER_RESSOURCES'] : []),
@@ -451,7 +578,7 @@ export function parcoursSimule(attendre: Attendre, institutionPortail: string, n
       e.ops.forEach((o) => { if (o.raci.R?.fonction === 'CONDUCTEUR') o.raci.R = p; if (o.raci.V?.fonction === 'CONDUCTEUR') o.raci.V = p })
     }),
     dossier: (id) => attendre(() => dossierDe(trouver(id))),
-    operations: (id, f) => attendre(() => trouver(id).ops.filter((o) => (!f?.etape || o.etape === f.etape) && (!f?.fonction || o.raci.R?.fonction === f.fonction))),
+    operations: (id, f) => attendre(() => trouver(id).ops.filter((o) => (!f?.etape || o.etape === f.etape) && (!f?.fonction || o.raci.R?.fonction === f.fonction)).map(vueOperation)),
     affecterRessources: (id, a) => attendre(() => {
       const e = trouver(id)
       const o = e.ops.find((x) => x.rang === '6')
@@ -489,7 +616,7 @@ export function parcoursSimule(attendre: Attendre, institutionPortail: string, n
       if (o.valeurReference && !c.valeurReference) throw refus(422, 'HOM_REFERENCE_VALUE_REQUIRED', 'Cette preuve doit porter la valeur de référence relevée.')
       o.etat = 'EN_VALIDATION'
       o.preuve = { documentRef: `DOC-${opId.replace(':', '-')}`, nom: fichier.name, empreinte: hex(fichier.name + fichier.size), deposeLe: jour(0), deposePar: o.raci.R?.nom ?? '', valeurReference: c.valeurReference ? { libelle: `parcours.valeur.${o.rang}`, valeur: c.valeurReference } : undefined, codeControle: o.cle ? c.codeControle : undefined, ceremonie: o.rang === 'C1' ? c.ceremonie : undefined }
-      o.actionsPermises = ['VALIDER', 'ATTRIBUER']
+      o.actionsPermises = ['VALIDER', 'RENVOYER', 'ATTRIBUER']
       void e
     }),
     validerOperation: (opId) => attendre(() => {
@@ -497,6 +624,49 @@ export function parcoursSimule(attendre: Attendre, institutionPortail: string, n
       if (o.etat !== 'EN_VALIDATION') throw refus(409, 'HOM_OPERATION_NOT_IN_VALIDATION', 'L\'opération n\'attend pas de validation.')
       terminer(e, o, o.preuve)
     }),
+    // D-93 §8.3 : renvoi motivé, l'opération revient à faire (bloquée si un blocage est actif), la pièce est gardée.
+    renvoyer: (opId, motif) => attendre(() => {
+      const { e, o } = operation(opId)
+      if (!motif.trim() || motif.length > 500) throw refus(422, 'HOM_MOTIF_REQUIS', 'Un motif (1 à 500 caractères) est exigé.')
+      if (o.etat !== 'EN_VALIDATION') throw refus(409, 'HOM_OPERATION_NOT_IN_VALIDATION', 'L\'opération n\'attend pas de validation.')
+      const bloquee = e.blocages.some((b) => !b.leveLe)
+      o.etat = bloquee ? 'BLOQUEE' : 'A_FAIRE'
+      o.renvois = [...(o.renvois ?? []), { motif: motif.trim(), parId: o.raci.V?.id ?? 'U-V', parNom: o.raci.V?.nom ?? 'Validateur', le: new Date().toISOString() }]
+      o.actionsPermises = bloquee ? ['ATTRIBUER'] : actionsOuvertes(o)
+    }),
+    // D-91 §5.4 : signature d'une opération, dans l'ordre, par le porteur de la fonction (clé de sécurité exigée).
+    signerOperation: (id, code, signature, assertion) => attendre(() => {
+      const e = trouver(id)
+      const o = e.ops.find((x) => x.rang === code)
+      if (!o) throw refus(404, 'HOM_OPERATION_NOT_FOUND', 'Opération introuvable.')
+      const x = (o.signatures ?? []).find((y) => y.code === signature)
+      if (!x) throw refus(404, 'HOM_SIGNATURE_INCONNUE', 'Signature inconnue.')
+      if (x.etat === 'SIGNEE') throw refus(409, 'HOM_SIGNATURE_DEJA_SIGNEE', 'Cette signature est déjà donnée.')
+      if (o.etat !== 'EN_SIGNATURE') throw new ApiError(409, 'HOM_SIGNATURE_ETAT', 'L\'opération n\'attend pas de signature.', correlation(), { etat: o.etat, attendu: 'EN_SIGNATURE' })
+      if (!suivantes(o).includes(x)) throw new ApiError(409, 'HOM_SIGNATURE_ORDRE', 'Une signature d\'un ordre inférieur est attendue d\'abord.', correlation(), { attendues: suivantes(o).map((y) => y.code) })
+      if (!codesMiens().includes(x.signataire)) throw refus(403, 'HOM_SIGNATURE_NON_SIGNATAIRE', 'Vous ne tenez pas la fonction signataire attendue.')
+      if (!assertion) throw refus(428, 'IAM_REAUTH_REQUIRED', 'Réauthentification exigée.')
+      Object.assign(x, { etat: 'SIGNEE', signePar: personne(x.signataire).id, signeParNom: personne(x.signataire).nom, signeLe: new Date().toISOString(), empreinte: hex(`${o.id}-${x.code}`) })
+      if ((o.signatures ?? []).every((y) => y.etat === 'SIGNEE')) {
+        o.etat = 'A_FAIRE'
+        terminer(e, o, o.preuve)
+      }
+    }),
+    // D-93 §8.1 : affectation d'une fonction de la liaison, sur les opérations non faites.
+    affecterFonction: (id, fonction, a) => attendre(() => {
+      const e = trouver(id)
+      const f = catalogueFonctions().find((x) => x.code === fonction)
+      if (!f || fonction === 'PARTICIPANT' || fonction === 'CONDUCTEUR') throw refus(422, 'HOM_FONCTION_NON_AFFECTABLE', 'Cette fonction ne s\'affecte pas ainsi.')
+      if (f.externe && !a.institutionId) throw refus(422, 'HOM_INSTITUTION_REQUISE', 'Une fonction externe est tenue par une institution.')
+      const p = f.externe ? P(`EXT-${a.institutionId}`, a.institutionId!, fonction) : PERSONNES.find((x) => x.id === a.personneId)
+      if (!p) throw refus(422, 'HOM_PERSON_UNKNOWN', 'Personne inconnue.')
+      if (p.fonction !== fonction) throw refus(422, 'HOM_PERSON_NOT_ELIGIBLE', 'Cette personne ne détient pas le profil de la fonction.')
+      const remplacer = (x: Personne | null) => (x?.fonction === fonction ? p : x)
+      e.ops.filter((o) => o.etat !== 'FAITE').forEach((o) => {
+        o.raci = { R: remplacer(o.raci.R), V: remplacer(o.raci.V), C: o.raci.C.map((x) => remplacer(x)!), I: o.raci.I.map((x) => remplacer(x)!), E: o.raci.E.map((x) => remplacer(x)!) }
+      })
+    }),
+    mesFonctions: () => attendre(mesFonctions),
     declarerBlocage: (id, b) => attendre(() => {
       const e = trouver(id)
       const resp = PERSONNES.find((p) => p.id === b.responsableId) ?? personne('CONDUCTEUR')
@@ -606,7 +776,7 @@ export function parcoursSimule(attendre: Attendre, institutionPortail: string, n
       const actions: string[] = []
       if (e.pv.etat === 'NON_ETABLI' && o17?.etat === 'FAITE' && o18?.etat === 'A_FAIRE') actions.push(e.pv.couverture.taux === 100 ? 'ETABLIR' : 'ETABLIR_BLOQUE')
       if (e.pv.etat === 'ETABLI' || e.pv.etat === 'SIGNE_PARTICIPANT') actions.push('SIGNER_GIMAC')
-      return { ...e.pv, actionsPermises: actions }
+      return { ...e.pv, circuit: circuitDe(e.pv), actionsPermises: actions }
     }),
     etablirProcesVerbal: (id) => attendre(() => {
       const e = trouver(id)
@@ -731,8 +901,11 @@ export function parcoursSimule(attendre: Attendre, institutionPortail: string, n
       const valeur = o12?.etat === 'FAITE' ? o12.preuve?.valeurReference?.valeur ?? null : null
       const coordonnees = valeur ? { adresse: valeur.slice(0, valeur.lastIndexOf(':')), port: valeur.slice(valeur.lastIndexOf(':') + 1), pointsTerminaison: coordonneesCommuniquees.get(id) ?? null, communiqueesLe: o12?.faiteLe ?? '' } : null
       return {
-        ...d, conducteur: d.conducteur ? { ...d.conducteur, id: 'CONDUCTEUR', nom: 'Conducteur de projet GIMAC' } : null, responsableFonctionnel: parFonction(d.responsableFonctionnel), responsableTechnique: parFonction(d.responsableTechnique),
+        ...d, conducteur: d.conducteur ? { ...d.conducteur, id: 'CONDUCTEUR', nom: 'Conducteur de projet GIMAC' } : null,
+        // Intervenants internes nommés par leur seule fonction ; aucune donnée interne au portail.
+        intervenants: (d.intervenants ?? []).map((i) => ({ ...i, personne: i.fonction === 'PARTICIPANT' ? i.personne : parFonction(i.personne) })),
         etapes: d.etapes.map((x) => ({ ...x, responsable: x.responsable?.fonction === 'PARTICIPANT' ? x.responsable : parFonction(x.responsable), validateur: parFonction(x.validateur) })),
+        etapesVersion: (d.etapesVersion ?? []).map((x) => ({ ...x, responsable: x.responsable?.fonction === 'PARTICIPANT' ? x.responsable : parFonction(x.responsable), validateur: parFonction(x.validateur) })),
         blocages: d.blocages.map((b) => ({ ...b, responsable: parFonction(b.responsable), actionsPermises: [] })), coordonneesTechniques: coordonnees, actionsPermises: [],
       }
     }),
@@ -752,7 +925,7 @@ export function parcoursSimule(attendre: Attendre, institutionPortail: string, n
     procesVerbal: (id) => attendre(() => {
       const e = sienne(id)
       const pv = e.pv
-      return { ...pv, etabliPar: pv.etabliPar ? 'CONDUCTEUR' : null, signatureGimac: pv.signatureGimac ? { ...pv.signatureGimac, signataire: pv.signatureGimac.fonction } : null, actionsPermises: pv.etat === 'ETABLI' || pv.etat === 'SIGNE_GIMAC' ? ['SIGNER_PARTICIPANT'] : [] }
+      return { ...pv, circuit: circuitDe(pv), etabliPar: pv.etabliPar ? 'CONDUCTEUR' : null, signatureGimac: pv.signatureGimac ? { ...pv.signatureGimac, signataire: pv.signatureGimac.fonction } : null, actionsPermises: pv.etat === 'ETABLI' || pv.etat === 'SIGNE_GIMAC' ? ['SIGNER_PARTICIPANT'] : [] }
     }),
     signerProcesVerbal: (id, assertion) => attendre(() => {
       if (!assertion) throw refus(401, 'IAM_REAUTH_REQUIRED', 'Réauthentification exigée.')

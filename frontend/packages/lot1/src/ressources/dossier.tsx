@@ -108,7 +108,7 @@ export const registreDescriptor: ResourceDescriptorLot1<EntreeRegistre, Services
   fields: [
     { name: 'numero', label: 'attestation.numero', kind: 'mono', inList: true, inDetail: true, sortable: true },
     { name: 'institutionNom', label: 'dossier.institution', kind: 'text', inList: true, inDetail: true, filterable: true },
-    { name: 'typeProjet', label: 'registre.typeProjet', kind: 'custom', inList: true, inDetail: true, render: (v) => t(`typeProjet.${String(v)}`) },
+    { name: 'typeProjet', label: 'registre.typeProjet', kind: 'custom', inList: true, inDetail: true, render: (v) => t(`typeProjet.${String(v)}`, { defaultValue: String(String(v)) }) },
     { name: 'services', label: 'registre.services', kind: 'custom', inList: true, inDetail: true, render: (v) => (v as string[]).join(', ') },
     { name: 'dateEmission', label: 'registre.dateEmission', kind: 'date', inList: true, inDetail: true, sortable: true },
     { name: 'echeanceRenouvellement', label: 'registre.echeance', kind: 'date', inList: true, inDetail: true, sortable: true },

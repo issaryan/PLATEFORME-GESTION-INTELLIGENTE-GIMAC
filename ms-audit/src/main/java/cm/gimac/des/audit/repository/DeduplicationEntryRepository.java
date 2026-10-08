@@ -10,4 +10,7 @@ import org.springframework.stereotype.Repository;
  */
 @SuppressWarnings("unused")
 @Repository
-public interface DeduplicationEntryRepository extends JpaRepository<DeduplicationEntry, UUID> {}
+public interface DeduplicationEntryRepository extends JpaRepository<DeduplicationEntry, UUID> {
+    /** Événement déjà inscrit au registre (RG-15, RG-35). */
+    boolean existsByEventId(UUID eventId);
+}

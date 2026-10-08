@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { CheckboxGroup, IconButton, CrudDialog, DataTable, PageHeader, Select, type Column } from '@gimac/design-system'
 import { aPermission, usePermissions, useLibelleProfil } from '@gimac/socle'
-import { ACTIONS_POUVOIR, PORTEES, completerActions, type ActionsPouvoir, type PouvoirsProfil, type Portee } from '@gimac/lot1'
+import { ACTIONS_POUVOIR, PORTEES, completerActions, porteesAdmisesParDefaut, type ActionPouvoir, type ActionsPouvoir, type MatricePouvoirs, type PouvoirsProfil, type Portee } from '@gimac/lot1'
 import { BadgePortee } from '../composants/profils'
 import { useEffet, useLibellesProfils, useMatricePouvoirs, useProfils } from '../hooks'
 import { Annonce } from '../composants/Annonce'
@@ -19,8 +19,11 @@ import { etatListe } from '../composants/formats'
 // et PROCESSUS_LANCER (processus d'unité, D-87) ; une action absente d'une ligne vaut AUCUNE. ?profil=<code> met la
 // ligne en évidence (lien depuis la fiche d'un profil et le panneau « Pouvoirs » de l'organigramme).
 
-function DialogueLigne({ ligne, demandables, onFermer, onContinuer }: {
-  ligne: PouvoirsProfil; demandables: string[]; onFermer: () => void; onContinuer: (e: { actions: ActionsPouvoir; profilsDemandables: string[] }) => void
+/** Portées proposées pour une action (D-92) : `porteesAdmises` servies par MS-IAM ; TOUTES seulement pour les processus. */
+const admises = (m: MatricePouvoirs | undefined, a: ActionPouvoir): readonly Portee[] => m?.porteesAdmises?.[a] ?? porteesAdmisesParDefaut(a)
+
+function DialogueLigne({ ligne, demandables, matrice, onFermer, onContinuer }: {
+  ligne: PouvoirsProfil; demandables: string[]; matrice?: MatricePouvoirs; onFermer: () => void; onContinuer: (e: { actions: ActionsPouvoir; profilsDemandables: string[] }) => void
 }) {
   const { t } = useTranslation()
   const libelleProfil = useLibelleProfil(useLibellesProfils())
@@ -35,7 +38,7 @@ function DialogueLigne({ ligne, demandables, onFermer, onContinuer }: {
         {ACTIONS_POUVOIR.map((a) => (
           <div key={a} className="gm-form-field">
             <Select name={a} label={t(`console.matrice.action.${a}`)} help={t(`console.matrice.aide.${a}`)} value={actions[a]} onChange={(v) => setActions((o) => ({ ...o, [a]: v as Portee }))}
-              options={PORTEES.map((p) => ({ value: p, label: t(`console.matrice.portee.${p}`) }))} />
+              options={admises(matrice, a).map((p) => ({ value: p, label: t(`console.matrice.portee.${p}`) }))} />
           </div>
         ))}
       </div>
@@ -80,7 +83,7 @@ export default function MatricePouvoirsPage() {
       </div>
       <DataTable columns={colonnes} rows={lignes} rowKey={(l) => l.profil} pageSize={25} density="compact" selected={enEvidence ? [enEvidence] : undefined} onRetry={() => void matrice.refetch()} emptyText={t('console.matrice.vide')} {...etatListe(matrice, lignes)} />
       {ouverte ? (
-        <DialogueLigne ligne={ouverte} demandables={demandables} onFermer={() => setOuverte(null)} onContinuer={(e) => {
+        <DialogueLigne ligne={ouverte} demandables={demandables} matrice={matrice.data} onFermer={() => setOuverte(null)} onContinuer={(e) => {
           const l = { ...ouverte, actions: completerActions(ouverte.actions) }
           setOuverte(null)
           actes.sensible({

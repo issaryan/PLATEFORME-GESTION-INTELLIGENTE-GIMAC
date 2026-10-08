@@ -104,14 +104,21 @@ public class ProfilsService {
         return presentations == null ? p : p.modifie(new PresentationProfil(code, l, d, maintenant, acteur.id(), acteur.nom()));
     }
 
-    /**
-     * Libellé et description d'un profil livré ou créé (D-86 §2) ; le code est immuable. Motif obligatoire
-     * (400 IAM_REASON_REQUIRED) ; profil inconnu : 404 IAM_PROFILE_NOT_FOUND ; profil privilégié sans le
-     * droit d'octroi privilégié : 403 IAM_PRIVILEGED_PROFILE ; libellé (1..80) ou description (0..500)
-     * invalide : 400 IAM_PROFIL_INVALIDE. Journal CONFIGURATION_PROFIL_MODIFIE (avant, après) ; la valeur
-     * fixée est gardée par MS-IAM pour survivre à un réimport du domaine.
-     */
+    /** Libellé et description, attribut externe inchangé (D-86 §2). */
     public Profil modifier(Acteur acteur, String code, String libelle, String description, String motif) {
+        return modifier(acteur, code, libelle, description, null, motif);
+    }
+
+    /**
+     * Libellé, description et attribut externe d'un profil livré ou créé (D-86 §2, D-94) ; le code est immuable.
+     * Motif obligatoire (400 IAM_REASON_REQUIRED) ; profil inconnu : 404 IAM_PROFILE_NOT_FOUND ; profil privilégié
+     * sans le droit d'octroi privilégié : 403 IAM_PRIVILEGED_PROFILE ; libellé (1..80) ou description (0..500)
+     * invalide : 400 IAM_PROFIL_INVALIDE. {@code externe} nul : inchangé ; changé sur un profil qui a des
+     * titulaires : 409 IAM_PROFIL_EXTERNE_TITULAIRES (leurs comptes perdraient la cohérence entre profil et
+     * institution). Journal CONFIGURATION_PROFIL_MODIFIE (avant, après) ; les valeurs fixées sont gardées par MS-IAM
+     * pour survivre à un réimport du domaine.
+     */
+    public Profil modifier(Acteur acteur, String code, String libelle, String description, Boolean externe, String motif) {
         ReglesAdministration.exigerMotif(motif);
         if (!catalogue.attribuables().contains(code)) {
             throw IamException.introuvable("IAM_PROFILE_NOT_FOUND", code);
@@ -125,6 +132,15 @@ public class ProfilsService {
         if (avant == null) {
             throw IamException.introuvable("IAM_PROFILE_NOT_FOUND", code);
         }
+        Profil actuel = annuaire.profils().stream().filter(p -> p.code().equals(code)).findFirst().orElseThrow(() -> IamException.introuvable("IAM_PROFILE_NOT_FOUND", code));
+        boolean changeExterne = externe != null && externe != actuel.externe();
+        if (changeExterne && actuel.titulaires() > 0) {
+            throw IamException.conflit(
+                "IAM_PROFIL_EXTERNE_TITULAIRES",
+                "Retirer d'abord le profil de ses titulaires avant de changer sa qualité externe",
+                Map.of("code", code, "titulaires", actuel.titulaires())
+            );
+        }
         if (catalogue.cree(code)) {
             ProfilCree cree = crees.lire(code).orElseThrow(() -> IamException.introuvable("IAM_PROFILE_NOT_FOUND", code));
             crees.enregistrer(new ProfilCree(code, d, cree.privilegie(), cree.creePar(), cree.creeLe()));
@@ -132,9 +148,21 @@ public class ProfilsService {
         Instant maintenant = clock.instant();
         if (presentations != null) {
             presentations.fixer(code, l, d, maintenant, acteur.id(), acteur.nom());
+            if (changeExterne) {
+                presentations.fixerExterne(code, externe, maintenant, acteur.id(), acteur.nom());
+            }
         }
         annuaire.definirPresentationProfil(code, l, d);
-        journal.profil(acteur, code, motif.strip(), resume(avant.libelle() == null ? code : avant.libelle(), avant.description()), resume(l, d));
+        if (changeExterne) {
+            annuaire.definirExterne(code, externe);
+        }
+        String resumeAvant = resume(avant.libelle() == null ? code : avant.libelle(), avant.description());
+        String resumeApres = resume(l, d);
+        if (changeExterne) {
+            resumeAvant += " ; externe=" + actuel.externe();
+            resumeApres += " ; externe=" + externe;
+        }
+        journal.profil(acteur, code, motif.strip(), resumeAvant, resumeApres);
         Set<String> privilegies = catalogue.privilegies();
         return annuaire.profils().stream()
             .filter(p -> p.code().equals(code))

@@ -1,6 +1,7 @@
 package cm.gimac.des.iam.application.usecase;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -44,6 +45,18 @@ class ProfilsPresentationTest {
     static final class PresentationsEnMemoire implements PresentationsProfils {
 
         final Map<String, PresentationProfil> traces = new TreeMap<>();
+        final Map<String, Boolean> externes = new TreeMap<>();
+
+        @Override
+        public Map<String, Boolean> externes() {
+            return new TreeMap<>(externes);
+        }
+
+        @Override
+        public void fixerExterne(String code, boolean externe, Instant le, String parId, String parNom) {
+            externes.put(code, externe);
+            toucher(code, le, parId, parNom);
+        }
 
         @Override
         public Map<String, PresentationProfil> toutes() {
@@ -69,6 +82,7 @@ class ProfilsPresentationTest {
         @Override
         public void supprimer(String code) {
             traces.remove(code);
+            externes.remove(code);
         }
     }
 
@@ -85,11 +99,11 @@ class ProfilsPresentationTest {
 
     @BeforeEach
     void init() {
-        annuaire = new AnnuaireEnMemoire(AnnuaireEnMemoire.catalogueParDefaut(AdministrationComptesServiceTest.CATALOGUE), AdministrationComptesServiceTest.PRIVILEGIES);
+        annuaire = new AnnuaireEnMemoire(AnnuaireEnMemoire.catalogueParDefaut(AdministrationComptesServiceTest.CATALOGUE));
         crees = new DemandesEtProfilsServiceTest.ProfilsCreesEnMemoire();
         presentations = new PresentationsEnMemoire();
         matrice = new PouvoirsServiceTest.MatriceEnMemoire();
-        catalogue = new CatalogueProfils(AdministrationComptesServiceTest.proprietes(), crees);
+        catalogue = new CatalogueProfils(AdministrationComptesServiceTest.proprietes(), crees, annuaire);
         Clock horloge = Clock.fixed(T, ZoneOffset.UTC);
         service = new ProfilsService(annuaire, crees, catalogue, matrice, journal, horloge, presentations);
         configuration = new ConfigurationAuthentificationService(annuaire, journal, null, null, horloge, catalogue, crees, presentations);
@@ -204,5 +218,59 @@ class ProfilsPresentationTest {
         assertThat(annuaire.presentationsProfils().get("ROLE_CHEF_DDRM").libelle()).isEqualTo("Chef de la DDRM");
         assertThat(restauration.restaurer()).isZero();
         restauration.auDemarrage();
+    }
+
+    @Test
+    @DisplayName("D-94 : attribut externe modifié avec le libellé (motif, journal avant/après), refusé sur un profil qui a des titulaires, gardé par MS-IAM")
+    void attributExterne() {
+        assertThat(configuration.profils()).filteredOn(p -> p.code().equals("ROLE_CORRESPONDANT")).singleElement().extracting(Profil::externe).isEqualTo(true);
+        assertThat(configuration.profils()).filteredOn(p -> p.code().equals("ROLE_CHARGE_DDRM")).singleElement().extracting(Profil::externe).isEqualTo(false);
+        // Inchangé (nul ou même valeur) : rien d'autre que le libellé n'est écrit.
+        service.modifier(RSSI, "ROLE_CHARGE_DDRM", "Chargé de la DDRM", "", null, "Libellé");
+        service.modifier(RSSI, "ROLE_CHARGE_DDRM", "Chargé de la DDRM", "", false, "Libellé");
+        assertThat(presentations.externes()).isEmpty();
+        assertThat(annuaire.attributsExternes()).isEmpty();
+        // Profil sans titulaire rendu externe.
+        Profil p = service.modifier(RSSI, "ROLE_CHARGE_DDRM", "Partenaire DDRM", "Compte d'une institution", true, "Ouverture aux partenaires");
+        assertThat(p.externe()).isTrue();
+        assertThat(annuaire.attributsExternes()).containsEntry("ROLE_CHARGE_DDRM", true);
+        assertThat(presentations.externes()).containsEntry("ROLE_CHARGE_DDRM", true);
+        assertThat(catalogue.externes()).contains("ROLE_CHARGE_DDRM", "ROLE_CORRESPONDANT");
+        verify(journal).profil(
+            eq(RSSI),
+            eq("ROLE_CHARGE_DDRM"),
+            eq("Ouverture aux partenaires"),
+            eq("libelle=Chargé de la DDRM ; description= ; externe=false"),
+            eq("libelle=Partenaire DDRM ; description=Compte d'une institution ; externe=true")
+        );
+        // Profil qui a des titulaires : la qualité externe ne change pas.
+        annuaire.creer(new cm.gimac.des.iam.domain.compte.NouveauCompte("corr.x", "C", "X", "corr.x@banque.test", null, null, "INST-1", Set.of("ROLE_CORRESPONDANT")), java.util.List.of());
+        assertThatThrownBy(() -> service.modifier(SUPER, "ROLE_CORRESPONDANT", "Correspondant", "", false, "x"))
+            .isInstanceOfSatisfying(cm.gimac.des.iam.domain.IamException.class, e -> assertThat(e.code()).isEqualTo("IAM_PROFIL_EXTERNE_TITULAIRES"));
+    }
+
+    @Test
+    @DisplayName("D-94 : au démarrage, valeur fixée depuis la console réappliquée, valeur de départ posée si l'attribut est absent, jamais écrasée ; idempotent")
+    void initialisationExternes() {
+        InitialisationProfilsExternes init = new InitialisationProfilsExternes(annuaire, presentations, AdministrationComptesServiceTest.proprietes());
+        // Valeur de départ (gimac.iam.profils.externes-initiaux) : ROLE_CORRESPONDANT reçoit l'attribut.
+        assertThat(init.initialiser()).isEqualTo(1);
+        assertThat(annuaire.attributsExternes()).containsOnly(Map.entry("ROLE_CORRESPONDANT", true));
+        assertThat(init.initialiser()).isZero();
+        // Un attribut posé à faux n'est jamais remplacé par la valeur de départ.
+        annuaire.definirExterne("ROLE_CORRESPONDANT", false);
+        assertThat(init.initialiser()).isZero();
+        assertThat(annuaire.attributsExternes()).containsEntry("ROLE_CORRESPONDANT", false);
+        // Valeur fixée depuis la console, écrasée par un réimport : réappliquée ; profil disparu ignoré.
+        presentations.fixerExterne("ROLE_CHARGE_DDRM", true, T, "super", "Super Admin");
+        presentations.fixerExterne("ROLE_DISPARU", true, T, "super", "Super Admin");
+        assertThat(init.initialiser()).isEqualTo(1);
+        assertThat(annuaire.attributsExternes()).containsEntry("ROLE_CHARGE_DDRM", true);
+        annuaire.definirExterne("ROLE_CHARGE_DDRM", false);
+        assertThat(init.initialiser()).isEqualTo(1);
+        assertThat(annuaire.attributsExternes()).containsEntry("ROLE_CHARGE_DDRM", true);
+        init.auDemarrage();
+        // Annuaire en panne : le démarrage continue.
+        new InitialisationProfilsExternes(null, presentations, AdministrationComptesServiceTest.proprietes()).auDemarrage();
     }
 }

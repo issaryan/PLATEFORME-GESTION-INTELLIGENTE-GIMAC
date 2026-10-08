@@ -51,7 +51,7 @@ export function creerLiaisonDescriptor({ t, conducteurs, ouverture }: OptionsLia
       },
       { name: 'id', label: 'liaison.reference', kind: 'mono', inDetail: true },
       { name: 'typeProjet', label: 'liaison.typeProjet', kind: 'select', options: typeProjetOptions, inList: true, inDetail: true, filterable: true,
-        render: (_v, r) => t(`typeProjet.${r.typeProjet}`) },
+        render: (_v, r) => t(`typeProjet.${r.typeProjet}`, { defaultValue: String(r.typeProjet) }) },
       { name: 'chefDeProjetId', label: 'liaison.chefDeProjet', kind: 'select', required: true, options: conducteurs, inForm: 'edit', help: 'liaison.chefDeProjet.aide' },
       { name: 'chefDeProjetNom', label: 'liaison.chefDeProjet', kind: 'text', inList: true, inDetail: true },
       { name: 'banquePartenaireNom', label: 'liaison.portage', kind: 'text', inDetail: true },

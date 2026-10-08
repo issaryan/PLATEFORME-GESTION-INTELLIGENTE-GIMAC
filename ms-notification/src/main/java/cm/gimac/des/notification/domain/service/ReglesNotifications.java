@@ -314,9 +314,14 @@ public final class ReglesNotifications {
                 case "A_VALIDER" -> avec("Validation attendue", etape);
                 default -> avec("Étape signée", etape);
             };
-            case ETAPE_REAFFECTEE -> avec("DEPART".equals(f.precision()) ? "Étape à reprendre" : "Étape réaffectée", etape);
+            case ETAPE_REAFFECTEE -> avec(aReprendre(f.precision()) ? "Étape à reprendre" : "Étape réaffectée", etape);
             case INSTANCE_CLOSE -> avec("ANNULEE".equals(f.precision()) ? "Processus annulé" : "Processus terminé", nomProcessus(f));
         };
+    }
+
+    /** Réaffectation subie (départ, retrait de profil, changement d'unité) : l'étape est à reprendre. */
+    private static boolean aReprendre(String cause) {
+        return "DEPART".equals(cause) || "PROFIL_RETIRE".equals(cause) || "CHANGEMENT_UNITE".equals(cause);
     }
 
     /**
@@ -334,12 +339,14 @@ public final class ReglesNotifications {
                 case ETAPE_ACTIVEE -> vide(f.echeance()) ? null : "échéance " + f.echeance();
                 case ETAPE_SOUMISE -> vide(nomActeur) ? null : "soumise par " + nomActeur;
                 case ETAPE_SIGNEE -> vide(nomActeur) ? null : "signée par " + nomActeur;
-                case ETAPE_REAFFECTEE -> {
-                    if ("DEPART".equals(f.precision())) {
-                        yield vide(nomAncien) ? "après un départ" : "après le départ de " + nomAncien;
-                    }
-                    yield vide(nomActeur) ? null : "réaffectée par " + nomActeur;
-                }
+                case ETAPE_REAFFECTEE -> switch (f.precision() == null ? "" : f.precision()) {
+                    case "DEPART" -> vide(nomAncien) ? "après un départ" : "après le départ de " + nomAncien;
+                    // D-93 §9.3 : réaction aux changements d'organisation.
+                    case "PROFIL_RETIRE" -> vide(nomAncien) ? "après un retrait de profil" : "après le retrait d'un profil de " + nomAncien;
+                    case "CHANGEMENT_UNITE" -> vide(nomAncien) ? "après un changement d'unité" : "après le changement d'unité de " + nomAncien;
+                    case "CHANGEMENT_CHEF" -> "après un changement de chef d'unité";
+                    default -> vide(nomActeur) ? null : "réaffectée par " + nomActeur;
+                };
                 case INSTANCE_CLOSE -> "ANNULEE".equals(f.precision()) && !vide(nomActeur) ? "annulé par " + nomActeur : null;
             };
         if (f.nature() == NatureProcessus.INSTANCE_LANCEE || f.nature() == NatureProcessus.INSTANCE_CLOSE) {

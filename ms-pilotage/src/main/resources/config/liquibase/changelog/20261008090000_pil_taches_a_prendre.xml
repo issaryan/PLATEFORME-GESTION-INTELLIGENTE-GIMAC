@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Tâches à prendre offertes par un autre service (D-93, docs/lot1/effet-reel-referentiels.md §9) : sans responsable,
+     réservées aux porteurs de l'un des profils requis, dans une unité ou dans toute l'organisation ; idempotence par
+     origine.reference seule. Écrit à la main. -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="pil-taches-a-prendre" author="lot1">
+        <addColumn tableName="tache">
+            <column name="offre_profils" type="boolean" defaultValueBoolean="false" remarks="Tâche à prendre offerte par un autre service aux porteurs de profils (D-93).">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <createTable tableName="tache_profil_requis" remarks="Profils dont l'un suffit pour prendre une tâche offerte (D-93).">
+            <column name="tache_id" type="uuid">
+                <constraints nullable="false" foreignKeyName="fk_tache_profil_requis_tache" referencedTableName="tache" referencedColumnNames="id" deleteCascade="true"/>
+            </column>
+            <column name="profil" type="varchar(80)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addPrimaryKey tableName="tache_profil_requis" columnNames="tache_id, profil" constraintName="pk_tache_profil_requis"/>
+        <createIndex tableName="tache_profil_requis" indexName="ix_tache_profil_requis_profil">
+            <column name="profil"/>
+        </createIndex>
+        <!-- Une offre par référence d'origine (idempotence par origine.reference seule). -->
+        <sql>CREATE UNIQUE INDEX ux_tache_offre ON tache (origine_reference) WHERE offre_profils AND origine_reference IS NOT NULL;</sql>
+        <!-- Sans responsable : à prendre (unité visée, ou offre d'un autre service) ; une offre peut être terminée ou
+             annulée sans avoir été prise. -->
+        <sql>
+            ALTER TABLE tache DROP CONSTRAINT ck_tache_responsable;
+            ALTER TABLE tache ADD CONSTRAINT ck_tache_responsable CHECK (
+                (etat = 'A_PRENDRE' AND responsable_id IS NULL AND (unite_cible IS NOT NULL OR offre_profils))
+                OR (etat &lt;&gt; 'A_PRENDRE' AND (responsable_id IS NOT NULL
+                    OR (etat = 'ANNULEE' AND unite_cible IS NOT NULL)
+                    OR (etat IN ('TERMINEE', 'ANNULEE') AND offre_profils)))
+            );
+        </sql>
+    </changeSet>
+</databaseChangeLog>

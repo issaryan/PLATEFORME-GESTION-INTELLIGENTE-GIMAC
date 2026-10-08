@@ -8,7 +8,7 @@ import type { Institution } from '../../../modele/participant'
 import { useConducteurs, useLiaisons, useOuvrirLiaison } from '../../../hooks/liaisons'
 import { useInstitutions } from '../../../hooks/participant'
 import { etatLiaison } from '../../../dictionnaires'
-import { typeProjetOptions } from '../../../ressources/liaison'
+import { useOptionsTypesProjet } from '../../../hooks/referentiels'
 import { useErreurService } from '../liaisons/communs'
 
 // Étape 3 du parcours (D-57, D-58) : ouverture d'une liaison en phase de cadrage depuis la fiche d'une
@@ -29,6 +29,8 @@ export function FormulaireCadrage({ institution, onFermer }: { institution: Inst
   // Banques partenaires possibles : banques du registre déjà admises.
   const banques = useInstitutions({ page: 1, taille: 100, statut: ['ADHERENT', 'EN_HOMOLOGATION', 'ACTIF'] })
   const ouvrir = useOuvrirLiaison()
+  // Types proposés au cadrage (D-91) : servis par MS-HOMOLOGATION.
+  const types = useOptionsTypesProjet(true)
   const erreur = useErreurService()
   const [erreurs, setErreurs] = useState<Record<string, string>>({})
   const descripteur: ResourceDescriptor<Valeurs> = {
@@ -40,7 +42,7 @@ export function FormulaireCadrage({ institution, onFermer }: { institution: Inst
     permissions: { list: 'HOM_LIAISON_LIST', read: 'HOM_LIAISON_READ', create: 'HOM_LIAISON_OPEN' },
     actions: [],
     fields: [
-      { name: 'typeProjet', label: t('liaison.typeProjet'), kind: 'radio', required: true, inForm: 'create', options: typeProjetOptions.map((o) => ({ ...o, label: t(o.label) })) },
+      { name: 'typeProjet', label: t('liaison.typeProjet'), kind: 'radio', required: true, inForm: 'create', options: types.options },
       {
         name: 'chefDeProjetId', label: t('cadrage.conducteur'), kind: 'select', required: true, inForm: 'create', help: t('cadrage.conducteur.aide'),
         // Le formulaire du catalogue place lui-même l'option vide « Choisir » en tête de liste.
@@ -95,7 +97,7 @@ export function OngletLiaisonsInstitution({ institution }: { institution: Instit
       items={(liaisons.data?.contenu ?? []).map((l) => ({
         key: l.id,
         href: `/des/liaisons/${l.id}`,
-        label: `${t(`typeProjet.${l.typeProjet}`)} (${l.id})`,
+        label: `${t(`typeProjet.${l.typeProjet}`, { defaultValue: String(l.typeProjet) })} (${l.id})`,
         meta: t(`phase.${l.phaseCourante}`, { defaultValue: l.phaseCourante }),
         status: etatLiaison[l.etat]?.status ?? 'neutral',
         statusLabel: t(etatLiaison[l.etat]?.label ?? l.etat),

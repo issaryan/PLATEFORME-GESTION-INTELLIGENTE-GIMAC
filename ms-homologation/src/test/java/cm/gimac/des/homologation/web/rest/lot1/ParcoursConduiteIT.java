@@ -58,6 +58,13 @@ class ParcoursConduiteIT extends ParcoursITSupport {
             .andExpect(jsonPath("$[*].rang").value(Matchers.contains("3", "4", "5")))
             .andExpect(jsonPath("$[0].etat").value("A_FAIRE"))
             .andExpect(jsonPath("$[0].actionsPermises").value(Matchers.contains("DEPOSER_PREUVE", "ATTRIBUER")))
+            // D-93 §1 : la fonction n'est plus tenue d'office par le premier titulaire de l'annuaire.
+            .andExpect(jsonPath("$[0].raci.R.nom").value("Non affecté (DDRM)"));
+        mvc
+            .perform(put("/api/v1/liaisons/" + id + "/fonctions/DDRM").with(conducteur()).contentType(MediaType.APPLICATION_JSON).content("{\"personneId\":\"" + DDRM + "\",\"motif\":\"Chargée du dossier\"}"))
+            .andExpect(status().isNoContent());
+        mvc
+            .perform(get("/api/v1/liaisons/" + id + "/parcours/operations").param("etape", "CADRAGE").param("fonction", "DDRM").with(conducteur()))
             .andExpect(jsonPath("$[0].raci.R.nom").value("Chargé DDRM"));
         mvc.perform(get("/api/v1/liaisons").param("statut", "CADREE").param("etape", "CADRAGE,LANCEMENT").with(conducteur())).andExpect(jsonPath("$.contenu[*].id").value(Matchers.hasItem(id)));
         mvc.perform(get("/api/v1/liaisons").param("statut", "EN_TEST").with(conducteur())).andExpect(jsonPath("$.contenu[*].id").value(Matchers.not(Matchers.hasItem(id))));
@@ -128,7 +135,7 @@ class ParcoursConduiteIT extends ParcoursITSupport {
             .andExpect(status().is(428))
             .andExpect(jsonPath("$.code").value("IAM_REAUTH_REQUIRED"));
         mvc
-            .perform(post("/api/v1/parcours/operations/" + o13 + "/validation").header("X-Reauth-Assertion", ReauthStubAdapter.ASSERTION_REFUSEE).with(validateur()))
+            .perform(post("/api/v1/parcours/operations/" + o13 + "/validation").header("X-Reauth-Assertion", ReauthStubAdapter.ASSERTION_REFUSEE).with(validateurPour(o13)))
             .andExpect(status().isForbidden())
             .andExpect(jsonPath("$.code").value("HOM_REAUTH_INVALID"));
         valider(o13);

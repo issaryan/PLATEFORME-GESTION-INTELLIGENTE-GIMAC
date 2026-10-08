@@ -1,15 +1,18 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, DateField, InlineAlert, KeyValueList, Select, TextArea, TextField, Note } from '@gimac/design-system'
+import { Button, DataTable, DateField, InlineAlert, KeyValueList, Select, StatusBadge, TextArea, TextField, Note, type Column } from '@gimac/design-system'
 import { aPermission, usePermissions } from '@gimac/socle'
 import { usePersonnes } from '../../../../hooks/parcours'
-import type { Fonction, OperationParcours, Qualite } from '../../../../modele/parcours'
+import { useFonctionsCatalogue } from '../../../../hooks/referentiels'
+import type { Fonction, LivrableAttendu, OperationParcours, Qualite, SignatureOperation } from '../../../../modele/parcours'
 import { useExecuteurActions } from '../../../../ressources/actions'
 import { PERM } from '../../../../permissions'
 import { ChampFichier } from '../../../commun/ChampFichier'
 import { useActionsOperation } from './actions'
 import { lireCodeControle } from './regles'
+import { preuveAttendue } from './Detail'
 import { libelleOperation } from '../../../../adaptateurs/modelisateur'
+import { useFormatDate } from '../communs'
 
 // Formulaires d'exécution d'une opération, dans le tiroir : dépôt de preuve (valeur de référence, code
 // de contrôle, cérémonie de clés), dépôt de livrable de phase, validation par le validateur, attribution
@@ -40,6 +43,16 @@ function ChampCodeControle({ label, valeur, onChange, erreur, help }: { label: s
 }
 
 
+/** Livrables attendus que la personne peut déposer (D-93 §8.4) ; plusieurs : le dépôt choisit son code. */
+const deposables = (op: OperationParcours) => (op.livrablesAttendus ?? []).filter((l) => l.peutDeposer)
+function ChoixLivrable({ op, valeur, onChange }: { op: OperationParcours; valeur: string; onChange: (v: string) => void }) {
+  const { t } = useTranslation()
+  const l = deposables(op)
+  if (l.length < 2) return null
+  return <Select name="livrable" label={t('parcoursOps.livrable.choisir')} required value={valeur} onChange={onChange}
+    options={l.map((x) => ({ value: x.code, label: `${x.code} · ${x.libelle}${x.obligatoire ? '' : ` (${t('parcoursOps.livrable.facultatif')})`}` }))} />
+}
+
 /** Date saisie (JJ/MM/AAAA, format du champ) envoyée au service en ISO (AAAA-MM-JJ) ; une date déjà ISO passe telle quelle. */
 export const dateIso = (saisie: string) => {
   const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(saisie.trim())
@@ -49,7 +62,9 @@ export function FormulairePreuve({ op }: { op: OperationParcours }) {
   const { t } = useTranslation()
   const executeur = useExecuteurActions()
   const { preuve } = useActionsOperation()
-  const ceremonie = op.rang === 'C1'
+  // Cérémonie de clés : vue de l'opération (D-93), jamais son rang.
+  const ceremonie = op.vue === 'CEREMONIE'
+  const [livrable, setLivrable] = useState(deposables(op)[0]?.code ?? '')
   const [fichier, setFichier] = useState<File | null>(null)
   const [valeur, setValeur] = useState('')
   const [kcv, setKcv] = useState('')
@@ -71,18 +86,20 @@ export function FormulairePreuve({ op }: { op: OperationParcours }) {
       valeurReference: op.valeurReference ? valeur.trim() : undefined,
       codeControle: op.cle && !ceremonie ? kcv : undefined,
       ceremonie: ceremonie ? { tenueLe: dateIso(tenueLe), porteurs: porteurs.map((p) => p.trim()), codesControle: kcvs } : undefined,
+      livrable: deposables(op).length > 1 ? livrable : undefined,
     }
     executeur.lancer(preuve, { ...op, saisie }, `${op.rang} · ${libelleOperation(t, op)}`, SUJET)
   }
   return (
     <div className="gm-col">
-      <KeyValueList items={[{ key: t('parcoursOps.preuveAttendue'), value: t(`parcours.preuveAttendue.${op.rang}`) }]} />
+      <KeyValueList items={[{ key: t('parcoursOps.preuveAttendue'), value: preuveAttendue(op, t) }]} />
+      <ChoixLivrable op={op} valeur={livrable} onChange={setLivrable} />
       {op.cle || ceremonie ? <InlineAlert level="warn" title={t('parcoursOps.secret.titre')}>{t('parcours.alerte.cle')}</InlineAlert> : null}
       {op.secret ? <InlineAlert level="warn" title={t('parcoursOps.secret.titre')}>{t('parcoursOps.secret.texte')}</InlineAlert> : null}
       <ChampFichier label={t('parcoursOps.preuve.fichier')} required fichier={fichier} onFichier={setFichier} error={tente && !fichier ? t('parcoursOps.fichier.requis') : undefined} />
       {op.valeurReference ? (
         <TextField
-          label={t(`parcours.valeur.${op.rang}`)}
+          label={t(`parcours.valeur.${op.rang}`, { defaultValue: t('parcoursOps.valeur.libelle') })}
           value={valeur}
           onChange={setValeur}
           required
@@ -131,10 +148,12 @@ export function FormulaireLivrable({ op }: { op: OperationParcours }) {
   const { livrable } = useActionsOperation()
   const [fichier, setFichier] = useState<File | null>(null)
   const [commentaire, setCommentaire] = useState('')
+  const [livrableVise, setLivrableVise] = useState(deposables(op)[0]?.code ?? '')
   const [tente, setTente] = useState(false)
   return (
     <div className="gm-col">
-      <KeyValueList items={[{ key: t('parcoursOps.preuveAttendue'), value: t(`parcours.preuveAttendue.${op.rang}`) }]} />
+      <KeyValueList items={[{ key: t('parcoursOps.preuveAttendue'), value: preuveAttendue(op, t) }]} />
+      <ChoixLivrable op={op} valeur={livrableVise} onChange={setLivrableVise} />
       {op.grain === 'PHASE' ? <InlineAlert level="info" title={t('parcours.grain.PHASE')}>{t('parcoursOps.livrable.unique')}</InlineAlert> : null}
       <ChampFichier label={t('parcoursOps.livrable.fichier')} required fichier={fichier} onFichier={setFichier} error={tente && !fichier ? t('parcoursOps.fichier.requis') : undefined} />
       <TextArea label={t('parcoursOps.livrable.commentaire')} value={commentaire} onChange={setCommentaire} rows={3} />
@@ -144,7 +163,7 @@ export function FormulaireLivrable({ op }: { op: OperationParcours }) {
           icon="upload"
           onClick={() => {
             setTente(true)
-            if (fichier) executeur.lancer(livrable, { ...op, saisie: { fichier, commentaire } }, `${op.rang} · ${libelleOperation(t, op)}`, SUJET)
+            if (fichier) executeur.lancer(livrable, { ...op, saisie: { fichier, commentaire, livrable: deposables(op).length > 1 ? livrableVise : undefined } }, `${op.rang} · ${libelleOperation(t, op)}`, SUJET)
           }}
         >
           {t(livrable.label)}
@@ -154,32 +173,105 @@ export function FormulaireLivrable({ op }: { op: OperationParcours }) {
   )
 }
 
-export function BlocValidation({ op }: { op: OperationParcours }) {
+export function BlocValidation({ op, renvoyer = false }: { op: OperationParcours; renvoyer?: boolean }) {
   const { t } = useTranslation()
   const executeur = useExecuteurActions()
-  const { validation } = useActionsOperation()
+  const { validation, renvoi } = useActionsOperation()
   return (
     <div className="gm-col">
       <InlineAlert level="info" title={t('parcoursOps.valider.titre')}>{t('parcoursOps.valider.regle')}</InlineAlert>
       <div className="gm-row">
         <Button variant="primary" icon="pen-line" onClick={() => executeur.lancer(validation, op, `${op.rang} · ${libelleOperation(t, op)}`, SUJET)}>{t(validation.label)}</Button>
+        {/* D-93 : renvoi motivé, l'opération revient à faire et la tâche de R est rouverte. */}
+        {renvoyer ? <Button variant="secondary" icon="rotate-ccw" onClick={() => executeur.lancer(renvoi, op, `${op.rang} · ${libelleOperation(t, op)}`, SUJET)}>{t(renvoi.label)}</Button> : null}
       </div>
     </div>
   )
 }
 
+/** Renvois de l'opération par son validateur (D-93) : motif, auteur, date. */
+export function Renvois({ op }: { op: OperationParcours }) {
+  const { t } = useTranslation()
+  const date = useFormatDate()
+  if (!op.renvois?.length) return null
+  return (
+    <InlineAlert level="warn" title={t('parcoursOps.renvoi.titre', { count: op.renvois.length })}>
+      <ul className="gm-col" style={{ gap: 'var(--gm-space-1)', margin: 0, paddingLeft: 'var(--gm-space-4)' }}>
+        {op.renvois.map((r, i) => <li key={i}>{t('parcoursOps.renvoi.ligne', { motif: r.motif, par: r.parNom, le: date(r.le) })}</li>)}
+      </ul>
+    </InlineAlert>
+  )
+}
+
+/** Livrables attendus de l'opération (D-93 §8.4) : déposant, caractère obligatoire, dépôt. */
+export function LivrablesAttendus({ op }: { op: OperationParcours }) {
+  const { t } = useTranslation()
+  const date = useFormatDate()
+  const l = op.livrablesAttendus ?? []
+  if (l.length < 2 && !l.some((x) => !x.obligatoire)) return null
+  const colonnes: Column<LivrableAttendu>[] = [
+    { key: 'code', header: t('parcoursOps.livrable.code'), type: 'mono', width: 80 },
+    { key: 'libelle', header: t('parcoursOps.livrable.libelle') },
+    { key: 'deposant', header: t('parcoursOps.livrable.deposant'), render: (x) => x.libelleDeposant ?? x.deposant ?? '' },
+    { key: 'depot', header: t('parcoursOps.livrable.depot'), render: (x) => (x.depot ? `${x.depot.nom} · ${date(x.depot.deposeLe)}` : <StatusBadge status={x.obligatoire ? 'warn' : 'neutral'} label={t(x.obligatoire ? 'parcoursOps.livrable.manquant' : 'parcoursOps.livrable.facultatif')} />) },
+  ]
+  return (
+    <section className="gm-col" aria-labelledby={`liv-${op.id}`} style={{ gap: 'var(--gm-space-2)' }}>
+      <h3 id={`liv-${op.id}`} className="gm-type-h3" style={{ margin: 0 }}>{t('parcoursOps.livrable.attendus')}</h3>
+      <DataTable columns={colonnes} rows={l} rowKey={(x) => x.code} density="compact" pagination={false} state="ok" />
+    </section>
+  )
+}
+
+/** Signatures attendues de l'opération (D-91) et bouton « Signer » pour la signature suivante que la personne peut donner. */
+export function Signatures({ op }: { op: OperationParcours }) {
+  const { t } = useTranslation()
+  const date = useFormatDate()
+  const executeur = useExecuteurActions()
+  const { signature } = useActionsOperation()
+  const f = useFonctionsCatalogue()
+  const l = [...(op.signatures ?? [])].sort((a, b) => a.ordre - b.ordre)
+  if (!l.length) return null
+  const peutSigner = op.actionsPermises.includes('SIGNER')
+  const colonnes: Column<SignatureOperation>[] = [
+    { key: 'ordre', header: t('parcoursOps.signature.ordre'), type: 'number', width: 72 },
+    { key: 'libelle', header: t('parcoursOps.signature.libelle'), render: (x) => <span className="gm-col" style={{ gap: 0 }}><span>{x.libelle}</span><span className="gm-mono gm-type-small">{x.code}</span></span> },
+    { key: 'signataire', header: t('parcoursOps.signature.signataire'), render: (x) => x.libelleSignataire ?? f.libelle(x.signataire) },
+    {
+      key: 'etat', header: t('parcoursOps.col.etat'), render: (x) => (x.etat === 'SIGNEE'
+        ? <span className="gm-col" style={{ gap: 0, alignItems: 'flex-start' }}><StatusBadge status="ok" label={t('parcoursOps.signature.signee')} /><span className="gm-field-help">{t('parcoursOps.signature.par', { nom: x.signeParNom ?? '', le: x.signeLe ? date(x.signeLe) : '' })}</span></span>
+        : <span className="gm-col" style={{ gap: 0, alignItems: 'flex-start' }}><StatusBadge status={x.suivante ? 'warn' : 'neutral'} label={t(x.suivante ? 'parcoursOps.signature.attendue' : 'parcoursOps.signature.aVenir')} />{x.attendu ? <span className="gm-field-help">{x.attendu.nom}</span> : null}</span>),
+    },
+    {
+      key: 'action', header: '', type: 'actions', render: (x) => (peutSigner && x.suivante && x.etat === 'ATTENDUE'
+        ? <Button size="sm" variant="primary" icon="pen-line" aria-label={t('parcoursOps.signature.signerQui', { libelle: x.libelle })}
+            onClick={() => executeur.lancer(signature, { ...op, saisie: x }, `${op.rang} · ${x.libelle}`, SUJET)}>{t('parcoursOps.action.signer')}</Button>
+        : null),
+    },
+  ]
+  return (
+    <section className="gm-col" aria-labelledby={`sig-${op.id}`} style={{ gap: 'var(--gm-space-2)' }}>
+      <h3 id={`sig-${op.id}`} className="gm-type-h3" style={{ margin: 0 }}>{t('parcoursOps.signature.titre')}</h3>
+      {op.etat === 'EN_SIGNATURE' ? <InlineAlert level="info">{t('parcoursOps.signature.regle')}</InlineAlert> : null}
+      <DataTable columns={colonnes} rows={l} rowKey={(x) => x.code} density="compact" pagination={false} state="ok" />
+    </section>
+  )
+}
+
 const QUALITES: Qualite[] = ['R', 'C', 'V', 'I']
-/** Fonctions qui interviennent sur les opérations d'exécution (liste fermée de moins de dix choix, DS §7.2). */
-const FONCTIONS_INTERNES: Fonction[] = ['CONDUCTEUR', 'SNA', 'PRODUCTION_MONETIQUE', 'POLE_RESEAU', 'POLE_SYSTEME', 'RSSI', 'DDRM', 'CHEF_DES', 'EXPLOITATION']
 
 export function FormulaireAttribution({ op }: { op: OperationParcours }) {
   const { t } = useTranslation()
   const executeur = useExecuteurActions()
   const { attribution } = useActionsOperation()
+  // Fonctions internes du catalogue (D-91) : plus de liste figée.
+  const catalogue = useFonctionsCatalogue()
+  const internes = catalogue.internes.map((f) => f.code).filter((c) => c !== 'CHEFS_DEPARTEMENT')
   const [qualite, setQualite] = useState<Qualite>('R')
-  const [fonction, setFonction] = useState<Fonction>(op.raci.R?.fonction && FONCTIONS_INTERNES.includes(op.raci.R.fonction) ? op.raci.R.fonction : 'SNA')
+  const [choixFonction, setFonction] = useState<Fonction>('')
+  const fonction = choixFonction || (op.raci.R?.fonction && internes.includes(op.raci.R.fonction) ? op.raci.R.fonction : internes[0] ?? '')
   const [personneId, setPersonneId] = useState('')
-  const personnes = usePersonnes(fonction)
+  const personnes = usePersonnes(fonction, Boolean(fonction))
   const choix = (personnes.data ?? []).find((p) => p.id === personneId)
   const [tente, setTente] = useState(false)
   return (
@@ -197,7 +289,7 @@ export function FormulaireAttribution({ op }: { op: OperationParcours }) {
               setFonction(v as Fonction)
               setPersonneId('')
             }}
-            options={FONCTIONS_INTERNES.map((f) => ({ value: f, label: t(`parcours.fonction.${f}`) }))}
+            options={internes.map((f) => ({ value: f, label: catalogue.libelle(f) }))}
           />
         </div>
       </div>
@@ -235,6 +327,8 @@ export function usePermis(op: OperationParcours) {
     // Livrable d'étape (compte rendu de lancement, d'atelier…) : conduite des étapes ou dépôt de preuve.
     livrable: a('DEPOSER_LIVRABLE', PERM.etapeConduire) || a('DEPOSER_LIVRABLE', PERM.preuveDeposer),
     valider: a('VALIDER', PERM.operationValider),
+    // D-93 : renvoi motivé par le validateur admis.
+    renvoyer: a('RENVOYER', PERM.operationValider),
     attribuer: a('ATTRIBUER', PERM.operationAttribuer),
     constater: a('CONSTATER_COUVERTURE', PERM.dossierVerifier),
   }

@@ -2,15 +2,15 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 import {
-  Button, Checkbox, CrudDialog, DataTable, Dialog, Icon, InlineAlert, KeyValueList, PermissionPicker, Select, StatusBadge, Tabs, TextArea, TextField, type Column, type PermissionGroup,
+  Button, Checkbox, CrudDialog, DataTable, Dialog, Icon, InlineAlert, KeyValueList, PermissionPicker, Select, StatusBadge, Tabs, TextArea, TextField, type Column, type IconName, type PermissionGroup,
 } from '@gimac/design-system'
 import { satisfait, useLibelleProfil } from '@gimac/socle'
 import {
-  ACTIONS_POUVOIR, CATALOGUE_DROITS, FONCTIONNALITES, GROUPES, basculerDroit, basculerFonctionnalite, completerActions, etatFonctionnalite, permissionPrivilegiee,
-  type FonctionnaliteDroits, type ModuleDroits, type Portee,
+  ACTIONS_POUVOIR, ECRANS_DES, basculerDroit, basculerFonctionnalite, catalogueDroits, completerActions, etatFonctionnalite, libelleServi, permissionPrivilegiee, predicatDe,
+  trierFonctionnalites, useTraduire, type FonctionnaliteDroits, type ModuleDroits, type Portee,
 } from '@gimac/lot1'
 import type { Compte } from '@gimac/compte'
-import { useComptes, useLibellesProfils, useMatricePouvoirs, usePermissionsRealm, useUnitesOrganisation } from '../hooks'
+import { useComptes, useFonctionnalites, useLibellesProfils, useMatricePouvoirs, usePermissionsRealm, useUnitesOrganisation } from '../hooks'
 import { DOMAINES_PERMISSIONS, LIMITES_PROFIL, type Profil } from '../modele/configuration'
 import { useChemins } from '../services/useServicesConsole'
 import { libelleUnite } from './rattachement'
@@ -19,7 +19,14 @@ import { libelleUnite } from './rattachement'
 // fiche d'un profil en grande modale (onglets Fonctionnalités, Droits, Pouvoirs, Organisation), arbre Module >
 // Fonctionnalité > Droit à cases, aperçu de la barre latérale du profil, permissions brutes en vue avancée, comparaison
 // de deux profils, modification du libellé et de la description. L'enregistrement de la composition passe par la
-// route D-62 (motif et clé de sécurité) ; le catalogue des droits est local au frontend (registre D-79).
+// route D-62 (motif et clé de sécurité) ; le catalogue des droits dérive du catalogue des fonctionnalités servi par
+// MS-IAM (D-94), comme la barre latérale.
+
+/** Catalogue Module > Fonctionnalité > Droit dérivé du catalogue servi (D-94). */
+export function useCatalogueDroits(): ModuleDroits[] {
+  const q = useFonctionnalites()
+  return useMemo(() => catalogueDroits(q.data ?? []), [q.data])
+}
 
 /** Permissions du domaine, groupées par préfixe (HOM, CER, PAR, PIL, COL, NOT, IAM, PLATFORM). */
 export function groupesPermissions(permissions: string[], libelle: (d: string) => string): PermissionGroup[] {
@@ -53,7 +60,8 @@ function ItemFonctionnalite({ f, permissions, lecture, onChange }: { f: Fonction
   const [ouvert, setOuvert] = useState(false)
   const id = useId().replace(/:/g, '')
   const etat = etatFonctionnalite(f, permissions)
-  const nom = t(f.libelleKey)
+  const tr = useTraduire()
+  const nom = libelleServi(tr, f.libelleKey)
   const n = f.droits.filter((d) => permissions.includes(d.permission)).length
   return (
     <li className="gm-fct-item">
@@ -72,10 +80,10 @@ function ItemFonctionnalite({ f, permissions, lecture, onChange }: { f: Fonction
             <li key={`${d.nature}-${d.permission}`} className="gm-fct-droit">
               <label className="gm-check">
                 <input type="checkbox" checked={permissions.includes(d.permission)} disabled={lecture}
-                  aria-label={`${t(`droits.nature.${d.nature}`)} : ${t(`droits.permission.${d.permission}`)} (${d.permission})`}
+                  aria-label={`${t(`droits.nature.${d.nature}`)} : ${t(`droits.permission.${d.permission}`, { defaultValue: d.libelle ?? d.permission })} (${d.permission})`}
                   onChange={(e) => onChange(basculerDroit(permissions, f, d, e.target.checked))} />
                 <span>
-                  <span><span className="gm-fct-nature">{t(`droits.nature.${d.nature}`)}</span> · {t(`droits.permission.${d.permission}`)}</span>
+                  <span><span className="gm-fct-nature">{t(`droits.nature.${d.nature}`)}</span> · {t(`droits.permission.${d.permission}`, { defaultValue: d.libelle ?? d.permission })}</span>
                   <span className="gm-fct-code">{d.permission}{permissionPrivilegiee(d.permission) ? ` · ${t('console.profils.privilegie')}` : ''}</span>
                 </span>
               </label>
@@ -88,15 +96,17 @@ function ItemFonctionnalite({ f, permissions, lecture, onChange }: { f: Fonction
 }
 
 /** Arbre Module > Fonctionnalité > Droit à cases ; cocher un droit d'écriture coche la consultation. */
-export function ArbreFonctionnalites({ permissions, onChange, lecture = false, catalogue = CATALOGUE_DROITS }: {
+export function ArbreFonctionnalites({ permissions, onChange, lecture = false, catalogue: impose }: {
   permissions: string[]; onChange: (p: string[]) => void; lecture?: boolean; catalogue?: ModuleDroits[]
 }) {
+  const servi = useCatalogueDroits()
+  const catalogue = impose ?? servi
   const { t } = useTranslation()
   return (
     <div className="gm-fct-modules" role="group" aria-label={t('console.profils.fct.arbre')}>
       {catalogue.map((m) => (
         <section key={m.cle} className="gm-fct-module" aria-labelledby={`gm-fct-module-${m.cle}`}>
-          <h3 id={`gm-fct-module-${m.cle}`}>{t(m.libelleKey)}</h3>
+          <h3 id={`gm-fct-module-${m.cle}`}>{t(m.libelleKey, { defaultValue: m.cle })}</h3>
           <ul className="gm-fct-liste">
             {m.fonctionnalites.map((f) => <ItemFonctionnalite key={f.cle} f={f} permissions={permissions} lecture={lecture} onChange={onChange} />)}
           </ul>
@@ -106,32 +116,36 @@ export function ArbreFonctionnalites({ permissions, onChange, lecture = false, c
   )
 }
 
-/** Barre latérale de l'application interne qu'ouvrirait la composition (registre D-79), comparée à la composition de référence. */
+/** Barre latérale de l'application interne qu'ouvrirait la composition (catalogue servi, D-94), comparée à la composition de référence. */
 export function ApercuBarreLaterale({ permissions, reference }: { permissions: string[]; reference?: string[] }) {
   const { t } = useTranslation()
-  const ouverte = (p: string[] | undefined, f: (typeof FONCTIONNALITES)[number]) => satisfait(p, f.predicat)
-  const groupes = GROUPES.map((g) => ({
-    g,
-    entrees: FONCTIONNALITES.filter((f) => f.groupe === g.cle && (ouverte(permissions, f) || (reference && ouverte(reference, f)))),
+  const tr = useTraduire()
+  const q = useFonctionnalites()
+  const entrees = trierFonctionnalites((q.data ?? []).filter((f) => f.application === 'des' && f.visible && f.groupe && ECRANS_DES[f.cle]))
+  const ouverte = (p: string[] | undefined, f: (typeof entrees)[number]) => satisfait(p, predicatDe(f.permissions))
+  const codes: string[] = []
+  entrees.forEach((f) => { if (!codes.includes(f.groupe!)) codes.push(f.groupe!) })
+  const groupes = codes.map((g) => ({
+    g, entrees: entrees.filter((f) => f.groupe === g && (ouverte(permissions, f) || (reference && ouverte(reference, f)))),
   })).filter((x) => x.entrees.length)
-  const visibles = FONCTIONNALITES.filter((f) => ouverte(permissions, f)).length
+  const visibles = entrees.filter((f) => ouverte(permissions, f)).length
   const id = `gm-nav-apercu-${useId().replace(/:/g, '')}`
   return (
     <aside className="gm-nav-apercu" aria-labelledby={id}>
       <h3 id={id}>{t('console.profils.apercu.titre')}</h3>
       <p className="gm-field-help" style={{ margin: 0 }} role="status">{t('console.profils.apercu.compte', { count: visibles })}</p>
-      {groupes.map(({ g, entrees }) => (
-        <div key={g.cle}>
-          {g.libelleKey ? <p className="gm-nav-apercu-groupe">{t(g.libelleKey)}</p> : null}
+      {groupes.map(({ g, entrees: l }) => (
+        <div key={g}>
+          {g !== 'accueil' ? <p className="gm-nav-apercu-groupe">{tr.existe(`nav.groupe.${g}`) ? t(`nav.groupe.${g}`) : g}</p> : null}
           <ul>
-            {entrees.map((f) => {
+            {l.map((f) => {
               const maintenant = ouverte(permissions, f)
               const avant = reference ? ouverte(reference, f) : maintenant
               const classe = maintenant && !avant ? 'gm-nav-apercu-nouveau' : !maintenant && avant ? 'gm-nav-apercu-retire' : undefined
               return (
                 <li key={f.cle} className={classe}>
-                  <Icon name={f.icone} size={16} />
-                  <span>{t(f.libelleKey)}</span>
+                  <Icon name={f.icone as IconName} size={16} />
+                  <span>{libelleServi(tr, f.libelle)}</span>
                   {classe ? <span className="gm-sr-only">{t(maintenant ? 'console.profils.apercu.ajoutee' : 'console.profils.apercu.retiree')}</span> : null}
                 </li>
               )
@@ -145,7 +159,7 @@ export function ApercuBarreLaterale({ permissions, reference }: { permissions: s
 
 // ------------------------------------------------------------------ Fiche d'un profil
 
-const STATUT_PORTEE: Record<Portee, 'neutral' | 'info' | 'warn' | 'ok'> = { AUCUNE: 'neutral', DIRECTS: 'info', EQUIPE: 'warn', UNITES: 'ok' }
+const STATUT_PORTEE: Record<Portee, 'neutral' | 'info' | 'warn' | 'ok'> = { AUCUNE: 'neutral', DIRECTS: 'info', EQUIPE: 'warn', UNITES: 'ok', TOUTES: 'ok' }
 export function BadgePortee({ portee }: { portee: Portee }) {
   const { t } = useTranslation()
   return <StatusBadge status={STATUT_PORTEE[portee]} icon={null} label={t(`console.matrice.portee.${portee}`)} />
@@ -218,7 +232,7 @@ export function FicheProfil({ profil, modifiable, ongletInitial = 'fonctionnalit
   const disponibles = [...new Set([...(realm.data ?? []), ...initiale])].filter((p) => !p.startsWith('INTERNAL_'))
   return (
     <Dialog open id="gm-dlg-composition" className="gm-dialog-xl" title={t('console.profils.fiche', { profil: libelleProfil(profil.code, profil.libelle) })}
-      subtitle={<span className="gm-row" style={{ gap: 'var(--gm-space-2)', flexWrap: 'wrap' }}><span className="gm-mono">{profil.code}</span>{profil.description ? <span>{profil.description}</span> : null}</span>}
+      subtitle={<span className="gm-row" style={{ gap: 'var(--gm-space-2)', flexWrap: 'wrap' }}><span className="gm-mono">{profil.code}</span>{profil.externe ? <StatusBadge status="info" icon="landmark" label={t('console.profils.externe')} /> : null}{profil.description ? <span>{profil.description}</span> : null}</span>}
       onClose={onFermer}
       footer={(
         <>
@@ -260,17 +274,17 @@ export function FicheProfil({ profil, modifiable, ongletInitial = 'fonctionnalit
 // ------------------------------------------------------------------ Présentation (libellé, description)
 
 /** « Modifier le profil » (D-86 §2) : libellé 1 à 80, description 0 à 500 ; motif et clé de sécurité ensuite. */
-export function DialoguePresentation({ profil, onFermer, onContinuer }: { profil: Profil; onFermer: () => void; onContinuer: (p: { libelle: string; description: string }) => void }) {
+export function DialoguePresentation({ profil, onFermer, onContinuer }: { profil: Profil; onFermer: () => void; onContinuer: (p: { libelle: string; description: string; externe?: boolean }) => void }) {
   const { t } = useTranslation()
   const libelleProfil = useLibelleProfil(useLibellesProfils())
-  const initiale = { libelle: libelleProfil(profil.code, profil.libelle), description: profil.description ?? '' }
+  const initiale = { libelle: libelleProfil(profil.code, profil.libelle), description: profil.description ?? '', externe: !!profil.externe }
   const [v, setV] = useState(initiale)
   const [tente, setTente] = useState(false)
   const erreurs = {
     libelle: !v.libelle.trim() || v.libelle.trim().length > LIMITES_PROFIL.libelleMax ? t('console.profils.erreur.libelle', { max: LIMITES_PROFIL.libelleMax }) : undefined,
     description: v.description.trim().length > LIMITES_PROFIL.descriptionMax ? t('console.profils.erreur.description', { max: LIMITES_PROFIL.descriptionMax }) : undefined,
   }
-  const dirty = v.libelle !== initiale.libelle || v.description !== initiale.description
+  const dirty = v.libelle !== initiale.libelle || v.description !== initiale.description || v.externe !== initiale.externe
   return (
     <CrudDialog context="edit" size="md" id="gm-dlg-presentation-profil" title={t('console.profils.presentation.titre')} subject={<span className="gm-mono">{profil.code}</span>}
       description={t('console.profils.presentation.texte')} onClose={onFermer} reauth dirty={dirty} submitDisabled={!dirty} submitDisabledReason={t('console.matrice.inchangee')}
@@ -278,12 +292,16 @@ export function DialoguePresentation({ profil, onFermer, onContinuer }: { profil
       onSubmit={() => {
         setTente(true)
         if (erreurs.libelle || erreurs.description) return
-        onContinuer({ libelle: v.libelle.trim(), description: v.description.trim() })
+        onContinuer({ libelle: v.libelle.trim(), description: v.description.trim(), ...(v.externe !== initiale.externe ? { externe: v.externe } : {}) })
       }}>
       <TextField name="libelle" label={t('console.profils.libelle')} help={t('console.profils.libelleAide')} required maxLength={LIMITES_PROFIL.libelleMax} value={v.libelle}
         onChange={(x) => setV((o) => ({ ...o, libelle: x }))} error={tente ? erreurs.libelle : undefined} />
       <TextArea name="description" label={t('console.profils.description')} help={t('console.profils.descriptionAide')} rows={4} maxLength={LIMITES_PROFIL.descriptionMax} value={v.description}
         onChange={(x) => setV((o) => ({ ...o, description: x }))} error={tente ? erreurs.description : undefined} />
+      {/* Profil externe (D-94 §6.1) : compte d'institution, portail ; ne change pas tant que le profil a des titulaires. */}
+      <Checkbox name="externe" label={t('console.profils.externeCase')} checked={v.externe} onChange={(x) => setV((o) => ({ ...o, externe: x }))} />
+      <p className="gm-field-help" style={{ margin: 0 }}>{t('console.profils.externeAide')}</p>
+      {v.externe !== initiale.externe && profil.titulaires > 0 ? <InlineAlert level="warn" title={t('console.profils.externeTitulaires', { count: profil.titulaires })} /> : null}
       {profil.privilegie ? <InlineAlert level="warn" title={t('console.profils.presentation.privilegie')} /> : null}
     </CrudDialog>
   )
@@ -295,6 +313,8 @@ export function DialoguePresentation({ profil, onFermer, onContinuer }: { profil
 export function DialogueComparaison({ profils, onFermer }: { profils: Profil[]; onFermer: () => void }) {
   const { t } = useTranslation()
   const libelleProfil = useLibelleProfil(useLibellesProfils())
+  const catalogueDroits = useCatalogueDroits()
+  const tr = useTraduire()
   const [a, setA] = useState(profils[0]?.code ?? '')
   const [b, setB] = useState(profils[1]?.code ?? profils[0]?.code ?? '')
   const [differences, setDifferences] = useState(false)
@@ -320,16 +340,16 @@ export function DialogueComparaison({ profils, onFermer }: { profils: Profil[]; 
         <table className="gm-cmp-table">
           <caption className="gm-sr-only">{t('console.profils.cmp.caption', { a: nomA, b: nomB })}</caption>
           <thead><tr><th scope="col">{t('console.profils.cmp.droit')}</th><th scope="col">{nomA}</th><th scope="col">{nomB}</th></tr></thead>
-          {CATALOGUE_DROITS.map((m) => {
+          {catalogueDroits.map((m) => {
             const lignes = m.fonctionnalites.flatMap((f) => f.droits.map((d) => ({ f, d, ia: pa.includes(d.permission), ib: pb.includes(d.permission) })))
               .filter((x) => !differences || x.ia !== x.ib)
             if (!lignes.length) return null
             return (
               <tbody key={m.cle}>
-                <tr><th scope="rowgroup" colSpan={3}>{t(m.libelleKey)}</th></tr>
+                <tr><th scope="rowgroup" colSpan={3}>{t(m.libelleKey, { defaultValue: m.cle })}</th></tr>
                 {lignes.map(({ f, d, ia, ib }) => (
                   <tr key={`${f.cle}-${d.permission}`} className={ia !== ib ? 'gm-cmp-diff' : undefined}>
-                    <td>{t(f.libelleKey)} · {t(`droits.nature.${d.nature}`)} · {t(`droits.permission.${d.permission}`)} <span className="gm-fct-code">{d.permission}</span></td>
+                    <td>{libelleServi(tr, f.libelleKey)} · {t(`droits.nature.${d.nature}`)} · {t(`droits.permission.${d.permission}`, { defaultValue: d.libelle ?? d.permission })} <span className="gm-fct-code">{d.permission}</span></td>
                     {marque(ia, nomA)}
                     {marque(ib, nomB)}
                   </tr>

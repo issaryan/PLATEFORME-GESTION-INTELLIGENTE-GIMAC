@@ -64,7 +64,7 @@ class ReferentialLifecycleServiceTest {
         ReferentialVersion precedente = ReferentialVersionSamples.publiee(TypeProjet.DELEGATAIRE, 2);
         ReferentialVersion brouillon = ReferentialVersionSamples.brouillonComplet(TypeProjet.DELEGATAIRE);
         when(versions.findByIdForUpdate(brouillon.getId())).thenReturn(Optional.of(brouillon));
-        when(graphValidator.validate(anyList())).thenReturn(List.of("DL-AMONT-01", "DL-BR-01", "DL-AVAL-01"));
+        when(graphValidator.validate(anyList(), org.mockito.ArgumentMatchers.anyBoolean())).thenReturn(List.of("DL-AMONT-01", "DL-BR-01", "DL-AVAL-01"));
         when(versions.findFirstByTypeProjetAndEtat(TypeProjet.DELEGATAIRE, EtatVersionReferentiel.PUBLIEE)).thenReturn(Optional.of(precedente));
         when(versions.maxNumero(TypeProjet.DELEGATAIRE)).thenReturn(Optional.of(2));
 

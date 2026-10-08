@@ -71,6 +71,11 @@ public record Compte(
         return new Compte(id, identifiant, prenom, nom, email, emailVerifie, actif, creeLe, telephone, fonction, langue, institutionId, profilComplet, profils, actionsRequises, secondFacteur, nouvelleUnite, nouveauResponsable);
     }
 
+    /** Même compte avec d'autres profils (compte allégé complété par la lecture des profils par compte). */
+    public Compte avecProfils(Set<String> nouveauxProfils) {
+        return new Compte(id, identifiant, prenom, nom, email, emailVerifie, actif, creeLe, telephone, fonction, langue, institutionId, profilComplet, nouveauxProfils, actionsRequises, secondFacteur, unite, responsableId);
+    }
+
     public String nomAffiche() {
         String n = ((prenom == null ? "" : prenom) + " " + (nom == null ? "" : nom)).trim();
         return n.isEmpty() ? identifiant : n;

@@ -33,18 +33,15 @@ class IntervenantsTest {
     }
 
     @Test
-    @DisplayName("Intervenants d'une fonction par ses profils, actifs seulement ; titulaire ou fonction à affecter")
+    @DisplayName("Intervenants d'une fonction par ses profils, actifs seulement (D-93 : plus de premier titulaire désigné d'office)")
     void deFonction() {
         Intervenants i = new Intervenants(annuaire);
         when(annuaire.parProfil("ROLE_SNA")).thenReturn(List.of(new CollaboratorView(ID, "Ingénieur SNA", Set.of("ROLE_SNA"), null, true)));
         when(annuaire.parProfil("ROLE_INGENIEUR_HOMOLOGATION")).thenReturn(List.of(new CollaboratorView(UUID.randomUUID(), "Inactif", Set.of(), null, false)));
         assertThat(i.deFonction(Fonction.SNA)).containsExactly(new Personne(ID.toString(), "Ingénieur SNA", Fonction.SNA));
-        assertThat(i.titulaire(Fonction.SNA).nom()).isEqualTo("Ingénieur SNA");
         assertThat(i.deFonction(Fonction.PERSONNALISATEUR)).isEmpty();
         when(annuaire.parProfil("ROLE_RSSI")).thenReturn(List.of());
-        assertThat(i.titulaire(Fonction.RSSI)).isEqualTo(Personne.aAffecter(Fonction.RSSI));
-        when(annuaire.parProfil("ROLE_DG")).thenThrow(HomologationException.unavailable("HOM_IAM_UNAVAILABLE", "x"));
-        assertThat(i.titulaire(Fonction.DG)).isEqualTo(Personne.aAffecter(Fonction.DG));
+        assertThat(i.deFonction(Fonction.RSSI)).isEmpty();
     }
 
     @Test

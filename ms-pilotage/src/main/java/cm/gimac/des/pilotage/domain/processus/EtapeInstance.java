@@ -219,6 +219,11 @@ public class EtapeInstance extends EntitePilotage {
         return codes;
     }
 
+    /** Signataire attendu d'une signature encore attendue remplacé (prise de sa tâche, changement d'organisation). */
+    public void reaffecterSignature(String codeSignature, Affectation a) {
+        remplacerSignature(codeSignature, s -> s.etat() == EtatSignature.ATTENDUE ? s.reaffectee(a) : s);
+    }
+
     private void avancerApresSignatures(Instant le) {
         if (signatures.stream().anyMatch(x -> x.etat() == EtatSignature.ATTENDUE)) {
             this.etat = EtatEtape.A_SIGNER;

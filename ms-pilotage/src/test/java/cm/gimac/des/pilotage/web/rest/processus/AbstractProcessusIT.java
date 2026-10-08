@@ -58,8 +58,14 @@ abstract class AbstractProcessusIT extends AbstractPilotageIT {
         return responsable(id);
     }
 
+    /** Administration des référentiels métier, tous domaines (D-92) : toutes les unités. */
     static RequestPostProcessor administration(String id) {
-        return utilisateur(id, "PIL_ACTIVITY_OWN", "IAM_PROFILE_EDIT");
+        return utilisateur(id, "PIL_ACTIVITY_OWN", "REF_METIER_ADMIN");
+    }
+
+    /** Administration des comptes et des profils seule (RSSI) : aucune unité de plus (D-94). */
+    static RequestPostProcessor administrationDesComptes(String id) {
+        return utilisateur(id, "PIL_ACTIVITY_OWN", "IAM_PROFILE_EDIT", "IAM_ACCOUNT_READ");
     }
 
     MockHttpServletRequestBuilder json(MockHttpServletRequestBuilder r, Object corps) throws Exception {

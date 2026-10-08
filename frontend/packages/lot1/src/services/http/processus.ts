@@ -15,6 +15,8 @@ const etape = (id: string, code: string) => `${instance(id)}/etapes/${encodeURIC
 
 export const processusHttp: ServiceProcessus = {
   lister: (q) => http.get(PROCESSUS, { query: { unite: q.unite || undefined, etat: q.etat || undefined, q: q.q?.trim() || undefined } }),
+  // D-92 : tous domaines (REF_METIER_ADMIN, portée TOUTES de la matrice) ou mes unités.
+  portee: () => http.get(`${PROCESSUS}/portee`),
   lire: (id) => http.get(definition(id)),
   creer: (s) => http.post(PROCESSUS, { body: s }),
   modifier: (id, s) => http.put(definition(id), { body: s }),
@@ -34,6 +36,9 @@ export const processusHttp: ServiceProcessus = {
   terminer: (id, code) => http.post(`${etape(id, code)}/fin`),
   valider: (id, code, decision, motif) => http.post(`${etape(id, code)}/validation`, { body: { decision, ...(motif?.trim() ? { motif: motif.trim() } : {}) } }),
   reaffecter: (id, code, personneId, motif) => http.post(`${etape(id, code)}/reaffectation`, { body: { personneId, motif } }),
+  // Désignation hors de l'unité : porteurs du profil dans l'unité, puis ailleurs dans le GIMAC.
+  candidats: (q) => http.get(`${PROCESSUS}/candidats`, { query: { unite: q.unite, profil: q.profil || undefined } }),
+  candidatsEtape: (id, code) => http.get(`${etape(id, code)}/candidats`),
   suspendre: (id, motif) => http.post(`${instance(id)}/suspension`, { body: { motif } }),
   reprendre: (id, motif) => http.post(`${instance(id)}/reprise`, { body: motif?.trim() ? { motif: motif.trim() } : {} }),
   annuler: (id, motif) => http.post(`${instance(id)}/annulation`, { body: { motif } }),

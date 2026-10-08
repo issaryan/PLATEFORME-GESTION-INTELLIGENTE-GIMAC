@@ -1,42 +1,46 @@
 import type { IconName } from '@gimac/design-system'
-import { adresseBaseApplication, satisfait, type GroupeNavigation, type Predicat } from '@gimac/socle'
-import { PERM } from './permissions'
+import { adresseBaseApplication, satisfait, type EntreeNavigation, type GroupeNavigation, type Predicat } from '@gimac/socle'
 
-// Registre unique des fonctionnalités de l'application interne (D-79). Chaque fonctionnalité porte sa clé,
-// son libellé, son icône, son chemin, son groupe et le prédicat de permissions du jeton qui l'ouvre ; certaines
-// apportent un widget au tableau de bord. La barre latérale et le tableau de bord en sont dérivés : un
-// profil voit exactement ce que ses permissions ouvrent, jamais une liste de noms de rôle. La passerelle (OPA)
-// et chaque service refont le contrôle à chaque appel.
+// Écrans pilotés par la configuration (D-94, docs/lot1/ecrans-par-configuration.md) : le catalogue des fonctionnalités
+// est servi par MS-IAM (GET /bff/{des,console}/iam/configuration/fonctionnalites) et modifié par le RSSI ou le super
+// administrateur (PUT …/{cle}, IAM_PROFILE_EDIT). Libellé, groupe, ordre, icône, visibilité, prédicat de permissions
+// (tous, unDe), widgets du tableau de bord et droits (D-90) viennent de ce catalogue ; le code ne garde que la
+// correspondance clé → écran (chemin et composant). La barre latérale, les gardes de route, la navigation de la
+// console, le tableau de bord, l'éditeur de profil par fonctionnalité et l'aperçu de la barre latérale en dérivent.
+// La passerelle (OPA) et chaque service refont le contrôle à chaque appel.
 
-/** Widgets du tableau de bord, dans leur ordre d'affichage (« Ma journée » d'abord). */
+export type Application = 'des' | 'console' | 'portail'
+export const NATURES_DROIT = ['CONSULTER', 'CREER', 'MODIFIER', 'VALIDER', 'SIGNER', 'PUBLIER', 'EXPORTER', 'ADMINISTRER'] as const
+export type NatureDroit = (typeof NATURES_DROIT)[number]
+/** Prédicat servi : toutes les permissions de `tous` et au moins une de `unDe` (vides : toujours satisfaits). */
+export type PredicatServi = { tous: string[]; unDe: string[] }
+export type DroitServi = { cle: string; nature: NatureDroit; permission: string; libelle: string }
+export type WidgetServi = { cle: string; permissions: PredicatServi }
+/** Fonctionnalité telle que la sert MS-IAM (§6.2) ; `groupe` nul : hors barre latérale (droits seulement). */
+export type DefinitionFonctionnalite = {
+  cle: string
+  application: Application
+  module: string
+  libelle: string
+  groupe: string | null
+  ordre: number
+  icone: string
+  visible: boolean
+  permissions: PredicatServi
+  widgets: WidgetServi[]
+  droits: DroitServi[]
+  modifieLe?: string | null
+  modifiePar?: string | null
+}
+/** Saisie d'une modification (PUT, sans trace) ; le motif est envoyé à part. */
+export type SaisieFonctionnalite = Omit<DefinitionFonctionnalite, 'modifieLe' | 'modifiePar'>
+
+/** État du catalogue servi : en chargement, prêt, ou indisponible (repli prudent : rien au-delà de l'accueil). */
+export type EtatCatalogue = { etat: 'chargement' | 'pret' | 'indisponible'; fonctionnalites: DefinitionFonctionnalite[] }
+
+/** Widgets du tableau de bord connus du code (clé → composant), dans leur ordre d'affichage (« Ma journée » d'abord). */
 export const WIDGETS = ['maJournee', 'administration', 'supervision', 'infrastructure', 'ddrm', 'cockpit', 'monTravail'] as const
 export type CleWidget = (typeof WIDGETS)[number]
-/** Widget apporté par une fonctionnalité, avec son prédicat propre en plus de celui de la fonctionnalité. */
-export type WidgetTableau = { cle: CleWidget; predicat?: Predicat }
-
-export type GroupeFonctionnalites = 'accueil' | 'monActivite' | 'registre' | 'homologation' | 'administration' | 'plateforme'
-
-export type Fonctionnalite = {
-  cle: string
-  libelleKey: string
-  icone: IconName
-  /** Chemin de l'écran ; adresse absolue pour un écran d'une autre application (console). */
-  chemin: string
-  groupe: GroupeFonctionnalites
-  /** Prédicat de permissions ; absent : toute session interne. */
-  predicat?: Predicat
-  widgets?: WidgetTableau[]
-}
-
-/** Groupes de la barre latérale, dans leur ordre ; l'accueil n'a pas de titre. */
-export const GROUPES: { cle: GroupeFonctionnalites; libelleKey?: string }[] = [
-  { cle: 'accueil' },
-  { cle: 'monActivite', libelleKey: 'nav.groupe.monActivite' },
-  { cle: 'registre', libelleKey: 'nav.groupe.registre' },
-  { cle: 'homologation', libelleKey: 'nav.groupe.homologation' },
-  { cle: 'administration', libelleKey: 'nav.groupe.administration' },
-  { cle: 'plateforme', libelleKey: 'nav.groupe.plateforme' },
-]
 
 /** Écrans de l'administration des comptes servis dans l'application interne (D-69). */
 export const ADMINISTRATION = '/des/administration'
@@ -51,86 +55,99 @@ export const urlConsole = () => adresseBaseApplication('console')
 /** Adresse d'un écran de la console (chemin commençant par /console). */
 export const versConsole = (chemin: string) => `${urlConsole()}${chemin}`
 
-const tient = (...any: string[]): Predicat => ({ any })
+/** Écran d'une fonctionnalité : chemin dans l'application (adresse absolue pour un écran d'une autre application). */
+export type Ecran = { chemin: string }
 
 /**
- * « Mon travail » (étapes 3 à 10 du parcours) : tableau de bord d'acteur de MS-HOMOLOGATION (HOM_DASHBOARD_READ,
- * liste des liaisons), pour qui agit dans le parcours : dépôt, validation ou attribution d'une opération, conduite
- * d'une étape, désignation du conducteur, procès-verbal, vérifications et visas de la décision.
+ * Correspondance clé → écran de l'application interne : seule donnée gardée dans le code. Une fonctionnalité servie
+ * dont la clé est inconnue ici n'apparaît pas (aucun écran à ouvrir) ; une clé d'ici absente du catalogue non plus.
  */
-export const PREDICAT_MON_TRAVAIL: Predicat = {
-  all: [PERM.pilotageLire, PERM.liaisonLister],
-  any: [PERM.preuveDeposer, PERM.operationValider, PERM.operationAttribuer, PERM.etapeConduire, PERM.projetDesigner, PERM.pvEtablir, PERM.pvSignerGimac,
-    'CER_QUITUS_SECURITE_SIGN', PERM.visaConformite, PERM.visaDg, PERM.securiteVerifier, PERM.dossierVerifier, PERM.ficheChangementLier, PERM.pvMiseEnServiceDeposer],
-}
-/** Cockpit de pilotage (CR §7.3) : qui désigne les conducteurs de projet (chefs de département) ou vise pour la direction générale. */
-export const PREDICAT_COCKPIT: Predicat = { all: [PERM.pilotageLire], any: [PERM.projetDesigner, PERM.visaDg, 'CER_ATTESTATION_STATUS_APPROVE'] }
-/** Étapes 1 et 2 (DDRM) : qui instruit les adhésions ou prononce les transitions du registre. */
-export const PREDICAT_DDRM: Predicat = { all: [PERM.institutionLire], any: [PERM.adhesionInstruire, PERM.transitionApprouver] }
-
-export const FONCTIONNALITES: Fonctionnalite[] = [
-  // Tableau de bord propre à chaque acteur (D-58) ; messagerie de travail entre acteurs (D-64).
-  { cle: 'tableauDeBord', libelleKey: 'nav.tableauDeBord', icone: 'gauge', chemin: '/des/tableau-de-bord', groupe: 'accueil' },
-  { cle: 'messagerie', libelleKey: 'nav.messagerie', icone: 'messages-square', chemin: '/des/messagerie', groupe: 'accueil', predicat: tient(PERM.messageLire) },
-  // Notifications de la plateforme (D-80) : « Voir tout » de la cloche ; tout profil interne.
-  { cle: 'notifications', libelleKey: 'nav.notifications', icone: 'bell-ring', chemin: '/des/notifications', groupe: 'accueil', predicat: tient(PERM.notificationsLire) },
-  // Mon activité (D-76 §6) : tout membre interne ; « Mon équipe » pour les responsables.
-  { cle: 'maJournee', libelleKey: 'nav.maJournee', icone: 'square-check', chemin: '/des/activite', groupe: 'monActivite', predicat: tient(PERM.activitePropre), widgets: [{ cle: 'maJournee' }] },
-  { cle: 'agenda', libelleKey: 'nav.agenda', icone: 'calendar', chemin: '/des/agenda', groupe: 'monActivite', predicat: tient(PERM.activitePropre) },
-  { cle: 'taches', libelleKey: 'nav.taches', icone: 'kanban', chemin: '/des/taches', groupe: 'monActivite', predicat: tient(PERM.activitePropre) },
-  { cle: 'rapports', libelleKey: 'nav.rapports', icone: 'file-text', chemin: '/des/rapports', groupe: 'monActivite', predicat: tient(PERM.activitePropre) },
-  { cle: 'equipe', libelleKey: 'nav.equipe', icone: 'users', chemin: '/des/equipe', groupe: 'monActivite', predicat: tient(PERM.equipeLire) },
-  // Processus de l'unité (D-87) : catalogue, modélisateur, lancement et suivi ; tout membre interne (droits fins vérifiés par MS-PILOTAGE).
-  { cle: 'processus', libelleKey: 'nav.processus', icone: 'workflow', chemin: '/des/processus', groupe: 'monActivite', predicat: tient(PERM.activitePropre) },
-  // Registre des institutions (étapes 1 et 2).
-  { cle: 'institutions', libelleKey: 'nav.institutions', icone: 'landmark', chemin: '/des/institutions', groupe: 'registre', predicat: tient(PERM.institutionLire), widgets: [{ cle: 'ddrm', predicat: PREDICAT_DDRM }] },
-  // Étapes 3 à 10 : liste et dossier numérique des liaisons (D-57), cockpit de pilotage et « Mon travail ».
-  {
-    cle: 'liaisons', libelleKey: 'nav.liaisons', icone: 'route', chemin: '/des/parcours', groupe: 'homologation', predicat: tient(PERM.liaisonLister),
-    widgets: [{ cle: 'cockpit', predicat: PREDICAT_COCKPIT }, { cle: 'monTravail', predicat: PREDICAT_MON_TRAVAIL }],
-  },
-  // « Mes projets » : les liaisons confiées au conducteur de projet (D-58), seul à établir le procès-verbal.
-  { cle: 'mesProjets', libelleKey: 'nav.mesProjets', icone: 'user', chemin: '/des/parcours?mesProjets=1', groupe: 'homologation', predicat: tient(PERM.pvEtablir) },
-  { cle: 'referentiels', libelleKey: 'nav.referentiels', icone: 'kanban', chemin: '/des/referentiels/operations', groupe: 'homologation', predicat: tient(PERM.referentielLire) },
-  // Administration des comptes (D-62, D-69), servie dans l'application interne.
-  { cle: 'adminComptes', libelleKey: 'nav.admin.comptes', icone: 'users', chemin: `${ADMINISTRATION}/comptes`, groupe: 'administration', predicat: tient(PERM.comptesLire), widgets: [{ cle: 'administration' }] },
-  // Pouvoirs hiérarchiques (D-81) : demandes des chefs à traiter (IAM_ACCOUNT_READ), matrice des pouvoirs (IAM_PROFILE_EDIT).
-  { cle: 'adminDemandes', libelleKey: 'nav.admin.demandes', icone: 'inbox', chemin: `${ADMINISTRATION}/demandes`, groupe: 'administration', predicat: tient(PERM.comptesLire) },
-  { cle: 'adminProfils', libelleKey: 'nav.admin.profils', icone: 'shield-check', chemin: `${ADMINISTRATION}/profils`, groupe: 'administration', predicat: tient(PERM.comptesLire) },
-  { cle: 'adminMatrice', libelleKey: 'nav.admin.matrice', icone: 'scale', chemin: `${ADMINISTRATION}/matrice-pouvoirs`, groupe: 'administration', predicat: tient(PERM.profilEditer) },
-  // Catalogue des unités organisationnelles (D-76 §1.1) : lecture IAM_ACCOUNT_READ, édition IAM_ACCOUNT_EDIT.
-  { cle: 'adminOrganisation', libelleKey: 'nav.admin.organisation', icone: 'landmark', chemin: `${ADMINISTRATION}/organisation`, groupe: 'administration', predicat: tient(PERM.comptesLire) },
-  // Organigramme (D-86 §3) : unités, chefs, membres et n+1 en arbre, gestes par glisser-déposer ou au clavier.
-  { cle: 'adminOrganigramme', libelleKey: 'nav.admin.organigramme', icone: 'network', chemin: `${ADMINISTRATION}/organigramme`, groupe: 'administration', predicat: tient(PERM.comptesLire) },
-  { cle: 'adminJournal', libelleKey: 'nav.admin.journal', icone: 'scroll-text', chemin: `${ADMINISTRATION}/journal`, groupe: 'administration', predicat: tient(PERM.journalAdministrationLire) },
-  { cle: 'adminPolitique', libelleKey: 'nav.admin.politique', icone: 'lock', chemin: `${ADMINISTRATION}/politique-securite`, groupe: 'administration', predicat: tient(PERM.politiqueLire) },
-  // Plateforme (D-79) : les écrans de la console servis aussi dans l'application interne ; la console reste à part.
-  { cle: 'supervision', libelleKey: 'nav.plateforme.supervision', icone: 'eye', chemin: `${PLATEFORME}/supervision`, groupe: 'plateforme', predicat: tient(PERM.supervisionLire), widgets: [{ cle: 'supervision' }] },
-  { cle: 'infrastructure', libelleKey: 'nav.plateforme.infrastructure', icone: 'rotate-ccw', chemin: `${PLATEFORME}/infrastructure`, groupe: 'plateforme', predicat: tient(PERM.exploitationLire), widgets: [{ cle: 'infrastructure' }] },
-  { cle: 'configuration', libelleKey: 'nav.plateforme.configuration', icone: 'monitor', chemin: `${PLATEFORME}/configuration`, groupe: 'plateforme', predicat: tient(PERM.configurationLire) },
-  { cle: 'journalisation', libelleKey: 'nav.plateforme.journalisation', icone: 'file-text', chemin: `${PLATEFORME}/journalisation`, groupe: 'plateforme', predicat: tient(PERM.configurationLire) },
-  { cle: 'courriels', libelleKey: 'nav.plateforme.courriels', icone: 'send', chemin: `${PLATEFORME}/courriels`, groupe: 'plateforme', predicat: tient(PERM.courrielsPlateforme) },
-  { cle: 'adminConsole', libelleKey: 'nav.admin.console', icone: 'arrow-right', chemin: versConsole('/console/tableau-de-bord'), groupe: 'plateforme', predicat: tient(PERM.configurationLire) },
-]
-
-/** Vrai si les permissions ouvrent la fonctionnalité. */
-export const estOuverte = (f: Fonctionnalite, permissions: readonly string[] | undefined) => satisfait(permissions, f.predicat)
-
-/** Fonctionnalités que les permissions ouvrent, dans l'ordre du registre. */
-export function fonctionnalitesOuvertes(permissions: readonly string[] | undefined, registre = FONCTIONNALITES): Fonctionnalite[] {
-  return registre.filter((f) => estOuverte(f, permissions))
+export const ECRANS_DES: Record<string, Ecran> = {
+  tableauDeBord: { chemin: '/des/tableau-de-bord' },
+  messagerie: { chemin: '/des/messagerie' },
+  notifications: { chemin: '/des/notifications' },
+  maJournee: { chemin: '/des/activite' },
+  agenda: { chemin: '/des/agenda' },
+  taches: { chemin: '/des/taches' },
+  rapports: { chemin: '/des/rapports' },
+  equipe: { chemin: '/des/equipe' },
+  processus: { chemin: '/des/processus' },
+  institutions: { chemin: '/des/institutions' },
+  liaisons: { chemin: '/des/parcours' },
+  mesProjets: { chemin: '/des/parcours?mesProjets=1' },
+  referentiels: { chemin: '/des/referentiels/operations' },
+  adminComptes: { chemin: `${ADMINISTRATION}/comptes` },
+  adminDemandes: { chemin: `${ADMINISTRATION}/demandes` },
+  adminProfils: { chemin: `${ADMINISTRATION}/profils` },
+  adminMatrice: { chemin: `${ADMINISTRATION}/matrice-pouvoirs` },
+  adminOrganisation: { chemin: `${ADMINISTRATION}/organisation` },
+  adminOrganigramme: { chemin: `${ADMINISTRATION}/organigramme` },
+  adminJournal: { chemin: `${ADMINISTRATION}/journal` },
+  adminPolitique: { chemin: `${ADMINISTRATION}/politique-securite` },
+  supervision: { chemin: `${PLATEFORME}/supervision` },
+  infrastructure: { chemin: `${PLATEFORME}/infrastructure` },
+  configuration: { chemin: `${PLATEFORME}/configuration` },
+  journalisation: { chemin: `${PLATEFORME}/journalisation` },
+  courriels: { chemin: `${PLATEFORME}/courriels` },
+  adminConsole: { chemin: versConsole('/console/tableau-de-bord') },
 }
 
-/** Widgets du tableau de bord que les permissions ouvrent, dans l'ordre d'affichage, sans doublon. */
-export function widgetsOuverts(permissions: readonly string[] | undefined, registre = FONCTIONNALITES): CleWidget[] {
-  const ouverts = new Set(fonctionnalitesOuvertes(permissions, registre).flatMap((f) => (f.widgets ?? []).filter((w) => satisfait(permissions, w.predicat)).map((w) => w.cle)))
+/** Accueil de chaque application : seule entrée montrée tant que le catalogue n'est pas servi (repli prudent). */
+export const ACCUEIL: Record<'des' | 'console', EntreeNavigation> = {
+  des: { cle: 'tableauDeBord', libelleKey: 'nav.tableauDeBord', icone: 'gauge', chemin: '/des/tableau-de-bord' },
+  console: { cle: 'consoleTableauDeBord', libelleKey: 'console.nav.tableauDeBord', icone: 'gauge', chemin: '/console/tableau-de-bord' },
+}
+
+/** Prédicat du socle d'un prédicat servi. */
+export const predicatDe = (p?: PredicatServi | null): Predicat => ({ all: p?.tous ?? [], any: p?.unDe ?? [] })
+
+/** Vrai si la fonctionnalité est visible et que les permissions satisfont son prédicat. */
+export const estOuverte = (f: DefinitionFonctionnalite, permissions: readonly string[] | undefined) => f.visible && satisfait(permissions, predicatDe(f.permissions))
+
+/** Tri du catalogue : ordre puis clé (comme le serveur). */
+export const trier = (l: DefinitionFonctionnalite[]) => [...l].sort((a, b) => a.ordre - b.ordre || a.cle.localeCompare(b.cle))
+
+/** Fonctionnalités d'une application que les permissions ouvrent, dans l'ordre du catalogue. */
+export function fonctionnalitesOuvertes(catalogue: DefinitionFonctionnalite[], application: Application, permissions: readonly string[] | undefined): DefinitionFonctionnalite[] {
+  return trier(catalogue.filter((f) => f.application === application && estOuverte(f, permissions)))
+}
+
+/** Widgets du tableau de bord que les permissions ouvrent (fonctionnalité ouverte et prédicat du widget), dans l'ordre d'affichage. */
+export function widgetsOuverts(catalogue: DefinitionFonctionnalite[], permissions: readonly string[] | undefined): CleWidget[] {
+  const ouverts = new Set(fonctionnalitesOuvertes(catalogue, 'des', permissions).flatMap((f) => f.widgets.filter((w) => satisfait(permissions, predicatDe(w.permissions))).map((w) => w.cle)))
   return WIDGETS.filter((w) => ouverts.has(w))
 }
 
-/** Barre latérale dérivée du registre : chaque entrée garde son prédicat, l'enveloppe ne montre que les entrées permises. */
-export function navigationDepuis(registre = FONCTIONNALITES): GroupeNavigation[] {
-  return GROUPES.map((g) => ({
-    ...(g.libelleKey ? { libelleKey: g.libelleKey } : {}),
-    entrees: registre.filter((f) => f.groupe === g.cle).map((f) => ({ cle: f.cle, libelleKey: f.libelleKey, icone: f.icone, chemin: f.chemin, predicat: f.predicat })),
-  })).filter((g) => g.entrees.length > 0)
+/** Accès à l'écran d'une fonctionnalité : catalogue prêt, fonctionnalité visible et ouverte, droit exigé détenu s'il est donné. */
+export function accesFonctionnalite(c: EtatCatalogue, cle: string, permissions: readonly string[] | undefined, droit?: string): 'chargement' | 'indisponible' | 'ouvert' | 'refuse' {
+  if (c.etat !== 'pret') return c.etat
+  const f = c.fonctionnalites.find((x) => x.cle === cle)
+  if (!f || !estOuverte(f, permissions)) return 'refuse'
+  return !droit || (permissions ?? []).includes(droit) ? 'ouvert' : 'refuse'
 }
+
+/** Libellé servi : clé de traduction connue, sinon texte français tel quel. */
+export type Traduire = { t: (cle: string) => string; existe: (cle: string) => boolean }
+export const libelleServi = (tr: Traduire, libelle: string) => (tr.existe(libelle) ? tr.t(libelle) : libelle)
+/** Titre d'un groupe : `<prefixe><groupe>` s'il est traduit, sinon le code du groupe (groupe créé par la configuration). */
+export const libelleGroupe = (tr: Traduire, prefixe: string, groupe: string) => (tr.existe(`${prefixe}${groupe}`) ? tr.t(`${prefixe}${groupe}`) : groupe)
+
+/**
+ * Barre latérale d'une application depuis le catalogue : fonctionnalités visibles d'un groupe dont la clé a un écran,
+ * groupes dans l'ordre de leur première fonctionnalité ; l'accueil (`accueil`) n'a pas de titre. Chaque entrée garde
+ * son prédicat : l'enveloppe ne montre que les entrées permises.
+ */
+export function navigationDepuis(catalogue: DefinitionFonctionnalite[], application: Application, ecrans: Record<string, Ecran>, tr: Traduire, prefixeGroupe: string): GroupeNavigation[] {
+  const entrees = trier(catalogue.filter((f) => f.application === application && f.visible && f.groupe && ecrans[f.cle]))
+  const groupes: string[] = []
+  entrees.forEach((f) => { if (!groupes.includes(f.groupe!)) groupes.push(f.groupe!) })
+  return groupes.map((g) => ({
+    ...(g === 'accueil' ? {} : { libelleKey: `${prefixeGroupe}${g}`, libelle: libelleGroupe(tr, prefixeGroupe, g) }),
+    entrees: entrees.filter((f) => f.groupe === g).map((f) => ({
+      cle: f.cle, libelleKey: f.libelle, libelle: libelleServi(tr, f.libelle), icone: f.icone as IconName, chemin: ecrans[f.cle].chemin, predicat: predicatDe(f.permissions),
+    })),
+  }))
+}
+
+/** Repli prudent (catalogue en chargement ou indisponible) : l'accueil seul. */
+export const navigationRepli = (application: 'des' | 'console'): GroupeNavigation[] => [{ entrees: [ACCUEIL[application]] }]

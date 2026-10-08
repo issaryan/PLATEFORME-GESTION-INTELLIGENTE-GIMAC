@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
-import { Button, Card, CoverageBar, Hash, InlineAlert, KeyValueList, ProgressRing, StatusBadge, Note } from '@gimac/design-system'
-import type { DossierLiaison, ProcesVerbalCertification, ServicePerimetre } from '../../../../modele/parcours'
+import { Button, Card, CoverageBar, DataTable, Hash, InlineAlert, KeyValueList, ProgressRing, StatusBadge, Note, type Column } from '@gimac/design-system'
+import type { DossierLiaison, EtapeCircuit, ProcesVerbalCertification, ServicePerimetre } from '../../../../modele/parcours'
+import { useFonctionsCatalogue } from '../../../../hooks/referentiels'
 import { useEtablirProcesVerbal, useSignerProcesVerbalGimac } from '../../../../hooks/parcours'
 import { EtatSignature, SousTitre, TON_PV, useDetient, useLancer, usePeut, Vide, type Action, PERMISSION_GESTE } from './commun'
 
@@ -10,6 +11,27 @@ import { EtatSignature, SousTitre, TON_PV, useDetient, useLancer, usePeut, Vide,
 
 /** Niveau de la barre de couverture d'un service (0 hors périmètre … 3 certifié, 4 en service). */
 const NIVEAU: Record<ServicePerimetre['etat'], 1 | 2 | 3 | 4> = { NON_DEMARRE: 1, EN_TEST: 2, CERTIFIE: 3, OUVERT: 4, NON_OUVERT: 3 }
+
+/** Circuit de signature du procès-verbal (D-94) : étapes configurées, côté (GIMAC ou portail), ordre et état. */
+export function CircuitSignature({ pv }: { pv: ProcesVerbalCertification }) {
+  const { t } = useTranslation()
+  const f = useFonctionsCatalogue()
+  const l = [...(pv.circuit ?? [])].sort((a, b) => a.ordre - b.ordre)
+  if (!l.length) return null
+  const colonnes: Column<EtapeCircuit>[] = [
+    { key: 'ordre', header: t('decision.circuit.ordre'), type: 'number', width: 72 },
+    { key: 'libelle', header: t('decision.circuit.etape'), render: (e) => <span className="gm-col" style={{ gap: 0 }}><span>{e.libelle}</span><span className="gm-mono gm-type-small">{e.code}</span></span> },
+    { key: 'fonction', header: t('decision.circuit.fonction'), render: (e) => f.libelle(e.fonction) },
+    { key: 'portail', header: t('decision.circuit.cote'), render: (e) => t(e.portail ? 'decision.circuit.portail' : 'decision.circuit.gimac') },
+    { key: 'etat', header: t('decision.circuit.etat'), render: (e) => <EtatSignature signature={e.signature ?? null} attente={t('decision.circuit.attendue')} /> },
+  ]
+  return (
+    <>
+      <SousTitre>{t('decision.circuit.titre')}</SousTitre>
+      <DataTable columns={colonnes} rows={l} rowKey={(e) => e.code} density="compact" pagination={false} state="ok" />
+    </>
+  )
+}
 
 export function CarteProcesVerbal({ dossier, pv }: { dossier: DossierLiaison; pv: ProcesVerbalCertification }) {
   const { t } = useTranslation()
@@ -30,7 +52,7 @@ export function CarteProcesVerbal({ dossier, pv }: { dossier: DossierLiaison; pv
   }
   const actionSigner: Action<ProcesVerbalCertification> = {
     key: 'signerPvGimac', permission: PERMISSION_GESTE.signerPvGimac[0], label: 'decision.pv.action.signerGimac', icon: 'pen-line', variant: 'primary', scope: 'row', confirm: 'sign',
-    sign: { purpose: 'QUITUS_SIGN', empreinte: (p) => p.empreinte ?? '' },
+    sign: { purpose: 'SIGNATURE_OPERATION', empreinte: (p) => p.empreinte ?? '' },
     consequences: (p) => <p style={{ margin: 0 }}>{t(p.signatureParticipant ? 'decision.pv.signer.consequenceFinale' : 'decision.pv.signer.consequence')}</p>,
     run: ({ assertion }) => signer.mutateAsync({ liaisonId: pv.liaisonId, assertion: assertion ?? '' }),
   }
@@ -82,6 +104,7 @@ export function CarteProcesVerbal({ dossier, pv }: { dossier: DossierLiaison; pv
             { key: t('decision.pv.signatureParticipant'), value: <EtatSignature signature={pv.signatureParticipant} attente={t('decision.pv.attenteParticipant')} /> },
           ]}
         />
+        <CircuitSignature pv={pv} />
         {pv.etat === 'SIGNE' ? <InlineAlert level="info" title={t('decision.pv.certifiee.titre')}>{t('decision.pv.certifiee.texte')}</InlineAlert> : null}
 
         {peutEtablir || (bloque && detient('etablirPv')) || peutSigner ? (

@@ -12,6 +12,7 @@ import cm.gimac.des.iam.domain.compte.PresentationProfil;
 import cm.gimac.des.iam.domain.compte.Profil;
 import cm.gimac.des.iam.domain.compte.SessionCompte;
 import cm.gimac.des.iam.domain.service.PolitiqueMotDePasse;
+import cm.gimac.des.iam.domain.service.ReglesProfils;
 import cm.gimac.des.iam.domain.service.Totp;
 import java.time.Instant;
 import java.util.ArrayDeque;
@@ -42,15 +43,16 @@ public class AnnuaireEnMemoire implements Annuaire {
     /** Libellé (attribut gimac_libelle) et description de chaque profil (D-86). */
     private final Map<String, String> libelles = new TreeMap<>();
     private final Map<String, String> descriptions = new TreeMap<>();
-    private final Set<String> privilegies;
+    /** Attribut gimac_externe posé sur un profil (D-94) ; absent : règle de repli *_PORTAL_*. */
+    private final Map<String, Boolean> externes = new TreeMap<>();
     /** Mots de passe du substitut (le plus récent en tête), jamais exposés. */
     private final Map<String, Deque<String>> motsDePasse = new ConcurrentHashMap<>();
     private final Map<String, String> totp = new ConcurrentHashMap<>();
     private volatile PolitiqueSecurite politique = new PolitiqueSecurite(12, 1, 1, 1, 1, 5, 90, true, 6, 30, "HmacSHA1", 30, 10, true, 5, 15);
     private volatile ConfigurationMessagerie messagerie = new ConfigurationMessagerie("messagerie", 1025, "plateforme@gimac.test", "Plateforme Moabi du GIMAC", false, false, false, null, null, false);
 
-    public AnnuaireEnMemoire(Map<String, Set<String>> catalogue, Set<String> privilegies) {
-        this.privilegies = Set.copyOf(privilegies);
+    /** Profils du catalogue avec leurs permissions ; privilégiés par leurs permissions (IAM_*, PLATFORM_*, D-94). */
+    public AnnuaireEnMemoire(Map<String, Set<String>> catalogue) {
         catalogue.forEach((k, v) -> profils.put(k, new TreeSet<>(v)));
         profils.keySet().forEach(k -> {
             if (LIBELLES_PAR_PROFIL.containsKey(k)) {
@@ -317,6 +319,7 @@ public class AnnuaireEnMemoire implements Annuaire {
     @Override
     public synchronized void supprimerProfil(String code) {
         profils.remove(code);
+        externes.remove(code);
         libelles.remove(code);
         descriptions.remove(code);
     }
@@ -360,9 +363,35 @@ public class AnnuaireEnMemoire implements Annuaire {
     public synchronized List<Profil> profils() {
         List<Profil> l = new ArrayList<>();
         profils.forEach((code, perms) ->
-            l.add(new Profil(code, libelles.get(code), descriptions.get(code), perms, privilegies.contains(code), comptes.values().stream().filter(c -> c.profils().contains(code)).count(), false))
+            l.add(
+                new Profil(
+                    code,
+                    libelles.get(code),
+                    descriptions.get(code),
+                    perms,
+                    ReglesProfils.privilegie(perms),
+                    comptes.values().stream().filter(c -> c.profils().contains(code)).count(),
+                    false,
+                    null,
+                    null,
+                    ReglesProfils.externe(externes.get(code), perms)
+                )
+            )
         );
         return l;
+    }
+
+    @Override
+    public synchronized Map<String, Boolean> attributsExternes() {
+        return Map.copyOf(externes);
+    }
+
+    @Override
+    public synchronized void definirExterne(String code, boolean externe) {
+        if (!profils.containsKey(code)) {
+            throw IamException.introuvable("IAM_PROFILE_NOT_FOUND", code);
+        }
+        externes.put(code, externe);
     }
 
     @Override
@@ -409,6 +438,12 @@ public class AnnuaireEnMemoire implements Annuaire {
         "IAM_ACCOUNT_SECURITY", "IAM_JOURNAL_READ", "IAM_PROFILE_EDIT", "PLATFORM_SECURITY_POLICY_READ", "PLATFORM_SECURITY_POLICY_EDIT", "PLATFORM_MESSAGING_EDIT"
     );
     private static final Set<String> CHEF = Set.of("PIL_TEAM_READ", "PIL_TASK_ASSIGN");
+    /**
+     * « Administration des référentiels métier, tous domaines » (D-92, docs/lot1/referentiels-metier-admin.md) :
+     * permission ordinaire, non privilégiée, attribuable à tout profil ; portée par défaut par les deux profils
+     * qui la reçoivent dans le realm.
+     */
+    static final String REF_METIER_ADMIN = "REF_METIER_ADMIN";
 
     private static Set<String> union(Set<?>... ensembles) {
         Set<String> s = new TreeSet<>();
@@ -420,7 +455,7 @@ public class AnnuaireEnMemoire implements Annuaire {
 
     /** Permissions principales des profils livrés (extrait du realm du lot 1). */
     static final Map<String, Set<String>> PERMISSIONS_PAR_PROFIL = Map.ofEntries(
-        Map.entry("ROLE_SUPER_ADMIN", union(COMMUNES, IAM, Set.of("IAM_ROLE_PRIVILEGED_GRANT", "PLATFORM_CONFIG_READ", "PLATFORM_CONFIG_EDIT"))),
+        Map.entry("ROLE_SUPER_ADMIN", union(COMMUNES, IAM, Set.of("IAM_ROLE_PRIVILEGED_GRANT", "PLATFORM_CONFIG_READ", "PLATFORM_CONFIG_EDIT", REF_METIER_ADMIN))),
         Map.entry("ROLE_RSSI", union(COMMUNES, IAM, CHEF)),
         Map.entry("ROLE_CHEF_DES", union(COMMUNES, CHEF, Set.of("HOM_DASHBOARD_READ"))),
         Map.entry("ROLE_CHEF_DDRM", union(COMMUNES, CHEF, Set.of("PAR_INSTITUTION_READ"))),
@@ -429,14 +464,14 @@ public class AnnuaireEnMemoire implements Annuaire {
         Map.entry("ROLE_RESPONSABLE_SERVICE", union(COMMUNES, CHEF)),
         Map.entry("ROLE_ADMIN_SYSTEME", union(COMMUNES, Set.of("PLATFORM_OPS_READ", "PLATFORM_OPS_EXECUTE"))),
         Map.entry("ROLE_COLLABORATEUR", COMMUNES),
-        Map.entry("ROLE_INGENIEUR_HOMOLOGATION", union(COMMUNES, Set.of("HOM_DASHBOARD_READ", "HOM_OPERATION_VALIDATE"))),
+        Map.entry("ROLE_INGENIEUR_HOMOLOGATION", union(COMMUNES, Set.of("HOM_DASHBOARD_READ", "HOM_OPERATION_VALIDATE", REF_METIER_ADMIN))),
         Map.entry("ROLE_SNA", union(COMMUNES, Set.of("HOM_DASHBOARD_READ"))),
         Map.entry("ROLE_PRODUCTION_MONETIQUE", union(COMMUNES, Set.of("HOM_DASHBOARD_READ"))),
         Map.entry("ROLE_POLE_RESEAU", union(COMMUNES, Set.of("HOM_DASHBOARD_READ"))),
         Map.entry("ROLE_POLE_SYSTEME", union(COMMUNES, Set.of("HOM_DASHBOARD_READ"))),
         Map.entry("ROLE_CHARGE_DDRM", union(COMMUNES, Set.of("PAR_INSTITUTION_READ"))),
         Map.entry("ROLE_CONDUCTEUR_PROJET", union(COMMUNES, Set.of("HOM_DASHBOARD_READ"))),
-        Map.entry("ROLE_CORRESPONDANT", Set.of("HOM_PORTAL_READ", "HOM_PORTAL_SUBMIT"))
+        Map.entry("ROLE_CORRESPONDANT", Set.of("HOM_PORTAL_READ", "HOM_PORTAL_SUBMIT", "NOT_INBOX_READ"))
     );
 
     /** Libellés des profils livrés (infra/keycloak/generer-realm-gimac.py, attribut gimac_libelle). */
@@ -461,5 +496,5 @@ public class AnnuaireEnMemoire implements Annuaire {
     );
 
     /** Permissions connues du substitut, même sans profil qui les porte (dont les permissions internes). */
-    static final Set<String> PERMISSIONS_CONNUES = Set.of("INTERNAL_IAM_READ", "PAR_INSTITUTION_READ", "HOM_DASHBOARD_READ");
+    static final Set<String> PERMISSIONS_CONNUES = Set.of("INTERNAL_IAM_READ", "PAR_INSTITUTION_READ", "HOM_DASHBOARD_READ", REF_METIER_ADMIN);
 }

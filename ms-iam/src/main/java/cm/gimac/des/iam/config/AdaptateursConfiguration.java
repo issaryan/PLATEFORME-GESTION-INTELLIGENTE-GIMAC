@@ -55,7 +55,7 @@ public class AdaptateursConfiguration {
     @Bean
     @ConditionalOnProperty(name = "gimac.adapters.annuaire", havingValue = "real")
     public Annuaire annuaireKeycloak(org.keycloak.admin.client.Keycloak keycloak, IamProprietes p) {
-        return new KeycloakAnnuaire(keycloak, p.keycloak().url(), p.keycloak().realm(), p.profils().privilegies(), p.connexion().clientId(), p.connexion().clientSecret());
+        return new KeycloakAnnuaire(keycloak, p.keycloak().url(), p.keycloak().realm(), p.connexion().clientId(), p.connexion().clientSecret());
     }
 
     @Bean
@@ -78,6 +78,6 @@ public class AdaptateursConfiguration {
     @Bean
     @ConditionalOnProperty(name = "gimac.adapters.annuaire", havingValue = "stub")
     public Annuaire annuaireEnMemoire(IamProprietes p) {
-        return new AnnuaireEnMemoire(AnnuaireEnMemoire.catalogueParDefaut(p.profils().attribuables()), p.profils().privilegies());
+        return new AnnuaireEnMemoire(AnnuaireEnMemoire.catalogueParDefaut(p.profils().attribuables()));
     }
 }

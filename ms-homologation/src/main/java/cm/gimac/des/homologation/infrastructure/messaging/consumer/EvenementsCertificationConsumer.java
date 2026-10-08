@@ -91,7 +91,7 @@ public class EvenementsCertificationConsumer {
 
     private static List<Signature> signatures(JsonNode n) {
         List<Signature> l = new ArrayList<>();
-        n.forEach(s -> l.add(new Signature(texte(s, "fonction"), texte(s, "signataire"))));
+        n.forEach(s -> l.add(new Signature(texte(s, "fonction"), texte(s, "signataire"), texte(s, "signeLe"), texte(s, "signature"))));
         return l;
     }
 

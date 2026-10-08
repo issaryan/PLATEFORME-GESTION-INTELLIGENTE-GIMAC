@@ -140,7 +140,24 @@ abstract class ParcoursITSupport extends AbstractHomologationIT {
     }
 
     void valider(String opId) throws Exception {
-        mvc.perform(post("/api/v1/parcours/operations/" + opId + "/validation").header("X-Reauth-Assertion", "YXNzZXJ0aW9u").with(validateur())).andExpect(status().isNoContent());
+        mvc.perform(post("/api/v1/parcours/operations/" + opId + "/validation").header("X-Reauth-Assertion", "YXNzZXJ0aW9u").with(validateurPour(opId))).andExpect(status().isNoContent());
+    }
+
+    /**
+     * Validateur admis par le RACI imposé (D-93 §2) : le V désigné (conducteur ou ingénieur SNA), sinon un porteur de la
+     * fonction V à affecter (chef du DES).
+     */
+    RequestPostProcessor validateurPour(String opId) throws Exception {
+        Object v = operations(liaisonDe(opId)).stream().filter(o -> opId.equals(o.get("id"))).findFirst().map(o -> JsonPath.read(o, "$.raci.V.id")).orElse(null);
+        if (CollaboratorStubAdapter.CONDUCTEUR_1.toString().equals(v)) {
+            return conducteur();
+        }
+        return SNA.toString().equals(v) ? sna() : validateur();
+    }
+
+    /** Liaison d'une opération, lue en base. */
+    String liaisonDe(String opId) {
+        return jdbc.queryForObject("select cast(liaison_id as varchar) from parcours_operation where id = ?", String.class, UUID.fromString(opId));
     }
 
     /** Événement de MS-CERTIFICATION remis au consommateur, comme le ferait Kafka. */

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Tâches à prendre (D-93, D-94, docs/lot1/effet-reel-referentiels.md §8.8) : permissions qui caractérisent chaque
+     fonction du catalogue (D-91). Une fonction interne à affecter est offerte dans MS-PILOTAGE aux porteurs de l'une de
+     ses permissions (lus dans MS-IAM). Valeurs de départ des fonctions reprises : la permission que seuls les profils de
+     la fonction portent dans le domaine livré (infra/keycloak/generer-realm-gimac.py) ; aucune pour les fonctions sans
+     permission propre (DDRM, production monétique, pôles, exploitation), modifiables par PUT /referentiels/fonctions. -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="20261012000100-1" author="lot1">
+        <addColumn tableName="referentiel_fonction">
+            <column name="permissions" type="jsonb" defaultValueComputed="'[]'::jsonb" remarks="Permissions qui caractérisent la fonction (D-94).">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <sql>
+            UPDATE referentiel_fonction SET permissions = '["PAR_TRANSITION_APPROVE"]'::jsonb WHERE code = 'CHEF_DDRM' AND permissions = '[]'::jsonb;
+            UPDATE referentiel_fonction SET permissions = '["CER_QUITUS_TECHNIQUE_SIGN"]'::jsonb WHERE code = 'CHEF_DES' AND permissions = '[]'::jsonb;
+            UPDATE referentiel_fonction SET permissions = '["CER_QUITUS_TECHNIQUE_SIGN","PAR_TRANSITION_APPROVE"]'::jsonb WHERE code = 'CHEFS_DEPARTEMENT' AND permissions = '[]'::jsonb;
+            UPDATE referentiel_fonction SET permissions = '["HOM_PROJECT_CONDUCT"]'::jsonb WHERE code = 'CONDUCTEUR' AND permissions = '[]'::jsonb;
+            UPDATE referentiel_fonction SET permissions = '["CER_DOSSIER_VERIFY"]'::jsonb WHERE code = 'SNA' AND permissions = '[]'::jsonb;
+            UPDATE referentiel_fonction SET permissions = '["CER_SECURITY_VERIFY"]'::jsonb WHERE code = 'RSSI' AND permissions = '[]'::jsonb;
+            UPDATE referentiel_fonction SET permissions = '["CER_QUITUS_CONFORMITE_SIGN"]'::jsonb WHERE code = 'CONFORMITE' AND permissions = '[]'::jsonb;
+            UPDATE referentiel_fonction SET permissions = '["CER_QUITUS_DG_SIGN"]'::jsonb WHERE code = 'DG' AND permissions = '[]'::jsonb;
+        </sql>
+    </changeSet>
+</databaseChangeLog>

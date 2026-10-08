@@ -65,6 +65,8 @@ export type Profil = {
   titulaires: number
   /** Profil créé par l'administration (D-81 §5), supprimable sans titulaire ; les profils livrés ne le sont pas. */
   cree?: boolean
+  /** Profil externe (compte d'institution, portail ; D-94 §6.1), modifiable tant que le profil n'a pas de titulaire. */
+  externe?: boolean
 }
 
 /** Bornes de la présentation d'un profil (D-86 §5), après retrait des espaces de tête et de fin. */

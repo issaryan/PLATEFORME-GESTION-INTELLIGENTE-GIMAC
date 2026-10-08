@@ -1,12 +1,13 @@
 import type { ApiError, OptionsTeleversement, Televersement } from '@gimac/socle'
 import type {
-  Activite, EntreeEvenement, EtatRapportDuJour, EtatTache, Evenement, GroupeTaches, MembreEquipe, PersonneActivite, Rapport, Rattachement, Tache, TypeRapport, Unite,
+  Activite, DestinatairesRapport, EntreeEvenement, EtatRapportDuJour, EtatTache, Evenement, GroupeTaches, MembreEquipe, PersonneActivite, Rapport, Rattachement, Tache, TypeRapport, Unite,
 } from '../../modele/pilotage'
 import { LIMITES_GROUPE, TRANSITIONS_TACHE, motifExige } from '../../modele/pilotage'
 import { magasinPouvoirs, type MagasinPouvoirs } from './pouvoirs'
 import { ajouterJours, aujourdhui, instant, jourDe, jourOuvreSuivant, lundiDe, lundiDeSemaine, semaineIso } from '../../modele/jours'
 import type { ServicePilotage } from '../ports'
 import { pdfDemo } from './messagerie'
+import { PROFILS } from '../../permissions'
 
 // « Mon activité » simulée (D-76, docs/lot1/mon-activite.md) : mêmes formes de réponse et mêmes codes de refus
 // que MS-PILOTAGE et l'organisation de MS-IAM ; ses règles ne sont qu'une imitation : équipe (chaîne des
@@ -149,7 +150,7 @@ export function pilotageSimule(
   const tache = (responsable: string | null, createur: string, titre: string, etat: EtatTache, echeance: string | null, o: Partial<Tache> = {}) => {
     const t: EtatTacheSim = {
       id: id('TCH'), titre, description: null, echeance, priorite: 'NORMALE', etat, responsable: responsable ? personne(responsable) : null, createur: personne(createur),
-      groupeId: null, uniteCible: null, profilRequis: null,
+      groupeId: null, uniteCible: null, profilRequis: null, profilsRequis: null, permissionsRequises: null, aPrendre: false,
       origine: { type: 'INTERNE', reference: null, service: null, lien: null }, enRetard: false, creeeLe: `${ajouterJours(jour, -6)}T08:30:00+01:00`,
       termineeLe: etat === 'TERMINEE' ? `${hier}T16:10:00+01:00` : null,
       historique: [{ quand: `${ajouterJours(jour, -6)}T08:30:00+01:00`, acteur: personne(createur), action: 'CREEE', detail: null }],
@@ -215,6 +216,11 @@ export function pilotageSimule(
     })
     tache('u-sna', 'U-001', 'Relire la grille d’essais de LIA-2026-030', 'EN_COURS', ajouterJours(jour, 2), { groupeId: 'GRP-0001' })
     tache('U-101', 'U-001', 'Relire la grille d’essais de LIA-2026-030', 'TERMINEE', ajouterJours(jour, 2), { groupeId: 'GRP-0001' })
+    // Tâche offerte par MS-HOMOLOGATION (D-93 §8.8) : fonction à affecter, prise par tout porteur de sa permission.
+    tache(null, 'U-001', 'Prendre la fonction Normes et Agréments (LIA-2026-041)', 'A_PRENDRE', ajouterJours(jour, 3), {
+      priorite: 'HAUTE', permissionsRequises: ['CER_DOSSIER_VERIFY'], aPrendre: true,
+      origine: { type: 'OPERATION', reference: 'LIA-2026-041/AFFECTER/SNA', service: 'homologation', lien: '/des/parcours/LIA-2026-041?onglet=etapes&fonction=SNA' },
+    })
   }
   // Rapport déposé en document (D-74) : le pôle réseau, soumis au chef de service.
   const parDocument = rapports.find((r) => r.auteur.id === 'u-res' && r.periode === hier)
@@ -249,7 +255,13 @@ export function pilotageSimule(
     return l
   }
   const porteProfil = (t: Tache) => !t.profilRequis || magasin.profilsDe(moi.id).includes(t.profilRequis)
-  const aPrendreVisible = (t: Tache) => t.etat === 'A_PRENDRE' && !!t.uniteCible && unitesVisibles().has(t.uniteCible) && porteProfil(t)
+  // Offre par permission ou par profils (D-93 §8.8), étape offerte hors de l'unité (profil requis sans unité) : visible et
+  // prenable par leurs seuls porteurs, sans unité exigée.
+  const mesPermissions = () => magasin.profilsDe(moi.id).flatMap((p) => PROFILS[p] ?? [])
+  const portePermission = (t: Tache) => !t.permissionsRequises?.length || t.permissionsRequises.some((p) => mesPermissions().includes(p))
+  const porteProfils = (t: Tache) => !t.profilsRequis?.length || t.profilsRequis.some((p) => magasin.profilsDe(moi.id).includes(p))
+  const offre = (t: Tache) => !!t.permissionsRequises?.length || !!t.profilsRequis?.length
+  const aPrendreVisible = (t: Tache) => t.etat === 'A_PRENDRE' && (t.uniteCible ? unitesVisibles().has(t.uniteCible) : offre(t) || !!t.profilRequis) && porteProfil(t) && portePermission(t) && porteProfils(t)
   const trouverTache = (tid: string) => {
     const t = taches.find((x) => x.id === tid)
     const r = t?.responsable?.id
@@ -370,6 +382,28 @@ export function pilotageSimule(
     const r = trouverRapport(rid)
     if (r.auteur.id !== moi.id || r.etat !== 'BROUILLON') throw refus(409, 'PIL_RAPPORT_NON_MODIFIABLE', 'Seul un brouillon de l’auteur se modifie.')
     return r
+  }
+  /**
+   * Chaîne hiérarchique de l'auteur dans l'ordre de résolution du destinataire (§2.4) : n+1 actif ; chefs des unités, de
+   * la sienne vers le sommet (jamais l'auteur) ; puis les autres responsables de la chaîne. Vide au sommet.
+   */
+  const chaineDe = (auteur: string): DestinatairesRapport['choix'] => {
+    const actif = (id: string | null | undefined): id is string => !!id && id !== auteur && magasin.organisation.find((m) => m.id === id)?.actif !== false && organisation.some((m) => m.id === id)
+    const l: DestinatairesRapport['choix'] = []
+    const ajouter = (id: string, lien: DestinatairesRapport['choix'][number]['lien'], unite: string | null) => { if (!l.some((x) => x.id === id)) l.push({ id, nomAffiche: personne(id).nomAffiche, lien, unite }) }
+    const n1 = responsableDe(auteur)
+    if (actif(n1)) ajouter(n1, 'N_PLUS_UN', null)
+    let u = unites.find((x) => x.code === organisation.find((m) => m.id === auteur)?.unite)
+    for (let i = 0; u && i < 10; i++, u = unites.find((x) => x.code === u!.parent)) {
+      if (actif(u.responsableId)) ajouter(u.responsableId, i === 0 ? 'CHEF_UNITE' : 'CHEF_UNITE_PARENTE', u.code)
+    }
+    for (let r = responsableDe(n1 ?? ''), i = 0; r && i < 10; r = responsableDe(r), i++) if (actif(r)) ajouter(r, 'CHAINE', null)
+    return l
+  }
+  const destinatairesDe = (auteur: string): DestinatairesRapport => {
+    const choix = chaineDe(auteur)
+    const d = choix[0]
+    return { destinataire: d ? personne(d.id) : null, motif: d ? (d.lien === 'CHAINE' ? 'CHOISI' : d.lien) : null, depot: !d, choix }
   }
   const rapportDuJour = (qui: string, j: string): EtatRapportDuJour => rapports.find((r) => r.auteur.id === qui && r.type === 'QUOTIDIEN' && r.periode === j)?.etat ?? 'ABSENT'
   const documents = new Map<string, { blob: Blob; nom: string; typeMime: string; taille: number }>()
@@ -500,9 +534,10 @@ export function pilotageSimule(
       const t = trouverTache(tid)
       if (t.etat !== 'A_PRENDRE') throw refus(409, 'PIL_TRANSITION_INTERDITE', 'La tâche n’est plus à prendre.')
       const mienne = membreDe(moi.id)
-      if (!mienne || !magasin.sousUnites(t.uniteCible!).includes(mienne)) throw refus(403, 'PIL_HORS_EQUIPE', 'Vous n’êtes pas membre de cette unité.')
-      if (!porteProfil(t)) throw refus(403, 'PIL_PROFIL_REQUIS', 'Seuls les porteurs du profil requis prennent cette tâche.')
-      Object.assign(t, { responsable: moi, etat: 'OUVERTE' })
+      if (t.uniteCible && (!mienne || !magasin.sousUnites(t.uniteCible).includes(mienne))) throw refus(403, 'PIL_HORS_EQUIPE', 'Vous n’êtes pas membre de cette unité.')
+      if (!porteProfil(t) || !porteProfils(t)) throw refus(403, 'PIL_PROFIL_REQUIS', 'Seuls les porteurs du profil requis prennent cette tâche.')
+      if (!portePermission(t)) throw refus(403, 'PIL_PERMISSION_REQUISE', 'Seuls les porteurs de la permission requise prennent cette tâche.')
+      Object.assign(t, { responsable: moi, etat: 'OUVERTE', aPrendre: false })
       t.historique.push({ quand: maintenant(), acteur: moi, action: 'PRISE', detail: null })
       pont.surPrise?.(t.id, moi)
       return vueTache(t)
@@ -560,13 +595,23 @@ export function pilotageSimule(
       Object.assign(r, { mode: x.mode, contenu: x.contenu?.trim() || null, ...(x.document && doc ? { document: { ticket: x.document.ticket, nom: doc.nom, typeMime: doc.typeMime, taille: doc.taille }, documentBlob: doc.blob } : {}) })
       return vueRapport(r)
     }),
-    soumettre: (rid) => attendre(() => {
+    // Destinataire résolu (n+1, chef de l'unité, chef d'une unité parente) ou choisi dans la chaîne ; personne : DEPOSE.
+    soumettre: (rid, destinataireId) => attendre(() => {
       const r = brouillon(rid)
-      const resp = responsableDe(moi.id)
-      if (!resp) throw refus(422, 'PIL_SANS_RESPONSABLE', 'Aucun responsable (n+1) n’est désigné pour votre compte.')
       if (!r.contenu && !r.document) throw refus(422, 'PIL_RAPPORT_INCOMPLET', 'Le rapport n’a ni texte ni document.')
-      Object.assign(r, { etat: 'SOUMIS', destinataire: personne(resp), soumisLe: maintenant(), indicateurs: indicateurs(moi.id, r.type, r.periode) })
+      const d = destinatairesDe(moi.id)
+      if (destinataireId && !d.choix.some((c) => c.id === destinataireId)) {
+        throw refus(422, 'PIL_DESTINATAIRE_INVALIDE', 'Le destinataire choisi doit appartenir à votre chaîne hiérarchique.')
+      }
+      const id = destinataireId ?? d.destinataire?.id ?? null
+      const motif = !id ? null : destinataireId && destinataireId !== d.destinataire?.id ? 'CHOISI' : d.motif
+      Object.assign(r, { etat: id ? 'SOUMIS' : 'DEPOSE', destinataire: id ? personne(id) : null, destinataireMotif: motif, soumisLe: maintenant(), indicateurs: indicateurs(moi.id, r.type, r.periode) })
       return vueRapport(r)
+    }),
+    destinatairesRapport: (rid) => attendre(() => {
+      const r = trouverRapport(rid)
+      if (r.auteur.id !== moi.id) throw refus(403, 'PIL_ACTION_RESERVEE', 'Seul l’auteur soumet son rapport.')
+      return destinatairesDe(moi.id)
     }),
     viser: (rid, commentaire) => attendre(() => {
       const r = trouverRapport(rid)

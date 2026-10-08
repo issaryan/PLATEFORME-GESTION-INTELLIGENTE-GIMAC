@@ -9,6 +9,7 @@ import { useLiaisonsParcours } from '../../../hooks/parcours'
 import { PERM } from '../../../permissions'
 import { colonnesLiaisons, useFormatDate } from './communs'
 import { DialogueOuverture } from './DialogueOuverture'
+import { useOptionsTypesProjet } from '../../../hooks/referentiels'
 
 // Étape 3, cadrage (/des/parcours, gabarit G2 ; D-57, D-58) : liste paginée côté serveur des liaisons du
 // parcours. Les filtres sont portés par l'adresse (les compteurs du tableau de bord y renvoient) ; « Mes
@@ -16,13 +17,14 @@ import { DialogueOuverture } from './DialogueOuverture'
 
 const STATUTS: StatutParcours[] = ['CADREE', 'EN_INTEGRATION', 'EN_TEST', 'CERTIFIEE', 'APPROUVEE_SECURITE', 'EN_PRODUCTION', 'SUSPENDUE', 'CLOSE_SANS_SUITE']
 const ETAPES_LIAISON = ETAPES.filter((e) => e !== 'PRISE_CONTACT' && e !== 'ADHESION')
-const TYPES = ['CARTE_INTERBANCAIRE', 'PAIEMENT_MOBILE', 'DELEGATAIRE']
 /** Paramètres de l'adresse qui filtrent la liste ; tout changement ramène à la première page. */
 const FILTRES = ['statut', 'type', 'etape', 'bloquees', 'sansConducteur'] as const
 const TAILLES = [10, 25, 50, 100]
 
 export default function ParcoursPage() {
   const { t } = useTranslation()
+  // Types de projet servis (D-91) : filtre de la liste.
+  const types = useOptionsTypesProjet()
   const navigate = useNavigate()
   const permissions = usePermissions()
   const [params, setParams] = useSearchParams()
@@ -70,7 +72,7 @@ export default function ParcoursPage() {
   const libelleEtapes = (v: string) => v.split(',').map((e) => t(`parcours.etape.${e}`)).join(', ')
   const actifs = [
     ...(params.get('statut') ? [{ key: 'statut', label: `${t('parcoursListe.statut')} : ${t(`parcours.statut.${params.get('statut')}`)}` }] : []),
-    ...(params.get('type') ? [{ key: 'type', label: `${t('parcoursListe.type')} : ${t(`parcours.typeProjet.${params.get('type')}`)}` }] : []),
+    ...(params.get('type') ? [{ key: 'type', label: `${t('parcoursListe.type')} : ${types.libelle(params.get('type') ?? '')}` }] : []),
     ...(params.get('etape') ? [{ key: 'etape', label: `${t('parcoursListe.etape')} : ${libelleEtapes(params.get('etape') ?? '')}` }] : []),
     ...(params.get('bloquees') === '1' ? [{ key: 'bloquees', label: t('parcoursListe.filtre.bloquees') }] : []),
     ...(params.get('sansConducteur') === '1' ? [{ key: 'sansConducteur', label: t('parcoursListe.filtre.sansConducteur') }] : []),
@@ -78,7 +80,7 @@ export default function ParcoursPage() {
   ]
   const filtres = [
     { key: 'statut', label: t('parcoursListe.statut'), value: params.get('statut') ?? '', options: STATUTS.map((s) => ({ value: s, label: t(`parcours.statut.${s}`) })) },
-    { key: 'type', label: t('parcoursListe.type'), value: params.get('type') ?? '', options: TYPES.map((s) => ({ value: s, label: t(`parcours.typeProjet.${s}`) })) },
+    { key: 'type', label: t('parcoursListe.type'), value: params.get('type') ?? '', options: types.options },
     { key: 'etape', label: t('parcoursListe.etape'), value: params.get('etape') ?? '', options: ETAPES_LIAISON.map((s) => ({ value: s, label: t(`parcours.etape.${s}`) })) },
     { key: 'situation', label: t('parcoursListe.situation'), value: params.get('bloquees') === '1' ? 'bloquees' : params.get('sansConducteur') === '1' ? 'sansConducteur' : '', options: [
       { value: 'bloquees', label: t('parcoursListe.filtre.bloquees') },

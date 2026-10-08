@@ -484,6 +484,46 @@ class IamRoutesSecurityTest {
     }
 
     @Test
+    @DisplayName("D-94 §3 : porteurs d'une permission, liste réservée au jeton de service INTERNAL_IAM_READ, sans coordonnées")
+    void collaborateursParPermission() throws Exception {
+        String uri = "/api/v1/interne/collaborateurs?permission=HOM_PROJECT_CONDUCT";
+        mvc.perform(req(HttpMethod.GET, uri, null)).andExpect(status().isUnauthorized());
+        mvc.perform(req(HttpMethod.GET, uri, null).with(jeton("2", PERMISSIONS_IAM.toArray(String[]::new)))).andExpect(status().isForbidden());
+        when(comptes.porteursPermission("HOM_PROJECT_CONDUCT")).thenReturn(List.of(compte));
+        mvc
+            .perform(req(HttpMethod.GET, uri, null).with(jwt().authorities(new SimpleGrantedAuthority("INTERNAL_IAM_READ"))))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.length()").value(1))
+            .andExpect(jsonPath("$[0].id").value(ID))
+            .andExpect(jsonPath("$[0].nomAffiche").value("Awa Mballa"))
+            .andExpect(jsonPath("$[0].profils[0]").value("ROLE_CHARGE_DDRM"))
+            .andExpect(jsonPath("$[0].actif").value(true))
+            .andExpect(jsonPath("$[0].email").doesNotExist());
+        mvc
+            .perform(req(HttpMethod.GET, "/api/v1/interne/collaborateurs?permission=INCONNUE", null).with(jwt().authorities(new SimpleGrantedAuthority("INTERNAL_IAM_READ"))))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test
+    @DisplayName("D-93 §11 : comptes d'une institution, liste réservée au jeton de service INTERNAL_IAM_READ, sans coordonnées")
+    void collaborateursParInstitution() throws Exception {
+        String uri = "/api/v1/interne/collaborateurs?institution=INST-0042";
+        mvc.perform(req(HttpMethod.GET, uri, null)).andExpect(status().isUnauthorized());
+        mvc.perform(req(HttpMethod.GET, uri, null).with(jeton("2", PERMISSIONS_IAM.toArray(String[]::new)))).andExpect(status().isForbidden());
+        Compte correspondant = new Compte("c-1", "corr", "Carine", "Ngo", "c@gimac.cm", true, true, Instant.EPOCH, null, null, "fr", "INST-0042", true, Set.of("ROLE_CORRESPONDANT"), List.of(), true);
+        when(comptes.comptesInstitution("INST-0042")).thenReturn(List.of(correspondant));
+        mvc
+            .perform(req(HttpMethod.GET, uri, null).with(jwt().authorities(new SimpleGrantedAuthority("INTERNAL_IAM_READ"))))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.length()").value(1))
+            .andExpect(jsonPath("$[0].id").value("c-1"))
+            .andExpect(jsonPath("$[0].institutionId").value("INST-0042"))
+            .andExpect(jsonPath("$[0].actif").value(true))
+            .andExpect(jsonPath("$[0].email").doesNotExist());
+    }
+
+    @Test
     @DisplayName("D-64 : annuaire interne paginé réservé au jeton de service INTERNAL_IAM_READ, sans coordonnées")
     void annuaireInterne() throws Exception {
         String uri = "/api/v1/interne/collaborateurs?recherche=mballa&page=1&taille=10";

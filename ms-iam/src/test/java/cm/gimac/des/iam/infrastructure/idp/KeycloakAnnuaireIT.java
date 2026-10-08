@@ -49,7 +49,6 @@ class KeycloakAnnuaireIT {
     static final String SECRET = "secret-iam-it";
     static final String SECRET_CONNEXION = "secret-connexion-it";
     static final String IMAGE = "quay.io/keycloak/keycloak:26.7.4-0";
-    static final Set<String> PRIVILEGIES = Set.of("ROLE_SUPER_ADMIN", "ROLE_RSSI");
     static final Path EXTENSION = Path.of("../infra/keycloak/extensions/gimac-totp");
     static final Path JAR = EXTENSION.resolve("target/gimac-totp.jar");
 
@@ -132,7 +131,7 @@ class KeycloakAnnuaireIT {
             .clientId("iam-service")
             .clientSecret(secret)
             .build();
-        annuaire = new KeycloakAnnuaire(client, url, "gimac", PRIVILEGIES, "gimac-connexion", secretConnexion);
+        annuaire = new KeycloakAnnuaire(client, url, "gimac", "gimac-connexion", secretConnexion);
         // Le domaine est importé avant que la sonde ne réponde ; on attend qu'il serve des jetons.
         long fin = System.nanoTime() + Duration.ofMinutes(2).toNanos();
         while (true) {
@@ -237,7 +236,7 @@ class KeycloakAnnuaireIT {
     }
 
     @Test
-    @DisplayName("D-76 : rattachement (attributs unite et responsable_id) conservé, recherche des comptes d'un responsable par attribut")
+    @DisplayName("D-76 : rattachement (attributs unite et responsable_id) conservé, recherche des comptes d'un responsable par attribut ; D-92 : comptes actifs")
     void rattachement() {
         String chef = annuaire.creer(nouveau(unique("chef"), "ROLE_CHARGE_DDRM"), List.of());
         String agent = annuaire.creer(nouveau(unique("agent"), "ROLE_CHARGE_DDRM"), List.of());
@@ -262,6 +261,66 @@ class KeycloakAnnuaireIT {
         assertThat(annuaire.lire(agent).orElseThrow().unite()).isNull();
         assertThat(annuaire.lire(agent).orElseThrow().responsableId()).isNull();
         assertThat(annuaire.parResponsable(chef)).isEmpty();
+        // D-92 : comptes actifs (périmètre TOUTES), allégés, sans compte de service ni compte désactivé.
+        annuaire.definirActif(autre, false);
+        List<Compte> actifs = annuaire.actifs();
+        assertThat(actifs).extracting(Compte::id).contains(chef, agent).doesNotContain(autre);
+        assertThat(actifs).allSatisfy(x -> {
+            assertThat(x.actif()).isTrue();
+            assertThat(x.identifiant()).doesNotStartWith("service-account-");
+        });
+        assertThat(actifs).filteredOn(x -> x.id().equals(chef)).singleElement().satisfies(x -> assertThat(x.profils()).isEmpty());
+    }
+
+    @Test
+    @DisplayName("D-94 §3 : porteurs d'une permission lus dans la composition Keycloak, profil créé et recomposition compris ; externe et désactivé exclus")
+    void porteursPermission() {
+        String code = "ROLE_IT_" + UUID.randomUUID().toString().substring(0, 6).toUpperCase(java.util.Locale.ROOT).replace('-', '_');
+        annuaire.creerProfil(code, "Profil d'essai", Set.of("COL_MESSAGE_READ"));
+        String interne = annuaire.creer(new NouveauCompte(unique("porteur"), "Awa", "Mballa", unique("porteur") + "@gimac.test", null, null, null, Set.of(code)), List.of());
+        String externe = annuaire.creer(nouveau(unique("externe"), code), List.of());
+        String parti = annuaire.creer(new NouveauCompte(unique("parti"), "Paul", "Ndi", unique("parti") + "@gimac.test", null, null, null, Set.of(code)), List.of());
+        annuaire.definirActif(parti, false);
+        try {
+            assertThat(cm.gimac.des.iam.application.usecase.PorteursPermission.lire(annuaire, "HOM_DASHBOARD_READ")).extracting(Compte::id).doesNotContain(interne, externe, parti);
+            annuaire.definirPermissionsProfil(code, Set.of("COL_MESSAGE_READ", "HOM_DASHBOARD_READ"));
+            List<Compte> porteurs = cm.gimac.des.iam.application.usecase.PorteursPermission.lire(annuaire, "HOM_DASHBOARD_READ");
+            assertThat(porteurs).extracting(Compte::id).contains(interne).doesNotContain(externe, parti);
+            assertThat(porteurs).filteredOn(x -> x.id().equals(interne)).singleElement().satisfies(x -> {
+                assertThat(x.profils()).contains(code);
+                assertThat(x.nomAffiche()).isEqualTo("Awa Mballa");
+            });
+            assertThat(porteurs).allSatisfy(x -> {
+                assertThat(x.actif()).isTrue();
+                assertThat(x.interne()).isTrue();
+            });
+        } finally {
+            annuaire.supprimer(interne);
+            annuaire.supprimer(externe);
+            annuaire.supprimer(parti);
+            annuaire.supprimerProfil(code);
+        }
+    }
+
+    @Test
+    @DisplayName("D-93 §11 : comptes d'une institution par l'attribut institution_id (correspondance exacte), comptes actifs seulement")
+    void parInstitution() {
+        String institution = "INST-" + UUID.randomUUID().toString().substring(0, 8);
+        String actif = annuaire.creer(new NouveauCompte(unique("corr"), "Awa", "Mballa", unique("corr") + "@gimac.test", null, null, institution, Set.of("ROLE_CORRESPONDANT")), List.of());
+        String parti = annuaire.creer(new NouveauCompte(unique("corrparti"), "Paul", "Ndi", unique("corrparti") + "@gimac.test", null, null, institution, Set.of("ROLE_CORRESPONDANT")), List.of());
+        String voisin = annuaire.creer(new NouveauCompte(unique("voisin"), "Eric", "Ndi", unique("voisin") + "@gimac.test", null, null, institution + "-B", Set.of("ROLE_CORRESPONDANT")), List.of());
+        annuaire.definirActif(parti, false);
+        try {
+            List<Compte> l = annuaire.parInstitution(institution);
+            assertThat(l).extracting(Compte::id).containsExactly(actif);
+            assertThat(l.get(0).institutionId()).isEqualTo(institution);
+            assertThat(l.get(0).actif()).isTrue();
+            assertThat(annuaire.parInstitution(institution + "-C")).isEmpty();
+        } finally {
+            annuaire.supprimer(actif);
+            annuaire.supprimer(parti);
+            annuaire.supprimer(voisin);
+        }
     }
 
     @Test
@@ -335,6 +394,41 @@ class KeycloakAnnuaireIT {
     }
 
     @Test
+    @DisplayName("D-94 : attribut gimac_externe d'un profil lu par l'annuaire, posé sans perdre les autres attributs, repli *_PORTAL_*")
+    void profilExterne() {
+        // Correspondant livré : externe (attribut du domaine, ou à défaut ses permissions du portail).
+        assertThat(annuaire.profilsExternes()).contains("ROLE_CORRESPONDANT").doesNotContain("ROLE_SUPER_ADMIN", "ROLE_CHEF_DES");
+        assertThat(annuaire.profils()).filteredOn(p -> p.code().equals("ROLE_CORRESPONDANT")).singleElement().extracting(Profil::externe).isEqualTo(true);
+
+        String code = "ROLE_IT_" + UUID.randomUUID().toString().substring(0, 6).toUpperCase(java.util.Locale.ROOT).replace('-', '_');
+        annuaire.creerProfil(code, "Auditeur externe", "Profil d'essai", Set.of("HOM_PORTAL_READ"));
+        // Sans attribut : règle de repli (permission du portail).
+        assertThat(annuaire.attributsExternes()).doesNotContainKey(code);
+        assertThat(annuaire.profilsExternes()).contains(code);
+        // Attribut posé à faux : le profil n'est plus externe malgré sa permission du portail.
+        annuaire.definirExterne(code, false);
+        assertThat(annuaire.attributsExternes()).containsEntry(code, false);
+        assertThat(annuaire.profilsExternes()).doesNotContain(code);
+        assertThat(annuaire.profils()).filteredOn(p -> p.code().equals(code)).singleElement().extracting(Profil::externe).isEqualTo(false);
+        var role = client.realm("gimac").roles().get(code).toRepresentation();
+        assertThat(role.getAttributes())
+            .containsEntry("gimac_externe", List.of("false"))
+            .containsEntry("gimac_libelle", List.of("Auditeur externe"))
+            .containsEntry("gimac_profil_cree", List.of("true"));
+        // Profil sans permission du portail rendu externe par l'attribut seul.
+        annuaire.definirPermissionsProfil(code, Set.of("COL_MESSAGE_READ"));
+        annuaire.definirExterne(code, true);
+        assertThat(annuaire.profilsExternes()).contains(code);
+        assertThat(annuaire.compositions().get(code)).containsExactly("COL_MESSAGE_READ");
+        // Le libellé modifié ensuite conserve l'attribut externe.
+        annuaire.definirPresentationProfil(code, "Auditeur", "Mission");
+        assertThat(annuaire.attributsExternes()).containsEntry(code, true);
+        assertThatThrownBy(() -> annuaire.definirExterne("ROLE_INEXISTANT_IT", true)).isInstanceOfSatisfying(IamException.class, e -> assertThat(e.code()).isEqualTo("IAM_PROFILE_NOT_FOUND"));
+        annuaire.supprimerProfil(code);
+        assertThat(annuaire.attributsExternes()).doesNotContainKey(code);
+    }
+
+    @Test
     @DisplayName("Politique de sécurité : écrite dans le realm puis relue à l'identique")
     void politique() {
         PolitiqueSecurite p = new PolitiqueSecurite(14, 1, 1, 1, 1, 5, 90, true, 6, 30, "HmacSHA256", 30, 10, true, 5, 15);
@@ -363,6 +457,10 @@ class KeycloakAnnuaireIT {
         List<Profil> profils = annuaire.profils();
         Profil superAdmin = profils.stream().filter(p -> p.code().equals("ROLE_SUPER_ADMIN")).findFirst().orElseThrow();
         assertThat(superAdmin.privilegie()).isTrue();
+        // D-94 : privilégié par les permissions (IAM_*, PLATFORM_*), quel que soit le nom.
+        assertThat(profils).filteredOn(p -> p.code().equals("ROLE_ADMIN_SYSTEME")).singleElement().extracting(Profil::privilegie).isEqualTo(true);
+        assertThat(profils).filteredOn(p -> p.code().equals("ROLE_CHEF_DES")).singleElement().extracting(Profil::privilegie).isEqualTo(false);
+        assertThat(annuaire.compositions().get("ROLE_SUPER_ADMIN")).isEqualTo(superAdmin.permissions());
         assertThat(superAdmin.permissions()).contains("IAM_ROLE_PRIVILEGED_GRANT", "PLATFORM_CONFIG_EDIT", "IAM_ACCOUNT_DELETE");
         Profil rssi = profils.stream().filter(p -> p.code().equals("ROLE_RSSI")).findFirst().orElseThrow();
         assertThat(rssi.permissions()).contains("IAM_ACCOUNT_CREATE", "PLATFORM_SECURITY_POLICY_EDIT").doesNotContain("IAM_ROLE_PRIVILEGED_GRANT");
@@ -391,7 +489,7 @@ class KeycloakAnnuaireIT {
                 .clientSecret("x")
                 .build()
         ) {
-            KeycloakAnnuaire horsLigne = new KeycloakAnnuaire(injoignable, "http://127.0.0.1:1/", "gimac", PRIVILEGIES, "gimac-connexion", "x");
+            KeycloakAnnuaire horsLigne = new KeycloakAnnuaire(injoignable, "http://127.0.0.1:1/", "gimac", "gimac-connexion", "x");
             assertThatThrownBy(horsLigne::lister).isInstanceOfSatisfying(IamException.class, e -> assertThat(e.code()).isEqualTo("IAM_IDP_UNAVAILABLE"));
             assertThatThrownBy(() -> horsLigne.verifierMotDePasse("agent", "x")).isInstanceOfSatisfying(IamException.class, e -> assertThat(e.code()).isEqualTo("IAM_IDP_UNAVAILABLE"));
             assertThatThrownBy(() -> horsLigne.enregistrerTotp("id", "JBSWY3DPEHPK3PXP", "123456", null)).isInstanceOfSatisfying(IamException.class, e -> assertThat(e.code()).isEqualTo("IAM_IDP_UNAVAILABLE"));

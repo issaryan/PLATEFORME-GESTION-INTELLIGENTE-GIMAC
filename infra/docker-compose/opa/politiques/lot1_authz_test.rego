@@ -320,6 +320,7 @@ test_livrable_du_participant_sans_institution_refuse if not authz.allow with inp
 # Parcours, étapes 4 à 10 : chaque geste à permission unique exige sa permission ; route interne refusée.
 routes_parcours := [
 	["POST", "/bff/des/homologation/parcours/operations/o1/validation", "HOM_OPERATION_VALIDATE"],
+	["POST", "/bff/des/homologation/parcours/operations/o1/renvoi", "HOM_OPERATION_VALIDATE"],
 	["POST", "/bff/des/homologation/parcours/operations/o1/preuves", "HOM_EVIDENCE_SUBMIT"],
 	["PUT", "/bff/des/homologation/liaisons/l1/ressources", "HOM_STEP_MANAGE"],
 	["POST", "/bff/des/homologation/liaisons/l1/blocages", "HOM_STEP_MANAGE"],
@@ -345,6 +346,16 @@ test_parcours_sans_permission if {
 test_parcours_livrable_laisse_au_service if authz.allow with input as {
 	"method": "POST", "path": "/bff/des/homologation/parcours/operations/o1/livrable", "permissions": ["HOM_STEP_MANAGE"],
 	"authentifie": true, "acr": "2",
+}
+
+# D-93 et D-94 : affectation d'une fonction et fonctions de l'appelant laissées au @PreAuthorize du service.
+test_affectation_fonction_et_mes_fonctions_laissees_au_service if {
+	authz.allow with input as {
+		"method": "PUT", "path": "/bff/des/homologation/liaisons/l1/fonctions/SNA", "permissions": ["HOM_OPERATION_ASSIGN"],
+		"authentifie": true, "acr": "2",
+	}
+	authz.allow with input as {"method": "GET", "path": "/bff/des/homologation/moi/fonctions", "permissions": [], "authentifie": true, "acr": "2"}
+	not authz.allow with input as {"method": "GET", "path": "/bff/des/homologation/moi/fonctions", "permissions": [], "authentifie": true, "acr": "1"}
 }
 
 # Remise de la fiche de suivi : conducteur ou Normes et Agréments, décidé par le @PreAuthorize du service.
@@ -623,6 +634,7 @@ routes_pilotage := [
 	["GET", "/bff/des/pilotage/rapports", "PIL_ACTIVITY_OWN"],
 	["GET", "/bff/des/pilotage/rapports/r1", "PIL_ACTIVITY_OWN"],
 	["GET", "/bff/des/pilotage/rapports/r1/document", "PIL_ACTIVITY_OWN"],
+	["GET", "/bff/des/pilotage/rapports/r1/destinataires", "PIL_ACTIVITY_OWN"],
 	["POST", "/bff/des/pilotage/rapports", "PIL_ACTIVITY_OWN"],
 	["POST", "/bff/des/pilotage/rapports/preremplissage", "PIL_ACTIVITY_OWN"],
 	["PUT", "/bff/des/pilotage/rapports/r1", "PIL_ACTIVITY_OWN"],
@@ -696,6 +708,8 @@ routes_processus := [
 	["POST", "/bff/des/pilotage/processus/p1/instances"],
 	["GET", "/bff/des/pilotage/processus/instances"],
 	["GET", "/bff/des/pilotage/processus/instances/i1"],
+	["GET", "/bff/des/pilotage/processus/candidats"],
+	["GET", "/bff/des/pilotage/processus/instances/i1/etapes/ANALYSE/candidats"],
 	["POST", "/bff/des/pilotage/processus/instances/i1/etapes/ANALYSE/livrables"],
 	["PUT", "/bff/des/pilotage/processus/instances/i1/etapes/ANALYSE/champs"],
 	["POST", "/bff/des/pilotage/processus/instances/i1/etapes/RECETTE/signature"],
@@ -849,6 +863,90 @@ test_referentiel_lecture_filtree if {
 	}
 }
 
+# D-91 : types de projet et catalogue des fonctions (lecture HOM_REFERENTIEL_READ, écriture HOM_REFERENTIEL_EDIT).
+routes_types_fonctions_lecture := [
+	"/bff/des/homologation/types-projet",
+	"/bff/des/homologation/types-projet/MONNAIE_ELECTRONIQUE",
+	"/bff/des/homologation/referentiels/fonctions",
+	"/bff/des/homologation/referentiels/fonctions/JURISTE",
+]
+
+routes_types_fonctions_ecriture := [
+	["POST", "/bff/des/homologation/types-projet"],
+	["PUT", "/bff/des/homologation/types-projet/MONNAIE_ELECTRONIQUE"],
+	["POST", "/bff/des/homologation/referentiels/fonctions"],
+	["PUT", "/bff/des/homologation/referentiels/fonctions/JURISTE"],
+]
+
+test_types_fonctions_lecture if {
+	every chemin in routes_types_fonctions_lecture {
+		authz.required_permission == "HOM_REFERENTIEL_READ" with input as {"method": "GET", "path": chemin}
+		authz.allow with input as {"method": "GET", "path": chemin, "permissions": ["HOM_REFERENTIEL_READ"], "authentifie": true, "acr": "2"}
+		not authz.allow with input as {"method": "GET", "path": chemin, "permissions": ["HOM_LIAISON_READ"], "authentifie": true, "acr": "2"}
+	}
+}
+
+test_types_fonctions_ecriture_editeur if {
+	every r in routes_types_fonctions_ecriture {
+		authz.required_permission == "HOM_REFERENTIEL_EDIT" with input as {"method": r[0], "path": r[1]}
+		authz.allow with input as {"method": r[0], "path": r[1], "permissions": ["HOM_REFERENTIEL_EDIT"], "authentifie": true, "acr": "2"}
+	}
+}
+
+test_types_fonctions_ecriture_lecteur_refuse if {
+	every r in routes_types_fonctions_ecriture {
+		not authz.allow with input as {"method": r[0], "path": r[1], "permissions": ["HOM_REFERENTIEL_READ", "HOM_REFERENTIEL_READ_ALL"], "authentifie": true, "acr": "2"}
+	}
+}
+
+test_types_fonctions_un_facteur_refuse if {
+	not authz.allow with input as {"method": "POST", "path": "/bff/des/homologation/types-projet", "permissions": ["HOM_REFERENTIEL_EDIT"], "authentifie": true, "acr": "1"}
+}
+
+test_types_projet_chemin_imbrique_non_couvert if {
+	not authz.required_permission with input as {"method": "PUT", "path": "/bff/des/homologation/types-projet/A/B"}
+}
+
+# D-91 §3 : signature d'une opération d'une liaison (membre interne ; signataire vérifié par MS-HOMOLOGATION).
+signature_operation := "/bff/des/homologation/liaisons/l1/operations/27/signatures/VISA_DG"
+
+test_signature_operation if {
+	authz.required_permission == "HOM_LIAISON_READ" with input as {"method": "POST", "path": signature_operation}
+	authz.allow with input as {"method": "POST", "path": signature_operation, "permissions": ["HOM_LIAISON_READ"], "authentifie": true, "acr": "2"}
+}
+
+test_signature_operation_refusee if {
+	not authz.allow with input as {"method": "POST", "path": signature_operation, "permissions": ["HOM_PORTAL_SUBMIT"], "authentifie": true, "acr": "2"}
+	not authz.allow with input as {"method": "POST", "path": signature_operation, "permissions": ["HOM_LIAISON_READ"], "authentifie": true, "acr": "1"}
+}
+
+# D-92 : suppression d'un brouillon du référentiel.
+test_suppression_brouillon if {
+	authz.allow with input as {"method": "DELETE", "path": "/bff/des/homologation/referentiels/v1", "permissions": ["HOM_REFERENTIEL_EDIT"], "authentifie": true, "acr": "2"}
+	not authz.allow with input as {"method": "DELETE", "path": "/bff/des/homologation/referentiels/v1", "permissions": ["HOM_REFERENTIEL_READ"], "authentifie": true, "acr": "2"}
+}
+
+# D-92 : REF_METIER_ADMIN vaut chaque permission du référentiel, des étapes, des types de projet et des fonctions.
+test_ref_metier_admin_referentiels if {
+	routes := array.concat(
+		array.concat(routes_modelisateur, [[r[0], r[1], "HOM_REFERENTIEL_EDIT"] | some r in routes_etapes_referentiel]),
+		[[r[0], r[1], "HOM_REFERENTIEL_EDIT"] | some r in routes_types_fonctions_ecriture],
+	)
+	every r in routes {
+		authz.allow with input as {"method": r[0], "path": r[1], "permissions": ["REF_METIER_ADMIN"], "authentifie": true, "acr": "2"}
+	}
+	every chemin in routes_types_fonctions_lecture {
+		authz.allow with input as {"method": "GET", "path": chemin, "permissions": ["REF_METIER_ADMIN"], "authentifie": true, "acr": "2"}
+	}
+	authz.allow with input as {"method": "DELETE", "path": "/bff/des/homologation/referentiels/v1", "permissions": ["REF_METIER_ADMIN"], "authentifie": true, "acr": "2"}
+}
+
+test_ref_metier_admin_hors_referentiels if {
+	not authz.allow with input as {"method": "POST", "path": "/bff/des/homologation/liaisons", "permissions": ["REF_METIER_ADMIN"], "authentifie": true, "acr": "2"}
+	not authz.allow with input as {"method": "POST", "path": "/bff/console/iam/comptes", "permissions": ["REF_METIER_ADMIN"], "authentifie": true, "acr": "2"}
+	not authz.allow with input as {"method": "POST", "path": "/bff/des/homologation/types-projet", "permissions": ["REF_METIER_ADMIN"], "authentifie": true, "acr": "1"}
+}
+
 # D-80 : notifications de la plateforme, comptes internes seulement.
 routes_notifications := [
 	["GET", "/bff/des/notification/notifications"],
@@ -882,6 +980,41 @@ test_notifications_compte_externe_refuse if {
 
 test_notifications_chemin_non_liste_refuse if not authz.allow with input as {
 	"method": "DELETE", "path": "/bff/des/notification/notifications/n1", "permissions": ["NOT_INBOX_READ"], "authentifie": true, "acr": "2",
+}
+
+# D-93 §11.4 : notifications du portail, comptes d'institution à deux facteurs portant NOT_INBOX_READ.
+routes_notifications_portail := [
+	["GET", "/bff/portail/notification/notifications"],
+	["GET", "/bff/portail/notification/notifications/compteur"],
+	["GET", "/bff/portail/notification/preferences"],
+	["POST", "/bff/portail/notification/notifications/n1/lecture"],
+	["POST", "/bff/portail/notification/notifications/lecture"],
+	["PUT", "/bff/portail/notification/preferences"],
+]
+
+correspondant(r, permissions, acr) := {
+	"method": r[0], "path": r[1], "permissions": permissions, "institution_id": "INST-0042",
+	"authentifie": true, "acr": acr,
+}
+
+test_notifications_portail_correspondant if {
+	every r in routes_notifications_portail {
+		authz.allow with input as correspondant(r, ["NOT_INBOX_READ", "HOM_PORTAL_READ"], "2")
+	}
+}
+
+test_notifications_portail_refus if {
+	every r in routes_notifications_portail {
+		not authz.allow with input as correspondant(r, ["HOM_PORTAL_READ"], "2")
+		not authz.allow with input as correspondant(r, ["NOT_INBOX_READ"], "1")
+		not authz.allow with input as {"method": r[0], "path": r[1], "permissions": ["NOT_INBOX_READ"], "authentifie": true, "acr": "2"}
+	}
+}
+
+test_notifications_portail_chemin_non_liste_refuse if {
+	not authz.allow with input as correspondant(["DELETE", "/bff/portail/notification/notifications/n1"], ["NOT_INBOX_READ"], "2")
+	not authz.allow with input as correspondant(["GET", "/bff/portail/notification/notifications/n1"], ["NOT_INBOX_READ"], "2")
+	not authz.allow with input as correspondant(["PUT", "/bff/portail/notification/notifications/compteur"], ["NOT_INBOX_READ"], "2")
 }
 
 # D-81 : pouvoirs des chefs, demandes à l'administration, profils créés, tâches confiées.
@@ -1066,4 +1199,35 @@ test_lectures_message_avec_permission if {
 
 test_lectures_message_sans_permission if {
 	not authz.allow with input as {"method": "GET", "path": "/bff/des/collaboration/messagerie/conversations/c1/messages/m1/lectures", "permissions": ["PIL_ACTIVITY_OWN"], "authentifie": true, "acr": "2"}
+}
+
+# Catalogue des fonctionnalités (D-94) : lecture par tout compte interne, modification par IAM_PROFILE_EDIT.
+test_catalogue_fonctionnalites_lu_par_tout_compte_interne if {
+	every c in ["des", "console"] {
+		authz.allow with input as {"method": "GET", "path": sprintf("/bff/%s/iam/configuration/fonctionnalites", [c]), "permissions": [], "authentifie": true, "acr": "2"}
+	}
+}
+
+test_catalogue_fonctionnalites_refuse_a_un_compte_d_institution if not authz.allow with input as {
+	"method": "GET", "path": "/bff/des/iam/configuration/fonctionnalites", "permissions": ["HOM_PORTAL_READ"], "institution_id": "INST-0042",
+	"authentifie": true, "acr": "2",
+}
+
+test_catalogue_fonctionnalites_refuse_au_portail if not authz.allow with input as {
+	"method": "GET", "path": "/bff/portail/iam/configuration/fonctionnalites", "permissions": ["HOM_PORTAL_READ"], "institution_id": "INST-0042",
+	"authentifie": true, "acr": "2",
+}
+
+test_catalogue_fonctionnalites_refuse_sans_second_facteur if not authz.allow with input as {
+	"method": "GET", "path": "/bff/console/iam/configuration/fonctionnalites", "permissions": [], "authentifie": true, "acr": "1",
+}
+
+test_modification_d_une_fonctionnalite_avec_iam_profile_edit if {
+	every c in ["des", "console"] {
+		authz.allow with input as {"method": "PUT", "path": sprintf("/bff/%s/iam/configuration/fonctionnalites/liaisons", [c]), "permissions": ["IAM_PROFILE_EDIT"], "authentifie": true, "acr": "2"}
+	}
+}
+
+test_modification_d_une_fonctionnalite_refusee_sans_iam_profile_edit if not authz.allow with input as {
+	"method": "PUT", "path": "/bff/des/iam/configuration/fonctionnalites/liaisons", "permissions": ["IAM_ACCOUNT_READ"], "authentifie": true, "acr": "2",
 }

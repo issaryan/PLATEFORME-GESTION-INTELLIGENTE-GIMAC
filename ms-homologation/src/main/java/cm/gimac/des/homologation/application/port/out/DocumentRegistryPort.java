@@ -19,5 +19,13 @@ public interface DocumentRegistryPort {
 
     Verification verifier(UUID documentId, String sha256);
 
+    /**
+     * Type de la pièce déposée (MIME), lu par {@code GET /api/v1/interne/documents/{id}} (D-93 §3 : types de pièces du
+     * livrable) ; null si le registre ne le connaît pas.
+     */
+    default String typeMime(UUID documentId) {
+        return null;
+    }
+
     Depot deposer(byte[] contenu, String nomFichier, String typeMime, String finalite, String reference, UUID deposantId);
 }

@@ -4,7 +4,6 @@ import cm.gimac.des.homologation.domain.ReferenceOperation;
 import cm.gimac.des.homologation.domain.parcours.Fonction;
 import cm.gimac.des.homologation.domain.parcours.Livrable;
 import java.util.Collection;
-import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -26,7 +25,9 @@ public final class VisibiliteReferentiel {
         LECTURE_COMPLETE,
         "HOM_REFERENTIEL_EDIT",
         "HOM_REFERENTIEL_PUBLISH",
-        "HOM_REFERENTIEL_MIGRATE"
+        "HOM_REFERENTIEL_MIGRATE",
+        // Administration des référentiels métier, tous domaines (D-92).
+        "REF_METIER_ADMIN"
     );
 
     public enum Filtre {
@@ -65,7 +66,7 @@ public final class VisibiliteReferentiel {
 
     /** Fonctions du lecteur ; un chef de département tient aussi la fonction collective des chefs de département. */
     public static Set<Fonction> fonctions(Collection<String> autorites) {
-        Set<Fonction> f = EnumSet.noneOf(Fonction.class);
+        Set<Fonction> f = new java.util.LinkedHashSet<>();
         f.addAll(Fonction.desProfils(autorites));
         if (f.contains(Fonction.CHEF_DES) || f.contains(Fonction.CHEF_DDRM)) {
             f.add(Fonction.CHEFS_DEPARTEMENT);
@@ -73,18 +74,20 @@ public final class VisibiliteReferentiel {
         return f;
     }
 
-    /** Une des fonctions est R, V, C, I, E ou déposant d'un livrable de l'opération (valeurs effectives). */
+    /** Une des fonctions est R, V, C, I, E, déposant d'un livrable ou signataire de l'opération (valeurs effectives). */
     public static boolean concerne(ReferenceOperation o, Set<Fonction> fonctions) {
         if (fonctions.isEmpty()) {
             return false;
         }
-        Set<Fonction> qualites = EnumSet.noneOf(Fonction.class);
+        Set<Fonction> qualites = new java.util.LinkedHashSet<>();
         qualites.add(o.responsableEffectif());
         qualites.add(o.validateurEffectif());
         qualites.addAll(o.getConsultes());
         qualites.addAll(o.informesEffectifs());
         qualites.addAll(o.getExternes());
         o.getLivrables().stream().map(Livrable::deposant).filter(d -> d != null).forEach(qualites::add);
+        // Signataires (D-91) : la personne qui signe voit l'opération.
+        o.getSignatures().stream().map(cm.gimac.des.homologation.domain.parcours.SignatureOperation::signataire).filter(d -> d != null).forEach(qualites::add);
         return qualites.stream().anyMatch(fonctions::contains);
     }
 

@@ -74,15 +74,15 @@ describe('Dossier numérique de la liaison (CR Fig. 7.3)', () => {
     expect(await screen.findByText(/Compte rendu déposé/)).toBeTruthy()
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
   })
-  it('étape 4 : affectation des ressources par un chef de département, responsables exigés', async () => {
+  it('étape 4 : affectation des ressources par un chef de département, une personne au moins, fonctions du RACI servi', async () => {
     page('/des/parcours/LIA-2026-044?action=affecter', { role: 'ROLE_CHEF_DES' })
     const d = await screen.findByRole('dialog')
     expect(within(d).getByText(/Aucun conducteur/)).toBeTruthy()
-    fireEvent.change(within(d).getByLabelText(/Responsable fonctionnel/), { target: { value: '' } })
+    // Fonctions internes du RACI de la liaison (intervenants servis), ni participant ni conducteur.
+    expect(within(d).queryByLabelText(/^Conducteur de projet/)).toBeNull()
+    d.querySelectorAll('select').forEach((x) => fireEvent.change(x, { target: { value: '' } }))
     fireEvent.click(within(d).getByRole('button', { name: 'Affecter les ressources' }))
-    expect(await within(d).findByText('Désignez une personne pour cette fonction.')).toBeTruthy()
-    await waitFor(() => expect(within(d).getByLabelText(/Responsable fonctionnel/).querySelectorAll('option').length).toBeGreaterThan(1))
-    fireEvent.change(within(d).getByLabelText(/Responsable fonctionnel/), { target: { value: 'U-DDRM-2' } })
+    expect(await within(d).findByText('Désignez au moins une personne.')).toBeTruthy()
     await waitFor(() => expect(within(d).getByLabelText(/Pôle réseau/).querySelectorAll('option').length).toBeGreaterThan(1))
     fireEvent.change(within(d).getByLabelText(/Pôle réseau/), { target: { value: 'U-RES-1' } })
     fireEvent.click(within(d).getByRole('button', { name: 'Affecter les ressources' }))

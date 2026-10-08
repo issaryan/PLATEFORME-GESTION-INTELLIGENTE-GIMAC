@@ -57,7 +57,7 @@ test.describe('Fonctionnalité : cadrage des liaisons par le chef du DES', () =>
     })
   })
 
-  test('Scénario : ouvrir une liaison, refus d’un type sans référentiel publié puis succès', async ({ page }) => {
+  test('Scénario : ouvrir une liaison, seuls les types au référentiel publié sont proposés, puis succès', async ({ page }) => {
     await page.goto(`${ADRESSES.departement}/des/institutions?statut=ADHERENT`)
     await page.getByRole('link', { name: 'Crédit rural du Woleu' }).click()
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Crédit rural du Woleu')
@@ -68,10 +68,9 @@ test.describe('Fonctionnalité : cadrage des liaisons par le chef du DES', () =>
       await d.getByRole('button', { name: 'Ouvrir une liaison (cadrage)' }).click()
       await expect(page.getByText('Choisissez le type de projet.').first()).toBeVisible()
     })
-    await test.step('Quand il choisit un projet délégataire, sans référentiel publié', async () => {
-      await page.getByLabel('Délégataire').check()
-      await d.getByRole('button', { name: 'Ouvrir une liaison (cadrage)' }).click()
-      await expect(page.getByText(/Aucun référentiel d'opérations n'est publié pour ce type de projet/)).toBeVisible()
+    await test.step('Alors le projet délégataire, sans référentiel publié, n’est pas proposé (types servis, D-91)', async () => {
+      await expect(d.getByLabel('Carte interbancaire')).toBeVisible()
+      await expect(d.getByLabel('Délégataire')).toHaveCount(0)
     })
     await test.step('Puis un projet de carte interbancaire', async () => {
       await page.getByLabel('Carte interbancaire').check()

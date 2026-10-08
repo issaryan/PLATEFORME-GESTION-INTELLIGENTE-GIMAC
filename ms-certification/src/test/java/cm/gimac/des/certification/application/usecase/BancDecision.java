@@ -11,7 +11,12 @@ import cm.gimac.des.certification.application.port.out.ContexteCertificationPort
 import cm.gimac.des.certification.application.port.out.ContexteCertificationPort.Couverture;
 import cm.gimac.des.certification.domain.TimestampToken;
 import cm.gimac.des.certification.domain.decision.ApprobationSecurite;
+import cm.gimac.des.certification.domain.decision.EtapeSignature;
 import cm.gimac.des.certification.domain.decision.ProcesVerbalCertification;
+import cm.gimac.des.certification.domain.operation.GesteCertification;
+import cm.gimac.des.certification.domain.operation.Intervenant;
+import cm.gimac.des.certification.domain.operation.OperationLiaison;
+import cm.gimac.des.certification.repository.OperationLiaisonRepository;
 import cm.gimac.des.certification.domain.decision.SignatureVerrou;
 import cm.gimac.des.certification.domain.enumeration.ObjetSignature;
 import cm.gimac.des.certification.infrastructure.client.CachetPlateformeStubAdapter;
@@ -94,7 +99,11 @@ class BancDecision {
     final CachetPlateformeStubAdapter cachet = new CachetPlateformeStubAdapter("cle-de-test", horloge);
 
     final AccesLiaison acces = new AccesLiaison(contextes);
-    final ScellementSignatures scellement = new ScellementSignatures(reauth, cachet, signatures, jetons, horloge);
+    final Map<UUID, OperationLiaison> operationsParId = new java.util.LinkedHashMap<>();
+    final OperationLiaisonRepository operationsRepo = mock(OperationLiaisonRepository.class);
+    final OperationsLiaison operations = new OperationsLiaison(operationsRepo, parametresOperations());
+    final CircuitsSignature circuits = new CircuitsSignature(circuitsParDefaut());
+    final ScellementSignatures scellement = new ScellementSignatures(reauth, cachet, signatures, jetons, horloge, circuits);
     final ApprobationSecuriteService approbations;
     final ProcesVerbalService procesVerbaux;
 
@@ -132,6 +141,15 @@ class BancDecision {
             jetonsEnregistres.add(t);
             return t;
         });
+        when(operationsRepo.findById(any())).thenAnswer(i -> Optional.ofNullable(operationsParId.get(i.<UUID>getArgument(0))));
+        when(operationsRepo.findByLiaisonId(any())).thenAnswer(i ->
+            operationsParId.values().stream().filter(o -> o.getLiaisonId().equals(i.getArgument(0))).toList()
+        );
+        when(operationsRepo.save(any())).thenAnswer(i -> {
+            OperationLiaison o = i.getArgument(0);
+            operationsParId.put(o.getId(), o);
+            return o;
+        });
         doAnswer(i -> {
             evenements.add(new Evenement(i.getArgument(0), i.getArgument(1), i.getArgument(2), i.getArgument(3), i.getArgument(4)));
             return UUID.randomUUID();
@@ -150,9 +168,11 @@ class BancDecision {
             horloge,
             Duration.ofMinutes(15),
             visaConformite,
-            visaDg
+            visaDg,
+            operations,
+            circuits
         );
-        procesVerbaux = new ProcesVerbalService(pvs, signatures, acces, scellement, approbations, outbox, horloge);
+        procesVerbaux = new ProcesVerbalService(pvs, signatures, acces, scellement, approbations, outbox, horloge, operations, circuits);
     }
 
     ContexteCertification liaison(String typeProjet, boolean fintech, int taux, boolean constatee) {
@@ -177,6 +197,74 @@ class BancDecision {
         );
         contextes.enregistrer(c);
         return c;
+    }
+
+    /** Circuits par défaut de la configuration livrée (application.yml). */
+    static ParametresCircuits circuitsParDefaut() {
+        return new ParametresCircuits(
+            List.of(
+                new ParametresCircuits.Etape("GIMAC", "Signature du GIMAC (chef du DES)", "CHEF_DES", 1, false),
+                new ParametresCircuits.Etape("PARTICIPANT", "Signature du participant", "PARTICIPANT", 1, true)
+            ),
+            Map.of(
+                "CONFORMITE",
+                new ParametresCircuits.Etape("CONFORMITE", "Visa de la conformité", "CONFORMITE", null, null),
+                "DIRECTION_GENERALE",
+                new ParametresCircuits.Etape("DIRECTION_GENERALE", "Visa de la Direction Générale", "DG", null, null)
+            ),
+            null
+        );
+    }
+
+    static ParametresOperations parametresOperations() {
+        return new ParametresOperations("ADMETTRE");
+    }
+
+    /** Déclencheurs publiés par MS-HOMOLOGATION pour les opérations de la version 1 utilisées par les tests. */
+    static final Map<String, String> DECLENCHEURS = Map.of(
+        "18",
+        GesteCertification.Declencheur.PV_ETABLI,
+        "19",
+        GesteCertification.Declencheur.PV_SIGNE,
+        "20",
+        GesteCertification.Declencheur.DOSSIER_CHANGEMENT,
+        "21",
+        GesteCertification.Declencheur.ATTESTATIONS_ARCHIVEES,
+        "23",
+        GesteCertification.Declencheur.SECURITE_APPROUVEE
+    );
+
+    /** Intervenant interne désigné. */
+    static Intervenant interne(String qualite, String fonction, String compte) {
+        return new Intervenant(qualite, fonction, compte, null, false);
+    }
+
+    /** Fonction à affecter. */
+    static Intervenant aAffecter(String qualite, String fonction) {
+        return new Intervenant(qualite, fonction, null, null, true);
+    }
+
+    /** Institution qui tient une fonction externe. */
+    static Intervenant institution(String qualite, String fonction, String institution) {
+        return new Intervenant(qualite, fonction, null, institution, false);
+    }
+
+    /** homologation.operation-activated.v1 reçu pour l'opération de ce code, avec son déclencheur publié. */
+    UUID operationOuverte(UUID liaison, String code, List<EtapeSignature> signatures, Intervenant... intervenants) {
+        UUID id = UUID.randomUUID();
+        horloge.avancer(Duration.ofSeconds(1));
+        operations.activee(
+            new OperationsLiaison.OperationRecue(
+                liaison,
+                id,
+                horloge.instant(),
+                new OperationLiaison.Description(code, "Opération " + code, "EVENEMENT_EXTERNE", "DECISION", null, DECLENCHEURS.get(code)),
+                List.of(intervenants),
+                List.of(),
+                signatures
+            )
+        );
+        return id;
     }
 
     List<String> types() {

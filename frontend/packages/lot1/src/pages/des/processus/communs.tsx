@@ -1,15 +1,16 @@
+import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Select, StatusBadge } from '@gimac/design-system'
 import { estApiError } from '@gimac/socle'
 import { PROFILS } from '../../../permissions'
 import { useLecture } from '../../../hooks/base'
-import type { EtatEtape, EtatInstance, EtatProcessus, GraviteAnomalie, Intervenant } from '../../../modele/processus'
+import type { CandidatsProcessus, EtatEtape, EtatInstance, EtatProcessus, GraviteAnomalie, Intervenant } from '../../../modele/processus'
 import { useLibelleProfilEquipe } from '../activite/dialoguesEquipe'
 import { useLibelleUnite } from '../activite/communs'
 import './processus.css'
 
 // Compositions communes des processus d'unité (D-87) : pastilles d'état, résumé d'un intervenant, refus traduits,
-// choix d'une personne de l'annuaire interne (porteurs du profil demandé d'abord).
+// choix d'une personne (candidats dans l'unité, puis ailleurs dans le GIMAC, puis l'annuaire interne).
 
 type Statut = 'ok' | 'warn' | 'crit' | 'info' | 'neutral'
 const ETAT_PROCESSUS: Record<EtatProcessus, Statut> = { BROUILLON: 'info', PUBLIEE: 'ok', RETIREE: 'neutral' }
@@ -70,20 +71,48 @@ export function useErreurProcessus() {
 /** Annuaire interne (MS-COLLABORATION) : personnes proposées aux désignations et réaffectations. */
 export const useAnnuaireProcessus = (actif = true) => useLecture(['collaboration', 'annuaire', 'processus'], (s) => s.messagerie.annuaire('', 0, 50), { enabled: actif, staleTime: 60_000 })
 
-/** Choix d'une personne de l'annuaire : les porteurs du profil indiqué d'abord. */
-export function ChoixPersonne({ name, label, value, onChange, profil, help, error, required, exclure = [] }: {
-  name: string; label: string; value: string; onChange: (v: string) => void; profil?: string | null; help?: string; error?: string; required?: boolean; exclure?: string[]
+/**
+ * Choix d'une personne (désignation hors de l'unité) : candidats servis par MS-PILOTAGE groupés « Dans l'unité » puis
+ * « Ailleurs dans le GIMAC » (avec leur unité), puis les autres personnes de l'annuaire. Un seul candidat : il est
+ * choisi d'office (une fois, la personne peut ensuite changer). Sans candidats (profil absent) : l'annuaire, les
+ * porteurs du profil d'abord.
+ */
+export function ChoixPersonne({ name, label, value, onChange, profil, candidats, chargement, help, error, required, exclure = [] }: {
+  name: string; label: string; value: string; onChange: (v: string) => void; profil?: string | null; candidats?: CandidatsProcessus; chargement?: boolean
+  help?: string; error?: string; required?: boolean; exclure?: string[]
 }) {
   const { t } = useTranslation()
   const annuaire = useAnnuaireProcessus()
   const libelleProfil = useLibelleProfilEquipe()
-  const l = (annuaire.data?.contenu ?? []).filter((p) => !exclure.includes(p.id))
-  const porteurs = profil ? l.filter((p) => p.profils?.includes(profil)) : []
+  const libelleUnite = useLibelleUnite()
+  const dans = (candidats?.dansUnite ?? []).filter((c) => !exclure.includes(c.id))
+  const ailleurs = (candidats?.ailleurs ?? []).filter((c) => !exclure.includes(c.id))
+  const proposes = new Set([...dans, ...ailleurs].map((c) => c.id))
+  const l = (annuaire.data?.contenu ?? []).filter((p) => !exclure.includes(p.id) && !proposes.has(p.id))
+  const porteurs = profil && !candidats ? l.filter((p) => p.profils?.includes(profil)) : []
   const autres = l.filter((p) => !porteurs.includes(p))
-  const option = (p: (typeof l)[number]) => ({ value: p.id, label: `${p.nom}${p.fonction ? ` · ${p.fonction}` : ''}` })
+  const seul = candidats && dans.length + ailleurs.length === 1 ? (dans[0] ?? ailleurs[0]) : null
+  const rempli = useRef(false)
+  useEffect(() => {
+    if (seul && !value && !rempli.current) {
+      rempli.current = true
+      onChange(seul.id)
+    }
+  }, [seul, value, onChange])
+  const fonction = (f: string | null | undefined) => (f ? ` · ${f}` : '')
+  const groupe = candidats ? t('proc.personne.autres') : undefined
+  const options = [
+    { value: '', label: t('proc.personne.choisir') },
+    ...dans.map((c) => ({ value: c.id, label: `${c.nomAffiche}${fonction(c.fonction)}`, group: t('proc.personne.dansUnite') })),
+    ...ailleurs.map((c) => ({ value: c.id, label: `${c.nomAffiche} · ${c.unite ? libelleUnite(c.unite) : t('proc.suivi.toutLeGimac')}${fonction(c.fonction)}`, group: t('proc.personne.ailleurs') })),
+    ...[...porteurs, ...autres].map((p) => ({ value: p.id, label: `${p.nom}${fonction(p.fonction)}`, group: groupe })),
+  ]
+  const libelle = profil ? libelleProfil(profil) : ''
+  const aide = help ?? (chargement ? t('proc.personne.chargement')
+    : candidats && profil ? (seul ? t('proc.personne.seul', { profil: libelle }) : !dans.length && !ailleurs.length ? t('proc.personne.aucunPorteur', { profil: libelle })
+      : !dans.length ? t('proc.personne.horsUnite', { profil: libelle }) : t('proc.personne.aideProfil', { profil: libelle }))
+      : profil ? t('proc.personne.aideProfil', { profil: libelle }) : undefined)
   return (
-    <Select name={name} label={label} required={required} help={help ?? (profil ? t('proc.personne.aideProfil', { profil: libelleProfil(profil) }) : undefined)} error={error} value={value} onChange={onChange}
-      disabled={annuaire.isPending}
-      options={[{ value: '', label: t('proc.personne.choisir') }, ...porteurs.map(option), ...autres.map(option)]} />
+    <Select name={name} label={label} required={required} help={aide} error={error} value={value} onChange={onChange} disabled={annuaire.isPending && !candidats} options={options} />
   )
 }

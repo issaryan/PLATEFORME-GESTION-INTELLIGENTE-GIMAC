@@ -1,13 +1,12 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams } from 'react-router'
-import { Button, CrudDialog, DataTable, EmptyState, NumberField, PageHeader, Select, Tabs, TextArea, TextField, type Column } from '@gimac/design-system'
-import { aPermission, usePermissions } from '@gimac/socle'
+import { Banner, Button, CrudDialog, DataTable, EmptyState, NumberField, PageHeader, Select, Tabs, TextArea, TextField, type Column } from '@gimac/design-system'
 import { ETATS_INSTANCE, ETATS_PROCESSUS, LIMITES_PROCESSUS, type EtatInstance, type EtatProcessus, type ResumeInstance, type ResumeProcessus, type VueInstances } from '../../../modele/processus'
-import { useCatalogueProcessus, useEcritureProcessus, useInstances, useProcessus } from '../../../hooks/processus'
+import { useCatalogueProcessus, useEcritureProcessus, useInstances, usePorteeProcessus, useProcessus } from '../../../hooks/processus'
+import type { Unite } from '../../../modele/pilotage'
 import { useOrganisation, useUnites } from '../../../hooks/pilotage'
 import { usePouvoirs } from '../../../hooks/pouvoirs'
-import { PERM } from '../../../permissions'
 import { useRetour } from '../parcours/communs'
 import { etatListe } from '../liaisons/communs'
 import { useDates, useLibelleUnite } from '../activite/communs'
@@ -20,6 +19,22 @@ import { DialogueLancement } from './DialogueLancement'
 // viennent de MS-PILOTAGE.
 
 const PAR_PAGE = 20
+
+/**
+ * Unités en arbre (secteurs et branches, D-92) : chaque unité suivie de ses sous-unités, libellé en retrait selon la
+ * profondeur et type rappelé ; options complètes (le libellé entier, jamais tronqué) avec la recherche du filtre.
+ */
+export function unitesEnArbre(unites: Unite[], retenir: (u: Unite) => boolean = () => true): { code: string; libelle: string }[] {
+  const codes = new Set(unites.map((u) => u.code))
+  const racines = unites.filter((u) => !u.parent || !codes.has(u.parent)).sort((a, b) => a.libelle.localeCompare(b.libelle, 'fr'))
+  const sortie: { code: string; libelle: string }[] = []
+  const visiter = (u: Unite, profondeur: number) => {
+    if (retenir(u)) sortie.push({ code: u.code, libelle: `${'\u00a0\u00a0'.repeat(profondeur)}${profondeur ? '└ ' : ''}${u.libelle}${u.active ? '' : ' (inactive)'}` })
+    unites.filter((x) => x.parent === u.code).sort((a, b) => a.libelle.localeCompare(b.libelle, 'fr')).forEach((x) => visiter(x, profondeur + 1))
+  }
+  racines.forEach((u) => visiter(u, 0))
+  return sortie
+}
 
 function DialogueNouveau({ unites, onFermer, onCree }: { unites: { code: string; libelle: string }[]; onFermer: () => void; onCree: (id: string) => void }) {
   const { t } = useTranslation()
@@ -117,8 +132,9 @@ function Catalogue({ onLancer }: { onLancer: (id: string) => void }) {
   return (
     <div className="gm-col">
       <div className="gm-row" style={{ gap: 'var(--gm-space-3)', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-        <div style={{ minWidth: 220 }}>
-          <Select id="proc-filtre-unite" name="unite" label={t('proc.filtre.unite')} value={unite} onChange={setUnite} options={[{ value: '', label: t('proc.filtre.toutes') }, ...(unites.data ?? []).map((u) => ({ value: u.code, label: u.libelle }))]} />
+        {/* Liste « Unité » complète et lisible (correctif) : arbre des unités, largeur suffisante, jamais tronquée. */}
+        <div style={{ flex: '1 1 360px', minWidth: 320, maxWidth: 560 }}>
+          <Select id="proc-filtre-unite" name="unite" label={t('proc.filtre.unite')} value={unite} onChange={setUnite} options={[{ value: '', label: t('proc.filtre.toutes') }, ...unitesEnArbre(unites.data ?? []).map((u) => ({ value: u.code, label: u.libelle }))]} />
         </div>
         <div style={{ minWidth: 200 }}>
           <Select id="proc-filtre-etat" name="etat" label={t('proc.filtre.etat')} value={etat} onChange={(v) => setEtat(v as EtatProcessus | '')} options={[{ value: '', label: t('proc.filtre.tous') }, ...ETATS_PROCESSUS.map((e) => ({ value: e, label: t(`proc.etat.${e}`) }))]} />
@@ -188,7 +204,6 @@ function Instances() {
 export default function ProcessusPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const permissions = usePermissions()
   const [params, setParams] = useSearchParams()
   const onglet = params.get('vue') === 'instances' ? 'instances' : 'catalogue'
   const pouvoirs = usePouvoirs()
@@ -197,14 +212,23 @@ export default function ProcessusPage() {
   const [nouveau, setNouveau] = useState(false)
   const [lancer, setLancer] = useState<string | null>(null)
   const [retour] = useRetour()
-  // Unités où définir un processus : l'administration toutes, sinon celles que je dirige (PROCESSUS_DEFINIR de portée UNITES).
-  const admin = aPermission(permissions, PERM.profilEditer)
+  // Portée servie par MS-PILOTAGE (D-92) : tous domaines (REF_METIER_ADMIN, portée TOUTES de la matrice) ou mes unités ;
+  // plus aucune règle sur une permission d'administration des profils.
+  const portee = usePorteeProcessus()
+  const tous = portee.data?.portee === 'TOUS_DOMAINES'
   const dirigees = new Set([...(pouvoirs.data?.unitesDirigees ?? []), ...(organisation.data?.unitesDirigees ?? [])])
-  const definissables = (unites.data ?? []).filter((u) => u.active && (admin || (pouvoirs.data?.actions.PROCESSUS_DEFINIR === 'UNITES' && dirigees.has(u.code))))
+  const servies = portee.data?.unitesDefinissables
+  const definissables = unitesEnArbre(unites.data ?? [], (u) => (tous && !!portee.data?.definirToutesUnites)
+    || (servies?.length ? servies.includes(u.code) : u.active && pouvoirs.data?.actions.PROCESSUS_DEFINIR === 'UNITES' && dirigees.has(u.code)))
   return (
     <div className="gm-col">
       <PageHeader title={t('proc.titre')} subtitle={t('proc.sousTitre')}
         actions={definissables.length ? <Button variant="primary" icon="plus" onClick={() => setNouveau(true)}>{t('proc.nouveau.titre')}</Button> : undefined} />
+      {tous ? (
+        <Banner level="info" title={t('proc.tousDomaines.titre')}>
+          {t('proc.tousDomaines.texte', { auTitreDe: (portee.data?.auTitreDe ?? []).map((x) => t(`proc.auTitreDe.${x.replace(':', '_')}`, { defaultValue: x })).join(', ') })}
+        </Banner>
+      ) : null}
       <Tabs items={[{ key: 'catalogue', label: t('proc.onglet.catalogue') }, { key: 'instances', label: t('proc.onglet.instances') }]} value={onglet}
         onChange={(k) => setParams(k === 'instances' ? { vue: 'instances' } : {})} />
       {retour}

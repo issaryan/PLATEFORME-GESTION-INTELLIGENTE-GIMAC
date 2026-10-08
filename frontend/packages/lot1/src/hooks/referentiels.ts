@@ -1,9 +1,12 @@
+import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { ApiError } from '@gimac/socle'
 import { useServices } from '../services/ServicesProvider'
-import type { GrapheReferentiel, SaisieEtape, SaisieOperation } from '../modele/homologation'
+import type { CreationFonction, CreationTypeProjet, GrapheReferentiel, ModificationFonction, ModificationTypeProjet, SaisieEtape, SaisieOperation } from '../modele/homologation'
 import type { Telechargement } from '../modele/certification'
 import { useEffet, useLecture } from './base'
+import { TYPES_PROJET_REPRIS } from '../modele/commun'
 import { cles } from './cles'
 
 // Hooks de données de DES-12 (HOM-01 à HOM-03). Contrôle à blanc et simulation sont des lectures sans effet.
@@ -58,4 +61,53 @@ export function usePlacerOperations(id: string) {
         g ? { ...g, noeuds: g.noeuds.map((n) => { const p = positions.find((x) => x.code === n.code); return p ? { ...n, position: { x: p.x, y: p.y } } : n }) } : g)
     },
   })
+}
+
+// Types de projet et catalogue des fonctions (D-91) : lecture HOM_REFERENTIEL_READ, écriture HOM_REFERENTIEL_EDIT.
+const TYPES = ['homologation', 'types-projet'] as const
+const FONCTIONS = ['homologation', 'fonctions'] as const
+export const useTypesProjet = (actif?: boolean, active = true) =>
+  useLecture([...TYPES, actif ?? 'tous'], (s) => s.homologation.typesProjet(actif), { enabled: active, staleTime: 60_000 })
+export const useCreerTypeProjet = () => useEffet((s, c: CreationTypeProjet) => s.homologation.creerTypeProjet(c), [['homologation']])
+export const useModifierTypeProjet = () => useEffet((s, v: { code: string; m: ModificationTypeProjet }) => s.homologation.modifierTypeProjet(v.code, v.m), [['homologation']])
+export const useFonctionsReferentiel = (actif?: boolean, active = true) =>
+  useLecture([...FONCTIONS, actif ?? 'tous'], (s) => s.homologation.fonctionsReferentiel(actif), { enabled: active, staleTime: 60_000 })
+export const useCreerFonction = () => useEffet((s, c: CreationFonction) => s.homologation.creerFonction(c), [['homologation']])
+export const useModifierFonction = () => useEffet((s, v: { code: string; m: ModificationFonction }) => s.homologation.modifierFonction(v.code, v.m), [['homologation']])
+
+/**
+ * Fonctions du catalogue (D-91) pour l'affichage : libellé servi (une fonction créée n'a pas de clé de traduction) et
+ * fonctions externes (tenues par le participant ou une institution liée). Repli sur la traduction tant que le
+ * catalogue n'est pas lu.
+ */
+export function useFonctionsCatalogue() {
+  const { t } = useTranslation()
+  const c = useCatalogueReferentiels()
+  return useMemo(() => {
+    const l = c.data?.fonctions ?? []
+    return {
+      libelle: (code: string) => t(`parcours.fonction.${code}`, { defaultValue: l.find((f) => f.code === code)?.libelle ?? code }),
+      externes: l.filter((f) => f.externe).map((f) => f.code),
+      internes: l.filter((f) => !f.externe && f.actif !== false),
+      pret: c.isSuccess,
+    }
+  }, [c.data, c.isSuccess, t])
+}
+
+/**
+ * Types de projet proposés (D-91) : lus au catalogue servi (`proposables` : actifs dont le référentiel est publié, pour
+ * le cadrage d'une liaison) ; libellé traduit d'un type repris, libellé servi sinon. Tant que la liste n'est pas servie
+ * (service antérieur à D-91), les trois types repris restent proposés.
+ */
+export function useOptionsTypesProjet(proposables = false) {
+  const { t } = useTranslation()
+  const q = useTypesProjet(proposables ? true : undefined)
+  return useMemo(() => {
+    const l = q.data ? q.data.filter((x) => !proposables || x.proposable).map((x) => ({ code: x.code, libelle: x.libelle })) : q.isError ? TYPES_PROJET_REPRIS.map((code) => ({ code, libelle: code })) : []
+    return {
+      options: l.map((x) => ({ value: x.code, label: t(`parcours.typeProjet.${x.code}`, { defaultValue: x.libelle }) })),
+      libelle: (code: string) => t(`parcours.typeProjet.${code}`, { defaultValue: q.data?.find((x) => x.code === code)?.libelle ?? code }),
+      pret: q.isSuccess || q.isError,
+    }
+  }, [q.data, q.isError, q.isSuccess, proposables, t])
 }

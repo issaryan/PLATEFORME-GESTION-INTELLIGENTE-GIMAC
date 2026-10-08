@@ -1,0 +1,186 @@
+# Job de mise à jour du domaine « gimac » (keycloak-domaine.yaml), lancé par actualiser-domaine-keycloak.sh
+# Keycloak arrêté : hors des ressources de kustomization.yaml (« kubectl apply -k . » ne le lance pas).
+#
+#   exporter   domaine en service exporté avec ses comptes (kc.sh export --users realm_file) ; domaine de
+#              l'image identique à la base : rien à faire
+#   fusionner  fusionner-domaine.py : domaine de l'image, export, base du volume keycloak-domaine-etat
+#   importer   kc.sh import --override true (secrets ${GIMAC_*} substitués), puis domaine de l'image
+#              gardé comme base de la fois suivante
+#
+# Les fichiers d'échange contiennent des empreintes de mots de passe : volume en mémoire, détruit avec le pod
+# (supprimé par le script). Les journaux ne nomment que des paramètres, jamais une valeur ni un mot de passe.
+# Image : celle du StatefulSet keycloak, reportée par le script (kubectl set image --local).
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: keycloak-domaine
+  namespace: gimac-des
+  labels:
+    app: keycloak-domaine
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app: keycloak-domaine
+        # Politiques réseau du segment identite : sortie vers keycloak-postgresql (5432) seulement utile ici.
+        gimac.cm/segment: identite
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        - name: exporter
+          image: registre.gimac.local/des/keycloak:26.7.4-gimac
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -euo pipefail
+              cp /opt/keycloak/data/import/gimac-realm.json /echange/depot.json
+              if cmp -s /echange/depot.json /etat/gimac-realm.precedent.json; then
+                echo "Domaine de l'image identique au domaine importé la fois précédente : rien à faire"
+                exit 0
+              fi
+              mkdir -p /echange/export
+              /opt/keycloak/bin/kc.sh export --dir /echange/export --realm gimac --users realm_file
+          env:
+            - name: KC_DB
+              value: postgres
+            - name: KC_DB_URL_HOST
+              value: keycloak-postgresql.gimac-des.svc.cluster.local
+            - name: KC_DB_USERNAME
+              value: keycloak
+            - name: KC_DB_PASSWORD
+              valueFrom: { secretKeyRef: { name: keycloak-postgresql, key: postgresql-password } }
+            - name: KC_FEATURES
+              value: scripts
+            # Instance d'export ou d'import isolée : aucune grappe JGroups.
+            - name: KC_CACHE
+              value: local
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ['ALL']
+          resources:
+            requests: { cpu: 250m, memory: 768Mi }
+            limits: { cpu: "1", memory: 1536Mi }
+          volumeMounts:
+            - name: echange
+              mountPath: /echange
+            - name: etat
+              mountPath: /etat
+        - name: fusionner
+          image: python:3.13.7-slim
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -eu
+              [ -s /echange/export/gimac-realm.json ] || exit 0
+              base=""
+              [ -s /etat/gimac-realm.precedent.json ] && base=/etat/gimac-realm.precedent.json
+              mkdir -p /echange/import
+              python3 -I /scripts/fusionner-domaine.py /echange/depot.json /echange/export/gimac-realm.json $base \
+                > /echange/import/gimac-realm.json
+              echo "Domaine fusionné ($([ -n "$base" ] && echo 'à trois voies' || echo 'sans base : union'))"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ['ALL']
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 512Mi }
+          volumeMounts:
+            - name: echange
+              mountPath: /echange
+            - name: etat
+              mountPath: /etat
+              readOnly: true
+            - name: script
+              mountPath: /scripts
+              readOnly: true
+      containers:
+        - name: importer
+          image: registre.gimac.local/des/keycloak:26.7.4-gimac
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -euo pipefail
+              if [ -s /echange/import/gimac-realm.json ]; then
+                /opt/keycloak/bin/kc.sh import --dir /echange/import --override true
+                echo "Domaine gimac réimporté, comptes et administration conservés"
+              fi
+              cp /echange/depot.json /etat/gimac-realm.precedent.json.tmp
+              mv /etat/gimac-realm.precedent.json.tmp /etat/gimac-realm.precedent.json
+          env:
+            - name: KC_DB
+              value: postgres
+            - name: KC_DB_URL_HOST
+              value: keycloak-postgresql.gimac-des.svc.cluster.local
+            - name: KC_DB_USERNAME
+              value: keycloak
+            - name: KC_DB_PASSWORD
+              valueFrom: { secretKeyRef: { name: keycloak-postgresql, key: postgresql-password } }
+            - name: KC_FEATURES
+              value: scripts
+            - name: KC_CACHE
+              value: local
+            # Secrets substitués à l'import (${GIMAC_*} de gimac-realm.json), comme domaine-gimac/keycloak.yaml.
+            - name: GIMAC_MOT_DE_PASSE_TEST
+              valueFrom: { secretKeyRef: { name: gimac-clients-keycloak, key: mot-de-passe-test } }
+            - name: GIMAC_SECRET_TESTER_CLI
+              valueFrom: { secretKeyRef: { name: gimac-clients-keycloak, key: tester-cli } }
+            - name: GIMAC_SECRET_HOMOLOGATION_SERVICE
+              valueFrom: { secretKeyRef: { name: gimac-clients-keycloak, key: homologation-service } }
+            - name: GIMAC_SECRET_CERTIFICATION_SERVICE
+              valueFrom: { secretKeyRef: { name: gimac-clients-keycloak, key: certification-service } }
+            - name: GIMAC_SECRET_PARTICIPANT_SERVICE
+              valueFrom: { secretKeyRef: { name: gimac-clients-keycloak, key: participant-service } }
+            - name: GIMAC_SECRET_IAM_SERVICE
+              valueFrom: { secretKeyRef: { name: gimac-clients-keycloak, key: iam-service } }
+            - name: GIMAC_SECRET_GATEWAY_SUPERVISION
+              valueFrom: { secretKeyRef: { name: gimac-clients-keycloak, key: gateway-supervision } }
+            - name: GIMAC_SECRET_COLLABORATION_SERVICE
+              valueFrom: { secretKeyRef: { name: gimac-clients-keycloak, key: collaboration-service } }
+            - name: GIMAC_SECRET_PILOTAGE_SERVICE
+              valueFrom: { secretKeyRef: { name: gimac-clients-keycloak, key: pilotage-service } }
+            - name: GIMAC_SECRET_NOTIFICATION_SERVICE
+              valueFrom: { secretKeyRef: { name: gimac-clients-keycloak, key: notification-service } }
+            - name: GIMAC_SECRET_INTERNAL
+              valueFrom: { secretKeyRef: { name: gimac-clients-keycloak, key: internal } }
+            - name: GIMAC_SECRET_CONNEXION
+              valueFrom: { secretKeyRef: { name: gimac-clients-keycloak, key: connexion } }
+            - name: GIMAC_SECRET_WEB_APP
+              valueFrom: { secretKeyRef: { name: gimac-clients-keycloak, key: web-app } }
+            - name: GIMAC_SECRET_GATEWAY_SERVICE
+              valueFrom: { secretKeyRef: { name: gimac-clients-keycloak, key: gateway-service } }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ['ALL']
+          resources:
+            requests: { cpu: 250m, memory: 768Mi }
+            limits: { cpu: "1", memory: 1536Mi }
+          volumeMounts:
+            - name: echange
+              mountPath: /echange
+            - name: etat
+              mountPath: /etat
+      volumes:
+        - name: echange
+          emptyDir: { medium: Memory, sizeLimit: 256Mi }
+        - name: etat
+          persistentVolumeClaim:
+            claimName: keycloak-domaine-etat
+        - name: script
+          configMap:
+            name: keycloak-fusion-domaine

@@ -29,7 +29,7 @@ public class Liaison implements Serializable {
     private UUID id;
 
     @NotNull
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = ConvertisseursCodes.TypeProjetEnTexte.class)
     @Column(name = "type_projet", nullable = false)
     private TypeProjet typeProjet;
 
@@ -85,7 +85,37 @@ public class Liaison implements Serializable {
     @Column(name = "liaison_origine_id")
     private UUID liaisonOrigineId;
 
+    /**
+     * Définition du type de projet (D-91), lue par la même colonne : son modèle porte les comportements du type
+     * (attestations, catalogue des services, avancement du simulateur).
+     */
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "type_projet", referencedColumnName = "code", insertable = false, updatable = false)
+    @JsonIgnoreProperties(allowSetters = true, value = { "hibernateLazyInitializer" })
+    private DefinitionTypeProjet definitionTypeProjet;
+
     // jhipster-needle-entity-add-field - JHipster will add fields here
+
+    /** Modèle du type de projet ; définition non chargée (tests unitaires) : celui de même nom, sinon générique. */
+    public cm.gimac.des.homologation.domain.parcours.ModeleTypeProjet modeleTypeProjet() {
+        if (definitionTypeProjet != null && definitionTypeProjet.getCode().equals(typeProjet == null ? null : typeProjet.name())) {
+            return definitionTypeProjet.getModele();
+        }
+        return cm.gimac.des.homologation.domain.parcours.ModeleTypeProjet.parDefaut(typeProjet);
+    }
+
+    /** Rattache la définition du type (ouverture d'une liaison) ; le type de la liaison devient celui de la définition. */
+    public Liaison definitionTypeProjet(DefinitionTypeProjet d) {
+        this.definitionTypeProjet = d;
+        if (d != null) {
+            this.typeProjet = d.type();
+        }
+        return this;
+    }
+
+    public DefinitionTypeProjet getDefinitionTypeProjet() {
+        return definitionTypeProjet;
+    }
 
     public UUID getLiaisonOrigineId() {
         return this.liaisonOrigineId;

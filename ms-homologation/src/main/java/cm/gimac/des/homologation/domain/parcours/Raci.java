@@ -43,9 +43,31 @@ public record Raci(
         };
     }
 
+    /** Remplace, dans toutes les qualités (E comprise), chaque personne qui satisfait le critère (D-93 §1). */
+    public Raci remplacerSi(java.util.function.Predicate<Personne> critere, java.util.function.UnaryOperator<Personne> par) {
+        UnaryOperator<Personne> un = x -> x != null && critere.test(x) ? par.apply(x) : x;
+        UnaryOperator<List<Personne>> tous = l -> l.stream().map(un).distinct().toList();
+        return new Raci(un.apply(r), tous.apply(c), un.apply(v), tous.apply(i), tous.apply(e));
+    }
+
+    /** Toutes les personnes désignées, toutes qualités confondues (R, V, C, I, E). */
+    public List<Personne> toutes() {
+        List<Personne> l = new ArrayList<>();
+        if (r != null) {
+            l.add(r);
+        }
+        if (v != null) {
+            l.add(v);
+        }
+        l.addAll(c);
+        l.addAll(i);
+        l.addAll(e);
+        return l;
+    }
+
     /** Remplace, dans toutes les qualités internes, la personne qui tient une fonction (affectation des ressources, rang 6). */
     public Raci remplacer(Fonction f, Personne p) {
-        UnaryOperator<Personne> un = x -> x != null && x.fonction() == f ? p : x;
+        UnaryOperator<Personne> un = x -> x != null && f.equals(x.fonction()) ? p : x;
         UnaryOperator<List<Personne>> tous = l -> l.stream().map(un).distinct().toList();
         return new Raci(un.apply(r), tous.apply(c), un.apply(v), tous.apply(i), e);
     }

@@ -31,7 +31,7 @@ const mention = (cid: string, mid: string, type: 'MENTION' | 'REPONSE' = 'MENTIO
 
 describe('notifications de mention et de réponse', () => {
   it('types, conversation d’une notification, conversation ouverte, lien de la console', () => {
-    expect(TYPES_NOTIFICATION).toEqual(['MESSAGE', 'TACHE', 'RAPPORT', 'MENTION', 'REPONSE', 'DEMANDE', 'PROCESSUS'])
+    expect(TYPES_NOTIFICATION).toEqual(['MESSAGE', 'TACHE', 'RAPPORT', 'MENTION', 'REPONSE', 'DEMANDE', 'PROCESSUS', 'HOMOLOGATION'])
     const n = { type: 'MENTION' as const, reference: { service: 'collaboration', type: 'MESSAGE', id: 'm-1' }, conversationId: 'c-1' }
     expect(conversationDe(n)).toBe('c-1')
     expect(conversationDe({ type: 'MESSAGE', reference: referenceConversation('c-2') })).toBe('c-2')

@@ -105,7 +105,7 @@ public class ReferentialMigrationService {
             depot
                 .trouver(id, true)
                 .ifPresent(p -> {
-                    Parcours.Differentiel d = p.migrer(cible.getId(), cible.getNumero(), cible.getOperations(), instanciation.designation(l, p.etat().getRessources()), aujourdhui);
+                    Parcours.Differentiel d = p.migrer(cible.getId(), cible.getNumero(), cible.getOperations(), instanciation.designation(l, p.etat().getRessources(), p.etat().getInstitutionsLiees()), aujourdhui);
                     d.supprimees().forEach(depot::supprimer);
                     d.ajoutees().forEach(depot::ajouter);
                 });

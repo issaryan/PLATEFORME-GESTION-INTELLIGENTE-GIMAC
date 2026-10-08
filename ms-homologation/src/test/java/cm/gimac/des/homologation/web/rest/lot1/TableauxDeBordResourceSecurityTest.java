@@ -110,4 +110,19 @@ class TableauxDeBordResourceSecurityTest {
         assertThat(TableauxDeBordResource.fonctions(" , SNA ,")).containsExactly(Fonction.SNA);
         assertThatThrownBy(() -> TableauxDeBordResource.fonctions("x")).isInstanceOf(HomologationException.class);
     }
+
+    @Test
+    @DisplayName("D-94 : fonctions de l'appelant déduites du catalogue et des profils du jeton ; sans second facteur : 403")
+    void mesFonctions() throws Exception {
+        mvc.perform(req(HttpMethod.GET, "/api/v1/moi/fonctions", null)).andExpect(status().isUnauthorized());
+        mvc.perform(req(HttpMethod.GET, "/api/v1/moi/fonctions", null).with(jeton("1", "ROLE_CHEF_DES"))).andExpect(status().isForbidden());
+        mvc
+            .perform(req(HttpMethod.GET, "/api/v1/moi/fonctions", null).with(jeton("2", "ROLE_CHEF_DES", "ROLE_SNA")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[*].code").value(org.hamcrest.Matchers.contains("CHEF_DES", "CHEFS_DEPARTEMENT", "SNA")))
+            .andExpect(jsonPath("$[0].libelle").value("Chef du département DES"))
+            .andExpect(jsonPath("$[0].profils[0]").value("ROLE_CHEF_DES"))
+            .andExpect(jsonPath("$[2].externe").value(false));
+        mvc.perform(req(HttpMethod.GET, "/api/v1/moi/fonctions", null).with(jeton("2", "HOM_LIAISON_READ"))).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(0));
+    }
 }

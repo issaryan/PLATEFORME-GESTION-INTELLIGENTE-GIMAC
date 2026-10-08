@@ -11,7 +11,8 @@ S'appuie sur `../kubernetes`, généré par JHipster, sans le modifier (D-48, D-
 | `alertmanager.yaml` | Alertmanager `v0.34.1` comme Compose, configuration `alertmanager-configuration`, segment `alertes` (Prometheus, passerelle, Grafana), aucune sortie |
 | `regles-alertes.yaml` | `PrometheusRule` générée depuis `docker-compose/prometheus-conf/alert_rules.yml` par `synchroniser-partages.sh` |
 | `kafka-sujets.yaml` | Job `kafka-sujets-init` : sujets du lot 1 (équivalent du conteneur Compose), réplication 1 |
-| `partages/` | Copies exactes des fichiers de Compose lus par les générateurs (`opa/*.rego`, `alertmanager/config.yml`, `kafka/creer-sujets-lot1.sh`) : Kustomize ne lit rien hors de ce dossier |
+| `keycloak-domaine.yaml`, `keycloak-domaine-job.yaml`, `actualiser-domaine-keycloak.sh` | Mise à jour du domaine `gimac` sans perte (comptes, profils créés, recompositions, politique de mot de passe, OTP, sessions, force brute) : volume `keycloak-domaine-etat` (base de la fusion), ConfigMap `keycloak-fusion-domaine` (copie de `infra/ci/fusionner-domaine.py`), Job appliqué hors de Kustomize par le script, Keycloak arrêté |
+| `partages/` | Copies exactes des fichiers de Compose et de la CI lus par les générateurs (`opa/*.rego`, `alertmanager/config.yml`, `kafka/creer-sujets-lot1.sh`, `keycloak/fusionner-domaine.py`) : Kustomize ne lit rien hors de ce dossier |
 | `synchroniser-partages.sh` | Recopie `partages/` et régénère `regles-alertes.yaml` ; `--verifier` échoue si une copie diffère de sa source |
 | `retrait-operateur-prometheus.yaml` | Retrait de l'opérateur Prometheus généré (v0.42.1, RBAC `v1beta1` refusé depuis Kubernetes 1.22) |
 | `politiques-reseau.yaml` | Refus par défaut et matrice des flux par segment : `dmz`, `socle`, `referentiels`, `exploitation`, `pilotage`, `persistance`, `identite`, `supervision`, `presentation`, `conversion`, `politiques`, `alertes` ; sorties vers les dispositifs extérieurs (S3, SMTP, gestion des changements) par port, à resserrer par `ipBlock` |
@@ -30,7 +31,21 @@ GIMAC_S3_POINT_ACCES=... GIMAC_S3_CLE_ACCES=... GIMAC_S3_CLE_SECRETE=... \
 GIMAC_GESTION_CHANGEMENTS_URL=https://... ./creer-secrets.sh
 ./synchroniser-partages.sh --verifier
 kubectl apply -k .
+./actualiser-domaine-keycloak.sh   # seulement si l'image Keycloak porte une nouvelle version du domaine
 ```
+
+## Mettre à jour le domaine Keycloak sans perte
+
+`start --import-realm` ignore un domaine existant. Quand l'image Keycloak porte une nouvelle version de
+`gimac-realm.json`, `./actualiser-domaine-keycloak.sh` : arrête Keycloak (aucune écriture concurrente, caches vidés
+au redémarrage) ; lance le Job `keycloak-domaine` (`keycloak-domaine-job.yaml`, même image que le StatefulSet, base
+`keycloak-postgresql`) dont les conteneurs **exporter** (`kc.sh export --users realm_file` ; domaine de l'image
+identique à la base : rien à faire), **fusionner** (`python3 fusionner-domaine.py`, ConfigMap `keycloak-fusion-domaine`)
+et **importer** (`kc.sh import --override true`, secrets `${GIMAC_*}` du Secret `gimac-clients-keycloak`, puis domaine de
+l'image gardé comme base dans le volume `keycloak-domaine-etat`) se suivent ; affiche les journaux, supprime le Job et
+relance Keycloak au nombre de répliques d'avant. Les fichiers d'échange (empreintes de mots de passe) restent dans un
+volume en mémoire du pod. Règles de la fusion : `docs/lot1/ecrans-par-configuration.md` §6.6. Le Job porte le segment
+`identite` (sortie vers `keycloak-postgresql` seule) et l'étiquette `app: keycloak-domaine`, hors du Service `keycloak`.
 
 Prérequis : contrôleur d'entrée NGINX dans l'espace de noms `ingress-nginx`, opérateur Kyverno, opérateur Prometheus à jour et ses CRD (`monitoring.coreos.com` : bundle officiel de prometheus-operator ou kube-prometheus-stack ; celui généré par JHipster est retiré), images dans `registre.gimac.local/des`, dont l'image Keycloak construite depuis `infra/keycloak/Dockerfile` (`registre.gimac.local/des/keycloak:26.7.4-gimac`).
 
@@ -51,6 +66,7 @@ Comparaison avec `docker-compose.yml`, `docker-compose.gimac.yml` et `docker-com
 | `/management/prometheus` | `permitAll` dans la `SecurityConfiguration` de la passerelle et des 13 services | Accepté dans la grappe (Prometheus seul y est admis par les politiques réseau). Corrigé : l'entrée générée publiait la passerelle sans authentification (`gateway.gimac-des.des.gimac.local`, dont `/management/*`) et chaque service sous `/services/<service>/` sans OPA ; la règle est retirée, comme le serveur Compose qui ne publie que les couches de présentation |
 | `keycloak` (`KC_HEALTH_ENABLED`, `KC_HTTP_MANAGEMENT_PORT=9990`, `start-dev`) | Port `management` 9990 (conteneur et Service), `GIMAC_SUPERVISION_KEYCLOAKSANTEURL`, politiques `identite` et `sortie-passerelle-plateforme` | Corrigé. Aussi : options v1 retirées de Keycloak 26 (`KC_PROXY`, `KC_HOSTNAME_URL`, `KC_HOSTNAME_ADMIN_URL`) remplacées par `KC_HOSTNAME`, `KC_HTTP_ENABLED` (sans quoi `start` refuse le HTTP) et `KC_PROXY_HEADERS` ; JGroups (7800, 57800) ouvert entre les deux répliques |
 | Import du domaine (`--import-realm`, `gimac-realm.json` et secrets `${GIMAC_SECRET_*}`) | Domaine intégré à l'image GIMAC, realm JHipster par ConfigMap, 14 secrets du Secret `gimac-clients-keycloak` | Équivalent. Base `keycloak-postgresql` comme `docker-compose.serveur.yml` |
+| Réimport par fusion à trois voies d'un domaine modifié (`actualiser_domaine` de `deployer-serveur.sh`, `mettre-a-jour.sh`) | `actualiser-domaine-keycloak.sh` et Job `keycloak-domaine` (`kc.sh export`, `fusionner-domaine.py`, `kc.sh import --override true`), base dans le volume `keycloak-domaine-etat` | Équivalent, lancé par l'exploitant après `kubectl apply -k .` (Keycloak arrêté le temps du Job). `--import-realm` seul ignorait toute nouvelle version du domaine |
 | Secrets des clients de service (`.env`) | `creer-secrets.sh` (`gimac-clients-keycloak`), puis OpenBao (SOC-06) | Corrigé : `GIMAC_SECRET_INTERNAL` manquait aux 13 services (registration OAuth2 `internal`) |
 | `kafka` (réplication 1 des sujets internes) | `jhipster-kafka` | Corrigé : réplication 1 des sujets de transactions et de partage ajoutée ; adresse du courtier (`SPRING_CLOUD_STREAM_KAFKA_BINDER_BROKERS`, `SPRING_KAFKA_BOOTSTRAP_SERVERS` pour la passerelle) absente : les 14 services visaient `localhost:9092` (les `KAFKA_CONSUMER_*` générées ne sont lues par aucun service). Pas de volume (comme Compose) |
 | `kafka-sujets-init` | Job `kafka-sujets-init` (`kafka-sujets.yaml`) | Corrigé. Sans dépendance d'ordre en Kubernetes : un service démarré avant la fin du Job créerait un sujet à 1 partition (en pratique, le Job s'achève avant le démarrage des JVM) |
@@ -91,3 +107,4 @@ Dernier résultat (`infra/ci/valider-infra.sh`, schémas Kubernetes 1.33.0 et ca
 | 2026-10-06 | - | Aperçu bureautique (D-83) : `conversion-documents.yaml` (Deployment et Service internes), segment `conversion` et politiques réseau ; `GIMAC_APERCU_URL` de MS-DOCUMENT ; entrées des couches : corps de 110 Mo (`proxy-body-size`, 1 Mo par défaut au contrôleur) ; `kustomize build` vérifié (138 objets) |
 | 2026-10-06 | - | Services applicatifs : port exposé = port du conteneur (`gateway` 8080, `iam` 8081 ... `collaboration` 8093) au lieu du port 80 généré, pour les adresses `http://<service>:<port>` des `application-prod.yml` (dont `gimac.services.*` de la passerelle) et `GIMAC_PASSERELLE` des couches de présentation ; garde `test` sur le port cible ; l'entrée désigne les ports par nom, inchangée |
 | 2026-10-06 | - | Équivalence avec Docker Compose (tableau ci-dessus) : OPA, Alertmanager, règles d'alerte, Job des sujets Kafka, copies `partages/` et `synchroniser-partages.sh` ; ServiceMonitor (`http`, `/management/prometheus`), RBAC `v1`, opérateur Prometheus généré retiré ; adresse du courtier Kafka et `GIMAC_SECRET_INTERNAL` des services ; supervision et journal des connexions de la passerelle ; Keycloak 26 (nom d'hôte v2, HTTP, port de gestion 9990, JGroups) ; règle publique de la passerelle retirée de l'entrée ; gestion des changements par `gimac-dispositifs-externes` ; `kustomize build` et kubeconform : 151 objets valides |
+| 2026-10-07 | - | Domaine Keycloak mis à jour sans perte : `actualiser-domaine-keycloak.sh`, Job `keycloak-domaine` (hors Kustomize, validé par kubeconform dans `valider-infra.sh`), volume `keycloak-domaine-etat`, ConfigMap `keycloak-fusion-domaine` (copie `partages/keycloak/fusionner-domaine.py` tenue par `synchroniser-partages.sh`) ; `kustomize build` : 157 objets |

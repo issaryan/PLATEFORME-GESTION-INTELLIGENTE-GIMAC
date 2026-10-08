@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.TreeSet;
 
 /**
@@ -29,8 +30,9 @@ public final class ReglesPouvoirs {
     private ReglesPouvoirs() {}
 
     /**
-     * Pouvoirs d'un compte d'après ses profils : portée maximale par action ; profils demandables
-     * réunis, restreints aux profils attribuables non privilégiés.
+     * Pouvoirs d'un compte d'après ses profils : portée maximale par action (TOUTES l'emporte sur UNITES ;
+     * une portée non admise par l'action, que la base refuse déjà, est ramenée à UNITES) ; profils
+     * demandables réunis, restreints aux profils attribuables non privilégiés.
      */
     public static Pouvoirs calculer(Collection<String> profils, Map<String, PouvoirsProfil> matrice, Set<String> attribuables, Set<String> privilegies) {
         Map<ActionPouvoir, Portee> actions = new EnumMap<>(ActionPouvoir.class);
@@ -40,7 +42,7 @@ public final class ReglesPouvoirs {
             if (ligne == null) {
                 continue;
             }
-            ligne.actions().forEach((a, p) -> actions.merge(a, p, Portee::max));
+            ligne.actions().forEach((a, p) -> actions.merge(a, a.admet(p) ? p : p.min(Portee.UNITES), Portee::max));
             demandables.addAll(ligne.profilsDemandables());
         }
         demandables.removeIf(p -> !attribuables.contains(p) || privilegies.contains(p));
@@ -48,10 +50,25 @@ public final class ReglesPouvoirs {
     }
 
     /**
-     * Vérifie une ligne de la matrice avant enregistrement : profils demandables connus (400
-     * IAM_PROFILE_UNKNOWN) et non privilégiés (422 ORG_PROFIL_NON_DEMANDABLE).
+     * Vérifie une ligne de la matrice avant enregistrement : portée admise par chaque action (422
+     * ORG_PORTEE_NON_ADMISE, détail : actions et portées refusées ; TOUTES n'est admise que pour
+     * PROCESSUS_DEFINIR et PROCESSUS_LANCER, D-92), profils demandables connus (400 IAM_PROFILE_UNKNOWN) et
+     * non privilégiés (422 ORG_PROFIL_NON_DEMANDABLE).
      */
     public static void verifierLigne(PouvoirsProfil ligne, Set<String> attribuables, Set<String> privilegies) {
+        Map<String, String> nonAdmises = new TreeMap<>();
+        ligne.actions().forEach((a, p) -> {
+            if (!a.admet(p)) {
+                nonAdmises.put(a.name(), p.name());
+            }
+        });
+        if (!nonAdmises.isEmpty()) {
+            throw IamException.nonTraitable(
+                "ORG_PORTEE_NON_ADMISE",
+                "Portée non admise pour cette action : TOUTES est réservée à PROCESSUS_DEFINIR et PROCESSUS_LANCER",
+                Map.of("actions", List.copyOf(nonAdmises.keySet()), "portees", nonAdmises)
+            );
+        }
         Set<String> inconnus = new TreeSet<>(ligne.profilsDemandables());
         inconnus.removeAll(attribuables);
         if (!inconnus.isEmpty()) {
