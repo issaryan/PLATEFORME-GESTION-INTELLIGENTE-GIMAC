@@ -683,7 +683,6 @@
             "CER_DOSSIER_READ",
             "CER_REGISTER_READ",
             "PAR_INSTITUTION_READ",
-            "ROLE_ADMIN",
             "IAM_ACCOUNT_READ",
             "IAM_ACCOUNT_CREATE",
             "IAM_ACCOUNT_EDIT",

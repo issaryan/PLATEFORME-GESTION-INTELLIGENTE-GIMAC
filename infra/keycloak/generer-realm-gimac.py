@@ -80,7 +80,10 @@ PROFILS = {
         "CER_REGISTER_EXPORT", "CER_ATTESTATION_STATUS_REQUEST", "HOM_STEP_MANAGE"],
     # Super administrateur et RSSI administrent la plateforme depuis la console (D-62) ; seul le
     # super administrateur attribue un profil privilégié et règle la journalisation des services.
-    "ROLE_SUPER_ADMIN": LECTURE_DES + ["ROLE_ADMIN"] + [f"IAM_{p}" for p in PERMISSIONS["IAM"]]
+    # Sans ROLE_ADMIN : ce rôle technique ouvre le CRUD généré (/api/**) et les points /management des
+    # services JHipster, hors OPA et hors règles métier ; seul le compte de service gateway-supervision le
+    # porte (lecture des /management par la passerelle). La console passe par /api/plateforme/** (PLATFORM_*).
+    "ROLE_SUPER_ADMIN": LECTURE_DES + [f"IAM_{p}" for p in PERMISSIONS["IAM"]]
         + [f"PLATFORM_{p}" for p in PERMISSIONS["PLATFORM"]],
     "ROLE_RSSI": LECTURE_DES + ["CER_QUITUS_SECURITE_SIGN", "CER_SECURITY_VERIFY", "HOM_EVIDENCE_SUBMIT"] + [f"IAM_{p}" for p in PERMISSIONS["IAM"] if p != "ROLE_PRIVILEGED_GRANT"]
         + ["PLATFORM_SUPERVISION_READ", "PLATFORM_CONFIG_READ", "PLATFORM_SECURITY_POLICY_READ", "PLATFORM_SECURITY_POLICY_EDIT",
@@ -581,6 +584,11 @@ def main():
     comptes_service = {u.get("serviceAccountClientId"): u for u in realm["users"]}
     assert clients["gateway-service"]["serviceAccountsEnabled"] and "INTERNAL_IAM_READ" in comptes_service["gateway-service"]["realmRoles"]
     assert "manage-users" in comptes_service["iam-service"]["clientRoles"]["realm-management"]
+    # ROLE_ADMIN (CRUD généré et /management des services) : jamais dans un profil, porté par le seul compte
+    # de service de la supervision.
+    assert "ROLE_ADMIN" in comptes_service["gateway-supervision"]["realmRoles"]
+    assert not any("ROLE_ADMIN" in (r.get("composites") or {}).get("realm", []) for r in realm["roles"]["realm"]), "ROLE_ADMIN dans un profil"
+    assert [u["username"] for u in realm["users"] if "ROLE_ADMIN" in (u.get("realmRoles") or [])] == ["service-account-gateway-supervision"]
     assert not any(u.get("requiredActions") for u in realm["users"]), "action requise Keycloak sur un compte"
     assert all(u["attributes"]["gimac_actions_requises"] == ACTIONS_TEST for u in realm["users"] if u["username"].startswith("test-"))
     assert all(realm[k] == v for k, v in {**SESSIONS, **FORCE_BRUTE, **POLITIQUE_OTP}.items())

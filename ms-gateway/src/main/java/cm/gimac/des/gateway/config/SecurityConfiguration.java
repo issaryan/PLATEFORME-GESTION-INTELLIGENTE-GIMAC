@@ -106,9 +106,9 @@ public class SecurityConfiguration {
                     .pathMatchers("/api/session/appareils", "/api/session/appareils/**", "/api/session/historique")
                         .access(new DoubleFacteurAuthorizationManager(niveauxDoubleFacteur))
                     .pathMatchers("/api/**").authenticated()
-                    .pathMatchers("/services/*/management/health/readiness").permitAll()
-                    .pathMatchers("/services/*/v3/api-docs").hasAuthority(AuthoritiesConstants.ADMIN)
-                    .pathMatchers("/services/**").authenticated()
+                    // Routes JHipster /services/{service}/** retirées (application.yml) : elles relayaient le CRUD
+                    // généré des services hors OPA. Fermé à tous, même à ROLE_ADMIN, si une route y revenait.
+                    .pathMatchers("/services", "/services/**").denyAll()
                     // Canal poussé des couches (contrat de messagerie §5) : servi par la passerelle, hors OPA ;
                     // session à deux facteurs exigée comme sur toute route /bff (D-61).
                     .pathMatchers(HttpMethod.GET, "/bff/*/live").access(new DoubleFacteurAuthorizationManager(niveauxDoubleFacteur))

@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.server.PathContainer;
 import org.springframework.util.unit.DataSize;
 import org.springframework.web.util.pattern.PathPattern;
@@ -265,6 +266,34 @@ class RoutesPresentationTest {
     @DisplayName("Administration hors console et département, courriels hors console, routes internes, lectures de documents, messagerie hors DES et canal temps réel : aucune route")
     void fermes(String chemin) {
         assertThat(correspondantes(chemin)).isEmpty();
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @ValueSource(
+        strings = {
+            "/services/iam/api/collaborators",
+            "/services/iam/api/admin/users",
+            "/services/participant/api/institutions",
+            "/services/homologation/api/liaisons",
+            "/services/certification/management/env",
+            "/services/collaboration/management/loggers/ROOT",
+            "/services/document/v3/api-docs",
+            "/services/audit/management/health/readiness",
+            "/services/gateway/api/admin/users",
+        }
+    )
+    @DisplayName("Routes JHipster /services/{service}/** retirées : le CRUD généré et les points /management des services ne sont jamais relayés")
+    void servicesNonRelayes(String chemin) {
+        assertThat(correspondantes(chemin)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Toute route déclarée est une route /bff des couches, filtrée par OpaAuthorize en premier")
+    void toutesLesRoutesPassentParOpa() {
+        assertThat(routes).allSatisfy(r -> {
+            assertThat(r.filtres()).as("filtres de %s", r.id()).startsWith("OpaAuthorize");
+            assertThat(r.chemins()).as("chemins de %s", r.id()).isNotEmpty().allSatisfy(p -> assertThat(p.getPatternString()).startsWith("/bff/"));
+        });
     }
 
     @Test
