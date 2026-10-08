@@ -110,12 +110,16 @@ public class CanalDirectService implements AutoCloseable {
 
     /**
      * Flux d'une connexion : reprise après {@code dernier}, puis événements en direct, filtrés par
-     * les règles de l'abonné ; données limitées à {@link VueEvenement}, identifiant en ligne « id: ».
+     * les règles de l'abonné ; données limitées à {@link VueEvenement} (sans acteur sur le portail), identifiant
+     * en ligne « id: ».
      */
     public Flux<ServerSentEvent<VueEvenement>> ouvrir(Abonne abonne, String dernier) {
         Flux<ServerSentEvent<VueEvenement>> evenements = Flux.<EvenementLive>create(sink -> brancher(sink, dernier), FluxSink.OverflowStrategy.BUFFER)
             .filter(abonne::recoit)
-            .map(e -> e.ephemere() ? ServerSentEvent.builder(e.vue()).build() : ServerSentEvent.builder(e.vue()).id(e.id()).build());
+            .map(e -> {
+                VueEvenement vue = abonne.vue(e);
+                return e.ephemere() ? ServerSentEvent.builder(vue).build() : ServerSentEvent.builder(vue).id(e.id()).build();
+            });
         Flux<ServerSentEvent<VueEvenement>> battements = Flux.interval(parametres.battement()).map(i ->
             ServerSentEvent.<VueEvenement>builder().comment(BATTEMENT).build()
         );

@@ -192,6 +192,12 @@ class MonCompteEtConfigurationTest {
         assertThat(configuration.profils()).extracting("code").contains("ROLE_CHARGE_DDRM", "ROLE_RSSI");
         assertThat(configuration.permissions()).contains("IAM_ACCOUNT_READ", "PAR_INSTITUTION_READ");
         assertThat(configuration.definirPermissions(RSSI, "ROLE_CHARGE_DDRM", Set.of("PAR_INSTITUTION_READ", "HOM_DASHBOARD_READ"), "revue").permissions()).hasSize(2);
+        // D-97 : les permissions des fonctions opérationnelles sont connues et non privilégiées, composables sans octroi privilégié.
+        Set<String> fonctions = Set.of("HOM_FUNCTION_DDRM", "HOM_FUNCTION_PRODUCTION", "HOM_FUNCTION_NETWORK", "HOM_FUNCTION_SYSTEM", "HOM_FUNCTION_OPERATIONS");
+        assertThat(configuration.permissions()).containsAll(fonctions);
+        var compose = configuration.definirPermissions(RSSI, "ROLE_CHARGE_DDRM", fonctions, "fonctions opérationnelles");
+        assertThat(compose.permissions()).containsExactlyInAnyOrderElementsOf(fonctions);
+        assertThat(compose.privilegie()).isFalse();
         // D-94 : un profil livré qui reçoit une permission IAM_* ou PLATFORM_* devient privilégié : octroi privilégié exigé.
         refus(() -> configuration.definirPermissions(RSSI, "ROLE_CHARGE_DDRM", Set.of("PAR_INSTITUTION_READ", "IAM_ACCOUNT_READ"), "revue"), "IAM_PRIVILEGED_PROFILE");
         assertThat(configuration.definirPermissions(SUPER, "ROLE_CHARGE_DDRM", Set.of("PAR_INSTITUTION_READ", "IAM_ACCOUNT_READ"), "revue").privilegie()).isTrue();

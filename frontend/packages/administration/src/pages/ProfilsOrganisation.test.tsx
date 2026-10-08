@@ -23,8 +23,7 @@ const organigramme = (o: Partial<Parameters<typeof rendrePage>[1]> = {}) =>
 describe('D-90 : catalogue des droits et permissions du domaine', () => {
   it('chaque permission du catalogue des permissions (hors INTERNAL_*) appartient à au moins un droit', () => {
     const couvertes = permissionsCatalogue(catalogueDroits(FONCTIONNALITES_DEMO))
-    // Écart signalé : HOM_PROJECT_CONDUCT (D-94 §6.5) n'appartient encore à aucun droit des valeurs de départ de MS-IAM.
-    expect(PERMISSIONS_REALM.filter((p) => !p.startsWith('INTERNAL_') && !couvertes.has(p))).toEqual(['HOM_PROJECT_CONDUCT'])
+    expect(PERMISSIONS_REALM.filter((p) => !p.startsWith('INTERNAL_') && !couvertes.has(p))).toEqual([])
   })
 })
 

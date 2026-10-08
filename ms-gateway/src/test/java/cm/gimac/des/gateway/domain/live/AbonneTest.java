@@ -99,6 +99,18 @@ class AbonneTest {
     }
 
     @Test
+    @DisplayName("Portail : aucune donnée interne du GIMAC, l'acteur d'une notification n'est jamais remis ; DES et console le gardent")
+    void vueParCouche() {
+        EvenementLive n = new EvenementLive("n1", "notification.inapp-created.v1", "n-1", NOTIFICATION, null, Set.of("u1"), "membre-gimac");
+        assertThat(Abonne.de(Couche.PORTAIL, "u1", "I1", null).vue(n)).isEqualTo(new VueEvenement("n1", "notification.inapp-created.v1", "n-1", NOTIFICATION));
+        assertThat(Abonne.de(Couche.PORTAIL, "u1", "I1", null).vue(n).acteur()).isNull();
+        assertThat(Abonne.de(Couche.DES, "u1", "", null).vue(n).acteur()).isEqualTo("membre-gimac");
+        assertThat(Abonne.de(Couche.CONSOLE, "u1", "", null).vue(n).acteur()).isEqualTo("membre-gimac");
+        EvenementLive h = new EvenementLive("h1", "homologation.operation-signed.v1", "l1", HOMOLOGATION, "I1", null, "signataire", "x");
+        assertThat(Abonne.de(Couche.PORTAIL, "u1", "I1", null).vue(h)).isEqualTo(new VueEvenement("h1", "homologation.operation-signed.v1", "l1", HOMOLOGATION));
+    }
+
+    @Test
     @DisplayName("Vue remise au navigateur : identifiant, type, sujet et sujet fonctionnel seulement")
     void vue() {
         EvenementLive e = new EvenementLive("m1", "collaboration.message-sent.v1", "c1", COLLABORATION, "I1", Set.of("u1"));

@@ -4,11 +4,13 @@ import static cm.gimac.des.notification.web.rest.boite.Jetons.compte;
 
 import cm.gimac.des.notification.application.port.in.BoiteNotificationsUseCase;
 import cm.gimac.des.notification.application.port.in.BoiteNotificationsUseCase.ReferenceSaisie;
+import cm.gimac.des.notification.domain.boite.NotificationUtilisateur;
 import cm.gimac.des.notification.web.rest.boite.Vues.CompteurVue;
 import cm.gimac.des.notification.web.rest.boite.Vues.LectureRequete;
 import cm.gimac.des.notification.web.rest.boite.Vues.NotificationVue;
 import cm.gimac.des.notification.web.rest.boite.Vues.PageVue;
 import java.util.UUID;
+import java.util.function.Function;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -24,7 +26,8 @@ import org.springframework.web.bind.annotation.RestController;
  * Notifications du compte appelant (docs/lot1/notifications.md §3), exposées par la passerelle sous
  * /bff/{des,console}/notification/notifications : liste, compteur, lecture d'une notification ou de
  * plusieurs. Jeton à deux facteurs (SecurityConfiguration) puis NOT_INBOX_READ ; la notification d'un
- * autre compte répond 404.
+ * autre compte répond 404. Lecteur portant une institution (portail, D-93 §11.4) : projection sans donnée interne
+ * du GIMAC (ni acteur ni conversation), {@link NotificationVue#pourInstitution}.
  */
 @RestController
 @RequestMapping("/api/v1/notifications")
@@ -44,7 +47,8 @@ public class BoiteNotificationsResource {
         @RequestParam(name = "taille", required = false) Integer taille,
         Authentication auth
     ) {
-        return PageVue.de(boite.lister(compte(auth), etat, page, taille), NotificationVue::de);
+        Function<NotificationUtilisateur, NotificationVue> vue = Jetons.compteInstitution(auth) ? NotificationVue::pourInstitution : NotificationVue::de;
+        return PageVue.de(boite.lister(compte(auth), etat, page, taille), vue);
     }
 
     @GetMapping("/compteur")

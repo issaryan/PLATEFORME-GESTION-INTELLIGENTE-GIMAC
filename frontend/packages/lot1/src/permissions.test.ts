@@ -75,4 +75,13 @@ describe('qualités par permission (D-94)', () => {
     expect(Object.keys(PROFILS).filter((r) => PROFILS[r].includes('HOM_PROJECT_CONDUCT'))).toEqual(['ROLE_CONDUCTEUR_PROJET'])
     expect(Object.keys(PROFILS).filter((r) => PROFILS[r].includes('REF_METIER_ADMIN')).sort()).toEqual(['ROLE_INGENIEUR_HOMOLOGATION', 'ROLE_SUPER_ADMIN'])
   })
+  it('fonctions opérationnelles (D-97) : une permission par fonction, aux profils que le catalogue des fonctions associe', () => {
+    expect(detenteurs(PERM.fonctionDdrm)).toEqual(['ROLE_CHARGE_DDRM'])
+    expect(detenteurs(PERM.fonctionProduction)).toEqual(['ROLE_PRODUCTION_MONETIQUE'])
+    expect(detenteurs(PERM.fonctionReseau)).toEqual(['ROLE_POLE_RESEAU'])
+    expect(detenteurs(PERM.fonctionSysteme)).toEqual(['ROLE_POLE_SYSTEME'])
+    // Exploitation et Supervision : tenue par la production monétique (aucun profil propre).
+    expect(detenteurs(PERM.fonctionExploitation)).toEqual(['ROLE_PRODUCTION_MONETIQUE'])
+    ;[PERM.fonctionDdrm, PERM.fonctionProduction, PERM.fonctionReseau, PERM.fonctionSysteme, PERM.fonctionExploitation].forEach((p) => expect(p).toMatch(/^HOM_FUNCTION_/))
+  })
 })

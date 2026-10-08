@@ -56,6 +56,16 @@ final class Vues {
                 n.getLueLe()
             );
         }
+
+        /**
+         * Projection pour un compte d'institution (portail) : aucune donnée interne du GIMAC n'en sort
+         * (PI-GIMAC-01, projections du portail), ni l'acteur (membre du GIMAC à l'origine), ni la conversation de la
+         * messagerie interne. Le reste (titre, lien du portail, référence, dates) est inchangé.
+         */
+        static NotificationVue pourInstitution(NotificationUtilisateur n) {
+            NotificationVue v = de(n);
+            return new NotificationVue(v.id(), v.type(), v.titre(), v.sousTitre(), v.lien(), v.reference(), null, null, v.nombre(), v.creeLe(), v.misAJourLe(), v.lueLe());
+        }
     }
 
     record CompteurVue(long nonLues) {}

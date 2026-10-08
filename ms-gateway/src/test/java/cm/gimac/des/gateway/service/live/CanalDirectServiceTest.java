@@ -107,6 +107,29 @@ class CanalDirectServiceTest {
     }
 
     @Test
+    @DisplayName("Portail : notification remise sans l'acteur (membre du GIMAC), en direct comme en reprise ; le DES le reçoit")
+    void portailSansActeur() {
+        CanalDirectService c = canal();
+        EvenementLive avant = new EvenementLive("n0", "notification.inapp-created.v1", "x0", EvenementLive.NOTIFICATION, null, Set.of("p1", "u1"), "membre");
+        source.tryEmitNext(homologation("h0", null));
+        source.tryEmitNext(avant);
+        StepVerifier.create(c.ouvrir(Abonne.de(Couche.PORTAIL, "p1", "I1", null), "h0"))
+            .expectNextMatches(e -> commentaire(e, CanalDirectService.OUVERTURE))
+            .expectNextMatches(e -> evenement(e, "n0") && e.data().acteur() == null)
+            .then(() ->
+                source.tryEmitNext(new EvenementLive("n1", "notification.inapp-created.v1", "x1", EvenementLive.NOTIFICATION, null, Set.of("p1"), "membre"))
+            )
+            .expectNextMatches(e -> evenement(e, "n1") && e.data().acteur() == null && e.data().luJusquA() == null)
+            .thenCancel()
+            .verify(DELAI);
+        StepVerifier.create(c.ouvrir(Abonne.de(Couche.DES, "u1", "", "notification"), "h0"))
+            .expectNextMatches(e -> commentaire(e, CanalDirectService.OUVERTURE))
+            .expectNextMatches(e -> evenement(e, "n0") && "membre".equals(e.data().acteur()))
+            .thenCancel()
+            .verify(DELAI);
+    }
+
+    @Test
     @DisplayName("Commentaire de maintien périodique ; flux clos après la durée maximale")
     void battementEtDuree() {
         StepVerifier.withVirtualTime(() -> canal(Duration.ofSeconds(25), Duration.ofSeconds(60), 16).ouvrir(Abonne.de(Couche.DES, "u1", "", null), null))

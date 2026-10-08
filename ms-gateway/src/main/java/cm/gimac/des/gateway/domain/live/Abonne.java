@@ -56,6 +56,16 @@ public record Abonne(Couche couche, String compte, String institutionId, Set<Str
         return true;
     }
 
+    /**
+     * Représentation remise à cet abonné. Portail (PI-GIMAC-01, projections du portail : aucune donnée
+     * interne du GIMAC vers le participant) : ni acteur ni accusé de lecture, quel que soit le sujet ; l'acteur
+     * d'une notification de la plateforme est un membre du GIMAC dont l'identifiant ne doit pas atteindre un
+     * compte d'institution.
+     */
+    public VueEvenement vue(EvenementLive e) {
+        return couche.interne() ? e.vue() : e.vueExterne();
+    }
+
     private static boolean vide(String s) {
         return s == null || s.isBlank();
     }

@@ -23,6 +23,15 @@ export const PERM = {
   referentielPublier: 'HOM_REFERENTIEL_PUBLISH',
   /** Conduite des projets d'homologation (D-94 §6.5) : un conducteur de projet est un porteur de cette permission. */
   projetConduire: 'HOM_PROJECT_CONDUCT',
+  /**
+   * Fonctions opérationnelles du catalogue D-91 (D-97), sur le modèle de projetConduire : un porteur est candidat d'une
+   * fonction à affecter (tâche à prendre) ; aucune n'ouvre un écran.
+   */
+  fonctionDdrm: 'HOM_FUNCTION_DDRM',
+  fonctionProduction: 'HOM_FUNCTION_PRODUCTION',
+  fonctionReseau: 'HOM_FUNCTION_NETWORK',
+  fonctionSysteme: 'HOM_FUNCTION_SYSTEM',
+  fonctionExploitation: 'HOM_FUNCTION_OPERATIONS',
   /** Administration des référentiels métier, tous domaines (D-92). */
   referentielsMetierAdmin: 'REF_METIER_ADMIN',
   /** Nouvelle (D-56, D-59) : conduite des étapes 4 à 10 (compte rendu de lancement, ateliers, blocages, jalons). */
@@ -95,7 +104,7 @@ const COMMUN_DES = [PERM.institutionLire, PERM.liaisonLister, PERM.liaisonLire, 
 
 /** Profils par fonction (D-58), reflet du domaine Keycloak `gimac` et des permissions nouvelles. */
 export const PROFILS: Record<string, string[]> = {
-  ROLE_CHARGE_DDRM: [...COMMUN_DES, 'PAR_INSTITUTION_CREATE', 'PAR_INSTITUTION_EDIT', PERM.adhesionInstruire, 'PAR_TRANSITION_REQUEST', PERM.etapeConduire],
+  ROLE_CHARGE_DDRM: [...COMMUN_DES, 'PAR_INSTITUTION_CREATE', 'PAR_INSTITUTION_EDIT', PERM.adhesionInstruire, 'PAR_TRANSITION_REQUEST', PERM.etapeConduire, PERM.fonctionDdrm],
   ROLE_CHEF_DDRM: [...COMMUN_DES, 'PAR_INSTITUTION_CREATE', 'PAR_INSTITUTION_EDIT', PERM.adhesionInstruire, 'PAR_TRANSITION_REQUEST', PERM.transitionApprouver,
     PERM.liaisonOuvrir, PERM.projetDesigner, PERM.etapeConduire, ...RESPONSABLE, PERM.referentielModifier, PERM.referentielPublier, PERM.referentielLireTout],
   ROLE_CHEF_DES: [...COMMUN_DES, PERM.liaisonOuvrir, PERM.projetDesigner, PERM.pvSignerGimac, 'HOM_LIAISON_UNFREEZE', 'HOM_DEADLINE_CONFIG', 'HOM_REFERENTIEL_MIGRATE',
@@ -103,9 +112,10 @@ export const PROFILS: Record<string, string[]> = {
     PERM.referentielModifier, PERM.referentielPublier, PERM.referentielLireTout],
   ROLE_CONDUCTEUR_PROJET: [...COMMUN_DES, PERM.projetConduire, PERM.operationAttribuer, PERM.preuveDeposer, PERM.operationValider, 'HOM_EVIDENCE_FILE_EXPORT', PERM.etapeConduire, PERM.pvEtablir],
   ROLE_SNA: [...COMMUN_DES, PERM.preuveDeposer, PERM.operationValider, PERM.dossierVerifier],
-  ROLE_PRODUCTION_MONETIQUE: [...COMMUN_DES, PERM.preuveDeposer, PERM.ficheChangementLier, PERM.pvMiseEnServiceDeposer],
-  ROLE_POLE_RESEAU: [...COMMUN_DES, PERM.preuveDeposer],
-  ROLE_POLE_SYSTEME: [...COMMUN_DES, PERM.preuveDeposer],
+  // Exploitation et Supervision (catalogue D-91) : tenue par la production monétique, sans profil propre.
+  ROLE_PRODUCTION_MONETIQUE: [...COMMUN_DES, PERM.preuveDeposer, PERM.ficheChangementLier, PERM.pvMiseEnServiceDeposer, PERM.fonctionProduction, PERM.fonctionExploitation],
+  ROLE_POLE_RESEAU: [...COMMUN_DES, PERM.preuveDeposer, PERM.fonctionReseau],
+  ROLE_POLE_SYSTEME: [...COMMUN_DES, PERM.preuveDeposer, PERM.fonctionSysteme],
   // RSSI (generer-realm-gimac.py) : vérification de la sécurité, administration des comptes sans octroi
   // privilégié, supervision et configuration en lecture, politique de sécurité et messagerie de la plateforme.
   ROLE_RSSI: [...COMMUN_DES, 'CER_QUITUS_SECURITE_SIGN', PERM.securiteVerifier, PERM.preuveDeposer, ...IAM_SANS_PRIVILEGE,

@@ -346,6 +346,24 @@ class KeycloakAnnuaireIT {
     }
 
     @Test
+    @DisplayName("D-97 : permission de chaque fonction opérationnelle importée et composée dans les profils que le catalogue des fonctions associe")
+    void permissionsDesFonctions() {
+        assertThat(annuaire.permissions()).contains("HOM_FUNCTION_DDRM", "HOM_FUNCTION_PRODUCTION", "HOM_FUNCTION_NETWORK", "HOM_FUNCTION_SYSTEM", "HOM_FUNCTION_OPERATIONS");
+        java.util.Map<String, Set<String>> attendues = java.util.Map.of(
+            "ROLE_CHARGE_DDRM", Set.of("HOM_FUNCTION_DDRM"),
+            "ROLE_PRODUCTION_MONETIQUE", Set.of("HOM_FUNCTION_PRODUCTION", "HOM_FUNCTION_OPERATIONS"),
+            "ROLE_POLE_RESEAU", Set.of("HOM_FUNCTION_NETWORK"),
+            "ROLE_POLE_SYSTEME", Set.of("HOM_FUNCTION_SYSTEM")
+        );
+        for (Profil p : annuaire.profils()) {
+            Set<String> fonctions = new java.util.TreeSet<>(p.permissions());
+            fonctions.removeIf(x -> !x.startsWith("HOM_FUNCTION_"));
+            assertThat(fonctions).as(p.code()).isEqualTo(attendues.getOrDefault(p.code(), Set.of()));
+        }
+        assertThat(client.realm("gimac").roles().get("HOM_FUNCTION_DDRM").toRepresentation().getDescription()).isEqualTo("Tenir la fonction DDRM dans un projet d'homologation");
+    }
+
+    @Test
     @DisplayName("D-86 : libellé (attribut gimac_libelle) et mission des profils livrés importés ; modification du libellé et de la description, attributs conservés ; profils par compte")
     void presentationDesProfils() {
         var presentations = annuaire.presentationsProfils();

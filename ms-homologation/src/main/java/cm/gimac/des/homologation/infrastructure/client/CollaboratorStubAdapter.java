@@ -41,6 +41,10 @@ public class CollaboratorStubAdapter implements CollaboratorDirectoryPort {
         compositions.put("ROLE_CHEF_DES", Set.of("HOM_REFERENTIEL_EDIT"));
         compositions.put("ROLE_CHEF_DDRM", Set.of("HOM_REFERENTIEL_EDIT"));
         compositions.put("ROLE_RESPONSABLE_SERVICE", Set.of("HOM_REFERENTIEL_EDIT"));
+        compositions.put("ROLE_CHARGE_DDRM", Set.of("HOM_FUNCTION_DDRM"));
+        compositions.put("ROLE_PRODUCTION_MONETIQUE", Set.of("HOM_FUNCTION_PRODUCTION", "HOM_FUNCTION_OPERATIONS"));
+        compositions.put("ROLE_POLE_RESEAU", Set.of("HOM_FUNCTION_NETWORK"));
+        compositions.put("ROLE_POLE_SYSTEME", Set.of("HOM_FUNCTION_SYSTEM"));
     }
 
     /** Permissions d'un profil (profil créé ou modifié par l'administration, D-81, D-86, D-94). */

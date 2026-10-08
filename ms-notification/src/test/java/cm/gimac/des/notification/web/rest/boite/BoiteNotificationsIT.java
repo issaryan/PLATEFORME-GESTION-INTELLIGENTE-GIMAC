@@ -4,6 +4,7 @@ import static cm.gimac.des.notification.infrastructure.client.AnnuaireStubAdapte
 import static cm.gimac.des.notification.infrastructure.client.AnnuaireStubAdapter.CONDUCTEUR;
 import static cm.gimac.des.notification.infrastructure.client.AnnuaireStubAdapter.INGENIEUR;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -25,6 +26,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 /** Boîte de notifications (docs/lot1/notifications.md §2 et §3) de bout en bout sur PostgreSQL. */
 class BoiteNotificationsIT extends AbstractNotificationIT {
@@ -129,6 +131,41 @@ class BoiteNotificationsIT extends AbstractNotificationIT {
         mvc
             .perform(post("/api/v1/notifications/lecture").contentType(MediaType.APPLICATION_JSON).content("{\"type\":\"AUTRE\"}").with(interne(CONDUCTEUR)))
             .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("Lecteur d'une institution (portail) : ni acteur ni conversation, aucun identifiant d'un membre du GIMAC ; compte interne inchangé")
+    void projectionInstitution() throws Exception {
+        String participant = "compte-participant-1";
+        conversations.groupe("c-portail", "Groupe", List.of(CHEF_DES, participant));
+        message("c-portail", CHEF_DES, T, participant);
+        evenements.tacheAffectee(new TacheAffectee(UUID.randomUUID().toString(), participant, CHEF_DES, T.minusSeconds(60), null, null));
+        var institution = jwt()
+            .jwt(j -> j.subject(participant).claim("acr", "2").claim("institution_id", "INST-1"))
+            .authorities(new SimpleGrantedAuthority(BOITE));
+        String corps = mvc
+            .perform(get("/api/v1/notifications").with(institution))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.total").value(2))
+            .andExpect(jsonPath("$.contenu[0].type").value("MESSAGE"))
+            .andExpect(jsonPath("$.contenu[0].acteur").value(org.hamcrest.Matchers.nullValue()))
+            .andExpect(jsonPath("$.contenu[0].conversationId").value(org.hamcrest.Matchers.nullValue()))
+            .andExpect(jsonPath("$.contenu[0].titre").isNotEmpty())
+            .andExpect(jsonPath("$.contenu[1].type").value("TACHE"))
+            .andExpect(jsonPath("$.contenu[1].acteur").value(org.hamcrest.Matchers.nullValue()))
+            .andReturn()
+            .getResponse()
+            .getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
+        assertThat(corps).doesNotContain(CHEF_DES);
+        // Même boîte lue sans institution (compte interne) : l'acteur reste remis.
+        mvc
+            .perform(get("/api/v1/notifications").with(interne(participant)))
+            .andExpect(jsonPath("$.contenu[0].acteur.id").value(CHEF_DES))
+            .andExpect(jsonPath("$.contenu[1].acteur.id").value(CHEF_DES));
+        // Institution vide : traitée comme un compte interne.
+        mvc
+            .perform(get("/api/v1/notifications").with(jwt().jwt(j -> j.subject(participant).claim("acr", "2").claim("institution_id", " ")).authorities(new SimpleGrantedAuthority(BOITE))))
+            .andExpect(jsonPath("$.contenu[0].acteur.id").value(CHEF_DES));
     }
 
     @Test

@@ -239,6 +239,36 @@
         "clientRole": false
       },
       {
+        "name": "HOM_FUNCTION_DDRM",
+        "description": "Tenir la fonction DDRM dans un projet d'homologation",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "HOM_FUNCTION_PRODUCTION",
+        "description": "Tenir la fonction Production monétique dans un projet d'homologation",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "HOM_FUNCTION_NETWORK",
+        "description": "Tenir la fonction Pôle réseau dans un projet d'homologation",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "HOM_FUNCTION_SYSTEM",
+        "description": "Tenir la fonction Pôle système dans un projet d'homologation",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "HOM_FUNCTION_OPERATIONS",
+        "description": "Tenir la fonction Exploitation et Supervision dans un projet d'homologation",
+        "composite": false,
+        "clientRole": false
+      },
+      {
         "name": "CER_CIRCUIT_READ",
         "description": "Permission du lot 1",
         "composite": false,
@@ -878,6 +908,7 @@
             "PAR_ADHESION_INSTRUCT",
             "PAR_TRANSITION_REQUEST",
             "HOM_STEP_MANAGE",
+            "HOM_FUNCTION_DDRM",
             "COL_MESSAGE_READ",
             "COL_MESSAGE_SEND",
             "PIL_ACTIVITY_OWN",
@@ -981,6 +1012,8 @@
             "HOM_EVIDENCE_SUBMIT",
             "CER_CHANGE_RECORD_LINK",
             "CER_GOLIVE_REPORT_SUBMIT",
+            "HOM_FUNCTION_PRODUCTION",
+            "HOM_FUNCTION_OPERATIONS",
             "COL_MESSAGE_READ",
             "COL_MESSAGE_SEND",
             "PIL_ACTIVITY_OWN",
@@ -1010,6 +1043,7 @@
             "CER_REGISTER_READ",
             "PAR_INSTITUTION_READ",
             "HOM_EVIDENCE_SUBMIT",
+            "HOM_FUNCTION_NETWORK",
             "COL_MESSAGE_READ",
             "COL_MESSAGE_SEND",
             "PIL_ACTIVITY_OWN",
@@ -1039,6 +1073,7 @@
             "CER_REGISTER_READ",
             "PAR_INSTITUTION_READ",
             "HOM_EVIDENCE_SUBMIT",
+            "HOM_FUNCTION_SYSTEM",
             "COL_MESSAGE_READ",
             "COL_MESSAGE_SEND",
             "PIL_ACTIVITY_OWN",

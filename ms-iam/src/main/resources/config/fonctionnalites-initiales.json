@@ -422,6 +422,42 @@
           "libelle": "droits.permission.HOM_STEP_MANAGE"
         },
         {
+          "cle": "HOM_PROJECT_CONDUCT",
+          "nature": "MODIFIER",
+          "permission": "HOM_PROJECT_CONDUCT",
+          "libelle": "droits.permission.HOM_PROJECT_CONDUCT"
+        },
+        {
+          "cle": "HOM_FUNCTION_DDRM",
+          "nature": "MODIFIER",
+          "permission": "HOM_FUNCTION_DDRM",
+          "libelle": "droits.permission.HOM_FUNCTION_DDRM"
+        },
+        {
+          "cle": "HOM_FUNCTION_PRODUCTION",
+          "nature": "MODIFIER",
+          "permission": "HOM_FUNCTION_PRODUCTION",
+          "libelle": "droits.permission.HOM_FUNCTION_PRODUCTION"
+        },
+        {
+          "cle": "HOM_FUNCTION_NETWORK",
+          "nature": "MODIFIER",
+          "permission": "HOM_FUNCTION_NETWORK",
+          "libelle": "droits.permission.HOM_FUNCTION_NETWORK"
+        },
+        {
+          "cle": "HOM_FUNCTION_SYSTEM",
+          "nature": "MODIFIER",
+          "permission": "HOM_FUNCTION_SYSTEM",
+          "libelle": "droits.permission.HOM_FUNCTION_SYSTEM"
+        },
+        {
+          "cle": "HOM_FUNCTION_OPERATIONS",
+          "nature": "MODIFIER",
+          "permission": "HOM_FUNCTION_OPERATIONS",
+          "libelle": "droits.permission.HOM_FUNCTION_OPERATIONS"
+        },
+        {
           "cle": "HOM_GRID_EDIT",
           "nature": "MODIFIER",
           "permission": "HOM_GRID_EDIT",

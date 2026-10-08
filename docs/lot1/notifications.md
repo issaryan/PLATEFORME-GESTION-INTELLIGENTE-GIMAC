@@ -43,6 +43,8 @@ Noms : annuaire interne de MS-IAM (jeton du client `notification-service`, `INTE
 cache. Titre d'une conversation de groupe : `GET /api/v1/interne/conversations/{id}` de MS-COLLABORATION
 (`{ id, type, nom, membres }`, jeton `INTERNAL_COLLABORATION_READ`) ; conversation directe : `sousTitre` null.
 Conservation : 90 jours, puis purge.
+Compte d'institution (jeton portant `institution_id`, portail) : `acteur` et `conversationId` toujours null, aucune
+donnée interne du GIMAC (D-97) ; sur le canal temps réel du portail, la passerelle retire de même `acteur`.
 
 ## 3. Routes (passerelle `/bff/{des,console}/notification/**` → MS-NOTIFICATION `/api/v1/**`)
 

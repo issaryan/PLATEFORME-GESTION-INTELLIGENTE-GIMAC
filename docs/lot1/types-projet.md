@@ -156,6 +156,16 @@ Lecture `HOM_REFERENTIEL_READ`, écriture `HOM_REFERENTIEL_EDIT` ; `REF_METIER_A
   l'administration devient effectif dès qu'un compte le porte.
 - Événements (sujet `homologation.function`) : `homologation.function-created.v1` et `homologation.function-updated.v1`
   `{ code, libelle, profils, externe, actif, changements, motif, acteurId, le }`.
+- Champ `permissions` (D-94, `effet-reel-referentiels.md` §8.8) : permissions dont les porteurs peuvent tenir la
+  fonction. Valeurs de départ des fonctions opérationnelles, une permission dédiée chacune (D-97, sur le modèle de
+  `HOM_PROJECT_CONDUCT`, non privilégiées) : `DDRM` `HOM_FUNCTION_DDRM` (profil `ROLE_CHARGE_DDRM`),
+  `PRODUCTION_MONETIQUE` `HOM_FUNCTION_PRODUCTION` (`ROLE_PRODUCTION_MONETIQUE`), `POLE_RESEAU` `HOM_FUNCTION_NETWORK`
+  (`ROLE_POLE_RESEAU`), `POLE_SYSTEME` `HOM_FUNCTION_SYSTEM` (`ROLE_POLE_SYSTEME`), `EXPLOITATION`
+  `HOM_FUNCTION_OPERATIONS` (pas de profil propre : le catalogue la confie à `ROLE_PRODUCTION_MONETIQUE`, qui reçoit
+  donc cette permission aussi). Reprise Liquibase `20261013000100_permissions_fonctions.xml`, sans remplacer une valeur
+  saisie dans la plateforme. Leurs tâches à prendre parviennent aux porteurs de la fonction au lieu de retomber au
+  conducteur Ces permissions, comme `HOM_PROJECT_CONDUCT`, sont des droits `MODIFIER` de la fonctionnalité
+  `liaisons` du catalogue des fonctionnalités (D-90) : elles se composent dans un profil depuis la console.
 
 ### 5.4 Signatures d'une opération
 

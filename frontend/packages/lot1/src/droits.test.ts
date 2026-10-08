@@ -12,17 +12,17 @@ import { catalogue as d94 } from './i18n/ecrans/d91-d94'
 // du frontend appartient à au moins un droit ; cocher un droit d'écriture coche la consultation.
 const CATALOGUE_DROITS = catalogueDroits(CATALOGUE)
 const fonctionnalite = (cle: string): FonctionnaliteDroits => CATALOGUE_DROITS.flatMap((m) => m.fonctionnalites).find((f) => f.cle === cle)!
-/**
- * Écart avec les valeurs de départ de MS-IAM (signalé) : HOM_PROJECT_CONDUCT (D-94 §6.5) n'appartient encore à aucun droit
- * de ms-iam/src/main/resources/config/fonctionnalites-initiales.json.
- */
-const ECARTS_SERVEUR = ['HOM_PROJECT_CONDUCT']
-
 describe('D-90 : catalogue Module > Fonctionnalité > Droit', () => {
   it('chaque permission connue du frontend (PERM, profils du domaine) appartient à au moins un droit', () => {
     const connues = new Set([...Object.values(PERM), ...Object.values(PROFILS).flat()].filter((p) => !p.startsWith('INTERNAL_')))
     const couvertes = permissionsCatalogue(CATALOGUE_DROITS)
-    expect([...connues].filter((p) => !couvertes.has(p))).toEqual(ECARTS_SERVEUR)
+    expect([...connues].filter((p) => !couvertes.has(p))).toEqual([])
+    // Conduite d'un projet et fonctions opérationnelles (D-94 §6.5, D-97) : droits de la fonctionnalité des liaisons.
+    const fonctions: string[] = [PERM.projetConduire, PERM.fonctionDdrm, PERM.fonctionProduction, PERM.fonctionReseau, PERM.fonctionSysteme, PERM.fonctionExploitation]
+    expect(fonctionnalite('liaisons').droits.filter((d) => fonctions.includes(d.permission))).toEqual(
+      fonctions.map((p) => ({ permission: p, nature: 'MODIFIER', libelle: `droits.permission.${p}` })),
+    )
+    for (const p of fonctions) expect((d94.fr as Record<string, string>)[`droits.permission.${p}`]).toBeTruthy()
   })
 
   it('modules dans l’ordre de leur première fonctionnalité ; fonctionnalités sans droit absentes ; référentiels métier', () => {

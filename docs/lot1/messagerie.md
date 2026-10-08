@@ -253,7 +253,8 @@ MS-COLLABORATION publie `collaboration.conversation-read.v1` quand la position d
 ## 5. Temps réel
 
 `GET /bff/{couche}/live?sujets=collaboration,homologation,certification&depuis=<id>` (passerelle, SSE,
-cookie de session). Chaque événement : `{ "id", "type", "subject", "topic", "acteur" }`. Les événements
+cookie de session). Chaque événement : `{ "id", "type", "subject", "topic", "acteur" }` (`acteur` toujours null sur
+la couche `portail` : aucun identifiant d'un membre du GIMAC vers un participant, D-97). Les événements
 `collaboration.message-sent.v1` ne sont remis qu'aux utilisateurs dont l'identifiant figure parmi les
 `destinataires` ; le frontend invalide alors ses requêtes du sujet `collaboration` (liste, fil, non-lus).
 À défaut d'événement (relais coupé), la liste et le fil ouverts sont relus toutes les 5 s quand la page est

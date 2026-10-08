@@ -105,7 +105,8 @@ permission qui l'ouvre : la barre latérale et les gardes d'un utilisateur suive
   `IAM_FONCTIONNALITE_INTROUVABLE`, 400 `IAM_FONCTIONNALITE_INVALIDE` (`details.champ`), 422
   `IAM_FONCTIONNALITE_APPLICATION_IMMUABLE`, 400 `IAM_PERMISSION_UNKNOWN` (permission absente de
   `GET /configuration/permissions`), 422 `IAM_FONCTIONNALITE_PERMISSION_INTERNE`. Journal
-  `CONFIGURATION_FONCTIONNALITE_MODIFIEE` (avant, après : champs modifiés seulement) et événement de configuration
+  `CONFIGURATION_FONCTIONNALITE_MODIFIEE` (avant, après : champs modifiés seulement ; au-delà des 2 000 caractères de la
+  colonne, la partie la plus longue est raccourcie et marquée « … », la valeur après restant lisible) et événement de configuration
   `FONCTIONNALITE_MODIFIEE`. Sans changement, rien n'est écrit.
 
 ```json
@@ -134,6 +135,10 @@ permission qui l'ouvre : la barre latérale et les gardes d'un utilisateur suive
   - « Console » depuis l'application interne : `PLATFORM_CONFIG_READ`, alors que la console s'ouvre avec l'une des
     `PERMISSIONS_CONSOLE` : gardé `PLATFORM_CONFIG_READ` ;
   - navigation de la console sans droits D-90 (les droits ne sont portés que par les fonctionnalités `des` et `portail`).
+- Droits de la fonctionnalité `liaisons` (08/10/2026) : conduite d'un projet (`HOM_PROJECT_CONDUCT`) et tenue des
+  fonctions opérationnelles (`HOM_FUNCTION_DDRM`, `HOM_FUNCTION_PRODUCTION`, `HOM_FUNCTION_NETWORK`,
+  `HOM_FUNCTION_SYSTEM`, `HOM_FUNCTION_OPERATIONS`, D-97), nature `MODIFIER` (aucune nature d'exécution n'existe), à la
+  suite de `HOM_STEP_MANAGE`. Toute permission du domaine (hors `INTERNAL_*`) appartient désormais à un droit.
 
 ### 6.3 MS-PILOTAGE
 

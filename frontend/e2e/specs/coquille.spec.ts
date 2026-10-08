@@ -60,9 +60,17 @@ test.describe('Fonctionnalité : coquille applicative fixe', () => {
     })
     await capturer(page, 'coquille-longue-haut')
     await test.step('Quand il fait défiler le contenu jusqu’en bas', async () => {
+      // Le défilement à la molette est animé et le tableau de bord peut encore s'allonger (données reçues après
+      // coup) : on fait défiler jusqu'à ce que la zone soit réellement en bas, au lieu d'une seule mesure prise
+      // en cours d'animation (sous charge, le pied de page était encore hors de la fenêtre).
       await page.mouse.move(900, 500)
-      await page.mouse.wheel(0, 20_000)
-      await expect.poll(async () => (await mesurer(page)).zoneHaut).toBeGreaterThan(200)
+      await expect(async () => {
+        await page.mouse.wheel(0, 20_000)
+        const m = await mesurer(page)
+        expect(m.zoneHaut).toBeGreaterThan(200)
+        expect(m.zoneDefilable - m.zoneHaut).toBeLessThanOrEqual(1)
+        expect(m.pied.bas).toBe(m.hauteur)
+      }).toPass({ timeout: 15_000 })
     })
     await test.step('Alors la barre et la navigation restent en place et le pied de page apparaît en bas de la zone', async () => {
       const apres = await mesurer(page)
@@ -78,8 +86,8 @@ test.describe('Fonctionnalité : coquille applicative fixe', () => {
       const poignee = await nav.elementHandle()
       await naviguer(page, 'Institutions membres')
       await expect(page.getByRole('heading', { level: 1 })).toHaveText('Institutions membres')
+      await expect.poll(async () => (await mesurer(page)).zoneHaut).toBe(0)
       const ici = await mesurer(page)
-      expect(ici.zoneHaut).toBe(0)
       expect(ici.nav).toEqual(avant.nav)
       expect(await poignee!.evaluate((n) => n.isConnected)).toBe(true)
       await expect(nav.getByRole('link', { name: 'Institutions membres' })).toHaveAttribute('aria-current', 'page')

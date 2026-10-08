@@ -433,6 +433,9 @@ export function referentielsSimules(attendre: Attendre, refus: Refus, o: {
   const PERMISSIONS_DEPART: Record<string, string[]> = {
     CHEF_DDRM: ['PAR_TRANSITION_APPROVE'], CHEF_DES: ['CER_QUITUS_TECHNIQUE_SIGN'], CHEFS_DEPARTEMENT: ['PAR_TRANSITION_APPROVE', 'CER_QUITUS_TECHNIQUE_SIGN'],
     CONDUCTEUR: ['HOM_PROJECT_CONDUCT'], SNA: ['CER_DOSSIER_VERIFY'], RSSI: ['CER_SECURITY_VERIFY'], CONFORMITE: ['CER_QUITUS_CONFORMITE_SIGN'], DG: ['CER_QUITUS_DG_SIGN'],
+    // Fonctions opérationnelles (D-97) : une permission dédiée chacune.
+    DDRM: ['HOM_FUNCTION_DDRM'], PRODUCTION_MONETIQUE: ['HOM_FUNCTION_PRODUCTION'], POLE_RESEAU: ['HOM_FUNCTION_NETWORK'], POLE_SYSTEME: ['HOM_FUNCTION_SYSTEM'],
+    EXPLOITATION: ['HOM_FUNCTION_OPERATIONS'],
   }
   const fonctions: FonctionCatalogue[] = CATALOGUE.fonctions.map((f) => ({ code: f.code, libelle: f.libelle, profils: [...(f.profils ?? [])], permissions: [...(PERMISSIONS_DEPART[f.code] ?? [])], externe: !!f.externe, actif: true, reprise: true }))
   const verifierPermissions = (l: string[] | undefined) => {

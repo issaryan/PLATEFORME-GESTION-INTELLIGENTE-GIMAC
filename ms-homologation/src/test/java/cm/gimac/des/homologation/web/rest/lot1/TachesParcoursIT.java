@@ -12,6 +12,7 @@ import cm.gimac.des.homologation.infrastructure.messaging.taches.RelaisTachesPil
 import com.jayway.jsonpath.JsonPath;
 import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -34,6 +35,14 @@ class TachesParcoursIT extends ParcoursITSupport {
     void init() {
         pilotage.vider();
         pilotage.indisponible(false);
+        // Aucun porteur de HOM_FUNCTION_DDRM (D-97) : la fonction à affecter reste à la main du conducteur, chemin
+        // vérifié ici ; l'offre aux porteurs de la permission est vérifiée par TachesAPrendreIT.
+        annuaire.composer("ROLE_CHARGE_DDRM", java.util.Set.of());
+    }
+
+    @AfterEach
+    void compositions() {
+        annuaire.reinitialiserCompositions();
     }
 
     String reference(String liaison) throws Exception {

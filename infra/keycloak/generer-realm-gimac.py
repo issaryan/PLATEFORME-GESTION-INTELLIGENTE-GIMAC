@@ -31,7 +31,10 @@ PERMISSIONS = {
             # Parcours de la liaison, étapes 4 à 10 (D-56 à D-59) : conduite des étapes.
             "STEP_MANAGE",
             # Conduite d'un projet d'homologation (D-94 §3) : rend un compte désignable comme conducteur de liaison.
-            "PROJECT_CONDUCT"],
+            "PROJECT_CONDUCT",
+            # Fonctions opérationnelles du catalogue D-91 sans permission propre (D-97) : leurs porteurs sont les
+            # candidats d'une fonction à affecter (tâche à prendre), au lieu d'une tâche au conducteur.
+            "FUNCTION_DDRM", "FUNCTION_PRODUCTION", "FUNCTION_NETWORK", "FUNCTION_SYSTEM", "FUNCTION_OPERATIONS"],
     "CER": ["CIRCUIT_READ", "QUITUS_TECHNIQUE_SIGN", "QUITUS_SECURITE_SIGN", "QUITUS_CONFORMITE_SIGN", "QUITUS_DG_SIGN",
             "DOSSIER_READ", "DOSSIER_VERIFY", "CHANGE_RECORD_LINK", "GOLIVE_REPORT_SUBMIT", "ATTESTATION_ISSUE", "REGISTER_READ",
             "REGISTER_EXPORT", "ATTESTATION_STATUS_REQUEST", "ATTESTATION_STATUS_APPROVE", "PORTAL_READ",
@@ -94,14 +97,16 @@ PROFILS = {
     "ROLE_CORRESPONDANT": ["HOM_PORTAL_READ", "HOM_PORTAL_SUBMIT", "CER_PORTAL_READ", "CER_PORTAL_SIGN", "NOT_INBOX_READ"],
     # DDRM : le chargé instruit et propose, le chef prononce (maker-checker, algorithme 6.25).
     "ROLE_CHARGE_DDRM": LECTURE_DES + ["PAR_INSTITUTION_CREATE", "PAR_INSTITUTION_EDIT", "PAR_ADHESION_INSTRUCT",
-        "PAR_TRANSITION_REQUEST", "HOM_STEP_MANAGE"],
+        "PAR_TRANSITION_REQUEST", "HOM_STEP_MANAGE", "HOM_FUNCTION_DDRM"],
     "ROLE_CHEF_DDRM": LECTURE_DES + ["HOM_LIAISON_OPEN", "HOM_PROJECT_DESIGNATE", "PAR_INSTITUTION_CREATE", "PAR_INSTITUTION_EDIT", "PAR_ADHESION_INSTRUCT",
         "PAR_TRANSITION_REQUEST", "PAR_TRANSITION_APPROVE", "HOM_STEP_MANAGE"],
     # Service Normes et Agréments, production monétique, pôles réseau et système (CR-CERT §3.6).
     "ROLE_SNA": LECTURE_DES + ["HOM_EVIDENCE_SUBMIT", "HOM_OPERATION_VALIDATE", "CER_DOSSIER_VERIFY"],
-    "ROLE_PRODUCTION_MONETIQUE": LECTURE_DES + ["HOM_EVIDENCE_SUBMIT", "CER_CHANGE_RECORD_LINK", "CER_GOLIVE_REPORT_SUBMIT"],
-    "ROLE_POLE_RESEAU": LECTURE_DES + ["HOM_EVIDENCE_SUBMIT"],
-    "ROLE_POLE_SYSTEME": LECTURE_DES + ["HOM_EVIDENCE_SUBMIT"],
+    # Exploitation et supervision (catalogue D-91) : tenue par la production monétique, sans profil propre (D-58).
+    "ROLE_PRODUCTION_MONETIQUE": LECTURE_DES + ["HOM_EVIDENCE_SUBMIT", "CER_CHANGE_RECORD_LINK", "CER_GOLIVE_REPORT_SUBMIT",
+        "HOM_FUNCTION_PRODUCTION", "HOM_FUNCTION_OPERATIONS"],
+    "ROLE_POLE_RESEAU": LECTURE_DES + ["HOM_EVIDENCE_SUBMIT", "HOM_FUNCTION_NETWORK"],
+    "ROLE_POLE_SYSTEME": LECTURE_DES + ["HOM_EVIDENCE_SUBMIT", "HOM_FUNCTION_SYSTEM"],
     # D-76 : tout employé du GIMAC sans fonction métier dans la plateforme, et responsable d'une unité
     # (service, pôle, cellule) ; « Mon activité » et la messagerie leur sont ajoutées ci-dessous.
     "ROLE_COLLABORATEUR": [],
@@ -184,9 +189,21 @@ for _profil in PROFILS:
             PROFILS[_profil] = PROFILS[_profil] + ["PIL_TEAM_READ", "PIL_TASK_ASSIGN"]
 # Libellés propres de certaines permissions (description du rôle Keycloak), à défaut « Permission du lot 1 ».
 LIBELLES_PERMISSIONS = {"REF_METIER_ADMIN": "Administration des référentiels métier, tous domaines",
-                        "HOM_PROJECT_CONDUCT": "Conduite des projets d'homologation (désignable comme conducteur de liaison)"}
+                        "HOM_PROJECT_CONDUCT": "Conduite des projets d'homologation (désignable comme conducteur de liaison)",
+                        "HOM_FUNCTION_DDRM": "Tenir la fonction DDRM dans un projet d'homologation",
+                        "HOM_FUNCTION_PRODUCTION": "Tenir la fonction Production monétique dans un projet d'homologation",
+                        "HOM_FUNCTION_NETWORK": "Tenir la fonction Pôle réseau dans un projet d'homologation",
+                        "HOM_FUNCTION_SYSTEM": "Tenir la fonction Pôle système dans un projet d'homologation",
+                        "HOM_FUNCTION_OPERATIONS": "Tenir la fonction Exploitation et Supervision dans un projet d'homologation"}
 # D-94 §3 : le conducteur de projet est le porteur de HOM_PROJECT_CONDUCT, donnée par défaut au profil conducteur seul.
 assert [n for n, ps in PROFILS.items() if "HOM_PROJECT_CONDUCT" in ps] == ["ROLE_CONDUCTEUR_PROJET"]
+# D-97 : permission de chaque fonction opérationnelle, donnée aux profils que le catalogue des fonctions (D-91,
+# valeurs de départ de MS-HOMOLOGATION) associe à la fonction ; EXPLOITATION est tenue par la production monétique.
+FONCTIONS_OPERATIONNELLES = {"HOM_FUNCTION_DDRM": ["ROLE_CHARGE_DDRM"], "HOM_FUNCTION_PRODUCTION": ["ROLE_PRODUCTION_MONETIQUE"],
+                             "HOM_FUNCTION_NETWORK": ["ROLE_POLE_RESEAU"], "HOM_FUNCTION_SYSTEM": ["ROLE_POLE_SYSTEME"],
+                             "HOM_FUNCTION_OPERATIONS": ["ROLE_PRODUCTION_MONETIQUE"]}
+for _permission, _profils in FONCTIONS_OPERATIONNELLES.items():
+    assert [n for n, ps in PROFILS.items() if _permission in ps] == _profils, _permission
 assert all(p in TOUTES for p in LIBELLES_PERMISSIONS)
 assert all("REF_METIER_ADMIN" in ps for n, ps in PROFILS.items() if n in REFERENTIELS_METIER_ADMIN)
 assert [n for n, ps in PROFILS.items() if "REF_METIER_ADMIN" in ps] == [n for n in PROFILS if n in REFERENTIELS_METIER_ADMIN]

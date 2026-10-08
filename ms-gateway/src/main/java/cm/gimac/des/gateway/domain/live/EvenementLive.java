@@ -64,4 +64,9 @@ public record EvenementLive(
     public VueEvenement vue() {
         return new VueEvenement(id, type, subject, topic, acteur, luJusquA);
     }
+
+    /** Représentation remise au portail : ni acteur ni accusé de lecture (aucune donnée interne du GIMAC). */
+    public VueEvenement vueExterne() {
+        return new VueEvenement(id, type, subject, topic);
+    }
 }

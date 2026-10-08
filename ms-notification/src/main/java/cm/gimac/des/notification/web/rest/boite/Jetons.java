@@ -12,6 +12,21 @@ final class Jetons {
 
     private Jetons() {}
 
+    /** Claim de l'institution d'un compte de participant (portail) ; absent pour un membre du GIMAC. */
+    static final String INSTITUTION = "institution_id";
+
+    /**
+     * Le lecteur est un compte d'institution (claim {@code institution_id} non vide) : ses réponses ne portent
+     * aucune donnée interne du GIMAC (PI-GIMAC-01, projections du portail).
+     */
+    static boolean compteInstitution(Authentication auth) {
+        if (auth instanceof JwtAuthenticationToken jwt) {
+            String institution = jwt.getToken().getClaimAsString(INSTITUTION);
+            return institution != null && !institution.isBlank();
+        }
+        return false;
+    }
+
     static String compte(Authentication auth) {
         if (auth instanceof JwtAuthenticationToken jwt && jwt.getToken().getSubject() != null && !jwt.getToken().getSubject().isBlank()) {
             return jwt.getToken().getSubject();

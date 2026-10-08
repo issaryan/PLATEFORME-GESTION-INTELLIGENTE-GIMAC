@@ -13,6 +13,7 @@ import cm.gimac.des.homologation.infrastructure.messaging.consumer.ComptesIamCon
 import cm.gimac.des.homologation.infrastructure.messaging.consumer.TachesPilotageConsumer;
 import cm.gimac.des.homologation.infrastructure.messaging.taches.RelaisTachesPilotage;
 import com.jayway.jsonpath.JsonPath;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -53,7 +54,8 @@ class TachesAPrendreIT extends ParcoursITSupport {
 
     @AfterEach
     void retablir() {
-        permissionsDdrm("[]");
+        // Valeur de départ du catalogue (D-97).
+        permissionsDdrm("[\"HOM_FUNCTION_DDRM\"]");
         annuaire.reinitialiserCompositions();
     }
 
@@ -145,6 +147,35 @@ class TachesAPrendreIT extends ParcoursITSupport {
         relais.relayer();
         assertThat(pilotage.taches().get(ref + "/AFFECTER/DDRM|null").etat()).isEqualTo("TERMINEE");
         assertThat(pilotage.taches()).containsKey(ref + "/3/R|" + SNA);
+    }
+
+    @Test
+    @DisplayName("Valeurs livrées (D-97) : chaque fonction opérationnelle porte sa permission en base ; DDRM offerte aux porteurs de HOM_FUNCTION_DDRM")
+    void valeursLivrees() throws Exception {
+        permissionsDdrm("[\"HOM_FUNCTION_DDRM\"]");
+        annuaire.reinitialiserCompositions();
+        // Reprise Liquibase : la base porte les valeurs de départ du catalogue, pour chaque fonction reprise.
+        for (CatalogueFonctions.Definition d : CatalogueFonctions.REPRISES) {
+            String lu = jdbc.queryForObject("select permissions::text from referentiel_fonction where code = ?", String.class, d.code());
+            assertThat(JsonPath.<List<String>>read(lu, "$")).as(d.code()).containsExactlyElementsOf(d.permissions());
+        }
+        assertThat(CatalogueFonctions.REPRISES)
+            .filteredOn(d -> List.of("DDRM", "PRODUCTION_MONETIQUE", "POLE_RESEAU", "POLE_SYSTEME", "EXPLOITATION").contains(d.code()))
+            .extracting(CatalogueFonctions.Definition::permissions)
+            .containsExactly(
+                List.of("HOM_FUNCTION_DDRM"),
+                List.of("HOM_FUNCTION_PRODUCTION"),
+                List.of("HOM_FUNCTION_NETWORK"),
+                List.of("HOM_FUNCTION_SYSTEM"),
+                List.of("HOM_FUNCTION_OPERATIONS")
+            );
+        UUID ep = adherent("Établissement Valeurs livrées", "ETABLISSEMENT_PAIEMENT", "RETRAIT");
+        String liaison = ouvrir(ep, TypeProjet.CARTE_INTERBANCAIRE);
+        String ref = reference(liaison);
+        relais.relayer();
+        String conducteur = CollaboratorStubAdapter.CONDUCTEUR_1.toString();
+        assertThat(pilotage.taches()).containsKey(ref + "/AFFECTER/DDRM|null").doesNotContainKey(ref + "/AFFECTER/DDRM|" + conducteur);
+        assertThat(pilotage.taches().get(ref + "/AFFECTER/DDRM|null").tache().permissionsRequises()).containsExactly("HOM_FUNCTION_DDRM");
     }
 
     @Test

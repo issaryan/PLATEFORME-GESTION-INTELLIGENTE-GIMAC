@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Une permission dédiée par fonction opérationnelle (D-97, docs/lot1/effet-reel-referentiels.md §8.8,
+     docs/lot1/types-projet.md §5.3) : DDRM, production monétique, pôles réseau et système, exploitation n'avaient
+     aucune permission propre, leurs tâches à prendre retombaient au conducteur. Valeurs de départ, sur le modèle de
+     HOM_PROJECT_CONDUCT (infra/keycloak/generer-realm-gimac.py) ; une valeur déjà modifiée dans la plateforme
+     (PUT /referentiels/fonctions, liste non vide) n'est pas remplacée. -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="20261013000100-1" author="lot1">
+        <sql>
+            UPDATE referentiel_fonction SET permissions = '["HOM_FUNCTION_DDRM"]'::jsonb WHERE code = 'DDRM' AND permissions = '[]'::jsonb;
+            UPDATE referentiel_fonction SET permissions = '["HOM_FUNCTION_PRODUCTION"]'::jsonb WHERE code = 'PRODUCTION_MONETIQUE' AND permissions = '[]'::jsonb;
+            UPDATE referentiel_fonction SET permissions = '["HOM_FUNCTION_NETWORK"]'::jsonb WHERE code = 'POLE_RESEAU' AND permissions = '[]'::jsonb;
+            UPDATE referentiel_fonction SET permissions = '["HOM_FUNCTION_SYSTEM"]'::jsonb WHERE code = 'POLE_SYSTEME' AND permissions = '[]'::jsonb;
+            UPDATE referentiel_fonction SET permissions = '["HOM_FUNCTION_OPERATIONS"]'::jsonb WHERE code = 'EXPLOITATION' AND permissions = '[]'::jsonb;
+        </sql>
+    </changeSet>
+</databaseChangeLog>

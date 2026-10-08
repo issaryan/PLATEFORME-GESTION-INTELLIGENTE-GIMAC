@@ -53,6 +53,7 @@
     <include file="config/liquibase/changelog/20261010000100_types_projet_fonctions_signatures.xml" relativeToChangelogFile="false"/>
     <include file="config/liquibase/changelog/20261011000100_effet_reel_referentiels.xml" relativeToChangelogFile="false"/>
     <include file="config/liquibase/changelog/20261012000100_taches_a_prendre.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261013000100_permissions_fonctions.xml" relativeToChangelogFile="false"/>
     <!-- jhipster-needle-liquibase-add-constraints-changelog - JHipster will add liquibase constraints changelogs here -->
     <!-- jhipster-needle-liquibase-add-incremental-changelog - JHipster will add incremental liquibase changelogs here -->
 </databaseChangeLog>

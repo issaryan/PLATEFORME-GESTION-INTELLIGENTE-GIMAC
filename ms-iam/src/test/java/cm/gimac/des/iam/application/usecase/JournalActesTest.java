@@ -123,7 +123,14 @@ class JournalActesTest {
         assertThat(f.getCibleLibelle()).isEqualTo("liaisons");
         assertThat(f.getCibleId()).isNull();
         assertThat(f.getMotif()).hasSize(1000);
-        assertThat(f.getDetails()).hasSize(2000).startsWith("avant: ordre=110, après: aaa");
+        assertThat(f.getDetails()).hasSize(2000).startsWith("avant: ordre=110, après: aaa").endsWith("a…");
+        // Valeur avant longue (droits d'une fonctionnalité) : la valeur après reste entière ; deux valeurs longues :
+        // chacune raccourcie de moitié, les deux restent lisibles.
+        String apres = "libelle=Projets d'homologation ; ordre=5";
+        assertThat(JournalActes.avantApres("d".repeat(2500), apres)).hasSize(2000).startsWith("avant: ddd").endsWith("d…, après: " + apres);
+        assertThat(JournalActes.avantApres("d".repeat(1500), "e".repeat(1500))).hasSize(2000).contains("d…, après: eee").endsWith("e…");
+        assertThat(JournalActes.avantApres("d".repeat(992), "e".repeat(992))).hasSize(2000).doesNotContain("…");
+        assertThat(JournalActes.avantApres(null, "x")).isEqualTo("avant: null, après: x");
         assertThat(e.getAllValues().get(2).getMotif()).isNull();
         assertThat(e.getAllValues().get(2).getDetails()).isEqualTo("avant: visible=true, après: visible=false");
         verify(outbox).publish(

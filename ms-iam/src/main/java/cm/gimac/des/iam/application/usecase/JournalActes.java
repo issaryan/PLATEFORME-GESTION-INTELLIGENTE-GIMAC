@@ -55,7 +55,7 @@ public class JournalActes {
      */
     @Transactional(propagation = Propagation.MANDATORY)
     public void matrice(Acteur acteur, String profil, String motif, String avant, String apres) {
-        String details = tronquer("avant: " + avant + ", après: " + apres, 2000);
+        String details = avantApres(avant, apres);
         journal.save(new JournalAdministration(clock.instant(), acteur.id(), acteur.nom(), "MATRICE_POUVOIRS_MODIFIEE", null, profil, motif, details, CorrelationContext.current()));
         outbox.publish("configuration", "MATRICE_POUVOIRS", ConfigurationModifieePayload.TYPE, new ConfigurationModifieePayload("MATRICE_POUVOIRS", acteur.id(), motif, List.of(profil)));
     }
@@ -78,7 +78,7 @@ public class JournalActes {
      */
     @Transactional(propagation = Propagation.MANDATORY)
     public void profil(Acteur acteur, String code, String motif, String avant, String apres) {
-        String details = tronquer("avant: " + avant + ", après: " + apres, 2000);
+        String details = avantApres(avant, apres);
         journal.save(new JournalAdministration(clock.instant(), acteur.id(), acteur.nom(), "CONFIGURATION_PROFIL_MODIFIE", null, code, motif == null ? null : tronquer(motif, 1000), details, CorrelationContext.current()));
         outbox.publish("configuration", "PROFIL_MODIFIE", ConfigurationModifieePayload.TYPE, new ConfigurationModifieePayload("PROFIL_MODIFIE", acteur.id(), motif, List.of(code, "libelle", "description")));
     }
@@ -90,7 +90,7 @@ public class JournalActes {
      */
     @Transactional(propagation = Propagation.MANDATORY)
     public void fonctionnalite(Acteur acteur, String cle, String motif, String avant, String apres) {
-        String details = tronquer("avant: " + avant + ", après: " + apres, 2000);
+        String details = avantApres(avant, apres);
         journal.save(
             new JournalAdministration(clock.instant(), acteur.id(), acteur.nom(), "CONFIGURATION_FONCTIONNALITE_MODIFIEE", null, cle, motif == null ? null : tronquer(motif, 1000), details, CorrelationContext.current())
         );
@@ -99,6 +99,31 @@ public class JournalActes {
 
     private static String tronquer(String s, int max) {
         return s.length() <= max ? s : s.substring(0, max);
+    }
+
+    /** Longueur de la colonne journal_administration.details. */
+    static final int DETAILS_MAX = 2000;
+
+    /**
+     * Détails « avant: …, après: … » tenant dans la colonne : quand ils la dépassent, la partie la plus longue est
+     * raccourcie (marquée « … ») au lieu de couper la fin du texte, pour que la valeur après l'acte reste toujours
+     * lisible dans le journal, même quand la valeur avant est longue.
+     */
+    static String avantApres(String avant, String apres) {
+        String a = String.valueOf(avant);
+        String b = String.valueOf(apres);
+        int budget = DETAILS_MAX - "avant: ".length() - ", après: ".length();
+        if (a.length() + b.length() > budget) {
+            int moitie = budget / 2;
+            int pourA = a.length() <= moitie ? a.length() : Math.max(moitie, budget - b.length());
+            a = abreger(a, pourA);
+            b = abreger(b, budget - a.length());
+        }
+        return "avant: " + a + ", après: " + b;
+    }
+
+    private static String abreger(String s, int max) {
+        return s.length() <= max ? s : s.substring(0, max - 1) + "…";
     }
 
     @Transactional(propagation = Propagation.MANDATORY)

@@ -37,20 +37,21 @@ public final class CatalogueFonctions {
 
     /** Les seize fonctions de l'ancienne énumération, avec leurs profils, leur caractère externe et leurs libellés. */
     public static final List<Definition> REPRISES = List.of(
-        new Definition("DDRM", "Développement du Réseau et du Marché", List.of("ROLE_CHARGE_DDRM"), false, true),
+        new Definition("DDRM", "Développement du Réseau et du Marché", List.of("ROLE_CHARGE_DDRM"), false, true, List.of("HOM_FUNCTION_DDRM")),
         new Definition("CHEF_DDRM", "Chef du département DDRM", List.of("ROLE_CHEF_DDRM"), false, true, List.of("PAR_TRANSITION_APPROVE")),
         new Definition("CHEF_DES", "Chef du département DES", List.of("ROLE_CHEF_DES"), false, true, List.of("CER_QUITUS_TECHNIQUE_SIGN")),
         new Definition("CHEFS_DEPARTEMENT", "Chefs des deux départements", List.of("ROLE_CHEF_DES"), false, true, List.of("CER_QUITUS_TECHNIQUE_SIGN", "PAR_TRANSITION_APPROVE")),
         new Definition("CONDUCTEUR", "Conducteur de projet", List.of("ROLE_CONDUCTEUR_PROJET"), false, true, List.of("HOM_PROJECT_CONDUCT")),
         new Definition("SNA", "Normes et Agréments", List.of("ROLE_SNA", "ROLE_INGENIEUR_HOMOLOGATION"), false, true, List.of("CER_DOSSIER_VERIFY")),
-        new Definition("PRODUCTION_MONETIQUE", "Production monétique", List.of("ROLE_PRODUCTION_MONETIQUE"), false, true),
-        new Definition("POLE_RESEAU", "Pôle réseau", List.of("ROLE_POLE_RESEAU"), false, true),
-        new Definition("POLE_SYSTEME", "Pôle système", List.of("ROLE_POLE_SYSTEME"), false, true),
+        new Definition("PRODUCTION_MONETIQUE", "Production monétique", List.of("ROLE_PRODUCTION_MONETIQUE"), false, true, List.of("HOM_FUNCTION_PRODUCTION")),
+        new Definition("POLE_RESEAU", "Pôle réseau", List.of("ROLE_POLE_RESEAU"), false, true, List.of("HOM_FUNCTION_NETWORK")),
+        new Definition("POLE_SYSTEME", "Pôle système", List.of("ROLE_POLE_SYSTEME"), false, true, List.of("HOM_FUNCTION_SYSTEM")),
         new Definition("RSSI", "Sécurité des systèmes d'information", List.of("ROLE_RSSI"), false, true, List.of("CER_SECURITY_VERIFY")),
         new Definition("CONFORMITE", "Conformité", List.of("ROLE_CONFORMITE"), false, true, List.of("CER_QUITUS_CONFORMITE_SIGN")),
         new Definition("DG", "Direction générale", List.of("ROLE_DG"), false, true, List.of("CER_QUITUS_DG_SIGN")),
-        // Exploitation et supervision (CR §3) : tenue par la production monétique, aucun profil propre (D-58).
-        new Definition("EXPLOITATION", "Exploitation et Supervision", List.of("ROLE_PRODUCTION_MONETIQUE"), false, true),
+        // Exploitation et supervision (CR §3) : tenue par la production monétique, aucun profil propre (D-58) ; sa
+        // permission (D-97) est donnée par défaut au profil de la production monétique.
+        new Definition("EXPLOITATION", "Exploitation et Supervision", List.of("ROLE_PRODUCTION_MONETIQUE"), false, true, List.of("HOM_FUNCTION_OPERATIONS")),
         new Definition("PARTICIPANT", "Participant", List.of("ROLE_CORRESPONDANT"), true, true),
         new Definition("BANQUE_PARTENAIRE", "Banque partenaire", List.of(), true, true),
         new Definition("PERSONNALISATEUR", "Personnalisateur", List.of(), true, true)

@@ -237,8 +237,39 @@ fictif).
   livré : `CHEF_DDRM` `PAR_TRANSITION_APPROVE`, `CHEF_DES` `CER_QUITUS_TECHNIQUE_SIGN`, `CHEFS_DEPARTEMENT` ces deux-là,
   `CONDUCTEUR` `HOM_PROJECT_CONDUCT`, `SNA` `CER_DOSSIER_VERIFY`, `RSSI` `CER_SECURITY_VERIFY`, `CONFORMITE`
   `CER_QUITUS_CONFORMITE_SIGN`, `DG` `CER_QUITUS_DG_SIGN`. `DDRM`, `PRODUCTION_MONETIQUE`, `POLE_RESEAU`, `POLE_SYSTEME`
-  et `EXPLOITATION` n'ont aucune permission propre dans le domaine livré : aucune valeur, la tâche reste au conducteur
-  tant qu'un éditeur du référentiel ne leur en donne pas une.
+  et `EXPLOITATION` n'avaient aucune permission propre dans le domaine livré : chacune reçoit désormais une permission
+  dédiée (D-97, ci-dessous).
+- **Une permission par fonction opérationnelle (D-97)** : sur le modèle de `HOM_PROJECT_CONDUCT`, le domaine livré
+  (`infra/keycloak/generer-realm-gimac.py`, `PERMISSIONS["HOM"]`, libellés dans `LIBELLES_PERMISSIONS`) déclare cinq
+  permissions non privilégiées (ni `IAM_*` ni `PLATFORM_*`), données aux profils que le catalogue des fonctions associe
+  à chaque fonction (valeurs de départ de `CatalogueFonctions.REPRISES`) :
+
+  | Fonction | Permission | Libellé | Profils livrés |
+  |---|---|---|---|
+  | `DDRM` | `HOM_FUNCTION_DDRM` | Tenir la fonction DDRM dans un projet d'homologation | `ROLE_CHARGE_DDRM` |
+  | `PRODUCTION_MONETIQUE` | `HOM_FUNCTION_PRODUCTION` | Tenir la fonction Production monétique dans un projet d'homologation | `ROLE_PRODUCTION_MONETIQUE` |
+  | `POLE_RESEAU` | `HOM_FUNCTION_NETWORK` | Tenir la fonction Pôle réseau dans un projet d'homologation | `ROLE_POLE_RESEAU` |
+  | `POLE_SYSTEME` | `HOM_FUNCTION_SYSTEM` | Tenir la fonction Pôle système dans un projet d'homologation | `ROLE_POLE_SYSTEME` |
+  | `EXPLOITATION` | `HOM_FUNCTION_OPERATIONS` | Tenir la fonction Exploitation et Supervision dans un projet d'homologation | `ROLE_PRODUCTION_MONETIQUE` |
+
+  `EXPLOITATION` n'a pas de profil propre (D-58) : le catalogue la confie à la production monétique, dont le profil
+  porte donc deux de ces permissions. Une assertion du générateur vérifie que chaque permission n'est portée que par ces
+  profils. Valeurs de départ du catalogue : `CatalogueFonctions.REPRISES` et reprise Liquibase
+  `20261013000100_permissions_fonctions.xml`, qui ne pose la permission que si la fonction est encore sans permission
+  (`permissions = '[]'`) : une valeur saisie dans la plateforme n'est pas remplacée. Domaine déjà en service : la fusion
+  à trois voies (`infra/ci/fusionner-domaine.py`) crée les cinq rôles et les ajoute aux profils livrés, recompositions
+  faites depuis la console conservées (vérifié sur le domaine de production de la version précédente, profil recomposé
+  et profil créé conservés). MS-IAM les compose dans un profil sans octroi privilégié (`MonCompteEtConfigurationTest`,
+  `KeycloakAnnuaireIT.permissionsDesFonctions`) ; elles figurent dans l'annuaire de substitution de MS-IAM, dans
+  `frontend/packages/lot1/src/permissions.ts` (`PERM.fonction*`, `PROFILS`) et dans les libellés
+  `droits.permission.HOM_FUNCTION_*` (FR, EN, ES). Droits D-90 : `HOM_PROJECT_CONDUCT` et ces cinq permissions sont des
+  droits de nature `MODIFIER` de la fonctionnalité `liaisons` (module `homologation`) du catalogue des fonctionnalités
+  de MS-IAM (`fonctionnalites-initiales.json`, copie de démonstration du frontend identique), libellés
+  `droits.permission.<code>` : elles se cochent dans la composition d'un profil (matrice D-90) et l'écart
+  `ECARTS_SERVEUR` est levé (`droits.test.ts`, `ProfilsOrganisation.test.tsx`). Un serveur déjà en service les reçoit
+  au démarrage, la fonctionnalité `liaisons` étant mise à jour tant qu'elle n'a jamais été modifiée depuis la
+  plateforme (sinon conservée, `FonctionnalitesServiceTest.fichierLivre`). Effet : la tâche d'une de ces fonctions à affecter est offerte aux
+  porteurs de sa permission au lieu de retomber au conducteur (`TachesAPrendreIT.valeursLivrees`).
 - **Offre** : une fonction interne à affecter (mêmes conditions qu'au §8.1 : R d'une opération engagée, V en
   validation, C sollicité) dont le catalogue donne au moins une permission et dont MS-IAM connaît au moins un porteur
   interne actif (`GET /api/v1/interne/collaborateurs?permission=`) devient une tâche à prendre de MS-PILOTAGE
@@ -653,6 +684,10 @@ Aucun sujet nouveau. `infra/kafka/creer-sujets-lot1.sh` et sa copie `infra/kuber
   **Servi** (07/10/2026, `ecrans-par-configuration.md` §6.6), ainsi que le portail : routes `/bff/portail/notification/**`
   ouvertes (OPA, passerelle), `NOT_INBOX_READ` au profil du correspondant, `notification.inapp` relayé au canal du
   portail (destinataire seul).
+- **Aucune donnée interne du GIMAC vers le participant** (D-97, PI-GIMAC-01, projections du portail). **Servi**
+  (08/10/2026) : la passerelle remet au canal du portail une vue sans `acteur` ni `luJusquA` (`Abonne.vue`), en direct
+  et en reprise, et MS-NOTIFICATION répond à un jeton portant `institution_id` sans `acteur` ni `conversationId`
+  (`NotificationVue.pourInstitution`) ; `homologation` et `certification` ne relayaient déjà aucun identifiant de membre.
 - **Passerelle et OPA** : la boîte de notifications n'est ouverte qu'aux couches `des` et `console` ; ouvrir
   `/bff/portail/notification/**` (route `notification-boite`, règle `boite_notifications` qui refuse aujourd'hui un compte
   d'institution) et relayer `notification.inapp` au canal du portail, pour que les correspondants lisent leurs

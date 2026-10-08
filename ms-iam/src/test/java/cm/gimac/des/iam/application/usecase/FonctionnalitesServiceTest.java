@@ -2,6 +2,7 @@ package cm.gimac.des.iam.application.usecase;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -123,6 +124,12 @@ class FonctionnalitesServiceTest {
             null,
             null
         );
+    }
+
+    /** Version précédente d'une valeur de départ : sans les droits des permissions données. */
+    static Fonctionnalite sansDroits(Fonctionnalite f, List<String> permissions) {
+        List<Droit> droits = f.droits().stream().filter(d -> !permissions.contains(d.permission())).toList();
+        return new Fonctionnalite(f.cle(), f.application(), f.module(), f.libelle(), f.groupe(), f.ordre(), f.icone(), f.visible(), f.permissions(), f.widgets(), droits, null, null);
     }
 
     static Fonctionnalite avec(Fonctionnalite f, String libelle, String groupe, int ordre, boolean visible, Predicat permissions) {
@@ -254,6 +261,23 @@ class FonctionnalitesServiceTest {
         // Chargement complet, puis idempotent.
         assertThat(init.charger().ajoutees()).isEqualTo(l.size());
         assertThat(init.charger()).isEqualTo(new FonctionnalitesService.Chargement(0, 0, 0, 0, 0));
+        // Conduite d'un projet et fonctions opérationnelles (D-94 §6.5, D-97) : droits de nature MODIFIER des liaisons.
+        List<String> fonctions = List.of("HOM_PROJECT_CONDUCT", "HOM_FUNCTION_DDRM", "HOM_FUNCTION_PRODUCTION", "HOM_FUNCTION_NETWORK", "HOM_FUNCTION_SYSTEM", "HOM_FUNCTION_OPERATIONS");
+        Fonctionnalite liaisonsLivree = catalogue.lignes.get("liaisons");
+        assertThat(liaisonsLivree.droits()).filteredOn(d -> fonctions.contains(d.permission())).extracting(Droit::permission, Droit::nature, Droit::libelle).containsExactlyElementsOf(
+            fonctions.stream().map(p -> tuple(p, NatureDroit.MODIFIER, "droits.permission." + p)).toList()
+        );
+        // Serveur déjà en service (version précédente du fichier, jamais modifiée depuis la plateforme) : mise à jour.
+        catalogue.lignes.put("liaisons", sansDroits(liaisonsLivree, fonctions));
+        assertThat(init.charger()).isEqualTo(new FonctionnalitesService.Chargement(0, 1, 0, 0, 0));
+        assertThat(catalogue.lignes.get("liaisons")).isEqualTo(liaisonsLivree);
+        // Modifiée depuis la plateforme : conservée telle quelle.
+        Fonctionnalite modifiee = sansDroits(liaisonsLivree, fonctions);
+        modifiee = new Fonctionnalite(modifiee.cle(), modifiee.application(), modifiee.module(), modifiee.libelle(), modifiee.groupe(), modifiee.ordre(), modifiee.icone(), modifiee.visible(), modifiee.permissions(), modifiee.widgets(), modifiee.droits(), T, new Fonctionnalite.Auteur("rssi", "Carine RSSI"));
+        catalogue.lignes.put("liaisons", modifiee);
+        assertThat(init.charger()).isEqualTo(new FonctionnalitesService.Chargement(0, 0, 0, 1, 0));
+        assertThat(catalogue.lignes.get("liaisons").droits()).extracting(Droit::permission).doesNotContainAnyElementsOf(fonctions);
+        catalogue.lignes.put("liaisons", liaisonsLivree);
         init.auDemarrage();
         // Fichier absent : aucune valeur, démarrage maintenu ; fichier illisible : tracé.
         assertThat(new InitialisationFonctionnalites(service, JSON, new DefaultResourceLoader(), "classpath:config/absent.json").lire()).isEmpty();

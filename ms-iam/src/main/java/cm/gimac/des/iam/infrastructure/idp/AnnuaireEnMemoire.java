@@ -445,6 +445,15 @@ public class AnnuaireEnMemoire implements Annuaire {
      */
     static final String REF_METIER_ADMIN = "REF_METIER_ADMIN";
 
+    /** Permissions des fonctions opérationnelles du catalogue D-91 (D-97) : non privilégiées, rôles du realm livré. */
+    static final Set<String> FONCTIONS_OPERATIONNELLES = Set.of(
+        "HOM_FUNCTION_DDRM",
+        "HOM_FUNCTION_PRODUCTION",
+        "HOM_FUNCTION_NETWORK",
+        "HOM_FUNCTION_SYSTEM",
+        "HOM_FUNCTION_OPERATIONS"
+    );
+
     private static Set<String> union(Set<?>... ensembles) {
         Set<String> s = new TreeSet<>();
         for (Set<?> e : ensembles) {
@@ -453,7 +462,10 @@ public class AnnuaireEnMemoire implements Annuaire {
         return s;
     }
 
-    /** Permissions principales des profils livrés (extrait du realm du lot 1). */
+    /**
+     * Permissions principales des profils livrés (extrait du realm du lot 1), dont la permission de chaque fonction
+     * opérationnelle du catalogue D-91 (D-97 : HOM_FUNCTION_*, non privilégiées).
+     */
     static final Map<String, Set<String>> PERMISSIONS_PAR_PROFIL = Map.ofEntries(
         Map.entry("ROLE_SUPER_ADMIN", union(COMMUNES, IAM, Set.of("IAM_ROLE_PRIVILEGED_GRANT", "PLATFORM_CONFIG_READ", "PLATFORM_CONFIG_EDIT", REF_METIER_ADMIN))),
         Map.entry("ROLE_RSSI", union(COMMUNES, IAM, CHEF)),
@@ -466,10 +478,10 @@ public class AnnuaireEnMemoire implements Annuaire {
         Map.entry("ROLE_COLLABORATEUR", COMMUNES),
         Map.entry("ROLE_INGENIEUR_HOMOLOGATION", union(COMMUNES, Set.of("HOM_DASHBOARD_READ", "HOM_OPERATION_VALIDATE", REF_METIER_ADMIN))),
         Map.entry("ROLE_SNA", union(COMMUNES, Set.of("HOM_DASHBOARD_READ"))),
-        Map.entry("ROLE_PRODUCTION_MONETIQUE", union(COMMUNES, Set.of("HOM_DASHBOARD_READ"))),
-        Map.entry("ROLE_POLE_RESEAU", union(COMMUNES, Set.of("HOM_DASHBOARD_READ"))),
-        Map.entry("ROLE_POLE_SYSTEME", union(COMMUNES, Set.of("HOM_DASHBOARD_READ"))),
-        Map.entry("ROLE_CHARGE_DDRM", union(COMMUNES, Set.of("PAR_INSTITUTION_READ"))),
+        Map.entry("ROLE_PRODUCTION_MONETIQUE", union(COMMUNES, Set.of("HOM_DASHBOARD_READ", "HOM_FUNCTION_PRODUCTION", "HOM_FUNCTION_OPERATIONS"))),
+        Map.entry("ROLE_POLE_RESEAU", union(COMMUNES, Set.of("HOM_DASHBOARD_READ", "HOM_FUNCTION_NETWORK"))),
+        Map.entry("ROLE_POLE_SYSTEME", union(COMMUNES, Set.of("HOM_DASHBOARD_READ", "HOM_FUNCTION_SYSTEM"))),
+        Map.entry("ROLE_CHARGE_DDRM", union(COMMUNES, Set.of("PAR_INSTITUTION_READ", "HOM_FUNCTION_DDRM"))),
         Map.entry("ROLE_CONDUCTEUR_PROJET", union(COMMUNES, Set.of("HOM_DASHBOARD_READ"))),
         Map.entry("ROLE_CORRESPONDANT", Set.of("HOM_PORTAL_READ", "HOM_PORTAL_SUBMIT", "NOT_INBOX_READ"))
     );
@@ -496,5 +508,7 @@ public class AnnuaireEnMemoire implements Annuaire {
     );
 
     /** Permissions connues du substitut, même sans profil qui les porte (dont les permissions internes). */
-    static final Set<String> PERMISSIONS_CONNUES = Set.of("INTERNAL_IAM_READ", "PAR_INSTITUTION_READ", "HOM_DASHBOARD_READ", REF_METIER_ADMIN);
+    static final Set<String> PERMISSIONS_CONNUES = Set.copyOf(
+        union(Set.of("INTERNAL_IAM_READ", "PAR_INSTITUTION_READ", "HOM_DASHBOARD_READ", REF_METIER_ADMIN), FONCTIONS_OPERATIONNELLES)
+    );
 }
