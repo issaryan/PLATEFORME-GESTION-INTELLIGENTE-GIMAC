@@ -7,7 +7,7 @@ import {
 } from '@gimac/socle'
 import { CompteProvider, GardePremierAcces, MonComptePage, useMonAvatar, monCompteHttp, monCompteSimule } from '@gimac/compte'
 import {
-  CatalogueFonctionnalitesProvider, ECRANS_DES, ExtensionsTableauDeBordProvider, Fournisseurs, GardeFonctionnalite, ORGANISATION_DEMO, PERM, creerClientRequetes, lecteurApercu,
+  CatalogueFonctionnalitesProvider, ECRANS_DES, ExtensionsTableauDeBordProvider, Fournisseurs, GardeFonctionnalite, GardePermission, ORGANISATION_DEMO, PERM, creerClientRequetes, lecteurApercu,
   magasinPouvoirs, navigationDepuis, navigationRepli, notificationsDemo, rattachementDemo, servicesHttp, servicesSimules, useNonLus, useSourcesRecherche, useTraduire,
   type EtatCatalogue,
 } from '@gimac/lot1'
@@ -35,6 +35,9 @@ const ClotureOperationPage = lazy(() => import('@gimac/lot1/pages/des/ClotureOpe
 const DossierMiseEnServicePage = lazy(() => import('@gimac/lot1/pages/des/DossierMiseEnServicePage'))
 const ParcoursPage = lazy(() => import('@gimac/lot1/pages/des/parcours/ParcoursPage'))
 const DossierLiaisonPage = lazy(() => import('@gimac/lot1/pages/des/parcours/DossierLiaisonPage'))
+// Parcours de certification (D-98, docs/lot1/lancement-processus.md §8) : lancement guidé et « Mes actions de certification ».
+const LancerCertificationPage = lazy(() => import('@gimac/lot1/pages/des/certification/LancerCertificationPage'))
+const MesActionsCertificationPage = lazy(() => import('@gimac/lot1/pages/des/certification/MesActionsCertificationPage'))
 const ReferentielsOperationsPage = lazy(() => import('@gimac/lot1/pages/des/ReferentielsOperationsPage'))
 // Types de projet et catalogue des fonctions (D-91).
 const TypesProjetPage = lazy(() => import('@gimac/lot1/pages/des/referentiels/TypesProjetPage'))
@@ -49,6 +52,9 @@ const EquipePage = lazy(() => import('@gimac/lot1/pages/des/activite/EquipePage'
 const ProcessusPage = lazy(() => import('@gimac/lot1/pages/des/processus/ProcessusPage'))
 const ModelisateurProcessusPage = lazy(() => import('@gimac/lot1/pages/des/processus/ModelisateurProcessusPage'))
 const InstanceProcessusPage = lazy(() => import('@gimac/lot1/pages/des/processus/InstancePage'))
+// Lancer une demande et suivre ses demandes (D-98, docs/lot1/lancement-processus.md §3, §7).
+const LancerDemandePage = lazy(() => import('@gimac/lot1/pages/des/processus/LancerDemandePage'))
+const MesDemandesPage = lazy(() => import('@gimac/lot1/pages/des/processus/MesDemandesPage'))
 // Administration des comptes (D-69) : écrans de @gimac/administration servis sous /des/administration,
 // pour le RSSI et le super administrateur ; la console garde la supervision et la configuration.
 const ComptesPage = lazy(() => import('@gimac/administration/pages/ComptesPage'))
@@ -146,6 +152,8 @@ function Pages({ session, etatCanal, correlationId, notifications }: { session: 
                   <Route path="liaisons/:id/mise-en-service" element={G('liaisons', <DossierMiseEnServicePage />)} />
                   <Route path="parcours" element={G('liaisons', <ParcoursPage />)} />
                   <Route path="parcours/:id" element={G('liaisons', <DossierLiaisonPage />)} />
+                  <Route path="certification/lancer" element={G('lancerCertification', <LancerCertificationPage />)} />
+                  <Route path="certification/mes-actions" element={G('mesActionsCertification', <MesActionsCertificationPage />)} />
                   <Route path="messagerie" element={G('messagerie', <MessageriePage />)} />
                   <Route path="notifications" element={G('notifications', <NotificationsPage />)} />
                   <Route path="activite" element={G('maJournee', <MaJourneePage />)} />
@@ -155,8 +163,12 @@ function Pages({ session, etatCanal, correlationId, notifications }: { session: 
                   <Route path="equipe" element={G('equipe', <EquipePage />)} />
                   <Route path="equipe/demandes" element={G('equipe', <EquipePage />)} />
                   <Route path="processus" element={G('processus', <ProcessusPage />)} />
-                  <Route path="processus/instances/:id" element={G('processus', <InstanceProcessusPage />)} />
+                  {/* D-98 : lien des notifications et des tâches, ouvert à tout compte interne (PIL_ACTIVITY_OWN), même si « Processus de l'unité » est masquée ; MS-PILOTAGE contrôle la lecture. */}
+                  <Route path="processus/instances/:id" element={<GardePermission permission={PERM.activitePropre}><InstanceProcessusPage /></GardePermission>} />
                   <Route path="processus/:id" element={G('processus', <ModelisateurProcessusPage />)} />
+                  <Route path="demandes" element={G('mesDemandes', <MesDemandesPage />)} />
+                  <Route path="demandes/lancer" element={G('lancerDemande', <LancerDemandePage />)} />
+                  <Route path="demandes/:id" element={<GardePermission permission={PERM.activitePropre}><InstanceProcessusPage /></GardePermission>} />
                   <Route path="referentiels/operations" element={G('referentiels', <ReferentielsOperationsPage />)} />
                   <Route path="referentiels/types-projet" element={G('referentiels', <TypesProjetPage />)} />
                   <Route path="administration/comptes" element={G('adminComptes', <ComptesPage />)} />

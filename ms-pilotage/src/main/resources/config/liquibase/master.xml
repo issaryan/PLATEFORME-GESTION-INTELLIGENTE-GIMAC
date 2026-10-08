@@ -57,5 +57,7 @@
     <include file="config/liquibase/changelog/20261008110000_pil_etapes_hors_unite.xml" relativeToChangelogFile="false"/>
     <!-- Destinataire d'un rapport (§2.4 : n+1, chef d'unité, choix, dépôt au sommet), écrit à la main. -->
     <include file="config/liquibase/changelog/20261008120000_pil_rapports_destinataire.xml" relativeToChangelogFile="false"/>
+    <!-- Initiateurs et formulaire de lancement des processus d'unité (D-98), écrit à la main. -->
+    <include file="config/liquibase/changelog/20261008130000_pil_lancement_processus.xml" relativeToChangelogFile="false"/>
     <!-- jhipster-needle-liquibase-add-incremental-changelog - JHipster will add incremental liquibase changelogs here -->
 </databaseChangeLog>

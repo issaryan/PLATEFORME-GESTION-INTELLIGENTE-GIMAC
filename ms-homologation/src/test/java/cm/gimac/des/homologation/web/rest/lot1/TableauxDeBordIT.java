@@ -58,4 +58,44 @@ class TableauxDeBordIT extends ParcoursITSupport {
         mvc.perform(get("/api/v1/intervenants").param("fonction", "SNA").with(conducteur())).andExpect(jsonPath("$[*].id").value(Matchers.hasItem(SNA.toString())));
         mvc.perform(get("/api/v1/intervenants").param("fonction", "CONDUCTEUR").with(conducteur())).andExpect(jsonPath("$[*].nom").value(Matchers.hasItem("Aminata Ngono")));
     }
+
+    @Test
+    @DisplayName("D-98 : mes opérations par personne (à faire, à prendre, à valider, à suivre, jalons) ; preuve du chargé DDRM tel que livré")
+    void mesOperations() throws Exception {
+        UUID a = adherent("Banque Mes Actions", "BANQUE", "RETRAIT");
+        String liaison = ouvrir(a, TypeProjet.CARTE_INTERBANCAIRE);
+        String o3 = opId(liaison, "3");
+        String filtre = "$.aAgir[?(@.operationId == '" + o3 + "')]";
+        // Chargé de la DDRM tel que livré (HOM_STEP_MANAGE, sans HOM_EVIDENCE_SUBMIT) : la preuve du rang 3 est à prendre.
+        org.springframework.test.web.servlet.request.RequestPostProcessor chargeDdrm = utilisateur(DDRM, avec(COMMUN, "ROLE_CHARGE_DDRM", "HOM_STEP_MANAGE", "HOM_FUNCTION_DDRM"));
+        mvc
+            .perform(get("/api/v1/parcours/mes-operations").with(chargeDdrm))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath(filtre + ".qualite").value(Matchers.hasItem("R")))
+            .andExpect(jsonPath(filtre + ".aPrendre").value(Matchers.hasItem(true)))
+            .andExpect(jsonPath(filtre + ".actionsPermises[*]").value(Matchers.hasItem("DEPOSER_PREUVE")))
+            .andExpect(jsonPath(filtre + ".lien").value(Matchers.hasItem("/des/parcours/" + liaison + "?onglet=operations&operation=" + o3)))
+            .andExpect(jsonPath(filtre + ".liaisonReference").value(Matchers.hasItem(Matchers.startsWith("LIA-"))));
+        String corps = "{\"documentId\":\"" + UUID.randomUUID() + "\",\"empreinte\":\"" + SHA + "\",\"nom\":\"perimetre.pdf\"}";
+        mvc.perform(post("/api/v1/parcours/operations/" + o3 + "/preuves").with(chargeDdrm).contentType(MediaType.APPLICATION_JSON).content(corps)).andExpect(status().isNoContent());
+        // Le conducteur, validateur désigné, la reçoit à valider ; il suit sa liaison et ses jalons.
+        String liaisonSuivie = "$.liaisons[?(@.liaisonId == '" + liaison + "')]";
+        mvc
+            .perform(get("/api/v1/parcours/mes-operations").with(conducteur()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath(filtre + ".qualite").value(Matchers.hasItem("V")))
+            .andExpect(jsonPath(filtre + ".etat").value(Matchers.hasItem("EN_VALIDATION")))
+            .andExpect(jsonPath(filtre + ".actionsPermises[*]").value(Matchers.hasItems("VALIDER", "RENVOYER")))
+            .andExpect(jsonPath(liaisonSuivie + ".conducteur").value(Matchers.hasItem(true)))
+            .andExpect(jsonPath(liaisonSuivie + ".statut").value(Matchers.hasItem("CADREE")))
+            .andExpect(jsonPath(liaisonSuivie + ".jalons[*].jalon").value(Matchers.hasItems("CERTIFIEE", "EN_PRODUCTION")))
+            .andExpect(jsonPath(liaisonSuivie + ".jalons[?(@.jalon == 'EN_PRODUCTION')].atteint").value(Matchers.hasItem(false)));
+        // Le chargé ne l'a plus à faire ; une personne étrangère à la liaison ne la voit pas.
+        mvc.perform(get("/api/v1/parcours/mes-operations").with(chargeDdrm)).andExpect(jsonPath(filtre).value(Matchers.empty()));
+        mvc
+            .perform(get("/api/v1/parcours/mes-operations").with(utilisateur(UUID.randomUUID(), "CER_SECURITY_VERIFY")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.aAgir[?(@.liaisonId == '" + liaison + "')]").value(Matchers.empty()))
+            .andExpect(jsonPath(liaisonSuivie).value(Matchers.empty()));
+    }
 }

@@ -13,7 +13,15 @@ export const clesProcessus = {
   definition: (id: string) => ['pilotage', 'processus', 'definition', id] as const,
   instances: (q: object) => ['pilotage', 'processus', 'instances', q] as const,
   instance: (id: string) => ['pilotage', 'processus', 'instance', id] as const,
+  lancables: (q: object) => ['pilotage', 'processus', 'lancables', q] as const,
+  demandes: (q: object) => ['pilotage', 'processus', 'demandes', q] as const,
 }
+
+/**
+ * Suivi en temps réel d'une demande (D-98 §4) : relecture périodique de l'instance en cours et de « Mes demandes » (les
+ * actes des intervenants changent l'état sans geste de l'initiateur) ; chaque notification relit aussi tout le sujet.
+ */
+export const SUIVI_DEMANDE_MS = 10_000
 
 export const useCatalogueProcessus = (q: { unite?: string; etat?: EtatProcessus; q?: string }) =>
   useLecture(clesProcessus.liste(q), (s) => s.processus.lister(q), { placeholderData: keepPreviousData })
@@ -28,7 +36,16 @@ export const useCandidatsProcessus = (unite: string | null | undefined, profil: 
 /** Candidats à l'exécution d'une étape en cours (réaffectation). */
 export const useCandidatsEtape = (instanceId: string, etape: string, actif = true) =>
   useLecture(['pilotage', 'processus', 'candidats', 'etape', instanceId, etape], (s) => s.processus.candidatsEtape(instanceId, etape), { enabled: actif, staleTime: 30_000 })
-export const useInstance = (id: string | undefined) => useLecture(clesProcessus.instance(id ?? ''), (s) => s.processus.instance(id!), { enabled: !!id })
+export const useInstance = (id: string | undefined) => useLecture(clesProcessus.instance(id ?? ''), (s) => s.processus.instance(id!), {
+  enabled: !!id,
+  // Instance en cours ou suspendue : relue périodiquement (suivi par l'initiateur, les intervenants et le chef).
+  refetchInterval: (q) => (q.state.data && (q.state.data.etat === 'EN_COURS' || q.state.data.etat === 'SUSPENDUE') ? SUIVI_DEMANDE_MS : false),
+})
+/** D-98 : processus que je peux lancer, groupés par unité propriétaire. */
+export const useLancables = (q: { q?: string }) => useLecture(clesProcessus.lancables(q), (s) => s.processus.lancables(q), { placeholderData: keepPreviousData })
+/** D-98 : « Mes demandes », relues périodiquement. */
+export const useDemandes = (q: { etat?: EtatInstance; q?: string; page?: number; taille?: number }) =>
+  useLecture(clesProcessus.demandes(q), (s) => s.processus.demandes(q), { placeholderData: keepPreviousData, refetchInterval: SUIVI_DEMANDE_MS })
 
 const TOUT = [clesPilotage.tout]
 

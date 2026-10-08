@@ -27,8 +27,9 @@ import org.springframework.stereotype.Component;
  * (DG, chef du DES, cheffe de service, chef de la DDRM), AUCUNE pour les autres ; PROCESSUS_DEFINIR et
  * PROCESSUS_LANCER à UNITES pour les responsables (D-86 §4). Chaque compte porte ses profils (ROLE_…), qui
  * servent aux processus d'unité (D-87). Jeu de démonstration du pôle réseau (chef, deux ingénieurs réseau
- * portant ROLE_POLE_RESEAU), chargé avec gimac.demonstration.processus=true (profil dev) ou par
- * {@link #chargerDemonstrationReseau()}. Les tests peuvent enregistrer d'autres comptes et unités, leurs
+ * portant ROLE_POLE_RESEAU) et service des ressources humaines (cheffe, gestionnaire, D-98), chargés avec
+ * gimac.demonstration.processus=true (profil dev) ou par {@link #chargerDemonstrationReseau()} et
+ * {@link #chargerDemonstrationRh()}. Les tests peuvent enregistrer d'autres comptes et unités, leurs
  * profils, et changer les pouvoirs d'un compte.
  */
 @Component
@@ -54,6 +55,10 @@ public class OrganisationStubAdapter implements OrganisationPort {
     public static final String INGENIEUR_RESEAU = "00000000-0000-4000-8000-0000000d0012";
     public static final String TECHNICIEN_RESEAU = "00000000-0000-4000-8000-0000000d0013";
     public static final String PROFIL_RESEAU = "ROLE_POLE_RESEAU";
+    /** Service des ressources humaines de démonstration (demande de congé, D-98). */
+    public static final String CHEF_RH = "00000000-0000-4000-8000-0000000d0014";
+    public static final String GESTIONNAIRE_RH = "00000000-0000-4000-8000-0000000d0015";
+    public static final String UNITE_RH = "RH";
 
     /** Profils connus de l'organisation simulée (profils du domaine gimac). */
     static final Set<String> PROFILS_CONNUS = Set.of(
@@ -172,7 +177,21 @@ public class OrganisationStubAdapter implements OrganisationPort {
         attribuerProfils(SUPER_ADMIN, "ROLE_SUPER_ADMIN");
         if (demonstration) {
             chargerDemonstrationReseau();
+            chargerDemonstrationRh();
         }
+    }
+
+    /**
+     * Service des ressources humaines de démonstration (D-98) : une cheffe de service (responsable de l'unité RH, n+1 :
+     * le directeur général) et un gestionnaire, pour la demande de congé lancée de tout le GIMAC.
+     */
+    public final void chargerDemonstrationRh() {
+        enregistrerUnite(new Unite(UNITE_RH, "DG", CHEF_RH));
+        enregistrer(new Compte(CHEF_RH, "Solange Ateba Mvondo", "Cheffe du service des ressources humaines", UNITE_RH, DG, true, true));
+        enregistrer(new Compte(GESTIONNAIRE_RH, "Thierry Bekolo Ngoa", "Gestionnaire des ressources humaines", UNITE_RH, CHEF_RH, true, true));
+        attribuerProfils(CHEF_RH, "ROLE_RESPONSABLE_SERVICE");
+        attribuerProfils(GESTIONNAIRE_RH, "ROLE_COLLABORATEUR");
+        definirPouvoirs(CHEF_RH, MATRICE_RESPONSABLE);
     }
 
     /**

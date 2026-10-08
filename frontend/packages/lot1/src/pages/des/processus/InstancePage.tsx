@@ -5,7 +5,7 @@ import { ReactFlowProvider } from '@xyflow/react'
 import {
   Button, ConfirmDialog, CrudDialog, DataTable, FileDropzone, Icon, InlineAlert, KeyValueList, PageHeader, SignDialog, StatusBadge, Timeline, cx, type Column,
 } from '@gimac/design-system'
-import { EtatsRequete, cleSecuriteDisponible, refusReauth, sha256Hex, type Progression } from '@gimac/socle'
+import { EtatsRequete, cleSecuriteDisponible, refusReauth, sha256Hex, usePermissions, useSession, type Progression } from '@gimac/socle'
 import { ETATS_ETAPE, type EtapeInstance, type InstanceProcessus } from '../../../modele/processus'
 import { useActeInstance, useCandidatsEtape, useInstance } from '../../../hooks/processus'
 import { useEffet } from '../../../hooks/base'
@@ -16,11 +16,16 @@ import { useDates, useLibelleUnite } from '../activite/communs'
 import { CanevasProcessus, type CarteEtape } from './CanevasProcessus'
 import { ChampValeur, erreurValeur, valeurEnvoyee, valeurSaisie } from './DialogueLancement'
 import { BadgeEtape, BadgeInstance, ChoixPersonne, useErreurProcessus } from './communs'
+import { ValeursFormulaire } from './FormulaireLancement'
+import { useCatalogueFonctionnalites } from '../../../catalogue'
+import { accesFonctionnalite } from '../../../fonctionnalites'
 
 // Suivi d'une instance de processus d'unité (D-87 §4, /des/processus/instances/:id?etape=CODE) : graphe coloré par l'état
 // des étapes (ou liste équivalente), panneau de l'étape choisie (action, exécutant ou tâche à prendre, livrables déposés
 // par le dépôt fragmenté de MS-DOCUMENT, champs, signatures FIDO2 de finalité SIGNATURE_PROCESSUS, validation ou
 // renvoi, fin de l'étape, réaffectation), suspension, reprise et annulation selon droits et moi, historique.
+// D-98 : valeurs du formulaire de lancement visibles de tous (initiateur, intervenants, chef) ; instance en cours relue
+// périodiquement (suivi en temps réel) ; l'initiateur revient à « Mes demandes ».
 
 export default function InstancePage() {
   const { id } = useParams()
@@ -47,6 +52,13 @@ type Geste = 'terminer' | 'valider' | 'renvoyer' | 'reaffecter' | 'suspendre' | 
 function Suivi({ instance: i }: { instance: InstanceProcessus }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const session = useSession()
+  // L'initiateur suit sa demande : retour à « Mes demandes » ; les autres reviennent aux instances de l'unité.
+  const initiateur = !!session && session.sujet === i.lanceur.id
+  // Liens de retour selon le catalogue (D-98) : l'instance s'ouvre aussi sans « Processus de l'unité » (lien profond).
+  const catalogue = useCatalogueFonctionnalites()
+  const permissions = usePermissions()
+  const ouverte = (cle: string) => accesFonctionnalite(catalogue, cle, permissions) === 'ouvert'
   const dates = useDates()
   const libelleUnite = useLibelleUnite()
   const erreur = useErreurProcessus()
@@ -114,7 +126,8 @@ function Suivi({ instance: i }: { instance: InstanceProcessus }) {
             {i.droits.suspendre ? <Button size="sm" icon="pause" onClick={() => setGeste('suspendre')}>{t('proc.suivi.suspendre')}</Button> : null}
             {i.droits.reprendre ? <Button size="sm" icon="refresh" onClick={() => setGeste('reprendre')}>{t('proc.suivi.reprendre')}</Button> : null}
             {i.droits.annuler ? <Button size="sm" variant="danger" icon="x" onClick={() => setGeste('annuler')}>{t('proc.suivi.annuler')}</Button> : null}
-            <Button size="sm" variant="ghost" icon="arrow-left" onClick={() => navigate('/des/processus?vue=instances')}>{t('proc.suivi.retour')}</Button>
+            {initiateur && ouverte('mesDemandes') ? <Button size="sm" variant="ghost" icon="inbox" onClick={() => navigate('/des/demandes')}>{t('dem.mesDemandes.titre')}</Button> : null}
+            {ouverte('processus') ? <Button size="sm" variant="ghost" icon="arrow-left" onClick={() => navigate('/des/processus?vue=instances')}>{t('proc.suivi.retour')}</Button> : null}
           </span>
         )} />
       <KeyValueList items={[
@@ -124,6 +137,12 @@ function Suivi({ instance: i }: { instance: InstanceProcessus }) {
         ...(i.closeLe ? [{ key: t('proc.suivi.closeLe'), value: dates.instant(i.closeLe) }] : []),
         ...(i.motif ? [{ key: t('proc.suivi.motif'), value: i.motif }] : []),
       ]} />
+      {i.formulaire?.length ? (
+        <section className="gm-proc-bloc" aria-labelledby="gm-proc-formulaire" data-testid="valeurs-lancement">
+          <h3 id="gm-proc-formulaire">{t('dem.suivi.formulaire')}</h3>
+          <ValeursFormulaire valeurs={i.formulaire} />
+        </section>
+      ) : null}
       {i.etat === 'SUSPENDUE' ? <InlineAlert level="warn" title={t('proc.suivi.suspendue')} /> : null}
       {refus ? <InlineAlert level="crit" title={refus.titre} correlationId={refus.correlationId} action={<Button size="sm" variant="ghost" icon="x" onClick={() => setEchec(null)}>{t('commun.fermer')}</Button>} /> : null}
       <div className="gm-sr-only" role="status" aria-live="polite">{annonce}</div>

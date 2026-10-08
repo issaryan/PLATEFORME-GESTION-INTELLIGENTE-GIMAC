@@ -34,6 +34,18 @@ public class TableauxDeBordResource {
         return lectures.tableauActeur(fonctions(fonctions), ActeurCourant.de(auth));
     }
 
+    /**
+     * « Mes actions de certification » (D-98 §5, docs/lot1/lancement-processus.md §8) : toute permission d'un acteur du
+     * parcours de certification suffit à lire ses propres opérations ; le service ne rend que celles de l'appelant.
+     * OPA exige l'une de ces permissions (règle {@code mes_operations}).
+     */
+    @GetMapping("/parcours/mes-operations")
+    // prettier-ignore
+    @PreAuthorize("hasAnyAuthority('HOM_LIAISON_READ', 'HOM_DASHBOARD_READ', 'HOM_EVIDENCE_SUBMIT', 'HOM_OPERATION_VALIDATE', 'HOM_STEP_MANAGE', 'HOM_OPERATION_ASSIGN', 'HOM_PROJECT_CONDUCT', 'HOM_FUNCTION_DDRM', 'HOM_FUNCTION_PRODUCTION', 'HOM_FUNCTION_NETWORK', 'HOM_FUNCTION_SYSTEM', 'HOM_FUNCTION_OPERATIONS', 'CER_PV_ESTABLISH', 'CER_QUITUS_TECHNIQUE_SIGN', 'CER_DOSSIER_VERIFY', 'CER_SECURITY_VERIFY', 'CER_CHANGE_RECORD_LINK', 'CER_QUITUS_CONFORMITE_SIGN', 'CER_QUITUS_DG_SIGN')")
+    public Vues.MesOperations mesOperations(Authentication auth) {
+        return lectures.mesOperations(ActeurCourant.de(auth));
+    }
+
     @GetMapping("/tableaux-de-bord/pilotage")
     @PreAuthorize("hasAuthority('HOM_DASHBOARD_READ')")
     public Vues.Pilotage pilotage() {

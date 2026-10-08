@@ -35,6 +35,11 @@ public class PilotageException extends RuntimeException {
         return new PilotageException(code, 403, message, Map.of());
     }
 
+    /** 403 avec détails (règles d'initiateurs d'un processus refusé, D-98). */
+    public static PilotageException interditDetaille(String code, String message, Map<String, Object> details) {
+        return new PilotageException(code, 403, message, details);
+    }
+
     /** 403 PIL_HORS_EQUIPE (docs/lot1/mon-activite.md §3). */
     public static PilotageException horsEquipe() {
         return interdit("PIL_HORS_EQUIPE", "Ce compte n'est pas dans votre équipe");

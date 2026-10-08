@@ -288,6 +288,55 @@ export type TacheActeur = {
   signature?: string | null
 }
 
+/**
+ * « Mes actions de certification » (D-98 §5, GET /parcours/mes-operations) : opération que je dois faire (qualité R, V ou C,
+ * signature attendue, tâche à prendre) ou que je suis (conducteur de la liaison, intervenant désigné), calculée par le service.
+ */
+export type MonOperation = {
+  operationId: string
+  liaisonId: string
+  liaisonReference: string
+  institutionNom: string
+  statutLiaison: StatutParcours
+  code: string
+  libelle?: string | null
+  etape: EtapeCode
+  etapeCode?: string | null
+  etat: EtatOperationParcours
+  /** Absente pour une opération suivie (rien à faire maintenant). */
+  qualite?: Qualite | null
+  aPrendre?: boolean | null
+  signature?: string | null
+  geste?: Geste | null
+  jalon?: Jalon | null
+  declencheur?: string | null
+  vue?: VueOperation | null
+  responsable?: Personne | null
+  validateur?: Personne | null
+  echeance?: string | null
+  sla?: Sla | null
+  /** Écran de l'opération dans le dossier de la liaison (onglet du geste et ?operation=). */
+  lien: string
+  actionsPermises: string[]
+}
+/** Jalon d'une liaison suivie : atteint quand l'opération qui le porte est faite. */
+export type JalonSuivi = { jalon: Jalon; atteint: boolean; atteintLe?: string | null; operationId?: string | null }
+/** Liaison que je conduis ou sur laquelle j'interviens : statut, avancement, jalons. */
+export type LiaisonSuivie = {
+  liaisonId: string
+  reference: string
+  institutionNom: string
+  typeProjet: TypeProjet
+  statut: StatutParcours
+  etapeCourante: EtapeCode
+  conducteur: boolean
+  operationsFaites: number
+  operationsTotal: number
+  jalons: JalonSuivi[]
+  lien: string
+}
+export type MesOperations = { aAgir: MonOperation[]; aSuivre: MonOperation[]; liaisons: LiaisonSuivie[] }
+
 /** Pilotage (CR §7.3, vision diapositives 11 et 12) : tous les chiffres viennent du service. */
 export type IndicateursPilotage = {
   projetsActifs: number

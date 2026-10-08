@@ -70,6 +70,21 @@ export function ongletDuGeste(o: Pick<OperationParcours, 'vue'>): GesteAilleurs 
   if (o.vue === 'MISE_EN_SERVICE') return 'mise-en-service'
   return null
 }
+/**
+ * Carte de l'onglet « Décision » où se réalise une opération (lien profond ?operation=, D-98) : lue sur le déclencheur, le
+ * jalon, le geste et la vue de l'opération, jamais sur son rang. Procès-verbal : constat de couverture, établissement et
+ * signature (jalons APTE_CERTIFICATION et CERTIFIEE) ; approbation de la sécurité : dossier et fiche de changement,
+ * attestations, approbation (jalon APPROUVEE_SECURITE, vue ATTESTATIONS) ; null si l'opération ne se rattache à aucune carte.
+ */
+export type CarteDecision = 'pv' | 'approbation'
+export function carteDecision(o: Pick<OperationParcours, 'vue' | 'geste' | 'jalon' | 'declencheur'> | undefined): CarteDecision | null {
+  if (!o) return null
+  const d = o.declencheur ?? ''
+  if (/\.(change-record-[a-z]+|attestations-archived|security-approved)\.v\d+$/.test(d) || o.jalon === 'APPROUVEE_SECURITE' || o.vue === 'ATTESTATIONS') return 'approbation'
+  if (/\.pv-[a-z]+\.v\d+$/.test(d) || o.jalon === 'APTE_CERTIFICATION' || o.jalon === 'CERTIFIEE' || o.geste === 'CONSTATER_COUVERTURE') return 'pv'
+  return o.vue === 'DECISION' ? 'pv' : null
+}
+
 export function lienDuGeste(g: GesteAilleurs, o: { liaisonId: string; id: string }): string {
   const base = `/des/parcours/${o.liaisonId}`
   return g === 'affectation' ? `${base}?onglet=etapes&action=affecter` : `${base}?onglet=${g}&operation=${encodeURIComponent(o.id)}`

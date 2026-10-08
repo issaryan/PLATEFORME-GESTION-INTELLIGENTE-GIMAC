@@ -323,7 +323,9 @@ export function usePermis(op: OperationParcours) {
   const permissions = usePermissions()
   const a = (action: string, permission: string) => op.actionsPermises.includes(action) && aPermission(permissions, permission)
   return {
-    preuve: a('DEPOSER_PREUVE', PERM.preuveDeposer),
+    // D-98 : comme le livrable, la preuve est ouverte à la conduite des étapes (chargé de la DDRM, responsable des preuves du
+    // cadrage) ou au dépôt de preuve ; le service décide du droit de dépôt (RACI).
+    preuve: a('DEPOSER_PREUVE', PERM.preuveDeposer) || a('DEPOSER_PREUVE', PERM.etapeConduire),
     // Livrable d'étape (compte rendu de lancement, d'atelier…) : conduite des étapes ou dépôt de preuve.
     livrable: a('DEPOSER_LIVRABLE', PERM.etapeConduire) || a('DEPOSER_LIVRABLE', PERM.preuveDeposer),
     valider: a('VALIDER', PERM.operationValider),

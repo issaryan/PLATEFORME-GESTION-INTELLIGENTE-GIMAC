@@ -5,6 +5,7 @@ import { ApiError } from '@gimac/socle'
 import InstitutionPage from './InstitutionPage'
 import InstitutionsPage from './InstitutionsPage'
 import LiaisonPage from './LiaisonPage'
+import DossierLiaisonPage from './parcours/DossierLiaisonPage'
 import { rendrePage, sessionTest } from '../../test/rendu'
 import { servicesSimules } from '../../services/simule'
 import type { Services } from '../../services/ports'
@@ -19,15 +20,16 @@ const CHEF_DES = [...LECTURE, 'HOM_LIAISON_OPEN', 'HOM_PROJECT_DESIGNATE', 'HOM_
 const INGENIEUR = [...LECTURE, 'HOM_OPERATION_ASSIGN']
 const cleBrute = /\b(cadrage|phase|service|intervenant|institution|transition|erreur|liaison)\.[a-zA-Z]/
 
+// D-98 : l'ouverture passe par le port du parcours (même route POST /liaisons) ; la surcharge vaut pour les deux ports.
 const avec = (surcharge: Partial<Services['homologation']>): Services => {
   const s = servicesSimules({ latenceMs: 0 })
-  return { ...s, homologation: { ...s.homologation, ...surcharge } }
+  return { ...s, homologation: { ...s.homologation, ...surcharge }, parcours: { ...s.parcours, ...(surcharge.ouvrirLiaison ? { ouvrirLiaison: surcharge.ouvrirLiaison as unknown as Services['parcours']['ouvrirLiaison'] } : {}) } }
 }
 function fiche(id: string, o: { permissions?: string[]; suffixe?: string; services?: Services; langue?: 'fr' | 'en' | 'es' } = {}) {
   const services = o.services ?? servicesSimules({ latenceMs: 0 })
   const r = rendrePage(<InstitutionPage />, {
     chemin: `/des/institutions/${id}${o.suffixe ?? ''}`, motif: '/des/institutions/:id', services, langue: o.langue, session: sessionTest(o.permissions ?? CHEF_DDRM, ['ROLE_CHEF_DDRM']),
-    autres: [{ motif: '/des/liaisons/:id', element: <LiaisonPage /> }],
+    autres: [{ motif: '/des/liaisons/:id', element: <LiaisonPage /> }, { motif: '/des/parcours/:id', element: <DossierLiaisonPage /> }],
   })
   return { ...r, services }
 }
@@ -53,20 +55,19 @@ const choisir = async (c: HTMLElement, o: { type?: string; conducteur?: string; 
 }
 
 describe('Cadrage : ouverture d’une liaison depuis la fiche de l’institution', () => {
-  it('chef de la DDRM : ouvre la liaison, arrive sur sa fiche, l’institution passe en homologation', async () => {
+  it('chef de la DDRM : ouvre la liaison, arrive sur son dossier (D-98), l’institution passe en homologation', async () => {
     const { container, services } = fiche('INST-0105')
     fireEvent.click(await screen.findByRole('button', { name: 'Ouvrir une liaison (cadrage)' }))
     expect(await screen.findByRole('dialog', { name: 'Ouvrir une liaison (cadrage) pour Mobile Money Sanaga' })).toBeTruthy()
     expect(screen.getByText(/fera ensuite passer Mobile Money Sanaga du statut « Adhérent » au statut « En homologation »/)).toBeTruthy()
     const f = await formulaire(container)
-    await choisir(container, { type: 'PAIEMENT_MOBILE', conducteur: 'U-202', banque: 'INST-0017' })
+    await choisir(container, { type: 'CARTE_INTERBANCAIRE', conducteur: 'U-COND-2', banque: 'INST-0017' })
     fireEvent.submit(f)
-    expect(await screen.findByText(/ouverte en phase de cadrage\. Le statut de Mobile Money Sanaga passera à « En homologation »/)).toBeTruthy()
+    // Le dossier de la liaison (parcours) s'ouvre : c'est là que chaque acteur suit et réalise ses opérations.
+    expect(await screen.findByText(/^Liaison LIA-\d{4}-\d{3} ouverte au cadrage\.$/)).toBeTruthy()
     expect(screen.getByRole('heading', { level: 1, name: 'Mobile Money Sanaga' })).toBeTruthy()
-    const resume = screen.getByRole('heading', { name: 'Cadrage de la liaison' }).closest('section')!
-    expect(within(resume).getByText('Transverse')).toBeTruthy()
-    expect(within(resume).getByText('Brice Ondo Mba')).toBeTruthy()
-    expect(within(resume).getByText('Banque B')).toBeTruthy()
+    expect(screen.getAllByText('Banque B').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Conducteur de projet 2').length).toBeGreaterThan(0)
     await waitFor(async () => expect((await services.participant.dossier('INST-0105')).institution.statut).toBe('EN_HOMOLOGATION'))
   })
   it('champs requis signalés avant tout appel au service', async () => {
@@ -97,7 +98,7 @@ describe('Cadrage : ouverture d’une liaison depuis la fiche de l’institution
     const services = avec({ ouvrirLiaison: async () => { throw new ApiError(statut, code, 'refus', `RQ-${code}`, details) } })
     const { container } = fiche('INST-0105', { suffixe: '?formulaire=liaison', services })
     const f = await formulaire(container)
-    await choisir(container, { type: 'CARTE_INTERBANCAIRE', conducteur: 'U-201' })
+    await choisir(container, { type: 'CARTE_INTERBANCAIRE', conducteur: 'U-COND-1' })
     fireEvent.submit(f)
     expect(await screen.findByText(attendu)).toBeTruthy()
     expect(screen.getByText(`RQ-${code}`)).toBeTruthy()
@@ -167,7 +168,7 @@ describe('Cadrage : ouverture d’une liaison depuis la fiche de l’institution
   it.each(['en', 'es'] as const)('formulaire et fiche en %s sans clé brute', async (langue) => {
     const { container } = fiche('INST-0105', { suffixe: '?formulaire=liaison', langue })
     await formulaire(container)
-    await waitFor(() => expect(container.querySelectorAll('select[name="chefDeProjetId"] option').length).toBe(4))
+    await waitFor(() => expect(container.querySelectorAll('select[name="chefDeProjetId"] option').length).toBe(3))
     expect(container.textContent).not.toMatch(cleBrute)
   })
   it('chaque refus du service a son message en français, anglais et espagnol', () => {

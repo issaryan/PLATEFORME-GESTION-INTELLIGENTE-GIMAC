@@ -6,12 +6,14 @@ import { BadgeEtape, useErreurProcessus } from './communs'
 
 // « Mes étapes » (D-87 §4) dans Mon activité : étapes en cours des instances qui me concernent (vue « miennes » de
 // MS-PILOTAGE : exécutant, validateur, signataire attendu, ou tâche à prendre par mon profil), avec leur échéance.
+// D-98 : seules les étapes qui attendent ma décision (attendMoi servi par le serveur : exécuter, prendre, signer, valider) ;
+// une étape soumise qui attend le validateur ou un signataire n'y figure plus pour son exécutant.
 export function MesEtapes() {
   const { t } = useTranslation()
   const dates = useDates()
   const erreur = useErreurProcessus()
   const instances = useInstances({ vue: 'miennes', etat: 'EN_COURS', taille: 50 })
-  const items = (instances.data?.contenu ?? []).flatMap((i) => i.etapesEnCours.map((e) => ({
+  const items = (instances.data?.contenu ?? []).flatMap((i) => i.etapesEnCours.filter((e) => e.attendMoi ?? true).map((e) => ({
     key: `${i.id}-${e.code}`, href: `/des/processus/instances/${encodeURIComponent(i.id)}?etape=${encodeURIComponent(e.code)}`,
     label: `${i.intitule} : ${e.libelle}`, meta: <span className="gm-row" style={{ gap: 'var(--gm-space-1)' }}><BadgeEtape etat={e.etat} />{e.echeance ? <span className="gm-field-help">{dates.jour(e.echeance)}</span> : null}</span>,
   })))

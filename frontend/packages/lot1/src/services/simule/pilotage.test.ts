@@ -18,7 +18,7 @@ const code = (p: Promise<unknown>) => p.then(() => 'ok', (e: ApiError) => `${e.s
 
 describe('organisation de démonstration', () => {
   it('unités du §1.1, organisation cohérente, rattachement et chaîne', () => {
-    expect(UNITES_DEMO.map((u) => u.code)).toEqual(['DG', 'DES', 'SNA', 'PROD_MONETIQUE', 'PROD_INFO', 'POLE_RESEAU', 'POLE_SYSTEME', 'DDRM', 'SSI', 'CONFORMITE'])
+    expect(UNITES_DEMO.map((u) => u.code)).toEqual(['DG', 'DES', 'SNA', 'PROD_MONETIQUE', 'PROD_INFO', 'POLE_RESEAU', 'POLE_SYSTEME', 'DDRM', 'SSI', 'CONFORMITE', 'RH'])
     ORGANISATION_DEMO.forEach((m) => {
       expect(UNITES_DEMO.some((u) => u.code === m.unite)).toBe(true)
       if (m.responsableId) expect(ORGANISATION_DEMO.some((x) => x.id === m.responsableId)).toBe(true)
@@ -196,7 +196,7 @@ describe('pilotageSimule', () => {
     expect(synthese.evenements.length).toBeLessThanOrEqual(5)
     expect(synthese.taches.ouvertes).toBeGreaterThan(0)
     expect((await chef.synthese('2026-10-06')).rapportsARecevoir).toBeGreaterThan(0)
-    expect((await chef.unites()).length).toBe(10)
+    expect((await chef.unites()).length).toBe(11)
     expect((await chef.organisation()).equipeDirecte).toBe(3)
     // Compte hors de l'organisation simulée (super administrateur) : ni unité ni responsable.
     const admin = servicesSimules({ latenceMs: 0, utilisateur: { id: 'u-super-admin', nom: 'Serge Mouelle Kombi' } }).pilotage

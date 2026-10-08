@@ -45,9 +45,14 @@ public interface RecevoirEvenementsUseCase {
 
     /**
      * pilotage.task-offered.v1 (sujet pilotage.task, docs/lot1/pouvoirs-hierarchiques.md §6) : tâche à
-     * prendre par les membres d'une unité.
+     * prendre par les membres d'une unité. {@code lien} (D-98, facultatif) : écran où l'acte se fait sans prise préalable
+     * (offre d'origine DECISION : prononcer une transition de statut) ; absent : les tâches à prendre.
      */
-    record TacheOfferte(String tacheId, String titre, String uniteCible, List<String> destinataires, String acteurId, Instant le) {}
+    record TacheOfferte(String tacheId, String titre, String uniteCible, List<String> destinataires, String acteurId, Instant le, String lien) {
+        public TacheOfferte(String tacheId, String titre, String uniteCible, List<String> destinataires, String acteurId, Instant le) {
+            this(tacheId, titre, uniteCible, destinataires, acteurId, le, null);
+        }
+    }
 
     /** pilotage.task-reminded.v1 (sujet pilotage.task) : relance d'une tâche à son responsable. */
     record TacheRelancee(String tacheId, String titre, String responsableId, String acteurId, Instant le) {}

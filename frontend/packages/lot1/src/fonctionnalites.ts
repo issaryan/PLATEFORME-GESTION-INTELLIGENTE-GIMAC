@@ -72,7 +72,13 @@ export const ECRANS_DES: Record<string, Ecran> = {
   rapports: { chemin: '/des/rapports' },
   equipe: { chemin: '/des/equipe' },
   processus: { chemin: '/des/processus' },
+  // Lancer une demande et suivre ses demandes (D-98).
+  lancerDemande: { chemin: '/des/demandes/lancer' },
+  mesDemandes: { chemin: '/des/demandes' },
   institutions: { chemin: '/des/institutions' },
+  // Parcours de certification (D-98) : lancement guidé et actions de la personne.
+  lancerCertification: { chemin: '/des/certification/lancer' },
+  mesActionsCertification: { chemin: '/des/certification/mes-actions' },
   liaisons: { chemin: '/des/parcours' },
   mesProjets: { chemin: '/des/parcours?mesProjets=1' },
   referentiels: { chemin: '/des/referentiels/operations' },

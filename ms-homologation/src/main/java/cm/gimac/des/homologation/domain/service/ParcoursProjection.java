@@ -199,8 +199,8 @@ public class ParcoursProjection {
                 String geste = Parcours.geste(o);
                 boolean permis = switch (geste) {
                     case "CONSTATER_COUVERTURE" -> a.peut(Permissions.DOSSIER_VERIFY);
-                    case "DEPOSER_LIVRABLE" -> a.peut(Permissions.STEP_MANAGE, Permissions.EVIDENCE_SUBMIT);
-                    default -> a.peut(Permissions.EVIDENCE_SUBMIT);
+                    // D-98 : livrable et preuve ouverts aux mêmes permissions ; le RACI décide ensuite (droitDepot).
+                    default -> a.peut(Permissions.STEP_MANAGE, Permissions.EVIDENCE_SUBMIT);
                 };
                 if (permis) {
                     l.add(geste);

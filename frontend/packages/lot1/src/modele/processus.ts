@@ -44,6 +44,30 @@ export type EtapeProcessus = {
 
 export type DroitsProcessus = { modifier: boolean; publier: boolean; lancer: boolean; retirer: boolean }
 
+// ------------------------------------------------------------------ Lancement (D-98, docs/lot1/lancement-processus.md §1, §2)
+
+/** Qui peut lancer une version publiée : règles cumulables (l'une suffit), en données dans la définition. */
+export const REGLES_INITIATEUR = ['MEMBRES_UNITE', 'TOUT_LE_GIMAC', 'UNITES', 'PROFILS', 'PERMISSIONS'] as const
+export type RegleInitiateur = (typeof REGLES_INITIATEUR)[number]
+export type Initiateurs = { regles: RegleInitiateur[]; unites: string[]; profils: string[]; permissions: string[] }
+/** Défaut (et reprise des définitions existantes) : les membres de l'unité propriétaire. */
+export const INITIATEURS_DEFAUT: Initiateurs = { regles: ['MEMBRES_UNITE'], unites: [], profils: [], permissions: [] }
+
+/** Types des champs du formulaire de lancement. */
+export const TYPES_CHAMP_FORMULAIRE = ['TEXTE', 'TEXTE_LONG', 'NOMBRE', 'DATE', 'PERIODE', 'LISTE', 'CASE', 'PIECE_JOINTE'] as const
+export type TypeChampFormulaire = (typeof TYPES_CHAMP_FORMULAIRE)[number]
+export type ChampFormulaire = { code: string; libelle: string; type: TypeChampFormulaire; choix: string[]; obligatoire: boolean; aide: string | null; typesPieces: string[] }
+export type Formulaire = { champs: ChampFormulaire[] }
+/** Pièce jointe déposée par le dépôt fragmenté (finalité PROCESSUS_UNITE, référence : la définition lancée). */
+export type PieceJointe = { documentId: string; nomFichier: string; typeMime: string; taille: number; sha256: string }
+export type Periode = { debut: string; fin: string }
+/** Valeur d'un champ : texte (texte, date AAAA-MM-JJ, liste), nombre, période, case, pièce jointe. */
+export type ValeurFormulaire = string | number | boolean | Periode | PieceJointe | null
+/** Valeur rendue avec le champ (instance, visible à chaque étape). */
+export type ValeurChampFormulaire = ChampFormulaire & { valeur: ValeurFormulaire }
+/** Bornes du formulaire (§2), annoncées avant l'envoi ; le service refait tout (422 et fieldErrors). */
+export const LIMITES_FORMULAIRE = { champs: 30, texte: 500, texteLong: 4000, aide: 500, parametres: 20 } as const
+
 /** Résumé d'une version (GET /processus). */
 export type ResumeProcessus = {
   id: string
@@ -60,7 +84,13 @@ export type ResumeProcessus = {
   modifieLe: string | null
   modifiePar: PersonneActivite | null
   droits: DroitsProcessus
+  /** D-98 : absents d'un service antérieur. */
+  initiateurs?: Initiateurs
+  nombreChampsFormulaire?: number
 }
+
+/** « Lancer une demande » (GET /processus/lancables) : versions publiées que je peux lancer, par unité propriétaire. */
+export type Lancables = { groupes: { unite: string; processus: ResumeProcessus[] }[] }
 
 export type GraviteAnomalie = 'BLOQUANTE' | 'LEVABLE' | 'AVERTISSEMENT'
 export type AnomalieProcessus = { code: string; gravite: GraviteAnomalie; etape: string | null; element: string | null; message: string }
@@ -78,6 +108,9 @@ export type Processus = {
   categorie: string
   delaiCibleJours: number | null
   etapes: EtapeProcessus[]
+  /** D-98 : qui peut lancer, formulaire de lancement (absents d'un service antérieur : défauts). */
+  initiateurs?: Initiateurs
+  formulaire?: Formulaire
   creeLe: string | null
   creePar: PersonneActivite | null
   modifieLe: string | null
@@ -105,6 +138,8 @@ export type SaisieProcessus = {
   categorie: string
   delaiCibleJours: number | null
   etapes: EtapeProcessus[]
+  initiateurs?: Initiateurs
+  formulaire?: Formulaire
 }
 
 export type ControleProcessus = { publiable: boolean; anomalies: AnomalieProcessus[] }
@@ -168,6 +203,8 @@ export type InstanceProcessus = {
   motif: string | null
   designations: Record<string, PersonneActivite>
   avancement: { total: number; terminees: number }
+  /** D-98 : valeurs du formulaire de lancement, visibles à chaque étape. */
+  formulaire?: ValeurChampFormulaire[]
   etapes: EtapeInstance[]
   historique: HistoriqueProcessus[]
   droits: { suspendre: boolean; reprendre: boolean; annuler: boolean; reaffecter: boolean }
@@ -183,13 +220,56 @@ export type ResumeInstance = {
   lanceeLe: string
   closeLe: string | null
   avancement: { total: number; terminees: number }
-  etapesEnCours: { code: string; libelle: string; etat: EtatEtape; echeance: string | null }[]
+  /**
+   * Étapes en cours ; D-98 : `moi` (actions permises à l'appelant, calculées par le serveur) et `attendMoi` (l'étape attend
+   * sa décision : exécuter, prendre, signer ou valider). Absents d'un service antérieur.
+   */
+  etapesEnCours: { code: string; libelle: string; etat: EtatEtape; echeance: string | null; moi?: EtapeInstance['moi']; attendMoi?: boolean }[]
 }
 
 export type PageInstances = { contenu: ResumeInstance[]; total: number; page: number; taille: number }
 
-/** POST /processus/{id}/instances : clés des désignations CODE_ETAPE, CODE_ETAPE.validateur, CODE_ETAPE.signature.CODE. */
-export type Lancement = { intitule: string; champs: Record<string, string | number | null>; designations: Record<string, string> }
+/** Étape d'une demande vue de l'initiateur (« Mes demandes ») : état et personne qui la tient. */
+export type EtapeDemande = {
+  code: string
+  libelle: string
+  etat: EtatEtape
+  executant: PersonneActivite | null
+  aPrendre: { unite: string | null; profil: string | null } | null
+  activeeLe: string | null
+  echeance: string | null
+  termineeLe: string | null
+  enRetard: boolean
+}
+/** « Mes demandes » (GET /processus/demandes, D-98 §3) : instances lancées par moi. */
+export type DemandeProcessus = {
+  id: string
+  processus: { id: string; code: string; version: number; libelle: string }
+  unite: string
+  intitule: string
+  etat: EtatInstance
+  lanceeLe: string
+  closeLe: string | null
+  motif: string | null
+  avancement: { total: number; terminees: number }
+  etapes: EtapeDemande[]
+  derniereEvolution: HistoriqueProcessus | null
+}
+export type PageDemandesProcessus = { contenu: DemandeProcessus[]; total: number; page: number; taille: number }
+
+/**
+ * POST /processus/{id}/instances : clés des désignations CODE_ETAPE, CODE_ETAPE.validateur, CODE_ETAPE.signature.CODE ;
+ * `formulaire` (D-98) : valeurs du formulaire de lancement par code (pièce jointe : { documentId }).
+ */
+export type Lancement = {
+  intitule: string
+  champs: Record<string, string | number | null>
+  designations: Record<string, string>
+  formulaire?: Record<string, string | number | boolean | Periode | { documentId: string } | null>
+}
+
+/** Étapes en cours d'une demande (active, à signer, à valider). */
+export const etapesEnCours = <T extends { etat: EtatEtape }>(etapes: T[]) => etapes.filter((e) => e.etat === 'ACTIVE' || e.etat === 'A_SIGNER' || e.etat === 'A_VALIDER')
 
 export type DecisionValidation = 'VALIDER' | 'RENVOYER'
 
@@ -234,8 +314,11 @@ export function designationsAttendues(etapes: EtapeProcessus[]): { cle: string; 
   ])
 }
 
-/** Champs saisis au lancement : ceux des étapes initiales (sans prédécesseur). */
-export const champsDeLancement = (etapes: EtapeProcessus[]) => etapes.filter((e) => e.predecesseurs.length === 0).flatMap((e) => e.champs)
+/**
+ * Champs saisis au lancement : ceux des étapes initiales (sans prédécesseur) que le lanceur exécute lui-même. D-98 : une
+ * étape initiale confiée au service destinataire garde ses champs pour son exécutant (le lanceur remplit le formulaire).
+ */
+export const champsDeLancement = (etapes: EtapeProcessus[]) => etapes.filter((e) => e.predecesseurs.length === 0 && e.intervenant.mode === 'LANCEUR').flatMap((e) => e.champs)
 
 /** Étape vierge d'un brouillon. */
 export const etapeVierge = (n: number, position: { x: number; y: number } | null = null): EtapeProcessus => ({

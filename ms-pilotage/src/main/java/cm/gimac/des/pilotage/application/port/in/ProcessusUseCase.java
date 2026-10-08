@@ -38,8 +38,33 @@ public interface ProcessusUseCase {
         PositionSaisie position
     ) {}
 
-    /** Corps de POST /processus (code et unité) et de PUT /processus/{id} (code et unité immuables). */
-    record ProcessusSaisie(String code, String unite, String libelle, String description, String categorie, Integer delaiCibleJours, List<EtapeSaisie> etapes) {}
+    /** Initiateurs (D-98 §1) : règles cumulables MEMBRES_UNITE, TOUT_LE_GIMAC, UNITES, PROFILS, PERMISSIONS. */
+    record InitiateursSaisie(List<String> regles, List<String> unites, List<String> profils, List<String> permissions) {}
+
+    /** Champ du formulaire de lancement (D-98 §2). */
+    record ChampFormulaireSaisie(String code, String libelle, String type, List<String> choix, Boolean obligatoire, String aide, List<String> typesPieces) {}
+
+    record FormulaireSaisie(List<ChampFormulaireSaisie> champs) {}
+
+    /**
+     * Corps de POST /processus (code et unité) et de PUT /processus/{id} (code et unité immuables) ; initiateurs et
+     * formulaire de lancement facultatifs (D-98 : absents, les membres de l'unité et aucun champ).
+     */
+    record ProcessusSaisie(
+        String code,
+        String unite,
+        String libelle,
+        String description,
+        String categorie,
+        Integer delaiCibleJours,
+        List<EtapeSaisie> etapes,
+        InitiateursSaisie initiateurs,
+        FormulaireSaisie formulaire
+    ) {
+        public ProcessusSaisie(String code, String unite, String libelle, String description, String categorie, Integer delaiCibleJours, List<EtapeSaisie> etapes) {
+            this(code, unite, libelle, description, categorie, delaiCibleJours, etapes, null, null);
+        }
+    }
 
     /**
      * Ce que l'appelant peut faire sur cette version : modifier, publier et supprimer un brouillon ; lancer et retirer
@@ -81,6 +106,16 @@ public interface ProcessusUseCase {
     record Candidats(String unite, String profil, List<Candidat> dansUnite, List<Candidat> ailleurs) {}
 
     List<ProcessusLu> lister(Appelant appelant, String unite, String etat, String q);
+
+    /** Processus d'une unité propriétaire que l'appelant peut lancer (D-98 §3). */
+    record GroupeLancables(String unite, List<ProcessusLu> processus) {}
+
+    /**
+     * Catalogue « Lancer une demande » (D-98 §3) : versions publiées que l'appelant peut lancer (initiateurs, ou
+     * PROCESSUS_LANCER couvrant l'unité, REF_METIER_ADMIN), groupées par unité propriétaire ; recherche {@code q} sur le
+     * code, le libellé et la catégorie.
+     */
+    List<GroupeLancables> lancables(Appelant appelant, String q);
 
     /** Portée du catalogue pour l'appelant (GET /processus/portee). */
     PorteeCatalogue portee(Appelant appelant);

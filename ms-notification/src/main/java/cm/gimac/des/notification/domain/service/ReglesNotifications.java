@@ -163,6 +163,24 @@ public final class ReglesNotifications {
         return "/des/taches?vue=unite";
     }
 
+    /**
+     * Lien de la notification d'une tâche à prendre (D-98) : celui de l'offre s'il est un chemin de la couche interne
+     * (sous /des/, 500 caractères au plus, sans espace, caractère de contrôle ni « .. ») : écran où l'acte se fait sans
+     * prise préalable, par exemple prononcer une transition de statut ; sinon les tâches à prendre.
+     */
+    public String lienTacheOfferte(String lien) {
+        if (
+            lien != null &&
+            lien.startsWith("/des/") &&
+            lien.length() <= NotificationUtilisateur.LIEN_MAX &&
+            lien.chars().noneMatch(c -> Character.isWhitespace(c) || Character.isISOControl(c)) &&
+            !lien.contains("..")
+        ) {
+            return lien;
+        }
+        return lienTachesAPrendre();
+    }
+
     /** Demande à traiter, pour l'administration (docs/lot1/pouvoirs-hierarchiques.md §4). */
     public String lienDemandeATraiter(String demandeId) {
         return "/des/administration/demandes?demande=" + demandeId;
@@ -273,6 +291,11 @@ public final class ReglesNotifications {
         ETAPE_REAFFECTEE,
         /** pilotage.process-instance-closed.v1 : au lanceur. */
         INSTANCE_CLOSE,
+        /**
+         * pilotage.process-step-activated.v1 vu de l'initiateur (D-98) : sa demande passe à une nouvelle étape, s'il n'en
+         * est pas lui-même l'intervenant.
+         */
+        DEMANDE_AVANCEE,
     }
 
     /**
@@ -316,6 +339,7 @@ public final class ReglesNotifications {
             };
             case ETAPE_REAFFECTEE -> avec(aReprendre(f.precision()) ? "Étape à reprendre" : "Étape réaffectée", etape);
             case INSTANCE_CLOSE -> avec("ANNULEE".equals(f.precision()) ? "Processus annulé" : "Processus terminé", nomProcessus(f));
+            case DEMANDE_AVANCEE -> avec("Votre demande avance", etape);
         };
     }
 
@@ -348,6 +372,8 @@ public final class ReglesNotifications {
                     default -> vide(nomActeur) ? null : "réaffectée par " + nomActeur;
                 };
                 case INSTANCE_CLOSE -> "ANNULEE".equals(f.precision()) && !vide(nomActeur) ? "annulé par " + nomActeur : null;
+                // D-98 : l'initiateur sait si l'étape attend d'être prise ou quand elle doit être faite.
+                case DEMANDE_AVANCEE -> f.aPrendre() ? "en attente de prise en charge" : vide(f.echeance()) ? "étape en cours" : "étape en cours, échéance " + f.echeance();
             };
         if (f.nature() == NatureProcessus.INSTANCE_LANCEE || f.nature() == NatureProcessus.INSTANCE_CLOSE) {
             // Le titre nomme déjà l'instance : le code du processus la situe.

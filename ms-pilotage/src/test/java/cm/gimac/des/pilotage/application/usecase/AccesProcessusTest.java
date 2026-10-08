@@ -13,6 +13,9 @@ import cm.gimac.des.pilotage.application.port.in.ProcessusUseCase.PorteeCatalogu
 import cm.gimac.des.pilotage.application.port.out.OrganisationPort.Portee;
 import cm.gimac.des.pilotage.application.port.out.OrganisationPort.Pouvoir;
 import cm.gimac.des.pilotage.application.port.out.OrganisationPort.Pouvoirs;
+import cm.gimac.des.pilotage.domain.processus.Initiateurs;
+import cm.gimac.des.pilotage.domain.processus.Processus;
+import cm.gimac.des.pilotage.domain.processus.RegleInitiateur;
 import cm.gimac.des.pilotage.infrastructure.client.OrganisationStubAdapter;
 import java.util.List;
 import java.util.Map;
@@ -161,5 +164,52 @@ class AccesProcessusTest {
         assertThat(p.toutes(Pouvoir.PROCESSUS_LANCER)).isTrue();
         assertThat(Pouvoir.PROCESSUS_DEFINIR.admetToutes()).isTrue();
         assertThat(Pouvoir.TACHE_CONFIER.admetToutes()).isFalse();
+    }
+
+    private static Processus publie(String unite, Initiateurs initiateurs) {
+        Processus p = Processus.brouillon("DEMANDE_TEST", unite, "a", java.time.Instant.EPOCH);
+        p.definirLancement(initiateurs, null, "a", java.time.Instant.EPOCH);
+        return p;
+    }
+
+    @Test
+    @DisplayName("D-98 : initiateurs en données, cumulables ; PROCESSUS_LANCER et REF_METIER_ADMIN lancent toujours")
+    void initiateurs() {
+        Appelant agentSna = appelant(AGENT, "PIL_ACTIVITY_OWN");
+        Appelant technicien = appelant(TECHNICIEN_RESEAU, "PIL_ACTIVITY_OWN");
+        Appelant chefDdrm = appelant(CHEF_DDRM, "PIL_ACTIVITY_OWN", "CER_DOSSIER_VERIFY");
+        // Défaut : membres de l'unité propriétaire seulement (reprise des définitions existantes).
+        Processus defaut = publie("POLE_RESEAU", null);
+        assertThat(defaut.getInitiateurs().regles()).containsExactly(RegleInitiateur.MEMBRES_UNITE);
+        assertThat(acces.lance(technicien, defaut)).isTrue();
+        assertThat(acces.lance(agentSna, defaut)).isFalse();
+        // Tout le GIMAC : tout compte interne actif, d'un autre service compris ; pas un compte inactif ni externe.
+        Processus tous = publie("POLE_RESEAU", new Initiateurs(List.of(RegleInitiateur.TOUT_LE_GIMAC), null, null, null));
+        assertThat(acces.lance(agentSna, tous)).isTrue();
+        assertThat(acces.lance(appelant(OrganisationStubAdapter.INACTIF, "PIL_ACTIVITY_OWN"), tous)).isFalse();
+        assertThat(acces.lance(appelant(OrganisationStubAdapter.CORRESPONDANT, "PIL_ACTIVITY_OWN"), tous)).isFalse();
+        // Unités désignées (sous-unités comprises), profils, permissions du jeton ; règles cumulées.
+        Processus unites = publie("POLE_RESEAU", new Initiateurs(List.of(RegleInitiateur.UNITES), List.of("DES"), null, null));
+        assertThat(acces.lance(agentSna, unites)).as("SNA est une sous-unité du DES").isTrue();
+        assertThat(acces.lance(chefDdrm, unites)).isFalse();
+        Processus profils = publie("POLE_RESEAU", new Initiateurs(List.of(RegleInitiateur.PROFILS), null, List.of("ROLE_CHEF_DDRM"), null));
+        assertThat(acces.lance(chefDdrm, profils)).isTrue();
+        assertThat(acces.lance(agentSna, profils)).isFalse();
+        Processus permissions = publie("POLE_RESEAU", new Initiateurs(List.of(RegleInitiateur.PERMISSIONS), null, null, List.of("CER_DOSSIER_VERIFY")));
+        assertThat(acces.lance(chefDdrm, permissions)).isTrue();
+        assertThat(acces.lance(agentSna, permissions)).isFalse();
+        Processus cumul = publie("POLE_RESEAU", new Initiateurs(List.of(RegleInitiateur.PROFILS, RegleInitiateur.UNITES), List.of("SNA"), List.of("ROLE_CHEF_DDRM"), null));
+        assertThat(acces.lance(chefDdrm, cumul)).isTrue();
+        assertThat(acces.lance(agentSna, cumul)).isTrue();
+        assertThat(acces.lance(technicien, cumul)).as("MEMBRES_UNITE non retenue").isFalse();
+        // Pouvoirs de pilotage : inchangés, quelles que soient les règles.
+        assertThat(acces.lance(appelant(CHEF_RESEAU, "PIL_ACTIVITY_OWN"), cumul)).isTrue();
+        assertThat(acces.lance(appelant(AGENT_BIS, "REF_METIER_ADMIN"), cumul)).isTrue();
+        // Refus explicite : les règles dans le message et en détail.
+        var refus = AccesProcessus.nonInitiateur(cumul);
+        assertThat(refus.code()).isEqualTo("PIL_PROCESSUS_NON_INITIATEUR");
+        assertThat(refus.status()).isEqualTo(403);
+        assertThat(refus.getMessage()).contains("ROLE_CHEF_DDRM").contains("SNA");
+        assertThat(refus.details()).containsEntry("regles", List.of("PROFILS", "UNITES"));
     }
 }

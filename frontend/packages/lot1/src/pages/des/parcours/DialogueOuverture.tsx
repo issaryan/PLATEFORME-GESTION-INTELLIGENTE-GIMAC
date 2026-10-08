@@ -27,7 +27,8 @@ function ErreurGroupe({ texte }: { texte?: string }) {
 export function DialogueOuverture({ onFermer }: { onFermer: () => void }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const adherents = useInstitutions({ page: 1, taille: 200, statut: ['ADHERENT'] })
+  // Adhérents et institutions déjà en homologation (nouvelle liaison sans repasser par l'adhésion) : MS-HOMOLOGATION revérifie.
+  const adherents = useInstitutions({ page: 1, taille: 200, statut: ['ADHERENT', 'EN_HOMOLOGATION'] })
   const banques = useInstitutions({ page: 1, taille: 200, statut: ['ACTIF'] })
   const conducteurs = useConducteurs()
   const ouvrir = useOuvrirLiaison()

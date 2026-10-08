@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Fonction, OperationParcours } from '../../../../modele/parcours'
-import { compter, concerne, externe, filtrer, grouper, lienDuGeste, lireCodeControle, ongletDuGeste, plateformes } from './regles'
+import { carteDecision, compter, concerne, externe, filtrer, grouper, lienDuGeste, lireCodeControle, ongletDuGeste, plateformes } from './regles'
 
 // Règles de présentation de l'onglet « Opérations » : filtres, regroupement, code de contrôle.
 const P = (fonction: Fonction) => ({ id: `U-${fonction}`, nom: fonction, fonction })
@@ -68,6 +68,18 @@ describe('onglet Opérations : règles de présentation', () => {
     expect(vues.map((vue) => ongletDuGeste({ vue }))).toEqual(['affectation', 'decision', 'decision', 'mise-en-service', null, null, null, null])
     expect(lienDuGeste('affectation', { liaisonId: 'L', id: 'L:6' })).toBe('/des/parcours/L?onglet=etapes&action=affecter')
     expect(lienDuGeste('decision', { liaisonId: 'L', id: 'L:20' })).toBe('/des/parcours/L?onglet=decision&operation=L%3A20')
+    // D-98 : carte de l'onglet Décision visée par ?operation=, lue sur le déclencheur, le jalon, le geste et la vue.
+    expect(carteDecision(undefined)).toBeNull()
+    expect(carteDecision({ vue: 'DECISION', declencheur: 'certification.pv-established.v1' })).toBe('pv')
+    expect(carteDecision({ vue: 'DECISION', declencheur: 'certification.pv-signed.v1', jalon: 'CERTIFIEE' })).toBe('pv')
+    expect(carteDecision({ vue: 'ESSAIS', geste: 'CONSTATER_COUVERTURE', jalon: 'APTE_CERTIFICATION' })).toBe('pv')
+    expect(carteDecision({ vue: 'DECISION', declencheur: 'certification.change-record-constituted.v1' })).toBe('approbation')
+    expect(carteDecision({ vue: 'DECISION', declencheur: 'certification.change-record-referenced.v1' })).toBe('approbation')
+    expect(carteDecision({ vue: 'ATTESTATIONS', declencheur: null })).toBe('approbation')
+    expect(carteDecision({ vue: 'DECISION', declencheur: 'certification.security-approved.v1' })).toBe('approbation')
+    expect(carteDecision({ vue: 'AUCUNE', jalon: 'APPROUVEE_SECURITE' })).toBe('approbation')
+    expect(carteDecision({ vue: 'DECISION' })).toBe('pv')
+    expect(carteDecision({ vue: 'MISE_EN_SERVICE', geste: 'FICHE_SUIVI' })).toBeNull()
     const externes = ['PARTICIPANT', 'PERSONNALISATEUR', 'JURISTE_EXTERNE']
     expect(externe(op({ raci: { R: P('PARTICIPANT'), C: [], V: null, I: [], E: [] } }), externes)).toBe(true)
     expect(externe(op({ raci: { R: P('JURISTE_EXTERNE'), C: [], V: null, I: [], E: [] } }), externes)).toBe(true)

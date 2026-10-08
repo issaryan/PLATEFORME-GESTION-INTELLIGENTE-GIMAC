@@ -76,10 +76,13 @@ export function Section({ titre, action, description, children }: { titre: strin
   )
 }
 
-/** Libellé d'une tâche du participant : l'opération du référentiel (clé parcours.op.<rang>). */
+/**
+ * Libellé d'une tâche du participant : traduction de l'opération reprise de l'annexe A (clé parcours.op.<rang>), sinon le
+ * libellé servi par MS-HOMOLOGATION (opération d'un type créé dans la plateforme, D-91, D-98), sinon son code.
+ */
 export function useLibelleTache() {
-  const { t } = useTranslation()
-  return useCallback((x: Pick<TacheActeur, 'rang'>) => t(`parcours.op.${x.rang}`, { defaultValue: x.rang }), [t])
+  const { t, i18n } = useTranslation()
+  return useCallback((x: Pick<TacheActeur, 'rang' | 'libelle'>) => (i18n.exists(`parcours.op.${x.rang}`) ? t(`parcours.op.${x.rang}`) : x.libelle || x.rang), [t, i18n])
 }
 
 /** Libellé du geste attendu du participant sur une tâche (bouton d'accès à l'écran d'action). */

@@ -324,3 +324,6 @@ gimac:
     # Unité modifiée (iam.configuration-changed.v1, objet UNITE_ORGANISATIONNELLE) : rôles CHEF_UNITE revus (D-93).
     configuration:
       sujet: iam.configuration
+    # Transitions de statut proposées, approuvées, refusées (MS-PARTICIPANT) : tâche de l'approbateur (D-98).
+    transitions:
+      sujet: participant.transition

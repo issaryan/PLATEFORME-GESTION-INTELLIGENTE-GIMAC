@@ -102,6 +102,20 @@ class ReglesHomologationTest {
     }
 
     @Test
+    @DisplayName("D-98 : lien du portail vers l'écran du geste (coordonnées, procès-verbal, attestations, fiche de suivi)")
+    void liensPortailParGeste() {
+        Intervenant r = institution("R", BANQUE);
+        FaitsOperation coordonnees = new FaitsOperation(Nature.OPERATION_ACTIVEE, LIAISON, null, null, OPERATION, "12", null, "COORDONNEES_TECHNIQUES", null, null, r, null, null, null, null, null);
+        assertThat(regles.lienPortailOperation(coordonnees, Role.ACTION)).isEqualTo("/portail/liaisons/" + LIAISON + "/coordonnees");
+        FaitsOperation pv = new FaitsOperation(Nature.OPERATION_ACTIVEE, LIAISON, null, null, OPERATION, "19", null, "EVENEMENT_EXTERNE", null, null, compte("R", "r"), null, null, List.of(BANQUE), null, "certification.pv-signed.v1");
+        assertThat(regles.lienPortailOperation(pv, Role.ESCALADE)).isEqualTo("/portail/liaisons/" + LIAISON + "/proces-verbal");
+        FaitsOperation attestations = new FaitsOperation(Nature.OPERATION_ACTIVEE, LIAISON, null, null, OPERATION, "21", null, "EVENEMENT_EXTERNE", null, null, r, null, null, null, null, "certification.attestations-archived.v1");
+        assertThat(regles.lienPortailOperation(attestations, Role.ACTION)).isEqualTo("/portail/liaisons/" + LIAISON + "/attestations");
+        FaitsOperation fiche = new FaitsOperation(Nature.OPERATION_ACTIVEE, LIAISON, null, null, OPERATION, "32", null, "FICHE_SUIVI", null, null, r, null, null, null, null, null);
+        assertThat(regles.lienPortailOperation(fiche, Role.ACTION)).isEqualTo("/portail/liaisons/" + LIAISON + "/fiche-suivi");
+    }
+
+    @Test
     @DisplayName("Validation demandée : V action, institution R informée, institutions concernées informées ; R interne non notifié")
     void validation() {
         FaitsOperation f = operation(Nature.VALIDATION_DEMANDEE, null, institution("R", BANQUE), compte("V", "v"), List.of(compte("C", "c")), List.of(BANQUE));

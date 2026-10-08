@@ -167,6 +167,20 @@ describe('Tâches', () => {
     expect(await screen.findByText('Tâche confiée.')).toBeTruthy()
   })
 
+  it('D-98 : transition proposée, décision à prononcer offerte à l’approbateur, lien vers l’onglet des transitions', async () => {
+    const CHEF_DDRM = { id: 'U-020', nom: 'Bertrand Nguema Obiang' }
+    const s = servicesSimules({ latenceMs: 0, utilisateur: { ...CHEF_DDRM, profils: ['ROLE_CHEF_DDRM'] } })
+    const banque = (await s.participant.listerInstitutions({ recherche: 'Libreville', page: 1, taille: 5 })).contenu[0]
+    await s.participant.proposerTransition(banque.id, 'ADHERENT', 'Dossier complet')
+    page('/des/taches?vue=unite', { s, u: CHEF_DDRM, role: 'ROLE_CHEF_DDRM' })
+    const ligne = (await screen.findByRole('button', { name: 'Prononcer l’adhésion : Banque de Libreville' })).closest('tr') as HTMLElement
+    expect(within(ligne).getByText('Décision à prononcer')).toBeTruthy()
+    expect(within(ligne).getByText('Fatimé Abakar Hissein')).toBeTruthy()
+    fireEvent.click(within(ligne).getByRole('button', { name: 'Prononcer l’adhésion : Banque de Libreville' }))
+    const f = await screen.findByRole('dialog', { name: 'Prononcer l’adhésion : Banque de Libreville' })
+    expect((await within(f).findByRole('link', { name: 'Ouvrir' })).getAttribute('href')).toBe(`/des/institutions/${banque.id}?onglet=transitions`)
+  })
+
   it('liste indisponible : erreur et nouvel essai', async () => {
     const s = services()
     vi.spyOn(s.pilotage, 'taches').mockRejectedValue(new ApiError(503, 'PIL_ORGANISATION_INDISPONIBLE', 'x', 'cid-5'))

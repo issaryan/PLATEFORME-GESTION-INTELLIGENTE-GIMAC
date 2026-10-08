@@ -3,9 +3,10 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 import { InlineAlert, LinkList, ResourceForm, type ResourceDescriptor } from '@gimac/design-system'
 import type { TypeProjet } from '../../../modele/commun'
-import type { Liaison } from '../../../modele/homologation'
 import type { Institution } from '../../../modele/participant'
-import { useConducteurs, useLiaisons, useOuvrirLiaison } from '../../../hooks/liaisons'
+import { useLiaisons } from '../../../hooks/liaisons'
+// D-98 : même ouverture que le parcours (POST /liaisons, conducteurs habilités), puis le dossier de la liaison.
+import { useConducteurs, useOuvrirLiaison } from '../../../hooks/parcours'
 import { useInstitutions } from '../../../hooks/participant'
 import { etatLiaison } from '../../../dictionnaires'
 import { useOptionsTypesProjet } from '../../../hooks/referentiels'
@@ -79,7 +80,8 @@ export function FormulaireCadrage({ institution, onFermer }: { institution: Inst
             chefDeProjetId: texte(v.chefDeProjetId),
             banquePartenaireId: texte(v.banquePartenaireId) || null,
           },
-          { onSuccess: (l) => void navigate(`/des/liaisons/${(l as Liaison).id}?ouverte=1`) },
+          // D-98 : la liaison ouverte mène à son dossier (parcours), où chaque acteur suit ses opérations.
+          { onSuccess: (l) => void navigate(`/des/parcours/${encodeURIComponent(l.id)}?nouvelle=1`) },
         )
       }}
     />

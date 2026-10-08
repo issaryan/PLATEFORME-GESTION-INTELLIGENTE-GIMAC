@@ -205,42 +205,8 @@ public class TableauDeBordCalculateur {
         Set<Fonction> f = VisibiliteReferentiel.fonctions(acteur.permissions());
         for (Parcours p : visibles) {
             for (OperationParcours o : p.operations()) {
-                if (!o.getEtat().enCours()) {
-                    continue;
-                }
-                var raci = o.getRaci();
-                Personne r = raci.r();
-                Qualite q = null;
-                Boolean aPrendre = null;
-                String signature = null;
-                boolean actif = o.getEtat() != EtatOperationParcours.EN_VALIDATION && o.getEtat() != EtatOperationParcours.EN_SIGNATURE;
-                if (actif && r != null) {
-                    if (acteur.est(r)) {
-                        q = Qualite.R;
-                    } else if (!r.affectee() && !r.fonction().externe() && f.contains(r.fonction())) {
-                        q = Qualite.R;
-                        aPrendre = Boolean.TRUE;
-                    } else if (!r.affectee() && r.fonction().externe() && p.conduitePar(acteur)) {
-                        q = Qualite.R;
-                    }
-                }
-                if (q == null && o.getEtat() == EtatOperationParcours.EN_VALIDATION && p.peutValider(o, acteur, f)) {
-                    q = Qualite.V;
-                    aPrendre = raci.v() != null && !raci.v().affectee() ? Boolean.TRUE : null;
-                }
-                if (q == null && o.isConsultesRecoiventTache() && o.getEtat() != EtatOperationParcours.EN_SIGNATURE && raci.c().stream().anyMatch(acteur::est)) {
-                    q = Qualite.C;
-                }
-                if (q == null && o.getEtat() == EtatOperationParcours.EN_SIGNATURE) {
-                    signature = o
-                        .signaturesSuivantes()
-                        .stream()
-                        .filter(s -> p.titulaire(o, s.signataire()).map(acteur::est).orElse(f.contains(s.signataire())))
-                        .map(cm.gimac.des.homologation.domain.parcours.SignatureOperation::code)
-                        .findFirst()
-                        .orElse(null);
-                }
-                if (q == null && signature == null) {
+                Part x = part(p, o, acteur, f);
+                if (x == null) {
                     continue;
                 }
                 l.add(
@@ -251,21 +217,160 @@ public class TableauDeBordCalculateur {
                         p.liaison().getInstitutionNom(),
                         o.getRang(),
                         o.getEtape(),
-                        q,
+                        x.qualite(),
                         o.getEcheance(),
                         Parcours.sla(o, aujourdhui),
                         o.isOubliSansSymptome(),
                         ParcoursProjection.lienOperation(p, o),
                         projection.actionsAvecSignature(p, o, acteur),
                         o.getLibelle(),
-                        aPrendre,
-                        signature
+                        x.aPrendre(),
+                        x.signature()
                     )
                 );
             }
         }
         l.sort(Comparator.comparing(t -> t.echeance() == null ? "9" : t.echeance().toString()));
         return l;
+    }
+
+    /** Part de la personne sur une opération en cours : qualité (R, V, C), tâche à prendre, signature attendue. */
+    record Part(Qualite qualite, Boolean aPrendre, String signature) {}
+
+    /**
+     * Ce que la personne doit faire sur l'opération (D-93 §5) : R désigné (ou, R à affecter, porteuse de sa fonction :
+     * à prendre), V désigné en validation (même règle), consulté désigné quand l'opération sollicite les consultés,
+     * signataire attendu ; conducteur : une opération d'une fonction externe sans institution liée. Rien sinon.
+     */
+    Part part(Parcours p, OperationParcours o, Acteur acteur, Set<Fonction> f) {
+        if (acteur.id() == null || !o.getEtat().enCours()) {
+            return null;
+        }
+        var raci = o.getRaci();
+        Personne r = raci.r();
+        Qualite q = null;
+        Boolean aPrendre = null;
+        String signature = null;
+        boolean actif = o.getEtat() != EtatOperationParcours.EN_VALIDATION && o.getEtat() != EtatOperationParcours.EN_SIGNATURE;
+        if (actif && r != null) {
+            if (acteur.est(r)) {
+                q = Qualite.R;
+            } else if (!r.affectee() && !r.fonction().externe() && f.contains(r.fonction())) {
+                q = Qualite.R;
+                aPrendre = Boolean.TRUE;
+            } else if (!r.affectee() && r.fonction().externe() && p.conduitePar(acteur)) {
+                q = Qualite.R;
+            }
+        }
+        if (q == null && o.getEtat() == EtatOperationParcours.EN_VALIDATION && p.peutValider(o, acteur, f)) {
+            q = Qualite.V;
+            aPrendre = raci.v() != null && !raci.v().affectee() ? Boolean.TRUE : null;
+        }
+        if (q == null && o.isConsultesRecoiventTache() && o.getEtat() != EtatOperationParcours.EN_SIGNATURE && raci.c().stream().anyMatch(acteur::est)) {
+            q = Qualite.C;
+        }
+        if (q == null && o.getEtat() == EtatOperationParcours.EN_SIGNATURE) {
+            signature = o
+                .signaturesSuivantes()
+                .stream()
+                .filter(s -> p.titulaire(o, s.signataire()).map(acteur::est).orElse(f.contains(s.signataire())))
+                .map(cm.gimac.des.homologation.domain.parcours.SignatureOperation::code)
+                .findFirst()
+                .orElse(null);
+        }
+        return q == null && signature == null ? null : new Part(q, aPrendre, signature);
+    }
+
+    /**
+     * « Mes actions de certification » (D-98 §5) : sur les liaisons actives, les opérations en cours que la personne
+     * doit faire (même règle que « mes tâches », sans exiger qu'elle porte une fonction), celles qu'elle suit sur les
+     * liaisons qu'elle conduit ou sur lesquelles elle intervient, et l'état de ces liaisons et de leurs jalons. Une
+     * opération figure une seule fois, à faire de préférence.
+     */
+    public Vues.MesOperations mesOperations(List<Parcours> tous, Acteur acteur, LocalDate aujourdhui) {
+        List<Vues.MonOperation> aAgir = new ArrayList<>();
+        List<Vues.MonOperation> aSuivre = new ArrayList<>();
+        List<Vues.LiaisonSuivie> liaisons = new ArrayList<>();
+        if (acteur.id() == null) {
+            return new Vues.MesOperations(aAgir, aSuivre, liaisons);
+        }
+        Set<Fonction> f = VisibiliteReferentiel.fonctions(acteur.permissions());
+        for (Parcours p : tous) {
+            if (p.etat().getStatut() == StatutParcours.CLOSE_SANS_SUITE) {
+                continue;
+            }
+            boolean conduit = p.conduitePar(acteur);
+            boolean implique = conduit || p.implique(acteur.id().toString());
+            boolean agit = false;
+            for (OperationParcours o : p.operations()) {
+                Part x = part(p, o, acteur, f);
+                if (x != null) {
+                    aAgir.add(monOperation(p, o, x, acteur, aujourdhui));
+                    agit = true;
+                } else if (implique && o.getEtat().enCours()) {
+                    aSuivre.add(monOperation(p, o, null, acteur, aujourdhui));
+                }
+            }
+            if (implique || agit) {
+                liaisons.add(suivie(p, conduit));
+            }
+        }
+        aAgir.sort(Comparator.comparing((Vues.MonOperation m) -> m.echeance() == null ? "9" : m.echeance().toString()).thenComparing(Vues.MonOperation::liaisonReference));
+        aSuivre.sort(Comparator.comparing(Vues.MonOperation::liaisonReference).thenComparing(m -> m.echeance() == null ? "9" : m.echeance().toString()));
+        liaisons.sort(Comparator.comparing(Vues.LiaisonSuivie::reference));
+        return new Vues.MesOperations(aAgir, aSuivre, liaisons);
+    }
+
+    private Vues.MonOperation monOperation(Parcours p, OperationParcours o, Part x, Acteur acteur, LocalDate aujourdhui) {
+        var raci = o.getRaci();
+        return new Vues.MonOperation(
+            o.getId().toString(),
+            p.id().toString(),
+            p.etat().getReference(),
+            p.liaison().getInstitutionNom(),
+            p.etat().getStatut(),
+            o.getRang(),
+            o.getLibelle(),
+            o.getEtape(),
+            o.getEtapeCode(),
+            o.getEtat(),
+            x == null ? null : x.qualite(),
+            x == null ? null : x.aPrendre(),
+            x == null ? null : x.signature(),
+            o.getGeste(),
+            o.getJalon(),
+            o.getDeclencheur(),
+            o.getVue(),
+            raci.r(),
+            raci.v(),
+            o.getEcheance(),
+            Parcours.sla(o, aujourdhui),
+            ParcoursProjection.lienOperation(p, o),
+            projection.actionsAvecSignature(p, o, acteur)
+        );
+    }
+
+    private static Vues.LiaisonSuivie suivie(Parcours p, boolean conduit) {
+        List<Vues.JalonSuivi> jalons = p
+            .operations()
+            .stream()
+            .filter(o -> o.getJalon() != null && o.getEtat() != EtatOperationParcours.SANS_OBJET)
+            .map(o -> new Vues.JalonSuivi(o.getJalon(), o.faite(), o.faite() ? o.getFaiteLe() : null, o.getId().toString()))
+            .toList();
+        long faites = p.operations().stream().filter(OperationParcours::faite).count();
+        return new Vues.LiaisonSuivie(
+            p.id().toString(),
+            p.etat().getReference(),
+            p.liaison().getInstitutionNom(),
+            p.liaison().getTypeProjet(),
+            p.etat().getStatut(),
+            p.etat().getEtapeCourante(),
+            conduit,
+            faites,
+            p.operations().size(),
+            jalons,
+            "/des/parcours/" + p.id()
+        );
     }
 
     /** Tâches du participant (portail) : opérations en cours dont il est responsable (R) ou partie externe (E). */

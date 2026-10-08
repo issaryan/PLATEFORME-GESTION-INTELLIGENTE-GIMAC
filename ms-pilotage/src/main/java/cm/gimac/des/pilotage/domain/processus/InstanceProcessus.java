@@ -55,6 +55,15 @@ public class InstanceProcessus extends EntitePilotage {
     @Column(name = "designations", columnDefinition = "jsonb", nullable = false)
     private Map<String, String> designations = Map.of();
 
+    /**
+     * Valeurs du formulaire de lancement (D-98 §2), par code de champ : texte, nombre (texte décimal), date
+     * AAAA-MM-JJ, période { debut, fin }, valeur de liste, booléen, pièce jointe { documentId, nomFichier, typeMime,
+     * taille, sha256 } ; fixées au lancement.
+     */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "formulaire", columnDefinition = "jsonb", nullable = false, updatable = false)
+    private Map<String, Object> formulaire = Map.of();
+
     @Column(name = "lancee_le", nullable = false, updatable = false)
     private Instant lanceeLe;
 
@@ -85,6 +94,11 @@ public class InstanceProcessus extends EntitePilotage {
         this.designations = designations == null ? Map.of() : Map.copyOf(designations);
         this.lanceeLe = le;
         this.modifieeLe = le;
+    }
+
+    /** Valeurs du formulaire de lancement, fixées avant l'enregistrement de l'instance. */
+    public void renseignerFormulaire(Map<String, Object> valeurs) {
+        this.formulaire = valeurs == null ? Map.of() : new java.util.LinkedHashMap<>(valeurs);
     }
 
     /** Actes sur les étapes : instance en cours (409 PIL_PROCESSUS_INSTANCE_ETAT sinon). */
@@ -169,6 +183,10 @@ public class InstanceProcessus extends EntitePilotage {
 
     public Map<String, String> getDesignations() {
         return designations;
+    }
+
+    public Map<String, Object> getFormulaire() {
+        return formulaire == null ? Map.of() : formulaire;
     }
 
     public Instant getLanceeLe() {

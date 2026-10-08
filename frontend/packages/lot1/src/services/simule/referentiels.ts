@@ -390,6 +390,36 @@ export function versionsInitiales(): { versions: ReferentielVersion[]; operation
   }
 }
 
+/**
+ * Type de projet de démonstration créé dans la plateforme (D-91, modèle GENERIQUE) : « Agrégateur de paiement », version 1
+ * publiée, courte, qui parcourt tout le flux de certification (D-98) : preuve du cadrage, essais, constat de la couverture,
+ * procès-verbal établi puis signé des deux parties, dossier et fiche de changement, approbation de la sécurité, bascule en
+ * production. Chaque opération porte son geste, son jalon, son déclencheur et sa vue en données, sans rang codé.
+ */
+export const TYPE_DEMO_COURT = 'AGREGATEUR'
+export function versionAgregateur(): ReferenceOperation[] {
+  const o = (code: string, i: number, libelle: string, etape: EtapeCode, responsable: Fonction, validateur: Fonction | null, geste: Geste, predecesseurs: string[],
+    x: Partial<ReferenceOperation> = {}): ReferenceOperation => ({
+    code, libelle, description: null, etape, segment: 'AMONT', ordre: i, responsable, validateur, consultes: [], informes: ['CHEF_DDRM'], externes: [], predecesseurs,
+    delaiJours: 5, grain: 'OPERATION', plateforme: null, cle: false, secret: false, oubliSansSymptome: false, pivot: false, valeurReference: null, livrables: [], geste,
+    jalon: null, declencheur: null, particularite: null, position: { x: i * 220, y: 80 }, phase: null, partie: 'DES', serviceCode: 'TRANSVERSE', natureCouverture: 'AUCUNE',
+    preuveAttendue: {}, idScenario: null, fonctionResponsable: responsable, grille: null, vue: 'AUCUNE', consultesRecoiventTache: false, signatures: [], ...x,
+  })
+  return [
+    o('A1', 1, 'Arrêter le périmètre et le calendrier du projet', 'CADRAGE', 'DDRM', 'CONDUCTEUR', 'DEPOSER_PREUVE', []),
+    o('A2', 2, 'Exécuter les essais de certification', 'TESTS', 'SNA', 'CONDUCTEUR', 'DEPOSER_PREUVE', ['A1']),
+    o('A3', 3, 'Constater la couverture de certification', 'CERTIFICATION', 'SNA', null, 'CONSTATER_COUVERTURE', ['A2'], { jalon: 'APTE_CERTIFICATION' }),
+    o('A4', 4, 'Établir le procès-verbal de certification', 'CERTIFICATION', 'CONDUCTEUR', 'CHEF_DES', 'EVENEMENT_EXTERNE', ['A3'], { declencheur: 'certification.pv-established.v1', vue: 'DECISION' }),
+    o('A5', 5, 'Signer le procès-verbal de certification', 'CERTIFICATION', 'CHEF_DES', null, 'EVENEMENT_EXTERNE', ['A4'],
+      { declencheur: 'certification.pv-signed.v1', jalon: 'CERTIFIEE', vue: 'DECISION', externes: ['PARTICIPANT'], pivot: true }),
+    o('A6', 6, 'Constituer le dossier de changement', 'APPROBATION_SECURITE', 'PRODUCTION_MONETIQUE', null, 'EVENEMENT_EXTERNE', ['A5'],
+      { declencheur: 'certification.change-record-constituted.v1', vue: 'DECISION' }),
+    o('A7', 7, 'Faire approuver le changement par la sécurité', 'APPROBATION_SECURITE', 'PRODUCTION_MONETIQUE', 'RSSI', 'EVENEMENT_EXTERNE', ['A6'],
+      { declencheur: 'certification.security-approved.v1', jalon: 'APPROUVEE_SECURITE', vue: 'DECISION' }),
+    o('A8', 8, 'Basculer le participant en production', 'MISE_EN_PRODUCTION', 'PRODUCTION_MONETIQUE', 'CONDUCTEUR', 'DEPOSER_PREUVE', ['A7'], { jalon: 'EN_PRODUCTION' }),
+  ]
+}
+
 type Refus = (status: number, code: string, message: string, details?: Record<string, unknown>) => ApiError
 type Attendre = <T>(v: T | (() => T)) => Promise<T>
 const CODE = /^[A-Z0-9][A-Z0-9_-]*$/
@@ -399,6 +429,12 @@ export function referentielsSimules(attendre: Attendre, refus: Refus, o: {
   utilisateur?: string; profils?: string[]; maintenant: () => string; liaisonsActives: (versionId: string) => number; liaisonsDuType?: (type: string) => number
 }) {
   const { versions, operations } = versionsInitiales()
+  // D-98 : type créé dans la plateforme, version 1 publiée (démonstration du flux complet de certification).
+  versions.push({
+    id: 'REF-AG-1', typeProjet: TYPE_DEMO_COURT, numero: 1, libelle: 'Agrégateur de paiement, version 1', etat: 'PUBLIEE', dateCreation: '01/09/2026 09:00',
+    datePublication: '15/09/2026 10:00', versionSourceId: null, versionActiveId: 'REF-AG-1', transitionsPermises: [], actionsPermises: ['DERIVER', 'CONTROLER'], piloteId: null,
+  })
+  operations['REF-AG-1'] = versionAgregateur()
   // Étapes de chaque version (D-89) : les onze étapes canoniques au départ.
   const etapes: Record<string, Etape[]> = Object.fromEntries(versions.map((v) => [v.id, etapesInitiales()]))
   const etapesDe = (id: string) => etapes[id] ?? (etapes[id] = etapesInitiales())
@@ -429,6 +465,8 @@ export function referentielsSimules(attendre: Attendre, refus: Refus, o: {
   // Types de projet et catalogue des fonctions (D-91) : données au lieu d'énumérations.
   const types: Omit<TypeProjetVue, 'referentielActif' | 'brouillonId' | 'fige' | 'proposable' | 'nombreLiaisons' | 'libelleModele'>[] = MODELES_LIBELLES.filter(([c]) => c !== 'GENERIQUE')
     .map(([code, libelle]) => ({ code, libelle, description: null, modele: code, actif: true, creeLe: '01/01/2026 08:00', creePar: 'U-001', modifieLe: null, modifiePar: null }))
+  types.push({ code: TYPE_DEMO_COURT, libelle: 'Agrégateur de paiement', description: 'Type créé dans la plateforme (modèle générique) : parcours court de démonstration.', modele: 'GENERIQUE',
+    actif: true, creeLe: '01/09/2026 09:00', creePar: 'U-101', modifieLe: null, modifiePar: null })
   // Permissions de départ (§8.8) : celle que seuls les profils de la fonction portent dans le domaine livré.
   const PERMISSIONS_DEPART: Record<string, string[]> = {
     CHEF_DDRM: ['PAR_TRANSITION_APPROVE'], CHEF_DES: ['CER_QUITUS_TECHNIQUE_SIGN'], CHEFS_DEPARTEMENT: ['PAR_TRANSITION_APPROVE', 'CER_QUITUS_TECHNIQUE_SIGN'],
@@ -708,5 +746,10 @@ export function referentielsSimules(attendre: Attendre, refus: Refus, o: {
       return v
     }),
   }
-  return { port, versions, fonctions, types: () => types.map(vueType) }
+  /** Opérations de la version publiée d'un type (instanciation d'une liaison, D-91) ; null sans version publiée. */
+  const versionPubliee = (type: string): ReferenceOperation[] | null => {
+    const v = versions.find((x) => x.typeProjet === type && x.etat === 'PUBLIEE')
+    return v ? structuredClone(operations[v.id] ?? []) : null
+  }
+  return { port, versions, fonctions, types: () => types.map(vueType), versionPubliee }
 }

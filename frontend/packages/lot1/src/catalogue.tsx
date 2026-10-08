@@ -1,7 +1,7 @@
 import { createContext, useContext, useMemo, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { EmptyState, Skeleton } from '@gimac/design-system'
-import { usePermissions, type GroupeNavigation } from '@gimac/socle'
+import { satisfait, usePermissions, type GroupeNavigation } from '@gimac/socle'
 import {
   accesFonctionnalite, fonctionnalitesOuvertes, navigationDepuis, navigationRepli, widgetsOuverts, type Application, type CleWidget, type DefinitionFonctionnalite, type Ecran,
   type EtatCatalogue, type Traduire,
@@ -64,5 +64,17 @@ export function GardeFonctionnalite({ cle, droit, children }: { cle: string; dro
   if (acces === 'ouvert') return <>{children}</>
   if (acces === 'chargement') return <Skeleton height={32} />
   if (acces === 'indisponible') return <CatalogueIndisponible />
+  return <EmptyState icon="lock" title={t('catalogue.refuse.titre')} text={t('catalogue.refuse.texte')} />
+}
+
+/**
+ * Garde d'un lien profond vers un objet qui concerne la personne (D-98 : instance ou étape d'un processus ouverte depuis une
+ * notification, une tâche ou « Mes demandes ») : ouverte à tout porteur de la permission d'entrée, indépendamment de la
+ * visibilité d'une fonctionnalité de la barre latérale (« Processus de l'unité » peut être masquée à l'initiateur ou à
+ * l'intervenant d'un autre service). Le service refait le contrôle de lecture (intervenant, initiateur, unité).
+ */
+export function GardePermission({ permission, children }: { permission: string; children: ReactNode }) {
+  const { t } = useTranslation()
+  if (satisfait(usePermissions(), { all: [], any: [permission] })) return <>{children}</>
   return <EmptyState icon="lock" title={t('catalogue.refuse.titre')} text={t('catalogue.refuse.texte')} />
 }

@@ -115,6 +115,14 @@ public class ParcoursLectures {
         return tableaux.tableau(tous, retenues, a, null, noms(tous), aujourdhui());
     }
 
+    /**
+     * « Mes actions de certification » (D-98 §5) : opérations que l'acteur doit faire ou peut prendre, celles qu'il suit,
+     * et l'état des liaisons qu'il conduit ou sur lesquelles il intervient ; aucune fonction exigée.
+     */
+    public Vues.MesOperations mesOperations(Acteur a) {
+        return tableaux.mesOperations(depot.tous(), a, aujourdhui());
+    }
+
     public Vues.Pilotage pilotage() {
         return tableaux.pilotage(depot.tous(), aujourdhui());
     }

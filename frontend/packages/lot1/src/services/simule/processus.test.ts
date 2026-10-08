@@ -40,14 +40,15 @@ describe('D-87 : définitions', () => {
     const qui = monde()
     const chef = qui('U-001').processus
     const l = await chef.lister({})
+    // D-98 : la demande de changement d'adresse IP du pôle réseau figure aussi au catalogue de l'unité.
     expect(l.map((p) => [p.code, p.etat, p.droits.modifier, p.droits.lancer])).toEqual([
-      ['ACCES_VPN_PARTICIPANT', 'BROUILLON', true, false], ['OUVERTURE_FLUX_RESEAU', 'PUBLIEE', false, true],
+      ['ACCES_VPN_PARTICIPANT', 'BROUILLON', true, false], ['CHANGEMENT_ADRESSE_IP', 'PUBLIEE', false, true], ['OUVERTURE_FLUX_RESEAU', 'PUBLIEE', false, true],
     ])
-    expect((await chef.lister({ etat: 'PUBLIEE' })).length).toBe(1)
+    expect((await chef.lister({ etat: 'PUBLIEE' })).length).toBe(2)
     expect((await chef.lister({ q: 'vpn' })).map((p) => p.code)).toEqual(['ACCES_VPN_PARTICIPANT'])
     expect(await chef.lister({ unite: 'SNA' })).toEqual([])
     const membre = qui('u-res').processus
-    expect((await membre.lister({})).map((p) => p.code)).toEqual(['OUVERTURE_FLUX_RESEAU'])
+    expect((await membre.lister({})).map((p) => p.code)).toEqual(['CHANGEMENT_ADRESSE_IP', 'OUVERTURE_FLUX_RESEAU'])
     expect(await code(membre.lire(l[0].id))).toBe('404 PIL_PROCESSUS_INTROUVABLE')
     expect(await qui('u-sna').processus.lister({})).toEqual([])
   })
@@ -115,7 +116,7 @@ describe('D-87 : instances', () => {
   it('lancement : désignations exigées et vérifiées, étape initiale active, tâche du lanceur ; vues', async () => {
     const qui = monde()
     const membre = qui('u-res')
-    const flux = (await membre.processus.lister({ etat: 'PUBLIEE' }))[0]
+    const flux = (await membre.processus.lister({ etat: 'PUBLIEE' })).find((p) => p.code === 'OUVERTURE_FLUX_RESEAU')!
     const base = { intitule: 'Flux de test', champs: { SOURCE: '10.0.0.1' }, designations: {} as Record<string, string> }
     expect(await code(membre.processus.lancer(flux.id, base))).toBe('422 PIL_PROCESSUS_DESIGNATION_MANQUANTE')
     expect(await code(membre.processus.lancer(flux.id, { ...base, designations: { MISE_EN_OEUVRE: 'inconnu' } }))).toBe('422 PIL_PROCESSUS_DESIGNATION_INVALIDE')
@@ -133,7 +134,7 @@ describe('D-87 : instances', () => {
     expect((await membre.processus.instances({ vue: 'miennes', etat: 'EN_COURS' })).total).toBeGreaterThan(0)
     expect((await qui('U-001').processus.instances({ vue: 'unite', taille: 1, page: 1 })).contenu).toHaveLength(1)
     expect(await code(qui('u-sna').processus.instance(i.id))).toBe('404 PIL_PROCESSUS_INSTANCE_INTROUVABLE')
-    expect(await code(qui('u-sna').processus.lancer(flux.id, { ...base, designations: { MISE_EN_OEUVRE: 'u-collab' } }))).toBe('404 PIL_PROCESSUS_INTROUVABLE')
+    expect(await code(qui('u-sna').processus.lancer(flux.id, { ...base, designations: { MISE_EN_OEUVRE: 'u-collab' } }))).toBe('403 PIL_PROCESSUS_NON_INITIATEUR')
   })
 
   it('étape : champs contrôlés, fin refusée sans champs ni livrables, tâche à prendre par profil, prise, livrable, validation, renvoi', async () => {
@@ -142,7 +143,7 @@ describe('D-87 : instances', () => {
     qui.magasin.organisation.push({ id: 'u-res-bis', nomAffiche: 'Armel Nkoulou Beti', fonction: 'Technicien réseau', unite: 'POLE_RESEAU', responsableId: 'u-resp-info', actif: true })
     qui.magasin.definirProfils('u-res-bis', ['ROLE_POLE_RESEAU'])
     const membre = qui('u-res')
-    const flux = (await membre.processus.lister({ etat: 'PUBLIEE' }))[0]
+    const flux = (await membre.processus.lister({ etat: 'PUBLIEE' })).find((p) => p.code === 'OUVERTURE_FLUX_RESEAU')!
     let i = await membre.processus.lancer(flux.id, { intitule: 'Flux B', champs: {}, designations: { MISE_EN_OEUVRE: 'u-res-bis' } })
     expect(await code(membre.processus.terminer(i.id, 'DEMANDE'))).toBe('422 PIL_PROCESSUS_CHAMPS_MANQUANTS')
     expect(await code(membre.processus.saisirChamps(i.id, 'DEMANDE', { PORT: 'abc' }))).toBe('422 PIL_PROCESSUS_CHAMP_INVALIDE')

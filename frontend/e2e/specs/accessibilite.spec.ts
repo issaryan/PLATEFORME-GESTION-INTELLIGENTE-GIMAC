@@ -13,7 +13,8 @@ const EXCLUS = ['.gm-filter-label']
 async function auditer(page: Page, portee?: string) {
   // Animations d'apparition (fondu des modales) terminées : sinon le contraste est mesuré en cours de fondu.
   await page.evaluate(() => Promise.all(document.getAnimations().filter((a) => a.effect?.getComputedTiming().iterations !== Infinity).map((a) => a.finished.catch(() => undefined))))
-  await page.addScriptTag({ path: axe })
+  // axe-core injecté une fois par document : la navigation dans l'application (ecran) garde le document.
+  if (!(await page.evaluate(() => 'axe' in window))) await page.addScriptTag({ path: axe })
   const violations = await page.evaluate(async ({ exclus, portee }) => {
     const w = window as unknown as { axe: { run: (c: unknown, o: unknown) => Promise<{ violations: { id: string; nodes: { html: string }[] }[] }> } }
     const r = await w.axe.run({ include: portee ? [[portee]] : [document], exclude: exclus.map((s: string) => [s]) }, {
@@ -22,6 +23,24 @@ async function auditer(page: Page, portee?: string) {
     return r.violations.map((v) => `${v.id} : ${v.nodes.slice(0, 3).map((n) => n.html.slice(0, 140)).join(' | ')}`)
   }, { exclus: EXCLUS, portee })
   expect(violations).toEqual([])
+}
+
+/**
+ * Ouvre un écran : chargement complet la première fois (ou depuis une autre application), puis navigation dans
+ * l'application (routeur de l'historique), comme un utilisateur qui passe d'un écran à l'autre. Une suite d'écrans
+ * audités ne recharge plus à chaque écran la construction instrumentée ni axe-core : ces rechargements successifs
+ * (une douzaine par scénario) faisaient dépasser le délai d'un scénario sous charge parallèle.
+ */
+async function ecran(page: Page, base: string, chemin: string) {
+  if (new URL(page.url()).origin !== new URL(base).origin || !(await page.locator('#root > *').count())) {
+    await page.goto(`${base}${chemin}`)
+    return
+  }
+  await page.evaluate((c) => {
+    window.history.pushState({}, '', c)
+    window.dispatchEvent(new PopStateEvent('popstate', { state: {} }))
+  }, chemin)
+  await page.waitForURL(`${base}${chemin}`)
 }
 
 test.describe('Fonctionnalité : accessibilité des écrans D-62', () => {
@@ -43,7 +62,7 @@ test.describe('Fonctionnalité : accessibilité des écrans D-62', () => {
         ['/console/mon-compte', 'Mon compte'],
       ]) {
         await test.step(chemin, async () => {
-          await page.goto(`${ADRESSES.console}${chemin}`)
+          await ecran(page, ADRESSES.console, chemin)
           await expect(page.getByRole('heading', { level: 1 })).toHaveText(titre)
           await page.waitForLoadState('networkidle')
           await auditer(page)
@@ -76,7 +95,7 @@ test.describe('Fonctionnalité : accessibilité des écrans D-62', () => {
         ['/des/messagerie?conversation=CONV-0005', 'Messagerie'],
       ]) {
         await test.step(chemin, async () => {
-          await page.goto(`${ADRESSES.departement}${chemin}`)
+          await ecran(page, ADRESSES.departement, chemin)
           await expect(page.getByRole('heading', { level: 1 })).toHaveText(titre)
           await page.waitForLoadState('networkidle')
           await auditer(page)

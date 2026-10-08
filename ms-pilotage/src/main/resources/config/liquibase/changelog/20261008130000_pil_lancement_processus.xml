@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Lancer un processus, agir à chaque étape, suivre son avancement (D-98, docs/lot1/lancement-processus.md §1, §2) :
+     initiateurs et formulaire de lancement en données dans la définition ; valeurs du formulaire gardées par l'instance.
+     Reprise : les définitions existantes gardent les membres de l'unité propriétaire comme seuls initiateurs
+     (MEMBRES_UNITE, comportement antérieur) et un formulaire vide. Écrit à la main. -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="pil-lancement-processus" author="lot1">
+        <sql>
+            ALTER TABLE processus ADD COLUMN initiateurs JSONB;
+            ALTER TABLE processus ADD COLUMN formulaire JSONB;
+            UPDATE processus SET initiateurs = '{"regles":["MEMBRES_UNITE"],"unites":[],"profils":[],"permissions":[]}'::jsonb WHERE initiateurs IS NULL;
+            UPDATE processus SET formulaire = '{"champs":[]}'::jsonb WHERE formulaire IS NULL;
+            ALTER TABLE processus ALTER COLUMN initiateurs SET DEFAULT '{"regles":["MEMBRES_UNITE"],"unites":[],"profils":[],"permissions":[]}'::jsonb;
+            ALTER TABLE processus ALTER COLUMN initiateurs SET NOT NULL;
+            ALTER TABLE processus ALTER COLUMN formulaire SET DEFAULT '{"champs":[]}'::jsonb;
+            ALTER TABLE processus ALTER COLUMN formulaire SET NOT NULL;
+            ALTER TABLE processus_instance ADD COLUMN formulaire JSONB NOT NULL DEFAULT '{}'::jsonb;
+        </sql>
+    </changeSet>
+</databaseChangeLog>

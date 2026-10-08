@@ -185,6 +185,56 @@ class TableauDeBordCalculateurTest {
     }
 
     @Test
+    @DisplayName("D-98 : mes opérations : à faire (R, V, à prendre), à suivre (conducteur), liaisons et jalons ; rien sans identifiant")
+    void mesOperations() {
+        Parcours p = parcours(TypeProjet.CARTE_INTERBANCAIRE, "RETRAIT");
+        avancer(p, "27", J);
+        p.operations().stream().filter(o -> !o.faite()).forEach(o -> o.setRaci(o.getRaci().remplacerSi(x -> x.fonction() == Fonction.POLE_SYSTEME, x -> Personne.aAffecter(Fonction.POLE_SYSTEME))));
+        Parcours close = parcours(TypeProjet.CARTE_INTERBANCAIRE, "RETRAIT");
+        close.etat().setStatut(cm.gimac.des.homologation.domain.parcours.StatutParcours.CLOSE_SANS_SUITE);
+        // Porteur de la fonction à affecter : les deux opérations engagées sont à prendre, sans fonction exigée par la route.
+        Acteur porteur = new Acteur(UUID.randomUUID(), "Porteur", Set.of("ROLE_POLE_SYSTEME", "HOM_EVIDENCE_SUBMIT"), null);
+        Vues.MesOperations m = calcul.mesOperations(List.of(p, close), porteur, J);
+        assertThat(m.aAgir()).extracting(Vues.MonOperation::code).containsExactly("28", "29");
+        assertThat(m.aAgir()).extracting(Vues.MonOperation::aPrendre).containsOnly(Boolean.TRUE);
+        assertThat(m.aAgir().get(0)).satisfies(o -> {
+            assertThat(o.qualite()).isEqualTo(Qualite.R);
+            assertThat(o.lien()).isEqualTo(ParcoursProjection.lienOperation(p, p.operation("28").orElseThrow()));
+            assertThat(o.actionsPermises()).contains("DEPOSER_PREUVE");
+            assertThat(o.liaisonReference()).isEqualTo("LIA-2026-001");
+            assertThat(o.statutLiaison()).isEqualTo(p.etat().getStatut());
+            assertThat(o.responsable().affectee()).isFalse();
+        });
+        assertThat(m.aSuivre()).isEmpty();
+        assertThat(m.liaisons()).singleElement().satisfies(l -> {
+            assertThat(l.conducteur()).isFalse();
+            assertThat(l.operationsTotal()).isEqualTo(p.operations().size());
+            assertThat(l.jalons()).extracting(Vues.JalonSuivi::jalon).contains(cm.gimac.des.homologation.domain.parcours.Jalon.CERTIFIEE, cm.gimac.des.homologation.domain.parcours.Jalon.EN_PRODUCTION);
+            assertThat(l.jalons()).filteredOn(j -> j.jalon() == cm.gimac.des.homologation.domain.parcours.Jalon.CERTIFIEE).singleElement().satisfies(j -> {
+                assertThat(j.atteint()).isTrue();
+                assertThat(j.atteintLe()).isEqualTo(J);
+            });
+        });
+        // Preuve déposée : le conducteur, validateur désigné, l'a à valider ; il suit les autres opérations engagées de sa liaison.
+        p.deposerPreuve(p.operation("28").orElseThrow(), cm.gimac.des.homologation.domain.parcours.Preuve.piece("d", "n", "e", J, "x"), null, null, null);
+        Acteur conducteur = new Acteur(ParcoursSamples.CONDUCTEUR, "Conducteur", Set.of("ROLE_CONDUCTEUR_PROJET", "HOM_OPERATION_VALIDATE"), null);
+        Vues.MesOperations c = calcul.mesOperations(List.of(p), conducteur, J);
+        assertThat(c.aAgir()).singleElement().satisfies(o -> {
+            assertThat(o.code()).isEqualTo("28");
+            assertThat(o.qualite()).isEqualTo(Qualite.V);
+            assertThat(o.actionsPermises()).contains("VALIDER", "RENVOYER");
+        });
+        assertThat(c.aSuivre()).extracting(Vues.MonOperation::code).contains("29").doesNotContain("28");
+        assertThat(c.aSuivre()).allSatisfy(o -> assertThat(o.qualite()).isNull());
+        assertThat(c.liaisons()).singleElement().satisfies(l -> assertThat(l.conducteur()).isTrue());
+        // Personne étrangère à la liaison, ou sans identifiant : rien.
+        Vues.MesOperations rien = calcul.mesOperations(List.of(p), new Acteur(UUID.randomUUID(), "Autre", Set.of("CER_SECURITY_VERIFY"), null), J);
+        assertThat(rien.aAgir()).isEmpty();
+        assertThat(rien.liaisons()).isEmpty();
+        assertThat(calcul.mesOperations(List.of(p), new Acteur(null, null, Set.of(), null), J)).isEqualTo(new Vues.MesOperations(List.of(), List.of(), List.of()));
+    }
+
+    @Test
     @DisplayName("Participant : cloisonné à son institution, geste et écran de chaque tâche, aucun nom interne")
     void participant() {
         String inst = essais.liaison().getInstitutionId().toString();

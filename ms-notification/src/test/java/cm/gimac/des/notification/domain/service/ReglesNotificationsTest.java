@@ -70,6 +70,15 @@ class ReglesNotificationsTest {
         assertThat(regles.lienDemandeATraiter("d-1")).isEqualTo("/des/administration/demandes?demande=d-1");
         assertThat(regles.lienDemandeDecidee("d-1")).isEqualTo("/des/equipe/demandes?demande=d-1");
         assertThat(regles.lienTachesAPrendre()).isEqualTo("/des/taches?vue=unite");
+        // D-98 : offre d'une décision (transition à prononcer) : lien profond vers son écran, s'il est sûr.
+        assertThat(regles.lienTacheOfferte("/des/institutions/i-1?onglet=transitions")).isEqualTo("/des/institutions/i-1?onglet=transitions");
+        assertThat(regles.lienTacheOfferte(null)).isEqualTo("/des/taches?vue=unite");
+        assertThat(regles.lienTacheOfferte("https://ailleurs.example/des/x")).isEqualTo("/des/taches?vue=unite");
+        assertThat(regles.lienTacheOfferte("/portail/liaisons/l-1")).isEqualTo("/des/taches?vue=unite");
+        assertThat(regles.lienTacheOfferte("/des/../portail")).isEqualTo("/des/taches?vue=unite");
+        assertThat(regles.lienTacheOfferte("/des/a b")).isEqualTo("/des/taches?vue=unite");
+        assertThat(regles.lienTacheOfferte("/des/a\u0007")).isEqualTo("/des/taches?vue=unite");
+        assertThat(regles.lienTacheOfferte("/des/" + "x".repeat(600))).isEqualTo("/des/taches?vue=unite");
         assertThat(regles.titreDemandeSoumise("Paul")).isEqualTo("Demande de Paul");
         assertThat(regles.titreDemandeSoumise(null)).isEqualTo("Nouvelle demande à traiter");
         assertThat(regles.titreDemandeDecidee("ACCEPTEE")).isEqualTo("Demande acceptée");
@@ -194,6 +203,15 @@ class ReglesNotificationsTest {
         assertThat(regles.titreProcessus(new FaitsProcessus(NatureProcessus.INSTANCE_LANCEE, "OUVERTURE", " ", null, null, null, false, false, null))).isEqualTo("Processus lancé : OUVERTURE");
         assertThat(regles.titreProcessus(new FaitsProcessus(NatureProcessus.ETAPE_ACTIVEE, null, null, null, null, null, false, false, null))).isEqualTo("Étape à réaliser");
         assertThat(regles.titreProcessus(new FaitsProcessus(NatureProcessus.INSTANCE_CLOSE, null, null, null, null, "ANNULEE", false, false, null))).isEqualTo("Processus annulé");
+    }
+
+    @Test
+    @DisplayName("D-98 : avancement d'une demande vu de l'initiateur (titre, attente de prise en charge, échéance)")
+    void demandeAvancee() {
+        assertThat(regles.titreProcessus(faits(NatureProcessus.DEMANDE_AVANCEE, null, false, true, null))).isEqualTo("Votre demande avance : Analyse de la demande");
+        assertThat(regles.sousTitreProcessus(faits(NatureProcessus.DEMANDE_AVANCEE, null, false, true, "2026-10-09"), null, null)).isEqualTo("Flux vers la banque X, en attente de prise en charge");
+        assertThat(regles.sousTitreProcessus(faits(NatureProcessus.DEMANDE_AVANCEE, null, false, false, "2026-10-09"), null, null)).isEqualTo("Flux vers la banque X, étape en cours, échéance 2026-10-09");
+        assertThat(regles.sousTitreProcessus(faits(NatureProcessus.DEMANDE_AVANCEE, null, false, false, null), null, null)).isEqualTo("Flux vers la banque X, étape en cours");
     }
 
     @Test

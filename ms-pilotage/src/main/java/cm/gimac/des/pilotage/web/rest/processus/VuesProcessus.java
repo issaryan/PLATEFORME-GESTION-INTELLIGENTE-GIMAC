@@ -5,6 +5,7 @@ import cm.gimac.des.pilotage.application.port.in.InstancesProcessusUseCase.Insta
 import cm.gimac.des.pilotage.application.port.in.InstancesProcessusUseCase.MoiEtape;
 import cm.gimac.des.pilotage.application.port.in.Page;
 import cm.gimac.des.pilotage.application.port.in.ProcessusUseCase.Droits;
+import cm.gimac.des.pilotage.application.port.in.ProcessusUseCase.GroupeLancables;
 import cm.gimac.des.pilotage.application.port.in.ProcessusUseCase.ProcessusLu;
 import cm.gimac.des.pilotage.application.port.in.ProcessusUseCase.VersionResume;
 import cm.gimac.des.pilotage.domain.activite.EtatTache;
@@ -17,12 +18,15 @@ import cm.gimac.des.pilotage.domain.processus.DocumentSigne;
 import cm.gimac.des.pilotage.domain.processus.Etape;
 import cm.gimac.des.pilotage.domain.processus.EtapeInstance;
 import cm.gimac.des.pilotage.domain.processus.EtatEtape;
+import cm.gimac.des.pilotage.domain.processus.Formulaire;
 import cm.gimac.des.pilotage.domain.processus.HistoriqueProcessus;
+import cm.gimac.des.pilotage.domain.processus.Initiateurs;
 import cm.gimac.des.pilotage.domain.processus.InstanceProcessus;
 import cm.gimac.des.pilotage.domain.processus.Position;
 import cm.gimac.des.pilotage.domain.processus.Processus;
 import cm.gimac.des.pilotage.domain.processus.SignatureInstance;
 import cm.gimac.des.pilotage.domain.processus.TypeChamp;
+import cm.gimac.des.pilotage.domain.processus.TypeChampFormulaire;
 import cm.gimac.des.pilotage.domain.service.ReglesActivite;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -69,6 +73,8 @@ final class VuesProcessus {
         String categorie,
         Integer delaiCibleJours,
         List<Etape> etapes,
+        Initiateurs initiateurs,
+        Formulaire formulaire,
         String creeLe,
         PersonneVue creePar,
         String modifieLe,
@@ -113,6 +119,8 @@ final class VuesProcessus {
                 p.getCategorie(),
                 p.getDelaiCibleJours(),
                 p.getEtapes(),
+                p.getInitiateurs(),
+                p.getFormulaire(),
                 ReglesActivite.horodatage(p.getCreeLe()),
                 PersonneVue.de(p.getCreePar(), noms),
                 ReglesActivite.horodatage(p.getModifieLe()),
@@ -147,7 +155,9 @@ final class VuesProcessus {
         String publieeLe,
         String modifieLe,
         PersonneVue modifiePar,
-        Droits droits
+        Droits droits,
+        Initiateurs initiateurs,
+        int nombreChampsFormulaire
     ) {
         static ProcessusResumeVue de(ProcessusLu l) {
             Processus p = l.processus();
@@ -165,8 +175,19 @@ final class VuesProcessus {
                 ReglesActivite.horodatage(p.getPublieeLe()),
                 ReglesActivite.horodatage(p.getModifieLe()),
                 PersonneVue.de(p.getModifiePar(), l.noms()),
-                l.droits()
+                l.droits(),
+                p.getInitiateurs(),
+                p.getFormulaire().champs().size()
             );
+        }
+    }
+
+    /** « Lancer une demande » (D-98 §3) : processus lançables groupés par unité propriétaire. */
+    record LancablesVue(List<GroupeVue> groupes) {
+        record GroupeVue(String unite, List<ProcessusResumeVue> processus) {}
+
+        static LancablesVue de(List<GroupeLancables> l) {
+            return new LancablesVue(l.stream().map(g -> new GroupeVue(g.unite(), g.processus().stream().map(ProcessusResumeVue::de).toList())).toList());
         }
     }
 
@@ -278,6 +299,7 @@ final class VuesProcessus {
         String motif,
         Map<String, PersonneVue> designations,
         Avancement avancement,
+        List<ValeurFormulaireVue> formulaire,
         List<EtapeInstanceVue> etapes,
         List<HistoriqueVue> historique,
         DroitsInstance droits
@@ -299,6 +321,7 @@ final class VuesProcessus {
                 i.getMotif(),
                 designations,
                 Avancement.de(l.etapes()),
+                ValeurFormulaireVue.de(l.processus(), i),
                 l.etapes().stream().map(e -> etape(l, e)).toList(),
                 l.historique().stream().map(h -> HistoriqueVue.de(h, noms)).toList(),
                 l.droits()
@@ -341,7 +364,106 @@ final class VuesProcessus {
         }
     }
 
-    record EtapeResumeVue(String code, String libelle, String etat, String echeance) {}
+    /**
+     * Valeur du formulaire de lancement (D-98 §2), visible de toute personne qui lit l'instance : champ de la version
+     * lancée et valeur (NOMBRE : nombre JSON ; PERIODE : { debut, fin } ; CASE : booléen ; PIECE_JOINTE : { documentId,
+     * nomFichier, typeMime, taille, sha256 } ; absente : null).
+     */
+    record ValeurFormulaireVue(String code, String libelle, String type, boolean obligatoire, String aide, List<String> choix, List<String> typesPieces, Object valeur) {
+        static List<ValeurFormulaireVue> de(Processus p, InstanceProcessus i) {
+            if (p == null) {
+                return List.of();
+            }
+            return p
+                .getFormulaire()
+                .champs()
+                .stream()
+                .map(c -> {
+                    Object v = i.getFormulaire().get(c.code());
+                    if (v instanceof String t && c.type() == TypeChampFormulaire.NOMBRE) {
+                        try {
+                            v = new BigDecimal(t);
+                        } catch (NumberFormatException e) {
+                            v = t;
+                        }
+                    }
+                    return new ValeurFormulaireVue(c.code(), c.libelle(), c.type().name(), c.obligatoire(), c.aide(), c.choix(), c.typesPieces(), v);
+                })
+                .toList();
+        }
+    }
+
+    /** État d'une étape dans « Mes demandes » (D-98 §3) : qui la tient (exécutant, ou à prendre par un profil). */
+    record EtapeDemandeVue(
+        String code,
+        String libelle,
+        String etat,
+        PersonneVue executant,
+        APrendreVue aPrendre,
+        String activeeLe,
+        String echeance,
+        String termineeLe,
+        boolean enRetard
+    ) {}
+
+    /** Ligne de « Mes demandes » (GET /processus/demandes, D-98 §3). */
+    record DemandeVue(
+        UUID id,
+        ProcessusRef processus,
+        String unite,
+        String intitule,
+        String etat,
+        String lanceeLe,
+        String closeLe,
+        String motif,
+        Avancement avancement,
+        List<EtapeDemandeVue> etapes,
+        HistoriqueVue derniereEvolution
+    ) {
+        static DemandeVue de(InstanceLue l) {
+            InstanceProcessus i = l.instance();
+            Map<String, String> noms = l.noms();
+            List<EtapeDemandeVue> etapes = l
+                .etapes()
+                .stream()
+                .map(e -> {
+                    Tache t = e.getTacheId() == null ? null : l.taches().get(e.getTacheId());
+                    boolean aPrendre = t != null && t.getEtat() == EtatTache.A_PRENDRE;
+                    String libelle = l.processus() == null ? e.getCode() : l.processus().etape(e.getCode()).map(Etape::libelle).orElse(e.getCode());
+                    return new EtapeDemandeVue(
+                        e.getCode(),
+                        libelle,
+                        e.getEtat().name(),
+                        t == null || aPrendre ? null : PersonneVue.de(t.getResponsableId(), noms),
+                        aPrendre && e.getEtat().enCours() ? new APrendreVue(t.getUniteCible(), t.getProfilRequis()) : null,
+                        horodatage(e.getActiveeLe()),
+                        e.getEcheance() == null ? null : e.getEcheance().toString(),
+                        horodatage(e.getTermineeLe()),
+                        e.getEcheance() != null && e.getEtat().enCours() && e.getEcheance().isBefore(l.aujourdhui())
+                    );
+                })
+                .toList();
+            return new DemandeVue(
+                i.getId(),
+                ProcessusRef.de(i),
+                i.getUnite(),
+                i.getIntitule(),
+                i.getEtat().name(),
+                horodatage(i.getLanceeLe()),
+                horodatage(i.getCloseLe()),
+                i.getMotif(),
+                Avancement.de(l.etapes()),
+                etapes,
+                l.historique().isEmpty() ? null : HistoriqueVue.de(l.historique().get(l.historique().size() - 1), noms)
+            );
+        }
+    }
+
+    /**
+     * Étape en cours d'un résumé d'instance ; D-98 : {@code moi} (actions permises à l'appelant) et {@code attendMoi}
+     * (l'étape attend sa décision : exécuter, prendre, signer ou valider).
+     */
+    record EtapeResumeVue(String code, String libelle, String etat, String echeance, MoiEtape moi, boolean attendMoi) {}
 
     record InstanceResumeVue(
         UUID id,
@@ -371,14 +493,17 @@ final class VuesProcessus {
                     .etapes()
                     .stream()
                     .filter(e -> e.getEtat().enCours())
-                    .map(e ->
-                        new EtapeResumeVue(
+                    .map(e -> {
+                        MoiEtape moi = l.moi().get(e.getCode());
+                        return new EtapeResumeVue(
                             e.getCode(),
                             l.processus() == null ? e.getCode() : l.processus().etape(e.getCode()).map(Etape::libelle).orElse(e.getCode()),
                             e.getEtat().name(),
-                            e.getEcheance() == null ? null : e.getEcheance().toString()
-                        )
-                    )
+                            e.getEcheance() == null ? null : e.getEcheance().toString(),
+                            moi,
+                            moi != null && moi.attendMoi()
+                        );
+                    })
                     .toList()
             );
         }

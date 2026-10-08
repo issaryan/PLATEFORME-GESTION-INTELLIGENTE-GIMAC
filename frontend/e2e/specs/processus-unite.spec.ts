@@ -9,7 +9,8 @@ import { joindre, naviguer, ongletSelectionne } from './outils'
 // département. Le chef du DES modélise un processus (modale d'étape à onglets, contrôle, publication avec levée
 // motivée des avertissements, profil porté hors de l'unité signalé pour information) ; un membre du pôle réseau lance
 // « Ouverture d'un flux réseau » (désignation remplie d'office : seul porteur du profil), reçoit d'office l'étape
-// d'analyse, dépose sa note et la termine ; le chef du service signe le procès-verbal de recette avec sa clé de sécurité.
+// d'analyse, dépose sa note et la termine (elle quitte « Mes étapes ») ; le chef du service signe le procès-verbal de
+// recette avec sa clé de sécurité.
 // Captures en thème clair et sombre dans e2e/captures/d86-d90 (ou $GIMAC_CAPTURES/d86-d90).
 
 const ICI = dirname(fileURLToPath(import.meta.url))
@@ -121,10 +122,13 @@ for (const theme of ['light', 'dark'] as const) {
       })
 
       await test.step('Alors « Ma journée » ne présente plus l’étape parmi « Mes étapes »', async () => {
-        // Navigation dans l'application : l'état simulé de la session est conservé.
+        // Navigation dans l'application : l'état simulé de la session est conservé. D-98 : « Mes étapes » ne garde que les
+        // étapes qui attendent ma décision (attendMoi du service) ; l'assertion attend la liste chargée (auparavant, une
+        // absence constatée pendant le chargement la faisait passer par hasard).
         await naviguer(page, 'Ma journée')
-        await expect(page.getByRole('heading', { name: 'Mes étapes de processus' })).toBeVisible()
-        await expect(page.getByText('Ouverture du port 443 pour la supervision : Analyse de sécurité du flux')).toHaveCount(0)
+        const liste = page.getByRole('list', { name: 'Mes étapes de processus' })
+        await expect(liste.getByText('Flux SNMP vers la supervision : Demande d’ouverture du flux')).toBeVisible()
+        await expect(liste.getByText('Ouverture du port 443 pour la supervision : Analyse de sécurité du flux')).toHaveCount(0)
       })
     })
 

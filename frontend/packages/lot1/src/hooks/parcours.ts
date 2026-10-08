@@ -14,10 +14,12 @@ export const useLiaisonsParcours = (f: FiltreLiaisons, actif = true) => useLectu
 export const useConducteurs = (actif = true) => useLecture(cles.parcoursPersonnes('CONDUCTEUR'), (s) => s.parcours.conducteurs(), { enabled: actif })
 export const usePersonnes = (fonction: Fonction, actif = true) => useLecture(cles.parcoursPersonnes(fonction), (s) => s.parcours.personnes(fonction), { enabled: actif })
 export const useDossierLiaison = (id: string) => useLecture(cles.parcoursDossier(id), (s) => s.parcours.dossier(id), { enabled: Boolean(id) })
-export const useOperationsParcours = (id: string, filtre?: { etape?: string; fonction?: Fonction }) =>
-  useLecture(cles.parcoursDossier(id, `operations:${filtre?.etape ?? ''}:${filtre?.fonction ?? ''}`), (s) => s.parcours.operations(id, filtre), { enabled: Boolean(id) })
+export const useOperationsParcours = (id: string, filtre?: { etape?: string; fonction?: Fonction }, actif = true) =>
+  useLecture(cles.parcoursDossier(id, `operations:${filtre?.etape ?? ''}:${filtre?.fonction ?? ''}`), (s) => s.parcours.operations(id, filtre), { enabled: Boolean(id) && actif })
 export const useTableauActeur = (fonctions: Fonction[], actif = true) =>
   useLecture(cles.parcoursActeur(fonctions), (s) => s.parcours.tableauActeur(fonctions), { enabled: actif })
+/** D-98 : mes actions de certification, rafraîchies à chaque geste (sujet « parcours ») et par le canal poussé. */
+export const useMesOperations = (actif = true) => useLecture([...cles.parcours, 'mes-operations'], (s) => s.parcours.mesOperations(), { enabled: actif })
 export const usePilotage = (actif = true) => useLecture(cles.parcoursPilotage(), (s) => s.parcours.pilotage(), { enabled: actif })
 export const useProcesVerbal = (id: string) => useLecture(cles.parcoursDossier(id, 'pv'), (s) => s.decision.procesVerbal(id), { enabled: Boolean(id) })
 export const useApprobation = (id: string) => useLecture(cles.parcoursDossier(id, 'approbation'), (s) => s.decision.approbation(id), { enabled: Boolean(id) })
@@ -26,7 +28,8 @@ export const useMesFonctions = (actif = true) => useLecture(['parcours', 'moi-fo
 export const useFicheSuivi = (id: string) => useLecture(cles.parcoursDossier(id, 'fiche-suivi'), (s) => s.decision.ficheSuivi(id), { enabled: Boolean(id) })
 
 // Étape 3 : cadrage
-export const useOuvrirLiaison = () => useEffet((s, o: OuvertureLiaison) => s.parcours.ouvrirLiaison(o), P)
+// L'ouverture fait passer l'institution adhérente en homologation (MS-PARTICIPANT) : le registre est relu aussi.
+export const useOuvrirLiaison = () => useEffet((s, o: OuvertureLiaison) => s.parcours.ouvrirLiaison(o), [...P, cles.participant])
 export const useDesignerConducteur = () =>
   useEffet((s, v: { liaisonId: string; conducteurId: string; motif: string }) => s.parcours.designerConducteur(v.liaisonId, v.conducteurId, v.motif), P)
 

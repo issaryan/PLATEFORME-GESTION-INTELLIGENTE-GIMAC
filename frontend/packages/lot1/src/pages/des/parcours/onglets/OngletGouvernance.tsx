@@ -77,13 +77,15 @@ function DialogueAffecterFonction({ dossier, intervenant, onFermer, onAffecte }:
 }
 
 /** Intervenants de la liaison lus du RACI (D-93 §8.5) : fonction, qualités, personne désignée ou fonction à affecter. */
-function Intervenants({ dossier }: { dossier: DossierLiaison }) {
+function Intervenants({ dossier, fonction }: { dossier: DossierLiaison; fonction?: string | null }) {
   const { t } = useTranslation()
   const permissions = usePermissions()
   const [choisi, setChoisi] = useState<IntervenantLiaison | null>(null)
   const [retour, annoncer] = useRetour()
   const peutAffecter = dossier.actionsPermises.includes('AFFECTER_FONCTION') && aPermission(permissions, PERM.etapeConduire, PERM.operationAttribuer)
   const l = dossier.intervenants ?? []
+  // D-98 : fonction demandée par la tâche qui mène ici (?fonction=) : signalée en tête, avec son affectation.
+  const demandee = fonction ? l.find((i) => i.fonction === fonction) : undefined
   const colonnes: Column<IntervenantLiaison>[] = [
     { key: 'libelle', header: t('parcoursGouvernance.fonction'), render: (i) => <span className="gm-col" style={{ gap: 0 }}><span>{i.libelle}</span><span className="gm-mono gm-type-small">{i.fonction}</span></span> },
     { key: 'qualites', header: t('parcoursGouvernance.qualites'), render: (i) => <span className="gm-row" style={{ gap: 'var(--gm-space-1)' }}>{i.qualites.map((q) => <Tag key={q}>{q}</Tag>)}</span> },
@@ -103,6 +105,14 @@ function Intervenants({ dossier }: { dossier: DossierLiaison }) {
   return (
     <Card title={t('parcoursGouvernance.intervenants', { count: l.length })}>
       <div className="gm-col">
+        {demandee ? (
+          demandee.aAffecter ? (
+            <InlineAlert level="warn" title={t('certif.fonction.demandee.titre', { fonction: demandee.libelle })}
+              action={peutAffecter && !demandee.externe && !NON_AFFECTABLES.includes(demandee.fonction) ? <Button size="sm" variant="primary" icon="user" onClick={() => setChoisi(demandee)}>{t('parcoursGouvernance.affecter.bouton')}</Button> : undefined}>
+              {t('certif.fonction.demandee.texte')}
+            </InlineAlert>
+          ) : <InlineAlert level="info">{t('certif.fonction.demandee.affectee', { fonction: demandee.libelle, nom: demandee.personne?.nom ?? '' })}</InlineAlert>
+        ) : null}
         {l.some((i) => i.aAffecter) ? <InlineAlert level="warn" title={t('parcoursGouvernance.aAffecter.titre')}>{t('parcoursGouvernance.aAffecter.texte')}</InlineAlert> : null}
         <DataTable columns={colonnes} rows={l} rowKey={(i) => i.fonction} density="compact" pagination={false} state={l.length ? 'ok' : 'empty'} emptyText={t('parcoursGouvernance.aucun')} />
         {retour}
@@ -115,7 +125,7 @@ function Intervenants({ dossier }: { dossier: DossierLiaison }) {
   )
 }
 
-export function OngletGouvernance({ dossier }: { dossier: DossierLiaison }) {
+export function OngletGouvernance({ dossier, fonction }: { dossier: DossierLiaison; fonction?: string | null }) {
   const { t } = useTranslation()
   const ops = useOperationsParcours(dossier.id)
   const colonnes: Column<LigneRaci>[] = [
@@ -156,7 +166,7 @@ export function OngletGouvernance({ dossier }: { dossier: DossierLiaison }) {
           </Card>
         </div>
       </div>
-      <Intervenants dossier={dossier} />
+      <Intervenants dossier={dossier} fonction={fonction} />
       <Card title={t('parcoursGouvernance.raci')}>
         <div className="gm-col">
           <span className="gm-field-help">{t('parcoursGouvernance.raci.aide')}</span>

@@ -4,3 +4,8 @@
   display: flex; flex-direction: column; gap: var(--gm-space-1); align-items: flex-start; padding: var(--gm-space-2) var(--gm-space-3);
   background: var(--gm-color-surface); border: var(--gm-border-1) solid var(--gm-color-border); border-left: 4px solid var(--gm-color-border); border-radius: var(--gm-radius);
 }
+
+/* Onglet « Décision » (D-98) : carte du geste visé par ?operation= mise en évidence (liseré de focus, fond passager), clair et sombre. */
+.gm-decision-carte { display: flex; flex-direction: column; gap: var(--gm-space-2); scroll-margin-top: var(--gm-space-6); }
+.gm-decision-cible > .gm-card { outline: var(--gm-border-2) solid var(--gm-color-focus); outline-offset: 2px; animation: gm-evidence 2s var(--gm-motion-ease) 1; }
+@media (prefers-reduced-motion: reduce) { .gm-decision-cible > .gm-card { animation: none; } }

@@ -5,7 +5,8 @@ import {
   type FonctionUtilisateur, type IndicateursPilotage, type IntervenantLiaison, type LiaisonResume, type LivrableAttendu, type OperationParcours, type Personne, type ProcesVerbalCertification,
   type Qualite, type ServicePerimetre, type SignatureOperation, type Sla, type StatutParcours, type TableauActeur, type TacheActeur, type TypeAttestation,
 } from '../../modele/parcours'
-import type { FonctionCatalogue } from '../../modele/homologation'
+import type { FonctionCatalogue, Geste, Jalon, ReferenceOperation } from '../../modele/homologation'
+import type { MesOperations, MonOperation } from '../../modele/parcours'
 import { referentielDe, type OperationReferentiel } from '../../modele/referentielCR'
 import { CATALOGUE, ETAPES_CANONIQUES, actionDuGeste, codesDeclenches, estDedie, gesteDe, jetonEtape, versionCR, vueDe } from './referentiels'
 import { LIBELLES_CR } from './libellesCR'
@@ -90,6 +91,11 @@ type Scenario = {
   aAffecter?: Fonction[]
   /** D-91 : opération faite en attente de ses signatures, dans l'ordre (démonstration de « Signer »). */
   enSignature?: { rang: string; signatures: Pick<SignatureOperation, 'code' | 'libelle' | 'signataire' | 'ordre' | 'porte'>[] }
+  /**
+   * D-98 : liaison instanciée depuis la version publiée d'un type créé dans la plateforme (modèle générique) : opérations,
+   * gestes, jalons et déclencheurs lus sur la version ; aucune attestation imposée.
+   */
+  depuisVersion?: boolean
 }
 const SERVICES_CARTE = [{ code: 'RETRAIT', libelle: 'Retrait' }, { code: 'PAIEMENT', libelle: 'Paiement marchand' }, { code: 'TRANSFERT', libelle: 'Transfert' }, { code: 'COMMERCE_ELECTRONIQUE', libelle: 'Commerce électronique' }]
 const SERVICES_MOBILE = [{ code: 'PAIEMENT_MARCHAND', libelle: 'Paiement marchand mobile' }, { code: 'REMITTANCE', libelle: 'Rémittence entrante' }, { code: 'FACTURE', libelle: 'Paiement de facture' }, { code: 'CASH_IN', libelle: 'Cash-in agent' }]
@@ -133,12 +139,10 @@ type Etat = {
 /** Déclencheur de l'opération (D-77 §3), lu sur la version simulée du référentiel. */
 const codesDeclenchesParRang = (type: string, rang: string) => ['certification.pv-established.v1', 'certification.pv-signed.v1', 'certification.change-record-constituted.v1',
   'certification.attestations-archived.v1', 'certification.security-approved.v1', 'certification.change-record-referenced.v1'].find((d) => codesDeclenches(type, d).includes(rang)) ?? null
-const declenchees = (e: Etat, sujet: string) => { const codes = codesDeclenches(e.s.typeProjet, sujet); return e.ops.filter((o) => codes.includes(o.rang)) }
+// D-98 : déclencheur lu sur l'opération instanciée (version publiée du type), jamais sur un rang.
+const declenchees = (e: Etat, sujet: string) => e.ops.filter((o) => o.declencheur === sujet)
 const declenchee = (e: Etat, sujet: string) => declenchees(e, sujet)[0]
 
-/** Geste attendu sur une opération ouverte : livrable pour les pièces de phase et les comptes rendus (rangs 7 à 11). */
-// Geste lu sur l'opération de la version 1 simulée du référentiel (D-77, §3) : plus de rang codé en dur ici.
-const actionOuverte = (o: { grain: string; rang: string }) => actionDuGeste(gesteDe({ rang: o.rang, grain: o.grain as OperationReferentiel['grain'] }))
 /** Actions d'une opération ouverte : son geste, et l'attribution des qualités tant qu'elle n'est pas faite. */
 /**
  * Rangs dont le geste a sa route propre (affectation des ressources, verrous de la décision tenus par
@@ -146,9 +150,11 @@ const actionOuverte = (o: { grain: string; rang: string }) => actionDuGeste(gest
  */
 export const GESTES_DEDIES = (['CARTE_INTERBANCAIRE', 'PAIEMENT_MOBILE', 'DELEGATAIRE'] as TypeProjet[])
   .flatMap((t) => versionCR(t)).filter((o) => estDedie(o.geste)).map((o) => o.code).filter((c, i, l) => l.indexOf(c) === i)
-const actionsOuvertes = (o: { grain: string; rang: string }) => (GESTES_DEDIES.includes(o.rang) ? ['ATTRIBUER'] : [actionOuverte(o), 'ATTRIBUER'])
-const refuserGesteLibre = (o: { rang: string }) => {
-  if (GESTES_DEDIES.includes(o.rang)) throw refus(409, 'HOM_OPERATION_DEDICATED_GESTURE', 'Cette opération se réalise par son geste propre (affectation, verrous de la décision ou fiche de suivi), jamais par une pièce libre.')
+// D-98 : geste lu sur l'opération (version publiée), celui des rangs de la version 1 à défaut.
+const gesteOuvert = (o: { geste?: Geste | null; grain: string; rang: string }) => o.geste ?? gesteDe({ rang: o.rang, grain: o.grain as OperationReferentiel['grain'] })
+const actionsOuvertes = (o: { geste?: Geste | null; grain: string; rang: string }) => (estDedie(gesteOuvert(o)) ? ['ATTRIBUER'] : [actionDuGeste(gesteOuvert(o)), 'ATTRIBUER'])
+const refuserGesteLibre = (o: { geste?: Geste | null; grain: string; rang: string }) => {
+  if (estDedie(gesteOuvert(o))) throw refus(409, 'HOM_OPERATION_DEDICATED_GESTURE', 'Cette opération se réalise par son geste propre (affectation, verrous de la décision ou fiche de suivi), jamais par une pièce libre.')
 }
 /** Onglet du dossier où se réalise le geste d'une opération : décision (verrous 1 et 2), mise en service (étape 10), sinon opérations. */
 // D-93 : l'onglet suit la vue de l'opération (attribut servi), jamais son rang.
@@ -157,11 +163,45 @@ const lienOperation = (o: Pick<OperationParcours, 'liaisonId' | 'id' | 'vue'>) =
 
 const couv = (n: number, d: number): CoverageValue => ({ taux: d ? Math.round((n / d) * 100) : null, numerateur: n, denominateur: d, calculable: d > 0, motifNonCalculable: d ? undefined : 'aucun service inclus' })
 
-function construire(s: Scenario): Etat {
+/** Jalon porté par une opération de la version 1 simulée d'un type repris (D-77 §3). */
+const jalonsParType = new Map<string, Map<string, Jalon | null>>()
+const jalonDuRang = (type: string, rang: string): Jalon | null => {
+  if (!jalonsParType.has(type)) jalonsParType.set(type, new Map(versionCR(type).map((o) => [o.code, o.jalon])))
+  return jalonsParType.get(type)?.get(rang) ?? null
+}
+/** Statut de la liaison qui résulte d'un jalon atteint (homologation.liaison-milestone-reached.v1). */
+const STATUT_DU_JALON: Record<Jalon, StatutParcours | null> = { APTE_CERTIFICATION: null, CERTIFIEE: 'CERTIFIEE', APPROUVEE_SECURITE: 'APPROUVEE_SECURITE', EN_PRODUCTION: 'EN_PRODUCTION' }
+
+/**
+ * D-98 : opérations d'une liaison instanciée depuis la version publiée de son type (D-91), comme MS-HOMOLOGATION : RACI
+ * des fonctions de la version (conducteur désigné, correspondant du participant, fonction à affecter sinon tenue par
+ * son premier titulaire de démonstration), geste, jalon, déclencheur et vue de chaque opération.
+ */
+function operationsDepuisVersion(s: Scenario, version: ReferenceOperation[], conducteur: Personne | null): OperationParcours[] {
+  const correspondant = P(`EXT-${s.institutionId}`, `Correspondant ${s.institutionNom}`, 'PARTICIPANT')
+  const tenue = (f: Fonction | null): Personne | null => (!f ? null : f === 'PARTICIPANT' ? correspondant : f === 'CONDUCTEUR' ? conducteur : s.aAffecter?.includes(f) ? aAffecter(f) : personne(f))
+  return [...version].sort((a, b) => (a.ordre ?? 0) - (b.ordre ?? 0)).map((o, i): OperationParcours => {
+    const courant = o.predecesseurs.length === 0
+    const geste = o.geste ?? 'DEPOSER_PREUVE'
+    const echeance = jour(s.debut + (i + 1) * (o.delaiJours ?? 3))
+    return {
+      id: `${s.id}:${o.code}`, liaisonId: s.id, rang: o.code, etape: (o.etape ?? 'CADRAGE') as EtapeCode, libelle: o.libelle, description: o.description, etapeCode: o.etape,
+      vue: o.vue ?? 'AUCUNE', geste, declencheur: o.declencheur, jalon: o.jalon, particularite: o.particularite, renvois: [],
+      signatures: (o.signatures ?? []).filter((x) => x.signataire).map((x) => ({ ...x, signataire: x.signataire as Fonction, libelleSignataire: CATALOGUE.fonctions.find((f) => f.code === x.signataire)?.libelle ?? x.signataire, etat: 'ATTENDUE' as const, suivante: false })),
+      segment: o.segment ?? 'AMONT', plateforme: o.plateforme, grain: o.grain ?? 'OPERATION', etat: courant ? 'A_FAIRE' : 'VERROUILLEE',
+      raci: { R: tenue(o.responsable), V: tenue(o.validateur), C: o.consultes.map((f) => tenue(f)!).filter(Boolean), I: o.informes.map((f) => tenue(f)!).filter(Boolean), E: o.externes.map((f) => tenue(f)!).filter(Boolean) },
+      echeance, sla: courant ? 'DANS_LES_DELAIS' : null, faiteLe: null, preuve: null, cle: o.cle, secret: o.secret, valeurReference: !!o.valeurReference,
+      oubliSansSymptome: o.oubliSansSymptome, pivot: o.pivot, predecesseursNonFaits: [...o.predecesseurs], transitionsPermises: [],
+      actionsPermises: courant ? actionsOuvertes({ geste, grain: o.grain ?? 'OPERATION', rang: o.code }) : ['ATTRIBUER'],
+    }
+  })
+}
+
+function construire(s: Scenario, version?: ReferenceOperation[] | null): Etat {
   const ref = referentielDe(s.typeProjet).filter((o) => Number(o.rang) >= 3 || isNaN(Number(o.rang)))
   const idxAvance = ref.findIndex((o) => o.rang === s.avancement)
   const conducteur = s.conducteur === null ? null : personne('CONDUCTEUR', s.conducteur)
-  const ops: OperationParcours[] = ref.map((o: OperationReferentiel, i) => {
+  const ops: OperationParcours[] = version ? operationsDepuisVersion(s, version, conducteur) : ref.map((o: OperationReferentiel, i) => {
     const fait = i <= idxAvance
     const enAttente = o.predecesseurs.filter((p) => ref.findIndex((x) => x.rang === p) > idxAvance)
     const courant = !fait && enAttente.length === 0
@@ -185,6 +225,7 @@ function construire(s: Scenario): Etat {
       vue: vueDe(o.rang),
       geste,
       declencheur: codesDeclenchesParRang(s.typeProjet, o.rang),
+      jalon: jalonDuRang(s.typeProjet, o.rang),
       particularite: o.rang === '15' ? 'ENTREE_ESSAIS' : o.rang === '16' ? 'FIN_ESSAIS' : o.rang === 'C1' ? 'CEREMONIE_CLES' : o.rang === '35' ? 'SERVICE_SUPPLEMENTAIRE' : null,
       renvois: [],
       signatures: [],
@@ -235,7 +276,8 @@ function construire(s: Scenario): Etat {
     transitionsPermises: [],
     actionsPermises: [],
   }
-  const typesAttestation: TypeAttestation[] = s.typeProjet === 'PAIEMENT_MOBILE' ? ['ISO_27001', 'GSMA'] : ['PCI_DSS']
+  // Modèle GENERIQUE (type créé dans la plateforme, D-91) : aucune attestation imposée.
+  const typesAttestation: TypeAttestation[] = s.depuisVersion ? [] : s.typeProjet === 'PAIEMENT_MOBILE' ? ['ISO_27001', 'GSMA'] : ['PCI_DSS']
   const approuve = ['APPROUVEE_SECURITE', 'EN_PRODUCTION'].includes(s.statut)
   const approbation: ApprobationSecurite = {
     liaisonId: s.id,
@@ -390,7 +432,8 @@ function tachesDe(etats: Etat[], fonctions: Fonction[]): TacheActeur[] {
       .filter((o) => o.etat === 'A_FAIRE' || o.etat === 'EN_COURS' || o.etat === 'BLOQUEE' || o.etat === 'EN_VALIDATION' || o.etat === 'EN_SIGNATURE')
       .flatMap((o): TacheActeur[] => {
         const r = o.raci.R?.fonction
-        const estR = o.etat !== 'EN_SIGNATURE' && r !== undefined && (fonctions.includes(r) || (r === 'CHEF_DES' && fonctions.includes('CHEFS_DEPARTEMENT')))
+        // Comme MS-HOMOLOGATION : le responsable n'a plus rien à faire pendant la validation et les signatures.
+        const estR = o.etat !== 'EN_SIGNATURE' && o.etat !== 'EN_VALIDATION' && r !== undefined && (fonctions.includes(r) || (r === 'CHEF_DES' && fonctions.includes('CHEFS_DEPARTEMENT')))
         const estE = o.etat !== 'EN_SIGNATURE' && participant && (r === 'PARTICIPANT' || o.raci.E.some((p) => p.fonction === 'PARTICIPANT'))
         const estV = o.etat === 'EN_VALIDATION' && o.raci.V !== null && fonctions.includes(o.raci.V.fonction)
         // D-91 : signature attendue (plus petit ordre restant) dont la fonction est tenue par l'acteur.
@@ -415,9 +458,38 @@ function suivantes(o: OperationParcours): SignatureOperation[] {
 }
 
 /** nomInstitution : nom tenu par le registre (MS-PARTICIPANT simulé), pour que la liaison ouverte porte le nom de l'adhérent choisi. */
-export function parcoursSimule(attendre: Attendre, institutionPortail: string, nomInstitution?: (id: string) => Promise<string | undefined>,
-  u: { profils?: string[]; fonctions?: () => FonctionCatalogue[] } = {}): { parcours: ServiceParcours; decision: ServiceDecision; portailParcours: ServicePortailParcours } {
+/** Démonstration continue (D-98) : état du parcours simulé gardé d'un chargement à l'autre (changement d'acteur). */
+export type PersistanceDemo = { lire(): string | null; ecrire(valeur: string): void }
+
+export function parcoursSimule(attendreJeu: Attendre, institutionPortail: string, nomInstitution?: (id: string) => Promise<string | undefined>,
+  u: {
+    profils?: string[]; fonctions?: () => FonctionCatalogue[]
+    /** D-98 : opérations de la version publiée d'un type (instanciation, D-91) ; null sans version publiée. */
+    versionPubliee?: (type: string) => ReferenceOperation[] | null
+    /** homologation.liaison-opened.v1 consommé par MS-PARTICIPANT : ADHERENT vers EN_HOMOLOGATION. */
+    surLiaisonOuverte?: (institutionId: string, liaisonId: string) => void
+    /** homologation.liaison-milestone-reached.v1 consommé par MS-PARTICIPANT (EN_PRODUCTION : institution ACTIF). */
+    surJalon?: (institutionId: string, jalon: Jalon, liaisonId: string) => void
+    persistance?: PersistanceDemo
+  } = {}): { parcours: ServiceParcours; decision: ServiceDecision; portailParcours: ServicePortailParcours } {
   const etats = new Map(SCENARIOS.map((s) => [s.id, construire(structuredClone(s))]))
+  // Démonstration continue : l'état gardé remplace le jeu initial (liaisons ouvertes et gestes accomplis compris).
+  try {
+    const garde = u.persistance?.lire()
+    if (garde) (JSON.parse(garde) as [string, Etat][]).forEach(([id, e]) => etats.set(id, e))
+  } catch {
+    // État illisible : jeu initial.
+  }
+  /** Chaque réponse garde l'état (démonstration continue) une fois l'effet appliqué. */
+  const attendre = (<T>(v: T | (() => T)) => attendreJeu(() => {
+    const r = typeof v === 'function' ? (v as () => T)() : v
+    try {
+      u.persistance?.ecrire(JSON.stringify([...etats.entries()]))
+    } catch {
+      // Stockage indisponible : la démonstration continue en mémoire.
+    }
+    return r
+  })) as Attendre
   // Fonctions du catalogue (D-91), et celles que confèrent les profils de l'utilisateur (GET /moi/fonctions, D-94 §6.5).
   const catalogueFonctions = (): FonctionCatalogue[] => u.fonctions?.() ?? CATALOGUE.fonctions.map((f) => ({ code: f.code, libelle: f.libelle, profils: f.profils ?? [], externe: !!f.externe, actif: true }))
   const libelleFonction = (f: Fonction) => catalogueFonctions().find((x) => x.code === f)?.libelle ?? f
@@ -501,6 +573,12 @@ export function parcoursSimule(attendre: Attendre, institutionPortail: string, n
     o.sla = null
     o.preuve = preuve
     o.actionsPermises = ['CONSULTER']
+    // Jalon atteint (homologation.liaison-milestone-reached.v1) : statut de la liaison, institution ACTIF en production.
+    const statut = o.jalon ? STATUT_DU_JALON[o.jalon] : null
+    if (o.jalon && statut) {
+      e.s.statut = statut
+      u.surJalon?.(e.s.institutionId, o.jalon, e.s.id)
+    }
     e.ops.forEach((x) => {
       x.predecesseursNonFaits = x.predecesseursNonFaits.filter((r) => r !== o.rang)
       if (x.etat === 'VERROUILLEE' && x.predecesseursNonFaits.length === 0) {
@@ -516,7 +594,7 @@ export function parcoursSimule(attendre: Attendre, institutionPortail: string, n
       id: e.s.id, reference: e.s.id, institutionId: e.s.institutionId, institutionNom: e.s.institutionNom, typeProjet: e.s.typeProjet,
       banquePartenaireNom: e.s.banque, personnalisateurNom: e.s.personnalisateur, statut: e.s.statut, etapeCourante: r.etapeCourante,
       conducteur: e.conducteur, etapesVersion: etapesVersionDe(e), intervenants: intervenantsDe(e),
-      dateDemarrage: jour(e.s.debut), dateCibleProduction: r.dateCibleProduction, versionReferentiel: e.s.typeProjet === 'PAIEMENT_MOBILE' ? 2 : 4,
+      dateDemarrage: jour(e.s.debut), dateCibleProduction: r.dateCibleProduction, versionReferentiel: e.s.depuisVersion ? 1 : e.s.typeProjet === 'PAIEMENT_MOBILE' ? 2 : 4,
       perimetre: perimetreDe(e), couvertureCertification: r.couvertureCertification, couvertureMiseEnService: r.couvertureMiseEnService,
       etapes: etapesDe(e), blocages: e.blocages, interlocuteursParticipant: [{ nom: `Correspondant technique ${e.s.institutionNom}`, fonction: 'Responsable technique' }, { nom: `Correspondant fonctionnel ${e.s.institutionNom}`, fonction: 'Responsable fonctionnel' }],
       liaisonOrigineId: e.s.origine ?? null,
@@ -563,9 +641,12 @@ export function parcoursSimule(attendre: Attendre, institutionPortail: string, n
           throw refus(409, 'HOM_LIAISON_DUPLICATE', 'Une liaison active existe déjà pour cette institution et ce type de projet.')
         }
         const cond = PERSONNES.findIndex((p) => p.id === o.chefDeProjetId)
-        const s: Scenario = { id: `LIA-2026-${String(50 + etats.size).padStart(3, '0')}`, institutionId: o.institutionId, institutionNom: nom ?? (o.institutionId === 'INST-0042' ? 'Établissement de paiement A' : o.institutionId === 'INST-0017' ? 'Banque B' : 'Nouvel adhérent'), typeProjet: o.typeProjet, banque: banque ?? null, personnalisateur: null, fintech: false, avancement: '2', statut: 'CADREE', conducteur: cond >= 0 ? PERSONNES.filter((p) => p.fonction === 'CONDUCTEUR').findIndex((p) => p.id === o.chefDeProjetId) : 0, debut: 0, cible: null, services: perimetre(o.typeProjet === 'PAIEMENT_MOBILE' ? SERVICES_MOBILE : SERVICES_CARTE, []) }
-        const e = construire(s)
+        // D-91, D-98 : un type créé dans la plateforme s'instancie depuis la version publiée de son référentiel.
+        const version = ['CARTE_INTERBANCAIRE', 'PAIEMENT_MOBILE', 'DELEGATAIRE'].includes(o.typeProjet) ? null : u.versionPubliee?.(o.typeProjet) ?? null
+        const s: Scenario = { id: `LIA-2026-${String(50 + etats.size).padStart(3, '0')}`, institutionId: o.institutionId, institutionNom: nom ?? (o.institutionId === 'INST-0042' ? 'Établissement de paiement A' : o.institutionId === 'INST-0017' ? 'Banque B' : 'Nouvel adhérent'), typeProjet: o.typeProjet, banque: banque ?? null, personnalisateur: null, fintech: false, avancement: '2', statut: 'CADREE', conducteur: cond >= 0 ? PERSONNES.filter((p) => p.fonction === 'CONDUCTEUR').findIndex((p) => p.id === o.chefDeProjetId) : 0, debut: 0, cible: null, services: version ? [{ code: 'TRANSVERSE', libelle: 'Service du projet', inclus: true }] : perimetre(o.typeProjet === 'PAIEMENT_MOBILE' ? SERVICES_MOBILE : SERVICES_CARTE, []), ...(version ? { depuisVersion: true } : {}) }
+        const e = construire(s, version)
         etats.set(s.id, e)
+        u.surLiaisonOuverte?.(o.institutionId, s.id)
         return resume(e)
       })
     },
@@ -684,8 +765,14 @@ export function parcoursSimule(attendre: Attendre, institutionPortail: string, n
     }),
     constaterCouverture: (id) => attendre(() => {
       const e = trouver(id)
-      const o = e.ops.find((x) => x.rang === '17')
+      // D-98 : l'opération du constat est celle qui porte le geste CONSTATER_COUVERTURE.
+      const o = e.ops.find((x) => x.geste === 'CONSTATER_COUVERTURE' && (x.etat === 'A_FAIRE' || x.etat === 'EN_COURS')) ?? e.ops.find((x) => x.geste === 'CONSTATER_COUVERTURE')
       if (!o || (o.etat !== 'A_FAIRE' && o.etat !== 'EN_COURS')) throw refus(409, 'HOM_COVERAGE_NOT_READY', 'Les essais ne sont pas terminés : la couverture ne peut pas être constatée.')
+      // Essais achevés : tous les services inclus sont certifiés, la couverture est complète.
+      if (e.s.depuisVersion) {
+        const inclus = e.s.services.filter((x) => x.inclus)
+        e.pv = { ...e.pv, couverture: couv(inclus.length, inclus.length), servicesCouverts: inclus.map((x) => x.code) }
+      }
       terminer(e, o, { documentRef: `COUV-${id.slice(-3)}`, nom: 'constat-couverture', empreinte: hex(`couv-${id}`), deposeLe: jour(0), deposePar: personne('SNA').nom })
     }),
     ouvrirServiceSupplementaire: (id, services) => attendre(() => {
@@ -741,6 +828,34 @@ export function parcoursSimule(attendre: Attendre, institutionPortail: string, n
       const liaisons = (f('PARTICIPANT') ? visibles : f('CONDUCTEUR') && fonctions.length === 1 ? actives.filter((e) => e.conducteur?.id === personne('CONDUCTEUR', 0).id) : actives).map(resume)
       return { fonction: fonctions[0] ?? 'DDRM', compteurs, taches: taches.sort((a, b) => (a.echeance ?? '9').localeCompare(b.echeance ?? '9')), liaisons, blocages: visibles.flatMap((e) => e.blocages.filter((b) => !b.leveLe)) }
     }),
+    // D-98 : mes actions de certification : tâches de mes fonctions (même calcul que le tableau d'acteur), opérations
+    // engagées des liaisons que je conduis, état et jalons de ces liaisons.
+    mesOperations: () => attendre((): MesOperations => {
+      const miens = codesMiens()
+      const actives = tous().filter((e) => e.s.statut !== 'CLOSE_SANS_SUITE')
+      const taches = tachesDe(actives, miens)
+      const mon = (e: Etat, o: OperationParcours, t?: TacheActeur): MonOperation => {
+        const v = vueOperation(o)
+        return {
+          operationId: o.id, liaisonId: e.s.id, liaisonReference: e.s.id, institutionNom: e.s.institutionNom, statutLiaison: e.s.statut, code: o.rang, libelle: t?.libelle ?? o.libelle ?? o.rang,
+          etape: o.etape, etapeCode: o.etapeCode ?? o.etape, etat: o.etat, qualite: t?.qualite ?? null, aPrendre: t?.aPrendre ?? null, signature: t?.signature ?? null, geste: o.geste ?? null,
+          jalon: o.jalon ?? null, declencheur: o.declencheur ?? null, vue: o.vue ?? null, responsable: o.raci.R, validateur: o.raci.V, echeance: o.echeance, sla: o.sla,
+          lien: lienOperation(o), actionsPermises: t ? v.actionsPermises : [],
+        }
+      }
+      const aAgir = taches.map((t) => { const { e, o } = operation(t.operationId); return mon(e, o, t) })
+      const faire = new Set(aAgir.map((x) => x.operationId))
+      const moi = personne('CONDUCTEUR', 0).id
+      const conduites = miens.includes('CONDUCTEUR') ? actives.filter((e) => e.conducteur?.id === moi) : []
+      const aSuivre = conduites.flatMap((e) => e.ops.filter((o) => !faire.has(o.id) && ['A_FAIRE', 'EN_COURS', 'EN_VALIDATION', 'EN_SIGNATURE', 'BLOQUEE'].includes(o.etat)).map((o) => mon(e, o)))
+      const suivies = [...conduites, ...actives.filter((e) => !conduites.includes(e) && aAgir.some((x) => x.liaisonId === e.s.id))]
+      const liaisons = suivies.map((e) => ({
+        liaisonId: e.s.id, reference: e.s.id, institutionNom: e.s.institutionNom, typeProjet: e.s.typeProjet, statut: e.s.statut, etapeCourante: etapeCourante(e), conducteur: conduites.includes(e),
+        operationsFaites: e.ops.filter((o) => o.etat === 'FAITE').length, operationsTotal: e.ops.length, lien: `/des/parcours/${e.s.id}`,
+        jalons: e.ops.filter((o) => o.jalon).map((o) => ({ jalon: o.jalon!, atteint: o.etat === 'FAITE', atteintLe: o.etat === 'FAITE' ? o.faiteLe : null, operationId: o.id })),
+      })).sort((a, b) => a.reference.localeCompare(b.reference))
+      return { aAgir, aSuivre, liaisons }
+    }),
     pilotage: () => attendre((): IndicateursPilotage => {
       const actives = tous().filter((e) => e.s.statut !== 'CLOSE_SANS_SUITE')
       const r = actives.map(resume)
@@ -771,7 +886,7 @@ export function parcoursSimule(attendre: Attendre, institutionPortail: string, n
   const decision: ServiceDecision = {
     procesVerbal: (id) => attendre(() => {
       const e = trouver(id)
-      const o17 = e.ops.find((o) => o.rang === '17')
+      const o17 = e.ops.find((o) => o.geste === 'CONSTATER_COUVERTURE')
       const o18 = declenchee(e, 'certification.pv-established.v1')
       const actions: string[] = []
       if (e.pv.etat === 'NON_ETABLI' && o17?.etat === 'FAITE' && o18?.etat === 'A_FAIRE') actions.push(e.pv.couverture.taux === 100 ? 'ETABLIR' : 'ETABLIR_BLOQUE')
@@ -804,7 +919,7 @@ export function parcoursSimule(attendre: Attendre, institutionPortail: string, n
       const actions: string[] = []
       if (e.pv.etat === 'SIGNE' && a.etat === 'EN_ATTENTE_DOSSIER') actions.push('CONSTITUER_DOSSIER')
       if (a.attestations.some((x) => x.preuve && !x.verifieeLe)) actions.push('VERIFIER_ATTESTATION')
-      if (a.attestations.every((x) => x.verifieeLe) && a.etat !== 'APPROUVEE' && a.etat !== 'VERIFIE_ARCHIVE') actions.push('ARCHIVER')
+      if (a.attestations.length && a.attestations.every((x) => x.verifieeLe) && a.etat !== 'APPROUVEE' && a.etat !== 'VERIFIE_ARCHIVE') actions.push('ARCHIVER')
       if (a.dossierChangement && !a.ficheChangement) actions.push('REFERENCER_FICHE')
       if (a.ficheChangement) actions.push('RELIRE_FICHE')
       // Visas optionnels (D-56) : signables avant l'approbation de la sécurité, une fois le procès-verbal signé.
@@ -816,7 +931,8 @@ export function parcoursSimule(attendre: Attendre, institutionPortail: string, n
     constituerDossierChangement: (id, fichier) => attendre(() => {
       const e = trouver(id)
       if (e.pv.etat !== 'SIGNE') throw refus(409, 'CER_PV_NOT_SIGNED', 'Le procès-verbal de certification doit être signé des deux parties.')
-      e.approbation = { ...e.approbation, etat: 'DOSSIER_CONSTITUE', dossierChangement: { documentRef: `CHG-DOS-${id.slice(-3)}`, nom: fichier.name, empreinte: hex(fichier.name + fichier.size), deposeLe: jour(0), deposePar: personne('PRODUCTION_MONETIQUE').nom } }
+      // Aucune attestation exigée (modèle générique) : rien à vérifier ni à archiver avant la relecture de la fiche.
+      e.approbation = { ...e.approbation, etat: e.approbation.attestations.length ? 'DOSSIER_CONSTITUE' : 'VERIFIE_ARCHIVE', dossierChangement: { documentRef: `CHG-DOS-${id.slice(-3)}`, nom: fichier.name, empreinte: hex(fichier.name + fichier.size), deposeLe: jour(0), deposePar: personne('PRODUCTION_MONETIQUE').nom } }
       const o = declenchee(e, 'certification.change-record-constituted.v1')
       if (o && o.etat !== 'FAITE') terminer(e, o, e.approbation.dossierChangement)
     }),
@@ -826,6 +942,8 @@ export function parcoursSimule(attendre: Attendre, institutionPortail: string, n
       e.approbation = { ...e.approbation, ficheChangement: { reference, etatApprobation: 'EN_EXAMEN', lueLe: jour(0), aRelire: false } }
       const o = declenchee(e, 'certification.change-record-referenced.v1')
       if (o && o.etat === 'A_FAIRE') terminer(e, o, { documentRef: reference, nom: reference, empreinte: hex(reference), deposeLe: jour(0), deposePar: personne('PRODUCTION_MONETIQUE').nom })
+      // D-98 : fiche référencée par le responsable, l'approbation attend la relecture de son validateur (sécurité).
+      if (e.s.depuisVersion) declenchees(e, 'certification.security-approved.v1').filter((x) => x.etat === 'A_FAIRE' && x.raci.V).forEach((x) => { x.etat = 'EN_VALIDATION'; x.actionsPermises = ['ATTRIBUER'] })
     }),
     relireFicheChangement: (id) => attendre(() => {
       const e = trouver(id)

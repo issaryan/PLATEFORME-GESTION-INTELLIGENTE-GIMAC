@@ -49,7 +49,7 @@ regles := [
 	# fonction (PUT liaisons/{id}/fonctions/{fonction}, HOM_STEP_MANAGE ou HOM_OPERATION_ASSIGN) et GET moi/fonctions
 	# (tout compte) restent au @PreAuthorize.
 	{"m": "POST", "re": `^/bff/des/homologation/parcours/operations/[^/]+/renvoi$`, "p": "HOM_OPERATION_VALIDATE"},
-	{"m": "POST", "re": `^/bff/des/homologation/parcours/operations/[^/]+/preuves$`, "p": "HOM_EVIDENCE_SUBMIT"},
+	# D-98 : la preuve, comme le livrable, est ouverte à HOM_STEP_MANAGE ou HOM_EVIDENCE_SUBMIT (@PreAuthorize du service).
 	{"m": "PUT", "re": `^/bff/des/homologation/liaisons/[^/]+/ressources$`, "p": "HOM_STEP_MANAGE"},
 	{"m": "POST", "re": `^/bff/des/homologation/(liaisons/[^/]+/blocages|blocages/[^/]+/levee)$`, "p": "HOM_STEP_MANAGE"},
 	# Remise de la fiche de suivi : conducteur (HOM_STEP_MANAGE) ou Normes et Agréments (CER_DOSSIER_VERIFY), au @PreAuthorize.
@@ -166,6 +166,7 @@ regles := [
 	# Processus d'unité (D-87, docs/lot1/processus-unite.md §5.1) : définitions et instances, tout membre interne ;
 	# droits fins (unité, pouvoirs D-81/D-86, intervenant, signataire, validateur) vérifiés par MS-PILOTAGE.
 	# Candidats d'un intervenant (désignation hors de l'unité) : /processus/candidats et …/etapes/{code}/candidats.
+	# D-98 : « processus que je peux lancer » (/processus/lancables) et « mes demandes » (/processus/demandes), même règle.
 	{"m": "GET", "re": `^/bff/des/pilotage/processus(/[^/]+|/instances/[^/]+(/etapes/[^/]+/candidats)?)?$`, "p": "PIL_ACTIVITY_OWN"},
 	{"m": "POST", "re": `^/bff/des/pilotage/processus(/[^/]+/(controle|publication|nouvelle-version|retrait|instances))?$`, "p": "PIL_ACTIVITY_OWN"},
 	{"m": "POST", "re": `^/bff/des/pilotage/processus/instances/[^/]+/(suspension|reprise|annulation)$`, "p": "PIL_ACTIVITY_OWN"},
@@ -197,6 +198,21 @@ messagerie_externe if {
 pilotage if regex.match(`^/bff/des/pilotage(/|$)`, input.path)
 
 organisation if regex.match(`^/bff/(des|console)/iam/(organisation|pouvoirs|demandes)(/|$)`, input.path)
+
+# « Mes actions de certification » (D-98, docs/lot1/lancement-processus.md §8) : GET des opérations de l'appelant,
+# ouvert à toute permission d'un acteur du parcours de certification (même liste que le @PreAuthorize du service et
+# que la fonctionnalité « mesActionsCertification » du catalogue), jamais à un compte d'institution.
+mes_operations if {
+	input.method == "GET"
+	input.path == "/bff/des/homologation/parcours/mes-operations"
+}
+
+permissions_mes_operations := {
+	"HOM_LIAISON_READ", "HOM_DASHBOARD_READ", "HOM_EVIDENCE_SUBMIT", "HOM_OPERATION_VALIDATE", "HOM_STEP_MANAGE",
+	"HOM_OPERATION_ASSIGN", "HOM_PROJECT_CONDUCT", "HOM_FUNCTION_DDRM", "HOM_FUNCTION_PRODUCTION", "HOM_FUNCTION_NETWORK",
+	"HOM_FUNCTION_SYSTEM", "HOM_FUNCTION_OPERATIONS", "CER_PV_ESTABLISH", "CER_QUITUS_TECHNIQUE_SIGN", "CER_DOSSIER_VERIFY",
+	"CER_SECURITY_VERIFY", "CER_CHANGE_RECORD_LINK", "CER_QUITUS_CONFORMITE_SIGN", "CER_QUITUS_DG_SIGN",
+}
 
 boite_notifications if regex.match(`^/bff/(des|console|portail)/notification(/|$)`, input.path)
 
@@ -374,6 +390,7 @@ allow if {
 	not catalogue_fonctionnalites
 	not depots_fragmentes
 	not apercus
+	not mes_operations
 	startswith(input.path, "/bff/des/")
 	input.authentifie == true
 	double_facteur
@@ -416,4 +433,14 @@ allow if {
 	avatar_collegue
 	input.authentifie == true
 	double_facteur
+}
+
+allow if {
+	not restreinte
+	mes_operations
+	not compte_externe
+	input.authentifie == true
+	double_facteur
+	some p in input.permissions
+	p in permissions_mes_operations
 }

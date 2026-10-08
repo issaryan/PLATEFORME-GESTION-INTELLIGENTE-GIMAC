@@ -181,6 +181,15 @@ class EvenementsNotificationsKafkaIT extends AbstractNotificationIT {
             {"specversion":"1.0","id":"%s","type":"pilotage.task-reminded.v1","subject":"%s","data":{"tacheId":"%s","titre":"Sauvegardes","responsableId":"%s","acteurId":"%s","le":"2026-10-06T10:00:00Z"}}"""
                 .formatted(UUID.randomUUID(), tache, tache, INGENIEUR, CHEF_DES)
         );
+        // D-98 : offre d'une décision (transition de statut à prononcer) : lien profond vers l'écran de la décision.
+        String decision = UUID.randomUUID().toString();
+        publier(
+            "pilotage.task",
+            decision,
+            """
+            {"specversion":"1.0","id":"%s","type":"pilotage.task-offered.v1","subject":"%s","data":{"tacheId":"%s","titre":"Prononcer l'adhésion : Banque B","uniteCible":null,"destinataires":["%s"],"acteurId":"%s","le":"2026-10-06T08:00:00Z","lien":"/des/institutions/i-1?onglet=transitions"}}"""
+                .formatted(UUID.randomUUID(), decision, decision, CHEF_DES, CONDUCTEUR)
+        );
         consommateurs.getListenerContainer(EvenementsNotificationsConsumer.GROUPE).start();
 
         assertThat(attendre("select count(*) from notification_utilisateur where reference_id = ?", 2, demande)).isEqualTo(2);
@@ -194,6 +203,10 @@ class EvenementsNotificationsKafkaIT extends AbstractNotificationIT {
         assertThat(compter("select count(*) from notification_utilisateur where reference_id = ? and type = 'DEMANDE'", demande)).isEqualTo(2);
         assertThat(compter("select count(*) from notification_utilisateur where reference_id = ? and lien = '/des/taches?vue=unite'", tache)).isEqualTo(2);
         assertThat(compter("select count(*) from notification_utilisateur where reference_id = ? and destinataire_id = ? and lien = ?", tache, INGENIEUR, "/des/taches?tache=" + tache)).isEqualTo(1);
+        assertThat(attendre("select count(*) from notification_utilisateur where reference_id = ?", 1, decision)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select lien from notification_utilisateur where reference_id = ? and destinataire_id = ?", String.class, decision, CHEF_DES)).isEqualTo(
+            "/des/institutions/i-1?onglet=transitions"
+        );
     }
 
     @Test

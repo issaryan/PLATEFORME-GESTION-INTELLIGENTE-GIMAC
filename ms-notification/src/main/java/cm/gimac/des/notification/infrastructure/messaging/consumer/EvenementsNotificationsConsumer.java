@@ -31,7 +31,8 @@ import org.springframework.transaction.annotation.Transactional;
  * (sujet pilotage.report), iam.request-submitted.v1 et iam.request-decided.v1 (sujet iam.request,
  * docs/lot1/pouvoirs-hierarchiques.md §4), et les six événements à destinataires des processus d'unité (sujet
  * pilotage.process, D-87, docs/lot1/processus-unite.md §5.5 : process-instance-started, process-step-activated,
- * process-step-submitted, process-step-signed, process-step-reassigned, process-instance-closed) ; les autres
+ * process-step-submitted, process-step-signed, process-step-reassigned, process-instance-closed ; l'activation d'une
+ * étape est aussi notifiée à l'initiateur de la demande, D-98) ; les autres
  * types de ces sujets (dont pilotage.process-published.v1) sont ignorés. Consommation idempotente par identifiant d'événement (table processed_event, RG-15,
  * RG-35) ; un message illisible part en rebut par le gestionnaire d'erreurs commun.
  */
@@ -126,7 +127,15 @@ public class EvenementsNotificationsConsumer {
                 );
             case TACHE_OFFERTE -> () ->
                 evenements.tacheOfferte(
-                    new TacheOfferte(texte(d, "tacheId"), texte(d, "titre"), texte(d, "uniteCible"), textes(d.path("destinataires")), texte(d, "acteurId"), instant(d, "le"))
+                    new TacheOfferte(
+                        texte(d, "tacheId"),
+                        texte(d, "titre"),
+                        texte(d, "uniteCible"),
+                        textes(d.path("destinataires")),
+                        texte(d, "acteurId"),
+                        instant(d, "le"),
+                        texte(d, "lien")
+                    )
                 );
             case TACHE_RELANCEE -> () ->
                 evenements.tacheRelancee(new TacheRelancee(texte(d, "tacheId"), texte(d, "titre"), texte(d, "responsableId"), texte(d, "acteurId"), instant(d, "le")));
@@ -139,7 +148,7 @@ public class EvenementsNotificationsConsumer {
                     new DemandeDecidee(texte(d, "demandeId"), texte(d, "type"), texte(d, "etat"), texte(d, "acteurId"), textes(d.path("destinataires")), instant(d, "le"))
                 );
             case INSTANCE_LANCEE -> processus(d, NatureProcessus.INSTANCE_LANCEE, null, texte(d, "lanceurId"));
-            case ETAPE_ACTIVEE -> processus(d, NatureProcessus.ETAPE_ACTIVEE, null, null);
+            case ETAPE_ACTIVEE -> avecInitiateur(d, processus(d, NatureProcessus.ETAPE_ACTIVEE, null, null));
             case ETAPE_SOUMISE -> processus(d, NatureProcessus.ETAPE_SOUMISE, texte(d, "attente"), texte(d, "acteurId"));
             case ETAPE_SIGNEE -> processus(d, NatureProcessus.ETAPE_SIGNEE, texte(d, "etatEtape"), texte(d, "signataireId"));
             case ETAPE_REAFFECTEE -> processus(d, NatureProcessus.ETAPE_REAFFECTEE, texte(d, "cause"), texte(d, "acteurId"));
@@ -170,6 +179,34 @@ public class EvenementsNotificationsConsumer {
             evenements.evenementProcessus(
                 new EvenementProcessus(texte(d, "instanceId"), faits, acteurId, ancienId, textes(d.path("destinataires")), texte(d, "lien"), instant(d, "le"))
             );
+    }
+
+    /**
+     * Avancement d'une demande (D-98) : l'étape activée est aussi notifiée à l'initiateur ({@code lanceurId}, ajouté
+     * à pilotage.process-step-activated.v1), sauf s'il en est lui-même destinataire (il agit) ou pour un renvoi (même
+     * étape, déjà connue de lui). Un événement antérieur, sans {@code lanceurId}, ne notifie que ses destinataires.
+     */
+    private Runnable avecInitiateur(JsonNode d, Runnable etape) {
+        String lanceur = texte(d, "lanceurId");
+        if (lanceur == null || d.path("renvoi").asBoolean(false) || textes(d.path("destinataires")).contains(lanceur)) {
+            return etape;
+        }
+        FaitsProcessus faits = new FaitsProcessus(
+            NatureProcessus.DEMANDE_AVANCEE,
+            texte(d, "code"),
+            texte(d, "intitule"),
+            texte(d, "etape"),
+            texte(d, "libelleEtape"),
+            null,
+            false,
+            texte(d, "executantId") == null,
+            texte(d, "echeance")
+        );
+        EvenementProcessus demande = new EvenementProcessus(texte(d, "instanceId"), faits, null, null, List.of(lanceur), texte(d, "lien"), instant(d, "le"));
+        return () -> {
+            etape.run();
+            evenements.evenementProcessus(demande);
+        };
     }
 
     private static String texte(JsonNode n, String champ) {

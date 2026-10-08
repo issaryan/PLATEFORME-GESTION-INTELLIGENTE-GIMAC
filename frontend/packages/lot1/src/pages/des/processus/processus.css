@@ -50,3 +50,22 @@
 @media (max-width: 960px) {
   .gm-proc-suivi { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* Lancer une demande et Mes demandes (D-98) : cartes des processus lançables, étapes d'une demande en frise. */
+.gm-dem-cartes { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: var(--gm-space-3); }
+.gm-dem-titre { background: none; border: 0; padding: 0; font: inherit; font-weight: 600; text-align: left; cursor: pointer; }
+.gm-dem-encours { display: flex; flex-wrap: wrap; align-items: center; gap: var(--gm-space-1); }
+.gm-dem-etapes { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--gm-space-2); counter-reset: etape; }
+.gm-dem-etape { counter-increment: etape; }
+.gm-dem-etape-bouton {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 150px; padding: var(--gm-space-2); font: inherit; font-size: 12px; text-align: left; cursor: pointer;
+  background: var(--gm-color-surface); color: var(--gm-color-text-primary); border: var(--gm-border-1) solid var(--gm-color-border); border-left: var(--gm-border-4) solid var(--gm-color-border-strong);
+}
+.gm-dem-etape-bouton:focus-visible { outline: 2px solid var(--gm-color-focus); outline-offset: 2px; }
+.gm-dem-etape-libelle { font-weight: 600; }
+.gm-dem-etape-libelle::before { content: counter(etape) '. '; color: var(--gm-color-text-secondary); }
+.gm-dem-etape-active .gm-dem-etape-bouton { border-left-color: var(--gm-color-status-info-fg); background: var(--gm-color-action-subtle); }
+.gm-dem-etape-a_signer .gm-dem-etape-bouton, .gm-dem-etape-a_valider .gm-dem-etape-bouton { border-left-color: var(--gm-color-status-warn-fg); background: var(--gm-color-status-warn-bg); }
+.gm-dem-etape-terminee .gm-dem-etape-bouton { border-left-color: var(--gm-color-status-ok-fg); background: var(--gm-color-status-ok-bg); }
+.gm-dem-etape-en_attente .gm-dem-etape-bouton { color: var(--gm-color-text-secondary); background: var(--gm-color-surface-sunken); }
+.gm-dem-etape-annulee .gm-dem-etape-bouton { color: var(--gm-color-text-muted); text-decoration: line-through; }

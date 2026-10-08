@@ -15,11 +15,26 @@ import java.util.UUID;
  * réaffectation, suspension, reprise, annulation ; départ d'une personne (événement de MS-IAM).
  */
 public interface InstancesProcessusUseCase {
-    /** Corps de POST /processus/{id}/instances. */
-    record Lancement(String intitule, Map<String, Object> champs, Map<String, String> designations) {}
+    /**
+     * Corps de POST /processus/{id}/instances : objet ({@code intitule}), champs des étapes initiales, désignations,
+     * valeurs du formulaire de lancement (D-98 §2, par code de champ).
+     */
+    record Lancement(String intitule, Map<String, Object> champs, Map<String, String> designations, Map<String, Object> formulaire) {
+        public Lancement(String intitule, Map<String, Object> champs, Map<String, String> designations) {
+            this(intitule, champs, designations, null);
+        }
+    }
 
     /** Ce que l'appelant peut faire sur une étape. */
-    record MoiEtape(boolean executer, boolean prendre, List<String> signer, boolean valider, boolean reaffecter) {}
+    record MoiEtape(boolean executer, boolean prendre, List<String> signer, boolean valider, boolean reaffecter) {
+        /**
+         * L'étape attend une décision de l'appelant (D-98) : l'exécuter, la prendre, la signer ou la valider ; la
+         * réaffectation, geste de pilotage, n'en fait pas partie.
+         */
+        public boolean attendMoi() {
+            return executer || prendre || !signer.isEmpty() || valider;
+        }
+    }
 
     record DroitsInstance(boolean suspendre, boolean reprendre, boolean annuler, boolean reaffecter) {}
 
@@ -36,10 +51,20 @@ public interface InstancesProcessusUseCase {
         LocalDate aujourdhui
     ) {}
 
-    /** {@code vue} : miennes (je suis ou ai été exécutant, validateur ou signataire), unite (mes unités), lancees. */
+    /**
+     * {@code vue} : miennes (je suis ou ai été exécutant, validateur ou signataire), unite (mes unités), lancees ; chaque
+     * instance porte les actions permises à l'appelant sur ses étapes ({@code moi}, D-98).
+     */
     Page<InstanceLue> instances(Appelant appelant, String vue, String etat, Integer page, Integer taille);
 
     InstanceLue lancer(Appelant appelant, UUID processusId, Lancement lancement);
+
+    /**
+     * « Mes demandes » (D-98 §3) : instances lancées par l'appelant, les plus récentes d'abord, avec l'état de chaque
+     * étape, la personne qui tient chaque étape en cours (tâches) et la dernière entrée de l'historique ; filtre d'état
+     * et recherche sur l'objet, le libellé ou le code du processus.
+     */
+    Page<InstanceLue> demandes(Appelant appelant, String etat, String q, Integer page, Integer taille);
 
     InstanceLue instance(Appelant appelant, UUID id);
 

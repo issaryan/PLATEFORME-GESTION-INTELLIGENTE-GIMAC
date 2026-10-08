@@ -76,7 +76,7 @@ class ProcessusExecutionIT extends AbstractProcessusIT {
             .perform(json(post(BASE + "/" + processus + "/instances").with(agent(TECHNICIEN_RESEAU)), lancement(AGENT)))
             .andExpect(status().isUnprocessableEntity())
             .andExpect(jsonPath("$.code").value("PIL_PROCESSUS_DESIGNATION_INVALIDE"));
-        mvc.perform(json(post(BASE + "/" + processus + "/instances").with(agent(AGENT)), lancement(INGENIEUR_RESEAU))).andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("PIL_PROCESSUS_INTERDIT"));
+        mvc.perform(json(post(BASE + "/" + processus + "/instances").with(agent(AGENT)), lancement(INGENIEUR_RESEAU))).andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("PIL_PROCESSUS_NON_INITIATEUR"));
         Map<String, Object> inconnue = lancement(INGENIEUR_RESEAU);
         inconnue.put("designations", Map.of("MISE_EN_OEUVRE", INGENIEUR_RESEAU, "ANALYSE", INGENIEUR_RESEAU));
         mvc.perform(json(post(BASE + "/" + processus + "/instances").with(agent(TECHNICIEN_RESEAU)), inconnue)).andExpect(status().isBadRequest()).andExpect(jsonPath("$.details.champ").value("designations.ANALYSE"));

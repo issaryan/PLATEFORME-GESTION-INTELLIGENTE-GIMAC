@@ -82,11 +82,33 @@ public final class ReglesHomologation {
         Intervenant validateur,
         List<Intervenant> destinataires,
         List<String> institutionsConcernees,
-        String lien
+        String lien,
+        String declencheur
     ) {
         public FaitsOperation {
             destinataires = destinataires == null ? List.of() : destinataires.stream().filter(d -> d != null).toList();
             institutionsConcernees = institutionsConcernees == null ? List.of() : institutionsConcernees.stream().filter(i -> !vide(i)).toList();
+        }
+
+        /** Faits sans déclencheur (opération qu'aucun geste de MS-CERTIFICATION ne clôt). */
+        public FaitsOperation(
+            Nature nature,
+            String liaisonId,
+            String reference,
+            String institutionNom,
+            String operationId,
+            String code,
+            String libelle,
+            String geste,
+            String echeance,
+            String motif,
+            Intervenant responsable,
+            Intervenant validateur,
+            List<Intervenant> destinataires,
+            List<String> institutionsConcernees,
+            String lien
+        ) {
+            this(nature, liaisonId, reference, institutionNom, operationId, code, libelle, geste, echeance, motif, responsable, validateur, destinataires, institutionsConcernees, lien, null);
         }
     }
 
@@ -283,14 +305,29 @@ public final class ReglesHomologation {
     }
 
     /**
-     * Lien du portail : l'écran de dépôt du livrable ({@code /portail/liaisons/<liaison>/livrables/<operation>}) quand
-     * l'institution doit déposer (action attendue sur un geste DEPOSER_*), sinon la liaison de l'institution.
+     * Lien du portail (D-98, comme le geste du participant servi par MS-HOMOLOGATION) : l'écran où l'institution agit ou
+     * suit l'opération : coordonnées techniques, procès-verbal (déclencheur {@code certification.pv-signed.v1}),
+     * attestations ({@code certification.attestations-archived.v1}), fiche de suivi ; l'écran de dépôt du livrable
+     * ({@code /portail/liaisons/<liaison>/livrables/<operation>}) quand l'institution doit déposer (action attendue sur un
+     * geste DEPOSER_*) ; sinon la liaison de l'institution.
      */
     public String lienPortailOperation(FaitsOperation f, Role role) {
         if (!identifiant(f.liaisonId())) {
             return PREFIXE_LIEN_PORTAIL;
         }
         String l = PREFIXE_LIEN_PORTAIL + "/" + f.liaisonId();
+        if ("COORDONNEES_TECHNIQUES".equals(f.geste())) {
+            return l + "/coordonnees";
+        }
+        if ("certification.pv-signed.v1".equals(f.declencheur())) {
+            return l + "/proces-verbal";
+        }
+        if ("certification.attestations-archived.v1".equals(f.declencheur())) {
+            return l + "/attestations";
+        }
+        if ("FICHE_SUIVI".equals(f.geste())) {
+            return l + "/fiche-suivi";
+        }
         boolean depot = f.geste() != null && f.geste().startsWith("DEPOSER_");
         if (role == Role.ACTION && f.nature() == Nature.OPERATION_ACTIVEE && depot && identifiant(f.operationId())) {
             return l + "/livrables/" + f.operationId();

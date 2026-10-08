@@ -10,8 +10,11 @@ import cm.gimac.des.pilotage.application.port.in.ProcessusUseCase.PorteeCatalogu
 import cm.gimac.des.pilotage.application.port.in.ProcessusUseCase.ProcessusSaisie;
 import cm.gimac.des.pilotage.web.rest.activite.Jetons;
 import cm.gimac.des.pilotage.web.rest.processus.VuesProcessus.ControleVue;
+import cm.gimac.des.pilotage.web.rest.processus.VuesProcessus.DemandeVue;
 import cm.gimac.des.pilotage.web.rest.processus.VuesProcessus.InstanceVue;
+import cm.gimac.des.pilotage.web.rest.processus.VuesProcessus.LancablesVue;
 import cm.gimac.des.pilotage.web.rest.processus.VuesProcessus.MotifRequete;
+import cm.gimac.des.pilotage.web.rest.processus.VuesProcessus.PageVue;
 import cm.gimac.des.pilotage.web.rest.processus.VuesProcessus.ProcessusResumeVue;
 import cm.gimac.des.pilotage.web.rest.processus.VuesProcessus.ProcessusVue;
 import cm.gimac.des.pilotage.web.rest.processus.VuesProcessus.PublicationRequete;
@@ -81,6 +84,32 @@ public class ProcessusResource {
         Authentication auth
     ) {
         return processus.candidats(appelant(auth), unite, profil);
+    }
+
+    /**
+     * « Lancer une demande » (D-98 §3) : versions publiées que l'appelant peut lancer (initiateurs de la définition, ou
+     * PROCESSUS_LANCER couvrant l'unité), groupées par unité propriétaire ; {@code q} : code, libellé ou catégorie.
+     */
+    @GetMapping("/lancables")
+    @PreAuthorize(Jetons.ACTIVITE)
+    public LancablesVue lancables(@RequestParam(name = "q", required = false) String q, Authentication auth) {
+        return LancablesVue.de(processus.lancables(appelant(auth), q));
+    }
+
+    /**
+     * « Mes demandes » (D-98 §3) : instances lancées par l'appelant, état de chaque étape, qui la tient, dernière
+     * évolution ; {@code etat} et {@code q} (objet, libellé ou code du processus) facultatifs, pagination.
+     */
+    @GetMapping("/demandes")
+    @PreAuthorize(Jetons.ACTIVITE)
+    public PageVue<DemandeVue> demandes(
+        @RequestParam(name = "etat", required = false) String etat,
+        @RequestParam(name = "q", required = false) String q,
+        @RequestParam(name = "page", required = false) Integer page,
+        @RequestParam(name = "taille", required = false) Integer taille,
+        Authentication auth
+    ) {
+        return PageVue.de(instances.demandes(appelant(auth), etat, q, page, taille), DemandeVue::de);
     }
 
     @PostMapping

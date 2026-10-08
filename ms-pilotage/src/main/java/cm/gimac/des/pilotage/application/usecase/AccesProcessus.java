@@ -6,6 +6,9 @@ import cm.gimac.des.pilotage.application.port.out.OrganisationPort.Portee;
 import cm.gimac.des.pilotage.application.port.out.OrganisationPort.Pouvoir;
 import cm.gimac.des.pilotage.application.port.out.OrganisationPort.Pouvoirs;
 import cm.gimac.des.pilotage.domain.exception.PilotageException;
+import cm.gimac.des.pilotage.domain.processus.Initiateurs;
+import cm.gimac.des.pilotage.domain.processus.Processus;
+import cm.gimac.des.pilotage.domain.processus.RegleInitiateur;
 import java.util.ArrayList;
 import java.util.List;
 import org.springframework.stereotype.Component;
@@ -71,6 +74,55 @@ class AccesProcessus {
 
     boolean lance(Appelant a, String unite) {
         return referentielsMetier(a) || equipes.dansUnite(a.id(), unite) || equipes.couvreUnite(a, Pouvoir.PROCESSUS_LANCER, unite);
+    }
+
+    /**
+     * Lancer cette version (D-98 §1) : REF_METIER_ADMIN ou PROCESSUS_LANCER couvrant l'unité (pouvoir de pilotage,
+     * inchangé), sinon l'une des règles d'initiateurs de la définition : membre de l'unité propriétaire
+     * (MEMBRES_UNITE), compte interne actif (TOUT_LE_GIMAC), membre d'une unité désignée (UNITES), porteur actif d'un
+     * profil désigné (PROFILS), porteur d'une permission désignée dans son jeton (PERMISSIONS).
+     */
+    boolean lance(Appelant a, Processus p) {
+        return referentielsMetier(a) || equipes.couvreUnite(a, Pouvoir.PROCESSUS_LANCER, p.getUnite()) || initiateur(a, p.getUnite(), p.getInitiateurs());
+    }
+
+    /** L'appelant satisfait l'une des règles d'initiateurs (sans les pouvoirs de pilotage). */
+    boolean initiateur(Appelant a, String unite, Initiateurs i) {
+        for (RegleInitiateur r : i.regles()) {
+            boolean ok = switch (r) {
+                case MEMBRES_UNITE -> equipes.dansUnite(a.id(), unite);
+                case TOUT_LE_GIMAC -> equipes.interneActif(a.id());
+                case UNITES -> i.unites().stream().anyMatch(u -> equipes.dansUnite(a.id(), u));
+                case PROFILS -> !i.profils().isEmpty() && equipes.interneActif(a.id()) && equipes.profilsDe(a.id()).stream().anyMatch(i.profils()::contains);
+                case PERMISSIONS -> i.permissions().stream().anyMatch(a.permissions()::contains);
+            };
+            if (ok) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Refus explicite d'un lancement (D-98 §1) : 403 PIL_PROCESSUS_NON_INITIATEUR, règles de la définition en détail. */
+    static PilotageException nonInitiateur(Processus p) {
+        Initiateurs i = p.getInitiateurs();
+        List<String> qui = new ArrayList<>();
+        for (RegleInitiateur r : i.regles()) {
+            qui.add(
+                switch (r) {
+                    case MEMBRES_UNITE -> "les membres de l'unité " + p.getUnite();
+                    case TOUT_LE_GIMAC -> "tout compte interne actif du GIMAC";
+                    case UNITES -> "les membres des unités " + String.join(", ", i.unites());
+                    case PROFILS -> "les porteurs des profils " + String.join(", ", i.profils());
+                    case PERMISSIONS -> "les porteurs des permissions " + String.join(", ", i.permissions());
+                }
+            );
+        }
+        return PilotageException.interditDetaille(
+            "PIL_PROCESSUS_NON_INITIATEUR",
+            "Ce processus ne peut être lancé que par " + String.join(", ou ", qui) + " (ou avec PROCESSUS_LANCER couvrant l'unité)",
+            java.util.Map.of("regles", i.regles().stream().map(Enum::name).toList(), "unites", i.unites(), "profils", i.profils(), "permissions", i.permissions())
+        );
     }
 
     boolean lit(Appelant a, String unite) {

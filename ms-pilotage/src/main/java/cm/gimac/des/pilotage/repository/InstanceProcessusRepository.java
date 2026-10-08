@@ -17,6 +17,20 @@ public interface InstanceProcessusRepository extends JpaRepository<InstanceProce
     )
     Page<InstanceProcessus> lancees(@Param("lanceur") String lanceur, @Param("etat") cm.gimac.des.pilotage.domain.processus.EtatInstance etat, Pageable page);
 
+    /** « Mes demandes » (D-98 §3) : instances lancées par le compte, filtre d'état, recherche sur l'objet et le processus. */
+    @Query(
+        value = "select i from InstanceProcessus i where i.lanceurId = :lanceur and (:etat is null or i.etat = :etat) " +
+        "and (:q is null or lower(i.intitule) like :q or lower(i.libelle) like :q or lower(i.code) like :q) order by i.lanceeLe desc",
+        countQuery = "select count(i) from InstanceProcessus i where i.lanceurId = :lanceur and (:etat is null or i.etat = :etat) " +
+        "and (:q is null or lower(i.intitule) like :q or lower(i.libelle) like :q or lower(i.code) like :q)"
+    )
+    Page<InstanceProcessus> demandes(
+        @Param("lanceur") String lanceur,
+        @Param("etat") cm.gimac.des.pilotage.domain.processus.EtatInstance etat,
+        @Param("q") String q,
+        Pageable page
+    );
+
     @Query(
         value = "select i from InstanceProcessus i where (:toutes = true or i.unite in :unites) and (:etat is null or i.etat = :etat) order by i.lanceeLe desc",
         countQuery = "select count(i) from InstanceProcessus i where (:toutes = true or i.unite in :unites) and (:etat is null or i.etat = :etat)"

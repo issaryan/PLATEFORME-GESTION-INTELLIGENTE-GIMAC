@@ -397,7 +397,7 @@ describe('D-87 : suivi d’une instance', () => {
 
   it('exécutant : champs d’une étape (contrôle, enregistrement) ; refus restitué ; instance inconnue', async () => {
     const s = services(PERSONNES.membre)
-    const l = (await s.processus.lister({ etat: 'PUBLIEE' }))[0]
+    const l = (await s.processus.lister({ etat: 'PUBLIEE' })).find((p) => p.code === 'OUVERTURE_FLUX_RESEAU')!
     const i = await s.processus.lancer(l.id, { intitule: 'Essai des champs', champs: {}, designations: { MISE_EN_OEUVRE: 'u-res' } })
     rendrePage(<InstancePage />, { chemin: `/des/processus/instances/${i.id}`, motif: '/des/processus/instances/:id', services: s, session: session(PERSONNES.membre) })
     const panneau = await screen.findByRole('complementary', { name: /Demande d’ouverture du flux/ })

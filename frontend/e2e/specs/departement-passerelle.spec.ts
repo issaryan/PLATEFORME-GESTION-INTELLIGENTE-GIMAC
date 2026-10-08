@@ -49,11 +49,13 @@ test.describe('Fonctionnalité : application du département sur la passerelle',
     })
     await test.step('Alors une nouvelle soumission ouvre la liaison au cadrage', async () => {
       await page.getByRole('dialog').getByRole('button', { name: 'Ouvrir une liaison (cadrage)' }).click()
-      await expect(page.getByText(/Liaison LIA-2026-101 ouverte en phase de cadrage/)).toBeVisible()
+      // D-98 : la liaison ouverte mène à son dossier (parcours).
+      await expect(page).toHaveURL(/\/des\/parcours\/LIA-2026-101\?nouvelle=1/)
       const ouverture = gw.appels.filter((a) => a.methode === 'POST' && a.chemin === '/bff/des/homologation/liaisons').at(-1)!
       expect(ouverture.corps).toEqual({ institutionId: 'i-mms', typeProjet: 'PAIEMENT_MOBILE', chefDeProjetId: 'U-201', banquePartenaireId: 'i-bqb' })
     })
     await test.step('Quand il désigne un autre conducteur avec un motif', async () => {
+      await page.goto(`${ADRESSES.departementHttp}/des/liaisons/LIA-2026-101`)
       await page.getByRole('button', { name: 'Désigner le conducteur' }).click()
       await page.locator('select[name="chefDeProjetId"]').selectOption('U-202')
       await page.locator('textarea[name="motif"]').fill('Charge du premier conducteur')

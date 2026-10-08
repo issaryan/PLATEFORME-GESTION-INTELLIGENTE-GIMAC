@@ -251,6 +251,61 @@ public final class Vues {
 
     public record TableauActeur(Fonction fonction, List<Compteur> compteurs, List<Tache> taches, List<LiaisonResume> liaisons, List<Blocage> blocages) {}
 
+    /**
+     * « Mes actions de certification » (D-98 §5) : opération que la personne doit faire (qualité R, V ou C, signature
+     * attendue, tâche à prendre) ou qu'elle suit (conducteur de la liaison, intervenant désigné), avec son état, ses
+     * intervenants, son lien direct et les actions qu'elle peut accomplir maintenant.
+     */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record MonOperation(
+        String operationId,
+        String liaisonId,
+        String liaisonReference,
+        String institutionNom,
+        StatutParcours statutLiaison,
+        String code,
+        String libelle,
+        EtapeCode etape,
+        String etapeCode,
+        EtatOperationParcours etat,
+        Qualite qualite,
+        Boolean aPrendre,
+        String signature,
+        Geste geste,
+        Jalon jalon,
+        String declencheur,
+        VueOperation vue,
+        Personne responsable,
+        Personne validateur,
+        LocalDate echeance,
+        Sla sla,
+        String lien,
+        List<String> actionsPermises
+    ) {}
+
+    /** Jalon d'une liaison suivie : atteint quand l'opération qui le porte est faite. */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record JalonSuivi(Jalon jalon, boolean atteint, LocalDate atteintLe, String operationId) {}
+
+    /** Liaison que la personne conduit ou sur laquelle elle intervient : statut, avancement et jalons. */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record LiaisonSuivie(
+        String liaisonId,
+        String reference,
+        String institutionNom,
+        TypeProjet typeProjet,
+        StatutParcours statut,
+        EtapeCode etapeCourante,
+        boolean conducteur,
+        long operationsFaites,
+        long operationsTotal,
+        List<JalonSuivi> jalons,
+        String lien
+    ) {}
+
+    /** Réponse de {@code GET /parcours/mes-operations} : à faire, à suivre, liaisons suivies et leurs jalons. */
+    public record MesOperations(List<MonOperation> aAgir, List<MonOperation> aSuivre, List<LiaisonSuivie> liaisons) {}
+
     public record ServiceNombre(String serviceCode, String libelle, long nombre) {}
 
     public record ServiceDelai(String serviceCode, String libelle, long delaiMoyenJours) {}

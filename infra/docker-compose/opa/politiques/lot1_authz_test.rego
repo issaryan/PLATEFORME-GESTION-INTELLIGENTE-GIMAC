@@ -321,7 +321,6 @@ test_livrable_du_participant_sans_institution_refuse if not authz.allow with inp
 routes_parcours := [
 	["POST", "/bff/des/homologation/parcours/operations/o1/validation", "HOM_OPERATION_VALIDATE"],
 	["POST", "/bff/des/homologation/parcours/operations/o1/renvoi", "HOM_OPERATION_VALIDATE"],
-	["POST", "/bff/des/homologation/parcours/operations/o1/preuves", "HOM_EVIDENCE_SUBMIT"],
 	["PUT", "/bff/des/homologation/liaisons/l1/ressources", "HOM_STEP_MANAGE"],
 	["POST", "/bff/des/homologation/liaisons/l1/blocages", "HOM_STEP_MANAGE"],
 	["POST", "/bff/des/homologation/blocages/b1/levee", "HOM_STEP_MANAGE"],
@@ -346,6 +345,42 @@ test_parcours_sans_permission if {
 test_parcours_livrable_laisse_au_service if authz.allow with input as {
 	"method": "POST", "path": "/bff/des/homologation/parcours/operations/o1/livrable", "permissions": ["HOM_STEP_MANAGE"],
 	"authentifie": true, "acr": "2",
+}
+
+# D-98 : la preuve est laissée au @PreAuthorize du service (HOM_STEP_MANAGE ou HOM_EVIDENCE_SUBMIT), comme le livrable.
+test_parcours_preuve_laissee_au_service if {
+	every p in ["HOM_STEP_MANAGE", "HOM_EVIDENCE_SUBMIT"] {
+		authz.allow with input as {
+			"method": "POST", "path": "/bff/des/homologation/parcours/operations/o1/preuves", "permissions": [p],
+			"authentifie": true, "acr": "2",
+		}
+	}
+}
+
+# D-98 : « Mes actions de certification » ouvertes à toute permission d'un acteur du parcours, refusées sans, sans second
+# facteur ou pour un compte d'institution.
+test_mes_operations_acteurs_du_parcours if {
+	every p in ["HOM_LIAISON_READ", "HOM_FUNCTION_DDRM", "HOM_PROJECT_CONDUCT", "CER_SECURITY_VERIFY", "CER_QUITUS_DG_SIGN", "CER_CHANGE_RECORD_LINK"] {
+		authz.allow with input as {
+			"method": "GET", "path": "/bff/des/homologation/parcours/mes-operations", "permissions": [p],
+			"authentifie": true, "acr": "2",
+		}
+	}
+}
+
+test_mes_operations_refusees if {
+	not authz.allow with input as {
+		"method": "GET", "path": "/bff/des/homologation/parcours/mes-operations", "permissions": ["HOM_LIAISON_LIST", "PIL_ACTIVITY_OWN"],
+		"authentifie": true, "acr": "2",
+	}
+	not authz.allow with input as {
+		"method": "GET", "path": "/bff/des/homologation/parcours/mes-operations", "permissions": ["HOM_LIAISON_READ"],
+		"authentifie": true, "acr": "1",
+	}
+	not authz.allow with input as {
+		"method": "GET", "path": "/bff/des/homologation/parcours/mes-operations", "permissions": ["HOM_LIAISON_READ"],
+		"institution_id": "INST-0042", "authentifie": true, "acr": "2",
+	}
 }
 
 # D-93 et D-94 : affectation d'une fonction et fonctions de l'appelant laissées au @PreAuthorize du service.
@@ -709,6 +744,9 @@ routes_processus := [
 	["GET", "/bff/des/pilotage/processus/instances"],
 	["GET", "/bff/des/pilotage/processus/instances/i1"],
 	["GET", "/bff/des/pilotage/processus/candidats"],
+	# D-98 : processus que je peux lancer, mes demandes.
+	["GET", "/bff/des/pilotage/processus/lancables"],
+	["GET", "/bff/des/pilotage/processus/demandes"],
 	["GET", "/bff/des/pilotage/processus/instances/i1/etapes/ANALYSE/candidats"],
 	["POST", "/bff/des/pilotage/processus/instances/i1/etapes/ANALYSE/livrables"],
 	["PUT", "/bff/des/pilotage/processus/instances/i1/etapes/ANALYSE/champs"],

@@ -27,6 +27,10 @@ export const processusHttp: ServiceProcessus = {
   retirer: (id, motif) => http.post(`${definition(id)}/retrait`, { body: { motif } }),
 
   instances: (q) => http.get(`${PROCESSUS}/instances`, { query: { vue: q.vue, etat: q.etat || undefined, page: q.page ?? 0, taille: q.taille ?? 20 } }),
+  // D-98 : « Lancer une demande » et « Mes demandes » ; pièce jointe du formulaire de lancement, référence = la définition.
+  lancables: (q) => http.get(`${PROCESSUS}/lancables`, { query: { q: q.q?.trim() || undefined } }),
+  demandes: (q) => http.get(`${PROCESSUS}/demandes`, { query: { etat: q.etat || undefined, q: q.q?.trim() || undefined, page: q.page ?? 0, taille: q.taille ?? 20 } }),
+  televerserPieceLancement: (fichier, processusId, o) => televerser(depotsHttp('des'), fichier, { finalite: 'PROCESSUS_UNITE', reference: processusId }, o),
   lancer: (id, l) => http.post(`${definition(id)}/instances`, { body: l }),
   instance: (id) => http.get(instance(id)),
   televerserLivrable: (fichier, instanceId, o) => televerser(depotsHttp('des'), fichier, { finalite: 'PROCESSUS_UNITE', reference: instanceId }, o),

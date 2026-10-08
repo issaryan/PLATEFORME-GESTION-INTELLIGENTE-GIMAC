@@ -24,7 +24,7 @@ export function Couverture({ libelle, valeur }: { libelle: string; valeur: Cover
 
 /** Tâches du participant : libellé, liaison, étape, qualité, échéance, et le geste qui la réalise. */
 export function TableTaches({ taches, requete, liaison = true }: { taches: TacheActeur[]; requete: Etat; liaison?: boolean }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const permissions = usePermissions()
   const libelle = useLibelleTache()
@@ -34,9 +34,12 @@ export function TableTaches({ taches, requete, liaison = true }: { taches: Tache
       render: (x) => (
         <span className="gm-col" style={{ gap: 'var(--gm-space-1)', textAlign: 'left' }}>
           <span className="gm-type-body-strong">{libelle(x)}</span>
-          <span className="gm-type-small" style={{ color: 'var(--gm-color-text-secondary)' }}>
-            {t('pp.preuve', { preuve: t(`parcours.preuveAttendue.${x.rang}`, { defaultValue: '' }) })}
-          </span>
+          {/* Preuve attendue d'une opération reprise de l'annexe A ; rien pour une opération d'un type créé (D-98). */}
+          {i18n.exists(`parcours.preuveAttendue.${x.rang}`) ? (
+            <span className="gm-type-small" style={{ color: 'var(--gm-color-text-secondary)' }}>
+              {t('pp.preuve', { preuve: t(`parcours.preuveAttendue.${x.rang}`) })}
+            </span>
+          ) : null}
         </span>
       ),
     },

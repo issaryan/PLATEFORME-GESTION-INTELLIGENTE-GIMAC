@@ -47,7 +47,7 @@ export {
   type DroitServi, type WidgetServi, type Application, type Ecran, type CleWidget,
 } from './fonctionnalites'
 export {
-  CatalogueFonctionnalitesProvider, CatalogueIndisponible, GardeFonctionnalite, useCatalogueFonctionnalites, useFonctionnalitesOuvertes, useNavigationCatalogue, useTraduire,
+  CatalogueFonctionnalitesProvider, CatalogueIndisponible, GardeFonctionnalite, GardePermission, useCatalogueFonctionnalites, useFonctionnalitesOuvertes, useNavigationCatalogue, useTraduire,
 } from './catalogue'
 export { FONCTIONNALITES_INITIALES as FONCTIONNALITES_DEMO } from './services/simule/fonctionnalites'
 // Rôles composés par fonctionnalité (D-90) : catalogue Module > Fonctionnalité > Droit dérivé du catalogue servi.

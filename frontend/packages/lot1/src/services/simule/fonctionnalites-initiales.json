@@ -244,6 +244,56 @@
    ]
   },
   {
+   "cle": "lancerDemande",
+   "application": "des",
+   "module": "processus",
+   "libelle": "nav.lancerDemande",
+   "groupe": "monActivite",
+   "ordre": 92,
+   "icone": "send",
+   "visible": true,
+   "permissions": {
+    "tous": [],
+    "unDe": [
+     "PIL_ACTIVITY_OWN"
+    ]
+   },
+   "widgets": [],
+   "droits": [
+    {
+     "cle": "PIL_ACTIVITY_OWN",
+     "nature": "CONSULTER",
+     "permission": "PIL_ACTIVITY_OWN",
+     "libelle": "droits.permission.PIL_ACTIVITY_OWN"
+    }
+   ]
+  },
+  {
+   "cle": "mesDemandes",
+   "application": "des",
+   "module": "processus",
+   "libelle": "nav.mesDemandes",
+   "groupe": "monActivite",
+   "ordre": 94,
+   "icone": "inbox",
+   "visible": true,
+   "permissions": {
+    "tous": [],
+    "unDe": [
+     "PIL_ACTIVITY_OWN"
+    ]
+   },
+   "widgets": [],
+   "droits": [
+    {
+     "cle": "PIL_ACTIVITY_OWN",
+     "nature": "CONSULTER",
+     "permission": "PIL_ACTIVITY_OWN",
+     "libelle": "droits.permission.PIL_ACTIVITY_OWN"
+    }
+   ]
+  },
+  {
    "cle": "institutions",
    "application": "des",
    "module": "participants",
@@ -310,6 +360,62 @@
      "libelle": "droits.permission.PAR_TRANSITION_APPROVE"
     }
    ]
+  },
+  {
+   "cle": "lancerCertification",
+   "application": "des",
+   "module": "homologation",
+   "libelle": "nav.lancerCertification",
+   "groupe": "homologation",
+   "ordre": 104,
+   "icone": "flag",
+   "visible": true,
+   "permissions": {
+    "tous": [],
+    "unDe": [
+     "PAR_INSTITUTION_CREATE",
+     "PAR_ADHESION_INSTRUCT",
+     "HOM_LIAISON_OPEN"
+    ]
+   },
+   "widgets": [],
+   "droits": []
+  },
+  {
+   "cle": "mesActionsCertification",
+   "application": "des",
+   "module": "homologation",
+   "libelle": "nav.mesActionsCertification",
+   "groupe": "homologation",
+   "ordre": 106,
+   "icone": "check-check",
+   "visible": true,
+   "permissions": {
+    "tous": [],
+    "unDe": [
+     "HOM_LIAISON_READ",
+     "HOM_DASHBOARD_READ",
+     "HOM_EVIDENCE_SUBMIT",
+     "HOM_OPERATION_VALIDATE",
+     "HOM_STEP_MANAGE",
+     "HOM_OPERATION_ASSIGN",
+     "HOM_PROJECT_CONDUCT",
+     "HOM_FUNCTION_DDRM",
+     "HOM_FUNCTION_PRODUCTION",
+     "HOM_FUNCTION_NETWORK",
+     "HOM_FUNCTION_SYSTEM",
+     "HOM_FUNCTION_OPERATIONS",
+     "CER_PV_ESTABLISH",
+     "CER_QUITUS_TECHNIQUE_SIGN",
+     "CER_DOSSIER_VERIFY",
+     "CER_SECURITY_VERIFY",
+     "CER_CHANGE_RECORD_LINK",
+     "CER_QUITUS_CONFORMITE_SIGN",
+     "CER_QUITUS_DG_SIGN"
+    ]
+   },
+   "widgets": [],
+   "droits": []
   },
   {
    "cle": "liaisons",

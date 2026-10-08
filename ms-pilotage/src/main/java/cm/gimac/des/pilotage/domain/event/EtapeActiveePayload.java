@@ -9,7 +9,8 @@ import java.util.UUID;
  * (ou rendue active par un renvoi du validateur, {@code renvoi} vrai, {@code motif}) ; {@code executantId} :
  * personne chargée, ou null pour une tâche à prendre par les porteurs de {@code profil} dans {@code unite} ;
  * {@code destinataires} : l'exécutant, ou les membres actifs de l'unité portant le profil (à défaut le chef de
- * l'unité), que MS-NOTIFICATION avertit (type PROCESSUS).
+ * l'unité), que MS-NOTIFICATION avertit (type PROCESSUS) ; {@code lanceurId} (ajout D-98) : l'initiateur de la
+ * demande, que MS-NOTIFICATION avertit de l'avancement (étape en cours) s'il n'est pas lui-même destinataire.
  */
 public record EtapeActiveePayload(
     UUID instanceId,
@@ -27,7 +28,8 @@ public record EtapeActiveePayload(
     String motif,
     List<String> destinataires,
     String lien,
-    Instant le
+    Instant le,
+    String lanceurId
 ) {
     public static final String TYPE = "pilotage.process-step-activated.v1";
 

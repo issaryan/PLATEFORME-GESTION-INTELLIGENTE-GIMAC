@@ -162,8 +162,24 @@ class ParcoursDdrmIT extends AbstractParticipantIT {
             "participant.adhesion-piece-recorded.v1",
             "participant.institution-updated.v1",
             "participant.transition-requested.v1",
+            "participant.transition-approved.v1",
             "participant.status-changed.v1"
         );
+        // D-98 : la proposition porte l'écran où l'approbateur la prononce, l'approbation la clôt (tâche de MS-PILOTAGE).
+        String demandee = jdbc.queryForObject(
+            "select payload::text from outbox_event where aggregate_id = ? and event_type = 'participant.transition-requested.v1'",
+            String.class,
+            id
+        );
+        assertThat(JsonPath.<String>read(demandee, "$.lien")).isEqualTo("/des/institutions/" + id + "?onglet=transitions");
+        assertThat(JsonPath.<String>read(demandee, "$.institutionNom")).isNotBlank();
+        String approbation = jdbc.queryForObject(
+            "select payload::text from outbox_event where aggregate_id = ? and event_type = 'participant.transition-approved.v1'",
+            String.class,
+            id
+        );
+        assertThat(JsonPath.<Boolean>read(approbation, "$.definitive")).isTrue();
+        assertThat(JsonPath.<String>read(approbation, "$.transitionId")).isEqualTo(JsonPath.<String>read(demandee, "$.transitionId"));
         assertThat(jdbc.queryForObject("select count(*) from interaction where institution_id = ?::uuid", Integer.class, id)).isEqualTo(2);
 
         relais.relayerJusquaEnvoi(id);
@@ -171,6 +187,9 @@ class ParcoursDdrmIT extends AbstractParticipantIT {
             assertThat(JsonPath.<String>read(r.value(), "$.type")).isIn("participant.institution-registered.v1", "participant.status-changed.v1");
             assertThat(JsonPath.<String>read(r.value(), "$.specversion")).isEqualTo("1.0");
         });
+        assertThat(relais.lire("participant.transition", id))
+            .extracting(r -> JsonPath.<String>read(r.value(), "$.type"))
+            .containsSubsequence("participant.transition-requested.v1", "participant.transition-approved.v1");
     }
 
     @Test

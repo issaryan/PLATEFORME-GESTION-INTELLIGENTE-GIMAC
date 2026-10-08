@@ -43,7 +43,11 @@ function Dossier({ dossier }: { dossier: DossierLiaison }) {
   const [params, setParams] = useSearchParams()
   const [retour, annoncer] = useRetour()
   const gestes = useGestesDossier(dossier)
-  const onglet: Onglet = (ONGLETS as readonly string[]).includes(params.get('onglet') ?? '') ? (params.get('onglet') as Onglet) : 'perimetre'
+  // D-98 : la tâche « Prendre la fonction » ou « Affecter <fonction> » mène à ?onglet=etapes&fonction=<FONCTION> : l'affectation
+  // se fait dans la gouvernance, ouverte avec la fonction demandée.
+  const fonctionDemandee = params.get('fonction')
+  const demande = (ONGLETS as readonly string[]).includes(params.get('onglet') ?? '') ? (params.get('onglet') as Onglet) : 'perimetre'
+  const onglet: Onglet = fonctionDemandee && demande === 'etapes' ? 'gouvernance' : demande
   const action = params.get('action')
   const maj = (m: Record<string, string | null>) =>
     setParams(
@@ -86,7 +90,7 @@ function Dossier({ dossier }: { dossier: DossierLiaison }) {
     decision: <OngletDecision dossier={dossier} />,
     'mise-en-service': <OngletMiseEnService dossier={dossier} />,
     blocages: <OngletBlocages dossier={dossier} onDeclarer={gestes.bloquer ? () => maj({ action: 'bloquer' }) : undefined} />,
-    gouvernance: <OngletGouvernance dossier={dossier} />,
+    gouvernance: <OngletGouvernance dossier={dossier} fonction={fonctionDemandee} />,
   }
   const libelleOnglet = (k: Onglet) => (k === 'blocages' && blocagesEnCours > 0 ? t('parcoursDossier.onglet.blocagesN', { count: blocagesEnCours }) : t(`parcoursDossier.onglet.${k}`))
 

@@ -666,7 +666,7 @@ public class TacheService implements TachesUseCase {
         );
         publierCreation(t, createur, le);
         List<String> destinataires = destinatairesOffre(unite, profils, permissions);
-        outbox.publish(AGREGAT, t.getId(), TacheOffertePayload.TYPE, new TacheOffertePayload(t.getId(), t.getTitre(), unite, destinataires, createur, le));
+        outbox.publish(AGREGAT, t.getId(), TacheOffertePayload.TYPE, new TacheOffertePayload(t.getId(), t.getTitre(), unite, destinataires, createur, le, lienNotification(t)));
         return new Creation(lue(t), true);
     }
 
@@ -787,7 +787,20 @@ public class TacheService implements TachesUseCase {
             le
         );
         List<String> destinataires = destinatairesOffre(t.getUniteCible(), List.copyOf(t.getProfilsRequis()), List.copyOf(t.getPermissionsRequises()));
-        outbox.publish(AGREGAT, t.getId(), TacheOffertePayload.TYPE, new TacheOffertePayload(t.getId(), t.getTitre(), t.getUniteCible(), destinataires, t.getCreateurId(), le));
+        outbox.publish(
+            AGREGAT,
+            t.getId(),
+            TacheOffertePayload.TYPE,
+            new TacheOffertePayload(t.getId(), t.getTitre(), t.getUniteCible(), destinataires, t.getCreateurId(), le, lienNotification(t))
+        );
+    }
+
+    /**
+     * Lien de la notification d'une offre (D-98) : celui de l'origine pour une offre d'origine DECISION (l'acte se fait sur
+     * cet écran, sans prise préalable : prononcer une transition de statut) ; sinon nul (tâches à prendre).
+     */
+    static String lienNotification(Tache t) {
+        return t.getOrigineType() == TypeOrigine.DECISION ? t.getOrigineLien() : null;
     }
 
     /**

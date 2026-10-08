@@ -64,7 +64,7 @@ test.describe('Fonctionnalité : cadrage des liaisons par le chef du DES', () =>
     await page.getByRole('button', { name: 'Ouvrir une liaison (cadrage)' }).click()
     const d = page.getByRole('dialog')
     await test.step('Quand il soumet sans type de projet', async () => {
-      await page.locator('select[name="chefDeProjetId"]').selectOption('U-201')
+      await page.locator('select[name="chefDeProjetId"]').selectOption('U-COND-1')
       await d.getByRole('button', { name: 'Ouvrir une liaison (cadrage)' }).click()
       await expect(page.getByText('Choisissez le type de projet.').first()).toBeVisible()
     })
@@ -75,7 +75,8 @@ test.describe('Fonctionnalité : cadrage des liaisons par le chef du DES', () =>
     await test.step('Puis un projet de carte interbancaire', async () => {
       await page.getByLabel('Carte interbancaire').check()
       await d.getByRole('button', { name: 'Ouvrir une liaison (cadrage)' }).click()
-      await expect(page.getByText(/ouverte en phase de cadrage/)).toBeVisible()
+      // D-98 : le dossier de la liaison s'ouvre.
+      await expect(page.getByText(/ouverte au cadrage/)).toBeVisible()
       await expect(page.getByRole('heading', { level: 1 })).toHaveText('Crédit rural du Woleu')
     })
   })

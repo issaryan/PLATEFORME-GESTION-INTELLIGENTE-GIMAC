@@ -18,14 +18,14 @@ import type {
 } from '../modele/pilotage'
 import type { Demande, EtatDemande, MesPouvoirs, NouvelleDemande, PageDemandes } from '../modele/pouvoirs'
 import type {
-  CandidatsProcessus, ControleProcessus, DecisionValidation, EtatInstance, EtatProcessus, InstanceProcessus, Lancement, PageInstances, PorteeProcessus, Processus, ResumeProcessus, SaisieProcessus, VueInstances,
+  CandidatsProcessus, ControleProcessus, DecisionValidation, EtatInstance, EtatProcessus, InstanceProcessus, Lancables, Lancement, PageDemandesProcessus, PageInstances, PorteeProcessus, Processus, ResumeProcessus, SaisieProcessus, VueInstances,
 } from '../modele/processus'
 import type {
   Candidature, ConditionsAdhesion, DossierInstitution, FiltreInstitutions, IndicateursDdrm, Institution, PieceAdhesion, Prerequis,
   StatutInstitution, TransitionStatut,
 } from '../modele/participant'
 import type {
-  ApprobationSecurite, Blocage, DossierLiaison, Fonction, FonctionUtilisateur, FicheSuiviServices, IndicateursPilotage, LiaisonResume, OperationParcours,
+  ApprobationSecurite, Blocage, DossierLiaison, Fonction, FonctionUtilisateur, FicheSuiviServices, IndicateursPilotage, LiaisonResume, MesOperations, OperationParcours,
   Ceremonie, OuvertureLiaison as OuvertureCadrage, Personne, ProcesVerbalCertification, TableauActeur, TypeAttestation,
 } from '../modele/parcours'
 
@@ -218,6 +218,8 @@ export interface ServiceParcours {
   ouvrirServiceSupplementaire(liaisonId: string, services: string[]): Promise<LiaisonResume>
   // Tableaux de bord
   tableauActeur(fonctions: Fonction[]): Promise<TableauActeur>
+  /** D-98 : mes actions de certification (à faire, à prendre, à suivre) et l'état des liaisons suivies, sans fonction exigée. */
+  mesOperations(): Promise<MesOperations>
   pilotage(): Promise<IndicateursPilotage>
   personnes(fonction: Fonction): Promise<Personne[]>
 }
@@ -389,6 +391,16 @@ export interface ServiceProcessus {
   nouvelleVersion(id: string): Promise<Processus>
   retirer(id: string, motif: string): Promise<Processus>
   instances(q: { vue: VueInstances; etat?: EtatInstance; page?: number; taille?: number }): Promise<PageInstances>
+  /** D-98 : versions publiées que je peux lancer, groupées par unité propriétaire (recherche : code, libellé, catégorie). */
+  lancables(q: { q?: string }): Promise<Lancables>
+  /** D-98 : « Mes demandes », instances lancées par moi (état de chaque étape, qui la tient, dernière évolution). */
+  demandes(q: { etat?: EtatInstance; q?: string; page?: number; taille?: number }): Promise<PageDemandesProcessus>
+  /**
+   * D-98 : pièce jointe du formulaire de lancement, dépôt fragmenté (D-74), finalité PROCESSUS_UNITE, référence = la
+   * définition lancée ; le ticket part ensuite dans le formulaire ({ documentId }). 422 PIL_PROCESSUS_FORMULAIRE_INVALIDE
+   * (fieldErrors, details.champs) et 403 PIL_PROCESSUS_NON_INITIATEUR au lancement.
+   */
+  televerserPieceLancement(fichier: File, processusId: string, o?: OptionsTeleversement): Promise<Televersement>
   lancer(id: string, l: Lancement): Promise<InstanceProcessus>
   instance(id: string): Promise<InstanceProcessus>
   /**

@@ -1,19 +1,27 @@
 package cm.gimac.des.pilotage.application.usecase;
 
+import cm.gimac.des.pilotage.application.port.in.ProcessusUseCase.ChampFormulaireSaisie;
 import cm.gimac.des.pilotage.application.port.in.ProcessusUseCase.ChampSaisie;
 import cm.gimac.des.pilotage.application.port.in.ProcessusUseCase.EtapeSaisie;
+import cm.gimac.des.pilotage.application.port.in.ProcessusUseCase.FormulaireSaisie;
+import cm.gimac.des.pilotage.application.port.in.ProcessusUseCase.InitiateursSaisie;
 import cm.gimac.des.pilotage.application.port.in.ProcessusUseCase.IntervenantSaisie;
 import cm.gimac.des.pilotage.application.port.in.ProcessusUseCase.LivrableSaisie;
 import cm.gimac.des.pilotage.application.port.in.ProcessusUseCase.SignatureSaisie;
 import cm.gimac.des.pilotage.domain.exception.PilotageException;
 import cm.gimac.des.pilotage.domain.processus.Champ;
+import cm.gimac.des.pilotage.domain.processus.ChampFormulaire;
 import cm.gimac.des.pilotage.domain.processus.Etape;
+import cm.gimac.des.pilotage.domain.processus.Formulaire;
+import cm.gimac.des.pilotage.domain.processus.Initiateurs;
 import cm.gimac.des.pilotage.domain.processus.Intervenant;
 import cm.gimac.des.pilotage.domain.processus.Livrable;
 import cm.gimac.des.pilotage.domain.processus.ModeIntervenant;
 import cm.gimac.des.pilotage.domain.processus.Position;
+import cm.gimac.des.pilotage.domain.processus.RegleInitiateur;
 import cm.gimac.des.pilotage.domain.processus.SignatureRequise;
 import cm.gimac.des.pilotage.domain.processus.TypeChamp;
+import cm.gimac.des.pilotage.domain.processus.TypeChampFormulaire;
 import cm.gimac.des.pilotage.domain.service.ReglesActivite;
 import java.util.ArrayList;
 import java.util.List;
@@ -212,6 +220,101 @@ final class SaisieProcessus {
             }
         }
         return new Champ(code, libelle, type, choix, Boolean.TRUE.equals(s.obligatoire()));
+    }
+
+    // ------------------------------------------------------------------ lancement (D-98 §1, §2)
+
+    static final Pattern PERMISSION = Pattern.compile("^[A-Z][A-Z0-9_]{1,79}$");
+    static final int AIDE_MAX = 500;
+    static final int PARAMETRES_MAX = 20;
+    static final int CHAMPS_FORMULAIRE_MAX = 30;
+
+    /** Initiateurs saisis : règles connues, sans doublon ; unités, profils et permissions au bon format (20 au plus). */
+    static Initiateurs initiateurs(InitiateursSaisie s) {
+        if (s == null) {
+            return Initiateurs.parDefaut();
+        }
+        List<RegleInitiateur> regles = new ArrayList<>();
+        if (s.regles() != null) {
+            if (s.regles().size() > PARAMETRES_MAX) {
+                throw PilotageException.champ("initiateurs.regles", PARAMETRES_MAX + " règles au plus");
+            }
+            for (int i = 0; i < s.regles().size(); i++) {
+                RegleInitiateur r = ReglesActivite.valeur("initiateurs.regles[" + i + "]", RegleInitiateur.class, s.regles().get(i), null);
+                if (!regles.contains(r)) {
+                    regles.add(r);
+                }
+            }
+        }
+        List<String> unites = codes("initiateurs.unites", s.unites(), UNITE, "Code d'unité attendu (par exemple POLE_RESEAU)");
+        List<String> profils = codes("initiateurs.profils", s.profils(), PROFIL, "Profil ROLE_… attendu");
+        List<String> permissions = codes("initiateurs.permissions", s.permissions(), PERMISSION, "Permission ^[A-Z][A-Z0-9_]{1,79}$ attendue");
+        return new Initiateurs(regles, unites, profils, permissions);
+    }
+
+    private static List<String> codes(String c, List<String> l, Pattern motif, String message) {
+        List<String> r = new ArrayList<>();
+        if (l == null) {
+            return r;
+        }
+        if (l.size() > PARAMETRES_MAX) {
+            throw PilotageException.champ(c, PARAMETRES_MAX + " éléments au plus");
+        }
+        for (int i = 0; i < l.size(); i++) {
+            String v = format(c + "[" + i + "]", l.get(i), motif, message);
+            if (!r.contains(v)) {
+                r.add(v);
+            }
+        }
+        return r;
+    }
+
+    /** Formulaire de lancement saisi : 30 champs au plus, codes et types, choix d'une LISTE, types de pièces. */
+    static Formulaire formulaire(FormulaireSaisie s) {
+        if (s == null || s.champs() == null) {
+            return Formulaire.vide();
+        }
+        if (s.champs().size() > CHAMPS_FORMULAIRE_MAX) {
+            throw PilotageException.champ("formulaire.champs", CHAMPS_FORMULAIRE_MAX + " champs au plus");
+        }
+        List<ChampFormulaire> l = new ArrayList<>();
+        for (int i = 0; i < s.champs().size(); i++) {
+            String c = "formulaire.champs[" + i + "]";
+            ChampFormulaireSaisie x = s.champs().get(i);
+            if (x == null) {
+                throw PilotageException.champ(c, "Élément absent");
+            }
+            String code = format(c + ".code", x.code(), CODE, "Code ^[A-Z0-9][A-Z0-9_-]{0,39}$ attendu");
+            String libelle = ReglesActivite.texteObligatoire(c + ".libelle", x.libelle(), LIBELLE_MAX);
+            TypeChampFormulaire type = ReglesActivite.valeur(c + ".type", TypeChampFormulaire.class, x.type(), TypeChampFormulaire.TEXTE);
+            List<String> choix = new ArrayList<>();
+            if (x.choix() != null && type == TypeChampFormulaire.LISTE) {
+                if (x.choix().size() > CHOIX_MAX) {
+                    throw PilotageException.champ(c + ".choix", CHOIX_MAX + " choix au plus");
+                }
+                for (int j = 0; j < x.choix().size(); j++) {
+                    String v = ReglesActivite.texteObligatoire(c + ".choix[" + j + "]", x.choix().get(j), LIBELLE_MAX);
+                    if (!choix.contains(v)) {
+                        choix.add(v);
+                    }
+                }
+            }
+            List<String> types = new ArrayList<>();
+            if (x.typesPieces() != null && type == TypeChampFormulaire.PIECE_JOINTE) {
+                if (x.typesPieces().size() > TYPES_MAX) {
+                    throw PilotageException.champ(c + ".typesPieces", TYPES_MAX + " types au plus");
+                }
+                for (int j = 0; j < x.typesPieces().size(); j++) {
+                    String t = format(c + ".typesPieces[" + j + "]", x.typesPieces().get(j) == null ? null : x.typesPieces().get(j).toLowerCase(java.util.Locale.ROOT), TYPE_MIME, "Type MIME attendu (par exemple application/pdf)");
+                    if (!types.contains(t)) {
+                        types.add(t);
+                    }
+                }
+            }
+            String aide = ReglesActivite.texteFacultatif(c + ".aide", x.aide(), AIDE_MAX);
+            l.add(new ChampFormulaire(code, libelle, type, choix, Boolean.TRUE.equals(x.obligatoire()), aide, types));
+        }
+        return new Formulaire(l);
     }
 
     static String format(String champ, String valeur, Pattern motif, String message) {

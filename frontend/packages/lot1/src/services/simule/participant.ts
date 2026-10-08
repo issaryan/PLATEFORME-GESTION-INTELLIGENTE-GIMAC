@@ -73,7 +73,18 @@ export type PontParticipant = {
   institution(id: string): Institution | undefined
   /** homologation.liaison-opened.v1 : ADHERENT vers EN_HOMOLOGATION, transition automatique (D-57). */
   liaisonOuverte(institutionId: string, liaisonId: string): void
+  /** homologation.liaison-milestone-reached.v1, jalon EN_PRODUCTION : EN_HOMOLOGATION vers ACTIF (D-93 §10.4). */
+  enProduction(institutionId: string, liaisonId: string): void
+  /** Propositions en attente d'approbation (registre gardé d'un chargement à l'autre en démonstration continue). */
+  propositions(): TransitionObservee[]
+  /**
+   * participant.transition-requested.v1, transition-approved.v1 et transition-rejected.v1 (D-98), consommés par MS-PILOTAGE
+   * simulé : tâche de l'approbateur.
+   */
+  surTransition: ((e: TransitionObservee) => void) | null
 }
+/** Proposition, approbation ou refus d'une transition, tels que publiés par MS-PARTICIPANT. */
+export type TransitionObservee = { type: 'PROPOSEE' | 'APPROUVEE' | 'REJETEE'; institutionId: string; institutionNom: string; transition: TransitionStatut }
 export type ParticipantSimule = ServiceParticipant & { pont: PontParticipant }
 
 /**
@@ -88,7 +99,8 @@ function fluxParMois(): FluxMensuel[] {
   })
 }
 
-export function participantSimule(attendre: <T>(v: T | (() => T)) => Promise<T>, refus: (s: number, c: string, m: string) => ApiError): ParticipantSimule {
+export function participantSimule(attendreJeu: <T>(v: T | (() => T)) => Promise<T>, refus: (s: number, c: string, m: string) => ApiError,
+  persistance?: { lire(): string | null; ecrire(valeur: string): void }): ParticipantSimule {
   const base: Etat[] = [
     nouvelEtat({ nom: 'Fintech Kribi Pay', pays: 'CM', categorie: 'FINTECH', originePriseDeContact: 'Salon', projetEnvisage: 'Paiement mobile' }),
     nouvelEtat({ nom: 'Banque de Libreville', sigle: 'BDL', pays: 'GA', categorie: 'BANQUE', codeIdentification: 'BDLIGALX' }),
@@ -101,7 +113,7 @@ export function participantSimule(attendre: <T>(v: T | (() => T)) => Promise<T>,
   base[1].institution.modeAdhesion = 'DIRECT'
   base[1].pieces[0].etat = 'VALIDEE'
   base[2].pieces[1].etat = 'RECUE'
-  const etats = base
+  let etats = base
   // Adhérents prêts pour le cadrage (étape 3), puis institutions déjà engagées dans une liaison, sous les
   // identifiants des liaisons du jeu de données de MS-HOMOLOGATION.
   etats.push(
@@ -113,6 +125,25 @@ export function participantSimule(attendre: <T>(v: T | (() => T)) => Promise<T>,
     admise('Banque D', 'INST-0061', 'BANQUE', 'CG', 'SUSPENDU', 'BQ-D-061', 'LIA-2026-021'),
   )
 
+  // Démonstration continue (D-98) : registre gardé d'un chargement à l'autre.
+  try {
+    const garde = persistance?.lire()
+    if (garde) etats = JSON.parse(garde) as Etat[]
+  } catch {
+    // État illisible : jeu initial.
+  }
+  const sauver = () => {
+    try {
+      persistance?.ecrire(JSON.stringify(etats))
+    } catch {
+      // Stockage indisponible : la démonstration continue en mémoire.
+    }
+  }
+  const attendre = <T,>(v: T | (() => T)) => attendreJeu(() => {
+    const r = typeof v === 'function' ? (v as () => T)() : v
+    sauver()
+    return r
+  })
   const trouver = (i: string) => {
     const e = etats.find((x) => x.institution.id === i)
     if (!e) throw refus(404, 'PAR_INSTITUTION_NOT_FOUND', 'Ressource introuvable')
@@ -148,8 +179,22 @@ export function participantSimule(attendre: <T>(v: T | (() => T)) => Promise<T>,
       if (!e || e.institution.statut !== 'ADHERENT') return
       e.transitions.unshift(historique('ADHERENT', 'EN_HOMOLOGATION', `Ouverture de la liaison ${liaisonId}`, maintenant(), true))
       e.institution.statut = 'EN_HOMOLOGATION'
+      sauver()
     },
+    enProduction: (i, liaisonId) => {
+      const e = etats.find((x) => x.institution.id === i)
+      // Seule une institution en homologation passe à ACTIF ; une réactivation reste une décision humaine.
+      if (!e || e.institution.statut !== 'EN_HOMOLOGATION') return
+      e.transitions.unshift(historique('EN_HOMOLOGATION', 'ACTIF', `Jalon EN_PRODUCTION de la liaison ${liaisonId}`, maintenant(), true))
+      e.institution.statut = 'ACTIF'
+      sauver()
+    },
+    propositions: () => etats.flatMap((e) => e.transitions.filter((t) => t.etat === 'PROPOSEE')
+      .map((t) => ({ type: 'PROPOSEE' as const, institutionId: e.institution.id, institutionNom: e.institution.nom, transition: { ...t } }))),
+    surTransition: null,
   }
+  const publier = (type: TransitionObservee['type'], e: Etat, t: TransitionStatut) =>
+    pont.surTransition?.({ type, institutionId: e.institution.id, institutionNom: e.institution.nom, transition: { ...t } })
 
   return {
     pont,
@@ -240,6 +285,7 @@ export function participantSimule(attendre: <T>(v: T | (() => T)) => Promise<T>,
           approbationsRequises: 1, approbateurId: null, secondApprobateurId: null, decideeLe: null, motifRejet: null, pieceDecisionId: null,
         }
         e.transitions.unshift(t)
+        publier('PROPOSEE', e, t)
         return { ...t, institutionId: i }
       }),
     approuverTransition: (i, t) =>
@@ -251,6 +297,7 @@ export function participantSimule(attendre: <T>(v: T | (() => T)) => Promise<T>,
         e.institution.statut = x.vers
         if (x.vers === 'ADHERENT') Object.assign(e.adhesion, { prononceeLe: maintenant(), prononceePar: 'sim-chef', dateAdhesion: maintenant().slice(0, 10) })
         if (x.vers === 'CLOS_SANS_SUITE') Object.assign(e.adhesion, { motifCloture: x.motif, closLe: maintenant() })
+        publier('APPROUVEE', e, x)
         return { ...x, institutionId: i }
       }),
     rejeterTransition: (i, t, motif) =>
@@ -259,6 +306,7 @@ export function participantSimule(attendre: <T>(v: T | (() => T)) => Promise<T>,
         const x = e.transitions.find((y) => y.id === t && y.etat === 'PROPOSEE')
         if (!x) throw refus(409, 'PAR_TRANSITION_NOT_PENDING', 'Cette proposition a déjà été tranchée')
         Object.assign(x, { etat: 'REJETEE', approbateurId: 'sim-chef', decideeLe: maintenant(), motifRejet: motif })
+        publier('REJETEE', e, x)
         return { ...x, institutionId: i }
       }),
   }

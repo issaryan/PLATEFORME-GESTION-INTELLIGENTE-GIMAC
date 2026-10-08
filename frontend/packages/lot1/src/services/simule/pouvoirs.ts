@@ -6,7 +6,7 @@ import {
 } from '../../modele/pouvoirs'
 import type { ServicePouvoirs } from '../ports'
 import { ANNUAIRE } from './messagerie'
-import { ORGANISATION_DEMO, UNITES_DEMO } from './pilotage'
+import { ORGANISATION_DEMO, PROFILS_ORGANISATION_DEMO, UNITES_DEMO } from './pilotage'
 import { PRESENTATIONS_PROFILS } from './presentations'
 
 // MS-IAM simulé pour les pouvoirs hiérarchiques (D-81, docs/lot1/pouvoirs-hierarchiques.md) : matrice des
@@ -19,7 +19,7 @@ type Refus = (status: number, code: string, message: string, details?: Record<st
 
 /** Responsables d'unité de l'organisation de démonstration (§2). */
 export const RESPONSABLES_UNITES_DEMO: Record<string, string> = {
-  DG: 'u-dg', DES: 'U-001', PROD_INFO: 'u-resp-info', DDRM: 'U-020', SSI: 'u-rssi', CONFORMITE: 'u-conf',
+  DG: 'u-dg', DES: 'U-001', PROD_INFO: 'u-resp-info', DDRM: 'U-020', SSI: 'u-rssi', CONFORMITE: 'u-conf', RH: 'u-rh-chef',
 }
 
 /** Profils des responsables (§3) : portées par défaut ; les autres profils n'ont aucun pouvoir. */
@@ -95,7 +95,7 @@ export function magasinPouvoirs(): MagasinPouvoirs {
   const profils = new Map<string, string[]>()
   const matrice = PROFILS_DOMAINE.map((p) => pouvoirsParDefaut(p))
   const personne = (id: string): PersonneActivite => ({ id, nomAffiche: organisation.find((m) => m.id === id)?.nomAffiche ?? ANNUAIRE.find((p) => p.id === id)?.nom ?? id })
-  const profilsDe = (id: string) => profils.get(id) ?? ANNUAIRE.find((p) => p.id === id)?.profils ?? []
+  const profilsDe = (id: string) => profils.get(id) ?? ANNUAIRE.find((p) => p.id === id)?.profils ?? PROFILS_ORGANISATION_DEMO[id] ?? []
   const libelleDe = (code: string) => matrice.find((l) => l.profil === code)?.libelle ?? PRESENTATIONS_PROFILS[code]?.libelle ?? code
   const sousUnites = (code: string): string[] => [code, ...unites.filter((u) => u.parent === code).flatMap((u) => sousUnites(u.code))]
   const unitesDirigees = (id: string) => [...new Set(unites.filter((u) => u.responsableId === id).flatMap((u) => sousUnites(u.code)))]

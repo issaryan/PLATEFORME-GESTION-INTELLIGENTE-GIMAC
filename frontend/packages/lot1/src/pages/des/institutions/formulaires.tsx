@@ -14,11 +14,15 @@ import { candidature, erreursDuService, verifierCandidature } from './saisie'
 
 const texte = (v: unknown) => (typeof v === 'string' && v.trim() !== '' ? v.trim() : null)
 
-/** DES-07 : prise de contact (création) ou modification des données descriptives. */
-export function FormulaireInstitution({ descripteur, institution, onFermer }: {
+/**
+ * DES-07 : prise de contact (création) ou modification des données descriptives. `onCree` (D-98, « Lancer une
+ * certification ») : l'institution créée est rendue à l'appelant au lieu d'ouvrir sa fiche.
+ */
+export function FormulaireInstitution({ descripteur, institution, onFermer, onCree }: {
   descripteur: ResourceDescriptor<Institution>
   institution?: Institution
   onFermer: () => void
+  onCree?: (i: Institution) => void
 }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -62,7 +66,7 @@ export function FormulaireInstitution({ descripteur, institution, onFermer }: {
       errors={erreurs}
       serverError={erreur(enregistrer.error)}
       onCancel={onFermer}
-      onSubmit={(v) => valider(v) && enregistrer.mutate(candidature(v), { onSuccess: (i) => void navigate(`/des/institutions/${(i as Institution).id}`) })}
+      onSubmit={(v) => valider(v) && enregistrer.mutate(candidature(v), { onSuccess: (i) => (onCree ? onCree(i as Institution) : void navigate(`/des/institutions/${(i as Institution).id}`)) })}
     />
   )
 }

@@ -135,8 +135,13 @@ public class ParcoursResource {
         return ResponseEntity.noContent().build();
     }
 
+    /**
+     * D-98 : comme le livrable, la preuve est ouverte à HOM_STEP_MANAGE ou HOM_EVIDENCE_SUBMIT ; le droit de dépôt (R
+     * désigné, porteur de la fonction à affecter, déposant, conducteur, supervision) reste décidé par le parcours. Sans
+     * cela, le chargé de la DDRM, responsable des preuves du cadrage, ne pouvait pas les déposer.
+     */
     @PostMapping("/parcours/operations/{id}/preuves")
-    @PreAuthorize("hasAuthority('HOM_EVIDENCE_SUBMIT')")
+    @PreAuthorize("hasAnyAuthority('HOM_STEP_MANAGE', 'HOM_EVIDENCE_SUBMIT')")
     public ResponseEntity<Void> preuve(@PathVariable UUID id, @Valid @RequestBody PreuveRequest r, Authentication auth) {
         if (r.autres() != null && !r.autres().isEmpty()) {
             throw HomologationException.unprocessable(

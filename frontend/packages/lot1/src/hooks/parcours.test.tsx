@@ -80,7 +80,6 @@ describe('hooks du parcours : lectures', () => {
 
 describe('hooks du parcours : actions', () => {
   const actions: [string, () => { mutateAsync: (v: never) => Promise<unknown> }, unknown, 'parcours' | 'decision' | 'portailParcours', string, unknown[]][] = [
-    ['useOuvrirLiaison', H.useOuvrirLiaison, { institutionId: 'I', typeProjet: 'DELEGATAIRE', chefDeProjetId: 'U' }, 'parcours', 'ouvrirLiaison', [{ institutionId: 'I', typeProjet: 'DELEGATAIRE', chefDeProjetId: 'U' }]],
     ['useDesignerConducteur', H.useDesignerConducteur, { liaisonId: 'L1', conducteurId: 'U2', motif: 'm' }, 'parcours', 'designerConducteur', ['L1', 'U2', 'm']],
     ['useAffecterRessources', H.useAffecterRessources, { liaisonId: 'L1', affectations: [{ fonction: 'SNA', personneId: 'U' }] }, 'parcours', 'affecterRessources', ['L1', [{ fonction: 'SNA', personneId: 'U' }]]],
     ['useDeposerLivrable', H.useDeposerLivrable, { operationId: 'L1:7', fichier, commentaire: 'c' }, 'parcours', 'deposerLivrable', ['L1:7', fichier, 'c', undefined]],
@@ -113,6 +112,16 @@ describe('hooks du parcours : actions', () => {
     await expect(result.current.mutateAsync(variables as never)).resolves.toEqual({ resultat: methode })
     expect(services[sujet][methode]).toHaveBeenCalledWith(...args)
     expect(invalider.mock.calls.map(([f]) => f?.queryKey)).toEqual([['parcours'], ['homologation']])
+  })
+
+  // D-98 : l'ouverture fait passer l'institution adhérente en homologation (MS-PARTICIPANT) : le registre est relu aussi.
+  it('useOuvrirLiaison : méthode du port, arguments, puis invalidation de « parcours », « homologation » et « participant »', async () => {
+    const { services, invalider, wrapper } = monter()
+    const { result } = renderHook(H.useOuvrirLiaison, { wrapper })
+    const o = { institutionId: 'I', typeProjet: 'DELEGATAIRE', chefDeProjetId: 'U' }
+    await expect(result.current.mutateAsync(o as never)).resolves.toEqual({ resultat: 'ouvrirLiaison' })
+    expect(services.parcours.ouvrirLiaison).toHaveBeenCalledWith(o)
+    expect(invalider.mock.calls.map(([f]) => f?.queryKey)).toEqual([['parcours'], ['homologation'], ['participant']])
   })
 
   it('un refus du service n’invalide rien et remonte l’erreur', async () => {

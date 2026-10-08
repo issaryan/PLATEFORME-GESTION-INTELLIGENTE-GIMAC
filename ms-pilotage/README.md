@@ -41,6 +41,13 @@ MS-IAM (`SIGNATURE_PROCESSUS`), validation et renvoi, réaffectation, suspension
 (`iam.account-administered.v1`, sujet `iam.account`) ; routes `/api/v1/processus/**`, événements `pilotage.process-*`.
 Démonstration (profil dev) : `OUVERTURE_FLUX_RESEAU` du pôle réseau.
 
+**Tâche de l'approbateur d'une transition (D-98, `docs/lot1/lancement-processus.md` §8.8)** : consommateur
+`TransitionsParticipantConsumer` (groupe `pilotage-transitions-participant`, sujet `participant.transition`,
+`gimac.consommateurs.transitions.sujet`) : `participant.transition-requested.v1` crée une tâche à prendre d'origine
+`DECISION` par les porteurs de `PAR_TRANSITION_APPROVE`, notifiée vers l'écran de la proposition ;
+`participant.transition-approved.v1` la termine (définitive) ou la remet à prendre (première de deux approbations) ;
+`participant.transition-rejected.v1` la termine.
+
 ## Lancer
 
 - Service seul, en développement : `./mvnw` (dépendances : `docker compose -f src/main/docker/services.yml up -d`).

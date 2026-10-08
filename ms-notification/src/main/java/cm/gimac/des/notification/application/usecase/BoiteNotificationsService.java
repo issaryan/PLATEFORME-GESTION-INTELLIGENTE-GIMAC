@@ -207,7 +207,7 @@ public class BoiteNotificationsService implements BoiteNotificationsUseCase, Rec
                 TypeNotification.TACHE,
                 regles.titreTacheOfferte(e.titre()),
                 regles.sousTitreTacheOfferte(e.uniteCible()),
-                regles.lienTachesAPrendre(),
+                regles.lienTacheOfferte(e.lien()),
                 Reference.tache(e.tacheId()),
                 e.acteurId(),
                 acteur,

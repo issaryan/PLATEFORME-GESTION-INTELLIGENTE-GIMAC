@@ -4,10 +4,11 @@ import type { ClotureOperation, ElementCloture, Liaison, OuvertureLiaison } from
 import type { PortailLiaison } from '../../modele/portail'
 import type { ServiceCertification, ServiceHomologation, ServicePortail, Services } from '../ports'
 import * as D from './donnees'
-import { participantSimule } from './participant'
+import { participantSimule, type TransitionObservee } from './participant'
+import { PERM, PROFILS } from '../../permissions'
 import { messagerieSimulee, type MessagerieSimulee } from './messagerie'
 import { parcoursSimule } from './parcours'
-import { pilotageSimule, type PontTachesProcessus } from './pilotage'
+import { ORGANISATION_DEMO, pilotageSimule, type PontTachesProcessus } from './pilotage'
 import { processusSimule } from './processus'
 import { magasinPouvoirs, pouvoirsSimules, type MagasinPouvoirs } from './pouvoirs'
 import { apercuSimule } from './apercu'
@@ -27,6 +28,20 @@ export type OptionsSimulation = {
    * (matrice, demandes à traiter) ; un magasin propre à défaut.
    */
   pouvoirs?: MagasinPouvoirs
+}
+
+/**
+ * Démonstration continue (D-98) : avec gm.demoContinue = 1 (stockage local), le parcours et le registre simulés gardent
+ * leur état d'un chargement à l'autre, pour enchaîner les acteurs (changement de profil) sur une même liaison. Sans ce
+ * réglage, chaque chargement repart du jeu initial.
+ */
+function persistanceDemo(cle: string): { lire(): string | null; ecrire(valeur: string): void } | undefined {
+  try {
+    if (typeof localStorage === 'undefined' || localStorage.getItem('gm.demoContinue') !== '1') return undefined
+  } catch {
+    return undefined
+  }
+  return { lire: () => localStorage.getItem(`gm.demo.${cle}`), ecrire: (v) => localStorage.setItem(`gm.demo.${cle}`, v) }
 }
 
 let compteur = 0
@@ -50,7 +65,11 @@ function pagine<T>(lignes: T[], q: ListQuery, champs: (keyof T)[]): Page<T> {
 }
 
 /** Services simulés : les ports, plus la réception de messages de démonstration (notifications, D-80). */
-export type ServicesSimules = Services & { messagerie: MessagerieSimulee }
+/** Offre d'une décision à prononcer (D-98) visible de l'utilisateur de la démonstration : notifiée avec son lien profond. */
+export type DecisionDemo = { tacheId: string; titre: string; lien: string; createur: { id: string; nomAffiche: string } }
+/** Décisions à prononcer de la démonstration (MS-NOTIFICATION simulé : notification TACHE vers l'écran de la décision). */
+export type DecisionsDemo = { aPrononcer(): DecisionDemo[]; surOffre(f: (d: DecisionDemo) => void): void }
+export type ServicesSimules = Services & { messagerie: MessagerieSimulee; decisions: DecisionsDemo }
 
 export function servicesSimules(o: OptionsSimulation = {}): ServicesSimules {
   const latence = o.latenceMs ?? 350
@@ -80,7 +99,7 @@ export function servicesSimules(o: OptionsSimulation = {}): ServicesSimules {
     return op
   }
   const depots = new Map<string, ClotureOperation['dernierDepot']>()
-  const participant = participantSimule(attendre, refus)
+  const participant = participantSimule(attendre, refus, persistanceDemo('participant'))
   // Référentiels et modélisateur (D-77) : état propre à l'instance.
   const referentiels = referentielsSimules(attendre, refus, {
     utilisateur: o.utilisateur?.id, profils: o.utilisateur?.profils, maintenant, liaisonsActives: (versionId) => liaisons.filter((l) => l.versionId === versionId && l.etat !== 'CLOSE').length,
@@ -314,13 +333,52 @@ export function servicesSimules(o: OptionsSimulation = {}): ServicesSimules {
   const magasin = o.pouvoirs ?? magasinPouvoirs()
   if (o.utilisateur?.profils) magasin.definirProfils(o.utilisateur.id, o.utilisateur.profils)
   const { parcours, decision, portailParcours } = parcoursSimule(attendre, INSTITUTION_PORTAIL, (id) => participant.dossier(id).then((d) => d.institution.nom, () => undefined),
-    { profils: o.utilisateur?.profils, fonctions: () => referentiels.fonctions })
+    {
+      profils: o.utilisateur?.profils, fonctions: () => referentiels.fonctions,
+      // D-98 : instanciation depuis la version publiée du type, et événements consommés par MS-PARTICIPANT.
+      versionPubliee: referentiels.versionPubliee,
+      surLiaisonOuverte: (institutionId, liaisonId) => participant.pont.liaisonOuverte(institutionId, liaisonId),
+      surJalon: (institutionId, jalon, liaisonId) => { if (jalon === 'EN_PRODUCTION') participant.pont.enProduction(institutionId, liaisonId) },
+      persistance: persistanceDemo('parcours'),
+    })
 
   // Tâches d'origine PROCESSUS (D-87) : le moteur simulé des processus les crée dans « Mon activité ».
   let pont: PontTachesProcessus | undefined
   const pilotage = pilotageSimule(attendre, refus, o.utilisateur ? { id: o.utilisateur.id, nom: o.utilisateur.nom } : undefined, magasin, (p) => { pont = p })
 
+  // D-98 : tâche de l'approbateur d'une transition (participant.transition-* consommés par MS-PILOTAGE simulé) : à prendre
+  // par les porteurs de la permission d'approbation, close quand la transition est prononcée ou refusée ; notifiée vers
+  // l'onglet des transitions de l'institution.
+  const moiId = o.utilisateur?.id ?? 'U-001'
+  const approbateur = () => magasin.profilsDe(moiId).flatMap((p) => PROFILS[p] ?? []).includes(PERM.transitionApprouver)
+  const offertes: DecisionDemo[] = []
+  const abonnes: ((d: DecisionDemo) => void)[] = []
+  const relaisTransition = (e: TransitionObservee) => {
+    if (!pont) return
+    const t = e.transition
+    const reference = `${e.institutionId}/TRANSITION/${t.id}`
+    if (e.type !== 'PROPOSEE') {
+      pont.terminerOrigine(reference)
+      return
+    }
+    const lien = `/des/institutions/${e.institutionId}?onglet=transitions`
+    const titre = t.vers === 'ADHERENT' ? `Prononcer l’adhésion : ${e.institutionNom}` : `Statuer sur la transition ${t.de} vers ${t.vers} : ${e.institutionNom}`
+    const tacheId = pont.offrir({
+      titre, createur: t.demandeurId, permissionsRequises: [PERM.transitionApprouver],
+      description: `Proposition de transition ${t.de} vers ${t.vers}. Motif : ${t.motif}. Prononcer ou refuser depuis l’onglet Transitions de la fiche de l’institution.`,
+      origine: { type: 'DECISION', reference, service: 'participant', lien },
+    })
+    if (!approbateur() || t.demandeurId === moiId || offertes.some((d) => d.tacheId === tacheId)) return
+    const d = { tacheId, titre, lien, createur: { id: t.demandeurId, nomAffiche: ORGANISATION_DEMO.find((m) => m.id === t.demandeurId)?.nomAffiche ?? t.demandeurId } }
+    offertes.push(d)
+    abonnes.forEach((f) => f(d))
+  }
+  participant.pont.propositions().forEach(relaisTransition)
+  participant.pont.surTransition = relaisTransition
+  const decisions: DecisionsDemo = { aPrononcer: () => [...offertes], surOffre: (f) => { abonnes.push(f) } }
+
   return {
+    decisions,
     participant,
     parcours,
     decision,

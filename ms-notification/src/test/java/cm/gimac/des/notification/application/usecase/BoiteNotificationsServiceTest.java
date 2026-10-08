@@ -236,6 +236,21 @@ class BoiteNotificationsServiceTest {
     }
 
     @Test
+    @DisplayName("D-98 : offre d'une décision (transition à prononcer) : lien profond vers l'écran de la décision")
+    void tacheOfferteAvecLien() {
+        int n = service.tacheOfferte(
+            new TacheOfferte("t-9", "Prononcer l'adhésion : Banque B", null, List.of("chef", "demandeur"), "demandeur", T, "/des/institutions/i-1?onglet=transitions")
+        );
+        assertThat(n).isEqualTo(1);
+        NotificationUtilisateur l = enregistrees(1).get(0);
+        assertThat(l.getDestinataireId()).isEqualTo("chef");
+        assertThat(l.getTitre()).isEqualTo("Prononcer l'adhésion : Banque B");
+        assertThat(l.getSousTitre()).isEqualTo("À prendre");
+        assertThat(l.getLien()).isEqualTo("/des/institutions/i-1?onglet=transitions");
+        assertThat(l.getReference()).isEqualTo(Reference.tache("t-9"));
+    }
+
+    @Test
     @DisplayName("Relance : notification TACHE au responsable, lien vers la tâche ; relance de soi-même : rien")
     void tacheRelancee() {
         assertThat(service.tacheRelancee(new TacheRelancee("t-2", "Sauvegardes", "serge", "paul", T))).isEqualTo(1);

@@ -115,4 +115,22 @@ describe('processusHttp', () => {
     expect(JSON.parse(String((ouverture[1] as RequestInit).body))).toMatchObject({ finalite: 'PROCESSUS_UNITE', reference: 'INS-1', nomFichier: 'pv.pdf' })
     expect(servicesHttp('des').processus).toBe(processusHttp)
   })
+
+  it('D-98 : processus que je peux lancer, mes demandes, lancement avec le formulaire', async () => {
+    brancher()
+    await processusHttp.lancables({})
+    await processusHttp.lancables({ q: ' ip ' })
+    await processusHttp.demandes({})
+    await processusHttp.demandes({ etat: 'CLOSE', q: ' accueil ', page: 1, taille: 10 })
+    const l = { intitule: 'Poste', champs: {}, designations: {}, formulaire: { PERIODE: { debut: '2026-12-21', fin: '2026-12-31' }, JUSTIFICATIF: { documentId: 'DOC-1' }, ATTESTE: true } }
+    await processusHttp.lancer('P1', l)
+    expect(appels().map((_, i) => appel(i))).toEqual([
+      'GET /bff/des/pilotage/processus/lancables',
+      'GET /bff/des/pilotage/processus/lancables?q=ip',
+      'GET /bff/des/pilotage/processus/demandes?page=0&taille=20',
+      'GET /bff/des/pilotage/processus/demandes?etat=CLOSE&q=accueil&page=1&taille=10',
+      'POST /bff/des/pilotage/processus/P1/instances',
+    ])
+    expect(corps(4)).toEqual(l)
+  })
 })

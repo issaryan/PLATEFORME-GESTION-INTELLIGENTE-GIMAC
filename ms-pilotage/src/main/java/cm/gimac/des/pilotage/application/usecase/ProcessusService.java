@@ -8,13 +8,18 @@ import cm.gimac.des.pilotage.domain.event.ProcessusPubliePayload;
 import cm.gimac.des.pilotage.domain.exception.PilotageException;
 import cm.gimac.des.pilotage.domain.processus.ActionProcessus;
 import cm.gimac.des.pilotage.domain.processus.Anomalie;
+import cm.gimac.des.pilotage.domain.processus.ChampFormulaire;
 import cm.gimac.des.pilotage.domain.processus.Etape;
 import cm.gimac.des.pilotage.domain.processus.EtatProcessus;
+import cm.gimac.des.pilotage.domain.processus.Formulaire;
 import cm.gimac.des.pilotage.domain.processus.GraviteAnomalie;
 import cm.gimac.des.pilotage.domain.processus.HistoriqueProcessus;
+import cm.gimac.des.pilotage.domain.processus.Initiateurs;
 import cm.gimac.des.pilotage.domain.processus.Intervenant;
 import cm.gimac.des.pilotage.domain.processus.ModeIntervenant;
 import cm.gimac.des.pilotage.domain.processus.Processus;
+import cm.gimac.des.pilotage.domain.processus.RegleInitiateur;
+import cm.gimac.des.pilotage.domain.processus.TypeChampFormulaire;
 import cm.gimac.des.pilotage.domain.service.ControleProcessus;
 import cm.gimac.des.pilotage.domain.service.ReglesActivite;
 import cm.gimac.des.pilotage.infrastructure.messaging.outbox.OutboxPublisher;
@@ -107,7 +112,7 @@ public class ProcessusService implements ProcessusUseCase {
                     droits(
                         p,
                         definition.computeIfAbsent(p.getUnite(), x -> acces.definit(appelant, x)),
-                        lancement.computeIfAbsent(p.getUnite(), x -> acces.lance(appelant, x))
+                        p.getEtat() == EtatProcessus.PUBLIEE && lancement.computeIfAbsent(p.getId().toString(), x -> acces.lance(appelant, p))
                     ),
                     List.of(),
                     List.of(),
@@ -115,6 +120,19 @@ public class ProcessusService implements ProcessusUseCase {
                 )
             )
             .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<GroupeLancables> lancables(Appelant appelant, String q) {
+        String motif = q == null || q.isBlank() ? null : "%" + q.strip().toLowerCase(Locale.ROOT).replace("%", "").replace("_", "") + "%";
+        List<Processus> publiees = processus.visibles(true, List.of("-"), EtatProcessus.PUBLIEE, motif).stream().filter(p -> acces.lance(appelant, p)).toList();
+        Map<String, String> noms = equipes.noms(publiees.stream().flatMap(p -> Stream.of(p.getModifiePar(), p.getPublieePar())).filter(Objects::nonNull).toList());
+        Map<String, List<ProcessusLu>> parUnite = new java.util.TreeMap<>();
+        for (Processus p : publiees) {
+            parUnite.computeIfAbsent(p.getUnite(), u -> new ArrayList<>()).add(new ProcessusLu(p, noms, droits(p, false, true), List.of(), List.of(), List.of()));
+        }
+        return parUnite.entrySet().stream().map(e -> new GroupeLancables(e.getKey(), List.copyOf(e.getValue()))).toList();
     }
 
     @Override
@@ -315,8 +333,45 @@ public class ProcessusService implements ProcessusUseCase {
                 a.add(Anomalie.levable("CHEF_ABSENT", r.etape(), r.element(), "L'unité " + unite + " n'a pas de chef désigné"));
             }
         }
+        lancement(p, a, cache);
         Set<String> vues = new LinkedHashSet<>();
         return a.stream().filter(x -> vues.add(x.code() + "|" + x.etape() + "|" + x.element() + "|" + x.message())).toList();
+    }
+
+    /**
+     * Initiateurs et formulaire de lancement (D-98) : une règle UNITES, PROFILS ou PERMISSIONS sans paramètre, une
+     * unité ou un profil inconnus, un code de champ en double, une liste sans valeur sont bloquants.
+     */
+    private void lancement(Processus p, List<Anomalie> a, Map<String, Optional<UniteMembres>> cache) {
+        Initiateurs i = p.getInitiateurs();
+        if (i.a(RegleInitiateur.UNITES) && i.unites().isEmpty()) {
+            a.add(Anomalie.bloquante("INITIATEURS_INCOMPLETS", null, "initiateurs.unites", "Règle UNITES sans unité désignée"));
+        }
+        if (i.a(RegleInitiateur.PROFILS) && i.profils().isEmpty()) {
+            a.add(Anomalie.bloquante("INITIATEURS_INCOMPLETS", null, "initiateurs.profils", "Règle PROFILS sans profil désigné"));
+        }
+        if (i.a(RegleInitiateur.PERMISSIONS) && i.permissions().isEmpty()) {
+            a.add(Anomalie.bloquante("INITIATEURS_INCOMPLETS", null, "initiateurs.permissions", "Règle PERMISSIONS sans permission désignée"));
+        }
+        if (i.a(RegleInitiateur.UNITES)) {
+            i.unites().stream().filter(u -> membres(cache, u, null).isEmpty()).forEach(u -> a.add(Anomalie.bloquante("UNITE_INCONNUE", null, "initiateurs.unites", "Unité inconnue : " + u)));
+        }
+        if (i.a(RegleInitiateur.PROFILS)) {
+            i
+                .profils()
+                .stream()
+                .filter(x -> membres(cache, p.getUnite(), x).map(m -> !m.profilConnu()).orElse(false))
+                .forEach(x -> a.add(Anomalie.bloquante("PROFIL_INCONNU", null, "initiateurs.profils", "Profil inconnu : " + x)));
+        }
+        Set<String> codes = new java.util.HashSet<>();
+        for (ChampFormulaire c : p.getFormulaire().champs()) {
+            if (!codes.add(c.code())) {
+                a.add(Anomalie.bloquante("CHAMP_CODE_DUPLIQUE", null, "formulaire." + c.code(), "Code de champ du formulaire en double : " + c.code()));
+            }
+            if (c.type() == TypeChampFormulaire.LISTE && c.choix().isEmpty()) {
+                a.add(Anomalie.bloquante("CHAMP_CHOIX_ABSENT", null, "formulaire." + c.code(), "Liste sans valeur : " + c.code()));
+            }
+        }
     }
 
     private Optional<UniteMembres> membres(Map<String, Optional<UniteMembres>> cache, String unite, String profil) {
@@ -385,7 +440,7 @@ public class ProcessusService implements ProcessusUseCase {
         h.stream().map(HistoriqueProcessus::getActeurId).forEach(ids::add);
         p.getEtapes().stream().flatMap(e -> ControleProcessus.roles(List.of(e)).stream()).map(ControleProcessus.Role::intervenant).filter(Objects::nonNull).map(Intervenant::personneId).filter(Objects::nonNull).forEach(ids::add);
         Map<String, String> noms = equipes.noms(ids);
-        return new ProcessusLu(p, noms, droits(p, acces.definit(appelant, p.getUnite()), acces.lance(appelant, p.getUnite())), versions, avertissements, h);
+        return new ProcessusLu(p, noms, droits(p, acces.definit(appelant, p.getUnite()), p.getEtat() == EtatProcessus.PUBLIEE && acces.lance(appelant, p)), versions, avertissements, h);
     }
 
     private static Droits droits(Processus p, boolean definit, boolean lance) {
@@ -400,10 +455,18 @@ public class ProcessusService implements ProcessusUseCase {
         String categorie = ReglesActivite.texteFacultatif("categorie", s.categorie(), SaisieProcessus.CATEGORIE_MAX);
         Integer delai = SaisieProcessus.delaiCible(s.delaiCibleJours());
         List<Etape> etapes = SaisieProcessus.etapes(s.etapes());
+        // D-98 : initiateurs et formulaire de lancement ; absents d'une modification, ceux de la définition sont gardés.
+        Initiateurs initiateurs = s.initiateurs() == null ? p.getInitiateurs() : SaisieProcessus.initiateurs(s.initiateurs());
+        Formulaire formulaire = s.formulaire() == null ? p.getFormulaire() : SaisieProcessus.formulaire(s.formulaire());
         p.decrire(libelle, description, categorie, delai, etapes, appelant.id(), le);
+        p.definirLancement(initiateurs, formulaire, appelant.id(), le);
     }
 
     private void exigerLecture(Appelant appelant, Processus p) {
+        // D-98 : une version publiée se lit aussi de qui peut la lancer (formulaire de lancement, désignations).
+        if (p.getEtat() == EtatProcessus.PUBLIEE && acces.lance(appelant, p)) {
+            return;
+        }
         if (!acces.lit(appelant, p.getUnite()) || (p.getEtat() == EtatProcessus.BROUILLON && !acces.definit(appelant, p.getUnite()))) {
             throw AccesProcessus.interdit("Ce processus n'est pas lisible depuis votre unité");
         }

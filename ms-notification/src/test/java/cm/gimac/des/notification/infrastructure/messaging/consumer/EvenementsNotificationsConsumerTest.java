@@ -139,6 +139,13 @@ class EvenementsNotificationsConsumerTest {
         );
         verify(evenements).tacheOfferte(new TacheOfferte("t-7", "Sauvegardes", "POLE_RESEAU", List.of("aminata", "serge"), "paul", Instant.parse("2026-10-06T08:00:00Z")));
         consommateur.recevoir(
+            "{\"id\":\"e-7b\",\"type\":\"pilotage.task-offered.v1\",\"data\":{\"tacheId\":\"t-8\",\"titre\":\"Prononcer l'adhésion\"," +
+            "\"destinataires\":[\"chef\"],\"acteurId\":\"charge\",\"le\":\"2026-10-06T08:30:00Z\",\"lien\":\"/des/institutions/i-1?onglet=transitions\"}}"
+        );
+        verify(evenements).tacheOfferte(
+            new TacheOfferte("t-8", "Prononcer l'adhésion", null, List.of("chef"), "charge", Instant.parse("2026-10-06T08:30:00Z"), "/des/institutions/i-1?onglet=transitions")
+        );
+        consommateur.recevoir(
             "{\"id\":\"e-8\",\"type\":\"pilotage.task-reminded.v1\",\"data\":{\"tacheId\":\"t-7\",\"titre\":\"Sauvegardes\",\"responsableId\":\"serge\",\"acteurId\":\"paul\",\"le\":\"2026-10-06T09:00:00Z\"}}"
         );
         verify(evenements).tacheRelancee(new TacheRelancee("t-7", "Sauvegardes", "serge", "paul", Instant.parse("2026-10-06T09:00:00Z")));
@@ -152,7 +159,7 @@ class EvenementsNotificationsConsumerTest {
             "\"demandeurId\":\"paul\",\"acteurId\":\"admin\",\"destinataires\":[\"paul\"],\"le\":\"2026-10-06T11:00:00Z\"}}"
         );
         verify(evenements).demandeDecidee(new DemandeDecidee("d-1", "CREATION_COMPTE", "REFUSEE", "admin", List.of("paul"), Instant.parse("2026-10-06T11:00:00Z")));
-        verify(traites, times(4)).save(any());
+        verify(traites, times(5)).save(any());
     }
 
     // ------------------------------------------------------------------ processus d'unité (D-87)
@@ -281,6 +288,53 @@ class EvenementsNotificationsConsumerTest {
         );
         verify(evenements, times(8)).evenementProcessus(any());
         verify(traites, times(8)).save(any());
+    }
+
+    @Test
+    @DisplayName("D-98 : étape activée d'une demande, aussi notifiée à l'initiateur (lanceurId) sauf s'il agit lui-même ou pour un renvoi")
+    void avancementDemande() throws Exception {
+        consommateur.recevoir(
+            enveloppe(
+                "d-1",
+                "pilotage.process-step-activated.v1",
+                "{\"instanceId\":\"" + I + "\",\"code\":\"CHANGEMENT_ADRESSE_IP\",\"intitule\":\"Poste d'accueil\",\"etape\":\"ANALYSE\",\"libelleEtape\":\"Analyse technique\"," +
+                "\"executantId\":null,\"profil\":\"ROLE_POLE_RESEAU\",\"echeance\":\"2026-10-10\",\"renvoi\":false,\"destinataires\":[\"bob\",\"awa\"]," +
+                "\"lien\":\"" + L + "?etape=ANALYSE\",\"le\":\"2026-10-07T08:00:00Z\",\"lanceurId\":\"rachel\"}"
+            )
+        );
+        ArgumentCaptor<EvenementProcessus> c = ArgumentCaptor.forClass(EvenementProcessus.class);
+        verify(evenements, times(2)).evenementProcessus(c.capture());
+        assertThat(c.getAllValues().get(0).destinataires()).containsExactly("bob", "awa");
+        EvenementProcessus initiateur = c.getAllValues().get(1);
+        assertThat(initiateur).isEqualTo(
+            new EvenementProcessus(
+                I,
+                new FaitsProcessus(NatureProcessus.DEMANDE_AVANCEE, "CHANGEMENT_ADRESSE_IP", "Poste d'accueil", "ANALYSE", "Analyse technique", null, false, true, "2026-10-10"),
+                null,
+                null,
+                List.of("rachel"),
+                L + "?etape=ANALYSE",
+                LE
+            )
+        );
+        verify(traites, times(1)).save(any());
+
+        // L'initiateur est lui-même l'intervenant de l'étape, ou l'étape est renvoyée : une seule notification.
+        consommateur.recevoir(
+            enveloppe(
+                "d-2",
+                "pilotage.process-step-activated.v1",
+                "{\"instanceId\":\"" + I + "\",\"etape\":\"DEMANDE\",\"executantId\":\"rachel\",\"destinataires\":[\"rachel\"],\"lanceurId\":\"rachel\"}"
+            )
+        );
+        consommateur.recevoir(
+            enveloppe(
+                "d-3",
+                "pilotage.process-step-activated.v1",
+                "{\"instanceId\":\"" + I + "\",\"etape\":\"ANALYSE\",\"executantId\":\"bob\",\"renvoi\":true,\"destinataires\":[\"bob\"],\"lanceurId\":\"rachel\"}"
+            )
+        );
+        verify(evenements, times(4)).evenementProcessus(any());
     }
 
     @Test

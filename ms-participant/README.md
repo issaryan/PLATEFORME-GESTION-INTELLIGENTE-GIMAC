@@ -62,7 +62,7 @@ Erreurs en ProblemDetail RFC 9457 (`code` PAR_*, `message`, `details`, `correlat
 | `participant.institution-updated.v1` | `participant.institution` |
 | `participant.status-changed.v1` | `participant.status` (lu par MS-HOMOLOGATION, HOM-06) |
 | `participant.adhesion-piece-recorded.v1` | `participant.adhesion` |
-| `participant.transition-requested.v1`, `participant.transition-rejected.v1` | `participant.transition` |
+| `participant.transition-requested.v1`, `participant.transition-approved.v1`, `participant.transition-rejected.v1` | `participant.transition` (lus par MS-PILOTAGE : tâche de l'approbateur, D-98) |
 
 ## Tests : définition de fini (D-61)
 

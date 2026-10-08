@@ -152,9 +152,14 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
         l.forEach(i -> definitions.computeIfAbsent(i.getProcessusId(), id -> processus.findById(id).orElse(null)));
         Map<String, String> noms = equipes.noms(l.stream().map(InstanceProcessus::getLanceurId).toList());
         LocalDate jour = ReglesActivite.aujourdhui(horloge);
+        // D-98 : actions permises à l'appelant par étape (« Mes étapes » ne garde que celles qui attendent sa décision).
+        Map<UUID, Tache> t = tachesDe(parInstance.values().stream().flatMap(List::stream).toList());
         List<InstanceLue> lues = l
             .stream()
-            .map(i -> new InstanceLue(i, definitions.get(i.getProcessusId()), parInstance.getOrDefault(i.getId(), List.of()), Map.of(), List.of(), noms, Map.of(), null, jour))
+            .map(i -> {
+                List<EtapeInstance> e = parInstance.getOrDefault(i.getId(), List.of());
+                return new InstanceLue(i, definitions.get(i.getProcessusId()), e, Map.of(), List.of(), noms, moiDe(appelant, i, e, t), null, jour);
+            })
             .toList();
         return new Page<>(lues, r.getTotalElements(), p.getPageNumber(), p.getPageSize());
     }
@@ -171,13 +176,50 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
         return lue(appelant, i, definition(i), l, t);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public Page<InstanceLue> demandes(Appelant appelant, String etat, String q, Integer page, Integer taille) {
+        EtatInstance filtre = etat == null || etat.isBlank() ? null : ReglesActivite.valeur("etat", EtatInstance.class, etat, null);
+        String motif = q == null || q.isBlank() ? null : "%" + q.strip().toLowerCase(Locale.ROOT).replace("%", "").replace("_", "") + "%";
+        PageRequest p = PageRequest.of(ReglesActivite.page(page), ReglesActivite.taille(taille));
+        org.springframework.data.domain.Page<InstanceProcessus> r = instances.demandes(appelant.id(), filtre, motif, p);
+        List<InstanceProcessus> l = r.getContent();
+        List<EtapeInstance> toutes = l.isEmpty() ? List.of() : etapes.findByInstanceIdInOrderByRangAsc(l.stream().map(InstanceProcessus::getId).toList());
+        Map<UUID, List<EtapeInstance>> parInstance = toutes.stream().collect(Collectors.groupingBy(EtapeInstance::getInstanceId));
+        Map<UUID, Tache> t = tachesDe(toutes);
+        Map<UUID, Processus> definitions = new HashMap<>();
+        l.forEach(i -> definitions.computeIfAbsent(i.getProcessusId(), id -> processus.findById(id).orElse(null)));
+        List<String> ids = new ArrayList<>(l.stream().map(InstanceProcessus::getLanceurId).toList());
+        t.values().stream().map(Tache::getResponsableId).filter(Objects::nonNull).forEach(ids::add);
+        Map<UUID, List<HistoriqueProcessus>> derniers = new HashMap<>();
+        for (InstanceProcessus i : l) {
+            List<HistoriqueProcessus> h = historique.findByInstanceIdOrderByQuandAsc(i.getId());
+            List<HistoriqueProcessus> dernier = h.isEmpty() ? List.of() : List.of(h.get(h.size() - 1));
+            dernier.forEach(x -> ids.add(x.getActeurId()));
+            derniers.put(i.getId(), dernier);
+        }
+        Map<String, String> noms = equipes.noms(ids);
+        LocalDate jour = ReglesActivite.aujourdhui(horloge);
+        List<InstanceLue> lues = l
+            .stream()
+            .map(i -> {
+                List<EtapeInstance> e = parInstance.getOrDefault(i.getId(), List.of());
+                Map<UUID, Tache> ti = new HashMap<>();
+                e.stream().map(EtapeInstance::getTacheId).filter(Objects::nonNull).filter(t::containsKey).forEach(x -> ti.put(x, t.get(x)));
+                return new InstanceLue(i, definitions.get(i.getProcessusId()), e, ti, derniers.get(i.getId()), noms, Map.of(), null, jour);
+            })
+            .toList();
+        return new Page<>(lues, r.getTotalElements(), p.getPageNumber(), p.getPageSize());
+    }
+
     // ------------------------------------------------------------------ lancement
 
     @Override
     public InstanceLue lancer(Appelant appelant, UUID processusId, Lancement l) {
         Processus p = processus.findById(processusId).orElseThrow(() -> PilotageException.introuvable("PIL_PROCESSUS_INTROUVABLE", processusId));
-        if (!acces.lance(appelant, p.getUnite())) {
-            throw AccesProcessus.interdit("Lancer un processus de l'unité " + p.getUnite() + " exige d'en être membre, PROCESSUS_LANCER ou REF_METIER_ADMIN");
+        if (!acces.lance(appelant, p)) {
+            // D-98 §1 : initiateurs en données dans la définition, refus explicite.
+            throw AccesProcessus.nonInitiateur(p);
         }
         if (p.getEtat() != EtatProcessus.PUBLIEE) {
             throw PilotageException.conflit("PIL_PROCESSUS_NON_PUBLIE", "Seule une version publiée se lance", Map.of("etat", p.getEtat().name()));
@@ -188,9 +230,12 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
         String intitule = ReglesActivite.texteObligatoire("intitule", l.intitule(), SaisieProcessus.LIBELLE_MAX);
         Map<String, String> designations = designations(appelant, p, l.designations());
         Map<String, Map<String, String>> champsInitiaux = champsDeLancement(p, l.champs());
+        // D-98 §2 : formulaire de lancement contrôlé (422 PIL_PROCESSUS_FORMULAIRE_INVALIDE, fieldErrors).
+        Map<String, Object> formulaire = FormulaireLancement.valeurs(p.getFormulaire(), l.formulaire(), p.getId(), appelant.id(), documents::metadonnees);
         String nPlus1 = equipes.rattachement(appelant.id()).map(r -> r.responsable() == null ? null : r.responsable().id()).orElse(null);
         Instant le = horloge.instant();
         InstanceProcessus i = new InstanceProcessus(p, intitule, appelant.id(), nPlus1, designations, le);
+        i.renseignerFormulaire(formulaire);
         instances.save(i);
         List<String> ordre = GrapheProcessus.kahn(p.getEtapes()).ordre();
         List<EtapeInstance> l2 = new ArrayList<>();
@@ -354,7 +399,8 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
                 null,
                 destinataires,
                 lien(i, def.code()),
-                le
+                le,
+                i.getLanceurId()
             )
         );
         if (r.parti() != null) {
@@ -552,7 +598,8 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
                         m,
                         executant == null ? List.of() : List.of(executant),
                         lien(c.i(), c.ei().getCode()),
-                        le
+                        le,
+                        c.i().getLanceurId()
                     )
                 );
             }
@@ -1267,21 +1314,33 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
         return lue(appelant, i, definition(i), l, tachesDe(l));
     }
 
-    private InstanceLue lue(Appelant appelant, InstanceProcessus i, Processus p, List<EtapeInstance> l, Map<UUID, Tache> t) {
-        boolean pilote = acces.pilote(appelant, i.getUnite());
+    /** Actions permises à l'appelant sur chaque étape (calculées par le serveur, jamais par l'interface). */
+    private Map<String, MoiEtape> moiDe(Appelant appelant, InstanceProcessus i, List<EtapeInstance> l, Map<UUID, Tache> t) {
         boolean enCours = i.getEtat() == EtatInstance.EN_COURS;
         Map<String, MoiEtape> moi = new LinkedHashMap<>();
+        if (!enCours) {
+            l.forEach(ei -> moi.put(ei.getCode(), new MoiEtape(false, false, List.of(), false, false)));
+            return moi;
+        }
+        boolean pilote = acces.pilote(appelant, i.getUnite());
         for (EtapeInstance ei : l) {
             Tache tache = ei.getTacheId() == null ? null : t.get(ei.getTacheId());
             String executant = tache == null ? null : tache.getResponsableId();
-            boolean executer = enCours && ei.getEtat() == EtatEtape.ACTIVE && appelant.id().equals(executant);
-            boolean prendre = enCours && tache != null && tache.getEtat() == EtatTache.A_PRENDRE &&
+            boolean executer = ei.getEtat() == EtatEtape.ACTIVE && appelant.id().equals(executant);
+            boolean prendre = tache != null && tache.getEtat() == EtatTache.A_PRENDRE &&
                 resolution.affecte(appelant.id(), new Affectation(null, tache.getProfilRequis(), tache.getUniteCible()));
-            List<String> signer = enCours ? ei.signaturesOuvertes().stream().filter(s -> resolution.affecte(appelant.id(), s.attendu())).map(SignatureInstance::code).toList() : List.of();
-            boolean valider = enCours && ei.getEtat() == EtatEtape.A_VALIDER && !appelant.id().equals(executant) && resolution.affecte(appelant.id(), ei.getValidateur());
-            boolean reaffecter = enCours && ei.getEtat().enCours() && (pilote || lanceurDesigne(appelant.id(), i, tache));
+            List<String> signer = ei.signaturesOuvertes().stream().filter(s -> resolution.affecte(appelant.id(), s.attendu())).map(SignatureInstance::code).toList();
+            boolean valider = ei.getEtat() == EtatEtape.A_VALIDER && !appelant.id().equals(executant) && resolution.affecte(appelant.id(), ei.getValidateur());
+            boolean reaffecter = ei.getEtat().enCours() && (pilote || lanceurDesigne(appelant.id(), i, tache));
             moi.put(ei.getCode(), new MoiEtape(executer, prendre, signer, valider, reaffecter));
         }
+        return moi;
+    }
+
+    private InstanceLue lue(Appelant appelant, InstanceProcessus i, Processus p, List<EtapeInstance> l, Map<UUID, Tache> t) {
+        boolean pilote = acces.pilote(appelant, i.getUnite());
+        boolean enCours = i.getEtat() == EtatInstance.EN_COURS;
+        Map<String, MoiEtape> moi = moiDe(appelant, i, l, t);
         DroitsInstance droits = new DroitsInstance(pilote && enCours, pilote && i.getEtat() == EtatInstance.SUSPENDUE, pilote && !i.getEtat().estFinal(), pilote && enCours);
         List<HistoriqueProcessus> h = historique.findByInstanceIdOrderByQuandAsc(i.getId());
         List<String> ids = new ArrayList<>();

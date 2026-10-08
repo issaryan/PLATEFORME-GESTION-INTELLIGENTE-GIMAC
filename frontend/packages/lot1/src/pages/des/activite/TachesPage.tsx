@@ -88,7 +88,7 @@ export default function TachesPage() {
           </span>
         ),
       },
-    ...(vue === 'unite' ? [{ key: 'unite', header: t('pvr.tache.unite'), render: (x: Tache) => (x.uniteCible ? libelleUnite(x.uniteCible) : t('pvr.tache.offreFonction')) }] : []),
+    ...(vue === 'unite' ? [{ key: 'unite', header: t('pvr.tache.unite'), render: (x: Tache) => (x.uniteCible ? libelleUnite(x.uniteCible) : t(x.origine.type === 'DECISION' ? 'pvr.tache.offreDecision' : 'pvr.tache.offreFonction')) }] : []),
   ]
   return (
     <div className="gm-col">

@@ -1,7 +1,7 @@
 import type { QueryClient } from '@tanstack/react-query'
 import { notificationsSimulees, referenceConversation, type ArriveeNotification, type LecteurApercu, type ServiceNotificationsSimule } from '@gimac/socle'
 import type { OptionsLectureDemo, OptionsReceptionDemo, ReceptionDemo } from './simule/messagerie'
-import type { ServicesSimules } from './simule'
+import type { DecisionDemo, ServicesSimules } from './simule'
 import type { Services } from './ports'
 
 // Notifications de la plateforme (D-80, docs/lot1/notifications.md) côté lot 1 : l'aperçu d'un message est lu
@@ -89,7 +89,14 @@ export function notificationsDemo(services: ServicesSimules, o: { qc?: QueryClie
       acteur: null, le: il(40 * 60), lueLe: il(39 * 60) },
     ...services.messagerie.nonLuesDemo().map((r) => ({ ...arriveeMessage(r), nombre: r.nonLus })),
   ]
+  // D-98 : décision à prononcer (transition de statut proposée) offerte à l'utilisateur : notification TACHE vers son écran.
+  const decision = (d: DecisionDemo, minutes = 0): ArriveeNotification => ({
+    type: 'TACHE', titre: d.titre, sousTitre: 'À prendre', lien: d.lien, reference: { service: 'pilotage', type: 'TACHE', id: d.tacheId },
+    acteur: d.createur, le: il(minutes),
+  })
+  initiales.push(...services.decisions.aPrononcer().map((d) => decision(d, 5)))
   const notifications = notificationsSimulees({ initiales })
+  services.decisions.surOffre((d) => notifications.recevoir(decision(d)))
   services.messagerie.surReception((r) => {
     notifications.recevoir(arriveeMessage(r))
     const mention = arriveeMention(r, o.moi ?? 'U-001')

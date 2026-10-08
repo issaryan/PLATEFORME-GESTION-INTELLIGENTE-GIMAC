@@ -114,7 +114,8 @@ public class EvenementsHomologationConsumer {
             intervenant(d.get("validateur")),
             intervenants(d.path("destinataires")),
             textes(d.path("institutionsConcernees")),
-            texte(d, "lien")
+            texte(d, "lien"),
+            texte(d, "declencheur")
         );
         Instant le = instant(d, "le");
         return () -> homologation.operationHomologation(f, le);

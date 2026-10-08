@@ -36,6 +36,7 @@ import cm.gimac.des.participant.domain.event.AdhesionPieceRecordedPayload;
 import cm.gimac.des.participant.domain.event.InstitutionRegisteredPayload;
 import cm.gimac.des.participant.domain.event.InstitutionUpdatedPayload;
 import cm.gimac.des.participant.domain.event.StatusChangedPayload;
+import cm.gimac.des.participant.domain.event.TransitionApprovedPayload;
 import cm.gimac.des.participant.domain.event.TransitionRejectedPayload;
 import cm.gimac.des.participant.domain.event.TransitionRequestedPayload;
 import cm.gimac.des.participant.infrastructure.messaging.outbox.OutboxPublisher;
@@ -461,7 +462,14 @@ class InstitutionLifecycleServiceTest {
             assertThat(t.getRequiredApprovals()).isEqualTo(1);
             assertThat(t.getRequesterId()).isEqualTo(CHARGE.id());
             assertThat(banque.getStatus()).isEqualTo(InstitutionStatus.CANDIDAT);
-            verify(outbox).publish(eq("transition"), eq(banque.getId()), eq(TransitionRequestedPayload.TYPE), any(TransitionRequestedPayload.class));
+            ArgumentCaptor<Object> evt = ArgumentCaptor.forClass(Object.class);
+            verify(outbox).publish(eq("transition"), eq(banque.getId()), eq(TransitionRequestedPayload.TYPE), evt.capture());
+            // D-98 : nom de l'institution et écran où l'approbateur prononce la transition (tâche de MS-PILOTAGE).
+            TransitionRequestedPayload p = (TransitionRequestedPayload) evt.getValue();
+            assertThat(p.institutionNom()).isEqualTo(banque.getName());
+            assertThat(p.lien()).isEqualTo("/des/institutions/" + banque.getId() + "?onglet=transitions");
+            assertThat(p.approbationsRequises()).isEqualTo(1);
+            assertThat(p.vers()).isEqualTo("ADHERENT");
         }
 
         @Test
@@ -524,6 +532,12 @@ class InstitutionLifecycleServiceTest {
             assertThat(payload.statut()).isEqualTo("ADHERENT");
             assertThat(payload.ancienStatut()).isEqualTo("CANDIDAT");
             assertThat(payload.institutionId()).isEqualTo(banque.getId());
+            // D-98 : approbation définitive publiée sur le sujet des transitions (clôture de la tâche de l'approbateur).
+            ArgumentCaptor<Object> approbation = ArgumentCaptor.forClass(Object.class);
+            verify(outbox).publish(eq("transition"), eq(banque.getId()), eq(TransitionApprovedPayload.TYPE), approbation.capture());
+            assertThat((TransitionApprovedPayload) approbation.getValue()).isEqualTo(
+                new TransitionApprovedPayload(banque.getId(), t.getId(), "CANDIDAT", "ADHERENT", CHEF.id(), 1, 1, true)
+            );
         }
 
         @Test
@@ -602,6 +616,13 @@ class InstitutionLifecycleServiceTest {
             assertThat(t.getState()).isEqualTo(TransitionState.PROPOSEE);
             assertThat(t.getApproverId()).isEqualTo(CHEF.id());
             assertThat(banque.getStatus()).isEqualTo(InstitutionStatus.SUSPENDU);
+            // D-98 : première approbation publiée, non définitive (la tâche repasse à prendre pour un second approbateur).
+            verify(outbox).publish(
+                "transition",
+                banque.getId(),
+                TransitionApprovedPayload.TYPE,
+                new TransitionApprovedPayload(banque.getId(), t.getId(), "SUSPENDU", "ACTIF", CHEF.id(), 2, 1, false)
+            );
 
             assertThatThrownBy(() -> service.approuverTransition(banque.getId(), t.getId(), CHEF, "a"))
                 .isInstanceOfSatisfying(ParticipantException.class, ex -> assertThat(ex.code()).isEqualTo("PAR_SEPARATION_OF_DUTIES"));
@@ -611,6 +632,12 @@ class InstitutionLifecycleServiceTest {
             assertThat(t.getSecondApproverId()).isEqualTo(DG.id());
             assertThat(t.getSecondApprovedAt()).isEqualTo(MAINTENANT);
             assertThat(banque.getStatus()).isEqualTo(InstitutionStatus.ACTIF);
+            verify(outbox).publish(
+                "transition",
+                banque.getId(),
+                TransitionApprovedPayload.TYPE,
+                new TransitionApprovedPayload(banque.getId(), t.getId(), "SUSPENDU", "ACTIF", DG.id(), 2, 2, true)
+            );
         }
 
         @Test

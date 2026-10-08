@@ -55,6 +55,16 @@ public class Processus extends EntitePilotage {
     @Column(name = "etapes", columnDefinition = "jsonb", nullable = false)
     private List<Etape> etapes = List.of();
 
+    /** Qui peut lancer cette version (D-98 §1) ; défaut : les membres de l'unité propriétaire. */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "initiateurs", columnDefinition = "jsonb", nullable = false)
+    private Initiateurs initiateurs = Initiateurs.parDefaut();
+
+    /** Formulaire de lancement (D-98 §2) : champs typés remplis par l'initiateur. */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "formulaire", columnDefinition = "jsonb", nullable = false)
+    private Formulaire formulaire = Formulaire.vide();
+
     @Column(name = "cree_le", nullable = false, updatable = false)
     private Instant creeLe;
 
@@ -120,6 +130,8 @@ public class Processus extends EntitePilotage {
         p.categorie = categorie;
         p.delaiCibleJours = delaiCibleJours;
         p.etapes = etapes;
+        p.initiateurs = getInitiateurs();
+        p.formulaire = getFormulaire();
         return p;
     }
 
@@ -131,6 +143,15 @@ public class Processus extends EntitePilotage {
         this.categorie = categorie;
         this.delaiCibleJours = delaiCibleJours;
         this.etapes = etapes == null ? List.of() : List.copyOf(etapes);
+        this.modifieLe = le;
+        this.modifiePar = acteur;
+    }
+
+    /** Initiateurs et formulaire de lancement d'un brouillon (D-98) ; absents : valeurs par défaut. */
+    public void definirLancement(Initiateurs initiateurs, Formulaire formulaire, String acteur, Instant le) {
+        exigerBrouillon();
+        this.initiateurs = initiateurs == null ? Initiateurs.parDefaut() : initiateurs;
+        this.formulaire = formulaire == null ? Formulaire.vide() : formulaire;
         this.modifieLe = le;
         this.modifiePar = acteur;
     }
@@ -203,6 +224,14 @@ public class Processus extends EntitePilotage {
 
     public List<Etape> getEtapes() {
         return etapes;
+    }
+
+    public Initiateurs getInitiateurs() {
+        return initiateurs == null ? Initiateurs.parDefaut() : initiateurs;
+    }
+
+    public Formulaire getFormulaire() {
+        return formulaire == null ? Formulaire.vide() : formulaire;
     }
 
     public Instant getCreeLe() {

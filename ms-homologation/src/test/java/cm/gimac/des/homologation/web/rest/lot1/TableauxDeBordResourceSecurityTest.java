@@ -62,13 +62,25 @@ class TableauxDeBordResourceSecurityTest {
         when(lectures.tableauActeur(any(), any())).thenReturn(calcul.tableau(List.of(p), List.of(Fonction.CHEF_DES), new Acteur(null, null, Set.of(), null), null, Map.of(), LocalDate.now()));
         when(lectures.pilotage()).thenReturn(calcul.pilotage(List.of(p), LocalDate.now()));
         when(lectures.intervenants(Fonction.RSSI)).thenReturn(List.of(new Personne("U-RSSI", "RSSI", Fonction.RSSI)));
+        // Conducteur de la liaison d'exemple : il suit ses opérations engagées (forme complète servie).
+        var conducteur = new Acteur(ParcoursSamples.CONDUCTEUR, "Conducteur", Set.of("ROLE_CONDUCTEUR_PROJET", "HOM_OPERATION_VALIDATE"), null);
+        when(lectures.mesOperations(any())).thenReturn(calcul.mesOperations(List.of(p), conducteur, LocalDate.now()));
     }
+
+    /** D-98 : permissions qui ouvrent « Mes actions de certification » (catalogue des fonctionnalités, OPA, @PreAuthorize). */
+    static final List<String> ACTEURS_CERTIFICATION = List.of(
+        "HOM_LIAISON_READ", "HOM_DASHBOARD_READ", "HOM_EVIDENCE_SUBMIT", "HOM_OPERATION_VALIDATE", "HOM_STEP_MANAGE", "HOM_OPERATION_ASSIGN",
+        "HOM_PROJECT_CONDUCT", "HOM_FUNCTION_DDRM", "HOM_FUNCTION_PRODUCTION", "HOM_FUNCTION_NETWORK", "HOM_FUNCTION_SYSTEM", "HOM_FUNCTION_OPERATIONS",
+        "CER_PV_ESTABLISH", "CER_QUITUS_TECHNIQUE_SIGN", "CER_DOSSIER_VERIFY", "CER_SECURITY_VERIFY", "CER_CHANGE_RECORD_LINK", "CER_QUITUS_CONFORMITE_SIGN",
+        "CER_QUITUS_DG_SIGN"
+    );
 
     static Stream<Arguments> routes() {
         return Stream.of(
             Arguments.of("/api/v1/tableaux-de-bord/acteur?fonctions=CHEF_DES", List.of("HOM_DASHBOARD_READ")),
             Arguments.of("/api/v1/tableaux-de-bord/pilotage", List.of("HOM_DASHBOARD_READ")),
-            Arguments.of("/api/v1/intervenants?fonction=RSSI", List.of("HOM_LIAISON_READ", "HOM_OPERATION_ASSIGN", "HOM_STEP_MANAGE"))
+            Arguments.of("/api/v1/intervenants?fonction=RSSI", List.of("HOM_LIAISON_READ", "HOM_OPERATION_ASSIGN", "HOM_STEP_MANAGE")),
+            Arguments.of("/api/v1/parcours/mes-operations", ACTEURS_CERTIFICATION)
         );
     }
 
@@ -109,6 +121,23 @@ class TableauxDeBordResourceSecurityTest {
         assertThat(TableauxDeBordResource.fonctions(null)).isEmpty();
         assertThat(TableauxDeBordResource.fonctions(" , SNA ,")).containsExactly(Fonction.SNA);
         assertThatThrownBy(() -> TableauxDeBordResource.fonctions("x")).isInstanceOf(HomologationException.class);
+    }
+
+    @Test
+    @DisplayName("D-98 : mes opérations de l'appelant, sans fonction exigée ; refus sans permission d'acteur du parcours")
+    void mesOperations() throws Exception {
+        mvc
+            .perform(req(HttpMethod.GET, "/api/v1/parcours/mes-operations", null).with(jeton("2", "CER_SECURITY_VERIFY")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.aAgir").isArray())
+            .andExpect(jsonPath("$.aSuivre").isArray())
+            .andExpect(jsonPath("$.liaisons[0].reference").value("LIA-2026-001"))
+            .andExpect(jsonPath("$.liaisons[0].conducteur").value(true))
+            .andExpect(jsonPath("$.liaisons[0].jalons[*].jalon").value(org.hamcrest.Matchers.hasItem("EN_PRODUCTION")))
+            .andExpect(jsonPath("$.aSuivre[0].lien").value(org.hamcrest.Matchers.startsWith("/des/parcours/")))
+            .andExpect(jsonPath("$.aSuivre[0].responsable.fonction").exists());
+        verify(lectures).mesOperations(any());
+        mvc.perform(req(HttpMethod.GET, "/api/v1/parcours/mes-operations", null).with(jeton("2", "HOM_LIAISON_LIST", "PAR_INSTITUTION_READ"))).andExpect(status().isForbidden());
     }
 
     @Test

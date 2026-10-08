@@ -130,6 +130,7 @@ export const parcoursHttp: ServiceParcours = {
   constaterCouverture: (id) => http.post(`${L}/${id}/couverture/constat`, { body: {} }),
   ouvrirServiceSupplementaire: async (id, services) => versResume(await http.post<LiaisonVue>(`${L}/${id}/services-supplementaires`, { body: { services } })),
   tableauActeur: (fonctions) => http.get(`${H}/tableaux-de-bord/acteur`, { query: { fonctions: fonctions.join(',') } }),
+  mesOperations: () => http.get(`${H}/parcours/mes-operations`),
   pilotage: () => http.get(`${H}/tableaux-de-bord/pilotage`),
   personnes: (fonction) => http.get(`${H}/intervenants`, { query: { fonction } }),
 }

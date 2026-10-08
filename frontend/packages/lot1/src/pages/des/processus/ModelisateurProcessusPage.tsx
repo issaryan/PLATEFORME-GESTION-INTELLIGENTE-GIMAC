@@ -4,13 +4,14 @@ import { useNavigate, useParams, useSearchParams } from 'react-router'
 import { ReactFlowProvider } from '@xyflow/react'
 import { Button, ConfirmDialog, CrudDialog, DataTable, Icon, InlineAlert, KeyValueList, NumberField, PageHeader, Select, TextArea, TextField, cx, type Column } from '@gimac/design-system'
 import { EtatsRequete, type ApiError } from '@gimac/socle'
-import { LIMITES_PROCESSUS, etapeVierge, type AnomalieProcessus, type EtapeProcessus, type Processus, type SaisieProcessus } from '../../../modele/processus'
+import { INITIATEURS_DEFAUT, LIMITES_PROCESSUS, etapeVierge, type AnomalieProcessus, type EtapeProcessus, type Initiateurs, type Processus, type SaisieProcessus } from '../../../modele/processus'
 import { useControleProcessus, useEcritureProcessus, usePorteeProcessus, useProcessus, useSupprimerProcessus } from '../../../hooks/processus'
 import { usePouvoirs } from '../../../hooks/pouvoirs'
 import { useDates, useLibelleUnite } from '../activite/communs'
 import { CanevasProcessus, type CarteEtape } from './CanevasProcessus'
 import { ModaleEtape, type OngletEtape } from './ModaleEtape'
 import { DialogueLancement } from './DialogueLancement'
+import { ModaleLancement } from './ModaleLancement'
 import { BadgeGravite, BadgeProcessus, useErreurProcessus, useResumeIntervenant } from './communs'
 
 // Modélisateur d'un processus d'unité (D-87 §4, /des/processus/:id) : canevas générique partagé avec le modélisateur des
@@ -24,7 +25,22 @@ type Confirmation = 'publier' | 'lever' | 'retirer' | 'supprimer' | null
 
 export const saisieDe = (p: Processus, etapes = p.etapes): SaisieProcessus => ({
   code: p.code, unite: p.unite, libelle: p.libelle, description: p.description, categorie: p.categorie, delaiCibleJours: p.delaiCibleJours, etapes,
+  // D-98 : initiateurs et formulaire de lancement repartent avec chaque enregistrement (absents d'un service antérieur).
+  ...(p.initiateurs ? { initiateurs: p.initiateurs } : {}), ...(p.formulaire ? { formulaire: p.formulaire } : {}),
 })
+
+/** Résumé des initiateurs (« Membres de l'unité », « Tout le GIMAC », « Unités : SNA, DDRM »…). */
+export function useResumeInitiateurs() {
+  const { t } = useTranslation()
+  const libelleUnite = useLibelleUnite()
+  return (i: Initiateurs | undefined) => (i ?? INITIATEURS_DEFAUT).regles.map((r) => {
+    const x = i ?? INITIATEURS_DEFAUT
+    if (r === 'UNITES') return `${t('dem.regle.UNITES')} (${x.unites.map(libelleUnite).join(', ')})`
+    if (r === 'PROFILS') return `${t('dem.regle.PROFILS')} (${x.profils.join(', ')})`
+    if (r === 'PERMISSIONS') return `${t('dem.regle.PERMISSIONS')} (${x.permissions.join(', ')})`
+    return t(`dem.regle.${r}`)
+  }).join(' ; ')
+}
 
 export default function ModelisateurProcessusPage() {
   const { id } = useParams()
@@ -84,6 +100,8 @@ function Espace({ processus: p }: { processus: Processus }) {
   const [modale, setModale] = useState<Modale | null>(null)
   const [proprietes, setProprietes] = useState(false)
   const [lancement, setLancement] = useState(false)
+  const [reglageLancement, setReglageLancement] = useState(false)
+  const resumeInitiateurs = useResumeInitiateurs()
   const [confirmation, setConfirmation] = useState<Confirmation>(null)
   const [anomalies, setAnomalies] = useState<AnomalieProcessus[] | null>(null)
   const [focus, setFocus] = useState<string | null>(null)
@@ -169,6 +187,7 @@ function Espace({ processus: p }: { processus: Processus }) {
         </div>
         {!lecture ? <Button size="sm" icon="plus" onClick={() => setModale({ creation: true })}>{t('proc.etape.ajouter')}</Button> : null}
         {!lecture ? <Button size="sm" icon="pen-line" onClick={() => setProprietes(true)}>{t('proc.proprietes.titre')}</Button> : null}
+        <Button size="sm" icon="send" onClick={() => setReglageLancement(true)}>{t('dem.modele.titre')}</Button>
         <Button size="sm" icon="shield-check" loading={controle.isPending} onClick={controler}>{t('proc.controler')}</Button>
         {p.droits.publier ? <Button size="sm" variant="primary" icon="check" onClick={() => setConfirmation('publier')}>{t('proc.publier')}</Button> : null}
         {p.droits.lancer ? <Button size="sm" variant="primary" icon="arrow-right" onClick={() => setLancement(true)}>{t('proc.lancer')}</Button> : null}
@@ -183,6 +202,8 @@ function Espace({ processus: p }: { processus: Processus }) {
       </div>
       <KeyValueList items={[
         { key: t('proc.champ.etapes'), value: String(p.etapes.length) },
+        { key: t('dem.modele.initiateurs'), value: resumeInitiateurs(p.initiateurs) },
+        { key: t('dem.modele.formulaire'), value: t('dem.lancer.champs', { count: p.formulaire?.champs.length ?? 0 }) },
         ...(p.categorie ? [{ key: t('proc.champ.categorie'), value: p.categorie }] : []),
         ...(p.delaiCibleJours !== null ? [{ key: t('proc.champ.delaiCible'), value: t('proc.carte.delai', { n: p.delaiCibleJours }) }] : []),
         ...(p.publieeLe ? [{ key: t('proc.champ.publieeLe'), value: `${dates.instant(p.publieeLe)}${p.publieePar ? ` · ${p.publieePar.nomAffiche}` : ''}${p.motifPublication ? ` · ${p.motifPublication}` : ''}` }] : []),
@@ -242,6 +263,11 @@ function Espace({ processus: p }: { processus: Processus }) {
       ) : null}
       {proprietes ? <Proprietes processus={p} enCours={enregistrer.isPending} erreur={erreur(enregistrer.error)} onFermer={() => setProprietes(false)}
         onEnregistrer={(s) => enregistrer.mutate(s, { onSuccess: () => { setProprietes(false); setAnnonce(t('proc.annonce.proprietes')) } })} /> : null}
+      {reglageLancement ? (
+        <ModaleLancement initiateurs={p.initiateurs} formulaire={p.formulaire} lecture={lecture} enCours={enregistrer.isPending} erreur={erreur(enregistrer.error)}
+          onFermer={() => { setReglageLancement(false); enregistrer.reset() }}
+          onEnregistrer={(initiateurs, formulaire) => enregistrer.mutate({ ...saisieDe(p), initiateurs, formulaire }, { onSuccess: () => { setReglageLancement(false); setAnnonce(t('dem.modele.enregistre')) } })} />
+      ) : null}
       {lancement ? <DialogueLancement processus={p} onFermer={() => setLancement(false)} onLance={(i) => navigate(`/des/processus/instances/${encodeURIComponent(i.id)}`)} /> : null}
       {confirmation === 'publier' ? (
         <ConfirmDialog open title={t('proc.publication.titre')} description={t('proc.publication.texte')} confirmLabel={t('proc.publier')}

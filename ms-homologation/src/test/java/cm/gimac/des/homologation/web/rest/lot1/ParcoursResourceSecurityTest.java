@@ -118,7 +118,7 @@ class ParcoursResourceSecurityTest {
             Arguments.of(HttpMethod.GET, l + "/parcours/operations?etape=CADRAGE&fonction=DDRM", null, List.of("HOM_LIAISON_READ"), 200),
             Arguments.of(HttpMethod.PUT, l + "/ressources", "{\"affectations\":[{\"fonction\":\"SNA\",\"personneId\":\"u\"}]}", List.of("HOM_STEP_MANAGE"), 204),
             Arguments.of(HttpMethod.POST, o + "/livrable", PIECE, List.of("HOM_STEP_MANAGE", "HOM_EVIDENCE_SUBMIT"), 204),
-            Arguments.of(HttpMethod.POST, o + "/preuves", PREUVE, List.of("HOM_EVIDENCE_SUBMIT"), 204),
+            Arguments.of(HttpMethod.POST, o + "/preuves", PREUVE, List.of("HOM_STEP_MANAGE", "HOM_EVIDENCE_SUBMIT"), 204),
             Arguments.of(HttpMethod.POST, o + "/validation", "{}", List.of("HOM_OPERATION_VALIDATE"), 204),
             // D-93 §2 : renvoi au responsable avec motif ; §1 : affectation d'une fonction à tout moment.
             Arguments.of(HttpMethod.POST, o + "/renvoi", "{\"motif\":\"Pièce illisible\"}", List.of("HOM_OPERATION_VALIDATE"), 204),

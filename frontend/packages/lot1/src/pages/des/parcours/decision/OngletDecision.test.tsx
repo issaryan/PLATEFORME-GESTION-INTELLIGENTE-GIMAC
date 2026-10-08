@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { useParams } from 'react-router'
 import axe from 'axe-core'
@@ -25,9 +25,9 @@ const simules = (): Services => {
   const s = servicesSimules({ latenceMs: 0 })
   return { ...s, reauth: { assertion: () => Promise.resolve('YXNzZXJ0aW9u') } }
 }
-const ouvrir = (liaison: string, role?: string, o: { services?: Services; langue?: Langue; theme?: 'light' | 'dark' } = {}) =>
+const ouvrir = (liaison: string, role?: string, o: { services?: Services; langue?: Langue; theme?: 'light' | 'dark'; operation?: string } = {}) =>
   rendrePage(<Banc />, {
-    chemin: `/des/parcours/${liaison}?onglet=decision`, motif: '/des/parcours/:id', services: o.services ?? simules(), langue: o.langue, theme: o.theme,
+    chemin: `/des/parcours/${liaison}?onglet=decision${o.operation ? `&operation=${encodeURIComponent(o.operation)}` : ''}`, motif: '/des/parcours/:id', services: o.services ?? simules(), langue: o.langue, theme: o.theme,
     session: role ? sessionTest(PROFILS[role], [role]) : undefined,
   })
 const carte = (titre: RegExp) => screen.getByRole('heading', { name: titre }).closest('.gm-card') as HTMLElement
@@ -215,6 +215,35 @@ describe('Verrou 2 : approbation de la sécurité', () => {
     const alerte = await screen.findByRole('alert')
     expect(alerte.textContent).toContain('cid-503')
     expect(within(alerte).getByRole('button', { name: 'Réessayer' })).toBeTruthy()
+  })
+})
+
+describe('Lien profond ?operation= (D-98)', () => {
+  it('signature du procès-verbal visée : la carte du verrou 1 défile et se signale, pas celle du verrou 2', async () => {
+    const defiler = vi.fn()
+    Element.prototype.scrollIntoView = defiler
+    ouvrir('LIA-2026-027', 'ROLE_CHEF_DES', { operation: 'LIA-2026-027:19' })
+    const badge = await screen.findByText(/^Opération visée : /)
+    const pv = document.getElementById('decision-pv')!
+    expect(pv.contains(badge)).toBe(true)
+    expect(pv.className).toContain('gm-decision-cible')
+    expect(pv.getAttribute('aria-current')).toBe('step')
+    expect(document.getElementById('decision-approbation')!.className).not.toContain('gm-decision-cible')
+    await waitFor(() => expect(defiler).toHaveBeenCalled())
+    expect(defiler.mock.contexts[0]).toBe(pv)
+  })
+
+  it('approbation de la sécurité visée : la carte du verrou 2 se signale ; opération inconnue : aucune carte', async () => {
+    Element.prototype.scrollIntoView = vi.fn()
+    ouvrir('LIA-2026-027', 'ROLE_RSSI', { operation: 'LIA-2026-027:25' })
+    const badge = await screen.findByText(/^Opération visée : /)
+    expect(document.getElementById('decision-approbation')!.contains(badge)).toBe(true)
+    expect(document.getElementById('decision-pv')!.className).not.toContain('gm-decision-cible')
+    cleanup()
+    ouvrir('LIA-2026-027', 'ROLE_RSSI', { operation: 'LIA-2026-027:inconnue' })
+    await screen.findByText('Établi, à signer')
+    expect(screen.queryByText(/^Opération visée : /)).toBeNull()
+    expect(document.querySelector('.gm-decision-cible')).toBeNull()
   })
 })
 

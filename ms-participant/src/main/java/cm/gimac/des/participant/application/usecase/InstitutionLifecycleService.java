@@ -19,6 +19,7 @@ import cm.gimac.des.participant.domain.event.AdhesionPieceRecordedPayload;
 import cm.gimac.des.participant.domain.event.InstitutionRegisteredPayload;
 import cm.gimac.des.participant.domain.event.InstitutionUpdatedPayload;
 import cm.gimac.des.participant.domain.event.StatusChangedPayload;
+import cm.gimac.des.participant.domain.event.TransitionApprovedPayload;
 import cm.gimac.des.participant.domain.event.TransitionRejectedPayload;
 import cm.gimac.des.participant.domain.event.TransitionRequestedPayload;
 import cm.gimac.des.participant.domain.service.InstitutionLifecycle;
@@ -281,7 +282,17 @@ public class InstitutionLifecycleService implements ManageInstitutionUseCase {
             AGREGAT_TRANSITION,
             i.getId(),
             TransitionRequestedPayload.TYPE,
-            new TransitionRequestedPayload(i.getId(), t.getId(), t.getFromStatus().name(), vers.name(), motif, acteur.id(), requises)
+            new TransitionRequestedPayload(
+                i.getId(),
+                t.getId(),
+                t.getFromStatus().name(),
+                vers.name(),
+                motif,
+                acteur.id(),
+                requises,
+                i.getName(),
+                TransitionRequestedPayload.lienTransitions(i.getId())
+            )
         );
         return t;
     }
@@ -316,6 +327,7 @@ public class InstitutionLifecycleService implements ManageInstitutionUseCase {
         Instant maintenant = clock.instant();
         if (t.getRequiredApprovals() > 1 && t.getApproverId() == null) {
             t.setApproverId(acteur.id());
+            publierApprobation(i, t, acteur, 1, false);
             return t;
         }
         if (t.getApproverId() == null) {
@@ -328,6 +340,7 @@ public class InstitutionLifecycleService implements ManageInstitutionUseCase {
         t.setDecidedAt(maintenant);
         appliquer(i, t, maintenant);
         journaliser(i, InteractionNature.CHANGEMENT_STATUT, t.getFromStatus() + " vers " + t.getToStatus() + " : " + t.getReason(), acteur, t.getId().toString());
+        publierApprobation(i, t, acteur, t.getRequiredApprovals(), true);
         outbox.publish(
             AGREGAT_INSTITUTION,
             i.getId(),
@@ -537,6 +550,25 @@ public class InstitutionLifecycleService implements ManageInstitutionUseCase {
         if (motif == null || motif.isBlank()) {
             throw ParticipantException.conflict("PAR_REASON_REQUIRED", "Motif obligatoire", Map.of());
         }
+    }
+
+    /** participant.transition-approved.v1, sur le sujet des transitions (clé : institution), avant le changement de statut. */
+    private void publierApprobation(Institution i, StatusTransition t, Acteur acteur, int recues, boolean definitive) {
+        outbox.publish(
+            AGREGAT_TRANSITION,
+            i.getId(),
+            TransitionApprovedPayload.TYPE,
+            new TransitionApprovedPayload(
+                i.getId(),
+                t.getId(),
+                t.getFromStatus().name(),
+                t.getToStatus().name(),
+                acteur.id(),
+                t.getRequiredApprovals(),
+                recues,
+                definitive
+            )
+        );
     }
 
     private void publierMiseAJour(Institution i, List<String> champs, Acteur acteur) {

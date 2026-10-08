@@ -2,8 +2,10 @@ import { ApiError, type OptionsTeleversement, type Televersement } from '@gimac/
 import { PROFILS } from '../../permissions'
 import type { PersonneActivite } from '../../modele/pilotage'
 import {
-  LIMITES_PROCESSUS, MODES_REMPLACEMENT, cleDesignation, designationsAttendues, intervenantNormalise, type AnomalieProcessus, type Attendu, type ControleProcessus, type EtapeInstance,
-  type EtapeProcessus, type HistoriqueProcessus, type InstanceProcessus, type Intervenant, type CandidatsProcessus, type Processus, type ResumeInstance, type SaisieProcessus,
+  INITIATEURS_DEFAUT, LIMITES_FORMULAIRE, LIMITES_PROCESSUS, MODES_REMPLACEMENT, cleDesignation, designationsAttendues, intervenantNormalise, type AnomalieProcessus, type Attendu,
+  type ChampFormulaire, type ControleProcessus, type DemandeProcessus, type EtapeInstance, type EtapeProcessus, type Formulaire, type HistoriqueProcessus, type Initiateurs,
+  type InstanceProcessus, type Intervenant, type CandidatsProcessus, type Lancement, type Processus, type ResumeInstance, type ResumeProcessus, type SaisieProcessus,
+  type ValeurChampFormulaire, type ValeurFormulaire,
 } from '../../modele/processus'
 import { ajouterJours, aujourdhui } from '../../modele/jours'
 import type { ServiceProcessus } from '../ports'
@@ -19,7 +21,7 @@ import { PRESENTATIONS_PROFILS } from './presentations'
 type Attendre = <T>(v: T | (() => T)) => Promise<T>
 type Refus = (status: number, code: string, message: string, details?: Record<string, unknown>) => ApiError
 
-type Document = { nomFichier: string; typeMime: string; taille: number; sha256: string }
+type Document = { nomFichier: string; typeMime: string; taille: number; sha256: string; reference?: string | null; deposant?: string | null }
 type EtapeSim = EtapeInstance & { def: EtapeProcessus }
 type InstanceSim = Omit<InstanceProcessus, 'etapes' | 'droits'> & { etapes: EtapeSim[] }
 
@@ -72,13 +74,94 @@ export function definitionDemo(): EtapeProcessus[] {
   ]
 }
 
+/** Demandes ouvertes à tout le GIMAC (D-98) : « Demande de congé » (RH) et « Demande de changement d'adresse IP » (pôle réseau). */
+export function demandesDemo(): { code: string; unite: string; libelle: string; description: string; categorie: string; etapes: EtapeProcessus[]; formulaire: Formulaire }[] {
+  const champ = (code: string, libelle: string, type: ChampFormulaire['type'], obligatoire: boolean, aide: string, o: Partial<ChampFormulaire> = {}): ChampFormulaire =>
+    ({ code, libelle, type, obligatoire, aide, choix: [], typesPieces: [], ...o })
+  const etape = (code: string, libelle: string, action: string, intervenant: Intervenant, predecesseurs: string[], x: number, o: Partial<EtapeProcessus> = {}): EtapeProcessus =>
+    ({ code, libelle, action, intervenant, validateur: null, predecesseurs, delaiJours: 2, livrables: [], signatures: [], champs: [], position: pos(x, 80), ...o })
+  const gestionnaireRh: Intervenant = { mode: 'PROFIL', profil: 'ROLE_COLLABORATEUR', unite: 'RH' }
+  const reseau: Intervenant = { mode: 'PROFIL', profil: 'ROLE_POLE_RESEAU' }
+  return [
+    {
+      code: 'DEMANDE_CONGE', unite: 'RH', libelle: 'Demande de congé', categorie: 'Ressources humaines',
+      description: 'Demande de congé adressée au service des ressources humaines : vérification des droits, accord du supérieur, enregistrement et clôture.',
+      formulaire: { champs: [
+        champ('PERIODE', 'Période de congé', 'PERIODE', true, 'Premier et dernier jour d’absence.'),
+        champ('MOTIF', 'Motif', 'TEXTE_LONG', true, 'Congé annuel, événement familial, récupération…'),
+        champ('JUSTIFICATIF', 'Pièce justificative', 'PIECE_JOINTE', false, 'Facultative : PDF ou image.', { typesPieces: ['application/pdf', 'image/*'] }),
+      ] },
+      etapes: [
+        etape('ANALYSE', 'Vérification des droits à congé', 'Vérifier le solde de congés du demandeur et la conformité de la période demandée.', gestionnaireRh, [], 0,
+          { champs: [{ code: 'SOLDE_JOURS', libelle: 'Solde de jours disponible', type: 'NOMBRE', choix: [], obligatoire: true }] }),
+        etape('VALIDATION', 'Accord du supérieur hiérarchique', 'Donner l’accord du service sur la période demandée.', { mode: 'N_PLUS_1_LANCEUR', remplacement: 'ROLE_RESPONSABLE_SERVICE' }, ['ANALYSE'], 300,
+          { champs: [{ code: 'DECISION', libelle: 'Décision', type: 'CHOIX', choix: ['Accordé', 'Accordé avec dates modifiées'], obligatoire: true }] }),
+        etape('EXECUTION', 'Enregistrement du congé', 'Enregistrer le congé dans le dossier du demandeur et établir la décision.', gestionnaireRh, ['VALIDATION'], 600,
+          { livrables: [{ code: 'DECISION_CONGE', libelle: 'Décision de congé', typesPieces: ['application/pdf'], obligatoire: false, modele: null }] }),
+        etape('CLOTURE', 'Clôture du dossier', 'Informer le demandeur et archiver la demande.', gestionnaireRh, ['EXECUTION'], 900, { delaiJours: 1 }),
+      ],
+    },
+    {
+      code: 'CHANGEMENT_ADRESSE_IP', unite: 'POLE_RESEAU', libelle: 'Demande de changement d’adresse IP', categorie: 'Réseau',
+      description: 'Demande adressée au pôle réseau pour changer l’adresse IP d’un poste ou d’un équipement : analyse, validation, mise en œuvre et clôture.',
+      formulaire: { champs: [
+        champ('EQUIPEMENT', 'Équipement', 'TEXTE', true, 'Nom ou numéro d’inventaire du poste ou de l’équipement.'),
+        champ('ADRESSE_ACTUELLE', 'Adresse IP actuelle', 'TEXTE', true, 'Par exemple 10.20.4.15.'),
+        champ('ADRESSE_DEMANDEE', 'Adresse IP demandée', 'TEXTE', true, 'Adresse souhaitée, ou plage du réseau visé.'),
+        champ('JUSTIFICATION', 'Justification', 'TEXTE_LONG', true, 'Pourquoi le changement est nécessaire.'),
+      ] },
+      etapes: [
+        etape('ANALYSE', 'Analyse technique', 'Vérifier le plan d’adressage, la disponibilité de l’adresse demandée et l’impact sur les règles de filtrage.', reseau, [], 0,
+          { champs: [{ code: 'ADRESSE_DISPONIBLE', libelle: 'Adresse disponible', type: 'CHOIX', choix: ['Oui', 'Non, autre adresse proposée'], obligatoire: true }] }),
+        etape('VALIDATION', 'Validation du chef de pôle', 'Autoriser le changement d’adresse au vu de l’analyse.', { mode: 'CHEF_UNITE', remplacement: 'ROLE_RESPONSABLE_SERVICE' }, ['ANALYSE'], 300,
+          { delaiJours: 1, champs: [{ code: 'DECISION', libelle: 'Décision', type: 'CHOIX', choix: ['Accordée', 'Accordée avec réserves'], obligatoire: true }] }),
+        etape('EXECUTION', 'Mise en œuvre du changement', 'Appliquer la nouvelle adresse, mettre à jour le DHCP, le DNS et les règles de filtrage.', reseau, ['VALIDATION'], 600,
+          { champs: [{ code: 'ADRESSE_ATTRIBUEE', libelle: 'Adresse IP attribuée', type: 'TEXTE', choix: [], obligatoire: true }] }),
+        etape('CLOTURE', 'Vérification et clôture', 'Vérifier la connectivité avec le demandeur et clôturer la demande.', reseau, ['EXECUTION'], 900, { delaiJours: 1 }),
+      ],
+    },
+  ]
+}
+
 type EtatSimule = { definitions: Processus[]; instances: InstanceSim[]; documents: Map<string, Document>; sequence: number }
 /** État partagé par les services simulés d'un même magasin des pouvoirs (organisation commune, plusieurs personnes). */
 const ETATS = new WeakMap<MagasinPouvoirs, EtatSimule>()
 
+/**
+ * Démonstration d'un parcours à plusieurs personnes (D-98) : dans une session de démonstration ouverte (gm.sessionDemo),
+ * l'état des processus est gardé dans l'onglet (sessionStorage) pour survivre au changement de profil de démonstration
+ * (rechargement) ; les tâches des étapes en cours sont recréées dans « Mon activité ». Hors session (tests unitaires) : rien.
+ */
+const CLE_ETAT = 'gm.demoProcessus.v1'
+function stockage(): Storage | null {
+  try {
+    return typeof sessionStorage !== 'undefined' && sessionStorage.getItem('gm.sessionDemo') ? sessionStorage : null
+  } catch {
+    return null
+  }
+}
+function relireEtat(): EtatSimule | null {
+  try {
+    const brut = stockage()?.getItem(CLE_ETAT)
+    if (!brut) return null
+    const e = JSON.parse(brut) as { definitions: Processus[]; instances: InstanceSim[]; documents: [string, Document][]; sequence: number }
+    return { definitions: e.definitions, instances: e.instances, documents: new Map(e.documents), sequence: e.sequence }
+  } catch {
+    return null
+  }
+}
+function garderEtat(e: EtatSimule) {
+  try {
+    stockage()?.setItem(CLE_ETAT, JSON.stringify({ definitions: e.definitions, instances: e.instances, documents: [...e.documents.entries()], sequence: e.sequence }))
+  } catch {
+    // Stockage indisponible ou plein : la démonstration continue en mémoire.
+  }
+}
+
 export function processusSimule(attendre: Attendre, refus: Refus, moiId: string, magasin: MagasinPouvoirs, pont?: PontTachesProcessus): ServiceProcessus {
   const existant = ETATS.get(magasin)
-  const etat: EtatSimule = existant ?? { definitions: [], instances: [], documents: new Map(), sequence: 0 }
+  const repris = existant ? null : relireEtat()
+  const etat: EtatSimule = existant ?? repris ?? { definitions: [], instances: [], documents: new Map(), sequence: 0 }
   ETATS.set(magasin, etat)
   const id = (prefixe: string) => `${prefixe}-${(++etat.sequence).toString().padStart(4, '0')}`
   const maintenant = () => new Date().toISOString()
@@ -102,6 +185,22 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
   }
   const peutDefinir = (unite: string) => refMetier() || magasin.couvreUnite(moiId, 'PROCESSUS_DEFINIR', unite)
   const peutLancer = (unite: string) => membreDe(moiId, unite) || magasin.couvreUnite(moiId, 'PROCESSUS_LANCER', unite) || admin()
+  const permissionsDe = (pid: string) => new Set(profils(pid).flatMap((p) => PROFILS[p] ?? []))
+  /** D-98 : l'une des règles d'initiateurs de la définition, ou PROCESSUS_LANCER couvrant l'unité, ou REF_METIER_ADMIN. */
+  const initiateurs = (p: Processus): Initiateurs => p.initiateurs ?? INITIATEURS_DEFAUT
+  const peutLancerProcessus = (p: Processus) => {
+    if (admin() || magasin.couvreUnite(moiId, 'PROCESSUS_LANCER', p.unite)) return true
+    const i = initiateurs(p)
+    return i.regles.some((r) => {
+      switch (r) {
+        case 'MEMBRES_UNITE': return membreDe(moiId, p.unite)
+        case 'TOUT_LE_GIMAC': return membre(moiId)?.actif !== false
+        case 'UNITES': return i.unites.some((u) => membreDe(moiId, u))
+        case 'PROFILS': return i.profils.some((x) => profils(moiId).includes(x))
+        default: return i.permissions.some((x) => permissionsDe(moiId).has(x))
+      }
+    })
+  }
   const peutLire = (unite: string) => peutDefinir(unite) || peutLancer(unite) || magasin.unitesDirigees(moiId).some((u) => magasin.sousUnites(u).includes(unite))
   const peutPiloter = (unite: string) => admin() || magasin.unitesDirigees(moiId).includes(unite) || magasin.couvreUnite(moiId, 'TACHE_CONFIER', unite)
   const documents = etat.documents
@@ -131,11 +230,18 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
       id: id('PRC'), code: s.code, version: 1, etat: 'BROUILLON', unite: s.unite, libelle: s.libelle, description: s.description, categorie: s.categorie, delaiCibleJours: s.delaiCibleJours,
       etapes: s.etapes.map(normaliserEtape), creeLe: maintenant(), creePar: personne(auteur), modifieLe: null, modifiePar: null, publieeLe: null, publieePar: null, motifPublication: null,
       avertissementsLeves: false, retireeLe: null, retireePar: null, motifRetrait: null, droits: { modifier: false, publier: false, lancer: false, retirer: false }, versions: [],
-      avertissements: [], personnes: {}, historique: [{ quand: maintenant(), acteur: personne(auteur), action: 'CREE', etape: null, detail: null }], ...o,
+      avertissements: [], personnes: {}, historique: [{ quand: maintenant(), acteur: personne(auteur), action: 'CREE', etape: null, detail: null }],
+      initiateurs: normaliserInitiateurs(s.initiateurs), formulaire: normaliserFormulaire(s.formulaire), ...o,
     }
     definitions.push(p)
     return p
   }
+  const normaliserInitiateurs = (i: Partial<Initiateurs> | undefined): Initiateurs => ({
+    regles: i?.regles?.length ? [...new Set(i.regles)] : [...INITIATEURS_DEFAUT.regles], unites: [...new Set(i?.unites ?? [])], profils: [...new Set(i?.profils ?? [])], permissions: [...new Set(i?.permissions ?? [])],
+  })
+  const normaliserFormulaire = (f: Formulaire | undefined): Formulaire => ({
+    champs: (f?.champs ?? []).map((c) => ({ ...c, code: c.code.trim(), libelle: c.libelle.trim(), obligatoire: !!c.obligatoire, aide: c.aide?.trim() || null, choix: c.type === 'LISTE' ? c.choix ?? [] : [], typesPieces: c.type === 'PIECE_JOINTE' ? c.typesPieces ?? [] : [] })),
+  })
   const normaliserEtape = (e: EtapeProcessus): EtapeProcessus => ({
     ...e, code: e.code.trim(), libelle: e.libelle.trim(), action: e.action ?? '', intervenant: intervenantNormalise(e.intervenant), validateur: e.validateur ? intervenantNormalise(e.validateur) : null,
     livrables: e.livrables.map((l) => ({ ...l, obligatoire: l.obligatoire ?? true, modele: l.modele || null })), signatures: e.signatures.map((s) => ({ ...s, signataire: intervenantNormalise(s.signataire), ordre: s.ordre || 1 })),
@@ -147,13 +253,23 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
     const definir = peutDefinir(p.unite)
     return structuredClone({
       ...p, versions, personnes, avertissements: p.etat === 'PUBLIEE' ? controler(p).filter((a) => a.gravite === 'AVERTISSEMENT') : [],
-      droits: { modifier: definir && p.etat === 'BROUILLON', publier: definir && p.etat === 'BROUILLON', lancer: p.etat === 'PUBLIEE' && peutLancer(p.unite), retirer: definir && p.etat === 'PUBLIEE' },
+      initiateurs: initiateurs(p), formulaire: p.formulaire ?? { champs: [] },
+      droits: { modifier: definir && p.etat === 'BROUILLON', publier: definir && p.etat === 'BROUILLON', lancer: p.etat === 'PUBLIEE' && peutLancerProcessus(p), retirer: definir && p.etat === 'PUBLIEE' },
     })
   }
   const trouver = (pid: string) => {
     const p = definitions.find((x) => x.id === pid)
+    // D-98 : une version publiée se lit aussi de qui peut la lancer (formulaire de lancement).
+    if (p && p.etat === 'PUBLIEE' && peutLancerProcessus(p)) return p
     if (!p || !peutLire(p.unite) || (p.etat === 'BROUILLON' && !peutDefinir(p.unite))) throw refus(404, 'PIL_PROCESSUS_INTROUVABLE', 'Processus introuvable.')
     return p
+  }
+  const resume = (p: Processus): ResumeProcessus => {
+    const v = vue(p)
+    return {
+      id: v.id, code: v.code, version: v.version, etat: v.etat, unite: v.unite, libelle: v.libelle, description: v.description, categorie: v.categorie, delaiCibleJours: v.delaiCibleJours,
+      nombreEtapes: v.etapes.length, publieeLe: v.publieeLe, modifieLe: v.modifieLe, modifiePar: v.modifiePar, droits: v.droits, initiateurs: v.initiateurs, nombreChampsFormulaire: v.formulaire?.champs.length ?? 0,
+    }
   }
   const exigerDefinir = (unite: string) => {
     if (!peutDefinir(unite)) throw refus(403, 'PIL_PROCESSUS_INTERDIT', 'Définir les processus de cette unité exige le pouvoir PROCESSUS_DEFINIR.')
@@ -171,6 +287,12 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
       if (!e.intervenant?.mode) throw champ(`etapes[${i}].intervenant.mode`, 'Mode d’intervenant obligatoire.')
     })
     if (!magasin.unites.some((u) => u.code === s.unite)) throw refus(422, 'PIL_PROCESSUS_UNITE_INCONNUE', 'Unité inconnue.')
+    if ((s.formulaire?.champs.length ?? 0) > LIMITES_FORMULAIRE.champs) throw champ('formulaire.champs', 'Trente champs au plus.')
+    s.formulaire?.champs.forEach((c, i) => {
+      if (!LIMITES_PROCESSUS.codeEtape.test(c.code ?? '')) throw champ(`formulaire.champs[${i}].code`, 'Code de champ invalide.')
+      if (!c.libelle?.trim()) throw champ(`formulaire.champs[${i}].libelle`, 'Libellé obligatoire.')
+    })
+    s.initiateurs?.profils.forEach((x, i) => { if (!/^ROLE_[A-Z][A-Z0-9_]{1,60}$/.test(x)) throw champ(`initiateurs.profils[${i}]`, 'Profil ROLE_… attendu.') })
   }
 
   /** Contrôle de publication (§5.1) : graphe, intervenants, livrables, signatures, champs, couverture des profils. */
@@ -243,6 +365,15 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
       })
       livrablesVus.push(...e.livrables.map((l) => l.code))
     })
+    // D-98 : initiateurs et formulaire de lancement.
+    const i = initiateurs(p)
+    if (i.regles.includes('UNITES') && !i.unites.length) ajouter('INITIATEURS_INCOMPLETS', 'BLOQUANTE', null, 'initiateurs.unites', 'Règle UNITES sans unité désignée.')
+    if (i.regles.includes('PROFILS') && !i.profils.length) ajouter('INITIATEURS_INCOMPLETS', 'BLOQUANTE', null, 'initiateurs.profils', 'Règle PROFILS sans profil désigné.')
+    if (i.regles.includes('PERMISSIONS') && !i.permissions.length) ajouter('INITIATEURS_INCOMPLETS', 'BLOQUANTE', null, 'initiateurs.permissions', 'Règle PERMISSIONS sans permission désignée.')
+    if (i.regles.includes('UNITES')) i.unites.filter((u) => !magasin.unites.some((x) => x.code === u)).forEach((u) => ajouter('UNITE_INCONNUE', 'BLOQUANTE', null, 'initiateurs.unites', `Unité inconnue : ${u}.`))
+    const champsFormulaire = (p.formulaire?.champs ?? []).map((c) => c.code)
+    champsFormulaire.filter((c, n) => champsFormulaire.indexOf(c) !== n).forEach((c) => ajouter('CHAMP_CODE_DUPLIQUE', 'BLOQUANTE', null, `formulaire.${c}`, `Code de champ du formulaire en double : ${c}.`))
+    ;(p.formulaire?.champs ?? []).filter((c) => c.type === 'LISTE' && !c.choix.length).forEach((c) => ajouter('CHAMP_CHOIX_ABSENT', 'BLOQUANTE', null, `formulaire.${c.code}`, `Liste sans valeur : ${c.code}.`))
     return a
   }
 
@@ -359,20 +490,83 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
     if (!m?.trim() || m.trim().length > LIMITES_PROCESSUS.motif) throw refus(400, 'PIL_REQUETE_INVALIDE', 'Motif obligatoire.', { champ: 'motif' })
     return m.trim()
   }
-  const lancer = (p: Processus, l: { intitule: string; champs: Record<string, string | number | null>; designations: Record<string, string> }, lanceur: string): InstanceSim => {
-    const manquantes = designationsAttendues(p.etapes).map((d) => d.cle).filter((c) => !l.designations[c])
+  /**
+   * Formulaire de lancement (D-98 §2) : toutes les erreurs ensemble, 422 PIL_PROCESSUS_FORMULAIRE_INVALIDE, details.fieldErrors
+   * et details.champs (« formulaire.CODE » vers le message), comme le client HTTP les rend depuis le service.
+   */
+  const valeursFormulaire = (p: Processus, saisies: Lancement['formulaire'], lanceur: string): ValeurChampFormulaire[] => {
+    const s = saisies ?? {}
+    const erreurs: { field: string; code: string; message: string }[] = []
+    const erreur = (code: string, raison: string, message: string) => erreurs.push({ field: `formulaire.${code}`, code: raison, message })
+    const champs = p.formulaire?.champs ?? []
+    Object.keys(s).filter((c) => !champs.some((x) => x.code === c)).forEach((c) => erreur(c, 'INCONNU', 'Ce champ n’appartient pas au formulaire de lancement.'))
+    const date = (v: unknown) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)
+    const r = champs.map((c): ValeurChampFormulaire => {
+      const v = s[c.code]
+      const vide = v === null || v === undefined || (typeof v === 'string' && !v.trim())
+      if (vide || (c.type === 'CASE' && v === false && c.obligatoire)) {
+        if (c.obligatoire) erreur(c.code, 'OBLIGATOIRE', 'Champ obligatoire.')
+        return { ...c, valeur: c.type === 'CASE' ? false : null }
+      }
+      let valeur: ValeurFormulaire = null
+      switch (c.type) {
+        case 'TEXTE': case 'TEXTE_LONG':
+          if (String(v).trim().length > (c.type === 'TEXTE' ? LIMITES_FORMULAIRE.texte : LIMITES_FORMULAIRE.texteLong)) erreur(c.code, 'TROP_LONG', 'Texte trop long.')
+          valeur = String(v).trim()
+          break
+        case 'NOMBRE':
+          if (Number.isNaN(Number(String(v).replace(',', '.')))) erreur(c.code, 'FORMAT', 'Nombre attendu.')
+          valeur = Number(String(v).replace(',', '.'))
+          break
+        case 'DATE':
+          if (!date(v)) erreur(c.code, 'FORMAT', 'Date AAAA-MM-JJ attendue.')
+          valeur = String(v)
+          break
+        case 'PERIODE': {
+          const x = v as { debut?: string; fin?: string }
+          if (!date(x?.debut) || !date(x?.fin)) erreur(c.code, 'PERIODE', 'Début et fin de la période attendus.')
+          else if (x.fin! < x.debut!) erreur(c.code, 'PERIODE', 'La fin de la période précède son début.')
+          valeur = { debut: x?.debut ?? '', fin: x?.fin ?? '' }
+          break
+        }
+        case 'LISTE':
+          if (!c.choix.includes(String(v))) erreur(c.code, 'HORS_LISTE', 'Valeur hors de la liste admise.')
+          valeur = String(v)
+          break
+        case 'CASE':
+          valeur = v === true || v === 'true'
+          break
+        default: {
+          const id = typeof v === 'object' && v && 'documentId' in v ? String(v.documentId) : String(v)
+          const d = documents.get(id)
+          if (!d || (d.deposant && d.deposant !== lanceur) || (d.reference && d.reference !== p.id)) erreur(c.code, 'PIECE_INVALIDE', 'Pièce inconnue, ou non déposée par vous pour ce processus.')
+          else if (c.typesPieces.length && !c.typesPieces.some((t) => t === d.typeMime || (t.endsWith('/*') && d.typeMime.startsWith(t.slice(0, -1))))) erreur(c.code, 'TYPE_PIECE', 'Type de pièce non admis.')
+          else valeur = { documentId: id, nomFichier: d.nomFichier, typeMime: d.typeMime, taille: d.taille, sha256: d.sha256 }
+        }
+      }
+      return { ...c, valeur }
+    })
+    if (erreurs.length) {
+      throw refus(422, 'PIL_PROCESSUS_FORMULAIRE_INVALIDE', `Formulaire de lancement à corriger : ${erreurs.length} champ(s).`,
+        { fieldErrors: erreurs.map((x) => ({ objectName: 'lancement', ...x })), champs: Object.fromEntries(erreurs.map((x) => [x.field, x.message])) })
+    }
+    return r
+  }
+  const lancer = (p: Processus, l: Lancement, lanceur: string): InstanceSim => {
+    const manquantes = designationsAttendues(p.etapes).map((d) => d.cle).filter((c) => !l.designations?.[c])
     if (manquantes.length) throw refus(422, 'PIL_PROCESSUS_DESIGNATION_MANQUANTE', 'Désignations manquantes.', { cles: manquantes })
-    if (Object.values(l.designations).some((pid) => !membre(pid) || membre(pid)!.actif === false)) throw refus(422, 'PIL_PROCESSUS_DESIGNATION_INVALIDE', 'Personne désignée invalide.')
+    if (Object.values(l.designations ?? {}).some((pid) => !membre(pid) || membre(pid)!.actif === false)) throw refus(422, 'PIL_PROCESSUS_DESIGNATION_INVALIDE', 'Personne désignée invalide.')
     if (!l.intitule?.trim()) throw refus(400, 'PIL_REQUETE_INVALIDE', 'Intitulé obligatoire.', { champ: 'intitule' })
+    const formulaire = valeursFormulaire(p, l.formulaire, lanceur)
     const inst: InstanceSim = {
       id: id('INS'), processus: { id: p.id, code: p.code, version: p.version, libelle: p.libelle }, unite: p.unite, intitule: l.intitule.trim(), etat: 'EN_COURS', lanceur: personne(lanceur),
-      lanceeLe: maintenant(), closeLe: null, motif: null, designations: Object.fromEntries(Object.entries(l.designations).map(([k, v]) => [k, personne(v)])),
-      avancement: { total: p.etapes.length, terminees: 0 }, historique: [],
+      lanceeLe: maintenant(), closeLe: null, motif: null, designations: Object.fromEntries(Object.entries(l.designations ?? {}).map(([k, v]) => [k, personne(v)])),
+      avancement: { total: p.etapes.length, terminees: 0 }, historique: [], formulaire,
       etapes: p.etapes.map((def) => ({
         def, code: def.code, libelle: def.libelle, action: def.action, predecesseurs: def.predecesseurs, position: def.position, delaiJours: def.delaiJours, etat: 'EN_ATTENTE', activeeLe: null,
         echeance: null, soumiseLe: null, termineeLe: null, enRetard: false, renvois: 0, tacheId: null, executant: null, aPrendre: null, validateur: null,
         livrables: def.livrables.map((x) => ({ ...x, depot: null })),
-        champs: def.champs.map((c) => ({ ...c, valeur: def.predecesseurs.length ? null : (l.champs[c.code] ?? null) })),
+        champs: def.champs.map((c) => ({ ...c, valeur: def.predecesseurs.length ? null : (l.champs?.[c.code] ?? null) })),
         signatures: [], moi: { executer: false, prendre: false, signer: [], valider: false, reaffecter: false },
       })),
     }
@@ -440,10 +634,35 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
     // Instance à l'analyse : tâche à prendre par les porteurs du profil « Pôle réseau ».
     const instB = lancer(flux, { intitule: 'Ouverture du port 443 pour la supervision', champs: { SOURCE: '10.20.6.2', DESTINATION: '10.30.1.9', PORT: 443, PROTOCOLE: 'TCP' }, designations: { MISE_EN_OEUVRE: 'u-collab' } }, 'u-collab')
     terminerEtape(instB, derouler(instB, 'DEMANDE', 'u-collab', []))
+    // D-98 : demandes ouvertes à tout le GIMAC, publiées par le service destinataire.
+    const publiees = demandesDemo().map((d) => {
+      const auteur = d.unite === 'RH' ? 'u-rh-chef' : 'u-resp-info'
+      const p = nouvelle({ code: d.code, unite: d.unite, libelle: d.libelle, description: d.description, categorie: d.categorie, delaiCibleJours: 5, etapes: d.etapes,
+        initiateurs: { regles: ['TOUT_LE_GIMAC'], unites: [], profils: [], permissions: [] }, formulaire: d.formulaire }, auteur)
+      Object.assign(p, { etat: 'PUBLIEE', publieeLe: `${ajouterJours(aujourdhui(), -10)}T09:00:00+01:00`, publieePar: personne(auteur), motifPublication: null })
+      p.historique.push({ quand: p.publieeLe!, acteur: personne(auteur), action: 'PUBLIE', etape: null, detail: null })
+      return p
+    })
+    // L'ingénieur d'homologation a demandé un congé : vérifié par les RH, en attente de l'accord de son supérieur.
+    acteurForce = personne('U-101')
+    const conge = lancer(publiees[0], { intitule: 'Congé annuel de fin d’année', champs: {}, designations: {},
+      formulaire: { PERIODE: { debut: ajouterJours(aujourdhui(), 30), fin: ajouterJours(aujourdhui(), 44) }, MOTIF: 'Congé annuel.' } }, 'U-101')
+    terminerEtape(conge, derouler(conge, 'ANALYSE', 'u-rh', [], { SOLDE_JOURS: 24 }))
     acteurForce = null
   }
-  if (!existant) demonstration()
+  if (!existant && !repris) demonstration()
 
+  // État repris d'un autre profil de démonstration (D-98) : les tâches des étapes en cours renaissent dans « Mon activité ».
+  if (repris && pont) {
+    for (const inst of instances.filter((i) => i.etat === 'EN_COURS' || i.etat === 'SUSPENDUE')) {
+      for (const e of inst.etapes.filter((x) => x.etat === 'ACTIVE' || x.etat === 'A_SIGNER' || x.etat === 'A_VALIDER')) {
+        e.tacheId = pont.creer({
+          titre: `${inst.intitule} : ${e.libelle}`, description: e.action || null, responsable: e.executant?.id ?? null, uniteCible: e.executant ? null : e.aPrendre?.unite ?? null,
+          profilRequis: e.executant ? null : e.aPrendre?.profil ?? null, createur: inst.lanceur.id, echeance: e.echeance, reference: `${inst.id}/${e.code}`, lien: lien(inst, e.code),
+        })
+      }
+    }
+  }
   // La prise d'une tâche d'étape (Mon activité) désigne l'exécutant de l'étape (§5.3).
   if (pont) {
     pont.surPrise = (tid, p) => {
@@ -452,18 +671,56 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
       if (!inst || !e) return
       Object.assign(e, { executant: p, aPrendre: null })
       historiser(inst.historique, 'ETAPE_PRISE', p.nomAffiche, e.code, p)
+      garderEtat(etat)
     }
   }
 
-  const resumeInstance = (inst: InstanceSim): ResumeInstance => ({
-    id: inst.id, processus: inst.processus, unite: inst.unite, intitule: inst.intitule, etat: inst.etat, lanceur: inst.lanceur, lanceeLe: inst.lanceeLe, closeLe: inst.closeLe, avancement: inst.avancement,
-    etapesEnCours: inst.etapes.filter((e) => ['ACTIVE', 'A_SIGNER', 'A_VALIDER'].includes(e.etat)).map((e) => ({ code: e.code, libelle: e.libelle, etat: e.etat, echeance: e.echeance })),
+  const resumeInstance = (inst: InstanceSim): ResumeInstance => {
+    // D-98 : actions de l'appelant par étape (comme MS-PILOTAGE), « attend ma décision » hors réaffectation.
+    const moi = new Map(vueInstance(inst).etapes.map((e) => [e.code, e.moi]))
+    return {
+      id: inst.id, processus: inst.processus, unite: inst.unite, intitule: inst.intitule, etat: inst.etat, lanceur: inst.lanceur, lanceeLe: inst.lanceeLe, closeLe: inst.closeLe, avancement: inst.avancement,
+      etapesEnCours: inst.etapes.filter((e) => ['ACTIVE', 'A_SIGNER', 'A_VALIDER'].includes(e.etat)).map((e) => {
+        const m = moi.get(e.code)!
+        return { code: e.code, libelle: e.libelle, etat: e.etat, echeance: e.echeance, moi: m, attendMoi: m.executer || m.prendre || m.signer.length > 0 || m.valider }
+      }),
+    }
+  }
+  const demande = (inst: InstanceSim): DemandeProcessus => ({
+    id: inst.id, processus: inst.processus, unite: inst.unite, intitule: inst.intitule, etat: inst.etat, lanceeLe: inst.lanceeLe, closeLe: inst.closeLe, motif: inst.motif, avancement: inst.avancement,
+    etapes: inst.etapes.map((e) => ({
+      code: e.code, libelle: e.libelle, etat: e.etat, executant: e.aPrendre && !e.executant ? null : e.executant, aPrendre: e.executant ? null : e.aPrendre, activeeLe: e.activeeLe, echeance: e.echeance,
+      termineeLe: e.termineeLe, enRetard: e.enRetard,
+    })),
+    derniereEvolution: inst.historique.at(-1) ?? null,
   })
   const implique = (inst: InstanceSim) => inst.etapes.some((e) => e.executant?.id === moiId || e.validateur?.personne?.id === moiId
     || e.signatures.some((s) => s.attendu.personne?.id === moiId || s.signePar?.id === moiId) || (e.etat === 'ACTIVE' && !e.executant && peutAgir(e.aPrendre ? { personne: null, ...e.aPrendre } : null))
     || (e.etat === 'A_SIGNER' && e.signatures.some((s) => s.etat === 'ATTENDUE' && peutAgir(s.attendu))))
 
-  return {
+  async function deposerFragmente(fichier: File, reference: string, o: OptionsTeleversement): Promise<Televersement> {
+    const pause = (ms: number) => new Promise<void>((ok, ko) => {
+      const t = window.setTimeout(ok, ms)
+      o.signal?.addEventListener('abort', () => {
+        window.clearTimeout(t)
+        ko(new DOMException('Envoi annulé', 'AbortError'))
+      })
+    })
+    const total = fichier.size
+    for (let i = 0; i <= 10; i++) {
+      o.surProgression?.({ phase: 'envoi', envoye: Math.round((total * i) / 10), total })
+      if (i < 10) await pause(DUREE_ETAPE_DOCUMENT_MS / 4)
+    }
+    o.surProgression?.({ phase: 'verification', envoye: total, total })
+    await pause(DUREE_ETAPE_DOCUMENT_MS / 4)
+    const ticket = id('DOC')
+    const sha256 = empreinteDemo(`${fichier.name}:${total}`)
+    documents.set(ticket, { nomFichier: fichier.name, typeMime: fichier.type || 'application/octet-stream', taille: total, sha256, reference, deposant: moiId })
+    garderEtat(etat)
+    o.surProgression?.({ phase: 'pret', envoye: total, total })
+    return { documentId: ticket, sha256, dedoublonne: false, depotId: id('DEPOT') }
+  }
+  const service: ServiceProcessus = {
     // D-92 : portée de l'appelant (GET /processus/portee).
     portee: () => attendre(() => {
       const tous = refMetier() || definirToutes() || lancerToutes()
@@ -482,13 +739,24 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
       .filter((p) => peutLire(p.unite) && (p.etat !== 'BROUILLON' || peutDefinir(p.unite)))
       .filter((p) => (!q.unite || p.unite === q.unite) && (!q.etat || p.etat === q.etat) && (!q.q?.trim() || `${p.code} ${p.libelle} ${p.categorie}`.toLowerCase().includes(q.q.trim().toLowerCase())))
       .sort((a, b) => a.libelle.localeCompare(b.libelle, 'fr') || b.version - a.version)
-      .map((p) => {
-        const v = vue(p)
-        return {
-          id: v.id, code: v.code, version: v.version, etat: v.etat, unite: v.unite, libelle: v.libelle, description: v.description, categorie: v.categorie, delaiCibleJours: v.delaiCibleJours,
-          nombreEtapes: v.etapes.length, publieeLe: v.publieeLe, modifieLe: v.modifieLe, modifiePar: v.modifiePar, droits: v.droits,
-        }
-      })),
+      .map(resume)),
+    // D-98 : versions publiées que je peux lancer, par unité propriétaire.
+    lancables: (q) => attendre(() => {
+      const r = q.q?.trim().toLowerCase()
+      const l = definitions.filter((p) => p.etat === 'PUBLIEE' && peutLancerProcessus(p) && (!r || `${p.code} ${p.libelle} ${p.categorie}`.toLowerCase().includes(r)))
+        .sort((a, b) => a.libelle.localeCompare(b.libelle, 'fr'))
+      const unites = [...new Set(l.map((p) => p.unite))].sort()
+      return { groupes: unites.map((u) => ({ unite: u, processus: l.filter((p) => p.unite === u).map(resume) })) }
+    }),
+    // D-98 : « Mes demandes ».
+    demandes: (q) => attendre(() => {
+      const r = q.q?.trim().toLowerCase()
+      const l = instances.filter((i) => i.lanceur.id === moiId && (!q.etat || i.etat === q.etat) && (!r || `${i.intitule} ${i.processus.libelle} ${i.processus.code}`.toLowerCase().includes(r)))
+        .sort((a, b) => b.lanceeLe.localeCompare(a.lanceeLe))
+      const page = q.page ?? 0
+      const taille = Math.min(q.taille ?? 20, 100)
+      return { contenu: l.slice(page * taille, (page + 1) * taille).map(demande), total: l.length, page, taille }
+    }),
     lire: (pid) => attendre(() => vue(trouver(pid))),
     creer: (s) => attendre(() => {
       verifierSaisie(s)
@@ -502,6 +770,9 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
       if (p.etat !== 'BROUILLON') throw refus(409, 'PIL_PROCESSUS_ETAT', 'Seul un brouillon se modifie.')
       verifierSaisie({ ...s, code: p.code, unite: p.unite })
       Object.assign(p, { libelle: s.libelle.trim(), description: s.description ?? '', categorie: s.categorie ?? '', delaiCibleJours: s.delaiCibleJours, etapes: s.etapes.map(normaliserEtape), modifieLe: maintenant(), modifiePar: moi() })
+      // D-98 : absents d'une modification, initiateurs et formulaire de la définition sont gardés (comme MS-PILOTAGE).
+      if (s.initiateurs) p.initiateurs = normaliserInitiateurs(s.initiateurs)
+      if (s.formulaire) p.formulaire = normaliserFormulaire(s.formulaire)
       historiser(p.historique, 'MODIFIE')
       return vue(p)
     }),
@@ -558,9 +829,13 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
       return { contenu: l.slice(page * taille, (page + 1) * taille), total: l.length, page, taille }
     }),
     lancer: (pid, l) => attendre(() => {
-      const p = trouver(pid)
+      // Comme MS-PILOTAGE : la définition est cherchée sans condition de lecture, puis les initiateurs décident (403).
+      const p = definitions.find((x) => x.id === pid)
+      if (!p) throw refus(404, 'PIL_PROCESSUS_INTROUVABLE', 'Processus introuvable.')
+      if (!peutLancerProcessus(p)) {
+        throw refus(403, 'PIL_PROCESSUS_NON_INITIATEUR', 'Vous ne figurez pas parmi les initiateurs de ce processus.', { regles: initiateurs(p).regles, unites: initiateurs(p).unites, profils: initiateurs(p).profils, permissions: initiateurs(p).permissions })
+      }
       if (p.etat !== 'PUBLIEE') throw refus(409, 'PIL_PROCESSUS_NON_PUBLIE', 'Seule une version publiée se lance.')
-      if (!peutLancer(p.unite)) throw refus(403, 'PIL_PROCESSUS_INTERDIT', 'Lancer un processus de cette unité exige d’en être membre ou le pouvoir PROCESSUS_LANCER.')
       // Personne désignée : active, et le lanceur lui-même, porteuse du profil de remplacement (dans l'unité ou ailleurs
       // dans le GIMAC), ou dans la portée TACHE_CONFIER du lanceur.
       for (const d of designationsAttendues(p.etapes)) {
@@ -572,28 +847,10 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
       return vueInstance(lancer(p, l, moiId))
     }),
     instance: (iid) => attendre(() => vueInstance(trouverInstance(iid))),
+    // D-98 : pièce jointe du formulaire de lancement, même dépôt simulé, référence = la définition lancée.
+    televerserPieceLancement: (fichier: File, processusId: string, o: OptionsTeleversement = {}) => deposerFragmente(fichier, processusId, o),
     // Dépôt fragmenté simulé (D-74), finalité PROCESSUS_UNITE : progression en dix étapes, vérification, ticket.
-    televerserLivrable: async (fichier: File, _instanceId: string, o: OptionsTeleversement = {}): Promise<Televersement> => {
-      const pause = (ms: number) => new Promise<void>((ok, ko) => {
-        const t = window.setTimeout(ok, ms)
-        o.signal?.addEventListener('abort', () => {
-          window.clearTimeout(t)
-          ko(new DOMException('Envoi annulé', 'AbortError'))
-        })
-      })
-      const total = fichier.size
-      for (let i = 0; i <= 10; i++) {
-        o.surProgression?.({ phase: 'envoi', envoye: Math.round((total * i) / 10), total })
-        if (i < 10) await pause(DUREE_ETAPE_DOCUMENT_MS / 4)
-      }
-      o.surProgression?.({ phase: 'verification', envoye: total, total })
-      await pause(DUREE_ETAPE_DOCUMENT_MS / 4)
-      const ticket = id('DOC')
-      const sha256 = empreinteDemo(`${fichier.name}:${total}`)
-      documents.set(ticket, { nomFichier: fichier.name, typeMime: fichier.type || 'application/octet-stream', taille: total, sha256 })
-      o.surProgression?.({ phase: 'pret', envoye: total, total })
-      return { documentId: ticket, sha256, dedoublonne: false, depotId: id('DEPOT') }
-    },
+    televerserLivrable: (fichier: File, instanceId: string, o: OptionsTeleversement = {}) => deposerFragmente(fichier, instanceId, o),
     deposerLivrable: (iid, code, livrable, documentId) => attendre(() => {
       const inst = trouverInstance(iid)
       enCours(inst)
@@ -728,4 +985,10 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
       return vueInstance(inst)
     }),
   }
+  // Chaque appel réussi garde l'état dans la session de démonstration (parcours à plusieurs personnes, D-98).
+  return Object.fromEntries(Object.entries(service).map(([k, f]) => [k, async (...a: unknown[]) => {
+    const r = await (f as (...x: unknown[]) => Promise<unknown>)(...a)
+    garderEtat(etat)
+    return r
+  }])) as unknown as ServiceProcessus
 }

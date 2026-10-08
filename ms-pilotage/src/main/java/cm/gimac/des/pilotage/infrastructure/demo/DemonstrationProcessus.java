@@ -2,15 +2,20 @@ package cm.gimac.des.pilotage.infrastructure.demo;
 
 import cm.gimac.des.pilotage.domain.processus.ActionProcessus;
 import cm.gimac.des.pilotage.domain.processus.Champ;
+import cm.gimac.des.pilotage.domain.processus.ChampFormulaire;
 import cm.gimac.des.pilotage.domain.processus.Etape;
+import cm.gimac.des.pilotage.domain.processus.Formulaire;
 import cm.gimac.des.pilotage.domain.processus.HistoriqueProcessus;
+import cm.gimac.des.pilotage.domain.processus.Initiateurs;
 import cm.gimac.des.pilotage.domain.processus.Intervenant;
 import cm.gimac.des.pilotage.domain.processus.Livrable;
 import cm.gimac.des.pilotage.domain.processus.ModeIntervenant;
 import cm.gimac.des.pilotage.domain.processus.Position;
 import cm.gimac.des.pilotage.domain.processus.Processus;
+import cm.gimac.des.pilotage.domain.processus.RegleInitiateur;
 import cm.gimac.des.pilotage.domain.processus.SignatureRequise;
 import cm.gimac.des.pilotage.domain.processus.TypeChamp;
+import cm.gimac.des.pilotage.domain.processus.TypeChampFormulaire;
 import cm.gimac.des.pilotage.repository.HistoriqueProcessusRepository;
 import cm.gimac.des.pilotage.repository.ProcessusRepository;
 import java.time.Clock;
@@ -30,7 +35,9 @@ import org.springframework.transaction.support.TransactionTemplate;
  * processus publié « Ouverture d'un flux réseau » du pôle réseau (OUVERTURE_FLUX_RESEAU v1) : demande par le
  * lanceur, analyse par un ingénieur réseau (profil ROLE_POLE_RESEAU) validée par le chef d'unité, mise en œuvre
  * par une personne désignée au lancement (remplacement : ROLE_POLE_RESEAU), recette dont le procès-verbal est
- * signé par le chef d'unité. Rien n'est fait si le code existe déjà.
+ * signé par le chef d'unité. D-98 : deux demandes lancées de tout le GIMAC (initiateurs TOUT_LE_GIMAC) avec leur
+ * formulaire de lancement, « Demande de congé » (DEMANDE_CONGE, unité RH) et « Demande de changement d'adresse IP »
+ * (CHANGEMENT_ADRESSE_IP, pôle réseau). Rien n'est fait pour un code qui existe déjà.
  */
 @Component
 @ConditionalOnProperty(name = "gimac.demonstration.processus", havingValue = "true")
@@ -57,6 +64,7 @@ public class DemonstrationProcessus implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments args) {
         transactions.executeWithoutResult(s -> {
+            demandes();
             if (processus.existsByCode(CODE)) {
                 return;
             }
@@ -76,6 +84,201 @@ public class DemonstrationProcessus implements ApplicationRunner {
             historique.save(new HistoriqueProcessus(p.getId(), null, null, le, ACTEUR, ActionProcessus.PUBLIE, "Jeu de démonstration"));
             LOG.info("Processus de démonstration {} publié (unité {})", CODE, UNITE);
         });
+    }
+
+    // ------------------------------------------------------------------ demandes lancées de tout le GIMAC (D-98)
+
+    public static final String CODE_CONGE = "DEMANDE_CONGE";
+    public static final String CODE_IP = "CHANGEMENT_ADRESSE_IP";
+    public static final String UNITE_RH = "RH";
+
+    /** Publie « Demande de congé » (RH) et « Demande de changement d'adresse IP » (pôle réseau) s'ils sont absents. */
+    private void demandes() {
+        Instant le = horloge.instant();
+        publierDemande(
+            CODE_CONGE,
+            UNITE_RH,
+            "Demande de congé",
+            "Demande de congé adressée au service des ressources humaines : vérification des droits, accord du supérieur, enregistrement et clôture.",
+            "Ressources humaines",
+            etapesConge(),
+            formulaireConge(),
+            le
+        );
+        publierDemande(
+            CODE_IP,
+            UNITE,
+            "Demande de changement d'adresse IP",
+            "Demande adressée au pôle réseau pour changer l'adresse IP d'un poste ou d'un équipement : analyse, validation, mise en œuvre et clôture.",
+            "Réseau",
+            etapesIp(),
+            formulaireIp(),
+            le
+        );
+    }
+
+    private void publierDemande(String code, String unite, String libelle, String description, String categorie, List<Etape> etapes, Formulaire formulaire, Instant le) {
+        if (processus.existsByCode(code)) {
+            return;
+        }
+        Processus p = Processus.brouillon(code, unite, ACTEUR, le);
+        p.decrire(libelle, description, categorie, 5, etapes, ACTEUR, le);
+        p.definirLancement(new Initiateurs(List.of(RegleInitiateur.TOUT_LE_GIMAC), List.of(), List.of(), List.of()), formulaire, ACTEUR, le);
+        p.publier(ACTEUR, "Jeu de démonstration", false, le);
+        processus.save(p);
+        historique.save(new HistoriqueProcessus(p.getId(), null, null, le, ACTEUR, ActionProcessus.PUBLIE, "Jeu de démonstration"));
+        LOG.info("Processus de démonstration {} publié (unité {}, initiateurs : tout le GIMAC)", code, unite);
+    }
+
+    /** Formulaire de la demande de congé : période, motif, pièce jointe facultative. */
+    public static Formulaire formulaireConge() {
+        return new Formulaire(
+            List.of(
+                new ChampFormulaire("PERIODE", "Période de congé", TypeChampFormulaire.PERIODE, List.of(), true, "Premier et dernier jour d'absence.", List.of()),
+                new ChampFormulaire("MOTIF", "Motif", TypeChampFormulaire.TEXTE_LONG, List.of(), true, "Congé annuel, événement familial, récupération…", List.of()),
+                new ChampFormulaire(
+                    "JUSTIFICATIF",
+                    "Pièce justificative",
+                    TypeChampFormulaire.PIECE_JOINTE,
+                    List.of(),
+                    false,
+                    "Facultative : PDF ou image.",
+                    List.of("application/pdf", "image/*")
+                )
+            )
+        );
+    }
+
+    /** Étapes de la demande de congé (unité RH) : analyse, validation, exécution, clôture. */
+    public static List<Etape> etapesConge() {
+        Intervenant gestionnaire = new Intervenant(ModeIntervenant.PROFIL, "ROLE_COLLABORATEUR", null, UNITE_RH, null);
+        Intervenant superieur = new Intervenant(ModeIntervenant.N_PLUS_1_LANCEUR, null, null, null, "ROLE_RESPONSABLE_SERVICE");
+        return List.of(
+            new Etape(
+                "ANALYSE",
+                "Vérification des droits à congé",
+                "Vérifier le solde de congés du demandeur et la conformité de la période demandée.",
+                gestionnaire,
+                null,
+                List.of(),
+                2,
+                List.of(),
+                List.of(),
+                List.of(new Champ("SOLDE_JOURS", "Solde de jours disponible", TypeChamp.NOMBRE, List.of(), true)),
+                new Position(0, 0)
+            ),
+            new Etape(
+                "VALIDATION",
+                "Accord du supérieur hiérarchique",
+                "Donner l'accord du service sur la période demandée.",
+                superieur,
+                null,
+                List.of("ANALYSE"),
+                2,
+                List.of(),
+                List.of(),
+                List.of(new Champ("DECISION", "Décision", TypeChamp.CHOIX, List.of("Accordé", "Accordé avec dates modifiées"), true)),
+                new Position(260, 0)
+            ),
+            new Etape(
+                "EXECUTION",
+                "Enregistrement du congé",
+                "Enregistrer le congé dans le dossier du demandeur et établir la décision.",
+                gestionnaire,
+                null,
+                List.of("VALIDATION"),
+                2,
+                List.of(new Livrable("DECISION_CONGE", "Décision de congé", List.of("application/pdf"), false, null)),
+                List.of(),
+                List.of(),
+                new Position(520, 0)
+            ),
+            new Etape(
+                "CLOTURE",
+                "Clôture du dossier",
+                "Informer le demandeur et archiver la demande.",
+                gestionnaire,
+                null,
+                List.of("EXECUTION"),
+                1,
+                List.of(),
+                List.of(),
+                List.of(),
+                new Position(780, 0)
+            )
+        );
+    }
+
+    /** Formulaire de la demande de changement d'adresse IP : équipement, adresse actuelle, adresse demandée, justification. */
+    public static Formulaire formulaireIp() {
+        return new Formulaire(
+            List.of(
+                new ChampFormulaire("EQUIPEMENT", "Équipement", TypeChampFormulaire.TEXTE, List.of(), true, "Nom ou numéro d'inventaire du poste ou de l'équipement.", List.of()),
+                new ChampFormulaire("ADRESSE_ACTUELLE", "Adresse IP actuelle", TypeChampFormulaire.TEXTE, List.of(), true, "Par exemple 10.20.4.15.", List.of()),
+                new ChampFormulaire("ADRESSE_DEMANDEE", "Adresse IP demandée", TypeChampFormulaire.TEXTE, List.of(), true, "Adresse souhaitée, ou plage du réseau visé.", List.of()),
+                new ChampFormulaire("JUSTIFICATION", "Justification", TypeChampFormulaire.TEXTE_LONG, List.of(), true, "Pourquoi le changement est nécessaire.", List.of())
+            )
+        );
+    }
+
+    /** Étapes de la demande de changement d'adresse IP (pôle réseau) : analyse, validation, exécution, clôture. */
+    public static List<Etape> etapesIp() {
+        Intervenant reseau = new Intervenant(ModeIntervenant.PROFIL, PROFIL, null, null, null);
+        Intervenant chef = new Intervenant(ModeIntervenant.CHEF_UNITE, null, null, null, "ROLE_RESPONSABLE_SERVICE");
+        return List.of(
+            new Etape(
+                "ANALYSE",
+                "Analyse technique",
+                "Vérifier le plan d'adressage, la disponibilité de l'adresse demandée et l'impact sur les règles de filtrage.",
+                reseau,
+                null,
+                List.of(),
+                2,
+                List.of(),
+                List.of(),
+                List.of(new Champ("ADRESSE_DISPONIBLE", "Adresse disponible", TypeChamp.CHOIX, List.of("Oui", "Non, autre adresse proposée"), true)),
+                new Position(0, 0)
+            ),
+            new Etape(
+                "VALIDATION",
+                "Validation du chef de pôle",
+                "Autoriser le changement d'adresse au vu de l'analyse.",
+                chef,
+                null,
+                List.of("ANALYSE"),
+                1,
+                List.of(),
+                List.of(),
+                List.of(new Champ("DECISION", "Décision", TypeChamp.CHOIX, List.of("Accordée", "Accordée avec réserves"), true)),
+                new Position(260, 0)
+            ),
+            new Etape(
+                "EXECUTION",
+                "Mise en œuvre du changement",
+                "Appliquer la nouvelle adresse, mettre à jour le DHCP, le DNS et les règles de filtrage.",
+                reseau,
+                null,
+                List.of("VALIDATION"),
+                2,
+                List.of(),
+                List.of(),
+                List.of(new Champ("ADRESSE_ATTRIBUEE", "Adresse IP attribuée", TypeChamp.TEXTE, List.of(), true)),
+                new Position(520, 0)
+            ),
+            new Etape(
+                "CLOTURE",
+                "Vérification et clôture",
+                "Vérifier la connectivité avec le demandeur et clôturer la demande.",
+                reseau,
+                null,
+                List.of("EXECUTION"),
+                1,
+                List.of(),
+                List.of(),
+                List.of(),
+                new Position(780, 0)
+            )
+        );
     }
 
     /** Étapes du processus « Ouverture d'un flux réseau ». */

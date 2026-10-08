@@ -29,6 +29,8 @@ export const UNITES_DEMO: Unite[] = [
   { code: 'DDRM', libelle: 'Département Développement du Réseau et du Marché', type: 'DEPARTEMENT', parent: 'DG', active: true },
   { code: 'SSI', libelle: 'Sécurité des systèmes d’information', type: 'SERVICE', parent: 'DG', active: true },
   { code: 'CONFORMITE', libelle: 'Conformité', type: 'SERVICE', parent: 'DG', active: true },
+  // D-98 : service destinataire de la demande de congé.
+  { code: 'RH', libelle: 'Service des ressources humaines', type: 'SERVICE', parent: 'DG', active: true },
 ]
 
 type Membre = { id: string; nomAffiche: string; fonction: string; unite: string | null; responsableId: string | null }
@@ -49,7 +51,15 @@ export const ORGANISATION_DEMO: Membre[] = [
   { id: 'u-collab', nomAffiche: 'Nadège Mvondo Assiga', fonction: 'Technicienne réseau', unite: 'POLE_RESEAU', responsableId: 'u-resp-info' },
   { id: 'u-rssi', nomAffiche: 'Hervé Kamga Tchoupo', fonction: 'Responsable de la sécurité des SI', unite: 'SSI', responsableId: 'u-dg' },
   { id: 'u-conf', nomAffiche: 'Mireille Obame Nze', fonction: 'Responsable conformité', unite: 'CONFORMITE', responsableId: 'u-dg' },
+  { id: 'u-rh-chef', nomAffiche: 'Solange Ateba Mvondo', fonction: 'Cheffe du service des ressources humaines', unite: 'RH', responsableId: 'u-dg' },
+  { id: 'u-rh', nomAffiche: 'Thierry Bekolo Ngoa', fonction: 'Gestionnaire des ressources humaines', unite: 'RH', responsableId: 'u-rh-chef' },
 ]
+
+/**
+ * Profils des comptes de l'organisation absents de l'annuaire de la messagerie (service des ressources humaines, D-98) : la
+ * cheffe du service le dirige par son rattachement (responsable de l'unité), sans profil de démonstration.
+ */
+export const PROFILS_ORGANISATION_DEMO: Record<string, string[]> = { 'u-rh-chef': [], 'u-rh': ['ROLE_COLLABORATEUR'] }
 
 /** Chaîne des unités, de la plus haute à la plus fine. */
 const cheminDe = (unites: Unite[], code: string | null): Unite[] => {
@@ -86,6 +96,13 @@ export type PontTachesProcessus = {
   terminer(tacheId: string): void
   annuler(tacheId: string): void
   surPrise: ((tacheId: string, personne: PersonneActivite) => void) | null
+  /**
+   * Offre d'un autre service (D-98 : transition de statut à prononcer, consommée de MS-PARTICIPANT) : à prendre par les
+   * porteurs de l'une des permissions, idempotente par origine.reference ; rend l'identifiant de la tâche.
+   */
+  offrir(t: { titre: string; description: string | null; createur: string; permissionsRequises: string[]; origine: Tache['origine'] }): string
+  /** Tâches ouvertes d'une origine terminées par le service (transition prononcée ou refusée). */
+  terminerOrigine(reference: string): void
 }
 
 /** Durée d'une étape du dépôt simulé d'un document de rapport (dix étapes d'envoi, une de vérification). */
@@ -294,6 +311,18 @@ export function pilotageSimule(
       if (t && ouverte(t)) Object.assign(t, { etat: 'ANNULEE' })
     },
     surPrise: null,
+    offrir: (x) => {
+      const existante = taches.find((t) => t.origine.reference === x.origine.reference && offre(t))
+      if (existante) return existante.id
+      const t = tache(null, x.createur, x.titre, 'A_PRENDRE', null, {
+        description: x.description, priorite: 'HAUTE', permissionsRequises: x.permissionsRequises, aPrendre: true, creeeLe: maintenant(), historique: [], origine: x.origine,
+      })
+      t.historique.push({ quand: maintenant(), acteur: personne(x.createur), action: 'CREEE', detail: `Créée par le service ${x.origine.service ?? ''}`.trim() })
+      return t.id
+    },
+    terminerOrigine: (reference) => {
+      taches.filter((t) => t.origine.reference === reference && ouverte(t)).forEach((t) => Object.assign(t, { etat: 'TERMINEE', aPrendre: false, termineeLe: maintenant() }))
+    },
   }
   relier?.(pont)
   const deProcessus = (t: Tache) => t.origine.type === 'PROCESSUS'

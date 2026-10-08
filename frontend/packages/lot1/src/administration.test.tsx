@@ -46,6 +46,9 @@ describe('navigation : groupe « Mon activité » (D-76)', () => {
       ['/des/equipe', 'PIL_TEAM_READ'],
       // Processus de l'unité (D-87) : tout membre interne.
       ['/des/processus', 'PIL_ACTIVITY_OWN'],
+      // Lancer une demande et Mes demandes (D-98) : tout compte interne.
+      ['/des/demandes/lancer', 'PIL_ACTIVITY_OWN'],
+      ['/des/demandes', 'PIL_ACTIVITY_OWN'],
     ])
   })
 })
