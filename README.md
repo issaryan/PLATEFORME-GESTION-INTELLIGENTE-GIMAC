@@ -126,3 +126,4 @@ infra/ci/valider-securite.sh                       # secrets (gitleaks) et vuln�
 | 2026-10-06 | — | Exploitation Kubernetes depuis la console, lecture (lot 4b-1, écrans) : pods et événements par charge, nœuds du cluster, jobs et cronjobs |
 | 2026-10-06 | — | Exploitation Kubernetes depuis la console : retour à la version précédente d'un déploiement (geste RETABLIR signé, lot 4b-2), image cible affichée dans la confirmation |
 | 2026-10-06 | — | Tableaux de bord métier en graphiques (lot 5) : comptes par profil et activité quotidienne (MS-IAM), répartition des institutions et flux mensuel de la DDRM (MS-PARTICIPANT) |
+| 2026-10-08 | — | Publication HTTPS : décision de la DSI du 07/10 (noms internes résolus par fichier hosts, certificat ANTIC importé sur le serveur), état constaté, marche à suivre pour les postes et architecture du déploiement (`docs/exploitation/publication-https.md` §2 bis) |
