@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, DataTable, Dialog, Select, Tag, type Column } from '@gimac/design-system'
+import { Button, DataTable, Dialog, Icon, Select, Tag, type Column } from '@gimac/design-system'
 import type { GrapheReferentiel, NoeudGraphe } from '../../../modele/homologation'
 import type { SourceEtapes } from '../../../adaptateurs/modelisateur'
 
@@ -8,6 +8,9 @@ import type { SourceEtapes } from '../../../adaptateurs/modelisateur'
 // opération (rôles, chronologie, anomalies), et les mêmes gestes (modifier, relier, délier) par des boutons.
 
 type Ligne = NoeudGraphe & Record<string, unknown>
+
+/** Texte comparable : minuscules, sans accent. */
+const normaliser = (x: string) => x.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 
 export type VueListeProps = {
   graphe: GrapheReferentiel
@@ -53,6 +56,8 @@ function DialogueArcs({ noeud, graphe, onRelier, onDelier, onFermer }: { noeud: 
 export function VueListe(p: VueListeProps) {
   const { t } = useTranslation()
   const [arcs, setArcs] = useState<string | null>(null)
+  // Liste paginée (DataTable) et filtrable par code ou libellé : une opération se retrouve sans parcourir les pages.
+  const [filtre, setFiltre] = useState('')
   const fonction = (f: string | null) => (f ? t(`parcours.fonction.${f}`, { defaultValue: f }) : '')
   const colonnes: Column<Ligne>[] = [
     { key: 'code', header: t('modelisateur.champ.code'), type: 'mono', width: 80 },
@@ -84,9 +89,16 @@ export function VueListe(p: VueListeProps) {
     },
   ]
   const noeud = arcs ? p.graphe.noeuds.find((n) => n.code === arcs) : undefined
+  const f = normaliser(filtre.trim())
+  const lignes = (f ? p.graphe.noeuds.filter((n) => normaliser(`${n.code} ${n.libelle}`).includes(f)) : p.graphe.noeuds) as Ligne[]
   return (
     <div data-testid="modelisateur-liste">
-      <DataTable<Ligne> columns={colonnes} rows={p.graphe.noeuds as Ligne[]} rowKey={(r) => r.code} state="ok" density="compact" pagination={false} selected={[...p.surlignes]}
+      <div className="gm-input-wrap" style={{ maxWidth: 420, marginBottom: 'var(--gm-space-2)' }}>
+        <input type="search" className="gm-input" aria-label={t('modelisateur.liste.filtre')} placeholder={t('modelisateur.liste.filtre')} value={filtre} onChange={(e) => setFiltre(e.target.value)} />
+        <span className="gm-input-suffix"><Icon name="search" /></span>
+      </div>
+      {/* Nouveau filtre : la table repart de sa première page (ou de celle de la ligne mise en évidence). */}
+      <DataTable<Ligne> key={filtre.trim()} columns={colonnes} rows={lignes} rowKey={(r) => r.code} state="ok" density="compact" selected={[...p.surlignes]}
         emptyText={t('referentiel.operations.aucune')} />
       {noeud ? <DialogueArcs noeud={noeud} graphe={p.graphe} onRelier={p.onRelier} onDelier={p.onDelier} onFermer={() => setArcs(null)} /> : null}
     </div>

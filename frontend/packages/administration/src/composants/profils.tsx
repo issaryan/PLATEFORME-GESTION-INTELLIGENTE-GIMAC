@@ -225,7 +225,7 @@ function OngletOrganisation({ profil }: { profil: Profil }) {
   return (
     <div className="gm-col">
       <p className="gm-field-help" style={{ margin: 0 }}>{t('console.profils.onglet.organisationTexte')}</p>
-      <DataTable columns={colonnes} rows={l} rowKey={(c) => c.id} density="compact" pagination={false} state={comptes.isPending ? 'loading' : l.length ? 'ok' : 'empty'} emptyText={t('console.profils.org.aucun')} />
+      <DataTable columns={colonnes} rows={l} rowKey={(c) => c.id} density="compact" state={comptes.isPending ? 'loading' : l.length ? 'ok' : 'empty'} emptyText={t('console.profils.org.aucun')} />
       <div><Button size="sm" icon="network" onClick={() => navigate(`${base}/organigramme`)}>{t('console.profils.versOrganigramme')}</Button></div>
     </div>
   )

@@ -446,7 +446,7 @@ Validation : côté client par schéma (zod) pour le format, jamais pour la règ
 |---|---|
 | `Tabs` | Onglets d'une fiche ; l'onglet actif est souligné de 2 px action ; navigation clavier flèches ; l'onglet est dans l'URL (`?onglet=pieces`) |
 | `Stepper` | Assistant en étapes (dossier de mise en service, dépôt de pièce, enregistrement d'institution) : numéro, libellé, état (à faire, en cours, fait, en erreur), navigation retour permise, résumé avant confirmation |
-| `Pagination` | Pagination côté serveur : taille de page (25, 50, 100), total, aller à la page ; jamais de défilement infini dans les listes de travail |
+| `Pagination` | Pagination côté serveur : taille de page (25, 50, 100), total, aller à la page ; jamais de défilement infini dans les listes de travail. Une liste déjà chargée (organigramme, opérations d'un référentiel) est paginée par la table elle-même (10 lignes par défaut, 10 à 100 au choix) et reçoit un filtre ; la ligne mise en évidence (`selected`) fait passer la table sur sa page (09/10/2026) |
 | `Breadcrumb` | Fil d'Ariane à 3 niveaux au plus, dernier élément non cliquable |
 | `SideNav`, `TopBar` | Voir chapitre 6 |
 | `CommandPalette` | Recherche globale `Ctrl+K` : objets (institution, liaison, ticket, suspens, pièce), écrans, actions ; résultats groupés |

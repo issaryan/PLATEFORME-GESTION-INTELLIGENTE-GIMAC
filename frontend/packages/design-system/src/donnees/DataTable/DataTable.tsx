@@ -78,8 +78,22 @@ export function DataTable<Row extends TableRow = TableRow>(p: DataTableProps<Row
   const state = p.state || 'ok'
   // Pagination locale : toute liste montre sa pagination, même courte (DS-GIMAC-01 §7.4).
   const locale = p.total === undefined && p.pagination !== false
-  const [pageLocale, setPageLocale] = useState(1)
   const [tailleLocale, setTailleLocale] = useState(p.pageSize || 10)
+  // Ligne mise en évidence (selected) : la pagination locale se place sur sa page, à l'ouverture comme à chaque
+  // changement de la mise en évidence (opération contrôlée, ligne ajoutée), pour qu'elle reste visible.
+  const pageDe = (cle: string | undefined) => {
+    if (!locale || !cle || !p.rowKey) return undefined
+    const i = toutes.findIndex((r) => p.rowKey!(r) === cle)
+    return i >= 0 ? Math.floor(i / tailleLocale) + 1 : undefined
+  }
+  const cleSelection = (p.selected ?? []).join('\u0000')
+  const [pageLocale, setPageLocale] = useState(() => pageDe(p.selected?.[0]) ?? 1)
+  const [selectionVue, setSelectionVue] = useState(cleSelection)
+  if (selectionVue !== cleSelection) {
+    setSelectionVue(cleSelection)
+    const cible = pageDe(p.selected?.[0])
+    if (cible) setPageLocale(cible)
+  }
   const pages = Math.max(1, Math.ceil(toutes.length / tailleLocale))
   const courante = Math.min(pageLocale, pages)
   const rows = locale ? toutes.slice((courante - 1) * tailleLocale, courante * tailleLocale) : toutes

@@ -258,3 +258,29 @@ describe('D-102 : calculs de l’organigramme', () => {
     expect(nomFichierOrganigramme(new Date('2026-10-09T23:30:00Z'))).toBe('organigramme-moabi-2026-10-10.pdf')
   })
 })
+
+describe('Comptes sans unité : liste paginée et filtrable (09/10/2026)', () => {
+  it('dix comptes par page, page suivante, taille au choix, filtre par nom', async () => {
+    const base = simules()
+    const { contenu } = await base.comptes.lister({ page: 1, taille: 100 })
+    const modele = contenu.find((c) => !c.institutionId && c.actif)!
+    const ajouts = Array.from({ length: 25 }, (_, i) => ({
+      ...modele, id: `u-libre-${i}`, identifiant: `libre.${i}`, nomAffiche: `Agent libre ${String(i + 1).padStart(2, '0')}`, unite: null, responsableId: null, fonction: null,
+    }))
+    const tous = [...contenu, ...ajouts]
+    organigramme({ services: avec('comptes', { lister: async () => ({ contenu: tous, total: tous.length, page: 1, taille: tous.length }) }, base) })
+    const groupe = await screen.findByRole('group', { name: 'Comptes sans unité' })
+    const total = tous.filter((c) => !c.institutionId && c.actif && !c.unite).length
+    expect(screen.getByRole('heading', { name: `Comptes sans unité (${total})` })).toBeTruthy()
+    expect(within(groupe).getAllByRole('listitem')).toHaveLength(10)
+    expect(within(groupe).getByText('Agent libre 01')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Suivante' }))
+    await waitFor(() => expect(within(screen.getByRole('group', { name: 'Comptes sans unité' })).queryByText('Agent libre 01')).toBeNull())
+    fireEvent.change(screen.getByRole('combobox', { name: /taille|lignes/i }), { target: { value: '50' } })
+    await waitFor(() => expect(within(screen.getByRole('group', { name: 'Comptes sans unité' })).getAllByRole('listitem')).toHaveLength(total))
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Filtrer les comptes sans unité' }), { target: { value: 'libre 2' } })
+    await waitFor(() => expect(within(screen.getByRole('group', { name: 'Comptes sans unité' })).getAllByRole('listitem')).toHaveLength(6))
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Filtrer les comptes sans unité' }), { target: { value: 'personne inconnue' } })
+    expect(await screen.findByText('Aucun compte ne correspond.')).toBeTruthy()
+  })
+})

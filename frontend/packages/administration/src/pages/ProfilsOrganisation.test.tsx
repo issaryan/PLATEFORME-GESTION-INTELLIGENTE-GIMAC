@@ -243,7 +243,7 @@ describe('D-86 §3 : organigramme', () => {
     const membres = await screen.findByRole('group', { name: 'Membres de Service Normes et Agréments' })
     expect(within(membres).getByText('Patrick Mbida Essomba')).toBeTruthy()
     expect(within(membres).getAllByText(/n\+1 : Christian Ndong Obiang/).length).toBe(2)
-    expect(screen.getByRole('heading', { name: 'Comptes sans unité' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: /^Comptes sans unité/ })).toBeTruthy()
     fireEvent.click(unite('DES'))
     fireEvent.click(await screen.findByRole('button', { name: 'Pouvoirs de Christian Ndong Obiang' }))
     const panneau = await screen.findByRole('region', { name: 'Pouvoirs de Christian Ndong Obiang' })

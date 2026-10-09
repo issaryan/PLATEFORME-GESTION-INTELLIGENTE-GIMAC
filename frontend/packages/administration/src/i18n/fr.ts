@@ -827,6 +827,7 @@ export const fr: Record<string, string> = {
   'console.organigramme.effectif_one': '{{count}} personne',
   'console.organigramme.effectif_other': '{{count}} personnes',
   'console.organigramme.sansUnite': 'Comptes sans unité',
+  'console.organigramme.sansUniteFiltre': 'Filtrer les comptes sans unité',
   'console.organigramme.membres': 'Membres et n+1',
   'console.organigramme.membresDe': 'Membres {{unite, de}}',
   'console.organigramme.aucunMembre': 'Aucun compte rattaché à cette unité.',

@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperti
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 import {
-  Avatar, Button, Card, Checkbox, ConfirmDialog, CrudDialog, DataTable, EmptyState, Icon, IconButton, InlineAlert, KeyValueList, Menu, PageHeader, RadioGroup, Select, StatusBadge, Tag, cx,
+  Avatar, Button, Card, Checkbox, ConfirmDialog, CrudDialog, DataTable, EmptyState, Icon, IconButton, InlineAlert, KeyValueList, Menu, PageHeader, Pagination, RadioGroup, Select, StatusBadge, Tag, cx,
   type Column, type MenuItem,
 } from '@gimac/design-system'
 import { aPermission, usePermissions, useLibelleProfil, urlAvatar, type ApiError } from '@gimac/socle'
@@ -92,6 +92,10 @@ export default function OrganigrammePage() {
   const [zoom, setZoom] = useState(1)
   const [pleinEcran, setPleinEcran] = useState(false)
   const [recherche, setRecherche] = useState('')
+  // Comptes sans unité : liste paginée et filtrable, jamais un défilement sans fin.
+  const [sansUniteFiltre, setSansUniteFiltre] = useState('')
+  const [sansUnitePage, setSansUnitePage] = useState(1)
+  const [sansUniteTaille, setSansUniteTaille] = useState(10)
   const [trouve, setTrouve] = useState<{ unite?: string; compte?: string } | null>(null)
   const [menu, setMenu] = useState<string | null>(null)
   const vueRef = useRef<HTMLDivElement>(null)
@@ -413,6 +417,14 @@ export default function OrganigrammePage() {
   const u = l.find((x) => x.code === choisie)
   const membres = u ? arbreMembres(internes, u.code) : []
   const sansUnite = internes.filter((c) => !c.unite && c.actif)
+  const nSansUnite = normaliser(sansUniteFiltre)
+  const sansUniteFiltres = sansUnite
+    .filter((c) => !nSansUnite || normaliser(`${c.nomAffiche} ${c.identifiant} ${c.fonction ?? ''}`).includes(nSansUnite))
+    .sort((a, b) => a.nomAffiche.localeCompare(b.nomAffiche, 'fr'))
+  // Page bornée : une affectation qui vide la dernière page ramène à la précédente.
+  const sansUnitePages = Math.max(1, Math.ceil(sansUniteFiltres.length / sansUniteTaille))
+  const sansUnitePageEffective = Math.min(sansUnitePage, sansUnitePages)
+  const sansUniteVisibles = sansUniteFiltres.slice((sansUnitePageEffective - 1) * sansUniteTaille, sansUnitePageEffective * sansUniteTaille)
   const compte = internes.find((c) => c.id === compteChoisi)
 
   const panneauUnite = u ? (
@@ -585,8 +597,19 @@ export default function OrganigrammePage() {
                 </div>
                 {sansUnite.length ? (
                   <section aria-labelledby="gm-org-sans-unite" className="gm-col gm-org-sans-unite" style={{ gap: 'var(--gm-space-1)' }}>
-                    <h3 id="gm-org-sans-unite" className="gm-type-h3" style={{ margin: 0 }}>{t('console.organigramme.sansUnite')}</h3>
-                    <div className="gm-org-membres">{arbre(sansUnite.map((c) => ({ compte: c, enfants: [] })), undefined)}</div>
+                    <h3 id="gm-org-sans-unite" className="gm-type-h3" style={{ margin: 0 }}>{t('console.organigramme.sansUnite')} <span className="gm-num gm-type-small">({sansUnite.length})</span></h3>
+                    <div className="gm-input-wrap gm-org-sans-unite-filtre">
+                      <input type="search" className="gm-input" aria-label={t('console.organigramme.sansUniteFiltre')} placeholder={t('console.organigramme.sansUniteFiltre')} value={sansUniteFiltre}
+                        onChange={(e) => { setSansUniteFiltre(e.target.value); setSansUnitePage(1) }} />
+                      <span className="gm-input-suffix"><Icon name="search" /></span>
+                    </div>
+                    {sansUniteVisibles.length
+                      ? <div className="gm-org-membres" role="group" aria-label={t('console.organigramme.sansUnite')}>{arbre(sansUniteVisibles.map((c) => ({ compte: c, enfants: [] })), undefined)}</div>
+                      : <p className="gm-field-help" style={{ margin: 0 }}>{t('console.organigramme.affectation.aucun')}</p>}
+                    {sansUniteFiltres.length > sansUniteTaille || sansUniteTaille > 10 ? (
+                      <Pagination page={sansUnitePageEffective} total={sansUniteFiltres.length} pageSize={sansUniteTaille} onPage={setSansUnitePage}
+                        onPageSize={(n) => { setSansUniteTaille(n); setSansUnitePage(1) }} />
+                    ) : null}
                   </section>
                 ) : null}
               </div>
@@ -599,7 +622,7 @@ export default function OrganigrammePage() {
         ) : (
           <div className="gm-col">
             <h2 className="gm-type-h3" style={{ margin: 0 }}>{t('console.organigramme.arbre')}</h2>
-            <DataTable columns={colonnesUnites} rows={enArbre(l) as ({ unite: Unite; profondeur: number } & Record<string, unknown>)[]} rowKey={(x) => x.unite.code} density="compact" pagination={false} state="ok" />
+            <DataTable columns={colonnesUnites} rows={enArbre(l) as ({ unite: Unite; profondeur: number } & Record<string, unknown>)[]} rowKey={(x) => x.unite.code} density="compact" state="ok" />
             <h2 className="gm-type-h3" style={{ margin: 0 }}>{t('console.organigramme.comptes')}</h2>
             <DataTable columns={colonnesComptes} rows={internes} rowKey={(c) => c.id} density="compact" pageSize={25} state={tous.isPending ? 'loading' : internes.length ? 'ok' : 'empty'} emptyText={t('console.organigramme.aucunMembre')} />
             {panneauPouvoirs}

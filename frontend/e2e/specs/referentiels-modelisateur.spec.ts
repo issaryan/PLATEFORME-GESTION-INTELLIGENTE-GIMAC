@@ -170,6 +170,9 @@ test.describe('Fonctionnalité : modélisateur des référentiels (services simu
     await expect(carte(page, 'C11')).not.toContainText('Validateur absent')
     await page.getByRole('button', { name: 'Liste', exact: true }).click()
     await expect(page).toHaveURL(/vue=liste/)
+    // Liste paginée : elle s'ouvre sur la page de l'opération surlignée (C11) ; le filtre retrouve l'opération 3.
+    await expect(page.getByRole('button', { name: 'Arcs de l\'opération C11', exact: true })).toBeVisible()
+    await page.getByRole('searchbox', { name: 'Filtrer les opérations (code ou libellé)' }).fill('3')
     await page.getByRole('button', { name: 'Arcs de l\'opération 3', exact: true }).click()
     const arcs = page.getByRole('dialog', { name: 'Arcs de l\'opération 3' })
     await arcs.getByLabel('Ajouter un prédécesseur').selectOption('35')

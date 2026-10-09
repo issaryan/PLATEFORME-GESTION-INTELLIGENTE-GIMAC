@@ -64,6 +64,7 @@ describe('DES-12 : modélisateur', () => {
     fireEvent.change(within(d).getByLabelText(/Validateur \(V\)/), { target: { value: 'CONDUCTEUR' } })
     fireEvent.click(within(d).getByRole('button', { name: 'Créer l\'opération' }))
     await waitFor(() => expect(creer).toHaveBeenCalledWith('REF-CI-4', expect.objectContaining({ code: 'C12', libelle: 'Revue des journaux du switch', etape: 'MISE_EN_PRODUCTION', segment: 'BRANCHE' })))
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Filtrer les opérations (code ou libellé)' }), { target: { value: 'journaux du switch' } })
     expect(await screen.findByRole('cell', { name: 'Revue des journaux du switch' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Modifier l\'opération C12' }))
     const m = await screen.findByRole('dialog', { name: 'Opération C12' })
@@ -85,7 +86,8 @@ describe('DES-12 : modélisateur', () => {
     await waitFor(() => expect(arc).toHaveBeenCalledWith('REF-CI-4', { de: '35', vers: '3', present: true }))
     expect(await screen.findByText(/fermerait un cycle/)).toBeTruthy()
     fireEvent.click(within(d).getAllByRole('button', { name: 'Fermer' }).at(-1)!)
-    fireEvent.click(screen.getByRole('button', { name: 'Arcs de l\'opération C11' }))
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Filtrer les opérations (code ou libellé)' }), { target: { value: 'c11' } })
+    fireEvent.click(await screen.findByRole('button', { name: 'Arcs de l\'opération C11' }))
     d = await screen.findByRole('dialog', { name: 'Arcs de l\'opération C11' })
     fireEvent.click(within(d).getByRole('button', { name: 'Retirer l\'arc C8 vers C11' }))
     await waitFor(() => expect(arc).toHaveBeenCalledWith('REF-CI-4', { de: 'C8', vers: 'C11', present: false }))
@@ -148,6 +150,7 @@ describe('DES-12 : modélisateur', () => {
 
   it('lecteur seul : le brouillon s\'affiche en lecture ; erreur du graphe expliquée', async () => {
     ouvrir('?version=REF-CI-4&vue=liste', ['HOM_REFERENTIEL_READ'])
+    fireEvent.change(await screen.findByRole('searchbox', { name: 'Filtrer les opérations (code ou libellé)' }), { target: { value: 'C11' } })
     expect(await screen.findByRole('button', { name: 'Consulter l\'opération C11' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: /^Arcs/ })).toBeNull()
     cleanup()

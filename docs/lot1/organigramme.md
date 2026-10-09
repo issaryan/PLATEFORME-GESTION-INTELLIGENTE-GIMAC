@@ -197,6 +197,12 @@ Compléments de la validation d'intégration (09/10/2026) :
   agrandissement, rattachement, chef désigné, n+1 changé, sous-unité créée, déplacée, désactivée puis réactivée,
   affectation de deux personnes (n+1 choisi puis aucun), PDF d'une branche en A4 portrait sans annexe.
 
+Pagination des listes (signalement du 09/10/2026, « on ne doit pas avoir un scroll d'une infinité de comptes ») : la
+section « Comptes sans unité » affiche son effectif, un filtre (nom, identifiant, fonction) et dix comptes par page (10 à
+100 au choix), triés par nom ; une affectation qui vide la dernière page ramène à la précédente. La vue Liste des unités et
+la liste des comptes d'un profil sont paginées de même ; la vue Liste des opérations du modélisateur de référentiel
+(28 opérations et plus) aussi, avec un filtre par code ou libellé.
+
 ## 8. Écarts et suites
 
 - Le retrait d'une personne par un chef n'est pas ouvert (règle D-81 : unité cible obligatoire) ; l'interface du chef
