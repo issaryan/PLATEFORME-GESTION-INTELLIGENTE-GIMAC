@@ -10,6 +10,7 @@
 #   frontend    types et lint, Vitest (≥ 80 %), construction, Playwright (≥ 80 %)
 #   securite    secrets (gitleaks) et vulnérabilités (Trivy)
 #   images      sur main seulement : construction, publication GHCR et signature cosign
+#   paquet-serveur sur main seulement : paquet du serveur de démonstration, sans code (deploiement-serveur-images.yml)
 #   deploiement sur main seulement : application en recette (environnement protégé)
 name: CI/CD plateforme DES
 
@@ -199,6 +200,8 @@ jobs:
       matrix:
         cible:
           - frontend
+          # Couches de présentation du serveur de démonstration (adresses de infra/serveur/publication.env).
+          - frontend-serveur
           - keycloak
           - ms-audit
           - ms-certification
@@ -245,6 +248,25 @@ jobs:
         with:
           name: images-${{ matrix.cible }}
           path: images-${{ matrix.cible }}.txt
+          retention-days: 30
+
+  # Paquet du serveur de démonstration : fichiers Compose, configurations montées et scripts de
+  # déploiement, sans code d'application (infra/ci/paquet-serveur.sh). Repris avec les listes d'images
+  # par .github/workflows/deploiement-serveur-images.yml.
+  paquet-serveur:
+    name: Paquet du serveur de démonstration
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    needs: [infra]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - name: Construction et contrôle du paquet
+        run: infra/ci/paquet-serveur.sh paquet-serveur.tar.gz
+      - uses: actions/upload-artifact@v7
+        with:
+          name: paquet-serveur
+          path: paquet-serveur.tar.gz
           retention-days: 30
 
   deploiement:

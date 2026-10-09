@@ -1,0 +1,97 @@
+# Déploiement du serveur de démonstration (10.20.36.214) sans code source : le serveur ne reçoit que le
+# paquet de déploiement (infra/ci/paquet-serveur.sh) et les images publiées et signées par ci.yml après
+# validation complète d'un commit de main. Aucune copie du dépôt (pas d'actions/checkout), aucune
+# construction sur le serveur.
+#
+# Bascule depuis deploiement-serveur.yml (copie du dépôt, construction sur place) par la variable du dépôt
+# GIMAC_DEPLOIEMENT_SERVEUR (Settings > Secrets and variables > Actions > Variables) :
+#   absente ou autre valeur : deploiement-serveur.yml à chaque poussée ; celui-ci seulement à la main ;
+#   « images » : celui-ci après chaque CI réussie sur main ; deploiement-serveur.yml seulement à la main.
+# Procédure : docs/exploitation/deploiement-serveur-images.md.
+name: Déploiement du serveur de démonstration (images)
+
+on:
+  workflow_run:
+    workflows: ["CI/CD plateforme DES"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      execution:
+        description: "Identifiant de l'exécution CI à déployer (vide : la dernière réussie sur main)"
+        required: false
+        default: ""
+
+# Même groupe que deploiement-serveur.yml : un seul déploiement à la fois sur le serveur.
+concurrency:
+  group: deploiement-serveur
+  cancel-in-progress: false
+
+permissions:
+  actions: read # artefacts (paquet, listes d'images) de l'exécution CI
+  packages: read # images du registre ghcr.io
+
+jobs:
+  deploiement:
+    name: Déploiement par images sur gimac-214
+    if: >-
+      ${{ github.event_name == 'workflow_dispatch' ||
+          (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' &&
+           vars.GIMAC_DEPLOIEMENT_SERVEUR == 'images') }}
+    runs-on: [self-hosted, gimac-214]
+    timeout-minutes: 60
+    steps:
+      - name: Exécution CI à déployer
+        id: execution
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEPOT: ${{ github.repository }}
+          DECLENCHEUR: ${{ github.event.workflow_run.id }}
+          DEMANDE: ${{ inputs.execution }}
+        run: |
+          execution="${DECLENCHEUR:-$DEMANDE}"
+          if [ -z "$execution" ]; then
+            execution="$(curl -fsS -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/$DEPOT/actions/workflows/ci.yml/runs?branch=main&event=push&status=success&per_page=1" \
+              | python3 -c 'import json, sys; r = json.load(sys.stdin)["workflow_runs"]; print(r[0]["id"] if r else "")')"
+          fi
+          [ -n "$execution" ] || { echo "::error::Aucune exécution CI réussie sur main"; exit 1; }
+          echo "Exécution CI : $execution"
+          echo "id=$execution" >> "$GITHUB_OUTPUT"
+      - uses: actions/download-artifact@v7
+        with:
+          name: paquet-serveur
+          path: ${{ runner.temp }}/paquet
+          run-id: ${{ steps.execution.outputs.id }}
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: images-*
+          path: ${{ runner.temp }}/images
+          merge-multiple: true
+          run-id: ${{ steps.execution.outputs.id }}
+          github-token: ${{ github.token }}
+      - name: Accès au registre
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ACTEUR: ${{ github.actor }}
+        run: printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$ACTEUR" --password-stdin
+      - name: Installation du paquet et démarrage
+        run: |
+          set -euo pipefail
+          # Copie de déploiement, hors du dossier de travail de l'exécuteur ; .env et comptes y sont des liens
+          # vers ~/.config/gimac-des (deployer-serveur.sh).
+          DESTINATION="$HOME/gimac-des"
+          extrait="$RUNNER_TEMP/extrait"
+          rm -rf "$extrait" && mkdir -p "$extrait" "$DESTINATION"
+          tar -xzf "$RUNNER_TEMP/paquet/paquet-serveur.tar.gz" -C "$extrait"
+          echo "Version : $(cat "$extrait/VERSION") -> $DESTINATION"
+          # L'état propre au serveur n'est pas dans le paquet : il est conservé.
+          rsync -a --delete \
+            --exclude /infra/docker-compose/.env --exclude /infra/docker-compose/.journaux-echec/ \
+            --exclude /infra/keycloak/local/ --exclude /infra/keycloak/extensions/ \
+            "$extrait/" "$DESTINATION/"
+          "$DESTINATION/infra/ci/deployer-serveur.sh" --images "$RUNNER_TEMP/images"
+      - name: Fin de l'accès au registre
+        if: ${{ always() }}
+        run: docker logout ghcr.io || true

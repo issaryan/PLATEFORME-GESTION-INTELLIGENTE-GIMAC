@@ -107,8 +107,11 @@ d'intégration (`-DskipITs`) et le signale.
 
 Sur un push de `main`, une fois toutes les validations réussies :
 
-- les 16 cibles (`frontend` → 3 images, `keycloak`, 14 microservices) sont construites et
-  publiées dans `ghcr.io/<propriétaire>/gimac-des/<nom>:<commit>` ;
+- les 17 cibles (`frontend` → 3 images, `frontend-serveur` → 3 images aux adresses du serveur de
+  démonstration, `keycloak`, 14 microservices) sont construites et publiées dans
+  `ghcr.io/<propriétaire>/gimac-des/<nom>:<commit>` ;
+- la tâche `paquet-serveur` publie l'artefact du même nom : fichiers Compose, configurations montées et
+  scripts de déploiement du serveur de démonstration, sans code d'application (`paquet-serveur.sh`) ;
 - chaque image est signée par cosign, référencée par son empreinte :
   - **sans clé** (Sigstore), identité du workflow :
     émetteur `https://token.actions.githubusercontent.com`, sujet
@@ -134,4 +137,5 @@ Secrets à définir dans GitHub : `COSIGN_PRIVATE_KEY`, `COSIGN_PASSWORD` (dép�
 | `valider-tout.sh` | toutes les validations sur le poste |
 | `construire-images.sh`, `deployer-recette.sh` | livraison et déploiement continus |
 | `deployer-serveur.sh`, `fusionner-domaine.py`, `test_fusionner_domaine.py` | serveur de démonstration (10.20.36.214) : images construites sur place, démarrage par `gimac-dev.sh` avec `docker-compose.serveur.yml`, Keycloak persistant (domaine modifié réimporté par fusion à trois voies en conservant comptes, mots de passe, TOTP, profils créés, recompositions et politique de sécurité modifiée dans la console ; même fusion dans `mettre-a-jour.sh` et le Job Kubernetes `keycloak-domaine` ; tests lancés par `valider-infra.sh`), comptes nominatifs, configurations montées (politiques OPA, simulacres, observabilité) suivies par empreinte : un service dont la configuration a changé est redémarré puis attendu sain ; lancé par `.github/workflows/deploiement-serveur.yml` sur l'exécuteur auto-hébergé `gimac-214` à chaque poussée sur `main` |
+| `paquet-serveur.sh` | paquet de déploiement du serveur de démonstration, sans code d'application ; avec `deployer-serveur.sh --images`, lancé par `.github/workflows/deploiement-serveur-images.yml` après chaque CI réussie sur `main` quand la variable `GIMAC_DEPLOIEMENT_SERVEUR` vaut `images` (`docs/exploitation/deploiement-serveur-images.md`) |
 | `yamllint.yml`, `gitleaks.toml` | règles de yamllint et de gitleaks |

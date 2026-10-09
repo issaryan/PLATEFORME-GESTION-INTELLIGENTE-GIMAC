@@ -25,3 +25,4 @@ Principe (D-48) : ce que JHipster sait générer est régénéré, jamais édit�
 | 2026-10-05 | — | Relais HTTPS de Moabi installé sur le nginx du serveur 214 (port 8463, trois noms) et vérifié ; en attente du DNS OVH et du pare-feu |
 | 2026-10-06 | — | `kubernetes-gimac/exploitation-rbac.yaml` : lecture des événements, jeux de répliques, jobs et cronjobs de l'espace de noms et des nœuds du cluster pour le compte de service de la passerelle |
 | 2026-10-08 | — | Publication HTTPS : noms internes par fichier hosts (décision de la DSI du 07/10) ; serveur fait, postes à configurer (`docs/exploitation/publication-https.md` §2 bis) |
+| 2026-10-09 | — | `ci/paquet-serveur.sh`, `ci/deployer-serveur.sh --images`, cible `frontend-serveur` de `ci/construire-images.sh` : serveur 214 déployé depuis les images de la CI, sans code source (`docs/exploitation/deploiement-serveur-images.md`) ; `.env` du serveur modifié sans rompre son lien vers `~/.config/gimac-des` |

@@ -8,7 +8,10 @@
 #   infra/ci/construire-images.sh ms-iam ms-gateway
 #   infra/ci/construire-images.sh --pousser ms-iam      # publier dans le registre, puis signer
 #
-# Cibles : frontend (departement, portail, console), keycloak, ms-<service>.
+# Cibles : frontend (departement, portail, console), frontend-serveur, keycloak, ms-<service>.
+# frontend-serveur : les trois couches de présentation du serveur de démonstration (frontend-<application>-serveur),
+#   adresses publiques prises dans infra/serveur/publication.env (Vite les fixe à la construction) ; déployées
+#   par infra/ci/deployer-serveur.sh --images, sans code source sur le serveur.
 #
 # Variables :
 #   GIMAC_REGISTRE       préfixe des images (défaut : registre.gimac.local/des, celui des
@@ -32,8 +35,8 @@ cibles=()
 for argument in "$@"; do
   case "$argument" in
     --pousser) pousser=1 ;;
-    frontend|keycloak|ms-*) cibles+=("${argument%/}") ;;
-    *) echo "Cible inconnue : $argument (frontend, keycloak, ms-<service>)" >&2; exit 2 ;;
+    frontend|frontend-serveur|keycloak|ms-*) cibles+=("${argument%/}") ;;
+    *) echo "Cible inconnue : $argument (frontend, frontend-serveur, keycloak, ms-<service>)" >&2; exit 2 ;;
   esac
 done
 if [ "${#cibles[@]}" -eq 0 ]; then
@@ -96,6 +99,32 @@ image_service() {
   fi
 }
 
+# Adresses publiques du serveur de démonstration (D-75), mêmes règles que appliquer_publication de
+# deployer-serveur.sh. Mode http : adresses selon l'IP du .env du serveur, inconnue ici (images sautées).
+PUBLICATION="$RACINE_DEPOT/infra/serveur/publication.env"
+publication() { sed -n "s/^$1=//p" "$PUBLICATION"; }
+images_serveur() {
+  local mode domaine port suffixe interne portail console application arguments
+  mode="$(publication GIMAC_PUBLICATION)"
+  case "$mode" in
+    mixte | https) ;;
+    *) echo "  Publication « $mode » : adresses liées à l'IP du serveur, images du serveur non construites"; return 0 ;;
+  esac
+  domaine="$(publication GIMAC_DOMAINE)"; port="$(publication GIMAC_PORT_HTTPS)"
+  suffixe=""; [ "${port:-443}" = 443 ] || suffixe=":$port"
+  interne="https://$(publication GIMAC_NOM_INTERNE).$domaine$suffixe"
+  portail="https://$(publication GIMAC_NOM_PORTAIL).$domaine$suffixe"
+  console="https://$(publication GIMAC_NOM_CONSOLE).$domaine$suffixe"
+  # Mêmes arguments que docker-compose.serveur.yml (URL_DEPARTEMENT pour la console seulement).
+  for application in departement portail console; do
+    arguments=(--build-arg "APPLICATION=$application" --build-arg "URL_DES=$interne"
+               --build-arg "URL_PORTAIL=$portail" --build-arg "URL_CONSOLE=$console")
+    [ "$application" != console ] || arguments+=(--build-arg "URL_DEPARTEMENT=$interne")
+    [ -z "${GIMAC_VERSION_FRONTEND:-}" ] || arguments+=(--build-arg "VERSION=$GIMAC_VERSION_FRONTEND")
+    image_docker "frontend-$application-serveur" frontend "${arguments[@]}"
+  done
+}
+
 for cible in "${cibles[@]}"; do
   section "Image(s) : $cible"
   case "$cible" in
@@ -106,6 +135,8 @@ for cible in "${cibles[@]}"; do
         [ -z "${GIMAC_VERSION_FRONTEND:-}" ] || arguments+=(--build-arg "VERSION=$GIMAC_VERSION_FRONTEND")
         image_docker "frontend-$application" frontend "${arguments[@]}"
       done ;;
+    frontend-serveur)
+      images_serveur ;;
     keycloak)
       image_docker keycloak infra/keycloak ;;
     ms-*)

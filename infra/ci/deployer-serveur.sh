@@ -1,15 +1,25 @@
 #!/usr/bin/env bash
-# Déploiement de la plateforme sur un serveur Docker (démonstration, 10.20.36.214) : construction
-# des images sur place, démarrage par gimac-dev.sh avec la surcouche docker-compose.serveur.yml,
-# puis amorçage des comptes nominatifs. Exécuté par .github/workflows/deploiement-serveur.yml
-# (exécuteur auto-hébergé du serveur) à chaque poussée sur main, ou à la main sur le serveur.
+# Déploiement de la plateforme sur un serveur Docker (démonstration, 10.20.36.214) : images, démarrage
+# par gimac-dev.sh avec la surcouche docker-compose.serveur.yml, puis amorçage des comptes nominatifs.
 #
-#   infra/ci/deployer-serveur.sh [hote-public]     (défaut : GIMAC_HOTE_PUBLIC du .env, sinon hostname -I)
+#   infra/ci/deployer-serveur.sh [hote-public]
+#       construction des images sur place depuis une copie du dépôt (.github/workflows/deploiement-serveur.yml) ;
+#   infra/ci/deployer-serveur.sh --images <dossier> [hote-public]
+#       sans code source : depuis le paquet de infra/ci/paquet-serveur.sh, images publiées par la CI et
+#       listées dans <dossier>/images-*.txt (« nom image@sha256:… »), tirées du registre puis étiquetées
+#       sous les noms des fichiers Compose (.github/workflows/deploiement-serveur-images.yml).
+#   hote-public : défaut GIMAC_HOTE_PUBLIC du .env, sinon hostname -I.
 #
-# Prérequis : Docker et Compose v2 accessibles à l'utilisateur ; Java 21 et Maven sont installés
-# au besoin dans ~/.local/opt, sans droits d'administration. Le .env (secrets) et
+# Prérequis : Docker et Compose v2 accessibles à l'utilisateur ; en construction sur place, Java 21 et
+# Maven sont installés au besoin dans ~/.local/opt, sans droits d'administration. Le .env (secrets) et
 # infra/keycloak/local/comptes.json restent sur le serveur, jamais dans le dépôt (BNF-07).
 set -euo pipefail
+
+LISTES_IMAGES=""
+if [ "${1:-}" = --images ]; then
+  LISTES_IMAGES="${2:?--images <dossier des listes images-*.txt>}"
+  shift 2
+fi
 
 RACINE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 COMPOSE_DIR="$RACINE/infra/docker-compose"
@@ -31,6 +41,14 @@ lier_etat() {
   chmod 700 "$ETAT_SERVEUR"
   if [ -f "$cible" ] && [ ! -L "$cible" ] && [ ! -e "$ETAT_SERVEUR/$nom" ]; then
     mv "$cible" "$ETAT_SERVEUR/$nom"
+  elif [ "$nom" = env ] && [ -f "$cible" ] && [ ! -L "$cible" ]; then
+    # .env redevenu un fichier ordinaire (avant --follow-symlinks, sed -i rompait le lien) : les variables
+    # qu'il est seul à porter rejoignent l'état, au lieu d'être régénérées avec une autre valeur.
+    local ligne
+    while IFS= read -r ligne; do
+      [[ "$ligne" =~ ^([A-Z0-9_]+)= ]] || continue
+      grep -q "^${BASH_REMATCH[1]}=" "$ETAT_SERVEUR/$nom" || printf '%s\n' "$ligne" >> "$ETAT_SERVEUR/$nom"
+    done < "$cible"
   fi
   [ -e "$ETAT_SERVEUR/$nom" ] || { [ "$nom" = comptes.json ] && return 0; touch "$ETAT_SERVEUR/$nom"; chmod 600 "$ETAT_SERVEUR/$nom"; }
   ln -sfn "$ETAT_SERVEUR/$nom" "$cible"
@@ -85,8 +103,9 @@ configurer_env() {
 # Publication (D-75, infra/serveur/publication.env) : en mode mixte ou https, les adresses publiques,
 # les origines des clés de sécurité et le témoin de session suivent les noms HTTPS du GIMAC. En mode
 # http, le .env reste tel quel (adresse IP et ports).
+# --follow-symlinks : le .env est un lien vers l'état du serveur, que sed -i remplacerait par une copie.
 fixer() {
-  if grep -q "^$1=" "$ENV"; then sed -i "s|^$1=.*|$1=$2|" "$ENV"; else echo "$1=$2" >> "$ENV"; fi
+  if grep -q "^$1=" "$ENV"; then sed -i --follow-symlinks "s|^$1=.*|$1=$2|" "$ENV"; else echo "$1=$2" >> "$ENV"; fi
 }
 appliquer_publication() {
   local pub="$RACINE/infra/serveur/publication.env" mode domaine port suffixe hote interne portail console
@@ -200,21 +219,58 @@ actualiser_configurations_montees() {
   for entree in "${empreintes[@]}"; do echo "${entree#*:}" > "${entree%%:*}"; done
 }
 
-outils
+# Images publiées par la CI (--images) : toutes présentes dans les listes avant de toucher au serveur, tirées
+# par empreinte, puis étiquetées sous les noms des fichiers Compose (gateway, iam… ; frontend-<application>
+# depuis frontend-<application>-serveur, construites avec les adresses de publication.env). L'extension
+# gimac-totp, montée par le Compose, est extraite de l'image keycloak.
+recuperer_images() {
+  local listes nom reference manquants=() services
+  listes="$(cat "$LISTES_IMAGES"/images-*.txt 2>/dev/null || true)"
+  reference_de() { awk -v n="$1" '$1 == n && $2 ~ /@sha256:/ { print $2; exit }' <<< "$listes"; }
+  mapfile -t services < <(sed -n '/^SERVICES=(/,/)/p' "$COMPOSE_DIR/gimac-dev.sh" | tr -d '()' | sed 's/^SERVICES=//' | tr -s ' ' '\n' | grep .)
+  [ "${#services[@]}" -eq 14 ] || { echo "ERREUR : liste des microservices illisible dans gimac-dev.sh" >&2; exit 1; }
+  for nom in "${services[@]}" frontend-departement-serveur frontend-portail-serveur frontend-console-serveur keycloak; do
+    [ -n "$(reference_de "$nom")" ] || manquants+=("$nom")
+  done
+  [ "${#manquants[@]}" -eq 0 ] || { echo "ERREUR : images absentes des listes : ${manquants[*]}" >&2; exit 1; }
+  for nom in "${services[@]}" frontend-departement-serveur frontend-portail-serveur frontend-console-serveur keycloak; do
+    reference="$(reference_de "$nom")"
+    docker pull -q "$reference" >/dev/null
+    case "$nom" in
+      keycloak)
+        local conteneur cible="$RACINE/infra/keycloak/extensions/gimac-totp/target"
+        mkdir -p "$cible"
+        conteneur="$(docker create "$reference")"
+        docker cp "$conteneur:/opt/keycloak/providers/gimac-totp.jar" "$cible/gimac-totp.jar" >/dev/null
+        docker rm "$conteneur" >/dev/null ;;
+      *-serveur) docker tag "$reference" "${nom%-serveur}" ;;
+      *) docker tag "$reference" "$nom" ;;
+    esac
+    echo "  $nom : $reference"
+  done
+}
+
 configurer_env "${1:-}"
 appliquer_publication
 
-etape "Images des 14 microservices et extension Keycloak"
-"$COMPOSE_DIR/gimac-dev.sh" images
-actualiser_domaine
+if [ -n "$LISTES_IMAGES" ]; then
+  etape "Images publiées par la CI (aucune construction sur le serveur)"
+  recuperer_images
+  actualiser_domaine
+else
+  outils
+  etape "Images des 14 microservices et extension Keycloak"
+  "$COMPOSE_DIR/gimac-dev.sh" images
+  actualiser_domaine
 
-etape "Images des trois couches de présentation"
-# Une image après l'autre : trois constructions Vite simultanées épuisent la mémoire du serveur et font
-# tomber le démon de construction (« failed to receive status … EOF »). Les couches communes (npm ci)
-# sont en cache dès la première image.
-for couche in frontend-departement frontend-portail frontend-console; do
-  compose build "$couche"
-done
+  etape "Images des trois couches de présentation"
+  # Une image après l'autre : trois constructions Vite simultanées épuisent la mémoire du serveur et font
+  # tomber le démon de construction (« failed to receive status … EOF »). Les couches communes (npm ci)
+  # sont en cache dès la première image.
+  for couche in frontend-departement frontend-portail frontend-console; do
+    compose build "$couche"
+  done
+fi
 
 etape "Démarrage"
 "$COMPOSE_DIR/gimac-dev.sh" demarrer

@@ -25,6 +25,9 @@ permissions:
 jobs:
   deploiement:
     name: Déploiement sur gimac-214
+    # Remplacé par deploiement-serveur-images.yml (sans code source) quand la variable du dépôt
+    # GIMAC_DEPLOIEMENT_SERVEUR vaut « images » ; reste lançable à la main.
+    if: ${{ github.event_name == 'workflow_dispatch' || vars.GIMAC_DEPLOIEMENT_SERVEUR != 'images' }}
     runs-on: [self-hosted, gimac-214]
     timeout-minutes: 120
     steps:
