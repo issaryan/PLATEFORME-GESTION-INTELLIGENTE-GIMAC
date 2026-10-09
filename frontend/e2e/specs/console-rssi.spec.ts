@@ -64,7 +64,10 @@ test.describe('Fonctionnalité : console du RSSI', () => {
       await page.getByRole('button', { name: 'Continuer vers la signature' }).click()
       const d = await signer(page, 'Tentative de suppression du dernier super administrateur')
       await expect(d.getByText('La plateforme doit garder au moins un super administrateur actif.')).toBeVisible()
-      await d.getByRole('button', { name: 'Annuler' }).click()
+      // Refus du service, la clé ayant répondu (recette ADM-03) : ni panne de clé ni « Réessayer », fenêtre à fermer.
+      await expect(d.getByText('Acte refusé par le service')).toBeVisible()
+      await expect(d.getByRole('button', { name: 'Réessayer' })).toHaveCount(0)
+      await d.getByRole('button', { name: 'Fermer', exact: true }).last().click()
     })
   })
 

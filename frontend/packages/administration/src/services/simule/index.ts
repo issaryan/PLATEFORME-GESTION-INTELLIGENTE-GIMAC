@@ -1,14 +1,18 @@
-import { ReauthCancelled } from '@gimac/socle'
+import { ReauthCancelled, lirePreference } from '@gimac/socle'
 import { creerSimulateur, type Compte, type SessionCompte } from '@gimac/compte'
 import type { EntreeJournal, ParJour } from '../../modele/comptes'
 import { ALGORITHMES_OTP, type PolitiqueSecurite, type Profil } from '../../modele/configuration'
-import { ACTIONS_POUVOIR, FONCTIONNALITES_DEMO, MOTIF_DEMANDE, PORTEES, porteesAdmisesParDefaut, PRESENTATIONS_PROFILS, UNITES_DEMO, estCreation, estProfils, magasinPouvoirs, type DefinitionFonctionnalite, type Demande, type MagasinPouvoirs, type Unite } from '@gimac/lot1'
+import {
+  ACTIONS_POUVOIR, FONCTIONNALITES_DEMO, MOTIF_DEMANDE, OCTROI_PRIVILEGIE, PERMISSIONS_COMMUNES, PORTEES, compositionPrivilegiee, porteesAdmisesParDefaut, UNITES_DEMO, estCreation, estProfils, magasinPouvoirs,
+  type DefinitionFonctionnalite, type Demande, type MagasinPouvoirs, type Unite,
+} from '@gimac/lot1'
 import type { NouveauCompte } from '../../modele/comptes'
 import type { ServiceComptes, ServiceConfiguration, ServiceOrganisation, ServicePlateforme, ServicePouvoirsAdministration, ServicesConsole } from '../ports'
-import { PERMISSIONS_REALM, PRIVILEGIES, PROFILS_REALM } from './catalogue'
+import { PERMISSIONS_REALM, PROFILS_REALM } from './catalogue'
 import * as D from './donnees'
 import { infrastructureSimulee } from './infrastructure'
 import type { Orchestrateur } from '../../modele/infrastructure'
+import { CLE_ORCHESTRATEUR_DEMO } from '../../profilsDemo'
 
 // Serveur de substitution de MS-IAM et de la supervision de MS-GATEWAY pour la console : mêmes formes
 // de réponse et mêmes codes de refus que les services ; ses « règles » ne sont qu'une imitation.
@@ -31,12 +35,18 @@ export type OptionsConsoleSimulee = {
 
 /** Responsables d'unité de l'annuaire de la console simulée (D-81 §2). */
 const RESPONSABLES_UNITES: Record<string, string> = { DG: 'u-dg', DES: 'u-chef-des', DDRM: 'u-chef-ddrm', SSI: 'u-rssi', CONFORMITE: 'u-conformite' }
-/** Permissions de tout profil interne créé (D-81 §5) : messagerie, Mon activité, notifications. */
-const INTERNE = ['COL_MESSAGE_READ', 'COL_MESSAGE_SEND', 'PIL_ACTIVITY_OWN', 'NOT_INBOX_READ']
 const CODE_PROFIL = /^ROLE_[A-Z][A-Z0-9_]{2,40}$/
-const privilegiee = (p: string) => /^(IAM|PLATFORM|INTERNAL)_/.test(p)
-/** Permissions du domaine servies par GET /configuration/permissions : le catalogue généré et la messagerie (D-64). */
-const PERMISSIONS_DOMAINE = [...PERMISSIONS_REALM, 'COL_MESSAGE_READ', 'COL_MESSAGE_SEND']
+/** Permissions du domaine servies par GET /configuration/permissions : catalogue généré du domaine Keycloak (ADM-01). */
+const PERMISSIONS_DOMAINE: readonly string[] = PERMISSIONS_REALM
+
+/**
+ * Orchestrateur de la démonstration (gestes Docker ou Kubernetes, ou exploitation non configurée) : préférence
+ * gm.orchestrateurDemo du stockage local, sinon VITE_ORCHESTRATEUR_DEMO, sinon Kubernetes.
+ */
+export function orchestrateurDemo(): Orchestrateur {
+  const v = (lirePreference(CLE_ORCHESTRATEUR_DEMO) ?? import.meta.env.VITE_ORCHESTRATEUR_DEMO ?? '').toUpperCase()
+  return v === 'DOCKER' || v === 'AUCUN' ? v : 'KUBERNETES'
+}
 
 const IDENTIFIANT = /^[a-z][a-z0-9._-]{2,49}$/
 const TELEPHONE = /^\+?[0-9 ]{8,20}$/
@@ -58,7 +68,7 @@ function parJour(instants: (string | null | undefined)[], fond: (i: number) => n
 export function servicesConsoleSimules(o: OptionsConsoleSimulee = {}): ServicesConsole {
   const { attendre, refus } = creerSimulateur({ latenceMs: o.latenceMs ?? 300 })
   const acteur = o.acteur ?? { id: 'u-super-admin', nom: 'Serge Mouelle Kombi', permissions: ['IAM_ROLE_PRIVILEGED_GRANT'] }
-  const peutPrivilegie = acteur.permissions.includes('IAM_ROLE_PRIVILEGED_GRANT')
+  const peutPrivilegie = acteur.permissions.includes(OCTROI_PRIVILEGIE)
   let comptes: Compte[] = D.comptesInitiaux()
   const journal: EntreeJournal[] = D.journalInitial()
   let politique = D.politiqueInitiale()
@@ -67,10 +77,10 @@ export function servicesConsoleSimules(o: OptionsConsoleSimulee = {}): ServicesC
   type ProfilSimule = {
     code: string; libelle: string; description: string; permissions: string[]; cree?: boolean; externe: boolean; modifieLe: string | null; modifiePar: { id: string; nomAffiche: string } | null
   }
-  // Profil externe (D-94 §6.1) : valeur de départ gimac.iam.profils.externes-initiaux, puis attribut modifiable.
+  // Profils livrés (D-86 §2, D-94 §6.1) : libellé, mission, caractère externe (attribut gimac_externe) et composition du
+  // domaine généré, puis modifiables depuis la console. Aucun nom de profil : les règles lisent les compositions.
   const profils: ProfilSimule[] = PROFILS_REALM.map((p) => ({
-    ...p, libelle: PRESENTATIONS_PROFILS[p.code]?.libelle ?? p.code, description: PRESENTATIONS_PROFILS[p.code]?.description ?? p.description, permissions: [...p.permissions],
-    externe: p.code === 'ROLE_CORRESPONDANT', modifieLe: null, modifiePar: null,
+    code: p.code, libelle: p.libelle || p.code, description: p.description, permissions: [...p.permissions], externe: p.externe, modifieLe: null, modifiePar: null,
   }))
   // Catalogue des fonctionnalités (D-94 §6.2) : valeurs de départ de MS-IAM, modifiables par IAM_PROFILE_EDIT.
   const fonctionnalites: DefinitionFonctionnalite[] = structuredClone(FONCTIONNALITES_DEMO)
@@ -111,24 +121,34 @@ export function servicesConsoleSimules(o: OptionsConsoleSimulee = {}): ServicesC
       throw refus(403, 'IAM_PRIVILEGED_PROFILE', "L'attribution d'un profil privilégié est réservée au super administrateur")
     }
   }
-  // Institution : réservée au correspondant de participant, et obligatoire pour lui (règle de MS-IAM).
+  // Institution (D-94, ReglesAdministration.verifierRattachement) : réservée aux comptes de profils externes, et
+  // obligatoire pour eux.
+  const estExterne = (code: string) => !!profils.find((x) => x.code === code)?.externe
   const verifierRattachement = (demandes: string[], institutionId?: string | null) => {
     const rattache = !!institutionId?.trim()
-    if (rattache && demandes.some((p) => p !== 'ROLE_CORRESPONDANT')) {
-      throw refus(400, 'IAM_INSTITUTION_INTERNAL_ACCOUNT', "Un compte interne du GIMAC n'est rattaché à aucune institution", { institutionId })
+    if (rattache && demandes.some((p) => !estExterne(p))) {
+      throw refus(400, 'IAM_INSTITUTION_INTERNAL_ACCOUNT', "Un compte interne du GIMAC n'est rattaché à aucune institution : laisser l'institution vide", { institutionId })
     }
-    if (demandes.includes('ROLE_CORRESPONDANT') && !rattache) {
-      throw refus(400, 'IAM_INSTITUTION_REQUIRED', 'Un correspondant de participant est rattaché à son institution')
+    if (demandes.some(estExterne) && !rattache) {
+      throw refus(400, 'IAM_INSTITUTION_REQUIRED', 'Un compte de profil externe est rattaché à son institution')
+    }
+  }
+  // Octroi des profils privilégiés (D-94) : porté par la composition d'un profil (IAM_ROLE_PRIVILEGED_GRANT), jamais par un nom.
+  const compositionDe = (code: string) => profils.find((x) => x.code === code)?.permissions ?? []
+  const porteOctroi = (codes: string[]) => codes.some((p) => compositionDe(p).includes(OCTROI_PRIVILEGIE))
+  /** Dernier compte actif portant l'octroi (ReglesAdministration.verifierDernierPorteurOctroi) : 409 IAM_LAST_SUPER_ADMIN. */
+  const dernierPorteurOctroi = (actif: boolean, porteurs = comptes.filter((x) => x.actif && porteOctroi(x.profils)).length) => {
+    if (actif && porteurs <= 1) {
+      throw refus(409, 'IAM_LAST_SUPER_ADMIN', `La plateforme doit garder au moins un compte actif portant ${OCTROI_PRIVILEGIE}`, { permission: OCTROI_PRIVILEGIE })
     }
   }
   const dernierSuperAdmin = (c: Compte) => {
-    if (c.actif && c.profils.includes('ROLE_SUPER_ADMIN') && comptes.filter((x) => x.actif && x.profils.includes('ROLE_SUPER_ADMIN')).length <= 1) {
-      throw refus(409, 'IAM_LAST_SUPER_ADMIN', 'La plateforme doit garder au moins un super administrateur actif')
-    }
+    if (porteOctroi(c.profils)) dernierPorteurOctroi(c.actif)
   }
   const filtreEtat = (c: Compte, etat?: string) =>
     !etat || (etat === 'ACTIF' ? c.actif : etat === 'INACTIF' ? !c.actif : etat === 'PREMIER_ACCES' ? c.actif && c.premierAccesEnAttente : c.actif && !c.secondFacteur)
-  const estPrivilegie = (code: string) => PRIVILEGIES.includes(code) || !!profils.find((x) => x.code === code && x.cree && x.permissions.some(privilegiee))
+  /** Profil privilégié : composition IAM_* ou PLATFORM_* (ReglesProfils.privilegie), livré ou créé. */
+  const estPrivilegie = (code: string) => compositionPrivilegiee(compositionDe(code))
   const vueProfil = (p: (typeof profils)[number]): Profil => ({
     code: p.code, libelle: p.libelle, description: p.description, permissions: [...p.permissions].sort(), privilegie: estPrivilegie(p.code),
     titulaires: comptes.filter((c) => c.profils.includes(p.code)).length, cree: !!p.cree, externe: p.externe, modifieLe: p.modifieLe, modifiePar: p.modifiePar,
@@ -194,7 +214,7 @@ export function servicesConsoleSimules(o: OptionsConsoleSimulee = {}): ServicesC
           total: comptes.length, actifs: comptes.filter((c) => c.actif).length, inactifs: comptes.filter((c) => !c.actif).length,
           premierAccesEnAttente: comptes.filter((c) => c.actif && c.premierAccesEnAttente).length,
           sansSecondFacteur: comptes.filter((c) => c.actif && !c.secondFacteur).length,
-          privilegies: comptes.filter((c) => c.profils.some((p) => PRIVILEGIES.includes(p))).length,
+          privilegies: comptes.filter((c) => c.profils.some(estPrivilegie)).length,
           creesDepuis30Jours: comptes.filter((c) => c.creeLe && Date.parse(c.creeLe) > il30).length,
           actesDepuis24Heures: journal.filter((j) => Date.parse(j.horodatage) > Date.now() - 86_400_000).length,
           parProfil,
@@ -232,7 +252,8 @@ export function servicesConsoleSimules(o: OptionsConsoleSimulee = {}): ServicesC
         motif(m)
         const c = trouver(id)
         verifierProfils(c.profils, demandes)
-        if (!demandes.includes('ROLE_SUPER_ADMIN')) dernierSuperAdmin(c)
+        verifierRattachement(demandes, c.institutionId)
+        if (porteOctroi(c.profils) && !porteOctroi(demandes)) dernierPorteurOctroi(c.actif)
         c.profils = [...demandes].sort()
         tracer('PROFILS', { id, libelle: c.identifiant }, m, c.profils)
         return c
@@ -419,16 +440,27 @@ export function servicesConsoleSimules(o: OptionsConsoleSimulee = {}): ServicesC
         if (!COURRIEL.test(d ?? '')) throw refus(400, 'IAM_SMTP_INVALID', 'Adresse de destination invalide')
       }),
     profils: () => attendre(() => profils.map(vueProfil)),
-    permissions: () => attendre(() => PERMISSIONS_DOMAINE),
+    permissions: () => attendre(() => [...PERMISSIONS_DOMAINE]),
     definirPermissions: (code, permissions, m, assertion) =>
       attendre(() => {
         reauth(assertion)
         motif(m)
         const p = profils.find((x) => x.code === code)
         if (!p) throw refus(404, 'IAM_PROFILE_NOT_FOUND', 'Ressource introuvable', { id: code })
-        if (PRIVILEGIES.includes(code) && !peutPrivilegie) throw refus(403, 'IAM_PRIVILEGED_PROFILE', 'La modification d’un profil privilégié est réservée au super administrateur')
+        if (estPrivilegie(code) && !peutPrivilegie) throw refus(403, 'IAM_PRIVILEGED_PROFILE', 'La modification d’un profil privilégié est réservée au super administrateur')
+        // Profil créé : permissions communes gardées et aucune permission interne (ReglesProfils.verifierComposition).
+        if (p.cree) {
+          permissions = [...new Set([...permissions, ...PERMISSIONS_COMMUNES])].sort()
+          if (permissions.some((y) => y.startsWith('INTERNAL_'))) throw refus(422, 'IAM_PROFIL_PERMISSION_INTERNE', 'Une permission interne n’est jamais attribuée à un profil de personne')
+        }
         const inconnues = permissions.filter((x) => !PERMISSIONS_DOMAINE.includes(x))
         if (inconnues.length) throw refus(400, 'IAM_PERMISSION_UNKNOWN', 'Permission inconnue', { permissions: inconnues })
+        // D-94 : une composition privilégiée l'est pour tout profil, livré ou créé.
+        if (compositionPrivilegiee(permissions) && !peutPrivilegie) throw refus(403, 'IAM_PRIVILEGED_PROFILE', 'Un profil privilégié est réservé au super administrateur')
+        // Retirer l'octroi d'une composition ne laisse jamais la plateforme sans compte actif qui le porte.
+        if (p.permissions.includes(OCTROI_PRIVILEGIE) && !permissions.includes(OCTROI_PRIVILEGIE)) {
+          dernierPorteurOctroi(true, comptes.filter((c) => c.actif && c.profils.some((x) => x !== code && compositionDe(x).includes(OCTROI_PRIVILEGIE))).length + 1)
+        }
         p.permissions = [...permissions]
         Object.assign(p, modification())
         tracer(`CONFIGURATION_PROFIL_${code}`, { id: null, libelle: `PROFIL_${code}` }, m, [...permissions].sort())
@@ -447,8 +479,8 @@ export function servicesConsoleSimules(o: OptionsConsoleSimulee = {}): ServicesC
         if (x.permissions.some((y) => y.startsWith('INTERNAL_'))) throw refus(422, 'IAM_PROFIL_PERMISSION_INTERNE', 'Permission interne interdite à un profil de personne')
         const inconnues = x.permissions.filter((y) => !PERMISSIONS_DOMAINE.includes(y))
         if (inconnues.length) throw refus(400, 'IAM_PERMISSION_UNKNOWN', 'Permission inconnue', { permissions: inconnues })
-        if (x.permissions.some(privilegiee) && !peutPrivilegie) throw refus(403, 'IAM_PRIVILEGED_PROFILE', 'La création d’un profil privilégié est réservée au super administrateur')
-        const p: ProfilSimule = { code, ...presente, permissions: [...new Set([...x.permissions, ...INTERNE])].sort(), cree: true, externe: false, ...modification() }
+        if (compositionPrivilegiee(x.permissions) && !peutPrivilegie) throw refus(403, 'IAM_PRIVILEGED_PROFILE', 'La création d’un profil privilégié est réservée au super administrateur')
+        const p: ProfilSimule = { code, ...presente, permissions: [...new Set([...x.permissions, ...PERMISSIONS_COMMUNES])].sort(), cree: true, externe: false, ...modification() }
         profils.push(p)
         magasin.ajouterProfil(code, p.libelle)
         tracer('PROFIL_CREE', { id: null, libelle: `PROFIL_${code}` }, m, p.permissions)
@@ -637,7 +669,7 @@ export function servicesConsoleSimules(o: OptionsConsoleSimulee = {}): ServicesC
     pouvoirs,
     plateforme,
     infrastructure: infrastructureSimulee({
-      attendre, refus, acteur, assertionValide: (a) => a === ASSERTION_SIMULEE, orchestrateur: o.orchestrateur, dureeGesteMs: o.dureeGesteMs, latenceMs: o.latenceMs,
+      attendre, refus, acteur, assertionValide: (a) => a === ASSERTION_SIMULEE, orchestrateur: o.orchestrateur ?? orchestrateurDemo(), dureeGesteMs: o.dureeGesteMs, latenceMs: o.latenceMs,
     }),
     // Clé de sécurité simulée : confirmation après un délai ; annulation ou absence de clé à la demande.
     reauth: {

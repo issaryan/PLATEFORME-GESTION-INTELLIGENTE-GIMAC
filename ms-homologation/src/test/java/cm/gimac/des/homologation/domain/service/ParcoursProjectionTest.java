@@ -4,12 +4,14 @@ import static cm.gimac.des.homologation.domain.parcours.ParcoursSamples.avancer;
 import static cm.gimac.des.homologation.domain.parcours.ParcoursSamples.parcours;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import cm.gimac.des.homologation.domain.DefinitionTypeProjet;
 import cm.gimac.des.homologation.domain.enumeration.TypeProjet;
 import cm.gimac.des.homologation.domain.parcours.Acteur;
 import cm.gimac.des.homologation.domain.parcours.EtapeCode;
 import cm.gimac.des.homologation.domain.parcours.EtatOperationParcours;
 import cm.gimac.des.homologation.domain.parcours.EtatProcesVerbal;
 import cm.gimac.des.homologation.domain.parcours.Fonction;
+import cm.gimac.des.homologation.domain.parcours.ModeleTypeProjet;
 import cm.gimac.des.homologation.domain.parcours.OperationParcours;
 import cm.gimac.des.homologation.domain.parcours.Parcours;
 import cm.gimac.des.homologation.domain.parcours.ParcoursSamples;
@@ -18,6 +20,7 @@ import cm.gimac.des.homologation.domain.parcours.Preuve;
 import cm.gimac.des.homologation.domain.parcours.Sla;
 import cm.gimac.des.homologation.domain.parcours.StatutParcours;
 import cm.gimac.des.homologation.domain.parcours.Vues;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -65,6 +68,20 @@ class ParcoursProjectionTest {
         assertThat(projection.actions(o18, new Acteur(UUID.randomUUID(), null, Set.of("HOM_OPERATION_VALIDATE"), null))).containsExactly("VALIDER");
         o18.setEtat(EtatOperationParcours.SANS_OBJET);
         assertThat(projection.actions(o18, CONDUCTEUR)).containsExactly("CONSULTER", "ATTRIBUER");
+    }
+
+    @Test
+    @DisplayName("DDR-05 : la supervision (HOM_STEP_MANAGE hors RACI) n'est jamais offerte comme dépôt, ni en action ni en livrable")
+    void supervisionNonOfferte() {
+        Parcours p = parcours(TypeProjet.CARTE_INTERBANCAIRE, "RETRAIT");
+        Acteur chef = new Acteur(UUID.randomUUID(), "Chef de la DDRM", Set.of("HOM_STEP_MANAGE", "HOM_LIAISON_OPEN", "HOM_PROJECT_DESIGNATE"), null);
+        OperationParcours o3 = op(p, "3");
+        // Le service l'admettrait à titre de supervision journalisée…
+        assertThat(p.droitDepot(o3, null, chef, Set.of())).contains(Parcours.DroitDepot.SUPERVISION);
+        // … mais ne l'offre pas : le dépôt revient au responsable, au déposant ou au conducteur.
+        assertThat(projection.actions(p, o3, chef)).doesNotContain("DEPOSER_PREUVE", "DEPOSER_LIVRABLE");
+        assertThat(projection.livrablesAttendus(p, o3, chef)).noneMatch(Vues.LivrableAttendu::peutDeposer);
+        assertThat(projection.actions(p, o3, CONDUCTEUR)).contains("DEPOSER_PREUVE");
     }
 
     @Test
@@ -174,6 +191,19 @@ class ParcoursProjectionTest {
         assertThat(json).doesNotContain("Conducteur de projet 1").doesNotContain("Titulaire ").doesNotContain("Ingénieur");
         p.etat().setConducteurADesigner(true);
         assertThat(projection.dossierPortail(p, CTX, J).conducteur()).isNull();
+    }
+
+    @Test
+    @DisplayName("CER-05 : libellé du type de projet servi au dossier, au portail et au résumé ; null sans définition chargée")
+    void libelleTypeProjet() {
+        Parcours p = parcours(TypeProjet.PAIEMENT_MOBILE, "REMITTANCE");
+        assertThat(projection.dossierPortail(p, CTX, J).typeProjetLibelle()).isNull();
+        DefinitionTypeProjet def = DefinitionTypeProjet.creer("AGREGATEUR", "Agrégateur de paiement", null, ModeleTypeProjet.PAIEMENT_MOBILE, null, Instant.parse("2026-10-01T08:00:00Z"));
+        p.liaison().definitionTypeProjet(def);
+        assertThat(projection.dossierPortail(p, CTX, J).typeProjet()).isEqualTo(TypeProjet.valueOf("AGREGATEUR"));
+        assertThat(projection.dossierPortail(p, CTX, J).typeProjetLibelle()).isEqualTo("Agrégateur de paiement");
+        assertThat(projection.dossier(p, CTX, CONDUCTEUR, J).typeProjetLibelle()).isEqualTo("Agrégateur de paiement");
+        assertThat(projection.resume(p, "Conducteur de projet GIMAC", J).typeProjetLibelle()).isEqualTo("Agrégateur de paiement");
     }
 
     @Test

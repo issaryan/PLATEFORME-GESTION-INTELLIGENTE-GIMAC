@@ -27,7 +27,7 @@ test.describe('Fonctionnalité : cadrage des liaisons par le chef du DES', () =>
       await d.getByRole('button', { name: 'Désigner le conducteur' }).click()
     })
     await test.step('Alors le dossier de la liaison porte son conducteur', async () => {
-      await expect(page.getByText('Conducteur de projet 1 conduit désormais cette liaison.')).toBeVisible()
+      await expect(page.getByText('Aïcha Mahamat Nour conduit désormais cette liaison.')).toBeVisible()
       await expect(page.getByRole('button', { name: 'Redésigner le conducteur' })).toBeVisible()
     })
     await test.step('Et la liste historique des liaisons lui permet encore de désigner un conducteur', async () => {

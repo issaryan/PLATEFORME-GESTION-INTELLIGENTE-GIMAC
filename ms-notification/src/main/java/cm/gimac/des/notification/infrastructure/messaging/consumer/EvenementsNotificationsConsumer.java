@@ -9,6 +9,7 @@ import cm.gimac.des.notification.application.port.in.RecevoirEvenementsUseCase.R
 import cm.gimac.des.notification.application.port.in.RecevoirEvenementsUseCase.TacheAffectee;
 import cm.gimac.des.notification.application.port.in.RecevoirEvenementsUseCase.TacheOfferte;
 import cm.gimac.des.notification.application.port.in.RecevoirEvenementsUseCase.TacheRelancee;
+import cm.gimac.des.notification.application.port.in.RecevoirEvenementsUseCase.TransitionTranchee;
 import cm.gimac.des.notification.domain.service.ReglesNotifications.FaitsProcessus;
 import cm.gimac.des.notification.domain.service.ReglesNotifications.NatureProcessus;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -53,6 +54,9 @@ public class EvenementsNotificationsConsumer {
     public static final String ETAPE_SIGNEE = "pilotage.process-step-signed.v1";
     public static final String ETAPE_REAFFECTEE = "pilotage.process-step-reassigned.v1";
     public static final String INSTANCE_CLOSE = "pilotage.process-instance-closed.v1";
+    /** DDR-08 : décision sur une proposition de transition de statut, notifiée à son proposant (sujet participant.transition). */
+    public static final String TRANSITION_APPROUVEE = "participant.transition-approved.v1";
+    public static final String TRANSITION_REJETEE = "participant.transition-rejected.v1";
 
     private static final Logger LOG = LoggerFactory.getLogger(EvenementsNotificationsConsumer.class);
 
@@ -68,7 +72,7 @@ public class EvenementsNotificationsConsumer {
 
     @KafkaListener(
         id = GROUPE,
-        topics = "#{'${gimac.consommateurs.notification.sujets:collaboration.message,pilotage.task,pilotage.report,iam.request,pilotage.process}'.split(',')}",
+        topics = "#{'${gimac.consommateurs.notification.sujets:collaboration.message,pilotage.task,pilotage.report,iam.request,pilotage.process,participant.transition}'.split(',')}",
         groupId = GROUPE,
         autoStartup = "${gimac.consommateurs.demarrage-automatique:true}"
     )
@@ -147,6 +151,9 @@ public class EvenementsNotificationsConsumer {
                 evenements.demandeDecidee(
                     new DemandeDecidee(texte(d, "demandeId"), texte(d, "type"), texte(d, "etat"), texte(d, "acteurId"), textes(d.path("destinataires")), instant(d, "le"))
                 );
+            // Première des deux approbations requises (levée de suspension) : rien n'est encore prononcé.
+            case TRANSITION_APPROUVEE -> d.path("definitive").asBoolean(true) ? transition(d, "APPROUVEE") : null;
+            case TRANSITION_REJETEE -> transition(d, "REJETEE");
             case INSTANCE_LANCEE -> processus(d, NatureProcessus.INSTANCE_LANCEE, null, texte(d, "lanceurId"));
             case ETAPE_ACTIVEE -> avecInitiateur(d, processus(d, NatureProcessus.ETAPE_ACTIVEE, null, null));
             case ETAPE_SOUMISE -> processus(d, NatureProcessus.ETAPE_SOUMISE, texte(d, "attente"), texte(d, "acteurId"));
@@ -155,6 +162,25 @@ public class EvenementsNotificationsConsumer {
             case INSTANCE_CLOSE -> processus(d, NatureProcessus.INSTANCE_CLOSE, texte(d, "etat"), texte(d, "acteurId"));
             default -> null;
         };
+    }
+
+    /** Transition prononcée ou refusée (DDR-08) : au proposant, jamais à l'approbateur. */
+    private Runnable transition(JsonNode d, String decision) {
+        return () ->
+            evenements.transitionTranchee(
+                new TransitionTranchee(
+                    texte(d, "institutionId"),
+                    texte(d, "transitionId"),
+                    texte(d, "institutionNom"),
+                    texte(d, "vers"),
+                    decision,
+                    "REJETEE".equals(decision) ? texte(d, "motif") : null,
+                    texte(d, "demandeurId"),
+                    texte(d, "approbateurId"),
+                    texte(d, "lien"),
+                    null
+                )
+            );
     }
 
     /**

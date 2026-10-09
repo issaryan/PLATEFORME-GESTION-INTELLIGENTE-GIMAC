@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CrudDialog, DateField, NumberField, Note, Select, TextArea, TextField } from '@gimac/design-system'
-import { champsRefuses } from '@gimac/socle'
+import { champsRefuses, useSession } from '@gimac/socle'
 import { LIMITES_PROCESSUS, champsDeLancement, designationsAttendues, type ChampProcessus, type InstanceProcessus, type Lancement, type Processus } from '../../../modele/processus'
 import { useActeInstance, useCandidatsProcessus } from '../../../hooks/processus'
 import { depuisSaisie, versSaisie } from '../../../modele/jours'
@@ -45,9 +45,9 @@ export function erreurValeur(c: ChampProcessus, v: string, t: (k: string) => str
 }
 
 /** Désignation au lancement : porteurs du profil de remplacement dans l'unité, puis ailleurs dans le GIMAC (un seul : choisi). */
-function Designation({ unite, profil, onChange, ...p }: { name: string; label: string; unite: string; profil?: string | null; value: string; onChange: (v: string) => void; error?: string }) {
+function Designation({ unite, profil, onChange, exclure, ...p }: { name: string; label: string; unite: string; profil?: string | null; value: string; onChange: (v: string) => void; error?: string; exclure: string[] }) {
   const candidats = useCandidatsProcessus(unite, profil, !!profil)
-  return <ChoixPersonne {...p} required profil={profil} candidats={candidats.data} chargement={!!profil && candidats.isPending} onChange={onChange} />
+  return <ChoixPersonne {...p} required profil={profil} candidats={candidats.data} chargement={!!profil && candidats.isPending} onChange={onChange} exclure={exclure} />
 }
 
 export function DialogueLancement({ processus, onFermer, onLance, demande = false }: {
@@ -58,6 +58,9 @@ export function DialogueLancement({ processus, onFermer, onLance, demande = fals
   const { t } = useTranslation()
   const erreur = useErreurProcessus()
   const services = useServices()
+  // D-99 : l'initiateur ne se désigne pas pour une étape de sa propre demande, sauf autorisation de la définition.
+  const session = useSession()
+  const moiExclu = session && !processus.initiateurs?.initiateurIntervenant ? [session.sujet] : []
   const libelleUnite = useLibelleUnite()
   const lancer = useActeInstance((s, v: Lancement) => s.processus.lancer(processus.id, v))
   const champs = champsDeLancement(processus.etapes)
@@ -148,7 +151,7 @@ export function DialogueLancement({ processus, onFermer, onLance, demande = fals
           <legend className="gm-type-body-strong">{t('proc.lancement.designations')}</legend>
           <Note>{t('proc.lancement.designationsAide')}</Note>
           {designations.map((d) => (
-            <Designation key={d.cle} name={`designations.${d.cle}`} unite={d.intervenant.unite || processus.unite} profil={d.intervenant.remplacement}
+            <Designation key={d.cle} name={`designations.${d.cle}`} exclure={moiExclu} unite={d.intervenant.unite || processus.unite} profil={d.intervenant.remplacement}
               label={d.role === 'executant' ? t('proc.lancement.executant', { etape: d.etape.libelle }) : d.role === 'validateur' ? t('proc.lancement.validateur', { etape: d.etape.libelle })
                 : t('proc.lancement.signataire', { etape: d.etape.libelle, signature: d.signature!.libelle })}
               value={choix[d.cle] ?? ''} onChange={(v) => setChoix((o) => ({ ...o, [d.cle]: v }))} error={tente ? erreurs[`designation.${d.cle}`] : undefined} />

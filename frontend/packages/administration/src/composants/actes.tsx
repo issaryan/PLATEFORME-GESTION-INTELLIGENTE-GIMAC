@@ -2,14 +2,16 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ConfirmDialog, InlineAlert, Link, SignDialog, type KeyValueItem } from '@gimac/design-system'
 import { useMessageErreur, type MessageErreur } from '@gimac/compte'
-import { sha256Hex } from '@gimac/socle'
+import { estApiError, refusReauth, sha256Hex } from '@gimac/socle'
 import { useChemins, useServicesConsole } from '../services/useServicesConsole'
 
 // Exécution des actes de la console, toujours composés du design system :
 // - acte motivé : ConfirmDialog avec motif obligatoire (activation, sécurité du compte…) ;
 // - acte sensible : SignDialog avec motif et réauthentification FIDO2 ADMIN_SENSITIVE (profils,
 //   suppression, politique de sécurité, composition d'un profil). 428 : réauthentification exigée ;
-//   403 IAM_REAUTH_INVALID : refusée ; 409 IAM_NO_SECURITY_KEY : lien vers « Mon compte ».
+//   403 IAM_REAUTH_INVALID : refusée ; 409 IAM_NO_SECURITY_KEY : lien vers « Mon compte ». Un refus métier du
+//   service après la réponse de la clé (recette ADM-03) n'est pas une panne de la clé : bloc « Acte refusé par le
+//   service », message, détail et code du service, sans « Réessayer ».
 // Le résultat est annoncé dans une zone aria-live de la page.
 
 export type Retour = { niveau: 'info' | 'warn' | 'crit'; message: MessageErreur } | null
@@ -38,8 +40,8 @@ export function useActes() {
   const [motive, setMotive] = useState<ActeMotive | null>(null)
   const [sensible, setSensible] = useState<ActeSensible | null>(null)
   const [hash, setHash] = useState('')
-  const [etat, setEtat] = useState<'idle' | 'waiting' | 'done' | 'error'>('idle')
-  const [erreur, setErreur] = useState<MessageErreur | null>(null)
+  const [etat, setEtat] = useState<'idle' | 'waiting' | 'done' | 'error' | 'refused'>('idle')
+  const [erreur, setErreur] = useState<(MessageErreur & { detail?: string }) | null>(null)
   const [retour, setRetour] = useState<Retour>(null)
 
   useEffect(() => {
@@ -75,8 +77,10 @@ export function useActes() {
     const a = sensible!
     setEtat('waiting')
     setErreur(null)
+    let cleRepondu = false
     try {
       const assertion = await services.reauth.assertion('ADMIN_SENSITIVE')
+      cleRepondu = true
       await a.executer(motif, assertion)
       setEtat('done')
       setRetour({ niveau: 'info', message: { texte: a.succes } })
@@ -85,8 +89,10 @@ export function useActes() {
         fermer()
         return
       }
-      setEtat('error')
-      setErreur(message(e))
+      // La clé a répondu et le service refuse l'acte (hors refus de la réauthentification elle-même) : refus métier.
+      const refuse = cleRepondu && estApiError(e) && !refusReauth(e)
+      setEtat(refuse ? 'refused' : 'error')
+      setErreur({ ...message(e), ...(refuse && estApiError(e) ? { detail: e.message } : {}) })
     }
   }
 
@@ -121,6 +127,8 @@ export function useActes() {
         </>
       }
       error={erreur?.texte}
+      errorCode={etat === 'refused' ? erreur?.code : undefined}
+      errorDetail={erreur?.detail}
       onSign={(m) => void signer(m)}
       onClose={fermer}
       onDone={fermer}

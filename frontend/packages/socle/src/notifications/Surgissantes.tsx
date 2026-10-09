@@ -55,6 +55,7 @@ export function NotificationsSurgissantes() {
   const ouvrir = useOuvrirNotification()
   const lue = useMarquerNotificationLue()
   const vues = useRef<Map<string, string> | null>(null)
+  const ouverture = useRef(new Date().toISOString())
   const [affichees, setAffichees] = useState<NotificationPlateforme[]>([])
   // Valeurs courantes lues par l'effet d'arrivée sans le relancer.
   const etat = useRef({ ici, preferences: preferences.data })
@@ -63,10 +64,10 @@ export function NotificationsSurgissantes() {
   useEffect(() => {
     const liste = recentes.data?.contenu
     if (!liste || !c) return
-    // Premier chargement : l'état connu, sans fenêtre surgissante.
+    // Premier chargement : l'état connu, sans fenêtre surgissante, sauf ce qui est arrivé depuis l'ouverture de l'écran
+    // (QUO-11 : une notification reçue avant la première lecture de la liste n'était jamais annoncée).
     if (!vues.current) {
-      vues.current = new Map(liste.map((n) => [n.id, n.misAJourLe]))
-      return
+      vues.current = new Map(liste.filter((n) => n.lueLe || n.misAJourLe <= ouverture.current).map((n) => [n.id, n.misAJourLe]))
     }
     const connues = vues.current
     const arrivees = liste.filter((n) => !n.lueLe && (connues.get(n.id) ?? '') < n.misAJourLe).reverse()

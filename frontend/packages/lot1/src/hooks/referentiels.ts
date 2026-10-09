@@ -102,12 +102,14 @@ export function useFonctionsCatalogue() {
 export function useOptionsTypesProjet(proposables = false) {
   const { t } = useTranslation()
   const q = useTypesProjet(proposables ? true : undefined)
+  // CER-05 : sans la liste des types (droit de lecture des référentiels), libellé lu au catalogue du modélisateur.
+  const c = useCatalogueReferentiels()
   return useMemo(() => {
     const l = q.data ? q.data.filter((x) => !proposables || x.proposable).map((x) => ({ code: x.code, libelle: x.libelle })) : q.isError ? TYPES_PROJET_REPRIS.map((code) => ({ code, libelle: code })) : []
     return {
       options: l.map((x) => ({ value: x.code, label: t(`parcours.typeProjet.${x.code}`, { defaultValue: x.libelle }) })),
-      libelle: (code: string) => t(`parcours.typeProjet.${code}`, { defaultValue: q.data?.find((x) => x.code === code)?.libelle ?? code }),
+      libelle: (code: string) => t(`parcours.typeProjet.${code}`, { defaultValue: q.data?.find((x) => x.code === code)?.libelle ?? c.data?.typesProjet?.find((x) => x.code === code)?.libelle ?? code }),
       pret: q.isSuccess || q.isError,
     }
-  }, [q.data, q.isError, q.isSuccess, proposables, t])
+  }, [q.data, q.isError, q.isSuccess, proposables, t, c.data])
 }

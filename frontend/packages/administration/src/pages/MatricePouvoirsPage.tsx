@@ -64,7 +64,7 @@ export default function MatricePouvoirsPage() {
   const edition = aPermission(permissions, 'IAM_PROFILE_EDIT')
   const lignes = matrice.data?.profils ?? []
   // Profils demandables : jamais un profil privilégié, jamais un profil d'institution.
-  const demandables = (profils.data ?? []).filter((p) => !p.privilegie && p.code !== 'ROLE_CORRESPONDANT').map((p) => p.code)
+  const demandables = (profils.data ?? []).filter((p) => !p.privilegie && !p.externe).map((p) => p.code)
   const colonnes: Column<PouvoirsProfil>[] = [
     { key: 'profil', header: t('console.profils.profil'), render: (l) => <span className="gm-col" style={{ gap: 0 }}><span>{nom(l)}</span><span className="gm-mono gm-type-small">{l.profil}</span></span> },
     ...ACTIONS_POUVOIR.map((a): Column<PouvoirsProfil> => ({ key: a, header: t(`console.matrice.court.${a}`), render: (l) => <BadgePortee portee={completerActions(l.actions)[a]} /> })),

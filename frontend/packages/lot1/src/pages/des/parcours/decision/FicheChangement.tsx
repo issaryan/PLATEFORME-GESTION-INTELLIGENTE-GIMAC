@@ -4,6 +4,7 @@ import { Button, FileDropzone, CrudDialog, Hash, InlineAlert, KeyValueList, Stat
 import type { ApprobationSecurite, DossierLiaison } from '../../../../modele/parcours'
 import { useConstituerDossierChangement, useReferencerFicheChangement, useRelireFicheChangement } from '../../../../hooks/parcours'
 import { SousTitre, TON_FICHE_CHANGEMENT, useLancer, usePeut, Vide, type Action, PERMISSION_GESTE } from './commun'
+import { useFormatDate } from '../communs'
 
 // Verrou 2, rangs 20, 24 à 26 : dossier de changement constitué par la production monétique ; fiche de
 // changement du dispositif existant référencée (CHG-AAAA-N), puis LUE, jamais refaite (D-56, D-16, RG-34) :
@@ -14,6 +15,7 @@ const taille = (octets: number) => (octets < 1024 * 1024 ? `${Math.max(1, Math.r
 
 export function BlocDossierChangement({ dossier, approbation }: { dossier: DossierLiaison; approbation: ApprobationSecurite }) {
   const { t } = useTranslation()
+  const formatDate = useFormatDate()
   const peut = usePeut()
   const lancer = useLancer()
   const constituer = useConstituerDossierChangement()
@@ -35,7 +37,7 @@ export function BlocDossierChangement({ dossier, approbation }: { dossier: Dossi
         <KeyValueList
           items={[
             { key: t('decision.changement.piece'), value: <span className="gm-mono">{d.nom}</span> },
-            { key: t('decision.changement.deposePar'), value: t('decision.changement.deposeLe', { nom: d.deposePar, date: d.deposeLe }) },
+            { key: t('decision.changement.deposePar'), value: t('decision.changement.deposeLe', { nom: d.deposePar, date: formatDate(d.deposeLe) }) },
             { key: t('decision.pv.empreinte'), value: <Hash value={d.empreinte} /> },
           ]}
         />
@@ -66,8 +68,12 @@ export function BlocDossierChangement({ dossier, approbation }: { dossier: Dossi
   )
 }
 
+/** Référence d'une fiche de changement (ApprobationPolicy.REFERENCE_FICHE de MS-CERTIFICATION). */
+const REFERENCE_FICHE = /^[A-Z]{2,5}-\d{4}-\d{1,6}$/
+
 export function BlocFicheChangement({ dossier, approbation }: { dossier: DossierLiaison; approbation: ApprobationSecurite }) {
   const { t } = useTranslation()
+  const formatDate = useFormatDate()
   const peut = usePeut()
   const lancer = useLancer()
   const referencer = useReferencerFicheChangement()
@@ -101,12 +107,12 @@ export function BlocFicheChangement({ dossier, approbation }: { dossier: Dossier
               key: t('decision.fiche.lueLe'),
               value: (
                 <span className="gm-row">
-                  <span>{f.lueLe}</span>
+                  <span>{formatDate(f.lueLe)}</span>
                   {f.aRelire ? <StatusBadge status="warn" label={t('decision.fiche.aRelire')} /> : null}
                 </span>
               ),
             },
-            { key: t('decision.fiche.documentParametrage'), value: approbation.documentParametrageRecu ?? <Vide /> },
+            { key: t('decision.fiche.documentParametrage'), value: approbation.documentParametrageRecu ? formatDate(approbation.documentParametrageRecu) : <Vide /> },
           ]}
         />
       ) : peut(approbation.actionsPermises, 'REFERENCER_FICHE', 'referencerFiche') ? (
@@ -125,9 +131,12 @@ export function BlocFicheChangement({ dossier, approbation }: { dossier: Dossier
       ) : null}
       {saisie ? (
         <CrudDialog context="edit" id="gm-dlg-fiche-changement" size="md" subject={`${dossier.reference} · ${dossier.institutionNom}`} title={t('decision.fiche.action.referencer')} description={t('decision.fiche.explication')} onClose={() => setSaisie(false)}
-          onSubmit={() => { if (!reference.trim()) return; setSaisie(false); lancer(actionReferencer, { reference: reference.trim() }, dossier.reference) }}
-          submitLabel={t('decision.fiche.action.referencer')} submitIcon="paperclip" submitDisabled={!reference.trim()} submitDisabledReason={t('decision.fiche.referenceRequise')}>
-          <TextField name="reference" label={t('decision.fiche.reference')} required mono value={reference} onChange={(v) => setReference(v.toUpperCase())} help={t('decision.fiche.format')} maxLength={20} />
+          onSubmit={() => { if (!REFERENCE_FICHE.test(reference.trim())) return; setSaisie(false); lancer(actionReferencer, { reference: reference.trim() }, dossier.reference) }}
+          submitLabel={t('decision.fiche.action.referencer')} submitIcon="paperclip" submitDisabled={!REFERENCE_FICHE.test(reference.trim())}
+          submitDisabledReason={t(reference.trim() ? 'erreur.CER_CHANGE_RECORD_INVALID' : 'decision.fiche.referenceRequise')}>
+          {/* CER-10 : format contrôlé à la saisie, comme ApprobationPolicy.verifierReferenceFiche, avant toute confirmation. */}
+          <TextField name="reference" label={t('decision.fiche.reference')} required mono value={reference} onChange={(v) => setReference(v.toUpperCase())} help={t('decision.fiche.format')} maxLength={20}
+            error={reference.trim() && !REFERENCE_FICHE.test(reference.trim()) ? t('erreur.CER_CHANGE_RECORD_INVALID') : undefined} />
         </CrudDialog>
       ) : null}
     </div>

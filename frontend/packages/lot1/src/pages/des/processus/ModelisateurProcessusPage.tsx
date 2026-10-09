@@ -13,6 +13,8 @@ import { ModaleEtape, type OngletEtape } from './ModaleEtape'
 import { DialogueLancement } from './DialogueLancement'
 import { ModaleLancement } from './ModaleLancement'
 import { BadgeGravite, BadgeProcessus, useErreurProcessus, useResumeIntervenant } from './communs'
+import { useLibelleProfilEquipe } from '../activite/dialoguesEquipe'
+import { useUnites } from '../../../hooks/pilotage'
 
 // Modélisateur d'un processus d'unité (D-87 §4, /des/processus/:id) : canevas générique partagé avec le modélisateur des
 // référentiels (D-77) ou vue liste équivalente au clavier ; une carte par étape, les prédécesseurs en arcs ; modale
@@ -40,6 +42,23 @@ export function useResumeInitiateurs() {
     if (r === 'PERMISSIONS') return `${t('dem.regle.PERMISSIONS')} (${x.permissions.join(', ')})`
     return t(`dem.regle.${r}`)
   }).join(' ; ')
+}
+
+/**
+ * Recette HOM-15 : message d'anomalie du contrôle (MS-PILOTAGE) rendu lisible : profils (ROLE_*) et unités nommés par leur
+ * libellé, jamais par leur code. Mise en forme seulement : le service décide de l'anomalie.
+ */
+const echapper = (x: string) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+function useMessageLisible() {
+  const libelleProfil = useLibelleProfilEquipe()
+  const libelleUnite = useLibelleUnite()
+  const unites = useUnites()
+  return useCallback((m: string) => {
+    let s = m.replace(/\bROLE_[A-Z0-9_]+\b/g, (r) => libelleProfil(r))
+    const codes = (unites.data ?? []).map((u) => u.code).sort((a, b) => b.length - a.length)
+    if (codes.length) s = s.replace(new RegExp(`(unité |\\(|, )(${codes.map(echapper).join('|')})(?=[ ,;:.)]|$)`, 'g'), (_x, avant: string, c: string) => avant + libelleUnite(c))
+    return s
+  }, [libelleProfil, libelleUnite, unites.data])
 }
 
 export default function ModelisateurProcessusPage() {
@@ -78,6 +97,7 @@ function Proprietes({ processus, enCours, erreur, onFermer, onEnregistrer }: { p
 
 function Espace({ processus: p }: { processus: Processus }) {
   const { t } = useTranslation()
+  const lisible = useMessageLisible()
   const navigate = useNavigate()
   const dates = useDates()
   const libelleUnite = useLibelleUnite()
@@ -211,7 +231,7 @@ function Espace({ processus: p }: { processus: Processus }) {
       ]} />
       {p.description ? <p className="gm-field-help" style={{ margin: 0 }}>{p.description}</p> : null}
       {lecture ? <InlineAlert level="info">{t(p.etat === 'BROUILLON' ? 'proc.lectureSeule' : 'proc.lecturePubliee')}</InlineAlert> : null}
-      {p.avertissements.map((a, i) => <InlineAlert key={i} level={a.code === 'COUVERTURE_HORS_UNITE' ? 'info' : 'warn'} title={t(`proc.anomalie.${a.code}`, { defaultValue: a.message })}>{a.etape ? `${a.etape} · ${a.message}` : a.message}</InlineAlert>)}
+      {p.avertissements.map((a, i) => <InlineAlert key={i} level={a.code === 'COUVERTURE_HORS_UNITE' ? 'info' : 'warn'} title={t(`proc.anomalie.${a.code}`, { defaultValue: lisible(a.message) })}>{a.etape ? `${a.etape} · ${lisible(a.message)}` : lisible(a.message)}</InlineAlert>)}
       {refus ? (
         <InlineAlert level="crit" title={refus.titre} correlationId={refus.correlationId}
           action={<Button size="sm" variant="ghost" icon="x" onClick={() => setEchec(null)}>{t('commun.fermer')}</Button>} />
@@ -230,7 +250,7 @@ function Espace({ processus: p }: { processus: Processus }) {
                   <button type="button" className="gm-proc-anomalie" onClick={() => { if (a.etape) { setFocus(a.etape); setModale({ creation: false, code: a.etape }) } }}>
                     <BadgeGravite gravite={a.gravite} />
                     <strong>{t(`proc.anomalie.${a.code}`, { defaultValue: a.code })}</strong>
-                    <span>{[a.etape, a.element].filter(Boolean).join(' · ')}{a.message ? ` · ${a.message}` : ''}</span>
+                    <span>{[a.etape, a.element].filter(Boolean).join(' · ')}{a.message ? ` · ${lisible(a.message)}` : ''}</span>
                   </button>
                 </li>
               ))}
@@ -242,7 +262,7 @@ function Espace({ processus: p }: { processus: Processus }) {
         <CanevasProcessus cartes={cartes} lecture={lecture} surlignes={surlignes} libelleOuvrir={t(lecture ? 'proc.etape.consulter' : 'proc.etape.modifier')} testId="processus-canevas"
           onOuvrir={ouvrir} onRelier={relier} onDelier={delier} onPlacer={placer} />
       ) : (
-        <div data-testid="processus-liste">
+        <div data-testid="processus-liste" className="gm-proc-liste">
           <DataTable columns={colonnes} rows={p.etapes as (EtapeProcessus & Record<string, unknown>)[]} rowKey={(e) => e.code} state={p.etapes.length ? 'ok' : 'empty'} density="compact" pagination={false}
             selected={[...surlignes]} emptyText={t('proc.etape.aucune')} />
         </div>

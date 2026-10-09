@@ -475,3 +475,77 @@ et à l'institution `ACTIF`. Trous constatés et suite donnée :
   à quatre agents). Les écrans s'enchaînent désormais par la navigation de l'application (`ecran`, historique du
   routeur) et axe-core n'est injecté qu'une fois par document : 22 à 24 s à quatre agents ; même traitement pour le
   scénario du département.
+
+## 9. Séparation des fonctions : l'initiateur n'intervient pas sur sa demande (D-99, 08/10/2026)
+
+Constat de la recette du travail quotidien (QUO-02, `docs/recette/quotidien.md`) : la réaffectation d'une étape de la
+demande de congé proposait d'office la demandeuse elle-même, qui a ensuite vérifié ses propres droits et enregistré sa
+propre décision.
+
+### 9.1 Règle (MS-PILOTAGE et services simulés, mêmes règles)
+
+- L'initiateur (lanceur) d'une instance **n'exécute, ne prend, ne valide ni ne signe** les étapes de sa propre demande,
+  et il n'y est **ni résolu** à l'activation, **ni désigné** au lancement, **ni proposé** parmi les candidats (réaffectation,
+  désignation), **ni réaffecté**.
+- Exceptions, en données de la définition : l'intervenant de mode `LANCEUR` (la définition désigne explicitement
+  l'initiateur, par exemple l'étape « Demande » qui décrit le besoin) ; le réglage `initiateurs.initiateurIntervenant`
+  (case « L'initiateur peut aussi exécuter, valider ou signer les étapes de sa propre demande » de « Lancement et
+  formulaire » ; **faux par défaut** et pour les définitions antérieures, JSONB sans reprise Liquibase). Une nouvelle
+  version reprend le réglage.
+- Résolution : personne nommée, désignée, chef de l'unité ou n+1 égal à l'initiateur : remplacée par le profil de
+  remplacement ; porteurs d'un profil comptés **sans** l'initiateur (dans l'unité, puis ailleurs dans le GIMAC, D-95) ;
+  **aucun autre porteur** : l'étape va au **chef de l'unité** pour désigner (D-95) ; si ce chef est l'initiateur, à
+  **son responsable** ; à défaut, elle reste à prendre en attente d'une désignation par le pilote. L'historique le dit
+  (« Aucun porteur actif du profil … hors de l'initiateur de la demande (séparation des fonctions) : … »).
+- Les destinataires des notifications d'une étape à prendre n'incluent jamais l'initiateur ; l'offre d'une étape de sa
+  demande ne lui est pas listée (« Mes tâches » et « À prendre », critère : tâche d'origine PROCESSUS dont il est le
+  créateur) ; si la définition l'autorise, il la prend depuis l'écran de l'instance (`moi.prendre`).
+- Candidats (`GET /processus/instances/{id}/etapes/{code}/candidats`) : sans l'initiateur ; ajout compatible
+  `exclus: [id]` pour que l'interface l'écarte aussi de l'annuaire. L'interface n'annonce plus « Seul porteur … choisi
+  automatiquement » quand un porteur a été écarté (l'exécutant actuel) : « Aucun autre porteur du profil … ».
+
+### 9.2 Refus
+
+Code `PIL_PROCESSUS_SEPARATION_FONCTIONS`, message « L'initiateur d'une demande ne peut pas exécuter, valider ou signer les
+étapes de sa propre demande (séparation des fonctions). » (traduit en anglais et en espagnol dans l'interface) :
+
+| Geste | Statut |
+|---|---|
+| Se désigner au lancement (`designations`) | 422 (`details.cle`, `details.personneId`) |
+| Réaffecter l'étape à l'initiateur | 422 (`details.personneId`) |
+| Attribuer à l'initiateur la tâche d'une étape (voie des tâches) | 422 |
+| Prendre la tâche d'une étape, d'une validation ou d'une signature | 403 |
+| Déposer, renseigner, terminer, valider, signer | 403 (`details.lanceurId`) |
+
+La prise et l'attribution par la voie des tâches sont contrôlées par un événement interne synchrone
+(`PriseTacheProcessus`) que le moteur des processus refuse avant l'affectation.
+
+### 9.3 Lecture de l'instance et pièces (QUO-03, QUO-04, QUO-12)
+
+- Lisent l'instance, en plus de l'unité, de l'initiateur et des intervenants nommés : les porteurs qui **peuvent prendre**
+  une étape à prendre, la valider ou la signer par leur profil (ils l'ouvrent depuis la tâche ou la notification avant
+  de la prendre). Un tiers reçoit 403 `PIL_PROCESSUS_INTERDIT`, que l'interface explique (« Vous ne pouvez pas consulter
+  cette demande », sans « Réessayer ») ; « Demande introuvable » est réservé au 404.
+- `GET /processus/instances/{id}/documents/{documentId}` (`PIL_ACTIVITY_OWN`, OPA : règle `GET` des processus) : pièce
+  jointe du formulaire de lancement ou livrable déposé d'une étape, relayé en flux depuis MS-DOCUMENT, à qui lit
+  l'instance (403 sinon) ; document étranger à l'instance : 404 `PIL_PROCESSUS_DOCUMENT_INCONNU`. L'interface ouvre
+  l'aperçu (PDF, images, bureautique convertie) et propose le téléchargement.
+
+### 9.4 Démonstration
+
+- Comptes de démonstration du service RH (QUO-01) : Thierry Bekolo Ngoa (`t.bekolo`, gestionnaire, profil collaborateur)
+  et Solange Ateba Mvondo (`s.ateba`, cheffe du service, profil responsable de service), tirés de l'organisation simulée
+  (aucun nom de profil codé).
+- Notifications (QUO-05) : le moteur simulé produit, comme MS-NOTIFICATION, « Étape à réaliser », « Étape à prendre »,
+  « Validation attendue », « Signature attendue », « Étape renvoyée », « Étape réaffectée », « Votre demande avance » et
+  « Processus terminé » ou « Processus annulé », gardées avec l'état de la session (reçues après un changement de profil).
+- Rechargement (QUO-19) : les tâches des étapes terminées ou annulées renaissent aussi dans « Mon activité ».
+- Jeu de démonstration : les deux instances « Ouverture d'un flux réseau » sont lancées par la technicienne réseau et
+  menées par l'ingénieur réseau (l'initiatrice n'intervient plus sur sa demande).
+
+### 9.5 Tests
+
+`ProcessusSeparationFonctionsIT` (initiateur écarté, seul autre porteur puis chef, autorisation explicite, lecture par
+les porteurs et documents), ITs du moteur adaptés (`initiateurIntervenant` pour les scénarios où le lanceur agit,
+`aucunPorteur` : chef initiateur, son responsable désigne) ; OPA `routes_processus` ; interface
+`services/simule/quotidien.test.ts`, `pages/des/processus/Processus.test.tsx` (« recette du travail quotidien »).

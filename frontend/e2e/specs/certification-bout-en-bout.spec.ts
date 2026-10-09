@@ -110,10 +110,10 @@ test.describe('Fonctionnalité : parcours de certification de bout en bout (D-98
       await institution.selectOption({ label: 'Établissement de paiement A · En homologation' })
       await expect(page.getByText('Adhésion prononcée : une liaison peut être ouverte sur cette institution.')).toBeVisible()
       await page.getByRole('radio', { name: 'Agrégateur de paiement' }).check()
-      await page.getByLabel(/Conducteur de projet/).selectOption({ label: 'Conducteur de projet 1' })
+      await page.getByLabel(/Conducteur de projet/).selectOption({ label: 'Aïcha Mahamat Nour' })
       await capturer(page, 'lancer-certification', (p) => p.getByRole('radio', { name: 'Agrégateur de paiement' }), true)
       await page.getByRole('radio', { name: 'Agrégateur de paiement' }).check()
-      await page.getByLabel(/Conducteur de projet/).selectOption({ label: 'Conducteur de projet 1' })
+      await page.getByLabel(/Conducteur de projet/).selectOption({ label: 'Aïcha Mahamat Nour' })
       await page.getByRole('button', { name: 'Ouvrir la liaison' }).click()
       await expect(page).toHaveURL(/\/des\/parcours\/LIA-\d{4}-\d{3}\?nouvelle=1/)
       liaison = /\/des\/parcours\/(LIA-\d{4}-\d{3})/.exec(page.url())![1]
@@ -263,7 +263,8 @@ test.describe('Fonctionnalité : parcours de certification de bout en bout (D-98
       await devenir(page, 'ROLE_CHEF_DDRM')
       await page.goto(`${D}/des/taches?vue=unite`)
       const ligne = page.getByRole('row').filter({ hasText: titre })
-      await expect(ligne.getByText('Décision à prononcer')).toBeVisible()
+      // DDR-16 : la colonne Unité dit à qui la décision est offerte (toutes les unités porteuses de la permission).
+      await expect(ligne.getByText('Toutes unités')).toBeVisible()
       await expect(ligne.getByText(/Offerte aux porteurs de :/)).toBeVisible()
       await capturer(page, 'adhesion-a-prononcer', (p) => p.getByRole('row').filter({ hasText: titre }))
     })

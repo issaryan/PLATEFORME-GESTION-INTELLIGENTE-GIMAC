@@ -404,6 +404,11 @@ export interface ServiceProcessus {
   lancer(id: string, l: Lancement): Promise<InstanceProcessus>
   instance(id: string): Promise<InstanceProcessus>
   /**
+   * QUO-04 : pièce du formulaire de lancement ou livrable déposé d'une instance (GET …/instances/{id}/documents/{doc}),
+   * lisible de qui lit l'instance ; 403 PIL_PROCESSUS_INTERDIT, 404 PIL_PROCESSUS_DOCUMENT_INCONNU.
+   */
+  documentInstance(instanceId: string, documentId: string): Promise<{ blob: Blob; empreinte: string | null }>
+  /**
    * Dépôt fragmenté d'un livrable (D-74) : finalité PROCESSUS_UNITE, référence = identifiant de l'instance ; le ticket
    * est ensuite rattaché à l'étape (deposerLivrable).
    */

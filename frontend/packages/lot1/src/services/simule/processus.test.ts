@@ -115,16 +115,20 @@ describe('D-87 : définitions', () => {
 describe('D-87 : instances', () => {
   it('lancement : désignations exigées et vérifiées, étape initiale active, tâche du lanceur ; vues', async () => {
     const qui = monde()
+    qui.magasin.organisation.push({ id: 'u-res-bis', nomAffiche: 'Armel Nkoulou Beti', fonction: 'Technicien réseau', unite: 'POLE_RESEAU', responsableId: 'u-resp-info', actif: true })
+    qui.magasin.definirProfils('u-res-bis', ['ROLE_POLE_RESEAU'])
     const membre = qui('u-res')
     const flux = (await membre.processus.lister({ etat: 'PUBLIEE' })).find((p) => p.code === 'OUVERTURE_FLUX_RESEAU')!
     const base = { intitule: 'Flux de test', champs: { SOURCE: '10.0.0.1' }, designations: {} as Record<string, string> }
+    // D-99 : le lanceur ne se désigne pas lui-même pour une étape de sa demande.
+    expect(await code(membre.processus.lancer(flux.id, { ...base, designations: { MISE_EN_OEUVRE: 'u-res' } }))).toBe('422 PIL_PROCESSUS_SEPARATION_FONCTIONS')
     expect(await code(membre.processus.lancer(flux.id, base))).toBe('422 PIL_PROCESSUS_DESIGNATION_MANQUANTE')
     expect(await code(membre.processus.lancer(flux.id, { ...base, designations: { MISE_EN_OEUVRE: 'inconnu' } }))).toBe('422 PIL_PROCESSUS_DESIGNATION_INVALIDE')
     // Ni porteuse du profil de remplacement, ni dans la portée du lanceur : refusée.
     expect(await code(membre.processus.lancer(flux.id, { ...base, designations: { MISE_EN_OEUVRE: 'u-collab' } }))).toBe('422 PIL_PROCESSUS_DESIGNATION_INVALIDE')
-    expect(await code(membre.processus.lancer(flux.id, { ...base, intitule: ' ', designations: { MISE_EN_OEUVRE: 'u-res' } }))).toBe('400 PIL_REQUETE_INVALIDE')
-    const i = await membre.processus.lancer(flux.id, { ...base, designations: { MISE_EN_OEUVRE: 'u-res' } })
-    expect(i).toMatchObject({ etat: 'EN_COURS', lanceur: { id: 'u-res' }, designations: { MISE_EN_OEUVRE: { nomAffiche: 'Idriss Mahamat Saleh' } } })
+    expect(await code(membre.processus.lancer(flux.id, { ...base, intitule: ' ', designations: { MISE_EN_OEUVRE: 'u-res-bis' } }))).toBe('400 PIL_REQUETE_INVALIDE')
+    const i = await membre.processus.lancer(flux.id, { ...base, designations: { MISE_EN_OEUVRE: 'u-res-bis' } })
+    expect(i).toMatchObject({ etat: 'EN_COURS', lanceur: { id: 'u-res' }, designations: { MISE_EN_OEUVRE: { nomAffiche: 'Armel Nkoulou Beti' } } })
     const demande = i.etapes[0]
     expect(demande).toMatchObject({ code: 'DEMANDE', etat: 'ACTIVE', executant: { id: 'u-res' }, moi: { executer: true } })
     expect(demande.champs.find((c) => c.code === 'SOURCE')?.valeur).toBe('10.0.0.1')
@@ -133,7 +137,9 @@ describe('D-87 : instances', () => {
     expect((await membre.processus.instances({ vue: 'lancees' })).contenu[0].id).toBe(i.id)
     expect((await membre.processus.instances({ vue: 'miennes', etat: 'EN_COURS' })).total).toBeGreaterThan(0)
     expect((await qui('U-001').processus.instances({ vue: 'unite', taille: 1, page: 1 })).contenu).toHaveLength(1)
-    expect(await code(qui('u-sna').processus.instance(i.id))).toBe('404 PIL_PROCESSUS_INSTANCE_INTROUVABLE')
+    // QUO-12 : refus explicite, comme MS-PILOTAGE ; « introuvable » pour une instance inexistante seulement.
+    expect(await code(qui('u-sna').processus.instance(i.id))).toBe('403 PIL_PROCESSUS_INTERDIT')
+    expect(await code(qui('u-sna').processus.instance('INS-INCONNUE'))).toBe('404 PIL_PROCESSUS_INSTANCE_INTROUVABLE')
     expect(await code(qui('u-sna').processus.lancer(flux.id, { ...base, designations: { MISE_EN_OEUVRE: 'u-collab' } }))).toBe('403 PIL_PROCESSUS_NON_INITIATEUR')
   })
 
@@ -143,23 +149,29 @@ describe('D-87 : instances', () => {
     qui.magasin.organisation.push({ id: 'u-res-bis', nomAffiche: 'Armel Nkoulou Beti', fonction: 'Technicien réseau', unite: 'POLE_RESEAU', responsableId: 'u-resp-info', actif: true })
     qui.magasin.definirProfils('u-res-bis', ['ROLE_POLE_RESEAU'])
     const membre = qui('u-res')
-    const flux = (await membre.processus.lister({ etat: 'PUBLIEE' })).find((p) => p.code === 'OUVERTURE_FLUX_RESEAU')!
-    let i = await membre.processus.lancer(flux.id, { intitule: 'Flux B', champs: {}, designations: { MISE_EN_OEUVRE: 'u-res-bis' } })
-    expect(await code(membre.processus.terminer(i.id, 'DEMANDE'))).toBe('422 PIL_PROCESSUS_CHAMPS_MANQUANTS')
-    expect(await code(membre.processus.saisirChamps(i.id, 'DEMANDE', { PORT: 'abc' }))).toBe('422 PIL_PROCESSUS_CHAMP_INVALIDE')
-    expect(await code(membre.processus.saisirChamps(i.id, 'DEMANDE', { PROTOCOLE: 'ICMP' }))).toBe('422 PIL_PROCESSUS_CHAMP_INVALIDE')
-    expect(await code(membre.processus.saisirChamps(i.id, 'DEMANDE', { DATE_SOUHAITEE: '12/10/2026' }))).toBe('422 PIL_PROCESSUS_CHAMP_INVALIDE')
-    i = await membre.processus.saisirChamps(i.id, 'DEMANDE', { SOURCE: '10.0.0.1', DESTINATION: '10.0.0.2', PORT: '22', PROTOCOLE: 'TCP', DATE_SOUHAITEE: null })
+    // D-99 : ce scénario du moteur fait agir le lanceur sur les étapes de sa demande ; la définition l'autorise.
+    const chefP = qui('u-resp-info').processus
+    const brouillon = await chefP.creer(saisie(definitionDemo(), { code: 'FLUX_MOTEUR', initiateurs: { regles: ['MEMBRES_UNITE'], unites: [], profils: [], permissions: [], initiateurIntervenant: true } }))
+    const flux = await chefP.publier(brouillon.id, { leverAvertissements: true, motif: 'Essai du moteur' })
+    const lanceur = membre
+    let i = await lanceur.processus.lancer(flux.id, { intitule: 'Flux B', champs: {}, designations: { MISE_EN_OEUVRE: 'u-res-bis' } })
+    expect(await code(lanceur.processus.terminer(i.id, 'DEMANDE'))).toBe('422 PIL_PROCESSUS_CHAMPS_MANQUANTS')
+    expect(await code(lanceur.processus.saisirChamps(i.id, 'DEMANDE', { PORT: 'abc' }))).toBe('422 PIL_PROCESSUS_CHAMP_INVALIDE')
+    expect(await code(lanceur.processus.saisirChamps(i.id, 'DEMANDE', { PROTOCOLE: 'ICMP' }))).toBe('422 PIL_PROCESSUS_CHAMP_INVALIDE')
+    expect(await code(lanceur.processus.saisirChamps(i.id, 'DEMANDE', { DATE_SOUHAITEE: '12/10/2026' }))).toBe('422 PIL_PROCESSUS_CHAMP_INVALIDE')
+    i = await lanceur.processus.saisirChamps(i.id, 'DEMANDE', { SOURCE: '10.0.0.1', DESTINATION: '10.0.0.2', PORT: '22', PROTOCOLE: 'TCP', DATE_SOUHAITEE: null })
     expect(i.etapes[0].champs.find((c) => c.code === 'PORT')?.valeur).toBe(22)
     expect(await code(qui('u-collab').processus.saisirChamps(i.id, 'DEMANDE', {}))).toBe('403 PIL_PROCESSUS_NON_INTERVENANT')
-    i = await membre.processus.terminer(i.id, 'DEMANDE')
+    i = await lanceur.processus.terminer(i.id, 'DEMANDE')
     expect(i.etapes.map((e) => e.etat)).toEqual(['TERMINEE', 'ACTIVE', 'EN_ATTENTE', 'EN_ATTENTE'])
-    expect(await code(membre.processus.terminer(i.id, 'DEMANDE'))).toBe('409 PIL_PROCESSUS_ETAPE_ETAT')
+    expect(await code(lanceur.processus.terminer(i.id, 'DEMANDE'))).toBe('409 PIL_PROCESSUS_ETAPE_ETAT')
     // ANALYSE : à prendre par les porteurs de ROLE_POLE_RESEAU ; la prise de la tâche désigne l'exécutant.
     const analyse = i.etapes[1]
     expect(analyse).toMatchObject({ executant: null, aPrendre: { profil: 'ROLE_POLE_RESEAU' }, moi: { prendre: true } })
     expect((await qui('u-collab').processus.instance(i.id)).etapes[1].moi.prendre).toBe(false)
-    const tache = (await membre.pilotage.taches({ vue: 'unite' })).contenu.find((t) => t.id === analyse.tacheId)!
+    // D-99 : l'offre d'une étape n'est jamais listée à l'initiateur ; autorisé par la définition, il la prend depuis l'instance.
+    expect((await membre.pilotage.taches({ vue: 'unite' })).contenu.some((t) => t.id === analyse.tacheId)).toBe(false)
+    const tache = await membre.pilotage.tache(analyse.tacheId!)
     expect(tache).toMatchObject({ etat: 'A_PRENDRE', profilRequis: 'ROLE_POLE_RESEAU' })
     expect(await code(qui('u-collab').pilotage.prendre(tache.id))).toBe('404 PIL_TACHE_INTROUVABLE')
     await membre.pilotage.prendre(tache.id)

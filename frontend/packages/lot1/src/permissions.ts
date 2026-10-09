@@ -1,5 +1,6 @@
 // Matrice des rôles du parcours (D-58, D-61) : l'interface n'affiche un tableau de bord ou une action que
 // si le jeton porte la permission ; la passerelle (OPA) et les services refont le contrôle à chaque appel.
+import { PROFILS_DOMAINE } from './domaine'
 
 export const PERM = {
   // Étapes 1 et 2 (MS-PARTICIPANT)
@@ -88,54 +89,8 @@ export const PERM = {
 /** Permissions nouvelles attendues du backend pour le modèle hybride (consignées dans docs/lot1/correspondance.md). */
 export const PERMISSIONS_NOUVELLES = [PERM.etapeConduire, PERM.pvEtablir, PERM.securiteVerifier, PERM.portailSigner] as const
 
-/** Administration des comptes (D-62), comme le domaine Keycloak : toutes les permissions IAM sauf l'octroi privilégié. */
-const IAM_SANS_PRIVILEGE = ['IAM_ACCOUNT_READ', 'IAM_ACCOUNT_CREATE', 'IAM_ACCOUNT_EDIT', 'IAM_ACCOUNT_ROLES', 'IAM_ACCOUNT_STATUS', 'IAM_ACCOUNT_DELETE',
-  'IAM_ACCOUNT_SECURITY', 'IAM_JOURNAL_READ', 'IAM_PROFILE_EDIT']
-
-/** Messagerie (D-64), « Mon activité » (D-76) et notifications de la plateforme (D-80) : tout profil interne. */
-const INTERNE = [PERM.messageLire, PERM.messageEnvoyer, PERM.activitePropre, PERM.notificationsLire]
-/** Équipe et tâches confiées (D-76 §4) : chefs de département et de service, DG, RSSI, conformité. */
-const RESPONSABLE = [PERM.equipeLire, PERM.tacheConfier]
-/** Référentiel des opérations (D-89 §1, §4) : édition et publication, lecture complète. */
-const REFERENTIEL_EDITION = [PERM.referentielLire, PERM.referentielModifier]
-
-const COMMUN_DES = [PERM.institutionLire, PERM.liaisonLister, PERM.liaisonLire, PERM.pilotageLire, PERM.referentielLire, 'CER_CIRCUIT_READ', PERM.dossierLire, PERM.registreLire,
-  ...INTERNE]
-
-/** Profils par fonction (D-58), reflet du domaine Keycloak `gimac` et des permissions nouvelles. */
-export const PROFILS: Record<string, string[]> = {
-  ROLE_CHARGE_DDRM: [...COMMUN_DES, 'PAR_INSTITUTION_CREATE', 'PAR_INSTITUTION_EDIT', PERM.adhesionInstruire, 'PAR_TRANSITION_REQUEST', PERM.etapeConduire, PERM.fonctionDdrm],
-  ROLE_CHEF_DDRM: [...COMMUN_DES, 'PAR_INSTITUTION_CREATE', 'PAR_INSTITUTION_EDIT', PERM.adhesionInstruire, 'PAR_TRANSITION_REQUEST', PERM.transitionApprouver,
-    PERM.liaisonOuvrir, PERM.projetDesigner, PERM.etapeConduire, ...RESPONSABLE, PERM.referentielModifier, PERM.referentielPublier, PERM.referentielLireTout],
-  ROLE_CHEF_DES: [...COMMUN_DES, PERM.liaisonOuvrir, PERM.projetDesigner, PERM.pvSignerGimac, 'HOM_LIAISON_UNFREEZE', 'HOM_DEADLINE_CONFIG', 'HOM_REFERENTIEL_MIGRATE',
-    PERM.operationValider, 'HOM_EVIDENCE_FILE_EXPORT', PERM.attestationEmettre, 'CER_ATTESTATION_STATUS_REQUEST', PERM.registreExporter, PERM.etapeConduire, ...RESPONSABLE,
-    PERM.referentielModifier, PERM.referentielPublier, PERM.referentielLireTout],
-  ROLE_CONDUCTEUR_PROJET: [...COMMUN_DES, PERM.projetConduire, PERM.operationAttribuer, PERM.preuveDeposer, PERM.operationValider, 'HOM_EVIDENCE_FILE_EXPORT', PERM.etapeConduire, PERM.pvEtablir],
-  ROLE_SNA: [...COMMUN_DES, PERM.preuveDeposer, PERM.operationValider, PERM.dossierVerifier],
-  // Exploitation et Supervision (catalogue D-91) : tenue par la production monétique, sans profil propre.
-  ROLE_PRODUCTION_MONETIQUE: [...COMMUN_DES, PERM.preuveDeposer, PERM.ficheChangementLier, PERM.pvMiseEnServiceDeposer, PERM.fonctionProduction, PERM.fonctionExploitation],
-  ROLE_POLE_RESEAU: [...COMMUN_DES, PERM.preuveDeposer, PERM.fonctionReseau],
-  ROLE_POLE_SYSTEME: [...COMMUN_DES, PERM.preuveDeposer, PERM.fonctionSysteme],
-  // RSSI (generer-realm-gimac.py) : vérification de la sécurité, administration des comptes sans octroi
-  // privilégié, supervision et configuration en lecture, politique de sécurité et messagerie de la plateforme.
-  ROLE_RSSI: [...COMMUN_DES, 'CER_QUITUS_SECURITE_SIGN', PERM.securiteVerifier, PERM.preuveDeposer, ...IAM_SANS_PRIVILEGE,
-    'PLATFORM_SUPERVISION_READ', 'PLATFORM_CONFIG_READ', 'PLATFORM_OPS_READ', 'PLATFORM_SECURITY_POLICY_READ', 'PLATFORM_SECURITY_POLICY_EDIT', 'PLATFORM_MESSAGING_EDIT', ...RESPONSABLE, PERM.referentielLireTout],
-  // Super administrateur (generer-realm-gimac.py) : lecture du DES, toute l'administration des comptes dont
-  // l'octroi privilégié, supervision et configuration de la plateforme (D-62, D-69).
-  ROLE_SUPER_ADMIN: [...COMMUN_DES, ...IAM_SANS_PRIVILEGE, 'IAM_ROLE_PRIVILEGED_GRANT', 'PLATFORM_SUPERVISION_READ', 'PLATFORM_CONFIG_READ', 'PLATFORM_CONFIG_EDIT',
-    'PLATFORM_OPS_READ', 'PLATFORM_OPS_EXECUTE',
-    'PLATFORM_SECURITY_POLICY_READ', 'PLATFORM_SECURITY_POLICY_EDIT', 'PLATFORM_MESSAGING_EDIT', PERM.referentielModifier, PERM.referentielPublier,
-    PERM.referentielLireTout, 'HOM_REFERENTIEL_MIGRATE', PERM.referentielsMetierAdmin],
-  ROLE_CONFORMITE: [...COMMUN_DES, PERM.visaConformite, PERM.ficheChangementLier, ...RESPONSABLE, PERM.referentielLireTout],
-  ROLE_DG: [...COMMUN_DES, PERM.visaDg, 'CER_ATTESTATION_STATUS_APPROVE', ...RESPONSABLE, PERM.referentielLireTout],
-  ROLE_INGENIEUR_HOMOLOGATION: [...COMMUN_DES, PERM.operationAttribuer, PERM.preuveDeposer, PERM.operationValider, PERM.operationRouvrir, PERM.referentielModifier,
-    PERM.referentielPublier, 'HOM_GRID_EDIT', 'HOM_SCENARIO_QUALIFY', 'HOM_EVIDENCE_FILE_EXPORT', PERM.dossierVerifier, PERM.pvMiseEnServiceDeposer, PERM.attestationEmettre, PERM.referentielsMetierAdmin],
-  // D-76 §4 : employé sans fonction métier dans la plateforme (messagerie et « Mon activité », lecture de rien
-  // d'autre) ; chef de service, de pôle ou de cellule (en plus : son équipe et les tâches qu'il lui confie).
-  ROLE_COLLABORATEUR: [...INTERNE],
-  ROLE_RESPONSABLE_SERVICE: [...INTERNE, ...RESPONSABLE, ...REFERENTIEL_EDITION],
-  // Administrateur système (D-78, generer-realm-gimac.py) : supervision, configuration en lecture et exploitation
-  // de l'infrastructure (charges, journaux, gestes) ; messagerie et « Mon activité » ; n'administre pas les comptes.
-  ROLE_ADMIN_SYSTEME: [...INTERNE, PERM.supervisionLire, PERM.configurationLire, PERM.exploitationLire, PERM.exploitationExecuter],
-  ROLE_CORRESPONDANT: [PERM.portailLire, PERM.portailDeposer, PERM.portailCertification, PERM.portailSigner],
-}
+/**
+ * Profils par fonction (D-58) : compositions du domaine Keycloak `gimac`, lues dans domaine-gimac.json qu'écrit
+ * infra/keycloak/generer-realm-gimac.py (recette ADM-01, ADM-09) ; aucune recopie à la main.
+ */
+export const PROFILS: Record<string, string[]> = Object.fromEntries(PROFILS_DOMAINE.map((p) => [p.code, [...p.permissions]]))

@@ -45,6 +45,16 @@ describe('profils de démonstration', () => {
     expect(PROFILS_DEMO.ROLE_CONDUCTEUR_PROJET.permissions).toContain('HOM_LIAISON_READ')
     expect(PROFILS_DEMO.ROLE_CHARGE_DDRM.permissions).not.toContain('PAR_TRANSITION_APPROVE')
   })
+  it('QUO-01 : comptes de démonstration du service RH, chacun avec son profil de l’organisation simulée', async () => {
+    const { COMPTES_DEMO } = await import('./connexionDemo')
+    const gestionnaire = COMPTES_DEMO.find((c) => c.identifiant === 't.bekolo')!
+    const cheffe = COMPTES_DEMO.find((c) => c.identifiant === 's.ateba')!
+    expect(gestionnaire.session).toMatchObject({ sujet: 'u-rh', nom: 'Thierry Bekolo Ngoa', roles: ['ROLE_COLLABORATEUR'] })
+    expect(cheffe.session).toMatchObject({ sujet: 'u-rh-chef', nom: 'Solange Ateba Mvondo', roles: ['ROLE_RESPONSABLE_SERVICE'] })
+    // La session ouverte par la connexion simulée garde le compte (et non le premier porteur du profil).
+    sessionStorage.setItem('gm.sessionDemo', JSON.stringify({ identifiant: 't.bekolo', role: gestionnaire.role }))
+    expect(sessionDemo()).toMatchObject({ sujet: 'u-rh', roles: ['ROLE_COLLABORATEUR'] })
+  })
   it('profil choisi par la préférence locale, chef de la DDRM à défaut', () => {
     expect(roleDemo()).toBe('ROLE_CHEF_DDRM')
     localStorage.setItem(CLE_PROFIL_DEMO, 'ROLE_CONDUCTEUR_PROJET')
@@ -57,7 +67,8 @@ describe('profils de démonstration', () => {
 
 describe('Mon activité (D-76)', () => {
   it('profils de démonstration : collaborateur et responsable de service, PIL_* selon le contrat', () => {
-    expect(PROFILS_DEMO.ROLE_COLLABORATEUR).toMatchObject({ sujet: 'u-collab', nom: 'Nadège Mvondo Assiga', permissions: ['COL_MESSAGE_READ', 'COL_MESSAGE_SEND', 'PIL_ACTIVITY_OWN', 'NOT_INBOX_READ'] })
+    expect(PROFILS_DEMO.ROLE_COLLABORATEUR).toMatchObject({ sujet: 'u-collab', nom: 'Nadège Mvondo Assiga' })
+    expect([...PROFILS_DEMO.ROLE_COLLABORATEUR.permissions].sort()).toEqual(['COL_MESSAGE_READ', 'COL_MESSAGE_SEND', 'NOT_INBOX_READ', 'PIL_ACTIVITY_OWN'])
     expect(PROFILS_DEMO.ROLE_RESPONSABLE_SERVICE.permissions).toEqual(expect.arrayContaining(['PIL_ACTIVITY_OWN', 'PIL_TEAM_READ', 'PIL_TASK_ASSIGN']))
     for (const r of ['ROLE_CHEF_DES', 'ROLE_CHEF_DDRM', 'ROLE_DG', 'ROLE_RSSI', 'ROLE_CONFORMITE']) expect(PROFILS_DEMO[r].permissions).toContain('PIL_TEAM_READ')
     for (const p of Object.values(PROFILS_DEMO)) expect(p.permissions).toEqual(expect.arrayContaining(['PIL_ACTIVITY_OWN', 'NOT_INBOX_READ']))
@@ -115,7 +126,7 @@ describe('Application du département', () => {
   })
   it.each([
     ['/des/processus/INCONNU', 'Le processus n’a pas pu être lu.'],
-    ['/des/processus/instances/INCONNUE', 'L’instance n’a pas pu être lue.'],
+    ['/des/processus/instances/INCONNUE', 'Demande introuvable'],
   ])('processus d’unité (D-87) : %s chargé à la demande', async (chemin, message) => {
     monter(chemin)
     expect(await screen.findByText(message, {}, { timeout: 8000 })).toBeTruthy()

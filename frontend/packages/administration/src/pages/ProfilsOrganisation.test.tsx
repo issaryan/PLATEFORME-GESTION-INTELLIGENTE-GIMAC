@@ -238,7 +238,7 @@ describe('D-86 §3 : organigramme', () => {
     organigramme()
     const arbre = await screen.findByRole('list', { name: 'Unités' })
     expect(within(arbre).getByText('Département Exploitation et Supervision')).toBeTruthy()
-    await waitFor(() => expect(unite('DES').textContent).toMatch(/Chef : Christian Ndong Obiang · 4 personnes/))
+    await waitFor(() => expect(unite('DES').textContent).toMatch(/Chef : Christian Ndong Obiang · 5 personnes/))
     fireEvent.click(unite('SNA'))
     const membres = await screen.findByRole('group', { name: 'Membres de Service Normes et Agréments' })
     expect(within(membres).getByText('Patrick Mbida Essomba')).toBeTruthy()

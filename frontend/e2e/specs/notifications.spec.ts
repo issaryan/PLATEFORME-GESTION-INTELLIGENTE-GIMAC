@@ -35,22 +35,25 @@ for (const theme of ['light', 'dark'] as const) {
       await demo(page, { profil: 'ROLE_CHEF_DES', theme })
       await page.goto(`${ADRESSES.departement}/des/tableau-de-bord`)
 
-      await test.step('Étant donné deux conversations et une tâche non lues, la cloche porte la pastille 3', async () => {
-        await expect(pastille(page)).toHaveText('3')
-        await expect(cloche(page)).toHaveAccessibleName('Notifications, 3 non lues')
+      // QUO-05 : plus l'étape « Accord du supérieur » de la demande de congé de démonstration (le chef du DES est le n+1).
+      await test.step('Étant donné deux conversations, une tâche et une étape de processus non lues, la cloche porte la pastille 4', async () => {
+        await expect(pastille(page)).toHaveText('4')
+        await expect(cloche(page)).toHaveAccessibleName('Notifications, 4 non lues')
         await expect(page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('link', { name: 'Notifications', exact: true })).toBeVisible()
       })
 
       await test.step('Quand il ouvre la cloche : type, titre, sous-titre, aperçu du dernier message, nombre regroupé', async () => {
         await cloche(page).click()
         const p = panneau(page)
-        await expect(p.getByText('3 non lues')).toBeVisible()
+        await expect(p.getByText('4 non lues')).toBeVisible()
+        await expect(p.getByRole('button', { name: /^Processus : Étape à réaliser : Accord du supérieur hiérarchique/ })).toBeVisible()
         const groupe = p.getByRole('button', { name: 'Message : Rachel Biyong Mengue, non lue' })
         await expect(groupe.getByText('Essais de LIA-2026-030')).toBeVisible()
         await expect(groupe.getByText('2 messages')).toBeVisible()
         await expect(groupe.getByText('Le blocage est déclaré sur la liaison ; échéance de levée au 27 septembre.')).toBeVisible()
         await expect(p.getByRole('button', { name: 'Message : Aïcha Mahamat Nour, non lue' }).getByText('Merci. Le participant signera ensuite depuis son portail.')).toBeVisible()
-        await expect(p.getByRole('button', { name: 'Tâche : Tâche confiée par Bertrand Nguema Obiang, non lue' })).toBeVisible()
+        // DDR-20 : la tâche de démonstration est confiée par le responsable réel du chef du DES (le directeur général).
+        await expect(p.getByRole('button', { name: 'Tâche : Tâche confiée par Jean-Baptiste Ella Mintsa, non lue' })).toBeVisible()
         await expect(p.getByRole('button', { name: 'Rapport : Rapport de Joël Ekotto Mballa' })).toBeVisible()
         await capturer(page, `cloche-ouverte-${suffixe}`)
       })
@@ -106,9 +109,10 @@ for (const theme of ['light', 'dark'] as const) {
         const liste = page.getByRole('list', { name: 'Notifications', exact: true })
         await expect(liste.getByRole('button')).toHaveCount(1)
         await page.getByRole('tab', { name: 'Toutes' }).click()
-        // Sept notifications de la plateforme et une d'homologation (MS-NOTIFICATION §11), lue, avec son pictogramme.
+        // Huit notifications de la plateforme (QUO-05 : dont l'étape de processus) ; DDR-20 : l'action attendue d'homologation de
+        // démonstration ne revient qu'à un porteur de la fonction concernée (Normes et Agréments, configuration-d91-d94.spec.ts).
         await expect(liste.getByRole('button')).toHaveCount(8)
-        await expect(liste.getByRole('button', { name: /^Homologation : Action attendue : Atelier comptabilisation/ })).toBeVisible()
+        await expect(liste.getByRole('button', { name: /^Homologation : Action attendue : Atelier comptabilisation/ })).toHaveCount(0)
         await liste.getByRole('button', { name: /^Message : Aïcha Mahamat Nour, non lue/ }).click()
         await expect(page).toHaveURL(new RegExp(`/des/messagerie\\?conversation=${conversation}$`))
         await expect(pastille(page)).toHaveCount(0)
@@ -184,12 +188,14 @@ test.describe('Fonctionnalité : notifications de la console sur la passerelle (
     await test.step('Et les préférences sont enregistrées par PUT /preferences, champ changé seulement', async () => {
       await page.goto(`${ADRESSES.consoleHttp}/console/mon-compte#notifications`)
       const section = page.getByRole('region', { name: 'Notifications', exact: true })
-      await section.getByRole('switch', { name: 'Rapports qui me sont soumis' }).click()
-      await expect(section.getByRole('switch', { name: 'Rapports qui me sont soumis' })).not.toBeChecked()
+      // QUO-08 : « Rapports qui me sont soumis » n'est proposé qu'à qui a une équipe ; les tâches le sont à tous.
+      await expect(section.getByRole('switch', { name: 'Rapports qui me sont soumis' })).toHaveCount(0)
+      await section.getByRole('switch', { name: 'Tâches qui me sont confiées' }).click()
+      await expect(section.getByRole('switch', { name: 'Tâches qui me sont confiées' })).not.toBeChecked()
       await expect(section.getByText('Préférences de notification enregistrées.')).toBeVisible()
       const put = appels('/bff/console/notification/preferences').filter((a) => a.methode === 'PUT')
-      expect(put.map((a) => a.corps)).toEqual([{ types: { MESSAGE: true, TACHE: true, RAPPORT: false, MENTION: true, REPONSE: true } }])
-      expect(gw.preferencesNotifications.types.RAPPORT).toBe(false)
+      expect(put.map((a) => a.corps)).toEqual([{ types: { MESSAGE: true, TACHE: false, RAPPORT: true, MENTION: true, REPONSE: true } }])
+      expect(gw.preferencesNotifications.types.TACHE).toBe(false)
     })
   })
 })

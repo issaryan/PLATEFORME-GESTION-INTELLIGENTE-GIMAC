@@ -169,6 +169,32 @@ class BoiteNotificationsIT extends AbstractNotificationIT {
     }
 
     @Test
+    @DisplayName("CER-13 : un compte d'institution ne règle que les types du portail (homologation) ; un type interne est refusé")
+    void preferencesPortail() throws Exception {
+        var institution = jwt()
+            .jwt(j -> j.subject("compte-participant-2").claim("acr", "2").claim("institution_id", "INST-1"))
+            .authorities(new SimpleGrantedAuthority(BOITE));
+        mvc
+            .perform(get("/api/v1/preferences").with(institution))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.types.HOMOLOGATION").value(true))
+            .andExpect(jsonPath("$.types.MESSAGE").doesNotExist())
+            .andExpect(jsonPath("$.types.PROCESSUS").doesNotExist())
+            .andExpect(jsonPath("$.types.DEMANDE").doesNotExist());
+        mvc
+            .perform(put("/api/v1/preferences").contentType(MediaType.APPLICATION_JSON).content("{\"types\":{\"RAPPORT\":false}}").with(institution))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("NOT_REQUETE_INVALIDE"));
+        mvc
+            .perform(put("/api/v1/preferences").contentType(MediaType.APPLICATION_JSON).content("{\"types\":{\"HOMOLOGATION\":false}}").with(institution))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.types.HOMOLOGATION").value(false))
+            .andExpect(jsonPath("$.types.TACHE").doesNotExist());
+        // Compte interne : tous les types.
+        mvc.perform(get("/api/v1/preferences").with(interne(CONDUCTEUR))).andExpect(jsonPath("$.types.MESSAGE").exists()).andExpect(jsonPath("$.types.HOMOLOGATION").exists());
+    }
+
+    @Test
     @DisplayName("Préférences : défauts, modification (200), type désactivé sans notification, autre compte inchangé")
     void preferences() throws Exception {
         mvc

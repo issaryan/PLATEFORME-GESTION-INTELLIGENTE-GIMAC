@@ -57,6 +57,20 @@ describe('DES-05 Registre des institutions', () => {
     expect(screen.queryByRole('tab', { name: 'Mes dossiers' })).toBeNull()
     expect(screen.queryByRole('button', { name: "Proposer l'adhésion" })).toBeNull()
   })
+  it('DDR-07 : le filtre Statut filtre la liste et garde la valeur choisie ; l’adresse ?statut= le présélectionne', async () => {
+    page()
+    await screen.findByText('Fintech Kribi Pay')
+    const statut = screen.getByRole('combobox', { name: 'Statut' }) as HTMLSelectElement
+    fireEvent.change(statut, { target: { value: 'EN_HOMOLOGATION' } })
+    await waitFor(() => expect(screen.queryByText('Fintech Kribi Pay')).toBeNull())
+    expect(await screen.findByText('Établissement de paiement A')).toBeTruthy()
+    expect((screen.getByRole('combobox', { name: 'Statut' }) as HTMLSelectElement).value).toBe('EN_HOMOLOGATION')
+    cleanup()
+    page({ chemin: '/des/institutions?statut=CANDIDAT' })
+    await screen.findByText('Fintech Kribi Pay')
+    expect((screen.getByRole('combobox', { name: 'Statut' }) as HTMLSelectElement).value).toBe('CANDIDAT')
+    expect(screen.queryByText('Banque B')).toBeNull()
+  })
   it('onglet « Mes dossiers » : filtre les dossiers portés par le chargé', async () => {
     let filtre: unknown
     const services = avec({ listerInstitutions: async (f) => { filtre = f; return { contenu: [], total: 0 } } })

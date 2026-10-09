@@ -3,6 +3,7 @@ import { Button, DataTable, Hash, InlineAlert, StatusBadge, type Column, type St
 import type { ApprobationSecurite, Attestation, DossierLiaison } from '../../../../modele/parcours'
 import { useArchiverAttestations, useVerifierAttestation } from '../../../../hooks/parcours'
 import { SousTitre, useLancer, usePeut, Vide, type Action, PERMISSION_GESTE } from './commun'
+import { useFormatDate } from '../communs'
 
 // Verrou 2, rangs 21 à 23 : attestations exigées selon l'activité (ISO 27001, PCI DSS ou GSMA ; conformité
 // COBAC si fintech), fournies par le participant sur son portail, vérifiées une à une par la sécurité des SI
@@ -16,6 +17,7 @@ const etatDe = (a: Attestation): EtatAffiche =>
 
 export function BlocAttestations({ dossier, approbation }: { dossier: DossierLiaison; approbation: ApprobationSecurite }) {
   const { t } = useTranslation()
+  const formatDate = useFormatDate()
   const peut = usePeut()
   const lancer = useLancer()
   const verifier = useVerifierAttestation()
@@ -68,13 +70,13 @@ export function BlocAttestations({ dossier, approbation }: { dossier: DossierLia
         <span className="gm-col" style={{ gap: 'var(--gm-space-1)' }}>
           <span className="gm-mono">{a.preuve.nom}</span>
           <Hash value={a.preuve.empreinte} />
-          <span className="gm-field-help">{t('decision.attestation.deposee', { date: a.preuve.deposeLe })}</span>
+          <span className="gm-field-help">{t('decision.attestation.deposee', { date: formatDate(a.preuve.deposeLe) })}</span>
         </span>
       ) : <Vide texte={t('decision.attestation.aucunePiece')} />),
     },
     {
       key: 'verification', header: t('decision.attestation.verification'),
-      render: (a) => (a.verifieeLe ? t('decision.attestation.verifieePar', { nom: a.verifieePar ?? '', date: a.verifieeLe }) : <Vide />),
+      render: (a) => (a.verifieeLe ? t('decision.attestation.verifieePar', { nom: a.verifieePar ?? '', date: formatDate(a.verifieeLe) }) : <Vide />),
     },
     {
       key: 'actions', header: t('decision.attestation.actions'), type: 'actions',
@@ -91,7 +93,8 @@ export function BlocAttestations({ dossier, approbation }: { dossier: DossierLia
   return (
     <div className="gm-col">
       <SousTitre>{t('decision.attestation.titre')}</SousTitre>
-      <Note>{t(dossier.typeProjet === 'PAIEMENT_MOBILE' ? 'decision.attestation.exigenceMobile' : 'decision.attestation.exigenceCarte')}</Note>
+      {/* CER-09 : l'exigence se lit sur les attestations servies (modèle générique : aucune), jamais sur le type de projet. */}
+      {approbation.attestations.length ? <Note>{t(approbation.attestations.some((a) => a.type === 'GSMA' || a.type === 'ISO_27001') ? 'decision.attestation.exigenceMobile' : 'decision.attestation.exigenceCarte')}</Note> : null}
       {approbation.fintech ? <InlineAlert level="info">{t('decision.attestation.fintech')}</InlineAlert> : null}
       {verifiable && aVerifier > 0 ? <InlineAlert level="warn">{t('decision.attestation.aVerifier', { count: aVerifier })}</InlineAlert> : null}
       <DataTable columns={colonnes} rows={approbation.attestations} rowKey={(a) => a.type} state={approbation.attestations.length ? 'ok' : 'empty'} emptyText={t('decision.attestation.aucune')} />

@@ -20,6 +20,15 @@
 .gm-dialog-body { padding: var(--gm-space-5) var(--gm-space-6); overflow: auto; }
 .gm-dialog-body .gm-form-grid { gap: var(--gm-space-4) var(--gm-space-5); align-items: start; }
 .gm-dialog-foot { display: flex; justify-content: flex-end; align-items: center; gap: var(--gm-space-3); padding: var(--gm-space-4) var(--gm-space-6); border-top: var(--gm-border-1) solid var(--gm-color-border); }
+/* Recette HOM-13 : sur un écran étroit, les boutons du pied passent à la ligne au lieu de se chevaucher, et la fenêtre
+   occupe presque toute la largeur (voile réduit). */
+.gm-dialog-foot { flex-wrap: wrap; }
+@media (max-width: 480px) {
+  .gm-overlay:not(.gm-overlay-right) { padding: var(--gm-space-2); }
+  .gm-dialog-head, .gm-dialog-body { padding-left: var(--gm-space-4); padding-right: var(--gm-space-4); }
+  .gm-dialog-foot { padding: var(--gm-space-3) var(--gm-space-4); gap: var(--gm-space-2); }
+  .gm-dialog-foot > .gm-btn { flex: 1 1 auto; justify-content: center; }
+}
 @keyframes gm-voile { from { opacity: 0; } to { opacity: 1; } }
 @keyframes gm-surgir { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .gm-overlay, .gm-dialog, .gm-popover { animation: none; } }

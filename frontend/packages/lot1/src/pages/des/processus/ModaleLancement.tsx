@@ -61,7 +61,7 @@ export function ModaleLancement({ initiateurs, formulaire, lecture, enCours, err
         setTente(true)
         if (Object.values(erreurs).some(Boolean)) return
         onEnregistrer(
-          { regles: REGLES_INITIATEUR.filter((r) => i.regles.includes(r)), unites: i.regles.includes('UNITES') ? i.unites : [], profils: i.regles.includes('PROFILS') ? i.profils : [], permissions: i.regles.includes('PERMISSIONS') ? liste(permissions) : [] },
+          { regles: REGLES_INITIATEUR.filter((r) => i.regles.includes(r)), unites: i.regles.includes('UNITES') ? i.unites : [], profils: i.regles.includes('PROFILS') ? i.profils : [], permissions: i.regles.includes('PERMISSIONS') ? liste(permissions) : [], initiateurIntervenant: !!i.initiateurIntervenant },
           { champs: champs.map((c) => ({ ...c, libelle: c.libelle.trim(), aide: c.aide?.trim() || null, choix: c.type === 'LISTE' ? c.choix : [], typesPieces: c.type === 'PIECE_JOINTE' ? c.typesPieces : [] })) },
         )
       }}>
@@ -87,6 +87,10 @@ export function ModaleLancement({ initiateurs, formulaire, lecture, enCours, err
           </div>
         ))}
         {tente && erreurs.regles ? <InlineAlert level="crit" title={erreurs.regles} /> : null}
+        {/* D-99 : séparation des fonctions, réglage en données de la définition (non par défaut). */}
+        <Checkbox name="initiateurs.initiateurIntervenant" label={t('proc.lancement.initiateurIntervenant')} checked={!!i.initiateurIntervenant} disabled={lecture}
+          onChange={(x) => setI((o) => ({ ...o, initiateurIntervenant: x }))} />
+        <span className="gm-field-help">{t('proc.lancement.initiateurIntervenantAide')}</span>
       </fieldset>
       <fieldset className="gm-proc-element">
         <legend className="gm-type-body-strong">{t('dem.modele.formulaire')}</legend>

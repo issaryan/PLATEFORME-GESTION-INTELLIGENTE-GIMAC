@@ -33,6 +33,14 @@ export const ongletDe = (champ: string): OngletEtape => {
 }
 
 /** Erreurs de forme d'une étape (clés : chemins de champ, valeurs : clés de traduction). */
+/**
+ * QUO-06 : code proposé d'office pour un nouveau livrable, unique dans tout le processus (le contrôle de publication refuse
+ * un code de livrable en double entre étapes) : LIVRABLE_n, n le plus petit libre.
+ */
+export function codeLivrableLibre(pris: string[]): string {
+  for (let n = 1; ; n++) if (!pris.includes(`LIVRABLE_${n}`)) return `LIVRABLE_${n}`
+}
+
 export function erreursEtape(e: EtapeProcessus, autres: string[]): Record<string, string> {
   const r: Record<string, string> = {}
   if (!LIMITES_PROCESSUS.codeEtape.test(e.code)) r.code = 'proc.erreur.codeEtape'
@@ -209,7 +217,7 @@ export function ModaleEtape(p: ModaleEtapeProps) {
                 </fieldset>
               ))}
               {!lecture ? <div><Button size="sm" icon="plus" disabled={e.livrables.length >= LIMITES_PROCESSUS.elements}
-                onClick={() => maj({ livrables: [...e.livrables, { code: `LIVRABLE_${e.livrables.length + 1}`, libelle: '', typesPieces: ['application/pdf'], obligatoire: true, modele: null }] })}>{t('proc.livrable.ajouter')}</Button></div> : null}
+                onClick={() => maj({ livrables: [...e.livrables, { code: codeLivrableLibre([...autres.filter((x) => x.code !== e.code).flatMap((x) => x.livrables), ...e.livrables].map((l) => l.code)), libelle: '', typesPieces: ['application/pdf'], obligatoire: true, modele: null }] })}>{t('proc.livrable.ajouter')}</Button></div> : null}
             </div>
           ) : null}
           {onglet === 'signatures' ? (

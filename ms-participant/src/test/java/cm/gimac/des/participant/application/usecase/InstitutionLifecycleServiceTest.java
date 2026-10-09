@@ -312,6 +312,27 @@ class InstitutionLifecycleServiceTest {
         }
 
         @Test
+        @DisplayName("DDR-03 : conditions vides, code invalide ou comptes manquants (RG-11, RG-12) refusés champ par champ")
+        void conditionsIncompletes() {
+            assertThatThrownBy(() -> service.definirConditionsAdhesion(banque.getId(), new ConditionsAdhesion(null, null, null, null, null, null), CHARGE))
+                .isInstanceOfSatisfying(ParticipantException.class, ex -> {
+                    assertThat(ex.code()).isEqualTo("PAR_CONDITIONS_INVALID");
+                    assertThat(ex.status()).isEqualTo(422);
+                    assertThat(((Map<?, ?>) ex.details().get("champs")).keySet()).map(String::valueOf).containsExactlyInAnyOrder("codeParticipant", "mode");
+                });
+            assertThatThrownBy(() ->
+                service.definirConditionsAdhesion(banque.getId(), new ConditionsAdhesion("BAL@01 !", MembershipMode.INDIRECT, null, null, null, null), CHARGE)
+            ).isInstanceOfSatisfying(ParticipantException.class, ex ->
+                assertThat(((Map<?, ?>) ex.details().get("champs")).keySet()).map(String::valueOf).containsExactlyInAnyOrder("codeParticipant", "banqueMarraineId", "compteCantonnement")
+            );
+            assertThatThrownBy(() ->
+                service.definirConditionsAdhesion(banque.getId(), new ConditionsAdhesion("BQ-BAL-074", MembershipMode.DIRECT, null, null, " ", null), CHARGE)
+            ).isInstanceOfSatisfying(ParticipantException.class, ex -> assertThat(((Map<?, ?>) ex.details().get("champs")).keySet()).map(String::valueOf).containsExactlyInAnyOrder("compteReglement"));
+            assertThat(banque.getParticipantCode()).isNull();
+            verifyNoInteractions(outbox);
+        }
+
+        @Test
         @DisplayName("Une institution ne peut être sa propre marraine")
         void propreMarraine() {
             assertThatThrownBy(() ->
@@ -536,7 +557,7 @@ class InstitutionLifecycleServiceTest {
             ArgumentCaptor<Object> approbation = ArgumentCaptor.forClass(Object.class);
             verify(outbox).publish(eq("transition"), eq(banque.getId()), eq(TransitionApprovedPayload.TYPE), approbation.capture());
             assertThat((TransitionApprovedPayload) approbation.getValue()).isEqualTo(
-                new TransitionApprovedPayload(banque.getId(), t.getId(), "CANDIDAT", "ADHERENT", CHEF.id(), 1, 1, true)
+                new TransitionApprovedPayload(banque.getId(), t.getId(), "CANDIDAT", "ADHERENT", CHEF.id(), 1, 1, true, CHARGE.id(), "Banque B", "/des/institutions/" + banque.getId() + "?onglet=transitions")
             );
         }
 
@@ -621,7 +642,7 @@ class InstitutionLifecycleServiceTest {
                 "transition",
                 banque.getId(),
                 TransitionApprovedPayload.TYPE,
-                new TransitionApprovedPayload(banque.getId(), t.getId(), "SUSPENDU", "ACTIF", CHEF.id(), 2, 1, false)
+                new TransitionApprovedPayload(banque.getId(), t.getId(), "SUSPENDU", "ACTIF", CHEF.id(), 2, 1, false, CHARGE.id(), "Banque B", "/des/institutions/" + banque.getId() + "?onglet=transitions")
             );
 
             assertThatThrownBy(() -> service.approuverTransition(banque.getId(), t.getId(), CHEF, "a"))
@@ -636,7 +657,7 @@ class InstitutionLifecycleServiceTest {
                 "transition",
                 banque.getId(),
                 TransitionApprovedPayload.TYPE,
-                new TransitionApprovedPayload(banque.getId(), t.getId(), "SUSPENDU", "ACTIF", DG.id(), 2, 2, true)
+                new TransitionApprovedPayload(banque.getId(), t.getId(), "SUSPENDU", "ACTIF", DG.id(), 2, 2, true, CHARGE.id(), "Banque B", "/des/institutions/" + banque.getId() + "?onglet=transitions")
             );
         }
 
@@ -667,7 +688,23 @@ class InstitutionLifecycleServiceTest {
             assertThat(t.getRejectionReason()).isEqualTo("Candidat relancé");
             assertThat(t.getApproverId()).isEqualTo(CHEF.id());
             assertThat(banque.getStatus()).isEqualTo(InstitutionStatus.CANDIDAT);
-            verify(outbox).publish(eq("transition"), eq(banque.getId()), eq(TransitionRejectedPayload.TYPE), any(TransitionRejectedPayload.class));
+            // DDR-08 : le refus porte le proposant, pour que MS-NOTIFICATION l'en avise.
+            verify(outbox).publish(
+                "transition",
+                banque.getId(),
+                TransitionRejectedPayload.TYPE,
+                new TransitionRejectedPayload(
+                    banque.getId(),
+                    t.getId(),
+                    "CANDIDAT",
+                    "CLOS_SANS_SUITE",
+                    "Candidat relancé",
+                    CHEF.id(),
+                    CHARGE.id(),
+                    "Banque B",
+                    "/des/institutions/" + banque.getId() + "?onglet=transitions"
+                )
+            );
         }
 
         @Test

@@ -59,7 +59,8 @@ export default function OrganigrammePage() {
   const glisse = useRef<Glisse | null>(null)
 
   const internes = useMemo(() => (tous.data ?? []).filter((c) => !c.institutionId), [tous.data])
-  const nom = (id: string | null | undefined) => (id ? internes.find((c) => c.id === id)?.nomAffiche ?? id : t('console.org.rattachement.aucunResponsable'))
+  // Jamais d'identifiant technique pendant le chargement des comptes (recette ADM-08) : « chargement… » à sa place.
+  const nom = (id: string | null | undefined) => (!id ? t('console.org.rattachement.aucunResponsable') : tous.isPending ? t('console.organigramme.chargement') : internes.find((c) => c.id === id)?.nomAffiche ?? id)
   const l = unites.data ?? []
 
   // ------------------------------------------------------------ gestes
@@ -162,7 +163,9 @@ export default function OrganigrammePage() {
             <StatusBadge status="neutral" icon={null} label={t(`console.org.type.${u.type}`)} />
             {!u.active ? <StatusBadge status="neutral" label={t('console.org.inactive')} /> : null}
           </span>
-          <span className="gm-org-unite-ligne">{t('console.organigramme.chefDe', { nom: chef })} · {t('console.organigramme.effectif', { count: effectif(l, internes, u.code) })}</span>
+          <span className="gm-org-unite-ligne" aria-busy={tous.isPending || undefined}>
+            {t('console.organigramme.chefDe', { nom: chef })}{tous.isPending ? null : <> · {t('console.organigramme.effectif', { count: effectif(l, internes, u.code) })}</>}
+          </span>
         </span>
       </button>
     )

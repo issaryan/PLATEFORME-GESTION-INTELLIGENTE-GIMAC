@@ -175,7 +175,7 @@ class LiaisonQueriesTest {
         assertThat(f.intervenants()).extracting(LiaisonQueries.Intervenant::role).containsExactly("INSTITUTION");
         assertThat(f.actionsPermises()).isEmpty();
         assertThat(q.fichePortail(liaison(EtatLiaison.OUVERTE, conducteur, null), null).perimetre()).isEmpty();
-        var resume = new cm.gimac.des.homologation.domain.parcours.Vues.LiaisonResume(l.getId().toString(), "LIA-2026-001", "EP A", TypeProjet.PAIEMENT_MOBILE, cm.gimac.des.homologation.domain.parcours.StatutParcours.CADREE, cm.gimac.des.homologation.domain.parcours.EtapeCode.CADRAGE, "C", cm.gimac.des.homologation.domain.parcours.Couverture.de(0, 1), cm.gimac.des.homologation.domain.parcours.Couverture.de(0, 1), false, 0, null, null);
+        var resume = new cm.gimac.des.homologation.domain.parcours.Vues.LiaisonResume(l.getId().toString(), "LIA-2026-001", "EP A", TypeProjet.PAIEMENT_MOBILE, "Paiement mobile", cm.gimac.des.homologation.domain.parcours.StatutParcours.CADREE, cm.gimac.des.homologation.domain.parcours.EtapeCode.CADRAGE, "C", cm.gimac.des.homologation.domain.parcours.Couverture.de(0, 1), cm.gimac.des.homologation.domain.parcours.Couverture.de(0, 1), false, 0, null, null);
         when(liaisons.findById(l.getId())).thenReturn(Optional.of(l));
         when(parcours.resumes(any(), any())).thenReturn(java.util.Map.of(l.getId(), resume));
         assertThat(q.fiche(l.getId(), Set.of()).parcours()).isSameAs(resume);

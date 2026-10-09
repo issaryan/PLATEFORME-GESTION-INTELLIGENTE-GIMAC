@@ -119,7 +119,7 @@ public class TacheService implements TachesUseCase {
                 List<String> unites = equipes.unitesDe(appelant.id());
                 r = unites.isEmpty()
                     ? org.springframework.data.domain.Page.empty(p)
-                    : taches.deUnites(unites, filtre == null ? EtatTache.A_PRENDRE : filtre, auMoinsUn(equipes.profilsDe(appelant.id())), p);
+                    : taches.deUnites(unites, filtre == null ? EtatTache.A_PRENDRE : filtre, auMoinsUn(equipes.profilsDe(appelant.id())), appelant.id(), p);
             }
             default -> throw PilotageException.champ("vue", "Vue moi, creees, equipe ou unite attendue");
         }
@@ -271,6 +271,7 @@ public class TacheService implements TachesUseCase {
             }
             throw PilotageException.interdit("PIL_PROFIL_REQUIS", "Seuls les porteurs du profil " + t.getProfilRequis() + " prennent cette tâche");
         }
+        verifierPriseProcessus(t, appelant.id(), false);
         Instant le = horloge.instant();
         t.confierA(appelant.id(), le);
         enregistrer(t);
@@ -410,6 +411,7 @@ public class TacheService implements TachesUseCase {
                 Map.of("responsableId", cible, "profilsRequis", List.copyOf(t.getProfilsRequis()), "permissionsRequises", List.copyOf(t.getPermissionsRequises()))
             );
         }
+        verifierPriseProcessus(t, cible, true);
         Instant le = horloge.instant();
         t.confierA(cible, le);
         enregistrer(t);
@@ -547,6 +549,14 @@ public class TacheService implements TachesUseCase {
         EtatTache cible = etat == null || etat.isBlank() ? null : ReglesActivite.valeur("etat", EtatTache.class, etat, null);
         if (t.getOrigineType() == TypeOrigine.PROCESSUS && (cible == EtatTache.TERMINEE || cible == EtatTache.ANNULEE)) {
             throw tacheProcessus("La tâche d'une étape se termine avec l'étape (fin, signatures, validation) et s'annule avec l'instance");
+        }
+        // DDR-28 : la tâche d'une décision (transition de statut à prononcer) se clôt quand le service prononce ou refuse.
+        if (t.getOrigineType() == TypeOrigine.DECISION && (cible == EtatTache.TERMINEE || cible == EtatTache.ANNULEE)) {
+            throw PilotageException.conflit(
+                "PIL_TACHE_DECISION",
+                "La tâche d'une décision se clôt quand le service prononce ou refuse la proposition",
+                Map.of()
+            );
         }
         Instant le = horloge.instant();
         String m = motif == null || motif.isBlank() ? null : motif.strip();
@@ -916,6 +926,13 @@ public class TacheService implements TachesUseCase {
     /** 409 PIL_TACHE_PROCESSUS : la tâche suit son étape. */
     private static PilotageException tacheProcessus(String message) {
         return PilotageException.conflit("PIL_TACHE_PROCESSUS", message, Map.of());
+    }
+
+    /** D-99 : la tâche d'une étape n'est ni prise par l'initiateur de l'instance ni attribuée à lui (refus du moteur). */
+    private void verifierPriseProcessus(Tache t, String compte, boolean attribution) {
+        if (t.getOrigineType() == TypeOrigine.PROCESSUS) {
+            evenements.publishEvent(new PriseTacheProcessus(t.getId(), t.getOrigineReference(), compte, attribution));
+        }
     }
 
     private void signalerProcessus(Tache t, String acteur, boolean prise) {

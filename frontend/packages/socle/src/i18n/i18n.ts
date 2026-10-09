@@ -3,6 +3,7 @@ import { initReactI18next } from 'react-i18next'
 import fr from './fr.json'
 import en from './en.json'
 import es from './es.json'
+import { prepositionDe } from './elision'
 
 // Catalogues des trois langues de la zone CEMAC (français, anglais, espagnol) ; le socle porte les
 // clés communes, chaque lot ajoute les siennes. Bascule sans rechargement ; les données métier non
@@ -26,5 +27,7 @@ export function initI18n(catalogues: Catalogue[] = [], lng: Langue = 'fr') {
     interpolation: { escapeValue: false },
     returnNull: false,
   })
+  // Préposition « de » élidée ou contractée devant un nom variable (« Droits {{nom, de}} », recette ADM-07).
+  i18next.services.formatter?.add('de', (valeur) => prepositionDe(valeur))
   return i18next
 }

@@ -104,6 +104,17 @@ public class Liaison implements Serializable {
         return cm.gimac.des.homologation.domain.parcours.ModeleTypeProjet.parDefaut(typeProjet);
     }
 
+    /**
+     * Libellé du type de projet (CER-05), servi au DES comme au portail ; définition non chargée (tests unitaires) :
+     * null, l'interface retombe alors sur le code.
+     */
+    public String libelleTypeProjet() {
+        if (definitionTypeProjet != null && definitionTypeProjet.getCode().equals(typeProjet == null ? null : typeProjet.name())) {
+            return definitionTypeProjet.getLibelle();
+        }
+        return null;
+    }
+
     /** Rattache la définition du type (ouverture d'une liaison) ; le type de la liaison devient celui de la définition. */
     public Liaison definitionTypeProjet(DefinitionTypeProjet d) {
         this.definitionTypeProjet = d;

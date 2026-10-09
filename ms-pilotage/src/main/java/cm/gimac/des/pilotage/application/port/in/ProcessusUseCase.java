@@ -38,8 +38,11 @@ public interface ProcessusUseCase {
         PositionSaisie position
     ) {}
 
-    /** Initiateurs (D-98 §1) : règles cumulables MEMBRES_UNITE, TOUT_LE_GIMAC, UNITES, PROFILS, PERMISSIONS. */
-    record InitiateursSaisie(List<String> regles, List<String> unites, List<String> profils, List<String> permissions) {}
+    /**
+     * Initiateurs (D-98 §1) : règles cumulables MEMBRES_UNITE, TOUT_LE_GIMAC, UNITES, PROFILS, PERMISSIONS ;
+     * {@code initiateurIntervenant} (D-99) : l'initiateur peut intervenir sur les étapes de sa demande (absent : non).
+     */
+    record InitiateursSaisie(List<String> regles, List<String> unites, List<String> profils, List<String> permissions, Boolean initiateurIntervenant) {}
 
     /** Champ du formulaire de lancement (D-98 §2). */
     record ChampFormulaireSaisie(String code, String libelle, String type, List<String> choix, Boolean obligatoire, String aide, List<String> typesPieces) {}
@@ -102,8 +105,9 @@ public interface ProcessusUseCase {
     /**
      * Candidats d'un intervenant (désignation hors de l'unité) : porteurs actifs du profil dans l'unité (sous-unités
      * comprises), puis ailleurs dans le GIMAC (unités actives) ; sans profil : membres actifs de l'unité seulement.
+     * {@code exclus} (D-99) : comptes à ne jamais proposer (initiateur de l'instance, séparation des fonctions).
      */
-    record Candidats(String unite, String profil, List<Candidat> dansUnite, List<Candidat> ailleurs) {}
+    record Candidats(String unite, String profil, List<Candidat> dansUnite, List<Candidat> ailleurs, List<String> exclus) {}
 
     List<ProcessusLu> lister(Appelant appelant, String unite, String etat, String q);
 

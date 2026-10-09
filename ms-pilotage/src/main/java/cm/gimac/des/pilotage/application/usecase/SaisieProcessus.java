@@ -249,7 +249,7 @@ final class SaisieProcessus {
         List<String> unites = codes("initiateurs.unites", s.unites(), UNITE, "Code d'unité attendu (par exemple POLE_RESEAU)");
         List<String> profils = codes("initiateurs.profils", s.profils(), PROFIL, "Profil ROLE_… attendu");
         List<String> permissions = codes("initiateurs.permissions", s.permissions(), PERMISSION, "Permission ^[A-Z][A-Z0-9_]{1,79}$ attendue");
-        return new Initiateurs(regles, unites, profils, permissions);
+        return new Initiateurs(regles, unites, profils, permissions, Boolean.TRUE.equals(s.initiateurIntervenant()));
     }
 
     private static List<String> codes(String c, List<String> l, Pattern motif, String message) {

@@ -158,7 +158,7 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
             .stream()
             .map(i -> {
                 List<EtapeInstance> e = parInstance.getOrDefault(i.getId(), List.of());
-                return new InstanceLue(i, definitions.get(i.getProcessusId()), e, Map.of(), List.of(), noms, moiDe(appelant, i, e, t), null, jour);
+                return new InstanceLue(i, definitions.get(i.getProcessusId()), e, Map.of(), List.of(), noms, moiDe(appelant, i, definitions.get(i.getProcessusId()), e, t), null, jour);
             })
             .toList();
         return new Page<>(lues, r.getTotalElements(), p.getPageNumber(), p.getPageSize());
@@ -174,6 +174,36 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
             throw AccesProcessus.interdit("Cette instance n'est lisible que de l'unité et de ses intervenants");
         }
         return lue(appelant, i, definition(i), l, t);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public DocumentInstance document(Appelant appelant, UUID id, String documentId) {
+        InstanceProcessus i = trouver(id);
+        List<EtapeInstance> l = etapes.findByInstanceIdOrderByRangAsc(id);
+        if (!acces.lit(appelant, i.getUnite()) && !participant(appelant, i, l, tachesDe(l))) {
+            throw AccesProcessus.interdit("Cette instance n'est lisible que de l'unité et de ses intervenants");
+        }
+        String doc = documentId == null ? "" : documentId.strip();
+        // Pièces du formulaire de lancement : { documentId, nomFichier, typeMime, taille, sha256 }.
+        for (Object v : i.getFormulaire().values()) {
+            if (v instanceof Map<?, ?> m && doc.equals(String.valueOf(m.get("documentId")))) {
+                return lireDocument(doc, (String) m.get("nomFichier"), (String) m.get("typeMime"), m.get("taille") instanceof Number n ? n.longValue() : -1);
+            }
+        }
+        for (EtapeInstance ei : l) {
+            for (Depot d : ei.getDepots()) {
+                if (doc.equals(d.documentId())) {
+                    return lireDocument(doc, d.nomFichier(), d.typeMime(), d.taille());
+                }
+            }
+        }
+        throw PilotageException.introuvable("PIL_PROCESSUS_DOCUMENT_INCONNU", doc);
+    }
+
+    private DocumentInstance lireDocument(String id, String nom, String type, long taille) {
+        DocumentPort.Contenu c = documents.lire(UUID.fromString(id));
+        return new DocumentInstance(nom, type, taille >= 0 ? taille : c.taille(), c.flux());
     }
 
     @Override
@@ -291,6 +321,10 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
         Map<String, String> r = new LinkedHashMap<>();
         attendues.forEach((cle, intervenant) -> {
             String id = d.get(cle).strip();
+            if (id.equals(appelant.id()) && !p.getInitiateurs().initiateurIntervenant()) {
+                // D-99 : l'initiateur ne se désigne pas pour une étape de sa propre demande.
+                throw separation(422, Map.of("cle", cle, "personneId", id));
+            }
             String unite = intervenant.uniteOu(p.getUnite());
             boolean admissible =
                 equipes.interneActif(id) &&
@@ -342,10 +376,11 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
     /** Activation d'une étape : tâche à la personne résolue, ou à prendre par les porteurs du profil. */
     private void activer(InstanceProcessus i, Processus p, EtapeInstance ei, String acteur, Instant le) {
         Etape def = definitionEtape(p, ei.getCode());
-        ResolutionIntervenants.Resolution r = resolution.resoudre(def.intervenant(), p.getUnite(), i.getLanceurId(), i.getNPlus1LanceurId(), i.getDesignations(), def.code());
+        String exclu = exclu(i, p);
+        ResolutionIntervenants.Resolution r = resolution.resoudre(def.intervenant(), p.getUnite(), i.getLanceurId(), i.getNPlus1LanceurId(), i.getDesignations(), def.code(), exclu);
         Affectation validateur = def.validateur() == null
             ? null
-            : resolution.resoudre(def.validateur(), p.getUnite(), i.getLanceurId(), i.getNPlus1LanceurId(), i.getDesignations(), ResolutionIntervenants.cle(def.code(), ControleProcessus.VALIDATEUR)).affectation();
+            : resolution.resoudre(def.validateur(), p.getUnite(), i.getLanceurId(), i.getNPlus1LanceurId(), i.getDesignations(), ResolutionIntervenants.cle(def.code(), ControleProcessus.VALIDATEUR), exclu).affectation();
         List<SignatureInstance> signatures = def
             .signatures()
             .stream()
@@ -353,13 +388,13 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
             .map(s ->
                 SignatureInstance.attendue(
                     s,
-                    resolution.resoudre(s.signataire(), p.getUnite(), i.getLanceurId(), i.getNPlus1LanceurId(), i.getDesignations(), ResolutionIntervenants.cle(def.code(), "signature." + s.code())).affectation()
+                    resolution.resoudre(s.signataire(), p.getUnite(), i.getLanceurId(), i.getNPlus1LanceurId(), i.getDesignations(), ResolutionIntervenants.cle(def.code(), "signature." + s.code()), exclu).affectation()
                 )
             )
             .toList();
         LocalDate echeance = ReglesActivite.aujourdhui(horloge).plusDays(def.delaiJours());
         Affectation a = r.affectation();
-        List<String> destinataires = resolution.destinataires(a, null);
+        List<String> destinataires = resolution.destinataires(a, null, exclu);
         Tache t = taches.creerPourEtape(
             new TacheService.TacheEtape(
                 i.getLanceurId(),
@@ -501,6 +536,7 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
         if (!resolution.affecte(appelant.id(), s.attendu())) {
             throw PilotageException.interdit("PIL_PROCESSUS_NON_SIGNATAIRE", "Vous n'êtes pas le signataire attendu");
         }
+        exigerSeparation(appelant.id(), c, signataire(c.def(), code));
         if (assertion == null || assertion.isBlank()) {
             throw PilotageException.preconditionRequise("PIL_PROCESSUS_REAUTH_REQUISE", "Signature : réauthentification FIDO2 exigée (en-tête X-Reauth-Assertion)");
         }
@@ -559,6 +595,7 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
         if (executant(c.ei()).filter(appelant.id()::equals).isPresent()) {
             throw PilotageException.interdit("PIL_PROCESSUS_NON_VALIDATEUR", "L'exécutant ne valide pas sa propre étape");
         }
+        exigerSeparation(appelant.id(), c, c.def().validateur());
         String d = decision == null ? "" : decision.strip().toUpperCase(Locale.ROOT);
         Instant le = horloge.instant();
         switch (d) {
@@ -619,6 +656,10 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
         }
         String personne = ReglesActivite.texteObligatoire("personneId", personneId, 80);
         String m = SaisieProcessus.motif(motif, true);
+        if (personne.equals(exclu(c.i(), c.p()))) {
+            // D-99 : l'étape d'une demande n'est jamais confiée à son initiateur (sauf autorisation de la définition).
+            throw separation(422, Map.of("personneId", personne));
+        }
         String unite = uniteEtape(c);
         String profil = profilExige(c);
         boolean admissible =
@@ -650,7 +691,7 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
     public ProcessusUseCase.Candidats candidats(Appelant appelant, UUID id, String etape) {
         Contexte c = contexte(appelant, id, etape);
         exigerReaffectation(appelant, c);
-        return resolution.candidats(uniteEtape(c), profilExige(c));
+        return resolution.candidats(uniteEtape(c), profilExige(c), exclu(c.i(), c.p()));
     }
 
     /**
@@ -811,7 +852,7 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
      * un seul porteur : à lui ; aucun : chef de l'unité, à défaut lanceur), jamais la personne partie elle-même.
      */
     private Affectation remplacement(InstanceProcessus i, String profil, String unite, String parti) {
-        Affectation a = resolution.parProfil(profil, unite, i.getLanceurId(), parti, null).affectation();
+        Affectation a = resolution.parProfil(profil, unite, i.getLanceurId(), parti, null, exclu(i, definition(i))).affectation();
         return parti.equals(a.personneId()) ? Affectation.profil(profil, unite) : a;
     }
 
@@ -831,6 +872,66 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
             return;
         }
         attente(e.reference()).ifPresent(a -> prendreAttente(a, e));
+    }
+
+
+    // ------------------------------------------------------------------ séparation des fonctions (D-99)
+
+    static final String SEPARATION = "PIL_PROCESSUS_SEPARATION_FONCTIONS";
+    static final String MESSAGE_SEPARATION =
+        "L'initiateur d'une demande ne peut pas exécuter, valider ou signer les étapes de sa propre demande (séparation des fonctions).";
+
+    /** Initiateur à écarter des étapes de l'instance (D-99), null si la définition l'autorise. */
+    private static String exclu(InstanceProcessus i, Processus p) {
+        return p != null && p.getInitiateurs().initiateurIntervenant() ? null : i.getLanceurId();
+    }
+
+    /** Le compte est l'initiateur écarté du rôle (intervenant de mode LANCEUR : choix explicite de la définition, admis). */
+    private static boolean separe(String compte, InstanceProcessus i, Processus p, Intervenant role) {
+        return compte != null && compte.equals(exclu(i, p)) && (role == null || role.mode() != ModeIntervenant.LANCEUR);
+    }
+
+    private void exigerSeparation(String compte, Contexte c, Intervenant role) {
+        if (separe(compte, c.i(), c.p(), role)) {
+            throw separation(403, Map.of("lanceurId", c.i().getLanceurId()));
+        }
+    }
+
+    /** Refus de la séparation des fonctions : 403 (agir), 422 (désigner ou réaffecter l'initiateur). */
+    static PilotageException separation(int statut, Map<String, Object> details) {
+        return statut == 403 ? PilotageException.interditDetaille(SEPARATION, MESSAGE_SEPARATION, details) : PilotageException.regle(SEPARATION, MESSAGE_SEPARATION, details);
+    }
+
+    private static Intervenant signataire(Etape def, String code) {
+        return def.signatures().stream().filter(s -> s.code().equals(code)).map(SignatureRequise::signataire).findFirst().orElse(null);
+    }
+
+    /**
+     * Prise ou attribution de la tâche d'une étape, ou d'une validation ou signature à prendre (voie des tâches) : jamais
+     * par l'initiateur de l'instance (D-99), sauf autorisation de la définition ou intervenant LANCEUR.
+     */
+    @EventListener
+    public void verifierPrise(PriseTacheProcessus e) {
+        Optional<EtapeInstance> execution = etapes.findByTacheId(e.tacheId());
+        Optional<Attente> a = execution.isPresent() ? Optional.empty() : attente(e.reference());
+        UUID instance = execution.map(EtapeInstance::getInstanceId).orElse(a.map(Attente::instance).orElse(null));
+        if (instance == null) {
+            return;
+        }
+        InstanceProcessus i = instances.findById(instance).orElse(null);
+        if (i == null) {
+            return;
+        }
+        Processus p = definition(i);
+        String code = execution.map(EtapeInstance::getCode).orElse(a.map(Attente::etape).orElse(null));
+        Etape def = p.etape(code).orElse(null);
+        if (def == null) {
+            return;
+        }
+        Intervenant role = execution.isPresent() ? def.intervenant() : a.orElseThrow().signature() == null ? def.validateur() : signataire(def, a.orElseThrow().signature());
+        if (separe(e.compteId(), i, p, role)) {
+            throw separation(e.attribution() ? 422 : 403, Map.of("personneId", e.compteId()));
+        }
     }
 
     // ------------------------------------------------------------------ tâches d'attente : validateur et signataires (D-93)
@@ -923,7 +1024,7 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
                 ei.getEcheance(),
                 reference,
                 lien(i, def.code()),
-                a.personneId() == null ? resolution.destinataires(a, null) : List.of()
+                a.personneId() == null ? resolution.destinataires(a, null, exclu(i, definition(i))) : List.of()
             ),
             le
         );
@@ -1064,7 +1165,7 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
      * s'il y en a une (nouveau chef d'unité).
      */
     private Optional<Affectation> nouvelleAffectation(InstanceProcessus i, Processus p, Role r) {
-        ResolutionIntervenants.Resolution res = resolution.resoudre(r.intervenant(), p.getUnite(), i.getLanceurId(), i.getNPlus1LanceurId(), i.getDesignations(), r.cle());
+        ResolutionIntervenants.Resolution res = resolution.resoudre(r.intervenant(), p.getUnite(), i.getLanceurId(), i.getNPlus1LanceurId(), i.getDesignations(), r.cle(), exclu(i, p));
         Affectation a = res.affectation();
         String x = r.titulaire();
         if (x == null) {
@@ -1269,6 +1370,7 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
     private void exigerExecutant(Appelant appelant, Contexte c) {
         Optional<Tache> t = taches.tacheEtape(c.ei().getTacheId());
         if (t.map(Tache::getResponsableId).filter(appelant.id()::equals).isPresent()) {
+            exigerSeparation(appelant.id(), c, c.def().intervenant());
             return;
         }
         if (t.map(Tache::getEtat).filter(e -> e == EtatTache.A_PRENDRE).isPresent()) {
@@ -1281,7 +1383,11 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
         return taches.tacheEtape(ei.getTacheId()).map(Tache::getResponsableId);
     }
 
-    /** Lanceur, exécutant, validateur ou signataire (attendu ou ayant signé) de l'une des étapes. */
+    /**
+     * Lanceur, exécutant, validateur ou signataire (attendu ou ayant signé) de l'une des étapes ; porteur qui peut prendre
+     * une étape à prendre, une validation ou une signature attendue de son profil (QUO-03 : il lit l'instance avant de
+     * la prendre).
+     */
     private boolean participant(Appelant appelant, InstanceProcessus i, List<EtapeInstance> l, Map<UUID, Tache> t) {
         String moi = appelant.id();
         if (moi.equals(i.getLanceurId())) {
@@ -1290,6 +1396,15 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
         for (EtapeInstance ei : l) {
             Tache tache = ei.getTacheId() == null ? null : t.get(ei.getTacheId());
             if (tache != null && moi.equals(tache.getResponsableId())) {
+                return true;
+            }
+            if (tache != null && tache.getEtat() == EtatTache.A_PRENDRE && resolution.affecte(moi, new Affectation(null, tache.getProfilRequis(), tache.getUniteCible()))) {
+                return true;
+            }
+            if (ei.getEtat() == EtatEtape.A_VALIDER && resolution.affecte(moi, ei.getValidateur())) {
+                return true;
+            }
+            if (ei.signaturesOuvertes().stream().anyMatch(s -> resolution.affecte(moi, s.attendu()))) {
                 return true;
             }
             if (ei.getValidateur() != null && ei.getValidateur().nomme(moi)) {
@@ -1315,7 +1430,7 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
     }
 
     /** Actions permises à l'appelant sur chaque étape (calculées par le serveur, jamais par l'interface). */
-    private Map<String, MoiEtape> moiDe(Appelant appelant, InstanceProcessus i, List<EtapeInstance> l, Map<UUID, Tache> t) {
+    private Map<String, MoiEtape> moiDe(Appelant appelant, InstanceProcessus i, Processus p, List<EtapeInstance> l, Map<UUID, Tache> t) {
         boolean enCours = i.getEtat() == EtatInstance.EN_COURS;
         Map<String, MoiEtape> moi = new LinkedHashMap<>();
         if (!enCours) {
@@ -1326,11 +1441,21 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
         for (EtapeInstance ei : l) {
             Tache tache = ei.getTacheId() == null ? null : t.get(ei.getTacheId());
             String executant = tache == null ? null : tache.getResponsableId();
-            boolean executer = ei.getEtat() == EtatEtape.ACTIVE && appelant.id().equals(executant);
-            boolean prendre = tache != null && tache.getEtat() == EtatTache.A_PRENDRE &&
+            // D-99 : l'initiateur n'exécute, ne prend, ne valide ni ne signe les étapes de sa demande (sauf LANCEUR ou autorisation).
+            Etape def = p == null ? null : p.etape(ei.getCode()).orElse(null);
+            boolean separeExecution = def != null && separe(appelant.id(), i, p, def.intervenant());
+            boolean executer = ei.getEtat() == EtatEtape.ACTIVE && appelant.id().equals(executant) && !separeExecution;
+            boolean prendre = tache != null && tache.getEtat() == EtatTache.A_PRENDRE && !separeExecution &&
                 resolution.affecte(appelant.id(), new Affectation(null, tache.getProfilRequis(), tache.getUniteCible()));
-            List<String> signer = ei.signaturesOuvertes().stream().filter(s -> resolution.affecte(appelant.id(), s.attendu())).map(SignatureInstance::code).toList();
-            boolean valider = ei.getEtat() == EtatEtape.A_VALIDER && !appelant.id().equals(executant) && resolution.affecte(appelant.id(), ei.getValidateur());
+            List<String> signer = ei
+                .signaturesOuvertes()
+                .stream()
+                .filter(s -> resolution.affecte(appelant.id(), s.attendu()))
+                .filter(s -> def == null || !separe(appelant.id(), i, p, signataire(def, s.code())))
+                .map(SignatureInstance::code)
+                .toList();
+            boolean valider = ei.getEtat() == EtatEtape.A_VALIDER && !appelant.id().equals(executant) && resolution.affecte(appelant.id(), ei.getValidateur()) &&
+                (def == null || !separe(appelant.id(), i, p, def.validateur()));
             boolean reaffecter = ei.getEtat().enCours() && (pilote || lanceurDesigne(appelant.id(), i, tache));
             moi.put(ei.getCode(), new MoiEtape(executer, prendre, signer, valider, reaffecter));
         }
@@ -1340,7 +1465,7 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
     private InstanceLue lue(Appelant appelant, InstanceProcessus i, Processus p, List<EtapeInstance> l, Map<UUID, Tache> t) {
         boolean pilote = acces.pilote(appelant, i.getUnite());
         boolean enCours = i.getEtat() == EtatInstance.EN_COURS;
-        Map<String, MoiEtape> moi = moiDe(appelant, i, l, t);
+        Map<String, MoiEtape> moi = moiDe(appelant, i, p, l, t);
         DroitsInstance droits = new DroitsInstance(pilote && enCours, pilote && i.getEtat() == EtatInstance.SUSPENDUE, pilote && !i.getEtat().estFinal(), pilote && enCours);
         List<HistoriqueProcessus> h = historique.findByInstanceIdOrderByQuandAsc(i.getId());
         List<String> ids = new ArrayList<>();

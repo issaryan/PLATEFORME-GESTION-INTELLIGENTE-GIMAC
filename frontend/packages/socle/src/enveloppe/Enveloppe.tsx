@@ -15,6 +15,9 @@ import { PanneauNotifications } from '../notifications/Cloche'
 import { NotificationsSurgissantes } from '../notifications/Surgissantes'
 import { ContexteBarreLaterale } from './barreLaterale'
 
+/** Identifiant du tiroir de navigation des écrans étroits, commandé par le bouton de menu (aria-controls). */
+const ID_TIROIR = 'gm-shell-tiroir'
+
 type Cloche = { nonLues: number; panneau: (fermer: () => void) => ReactNode }
 
 /** Cloche des notifications (D-80) : compteur des non-lues et panneau, quand la couche les sert. */
@@ -87,6 +90,21 @@ export function Enveloppe(p: EnveloppeProps) {
   const barreLaterale = useMemo(() => ({ reduite, reduire: setReduite, active: !etroit }), [reduite, etroit])
   const [rechercheOuverte, setRechercheOuverte] = useState(false)
   const avecRecherche = p.recherche !== undefined && p.couche !== 'portail'
+
+  // Tiroir ouvert (recette ACC-07) : le focus entre dans le tiroir ; Échap le referme d'où que vienne la touche et
+  // rend le focus au bouton de menu qui l'a ouvert.
+  const tiroir = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!etroit || !navOuverte) return
+    tiroir.current?.querySelector<HTMLElement>('a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])')?.focus()
+    const touche = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      setNavOuverte(false)
+      document.querySelector<HTMLElement>(`[aria-controls="${ID_TIROIR}"]`)?.focus()
+    }
+    document.addEventListener('keydown', touche)
+    return () => document.removeEventListener('keydown', touche)
+  }, [etroit, navOuverte])
 
   // Changement de page : le tiroir se referme et la zone de contenu revient en haut.
   useEffect(() => {
@@ -186,6 +204,8 @@ export function Enveloppe(p: EnveloppeProps) {
       clock={heure}
       preferences={<Preferences />}
       onMenu={etroit ? () => setNavOuverte((v) => !v) : undefined}
+      menuOuvert={etroit ? navOuverte : undefined}
+      menuControle={ID_TIROIR}
       onRecherche={avecRecherche ? () => setRechercheOuverte(true) : undefined}
     />
   )
@@ -201,11 +221,11 @@ export function Enveloppe(p: EnveloppeProps) {
       <div className="gm-shell-corps">
         <div ref={contenu} className="gm-shell-contenu" data-testid="gm-shell-contenu">
           <main className="gm-shell-main"><ContexteBarreLaterale.Provider value={barreLaterale}>{p.children}</ContexteBarreLaterale.Provider></main>
-          <Footer version={p.version} documentation={p.documentation} correlationId={p.correlationId} />
+          <Footer version={p.version} documentation={p.documentation} correlationId={p.correlationId} couche={p.couche} />
         </div>
         {etroit && navOuverte ? (
           // Tiroir de navigation : voile du catalogue confiné à la zone sous la barre supérieure, fermeture par le voile ou Échap.
-          <div className="gm-overlay gm-overlay-inline gm-shell-tiroir" onClick={(e) => e.target === e.currentTarget && setNavOuverte(false)} onKeyDown={(e) => e.key === 'Escape' && setNavOuverte(false)}>
+          <div ref={tiroir} id={ID_TIROIR} className="gm-overlay gm-overlay-inline gm-shell-tiroir" onClick={(e) => e.target === e.currentTarget && setNavOuverte(false)}>
             {nav}
           </div>
         ) : null}

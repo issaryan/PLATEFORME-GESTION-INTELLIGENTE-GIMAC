@@ -155,7 +155,8 @@ function EtapeOuverture({ institution }: { institution: Institution }) {
           <>
             {erreur ? <InlineAlert level="crit" title={t('certif.ouverture.refus')} correlationId={erreur.correlationId || undefined}>{erreur.message}</InlineAlert> : null}
             <div className="gm-col" style={{ gap: 'var(--gm-space-1)' }}>
-              <RadioGroup name="typeProjet" label={t('certif.ouverture.type')} value={typeProjet} options={types.options} onChange={setType} />
+              {/* DDR-27 : choix obligatoire signalé par l'astérisque, comme les autres champs. */}
+              <RadioGroup name="typeProjet" label={t('certif.ouverture.type')} required value={typeProjet} options={types.options} onChange={setType} />
               <span className="gm-field-help">{t('certif.ouverture.type.aide')}</span>
               {types.pret && !types.options.length ? <InlineAlert level="info">{t('certif.ouverture.aucunType')}</InlineAlert> : null}
               {tente && erreurs.type ? <span className="gm-field-error" role="alert">{erreurs.type}</span> : null}

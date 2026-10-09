@@ -748,6 +748,8 @@ routes_processus := [
 	["GET", "/bff/des/pilotage/processus/lancables"],
 	["GET", "/bff/des/pilotage/processus/demandes"],
 	["GET", "/bff/des/pilotage/processus/instances/i1/etapes/ANALYSE/candidats"],
+	# QUO-04 : pièce jointe ou livrable d'une instance.
+	["GET", "/bff/des/pilotage/processus/instances/i1/documents/d1"],
 	["POST", "/bff/des/pilotage/processus/instances/i1/etapes/ANALYSE/livrables"],
 	["PUT", "/bff/des/pilotage/processus/instances/i1/etapes/ANALYSE/champs"],
 	["POST", "/bff/des/pilotage/processus/instances/i1/etapes/RECETTE/signature"],

@@ -123,7 +123,7 @@ public class DemonstrationProcessus implements ApplicationRunner {
         }
         Processus p = Processus.brouillon(code, unite, ACTEUR, le);
         p.decrire(libelle, description, categorie, 5, etapes, ACTEUR, le);
-        p.definirLancement(new Initiateurs(List.of(RegleInitiateur.TOUT_LE_GIMAC), List.of(), List.of(), List.of()), formulaire, ACTEUR, le);
+        p.definirLancement(new Initiateurs(List.of(RegleInitiateur.TOUT_LE_GIMAC), List.of(), List.of(), List.of(), false), formulaire, ACTEUR, le);
         p.publier(ACTEUR, "Jeu de démonstration", false, le);
         processus.save(p);
         historique.save(new HistoriqueProcessus(p.getId(), null, null, le, ACTEUR, ActionProcessus.PUBLIE, "Jeu de démonstration"));

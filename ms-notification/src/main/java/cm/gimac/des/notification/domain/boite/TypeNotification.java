@@ -34,5 +34,11 @@ public enum TypeNotification {
      * homologation.liaison) : opération ouverte ou en validation (action attendue, avis demandé, information, escalade
      * selon la qualité RACI), jalon atteint ; une notification par événement et par destinataire, jamais regroupée.
      */
-    HOMOLOGATION,
+    HOMOLOGATION;
+
+    /**
+     * Types qu'un compte d'institution (portail) peut recevoir : le parcours d'homologation de sa liaison seulement ;
+     * messagerie, tâches, rapports, demandes et processus d'unité sont des fonctions internes du GIMAC.
+     */
+    public static final java.util.Set<TypeNotification> PORTAIL = java.util.EnumSet.of(HOMOLOGATION);
 }

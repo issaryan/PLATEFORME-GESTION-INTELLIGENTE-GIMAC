@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Recette HOM-17 : la fonction « Chefs des deux départements » (CHEFS_DEPARTEMENT) est tenue par le chef du DES et par
+     le chef de la DDRM ; elle n'était reliée qu'au profil du chef du DES. Valeur de départ seulement : une liste de profils
+     déjà modifiée dans la plateforme (PUT /referentiels/fonctions) n'est pas remplacée. -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="20261014000200-1" author="lot1">
+        <sql>
+            UPDATE referentiel_fonction SET profils = '["ROLE_CHEF_DES","ROLE_CHEF_DDRM"]'::jsonb WHERE code = 'CHEFS_DEPARTEMENT' AND profils = '["ROLE_CHEF_DES"]'::jsonb;
+        </sql>
+    </changeSet>
+</databaseChangeLog>

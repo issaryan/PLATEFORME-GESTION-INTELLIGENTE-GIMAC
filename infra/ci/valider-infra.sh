@@ -171,18 +171,21 @@ valider_dockerfiles() {
 
 # ---------------------------------------------------------------- 7. Domaine Keycloak
 # gimac-realm.json est produit par generer-realm-gimac.py (D-62) : on le régénère dans une
-# copie de l'arborescence et on le compare au fichier versionné.
+# copie de l'arborescence et on le compare au fichier versionné, comme le catalogue des permissions et des
+# profils qu'il écrit pour les services simulés du frontend (domaine-gimac.json, recette ADM-01).
 valider_keycloak() {
   section "Domaine Keycloak gimac (régénération et comparaison)"
   exiger_outil python3 "régénération du domaine Keycloak" || { fin_section; return 0; }
   local copie="$DOSSIER_TRAVAIL/realm"
-  mkdir -p "$copie/infra/keycloak" "$copie/infra/docker-compose/realm-config"
+  local frontend=frontend/packages/lot1/src/domaine-gimac.json
+  mkdir -p "$copie/infra/keycloak" "$copie/infra/docker-compose/realm-config" "$copie/$(dirname "$frontend")"
   cp "$INFRA/keycloak/generer-realm-gimac.py" "$copie/infra/keycloak/"
   cp "$COMPOSE/realm-config/jhipster-realm.json" "$copie/infra/docker-compose/realm-config/"
   if python3 "$copie/infra/keycloak/generer-realm-gimac.py" >/dev/null; then
     if diff -q "$INFRA/keycloak/gimac-realm.json" "$copie/infra/keycloak/gimac-realm.json" >/dev/null \
-      && diff -q "$INFRA/keycloak/gimac-realm-production.json" "$copie/infra/keycloak/gimac-realm-production.json" >/dev/null; then
-      reussi "gimac-realm.json et gimac-realm-production.json (sans compte de test) identiques à la sortie de generer-realm-gimac.py"
+      && diff -q "$INFRA/keycloak/gimac-realm-production.json" "$copie/infra/keycloak/gimac-realm-production.json" >/dev/null \
+      && diff -q "$frontend" "$copie/$frontend" >/dev/null; then
+      reussi "gimac-realm.json, gimac-realm-production.json (sans compte de test) et $frontend identiques à la sortie de generer-realm-gimac.py"
     else
       diff -u "$INFRA/keycloak/gimac-realm.json" "$copie/infra/keycloak/gimac-realm.json" | head -40 || true
       echec "gimac-realm.json désynchronisé : lancer « python3 infra/keycloak/generer-realm-gimac.py » et versionner le résultat"

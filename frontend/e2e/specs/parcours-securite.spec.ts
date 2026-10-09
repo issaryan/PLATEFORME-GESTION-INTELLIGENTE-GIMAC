@@ -7,6 +7,22 @@ import { carte, cheminDossier, confirmerAction, joindre, monTravail, signer, tir
 // générale signent leur visa, motivé, avec leur clé de sécurité. Scénario LIA-2026-019 : attestations
 // fournies, visas activés. Services simulés.
 
+/**
+ * CER-02 : un visa se signe sur l'opération ouverte de l'approbation (rang 23), ouverte par l'archivage des attestations.
+ * La sécurité des SI vérifie et archive celles de LIA-2026-019, puis l'acteur du visa prend la main (démonstration continue).
+ */
+async function attestationsArchivees(page: import('@playwright/test').Page, profil: string) {
+  await page.goto(`${ADRESSES.departement}/favicon.svg`)
+  await page.evaluate(() => { localStorage.setItem('gm.profilDemo', 'ROLE_RSSI'); localStorage.setItem('gm.demoContinue', '1') })
+  await page.goto(`${ADRESSES.departement}${cheminDossier('LIA-2026-019', 'decision')}`)
+  await page.getByRole('button', { name: 'Déclarer conforme' }).first().click()
+  await confirmerAction(page, 'Déclarer conforme')
+  await page.getByRole('button', { name: 'Archiver les attestations' }).click()
+  await confirmerAction(page, 'Archiver les attestations')
+  await expect(page.getByText('Vérifiée et archivée').first()).toBeVisible()
+  await page.evaluate((r) => localStorage.setItem('gm.profilDemo', r), profil)
+}
+
 test.describe('Fonctionnalité : approbation de la sécurité et visas', () => {
   test('Scénario : la production monétique référence puis relit la fiche de changement', async ({ page }) => {
     await demo(page, { profil: 'ROLE_PRODUCTION_MONETIQUE', theme: 'light' })
@@ -19,22 +35,20 @@ test.describe('Fonctionnalité : approbation de la sécurité et visas', () => {
     await test.step('Et le dossier de changement déjà constitué de LIA-2026-019', async () => {
       await page.goto(`${ADRESSES.departement}${cheminDossier('LIA-2026-019', 'decision')}`)
       const verrou2 = carte(page, 'Verrou 2 : approbation de la sécurité')
-      await expect(verrou2.getByText('Dossier de changement (rang 20)')).toBeVisible()
+      await expect(verrou2.getByText('Dossier de changement', { exact: true })).toBeVisible()
       await expect(verrou2.getByText('dossier-changement-LIA-2026-019.pdf')).toBeVisible()
       await expect(page.getByRole('button', { name: 'Déclarer conforme' })).toHaveCount(0)
       await page.getByRole('button', { name: 'Référencer la fiche de changement' }).click()
       await expect(page.getByRole('dialog').getByRole('button', { name: 'Référencer la fiche de changement' })).toBeDisabled()
     })
-    await test.step('Quand il référence une fiche au mauvais format, le service la refuse', async () => {
-      await page.getByRole('dialog').getByRole('textbox', { name: /Référence de la fiche/ }).fill('chg412')
-      await page.getByRole('dialog').getByRole('button', { name: 'Référencer la fiche de changement' }).click()
-      const d = page.getByRole('alertdialog')
-      await d.getByRole('button', { name: 'Référencer la fiche de changement' }).click()
-      await expect(d.getByText(/Référence de fiche de changement invalide/)).toBeVisible()
-      await d.getByRole('button', { name: 'Annuler' }).click()
+    await test.step('Quand il saisit une fiche au mauvais format, le refus s’affiche sous le champ (CER-10)', async () => {
+      const f = page.getByRole('dialog')
+      await f.getByRole('textbox', { name: /Référence de la fiche/ }).fill('chg412')
+      await expect(f.getByText(/Référence de fiche de changement invalide/)).toBeVisible()
+      await expect(f.getByRole('button', { name: 'Référencer la fiche de changement' })).toBeDisabled()
+      await expect(page.getByRole('alertdialog')).toHaveCount(0)
     })
     await test.step('Et quand il la référence au format CHG-AAAA-N', async () => {
-      await page.getByRole('button', { name: 'Référencer la fiche de changement' }).click()
       await page.getByRole('dialog').getByRole('textbox', { name: /Référence de la fiche/ }).fill('CHG-2026-412')
       await page.getByRole('dialog').getByRole('button', { name: 'Référencer la fiche de changement' }).click()
       await confirmerAction(page, 'Référencer la fiche de changement')
@@ -63,7 +77,7 @@ test.describe('Fonctionnalité : approbation de la sécurité et visas', () => {
       await confirmerAction(page, 'Déposer la preuve')
     })
     await test.step('Alors la preuve attend la validation du conducteur de projet', async () => {
-      await expect(t.getByText(/Preuve déposée, en attente de la validation de Conducteur de projet 2/)).toBeVisible()
+      await expect(t.getByText(/Preuve déposée, en attente de la validation de Brice Ondo Mba/)).toBeVisible()
       await expect(t.getByText('M-0061')).toBeVisible()
     })
   })
@@ -108,11 +122,14 @@ test.describe('Fonctionnalité : approbation de la sécurité et visas', () => {
   })
 
   test('Scénario : la conformité vise favorablement, motif et clé de sécurité à l’appui', async ({ page }) => {
-    await demo(page, { profil: 'ROLE_CONFORMITE', theme: 'light' })
+    await demo(page, { theme: 'light' })
+    await attestationsArchivees(page, 'ROLE_CONFORMITE')
     await test.step('Étant donné la conformité et le visa attendu de LIA-2026-019', async () => {
       await page.goto(`${ADRESSES.departement}/des/tableau-de-bord`)
       const compteurs = monTravail(page).locator('[aria-label="Mes compteurs"]')
       await expect(compteurs.getByText('Visas attendus', { exact: true })).toBeVisible()
+      // CER-02 : la tâche du visa figure dans « Mes tâches » et mène à l'onglet Décision.
+      await expect(monTravail(page).getByRole('link', { name: 'Signer : Visa de la conformité' })).toHaveAttribute('href', /LIA-2026-019\?onglet=decision/)
       await expect(compteurs.getByText('Fintechs sous contrôle COBAC', { exact: true })).toBeVisible()
       await page.goto(`${ADRESSES.departement}${cheminDossier('LIA-2026-019', 'decision')}`)
       await expect(page.getByRole('region', { name: 'Visa de la direction générale' }).getByRole('button')).toHaveCount(0)
@@ -132,7 +149,8 @@ test.describe('Fonctionnalité : approbation de la sécurité et visas', () => {
   })
 
   test('Scénario : la direction générale vise défavorablement, motif obligatoire', async ({ page }) => {
-    await demo(page, { profil: 'ROLE_DG', theme: 'light' })
+    await demo(page, { theme: 'light' })
+    await attestationsArchivees(page, 'ROLE_DG')
     await test.step('Étant donné la direction générale, son cockpit et son visa attendu', async () => {
       await page.goto(`${ADRESSES.departement}/des/tableau-de-bord`)
       await expect(page.locator('.gm-pagehead-nom', { hasText: 'Jean-Baptiste Ella Mintsa' })).toBeVisible()

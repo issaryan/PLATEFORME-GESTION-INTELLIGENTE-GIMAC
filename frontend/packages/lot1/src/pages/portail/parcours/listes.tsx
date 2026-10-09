@@ -4,7 +4,7 @@ import { Button, DataTable, Link, ProgressRing, StatusBadge, Tag, type Column } 
 import { usePermissions, type ApiError } from '@gimac/socle'
 import type { CoverageValue } from '../../../modele/commun'
 import type { LiaisonResume, TacheActeur } from '../../../modele/parcours'
-import { Echeance, GESTES, gesteDe, lienGeste, tonStatut, useDate, useLibelleTache } from './commun'
+import { Echeance, GESTES, gesteDe, lienGeste, tonStatut, useDate, useLibelleTache, useTypeProjet } from './commun'
 
 // Listes du portail du participant : les tâches qui lui incombent, chacune menant à son geste, et ses
 // liaisons avec l'étape courante et les deux couvertures (CR §6.5 : lues directement et séparément).
@@ -79,6 +79,7 @@ export function TableTaches({ taches, requete, liaison = true }: { taches: Tache
 /** Liaisons de l'institution du jeton : étape courante, statut, deux couvertures, prochaine échéance. */
 export function TableLiaisons({ liaisons, requete }: { liaisons: LiaisonResume[]; requete: Etat }) {
   const { t } = useTranslation()
+  const typeProjet = useTypeProjet()
   const ecrire = useDate()
   const colonnes: Column<LiaisonResume>[] = [
     {
@@ -86,7 +87,7 @@ export function TableLiaisons({ liaisons, requete }: { liaisons: LiaisonResume[]
       render: (l) => (
         <span className="gm-col" style={{ gap: 'var(--gm-space-1)', textAlign: 'left' }}>
           <span style={{ whiteSpace: 'nowrap' }}><Link href={`/portail/liaisons/${l.id}`} mono>{l.reference}</Link></span>
-          <span className="gm-type-small">{t(`parcours.typeProjet.${l.typeProjet}`, { defaultValue: String(l.typeProjet) })}</span>
+          <span className="gm-type-small">{typeProjet(l)}</span>
         </span>
       ),
     },

@@ -80,10 +80,12 @@ describe('notifications de mention et de réponse', () => {
         </MemoryRouter>
       </QueryClientProvider>,
     )
-    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 2 non lues' }))
-    expect(await screen.findByRole('button', { name: 'Mention : Hervé vous a mentionné, non lue' })).toBeTruthy()
+    // Sous charge (suites lancées ensemble), le premier rendu de l'enveloppe dépasse la seconde d'attente par défaut.
+    const attente = { timeout: 10_000 }
+    fireEvent.click(await screen.findByRole('button', { name: 'Notifications, 2 non lues' }, attente))
+    expect(await screen.findByRole('button', { name: 'Mention : Hervé vous a mentionné, non lue' }, attente)).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Réponse : Hervé a répondu à votre message, non lue' })).toBeTruthy()
-    await waitFor(() => expect(screen.getAllByText('Pouvez-vous valider ?').length).toBe(2))
+    await waitFor(() => expect(screen.getAllByText('Pouvez-vous valider ?').length).toBe(2), attente)
   })
 })
 

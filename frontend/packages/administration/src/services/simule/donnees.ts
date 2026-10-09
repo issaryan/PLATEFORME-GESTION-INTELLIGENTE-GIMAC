@@ -5,7 +5,7 @@ import type { EntreeJournal } from '../../modele/comptes'
 import type { ConfigurationMessagerie, PolitiqueSecurite } from '../../modele/configuration'
 import type { EtatAlertes, EtatServeurs, EtatService, InstantanePlateforme, MetriqueSerie, NiveauxJournalisation, ConfigurationPlateforme, PeriodeSerie, PointSerie, SeriesMetriques } from '../../modele/plateforme'
 
-// Données fictives de la console (développement) : comptes de démonstration super.admin et rssi, agents
+// Données fictives de la console (développement) : comptes de démonstration super.admin, h.kamga et admin.systeme, agents
 // des directions, supervision d'une plateforme de recette. Aucune donnée réelle.
 
 const il = (heures: number) => new Date(Date.now() - heures * 3_600_000).toISOString()
@@ -13,7 +13,10 @@ const il = (heures: number) => new Date(Date.now() - heures * 3_600_000).toISOSt
 type Graine = [id: string, identifiant: string, prenom: string, nom: string, fonction: string, profils: string[], o?: Partial<Compte>]
 const GRAINES: Graine[] = [
   ['u-super-admin', 'super.admin', 'Serge', 'Mouelle Kombi', 'Super administrateur de la plateforme', ['ROLE_SUPER_ADMIN']],
-  ['u-rssi', 'rssi', 'Carine', 'Ebongue Ndjock', 'Responsable de la sécurité des SI', ['ROLE_RSSI']],
+  // Même identité que le compte RSSI commun aux trois applications (@gimac/lot1 profilsDemo, recette ACC-05).
+  ['u-rssi', 'h.kamga', 'Hervé', 'Kamga Tchoupo', 'Responsable de la sécurité des SI', ['ROLE_RSSI']],
+  // Administrateur système (D-78) : même identité que son compte de démonstration (admin.systeme), recette ADM-02.
+  ['u-admin-systeme', 'admin.systeme', 'Thierry', 'Abessolo Nkoulou', 'Administrateur système de la plateforme', ['ROLE_ADMIN_SYSTEME']],
   ['u-chef-des', 'c.ndong', 'Christian', 'Ndong Obiang', 'Chef du DES', ['ROLE_CHEF_DES']],
   ['u-ingenieur', 'p.mbida', 'Patrick', 'Mbida Essomba', 'Ingénieur d’homologation', ['ROLE_INGENIEUR_HOMOLOGATION', 'ROLE_CONDUCTEUR_PROJET']],
   ['u-chef-ddrm', 'a.ngombarga', 'Aïssatou', 'Ngo Mbarga', 'Cheffe de la DDRM', ['ROLE_CHEF_DDRM']],
@@ -36,6 +39,7 @@ const RATTACHEMENTS: Record<string, [unite: string, responsableId: string | null
   'u-dg': ['DG', null], 'u-chef-des': ['DES', 'u-dg'], 'u-chef-ddrm': ['DDRM', 'u-dg'], 'u-rssi': ['SSI', 'u-dg'], 'u-conformite': ['CONFORMITE', 'u-dg'],
   'u-charge-ddrm': ['DDRM', 'u-chef-ddrm'], 'u-ingenieur': ['SNA', 'u-chef-des'], 'u-sna': ['SNA', 'u-chef-des'], 'u-inactif': ['POLE_RESEAU', 'u-chef-des'],
   'u-premier-acces': ['PROD_MONETIQUE', 'u-chef-des'],
+  'u-admin-systeme': ['PROD_INFO', 'u-chef-des'],
 }
 
 /** Comptes qui ont déposé une photo de profil (démonstration, docs/lot1/mon-compte.md) ; les autres gardent leurs initiales. */
@@ -61,8 +65,8 @@ export function journalInitial(): EntreeJournal[] {
   })
   return [
     e(2, 'CREATION', 'u-premier-acces', 'l.nguema', null, 'ROLE_PRODUCTION_MONETIQUE'),
-    e(5, 'ACTIONS_REQUISES', 'u-sans-2fa', 'b.hamadou', 'Second facteur absent depuis la migration du poste', 'SECOND_FACTEUR', ['u-rssi', 'Carine Ebongue Ndjock']),
-    e(20, 'CONFIGURATION_POLITIQUE_SECURITE', null, 'POLITIQUE_SECURITE', 'Alignement sur la PSSI 2026 : 14 caractères', 'longueurMinimale', ['u-rssi', 'Carine Ebongue Ndjock']),
+    e(5, 'ACTIONS_REQUISES', 'u-sans-2fa', 'b.hamadou', 'Second facteur absent depuis la migration du poste', 'SECOND_FACTEUR', ['u-rssi', 'Hervé Kamga Tchoupo']),
+    e(20, 'CONFIGURATION_POLITIQUE_SECURITE', null, 'POLITIQUE_SECURITE', 'Alignement sur la PSSI 2026 : 14 caractères', 'longueurMinimale', ['u-rssi', 'Hervé Kamga Tchoupo']),
     e(30, 'DESACTIVATION', 'u-inactif', 'k.ateba', 'Départ du collaborateur le 15 septembre', ''),
     e(52, 'PROFILS', 'u-ingenieur', 'p.mbida', 'Désignation comme conducteur de projet LIA-2026-017', 'ROLE_CONDUCTEUR_PROJET, ROLE_INGENIEUR_HOMOLOGATION'),
   ]

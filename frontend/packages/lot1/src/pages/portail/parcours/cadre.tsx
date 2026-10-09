@@ -4,13 +4,14 @@ import { StatusBadge } from '@gimac/design-system'
 import { EtatsRequete } from '@gimac/socle'
 import type { DossierLiaison, TacheActeur } from '../../../modele/parcours'
 import { useDossierPortail, useMesTachesPortail } from '../../../hooks/parcours'
-import { EnTete, tonStatut } from './commun'
+import { EnTete, tonStatut, useTypeProjet } from './commun'
 
 // Cadre commun des écrans d'action du portail : la liaison est lue par la projection du portail (une
 // liaison d'une autre institution y est introuvable), l'en-tête rappelle la liaison et ramène au suivi.
 
 export function CadreAction({ id, titre, etat, children }: { id: string; titre: string; etat?: ReactNode; children: (d: DossierLiaison) => ReactNode }) {
   const { t } = useTranslation()
+  const typeProjet = useTypeProjet()
   const q = useDossierPortail(id)
   return (
     <EtatsRequete etat={q} emptyTitle={t('pp.introuvable')} errorTitle={t('pp.introuvable')} retryLabel={t('commun.reessayer')}>
@@ -23,7 +24,7 @@ export function CadreAction({ id, titre, etat, children }: { id: string; titre: 
               <span className="gm-row">
                 <span className="gm-mono">{d.reference}</span>
                 <span aria-hidden="true">·</span>
-                <span>{t(`parcours.typeProjet.${d.typeProjet}`, { defaultValue: String(d.typeProjet) })}</span>
+                <span>{typeProjet(d)}</span>
                 <StatusBadge status={tonStatut[d.statut]} label={t(`parcours.statut.${d.statut}`)} />
               </span>
             }

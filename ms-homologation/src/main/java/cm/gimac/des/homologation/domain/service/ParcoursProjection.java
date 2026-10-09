@@ -105,7 +105,7 @@ public class ParcoursProjection {
                     l.typesPieces(),
                     l.obligatoire(),
                     o.depot(l.code()).orElse(null),
-                    ouverte && p.droitDepot(o, l, a, f).isPresent()
+                    ouverte && offert(p.droitDepot(o, l, a, f))
                 )
             )
             .toList();
@@ -160,8 +160,8 @@ public class ParcoursProjection {
 
     /**
      * Actions de l'opération pour la personne (D-93 §2) : celles que sa matrice de rôles permet, restreintes au RACI
-     * imposé : dépôt par le R désigné (porteur de sa fonction s'il est à affecter), un déposant, le conducteur ou en
-     * supervision ; validation et renvoi par le V désigné (porteur de sa fonction s'il est à affecter).
+     * imposé : dépôt par le R désigné (porteur de sa fonction s'il est à affecter), un déposant ou le conducteur (jamais la
+     * supervision, DDR-05) ; validation et renvoi par le V désigné (porteur de sa fonction s'il est à affecter).
      */
     public List<String> actions(Parcours p, OperationParcours o, Acteur a) {
         Set<Fonction> f = VisibiliteReferentiel.fonctions(a.permissions());
@@ -169,7 +169,7 @@ public class ParcoursProjection {
         for (String x : actions(o, a)) {
             switch (x) {
                 case "DEPOSER_PREUVE", "DEPOSER_LIVRABLE" -> {
-                    if (p.droitDepot(o, null, a, f).isPresent()) {
+                    if (offert(p.droitDepot(o, null, a, f))) {
                         l.add(x);
                     }
                 }
@@ -183,6 +183,15 @@ public class ParcoursProjection {
             }
         }
         return l;
+    }
+
+    /**
+     * Dépôt offert à l'acteur (DDR-05) : seulement au titre du RACI (R désigné ou porteur de sa fonction à affecter,
+     * déposant, conducteur). La supervision par HOM_STEP_MANAGE reste admise par le service et journalisée, mais n'est
+     * jamais offerte comme une action de l'acteur : le geste revient au responsable.
+     */
+    static boolean offert(java.util.Optional<Parcours.DroitDepot> droit) {
+        return droit.isPresent() && droit.orElseThrow() != Parcours.DroitDepot.SUPERVISION;
     }
 
     /** Actions permises par la matrice des rôles : son geste quand elle est ouverte, la validation (jamais par R), l'attribution des qualités. */
@@ -485,6 +494,7 @@ public class ParcoursProjection {
             l.getInstitutionId().toString(),
             l.getInstitutionNom(),
             l.getTypeProjet(),
+            l.libelleTypeProjet(),
             ctx.banquePartenaireNom(),
             null,
             p.etat().getStatut(),
@@ -552,6 +562,7 @@ public class ParcoursProjection {
             d.institutionId(),
             d.institutionNom(),
             d.typeProjet(),
+            d.typeProjetLibelle(),
             d.banquePartenaireNom(),
             d.personnalisateurNom(),
             d.statut(),
@@ -593,6 +604,7 @@ public class ParcoursProjection {
             p.etat().getReference(),
             l.getInstitutionNom(),
             l.getTypeProjet(),
+            l.libelleTypeProjet(),
             p.etat().getStatut(),
             p.etat().getEtapeCourante(),
             p.etat().isConducteurADesigner() ? null : conducteurNom,

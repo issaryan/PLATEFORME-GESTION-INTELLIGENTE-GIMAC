@@ -51,7 +51,7 @@ function ActiviteDuJour() {
     {
       key: 'activites', header: t('act.equipe.activites'), render: (m) => (
         <span className="gm-col" style={{ gap: 0 }}>
-          <span>{t('act.equipe.faites', { faites: m.activites.faites, prevues: m.activites.prevues })}</span>
+          <span>{t('act.equipe.faites', { count: m.activites.faites, prevues: m.activites.prevues })}</span>
           {m.activites.enCours ? <span className="gm-field-help">{t('act.equipe.enCours', { count: m.activites.enCours })}</span> : null}
         </span>
       ),
@@ -68,7 +68,8 @@ function ActiviteDuJour() {
     { key: 'presence', header: t('act.equipe.presence'), render: (m) => <StatusBadge status={m.absent ? 'warn' : 'ok'} label={t(m.absent ? 'act.equipe.absent' : 'act.equipe.present')} /> },
     {
       key: 'acces', header: t('act.equipe.acces'), render: (m) => (
-        <span className="gm-col" style={{ gap: 'var(--gm-space-1)' }}>
+        // QUO-14 : liens côte à côte (renvoyés à la ligne si besoin), sans déborder de la ligne du tableau.
+        <span className="gm-row gm-equipe-acces" style={{ gap: 'var(--gm-space-1) var(--gm-space-3)', flexWrap: 'wrap', padding: 'var(--gm-space-1) 0' }}>
           <Link href={`/des/activite?jour=${jour}&collaborateur=${encodeURIComponent(m.collaborateur.id)}`}>{t('act.equipe.journee')}</Link>
           <Link href={`/des/agenda?jour=${jour}&collaborateur=${encodeURIComponent(m.collaborateur.id)}`}>{t('act.equipe.agenda')}</Link>
           <Link href={`/des/rapports?vue=recus&auteur=${encodeURIComponent(m.collaborateur.id)}`}>{t('act.equipe.rapports')}</Link>

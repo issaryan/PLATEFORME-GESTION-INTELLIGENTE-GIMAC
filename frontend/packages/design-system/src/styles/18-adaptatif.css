@@ -23,5 +23,5 @@
   .gm-table tr { border-bottom: var(--gm-border-1) solid var(--gm-color-border); padding: var(--gm-space-2) 0; }
   .gm-table td { height: auto; min-height: var(--gm-size-row-compact); display: flex; align-items: center; justify-content: space-between; gap: var(--gm-space-3); border: 0; text-align: right; }
   .gm-table td[data-label]::before { content: attr(data-label); font-weight: 600; color: var(--gm-color-text-secondary); text-align: left; }
-  .gm-table td.gm-row { justify-content: flex-end; }
+  .gm-table td.gm-row, .gm-table td.gm-td-actions { justify-content: flex-end; }
 }

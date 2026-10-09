@@ -3,6 +3,7 @@ package cm.gimac.des.pilotage.web.rest.processus;
 import static cm.gimac.des.pilotage.infrastructure.client.OrganisationStubAdapter.AGENT;
 import static cm.gimac.des.pilotage.infrastructure.client.OrganisationStubAdapter.AGENT_BIS;
 import static cm.gimac.des.pilotage.infrastructure.client.OrganisationStubAdapter.CHEF_DDRM;
+import static cm.gimac.des.pilotage.infrastructure.client.OrganisationStubAdapter.CHEF_DES;
 import static cm.gimac.des.pilotage.infrastructure.client.OrganisationStubAdapter.CHEF_RESEAU;
 import static cm.gimac.des.pilotage.infrastructure.client.OrganisationStubAdapter.INACTIF;
 import static cm.gimac.des.pilotage.infrastructure.client.OrganisationStubAdapter.INGENIEUR_RESEAU;
@@ -205,17 +206,20 @@ class ProcessusDesignationIT extends AbstractProcessusIT {
     }
 
     @Test
-    @DisplayName("Aucun porteur nulle part : lancement accepté, étape confiée au chef de l'unité pour désigner")
+    @DisplayName("Aucun porteur nulle part : lancement accepté, étape confiée au chef de l'unité pour désigner (chef initiateur : son responsable)")
     void aucunPorteur() throws Exception {
         String processus = publieHorsUnite("AVIS_AUCUN", "ROLE_POLE_SYSTEME");
+        // D-99 : le lanceur ne se désigne plus lui-même ; le chef désigne un membre de sa portée.
+        mvc
+            .perform(json(post(BASE + "/" + processus + "/instances").with(agent(TECHNICIEN_RESEAU)), lancement(TECHNICIEN_RESEAU)))
+            .andExpect(status().isUnprocessableEntity())
+            .andExpect(jsonPath("$.code").value("PIL_PROCESSUS_SEPARATION_FONCTIONS"));
         JsonNode i = lire(
-            mvc
-                .perform(json(post(BASE + "/" + processus + "/instances").with(agent(TECHNICIEN_RESEAU)), lancement(TECHNICIEN_RESEAU)))
-                .andExpect(status().isCreated())
-                .andReturn()
+            mvc.perform(json(post(BASE + "/" + processus + "/instances").with(chef(CHEF_RESEAU)), lancement(TECHNICIEN_RESEAU))).andExpect(status().isCreated()).andReturn()
         );
-        assertThat(etape(i, "TRAITEMENT").at("/executant/id").asText()).isEqualTo(CHEF_RESEAU);
-        assertThat(i.get("historique").findValuesAsText("detail")).anyMatch(x -> x.contains("Aucune personne active") && x.contains("désigner"));
+        // Le chef de l'unité est l'initiateur : son responsable (chef du DES) reçoit l'étape pour désigner.
+        assertThat(etape(i, "TRAITEMENT").at("/executant/id").asText()).isEqualTo(CHEF_DES);
+        assertThat(i.get("historique").findValuesAsText("detail")).anyMatch(x -> x.contains("hors de l'initiateur") && x.contains("désigner"));
     }
 
     @Test

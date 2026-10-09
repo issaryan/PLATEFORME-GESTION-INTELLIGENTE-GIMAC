@@ -1,4 +1,4 @@
-import type { Candidature, CategorieInstitution } from '../../../modele/participant'
+import type { Candidature, CategorieInstitution, ConditionsAdhesion, ModeAdhesion } from '../../../modele/participant'
 import { aujourdhui, depuisSaisie } from '../../../modele/jours'
 import { categorieOptions, paysOptions } from '../../../ressources/institution'
 
@@ -82,4 +82,41 @@ export function erreursDuService(champs: Record<string, string>, t: (cle: string
   return Object.fromEntries(
     Object.keys(champs).map((champ) => [champ, t(`institution.erreur.service.${champ}`, { defaultValue: t('institution.erreur.service') })]),
   )
+}
+
+// ---------------------------------------------------------------- conditions d'adhésion (DDR-03)
+
+/** Code participant du registre : majuscules, chiffres et tirets, 20 caractères au plus (ConditionsRequest de MS-PARTICIPANT). */
+export const CODE_PARTICIPANT = /^[A-Z0-9-]+$/
+
+/** Corps de la requête PUT conditions-adhesion : code en majuscules, champs vides ramenés à l'absence de valeur, jamais de mode imposé. */
+export const conditions = (v: Record<string, unknown>): ConditionsAdhesion => ({
+  codeParticipant: (texte(v.codeParticipant) ?? '').toUpperCase(),
+  mode: (texte(v.mode) ?? null) as ModeAdhesion,
+  compteReglement: texte(v.compteReglement),
+  compteCantonnement: texte(v.compteCantonnement),
+  banqueMarraineId: texte(v.banqueMarraineId),
+})
+
+/**
+ * Contrôles du service sur les conditions, appliqués avant l'envoi (un message sous chaque champ) : code obligatoire et au
+ * format du registre, mode obligatoire, compte de règlement en adhésion directe (RG-11), banque marraine et compte de
+ * cantonnement en adhésion indirecte (RG-12).
+ */
+export function verifierConditions(v: Record<string, unknown>): Partial<Record<keyof ConditionsAdhesion, ErreurChamp>> {
+  const c = conditions(v)
+  const e: Partial<Record<keyof ConditionsAdhesion, ErreurChamp>> = {}
+  if (!c.codeParticipant) e.codeParticipant = { cle: 'institution.erreur.requis' }
+  else if (c.codeParticipant.length > 20 || !CODE_PARTICIPANT.test(c.codeParticipant)) e.codeParticipant = { cle: 'adhesion.erreur.codeParticipant' }
+  if (!c.mode) e.mode = { cle: 'institution.erreur.requis' }
+  else if (c.mode === 'DIRECT' && !c.compteReglement) e.compteReglement = { cle: 'adhesion.erreur.compteReglement' }
+  else if (c.mode === 'INDIRECT') {
+    if (!c.banqueMarraineId) e.banqueMarraineId = { cle: 'adhesion.erreur.banqueMarraine' }
+    if (!c.compteCantonnement) e.compteCantonnement = { cle: 'adhesion.erreur.compteCantonnement' }
+  }
+  for (const champ of ['compteReglement', 'compteCantonnement'] as const) {
+    const valeur = c[champ]
+    if (!e[champ] && valeur && valeur.length > 50) e[champ] = { cle: 'institution.erreur.longueur', valeurs: { max: 50 } }
+  }
+  return e
 }

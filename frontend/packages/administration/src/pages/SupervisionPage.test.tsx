@@ -13,10 +13,10 @@ const page = (o: Partial<Parameters<typeof rendrePage>[1]> = {}) =>
   rendrePage(<SupervisionPage />, { chemin: '/des/plateforme/supervision', motif: '/des/plateforme/supervision', permissions: SUPER_ADMIN, ...o })
 
 // Centre de contrôle : graphiques des métriques historisées en plus des tableaux de l'état instantané.
-describe('Centre de contrôle de la supervision', () => {
+describe('Supervision : un seul nom pour l’entrée et le titre (ADM-05)', () => {
   it('anneau de disponibilité, tendances par service, courbes de la plateforme, des services et des serveurs', async () => {
     page()
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Centre de contrôle')
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Supervision')
     expect(await screen.findByRole('img', { name: 'Disponibilité des services : 88 %' })).toBeTruthy()
     expect(screen.getByText('7 sur 8 démarrés')).toBeTruthy()
     expect(await screen.findByRole('columnheader', { name: 'Tendance de latence' })).toBeTruthy()

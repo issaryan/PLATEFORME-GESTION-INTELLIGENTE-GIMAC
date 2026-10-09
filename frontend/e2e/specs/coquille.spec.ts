@@ -78,7 +78,12 @@ test.describe('Fonctionnalité : coquille applicative fixe', () => {
       expect(apres.nav).toEqual(avant.nav)
       expect(apres.barre).toEqual(avant.barre)
       expect(apres.pied.bas).toBe(apres.hauteur)
-      await expect(page.locator('footer.gm-footer')).toBeInViewport()
+      // Le tableau de bord peut encore s'allonger après la mesure (données de démonstration reçues après coup) : le pied de
+      // page est ramené en bas de la zone avant d'être constaté dans la fenêtre.
+      await expect(async () => {
+        await page.mouse.wheel(0, 20_000)
+        await expect(page.locator('footer.gm-footer')).toBeInViewport({ timeout: 2_000 })
+      }).toPass({ timeout: 15_000 })
     })
     await capturer(page, 'coquille-longue-bas')
     await test.step('Quand il choisit une entrée de la navigation, seule la zone de contenu change et revient en haut', async () => {
@@ -134,9 +139,13 @@ test.describe('Fonctionnalité : coquille applicative fixe', () => {
     const m = await mesurer(page)
     expect(m.pageDefile).toBe(0)
     await capturer(page, 'coquille-mobile')
-    await page.getByRole('button', { name: /Replier/ }).click()
+    // ACC-07 : le bouton de menu nomme son effet et porte l'état du tiroir (aria-expanded).
+    const menu = page.getByRole('button', { name: 'Ouvrir la navigation' })
+    await expect(menu).toHaveAttribute('aria-expanded', 'false')
+    await menu.click()
     const nav = page.getByRole('navigation', { name: 'Navigation principale' })
     await expect(nav).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Fermer la navigation' })).toHaveAttribute('aria-expanded', 'true')
     await capturer(page, 'coquille-mobile-tiroir')
     await nav.getByRole('link', { name: 'Institutions membres' }).click()
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Institutions membres')

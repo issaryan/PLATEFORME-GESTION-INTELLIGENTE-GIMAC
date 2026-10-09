@@ -25,6 +25,11 @@ public class ParticipantException extends RuntimeException {
         return new ParticipantException(code, 409, message, details);
     }
 
+    /** 422 : saisie complète au format attendu mais refusée par une règle métier (un message par champ dans details.champs). */
+    public static ParticipantException unprocessable(String code, String message, Map<String, Object> details) {
+        return new ParticipantException(code, 422, message, details);
+    }
+
     /** 403 : action refusée à cet acteur (séparation des pouvoirs, RG-14). */
     public static ParticipantException forbidden(String code, String message) {
         return new ParticipantException(code, 403, message, Map.of());

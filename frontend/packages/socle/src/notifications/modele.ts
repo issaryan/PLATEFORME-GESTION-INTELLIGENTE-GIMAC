@@ -10,6 +10,20 @@
 /** HOMOLOGATION (MS-NOTIFICATION §11) : action attendue, avis, validation ou jalon d'une opération du parcours d'homologation. */
 export type TypeNotification = 'MESSAGE' | 'TACHE' | 'RAPPORT' | 'MENTION' | 'REPONSE' | 'DEMANDE' | 'PROCESSUS' | 'HOMOLOGATION'
 export const TYPES_NOTIFICATION: readonly TypeNotification[] = ['MESSAGE', 'TACHE', 'RAPPORT', 'MENTION', 'REPONSE', 'DEMANDE', 'PROCESSUS', 'HOMOLOGATION']
+/** Types qu'un compte d'institution reçoit au portail (TypeNotification.PORTAIL de MS-NOTIFICATION) : le parcours de ses liaisons. */
+export const TYPES_NOTIFICATION_PORTAIL: readonly TypeNotification[] = ['HOMOLOGATION']
+/** Types proposés dans une couche : ceux du portail pour un compte d'institution, tous dans les couches internes. */
+export const typesNotificationDe = (couche: string | null | undefined): readonly TypeNotification[] => (couche === 'portail' ? TYPES_NOTIFICATION_PORTAIL : TYPES_NOTIFICATION)
+/**
+ * QUO-08 : permissions qui donnent un objet à un type (l'une suffit) ; type absent : tout compte interne. Rapports soumis :
+ * qui a une équipe ; demandes à l'administration : qui en adresse (équipe, proposition de statut) ou en traite ; homologation :
+ * qui lit les liaisons. Les préférences ne proposent que les types qui peuvent concerner le compte.
+ */
+export const PERMISSIONS_TYPE_NOTIFICATION: Partial<Record<TypeNotification, readonly string[]>> = {
+  RAPPORT: ['PIL_TEAM_READ'], DEMANDE: ['PIL_TEAM_READ', 'IAM_ACCOUNT_READ', 'PAR_TRANSITION_REQUEST'], HOMOLOGATION: ['HOM_LIAISON_READ'],
+}
+export const typeNotificationPermis = (type: TypeNotification, permissions: readonly string[]): boolean =>
+  !PERMISSIONS_TYPE_NOTIFICATION[type] || PERMISSIONS_TYPE_NOTIFICATION[type]!.some((p) => permissions.includes(p))
 /** Types qui portent sur la messagerie : leur lien mène à une conversation. */
 export const TYPES_MESSAGERIE: readonly TypeNotification[] = ['MESSAGE', 'MENTION', 'REPONSE']
 
@@ -38,7 +52,8 @@ export type NotificationPlateforme = {
 
 export type EtatNotifications = 'non-lues' | 'toutes'
 export type PageNotifications = { contenu: NotificationPlateforme[]; total: number; page: number; taille: number }
-export type PreferencesNotifications = { systeme: boolean; son: boolean; types: Record<TypeNotification, boolean> }
+/** `types` : ceux que la couche propose (au portail, ceux du portail seulement, MS-NOTIFICATION). */
+export type PreferencesNotifications = { systeme: boolean; son: boolean; types: Partial<Record<TypeNotification, boolean>> }
 /** Corps de POST /notifications/lecture : toutes les notifications, celles d'un type ou celles d'un objet. */
 export type FiltreLecture = { type?: TypeNotification; reference?: ReferenceNotification }
 

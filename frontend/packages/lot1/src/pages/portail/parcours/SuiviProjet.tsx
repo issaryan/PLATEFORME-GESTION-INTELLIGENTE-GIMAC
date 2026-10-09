@@ -4,7 +4,7 @@ import { Card, CoverageBar, DataTable, InlineAlert, KeyValueList, Link, Progress
 import { EtatsRequete, usePermissions } from '@gimac/socle'
 import type { DossierLiaison, EtapeParcours, ServicePerimetre, TacheActeur } from '../../../modele/parcours'
 import { useApprobationPortail, useDossierPortail, useFicheSuiviPortail, useMesTachesPortail, useProcesVerbalPortail } from '../../../hooks/parcours'
-import { EnTete, Echeance, PERM, Section, gesteDe, lienLivrable, tonEtape, tonStatut, useDate, useFonction, useLibelleTache, usePermissionPortail } from './commun'
+import { EnTete, Echeance, PERM, Section, gesteDe, lienLivrable, tonEtape, tonStatut, useDate, useFonction, useLibelleTache, usePermissionPortail, useTypeProjet } from './commun'
 import { TableTaches } from './listes'
 
 // Suivi de mon projet (portail, par liaison) : ce qui est attendu du participant, les blocages qui le
@@ -149,6 +149,9 @@ function Interlocuteurs({ d }: { d: DossierLiaison }) {
 }
 
 /** Pièces du participant sur la liaison : chacune avec son état et l'écran où la consulter ou l'établir ; livrables attendus menant à leur écran de dépôt. */
+/** Étapes postérieures à l'intégration, où les coordonnées techniques d'essai ont été communiquées si la liaison en attendait. */
+const APRES_INTEGRATION: string[] = ['TESTS', 'CERTIFICATION', 'APPROBATION_SECURITE', 'MISE_EN_PRODUCTION', 'SUIVI']
+
 function Pieces({ d, livrables }: { d: DossierLiaison; livrables: TacheActeur[] }) {
   const { t } = useTranslation()
   const certification = usePermissionPortail(PERM.lireCertification)
@@ -167,7 +170,8 @@ function Pieces({ d, livrables }: { d: DossierLiaison; livrables: TacheActeur[] 
   return (
     <Card title={t('pp.pieces.titre')}>
       <ul className="gm-col" style={{ listStyle: 'none', margin: 0, padding: 0, gap: 0 }}>
-        {piece(t('pp.coordonnees.titre'), c ? <span className="gm-mono" style={{ overflowWrap: 'anywhere' }}>{`${c.adresse}:${c.port}`}</span> : <StatusBadge status="neutral" label={t('pp.nonCommuniquees')} />, 'coordonnees')}
+        {/* CER-09 : passé l'intégration sans coordonnées, la liaison n'en attendait pas (modèle sans essai de connexion). */}
+        {piece(t('pp.coordonnees.titre'), c ? <span className="gm-mono" style={{ overflowWrap: 'anywhere' }}>{`${c.adresse}:${c.port}`}</span> : <StatusBadge status="neutral" label={t(APRES_INTEGRATION.includes(d.etapeCourante) ? 'pp.sansObjet' : 'pp.nonCommuniquees')} />, 'coordonnees')}
         {certification ? piece(t('pp.pv.titre'), <EtatPv id={d.id} />, 'proces-verbal') : null}
         {certification ? piece(t('pp.attestations.titre'), <EtatApprobation id={d.id} />, 'attestations') : null}
         {piece(t('pp.fiche.titre'), <EtatFiche id={d.id} />, 'fiche-suivi')}
@@ -199,6 +203,8 @@ function EtatApprobation({ id }: { id: string }) {
   if (q.isPending) return <Skeleton width="60%" />
   if (!q.data) return <StatusBadge status="neutral" label="—" />
   const fournies = q.data.attestations.filter((a) => a.preuve).length
+  // CER-09 : aucune attestation exigée (modèle générique) : rien n'est attendu, ni maintenant ni plus tard.
+  if (q.data.attestations.length === 0) return <StatusBadge status="neutral" label={t('pp.attestations.aucuneExigee')} />
   if (fournies === 0 && !q.data.actionsPermises.includes('DEPOSER_ATTESTATION')) return <StatusBadge status="neutral" label={t('pp.attestations.pasAttendues')} />
   return <StatusBadge status={fournies === q.data.attestations.length ? 'ok' : 'neutral'} label={t('pp.attestations.fournies', { n: fournies, total: q.data.attestations.length })} />
 }
@@ -213,6 +219,7 @@ function EtatFiche({ id }: { id: string }) {
 
 function Suivi({ d }: { d: DossierLiaison }) {
   const { t } = useTranslation()
+  const typeProjet = useTypeProjet()
   const permissions = usePermissions()
   const taches = useMesTachesPortail()
   const miennes = (taches.data?.taches ?? []).filter((x) => x.liaisonId === d.id)
@@ -223,7 +230,7 @@ function Suivi({ d }: { d: DossierLiaison }) {
         titre={t('pp.suivi.titre', { reference: d.reference })}
         sousTitre={
           <span className="gm-row">
-            <span>{t(`parcours.typeProjet.${d.typeProjet}`, { defaultValue: String(d.typeProjet) })}</span>
+            <span>{typeProjet(d)}</span>
             <span aria-hidden="true">·</span>
             <span>{d.institutionNom}</span>
             {d.liaisonOrigineId ? <Tag>{t('pp.serviceSupplementaire', { origine: d.liaisonOrigineId })}</Tag> : null}

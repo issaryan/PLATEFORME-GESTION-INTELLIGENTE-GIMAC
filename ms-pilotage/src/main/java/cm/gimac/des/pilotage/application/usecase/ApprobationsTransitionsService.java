@@ -46,11 +46,29 @@ public class ApprobationsTransitionsService implements ApprobationsTransitionsUs
         return "/des/institutions/" + institutionId + "?onglet=transitions";
     }
 
+    /** Libellé d'un statut d'institution (DDR-14, DDR-16) : jamais le code brut dans le titre ou la description d'une tâche. */
+    static String statut(String code) {
+        if (code == null) {
+            return "";
+        }
+        return switch (code) {
+            case "CANDIDAT" -> "Candidat";
+            case "ADHERENT" -> "Adhérent";
+            case "EN_HOMOLOGATION" -> "En homologation";
+            case "ACTIF" -> "Actif";
+            case "A_REGULARISER" -> "À régulariser";
+            case "SUSPENDU" -> "Suspendu";
+            case "RETIRE" -> "Retiré";
+            case "CLOS_SANS_SUITE" -> "Clos sans suite";
+            default -> code;
+        };
+    }
+
     static String titre(Proposition p) {
         String nom = p.institutionNom() == null || p.institutionNom().isBlank() ? p.institutionId() : p.institutionNom().strip();
         String t = "ADHERENT".equals(p.vers())
             ? "Prononcer l'adhésion : " + nom
-            : "Statuer sur la transition " + p.de() + " vers " + p.vers() + " : " + nom;
+            : "Statuer sur le passage de " + statut(p.de()) + " à " + statut(p.vers()) + " : " + nom;
         return t.length() > ReglesActivite.TITRE_MAX ? t.substring(0, ReglesActivite.TITRE_MAX - 1) + "…" : t;
     }
 
@@ -60,8 +78,8 @@ public class ApprobationsTransitionsService implements ApprobationsTransitionsUs
             ? " Deux approbations de personnes distinctes sont requises."
             : "";
         String d =
-            "Proposition de transition " + p.de() + " vers " + p.vers() + "." + motif + approbations +
-            " Prononcer ou refuser depuis l'onglet Transitions de la fiche de l'institution ; l'auteur de la proposition ne peut pas la prononcer.";
+            "Proposition de passage de " + statut(p.de()) + " à " + statut(p.vers()) + "." + motif + approbations +
+            " Prononcer ou refuser depuis l'onglet Propositions de statut de la fiche de l'institution ; l'auteur de la proposition ne peut pas la prononcer.";
         return d.length() > 2000 ? d.substring(0, 1999) + "…" : d;
     }
 

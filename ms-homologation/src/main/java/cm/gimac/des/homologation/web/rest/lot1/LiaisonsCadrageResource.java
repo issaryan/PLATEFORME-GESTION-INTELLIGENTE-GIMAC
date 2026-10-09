@@ -55,6 +55,8 @@ public class LiaisonsCadrageResource {
     public record LiaisonVue(
         UUID id,
         TypeProjet typeProjet,
+        /** Libellé du type (CER-05) : servi aussi au portail, qui ne lit pas le catalogue des types. */
+        String typeProjetLibelle,
         UUID institutionId,
         String institutionNom,
         EtatLiaison etat,
@@ -87,7 +89,7 @@ public class LiaisonsCadrageResource {
             Liaison l = f.liaison();
             Vues.LiaisonResume r = f.parcours();
             return new LiaisonVue(
-                l.getId(), l.getTypeProjet(), l.getInstitutionId(), l.getInstitutionNom(), l.getEtat(), l.getChefDeProjetId(), f.chefDeProjetNom(),
+                l.getId(), l.getTypeProjet(), l.libelleTypeProjet(), l.getInstitutionId(), l.getInstitutionNom(), l.getEtat(), l.getChefDeProjetId(), f.chefDeProjetNom(),
                 l.getBanquePartenaireId(), f.banquePartenaireNom(), l.getDateOuverture().toString(), l.getMotifEtat(), l.getVersion().getId(),
                 l.getVersion().getNumero(), l.getEtat() == EtatLiaison.OUVERTE ? "CADRAGE" : l.getEtat().name(),
                 r == null ? Couverture.AUCUNE : Couverture.de(r.couvertureCertification()),
@@ -103,7 +105,7 @@ public class LiaisonsCadrageResource {
         static LiaisonVue dePortail(LiaisonQueries.Fiche f) {
             LiaisonVue v = de(f);
             return new LiaisonVue(
-                v.id(), v.typeProjet(), v.institutionId(), v.institutionNom(), v.etat(), null, v.chefDeProjetNom(), null, null, v.dateOuverture(), v.motifEtat(),
+                v.id(), v.typeProjet(), v.typeProjetLibelle(), v.institutionId(), v.institutionNom(), v.etat(), null, v.chefDeProjetNom(), null, null, v.dateOuverture(), v.motifEtat(),
                 v.versionId(), v.versionNumero(), v.phaseCourante(), v.couvertureCertification(), v.couvertureMiseEnService(), v.operationsEnRetard(), v.etatsParcourus(),
                 v.perimetre(), v.intervenants(), List.of(), List.of(), v.reference(), v.statut(), v.etapeCourante(), v.bloquee(), v.prochaineEcheance(), v.dateCibleProduction(), v.liaisonOrigineId()
             );

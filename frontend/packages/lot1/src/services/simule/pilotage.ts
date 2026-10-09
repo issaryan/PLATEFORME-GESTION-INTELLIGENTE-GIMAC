@@ -57,9 +57,10 @@ export const ORGANISATION_DEMO: Membre[] = [
 
 /**
  * Profils des comptes de l'organisation absents de l'annuaire de la messagerie (service des ressources humaines, D-98) : la
- * cheffe du service le dirige par son rattachement (responsable de l'unité), sans profil de démonstration.
+ * cheffe du service le dirige par son rattachement (responsable de l'unité) et porte le profil de responsable de service,
+ * comme dans l'organisation simulée de MS-PILOTAGE (QUO-01 : chacun a son compte de démonstration, profilsDemo.ts).
  */
-export const PROFILS_ORGANISATION_DEMO: Record<string, string[]> = { 'u-rh-chef': [], 'u-rh': ['ROLE_COLLABORATEUR'] }
+export const PROFILS_ORGANISATION_DEMO: Record<string, string[]> = { 'u-rh-chef': ['ROLE_RESPONSABLE_SERVICE'], 'u-rh': ['ROLE_COLLABORATEUR'] }
 
 /** Chaîne des unités, de la plus haute à la plus fine. */
 const cheminDe = (unites: Unite[], code: string | null): Unite[] => {
@@ -96,13 +97,22 @@ export type PontTachesProcessus = {
   terminer(tacheId: string): void
   annuler(tacheId: string): void
   surPrise: ((tacheId: string, personne: PersonneActivite) => void) | null
+  /** Tâche gardée d'une origine (référence), ou null : reprise d'une démonstration sans doublon (QUO-19). */
+  trouver?: (reference: string) => string | null
+  /** Contrôle avant la prise ou l'attribution (D-99, séparation des fonctions) : lève le refus du moteur des processus. */
+  verifierPrise?: ((tacheId: string, personneId: string, attribution: boolean) => void) | null
   /**
    * Offre d'un autre service (D-98 : transition de statut à prononcer, consommée de MS-PARTICIPANT) : à prendre par les
    * porteurs de l'une des permissions, idempotente par origine.reference ; rend l'identifiant de la tâche.
    */
-  offrir(t: { titre: string; description: string | null; createur: string; permissionsRequises: string[]; origine: Tache['origine'] }): string
+  offrir(t: { titre: string; description: string | null; createur: string; permissionsRequises: string[]; origine: Tache['origine']; /** Instant de l'événement d'origine (DDR-15). */ le?: string }): string
   /** Tâches ouvertes d'une origine terminées par le service (transition prononcée ou refusée). */
   terminerOrigine(reference: string): void
+  /**
+   * Démonstration (DDR-20) : tâche ouverte confiée à une personne par un autre, pour la notification de démonstration
+   * (pilotage.task-assigned.v1) qui mène à cette tâche même.
+   */
+  tacheConfiee(responsableId: string): { id: string; titre: string; createur: PersonneActivite } | null
 }
 
 /** Durée d'une étape du dépôt simulé d'un document de rapport (dix étapes d'envoi, une de vérification). */
@@ -113,8 +123,10 @@ type EtatTacheSim = Required<Tache>
 type EtatRapport = Rapport & { documentBlob?: Blob }
 
 export function pilotageSimule(
-  attendre: Attendre, refus: Refus, utilisateur: { id: string; nom: string } = { id: 'U-001', nom: 'Paul Mbarga Atangana' }, magasin: MagasinPouvoirs = magasinPouvoirs(),
+  attendreJeu: Attendre, refus: Refus, utilisateur: { id: string; nom: string } = { id: 'U-001', nom: 'Paul Mbarga Atangana' }, magasin: MagasinPouvoirs = magasinPouvoirs(),
   relier?: (pont: PontTachesProcessus) => void,
+  /** DDR-09 : démonstration continue, tâches gardées d'un chargement à l'autre (changement d'acteur). */
+  persistance?: { lire(): string | null; ecrire(valeur: string): void },
 ): ServicePilotage {
   // Catalogue des unités avec leur responsable (D-81 §2), partagé avec le magasin des pouvoirs.
   const unites = magasin.unites
@@ -202,7 +214,9 @@ export function pilotageSimule(
     if (i % 2 === 0) activite(m.id, jour, 'Répondre aux courriels en attente', 'A_FAIRE', null)
     activite(m.id, demain, 'Préparer la revue hebdomadaire', 'A_FAIRE', null)
     // Tâches : une confiée par le responsable, une issue d'un autre service (en retard), une terminée.
-    tache(m.id, resp ?? m.id, 'Mettre à jour la fiche de procédure du service', 'OUVERTE', ajouterJours(jour, 3), { description: 'Intégrer les changements de la note de service de septembre.' })
+    // DDR-21 : un responsable d'équipe a sa propre fiche (celle de l'unité), distincte de celle qu'il confie à ses membres.
+    const chefEquipe = organisation.some((x) => x.responsableId === m.id)
+    tache(m.id, resp ?? m.id, chefEquipe ? 'Mettre à jour la fiche de procédure de l’unité' : 'Mettre à jour la fiche de procédure du service', 'OUVERTE', ajouterJours(jour, 3), { description: 'Intégrer les changements de la note de service de septembre.' })
     if (i % 2 === 0) {
       tache(m.id, resp ?? m.id, 'Compléter les preuves de l’opération OP-E05 de LIA-2026-030', 'EN_COURS', hier, {
         priorite: 'HAUTE', origine: { type: 'OPERATION', reference: 'LIA-2026-030:OP-E05', service: 'homologation', lien: '/des/parcours/LIA-2026-030' },
@@ -261,6 +275,30 @@ export function pilotageSimule(
   const hote = responsableDe(moi.id) ?? organisation.find((m) => m.id !== moi.id)!.id
   evenement(hote, 'Comité de pilotage des liaisons', 'REUNION', instant(demain, '15:00'), instant(demain, '16:30'), [[moi.id, 'EN_ATTENTE']], { lieu: 'Salle du conseil', description: 'Arbitrages du trimestre.' })
 
+  // DDR-09 : démonstration continue, tâches (créées, confiées, prises, offertes par les services) relues du stockage, et
+  // compteur des identifiants repris après le plus grand, pour qu'un identifiant ne soit jamais réattribué.
+  try {
+    const garde = persistance?.lire()
+    if (garde) {
+      taches.splice(0, taches.length, ...(JSON.parse(garde) as EtatTacheSim[]))
+      for (const m of garde.matchAll(/"[A-Z]{3}-(\d+)"/g)) sequence = Math.max(sequence, Number(m[1]))
+    }
+  } catch {
+    // État illisible : jeu initial.
+  }
+  const sauver = () => {
+    try {
+      persistance?.ecrire(JSON.stringify(taches))
+    } catch {
+      // Stockage indisponible : la démonstration continue en mémoire.
+    }
+  }
+  const attendre = (<T,>(v: T | (() => T)) => attendreJeu(() => {
+    const r = typeof v === 'function' ? (v as () => T)() : v
+    sauver()
+    return r
+  })) as Attendre
+
   // ---------------------------------------------------------------- règles imitées
   const ouverte = (t: Tache) => t.etat !== 'TERMINEE' && t.etat !== 'ANNULEE'
   const vueTache = (t: EtatTacheSim): Tache => ({ ...t, enRetard: ouverte(t) && !!t.echeance && t.echeance < aujourdhui() })
@@ -278,7 +316,9 @@ export function pilotageSimule(
   const portePermission = (t: Tache) => !t.permissionsRequises?.length || t.permissionsRequises.some((p) => mesPermissions().includes(p))
   const porteProfils = (t: Tache) => !t.profilsRequis?.length || t.profilsRequis.some((p) => magasin.profilsDe(moi.id).includes(p))
   const offre = (t: Tache) => !!t.permissionsRequises?.length || !!t.profilsRequis?.length
+  // D-99 : l'étape à prendre d'une demande n'est pas offerte à son initiateur (créateur de la tâche), comme MS-PILOTAGE.
   const aPrendreVisible = (t: Tache) => t.etat === 'A_PRENDRE' && (t.uniteCible ? unitesVisibles().has(t.uniteCible) : offre(t) || !!t.profilRequis) && porteProfil(t) && portePermission(t) && porteProfils(t)
+    && !(t.origine.type === 'PROCESSUS' && t.createur.id === moi.id)
   const trouverTache = (tid: string) => {
     const t = taches.find((x) => x.id === tid)
     const r = t?.responsable?.id
@@ -314,15 +354,31 @@ export function pilotageSimule(
     offrir: (x) => {
       const existante = taches.find((t) => t.origine.reference === x.origine.reference && offre(t))
       if (existante) return existante.id
+      // DDR-15 : créée à l'instant de l'événement d'origine (la proposition), non à celui de sa consommation.
+      const le = x.le ?? maintenant()
       const t = tache(null, x.createur, x.titre, 'A_PRENDRE', null, {
-        description: x.description, priorite: 'HAUTE', permissionsRequises: x.permissionsRequises, aPrendre: true, creeeLe: maintenant(), historique: [], origine: x.origine,
+        description: x.description, priorite: 'HAUTE', permissionsRequises: x.permissionsRequises, aPrendre: true, creeeLe: le, historique: [], origine: x.origine,
       })
-      t.historique.push({ quand: maintenant(), acteur: personne(x.createur), action: 'CREEE', detail: `Créée par le service ${x.origine.service ?? ''}`.trim() })
+      t.historique.push({ quand: le, acteur: personne(x.createur), action: 'CREEE', detail: `Créée par le service ${x.origine.service ?? ''}`.trim() })
       return t.id
+    },
+    tacheConfiee: (responsableId) => {
+      const t = taches.find((x) => x.responsable?.id === responsableId && x.createur.id !== responsableId && ouverte(x) && x.origine.type === 'INTERNE')
+      return t ? { id: t.id, titre: t.titre, createur: t.createur } : null
     },
     terminerOrigine: (reference) => {
       taches.filter((t) => t.origine.reference === reference && ouverte(t)).forEach((t) => Object.assign(t, { etat: 'TERMINEE', aPrendre: false, termineeLe: maintenant() }))
     },
+    trouver: (reference) => taches.find((t) => t.origine.type === 'PROCESSUS' && t.origine.reference === reference)?.id ?? null,
+  }
+  // Effets des autres services (processus, décisions) gardés eux aussi.
+  for (const cle of ['creer', 'affecter', 'terminer', 'annuler', 'offrir', 'terminerOrigine'] as const) {
+    const effet = pont[cle] as (...a: unknown[]) => unknown
+    ;(pont as unknown as Record<string, unknown>)[cle] = (...a: unknown[]) => {
+      const r = effet(...a)
+      sauver()
+      return r
+    }
   }
   relier?.(pont)
   const deProcessus = (t: Tache) => t.origine.type === 'PROCESSUS'
@@ -380,20 +436,22 @@ export function pilotageSimule(
     return [
       `## Réalisé\n${liste(l.filter((a) => a.statut === 'FAITE').map((a) => `${a.titre}${duree(a.dureeMinutes)}`))}`,
       `## En cours\n${liste(l.filter((a) => a.statut === 'EN_COURS').map((a) => a.titre))}`,
-      `## Reporté\n${liste(l.filter((a) => a.statut === 'REPORTEE').map((a) => `${a.titre}${a.reporteeAu ? ` (au ${a.reporteeAu})` : ''}`))}`,
+      `## Reporté\n${liste(l.filter((a) => a.statut === 'REPORTEE').map((a) => `${a.titre}${a.reporteeAu ? ` (reporté au ${jourLong(a.reporteeAu)})` : ''}`))}`,
       `## Tâches terminées\n${liste(terminees.map((t) => t.titre))}`,
     ]
   }
+  // QUO-18 : dates du texte prérempli au format local, comme RedactionRapport de MS-PILOTAGE (« jeudi 8 octobre 2026 »).
+  const jourLong = (j: string) => new Date(`${j}T12:00:00`).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
   const preremplissage = (type: TypeRapport, periode: string) => {
     if (type === 'QUOTIDIEN') {
       const suivant = jourOuvreSuivant(periode)
       const prevu = trier(minutesDuJour(moi.id, suivant, suivant)).map((a) => `- ${a.titre}`)
-      return [`# Rapport quotidien du ${periode}`, ...rubriques(periode, periode), `## Prévu demain\n${prevu.length ? prevu.join('\n') : '- Néant'}`].join('\n\n')
+      return [`# Rapport quotidien du ${jourLong(periode)}`, ...rubriques(periode, periode), `## Prévu demain (${jourLong(suivant)})\n${prevu.length ? prevu.join('\n') : '- Néant'}`].join('\n\n')
     }
     const [du] = bornes(type, periode)
     const jours = Array.from({ length: 5 }, (_, i) => ajouterJours(du, i))
     const total = minutesDuJour(moi.id, du, ajouterJours(du, 6)).reduce((s, a) => s + (a.dureeMinutes ?? 0), 0)
-    return [`# Rapport hebdomadaire de la semaine ${periode}`, ...jours.map((j) => `### ${j}\n\n${rubriques(j, j).join('\n\n')}`), `## Total des heures\n- ${Math.floor(total / 60)} h ${String(total % 60).padStart(2, '0')}`].join('\n\n')
+    return [`# Rapport hebdomadaire de la semaine ${periode}`, ...jours.map((j) => `### ${jourLong(j).replace(/^./, (c) => c.toUpperCase())}\n\n${rubriques(j, j).join('\n\n')}`), `## Total des heures\n- ${Math.floor(total / 60)} h ${String(total % 60).padStart(2, '0')}`].join('\n\n')
   }
   const futur = (type: TypeRapport, periode: string) => (type === 'QUOTIDIEN' ? periode > aujourdhui() : periode > semaineIso(aujourdhui()))
   const trouverRapport = (rid: string) => {
@@ -553,6 +611,8 @@ export function pilotageSimule(
       const autorise = t.responsable?.id === moi.id || (etat === 'ANNULEE' && t.createur.id === moi.id)
       if (!autorise || !TRANSITIONS_TACHE[t.etat].includes(etat)) throw refus(409, 'PIL_TRANSITION_INTERDITE', 'Transition non permise.')
       if (deProcessus(t) && (etat === 'TERMINEE' || etat === 'ANNULEE')) throw refus(409, 'PIL_TACHE_PROCESSUS', 'La tâche suit l’étape de son processus.')
+      // DDR-28 : comme MS-PILOTAGE, la tâche d'une décision se clôt quand le service prononce ou refuse.
+      if (t.origine.type === 'DECISION' && (etat === 'TERMINEE' || etat === 'ANNULEE')) throw refus(409, 'PIL_TACHE_DECISION', 'La tâche d’une décision se clôt quand le service prononce ou refuse la proposition.')
       if (motifExige(t.etat, etat) && !motif?.trim()) throw refus(422, 'PIL_MOTIF_OBLIGATOIRE', 'Motif obligatoire.')
       t.historique.push({ quand: maintenant(), acteur: moi, action: 'TRANSITION', detail: `${t.etat} → ${etat}${motif?.trim() ? ` : ${motif.trim()}` : ''}` })
       Object.assign(t, { etat, termineeLe: etat === 'TERMINEE' ? maintenant() : null })
@@ -566,6 +626,7 @@ export function pilotageSimule(
       if (t.uniteCible && (!mienne || !magasin.sousUnites(t.uniteCible).includes(mienne))) throw refus(403, 'PIL_HORS_EQUIPE', 'Vous n’êtes pas membre de cette unité.')
       if (!porteProfil(t) || !porteProfils(t)) throw refus(403, 'PIL_PROFIL_REQUIS', 'Seuls les porteurs du profil requis prennent cette tâche.')
       if (!portePermission(t)) throw refus(403, 'PIL_PERMISSION_REQUISE', 'Seuls les porteurs de la permission requise prennent cette tâche.')
+      pont.verifierPrise?.(t.id, moi.id, false)
       Object.assign(t, { responsable: moi, etat: 'OUVERTE', aPrendre: false })
       t.historique.push({ quand: maintenant(), acteur: moi, action: 'PRISE', detail: null })
       pont.surPrise?.(t.id, moi)
@@ -578,6 +639,7 @@ export function pilotageSimule(
       const unite = membreDe(responsableId)
       if (!unite || !magasin.sousUnites(t.uniteCible!).includes(unite)) throw refus(422, 'PIL_RESPONSABLE_INVALIDE', 'Le responsable doit être membre de l’unité.')
       if (!confiable(responsableId)) throw refus(403, 'PIL_HORS_EQUIPE', 'Ce compte n’est pas dans votre périmètre.')
+      pont.verifierPrise?.(t.id, responsableId, true)
       Object.assign(t, { responsable: personne(responsableId), etat: 'OUVERTE' })
       t.historique.push({ quand: maintenant(), acteur: moi, action: 'ATTRIBUEE', detail: `À ${personne(responsableId).nomAffiche}` })
       pont.surPrise?.(t.id, personne(responsableId))

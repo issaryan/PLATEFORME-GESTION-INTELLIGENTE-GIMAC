@@ -124,7 +124,15 @@ describe('descripteur transition', () => {
     expect(action<TransitionStatut>(d, 'approuver').isAllowed!(transition())).toBe(true)
     expect(action<TransitionStatut>(d, 'approuver').isAllowed!(transition({ etat: 'APPROUVEE' }))).toBe(false)
     expect(action<TransitionStatut>(d, 'rejeter').isAllowed!(transition({ etat: 'REJETEE' }))).toBe(false)
-    expect(action<TransitionStatut>(d, 'approuver').sign!.empreinte(transition())).toBe('t1')
+    // DDR-26 : empreinte SHA-256 de la proposition signée, jamais son identifiant.
+    expect(action<TransitionStatut>(d, 'approuver').sign!.empreinte(transition())).toMatch(/^[0-9a-f]{64}$/)
+    expect(action<TransitionStatut>(d, 'approuver').sign!.empreinte(transition({ motif: 'autre' }))).not.toBe(action<TransitionStatut>(d, 'approuver').sign!.empreinte(transition()))
+    // DDR-01 : ni le proposant ni le premier approbateur ne tranchent.
+    const moi = creerTransitionDescriptor({ t, moi: 'u-1' })
+    expect(action<TransitionStatut>(moi, 'approuver').isAllowed!(transition({ demandeurId: 'u-1' }))).toBe(false)
+    expect(action<TransitionStatut>(moi, 'rejeter').isAllowed!(transition({ demandeurId: 'u-1' }))).toBe(false)
+    expect(action<TransitionStatut>(moi, 'approuver').isAllowed!(transition({ demandeurId: 'u-2', approbateurId: 'u-1' }))).toBe(false)
+    expect(action<TransitionStatut>(moi, 'approuver').isAllowed!(transition({ demandeurId: 'u-2' }))).toBe(true)
     const { ctx, participant } = contexte(transition(), { assertion: 'a', motif: 'non' })
     await action<TransitionStatut>(d, 'approuver').run(ctx)
     await action<TransitionStatut>(d, 'rejeter').run(ctx)

@@ -52,7 +52,9 @@ describe('Référentiel simulé : version 1 de l\'annexe A', () => {
     expect(n('C2').successeurs).toEqual(['C3', 'C4', 'C9'])
     const b = calculerGraphe(versions[1], operations['REF-CI-4'])
     expect(b.noeuds.find((x) => x.code === 'C11')!.anomalies).toEqual(['VALIDATEUR_ABSENT'])
-    expect(b.manquants).toEqual([{ code: 'C11', attributs: ['validateur'] }])
+    // Attributs du service (ReferentialCompletenessChecker) : dérivés de l'étape, rien ne manque ; le validateur absent est une anomalie.
+    expect(b.manquants).toEqual([])
+    expect(b.anomalies.map((a) => a.type)).toEqual(['VALIDATEUR_ABSENT'])
   })
   it('anomalies : cycle, prédécesseur inconnu, segment, rôles, déclencheur, jalons, livrables, secret, sans entrée', () => {
     const r = controlerGraphe([
@@ -61,7 +63,7 @@ describe('Référentiel simulé : version 1 de l\'annexe A', () => {
         livrables: [{ code: 'L', libelle: 'l', nature: 'LIVRABLE', deposant: 'SNA', typesPieces: [], obligatoire: true }, { code: 'L', libelle: 'l', nature: 'PREUVE', deposant: 'SNA', typesPieces: [], obligatoire: true }] }),
       op('D', [], { jalon: 'CERTIFIEE' }), op('A', []),
     ])
-    expect(r.anomalies.map((a) => a.type).sort()).toEqual(['CODE_DUPLIQUE', 'DECLENCHEUR_INCONNU', 'JALON_DESORDONNE', 'JALON_DUPLIQUE', 'LIVRABLE_DUPLIQUE', 'PREDECESSEUR_INCONNU',
+    expect(r.anomalies.map((a) => a.type).sort()).toEqual(['CODE_DUPLIQUE', 'DECLENCHEUR_INCONNU', 'GESTE_CERTIFICATION_ABSENT', 'JALON_DESORDONNE', 'JALON_DUPLIQUE', 'LIVRABLE_DUPLIQUE', 'PREDECESSEUR_INCONNU',
       'RESPONSABLE_ABSENT', 'SECRET_AVEC_VALEUR', 'SEGMENT_INCOHERENT', 'VALIDATEUR_ABSENT', 'VALIDATEUR_EGAL_RESPONSABLE'].sort())
     const cycle = controleDe([op('X', ['Z']), op('Y', ['X']), op('Z', ['Y'])])
     expect(cycle.acyclique).toBe(false)

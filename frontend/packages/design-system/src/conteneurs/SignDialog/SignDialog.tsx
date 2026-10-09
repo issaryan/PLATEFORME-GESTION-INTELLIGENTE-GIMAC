@@ -4,7 +4,7 @@ import { TextArea } from '../../saisie/TextArea/TextArea'
 import { Button } from '../../actions/Button/Button'
 import { KeyValueList } from '../../affichage/KeyValueList/KeyValueList'
 import { Hash } from '../../affichage/Hash/Hash'
-import { SignatureField } from '../../saisie/SignatureField/SignatureField'
+import { SignatureField, type EtatBlocSignature } from '../../saisie/SignatureField/SignatureField'
 import { InlineAlert } from '../InlineAlert/InlineAlert'
 import { CrudDialog } from '../CrudDialog/CrudDialog'
 import { useLibelle } from '../../i18n/LangueProvider'
@@ -15,7 +15,8 @@ export interface SignDialogProps {
   action?: string
   /** Empreinte de ce qui sera signé. */
   hash: string
-  state?: 'idle' | 'waiting' | 'done' | 'error'
+  /** refused : la clé a répondu mais le service a refusé l'acte ; son message (error) et son code (errorCode) sont affichés. */
+  state?: EtatBlocSignature
   object?: KeyValueItem[]
   description?: string
   result?: string
@@ -31,6 +32,10 @@ export interface SignDialogProps {
   onSign?: (motif: string) => void
   /** Message d'erreur affiché dans le dialogue (InlineAlert critique). */
   error?: string
+  /** Code du refus du service (problème RFC 9457), rappelé sous le message. */
+  errorCode?: string
+  /** Détail du refus tel que le service l'a rédigé, quand il diffère du message. */
+  errorDetail?: string
   /** Contenu complémentaire, rendu sous le rappel de l'objet. */
   extra?: ReactNode
 }
@@ -53,7 +58,7 @@ export function SignDialog(p: SignDialogProps) {
       onClose={() => p.onClose?.()}
       title={p.title}
       description={p.description || t('sign.description')}
-      cancelLabel={st === 'done' ? t('commun.fermer') : t('commun.annuler')}
+      cancelLabel={st === 'done' || st === 'refused' ? t('commun.fermer') : t('commun.annuler')}
       extraActions={st === 'done' ? <Button variant="primary" onClick={p.onDone}>{p.doneLabel || t('sign.continuer')}</Button> : undefined}
     >
       {p.object ? <div className="gm-panel"><KeyValueList items={p.object} /></div> : null}
@@ -71,7 +76,12 @@ export function SignDialog(p: SignDialogProps) {
         disabled={!motifOk}
         disabledReason={motifOk ? undefined : t('confirm.motifObligatoire')}
       />
-      {p.error ? <InlineAlert level="crit" title={p.error} /> : null}
+      {p.error ? (
+        <InlineAlert level="crit" title={p.error}>
+          {p.errorDetail && p.errorDetail !== p.error ? <div>{p.errorDetail}</div> : null}
+          {p.errorCode ? <div className="gm-mono gm-type-small">{t('sign.codeService', { code: p.errorCode })}</div> : null}
+        </InlineAlert>
+      ) : null}
       {st === 'done' && p.result ? <InlineAlert level="info" title={t('sign.resultat')}>{p.result}</InlineAlert> : null}
     </CrudDialog>
   )

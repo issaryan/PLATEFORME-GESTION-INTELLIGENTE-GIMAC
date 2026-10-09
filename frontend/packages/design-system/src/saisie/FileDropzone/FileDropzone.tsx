@@ -7,6 +7,33 @@ import { MaskingResult, type MaskingResultProps } from '../../affichage/MaskingR
 import { useFieldId2 } from '../../lib/useFieldId2'
 import type { BaseProps } from '../../lib/types'
 import { useLibelle } from '../../i18n/LangueProvider'
+import type { CleLibelle } from '../../i18n/libelles'
+
+const FAMILLES = ['image', 'text', 'audio', 'video']
+
+/** Noms courts des types de fichier les plus courants (QUO-07 : jamais le type MIME brut à l'écran). */
+const NOMS_TYPES: Record<string, string> = {
+  'application/pdf': 'PDF', 'image/png': 'PNG', 'image/jpeg': 'JPEG', 'image/gif': 'GIF', 'image/webp': 'WebP', 'image/svg+xml': 'SVG', 'text/plain': 'TXT', 'text/csv': 'CSV',
+  'application/zip': 'ZIP', 'application/json': 'JSON', 'application/xml': 'XML', 'text/xml': 'XML', 'application/msword': 'Word', 'application/vnd.ms-excel': 'Excel', 'application/vnd.ms-powerpoint': 'PowerPoint',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'Word', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'Excel',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'PowerPoint', 'application/vnd.oasis.opendocument.text': 'ODT',
+  'application/vnd.oasis.opendocument.spreadsheet': 'ODS', 'application/vnd.oasis.opendocument.presentation': 'ODP',
+}
+
+/**
+ * Types admis lisibles (« application/pdf,image/* » → « PDF, images ») : nom court connu, famille entière (« images »,
+ * « textes »…) traduite par {@code familles}, extension en majuscules, à défaut le sous-type en majuscules.
+ */
+export function typesLisibles(accept: string | readonly string[] | null | undefined, familles: (famille: string) => string = (f) => f): string {
+  const l = (typeof accept === 'string' ? accept.split(',') : accept ?? []).map((x) => x.trim().toLowerCase()).filter(Boolean)
+  return [...new Set(l.map((x) => {
+    if (NOMS_TYPES[x]) return NOMS_TYPES[x]
+    if (x.endsWith('/*')) return familles(x.slice(0, -2))
+    if (x.startsWith('.')) return x.slice(1).toUpperCase()
+    const sous = x.split('/')[1] ?? x
+    return sous.replace(/^(x-|vnd\.)/, '').split(/[.+]/)[0].toUpperCase()
+  }))].join(', ')
+}
 
 export interface FileDropzoneProps extends BaseProps {
   id?: string
@@ -53,7 +80,7 @@ export function FileDropzone(p: FileDropzoneProps) {
           <strong>{t('fichier.deposez')}</strong> {t('fichier.ou')} <span className="gm-link">{t('fichier.parcourez')}</span>
         </div>
         <div className="gm-field-help" id={id + '-help'}>
-          {t('fichier.types', { types: p.accept || 'PDF, PNG, JPEG', taille: p.maxSize || t('fichier.tailleDefaut') })}
+          {t('fichier.types', { types: p.accept ? typesLisibles(p.accept, (f) => (FAMILLES.includes(f) ? t(`fichier.famille.${f}` as CleLibelle) : f)) : 'PDF, PNG, JPEG', taille: p.maxSize || t('fichier.tailleDefaut') })}
         </div>
       </div>
       {p.file ? (

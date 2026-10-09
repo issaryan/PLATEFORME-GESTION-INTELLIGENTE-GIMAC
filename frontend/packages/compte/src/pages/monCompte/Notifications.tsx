@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useLocation } from 'react-router'
 import { Button, Card, InlineAlert, Note, Skeleton, StatusBadge, Switch } from '@gimac/design-system'
 import {
-  TYPES_NOTIFICATION, demanderNotificationSysteme, etatNotificationSysteme, useEnregistrerPreferencesNotifications, useNotificationsDisponibles, usePreferencesNotifications,
+  demanderNotificationSysteme, etatNotificationSysteme, typeNotificationPermis, typesNotificationDe, useContexteNotifications, usePermissions, useEnregistrerPreferencesNotifications, useNotificationsDisponibles, usePreferencesNotifications,
   type EtatSysteme, type PreferencesNotifications,
 } from '@gimac/socle'
 import { Annonce, type Retour } from '../../composants/Annonce'
@@ -48,16 +48,21 @@ function Preferences({ p }: { p: PreferencesNotifications }) {
     void demanderNotificationSysteme().then(setEtat, () => setEtat(etatNotificationSysteme())).finally(() => setDemande(false))
   }
   const indisponible = etat === 'https' || etat === 'absente'
+  // Types proposés dans la couche : au portail, le parcours des liaisons seulement (comme MS-NOTIFICATION).
+  const couche = useContexteNotifications()?.couche
+  // QUO-08 : dans les couches internes, seuls les types qui peuvent concerner le compte (selon ses permissions).
+  const permissions = usePermissions()
+  const types = typesNotificationDe(couche).filter((type) => couche === 'portail' || !permissions || typeNotificationPermis(type, permissions))
   return (
     <div className="gm-col">
       <div className="gm-col" role="group" aria-label={t('compte.notifications.types')} style={{ gap: 'var(--gm-space-2)' }}>
         <strong>{t('compte.notifications.types')}</strong>
         {/* Un service antérieur ne renvoie ni MENTION, REPONSE (D-82), DEMANDE (D-81) ni PROCESSUS (D-87) : actifs par défaut, comme le contrat. */}
-        {TYPES_NOTIFICATION.map((type) => (
+        {types.map((type) => (
           <Switch key={type} label={t(`compte.notifications.type.${type}`)} checked={p.types[type] ?? true} disabled={enregistrer.isPending}
             onChange={(v) => changer({ types: { ...p.types, [type]: v } })} />
         ))}
-        <span className="gm-field-help">{t('compte.notifications.types.aide')}</span>
+        <span className="gm-field-help">{t(types.length < 2 ? 'compte.notifications.types.aidePortail' : 'compte.notifications.types.aide')}</span>
       </div>
       <div className="gm-col" role="group" aria-label={t('compte.notifications.alertes')} style={{ gap: 'var(--gm-space-2)' }}>
         <strong>{t('compte.notifications.alertes')}</strong>

@@ -44,7 +44,7 @@ class ApprobationsTransitionsServiceTest {
         verify(taches).creerPourService(eq("participant-service"), t.capture());
         TacheInterne d = t.getValue();
         assertThat(d.titre()).isEqualTo("Prononcer l'adhésion : Banque B");
-        assertThat(d.description()).contains("CANDIDAT vers ADHERENT", "Motif : Dossier complet.", "onglet Transitions").doesNotContain("Deux approbations");
+        assertThat(d.description()).contains("passage de Candidat à Adhérent", "Motif : Dossier complet.", "onglet Propositions de statut").doesNotContain("CANDIDAT", "ADHERENT").doesNotContain("Deux approbations");
         assertThat(d.priorite()).isEqualTo("HAUTE");
         assertThat(d.responsableId()).isNull();
         assertThat(d.createurId()).isEqualTo("charge");
@@ -61,7 +61,7 @@ class ApprobationsTransitionsServiceTest {
         assertThat(service.proposee(new Proposition("i-2", "t-2", "SUSPENDU", "ACTIF", " ", "charge", 2, null, "https://ailleurs.example/x"))).isFalse();
         ArgumentCaptor<TacheInterne> t = ArgumentCaptor.forClass(TacheInterne.class);
         verify(taches).creerPourService(any(), t.capture());
-        assertThat(t.getValue().titre()).isEqualTo("Statuer sur la transition SUSPENDU vers ACTIF : i-2");
+        assertThat(t.getValue().titre()).isEqualTo("Statuer sur le passage de Suspendu à Actif : i-2");
         assertThat(t.getValue().description()).contains("Deux approbations").doesNotContain("Motif");
         assertThat(t.getValue().origine().lien()).isEqualTo("/des/institutions/i-2?onglet=transitions");
         assertThat(ApprobationsTransitionsService.lien(null, "i-3")).isEqualTo("/des/institutions/i-3?onglet=transitions");

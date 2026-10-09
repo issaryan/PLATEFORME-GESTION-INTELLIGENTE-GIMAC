@@ -227,6 +227,15 @@ for (const theme of ['light', 'dark'] as const) {
     test('Scénario : étiquette « Prédécesseurs » du modélisateur, libellé long tronqué (D-77)', async ({ page }) => {
       await demo(page, { profil: 'ROLE_INGENIEUR_HOMOLOGATION', theme })
       await page.goto(`${ADRESSES.departement}/des/referentiels/operations?version=REF-CI-4`)
+      // Cadrage du canevas à l'ouverture (HOM-18) en deux temps : la vue est posée avant de viser une carte.
+      const vue = page.locator('.react-flow__viewport')
+      let precedente: string | null = null
+      await expect.poll(async () => {
+        const style = await vue.getAttribute('style')
+        const posee = style !== null && style === precedente
+        precedente = style
+        return posee
+      }, { intervals: [400] }).toBe(true)
       await page.locator('.react-flow__node[data-id="C11"]').getByRole('button', { name: 'Modifier l\'opération C11' }).click()
       const d = page.getByRole('dialog', { name: 'Opération C11' })
       await d.getByRole('tab', { name: 'Chronologie' }).click()

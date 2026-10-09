@@ -1,8 +1,9 @@
 import { useTranslation } from 'react-i18next'
-import { Checkbox, DateField, FileDropzone, KeyValueList, NumberField, Select, TextArea, TextField } from '@gimac/design-system'
+import { Checkbox, DateField, FileDropzone, KeyValueList, NumberField, Select, TextArea, TextField, typesLisibles } from '@gimac/design-system'
 import { LIMITES_FORMULAIRE, type ChampFormulaire, type Lancement, type PieceJointe, type ValeurChampFormulaire } from '../../../modele/processus'
 import { depuisSaisie, versSaisie } from '../../../modele/jours'
 import { useDates } from '../activite/communs'
+import { DocumentProcessus, useTypesLisibles } from './DocumentProcessus'
 
 // Formulaire de lancement d'un processus (D-98 §2, docs/lot1/lancement-processus.md) : champs typés en données dans la
 // définition (texte, texte long, nombre, date, période, liste, case, pièce jointe), saisis par l'initiateur, contrôlés au
@@ -35,7 +36,7 @@ export function erreursFormulaire(champs: ChampFormulaire[], s: SaisieFormulaire
         if (!debut || !fin) return [c.code, t('dem.erreur.periode')]
         return [c.code, fin < debut ? t('dem.erreur.periodeOrdre') : undefined]
       }
-      case 'PIECE_JOINTE': return [c.code, v instanceof File && !typeAdmis(c.typesPieces, v) ? t('dem.erreur.typePiece', { types: c.typesPieces.join(', ') }) : undefined]
+      case 'PIECE_JOINTE': return [c.code, v instanceof File && !typeAdmis(c.typesPieces, v) ? t('dem.erreur.typePiece', { types: typesLisibles(c.typesPieces, (f) => t(`proc.types.${f}`, { defaultValue: f })) }) : undefined]
       default: return [c.code, undefined]
     }
   }))
@@ -68,6 +69,7 @@ export function ChampsFormulaire({ champs, valeurs, onChange, erreurs }: {
   champs: ChampFormulaire[]; valeurs: SaisieFormulaire; onChange: (code: string, v: SaisieChamp) => void; erreurs: Record<string, string | undefined>
 }) {
   const { t } = useTranslation()
+  const types = useTypesLisibles()
   return (
     <div className="gm-form-grid gm-mod-grille" data-testid="formulaire-lancement">
       {champs.map((c) => {
@@ -108,7 +110,7 @@ export function ChampsFormulaire({ champs, valeurs, onChange, erreurs }: {
           case 'PIECE_JOINTE': {
             const f = v instanceof File ? v : null
             champ = (
-              <FileDropzone {...commun} accept={c.typesPieces.join(',') || undefined} help={[c.aide, c.typesPieces.length ? t('proc.suivi.types', { types: c.typesPieces.join(', ') }) : null].filter(Boolean).join(' ') || undefined}
+              <FileDropzone {...commun} accept={c.typesPieces.join(',') || undefined} help={[c.aide, c.typesPieces.length ? t('proc.suivi.types', { types: types(c.typesPieces) }) : null].filter(Boolean).join(' ') || undefined}
                 file={f ? { name: f.name, size: taille(f.size) } : undefined} state={f ? 'done' : 'idle'} onFile={(x) => onChange(c.code, x)} onRemove={() => onChange(c.code, null)} />
             )
             break
@@ -146,7 +148,12 @@ export function useValeurLisible() {
 }
 
 /** Valeurs du formulaire de lancement en lecture (instance, à chaque étape). */
-export function ValeursFormulaire({ valeurs }: { valeurs: ValeurChampFormulaire[] }) {
+export function ValeursFormulaire({ valeurs, instanceId }: { valeurs: ValeurChampFormulaire[]; /** QUO-04 : pièce jointe ouverte en aperçu et téléchargeable. */ instanceId?: string }) {
   const lisible = useValeurLisible()
-  return <KeyValueList items={valeurs.map((c) => ({ key: c.libelle, value: lisible(c), mono: c.type === 'PIECE_JOINTE' }))} />
+  return (
+    <KeyValueList items={valeurs.map((c) => {
+      const p = c.type === 'PIECE_JOINTE' && c.valeur && typeof c.valeur === 'object' && 'documentId' in c.valeur ? c.valeur as PieceJointe : null
+      return { key: c.libelle, value: p && instanceId ? <DocumentProcessus instanceId={instanceId} documentId={p.documentId} nom={p.nomFichier} typeMime={p.typeMime} taille={p.taille} /> : lisible(c) }
+    })} />
+  )
 }

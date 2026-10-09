@@ -19,6 +19,11 @@ async function capturer(page: Page, nom: string) {
   await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished.catch(() => undefined))))
   await page.screenshot({ path: join(CAPTURES, `${nom}.png`) })
 }
+/** Démonstration continue (D-98) : l'acteur change par la session de démonstration, sur le même état. */
+async function acteur(page: Page, role: string, adresse: string) {
+  await page.evaluate((r) => sessionStorage.setItem('gm.sessionDemo', JSON.stringify({ identifiant: '', role: r })), role)
+  await page.goto(adresse)
+}
 const nav = (page: Page) => page.getByRole('navigation', { name: 'Navigation principale' })
 /** Navigation interne sans rechargement (l'état des services simulés vit dans la page). */
 async function allerSansRecharger(page: Page, chemin: string) {
@@ -180,14 +185,29 @@ for (const theme of ['light', 'dark'] as const) {
     })
 
     test('Scénario : le conducteur renvoie une preuve avec son motif, puis affecte une fonction à affecter', async ({ page }) => {
-      await demo(page, { profil: 'ROLE_CONDUCTEUR_PROJET', theme })
-      await page.goto(`${ADRESSES.departement}${cheminDossier('LIA-2026-005', 'operations', '28')}`)
-      await test.step('Quand il dépose la trace de l’opération 28 puis la renvoie avec un motif', async () => {
-        const t = tiroir(page, '28')
+      // DDR-05 : la trace se dépose par le responsable (R, pôle système) ; le conducteur désigné de la liaison (V) la renvoie.
+      // LIA-2026-005 est d'abord confiée, motif à l'appui, au conducteur de la démonstration (démonstration continue, D-98).
+      await demo(page, { theme })
+      await page.addInitScript(() => localStorage.setItem('gm.demoContinue', '1'))
+      const operation = `${ADRESSES.departement}${cheminDossier('LIA-2026-005', 'operations', '28')}`
+      await page.goto(`${ADRESSES.departement}/des/tableau-de-bord`)
+      await acteur(page, 'ROLE_CHEF_DDRM', `${ADRESSES.departement}${cheminDossier('LIA-2026-005')}`)
+      await page.getByRole('button', { name: 'Redésigner le conducteur' }).click()
+      const redesignation = page.getByRole('dialog')
+      await redesignation.getByLabel(/Conducteur désigné/).selectOption('U-COND-1')
+      await redesignation.getByLabel(/Motif de la redésignation/).fill('Reprise de la liaison dans le portefeuille du conducteur')
+      await redesignation.getByRole('button', { name: 'Redésigner le conducteur' }).click()
+      await expect(page.getByRole('dialog')).toHaveCount(0)
+      await test.step('Quand le pôle système dépose la trace de l’opération 28 et que le conducteur la renvoie avec un motif', async () => {
+        await acteur(page, 'ROLE_POLE_SYSTEME', operation)
+        let t = tiroir(page, '28')
         await t.getByRole('button', { name: 'Déposer la preuve' }).click()
         await joindre(t, 'trace-script-depot.png', 'trace', 'image/png')
         await t.getByRole('button', { name: 'Déposer la preuve' }).click()
         await confirmerAction(page, 'Déposer la preuve')
+        await expect(t.getByText('trace-script-depot.png')).toBeVisible()
+        await acteur(page, 'ROLE_CONDUCTEUR_PROJET', operation)
+        t = tiroir(page, '28')
         await t.getByRole('button', { name: 'Renvoyer' }).click()
         await capturer(page, `operation-renvoi-modale-${suffixe}`)
         await confirmerAction(page, 'Renvoyer', 'Trace illisible : joindre la capture complète')
@@ -215,7 +235,8 @@ for (const theme of ['light', 'dark'] as const) {
       await page.goto(`${ADRESSES.departement}/des/taches?vue=unite`)
       const ligne = page.getByRole('row').filter({ hasText: 'Prendre la fonction Normes et Agréments (LIA-2026-041)' })
       await expect(ligne.getByText(/Offerte aux porteurs de :/)).toBeVisible()
-      await expect(ligne.getByText('Fonction à prendre')).toBeVisible()
+      // DDR-16 : la colonne Unité d'une tâche offerte sans unité porte « Toutes unités ».
+      await expect(ligne.getByText('Toutes unités')).toBeVisible()
       await capturer(page, `taches-a-prendre-${suffixe}`)
       await ligne.getByRole('button', { name: 'Prendre la fonction Normes et Agréments (LIA-2026-041)' }).click()
       const d = page.getByRole('dialog', { name: 'Prendre la fonction Normes et Agréments (LIA-2026-041)' })
@@ -249,12 +270,16 @@ for (const theme of ['light', 'dark'] as const) {
       await demo(page, { theme })
       await page.goto(`${ADRESSES.portail}/portail/tableau-de-bord`)
       const cloche = page.getByRole('banner').getByRole('button', { name: /^Notifications/ })
-      await expect(cloche).toHaveAccessibleName('Notifications, 1 non lue')
+      // CER-12 : une action attendue par tâche de l'institution (fiche de suivi, procès-verbal, coordonnées d'essai), avec le
+      // lien du geste au portail.
+      await expect(cloche).toHaveAccessibleName('Notifications, 3 non lues')
       await cloche.click()
-      await expect(page.getByText('Action attendue : Paramétrage d’essai')).toBeVisible()
+      const panneau = page.getByRole('dialog', { name: 'Centre de notifications' })
+      const action = panneau.getByText(/^Action attendue : Communication de l.adresse et du port d.essai$/)
+      await expect(action).toBeVisible()
       await capturer(page, `portail-cloche-${suffixe}`)
-      await page.getByText('Action attendue : Paramétrage d’essai').click()
-      await expect(page).toHaveURL(/\/portail\/liaisons\/LIA-2026-030\/livrables\/LIA-2026-030%3A15/)
+      await action.click()
+      await expect(page).toHaveURL(/\/portail\/liaisons\/LIA-2026-046\/coordonnees$/)
     })
   })
 }

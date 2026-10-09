@@ -81,6 +81,24 @@ public interface RecevoirEvenementsUseCase {
         }
     }
 
+    /**
+     * participant.transition-approved.v1 (définitive) et participant.transition-rejected.v1 (sujet participant.transition,
+     * DDR-08) : la proposition de transition de statut est prononcée ou refusée ; destinataire : son proposant
+     * ({@code demandeurId}), jamais l'approbateur. {@code decision} : APPROUVEE ou REJETEE ; {@code motif} : motif du refus.
+     */
+    record TransitionTranchee(
+        String institutionId,
+        String transitionId,
+        String institutionNom,
+        String vers,
+        String decision,
+        String motif,
+        String demandeurId,
+        String acteurId,
+        String lien,
+        Instant le
+    ) {}
+
     /** Rend le nombre de notifications créées ou regroupées. */
     int messageEnvoye(MessageEnvoye e);
 
@@ -95,6 +113,9 @@ public interface RecevoirEvenementsUseCase {
     int demandeSoumise(DemandeSoumise e);
 
     int demandeDecidee(DemandeDecidee e);
+
+    /** Une notification DEMANDE au proposant d'une transition tranchée (DDR-08), jamais regroupée. */
+    int transitionTranchee(TransitionTranchee e);
 
     /** Une notification PROCESSUS par destinataire, jamais regroupée (D-87). */
     int evenementProcessus(EvenementProcessus e);

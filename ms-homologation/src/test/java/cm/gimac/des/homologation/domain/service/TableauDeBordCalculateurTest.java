@@ -153,6 +153,40 @@ class TableauDeBordCalculateurTest {
     }
 
     @Test
+    @DisplayName("CER-02 : visas attendus de la conformité et de la DG, compteur relié à la liaison, tâche et « Mes actions » sur l'opération ouverte de l'approbation")
+    void visasAttendus() {
+        Vues.Compteur attendu = new Vues.Compteur("visasAttendus", 1, "warn", "/des/parcours/" + approbation.id() + "?onglet=decision");
+        assertThat(sans(compteurs(List.of(Fonction.CONFORMITE)).get("visasAttendus"))).isEqualTo(attendu);
+        assertThat(sans(compteurs(List.of(Fonction.DG)).get("visasAttendus"))).isEqualTo(attendu);
+        Acteur conformite = new Acteur(UUID.randomUUID(), "Conformité", Set.of("ROLE_CONFORMITE"), null);
+        Acteur dg = new Acteur(UUID.randomUUID(), "Direction générale", Set.of("ROLE_DG"), null);
+        // Opération de l'approbation (rang 23) non ouverte : le visa ne se signe pas encore, aucune tâche.
+        assertThat(calcul.tableau(tous, List.of(Fonction.CONFORMITE), conformite, null, Map.of(), J).taches()).isEmpty();
+        Parcours p = parcours(TypeProjet.CARTE_INTERBANCAIRE, "RETRAIT");
+        avancer(p, "19", J);
+        p.pvSigne(true, true, null, J);
+        avancer(p, "22", J);
+        p.visas(List.of("CONFORMITE", "DIRECTION_GENERALE"));
+        String lien = ParcoursProjection.lienOperation(p, p.operation("23").orElseThrow());
+        assertThat(calcul.tableau(List.of(p), List.of(Fonction.CONFORMITE), conformite, null, Map.of(), J).taches()).singleElement().satisfies(t -> {
+            assertThat(t.rang()).isEqualTo("23");
+            // Signature attendue, comme une signature d'opération : sans qualité RACI.
+            assertThat(t.qualite()).isNull();
+            assertThat(t.signature()).isEqualTo("CONFORMITE");
+            assertThat(t.libelle()).isEqualTo("Signer : Visa de la conformité");
+            assertThat(t.lien()).isEqualTo(lien).contains("onglet=decision");
+        });
+        assertThat(calcul.mesOperations(List.of(p), dg, J).aAgir()).singleElement().satisfies(m -> {
+            assertThat(m.signature()).isEqualTo("DIRECTION_GENERALE");
+            assertThat(m.libelle()).isEqualTo("Signer : Visa de la Direction Générale");
+            assertThat(m.lien()).isEqualTo(lien);
+        });
+        // Visa signé : plus de tâche.
+        p.visas(List.of("DIRECTION_GENERALE"));
+        assertThat(calcul.tableau(List.of(p), List.of(Fonction.CONFORMITE), conformite, null, Map.of(), J).taches()).isEmpty();
+    }
+
+    @Test
     @DisplayName("Tâches : responsable, validateur ; triées par échéance ; lien vers l'onglet du geste")
     void taches() {
         Parcours p = parcours(TypeProjet.CARTE_INTERBANCAIRE, "RETRAIT");

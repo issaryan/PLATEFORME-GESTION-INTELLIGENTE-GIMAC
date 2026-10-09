@@ -21,7 +21,7 @@ test.describe('Fonctionnalité : refus et états dégradés', () => {
     await page.getByRole('button', { name: 'Créer le compte' }).click()
     await expect(page.getByText(/Numéro de téléphone invalide/)).toBeVisible()
     await page.locator('input[name="telephone"]').fill('')
-    await page.locator('input[name="email"]').fill('rssi@gimac-afr.org')
+    await page.locator('input[name="email"]').fill('h.kamga@gimac-afr.org')
     await page.getByRole('button', { name: 'Créer le compte' }).click()
     await expect(page.getByText('Identifiant ou courriel déjà utilisé.')).toBeVisible()
   })
@@ -39,7 +39,7 @@ test.describe('Fonctionnalité : refus et états dégradés', () => {
     await d.getByRole('button', { name: 'Enregistrer la fiche' }).click()
     await expect(d.getByText(/Numéro de téléphone invalide/)).toBeVisible()
     await d.locator('input[name="telephone"]').fill('+237 699 70 70 70')
-    await d.locator('input[name="email"]').fill('rssi@gimac-afr.org')
+    await d.locator('input[name="email"]').fill('h.kamga@gimac-afr.org')
     await d.getByRole('button', { name: 'Enregistrer la fiche' }).click()
     await expect(d.getByText('Identifiant ou courriel déjà utilisé.')).toBeVisible()
     // Saisie modifiée : l'abandon est confirmé avant la fermeture de la modale.

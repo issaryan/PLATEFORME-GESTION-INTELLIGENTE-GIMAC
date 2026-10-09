@@ -104,7 +104,7 @@ export function Photo({ moi }: { moi: Moi }) {
         <div className="gm-row" style={{ gap: 'var(--gm-space-5)', alignItems: 'center', flexWrap: 'wrap' }}>
           <Avatar name={c.nomAffiche} src={src} size="xl" />
           <div className="gm-col" style={{ flex: 1, minWidth: 240 }}>
-            <Note>{t(src ? 'photo.texte.avec' : 'photo.texte.sans')}</Note>
+            <Note>{t(`${src ? 'photo.texte.avec' : 'photo.texte.sans'}${couche === 'portail' ? 'Portail' : ''}`)}</Note>
             <div className="gm-row">
               <Button icon="camera" onClick={() => ouvrir('CHANGER')}>{t(src ? 'photo.changer' : 'photo.ajouter')}</Button>
               {src ? <Button variant="danger" icon="trash" onClick={() => ouvrir('RETIRER')}>{t('photo.retirer')}</Button> : null}

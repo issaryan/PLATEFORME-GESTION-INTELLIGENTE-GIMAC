@@ -1,15 +1,17 @@
 import { ApiError } from '@gimac/socle'
 import type { CoverageValue, TypeProjet } from '../../modele/commun'
 import {
-  ETAPES, type ApprobationSecurite, type Blocage, type DossierLiaison, type EtapeCode, type EtapeParcours, type EtapeVersion, type EtatOperationParcours, type FicheSuiviServices, type Fonction,
+  ETAPES, type ApprobationSecurite, type Blocage, type DossierLiaison, type EtapeCircuit, type EtapeCode, type EtapeParcours, type EtapeVersion, type EtatOperationParcours, type FicheSuiviServices, type Fonction,
   type FonctionUtilisateur, type IndicateursPilotage, type IntervenantLiaison, type LiaisonResume, type LivrableAttendu, type OperationParcours, type Personne, type ProcesVerbalCertification,
-  type Qualite, type ServicePerimetre, type SignatureOperation, type Sla, type StatutParcours, type TableauActeur, type TacheActeur, type TypeAttestation,
+  type Qualite, type ServicePerimetre, type Signature, type SignatureOperation, type Sla, type StatutParcours, type TableauActeur, type TacheActeur, type TypeAttestation,
 } from '../../modele/parcours'
 import type { FonctionCatalogue, Geste, Jalon, ReferenceOperation } from '../../modele/homologation'
 import type { MesOperations, MonOperation } from '../../modele/parcours'
 import { referentielDe, type OperationReferentiel } from '../../modele/referentielCR'
 import { CATALOGUE, ETAPES_CANONIQUES, actionDuGeste, codesDeclenches, estDedie, gesteDe, jetonEtape, versionCR, vueDe } from './referentiels'
 import { LIBELLES_CR } from './libellesCR'
+import { empreinte } from './donnees'
+import { aujourdhui as aujourdhuiDouala } from '../../modele/jours'
 import type { ServiceDecision, ServiceParcours, ServicePortailParcours } from '../ports'
 
 // Serveur de substitution du parcours (étapes 3 à 10, D-56 à D-59) : il tient l'état en mémoire et
@@ -21,44 +23,72 @@ type Attendre = <T>(v: T | (() => T)) => Promise<T>
 let seq = 0
 const correlation = () => `sim-par-${Date.now().toString(36)}-${(++seq).toString(36)}`
 const refus = (status: number, code: string, message: string) => new ApiError(status, code, message, correlation())
-const AUJOURDHUI = new Date('2026-09-29T09:00:00Z')
+/**
+ * DDR-15 : jour de référence de la démonstration = jour courant de Douala (même horloge que l'en-tête), jamais une date figée ;
+ * toutes les dates du jeu (démarrage, échéances, clôtures, dépôts, blocages) s'en déduisent.
+ */
+const aujourdhuiDemo = () => new Date(`${aujourdhuiDouala()}T09:00:00Z`)
 const jour = (decalage: number) => {
-  const d = new Date(AUJOURDHUI)
+  const d = aujourdhuiDemo()
   d.setUTCDate(d.getUTCDate() + decalage)
   return d.toISOString().slice(0, 10)
 }
 const joursEntre = (a: string, b: string) => Math.round((Date.parse(b) - Date.parse(a)) / 86_400_000)
-const hex = (graine: string) => {
-  let h = 2166136261
-  let s = ''
-  for (let i = 0; s.length < 64; i++) {
-    h ^= graine.charCodeAt(i % graine.length) + i
-    h = Math.imul(h, 16777619) >>> 0
-    s += h.toString(16).padStart(8, '0')
-  }
-  return s.slice(0, 64)
-}
+/** Horodatage sur l'horloge de la démonstration (jour simulé, heure courante) : une seule horloge pour toutes les pièces. */
+const horodatage = () => `${jour(0)}T${new Date().toISOString().slice(11)}`
+/** Empreinte de démonstration (graine entièrement mêlée), commune aux pièces simulées. */
+const hex = empreinte
 
-/** Intervenants fictifs, désignés par leur fonction (CR §1.5). */
+/**
+ * Intervenants de démonstration, désignés par leur fonction (CR §1.5). Recette HOM-14 : nommés comme les comptes de
+ * démonstration qui tiennent ces fonctions (annuaire simulé, ORGANISATION_DEMO), pour que l'acteur se reconnaisse.
+ */
 const P = (id: string, nom: string, fonction: Fonction): Personne => ({ id, nom, fonction })
 export const PERSONNES: Personne[] = [
-  P('U-DDRM-1', 'Chargé DDRM 1', 'DDRM'), P('U-DDRM-2', 'Chargé DDRM 2', 'DDRM'), P('U-CDDRM', 'Chef du département DDRM', 'CHEF_DDRM'),
-  P('U-CDES', 'Chef du département DES', 'CHEF_DES'), P('U-COND-1', 'Conducteur de projet 1', 'CONDUCTEUR'), P('U-COND-2', 'Conducteur de projet 2', 'CONDUCTEUR'),
-  P('U-SNA-1', 'Ingénieur Normes et Agréments 1', 'SNA'), P('U-SNA-2', 'Ingénieur Normes et Agréments 2', 'SNA'),
-  P('U-PM-1', 'Opérateur production monétique 1', 'PRODUCTION_MONETIQUE'), P('U-PM-2', 'Opérateur production monétique 2', 'PRODUCTION_MONETIQUE'),
-  P('U-RES-1', 'Ingénieur pôle réseau', 'POLE_RESEAU'), P('U-SYS-1', 'Ingénieur pôle système', 'POLE_SYSTEME'), P('U-RSSI', 'RSSI', 'RSSI'),
+  P('U-DDRM-1', 'Fatimé Abakar Hissein', 'DDRM'), P('U-DDRM-2', 'Rodrigue Essono Mba', 'DDRM'), P('U-CDDRM', 'Bertrand Nguema Obiang', 'CHEF_DDRM'),
+  P('U-CDES', 'Paul Mbarga Atangana', 'CHEF_DES'), P('U-COND-1', 'Aïcha Mahamat Nour', 'CONDUCTEUR'), P('U-COND-2', 'Brice Ondo Mba', 'CONDUCTEUR'),
+  P('U-SNA-1', 'Rachel Biyong Mengue', 'SNA'), P('U-SNA-2', 'Joël Ekotto Mballa', 'SNA'),
+  P('U-PM-1', 'Serge Ondoua Essomba', 'PRODUCTION_MONETIQUE'), P('U-PM-2', 'Lucien Ateba Owona', 'PRODUCTION_MONETIQUE'),
+  P('U-RES-1', 'Idriss Mahamat Saleh', 'POLE_RESEAU'), P('U-SYS-1', 'Chantal Ngo Bassong', 'POLE_SYSTEME'), P('U-RSSI', 'RSSI', 'RSSI'),
   P('U-CONF', 'Responsable conformité', 'CONFORMITE'), P('U-DG', 'Directeur général', 'DG'), P('U-EXP', 'Exploitation et supervision', 'EXPLOITATION'),
 ]
-/** Circuit de signature du procès-verbal par défaut de MS-CERTIFICATION (§10.3) : le GIMAC (CHEF_DES) et le participant, ordre 1. */
-const circuitDe = (pv: ProcesVerbalCertification) => [
-  { code: 'GIMAC', libelle: 'Signature du GIMAC', fonction: 'CHEF_DES', ordre: 1, portail: false, etat: pv.signatureGimac ? 'SIGNEE' as const : 'ATTENDUE' as const, signature: pv.signatureGimac },
-  { code: 'PARTICIPANT', libelle: 'Signature du participant', fonction: 'PARTICIPANT', ordre: 1, portail: true, etat: pv.signatureParticipant ? 'SIGNEE' as const : 'ATTENDUE' as const, signature: pv.signatureParticipant },
+/** Étape d'un circuit de signature du procès-verbal (EtapeSignature de MS-CERTIFICATION, D-94). */
+type EtapePv = { code: string; libelle: string; fonction: Fonction; ordre: number; portail: boolean }
+/** Circuit par défaut du procès-verbal (gimac.certification.circuits.proces-verbal de MS-CERTIFICATION, §10.3). */
+const CIRCUIT_PV_DEFAUT: EtapePv[] = [
+  { code: 'GIMAC', libelle: 'Signature du GIMAC (chef du DES)', fonction: 'CHEF_DES', ordre: 1, portail: false },
+  { code: 'PARTICIPANT', libelle: 'Signature du participant', fonction: 'PARTICIPANT', ordre: 1, portail: true },
 ]
+const PV_SIGNE = 'certification.pv-signed.v1'
+const ouverteOp = (o: OperationParcours) => o.etat === 'A_FAIRE' || o.etat === 'EN_COURS'
+/** État du procès-verbal établi selon les signatures du circuit (ProcesVerbalPolicy.etat). */
+const etatPvDe = (c: EtapePv[], s: Record<string, unknown>): ProcesVerbalCertification['etat'] => {
+  const des = c.filter((x) => !x.portail).every((x) => s[x.code])
+  const portail = c.filter((x) => x.portail).every((x) => s[x.code])
+  if (des && portail) return 'SIGNE'
+  if (des && c.some((x) => !x.portail)) return 'SIGNE_GIMAC'
+  if (portail && c.some((x) => x.portail)) return 'SIGNE_PARTICIPANT'
+  return 'ETABLI'
+}
+/** Étapes que ce côté peut signer maintenant : non signées, du plus petit ordre restant (ProcesVerbalPolicy.signables). */
+const signablesPv = (c: EtapePv[], s: Record<string, unknown>, portail: boolean) => {
+  const prochain = Math.min(...c.filter((x) => !s[x.code]).map((x) => x.ordre))
+  return c.filter((x) => x.portail === portail && !s[x.code] && x.ordre === prochain)
+}
+/** Refus faute d'étape signable : CER_SIGNATURE_ORDRE si ce côté attend encore après d'autres, sinon CER_PV_NOT_SIGNABLE. */
+const nonSignablePv = (c: EtapePv[], s: Record<string, unknown>, portail: boolean) => {
+  if (c.some((x) => x.portail === portail && !s[x.code])) {
+    const prochain = Math.min(...c.filter((x) => !s[x.code]).map((x) => x.ordre))
+    return new ApiError(409, 'CER_SIGNATURE_ORDRE', 'D\'autres signatures du procès-verbal doivent précéder la vôtre.', correlation(), { attendues: c.filter((x) => !s[x.code] && x.ordre === prochain).map((x) => x.code) })
+  }
+  return refus(409, 'CER_PV_NOT_SIGNABLE', portail ? 'Le procès-verbal n\'attend pas votre signature.' : 'Le procès-verbal n\'attend pas la signature du GIMAC.')
+}
 
 /** Fonction à affecter (D-93) : identifiant A_AFFECTER:<FONCTION>, tenue par personne tant que le conducteur ne l'a pas affectée. */
 const aAffecter = (f: Fonction): Personne => ({ id: `A_AFFECTER:${f}`, nom: 'À affecter', fonction: f, aAffecter: true })
 const personne = (f: Fonction, i = 0): Personne => {
-  if (f === 'CHEFS_DEPARTEMENT') return personne('CHEF_DES')
+  // DDR-10 : la fonction partagée des deux chefs reste CHEFS_DEPARTEMENT (jamais CHEF_DES, réservée au chef du DES).
+  if (f === 'CHEFS_DEPARTEMENT') return { ...personne('CHEF_DES'), fonction: 'CHEFS_DEPARTEMENT' }
   const l = PERSONNES.filter((p) => p.fonction === f)
   return l[i % Math.max(1, l.length)] ?? P(`U-${f}`, f, f)
 }
@@ -96,6 +126,15 @@ type Scenario = {
    * gestes, jalons et déclencheurs lus sur la version ; aucune attestation imposée.
    */
   depuisVersion?: boolean
+  /** DDR-24 : numéro de la version du référentiel instanciée (version publiée à l'ouverture). */
+  versionNumero?: number
+  /** DDR-15 : dates des étapes 1 et 2 tenues par MS-PARTICIPANT (prise de contact, adhésion prononcée). */
+  amont?: { contact: string | null; adhesion: string | null }
+  /**
+   * Signatures configurées (D-91) de l'opération qui porte la signature du procès-verbal : circuit du procès-verbal de
+   * MS-CERTIFICATION (D-94), complété de la signature du participant au portail.
+   */
+  circuitPv?: Pick<SignatureOperation, 'code' | 'libelle' | 'signataire' | 'ordre' | 'porte'>[]
 }
 const SERVICES_CARTE = [{ code: 'RETRAIT', libelle: 'Retrait' }, { code: 'PAIEMENT', libelle: 'Paiement marchand' }, { code: 'TRANSFERT', libelle: 'Transfert' }, { code: 'COMMERCE_ELECTRONIQUE', libelle: 'Commerce électronique' }]
 const SERVICES_MOBILE = [{ code: 'PAIEMENT_MARCHAND', libelle: 'Paiement marchand mobile' }, { code: 'REMITTANCE', libelle: 'Rémittence entrante' }, { code: 'FACTURE', libelle: 'Paiement de facture' }, { code: 'CASH_IN', libelle: 'Cash-in agent' }]
@@ -116,7 +155,9 @@ const SCENARIOS: Scenario[] = [
   { id: 'LIA-2026-046', institutionId: 'INST-0042', institutionNom: 'Établissement de paiement A', typeProjet: 'PAIEMENT_MOBILE', banque: null, personnalisateur: null, fintech: false, avancement: '11', statut: 'EN_INTEGRATION', conducteur: 1, debut: -36, cible: 48, services: [{ code: 'CASH_IN', libelle: 'Cash-in agent', inclus: true }], origine: 'LIA-2025-088' },
   { id: 'LIA-2026-027', institutionId: 'INST-0042', institutionNom: 'Établissement de paiement A', typeProjet: 'DELEGATAIRE', banque: 'Banque B', personnalisateur: 'Personnalisateur P', fintech: false, avancement: '18', statut: 'EN_TEST', conducteur: 0, debut: -74, cible: 25, services: perimetre(SERVICES_CARTE, ['COMMERCE_ELECTRONIQUE']), pv: 'ETABLI' },
   { id: 'LIA-2026-005', institutionId: 'INST-0073', institutionNom: 'Banque E', typeProjet: 'CARTE_INTERBANCAIRE', banque: null, personnalisateur: null, fintech: false, avancement: '27', statut: 'APPROUVEE_SECURITE', conducteur: 1, debut: -140, cible: 4, services: perimetre(SERVICES_CARTE, ['TRANSFERT', 'COMMERCE_ELECTRONIQUE']) },
-  { id: 'LIA-2026-025', institutionId: 'INST-0151', institutionNom: 'Banque K', typeProjet: 'CARTE_INTERBANCAIRE', banque: null, personnalisateur: null, fintech: false, avancement: '17', statut: 'EN_TEST', conducteur: 0, debut: -70, cible: 28, services: perimetre(SERVICES_CARTE, ['TRANSFERT']), pv: 'A_ETABLIR' },
+  { id: 'LIA-2026-025', institutionId: 'INST-0151', institutionNom: 'Banque K', typeProjet: 'CARTE_INTERBANCAIRE', banque: null, personnalisateur: null, fintech: false, avancement: '17', statut: 'EN_TEST', conducteur: 0, debut: -70, cible: 28, services: perimetre(SERVICES_CARTE, ['TRANSFERT']), pv: 'A_ETABLIR',
+    // Circuit configuré sur l'opération de la signature (D-94) : le participant signe d'abord (ordre 1), le GIMAC ensuite (ordre 2).
+    circuitPv: [{ code: 'GIMAC', libelle: 'Signature du GIMAC (chef du DES)', signataire: 'CHEF_DES', ordre: 2, porte: ['L1'] }] },
   { id: 'LIA-2025-071', institutionId: 'INST-0144', institutionNom: 'Banque J', typeProjet: 'CARTE_INTERBANCAIRE', banque: null, personnalisateur: null, fintech: false, avancement: '31', statut: 'EN_PRODUCTION', conducteur: 1, debut: -190, cible: -12, services: perimetre(SERVICES_CARTE, ['TRANSFERT']), fiche: 'A_REMETTRE' },
   { id: 'LIA-2025-064', institutionId: 'INST-0133', institutionNom: 'Établissement de paiement H', typeProjet: 'PAIEMENT_MOBILE', banque: 'Banque D', personnalisateur: null, fintech: false, avancement: '32', statut: 'EN_PRODUCTION', conducteur: 0, debut: -230, cible: -45, services: perimetre(SERVICES_MOBILE, ['FACTURE']), fiche: 'RENSEIGNEE' },
   { id: 'LIA-2026-044', institutionId: 'INST-0017', institutionNom: 'Banque B', typeProjet: 'CARTE_INTERBANCAIRE', banque: null, personnalisateur: null, fintech: false, avancement: '3', statut: 'CADREE', conducteur: null, debut: -3, cible: null, services: [{ code: 'COMMERCE_ELECTRONIQUE', libelle: 'Commerce électronique', inclus: true }], origine: 'LIA-2026-022' },
@@ -125,14 +166,22 @@ const SCENARIOS: Scenario[] = [
   { id: 'LIA-2026-040', institutionId: 'INST-0144', institutionNom: 'Banque H', typeProjet: 'CARTE_INTERBANCAIRE', banque: null, personnalisateur: null, fintech: false, avancement: '12', statut: 'EN_INTEGRATION', conducteur: 1, debut: -50, cible: 45, services: perimetre(SERVICES_CARTE, []) },
 ]
 
+/** Opération ouverte ou renvoyée pendant la démonstration (homologation.operation-activated.v1, DDR-08). */
+export type EvenementOperationDemo = { type: 'OUVERTE' | 'RENVOYEE' | 'VALIDATION'; operationId: string; motif?: string; le: string }
 type Etat = {
   s: Scenario
   ops: OperationParcours[]
+  /** DDR-08 : opérations ouvertes ou renvoyées pendant la démonstration, notifiées à leur responsable. */
+  journal?: EvenementOperationDemo[]
   blocages: Blocage[]
   pv: ProcesVerbalCertification
   approbation: ApprobationSecurite
   fiche: FicheSuiviServices
   conducteur: Personne | null
+  /** Circuit du procès-verbal figé à la première signature (D-94). */
+  pvCircuit?: EtapePv[]
+  /** Signatures du procès-verbal données, par code d'étape du circuit. */
+  pvSignees?: Record<string, ProcesVerbalCertification['signatureGimac'] & object>
 }
 
 /** Opérations de la liaison closes par un sujet d'événement : déclencheur lu sur le référentiel simulé (D-77, §3). */
@@ -211,7 +260,7 @@ function construire(s: Scenario, version?: ReferenceOperation[] | null): Etat {
     const tenue = (f: Fonction) => (s.aAffecter?.includes(f) ? aAffecter(f) : personne(f))
     const R = o.porteurs[0] === 'PARTICIPANT' ? P(`EXT-${s.institutionId}`, `Correspondant ${s.institutionNom}`, 'PARTICIPANT') : o.porteurs[0] === 'CONDUCTEUR' ? conducteur : o.porteurs[0] === 'PERSONNALISATEUR' ? P('EXT-PERSO', s.personnalisateur ?? 'Personnalisateur', 'PERSONNALISATEUR') : tenue(o.porteurs[0])
     const autres = o.porteurs.slice(1).map((f) => (f === 'PARTICIPANT' ? P(`EXT-${s.institutionId}`, `Correspondant ${s.institutionNom}`, 'PARTICIPANT') : tenue(f)))
-    const sla: Sla | null = fait ? null : courant ? (Date.parse(echeance) < AUJOURDHUI.getTime() ? 'DEPASSE' : joursEntre(AUJOURDHUI.toISOString(), echeance) <= 5 ? 'ECHEANCE_PROCHE' : 'DANS_LES_DELAIS') : null
+    const sla: Sla | null = fait ? null : courant ? (Date.parse(echeance) < aujourdhuiDemo().getTime() ? 'DEPASSE' : joursEntre(aujourdhuiDemo().toISOString(), echeance) <= 5 ? 'ECHEANCE_PROCHE' : 'DANS_LES_DELAIS') : null
     const geste = gesteDe(o)
     return {
       id: `${s.id}:${o.rang}`,
@@ -259,6 +308,23 @@ function construire(s: Scenario, version?: ReferenceOperation[] | null): Etat {
       actionsPermises: courant ? actionsOuvertes(o) : fait ? ['CONSULTER'] : ['ATTRIBUER'],
     }
   })
+  // HOM-05 : signatures configurées au référentiel (D-91) recopiées sur les opérations de la liaison, comme à l'instanciation
+  // de MS-HOMOLOGATION : l'opération ne se clôt qu'après elles ; celles d'une opération déjà faite sont données.
+  if (!version) {
+    const configurees = new Map(versionCR(s.typeProjet).map((r) => [r.code, r.signatures ?? []]))
+    ops.forEach((o) => {
+      const l = (configurees.get(o.rang) ?? []).filter((x) => x.signataire)
+      if (!l.length) return
+      const faite = o.etat === 'FAITE'
+      o.signatures = l.map((x): SignatureOperation => {
+        const qui = x.signataire === 'CONDUCTEUR' && conducteur ? conducteur : personne(x.signataire as Fonction)
+        return {
+          ...x, signataire: x.signataire as Fonction, libelleSignataire: CATALOGUE.fonctions.find((f) => f.code === x.signataire)?.libelle ?? x.signataire!, etat: faite ? 'SIGNEE' : 'ATTENDUE', suivante: false,
+          ...(faite ? { signePar: qui.id, signeParNom: qui.nom, signeLe: `${o.faiteLe}T10:00:00Z`, empreinte: hex(`${o.id}-${x.code}`) } : {}),
+        }
+      })
+    })
+  }
   const inclus = s.services.filter((x) => x.inclus)
   const certifies = ['CERTIFIEE', 'APPROUVEE_SECURITE', 'EN_PRODUCTION'].includes(s.statut) || s.pv ? inclus.length : s.statut === 'EN_TEST' ? inclus.length - 1 : 0
   const pvEtat = s.pv && s.pv !== 'A_ETABLIR' ? s.pv : (['APPROUVEE_SECURITE', 'EN_PRODUCTION', 'CERTIFIEE'].includes(s.statut) ? 'SIGNE' : 'NON_ETABLI')
@@ -272,7 +338,7 @@ function construire(s: Scenario, version?: ReferenceOperation[] | null): Etat {
     etabliLe: pvEtat !== 'NON_ETABLI' ? jour(s.debut + 60) : null,
     empreinte: pvEtat !== 'NON_ETABLI' ? hex(`pv-${s.id}`) : null,
     signatureGimac: pvEtat === 'SIGNE' || pvEtat === 'SIGNE_GIMAC' ? signe('CHEF_DES', personne('CHEF_DES').nom, s.debut + 61) : null,
-    signatureParticipant: pvEtat === 'SIGNE' ? signe('PARTICIPANT', `Représentant de ${s.institutionNom}`, s.debut + 62) : null,
+    signatureParticipant: pvEtat === 'SIGNE' ? signe('PARTICIPANT', `Correspondant ${s.institutionNom}`, s.debut + 62) : null,
     transitionsPermises: [],
     actionsPermises: [],
   }
@@ -332,15 +398,24 @@ function construire(s: Scenario, version?: ReferenceOperation[] | null): Etat {
     sig.signatures = s.enSignature.signatures.map((x) => ({ ...x, libelleSignataire: CATALOGUE.fonctions.find((f) => f.code === x.signataire)?.libelle ?? x.signataire, etat: 'ATTENDUE', suivante: false }))
     sig.actionsPermises = ['ATTRIBUER']
   }
-  return { s, ops, blocages, pv, approbation, fiche, conducteur }
+  // D-94 : signatures configurées sur l'opération qui porte la signature du procès-verbal (circuit du procès-verbal).
+  const opPv = s.circuitPv ? ops.find((o) => o.declencheur === PV_SIGNE) : undefined
+  if (opPv && s.circuitPv) opPv.signatures = s.circuitPv.map((x) => ({ ...x, libelleSignataire: CATALOGUE.fonctions.find((f) => f.code === x.signataire)?.libelle ?? x.signataire, etat: 'ATTENDUE', suivante: false }))
+  // Signatures déjà données du jeu de démonstration : circuit par défaut, figé.
+  const pvSignees = { ...(pv.signatureGimac ? { GIMAC: pv.signatureGimac } : {}), ...(pv.signatureParticipant ? { PARTICIPANT: pv.signatureParticipant } : {}) }
+  return { s, ops, blocages, pv, approbation, fiche, conducteur, ...(Object.keys(pvSignees).length ? { pvCircuit: CIRCUIT_PV_DEFAUT, pvSignees } : {}) }
 }
+
+/** Clôture des étapes 1 et 2 : dates de MS-PARTICIPANT pour une liaison ouverte dans la démonstration (DDR-15), sinon le jeu. */
+const amont = (e: Etat, code: EtapeCode) =>
+  (code === 'ADHESION' ? e.s.amont?.adhesion : e.s.amont?.contact) ?? jour(e.s.debut - (code === 'ADHESION' ? 20 : 30))
 
 function etapesDe(e: Etat): EtapeParcours[] {
   const rangEtape: Record<EtapeCode, number | null> = { PRISE_CONTACT: 1, ADHESION: 2, CADRAGE: 3, LANCEMENT: 4, ATELIERS: 5, INTEGRATION: 6, TESTS: 7, CERTIFICATION: 8, APPROBATION_SECURITE: null, MISE_EN_PRODUCTION: 9, SUIVI: 10 }
   return ETAPES.map((code) => {
     const ops = e.ops.filter((o) => o.etape === code)
     if (code === 'PRISE_CONTACT' || code === 'ADHESION') {
-      return { code, rang: rangEtape[code], etat: 'CLOSE', porteurs: ['DDRM'], responsable: personne('DDRM'), elements: { RESPONSABLE: true, ACTIONS: true, LIVRABLES: true, VALIDATION: true, PREUVE: true, DATE: true }, actionsFaites: 1, actionsTotal: 1, livrables: [{ libelleKey: code === 'ADHESION' ? 'parcours.livrable.dossierAdhesion' : 'parcours.livrable.enregistrementCandidat', fourni: true }], validateur: personne('CHEF_DDRM'), valideeLe: jour(e.s.debut - 20), debut: jour(e.s.debut - 40), closeLe: jour(e.s.debut - 20), echeance: null, sla: null }
+      return { code, rang: rangEtape[code], etat: 'CLOSE', porteurs: ['DDRM'], responsable: personne('DDRM'), elements: { RESPONSABLE: true, ACTIONS: true, LIVRABLES: true, VALIDATION: true, PREUVE: true, DATE: true }, actionsFaites: 1, actionsTotal: 1, livrables: [{ libelleKey: code === 'ADHESION' ? 'parcours.livrable.dossierAdhesion' : 'parcours.livrable.enregistrementCandidat', fourni: true }], validateur: personne('CHEF_DDRM'), valideeLe: amont(e, code), debut: code === 'ADHESION' ? amont(e, 'PRISE_CONTACT') : (e.s.amont?.contact ?? jour(e.s.debut - 40)), closeLe: amont(e, code), echeance: null, sla: null }
     }
     const faites = ops.filter((o) => o.etat === 'FAITE').length
     const close = ops.length > 0 && faites === ops.length
@@ -388,7 +463,7 @@ function perimetreDe(e: Etat): ServicePerimetre[] {
   })
 }
 
-function resume(e: Etat): LiaisonResume {
+function resumeBrut(e: Etat): LiaisonResume {
   const p = perimetreDe(e)
   const inclus = p.filter((x) => x.inclus)
   const prochaine = e.ops.filter((o) => o.etat !== 'FAITE' && o.echeance).map((o) => o.echeance as string).sort()[0] ?? null
@@ -433,7 +508,7 @@ function tachesDe(etats: Etat[], fonctions: Fonction[]): TacheActeur[] {
       .flatMap((o): TacheActeur[] => {
         const r = o.raci.R?.fonction
         // Comme MS-HOMOLOGATION : le responsable n'a plus rien à faire pendant la validation et les signatures.
-        const estR = o.etat !== 'EN_SIGNATURE' && o.etat !== 'EN_VALIDATION' && r !== undefined && (fonctions.includes(r) || (r === 'CHEF_DES' && fonctions.includes('CHEFS_DEPARTEMENT')))
+        const estR = o.etat !== 'EN_SIGNATURE' && o.etat !== 'EN_VALIDATION' && r !== undefined && fonctions.includes(r)
         const estE = o.etat !== 'EN_SIGNATURE' && participant && (r === 'PARTICIPANT' || o.raci.E.some((p) => p.fonction === 'PARTICIPANT'))
         const estV = o.etat === 'EN_VALIDATION' && o.raci.V !== null && fonctions.includes(o.raci.V.fonction)
         // D-91 : signature attendue (plus petit ordre restant) dont la fonction est tenue par l'acteur.
@@ -446,8 +521,25 @@ function tachesDe(etats: Etat[], fonctions: Fonction[]): TacheActeur[] {
           libelle: signature ? `Signer : ${signature.libelle}` : o.libelle ?? o.rang, aPrendre: estR && !!o.raci.R?.aAffecter, signature: signature?.code ?? null,
           ...(participant ? gesteParticipant(e, o) : { lien: lienOperation(o) }),
         }]
-      }),
+      }).concat(participant ? [] : tachesVisa(e, fonctions)),
   )
+}
+
+/** Libellé du visa (circuit gimac.certification.circuits.visas de MS-CERTIFICATION). */
+export const LIBELLE_VISA = { CONFORMITE: 'Visa de la conformité', DIRECTION_GENERALE: 'Visa de la Direction Générale' } as const
+/**
+ * Visas optionnels attendus (D-56), comme MS-HOMOLOGATION : tâche du titulaire de la fonction du visa (CONFORMITE, DG)
+ * sur la première opération ouverte de l'approbation de la sécurité, où le visa se signe (onglet Décision).
+ */
+function tachesVisa(e: Etat, fonctions: Fonction[]): TacheActeur[] {
+  const o = e.ops.find((x) => x.declencheur === 'certification.security-approved.v1' && (x.etat === 'A_FAIRE' || x.etat === 'EN_COURS'))
+  if (!o) return []
+  return e.approbation.visas
+    .filter((v) => v.actif && v.etat === 'ATTENDU' && fonctions.includes(v.nature === 'CONFORMITE' ? 'CONFORMITE' : 'DG'))
+    .map((v): TacheActeur => ({
+      operationId: o.id, liaisonId: e.s.id, liaisonReference: e.s.id, institutionNom: e.s.institutionNom, rang: o.rang, etape: o.etape, qualite: 'V', echeance: o.echeance, sla: o.sla,
+      oubliSansSymptome: false, libelle: `Signer : ${LIBELLE_VISA[v.nature]}`, aPrendre: false, signature: v.nature, lien: lienOperation(o),
+    }))
 }
 
 /** Signatures restantes du plus petit ordre (D-91 : même ordre, indifférent). */
@@ -460,6 +552,18 @@ function suivantes(o: OperationParcours): SignatureOperation[] {
 /** nomInstitution : nom tenu par le registre (MS-PARTICIPANT simulé), pour que la liaison ouverte porte le nom de l'adhérent choisi. */
 /** Démonstration continue (D-98) : état du parcours simulé gardé d'un chargement à l'autre (changement d'acteur). */
 export type PersistanceDemo = { lire(): string | null; ecrire(valeur: string): void }
+/** DDR-08 : opération ouverte ou renvoyée, telle que MS-NOTIFICATION la notifie à son responsable. */
+export type NotificationOperationDemo = { type: 'OUVERTE' | 'RENVOYEE' | 'VALIDATION'; operationId: string; liaisonId: string; institutionNom: string; libelle: string; motif: string | null; lien: string; le: string }
+/** DDR-08 : opérations à notifier à l'utilisateur (responsable par sa fonction), relues de l'état gardé et poussées en direct. */
+export type EvenementsParcoursDemo = {
+  pourMoi(): NotificationOperationDemo[]; surEvenement(f: (n: NotificationOperationDemo) => void): void
+  /** HOM-04 : fonctions internes à affecter offertes en tâches à prendre de MS-PILOTAGE (effet-reel-referentiels.md §8.8). */
+  fonctionsAPrendre?(): OffreFonctionDemo[]
+  /** HOM-04 : prise de la tâche (pilotage.task-taken.v1) : la personne est affectée à la fonction sur la liaison (PrisesFonctions). */
+  prendreFonction?(liaisonId: string, fonction: Fonction, personne: { id: string; nom: string }): void
+}
+/** Tâche à prendre d'une fonction à affecter : référence <réf.>/AFFECTER/<FONCTION>, permissions de la fonction au catalogue. */
+export type OffreFonctionDemo = { liaisonId: string; reference: string; fonction: Fonction; titre: string; description: string; permissions: string[]; lien: string }
 
 export function parcoursSimule(attendreJeu: Attendre, institutionPortail: string, nomInstitution?: (id: string) => Promise<string | undefined>,
   u: {
@@ -471,7 +575,24 @@ export function parcoursSimule(attendreJeu: Attendre, institutionPortail: string
     /** homologation.liaison-milestone-reached.v1 consommé par MS-PARTICIPANT (EN_PRODUCTION : institution ACTIF). */
     surJalon?: (institutionId: string, jalon: Jalon, liaisonId: string) => void
     persistance?: PersistanceDemo
-  } = {}): { parcours: ServiceParcours; decision: ServiceDecision; portailParcours: ServicePortailParcours } {
+    /** Utilisateur de la démonstration : auteur réel des dépôts (DDR-05) et des affectations. */
+    utilisateur?: { id: string; nom: string }
+    /** Permissions de l'utilisateur : supervision HOM_STEP_MANAGE admise hors RACI, jamais offerte (DDR-05). */
+    permissions?: string[]
+    /** DDR-24 : numéro de la version publiée d'un type (arbre des référentiels). */
+    numeroPublie?: (type: string) => number | null
+    /** DDR-15 : dates de prise de contact et d'adhésion d'une institution (MS-PARTICIPANT). */
+    datesAmont?: (institutionId: string) => Promise<{ contact: string | null; adhesion: string | null } | undefined>
+    /** HOM-04 : appelé après chaque geste (offre des fonctions à affecter à MS-PILOTAGE simulé). */
+    apresEffet?: () => void
+    /** CER-05 : libellé d'un type de projet (catalogue des types de MS-HOMOLOGATION), servi au DES et au portail. */
+    libelleType?: (type: string) => string | null
+  } = {}): { parcours: ServiceParcours; decision: ServiceDecision; portailParcours: ServicePortailParcours; evenements: EvenementsParcoursDemo } {
+  // CER-05 : le résumé et le dossier portent le libellé du type, comme Vues.LiaisonResume et Vues.Dossier.
+  const resume = (e: Etat): LiaisonResume => {
+    const libelle = u.libelleType?.(e.s.typeProjet)
+    return libelle ? { ...resumeBrut(e), typeProjetLibelle: libelle } : resumeBrut(e)
+  }
   const etats = new Map(SCENARIOS.map((s) => [s.id, construire(structuredClone(s))]))
   // Démonstration continue : l'état gardé remplace le jeu initial (liaisons ouvertes et gestes accomplis compris).
   try {
@@ -480,14 +601,18 @@ export function parcoursSimule(attendreJeu: Attendre, institutionPortail: string
   } catch {
     // État illisible : jeu initial.
   }
-  /** Chaque réponse garde l'état (démonstration continue) une fois l'effet appliqué. */
-  const attendre = (<T>(v: T | (() => T)) => attendreJeu(() => {
-    const r = typeof v === 'function' ? (v as () => T)() : v
+  const garder = () => {
     try {
       u.persistance?.ecrire(JSON.stringify([...etats.entries()]))
     } catch {
       // Stockage indisponible : la démonstration continue en mémoire.
     }
+  }
+  /** Chaque réponse garde l'état (démonstration continue) une fois l'effet appliqué. */
+  const attendre = (<T>(v: T | (() => T)) => attendreJeu(() => {
+    const r = typeof v === 'function' ? (v as () => T)() : v
+    garder()
+    u.apresEffet?.()
     return r
   })) as Attendre
   // Fonctions du catalogue (D-91), et celles que confèrent les profils de l'utilisateur (GET /moi/fonctions, D-94 §6.5).
@@ -502,11 +627,85 @@ export function parcoursSimule(attendreJeu: Attendre, institutionPortail: string
     return l
   }
   const codesMiens = () => mesFonctions().map((f) => f.code)
+  /** Titulaire d'une fonction sur la liaison : le conducteur désigné pour CONDUCTEUR, sinon le premier titulaire de démonstration. */
+  const titulaire = (e: Etat | undefined, f: Fonction): Personne => (f === 'CONDUCTEUR' && e?.conducteur ? e.conducteur : personne(f))
+  /** Signataire admis (OperationsLiaison.admetSignataire) : la personne tient la fonction ; sans identité connue, le porteur de la permission de la route. */
+  const admetSignataire = (fonction: Fonction) => u.profils === undefined || codesMiens().includes(fonction)
+  /**
+   * Opérations ouvertes qui portent un geste de certification (OperationsLiaison.ouvertes, D-93 §4) : 409
+   * CER_OPERATION_ABSENTE si la version n'en porte aucune, CER_OPERATION_NON_OUVERTE si aucune n'est ouverte.
+   */
+  const ouvertesGeste = (e: Etat, declencheur: string, geste: string) => {
+    const portant = declenchees(e, declencheur)
+    if (!portant.length) throw new ApiError(409, 'CER_OPERATION_ABSENTE', `Le référentiel de cette liaison ne porte aucune opération pour ce geste : ${geste}.`, correlation(), { geste, declencheur })
+    const ouvertes = portant.filter(ouverteOp)
+    if (!ouvertes.length) throw new ApiError(409, 'CER_OPERATION_NON_OUVERTE', `L'opération qui porte ce geste n'est pas ouverte : ${geste}.`, correlation(), { geste, operations: portant.map((o) => ({ code: o.rang, etat: o.etat })) })
+    return ouvertes
+  }
+  const ouvertesSansRefus = (e: Etat, declencheur: string) => {
+    try {
+      return ouvertesGeste(e, declencheur, '')
+    } catch {
+      return null
+    }
+  }
+  /** Signatures du procès-verbal données (un état gardé antérieur n'a que celles du GIMAC et du participant). */
+  const signeesPv = (e: Etat): Record<string, Signature> =>
+    e.pvSignees ?? { ...(e.pv.signatureGimac ? { GIMAC: e.pv.signatureGimac } : {}), ...(e.pv.signatureParticipant ? { PARTICIPANT: e.pv.signatureParticipant } : {}) }
+  /**
+   * Circuit du procès-verbal (CircuitsSignature.procesVerbal, D-94) : figé à la première signature ; sinon signatures
+   * configurées des opérations ouvertes qui portent la signature, complétées de l'étape du portail ; à défaut, le défaut.
+   */
+  const circuitPv = (e: Etat): EtapePv[] => {
+    if (e.pvCircuit?.length) return e.pvCircuit
+    const configurees = (ouvertesSansRefus(e, PV_SIGNE) ?? []).flatMap((o) => o.signatures ?? []).map((x): EtapePv => ({ code: x.code, libelle: x.libelle, fonction: x.signataire, ordre: x.ordre, portail: false }))
+    return configurees.length ? [...configurees, ...CIRCUIT_PV_DEFAUT.filter((p) => p.portail && !configurees.some((c) => c.code === p.code))] : CIRCUIT_PV_DEFAUT
+  }
+  /** Vue du circuit ; au portail, une signature du GIMAC est désignée par sa fonction, jamais par le nom de la personne. */
+  const vueCircuit = (e: Etat, portail: boolean): EtapeCircuit[] => {
+    const s = signeesPv(e)
+    return circuitPv(e).map((x) => {
+      const sg = s[x.code] ?? null
+      return { ...x, etat: sg ? 'SIGNEE' : 'ATTENDUE', signature: sg && portail && !x.portail ? { ...sg, signataire: sg.fonction } : sg }
+    })
+  }
+  /** Signature du procès-verbal (ProcesVerbalService.signer) : opération ouverte, ordre du circuit, signataire désigné. */
+  const signerPv = (e: Etat, portail: boolean) => {
+    if (e.pv.etat === 'SIGNE') throw refus(409, 'CER_PV_NOT_SIGNABLE', 'Le procès-verbal est déjà signé.')
+    ouvertesGeste(e, PV_SIGNE, 'Signer le procès-verbal de certification')
+    const c = circuitPv(e)
+    const s = signeesPv(e)
+    const signables = signablesPv(c, s, portail)
+    if (!signables.length) throw nonSignablePv(c, s, portail)
+    const etape = portail ? signables[0] : signables.find((x) => admetSignataire(x.fonction))
+    if (!etape) throw new ApiError(403, 'CER_SIGNATAIRE_NON_DESIGNE', `Vous ne tenez pas la fonction signataire attendue : ${signables[0].libelle}.`, correlation(), { signature: signables[0].code, fonction: signables[0].fonction })
+    const nom = portail ? `Correspondant ${e.s.institutionNom}` : etape.fonction === 'CONDUCTEUR' && e.conducteur ? e.conducteur.nom : personne(etape.fonction).nom
+    const sig: Signature = { signataire: nom, fonction: etape.fonction, signeLe: jour(0), horodatage: horodatage() }
+    const signees = { ...s, [etape.code]: sig }
+    e.pvCircuit = c
+    e.pvSignees = signees
+    // D-91 : la signature configurée de l'opération est donnée avec celle du circuit.
+    declenchees(e, PV_SIGNE).forEach((o) => (o.signatures ?? []).filter((x) => x.code === etape.code).forEach((x) => Object.assign(x, { etat: 'SIGNEE', signeParNom: nom, signeLe: sig.horodatage, empreinte: e.pv.empreinte })))
+    const premiere = (cote: boolean) => c.filter((x) => x.portail === cote && signees[x.code]).map((x) => signees[x.code]).sort((a, b) => a.horodatage.localeCompare(b.horodatage))[0] ?? null
+    e.pv = { ...e.pv, etat: etatPvDe(c, signees), signatureGimac: premiere(false), signatureParticipant: premiere(true) }
+    if (e.pv.etat === 'SIGNE') {
+      e.s.statut = 'CERTIFIEE'
+      const o = declenchee(e, PV_SIGNE)
+      if (o && o.etat !== 'FAITE') terminer(e, o, { documentRef: `PV-SIG-${e.s.id.slice(-3)}`, nom: 'proces-verbal-signe.pdf', empreinte: e.pv.empreinte ?? '', deposeLe: jour(0), deposePar: nom })
+    }
+  }
+  /** Signatures que la personne peut donner maintenant (actions SIGNER_GIMAC, SIGNER_PARTICIPANT). */
+  const peutSignerPv = (e: Etat, portail: boolean) => {
+    if (e.pv.etat === 'NON_ETABLI' || e.pv.etat === 'SIGNE' || !ouvertesSansRefus(e, PV_SIGNE)) return false
+    const l = signablesPv(circuitPv(e), signeesPv(e), portail)
+    return portail ? l.length > 0 : l.some((x) => admetSignataire(x.fonction))
+  }
   /** Vue servie d'une opération (D-93 §8.5) : livrables attendus, signatures suivantes, actions calculées pour la personne. */
   const vueOperation = (o: OperationParcours): OperationParcours => {
     const miens = codesMiens()
     const ouverte = o.etat === 'A_FAIRE' || o.etat === 'EN_COURS'
-    const deposer = o.actionsPermises.some((a) => a === 'DEPOSER_LIVRABLE' || a === 'DEPOSER_PREUVE')
+    const droit = droitDepot(o)
+    const deposer = o.actionsPermises.some((a) => a === 'DEPOSER_LIVRABLE' || a === 'DEPOSER_PREUVE') && droit !== null && droit !== 'SUPERVISION'
     const livrablesAttendus: LivrableAttendu[] = estDedie(o.geste ?? null) || o.geste === 'AUCUN' ? [] : [{
       code: 'L1', libelle: o.description || o.libelle || o.rang, nature: o.geste === 'DEPOSER_LIVRABLE' ? 'LIVRABLE' : 'PREUVE', deposant: o.raci.R?.fonction ?? null,
       libelleDeposant: o.raci.R ? libelleFonction(o.raci.R.fonction) : null, typesPieces: [], obligatoire: true,
@@ -514,9 +713,78 @@ export function parcoursSimule(attendreJeu: Attendre, institutionPortail: string
       peutDeposer: ouverte && deposer,
     }]
     const suivante = o.etat === 'EN_SIGNATURE' ? suivantes(o) : []
-    const signatures = (o.signatures ?? []).map((x) => ({ ...x, suivante: suivante.includes(x), attendu: x.etat === 'ATTENDUE' ? { id: personne(x.signataire).id, nom: personne(x.signataire).nom, fonction: x.signataire } : null }))
-    const actions = [...o.actionsPermises, ...(o.etat === 'EN_SIGNATURE' && suivante.some((x) => miens.includes(x.signataire)) ? ['SIGNER'] : [])]
+    const signatures = (o.signatures ?? []).map((x) => ({ ...x, suivante: suivante.includes(x), attendu: x.etat === 'ATTENDUE' ? { id: titulaire(etats.get(o.liaisonId), x.signataire).id, nom: titulaire(etats.get(o.liaisonId), x.signataire).nom, fonction: x.signataire } : null }))
+    // DDR-05 : dépôt offert au seul RACI (R par sa fonction, conducteur), comme ParcoursProjection.actions ; HOM-03 : validation
+    // et renvoi offerts au seul validateur désigné.
+    const offerts = o.actionsPermises.filter((a) => ((a !== 'DEPOSER_LIVRABLE' && a !== 'DEPOSER_PREUVE') || deposer) && ((a !== 'VALIDER' && a !== 'RENVOYER') || peutValider(o)))
+    const actions = [...offerts, ...(o.etat === 'EN_SIGNATURE' && suivante.some((x) => miens.includes(x.signataire)) ? ['SIGNER'] : [])]
     return { ...o, livrablesAttendus, signatures, actionsPermises: actions }
+  }
+  /**
+   * DDR-05 : droit de dépôt de l'utilisateur (Parcours.droitDepot de MS-HOMOLOGATION) : R par sa fonction, conducteur de la
+   * liaison, sinon supervision par HOM_STEP_MANAGE (admise, journalisée, jamais offerte) ; null : refus. Sans profils
+   * (tests du jeu seul), le dépôt reste ouvert comme avant.
+   */
+  function droitDepot(o: OperationParcours): 'RESPONSABLE' | 'CONDUCTEUR' | 'SUPERVISION' | null {
+    if (!u.profils) return 'RESPONSABLE'
+    const miens = codesMiens()
+    if (o.raci.R && miens.includes(o.raci.R.fonction)) return 'RESPONSABLE'
+    const e = etats.get(o.liaisonId)
+    if (miens.includes('CONDUCTEUR') && e?.conducteur && e.conducteur.id === personne('CONDUCTEUR', 0).id) return 'CONDUCTEUR'
+    return (u.permissions ?? []).includes('HOM_STEP_MANAGE') ? 'SUPERVISION' : null
+  }
+  /** Dépôt admis, sinon 403 HOM_DEPOT_NON_AUTORISE ; l'auteur tracé est l'utilisateur réel (jamais le responsable désigné). */
+  const exigerDroitDepot = (o: OperationParcours): string => {
+    if (!droitDepot(o)) throw refus(403, 'HOM_DEPOT_NON_AUTORISE', `Ce dépôt revient au responsable désigné (${o.raci.R?.nom ?? 'non désigné'}) ou au conducteur de la liaison.`)
+    return u.utilisateur?.nom ?? o.raci.R?.nom ?? ''
+  }
+  /** DDR-08 : opération ouverte ou renvoyée, consignée pour la notification de son responsable. */
+  const abonnesEvenements: ((n: NotificationOperationDemo) => void)[] = []
+  const notificationDe = (e: Etat, j: EvenementOperationDemo): NotificationOperationDemo | null => {
+    const o = e.ops.find((x) => x.id === j.operationId)
+    if (!o) return null
+    return { type: j.type, operationId: o.id, liaisonId: e.s.id, institutionNom: e.s.institutionNom, libelle: o.libelle ?? o.rang, motif: j.motif ?? null, lien: lienOperation(o), le: j.le }
+  }
+  /**
+   * Destinataire de l'événement : le responsable (ouverture, renvoi) ; HOM-16 : le validateur désigné pour une validation
+   * demandée (homologation.operation-validation-requested.v1, « Validation attendue » de MS-NOTIFICATION).
+   */
+  const pourMoi = (o: OperationParcours, type: EvenementOperationDemo['type'] = 'OUVERTE') => {
+    if (!u.profils) return false
+    if (type === 'VALIDATION') return peutValider(o)
+    return !!o.raci.R && o.raci.R.fonction !== 'PARTICIPANT' && codesMiens().includes(o.raci.R.fonction)
+  }
+  const consigner = (e: Etat, o: OperationParcours, type: EvenementOperationDemo['type'], motif?: string) => {
+    const j: EvenementOperationDemo = { type, operationId: o.id, le: horodatage(), ...(motif ? { motif } : {}) }
+    e.journal = [...(e.journal ?? []), j]
+    const n = notificationDe(e, j)
+    if (n && pourMoi(o, type)) abonnesEvenements.forEach((f) => f(n))
+  }
+  /** Fonction tenue sur la liaison : par ses profils ; CONDUCTEUR seulement par le conducteur désigné de la liaison. */
+  const tient = (o: OperationParcours, p: Personne | null) => {
+    if (!p) return false
+    if (!codesMiens().includes(p.fonction)) return false
+    if (p.fonction !== 'CONDUCTEUR') return true
+    const e = etats.get(o.liaisonId)
+    return !e?.conducteur || e.conducteur.id === personne('CONDUCTEUR', 0).id
+  }
+  /**
+   * HOM-03 : validateur admis (Parcours.peutValider de MS-HOMOLOGATION) : le V désigné, ou un porteur de sa fonction s'il est
+   * à affecter, jamais le responsable (R) ; sans profils (tests du jeu seul), la validation reste ouverte comme avant.
+   */
+  function peutValider(o: OperationParcours): boolean {
+    if (!u.profils) return true
+    return !!o.raci.V && tient(o, o.raci.V) && !(o.raci.R && o.raci.R.fonction !== o.raci.V.fonction && tient(o, o.raci.R))
+  }
+  /** Validation ou renvoi admis (Parcours.exigerValidateur), sinon 403 HOM_VALIDATION_NON_VALIDATEUR ; R : 409 HOM_VALIDATOR_IS_RESPONSIBLE. */
+  const exigerValidateur = (o: OperationParcours) => {
+    if (!u.profils) return
+    const estR = !!o.raci.R && tient(o, o.raci.R) && !(o.raci.V && tient(o, o.raci.V) && o.raci.V.fonction === o.raci.R.fonction)
+    if (estR) throw refus(409, 'HOM_VALIDATOR_IS_RESPONSIBLE', 'Le validateur doit être distinct du responsable.')
+    if (!peutValider(o)) {
+      const v = o.raci.V
+      throw refus(403, 'HOM_VALIDATION_NON_VALIDATEUR', `Cette validation revient au validateur désigné (${!v ? 'non désigné' : v.aAffecter ? `un porteur de la fonction ${libelleFonction(v.fonction)}` : v.nom}).`)
+    }
   }
   /** Intervenants de la liaison lus du RACI (D-93 §8.5) : fonction, qualités, personne désignée ou à affecter. */
   const intervenantsDe = (e: Etat): IntervenantLiaison[] => {
@@ -584,17 +852,24 @@ export function parcoursSimule(attendreJeu: Attendre, institutionPortail: string
       if (x.etat === 'VERROUILLEE' && x.predecesseursNonFaits.length === 0) {
         x.etat = 'A_FAIRE'
         x.actionsPermises = actionsOuvertes(x)
+        consigner(e, x, 'OUVERTE')
       }
     })
+    // Avant tout jalon, statut du CR déduit de l'étape courante (Parcours.statutCalcule de MS-HOMOLOGATION, D-57).
+    if (!statut && (e.s.statut === 'CADREE' || e.s.statut === 'EN_INTEGRATION' || e.s.statut === 'EN_TEST')) {
+      const c = etapeCourante(e)
+      e.s.statut = c === 'TESTS' || c === 'CERTIFICATION' ? 'EN_TEST' : c === 'INTEGRATION' ? 'EN_INTEGRATION' : 'CADREE'
+    }
   }
   const dossierDe = (e: Etat): DossierLiaison => {
     const r = resume(e)
     const peutConduire = e.conducteur !== null
     return {
       id: e.s.id, reference: e.s.id, institutionId: e.s.institutionId, institutionNom: e.s.institutionNom, typeProjet: e.s.typeProjet,
+      ...(r.typeProjetLibelle ? { typeProjetLibelle: r.typeProjetLibelle } : {}),
       banquePartenaireNom: e.s.banque, personnalisateurNom: e.s.personnalisateur, statut: e.s.statut, etapeCourante: r.etapeCourante,
       conducteur: e.conducteur, etapesVersion: etapesVersionDe(e), intervenants: intervenantsDe(e),
-      dateDemarrage: jour(e.s.debut), dateCibleProduction: r.dateCibleProduction, versionReferentiel: e.s.depuisVersion ? 1 : e.s.typeProjet === 'PAIEMENT_MOBILE' ? 2 : 4,
+      dateDemarrage: jour(e.s.debut), dateCibleProduction: r.dateCibleProduction, versionReferentiel: e.s.versionNumero ?? (e.s.depuisVersion ? 1 : u.numeroPublie?.(e.s.typeProjet) ?? (e.s.typeProjet === 'PAIEMENT_MOBILE' ? 2 : e.s.typeProjet === 'CARTE_INTERBANCAIRE' ? 3 : 1)),
       perimetre: perimetreDe(e), couvertureCertification: r.couvertureCertification, couvertureMiseEnService: r.couvertureMiseEnService,
       etapes: etapesDe(e), blocages: e.blocages, interlocuteursParticipant: [{ nom: `Correspondant technique ${e.s.institutionNom}`, fonction: 'Responsable technique' }, { nom: `Correspondant fonctionnel ${e.s.institutionNom}`, fonction: 'Responsable fonctionnel' }],
       liaisonOrigineId: e.s.origine ?? null,
@@ -635,6 +910,7 @@ export function parcoursSimule(attendreJeu: Attendre, institutionPortail: string
     ouvrirLiaison: async (o) => {
       const nom = await nomInstitution?.(o.institutionId)
       const banque = o.banquePartenaireId ? await nomInstitution?.(o.banquePartenaireId) : undefined
+      const datesAmont = await u.datesAmont?.(o.institutionId)
       return attendre(() => {
         // Un service supplémentaire (rang 35) est une liaison propre, sans effet sur l'unicité de la liaison principale.
         if (tous().some((e) => (e.s.institutionId === o.institutionId || (nom !== undefined && e.s.institutionNom === nom)) && e.s.typeProjet === o.typeProjet && !e.s.origine && e.s.statut !== 'CLOSE_SANS_SUITE' && e.s.statut !== 'EN_PRODUCTION')) {
@@ -643,9 +919,12 @@ export function parcoursSimule(attendreJeu: Attendre, institutionPortail: string
         const cond = PERSONNES.findIndex((p) => p.id === o.chefDeProjetId)
         // D-91, D-98 : un type créé dans la plateforme s'instancie depuis la version publiée de son référentiel.
         const version = ['CARTE_INTERBANCAIRE', 'PAIEMENT_MOBILE', 'DELEGATAIRE'].includes(o.typeProjet) ? null : u.versionPubliee?.(o.typeProjet) ?? null
-        const s: Scenario = { id: `LIA-2026-${String(50 + etats.size).padStart(3, '0')}`, institutionId: o.institutionId, institutionNom: nom ?? (o.institutionId === 'INST-0042' ? 'Établissement de paiement A' : o.institutionId === 'INST-0017' ? 'Banque B' : 'Nouvel adhérent'), typeProjet: o.typeProjet, banque: banque ?? null, personnalisateur: null, fintech: false, avancement: '2', statut: 'CADREE', conducteur: cond >= 0 ? PERSONNES.filter((p) => p.fonction === 'CONDUCTEUR').findIndex((p) => p.id === o.chefDeProjetId) : 0, debut: 0, cible: null, services: version ? [{ code: 'TRANSVERSE', libelle: 'Service du projet', inclus: true }] : perimetre(o.typeProjet === 'PAIEMENT_MOBILE' ? SERVICES_MOBILE : SERVICES_CARTE, []), ...(version ? { depuisVersion: true } : {}) }
+        const s: Scenario = { id: `LIA-2026-${String(50 + etats.size).padStart(3, '0')}`, institutionId: o.institutionId, institutionNom: nom ?? (o.institutionId === 'INST-0042' ? 'Établissement de paiement A' : o.institutionId === 'INST-0017' ? 'Banque B' : 'Nouvel adhérent'), typeProjet: o.typeProjet, banque: banque ?? null, personnalisateur: null, fintech: false, avancement: '2', statut: 'CADREE', conducteur: cond >= 0 ? PERSONNES.filter((p) => p.fonction === 'CONDUCTEUR').findIndex((p) => p.id === o.chefDeProjetId) : 0, debut: 0, cible: null, services: version ? [{ code: 'TRANSVERSE', libelle: 'Service du projet', inclus: true }] : perimetre(o.typeProjet === 'PAIEMENT_MOBILE' ? SERVICES_MOBILE : SERVICES_CARTE, []), ...(version ? { depuisVersion: true } : {}),
+          versionNumero: u.numeroPublie?.(o.typeProjet) ?? undefined, amont: datesAmont }
         const e = construire(s, version)
         etats.set(s.id, e)
+        // DDR-08 : chaque opération ouverte parvient à son responsable (tâche et notification).
+        e.ops.filter((x) => x.etat === 'A_FAIRE').forEach((x) => consigner(e, x, 'OUVERTE'))
         u.surLiaisonOuverte?.(o.institutionId, s.id)
         return resume(e)
       })
@@ -665,13 +944,27 @@ export function parcoursSimule(attendreJeu: Attendre, institutionPortail: string
       const o = e.ops.find((x) => x.rang === '6')
       if (!o || o.etat !== 'A_FAIRE') throw refus(409, 'HOM_STEP_NOT_OPEN', 'L\'affectation des ressources n\'est pas ouverte.')
       if (a.length === 0) throw refus(422, 'HOM_RESOURCES_REQUIRED', 'Au moins une ressource doit être affectée.')
-      terminer(e, o, { documentRef: `AFF-${id.slice(-3)}`, nom: 'designation-ressources', empreinte: hex(`aff-${id}`), deposeLe: jour(0), deposePar: personne('CHEF_DES').nom })
+      // DDR-06 : comme MS-HOMOLOGATION (intervenants.pourFonction) : chaque personne existe et tient la fonction affectée ;
+      // elle remplace la fonction sur les opérations non faites.
+      const personnes = a.map((x) => {
+        const p = PERSONNES.find((y) => y.id === x.personneId)
+        if (!p) throw refus(422, 'HOM_PERSON_UNKNOWN', 'Personne inconnue.')
+        if (p.fonction !== x.fonction) throw refus(422, 'HOM_PERSON_NOT_ELIGIBLE', 'Cette personne ne détient pas le profil de la fonction.')
+        return p
+      })
+      const remplacer = (x: Personne | null) => personnes.find((p) => p.fonction === x?.fonction) ?? x
+      e.ops.filter((x) => x.etat !== 'FAITE').forEach((x) => {
+        x.raci = { R: remplacer(x.raci.R), V: remplacer(x.raci.V), C: x.raci.C.map((y) => remplacer(y)!), I: x.raci.I.map((y) => remplacer(y)!), E: x.raci.E }
+      })
+      const contenu = personnes.map((p) => `${p.fonction}=${p.id}`).join(';')
+      terminer(e, o, { documentRef: `AFF-${id.slice(-3)}`, nom: 'designation-ressources', empreinte: hex(`aff-${id}-${contenu}`), deposeLe: jour(0), deposePar: u.utilisateur?.nom ?? personne('CHEF_DES').nom })
     }),
     deposerLivrable: (opId, fichier, commentaire) => attendre(() => {
       const { e, o } = operation(opId)
       refuserGesteLibre(o)
       if (!o.actionsPermises.includes('DEPOSER_LIVRABLE') && !o.actionsPermises.includes('DEPOSER_PREUVE')) throw refus(409, 'HOM_OPERATION_NOT_OPEN', 'Cette opération n\'attend pas de livrable.')
-      terminer(e, o, { documentRef: `DOC-${opId.replace(':', '-')}`, nom: fichier.name, empreinte: hex(fichier.name + fichier.size + commentaire), deposeLe: jour(0), deposePar: o.raci.R?.nom ?? '' })
+      const auteur = exigerDroitDepot(o)
+      terminer(e, o, { documentRef: `DOC-${opId.replace(':', '-')}`, nom: fichier.name, empreinte: hex(`${opId}|${fichier.name}|${fichier.size}|${fichier.lastModified}|${commentaire}`), deposeLe: jour(0), deposePar: auteur })
     }),
     attribuer: (opId, qualite, personneId) => attendre(() => {
       const { o } = operation(opId)
@@ -695,14 +988,18 @@ export function parcoursSimule(attendreJeu: Attendre, institutionPortail: string
       } else if (o.cle && !c.codeControle) throw refus(422, 'HOM_KEY_CHECK_VALUE_REQUIRED', 'Le code de contrôle de la clé est exigé ; aucune valeur de clé n\'est admise.')
       if (o.cle && c.codeControle && !/^[0-9A-F]{4,8}$/.test(c.codeControle)) throw refus(422, 'HOM_KEY_CHECK_VALUE_INVALID', 'Un code de contrôle compte de 4 à 8 caractères hexadécimaux.')
       if (o.valeurReference && !c.valeurReference) throw refus(422, 'HOM_REFERENCE_VALUE_REQUIRED', 'Cette preuve doit porter la valeur de référence relevée.')
+      const auteur = exigerDroitDepot(o)
       o.etat = 'EN_VALIDATION'
-      o.preuve = { documentRef: `DOC-${opId.replace(':', '-')}`, nom: fichier.name, empreinte: hex(fichier.name + fichier.size), deposeLe: jour(0), deposePar: o.raci.R?.nom ?? '', valeurReference: c.valeurReference ? { libelle: `parcours.valeur.${o.rang}`, valeur: c.valeurReference } : undefined, codeControle: o.cle ? c.codeControle : undefined, ceremonie: o.rang === 'C1' ? c.ceremonie : undefined }
+      o.preuve = { documentRef: `DOC-${opId.replace(':', '-')}`, nom: fichier.name, empreinte: hex(`${opId}|${fichier.name}|${fichier.size}|${fichier.lastModified}`), deposeLe: jour(0), deposePar: auteur, valeurReference: c.valeurReference ? { libelle: `parcours.valeur.${o.rang}`, valeur: c.valeurReference } : undefined, codeControle: o.cle ? c.codeControle : undefined, ceremonie: o.rang === 'C1' ? c.ceremonie : undefined }
       o.actionsPermises = ['VALIDER', 'RENVOYER', 'ATTRIBUER']
-      void e
+      // HOM-16 : validation demandée, notifiée au validateur (homologation.operation-validation-requested.v1).
+      consigner(e, o, 'VALIDATION')
     }),
     validerOperation: (opId) => attendre(() => {
       const { e, o } = operation(opId)
       if (o.etat !== 'EN_VALIDATION') throw refus(409, 'HOM_OPERATION_NOT_IN_VALIDATION', 'L\'opération n\'attend pas de validation.')
+      // HOM-03 : RACI imposé, comme ParcoursCommandes.valider (exigerValidateur).
+      exigerValidateur(o)
       terminer(e, o, o.preuve)
     }),
     // D-93 §8.3 : renvoi motivé, l'opération revient à faire (bloquée si un blocage est actif), la pièce est gardée.
@@ -710,10 +1007,12 @@ export function parcoursSimule(attendreJeu: Attendre, institutionPortail: string
       const { e, o } = operation(opId)
       if (!motif.trim() || motif.length > 500) throw refus(422, 'HOM_MOTIF_REQUIS', 'Un motif (1 à 500 caractères) est exigé.')
       if (o.etat !== 'EN_VALIDATION') throw refus(409, 'HOM_OPERATION_NOT_IN_VALIDATION', 'L\'opération n\'attend pas de validation.')
+      exigerValidateur(o)
       const bloquee = e.blocages.some((b) => !b.leveLe)
       o.etat = bloquee ? 'BLOQUEE' : 'A_FAIRE'
-      o.renvois = [...(o.renvois ?? []), { motif: motif.trim(), parId: o.raci.V?.id ?? 'U-V', parNom: o.raci.V?.nom ?? 'Validateur', le: new Date().toISOString() }]
+      o.renvois = [...(o.renvois ?? []), { motif: motif.trim(), parId: o.raci.V?.id ?? 'U-V', parNom: o.raci.V?.nom ?? 'Validateur', le: horodatage() }]
       o.actionsPermises = bloquee ? ['ATTRIBUER'] : actionsOuvertes(o)
+      consigner(e, o, 'RENVOYEE', motif.trim())
     }),
     // D-91 §5.4 : signature d'une opération, dans l'ordre, par le porteur de la fonction (clé de sécurité exigée).
     signerOperation: (id, code, signature, assertion) => attendre(() => {
@@ -725,9 +1024,12 @@ export function parcoursSimule(attendreJeu: Attendre, institutionPortail: string
       if (x.etat === 'SIGNEE') throw refus(409, 'HOM_SIGNATURE_DEJA_SIGNEE', 'Cette signature est déjà donnée.')
       if (o.etat !== 'EN_SIGNATURE') throw new ApiError(409, 'HOM_SIGNATURE_ETAT', 'L\'opération n\'attend pas de signature.', correlation(), { etat: o.etat, attendu: 'EN_SIGNATURE' })
       if (!suivantes(o).includes(x)) throw new ApiError(409, 'HOM_SIGNATURE_ORDRE', 'Une signature d\'un ordre inférieur est attendue d\'abord.', correlation(), { attendues: suivantes(o).map((y) => y.code) })
-      if (!codesMiens().includes(x.signataire)) throw refus(403, 'HOM_SIGNATURE_NON_SIGNATAIRE', 'Vous ne tenez pas la fonction signataire attendue.')
+      // Signataire admis (OperationsLiaison.admetSignataire) : porteur de la fonction ; sans identité (tests du jeu seul), admis.
+      if (!admetSignataire(x.signataire)) throw refus(403, 'HOM_SIGNATURE_NON_SIGNATAIRE', 'Vous ne tenez pas la fonction signataire attendue.')
       if (!assertion) throw refus(428, 'IAM_REAUTH_REQUIRED', 'Réauthentification exigée.')
-      Object.assign(x, { etat: 'SIGNEE', signePar: personne(x.signataire).id, signeParNom: personne(x.signataire).nom, signeLe: new Date().toISOString(), empreinte: hex(`${o.id}-${x.code}`) })
+      // Signataire de la liaison (le conducteur désigné pour CONDUCTEUR), horloge de la démonstration.
+      const qui = titulaire(e, x.signataire)
+      Object.assign(x, { etat: 'SIGNEE', signePar: qui.id, signeParNom: qui.nom, signeLe: horodatage(), empreinte: hex(`${o.id}-${x.code}`) })
       if ((o.signatures ?? []).every((y) => y.etat === 'SIGNEE')) {
         o.etat = 'A_FAIRE'
         terminer(e, o, o.preuve)
@@ -818,8 +1120,10 @@ export function parcoursSimule(attendreJeu: Attendre, institutionPortail: string
         compteurs.push(compteur('scriptsDepot', o28.length, 'crit', versOps(o28, 'MISE_EN_PRODUCTION')), compteur('operationsSysteme', taches.length, 'info', taches.length === 1 ? taches[0].lien : null))
       }
       if (f('RSSI')) compteurs.push(compteur('attestationsAVerifier', actives.flatMap((e) => e.approbation.attestations.filter((a) => a.preuve && !a.verifieeLe)).length, 'warn'), compteur('approbationsEnAttente', actives.filter((e) => ['DOSSIER_CONSTITUE', 'EN_VERIFICATION', 'VERIFIE_ARCHIVE'].includes(e.approbation.etat)).length, 'warn'), compteur('ceremoniesCles', actives.flatMap((e) => e.ops.filter((o) => (o.rang === 'C1' || o.rang === 'D3') && o.etat === 'A_FAIRE')).length, 'warn'))
-      if (f('CONFORMITE')) compteurs.push(compteur('visasAttendus', actives.filter((e) => e.approbation.visas.some((v) => v.nature === 'CONFORMITE' && v.actif && v.etat === 'ATTENDU')).length, 'warn'), compteur('fintechsCobac', actives.filter((e) => e.approbation.fintech).length, 'info'))
-      if (f('DG')) compteurs.push(compteur('visasAttendus', actives.filter((e) => e.approbation.visas.some((v) => v.nature === 'DIRECTION_GENERALE' && v.actif && v.etat === 'ATTENDU')).length, 'warn'))
+      // Visas attendus : lien vers l'onglet Décision de la liaison s'il n'y en a qu'une, sinon la liste de l'étape (comme MS-HOMOLOGATION).
+      const visas = (nature: 'CONFORMITE' | 'DIRECTION_GENERALE') => actives.filter((e) => e.approbation.visas.some((v) => v.nature === nature && v.actif && v.etat === 'ATTENDU'))
+      if (f('CONFORMITE')) compteurs.push(compteur('visasAttendus', visas('CONFORMITE').length, 'warn', versLiaisons(visas('CONFORMITE'), 'decision', 'APPROBATION_SECURITE')), compteur('fintechsCobac', actives.filter((e) => e.approbation.fintech).length, 'info'))
+      if (f('DG')) compteurs.push(compteur('visasAttendus', visas('DIRECTION_GENERALE').length, 'warn', versLiaisons(visas('DIRECTION_GENERALE'), 'decision', 'APPROBATION_SECURITE')))
       if (f('PARTICIPANT')) {
         const siennes = visibles
         compteurs.push(compteur('tachesARealiser', taches.length, 'warn'), compteur('pvASigner', siennes.filter((e) => e.pv.etat === 'ETABLI' || e.pv.etat === 'SIGNE_GIMAC').length, 'warn'), compteur('attestationsAFournir', siennes.flatMap((e) => e.approbation.attestations.filter((a) => !a.preuve && e.pv.etat === 'SIGNE')).length, 'warn'), compteur('fichesSuivi', siennes.filter((e) => e.fiche.etat === 'REMISE').length, 'warn'))
@@ -838,7 +1142,7 @@ export function parcoursSimule(attendreJeu: Attendre, institutionPortail: string
         const v = vueOperation(o)
         return {
           operationId: o.id, liaisonId: e.s.id, liaisonReference: e.s.id, institutionNom: e.s.institutionNom, statutLiaison: e.s.statut, code: o.rang, libelle: t?.libelle ?? o.libelle ?? o.rang,
-          etape: o.etape, etapeCode: o.etapeCode ?? o.etape, etat: o.etat, qualite: t?.qualite ?? null, aPrendre: t?.aPrendre ?? null, signature: t?.signature ?? null, geste: o.geste ?? null,
+          etape: o.etape, etapeCode: o.etapeCode ?? o.etape, etat: o.etat, qualite: t?.signature ? null : t?.qualite ?? null, aPrendre: t?.aPrendre ?? null, signature: t?.signature ?? null, geste: o.geste ?? null,
           jalon: o.jalon ?? null, declencheur: o.declencheur ?? null, vue: o.vue ?? null, responsable: o.raci.R, validateur: o.raci.V, echeance: o.echeance, sla: o.sla,
           lien: lienOperation(o), actionsPermises: t ? v.actionsPermises : [],
         }
@@ -875,7 +1179,7 @@ export function parcoursSimule(attendreJeu: Attendre, institutionPortail: string
           servicesPlusDemandes: tri.slice(0, 4).map(([serviceCode, v]) => ({ serviceCode, libelle: v.libelle, nombre: v.nombre })),
           servicesPlusLongs: [{ serviceCode: 'REMITTANCE', libelle: 'Rémittence entrante', delaiMoyenJours: 38 }, { serviceCode: 'PAIEMENT', libelle: 'Paiement marchand', delaiMoyenJours: 31 }, { serviceCode: 'RETRAIT', libelle: 'Retrait', delaiMoyenJours: 22 }],
           delaiMoyenAdhesionProductionJours: 174,
-          projetsBloques: actives.flatMap((e) => e.blocages.filter((b) => !b.leveLe).map((b) => ({ liaisonId: e.s.id, reference: e.s.id, institutionNom: e.s.institutionNom, motif: b.motif, depuis: b.depuis, jours: joursEntre(b.depuis, AUJOURDHUI.toISOString()) }))),
+          projetsBloques: actives.flatMap((e) => e.blocages.filter((b) => !b.leveLe).map((b) => ({ liaisonId: e.s.id, reference: e.s.id, institutionNom: e.s.institutionNom, motif: b.motif, depuis: b.depuis, jours: joursEntre(b.depuis, aujourdhuiDemo().toISOString()) }))),
           lancementsParService12Mois: tri.map(([serviceCode, v]) => ({ serviceCode, libelle: v.libelle, nombre: v.nombre })),
         },
       }
@@ -890,8 +1194,9 @@ export function parcoursSimule(attendreJeu: Attendre, institutionPortail: string
       const o18 = declenchee(e, 'certification.pv-established.v1')
       const actions: string[] = []
       if (e.pv.etat === 'NON_ETABLI' && o17?.etat === 'FAITE' && o18?.etat === 'A_FAIRE') actions.push(e.pv.couverture.taux === 100 ? 'ETABLIR' : 'ETABLIR_BLOQUE')
-      if (e.pv.etat === 'ETABLI' || e.pv.etat === 'SIGNE_PARTICIPANT') actions.push('SIGNER_GIMAC')
-      return { ...e.pv, circuit: circuitDe(e.pv), actionsPermises: actions }
+      // D-94 : une signature du DES du circuit est signable maintenant par la personne (ordre, opération ouverte, signataire).
+      if (peutSignerPv(e, false)) actions.push('SIGNER_GIMAC')
+      return { ...e.pv, circuit: vueCircuit(e, false), actionsPermises: actions }
     }),
     etablirProcesVerbal: (id) => attendre(() => {
       const e = trouver(id)
@@ -901,29 +1206,28 @@ export function parcoursSimule(attendreJeu: Attendre, institutionPortail: string
       e.pv = { ...e.pv, etat: 'ETABLI', etabliPar: e.conducteur?.nom ?? null, etabliLe: jour(0), empreinte: hex(`pv-${id}-${Date.now()}`) }
       terminer(e, o, { documentRef: `PV-${id.slice(-3)}`, nom: `proces-verbal-certification-${id}.pdf`, empreinte: e.pv.empreinte ?? '', deposeLe: jour(0), deposePar: e.conducteur?.nom ?? '' })
     }),
+    // D-94 : prochaine signature du circuit que la personne tient, dans l'ordre (CER_SIGNATURE_ORDRE, CER_SIGNATAIRE_NON_DESIGNE).
     signerProcesVerbalGimac: (id, assertion) => attendre(() => {
       if (!assertion) throw refus(401, 'IAM_REAUTH_REQUIRED', 'Réauthentification exigée.')
       const e = trouver(id)
-      if (e.pv.etat !== 'ETABLI' && e.pv.etat !== 'SIGNE_PARTICIPANT') throw refus(409, 'CER_PV_NOT_SIGNABLE', 'Le procès-verbal n\'attend pas la signature du GIMAC.')
-      const sig = { signataire: personne('CHEF_DES').nom, fonction: 'CHEF_DES' as Fonction, signeLe: jour(0), horodatage: new Date().toISOString() }
-      e.pv = { ...e.pv, signatureGimac: sig, etat: e.pv.signatureParticipant ? 'SIGNE' : 'SIGNE_GIMAC' }
-      if (e.pv.etat === 'SIGNE') {
-        e.s.statut = 'CERTIFIEE'
-        const o = declenchee(e, 'certification.pv-signed.v1')
-        if (o) terminer(e, o, { documentRef: `PV-SIG-${id.slice(-3)}`, nom: 'proces-verbal-signe.pdf', empreinte: e.pv.empreinte ?? '', deposeLe: jour(0), deposePar: sig.signataire })
-      }
+      if (e.pv.etat === 'NON_ETABLI') throw refus(409, 'CER_PV_NOT_SIGNABLE', 'Le procès-verbal n\'est pas établi.')
+      signerPv(e, false)
     }),
     approbation: (id) => attendre(() => {
       const e = trouver(id)
       const a = e.approbation
       const actions: string[] = []
-      if (e.pv.etat === 'SIGNE' && a.etat === 'EN_ATTENTE_DOSSIER') actions.push('CONSTITUER_DOSSIER')
-      if (a.attestations.some((x) => x.preuve && !x.verifieeLe)) actions.push('VERIFIER_ATTESTATION')
-      if (a.attestations.length && a.attestations.every((x) => x.verifieeLe) && a.etat !== 'APPROUVEE' && a.etat !== 'VERIFIE_ARCHIVE') actions.push('ARCHIVER')
-      if (a.dossierChangement && !a.ficheChangement) actions.push('REFERENCER_FICHE')
-      if (a.ficheChangement) actions.push('RELIRE_FICHE')
-      // Visas optionnels (D-56) : signables avant l'approbation de la sécurité, une fois le procès-verbal signé.
-      if (e.pv.etat === 'SIGNE' && a.etat !== 'APPROUVEE') {
+      // Comme ApprobationPolicy.actionsDes : aucun geste une fois l'approbation close (approuvée ou refusée).
+      const ouverte = e.pv.etat === 'SIGNE' && a.etat !== 'APPROUVEE' && a.etat !== 'REFUSEE'
+      const archivee = a.etat === 'VERIFIE_ARCHIVE' || (a.attestations.length > 0 && a.attestations.every((x) => x.archiveeLe))
+      if (ouverte && a.etat === 'EN_ATTENTE_DOSSIER') actions.push('CONSTITUER_DOSSIER')
+      if (ouverte && !archivee && a.attestations.some((x) => x.preuve && !x.verifieeLe)) actions.push('VERIFIER_ATTESTATION')
+      if (ouverte && !archivee && a.attestations.length && a.attestations.every((x) => x.verifieeLe)) actions.push('ARCHIVER')
+      if (ouverte && a.dossierChangement && !a.ficheChangement) actions.push('REFERENCER_FICHE')
+      if (ouverte && a.ficheChangement) actions.push('RELIRE_FICHE')
+      // Visas optionnels (D-56) : signables avant l'approbation de la sécurité, une fois le procès-verbal signé, sur
+      // l'opération ouverte qui les porte (CER-02, comme ApprobationSecuriteService.actionsDes).
+      if (ouverte && ouvertesSansRefus(e, 'certification.security-approved.v1')) {
         a.visas.filter((v) => v.actif && v.etat === 'ATTENDU').forEach((v) => actions.push(v.nature === 'CONFORMITE' ? 'SIGNER_VISA_CONFORMITE' : 'SIGNER_VISA_DG'))
       }
       return { ...a, actionsPermises: actions }
@@ -985,7 +1289,13 @@ export function parcoursSimule(attendreJeu: Attendre, institutionPortail: string
       if (!v?.actif) throw refus(409, 'CER_VISA_NOT_REQUIRED', 'Ce visa n\'est pas requis pour ce type de projet.')
       if (v.etat !== 'ATTENDU') throw refus(409, 'CER_VISA_ALREADY_SIGNED', 'Ce visa est déjà signé : une signature est immuable.')
       if (!favorable && !motif.trim()) throw refus(422, 'CER_REJECTION_REASON_REQUIRED', 'Un avis défavorable doit être motivé.')
-      Object.assign(v, { etat: favorable ? 'SIGNE_FAVORABLE' : 'SIGNE_DEFAVORABLE', motif, signature: { signataire: personne(nature === 'CONFORMITE' ? 'CONFORMITE' : 'DG').nom, fonction: nature === 'CONFORMITE' ? 'CONFORMITE' : 'DG', signeLe: jour(0), horodatage: new Date().toISOString() } })
+      const e = trouver(id)
+      if (e.approbation.etat === 'APPROUVEE' || e.approbation.etat === 'REFUSEE') throw refus(409, 'CER_SECURITY_APPROVAL_CLOSED', 'L\'approbation de la sécurité est close.')
+      // Comme ApprobationSecuriteService.signerVisa : opération de l'approbation ouverte, signataire désigné du circuit du visa.
+      ouvertesGeste(e, 'certification.security-approved.v1', 'Signer un visa')
+      const fonction: Fonction = nature === 'CONFORMITE' ? 'CONFORMITE' : 'DG'
+      if (!admetSignataire(fonction)) throw new ApiError(403, 'CER_SIGNATAIRE_NON_DESIGNE', `Vous ne tenez pas la fonction signataire attendue : ${nature === 'CONFORMITE' ? 'Visa de la conformité' : 'Visa de la Direction Générale'}.`, correlation(), { signature: nature, fonction })
+      Object.assign(v, { etat: favorable ? 'SIGNE_FAVORABLE' : 'SIGNE_DEFAVORABLE', motif, signature: { signataire: personne(fonction).nom, fonction, signeLe: jour(0), horodatage: horodatage() } })
     }),
     ficheSuivi: (id) => attendre(() => {
       const e = trouver(id)
@@ -1043,19 +1353,13 @@ export function parcoursSimule(attendreJeu: Attendre, institutionPortail: string
     procesVerbal: (id) => attendre(() => {
       const e = sienne(id)
       const pv = e.pv
-      return { ...pv, circuit: circuitDe(pv), etabliPar: pv.etabliPar ? 'CONDUCTEUR' : null, signatureGimac: pv.signatureGimac ? { ...pv.signatureGimac, signataire: pv.signatureGimac.fonction } : null, actionsPermises: pv.etat === 'ETABLI' || pv.etat === 'SIGNE_GIMAC' ? ['SIGNER_PARTICIPANT'] : [] }
+      return { ...pv, circuit: vueCircuit(e, true), etabliPar: pv.etabliPar ? 'CONDUCTEUR' : null, signatureGimac: pv.signatureGimac ? { ...pv.signatureGimac, signataire: pv.signatureGimac.fonction } : null, actionsPermises: peutSignerPv(e, true) ? ['SIGNER_PARTICIPANT'] : [] }
     }),
     signerProcesVerbal: (id, assertion) => attendre(() => {
       if (!assertion) throw refus(401, 'IAM_REAUTH_REQUIRED', 'Réauthentification exigée.')
       const e = sienne(id)
-      if (e.pv.etat !== 'ETABLI' && e.pv.etat !== 'SIGNE_GIMAC') throw refus(409, 'CER_PV_NOT_SIGNABLE', 'Le procès-verbal n\'attend pas votre signature.')
-      const sig = { signataire: `Représentant de ${e.s.institutionNom}`, fonction: 'PARTICIPANT' as Fonction, signeLe: jour(0), horodatage: new Date().toISOString() }
-      e.pv = { ...e.pv, signatureParticipant: sig, etat: e.pv.signatureGimac ? 'SIGNE' : 'SIGNE_PARTICIPANT' }
-      if (e.pv.etat === 'SIGNE') {
-        e.s.statut = 'CERTIFIEE'
-        const o = declenchee(e, 'certification.pv-signed.v1')
-        if (o && o.etat !== 'FAITE') terminer(e, o, { documentRef: `PV-SIG-${id.slice(-3)}`, nom: 'proces-verbal-signe.pdf', empreinte: e.pv.empreinte ?? '', deposeLe: jour(0), deposePar: sig.signataire })
-      }
+      if (e.pv.etat === 'NON_ETABLI') throw refus(409, 'CER_PV_NOT_SIGNABLE', 'Le procès-verbal n\'attend pas votre signature.')
+      signerPv(e, true)
     }),
     approbation: (id) => attendre(() => {
       const e = sienne(id)
@@ -1088,5 +1392,45 @@ export function parcoursSimule(attendreJeu: Attendre, institutionPortail: string
     }),
   }
 
-  return { parcours, decision, portailParcours }
+  // DDR-08 : opérations ouvertes ou renvoyées dans la démonstration, encore à faire, dont l'utilisateur est responsable.
+  const evenements: EvenementsParcoursDemo = {
+    pourMoi: () => tous().flatMap((e) => (e.journal ?? []).flatMap((j) => {
+      const o = e.ops.find((x) => x.id === j.operationId)
+      const attente = j.type === 'VALIDATION' ? o?.etat === 'EN_VALIDATION' : o?.etat === 'A_FAIRE' || o?.etat === 'EN_COURS' || o?.etat === 'BLOQUEE'
+      const n = o && attente && pourMoi(o, j.type) ? notificationDe(e, j) : null
+      return n ? [n] : []
+    })),
+    surEvenement: (f) => { abonnesEvenements.push(f) },
+    // HOM-04 : comme MS-HOMOLOGATION (§8.8) : fonction interne à affecter, R d'une opération engagée ou V d'une opération en
+    // validation, dont le catalogue donne au moins une permission : tâche « Prendre la fonction <libellé> (<réf.>) ».
+    fonctionsAPrendre: () => tous().filter((e) => e.s.statut !== 'CLOSE_SANS_SUITE').flatMap((e) => {
+      const f = new Set<Fonction>()
+      e.ops.forEach((o) => {
+        if ((o.etat === 'A_FAIRE' || o.etat === 'EN_COURS' || o.etat === 'BLOQUEE') && o.raci.R?.aAffecter) f.add(o.raci.R.fonction)
+        if (o.etat === 'EN_VALIDATION' && o.raci.V?.aAffecter) f.add(o.raci.V.fonction)
+      })
+      return [...f].flatMap((x): OffreFonctionDemo[] => {
+        const c = catalogueFonctions().find((y) => y.code === x)
+        if (!c || c.externe || !c.actif || !c.permissions?.length) return []
+        return [{
+          liaisonId: e.s.id, reference: `${e.s.id}/AFFECTER/${x}`, fonction: x, titre: `Prendre la fonction ${c.libelle} (${e.s.id})`, permissions: [...c.permissions],
+          description: `La fonction ${c.libelle} est à affecter sur la liaison ${e.s.id} (${e.s.institutionNom}) : en prenant cette tâche, vous la tenez sur ses opérations non faites.`,
+          lien: `/des/parcours/${e.s.id}?onglet=etapes&fonction=${x}`,
+        }]
+      })
+    }),
+    // Prise (PrisesFonctions) : la personne remplace la fonction à affecter sur les opérations non faites ; sa tâche de R suit.
+    prendreFonction: (liaisonId, fonction, qui) => {
+      const e = etats.get(liaisonId)
+      if (!e) return
+      const p: Personne = { id: qui.id, nom: qui.nom, fonction }
+      const remplacer = (x: Personne | null) => (x?.aAffecter && x.fonction === fonction ? p : x)
+      e.ops.filter((o) => o.etat !== 'FAITE').forEach((o) => {
+        o.raci = { R: remplacer(o.raci.R), V: remplacer(o.raci.V), C: o.raci.C.map((x) => remplacer(x)!), I: o.raci.I.map((x) => remplacer(x)!), E: o.raci.E.map((x) => remplacer(x)!) }
+      })
+      e.s.aAffecter = (e.s.aAffecter ?? []).filter((x) => x !== fonction)
+      garder()
+    },
+  }
+  return { parcours, decision, portailParcours, evenements }
 }

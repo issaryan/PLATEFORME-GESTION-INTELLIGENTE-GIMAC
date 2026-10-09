@@ -275,6 +275,16 @@ describe('page des notifications', () => {
 })
 
 describe('fenêtres surgissantes', () => {
+  it('QUO-11 : une notification reçue avant la première lecture de la liste surgit aussi', async () => {
+    const s = notificationsSimulees({ latenceMs: 200, initiales: [message('c-0', 'Ancienne')] })
+    monter(s)
+    // Réception immédiate, avant que la liste récente soit lue.
+    act(() => void s.recevoir(message('c-9', 'Hervé Kamga Tchoupo')))
+    const region = await screen.findByRole('region', { name: 'Notifications reçues' }, { timeout: 3000 })
+    expect(await within(region).findByText('Hervé Kamga Tchoupo')).toBeTruthy()
+    expect(within(region).queryByText('Ancienne')).toBeNull()
+  })
+
   it('à l’arrivée : titre, aperçu, « Ouvrir » (lien et lue) ; trois au plus ; fermeture', async () => {
     const s = notificationsSimulees({ latenceMs: 0, initiales: [message('c-0', 'Ancienne')] })
     monter(s)

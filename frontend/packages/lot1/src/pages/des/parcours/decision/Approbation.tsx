@@ -4,12 +4,14 @@ import type { ApprobationSecurite, DossierLiaison, ProcesVerbalCertification } f
 import { BlocAttestations } from './Attestations'
 import { BlocDossierChangement, BlocFicheChangement } from './FicheChangement'
 import { TON_APPROBATION } from './commun'
+import { useFormatDate } from '../communs'
 
 // Verrou 2 : approbation du changement par la sécurité des SI (D-56, rangs 20 à 26). Elle fait passer la
 // liaison à « Approuvée par la sécurité » ; la mise en production ne commence qu'après.
 
 export function CarteApprobation({ dossier, approbation, pv }: { dossier: DossierLiaison; approbation: ApprobationSecurite; pv: ProcesVerbalCertification }) {
   const { t } = useTranslation()
+  const formatDate = useFormatDate()
   const ouvert = pv.etat === 'SIGNE'
   return (
     <Card
@@ -21,7 +23,7 @@ export function CarteApprobation({ dossier, approbation, pv }: { dossier: Dossie
         {!ouvert ? <InlineAlert level="info" title={t('decision.approbation.ferme.titre')}>{t('decision.approbation.ferme.texte')}</InlineAlert> : null}
         {approbation.etat === 'APPROUVEE' ? (
           <InlineAlert level="info" title={t('decision.approbation.approuvee.titre')}>
-            {t('decision.approbation.approuvee.texte', { date: approbation.approuveeLe ?? '' })}
+            {t('decision.approbation.approuvee.texte', { date: formatDate(approbation.approuveeLe) })}
           </InlineAlert>
         ) : null}
         {ouvert || approbation.etat !== 'EN_ATTENTE_DOSSIER' ? (

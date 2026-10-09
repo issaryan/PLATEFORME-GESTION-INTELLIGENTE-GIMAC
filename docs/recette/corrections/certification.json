@@ -1,0 +1,306 @@
+[
+  {
+    "id": "CER-01",
+    "gravite": "majeure",
+    "titre": "Refus CER_SIGNATAIRE_NON_DESIGNE, CER_SIGNATURE_ORDRE et CER_OPERATION_NON_OUVERTE et ordre du circuit du PV invérifiables en services simulés",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/certification/004-chef-des-decision-avant-pv-clair.png",
+    "apres": "docs/recette/captures/certification/corrections/CER-01-apres.png",
+    "correctif": "Le simulateur suit le circuit configuré sur l’opération de la signature du PV (complété de la signature du participant au portail, figé à la première signature), impose l’ordre et rend les codes du serveur, y compris pour les visas.",
+    "fichiers": [
+      "frontend/packages/lot1/src/services/simule/parcours.ts"
+    ],
+    "test": "certification-recette.test.ts : CER-01 (quatre cas)"
+  },
+  {
+    "id": "CER-02",
+    "gravite": "majeure",
+    "titre": "Visa attendu introuvable pour la conformité et la DG",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/certification/052-conformite-tableau-de-bord-visas-attendus-clair.png",
+    "apres": "docs/recette/captures/certification/corrections/CER-02-apres.png",
+    "correctif": "Compteur Visas attendus relié à l’onglet Décision de la liaison, tâche « Signer : Visa … » et entrée de Mes actions de certification sur l’opération ouverte de l’approbation, côté MS-HOMOLOGATION et simulateur.",
+    "fichiers": [
+      "ms-homologation/src/main/java/cm/gimac/des/homologation/domain/service/TableauDeBordCalculateur.java",
+      "ms-homologation/src/main/resources/config/tableau-acteur-compteurs.json",
+      "ms-certification/src/main/java/cm/gimac/des/certification/application/usecase/ApprobationSecuriteService.java",
+      "frontend/packages/lot1/src/services/simule/parcours.ts"
+    ],
+    "test": "TableauDeBordCalculateurTest.visasAttendus ; GestesParOperationTest.visaSurOperationOuverte ; certification-recette.test.ts : CER-02 ; OngletDecision.test.tsx : CER-02 ; parcours-securite.spec.ts"
+  },
+  {
+    "id": "CER-03",
+    "gravite": "mineure",
+    "titre": "Barres de couverture toutes grises en thème sombre",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/certification/016-chef-des-decision-carte-visee-signer-pv-sombre.png",
+    "apres": "docs/recette/captures/certification/corrections/CER-03-apres.png",
+    "correctif": "Couleur de niveau plus spécifique que le fond neutre du thème sombre.",
+    "fichiers": [
+      "frontend/packages/design-system/src/styles/13-affichages-derives.css"
+    ],
+    "test": null
+  },
+  {
+    "id": "CER-04",
+    "gravite": "mineure",
+    "titre": "Carte du PV dégradée à 390 px",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/certification/097-chef-des-mobile-decision-circuit-clair.png",
+    "apres": "docs/recette/captures/certification/corrections/CER-04-apres.png",
+    "correctif": "Barre de couverture et liste clé-valeur sur une colonne en écran étroit, valeurs renvoyées à la ligne.",
+    "fichiers": [
+      "frontend/packages/design-system/src/styles/13-affichages-derives.css",
+      "frontend/packages/design-system/src/styles/06-affichage.css"
+    ],
+    "test": null
+  },
+  {
+    "id": "CER-05",
+    "gravite": "mineure",
+    "titre": "Type de projet créé dans la plateforme affiché par son code",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/certification/003-chef-des-dossier-ouvert-clair.png",
+    "apres": "docs/recette/captures/certification/corrections/CER-05-apres.png",
+    "correctif": "Libellé du type servi par MS-HOMOLOGATION avec la liaison (Vues.Dossier, Vues.LiaisonResume et LiaisonVue portent typeProjetLibelle, lu de la définition du type) et repris par le simulateur : le portail (tableau de bord, liaisons, suivi, écrans d'action et procès-verbal) et le dossier de l'application interne nomment le type par son libellé, le code seulement à défaut.",
+    "fichiers": [
+      "ms-homologation/src/main/java/cm/gimac/des/homologation/domain/Liaison.java",
+      "ms-homologation/src/main/java/cm/gimac/des/homologation/domain/parcours/Vues.java",
+      "ms-homologation/src/main/java/cm/gimac/des/homologation/domain/service/ParcoursProjection.java",
+      "ms-homologation/src/main/java/cm/gimac/des/homologation/web/rest/lot1/LiaisonsCadrageResource.java",
+      "frontend/packages/lot1/src/modele/parcours.ts",
+      "frontend/packages/lot1/src/services/http/parcours.ts",
+      "frontend/packages/lot1/src/services/simule/parcours.ts",
+      "frontend/packages/lot1/src/services/simule/index.ts",
+      "frontend/packages/lot1/src/pages/portail/parcours/commun.tsx",
+      "frontend/packages/lot1/src/pages/portail/parcours/listes.tsx",
+      "frontend/packages/lot1/src/pages/portail/parcours/cadre.tsx",
+      "frontend/packages/lot1/src/pages/portail/parcours/SuiviProjet.tsx",
+      "frontend/packages/lot1/src/pages/des/parcours/DossierLiaisonPage.tsx",
+      "frontend/packages/lot1/src/hooks/referentiels.ts"
+    ],
+    "test": "ms-homologation ParcoursProjectionTest.libelleTypeProjet ; frontend/packages/lot1/src/services/simule/certification-recette.test.ts (CER-05)"
+  },
+  {
+    "id": "CER-06",
+    "gravite": "mineure",
+    "titre": "Dates ISO brutes dans l’onglet Décision",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/certification/013-conducteur-pv-etabli-clair.png",
+    "apres": "docs/recette/captures/certification/corrections/CER-06-apres.png",
+    "correctif": "Toutes les dates de l’onglet Décision et de la Mise en service au format local (useFormatDate).",
+    "fichiers": [
+      "frontend/packages/lot1/src/pages/des/parcours/decision/ProcesVerbal.tsx",
+      "frontend/packages/lot1/src/pages/des/parcours/decision/commun.tsx",
+      "frontend/packages/lot1/src/pages/des/parcours/decision/FicheChangement.tsx",
+      "frontend/packages/lot1/src/pages/des/parcours/decision/Attestations.tsx",
+      "frontend/packages/lot1/src/pages/des/parcours/decision/Approbation.tsx",
+      "frontend/packages/lot1/src/pages/des/parcours/decision/FicheSuivi.tsx",
+      "frontend/packages/lot1/src/pages/des/parcours/decision/Exploitation.tsx"
+    ],
+    "test": null
+  },
+  {
+    "id": "CER-07",
+    "gravite": "mineure",
+    "titre": "Empreintes identiques pour des pièces différentes",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/certification/036-chef-des-pv-027-signe-participant-attente-gimac-clair.png",
+    "apres": "docs/recette/captures/certification/corrections/CER-06-apres.png",
+    "correctif": "L’empreinte de démonstration mêle toute la graine.",
+    "fichiers": [
+      "frontend/packages/lot1/src/services/simule/donnees.ts",
+      "frontend/packages/lot1/src/services/simule/parcours.ts"
+    ],
+    "test": "certification-recette.test.ts : CER-07"
+  },
+  {
+    "id": "CER-08",
+    "gravite": "mineure",
+    "titre": "Deux horloges dans la démonstration",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/certification/073-conducteur-circuit-operation-signe-close-clair.png",
+    "apres": "docs/recette/captures/certification/corrections/CER-16-apres.png",
+    "correctif": "Signatures, visas et renvois horodatés sur l’horloge de la démonstration, dont le jour est désormais le jour courant de Douala (DDR-15), comme Ma journée.",
+    "fichiers": [
+      "frontend/packages/lot1/src/services/simule/parcours.ts"
+    ],
+    "test": "certification-recette.test.ts : CER-08 et CER-16"
+  },
+  {
+    "id": "CER-09",
+    "gravite": "mineure",
+    "titre": "Attestations et pièces incohérentes pour le modèle générique",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/certification/075-correspondant-suivi-liaison-066-en-production-clair.png",
+    "apres": "docs/recette/captures/certification/corrections/CER-09-apres.png",
+    "correctif": "Exigence d’attestation lue sur les attestations servies ; au portail, « aucune exigée » et coordonnées « sans objet » quand la liaison n’en attend pas.",
+    "fichiers": [
+      "frontend/packages/lot1/src/pages/des/parcours/decision/Attestations.tsx",
+      "frontend/packages/lot1/src/pages/portail/parcours/SuiviProjet.tsx",
+      "frontend/packages/lot1/src/i18n/ecrans/parcours-portail.ts"
+    ],
+    "test": null
+  },
+  {
+    "id": "CER-10",
+    "gravite": "mineure",
+    "titre": "Refus de la référence de fiche de changement peu visible",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/certification/026-production-fiche-reference-invalide-clair.png",
+    "apres": "docs/recette/captures/certification/corrections/CER-10-apres.png",
+    "correctif": "Format contrôlé à la saisie (même motif que le serveur) et refus du service affiché en alerte d’erreur dans toute confirmation.",
+    "fichiers": [
+      "frontend/packages/lot1/src/pages/des/parcours/decision/FicheChangement.tsx",
+      "frontend/packages/lot1/src/ressources/actions.tsx"
+    ],
+    "test": "OngletDecision.test.tsx et parcours-securite.spec.ts : référence de fiche (CER-10)"
+  },
+  {
+    "id": "CER-11",
+    "gravite": "mineure",
+    "titre": "Statut Cadrée pendant toute la certification du modèle générique",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/certification/013-conducteur-pv-etabli-clair.png",
+    "apres": "docs/recette/captures/certification/corrections/CER-11-apres.png",
+    "correctif": "Statut déduit de l’étape courante avant tout jalon, comme Parcours.statutCalcule de MS-HOMOLOGATION.",
+    "fichiers": [
+      "frontend/packages/lot1/src/services/simule/parcours.ts"
+    ],
+    "test": "certification-recette.test.ts : CER-11"
+  },
+  {
+    "id": "CER-12",
+    "gravite": "mineure",
+    "titre": "Notifications du portail figées et lien sans geste",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/certification/082-correspondant-livrable-depuis-notification-clair.png",
+    "apres": "docs/recette/captures/certification/corrections/CER-12-cloche-apres.png",
+    "correctif": "Notifications du portail simulé tirées des tâches de l’institution (PV à signer, attestations, fiche de suivi, livrables) avec le lien du geste ; le serveur les émettait déjà.",
+    "fichiers": [
+      "frontend/packages/lot1/src/services/notifications.ts",
+      "frontend/apps/portail/src/App.tsx"
+    ],
+    "test": "notifications.test.ts : CER-12"
+  },
+  {
+    "id": "CER-13",
+    "gravite": "mineure",
+    "titre": "Textes et préférences internes au portail",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/certification/083-correspondant-mon-compte-clair.png",
+    "apres": "docs/recette/captures/certification/corrections/CER-13-apres.png",
+    "correctif": "Au portail, seules les préférences du parcours des liaisons (MS-NOTIFICATION et simulateur), sous-titre de la page Notifications et texte de la photo propres au portail.",
+    "fichiers": [
+      "ms-notification/src/main/java/cm/gimac/des/notification/domain/boite/TypeNotification.java",
+      "ms-notification/src/main/java/cm/gimac/des/notification/web/rest/boite/PreferencesNotificationsResource.java",
+      "ms-notification/src/main/java/cm/gimac/des/notification/web/rest/boite/Vues.java",
+      "frontend/packages/socle/src/notifications/modele.ts",
+      "frontend/packages/socle/src/notifications/simule.ts",
+      "frontend/packages/socle/src/notifications/NotificationsPage.tsx",
+      "frontend/packages/compte/src/pages/monCompte/Notifications.tsx",
+      "frontend/packages/compte/src/pages/monCompte/Photo.tsx"
+    ],
+    "test": "BoiteNotificationsIT.preferencesPortail ; notifications.test.ts : CER-13"
+  },
+  {
+    "id": "CER-14",
+    "gravite": "mineure",
+    "titre": "Identité du correspondant incohérente",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/certification/083-correspondant-mon-compte-clair.png",
+    "apres": "docs/recette/captures/certification/corrections/CER-14-apres.png",
+    "correctif": "Même nom dans l’en-tête et la fiche, adresse et fonction de l’institution, aucun appareil sur une couche interne pour un compte d’institution.",
+    "fichiers": [
+      "frontend/apps/portail/src/connexionDemo.ts",
+      "frontend/apps/portail/src/App.tsx",
+      "frontend/packages/compte/src/services/simule.ts",
+      "frontend/e2e/specs/portail-parcours.spec.ts"
+    ],
+    "test": null
+  },
+  {
+    "id": "CER-15",
+    "gravite": "mineure",
+    "titre": "Circuit de signature non traduit en en-US",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/certification/099-chef-des-en-us-decision-clair.png",
+    "apres": "docs/recette/captures/certification/corrections/CER-15-apres.png",
+    "correctif": "Étapes du circuit par défaut traduites par leur code ; les noms des signataires sont des données (personnes), non traduits.",
+    "fichiers": [
+      "frontend/packages/lot1/src/i18n/ecrans/d91-d94.ts",
+      "frontend/packages/lot1/src/pages/des/parcours/decision/ProcesVerbal.tsx",
+      "frontend/packages/lot1/src/pages/portail/parcours/ProcesVerbalPage.tsx"
+    ],
+    "test": null
+  },
+  {
+    "id": "CER-16",
+    "gravite": "mineure",
+    "titre": "Signataire attendu erroné sur le circuit d’opération",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/certification/070-conducteur-circuit-operation-ordre2-non-signable-clair.png",
+    "apres": "docs/recette/captures/certification/corrections/CER-16-apres.png",
+    "correctif": "Le signataire CONDUCTEUR attendu et enregistré est le conducteur désigné de la liaison.",
+    "fichiers": [
+      "frontend/packages/lot1/src/services/simule/parcours.ts"
+    ],
+    "test": "certification-recette.test.ts : CER-08 et CER-16"
+  },
+  {
+    "id": "CER-17",
+    "gravite": "mineure",
+    "titre": "Fiche de l’institution INST-0042 incohérente",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/certification/033-conducteur-institution-active-clair.png",
+    "apres": "docs/recette/captures/certification/corrections/CER-17-apres.png",
+    "correctif": "Dates de prise de contact et d’enregistrement antérieures à l’adhésion, historique chronologique, « non renseigné » pour toute valeur absente. Gardés : statut En homologation (seule une institution adhérente ou en homologation ouvre une liaison, à trancher par la DDRM) et format jj/mm/aaaa des fiches génériques (convention du système de conception).",
+    "fichiers": [
+      "frontend/packages/lot1/src/services/simule/participant.ts",
+      "frontend/packages/design-system/src/crud/outils.tsx"
+    ],
+    "test": "finition.test.tsx : vide « non renseigné » (CER-17)"
+  },
+  {
+    "id": "CER-18",
+    "gravite": "mineure",
+    "titre": "Message d’introuvable doublé au portail",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/certification/078-correspondant-liaison-autre-institution-introuvable-clair.png",
+    "apres": "docs/recette/captures/certification/corrections/CER-18-apres.png",
+    "correctif": "Un refus définitif (404, 403) ne propose plus de réessayer et le message identique au titre n’est plus répété.",
+    "fichiers": [
+      "frontend/packages/socle/src/requete/QueryBoundary.tsx"
+    ],
+    "test": null
+  },
+  {
+    "id": "CER-19",
+    "gravite": "mineure",
+    "titre": "Accords et formulations",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/certification/052-conformite-tableau-de-bord-visas-attendus-clair.png",
+    "apres": "docs/recette/captures/certification/corrections/CER-19-apres.png",
+    "correctif": "Accord du nombre de services, « Mes tâches (0) », question de la fiche de suivi reformulée, signataire du participant nommé « Correspondant … ».",
+    "fichiers": [
+      "frontend/packages/lot1/src/i18n/ecrans/parcours-decision.ts",
+      "frontend/packages/lot1/src/i18n/ecrans/parcours-portail.ts",
+      "frontend/packages/lot1/src/i18n/ecrans/parcours-cadrage.ts",
+      "frontend/packages/lot1/src/services/simule/parcours.ts"
+    ],
+    "test": null
+  },
+  {
+    "id": "CER-20",
+    "gravite": "mineure",
+    "titre": "Relecture de la fiche toujours proposée après l’approbation",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/certification/065-rssi-019-approuvee-apres-visas-dg-clair.png",
+    "apres": "docs/recette/captures/certification/corrections/CER-20-apres.png",
+    "correctif": "Aucun geste de l’approbation proposé une fois close dans le simulateur, comme ApprobationPolicy.actionsDes du serveur (déjà correct).",
+    "fichiers": [
+      "frontend/packages/lot1/src/services/simule/parcours.ts"
+    ],
+    "test": "certification-recette.test.ts : CER-20"
+  }
+]

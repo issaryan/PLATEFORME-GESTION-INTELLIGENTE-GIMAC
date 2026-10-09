@@ -341,12 +341,14 @@ gimac:
         - pilotage.report
         - iam.request
         - pilotage.process
+        - participant.transition
         - homologation.operation
         - homologation.liaison
   consommateurs:
     notification:
       # pilotage.process : processus d'unité (D-87, type PROCESSUS).
-      sujets: collaboration.message,pilotage.task,pilotage.report,iam.request,pilotage.process
+      # participant.transition : proposition de statut prononcée ou refusée, au proposant (DDR-08, type DEMANDE).
+      sujets: collaboration.message,pilotage.task,pilotage.report,iam.request,pilotage.process,participant.transition
     homologation:
       # Parcours d'homologation (D-93, type HOMOLOGATION), groupe notification-homologation.
       sujets: homologation.operation,homologation.liaison

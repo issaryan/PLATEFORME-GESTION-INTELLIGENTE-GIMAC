@@ -24,12 +24,12 @@ describe('catalogue des fonctionnalités (valeurs de départ de MS-IAM)', () => 
     expect(Object.values(ECRANS_DES).every((e) => e.chemin.startsWith('/des/') || e.chemin.includes('/console/'))).toBe(true)
   })
 
-  it('tout profil interne : tableau de bord, messagerie et Mon activité ; correspondant : l’accueil seul', () => {
+  it('tout profil interne : tableau de bord, messagerie et Mon activité ; correspondant : l’accueil et ses notifications (D-93 §11.4)', () => {
     for (const role of INTERNES) {
       expect(ouvertes(PROFILS[role]), role).toEqual(expect.arrayContaining(['tableauDeBord', 'notifications', 'maJournee', 'agenda', 'taches', 'rapports']))
       expect(widgets(PROFILS[role])[0], role).toBe('maJournee')
     }
-    expect(ouvertes(PROFILS.ROLE_CORRESPONDANT)).toEqual(['tableauDeBord'])
+    expect(ouvertes(PROFILS.ROLE_CORRESPONDANT)).toEqual(['tableauDeBord', 'notifications'])
     expect(widgets(PROFILS.ROLE_CORRESPONDANT)).toEqual([])
   })
 

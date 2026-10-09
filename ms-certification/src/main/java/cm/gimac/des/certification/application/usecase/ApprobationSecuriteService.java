@@ -158,7 +158,7 @@ public class ApprobationSecuriteService {
     public ApprobationVue consulter(UUID liaisonId, Acteur acteur) {
         Optional<ApprobationSecurite> a = approbations.findByLiaisonId(liaisonId);
         if (a.isPresent()) {
-            return vue(a.orElseThrow(), ApprobationPolicy.actionsDes(a.orElseThrow(), true, acteur.permissions()), false);
+            return vue(a.orElseThrow(), actionsDes(a.orElseThrow(), acteur), false);
         }
         return vue(provisoire(liaisonId), List.of(), false);
     }
@@ -410,7 +410,28 @@ public class ApprobationSecuriteService {
     }
 
     private ApprobationVue vueDes(ApprobationSecurite a, Acteur acteur) {
-        return vue(a, ApprobationPolicy.actionsDes(a, true, acteur.permissions()), false);
+        return vue(a, actionsDes(a, acteur), false);
+    }
+
+    /**
+     * Actions du DES ; un visa n'est proposé que si l'opération qui le porte est ouverte (CER-02) : sinon sa signature
+     * serait refusée (409 CER_OPERATION_NON_OUVERTE), et la tâche du signataire n'existe pas encore côté MS-HOMOLOGATION.
+     */
+    private List<String> actionsDes(ApprobationSecurite a, Acteur acteur) {
+        List<String> actions = new java.util.ArrayList<>(ApprobationPolicy.actionsDes(a, true, acteur.permissions()));
+        if (actions.stream().anyMatch(x -> x.startsWith("SIGNER_VISA")) && !operationDuVisaOuverte(a.getLiaisonId())) {
+            actions.removeIf(x -> x.startsWith("SIGNER_VISA"));
+        }
+        return actions;
+    }
+
+    private boolean operationDuVisaOuverte(UUID liaisonId) {
+        try {
+            operations.ouvertes(liaisonId, GesteCertification.SIGNER_VISA);
+            return true;
+        } catch (CertificationException e) {
+            return false;
+        }
     }
 
     /**

@@ -119,7 +119,21 @@ export function ResourceList<T extends object>(p: ResourceListProps<T>) {
           </div>
         </div>
       )}
-      <FilterBar filters={filters} query={q.q || ''} onQuery={(v) => setQ({ q: v, page: 1 })} active={p.activeFilters || []} favorites={p.favorites} />
+      {/* Filtres pilotés (DDR-07) : la valeur choisie reste affichée et part dans la requête ; « Tous » retire le filtre. */}
+      <FilterBar
+        filters={filters.map((f) => ({ ...f, value: q.filters?.[f.key] ?? '' }))}
+        query={q.q || ''}
+        onQuery={(v) => setQ({ q: v, page: 1 })}
+        onChange={(cle, v) => {
+          const suivants = { ...(q.filters || {}) }
+          if (v) suivants[cle] = v
+          else delete suivants[cle]
+          setQ({ filters: suivants, page: 1 })
+        }}
+        onReset={() => setQ({ filters: {}, q: '', page: 1 })}
+        active={p.activeFilters || []}
+        favorites={p.favorites}
+      />
       <DataTable
         columns={columns}
         rows={rows}

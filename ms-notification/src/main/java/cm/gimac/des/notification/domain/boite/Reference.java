@@ -14,6 +14,8 @@ public class Reference {
     public static final String COLLABORATION = "collaboration";
     public static final String PILOTAGE = "pilotage";
     public static final String IAM = "iam";
+    public static final String PARTICIPANT = "participant";
+    public static final String TRANSITION = "TRANSITION";
     public static final String HOMOLOGATION = "homologation";
     public static final String CONVERSATION = "CONVERSATION";
     public static final String MESSAGE = "MESSAGE";
@@ -64,6 +66,11 @@ public class Reference {
     }
 
     /** Demande à l'administration (MS-IAM, docs/lot1/pouvoirs-hierarchiques.md §4). */
+    /** Proposition de transition de statut d'une institution (MS-PARTICIPANT, DDR-08). */
+    public static Reference transition(String id) {
+        return new Reference(PARTICIPANT, TRANSITION, id);
+    }
+
     public static Reference demande(String id) {
         return new Reference(IAM, DEMANDE, id);
     }

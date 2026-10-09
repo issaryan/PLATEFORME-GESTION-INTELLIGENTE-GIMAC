@@ -43,6 +43,7 @@ export type TypeAnomalie =
   | 'CODE_DUPLIQUE' | 'PREDECESSEUR_INCONNU' | 'SEGMENT_INCOHERENT' | 'CYCLE' | 'RESPONSABLE_ABSENT' | 'VALIDATEUR_ABSENT' | 'VALIDATEUR_EGAL_RESPONSABLE'
   | 'DECLENCHEUR_INCONNU' | 'JALON_DUPLIQUE' | 'JALON_DESORDONNE' | 'SANS_ENTREE' | 'LIVRABLE_DUPLIQUE' | 'SECRET_AVEC_VALEUR'
   | 'SIGNATURE_DUPLIQUEE' | 'SIGNATAIRE_INCONNU' | 'SIGNATAIRE_EXTERNE' | 'SIGNATURE_SANS_LIVRABLE' | 'SIGNATURE_PORTEE_INVALIDE' | 'FONCTION_INCONNUE'
+  | 'GESTE_CERTIFICATION_ABSENT'
 /** Livrable ou preuve attendu d'une opération, avec la fonction qui le dépose (externe : depuis le portail). */
 export type Livrable = { code: string; libelle: string; nature: NatureLivrable; deposant: Fonction | null; typesPieces: string[]; obligatoire: boolean }
 export type PositionNoeud = { x: number; y: number }
@@ -132,6 +133,8 @@ export type ImpactMigration = {
 export type ControleResultat = {
   acyclique: boolean; ordreTopologique: string[]; cycle: string[]
   incoherences: { code: string; predecesseur: string; motif: string }[]; manquants: { code: string; attributs: string[] }[]
+  /** Anomalies brutes du contrôle et version publiable (ControleVue de MS-HOMOLOGATION). */
+  anomalies?: AnomalieGraphe[]; conforme?: boolean
 }
 
 export type EtatLiaison = 'OUVERTE' | 'EN_HOMOLOGATION' | 'GELEE' | 'APTE_CERTIFICATION' | 'MISE_EN_SERVICE_AUTORISEE' | 'CERTIFIEE' | 'CLOSE'

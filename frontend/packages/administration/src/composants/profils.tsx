@@ -4,9 +4,9 @@ import { useNavigate } from 'react-router'
 import {
   Button, Checkbox, CrudDialog, DataTable, Dialog, Icon, InlineAlert, KeyValueList, PermissionPicker, Select, StatusBadge, Tabs, TextArea, TextField, type Column, type IconName, type PermissionGroup,
 } from '@gimac/design-system'
-import { satisfait, useLibelleProfil } from '@gimac/socle'
+import { aPermission, satisfait, useLibelleProfil, usePermissions } from '@gimac/socle'
 import {
-  ACTIONS_POUVOIR, ECRANS_DES, basculerDroit, basculerFonctionnalite, catalogueDroits, completerActions, etatFonctionnalite, libelleServi, permissionPrivilegiee, predicatDe,
+  ACTIONS_POUVOIR, ECRANS_DES, OCTROI_PRIVILEGIE, basculerDroit, basculerFonctionnalite, catalogueDroits, completerActions, etatFonctionnalite, libelleServi, permissionPrivilegiee, predicatDe,
   trierFonctionnalites, useTraduire, type FonctionnaliteDroits, type ModuleDroits, type Portee,
 } from '@gimac/lot1'
 import type { Compte } from '@gimac/compte'
@@ -42,24 +42,37 @@ export const compositionDe = (p: Pick<Profil, 'permissions'>) => p.permissions.f
 
 // ------------------------------------------------------------------ Arbre des fonctionnalités
 
-function CaseTroisEtats({ id, etat, label, disabled, onBasculer }: { id: string; etat: 'tout' | 'partiel' | 'aucun'; label: string; disabled?: boolean; onBasculer: () => void }) {
+function CaseTroisEtats({ id, etat, label, disabled, decritPar, onBasculer }: { id: string; etat: 'tout' | 'partiel' | 'aucun'; label: string; disabled?: boolean; decritPar?: string; onBasculer: () => void }) {
   const ref = useRef<HTMLInputElement>(null)
   useEffect(() => {
     if (ref.current) ref.current.indeterminate = etat === 'partiel'
   }, [etat])
   return (
     <label className="gm-check" htmlFor={id}>
-      <input ref={ref} id={id} type="checkbox" checked={etat === 'tout'} aria-checked={etat === 'partiel' ? 'mixed' : etat === 'tout'} disabled={disabled} onChange={onBasculer} />
+      <input ref={ref} id={id} type="checkbox" checked={etat === 'tout'} aria-checked={etat === 'partiel' ? 'mixed' : etat === 'tout'} disabled={disabled} aria-describedby={decritPar} onChange={onBasculer} />
       <span>{label}</span>
     </label>
   )
 }
 
-function ItemFonctionnalite({ f, permissions, lecture, onChange }: { f: FonctionnaliteDroits; permissions: string[]; lecture: boolean; onChange: (p: string[]) => void }) {
+/**
+ * Droits privilégiés (IAM_*, PLATFORM_*) réservés à qui porte l'octroi des profils privilégiés (recette ADM-04) : sans
+ * lui, un droit privilégié absent de la composition n'est pas cochable, avec son explication, avant toute signature.
+ * Un droit déjà présent reste décochable.
+ */
+export function usePrivilegeReserve(): boolean {
+  return !aPermission(usePermissions(), OCTROI_PRIVILEGIE)
+}
+
+function ItemFonctionnalite({ f, permissions, lecture, reserve, onChange }: { f: FonctionnaliteDroits; permissions: string[]; lecture: boolean; reserve: boolean; onChange: (p: string[]) => void }) {
   const { t } = useTranslation()
   const [ouvert, setOuvert] = useState(false)
   const id = useId().replace(/:/g, '')
   const etat = etatFonctionnalite(f, permissions)
+  const interdite = (p: string) => reserve && permissionPrivilegiee(p) && !permissions.includes(p)
+  // Cocher la fonctionnalité ajouterait un droit privilégié : case désactivée, raison affichée.
+  const fonctionnaliteInterdite = etat === 'aucun' && basculerFonctionnalite(permissions, f, true).some(interdite)
+  const idRaison = `gm-fct-reserve-${id}`
   const tr = useTraduire()
   const nom = libelleServi(tr, f.libelleKey)
   const n = f.droits.filter((d) => permissions.includes(d.permission)).length
@@ -71,20 +84,24 @@ function ItemFonctionnalite({ f, permissions, lecture, onChange }: { f: Fonction
         </button>
         <Icon name={f.icone} size={16} />
         {/* Aucune → la consultation est cochée ; partielle ou complète → la fonctionnalité est décochée. */}
-        <CaseTroisEtats id={`gm-fct-case-${id}`} etat={etat} label={nom} disabled={lecture} onBasculer={() => onChange(basculerFonctionnalite(permissions, f, etat === 'aucun'))} />
+        <CaseTroisEtats id={`gm-fct-case-${id}`} etat={etat} label={nom} disabled={lecture || fonctionnaliteInterdite} decritPar={fonctionnaliteInterdite ? idRaison : undefined}
+          onBasculer={() => onChange(basculerFonctionnalite(permissions, f, etat === 'aucun'))} />
         <span className="gm-fct-compte">{t('console.profils.fct.compte', { n, total: f.droits.length })}</span>
+        {fonctionnaliteInterdite && !lecture ? <span className="gm-fct-reserve" id={idRaison}><Icon name="lock" size={16} />{t('console.profils.fct.reserveOctroi')}</span> : null}
       </div>
       {ouvert ? (
         <ul className="gm-fct-droits" id={`gm-fct-${id}`} aria-label={t('console.profils.fct.droitsDe', { fonctionnalite: nom })}>
           {f.droits.map((d) => (
             <li key={`${d.nature}-${d.permission}`} className="gm-fct-droit">
               <label className="gm-check">
-                <input type="checkbox" checked={permissions.includes(d.permission)} disabled={lecture}
+                <input type="checkbox" checked={permissions.includes(d.permission)} disabled={lecture || interdite(d.permission)}
                   aria-label={`${t(`droits.nature.${d.nature}`)} : ${t(`droits.permission.${d.permission}`, { defaultValue: d.libelle ?? d.permission })} (${d.permission})`}
+                  aria-describedby={interdite(d.permission) ? `${idRaison}-${d.permission}` : undefined}
                   onChange={(e) => onChange(basculerDroit(permissions, f, d, e.target.checked))} />
                 <span>
                   <span><span className="gm-fct-nature">{t(`droits.nature.${d.nature}`)}</span> · {t(`droits.permission.${d.permission}`, { defaultValue: d.libelle ?? d.permission })}</span>
                   <span className="gm-fct-code">{d.permission}{permissionPrivilegiee(d.permission) ? ` · ${t('console.profils.privilegie')}` : ''}</span>
+                  {interdite(d.permission) && !lecture ? <span className="gm-fct-reserve" id={`${idRaison}-${d.permission}`}><Icon name="lock" size={16} />{t('console.profils.fct.reserveOctroi')}</span> : null}
                 </span>
               </label>
             </li>
@@ -102,13 +119,16 @@ export function ArbreFonctionnalites({ permissions, onChange, lecture = false, c
   const servi = useCatalogueDroits()
   const catalogue = impose ?? servi
   const { t } = useTranslation()
+  const reserve = usePrivilegeReserve()
+  const avecPrivilegies = !lecture && reserve && catalogue.some((m) => m.fonctionnalites.some((f) => f.droits.some((d) => permissionPrivilegiee(d.permission) && !permissions.includes(d.permission))))
   return (
     <div className="gm-fct-modules" role="group" aria-label={t('console.profils.fct.arbre')}>
+      {avecPrivilegies ? <InlineAlert level="info" title={t('console.profils.fct.privilegiesReserves')} /> : null}
       {catalogue.map((m) => (
         <section key={m.cle} className="gm-fct-module" aria-labelledby={`gm-fct-module-${m.cle}`}>
           <h3 id={`gm-fct-module-${m.cle}`}>{t(m.libelleKey, { defaultValue: m.cle })}</h3>
           <ul className="gm-fct-liste">
-            {m.fonctionnalites.map((f) => <ItemFonctionnalite key={f.cle} f={f} permissions={permissions} lecture={lecture} onChange={onChange} />)}
+            {m.fonctionnalites.map((f) => <ItemFonctionnalite key={f.cle} f={f} permissions={permissions} lecture={lecture} reserve={reserve} onChange={onChange} />)}
           </ul>
         </section>
       ))}
@@ -229,7 +249,9 @@ export function FicheProfil({ profil, modifiable, ongletInitial = 'fonctionnalit
   const [onglet, setOnglet] = useState<OngletFiche>(ongletInitial)
   const dirty = modifiable && choix.join() !== initiale.join()
   const devientPrivilegie = !profil.privilegie && choix.some(permissionPrivilegiee) && !initiale.some(permissionPrivilegiee)
-  const disponibles = [...new Set([...(realm.data ?? []), ...initiale])].filter((p) => !p.startsWith('INTERNAL_'))
+  const reserve = usePrivilegeReserve()
+  // Sans l'octroi des profils privilégiés, aucune permission privilégiée nouvelle n'est proposée (ADM-04).
+  const disponibles = [...new Set([...(realm.data ?? []), ...initiale])].filter((p) => !p.startsWith('INTERNAL_') && !(reserve && permissionPrivilegiee(p) && !initiale.includes(p)))
   return (
     <Dialog open id="gm-dlg-composition" className="gm-dialog-xl" title={t('console.profils.fiche', { profil: libelleProfil(profil.code, profil.libelle) })}
       subtitle={<span className="gm-row" style={{ gap: 'var(--gm-space-2)', flexWrap: 'wrap' }}><span className="gm-mono">{profil.code}</span>{profil.externe ? <StatusBadge status="info" icon="landmark" label={t('console.profils.externe')} /> : null}{profil.description ? <span>{profil.description}</span> : null}</span>}

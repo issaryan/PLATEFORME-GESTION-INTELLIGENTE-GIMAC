@@ -4,6 +4,8 @@ import static cm.gimac.des.notification.web.rest.boite.Jetons.compte;
 
 import cm.gimac.des.notification.application.port.in.BoiteNotificationsUseCase;
 import cm.gimac.des.notification.application.port.in.BoiteNotificationsUseCase.PreferencesSaisie;
+import cm.gimac.des.notification.domain.boite.TypeNotification;
+import cm.gimac.des.notification.domain.exception.NotificationException;
 import cm.gimac.des.notification.web.rest.boite.Vues.PreferencesRequete;
 import cm.gimac.des.notification.web.rest.boite.Vues.PreferencesVue;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -32,13 +34,26 @@ public class PreferencesNotificationsResource {
     @GetMapping
     @PreAuthorize(Jetons.BOITE)
     public PreferencesVue lire(Authentication auth) {
-        return PreferencesVue.de(boite.preferences(compte(auth)));
+        return PreferencesVue.de(boite.preferences(compte(auth)), Jetons.compteInstitution(auth));
     }
 
     @PutMapping
     @PreAuthorize(Jetons.BOITE)
     public PreferencesVue modifier(@RequestBody(required = false) PreferencesRequete requete, Authentication auth) {
+        boolean portail = Jetons.compteInstitution(auth);
+        // Compte d'institution : seuls les types du portail se règlent (400 sur un type interne du GIMAC).
+        if (portail && requete != null && requete.types() != null) {
+            requete
+                .types()
+                .keySet()
+                .stream()
+                .filter(t -> TypeNotification.PORTAIL.stream().noneMatch(p -> p.name().equals(t)))
+                .findFirst()
+                .ifPresent(t -> {
+                    throw NotificationException.champ("types", "Type de notification non proposé au portail : " + t);
+                });
+        }
         PreferencesSaisie saisie = requete == null ? null : new PreferencesSaisie(requete.systeme(), requete.son(), requete.types());
-        return PreferencesVue.de(boite.modifierPreferences(compte(auth), saisie));
+        return PreferencesVue.de(boite.modifierPreferences(compte(auth), saisie), portail);
     }
 }

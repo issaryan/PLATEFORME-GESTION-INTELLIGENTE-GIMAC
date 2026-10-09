@@ -45,6 +45,9 @@ function horodatage(value: unknown, kind: 'date' | 'datetime'): ReactNode {
 
 export function renderField<T>(f: FieldDescriptor<T>, value: unknown, row: T, desc: ResourceDescriptor<T>, t: Traduire): ReactNode {
   if (f.render) return f.render(value, row)
+  // CER-17 : une valeur absente (code, date, montant) s'annonce « non renseigné », quel que soit son type d'affichage.
+  const vide = value === undefined || value === null || value === ''
+  if (vide && f.kind !== 'status' && f.kind !== 'checkbox' && f.kind !== 'switch' && f.kind !== 'multiSelect') return <span className="gm-field-help">{t('crud.nonRenseigne')}</span>
   if (f.kind === 'status') {
     const d = (desc.statusDictionary || {})[String(value)] || { label: String(value || '').toLowerCase(), status: 'neutral' as Status }
     return <StatusBadge status={d.status} label={d.label} />

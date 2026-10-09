@@ -26,8 +26,8 @@ test.describe('Fonctionnalité : connexion sur la plateforme', () => {
       await expect(page.getByText(/fournisseur d.identité/)).toHaveCount(0)
     })
     await test.step('Quand il saisit son identifiant et son mot de passe, un code est demandé', async () => {
-      await saisirIdentifiants(page, 'rssi', DEMO)
-      await expect(page.getByText('Mot de passe vérifié pour rssi.', { exact: false })).toBeVisible()
+      await saisirIdentifiants(page, 'h.kamga', DEMO)
+      await expect(page.getByText('Mot de passe vérifié pour h.kamga.', { exact: false })).toBeVisible()
       await expect(page.locator('input[name="motDePasse"]')).toHaveCount(0)
       await page.locator('input[name="code"]').fill('12')
       await page.getByRole('button', { name: 'Vérifier le code' }).click()
@@ -39,7 +39,7 @@ test.describe('Fonctionnalité : connexion sur la plateforme', () => {
       await page.getByRole('button', { name: 'Vérifier le code' }).click()
       await expect(page).toHaveURL(/\/console\/comptes$/)
       await expect(page.getByRole('heading', { level: 1 })).toHaveText('Comptes')
-      await expect(page.getByText('Carine Ebongue Ndjock').first()).toBeVisible()
+      await expect(page.getByText('Hervé Kamga Tchoupo').first()).toBeVisible()
     })
   })
 

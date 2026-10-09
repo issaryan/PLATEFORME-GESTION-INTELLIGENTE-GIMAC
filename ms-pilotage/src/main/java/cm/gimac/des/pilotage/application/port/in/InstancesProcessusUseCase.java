@@ -68,6 +68,15 @@ public interface InstancesProcessusUseCase {
 
     InstanceLue instance(Appelant appelant, UUID id);
 
+    /** Document d'une instance (pièce du formulaire de lancement ou livrable déposé), relayé en flux depuis MS-DOCUMENT. */
+    record DocumentInstance(String nom, String typeMime, long taille, java.io.InputStream flux) {}
+
+    /**
+     * QUO-04 : pièce jointe du formulaire de lancement ou livrable déposé d'une étape, lisible de qui lit l'instance
+     * (403 PIL_PROCESSUS_INTERDIT sinon) ; document étranger à l'instance : 404 PIL_PROCESSUS_DOCUMENT_INCONNU.
+     */
+    DocumentInstance document(Appelant appelant, UUID id, String documentId);
+
     InstanceLue deposer(Appelant appelant, UUID id, String etape, String livrable, String documentId);
 
     InstanceLue renseigner(Appelant appelant, UUID id, String etape, Map<String, Object> valeurs);

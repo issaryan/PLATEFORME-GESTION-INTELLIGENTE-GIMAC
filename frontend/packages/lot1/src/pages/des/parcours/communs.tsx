@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { DateTime, Link, ProgressRing, StatusBadge, Toast, type Column, type Status } from '@gimac/design-system'
 import type { CoverageValue } from '../../../modele/commun'
 import type { EtatEtape, EtatServicePerimetre, LiaisonResume, Sla, StatutParcours } from '../../../modele/parcours'
+import { useOptionsTypesProjet } from '../../../hooks/referentiels'
 
 // Compositions communes des écrans du parcours (liste, dossier numérique, tableau de bord par acteur) :
 // tons des états servis par les services, dates localisées, couverture et échéance. Aucune règle :
@@ -108,6 +109,11 @@ export function useRetour(): [ReactNode, (message: string) => void] {
 
 type Traduire = (cle: string, o?: Record<string, unknown>) => string
 
+/** Recette HOM-09 : type de projet nommé par son libellé servi (type créé dans la plateforme, D-91), jamais par son code. */
+export function LibelleTypeProjet({ code }: { code: string }) {
+  return <>{useOptionsTypesProjet().libelle(code)}</>
+}
+
 /** Colonnes d'une liste de liaisons (liste du parcours, tableau de bord) : la référence est un lien au clavier. */
 export function colonnesLiaisons(t: Traduire, date: (iso: string) => string, o: { echeances?: boolean; geste?: (l: LiaisonResume) => ReactNode } = {}): Column<LiaisonResume>[] {
   const echeances = o.echeances ?? true
@@ -118,7 +124,7 @@ export function colonnesLiaisons(t: Traduire, date: (iso: string) => string, o: 
       render: (l) => (
         <span className="gm-col" style={{ gap: 0 }}>
           <span>{l.institutionNom}</span>
-          <span className="gm-field-help">{t(`parcours.typeProjet.${l.typeProjet}`, { defaultValue: String(l.typeProjet) })}</span>
+          <span className="gm-field-help"><LibelleTypeProjet code={String(l.typeProjet)} /></span>
         </span>
       ),
     },

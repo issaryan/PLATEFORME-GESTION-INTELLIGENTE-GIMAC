@@ -223,7 +223,7 @@ public class TableauDeBordCalculateur {
                         o.isOubliSansSymptome(),
                         ParcoursProjection.lienOperation(p, o),
                         projection.actionsAvecSignature(p, o, acteur),
-                        o.getLibelle(),
+                        x.libelle() == null ? o.getLibelle() : x.libelle(),
                         x.aPrendre(),
                         x.signature()
                     )
@@ -234,8 +234,53 @@ public class TableauDeBordCalculateur {
         return l;
     }
 
-    /** Part de la personne sur une opération en cours : qualité (R, V, C), tâche à prendre, signature attendue. */
-    record Part(Qualite qualite, Boolean aPrendre, String signature) {}
+    /**
+     * Part de la personne sur une opération en cours : qualité (R, V, C), tâche à prendre, signature attendue et, pour un
+     * visa, le libellé de la tâche (sinon celui de l'opération).
+     */
+    record Part(Qualite qualite, Boolean aPrendre, String signature, String libelle) {
+        Part(Qualite qualite, Boolean aPrendre, String signature) {
+            this(qualite, aPrendre, signature, null);
+        }
+    }
+
+    /** Libellés des visas optionnels (circuit gimac.certification.circuits.visas de MS-CERTIFICATION). */
+    static final Map<String, String> LIBELLES_VISA = Map.of("CONFORMITE", "Visa de la conformité", "DIRECTION_GENERALE", "Visa de la Direction Générale");
+
+    /** Fonction signataire d'un visa : CONFORMITE ou DG. */
+    static Fonction fonctionDuVisa(String nature) {
+        return "CONFORMITE".equals(nature) ? Fonction.CONFORMITE : "DIRECTION_GENERALE".equals(nature) ? Fonction.DG : null;
+    }
+
+    /**
+     * Visa optionnel attendu (D-56, projection visasAttendus) dont la personne porte la fonction signataire : il se signe
+     * sur l'opération ouverte de l'approbation de la sécurité (déclencheur certification.security-approved.v1, geste
+     * SIGNER_VISA de MS-CERTIFICATION), la première de la liaison seulement.
+     */
+    static Part partVisa(Parcours p, OperationParcours o, Set<Fonction> f) {
+        boolean ouverte = o.getEtat() == EtatOperationParcours.A_FAIRE || o.getEtat() == EtatOperationParcours.EN_COURS;
+        if (!ouverte || !Declencheurs.SECURITE_APPROUVEE.equals(o.getDeclencheur())) {
+            return null;
+        }
+        OperationParcours premiere = p
+            .operations()
+            .stream()
+            .filter(x -> Declencheurs.SECURITE_APPROUVEE.equals(x.getDeclencheur()))
+            .filter(x -> x.getEtat() == EtatOperationParcours.A_FAIRE || x.getEtat() == EtatOperationParcours.EN_COURS)
+            .findFirst()
+            .orElse(null);
+        if (premiere != o) {
+            return null;
+        }
+        return p
+            .etat()
+            .getVisasAttendus()
+            .stream()
+            .filter(n -> fonctionDuVisa(n) != null && f.contains(fonctionDuVisa(n)))
+            .findFirst()
+            .map(n -> new Part(null, null, n, "Signer : " + LIBELLES_VISA.get(n)))
+            .orElse(null);
+    }
 
     /**
      * Ce que la personne doit faire sur l'opération (D-93 §5) : R désigné (ou, R à affecter, porteuse de sa fonction :
@@ -278,7 +323,10 @@ public class TableauDeBordCalculateur {
                 .findFirst()
                 .orElse(null);
         }
-        return q == null && signature == null ? null : new Part(q, aPrendre, signature);
+        if (q == null && signature == null) {
+            return partVisa(p, o, f);
+        }
+        return new Part(q, aPrendre, signature);
     }
 
     /**
@@ -330,7 +378,7 @@ public class TableauDeBordCalculateur {
             p.liaison().getInstitutionNom(),
             p.etat().getStatut(),
             o.getRang(),
-            o.getLibelle(),
+            x != null && x.libelle() != null ? x.libelle() : o.getLibelle(),
             o.getEtape(),
             o.getEtapeCode(),
             o.getEtat(),

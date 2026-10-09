@@ -20,6 +20,7 @@ import cm.gimac.des.notification.application.port.in.RecevoirEvenementsUseCase.R
 import cm.gimac.des.notification.application.port.in.RecevoirEvenementsUseCase.TacheAffectee;
 import cm.gimac.des.notification.application.port.in.RecevoirEvenementsUseCase.TacheOfferte;
 import cm.gimac.des.notification.application.port.in.RecevoirEvenementsUseCase.TacheRelancee;
+import cm.gimac.des.notification.application.port.in.RecevoirEvenementsUseCase.TransitionTranchee;
 import cm.gimac.des.notification.application.port.out.AnnuairePort;
 import cm.gimac.des.notification.application.port.out.ConversationsPort;
 import cm.gimac.des.notification.domain.boite.NotificationUtilisateur;
@@ -290,6 +291,28 @@ class BoiteNotificationsServiceTest {
         p.modifier(null, null, Map.of(TypeNotification.DEMANDE, false), T);
         when(preferences.findById("aminata")).thenReturn(Optional.of(p));
         assertThat(service.demandeDecidee(new DemandeDecidee("d-2", "STATUT", "REFUSEE", "serge", List.of("aminata"), T))).isZero();
+    }
+
+    @Test
+    @DisplayName("DDR-08 : proposition de statut refusée puis prononcée, notifiée à son proposant (jamais à l'approbateur), lien vers les propositions")
+    void transitionTranchee() {
+        String lien = "/des/institutions/i-1?onglet=transitions";
+        assertThat(service.transitionTranchee(new TransitionTranchee("i-1", "t-1", "Banque Atlantique", "ADHERENT", "REJETEE", "Statuts à jour exigés", "aminata", "paul", lien, T))).isEqualTo(1);
+        assertThat(service.transitionTranchee(new TransitionTranchee("i-1", "t-2", "Banque Atlantique", "ADHERENT", "APPROUVEE", null, "aminata", "paul", "https://ailleurs/x", T))).isEqualTo(1);
+        List<NotificationUtilisateur> l = enregistrees(2);
+        assertThat(l).extracting(NotificationUtilisateur::getDestinataireId).containsOnly("aminata");
+        assertThat(l.get(0).getType()).isEqualTo(TypeNotification.DEMANDE);
+        assertThat(l.get(0).getTitre()).isEqualTo("Proposition de statut refusée : Banque Atlantique");
+        assertThat(l.get(0).getSousTitre()).isEqualTo("Motif : Statuts à jour exigés");
+        assertThat(l.get(0).getLien()).isEqualTo(lien);
+        assertThat(l.get(0).getReference()).isEqualTo(Reference.transition("t-1"));
+        assertThat(l.get(0).getActeurNom()).isEqualTo("Paul Mbarga Atangana");
+        assertThat(l.get(1).getTitre()).isEqualTo("Adhésion prononcée : Banque Atlantique");
+        assertThat(l.get(1).getSousTitre()).isNull();
+        // Lien hors de l'application interne : la fiche de l'institution le remplace.
+        assertThat(l.get(1).getLien()).isEqualTo(lien);
+        // Le proposant qui trancherait lui-même (impossible : maker-checker) ne serait pas notifié.
+        assertThat(service.transitionTranchee(new TransitionTranchee("i-1", "t-3", "B", "ADHERENT", "APPROUVEE", null, "paul", "paul", lien, T))).isZero();
     }
 
     // ------------------------------------------------------------------ mentions et réponses (D-82)

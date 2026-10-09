@@ -1,0 +1,305 @@
+[
+  {
+    "id": "QUO-01",
+    "gravite": "majeure",
+    "titre": "Aucun compte de démonstration du service RH",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/quotidien/141-dg-conge-etape-rh-clair.png",
+    "apres": "docs/recette/captures/quotidien/corrections/QUO-01-apres.png",
+    "correctif": "Comptes de démonstration du service RH tirés de l’organisation simulée : t.bekolo (gestionnaire, profil collaborateur) et s.ateba (cheffe, profil responsable de service, comme MS-PILOTAGE) ; la session garde le compte et non le premier porteur du profil.",
+    "fichiers": [
+      "frontend/packages/lot1/src/profilsDemo.ts",
+      "frontend/packages/lot1/src/services/simule/pilotage.ts",
+      "frontend/packages/lot1/src/index.ts",
+      "frontend/apps/departement/src/profils.ts",
+      "frontend/apps/departement/src/App.tsx"
+    ],
+    "test": "App.test.tsx (QUO-01) ; quotidien.test.ts (QUO-01)"
+  },
+  {
+    "id": "QUO-02",
+    "gravite": "majeure",
+    "titre": "La réaffectation d’une étape RH propose d’office la demandeuse elle-même",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/quotidien/143-dg-conge-reaffecter-clair.png",
+    "apres": "docs/recette/captures/quotidien/corrections/QUO-02-apres.png",
+    "correctif": "Séparation des fonctions (D-99) : l’initiateur n’est ni résolu, ni désigné, ni proposé, ni réaffecté, et ne prend, n’exécute, ne valide ni ne signe les étapes de sa demande, sauf réglage initiateurs.initiateurIntervenant de la définition ; « Seul porteur » n’est plus annoncé quand un porteur est écarté.",
+    "fichiers": [
+      "ms-pilotage/src/main/java/cm/gimac/des/pilotage/application/usecase/ResolutionIntervenants.java",
+      "ms-pilotage/src/main/java/cm/gimac/des/pilotage/application/usecase/ExecutionProcessusService.java",
+      "ms-pilotage/src/main/java/cm/gimac/des/pilotage/application/usecase/TacheService.java",
+      "ms-pilotage/src/main/java/cm/gimac/des/pilotage/application/usecase/PriseTacheProcessus.java",
+      "ms-pilotage/src/main/java/cm/gimac/des/pilotage/repository/TacheRepository.java",
+      "ms-pilotage/src/main/java/cm/gimac/des/pilotage/domain/processus/Initiateurs.java",
+      "frontend/packages/lot1/src/services/simule/processus.ts",
+      "frontend/packages/lot1/src/services/simule/pilotage.ts",
+      "frontend/packages/lot1/src/pages/des/processus/communs.tsx",
+      "frontend/packages/lot1/src/pages/des/processus/DialogueLancement.tsx",
+      "frontend/packages/lot1/src/pages/des/processus/ModaleLancement.tsx"
+    ],
+    "test": "ProcessusSeparationFonctionsIT.initiateurEcarte, seulAutrePorteurPuisChef, autorisationExplicite ; quotidien.test.ts (QUO-02)"
+  },
+  {
+    "id": "QUO-03",
+    "gravite": "majeure",
+    "titre": "Une tâche à prendre d’étape de processus s’ouvre sur « Instance introuvable »",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/quotidien/163-collab-fiche-tache-a-prendre-clair.png",
+    "apres": null,
+    "correctif": "Le porteur qui peut prendre une étape (ou la valider, la signer, par son profil) lit l’instance, côté serveur et en démonstration ; « Prendre l’étape » est accessible depuis l’instance. Pas de capture après : le scénario exige de modéliser et publier un processus confié à un profil porté hors de l’unité ; le correctif est prouvé par les tests (serveur et démonstration).",
+    "fichiers": [
+      "ms-pilotage/src/main/java/cm/gimac/des/pilotage/application/usecase/ExecutionProcessusService.java",
+      "frontend/packages/lot1/src/services/simule/processus.ts"
+    ],
+    "test": "ProcessusSeparationFonctionsIT.lecturePorteursEtDocuments ; quotidien.test.ts (QUO-03)"
+  },
+  {
+    "id": "QUO-04",
+    "gravite": "majeure",
+    "titre": "La pièce justificative du formulaire de lancement n’est pas consultable",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/quotidien/145-collab-justificatif-non-consultable-clair.png",
+    "apres": "docs/recette/captures/quotidien/corrections/QUO-04-apres.png",
+    "correctif": "Nouvelle route GET /processus/instances/{id}/documents/{documentId} (lecture de l’instance exigée) ; pièce du formulaire et livrables ouverts en aperçu et téléchargeables ; démonstration alignée.",
+    "fichiers": [
+      "ms-pilotage/src/main/java/cm/gimac/des/pilotage/web/rest/processus/InstanceProcessusResource.java",
+      "ms-pilotage/src/main/java/cm/gimac/des/pilotage/application/usecase/ExecutionProcessusService.java",
+      "infra/docker-compose/opa/politiques/lot1_authz.rego",
+      "frontend/packages/lot1/src/pages/des/processus/DocumentProcessus.tsx",
+      "frontend/packages/lot1/src/pages/des/processus/FormulaireLancement.tsx",
+      "frontend/packages/lot1/src/pages/des/processus/InstancePage.tsx",
+      "frontend/packages/lot1/src/services/http/processus.ts",
+      "frontend/packages/lot1/src/services/simule/processus.ts"
+    ],
+    "test": "ProcessusSeparationFonctionsIT.lecturePorteursEtDocuments ; quotidien.test.ts (QUO-04) ; lot1_authz_test.rego"
+  },
+  {
+    "id": "QUO-05",
+    "gravite": "majeure",
+    "titre": "Aucune notification d’étape ni de clôture de demande en services simulés",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/quotidien/116-reseau-cloche-sans-notification-etape-clair.png",
+    "apres": "docs/recette/captures/quotidien/corrections/QUO-05-apres.png",
+    "correctif": "Le moteur simulé des processus produit les notifications PROCESSUS de MS-NOTIFICATION (étape à réaliser ou à prendre, validation ou signature attendue, renvoi, réaffectation, avancement de la demande, clôture ou annulation), gardées avec l’état de la session et remises à la cloche du destinataire.",
+    "fichiers": [
+      "frontend/packages/lot1/src/services/simule/processus.ts",
+      "frontend/packages/lot1/src/services/simule/index.ts",
+      "frontend/packages/lot1/src/services/notifications.ts"
+    ],
+    "test": "quotidien.test.ts (QUO-05) ; notifications.test.ts"
+  },
+  {
+    "id": "QUO-06",
+    "gravite": "mineure",
+    "titre": "Codes de livrable proposés d’office en double",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/quotidien/100-chefdes-livrable-code-double-clair.png",
+    "apres": null,
+    "correctif": "Le code proposé d’office pour un nouveau livrable est le premier LIVRABLE_n libre dans tout le processus (et non dans l’étape) : l’outil ne crée plus d’anomalie « Code de livrable en double ». Pas de capture : effet visible seulement en modélisant deux étapes à livrables ; test unitaire.",
+    "fichiers": [
+      "frontend/packages/lot1/src/pages/des/processus/ModaleEtape.tsx"
+    ],
+    "test": "Processus.test.tsx (QUO-06, codeLivrableLibre)"
+  },
+  {
+    "id": "QUO-07",
+    "gravite": "mineure",
+    "titre": "Codes techniques montrés à l’utilisateur",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/quotidien/120-reseau-terminer-sans-champ-clair.png",
+    "apres": "docs/recette/captures/quotidien/corrections/QUO-04-apres.png",
+    "correctif": "Champs et livrables manquants nommés par leur libellé ; historique nommant l’étape par son libellé ; types admis et type d’un aperçu en noms courts traduits (PDF, images, Word) ; message de couverture avec profils et unités nommés (correctif HOM-15 du même écran).",
+    "fichiers": [
+      "frontend/packages/lot1/src/pages/des/processus/InstancePage.tsx",
+      "frontend/packages/lot1/src/pages/des/processus/FormulaireLancement.tsx",
+      "frontend/packages/lot1/src/pages/des/processus/DocumentProcessus.tsx",
+      "frontend/packages/design-system/src/saisie/FileDropzone/FileDropzone.tsx",
+      "frontend/packages/design-system/src/domaine/Messagerie/Messagerie.tsx",
+      "frontend/packages/design-system/src/i18n/libelles.ts",
+      "frontend/packages/lot1/src/i18n/ecrans/processus.ts"
+    ],
+    "test": "typesLisibles.test.ts ; Processus.test.tsx (champ manquant nommé)"
+  },
+  {
+    "id": "QUO-08",
+    "gravite": "mineure",
+    "titre": "Préférences de notification sans objet pour le profil",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/quotidien/191-collab-preferences-notifications-clair.png",
+    "apres": "docs/recette/captures/quotidien/corrections/QUO-08-apres.png",
+    "correctif": "Les préférences de « Mon compte » ne proposent que les types qui peuvent concerner le compte selon ses permissions (rapports soumis : équipe ; demandes : équipe, proposition de statut ou administration ; homologation : lecture des liaisons) ; MS-NOTIFICATION n’adresse déjà ces notifications qu’aux comptes concernés.",
+    "fichiers": [
+      "frontend/packages/socle/src/notifications/modele.ts",
+      "frontend/packages/socle/src/index.ts",
+      "frontend/packages/compte/src/pages/monCompte/Notifications.tsx"
+    ],
+    "test": "notifications.test.tsx (QUO-08)"
+  },
+  {
+    "id": "QUO-09",
+    "gravite": "mineure",
+    "titre": "Jeu de démonstration identique pour tous les profils",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/quotidien/190-collab-cloche-ouverte-clair.png",
+    "apres": "docs/recette/captures/quotidien/corrections/QUO-09-apres.png",
+    "correctif": "Jeu de démonstration propre au profil : sans lecture des liaisons, les conversations ne portent ni liaison ni étiquette ; une référence de liaison écrite dans le texte d’un message n’est un lien, et « Citer une liaison » n’est offert, que pour un lecteur qui lit les liaisons (HOM_LIAISON_LIST ou HOM_LIAISON_READ) ; notifications de démonstration déjà propres au profil (correctif DDR-20).",
+    "fichiers": [
+      "frontend/packages/lot1/src/services/simule/messagerie.ts",
+      "frontend/packages/lot1/src/services/simule/index.ts",
+      "frontend/packages/lot1/src/pages/des/messagerie/MessageriePage.tsx"
+    ],
+    "test": "quotidien.test.ts (QUO-09) ; MessageriePage.test.tsx (QUO-09) ; e2e messagerie.spec.ts (collaboratrice sans accès aux liaisons)"
+  },
+  {
+    "id": "QUO-10",
+    "gravite": "mineure",
+    "titre": "Indicateur « … écrit… » non démontrable",
+    "statut": "corrigée",
+    "avant": null,
+    "apres": "docs/recette/captures/quotidien/corrections/QUO-10-apres.png",
+    "correctif": "La démonstration simule le signal collaboration.message-typing.v1 : window.gmDemoNotifications.ecrire() fait apparaître « … écrit… » dans la liste et sous le fil (côté serveur, le canal poussé le porte déjà).",
+    "fichiers": [
+      "frontend/packages/lot1/src/services/simule/messagerie.ts",
+      "frontend/packages/lot1/src/services/notifications.ts"
+    ],
+    "test": "MessageriePage.test.tsx (QUO-10)"
+  },
+  {
+    "id": "QUO-11",
+    "gravite": "mineure",
+    "titre": "Fenêtre surgissante non reproduite à la main",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/quotidien/182-chefdes-fenetre-surgissante-scenario-clair.png",
+    "apres": "docs/recette/captures/quotidien/corrections/QUO-11-apres.png",
+    "correctif": "Défaut reproduit : une notification reçue avant la première lecture de la liste récente (quelques secondes après l’ouverture de l’écran) était comptée comme déjà connue et ne surgissait jamais ; elle surgit désormais si elle est arrivée depuis l’ouverture de l’écran.",
+    "fichiers": [
+      "frontend/packages/socle/src/notifications/Surgissantes.tsx"
+    ],
+    "test": "notifications.test.tsx (QUO-11)"
+  },
+  {
+    "id": "QUO-12",
+    "gravite": "mineure",
+    "titre": "Refus non expliqué pour le n+1 avant son étape",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/quotidien/140-resp-conge-etape-rh-clair.png",
+    "apres": "docs/recette/captures/quotidien/corrections/QUO-12-apres.png",
+    "correctif": "Refus de lecture expliqué (403 « Vous ne pouvez pas consulter cette demande », sans « Réessayer ») ; « introuvable » réservé à une instance inexistante ; la démonstration renvoie 403 comme le service.",
+    "fichiers": [
+      "frontend/packages/lot1/src/pages/des/processus/InstancePage.tsx",
+      "frontend/packages/lot1/src/services/simule/processus.ts"
+    ],
+    "test": "quotidien.test.ts (QUO-12) ; Processus.test.tsx"
+  },
+  {
+    "id": "QUO-13",
+    "gravite": "mineure",
+    "titre": "Accord du pluriel",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/quotidien/061-resp-mon-equipe-clair.png",
+    "apres": "docs/recette/captures/quotidien/corrections/QUO-13-apres.png",
+    "correctif": "Accords au singulier et au pluriel (« 1 faite sur 3 », « 1 activité faite sur 4 », « 1 tâche terminée ») en français, anglais et espagnol.",
+    "fichiers": [
+      "frontend/packages/lot1/src/i18n/ecrans/activite.ts",
+      "frontend/packages/lot1/src/pages/des/activite/EquipePage.tsx",
+      "frontend/packages/lot1/src/pages/des/activite/dialoguesRapport.tsx"
+    ],
+    "test": null
+  },
+  {
+    "id": "QUO-14",
+    "gravite": "mineure",
+    "titre": "Colonne « Accès » de Mon équipe",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/quotidien/061-resp-mon-equipe-clair.png",
+    "apres": "docs/recette/captures/quotidien/corrections/QUO-13-apres.png",
+    "correctif": "Liens Journée, Agenda et Rapports côte à côte dans la colonne Accès, renvoyés à la ligne si besoin, sans déborder de la ligne.",
+    "fichiers": [
+      "frontend/packages/lot1/src/pages/des/activite/EquipePage.tsx"
+    ],
+    "test": null
+  },
+  {
+    "id": "QUO-15",
+    "gravite": "mineure",
+    "titre": "Messages contradictoires dans le suivi d’un groupe",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/quotidien/073-resp-suivi-groupe-relance-clair.png",
+    "apres": "docs/recette/captures/quotidien/corrections/QUO-15-apres.png",
+    "correctif": "Une nouvelle relance efface le retour de la précédente : jamais un succès et un refus affichés ensemble.",
+    "fichiers": [
+      "frontend/packages/lot1/src/pages/des/activite/dialoguesTache.tsx"
+    ],
+    "test": null
+  },
+  {
+    "id": "QUO-16",
+    "gravite": "mineure",
+    "titre": "Vue Liste du modélisateur coupée à 1440 px",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/quotidien/096-chefdes-modelisateur-liste-clair.png",
+    "apres": "docs/recette/captures/quotidien/corrections/QUO-16-apres.png",
+    "correctif": "La cellule d’actions des tableaux reste une cellule (elle était mise en flex et sortait de la grille) et s’ajuste à ses boutons ; les en-têtes longs de la vue Liste passent à la ligne.",
+    "fichiers": [
+      "frontend/packages/design-system/src/donnees/DataTable/DataTable.tsx",
+      "frontend/packages/design-system/src/styles/09-tableau.css",
+      "frontend/packages/design-system/src/styles/18-adaptatif.css",
+      "frontend/packages/lot1/src/pages/des/processus/ModelisateurProcessusPage.tsx",
+      "frontend/packages/lot1/src/pages/des/processus/processus.css"
+    ],
+    "test": null
+  },
+  {
+    "id": "QUO-17",
+    "gravite": "mineure",
+    "titre": "Participants affichés deux fois dans « Nouvel événement »",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/quotidien/025-collab-agenda-nouvel-evenement-clair.png",
+    "apres": "docs/recette/captures/quotidien/corrections/QUO-17-apres.png",
+    "correctif": "Les participants choisis ne s’affichent plus qu’une fois, dans « N personnes choisies » de l’annuaire.",
+    "fichiers": [
+      "frontend/packages/lot1/src/pages/des/activite/dialoguesAgenda.tsx"
+    ],
+    "test": null
+  },
+  {
+    "id": "QUO-18",
+    "gravite": "mineure",
+    "titre": "Date au format ISO dans le rapport prérempli",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/quotidien/045-collab-rapport-remettre-a-clair.png",
+    "apres": "docs/recette/captures/quotidien/corrections/QUO-18-apres.png",
+    "correctif": "Texte prérempli de la démonstration aligné sur MS-PILOTAGE (RedactionRapport, déjà au format local) : « Rapport quotidien du vendredi 9 octobre 2026 », jours et reports au format local.",
+    "fichiers": [
+      "frontend/packages/lot1/src/services/simule/pilotage.ts"
+    ],
+    "test": "pilotage.test.ts (préremplissage)"
+  },
+  {
+    "id": "QUO-19",
+    "gravite": "mineure",
+    "titre": "Tâches de processus perdues au rechargement",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/quotidien/057-collab-taches-mobile-clair.png",
+    "apres": "docs/recette/captures/quotidien/corrections/QUO-19-apres.png",
+    "correctif": "À la reprise de l’état de la démonstration, les tâches des étapes terminées ou annulées renaissent aussi (terminées ou annulées), sans doublon avec une tâche déjà gardée.",
+    "fichiers": [
+      "frontend/packages/lot1/src/services/simule/processus.ts",
+      "frontend/packages/lot1/src/services/simule/pilotage.ts"
+    ],
+    "test": "quotidien.test.ts (QUO-19)"
+  },
+  {
+    "id": "QUO-20",
+    "gravite": "mineure",
+    "titre": "Onglet « Mes demandes » de Mon équipe mis en avant en thème sombre",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/quotidien/079-resp-mon-equipe-sombre.png",
+    "apres": "docs/recette/captures/quotidien/corrections/QUO-20-apres.png",
+    "correctif": "Le survol d’un onglet le souligne sans changer sa couleur de texte : en sombre, un onglet survolé ne ressemble plus à l’onglet actif (texte clair et gras).",
+    "fichiers": [
+      "frontend/packages/design-system/src/styles/07-navigation.css"
+    ],
+    "test": null
+  }
+]

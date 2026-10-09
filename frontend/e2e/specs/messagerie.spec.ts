@@ -169,6 +169,23 @@ test.describe('Fonctionnalité : messagerie de travail', () => {
     })
   })
 
+  // QUO-09 : sans lecture des liaisons, une référence écrite dans un message reste du texte (pas de lien vers un écran refusé).
+  test('Scénario : une collaboratrice sans accès aux liaisons lit et écrit une référence de liaison, sans lien', async ({ page }) => {
+    await demo(page, { profil: 'ROLE_COLLABORATEUR', theme: 'light' })
+    await page.goto(`${ADRESSES.departement}/des/messagerie`)
+    await conversations(page).getByRole('button').filter({ hasText: 'Aïcha Mahamat Nour' }).first().click()
+    const fil = page.getByRole('region', { name: 'Aïcha Mahamat Nour' })
+    const recu = fil.getByRole('listitem').filter({ hasText: 'le procès-verbal de LIA-2026-027' })
+    await expect(recu.getByText('LIA-2026-027', { exact: true })).toBeVisible()
+    await expect(recu.getByRole('link', { name: /LIA-2026/ })).toHaveCount(0)
+    await expect(fil.getByRole('button', { name: 'Citer une liaison' })).toHaveCount(0)
+    await fil.getByLabel('Votre message').fill('Je transmets la question sur LIA-2026-019 au service.')
+    await fil.getByRole('button', { name: 'Envoyer' }).click()
+    const envoye = fil.getByRole('listitem').filter({ hasText: 'la question sur LIA-2026-019' })
+    await expect(envoye.getByText('LIA-2026-019', { exact: true })).toBeVisible()
+    await expect(envoye.getByRole('link', { name: /LIA-2026/ })).toHaveCount(0)
+  })
+
   test('Scénario : écrire à une personne cherchée par son nom dans l’annuaire, pièce jointe et liaison citée', async ({ page }) => {
     await page.goto(`${ADRESSES.departement}/des/messagerie`)
     const panneau = page.getByRole('region', { name: 'Nouveau message' })

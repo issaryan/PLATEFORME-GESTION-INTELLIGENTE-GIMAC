@@ -34,7 +34,8 @@ describe('DES-01 Tableau de bord par acteur', () => {
     expect(screen.getByText('Agent de test').parentElement?.textContent).toBe('Agent de test · Chef de la DDRM')
   })
   it('chargé de la DDRM : ses dossiers en cours, sans propositions à trancher', async () => {
-    page(CHARGE, ['ROLE_CHARGE_DDRM'])
+    // « Mes dossiers » : ceux dont l'utilisateur est le chargé (DDR-16 : le chargé de démonstration, Fatimé Abakar Hissein).
+    page(CHARGE, ['ROLE_CHARGE_DDRM'], { services: servicesSimules({ latenceMs: 0, utilisateur: { id: 'sim-charge', nom: 'Fatimé Abakar Hissein', profils: ['ROLE_CHARGE_DDRM'] } }) })
     expect(await screen.findByText('Mes dossiers en cours')).toBeTruthy()
     expect(await screen.findByText('Fintech Kribi Pay')).toBeTruthy()
     expect(screen.queryByText('Propositions à trancher')).toBeNull()

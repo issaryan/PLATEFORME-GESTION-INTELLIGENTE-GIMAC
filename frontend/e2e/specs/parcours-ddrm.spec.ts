@@ -5,8 +5,18 @@ import { carte, joindre, monTravail, tiroir } from './outils'
 // DDRM suit les liaisons en phase amont et les conducteurs à désigner ; la chargée de la DDRM réalise ses
 // tâches (compte rendu de la réunion de lancement, comptes rendus d'ateliers). Services simulés.
 
+/**
+ * DDR-05 : le compte rendu d'un atelier se dépose par le responsable (R) de l'opération. Démonstration continue (D-98) :
+ * l'acteur change par la session de démonstration, sur le même état.
+ */
+async function acteur(page: import('@playwright/test').Page, role: string, adresse: string) {
+  await page.evaluate((r) => sessionStorage.setItem('gm.sessionDemo', JSON.stringify({ identifiant: '', role: r })), role)
+  await page.goto(adresse)
+}
+
 test.describe('Fonctionnalité : phase amont conduite par la DDRM', () => {
-  test('Scénario : le chef de la DDRM suit les liaisons en phase amont et dépose un compte rendu d’atelier', async ({ page }) => {
+  test('Scénario : le chef de la DDRM suit les liaisons en phase amont, le responsable d’un atelier en dépose le compte rendu', async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem('gm.demoContinue', '1'))
     await demo(page, { profil: 'ROLE_CHEF_DDRM', theme: 'light' })
     await test.step('Étant donné le chef de la DDRM sur son tableau de bord', async () => {
       await page.goto(`${ADRESSES.departement}/des/tableau-de-bord`)
@@ -16,7 +26,7 @@ test.describe('Fonctionnalité : phase amont conduite par la DDRM', () => {
       await expect(carte(page, 'Liaison sans conducteur (1)')).toBeVisible()
       await expect(carte(page, /^Liaisons en phase amont \(\d\)$/).getByRole('link', { name: 'LIA-2026-041' })).toBeVisible()
       // Le chef tient aussi la fonction des chefs de département (D-93 §6.5) : affectation des ressources à mener.
-      await expect(carte(page, /^Mes tâches \(\d+\)$/).getByText('Affectation des ressources du projet').first()).toBeVisible()
+      await expect(carte(page, /^(Mes tâches|Ma tâche) \(\d+\)$/).getByText('Affectation des ressources du projet').first()).toBeVisible()
       await expect(page.getByRole('region', { name: 'Pilotage des projets de certification' })).toBeVisible()
     })
     await test.step('Quand il ouvre toutes les liaisons en phase amont', async () => {
@@ -31,8 +41,10 @@ test.describe('Fonctionnalité : phase amont conduite par la DDRM', () => {
       await page.locator('.gm-tag').filter({ hasText: 'Étape courante : Cadrage, Lancement, Ateliers' }).getByRole('button').click()
       await expect(page.getByRole('link', { name: 'LIA-2026-030' })).toBeVisible()
     })
-    await test.step('Quand il dépose le compte rendu d’un atelier de la liaison LIA-2026-036', async () => {
+    await test.step('Quand l’ingénieur Normes et Agréments, responsable de l’atelier 10, en dépose le compte rendu sur la liaison LIA-2026-036', async () => {
       await page.getByRole('link', { name: 'LIA-2026-036' }).click()
+      await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+      await acteur(page, 'ROLE_SNA', page.url())
       await page.getByRole('tab', { name: 'Étapes' }).click()
       await expect(carte(page, '5. Ateliers')).toBeVisible()
       await expect(carte(page, 'Ateliers : comptes rendus')).toBeVisible()
@@ -73,7 +85,7 @@ test.describe('Fonctionnalité : phase amont conduite par la DDRM', () => {
     await test.step('Alors le tiroir de l’opération la présente, avec ses intervenants', async () => {
       const t = tiroir(page, '7')
       await expect(t.getByText('Réunion de lancement', { exact: true })).toBeVisible()
-      await expect(t.getByText('Chargé DDRM 1 · Développement du Réseau et du Marché')).toBeVisible()
+      await expect(t.getByText('Fatimé Abakar Hissein · Développement du Réseau et du Marché')).toBeVisible()
       await t.getByRole('tab', { name: 'Intervenants' }).click()
       await expect(t.getByText(/validateur \(V\) est toujours distinct du responsable/)).toBeVisible()
       await t.getByRole('tab', { name: 'Détail' }).click()

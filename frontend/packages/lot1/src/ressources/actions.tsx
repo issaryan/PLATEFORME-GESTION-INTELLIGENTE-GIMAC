@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
-import { ConfirmDialog, IconButton, SignDialog, Toast, ToastRegion } from '@gimac/design-system'
+import { ConfirmDialog, IconButton, InlineAlert, SignDialog, Toast, ToastRegion } from '@gimac/design-system'
 import { estApiError, ReauthCancelled, type ActionContext, type ResourceActionLot1 } from '@gimac/socle'
 import { useServices } from '../services/ServicesProvider'
 import type { Services } from '../services/ports'
@@ -127,8 +127,8 @@ export function ExecuteurActions({ children }: { children: ReactNode }) {
           danger={demande.action.variant === 'danger'}
           reason={demande.action.reason}
           object={[{ key: t('action.objet'), value: demande.titre }]}
-          description={erreur}
-          extra={demande.action.consequences?.(demande.row)}
+          // CER-10 : un refus du service s'affiche en alerte d'erreur, au-dessus des conséquences de l'action.
+          extra={<>{erreur ? <InlineAlert level="crit">{erreur}</InlineAlert> : null}{demande.action.consequences?.(demande.row)}</>}
           onConfirm={(motif: string) => void confirmer(motif)}
           onClose={fermer}
         />

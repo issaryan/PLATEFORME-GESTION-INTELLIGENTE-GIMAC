@@ -18,6 +18,8 @@ export interface ButtonProps extends BaseProps {
   /** Bouton qui ouvre un menu ou un dialogue surgissant. */
   'aria-haspopup'?: 'menu' | 'dialog' | 'true'
   'aria-expanded'?: boolean
+  /** Élément commandé par le bouton (tiroir, panneau). */
+  'aria-controls'?: string
   loading?: boolean
   disabled?: boolean
   /** Affiché en infobulle quand le bouton est désactivé : jamais désactivé sans explication. */
@@ -45,6 +47,7 @@ export function Button(p: ButtonProps) {
       aria-busy={p.loading ? 'true' : undefined}
       aria-haspopup={p['aria-haspopup']}
       aria-expanded={p['aria-expanded']}
+      aria-controls={p['aria-controls']}
       title={p.disabled && p.disabledReason ? p.disabledReason : undefined}
       aria-label={p['aria-label'] || (p.iconOnly && typeof p.children === 'string' ? p.children : undefined)}
     >

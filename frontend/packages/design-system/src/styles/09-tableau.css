@@ -12,8 +12,14 @@
 .gm-table tbody tr:hover td { background: var(--gm-color-action-subtle); }
 .gm-table tbody tr[aria-selected="true"] td { background: var(--gm-color-surface-selected); }
 .gm-table .gm-num, .gm-table th.gm-num { text-align: right; }
+/* QUO-16 : colonne d'actions ajustée à ses boutons, jamais tronquée. */
+.gm-table td.gm-td-actions { width: 1%; white-space: nowrap; text-align: right; }
 .gm-table-compact td, .gm-table-compact th { height: var(--gm-size-row-compact); }
 .gm-table-live td { animation: gm-live var(--gm-motion-live) var(--gm-motion-ease) 1; }
 @keyframes gm-live { from { background-color: var(--gm-color-action-subtle); } to { background-color: transparent; } }
 .gm-table-toolbar { display: flex; align-items: center; gap: var(--gm-space-2); padding: var(--gm-space-2) var(--gm-space-3); border-bottom: var(--gm-border-1) solid var(--gm-color-border); font-size: 12px; line-height: 18px; color: var(--gm-color-text-secondary); }
 .gm-table-toolbar .gm-grow { flex: 1; }
+/* DDR-23 : la ligne d'état vide n'est ni zébrée ni surlignée au survol (fond bleu saturé en thème sombre). */
+.gm-table tbody tr.gm-table-vide td, .gm-table tbody tr.gm-table-vide:hover td { background: transparent; }
+/* DDR-23 : illustration de l'état vide lisible en thème sombre (trame et pictogramme contrastés). */
+[data-theme="dark"] .gm-empty-art.gm-pattern { background-image: repeating-linear-gradient(45deg, transparent 0 15px, rgba(201, 139, 99, 0.12) 15px 16px), repeating-linear-gradient(-45deg, transparent 0 15px, rgba(201, 139, 99, 0.12) 15px 16px); color: var(--gm-color-text-primary); border: var(--gm-border-1) solid var(--gm-color-border); }

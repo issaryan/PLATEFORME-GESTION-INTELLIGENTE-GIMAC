@@ -123,7 +123,9 @@ class ProcessusOrganisationIT extends AbstractProcessusIT {
         Map<String, Object> visa = tache(refVisa);
         assertThat(visa).containsEntry("etat", "A_PRENDRE").containsEntry("profil_requis", PROFIL_RESEAU).containsEntry("unite_cible", "POLE_RESEAU");
         String tVisa = visa.get("id").toString();
-        mvc.perform(get("/api/v1/taches").param("vue", "moi").with(agent(TECHNICIEN_RESEAU))).andExpect(jsonPath("$.contenu[*].id", Matchers.hasItem(tVisa)));
+        mvc.perform(get("/api/v1/taches").param("vue", "moi").with(agent(INGENIEUR_RESEAU))).andExpect(jsonPath("$.contenu[*].id", Matchers.hasItem(tVisa)));
+        // D-99 : l'offre n'est jamais listée à l'initiateur (le technicien) ; la définition l'autorisant, il la prend quand même.
+        mvc.perform(get("/api/v1/taches").param("vue", "moi").with(agent(TECHNICIEN_RESEAU))).andExpect(jsonPath("$.contenu[*].id", Matchers.not(Matchers.hasItem(tVisa))));
         mvc.perform(get("/api/v1/taches").param("vue", "moi").with(chef(CHEF_RESEAU))).andExpect(jsonPath("$.contenu[*].id", Matchers.not(Matchers.hasItem(tVisa))));
         // La prise désigne le signataire : lui seul signe.
         mvc.perform(post("/api/v1/taches/" + tVisa + "/prise").with(agent(TECHNICIEN_RESEAU))).andExpect(status().isOk());

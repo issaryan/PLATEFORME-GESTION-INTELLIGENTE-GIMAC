@@ -9,16 +9,21 @@ import { useErreurService } from '../liaisons/communs'
 // fonction interne que tient le RACI de la liaison (intervenants servis), sans liste figée de fonctions. Le conducteur
 // est désigné à part (D-58). Le service vérifie l'ouverture de l'étape et les habilitations.
 
-/** Fonctions qui ne s'affectent pas ici (D-93 §8.1 : 422 HOM_FONCTION_NON_AFFECTABLE). */
-export const NON_AFFECTABLES = ['PARTICIPANT', 'CONDUCTEUR']
+/**
+ * Fonctions qui ne s'affectent pas ici (D-93 §8.1 : 422 HOM_FONCTION_NON_AFFECTABLE) ; CHEFS_DEPARTEMENT est tenue par les
+ * deux chefs eux-mêmes, qui affectent (DDR-06).
+ */
+export const NON_AFFECTABLES = ['PARTICIPANT', 'CONDUCTEUR', 'CHEFS_DEPARTEMENT']
 
-function ChoixPersonne({ fonction, libelle, valeur, onChange }: { fonction: Fonction; libelle: string; valeur: string; onChange: (v: string) => void }) {
+function ChoixPersonne({ fonction, libelle, valeur, erreur, onChange }: { fonction: Fonction; libelle: string; valeur: string; erreur?: string; onChange: (v: string) => void }) {
   const { t } = useTranslation()
   const personnes = usePersonnes(fonction)
   return (
     <Select
       name={`affectation-${fonction}`}
       label={libelle}
+      required
+      error={erreur}
       value={valeur}
       options={[{ value: '', label: t('parcoursAffectation.nonAffecte') }, ...(personnes.data ?? []).map((p) => ({ value: p.id, label: p.nom }))]}
       disabled={personnes.isPending}
@@ -36,10 +41,12 @@ export function DialogueAffectation({ dossier, onFermer, onAffecte }: { dossier:
   const [choix, setChoix] = useState<Partial<Record<Fonction, string>>>(() => Object.fromEntries(fonctions.filter((i) => i.personne && !i.aAffecter).map((i) => [i.fonction, i.personne!.id])))
   const [tente, setTente] = useState(false)
   const affectations = fonctions.flatMap(({ fonction }) => (choix[fonction] ? [{ fonction, personneId: choix[fonction] as string }] : []))
+  // DDR-06 : une personne pour chaque fonction présentée (la fenêtre l'annonce) ; un message sous chaque fonction non affectée.
+  const manquantes = fonctions.filter(({ fonction }) => !choix[fonction]).map(({ fonction }) => fonction)
   const refus = erreurService(affecter.error)
   const soumettre = () => {
     setTente(true)
-    if (!affectations.length) return
+    if (!affectations.length || manquantes.length) return
     affecter.mutate({ liaisonId: dossier.id, affectations }, { onSuccess: onAffecte })
   }
   return (
@@ -69,12 +76,12 @@ export function DialogueAffectation({ dossier, onFermer, onAffecte }: { dossier:
             {refus.message}
           </InlineAlert>
         ) : null}
-        {tente && !affectations.length ? <InlineAlert level="warn">{t('parcoursAffectation.erreur.aucune')}</InlineAlert> : null}
+        {tente && manquantes.length ? <InlineAlert level="warn">{t('parcoursAffectation.erreur.manquantes', { count: manquantes.length })}</InlineAlert> : null}
         {fonctions.length ? null : <InlineAlert level="info">{t('parcoursAffectation.aucuneFonction')}</InlineAlert>}
         <div className="gm-row" style={{ alignItems: 'flex-start', gap: 'var(--gm-space-4)' }}>
           {fonctions.map(({ fonction, libelle }) => (
             <div key={fonction} style={{ flex: '1 1 240px', minWidth: 0 }}>
-              <ChoixPersonne fonction={fonction} libelle={libelle} valeur={choix[fonction] ?? ''} onChange={(v) => setChoix((c) => ({ ...c, [fonction]: v }))} />
+              <ChoixPersonne fonction={fonction} libelle={libelle} valeur={choix[fonction] ?? ''} erreur={tente && !choix[fonction] ? t('parcoursAffectation.erreur.requise') : undefined} onChange={(v) => setChoix((c) => ({ ...c, [fonction]: v }))} />
             </div>
           ))}
         </div>

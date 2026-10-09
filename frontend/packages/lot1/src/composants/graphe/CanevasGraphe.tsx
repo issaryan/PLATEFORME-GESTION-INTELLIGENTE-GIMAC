@@ -36,6 +36,9 @@ export type CanevasGrapheProps<N extends Node> = {
  * Cadrage : à l'ouverture et chaque fois que l'ensemble des cartes change (autre version, lecture filtrée avec
  * fantômes, D-89), la vue est ajustée sur toutes les cartes une fois leurs dimensions connues.
  */
+/** Zoom au-dessous duquel les cartes ne se lisent plus (texte de 12 px réduit sous 8 px). */
+const ZOOM_LISIBLE = 0.65
+const MARGE_CADRAGE = 24
 function Cadrage({ cle }: { cle: string }) {
   const flux = useReactFlow()
   const prets = useNodesInitialized()
@@ -43,8 +46,14 @@ function Cadrage({ cle }: { cle: string }) {
   useEffect(() => {
     if (!prets || !cle || fait.current === cle) return
     fait.current = cle
-    // Cadrage sur les cartes seules (opérations et fantômes), sans les couloirs des étapes vides.
-    void flux.fitView({ nodes: cle.split('|').map((id) => ({ id })), padding: 0.15, maxZoom: 1 })
+    // Cadrage sur les cartes seules (opérations et fantômes), sans les couloirs des étapes vides. Recette HOM-18 : un grand
+    // graphe n'est jamais réduit sous un zoom lisible ; la vue s'ouvre alors sur le début du parcours (en haut à gauche).
+    const ids = cle.split('|')
+    void Promise.resolve(flux.fitView({ nodes: ids.map((id) => ({ id })), padding: 0.15, maxZoom: 1 })).then(() => {
+      if (flux.getZoom() >= ZOOM_LISIBLE) return
+      const b = flux.getNodesBounds(ids)
+      void flux.setViewport({ x: -b.x * ZOOM_LISIBLE + MARGE_CADRAGE, y: -b.y * ZOOM_LISIBLE + MARGE_CADRAGE, zoom: ZOOM_LISIBLE })
+    })
   }, [prets, cle, flux])
   return null
 }
@@ -89,7 +98,7 @@ export function CanevasGraphe<N extends Node>(p: CanevasGrapheProps<N>) {
         nodesDraggable={!p.lecture}
         nodesConnectable={!p.lecture}
         deleteKeyCode={p.lecture ? null : ['Delete', 'Backspace']}
-        fitView
+        // Cadrage initial confié à <Cadrage> (cartes seules, zoom lisible, HOM-18) ; ces options servent au bouton « Ajuster ».
         fitViewOptions={{ padding: 0.1, maxZoom: 1 }}
         minZoom={0.15}
         maxZoom={2}

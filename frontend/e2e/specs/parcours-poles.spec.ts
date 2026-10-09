@@ -43,7 +43,7 @@ test.describe('Fonctionnalité : opérations des pôles réseau et système', ()
       await confirmerAction(page, 'Déposer la preuve')
     })
     await test.step('Alors elle attend la validation du conducteur de projet', async () => {
-      await expect(tiroir(page, '13').getByText(/Preuve déposée, en attente de la validation de Conducteur de projet 2/)).toBeVisible()
+      await expect(tiroir(page, '13').getByText(/Preuve déposée, en attente de la validation de Brice Ondo Mba/)).toBeVisible()
     })
   })
 
@@ -65,7 +65,7 @@ test.describe('Fonctionnalité : opérations des pôles réseau et système', ()
       await confirmerAction(page, 'Déposer la preuve')
     })
     await test.step('Alors la preuve attend la validation et l’opération 29 (secret) ne demande aucun code', async () => {
-      await expect(tiroir(page, '28').getByText(/Preuve déposée, en attente de la validation de Conducteur de projet 2/)).toBeVisible()
+      await expect(tiroir(page, '28').getByText(/Preuve déposée, en attente de la validation de Brice Ondo Mba/)).toBeVisible()
       await tiroir(page, '28').getByRole('button', { name: 'Fermer' }).click()
       await page.getByRole('button', { name: /^Ouvrir l'opération 29 :/ }).click()
       await expect(tiroir(page, '29').getByText('Aucun secret dans le dossier')).toBeVisible()

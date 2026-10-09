@@ -17,12 +17,18 @@ describe('DES-10 Clore une opération', () => {
     expect(screen.getByText('Dernière version déposée')).toBeTruthy()
   })
 
-  it('DES-10 : erreur avec identifiant de corrélation et réessai ; opération introuvable', async () => {
+  it('DES-10 : erreur avec identifiant de corrélation et réessai ; opération introuvable sans réessai (CER-18)', async () => {
     const s = servicesSimules({ latenceMs: 0 })
     s.homologation.elementsDeCloture = vi.fn().mockRejectedValue(new ApiError(404, 'HOM_OPERATION_NOT_FOUND', 'Opération introuvable.', 'cid-404'))
-    rendrePage(<ClotureOperationPage />, { chemin: chemin(), motif: MOTIF, services: s })
+    const { unmount } = rendrePage(<ClotureOperationPage />, { chemin: chemin(), motif: MOTIF, services: s })
     const alerte = await screen.findByRole('alert')
     expect(alerte.textContent).toContain('cid-404')
+    // CER-18 : un refus définitif (introuvable) ne propose pas de réessayer.
+    expect(screen.queryByRole('button', { name: 'Réessayer' })).toBeNull()
+    unmount()
+    s.homologation.elementsDeCloture = vi.fn().mockRejectedValue(new ApiError(503, 'HOM_INDISPONIBLE', 'Service indisponible.', 'cid-503'))
+    rendrePage(<ClotureOperationPage />, { chemin: chemin(), motif: MOTIF, services: s })
+    expect((await screen.findByRole('alert')).textContent).toContain('cid-503')
     expect(screen.getByRole('button', { name: 'Réessayer' })).toBeTruthy()
   })
 

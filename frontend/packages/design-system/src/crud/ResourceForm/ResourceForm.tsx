@@ -124,7 +124,7 @@ export function ResourceForm<T extends object>(p: ResourceFormProps<T>) {
       case 'checkbox':
         return <Checkbox label={f.label} checked={!!vals[f.name]} onChange={(v: boolean) => set(f.name, v)} />
       case 'radio':
-        return <RadioGroup name={f.name} label={f.label} value={texte(f.name)} options={opts} onChange={(v: string) => set(f.name, v)} />
+        return <RadioGroup name={f.name} label={f.label} required={f.required} help={f.help} error={errors[f.name]} value={texte(f.name)} options={opts} onChange={(v: string) => set(f.name, v)} />
       case 'switch':
         return <Switch label={f.label} checked={!!vals[f.name]} onChange={(v: boolean) => set(f.name, v)} />
       case 'file':
@@ -140,7 +140,8 @@ export function ResourceForm<T extends object>(p: ResourceFormProps<T>) {
   const title = t(mode === 'create' ? (g === 'f' ? 'crud.enregistrerUne' : 'crud.enregistrerUn') : g === 'f' ? 'crud.modifierUne' : 'crud.modifierUn', { objet: desc.label.singular })
   const elision = /^[aeiouyhàâéèêîôû]/i.test(desc.label.singular)
   const soumettre = t(elision ? 'crud.enregistrerElision' : g === 'f' ? 'crud.enregistrerLa' : 'crud.enregistrerLe', { objet: desc.label.singular })
-  const errList = Object.keys(errors)
+  // DDR-16 : résumé des erreurs dans l'ordre des champs du formulaire, puis les champs inconnus du formulaire.
+  const errList = [...fields.map((f) => f.name as string).filter((k) => k in errors), ...Object.keys(errors).filter((k) => !fields.some((f) => f.name === k))]
   const corps = (
     <>
       {p.intro ? p.intro : null}

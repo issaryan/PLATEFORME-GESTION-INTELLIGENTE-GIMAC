@@ -39,7 +39,7 @@ describe('Comptes : liste', () => {
     const services = avec('comptes', { lister: async (f) => { filtres.push(f); return base.comptes.lister(f) } }, base)
     const { container } = liste(SUPER_ADMIN, { services })
     expect(await screen.findByText('super.admin')).toBeTruthy()
-    expect(screen.getByText('13 compte(s)')).toBeTruthy()
+    expect(screen.getByText('14 compte(s)')).toBeTruthy()
     expect(screen.getAllByText('sans second facteur').length).toBeGreaterThan(0)
     fireEvent.change(container.querySelector('input[type="search"]')!, { target: { value: 'ndong' } })
     await waitFor(() => expect(filtres.at(-1)).toMatchObject({ q: 'ndong', page: 1 }))
@@ -54,7 +54,7 @@ describe('Comptes : liste', () => {
     await waitFor(() => expect(filtres.at(-1)).toEqual({ page: 1, taille: 25 }))
     fireEvent.change(await screen.findByRole('combobox', { name: 'Taille de page' }), { target: { value: '50' } })
     await waitFor(() => expect(filtres.at(-1)).toMatchObject({ taille: 50 }))
-    fireEvent.click(await screen.findByText('Carine Ebongue Ndjock'))
+    fireEvent.click(await screen.findByText('Hervé Kamga Tchoupo'))
     await waitFor(() => expect(screen.getByTestId('emplacement').textContent).toBe('/console/comptes/u-rssi'))
   })
 
@@ -142,7 +142,7 @@ describe('Comptes : création (aucune inscription libre)', () => {
     await screen.findByLabelText('Normes et Agréments')
     expect(screen.queryByLabelText('Super administrateur')).toBeNull()
     expect(screen.queryByLabelText('RSSI')).toBeNull()
-    remplir(container, { identifiant: 'rssi', prenom: 'R', nom: 'S', email: 'rssi@gimac-afr.org' })
+    remplir(container, { identifiant: 'h.kamga', prenom: 'R', nom: 'S', email: 'h.kamga@gimac-afr.org' })
     fireEvent.click(screen.getByLabelText('Normes et Agréments'))
     fireEvent.submit(formulaire())
     const champ = container.querySelector('input[name="identifiant"]')!

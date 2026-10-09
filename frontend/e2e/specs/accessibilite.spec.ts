@@ -64,6 +64,9 @@ test.describe('Fonctionnalité : accessibilité des écrans D-62', () => {
         await test.step(chemin, async () => {
           await ecran(page, ADRESSES.console, chemin)
           await expect(page.getByRole('heading', { level: 1 })).toHaveText(titre)
+          // Création en modale : la fenêtre est montée (et son fondu commencé) avant l'audit, sinon son contraste est mesuré
+          // en plein fondu quand la page met du temps à l'ouvrir (charge parallèle).
+          if (chemin.endsWith('/nouveau')) await expect(page.getByRole('dialog')).toBeVisible()
           await page.waitForLoadState('networkidle')
           await auditer(page)
         })
@@ -220,7 +223,7 @@ test.describe('Fonctionnalité : accessibilité des écrans D-62', () => {
       await page.goto(`${ADRESSES.console}/connexion?motif=inactivite&minutes=30`)
       await expect(page.locator('input[name="identifiant"]')).toBeVisible()
       await auditer(page)
-      await page.locator('input[name="identifiant"]').fill('rssi')
+      await page.locator('input[name="identifiant"]').fill('h.kamga')
       await page.locator('input[name="motDePasse"]').fill('Gimac-Demo-2026!')
       await page.getByRole('button', { name: 'Se connecter' }).click()
       await expect(page.locator('input[name="code"]')).toBeVisible()

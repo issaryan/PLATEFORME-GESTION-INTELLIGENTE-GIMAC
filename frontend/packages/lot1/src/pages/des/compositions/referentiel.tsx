@@ -142,7 +142,7 @@ export function OngletControle({ versionId }: { versionId: string }) {
           {r.manquants.length ? (
             <section className="gm-col" style={{ gap: 'var(--gm-space-2)' }}>
               <h2 className="gm-type-h3" style={{ margin: 0 }}>{t('referentiel.controle.manquants')}</h2>
-              <KeyValueList items={r.manquants.map((m) => ({ key: m.code, value: m.attributs.join(', '), mono: true }))} />
+              <KeyValueList items={r.manquants.map((m) => ({ key: m.code, value: m.attributs.map((x) => t(`modelisateur.attribut.${x}`, { defaultValue: x })).join(', ') }))} />
             </section>
           ) : null}
           {r.acyclique && !r.incoherences.length && !r.manquants.length ? <InlineAlert level="info">{t('referentiel.controle.conforme')}</InlineAlert> : null}
@@ -222,4 +222,18 @@ export function ImpactPublication({ versionId }: { versionId: string }) {
   const q = useLiaisonsImpactees(versionId)
   if (!q.data) return null
   return <InlineAlert level="info">{t('referentiel.publier.impact', { n: q.data.total })}</InlineAlert>
+}
+
+/**
+ * Recette HOM-01 : la confirmation de la publication annonce le refus du service quand le contrôle à blanc de la version
+ * relève des anomalies ou des attributs manquants (lu sur ControleVue, aucune règle recalculée ici).
+ */
+export function ControlePublication({ versionId }: { versionId: string }) {
+  const { t } = useTranslation()
+  const q = useControleReferentiel(versionId)
+  if (!q.data) return null
+  const r = q.data
+  const anomalies = r.anomalies?.length ?? (r.incoherences.length + (r.acyclique ? 0 : 1))
+  if (r.conforme ?? (!anomalies && !r.manquants.length)) return null
+  return <InlineAlert level="warn">{t('referentiel.publier.anomalies', { anomalies, manquants: r.manquants.length })}</InlineAlert>
 }

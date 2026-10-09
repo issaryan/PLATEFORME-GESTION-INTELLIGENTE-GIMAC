@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Button, Card, EmptyState, InlineAlert, PageHeader, Pagination, Skeleton, Tabs } from '@gimac/design-system'
 import type { EtatNotifications } from './modele'
 import { ElementNotification } from './Cloche'
-import { useCompteurNotifications, useListeNotifications, useOuvrirNotification, useToutMarquerLu } from './contexte'
+import { useCompteurNotifications, useContexteNotifications, useListeNotifications, useOuvrirNotification, useToutMarquerLu } from './contexte'
 
 // Page des notifications (/{couche}/notifications, D-80) : « Voir tout » de la cloche. Filtre non lues ou
 // toutes, pagination par le service (20 par page, la première à 0), « Tout marquer comme lu ».
@@ -19,13 +19,15 @@ export function NotificationsPage() {
   const toutLu = useToutMarquerLu()
   const ouvrir = useOuvrirNotification()
   const nonLues = compteur.data?.nonLues ?? 0
+  // Portail : le participant ne reçoit que le parcours de ses liaisons (ni messagerie, ni tâches, ni rapports).
+  const portail = useContexteNotifications()?.couche === 'portail'
   useEffect(() => {
     document.title = `GIMAC · ${t('notifications.titre')}`
   }, [t])
   const contenu = liste.data?.contenu ?? []
   return (
     <div className="gm-col" style={{ gap: 'var(--gm-space-4)' }}>
-      <PageHeader title={t('notifications.titre')} subtitle={t('notifications.page.sousTitre')}
+      <PageHeader title={t('notifications.titre')} subtitle={t(portail ? 'notifications.page.sousTitrePortail' : 'notifications.page.sousTitre')}
         meta={<span>{t('notifications.nonLues', { count: nonLues })}</span>}
         actions={<Button variant="secondary" icon="check" disabled={nonLues === 0} loading={toutLu.isPending} onClick={() => toutLu.mutate(undefined)}>{t('notifications.toutLu')}</Button>} />
       <Card>

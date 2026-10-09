@@ -95,7 +95,7 @@ export function DataTable<Row extends TableRow = TableRow>(p: DataTableProps<Row
   else if (state === 'empty')
     body = (
       <tbody>
-        <tr><td colSpan={cols.length} style={{ height: 'auto' }}><EmptyState title={p.emptyText || t('commun.aucunElement')} text={p.emptyHelp} /></td></tr>
+        <tr className="gm-table-vide"><td colSpan={cols.length} style={{ height: 'auto' }}><EmptyState title={p.emptyText || t('commun.aucunElement')} text={p.emptyHelp} /></td></tr>
       </tbody>
     )
   else if (state === 'error')
@@ -125,8 +125,10 @@ export function DataTable<Row extends TableRow = TableRow>(p: DataTableProps<Row
               style={onRowOpen ? { cursor: 'pointer' } : undefined}
             >
               {cols.map((c) => (
-                <td key={c.key} data-label={c.header || undefined} className={cx((c.type === 'number' || c.type === 'money') && 'gm-num', c.type === 'actions' && 'gm-row')}>
-                  {cellule(c, r)}
+                // QUO-16 : la cellule d'actions reste une cellule de tableau (un td en flex sort de la grille et se tronque) ;
+                // ses boutons sont alignés dans un conteneur, sans retour à la ligne.
+                <td key={c.key} data-label={c.header || undefined} className={cx((c.type === 'number' || c.type === 'money') && 'gm-num', c.type === 'actions' && 'gm-td-actions')}>
+                  {c.type === 'actions' ? <span className="gm-row" style={{ flexWrap: 'nowrap', justifyContent: 'flex-end' }}>{cellule(c, r)}</span> : cellule(c, r)}
                 </td>
               ))}
             </tr>

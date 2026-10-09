@@ -22,7 +22,9 @@ public interface TacheRepository extends JpaRepository<Tache, UUID> {
     String A_PRENDRE_PAR_MOI =
         "(t.offreProfils = true and (t.uniteCible is null or t.uniteCible in :unites) and (exists (select 1 from Tache o join o.profilsRequis p where o.id = t.id and p in :profils)" +
         " or exists (select 1 from Tache o join o.permissionsRequises q where o.id = t.id and q in :permissions)))" +
-        " or (t.offreProfils = false and t.profilRequis in :profils and (t.uniteCible in :unites or t.uniteCible is null))";
+        " or (t.offreProfils = false and t.profilRequis in :profils and (t.uniteCible in :unites or t.uniteCible is null)" +
+        // D-99 : l'étape à prendre d'une demande n'est pas offerte à son initiateur (créateur de la tâche).
+        " and not (t.origineType = cm.gimac.des.pilotage.domain.activite.TypeOrigine.PROCESSUS and t.createurId = :moi))";
 
     @Query(value = "select t from Tache t where t.responsableId in :responsables and (:etat is null or t.etat = :etat)" + TRI,
         countQuery = "select count(t) from Tache t where t.responsableId in :responsables and (:etat is null or t.etat = :etat)")
@@ -55,9 +57,12 @@ public interface TacheRepository extends JpaRepository<Tache, UUID> {
      * Tâches confiées aux unités données, dans l'état donné (vue unite : à prendre, D-81 §6), sans profil exigé ou
      * réservées à l'un des profils donnés (étapes de processus, D-87).
      */
-    @Query(value = "select t from Tache t where t.uniteCible in :unites and t.etat = :etat and (t.profilRequis is null or t.profilRequis in :profils)" + TRI,
-        countQuery = "select count(t) from Tache t where t.uniteCible in :unites and t.etat = :etat and (t.profilRequis is null or t.profilRequis in :profils)")
-    Page<Tache> deUnites(@Param("unites") Collection<String> unites, @Param("etat") EtatTache etat, @Param("profils") Collection<String> profils, Pageable page);
+    String SAUF_MES_DEMANDES = " and not (t.origineType = cm.gimac.des.pilotage.domain.activite.TypeOrigine.PROCESSUS and t.createurId = :moi and t.etat = cm.gimac.des.pilotage.domain.activite.EtatTache.A_PRENDRE)";
+
+    /** D-99 : sans les étapes à prendre des demandes lancées par {@code moi} (séparation des fonctions). */
+    @Query(value = "select t from Tache t where t.uniteCible in :unites and t.etat = :etat and (t.profilRequis is null or t.profilRequis in :profils)" + SAUF_MES_DEMANDES + TRI,
+        countQuery = "select count(t) from Tache t where t.uniteCible in :unites and t.etat = :etat and (t.profilRequis is null or t.profilRequis in :profils)" + SAUF_MES_DEMANDES)
+    Page<Tache> deUnites(@Param("unites") Collection<String> unites, @Param("etat") EtatTache etat, @Param("profils") Collection<String> profils, @Param("moi") String moi, Pageable page);
 
     /** Tâches d'étapes de processus encore ouvertes dont le compte est responsable (départ d'une personne, D-87). */
     @Query("select t from Tache t where t.responsableId = :responsable and t.origineType = cm.gimac.des.pilotage.domain.activite.TypeOrigine.PROCESSUS and t.etat in :etats")

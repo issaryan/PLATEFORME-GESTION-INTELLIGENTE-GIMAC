@@ -20,6 +20,10 @@ CIBLE = RACINE / "infra/keycloak/gimac-realm.json"
 # Domaine de production : identique, sans aucun compte de test (seuls les comptes de service des clients restent) ;
 # les comptes réels sont créés depuis la console (D-62, docs/exploitation/reprise-des-donnees.md).
 CIBLE_PRODUCTION = RACINE / "infra/keycloak/gimac-realm-production.json"
+# Catalogue des permissions et des profils livrés, lu dans le domaine généré comme MS-IAM le lit dans Keycloak
+# (KeycloakAnnuaire : permissions, profils composites ROLE_*, libellé, mission, caractère externe) : source unique
+# des services simulés et des profils de démonstration du frontend (recette ADM-01, ADM-09), jamais recopié à la main.
+CIBLE_FRONTEND = RACINE / "frontend/packages/lot1/src/domaine-gimac.json"
 
 PERMISSIONS = {
     "HOM": ["PROJECT_DESIGNATE", "REFERENTIEL_READ", "REFERENTIEL_EDIT", "REFERENTIEL_PUBLISH", "REFERENTIEL_MIGRATE", "LIAISON_READ", "LIAISON_LIST",
@@ -427,6 +431,27 @@ def client_confidentiel(client_id, secret_var, directs=False, service=False, rol
     return c
 
 
+def catalogue_frontend(realm):
+    """Permissions et profils du domaine, selon les règles de lecture de MS-IAM (KeycloakAnnuaire) : une permission
+    est un rôle de realm en majuscules à souligné, hors ROLE_ ; un profil est un rôle composite ROLE_*."""
+    import re
+    motif = re.compile(r"^[A-Z][A-Z0-9]*(_[A-Z0-9]+)+$")
+    est_permission = lambda n: motif.match(n) and not n.startswith("ROLE_")
+    roles = realm["roles"]["realm"]
+    profils = [{
+        "code": r["name"],
+        "libelle": (r.get("attributes") or {}).get("gimac_libelle", [None])[0],
+        "description": r.get("description") or "",
+        "externe": (r.get("attributes") or {}).get("gimac_externe") == ["true"],
+        "permissions": sorted(p for p in r["composites"]["realm"] if est_permission(p)),
+    } for r in roles if r["name"].startswith("ROLE_") and r.get("composite")]
+    return {
+        "source": "Généré par infra/keycloak/generer-realm-gimac.py à partir de infra/keycloak/gimac-realm.json : ne pas modifier à la main.",
+        "permissions": sorted(r["name"] for r in roles if est_permission(r["name"])),
+        "profils": profils,
+    }
+
+
 def main():
     realm = json.loads(SOURCE.read_text(encoding="utf-8"))
     realm = copy.deepcopy(realm)
@@ -621,8 +646,13 @@ def main():
     production = dict(realm, users=[u for u in realm["users"] if u.get("serviceAccountClientId")])
     assert not any(u["username"].startswith("test-") for u in production["users"]) and production["users"], "domaine de production"
     CIBLE_PRODUCTION.write_text(json.dumps(production, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    frontend = catalogue_frontend(realm)
+    assert [p["code"] for p in frontend["profils"]] == list(PROFILS) and sorted(TOUTES) == frontend["permissions"], "catalogue du frontend"
+    assert all(set(p["permissions"]) == set(PROFILS[p["code"]]) for p in frontend["profils"]), "composition d'un profil du frontend"
+    CIBLE_FRONTEND.write_text(json.dumps(frontend, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"{CIBLE.relative_to(RACINE)} : {len(TOUTES)} permissions, {len(PROFILS)} profils, {len(UTILISATEURS)} utilisateurs de test")
     print(f"{CIBLE_PRODUCTION.relative_to(RACINE)} : {len(production['users'])} comptes de service, aucun compte de test")
+    print(f"{CIBLE_FRONTEND.relative_to(RACINE)} : catalogue des permissions et des profils des services simulés")
 
 
 if __name__ == "__main__":

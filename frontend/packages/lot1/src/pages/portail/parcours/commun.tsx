@@ -18,6 +18,18 @@ export const tonStatut: Record<StatutParcours, Status> = {
 export const tonSla: Record<Sla, Status> = { DANS_LES_DELAIS: 'ok', ECHEANCE_PROCHE: 'warn', DEPASSE: 'crit' }
 export const tonEtape: Record<EtatEtape, Status> = { A_VENIR: 'neutral', EN_COURS: 'info', CLOSE: 'ok', BLOQUEE: 'crit', SANS_OBJET: 'neutral' }
 
+/**
+ * Libellé du type de projet d'une liaison (CER-05) : traduction des types repris, sinon libellé servi par
+ * MS-HOMOLOGATION (un type créé dans la plateforme), le code seulement à défaut.
+ */
+export function useTypeProjet() {
+  const { t } = useTranslation()
+  return useCallback(
+    (l: { typeProjet: string; typeProjetLibelle?: string | null }) => t(`parcours.typeProjet.${l.typeProjet}`, { defaultValue: l.typeProjetLibelle || String(l.typeProjet) }),
+    [t],
+  )
+}
+
 /** Date du service (AAAA-MM-JJ ou horodatage) écrite dans la langue de l'interface. */
 export function useDate() {
   const { i18n } = useTranslation()

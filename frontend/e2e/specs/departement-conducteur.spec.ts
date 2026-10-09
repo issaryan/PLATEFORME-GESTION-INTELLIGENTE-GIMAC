@@ -39,7 +39,7 @@ test.describe('Fonctionnalité : « Mes projets » du conducteur de projet', () 
     await test.step('Et le dossier de sa liaison en cadrage se lit sans désignation possible', async () => {
       await page.getByRole('link', { name: 'LIA-2026-041' }).click()
       await expect(page.getByRole('heading', { level: 1 })).toHaveText('Fintech F')
-      await expect(page.getByText('Conducteur de projet 1', { exact: true })).toBeVisible()
+      await expect(page.getByText('Aïcha Mahamat Nour', { exact: true })).toBeVisible()
       await expect(page.getByRole('button', { name: /conducteur/ })).toHaveCount(0)
       await expect(page.getByRole('button', { name: 'Déclarer un blocage' })).toBeVisible()
     })

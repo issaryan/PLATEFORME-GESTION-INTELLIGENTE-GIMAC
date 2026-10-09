@@ -178,7 +178,12 @@ public final class ReferentialGraphValidator {
                     new Anomalie(
                         TypeAnomalie.GESTE_CERTIFICATION_ABSENT,
                         List.copyOf(codes),
-                        "Le jalon " + j.name() + " exige une opération de chaque déclencheur : " + String.join(", ", manquants)
+                        // Recette HOM-02 : motif en libellés (jalon, gestes), les codes restent dans {@code codes}.
+                        "Le jalon « " +
+                        j.libelle() +
+                        " » exige une opération qui porte chaque geste de certification : " +
+                        String.join(", ", manquants.stream().map(d -> Declencheurs.CONNUS.getOrDefault(d, d)).toList()) +
+                        "."
                     )
                 );
             }

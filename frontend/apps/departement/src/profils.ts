@@ -1,5 +1,5 @@
 import { lirePreference, lireSessionDemo, type Session } from '@gimac/socle'
-import { PROFILS_INTERNES_DEMO } from '@gimac/lot1'
+import { COMPTES_ORGANISATION_DEMO, PROFILS_INTERNES_DEMO, roleDeCleDemo, sessionDemoDuRole } from '@gimac/lot1'
 
 // Profils de démonstration de l'application du département (services simulés seulement), d'après les
 // profils du domaine « gimac » (infra/keycloak/generer-realm-gimac.py, D-57, D-58, D-61) : les chefs du
@@ -12,7 +12,8 @@ export type ProfilDemo = { identifiant: string; nom: string; sujet: string; perm
 
 // Un profil de démonstration par profil interne du domaine « gimac » (comptes internes communs aux trois
 // applications, @gimac/lot1 profilsDemo.ts) : noms et identifiants de l'annuaire simulé de la messagerie (D-64).
-export const PROFILS_DEMO: Record<string, ProfilDemo> = PROFILS_INTERNES_DEMO
+// QUO-01 : plus les comptes de l'organisation simulée hors annuaire (service RH), clé = compte, profil dans `role`.
+export const PROFILS_DEMO: Record<string, ProfilDemo> = { ...PROFILS_INTERNES_DEMO, ...COMPTES_ORGANISATION_DEMO }
 
 /**
  * Profil de la session de démonstration ouverte par la connexion simulée (D-65), sinon demandé dans
@@ -32,10 +33,14 @@ function profilDeLAdresse(): string | null {
  * le premier accès ouvert par la connexion simulée.
  */
 export function sessionDemo(role = roleDemo()): Session {
-  const p = PROFILS_DEMO[role]
   const demo = lireSessionDemo()
+  // Session ouverte avec un profil qui n'a pas sa place ici (profil externe) : gardée telle quelle pour que
+  // l'aiguillage (D-79) la conduise au portail, comme en production (recette ACC-01) ; jamais de profil par défaut.
+  const etrangere = demo?.role && !PROFILS_DEMO[demo.role] ? sessionDemoDuRole(demo.role, demo.identifiant) : null
+  if (etrangere) return etrangere
+  const p = PROFILS_DEMO[role]
   return {
-    sujet: p.sujet, nom: p.nom, identifiant: demo?.identifiant || p.identifiant, roles: [role], permissions: p.permissions, institutionId: '', acr: '2', doubleFacteur: true,
+    sujet: p.sujet, nom: p.nom, identifiant: demo?.identifiant || p.identifiant, roles: [roleDeCleDemo(role)], permissions: p.permissions, institutionId: '', acr: '2', doubleFacteur: true,
     ...(demo?.premierAcces ? { restreinte: true } : {}),
   }
 }

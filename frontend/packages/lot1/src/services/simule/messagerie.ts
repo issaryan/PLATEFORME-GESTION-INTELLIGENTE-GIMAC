@@ -1,4 +1,4 @@
-import { ApiError, avatarsSimules, diffuserAccuseLecture, type AccuseLecture, type OptionsTeleversement, type Televersement } from '@gimac/socle'
+import { ApiError, SIGNAL, appliquerSignal, avatarsSimules, diffuserAccuseLecture, type AccuseLecture, type OptionsTeleversement, type Televersement } from '@gimac/socle'
 import type { Conversation, Correspondant, EtiquetteLiaison, LecteurMessage, LectureMessage, Message, PieceJointe, TypeEvenementGroupe } from '../../modele/messagerie'
 import { LIMITES_MESSAGERIE, extraitCitation } from '../../modele/messagerie'
 import type { ServiceMessagerie } from '../ports'
@@ -116,9 +116,18 @@ export type MessagerieSimulee = ServiceMessagerie & {
    * canal poussé le ferait ; null si sa position n'avance pas (rien n'est publié, D-88 §4).
    */
   lireDemo(o?: OptionsLectureDemo): AccuseLecture | null
+  /**
+   * QUO-10 : un autre membre (par défaut : le premier) est en train d'écrire dans la conversation (par défaut : le premier
+   * échange direct) : signal collaboration.message-typing.v1 appliqué comme le canal poussé le ferait (« … écrit… »).
+   */
+  ecrireDemo(o?: { conversationId?: string; auteurId?: string }): { conversationId: string; auteurId: string }
 }
 
-export function messagerieSimulee(attendre: Attendre, refus: Refus, moi: Correspondant = ANNUAIRE[0]): MessagerieSimulee {
+/**
+ * `lectureLiaisons` (QUO-09) : faux pour un compte qui ne lit pas les liaisons (sans HOM_LIAISON_READ) : les conversations
+ * de démonstration ne portent alors ni liaison ni étiquette menant à un écran qui lui serait refusé.
+ */
+export function messagerieSimulee(attendre: Attendre, refus: Refus, moi: Correspondant = ANNUAIRE[0], o: { lectureLiaisons?: boolean } = {}): MessagerieSimulee {
   let sequence = 0
   PHOTOS_DEMO.forEach((p) => avatarsSimules.demo(p))
   const id = (prefixe: string) => `${prefixe}-${(++sequence).toString().padStart(4, '0')}`
@@ -192,13 +201,15 @@ export function messagerieSimulee(attendre: Attendre, refus: Refus, moi: Corresp
   const cond = autre('U-201')
   const sna = autre('u-sna')
   const rssi = autre('u-rssi')
+  // QUO-09 : jeu de démonstration propre au profil : sans lecture des liaisons, pas de lien vers une liaison.
+  const lia = (reference: string): EtiquetteLiaison[] => (o.lectureLiaisons === false ? [] : [{ liaisonId: reference, reference }])
   const d1 = creer([moi, cond], null, null, ilYA(300))
-  ajouterMessage(d1, cond, 'Bonjour, le procès-verbal de LIA-2026-027 est établi à 100 %. Pouvez-vous le signer aujourd’hui ?', ilYA(290), [{ liaisonId: 'LIA-2026-027', reference: 'LIA-2026-027' }])
+  ajouterMessage(d1, cond, 'Bonjour, le procès-verbal de LIA-2026-027 est établi à 100 %. Pouvez-vous le signer aujourd’hui ?', ilYA(290), lia('LIA-2026-027'))
   ajouterMessage(d1, moi, 'Bien reçu, je le signe cet après-midi.', ilYA(280))
   ajouterMessage(d1, cond, 'Merci. Le participant signera ensuite depuis son portail.', ilYA(45))
-  const g1 = creer([moi, sna, cond, rssi], 'Essais de LIA-2026-030', { liaisonId: 'LIA-2026-030', reference: 'LIA-2026-030' }, ilYA(1500))
+  const g1 = creer([moi, sna, cond, rssi], 'Essais de LIA-2026-030', lia('LIA-2026-030')[0] ?? null, ilYA(1500))
   evenement(g1, moi, 'GROUPE_CREE', ['Essais de LIA-2026-030'], ilYA(1500))
-  ajouterMessage(g1, sna, 'Les essais sont suspendus : l’élément de sécurité du participant doit être renouvelé. Rapport et journal joints.', ilYA(1490), [{ liaisonId: 'LIA-2026-030', reference: 'LIA-2026-030' }],
+  ajouterMessage(g1, sna, 'Les essais sont suspendus : l’élément de sécurité du participant doit être renouvelé. Rapport et journal joints.', ilYA(1490), lia('LIA-2026-030'),
     [
       new File([pdfDemo(['Rapport des essais de LIA-2026-030', 'Normes et Agréments, GIMAC', '', 'Essais suspendus : élément de sécurité du participant à renouveler.', 'Opérations testées : 18 sur 24. Échecs : 2 (code réponse 05).', 'Prochaine étape : nouvelle cérémonie de clés, puis reprise des essais.'])],
         'rapport-essais-LIA-2026-030.pdf', { type: 'application/pdf' }),
@@ -215,7 +226,7 @@ export function messagerieSimulee(attendre: Attendre, refus: Refus, moi: Corresp
   const d2 = creer([moi, rssi], null, null, ilYA(4000))
   // Documents bureautiques (D-83) : aperçu converti en PDF par le service.
   const bureautique = (nom: string, type: string) => new File([Uint8Array.from([0x50, 0x4b, 0x03, 0x04, 0x14, 0x00])], nom, { type })
-  ajouterMessage(d2, moi, 'Pouvez-vous confirmer les attestations PCI DSS attendues pour LIA-2026-019 ?', ilYA(3990), [{ liaisonId: 'LIA-2026-019', reference: 'LIA-2026-019' }], [
+  ajouterMessage(d2, moi, 'Pouvez-vous confirmer les attestations PCI DSS attendues pour LIA-2026-019 ?', ilYA(3990), lia('LIA-2026-019'), [
     bureautique('note-attestations-PCI-DSS.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'),
     bureautique('revue-securite-LIA-2026-019.pptx', 'application/vnd.openxmlformats-officedocument.presentationml.presentation'),
   ])
@@ -319,6 +330,12 @@ export function messagerieSimulee(attendre: Attendre, refus: Refus, moi: Corresp
       return r
     },
     nonLuesDemo: () => miennes().filter((c) => nonLusDe(c) > 0).map(reception),
+    ecrireDemo: (o = {}) => {
+      const c = o.conversationId ? sienne(o.conversationId) : miennes().find((x) => x.type === 'DIRECTE') ?? miennes()[0]
+      const auteurId = o.auteurId ?? c.membres.find((m) => m.id !== moi.id)!.id
+      appliquerSignal({ type: SIGNAL.saisie, subject: c.id, acteur: auteurId })
+      return { conversationId: c.id, auteurId }
+    },
     lireDemo: (o = {}) => {
       const c = o.conversationId ? sienne(o.conversationId) : miennes().find((x) => x.type === 'DIRECTE') ?? miennes()[0]
       const lecteur = o.lecteurId ?? c.membres.find((m) => m.id !== moi.id && (c.lus.get(m.id) ?? 0) < c.messages.length)?.id

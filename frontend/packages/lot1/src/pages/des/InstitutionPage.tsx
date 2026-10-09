@@ -1,9 +1,11 @@
 import { useMemo, useRef, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, useSearchParams } from 'react-router'
-import { ActionBar, Button, DataTable, InlineAlert, KeyValueList, ResourceDetail, ResourceList, StatusBadge, type Column } from '@gimac/design-system'
-import { aPermission, usePermissions } from '@gimac/socle'
-import type { DossierInstitution, Institution, Prerequis } from '../../modele/participant'
+import { ActionBar, Button, DataTable, EmptyState, Hash, InlineAlert, KeyValueList, ResourceDetail, ResourceList, StatusBadge, Timeline, type Column, type TimelineEvent } from '@gimac/design-system'
+import { useFormatDate } from './parcours/communs'
+import { etatPiece } from '../../dictionnaires'
+import { aPermission, usePermissions, useSession } from '@gimac/socle'
+import type { DossierInstitution, Institution, PieceAdhesion, Prerequis } from '../../modele/participant'
 import { useDossierInstitution, useInstitutions } from '../../hooks/participant'
 import { useDescripteurDS } from '../../ressources/descripteur'
 import { creerInstitutionDescriptor, creerPieceDescriptor, creerTransitionDescriptor } from '../../ressources/institution'
@@ -30,7 +32,24 @@ function OngletPieces({ dossier }: { dossier: DossierInstitution }) {
   const descripteur = useDescripteurDS(lot, pilotes)
   // Les vues du service ne portent pas l'institution : l'interface la rattache pour les actions de ligne.
   const lignes = useMemo(() => dossier.pieces.map((p) => ({ ...p, institutionId: dossier.institution.id })), [dossier])
-  return <ResourceList descriptor={descripteur} rows={lignes} total={lignes.length} permissions={permissions} embedded state={lignes.length ? 'ok' : 'empty'} />
+  // DDR-13 : le tiroir d'une pièce montre sa chronologie (dépôt, examen, motif), le fichier déposé et son empreinte.
+  const formatDate = useFormatDate()
+  const evenements = (p: PieceAdhesion): TimelineEvent[] => [
+    ...(p.deposeeLe ? [{ event: t('piece.chrono.deposee', { fichier: p.nomFichier ?? '' }), at: formatDate(p.deposeeLe) }] : []),
+    ...(p.examineeLe && p.etat === 'VALIDEE' ? [{ event: t('piece.chrono.validee'), at: formatDate(p.examineeLe) }] : []),
+    ...(p.examineeLe && p.etat === 'REJETEE' ? [{ event: t('piece.chrono.rejetee', { motif: p.motifRejet ?? '' }), at: formatDate(p.examineeLe) }] : []),
+  ].reverse()
+  const tiroir = (onglet: string, p: PieceAdhesion) => {
+    if (onglet === 'detail') return <ResourceDetail descriptor={descripteur} row={p} mode="drawer" permissions={permissions} />
+    if (onglet === 'pieces') {
+      return p.nomFichier
+        ? <KeyValueList items={[{ key: t('piece.fichier'), value: p.nomFichier }, { key: t('piece.empreinte'), value: p.documentSha256 ? <Hash value={p.documentSha256} /> : t('commun.nonRenseigne') }]} />
+        : <EmptyState title={t('piece.chrono.aucunFichier')} text={t('piece.chrono.aucunFichier.texte')} />
+    }
+    const l = evenements(p)
+    return l.length ? <Timeline events={l} /> : <EmptyState title={t('piece.chrono.aucun')} text={t('piece.chrono.aucun.texte')} />
+  }
+  return <ResourceList descriptor={descripteur} rows={lignes} total={lignes.length} permissions={permissions} embedded state={lignes.length ? 'ok' : 'empty'} drawerRender={tiroir} />
 }
 
 function OngletConditions({ dossier }: { dossier: DossierInstitution }) {
@@ -65,13 +84,21 @@ function OngletConditions({ dossier }: { dossier: DossierInstitution }) {
 function OngletPrerequis({ dossier }: { dossier: DossierInstitution }) {
   const { t } = useTranslation()
   const manquants = dossier.prerequisAdhesion.filter((p) => !p.satisfait).length
+  const referencePrerequis = (p: Prerequis) => {
+    const r = p.reference
+    if (!r) return <span className="gm-field-help">{t('commun.nonRenseigne')}</span>
+    if (p.code === 'MODE_ADHESION') return t(`institution.mode.${r}`, { defaultValue: r })
+    if (p.code.startsWith('PIECE_') && etatPiece[r]) return t(etatPiece[r].label)
+    return <span className="gm-mono">{r}</span>
+  }
   const colonnes: Column<Prerequis>[] = [
     { key: 'libelle', header: t('prerequis.libelle') },
     {
       key: 'satisfait', header: t('prerequis.etat'),
       render: (p) => <StatusBadge status={p.satisfait ? 'ok' : 'warn'} label={t(p.satisfait ? 'prerequis.satisfait' : 'prerequis.manquant')} />,
     },
-    { key: 'reference', header: t('prerequis.reference'), type: 'mono', render: (p) => p.reference ?? '' },
+    // DDR-14 : état d'une pièce attendue et mode d'adhésion nommés, jamais en code brut ; une référence documentaire reste en chasse fixe.
+    { key: 'reference', header: t('prerequis.reference'), render: (p) => referencePrerequis(p) },
   ]
   return (
     <div className="gm-col">
@@ -86,7 +113,9 @@ function OngletPrerequis({ dossier }: { dossier: DossierInstitution }) {
 function OngletTransitions({ dossier }: { dossier: DossierInstitution }) {
   const { t } = useTranslation()
   const permissions = usePermissions()
-  const lot = useMemo(() => creerTransitionDescriptor({ t }), [t])
+  // DDR-01 : le proposant ne se voit offrir ni l'approbation ni le refus de sa propre proposition.
+  const moi = useSession()?.sujet
+  const lot = useMemo(() => creerTransitionDescriptor({ t, moi }), [t, moi])
   const descripteur = useDescripteurDS(lot)
   const lignes = useMemo(() => dossier.transitions.map((x) => ({ ...x, institutionId: dossier.institution.id })), [dossier])
   return <ResourceList descriptor={descripteur} rows={lignes} total={lignes.length} permissions={permissions} embedded state={lignes.length ? 'ok' : 'empty'} />
@@ -130,12 +159,17 @@ function Dossier({ dossier }: { dossier: DossierInstitution }) {
     ) : formulaire === 'modifier' ? (
       <FormulaireInstitution descripteur={descripteur} institution={dossier.institution} onFermer={fermer} />
     ) : formulaire === 'conditions' ? (
-      <FormulaireConditions institution={dossier.institution} marraines={options} onFermer={fermer} />
+      <FormulaireConditions institution={dossier.institution} adhesion={dossier.adhesion} marraines={options} onFermer={fermer} />
     ) : piece ? (
       <FormulaireDepot institutionId={dossier.institution.id} piece={piece} onFermer={() => setParams({ onglet: 'pieces' })} />
     ) : null
 
-  const ligne = { ...dossier.institution, transitionsPermises: dossier.transitionsPermises } as Institution
+  // DDR-17 : état du dossier porté par la ligne, pour n'offrir que les propositions que le service peut accepter.
+  const ligne = {
+    ...dossier.institution, transitionsPermises: dossier.transitionsPermises,
+    propositionEnAttente: dossier.transitions.some((x) => x.etat === 'PROPOSEE'),
+    prerequisAdhesionReunis: dossier.prerequisAdhesion.every((p) => p.satisfait),
+  } as Institution
   return (
     <>
       <ResourceDetail

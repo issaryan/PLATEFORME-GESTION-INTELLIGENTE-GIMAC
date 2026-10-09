@@ -74,9 +74,16 @@ final class Vues {
 
     record PreferencesVue(boolean systeme, boolean son, Map<String, Boolean> types) {
         static PreferencesVue de(PreferencesNotification p) {
+            return de(p, false);
+        }
+
+        /** Au portail (compte d'institution), seuls les types qu'il peut recevoir ({@link TypeNotification#PORTAIL}). */
+        static PreferencesVue de(PreferencesNotification p, boolean portail) {
             Map<String, Boolean> types = new LinkedHashMap<>();
             for (TypeNotification t : TypeNotification.values()) {
-                types.put(t.name(), p.accepte(t));
+                if (!portail || TypeNotification.PORTAIL.contains(t)) {
+                    types.put(t.name(), p.accepte(t));
+                }
             }
             return new PreferencesVue(p.isSysteme(), p.isSon(), types);
         }

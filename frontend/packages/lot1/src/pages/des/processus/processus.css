@@ -69,3 +69,7 @@
 .gm-dem-etape-terminee .gm-dem-etape-bouton { border-left-color: var(--gm-color-status-ok-fg); background: var(--gm-color-status-ok-bg); }
 .gm-dem-etape-en_attente .gm-dem-etape-bouton { color: var(--gm-color-text-secondary); background: var(--gm-color-surface-sunken); }
 .gm-dem-etape-annulee .gm-dem-etape-bouton { color: var(--gm-color-text-muted); text-decoration: line-through; }
+
+/* QUO-16 : vue Liste du modélisateur et du suivi : les en-têtes longs passent à la ligne, la colonne d'actions reste
+   entière à 1440 px ; au-delà, le tableau défile dans son cadre. */
+.gm-proc-liste .gm-table th { white-space: normal; line-height: 1.25; padding-top: var(--gm-space-1); padding-bottom: var(--gm-space-1); }

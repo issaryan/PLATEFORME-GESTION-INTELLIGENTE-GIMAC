@@ -10,10 +10,15 @@
 .gm-cov-bar { display: flex; gap: 2px; height: 12px; }
 .gm-cov-seg { flex: 1; background: var(--gm-grey-200); }
 [data-theme="dark"] .gm-cov-seg { background: var(--gm-dark-500); }
-.gm-cov-1 { background: var(--gm-blue-300); }
-.gm-cov-2 { background: var(--gm-blue-500); }
-.gm-cov-3 { background: var(--gm-blue-700); }
-.gm-cov-4 { background: var(--gm-color-status-ok-fg); }
+/* Niveau d'un segment : plus spécifique que le fond neutre du thème sombre (CER-03), coloré dans les deux thèmes. */
+.gm-cov-bar .gm-cov-seg.gm-cov-1, .gm-cov-1 { background: var(--gm-blue-300); }
+.gm-cov-bar .gm-cov-seg.gm-cov-2, .gm-cov-2 { background: var(--gm-blue-500); }
+.gm-cov-bar .gm-cov-seg.gm-cov-3, .gm-cov-3 { background: var(--gm-blue-700); }
+.gm-cov-bar .gm-cov-seg.gm-cov-4, .gm-cov-4 { background: var(--gm-color-status-ok-fg); }
+/* Écran étroit (CER-04) : libellé, barre et état l'un sous l'autre, la barre garde toute la largeur. */
+@media (max-width: 600px) {
+  .gm-cov { grid-template-columns: minmax(0, 1fr); gap: var(--gm-space-1); }
+}
 .gm-cov-text { font-size: 12px; line-height: 18px; color: var(--gm-color-text-secondary); }
 .gm-late { color: var(--gm-color-status-crit-fg); font-weight: 600; }
 /* Extension lot 1 : anneau compact pour les colonnes de tableau (ProgressRing compact). */

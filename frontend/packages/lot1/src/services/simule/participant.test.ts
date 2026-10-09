@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { servicesSimules } from './index'
 import type { ParticipantSimule } from './participant'
 
@@ -6,6 +6,9 @@ import type { ParticipantSimule } from './participant'
 const svc = () => servicesSimules({ latenceMs: 0 }).participant
 const idDe = async (s: ReturnType<typeof svc>, nom: string) => (await s.listerInstitutions({ page: 1, taille: 50 })).contenu.find((i) => i.nom === nom)!.id
 const refus = (code: string) => expect.objectContaining({ code })
+const charge = { id: 'sim-charge', nom: 'Fatimé Abakar Hissein', profils: ['ROLE_CHARGE_DDRM'] }
+const chef = { id: 'U-020', nom: 'Bertrand Nguema Obiang', profils: ['ROLE_CHEF_DDRM'] }
+afterEach(() => Object.keys(localStorage).filter((k) => k.startsWith('gm.demo')).forEach((k) => localStorage.removeItem(k)))
 
 describe('participantSimule', () => {
   it('liste filtrée par statut, recherche, mes dossiers et paginée', async () => {
@@ -68,25 +71,75 @@ describe('participantSimule', () => {
     await expect(s.deposerPiece(id, 'INCONNUE', new File(['x'], 'a.pdf'))).rejects.toEqual(refus('PAR_PIECE_NOT_FOUND'))
   })
   it('prérequis, conditions, proposition, approbation et rejet', async () => {
-    const s = svc()
+    // Maker-checker (DDR-01) : le chargé propose, le chef tranche, sur un même registre (démonstration continue).
+    localStorage.setItem('gm.demoContinue', '1')
+    const s = servicesSimules({ latenceMs: 0, utilisateur: charge }).participant
     const id = await idDe(s, 'Banque de Libreville')
     expect((await s.prerequis(id, 'ADHERENT')).every((p) => p.satisfait)).toBe(true)
     expect(await s.prerequis(id, 'SUSPENDU')).toEqual([])
-    await s.definirConditions(id, { codeParticipant: 'BQ-BDL-002', mode: 'DIRECT' })
+    await s.definirConditions(id, { codeParticipant: 'BQ-BDL-002', mode: 'DIRECT', compteReglement: 'BEAC-GA-002' })
     await expect(s.proposerTransition(id, 'ACTIF', 'x')).rejects.toEqual(refus('PAR_TRANSITION_NOT_ALLOWED'))
     const t = await s.proposerTransition(id, 'ADHERENT', 'Dossier complet')
     await expect(s.proposerTransition(id, 'CLOS_SANS_SUITE', 'x')).rejects.toEqual(refus('PAR_TRANSITION_PENDING'))
     expect((await s.indicateurs()).propositionsEnAttente).toBe(1)
-    expect((await s.approuverTransition(id, t.id, 'a')).etat).toBe('APPROUVEE')
-    await expect(s.approuverTransition(id, t.id, 'a')).rejects.toEqual(refus('PAR_TRANSITION_NOT_PENDING'))
-    expect((await s.dossier(id)).institution.statut).toBe('ADHERENT')
-    await expect(s.definirConditions(id, { codeParticipant: 'X', mode: 'DIRECT' })).rejects.toEqual(refus('PAR_INSTITUTION_STATUS'))
-    const c = await s.proposerTransition(id, 'CLOS_SANS_SUITE', 'Abandon')
-    expect((await s.rejeterTransition(id, c.id, 'Relance')).etat).toBe('REJETEE')
-    await expect(s.rejeterTransition(id, c.id, 'x')).rejects.toEqual(refus('PAR_TRANSITION_NOT_PENDING'))
-    const c2 = await s.proposerTransition(id, 'CLOS_SANS_SUITE', 'Abandon')
-    await s.approuverTransition(id, c2.id, 'a')
-    expect((await s.dossier(id)).adhesion.motifCloture).toBe('Abandon')
+    const c = servicesSimules({ latenceMs: 0, utilisateur: chef }).participant
+    expect((await c.approuverTransition(id, t.id, 'a')).etat).toBe('APPROUVEE')
+    await expect(c.approuverTransition(id, t.id, 'a')).rejects.toEqual(refus('PAR_TRANSITION_NOT_PENDING'))
+    const d = await c.dossier(id)
+    expect(d.institution.statut).toBe('ADHERENT')
+    // DDR-29 : conformité documentaire CONFORME au prononcé, comme le service.
+    expect(d.institution.conformite).toBe('CONFORME')
+    await expect(c.definirConditions(id, { codeParticipant: 'X', mode: 'DIRECT', compteReglement: 'R' })).rejects.toEqual(refus('PAR_INSTITUTION_STATUS'))
+    const p = servicesSimules({ latenceMs: 0, utilisateur: charge }).participant
+    const clo = await p.proposerTransition(id, 'CLOS_SANS_SUITE', 'Abandon')
+    expect((await servicesSimules({ latenceMs: 0, utilisateur: chef }).participant.rejeterTransition(id, clo.id, 'Relance')).etat).toBe('REJETEE')
+    await expect(c.rejeterTransition(id, clo.id, 'x')).rejects.toEqual(refus('PAR_TRANSITION_NOT_PENDING'))
+    const c2 = await servicesSimules({ latenceMs: 0, utilisateur: charge }).participant.proposerTransition(id, 'CLOS_SANS_SUITE', 'Abandon')
+    const chef2 = servicesSimules({ latenceMs: 0, utilisateur: chef }).participant
+    await chef2.approuverTransition(id, c2.id, 'a')
+    expect((await chef2.dossier(id)).adhesion.motifCloture).toBe('Abandon')
+  })
+  it('DDR-01 : maker-checker, le proposant ne peut ni prononcer ni refuser sa propre proposition', async () => {
+    const s = servicesSimules({ latenceMs: 0, utilisateur: chef }).participant
+    const id = await idDe(s, 'Banque de Libreville')
+    const t = await s.proposerTransition(id, 'ADHERENT', 'Dossier complet')
+    expect(t.demandeurId).toBe(chef.id)
+    await expect(s.approuverTransition(id, t.id, 'a')).rejects.toEqual(expect.objectContaining({ code: 'PAR_SEPARATION_OF_DUTIES', status: 403 }))
+    await expect(s.rejeterTransition(id, t.id, 'motif')).rejects.toEqual(refus('PAR_SEPARATION_OF_DUTIES'))
+    expect((await s.dossier(id)).institution.statut).toBe('CANDIDAT')
+  })
+  it('DDR-02 : en démonstration continue, un identifiant n’est jamais réattribué après un rechargement', async () => {
+    localStorage.setItem('gm.demoContinue', '1')
+    const a = await servicesSimules({ latenceMs: 0, utilisateur: charge }).participant.enregistrer({ nom: 'Banque Atlantique du Littoral', pays: 'CM', categorie: 'BANQUE' })
+    // Rechargement (nouvelle instance, compteur de module repris) puis seconde création.
+    const b = await servicesSimules({ latenceMs: 0, utilisateur: chef }).participant.enregistrer({ nom: 'Trésor public centrafricain', pays: 'CF', categorie: 'TRESOR_PUBLIC' })
+    expect(b.id).not.toBe(a.id)
+    const s = servicesSimules({ latenceMs: 0, utilisateur: charge }).participant
+    expect((await s.dossier(a.id)).institution.nom).toBe('Banque Atlantique du Littoral')
+    expect((await s.dossier(b.id)).institution.nom).toBe('Trésor public centrafricain')
+    const ids = (await s.listerInstitutions({ page: 1, taille: 100 })).contenu.map((i) => i.id)
+    expect(new Set(ids).size).toBe(ids.length)
+  })
+  it('DDR-03 : conditions d’adhésion contrôlées champ par champ (code, mode, RG-11, RG-12)', async () => {
+    const s = svc()
+    const id = await idDe(s, 'Fintech Kribi Pay')
+    const champs = async (c: Parameters<typeof s.definirConditions>[1]) =>
+      s.definirConditions(id, c).then(() => null, (e: { code: string; details?: { champs?: Record<string, string> } }) => [e.code, Object.keys(e.details?.champs ?? {}).sort()])
+    expect(await champs({ codeParticipant: '', mode: null as never })).toEqual(['PAR_CONDITIONS_INVALID', ['codeParticipant', 'mode']])
+    expect(await champs({ codeParticipant: 'BAL@01 !', mode: 'INDIRECT' })).toEqual(['PAR_CONDITIONS_INVALID', ['banqueMarraineId', 'codeParticipant', 'compteCantonnement']])
+    expect(await champs({ codeParticipant: 'BQ-BAL-074', mode: 'DIRECT' })).toEqual(['PAR_CONDITIONS_INVALID', ['compteReglement']])
+    expect(await champs({ codeParticipant: 'BQ-BAL-074', mode: 'DIRECT', compteReglement: 'BEAC-CM-074' })).toBeNull()
+    expect((await s.dossier(id)).adhesion).toMatchObject({ codeParticipant: 'BQ-BAL-074', mode: 'DIRECT', compteReglement: 'BEAC-CM-074' })
+  })
+  it('DDR-04 : la modification de la fiche reprend tous les champs, contrôle l’unicité des codes', async () => {
+    const s = svc()
+    const i = await s.enregistrer({ nom: 'Banque Atlantique du Littoral', pays: 'CM', categorie: 'BANQUE', codeIdentification: 'BALTCMCXXXX', codeBanqueBeac: '10005AB' })
+    const m = await s.modifier(i.id, {
+      nom: 'Banque Atlantique du Littoral', sigle: 'BAL', pays: 'CM', categorie: 'BANQUE', codeIdentification: 'BALTCMCX', codeBanqueBeac: '10006', originePriseDeContact: 'Salon', datePriseDeContact: '2026-09-15',
+    })
+    expect(m).toMatchObject({ sigle: 'BAL', codeIdentification: 'BALTCMCX', codeBanqueBeac: '10006', originePriseDeContact: 'Salon', datePriseDeContact: '2026-09-15' })
+    expect((await s.dossier(i.id)).institution.codeBanqueBeac).toBe('10006')
+    await expect(s.modifier(i.id, { nom: 'x', pays: 'GA', categorie: 'BANQUE', codeIdentification: 'BDLIGALX' })).rejects.toEqual(refus('PAR_CODE_ALREADY_USED'))
   })
   it('proposition d’adhésion refusée sur un dossier incomplet', async () => {
     const s = svc()

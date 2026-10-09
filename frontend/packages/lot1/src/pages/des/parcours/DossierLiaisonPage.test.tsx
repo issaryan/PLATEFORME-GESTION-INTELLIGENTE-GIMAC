@@ -28,7 +28,8 @@ describe('Dossier numérique de la liaison (CR Fig. 7.3)', () => {
     expect(screen.getAllByText('LIA-2026-030').length).toBeGreaterThan(0)
     expect(screen.getByText('Étape courante : Intégration')).toBeTruthy()
     expect(screen.getByText('Banque B')).toBeTruthy()
-    expect(screen.getByText('version 4')).toBeTruthy()
+    // DDR-24 : version publiée du référentiel de la carte interbancaire (arbre des référentiels).
+    expect(screen.getByText('version 3')).toBeTruthy()
     expect(screen.getByText('Couvertures calculées sur le périmètre contractualisé')).toBeTruthy()
     expect(screen.getByText('Hors périmètre')).toBeTruthy()
     expect(screen.getByRole('tab', { name: 'Blocages (1)' })).toBeTruthy()
@@ -62,7 +63,8 @@ describe('Dossier numérique de la liaison (CR Fig. 7.3)', () => {
     expect(await screen.findAllByText('Réuni')).toHaveLength(6)
   })
   it('étape 5 : dépôt du compte rendu d’un atelier, fichier exigé', async () => {
-    page('/des/parcours/LIA-2026-036?onglet=etapes&etape=ATELIERS')
+    // DDR-05 : le dépôt revient au responsable de l'atelier ouvert (rang 10, Normes et Agréments), jamais offert en supervision.
+    page('/des/parcours/LIA-2026-036?onglet=etapes&etape=ATELIERS', { role: 'ROLE_INGENIEUR_HOMOLOGATION' })
     const boutons = await screen.findAllByRole('button', { name: 'Déposer le compte rendu' })
     fireEvent.click(boutons[0])
     fireEvent.click(within(dialogue()).getByRole('button', { name: 'Déposer le compte rendu' }))
@@ -82,9 +84,17 @@ describe('Dossier numérique de la liaison (CR Fig. 7.3)', () => {
     expect(within(d).queryByLabelText(/^Conducteur de projet/)).toBeNull()
     d.querySelectorAll('select').forEach((x) => fireEvent.change(x, { target: { value: '' } }))
     fireEvent.click(within(d).getByRole('button', { name: 'Affecter les ressources' }))
-    expect(await within(d).findByText('Désignez au moins une personne.')).toBeTruthy()
+    // DDR-06 : une personne pour chaque fonction présentée, un message sous chaque fonction non affectée.
+    expect(await within(d).findByText(/Désignez une personne pour chacune des \d+ fonctions signalées/)).toBeTruthy()
+    expect(within(d).getAllByText('Désignez une personne pour cette fonction.').length).toBe(d.querySelectorAll('select').length)
     await waitFor(() => expect(within(d).getByLabelText(/Pôle réseau/).querySelectorAll('option').length).toBeGreaterThan(1))
     fireEvent.change(within(d).getByLabelText(/Pôle réseau/), { target: { value: 'U-RES-1' } })
+    fireEvent.click(within(d).getByRole('button', { name: 'Affecter les ressources' }))
+    expect(within(d).queryByText('Ressources du projet affectées.')).toBeNull()
+    for (const x of Array.from(d.querySelectorAll('select'))) {
+      await waitFor(() => expect(x.querySelectorAll('option').length).toBeGreaterThan(1))
+      if (!x.value) fireEvent.change(x, { target: { value: (x.querySelectorAll('option')[1] as HTMLOptionElement).value } })
+    }
     fireEvent.click(within(d).getByRole('button', { name: 'Affecter les ressources' }))
     expect(await screen.findByText('Ressources du projet affectées.')).toBeTruthy()
   })
@@ -103,7 +113,7 @@ describe('Dossier numérique de la liaison (CR Fig. 7.3)', () => {
     await waitFor(() => expect(within(d).getByLabelText(/Conducteur désigné/).querySelectorAll('option').length).toBe(3))
     fireEvent.change(within(d).getByLabelText(/Conducteur désigné/), { target: { value: 'U-COND-1' } })
     fireEvent.click(within(d).getByRole('button', { name: 'Désigner le conducteur' }))
-    expect(await screen.findByText('Conducteur de projet 1 conduit désormais cette liaison.')).toBeTruthy()
+    expect(await screen.findByText('Aïcha Mahamat Nour conduit désormais cette liaison.')).toBeTruthy()
     fireEvent.click(await screen.findByRole('button', { name: 'Redésigner le conducteur' }))
     d = dialogue()
     fireEvent.change(within(d).getByLabelText(/Conducteur désigné/), { target: { value: 'U-COND-2' } })
@@ -111,7 +121,7 @@ describe('Dossier numérique de la liaison (CR Fig. 7.3)', () => {
     expect(await within(d).findByText(/Motivez la redésignation/)).toBeTruthy()
     fireEvent.change(within(d).getByLabelText(/Motif de la redésignation/), { target: { value: 'Rééquilibrage du plan de charge' } })
     fireEvent.click(within(d).getByRole('button', { name: 'Redésigner le conducteur' }))
-    expect(await screen.findByText('Conducteur de projet 2 conduit désormais cette liaison.')).toBeTruthy()
+    expect(await screen.findByText('Brice Ondo Mba conduit désormais cette liaison.')).toBeTruthy()
   })
   it('désignation refusée : refus du service affiché', async () => {
     page('/des/parcours/LIA-2026-044?action=designer', { services: avec({ designerConducteur: async () => { throw new ApiError(422, 'HOM_LEAD_NOT_ELIGIBLE', 'x', 'RQ-DES') } }) })

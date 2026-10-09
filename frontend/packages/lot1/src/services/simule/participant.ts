@@ -1,9 +1,10 @@
 import { ApiError } from '@gimac/socle'
 import type {
-  Adhesion, Candidature, DossierInstitution, FiltreInstitutions, FluxMensuel, IndicateursDdrm, Institution, PieceAdhesion, Prerequis, StatutInstitution,
+  Adhesion, Candidature, ConditionsAdhesion, DossierInstitution, FiltreInstitutions, FluxMensuel, IndicateursDdrm, Institution, PieceAdhesion, Prerequis, StatutInstitution,
   TransitionStatut,
 } from '../../modele/participant'
 import type { ServiceParticipant } from '../ports'
+import { empreinte } from './donnees'
 
 // Serveur de substitution de MS-PARTICIPANT pour le développement des écrans de la DDRM : mêmes formes
 // de réponse et mêmes codes de refus que le service ; ses « règles » ne sont qu'une imitation.
@@ -29,18 +30,31 @@ const DELTA: Record<StatutInstitution, StatutInstitution[]> = {
 
 let n = 0
 const id = (p: string) => `${p}-${(++n).toString().padStart(4, '0')}`
+/**
+ * DDR-02 : en démonstration continue, le registre relu du stockage porte des identifiants déjà attribués ; le compteur
+ * repart après le plus grand d'entre eux, pour qu'aucun identifiant ne soit réattribué d'un chargement à l'autre.
+ */
+const reprendreCompteur = (garde: string) => {
+  for (const m of garde.matchAll(/"(?:INS|PIE|DOC|TRA)-(\d+)"/g)) n = Math.max(n, Number(m[1]))
+}
+/** Chargé de la DDRM du jeu de démonstration (titulaire des dossiers initiaux, auteur des propositions historiques). */
+export const CHARGE_DEMO = { id: 'sim-charge', nom: 'Fatimé Abakar Hissein' }
+/** Chef de la DDRM du jeu de démonstration (approbateur des transitions historiques). */
+export const CHEF_DEMO = { id: 'U-020', nom: 'Bertrand Nguema Obiang' }
+/** Acteur authentifié (sujet du jeton) : auteur des écritures, comme ActeurCourant de MS-PARTICIPANT. */
+export type ActeurParticipant = { id: string; nom: string }
 const maintenant = () => new Date().toISOString()
 const adhesionVide = (): Adhesion => ({
   codeParticipant: null, mode: null, banqueReglementId: null, banqueMarraineId: null, compteReglement: null, compteCantonnement: null,
   dateAdhesion: null, prononceePar: null, prononceeLe: null, motifCloture: null, closLe: null,
 })
 
-function nouvelEtat(c: Candidature, statut: StatutInstitution = 'CANDIDAT', identifiant?: string): Etat {
+function nouvelEtat(c: Candidature, statut: StatutInstitution = 'CANDIDAT', identifiant?: string, charge: ActeurParticipant = CHARGE_DEMO): Etat {
   const institution: Institution = {
     id: identifiant ?? id('INS'), nom: c.nom, sigle: c.sigle ?? null, pays: c.pays, categorie: c.categorie, statut, codeParticipant: null,
     codeIdentification: c.codeIdentification ?? null, codeBanqueBeac: c.codeBanqueBeac ?? null, modeAdhesion: null,
     datePriseDeContact: c.datePriseDeContact ?? maintenant().slice(0, 10), originePriseDeContact: c.originePriseDeContact ?? null,
-    projetEnvisage: c.projetEnvisage ?? null, chargeDdrm: { id: 'sim-charge', nom: 'Chargé DDRM' }, conformite: 'A_REGULARISER', creeLe: maintenant(),
+    projetEnvisage: c.projetEnvisage ?? null, chargeDdrm: { id: charge.id, nom: charge.nom }, conformite: 'A_REGULARISER', creeLe: maintenant(),
   }
   const pieces = PIECES.map(([code, libelle, obligatoire]) => ({
     id: id('PIE'), code, libelle, obligatoire, etat: 'ATTENDUE' as const, documentId: null, documentSha256: null, nomFichier: null,
@@ -51,19 +65,22 @@ function nouvelEtat(c: Candidature, statut: StatutInstitution = 'CANDIDAT', iden
 
 /** Transition déjà tranchée, pour l'historique du jeu de données. */
 const historique = (de: StatutInstitution, vers: StatutInstitution, motif: string, le: string, automatique = false): TransitionStatut => ({
-  id: id('TRA'), de, vers, motif, etat: 'APPROUVEE', demandeurId: automatique ? 'systeme' : 'sim-charge', demandeeLe: le, approbationsRequises: automatique ? 0 : 1,
-  approbateurId: automatique ? null : 'sim-chef', secondApprobateurId: null, decideeLe: le, motifRejet: null, pieceDecisionId: null, automatique,
+  id: id('TRA'), de, vers, motif, etat: 'APPROUVEE', demandeurId: automatique ? 'systeme' : CHARGE_DEMO.id, demandeeLe: le, approbationsRequises: automatique ? 0 : 1,
+  approbateurId: automatique ? null : CHEF_DEMO.id, secondApprobateurId: null, decideeLe: le, motifRejet: null, pieceDecisionId: null, automatique,
 })
 
 /** Institution admise (et au-delà) : dossier complet, conditions d'adhésion, historique des transitions. */
 function admise(nom: string, identifiant: string, categorie: Institution['categorie'], pays: string, statut: StatutInstitution, code: string, liaison?: string): Etat {
-  const e = nouvelEtat({ nom, pays, categorie }, statut, identifiant)
+  // CER-17 : prise de contact et enregistrement antérieurs à l'adhésion, jamais datés du jour du chargement.
+  const e = nouvelEtat({ nom, pays, categorie, datePriseDeContact: '2026-01-12' }, statut, identifiant)
+  e.institution.creeLe = '2026-01-12T08:30:00Z'
   e.pieces.forEach((p) => Object.assign(p, { etat: p.obligatoire ? 'VALIDEE' : 'ATTENDUE', documentId: p.obligatoire ? id('DOC') : null }))
-  Object.assign(e.adhesion, { codeParticipant: code, mode: 'DIRECT', compteReglement: `BEAC-${pays}-${code.slice(-3)}`, dateAdhesion: '2026-02-10', prononceeLe: '2026-02-10T10:00:00Z', prononceePar: 'sim-chef' })
+  Object.assign(e.adhesion, { codeParticipant: code, mode: 'DIRECT', compteReglement: `BEAC-${pays}-${code.slice(-3)}`, dateAdhesion: '2026-02-10', prononceeLe: '2026-02-10T10:00:00Z', prononceePar: CHEF_DEMO.id })
   Object.assign(e.institution, { codeParticipant: code, modeAdhesion: 'DIRECT', conformite: 'CONFORME' })
   e.transitions.push(historique('CANDIDAT', 'ADHERENT', 'Dossier complet', '2026-02-10T10:00:00Z'))
   if (liaison) e.transitions.unshift(historique('ADHERENT', 'EN_HOMOLOGATION', `Ouverture de la liaison ${liaison}`, '2026-03-03T09:12:00Z', true))
-  if (statut === 'ACTIF' || statut === 'SUSPENDU') e.transitions.unshift(historique('EN_HOMOLOGATION', 'ACTIF', 'Attestation de certification émise', '2025-11-02T09:00:00Z'))
+  // CER-17 : activation postérieure à l'adhésion et à l'ouverture de la liaison (ordre chronologique de l'historique).
+  if (statut === 'ACTIF' || statut === 'SUSPENDU') e.transitions.unshift(historique('EN_HOMOLOGATION', 'ACTIF', 'Attestation de certification émise', '2026-07-15T09:00:00Z'))
   if (statut === 'SUSPENDU') e.transitions.unshift(historique('ACTIF', 'SUSPENDU', 'Suspension prononcée par la production monétique', '2026-09-21T17:40:00Z'))
   return e
 }
@@ -77,6 +94,8 @@ export type PontParticipant = {
   enProduction(institutionId: string, liaisonId: string): void
   /** Propositions en attente d'approbation (registre gardé d'un chargement à l'autre en démonstration continue). */
   propositions(): TransitionObservee[]
+  /** Propositions humaines déjà tranchées (prononcées ou refusées), pour aviser leur proposant (DDR-08). */
+  tranchees(): TransitionObservee[]
   /**
    * participant.transition-requested.v1, transition-approved.v1 et transition-rejected.v1 (D-98), consommés par MS-PILOTAGE
    * simulé : tâche de l'approbateur.
@@ -99,12 +118,14 @@ function fluxParMois(): FluxMensuel[] {
   })
 }
 
-export function participantSimule(attendreJeu: <T>(v: T | (() => T)) => Promise<T>, refus: (s: number, c: string, m: string) => ApiError,
-  persistance?: { lire(): string | null; ecrire(valeur: string): void }): ParticipantSimule {
+export function participantSimule(attendreJeu: <T>(v: T | (() => T)) => Promise<T>, refus: (s: number, c: string, m: string, details?: Record<string, unknown>) => ApiError,
+  persistance?: { lire(): string | null; ecrire(valeur: string): void },
+  /** Utilisateur de la démonstration : auteur des propositions et des décisions (maker-checker, DDR-01). */
+  acteur: ActeurParticipant = CHARGE_DEMO): ParticipantSimule {
   const base: Etat[] = [
-    nouvelEtat({ nom: 'Fintech Kribi Pay', pays: 'CM', categorie: 'FINTECH', originePriseDeContact: 'Salon', projetEnvisage: 'Paiement mobile' }),
-    nouvelEtat({ nom: 'Banque de Libreville', sigle: 'BDL', pays: 'GA', categorie: 'BANQUE', codeIdentification: 'BDLIGALX' }),
-    nouvelEtat({ nom: 'Microfinance du Chari', pays: 'TD', categorie: 'MICROFINANCE' }),
+    nouvelEtat({ nom: 'Fintech Kribi Pay', pays: 'CM', categorie: 'FINTECH', originePriseDeContact: 'Salon', projetEnvisage: 'Paiement mobile', datePriseDeContact: '2026-09-14' }),
+    nouvelEtat({ nom: 'Banque de Libreville', sigle: 'BDL', pays: 'GA', categorie: 'BANQUE', codeIdentification: 'BDLIGALX', datePriseDeContact: '2026-06-02' }),
+    nouvelEtat({ nom: 'Microfinance du Chari', pays: 'TD', categorie: 'MICROFINANCE', datePriseDeContact: '2026-08-21' }),
   ]
   // Un dossier complet, prêt au prononcé, et un dossier dont une pièce attend l'examen.
   base[1].pieces.forEach((p) => Object.assign(p, { etat: p.obligatoire ? 'VALIDEE' : 'ATTENDUE', documentId: p.obligatoire ? id('DOC') : null }))
@@ -113,6 +134,8 @@ export function participantSimule(attendreJeu: <T>(v: T | (() => T)) => Promise<
   base[1].institution.modeAdhesion = 'DIRECT'
   base[1].pieces[0].etat = 'VALIDEE'
   base[2].pieces[1].etat = 'RECUE'
+  // DDR-15 : dossiers de démonstration enregistrés le jour de leur prise de contact, jamais au chargement de la page.
+  base.forEach((e) => { e.institution.creeLe = `${e.institution.datePriseDeContact}T08:30:00Z` })
   let etats = base
   // Adhérents prêts pour le cadrage (étape 3), puis institutions déjà engagées dans une liaison, sous les
   // identifiants des liaisons du jeu de données de MS-HOMOLOGATION.
@@ -128,7 +151,10 @@ export function participantSimule(attendreJeu: <T>(v: T | (() => T)) => Promise<
   // Démonstration continue (D-98) : registre gardé d'un chargement à l'autre.
   try {
     const garde = persistance?.lire()
-    if (garde) etats = JSON.parse(garde) as Etat[]
+    if (garde) {
+      etats = JSON.parse(garde) as Etat[]
+      reprendreCompteur(garde)
+    }
   } catch {
     // État illisible : jeu initial.
   }
@@ -159,6 +185,14 @@ export function participantSimule(attendreJeu: <T>(v: T | (() => T)) => Promise<
     const r: Prerequis[] = e.pieces.filter((p) => p.obligatoire).map((p) => ({ code: `PIECE_${p.code}`, libelle: p.libelle, satisfait: p.etat === 'VALIDEE', reference: p.documentId ?? p.etat }))
     r.push({ code: 'CODE_PARTICIPANT', libelle: 'Code participant attribué', satisfait: !!e.adhesion.codeParticipant, reference: e.adhesion.codeParticipant })
     r.push({ code: 'MODE_ADHESION', libelle: "Mode d'adhésion défini", satisfait: !!e.adhesion.mode, reference: e.adhesion.mode })
+    // Comme PrerequisitesEvaluator : compte de règlement en directe (RG-11), marraine membre direct actif et compte de cantonnement en indirecte (RG-12).
+    if (e.adhesion.mode === 'DIRECT') {
+      r.push({ code: 'COMPTE_REGLEMENT', libelle: 'Compte de règlement à la BEAC (RG-11)', satisfait: !!e.adhesion.compteReglement, reference: e.adhesion.compteReglement })
+    } else if (e.adhesion.mode === 'INDIRECT') {
+      const m = etats.find((x) => x.institution.id === e.adhesion.banqueMarraineId)?.institution
+      r.push({ code: 'BANQUE_MARRAINE', libelle: 'Banque marraine membre direct actif', satisfait: m?.modeAdhesion === 'DIRECT' && m.statut === 'ACTIF', reference: m?.codeParticipant ?? null })
+      r.push({ code: 'COMPTE_CANTONNEMENT', libelle: 'Compte de cantonnement (RG-12)', satisfait: !!e.adhesion.compteCantonnement, reference: e.adhesion.compteCantonnement })
+    }
     return r
   }
   const dossier = (e: Etat): DossierInstitution => ({
@@ -168,6 +202,28 @@ export function participantSimule(attendreJeu: <T>(v: T | (() => T)) => Promise<
     prerequisAdhesion: prerequis(e, 'ADHERENT'),
     transitionsPermises: DELTA[e.institution.statut],
   })
+  /** DDR-04 : codes BIC et BEAC uniques dans le registre (RG-10), hors l'institution elle-même. */
+  const verifierUnicite = (c: Candidature, soi?: string) => {
+    const pris = (champ: 'codeIdentification' | 'codeBanqueBeac') =>
+      !!c[champ] && etats.some((e) => e.institution.id !== soi && e.institution[champ] === c[champ])
+    for (const champ of ['codeIdentification', 'codeBanqueBeac'] as const) {
+      if (pris(champ)) throw refus(409, 'PAR_CODE_ALREADY_USED', 'Code déjà attribué à une autre institution', { champ, valeur: c[champ] })
+    }
+  }
+  /** DDR-03 : mêmes contrôles que ConditionsRequest et definirConditionsAdhesion de MS-PARTICIPANT (RG-11, RG-12). */
+  const verifierConditions = (c: ConditionsAdhesion) => {
+    const champs: Record<string, string> = {}
+    const code = c.codeParticipant ?? ''
+    if (!code.trim()) champs.codeParticipant = 'Champ obligatoire'
+    else if (code.length > 20 || !/^[A-Z0-9-]+$/.test(code)) champs.codeParticipant = 'Majuscules, chiffres et tirets, 20 caractères au plus'
+    if (!c.mode) champs.mode = 'Champ obligatoire'
+    else if (c.mode === 'DIRECT' && !c.compteReglement?.trim()) champs.compteReglement = 'Compte de règlement exigé en adhésion directe (RG-11)'
+    else if (c.mode === 'INDIRECT') {
+      if (!c.banqueMarraineId) champs.banqueMarraineId = 'Banque marraine exigée en adhésion indirecte (RG-12)'
+      if (!c.compteCantonnement?.trim()) champs.compteCantonnement = 'Compte de cantonnement exigé en adhésion indirecte (RG-12)'
+    }
+    if (Object.keys(champs).length) throw refus(422, 'PAR_CONDITIONS_INVALID', 'Conditions d’adhésion incomplètes ou invalides', { champs })
+  }
   const exigerCandidat = (e: Etat) => {
     if (e.institution.statut !== 'CANDIDAT') throw refus(409, 'PAR_INSTITUTION_STATUS', "Action possible seulement à l'état CANDIDAT")
   }
@@ -191,6 +247,8 @@ export function participantSimule(attendreJeu: <T>(v: T | (() => T)) => Promise<
     },
     propositions: () => etats.flatMap((e) => e.transitions.filter((t) => t.etat === 'PROPOSEE')
       .map((t) => ({ type: 'PROPOSEE' as const, institutionId: e.institution.id, institutionNom: e.institution.nom, transition: { ...t } }))),
+    tranchees: () => etats.flatMap((e) => e.transitions.filter((t) => !t.automatique && (t.etat === 'APPROUVEE' || t.etat === 'REJETEE'))
+      .map((t) => ({ type: t.etat === 'REJETEE' ? 'REJETEE' as const : 'APPROUVEE' as const, institutionId: e.institution.id, institutionNom: e.institution.nom, transition: { ...t } }))),
     surTransition: null,
   }
   const publier = (type: TransitionObservee['type'], e: Etat, t: TransitionStatut) =>
@@ -205,7 +263,7 @@ export function participantSimule(attendreJeu: <T>(v: T | (() => T)) => Promise<
           .map((e) => e.institution)
           .filter((i) => !f.statut?.length || f.statut.includes(i.statut))
           .filter((i) => !r || [i.nom, i.sigle, i.codeParticipant].some((v) => (v ?? '').toLowerCase().includes(r)))
-          .filter((i) => !f.mesDossiers || i.chargeDdrm?.id === 'sim-charge')
+          .filter((i) => !f.mesDossiers || i.chargeDdrm?.id === acteur.id)
         const debut = (f.page - 1) * f.taille
         return { contenu: l.slice(debut, debut + f.taille), total: l.length }
       }),
@@ -226,24 +284,42 @@ export function participantSimule(attendreJeu: <T>(v: T | (() => T)) => Promise<
     prerequis: (i, etat) => attendre(() => prerequis(trouver(i), etat)),
     enregistrer: (c) =>
       attendre(() => {
-        if (c.codeIdentification && etats.some((e) => e.institution.codeIdentification === c.codeIdentification)) {
-          throw refus(409, 'PAR_CODE_ALREADY_USED', 'Code déjà attribué à une autre institution')
-        }
-        const e = nouvelEtat(c)
+        verifierUnicite(c)
+        // Le chargé de la DDRM est l'agent qui enregistre la prise de contact (ddrmOfficerId du service).
+        const e = nouvelEtat(c, 'CANDIDAT', undefined, acteur)
         etats.unshift(e)
         return e.institution
       }),
     modifier: (i, c) =>
       attendre(() => {
         const e = trouver(i)
-        Object.assign(e.institution, { nom: c.nom, sigle: c.sigle ?? null, pays: c.pays, categorie: c.categorie, projetEnvisage: c.projetEnvisage ?? null })
+        if (e.institution.statut === 'RETIRE' || e.institution.statut === 'CLOS_SANS_SUITE') {
+          throw refus(409, 'PAR_INSTITUTION_CLOSED', 'Institution close : fiche en lecture seule', { statut: e.institution.statut })
+        }
+        verifierUnicite(c, i)
+        // DDR-04 : tous les champs de la fiche, comme appliquerFiche du service ; la date de prise de contact si elle est fournie.
+        Object.assign(e.institution, {
+          nom: c.nom, sigle: c.sigle ?? null, pays: c.pays, categorie: c.categorie, codeIdentification: c.codeIdentification ?? null,
+          codeBanqueBeac: c.codeBanqueBeac ?? null, originePriseDeContact: c.originePriseDeContact ?? null, projetEnvisage: c.projetEnvisage ?? null,
+          ...(c.datePriseDeContact ? { datePriseDeContact: c.datePriseDeContact } : {}),
+        })
         return e.institution
       }),
     definirConditions: (i, c) =>
       attendre(() => {
         const e = trouver(i)
         exigerCandidat(e)
-        Object.assign(e.adhesion, { ...c })
+        verifierConditions(c)
+        if (etats.some((x) => x.institution.id !== i && x.institution.codeParticipant === c.codeParticipant)) {
+          throw refus(409, 'PAR_CODE_ALREADY_USED', 'Code déjà attribué à une autre institution', { champ: 'codeParticipant', valeur: c.codeParticipant })
+        }
+        if (c.banqueMarraineId === i) throw refus(409, 'PAR_SPONSOR_INVALID', 'Une institution ne peut être sa propre banque de règlement ou marraine')
+        // Comme le service : compte de règlement en directe, compte de cantonnement et marraine en indirecte.
+        Object.assign(e.adhesion, {
+          ...c, compteReglement: c.mode === 'DIRECT' ? c.compteReglement ?? null : null,
+          compteCantonnement: c.mode === 'INDIRECT' ? c.compteCantonnement ?? null : null,
+          banqueMarraineId: c.mode === 'INDIRECT' ? c.banqueMarraineId ?? null : null,
+        })
         e.institution.codeParticipant = c.codeParticipant
         e.institution.modeAdhesion = c.mode
         return e.institution
@@ -255,7 +331,9 @@ export function participantSimule(attendreJeu: <T>(v: T | (() => T)) => Promise<
         const p = e.pieces.find((x) => x.code === code)
         if (!p) throw refus(404, 'PAR_PIECE_NOT_FOUND', 'Ressource introuvable')
         if (p.etat === 'VALIDEE') throw refus(409, 'PAR_PIECE_ALREADY_VALIDATED', 'Pièce déjà validée')
-        Object.assign(p, { etat: 'RECUE', documentId: id('DOC'), documentSha256: '0'.repeat(64), nomFichier: fichier.name, deposeeLe: maintenant(), motifRejet: null })
+        // DDR-13 : empreinte propre à la pièce déposée (MS-DOCUMENT la calcule), jamais une suite de zéros.
+        const documentId = id('DOC')
+        Object.assign(p, { etat: 'RECUE', documentId, documentSha256: empreinte(`${documentId}|${fichier.name}|${fichier.size}|${fichier.lastModified}`), nomFichier: fichier.name, deposeeLe: maintenant(), examineeLe: null, motifRejet: null })
         return piece(e, code)
       }),
     validerPiece: (i, code) =>
@@ -281,7 +359,7 @@ export function participantSimule(attendreJeu: <T>(v: T | (() => T)) => Promise<
         if (e.transitions.some((t) => t.etat === 'PROPOSEE')) throw refus(409, 'PAR_TRANSITION_PENDING', 'Une proposition est déjà en attente')
         if (prerequis(e, vers).some((p) => !p.satisfait)) throw refus(409, 'PAR_PREREQUISITES_MISSING', 'Prérequis non réunis')
         const t: TransitionStatut = {
-          id: id('TRA'), de: e.institution.statut, vers, motif, etat: 'PROPOSEE', demandeurId: 'sim-charge', demandeeLe: maintenant(),
+          id: id('TRA'), de: e.institution.statut, vers, motif, etat: 'PROPOSEE', demandeurId: acteur.id, demandeeLe: maintenant(),
           approbationsRequises: 1, approbateurId: null, secondApprobateurId: null, decideeLe: null, motifRejet: null, pieceDecisionId: null,
         }
         e.transitions.unshift(t)
@@ -293,9 +371,18 @@ export function participantSimule(attendreJeu: <T>(v: T | (() => T)) => Promise<
         const e = trouver(i)
         const x = e.transitions.find((y) => y.id === t && y.etat === 'PROPOSEE')
         if (!x) throw refus(409, 'PAR_TRANSITION_NOT_PENDING', 'Cette proposition a déjà été tranchée')
-        Object.assign(x, { etat: 'APPROUVEE', approbateurId: 'sim-chef', decideeLe: maintenant() })
+        // DDR-01 (maker-checker, PAR-02 critère 4) : l'approbateur est distinct du demandeur, comme InstitutionLifecycleService.
+        if (x.demandeurId === acteur.id || x.approbateurId === acteur.id) {
+          throw refus(403, 'PAR_SEPARATION_OF_DUTIES', 'L’approbateur doit être distinct du demandeur et du premier approbateur')
+        }
+        if (prerequis(e, x.vers).some((p) => !p.satisfait)) throw refus(409, 'PAR_PREREQUISITES_MISSING', 'Prérequis non réunis')
+        Object.assign(x, { etat: 'APPROUVEE', approbateurId: acteur.id, decideeLe: maintenant() })
         e.institution.statut = x.vers
-        if (x.vers === 'ADHERENT') Object.assign(e.adhesion, { prononceeLe: maintenant(), prononceePar: 'sim-chef', dateAdhesion: maintenant().slice(0, 10) })
+        if (x.vers === 'ADHERENT') {
+          Object.assign(e.adhesion, { prononceeLe: maintenant(), prononceePar: acteur.id, dateAdhesion: maintenant().slice(0, 10) })
+          // DDR-29 : dossier complet au prononcé, conformité documentaire CONFORME (comme le service).
+          e.institution.conformite = 'CONFORME'
+        }
         if (x.vers === 'CLOS_SANS_SUITE') Object.assign(e.adhesion, { motifCloture: x.motif, closLe: maintenant() })
         publier('APPROUVEE', e, x)
         return { ...x, institutionId: i }
@@ -305,7 +392,8 @@ export function participantSimule(attendreJeu: <T>(v: T | (() => T)) => Promise<
         const e = trouver(i)
         const x = e.transitions.find((y) => y.id === t && y.etat === 'PROPOSEE')
         if (!x) throw refus(409, 'PAR_TRANSITION_NOT_PENDING', 'Cette proposition a déjà été tranchée')
-        Object.assign(x, { etat: 'REJETEE', approbateurId: 'sim-chef', decideeLe: maintenant(), motifRejet: motif })
+        if (x.demandeurId === acteur.id) throw refus(403, 'PAR_SEPARATION_OF_DUTIES', 'Le demandeur ne peut pas statuer sur sa propre proposition')
+        Object.assign(x, { etat: 'REJETEE', approbateurId: acteur.id, decideeLe: maintenant(), motifRejet: motif })
         publier('REJETEE', e, x)
         return { ...x, institutionId: i }
       }),

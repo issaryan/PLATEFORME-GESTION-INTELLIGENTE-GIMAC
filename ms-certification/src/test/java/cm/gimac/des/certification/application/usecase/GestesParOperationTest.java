@@ -251,6 +251,18 @@ class GestesParOperationTest {
     }
 
     @Test
+    @DisplayName("CER-02 : visa proposé seulement quand l'opération de l'approbation est ouverte ; sinon 409 CER_OPERATION_NON_OUVERTE")
+    void visaSurOperationOuverte() {
+        UUID id = banc.pvSigne("DELEGATAIRE", false);
+        banc.operationOuverte(id, "21", null, institution("R", "PARTICIPANT", INSTITUTION), interne("V", "RSSI", "u-rssi"));
+        assertThat(banc.approbations.consulter(id, conformite()).actionsPermises()).doesNotContain("SIGNER_VISA_CONFORMITE");
+        refus(() -> banc.approbations.signerVisa(id, NatureVisa.CONFORMITE, true, null, conformite(), "a"), 409, "CER_OPERATION_ABSENTE");
+        banc.operationOuverte(id, "23", null, interne("R", "RSSI", "u-rssi"));
+        assertThat(banc.approbations.consulter(id, conformite()).actionsPermises()).contains("SIGNER_VISA_CONFORMITE");
+        banc.approbations.signerVisa(id, NatureVisa.CONFORMITE, true, null, conformite(), "a");
+    }
+
+    @Test
     @DisplayName("D-94 : visa signé par la fonction du circuit configuré ; autre personne désignée : 403")
     void visaParCircuit() {
         UUID id = banc.pvSigne("DELEGATAIRE", false);

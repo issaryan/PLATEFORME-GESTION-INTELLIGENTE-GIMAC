@@ -114,7 +114,7 @@ test.describe('Fonctionnalité : console du super administrateur', () => {
 
   test('Scénario : rechercher et filtrer les comptes', async ({ page }) => {
     await page.goto(`${ADRESSES.console}/console/comptes`)
-    await expect(page.getByText('13 compte(s)')).toBeVisible()
+    await expect(page.getByText('14 compte(s)')).toBeVisible()
     await page.getByRole('searchbox', { name: 'Rechercher', exact: true }).fill('ndong')
     await expect(page.getByRole('link', { name: 'c.ndong' })).toBeVisible()
     await page.getByRole('button', { name: 'Réinitialiser' }).click()

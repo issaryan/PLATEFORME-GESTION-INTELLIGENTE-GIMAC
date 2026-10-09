@@ -72,7 +72,7 @@ abstract class AbstractProcessusIT extends AbstractPilotageIT {
         return r.contentType(MediaType.APPLICATION_JSON).content(corps(corps));
     }
 
-    /** Définition « Ouverture d'un flux réseau » du jeu de démonstration, au format de la saisie. */
+    /** Définition « Ouverture d'un flux réseau » du jeu de démonstration, au format de la saisie (lanceur intervenant admis). */
     ObjectNode definition(String code) {
         ObjectNode d = json.createObjectNode();
         d.put("code", code);
@@ -82,6 +82,9 @@ abstract class AbstractProcessusIT extends AbstractPilotageIT {
         d.put("categorie", "Réseau");
         d.put("delaiCibleJours", 10);
         d.set("etapes", json.valueToTree(DemonstrationProcessus.etapes()));
+        // D-99 : ces scénarios du moteur font intervenir le lanceur (technicien porteur du profil réseau) sur les étapes de
+        // sa demande ; la définition l'autorise. La séparation des fonctions par défaut : ProcessusSeparationFonctionsIT.
+        d.putObject("initiateurs").put("initiateurIntervenant", true);
         return d;
     }
 

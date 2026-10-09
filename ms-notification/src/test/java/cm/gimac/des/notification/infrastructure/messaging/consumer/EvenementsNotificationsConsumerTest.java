@@ -20,6 +20,7 @@ import cm.gimac.des.notification.application.port.in.RecevoirEvenementsUseCase.R
 import cm.gimac.des.notification.application.port.in.RecevoirEvenementsUseCase.TacheAffectee;
 import cm.gimac.des.notification.application.port.in.RecevoirEvenementsUseCase.TacheOfferte;
 import cm.gimac.des.notification.application.port.in.RecevoirEvenementsUseCase.TacheRelancee;
+import cm.gimac.des.notification.application.port.in.RecevoirEvenementsUseCase.TransitionTranchee;
 import cm.gimac.des.notification.domain.service.ReglesNotifications.FaitsProcessus;
 import cm.gimac.des.notification.domain.service.ReglesNotifications.NatureProcessus;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -79,6 +80,30 @@ class EvenementsNotificationsConsumerTest {
         assertThat(m.getAllValues().get(0).mentionnes()).containsExactly("serge");
         assertThat(m.getAllValues().get(1).reponseAAuteurId()).isNull();
         assertThat(m.getAllValues().get(1).mentionnes()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("DDR-08 : participant.transition-rejected.v1 et transition-approved.v1 définitive lues pour le proposant ; première approbation ignorée")
+    void transitionsTranchees() throws Exception {
+        consommateur.recevoir(
+            "{\"id\":\"t-r\",\"type\":\"participant.transition-rejected.v1\",\"data\":{\"institutionId\":\"i-1\",\"transitionId\":\"t-1\",\"de\":\"CANDIDAT\"," +
+            "\"vers\":\"ADHERENT\",\"motif\":\"Statuts\",\"approbateurId\":\"chef\",\"demandeurId\":\"charge\",\"institutionNom\":\"Banque A\",\"lien\":\"/des/institutions/i-1?onglet=transitions\"}}"
+        );
+        consommateur.recevoir(
+            "{\"id\":\"t-a\",\"type\":\"participant.transition-approved.v1\",\"data\":{\"institutionId\":\"i-1\",\"transitionId\":\"t-2\",\"vers\":\"ADHERENT\"," +
+            "\"approbateurId\":\"chef\",\"definitive\":true,\"demandeurId\":\"charge\",\"institutionNom\":\"Banque A\"}}"
+        );
+        consommateur.recevoir(
+            "{\"id\":\"t-p\",\"type\":\"participant.transition-approved.v1\",\"data\":{\"institutionId\":\"i-1\",\"transitionId\":\"t-3\",\"vers\":\"ACTIF\"," +
+            "\"approbateurId\":\"chef\",\"definitive\":false,\"demandeurId\":\"charge\"}}"
+        );
+        ArgumentCaptor<TransitionTranchee> t = ArgumentCaptor.forClass(TransitionTranchee.class);
+        verify(evenements, times(2)).transitionTranchee(t.capture());
+        assertThat(t.getAllValues().get(0)).isEqualTo(
+            new TransitionTranchee("i-1", "t-1", "Banque A", "ADHERENT", "REJETEE", "Statuts", "charge", "chef", "/des/institutions/i-1?onglet=transitions", null)
+        );
+        assertThat(t.getAllValues().get(1).decision()).isEqualTo("APPROUVEE");
+        assertThat(t.getAllValues().get(1).motif()).isNull();
     }
 
     @Test

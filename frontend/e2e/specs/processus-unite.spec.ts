@@ -50,7 +50,7 @@ for (const theme of ['light', 'dark'] as const) {
         // Validateur par un profil que personne ne porte au pôle : les porteurs d'ailleurs dans le GIMAC sont annoncés.
         await d.getByLabel(/^Désignation/).nth(1).selectOption('PROFIL')
         await d.getByLabel(/^Profil(?! de)/).first().selectOption('ROLE_RESPONSABLE_SERVICE')
-        await expect(d.getByText(/Aucun porteur dans l’unité ; 1 ailleurs dans le GIMAC/)).toBeVisible()
+        await expect(d.getByText(/Aucun porteur dans l’unité ; 2 ailleurs dans le GIMAC/)).toBeVisible()
         await capturer(page, `processus-etape-intervenant-${suffixe}`)
         await ongletSelectionne(d, 'Livrables')
         await capturer(page, `processus-etape-livrables-${suffixe}`)
@@ -84,8 +84,9 @@ for (const theme of ['light', 'dark'] as const) {
       })
     })
 
-    test('Scénario : un membre du pôle réseau lance un processus, reçoit d’office l’étape d’analyse et la termine', async ({ page }) => {
-      await demo(page, { profil: 'ROLE_POLE_RESEAU', theme })
+    // D-99 : l'initiateur n'intervient pas sur sa demande ; la technicienne du pôle lance, l'ingénieur réseau exécute.
+    test('Scénario : une technicienne du pôle réseau lance un processus ; l’ingénieur réseau reçoit d’office l’étape d’analyse et la termine', async ({ page }) => {
+      await demo(page, { profil: 'ROLE_COLLABORATEUR', theme })
       await page.goto(`${ADRESSES.departement}/des/processus`)
 
       await test.step('Étant donné la modale de lancement : intitulé, champs de départ, désignation au lancement', async () => {
@@ -102,9 +103,13 @@ for (const theme of ['light', 'dark'] as const) {
         await capturer(page, `processus-lancement-${suffixe}`)
         await d.getByRole('button', { name: 'Lancer l’instance' }).click()
         await expect(page.getByRole('heading', { level: 1, name: 'Flux SNMP vers la supervision' })).toBeVisible()
+        // L'étape de demande revient à la lanceuse (intervenant LANCEUR) : elle figure dans « Mes étapes ».
+        await naviguer(page, 'Ma journée')
+        await expect(page.getByRole('list', { name: 'Mes étapes de processus' }).getByText('Flux SNMP vers la supervision : Demande d’ouverture du flux')).toBeVisible()
       })
 
-      await test.step('Quand il ouvre l’étape d’analyse d’une autre instance, confiée d’office au seul porteur du profil, dépose sa note et la termine', async () => {
+      await test.step('Quand l’ingénieur ouvre l’étape d’analyse d’une autre instance, confiée d’office au seul porteur du profil, dépose sa note et la termine', async () => {
+        await demo(page, { profil: 'ROLE_POLE_RESEAU', theme })
         await page.goto(`${ADRESSES.departement}/des/processus?vue=instances`)
         await page.getByRole('combobox', { name: 'Instances' }).selectOption('unite')
         await page.getByRole('button', { name: 'Ouverture du port 443 pour la supervision' }).click()
@@ -126,9 +131,8 @@ for (const theme of ['light', 'dark'] as const) {
         // étapes qui attendent ma décision (attendMoi du service) ; l'assertion attend la liste chargée (auparavant, une
         // absence constatée pendant le chargement la faisait passer par hasard).
         await naviguer(page, 'Ma journée')
-        const liste = page.getByRole('list', { name: 'Mes étapes de processus' })
-        await expect(liste.getByText('Flux SNMP vers la supervision : Demande d’ouverture du flux')).toBeVisible()
-        await expect(liste.getByText('Ouverture du port 443 pour la supervision : Analyse de sécurité du flux')).toHaveCount(0)
+        await expect(page.getByText('Aucune étape de processus ne vous attend.')).toBeVisible()
+        await expect(page.getByText('Ouverture du port 443 pour la supervision : Analyse de sécurité du flux')).toHaveCount(0)
       })
     })
 

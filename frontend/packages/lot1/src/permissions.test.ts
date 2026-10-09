@@ -36,7 +36,8 @@ describe('matrice des rôles (PROFILS)', () => {
     Object.entries(PROFILS).filter(([r]) => !['ROLE_CORRESPONDANT', ...SANS_FONCTION].includes(r)).forEach(([, ps]) => expect(ps).toEqual(expect.arrayContaining(LECTURE_DES)))
     // Le responsable de service édite le référentiel (D-89 §1) : sa seule lecture du DES est HOM_REFERENTIEL_READ.
     SANS_FONCTION.forEach((r) => expect(PROFILS[r].filter((p) => LECTURE_DES.includes(p))).toEqual(r === 'ROLE_RESPONSABLE_SERVICE' ? ['HOM_REFERENTIEL_READ'] : []))
-    expect(PROFILS.ROLE_CORRESPONDANT).toEqual([PERM.portailLire, PERM.portailDeposer, PERM.portailCertification, PERM.portailSigner])
+    // Notifications du portail (D-93 §11.4) : boîte et préférences du correspondant.
+    expect([...PROFILS.ROLE_CORRESPONDANT].sort()).toEqual([PERM.portailCertification, PERM.portailSigner, PERM.portailLire, PERM.portailDeposer, PERM.notificationsLire])
     expect(PROFILS.ROLE_CORRESPONDANT.some((p) => LECTURE_DES.includes(p))).toBe(false)
   })
   it('conduite des étapes 4 à 10 : départements et conducteur, jamais les services exécutants', () => {
@@ -47,11 +48,11 @@ describe('matrice des rôles (PROFILS)', () => {
     const responsables = ['ROLE_CHEF_DDRM', 'ROLE_CHEF_DES', 'ROLE_CONFORMITE', 'ROLE_DG', 'ROLE_RESPONSABLE_SERVICE', 'ROLE_RSSI']
     expect(detenteurs(PERM.equipeLire)).toEqual(responsables)
     expect(detenteurs(PERM.tacheConfier)).toEqual(responsables)
-    expect(PROFILS.ROLE_COLLABORATEUR).toEqual([PERM.messageLire, PERM.messageEnvoyer, PERM.activitePropre, PERM.notificationsLire])
+    expect([...PROFILS.ROLE_COLLABORATEUR].sort()).toEqual([PERM.messageLire, PERM.messageEnvoyer, PERM.notificationsLire, PERM.activitePropre])
   })
-  it('notifications de la plateforme (D-80) : NOT_INBOX_READ pour tout profil interne, jamais pour le correspondant', () => {
+  it('notifications de la plateforme (D-80, D-93 §11.4) : NOT_INBOX_READ pour tout profil, correspondant compris (cloche du portail)', () => {
     expect(PERM.notificationsLire).toBe('NOT_INBOX_READ')
-    expect(detenteurs(PERM.notificationsLire)).toEqual(Object.keys(PROFILS).filter((r) => r !== 'ROLE_CORRESPONDANT').sort())
+    expect(detenteurs(PERM.notificationsLire)).toEqual(Object.keys(PROFILS).sort())
   })
   it('exploitation de l’infrastructure (D-78) : lecture pour le super administrateur, l’administrateur système et le RSSI ; gestes sans le RSSI', () => {
     expect(detenteurs(PERM.exploitationLire)).toEqual(['ROLE_ADMIN_SYSTEME', 'ROLE_RSSI', 'ROLE_SUPER_ADMIN'])

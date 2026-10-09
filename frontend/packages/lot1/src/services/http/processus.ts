@@ -33,6 +33,7 @@ export const processusHttp: ServiceProcessus = {
   televerserPieceLancement: (fichier, processusId, o) => televerser(depotsHttp('des'), fichier, { finalite: 'PROCESSUS_UNITE', reference: processusId }, o),
   lancer: (id, l) => http.post(`${definition(id)}/instances`, { body: l }),
   instance: (id) => http.get(instance(id)),
+  documentInstance: (id, doc) => http.blob(`${instance(id)}/documents/${encodeURIComponent(doc)}`, '*/*'),
   televerserLivrable: (fichier, instanceId, o) => televerser(depotsHttp('des'), fichier, { finalite: 'PROCESSUS_UNITE', reference: instanceId }, o),
   deposerLivrable: (id, code, livrable, documentId) => http.post(`${etape(id, code)}/livrables`, { body: { livrable, documentId } }),
   saisirChamps: (id, code, valeurs) => http.put(`${etape(id, code)}/champs`, { body: { valeurs } }),

@@ -125,7 +125,7 @@ describe('TopBar : préférences en menu surgissant ancré (D-66)', () => {
 
 describe('Horodatages des fiches (§4.3)', () => {
   const desc = { key: 'x', label: { singular: 'x', plural: 'x', gender: 'm' as const }, idField: 'id', titleField: 'id', endpoints: { list: '', get: '' }, fields: [], actions: [], permissions: { list: '', read: '' } }
-  const rendre = (value: unknown, kind: 'date' | 'datetime') => render(<>{renderField({ name: 'd', label: 'd', kind } as never, value, {} as never, desc as never, (k: string) => k)}</>).container
+  const rendre = (value: unknown, kind: 'date' | 'datetime' | 'mono') => render(<>{renderField({ name: 'd', label: 'd', kind } as never, value, {} as never, desc as never, (k: string) => k)}</>).container
   it('date seule au format JJ/MM/AAAA', () => {
     expect(rendre('2026-10-01', 'date').textContent).toBe('01/10/2026')
   })
@@ -135,9 +135,10 @@ describe('Horodatages des fiches (§4.3)', () => {
     expect(c.querySelector('time')?.getAttribute('title')).toBe('28/09/2026 13:05 UTC')
     expect(c.querySelector('time')?.getAttribute('dateTime')).toBe('2026-09-28T13:05:00Z')
   })
-  it('date ISO rendue en date seule ; valeur non ISO telle quelle ; vide inchangé', () => {
+  it('date ISO rendue en date seule ; valeur non ISO telle quelle ; vide « non renseigné » (CER-17)', () => {
     expect(rendre('2026-09-28T23:30:00Z', 'date').textContent).toBe('29/09/2026')
     expect(rendre('hier', 'datetime').textContent).toBe('hier')
-    expect(rendre('', 'date').textContent).toBe('')
+    expect(rendre('', 'date').textContent).toBe('crud.nonRenseigne')
+    expect(rendre(null, 'mono').textContent).toBe('crud.nonRenseigne')
   })
 })

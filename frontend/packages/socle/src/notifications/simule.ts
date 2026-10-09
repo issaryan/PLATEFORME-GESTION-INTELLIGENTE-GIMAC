@@ -1,6 +1,6 @@
 import { ApiError } from '../http/errors'
 import type { FiltreLecture, NotificationPlateforme, PreferencesNotifications, ServiceNotifications, TypeNotification } from './modele'
-import { TYPES_NOTIFICATION, conversationDe } from './modele'
+import { TYPES_NOTIFICATION, conversationDe, typesNotificationDe } from './modele'
 
 // Notifications simulées (D-80) : mêmes formes et mêmes codes que MS-NOTIFICATION (docs/lot1/notifications.md
 // §3, §6). Imitation des règles du service : consolidation par objet (une seule notification non lue par
@@ -20,6 +20,8 @@ export type OptionsNotificationsSimulees = {
   latenceMs?: number
   initiales?: ArriveeNotification[]
   preferences?: Partial<PreferencesNotifications>
+  /** Couche du lecteur : au portail, seuls les types du portail sont servis et réglables (comme MS-NOTIFICATION). */
+  couche?: string
 }
 
 const PREFERENCES_DEFAUT: PreferencesNotifications = { systeme: true, son: false, types: { MESSAGE: true, TACHE: true, RAPPORT: true, MENTION: true, REPONSE: true, DEMANDE: true, PROCESSUS: true, HOMOLOGATION: true } }
@@ -30,6 +32,8 @@ export function notificationsSimulees(o: OptionsNotificationsSimulees = {}): Ser
   const notifications: NotificationPlateforme[] = []
   let preferences: PreferencesNotifications = { ...PREFERENCES_DEFAUT, ...o.preferences, types: { ...PREFERENCES_DEFAUT.types, ...o.preferences?.types } }
   const abonnes = new Set<() => void>()
+  const admis = typesNotificationDe(o.couche)
+  const vuePreferences = (): PreferencesNotifications => ({ ...preferences, types: Object.fromEntries(Object.entries(preferences.types).filter(([t]) => admis.includes(t as TypeNotification))) })
   const refus = (status: number, code: string, message: string) => new ApiError(status, code, message, `sim-not-${Date.now().toString(36)}`)
   const attendre = <T>(f: () => T): Promise<T> =>
     new Promise((ok, ko) =>
@@ -87,12 +91,13 @@ export function notificationsSimulees(o: OptionsNotificationsSimulees = {}): Ser
       n.lueLe ??= new Date().toISOString()
     }),
     marquerLues: (f) => attendre(() => lire(f)),
-    preferences: () => attendre(() => preferences),
+    preferences: () => attendre(() => vuePreferences()),
     enregistrerPreferences: (p) => attendre(() => {
       if (p.types && Object.keys(p.types).some((t) => !TYPES_NOTIFICATION.includes(t as TypeNotification))) throw refus(400, 'NOT_REQUETE_INVALIDE', 'Type de notification inconnu.')
+      if (p.types && Object.keys(p.types).some((t) => !admis.includes(t as TypeNotification))) throw refus(400, 'NOT_REQUETE_INVALIDE', 'Type de notification non proposé au portail.')
       // Un champ absent garde sa valeur (§6).
       preferences = { systeme: p.systeme ?? preferences.systeme, son: p.son ?? preferences.son, types: { ...preferences.types, ...p.types } }
-      return preferences
+      return vuePreferences()
     }),
     ecouter: (rappel) => {
       abonnes.add(rappel)

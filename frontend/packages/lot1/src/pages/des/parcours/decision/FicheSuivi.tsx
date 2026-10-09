@@ -3,6 +3,7 @@ import { Button, Card, CoverageBar, DataTable, InlineAlert, ProgressRing, Status
 import type { DossierLiaison, FicheSuiviServices, ServicePerimetre } from '../../../../modele/parcours'
 import { useConstaterMiseEnService, useRemettreFicheSuivi } from '../../../../hooks/parcours'
 import { TON_FICHE_SUIVI, useLancer, usePeut, Vide, type Action, PERMISSION_GESTE } from './commun'
+import { useFormatDate } from '../communs'
 
 // Étape 10, rangs 32 et 33 : la fiche de suivi des services est remise au participant, qui la renseigne sur
 // son portail (service par service : ouvert ou non, commentaire) ; Normes et Agréments constate alors les
@@ -12,6 +13,7 @@ type Ligne = FicheSuiviServices['lignes'][number]
 
 export function CarteFicheSuivi({ dossier, fiche }: { dossier: DossierLiaison; fiche: FicheSuiviServices }) {
   const { t } = useTranslation()
+  const formatDate = useFormatDate()
   const peut = usePeut()
   const lancer = useLancer()
   const remettre = useRemettreFicheSuivi()
@@ -48,8 +50,8 @@ export function CarteFicheSuivi({ dossier, fiche }: { dossier: DossierLiaison; f
       <div className="gm-col">
         <Note>{t('miseEnService.fiche.explication')}</Note>
         {fiche.etat === 'REMISE' ? <InlineAlert level="info">{t('miseEnService.fiche.attenteParticipant')}</InlineAlert> : null}
-        {fiche.etat === 'RENSEIGNEE' ? <InlineAlert level="warn">{t('miseEnService.fiche.aConstater', { date: fiche.renseigneeLe ?? '' })}</InlineAlert> : null}
-        {fiche.etat === 'CONSTATEE' ? <InlineAlert level="info">{t('miseEnService.fiche.constatee', { date: fiche.constateeLe ?? '' })}</InlineAlert> : null}
+        {fiche.etat === 'RENSEIGNEE' ? <InlineAlert level="warn">{t('miseEnService.fiche.aConstater', { date: formatDate(fiche.renseigneeLe) })}</InlineAlert> : null}
+        {fiche.etat === 'CONSTATEE' ? <InlineAlert level="info">{t('miseEnService.fiche.constatee', { date: formatDate(fiche.constateeLe) })}</InlineAlert> : null}
         <DataTable columns={colonnes} rows={fiche.lignes} rowKey={(l) => l.serviceCode} state={fiche.lignes.length ? 'ok' : 'empty'} emptyText={t('miseEnService.fiche.aucune')} />
         {peutRemettre || peutConstater ? (
           <div className="gm-row" data-testid="actions-fiche">

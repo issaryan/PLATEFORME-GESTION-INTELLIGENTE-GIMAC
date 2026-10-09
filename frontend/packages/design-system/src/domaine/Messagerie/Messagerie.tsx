@@ -13,6 +13,7 @@ import { useLibelle } from '../../i18n/LangueProvider'
 import type { IconName } from '../../icones/icons'
 import type { CleLibelle } from '../../i18n/libelles'
 import { ApercuPdf } from './ApercuPdf'
+import { typesLisibles } from '../../saisie/FileDropzone/FileDropzone'
 
 // Messagerie de travail (D-64) : liste des conversations, fil et zone de saisie, assemblés à partir de
 // l'avatar, de l'étiquette, des boutons et des classes du salon (gm-chat, gm-msg). Le fond vient du
@@ -758,7 +759,7 @@ export function AttachmentViewer(p: AttachmentViewerProps) {
       className="gm-apercu"
       title={p.nom}
       icon={famille ? ICONES_BUREAUTIQUE[famille] : undefined}
-      subtitle={[p.typeMime, p.taille].filter(Boolean).join(' · ')}
+      subtitle={[typesLisibles(p.typeMime), p.taille].filter(Boolean).join(' · ')}
       onClose={p.onClose}
       footer={(
         <>

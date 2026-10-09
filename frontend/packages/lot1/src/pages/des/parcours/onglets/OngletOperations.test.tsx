@@ -98,7 +98,7 @@ describe('Onglet Opérations : exécution', () => {
     expect(conf.textContent).toContain('trace-script.png')
     fireEvent.click(within(conf).getByRole('button', { name: 'Déposer la preuve' }))
     await waitFor(() => expect(depot).toHaveBeenCalledWith('LIA-2026-005:28', expect.any(File), { valeurReference: undefined, codeControle: undefined, ceremonie: undefined }))
-    expect(await screen.findByText(/Preuve déposée, en attente de la validation de Conducteur de projet 2/)).toBeTruthy()
+    expect(await screen.findByText(/Preuve déposée, en attente de la validation de Brice Ondo Mba/)).toBeTruthy()
   })
 
   it('opération 29 (secret) : trace seule, avertissement, aucun code de contrôle demandé', async () => {
@@ -220,7 +220,7 @@ describe('Onglet Opérations : exécution', () => {
     expect(await within(d).findByText('Choisissez l\'intervenant.')).toBeTruthy()
     fireEvent.change(within(d).getByLabelText(/^Qualité/), { target: { value: 'V' } })
     fireEvent.change(within(d).getByLabelText(/^Fonction/), { target: { value: 'SNA' } })
-    await waitFor(() => expect(within(d).getByRole('option', { name: 'Ingénieur Normes et Agréments 1' })).toBeTruthy())
+    await waitFor(() => expect(within(d).getByRole('option', { name: 'Rachel Biyong Mengue' })).toBeTruthy())
     fireEvent.change(within(d).getByLabelText(/^Intervenant/), { target: { value: 'U-SNA-1' } })
     fireEvent.click(within(d).getByRole('button', { name: 'Attribuer' }))
     const conf = await screen.findByRole('alertdialog', { name: 'Attribuer' })

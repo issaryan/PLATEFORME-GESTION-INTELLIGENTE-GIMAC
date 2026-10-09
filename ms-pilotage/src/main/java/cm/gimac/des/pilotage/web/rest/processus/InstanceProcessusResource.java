@@ -14,7 +14,15 @@ import cm.gimac.des.pilotage.web.rest.processus.VuesProcessus.PageVue;
 import cm.gimac.des.pilotage.web.rest.processus.VuesProcessus.ReaffectationRequete;
 import cm.gimac.des.pilotage.web.rest.processus.VuesProcessus.SignatureRequete;
 import cm.gimac.des.pilotage.web.rest.processus.VuesProcessus.ValidationRequete;
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.InvalidMediaTypeException;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -60,6 +68,31 @@ public class InstanceProcessusResource {
     @PreAuthorize(Jetons.ACTIVITE)
     public InstanceVue lire(@PathVariable UUID id, Authentication auth) {
         return InstanceVue.de(instances.instance(appelant(auth), id));
+    }
+
+    /**
+     * QUO-04 : pièce du formulaire de lancement ou livrable déposé, relayé en flux depuis MS-DOCUMENT (jamais chargé en
+     * entier) ; lisible de qui lit l'instance (initiateur, intervenants, porteurs d'une étape à prendre, unité).
+     */
+    @GetMapping("/{id}/documents/{documentId}")
+    @PreAuthorize(Jetons.ACTIVITE)
+    public ResponseEntity<Resource> document(@PathVariable UUID id, @PathVariable String documentId, Authentication auth) {
+        InstancesProcessusUseCase.DocumentInstance d = instances.document(appelant(auth), id, documentId);
+        MediaType type;
+        try {
+            type = MediaType.parseMediaType(d.typeMime() == null ? "application/octet-stream" : d.typeMime());
+        } catch (InvalidMediaTypeException e) {
+            type = MediaType.APPLICATION_OCTET_STREAM;
+        }
+        String nom = d.nom() == null || d.nom().isBlank() ? "document" : d.nom();
+        ResponseEntity.BodyBuilder r = ResponseEntity.ok()
+            .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(nom, StandardCharsets.UTF_8).build().toString())
+            .header("X-Content-Type-Options", "nosniff")
+            .contentType(type);
+        if (d.taille() >= 0) {
+            r = r.contentLength(d.taille());
+        }
+        return r.body(new InputStreamResource(d.flux()));
     }
 
     @PostMapping("/{id}/etapes/{code}/livrables")

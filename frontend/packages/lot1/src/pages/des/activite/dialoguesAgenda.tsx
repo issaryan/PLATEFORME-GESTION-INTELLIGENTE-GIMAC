@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Checkbox, ConfirmDialog, CrudDialog, DateField, KeyValueList, Note, Select, StatusBadge, Tag, TextArea, TextField } from '@gimac/design-system'
+import { Button, Checkbox, ConfirmDialog, CrudDialog, DateField, KeyValueList, Note, Select, StatusBadge, TextArea, TextField } from '@gimac/design-system'
 import { useSession } from '@gimac/socle'
 import type { Correspondant } from '../../../modele/messagerie'
 import { CATEGORIES_EVENEMENT, type CategorieEvenement, type Evenement } from '../../../modele/pilotage'
@@ -97,11 +97,7 @@ export function DialogueEvenement({ jour, evenement, onFermer, onFait }: { jour:
       <div className="gm-col" style={{ gap: 'var(--gm-space-1)' }}>
         <span className="gm-field-label">{t('act.evenement.participants')}</span>
         <span className="gm-field-help">{t('act.evenement.participantsAide', { max: PARTICIPANTS_MAX })}</span>
-        {participants.length ? (
-          <div className="gm-row" style={{ flexWrap: 'wrap', gap: 'var(--gm-space-1)' }} aria-label={t('act.evenement.invites')}>
-            {participants.map((p) => <Tag key={p.id} onRemove={() => setParticipants((l) => l.filter((x) => x.id !== p.id))}>{p.nom}</Tag>)}
-          </div>
-        ) : null}
+        {/* QUO-17 : les personnes choisies ne s'affichent qu'une fois, dans l'annuaire (« N personnes choisies »). */}
         {e('participants') ? <span className="gm-field-error" role="alert">{e('participants')}</span> : null}
         <Annuaire choisis={participants} onChoisis={setParticipants} multiple exclus={session?.sujet ? [session.sujet] : []} />
       </div>

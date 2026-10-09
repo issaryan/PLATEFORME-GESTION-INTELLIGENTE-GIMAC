@@ -167,7 +167,8 @@ regles := [
 	# droits fins (unité, pouvoirs D-81/D-86, intervenant, signataire, validateur) vérifiés par MS-PILOTAGE.
 	# Candidats d'un intervenant (désignation hors de l'unité) : /processus/candidats et …/etapes/{code}/candidats.
 	# D-98 : « processus que je peux lancer » (/processus/lancables) et « mes demandes » (/processus/demandes), même règle.
-	{"m": "GET", "re": `^/bff/des/pilotage/processus(/[^/]+|/instances/[^/]+(/etapes/[^/]+/candidats)?)?$`, "p": "PIL_ACTIVITY_OWN"},
+	# QUO-04 : pièce du formulaire de lancement ou livrable d'une instance (/processus/instances/{id}/documents/{doc}).
+	{"m": "GET", "re": `^/bff/des/pilotage/processus(/[^/]+|/instances/[^/]+(/etapes/[^/]+/candidats|/documents/[^/]+)?)?$`, "p": "PIL_ACTIVITY_OWN"},
 	{"m": "POST", "re": `^/bff/des/pilotage/processus(/[^/]+/(controle|publication|nouvelle-version|retrait|instances))?$`, "p": "PIL_ACTIVITY_OWN"},
 	{"m": "POST", "re": `^/bff/des/pilotage/processus/instances/[^/]+/(suspension|reprise|annulation)$`, "p": "PIL_ACTIVITY_OWN"},
 	{"m": "POST", "re": `^/bff/des/pilotage/processus/instances/[^/]+/etapes/[^/]+/(livrables|signature|fin|validation|reaffectation)$`, "p": "PIL_ACTIVITY_OWN"},

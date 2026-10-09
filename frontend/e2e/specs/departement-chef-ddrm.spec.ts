@@ -1,9 +1,20 @@
 import { ADRESSES, demo, expect, test } from '../fixtures'
-import { confirmer, monTravail, naviguer, ongletSelectionne } from './outils'
+import { confirmer, monTravail, naviguer } from './outils'
 
 // Fonctionnalité : le chef de la DDRM tranche les propositions (étape 2) puis ouvre la liaison d'un
 // adhérent au cadrage et désigne son conducteur de projet (étape 3, D-57, D-58). Services simulés ; la
 // réauthentification par navigator.credentials est couverte par departement-passerelle.spec.ts.
+
+/**
+ * DDR-01 (maker-checker) : la proposition vient d'un autre acteur que le chef qui la tranche. Démonstration continue (D-98) :
+ * l'acteur change par la session de démonstration, sur le même registre simulé.
+ */
+async function acteur(page: import('@playwright/test').Page, role: string) {
+  await page.evaluate((r) => {
+    localStorage.setItem('gm.demoContinue', '1')
+    sessionStorage.setItem('gm.sessionDemo', JSON.stringify({ identifiant: '', role: r }))
+  }, role)
+}
 
 test.describe('Fonctionnalité : décisions du chef de la DDRM et cadrage des liaisons', () => {
   test.beforeEach(async ({ page }) => {
@@ -18,14 +29,18 @@ test.describe('Fonctionnalité : décisions du chef de la DDRM et cadrage des li
       await expect(monTravail(page)).toBeVisible()
       await expect(page.getByRole('region', { name: 'Pilotage des projets de certification' })).toBeVisible()
     })
-    await test.step('Quand l’adhésion d’un dossier complet lui est proposée, il l’approuve avec sa clé de sécurité', async () => {
+    await test.step('Quand l’adhésion d’un dossier complet lui est proposée par la chargée, il l’approuve avec sa clé de sécurité', async () => {
       await page.getByRole('region', { name: 'Relations avec les membres (DDRM)' }).getByRole('button', { name: /^Candidats \d+$/ }).click()
       await page.getByRole('link', { name: 'Banque de Libreville' }).click()
       await expect(page.getByRole('heading', { level: 1 })).toHaveText('Banque de Libreville')
+      const fiche = page.url().split('?')[0]
+      await acteur(page, 'ROLE_CHARGE_DDRM')
+      await page.goto(fiche)
       await page.getByRole('button', { name: 'Proposer l\'adhésion' }).click()
       await confirmer(page, 'Proposer l\'adhésion', 'Dossier complet')
       await expect(page.getByRole('alertdialog')).toHaveCount(0)
-      await ongletSelectionne(page, 'Propositions de statut')
+      await acteur(page, 'ROLE_CHEF_DDRM')
+      await page.goto(`${fiche}?onglet=transitions`)
       await page.getByRole('button', { name: 'Approuver' }).click()
       const d = page.getByRole('dialog')
       await expect(d.getByText(/L'institution passera à l'état « Adhérent »/)).toBeVisible()
@@ -42,10 +57,14 @@ test.describe('Fonctionnalité : décisions du chef de la DDRM et cadrage des li
       await naviguer(page, 'Institutions membres')
       await page.getByRole('link', { name: 'Fintech Kribi Pay' }).click()
       await expect(page.getByRole('heading', { level: 1 })).toHaveText('Fintech Kribi Pay')
+      const fiche = page.url().split('?')[0]
+      await acteur(page, 'ROLE_CHARGE_DDRM')
+      await page.goto(fiche)
       await page.getByRole('button', { name: 'Proposer la clôture sans suite' }).click()
       await confirmer(page, 'Proposer la clôture sans suite', 'Le candidat ne répond plus')
       await expect(page.getByRole('alertdialog')).toHaveCount(0)
-      await ongletSelectionne(page, 'Propositions de statut')
+      await acteur(page, 'ROLE_CHEF_DDRM')
+      await page.goto(`${fiche}?onglet=transitions`)
       await page.getByRole('row', { name: /Le candidat ne répond plus/ }).getByRole('button', { name: 'Plus d\'actions' }).click()
       await page.getByRole('dialog').getByRole('button', { name: 'Rejeter' }).click()
       await confirmer(page, 'Rejeter', 'Relance prévue le mois prochain')
@@ -75,7 +94,7 @@ test.describe('Fonctionnalité : décisions du chef de la DDRM et cadrage des li
     await test.step('Alors le dossier de la liaison s’ouvre au cadrage, avec la banque partenaire et le conducteur', async () => {
       await expect(page.getByText(/Liaison LIA-\d{4}-\d{3} ouverte au cadrage/)).toBeVisible()
       await expect(page.getByRole('heading', { level: 1 })).toHaveText('Mobile Money Sanaga')
-      for (const texte of ['Banque B', 'Conducteur de projet 2']) await expect(page.getByText(texte, { exact: true }).first()).toBeVisible()
+      for (const texte of ['Banque B', 'Brice Ondo Mba']) await expect(page.getByText(texte, { exact: true }).first()).toBeVisible()
     })
     await test.step('Quand il désigne un autre conducteur, motif à l’appui', async () => {
       await page.getByRole('button', { name: 'Redésigner le conducteur' }).click()
@@ -85,7 +104,7 @@ test.describe('Fonctionnalité : décisions du chef de la DDRM et cadrage des li
       await d.getByRole('button', { name: 'Redésigner le conducteur' }).click()
     })
     await test.step('Alors le conducteur est à jour dans le dossier', async () => {
-      await expect(page.getByText('Conducteur de projet 1', { exact: true }).first()).toBeVisible()
+      await expect(page.getByText('Aïcha Mahamat Nour', { exact: true }).first()).toBeVisible()
     })
     await test.step('Et l’institution est passée d’elle-même en homologation', async () => {
       await naviguer(page, 'Institutions membres')

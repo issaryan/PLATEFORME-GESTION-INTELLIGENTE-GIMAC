@@ -33,14 +33,18 @@ const il = (heures: number) => new Date(Date.now() - heures * 3_600_000).toISOSt
 
 const minutes = (m: number) => new Date(Date.now() - m * 60_000).toISOString()
 
-/** Appareils connectés de démonstration : la session courante, puis des sessions plus anciennes (IP masquées). */
+/**
+ * Appareils connectés de démonstration : la session courante, puis des sessions plus anciennes (IP masquées). Un compte
+ * d'institution ne se connecte qu'au portail, un compte interne qu'aux couches internes : aucune session d'une autre couche.
+ */
 export function appareilsDemo(couche = 'des'): Appareil[] {
+  const interne = couche === 'portail' ? 'portail' : 'des'
   const a = (navigateur: string, systeme: string, type: DescriptionAppareil['type']): DescriptionAppareil => ({ navigateur, systeme, type })
   return [
     { id: 'app-7f3c2a', courante: true, appareil: a('Chrome 129', 'Windows 11', 'ORDINATEUR'), adresseIp: '10.20.1.15', couche, ouverteLe: minutes(64), derniereActivite: minutes(0), expireA: new Date(Date.now() + 30 * 60_000).toISOString() },
     { id: 'app-91b4e0', courante: false, appareil: a('Firefox 131', 'Ubuntu 24.04', 'ORDINATEUR'), adresseIp: '10.20.4.•', couche, ouverteLe: minutes(60 * 26), derniereActivite: minutes(60 * 20 + 12), expireA: minutes(-10) },
-    { id: 'app-2d8e57', courante: false, appareil: a('Safari 18', 'iOS 18', 'MOBILE'), adresseIp: '41.202.219.•', couche: 'des', ouverteLe: minutes(60 * 3 + 5), derniereActivite: minutes(42), expireA: minutes(-12) },
-    { id: 'app-c05a19', courante: false, appareil: a('Chrome 129', 'Android 14', 'TABLETTE'), adresseIp: '10.20.7.•', couche: 'portail', ouverteLe: minutes(60 * 50), derniereActivite: minutes(60 * 49), expireA: minutes(-60 * 48) },
+    { id: 'app-2d8e57', courante: false, appareil: a('Safari 18', 'iOS 18', 'MOBILE'), adresseIp: '41.202.219.•', couche: interne, ouverteLe: minutes(60 * 3 + 5), derniereActivite: minutes(42), expireA: minutes(-12) },
+    { id: 'app-c05a19', courante: false, appareil: a('Chrome 129', 'Android 14', 'TABLETTE'), adresseIp: '10.20.7.•', couche, ouverteLe: minutes(60 * 50), derniereActivite: minutes(60 * 49), expireA: minutes(-60 * 48) },
     { id: 'app-e6f310', courante: false, appareil: a('Edge 129', 'Windows 10', 'ORDINATEUR'), adresseIp: '10.20.2.•', couche, ouverteLe: minutes(60 * 6), derniereActivite: minutes(95), expireA: minutes(-20) },
   ]
 }
@@ -57,7 +61,7 @@ export function historiqueDemo(couche = 'des'): Connexion[] {
   for (let i = 0; i < 64; i++) {
     const [navigateur, systeme, type, ip] = postes[(i * 7) % postes.length]
     const resultat: ResultatConnexion = i === 23 ? 'BLOQUEE' : i % 11 === 4 ? 'ECHEC_MOT_DE_PASSE' : i % 13 === 7 ? 'ECHEC_CODE' : 'REUSSIE'
-    lignes.push({ le: minutes(64 + i * 60 * 33 + (i % 5) * 17), resultat, appareil: { navigateur, systeme, type }, adresseIp: ip.replace(/\.\d+$/, '.•'), couche: i % 9 === 5 ? 'portail' : couche })
+    lignes.push({ le: minutes(64 + i * 60 * 33 + (i % 5) * 17), resultat, appareil: { navigateur, systeme, type }, adresseIp: ip.replace(/\.\d+$/, '.•'), couche })
   }
   return lignes
 }

@@ -183,6 +183,8 @@ public final class Vues {
         String institutionId,
         String institutionNom,
         TypeProjet typeProjet,
+        /** Libellé du type (CER-05) : le portail ne lit pas le catalogue des types ; null : le code fait foi. */
+        String typeProjetLibelle,
         String banquePartenaireNom,
         String personnalisateurNom,
         StatutParcours statut,
@@ -212,6 +214,8 @@ public final class Vues {
         String reference,
         String institutionNom,
         TypeProjet typeProjet,
+        /** Libellé du type (CER-05) ; null : le code fait foi. */
+        String typeProjetLibelle,
         StatutParcours statut,
         EtapeCode etapeCourante,
         String conducteurNom,

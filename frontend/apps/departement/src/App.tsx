@@ -8,7 +8,7 @@ import {
 import { CompteProvider, GardePremierAcces, MonComptePage, useMonAvatar, monCompteHttp, monCompteSimule } from '@gimac/compte'
 import {
   CatalogueFonctionnalitesProvider, ECRANS_DES, ExtensionsTableauDeBordProvider, Fournisseurs, GardeFonctionnalite, GardePermission, ORGANISATION_DEMO, PERM, creerClientRequetes, lecteurApercu,
-  magasinPouvoirs, navigationDepuis, navigationRepli, notificationsDemo, rattachementDemo, servicesHttp, servicesSimules, useNonLus, useSourcesRecherche, useTraduire,
+  magasinPouvoirs, navigationDepuis, navigationRepli, notificationsDemo, rattachementDemo, roleDeCleDemo, servicesHttp, servicesSimules, useNonLus, useSourcesRecherche, useTraduire,
   type EtatCatalogue,
 } from '@gimac/lot1'
 import {
@@ -226,7 +226,7 @@ export default function App() {
     }
     const demo = sessionDemo()
     const s = servicesSimules({ utilisateur: { id: demo.sujet, nom: demo.nom, profils: demo.roles }, pouvoirs })
-    return { services: s, notifications: { service: notificationsDemo(s, { qc: client, moi: demo.sujet }), apercu: lecteurApercu(s) } }
+    return { services: s, notifications: { service: notificationsDemo(s, { qc: client, moi: demo.sujet, profils: demo.roles }), apercu: lecteurApercu(s) } }
   }, [reels, client, pouvoirs])
   // « Mon compte » (D-62) : /bff/des/iam/moi, ou service simulé au nom du profil de démonstration
   // (gm.premierAccesDemo = 1 : démonstration du premier accès).
@@ -243,7 +243,7 @@ export default function App() {
       couche: 'des',
       premierAcces: demo?.premierAcces ?? lirePreference('gm.premierAccesDemo') === '1',
       etapes: demo?.etapes,
-      compte: { id: p.sujet, identifiant, prenom, nom: nom.join(' '), nomAffiche: p.nom, email: `${identifiant}@gimac-afr.org`, profils: [role], unite: org?.unite ?? null, responsableId: org?.responsableId ?? null },
+      compte: { id: p.sujet, identifiant, prenom, nom: nom.join(' '), nomAffiche: p.nom, email: `${identifiant}@gimac-afr.org`, profils: [roleDeCleDemo(role)], unite: org?.unite ?? null, responsableId: org?.responsableId ?? null },
       rattachement: rattachementDemo(p.sujet, p.nom),
     })
   }, [reels])

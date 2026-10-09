@@ -140,6 +140,25 @@ describe('Enveloppe : tiroir de navigation sous 1 280 px', () => {
       Object.defineProperty(window, 'innerWidth', { value: 1400, configurable: true })
     }
   })
+  it('accessibilité (recette ACC-07) : « Ouvrir la navigation », aria-expanded, focus dans le tiroir, Échap d’où que ce soit le referme', () => {
+    Object.defineProperty(window, 'innerWidth', { value: 390, configurable: true })
+    try {
+      const { container } = coquille()
+      const menu = screen.getByRole('button', { name: 'Ouvrir la navigation' })
+      expect(menu.getAttribute('aria-expanded')).toBe('false')
+      fireEvent.click(menu)
+      const ouvert = screen.getByRole('button', { name: 'Fermer la navigation' })
+      expect(ouvert.getAttribute('aria-expanded')).toBe('true')
+      expect(ouvert.getAttribute('aria-controls')).toBe('gm-shell-tiroir')
+      const tiroir = container.querySelector('#gm-shell-tiroir') as HTMLElement
+      expect(tiroir.contains(document.activeElement)).toBe(true)
+      fireEvent.keyDown(document.body, { key: 'Escape' })
+      expect(container.querySelector('#gm-shell-tiroir')).toBeNull()
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Ouvrir la navigation' }))
+    } finally {
+      Object.defineProperty(window, 'innerWidth', { value: 1400, configurable: true })
+    }
+  })
 })
 
 // Recherche globale (Ctrl+K) : écrans permis de la navigation et objets des sources ; portail sans recherche.

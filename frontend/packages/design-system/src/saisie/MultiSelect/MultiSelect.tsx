@@ -25,6 +25,8 @@ export interface MultiSelectProps extends BaseProps {
   labels?: Record<string, string>
   /** Avatars des valeurs choisies absentes des options courantes (destinataires). */
   avatars?: Record<string, { name: string; src?: string | null }>
+  /** Texte de la liste sans proposition, propre au champ (défaut : « Aucun choix ne correspond. »). */
+  emptyLabel?: string
 }
 
 // Sélection multiple par jetons, retrait au clavier (Retour arrière) et à la souris (§7.2) ; avec
@@ -109,7 +111,7 @@ export function MultiSelect(p: MultiSelectProps) {
               </li>
             ))
           ) : (
-            <li className="gm-option gm-option-empty">{t('searchSelect.aucun')}</li>
+            <li className="gm-option gm-option-empty">{p.emptyLabel ?? t('multiSelect.aucun')}</li>
           )}
         </ul>
       ) : null}

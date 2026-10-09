@@ -6,8 +6,8 @@ import {
   connexionHttp, lirePreference, lireSessionDemo, surNonAutorise, type EtatCanal, type Session,
 } from '@gimac/socle'
 import { CompteProvider, GardePremierAcces, MonComptePage, useMonAvatar, monCompteHttp, monCompteSimule } from '@gimac/compte'
-import { Fournisseurs, NAVIGATION_PORTAIL, creerClientRequetes, notificationsPortailDemo, servicesHttp, servicesSimules } from '@gimac/lot1'
-import { connexionDemo, sessionCorrespondant } from './connexionDemo'
+import { Fournisseurs, NAVIGATION_PORTAIL, creerClientRequetes, notificationsPortailDemo, servicesHttp, servicesSimules, sessionDemoDuRole } from '@gimac/lot1'
+import { NOM_CORRESPONDANT_DEMO, connexionDemo, sessionCorrespondant } from './connexionDemo'
 
 // Portail des participants (couche « portail ») : POR-03 du lot 1 (DS-GIMAC-01 §10.2), tableau de bord du
 // participant et gestes qui lui incombent (qualité Externe, CR §3.4, D-56 à D-59). Toutes les données
@@ -28,6 +28,10 @@ const VERSION = import.meta.env.VITE_VERSION ?? '0.1.0'
 
 function sessionDemo(): Session {
   const demo = lireSessionDemo()
+  // Session interne ouverte dans l'onglet (application interne, console) : gardée telle quelle pour que l'aiguillage
+  // (D-79) la conduise vers l'application interne, comme en production (recette ACC-01) ; jamais le correspondant.
+  const interne = demo?.role ? sessionDemoDuRole(demo.role, demo.identifiant) : null
+  if (interne && !interne.institutionId) return interne
   return { ...sessionCorrespondant(demo?.identifiant || undefined), ...(demo?.premierAcces ? { restreinte: true } : {}) }
 }
 
@@ -42,18 +46,18 @@ function AvecSession({ children }: { children: (s: Session) => ReactNode }) {
   return <GardeSession>{(s) => <Aiguillage session={s} couche="portail">{children(s)}</Aiguillage>}</GardeSession>
 }
 
-// Notifications du portail (MS-NOTIFICATION §11) : cloche et page, liens profonds vers le suivi d'une liaison et le dépôt d'un
-// livrable. Démonstration seulement tant que la passerelle ne sert pas /bff/portail/notification (route à ouvrir).
-const NOTIFICATIONS = REELS ? null : notificationsPortailDemo()
-const SERVICE_NOTIFICATIONS = NOTIFICATIONS ?? notificationsPortailDemo()
+// Notifications du portail (MS-NOTIFICATION §11) : cloche et page, liens profonds vers le geste attendu de l'institution.
+// Démonstration seulement tant que la passerelle ne sert pas /bff/portail/notification (route à ouvrir) : elles suivent
+// les tâches du parcours simulé (CER-12).
+type Notifs = { service: ReturnType<typeof notificationsPortailDemo>; actif: boolean }
 
-function Pages({ session, etatCanal, correlationId }: { session: Session; etatCanal: EtatCanal | undefined; correlationId?: string }) {
+function Pages({ session, etatCanal, correlationId, notifications }: { session: Session; etatCanal: EtatCanal | undefined; correlationId?: string; notifications: Notifs }) {
   // Photo de profil du titulaire (docs/lot1/mon-compte.md §4) : menu utilisateur de la barre du haut.
   const moi = useMonAvatar()
   return (
     <GardePremierAcces>
       {(assistant) => (
-        <NotificationsProvider service={SERVICE_NOTIFICATIONS} couche="portail" actif={!assistant && NOTIFICATIONS !== null}>
+        <NotificationsProvider service={notifications.service} couche="portail" actif={!assistant && notifications.actif}>
         <Enveloppe avatar={moi?.src} fonction={moi?.fonction} couche="portail" navigation={assistant ? [] : NAVIGATION_PORTAIL} permissions={session.permissions} utilisateur={session.nom}
           institution={REELS ? undefined : 'Établissement de paiement A'} etatCanal={etatCanal} version={VERSION} correlationId={correlationId} espacePersonnel="/portail">
           <Suspense fallback={<Skeleton height={32} />}>
@@ -72,7 +76,7 @@ function Pages({ session, etatCanal, correlationId }: { session: Session; etatCa
                   <Route path="liaisons/:id/proces-verbal" element={<ProcesVerbalPage />} />
                   <Route path="liaisons/:id/attestations" element={<AttestationsPage />} />
                   <Route path="liaisons/:id/fiche-suivi" element={<FicheSuiviPage />} />
-                  {NOTIFICATIONS ? <Route path="notifications" element={<NotificationsPage />} /> : null}
+                  {notifications.actif ? <Route path="notifications" element={<NotificationsPage />} /> : null}
                   <Route path="*" element={<Navigate to="/portail/tableau-de-bord" replace />} />
                 </>
               )}
@@ -87,6 +91,7 @@ function Pages({ session, etatCanal, correlationId }: { session: Session; etatCa
 
 export default function App() {
   const services = useMemo(() => (REELS ? servicesHttp('portail') : servicesSimules()), [])
+  const notifications = useMemo<Notifs>(() => (REELS ? { service: notificationsPortailDemo(), actif: false } : { service: notificationsPortailDemo(services as ReturnType<typeof servicesSimules>), actif: true }), [services])
   const compte = useMemo(() => {
     if (REELS) return monCompteHttp('portail')
     const demo = lireSessionDemo()
@@ -94,7 +99,11 @@ export default function App() {
       couche: 'portail',
       premierAcces: demo?.premierAcces ?? lirePreference('gm.premierAccesDemo') === '1',
       etapes: demo?.etapes,
-      compte: { identifiant: demo?.identifiant || 'correspondant-a', prenom: 'Brice', nom: 'Nzeng Mba', nomAffiche: 'Brice Nzeng Mba', profils: ['ROLE_CORRESPONDANT'], institutionId: 'INST-0042' },
+      // Correspondant de l'institution de démonstration : même nom que la session (connexionDemo.ts), adresse et fonction de l'institution.
+      compte: {
+        identifiant: demo?.identifiant || 'correspondant-a', prenom: 'Brice', nom: 'Nzeng Mba', nomAffiche: NOM_CORRESPONDANT_DEMO, email: 'b.nzengmba@etablissement-paiement-a.example',
+        fonction: 'Correspondant technique', profils: ['ROLE_CORRESPONDANT'], institutionId: 'INST-0042',
+      },
     })
   }, [])
   const connexion = useMemo(() => (REELS ? connexionHttp() : connexionDemo()), [])
@@ -114,7 +123,7 @@ export default function App() {
         <CompteProvider service={compte}>
           <Routes>
             <Route path="/connexion/*" element={<PageConnexion couche="portail" />} />
-            <Route path="/portail/*" element={<AvecSession>{(s) => <Pages session={s} etatCanal={etatCanal} correlationId={correlationId} />}</AvecSession>} />
+            <Route path="/portail/*" element={<AvecSession>{(s) => <Pages session={s} etatCanal={etatCanal} correlationId={correlationId} notifications={notifications} />}</AvecSession>} />
             <Route path="*" element={<Navigate to="/portail/tableau-de-bord" replace />} />
           </Routes>
         </CompteProvider>

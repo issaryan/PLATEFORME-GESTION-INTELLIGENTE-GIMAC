@@ -1,4 +1,4 @@
-import { ApiError, type OptionsTeleversement, type Televersement } from '@gimac/socle'
+import { ApiError, type ArriveeNotification, type OptionsTeleversement, type Televersement } from '@gimac/socle'
 import { PROFILS } from '../../permissions'
 import type { PersonneActivite } from '../../modele/pilotage'
 import {
@@ -12,16 +12,35 @@ import type { ServiceProcessus } from '../ports'
 import type { MagasinPouvoirs } from './pouvoirs'
 import { DUREE_ETAPE_DOCUMENT_MS, type PontTachesProcessus } from './pilotage'
 import { PRESENTATIONS_PROFILS } from './presentations'
+import { pdfDemo } from './messagerie'
 
 // MS-PILOTAGE simulé pour les processus d'unité (D-87, docs/lot1/processus-unite.md §5) : mêmes formes et mêmes codes de
 // refus que le service ; ses règles ne sont qu'une imitation (contrôle de publication, versions, résolution des
 // intervenants, ordre des signatures, validation et renvoi, tâches d'origine PROCESSUS de « Mon activité »). Jeu de
 // démonstration : processus publié « Ouverture d'un flux réseau » du pôle réseau, un brouillon et deux instances.
 
+/** D-99 : refus de la séparation des fonctions, même texte que MS-PILOTAGE. */
+export const MESSAGE_SEPARATION = 'L’initiateur d’une demande ne peut pas exécuter, valider ou signer les étapes de sa propre demande (séparation des fonctions).'
+
 type Attendre = <T>(v: T | (() => T)) => Promise<T>
 type Refus = (status: number, code: string, message: string, details?: Record<string, unknown>) => ApiError
 
-type Document = { nomFichier: string; typeMime: string; taille: number; sha256: string; reference?: string | null; deposant?: string | null }
+/** `contenu` (QUO-04) : contenu en base64, gardé avec l'état de la démonstration pour l'aperçu et le téléchargement. */
+type Document = { nomFichier: string; typeMime: string; taille: number; sha256: string; reference?: string | null; deposant?: string | null; contenu?: string }
+
+/** Contenu de démonstration d'un document sans fichier (jeu préparé) : PDF d'une page, ou texte. */
+const contenuDemo = (d: Document): Blob => (d.typeMime === 'application/pdf'
+  ? pdfDemo([d.nomFichier, 'Document de démonstration', '', `Empreinte SHA-256 : ${d.sha256.slice(0, 16)}…`])
+  : new Blob([`${d.nomFichier}\nDocument de démonstration.\n`], { type: d.typeMime || 'text/plain' }))
+const enBase64 = (b: Blob): Promise<string> => new Promise((ok, ko) => {
+  const lecteur = new FileReader()
+  lecteur.onload = () => ok(String(lecteur.result).replace(/^data:[^,]*,/, ''))
+  lecteur.onerror = () => ko(lecteur.error)
+  lecteur.readAsDataURL(b)
+})
+const depuisBase64 = (b: string, type: string) => new Blob([Uint8Array.from(atob(b), (c) => c.charCodeAt(0))], { type })
+/** Taille au-delà de laquelle le contenu d'un dépôt simulé n'est pas gardé dans la session (stockage de l'onglet limité). */
+const CONTENU_MAX = 1_000_000
 type EtapeSim = EtapeInstance & { def: EtapeProcessus }
 type InstanceSim = Omit<InstanceProcessus, 'etapes' | 'droits'> & { etapes: EtapeSim[] }
 
@@ -123,9 +142,23 @@ export function demandesDemo(): { code: string; unite: string; libelle: string; 
   ]
 }
 
-type EtatSimule = { definitions: Processus[]; instances: InstanceSim[]; documents: Map<string, Document>; sequence: number }
+/** Notification d'un événement de processus (QUO-05), adressée à une personne, comme MS-NOTIFICATION la déduit des événements pilotage.process-*. */
+export type NotificationProcessusDemo = ArriveeNotification & { destinataire: string }
+type EtatSimule = { definitions: Processus[]; instances: InstanceSim[]; documents: Map<string, Document>; sequence: number; notifications?: NotificationProcessusDemo[] }
 /** État partagé par les services simulés d'un même magasin des pouvoirs (organisation commune, plusieurs personnes). */
 const ETATS = new WeakMap<MagasinPouvoirs, EtatSimule>()
+const ABONNES = new WeakMap<MagasinPouvoirs, ((n: NotificationProcessusDemo) => void)[]>()
+
+/**
+ * Notifications de processus de la démonstration (QUO-05) : celles adressées à une personne (gardées avec l'état, donc
+ * reçues après un changement de profil) et l'abonnement aux suivantes.
+ */
+export function notificationsProcessusDemo(magasin: MagasinPouvoirs) {
+  return {
+    pour: (personneId: string): ArriveeNotification[] => (ETATS.get(magasin)?.notifications ?? []).filter((n) => n.destinataire === personneId).map(({ destinataire: _d, ...n }) => n),
+    surNotification: (f: (n: NotificationProcessusDemo) => void) => { ABONNES.set(magasin, [...(ABONNES.get(magasin) ?? []), f]) },
+  }
+}
 
 /**
  * Démonstration d'un parcours à plusieurs personnes (D-98) : dans une session de démonstration ouverte (gm.sessionDemo),
@@ -144,15 +177,15 @@ function relireEtat(): EtatSimule | null {
   try {
     const brut = stockage()?.getItem(CLE_ETAT)
     if (!brut) return null
-    const e = JSON.parse(brut) as { definitions: Processus[]; instances: InstanceSim[]; documents: [string, Document][]; sequence: number }
-    return { definitions: e.definitions, instances: e.instances, documents: new Map(e.documents), sequence: e.sequence }
+    const e = JSON.parse(brut) as { definitions: Processus[]; instances: InstanceSim[]; documents: [string, Document][]; sequence: number; notifications?: NotificationProcessusDemo[] }
+    return { definitions: e.definitions, instances: e.instances, documents: new Map(e.documents), sequence: e.sequence, notifications: e.notifications ?? [] }
   } catch {
     return null
   }
 }
 function garderEtat(e: EtatSimule) {
   try {
-    stockage()?.setItem(CLE_ETAT, JSON.stringify({ definitions: e.definitions, instances: e.instances, documents: [...e.documents.entries()], sequence: e.sequence }))
+    stockage()?.setItem(CLE_ETAT, JSON.stringify({ definitions: e.definitions, instances: e.instances, documents: [...e.documents.entries()], sequence: e.sequence, notifications: e.notifications ?? [] }))
   } catch {
     // Stockage indisponible ou plein : la démonstration continue en mémoire.
   }
@@ -238,6 +271,8 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
   }
   const normaliserInitiateurs = (i: Partial<Initiateurs> | undefined): Initiateurs => ({
     regles: i?.regles?.length ? [...new Set(i.regles)] : [...INITIATEURS_DEFAUT.regles], unites: [...new Set(i?.unites ?? [])], profils: [...new Set(i?.profils ?? [])], permissions: [...new Set(i?.permissions ?? [])],
+    // D-99 : séparation des fonctions, l'initiateur n'intervient pas sur sa demande sauf réglage explicite.
+    initiateurIntervenant: !!i?.initiateurIntervenant,
   })
   const normaliserFormulaire = (f: Formulaire | undefined): Formulaire => ({
     champs: (f?.champs ?? []).map((c) => ({ ...c, code: c.code.trim(), libelle: c.libelle.trim(), obligatoire: !!c.obligatoire, aide: c.aide?.trim() || null, choix: c.type === 'LISTE' ? c.choix ?? [] : [], typesPieces: c.type === 'PIECE_JOINTE' ? c.typesPieces ?? [] : [] })),
@@ -331,8 +366,8 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
       const couverture = (profil: string, el: string) => {
         if (porteursDans(unite, profil).length) return
         const ailleurs = porteursPartout(profil)
-        if (!ailleurs.length) ajouter('COUVERTURE_PROFIL', 'LEVABLE', e.code, el, `Aucune personne active ne porte ${profil} dans l’unité ${unite} ni ailleurs dans le GIMAC.`)
-        else ajouter('COUVERTURE_HORS_UNITE', 'AVERTISSEMENT', e.code, el, `Aucune personne active ne porte ${profil} dans l’unité ${unite} ; ${ailleurs.length} porteur${ailleurs.length > 1 ? 's' : ''} ailleurs dans le GIMAC (${repartition(ailleurs)}) : l’étape ${ailleurs.length > 1 ? 'leur sera offerte' : 'lui sera confiée'}.`)
+        if (!ailleurs.length) ajouter('COUVERTURE_PROFIL', 'LEVABLE', e.code, el, `Aucune personne active ne porte le profil ${profil} dans l’unité ${unite} ni ailleurs dans le GIMAC.`)
+        else ajouter('COUVERTURE_HORS_UNITE', 'AVERTISSEMENT', e.code, el, `Aucune personne active ne porte le profil ${profil} dans l’unité ${unite} ; ${ailleurs.length} porteur${ailleurs.length > 1 ? 's' : ''} ailleurs dans le GIMAC (${repartition(ailleurs)}) : l’étape ${ailleurs.length > 1 ? 'leur sera offerte' : 'lui sera confiée'}.`)
       }
       if (i.mode === 'PROFIL' && i.profil) couverture(i.profil, element)
       if (i.remplacement) couverture(i.remplacement, `${element}.remplacement`)
@@ -381,27 +416,76 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
   const instances = etat.instances
   const lien = (inst: InstanceSim, etape?: string) => `/des/processus/instances/${inst.id}${etape ? `?etape=${encodeURIComponent(etape)}` : ''}`
   /**
+   * D-99, séparation des fonctions (comme MS-PILOTAGE) : sauf autorisation de la définition (initiateurs.initiateurIntervenant)
+   * ou intervenant LANCEUR, l'initiateur n'est ni résolu, ni désigné, ni proposé, ni réaffecté, et n'exécute, ne prend, ne
+   * valide ni ne signe les étapes de sa demande.
+   */
+  const exclu = (inst: InstanceSim): string | null => (definitions.find((p) => p.id === inst.processus.id)?.initiateurs?.initiateurIntervenant ? null : inst.lanceur.id)
+  const separe = (inst: InstanceSim, pid: string, role: Intervenant | null | undefined) => pid === exclu(inst) && role?.mode !== 'LANCEUR'
+  const separation = (status: number, details: Record<string, unknown>) => refus(status, 'PIL_PROCESSUS_SEPARATION_FONCTIONS', MESSAGE_SEPARATION, details)
+  /** Destinataires d'une attente (comme MS-PILOTAGE) : la personne, sinon les porteurs du profil (sans l'initiateur écarté), à défaut le chef. */
+  const destinatairesDe = (inst: InstanceSim, a: Attendu | null): string[] => {
+    if (!a) return []
+    if (a.personne) return [a.personne.id]
+    const x = exclu(inst)
+    const l = (a.profil ? (a.unite ? porteursDans(a.unite, a.profil) : porteursPartout(a.profil))
+      : a.unite ? magasin.organisation.filter((m) => m.actif && !!m.unite && magasin.sousUnites(a.unite!).includes(m.unite)) : []).map((m) => m.id).filter((m) => m !== x)
+    const chef = a.unite ? chefDe(a.unite) : null
+    return l.length ? l : chef && chef !== x ? [chef] : []
+  }
+  /**
+   * QUO-05 : notification PROCESSUS de MS-NOTIFICATION simulée (mêmes titres que ReglesNotifications), jamais à l'acteur ;
+   * gardée avec l'état et remise aux abonnés (cloche de la personne connectée).
+   */
+  const notifier = (inst: InstanceSim, qui: string[], acteur: PersonneActivite | null, titre: string, suite: string | null, etape: string | null, cle: string) => {
+    const le = maintenant()
+    const sousTitre = [inst.intitule, suite].filter(Boolean).join(', ') || null
+    ;[...new Set(qui)].filter((d) => d !== acteur?.id).forEach((destinataire) => {
+      const n: NotificationProcessusDemo = {
+        destinataire, type: 'PROCESSUS', titre, sousTitre, lien: lien(inst, etape ?? undefined), acteur: acteur ? { id: acteur.id, nomAffiche: acteur.nomAffiche } : null,
+        reference: { service: 'pilotage', type: etape ? 'ETAPE' : 'INSTANCE', id: `${inst.id}${etape ? `/${etape}` : ''}/${cle}` }, le,
+      }
+      etat.notifications = [...(etat.notifications ?? []), n]
+      ;(ABONNES.get(magasin) ?? []).forEach((f) => f(n))
+    })
+  }
+  /** Échéance d'une notification, au format local (JJ/MM/AAAA). */
+  const jourLocal = (d: string | null) => (d && /^\d{4}-\d{2}-\d{2}/.test(d) ? `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}` : d)
+  const attenteSoumise = (inst: InstanceSim, e: EtapeSim, acteur: PersonneActivite, verbe: 'soumise' | 'signée') => {
+    if (e.etat === 'A_SIGNER') {
+      const min = Math.min(...e.signatures.filter((s) => s.etat === 'ATTENDUE').map((s) => s.ordre))
+      notifier(inst, e.signatures.filter((s) => s.etat === 'ATTENDUE' && s.ordre === min).flatMap((s) => destinatairesDe(inst, s.attendu)), acteur, `Signature attendue : ${e.libelle}`, `${verbe} par ${acteur.nomAffiche}`, e.code, `ATTENTE-${e.renvois}-${verbe}`)
+    } else if (e.etat === 'A_VALIDER') {
+      notifier(inst, destinatairesDe(inst, e.validateur), acteur, `Validation attendue : ${e.libelle}`, `${verbe} par ${acteur.nomAffiche}`, e.code, `VALIDATION-${e.renvois}`)
+    }
+  }
+  /**
    * Résolution par profil (désignation hors de l'unité) : porteurs actifs dans l'unité, à défaut dans tout le GIMAC ; un
    * seul : à lui ; plusieurs : à prendre (sans unité s'ils sont hors de l'unité) ; aucun : chef de l'unité, à défaut lanceur.
    */
-  const parProfil = (inst: InstanceSim, profil: string | null, unite: string): Attendu => {
+  const parProfil = (inst: InstanceSim, profil: string | null, unite: string, sauf: string | null = null): Attendu => {
     if (!profil) return { personne: null, profil: null, unite }
-    const dans = porteursDans(unite, profil)
+    const dans = porteursDans(unite, profil).filter((m) => m.id !== sauf)
     if (dans.length === 1) return { personne: personne(dans[0].id), profil: null, unite }
     if (dans.length > 1) return { personne: null, profil, unite }
-    const ailleurs = porteursPartout(profil)
+    const ailleurs = porteursPartout(profil).filter((m) => m.id !== sauf)
     if (ailleurs.length === 1) return { personne: personne(ailleurs[0].id), profil: null, unite }
     if (ailleurs.length > 1) return { personne: null, profil, unite: null }
+    // Aucun autre porteur : chef de l'unité ; chef initiateur (D-99) : son responsable ; sinon le lanceur s'il est admis.
     const chef = chefDe(unite)
-    return { personne: personne(chef && membre(chef)?.actif !== false ? chef : inst.lanceur.id), profil: null, unite }
+    if (chef && chef !== sauf && membre(chef)?.actif !== false) return { personne: personne(chef), profil: null, unite }
+    const superieur = chef && chef === sauf ? membre(chef)?.responsableId : null
+    if (superieur && superieur !== sauf && membre(superieur)?.actif !== false) return { personne: personne(superieur), profil: null, unite }
+    return sauf ? { personne: null, profil, unite } : { personne: personne(inst.lanceur.id), profil: null, unite }
   }
   /** Personne résolue d'un intervenant, sinon par son profil (ou son profil de remplacement). */
   const resoudre = (inst: InstanceSim, i: Intervenant, cle: string): Attendu => {
     const unite = i.unite || inst.unite
-    const actif = (pid: string | null | undefined) => (pid && membre(pid)?.actif !== false ? personne(pid) : null)
-    const parRemplacement = (p: PersonneActivite | null): Attendu => (p ? { personne: p, profil: null, unite } : parProfil(inst, i.remplacement ?? null, unite))
+    const sauf = i.mode === 'LANCEUR' ? null : exclu(inst)
+    const actif = (pid: string | null | undefined) => (pid && pid !== sauf && membre(pid)?.actif !== false ? personne(pid) : null)
+    const parRemplacement = (p: PersonneActivite | null): Attendu => (p ? { personne: p, profil: null, unite } : parProfil(inst, i.remplacement ?? null, unite, sauf))
     switch (i.mode) {
-      case 'PROFIL': return parProfil(inst, i.profil ?? null, unite)
+      case 'PROFIL': return parProfil(inst, i.profil ?? null, unite, sauf)
       case 'PERSONNE': return parRemplacement(actif(i.personneId))
       case 'AU_LANCEMENT': return parRemplacement(actif(inst.designations[cle]?.id))
       case 'CHEF_UNITE': return parRemplacement(actif(chefDe(unite)))
@@ -427,6 +511,12 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
       createur: inst.lanceur.id, echeance: e.echeance, reference: `${inst.id}/${e.code}`, lien: lien(inst, e.code),
     }) ?? null
     historiser(inst.historique, 'ETAPE_ACTIVEE', r.personne ? r.personne.nomAffiche : `À prendre : ${r.profil ? (PRESENTATIONS_PROFILS[r.profil]?.libelle ?? r.profil) : r.unite}`, e.code, acteur)
+    // QUO-05 : l'exécutant (ou les porteurs de l'étape à prendre), puis l'initiateur s'il n'en est pas (DEMANDE_AVANCEE).
+    const destinataires = destinatairesDe(inst, { personne: r.personne, profil: r.profil, unite: r.unite })
+    notifier(inst, destinataires, acteur, `${r.personne ? 'Étape à réaliser' : 'Étape à prendre'} : ${e.libelle}`, e.echeance ? `échéance ${jourLocal(e.echeance)}` : null, e.code, 'ACTIVEE')
+    if (!destinataires.includes(inst.lanceur.id)) {
+      notifier(inst, [inst.lanceur.id], acteur, `Votre demande avance : ${e.libelle}`, r.personne ? `étape en cours${e.echeance ? `, échéance ${jourLocal(e.echeance)}` : ''}` : 'en attente de prise en charge', e.code, 'AVANCEE')
+    }
   }
   const terminerEtape = (inst: InstanceSim, e: EtapeSim) => {
     Object.assign(e, { etat: 'TERMINEE', termineeLe: maintenant() })
@@ -437,27 +527,31 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
     if (inst.etapes.every((x) => x.etat === 'TERMINEE')) {
       Object.assign(inst, { etat: 'CLOSE', closeLe: maintenant() })
       historiser(inst.historique, 'INSTANCE_CLOSE')
+      notifier(inst, [inst.lanceur.id], acteurForce ?? moi(), `Processus terminé : ${inst.intitule}`, null, null, 'CLOSE')
     }
   }
   const apresSoumission = (inst: InstanceSim, e: EtapeSim) => {
     if (e.signatures.some((s) => s.etat === 'ATTENDUE')) e.etat = 'A_SIGNER'
     else if (e.validateur) e.etat = 'A_VALIDER'
     else terminerEtape(inst, e)
+    attenteSoumise(inst, e, acteurForce ?? moi(), 'soumise')
   }
   const vueInstance = (inst: InstanceSim): InstanceProcessus => {
     const piloter = peutPiloter(inst.unite)
     const encours = inst.etat === 'EN_COURS'
     return structuredClone({
       ...inst,
-      etapes: inst.etapes.map(({ def: _d, ...e }) => {
+      etapes: inst.etapes.map(({ def, ...e }) => {
         const minOrdre = Math.min(...e.signatures.filter((s) => s.etat === 'ATTENDUE').map((s) => s.ordre))
+        const separeExecution = separe(inst, moiId, def.intervenant)
         return {
           ...e,
           moi: {
-            executer: encours && e.etat === 'ACTIVE' && e.executant?.id === moiId,
-            prendre: encours && e.etat === 'ACTIVE' && !e.executant && peutAgir(e.aPrendre ? { personne: null, ...e.aPrendre } : null),
-            signer: encours && e.etat === 'A_SIGNER' ? e.signatures.filter((s) => s.etat === 'ATTENDUE' && s.ordre === minOrdre && peutAgir(s.attendu)).map((s) => s.code) : [],
-            valider: encours && e.etat === 'A_VALIDER' && peutAgir(e.validateur) && e.executant?.id !== moiId,
+            executer: encours && e.etat === 'ACTIVE' && e.executant?.id === moiId && !separeExecution,
+            prendre: encours && e.etat === 'ACTIVE' && !e.executant && !separeExecution && peutAgir(e.aPrendre ? { personne: null, ...e.aPrendre } : null),
+            signer: encours && e.etat === 'A_SIGNER' ? e.signatures.filter((s) => s.etat === 'ATTENDUE' && s.ordre === minOrdre && peutAgir(s.attendu)
+              && !separe(inst, moiId, def.signatures.find((x) => x.code === s.code)?.signataire)).map((s) => s.code) : [],
+            valider: encours && e.etat === 'A_VALIDER' && peutAgir(e.validateur) && e.executant?.id !== moiId && !separe(inst, moiId, def.validateur),
             reaffecter: encours && (piloter || lanceurDesigne(inst, inst.etapes.find((x) => x.code === e.code)!)) && ['ACTIVE', 'A_SIGNER', 'A_VALIDER'].includes(e.etat),
           },
         }
@@ -465,11 +559,16 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
       droits: { suspendre: piloter && encours, reprendre: piloter && inst.etat === 'SUSPENDUE', annuler: piloter && ['EN_COURS', 'SUSPENDUE'].includes(inst.etat), reaffecter: piloter && encours },
     })
   }
+  // QUO-03 : le porteur qui peut prendre une étape, la valider ou la signer (profil) lit aussi l'instance, comme MS-PILOTAGE.
   const lisibleInstance = (inst: InstanceSim) => peutLire(inst.unite) || peutPiloter(inst.unite) || inst.lanceur.id === moiId
-    || inst.etapes.some((e) => e.executant?.id === moiId || e.validateur?.personne?.id === moiId || e.signatures.some((s) => s.attendu.personne?.id === moiId || s.signePar?.id === moiId))
+    || inst.etapes.some((e) => e.executant?.id === moiId || e.validateur?.personne?.id === moiId || e.signatures.some((s) => s.attendu.personne?.id === moiId || s.signePar?.id === moiId)
+      || (e.etat === 'ACTIVE' && !e.executant && peutAgir(e.aPrendre ? { personne: null, ...e.aPrendre } : null))
+      || (e.etat === 'A_VALIDER' && peutAgir(e.validateur)) || (e.etat === 'A_SIGNER' && e.signatures.some((s) => s.etat === 'ATTENDUE' && peutAgir(s.attendu))))
+  // QUO-12 : refus explicite (403) comme le service ; « introuvable » (404) seulement pour une instance inexistante.
   const trouverInstance = (iid: string) => {
     const inst = instances.find((x) => x.id === iid)
-    if (!inst || !lisibleInstance(inst)) throw refus(404, 'PIL_PROCESSUS_INSTANCE_INTROUVABLE', 'Instance introuvable.')
+    if (!inst) throw refus(404, 'PIL_PROCESSUS_INSTANCE_INTROUVABLE', 'Instance introuvable.')
+    if (!lisibleInstance(inst)) throw refus(403, 'PIL_PROCESSUS_INTERDIT', 'Cette instance n’est lisible que de l’unité et de ses intervenants.')
     return inst
   }
   const enCours = (inst: InstanceSim) => {
@@ -483,8 +582,9 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
   const exigerEtat = (e: EtapeSim, attendu: EtapeSim['etat']) => {
     if (e.etat !== attendu) throw refus(409, 'PIL_PROCESSUS_ETAPE_ETAT', 'L’étape n’est pas dans l’état attendu.', { etat: e.etat, attendu })
   }
-  const exigerExecutant = (e: EtapeSim) => {
+  const exigerExecutant = (inst: InstanceSim, e: EtapeSim) => {
     if (e.executant?.id !== moiId) throw refus(403, 'PIL_PROCESSUS_NON_INTERVENANT', 'Seul l’exécutant de l’étape agit sur elle.')
+    if (separe(inst, moiId, e.def.intervenant)) throw separation(403, { lanceurId: inst.lanceur.id })
   }
   const motifObligatoire = (m: string | undefined) => {
     if (!m?.trim() || m.trim().length > LIMITES_PROCESSUS.motif) throw refus(400, 'PIL_REQUETE_INVALIDE', 'Motif obligatoire.', { champ: 'motif' })
@@ -609,7 +709,8 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
       ],
     }, 'U-001')
     // Instance arrivée à la signature du procès-verbal de recette par le chef d'unité.
-    const instA = lancer(flux, { intitule: 'Flux SFTP vers la Banque de Libreville', champs: { SOURCE: '10.20.4.15', DESTINATION: '172.16.8.40', PORT: 22, PROTOCOLE: 'TCP', DATE_SOUHAITEE: ajouterJours(aujourdhui(), 3) }, designations: { MISE_EN_OEUVRE: 'u-collab' } }, 'u-res')
+    // D-99 : l'initiatrice (technicienne réseau) n'intervient pas sur sa demande ; l'ingénieur réseau mène l'analyse et la mise en œuvre.
+    const instA = lancer(flux, { intitule: 'Flux SFTP vers la Banque de Libreville', champs: { SOURCE: '10.20.4.15', DESTINATION: '172.16.8.40', PORT: 22, PROTOCOLE: 'TCP', DATE_SOUHAITEE: ajouterJours(aujourdhui(), 3) }, designations: { MISE_EN_OEUVRE: 'u-res' } }, 'u-collab')
     const derouler = (inst: InstanceSim, code: string, executant: string, livrables: [string, string, string][], valeurs: Record<string, string | number> = {}) => {
       acteurForce = personne(executant)
       const e = etapeDe(inst, code)
@@ -623,16 +724,16 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
       e.soumiseLe = maintenant()
       return e
     }
-    terminerEtape(instA, derouler(instA, 'DEMANDE', 'u-res', []))
+    terminerEtape(instA, derouler(instA, 'DEMANDE', 'u-collab', []))
     const analyse = derouler(instA, 'ANALYSE', 'u-res', [['NOTE_ANALYSE', 'note-analyse-flux-sftp.pdf', 'application/pdf']])
     analyse.etat = 'A_VALIDER'
     acteurForce = personne('u-resp-info')
     historiser(instA.historique, 'ETAPE_VALIDEE', null, 'ANALYSE')
     terminerEtape(instA, analyse)
-    terminerEtape(instA, derouler(instA, 'MISE_EN_OEUVRE', 'u-collab', [['CONFIGURATION', 'regles-pare-feu-sftp.txt', 'text/plain']], { EQUIPEMENTS: 'FW-CORE-01, FW-CORE-02' }))
+    terminerEtape(instA, derouler(instA, 'MISE_EN_OEUVRE', 'u-res', [['CONFIGURATION', 'regles-pare-feu-sftp.txt', 'text/plain']], { EQUIPEMENTS: 'FW-CORE-01, FW-CORE-02' }))
     apresSoumission(instA, derouler(instA, 'RECETTE', 'u-res', [['PV_RECETTE', 'pv-recette-flux-sftp.pdf', 'application/pdf']], { RESULTAT: 'Conforme' }))
     // Instance à l'analyse : tâche à prendre par les porteurs du profil « Pôle réseau ».
-    const instB = lancer(flux, { intitule: 'Ouverture du port 443 pour la supervision', champs: { SOURCE: '10.20.6.2', DESTINATION: '10.30.1.9', PORT: 443, PROTOCOLE: 'TCP' }, designations: { MISE_EN_OEUVRE: 'u-collab' } }, 'u-collab')
+    const instB = lancer(flux, { intitule: 'Ouverture du port 443 pour la supervision', champs: { SOURCE: '10.20.6.2', DESTINATION: '10.30.1.9', PORT: 443, PROTOCOLE: 'TCP' }, designations: { MISE_EN_OEUVRE: 'u-res' } }, 'u-collab')
     terminerEtape(instB, derouler(instB, 'DEMANDE', 'u-collab', []))
     // D-98 : demandes ouvertes à tout le GIMAC, publiées par le service destinataire.
     const publiees = demandesDemo().map((d) => {
@@ -652,19 +753,36 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
   }
   if (!existant && !repris) demonstration()
 
-  // État repris d'un autre profil de démonstration (D-98) : les tâches des étapes en cours renaissent dans « Mon activité ».
+  // État repris d'un autre profil de démonstration (D-98) : les tâches des étapes activées renaissent dans « Mon activité »,
+  // en cours comme terminées ou annulées (QUO-19 : l'historique des tâches de processus survit au rechargement) ; une
+  // tâche déjà gardée par « Mon activité » (démonstration continue) est reprise telle quelle.
   if (repris && pont) {
-    for (const inst of instances.filter((i) => i.etat === 'EN_COURS' || i.etat === 'SUSPENDUE')) {
-      for (const e of inst.etapes.filter((x) => x.etat === 'ACTIVE' || x.etat === 'A_SIGNER' || x.etat === 'A_VALIDER')) {
+    for (const inst of instances) {
+      for (const e of inst.etapes.filter((x) => x.etat !== 'EN_ATTENTE' && (x.activeeLe || x.etat === 'ACTIVE' || x.etat === 'A_SIGNER' || x.etat === 'A_VALIDER'))) {
+        const reference = `${inst.id}/${e.code}`
+        const gardee = pont.trouver?.(reference) ?? null
+        if (gardee) {
+          e.tacheId = gardee
+          continue
+        }
+        const enCoursEtape = ['ACTIVE', 'A_SIGNER', 'A_VALIDER'].includes(e.etat)
+        if (!enCoursEtape && !e.executant) continue
         e.tacheId = pont.creer({
           titre: `${inst.intitule} : ${e.libelle}`, description: e.action || null, responsable: e.executant?.id ?? null, uniteCible: e.executant ? null : e.aPrendre?.unite ?? null,
-          profilRequis: e.executant ? null : e.aPrendre?.profil ?? null, createur: inst.lanceur.id, echeance: e.echeance, reference: `${inst.id}/${e.code}`, lien: lien(inst, e.code),
+          profilRequis: e.executant ? null : e.aPrendre?.profil ?? null, createur: inst.lanceur.id, echeance: e.echeance, reference, lien: lien(inst, e.code),
         })
+        if (e.etat === 'TERMINEE') pont.terminer(e.tacheId)
+        else if (e.etat === 'ANNULEE') pont.annuler(e.tacheId)
       }
     }
   }
-  // La prise d'une tâche d'étape (Mon activité) désigne l'exécutant de l'étape (§5.3).
+  // La prise d'une tâche d'étape (Mon activité) désigne l'exécutant de l'étape (§5.3) ; jamais par l'initiateur (D-99).
   if (pont) {
+    pont.verifierPrise = (tid, pid, attribution) => {
+      const inst = instances.find((i) => i.etapes.some((e) => e.tacheId === tid))
+      const e = inst?.etapes.find((x) => x.tacheId === tid)
+      if (inst && e && separe(inst, pid, e.def.intervenant)) throw separation(attribution ? 422 : 403, { personneId: pid })
+    }
     pont.surPrise = (tid, p) => {
       const inst = instances.find((i) => i.etapes.some((e) => e.tacheId === tid))
       const e = inst?.etapes.find((x) => x.tacheId === tid)
@@ -715,7 +833,8 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
     await pause(DUREE_ETAPE_DOCUMENT_MS / 4)
     const ticket = id('DOC')
     const sha256 = empreinteDemo(`${fichier.name}:${total}`)
-    documents.set(ticket, { nomFichier: fichier.name, typeMime: fichier.type || 'application/octet-stream', taille: total, sha256, reference, deposant: moiId })
+    const contenu = total <= CONTENU_MAX ? await enBase64(fichier).catch(() => undefined) : undefined
+    documents.set(ticket, { nomFichier: fichier.name, typeMime: fichier.type || 'application/octet-stream', taille: total, sha256, reference, deposant: moiId, contenu })
     garderEtat(etat)
     o.surProgression?.({ phase: 'pret', envoye: total, total })
     return { documentId: ticket, sha256, dedoublonne: false, depotId: id('DEPOT') }
@@ -841,12 +960,26 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
       for (const d of designationsAttendues(p.etapes)) {
         const pid = l.designations[d.cle]
         if (!pid) continue
+        if (pid === moiId && !p.initiateurs?.initiateurIntervenant) throw separation(422, { cle: d.cle, personneId: pid })
         const admis = membre(pid)?.actif !== false && !!membre(pid) && (pid === moiId || portePartout(pid, d.intervenant.remplacement) || magasin.couvre(moiId, 'TACHE_CONFIER', pid))
         if (!admis) throw refus(422, 'PIL_PROCESSUS_DESIGNATION_INVALIDE', 'Personne désignée inactive, ou ne portant pas le profil requis, ni dans votre portée.', { cle: d.cle, personneId: pid })
       }
       return vueInstance(lancer(p, l, moiId))
     }),
     instance: (iid) => attendre(() => vueInstance(trouverInstance(iid))),
+    // QUO-04 : pièce du formulaire de lancement ou livrable déposé, lisible de qui lit l'instance (comme MS-PILOTAGE).
+    documentInstance: (iid, documentId) => attendre(() => {
+      const inst = trouverInstance(iid)
+      const connu = inst.formulaire?.some((c) => !!c.valeur && typeof c.valeur === 'object' && 'documentId' in c.valeur && c.valeur.documentId === documentId)
+        || inst.etapes.some((e) => e.livrables.some((l) => l.depot?.documentId === documentId))
+      const d = documents.get(documentId)
+      if (!connu || !d) throw refus(404, 'PIL_PROCESSUS_DOCUMENT_INCONNU', 'Document inconnu de cette instance.')
+      return documentId
+    }).then((doc) => {
+      // Le contenu est rendu hors de la copie de la réponse (un Blob ne se clone pas), comme le document d'un rapport.
+      const d = documents.get(doc)!
+      return { blob: d.contenu ? depuisBase64(d.contenu, d.typeMime) : contenuDemo(d), empreinte: d.sha256 }
+    }),
     // D-98 : pièce jointe du formulaire de lancement, même dépôt simulé, référence = la définition lancée.
     televerserPieceLancement: (fichier: File, processusId: string, o: OptionsTeleversement = {}) => deposerFragmente(fichier, processusId, o),
     // Dépôt fragmenté simulé (D-74), finalité PROCESSUS_UNITE : progression en dix étapes, vérification, ticket.
@@ -856,7 +989,7 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
       enCours(inst)
       const e = etapeDe(inst, code)
       exigerEtat(e, 'ACTIVE')
-      exigerExecutant(e)
+      exigerExecutant(inst, e)
       deposer(inst, e, livrable, documentId, moiId)
       return vueInstance(inst)
     }),
@@ -865,7 +998,7 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
       enCours(inst)
       const e = etapeDe(inst, code)
       exigerEtat(e, 'ACTIVE')
-      exigerExecutant(e)
+      exigerExecutant(inst, e)
       Object.entries(valeurs).forEach(([c, v]) => {
         const champ = e.champs.find((x) => x.code === c)
         const invalide = !champ || (v !== null && ((champ.type === 'NOMBRE' && Number.isNaN(Number(v))) || (champ.type === 'DATE' && !/^\d{4}-\d{2}-\d{2}$/.test(String(v)))
@@ -885,6 +1018,7 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
       if (!s) throw refus(404, 'PIL_PROCESSUS_SIGNATURE_INCONNUE', 'Signature inconnue.')
       if (s.etat === 'SIGNEE') throw refus(409, 'PIL_PROCESSUS_DEJA_SIGNEE', 'Signature déjà apposée.')
       if (!peutAgir(s.attendu)) throw refus(403, 'PIL_PROCESSUS_NON_SIGNATAIRE', 'Vous n’êtes pas le signataire attendu.')
+      if (separe(inst, moiId, e.def.signatures.find((x) => x.code === signature)?.signataire)) throw separation(403, { lanceurId: inst.lanceur.id })
       if (e.signatures.some((x) => x.etat === 'ATTENDUE' && x.ordre < s.ordre)) throw refus(409, 'PIL_PROCESSUS_SIGNATURE_ORDRE', 'Une signature précédente est attendue.')
       if (!assertion) throw refus(428, 'PIL_PROCESSUS_REAUTH_REQUISE', 'Réauthentification forte exigée.')
       const { docs, empreinte } = empreinteSignature(inst, s.porte)
@@ -894,6 +1028,7 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
         if (e.validateur) e.etat = 'A_VALIDER'
         else terminerEtape(inst, e)
       }
+      attenteSoumise(inst, e, moi(), 'signée')
       return vueInstance(inst)
     }),
     terminer: (iid, code) => attendre(() => {
@@ -901,7 +1036,7 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
       enCours(inst)
       const e = etapeDe(inst, code)
       exigerEtat(e, 'ACTIVE')
-      exigerExecutant(e)
+      exigerExecutant(inst, e)
       const livrables = e.livrables.filter((l) => l.obligatoire && !l.depot).map((l) => l.code)
       if (livrables.length) throw refus(422, 'PIL_PROCESSUS_LIVRABLES_MANQUANTS', 'Des livrables obligatoires manquent.', { livrables })
       const champs = e.champs.filter((c) => c.obligatoire && (c.valeur === null || c.valeur === '')).map((c) => c.code)
@@ -917,10 +1052,12 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
       const e = etapeDe(inst, code)
       exigerEtat(e, 'A_VALIDER')
       if (!peutAgir(e.validateur) || e.executant?.id === moiId) throw refus(403, 'PIL_PROCESSUS_NON_VALIDATEUR', 'Vous n’êtes pas le validateur de cette étape.')
+      if (separe(inst, moiId, e.def.validateur)) throw separation(403, { lanceurId: inst.lanceur.id })
       if (decision === 'RENVOYER') {
         const m = motifObligatoire(motif)
         Object.assign(e, { etat: 'ACTIVE', renvois: e.renvois + 1, signatures: e.signatures.map((s) => ({ ...s, etat: 'ATTENDUE', signePar: null, signeLe: null, empreinte: null, documents: [] })) })
         historiser(inst.historique, 'ETAPE_RENVOYEE', m, e.code)
+        notifier(inst, e.executant ? [e.executant.id] : [], moi(), `Étape renvoyée : ${e.libelle}`, null, e.code, `RENVOI-${e.renvois}`)
       } else {
         historiser(inst.historique, 'ETAPE_VALIDEE', motif?.trim() || null, e.code)
         terminerEtape(inst, e)
@@ -933,6 +1070,7 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
       const e = etapeDe(inst, code)
       if (!peutReaffecter(inst, e)) throw refus(403, 'PIL_PROCESSUS_INTERDIT', 'Réaffecter exige de diriger l’unité, le pouvoir TACHE_CONFIER, ou d’être le lanceur d’une étape à prendre.')
       const motif = motifObligatoire(m)
+      if (personneId === exclu(inst)) throw separation(422, { personneId })
       if (!['ACTIVE', 'A_SIGNER', 'A_VALIDER'].includes(e.etat)) throw refus(409, 'PIL_PROCESSUS_ETAPE_ETAT', 'L’étape n’est pas active.', { etat: e.etat, attendu: 'ACTIVE' })
       const unite = e.def.intervenant.unite || inst.unite
       const admis = !!membre(personneId) && membre(personneId)!.actif !== false
@@ -941,6 +1079,7 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
       Object.assign(e, { executant: personne(personneId), aPrendre: null })
       if (e.tacheId) pont?.affecter(e.tacheId, personneId)
       historiser(inst.historique, 'ETAPE_REAFFECTEE', `${personne(personneId).nomAffiche} : ${motif}`, e.code)
+      notifier(inst, [personneId], moi(), `Étape réaffectée : ${e.libelle}`, `réaffectée par ${moi().nomAffiche}`, e.code, `REAFFECTEE-${personneId}`)
       return vueInstance(inst)
     }),
     candidats: (q) => attendre(() => {
@@ -952,7 +1091,10 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
       enCours(inst)
       const e = etapeDe(inst, code)
       if (!peutReaffecter(inst, e)) throw refus(403, 'PIL_PROCESSUS_INTERDIT', 'Réservé au chef de l’unité et au lanceur d’une étape à prendre.')
-      return candidatsDe(e.def.intervenant.unite || inst.unite, profilExige(e))
+      // D-99 : l'initiateur n'est jamais proposé ; « exclus » le nomme pour que l'interface l'écarte aussi de l'annuaire.
+      const c = candidatsDe(e.def.intervenant.unite || inst.unite, profilExige(e))
+      const x = exclu(inst)
+      return { ...c, dansUnite: c.dansUnite.filter((m) => m.id !== x), ailleurs: c.ailleurs.filter((m) => m.id !== x), exclus: x ? [x] : [] }
     }),
     suspendre: (iid, m) => attendre(() => {
       const inst = trouverInstance(iid)
@@ -982,6 +1124,7 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
       })
       Object.assign(inst, { etat: 'ANNULEE', closeLe: maintenant(), motif })
       historiser(inst.historique, 'INSTANCE_ANNULEE', motif)
+      notifier(inst, [inst.lanceur.id], moi(), `Processus annulé : ${inst.intitule}`, `annulé par ${moi().nomAffiche}`, null, 'ANNULEE')
       return vueInstance(inst)
     }),
   }

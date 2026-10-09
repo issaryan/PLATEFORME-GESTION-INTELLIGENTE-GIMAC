@@ -102,7 +102,21 @@ describe('Verrou 1 : procès-verbal de certification', () => {
   })
 })
 
+/** LIA-2026-019 : attestations vérifiées et archivées, l'opération de l'approbation (rang 23) est ouverte aux visas. */
+async function approbationOuverte() {
+  const services = simules()
+  await services.decision.verifierAttestation('LIA-2026-019', 'PCI_DSS', true, '')
+  await services.decision.archiverAttestations('LIA-2026-019')
+  return services
+}
+
 describe('Visas optionnels', () => {
+  it('CER-02 : visa non proposé tant que l’opération de l’approbation n’est pas ouverte', async () => {
+    ouvrir('LIA-2026-019', 'ROLE_CONFORMITE')
+    const zone = await screen.findByRole('region', { name: 'Visa de la conformité' })
+    expect(within(zone).queryByRole('button', { name: 'Viser favorablement' })).toBeNull()
+  })
+
   it('absents quand ils ne sont pas activés', async () => {
     ouvrir('LIA-2026-012', 'ROLE_DG')
     await screen.findByText('Changement approuvé par la sécurité')
@@ -110,7 +124,8 @@ describe('Visas optionnels', () => {
   })
 
   it('conformité : visa favorable motivé et signé ; le DG ne voit que le sien', async () => {
-    ouvrir('LIA-2026-019', 'ROLE_CONFORMITE')
+    const services = await approbationOuverte()
+    ouvrir('LIA-2026-019', 'ROLE_CONFORMITE', { services })
     const zone = await screen.findByRole('region', { name: 'Visa de la conformité' })
     const dg = screen.getByRole('region', { name: 'Visa de la direction générale' })
     expect(within(dg).queryByRole('button')).toBeNull()
@@ -125,7 +140,7 @@ describe('Visas optionnels', () => {
   })
 
   it('direction générale : visa défavorable, motif obligatoire', async () => {
-    ouvrir('LIA-2026-019', 'ROLE_DG')
+    ouvrir('LIA-2026-019', 'ROLE_DG', { services: await approbationOuverte() })
     const zone = await screen.findByRole('region', { name: 'Visa de la direction générale' })
     fireEvent.click(within(zone).getByRole('button', { name: 'Viser défavorablement' }))
     const d = await screen.findByRole('dialog')
@@ -162,19 +177,17 @@ describe('Verrou 2 : approbation de la sécurité', () => {
 
   it('production monétique : pas de vérification d\'attestation ; référence de fiche refusée puis acceptée', async () => {
     ouvrir('LIA-2026-019', 'ROLE_PRODUCTION_MONETIQUE')
-    await screen.findByText('Dossier de changement (rang 20)')
+    await screen.findByRole('heading', { name: /^Dossier de changement/ })
     expect(screen.queryByRole('button', { name: 'Déclarer conforme' })).toBeNull()
     // Saisie de la référence dans une fenêtre modale, puis confirmation.
     fireEvent.click(screen.getByRole('button', { name: 'Référencer la fiche de changement' }))
-    let f = await screen.findByRole('dialog', { name: 'Référencer la fiche de changement' })
+    const f = await screen.findByRole('dialog', { name: 'Référencer la fiche de changement' })
     fireEvent.change(within(f).getByRole('textbox', { name: /Référence de la fiche/ }), { target: { value: 'chg412' } })
-    fireEvent.click(within(f).getByRole('button', { name: 'Référencer la fiche de changement' }))
-    const d = await screen.findByRole('alertdialog')
-    fireEvent.click(within(d).getByRole('button', { name: 'Référencer la fiche de changement' }))
-    await waitFor(() => expect(d.textContent).toContain('Référence de fiche de changement invalide'))
-    fireEvent.click(within(d).getByRole('button', { name: 'Annuler' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Référencer la fiche de changement' }))
-    f = await screen.findByRole('dialog', { name: 'Référencer la fiche de changement' })
+    // CER-10 : format contrôlé à la saisie (motif du serveur) : erreur sous le champ, aucune confirmation possible.
+    expect(within(f).getByText(/Référence de fiche de changement invalide/)).toBeTruthy()
+    const valider = within(f).getByRole('button', { name: 'Référencer la fiche de changement' }) as HTMLButtonElement
+    expect(valider.disabled || valider.getAttribute('aria-disabled') === 'true').toBe(true)
+    expect(screen.queryByRole('alertdialog')).toBeNull()
     fireEvent.change(within(f).getByRole('textbox', { name: /Référence de la fiche/ }), { target: { value: 'CHG-2026-412' } })
     fireEvent.click(within(f).getByRole('button', { name: 'Référencer la fiche de changement' }))
     fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Référencer la fiche de changement' }))

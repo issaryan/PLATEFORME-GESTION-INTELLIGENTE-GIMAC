@@ -15,8 +15,8 @@ export const INSTITUTIONS = [
   { id: 'INST-0061', code: 'INST-0061', denomination: 'Banque D' },
 ]
 export const COLLABORATEURS = [
-  { id: 'U-101', nom: 'Ingénieur d\'homologation A', role: 'INGENIEUR_HOMOLOGATION' },
-  { id: 'U-102', nom: 'Ingénieur d\'homologation B', role: 'INGENIEUR_HOMOLOGATION' },
+  { id: 'U-101', nom: 'Joël Ekotto Mballa', role: 'INGENIEUR_HOMOLOGATION' },
+  { id: 'U-102', nom: 'Arnaud Mvogo Eyenga', role: 'INGENIEUR_HOMOLOGATION' },
   { id: 'U-001', nom: 'Chef du DES', role: 'CHEF_DES' },
   // Conducteurs de projet (ROLE_CONDUCTEUR_PROJET) : seuls désignables à la tête d'une liaison (D-58).
   { id: 'U-201', nom: 'Aïcha Mahamat Nour', role: 'CONDUCTEUR_PROJET' },
@@ -42,12 +42,17 @@ export function intervenantsDe(l: Pick<Liaison, 'institutionId' | 'institutionNo
   ]
 }
 
+/** Empreinte de démonstration : toute la graine est mêlée (FNV-1a), deux graines différentes donnent deux empreintes différentes. */
 const hex = (graine: string) => {
   let h = 2166136261
+  for (let i = 0; i < graine.length; i++) {
+    h ^= graine.charCodeAt(i)
+    h = Math.imul(h, 16777619) >>> 0
+  }
   let s = ''
   for (let i = 0; s.length < 64; i++) {
-    h ^= graine.charCodeAt(i % graine.length) + i
-    h = Math.imul(h, 16777619) >>> 0
+    h ^= (i + 1) * 0x9e3779b9
+    h = Math.imul(h ^ (h >>> 15), 16777619) >>> 0
     s += h.toString(16).padStart(8, '0')
   }
   return s.slice(0, 64)

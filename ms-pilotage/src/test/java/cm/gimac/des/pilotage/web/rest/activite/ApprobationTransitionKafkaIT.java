@@ -123,7 +123,7 @@ class ApprobationTransitionKafkaIT extends AbstractPilotageIT {
             .perform(get("/api/v1/taches/" + id).with(agent(CHEF_DDRM)))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.aPrendre").value(true))
-            .andExpect(jsonPath("$.titre").value("Statuer sur la transition SUSPENDU vers ACTIF : Banque B"))
+            .andExpect(jsonPath("$.titre").value("Statuer sur le passage de Suspendu à Actif : Banque B"))
             .andExpect(jsonPath("$.priorite").value("HAUTE"))
             .andExpect(jsonPath("$.permissionsRequises[0]").value("PAR_TRANSITION_APPROVE"))
             .andExpect(jsonPath("$.origine.type").value("DECISION"))
@@ -138,6 +138,16 @@ class ApprobationTransitionKafkaIT extends AbstractPilotageIT {
         assertThat(mesTaches(CHEF_DDRM)).contains(id);
         assertThat(mesTaches(AGENT_BIS)).contains(id);
         assertThat(mesTaches(AGENT)).doesNotContain(id);
+        // DDR-28 : ni le créateur ni le responsable n'annulent ou ne terminent à la main la tâche d'une décision.
+        mvc
+            .perform(
+                post("/api/v1/taches/" + id + "/transition")
+                    .with(agent(AGENT))
+                    .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                    .content(json.writeValueAsString(Map.of("etat", "ANNULEE", "motif", "Plus utile")))
+            )
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.code").value("PIL_TACHE_DECISION"));
 
         // Rejeu du même événement : une seule tâche.
         envoyer(demandee, "participant.transition-requested.v1", institution, proposition(institution, transition, "SUSPENDU", "ACTIF", 2));

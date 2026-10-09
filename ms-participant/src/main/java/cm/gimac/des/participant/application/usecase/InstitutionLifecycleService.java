@@ -169,6 +169,7 @@ public class InstitutionLifecycleService implements ManageInstitutionUseCase {
     public Institution definirConditionsAdhesion(UUID institutionId, ConditionsAdhesion c, Acteur acteur) {
         Institution i = verrouiller(institutionId);
         exigerStatut(i, InstitutionStatus.CANDIDAT);
+        exigerConditionsCompletes(c);
         verifierUnicite(null, null, c.codeParticipant(), i.getId());
         i.setParticipantCode(c.codeParticipant());
         i.setMembershipMode(c.mode());
@@ -370,7 +371,17 @@ public class InstitutionLifecycleService implements ManageInstitutionUseCase {
             AGREGAT_TRANSITION,
             i.getId(),
             TransitionRejectedPayload.TYPE,
-            new TransitionRejectedPayload(i.getId(), t.getId(), t.getFromStatus().name(), t.getToStatus().name(), motif, acteur.id())
+            new TransitionRejectedPayload(
+                i.getId(),
+                t.getId(),
+                t.getFromStatus().name(),
+                t.getToStatus().name(),
+                motif,
+                acteur.id(),
+                t.getRequesterId(),
+                i.getName(),
+                TransitionRequestedPayload.lienTransitions(i.getId())
+            )
         );
         return t;
     }
@@ -540,6 +551,37 @@ public class InstitutionLifecycleService implements ManageInstitutionUseCase {
         }
     }
 
+    /**
+     * Conditions d'adhésion complètes (DDR-03) : code participant au format du registre (majuscules, chiffres et tirets,
+     * 20 caractères au plus) et mode obligatoires ; adhésion directe avec compte de règlement (RG-11), indirecte avec
+     * banque marraine et compte de cantonnement (RG-12). Refus 422 PAR_CONDITIONS_INVALID, un message par champ
+     * (details.champs), affiché sous le champ par l'interface.
+     */
+    static void exigerConditionsCompletes(ConditionsAdhesion c) {
+        Map<String, String> champs = new java.util.LinkedHashMap<>();
+        String code = c.codeParticipant();
+        if (code == null || code.isBlank()) {
+            champs.put("codeParticipant", "Champ obligatoire");
+        } else if (code.length() > 20 || !code.matches("^[A-Z0-9-]+$")) {
+            champs.put("codeParticipant", "Majuscules, chiffres et tirets, 20 caractères au plus");
+        }
+        if (c.mode() == null) {
+            champs.put("mode", "Champ obligatoire");
+        } else if (c.mode() == MembershipMode.DIRECT && (c.compteReglement() == null || c.compteReglement().isBlank())) {
+            champs.put("compteReglement", "Compte de règlement exigé en adhésion directe (RG-11)");
+        } else if (c.mode() == MembershipMode.INDIRECT) {
+            if (c.banqueMarraineId() == null) {
+                champs.put("banqueMarraineId", "Banque marraine exigée en adhésion indirecte (RG-12)");
+            }
+            if (c.compteCantonnement() == null || c.compteCantonnement().isBlank()) {
+                champs.put("compteCantonnement", "Compte de cantonnement exigé en adhésion indirecte (RG-12)");
+            }
+        }
+        if (!champs.isEmpty()) {
+            throw ParticipantException.unprocessable("PAR_CONDITIONS_INVALID", "Conditions d'adhésion incomplètes ou invalides", Map.of("champs", champs));
+        }
+    }
+
     private static void exigerNonTerminal(Institution i) {
         if (InstitutionLifecycle.estTerminal(i.getStatus())) {
             throw ParticipantException.conflict("PAR_INSTITUTION_CLOSED", "Institution close : fiche en lecture seule", Map.of("statut", i.getStatus().name()));
@@ -566,7 +608,10 @@ public class InstitutionLifecycleService implements ManageInstitutionUseCase {
                 acteur.id(),
                 t.getRequiredApprovals(),
                 recues,
-                definitive
+                definitive,
+                t.getRequesterId(),
+                i.getName(),
+                TransitionRequestedPayload.lienTransitions(i.getId())
             )
         );
     }

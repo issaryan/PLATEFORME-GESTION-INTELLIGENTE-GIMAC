@@ -17,14 +17,14 @@ describe('parcoursSimule : cadrage et liste', () => {
     expect((await parcours.listerLiaisons({ page: 1, taille: 50, recherche: 'banque e' })).total).toBe(1)
     expect((await parcours.listerLiaisons({ page: 1, taille: 50, etape: 'CADRAGE' })).contenu.every((l) => l.etapeCourante === 'CADRAGE')).toBe(true)
     const miens = await parcours.listerLiaisons({ page: 1, taille: 50, mesProjets: true })
-    expect(miens.contenu.every((l) => l.conducteurNom === 'Conducteur de projet 1')).toBe(true)
+    expect(miens.contenu.every((l) => l.conducteurNom === 'Aïcha Mahamat Nour')).toBe(true)
     expect((await parcours.listerLiaisons({ page: 2, taille: 4 })).contenu).toHaveLength(4)
   })
   it('ouverture : doublon refusé, nouvelle liaison cadrée ; désignation motivée et éligibilité', async () => {
     const { parcours } = svc()
     await expect(parcours.ouvrirLiaison({ institutionId: 'INST-0042', typeProjet: 'CARTE_INTERBANCAIRE', chefDeProjetId: 'U-COND-1' })).rejects.toEqual(refus('HOM_LIAISON_DUPLICATE'))
     const l = await parcours.ouvrirLiaison({ institutionId: 'INST-0042', typeProjet: 'PAIEMENT_MOBILE', chefDeProjetId: 'U-COND-2' })
-    expect(l).toMatchObject({ statut: 'CADREE', etapeCourante: 'CADRAGE', conducteurNom: 'Conducteur de projet 2' })
+    expect(l).toMatchObject({ statut: 'CADREE', etapeCourante: 'CADRAGE', conducteurNom: 'Brice Ondo Mba' })
     expect((await parcours.conducteurs()).map((p) => p.id)).toEqual(['U-COND-1', 'U-COND-2'])
     await expect(parcours.designerConducteur(l.id, 'U-COND-1', ' ')).rejects.toEqual(refus('HOM_DESIGNATION_REASON_REQUIRED'))
     await expect(parcours.designerConducteur(l.id, 'U-SNA-1', 'motif')).rejects.toEqual(refus('HOM_LEAD_NOT_ELIGIBLE'))
@@ -84,6 +84,9 @@ describe('parcoursSimule : dossier et opérations', () => {
     const { parcours } = svc()
     const o7 = (await parcours.operations('LIA-2026-041')).find((o) => o.rang === '7')!
     await parcours.deposerLivrable(o7.id, fichier('cr-lancement.pdf'), 'relu')
+    // HOM-05 : le compte rendu porte le visa du conducteur configuré au référentiel : l'opération se clôt après lui.
+    expect((await parcours.operations('LIA-2026-041')).find((o) => o.rang === '7')?.etat).toBe('EN_SIGNATURE')
+    await parcours.signerOperation('LIA-2026-041', '7', 'VISA_CONDUITE', 'assertion')
     expect((await parcours.operations('LIA-2026-041')).find((o) => o.rang === '8')?.etat).toBe('A_FAIRE')
     await expect(parcours.deposerLivrable(o7.id, fichier('x.pdf'), '')).rejects.toEqual(refus('HOM_OPERATION_NOT_OPEN'))
     await expect(parcours.affecterRessources('LIA-2026-041', [])).rejects.toEqual(refus('HOM_STEP_NOT_OPEN'))
@@ -146,6 +149,10 @@ describe('parcoursSimule : verrous de la décision (D-56)', () => {
     await expect(decision.relireFicheChangement('LIA-2026-019')).rejects.toEqual(refus('CER_CHANGE_RECORD_MISSING'))
     await decision.referencerFicheChangement('LIA-2026-019', 'CHG-2026-0412')
     await expect(decision.signerVisa('LIA-2026-019', 'CONFORMITE', true, '', '')).rejects.toEqual(refus('IAM_REAUTH_REQUIRED'))
+    // CER-01 : le visa se signe sur l'opération ouverte de l'approbation (rang 23, ouvert par l'archivage des attestations).
+    await expect(decision.signerVisa('LIA-2026-019', 'CONFORMITE', true, 'conforme', 'a')).rejects.toEqual(refus('CER_OPERATION_NON_OUVERTE'))
+    await decision.verifierAttestation('LIA-2026-019', 'PCI_DSS', true, '')
+    await decision.archiverAttestations('LIA-2026-019')
     await decision.signerVisa('LIA-2026-019', 'CONFORMITE', true, 'conforme', 'a')
     await expect(decision.signerVisa('LIA-2026-005', 'DIRECTION_GENERALE', true, '', 'a')).rejects.toEqual(refus('CER_VISA_NOT_REQUIRED'))
     await expect(portailParcours.deposerAttestation('LIA-2026-019', 'PCI_DSS', fichier('x.pdf'))).rejects.toEqual(refus('HOM_LIAISON_NOT_FOUND'))
@@ -200,7 +207,7 @@ describe('parcoursSimule : tableaux de bord et portail', () => {
     expect(sys.taches.map((t) => t.rang)).toEqual(expect.arrayContaining(['28', '29']))
     const echeances = sys.taches.map((t) => t.echeance ?? '9')
     expect(echeances).toEqual([...echeances].sort())
-    expect((await parcours.tableauActeur(['CONDUCTEUR'])).liaisons.every((l) => l.conducteurNom === 'Conducteur de projet 1')).toBe(true)
+    expect((await parcours.tableauActeur(['CONDUCTEUR'])).liaisons.every((l) => l.conducteurNom === 'Aïcha Mahamat Nour')).toBe(true)
     const p = await parcours.pilotage()
     expect(p.projetsBloques).toBe(1)
     expect(p.repartitionParEtape.map((r) => r.etape)).not.toContain('ADHESION')
@@ -232,6 +239,7 @@ describe('parcoursSimule : tableaux de bord et portail', () => {
       const o = (await parcours.operations(neuve.id)).find((x) => x.rang === r)!
       if (r === '6') await parcours.affecterRessources(neuve.id, [{ fonction: 'SNA', personneId: 'U-SNA-1' }])
       else await parcours.deposerLivrable(o.id, fichier(`${r}.pdf`), '')
+      if (r === '7') await parcours.signerOperation(neuve.id, '7', 'VISA_CONDUITE', 'assertion')
     }
     await portailParcours.communiquerCoordonnees(neuve.id, { adresse: 'essai.exemple', port: '8443' })
     const o12 = (await parcours.operations(neuve.id)).find((x) => x.rang === '12')!

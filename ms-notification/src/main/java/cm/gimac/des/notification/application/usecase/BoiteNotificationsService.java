@@ -291,6 +291,34 @@ public class BoiteNotificationsService implements BoiteNotificationsUseCase, Rec
     }
 
     @Override
+    public int transitionTranchee(TransitionTranchee e) {
+        if (vide(e.transitionId()) || vide(e.institutionId()) || vide(e.demandeurId())) {
+            return 0;
+        }
+        List<String> destinataires = acceptants(regles.destinataires(List.of(e.demandeurId()), e.acteurId()), TypeNotification.DEMANDE);
+        if (destinataires.isEmpty()) {
+            return 0;
+        }
+        String acteur = new Noms().de(e.acteurId());
+        Instant le = instant(e.le());
+        for (String d : destinataires) {
+            NotificationUtilisateur n = new NotificationUtilisateur(
+                d,
+                TypeNotification.DEMANDE,
+                regles.titreTransitionTranchee(e.decision(), e.vers(), e.institutionNom()),
+                regles.sousTitreTransitionTranchee(e.decision(), e.motif()),
+                regles.lienTransition(e.lien(), e.institutionId()),
+                Reference.transition(e.transitionId()),
+                e.acteurId(),
+                acteur,
+                le
+            );
+            publier(notifications.save(n));
+        }
+        return destinataires.size();
+    }
+
+    @Override
     public int evenementProcessus(EvenementProcessus e) {
         if (vide(e.instanceId()) || e.faits() == null || e.faits().nature() == null) {
             return 0;

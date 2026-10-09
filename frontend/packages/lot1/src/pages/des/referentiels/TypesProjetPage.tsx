@@ -8,6 +8,7 @@ import { aPermission, usePermissions, type ApiError } from '@gimac/socle'
 import { useCreerFonction, useCreerTypeProjet, useFonctionsReferentiel, useModifierFonction, useModifierTypeProjet, useTypesProjet } from '../../../hooks/referentiels'
 import { MODELES_TYPE_PROJET, type FonctionCatalogue, type ModeleTypeProjet, type TypeProjetVue } from '../../../modele/homologation'
 import { PERM } from '../../../permissions'
+import '../modelisateur/modelisateur.css'
 
 // Types de projet et catalogue des fonctions (D-91, docs/lot1/types-projet.md §4) : données servies par MS-HOMOLOGATION
 // au lieu d'énumérations. Création, modification et activation par les porteurs de HOM_REFERENTIEL_EDIT ou de
@@ -203,7 +204,7 @@ function Fonctions({ editeur, annoncer }: { editeur: boolean; annoncer: (m: stri
     { key: 'profils', header: t('typesProjet.fonction.profils'), render: (x) => (x.profils.length ? <span className="gm-row" style={{ gap: 'var(--gm-space-1)', flexWrap: 'wrap' }}>{x.profils.map((p) => <Tag key={p}>{p}</Tag>)}</span> : <span className="gm-field-help">{t('typesProjet.fonction.sansProfil')}</span>) },
     {
       key: 'permissions', header: t('typesProjet.fonction.permissions'),
-      render: (x) => (x.permissions?.length ? <span className="gm-row" style={{ gap: 'var(--gm-space-1)', flexWrap: 'wrap' }}>{x.permissions.map((p) => <span key={p} title={p}><Tag>{t(`droits.permission.${p}`, { defaultValue: p })}</Tag></span>)}</span> : <span className="gm-field-help">{t('typesProjet.fonction.sansPermission')}</span>),
+      render: (x) => (x.permissions?.length ? <span className="gm-row gm-tf-etiquettes" style={{ gap: 'var(--gm-space-1)', flexWrap: 'wrap' }}>{x.permissions.map((p) => <span key={p} title={p}><Tag>{t(`droits.permission.${p}`, { defaultValue: p })}</Tag></span>)}</span> : <span className="gm-field-help">{t('typesProjet.fonction.sansPermission')}</span>),
     },
     { key: 'externe', header: t('typesProjet.fonction.nature'), render: (x) => t(x.externe ? 'typesProjet.fonction.externeCourt' : 'typesProjet.fonction.interne') },
     { key: 'actif', header: t('typesProjet.champ.etat'), render: (x) => <StatusBadge status={x.actif ? 'ok' : 'neutral'} label={t(x.actif ? 'typesProjet.actif' : 'typesProjet.inactif')} /> },

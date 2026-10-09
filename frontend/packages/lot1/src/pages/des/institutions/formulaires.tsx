@@ -3,16 +3,15 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 import { FileDropzone, CrudDialog, ResourceForm, type Option, type ResourceDescriptor } from '@gimac/design-system'
 import { champsRefuses } from '@gimac/socle'
-import type { ConditionsAdhesion, Institution, ModeAdhesion, PieceAdhesion } from '../../../modele/participant'
+import type { Adhesion, ConditionsAdhesion, Institution, PieceAdhesion } from '../../../modele/participant'
 import { useDefinirConditions, useDeposerPiece, useEnregistrerInstitution, useModifierInstitution } from '../../../hooks/participant'
 import { useErreurService } from '../liaisons/communs'
-import { candidature, erreursDuService, verifierCandidature } from './saisie'
+import { versSaisie } from '../../../modele/jours'
+import { candidature, conditions, erreursDuService, verifierCandidature, verifierConditions } from './saisie'
 
 // Formulaires de la DDRM composés du catalogue (DES-06, DES-07) : prise de contact, données
 // descriptives, conditions d'adhésion, dépôt d'une pièce, chacun dans une fenêtre modale ouverte sur la
 // liste ou la fiche. Le service décide ; le formulaire affiche son refus.
-
-const texte = (v: unknown) => (typeof v === 'string' && v.trim() !== '' ? v.trim() : null)
 
 /**
  * DES-07 : prise de contact (création) ou modification des données descriptives. `onCree` (D-98, « Lancer une
@@ -45,7 +44,8 @@ export function FormulaireInstitution({ descripteur, institution, onFermer, onCr
         mode="edit"
         title={t('institution.form.modifier', { nom: institution.nom })}
         submitLabel={t('institution.action.modifier')}
-        initial={{ ...institution }}
+        // DDR-04 : la date de prise de contact se modifie au format de saisie (JJ/MM/AAAA).
+        initial={{ ...institution, datePriseDeContact: institution.datePriseDeContact ? versSaisie(institution.datePriseDeContact) : '' }}
         presentation="dialog"
         submitting={modifier.isPending}
         errors={erreurs}
@@ -74,10 +74,28 @@ export function FormulaireInstitution({ descripteur, institution, onFermer, onCr
 type ValeursConditions = Record<keyof ConditionsAdhesion, string>
 
 /** Conditions de l'adhésion (CR-CERT rang 2) : code participant, mode, comptes et banque marraine. */
-export function FormulaireConditions({ institution, marraines, onFermer }: { institution: Institution; marraines: Option[]; onFermer: () => void }) {
+export function FormulaireConditions({ institution, adhesion, marraines, onFermer }: {
+  institution: Institution
+  /** Conditions déjà enregistrées (DDR-18) : la fenêtre se rouvre sur toutes les valeurs, comptes et marraine compris. */
+  adhesion?: Adhesion | null
+  marraines: Option[]
+  onFermer: () => void
+}) {
   const { t } = useTranslation()
   const definir = useDefinirConditions()
   const erreur = useErreurService()
+  // DDR-03 : contrôles du service avant l'envoi, puis refus du service par champ (details.champs), sous le champ concerné.
+  const [erreursSaisie, setErreursSaisie] = useState<Record<string, string>>({})
+  const refusChamps = champsRefuses(definir.error)
+  const erreurs = {
+    ...Object.fromEntries(Object.entries(refusChamps).map(([champ, m]) => [champ, t(`adhesion.erreur.service.${champ}`, { defaultValue: m || t('institution.erreur.service') })])),
+    ...erreursSaisie,
+  }
+  const valider = (v: Record<string, unknown>) => {
+    const e = Object.fromEntries(Object.entries(verifierConditions(v)).map(([champ, x]) => [champ, t(x.cle, x.valeurs)]))
+    setErreursSaisie(e)
+    return Object.keys(e).length === 0
+  }
   const descripteur: ResourceDescriptor<ValeursConditions> = {
     key: 'conditionsAdhesion',
     label: { singular: t('adhesion.conditions'), plural: t('adhesion.conditions'), gender: 'f' },
@@ -100,26 +118,16 @@ export function FormulaireConditions({ institution, marraines, onFermer }: { ins
       mode="edit"
       title={t('adhesion.form.conditions', { nom: institution.nom })}
       submitLabel={t('adhesion.action.enregistrerConditions')}
-      initial={{ codeParticipant: institution.codeParticipant ?? '', mode: institution.modeAdhesion ?? '' }}
+      initial={{
+        codeParticipant: adhesion?.codeParticipant ?? institution.codeParticipant ?? '', mode: adhesion?.mode ?? institution.modeAdhesion ?? '',
+        compteReglement: adhesion?.compteReglement ?? '', compteCantonnement: adhesion?.compteCantonnement ?? '', banqueMarraineId: adhesion?.banqueMarraineId ?? '',
+      }}
       presentation="dialog"
       submitting={definir.isPending}
-      serverError={erreur(definir.error)}
+      errors={erreurs}
+      serverError={Object.keys(refusChamps).length ? undefined : erreur(definir.error)}
       onCancel={onFermer}
-      onSubmit={(v) =>
-        definir.mutate(
-          {
-            id: institution.id,
-            c: {
-              codeParticipant: (texte(v.codeParticipant) ?? '').toUpperCase(),
-              mode: (texte(v.mode) ?? 'DIRECT') as ModeAdhesion,
-              compteReglement: texte(v.compteReglement),
-              compteCantonnement: texte(v.compteCantonnement),
-              banqueMarraineId: texte(v.banqueMarraineId),
-            },
-          },
-          { onSuccess: onFermer },
-        )
-      }
+      onSubmit={(v) => valider(v) && definir.mutate({ id: institution.id, c: conditions(v) }, { onSuccess: onFermer })}
     />
   )
 }

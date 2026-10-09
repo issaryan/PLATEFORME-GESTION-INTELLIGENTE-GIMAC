@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router'
 import { Button, CrudDialog, DataTable, InlineAlert, PageHeader, StatusBadge, Tabs, TextArea, TextField, type Column } from '@gimac/design-system'
 import { aPermission, usePermissions, useLibelleProfil } from '@gimac/socle'
 import { dateHeure } from '@gimac/compte'
+import { PERMISSIONS_COMMUNES } from '@gimac/lot1'
 import { ArbreFonctionnalites, ApercuBarreLaterale, DialogueComparaison, DialoguePresentation, FicheProfil, compositionDe } from '../composants/profils'
 import { useEffet, useLibellesProfils, useProfils } from '../hooks'
 import { LIMITES_PROFIL, type Profil } from '../modele/configuration'
@@ -62,7 +63,8 @@ function NouveauProfil({ onFermer, onContinuer }: { onFermer: () => void; onCont
       <p className="gm-field-help" style={{ margin: 0 }}>{t('console.profils.nouveau.fonctionnalites')}</p>
       <div className="gm-fct">
         <ArbreFonctionnalites permissions={v.permissions} onChange={(x) => setV((o) => ({ ...o, permissions: x }))} />
-        <ApercuBarreLaterale permissions={v.permissions} />
+        {/* Aperçu fidèle (recette ADM-06) : MS-IAM ajoute d'office à tout profil créé la messagerie, Mon activité et les notifications. */}
+        <ApercuBarreLaterale permissions={[...new Set([...v.permissions, ...PERMISSIONS_COMMUNES])]} />
       </div>
     </CrudDialog>
   )

@@ -31,6 +31,11 @@
 .gm-fct-droit .gm-check > span { display: flex; flex-direction: column; }
 .gm-fct-nature { font-weight: 600; }
 .gm-fct-code { font-family: var(--font-mono); font-size: 11px; color: var(--gm-color-text-secondary); }
+/* Droit privilégié réservé à l'octroi des profils privilégiés (recette ADM-04) : case désactivée et sa raison. */
+.gm-fct-ligne { flex-wrap: wrap; }
+.gm-fct-ligne > .gm-fct-reserve { flex-basis: 100%; padding-left: calc(var(--gm-space-3) + 26px); }
+.gm-fct-reserve { display: inline-flex; align-items: center; gap: var(--gm-space-1); font-size: 12px; color: var(--gm-color-text-secondary); }
+.gm-fct-reserve .gm-icon { flex: none; }
 
 /* Aperçu de la barre latérale d'un profil. */
 .gm-nav-apercu { border: var(--gm-border-1) solid var(--gm-color-border); background: var(--gm-color-surface-sunken); padding: var(--gm-space-3); position: sticky; top: 0; }

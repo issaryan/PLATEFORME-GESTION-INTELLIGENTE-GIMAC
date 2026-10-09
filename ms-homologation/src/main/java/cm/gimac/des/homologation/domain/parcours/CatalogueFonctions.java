@@ -40,7 +40,7 @@ public final class CatalogueFonctions {
         new Definition("DDRM", "Développement du Réseau et du Marché", List.of("ROLE_CHARGE_DDRM"), false, true, List.of("HOM_FUNCTION_DDRM")),
         new Definition("CHEF_DDRM", "Chef du département DDRM", List.of("ROLE_CHEF_DDRM"), false, true, List.of("PAR_TRANSITION_APPROVE")),
         new Definition("CHEF_DES", "Chef du département DES", List.of("ROLE_CHEF_DES"), false, true, List.of("CER_QUITUS_TECHNIQUE_SIGN")),
-        new Definition("CHEFS_DEPARTEMENT", "Chefs des deux départements", List.of("ROLE_CHEF_DES"), false, true, List.of("CER_QUITUS_TECHNIQUE_SIGN", "PAR_TRANSITION_APPROVE")),
+        new Definition("CHEFS_DEPARTEMENT", "Chefs des deux départements", List.of("ROLE_CHEF_DES", "ROLE_CHEF_DDRM"), false, true, List.of("CER_QUITUS_TECHNIQUE_SIGN", "PAR_TRANSITION_APPROVE")),
         new Definition("CONDUCTEUR", "Conducteur de projet", List.of("ROLE_CONDUCTEUR_PROJET"), false, true, List.of("HOM_PROJECT_CONDUCT")),
         new Definition("SNA", "Normes et Agréments", List.of("ROLE_SNA", "ROLE_INGENIEUR_HOMOLOGATION"), false, true, List.of("CER_DOSSIER_VERIFY")),
         new Definition("PRODUCTION_MONETIQUE", "Production monétique", List.of("ROLE_PRODUCTION_MONETIQUE"), false, true, List.of("HOM_FUNCTION_PRODUCTION")),

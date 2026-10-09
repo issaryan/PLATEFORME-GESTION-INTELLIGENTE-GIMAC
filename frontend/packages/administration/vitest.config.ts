@@ -4,6 +4,8 @@ import { defineConfig } from 'vitest/config'
 // Définition de fini (D-61) : 80 % bloquants sur l'administration (D-62, D-69).
 export default defineConfig({
   plugins: [react()],
+  // Le test de concordance du catalogue simulé lit le domaine Keycloak généré (infra/keycloak/gimac-realm.json, ADM-01).
+  server: { fs: { allow: ['../../..'] } },
   test: {
     environment: 'jsdom',
     // Les tests d'écran tournent sur les services simulés, demandés explicitement comme en démonstration.

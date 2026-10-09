@@ -8,7 +8,7 @@ import {
 } from '@gimac/socle'
 import { GardePremierAcces, MonComptePage, useMonAvatar, monCompteHttp, monCompteSimule } from '@gimac/compte'
 import {
-  CatalogueFonctionnalitesProvider, GardeFonctionnalite, PERM, lecteurApercu, navigationDepuis, navigationRepli, notificationsDemo, servicesHttp, servicesSimules, useNonLus,
+  CatalogueFonctionnalitesProvider, GardeFonctionnalite, PERM, lecteurApercu, navigationDepuis, navigationRepli, notificationsDemo, servicesHttp, servicesSimules, sessionDemoDuRole, useNonLus,
   useSourcesRecherche, useTraduire, type EtatCatalogue,
 } from '@gimac/lot1'
 import { Fournisseurs, creerClientRequetes, servicesConsoleHttp, servicesConsoleSimules, useFonctionnalites, useSourceComptes } from '@gimac/administration'
@@ -45,16 +45,23 @@ const VERSION = import.meta.env.VITE_VERSION ?? '0.1.0'
 
 function profilDemo() {
   const adresse = typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('profil')
-  // Profil de la session ouverte par la connexion simulée (D-65) d'abord.
-  const demande = lireSessionDemo()?.role ?? (adresse && PROFILS_DEMO[adresse] ? adresse : null) ?? lirePreference(CLE_PROFIL_DEMO) ?? import.meta.env.VITE_PROFIL_DEMO
+  // Profil de la session ouverte par la connexion simulée (D-65) d'abord : une session dont le profil n'a pas sa
+  // place dans la console (profil externe, rôle d'une autre application) garde son rôle et sera aiguillée (D-79,
+  // recette ACC-01) ; jamais de profil par défaut pour elle.
+  const ouverte = lireSessionDemo()?.role
+  if (ouverte && !PROFILS_DEMO[ouverte]) {
+    const s = sessionDemoDuRole(ouverte)
+    if (s) return { role: ouverte, identifiant: s.identifiant, nom: s.nom, sujet: s.sujet, permissions: s.permissions, institutionId: s.institutionId }
+  }
+  const demande = ouverte ?? (adresse && PROFILS_DEMO[adresse] ? adresse : null) ?? lirePreference(CLE_PROFIL_DEMO) ?? import.meta.env.VITE_PROFIL_DEMO
   const role = demande && PROFILS_DEMO[demande] ? demande : 'ROLE_SUPER_ADMIN'
-  return { role, ...PROFILS_DEMO[role] }
+  return { role, ...PROFILS_DEMO[role], institutionId: '' }
 }
 function sessionDemo(): Session {
   const p = profilDemo()
   const demo = lireSessionDemo()
   return {
-    sujet: p.sujet, nom: p.nom, identifiant: demo?.identifiant || p.identifiant, roles: [p.role], permissions: p.permissions, institutionId: '', acr: '2', doubleFacteur: true,
+    sujet: p.sujet, nom: p.nom, identifiant: demo?.identifiant || p.identifiant, roles: [p.role], permissions: p.permissions, institutionId: p.institutionId, acr: '2', doubleFacteur: true,
     ...(demo?.premierAcces ? { restreinte: true } : {}),
   }
 }
@@ -184,7 +191,7 @@ export default function App() {
     }
     const p = profilDemo()
     const m = servicesSimules({ utilisateur: { id: p.sujet, nom: p.nom } })
-    return { messagerie: m, notifications: { service: notificationsDemo(m, { qc: client, moi: p.sujet }), apercu: lecteurApercu(m) } }
+    return { messagerie: m, notifications: { service: notificationsDemo(m, { qc: client, moi: p.sujet, profils: [p.role] }), apercu: lecteurApercu(m) } }
   }, [reels, client])
   const compte = useMemo(() => {
     if (reels) return monCompteHttp('console')

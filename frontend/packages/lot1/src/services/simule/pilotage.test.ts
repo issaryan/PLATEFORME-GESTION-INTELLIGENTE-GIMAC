@@ -114,7 +114,8 @@ describe('pilotageSimule', () => {
   it('rapports : préremplissage, brouillon unique, période future, soumission au n+1, visa du destinataire, reçus', async () => {
     const s = svc()
     const pre = await s.preremplir('QUOTIDIEN', '2026-10-06')
-    expect(pre.contenu).toContain('# Rapport quotidien du 2026-10-06')
+    // QUO-18 : date au format local, comme MS-PILOTAGE.
+    expect(pre.contenu).toContain('# Rapport quotidien du mardi 6 octobre 2026')
     expect(pre.contenu).toContain('## Réalisé')
     expect(pre.contenu).toContain('## Prévu demain')
     expect((await s.preremplir('HEBDOMADAIRE', '2026-W41')).contenu).toContain('## Total des heures')

@@ -248,7 +248,11 @@ export function ConsultationRapport({ id, onFermer, onFait }: { id: string; onFe
                 },
                 { key: t('act.rapport.mode'), value: t(`act.rapport.modeValeur.${r.mode}`) },
                 ...(r.soumisLe ? [{ key: t('act.rapport.soumisLe'), value: dates.instant(r.soumisLe) }] : []),
-                { key: t('act.rapport.indicateurs'), value: t('act.rapport.indicateursTexte', { faites: r.indicateurs.activitesFaites, prevues: r.indicateurs.activitesPrevues, duree: dates.duree(r.indicateurs.minutes) || '0 min', taches: r.indicateurs.tachesTerminees }) },
+                { key: t('act.rapport.indicateurs'), value: t('act.rapport.indicateursTexte', {
+                  // QUO-13 : accords au singulier et au pluriel.
+                  activites: t('act.rapport.activitesFaites', { count: r.indicateurs.activitesFaites, prevues: r.indicateurs.activitesPrevues }),
+                  duree: dates.duree(r.indicateurs.minutes) || '0 min', taches: t('act.rapport.tachesTerminees', { count: r.indicateurs.tachesTerminees }),
+                }) },
               ]}
             />
             {brouillon && destinataires.data ? (

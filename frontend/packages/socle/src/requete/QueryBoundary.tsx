@@ -42,14 +42,18 @@ export function EtatsRequete<R>(p: {
     )
   }
   if (etat.isError || etat.data === undefined) {
+    // CER-18 : un refus définitif (introuvable, interdit) ne propose pas de réessayer ; le message du service n'est
+    // pas répété quand il redit le titre.
+    const definitif = etat.error?.status === 404 || etat.error?.status === 403
+    const message = etat.error?.message && etat.error.message.trim() !== p.errorTitle.trim() ? etat.error.message : null
     return (
       <InlineAlert
         level="crit"
         title={p.errorTitle}
         correlationId={etat.error?.correlationId || undefined}
-        action={<Button size="sm" icon="refresh" onClick={() => void etat.refetch()}>{p.retryLabel}</Button>}
+        action={definitif ? undefined : <Button size="sm" icon="refresh" onClick={() => void etat.refetch()}>{p.retryLabel}</Button>}
       >
-        {etat.error?.message}
+        {message}
       </InlineAlert>
     )
   }

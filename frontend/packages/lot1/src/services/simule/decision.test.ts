@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { OperationParcours } from '../../modele/parcours'
 import { servicesSimules } from './index'
 
@@ -8,6 +8,12 @@ import { servicesSimules } from './index'
 type S = ReturnType<typeof servicesSimules>
 const svc = () => servicesSimules({ latenceMs: 0 })
 const refus = (code: string) => expect.objectContaining({ code })
+// DDR-15 : la démonstration date ses gestes du jour courant de Douala ; ces attentes portent sur le 29/09/2026.
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date('2026-09-29T09:00:00Z'))
+})
+afterEach(() => vi.useRealTimers())
 const fichier = (nom = 'piece.pdf') => new File(['contenu'], nom, { type: 'application/pdf' })
 const op = async (s: S, liaison: string, rang: string) => (await s.parcours.operations(liaison)).find((o) => o.rang === rang)!
 const etat = async (s: S, liaison: string, rang: string) => (await op(s, liaison, rang)).etat
@@ -50,17 +56,17 @@ describe('verrou 1 : procès-verbal de certification (rangs 17 à 19)', () => {
   })
   it('signature GIMAC puis participant : réauthentification exigée, la seconde signature clôt le rang 19', async () => {
     const s = svc()
-    expect(await s.decision.procesVerbal('LIA-2026-027')).toMatchObject({ etat: 'ETABLI', etabliPar: 'Conducteur de projet 1', couverture: { taux: 100 }, signatureGimac: null, actionsPermises: ['SIGNER_GIMAC'] })
+    expect(await s.decision.procesVerbal('LIA-2026-027')).toMatchObject({ etat: 'ETABLI', etabliPar: 'Aïcha Mahamat Nour', couverture: { taux: 100 }, signatureGimac: null, actionsPermises: ['SIGNER_GIMAC'] })
     await expect(s.decision.signerProcesVerbalGimac('LIA-2026-027', '')).rejects.toEqual(refus('IAM_REAUTH_REQUIRED'))
     await s.decision.signerProcesVerbalGimac('LIA-2026-027', 'assertion')
-    expect(await s.decision.procesVerbal('LIA-2026-027')).toMatchObject({ etat: 'SIGNE_GIMAC', signatureGimac: { fonction: 'CHEF_DES', signataire: 'Chef du département DES', signeLe: '2026-09-29' }, actionsPermises: [] })
+    expect(await s.decision.procesVerbal('LIA-2026-027')).toMatchObject({ etat: 'SIGNE_GIMAC', signatureGimac: { fonction: 'CHEF_DES', signataire: 'Paul Mbarga Atangana', signeLe: '2026-09-29' }, actionsPermises: [] })
     await expect(s.decision.signerProcesVerbalGimac('LIA-2026-027', 'assertion')).rejects.toEqual(refus('CER_PV_NOT_SIGNABLE'))
     expect(await etat(s, 'LIA-2026-027', '19')).toBe('A_FAIRE')
     // Côté portail : signature attendue, puis refusée une fois donnée.
     expect((await s.portailParcours.procesVerbal('LIA-2026-027')).actionsPermises).toEqual(['SIGNER_PARTICIPANT'])
     await expect(s.portailParcours.signerProcesVerbal('LIA-2026-027', '')).rejects.toEqual(refus('IAM_REAUTH_REQUIRED'))
     await s.portailParcours.signerProcesVerbal('LIA-2026-027', 'assertion')
-    expect(await s.portailParcours.procesVerbal('LIA-2026-027')).toMatchObject({ etat: 'SIGNE', signatureParticipant: { fonction: 'PARTICIPANT', signataire: 'Représentant de Établissement de paiement A' }, actionsPermises: [] })
+    expect(await s.portailParcours.procesVerbal('LIA-2026-027')).toMatchObject({ etat: 'SIGNE', signatureParticipant: { fonction: 'PARTICIPANT', signataire: 'Correspondant Établissement de paiement A' }, actionsPermises: [] })
     await expect(s.portailParcours.signerProcesVerbal('LIA-2026-027', 'assertion')).rejects.toEqual(refus('CER_PV_NOT_SIGNABLE'))
     expect(await op(s, 'LIA-2026-027', '19')).toMatchObject({ etat: 'FAITE', preuve: { nom: 'proces-verbal-signe.pdf' } })
     expect(await s.parcours.dossier('LIA-2026-027')).toMatchObject({ statut: 'CERTIFIEE', etapeCourante: 'APPROBATION_SECURITE' })
@@ -92,9 +98,10 @@ describe('verrou 2 : approbation de la sécurité (rangs 20 à 26)', () => {
     expect(await types('LIA-2025-088')).toEqual(['ISO_27001', 'GSMA'])
     expect(await types('LIA-2026-041')).toEqual(['ISO_27001', 'GSMA', 'COBAC'])
     expect((await s.decision.approbation('LIA-2026-041')).fintech).toBe(true)
-    expect(await s.decision.approbation('LIA-2025-088')).toMatchObject({ etat: 'APPROUVEE', ficheChangement: { etatApprobation: 'APPROUVEE', aRelire: false }, actionsPermises: ['RELIRE_FICHE'] })
-    // LIA-2026-019 : attestations déjà fournies (à vérifier) et visas optionnels activés, signables avant l'approbation.
-    expect(await s.decision.approbation('LIA-2026-019')).toMatchObject({ etat: 'DOSSIER_CONSTITUE', ficheChangement: null, actionsPermises: ['VERIFIER_ATTESTATION', 'REFERENCER_FICHE', 'SIGNER_VISA_CONFORMITE', 'SIGNER_VISA_DG'] })
+    expect(await s.decision.approbation('LIA-2025-088')).toMatchObject({ etat: 'APPROUVEE', ficheChangement: { etatApprobation: 'APPROUVEE', aRelire: false }, actionsPermises: [] })
+    // LIA-2026-019 : attestations déjà fournies (à vérifier) et visas optionnels activés, signables une fois l'opération de
+    // l'approbation ouverte (archivage des attestations), avant l'approbation.
+    expect(await s.decision.approbation('LIA-2026-019')).toMatchObject({ etat: 'DOSSIER_CONSTITUE', ficheChangement: null, actionsPermises: ['VERIFIER_ATTESTATION', 'REFERENCER_FICHE'] })
   })
   it('parcours complet : dossier, fiche lue (jamais refaite), attestations vérifiées puis archivées, approbation', async () => {
     const s = svc()
@@ -153,6 +160,9 @@ describe('visas optionnels (D-56 : désactivés par défaut)', () => {
     const id = 'LIA-2026-019'
     expect((await s.decision.approbation(id)).visas.map((v) => [v.nature, v.actif, v.etat])).toEqual([['CONFORMITE', true, 'ATTENDU'], ['DIRECTION_GENERALE', true, 'ATTENDU']])
     await expect(s.decision.signerVisa(id, 'CONFORMITE', true, 'Conforme', '')).rejects.toEqual(refus('IAM_REAUTH_REQUIRED'))
+    // L'opération de l'approbation (rang 23) s'ouvre à l'archivage des attestations : le visa se signe ensuite.
+    await s.decision.verifierAttestation(id, 'PCI_DSS', true, '')
+    await s.decision.archiverAttestations(id)
     await s.decision.signerVisa(id, 'CONFORMITE', true, 'Conforme', 'assertion')
     await s.decision.signerVisa(id, 'DIRECTION_GENERALE', false, 'Calendrier incompatible', 'assertion')
     const [c, dg] = (await s.decision.approbation(id)).visas
@@ -248,6 +258,8 @@ describe('parcours de bout en bout (étapes 3 à 10)', () => {
     expect(await courante(s, id)).toBe('LANCEMENT')
     await s.parcours.affecterRessources(id, [{ fonction: 'SNA', personneId: 'U-SNA-2' }, { fonction: 'POLE_RESEAU', personneId: 'U-RES-1' }])
     await s.parcours.deposerLivrable(`${id}:7`, fichier('cr-lancement.pdf'), 'Réunion de lancement tenue')
+    // HOM-05 : visa du conducteur configuré au référentiel sur le compte rendu, avant la clôture.
+    await s.parcours.signerOperation(id, '7', 'VISA_CONDUITE', 'assertion')
     expect(await courante(s, id)).toBe('ATELIERS')
     // Le participant dépose le compte rendu d'un atelier depuis le portail.
     await s.portailParcours.deposerLivrable(`${id}:8`, fichier('cr-atelier.pdf'), 'Atelier fonctionnel')

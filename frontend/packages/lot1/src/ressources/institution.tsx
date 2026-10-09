@@ -1,5 +1,5 @@
 import { Hash, InlineAlert, Link, StatusBadge, Tag, type Option } from '@gimac/design-system'
-import type { ResourceDescriptorLot1 } from '@gimac/socle'
+import { sha256Js, type ResourceDescriptorLot1 } from '@gimac/socle'
 import type { Institution, PieceAdhesion, StatutInstitution, TransitionStatut } from '../modele/participant'
 import type { Services } from '../services/ports'
 import { conformite, etatInstitution, etatPiece, etatTransition } from '../dictionnaires'
@@ -13,11 +13,32 @@ export type OptionsInstitution = {
   t: Traduire
   /** HOM_LIAISON_OPEN et HOM_PROJECT_DESIGNATE réunies (chef du DES, chef de la DDRM) : ouverture au cadrage. */
   ouvertureLiaison?: boolean
+  /**
+   * Sujet de la session (DDR-01) : maker-checker, l'auteur d'une proposition (ou son premier approbateur) ne se voit
+   * offrir ni l'approbation ni le refus ; MS-PARTICIPANT les refuse de toute façon (403 PAR_SEPARATION_OF_DUTIES).
+   */
+  moi?: string
+}
+
+/**
+ * DDR-26 : empreinte SHA-256 de ce qui est signé (la proposition tranchée : institution, transition, statuts, motif, auteur
+ * et instant de la proposition), jamais l'identifiant de la proposition.
+ */
+export function empreinteProposition(r: TransitionStatut): string {
+  const contenu = JSON.stringify([r.institutionId ?? null, r.id, r.de, r.vers, r.motif, r.demandeurId, r.demandeeLe])
+  return Array.from(sha256Js(new TextEncoder().encode(contenu)), (o) => o.toString(16).padStart(2, '0')).join('')
 }
 /** Statuts depuis lesquels une liaison s'ouvre (étape 3, D-57) ; MS-HOMOLOGATION revérifie. */
 const OUVRABLES: StatutInstitution[] = ['ADHERENT', 'EN_HOMOLOGATION']
 
 const I = '/bff/des/participant/institutions'
+/**
+ * DDR-17 : sur la fiche, la ligne porte l'état du dossier (proposition en attente, prérequis de l'adhésion) ; une proposition
+ * vouée au refus du service (PAR_TRANSITION_PENDING, PAR_PREREQUISITES_MISSING) n'est pas offerte. Dans la liste, sans
+ * dossier, le service tranche.
+ */
+type LigneInstitution = Institution & { propositionEnAttente?: boolean; prerequisAdhesionReunis?: boolean }
+const proposable = (r: LigneInstitution) => !r.propositionEnAttente
 const TERMINAUX: StatutInstitution[] = ['RETIRE', 'CLOS_SANS_SUITE']
 
 export const paysOptions: Option[] = ['CM', 'CF', 'CG', 'GA', 'GQ', 'TD'].map((v) => ({ value: v, label: `pays.${v}` }))
@@ -48,7 +69,9 @@ export function creerInstitutionDescriptor({ t, ouvertureLiaison }: OptionsInsti
       { name: 'codeParticipant', label: 'institution.codeParticipant', kind: 'mono', inList: true, inDetail: true },
       { name: 'codeIdentification', label: 'institution.codeIdentification', kind: 'mono', inDetail: true, inForm: true, help: 'institution.codeIdentification.aide' },
       { name: 'codeBanqueBeac', label: 'institution.codeBanqueBeac', kind: 'mono', inDetail: true, inForm: true, help: 'institution.codeBanqueBeac.aide' },
-      { name: 'datePriseDeContact', label: 'institution.datePriseDeContact', kind: 'date', inList: true, inDetail: true, inForm: 'create', sortable: true },
+      // DDR-04 : modifiable aussi sur la fiche (le service l'accepte à la modification).
+      // DDR-12 : hors de la liste (le tableau tient dans la largeur à 1440 px), sur la fiche et dans le formulaire.
+      { name: 'datePriseDeContact', label: 'institution.datePriseDeContact', kind: 'date', inDetail: true, inForm: true, sortable: true },
       { name: 'originePriseDeContact', label: 'institution.origine', kind: 'text', inDetail: true, inForm: true, help: 'institution.origine.aide' },
       { name: 'projetEnvisage', label: 'institution.projetEnvisage', kind: 'textarea', inDetail: true, inForm: true, width: 2 },
       {
@@ -65,7 +88,7 @@ export function creerInstitutionDescriptor({ t, ouvertureLiaison }: OptionsInsti
       { key: 'enregistrer', label: 'institution.action.enregistrer', icon: 'plus', variant: 'primary', scope: 'page', permission: 'PAR_INSTITUTION_CREATE', confirm: 'none', run: (ctx) => ctx.openForm('create') },
       {
         key: 'proposerAdhesion', label: 'institution.action.proposerAdhesion', icon: 'check', variant: 'primary', scope: 'row', permission: 'PAR_TRANSITION_REQUEST', confirm: 'confirm', reason: true,
-        isAllowed: (r) => r.statut === 'CANDIDAT',
+        isAllowed: (r) => r.statut === 'CANDIDAT' && proposable(r) && (r as LigneInstitution).prerequisAdhesionReunis !== false,
         consequences: () => <InlineAlert level="info">{t('institution.adhesion.consequence')}</InlineAlert>,
         run: (ctx) => ctx.services.participant.proposerTransition(ctx.row.id, 'ADHERENT', ctx.motif ?? ''),
       },
@@ -82,7 +105,7 @@ export function creerInstitutionDescriptor({ t, ouvertureLiaison }: OptionsInsti
       },
       {
         key: 'proposerCloture', label: 'institution.action.proposerCloture', icon: 'x', variant: 'danger', scope: 'row', permission: 'PAR_TRANSITION_REQUEST', confirm: 'confirm', reason: true,
-        isAllowed: (r) => r.statut === 'CANDIDAT' || r.statut === 'ADHERENT',
+        isAllowed: (r) => (r.statut === 'CANDIDAT' || r.statut === 'ADHERENT') && proposable(r),
         consequences: () => <InlineAlert level="warn">{t('institution.cloture.consequence')}</InlineAlert>,
         run: (ctx) => ctx.services.participant.proposerTransition(ctx.row.id, 'CLOS_SANS_SUITE', ctx.motif ?? ''),
       },
@@ -138,7 +161,9 @@ export function creerPieceDescriptor({ t }: OptionsInstitution): ResourceDescrip
 }
 
 /** Propositions de transition de statut (algorithme 6.25) : approbation signée, rejet motivé. */
-export function creerTransitionDescriptor({ t }: OptionsInstitution): ResourceDescriptorLot1<TransitionStatut, Services> {
+export function creerTransitionDescriptor({ t, moi }: OptionsInstitution): ResourceDescriptorLot1<TransitionStatut, Services> {
+  // DDR-01 : ni le proposant ni le premier approbateur ne tranchent la proposition.
+  const tranchable = (r: TransitionStatut) => r.etat === 'PROPOSEE' && (!moi || (r.demandeurId !== moi && r.approbateurId !== moi))
   const statut = (s: StatutInstitution) => <StatusBadge status={etatInstitution[s]?.status ?? 'neutral'} label={t(`institution.statut.${s}`)} />
   return {
     key: 'transition',
@@ -156,20 +181,23 @@ export function creerTransitionDescriptor({ t }: OptionsInstitution): ResourceDe
       { name: 'automatique', label: 'transition.mode', kind: 'custom', inList: true, inDetail: true,
         render: (_v, r) => <Tag>{t(r.automatique ? 'transition.mode.automatique' : 'transition.mode.proposee')}</Tag> },
       { name: 'demandeeLe', label: 'transition.demandeeLe', kind: 'datetime', inList: true, inDetail: true },
+      // DDR-17 : proposant (« vous » pour l'utilisateur), dans le tableau et le tiroir.
+      { name: 'demandeurId', label: 'transition.demandeur', kind: 'custom', inList: true, inDetail: true,
+        render: (_v, r) => (r.automatique ? t('transition.demandeur.systeme') : moi && r.demandeurId === moi ? t('transition.demandeur.vous') : t('transition.demandeur.autre')) },
       { name: 'decideeLe', label: 'transition.decideeLe', kind: 'datetime', inDetail: true },
       { name: 'motifRejet', label: 'transition.motifRejet', kind: 'text', inDetail: true },
     ],
     actions: [
       {
         key: 'approuver', label: 'transition.action.approuver', icon: 'check', variant: 'primary', scope: 'row', permission: 'PAR_TRANSITION_APPROVE', confirm: 'sign',
-        isAllowed: (r) => r.etat === 'PROPOSEE',
-        sign: { purpose: 'STATUS_APPROVE', empreinte: (r) => r.id },
+        isAllowed: tranchable,
+        sign: { purpose: 'STATUS_APPROVE', empreinte: empreinteProposition },
         consequences: (r) => <InlineAlert level="info">{t('transition.approbation.consequence', { vers: t(`institution.statut.${r.vers}`) })}</InlineAlert>,
         run: (ctx) => ctx.services.participant.approuverTransition(ctx.row.institutionId ?? '', ctx.row.id, ctx.assertion ?? ''),
       },
       {
         key: 'rejeter', label: 'transition.action.rejeter', icon: 'x', variant: 'danger', scope: 'row', permission: 'PAR_TRANSITION_APPROVE', confirm: 'confirm', reason: true,
-        isAllowed: (r) => r.etat === 'PROPOSEE',
+        isAllowed: tranchable,
         run: (ctx) => ctx.services.participant.rejeterTransition(ctx.row.institutionId ?? '', ctx.row.id, ctx.motif ?? ''),
       },
     ],

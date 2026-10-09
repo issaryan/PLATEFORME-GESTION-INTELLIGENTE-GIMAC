@@ -85,13 +85,17 @@ export function ChoixPersonne({ name, label, value, onChange, profil, candidats,
   const annuaire = useAnnuaireProcessus()
   const libelleProfil = useLibelleProfilEquipe()
   const libelleUnite = useLibelleUnite()
-  const dans = (candidats?.dansUnite ?? []).filter((c) => !exclure.includes(c.id))
-  const ailleurs = (candidats?.ailleurs ?? []).filter((c) => !exclure.includes(c.id))
+  // D-99 : l'initiateur nommé par le service (« exclus ») n'est proposé nulle part, pas même dans l'annuaire.
+  const exclus = [...exclure, ...(candidats?.exclus ?? [])]
+  const dans = (candidats?.dansUnite ?? []).filter((c) => !exclus.includes(c.id))
+  const ailleurs = (candidats?.ailleurs ?? []).filter((c) => !exclus.includes(c.id))
   const proposes = new Set([...dans, ...ailleurs].map((c) => c.id))
-  const l = (annuaire.data?.contenu ?? []).filter((p) => !exclure.includes(p.id) && !proposes.has(p.id))
+  const l = (annuaire.data?.contenu ?? []).filter((p) => !exclus.includes(p.id) && !proposes.has(p.id))
   const porteurs = profil && !candidats ? l.filter((p) => p.profils?.includes(profil)) : []
   const autres = l.filter((p) => !porteurs.includes(p))
-  const seul = candidats && dans.length + ailleurs.length === 1 ? (dans[0] ?? ailleurs[0]) : null
+  // QUO-02 : « seul porteur » seulement s'il l'est vraiment (un porteur écarté, l'exécutant actuel par exemple, compte).
+  const porteursServis = (candidats?.dansUnite.length ?? 0) + (candidats?.ailleurs.length ?? 0)
+  const seul = candidats && porteursServis === 1 && dans.length + ailleurs.length === 1 ? (dans[0] ?? ailleurs[0]) : null
   const rempli = useRef(false)
   useEffect(() => {
     if (seul && !value && !rempli.current) {
@@ -109,7 +113,7 @@ export function ChoixPersonne({ name, label, value, onChange, profil, candidats,
   ]
   const libelle = profil ? libelleProfil(profil) : ''
   const aide = help ?? (chargement ? t('proc.personne.chargement')
-    : candidats && profil ? (seul ? t('proc.personne.seul', { profil: libelle }) : !dans.length && !ailleurs.length ? t('proc.personne.aucunPorteur', { profil: libelle })
+    : candidats && profil ? (seul ? t('proc.personne.seul', { profil: libelle }) : !dans.length && !ailleurs.length ? t(porteursServis ? 'proc.personne.aucunAutre' : 'proc.personne.aucunPorteur', { profil: libelle })
       : !dans.length ? t('proc.personne.horsUnite', { profil: libelle }) : t('proc.personne.aideProfil', { profil: libelle }))
       : profil ? t('proc.personne.aideProfil', { profil: libelle }) : undefined)
   return (

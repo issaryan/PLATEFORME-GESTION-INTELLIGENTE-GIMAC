@@ -1,0 +1,126 @@
+[
+  {
+    "id": "ACC-01",
+    "gravite": "majeure",
+    "titre": "Une session existante n'est pas aiguillée ; elle prend un profil par défaut",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/acces/422-correspondant-session-existante-6102-clair.png",
+    "apres": "docs/recette/captures/acces/corrections/ACC-01-apres.png",
+    "correctif": "Une session de démonstration garde son rôle dans chaque application : profil externe en compte d'institution sur la console et l'application interne, profil interne en compte interne sur le portail ; l'aiguillage D-79 les conduit vers leur application, plus aucun profil par défaut.",
+    "fichiers": [
+      "frontend/packages/lot1/src/profilsDemo.ts",
+      "frontend/packages/lot1/src/index.ts",
+      "frontend/apps/console/src/App.tsx",
+      "frontend/apps/departement/src/profils.ts",
+      "frontend/apps/portail/src/App.tsx"
+    ],
+    "test": "frontend/packages/lot1/src/domaine.test.ts (session de démonstration d'un rôle)"
+  },
+  {
+    "id": "ACC-02",
+    "gravite": "majeure",
+    "titre": "Catalogue des profils et permissions de la console simulée non régénéré",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/acces/316-des-catalogue-liaisons-resultat-clair.png",
+    "apres": "docs/recette/captures/acces/corrections/ACC-02-apres.png",
+    "correctif": "Même correctif que ADM-01 : permissions et profils du serveur simulé produits par generer-realm-gimac.py ; toute fonctionnalité du catalogue se modifie sans « Permission inconnue ».",
+    "fichiers": [
+      "infra/keycloak/generer-realm-gimac.py",
+      "frontend/packages/lot1/src/domaine-gimac.json",
+      "frontend/packages/lot1/src/domaine.ts",
+      "frontend/packages/administration/src/services/simule/catalogue.ts",
+      "frontend/packages/administration/src/services/simule/index.ts"
+    ],
+    "test": "frontend/packages/administration/src/services/simule/catalogue.test.ts (catalogue des fonctionnalités modifiable)"
+  },
+  {
+    "id": "ACC-03",
+    "gravite": "mineure",
+    "titre": "Refus du service présenté comme une panne de la clé de sécurité",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/acces/316-des-catalogue-liaisons-resultat-clair.png",
+    "apres": "docs/recette/captures/acces/corrections/ACC-03-apres.png",
+    "correctif": "Même correctif que ADM-03 : état « Acte refusé par le service » du bloc de signature (SignatureField, SignDialog), message et code du service, sans mise en cause de la clé.",
+    "fichiers": [
+      "frontend/packages/design-system/src/saisie/SignatureField/SignatureField.tsx",
+      "frontend/packages/design-system/src/conteneurs/SignDialog/SignDialog.tsx",
+      "frontend/packages/administration/src/composants/actes.tsx"
+    ],
+    "test": "frontend/packages/administration/src/pages/RecetteAdministration.test.tsx (ADM-03)"
+  },
+  {
+    "id": "ACC-04",
+    "gravite": "mineure",
+    "titre": "Code technique ROLE_SUPER_ADMIN affiché sur le tableau de bord interne",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/acces/011-super-admin-des-tableau-de-bord-clair.png",
+    "apres": "docs/recette/captures/acces/corrections/ACC-04-apres.png",
+    "correctif": "Clé profil.ROLE_SUPER_ADMIN ajoutée en français, anglais et espagnol ; un test exige un libellé d'interface pour chaque profil du domaine.",
+    "fichiers": [
+      "frontend/packages/lot1/src/i18n/ecrans/par.ts"
+    ],
+    "test": "frontend/packages/lot1/src/domaine.test.ts (libellé d'interface de chaque profil)"
+  },
+  {
+    "id": "ACC-05",
+    "gravite": "mineure",
+    "titre": "Identité et permissions du RSSI et du super administrateur différentes selon l'application",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/acces/018-rssi-console-tableau-de-bord-clair.png",
+    "apres": "docs/recette/captures/acces/corrections/ACC-05-apres.png",
+    "correctif": "La console reprend l'identité des comptes communs aux trois applications (h.kamga, Hervé Kamga Tchoupo pour le RSSI) et la composition du domaine pour chaque profil privilégié ; l'annuaire simulé de la console suit.",
+    "fichiers": [
+      "frontend/packages/administration/src/profilsDemo.ts",
+      "frontend/packages/administration/src/services/simule/donnees.ts",
+      "frontend/e2e/specs/connexion.spec.ts",
+      "frontend/e2e/specs/accessibilite.spec.ts",
+      "frontend/apps/console/src/App.test.tsx"
+    ],
+    "test": "frontend/packages/administration/src/services/simule/catalogue.test.ts (profils de démonstration = domaine Keycloak)"
+  },
+  {
+    "id": "ACC-06",
+    "gravite": "mineure",
+    "titre": "Matrice des profils de l'interface différente du domaine pour deux profils",
+    "statut": "corrigée",
+    "avant": null,
+    "apres": null,
+    "correctif": "Matrice PROFILS de l’interface lue dans le domaine généré (domaine-gimac.json) : ingénieur avec HOM_REPLAY_ADMIN, correspondant avec NOT_INBOX_READ (sans effet visible : pas de capture).",
+    "fichiers": [
+      "frontend/packages/lot1/src/permissions.ts",
+      "frontend/packages/lot1/src/permissions.test.ts",
+      "frontend/packages/lot1/src/services/simule/presentations.ts",
+      "frontend/packages/lot1/src/services/simule/pouvoirs.ts"
+    ],
+    "test": "frontend/packages/lot1/src/domaine.test.ts (matrice PROFILS lue dans le domaine)"
+  },
+  {
+    "id": "ACC-07",
+    "gravite": "mineure",
+    "titre": "Tiroir de navigation à 390 px : nom, état et clavier",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/acces/402-collaborateur-mobile-navigation-ouverte-clair.png",
+    "apres": "docs/recette/captures/acces/corrections/ACC-07-apres.png",
+    "correctif": "Bouton « Ouvrir la navigation » ou « Fermer la navigation » avec aria-expanded et aria-controls ; le focus entre dans le tiroir ; Échap le referme d'où que vienne la touche et rend le focus au bouton.",
+    "fichiers": [
+      "frontend/packages/design-system/src/enveloppe/TopBar/TopBar.tsx",
+      "frontend/packages/design-system/src/actions/Button/Button.tsx",
+      "frontend/packages/design-system/src/i18n/libelles.ts",
+      "frontend/packages/socle/src/enveloppe/Enveloppe.tsx"
+    ],
+    "test": "frontend/packages/socle/src/enveloppe/Enveloppe.test.tsx (accessibilité ACC-07)"
+  },
+  {
+    "id": "ACC-08",
+    "gravite": "mineure",
+    "titre": "Icône au-dessus du libellé dans le catalogue des fonctionnalités",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/acces/304-console-catalogue-masquee-clair.png",
+    "apres": "docs/recette/captures/acces/corrections/ACC-08-apres.png",
+    "correctif": "Colonne Libellé du catalogue en ligne sans retour : l'icône reste à gauche, seul le texte se replie.",
+    "fichiers": [
+      "frontend/packages/administration/src/composants/fonctionnalites.tsx"
+    ],
+    "test": null
+  }
+]

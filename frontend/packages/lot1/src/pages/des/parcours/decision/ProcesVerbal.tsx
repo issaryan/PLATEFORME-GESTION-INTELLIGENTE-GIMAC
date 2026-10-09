@@ -4,6 +4,7 @@ import type { DossierLiaison, EtapeCircuit, ProcesVerbalCertification, ServicePe
 import { useFonctionsCatalogue } from '../../../../hooks/referentiels'
 import { useEtablirProcesVerbal, useSignerProcesVerbalGimac } from '../../../../hooks/parcours'
 import { EtatSignature, SousTitre, TON_PV, useDetient, useLancer, usePeut, Vide, type Action, PERMISSION_GESTE } from './commun'
+import { useFormatDate } from '../communs'
 
 // Verrou 1 : procès-verbal de certification (D-56, rangs 17 à 19). La couverture du périmètre doit valoir
 // 100 % ; le conducteur de projet établit le procès-verbal ; le chef du DES le signe pour le GIMAC (ancien
@@ -20,7 +21,7 @@ export function CircuitSignature({ pv }: { pv: ProcesVerbalCertification }) {
   if (!l.length) return null
   const colonnes: Column<EtapeCircuit>[] = [
     { key: 'ordre', header: t('decision.circuit.ordre'), type: 'number', width: 72 },
-    { key: 'libelle', header: t('decision.circuit.etape'), render: (e) => <span className="gm-col" style={{ gap: 0 }}><span>{e.libelle}</span><span className="gm-mono gm-type-small">{e.code}</span></span> },
+    { key: 'libelle', header: t('decision.circuit.etape'), render: (e) => <span className="gm-col" style={{ gap: 0 }}><span>{t(`decision.circuit.libelle.${e.code}`, { defaultValue: e.libelle })}</span><span className="gm-mono gm-type-small">{e.code}</span></span> },
     { key: 'fonction', header: t('decision.circuit.fonction'), render: (e) => f.libelle(e.fonction) },
     { key: 'portail', header: t('decision.circuit.cote'), render: (e) => t(e.portail ? 'decision.circuit.portail' : 'decision.circuit.gimac') },
     { key: 'etat', header: t('decision.circuit.etat'), render: (e) => <EtatSignature signature={e.signature ?? null} attente={t('decision.circuit.attendue')} /> },
@@ -40,6 +41,7 @@ export function CarteProcesVerbal({ dossier, pv }: { dossier: DossierLiaison; pv
   const lancer = useLancer()
   const etablir = useEtablirProcesVerbal()
   const signer = useSignerProcesVerbalGimac()
+  const date = useFormatDate()
   const titre = `${dossier.reference} · ${dossier.institutionNom}`
   const inclus = dossier.perimetre.filter((s) => s.inclus)
   const taux = pv.couverture.taux
@@ -76,7 +78,7 @@ export function CarteProcesVerbal({ dossier, pv }: { dossier: DossierLiaison; pv
               label={t('decision.pv.couvertureLibelle')}
               value={taux}
               status={complete ? 'ok' : 'warn'}
-              statusLabel={t(complete ? 'decision.pv.couvertureComplete' : 'decision.pv.couvertureIncomplete', { n: pv.couverture.numerateur, d: pv.couverture.denominateur })}
+              statusLabel={t(complete ? 'decision.pv.couvertureComplete' : 'decision.pv.couvertureIncomplete', { n: pv.couverture.numerateur, d: pv.couverture.denominateur, count: pv.couverture.numerateur })}
             />
           </div>
           <div className="gm-col" style={{ flex: '1 1 280px', gap: 'var(--gm-space-2)' }} aria-label={t('decision.pv.servicesCouverts')}>
@@ -98,7 +100,7 @@ export function CarteProcesVerbal({ dossier, pv }: { dossier: DossierLiaison; pv
         <KeyValueList
           items={[
             { key: t('decision.pv.etabliPar'), value: pv.etabliPar ?? <Vide /> },
-            { key: t('decision.pv.etabliLe'), value: pv.etabliLe ?? <Vide /> },
+            { key: t('decision.pv.etabliLe'), value: pv.etabliLe ? date(pv.etabliLe) : <Vide /> },
             { key: t('decision.pv.empreinte'), value: pv.empreinte ? <Hash value={pv.empreinte} /> : <Vide /> },
             { key: t('decision.pv.signatureGimac'), value: <EtatSignature signature={pv.signatureGimac} attente={t('decision.pv.attenteGimac')} /> },
             { key: t('decision.pv.signatureParticipant'), value: <EtatSignature signature={pv.signatureParticipant} attente={t('decision.pv.attenteParticipant')} /> },

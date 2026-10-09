@@ -5,7 +5,7 @@ import { politiqueInitiale } from './donnees'
 
 // Serveur simulé de la console : mêmes formes et mêmes refus que MS-IAM et MS-GATEWAY.
 const A = btoa('assertion-simulee')
-const RSSI = { id: 'u-rssi', nom: 'Carine Ebongue Ndjock', permissions: ['IAM_ACCOUNT_READ'] }
+const RSSI = { id: 'u-rssi', nom: 'Hervé Kamga Tchoupo', permissions: ['IAM_ACCOUNT_READ'] }
 const s = (o = {}) => servicesConsoleSimules({ latenceMs: 0, ...o })
 
 afterEach(() => vi.useRealTimers())
@@ -13,16 +13,16 @@ afterEach(() => vi.useRealTimers())
 describe('comptes simulés', () => {
   it('liste filtrée par recherche, profil et état ; pagination ; indicateurs', async () => {
     const c = s().comptes
-    expect((await c.lister({ page: 1, taille: 100 })).total).toBe(13)
+    expect((await c.lister({ page: 1, taille: 100 })).total).toBe(14)
     expect((await c.lister({ page: 1, taille: 100, q: 'super' })).contenu.map((x) => x.identifiant)).toEqual(['super.admin'])
-    expect((await c.lister({ page: 1, taille: 100, profil: 'ROLE_RSSI' })).contenu.map((x) => x.identifiant)).toEqual(['rssi'])
+    expect((await c.lister({ page: 1, taille: 100, profil: 'ROLE_RSSI' })).contenu.map((x) => x.identifiant)).toEqual(['h.kamga'])
     expect((await c.lister({ page: 1, taille: 100, etat: 'INACTIF' })).contenu.map((x) => x.identifiant)).toEqual(['k.ateba'])
     expect((await c.lister({ page: 1, taille: 100, etat: 'PREMIER_ACCES' })).contenu.map((x) => x.identifiant)).toEqual(['l.nguema'])
     expect((await c.lister({ page: 1, taille: 100, etat: 'SANS_2FA' })).contenu.map((x) => x.identifiant)).toEqual(['b.hamadou', 'l.nguema'])
-    expect((await c.lister({ page: 1, taille: 100, etat: 'ACTIF' })).total).toBe(12)
+    expect((await c.lister({ page: 1, taille: 100, etat: 'ACTIF' })).total).toBe(13)
     expect((await c.lister({ page: 2, taille: 5 })).contenu).toHaveLength(5)
     const i = await c.indicateurs()
-    expect(i).toMatchObject({ total: 13, actifs: 12, inactifs: 1, premierAccesEnAttente: 1, sansSecondFacteur: 2, privilegies: 2, creesDepuis30Jours: 1 })
+    expect(i).toMatchObject({ total: 14, actifs: 13, inactifs: 1, premierAccesEnAttente: 1, sansSecondFacteur: 2, privilegies: 3, creesDepuis30Jours: 1 })
     expect(i.parProfil.ROLE_SUPER_ADMIN).toBe(1)
     expect((await c.journal({ page: 1, taille: 10, compte: 'u-inactif' })).contenu[0].action).toBe('DESACTIVATION')
     expect((await c.sessions('u-chef-ddrm'))).toHaveLength(1)
@@ -39,7 +39,7 @@ describe('comptes simulés', () => {
     await expect(c.creer({ ...base, envoyerInvitation: false })).rejects.toMatchObject({ code: 'IAM_ONBOARDING_REQUIRED' })
     await expect(c.creer({ ...base, profils: [] })).rejects.toMatchObject({ code: 'IAM_PROFILE_UNKNOWN' })
     await expect(c.creer({ ...base, profils: ['ROLE_INCONNU'] })).rejects.toMatchObject({ code: 'IAM_PROFILE_UNKNOWN' })
-    await expect(c.creer({ ...base, identifiant: 'rssi' })).rejects.toMatchObject({ status: 409, code: 'IAM_ACCOUNT_CONFLICT' })
+    await expect(c.creer({ ...base, identifiant: 'h.kamga' })).rejects.toMatchObject({ status: 409, code: 'IAM_ACCOUNT_CONFLICT' })
     const r = await c.creer({ ...base, identifiant: ' N.Agent ', motDePasseProvisoire: true })
     expect(r.compte.identifiant).toBe('n.agent')
     expect(r.compte.premierAccesEnAttente).toBe(true)
@@ -78,7 +78,7 @@ describe('comptes simulés', () => {
     await c.fermerSessions('u-chef-des', 'Poste volé')
     expect(await c.sessions('u-chef-des')).toEqual([])
     await expect(c.modifier('u-dg', { telephone: '12' })).rejects.toMatchObject({ code: 'IAM_PHONE_INVALID' })
-    await expect(c.modifier('u-dg', { email: 'rssi@gimac-afr.org' })).rejects.toMatchObject({ code: 'IAM_ACCOUNT_CONFLICT' })
+    await expect(c.modifier('u-dg', { email: 'h.kamga@gimac-afr.org' })).rejects.toMatchObject({ code: 'IAM_ACCOUNT_CONFLICT' })
     expect((await c.modifier('u-dg', { prenom: 'Francis', fonction: 'DGA' })).nomAffiche).toBe('Francis Tchoumi Kamga')
   })
 })

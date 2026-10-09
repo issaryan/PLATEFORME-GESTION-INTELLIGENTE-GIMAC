@@ -54,7 +54,7 @@ describe('Étape 10 : mise en service constatée', () => {
     ouvrir('LIA-2025-064', 'ROLE_CONDUCTEUR_PROJET')
     await screen.findByText(/est à constater/)
     expect(screen.queryByTestId('actions-fiche')).toBeNull()
-    expect(screen.queryByText('Service supplémentaire (rang 35)')).toBeNull()
+    expect(screen.queryByText('Service supplémentaire')).toBeNull()
   })
 
   it('refus du service lors du constat : message traduit et identifiant de corrélation', async () => {
@@ -88,7 +88,7 @@ describe('Service supplémentaire (rang 35)', () => {
     ouvrir('LIA-2025-088', 'ROLE_CHEF_DES')
     // Choix des services dans une fenêtre modale, puis confirmation de l'ouverture.
     fireEvent.click(await screen.findByRole('button', { name: 'Ouvrir une nouvelle liaison' }))
-    const f = await screen.findByRole('dialog', { name: 'Service supplémentaire (rang 35)' })
+    const f = await screen.findByRole('dialog', { name: 'Service supplémentaire' })
     const choix = within(f).getByRole('checkbox', { name: 'Cash-in agent' })
     const bouton = within(f).getByRole('button', { name: 'Ouvrir une nouvelle liaison' }) as HTMLButtonElement
     expect(bouton.disabled || bouton.getAttribute('aria-disabled') === 'true').toBe(true)
@@ -104,7 +104,7 @@ describe('Service supplémentaire (rang 35)', () => {
 
   it('Normes et Agréments : pas d\'ouverture de service supplémentaire', async () => {
     ouvrir('LIA-2025-088', 'ROLE_SNA')
-    await screen.findByText('Fiche de suivi des services (rangs 32 et 33)')
+    await screen.findByText('Fiche de suivi des services')
     expect(screen.queryByRole('button', { name: 'Ouvrir une nouvelle liaison' })).toBeNull()
   })
 

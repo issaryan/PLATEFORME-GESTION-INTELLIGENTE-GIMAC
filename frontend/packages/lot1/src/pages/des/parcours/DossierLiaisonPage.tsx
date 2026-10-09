@@ -5,6 +5,7 @@ import { Banner, Breadcrumb, Button, Card, KeyValueList, Link, StatusBadge, Tabs
 import { aPermission, usePermissions } from '@gimac/socle'
 import type { DossierLiaison } from '../../../modele/parcours'
 import { useDossierLiaison } from '../../../hooks/parcours'
+import { useOptionsTypesProjet } from '../../../hooks/referentiels'
 import { PERM } from '../../../permissions'
 import { Donnees } from '../liaisons/communs'
 import { BadgeStatut, Jour, useRetour, Valeur } from './communs'
@@ -60,11 +61,14 @@ function Dossier({ dossier }: { dossier: DossierLiaison }) {
     )
   const fermer = () => maj({ action: null })
   const blocagesEnCours = dossier.blocages.filter((b) => !b.leveLe).length
+  // Recette HOM-09 : type créé dans la plateforme (D-91) nommé par son libellé servi, jamais par son code.
+  const types = useOptionsTypesProjet()
 
   const identification = [
     { key: t('parcoursDossier.reference'), value: dossier.reference, mono: true },
     { key: t('parcoursDossier.institution'), value: dossier.institutionNom },
-    { key: t('parcoursDossier.type'), value: t(`parcours.typeProjet.${dossier.typeProjet}`, { defaultValue: dossier.typeProjet }) },
+    // CER-05 : libellé servi avec le dossier quand le catalogue des types ne le connaît pas.
+    { key: t('parcoursDossier.type'), value: types.libelle(dossier.typeProjet) === dossier.typeProjet && dossier.typeProjetLibelle ? dossier.typeProjetLibelle : types.libelle(dossier.typeProjet) },
     { key: t('parcoursDossier.banque'), value: dossier.banquePartenaireNom ?? <span className="gm-field-help">{t('parcoursDossier.sansBanque')}</span> },
     ...(dossier.personnalisateurNom ? [{ key: t('parcoursDossier.personnalisateur'), value: dossier.personnalisateurNom }] : []),
     { key: t('parcoursDossier.versionReferentiel'), value: <Valeur>{dossier.versionReferentiel === null ? null : t('parcoursDossier.version', { v: dossier.versionReferentiel })}</Valeur> },

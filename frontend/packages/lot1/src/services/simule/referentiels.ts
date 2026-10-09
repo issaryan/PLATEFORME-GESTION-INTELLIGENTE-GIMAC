@@ -67,7 +67,8 @@ export function versionCR(type: TypeProjet): ReferenceOperation[] {
     const ligne = lignes.get(o.etape) ?? 0
     lignes.set(o.etape, ligne + 1)
     const predecesseurs = o.rang === '27' && finBranche ? [finBranche] : o.predecesseurs.filter((p) => codes.has(p))
-    const livrables: Livrable[] = o.grain === 'PHASE' || o.pivot ? [{ code: 'L1', libelle: preuve || libelle, nature: 'LIVRABLE', deposant: r, typesPieces: PDF, obligatoire: true }] : []
+    // HOM-01 : la réunion de lancement (rang 7) porte la signature VISA_CONDUITE de son compte rendu : son livrable L1 est déclaré.
+    const livrables: Livrable[] = o.grain === 'PHASE' || o.pivot || o.rang === '7' ? [{ code: 'L1', libelle: preuve || libelle, nature: 'LIVRABLE', deposant: r, typesPieces: PDF, obligatoire: true }] : []
     return {
       code: o.rang, libelle, description: preuve ? `Preuve attendue : ${preuve}.` : null, etape: o.etape, segment: o.segment, ordre: i + 1,
       responsable: r, validateur: r === 'CONDUCTEUR' ? 'CHEF_DES' : 'CONDUCTEUR', consultes: autres.filter((f) => !EXTERNES.includes(f)), informes: ['CHEF_DDRM'],
@@ -98,7 +99,7 @@ const MODELES_LIBELLES: [ModeleTypeProjet, string][] = [['CARTE_INTERBANCAIRE', 
 export const CATALOGUE: CatalogueModelisateur = {
   fonctions: ([
     ['DDRM', 'Développement du Réseau et du Marché', ['ROLE_CHARGE_DDRM']], ['CHEF_DDRM', 'Chef du département DDRM', ['ROLE_CHEF_DDRM']],
-    ['CHEF_DES', 'Chef du département DES', ['ROLE_CHEF_DES']], ['CHEFS_DEPARTEMENT', 'Chefs des deux départements', ['ROLE_CHEF_DES']],
+    ['CHEF_DES', 'Chef du département DES', ['ROLE_CHEF_DES']], ['CHEFS_DEPARTEMENT', 'Chefs des deux départements', ['ROLE_CHEF_DES', 'ROLE_CHEF_DDRM']],
     ['CONDUCTEUR', 'Conducteur de projet', ['ROLE_CONDUCTEUR_PROJET']], ['SNA', 'Normes et Agréments', ['ROLE_SNA', 'ROLE_INGENIEUR_HOMOLOGATION']],
     ['PRODUCTION_MONETIQUE', 'Production monétique', ['ROLE_PRODUCTION_MONETIQUE']], ['POLE_RESEAU', 'Pôle réseau', ['ROLE_POLE_RESEAU']],
     ['POLE_SYSTEME', 'Pôle système', ['ROLE_POLE_SYSTEME']], ['RSSI', 'Sécurité des systèmes d\'information', ['ROLE_RSSI']], ['CONFORMITE', 'Conformité', ['ROLE_CONFORMITE']],
@@ -127,7 +128,8 @@ export const CATALOGUE: CatalogueModelisateur = {
     { code: 'CEREMONIE_CLES', libelle: 'Cérémonie de clés en trois composantes' }, { code: 'SERVICE_SUPPLEMENTAIRE', libelle: 'Ouverture d\'un service supplémentaire' }],
   typesPieces: ['application/pdf', 'image/png', 'image/jpeg', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'text/csv', 'application/zip'],
-  pilotes: [{ id: 'U-101', nom: 'Ingénieur d\'homologation A' }, { id: 'U-102', nom: 'Ingénieur d\'homologation B' }],
+  // Recette HOM-14 : pilotes nommés comme les comptes de démonstration des ingénieurs d'homologation.
+  pilotes: [{ id: 'U-101', nom: 'Joël Ekotto Mballa' }, { id: 'U-102', nom: 'Arnaud Mvogo Eyenga' }],
   vuesOperation: ([
     ['AUCUNE', 'Aucune vue spécialisée'], ['AFFECTATION', 'Affectation des intervenants'], ['COORDONNEES', 'Coordonnées techniques'], ['ESSAIS', 'Essais'],
     ['DECISION', 'Décision de mise en production'], ['ATTESTATIONS', 'Attestations'], ['MISE_EN_SERVICE', 'Mise en service'], ['CEREMONIE', 'Cérémonie de clés'],
@@ -203,11 +205,30 @@ export function visibles(ops: ReferenceOperation[], profils: string[] | undefine
 
 type Rapport = { anomalies: AnomalieGraphe[]; ordre: string[]; couches: Map<string, number>; cycle: string[] }
 
-/** Contrôle du graphe (ReferentialGraphValidator) : Kahn, cycle, prédécesseurs, rôles, jalons, livrables, secrets. */
-export function controlerGraphe(ops: ReferenceOperation[]): Rapport {
+/**
+ * Gestes de certification attendus à la publication (gimac.homologation.referentiel.gestes-certification de
+ * MS-HOMOLOGATION, HOM-02) : pour chaque jalon porté, déclencheurs qu'au moins une opération doit porter ; « avecAttestations »
+ * s'ajoute quand le modèle du type de projet exige des attestations (AttestationsTypeProjet).
+ */
+export const GESTES_CERTIFICATION: { toujours: Partial<Record<Jalon, string[]>>; avecAttestations: Partial<Record<Jalon, string[]>> } = {
+  toujours: { CERTIFIEE: ['certification.pv-established.v1', 'certification.pv-signed.v1'], APPROUVEE_SECURITE: ['certification.security-approved.v1'] },
+  avecAttestations: { APPROUVEE_SECURITE: ['certification.change-record-constituted.v1', 'certification.attestations-archived.v1'] },
+}
+/** Contexte du contrôle : catalogue des fonctions (actives, externes) et attestations exigées par le modèle du type. */
+export type ContexteControle = { fonctions?: { code: string; actif?: boolean; externe?: boolean }[]; attestations?: boolean }
+const LIBELLES_JALON: Record<Jalon, string> = { APTE_CERTIFICATION: 'Apte à la certification', CERTIFIEE: 'Certifiée', APPROUVEE_SECURITE: 'Approuvée par la sécurité', EN_PRODUCTION: 'En production' }
+
+/**
+ * Contrôle du graphe (ReferentialGraphValidator) : Kahn, cycle, prédécesseurs, rôles, jalons, livrables, secrets, fonctions
+ * du catalogue, signatures (D-91) et gestes de certification attendus (GESTE_CERTIFICATION_ABSENT, HOM-01, HOM-02).
+ */
+export function controlerGraphe(ops: ReferenceOperation[], ctx: ContexteControle = {}): Rapport {
   const anomalies: AnomalieGraphe[] = []
   const ajouter = (type: TypeAnomalie, codes: string[], motif: string) => anomalies.push({ type, codes, motif })
   const parCode = new Map(ops.map((o) => [o.code, o]))
+  const catalogue = ctx.fonctions ?? CATALOGUE.fonctions
+  const active = (f: string | null | undefined) => !!f && catalogue.some((x) => x.code === f && x.actif !== false)
+  const externe = (f: string) => !!catalogue.find((x) => x.code === f)?.externe
   const vus = new Set<string>()
   ops.forEach((o) => {
     if (vus.has(o.code)) ajouter('CODE_DUPLIQUE', [o.code], `Code ${o.code} employé plusieurs fois.`)
@@ -227,6 +248,29 @@ export function controlerGraphe(ops: ReferenceOperation[]): Rapport {
     if (o.secret && o.valeurReference) ajouter('SECRET_AVEC_VALEUR', [o.code], `${o.code} est secrète : aucune valeur de référence n'est admise.`)
     const lv = o.livrables.map((l) => l.code)
     if (new Set(lv).size !== lv.length) ajouter('LIVRABLE_DUPLIQUE', [o.code], `${o.code} a deux livrables au même code.`)
+    // Fonctions citées (R, V, C, I, E, déposants, signataires) actives au catalogue (ReferenceOperation.fonctionsCitees).
+    const citees = [...new Set([o.responsable, o.validateur, ...(o.consultes ?? []), ...(o.informes ?? []), ...(o.externes ?? []),
+      ...o.livrables.map((l) => l.deposant), ...(o.signatures ?? []).map((s) => s.signataire)].filter((f): f is Fonction => !!f))]
+    citees.filter((f) => !active(f)).forEach((f) => ajouter('FONCTION_INCONNUE', [o.code, f], 'Fonction absente du catalogue ou désactivée'))
+  })
+  // Signatures (ReferentialGraphValidator.controlerSignatures) : après le tri, l'antériorité d'un livrable porté se lit dans le DAG.
+  const controlerSignatures = (acyclique: boolean, ancetre: (a: string, b: string) => boolean) => ops.forEach((o) => {
+    const codes = new Set<string>()
+    ;(o.signatures ?? []).forEach((s) => {
+      if (codes.has(s.code)) ajouter('SIGNATURE_DUPLIQUEE', [o.code, s.code], 'Code de signature présent plusieurs fois')
+      codes.add(s.code)
+      if (!s.signataire || !active(s.signataire)) ajouter('SIGNATAIRE_INCONNU', s.signataire ? [o.code, s.code, s.signataire] : [o.code, s.code], 'Le signataire doit être une fonction active du catalogue')
+      else if (externe(s.signataire)) ajouter('SIGNATAIRE_EXTERNE', [o.code, s.code, s.signataire], 'Une signature d\'opération est donnée par un membre du GIMAC')
+      if (!s.porte.length) ajouter('SIGNATURE_SANS_LIVRABLE', [o.code, s.code], 'Une signature porte au moins un livrable')
+      s.porte.forEach((ref) => {
+        const i = ref.indexOf('/')
+        const op = i < 0 ? null : ref.slice(0, i)
+        const livrable = i < 0 ? ref : ref.slice(i + 1)
+        const porteur = op === null ? o : parCode.get(op)
+        const valide = !!porteur && porteur.livrables.some((l) => l.code === livrable) && (op === null || (acyclique && ancetre(op, o.code)))
+        if (!valide) ajouter('SIGNATURE_PORTEE_INVALIDE', [o.code, s.code, ref], 'Livrable porté inconnu, ou d\'une opération qui n\'est pas antérieure')
+      })
+    })
   })
   // Kahn : ordre topologique et couche (plus long chemin depuis une entrée).
   const degre = new Map(ops.map((o) => [o.code, preds(o).length]))
@@ -279,23 +323,53 @@ export function controlerGraphe(ops: ReferenceOperation[]): Rapport {
       })
     })
   }
+  controlerSignatures(!cycle.length, (a, b) => !cycle.length && ancetres(b).has(a))
+  // GESTE_CERTIFICATION_ABSENT : un jalon porté sans les déclencheurs des gestes de certification qu'il exige.
+  const declencheurs = new Set(ops.map((o) => o.declencheur).filter(Boolean))
+  JALONS.filter((j) => ops.some((o) => o.jalon === j)).forEach((j) => {
+    const attendus = [...(GESTES_CERTIFICATION.toujours[j] ?? [])]
+    if (ctx.attestations !== false) (GESTES_CERTIFICATION.avecAttestations[j] ?? []).filter((d) => !attendus.includes(d)).forEach((d) => attendus.push(d))
+    const absents = attendus.filter((d) => !declencheurs.has(d))
+    if (absents.length) {
+      ajouter('GESTE_CERTIFICATION_ABSENT', [j, ...absents],
+        `Le jalon « ${LIBELLES_JALON[j]} » exige une opération qui porte chaque geste de certification : ${absents.map((d) => DECLENCHEURS[d] ?? d).join(', ')}.`)
+    }
+  })
   return { anomalies, ordre, couches, cycle }
 }
 
-/** Attributs requis à la publication (ReferentialCompletenessChecker). */
-function manquants(ops: ReferenceOperation[]) {
+/**
+ * Attributs requis à la publication (ReferentialCompletenessChecker) : ceux du service, l'étape tenant lieu de phase et
+ * les attributs historiques dérivés de l'étape et du responsable comme ReferenceOperation.deriverAttributsHistoriques.
+ */
+export function manquants(ops: ReferenceOperation[]) {
+  const vide = (v: unknown) => v === null || v === undefined || (typeof v === 'string' && !v.trim()) || (typeof v === 'object' && !Array.isArray(v) && !Object.keys(v as object).length)
   return ops
-    .map((o) => ({ code: o.code, attributs: (['libelle', 'etape', 'segment', 'responsable', 'validateur', 'geste'] as const).filter((a) => !o[a]) as string[] }))
+    .map((o) => {
+      const derive = !!o.etape
+      const attributs: string[] = []
+      if (vide(o.libelle)) attributs.push('libelle')
+      if (vide(o.phase) && !derive) attributs.push('phase')
+      if (!o.segment) attributs.push('segment')
+      if (!o.partie && !(derive && o.responsable)) attributs.push('partie')
+      if (vide(o.serviceCode) && !derive) attributs.push('serviceCode')
+      if (!o.natureCouverture && !derive) attributs.push('natureCouverture')
+      if (vide(o.preuveAttendue) && !derive) attributs.push('preuveAttendue')
+      if (vide(o.fonctionResponsable) && !(derive && o.responsable)) attributs.push('fonctionResponsable')
+      if (o.natureCouverture === 'CERTIFICATION' && vide(o.idScenario)) attributs.push('idScenario')
+      return { code: o.code, attributs }
+    })
     .filter((m) => m.attributs.length)
+    .sort((a, b) => a.code.localeCompare(b.code))
 }
 
 /** Successeurs déduits des prédécesseurs. */
 const avecSuccesseurs = (ops: ReferenceOperation[]) => ops.map((o) => ({ ...o, successeurs: ops.filter((x) => x.predecesseurs.includes(o.code)).map((x) => x.code).sort() }))
 
 /** Graphe étendu (GET /referentiels/{id}/graphe). */
-export function calculerGraphe(v: ReferentielVersion, ops: ReferenceOperation[], d89: { etapes?: EtapeReferentiel[]; profils?: string[] } = {}): GrapheReferentiel {
+export function calculerGraphe(v: ReferentielVersion, ops: ReferenceOperation[], d89: { etapes?: EtapeReferentiel[]; profils?: string[]; controle?: ContexteControle } = {}): GrapheReferentiel {
   const vue = visibles(ops, d89.profils)
-  const complet = calculerGrapheComplet(v, ops)
+  const complet = calculerGrapheComplet(v, ops, d89.controle)
   if (vue.filtre === 'COMPLET') return { ...complet, ...(d89.etapes ? { etapes: d89.etapes } : {}), filtre: 'COMPLET' }
   // Lecture concernée : nœuds visibles et fantômes, arcs touchant une opération visible, contrôles réduits aux visibles.
   const parCode = new Map(complet.noeuds.map((n) => [n.code, n]))
@@ -312,8 +386,8 @@ export function calculerGraphe(v: ReferentielVersion, ops: ReferenceOperation[],
   }
 }
 
-function calculerGrapheComplet(v: ReferentielVersion, ops: ReferenceOperation[]): GrapheReferentiel {
-  const r = controlerGraphe(ops)
+function calculerGrapheComplet(v: ReferentielVersion, ops: ReferenceOperation[], ctx: ContexteControle = {}): GrapheReferentiel {
+  const r = controlerGraphe(ops, ctx)
   const parCode = new Map(ops.map((o) => [o.code, o]))
   const debut = new Map<string, number>()
   const fin = new Map<string, number>()
@@ -346,13 +420,14 @@ function calculerGrapheComplet(v: ReferentielVersion, ops: ReferenceOperation[])
   }
 }
 
-/** Restitution du contrôle à blanc (ControleVue). */
-export function controleDe(ops: ReferenceOperation[]): ControleResultat {
-  const r = controlerGraphe(ops)
+/** Restitution du contrôle à blanc (ControleVue) : anomalies brutes et « conforme » (publiable) comme le service. */
+export function controleDe(ops: ReferenceOperation[], ctx: ContexteControle = {}): ControleResultat {
+  const r = controlerGraphe(ops, ctx)
+  const m = manquants(ops)
   return {
     acyclique: !r.cycle.length, ordreTopologique: r.ordre, cycle: r.cycle,
     incoherences: r.anomalies.filter((a) => a.type !== 'CYCLE').map((a) => ({ code: a.codes[0] ?? '', predecesseur: a.codes[1] ?? '', motif: a.motif })),
-    manquants: manquants(ops),
+    manquants: m, anomalies: r.anomalies, conforme: !r.anomalies.length && !m.length,
   }
 }
 
@@ -397,22 +472,24 @@ export function versionsInitiales(): { versions: ReferentielVersion[]; operation
  * production. Chaque opération porte son geste, son jalon, son déclencheur et sa vue en données, sans rang codé.
  */
 export const TYPE_DEMO_COURT = 'AGREGATEUR'
+// HOM-18 : aucune position enregistrée, les cartes sont disposées dans les couloirs de leur étape (disposition automatique).
 export function versionAgregateur(): ReferenceOperation[] {
   const o = (code: string, i: number, libelle: string, etape: EtapeCode, responsable: Fonction, validateur: Fonction | null, geste: Geste, predecesseurs: string[],
     x: Partial<ReferenceOperation> = {}): ReferenceOperation => ({
     code, libelle, description: null, etape, segment: 'AMONT', ordre: i, responsable, validateur, consultes: [], informes: ['CHEF_DDRM'], externes: [], predecesseurs,
     delaiJours: 5, grain: 'OPERATION', plateforme: null, cle: false, secret: false, oubliSansSymptome: false, pivot: false, valeurReference: null, livrables: [], geste,
-    jalon: null, declencheur: null, particularite: null, position: { x: i * 220, y: 80 }, phase: null, partie: 'DES', serviceCode: 'TRANSVERSE', natureCouverture: 'AUCUNE',
+    jalon: null, declencheur: null, particularite: null, position: null, phase: null, partie: 'DES', serviceCode: 'TRANSVERSE', natureCouverture: 'AUCUNE',
     preuveAttendue: {}, idScenario: null, fonctionResponsable: responsable, grille: null, vue: 'AUCUNE', consultesRecoiventTache: false, signatures: [], ...x,
   })
   return [
     o('A1', 1, 'Arrêter le périmètre et le calendrier du projet', 'CADRAGE', 'DDRM', 'CONDUCTEUR', 'DEPOSER_PREUVE', []),
     o('A2', 2, 'Exécuter les essais de certification', 'TESTS', 'SNA', 'CONDUCTEUR', 'DEPOSER_PREUVE', ['A1']),
-    o('A3', 3, 'Constater la couverture de certification', 'CERTIFICATION', 'SNA', null, 'CONSTATER_COUVERTURE', ['A2'], { jalon: 'APTE_CERTIFICATION' }),
+    // HOM-01 : chaque opération a un validateur distinct de son responsable, sans quoi le service refuserait la publication.
+    o('A3', 3, 'Constater la couverture de certification', 'CERTIFICATION', 'SNA', 'CONDUCTEUR', 'CONSTATER_COUVERTURE', ['A2'], { jalon: 'APTE_CERTIFICATION' }),
     o('A4', 4, 'Établir le procès-verbal de certification', 'CERTIFICATION', 'CONDUCTEUR', 'CHEF_DES', 'EVENEMENT_EXTERNE', ['A3'], { declencheur: 'certification.pv-established.v1', vue: 'DECISION' }),
-    o('A5', 5, 'Signer le procès-verbal de certification', 'CERTIFICATION', 'CHEF_DES', null, 'EVENEMENT_EXTERNE', ['A4'],
+    o('A5', 5, 'Signer le procès-verbal de certification', 'CERTIFICATION', 'CHEF_DES', 'CONDUCTEUR', 'EVENEMENT_EXTERNE', ['A4'],
       { declencheur: 'certification.pv-signed.v1', jalon: 'CERTIFIEE', vue: 'DECISION', externes: ['PARTICIPANT'], pivot: true }),
-    o('A6', 6, 'Constituer le dossier de changement', 'APPROBATION_SECURITE', 'PRODUCTION_MONETIQUE', null, 'EVENEMENT_EXTERNE', ['A5'],
+    o('A6', 6, 'Constituer le dossier de changement', 'APPROBATION_SECURITE', 'PRODUCTION_MONETIQUE', 'CONDUCTEUR', 'EVENEMENT_EXTERNE', ['A5'],
       { declencheur: 'certification.change-record-constituted.v1', vue: 'DECISION' }),
     o('A7', 7, 'Faire approuver le changement par la sécurité', 'APPROBATION_SECURITE', 'PRODUCTION_MONETIQUE', 'RSSI', 'EVENEMENT_EXTERNE', ['A6'],
       { declencheur: 'certification.security-approved.v1', jalon: 'APPROUVEE_SECURITE', vue: 'DECISION' }),
@@ -476,6 +553,11 @@ export function referentielsSimules(attendre: Attendre, refus: Refus, o: {
     EXPLOITATION: ['HOM_FUNCTION_OPERATIONS'],
   }
   const fonctions: FonctionCatalogue[] = CATALOGUE.fonctions.map((f) => ({ code: f.code, libelle: f.libelle, profils: [...(f.profils ?? [])], permissions: [...(PERMISSIONS_DEPART[f.code] ?? [])], externe: !!f.externe, actif: true, reprise: true }))
+  /** Contexte du contrôle d'une version : catalogue des fonctions courant, attestations exigées par le modèle du type (AttestationsTypeProjet). */
+  const contexte = (id: string): ContexteControle => {
+    const modele = types.find((t) => t.code === version(id).typeProjet)?.modele
+    return { fonctions, attestations: modele !== 'GENERIQUE' }
+  }
   const verifierPermissions = (l: string[] | undefined) => {
     if (l && (l.length > 20 || l.some((p) => !/^[A-Z][A-Z0-9_]{1,79}$/.test(p)))) throw refus(422, 'HOM_FONCTION_PERMISSION_INVALIDE', 'Permission invalide : 20 codes au plus, majuscules, chiffres ou souligné.')
   }
@@ -646,7 +728,7 @@ export function referentielsSimules(attendre: Attendre, refus: Refus, o: {
       etapes[id] = codes.map((c) => l.find((x) => x.code === c)!)
       return vuesDe(id)
     }),
-    controlerReferentiel: (id) => attendre(() => controleDe(operations[id] ?? [])),
+    controlerReferentiel: (id) => attendre(() => controleDe(operations[id] ?? [], contexte(id))),
     liaisonsImpactees: (versionId) => attendre({ total: o.liaisonsActives(versionId) }),
     creerBrouillon: (e) => attendre(() => {
       const piloteId = e.piloteId ?? o.utilisateur ?? 'U-101'
@@ -674,11 +756,14 @@ export function referentielsSimules(attendre: Attendre, refus: Refus, o: {
       etapes[v.id] = structuredClone(etapesDe(s.id))
       return v
     }),
+    // HOM-01, HOM-02 : refus comme ReferentialLifecycleService.publier, attributs manquants d'abord, puis toute anomalie du contrôle.
     publierReferentiel: (id) => attendre(() => {
       const v = version(id)
       if (v.etat !== 'BROUILLON') throw refus(409, 'HOM_REFERENTIAL_FROZEN', 'Une version publiée est figée.')
-      const r = controlerGraphe(operations[id] ?? [])
-      if (r.cycle.length) throw refus(409, 'HOM_REFERENTIAL_GRAPH_INVALID', 'Le graphe contient un cycle.')
+      const m = manquants(operations[id] ?? [])
+      if (m.length) throw refus(409, 'HOM_REFERENTIAL_INCOMPLETE', 'Publication refusée : opérations incomplètes', { operations: m })
+      const r = controlerGraphe(operations[id] ?? [], contexte(id))
+      if (r.anomalies.length) throw refus(409, 'HOM_REFERENTIAL_GRAPH_INVALID', 'Publication refusée : graphe des prédécesseurs non conforme', { anomalies: r.anomalies })
       versions.filter((x) => x.typeProjet === v.typeProjet && x.etat === 'PUBLIEE').forEach((x) => {
         x.etat = 'RETIREE'
         x.actionsPermises = []
@@ -690,7 +775,7 @@ export function referentielsSimules(attendre: Attendre, refus: Refus, o: {
       v.actionsPermises = ['DERIVER', 'CONTROLER']
       versions.filter((x) => x.typeProjet === v.typeProjet).forEach((x) => (x.versionActiveId = v.id))
     }),
-    grapheReferentiel: (id) => attendre(() => calculerGraphe(version(id), operations[id] ?? [], { etapes: vuesDe(id), profils: o.profils })),
+    grapheReferentiel: (id) => attendre(() => calculerGraphe(version(id), operations[id] ?? [], { etapes: vuesDe(id), profils: o.profils, controle: contexte(id) })),
     catalogueReferentiels: (versionId) => attendre(() => ({
       ...CATALOGUE, fonctions: fonctions.map((f) => ({ code: f.code, libelle: f.libelle, profils: f.profils, externe: f.externe, actif: f.actif })),
       typesProjet: types.map((t) => ({ code: t.code, libelle: t.libelle, actif: t.actif })),

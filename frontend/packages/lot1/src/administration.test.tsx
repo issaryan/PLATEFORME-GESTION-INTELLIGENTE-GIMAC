@@ -29,7 +29,7 @@ describe('profil du RSSI (reflet de generer-realm-gimac.py)', () => {
     expect(rssi).not.toContain('IAM_ROLE_PRIVILEGED_GRANT')
     expect(rssi).not.toContain('PLATFORM_CONFIG_EDIT')
     // Seuls le RSSI et le super administrateur administrent les comptes ; seul le second octroie un profil privilégié.
-    expect(Object.keys(PROFILS).filter((r) => PROFILS[r].includes('IAM_ACCOUNT_READ'))).toEqual(['ROLE_RSSI', 'ROLE_SUPER_ADMIN'])
+    expect(Object.keys(PROFILS).filter((r) => PROFILS[r].includes('IAM_ACCOUNT_READ')).sort()).toEqual(['ROLE_RSSI', 'ROLE_SUPER_ADMIN'])
     expect(PROFILS.ROLE_SUPER_ADMIN).toContain('IAM_ROLE_PRIVILEGED_GRANT')
     expect(PROFILS.ROLE_SUPER_ADMIN).toContain('PLATFORM_CONFIG_EDIT')
   })

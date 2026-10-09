@@ -233,6 +233,19 @@ describe('titreConversation et CorpsMessage', () => {
     expect(screen.getByRole('link', { name: 'LIA-2026-027' }).getAttribute('href')).toBe('/des/parcours/uuid-27')
     expect(screen.getByRole('link', { name: 'LIA-2026-099' }).getAttribute('href')).toBe('/des/parcours?q=LIA-2026-099')
   })
+  it('QUO-09 : sans lecture des liaisons, une référence écrite dans un message reste du texte (pas de lien vers un écran refusé)', async () => {
+    const s = services()
+    const direct = await s.messagerie.demarrer({ destinataires: ['U-201'], titre: 'Note QUO-09', liaisonId: null, contenu: 'Voir LIA-2026-027, svp.', etiquettes: [], fichiers: [] })
+    page(`/des/messagerie?conversation=${direct.id}`, { s, permissions: [PERM.messageLire, PERM.messageEnvoyer] })
+    const texte = await screen.findByText('LIA-2026-027')
+    expect(texte.closest('a')).toBeNull()
+    expect(screen.queryAllByRole('link', { name: /LIA-2026/ })).toEqual([])
+    // Ni recherche de liaison à citer : la liste des liaisons lui serait refusée.
+    expect(screen.queryByRole('button', { name: 'Citer une liaison' })).toBeNull()
+    cleanup()
+    page(`/des/messagerie?conversation=${direct.id}`, { s })
+    expect((await screen.findByRole('link', { name: 'LIA-2026-027' })).getAttribute('href')).toBe('/des/parcours?q=LIA-2026-027')
+  })
 })
 
 describe('MessageriePage : photos de profil (docs/lot1/mon-compte.md §4)', () => {
@@ -260,6 +273,17 @@ describe('MessageriePage : photos de profil (docs/lot1/mon-compte.md §4)', () =
     expect(interlocuteur(c, 'a')?.id).toBe('b')
     expect(interlocuteur({ ...c, type: 'GROUPE' }, 'a')).toBeUndefined()
   })
+  it('QUO-10 : « écrit… » démontrable en démonstration (signal de saisie simulé d’un correspondant)', async () => {
+    const s = services()
+    const { contenu } = await s.messagerie.conversations({})
+    const directe = contenu.find((c) => c.type === 'DIRECTE' && !c.titre)!
+    const autre = directe.membres.find((m) => m.id !== 'u-test')!
+    page(`/des/messagerie?conversation=${directe.id}`, { s })
+    const fil = await screen.findByRole('region', { name: autre.nom })
+    act(() => void s.messagerie.ecrireDemo({ conversationId: directe.id }))
+    expect(await within(fil).findByText(`${autre.nom.split(' ')[0]} écrit…`)).toBeTruthy()
+  })
+
   it('D-72 : présence et « écrit… » dans la liste, l’en-tête et sous le fil ; la frappe signale la saisie', async () => {
     const s = services()
     const signaler = vi.spyOn(s.messagerie, 'signalerSaisie')

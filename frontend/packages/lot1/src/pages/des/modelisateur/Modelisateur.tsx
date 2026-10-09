@@ -186,7 +186,8 @@ function Espace({ version, graphe, catalogue }: { version: ReferentielVersion; g
               {graphe.anomalies.map((a, i) => (
                 <li key={`${a.type}-${i}`}>
                   <button type="button" className="gm-mod-anomalie-lien" onClick={() => a.codes[0] && centrer(a.codes[0])}>
-                    <strong>{t(`modelisateur.anomalie.${a.type}`)}</strong>{a.codes.length ? ` · ${a.codes.join(', ')}` : ''}{a.motif ? ` · ${a.motif}` : ''}
+                    {/* HOM-02 : les codes d'un geste de certification absent sont un jalon et des sujets d'événement, dits par le motif. */}
+                    <strong>{t(`modelisateur.anomalie.${a.type}`)}</strong>{a.codes.length && a.type !== 'GESTE_CERTIFICATION_ABSENT' ? ` · ${a.codes.join(', ')}` : ''}{a.motif ? ` · ${a.motif}` : ''}
                   </button>
                 </li>
               ))}

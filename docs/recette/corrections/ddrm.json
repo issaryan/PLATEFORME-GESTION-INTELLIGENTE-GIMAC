@@ -1,0 +1,439 @@
+[
+  {
+    "id": "DDR-01",
+    "gravite": "bloquante",
+    "titre": "Maker-checker non appliqué : le chef prononce sa propre proposition",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/ddrm/046-chef-approuver-propre-proposition-clair.png",
+    "apres": "docs/recette/captures/ddrm/corrections/DDR-01-apres.png",
+    "correctif": "Le service simulé prend l'utilisateur comme proposant et approbateur et refuse 403 PAR_SEPARATION_OF_DUTIES comme MS-PARTICIPANT ; les boutons Approuver et Rejeter ne sont plus offerts au proposant.",
+    "fichiers": [
+      "frontend/packages/lot1/src/services/simule/participant.ts",
+      "frontend/packages/lot1/src/services/simule/index.ts",
+      "frontend/packages/lot1/src/ressources/institution.tsx",
+      "frontend/packages/lot1/src/pages/des/InstitutionPage.tsx"
+    ],
+    "test": "frontend/packages/lot1/src/services/simule/participant.test.ts (DDR-01 : maker-checker) ; ms-participant InstitutionLifecycleServiceTest.approbateurIdentique (règle serveur déjà présente)"
+  },
+  {
+    "id": "DDR-02",
+    "gravite": "bloquante",
+    "titre": "Identifiants réattribués après un rechargement en démonstration continue",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/ddrm/048-chef-liste-identifiants-en-double-clair.png",
+    "apres": "docs/recette/captures/ddrm/corrections/DDR-02-apres.png",
+    "correctif": "Le compteur d'identifiants du registre simulé reprend après le plus grand identifiant relu du stockage ; le serveur attribue des UUID (sans défaut).",
+    "fichiers": [
+      "frontend/packages/lot1/src/services/simule/participant.ts"
+    ],
+    "test": "frontend/packages/lot1/src/services/simule/participant.test.ts (DDR-02)"
+  },
+  {
+    "id": "DDR-03",
+    "gravite": "majeure",
+    "titre": "Conditions d'adhésion enregistrées sans contrôle",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/ddrm/026-charge-conditions-code-invalide-indirecte-sans-marraine-clair.png",
+    "apres": "docs/recette/captures/ddrm/corrections/DDR-03-apres.png",
+    "correctif": "Contrôles du code participant, du mode et des comptes (RG-11, RG-12) dans MS-PARTICIPANT (422 PAR_CONDITIONS_INVALID, un message par champ), dans le service simulé et dans le formulaire, messages sous les champs, sans mode imposé.",
+    "fichiers": [
+      "ms-participant/src/main/java/cm/gimac/des/participant/application/usecase/InstitutionLifecycleService.java",
+      "ms-participant/src/main/java/cm/gimac/des/participant/domain/ParticipantException.java",
+      "frontend/packages/lot1/src/services/simule/participant.ts",
+      "frontend/packages/lot1/src/pages/des/institutions/saisie.ts",
+      "frontend/packages/lot1/src/pages/des/institutions/formulaires.tsx"
+    ],
+    "test": "ms-participant InstitutionLifecycleServiceTest.conditionsIncompletes ; frontend/packages/lot1/src/services/simule/participant.test.ts (DDR-03)"
+  },
+  {
+    "id": "DDR-04",
+    "gravite": "majeure",
+    "titre": "Modification de fiche perdue en partie",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/ddrm/030-charge-fiche-apres-modification-clair.png",
+    "apres": "docs/recette/captures/ddrm/corrections/DDR-04-apres.png",
+    "correctif": "Le service simulé reprend tous les champs de la fiche comme appliquerFiche (BIC, code BEAC, origine, date de prise de contact) et contrôle l'unicité des codes ; la date de prise de contact est modifiable dans le formulaire.",
+    "fichiers": [
+      "frontend/packages/lot1/src/services/simule/participant.ts",
+      "frontend/packages/lot1/src/ressources/institution.tsx",
+      "frontend/packages/lot1/src/pages/des/institutions/formulaires.tsx"
+    ],
+    "test": "frontend/packages/lot1/src/services/simule/participant.test.ts (DDR-04)"
+  },
+  {
+    "id": "DDR-05",
+    "gravite": "majeure",
+    "titre": "Dépôt de preuve par un acteur non habilité, attribué à un autre",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/ddrm/064-chef-depot-preuve-op3-tentative-clair.png",
+    "apres": "docs/recette/captures/ddrm/corrections/DDR-05-apres.png",
+    "correctif": "Le dépôt n'est offert qu'au RACI (responsable, conducteur) dans MS-HOMOLOGATION et le service simulé ; la supervision HOM_STEP_MANAGE reste admise et journalisée sans être offerte ; l'auteur tracé est l'utilisateur réel.",
+    "fichiers": [
+      "ms-homologation/src/main/java/cm/gimac/des/homologation/domain/service/ParcoursProjection.java",
+      "frontend/packages/lot1/src/services/simule/parcours.ts",
+      "frontend/packages/lot1/src/services/simule/index.ts"
+    ],
+    "test": "ms-homologation ParcoursProjectionTest.supervisionNonOfferte ; frontend/packages/lot1/src/services/simule/ddrm-recette.test.ts (DDR-05)"
+  },
+  {
+    "id": "DDR-06",
+    "gravite": "majeure",
+    "titre": "Affectation des ressources acceptée sans désignation",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/ddrm/076-chef-affecter-ressources-vide-clair.png",
+    "apres": "docs/recette/captures/ddrm/corrections/DDR-06-apres.png",
+    "correctif": "La fenêtre exige une personne pour chaque fonction présentée (message sous chaque fonction) et annonce la règle appliquée ; le service simulé contrôle comme MS-HOMOLOGATION la personne et sa fonction et l'affecte sur les opérations non faites.",
+    "fichiers": [
+      "frontend/packages/lot1/src/pages/des/parcours/DialogueAffectation.tsx",
+      "frontend/packages/lot1/src/i18n/ecrans/parcours-cadrage.ts",
+      "frontend/packages/lot1/src/services/simule/parcours.ts"
+    ],
+    "test": "frontend/packages/lot1/src/services/simule/ddrm-recette.test.ts (DDR-06)"
+  },
+  {
+    "id": "DDR-07",
+    "gravite": "majeure",
+    "titre": "Filtre Statut de la liste des institutions sans effet",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/ddrm/118-charge-institutions-filtre-statut-sans-effet-clair.png",
+    "apres": "docs/recette/captures/ddrm/corrections/DDR-07-apres.png",
+    "correctif": "La barre de filtres de ResourceList est pilotée : la valeur choisie reste affichée, part dans la requête, et l'adresse ?statut= la présélectionne ; « Tous » retire le filtre.",
+    "fichiers": [
+      "frontend/packages/design-system/src/crud/ResourceList/ResourceList.tsx"
+    ],
+    "test": "frontend/packages/lot1/src/pages/des/InstitutionsPage.test.tsx (DDR-07)"
+  },
+  {
+    "id": "DDR-08",
+    "gravite": "majeure",
+    "titre": "Acteurs non notifiés des décisions et des opérations",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/ddrm/052-charge-notifications-apres-rejet-clair.png",
+    "apres": "docs/recette/captures/ddrm/corrections/DDR-08-apres.png",
+    "correctif": "MS-PARTICIPANT publie le proposant dans transition-approved et transition-rejected ; MS-NOTIFICATION avise le proposant du prononcé et du refus ; le service simulé notifie aussi les opérations ouvertes et renvoyées à leur responsable.",
+    "fichiers": [
+      "ms-participant/src/main/java/cm/gimac/des/participant/domain/event/TransitionApprovedPayload.java",
+      "ms-participant/src/main/java/cm/gimac/des/participant/domain/event/TransitionRejectedPayload.java",
+      "ms-notification/src/main/java/cm/gimac/des/notification/application/usecase/BoiteNotificationsService.java",
+      "ms-notification/src/main/java/cm/gimac/des/notification/infrastructure/messaging/consumer/EvenementsNotificationsConsumer.java",
+      "frontend/packages/lot1/src/services/notifications.ts",
+      "frontend/packages/lot1/src/services/simule/parcours.ts",
+      "frontend/packages/lot1/src/services/simule/index.ts"
+    ],
+    "test": "ms-notification BoiteNotificationsServiceTest.transitionTranchee et EvenementsNotificationsConsumerTest.transitionsTranchees ; frontend/packages/lot1/src/services/notifications.test.ts (DDR-08)"
+  },
+  {
+    "id": "DDR-09",
+    "gravite": "majeure",
+    "titre": "Tâches confiées perdues entre acteurs",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/ddrm/083-charge-mes-taches-clair.png",
+    "apres": "docs/recette/captures/ddrm/corrections/DDR-09-apres.png",
+    "correctif": "Les tâches simulées sont gardées en démonstration continue (gm.demo.pilotage), effets des autres services compris, sans réattribution d'identifiant.",
+    "fichiers": [
+      "frontend/packages/lot1/src/services/simule/pilotage.ts",
+      "frontend/packages/lot1/src/services/simule/index.ts"
+    ],
+    "test": "frontend/packages/lot1/src/services/simule/ddrm-recette.test.ts (DDR-09)"
+  },
+  {
+    "id": "DDR-10",
+    "gravite": "majeure",
+    "titre": "Action d'un autre profil annoncée au chef de la DDRM",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/ddrm/072-chef-mes-actions-certification-clair.png",
+    "apres": "docs/recette/captures/ddrm/corrections/DDR-10-apres.png",
+    "correctif": "Le service simulé ne confond plus la fonction CHEF_DES avec la fonction partagée CHEFS_DEPARTEMENT : la signature du procès-verbal n'est plus annoncée au chef de la DDRM (le serveur n'avait pas le défaut).",
+    "fichiers": [
+      "frontend/packages/lot1/src/services/simule/parcours.ts",
+      "frontend/packages/lot1/src/pages/des/parcours/DialogueAffectation.tsx"
+    ],
+    "test": "frontend/packages/lot1/src/services/simule/ddrm-recette.test.ts (DDR-10)"
+  },
+  {
+    "id": "DDR-11",
+    "gravite": "mineure",
+    "titre": "Calendrier des champs date inopérant, erreur non reliée au champ",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/ddrm/010-charge-prise-contact-calendrier-clair.png",
+    "apres": "docs/recette/captures/ddrm/corrections/DDR-11-apres.png",
+    "correctif": "Le bouton « Ouvrir le calendrier » ouvre un calendrier piloté (mois, jour choisi, changement de mois) ; le message d'erreur est relié au champ par aria-describedby.",
+    "fichiers": [
+      "frontend/packages/design-system/src/saisie/DateField/DateField.tsx",
+      "frontend/packages/design-system/src/saisie/DateField/CalendarPopover.tsx"
+    ],
+    "test": "Capture après ; tests du système de conception existants (saisie de date)"
+  },
+  {
+    "id": "DDR-12",
+    "gravite": "mineure",
+    "titre": "Liste des institutions débordante à 1440 px",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/ddrm/004-charge-institutions-liste-clair.png",
+    "apres": "docs/recette/captures/ddrm/corrections/DDR-12-apres.png",
+    "correctif": "Les actions « Proposer l'adhésion » et « Modifier la fiche » quittent la liste (fiche et formulaire) : le tableau tient dans la largeur à 1440 px.",
+    "fichiers": [
+      "frontend/packages/lot1/src/ressources/institution.tsx"
+    ],
+    "test": "Capture après (tableau de 1110 px dans 1110 px)"
+  },
+  {
+    "id": "DDR-13",
+    "gravite": "mineure",
+    "titre": "Tiroir de pièce sans chronologie, empreinte nulle",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/ddrm/022-charge-piece-rejetee-chronologie-clair.png",
+    "apres": "docs/recette/captures/ddrm/corrections/DDR-13-apres.png",
+    "correctif": "Le tiroir d'une pièce montre sa chronologie (dépôt, examen, motif), le fichier déposé et son empreinte ; le service simulé calcule une empreinte propre à chaque pièce.",
+    "fichiers": [
+      "frontend/packages/lot1/src/pages/des/InstitutionPage.tsx",
+      "frontend/packages/lot1/src/services/simule/participant.ts",
+      "frontend/packages/lot1/src/i18n/ecrans/ddrm-recette.ts"
+    ],
+    "test": "frontend/packages/lot1/src/pages/des/InstitutionPage.test.tsx"
+  },
+  {
+    "id": "DDR-14",
+    "gravite": "mineure",
+    "titre": "Codes bruts affichés (prérequis, tâche de décision)",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/ddrm/014-charge-prerequis-manquants-clair.png",
+    "apres": "docs/recette/captures/ddrm/corrections/DDR-14-apres.png",
+    "correctif": "Références des prérequis nommées (état de la pièce, mode d'adhésion) ; statuts nommés dans le titre et la description de la tâche de décision, au service simulé comme dans MS-PILOTAGE. Le type AGREGATEUR et les formats de fichier lisibles relèvent d'autres lots (déjà nommés).",
+    "fichiers": [
+      "frontend/packages/lot1/src/pages/des/InstitutionPage.tsx",
+      "frontend/packages/lot1/src/services/simule/index.ts",
+      "ms-pilotage/src/main/java/cm/gimac/des/pilotage/application/usecase/ApprobationsTransitionsService.java"
+    ],
+    "test": "frontend/packages/lot1/src/pages/des/InstitutionPage.test.tsx (DDR-14) ; ms-pilotage ApprobationsTransitionsServiceTest"
+  },
+  {
+    "id": "DDR-15",
+    "gravite": "mineure",
+    "titre": "Date de référence de la démonstration figée au 29/09/2026",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/ddrm/037-chef-tableau-de-bord-clair.png",
+    "apres": "docs/recette/captures/ddrm/corrections/DDR-15-apres.png",
+    "correctif": "Le jour de référence des services simulés est le jour courant de Douala (même horloge que l'en-tête) ; étapes 1 et 2 datées par le registre des institutions, signature horodatée à l'instant, tâche et notification de décision datées de la proposition.",
+    "fichiers": [
+      "frontend/packages/lot1/src/services/simule/parcours.ts",
+      "frontend/packages/lot1/src/services/simule/participant.ts",
+      "frontend/packages/lot1/src/services/simule/pilotage.ts",
+      "frontend/packages/lot1/src/services/simule/index.ts",
+      "frontend/packages/lot1/src/services/notifications.ts",
+      "frontend/packages/design-system/src/saisie/SignatureField/SignatureField.tsx"
+    ],
+    "test": "frontend/packages/lot1/src/services/simule/ddrm-recette.test.ts (DDR-15)"
+  },
+  {
+    "id": "DDR-16",
+    "gravite": "mineure",
+    "titre": "Libellés : pluriels, ordre des erreurs, noms et colonnes",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/ddrm/041-chef-tache-decision-ouverte-clair.png",
+    "apres": "docs/recette/captures/ddrm/corrections/DDR-16-apres.png",
+    "correctif": "« 1 élément » au singulier ; résumé d'erreurs dans l'ordre des champs ; nom de la chargée ; onglet « Propositions de statut » dans la description ; colonne Unité « Toutes unités » ; « À prendre » sans deux-points ; plus de nom de microservice dans la fenêtre d'ouverture de liaison.",
+    "fichiers": [
+      "frontend/packages/design-system/src/navigation/Pagination/Pagination.tsx",
+      "frontend/packages/design-system/src/i18n/libelles.ts",
+      "frontend/packages/design-system/src/crud/ResourceForm/ResourceForm.tsx",
+      "frontend/packages/lot1/src/pages/des/activite/dialoguesTache.tsx",
+      "frontend/packages/lot1/src/pages/des/activite/TachesPage.tsx",
+      "frontend/packages/lot1/src/i18n/ecrans/cadrage.ts",
+      "frontend/packages/lot1/src/i18n/ecrans/parcours-cadrage.ts",
+      "frontend/packages/lot1/src/i18n/ecrans/ddrm-recette.ts",
+      "frontend/packages/lot1/src/services/simule/index.ts",
+      "ms-pilotage/src/main/java/cm/gimac/des/pilotage/application/usecase/ApprobationsTransitionsService.java"
+    ],
+    "test": "frontend/packages/lot1/src/pages/des/activite/TachesPage.test.tsx (DDR-16) ; frontend/packages/lot1/src/pages/des/TableauDeBordPage.test.tsx"
+  },
+  {
+    "id": "DDR-17",
+    "gravite": "mineure",
+    "titre": "Propositions de statut : pastille, proposant, refus, bouton actif",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/ddrm/015-charge-proposition-refusee-prerequis-clair.png",
+    "apres": "docs/recette/captures/ddrm/corrections/DDR-17-apres.png",
+    "correctif": "Pastille « sur proposition » contenue dans sa cellule ; proposant affiché dans le tableau et le tiroir ; « Proposer l'adhésion » non offert pendant une proposition en attente ou avec des prérequis manquants. La mise en forme d'erreur du refus est due au lot certification (CER-10).",
+    "fichiers": [
+      "frontend/packages/lot1/src/ressources/institution.tsx",
+      "frontend/packages/lot1/src/pages/des/InstitutionPage.tsx",
+      "frontend/packages/lot1/src/i18n/ecrans/ddrm-recette.ts",
+      "frontend/packages/design-system/src/styles/05-badges.css"
+    ],
+    "test": "frontend/packages/lot1/src/pages/des/InstitutionPage.test.tsx (DDR-17)"
+  },
+  {
+    "id": "DDR-18",
+    "gravite": "mineure",
+    "titre": "Conditions d'adhésion rouvertes sans les comptes enregistrés",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/ddrm/030-charge-fiche-apres-modification-clair.png",
+    "apres": "docs/recette/captures/ddrm/corrections/DDR-18-apres.png",
+    "correctif": "La fenêtre des conditions se rouvre sur toutes les valeurs enregistrées (comptes de règlement et de cantonnement, banque marraine).",
+    "fichiers": [
+      "frontend/packages/lot1/src/pages/des/institutions/formulaires.tsx",
+      "frontend/packages/lot1/src/pages/des/institutions/saisie.ts"
+    ],
+    "test": "frontend/packages/lot1/src/pages/des/InstitutionPage.test.tsx (DDR-03 et DDR-18)"
+  },
+  {
+    "id": "DDR-19",
+    "gravite": "mineure",
+    "titre": "Longueur minimale du motif indiquée par la seule infobulle",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/ddrm/020-charge-rejet-piece-motif-trop-court-clair.png",
+    "apres": "docs/recette/captures/ddrm/corrections/DDR-19-apres.png",
+    "correctif": "L'aide du champ motif annonce « 10 caractères au moins » dans les trois langues.",
+    "fichiers": [
+      "frontend/packages/design-system/src/i18n/libelles.ts"
+    ],
+    "test": "Capture après"
+  },
+  {
+    "id": "DDR-20",
+    "gravite": "mineure",
+    "titre": "Notifications de démonstration identiques pour tous les profils",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/ddrm/085-charge-lien-notification-1-clair.png",
+    "apres": "docs/recette/captures/ddrm/corrections/DDR-20-apres.png",
+    "correctif": "Notifications de démonstration propres au profil : rapport reçu d'un membre de son équipe seulement, action d'homologation aux seuls porteurs de la fonction, tâche confiée réelle de sa liste avec un lien vers elle.",
+    "fichiers": [
+      "frontend/packages/lot1/src/services/notifications.ts",
+      "frontend/packages/lot1/src/services/simule/pilotage.ts",
+      "frontend/packages/lot1/src/services/simule/index.ts",
+      "frontend/apps/departement/src/App.tsx",
+      "frontend/apps/console/src/App.tsx"
+    ],
+    "test": "frontend/packages/lot1/src/services/notifications.test.ts (DDR-20) ; frontend/e2e/specs/notifications.spec.ts"
+  },
+  {
+    "id": "DDR-21",
+    "gravite": "mineure",
+    "titre": "Tâche à la fois dans Mes tâches et dans Confiées du chef",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/ddrm/039-chef-taches-mes-taches-clair.png",
+    "apres": "docs/recette/captures/ddrm/corrections/DDR-21-apres.png",
+    "correctif": "Le jeu de tâches distingue la fiche du responsable d'équipe (confiée par son propre responsable) de celle qu'il confie à ses membres.",
+    "fichiers": [
+      "frontend/packages/lot1/src/services/simule/pilotage.ts"
+    ],
+    "test": "Capture après"
+  },
+  {
+    "id": "DDR-22",
+    "gravite": "mineure",
+    "titre": "Portail : notification, sous-titre, classification, Réessayer",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/ddrm/105-correspondant-lien-notification-action-attendue-clair.png",
+    "apres": "docs/recette/captures/ddrm/corrections/DDR-22-apres.png",
+    "correctif": "Pied de page et écran de connexion du portail en « Diffusion restreinte au participant et au GIMAC » (couche servie). Lien de la notification (CER-12), sous-titre de la page Notifications et bouton Réessayer sur une liaison introuvable (CER-18) corrigés par d'autres lots.",
+    "fichiers": [
+      "frontend/packages/design-system/src/enveloppe/Footer/Footer.tsx",
+      "frontend/packages/socle/src/enveloppe/Enveloppe.tsx",
+      "frontend/packages/socle/src/connexion/PageConnexion.tsx",
+      "frontend/packages/socle/src/i18n/fr.json",
+      "frontend/packages/socle/src/i18n/en.json",
+      "frontend/packages/socle/src/i18n/es.json",
+      "frontend/packages/design-system/src/i18n/libelles.ts"
+    ],
+    "test": "Capture après"
+  },
+  {
+    "id": "DDR-23",
+    "gravite": "mineure",
+    "titre": "Portail sombre : tableau vide sur fond bleu saturé",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/ddrm/115-correspondant-suivi-liaison-sombre.png",
+    "apres": "docs/recette/captures/ddrm/corrections/DDR-23-apres.png",
+    "correctif": "La ligne d'état vide n'est ni zébrée ni surlignée au survol, et son illustration est contrastée en thème sombre.",
+    "fichiers": [
+      "frontend/packages/design-system/src/styles/09-tableau.css",
+      "frontend/packages/design-system/src/donnees/DataTable/DataTable.tsx"
+    ],
+    "test": "Capture après (thème sombre)"
+  },
+  {
+    "id": "DDR-24",
+    "gravite": "mineure",
+    "titre": "Liaison citant une version 4 du référentiel non publiée",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/ddrm/060-chef-dossier-liaison-ouvert-clair.png",
+    "apres": "docs/recette/captures/ddrm/corrections/DDR-24-apres.png",
+    "correctif": "La liaison ouverte instancie la version publiée de son type (arbre des référentiels), version 3 pour la carte interbancaire.",
+    "fichiers": [
+      "frontend/packages/lot1/src/services/simule/parcours.ts",
+      "frontend/packages/lot1/src/services/simule/index.ts"
+    ],
+    "test": "frontend/packages/lot1/src/pages/des/parcours/DossierLiaisonPage.test.tsx (DDR-24)"
+  },
+  {
+    "id": "DDR-25",
+    "gravite": "mineure",
+    "titre": "Banques partenaires différentes selon le chemin d'ouverture",
+    "statut": "pas un défaut",
+    "avant": "docs/recette/captures/ddrm/059-chef-lancer-certification-saisie-complete-clair.png",
+    "apres": null,
+    "correctif": "Pas un défaut : les deux chemins appliquent la même règle (banques adhérentes, en homologation ou actives, hors l'institution elle-même) ; l'écart observé tient à l'état du registre au moment de chaque geste et à l'institution exclue.",
+    "fichiers": [],
+    "test": "Sans objet"
+  },
+  {
+    "id": "DDR-26",
+    "gravite": "mineure",
+    "titre": "Empreintes SHA-256 identiques ou égales à un identifiant",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/ddrm/069-charge-op3-preuve-deposee-a-valider-clair.png",
+    "apres": "docs/recette/captures/ddrm/corrections/DDR-26-apres.png",
+    "correctif": "Empreinte SHA-256 calculée sur ce qui est signé (institution, transition, statuts, motif, auteur) ; deux fichiers de preuve différents ont deux empreintes différentes.",
+    "fichiers": [
+      "frontend/packages/lot1/src/ressources/institution.tsx",
+      "frontend/packages/lot1/src/services/simule/parcours.ts",
+      "frontend/packages/socle/src/index.ts"
+    ],
+    "test": "frontend/packages/lot1/src/services/simule/ddrm-recette.test.ts (DDR-26) ; frontend/packages/lot1/src/ressources/institution.test.tsx"
+  },
+  {
+    "id": "DDR-27",
+    "gravite": "mineure",
+    "titre": "Type de projet obligatoire sans astérisque",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/ddrm/058-chef-lancer-certification-sans-type-ni-conducteur-clair.png",
+    "apres": "docs/recette/captures/ddrm/corrections/DDR-27-apres.png",
+    "correctif": "Le groupe de choix obligatoire porte l'astérisque après sa légende, comme les autres champs.",
+    "fichiers": [
+      "frontend/packages/design-system/src/saisie/RadioGroup/RadioGroup.tsx",
+      "frontend/packages/design-system/src/crud/ResourceForm/ResourceForm.tsx",
+      "frontend/packages/lot1/src/pages/des/certification/LancerCertificationPage.tsx"
+    ],
+    "test": "Capture après"
+  },
+  {
+    "id": "DDR-28",
+    "gravite": "mineure",
+    "titre": "« Annuler la tâche » proposé sur une tâche de décision",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/ddrm/042-chef-tache-decision-prise-clair.png",
+    "apres": "docs/recette/captures/ddrm/corrections/DDR-28-apres.png",
+    "correctif": "Ni annulation ni fin à la main d'une tâche de décision : elle se clôt quand le service prononce ou refuse ; MS-PILOTAGE refuse 409 PIL_TACHE_DECISION.",
+    "fichiers": [
+      "frontend/packages/lot1/src/pages/des/activite/dialoguesTache.tsx",
+      "frontend/packages/lot1/src/services/simule/pilotage.ts",
+      "ms-pilotage/src/main/java/cm/gimac/des/pilotage/application/usecase/TacheService.java"
+    ],
+    "test": "frontend/packages/lot1/src/pages/des/activite/TachesPage.test.tsx (DDR-28) ; ms-pilotage ApprobationTransitionKafkaIT"
+  },
+  {
+    "id": "DDR-29",
+    "gravite": "mineure",
+    "titre": "Conformité documentaire « À régulariser » après l'adhésion",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/ddrm/088-charge-fiche-institution-sombre.png",
+    "apres": "docs/recette/captures/ddrm/corrections/DDR-29-apres.png",
+    "correctif": "Au prononcé de l'adhésion, dossier complet, la conformité documentaire passe à CONFORME, comme le service.",
+    "fichiers": [
+      "frontend/packages/lot1/src/services/simule/participant.ts"
+    ],
+    "test": "frontend/packages/lot1/src/services/simule/participant.test.ts (DDR-29)"
+  }
+]

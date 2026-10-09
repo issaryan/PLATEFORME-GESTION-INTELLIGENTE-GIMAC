@@ -109,7 +109,13 @@ export function CatalogueFonctionnalites() {
     { key: 'ordre', header: t('console.fct.ordre'), type: 'number', width: 80 },
     {
       key: 'libelle', header: t('console.fct.libelle'),
-      render: (f) => <span className="gm-row" style={{ gap: 'var(--gm-space-2)' }}><Icon name={f.icone as IconName} size={16} /><span className="gm-col" style={{ gap: 0 }}><span>{libelleServi(tr, f.libelle)}</span><span className="gm-mono gm-type-small">{f.cle}</span></span></span>,
+      // Icône toujours à gauche du libellé (recette ACC-08) : ligne sans retour, texte seul replié.
+      render: (f) => (
+        <span className="gm-row" style={{ gap: 'var(--gm-space-2)', flexWrap: 'nowrap', alignItems: 'flex-start' }}>
+          <span style={{ flex: 'none', display: 'inline-flex' }}><Icon name={f.icone as IconName} size={16} /></span>
+          <span className="gm-col" style={{ gap: 0, minWidth: 0 }}><span>{libelleServi(tr, f.libelle)}</span><span className="gm-mono gm-type-small" style={{ overflowWrap: 'anywhere' }}>{f.cle}</span></span>
+        </span>
+      ),
     },
     { key: 'groupe', header: t('console.fct.groupe'), render: (f) => (f.groupe ? libelleGroupe(t, tr, f.application, f.groupe) : <span className="gm-field-help">{t('console.fct.horsBarre')}</span>) },
     { key: 'permissions', header: t('console.fct.permissions'), render: (f) => (predicat(f).length ? <span className="gm-col" style={{ gap: 0 }}>{predicat(f).map((x) => <span key={x} className="gm-mono gm-type-small">{x}</span>)}</span> : <span className="gm-field-help">{t('console.fct.toutCompte')}</span>) },

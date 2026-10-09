@@ -5,7 +5,7 @@ import { ReactFlowProvider } from '@xyflow/react'
 import {
   Button, ConfirmDialog, CrudDialog, DataTable, FileDropzone, Icon, InlineAlert, KeyValueList, PageHeader, SignDialog, StatusBadge, Timeline, cx, type Column,
 } from '@gimac/design-system'
-import { EtatsRequete, cleSecuriteDisponible, refusReauth, sha256Hex, usePermissions, useSession, type Progression } from '@gimac/socle'
+import { EtatsRequete, cleSecuriteDisponible, estApiError, refusReauth, sha256Hex, usePermissions, useSession, type Progression } from '@gimac/socle'
 import { ETATS_ETAPE, type EtapeInstance, type InstanceProcessus } from '../../../modele/processus'
 import { useActeInstance, useCandidatsEtape, useInstance } from '../../../hooks/processus'
 import { useEffet } from '../../../hooks/base'
@@ -17,6 +17,7 @@ import { CanevasProcessus, type CarteEtape } from './CanevasProcessus'
 import { ChampValeur, erreurValeur, valeurEnvoyee, valeurSaisie } from './DialogueLancement'
 import { BadgeEtape, BadgeInstance, ChoixPersonne, useErreurProcessus } from './communs'
 import { ValeursFormulaire } from './FormulaireLancement'
+import { DocumentProcessus, tailleLisible, useTypesLisibles } from './DocumentProcessus'
 import { useCatalogueFonctionnalites } from '../../../catalogue'
 import { accesFonctionnalite } from '../../../fonctionnalites'
 
@@ -31,6 +32,16 @@ export default function InstancePage() {
   const { id } = useParams()
   const { t } = useTranslation()
   const i = useInstance(id)
+  // QUO-03, QUO-12 : un refus de lecture (403) ou une instance inexistante (404) s'explique, sans « Réessayer ».
+  const refus = i.isError && estApiError(i.error) && (i.error.status === 403 || i.error.status === 404) ? i.error : null
+  if (refus) {
+    const introuvable = refus.status === 404
+    return (
+      <InlineAlert level={introuvable ? 'warn' : 'info'} title={t(introuvable ? 'proc.acces.introuvableTitre' : 'proc.acces.refuseTitre')} correlationId={refus.correlationId || undefined}>
+        {t(introuvable ? 'proc.acces.introuvableTexte' : 'proc.acces.refuseTexte')}
+      </InlineAlert>
+    )
+  }
   return (
     <EtatsRequete etat={i} emptyTitle={t('commun.vide')} errorTitle={t('proc.erreur.lectureInstance')} retryLabel={t('commun.reessayer')}>
       {(x) => <ReactFlowProvider><Suivi instance={x} /></ReactFlowProvider>}
@@ -38,7 +49,7 @@ export default function InstancePage() {
   )
 }
 
-const taille = (o: number) => (o < 1024 ? `${o} o` : o < 1_048_576 ? `${Math.round(o / 1024)} Ko` : `${(o / 1_048_576).toFixed(1)} Mo`)
+const taille = tailleLisible
 
 /** Empreinte que signera une signature (§5.3) : SHA-256 des lignes CODE:documentId:sha256 des livrables portés déposés. */
 export async function empreinteAttendue(instance: InstanceProcessus, porte: string[]): Promise<string> {
@@ -140,7 +151,7 @@ function Suivi({ instance: i }: { instance: InstanceProcessus }) {
       {i.formulaire?.length ? (
         <section className="gm-proc-bloc" aria-labelledby="gm-proc-formulaire" data-testid="valeurs-lancement">
           <h3 id="gm-proc-formulaire">{t('dem.suivi.formulaire')}</h3>
-          <ValeursFormulaire valeurs={i.formulaire} />
+          <ValeursFormulaire valeurs={i.formulaire} instanceId={i.id} />
         </section>
       ) : null}
       {i.etat === 'SUSPENDUE' ? <InlineAlert level="warn" title={t('proc.suivi.suspendue')} /> : null}
@@ -170,7 +181,8 @@ function Suivi({ instance: i }: { instance: InstanceProcessus }) {
       <section className="gm-col" aria-labelledby="gm-proc-historique" style={{ gap: 'var(--gm-space-2)' }}>
         <h2 id="gm-proc-historique" className="gm-type-h3" style={{ margin: 0 }}>{t('proc.suivi.historique')}</h2>
         <Timeline events={[...i.historique].reverse().map((h) => ({
-          event: `${t(`proc.historique.${h.action}`, { defaultValue: h.action })}${h.etape ? ` · ${h.etape}` : ''}${h.detail ? ` : ${h.detail}` : ''}`,
+          // QUO-07 : l'étape est nommée par son libellé, non par son code.
+          event: `${t(`proc.historique.${h.action}`, { defaultValue: h.action })}${h.etape ? ` · ${i.etapes.find((x) => x.code === h.etape)?.libelle ?? h.etape}` : ''}${h.detail ? ` : ${h.detail}` : ''}`,
           at: dates.instant(h.quand), actor: h.acteur?.nomAffiche,
         }))} />
       </section>
@@ -219,7 +231,13 @@ function PanneauEtape({ instance: i, etape: e, onAnnonce }: { instance: Instance
           {e.renvois ? <StatusBadge status="warn" icon={null} label={t('proc.suivi.renvois', { count: e.renvois })} /> : null}
         </span>
       </div>
-      {refus ? <InlineAlert level="crit" title={refus.titre} correlationId={refus.correlationId}>{details?.livrables?.length ? details.livrables.join(', ') : details?.champs?.join(', ')}</InlineAlert> : null}
+      {refus ? (
+        <InlineAlert level="crit" title={refus.titre} correlationId={refus.correlationId}>
+          {/* QUO-07 : champs et livrables manquants nommés par leur libellé, non par leur code. */}
+          {details?.livrables?.length ? t('proc.manquants.livrables', { liste: details.livrables.map((c) => e.livrables.find((l) => l.code === c)?.libelle ?? c).join(', ') })
+            : details?.champs?.length ? t('proc.manquants.champs', { liste: details.champs.map((c) => e.champs.find((x) => x.code === c)?.libelle ?? c).join(', ') }) : null}
+        </InlineAlert>
+      ) : null}
       {e.action ? <p style={{ margin: 0 }}>{e.action}</p> : null}
       <KeyValueList items={[
         { key: t('proc.suivi.executant'), value: e.executant ? e.executant.nomAffiche : e.aPrendre ? attendu({ personne: null, ...e.aPrendre }) : t('proc.suivi.pasEncore') },
@@ -239,7 +257,10 @@ function PanneauEtape({ instance: i, etape: e, onAnnonce }: { instance: Instance
               <span><strong>{l.libelle}</strong> <span className="gm-mono gm-type-small">{l.code}</span>{l.obligatoire ? <span className="gm-field-help"> · {t('proc.livrable.obligatoire')}</span> : null}</span>
               {l.depot ? (
                 <span className="gm-col" style={{ gap: 0 }}>
-                  <span><Icon name="file-text" size={16} /> {l.depot.nomFichier} · {taille(l.depot.taille)}{l.depot.deposePar ? ` · ${l.depot.deposePar.nomAffiche}` : ''} · {dates.instant(l.depot.deposeLe)}</span>
+                  <span className="gm-row" style={{ gap: 'var(--gm-space-1)', flexWrap: 'wrap' }}>
+                    <DocumentProcessus instanceId={i.id} documentId={l.depot.documentId} nom={l.depot.nomFichier} typeMime={l.depot.typeMime} taille={l.depot.taille} />
+                    <span>{l.depot.deposePar ? `· ${l.depot.deposePar.nomAffiche} ` : ''}· {dates.instant(l.depot.deposeLe)}</span>
+                  </span>
                   <span className="gm-proc-hash" title="SHA-256">SHA-256 {l.depot.sha256}</span>
                 </span>
               ) : <span className="gm-field-help">{t('proc.suivi.nonDepose')}</span>}
@@ -315,6 +336,7 @@ function DepotLivrable({ instanceId, etape, livrable, onDepose, onEchec }: {
 }) {
   const { t } = useTranslation()
   const services = useServices()
+  const types = useTypesLisibles()
   const rattacher = useActeInstance((s, documentId: string) => s.processus.deposerLivrable(instanceId, etape, livrable.code, documentId))
   const [fichier, setFichier] = useState<File | null>(null)
   const [progression, setProgression] = useState<Progression | null>(null)
@@ -338,7 +360,7 @@ function DepotLivrable({ instanceId, etape, livrable, onDepose, onEchec }: {
   return (
     <div className="gm-col" style={{ gap: 'var(--gm-space-1)' }}>
       <FileDropzone name={`livrable-${livrable.code}`} label={t(livrable.depot ? 'proc.suivi.remplacer' : 'proc.suivi.deposer', { livrable: livrable.libelle })} accept={livrable.typesPieces.join(',')}
-        help={livrable.typesPieces.length ? t('proc.suivi.types', { types: livrable.typesPieces.join(', ') }) : undefined}
+        help={livrable.typesPieces.length ? t('proc.suivi.types', { types: types(livrable.typesPieces) }) : undefined}
         file={fichier ? { name: fichier.name, size: taille(fichier.size) } : undefined} state={progression ? 'uploading' : fichier ? 'done' : 'idle'} progress={pourcent}
         onFile={setFichier} onRemove={() => setFichier(null)} />
       {progression ? <span className="gm-field-help" aria-live="polite">{t(`proc.depot.${progression.phase}`, { pourcent })}</span> : null}

@@ -8,6 +8,7 @@ import type { ServicePouvoirs } from '../ports'
 import { ANNUAIRE } from './messagerie'
 import { ORGANISATION_DEMO, PROFILS_ORGANISATION_DEMO, UNITES_DEMO } from './pilotage'
 import { PRESENTATIONS_PROFILS } from './presentations'
+import { PROFILS_DOMAINE as PROFILS_GIMAC, compositionPrivilegiee } from '../../domaine'
 
 // MS-IAM simulé pour les pouvoirs hiérarchiques (D-81, docs/lot1/pouvoirs-hierarchiques.md) : matrice des
 // pouvoirs, périmètre de chacun, demandes adressées à l'administration. Un même magasin peut servir l'application
@@ -25,8 +26,8 @@ export const RESPONSABLES_UNITES_DEMO: Record<string, string> = {
 /** Profils des responsables (§3) : portées par défaut ; les autres profils n'ont aucun pouvoir. */
 export const PROFILS_RESPONSABLES = ['ROLE_CHEF_DES', 'ROLE_CHEF_DDRM', 'ROLE_DG', 'ROLE_RSSI', 'ROLE_CONFORMITE', 'ROLE_RESPONSABLE_SERVICE']
 
-/** Profils privilégiés : jamais demandables (§3). */
-export const PROFILS_PRIVILEGIES = ['ROLE_SUPER_ADMIN', 'ROLE_RSSI', 'ROLE_ADMIN_SYSTEME']
+/** Profils privilégiés (composition IAM_* ou PLATFORM_* du domaine, règle de MS-IAM) : jamais demandables (§3). */
+export const PROFILS_PRIVILEGIES = PROFILS_GIMAC.filter((p) => compositionPrivilegiee(p.permissions)).map((p) => p.code)
 
 /** Profils du domaine (lignes de la matrice de démonstration). */
 export const PROFILS_DOMAINE = [

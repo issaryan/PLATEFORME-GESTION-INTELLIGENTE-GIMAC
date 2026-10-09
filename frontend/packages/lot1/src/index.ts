@@ -29,7 +29,9 @@ export { useNonLus } from './hooks/messagerie'
 export { useSourcesRecherche } from './recherche'
 export { ExtensionsTableauDeBordProvider, type ExtensionsTableauDeBord } from './pages/des/tableau/extensions'
 export { ANNUAIRE } from './services/simule/messagerie'
-export { PROFILS_INTERNES_DEMO, IDENTITES_HORS_ANNUAIRE, identifiantDemo, type ProfilInterneDemo } from './profilsDemo'
+export { PROFILS_INTERNES_DEMO, IDENTITES_HORS_ANNUAIRE, INSTITUTION_DEMO, identifiantDemo, sessionDemoDuRole, type ProfilInterneDemo } from './profilsDemo'
+// QUO-01 : comptes de démonstration du service des ressources humaines (organisation simulée).
+export { COMPTES_ORGANISATION_DEMO, roleDeCleDemo } from './profilsDemo'
 // Mon activité (D-76) : organisation de démonstration (unités, rattachements), reprise par « Mon compte » et l'administration simulés.
 export { ORGANISATION_DEMO, UNITES_DEMO, rattachementDemo } from './services/simule/pilotage'
 export { TYPES_UNITE, LIMITES_GROUPE } from './modele/pilotage'
@@ -38,6 +40,8 @@ export { ACTIONS_POUVOIR, PORTEES, porteesAdmisesParDefaut, AUCUN_POUVOIR, compl
 export { magasinPouvoirs, pouvoirsParDefaut, PROFILS_PRIVILEGIES, PROFILS_RESPONSABLES, RESPONSABLES_UNITES_DEMO, type MagasinPouvoirs } from './services/simule/pouvoirs'
 // Profils et organisation (D-86) : libellé et mission des profils livrés, pour les services simulés.
 export { PRESENTATIONS_PROFILS, type PresentationProfil } from './services/simule/presentations'
+// Domaine Keycloak « gimac » généré par infra/keycloak/generer-realm-gimac.py : permissions et profils des services simulés.
+export { PERMISSIONS_DOMAINE, PROFILS_DOMAINE, PERMISSIONS_COMMUNES, OCTROI_PRIVILEGIE, compositionPrivilegiee, permissionsDuProfil, type ProfilDomaine } from './domaine'
 export { catalogues } from './i18n'
 export { NAVIGATION_PORTAIL } from './navigation'
 // Écrans pilotés par la configuration (D-94) : catalogue des fonctionnalités servi par MS-IAM, correspondance clé → écran.

@@ -60,7 +60,9 @@ describe('Agenda', () => {
     fireEvent.change(within(d).getByLabelText('Lieu'), { target: { value: 'Salle 4' } })
     fireEvent.change(within(d).getByLabelText('Catégorie'), { target: { value: 'ACTIVITE' } })
     fireEvent.click(await within(d).findByRole('button', { name: /Idriss Mahamat Saleh/ }))
-    expect(within(d).getByLabelText('Participants invités').textContent).toContain('Idriss Mahamat Saleh')
+    // QUO-17 : la personne choisie n'apparaît qu'une fois, dans l'annuaire.
+    expect(within(d).getByText('1 personne choisie').parentElement!.textContent).toContain('Idriss Mahamat Saleh')
+    expect(within(d).getAllByText('Idriss Mahamat Saleh', { selector: '.gm-tag, .gm-tag *' })).toHaveLength(1)
     fireEvent.click(within(d).getByRole('button', { name: 'Créer l’événement' }))
     expect(await screen.findByText('Événement créé ; les participants sont invités.')).toBeTruthy()
     fireEvent.click(await screen.findByRole('button', { name: /Point sur la recette/ }))

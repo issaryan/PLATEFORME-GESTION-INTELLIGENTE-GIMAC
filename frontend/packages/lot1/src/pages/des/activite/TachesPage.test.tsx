@@ -169,16 +169,24 @@ describe('Tâches', () => {
 
   it('D-98 : transition proposée, décision à prononcer offerte à l’approbateur, lien vers l’onglet des transitions', async () => {
     const CHEF_DDRM = { id: 'U-020', nom: 'Bertrand Nguema Obiang' }
+    // DDR-01 : la chargée propose, le chef (autre acteur, démonstration continue) prononce.
+    localStorage.setItem('gm.demoContinue', '1')
+    const parCharge = servicesSimules({ latenceMs: 0, utilisateur: { id: 'sim-charge', nom: 'Fatimé Abakar Hissein', profils: ['ROLE_CHARGE_DDRM'] } })
+    const banque = (await parCharge.participant.listerInstitutions({ recherche: 'Libreville', page: 1, taille: 5 })).contenu[0]
+    await parCharge.participant.proposerTransition(banque.id, 'ADHERENT', 'Dossier complet')
     const s = servicesSimules({ latenceMs: 0, utilisateur: { ...CHEF_DDRM, profils: ['ROLE_CHEF_DDRM'] } })
-    const banque = (await s.participant.listerInstitutions({ recherche: 'Libreville', page: 1, taille: 5 })).contenu[0]
-    await s.participant.proposerTransition(banque.id, 'ADHERENT', 'Dossier complet')
+    Object.keys(localStorage).filter((k) => k.startsWith('gm.demo')).forEach((k) => localStorage.removeItem(k))
     page('/des/taches?vue=unite', { s, u: CHEF_DDRM, role: 'ROLE_CHEF_DDRM' })
     const ligne = (await screen.findByRole('button', { name: 'Prononcer l’adhésion : Banque de Libreville' })).closest('tr') as HTMLElement
-    expect(within(ligne).getByText('Décision à prononcer')).toBeTruthy()
+    // DDR-16 : colonne Unité : offerte à toutes les unités (porteurs de la permission), pas « Décision à prononcer ».
+    expect(within(ligne).getByText('Toutes unités')).toBeTruthy()
     expect(within(ligne).getByText('Fatimé Abakar Hissein')).toBeTruthy()
     fireEvent.click(within(ligne).getByRole('button', { name: 'Prononcer l’adhésion : Banque de Libreville' }))
     const f = await screen.findByRole('dialog', { name: 'Prononcer l’adhésion : Banque de Libreville' })
     expect((await within(f).findByRole('link', { name: 'Ouvrir' })).getAttribute('href')).toBe(`/des/institutions/${banque.id}?onglet=transitions`)
+    // DDR-16 : « À prendre » sans deux-points orphelins ; DDR-28 : ni annulation ni fin à la main d'une tâche de décision.
+    expect(within(f).queryByText(/À prendre :/)).toBeNull()
+    expect(within(f).queryByRole('button', { name: 'Annuler la tâche' })).toBeNull()
   })
 
   it('liste indisponible : erreur et nouvel essai', async () => {

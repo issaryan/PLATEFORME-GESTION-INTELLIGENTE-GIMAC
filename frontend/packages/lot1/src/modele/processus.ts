@@ -49,7 +49,11 @@ export type DroitsProcessus = { modifier: boolean; publier: boolean; lancer: boo
 /** Qui peut lancer une version publiée : règles cumulables (l'une suffit), en données dans la définition. */
 export const REGLES_INITIATEUR = ['MEMBRES_UNITE', 'TOUT_LE_GIMAC', 'UNITES', 'PROFILS', 'PERMISSIONS'] as const
 export type RegleInitiateur = (typeof REGLES_INITIATEUR)[number]
-export type Initiateurs = { regles: RegleInitiateur[]; unites: string[]; profils: string[]; permissions: string[] }
+/**
+ * `initiateurIntervenant` (D-99, séparation des fonctions) : vrai si l'initiateur peut aussi exécuter, valider ou signer les
+ * étapes de sa propre demande ; absent ou faux par défaut.
+ */
+export type Initiateurs = { regles: RegleInitiateur[]; unites: string[]; profils: string[]; permissions: string[]; initiateurIntervenant?: boolean }
 /** Défaut (et reprise des définitions existantes) : les membres de l'unité propriétaire. */
 export const INITIATEURS_DEFAUT: Initiateurs = { regles: ['MEMBRES_UNITE'], unites: [], profils: [], permissions: [] }
 
@@ -279,7 +283,8 @@ export type CandidatProcessus = { id: string; nomAffiche: string; fonction: stri
  * Candidats d'un intervenant (GET /processus/candidats, GET …/etapes/{code}/candidats) : porteurs actifs du profil dans
  * l'unité (sous-unités comprises), puis ailleurs dans le GIMAC ; sans profil : membres actifs de l'unité seulement.
  */
-export type CandidatsProcessus = { unite: string; profil: string | null; dansUnite: CandidatProcessus[]; ailleurs: CandidatProcessus[] }
+/** `exclus` (D-99) : comptes jamais proposés (initiateur de l'instance), à écarter aussi de l'annuaire. */
+export type CandidatsProcessus = { unite: string; profil: string | null; dansUnite: CandidatProcessus[]; ailleurs: CandidatProcessus[]; exclus?: string[] }
 
 /** Bornes du contrat (§5.1), annoncées avant l'envoi ; le service refait tout. */
 export const LIMITES_PROCESSUS = {

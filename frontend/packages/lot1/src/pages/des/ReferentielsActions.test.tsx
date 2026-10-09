@@ -64,7 +64,8 @@ describe('DES-12 : actions sur les versions', () => {
     const { services } = ouvrir('?version=REF-CI-4')
     const publier = vi.spyOn(services.homologation, 'publierReferentiel')
     fireEvent.click(await screen.findByRole('button', { name: 'Contrôler le graphe' }))
-    expect(await screen.findByText('Attributs manquants par opération')).toBeTruthy()
+    // Recette HOM-01 : le validateur absent de C11 est une anomalie du contrôle du service (aucun attribut manquant).
+    expect(await screen.findByText('C11 n\'a pas de validateur (V).')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Publier la version' }))
     const d = await screen.findByRole('alertdialog')
     fireEvent.click(within(d).getByRole('button', { name: 'Publier la version' }))

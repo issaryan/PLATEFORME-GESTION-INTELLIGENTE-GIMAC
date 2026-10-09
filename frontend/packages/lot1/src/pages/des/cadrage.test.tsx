@@ -67,7 +67,7 @@ describe('Cadrage : ouverture d’une liaison depuis la fiche de l’institution
     expect(await screen.findByText(/^Liaison LIA-\d{4}-\d{3} ouverte au cadrage\.$/)).toBeTruthy()
     expect(screen.getByRole('heading', { level: 1, name: 'Mobile Money Sanaga' })).toBeTruthy()
     expect(screen.getAllByText('Banque B').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('Conducteur de projet 2').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Brice Ondo Mba').length).toBeGreaterThan(0)
     await waitFor(async () => expect((await services.participant.dossier('INST-0105')).institution.statut).toBe('EN_HOMOLOGATION'))
   })
   it('champs requis signalés avant tout appel au service', async () => {
@@ -91,7 +91,7 @@ describe('Cadrage : ouverture d’une liaison depuis la fiche de l’institution
     ['HOM_LIAISON_CARRIER_NOT_BANK', {}, /n'est pas une banque/],
     ['HOM_REFERENTIAL_NONE_PUBLISHED', {}, /Aucun référentiel d'opérations n'est publié/],
     ['HOM_PROJECT_DESIGNATION_FORBIDDEN', {}, /droit de désigner un conducteur de projet/],
-    ['HOM_PARTICIPANT_UNAVAILABLE', {}, /MS-PARTICIPANT\) ne répond pas/],
+    ['HOM_PARTICIPANT_UNAVAILABLE', {}, /registre des institutions ne répond pas/],
     ['HOM_IAM_UNAVAILABLE', {}, /MS-IAM\) ne répond pas/],
   ])('refus %s traduit, avec l’identifiant de corrélation', async (code, details, attendu) => {
     const statut = code.endsWith('UNAVAILABLE') ? 503 : code.endsWith('FORBIDDEN') ? 403 : 409

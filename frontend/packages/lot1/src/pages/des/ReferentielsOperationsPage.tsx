@@ -23,6 +23,7 @@ export default function ReferentielsOperationsPage() {
   const executeur = useExecuteurActions()
   const navigate = useNavigate()
   const versions = useReferentiels()
+  const types = useOptionsTypesProjet()
   const creer = referentielOperationsDescriptor.actions.find((a) => a.key === 'creer')!
   // « Nouveau brouillon » : seulement avec la permission de l'action (HOM_REFERENTIEL_EDIT), sinon 403 du service.
   const peutCreer = aPermission(usePermissions(), creer.permission ?? '')
@@ -53,8 +54,9 @@ export default function ReferentielsOperationsPage() {
             isEmpty={(v) => v.length === 0}
           >
             {(v) => {
-              const noeuds = versArbre(v, t)
-              return <TreeView label={t('referentiel.arbre')} nodes={noeuds} expanded={noeuds.map((n) => n.key)} selected={versionId || undefined} onSelect={choisir} />
+              const noeuds = versArbre(v, t, types.libelle)
+              // Un type ajouté (création d'un type de projet) arrive déplié lui aussi : l'arbre est recréé quand la liste des types change.
+              return <TreeView key={noeuds.map((n) => n.key).join('|')} label={t('referentiel.arbre')} nodes={noeuds} expanded={noeuds.map((n) => n.key)} selected={versionId || undefined} onSelect={choisir} />
             }}
           </EtatsRequete>
         </Card>

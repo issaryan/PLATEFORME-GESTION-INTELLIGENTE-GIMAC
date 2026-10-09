@@ -6,6 +6,7 @@ import type { Signature } from '../../../../modele/parcours'
 import type { Services } from '../../../../services/ports'
 import { useExecuteurActions } from '../../../../ressources/actions'
 import { PERM } from '../../../../permissions'
+import { useFormatDate } from '../communs'
 
 // Briques communes des onglets « Décision » et « Mise en service » (D-56) : une action n'est proposée que
 // si le service la permet (actionsPermises) ET si le jeton porte la permission ; les dialogues (confirmation,
@@ -64,11 +65,12 @@ export function Vide({ texte }: { texte?: string }) {
 /** État d'une signature : signée (signataire, date, horodatage) ou attendue. */
 export function EtatSignature({ signature, attente }: { signature: Signature | null; attente: string }) {
   const { t } = useTranslation()
+  const date = useFormatDate()
   if (!signature) return <StatusBadge status="neutral" label={attente} />
   return (
     <span className="gm-row">
       <StatusBadge status="ok" label={t('decision.signature.signee')} />
-      <span>{t('decision.signature.par', { nom: signature.signataire, date: signature.signeLe })}</span>
+      <span>{t('decision.signature.par', { nom: signature.signataire, date: date(signature.signeLe) })}</span>
     </span>
   )
 }

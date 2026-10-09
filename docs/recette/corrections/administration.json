@@ -1,0 +1,147 @@
+[
+  {
+    "id": "ADM-01",
+    "gravite": "mineure",
+    "titre": "Catalogue simulé des profils non aligné sur le domaine Keycloak",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/administration/051-superadmin-profil-superadmin-droits-clair.png",
+    "apres": "docs/recette/captures/administration/corrections/ADM-01-apres.png",
+    "correctif": "Catalogue simulé des permissions et des profils produit par generer-realm-gimac.py (domaine-gimac.json) et lu par le serveur simulé ; règles privilégié, externe et dernier porteur de l’octroi lues dans les compositions, sans nom de profil.",
+    "fichiers": [
+      "infra/keycloak/generer-realm-gimac.py",
+      "frontend/packages/lot1/src/domaine-gimac.json",
+      "frontend/packages/lot1/src/domaine.ts",
+      "frontend/packages/lot1/src/permissions.ts",
+      "frontend/packages/lot1/src/services/simule/presentations.ts",
+      "frontend/packages/lot1/src/services/simule/pouvoirs.ts",
+      "frontend/packages/administration/src/services/simule/catalogue.ts",
+      "frontend/packages/administration/src/services/simule/index.ts",
+      "frontend/packages/administration/src/pages/MatricePouvoirsPage.tsx"
+    ],
+    "test": "frontend/packages/administration/src/services/simule/catalogue.test.ts (catalogue simulé = domaine Keycloak)"
+  },
+  {
+    "id": "ADM-02",
+    "gravite": "mineure",
+    "titre": "Compte de démonstration de l’administrateur système absent de l’annuaire des comptes",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/administration/109-rssi-echec-priv-fiche.png",
+    "apres": "docs/recette/captures/administration/corrections/ADM-02-apres.png",
+    "correctif": "Compte admin.systeme (Thierry Abessolo Nkoulou, u-admin-systeme) ajouté à l’annuaire simulé de la console, rattaché au Service Production informatique.",
+    "fichiers": [
+      "frontend/packages/administration/src/services/simule/donnees.ts"
+    ],
+    "test": "frontend/packages/administration/src/services/simule/catalogue.test.ts (compte de l’administrateur système)"
+  },
+  {
+    "id": "ADM-03",
+    "gravite": "mineure",
+    "titre": "Refus métier présenté comme une panne de la clé de sécurité",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/administration/055-superadmin-profil-externe-refus-clair.png",
+    "apres": "docs/recette/captures/administration/corrections/ADM-03-apres.png",
+    "correctif": "Nouvel état « refusé » du bloc de signature : quand la clé a répondu et que le service refuse l'acte, la fenêtre affiche « Acte refusé par le service », le message, le détail et le code du service, sans « Réessayer » ; la panne de la clé garde son message.",
+    "fichiers": [
+      "frontend/packages/design-system/src/saisie/SignatureField/SignatureField.tsx",
+      "frontend/packages/design-system/src/conteneurs/SignDialog/SignDialog.tsx",
+      "frontend/packages/design-system/src/i18n/libelles.ts",
+      "frontend/packages/administration/src/composants/actes.tsx"
+    ],
+    "test": "frontend/packages/administration/src/pages/RecetteAdministration.test.tsx (ADM-03)"
+  },
+  {
+    "id": "ADM-04",
+    "gravite": "mineure",
+    "titre": "RSSI : composition d’un profil privilégié refusée seulement après la signature",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/administration/115-rssi-nouveau-profil-privilegie-resultat-clair.png",
+    "apres": "docs/recette/captures/administration/corrections/ADM-04-apres.png",
+    "correctif": "Sans IAM_ROLE_PRIVILEGED_GRANT, les droits privilégiés (IAM, PLATFORM) de l'arbre des fonctionnalités sont affichés mais non cochables, avec la raison « Réservé à qui peut attribuer les profils privilégiés » et un avertissement en tête ; la vue Droits ne les propose pas.",
+    "fichiers": [
+      "frontend/packages/administration/src/composants/profils.tsx",
+      "frontend/packages/design-system/src/styles/19-organisation.css",
+      "frontend/packages/administration/src/i18n/fr.ts",
+      "frontend/packages/administration/src/i18n/en.ts",
+      "frontend/packages/administration/src/i18n/es.ts"
+    ],
+    "test": "frontend/packages/administration/src/pages/RecetteAdministration.test.tsx (ADM-04)"
+  },
+  {
+    "id": "ADM-05",
+    "gravite": "mineure",
+    "titre": "Libellé incohérent « Supervision » et « Centre de contrôle »",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/administration/015-adminsys-des-barre-laterale-clair.png",
+    "apres": "docs/recette/captures/administration/corrections/ADM-05-apres.png",
+    "correctif": "Un seul nom, celui du catalogue des fonctionnalités de l'application interne : « Supervision » pour l'entrée de la console et le titre de l'écran (FR, EN, ES).",
+    "fichiers": [
+      "frontend/packages/administration/src/i18n/fr.ts",
+      "frontend/packages/administration/src/i18n/en.ts",
+      "frontend/packages/administration/src/i18n/es.ts",
+      "frontend/packages/administration/src/pages/SupervisionPage.test.tsx",
+      "frontend/packages/administration/src/pages/InfrastructurePage.test.tsx"
+    ],
+    "test": "frontend/packages/administration/src/pages/SupervisionPage.test.tsx (titre « Supervision »)"
+  },
+  {
+    "id": "ADM-06",
+    "gravite": "mineure",
+    "titre": "Aperçu de la barre latérale d’un nouveau profil incomplet",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/administration/060-superadmin-nouveau-profil-privilegie-alerte-clair.png",
+    "apres": "docs/recette/captures/administration/corrections/ADM-06-apres.png",
+    "correctif": "L'aperçu de la barre latérale d'un nouveau profil compose les permissions communes que MS-IAM ajoute d'office (messagerie, Mon activité, notifications).",
+    "fichiers": [
+      "frontend/packages/administration/src/pages/ProfilsPage.tsx",
+      "frontend/packages/lot1/src/domaine.ts"
+    ],
+    "test": "frontend/packages/administration/src/pages/RecetteAdministration.test.tsx (ADM-06)"
+  },
+  {
+    "id": "ADM-07",
+    "gravite": "mineure",
+    "titre": "Élision manquante dans les noms accessibles de l’arbre des fonctionnalités",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/administration/056-superadmin-profil-composition-arbre-apercu-clair.png",
+    "apres": "docs/recette/captures/administration/corrections/ADM-07-apres.png",
+    "correctif": "Règle générale d'élision et de contraction de « de » (formateur i18next « de » du socle) appliquée aux libellés français à nom variable : « Droits d’Agenda », « Pouvoirs d’Aïssatou Ngo Mbarga », « Membres du … ».",
+    "fichiers": [
+      "frontend/packages/socle/src/i18n/elision.ts",
+      "frontend/packages/socle/src/i18n/i18n.ts",
+      "frontend/packages/socle/src/index.ts",
+      "frontend/packages/administration/src/i18n/fr.ts"
+    ],
+    "test": "frontend/packages/socle/src/i18n/elision.test.ts et RecetteAdministration.test.tsx (ADM-07)"
+  },
+  {
+    "id": "ADM-08",
+    "gravite": "mineure",
+    "titre": "Identifiant technique affiché pendant le chargement de l’organigramme",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/administration/083-superadmin-organigramme-arbre-clair.png",
+    "apres": "docs/recette/captures/administration/corrections/ADM-08-apres.png",
+    "correctif": "Tant que les comptes ne sont pas lus, la carte de l’unité indique « Chef : chargement… » sans effectif, jamais l’identifiant technique (état fugace, couvert par le test ; la capture montre la carte une fois les comptes lus).",
+    "fichiers": [
+      "frontend/packages/administration/src/pages/OrganigrammePage.tsx",
+      "frontend/packages/administration/src/i18n/fr.ts",
+      "frontend/packages/administration/src/i18n/en.ts",
+      "frontend/packages/administration/src/i18n/es.ts"
+    ],
+    "test": "frontend/packages/administration/src/pages/RecetteAdministration.test.tsx (ADM-08)"
+  },
+  {
+    "id": "ADM-09",
+    "gravite": "mineure",
+    "titre": "Permissions des profils de démonstration de la console différentes du domaine",
+    "statut": "corrigée",
+    "avant": null,
+    "apres": null,
+    "correctif": "Profils de démonstration de la console et de l’application interne composés à partir du domaine généré, plus aucune liste de permissions recopiée (sans effet visible : permissions sans écran dans la console, pas de capture).",
+    "fichiers": [
+      "frontend/packages/administration/src/profilsDemo.ts",
+      "frontend/packages/lot1/src/permissions.ts",
+      "frontend/packages/lot1/src/permissions.test.ts"
+    ],
+    "test": "frontend/packages/administration/src/services/simule/catalogue.test.ts (profils de démonstration = domaine Keycloak)"
+  }
+]

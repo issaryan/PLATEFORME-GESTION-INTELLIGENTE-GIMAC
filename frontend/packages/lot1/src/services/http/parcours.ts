@@ -18,6 +18,8 @@ type EtatLiaison = 'OUVERTE' | 'EN_HOMOLOGATION' | 'GELEE' | 'APTE_CERTIFICATION
 export type LiaisonVue = {
   id: string
   typeProjet: TypeProjet
+  /** CER-05 : libellé du type, servi au DES et au portail. */
+  typeProjetLibelle?: string | null
   institutionNom: string
   etat: EtatLiaison
   chefDeProjetNom: string | null
@@ -58,6 +60,7 @@ export function versResume(v: LiaisonVue): LiaisonResume {
     reference: v.reference || (v.id.length > 12 ? v.id.slice(0, 8).toUpperCase() : v.id),
     institutionNom: v.institutionNom,
     typeProjet: v.typeProjet,
+    ...(v.typeProjetLibelle ? { typeProjetLibelle: v.typeProjetLibelle } : {}),
     statut: v.statut ?? a.statut,
     etapeCourante: v.etapeCourante ?? a.etape,
     conducteurNom: v.chefDeProjetNom,

@@ -9,7 +9,7 @@ import { notificationsDemo } from '../notifications'
 const chef = { id: 'U-020', nom: 'Bertrand Nguema Obiang', profils: ['ROLE_CHEF_DDRM'] }
 const charge = { id: 'sim-charge', nom: 'Fatimé Abakar Hissein', profils: ['ROLE_CHARGE_DDRM'] }
 
-afterEach(() => ['gm.demoContinue', 'gm.demo.parcours', 'gm.demo.participant'].forEach((k) => localStorage.removeItem(k)))
+afterEach(() => ['gm.demoContinue', 'gm.demo.parcours', 'gm.demo.participant', 'gm.demo.pilotage'].forEach((k) => localStorage.removeItem(k)))
 
 async function banqueDeLibreville(s: ReturnType<typeof servicesSimules>) {
   const p = await s.participant.listerInstitutions({ recherche: 'Libreville', page: 1, taille: 10 })
@@ -18,10 +18,13 @@ async function banqueDeLibreville(s: ReturnType<typeof servicesSimules>) {
 
 describe('D-98 : tâche de l’approbateur d’une transition', () => {
   it('proposition : tâche à prendre de l’approbateur, notification vers les transitions, close au prononcé', async () => {
+    // Le chargé propose (DDR-01 : le proposant ne prononce pas), le chef reçoit la tâche sur le même registre.
+    localStorage.setItem('gm.demoContinue', '1')
+    const parCharge = servicesSimules({ latenceMs: 0, utilisateur: charge })
+    const id = await banqueDeLibreville(parCharge)
+    const t = await parCharge.participant.proposerTransition(id, 'ADHERENT', 'Dossier complet')
     const s = servicesSimules({ latenceMs: 0, utilisateur: chef })
     const n = notificationsDemo(s, { moi: chef.id })
-    const id = await banqueDeLibreville(s)
-    const t = await s.participant.proposerTransition(id, 'ADHERENT', 'Dossier complet')
 
     const aPrendre = (await s.pilotage.taches({ vue: 'unite' })).contenu.find((x) => x.origine.service === 'participant')!
     expect(aPrendre).toMatchObject({

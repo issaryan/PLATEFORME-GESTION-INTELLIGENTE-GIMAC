@@ -2,14 +2,15 @@ import { ApiError, ReauthCancelled } from '@gimac/socle'
 import type { ListQuery, Page } from '../../modele/commun'
 import type { ClotureOperation, ElementCloture, Liaison, OuvertureLiaison } from '../../modele/homologation'
 import type { PortailLiaison } from '../../modele/portail'
+import type { Fonction } from '../../modele/parcours'
 import type { ServiceCertification, ServiceHomologation, ServicePortail, Services } from '../ports'
 import * as D from './donnees'
 import { participantSimule, type TransitionObservee } from './participant'
 import { PERM, PROFILS } from '../../permissions'
 import { messagerieSimulee, type MessagerieSimulee } from './messagerie'
-import { parcoursSimule } from './parcours'
+import { parcoursSimule, type EvenementsParcoursDemo } from './parcours'
 import { ORGANISATION_DEMO, pilotageSimule, type PontTachesProcessus } from './pilotage'
-import { processusSimule } from './processus'
+import { notificationsProcessusDemo, processusSimule } from './processus'
 import { magasinPouvoirs, pouvoirsSimules, type MagasinPouvoirs } from './pouvoirs'
 import { apercuSimule } from './apercu'
 import { referentielsSimules } from './referentiels'
@@ -50,6 +51,11 @@ const clone = <T>(v: T): T => structuredClone(v)
 const maintenant = () => new Date().toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }).replace(',', '')
 const refus = (status: number, code: string, message: string, details?: Record<string, unknown>) => new ApiError(status, code, message, correlation(), details)
 
+/** Statuts d'une institution nommés dans les tâches de décision (données du service, en français comme MS-PILOTAGE). */
+const LIBELLES_STATUT: Record<string, string> = {
+  CANDIDAT: 'Candidat', ADHERENT: 'Adhérent', EN_HOMOLOGATION: 'En homologation', ACTIF: 'Actif', A_REGULARISER: 'À régulariser', SUSPENDU: 'Suspendu', RETIRE: 'Retiré', CLOS_SANS_SUITE: 'Clos sans suite',
+}
+
 function pagine<T>(lignes: T[], q: ListQuery, champs: (keyof T)[]): Page<T> {
   const r = (q.recherche ?? '').toLowerCase()
   let l = r ? lignes.filter((x) => champs.some((c) => String(x[c] ?? '').toLowerCase().includes(r))) : lignes
@@ -66,10 +72,27 @@ function pagine<T>(lignes: T[], q: ListQuery, champs: (keyof T)[]): Page<T> {
 
 /** Services simulés : les ports, plus la réception de messages de démonstration (notifications, D-80). */
 /** Offre d'une décision à prononcer (D-98) visible de l'utilisateur de la démonstration : notifiée avec son lien profond. */
-export type DecisionDemo = { tacheId: string; titre: string; lien: string; createur: { id: string; nomAffiche: string } }
-/** Décisions à prononcer de la démonstration (MS-NOTIFICATION simulé : notification TACHE vers l'écran de la décision). */
-export type DecisionsDemo = { aPrononcer(): DecisionDemo[]; surOffre(f: (d: DecisionDemo) => void): void }
-export type ServicesSimules = Services & { messagerie: MessagerieSimulee; decisions: DecisionsDemo }
+export type DecisionDemo = { tacheId: string; titre: string; lien: string; createur: { id: string; nomAffiche: string }; /** Instant de la proposition (DDR-15). */ le?: string }
+/**
+ * Proposition de l'utilisateur prononcée ou refusée (DDR-08) : MS-NOTIFICATION la lui notifie (participant.transition-approved.v1
+ * définitive ou transition-rejected.v1), avec le motif du refus et le lien des propositions de statut.
+ */
+export type DecisionTrancheeDemo = {
+  transitionId: string; institutionId: string; institutionNom: string; vers: string; decision: 'APPROUVEE' | 'REJETEE'; motif: string | null; lien: string; le: string
+  acteur: { id: string; nomAffiche: string } | null
+}
+/** Décisions de la démonstration (MS-NOTIFICATION simulé : TACHE vers l'écran de la décision, DEMANDE pour le proposant). */
+export type DecisionsDemo = {
+  aPrononcer(): DecisionDemo[]; surOffre(f: (d: DecisionDemo) => void): void
+  tranchees(): DecisionTrancheeDemo[]; surTranchee(f: (d: DecisionTrancheeDemo) => void): void
+}
+export type ServicesSimules = Services & {
+  messagerie: MessagerieSimulee; decisions: DecisionsDemo; evenementsParcours: EvenementsParcoursDemo
+  /** DDR-20 : tâche ouverte confiée à l'utilisateur par un autre (notification de démonstration vers cette tâche). */
+  activiteDemo: { tacheConfiee(): { id: string; titre: string; createur: { id: string; nomAffiche: string } } | null }
+  /** QUO-05 : notifications des étapes et de la clôture des processus (MS-NOTIFICATION simulé). */
+  processusDemo: ReturnType<typeof notificationsProcessusDemo>
+}
 
 export function servicesSimules(o: OptionsSimulation = {}): ServicesSimules {
   const latence = o.latenceMs ?? 350
@@ -99,7 +122,8 @@ export function servicesSimules(o: OptionsSimulation = {}): ServicesSimules {
     return op
   }
   const depots = new Map<string, ClotureOperation['dernierDepot']>()
-  const participant = participantSimule(attendre, refus, persistanceDemo('participant'))
+  // DDR-01 : l'utilisateur de la démonstration est l'acteur des écritures (proposant, approbateur), comme le sujet du jeton.
+  const participant = participantSimule(attendre, refus, persistanceDemo('participant'), o.utilisateur ? { id: o.utilisateur.id, nom: o.utilisateur.nom } : undefined)
   // Référentiels et modélisateur (D-77) : état propre à l'instance.
   const referentiels = referentielsSimules(attendre, refus, {
     utilisateur: o.utilisateur?.id, profils: o.utilisateur?.profils, maintenant, liaisonsActives: (versionId) => liaisons.filter((l) => l.versionId === versionId && l.etat !== 'CLOSE').length,
@@ -198,7 +222,7 @@ export function servicesSimules(o: OptionsSimulation = {}): ServicesSimules {
         { documentRef: `DOC-2026-${id.slice(-3)}0`, version: 1, typePiece: 'Rapport de tests signé', empreinte: D.empreinte(id + 'v1'), dateDepot: '12/09/2026 15:02', scelle: true, valide: false },
       ]
     }),
-    attributionsOperation: () => attendre([{ event: 'Responsable désigné : Ingénieur d\'homologation A', at: '03/03/2026 09:15', actor: 'Chef du DES', correlationId: 'RQ-2026-0303-5' }]),
+    attributionsOperation: () => attendre([{ event: 'Responsable désigné : Joël Ekotto Mballa', at: '03/03/2026 09:15', actor: 'Chef du DES', correlationId: 'RQ-2026-0303-5' }]),
     grilleOperation: () => attendre([
       { code: 'G1', libelle: 'Les journaux de tests couvrent tous les scénarios attendus', reponse: 'CONFORME' as const, nonConformiteSignalee: false },
       { code: 'G2', libelle: 'Les écarts relevés sont justifiés et acceptés', reponse: null, nonConformiteSignalee: false },
@@ -332,7 +356,7 @@ export function servicesSimules(o: OptionsSimulation = {}): ServicesSimules {
 
   const magasin = o.pouvoirs ?? magasinPouvoirs()
   if (o.utilisateur?.profils) magasin.definirProfils(o.utilisateur.id, o.utilisateur.profils)
-  const { parcours, decision, portailParcours } = parcoursSimule(attendre, INSTITUTION_PORTAIL, (id) => participant.dossier(id).then((d) => d.institution.nom, () => undefined),
+  const { parcours, decision, portailParcours, evenements } = parcoursSimule(attendre, INSTITUTION_PORTAIL, (id) => participant.dossier(id).then((d) => d.institution.nom, () => undefined),
     {
       profils: o.utilisateur?.profils, fonctions: () => referentiels.fonctions,
       // D-98 : instanciation depuis la version publiée du type, et événements consommés par MS-PARTICIPANT.
@@ -340,11 +364,38 @@ export function servicesSimules(o: OptionsSimulation = {}): ServicesSimules {
       surLiaisonOuverte: (institutionId, liaisonId) => participant.pont.liaisonOuverte(institutionId, liaisonId),
       surJalon: (institutionId, jalon, liaisonId) => { if (jalon === 'EN_PRODUCTION') participant.pont.enProduction(institutionId, liaisonId) },
       persistance: persistanceDemo('parcours'),
+      // DDR-05 : auteur réel des dépôts, supervision admise sans être offerte ; DDR-24 : version publiée ; DDR-15 : dates amont.
+      utilisateur: o.utilisateur ? { id: o.utilisateur.id, nom: o.utilisateur.nom } : undefined,
+      permissions: (o.utilisateur?.profils ?? []).flatMap((p) => PROFILS[p] ?? []),
+      numeroPublie: (type) => referentiels.versions.find((v) => v.typeProjet === type && v.etat === 'PUBLIEE')?.numero ?? null,
+      datesAmont: (id) => participant.dossier(id).then((d) => ({ contact: d.institution.datePriseDeContact ?? null, adhesion: d.adhesion.dateAdhesion ?? null }), () => undefined),
+      // HOM-04 : après chaque geste, les fonctions à affecter sont offertes en tâches à prendre (MS-PILOTAGE simulé).
+      apresEffet: () => offrirFonctions(),
+      // CER-05 : libellé servi du type (catalogue des types de projet).
+      libelleType: (type) => referentiels.types().find((x) => x.code === type)?.libelle ?? null,
     })
 
   // Tâches d'origine PROCESSUS (D-87) : le moteur simulé des processus les crée dans « Mon activité ».
   let pont: PontTachesProcessus | undefined
-  const pilotage = pilotageSimule(attendre, refus, o.utilisateur ? { id: o.utilisateur.id, nom: o.utilisateur.nom } : undefined, magasin, (p) => { pont = p })
+  const pilotage = pilotageSimule(attendre, refus, o.utilisateur ? { id: o.utilisateur.id, nom: o.utilisateur.nom } : undefined, magasin, (p) => { pont = p }, persistanceDemo('pilotage'))
+
+  // HOM-04 (D-93 §8.8) : une fonction interne à affecter devient une tâche à prendre par les porteurs de ses permissions,
+  // terminée quand elle est pourvue ; sa prise (pilotage.task-taken.v1) affecte la personne à la fonction sur la liaison.
+  const offresFonctions = new Map<string, { liaisonId: string; fonction: Fonction }>()
+  function offrirFonctions() {
+    if (!pont || !evenements.fonctionsAPrendre) return
+    const offres = evenements.fonctionsAPrendre()
+    offres.forEach((x) => {
+      const tid = pont!.offrir({ titre: x.titre, description: x.description, createur: 'U-001', permissionsRequises: x.permissions, origine: { type: 'OPERATION', reference: x.reference, service: 'homologation', lien: x.lien } })
+      offresFonctions.set(tid, { liaisonId: x.liaisonId, fonction: x.fonction })
+    })
+    // Fonction pourvue entre-temps (affectation par le conducteur) : la tâche à prendre est terminée.
+    ;[...offresFonctions.entries()].filter(([, v]) => !offres.some((x) => x.liaisonId === v.liaisonId && x.fonction === v.fonction)).forEach(([tid, v]) => {
+      pont!.terminerOrigine(`${v.liaisonId}/AFFECTER/${v.fonction}`)
+      offresFonctions.delete(tid)
+    })
+  }
+  offrirFonctions()
 
   // D-98 : tâche de l'approbateur d'une transition (participant.transition-* consommés par MS-PILOTAGE simulé) : à prendre
   // par les porteurs de la permission d'approbation, close quand la transition est prononcée ou refusée ; notifiée vers
@@ -353,32 +404,69 @@ export function servicesSimules(o: OptionsSimulation = {}): ServicesSimules {
   const approbateur = () => magasin.profilsDe(moiId).flatMap((p) => PROFILS[p] ?? []).includes(PERM.transitionApprouver)
   const offertes: DecisionDemo[] = []
   const abonnes: ((d: DecisionDemo) => void)[] = []
+  const abonnesTranchees: ((d: DecisionTrancheeDemo) => void)[] = []
+  const nomDe = (id: string | null) => (id ? ORGANISATION_DEMO.find((m) => m.id === id)?.nomAffiche ?? id : null)
+  const tranchee = (e: Pick<TransitionObservee, 'institutionId' | 'institutionNom' | 'transition'>): DecisionTrancheeDemo => {
+    const t = e.transition
+    return {
+      transitionId: t.id, institutionId: e.institutionId, institutionNom: e.institutionNom, vers: t.vers, decision: t.etat === 'REJETEE' ? 'REJETEE' : 'APPROUVEE', motif: t.motifRejet,
+      lien: `/des/institutions/${e.institutionId}?onglet=transitions`, le: t.decideeLe ?? new Date().toISOString(),
+      acteur: t.approbateurId ? { id: t.approbateurId, nomAffiche: nomDe(t.approbateurId) ?? t.approbateurId } : null,
+    }
+  }
   const relaisTransition = (e: TransitionObservee) => {
     if (!pont) return
     const t = e.transition
     const reference = `${e.institutionId}/TRANSITION/${t.id}`
     if (e.type !== 'PROPOSEE') {
       pont.terminerOrigine(reference)
+      // DDR-08 : le proposant est avisé de la décision (jamais l'approbateur, qui agit).
+      if (t.demandeurId === moiId && t.approbateurId !== moiId) abonnesTranchees.forEach((f) => f(tranchee(e)))
       return
     }
     const lien = `/des/institutions/${e.institutionId}?onglet=transitions`
-    const titre = t.vers === 'ADHERENT' ? `Prononcer l’adhésion : ${e.institutionNom}` : `Statuer sur la transition ${t.de} vers ${t.vers} : ${e.institutionNom}`
+    // DDR-14, DDR-16 : statuts nommés et onglet « Propositions de statut », comme ApprobationsTransitionsService de MS-PILOTAGE.
+    const titre = t.vers === 'ADHERENT' ? `Prononcer l’adhésion : ${e.institutionNom}` : `Statuer sur le passage de ${LIBELLES_STATUT[t.de]} à ${LIBELLES_STATUT[t.vers]} : ${e.institutionNom}`
     const tacheId = pont.offrir({
-      titre, createur: t.demandeurId, permissionsRequises: [PERM.transitionApprouver],
-      description: `Proposition de transition ${t.de} vers ${t.vers}. Motif : ${t.motif}. Prononcer ou refuser depuis l’onglet Transitions de la fiche de l’institution.`,
+      titre, createur: t.demandeurId, permissionsRequises: [PERM.transitionApprouver], le: t.demandeeLe,
+      description: `Proposition de passage de ${LIBELLES_STATUT[t.de]} à ${LIBELLES_STATUT[t.vers]}. Motif : ${t.motif}. Prononcer ou refuser depuis l’onglet Propositions de statut de la fiche de l’institution ; l’auteur de la proposition ne peut pas la prononcer.`,
       origine: { type: 'DECISION', reference, service: 'participant', lien },
     })
     if (!approbateur() || t.demandeurId === moiId || offertes.some((d) => d.tacheId === tacheId)) return
-    const d = { tacheId, titre, lien, createur: { id: t.demandeurId, nomAffiche: ORGANISATION_DEMO.find((m) => m.id === t.demandeurId)?.nomAffiche ?? t.demandeurId } }
+    const d = { tacheId, titre, lien, le: t.demandeeLe, createur: { id: t.demandeurId, nomAffiche: nomDe(t.demandeurId) ?? t.demandeurId } }
     offertes.push(d)
     abonnes.forEach((f) => f(d))
   }
   participant.pont.propositions().forEach(relaisTransition)
   participant.pont.surTransition = relaisTransition
-  const decisions: DecisionsDemo = { aPrononcer: () => [...offertes], surOffre: (f) => { abonnes.push(f) } }
+  // DDR-08 : décisions récentes (sept jours) sur les propositions de l'utilisateur, prises dans une autre session de la démonstration.
+  const depuis = Date.now() - 7 * 86_400_000
+  const decisions: DecisionsDemo = {
+    aPrononcer: () => [...offertes], surOffre: (f) => { abonnes.push(f) },
+    tranchees: () => participant.pont.tranchees().filter((e) => e.transition.demandeurId === moiId && e.transition.approbateurId !== moiId && Date.parse(e.transition.decideeLe ?? '') >= depuis).map(tranchee),
+    surTranchee: (f) => { abonnesTranchees.push(f) },
+  }
+
+  const processus = processusSimule(attendre, refus, o.utilisateur?.id ?? 'U-001', magasin, pont)
+  // HOM-04 : la prise d'une tâche de fonction à affecter (Mon activité, Tâches à prendre) affecte la personne sur la liaison.
+  if (pont) {
+    const p = pont
+    const avant = p.surPrise
+    p.surPrise = (tid, qui) => {
+      avant?.(tid, qui)
+      const v = offresFonctions.get(tid)
+      if (!v) return
+      evenements.prendreFonction?.(v.liaisonId, v.fonction, { id: qui.id, nom: qui.nomAffiche })
+      offresFonctions.delete(tid)
+      p.terminer(tid)
+    }
+  }
 
   return {
     decisions,
+    evenementsParcours: evenements,
+    activiteDemo: { tacheConfiee: () => pont?.tacheConfiee(moiId) ?? null },
+    processusDemo: notificationsProcessusDemo(magasin),
     participant,
     parcours,
     decision,
@@ -386,11 +474,13 @@ export function servicesSimules(o: OptionsSimulation = {}): ServicesSimules {
     homologation,
     certification,
     portail,
-    messagerie: messagerieSimulee(attendre, refus, o.utilisateur ? { id: o.utilisateur.id, nom: o.utilisateur.nom, fonction: o.utilisateur.fonction ?? null } : undefined),
+    messagerie: messagerieSimulee(attendre, refus, o.utilisateur ? { id: o.utilisateur.id, nom: o.utilisateur.nom, fonction: o.utilisateur.fonction ?? null } : undefined,
+      // QUO-09 : sans lecture des liaisons, aucune conversation de démonstration ne mène à une liaison.
+      { lectureLiaisons: o.utilisateur?.profils ? o.utilisateur.profils.some((p) => (PROFILS[p] ?? []).includes(PERM.liaisonLire)) : undefined }),
     // Mon activité (D-76) : agenda, activités, tâches, rapports et équipe de l'utilisateur de la démonstration.
     pilotage,
     // Processus d'unité (D-87) : définitions, instances et tâches d'étapes ; jeu de démonstration du pôle réseau.
-    processus: processusSimule(attendre, refus, o.utilisateur?.id ?? 'U-001', magasin, pont),
+    processus,
     // Pouvoirs hiérarchiques et demandes à l'administration (D-81) : MS-IAM simulé.
     pouvoirs: pouvoirsSimules(attendre, refus, magasin, o.utilisateur?.id ?? 'U-001'),
     // Aperçu bureautique (D-83) : conversion simulée en un petit PDF de démonstration.

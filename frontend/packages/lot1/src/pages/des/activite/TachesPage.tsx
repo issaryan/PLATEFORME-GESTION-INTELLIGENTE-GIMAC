@@ -80,7 +80,7 @@ export default function TachesPage() {
       : {
         key: 'responsable', header: t('act.tache.responsable'), render: (x) => (
           <span className="gm-col" style={{ gap: 0 }}>
-            <span>{x.responsable?.nomAffiche ?? t('pvr.tache.aPrendreUnite', { unite: libelleUnite(x.uniteCible) })}</span>
+            <span>{x.responsable?.nomAffiche ?? (x.uniteCible ? t('pvr.tache.aPrendreUnite', { unite: libelleUnite(x.uniteCible) }) : t('pvr.tache.aPrendreSansUnite'))}</span>
             {x.groupeId && vue === 'creees' ? (
               <button type="button" className="gm-link" style={{ background: 'none', border: 0, padding: 0, font: 'inherit', textAlign: 'left', cursor: 'pointer' }}
                 aria-label={t('pvr.groupe.suiviDe', { titre: x.titre })} onClick={() => aller({ groupe: x.groupeId! })}>{t('pvr.groupe.suivi')}</button>
@@ -88,7 +88,7 @@ export default function TachesPage() {
           </span>
         ),
       },
-    ...(vue === 'unite' ? [{ key: 'unite', header: t('pvr.tache.unite'), render: (x: Tache) => (x.uniteCible ? libelleUnite(x.uniteCible) : t(x.origine.type === 'DECISION' ? 'pvr.tache.offreDecision' : 'pvr.tache.offreFonction')) }] : []),
+    ...(vue === 'unite' ? [{ key: 'unite', header: t('pvr.tache.unite'), render: (x: Tache) => (x.uniteCible ? libelleUnite(x.uniteCible) : t('pvr.tache.toutesUnites')) }] : []),
   ]
   return (
     <div className="gm-col">

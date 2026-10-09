@@ -191,6 +191,33 @@ public final class ReglesNotifications {
         return "/des/equipe/demandes?demande=" + demandeId;
     }
 
+    /**
+     * Titre d'une transition de statut tranchée, pour son proposant (DDR-08) : « Adhésion prononcée : X », « Proposition
+     * refusée : X », ou un libellé neutre sans nom d'institution.
+     */
+    public String titreTransitionTranchee(String decision, String vers, String institutionNom) {
+        boolean approuvee = "APPROUVEE".equals(decision);
+        String titre = approuvee ? ("ADHERENT".equals(vers) ? "Adhésion prononcée" : "Transition de statut prononcée") : "Proposition de statut refusée";
+        return institutionNom == null || institutionNom.isBlank() ? titre : titre + " : " + institutionNom.strip();
+    }
+
+    /** Sous-titre d'une transition refusée : son motif (tronqué à 200 caractères) ; prononcée : nul. */
+    public String sousTitreTransitionTranchee(String decision, String motif) {
+        if (!"REJETEE".equals(decision) || motif == null || motif.isBlank()) {
+            return null;
+        }
+        String m = motif.strip();
+        return "Motif : " + (m.length() > 200 ? m.substring(0, 200) : m);
+    }
+
+    /** Lien d'une transition tranchée : celui de l'événement s'il est sous /des/institutions/, sinon la fiche de l'institution. */
+    public String lienTransition(String lien, String institutionId) {
+        if (lien != null && lien.startsWith("/des/institutions/") && lienTacheOfferte(lien).equals(lien)) {
+            return lien;
+        }
+        return "/des/institutions/" + institutionId + "?onglet=transitions";
+    }
+
     /** Libellé du type d'une demande (CREATION_COMPTE, PROFILS, STATUT) ; autre : nul. */
     public String libelleDemande(String type) {
         if (type == null) {

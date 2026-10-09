@@ -10,11 +10,12 @@ export { openLiveChannel, type LiveTopic, type LiveEvent, type EtatCanal } from 
 export { ACCUSE_LECTURE, surAccuseLecture, diffuserAccuseLecture, accuseDe, type AccuseLecture } from './live/lectures'
 export { SIGNAL, DUREE_SAISIE_MS, initialiserPresence, appliquerSignal, viderSignaux, usePresence, useEnLigne, useSaisies, type EtatPresence } from './live/signaux'
 export { getReauthAssertion, ReauthCancelled, CleSecuriteIndisponible, cleSecuriteDisponible, refusReauth, estAnnulation, b64u, fromB64u, type SignPurpose, type RefusReauth } from './reauth/webauthn'
-export { sha256Hex } from './crypto/sha256'
+export { sha256Hex, sha256Js } from './crypto/sha256'
 export { enrolerCleSecurite, optionsCreation, type OptionsEnrolement, type CleSecurite } from './reauth/enrolement'
 export * from './ressource/types'
 export { QueryBoundary, EtatsRequete, type QueryBoundaryProps } from './requete/QueryBoundary'
 export { initI18n, LANGUES, type Langue, type Catalogue } from './i18n/i18n'
+export { prepositionDe } from './i18n/elision'
 export { Enveloppe, type EnveloppeProps, type EntreeNavigation, type GroupeNavigation } from './enveloppe/Enveloppe'
 export { useBarreLaterale, ContexteBarreLaterale, type BarreLaterale } from './enveloppe/barreLaterale'
 export { Preferences } from './enveloppe/Preferences'
@@ -45,7 +46,7 @@ export { LangueComposants } from './i18n/LangueComposants'
 export { useLibelleProfil, type LibellesProfils } from './i18n/libelleProfil'
 // Notifications de la plateforme (D-80, docs/lot1/notifications.md) : cloche, page, fenêtres surgissantes, système.
 export {
-  TYPES_NOTIFICATION, TYPES_MESSAGERIE, conversationDe, referenceConversation, type NotificationPlateforme, type TypeNotification, type ReferenceNotification, type EtatNotifications, type PageNotifications,
+  TYPES_NOTIFICATION, TYPES_NOTIFICATION_PORTAIL, typesNotificationDe, typeNotificationPermis, PERMISSIONS_TYPE_NOTIFICATION, TYPES_MESSAGERIE, conversationDe, referenceConversation, type NotificationPlateforme, type TypeNotification, type ReferenceNotification, type EtatNotifications, type PageNotifications,
   type PreferencesNotifications, type FiltreLecture, type ServiceNotifications,
 } from './notifications/modele'
 export { notificationsHttp } from './notifications/http'

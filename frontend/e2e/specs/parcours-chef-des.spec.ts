@@ -124,7 +124,7 @@ test.describe('Fonctionnalité : parcours de certification conduit par le chef d
     await test.step('Alors la liaison est ouverte au cadrage et son dossier l’annonce', async () => {
       await expect(page.getByText(/Liaison LIA-2026-\d+ ouverte au cadrage/).first()).toBeVisible()
       await expect(page.getByRole('heading', { level: 1 })).toHaveText('Crédit rural du Woleu')
-      await expect(page.getByText('Conducteur de projet 2', { exact: true })).toBeVisible()
+      await expect(page.getByText('Brice Ondo Mba', { exact: true })).toBeVisible()
       await expect(page.getByText('Étape courante : Cadrage')).toBeVisible()
       await page.getByRole('button', { name: 'Fermer' }).first().click()
       await expect(page.getByText(/ouverte au cadrage\.$/)).toHaveCount(0)
@@ -158,7 +158,7 @@ test.describe('Fonctionnalité : parcours de certification conduit par le chef d
       await expect(d.getByText('Choisissez le conducteur de projet.')).toBeVisible()
       await d.getByLabel(/Conducteur désigné/).selectOption('U-COND-1')
       await d.getByRole('button', { name: 'Désigner le conducteur' }).click()
-      await expect(page.getByText('Conducteur de projet 1 conduit désormais cette liaison.')).toBeVisible()
+      await expect(page.getByText('Aïcha Mahamat Nour conduit désormais cette liaison.')).toBeVisible()
       await page.getByRole('button', { name: 'Redésigner le conducteur' }).click()
       d = page.getByRole('dialog', { name: 'Redésigner le conducteur' })
       await d.getByLabel(/Conducteur désigné/).selectOption('U-COND-2')
@@ -166,7 +166,7 @@ test.describe('Fonctionnalité : parcours de certification conduit par le chef d
       await expect(d.getByText('Motivez la redésignation (10 caractères au moins).')).toBeVisible()
       await d.getByLabel(/Motif de la redésignation/).fill('Rééquilibrage du plan de charge des conducteurs')
       await d.getByRole('button', { name: 'Redésigner le conducteur' }).click()
-      await expect(page.getByText('Conducteur de projet 2 conduit désormais cette liaison.')).toBeVisible()
+      await expect(page.getByText('Brice Ondo Mba conduit désormais cette liaison.')).toBeVisible()
     })
     await test.step('Et qu’il affecte les ressources depuis l’étape de lancement', async () => {
       await ongletSelectionne(page, 'Étapes')
@@ -174,17 +174,23 @@ test.describe('Fonctionnalité : parcours de certification conduit par le chef d
       await expect(carte(page, '4. Lancement').getByText('Ressources du projet à affecter')).toBeVisible()
       await carte(page, '4. Lancement').getByRole('button', { name: 'Affecter les ressources' }).click()
       const d = page.getByRole('dialog', { name: 'Affecter les ressources' })
-      // Fonctions internes du RACI de la liaison (intervenants servis, D-93) : une personne au moins.
+      // Fonctions internes du RACI de la liaison (intervenants servis, D-93) : DDR-06, une personne pour chacune.
       await expect(d.getByLabel(/Pôle réseau/)).toBeVisible()
       for (const champ of await d.locator('select').all()) await champ.selectOption('')
       await d.getByRole('button', { name: 'Affecter les ressources' }).click()
-      await expect(d.getByText('Désignez au moins une personne.')).toBeVisible()
+      await expect(d.getByText(/Désignez une personne pour chacune des \d+ fonctions signalées/)).toBeVisible()
+      await expect(d.getByText('Désignez une personne pour cette fonction.').first()).toBeVisible()
       await d.getByLabel(/Pôle réseau/).selectOption('U-RES-1')
+      for (const champ of await d.locator('select').all()) if (!(await champ.inputValue())) await champ.selectOption({ index: 1 })
       await d.getByRole('button', { name: 'Affecter les ressources' }).click()
     })
     await test.step('Alors les ressources sont affectées et la réunion de lancement s’ouvre', async () => {
       await expect(page.getByRole('button', { name: 'Affecter les ressources' })).toHaveCount(0)
-      await expect(carte(page, 'Lancement : ressources et réunion de lancement').getByRole('button', { name: 'Déposer le compte rendu' })).toBeVisible()
+      // DDR-05 : le compte rendu se dépose par le responsable de la réunion (chargée de la DDRM), pas par le chef du DES.
+      const reunion = carte(page, 'Lancement : ressources et réunion de lancement').getByRole('row').filter({ hasText: 'Réunion de lancement' })
+      await expect(reunion.getByText('À faire')).toBeVisible()
+      await expect(reunion.getByText('Fatimé Abakar Hissein')).toBeVisible()
+      await expect(carte(page, 'Lancement : ressources et réunion de lancement').getByRole('button', { name: 'Déposer le compte rendu' })).toHaveCount(0)
     })
     await test.step('Quand il déclare un blocage, contrôlé puis daté', async () => {
       await page.getByRole('button', { name: 'Déclarer un blocage' }).first().click()

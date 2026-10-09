@@ -35,6 +35,13 @@ export interface TopBarProps {
   preferences?: ReactNode
   /** Replie ou déplie la navigation latérale. */
   onMenu?: () => void
+  /**
+   * Tiroir de navigation ouvert (écran étroit) : nomme le bouton « Ouvrir » ou « Fermer la navigation » et pose
+   * aria-expanded (recette ACC-07). Non fourni : bouton « Replier la navigation » sans état.
+   */
+  menuOuvert?: boolean
+  /** Identifiant du tiroir commandé par le bouton de menu (aria-controls). */
+  menuControle?: string
   /** Ouvre la recherche globale (Ctrl+K) ; sans elle, aucun champ de recherche n'est affiché. */
   onRecherche?: () => void
   /**
@@ -115,7 +122,10 @@ export function TopBar(p: TopBarProps) {
       <header className="gm-topbar">
         {p.sansMarque ? null : p.logo ? <img src={p.logo} alt="GIMAC" height={28} /> : <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, color: 'var(--gm-color-action)', fontSize: 18 }}>GIMAC</span>}
         {layer === 'portail' && p.institution ? <span className="gm-topbar-institution" style={{ fontWeight: 600 }}>{p.institution}</span> : null}
-        {p.onMenu ? <IconButton variant="ghost" icon="menu" label={t('topbar.replier')} onClick={p.onMenu} /> : null}
+        {p.onMenu ? (
+          <IconButton variant="ghost" icon="menu" label={p.menuOuvert === undefined ? t('topbar.replier') : t(p.menuOuvert ? 'topbar.fermerNavigation' : 'topbar.ouvrirNavigation')}
+            aria-expanded={p.menuOuvert} aria-controls={p.menuOuvert ? p.menuControle : undefined} onClick={p.onMenu} />
+        ) : null}
         {p.breadcrumb ? <Breadcrumb items={p.breadcrumb} /> : null}
         <span style={{ flex: 1 }} />
         {p.onRecherche ? (

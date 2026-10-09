@@ -6,6 +6,29 @@ import { carte, cheminDossier, confirmerAction, joindre, monTravail, naviguer, s
 // signée, attribution des qualités, filtres des opérations, et établissement du procès-verbal de
 // certification une fois la couverture complète constatée (verrou 1). Services simulés.
 
+/**
+ * DDR-05 : une preuve se dépose par le responsable (R) de l'opération ou le conducteur désigné de la liaison, et se valide par
+ * le validateur (V) désigné. Les liaisons LIA-2026-012 et LIA-2026-005 sont confiées à un autre conducteur : le chef de la
+ * DDRM les confie d'abord, motif à l'appui, au conducteur de la démonstration ; la preuve est déposée par le titulaire de la
+ * fonction responsable, puis le conducteur valide. Démonstration continue (D-98) : l'acteur change par la session de
+ * démonstration, sur le même état.
+ */
+async function acteur(page: import('@playwright/test').Page, role: string, adresse: string) {
+  await page.evaluate((r) => sessionStorage.setItem('gm.sessionDemo', JSON.stringify({ identifiant: '', role: r })), role)
+  await page.goto(adresse)
+}
+const continu = (page: import('@playwright/test').Page) => page.addInitScript(() => localStorage.setItem('gm.demoContinue', '1'))
+/** Redésignation motivée du conducteur de la liaison (D-58) par le chef de la DDRM : le conducteur de la démonstration devient V. */
+async function confier(page: import('@playwright/test').Page, liaison: string) {
+  await acteur(page, 'ROLE_CHEF_DDRM', `${ADRESSES.departement}${cheminDossier(liaison)}`)
+  await page.getByRole('button', { name: 'Redésigner le conducteur' }).click()
+  const d = page.getByRole('dialog')
+  await d.getByLabel(/Conducteur désigné/).selectOption('U-COND-1')
+  await d.getByLabel(/Motif de la redésignation/).fill('Reprise de la liaison dans le portefeuille du conducteur')
+  await d.getByRole('button', { name: 'Redésigner le conducteur' }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+}
+
 test.describe('Fonctionnalité : conduite de projet de certification', () => {
   test.beforeEach(async ({ page }) => {
     await demo(page, { profil: 'ROLE_CONDUCTEUR_PROJET', theme: 'light' })
@@ -32,7 +55,7 @@ test.describe('Fonctionnalité : conduite de projet de certification', () => {
     await test.step('Alors il est figé, établi par lui, et attend les deux signatures', async () => {
       const pv = carte(page, 'Verrou 1 : procès-verbal de certification')
       await expect(pv.getByText('Établi, à signer').first()).toBeVisible()
-      await expect(pv.getByText('Conducteur de projet 1')).toBeVisible()
+      await expect(pv.getByText('Aïcha Mahamat Nour')).toBeVisible()
       await expect(pv.getByText('Attendue du chef du DES')).toBeVisible()
       await expect(page.getByText('Établir le procès-verbal : effectué.')).toBeVisible()
       await expect(page.getByRole('button', { name: 'Établir le procès-verbal' })).toHaveCount(0)
@@ -58,8 +81,11 @@ test.describe('Fonctionnalité : conduite de projet de certification', () => {
       await expect(page.getByRole('alertdialog').getByText('cr-lancement.pdf')).toBeVisible()
       await confirmerAction(page, 'Déposer le livrable')
     })
-    await test.step('Alors l’opération est close et sa preuve se consulte', async () => {
+    await test.step('Alors l’opération attend le visa du conducteur configuré au référentiel, puis se clôt (recette HOM-05)', async () => {
       const t = tiroir(page, '7')
+      await expect(t.getByText(/ne se clôt qu'après ses signatures/)).toBeVisible()
+      await t.getByRole('button', { name: /^Signer/ }).first().click()
+      await signerCle(page)
       await expect(t.getByText(/Opération close le/)).toBeVisible()
       await t.getByRole('tab', { name: 'Preuve' }).click()
       await expect(t.getByText('cr-lancement.pdf')).toBeVisible()
@@ -69,7 +95,12 @@ test.describe('Fonctionnalité : conduite de projet de certification', () => {
 
   test('Scénario : cérémonie de clés C1 avec ses codes de contrôle, puis validation signée', async ({ page }) => {
     // Garde de non-régression : la date de tenue saisie au format du champ (JJ/MM/AAAA) est envoyée en ISO.
-    await page.goto(`${ADRESSES.departement}${cheminDossier('LIA-2026-012', 'operations', 'C1')}`)
+    await continu(page)
+    const c1 = `${ADRESSES.departement}${cheminDossier('LIA-2026-012', 'operations', 'C1')}`
+    await page.goto(c1)
+    // DDR-05 : la cérémonie revient à la sécurité des SI (R) ; le conducteur désigné de la liaison (V) valide.
+    await confier(page, 'LIA-2026-012')
+    await acteur(page, 'ROLE_RSSI', c1)
     const t = tiroir(page, 'C1')
     await test.step('Étant donné la cérémonie de clés de la liaison LIA-2026-012', async () => {
       await expect(t.getByText('Cérémonie de clés : clé maîtresse de zone en trois composantes')).toBeVisible()
@@ -96,8 +127,9 @@ test.describe('Fonctionnalité : conduite de projet de certification', () => {
       await expect(conf.getByText('Dépositaire 3 · A1B2C3')).toBeVisible()
       await confirmerAction(page, 'Déposer la preuve')
     })
-    await test.step('Alors la preuve attend la validation ; il la valide avec sa clé de sécurité', async () => {
+    await test.step('Alors la preuve attend la validation ; le conducteur la valide avec sa clé de sécurité', async () => {
       await expect(t.getByText('À valider').first()).toBeVisible()
+      await acteur(page, 'ROLE_CONDUCTEUR_PROJET', c1)
       await expect(t.getByText('Dépositaire 1 · A1B2C1')).toBeVisible()
       await t.getByRole('button', { name: 'Valider l\'opération' }).click()
       await signerCle(page)
@@ -112,7 +144,11 @@ test.describe('Fonctionnalité : conduite de projet de certification', () => {
   })
 
   test('Scénario : filtrer les opérations d’une liaison et attribuer une qualité, motif à l’appui', async ({ page }) => {
-    await page.goto(`${ADRESSES.departement}${cheminDossier('LIA-2026-005', 'operations')}`)
+    await continu(page)
+    const ops = `${ADRESSES.departement}${cheminDossier('LIA-2026-005', 'operations')}`
+    await page.goto(ops)
+    await confier(page, 'LIA-2026-005')
+    await acteur(page, 'ROLE_CONDUCTEUR_PROJET', ops)
     await test.step('Étant donné les opérations de LIA-2026-005 et l’alerte permanente de l’opération 28', async () => {
       await expect(page.getByRole('heading', { name: 'Mise en production', exact: true })).toBeVisible()
       await expect(page.getByText('Mise à jour du script de dépôt : à ne pas omettre')).toBeVisible()
@@ -153,7 +189,7 @@ test.describe('Fonctionnalité : conduite de projet de certification', () => {
       await expect(t.getByText('Choisissez l\'intervenant.')).toBeVisible()
       await t.getByLabel(/^Qualité/).selectOption('V')
       await t.getByLabel(/^Fonction/).selectOption('SNA')
-      await expect(t.getByLabel(/^Intervenant/).locator('option', { hasText: 'Ingénieur Normes et Agréments 1' })).toHaveCount(1)
+      await expect(t.getByLabel(/^Intervenant/).locator('option', { hasText: 'Rachel Biyong Mengue' })).toHaveCount(1)
       await t.getByLabel(/^Intervenant/).selectOption('U-SNA-1')
       await t.getByRole('button', { name: 'Attribuer' }).click()
       await confirmerAction(page, 'Attribuer', 'Relecture croisée des essais')
@@ -161,18 +197,22 @@ test.describe('Fonctionnalité : conduite de projet de certification', () => {
     await test.step('Alors le validateur figure parmi les intervenants de l’opération', async () => {
       const t = tiroir(page, '29')
       await t.getByRole('tab', { name: 'Intervenants' }).click()
-      await expect(t.getByText('Ingénieur Normes et Agréments 1 · Normes et Agréments')).toBeVisible()
+      await expect(t.getByText('Rachel Biyong Mengue · Normes et Agréments')).toBeVisible()
       await t.getByRole('button', { name: 'Fermer' }).click()
     })
-    await test.step('Quand il dépose la trace de l’opération 28 puis la valide avec sa clé de sécurité', async () => {
+    await test.step('Quand le pôle système (R) dépose la trace de l’opération 28, puis le conducteur la valide avec sa clé de sécurité', async () => {
+      await acteur(page, 'ROLE_POLE_SYSTEME', ops)
       await page.getByRole('button', { name: 'Ouvrir l\'opération 28', exact: true }).click()
-      const t = tiroir(page, '28')
+      let t = tiroir(page, '28')
       await t.getByRole('button', { name: 'Déposer la preuve' }).click()
       await expect(t.getByText('Choisissez le fichier de preuve.')).toBeVisible()
       await joindre(t, 'trace-script-depot.png', 'trace', 'image/png')
       await t.getByRole('button', { name: 'Déposer la preuve' }).click()
       await confirmerAction(page, 'Déposer la preuve')
       await expect(t.getByText('trace-script-depot.png')).toBeVisible()
+      await acteur(page, 'ROLE_CONDUCTEUR_PROJET', ops)
+      await page.getByRole('button', { name: 'Ouvrir l\'opération 28', exact: true }).click()
+      t = tiroir(page, '28')
       await t.getByRole('button', { name: 'Valider l\'opération' }).click()
       await signerCle(page)
     })

@@ -11,6 +11,8 @@ export interface FooterProps {
   correlationId?: string
   /** Année du droit d'auteur ; l'année courante par défaut. */
   annee?: number
+  /** DDR-22 : couche servie ; le portail des participants n'est pas d'usage interne. */
+  couche?: 'des' | 'portail' | 'console'
 }
 
 // Pied de page GIMAC commun aux trois couches (§6.3) : groupement, référence et version de la
@@ -26,7 +28,7 @@ export function Footer(p: FooterProps) {
       </div>
       <div className="gm-footer-meta">
         <span>{p.version ? t('pied.plateformeVersion', { version: p.version }) : t('pied.plateforme')}</span>
-        <span>{t('pied.classification')}</span>
+        <span>{t(p.couche === 'portail' ? 'pied.classificationPortail' : 'pied.classification')}</span>
         {p.documentation ? <Link href={p.documentation} external>{t('pied.documentation')}</Link> : null}
         {p.correlationId ? (
           <span className="gm-row" style={{ gap: 'var(--gm-space-1)' }}>

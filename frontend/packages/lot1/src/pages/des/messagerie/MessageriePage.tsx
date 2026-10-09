@@ -77,11 +77,16 @@ export function titreConversation(c: Conversation, moi: string | undefined): str
 }
 
 /**
- * Référence de liaison : lien vers son dossier dans le DES ; texte simple dans la console, servie sur une autre
- * origine et sans accès aux liaisons.
+ * Référence de liaison : lien vers son dossier dans le DES, pour un lecteur qui lit les liaisons ; texte simple
+ * sinon (QUO-09 : pas de lien vers un écran refusé) et dans la console, servie sur une autre origine et sans accès
+ * aux liaisons.
  */
 function RefLiaison({ href, children }: { href: string; children: string }) {
-  return useContext(Couche) === 'des' ? <Link href={href} mono>{children}</Link> : <span className="gm-mono">{children}</span>
+  const couche = useContext(Couche)
+  const permissions = usePermissions()
+  // Sans session (rendu isolé), tout est affiché, comme ailleurs dans le lot 1.
+  const lit = permissions === undefined || aPermission(permissions, PERM.liaisonLire)
+  return couche === 'des' && lit ? <Link href={href} mono>{children}</Link> : <span className="gm-mono">{children}</span>
 }
 
 /**
@@ -263,7 +268,10 @@ function Saisie({ envoi, erreur, onEnvoyer, onFrappe, reference, etiquettesIniti
   const [pieces, setPieces] = useState<PieceEnvoyee[]>([])
   const [etiquettes, setEtiquettes] = useState<EtiquetteLiaison[]>(etiquettesInitiales)
   const [citer, setCiter] = useState(etiquettesInitiales.length > 0)
-  const citable = useContext(Couche) === 'des'
+  // Citer une liaison cherche dans la liste des liaisons : offert dans le DES à qui peut la lire (QUO-09), sans session (rendu isolé)
+  // comme ailleurs dans le lot 1.
+  const permissions = usePermissions()
+  const citable = useContext(Couche) === 'des' && (permissions === undefined || aPermission(permissions, PERM.liaisonLister, PERM.liaisonLire))
   // Envois encore en cours au démontage (conversation quittée) : abandonnés côté serveur.
   const enCours = useRef(pieces)
   enCours.current = pieces

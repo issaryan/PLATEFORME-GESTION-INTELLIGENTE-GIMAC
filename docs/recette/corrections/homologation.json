@@ -1,0 +1,279 @@
+[
+  {
+    "id": "HOM-01",
+    "gravite": "majeure",
+    "titre": "Publication d'un graphe invalide acceptée, version de démonstration publiée avec anomalies",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/homologation/031-ingenieur-modelisateur-version2-publiee-avec-anomalies-clair.png",
+    "apres": "docs/recette/captures/homologation/corrections/HOM-01-apres-refus.png",
+    "correctif": "Le simulateur refuse la publication comme ReferentialLifecycleService.publier (HOM_REFERENTIAL_INCOMPLETE puis HOM_REFERENTIAL_GRAPH_INVALID pour toute anomalie : fonctions, signatures, gestes de certification compris) ; la confirmation annonce le refus ; l'Agrégateur v1 et le rang 7 de démonstration sont rendus conformes.",
+    "fichiers": [
+      "frontend/packages/lot1/src/services/simule/referentiels.ts",
+      "frontend/packages/lot1/src/modele/homologation.ts",
+      "frontend/packages/lot1/src/pages/des/compositions/referentiel.tsx",
+      "frontend/packages/lot1/src/ressources/referentielPublication.tsx",
+      "frontend/packages/lot1/src/i18n/ecrans/des12.ts"
+    ],
+    "test": "homologation-recette.test.ts : HOM-01 (versions de démonstration saines, refus VALIDATEUR_ABSENT, SIGNATURE_PORTEE_INVALIDE)"
+  },
+  {
+    "id": "HOM-02",
+    "gravite": "majeure",
+    "titre": "Refus GESTE_CERTIFICATION_ABSENT absent",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/homologation/033-ingenieur-modelisateur-sans-geste-pv-publie-clair.png",
+    "apres": "docs/recette/captures/homologation/corrections/HOM-02-apres.png",
+    "correctif": "Contrôle GESTE_CERTIFICATION_ABSENT du simulateur aligné sur la configuration du service (attestations selon le modèle du type), type et libellés fr, en, es ; motif en libellés côté service et simulateur.",
+    "fichiers": [
+      "frontend/packages/lot1/src/services/simule/referentiels.ts",
+      "frontend/packages/lot1/src/modele/homologation.ts",
+      "frontend/packages/lot1/src/i18n/ecrans/modelisateur.ts",
+      "frontend/packages/lot1/src/pages/des/modelisateur/Modelisateur.tsx",
+      "ms-homologation/src/main/java/cm/gimac/des/homologation/domain/service/ReferentialGraphValidator.java"
+    ],
+    "test": "homologation-recette.test.ts : HOM-02 ; RecetteHomologationTest.gesteCertificationAbsentLisible"
+  },
+  {
+    "id": "HOM-03",
+    "gravite": "majeure",
+    "titre": "RACI non imposé dans le tiroir d'opération",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/homologation/100-sna-raci-validation-non-designe-signature-clair.png",
+    "apres": "docs/recette/captures/homologation/corrections/HOM-03-apres.png",
+    "correctif": "Validation et renvoi réservés au validateur désigné comme Parcours.exigerValidateur (403 HOM_VALIDATION_NON_VALIDATEUR, 409 HOM_VALIDATOR_IS_RESPONSIBLE), boutons absents pour les autres ; le dépôt l'était déjà (DDR-05). Côté service, la règle existait.",
+    "fichiers": [
+      "frontend/packages/lot1/src/services/simule/parcours.ts"
+    ],
+    "test": "homologation-recette.test.ts : HOM-03"
+  },
+  {
+    "id": "HOM-04",
+    "gravite": "majeure",
+    "titre": "Tâche à prendre par fonction absente, prise sans effet",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/homologation/091-pole-reseau-taches-sans-tache-fonction-clair.png",
+    "apres": "docs/recette/captures/homologation/corrections/HOM-04-apres.png",
+    "correctif": "Une fonction interne à affecter (R engagé, V en validation) devient une tâche à prendre de MS-PILOTAGE simulé (permissions de la fonction, référence <réf.>/AFFECTER/<FONCTION>) ; sa prise affecte la personne sur la liaison et termine la tâche (capture HOM-04-apres-prise).",
+    "fichiers": [
+      "frontend/packages/lot1/src/services/simule/parcours.ts",
+      "frontend/packages/lot1/src/services/simule/index.ts"
+    ],
+    "test": "homologation-recette.test.ts : HOM-05 et HOM-04"
+  },
+  {
+    "id": "HOM-05",
+    "gravite": "majeure",
+    "titre": "Opération à livrable close dès le dépôt, sans validation ni signature configurée",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/homologation/088-charge-ddrm-tiroir-op7-livrable-depose-clair.png",
+    "apres": "docs/recette/captures/homologation/corrections/HOM-05-apres.png",
+    "correctif": "Les signatures configurées au référentiel sont recopiées sur les opérations des liaisons : le dépôt du compte rendu passe l'opération 7 En signature, close après le visa du conducteur (HOM-05-apres-signee). Une preuve passe par la validation du V ; un livrable se clôt au dernier dépôt, règle du service (effet-reel-referentiels.md §8.4), inchangée.",
+    "fichiers": [
+      "frontend/packages/lot1/src/services/simule/parcours.ts",
+      "frontend/packages/lot1/src/services/simule/referentiels.ts",
+      "frontend/e2e/specs/parcours-conducteur.spec.ts"
+    ],
+    "test": "homologation-recette.test.ts : HOM-05 et HOM-04"
+  },
+  {
+    "id": "HOM-06",
+    "gravite": "majeure",
+    "titre": "Livrables portés ne propose pas les livrables saisis dans la modale",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/homologation/022-ingenieur-modale-operation-signature-porte-vide-clair.png",
+    "apres": "docs/recette/captures/homologation/corrections/HOM-06-apres.png",
+    "correctif": "Options recalculées à chaque changement des livrables saisis.",
+    "fichiers": [
+      "frontend/packages/lot1/src/pages/des/modelisateur/ModaleOperation.tsx"
+    ],
+    "test": null
+  },
+  {
+    "id": "HOM-07",
+    "gravite": "mineure",
+    "titre": "Texte de liste vide hors sujet",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/homologation/022-ingenieur-modale-operation-signature-porte-vide-clair.png",
+    "apres": "docs/recette/captures/homologation/corrections/HOM-07-apres.png",
+    "correctif": "MultiSelect reçoit un texte de liste vide propre (défaut « Aucun choix ne correspond. ») ; les livrables portés disent quoi faire.",
+    "fichiers": [
+      "frontend/packages/design-system/src/saisie/MultiSelect/MultiSelect.tsx",
+      "frontend/packages/design-system/src/i18n/libelles.ts",
+      "frontend/packages/lot1/src/pages/des/modelisateur/ModaleOperation.tsx",
+      "frontend/packages/lot1/src/i18n/ecrans/modelisateur.ts"
+    ],
+    "test": null
+  },
+  {
+    "id": "HOM-08",
+    "gravite": "mineure",
+    "titre": "Modale d'opération fermée sans confirmation d'abandon",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/homologation/018-ingenieur-modale-operation-echap-fermee-clair.png",
+    "apres": "docs/recette/captures/homologation/corrections/HOM-08-apres.png",
+    "correctif": "Échap, × ou Annuler sur une saisie modifiée demandent « Abandonner la saisie ? ».",
+    "fichiers": [
+      "frontend/packages/lot1/src/pages/des/modelisateur/ModaleOperation.tsx",
+      "frontend/packages/lot1/src/i18n/ecrans/modelisateur.ts"
+    ],
+    "test": null
+  },
+  {
+    "id": "HOM-09",
+    "gravite": "mineure",
+    "titre": "Type de projet affiché par son code",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/homologation/008-ingenieur-referentiels-arbre-clair.png",
+    "apres": "docs/recette/captures/homologation/corrections/HOM-09-apres.png",
+    "correctif": "Arbre des versions et identification du dossier nommés par le libellé servi des types (GET /types-projet) ; un type ajouté arrive déplié dans l'arbre.",
+    "fichiers": [
+      "frontend/packages/lot1/src/adaptateurs/referentiel.ts",
+      "frontend/packages/lot1/src/pages/des/ReferentielsOperationsPage.tsx",
+      "frontend/packages/lot1/src/pages/des/parcours/DossierLiaisonPage.tsx"
+    ],
+    "test": null
+  },
+  {
+    "id": "HOM-10",
+    "gravite": "mineure",
+    "titre": "Dates du parcours simulé figées au 29/09/2026",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/homologation/079-conducteur-dossier-onglet-etapes-clair.png",
+    "apres": "docs/recette/captures/homologation/corrections/HOM-03-apres.png",
+    "correctif": "Déjà corrigé par le lot DDRM (DDR-15, jour courant de Douala) : l'échéance dépassée s'affiche En retard ; rien refait.",
+    "fichiers": [
+      "frontend/packages/lot1/src/services/simule/parcours.ts"
+    ],
+    "test": null
+  },
+  {
+    "id": "HOM-11",
+    "gravite": "mineure",
+    "titre": "Rang codé en dur dans l'onglet Décision",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/homologation/082-conducteur-dossier-onglet-decision-clair.png",
+    "apres": "docs/recette/captures/homologation/corrections/HOM-11-apres.png",
+    "correctif": "Plus aucun rang dans les libellés de la décision et de la mise en service (fr, en, es).",
+    "fichiers": [
+      "frontend/packages/lot1/src/i18n/ecrans/parcours-decision.ts"
+    ],
+    "test": null
+  },
+  {
+    "id": "HOM-12",
+    "gravite": "mineure",
+    "titre": "Étiquettes débordantes",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/homologation/041-ingenieur-catalogue-fonctions-permissions-clair.png",
+    "apres": "docs/recette/captures/homologation/corrections/HOM-12-apres.png",
+    "correctif": "Une étiquette agrandit son cadre ; les permissions du catalogue passent à la ligne dans leur étiquette (« Hors périmètre » : HOM-12-apres-fantomes).",
+    "fichiers": [
+      "frontend/packages/design-system/src/styles/05-badges.css",
+      "frontend/packages/lot1/src/pages/des/referentiels/TypesProjetPage.tsx",
+      "frontend/packages/lot1/src/pages/des/modelisateur/modelisateur.css"
+    ],
+    "test": null
+  },
+  {
+    "id": "HOM-13",
+    "gravite": "mineure",
+    "titre": "Modale d'opération à 390 px",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/homologation/129-ingenieur-modelisateur-brouillon-ci4-390-clair.png",
+    "apres": "docs/recette/captures/homologation/corrections/HOM-13-apres.png",
+    "correctif": "Pied des fenêtres modales à la ligne et marges réduites sur écran étroit.",
+    "fichiers": [
+      "frontend/packages/design-system/src/styles/15-dialogues.css"
+    ],
+    "test": null
+  },
+  {
+    "id": "HOM-14",
+    "gravite": "mineure",
+    "titre": "Identités simulées incohérentes",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/homologation/080-conducteur-dossier-onglet-gouvernance-clair.png",
+    "apres": "docs/recette/captures/homologation/corrections/HOM-04-apres-prise.png",
+    "correctif": "Intervenants, conducteurs et pilotes simulés nommés comme les comptes de démonstration (Aïcha Mahamat Nour, Fatimé Abakar Hissein, Joël Ekotto Mballa…), tests et scénarios mis à jour ; RSSI, conformité, DG et exploitation gardent leur désignation de fonction.",
+    "fichiers": [
+      "frontend/packages/lot1/src/services/simule/parcours.ts",
+      "frontend/packages/lot1/src/services/simule/referentiels.ts",
+      "frontend/packages/lot1/src/services/simule/donnees.ts",
+      "frontend/packages/lot1/src/services/simule/index.ts"
+    ],
+    "test": null
+  },
+  {
+    "id": "HOM-15",
+    "gravite": "mineure",
+    "titre": "Avertissement de couverture en codes techniques",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/homologation/051-ingenieur-processus-controle-couverture-clair.png",
+    "apres": "docs/recette/captures/homologation/corrections/HOM-15-apres.png",
+    "correctif": "Le message servi (MS-PILOTAGE ou simulateur) est rendu avec les libellés des profils et des unités dans le contrôle d'un processus.",
+    "fichiers": [
+      "frontend/packages/lot1/src/pages/des/processus/ModelisateurProcessusPage.tsx",
+      "frontend/packages/lot1/src/services/simule/processus.ts"
+    ],
+    "test": null
+  },
+  {
+    "id": "HOM-16",
+    "gravite": "mineure",
+    "titre": "Pas de notification de validation attendue",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/homologation/103-conducteur-centre-notifications-clair.png",
+    "apres": "docs/recette/captures/homologation/corrections/HOM-16-apres.png",
+    "correctif": "Le dépôt d'une preuve notifie « Validation attendue » au validateur désigné (homologation.operation-validation-requested.v1), comme MS-NOTIFICATION qui le faisait déjà.",
+    "fichiers": [
+      "frontend/packages/lot1/src/services/simule/parcours.ts",
+      "frontend/packages/lot1/src/services/notifications.ts"
+    ],
+    "test": "homologation-recette.test.ts : HOM-16"
+  },
+  {
+    "id": "HOM-17",
+    "gravite": "mineure",
+    "titre": "Fonction Chefs des deux départements reliée au seul chef du DES",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/homologation/041-ingenieur-catalogue-fonctions-permissions-clair.png",
+    "apres": "docs/recette/captures/homologation/corrections/HOM-17-apres.png",
+    "correctif": "CHEFS_DEPARTEMENT reliée à ROLE_CHEF_DES et ROLE_CHEF_DDRM : simulateur, catalogue de MS-HOMOLOGATION et changeset Liquibase (valeur de départ seulement).",
+    "fichiers": [
+      "frontend/packages/lot1/src/services/simule/referentiels.ts",
+      "ms-homologation/src/main/java/cm/gimac/des/homologation/domain/parcours/CatalogueFonctions.java",
+      "ms-homologation/src/main/resources/config/liquibase/changelog/20261014000200_chefs_departement.xml",
+      "ms-homologation/src/main/resources/config/liquibase/master.xml"
+    ],
+    "test": "homologation-recette.test.ts : HOM-17 ; RecetteHomologationTest.chefsDesDeuxDepartements"
+  },
+  {
+    "id": "HOM-18",
+    "gravite": "mineure",
+    "titre": "Canevas illisible à l'ouverture",
+    "statut": "corrigée",
+    "avant": "docs/recette/captures/homologation/010-ingenieur-referentiel-agregateur-v1-canevas-graphe-clair.png",
+    "apres": "docs/recette/captures/homologation/corrections/HOM-18-apres.png",
+    "correctif": "Cadrage initial jamais sous un zoom lisible (ouvert sur le début du parcours), intitulés de couloirs coupés dans leur couloir, cartes de l'Agrégateur disposées dans les couloirs de leur étape.",
+    "fichiers": [
+      "frontend/packages/lot1/src/composants/graphe/CanevasGraphe.tsx",
+      "frontend/packages/lot1/src/pages/des/modelisateur/modelisateur.css",
+      "frontend/packages/lot1/src/services/simule/referentiels.ts"
+    ],
+    "test": null
+  },
+  {
+    "id": "HOM-19",
+    "gravite": "mineure",
+    "titre": "Profil simulé de l'ingénieur d'homologation incomplet",
+    "statut": "corrigée",
+    "avant": null,
+    "apres": null,
+    "correctif": "Déjà corrigé par le lot administration : les profils simulés sont lus dans domaine-gimac.json écrit depuis le domaine Keycloak (HOM_REPLAY_ADMIN présent) ; sans écran, pas de capture.",
+    "fichiers": [
+      "frontend/packages/lot1/src/permissions.ts",
+      "frontend/packages/lot1/src/domaine-gimac.json"
+    ],
+    "test": null
+  }
+]

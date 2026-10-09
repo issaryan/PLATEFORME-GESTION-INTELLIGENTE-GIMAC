@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   Button, Checkbox, ConfirmDialog, Dialog, InlineAlert, KeyValueList, MultiSelect, NumberField, Select, Tabs, Tag, TextArea, TextField, type Option,
@@ -34,7 +34,7 @@ export type ModaleOperationProps = {
 }
 
 /** Choix multiple par jetons, avec suggestions filtrées par la saisie. */
-function ChoixMultiple(p: { label: string; options: Option[]; value: string[]; onChange: (v: string[]) => void; lectureSeule: boolean; help?: string; error?: string; name: string }) {
+function ChoixMultiple(p: { label: string; options: Option[]; value: string[]; onChange: (v: string[]) => void; lectureSeule: boolean; help?: string; error?: string; name: string; vide?: string }) {
   const [q, setQ] = useState('')
   if (p.lectureSeule) {
     return (
@@ -59,9 +59,13 @@ function ChoixMultiple(p: { label: string; options: Option[]; value: string[]; o
       query={q}
       onQuery={setQ}
       suggestions
+      emptyLabel={p.vide}
     />
   )
 }
+
+/** Une confirmation (abandon, suppression) est ouverte par-dessus la modale : Échap la ferme elle seule. */
+const confirmationOuverte = () => typeof document !== 'undefined' && !!document.querySelector('[role="alertdialog"]')
 
 export function ModaleOperation(p: ModaleOperationProps) {
   const { t } = useTranslation()
@@ -69,6 +73,8 @@ export function ModaleOperation(p: ModaleOperationProps) {
   const [onglet, setOnglet] = useState<Onglet>('general')
   const [erreurs, setErreurs] = useState<Record<string, string>>({})
   const [confirmerSuppression, setConfirmerSuppression] = useState(false)
+  // Recette HOM-08 : une saisie modifiée n'est abandonnée (Échap, ×, Annuler) qu'après confirmation, comme CrudDialog.
+  const [abandon, setAbandon] = useState(false)
   const lecture = p.lectureSeule
   const maj = (champs: Partial<ReferenceOperation>) => setO((x) => ({ ...x, ...champs }))
   const err = (champ: string) => (erreurs[champ] ? t(erreurs[champ]) : undefined)
@@ -102,7 +108,8 @@ export function ModaleOperation(p: ModaleOperationProps) {
       pieces: c.typesPieces.map((m) => ({ value: m, label: t(`modelisateur.piece.${m.replace(/[./+-]/g, '_')}`, { defaultValue: m }) })),
       predecesseurs: p.noeuds.filter((n) => !n.fantome && n.code !== o.code).map((n) => ({ value: n.code, label: `${n.code} · ${n.libelle}` })),
     }
-  }, [c, p.noeuds, o.code, t])
+    // Recette HOM-06 : les livrables saisis dans l'onglet Livrables sont aussitôt proposés aux signatures.
+  }, [c, p.noeuds, o.code, o.livrables, t])
   const noeud = p.noeuds.find((n) => n.code === p.operation.code && !p.creation)
   const successeurs = p.creation ? [] : (noeud?.successeurs ?? p.noeuds.filter((n) => (n.predecesseurs ?? []).includes(o.code)).map((n) => n.code))
 
@@ -119,7 +126,16 @@ export function ModaleOperation(p: ModaleOperationProps) {
   const majLivrable = (i: number, champs: Partial<Livrable>) => maj({ livrables: o.livrables.map((l, j) => (j === i ? { ...l, ...champs } : l)) })
   const signatures = o.signatures ?? []
   const majSignature = (i: number, champs: Partial<SignatureReferentiel>) => maj({ signatures: signatures.map((x, j) => (j === i ? { ...x, ...champs } : x)) })
-  const fermer = p.onFermer
+  const modifiee = !lecture && JSON.stringify(o) !== JSON.stringify(p.operation)
+  // Fermeture demandée (Échap, ×, Annuler) lue par référence : la fenêtre garde le gestionnaire de son ouverture.
+  const etat = useRef({ modifiee, abandon, enCours: p.enCours, onFermer: p.onFermer })
+  etat.current = { modifiee, abandon, enCours: p.enCours, onFermer: p.onFermer }
+  const fermer = useCallback(() => {
+    const e = etat.current
+    if (e.enCours || e.abandon || confirmationOuverte()) return
+    if (e.modifiee) setAbandon(true)
+    else e.onFermer()
+  }, [])
   const titre = p.creation ? t('modelisateur.modale.creer') : t('modelisateur.modale.titre', { code: p.operation.code })
   const serveur = p.erreurServeur
   const nbErreurs = (k: Onglet) => Object.keys(erreurs).filter((x) => ongletDuChamp(x) === k).length
@@ -204,7 +220,8 @@ export function ModaleOperation(p: ModaleOperationProps) {
                     <NumberField name={`signatures.${i}.ordre`} label={t('modelisateur.signature.ordre')} help={t('modelisateur.signature.ordreAide')} value={String(x.ordre)} min={1} max={99} required
                       readOnly={lecture} error={err(`signatures.${i}.ordre`)} onChange={(v) => majSignature(i, { ordre: v === '' ? 0 : Number(v) })} />
                     <ChoixMultiple name={`signatures.${i}.porte`} label={t('modelisateur.signature.porte')} help={t('modelisateur.signature.porteAide')} options={options.portes} value={x.porte}
-                      lectureSeule={lecture} error={err(`signatures.${i}.porte`)} onChange={(v) => majSignature(i, { porte: v })} />
+                      lectureSeule={lecture} error={err(`signatures.${i}.porte`)} onChange={(v) => majSignature(i, { porte: v })}
+                      vide={options.portes.length ? t('modelisateur.signature.porteAucunChoix') : t('modelisateur.signature.porteVide')} />
                   </div>
                   {!lecture ? (
                     <div className="gm-row" style={{ justifyContent: 'flex-end' }}>
@@ -298,6 +315,20 @@ export function ModaleOperation(p: ModaleOperationProps) {
           ) : null}
         </div>
       </div>
+      {abandon ? (
+        <ConfirmDialog
+          open
+          danger
+          title={t('modelisateur.abandon.titre')}
+          confirmLabel={t('modelisateur.abandon.confirmer')}
+          consequences={[t('modelisateur.abandon.texte')]}
+          onConfirm={() => {
+            setAbandon(false)
+            p.onFermer()
+          }}
+          onClose={() => setAbandon(false)}
+        />
+      ) : null}
       {confirmerSuppression ? (
         <ConfirmDialog
           open

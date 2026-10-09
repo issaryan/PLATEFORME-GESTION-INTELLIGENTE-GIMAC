@@ -363,7 +363,8 @@ export function PageConnexion({ couche, destination, service, erreur }: PageConn
         <Marque sombre={sombre} signature={t('connexion.signature')} />
       </div>
       <footer className="gm-acces-pied">
-        <span>{t(`connexion.couche.${couche}`)} · {t('connexion.classification')}</span>
+        {/* DDR-22 : le portail des participants n'est pas d'usage interne. */}
+        <span>{t(`connexion.couche.${couche}`)} · {t(couche === 'portail' ? 'connexion.classificationPortail' : 'connexion.classification')}</span>
         <span className="gm-acces-heure" role="timer" aria-label={t('connexion.heure')}>
           <time dateTime={maintenant.toISOString()}>Douala {format(maintenant, 'Africa/Douala')}</time> · UTC {format(maintenant, 'UTC')}
         </span>

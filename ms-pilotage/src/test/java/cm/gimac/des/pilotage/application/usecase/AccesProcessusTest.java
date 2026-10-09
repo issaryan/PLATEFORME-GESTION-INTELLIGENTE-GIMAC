@@ -184,21 +184,21 @@ class AccesProcessusTest {
         assertThat(acces.lance(technicien, defaut)).isTrue();
         assertThat(acces.lance(agentSna, defaut)).isFalse();
         // Tout le GIMAC : tout compte interne actif, d'un autre service compris ; pas un compte inactif ni externe.
-        Processus tous = publie("POLE_RESEAU", new Initiateurs(List.of(RegleInitiateur.TOUT_LE_GIMAC), null, null, null));
+        Processus tous = publie("POLE_RESEAU", new Initiateurs(List.of(RegleInitiateur.TOUT_LE_GIMAC), null, null, null, false));
         assertThat(acces.lance(agentSna, tous)).isTrue();
         assertThat(acces.lance(appelant(OrganisationStubAdapter.INACTIF, "PIL_ACTIVITY_OWN"), tous)).isFalse();
         assertThat(acces.lance(appelant(OrganisationStubAdapter.CORRESPONDANT, "PIL_ACTIVITY_OWN"), tous)).isFalse();
         // Unités désignées (sous-unités comprises), profils, permissions du jeton ; règles cumulées.
-        Processus unites = publie("POLE_RESEAU", new Initiateurs(List.of(RegleInitiateur.UNITES), List.of("DES"), null, null));
+        Processus unites = publie("POLE_RESEAU", new Initiateurs(List.of(RegleInitiateur.UNITES), List.of("DES"), null, null, false));
         assertThat(acces.lance(agentSna, unites)).as("SNA est une sous-unité du DES").isTrue();
         assertThat(acces.lance(chefDdrm, unites)).isFalse();
-        Processus profils = publie("POLE_RESEAU", new Initiateurs(List.of(RegleInitiateur.PROFILS), null, List.of("ROLE_CHEF_DDRM"), null));
+        Processus profils = publie("POLE_RESEAU", new Initiateurs(List.of(RegleInitiateur.PROFILS), null, List.of("ROLE_CHEF_DDRM"), null, false));
         assertThat(acces.lance(chefDdrm, profils)).isTrue();
         assertThat(acces.lance(agentSna, profils)).isFalse();
-        Processus permissions = publie("POLE_RESEAU", new Initiateurs(List.of(RegleInitiateur.PERMISSIONS), null, null, List.of("CER_DOSSIER_VERIFY")));
+        Processus permissions = publie("POLE_RESEAU", new Initiateurs(List.of(RegleInitiateur.PERMISSIONS), null, null, List.of("CER_DOSSIER_VERIFY"), false));
         assertThat(acces.lance(chefDdrm, permissions)).isTrue();
         assertThat(acces.lance(agentSna, permissions)).isFalse();
-        Processus cumul = publie("POLE_RESEAU", new Initiateurs(List.of(RegleInitiateur.PROFILS, RegleInitiateur.UNITES), List.of("SNA"), List.of("ROLE_CHEF_DDRM"), null));
+        Processus cumul = publie("POLE_RESEAU", new Initiateurs(List.of(RegleInitiateur.PROFILS, RegleInitiateur.UNITES), List.of("SNA"), List.of("ROLE_CHEF_DDRM"), null, false));
         assertThat(acces.lance(chefDdrm, cumul)).isTrue();
         assertThat(acces.lance(agentSna, cumul)).isTrue();
         assertThat(acces.lance(technicien, cumul)).as("MEMBRES_UNITE non retenue").isFalse();

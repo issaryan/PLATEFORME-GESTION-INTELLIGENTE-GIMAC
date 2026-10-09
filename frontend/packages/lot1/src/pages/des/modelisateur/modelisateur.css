@@ -53,6 +53,8 @@
 .gm-mod-couloir-etape { border-left: var(--gm-border-1) dashed var(--gm-color-border-strong); border-right: var(--gm-border-1) dashed var(--gm-color-border-strong); }
 .gm-mod-couloir-segment { background: var(--gm-color-surface); border: var(--gm-border-1) solid var(--gm-color-border); }
 .gm-mod-couloir-titre { display: block; padding: var(--gm-space-1) var(--gm-space-2); font-size: 12px; font-weight: 600; color: var(--gm-color-text-secondary); text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
+/* Recette HOM-18 : l'intitulé d'un couloir étroit est coupé dans son couloir au lieu de chevaucher le suivant. */
+.gm-mod-couloir-etape .gm-mod-couloir-titre { overflow: hidden; text-overflow: ellipsis; }
 .gm-mod-couloir-segment .gm-mod-couloir-titre { position: absolute; right: var(--gm-space-2); bottom: 0; color: var(--gm-color-text-muted); }
 
 /* Carte d'opération. */
@@ -133,3 +135,7 @@
 .gm-mod-couleur { display: inline-flex; align-items: center; gap: var(--gm-space-1); padding: var(--gm-space-1) var(--gm-space-2); border: var(--gm-border-1) solid var(--gm-color-border); cursor: pointer; }
 .gm-mod-couleur:has(input:checked) { border-color: var(--gm-color-action); background: var(--gm-color-action-subtle); }
 .gm-mod-couleur:has(input:focus-visible) { outline: 2px solid var(--gm-color-focus); outline-offset: 1px; }
+
+/* Recette HOM-12 : libellés longs des permissions du catalogue des fonctions passés à la ligne dans leur étiquette, qui
+   s'agrandit : la colonne ne déborde ni sur la ligne suivante ni hors du tableau. */
+.gm-tf-etiquettes .gm-tag { white-space: normal; }

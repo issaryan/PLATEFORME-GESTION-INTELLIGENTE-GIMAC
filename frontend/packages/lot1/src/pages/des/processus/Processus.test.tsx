@@ -12,7 +12,7 @@ import ModelisateurProcessusPage from './ModelisateurProcessusPage'
 import InstancePage from './InstancePage'
 import MaJourneePage from '../activite/MaJourneePage'
 import TachesPage from '../activite/TachesPage'
-import { erreursEtape, ongletDe } from './ModaleEtape'
+import { codeLivrableLibre, erreursEtape, ongletDe } from './ModaleEtape'
 import { positionsAuto } from './CanevasProcessus'
 import { etapeVierge } from '../../../modele/processus'
 
@@ -29,6 +29,7 @@ const PERSONNES = {
   chef: { id: 'U-001', nom: 'Paul Mbarga Atangana', role: 'ROLE_CHEF_DES' },
   resp: { id: 'u-resp-info', nom: 'Gaston Ndzana Ebode', role: 'ROLE_RESPONSABLE_SERVICE' },
   membre: { id: 'u-res', nom: 'Idriss Mahamat Saleh', role: 'ROLE_POLE_RESEAU' },
+  collab: { id: 'u-collab', nom: 'Nadège Mvondo Assiga', role: 'ROLE_COLLABORATEUR' },
 }
 type Qui = (typeof PERSONNES)[keyof typeof PERSONNES]
 /**
@@ -182,7 +183,8 @@ describe('D-87 : modélisateur', () => {
     fireEvent.change(within(d).getAllByLabelText(/^Désignation/)[1], { target: { value: 'PROFIL' } })
     fireEvent.change(within(d).getAllByLabelText(/^Profil(?! de)/)[0], { target: { value: 'ROLE_RESPONSABLE_SERVICE' } })
     // Couverture du profil : aucun porteur au pôle, un ailleurs dans le GIMAC.
-    expect(await within(d).findByText(/Aucun porteur dans l’unité ; 1 ailleurs dans le GIMAC/)).toBeTruthy()
+    // QUO-01 : la cheffe du service RH porte aussi ce profil (organisation simulée alignée sur MS-PILOTAGE).
+    expect(await within(d).findByText(/Aucun porteur dans l’unité ; 2 ailleurs dans le GIMAC/)).toBeTruthy()
     fireEvent.click(within(d).getByRole('tab', { name: 'Livrables' }))
     fireEvent.click(within(d).getByRole('button', { name: 'Ajouter un livrable' }))
     fireEvent.change(within(d).getAllByLabelText(/^Libellé/)[1], { target: { value: 'Journal de configuration' } })
@@ -203,7 +205,7 @@ describe('D-87 : modélisateur', () => {
     const etape = modifier.mock.calls.at(-1)![1].etapes.find((e) => e.code === 'CONFIGURATION')!
     expect(etape).toMatchObject({
       delaiJours: 3, intervenant: { mode: 'PERSONNE', personneId: 'u-res', remplacement: 'ROLE_POLE_RESEAU' }, validateur: { mode: 'PROFIL', profil: 'ROLE_RESPONSABLE_SERVICE' },
-      livrables: [{ code: 'FICHE_VPN' }, { code: 'LIVRABLE_2', libelle: 'Journal de configuration' }], signatures: [{ code: 'SIGNATURE_1', libelle: 'Visa du chef', porte: ['FICHE_VPN'] }],
+      livrables: [{ code: 'FICHE_VPN' }, { code: 'LIVRABLE_1', libelle: 'Journal de configuration' }], signatures: [{ code: 'SIGNATURE_1', libelle: 'Visa du chef', porte: ['FICHE_VPN'] }],
       champs: [{ code: 'CHAMP_1', type: 'CHOIX', choix: ['IPsec', 'OpenVPN'], obligatoire: true }],
     })
     // Ajout et suppression d'une étape.
@@ -398,7 +400,8 @@ describe('D-87 : suivi d’une instance', () => {
   it('exécutant : champs d’une étape (contrôle, enregistrement) ; refus restitué ; instance inconnue', async () => {
     const s = services(PERSONNES.membre)
     const l = (await s.processus.lister({ etat: 'PUBLIEE' })).find((p) => p.code === 'OUVERTURE_FLUX_RESEAU')!
-    const i = await s.processus.lancer(l.id, { intitule: 'Essai des champs', champs: {}, designations: { MISE_EN_OEUVRE: 'u-res' } })
+    // D-99 : le lanceur ne se désigne pas lui-même ; le second porteur du profil réseau est désigné.
+    const i = await s.processus.lancer(l.id, { intitule: 'Essai des champs', champs: {}, designations: { MISE_EN_OEUVRE: 'u-res-bis' } })
     rendrePage(<InstancePage />, { chemin: `/des/processus/instances/${i.id}`, motif: '/des/processus/instances/:id', services: s, session: session(PERSONNES.membre) })
     const panneau = await screen.findByRole('complementary', { name: /Demande d’ouverture du flux/ })
     expect((within(panneau).getByRole('button', { name: 'Enregistrer les champs' }) as HTMLButtonElement).disabled).toBe(true)
@@ -414,17 +417,21 @@ describe('D-87 : suivi d’une instance', () => {
     vi.spyOn(s.processus, 'terminer').mockRejectedValueOnce(new ApiError(422, 'PIL_PROCESSUS_CHAMPS_MANQUANTS', 'x', 'cid-c', { champs: ['DESTINATION'] }))
     fireEvent.click(screen.getByRole('button', { name: 'Terminer l’étape' }))
     await confirmer('Terminer l’étape')
-    expect(await screen.findByText('DESTINATION')).toBeTruthy()
+    // QUO-07 : le champ manquant est nommé par son libellé.
+    expect(await screen.findByText('Champs à renseigner : Adresse de destination')).toBeTruthy()
     cleanup()
+    // QUO-12 : instance inexistante expliquée, sans « Réessayer ».
     rendrePage(<InstancePage />, { chemin: '/des/processus/instances/INCONNUE', motif: '/des/processus/instances/:id', services: s, session: session(PERSONNES.membre) })
-    expect(await screen.findByText('L’instance n’a pas pu être lue.')).toBeTruthy()
+    expect(await screen.findByText('Demande introuvable')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Réessayer' })).toBeNull()
   })
 })
 
 describe('D-87 : désignation hors de l’unité', () => {
   it('lancement : un seul porteur du profil de remplacement, choisi d’office', async () => {
-    const s = servicesSimules({ latenceMs: 0, utilisateur: { id: 'u-res', nom: 'Idriss Mahamat Saleh', profils: ['ROLE_POLE_RESEAU'] }, pouvoirs: magasinPouvoirs() })
-    catalogue(PERSONNES.membre, s)
+    // D-99 : lancé par la technicienne (non porteuse) ; l'ingénieur réseau, seul porteur, est choisi d'office.
+    const s = servicesSimules({ latenceMs: 0, utilisateur: { id: 'u-collab', nom: 'Nadège Mvondo Assiga', profils: ['ROLE_COLLABORATEUR'] }, pouvoirs: magasinPouvoirs() })
+    catalogue(PERSONNES.collab, s)
     fireEvent.click(await screen.findByRole('button', { name: 'Lancer le processus Ouverture d’un flux réseau' }))
     const d = await screen.findByRole('dialog', { name: 'Lancer le processus' })
     const choix = within(d).getByLabelText(/^Intervenant de « Mise en œuvre/) as HTMLSelectElement
@@ -472,5 +479,52 @@ describe('D-87 : Mon activité', () => {
     const f = await screen.findByRole('dialog', { name: /Ouverture du port 443/ })
     expect(within(f).getByText('Processus d’unité')).toBeTruthy()
     expect(within(f).getByText('Profil requis')).toBeTruthy()
+  })
+})
+
+describe('recette du travail quotidien (QUO-02, QUO-04, QUO-12)', () => {
+  const periode = { debut: '2026-12-21', fin: '2026-12-31' }
+  const congé = async (s: Services) => (await s.processus.lancables({})).groupes.flatMap((g) => g.processus).find((p) => p.code === 'DEMANDE_CONGE')!
+
+  it('QUO-04 : la pièce justificative s’ouvre en aperçu depuis l’instance ; QUO-12 : un tiers reçoit un refus expliqué', async () => {
+    const magasin = magasinPouvoirs()
+    const s = services(PERSONNES.collab, magasin)
+    const p = await congé(s)
+    const depot = await s.processus.televerserPieceLancement(new File(['%PDF-1.4'], 'note.pdf', { type: 'application/pdf' }), p.id)
+    const i = await s.processus.lancer(p.id, { intitule: 'Congé de décembre', champs: {}, designations: {}, formulaire: { PERIODE: periode, MOTIF: 'Congé annuel.', JUSTIFICATIF: { documentId: depot.documentId } } })
+    rendrePage(<InstancePage />, { chemin: `/des/processus/instances/${i.id}`, motif: '/des/processus/instances/:id', services: s, session: session(PERSONNES.collab) })
+    const lancement = await screen.findByTestId('valeurs-lancement')
+    fireEvent.click(within(lancement).getByRole('button', { name: 'Ouvrir note.pdf' }))
+    expect(await screen.findByRole('dialog', { name: /note\.pdf/ })).toBeTruthy()
+    cleanup()
+    // Le responsable du pôle système ne lit pas la demande : refus expliqué, sans « Réessayer ».
+    const tiers = { id: 'u-sys', nom: 'Chantal Ngo Bassong', role: 'ROLE_POLE_SYSTEME' } as unknown as Qui
+    rendrePage(<InstancePage />, { chemin: `/des/processus/instances/${i.id}`, motif: '/des/processus/instances/:id', services: services(tiers, magasin), session: session(tiers) })
+    expect(await screen.findByText('Vous ne pouvez pas consulter cette demande')).toBeTruthy()
+    expect(screen.queryByText('Instance introuvable.')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Réessayer' })).toBeNull()
+  })
+
+  it('QUO-02 : la réaffectation ne propose jamais la demandeuse et n’annonce pas un faux « seul porteur »', async () => {
+    const magasin = magasinPouvoirs()
+    const s = services(PERSONNES.collab, magasin)
+    const i = await s.processus.lancer((await congé(s)).id, { intitule: 'Congé de décembre', champs: {}, designations: {}, formulaire: { PERIODE: periode, MOTIF: 'Congé annuel.' } })
+    const dg = { id: 'u-dg', nom: 'Jean-Baptiste Ella Mintsa', role: 'ROLE_DG' } as unknown as Qui
+    rendrePage(<InstancePage />, { chemin: `/des/processus/instances/${i.id}?etape=ANALYSE`, motif: '/des/processus/instances/:id', services: services(dg, magasin), session: session(dg) })
+    fireEvent.click(await screen.findByRole('button', { name: 'Réaffecter l’étape' }))
+    const d = await screen.findByRole('dialog', { name: /Réaffecter l’étape/ })
+    const choix = within(d).getByLabelText(/^Nouvel exécutant/) as HTMLSelectElement
+    await waitFor(() => expect(within(d).getByText(/Aucun autre porteur du profil/)).toBeTruthy())
+    expect(choix.value).toBe('')
+    expect([...choix.options].map((o) => o.value)).not.toContain('u-collab')
+  })
+})
+
+describe('recette du travail quotidien (QUO-06)', () => {
+  it('code de livrable proposé d’office unique dans tout le processus', () => {
+    expect(codeLivrableLibre([])).toBe('LIVRABLE_1')
+    // Livrable LIVRABLE_1 déjà dans une autre étape : la nouvelle étape reçoit LIVRABLE_2, jamais un doublon.
+    expect(codeLivrableLibre(['LIVRABLE_1'])).toBe('LIVRABLE_2')
+    expect(codeLivrableLibre(['LIVRABLE_2', 'BON_REMISE'])).toBe('LIVRABLE_1')
   })
 })

@@ -27,7 +27,7 @@ export function Pagination(p: PaginationProps) {
           </select>
         </>
       ) : null}
-      <span className="gm-num">{t('pagination.resume', { page: p.page, pages, total: formatMoney(p.total || 0) })}</span>
+      <span className="gm-num">{p.total === 1 ? t('pagination.resumeUn', { page: p.page, pages }) : t('pagination.resume', { page: p.page, pages, total: formatMoney(p.total || 0) })}</span>
       <span className="gm-row">
         <Button size="sm" variant="ghost" disabled={p.page <= 1} onClick={() => { if (p.onPage) p.onPage(p.page - 1) }}>{t('pagination.precedente')}</Button>
         <Button size="sm" variant="ghost" disabled={p.page >= pages} onClick={() => { if (p.onPage) p.onPage(p.page + 1) }}>{t('pagination.suivante')}</Button>

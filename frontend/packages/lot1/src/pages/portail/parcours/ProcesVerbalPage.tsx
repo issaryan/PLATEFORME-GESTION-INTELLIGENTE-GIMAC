@@ -41,7 +41,7 @@ function Pv({ d, pv }: { d: DossierLiaison; pv: ProcesVerbalCertification }) {
         sign: { purpose: 'SIGNATURE_OPERATION', empreinte: (p) => p.empreinte ?? '' },
         consequences: () => (
           <div className="gm-col" style={{ gap: 'var(--gm-space-2)' }}>
-            <span>{t('pp.pv.consequence', { n: couv.numerateur, total: couv.denominateur })}</span>
+            <span>{t('pp.pv.consequence', { n: couv.numerateur, total: couv.denominateur, count: couv.numerateur })}</span>
             <span>{t(pv.signatureGimac ? 'pp.pv.consequenceDerniere' : 'pp.pv.consequencePremiere')}</span>
           </div>
         ),
@@ -60,7 +60,7 @@ function Pv({ d, pv }: { d: DossierLiaison; pv: ProcesVerbalCertification }) {
             value: (
               <span className="gm-row" style={{ gap: 'var(--gm-space-2)' }}>
                 <span className="gm-num gm-type-body-strong">{couv.calculable ? `${couv.taux} %` : t('pp.nonCalculable')}</span>
-                <span className="gm-num">{t('pp.pv.servicesSur', { n: couv.numerateur, total: couv.denominateur })}</span>
+                <span className="gm-num">{t('pp.pv.servicesSur', { n: couv.numerateur, total: couv.denominateur, count: couv.numerateur })}</span>
                 {couv.taux === 100 ? <StatusBadge status="ok" label={t('pp.complete')} /> : <StatusBadge status="crit" label={t('pp.incomplete')} />}
               </span>
             ),
@@ -79,7 +79,7 @@ function Pv({ d, pv }: { d: DossierLiaison; pv: ProcesVerbalCertification }) {
             {[...pv.circuit].sort((a, b) => a.ordre - b.ordre).map((e) => (
               <li key={e.code}>
                 <span className="gm-row" style={{ gap: 'var(--gm-space-2)' }}>
-                  <span className="gm-type-body-strong">{e.libelle}</span>
+                  <span className="gm-type-body-strong">{t(`decision.circuit.libelle.${e.code}`, { defaultValue: e.libelle })}</span>
                   <span className="gm-field-help">{`${t(e.portail ? 'decision.circuit.portail' : 'decision.circuit.gimac')} · ${t('decision.circuit.ordreN', { n: e.ordre })}`}</span>
                   <StatusBadge status={e.etat === 'SIGNEE' ? 'ok' : 'warn'} label={t(e.etat === 'SIGNEE' ? 'decision.circuit.signee' : 'decision.circuit.attendue')} />
                 </span>

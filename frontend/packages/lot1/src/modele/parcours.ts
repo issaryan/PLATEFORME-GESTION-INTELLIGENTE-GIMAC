@@ -224,6 +224,8 @@ export type DossierLiaison = Permitted & {
   institutionId: string
   institutionNom: string
   typeProjet: TypeProjet
+  /** CER-05 : libellé du type servi par MS-HOMOLOGATION (le portail ne lit pas le catalogue des types). */
+  typeProjetLibelle?: string | null
   banquePartenaireNom: string | null
   personnalisateurNom: string | null
   statut: StatutParcours
@@ -255,6 +257,8 @@ export type LiaisonResume = {
   reference: string
   institutionNom: string
   typeProjet: TypeProjet
+  /** CER-05 : libellé du type servi par MS-HOMOLOGATION. */
+  typeProjetLibelle?: string | null
   statut: StatutParcours
   etapeCourante: EtapeCode
   conducteurNom: string | null

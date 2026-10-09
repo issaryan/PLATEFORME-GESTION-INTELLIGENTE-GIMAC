@@ -7,12 +7,15 @@ import type { ReferenceOperation, ReferentielVersion } from '../modele/homologat
 type Traduire = (cle: string, valeurs?: Record<string, unknown>) => string
 const TON = { BROUILLON: 'info', PUBLIEE: 'ok', RETIREE: 'neutral' } as const
 
-/** Arbre : type de projet, puis versions (les plus récentes d'abord). */
-export function versArbre(versions: ReferentielVersion[], t: Traduire): TreeNode[] {
+/**
+ * Arbre : type de projet, puis versions (les plus récentes d'abord). Recette HOM-09 : un type créé dans la plateforme
+ * (D-91) est nommé par son libellé servi (`libelleType`, GET /types-projet), jamais par son code.
+ */
+export function versArbre(versions: ReferentielVersion[], t: Traduire, libelleType?: (code: string) => string): TreeNode[] {
   const types = [...new Set(versions.map((v) => v.typeProjet))]
   return types.map((type) => ({
     key: `type:${type}`,
-    label: t(`typeProjet.${type}`, { defaultValue: String(type) }),
+    label: libelleType ? libelleType(String(type)) : t(`typeProjet.${type}`, { defaultValue: String(type) }),
     icon: 'kanban' as const,
     count: versions.filter((v) => v.typeProjet === type).length,
     children: versions
