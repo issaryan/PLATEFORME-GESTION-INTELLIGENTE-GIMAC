@@ -1313,3 +1313,43 @@ test_services_toute_permission_isolee_refusee if {
 		}
 	}
 }
+
+# ------------------------------------------------------------------ D-102 : organigramme (affectations, PDF)
+
+affecter(chemin, permissions, institution) := {
+	"method": "POST", "path": chemin, "permissions": permissions, "institution_id": institution, "authentifie": true, "acr": "2",
+}
+
+test_affectation_des_administration_ou_chef if {
+	authz.allow with input as affecter("/bff/des/iam/organisation/unites/SNA/affectations", ["IAM_ACCOUNT_EDIT"], "")
+	authz.allow with input as affecter("/bff/des/iam/organisation/unites/SNA/affectations", ["PIL_ACTIVITY_OWN"], "")
+}
+
+test_affectation_des_refusee if {
+	not authz.allow with input as affecter("/bff/des/iam/organisation/unites/SNA/affectations", ["IAM_ACCOUNT_READ"], "")
+	not authz.allow with input as affecter("/bff/des/iam/organisation/unites/SNA/affectations", ["PIL_ACTIVITY_OWN"], "INST-0042")
+	not authz.allow with input as object.union(affecter("/bff/des/iam/organisation/unites/SNA/affectations", ["IAM_ACCOUNT_EDIT"], ""), {"acr": "1"})
+	not authz.allow with input as affecter("/bff/des/iam/organisation/unites/SNA/affectations/u-1", ["PIL_ACTIVITY_OWN"], "")
+	not authz.allow with input as affecter("/bff/portail/iam/organisation/unites/SNA/affectations", ["IAM_ACCOUNT_EDIT"], "INST-0042")
+}
+
+test_affectation_console_administration_seulement if {
+	authz.allow with input as affecter("/bff/console/iam/organisation/unites/SNA/affectations", ["IAM_ACCOUNT_EDIT"], "")
+	not authz.allow with input as affecter("/bff/console/iam/organisation/unites/SNA/affectations", ["PIL_ACTIVITY_OWN"], "")
+}
+
+test_retrait_administration_seulement if {
+	every couche in ["des", "console"] {
+		authz.allow with input as {"method": "DELETE", "path": sprintf("/bff/%s/iam/organisation/unites/SNA/affectations/u-1", [couche]), "permissions": ["IAM_ACCOUNT_EDIT"], "authentifie": true, "acr": "2"}
+		not authz.allow with input as {"method": "DELETE", "path": sprintf("/bff/%s/iam/organisation/unites/SNA/affectations/u-1", [couche]), "permissions": ["PIL_ACTIVITY_OWN"], "authentifie": true, "acr": "2"}
+	}
+}
+
+test_organigramme_pdf_lecteurs_du_catalogue if {
+	authz.allow with input as {"method": "GET", "path": "/bff/des/iam/organisation/organigramme.pdf", "permissions": ["PIL_ACTIVITY_OWN"], "authentifie": true, "acr": "2"}
+	authz.allow with input as {"method": "GET", "path": "/bff/console/iam/organisation/organigramme.pdf", "permissions": ["IAM_ACCOUNT_READ"], "authentifie": true, "acr": "2"}
+	not authz.allow with input as {"method": "GET", "path": "/bff/console/iam/organisation/organigramme.pdf", "permissions": ["PIL_ACTIVITY_OWN"], "authentifie": true, "acr": "2"}
+	not authz.allow with input as {"method": "GET", "path": "/bff/des/iam/organisation/organigramme.pdf", "permissions": ["PIL_ACTIVITY_OWN"], "institution_id": "INST-0042", "authentifie": true, "acr": "2"}
+	not authz.allow with input as {"method": "GET", "path": "/bff/des/iam/organisation/organigrammexpdf", "permissions": ["PIL_ACTIVITY_OWN"], "authentifie": true, "acr": "2"}
+	not authz.allow with input as {"method": "GET", "path": "/bff/portail/iam/organisation/organigramme.pdf", "permissions": ["PIL_ACTIVITY_OWN"], "institution_id": "INST-0042", "authentifie": true, "acr": "2"}
+}

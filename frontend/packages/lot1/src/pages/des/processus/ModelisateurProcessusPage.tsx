@@ -4,7 +4,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router'
 import { ReactFlowProvider } from '@xyflow/react'
 import { Button, ConfirmDialog, CrudDialog, DataTable, Icon, InlineAlert, KeyValueList, NumberField, PageHeader, Select, TextArea, TextField, cx, type Column } from '@gimac/design-system'
 import { EtatsRequete, type ApiError } from '@gimac/socle'
-import { INITIATEURS_DEFAUT, LIMITES_PROCESSUS, etapeVierge, type AnomalieProcessus, type EtapeProcessus, type Initiateurs, type Processus, type SaisieProcessus } from '../../../modele/processus'
+import { LIMITES_PROCESSUS, etapeVierge, type AnomalieProcessus, type EtapeProcessus, type Initiateurs, type Processus, type SaisieProcessus } from '../../../modele/processus'
 import { useControleProcessus, useEcritureProcessus, usePorteeProcessus, useProcessus, useSupprimerProcessus } from '../../../hooks/processus'
 import { usePouvoirs } from '../../../hooks/pouvoirs'
 import { useDates, useLibelleUnite } from '../activite/communs'
@@ -12,7 +12,7 @@ import { CanevasProcessus, type CarteEtape } from './CanevasProcessus'
 import { ModaleEtape, type OngletEtape } from './ModaleEtape'
 import { DialogueLancement } from './DialogueLancement'
 import { ModaleLancement } from './ModaleLancement'
-import { BadgeGravite, BadgeProcessus, useErreurProcessus, useResumeIntervenant } from './communs'
+import { BadgeGravite, BadgeProcessus, useErreurProcessus, useResumeInitiateurs, useResumeIntervenant } from './communs'
 import { useLibelleProfilEquipe } from '../activite/dialoguesEquipe'
 import { useUnites } from '../../../hooks/pilotage'
 
@@ -25,24 +25,14 @@ import { useUnites } from '../../../hooks/pilotage'
 type Modale = { creation: true } | { creation: false; code: string; onglet?: OngletEtape }
 type Confirmation = 'publier' | 'lever' | 'retirer' | 'supprimer' | null
 
+const sansDetail = ({ personnesDetail: _d, ...i }: Initiateurs): Initiateurs => i
+
 export const saisieDe = (p: Processus, etapes = p.etapes): SaisieProcessus => ({
   code: p.code, unite: p.unite, libelle: p.libelle, description: p.description, categorie: p.categorie, delaiCibleJours: p.delaiCibleJours, etapes,
   // D-98 : initiateurs et formulaire de lancement repartent avec chaque enregistrement (absents d'un service antérieur).
-  ...(p.initiateurs ? { initiateurs: p.initiateurs } : {}), ...(p.formulaire ? { formulaire: p.formulaire } : {}),
+  // D-100 : le détail des personnes désignées (noms) est une vue du service, jamais renvoyé.
+  ...(p.initiateurs ? { initiateurs: sansDetail(p.initiateurs) } : {}), ...(p.formulaire ? { formulaire: p.formulaire } : {}),
 })
-
-/** Résumé des initiateurs (« Membres de l'unité », « Tout le GIMAC », « Unités : SNA, DDRM »…). */
-export function useResumeInitiateurs() {
-  const { t } = useTranslation()
-  const libelleUnite = useLibelleUnite()
-  return (i: Initiateurs | undefined) => (i ?? INITIATEURS_DEFAUT).regles.map((r) => {
-    const x = i ?? INITIATEURS_DEFAUT
-    if (r === 'UNITES') return `${t('dem.regle.UNITES')} (${x.unites.map(libelleUnite).join(', ')})`
-    if (r === 'PROFILS') return `${t('dem.regle.PROFILS')} (${x.profils.join(', ')})`
-    if (r === 'PERMISSIONS') return `${t('dem.regle.PERMISSIONS')} (${x.permissions.join(', ')})`
-    return t(`dem.regle.${r}`)
-  }).join(' ; ')
-}
 
 /**
  * Recette HOM-15 : message d'anomalie du contrôle (MS-PILOTAGE) rendu lisible : profils (ROLE_*) et unités nommés par leur
@@ -120,7 +110,13 @@ function Espace({ processus: p }: { processus: Processus }) {
   const [modale, setModale] = useState<Modale | null>(null)
   const [proprietes, setProprietes] = useState(false)
   const [lancement, setLancement] = useState(false)
-  const [reglageLancement, setReglageLancement] = useState(false)
+  // D-100 : accès direct au réglage du public (?reglage=public, depuis la liste ou la création).
+  const [reglageLancement, setReglageLancement] = useState(params.get('reglage') === 'public')
+  const nouveau = params.get('cree') === '1'
+  const fermerReglage = () => {
+    setReglageLancement(false)
+    if (params.get('reglage')) setParams((x) => { const n = new URLSearchParams(x); n.delete('reglage'); return n }, { replace: true })
+  }
   const resumeInitiateurs = useResumeInitiateurs()
   const [confirmation, setConfirmation] = useState<Confirmation>(null)
   const [anomalies, setAnomalies] = useState<AnomalieProcessus[] | null>(null)
@@ -207,7 +203,7 @@ function Espace({ processus: p }: { processus: Processus }) {
         </div>
         {!lecture ? <Button size="sm" icon="plus" onClick={() => setModale({ creation: true })}>{t('proc.etape.ajouter')}</Button> : null}
         {!lecture ? <Button size="sm" icon="pen-line" onClick={() => setProprietes(true)}>{t('proc.proprietes.titre')}</Button> : null}
-        <Button size="sm" icon="send" onClick={() => setReglageLancement(true)}>{t('dem.modele.titre')}</Button>
+        <Button size="sm" icon="users" onClick={() => setReglageLancement(true)}>{t('dem.modele.bouton')}</Button>
         <Button size="sm" icon="shield-check" loading={controle.isPending} onClick={controler}>{t('proc.controler')}</Button>
         {p.droits.publier ? <Button size="sm" variant="primary" icon="check" onClick={() => setConfirmation('publier')}>{t('proc.publier')}</Button> : null}
         {p.droits.lancer ? <Button size="sm" variant="primary" icon="arrow-right" onClick={() => setLancement(true)}>{t('proc.lancer')}</Button> : null}
@@ -222,7 +218,15 @@ function Espace({ processus: p }: { processus: Processus }) {
       </div>
       <KeyValueList items={[
         { key: t('proc.champ.etapes'), value: String(p.etapes.length) },
-        { key: t('dem.modele.initiateurs'), value: resumeInitiateurs(p.initiateurs) },
+        {
+          key: t('dem.resume.titre'), value: (
+            <span className="gm-row" style={{ gap: 'var(--gm-space-2)', flexWrap: 'wrap' }} data-testid="public-processus">
+              <span>{resumeInitiateurs(p.initiateurs, p.unite)}</span>
+              <Button size="sm" variant="ghost" icon={lecture ? 'eye' : 'pen-line'} aria-label={t(lecture ? 'dem.resume.voirQui' : 'dem.resume.reglerQui', { libelle: p.libelle })}
+                onClick={() => setReglageLancement(true)}>{t(lecture ? 'dem.resume.voir' : 'dem.resume.regler')}</Button>
+            </span>
+          ),
+        },
         { key: t('dem.modele.formulaire'), value: t('dem.lancer.champs', { count: p.formulaire?.champs.length ?? 0 }) },
         ...(p.categorie ? [{ key: t('proc.champ.categorie'), value: p.categorie }] : []),
         ...(p.delaiCibleJours !== null ? [{ key: t('proc.champ.delaiCible'), value: t('proc.carte.delai', { n: p.delaiCibleJours }) }] : []),
@@ -230,6 +234,12 @@ function Espace({ processus: p }: { processus: Processus }) {
         ...(p.retireeLe ? [{ key: t('proc.champ.retireeLe'), value: `${dates.instant(p.retireeLe)}${p.motifRetrait ? ` · ${p.motifRetrait}` : ''}` }] : []),
       ]} />
       {p.description ? <p className="gm-field-help" style={{ margin: 0 }}>{p.description}</p> : null}
+      {nouveau && !lecture ? (
+        <InlineAlert level="info" title={t('dem.creation.titre')}
+          action={<Button size="sm" icon="users" onClick={() => setReglageLancement(true)}>{t('dem.creation.regler')}</Button>}>
+          {t('dem.creation.texte', { public: resumeInitiateurs(p.initiateurs, p.unite) })}
+        </InlineAlert>
+      ) : null}
       {lecture ? <InlineAlert level="info">{t(p.etat === 'BROUILLON' ? 'proc.lectureSeule' : 'proc.lecturePubliee')}</InlineAlert> : null}
       {p.avertissements.map((a, i) => <InlineAlert key={i} level={a.code === 'COUVERTURE_HORS_UNITE' ? 'info' : 'warn'} title={t(`proc.anomalie.${a.code}`, { defaultValue: lisible(a.message) })}>{a.etape ? `${a.etape} · ${lisible(a.message)}` : lisible(a.message)}</InlineAlert>)}
       {refus ? (
@@ -285,8 +295,8 @@ function Espace({ processus: p }: { processus: Processus }) {
         onEnregistrer={(s) => enregistrer.mutate(s, { onSuccess: () => { setProprietes(false); setAnnonce(t('proc.annonce.proprietes')) } })} /> : null}
       {reglageLancement ? (
         <ModaleLancement initiateurs={p.initiateurs} formulaire={p.formulaire} lecture={lecture} enCours={enregistrer.isPending} erreur={erreur(enregistrer.error)}
-          onFermer={() => { setReglageLancement(false); enregistrer.reset() }}
-          onEnregistrer={(initiateurs, formulaire) => enregistrer.mutate({ ...saisieDe(p), initiateurs, formulaire }, { onSuccess: () => { setReglageLancement(false); setAnnonce(t('dem.modele.enregistre')) } })} />
+          onFermer={() => { fermerReglage(); enregistrer.reset() }}
+          onEnregistrer={(initiateurs, formulaire) => enregistrer.mutate({ ...saisieDe(p), initiateurs, formulaire }, { onSuccess: () => { fermerReglage(); setAnnonce(t('dem.modele.enregistre')) } })} />
       ) : null}
       {lancement ? <DialogueLancement processus={p} onFermer={() => setLancement(false)} onLance={(i) => navigate(`/des/processus/instances/${encodeURIComponent(i.id)}`)} /> : null}
       {confirmation === 'publier' ? (

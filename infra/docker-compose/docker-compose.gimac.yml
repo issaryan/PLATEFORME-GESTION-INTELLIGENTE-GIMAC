@@ -459,15 +459,21 @@ services:
 
   # ------------------------------------------------ Aperçu des documents bureautiques (D-83)
   # Gotenberg 8 (LibreOffice sans interface), docs/lot1/apercu-bureautique.md : seul MS-DOCUMENT le joint, par
-  # le réseau interne « conversion » (aucun port publié, aucun accès sortant). Routes de Chromium et des
-  # moteurs PDF, webhooks, téléchargement d'URL et métriques désactivés ; délai de conversion 60 s, corps de
-  # 21 Mo au plus, file d'attente bornée (au-delà, 429 : MS-DOCUMENT répond DOC_APERCU_INDISPONIBLE). Les
-  # macros ne sont jamais exécutées (réglage de LibreOffice dans l'image). Mémoire bornée à 1 Go.
+  # le réseau interne « conversion » (aucun port publié, aucun accès sortant). Routes des moteurs PDF, webhooks,
+  # téléchargement d'URL et métriques désactivés ; délai de conversion 60 s, corps de 21 Mo au plus, file d'attente
+  # bornée (au-delà, 429 : MS-DOCUMENT répond DOC_APERCU_INDISPONIBLE). Les macros ne sont jamais exécutées (réglage
+  # de LibreOffice dans l'image). Chromium (D-102, organigramme en PDF, docs/lot1/organigramme.md §4) : documents
+  # composés par MS-IAM et contrôlés par MS-DOCUMENT, JavaScript désactivé, seules les adresses de ses fichiers
+  # temporaires admises (toute autre adresse, privée ou publique, refusée). Mémoire bornée à 1,5 Go.
   conversion-documents:
     image: gotenberg/gotenberg:8.37.0
     command:
       - gotenberg
-      - --chromium-disable-routes=true
+      - --chromium-disable-javascript=true
+      - --chromium-allow-list=^file:///tmp/.*
+      - --chromium-deny-private-ips=true
+      - --chromium-deny-public-ips=true
+      - --chromium-max-queue-size=10
       - --webhook-disable=true
       - --api-timeout=60s
       - --api-disable-download-from=true
@@ -476,7 +482,7 @@ services:
       - --prometheus-disable-collect=true
       - --libreoffice-auto-start=true
       - --libreoffice-max-queue-size=20
-    mem_limit: 1g
+    mem_limit: 1536m
     # Système de fichiers en lecture seule : LibreOffice n'écrit que dans /tmp et son profil, en mémoire.
     read_only: true
     tmpfs:

@@ -13,6 +13,8 @@ import * as D from './donnees'
 import { infrastructureSimulee } from './infrastructure'
 import type { Orchestrateur } from '../../modele/infrastructure'
 import { CLE_ORCHESTRATEUR_DEMO } from '../../profilsDemo'
+// Exemple de démonstration de l'organigramme en PDF (D-102 §5), produit par la chaîne réelle sur le jeu de démonstration.
+import EXEMPLE_ORGANIGRAMME_PDF from '../../assets/organigramme-demonstration.pdf?url'
 
 // Serveur de substitution de MS-IAM et de la supervision de MS-GATEWAY pour la console : mêmes formes
 // de réponse et mêmes codes de refus que les services ; ses « règles » ne sont qu'une imitation.
@@ -352,24 +354,67 @@ export function servicesConsoleSimules(o: OptionsConsoleSimulee = {}): ServicesC
     const actives = unites.filter((x) => x.active && x.parent === u.code).map((x) => x.code)
     if (!u.active && actives.length) throw refus(409, 'ORG_UNITE_SOUS_UNITES_ACTIVES', "Désactiver d'abord les sous-unités actives", { sousUnites: actives })
   }
+  const verifierRattachementOrg = (c: Compte, unite: string | null, responsableId: string | null) => {
+    const id = c.id
+    if (c.institutionId && (unite || responsableId)) throw refus(422, 'ORG_COMPTE_EXTERNE', "Un compte d'institution n'a ni unité ni responsable", { id })
+    const u = unites.find((x) => x.code === unite)
+    if (unite && (!u || (!u.active && unite !== c.unite))) throw refus(422, 'ORG_UNITE_INCONNUE', 'Unité inconnue ou inactive', { unite })
+    if (responsableId) {
+      const resp = comptes.find((x) => x.id === responsableId)
+      if (!resp || resp.id === id || !resp.actif || resp.institutionId) {
+        throw refus(422, 'ORG_RESPONSABLE_INVALIDE', 'Le responsable doit être un compte interne actif, distinct du titulaire', { responsableId })
+      }
+      const vus = new Set<string>()
+      for (let x: Compte | undefined = resp; x?.responsableId && !vus.has(x.id); x = comptes.find((y) => y.id === x!.responsableId)) {
+        vus.add(x.id)
+        if (x.responsableId === id) throw refus(409, 'ORG_CYCLE', 'Le titulaire figure dans la chaîne de ses propres responsables', { responsableId })
+      }
+    }
+  }
+  /** n+1 proposé (ReglesOrganisation.responsableParDefaut) : chef de l'unité, sinon de la plus proche unité parente, jamais soi-même. */
+  const responsableParDefaut = (id: string, unite: string | null): string | null => {
+    const vus = new Set<string>()
+    for (let u = unites.find((x) => x.code === unite); u && !vus.has(u.code); u = unites.find((x) => x.code === u!.parent)) {
+      vus.add(u.code)
+      if (u.responsableId && u.responsableId !== id) return u.responsableId
+    }
+    return null
+  }
+  const sousUnitesDe = (codes: string[]): string[] => {
+    const l: string[] = []
+    const a = [...codes]
+    while (a.length) {
+      const c = a.shift()!
+      if (!l.includes(c)) {
+        l.push(c)
+        a.push(...unites.filter((x) => x.parent === c).map((x) => x.code))
+      }
+    }
+    return l
+  }
+  const motifAffectation = (m: string | undefined) => {
+    const x = m?.trim() ?? ''
+    if (x.length < 3 || x.length > 500) throw refus(400, 'IAM_REASON_REQUIRED', 'Motif obligatoire, de 3 à 500 caractères', { champ: 'motif' })
+    return x
+  }
   const organisation: ServiceOrganisation = {
     unites: () => attendre(() => unites),
-    creerUnite: (x) =>
+    creerUnite: (x, m) =>
       attendre(() => {
         const u = normaliser(x)
         if (unites.some((y) => y.code === u.code)) throw refus(409, 'ORG_UNITE_EXISTANTE', 'Une unité porte déjà ce code', { code: u.code })
         verifierPlace(u)
         unites = [...unites, u]
-        tracer('CONFIGURATION_UNITE_ORGANISATIONNELLE', { id: null, libelle: u.code }, null, ['CREATION'])
+        tracer('CONFIGURATION_UNITE_ORGANISATIONNELLE', { id: null, libelle: u.code }, m?.trim() || null, ['CREATION'])
         return u
       }),
-    modifierUnite: (code, x) =>
+    modifierUnite: (code, x, m) =>
       attendre(() => {
         if (!unites.some((y) => y.code === code)) throw refus(404, 'ORG_UNITE_INTROUVABLE', 'Ressource introuvable', { id: code })
         const u = normaliser({ ...x, code })
         verifierPlace(u)
         unites = unites.map((y) => (y.code === code ? u : y))
-        tracer('CONFIGURATION_UNITE_ORGANISATIONNELLE', { id: null, libelle: code }, null, [u.active ? 'MODIFICATION' : 'DESACTIVATION'])
+        tracer('CONFIGURATION_UNITE_ORGANISATIONNELLE', { id: null, libelle: code }, m?.trim() || null, [u.active ? 'MODIFICATION' : 'DESACTIVATION'])
         return u
       }),
     rattacher: (id, r) =>
@@ -377,24 +422,90 @@ export function servicesConsoleSimules(o: OptionsConsoleSimulee = {}): ServicesC
         const c = trouver(id)
         const unite = r.unite?.trim() || null
         const responsableId = r.responsableId?.trim() || null
-        if (c.institutionId && (unite || responsableId)) throw refus(422, 'ORG_COMPTE_EXTERNE', "Un compte d'institution n'a ni unité ni responsable", { id })
-        const u = unites.find((x) => x.code === unite)
-        if (unite && (!u || (!u.active && unite !== c.unite))) throw refus(422, 'ORG_UNITE_INCONNUE', 'Unité inconnue ou inactive', { unite })
-        if (responsableId) {
-          const resp = comptes.find((x) => x.id === responsableId)
-          if (!resp || resp.id === id || !resp.actif || resp.institutionId) {
-            throw refus(422, 'ORG_RESPONSABLE_INVALIDE', 'Le responsable doit être un compte interne actif, distinct du titulaire', { responsableId })
-          }
-          const vus = new Set<string>()
-          for (let x: Compte | undefined = resp; x?.responsableId && !vus.has(x.id); x = comptes.find((y) => y.id === x!.responsableId)) {
-            vus.add(x.id)
-            if (x.responsableId === id) throw refus(409, 'ORG_CYCLE', 'Le titulaire figure dans la chaîne de ses propres responsables', { responsableId })
-          }
-        }
-        tracer('COMPTE_RATTACHEMENT_MODIFIE', { id, libelle: c.identifiant }, null, [`avant: unite=${c.unite ?? null} responsable=${c.responsableId ?? null}`, `après: unite=${unite} responsable=${responsableId}`])
+        verifierRattachementOrg(c, unite, responsableId)
+        tracer('COMPTE_RATTACHEMENT_MODIFIE', { id, libelle: c.identifiant }, r.motif?.trim() || null, [`avant: unite=${c.unite ?? null} responsable=${c.responsableId ?? null}`, `après: unite=${unite} responsable=${responsableId}`])
         Object.assign(c, { unite, responsableId })
         return c
       }),
+    // D-102 (docs/lot1/organigramme.md §2) : mêmes règles et mêmes refus que AffectationsService de MS-IAM.
+    affecter: (code, d) =>
+      attendre(() => {
+        const m = motifAffectation(d.motif)
+        if (!Array.isArray(d.comptes) || d.comptes.length < 1 || d.comptes.length > 50) throw refus(400, 'ORG_AFFECTATION_INVALIDE', 'De 1 à 50 personnes par affectation', { champ: 'comptes' })
+        const ids = [...new Set(d.comptes.map((x) => x?.trim()))]
+        if (ids.some((x) => !x)) throw refus(400, 'ORG_AFFECTATION_INVALIDE', 'Identifiant de compte invalide', { champ: 'comptes' })
+        const u = unites.find((x) => x.code === code)
+        if (!u) throw refus(404, 'ORG_UNITE_INTROUVABLE', 'Ressource introuvable', { id: code })
+        if (!u.active) throw refus(422, 'ORG_UNITE_INCONNUE', 'Unité inconnue ou inactive', { unite: code })
+        const refusParCompte: { id: string; code: string; message: string }[] = []
+        const lus: Compte[] = []
+        for (const id of ids as string[]) {
+          const c = comptes.find((x) => x.id === id)
+          if (!c) refusParCompte.push({ id, code: 'IAM_ACCOUNT_NOT_FOUND', message: 'Compte inconnu' })
+          else if (c.institutionId) refusParCompte.push({ id, code: 'ORG_COMPTE_EXTERNE', message: "Un compte d'institution n'a ni unité ni responsable" })
+          else if (!c.actif) refusParCompte.push({ id, code: 'ORG_COMPTE_INACTIF', message: 'Le compte est désactivé' })
+          else lus.push(c)
+        }
+        const refuserSi = () => {
+          if (refusParCompte.length) throw refus(422, 'ORG_AFFECTATION_REFUSEE', "Affectation refusée : aucune personne n'a été affectée", { unite: code, refus: refusParCompte })
+        }
+        refuserSi()
+        const fourni = Object.prototype.hasOwnProperty.call(d, 'responsableId')
+        const demande = d.responsableId?.trim() || null
+        const vise = new Map(lus.map((c) => [c.id, fourni && c.id !== demande ? demande : responsableParDefaut(c.id, code)]))
+        // Chef sans droit d'administration (D-81) : unité cible parmi les unités qu'il dirige.
+        if (!acteur.permissions.includes('IAM_ACCOUNT_EDIT') && !peutPrivilegie && !sousUnitesDe(unites.filter((x) => x.responsableId === acteur.id).map((x) => x.code)).includes(code)) {
+          throw refus(403, 'ORG_HORS_PERIMETRE', "Hors du périmètre de l'action RATTACHEMENT_MODIFIER")
+        }
+        for (const c of lus) {
+          try {
+            verifierRattachementOrg(c, code, vise.get(c.id) ?? null)
+          } catch (e) {
+            const x = e as { code?: string; message?: string }
+            refusParCompte.push({ id: c.id, code: x.code ?? 'ORG_AFFECTATION_REFUSEE', message: x.message ?? '' })
+          }
+        }
+        refuserSi()
+        return lus.map((c) => {
+          const avant = { unite: c.unite ?? null, responsableId: c.responsableId ?? null }
+          const apres = { unite: code, responsableId: vise.get(c.id) ?? null }
+          tracer('COMPTE_RATTACHEMENT_MODIFIE', { id: c.id, libelle: c.identifiant }, m, [`avant: unite=${avant.unite} responsable=${avant.responsableId}`, `après: unite=${code} responsable=${apres.responsableId}`, `affectation=${code}`])
+          Object.assign(c, apres)
+          return { id: c.id, nomAffiche: c.nomAffiche, avant, apres }
+        })
+      }),
+    retirer: (code, id, motifRetrait) =>
+      attendre(() => {
+        const m = motifAffectation(motifRetrait)
+        const u = unites.find((x) => x.code === code)
+        if (!u) throw refus(404, 'ORG_UNITE_INTROUVABLE', 'Ressource introuvable', { id: code })
+        const c = trouver(id)
+        if (c.unite !== code) throw refus(409, 'ORG_AFFECTATION_ABSENTE', "La personne n'est pas rattachée à cette unité", { id, unite: code })
+        if (u.responsableId === id) throw refus(409, 'ORG_CHEF_UNITE', "La personne est le chef de cette unité : désigner d'abord un autre chef", { id, unite: code })
+        const avant = { unite: c.unite ?? null, responsableId: c.responsableId ?? null }
+        const apres = { unite: null, responsableId: c.responsableId && c.responsableId === responsableParDefaut(id, code) ? null : (c.responsableId ?? null) }
+        tracer('COMPTE_RATTACHEMENT_MODIFIE', { id, libelle: c.identifiant }, m, [`avant: unite=${avant.unite} responsable=${avant.responsableId}`, `après: unite=null responsable=${apres.responsableId}`, `retrait=${code}`])
+        Object.assign(c, apres)
+        return { id, nomAffiche: c.nomAffiche, avant, apres }
+      }),
+    // Services simulés : aucun moteur de mise en page. Le document rendu est l'exemple de démonstration produit par la
+    // chaîne réelle (MS-IAM, MS-DOCUMENT, Gotenberg) sur les données de ce jeu, marqué « Démonstration » ; il ne suit
+    // pas les modifications faites pendant la démonstration (docs/lot1/organigramme.md §5).
+    organigrammePdf: async (o) => {
+      await attendre(() => {
+        if (!['A4', 'A3'].includes(o.format)) throw refus(400, 'ORG_PDF_PARAMETRE', 'Format de papier A4 ou A3', { champ: 'format' })
+        if (!['paysage', 'portrait'].includes(o.orientation)) throw refus(400, 'ORG_PDF_PARAMETRE', 'Orientation paysage ou portrait', { champ: 'orientation' })
+        if (o.racine && !unites.some((x) => x.code === o.racine)) throw refus(404, 'ORG_UNITE_INTROUVABLE', 'Ressource introuvable', { id: o.racine })
+        return null
+      })
+      try {
+        const r = await fetch(EXEMPLE_ORGANIGRAMME_PDF)
+        if (!r.ok) throw new Error(String(r.status))
+        return new Blob([await r.arrayBuffer()], { type: 'application/pdf' })
+      } catch {
+        throw refus(503, 'ORG_PDF_INDISPONIBLE', 'Le moteur de mise en page PDF est momentanément indisponible ; réessayer dans quelques instants')
+      }
+    },
   }
 
   // Planchers de PolitiqueMotDePasse.verifier, en table : [champ, minimum, maximum, règle affichée].

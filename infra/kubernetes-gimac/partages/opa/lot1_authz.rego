@@ -147,6 +147,14 @@ regles := [
 	# Organisation (D-76 §1.3) : catalogue des unités (édition par l'administration des comptes) et
 	# rattachement du titulaire ; lecture du catalogue : tout membre interne (département), l'administration
 	# des comptes (console).
+	# Organigramme (D-102, docs/lot1/organigramme.md) : affectation de personnes à une unité depuis la console
+	# (IAM_ACCOUNT_EDIT ; depuis le département, règle « affectation_unite » plus bas : administration ou chef, MS-IAM
+	# vérifie le périmètre de RATTACHEMENT_MODIFIER), retrait d'une personne (IAM_ACCOUNT_EDIT), organigramme en PDF
+	# (mêmes lecteurs que le catalogue).
+	{"m": "POST", "re": `^/bff/console/iam/organisation/unites/[^/]+/affectations$`, "p": "IAM_ACCOUNT_EDIT"},
+	{"m": "DELETE", "re": `^/bff/(des|console)/iam/organisation/unites/[^/]+/affectations/[^/]+$`, "p": "IAM_ACCOUNT_EDIT"},
+	{"m": "GET", "re": `^/bff/des/iam/organisation/organigramme\.pdf$`, "p": "PIL_ACTIVITY_OWN"},
+	{"m": "GET", "re": `^/bff/console/iam/organisation/organigramme\.pdf$`, "p": "IAM_ACCOUNT_READ"},
 	{"m": "POST", "re": `^/bff/(des|console)/iam/organisation/unites$`, "p": "IAM_ACCOUNT_EDIT"},
 	{"m": "PUT", "re": `^/bff/(des|console)/iam/organisation/unites/[^/]+$`, "p": "IAM_ACCOUNT_EDIT"},
 	{"m": "GET", "re": `^/bff/des/iam/organisation/(moi|unites)$`, "p": "PIL_ACTIVITY_OWN"},
@@ -300,6 +308,16 @@ route_depot_fragmente if {
 	regex.match(`^/bff/(des|console)/document/depots/[^/]+$`, input.path)
 }
 
+# Affectation de personnes à une unité depuis le département (D-102, docs/lot1/organigramme.md §2) :
+# administration des comptes (IAM_ACCOUNT_EDIT) ou chef (PIL_ACTIVITY_OWN, périmètre vérifié par MS-IAM) ;
+# jamais un compte d'institution.
+affectation_unite if {
+	input.method == "POST"
+	regex.match(`^/bff/des/iam/organisation/unites/[^/]+/affectations$`, input.path)
+}
+
+permissions_affectation_unite := {"IAM_ACCOUNT_EDIT", "PIL_ACTIVITY_OWN"}
+
 # Session restreinte du premier accès (D-65, docs/lot1/connexion.md §2), transmise par la passerelle.
 restreinte if input.restreinte == true
 
@@ -419,6 +437,15 @@ allow if {
 	double_facteur
 	some p in input.permissions
 	p in permissions_depot_fragmente
+}
+
+allow if {
+	not restreinte
+	affectation_unite
+	not compte_externe
+	double_facteur
+	some p in input.permissions
+	p in permissions_affectation_unite
 }
 
 allow if {

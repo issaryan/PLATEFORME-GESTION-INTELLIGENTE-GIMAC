@@ -228,8 +228,16 @@ final class SaisieProcessus {
     static final int AIDE_MAX = 500;
     static final int PARAMETRES_MAX = 20;
     static final int CHAMPS_FORMULAIRE_MAX = 30;
+    /** Personnes désignées nommément (D-100) : 50 au plus. */
+    static final int PERSONNES_MAX = 50;
+    /** Identifiant de compte : texte non vide de 80 caractères au plus, comme ailleurs dans MS-PILOTAGE. */
+    static final int IDENTIFIANT_MAX = 80;
 
-    /** Initiateurs saisis : règles connues, sans doublon ; unités, profils et permissions au bon format (20 au plus). */
+    /**
+     * Public saisi (D-98 §1, D-100) : règles connues, sans doublon ; unités, profils et permissions au bon format (20 au
+     * plus) ; personnes désignées : identifiants de comptes (50 au plus, sans doublon). L'existence des unités, profils et
+     * personnes relève du contrôle de publication.
+     */
     static Initiateurs initiateurs(InitiateursSaisie s) {
         if (s == null) {
             return Initiateurs.parDefaut();
@@ -249,7 +257,26 @@ final class SaisieProcessus {
         List<String> unites = codes("initiateurs.unites", s.unites(), UNITE, "Code d'unité attendu (par exemple POLE_RESEAU)");
         List<String> profils = codes("initiateurs.profils", s.profils(), PROFIL, "Profil ROLE_… attendu");
         List<String> permissions = codes("initiateurs.permissions", s.permissions(), PERMISSION, "Permission ^[A-Z][A-Z0-9_]{1,79}$ attendue");
-        return new Initiateurs(regles, unites, profils, permissions, Boolean.TRUE.equals(s.initiateurIntervenant()));
+        List<String> personnes = personnes(s.personnes());
+        return new Initiateurs(regles, unites, profils, permissions, personnes, Boolean.TRUE.equals(s.initiateurIntervenant()));
+    }
+
+    /** Identifiants des personnes désignées (D-100) : non vides, 80 caractères au plus, 50 au plus, sans doublon. */
+    private static List<String> personnes(List<String> l) {
+        List<String> r = new ArrayList<>();
+        if (l == null) {
+            return r;
+        }
+        if (l.size() > PERSONNES_MAX) {
+            throw PilotageException.champ("initiateurs.personnes", PERSONNES_MAX + " personnes au plus");
+        }
+        for (int i = 0; i < l.size(); i++) {
+            String v = ReglesActivite.texteObligatoire("initiateurs.personnes[" + i + "]", l.get(i), IDENTIFIANT_MAX);
+            if (!r.contains(v)) {
+                r.add(v);
+            }
+        }
+        return r;
     }
 
     private static List<String> codes(String c, List<String> l, Pattern motif, String message) {

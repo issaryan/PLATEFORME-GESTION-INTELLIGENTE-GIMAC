@@ -2,17 +2,21 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Checkbox, CheckboxGroup, CrudDialog, InlineAlert, Note, Select, TextField } from '@gimac/design-system'
 import {
-  INITIATEURS_DEFAUT, LIMITES_FORMULAIRE, LIMITES_PROCESSUS, REGLES_INITIATEUR, TYPES_CHAMP_FORMULAIRE, type ChampFormulaire, type Formulaire, type Initiateurs, type RegleInitiateur,
+  INITIATEURS_DEFAUT, LIMITES_FORMULAIRE, LIMITES_PROCESSUS, LIMITES_PUBLIC, REGLES_INITIATEUR, TYPES_CHAMP_FORMULAIRE, type ChampFormulaire, type Formulaire, type Initiateurs, type RegleInitiateur,
 } from '../../../modele/processus'
+import type { Correspondant } from '../../../modele/messagerie'
+import { Annuaire } from '../messagerie/MessageriePage'
 import { useUnites } from '../../../hooks/pilotage'
 import { useLibelleProfilEquipe } from '../activite/dialoguesEquipe'
 import { unitesEnArbre } from './ProcessusPage'
 import { PROFILS_INTERVENANTS } from './communs'
 
-// Lancement d'un processus dans le modélisateur (D-98 §1, §2) : qui peut lancer (règles cumulables en données : membres de
-// l'unité, tout le GIMAC, unités, profils, permissions) et formulaire de lancement (champs typés, obligation, aide, valeurs
-// d'une liste, types de pièces). Enregistré avec la définition (PUT) ; contrôlé à la publication (anomalies
-// INITIATEURS_INCOMPLETS, CHAMP_CODE_DUPLIQUE, CHAMP_CHOIX_ABSENT) et au lancement par MS-PILOTAGE.
+// Public et lancement d'un processus dans le modélisateur (D-98 §1, §2, D-100) : qui peut voir et lancer le processus (règles
+// cumulables en données, choisies par son créateur : membres et responsables de l'unité, tout le GIMAC, unités, profils,
+// permissions, personnes désignées nommément dans l'annuaire), seul juge de « Lancer une demande », et formulaire de
+// lancement (champs typés, obligation, aide, valeurs d'une liste, types de pièces). Enregistré avec la définition (PUT) ;
+// contrôlé à la publication (anomalies INITIATEURS_INCOMPLETS, PERSONNE_INCONNUE, CHAMP_CODE_DUPLIQUE, CHAMP_CHOIX_ABSENT)
+// et au lancement par MS-PILOTAGE.
 
 const liste = (texte: string) => [...new Set(texte.split(',').map((x) => x.trim()).filter(Boolean))]
 const champVierge = (n: number): ChampFormulaire => ({ code: `CHAMP_${n}`, libelle: '', type: 'TEXTE', choix: [], obligatoire: false, aide: null, typesPieces: [] })
@@ -31,6 +35,10 @@ export function ModaleLancement({ initiateurs, formulaire, lecture, enCours, err
   const [i, setI] = useState<Initiateurs>(depart.initiateurs)
   const [champs, setChamps] = useState<ChampFormulaire[]>(depart.champs)
   const [permissions, setPermissions] = useState(depart.initiateurs.permissions.join(', '))
+  // D-100 : personnes désignées, choisies dans l'annuaire (puces retirables), nommées par la vue de la définition.
+  const [personnes, setPersonnes] = useState<Correspondant[]>((depart.initiateurs.personnes ?? []).map((id) => ({
+    id, nom: depart.initiateurs.personnesDetail?.find((d) => d.id === id)?.nomAffiche ?? id, fonction: null,
+  })))
   const [tente, setTente] = useState(false)
   const regle = (r: RegleInitiateur, oui: boolean) => setI((o) => ({ ...o, regles: oui ? [...o.regles, r] : o.regles.filter((x) => x !== r) }))
   const modifier = (n: number, c: Partial<ChampFormulaire>) => setChamps((l) => l.map((x, k) => (k === n ? { ...x, ...c } : x)))
@@ -46,13 +54,17 @@ export function ModaleLancement({ initiateurs, formulaire, lecture, enCours, err
     profils: i.regles.includes('PROFILS') && !i.profils.length ? t('dem.modele.erreur.profils') : undefined,
     permissions: i.regles.includes('PERMISSIONS') && !liste(permissions).length ? t('dem.modele.erreur.permissions')
       : liste(permissions).some((x) => !/^[A-Z][A-Z0-9_]{1,79}$/.test(x)) ? t('dem.modele.erreur.permissionFormat') : undefined,
+    personnes: i.regles.includes('PERSONNES') && !personnes.length ? t('dem.modele.erreur.personnes')
+      : personnes.length > LIMITES_PUBLIC.personnes ? t('dem.modele.erreur.personnesMax', { n: LIMITES_PUBLIC.personnes }) : undefined,
     ...Object.fromEntries(champs.flatMap((c, n) => [
       [`libelle.${n}`, !c.libelle.trim() ? t('proc.erreur.libelle') : undefined],
       [`code.${n}`, !LIMITES_PROCESSUS.codeEtape.test(c.code) ? t('proc.erreur.codeEtape') : codes.indexOf(c.code) !== n ? t('dem.modele.erreur.codeDouble') : undefined],
       [`choix.${n}`, c.type === 'LISTE' && !c.choix.length ? t('dem.modele.erreur.choix') : undefined],
     ])),
   }
-  const dirty = JSON.stringify({ i: { ...i, permissions: liste(permissions) }, champs }) !== JSON.stringify({ i: depart.initiateurs, champs: depart.champs })
+  const comparable = (x: Initiateurs) => ({ ...x, personnesDetail: undefined, personnes: x.personnes ?? [] })
+  const dirty = JSON.stringify({ i: comparable({ ...i, permissions: liste(permissions), personnes: personnes.map((p) => p.id) }), champs })
+    !== JSON.stringify({ i: comparable(depart.initiateurs), champs: depart.champs })
   return (
     <CrudDialog context={lecture ? 'detail' : 'edit'} size="lg" id="gm-dlg-lancement-modele" title={t('dem.modele.titre')} description={t('dem.modele.texte')} onClose={onFermer}
       submitLabel={lecture ? undefined : t('proc.enregistrer')} submitting={enCours} dirty={!lecture && dirty} cancelLabel={lecture ? t('commun.fermer') : undefined}
@@ -61,7 +73,10 @@ export function ModaleLancement({ initiateurs, formulaire, lecture, enCours, err
         setTente(true)
         if (Object.values(erreurs).some(Boolean)) return
         onEnregistrer(
-          { regles: REGLES_INITIATEUR.filter((r) => i.regles.includes(r)), unites: i.regles.includes('UNITES') ? i.unites : [], profils: i.regles.includes('PROFILS') ? i.profils : [], permissions: i.regles.includes('PERMISSIONS') ? liste(permissions) : [], initiateurIntervenant: !!i.initiateurIntervenant },
+          {
+            regles: REGLES_INITIATEUR.filter((r) => i.regles.includes(r)), unites: i.regles.includes('UNITES') ? i.unites : [], profils: i.regles.includes('PROFILS') ? i.profils : [],
+            permissions: i.regles.includes('PERMISSIONS') ? liste(permissions) : [], personnes: i.regles.includes('PERSONNES') ? personnes.map((p) => p.id) : [], initiateurIntervenant: !!i.initiateurIntervenant,
+          },
           { champs: champs.map((c) => ({ ...c, libelle: c.libelle.trim(), aide: c.aide?.trim() || null, choix: c.type === 'LISTE' ? c.choix : [], typesPieces: c.type === 'PIECE_JOINTE' ? c.typesPieces : [] })) },
         )
       }}>
@@ -83,6 +98,15 @@ export function ModaleLancement({ initiateurs, formulaire, lecture, enCours, err
             {r === 'PERMISSIONS' && i.regles.includes('PERMISSIONS') ? (
               <TextField name="initiateurs.permissions" label={t('dem.modele.permissions')} help={t('dem.modele.permissionsAide')} mono readOnly={lecture} value={permissions}
                 onChange={(x) => setPermissions(x.toUpperCase())} error={tente ? erreurs.permissions : undefined} />
+            ) : null}
+            {r === 'PERSONNES' && i.regles.includes('PERSONNES') ? (
+              <div className="gm-col" style={{ gap: 'var(--gm-space-1)' }} data-testid="initiateurs-personnes">
+                <span className="gm-field-label">{t('dem.modele.personnes')}</span>
+                {tente && erreurs.personnes ? <span className="gm-field-error" role="alert">{erreurs.personnes}</span> : null}
+                {lecture ? (
+                  <ul aria-label={t('dem.modele.personnes')} style={{ margin: 0 }}>{personnes.map((p) => <li key={p.id}>{p.nom}</li>)}</ul>
+                ) : <Annuaire choisis={personnes} onChoisis={setPersonnes} multiple />}
+              </div>
             ) : null}
           </div>
         ))}

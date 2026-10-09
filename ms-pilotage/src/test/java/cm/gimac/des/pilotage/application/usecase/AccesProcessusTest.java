@@ -125,7 +125,7 @@ class AccesProcessusTest {
     }
 
     @Test
-    @DisplayName("Portée TOUTES de la matrice, sans la permission : PROCESSUS_DEFINIR définit partout, PROCESSUS_LANCER lance et pilote partout")
+    @DisplayName("Portée TOUTES de la matrice, sans la permission : PROCESSUS_DEFINIR définit partout, PROCESSUS_LANCER lit et pilote partout")
     void porteeToutes() {
         organisation.definirPouvoirs(AGENT_BIS, Map.of(Pouvoir.PROCESSUS_DEFINIR, Portee.TOUTES));
         Appelant definit = appelant(AGENT_BIS, "PIL_ACTIVITY_OWN");
@@ -173,7 +173,7 @@ class AccesProcessusTest {
     }
 
     @Test
-    @DisplayName("D-98 : initiateurs en données, cumulables ; PROCESSUS_LANCER et REF_METIER_ADMIN lancent toujours")
+    @DisplayName("D-98 : initiateurs en données, cumulables ; D-100 : PROCESSUS_LANCER et REF_METIER_ADMIN n'y ajoutent rien")
     void initiateurs() {
         Appelant agentSna = appelant(AGENT, "PIL_ACTIVITY_OWN");
         Appelant technicien = appelant(TECHNICIEN_RESEAU, "PIL_ACTIVITY_OWN");
@@ -184,32 +184,81 @@ class AccesProcessusTest {
         assertThat(acces.lance(technicien, defaut)).isTrue();
         assertThat(acces.lance(agentSna, defaut)).isFalse();
         // Tout le GIMAC : tout compte interne actif, d'un autre service compris ; pas un compte inactif ni externe.
-        Processus tous = publie("POLE_RESEAU", new Initiateurs(List.of(RegleInitiateur.TOUT_LE_GIMAC), null, null, null, false));
+        Processus tous = publie("POLE_RESEAU", new Initiateurs(List.of(RegleInitiateur.TOUT_LE_GIMAC), null, null, null, null, false));
         assertThat(acces.lance(agentSna, tous)).isTrue();
         assertThat(acces.lance(appelant(OrganisationStubAdapter.INACTIF, "PIL_ACTIVITY_OWN"), tous)).isFalse();
         assertThat(acces.lance(appelant(OrganisationStubAdapter.CORRESPONDANT, "PIL_ACTIVITY_OWN"), tous)).isFalse();
         // Unités désignées (sous-unités comprises), profils, permissions du jeton ; règles cumulées.
-        Processus unites = publie("POLE_RESEAU", new Initiateurs(List.of(RegleInitiateur.UNITES), List.of("DES"), null, null, false));
+        Processus unites = publie("POLE_RESEAU", new Initiateurs(List.of(RegleInitiateur.UNITES), List.of("DES"), null, null, null, false));
         assertThat(acces.lance(agentSna, unites)).as("SNA est une sous-unité du DES").isTrue();
         assertThat(acces.lance(chefDdrm, unites)).isFalse();
-        Processus profils = publie("POLE_RESEAU", new Initiateurs(List.of(RegleInitiateur.PROFILS), null, List.of("ROLE_CHEF_DDRM"), null, false));
+        Processus profils = publie("POLE_RESEAU", new Initiateurs(List.of(RegleInitiateur.PROFILS), null, List.of("ROLE_CHEF_DDRM"), null, null, false));
         assertThat(acces.lance(chefDdrm, profils)).isTrue();
         assertThat(acces.lance(agentSna, profils)).isFalse();
-        Processus permissions = publie("POLE_RESEAU", new Initiateurs(List.of(RegleInitiateur.PERMISSIONS), null, null, List.of("CER_DOSSIER_VERIFY"), false));
+        Processus permissions = publie("POLE_RESEAU", new Initiateurs(List.of(RegleInitiateur.PERMISSIONS), null, null, List.of("CER_DOSSIER_VERIFY"), null, false));
         assertThat(acces.lance(chefDdrm, permissions)).isTrue();
         assertThat(acces.lance(agentSna, permissions)).isFalse();
-        Processus cumul = publie("POLE_RESEAU", new Initiateurs(List.of(RegleInitiateur.PROFILS, RegleInitiateur.UNITES), List.of("SNA"), List.of("ROLE_CHEF_DDRM"), null, false));
+        Processus cumul = publie("POLE_RESEAU", new Initiateurs(List.of(RegleInitiateur.PROFILS, RegleInitiateur.UNITES), List.of("SNA"), List.of("ROLE_CHEF_DDRM"), null, null, false));
         assertThat(acces.lance(chefDdrm, cumul)).isTrue();
         assertThat(acces.lance(agentSna, cumul)).isTrue();
         assertThat(acces.lance(technicien, cumul)).as("MEMBRES_UNITE non retenue").isFalse();
-        // Pouvoirs de pilotage : inchangés, quelles que soient les règles.
-        assertThat(acces.lance(appelant(CHEF_RESEAU, "PIL_ACTIVITY_OWN"), cumul)).isTrue();
-        assertThat(acces.lance(appelant(AGENT_BIS, "REF_METIER_ADMIN"), cumul)).isTrue();
-        // Refus explicite : les règles dans le message et en détail.
+        // D-100 : les pouvoirs de pilotage n'ouvrent plus le lancement ; seul le public défini par le créateur compte.
+        assertThat(acces.lance(appelant(CHEF_RESEAU, "PIL_ACTIVITY_OWN"), cumul)).isFalse();
+        assertThat(acces.lance(appelant(SUPER_ADMIN, "REF_METIER_ADMIN"), cumul)).isFalse();
+        // Refus explicite : les règles dans le message et en détail, sans mention d'un passe-droit.
         var refus = AccesProcessus.nonInitiateur(cumul);
         assertThat(refus.code()).isEqualTo("PIL_PROCESSUS_NON_INITIATEUR");
         assertThat(refus.status()).isEqualTo(403);
-        assertThat(refus.getMessage()).contains("ROLE_CHEF_DDRM").contains("SNA");
-        assertThat(refus.details()).containsEntry("regles", List.of("PROFILS", "UNITES"));
+        assertThat(refus.getMessage()).contains("ROLE_CHEF_DDRM").contains("SNA").doesNotContain("PROCESSUS_LANCER");
+        assertThat(refus.details()).containsEntry("regles", List.of("PROFILS", "UNITES")).containsEntry("personnes", List.of());
+    }
+
+    @Test
+    @DisplayName("D-100 : le public défini par le créateur fait seul foi ; REF_METIER_ADMIN et PROCESSUS_LANCER à TOUTES ne lancent plus")
+    void publicStrict() {
+        Processus personnes = publie("POLE_SYSTEME", new Initiateurs(List.of(RegleInitiateur.PERSONNES), null, null, null, List.of(AGENT_BIS, OrganisationStubAdapter.INACTIF), false));
+        Processus profils = publie("CONFORMITE", new Initiateurs(List.of(RegleInitiateur.PROFILS), null, List.of("ROLE_CONFORMITE"), null, null, false));
+        // Super administrateur (REF_METIER_ADMIN) : ni l'un ni l'autre, mais il garde la définition, la lecture et le pilotage.
+        Appelant admin = appelant(SUPER_ADMIN, "PIL_ACTIVITY_OWN", "REF_METIER_ADMIN");
+        assertThat(acces.lance(admin, personnes)).isFalse();
+        assertThat(acces.lance(admin, profils)).isFalse();
+        assertThat(acces.definit(admin, "POLE_SYSTEME")).isTrue();
+        assertThat(acces.lit(admin, "CONFORMITE")).isTrue();
+        assertThat(acces.pilote(admin, "CONFORMITE")).isTrue();
+        assertThat(acces.mention(admin, "CONFORMITE", AccesProcessus.Acte.LANCER)).isEmpty();
+        // Portée TOUTES de PROCESSUS_LANCER : pilotage partout, lancement nulle part hors du public.
+        organisation.definirPouvoirs(AGENT, Map.of(Pouvoir.PROCESSUS_LANCER, Portee.TOUTES));
+        Appelant lanceur = appelant(AGENT, "PIL_ACTIVITY_OWN");
+        assertThat(acces.lance(lanceur, personnes)).isFalse();
+        assertThat(acces.lance(lanceur, profils)).isFalse();
+        assertThat(acces.pilote(lanceur, "POLE_SYSTEME")).isTrue();
+        // Personne désignée, compte interne actif : voit et lance ; désignée mais inactive : non.
+        assertThat(acces.lance(appelant(AGENT_BIS, "PIL_ACTIVITY_OWN"), personnes)).isTrue();
+        assertThat(acces.lance(appelant(OrganisationStubAdapter.INACTIF, "PIL_ACTIVITY_OWN"), personnes)).isFalse();
+        // Porteur du profil désigné.
+        organisation.attribuerProfils(AGENT_BIS, "ROLE_CONFORMITE");
+        assertThat(acces.lance(appelant(AGENT_BIS, "PIL_ACTIVITY_OWN"), profils)).isTrue();
+        // Refus : le message nomme les personnes désignées par leur nombre, le détail leurs identifiants.
+        var refus = AccesProcessus.nonInitiateur(personnes);
+        assertThat(refus.getMessage()).isEqualTo("Ce processus ne peut être lancé que par les 2 personnes désignées par son créateur");
+        assertThat(refus.details()).containsEntry("regles", List.of("PERSONNES")).containsEntry("personnes", List.of(AGENT_BIS, OrganisationStubAdapter.INACTIF));
+        assertThat(AccesProcessus.nonInitiateur(publie("SNA", new Initiateurs(List.of(RegleInitiateur.PERSONNES), null, null, null, List.of(AGENT), false))).getMessage())
+            .endsWith("la personne désignée par son créateur");
+    }
+
+    @Test
+    @DisplayName("D-100 : MEMBRES_UNITE couvre les membres et les responsables de l'unité (chef qui la dirige, sous-unités comprises)")
+    void membresEtResponsables() {
+        Processus defaut = publie("POLE_RESEAU", null);
+        assertThat(acces.lance(appelant(TECHNICIEN_RESEAU, "PIL_ACTIVITY_OWN"), defaut)).as("membre").isTrue();
+        assertThat(acces.lance(appelant(CHEF_RESEAU, "PIL_ACTIVITY_OWN"), defaut)).as("chef du pôle").isTrue();
+        assertThat(acces.lance(appelant(OrganisationStubAdapter.CHEF_DES, "PIL_ACTIVITY_OWN"), defaut)).as("chef du DES, unité parente dirigée").isTrue();
+        assertThat(acces.lance(appelant(CHEF_DDRM, "PIL_ACTIVITY_OWN"), defaut)).as("chef d'une autre unité").isFalse();
+        assertThat(acces.lance(appelant(SUPER_ADMIN, "REF_METIER_ADMIN"), defaut)).as("administrateur hors de l'unité").isFalse();
+        // Le chef de l'unité qui n'en est pas membre : unité sans membre, dirigée par la cheffe du SNA (sous-unité ajoutée).
+        organisation.enregistrerUnite(new OrganisationStubAdapter.Unite("SNA_LABO", "SNA", null));
+        Processus labo = publie("SNA_LABO", null);
+        assertThat(acces.lance(appelant(OrganisationStubAdapter.CHEF_SERVICE, "PIL_ACTIVITY_OWN"), labo)).isTrue();
+        assertThat(acces.lance(appelant(AGENT, "PIL_ACTIVITY_OWN"), labo)).isFalse();
     }
 }

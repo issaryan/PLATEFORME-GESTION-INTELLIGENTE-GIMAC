@@ -2,9 +2,9 @@ import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Select, StatusBadge } from '@gimac/design-system'
 import { estApiError } from '@gimac/socle'
-import { PROFILS } from '../../../permissions'
+import { PROFILS_DOMAINE } from '../../../domaine'
 import { useLecture } from '../../../hooks/base'
-import type { CandidatsProcessus, EtatEtape, EtatInstance, EtatProcessus, GraviteAnomalie, Intervenant } from '../../../modele/processus'
+import { INITIATEURS_DEFAUT, type CandidatsProcessus, type EtatEtape, type EtatInstance, type EtatProcessus, type GraviteAnomalie, type Initiateurs, type Intervenant } from '../../../modele/processus'
 import { useLibelleProfilEquipe } from '../activite/dialoguesEquipe'
 import { useLibelleUnite } from '../activite/communs'
 import './processus.css'
@@ -35,8 +35,43 @@ export function BadgeGravite({ gravite }: { gravite: GraviteAnomalie }) {
   return <StatusBadge status={GRAVITE[gravite]} label={t(`proc.gravite.${gravite}`)} />
 }
 
-/** Profils proposés aux intervenants : ceux du domaine, hors profil d'institution ; MS-PILOTAGE vérifie leur existence. */
-export const PROFILS_INTERVENANTS = Object.keys(PROFILS).filter((p) => p !== 'ROLE_CORRESPONDANT').sort()
+/**
+ * Profils proposés aux intervenants et au public d'un processus : tous les profils internes du domaine « gimac »
+ * (catalogue réel domaine-gimac.json, écrit par generer-realm-gimac.py), sans les profils externes d'institution ;
+ * MS-PILOTAGE vérifie leur existence.
+ */
+export const PROFILS_INTERVENANTS = PROFILS_DOMAINE.filter((p) => !p.externe).map((p) => p.code).sort()
+
+/** Au-delà de ce nombre, les personnes désignées du résumé sont comptées plutôt que nommées. */
+const NOMS_RESUMES = 3
+
+/**
+ * Résumé du public d'un processus, « Visible et lançable par … » (D-98, D-100) : chaque règle en clair, unités et profils
+ * nommés par leur libellé, personnes désignées par leur nom (les trois premières, puis leur nombre).
+ */
+export function useResumeInitiateurs() {
+  const { t } = useTranslation()
+  const libelleUnite = useLibelleUnite()
+  const libelleProfil = useLibelleProfilEquipe()
+  return (i: Initiateurs | undefined, unite?: string) => {
+    const x = i ?? INITIATEURS_DEFAUT
+    return x.regles.map((r) => {
+      switch (r) {
+        case 'MEMBRES_UNITE': return unite ? t('dem.resume.MEMBRES_UNITE', { unite: libelleUnite(unite) }) : t('dem.regle.MEMBRES_UNITE')
+        case 'UNITES': return `${t('dem.regle.UNITES')} (${x.unites.map(libelleUnite).join(', ')})`
+        case 'PROFILS': return `${t('dem.regle.PROFILS')} (${x.profils.map((c) => libelleProfil(c)).join(', ')})`
+        case 'PERMISSIONS': return `${t('dem.regle.PERMISSIONS')} (${x.permissions.join(', ')})`
+        case 'PERSONNES': {
+          const ids = x.personnes ?? []
+          const noms = ids.map((id) => x.personnesDetail?.find((d) => d.id === id)?.nomAffiche ?? id)
+          const liste = noms.length > NOMS_RESUMES ? t('dem.resume.etAutres', { noms: noms.slice(0, NOMS_RESUMES).join(', '), count: noms.length - NOMS_RESUMES }) : noms.join(', ')
+          return `${t('dem.regle.PERSONNES')} (${liste})`
+        }
+        default: return t(`dem.regle.${r}`)
+      }
+    }).join(' ; ')
+  }
+}
 
 /** Résumé lisible d'un intervenant (« Profil : Pôle réseau », « Chef de l'unité »…). */
 export function useResumeIntervenant() {

@@ -203,6 +203,23 @@ class RoutesPresentationTest {
     }
 
     @Test
+    @DisplayName("Organigramme (D-102) : affectations et PDF par la seule route iam-organisation, réécrits vers /api/v1/organisation")
+    void organigramme() {
+        for (String couche : new String[] { "des", "console" }) {
+            for (String[] c : new String[][] {
+                { "/bff/" + couche + "/iam/organisation/unites/SNA/affectations", "/api/v1/organisation/unites/SNA/affectations" },
+                { "/bff/" + couche + "/iam/organisation/unites/SNA/affectations/u-1", "/api/v1/organisation/unites/SNA/affectations/u-1" },
+                { "/bff/" + couche + "/iam/organisation/organigramme.pdf", "/api/v1/organisation/organigramme.pdf" },
+            }) {
+                List<Route> l = correspondantes(c[0]);
+                assertThat(l).extracting(Route::id).containsExactly("iam-organisation");
+                assertThat(reecrire(l.get(0), c[0])).isEqualTo(c[1]);
+            }
+        }
+        assertThat(correspondantes("/bff/portail/iam/organisation/organigramme.pdf")).isEmpty();
+    }
+
+    @Test
     @DisplayName("Dépôts fragmentés : une partie de 16 Mio admise, corps borné à 17 Mio")
     void tailleDepotsFragmentes() {
         for (String couche : new String[] { "des", "console", "portail" }) {

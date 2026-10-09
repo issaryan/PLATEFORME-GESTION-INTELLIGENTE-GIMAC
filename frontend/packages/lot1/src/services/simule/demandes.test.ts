@@ -39,7 +39,8 @@ describe('D-98 : qui peut lancer', () => {
     const qui = monde()
     const sna = qui('u-sna')
     const l = await sna.lancables({})
-    expect(l.groupes.map((g) => [g.unite, g.processus.map((p) => p.code)])).toEqual([['POLE_RESEAU', ['CHANGEMENT_ADRESSE_IP']], ['RH', ['DEMANDE_CONGE']]])
+    // D-100 : l'analyste du SNA est l'une des deux personnes désignées de la création d'une machine virtuelle.
+    expect(l.groupes.map((g) => [g.unite, g.processus.map((p) => p.code)])).toEqual([['POLE_RESEAU', ['CHANGEMENT_ADRESSE_IP']], ['POLE_SYSTEME', ['CREATION_MACHINE_VIRTUELLE']], ['RH', ['DEMANDE_CONGE']]])
     expect(l.groupes[0].processus[0]).toMatchObject({ droits: { lancer: true }, nombreChampsFormulaire: 4, initiateurs: { regles: ['TOUT_LE_GIMAC'] } })
     expect((await sna.lancables({ q: 'congé' })).groupes.map((g) => g.unite)).toEqual(['RH'])
     const reseau = (await qui('u-res').lancables({})).groupes.find((g) => g.unite === 'POLE_RESEAU')!
@@ -69,7 +70,8 @@ describe('D-98 : qui peut lancer', () => {
 describe('D-98 : formulaire de lancement', () => {
   it('422 champ par champ (details.champs « formulaire.CODE »), pièce jointe déposée par l’initiateur', async () => {
     const sna = monde()('u-sna')
-    const [ipResume, conge] = (await sna.lancables({})).groupes.map((g) => g.processus[0])
+    const lancables = (await sna.lancables({})).groupes.flatMap((g) => g.processus)
+    const [ipResume, conge] = ['CHANGEMENT_ADRESSE_IP', 'DEMANDE_CONGE'].map((c) => lancables.find((p) => p.code === c)!)
     const refus = await sna.lancer(ipResume.id, { intitule: 'Poste', champs: {}, designations: {}, formulaire: { EQUIPEMENT: 'PC', COULEUR: 'bleu' } }).catch((e: ApiError) => e)
     expect(refus).toBeInstanceOf(ApiError)
     expect((refus as ApiError).code).toBe('PIL_PROCESSUS_FORMULAIRE_INVALIDE')

@@ -10,8 +10,9 @@ import { useLibelleUnite } from '../activite/communs'
 import { DialogueLancement } from './DialogueLancement'
 import { useErreurProcessus } from './communs'
 
-// « Lancer une demande » (D-98 §3, /des/demandes/lancer) : processus publiés que je peux lancer (initiateurs de chaque
-// définition, servis par MS-PILOTAGE), groupés par service destinataire (unité propriétaire), mes unités d'abord, avec
+// « Lancer une demande » (D-98 §3, /des/demandes/lancer) : processus publiés que je peux lancer (public défini par le
+// créateur de chaque définition, seul juge depuis D-100 : un administrateur n'y voit pas les processus réservés, servis
+// par MS-PILOTAGE), groupés par service destinataire (unité propriétaire), mes unités d'abord, avec
 // recherche ; le formulaire de lancement s'ouvre en fenêtre modale, puis l'instance créée (suivi).
 
 /** Lancement : la définition complète (formulaire, désignations) est lue avant d'ouvrir la fenêtre. */
@@ -27,6 +28,8 @@ function Lancement({ id, onFermer }: { id: string; onFermer: () => void }) {
 function CarteProcessus({ p, onLancer }: { p: ResumeProcessus; onLancer: () => void }) {
   const { t } = useTranslation()
   const ouvert = p.initiateurs?.regles.includes('TOUT_LE_GIMAC')
+  // D-100 : processus réservé par son créateur à des personnes désignées (dont moi, puisque le service me le propose).
+  const designe = !ouvert && p.initiateurs?.regles.includes('PERSONNES')
   return (
     <Card title={p.libelle} actions={<Button size="sm" variant="primary" icon="send" aria-label={t('dem.lancer.qui', { libelle: p.libelle })} onClick={onLancer}>{t('dem.lancer.action')}</Button>}>
       <div className="gm-col" style={{ gap: 'var(--gm-space-1)' }}>
@@ -34,6 +37,7 @@ function CarteProcessus({ p, onLancer }: { p: ResumeProcessus; onLancer: () => v
         <span className="gm-row" style={{ gap: 'var(--gm-space-2)', flexWrap: 'wrap' }}>
           {p.categorie ? <StatusBadge status="neutral" icon={null} label={p.categorie} /> : null}
           {ouvert ? <StatusBadge status="info" icon={null} label={t('dem.lancer.ouvertATous')} /> : null}
+          {designe ? <StatusBadge status="info" icon={null} label={t('dem.lancer.designe')} /> : null}
           <span className="gm-field-help">
             {t('dem.lancer.etapes', { count: p.nombreEtapes })}
             {p.nombreChampsFormulaire ? ` · ${t('dem.lancer.champs', { count: p.nombreChampsFormulaire })}` : ''}

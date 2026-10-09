@@ -5,7 +5,8 @@ import type { Page, Route } from '@playwright/test'
 // VITE_SERVICES=http, en complément de la passerelle de la console (passerelle.ts : session, clé de sécurité, défi) :
 // profils avec libellé, description et dernière modification (GET, PUT /configuration/profils/{code}, composition),
 // matrice des pouvoirs aux colonnes PROCESSUS_DEFINIR et PROCESSUS_LANCER, unités et comptes de l'organigramme
-// (POST et PUT /organisation/unites, PUT /comptes/{id}/rattachement). Toute autre route est rendue (route.fallback()).
+// (POST et PUT /organisation/unites, PUT /comptes/{id}/rattachement ; D-102 : affectations d'une unité et organigramme en
+// PDF). Toute autre route est rendue (route.fallback()).
 
 const il = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString()
 const AUCUNE = { TACHE_CONFIER: 'AUCUNE', TACHE_SUIVRE: 'AUCUNE', ACTIVITE_LIRE: 'AUCUNE', RAPPORT_VISER: 'AUCUNE', RATTACHEMENT_MODIFIER: 'AUCUNE', COMPTE_DEMANDER: 'AUCUNE',
@@ -126,6 +127,39 @@ export class PasserelleProfilsOrganisation {
       const c = this.comptes.find((x) => x.id === decodeURIComponent(ra[1]))
       if (!c) return refus(404, 'IAM_ACCOUNT_NOT_FOUND', 'Ressource introuvable')
       return json(Object.assign(c, { unite: corps.unite, responsableId: corps.responsableId }))
+    }
+    // ------------------------------------------------ D-102 (docs/lot1/organigramme.md) : affectations et PDF
+    const af = chemin.match(/^\/bff\/console\/iam\/organisation\/unites\/([^/]+)\/affectations(?:\/([^/]+))?$/)
+    if (af && methode === 'POST') {
+      noter()
+      const code = decodeURIComponent(af[1])
+      const chef = (c: string | null, id: string): string | null => {
+        const u = this.unites.find((x) => x.code === c)
+        if (!u) return null
+        return u.responsableId && u.responsableId !== id ? (u.responsableId as string) : chef(u.parent as string | null, id)
+      }
+      return json((corps.comptes as string[]).map((id) => {
+        const c = this.comptes.find((x) => x.id === id)!
+        const avant = { unite: c.unite, responsableId: c.responsableId }
+        const apres = { unite: code, responsableId: 'responsableId' in corps ? corps.responsableId : chef(code, id) }
+        Object.assign(c, apres)
+        return { id, nomAffiche: c.nomAffiche, avant, apres }
+      }))
+    }
+    if (af && af[2] && methode === 'DELETE') {
+      noter()
+      const c = this.comptes.find((x) => x.id === decodeURIComponent(af[2]))!
+      const avant = { unite: c.unite, responsableId: c.responsableId }
+      Object.assign(c, { unite: null })
+      return json({ id: c.id, nomAffiche: c.nomAffiche, avant, apres: { unite: null, responsableId: c.responsableId } })
+    }
+    if (chemin === '/bff/console/iam/organisation/organigramme.pdf' && methode === 'GET') {
+      noter()
+      return route.fulfill({
+        status: 200,
+        body: Buffer.from('%PDF-1.7\n% organigramme composé par MS-IAM (simulé)\n'),
+        headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': 'attachment; filename="organigramme-moabi-2026-10-09.pdf"' },
+      })
     }
     return route.fallback()
   }

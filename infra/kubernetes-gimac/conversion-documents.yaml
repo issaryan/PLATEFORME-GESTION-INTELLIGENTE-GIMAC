@@ -1,7 +1,9 @@
 # Aperçu des documents bureautiques (D-83, docs/lot1/apercu-bureautique.md) : moteur de conversion Gotenberg 8
 # (LibreOffice sans interface), joint par MS-DOCUMENT seulement (politique réseau « conversion-documents »),
-# sans aucune sortie. Routes de Chromium et des moteurs PDF, webhooks, téléchargement d'URL et métriques
-# désactivés ; délai de conversion 60 s ; mémoire bornée à 1 Gio ; profil restricted, racine en lecture seule.
+# sans aucune sortie. Routes des moteurs PDF, webhooks, téléchargement d'URL et métriques désactivés ; délai de
+# conversion 60 s ; profil restricted, racine en lecture seule. Chromium (D-102, organigramme en PDF,
+# docs/lot1/organigramme.md §4) : documents composés par MS-IAM et contrôlés par MS-DOCUMENT, JavaScript désactivé,
+# seules les adresses de ses fichiers temporaires admises ; mémoire bornée à 1,5 Gio.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -31,7 +33,11 @@ spec:
           image: gotenberg/gotenberg:8.37.0
           args:
             - gotenberg
-            - --chromium-disable-routes=true
+            - --chromium-disable-javascript=true
+            - --chromium-allow-list=^file:///tmp/.*
+            - --chromium-deny-private-ips=true
+            - --chromium-deny-public-ips=true
+            - --chromium-max-queue-size=10
             - --webhook-disable=true
             - --api-timeout=60s
             - --api-disable-download-from=true
@@ -50,7 +56,7 @@ spec:
               drop: ['ALL']
           resources:
             requests: { cpu: 250m, memory: 512Mi }
-            limits: { cpu: '1', memory: 1Gi }
+            limits: { cpu: '1', memory: 1536Mi }
           readinessProbe:
             httpGet:
               path: /health

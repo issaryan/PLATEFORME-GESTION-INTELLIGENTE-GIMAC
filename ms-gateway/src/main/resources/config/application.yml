@@ -217,7 +217,9 @@ spring:
                 - OpaAuthorize
                 - RewritePath=/bff/des/iam/(?<p>.*), /api/v1/${p}
             # Organisation du GIMAC (D-76, docs/lot1/mon-activite.md §1.3) : catalogue des unités et rattachement
-            # du titulaire, depuis le département et la console ; comptes internes seulement (OPA).
+            # du titulaire, depuis le département et la console ; comptes internes seulement (OPA). D-102
+            # (docs/lot1/organigramme.md) : affectations d'une unité (POST, DELETE …/unites/{code}/affectations) et
+            # organigramme en PDF (GET …/organigramme.pdf, quelques secondes, aucun délai global de la passerelle).
             - id: iam-organisation
               uri: ${gimac.services.iam}
               predicates:

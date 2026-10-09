@@ -22,4 +22,4 @@
 /* DDR-23 : la ligne d'état vide n'est ni zébrée ni surlignée au survol (fond bleu saturé en thème sombre). */
 .gm-table tbody tr.gm-table-vide td, .gm-table tbody tr.gm-table-vide:hover td { background: transparent; }
 /* DDR-23 : illustration de l'état vide lisible en thème sombre (trame et pictogramme contrastés). */
-[data-theme="dark"] .gm-empty-art.gm-pattern { background-image: repeating-linear-gradient(45deg, transparent 0 15px, rgba(201, 139, 99, 0.12) 15px 16px), repeating-linear-gradient(-45deg, transparent 0 15px, rgba(201, 139, 99, 0.12) 15px 16px); color: var(--gm-color-text-primary); border: var(--gm-border-1) solid var(--gm-color-border); }
+[data-theme="dark"] .gm-empty-art.gm-pattern { background-image: repeating-linear-gradient(45deg, transparent 0 15px, color-mix(in srgb, var(--gm-color-brand-accent) 12%, transparent) 15px 16px), repeating-linear-gradient(-45deg, transparent 0 15px, color-mix(in srgb, var(--gm-color-brand-accent) 12%, transparent) 15px 16px); color: var(--gm-color-text-primary); border: var(--gm-border-1) solid var(--gm-color-border); }

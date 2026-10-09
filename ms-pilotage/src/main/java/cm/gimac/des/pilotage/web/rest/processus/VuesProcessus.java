@@ -62,6 +62,33 @@ final class VuesProcessus {
 
     // ------------------------------------------------------------------ définitions (§1)
 
+    /**
+     * Public du processus, qui peut le voir et le lancer (D-98 §1, D-100) : les règles et leurs paramètres tels que
+     * saisis, plus {@code personnesDetail} : les personnes désignées avec leur nom affiché (absent si l'annuaire ne le
+     * connaît pas), pour que l'interface les présente.
+     */
+    record InitiateursVue(
+        List<String> regles,
+        List<String> unites,
+        List<String> profils,
+        List<String> permissions,
+        List<String> personnes,
+        List<PersonneVue> personnesDetail,
+        boolean initiateurIntervenant
+    ) {
+        static InitiateursVue de(Initiateurs i, Map<String, String> noms) {
+            return new InitiateursVue(
+                i.regles().stream().map(Enum::name).toList(),
+                i.unites(),
+                i.profils(),
+                i.permissions(),
+                i.personnes(),
+                i.personnes().stream().map(id -> new PersonneVue(id, noms.get(id))).toList(),
+                i.initiateurIntervenant()
+            );
+        }
+    }
+
     record ProcessusVue(
         UUID id,
         String code,
@@ -73,7 +100,7 @@ final class VuesProcessus {
         String categorie,
         Integer delaiCibleJours,
         List<Etape> etapes,
-        Initiateurs initiateurs,
+        InitiateursVue initiateurs,
         Formulaire formulaire,
         String creeLe,
         PersonneVue creePar,
@@ -119,7 +146,7 @@ final class VuesProcessus {
                 p.getCategorie(),
                 p.getDelaiCibleJours(),
                 p.getEtapes(),
-                p.getInitiateurs(),
+                InitiateursVue.de(p.getInitiateurs(), noms),
                 p.getFormulaire(),
                 ReglesActivite.horodatage(p.getCreeLe()),
                 PersonneVue.de(p.getCreePar(), noms),
@@ -156,7 +183,7 @@ final class VuesProcessus {
         String modifieLe,
         PersonneVue modifiePar,
         Droits droits,
-        Initiateurs initiateurs,
+        InitiateursVue initiateurs,
         int nombreChampsFormulaire
     ) {
         static ProcessusResumeVue de(ProcessusLu l) {
@@ -176,7 +203,7 @@ final class VuesProcessus {
                 ReglesActivite.horodatage(p.getModifieLe()),
                 PersonneVue.de(p.getModifiePar(), l.noms()),
                 l.droits(),
-                p.getInitiateurs(),
+                InitiateursVue.de(p.getInitiateurs(), l.noms()),
                 p.getFormulaire().champs().size()
             );
         }

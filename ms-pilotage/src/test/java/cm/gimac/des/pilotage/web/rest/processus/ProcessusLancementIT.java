@@ -266,8 +266,13 @@ class ProcessusLancementIT extends AbstractProcessusIT {
         mvc.perform(json(post(BASE + "/" + id + "/instances").with(agent(AGENT)), l)).andExpect(status().isCreated());
         mvc.perform(json(post(BASE + "/" + id + "/instances").with(agent(CHEF_DDRM)), l)).andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("PIL_PROCESSUS_NON_INITIATEUR"));
         mvc.perform(json(post(BASE + "/" + id + "/instances").with(utilisateur(CHEF_DDRM, "PIL_ACTIVITY_OWN", "CER_DOSSIER_VERIFY")), l)).andExpect(status().isCreated());
-        // MEMBRES_UNITE n'est pas retenue : le technicien du pôle ne lance pas, son chef (PROCESSUS_LANCER) si.
+        // MEMBRES_UNITE n'est pas retenue : ni le technicien du pôle, ni son chef (D-100 : PROCESSUS_LANCER couvrant l'unité
+        // n'ouvre plus le lancement, seul le public défini par le créateur compte).
         mvc.perform(json(post(BASE + "/" + id + "/instances").with(agent(TECHNICIEN_RESEAU)), l)).andExpect(status().isForbidden());
-        mvc.perform(json(post(BASE + "/" + id + "/instances").with(chef(CHEF_RESEAU)), l)).andExpect(status().isCreated());
+        mvc
+            .perform(json(post(BASE + "/" + id + "/instances").with(chef(CHEF_RESEAU)), l))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.code").value("PIL_PROCESSUS_NON_INITIATEUR"))
+            .andExpect(jsonPath("$.message", Matchers.not(Matchers.containsString("PROCESSUS_LANCER"))));
     }
 }

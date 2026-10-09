@@ -46,16 +46,28 @@ export type DroitsProcessus = { modifier: boolean; publier: boolean; lancer: boo
 
 // ------------------------------------------------------------------ Lancement (D-98, docs/lot1/lancement-processus.md §1, §2)
 
-/** Qui peut lancer une version publiée : règles cumulables (l'une suffit), en données dans la définition. */
-export const REGLES_INITIATEUR = ['MEMBRES_UNITE', 'TOUT_LE_GIMAC', 'UNITES', 'PROFILS', 'PERMISSIONS'] as const
-export type RegleInitiateur = (typeof REGLES_INITIATEUR)[number]
 /**
- * `initiateurIntervenant` (D-99, séparation des fonctions) : vrai si l'initiateur peut aussi exécuter, valider ou signer les
- * étapes de sa propre demande ; absent ou faux par défaut.
+ * Public d'une version publiée (D-98 §1, D-100) : qui peut la voir dans « Lancer une demande » et la lancer, règles
+ * cumulables (l'une suffit), en données dans la définition et choisies par son créateur. Elles font seules foi : aucun droit
+ * d'administration (REF_METIER_ADMIN, PROCESSUS_LANCER) ne s'y ajoute.
  */
-export type Initiateurs = { regles: RegleInitiateur[]; unites: string[]; profils: string[]; permissions: string[]; initiateurIntervenant?: boolean }
-/** Défaut (et reprise des définitions existantes) : les membres de l'unité propriétaire. */
-export const INITIATEURS_DEFAUT: Initiateurs = { regles: ['MEMBRES_UNITE'], unites: [], profils: [], permissions: [] }
+export const REGLES_INITIATEUR = ['MEMBRES_UNITE', 'TOUT_LE_GIMAC', 'UNITES', 'PROFILS', 'PERMISSIONS', 'PERSONNES'] as const
+export type RegleInitiateur = (typeof REGLES_INITIATEUR)[number]
+/** Personne désignée nommément, avec son nom affiché servi par MS-PILOTAGE (null s'il est inconnu de l'annuaire). */
+export type PersonneDesignee = { id: string; nomAffiche: string | null }
+/**
+ * `personnes` (D-100) : identifiants des comptes désignés nommément (règle PERSONNES, 50 au plus) ; `personnesDetail` :
+ * les mêmes avec leur nom, rendus par le service (absents d'un service antérieur). `initiateurIntervenant` (D-99,
+ * séparation des fonctions) : vrai si l'initiateur peut aussi exécuter, valider ou signer les étapes de sa propre demande ;
+ * absent ou faux par défaut.
+ */
+export type Initiateurs = {
+  regles: RegleInitiateur[]; unites: string[]; profils: string[]; permissions: string[]; personnes?: string[]; personnesDetail?: PersonneDesignee[]; initiateurIntervenant?: boolean
+}
+/** Défaut (et reprise des définitions existantes) : les membres de l'unité propriétaire et ses responsables. */
+export const INITIATEURS_DEFAUT: Initiateurs = { regles: ['MEMBRES_UNITE'], unites: [], profils: [], permissions: [], personnes: [] }
+/** Bornes du public (§10) : personnes désignées nommément. */
+export const LIMITES_PUBLIC = { personnes: 50 } as const
 
 /** Types des champs du formulaire de lancement. */
 export const TYPES_CHAMP_FORMULAIRE = ['TEXTE', 'TEXTE_LONG', 'NOMBRE', 'DATE', 'PERIODE', 'LISTE', 'CASE', 'PIECE_JOINTE'] as const

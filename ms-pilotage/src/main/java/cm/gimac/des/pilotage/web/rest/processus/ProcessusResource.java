@@ -87,8 +87,9 @@ public class ProcessusResource {
     }
 
     /**
-     * « Lancer une demande » (D-98 §3) : versions publiées que l'appelant peut lancer (initiateurs de la définition, ou
-     * PROCESSUS_LANCER couvrant l'unité), groupées par unité propriétaire ; {@code q} : code, libellé ou catégorie.
+     * « Lancer une demande » (D-98 §3, D-100) : versions publiées dont l'appelant fait partie du public défini par le
+     * créateur (règles d'initiateurs seules, sans passe-droit d'administration), groupées par unité propriétaire ;
+     * {@code q} : code, libellé ou catégorie.
      */
     @GetMapping("/lancables")
     @PreAuthorize(Jetons.ACTIVITE)

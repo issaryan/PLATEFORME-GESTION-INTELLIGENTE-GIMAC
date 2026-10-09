@@ -10,6 +10,8 @@
 .gm-stat { padding: var(--gm-space-4); display: flex; flex-direction: column; gap: var(--gm-space-1); min-width: 0; transition: border-color var(--gm-motion-fast) var(--gm-motion-ease), background-color var(--gm-motion-fast) var(--gm-motion-ease); }
 .gm-stat-label { font-size: 12px; line-height: 18px; font-weight: 400; color: var(--gm-color-text-secondary); }
 .gm-stat-value { font-family: var(--font-sans); font-size: 32px; line-height: 40px; font-weight: 600; color: var(--gm-color-text-primary); font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; display: flex; align-items: baseline; gap: var(--gm-space-1); }
+.gm-stat-value { min-width: 0; }
+.gm-stat-value-texte { font-size: 22px; line-height: 28px; overflow-wrap: break-word; hyphens: auto; }
 .gm-stat-unit { font-size: 14px; line-height: 22px; font-weight: 400; color: var(--gm-color-text-secondary); }
 .gm-stat-meta { margin-top: auto; min-height: 18px; display: flex; flex-wrap: wrap; align-items: center; gap: var(--gm-space-1) var(--gm-space-3); font-size: 12px; line-height: 18px; color: var(--gm-color-text-secondary); }
 .gm-stat-etat, .gm-stat-tendance { display: inline-flex; align-items: center; gap: var(--gm-space-1); }

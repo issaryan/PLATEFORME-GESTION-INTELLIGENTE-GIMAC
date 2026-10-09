@@ -16,6 +16,7 @@ import cm.gimac.des.pilotage.domain.processus.RegleInitiateur;
 import cm.gimac.des.pilotage.domain.processus.SignatureRequise;
 import cm.gimac.des.pilotage.domain.processus.TypeChamp;
 import cm.gimac.des.pilotage.domain.processus.TypeChampFormulaire;
+import cm.gimac.des.pilotage.infrastructure.client.OrganisationStubAdapter;
 import cm.gimac.des.pilotage.repository.HistoriqueProcessusRepository;
 import cm.gimac.des.pilotage.repository.ProcessusRepository;
 import java.time.Clock;
@@ -37,7 +38,11 @@ import org.springframework.transaction.support.TransactionTemplate;
  * par une personne désignée au lancement (remplacement : ROLE_POLE_RESEAU), recette dont le procès-verbal est
  * signé par le chef d'unité. D-98 : deux demandes lancées de tout le GIMAC (initiateurs TOUT_LE_GIMAC) avec leur
  * formulaire de lancement, « Demande de congé » (DEMANDE_CONGE, unité RH) et « Demande de changement d'adresse IP »
- * (CHANGEMENT_ADRESSE_IP, pôle réseau). Rien n'est fait pour un code qui existe déjà.
+ * (CHANGEMENT_ADRESSE_IP, pôle réseau). D-100 : deux processus au public restreint par leur créateur, pour montrer
+ * qu'un administrateur ne voit plus tout dans « Lancer une demande » : « Création d'une machine virtuelle »
+ * (CREATION_MACHINE_VIRTUELLE, pôle système), réservé à deux personnes désignées (l'ingénieure réseau et la chargée
+ * d'études du SNA de l'organisation simulée), et « Mise à jour de la plateforme » (MISE_A_JOUR_PLATEFORME, conformité),
+ * réservé aux porteurs des profils Conformité et Sécurité des SI. Rien n'est fait pour un code qui existe déjà.
  */
 @Component
 @ConditionalOnProperty(name = "gimac.demonstration.processus", havingValue = "true")
@@ -91,8 +96,37 @@ public class DemonstrationProcessus implements ApplicationRunner {
     public static final String CODE_CONGE = "DEMANDE_CONGE";
     public static final String CODE_IP = "CHANGEMENT_ADRESSE_IP";
     public static final String UNITE_RH = "RH";
+    /** D-100 : processus au public restreint (personnes désignées, profils). */
+    public static final String CODE_VM = "CREATION_MACHINE_VIRTUELLE";
+    public static final String CODE_MISE_A_JOUR = "MISE_A_JOUR_PLATEFORME";
+    public static final String UNITE_SYSTEME = "POLE_SYSTEME";
+    public static final String UNITE_CONFORMITE = "CONFORMITE";
 
-    /** Publie « Demande de congé » (RH) et « Demande de changement d'adresse IP » (pôle réseau) s'ils sont absents. */
+    /** Public de la création d'une machine virtuelle : deux personnes désignées nommément (D-100). */
+    public static Initiateurs publicMachineVirtuelle() {
+        return new Initiateurs(
+            List.of(RegleInitiateur.PERSONNES),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(OrganisationStubAdapter.INGENIEUR_RESEAU, OrganisationStubAdapter.AGENT_BIS),
+            false
+        );
+    }
+
+    /** Public de la mise à jour de la plateforme : porteurs des profils Conformité et Sécurité des SI (D-100). */
+    public static Initiateurs publicMiseAJour() {
+        return new Initiateurs(List.of(RegleInitiateur.PROFILS), List.of(), List.of("ROLE_CONFORMITE", "ROLE_RSSI"), List.of(), List.of(), false);
+    }
+
+    private static Initiateurs toutLeGimac() {
+        return new Initiateurs(List.of(RegleInitiateur.TOUT_LE_GIMAC), List.of(), List.of(), List.of(), List.of(), false);
+    }
+
+    /**
+     * Publie « Demande de congé » (RH) et « Demande de changement d'adresse IP » (pôle réseau), ouverts à tout le GIMAC, puis
+     * « Création d'une machine virtuelle » et « Mise à jour de la plateforme » au public restreint (D-100), s'ils sont absents.
+     */
     private void demandes() {
         Instant le = horloge.instant();
         publierDemande(
@@ -103,6 +137,7 @@ public class DemonstrationProcessus implements ApplicationRunner {
             "Ressources humaines",
             etapesConge(),
             formulaireConge(),
+            toutLeGimac(),
             le
         );
         publierDemande(
@@ -113,21 +148,75 @@ public class DemonstrationProcessus implements ApplicationRunner {
             "Réseau",
             etapesIp(),
             formulaireIp(),
+            toutLeGimac(),
+            le
+        );
+        publierDemande(
+            CODE_VM,
+            UNITE_SYSTEME,
+            "Création d'une machine virtuelle",
+            "Demande de création d'une machine virtuelle sur l'infrastructure de virtualisation : dimensionnement, création et remise.",
+            "Système",
+            etapesInterne("ROLE_POLE_SYSTEME", UNITE_SYSTEME, "Dimensionnement et création", "Remise de la machine"),
+            formulaireVm(),
+            publicMachineVirtuelle(),
+            le
+        );
+        publierDemande(
+            CODE_MISE_A_JOUR,
+            UNITE_CONFORMITE,
+            "Mise à jour de la plateforme",
+            "Demande de mise à jour de la plateforme soumise à la revue de conformité : analyse d'impact, revue et clôture.",
+            "Conformité",
+            etapesInterne("ROLE_CONFORMITE", UNITE_CONFORMITE, "Analyse d'impact et revue", "Clôture de la revue"),
+            Formulaire.vide(),
+            publicMiseAJour(),
             le
         );
     }
 
-    private void publierDemande(String code, String unite, String libelle, String description, String categorie, List<Etape> etapes, Formulaire formulaire, Instant le) {
+    /** Formulaire de la création d'une machine virtuelle : système, processeurs, mémoire. */
+    public static Formulaire formulaireVm() {
+        return new Formulaire(
+            List.of(
+                new ChampFormulaire("SYSTEME", "Système d'exploitation", TypeChampFormulaire.LISTE, List.of("Linux", "Windows Server"), true, null, List.of()),
+                new ChampFormulaire("PROCESSEURS", "Nombre de processeurs", TypeChampFormulaire.NOMBRE, List.of(), true, null, List.of()),
+                new ChampFormulaire("MEMOIRE", "Mémoire (Go)", TypeChampFormulaire.NOMBRE, List.of(), true, null, List.of())
+            )
+        );
+    }
+
+    /** Deux étapes tenues par les porteurs d'un profil de l'unité, la seconde validée par le chef de l'unité. */
+    public static List<Etape> etapesInterne(String profil, String unite, String premiere, String seconde) {
+        Intervenant porteur = new Intervenant(ModeIntervenant.PROFIL, profil, null, unite, null);
+        Intervenant chef = new Intervenant(ModeIntervenant.CHEF_UNITE, null, null, null, "ROLE_RESPONSABLE_SERVICE");
+        return List.of(
+            new Etape("REALISATION", premiere, "Réaliser la demande et consigner le résultat.", porteur, null, List.of(), 3, List.of(), List.of(), List.of(), new Position(0, 0)),
+            new Etape("CLOTURE", seconde, "Informer le demandeur et clôturer la demande.", porteur, chef, List.of("REALISATION"), 1, List.of(), List.of(), List.of(), new Position(260, 0))
+        );
+    }
+
+    private void publierDemande(
+        String code,
+        String unite,
+        String libelle,
+        String description,
+        String categorie,
+        List<Etape> etapes,
+        Formulaire formulaire,
+        Initiateurs initiateurs,
+        Instant le
+    ) {
         if (processus.existsByCode(code)) {
             return;
         }
         Processus p = Processus.brouillon(code, unite, ACTEUR, le);
         p.decrire(libelle, description, categorie, 5, etapes, ACTEUR, le);
-        p.definirLancement(new Initiateurs(List.of(RegleInitiateur.TOUT_LE_GIMAC), List.of(), List.of(), List.of(), false), formulaire, ACTEUR, le);
+        p.definirLancement(initiateurs, formulaire, ACTEUR, le);
         p.publier(ACTEUR, "Jeu de démonstration", false, le);
         processus.save(p);
         historique.save(new HistoriqueProcessus(p.getId(), null, null, le, ACTEUR, ActionProcessus.PUBLIE, "Jeu de démonstration"));
-        LOG.info("Processus de démonstration {} publié (unité {}, initiateurs : tout le GIMAC)", code, unite);
+        LOG.info("Processus de démonstration {} publié (unité {}, public : {})", code, unite, initiateurs.regles());
     }
 
     /** Formulaire de la demande de congé : période, motif, pièce jointe facultative. */

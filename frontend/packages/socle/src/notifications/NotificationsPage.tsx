@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Card, EmptyState, InlineAlert, PageHeader, Pagination, Skeleton, Tabs } from '@gimac/design-system'
 import type { EtatNotifications } from './modele'
@@ -21,9 +21,6 @@ export function NotificationsPage() {
   const nonLues = compteur.data?.nonLues ?? 0
   // Portail : le participant ne reçoit que le parcours de ses liaisons (ni messagerie, ni tâches, ni rapports).
   const portail = useContexteNotifications()?.couche === 'portail'
-  useEffect(() => {
-    document.title = `GIMAC · ${t('notifications.titre')}`
-  }, [t])
   const contenu = liste.data?.contenu ?? []
   return (
     <div className="gm-col" style={{ gap: 'var(--gm-space-4)' }}>

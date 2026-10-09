@@ -3,14 +3,19 @@ package cm.gimac.des.iam.web.rest.lot1;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import cm.gimac.des.iam.application.port.out.RenduPdf;
+import cm.gimac.des.iam.application.usecase.AffectationsService;
+import cm.gimac.des.iam.application.usecase.OrganigrammePdfService;
 import cm.gimac.des.iam.application.usecase.OrganisationService;
 import cm.gimac.des.iam.config.SecurityConfiguration;
 import cm.gimac.des.iam.config.TestSecurityConfiguration;
@@ -63,11 +68,17 @@ class OrganisationRoutesTest {
     @MockitoBean
     OrganisationService service;
 
+    @MockitoBean
+    AffectationsService affectations;
+
+    @MockitoBean
+    OrganigrammePdfService organigramme;
+
     @BeforeEach
     void init() {
         when(service.unites(anyBoolean())).thenReturn(List.of(DG, DES, RESEAU));
-        when(service.creerUnite(any(), any())).thenReturn(RESEAU);
-        when(service.modifierUnite(any(), eq("POLE_RESEAU"), any(), anyBoolean())).thenReturn(RESEAU);
+        when(service.creerUnite(any(), any(), any())).thenReturn(RESEAU);
+        when(service.modifierUnite(any(), eq("POLE_RESEAU"), any(), anyBoolean(), any())).thenReturn(RESEAU);
         var rattachement = new OrganisationService.Rattachement(
             ID,
             "Awa Mballa",
@@ -129,25 +140,91 @@ class OrganisationRoutesTest {
             .andExpect(status().isCreated())
             .andExpect(header().string("Location", "/api/v1/organisation/unites/POLE_RESEAU"))
             .andExpect(jsonPath("$.code").value("POLE_RESEAU"));
-        verify(service).creerUnite(any(), eq(RESEAU));
+        verify(service).creerUnite(any(), eq(RESEAU), isNull());
         mvc.perform(req(HttpMethod.PUT, u + "/POLE_RESEAU", MODIFICATION).with(jeton(ID, "IAM_ACCOUNT_EDIT"))).andExpect(status().isOk());
-        verify(service).modifierUnite(any(), eq("POLE_RESEAU"), eq(new Unite("POLE_RESEAU", "Pôle réseau", TypeUnite.POLE, "PROD_INFO", false)), eq(true));
+        verify(service).modifierUnite(any(), eq("POLE_RESEAU"), eq(new Unite("POLE_RESEAU", "Pôle réseau", TypeUnite.POLE, "PROD_INFO", false)), eq(true), isNull());
         // D-81 §2 : responsable fourni (valeur ou null) : appliqué ; absent : conservé.
         String avecResponsable = MODIFICATION.replace("}", ",\"responsableId\":\"" + CHEF + "\"}");
         mvc.perform(req(HttpMethod.PUT, u + "/POLE_RESEAU", avecResponsable).with(jeton(ID, "IAM_ACCOUNT_EDIT"))).andExpect(status().isOk());
-        verify(service).modifierUnite(any(), eq("POLE_RESEAU"), eq(new Unite("POLE_RESEAU", "Pôle réseau", TypeUnite.POLE, "PROD_INFO", false, CHEF)), eq(false));
+        verify(service).modifierUnite(any(), eq("POLE_RESEAU"), eq(new Unite("POLE_RESEAU", "Pôle réseau", TypeUnite.POLE, "PROD_INFO", false, CHEF)), eq(false), isNull());
         String sansResponsable = MODIFICATION.replace("}", ",\"responsableId\":null}");
         mvc.perform(req(HttpMethod.PUT, u + "/POLE_RESEAU", sansResponsable).with(jeton(ID, "IAM_ACCOUNT_EDIT"))).andExpect(status().isOk());
-        verify(service).modifierUnite(any(), eq("POLE_RESEAU"), eq(new Unite("POLE_RESEAU", "Pôle réseau", TypeUnite.POLE, "PROD_INFO", false)), eq(false));
+        verify(service).modifierUnite(any(), eq("POLE_RESEAU"), eq(new Unite("POLE_RESEAU", "Pôle réseau", TypeUnite.POLE, "PROD_INFO", false)), eq(false), isNull());
         mvc.perform(req(HttpMethod.POST, u, "{\"code\":\"X\",\"type\":\"POLE\"}").with(jeton(ID, "IAM_ACCOUNT_EDIT"))).andExpect(status().isBadRequest());
         mvc.perform(req(HttpMethod.PUT, u + "/POLE_RESEAU", "{\"libelle\":\"x\",\"type\":\"POLE\"}").with(jeton(ID, "IAM_ACCOUNT_EDIT"))).andExpect(status().isBadRequest());
     }
 
     @Test
+    @DisplayName("D-102 : motif des gestes d'unité transmis au service")
+    void motifDesGestes() throws Exception {
+        String u = "/api/v1/organisation/unites";
+        mvc.perform(req(HttpMethod.POST, u, UNITE.replace("}", ",\"motif\":\"Nouvelle unité\"}")).with(jeton(ID, "IAM_ACCOUNT_EDIT"))).andExpect(status().isCreated());
+        verify(service).creerUnite(any(), eq(RESEAU), eq("Nouvelle unité"));
+        mvc.perform(req(HttpMethod.PUT, u + "/POLE_RESEAU", MODIFICATION.replace("}", ",\"motif\":\"Déplacement\"}")).with(jeton(ID, "IAM_ACCOUNT_EDIT"))).andExpect(status().isOk());
+        verify(service).modifierUnite(any(), eq("POLE_RESEAU"), any(), eq(true), eq("Déplacement"));
+    }
+
+    @Test
+    @DisplayName("D-102 : affectations (IAM_ACCOUNT_EDIT ou PIL_ACTIVITY_OWN), n+1 absent ou null distingués, retrait (IAM_ACCOUNT_EDIT), refus détaillé")
+    void affectations() throws Exception {
+        String u = "/api/v1/organisation/unites/POLE_RESEAU/affectations";
+        var resultat = new AffectationsService.Resultat(ID, "Awa Mballa", new AffectationsService.Etat(null, null), new AffectationsService.Etat("POLE_RESEAU", CHEF));
+        when(affectations.affecter(any(), eq("POLE_RESEAU"), any(), anyBoolean(), any(), any())).thenReturn(List.of(resultat));
+        String corps = "{\"comptes\":[\"" + ID + "\"],\"motif\":\"Renfort\"}";
+        mvc.perform(req(HttpMethod.POST, u, corps)).andExpect(status().isUnauthorized());
+        mvc.perform(req(HttpMethod.POST, u, corps).with(jeton(ID, "IAM_ACCOUNT_READ"))).andExpect(status().isForbidden());
+        mvc
+            .perform(req(HttpMethod.POST, u, corps).with(jeton(ID, "IAM_ACCOUNT_EDIT")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].id").value(ID))
+            .andExpect(jsonPath("$[0].avant.unite").isEmpty())
+            .andExpect(jsonPath("$[0].apres.unite").value("POLE_RESEAU"))
+            .andExpect(jsonPath("$[0].apres.responsableId").value(CHEF));
+        verify(affectations).affecter(any(), eq("POLE_RESEAU"), eq(List.of(ID)), eq(false), isNull(), eq("Renfort"));
+        mvc.perform(req(HttpMethod.POST, u, corps.replace("}", ",\"responsableId\":null}")).with(jeton(ID, "PIL_ACTIVITY_OWN"))).andExpect(status().isOk());
+        verify(affectations).affecter(any(), eq("POLE_RESEAU"), eq(List.of(ID)), eq(true), isNull(), eq("Renfort"));
+        mvc.perform(req(HttpMethod.POST, u, "{\"comptes\":[],\"motif\":\"x\"}").with(jeton(ID, "IAM_ACCOUNT_EDIT"))).andExpect(status().isBadRequest());
+        when(affectations.affecter(any(), eq("DES"), any(), anyBoolean(), any(), any())).thenThrow(
+            IamException.nonTraitable("ORG_AFFECTATION_REFUSEE", "Refus", Map.of("unite", "DES", "refus", List.of(Map.of("id", ID, "code", "ORG_COMPTE_INACTIF", "message", "Inactif"))))
+        );
+        mvc
+            .perform(req(HttpMethod.POST, "/api/v1/organisation/unites/DES/affectations", corps).with(jeton(ID, "IAM_ACCOUNT_EDIT")))
+            .andExpect(status().is(422))
+            .andExpect(jsonPath("$.code").value("ORG_AFFECTATION_REFUSEE"))
+            .andExpect(jsonPath("$.details.refus[0].code").value("ORG_COMPTE_INACTIF"));
+
+        when(affectations.retirer(any(), eq("POLE_RESEAU"), eq(ID), eq("Départ"))).thenReturn(resultat);
+        mvc.perform(req(HttpMethod.DELETE, u + "/" + ID + "?motif=Départ", null).with(jeton(ID, "PIL_ACTIVITY_OWN"))).andExpect(status().isForbidden());
+        mvc.perform(req(HttpMethod.DELETE, u + "/" + ID + "?motif=Départ", null).with(jeton(ID, "IAM_ACCOUNT_EDIT"))).andExpect(status().isOk()).andExpect(jsonPath("$.id").value(ID));
+    }
+
+    @Test
+    @DisplayName("D-102 : organigramme.pdf, mêmes lecteurs que le catalogue, pièce jointe datée ; moteur indisponible : 503 ORG_PDF_INDISPONIBLE")
+    void organigrammePdf() throws Exception {
+        String u = "/api/v1/organisation/organigramme.pdf";
+        byte[] pdf = "%PDF-1.7".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+        when(organigramme.produire(any())).thenReturn(new OrganigrammePdfService.Fichier("organigramme-moabi-2026-10-09.pdf", pdf));
+        mvc.perform(req(HttpMethod.GET, u, null)).andExpect(status().isUnauthorized());
+        mvc.perform(req(HttpMethod.GET, u, null).with(jeton(ID, "IAM_ACCOUNT_EDIT"))).andExpect(status().isForbidden());
+        for (String perm : List.of("IAM_ACCOUNT_READ", "PIL_ACTIVITY_OWN")) {
+            mvc
+                .perform(req(HttpMethod.GET, u + "?racine=DES&format=A4&orientation=portrait&membres=true", null).with(jeton(ID, perm)))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "application/pdf"))
+                .andExpect(header().string("Content-Disposition", "attachment; filename=\"organigramme-moabi-2026-10-09.pdf\""))
+                .andExpect(content().bytes(pdf));
+        }
+        verify(organigramme, org.mockito.Mockito.times(2)).produire(eq(new OrganigrammePdfService.Demande("DES", RenduPdf.Format.A4, false, true)));
+        mvc.perform(req(HttpMethod.GET, u + "?format=A5", null).with(jeton(ID, "IAM_ACCOUNT_READ"))).andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("ORG_PDF_PARAMETRE"));
+        when(organigramme.produire(eq(new OrganigrammePdfService.Demande(null, RenduPdf.Format.A3, true, false)))).thenThrow(IamException.indisponible("ORG_PDF_INDISPONIBLE", "Moteur indisponible"));
+        mvc.perform(req(HttpMethod.GET, u, null).with(jeton(ID, "IAM_ACCOUNT_READ"))).andExpect(status().isServiceUnavailable()).andExpect(jsonPath("$.code").value("ORG_PDF_INDISPONIBLE"));
+    }
+
+    @Test
     @DisplayName("Erreurs du contrat en problem+json : ORG_CYCLE 409, ORG_UNITE_INCONNUE 422")
     void erreurs() throws Exception {
-        when(service.modifierUnite(any(), eq("DES"), any(), anyBoolean())).thenThrow(IamException.conflit("ORG_CYCLE", "Cycle", Map.of()));
-        when(service.creerUnite(any(), eq(new Unite("POLE_X", "x", TypeUnite.POLE, "ANCIEN", true)))).thenThrow(IamException.nonTraitable("ORG_UNITE_INCONNUE", "Inconnue", Map.of()));
+        when(service.modifierUnite(any(), eq("DES"), any(), anyBoolean(), any())).thenThrow(IamException.conflit("ORG_CYCLE", "Cycle", Map.of()));
+        when(service.creerUnite(any(), eq(new Unite("POLE_X", "x", TypeUnite.POLE, "ANCIEN", true)), any())).thenThrow(IamException.nonTraitable("ORG_UNITE_INCONNUE", "Inconnue", Map.of()));
         mvc
             .perform(req(HttpMethod.PUT, "/api/v1/organisation/unites/DES", MODIFICATION).with(jeton(ID, "IAM_ACCOUNT_EDIT")))
             .andExpect(status().isConflict())

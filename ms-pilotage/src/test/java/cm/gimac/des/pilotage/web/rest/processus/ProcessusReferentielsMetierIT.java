@@ -74,7 +74,7 @@ class ProcessusReferentielsMetierIT extends AbstractProcessusIT {
                 .perform(json(post(BASE + "/" + v1 + "/publication").with(qui), Map.of("leverAvertissements", true, "motif", "Mise en service par l'administration")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.etat").value("PUBLIEE"))
-                .andExpect(jsonPath("$.droits.lancer").value(true))
+                .andExpect(jsonPath("$.droits.lancer").value(false))
                 .andExpect(jsonPath("$.droits.retirer").value(true))
                 .andExpect(jsonPath("$.droits.nouvelleVersion").value(true))
                 .andReturn()
@@ -92,15 +92,23 @@ class ProcessusReferentielsMetierIT extends AbstractProcessusIT {
         mvc.perform(json(post(BASE + "/" + v3 + "/publication").with(qui), Map.of("leverAvertissements", true, "motif", "Version 3"))).andExpect(status().isOk());
         mvc.perform(get(BASE + "/" + v1).with(qui)).andExpect(jsonPath("$.etat").value("RETIREE"));
 
-        // Lancement et administration d'une instance.
-        JsonNode i = lire(mvc.perform(json(post(BASE + "/" + v3 + "/instances").with(qui), lancement())).andExpect(status().isCreated()).andReturn());
-        String id = i.get("id").asText();
+        // D-100 : l'administration ne lance pas (public défini par le créateur : membres et responsables du pôle) ; un membre
+        // lance, l'administration pilote l'instance.
+        mvc
+            .perform(json(post(BASE + "/" + v3 + "/instances").with(qui), lancement()))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.code").value("PIL_PROCESSUS_NON_INITIATEUR"));
+        mvc.perform(get(BASE + "/lancables").with(qui)).andExpect(jsonPath("$.groupes.length()").value(0));
+        String id = lire(mvc.perform(json(post(BASE + "/" + v3 + "/instances").with(agent(TECHNICIEN_RESEAU)), lancement())).andExpect(status().isCreated()).andReturn())
+            .get("id")
+            .asText();
+        JsonNode i = lire(mvc.perform(get(INSTANCES + "/" + id).with(qui)).andExpect(status().isOk()).andReturn());
         assertThat(i.at("/droits/suspendre").asBoolean()).isTrue();
         assertThat(i.at("/droits/annuler").asBoolean()).isTrue();
         assertThat(etape(i, "DEMANDE").at("/moi/reaffecter").asBoolean()).isTrue();
         mvc.perform(get(INSTANCES).param("vue", "unite").with(qui)).andExpect(jsonPath("$.contenu[*].id", Matchers.hasItem(id)));
         mvc
-            .perform(json(post(INSTANCES + "/" + id + "/etapes/DEMANDE/reaffectation").with(qui), Map.of("personneId", TECHNICIEN_RESEAU, "motif", "Absence")))
+            .perform(json(post(INSTANCES + "/" + id + "/etapes/DEMANDE/reaffectation").with(qui), Map.of("personneId", INGENIEUR_RESEAU, "motif", "Absence")))
             .andExpect(status().isOk());
         mvc.perform(json(post(INSTANCES + "/" + id + "/suspension").with(qui), Map.of("motif", "Gel des changements"))).andExpect(status().isOk()).andExpect(jsonPath("$.etat").value("SUSPENDUE"));
         mvc.perform(json(post(INSTANCES + "/" + id + "/reprise").with(qui), Map.of())).andExpect(status().isOk()).andExpect(jsonPath("$.etat").value("EN_COURS"));
@@ -110,7 +118,7 @@ class ProcessusReferentielsMetierIT extends AbstractProcessusIT {
         assertThat(annulee.get("etat").asText()).isEqualTo("ANNULEE");
         Map<String, String> parAction = new HashMap<>();
         annulee.get("historique").forEach(h -> parAction.put(h.get("action").asText(), h.path("detail").asText()));
-        assertThat(parAction.get("LANCEE")).endsWith(MENTION);
+        assertThat(parAction.get("LANCEE")).doesNotContain("au titre de");
         assertThat(parAction.get("REAFFECTEE")).endsWith(MENTION);
         assertThat(parAction.get("SUSPENDUE")).isEqualTo("Gel des changements " + MENTION);
         assertThat(parAction.get("REPRISE")).isEqualTo(MENTION);
@@ -204,7 +212,7 @@ class ProcessusReferentielsMetierIT extends AbstractProcessusIT {
     }
 
     @Test
-    @DisplayName("Fonction attribuable : profil créé avec REF_METIER_ADMIN ; profil avec PROCESSUS_DEFINIR ou PROCESSUS_LANCER à TOUTES sans la permission")
+    @DisplayName("Fonction attribuable : profil créé avec REF_METIER_ADMIN ; profil avec PROCESSUS_DEFINIR ou PROCESSUS_LANCER à TOUTES sans la permission (D-100 : sans lancement)")
     void fonctionAttribuable() throws Exception {
         // Profil créé quelconque recevant REF_METIER_ADMIN par composition.
         organisation.attribuerProfils(AGENT_BIS, "ROLE_PROFIL_CREE_QUALITE");
@@ -233,10 +241,13 @@ class ProcessusReferentielsMetierIT extends AbstractProcessusIT {
             .andExpect(jsonPath("$.lancerToutesUnites").value(false))
             .andExpect(jsonPath("$.auTitreDe[0]").value("PROCESSUS_DEFINIR:TOUTES"));
 
-        // Matrice : PROCESSUS_LANCER à TOUTES : lancer et piloter partout, pas définir.
+        // Matrice : PROCESSUS_LANCER à TOUTES : lire et piloter partout, ni définir, ni lancer (D-100 : le public du processus
+        // fait seul foi).
         organisation.definirPouvoirs(AGENT_BIS, Map.of(Pouvoir.PROCESSUS_LANCER, Portee.TOUTES));
         mvc.perform(json(post(BASE).with(agent(AGENT_BIS)), definition("FLUX_LANCEUR"))).andExpect(status().isForbidden());
-        String instance = lire(mvc.perform(json(post(BASE + "/" + reseau + "/instances").with(agent(AGENT_BIS)), lancement())).andExpect(status().isCreated()).andReturn())
+        mvc.perform(json(post(BASE + "/" + reseau + "/instances").with(agent(AGENT_BIS)), lancement())).andExpect(status().isForbidden());
+        mvc.perform(get(BASE + "/" + reseau).with(agent(AGENT_BIS))).andExpect(status().isOk()).andExpect(jsonPath("$.droits.lancer").value(false));
+        String instance = lire(mvc.perform(json(post(BASE + "/" + reseau + "/instances").with(agent(TECHNICIEN_RESEAU)), lancement())).andExpect(status().isCreated()).andReturn())
             .get("id")
             .asText();
         mvc

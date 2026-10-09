@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams } from 'react-router'
-import { Banner, Button, CrudDialog, DataTable, EmptyState, NumberField, PageHeader, Select, Tabs, TextArea, TextField, type Column } from '@gimac/design-system'
+import { Banner, Button, CrudDialog, DataTable, EmptyState, Note, NumberField, PageHeader, Select, Tabs, TextArea, TextField, type Column } from '@gimac/design-system'
 import { ETATS_INSTANCE, ETATS_PROCESSUS, LIMITES_PROCESSUS, type EtatInstance, type EtatProcessus, type ResumeInstance, type ResumeProcessus, type VueInstances } from '../../../modele/processus'
 import { useCatalogueProcessus, useEcritureProcessus, useInstances, usePorteeProcessus, useProcessus } from '../../../hooks/processus'
 import type { Unite } from '../../../modele/pilotage'
@@ -10,7 +10,7 @@ import { usePouvoirs } from '../../../hooks/pouvoirs'
 import { useRetour } from '../parcours/communs'
 import { etatListe } from '../liaisons/communs'
 import { useDates, useLibelleUnite } from '../activite/communs'
-import { BadgeEtape, BadgeInstance, BadgeProcessus, useErreurProcessus } from './communs'
+import { BadgeEtape, BadgeInstance, BadgeProcessus, useErreurProcessus, useResumeInitiateurs } from './communs'
 import { DialogueLancement } from './DialogueLancement'
 
 // Processus de l'unité (D-87 §4, /des/processus) : catalogue par unité (mes unités d'abord), filtres d'unité, d'état et de
@@ -80,6 +80,8 @@ function DialogueNouveau({ unites, onFermer, onCree }: { unites: { code: string;
           <TextArea name="description" label={t('proc.champ.description')} rows={3} maxLength={LIMITES_PROCESSUS.description} value={v.description} onChange={champ('description')} />
         </div>
       </div>
+      {/* D-100 : le public par défaut est annoncé dès la création, avec l'invitation à le régler dans le modélisateur. */}
+      <Note>{t('dem.creation.note', { unite: unites.find((u) => u.code === v.unite)?.libelle.trim() || t('dem.creation.uniteChoisie') })}</Note>
     </CrudDialog>
   )
 }
@@ -96,6 +98,7 @@ function Catalogue({ onLancer }: { onLancer: (id: string) => void }) {
   const navigate = useNavigate()
   const dates = useDates()
   const libelleUnite = useLibelleUnite()
+  const resumePublic = useResumeInitiateurs()
   const organisation = useOrganisation()
   const [unite, setUnite] = useState('')
   const [etat, setEtat] = useState<EtatProcessus | ''>('')
@@ -112,6 +115,8 @@ function Catalogue({ onLancer }: { onLancer: (id: string) => void }) {
         <span className="gm-col" style={{ gap: 0 }}>
           <button type="button" className="gm-link" style={{ background: 'none', border: 0, padding: 0, font: 'inherit', textAlign: 'left', cursor: 'pointer' }} onClick={() => navigate(`/des/processus/${encodeURIComponent(p.id)}`)}>{p.libelle}</button>
           <span className="gm-mono gm-type-small">{p.code} · v{p.version}</span>
+          {/* D-100 : public du processus, défini par son créateur. */}
+          <span className="gm-type-small gm-field-help" data-testid={`public-${p.code}`}>{t('dem.resume.court', { public: resumePublic(p.initiateurs, p.unite) })}</span>
         </span>
       ),
     },
@@ -124,6 +129,8 @@ function Catalogue({ onLancer }: { onLancer: (id: string) => void }) {
         <span className="gm-row" style={{ gap: 'var(--gm-space-1)', justifyContent: 'flex-end' }}>
           <Button size="sm" variant="ghost" icon={p.droits.modifier ? 'pen-line' : 'eye'} aria-label={t(p.droits.modifier ? 'proc.modifierQui' : 'proc.ouvrirQui', { libelle: p.libelle, version: p.version })}
             onClick={() => navigate(`/des/processus/${encodeURIComponent(p.id)}`)}>{t(p.droits.modifier ? 'proc.modifier' : 'proc.ouvrir')}</Button>
+          {p.droits.modifier ? <Button size="sm" variant="ghost" icon="users" aria-label={t('dem.resume.reglerQui', { libelle: p.libelle })}
+            onClick={() => navigate(`/des/processus/${encodeURIComponent(p.id)}?reglage=public`)}>{t('dem.resume.public')}</Button> : null}
           {p.droits.lancer ? <Button size="sm" variant="secondary" icon="arrow-right" aria-label={t('proc.lancerQui', { libelle: p.libelle })} onClick={() => onLancer(p.id)}>{t('proc.lancer')}</Button> : null}
         </span>
       ),
@@ -235,7 +242,7 @@ export default function ProcessusPage() {
       <div role="tabpanel" aria-label={t(`proc.onglet.${onglet}`)}>
         {onglet === 'catalogue' ? <Catalogue onLancer={setLancer} /> : <Instances />}
       </div>
-      {nouveau ? <DialogueNouveau unites={definissables} onFermer={() => setNouveau(false)} onCree={(id) => navigate(`/des/processus/${encodeURIComponent(id)}`)} /> : null}
+      {nouveau ? <DialogueNouveau unites={definissables} onFermer={() => setNouveau(false)} onCree={(id) => navigate(`/des/processus/${encodeURIComponent(id)}?cree=1`)} /> : null}
       {lancer ? <LancementDepuisCatalogue id={lancer} onFermer={() => setLancer(null)} /> : null}
     </div>
   )

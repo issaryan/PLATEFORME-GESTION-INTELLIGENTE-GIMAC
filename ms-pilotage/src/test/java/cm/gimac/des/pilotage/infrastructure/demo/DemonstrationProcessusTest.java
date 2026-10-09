@@ -31,7 +31,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 class DemonstrationProcessusTest {
 
     @Test
-    @DisplayName("Publie OUVERTURE_FLUX_RESEAU et les deux demandes ouvertes à tout le GIMAC (D-98) s'ils sont absents, sinon ne fait rien")
+    @DisplayName("Publie OUVERTURE_FLUX_RESEAU, les deux demandes ouvertes à tout le GIMAC (D-98) et les deux processus au public restreint (D-100) s'ils sont absents, sinon ne fait rien")
     void charge() {
         ProcessusRepository processus = mock(ProcessusRepository.class);
         HistoriqueProcessusRepository historique = mock(HistoriqueProcessusRepository.class);
@@ -41,7 +41,7 @@ class DemonstrationProcessusTest {
         when(processus.existsByCode(anyString())).thenReturn(false);
         d.run(null);
         ArgumentCaptor<Processus> p = ArgumentCaptor.forClass(Processus.class);
-        verify(processus, times(3)).save(p.capture());
+        verify(processus, times(5)).save(p.capture());
         Map<String, Processus> parCode = p.getAllValues().stream().collect(Collectors.toMap(Processus::getCode, x -> x));
         Processus flux = parCode.get(DemonstrationProcessus.CODE);
         assertThat(flux.getEtat()).isEqualTo(EtatProcessus.PUBLIEE);
@@ -60,9 +60,20 @@ class DemonstrationProcessusTest {
         assertThat(ip.getEtapes()).extracting(e -> e.code()).containsExactly("ANALYSE", "VALIDATION", "EXECUTION", "CLOTURE");
         assertThat(ControleProcessus.structure(ip.getEtapes())).isEmpty();
         assertThat(ControleProcessus.structure(conge.getEtapes())).isEmpty();
+        // D-100 : publics restreints par le créateur (personnes désignées, profils).
+        Processus vm = parCode.get(DemonstrationProcessus.CODE_VM);
+        assertThat(vm.getUnite()).isEqualTo("POLE_SYSTEME");
+        assertThat(vm.getInitiateurs().regles()).containsExactly(RegleInitiateur.PERSONNES);
+        assertThat(vm.getInitiateurs().personnes()).hasSize(2);
+        assertThat(ControleProcessus.structure(vm.getEtapes())).isEmpty();
+        Processus maj = parCode.get(DemonstrationProcessus.CODE_MISE_A_JOUR);
+        assertThat(maj.getUnite()).isEqualTo("CONFORMITE");
+        assertThat(maj.getInitiateurs().regles()).containsExactly(RegleInitiateur.PROFILS);
+        assertThat(maj.getInitiateurs().profils()).containsExactly("ROLE_CONFORMITE", "ROLE_RSSI");
+        assertThat(maj.getEtat()).isEqualTo(EtatProcessus.PUBLIEE);
         when(processus.existsByCode(anyString())).thenReturn(true);
         d.run(null);
-        verify(processus, times(3)).save(any());
+        verify(processus, times(5)).save(any());
         verify(historique, never()).delete(any());
     }
 }

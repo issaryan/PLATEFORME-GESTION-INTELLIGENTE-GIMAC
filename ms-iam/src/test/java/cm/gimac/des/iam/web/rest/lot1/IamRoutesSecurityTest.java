@@ -169,7 +169,7 @@ class IamRoutesSecurityTest {
         when(comptes.sessions(ID)).thenReturn(List.of(session));
         when(comptes.creer(any(), any(), anyBoolean(), anyBoolean())).thenReturn(new AdministrationComptesService.Creation(compte, true, null));
         when(comptes.modifier(any(), eq(ID), any())).thenReturn(compte);
-        when(organisation.rattacher(any(), eq(ID), any(), any())).thenReturn(compte);
+        when(organisation.rattacher(any(), eq(ID), any(), any(), any(), any())).thenReturn(compte);
         when(comptes.definirProfils(any(), eq(ID), any(), anyString())).thenReturn(compte);
         when(comptes.definirActif(any(), eq(ID), anyBoolean(), anyString())).thenReturn(compte);
         when(comptes.exigerActions(any(), eq(ID), any(), anyBoolean(), anyString())).thenReturn(compte);

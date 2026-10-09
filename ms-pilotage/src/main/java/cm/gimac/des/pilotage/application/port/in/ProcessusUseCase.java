@@ -39,10 +39,18 @@ public interface ProcessusUseCase {
     ) {}
 
     /**
-     * Initiateurs (D-98 §1) : règles cumulables MEMBRES_UNITE, TOUT_LE_GIMAC, UNITES, PROFILS, PERMISSIONS ;
+     * Public du processus, qui peut le voir et le lancer (D-98 §1, D-100) : règles cumulables MEMBRES_UNITE, TOUT_LE_GIMAC,
+     * UNITES, PROFILS, PERMISSIONS, PERSONNES ({@code personnes} : identifiants de comptes, 50 au plus) ;
      * {@code initiateurIntervenant} (D-99) : l'initiateur peut intervenir sur les étapes de sa demande (absent : non).
      */
-    record InitiateursSaisie(List<String> regles, List<String> unites, List<String> profils, List<String> permissions, Boolean initiateurIntervenant) {}
+    record InitiateursSaisie(
+        List<String> regles,
+        List<String> unites,
+        List<String> profils,
+        List<String> permissions,
+        List<String> personnes,
+        Boolean initiateurIntervenant
+    ) {}
 
     /** Champ du formulaire de lancement (D-98 §2). */
     record ChampFormulaireSaisie(String code, String libelle, String type, List<String> choix, Boolean obligatoire, String aide, List<String> typesPieces) {}
@@ -78,7 +86,8 @@ public interface ProcessusUseCase {
     /**
      * Portée du catalogue (D-92 §3) : {@code portee} TOUS_DOMAINES (toutes les unités, actives ou non) ou MES_UNITES ;
      * {@code definirToutesUnites} : création et administration des définitions dans n'importe quelle unité ;
-     * {@code lancerToutesUnites} : lancement et pilotage des instances dans n'importe quelle unité ; {@code auTitreDe} :
+     * {@code lancerToutesUnites} : lecture et pilotage des instances dans n'importe quelle unité (D-100 : le lancement relève
+     * du seul public de chaque processus, ce drapeau ne l'ouvre plus) ; {@code auTitreDe} :
      * droits qui ouvrent ces portées (REF_METIER_ADMIN, PROCESSUS_DEFINIR:TOUTES,
      * PROCESSUS_LANCER:TOUTES) ; {@code unites} : unités lisibles (MES_UNITES seulement, vide sinon) ;
      * {@code unitesDefinissables} : unités où créer (si definirToutesUnites est faux).
@@ -115,9 +124,9 @@ public interface ProcessusUseCase {
     record GroupeLancables(String unite, List<ProcessusLu> processus) {}
 
     /**
-     * Catalogue « Lancer une demande » (D-98 §3) : versions publiées que l'appelant peut lancer (initiateurs, ou
-     * PROCESSUS_LANCER couvrant l'unité, REF_METIER_ADMIN), groupées par unité propriétaire ; recherche {@code q} sur le
-     * code, le libellé et la catégorie.
+     * Catalogue « Lancer une demande » (D-98 §3, D-100) : versions publiées dont l'appelant fait partie du public défini
+     * par le créateur (règles d'initiateurs seules, sans passe-droit REF_METIER_ADMIN ni PROCESSUS_LANCER), groupées par
+     * unité propriétaire ; recherche {@code q} sur le code, le libellé et la catégorie.
      */
     List<GroupeLancables> lancables(Appelant appelant, String q);
 

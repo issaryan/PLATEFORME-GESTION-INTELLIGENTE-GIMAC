@@ -277,6 +277,12 @@ gimac:
   adapters:
     annuaire: stub
     courriel: stub
+    # Organigramme en PDF (D-102) : real, route interne de MS-DOCUMENT (moteur Gotenberg) ; stub, 503 ORG_PDF_INDISPONIBLE.
+    rendu-pdf: stub
+  # Services joints par les adaptateurs réels (surchargés par l'environnement).
+  services:
+    document:
+      url: ${GIMAC_SERVICES_DOCUMENT_URL:http://localhost:8083}
   kafka:
     rebut:
       actif: true

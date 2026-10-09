@@ -116,3 +116,8 @@ gimac:
   adapters:
     annuaire: real
     courriel: smtp
+    # Organigramme en PDF (D-102, docs/lot1/organigramme.md §4) : mise en page par MS-DOCUMENT (moteur Gotenberg).
+    rendu-pdf: real
+  services:
+    document:
+      url: ${GIMAC_SERVICES_DOCUMENT_URL:http://document:8083}

@@ -20,6 +20,10 @@ Chaque définition publiée porte ses **initiateurs**, en données (aucun nom de
 Plusieurs règles se cumulent. Le service propriétaire (unité destinataire) reste celui qui exécute les étapes ;
 l'initiateur peut appartenir à un autre service.
 
+D-100 (09/10/2026, §10) : ces règles forment le **public** du processus, défini par son créateur ; elles font seules foi
+pour voir et lancer (aucun passe-droit d'administration), `MEMBRES_UNITE` couvre aussi les responsables de l'unité et une
+règle `PERSONNES` désigne des comptes nommément.
+
 ## 2. Ce que l'initiateur fournit au départ
 
 La définition porte un **formulaire de lancement** : champs typés (texte, nombre, date, période, liste, case,
@@ -81,8 +85,8 @@ décrits ici.
 }
 ```
 
-- Lancer = `REF_METIER_ADMIN` ou `PROCESSUS_LANCER` couvrant l'unité (pouvoirs de pilotage, inchangés), sinon l'une des
-  règles : `MEMBRES_UNITE` (membre de l'unité propriétaire ou d'une sous-unité), `TOUT_LE_GIMAC` (compte interne actif),
+- (Remplacé par D-100, §10 : plus de passe-droit, `MEMBRES_UNITE` avec les responsables, règle `PERSONNES`.) Lancer =
+  `REF_METIER_ADMIN` ou `PROCESSUS_LANCER` couvrant l'unité (pouvoirs de pilotage, inchangés), sinon l'une des règles : `MEMBRES_UNITE` (membre de l'unité propriétaire ou d'une sous-unité), `TOUT_LE_GIMAC` (compte interne actif),
   `UNITES`, `PROFILS`, `PERMISSIONS`. Aucun nom de profil dans le code : les profils et permissions sont des données de la
   définition. Refus : 403 `PIL_PROCESSUS_NON_INITIATEUR`, message citant les règles, `details` = `{ regles, unites, profils,
   permissions }`.
@@ -549,3 +553,124 @@ La prise et l'attribution par la voie des tâches sont contrôlées par un évé
 les porteurs et documents), ITs du moteur adaptés (`initiateurIntervenant` pour les scénarios où le lanceur agit,
 `aucunPorteur` : chef initiateur, son responsable désigne) ; OPA `routes_processus` ; interface
 `services/simule/quotidien.test.ts`, `pages/des/processus/Processus.test.tsx` (« recette du travail quotidien »).
+
+## 10. Public d'un processus : qui peut le voir et le lancer (D-100, 09/10/2026)
+
+Demande de KOAGNE ISSA RYAN (09/10/2026) : sur « Lancer une demande », il voyait des processus qui ne le concernaient pas
+(« Mise à jour de la plateforme » de la conformité, « Création d'une machine virtuelle » du pôle système). « Il faudrait
+que la personne qui crée le processus interne puisse définir à qui il sera visible. […] on doit définir quelles sont les
+personnes qui peuvent voir et déclencher les processus (la personne qui les crée). »
+
+Cause : `AccesProcessus.lance(Appelant, Processus)` accordait le lancement, donc la présence dans
+`GET /processus/lancables`, à `REF_METIER_ADMIN` et à `PROCESSUS_LANCER` (portée `TOUTES` ou couvrant l'unité), quelles que
+soient les règles du créateur : un administrateur voyait tout.
+
+### 10.1 Règle : le public défini par le créateur fait seul foi
+
+- Les règles d'initiateurs de la définition (§1, §7.1) forment le **public** du processus. Elles décident seules de :
+  la liste « Lancer une demande » (`GET /processus/lancables`), le lancement (`POST /processus/{id}/instances`), la
+  lecture d'une version publiée par qui ne lit pas l'unité (`GET /processus/{id}`) et `droits.lancer` (catalogue,
+  définition, liste des lançables).
+- **Priorité stricte** : `REF_METIER_ADMIN`, `PROCESSUS_LANCER` de portée `TOUTES` et `PROCESSUS_LANCER` couvrant l'unité
+  **n'ouvrent plus le lancement**. Ils gardent ce qu'ils donnaient d'autre : la définition (`PROCESSUS_DEFINIR`,
+  `REF_METIER_ADMIN`), la lecture des définitions et des instances dans le modélisateur et le catalogue « Processus de
+  l'unité » (y compris un processus réservé, avec `droits.lancer` faux), et le pilotage des instances (réaffecter,
+  suspendre, reprendre, annuler). `GET /processus/portee` est inchangé ; `lancerToutesUnites` y signifie désormais lecture
+  et pilotage des instances de toutes les unités.
+- `AccesProcessus.lance(Appelant, String unite)` reste le rattachement à l'unité au titre du lancement (membre, pouvoir
+  `PROCESSUS_LANCER` couvrant l'unité, `REF_METIER_ADMIN`), utilisé **seulement** pour la lecture des définitions et des
+  instances de l'unité ; il n'ouvre aucun lancement.
+- Journal : un lancement relève toujours du public, jamais d'un passe-droit ; sa mention « (au titre de …) » est vide. Les
+  mentions de définition et de pilotage sont inchangées.
+
+### 10.2 Règles du public
+
+| Règle | Satisfaite si l'appelant… |
+|---|---|
+| `MEMBRES_UNITE` (défaut) | est membre de l'unité propriétaire ou d'une sous-unité, **ou** en est responsable : chef qui dirige l'unité ou l'une de ses unités parentes (`Pouvoirs.dirige(unite)`, sous-unités comprises) |
+| `TOUT_LE_GIMAC` | est un compte interne actif |
+| `UNITES` | est membre de l'une des unités désignées (sous-unités comprises) |
+| `PROFILS` | est un compte interne actif portant l'un des profils désignés |
+| `PERMISSIONS` | porte dans son jeton l'une des permissions désignées |
+| `PERSONNES` (nouvelle) | figure parmi les comptes désignés nommément **et** est un compte interne actif |
+
+Les règles se cumulent (l'une suffit). Le chef d'une unité garde ainsi l'accès aux processus internes de son unité par
+`MEMBRES_UNITE`, mais pas à un processus de son unité réservé à des personnes ou à des profils qu'il ne porte pas.
+
+### 10.3 Règle `PERSONNES` (MS-PILOTAGE, JSONB)
+
+```jsonc
+"initiateurs": {
+  "regles": ["PERSONNES", …],
+  "personnes": ["<identifiant de compte>", …],   // D-100 : 50 au plus, sans doublon
+  …
+}
+```
+
+- Saisie : 400 `PIL_REQUETE_INVALIDE` ; `details.champ` = `initiateurs.personnes[i]` (identifiant vide ou de plus de 80
+  caractères, comme les autres identifiants de comptes de MS-PILOTAGE) ou `initiateurs.personnes` (plus de 50). Les
+  doublons sont retirés.
+- Contrôle de publication, anomalies bloquantes (`etape` nulle, `element` = `initiateurs.personnes`) :
+  `INITIATEURS_INCOMPLETS` (règle `PERSONNES` sans personne) et `PERSONNE_INCONNUE` (compte inconnu de l'annuaire, externe
+  ou inactif ; le message le nomme).
+- Aucune migration : le champ est dans le JSON de `processus.initiateurs`. Une définition antérieure (sans `personnes`) se
+  lit avec une liste vide et garde son comportement (règles `MEMBRES_UNITE` et autres) ; une nouvelle version reprend le
+  public.
+
+### 10.4 Vues et refus
+
+- Vue de la définition et résumé (`GET /processus`, `/processus/{id}`, `/processus/lancables`) : `initiateurs` porte en plus
+  `personnes` (identifiants) et `personnesDetail: [{ id, nomAffiche }]` (nom absent si l'annuaire ne le connaît pas), pour
+  que l'interface nomme les personnes désignées.
+- Refus d'un lancement : 403 `PIL_PROCESSUS_NON_INITIATEUR`, message « Ce processus ne peut être lancé que par … » (règles
+  en clair : « les membres et les responsables de l'unité X », « la personne désignée par son créateur », « les N personnes
+  désignées par son créateur »…), sans plus aucune mention de `PROCESSUS_LANCER` ; `details` =
+  `{ regles, unites, profils, permissions, personnes }`. L'interface affiche « Ce processus est réservé au public choisi par
+  son créateur ; vous n'en faites pas partie. »
+- Aucune route ni décision OPA ne change (`routes_processus` couvrait déjà `lancables` et le lancement) ; le contrôle de
+  contrat des routes est sans écart.
+
+### 10.5 Interface (application interne)
+
+- Modélisateur : le réglage s'intitule **« Qui peut voir et lancer ce processus »** (bouton « Qui peut voir et lancer »),
+  avec l'aide : seules ces personnes voient le processus dans « Lancer une demande » et peuvent le lancer, aucun droit
+  d'administration ne s'y ajoute. La règle par défaut s'intitule « Membres et responsables de l'unité ». La règle
+  « Personnes désignées » ouvre l'annuaire interne déjà employé par la messagerie et l'agenda (recherche par nom ou
+  fonction, choix multiple, puces retirables) ; en lecture (version publiée), la liste des personnes nommées.
+- Résumé **« Visible et lançable par … »** : dans le détail du processus (avec un bouton « Régler » ou « Voir » qui ouvre
+  le réglage) et sous chaque ligne du catalogue « Processus de l'unité » (bouton « Public » vers le réglage pour un
+  brouillon). Unités et profils y sont nommés par leur libellé, les personnes par leur nom (trois, puis « et N autres »).
+  Lien direct : `/des/processus/{id}?reglage=public`.
+- Création : la fenêtre « Nouveau processus » annonce le public par défaut (membres et responsables de l'unité choisie) ;
+  le modélisateur s'ouvre ensuite (`?cree=1`) sur « Processus créé : par défaut, il est visible et lançable par … »
+  avec l'invitation « Régler qui peut voir et lancer ».
+- Profils proposés (règle `PROFILS` et intervenants) : tous les profils internes du catalogue réel du domaine
+  (`domaine-gimac.json`, écrit par `generer-realm-gimac.py`), sans les profils externes ; l'organisation simulée de
+  MS-PILOTAGE connaît aussi `ROLE_SUPER_ADMIN` et `ROLE_ADMIN_SYSTEME`.
+- « Lancer une demande » : une carte réservée à des personnes désignées porte « Ouvert à des personnes désignées ».
+- FR, EN, ES.
+
+### 10.6 Démonstration
+
+MS-PILOTAGE (profil dev) et services simulés, mêmes données : « Création d'une machine virtuelle »
+(`CREATION_MACHINE_VIRTUELLE`, pôle système, règle `PERSONNES` : deux personnes désignées, l'ingénieur réseau et l'analyste
+Normes et Agréments dans la démonstration de l'interface) et « Mise à jour de la plateforme » (`MISE_A_JOUR_PLATEFORME`,
+conformité, règle `PROFILS` : Conformité et Sécurité des SI). Le super administrateur et l'ingénieur d'homologation
+(`REF_METIER_ADMIN`) ne les voient plus dans « Lancer une demande » ; ils les lisent toujours dans « Processus de
+l'unité ». Les services simulés appliquent la même règle stricte, la même règle `PERSONNES`, les mêmes anomalies et les
+mêmes textes de refus.
+
+### 10.7 Tests
+
+- MS-PILOTAGE : `AccesProcessusTest` (`publicStrict` : administrateur et `PROCESSUS_LANCER` à `TOUTES` sans lancement,
+  pilotage gardé, personne désignée active ou inactive, profils, messages ; `membresEtResponsables` : chef du pôle, chef du
+  DES par une unité parente, chef d'une unité sans en être membre) ; `DemonstrationProcessusTest` (cinq processus) ;
+  `ProcessusPublicIT` (administrateur sans le processus réservé dans `lancables` ni lancement mais avec lecture et
+  pilotage ; personne désignée d'un autre service qui le voit, le lit et le lance ; profils ; `MEMBRES_UNITE` et chef du
+  DES ; définition antérieure sans `personnes` ; saisie 400 et anomalies `INITIATEURS_INCOMPLETS`, `PERSONNE_INCONNUE`) ;
+  `ProcessusLancementIT` et `ProcessusReferentielsMetierIT` adaptés (le chef, `REF_METIER_ADMIN` et `PROCESSUS_LANCER` à
+  `TOUTES` ne lancent plus hors du public ; ils pilotent l'instance lancée par un membre).
+- Interface : `pages/des/processus/Public.test.tsx` (services simulés, « Lancer une demande », réglage, résumé, création,
+  catalogue), `Demandes.test.tsx` et `services/simule/*.test.ts` adaptés ; scénario de bout en bout
+  `e2e/specs/public-processus.spec.ts` (l'administrateur ne voit pas « Création d'une machine virtuelle », la personne
+  désignée la voit et la lance), captures claires et sombres dans `e2e/captures/d100/`.

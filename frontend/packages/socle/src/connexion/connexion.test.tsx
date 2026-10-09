@@ -66,7 +66,7 @@ describe('PageConnexion : identifiant, mot de passe, puis code', () => {
     expect((screen.getByLabelText(/^Mot de passe/) as HTMLInputElement).type).toBe('password')
     expect(screen.getByRole('link', { name: 'Mot de passe oublié ?' }).getAttribute('href')).toBe('/connexion/mot-de-passe-oublie')
     expect(document.body.textContent).not.toMatch(/fournisseur d'identité|oauth2/i)
-    expect(document.title).toContain('Connexion')
+    expect(document.title).toBe('Moabi')
   })
 
   it('champs obligatoires signalés sans appel', async () => {
@@ -191,7 +191,7 @@ describe('PageConnexion : identifiant, mot de passe, puis code', () => {
 
   it('écran Moabi (D-67) : carte, nom guilloché ou en contour selon le thème, langue en menu, heures en pied', () => {
     monter()
-    expect(document.title).toBe('Moabi · Connexion')
+    expect(document.title).toBe('Moabi')
     expect(screen.getByRole('heading', { level: 1, name: 'Connexion' })).toBeTruthy()
     expect(screen.getByRole('img', { name: 'Moabi' }).getAttribute('data-style')).toBe('guilloche')
     expect(screen.getByText('GIMAC · Afrique centrale')).toBeTruthy()

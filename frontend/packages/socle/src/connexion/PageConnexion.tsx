@@ -338,8 +338,9 @@ export function PageConnexion({ couche, destination, service, erreur }: PageConn
     return () => window.clearInterval(id)
   }, [])
   useEffect(() => {
-    document.title = `${NOM_PLATEFORME} · ${t('connexion.titre')}`
-  }, [t])
+    // D-101 : l'onglet porte simplement le nom du logiciel.
+    document.title = NOM_PLATEFORME
+  }, [])
   const vue = pathname.endsWith('/mot-de-passe-oublie') ? 'oubli' : pathname.endsWith('/nouveau-mot-de-passe') ? 'nouveau' : 'connexion'
   const apres = retourSur(parametres.get('retour')) ?? destination ?? `/${couche}/tableau-de-bord`
   const sombre = p.theme === 'dark'

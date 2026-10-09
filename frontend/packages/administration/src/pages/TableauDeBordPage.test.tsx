@@ -139,6 +139,8 @@ describe('Tableau de bord de la console', () => {
       ecouteur!.onImpulsion({ sequence: 9, instantane: instantane(0, false), nombreAlertes: -1 })
     })
     expect(await screen.findByText('Opérationnelle', { selector: '.gm-stat-value' })).toBeTruthy()
+    // Valeur en mots : taille réduite et césure pour rester dans la carte (signalement du 09/10/2026).
+    expect(screen.getByText('Opérationnelle', { selector: '.gm-stat-value' }).classList.contains('gm-stat-value-texte')).toBe(true)
     expect(screen.getAllByText('Alertmanager injoignable').length).toBeGreaterThan(0)
     expect(screen.queryByText(/Le flux temps réel est interrompu/)).toBeNull()
   })

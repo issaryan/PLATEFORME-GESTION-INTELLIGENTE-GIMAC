@@ -108,7 +108,7 @@ services:
       - no-new-privileges:true
 
   # Aperçu des documents bureautiques (D-83) : moteur de conversion déclaré dans docker-compose.gimac.yml (réseau
-  # interne « conversion », aucun port publié, 1 Go de mémoire), relancé après un arrêt ou un redémarrage de l'hôte.
+  # interne « conversion », aucun port publié, 1,5 Go de mémoire), relancé après un arrêt ou un redémarrage de l'hôte.
   conversion-documents:
     restart: unless-stopped
 

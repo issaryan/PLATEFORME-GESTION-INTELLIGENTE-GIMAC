@@ -73,5 +73,20 @@ export type FiltreJournal = { page: number; taille: number; compte?: string }
 
 export type { ActionRequise, Compte }
 
-/** PUT …/comptes/{id}/rattachement (D-76, docs/lot1/mon-activite.md §1.2) : null retire l'unité ou le responsable. */
-export type DemandeRattachement = { unite: string | null; responsableId: string | null }
+/**
+ * PUT …/comptes/{id}/rattachement (D-76, docs/lot1/mon-activite.md §1.2) : null retire l'unité ou le responsable. Motif
+ * facultatif, porté au journal (D-102).
+ */
+export type DemandeRattachement = { unite: string | null; responsableId: string | null; motif?: string }
+
+/**
+ * POST …/organisation/unites/{code}/affectations (D-102, docs/lot1/organigramme.md §2) : 1 à 50 comptes internes actifs,
+ * motif de 3 à 500 caractères ; responsableId absent : n+1 résolu (chef de l'unité ou de la plus proche unité parente),
+ * null : aucun n+1.
+ */
+export type DemandeAffectation = { comptes: string[]; responsableId?: string | null; motif: string }
+export type EtatRattachement = { unite: string | null; responsableId: string | null }
+/** Effet d'une affectation ou d'un retrait sur une personne. */
+export type ResultatAffectation = { id: string; nomAffiche: string; avant: EtatRattachement; apres: EtatRattachement }
+/** GET …/organisation/organigramme.pdf (D-102 §4) : branche (absente : toute l'organisation), papier, annexe des membres. */
+export type OptionsOrganigrammePdf = { racine?: string | null; format: 'A4' | 'A3'; orientation: 'paysage' | 'portrait'; membres: boolean }

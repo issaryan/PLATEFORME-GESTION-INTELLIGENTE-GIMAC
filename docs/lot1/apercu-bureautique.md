@@ -11,8 +11,10 @@ aucune feuille de style injectée dans la page (la CSP `style-src 'self'` reste 
 visionneuse à maintenir, et les mêmes formats couverts partout (messagerie, rapports, documents).
 
 - **Moteur** : Gotenberg 8 (LibreOffice sans interface) dans le conteneur `conversion-documents`, réseau
-  interne seulement, aucun port publié, aucun accès sortant, Chromium et webhooks désactivés, macros jamais
-  exécutées, mémoire bornée (1 Go), délai de conversion 60 s.
+  interne seulement, aucun port publié, aucun accès sortant, webhooks désactivés, macros jamais exécutées, mémoire
+  bornée (1,5 Go depuis D-102), délai de conversion 60 s. Chromium, désactivé pour D-83, est ouvert depuis D-102 pour
+  l'organigramme en PDF seulement (JavaScript désactivé, adresses limitées aux fichiers temporaires du moteur,
+  `docs/lot1/organigramme.md` §4.3) ; l'aperçu bureautique n'emploie toujours que LibreOffice.
 - **Service** : MS-DOCUMENT, adaptateur `ConvertisseurApercu` (port hexagonal), seul client de Gotenberg.
 - **Formats** : `docx`, `doc`, `odt`, `rtf`, `pptx`, `ppt`, `odp`, `xlsx`, `xls`, `ods`. Source de 20 Mo au plus.
 - **Cache** : PDF converti gardé par empreinte SHA-256 de la source (24 h, 500 Mo au plus) ; un même fichier
@@ -55,7 +57,9 @@ du type (Word, PowerPoint, Excel) précède le titre. En cas d'erreur : message 
   sortant (résolution de noms extérieurs impossible, vérifiée). Kubernetes : `infra/kubernetes-gimac/conversion-documents.yaml`
   (Deployment et Service `ClusterIP`, segment `conversion`), politiques `conversion-documents` (entrée depuis les
   pods `app: document` sur 3000, aucune sortie hors DNS) et `sortie-document-conversion`.
-- Options : `--chromium-disable-routes`, `--pdfengines-disable-routes`, `--webhook-disable`,
+- Options : `--pdfengines-disable-routes`, `--webhook-disable` (D-102 : `--chromium-disable-routes` remplacé par
+  `--chromium-disable-javascript`, `--chromium-allow-list=^file:///tmp/.*`, `--chromium-deny-private-ips`,
+  `--chromium-deny-public-ips`, `--chromium-max-queue-size=10`),
   `--api-disable-download-from` (aucune lecture d'URL), `--prometheus-disable-collect`, `--api-timeout=60s`,
   `--api-body-limit=21MB`, `--libreoffice-auto-start` (premier aperçu sans attente du démarrage),
   `--libreoffice-max-queue-size=20` (au-delà, 429 du moteur, rendu en 503). Les macros ne sont jamais exécutées

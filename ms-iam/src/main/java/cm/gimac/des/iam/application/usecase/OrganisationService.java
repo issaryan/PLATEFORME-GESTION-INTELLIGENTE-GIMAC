@@ -97,6 +97,11 @@ public class OrganisationService {
     }
 
     public Unite creerUnite(Acteur acteur, Unite demande) {
+        return creerUnite(acteur, demande, null);
+    }
+
+    /** Création avec un motif facultatif, porté au journal (D-102 : motif des gestes de l'organigramme). */
+    public Unite creerUnite(Acteur acteur, Unite demande, String motif) {
         Unite u = ReglesOrganisation.normaliser(demande);
         ReglesOrganisation.verifierResponsableUnite(u.responsableId(), annuaire::lire);
         Map<String, Unite> parCode = parCode();
@@ -105,7 +110,7 @@ public class OrganisationService {
         }
         ReglesOrganisation.verifierPlace(u, parCode);
         Unite enregistree = catalogue.enregistrer(u);
-        journal.configuration(acteur, OBJET_UNITE, null, champs("CREATION", enregistree));
+        journal.configuration(acteur, OBJET_UNITE, vide(motif), champs("CREATION", enregistree));
         return enregistree;
     }
 
@@ -119,6 +124,11 @@ public class OrganisationService {
      * ne le mentionne pas). Un responsable nouveau doit être un compte interne actif (D-81 §2).
      */
     public Unite modifierUnite(Acteur acteur, String code, Unite demande, boolean conserverResponsable) {
+        return modifierUnite(acteur, code, demande, conserverResponsable, null);
+    }
+
+    /** Modification avec un motif facultatif, porté au journal (D-102 : déplacement, chef, désactivation). */
+    public Unite modifierUnite(Acteur acteur, String code, Unite demande, boolean conserverResponsable, String motif) {
         Map<String, Unite> parCode = parCode();
         Unite actuelle = parCode.get(code);
         if (actuelle == null) {
@@ -131,7 +141,7 @@ public class OrganisationService {
         }
         ReglesOrganisation.verifierPlace(u, parCode);
         Unite enregistree = catalogue.enregistrer(u);
-        journal.configuration(acteur, OBJET_UNITE, null, champs(u.active() ? "MODIFICATION" : "DESACTIVATION", enregistree));
+        journal.configuration(acteur, OBJET_UNITE, vide(motif), champs(u.active() ? "MODIFICATION" : "DESACTIVATION", enregistree));
         return enregistree;
     }
 

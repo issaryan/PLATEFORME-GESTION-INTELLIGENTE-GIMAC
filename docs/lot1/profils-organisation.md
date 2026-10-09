@@ -63,8 +63,9 @@ Les mêmes gestes restent possibles par les formulaires existants. Équivalent l
   une unité ne se dépose ni sur elle-même ni sur une sous-unité. La vue **Liste** offre les mêmes gestes au
   clavier (Déplacer, Désigner le chef, n+1, Unité) par des modales de choix ; une région annoncée (`aria-live`)
   décrit la saisie et la cible. Les comptes sont lus par pages de 100.
-- *Écarts assumés* : les routes d'organisation actuelles ne reçoivent pas de motif ; la modale de
-  confirmation le demande (motif de 10 caractères au moins) et l'aide le dit, mais il n'est pas transmis.
+- *Écarts assumés* : ~~les routes d'organisation actuelles ne reçoivent pas de motif~~ ; levé par D-102
+  (`docs/lot1/organigramme.md` §3) : le motif de la modale de confirmation (10 caractères au moins) est transmis et
+  journalisé. D-102 enrichit aussi l'écran (organigramme descendant, affectation de personnes, PDF).
   Rattachement : `PUT /comptes/{id}/rattachement` reçoit toujours `unite` et `responsableId` (l'autre valeur
   reste inchangée) ; déplacement et chef d'unité : `PUT /organisation/unites/{code}` avec l'unité entière.
   Le panneau « Pouvoirs » calcule la portée effective (la plus large des profils du compte) et les personnes

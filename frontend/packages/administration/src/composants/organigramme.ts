@@ -92,3 +92,53 @@ export function pouvoirsEffectifs(compte: Compte, comptes: Compte[], unites: Uni
   const actions = actionsDe(compte.profils, matrice)
   return ACTIONS_POUVOIR.map((action) => ({ action, portee: actions[action], personnes: couverts(compte.id, actions[action], comptes, unites) }))
 }
+
+// ------------------------------------------------------------------ D-102 (docs/lot1/organigramme.md)
+
+/** Texte comparable : minuscules, sans accents ni espaces superflus (recherche dans l'organigramme et l'annuaire). */
+export function normaliser(s: string | null | undefined): string {
+  return (s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim()
+}
+
+/** Unités parentes d'une unité, de la plus proche à la plus haute (sans cycle). */
+export function ancetres(unites: Unite[], code: string): string[] {
+  const l: string[] = []
+  for (let u = unites.find((x) => x.code === code); u?.parent && !l.includes(u.parent); u = unites.find((x) => x.code === u!.parent)) l.push(u.parent)
+  return l
+}
+
+/**
+ * n+1 proposé à une personne affectée à une unité (ReglesOrganisation.responsableParDefaut de MS-IAM) : chef de l'unité ;
+ * si l'unité n'a pas de chef ou si la personne est ce chef, chef de l'unité parente la plus proche ; null au sommet.
+ */
+export function responsableParDefaut(unites: Unite[], compte: string | null, code: string): { id: string; unite: Unite } | null {
+  const vus = new Set<string>()
+  for (let u = unites.find((x) => x.code === code); u && !vus.has(u.code); u = unites.find((x) => x.code === u!.parent)) {
+    vus.add(u.code)
+    if (u.responsableId && u.responsableId !== compte) return { id: u.responsableId, unite: u }
+  }
+  return null
+}
+
+export type ResultatRecherche = { type: 'unite'; unite: Unite } | { type: 'personne'; compte: Compte }
+
+/** Unités (libellé, code) puis personnes (nom, identifiant, fonction) qui contiennent le texte cherché ; 8 au plus. */
+export function rechercher(unites: Unite[], comptes: Compte[], q: string, max = 8): ResultatRecherche[] {
+  const n = normaliser(q)
+  if (n.length < 2) return []
+  const u: ResultatRecherche[] = unites.filter((x) => normaliser(`${x.libelle} ${x.code}`).includes(n)).map((unite) => ({ type: 'unite', unite }))
+  const p: ResultatRecherche[] = comptes.filter((c) => !c.institutionId && normaliser(`${c.nomAffiche} ${c.identifiant} ${c.fonction ?? ''}`).includes(n)).map((compte) => ({ type: 'personne', compte }))
+  return [...u, ...p].slice(0, max)
+}
+
+/** Nom du fichier PDF proposé par MS-IAM : organigramme-moabi-AAAA-MM-JJ.pdf, date de Douala. */
+export function nomFichierOrganigramme(d = new Date()): string {
+  const jour = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Douala', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d)
+  return `organigramme-moabi-${jour}.pdf`
+}
+
+/** Zoom de l'organigramme : bornes et pas. */
+export const ZOOM = { min: 0.3, max: 1.6, pas: 0.1 } as const
+export function borneZoom(z: number): number {
+  return Math.round(Math.min(ZOOM.max, Math.max(ZOOM.min, z)) * 100) / 100
+}

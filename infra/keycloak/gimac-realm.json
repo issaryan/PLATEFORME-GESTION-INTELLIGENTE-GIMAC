@@ -611,6 +611,12 @@
         "clientRole": false
       },
       {
+        "name": "INTERNAL_DOCUMENT_RENDER",
+        "description": "Permission du lot 1",
+        "composite": false,
+        "clientRole": false
+      },
+      {
         "name": "ROLE_INGENIEUR_HOMOLOGATION",
         "description": "Conduit les opérations d'homologation des liaisons (référentiel, preuves, validation) et prépare la certification.",
         "composite": true,
@@ -2264,7 +2270,8 @@
       "enabled": true,
       "serviceAccountClientId": "iam-service",
       "realmRoles": [
-        "default-roles-gimac"
+        "default-roles-gimac",
+        "INTERNAL_DOCUMENT_RENDER"
       ],
       "clientRoles": {
         "realm-management": [

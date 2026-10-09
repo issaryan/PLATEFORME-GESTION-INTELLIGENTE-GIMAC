@@ -42,9 +42,10 @@ describe('D-87 : définitions', () => {
     const l = await chef.lister({})
     // D-98 : la demande de changement d'adresse IP du pôle réseau figure aussi au catalogue de l'unité.
     expect(l.map((p) => [p.code, p.etat, p.droits.modifier, p.droits.lancer])).toEqual([
-      ['ACCES_VPN_PARTICIPANT', 'BROUILLON', true, false], ['CHANGEMENT_ADRESSE_IP', 'PUBLIEE', false, true], ['OUVERTURE_FLUX_RESEAU', 'PUBLIEE', false, true],
+      ['ACCES_VPN_PARTICIPANT', 'BROUILLON', true, false], ['CREATION_MACHINE_VIRTUELLE', 'PUBLIEE', false, false], ['CHANGEMENT_ADRESSE_IP', 'PUBLIEE', false, true], ['OUVERTURE_FLUX_RESEAU', 'PUBLIEE', false, true],
     ])
-    expect((await chef.lister({ etat: 'PUBLIEE' })).length).toBe(2)
+    // D-100 : le chef du DES lit le processus du pôle système réservé à deux personnes, sans pouvoir le lancer.
+    expect((await chef.lister({ etat: 'PUBLIEE' })).length).toBe(3)
     expect((await chef.lister({ q: 'vpn' })).map((p) => p.code)).toEqual(['ACCES_VPN_PARTICIPANT'])
     expect(await chef.lister({ unite: 'SNA' })).toEqual([])
     const membre = qui('u-res').processus

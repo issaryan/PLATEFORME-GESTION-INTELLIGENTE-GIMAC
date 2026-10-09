@@ -2,7 +2,7 @@ import { ApiError, type ArriveeNotification, type OptionsTeleversement, type Tel
 import { PROFILS } from '../../permissions'
 import type { PersonneActivite } from '../../modele/pilotage'
 import {
-  INITIATEURS_DEFAUT, LIMITES_FORMULAIRE, LIMITES_PROCESSUS, MODES_REMPLACEMENT, cleDesignation, designationsAttendues, intervenantNormalise, type AnomalieProcessus, type Attendu,
+  INITIATEURS_DEFAUT, LIMITES_FORMULAIRE, LIMITES_PROCESSUS, LIMITES_PUBLIC, MODES_REMPLACEMENT, cleDesignation, designationsAttendues, intervenantNormalise, type AnomalieProcessus, type Attendu,
   type ChampFormulaire, type ControleProcessus, type DemandeProcessus, type EtapeInstance, type EtapeProcessus, type Formulaire, type HistoriqueProcessus, type Initiateurs,
   type InstanceProcessus, type Intervenant, type CandidatsProcessus, type Lancement, type Processus, type ResumeInstance, type ResumeProcessus, type SaisieProcessus,
   type ValeurChampFormulaire, type ValeurFormulaire,
@@ -142,6 +142,43 @@ export function demandesDemo(): { code: string; unite: string; libelle: string; 
   ]
 }
 
+/**
+ * D-100 : processus au public restreint par leur créateur, comme le jeu de démonstration de MS-PILOTAGE, pour montrer
+ * qu'un administrateur ne voit plus tout dans « Lancer une demande » : « Création d'une machine virtuelle » (pôle système),
+ * réservée à deux personnes désignées (l'ingénieur réseau et l'analyste Normes et Agréments), et « Mise à jour de la
+ * plateforme » (conformité), réservée aux porteurs des profils Conformité et Sécurité des SI.
+ */
+export function publicsRestreintsDemo(): { code: string; unite: string; libelle: string; description: string; categorie: string; auteur: string; etapes: EtapeProcessus[]; formulaire: Formulaire; initiateurs: Initiateurs }[] {
+  const etapes = (profil: string, unite: string, premiere: string, seconde: string): EtapeProcessus[] => {
+    const porteur: Intervenant = { mode: 'PROFIL', profil, unite }
+    return [
+      { code: 'REALISATION', libelle: premiere, action: 'Réaliser la demande et consigner le résultat.', intervenant: porteur, validateur: null, predecesseurs: [], delaiJours: 3, livrables: [], signatures: [], champs: [], position: pos(0, 80) },
+      { code: 'CLOTURE', libelle: seconde, action: 'Informer le demandeur et clôturer la demande.', intervenant: porteur, validateur: { mode: 'CHEF_UNITE', remplacement: 'ROLE_RESPONSABLE_SERVICE' }, predecesseurs: ['REALISATION'], delaiJours: 1, livrables: [], signatures: [], champs: [], position: pos(300, 80) },
+    ]
+  }
+  const vide = { unites: [], profils: [], permissions: [], personnes: [] }
+  return [
+    {
+      code: 'CREATION_MACHINE_VIRTUELLE', unite: 'POLE_SYSTEME', libelle: 'Création d’une machine virtuelle', categorie: 'Système', auteur: 'u-resp-info',
+      description: 'Demande de création d’une machine virtuelle sur l’infrastructure de virtualisation : dimensionnement, création et remise.',
+      etapes: etapes('ROLE_POLE_SYSTEME', 'POLE_SYSTEME', 'Dimensionnement et création', 'Remise de la machine'),
+      formulaire: { champs: [
+        { code: 'SYSTEME', libelle: 'Système d’exploitation', type: 'LISTE', choix: ['Linux', 'Windows Server'], obligatoire: true, aide: null, typesPieces: [] },
+        { code: 'PROCESSEURS', libelle: 'Nombre de processeurs', type: 'NOMBRE', choix: [], obligatoire: true, aide: null, typesPieces: [] },
+        { code: 'MEMOIRE', libelle: 'Mémoire (Go)', type: 'NOMBRE', choix: [], obligatoire: true, aide: null, typesPieces: [] },
+      ] },
+      initiateurs: { ...vide, regles: ['PERSONNES'], personnes: ['u-res', 'u-sna'] },
+    },
+    {
+      code: 'MISE_A_JOUR_PLATEFORME', unite: 'CONFORMITE', libelle: 'Mise à jour de la plateforme', categorie: 'Conformité', auteur: 'u-conf',
+      description: 'Demande de mise à jour de la plateforme soumise à la revue de conformité : analyse d’impact, revue et clôture.',
+      etapes: etapes('ROLE_CONFORMITE', 'CONFORMITE', 'Analyse d’impact et revue', 'Clôture de la revue'),
+      formulaire: { champs: [] },
+      initiateurs: { ...vide, regles: ['PROFILS'], profils: ['ROLE_CONFORMITE', 'ROLE_RSSI'] },
+    },
+  ]
+}
+
 /** Notification d'un événement de processus (QUO-05), adressée à une personne, comme MS-NOTIFICATION la déduit des événements pilotage.process-*. */
 export type NotificationProcessusDemo = ArriveeNotification & { destinataire: string }
 type EtatSimule = { definitions: Processus[]; instances: InstanceSim[]; documents: Map<string, Document>; sequence: number; notifications?: NotificationProcessusDemo[] }
@@ -219,20 +256,43 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
   const peutDefinir = (unite: string) => refMetier() || magasin.couvreUnite(moiId, 'PROCESSUS_DEFINIR', unite)
   const peutLancer = (unite: string) => membreDe(moiId, unite) || magasin.couvreUnite(moiId, 'PROCESSUS_LANCER', unite) || admin()
   const permissionsDe = (pid: string) => new Set(profils(pid).flatMap((p) => PROFILS[p] ?? []))
-  /** D-98 : l'une des règles d'initiateurs de la définition, ou PROCESSUS_LANCER couvrant l'unité, ou REF_METIER_ADMIN. */
+  /**
+   * D-98, D-100 (comme MS-PILOTAGE) : voir et lancer une version, c'est faire partie de son public, défini par son créateur
+   * (l'une des règles d'initiateurs), et rien d'autre : REF_METIER_ADMIN et PROCESSUS_LANCER (TOUTES ou couvrant l'unité)
+   * n'y ajoutent rien. MEMBRES_UNITE couvre les membres de l'unité et ses responsables (unité dirigée ou parente dirigée).
+   */
   const initiateurs = (p: Processus): Initiateurs => p.initiateurs ?? INITIATEURS_DEFAUT
+  const actif = (pid: string) => membre(pid)?.actif !== false
+  const dirige = (pid: string, unite: string) => magasin.unitesDirigees(pid).some((u) => magasin.sousUnites(u).includes(unite))
   const peutLancerProcessus = (p: Processus) => {
-    if (admin() || magasin.couvreUnite(moiId, 'PROCESSUS_LANCER', p.unite)) return true
     const i = initiateurs(p)
     return i.regles.some((r) => {
       switch (r) {
-        case 'MEMBRES_UNITE': return membreDe(moiId, p.unite)
-        case 'TOUT_LE_GIMAC': return membre(moiId)?.actif !== false
+        case 'MEMBRES_UNITE': return membreDe(moiId, p.unite) || dirige(moiId, p.unite)
+        case 'TOUT_LE_GIMAC': return actif(moiId)
         case 'UNITES': return i.unites.some((u) => membreDe(moiId, u))
-        case 'PROFILS': return i.profils.some((x) => profils(moiId).includes(x))
+        case 'PROFILS': return actif(moiId) && i.profils.some((x) => profils(moiId).includes(x))
+        case 'PERSONNES': return (i.personnes ?? []).includes(moiId) && actif(moiId)
         default: return i.permissions.some((x) => permissionsDe(moiId).has(x))
       }
     })
+  }
+  /** Refus d'un lancement (mêmes textes que MS-PILOTAGE) : le public défini par le créateur, en message et en détail. */
+  const nonInitiateur = (p: Processus) => {
+    const i = initiateurs(p)
+    const personnes = i.personnes ?? []
+    const qui = i.regles.map((r) => {
+      switch (r) {
+        case 'MEMBRES_UNITE': return `les membres et les responsables de l'unité ${p.unite}`
+        case 'TOUT_LE_GIMAC': return 'tout compte interne actif du GIMAC'
+        case 'UNITES': return `les membres des unités ${i.unites.join(', ')}`
+        case 'PROFILS': return `les porteurs des profils ${i.profils.join(', ')}`
+        case 'PERMISSIONS': return `les porteurs des permissions ${i.permissions.join(', ')}`
+        default: return personnes.length === 1 ? 'la personne désignée par son créateur' : `les ${personnes.length} personnes désignées par son créateur`
+      }
+    })
+    return refus(403, 'PIL_PROCESSUS_NON_INITIATEUR', `Ce processus ne peut être lancé que par ${qui.join(', ou ')}`,
+      { regles: i.regles, unites: i.unites, profils: i.profils, permissions: i.permissions, personnes })
   }
   const peutLire = (unite: string) => peutDefinir(unite) || peutLancer(unite) || magasin.unitesDirigees(moiId).some((u) => magasin.sousUnites(u).includes(unite))
   const peutPiloter = (unite: string) => admin() || magasin.unitesDirigees(moiId).includes(unite) || magasin.couvreUnite(moiId, 'TACHE_CONFIER', unite)
@@ -271,6 +331,8 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
   }
   const normaliserInitiateurs = (i: Partial<Initiateurs> | undefined): Initiateurs => ({
     regles: i?.regles?.length ? [...new Set(i.regles)] : [...INITIATEURS_DEFAUT.regles], unites: [...new Set(i?.unites ?? [])], profils: [...new Set(i?.profils ?? [])], permissions: [...new Set(i?.permissions ?? [])],
+    // D-100 : personnes désignées nommément, sans doublon (le détail des noms est rendu par la vue).
+    personnes: [...new Set((i?.personnes ?? []).map((x) => x.trim()))],
     // D-99 : séparation des fonctions, l'initiateur n'intervient pas sur sa demande sauf réglage explicite.
     initiateurIntervenant: !!i?.initiateurIntervenant,
   })
@@ -288,9 +350,14 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
     const definir = peutDefinir(p.unite)
     return structuredClone({
       ...p, versions, personnes, avertissements: p.etat === 'PUBLIEE' ? controler(p).filter((a) => a.gravite === 'AVERTISSEMENT') : [],
-      initiateurs: initiateurs(p), formulaire: p.formulaire ?? { champs: [] },
+      initiateurs: avecNoms(initiateurs(p)), formulaire: p.formulaire ?? { champs: [] },
       droits: { modifier: definir && p.etat === 'BROUILLON', publier: definir && p.etat === 'BROUILLON', lancer: p.etat === 'PUBLIEE' && peutLancerProcessus(p), retirer: definir && p.etat === 'PUBLIEE' },
     })
+  }
+  /** D-100 : personnes désignées du public, avec leur nom affiché (comme la vue de MS-PILOTAGE). */
+  const avecNoms = (i: Initiateurs): Initiateurs => {
+    const personnes = i.personnes ?? []
+    return { ...i, personnes, personnesDetail: personnes.map((x) => ({ id: x, nomAffiche: membre(x)?.nomAffiche ?? null })) }
   }
   const trouver = (pid: string) => {
     const p = definitions.find((x) => x.id === pid)
@@ -328,6 +395,10 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
       if (!c.libelle?.trim()) throw champ(`formulaire.champs[${i}].libelle`, 'Libellé obligatoire.')
     })
     s.initiateurs?.profils.forEach((x, i) => { if (!/^ROLE_[A-Z][A-Z0-9_]{1,60}$/.test(x)) throw champ(`initiateurs.profils[${i}]`, 'Profil ROLE_… attendu.') })
+    // D-100 : identifiants de comptes (texte de 1 à 80 caractères), 50 au plus, comme MS-PILOTAGE.
+    const personnes = s.initiateurs?.personnes ?? []
+    if (personnes.length > LIMITES_PUBLIC.personnes) throw champ('initiateurs.personnes', `${LIMITES_PUBLIC.personnes} personnes au plus`)
+    personnes.forEach((x, i) => { if (!x?.trim() || x.trim().length > 80) throw champ(`initiateurs.personnes[${i}]`, 'Texte de 1 à 80 caractères attendu') })
   }
 
   /** Contrôle de publication (§5.1) : graphe, intervenants, livrables, signatures, champs, couverture des profils. */
@@ -405,7 +476,13 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
     if (i.regles.includes('UNITES') && !i.unites.length) ajouter('INITIATEURS_INCOMPLETS', 'BLOQUANTE', null, 'initiateurs.unites', 'Règle UNITES sans unité désignée.')
     if (i.regles.includes('PROFILS') && !i.profils.length) ajouter('INITIATEURS_INCOMPLETS', 'BLOQUANTE', null, 'initiateurs.profils', 'Règle PROFILS sans profil désigné.')
     if (i.regles.includes('PERMISSIONS') && !i.permissions.length) ajouter('INITIATEURS_INCOMPLETS', 'BLOQUANTE', null, 'initiateurs.permissions', 'Règle PERMISSIONS sans permission désignée.')
+    if (i.regles.includes('PERSONNES') && !(i.personnes ?? []).length) ajouter('INITIATEURS_INCOMPLETS', 'BLOQUANTE', null, 'initiateurs.personnes', 'Règle PERSONNES sans personne désignée')
     if (i.regles.includes('UNITES')) i.unites.filter((u) => !magasin.unites.some((x) => x.code === u)).forEach((u) => ajouter('UNITE_INCONNUE', 'BLOQUANTE', null, 'initiateurs.unites', `Unité inconnue : ${u}.`))
+    // D-100 : une personne désignée inconnue, externe ou inactive bloque la publication.
+    if (i.regles.includes('PERSONNES')) {
+      ;(i.personnes ?? []).filter((x) => !membre(x) || membre(x)?.actif === false)
+        .forEach((x) => ajouter('PERSONNE_INCONNUE', 'BLOQUANTE', null, 'initiateurs.personnes', `Personne désignée inconnue, externe ou inactive : ${membre(x)?.nomAffiche ?? x}`))
+    }
     const champsFormulaire = (p.formulaire?.champs ?? []).map((c) => c.code)
     champsFormulaire.filter((c, n) => champsFormulaire.indexOf(c) !== n).forEach((c) => ajouter('CHAMP_CODE_DUPLIQUE', 'BLOQUANTE', null, `formulaire.${c}`, `Code de champ du formulaire en double : ${c}.`))
     ;(p.formulaire?.champs ?? []).filter((c) => c.type === 'LISTE' && !c.choix.length).forEach((c) => ajouter('CHAMP_CHOIX_ABSENT', 'BLOQUANTE', null, `formulaire.${c.code}`, `Liste sans valeur : ${c.code}.`))
@@ -744,6 +821,12 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
       p.historique.push({ quand: p.publieeLe!, acteur: personne(auteur), action: 'PUBLIE', etape: null, detail: null })
       return p
     })
+    // D-100 : publics restreints par leur créateur (personnes désignées, profils).
+    publicsRestreintsDemo().forEach((d) => {
+      const p = nouvelle({ code: d.code, unite: d.unite, libelle: d.libelle, description: d.description, categorie: d.categorie, delaiCibleJours: 5, etapes: d.etapes, initiateurs: d.initiateurs, formulaire: d.formulaire }, d.auteur)
+      Object.assign(p, { etat: 'PUBLIEE', publieeLe: `${ajouterJours(aujourdhui(), -5)}T09:00:00+01:00`, publieePar: personne(d.auteur), motifPublication: null })
+      p.historique.push({ quand: p.publieeLe!, acteur: personne(d.auteur), action: 'PUBLIE', etape: null, detail: null })
+    })
     // L'ingénieur d'homologation a demandé un congé : vérifié par les RH, en attente de l'accord de son supérieur.
     acteurForce = personne('U-101')
     const conge = lancer(publiees[0], { intitule: 'Congé annuel de fin d’année', champs: {}, designations: {},
@@ -952,7 +1035,7 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
       const p = definitions.find((x) => x.id === pid)
       if (!p) throw refus(404, 'PIL_PROCESSUS_INTROUVABLE', 'Processus introuvable.')
       if (!peutLancerProcessus(p)) {
-        throw refus(403, 'PIL_PROCESSUS_NON_INITIATEUR', 'Vous ne figurez pas parmi les initiateurs de ce processus.', { regles: initiateurs(p).regles, unites: initiateurs(p).unites, profils: initiateurs(p).profils, permissions: initiateurs(p).permissions })
+        throw nonInitiateur(p)
       }
       if (p.etat !== 'PUBLIEE') throw refus(409, 'PIL_PROCESSUS_NON_PUBLIE', 'Seule une version publiée se lance.')
       // Personne désignée : active, et le lanceur lui-même, porteuse du profil de remplacement (dans l'unité ou ailleurs

@@ -63,7 +63,7 @@ Elle n'est pas une application grand public : pas de coins arrondis, pas d'ombre
 | Couleur, fond clair | `logo/gimac-couleur.svg` (source vectorielle), `gimac-couleur@2x.png` | Page de connexion, en-tête des rapports PDF/A-3, portail des participants |
 | Monochrome bleu | `logo/gimac-bleu.svg` | Barre supérieure des trois couches sur fond clair |
 | Monochrome blanc | `logo/gimac-blanc.svg` | Barre supérieure en mode sombre, bandeaux bleus |
-| Symbole seul (la coche et le « G ») | `logo/gimac-symbole.svg` | Favicon, icône d'application, avatar système des notifications, 16 à 48 px |
+| Symbole seul (la coche et le « G ») | `logo/gimac-symbole.svg` | Avatar système des notifications, 16 à 48 px (l'icône d'onglet et les icônes d'application sont celles de Moabi, §2.4, D-101) |
 
 Le logo original (`GIMAC-LOGO.png`, 1024 × 341) est la référence colorimétrique ; la vectorisation est réalisée à partir de lui sans modification des proportions.
 
@@ -72,11 +72,27 @@ Le logo original (`GIMAC-LOGO.png`, 1024 × 341) est la référence colorimétri
 - Zone de protection : au moins la hauteur du « G » sur les quatre côtés ; aucun élément (texte, bordure, pictogramme) ne pénètre cette zone.
 - Taille minimale du logo complet : 120 px de large à l'écran, 30 mm à l'impression. En dessous, utiliser le symbole seul.
 - Dans la barre supérieure : hauteur 28 px (logo monochrome), aligné à gauche, suivi du nom de la couche.
-- Favicon : symbole seul, 32 × 32 et 16 × 16 ; icône d'application 192 × 192 et 512 × 512.
+- Favicon et icônes d'application : voir l'identité du logiciel Moabi (§2.4, D-101).
 
 ### 2.3 Interdits
 
 Ne jamais déformer, incliner, recolorer, ombrer, contourner, animer le logo ; ne jamais le placer sur le motif de trame à plus de 8 % d'opacité ; ne jamais le placer sur une photographie ; ne jamais réordonner les drapeaux dans la version couleur ; dans la barre latérale, le logo s'emploie seul, sans les drapeaux (D-66).
+
+### 2.4 Identité du logiciel Moabi (D-101)
+
+Le logiciel porte sa propre identité, distincte de la marque du GIMAC, tirée de l'arbre moabi. Fichiers dans `packages/design-system/src/assets/logo/moabi/`, tous vectoriels, le mot « moabi » vectorisé (Ubuntu 500, feuille à la place du point du i) :
+
+| Élément | Fichiers | Usage |
+|---|---|---|
+| Houppier, symbole principal (couronne en parasol à trois strates, fût, contreforts) | `moabi-symbole.svg`, `-sombre`, `-blanc` | Logo avec le nom, écran de connexion, documents, icônes d'application 180, 192 et 512 px |
+| Feuille, marque compacte (limbe obovale, nervures évidées) | `moabi-feuille.svg`, `-sombre`, `-blanc` | Icône d'onglet 16 à 48 px, point du i, petits repères |
+| Logo horizontal (houppier et nom) | `moabi-logo.svg` (fond clair), `-sombre`, `-blanc` (barre bleue), `-noir` (une couleur) | En-têtes, documents, page de garde |
+
+Couleurs : forêt `#12352B`, canopée `#2F8F5B` (sombre `#5DBB82`), jeune pousse `#8CCB6E` (sombre `#A6DA88`), bois de cœur `#9C3F27` (sombre `#C2603D`), strate basse sombre `#CFE8D6`, nom sombre `#E6F1EA`.
+
+Onglet : titre « Moabi » seul dans les quatre applications ; `favicon.svg` (feuille, teinte claire sous `prefers-color-scheme: dark`), `favicon.ico` 16, 32 et 48 px ; `site.webmanifest` et `apple-touch-icon.png`, tuile de la couleur de l'application : département `#12352B`, portail `#1C4E73`, console `#2B2E35`, catalogue `#6E3A1E` (houppier à 62 %, zone sûre des icônes masquables). Le logo du GIMAC reste dans l'interface comme marque de l'institution.
+
+Règles : espace libre autour du logo au moins égal à la moitié de la hauteur du houppier ; logo avec le nom à 24 px de haut au minimum ; sous 32 px, la feuille plutôt que le houppier ; ni déformation, ni inclinaison, ni couleur hors palette, ni ombre ou contour.
 
 ---
 

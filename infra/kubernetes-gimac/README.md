@@ -17,7 +17,7 @@ S'appuie sur `../kubernetes`, généré par JHipster, sans le modifier (D-48, D-
 | `retrait-operateur-prometheus.yaml` | Retrait de l'opérateur Prometheus généré (v0.42.1, RBAC `v1beta1` refusé depuis Kubernetes 1.22) |
 | `politiques-reseau.yaml` | Refus par défaut et matrice des flux par segment : `dmz`, `socle`, `referentiels`, `exploitation`, `pilotage`, `persistance`, `identite`, `supervision`, `presentation`, `conversion`, `politiques`, `alertes` ; sorties vers les dispositifs extérieurs (S3, SMTP, gestion des changements) par port, à resserrer par `ipBlock` |
 | `valkey.yaml` | Cache partagé (D-25, SOC-11) |
-| `conversion-documents.yaml` | Moteur de conversion de l'aperçu bureautique (D-83) : Gotenberg `8.37.0`, segment `conversion`, joint par MS-DOCUMENT seulement (politiques `conversion-documents`, `sortie-document-conversion`), profil `restricted`, 1 Gio |
+| `conversion-documents.yaml` | Moteur de conversion de l'aperçu bureautique (D-83) et de l'organigramme en PDF (D-102, Chromium sans JavaScript, adresses limitées à ses fichiers temporaires) : Gotenberg `8.37.0`, segment `conversion`, joint par MS-DOCUMENT seulement (politiques `conversion-documents`, `sortie-document-conversion`), profil `restricted`, 1,5 Gio |
 | `frontend.yaml` | Trois couches de présentation, profil `restricted`, limitées à la passerelle |
 | `kyverno-images-signees.yaml` | Vérification des signatures d'images (Audit, puis Enforce avec SOC-02) |
 | `retrait-secrets-generes.yaml` | Retrait des Secrets générés |

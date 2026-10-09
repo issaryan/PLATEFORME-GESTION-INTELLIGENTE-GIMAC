@@ -68,7 +68,9 @@ PERMISSIONS = {
                  # Tâches créées par un autre service dans MS-PILOTAGE (D-76 §2.3, D-77).
                  "PILOTAGE_TASK_CREATE",
                  # Titre d'une conversation pour une notification (D-80 §2).
-                 "COLLABORATION_READ"],
+                 "COLLABORATION_READ",
+                 # Mise en page PDF d'un document composé par un service (D-102, organigramme de MS-IAM).
+                 "DOCUMENT_RENDER"],
 }
 TOUTES = [f"{d}_{p}" for d, ps in PERMISSIONS.items() for p in ps]
 
@@ -249,8 +251,9 @@ SERVICES = {
     "pilotage-service": ["INTERNAL_IAM_READ", "INTERNAL_DOCUMENT_READ"],
     # Notifications (D-80) : noms des comptes (MS-IAM) et titre des conversations (MS-COLLABORATION).
     "notification-service": ["INTERNAL_IAM_READ", "INTERNAL_COLLABORATION_READ"],
-    # MS-IAM administre le realm par l'API d'administration (D-62) : rôles de realm-management ci-dessous.
-    "iam-service": [],
+    # MS-IAM administre le realm par l'API d'administration (D-62) : rôles de realm-management ci-dessous. Organigramme en
+    # PDF (D-102) : mise en page par MS-DOCUMENT (POST /api/v1/interne/rendus/pdf).
+    "iam-service": ["INTERNAL_DOCUMENT_RENDER"],
     # Connexion sur la plateforme (D-65) : la passerelle lit l'état de connexion du compte sur MS-IAM.
     "gateway-service": ["INTERNAL_IAM_READ"],
     # Supervision de la passerelle : lecture des points /management des services (ROLE_ADMIN).

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Card, DataTable, KeyValueList, Select, StatusBadge, Tag, TextField, type Column, Note, PageHeader } from '@gimac/design-system'
 import { EtatsRequete, useLibelleProfil, type CleSecurite } from '@gimac/socle'
@@ -256,9 +256,6 @@ function Cles() {
 export default function MonComptePage() {
   const { t } = useTranslation()
   const moi = useMoi()
-  useEffect(() => {
-    document.title = `GIMAC · ${t('compte.titre')}`
-  }, [t])
   return (
     <div className="gm-col" style={{ gap: 'var(--gm-space-5)' }}>
       <PageHeader title={t('compte.titre')} subtitle={t('compte.sousTitre')} />

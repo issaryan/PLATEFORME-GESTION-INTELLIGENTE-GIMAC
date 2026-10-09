@@ -60,8 +60,10 @@ public class OrganisationStubAdapter implements OrganisationPort {
     public static final String GESTIONNAIRE_RH = "00000000-0000-4000-8000-0000000d0015";
     public static final String UNITE_RH = "RH";
 
-    /** Profils connus de l'organisation simulée (profils du domaine gimac). */
+    /** Profils connus de l'organisation simulée (profils internes du domaine gimac, domaine-gimac.json). */
     static final Set<String> PROFILS_CONNUS = Set.of(
+        "ROLE_SUPER_ADMIN",
+        "ROLE_ADMIN_SYSTEME",
         "ROLE_DG",
         "ROLE_CHEF_DES",
         "ROLE_CHEF_DDRM",

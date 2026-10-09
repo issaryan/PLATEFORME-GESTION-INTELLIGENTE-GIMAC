@@ -1,7 +1,7 @@
 /*
  * Profils et organisation (D-86, D-90) : fiche d'un profil en grande modale, arbre des fonctionnalités à cases,
  * aperçu de la barre latérale, comparaison de deux profils, organigramme (unités, membres, glisser-déposer).
- * Uniquement des jetons --gm-* : mode clair et mode sombre. Angles droits, aucune ombre.
+ * Uniquement des jetons --gm-* : mode clair et mode sombre. Angles droits, aucune ombre. Organigramme descendant (D-102).
  */
 .gm-dialog.gm-dialog-xl { width: 1120px; }
 
@@ -55,43 +55,142 @@
 .gm-cmp-table td.gm-cmp-non { color: var(--gm-color-text-secondary); }
 .gm-cmp-table tr.gm-cmp-diff td:first-child { border-left: var(--gm-border-2) solid var(--gm-color-status-warn-fg); }
 
-/* Organigramme : arbre des unités. */
-.gm-org { display: grid; grid-template-columns: minmax(320px, 5fr) minmax(0, 7fr); gap: var(--gm-space-4); align-items: start; }
-.gm-org-arbre, .gm-org-arbre ul { list-style: none; margin: 0; padding: 0; }
-.gm-org-arbre ul { margin-left: var(--gm-space-5); padding-left: var(--gm-space-3); border-left: var(--gm-border-1) dashed var(--gm-color-border-strong); }
-.gm-org-arbre li { margin-top: var(--gm-space-2); }
+/* Organigramme (D-86, D-102) : organigramme descendant, traits de liaison en CSS, cartes au type d'unité en couleur
+   discrète (liseré haut), zoom (propriété zoom de la toile), déplacement dans la zone, plein écran, panneau latéral. */
+.gm-org { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 400px); gap: var(--gm-space-4); align-items: start; }
+.gm-org-carte-arbre { min-width: 0; }
+.gm-org [data-type="DIRECTION"], .gm-org-pastille[data-type="DIRECTION"] { --gm-org-c: var(--gm-blue-700); }
+.gm-org [data-type="DEPARTEMENT"], .gm-org-pastille[data-type="DEPARTEMENT"] { --gm-org-c: var(--gm-blue-600); }
+.gm-org [data-type="SERVICE"], .gm-org-pastille[data-type="SERVICE"] { --gm-org-c: var(--gm-green-700); }
+.gm-org [data-type="POLE"], .gm-org-pastille[data-type="POLE"] { --gm-org-c: var(--gm-serie-3); }
+.gm-org [data-type="CELLULE"], .gm-org-pastille[data-type="CELLULE"] { --gm-org-c: var(--gm-ochre-700); }
+[data-theme="dark"] .gm-org [data-type="DIRECTION"], [data-theme="dark"] .gm-org-pastille[data-type="DIRECTION"] { --gm-org-c: var(--gm-blue-100); }
+[data-theme="dark"] .gm-org [data-type="DEPARTEMENT"], [data-theme="dark"] .gm-org-pastille[data-type="DEPARTEMENT"] { --gm-org-c: var(--gm-blue-300); }
+[data-theme="dark"] .gm-org [data-type="SERVICE"], [data-theme="dark"] .gm-org-pastille[data-type="SERVICE"] { --gm-org-c: var(--gm-green-300); }
+[data-theme="dark"] .gm-org [data-type="POLE"], [data-theme="dark"] .gm-org-pastille[data-type="POLE"] { --gm-org-c: color-mix(in srgb, var(--gm-serie-3) 55%, var(--gm-white)); }
+[data-theme="dark"] .gm-org [data-type="CELLULE"], [data-theme="dark"] .gm-org-pastille[data-type="CELLULE"] { --gm-org-c: var(--gm-ochre-300); }
+.gm-org-pastille { display: inline-block; width: 10px; height: 10px; flex: none; background: var(--gm-org-c, var(--gm-color-action)); }
+
+/* Barre d'outils : recherche, zoom, repli, plein écran. */
+.gm-org-outils { display: flex; flex-wrap: wrap; align-items: center; gap: var(--gm-space-2) var(--gm-space-3); }
+.gm-org-outils-groupe { gap: var(--gm-space-1); flex-wrap: nowrap; }
+.gm-org-zoom { min-width: 48px; text-align: center; font-size: 13px; font-variant-numeric: tabular-nums; color: var(--gm-color-text-secondary); }
+.gm-org-recherche { position: relative; flex: 1 1 260px; max-width: 420px; }
+.gm-org-resultats { position: absolute; z-index: 20; left: 0; right: 0; top: calc(100% + 2px); margin: 0; padding: var(--gm-space-1) 0; list-style: none; max-height: 320px; overflow: auto;
+  background: var(--gm-color-surface-raised); border: var(--gm-border-1) solid var(--gm-color-border-strong); }
+.gm-org-resultats li.gm-field-help { padding: var(--gm-space-2) var(--gm-space-3); }
+.gm-org-resultats button { display: flex; align-items: center; gap: var(--gm-space-2); width: 100%; padding: var(--gm-space-2) var(--gm-space-3); border: none; background: transparent; color: var(--gm-color-text-primary); font: inherit; text-align: left; cursor: pointer; }
+.gm-org-resultat-texte { display: flex; flex-direction: column; flex: 1; min-width: 0; line-height: 1.3; }
+.gm-org-resultat-texte > span + span { color: var(--gm-color-text-secondary); }
+.gm-org-resultats button:hover, .gm-org-resultats button:focus-visible { background: var(--gm-color-action-subtle); outline: none; }
+
+/* Zone de l'organigramme : défilement dans les deux sens, déplacement par glisser du fond. */
+.gm-org-vue { position: relative; overflow: auto; max-height: 68vh; min-height: 320px; padding: var(--gm-space-3); cursor: grab; touch-action: pan-x pan-y;
+  background-color: var(--gm-color-surface-sunken); background-image: radial-gradient(var(--gm-color-border) 1px, transparent 1px); background-size: 18px 18px;
+  border: var(--gm-border-1) solid var(--gm-color-border); }
+.gm-org-vue:active { cursor: grabbing; }
+.gm-org-vue:focus-visible { outline: 2px solid var(--gm-color-focus); outline-offset: 2px; }
+.gm-org-toile { display: inline-block; min-width: 100%; }
+
+/* Organigramme descendant : listes imbriquées, traits horizontaux et verticaux tracés par les pseudo-éléments. */
+.gm-org-arbre, .gm-org-arbre ul { list-style: none; margin: 0; padding: 0; display: flex; justify-content: center; }
+.gm-org-arbre { width: max-content; margin: 0 auto; }
+.gm-org-arbre ul { position: relative; padding-top: 20px; }
+.gm-org-arbre ul::before { content: ""; position: absolute; top: 0; left: 50%; height: 20px; border-left: var(--gm-border-1) solid var(--gm-color-border-strong); }
+.gm-org-arbre li { position: relative; display: flex; flex-direction: column; align-items: center; padding: 20px var(--gm-space-1) 0; }
+.gm-org-arbre li::before, .gm-org-arbre li::after { content: ""; position: absolute; top: 0; right: 50%; width: 50%; height: 20px; border-top: var(--gm-border-1) solid var(--gm-color-border-strong); }
+.gm-org-arbre li::after { right: auto; left: 50%; border-left: var(--gm-border-1) solid var(--gm-color-border-strong); }
+.gm-org-arbre li:only-child { padding-top: 0; }
+.gm-org-arbre li:only-child::before, .gm-org-arbre li:only-child::after { display: none; }
+.gm-org-arbre li:first-child::before, .gm-org-arbre li:last-child::after { border: 0 none; }
+.gm-org-arbre li:last-child::before { border-right: var(--gm-border-1) solid var(--gm-color-border-strong); }
+.gm-org-arbre > li { padding-top: 0; }
+.gm-org-arbre > li::before, .gm-org-arbre > li::after { display: none; }
+.gm-org-noeud { position: relative; display: flex; align-items: flex-start; }
+.gm-org-menu { position: absolute; top: 2px; right: 2px; }
+.gm-org-menu .gm-menu { position: absolute; z-index: 30; top: 100%; right: 0; min-width: 260px; }
+.gm-org-noeud-menu { z-index: 25; }
+.gm-org-replier { display: inline-flex; align-items: center; gap: 2px; margin-top: 2px; padding: 0 var(--gm-space-1); min-height: max(26px, calc(26px / var(--gm-org-zoom, 1))); min-width: max(26px, calc(26px / var(--gm-org-zoom, 1))); justify-content: center; font: inherit; font-size: 12px; cursor: pointer;
+  color: var(--gm-color-text-secondary); background: var(--gm-color-surface-raised); border: var(--gm-border-1) solid var(--gm-color-border-strong); }
+.gm-org-replier:hover { color: var(--gm-color-action); border-color: var(--gm-color-action); }
+.gm-org-replier:focus-visible { outline: 2px solid var(--gm-color-focus); outline-offset: 1px; }
+
+/* Carte d'une unité. */
 .gm-org-unite {
-  display: flex; align-items: flex-start; gap: var(--gm-space-2); width: 100%; box-sizing: border-box; text-align: left; font: inherit; cursor: pointer;
-  padding: var(--gm-space-2) var(--gm-space-3); background: var(--gm-color-surface-raised); color: var(--gm-color-text-primary);
-  border: var(--gm-border-1) solid var(--gm-color-border-strong); border-left: var(--gm-border-4) solid var(--gm-color-action);
+  display: flex; align-items: flex-start; gap: var(--gm-space-1); width: 208px; box-sizing: border-box; text-align: left; font: inherit; cursor: pointer;
+  padding: var(--gm-space-2) var(--gm-space-6) var(--gm-space-2) var(--gm-space-2); background: var(--gm-color-surface-raised); color: var(--gm-color-text-primary);
+  border: var(--gm-border-1) solid var(--gm-color-border-strong); border-top: var(--gm-border-4) solid var(--gm-org-c, var(--gm-color-action));
 }
 .gm-org-unite:hover { background: var(--gm-color-action-subtle); }
 .gm-org-unite:focus-visible { outline: 2px solid var(--gm-color-focus); outline-offset: 2px; }
 .gm-org-unite[aria-current="true"] { outline: 2px solid var(--gm-color-action); outline-offset: 1px; background: var(--gm-color-action-subtle); }
-.gm-org-unite-inactive { border-left-color: var(--gm-color-border-strong); color: var(--gm-color-text-secondary); }
-.gm-org-unite-corps { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
-.gm-org-unite-titre { display: flex; align-items: center; gap: var(--gm-space-2); flex-wrap: wrap; font-weight: 600; }
-.gm-org-unite-ligne { font-size: 12px; color: var(--gm-color-text-secondary); }
+.gm-org-unite-inactive { border-top-color: var(--gm-color-border-strong); color: var(--gm-color-text-secondary); opacity: 0.8; }
+.gm-org-unite-corps { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
+.gm-org-unite-type { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--gm-org-c, var(--gm-color-action)); }
+.gm-org-unite-type .gm-mono { font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--gm-color-text-secondary); margin-left: var(--gm-space-1); }
+.gm-org-unite-titre { display: flex; align-items: center; gap: var(--gm-space-1); flex-wrap: wrap; font-weight: 600; line-height: 1.25; }
+.gm-org-unite-libelle { font-family: var(--font-heading); font-weight: 500; }
+.gm-org-unite-ligne { display: flex; align-items: center; gap: var(--gm-space-2); font-size: 12px; color: var(--gm-color-text-secondary); padding-top: 4px; border-top: var(--gm-border-1) solid var(--gm-color-border); }
+.gm-org-unite-chef { display: flex; flex-direction: column; min-width: 0; }
+.gm-org-unite-chef > span:first-child { overflow: hidden; text-overflow: ellipsis; }
+.gm-org-sep { display: none; }
+.gm-org-unite-effectif { display: inline-flex; align-items: center; gap: 4px; }
+.gm-org-avatar-vide { background: transparent; border: var(--gm-border-1) dashed var(--gm-color-border-strong); color: transparent; }
 .gm-org-poignee { color: var(--gm-color-text-muted); cursor: grab; flex: none; padding-top: 2px; }
 .gm-org-cible { outline: 2px dashed var(--gm-color-status-ok-fg) !important; outline-offset: 2px; background: var(--gm-color-status-ok-bg) !important; }
 .gm-org-tire { opacity: 0.55; }
+.gm-org-trouve { outline: 3px solid var(--gm-color-status-warn-fg) !important; outline-offset: 3px; }
 .gm-org-zone { border: var(--gm-border-1) dashed var(--gm-color-border-strong); padding: var(--gm-space-3); color: var(--gm-color-text-secondary); font-size: 13px; background: var(--gm-color-surface); }
 
-/* Membres d'une unité : arbre des n+1. */
+/* Panneau latéral et membres d'une unité : arbre des n+1. */
+.gm-org-panneaux { position: sticky; top: var(--gm-space-3); max-height: calc(100vh - 2 * var(--gm-space-3)); overflow: auto; }
 .gm-org-membres, .gm-org-membres ul { list-style: none; margin: 0; padding: 0; }
 .gm-org-membres ul { margin-left: var(--gm-space-5); padding-left: var(--gm-space-3); border-left: var(--gm-border-1) solid var(--gm-color-border); }
 .gm-org-membres li { margin-top: var(--gm-space-1); }
 .gm-org-membre {
-  display: flex; align-items: center; gap: var(--gm-space-2); padding: var(--gm-space-1) var(--gm-space-2); background: var(--gm-color-surface);
+  display: flex; align-items: center; gap: var(--gm-space-2); flex-wrap: wrap; padding: var(--gm-space-1) var(--gm-space-2); background: var(--gm-color-surface);
   border: var(--gm-border-1) solid var(--gm-color-border); color: var(--gm-color-text-primary);
 }
-.gm-org-membre-nom { display: flex; flex-direction: column; min-width: 0; flex: 1; }
-.gm-org-membre-nom > span:last-child { font-size: 12px; color: var(--gm-color-text-secondary); }
+.gm-org-membre-nom { display: flex; flex-direction: column; min-width: 140px; flex: 1; }
+.gm-org-membre-nom > span + span { font-size: 12px; color: var(--gm-color-text-secondary); }
+.gm-org-membre-actions { display: flex; flex-wrap: wrap; gap: 2px; justify-content: flex-end; }
 .gm-org-membre-chef { border-left: var(--gm-border-4) solid var(--gm-color-brand-accent); }
 .gm-org-membre-inactif { color: var(--gm-color-text-secondary); background: var(--gm-color-surface-sunken); }
 .gm-org-portee { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--gm-space-1) var(--gm-space-3); align-items: center; font-size: 13px; }
 
+/* Plein écran : l'organigramme et ses panneaux occupent toute la fenêtre (Échap pour quitter). */
+.gm-org-plein-ecran { position: fixed; inset: 0; z-index: 900; padding: var(--gm-space-4); overflow: auto; background: var(--gm-color-surface); }
+.gm-org-plein-ecran .gm-org-vue { height: calc(100vh - 200px); max-height: none; }
+
+/* Affecter des personnes : annuaire à cases. */
+.gm-org-candidats { display: flex; flex-direction: column; max-height: 300px; overflow: auto; border: var(--gm-border-1) solid var(--gm-color-border); }
+.gm-org-candidat { display: flex; align-items: center; gap: var(--gm-space-2); padding: var(--gm-space-2) var(--gm-space-3); border-top: var(--gm-border-1) solid var(--gm-color-border); cursor: pointer; }
+.gm-org-candidat:first-child { border-top: none; }
+.gm-org-candidat:hover { background: var(--gm-color-action-subtle); }
+.gm-org-candidat input { width: 16px; height: 16px; flex: none; accent-color: var(--gm-color-action); }
+.gm-org-candidat input:focus-visible { outline: 2px solid var(--gm-color-focus); outline-offset: 2px; }
+.gm-org-candidat-choisi { background: var(--gm-color-action-subtle); }
+.gm-org-candidat-membre { cursor: default; color: var(--gm-color-text-secondary); }
+.gm-org-candidat-texte { display: flex; flex-direction: column; min-width: 0; }
+.gm-org-refus { margin: var(--gm-space-1) 0 0; padding-left: var(--gm-space-4); }
+
+/* Petit écran : l'organigramme redevient un arbre vertical indenté, les panneaux passent sous lui. */
+@media (max-width: 720px) {
+  .gm-org-vue { max-height: none; padding: var(--gm-space-2); background-image: none; }
+  .gm-org-toile { zoom: 1 !important; display: block; }
+  .gm-org-arbre, .gm-org-arbre ul { display: block; padding-top: 0; }
+  .gm-org-arbre { width: auto; }
+  .gm-org-arbre ul { margin-left: var(--gm-space-4); padding-left: var(--gm-space-3); border-left: var(--gm-border-1) dashed var(--gm-color-border-strong); }
+  .gm-org-arbre ul::before, .gm-org-arbre li::before, .gm-org-arbre li::after { display: none; }
+  .gm-org-arbre li { display: block; padding: var(--gm-space-2) 0 0; }
+  .gm-org-unite { width: 100%; }
+  .gm-org-replier { margin: var(--gm-space-1) 0 0; }
+  /* Arbre vertical : le zoom n'y a pas d'objet, la largeur de l'écran suffit. */
+  .gm-org-outils-zoom { display: none; }
+}
+
 @media (max-width: 960px) {
   .gm-fct, .gm-org { grid-template-columns: minmax(0, 1fr); }
+  .gm-org-panneaux { position: static; max-height: none; }
   .gm-nav-apercu { position: static; }
 }

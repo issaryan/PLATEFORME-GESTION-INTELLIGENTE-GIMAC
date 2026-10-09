@@ -34,6 +34,8 @@ export function StatCard(p: StatCardProps) {
   const t = useLibelle()
   const st = p.status
   const tendance = p.trend
+  // Valeur faite de mots (« Opérationnelle ») : taille réduite et césure, pour rester dans la carte.
+  const texte = typeof p.value === 'string' && /\p{L}/u.test(p.value) && !/\d/.test(p.value)
   return (
     <div
       className={cx('gm-card', 'gm-stat', st && 'gm-stat-' + st, p.onClick && 'gm-stat-lien', p.className)}
@@ -52,7 +54,7 @@ export function StatCard(p: StatCardProps) {
       }
     >
       <span className="gm-stat-label">{p.label}</span>
-      <div className="gm-stat-value">
+      <div className={cx('gm-stat-value', texte && 'gm-stat-value-texte')}>
         {p.value}
         {p.unit ? <span className="gm-stat-unit">{p.unit}</span> : null}
       </div>

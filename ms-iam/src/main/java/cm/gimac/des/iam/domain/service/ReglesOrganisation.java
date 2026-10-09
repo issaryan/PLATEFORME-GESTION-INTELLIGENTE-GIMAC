@@ -183,6 +183,21 @@ public final class ReglesOrganisation {
         }
     }
 
+    /**
+     * n+1 proposé à une personne affectée à une unité (D-102, docs/lot1/organigramme.md §2) : le chef de l'unité ; si
+     * l'unité n'a pas de chef ou si la personne est ce chef, le chef de l'unité parente la plus proche qui en a un et
+     * qui n'est pas la personne elle-même ; nul au sommet de l'organisation. Parcours borné et sans cycle.
+     */
+    public static String responsableParDefaut(String compteId, String unite, Map<String, Unite> catalogue) {
+        Set<String> vus = new HashSet<>();
+        for (Unite u = unite == null ? null : catalogue.get(unite); u != null && vus.add(u.code()); u = u.parent() == null ? null : catalogue.get(u.parent())) {
+            if (u.responsableId() != null && !u.responsableId().equals(compteId)) {
+                return u.responsableId();
+            }
+        }
+        return null;
+    }
+
     /** Responsables successifs d'un compte (n+1, n+2…), 10 au plus, arrêtés à un cycle ou à un compte absent. */
     public static List<String> chaine(Compte compte, Function<String, Optional<Compte>> lecteur) {
         List<String> l = new ArrayList<>();

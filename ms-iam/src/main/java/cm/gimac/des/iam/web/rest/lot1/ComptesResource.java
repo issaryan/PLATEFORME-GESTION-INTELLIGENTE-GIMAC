@@ -115,8 +115,11 @@ public class ComptesResource {
         @Size(max = 36) String institutionId
     ) {}
 
-    /** Rattachement organisationnel (docs/lot1/mon-activite.md §1.3) ; null retire la valeur. */
-    public record RattachementRequest(@Size(max = 32) String unite, @Size(max = 36) String responsableId) {}
+    /**
+     * Rattachement organisationnel (docs/lot1/mon-activite.md §1.3) ; null retire la valeur. Motif facultatif, porté au
+     * journal COMPTE_RATTACHEMENT_MODIFIE (D-102 : gestes de l'organigramme).
+     */
+    public record RattachementRequest(@Size(max = 32) String unite, @Size(max = 36) String responsableId, @Size(max = 1000) String motif) {}
 
     public record ProfilsRequest(@NotNull Set<String> profils, @NotBlank @Size(max = 1000) String motif) {}
 
@@ -222,7 +225,7 @@ public class ComptesResource {
     @PutMapping("/{id}/rattachement")
     @PreAuthorize("hasAuthority('IAM_ACCOUNT_EDIT')")
     public CompteVue rattacher(@PathVariable String id, @Valid @RequestBody RattachementRequest r, Authentication auth) {
-        return CompteVue.de(organisation.rattacher(ActeurCourant.de(auth), id, r.unite(), r.responsableId())).avecAvatar(avatars.version(id).orElse(null));
+        return CompteVue.de(organisation.rattacher(ActeurCourant.de(auth), id, r.unite(), r.responsableId(), r.motif(), null)).avecAvatar(avatars.version(id).orElse(null));
     }
 
     @PutMapping("/{id}/profils")

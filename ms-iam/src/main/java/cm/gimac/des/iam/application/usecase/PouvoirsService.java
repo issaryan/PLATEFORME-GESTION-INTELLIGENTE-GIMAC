@@ -168,6 +168,35 @@ public class PouvoirsService {
         return organisation.rattacher(acteur, cible.id(), u, r, motif, "pouvoir=" + ActionPouvoir.RATTACHEMENT_MODIFIER.name() + " portee=" + portee.name());
     }
 
+    /**
+     * Affectation de personnes à une unité par un chef (D-102, docs/lot1/organigramme.md §2), avant toute modification :
+     * portée de RATTACHEMENT_MODIFIER non nulle, unité cible parmi les unités qu'il dirige, chaque personne dans son
+     * périmètre et jamais lui-même, n+1 visé admis comme pour {@link #rattacherSubordonne} ; sinon 403
+     * ORG_HORS_PERIMETRE (ou IAM_SELF_ADMINISTRATION). Rend l'origine ajoutée au journal.
+     *
+     * @param responsables n+1 visé de chaque personne, par identifiant
+     */
+    @Transactional(readOnly = true)
+    public String verifierAffectationParChef(Acteur acteur, String unite, Map<String, String> responsables) {
+        Compte chef = annuaire.lire(acteur.id()).orElseThrow(() -> IamException.introuvable("IAM_ACCOUNT_NOT_FOUND", acteur.id()));
+        Portee portee = pouvoirs(chef).portee(ActionPouvoir.RATTACHEMENT_MODIFIER);
+        ReglesPouvoirs.exigerCouverture(portee != Portee.AUCUNE, ActionPouvoir.RATTACHEMENT_MODIFIER);
+        List<String> dirigees = organisation.unitesDirigees(chef.id());
+        ReglesPouvoirs.exigerCouverture(dirigees.contains(unite), ActionPouvoir.RATTACHEMENT_MODIFIER);
+        List<OrganisationService.MembreEquipe> perimetre = organisation.perimetre(chef.id(), portee).comptes();
+        Set<String> couverts = new HashSet<>();
+        perimetre.forEach(m -> couverts.add(m.id()));
+        responsables.forEach((id, responsable) -> {
+            if (chef.id().equals(id)) {
+                throw IamException.interdit("IAM_SELF_ADMINISTRATION", "Un compte ne modifie pas son propre rattachement");
+            }
+            OrganisationService.MembreEquipe cible = perimetre.stream().filter(m -> m.id().equals(id)).findFirst().orElse(null);
+            ReglesPouvoirs.exigerCouverture(cible != null, ActionPouvoir.RATTACHEMENT_MODIFIER);
+            ReglesPouvoirs.verifierRattachementSubordonne(chef.id(), id, cible.unite(), cible.responsableId(), unite, responsable, couverts, dirigees);
+        });
+        return "pouvoir=" + ActionPouvoir.RATTACHEMENT_MODIFIER.name() + " portee=" + portee.name();
+    }
+
     /** Périmètre d'un compte pour une action : celui de la portée que lui donne sa matrice. */
     @Transactional(readOnly = true)
     public OrganisationService.Perimetre perimetre(String compteId, ActionPouvoir action) {

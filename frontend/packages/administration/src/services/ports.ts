@@ -1,7 +1,7 @@
 import type { SessionCompte } from '@gimac/compte'
 import type { SignPurpose } from '@gimac/socle'
 import type { Application, DefinitionFonctionnalite, Demande, EntreePouvoirs, EtatDemande, MatricePouvoirs, PageDemandes, PouvoirsProfil, SaisieFonctionnalite, Unite } from '@gimac/lot1'
-import type { ActionRequise, Compte, Creation, DemandeRattachement, EntreeJournal, FicheCompte, FiltreComptes, FiltreJournal, IndicateursComptes, NouveauCompte, Page } from '../modele/comptes'
+import type { ActionRequise, Compte, Creation, DemandeAffectation, DemandeRattachement, OptionsOrganigrammePdf, ResultatAffectation, EntreeJournal, FicheCompte, FiltreComptes, FiltreJournal, IndicateursComptes, NouveauCompte, Page } from '../modele/comptes'
 import type { ConfigurationMessagerie, PolitiqueSecurite, Profil } from '../modele/configuration'
 import type { DemandeGeste, EtatInfrastructure, EvenementCharge, Geste, JournauxCharge, NoeudCluster, Operation, PageOperations, PodCharge, TacheCluster } from '../modele/infrastructure'
 import type {
@@ -39,15 +39,24 @@ export interface ServiceComptes {
 /**
  * Organisation du GIMAC (D-76, docs/lot1/mon-activite.md §1) : catalogue des unités organisationnelles de MS-IAM
  * et rattachement d'un compte (unité, responsable n+1). Refus : ORG_UNITE_INVALIDE, ORG_UNITE_EXISTANTE,
- * ORG_UNITE_INCONNUE, ORG_CYCLE, ORG_UNITE_SOUS_UNITES_ACTIVES, ORG_RESPONSABLE_INVALIDE, ORG_COMPTE_EXTERNE.
+ * ORG_UNITE_INCONNUE, ORG_CYCLE, ORG_UNITE_SOUS_UNITES_ACTIVES, ORG_RESPONSABLE_INVALIDE, ORG_COMPTE_EXTERNE. D-102
+ * (docs/lot1/organigramme.md) : affectations d'une unité (ORG_AFFECTATION_REFUSEE avec le détail par compte,
+ * ORG_AFFECTATION_INVALIDE, IAM_REASON_REQUIRED, ORG_HORS_PERIMETRE), retrait (ORG_AFFECTATION_ABSENTE, ORG_CHEF_UNITE),
+ * organigramme en PDF (ORG_PDF_PARAMETRE, ORG_PDF_INDISPONIBLE). Le motif des gestes d'unité est porté au journal.
  */
 export interface ServiceOrganisation {
   unites(): Promise<Unite[]>
-  creerUnite(u: Unite): Promise<Unite>
+  creerUnite(u: Unite, motif?: string): Promise<Unite>
   /** Libellé, type, parent ou état (désactivation) ; le code ne change pas. */
-  modifierUnite(code: string, u: Unite): Promise<Unite>
+  modifierUnite(code: string, u: Unite, motif?: string): Promise<Unite>
   /** Rend la fiche du compte complétée de son rattachement. */
   rattacher(id: string, r: DemandeRattachement): Promise<Compte>
+  /** Affecte des personnes à une unité : tout ou rien, avant et après pour chacune. */
+  affecter(code: string, d: DemandeAffectation): Promise<ResultatAffectation[]>
+  /** Retire une personne de l'unité (motif obligatoire). */
+  retirer(code: string, id: string, motif: string): Promise<ResultatAffectation>
+  /** Organigramme en PDF composé par MS-IAM (services simulés : exemple de démonstration). */
+  organigrammePdf(o: OptionsOrganigrammePdf): Promise<Blob>
 }
 
 export interface ServiceConfiguration {
