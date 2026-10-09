@@ -1,4 +1,7 @@
-# Mise à jour automatique du serveur de démonstration (10.20.36.214) à chaque poussée sur main.
+# Ancien déploiement du serveur de démonstration (10.20.36.214) : copie du dépôt et construction sur place.
+# Depuis le 09/10/2026, le serveur est livré depuis un poste, sans code source ni GitHub Actions
+# (infra/ci/livrer-serveur.sh, docs/exploitation/livraison-serveur.md) : plus de déclenchement à la poussée,
+# lancement manuel seulement, en secours.
 #
 # Exécuté par l'exécuteur auto-hébergé du serveur (étiquette gimac-214) : construction des images
 # sur place et redémarrage des seuls conteneurs changés (infra/ci/deployer-serveur.sh). Indépendant
@@ -6,12 +9,6 @@
 name: Déploiement du serveur de démonstration
 
 on:
-  push:
-    branches: [main]
-    # Le diagnostic à la demande ne redéploie rien.
-    paths-ignore:
-      - .github/workflows/diagnostic-serveur.yml
-      - infra/ci/diagnostiquer-serveur.sh
   workflow_dispatch:
 
 # Une seule mise à jour à la fois ; une poussée plus récente remplace celle en attente.

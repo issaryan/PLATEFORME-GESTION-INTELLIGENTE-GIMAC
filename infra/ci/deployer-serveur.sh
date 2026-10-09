@@ -5,9 +5,10 @@
 #   infra/ci/deployer-serveur.sh [hote-public]
 #       construction des images sur place depuis une copie du dépôt (.github/workflows/deploiement-serveur.yml) ;
 #   infra/ci/deployer-serveur.sh --images <dossier> [hote-public]
-#       sans code source : depuis le paquet de infra/ci/paquet-serveur.sh, images publiées par la CI et
-#       listées dans <dossier>/images-*.txt (« nom image@sha256:… »), tirées du registre puis étiquetées
-#       sous les noms des fichiers Compose (.github/workflows/deploiement-serveur-images.yml).
+#       sans code source : depuis le paquet de infra/ci/paquet-serveur.sh, images listées dans
+#       <dossier>/images-*.txt (« nom référence ») puis étiquetées sous les noms des fichiers Compose.
+#       Référence déjà présente dans le Docker du serveur (livraison depuis un poste, infra/ci/livrer-serveur.sh),
+#       sinon tirée du registre (« image@sha256:… » publiée par la CI, deploiement-serveur-images.yml).
 #   hote-public : défaut GIMAC_HOTE_PUBLIC du .env, sinon hostname -I.
 #
 # Prérequis : Docker et Compose v2 accessibles à l'utilisateur ; en construction sur place, Java 21 et
@@ -219,14 +220,14 @@ actualiser_configurations_montees() {
   for entree in "${empreintes[@]}"; do echo "${entree#*:}" > "${entree%%:*}"; done
 }
 
-# Images publiées par la CI (--images) : toutes présentes dans les listes avant de toucher au serveur, tirées
-# par empreinte, puis étiquetées sous les noms des fichiers Compose (gateway, iam… ; frontend-<application>
+# Images livrées ou publiées (--images) : toutes présentes dans les listes avant de toucher au serveur, tirées
+# du registre si absentes du serveur, puis étiquetées sous les noms des fichiers Compose (gateway, iam… ; frontend-<application>
 # depuis frontend-<application>-serveur, construites avec les adresses de publication.env). L'extension
 # gimac-totp, montée par le Compose, est extraite de l'image keycloak.
 recuperer_images() {
   local listes nom reference manquants=() services
   listes="$(cat "$LISTES_IMAGES"/images-*.txt 2>/dev/null || true)"
-  reference_de() { awk -v n="$1" '$1 == n && $2 ~ /@sha256:/ { print $2; exit }' <<< "$listes"; }
+  reference_de() { awk -v n="$1" '$1 == n && $2 != "" { print $2; exit }' <<< "$listes"; }
   mapfile -t services < <(sed -n '/^SERVICES=(/,/)/p' "$COMPOSE_DIR/gimac-dev.sh" | tr -d '()' | sed 's/^SERVICES=//' | tr -s ' ' '\n' | grep .)
   [ "${#services[@]}" -eq 14 ] || { echo "ERREUR : liste des microservices illisible dans gimac-dev.sh" >&2; exit 1; }
   for nom in "${services[@]}" frontend-departement-serveur frontend-portail-serveur frontend-console-serveur keycloak; do
@@ -235,7 +236,7 @@ recuperer_images() {
   [ "${#manquants[@]}" -eq 0 ] || { echo "ERREUR : images absentes des listes : ${manquants[*]}" >&2; exit 1; }
   for nom in "${services[@]}" frontend-departement-serveur frontend-portail-serveur frontend-console-serveur keycloak; do
     reference="$(reference_de "$nom")"
-    docker pull -q "$reference" >/dev/null
+    docker image inspect "$reference" >/dev/null 2>&1 || docker pull -q "$reference" >/dev/null
     case "$nom" in
       keycloak)
         local conteneur cible="$RACINE/infra/keycloak/extensions/gimac-totp/target"
@@ -254,7 +255,7 @@ configurer_env "${1:-}"
 appliquer_publication
 
 if [ -n "$LISTES_IMAGES" ]; then
-  etape "Images publiées par la CI (aucune construction sur le serveur)"
+  etape "Images livrées ou publiées (aucune construction sur le serveur)"
   recuperer_images
   actualiser_domaine
 else
