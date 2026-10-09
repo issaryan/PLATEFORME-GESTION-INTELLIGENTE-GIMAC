@@ -84,7 +84,8 @@ image_docker() {
   fi
 }
 
-# Construit l'image d'un microservice par Jib (pom.xml) ; avec --pousser, Jib la publie
+# Construit l'image d'un microservice par Jib (pom.xml) ; tests et seuils JaCoCo exclus (sans tests, le seuil
+# n'aurait aucune mesure et échouerait), vérifiés par valider-backend.sh avant publication. Avec --pousser, Jib la publie
 # directement dans le registre (identifiants de « docker login ») sans démon Docker.
 image_service() {
   local service="$1" nom="${1#ms-}"
@@ -92,7 +93,7 @@ image_service() {
   local but=jib:dockerBuild
   [ "$pousser" = 1 ] && but=jib:build
   if essayer "$nom : Jib $but ($image)" \
-       "$service/mvnw" -f "$service/pom.xml" -ntp -B -Pprod -DskipTests package "$but" -Djib.to.image="$image"; then
+       "$service/mvnw" -f "$service/pom.xml" -ntp -B -Pprod -DskipTests -Djacoco.skip=true package "$but" -Djib.to.image="$image"; then
     if [ "$pousser" = 1 ]; then
       signer_et_lister "$nom" "$REGISTRE/$nom@$(cat "$service/target/jib-image.digest")"
     fi
