@@ -131,6 +131,53 @@ services:
       - default
       - exploitation
 
+  # Bases des microservices dans des volumes nommés : sans eux, chaque base vit dans un volume
+  # anonyme lié à son conteneur, et un conteneur supprimé (compose down, ménage Docker) fait repartir
+  # le déploiement suivant sur une base vide, l'ancienne restant orpheline (constaté le 12/10/2026).
+  # Chemin de montage : celui du VOLUME de l'image (postgres 18 : /var/lib/postgresql ; 17 : /data).
+  gateway-postgresql:
+    volumes:
+      - gateway_donnees:/var/lib/postgresql
+  iam-postgresql:
+    volumes:
+      - iam_donnees:/var/lib/postgresql
+  audit-postgresql:
+    volumes:
+      - audit_donnees:/var/lib/postgresql
+  participant-postgresql:
+    volumes:
+      - participant_donnees:/var/lib/postgresql
+  homologation-postgresql:
+    volumes:
+      - homologation_donnees:/var/lib/postgresql
+  certification-postgresql:
+    volumes:
+      - certification_donnees:/var/lib/postgresql
+  document-postgresql:
+    volumes:
+      - document_donnees:/var/lib/postgresql/data
+  notification-postgresql:
+    volumes:
+      - notification_donnees:/var/lib/postgresql/data
+  incident-postgresql:
+    volumes:
+      - incident_donnees:/var/lib/postgresql/data
+  monitoring-postgresql:
+    volumes:
+      - monitoring_donnees:/var/lib/postgresql/data
+  rapprochement-postgresql:
+    volumes:
+      - rapprochement_donnees:/var/lib/postgresql/data
+  pilotage-postgresql:
+    volumes:
+      - pilotage_donnees:/var/lib/postgresql/data
+  reporting-postgresql:
+    volumes:
+      - reporting_donnees:/var/lib/postgresql/data
+  collaboration-postgresql:
+    volumes:
+      - collaboration_donnees:/var/lib/postgresql/data
+
 networks:
   # Réseau interne : ni accès extérieur ni port publié ; seuls la passerelle et le mandataire y sont.
   exploitation:
@@ -138,3 +185,17 @@ networks:
 
 volumes:
   keycloak_donnees:
+  gateway_donnees:
+  iam_donnees:
+  audit_donnees:
+  participant_donnees:
+  homologation_donnees:
+  certification_donnees:
+  document_donnees:
+  notification_donnees:
+  incident_donnees:
+  monitoring_donnees:
+  rapprochement_donnees:
+  pilotage_donnees:
+  reporting_donnees:
+  collaboration_donnees:
