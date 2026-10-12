@@ -20,6 +20,14 @@ masquer() { sed -E 's/eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]+/
 etape "Hôte : mémoire, disque, charge"
 free -m; df -h / /var/lib/docker 2>/dev/null; uptime
 
+# Serveur injoignable de l'extérieur (« Connection refused » sur tous les ports) : services arrêtés ou
+# pare-feu ? L'exécuteur, qui sort vers GitHub, peut encore répondre quand plus rien n'entre.
+etape "Accès réseau : démarrage, services, ports en écoute, pare-feu"
+echo "Démarré le : $(uptime -s)"
+for s in sshd nginx docker firewalld; do printf '  %-10s %s\n' "$s" "$(systemctl is-active "$s" 2>&1)"; done
+ss -ltnH | awk '{print $4}' | grep -E ':(22|4200|4201|4202|8463)$' | sort -u | sed 's/^/  en écoute : /'
+firewall-cmd --list-all 2>&1 | sed 's/^/  /' || true
+
 etape "Conteneurs (état, santé, redémarrages)"
 compose ps -a --format 'table {{.Service}}\t{{.State}}\t{{.Status}}'
 for c in $(compose ps -a -q); do
