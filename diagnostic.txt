@@ -1,0 +1,332 @@
+Diagnostic du 12/10/2026 14:35 WAT, commit c4db56f6e6e4b41a6bd8cd41fbd11bde8f13fc24
+
+
+== Hôte : mémoire, disque, charge
+               total        used        free      shared  buff/cache   available
+Mem:           63617        2796       52388         155        9285       60821
+Swap:          30719           0       30719
+Sys. de fichiers      Taille Utilisé Dispo Uti% Monté sur
+/dev/mapper/rhel-root    70G     30G   41G  43% /
+/dev/mapper/rhel-root    70G     30G   41G  43% /
+ 14:35:30 up 13 min,  2 users,  load average: 4,16, 1,78, 0,76
+
+== Accès réseau : démarrage, services, ports en écoute, pare-feu
+Démarré le : 2026-10-12 14:22:29
+  sshd       active
+  nginx      inactive
+  docker     active
+  firewalld  active
+  en écoute : 0.0.0.0:22
+  en écoute : [::]:22
+  Authorization failed.
+      Make sure polkit agent is running or run the application as superuser.
+
+== Conteneurs (état, santé, redémarrages)
+SERVICE                STATE     STATUS
+cadvisor               running   Up Less than a second (healthy)
+conversion-documents   running   Up Less than a second (healthy)
+docker-socket-proxy    running   Up Less than a second
+/gimac-des-cadvisor-1 restarts=0 oom=false exit=0 etat=running
+/gimac-des-conversion-documents-1 restarts=0 oom=false exit=0 etat=running
+/gimac-des-docker-socket-proxy-1 restarts=0 oom=false exit=0 etat=running
+
+== Consommation mémoire des conteneurs
+NAME                               MEM USAGE / LIMIT     CPU %
+gimac-des-cadvisor-1               50.73MiB / 62.13GiB   0.20%
+gimac-des-conversion-documents-1   302.4MiB / 1.5GiB     3.46%
+gimac-des-docker-socket-proxy-1    13.67MiB / 62.13GiB   0.02%
+
+== Passerelle vue depuis le conteneur du département
+service "frontend-departement" is not running
+
+== Moteur de conversion des aperçus (conversion-documents) : état et santé
+SERVICE                IMAGE                        STATE     STATUS
+conversion-documents   gotenberg/gotenberg:8.37.0   running   Up Less than a second (healthy)
+-- santé vue du conteneur
+{"status":"up","details":{"chromium":{"status":"up","timestamp":"2026-10-12T14:22:35.377835098Z"},"libreoffice":{"status":"up","timestamp":"2026-10-12T14:22:35.37782803Z"}}}
+-- santé vue de MS-DOCUMENT
+service "document" is not running
+-- aperçus des 24 dernières heures (résultats)
+
+== Réponses de nginx (port 4200) sans session
+-- GET /api/session
+curl: (7) Failed to connect to localhost port 4200: Connexion refusée
+statut=000 redirection= duree=0.001314s
+curl: (7) Failed to connect to 10.20.36.214 port 4200: Connexion refusée
+  via 10.20.36.214 : statut=000 duree=0.000186s
+-- GET /api/auth-info
+curl: (7) Failed to connect to localhost port 4200: Connexion refusée
+statut=000 redirection= duree=0.000886s
+curl: (7) Failed to connect to 10.20.36.214 port 4200: Connexion refusée
+  via 10.20.36.214 : statut=000 duree=0.000151s
+-- GET /bff/des/collaboration/messagerie/non-lus
+curl: (7) Failed to connect to localhost port 4200: Connexion refusée
+statut=000 redirection= duree=0.000835s
+curl: (7) Failed to connect to 10.20.36.214 port 4200: Connexion refusée
+  via 10.20.36.214 : statut=000 duree=0.000154s
+-- POST /api/connexion (corps vide, attendu 400 ou 401)
+curl: (7) Failed to connect to localhost port 4200: Connexion refusée
+statut=000 duree=0.000826s
+
+== Sonde d'intermittence : 200 appels successifs à /api/auth-info (port 4200)
+  appel 1 : 000 0.000795
+  appel 2 : 000 0.000873
+  appel 3 : 000 0.000888
+  appel 4 : 000 0.000844
+  appel 5 : 000 0.000816
+  appel 6 : 000 0.000852
+  appel 7 : 000 0.000808
+  appel 8 : 000 0.000801
+  appel 9 : 000 0.000917
+  appel 10 : 000 0.000843
+  appel 11 : 000 0.000965
+  appel 12 : 000 0.000844
+  appel 13 : 000 0.000881
+  appel 14 : 000 0.000857
+  appel 15 : 000 0.000714
+  appel 16 : 000 0.000841
+  appel 17 : 000 0.000774
+  appel 18 : 000 0.000983
+  appel 19 : 000 0.000751
+  appel 20 : 000 0.000854
+  appel 21 : 000 0.000798
+  appel 22 : 000 0.000812
+  appel 23 : 000 0.000870
+  appel 24 : 000 0.000755
+  appel 25 : 000 0.000847
+  appel 26 : 000 0.000797
+  appel 27 : 000 0.000968
+  appel 28 : 000 0.000801
+  appel 29 : 000 0.000826
+  appel 30 : 000 0.000808
+  appel 31 : 000 0.000818
+  appel 32 : 000 0.000844
+  appel 33 : 000 0.000916
+  appel 34 : 000 0.000792
+  appel 35 : 000 0.000824
+  appel 36 : 000 0.000718
+  appel 37 : 000 0.000864
+  appel 38 : 000 0.000915
+  appel 39 : 000 0.000817
+  appel 40 : 000 0.000810
+  appel 41 : 000 0.000897
+  appel 42 : 000 0.000925
+  appel 43 : 000 0.000875
+  appel 44 : 000 0.000861
+  appel 45 : 000 0.000801
+  appel 46 : 000 0.000837
+  appel 47 : 000 0.000794
+  appel 48 : 000 0.000832
+  appel 49 : 000 0.000869
+  appel 50 : 000 0.000788
+  appel 51 : 000 0.000780
+  appel 52 : 000 0.000856
+  appel 53 : 000 0.000810
+  appel 54 : 000 0.000879
+  appel 55 : 000 0.000774
+  appel 56 : 000 0.000886
+  appel 57 : 000 0.000989
+  appel 58 : 000 0.000724
+  appel 59 : 000 0.000750
+  appel 60 : 000 0.000854
+  appel 61 : 000 0.000822
+  appel 62 : 000 0.000772
+  appel 63 : 000 0.000832
+  appel 64 : 000 0.000924
+  appel 65 : 000 0.000807
+  appel 66 : 000 0.000860
+  appel 67 : 000 0.000805
+  appel 68 : 000 0.000825
+  appel 69 : 000 0.000783
+  appel 70 : 000 0.000801
+  appel 71 : 000 0.000788
+  appel 72 : 000 0.000736
+  appel 73 : 000 0.000806
+  appel 74 : 000 0.000932
+  appel 75 : 000 0.000790
+  appel 76 : 000 0.000744
+  appel 77 : 000 0.000791
+  appel 78 : 000 0.000978
+  appel 79 : 000 0.000810
+  appel 80 : 000 0.000858
+  appel 81 : 000 0.000790
+  appel 82 : 000 0.000788
+  appel 83 : 000 0.000771
+  appel 84 : 000 0.000782
+  appel 85 : 000 0.000748
+  appel 86 : 000 0.000823
+  appel 87 : 000 0.000831
+  appel 88 : 000 0.000812
+  appel 89 : 000 0.000874
+  appel 90 : 000 0.000916
+  appel 91 : 000 0.000799
+  appel 92 : 000 0.000755
+  appel 93 : 000 0.000849
+  appel 94 : 000 0.000890
+  appel 95 : 000 0.000771
+  appel 96 : 000 0.000797
+  appel 97 : 000 0.000937
+  appel 98 : 000 0.000799
+  appel 99 : 000 0.000805
+  appel 100 : 000 0.000796
+  appel 101 : 000 0.000716
+  appel 102 : 000 0.000865
+  appel 103 : 000 0.000791
+  appel 104 : 000 0.000767
+  appel 105 : 000 0.000930
+  appel 106 : 000 0.000740
+  appel 107 : 000 0.000776
+  appel 108 : 000 0.000797
+  appel 109 : 000 0.000960
+  appel 110 : 000 0.000700
+  appel 111 : 000 0.000802
+  appel 112 : 000 0.000811
+  appel 113 : 000 0.000896
+  appel 114 : 000 0.000876
+  appel 115 : 000 0.000827
+  appel 116 : 000 0.000886
+  appel 117 : 000 0.000826
+  appel 118 : 000 0.000843
+  appel 119 : 000 0.000798
+  appel 120 : 000 0.000881
+  appel 121 : 000 0.000759
+  appel 122 : 000 0.000841
+  appel 123 : 000 0.000919
+  appel 124 : 000 0.000832
+  appel 125 : 000 0.000778
+  appel 126 : 000 0.000859
+  appel 127 : 000 0.000792
+  appel 128 : 000 0.000854
+  appel 129 : 000 0.000876
+  appel 130 : 000 0.000776
+  appel 131 : 000 0.000881
+  appel 132 : 000 0.000813
+  appel 133 : 000 0.000778
+  appel 134 : 000 0.000868
+  appel 135 : 000 0.000880
+  appel 136 : 000 0.000809
+  appel 137 : 000 0.000815
+  appel 138 : 000 0.000892
+  appel 139 : 000 0.000916
+  appel 140 : 000 0.000805
+  appel 141 : 000 0.000923
+  appel 142 : 000 0.000883
+  appel 143 : 000 0.000795
+  appel 144 : 000 0.000885
+  appel 145 : 000 0.000880
+  appel 146 : 000 0.000930
+  appel 147 : 000 0.000767
+  appel 148 : 000 0.000876
+  appel 149 : 000 0.000839
+  appel 150 : 000 0.000753
+  appel 151 : 000 0.000855
+  appel 152 : 000 0.000700
+  appel 153 : 000 0.000766
+  appel 154 : 000 0.000772
+  appel 155 : 000 0.000858
+  appel 156 : 000 0.000776
+  appel 157 : 000 0.000821
+  appel 158 : 000 0.000948
+  appel 159 : 000 0.000822
+  appel 160 : 000 0.000867
+  appel 161 : 000 0.000971
+  appel 162 : 000 0.000775
+  appel 163 : 000 0.000929
+  appel 164 : 000 0.000788
+  appel 165 : 000 0.000726
+  appel 166 : 000 0.000790
+  appel 167 : 000 0.000660
+  appel 168 : 000 0.000855
+  appel 169 : 000 0.000882
+  appel 170 : 000 0.000759
+  appel 171 : 000 0.000834
+  appel 172 : 000 0.000819
+  appel 173 : 000 0.000754
+  appel 174 : 000 0.000840
+  appel 175 : 000 0.000831
+  appel 176 : 000 0.000956
+  appel 177 : 000 0.000823
+  appel 178 : 000 0.000823
+  appel 179 : 000 0.000804
+  appel 180 : 000 0.000808
+  appel 181 : 000 0.000790
+  appel 182 : 000 0.000863
+  appel 183 : 000 0.000872
+  appel 184 : 000 0.000800
+  appel 185 : 000 0.000803
+  appel 186 : 000 0.000822
+  appel 187 : 000 0.000817
+  appel 188 : 000 0.000930
+  appel 189 : 000 0.000923
+  appel 190 : 000 0.000828
+  appel 191 : 000 0.000713
+  appel 192 : 000 0.000814
+  appel 193 : 000 0.000740
+  appel 194 : 000 0.000862
+  appel 195 : 000 0.000838
+  appel 196 : 000 0.000697
+  appel 197 : 000 0.000861
+  appel 198 : 000 0.000769
+  appel 199 : 000 0.000794
+  appel 200 : 000 0.000997
+échecs=200/200, réponses de plus d'une seconde=0
+
+== Accès nginx frontend-departement (24 h) : statuts des appels /api et /bff
+requêtes=0
+-- statuts 0, 444, 499, 5xx (30 derniers)
+-- erreurs nginx
+
+== Accès nginx frontend-portail (24 h) : statuts des appels /api et /bff
+requêtes=0
+-- statuts 0, 444, 499, 5xx (30 derniers)
+-- erreurs nginx
+
+== Accès nginx frontend-console (24 h) : statuts des appels /api et /bff
+requêtes=0
+-- statuts 0, 444, 499, 5xx (30 derniers)
+-- erreurs nginx
+
+== Passerelle (24 h) : connexions coupées, délais dépassés
+
+== Hôte : connexions TCP vers les ports 4200 à 4202
+1
+Total: 754
+TCP:   81 (estab 22, closed 42, orphaned 15, timewait 13)
+
+Transport Total     IP        IPv6
+RAW	  0         0         0        
+
+== Erreurs récentes de nginx (département)
+
+== Erreurs récentes : gateway (6 dernières heures)
+
+== Erreurs récentes : iam (6 dernières heures)
+
+== Erreurs récentes : document (6 dernières heures)
+
+== Erreurs récentes : keycloak (6 dernières heures)
+
+== Erreurs récentes : pilotage (6 dernières heures)
+
+== Erreurs récentes : notification (6 dernières heures)
+
+== Erreurs récentes : homologation (6 dernières heures)
+
+== Erreurs récentes : collaboration (6 dernières heures)
+
+== Erreurs récentes : conversion-documents (6 dernières heures)
+
+== Clients de service refusés par Keycloak (dernière heure)
+
+== Jeton de chaque client de service (code HTTP seulement, aucun secret affiché)
+pilotage-service : service "frontend-departement" is not running (secret présent dans .env : oui)
+notification-service : service "frontend-departement" is not running (secret présent dans .env : oui)
+collaboration-service : service "frontend-departement" is not running (secret présent dans .env : oui)
+homologation-service : service "frontend-departement" is not running (secret présent dans .env : oui)
+
+== Migrations Liquibase (homologation, pilotage, notification)
+-- homologation
+-- pilotage
+-- notification
+
+== Dernières lignes de la passerelle
