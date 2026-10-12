@@ -25,6 +25,8 @@ export const processusHttp: ServiceProcessus = {
   publier: (id, o) => http.post(`${definition(id)}/publication`, { body: { ...(o.motif?.trim() ? { motif: o.motif.trim() } : {}), ...(o.leverAvertissements ? { leverAvertissements: true } : {}) } }),
   nouvelleVersion: (id) => http.post(`${definition(id)}/nouvelle-version`),
   retirer: (id, motif) => http.post(`${definition(id)}/retrait`, { body: { motif } }),
+  // D-103 : public d'un brouillon ou d'une version publiée, sans nouvelle version (motif obligatoire si publiée).
+  modifierPublic: (id, s) => http.put(`${definition(id)}/public`, { body: { initiateurs: s.initiateurs, ...(s.motif?.trim() ? { motif: s.motif.trim() } : {}) } }),
 
   instances: (q) => http.get(`${PROCESSUS}/instances`, { query: { vue: q.vue, etat: q.etat || undefined, page: q.page ?? 0, taille: q.taille ?? 20 } }),
   // D-98 : « Lancer une demande » et « Mes demandes » ; pièce jointe du formulaire de lancement, référence = la définition.

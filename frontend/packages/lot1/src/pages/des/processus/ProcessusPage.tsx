@@ -129,7 +129,8 @@ function Catalogue({ onLancer }: { onLancer: (id: string) => void }) {
         <span className="gm-row" style={{ gap: 'var(--gm-space-1)', justifyContent: 'flex-end' }}>
           <Button size="sm" variant="ghost" icon={p.droits.modifier ? 'pen-line' : 'eye'} aria-label={t(p.droits.modifier ? 'proc.modifierQui' : 'proc.ouvrirQui', { libelle: p.libelle, version: p.version })}
             onClick={() => navigate(`/des/processus/${encodeURIComponent(p.id)}`)}>{t(p.droits.modifier ? 'proc.modifier' : 'proc.ouvrir')}</Button>
-          {p.droits.modifier ? <Button size="sm" variant="ghost" icon="users" aria-label={t('dem.resume.reglerQui', { libelle: p.libelle })}
+          {/* D-103 : le public se règle aussi sur une version publiée (repli d'un service antérieur : modifier). */}
+          {(p.droits.modifierPublic ?? p.droits.modifier) ? <Button size="sm" variant="ghost" icon="users" aria-label={t('dem.resume.reglerQui', { libelle: p.libelle })}
             onClick={() => navigate(`/des/processus/${encodeURIComponent(p.id)}?reglage=public`)}>{t('dem.resume.public')}</Button> : null}
           {p.droits.lancer ? <Button size="sm" variant="secondary" icon="arrow-right" aria-label={t('proc.lancerQui', { libelle: p.libelle })} onClick={() => onLancer(p.id)}>{t('proc.lancer')}</Button> : null}
         </span>

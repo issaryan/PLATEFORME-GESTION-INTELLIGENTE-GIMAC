@@ -19,6 +19,8 @@ import org.hibernate.type.SqlTypes;
  * Une version d'un processus d'unité (§1) : code stable, numéro de version, état (BROUILLON, PUBLIEE, RETIREE),
  * unité propriétaire, graphe d'étapes (JSONB). Seul un brouillon se modifie ou se supprime ; une version publiée
  * est immuable (les instances lancées la gardent) ; une nouvelle version naît en brouillon d'une version publiée.
+ * Exception (D-103) : le public (qui peut voir et lancer) est un réglage d'accès, modifiable sur un brouillon comme sur
+ * une version publiée ; étapes, formulaire de lancement et séparation des fonctions restent figés.
  */
 @Entity
 @Table(name = "processus")
@@ -152,6 +154,25 @@ public class Processus extends EntitePilotage {
         exigerBrouillon();
         this.initiateurs = initiateurs == null ? Initiateurs.parDefaut() : initiateurs;
         this.formulaire = formulaire == null ? Formulaire.vide() : formulaire;
+        this.modifieLe = le;
+        this.modifiePar = acteur;
+    }
+
+    /**
+     * Public d'un brouillon ou d'une version publiée (D-103) : règles et paramètres remplacés, séparation des fonctions
+     * ({@code initiateurIntervenant}) conservée telle quelle ; 409 PIL_PROCESSUS_NON_MODIFIABLE sur une version retirée.
+     * Vaut pour les prochains lancements : les instances déjà lancées ne relisent pas le public.
+     */
+    public void reglerPublic(Initiateurs nouveau, String acteur, Instant le) {
+        if (etat == EtatProcessus.RETIREE) {
+            throw PilotageException.conflit(
+                "PIL_PROCESSUS_NON_MODIFIABLE",
+                "Une version retirée ne se modifie plus, son public compris",
+                Map.of("etat", etat.name())
+            );
+        }
+        Initiateurs n = nouveau == null ? Initiateurs.parDefaut() : nouveau;
+        this.initiateurs = new Initiateurs(n.regles(), n.unites(), n.profils(), n.permissions(), n.personnes(), getInitiateurs().initiateurIntervenant());
         this.modifieLe = le;
         this.modifiePar = acteur;
     }

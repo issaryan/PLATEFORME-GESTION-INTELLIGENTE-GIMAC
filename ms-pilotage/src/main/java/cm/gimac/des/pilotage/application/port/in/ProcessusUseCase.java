@@ -79,9 +79,17 @@ public interface ProcessusUseCase {
 
     /**
      * Ce que l'appelant peut faire sur cette version : modifier, publier et supprimer un brouillon ; lancer et retirer
-     * une version publiée ; en tirer une nouvelle version (publiée ou retirée).
+     * une version publiée ; en tirer une nouvelle version (publiée ou retirée) ; {@code modifierPublic} (D-103) : régler
+     * le public d'un brouillon ou d'une version publiée (qui définit les processus de l'unité), sans nouvelle version.
      */
-    record Droits(boolean modifier, boolean publier, boolean lancer, boolean retirer, boolean supprimer, boolean nouvelleVersion) {}
+    record Droits(boolean modifier, boolean publier, boolean lancer, boolean retirer, boolean supprimer, boolean nouvelleVersion, boolean modifierPublic) {}
+
+    /**
+     * Corps de PUT /processus/{id}/public (D-103) : règles et paramètres du public ({@code initiateurs.initiateurIntervenant}
+     * ignoré : la séparation des fonctions reste celle de la définition) ; {@code motif} obligatoire (3 à 500 caractères)
+     * sur une version publiée, facultatif sur un brouillon.
+     */
+    record PublicSaisie(InitiateursSaisie initiateurs, String motif) {}
 
     /**
      * Portée du catalogue (D-92 §3) : {@code portee} TOUS_DOMAINES (toutes les unités, actives ou non) ou MES_UNITES ;
@@ -148,6 +156,14 @@ public interface ProcessusUseCase {
     ProcessusLu nouvelleVersion(Appelant appelant, UUID id);
 
     ProcessusLu retirer(Appelant appelant, UUID id, String motif);
+
+    /**
+     * Public d'une version brouillon ou publiée (D-103), sans nouvelle version : qui définit les processus de l'unité
+     * (403 PIL_PROCESSUS_INTERDIT sinon) ; version retirée : 409 PIL_PROCESSUS_NON_MODIFIABLE ; saisie : 400
+     * PIL_REQUETE_INVALIDE ; version publiée : contrôles de publication du public, 422 PIL_PROCESSUS_ANOMALIES
+     * ({@code details.anomalies}) à la première anomalie bloquante. Historique PUBLIC_MODIFIE (avant, après, motif).
+     */
+    ProcessusLu modifierPublic(Appelant appelant, UUID id, PublicSaisie saisie);
 
     /**
      * Candidats d'un intervenant pour le modélisateur et le lancement : unité obligatoire (connue, 422

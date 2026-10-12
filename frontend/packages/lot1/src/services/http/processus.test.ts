@@ -30,6 +30,9 @@ describe('processusHttp', () => {
     await processusHttp.publier('P1', { motif: ' Levée ', leverAvertissements: true })
     await processusHttp.nouvelleVersion('P1')
     await processusHttp.retirer('P1', 'Obsolète')
+    const pub = { regles: ['PERSONNES' as const], unites: [], profils: [], permissions: [], personnes: ['u-1'] }
+    await processusHttp.modifierPublic('P/1', { initiateurs: pub, motif: '  Ouverture à u-1  ' })
+    await processusHttp.modifierPublic('P1', { initiateurs: pub, motif: '  ' })
     expect(appels().map((_, i) => appel(i))).toEqual([
       'GET /bff/des/pilotage/processus',
       'GET /bff/des/pilotage/processus?unite=POLE_RESEAU&etat=PUBLIEE&q=flux',
@@ -42,11 +45,16 @@ describe('processusHttp', () => {
       'POST /bff/des/pilotage/processus/P1/publication',
       'POST /bff/des/pilotage/processus/P1/nouvelle-version',
       'POST /bff/des/pilotage/processus/P1/retrait',
+      'PUT /bff/des/pilotage/processus/P%2F1/public',
+      'PUT /bff/des/pilotage/processus/P1/public',
     ])
     expect(corps(3)).toEqual(s)
     expect(corps(7)).toEqual({})
     expect(corps(8)).toEqual({ motif: 'Levée', leverAvertissements: true })
     expect(corps(10)).toEqual({ motif: 'Obsolète' })
+    // D-103 : public seul, motif rogné, absent s'il est vide (brouillon).
+    expect(corps(11)).toEqual({ initiateurs: pub, motif: 'Ouverture à u-1' })
+    expect(corps(12)).toEqual({ initiateurs: pub })
   })
 
   it('instances : liste, lancement, lecture, livrables, champs, signature signée, fin, validation, réaffectation, suspension, reprise, annulation', async () => {

@@ -2,7 +2,7 @@ import { ApiError, type ArriveeNotification, type OptionsTeleversement, type Tel
 import { PROFILS } from '../../permissions'
 import type { PersonneActivite } from '../../modele/pilotage'
 import {
-  INITIATEURS_DEFAUT, LIMITES_FORMULAIRE, LIMITES_PROCESSUS, LIMITES_PUBLIC, MODES_REMPLACEMENT, cleDesignation, designationsAttendues, intervenantNormalise, type AnomalieProcessus, type Attendu,
+  INITIATEURS_DEFAUT, LIMITES_FORMULAIRE, LIMITES_PROCESSUS, LIMITES_PUBLIC, MODES_REMPLACEMENT, REGLES_INITIATEUR, cleDesignation, designationsAttendues, intervenantNormalise, type AnomalieProcessus, type Attendu,
   type ChampFormulaire, type ControleProcessus, type DemandeProcessus, type EtapeInstance, type EtapeProcessus, type Formulaire, type HistoriqueProcessus, type Initiateurs,
   type InstanceProcessus, type Intervenant, type CandidatsProcessus, type Lancement, type Processus, type ResumeInstance, type ResumeProcessus, type SaisieProcessus,
   type ValeurChampFormulaire, type ValeurFormulaire,
@@ -351,7 +351,11 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
     return structuredClone({
       ...p, versions, personnes, avertissements: p.etat === 'PUBLIEE' ? controler(p).filter((a) => a.gravite === 'AVERTISSEMENT') : [],
       initiateurs: avecNoms(initiateurs(p)), formulaire: p.formulaire ?? { champs: [] },
-      droits: { modifier: definir && p.etat === 'BROUILLON', publier: definir && p.etat === 'BROUILLON', lancer: p.etat === 'PUBLIEE' && peutLancerProcessus(p), retirer: definir && p.etat === 'PUBLIEE' },
+      droits: {
+        modifier: definir && p.etat === 'BROUILLON', publier: definir && p.etat === 'BROUILLON', lancer: p.etat === 'PUBLIEE' && peutLancerProcessus(p), retirer: definir && p.etat === 'PUBLIEE',
+        // D-103 : le public se règle sur un brouillon comme sur une version publiée, sans nouvelle version.
+        modifierPublic: definir && p.etat !== 'RETIREE',
+      },
     })
   }
   /** D-100 : personnes désignées du public, avec leur nom affiché (comme la vue de MS-PILOTAGE). */
@@ -394,11 +398,58 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
       if (!LIMITES_PROCESSUS.codeEtape.test(c.code ?? '')) throw champ(`formulaire.champs[${i}].code`, 'Code de champ invalide.')
       if (!c.libelle?.trim()) throw champ(`formulaire.champs[${i}].libelle`, 'Libellé obligatoire.')
     })
-    s.initiateurs?.profils.forEach((x, i) => { if (!/^ROLE_[A-Z][A-Z0-9_]{1,60}$/.test(x)) throw champ(`initiateurs.profils[${i}]`, 'Profil ROLE_… attendu.') })
+    if (s.initiateurs) verifierInitiateurs(s.initiateurs)
+  }
+  /** Public saisi (D-98, D-100), comme SaisieProcessus.initiateurs de MS-PILOTAGE : règles connues, formats, bornes. */
+  const verifierInitiateurs = (i: Partial<Initiateurs>) => {
+    const champ = (c: string, m: string) => refus(400, 'PIL_REQUETE_INVALIDE', m, { champ: c })
+    const codes = (c: string, l: string[] | undefined, motif: RegExp, m: string) => {
+      if ((l ?? []).length > LIMITES_FORMULAIRE.parametres) throw champ(c, `${LIMITES_FORMULAIRE.parametres} éléments au plus`)
+      ;(l ?? []).forEach((x, n) => { if (!motif.test(x?.trim() ?? '')) throw champ(`${c}[${n}]`, m) })
+    }
+    if ((i.regles ?? []).length > LIMITES_FORMULAIRE.parametres) throw champ('initiateurs.regles', `${LIMITES_FORMULAIRE.parametres} règles au plus`)
+    ;(i.regles ?? []).forEach((r, n) => { if (!REGLES_INITIATEUR.includes(r)) throw champ(`initiateurs.regles[${n}]`, 'Valeur inconnue') })
+    codes('initiateurs.unites', i.unites, /^[A-Z][A-Z0-9_]{1,31}$/, 'Code d’unité attendu (par exemple POLE_RESEAU)')
+    codes('initiateurs.profils', i.profils, /^ROLE_[A-Z][A-Z0-9_]{1,60}$/, 'Profil ROLE_… attendu.')
+    codes('initiateurs.permissions', i.permissions, /^[A-Z][A-Z0-9_]{1,79}$/, 'Permission ^[A-Z][A-Z0-9_]{1,79}$ attendue')
     // D-100 : identifiants de comptes (texte de 1 à 80 caractères), 50 au plus, comme MS-PILOTAGE.
-    const personnes = s.initiateurs?.personnes ?? []
+    const personnes = i.personnes ?? []
     if (personnes.length > LIMITES_PUBLIC.personnes) throw champ('initiateurs.personnes', `${LIMITES_PUBLIC.personnes} personnes au plus`)
-    personnes.forEach((x, i) => { if (!x?.trim() || x.trim().length > 80) throw champ(`initiateurs.personnes[${i}]`, 'Texte de 1 à 80 caractères attendu') })
+    personnes.forEach((x, n) => { if (!x?.trim() || x.trim().length > 80) throw champ(`initiateurs.personnes[${n}]`, 'Texte de 1 à 80 caractères attendu') })
+  }
+  /** D-103 : motif d'un changement de public, 3 à 500 caractères (obligatoire sur une version publiée), comme MS-PILOTAGE. */
+  const motifPublic = (m: string | undefined, exige: boolean) => {
+    const v = m?.trim() ?? ''
+    if (!v && !exige) return null
+    if (v.length < 3 || v.length > LIMITES_PUBLIC.motifMax) throw refus(400, 'PIL_REQUETE_INVALIDE', `Motif de 3 à ${LIMITES_PUBLIC.motifMax} caractères attendu`, { champ: 'motif' })
+    return v
+  }
+  /** D-103 : résumé d'un public pour l'historique (règles, paramètres, personnes nommées), comme MS-PILOTAGE. */
+  const resumePublic = (i: Initiateurs) => i.regles.map((r) => {
+    const l = r === 'UNITES' ? i.unites : r === 'PROFILS' ? i.profils : r === 'PERMISSIONS' ? i.permissions : r === 'PERSONNES' ? (i.personnes ?? []).map((x) => membre(x)?.nomAffiche ?? x) : []
+    return l.length ? `${r} (${l.join(', ')})` : r
+  }).join(', ')
+  /** Profil connu : au catalogue ou porté par une personne de l'organisation simulée (comme l'annuaire de MS-PILOTAGE). */
+  const profilConnu = (x: string) => x in PROFILS || magasin.organisation.some((m) => profils(m.id).includes(x))
+  /**
+   * Anomalies du public (D-98, D-100), communes au contrôle de publication et au changement de public d'une version publiée
+   * (D-103).
+   */
+  const anomaliesPublic = (i: Initiateurs): AnomalieProcessus[] => {
+    const a: AnomalieProcessus[] = []
+    const ajouter = (code: string, element: string, message: string) => a.push({ code, gravite: 'BLOQUANTE', etape: null, element, message })
+    if (i.regles.includes('UNITES') && !i.unites.length) ajouter('INITIATEURS_INCOMPLETS', 'initiateurs.unites', 'Règle UNITES sans unité désignée.')
+    if (i.regles.includes('PROFILS') && !i.profils.length) ajouter('INITIATEURS_INCOMPLETS', 'initiateurs.profils', 'Règle PROFILS sans profil désigné.')
+    if (i.regles.includes('PERMISSIONS') && !i.permissions.length) ajouter('INITIATEURS_INCOMPLETS', 'initiateurs.permissions', 'Règle PERMISSIONS sans permission désignée.')
+    if (i.regles.includes('PERSONNES') && !(i.personnes ?? []).length) ajouter('INITIATEURS_INCOMPLETS', 'initiateurs.personnes', 'Règle PERSONNES sans personne désignée')
+    if (i.regles.includes('UNITES')) i.unites.filter((u) => !magasin.unites.some((x) => x.code === u)).forEach((u) => ajouter('UNITE_INCONNUE', 'initiateurs.unites', `Unité inconnue : ${u}.`))
+    if (i.regles.includes('PROFILS')) i.profils.filter((x) => !profilConnu(x)).forEach((x) => ajouter('PROFIL_INCONNU', 'initiateurs.profils', `Profil inconnu : ${x}`))
+    // D-100 : une personne désignée inconnue, externe ou inactive bloque la publication.
+    if (i.regles.includes('PERSONNES')) {
+      ;(i.personnes ?? []).filter((x) => !membre(x) || membre(x)?.actif === false)
+        .forEach((x) => ajouter('PERSONNE_INCONNUE', 'initiateurs.personnes', `Personne désignée inconnue, externe ou inactive : ${membre(x)?.nomAffiche ?? x}`))
+    }
+    return a
   }
 
   /** Contrôle de publication (§5.1) : graphe, intervenants, livrables, signatures, champs, couverture des profils. */
@@ -472,17 +523,7 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
       livrablesVus.push(...e.livrables.map((l) => l.code))
     })
     // D-98 : initiateurs et formulaire de lancement.
-    const i = initiateurs(p)
-    if (i.regles.includes('UNITES') && !i.unites.length) ajouter('INITIATEURS_INCOMPLETS', 'BLOQUANTE', null, 'initiateurs.unites', 'Règle UNITES sans unité désignée.')
-    if (i.regles.includes('PROFILS') && !i.profils.length) ajouter('INITIATEURS_INCOMPLETS', 'BLOQUANTE', null, 'initiateurs.profils', 'Règle PROFILS sans profil désigné.')
-    if (i.regles.includes('PERMISSIONS') && !i.permissions.length) ajouter('INITIATEURS_INCOMPLETS', 'BLOQUANTE', null, 'initiateurs.permissions', 'Règle PERMISSIONS sans permission désignée.')
-    if (i.regles.includes('PERSONNES') && !(i.personnes ?? []).length) ajouter('INITIATEURS_INCOMPLETS', 'BLOQUANTE', null, 'initiateurs.personnes', 'Règle PERSONNES sans personne désignée')
-    if (i.regles.includes('UNITES')) i.unites.filter((u) => !magasin.unites.some((x) => x.code === u)).forEach((u) => ajouter('UNITE_INCONNUE', 'BLOQUANTE', null, 'initiateurs.unites', `Unité inconnue : ${u}.`))
-    // D-100 : une personne désignée inconnue, externe ou inactive bloque la publication.
-    if (i.regles.includes('PERSONNES')) {
-      ;(i.personnes ?? []).filter((x) => !membre(x) || membre(x)?.actif === false)
-        .forEach((x) => ajouter('PERSONNE_INCONNUE', 'BLOQUANTE', null, 'initiateurs.personnes', `Personne désignée inconnue, externe ou inactive : ${membre(x)?.nomAffiche ?? x}`))
-    }
+    a.push(...anomaliesPublic(initiateurs(p)))
     const champsFormulaire = (p.formulaire?.champs ?? []).map((c) => c.code)
     champsFormulaire.filter((c, n) => champsFormulaire.indexOf(c) !== n).forEach((c) => ajouter('CHAMP_CODE_DUPLIQUE', 'BLOQUANTE', null, `formulaire.${c}`, `Code de champ du formulaire en double : ${c}.`))
     ;(p.formulaire?.champs ?? []).filter((c) => c.type === 'LISTE' && !c.choix.length).forEach((c) => ajouter('CHAMP_CHOIX_ABSENT', 'BLOQUANTE', null, `formulaire.${c.code}`, `Liste sans valeur : ${c.code}.`))
@@ -1018,6 +1059,27 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
       if (p.etat !== 'PUBLIEE') throw refus(409, 'PIL_PROCESSUS_ETAT', 'Seule une version publiée se retire.')
       Object.assign(p, { etat: 'RETIREE', retireeLe: maintenant(), retireePar: moi(), motifRetrait: motif })
       historiser(p.historique, 'RETIRE', motif)
+      return vue(p)
+    }),
+
+    // D-103 : public d'un brouillon ou d'une version publiée, sans nouvelle version (mêmes refus que MS-PILOTAGE).
+    modifierPublic: (pid, s) => attendre(() => {
+      const p = trouver(pid)
+      exigerDefinir(p.unite)
+      if (p.etat === 'RETIREE') throw refus(409, 'PIL_PROCESSUS_NON_MODIFIABLE', 'Une version retirée ne se modifie plus, son public compris', { etat: p.etat })
+      if (!s?.initiateurs) throw refus(400, 'PIL_REQUETE_INVALIDE', 'Public absent', { champ: 'initiateurs' })
+      verifierInitiateurs(s.initiateurs)
+      const publiee = p.etat === 'PUBLIEE'
+      const motif = motifPublic(s.motif, publiee)
+      const avant = normaliserInitiateurs(initiateurs(p))
+      const apres = normaliserInitiateurs({ ...s.initiateurs, initiateurIntervenant: !!avant.initiateurIntervenant })
+      if (publiee) {
+        const a = anomaliesPublic(apres)
+        if (a.length) throw refus(422, 'PIL_PROCESSUS_ANOMALIES', 'Le public comporte des anomalies bloquantes', { anomalies: a })
+      }
+      if (JSON.stringify(apres) === JSON.stringify(avant)) return vue(p)
+      Object.assign(p, { initiateurs: apres, modifieLe: maintenant(), modifiePar: moi() })
+      historiser(p.historique, 'PUBLIC_MODIFIE', `Public de la version ${p.version} modifié${motif ? ` : ${motif}` : ''} ; avant : ${resumePublic(avant)} ; après : ${resumePublic(apres)}`)
       return vue(p)
     }),
 

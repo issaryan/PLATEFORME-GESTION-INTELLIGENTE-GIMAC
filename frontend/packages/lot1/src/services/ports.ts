@@ -18,7 +18,7 @@ import type {
 } from '../modele/pilotage'
 import type { Demande, EtatDemande, MesPouvoirs, NouvelleDemande, PageDemandes } from '../modele/pouvoirs'
 import type {
-  CandidatsProcessus, ControleProcessus, DecisionValidation, EtatInstance, EtatProcessus, InstanceProcessus, Lancables, Lancement, PageDemandesProcessus, PageInstances, PorteeProcessus, Processus, ResumeProcessus, SaisieProcessus, VueInstances,
+  CandidatsProcessus, ControleProcessus, DecisionValidation, EtatInstance, EtatProcessus, InstanceProcessus, Lancables, Lancement, PageDemandesProcessus, PageInstances, PorteeProcessus, Processus, ResumeProcessus, SaisieProcessus, SaisiePublic, VueInstances,
 } from '../modele/processus'
 import type {
   Candidature, ConditionsAdhesion, DossierInstitution, FiltreInstitutions, IndicateursDdrm, Institution, PieceAdhesion, Prerequis,
@@ -390,6 +390,12 @@ export interface ServiceProcessus {
   publier(id: string, o: { motif?: string; leverAvertissements?: boolean }): Promise<Processus>
   nouvelleVersion(id: string): Promise<Processus>
   retirer(id: string, motif: string): Promise<Processus>
+  /**
+   * D-103 : public d'un brouillon ou d'une version publiée, sans nouvelle version. 403 PIL_PROCESSUS_INTERDIT, 409
+   * PIL_PROCESSUS_NON_MODIFIABLE (version retirée), 400 PIL_REQUETE_INVALIDE (details.champ), 422 PIL_PROCESSUS_ANOMALIES
+   * (details.anomalies, version publiée).
+   */
+  modifierPublic(id: string, s: SaisiePublic): Promise<Processus>
   instances(q: { vue: VueInstances; etat?: EtatInstance; page?: number; taille?: number }): Promise<PageInstances>
   /** D-98 : versions publiées que je peux lancer, groupées par unité propriétaire (recherche : code, libellé, catégorie). */
   lancables(q: { q?: string }): Promise<Lancables>

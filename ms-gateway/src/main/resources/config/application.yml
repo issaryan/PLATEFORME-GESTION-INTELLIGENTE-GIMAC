@@ -241,6 +241,7 @@ spring:
             # Processus d'unité (D-87, docs/lot1/processus-unite.md §3 et §5) : /bff/des/pilotage/processus/** vers
             # /api/v1/processus/** par cette même route (pas de route dédiée, qui doublerait celle-ci) ; méthodes GET,
             # POST, PUT et DELETE filtrées par OPA ; l'en-tête X-Reauth-Assertion de la signature est relayé tel quel.
+            # D-103 : PUT /bff/des/pilotage/processus/{id}/public (public d'une version publiée) passe par cette route.
             - id: des-pilotage
               uri: ${gimac.services.pilotage}
               predicates:

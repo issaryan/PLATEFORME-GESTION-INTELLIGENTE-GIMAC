@@ -48,8 +48,9 @@ import org.springframework.transaction.annotation.Transactional;
  * publication (structure : ControleProcessus ; organisation : unité connue, profil existant, personne interne
  * active, au moins une personne active couvrant chaque profil exigé dans l'unité ou, à défaut, ailleurs dans le GIMAC,
  * chef d'unité désigné), candidats d'un intervenant, publication (la
- * version publiée précédente est retirée), nouvelle version, retrait. Historique en ajout seul ; événement
- * pilotage.process-published.v1 par l'outbox.
+ * version publiée précédente est retirée), nouvelle version, retrait, public d'un brouillon ou d'une version publiée
+ * (D-103, sans nouvelle version). Historique en ajout seul ; événement pilotage.process-published.v1 par l'outbox (à la
+ * seule publication).
  */
 @Service
 @Transactional
@@ -304,6 +305,64 @@ public class ProcessusService implements ProcessusUseCase {
     }
 
     @Override
+    public ProcessusLu modifierPublic(Appelant appelant, UUID id, PublicSaisie s) {
+        Processus p = trouver(id);
+        exigerDefinition(appelant, p);
+        if (p.getEtat() == EtatProcessus.RETIREE) {
+            throw PilotageException.conflit("PIL_PROCESSUS_NON_MODIFIABLE", "Une version retirée ne se modifie plus, son public compris", Map.of("etat", p.getEtat().name()));
+        }
+        if (s == null || s.initiateurs() == null) {
+            throw PilotageException.champ("initiateurs", "Public absent");
+        }
+        boolean publiee = p.getEtat() == EtatProcessus.PUBLIEE;
+        Initiateurs saisi = SaisieProcessus.initiateurs(s.initiateurs());
+        String motif = SaisieProcessus.motifPublic(s.motif(), publiee);
+        Initiateurs avant = p.getInitiateurs();
+        Initiateurs apres = new Initiateurs(saisi.regles(), saisi.unites(), saisi.profils(), saisi.permissions(), saisi.personnes(), avant.initiateurIntervenant());
+        if (publiee) {
+            // Version publiée : le public est contrôlé comme à la publication, toute anomalie bloquante refuse.
+            List<Anomalie> a = new ArrayList<>();
+            publicDe(p.getUnite(), apres, a, new HashMap<>());
+            List<Anomalie> bloquantes = a.stream().filter(x -> x.gravite() == GraviteAnomalie.BLOQUANTE).toList();
+            if (!bloquantes.isEmpty()) {
+                throw PilotageException.regle("PIL_PROCESSUS_ANOMALIES", "Le public comporte des anomalies bloquantes", Map.of("anomalies", bloquantes));
+            }
+        }
+        if (apres.equals(avant)) {
+            // Rien ne change : ni écriture ni historique.
+            return lu(appelant, p);
+        }
+        Instant le = horloge.instant();
+        p.reglerPublic(apres, appelant.id(), le);
+        processus.save(p);
+        Map<String, String> noms = equipes.noms(Stream.concat(avant.personnes().stream(), apres.personnes().stream()).distinct().toList());
+        consigner(
+            p,
+            appelant.id(),
+            ActionProcessus.PUBLIC_MODIFIE,
+            "Public de la version " + p.getVersion() + " modifié" + (motif == null ? "" : " : " + motif) + " ; avant : " + resumePublic(avant, noms) + " ; après : " + resumePublic(apres, noms) + titre(appelant, p),
+            le
+        );
+        return lu(appelant, p);
+    }
+
+    /** Résumé d'un public pour l'historique (D-103) : règles et leurs paramètres, personnes nommées. */
+    static String resumePublic(Initiateurs i, Map<String, String> noms) {
+        List<String> l = new ArrayList<>();
+        for (RegleInitiateur r : i.regles()) {
+            List<String> parametres = switch (r) {
+                case UNITES -> i.unites();
+                case PROFILS -> i.profils();
+                case PERMISSIONS -> i.permissions();
+                case PERSONNES -> i.personnes().stream().map(x -> noms.getOrDefault(x, x)).toList();
+                default -> List.of();
+            };
+            l.add(parametres.isEmpty() ? r.name() : r.name() + " (" + String.join(", ", parametres) + ")");
+        }
+        return String.join(", ", l);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public Candidats candidats(Appelant appelant, String unite, String profil) {
         String u = SaisieProcessus.unite("unite", unite);
@@ -358,7 +417,12 @@ public class ProcessusService implements ProcessusUseCase {
      * double, une liste sans valeur sont bloquants.
      */
     private void lancement(Processus p, List<Anomalie> a, Map<String, Optional<UniteMembres>> cache) {
-        Initiateurs i = p.getInitiateurs();
+        publicDe(p.getUnite(), p.getInitiateurs(), a, cache);
+        formulaire(p, a);
+    }
+
+    /** Anomalies du public (D-98, D-100), communes à la publication et au changement de public d'une version publiée (D-103). */
+    private void publicDe(String uniteProprietaire, Initiateurs i, List<Anomalie> a, Map<String, Optional<UniteMembres>> cache) {
         if (i.a(RegleInitiateur.UNITES) && i.unites().isEmpty()) {
             a.add(Anomalie.bloquante("INITIATEURS_INCOMPLETS", null, "initiateurs.unites", "Règle UNITES sans unité désignée"));
         }
@@ -378,7 +442,7 @@ public class ProcessusService implements ProcessusUseCase {
             i
                 .profils()
                 .stream()
-                .filter(x -> membres(cache, p.getUnite(), x).map(m -> !m.profilConnu()).orElse(false))
+                .filter(x -> membres(cache, uniteProprietaire, x).map(m -> !m.profilConnu()).orElse(false))
                 .forEach(x -> a.add(Anomalie.bloquante("PROFIL_INCONNU", null, "initiateurs.profils", "Profil inconnu : " + x)));
         }
         if (i.a(RegleInitiateur.PERSONNES)) {
@@ -390,6 +454,9 @@ public class ProcessusService implements ProcessusUseCase {
                 }
             }
         }
+    }
+
+    private void formulaire(Processus p, List<Anomalie> a) {
         Set<String> codes = new java.util.HashSet<>();
         for (ChampFormulaire c : p.getFormulaire().champs()) {
             if (!codes.add(c.code())) {
@@ -474,7 +541,7 @@ public class ProcessusService implements ProcessusUseCase {
     private static Droits droits(Processus p, boolean definit, boolean lance) {
         boolean brouillon = p.getEtat() == EtatProcessus.BROUILLON;
         boolean publiee = p.getEtat() == EtatProcessus.PUBLIEE;
-        return new Droits(definit && brouillon, definit && brouillon, lance && publiee, definit && publiee, definit && brouillon, definit && !brouillon);
+        return new Droits(definit && brouillon, definit && brouillon, lance && publiee, definit && publiee, definit && brouillon, definit && !brouillon, definit && (brouillon || publiee));
     }
 
     private void decrire(Processus p, ProcessusSaisie s, Appelant appelant, Instant le) {

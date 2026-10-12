@@ -44,7 +44,7 @@ for (const theme of ['light', 'dark'] as const) {
         await capturer(page, `admin-lancer-demande-${suffixe}`)
       })
 
-      await test.step('Alors il le lit toujours dans « Processus de l’unité », avec son public, sans pouvoir le lancer', async () => {
+      await test.step('Alors il le lit toujours dans « Processus de l’unité », avec son public, sans pouvoir le lancer ; il peut en régler le public (D-103)', async () => {
         await page.goto(`${ADRESSES.departement}/des/processus`)
         const publicVm = page.getByTestId('public-CREATION_MACHINE_VIRTUELLE')
         await expect(publicVm).toHaveText('Visible et lançable par : Personnes désignées (Idriss Mahamat Saleh, Rachel Biyong Mengue)')
@@ -56,9 +56,11 @@ for (const theme of ['light', 'dark'] as const) {
         await expect(page.getByRole('heading', { level: 1, name: VM })).toBeVisible()
         await expect(page.getByTestId('public-processus')).toContainText('Personnes désignées (Idriss Mahamat Saleh, Rachel Biyong Mengue)')
         await expect(page.getByRole('button', { name: 'Lancer', exact: true })).toHaveCount(0)
-        await page.getByRole('button', { name: `Voir qui peut voir et lancer « ${VM} »` }).click()
+        // D-103 : qui définit les processus de l'unité (ici REF_METIER_ADMIN) règle le public d'une version publiée.
+        await page.getByRole('button', { name: `Régler qui peut voir et lancer « ${VM} »` }).click()
         const d = page.getByRole('dialog', { name: 'Qui peut voir et lancer ce processus' })
-        await expect(d.getByRole('list', { name: 'Personnes désignées' }).getByRole('listitem')).toHaveText(['Idriss Mahamat Saleh', 'Rachel Biyong Mengue'])
+        await expect(d.getByTestId('initiateurs-personnes').getByText('2 personnes choisies')).toBeVisible()
+        await expect(d.getByText('Version publiée : seul le public se règle ici')).toBeVisible()
         await capturer(page, `admin-public-lecture-${suffixe}`)
       })
 

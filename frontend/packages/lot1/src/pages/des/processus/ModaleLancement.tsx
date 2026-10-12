@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Checkbox, CheckboxGroup, CrudDialog, InlineAlert, Note, Select, TextField } from '@gimac/design-system'
 import {
@@ -16,7 +16,9 @@ import { PROFILS_INTERVENANTS } from './communs'
 // permissions, personnes désignées nommément dans l'annuaire), seul juge de « Lancer une demande », et formulaire de
 // lancement (champs typés, obligation, aide, valeurs d'une liste, types de pièces). Enregistré avec la définition (PUT) ;
 // contrôlé à la publication (anomalies INITIATEURS_INCOMPLETS, PERSONNE_INCONNUE, CHAMP_CODE_DUPLIQUE, CHAMP_CHOIX_ABSENT)
-// et au lancement par MS-PILOTAGE.
+// et au lancement par MS-PILOTAGE. D-103 : deux niveaux ; le public se règle aussi sur une version publiée
+// (`lecturePublic` faux, `motifRequis`), sans nouvelle version, tandis que le formulaire et la séparation des fonctions
+// restent en lecture (`lecture`) ; motif obligatoire et note sur les demandes déjà lancées.
 
 const liste = (texte: string) => [...new Set(texte.split(',').map((x) => x.trim()).filter(Boolean))]
 const champVierge = (n: number): ChampFormulaire => ({ code: `CHAMP_${n}`, libelle: '', type: 'TEXTE', choix: [], obligatoire: false, aide: null, typesPieces: [] })
@@ -24,9 +26,16 @@ const champVierge = (n: number): ChampFormulaire => ({ code: `CHAMP_${n}`, libel
 /** Code d'un champ tiré de son libellé (majuscules sans accent), modifiable ensuite. */
 export const codeDepuisLibelle = (libelle: string) => libelle.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 40)
 
-export function ModaleLancement({ initiateurs, formulaire, lecture, enCours, erreur, onFermer, onEnregistrer }: {
-  initiateurs?: Initiateurs; formulaire?: Formulaire; lecture: boolean; enCours: boolean; erreur?: { titre: string; correlationId?: string }
-  onFermer: () => void; onEnregistrer: (i: Initiateurs, f: Formulaire) => void
+export function ModaleLancement({ initiateurs, formulaire, lecture, lecturePublic = lecture, motifRequis = false, enCours, erreur, onFermer, onEnregistrer }: {
+  initiateurs?: Initiateurs; formulaire?: Formulaire
+  /** Formulaire de lancement et séparation des fonctions en lecture (version publiée ou retirée, ou sans droit). */
+  lecture: boolean
+  /** D-103 : public en lecture (par défaut comme `lecture`) ; faux sur une version publiée si `droits.modifierPublic`. */
+  lecturePublic?: boolean
+  /** D-103 : changement du public d'une version publiée, motif obligatoire (10 caractères au moins). */
+  motifRequis?: boolean
+  enCours: boolean; erreur?: { titre: string; correlationId?: string; detail?: ReactNode }
+  onFermer: () => void; onEnregistrer: (i: Initiateurs, f: Formulaire, motif: string) => void
 }) {
   const { t } = useTranslation()
   const unites = useUnites()
@@ -56,7 +65,7 @@ export function ModaleLancement({ initiateurs, formulaire, lecture, enCours, err
       : liste(permissions).some((x) => !/^[A-Z][A-Z0-9_]{1,79}$/.test(x)) ? t('dem.modele.erreur.permissionFormat') : undefined,
     personnes: i.regles.includes('PERSONNES') && !personnes.length ? t('dem.modele.erreur.personnes')
       : personnes.length > LIMITES_PUBLIC.personnes ? t('dem.modele.erreur.personnesMax', { n: LIMITES_PUBLIC.personnes }) : undefined,
-    ...Object.fromEntries(champs.flatMap((c, n) => [
+    ...Object.fromEntries((lecture ? [] : champs).flatMap((c, n) => [
       [`libelle.${n}`, !c.libelle.trim() ? t('proc.erreur.libelle') : undefined],
       [`code.${n}`, !LIMITES_PROCESSUS.codeEtape.test(c.code) ? t('proc.erreur.codeEtape') : codes.indexOf(c.code) !== n ? t('dem.modele.erreur.codeDouble') : undefined],
       [`choix.${n}`, c.type === 'LISTE' && !c.choix.length ? t('dem.modele.erreur.choix') : undefined],
@@ -65,11 +74,14 @@ export function ModaleLancement({ initiateurs, formulaire, lecture, enCours, err
   const comparable = (x: Initiateurs) => ({ ...x, personnesDetail: undefined, personnes: x.personnes ?? [] })
   const dirty = JSON.stringify({ i: comparable({ ...i, permissions: liste(permissions), personnes: personnes.map((p) => p.id) }), champs })
     !== JSON.stringify({ i: comparable(depart.initiateurs), champs: depart.champs })
+  const toutLecture = lecture && lecturePublic
   return (
-    <CrudDialog context={lecture ? 'detail' : 'edit'} size="lg" id="gm-dlg-lancement-modele" title={t('dem.modele.titre')} description={t('dem.modele.texte')} onClose={onFermer}
-      submitLabel={lecture ? undefined : t('proc.enregistrer')} submitting={enCours} dirty={!lecture && dirty} cancelLabel={lecture ? t('commun.fermer') : undefined}
-      error={erreur ? { title: erreur.titre, correlationId: erreur.correlationId } : undefined}
-      onSubmit={lecture ? undefined : () => {
+    <CrudDialog context={toutLecture ? 'detail' : 'edit'} size="lg" id="gm-dlg-lancement-modele" title={t('dem.modele.titre')} description={t('dem.modele.texte')} onClose={onFermer}
+      submitLabel={toutLecture ? undefined : t(motifRequis ? 'dem.modele.enregistrerPublic' : 'proc.enregistrer')} submitting={enCours} dirty={!toutLecture && dirty}
+      cancelLabel={toutLecture ? t('commun.fermer') : undefined} reason={!lecturePublic && motifRequis}
+      submitDisabled={!lecturePublic && motifRequis && !dirty} submitDisabledReason={t('dem.modele.inchange')}
+      error={erreur ? { title: erreur.titre, correlationId: erreur.correlationId, text: erreur.detail } : undefined}
+      onSubmit={toutLecture ? undefined : (motif) => {
         setTente(true)
         if (Object.values(erreurs).some(Boolean)) return
         onEnregistrer(
@@ -78,32 +90,37 @@ export function ModaleLancement({ initiateurs, formulaire, lecture, enCours, err
             permissions: i.regles.includes('PERMISSIONS') ? liste(permissions) : [], personnes: i.regles.includes('PERSONNES') ? personnes.map((p) => p.id) : [], initiateurIntervenant: !!i.initiateurIntervenant,
           },
           { champs: champs.map((c) => ({ ...c, libelle: c.libelle.trim(), aide: c.aide?.trim() || null, choix: c.type === 'LISTE' ? c.choix : [], typesPieces: c.type === 'PIECE_JOINTE' ? c.typesPieces : [] })) },
+          motif,
         )
       }}>
+      {!lecturePublic && motifRequis ? (
+        <InlineAlert level="info" title={t('dem.modele.publieeTitre')}>{t('dem.modele.publieeTexte')}</InlineAlert>
+      ) : null}
       <fieldset className="gm-proc-element">
         <legend className="gm-type-body-strong">{t('dem.modele.initiateurs')}</legend>
         <Note>{t('dem.modele.initiateursAide')}</Note>
+        {!lecturePublic && motifRequis ? <Note>{t('dem.modele.prochainsLancements')}</Note> : null}
         {REGLES_INITIATEUR.map((r) => (
           <div key={r} className="gm-col" style={{ gap: 'var(--gm-space-1)' }}>
-            <Checkbox name={`initiateurs.${r}`} label={t(`dem.regle.${r}`)} checked={i.regles.includes(r)} disabled={lecture} onChange={(x) => regle(r, x)} />
+            <Checkbox name={`initiateurs.${r}`} label={t(`dem.regle.${r}`)} checked={i.regles.includes(r)} disabled={lecturePublic} onChange={(x) => regle(r, x)} />
             <span className="gm-field-help" style={{ marginLeft: 26 }}>{t(`dem.regle.${r}.aide`)}</span>
             {r === 'UNITES' && i.regles.includes('UNITES') ? (
-              <CheckboxGroup id="initiateurs-unites" label={t('dem.modele.unites')} disabled={lecture} value={i.unites} onChange={(v) => setI((o) => ({ ...o, unites: v }))}
+              <CheckboxGroup id="initiateurs-unites" label={t('dem.modele.unites')} disabled={lecturePublic} value={i.unites} onChange={(v) => setI((o) => ({ ...o, unites: v }))}
                 options={unitesEnArbre(unites.data ?? []).map((u) => ({ value: u.code, label: u.libelle }))} error={tente ? erreurs.unites : undefined} />
             ) : null}
             {r === 'PROFILS' && i.regles.includes('PROFILS') ? (
-              <CheckboxGroup id="initiateurs-profils" label={t('dem.modele.profils')} disabled={lecture} value={i.profils} onChange={(v) => setI((o) => ({ ...o, profils: v }))}
+              <CheckboxGroup id="initiateurs-profils" label={t('dem.modele.profils')} disabled={lecturePublic} value={i.profils} onChange={(v) => setI((o) => ({ ...o, profils: v }))}
                 options={PROFILS_INTERVENANTS.map((p) => ({ value: p, label: libelleProfil(p) }))} error={tente ? erreurs.profils : undefined} />
             ) : null}
             {r === 'PERMISSIONS' && i.regles.includes('PERMISSIONS') ? (
-              <TextField name="initiateurs.permissions" label={t('dem.modele.permissions')} help={t('dem.modele.permissionsAide')} mono readOnly={lecture} value={permissions}
+              <TextField name="initiateurs.permissions" label={t('dem.modele.permissions')} help={t('dem.modele.permissionsAide')} mono readOnly={lecturePublic} value={permissions}
                 onChange={(x) => setPermissions(x.toUpperCase())} error={tente ? erreurs.permissions : undefined} />
             ) : null}
             {r === 'PERSONNES' && i.regles.includes('PERSONNES') ? (
               <div className="gm-col" style={{ gap: 'var(--gm-space-1)' }} data-testid="initiateurs-personnes">
                 <span className="gm-field-label">{t('dem.modele.personnes')}</span>
                 {tente && erreurs.personnes ? <span className="gm-field-error" role="alert">{erreurs.personnes}</span> : null}
-                {lecture ? (
+                {lecturePublic ? (
                   <ul aria-label={t('dem.modele.personnes')} style={{ margin: 0 }}>{personnes.map((p) => <li key={p.id}>{p.nom}</li>)}</ul>
                 ) : <Annuaire choisis={personnes} onChoisis={setPersonnes} multiple />}
               </div>

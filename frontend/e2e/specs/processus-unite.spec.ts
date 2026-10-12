@@ -80,7 +80,8 @@ for (const theme of ['light', 'dark'] as const) {
         const lever = page.getByRole('alertdialog', { name: 'Lever les avertissements' })
         await lever.getByLabel(/Motif/).fill('Validation par le chef du service en attendant la désignation')
         await lever.getByRole('button', { name: 'Lever et publier' }).click()
-        await expect(page.getByText('Version publiée ou retirée : lecture seule ; créez une nouvelle version pour la modifier.')).toBeVisible()
+        // D-103 : étapes et formulaire figés ; le public reste réglable par qui définit.
+        await expect(page.getByText('Version publiée : étapes et formulaire en lecture seule, créez une nouvelle version pour les modifier ; son public reste réglable (« Qui peut voir et lancer »).')).toBeVisible()
       })
     })
 

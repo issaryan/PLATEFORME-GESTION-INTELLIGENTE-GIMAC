@@ -243,7 +243,8 @@ describe('D-87 : modélisateur', () => {
     expect(within(lever).getAllByText(/Unité sans chef/).length).toBeGreaterThan(0)
     expect(within(lever).queryByText(/Profil porté hors de l’unité/)).toBeNull()
     await confirmer('Lever et publier', 'Validation par le chef du service en attendant', 'Lever les avertissements')
-    expect(await screen.findByText('Version publiée ou retirée : lecture seule ; créez une nouvelle version pour la modifier.')).toBeTruthy()
+    // D-103 : étapes et formulaire figés, le public reste réglable par qui définit.
+    expect(await screen.findByText('Version publiée : étapes et formulaire en lecture seule, créez une nouvelle version pour les modifier ; son public reste réglable (« Qui peut voir et lancer »).')).toBeTruthy()
     expect((await s.processus.lire(p.id))).toMatchObject({ etat: 'PUBLIEE', avertissementsLeves: true })
   })
 

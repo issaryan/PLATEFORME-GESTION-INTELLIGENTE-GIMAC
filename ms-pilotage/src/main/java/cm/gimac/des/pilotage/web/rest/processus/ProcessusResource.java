@@ -8,6 +8,7 @@ import cm.gimac.des.pilotage.application.port.in.ProcessusUseCase.Candidats;
 import cm.gimac.des.pilotage.application.port.in.ProcessusUseCase.Controle;
 import cm.gimac.des.pilotage.application.port.in.ProcessusUseCase.PorteeCatalogue;
 import cm.gimac.des.pilotage.application.port.in.ProcessusUseCase.ProcessusSaisie;
+import cm.gimac.des.pilotage.application.port.in.ProcessusUseCase.PublicSaisie;
 import cm.gimac.des.pilotage.web.rest.activite.Jetons;
 import cm.gimac.des.pilotage.web.rest.processus.VuesProcessus.ControleVue;
 import cm.gimac.des.pilotage.web.rest.processus.VuesProcessus.DemandeVue;
@@ -40,7 +41,8 @@ import org.springframework.web.bind.annotation.RestController;
  * (PROCESSUS_DEFINIR couvrant l'unité ; lecture par l'unité ; toutes les unités avec
  * REF_METIER_ADMIN ou la portée TOUTES, D-92 ; 403 PIL_PROCESSUS_INTERDIT). GET /processus/portee rend la portée du
  * catalogue ; GET /processus/candidats les candidats d'un intervenant (désignation hors de l'unité).
- * Le lancement (POST /processus/{id}/instances) rend l'instance créée.
+ * Le lancement (POST /processus/{id}/instances) rend l'instance créée. PUT /processus/{id}/public (D-103) règle le public
+ * d'un brouillon ou d'une version publiée.
  */
 @RestController
 @RequestMapping("/api/v1/processus")
@@ -130,6 +132,16 @@ public class ProcessusResource {
     @PreAuthorize(Jetons.ACTIVITE)
     public ProcessusVue modifier(@PathVariable UUID id, @RequestBody(required = false) ProcessusSaisie saisie, Authentication auth) {
         return ProcessusVue.de(processus.modifier(appelant(auth), id, saisie));
+    }
+
+    /**
+     * Public d'une version brouillon ou publiée (D-103, docs/lot1/lancement-processus.md §11), sans nouvelle version :
+     * corps {@code { initiateurs: { regles, unites, profils, permissions, personnes }, motif }} ; rend la définition relue.
+     */
+    @PutMapping("/{id}/public")
+    @PreAuthorize(Jetons.ACTIVITE)
+    public ProcessusVue modifierPublic(@PathVariable UUID id, @RequestBody(required = false) PublicSaisie saisie, Authentication auth) {
+        return ProcessusVue.de(processus.modifierPublic(appelant(auth), id, saisie));
     }
 
     @DeleteMapping("/{id}")

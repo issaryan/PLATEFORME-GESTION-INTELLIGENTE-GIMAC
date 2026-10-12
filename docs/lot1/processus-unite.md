@@ -80,6 +80,7 @@ Droits : définir et publier les processus d'une unité = `PROCESSUS_DEFINIR` co
 | POST | `/processus/{id}/publication` | publier (motif) |
 | POST | `/processus/{id}/nouvelle-version` | brouillon v+1 depuis une version publiée |
 | POST | `/processus/{id}/retrait` | retirer (motif) |
+| PUT | `/processus/{id}/public` | public d'un brouillon ou d'une version publiée, sans nouvelle version (D-103, `docs/lot1/lancement-processus.md` §11) |
 | GET | `/instances?vue=miennes\|unite\|lancees&etat=` | instances |
 | POST | `/processus/{id}/instances` | lancer (`{ intitule, champs, designations: { CODE_ETAPE: personneId } }`) |
 | GET | `/instances/{id}` | instance (étapes, états, livrables, signatures, historique) |
@@ -197,6 +198,8 @@ sont vérifiés par le cas d'utilisation (403 `PIL_PROCESSUS_INTERDIT`).
 - `POST /processus/{id}/nouvelle-version` (201) depuis une version publiée ou retirée : brouillon `max(version)+1` ;
   un brouillon existe déjà → 409 `PIL_PROCESSUS_BROUILLON_EXISTANT`. `POST …/retrait` `{ motif }` (obligatoire).
   `DELETE` : brouillon seulement (204). Hors brouillon, modifier ou supprimer → 409 `PIL_PROCESSUS_ETAT`.
+- `PUT /processus/{id}/public` (D-103) : seul le public se règle sur une version publiée, sans nouvelle version ;
+  contrat dans `docs/lot1/lancement-processus.md` §11.
 - `POST /processus/{id}/instances` (201) : `{ intitule, champs: { CODE_CHAMP: valeur }, designations: { cle:
   personneId } }`. `champs` : valeurs des champs des étapes initiales (sans prédécesseur), par code. Clés des
   désignations : `CODE_ETAPE` (exécutant), `CODE_ETAPE.validateur`, `CODE_ETAPE.signature.CODE`. Personne désignée

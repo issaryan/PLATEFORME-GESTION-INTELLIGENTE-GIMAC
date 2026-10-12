@@ -3,8 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams, useSearchParams } from 'react-router'
 import { ReactFlowProvider } from '@xyflow/react'
 import { Button, ConfirmDialog, CrudDialog, DataTable, Icon, InlineAlert, KeyValueList, NumberField, PageHeader, Select, TextArea, TextField, cx, type Column } from '@gimac/design-system'
-import { EtatsRequete, type ApiError } from '@gimac/socle'
-import { LIMITES_PROCESSUS, etapeVierge, type AnomalieProcessus, type EtapeProcessus, type Initiateurs, type Processus, type SaisieProcessus } from '../../../modele/processus'
+import { EtatsRequete, estApiError, type ApiError } from '@gimac/socle'
+import { LIMITES_PROCESSUS, etapeVierge, type AnomalieProcessus, type EtapeProcessus, type Initiateurs, type Processus, type SaisieProcessus, type SaisiePublic } from '../../../modele/processus'
 import { useControleProcessus, useEcritureProcessus, usePorteeProcessus, useProcessus, useSupprimerProcessus } from '../../../hooks/processus'
 import { usePouvoirs } from '../../../hooks/pouvoirs'
 import { useDates, useLibelleUnite } from '../activite/communs'
@@ -20,7 +20,8 @@ import { useUnites } from '../../../hooks/pilotage'
 // référentiels (D-77) ou vue liste équivalente au clavier ; une carte par étape, les prédécesseurs en arcs ; modale
 // d'étape à onglets ; contrôle (anomalies BLOQUANTE, LEVABLE, AVERTISSEMENT), publication (levée motivée des
 // avertissements), versions, nouvelle version, retrait, lancement. Brouillon : chaque geste enregistre la définition
-// (PUT /processus/{id}) ; version publiée ou retirée : lecture seule.
+// (PUT /processus/{id}) ; version publiée ou retirée : lecture seule, sauf le public d'une version publiée (D-103,
+// PUT /processus/{id}/public, motif obligatoire, sans nouvelle version) pour qui a `droits.modifierPublic`.
 
 type Modale = { creation: true } | { creation: false; code: string; onglet?: OngletEtape }
 type Confirmation = 'publier' | 'lever' | 'retirer' | 'supprimer' | null
@@ -97,6 +98,9 @@ function Espace({ processus: p }: { processus: Processus }) {
   const [params, setParams] = useSearchParams()
   const vue = params.get('vue') === 'liste' ? 'liste' : 'canevas'
   const lecture = !p.droits.modifier
+  // D-103 : le public se règle sur un brouillon comme sur une version publiée (repli d'un service antérieur : modifier).
+  const reglerPublic = p.droits.modifierPublic ?? p.droits.modifier
+  const publicPublie = reglerPublic && p.etat === 'PUBLIEE'
   // D-92 : droits servis par MS-PILOTAGE, portée tous domaines, ou PROCESSUS_DEFINIR sur une unité dirigée.
   const portee = usePorteeProcessus()
   const peutDefinir = p.droits.modifier || p.droits.publier || p.droits.retirer || !!portee.data?.definirToutesUnites
@@ -105,6 +109,7 @@ function Espace({ processus: p }: { processus: Processus }) {
   const publier = useEcritureProcessus((s, v: { motif?: string; leverAvertissements?: boolean }) => s.processus.publier(p.id, v))
   const nouvelleVersion = useEcritureProcessus((s) => s.processus.nouvelleVersion(p.id))
   const retirer = useEcritureProcessus((s, motif: string) => s.processus.retirer(p.id, motif))
+  const modifierPublic = useEcritureProcessus((s, v: SaisiePublic) => s.processus.modifierPublic(p.id, v))
   const supprimer = useSupprimerProcessus()
   const controle = useControleProcessus()
   const [modale, setModale] = useState<Modale | null>(null)
@@ -165,6 +170,22 @@ function Espace({ processus: p }: { processus: Processus }) {
   })), [p.etapes, p.personnes, anomalies, resume, t])
   const etape = modale && !modale.creation ? p.etapes.find((e) => e.code === modale.code) : null
   const refus = erreur(echec)
+  // D-103 : refus du réglage du public, avec les anomalies bloquantes (422 PIL_PROCESSUS_ANOMALIES) restituées dans la modale.
+  const echecPublic = enregistrer.error ?? modifierPublic.error
+  const anomaliesPublic = estApiError(echecPublic) ? (echecPublic.details as { anomalies?: AnomalieProcessus[] } | undefined)?.anomalies ?? [] : []
+  const erreurPublic = (() => {
+    const e = erreur(echecPublic)
+    if (!e) return undefined
+    return {
+      ...e,
+      ...(e.code === 'PIL_PROCESSUS_ANOMALIES' && modifierPublic.error ? { titre: t('dem.modele.anomaliesPublic') } : {}),
+      detail: anomaliesPublic.length ? (
+        <ul data-testid="anomalies-public" style={{ margin: 0, paddingLeft: 'var(--gm-space-4)' }}>
+          {anomaliesPublic.map((a, i) => <li key={`${a.code}-${i}`}><strong>{t(`proc.anomalie.${a.code}`, { defaultValue: a.code })}</strong> · {lisible(a.message)}</li>)}
+        </ul>
+      ) : undefined,
+    }
+  })()
   const basculerVue = (v: 'canevas' | 'liste') => setParams((x) => {
     const n = new URLSearchParams(x)
     if (v === 'liste') n.set('vue', 'liste')
@@ -222,8 +243,8 @@ function Espace({ processus: p }: { processus: Processus }) {
           key: t('dem.resume.titre'), value: (
             <span className="gm-row" style={{ gap: 'var(--gm-space-2)', flexWrap: 'wrap' }} data-testid="public-processus">
               <span>{resumeInitiateurs(p.initiateurs, p.unite)}</span>
-              <Button size="sm" variant="ghost" icon={lecture ? 'eye' : 'pen-line'} aria-label={t(lecture ? 'dem.resume.voirQui' : 'dem.resume.reglerQui', { libelle: p.libelle })}
-                onClick={() => setReglageLancement(true)}>{t(lecture ? 'dem.resume.voir' : 'dem.resume.regler')}</Button>
+              <Button size="sm" variant="ghost" icon={reglerPublic ? 'pen-line' : 'eye'} aria-label={t(reglerPublic ? 'dem.resume.reglerQui' : 'dem.resume.voirQui', { libelle: p.libelle })}
+                onClick={() => setReglageLancement(true)}>{t(reglerPublic ? 'dem.resume.regler' : 'dem.resume.voir')}</Button>
             </span>
           ),
         },
@@ -240,7 +261,7 @@ function Espace({ processus: p }: { processus: Processus }) {
           {t('dem.creation.texte', { public: resumeInitiateurs(p.initiateurs, p.unite) })}
         </InlineAlert>
       ) : null}
-      {lecture ? <InlineAlert level="info">{t(p.etat === 'BROUILLON' ? 'proc.lectureSeule' : 'proc.lecturePubliee')}</InlineAlert> : null}
+      {lecture ? <InlineAlert level="info">{t(p.etat === 'BROUILLON' ? 'proc.lectureSeule' : publicPublie ? 'proc.lecturePublieePublic' : 'proc.lecturePubliee')}</InlineAlert> : null}
       {p.avertissements.map((a, i) => <InlineAlert key={i} level={a.code === 'COUVERTURE_HORS_UNITE' ? 'info' : 'warn'} title={t(`proc.anomalie.${a.code}`, { defaultValue: lisible(a.message) })}>{a.etape ? `${a.etape} · ${lisible(a.message)}` : lisible(a.message)}</InlineAlert>)}
       {refus ? (
         <InlineAlert level="crit" title={refus.titre} correlationId={refus.correlationId}
@@ -294,9 +315,18 @@ function Espace({ processus: p }: { processus: Processus }) {
       {proprietes ? <Proprietes processus={p} enCours={enregistrer.isPending} erreur={erreur(enregistrer.error)} onFermer={() => setProprietes(false)}
         onEnregistrer={(s) => enregistrer.mutate(s, { onSuccess: () => { setProprietes(false); setAnnonce(t('proc.annonce.proprietes')) } })} /> : null}
       {reglageLancement ? (
-        <ModaleLancement initiateurs={p.initiateurs} formulaire={p.formulaire} lecture={lecture} enCours={enregistrer.isPending} erreur={erreur(enregistrer.error)}
-          onFermer={() => { fermerReglage(); enregistrer.reset() }}
-          onEnregistrer={(initiateurs, formulaire) => enregistrer.mutate({ ...saisieDe(p), initiateurs, formulaire }, { onSuccess: () => { fermerReglage(); setAnnonce(t('dem.modele.enregistre')) } })} />
+        <ModaleLancement initiateurs={p.initiateurs} formulaire={p.formulaire} lecture={lecture} lecturePublic={!reglerPublic} motifRequis={publicPublie}
+          enCours={enregistrer.isPending || modifierPublic.isPending} erreur={erreurPublic}
+          onFermer={() => { fermerReglage(); enregistrer.reset(); modifierPublic.reset() }}
+          onEnregistrer={(initiateurs, formulaire, motif) => {
+            if (!lecture) {
+              enregistrer.mutate({ ...saisieDe(p), initiateurs, formulaire }, { onSuccess: () => { fermerReglage(); setAnnonce(t('dem.modele.enregistre')) } })
+              return
+            }
+            // D-103 : version publiée, seul le public part (la séparation des fonctions reste celle de la définition).
+            const { regles, unites, profils, permissions, personnes } = initiateurs
+            modifierPublic.mutate({ initiateurs: { regles, unites, profils, permissions, personnes }, motif }, { onSuccess: () => { fermerReglage(); setAnnonce(t('dem.modele.publicEnregistre')) } })
+          }} />
       ) : null}
       {lancement ? <DialogueLancement processus={p} onFermer={() => setLancement(false)} onLance={(i) => navigate(`/des/processus/instances/${encodeURIComponent(i.id)}`)} /> : null}
       {confirmation === 'publier' ? (

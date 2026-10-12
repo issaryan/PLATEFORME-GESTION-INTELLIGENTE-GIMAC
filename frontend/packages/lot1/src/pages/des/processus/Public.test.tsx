@@ -223,13 +223,157 @@ describe('D-100 : catalogue « Processus de l’unité »', () => {
     expect(await screen.findByTestId('public-CREATION_MACHINE_VIRTUELLE')).toBeTruthy()
     expect(screen.getByTestId('public-CREATION_MACHINE_VIRTUELLE').textContent).toBe('Visible et lançable par : Personnes désignées (Idriss Mahamat Saleh, Rachel Biyong Mengue)')
     expect(screen.getByTestId('public-CHANGEMENT_ADRESSE_IP').textContent).toBe('Visible et lançable par : Tout le GIMAC')
-    // Le brouillon (droit de modifier) : bouton « Public » vers le réglage ; jamais sur une version publiée.
-    expect(screen.queryByRole('button', { name: 'Régler qui peut voir et lancer « Création d’une machine virtuelle »' })).toBeNull()
+    // D-103 : bouton « Public » vers le réglage pour qui définit, brouillon comme version publiée.
+    expect(screen.getByRole('button', { name: 'Régler qui peut voir et lancer « Création d’une machine virtuelle »' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Nouveau processus' }))
     const d = await screen.findByRole('dialog', { name: 'Nouveau processus' })
     expect(within(d).getByText(/Par défaut, le processus sera visible et lançable par les membres et les responsables de/)).toBeTruthy()
     fireEvent.click(within(d).getByRole('button', { name: 'Annuler' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Régler qui peut voir et lancer « Accès VPN d’un participant »' }))
     await waitFor(() => expect(screen.getByTestId('ici').textContent).toMatch(/^\/des\/processus\/PRC-\d+\?reglage=public$/))
+  })
+})
+
+// D-103 (docs/lot1/lancement-processus.md §11) : le public d'une version publiée se règle sans nouvelle version, par qui
+// définit les processus de l'unité, motif obligatoire ; effet immédiat sur « Lancer une demande » ; étapes, formulaire et
+// séparation des fonctions restent figés ; version retirée en lecture seule (services simulés alignés sur MS-PILOTAGE).
+const flux = async (q: Qui, magasin: MagasinPouvoirs) => (await services(q, magasin).processus.lister({ etat: 'PUBLIEE' })).find((p) => p.code === 'OUVERTURE_FLUX_RESEAU')!
+const personnes = (l: string[]): Initiateurs => ({ regles: ['PERSONNES'], unites: [], profils: [], permissions: [], personnes: l })
+
+describe('D-103 : public modifiable sur une version publiée (services simulés)', () => {
+
+  it('le chef du pôle ouvre le flux à une personne d’un autre service : elle le voit et le lance aussitôt, les membres non', async () => {
+    const magasin = magasinPouvoirs()
+    const chef = services(RESP, magasin).processus
+    const p = await flux(RESP, magasin)
+    expect(p.droits).toMatchObject({ modifier: false, modifierPublic: true, retirer: true })
+    expect((await flux(RESEAU, magasin)).droits.modifierPublic).toBe(false)
+    expect(await codes(SNA, magasin)).not.toContain('OUVERTURE_FLUX_RESEAU')
+    expect(await codes(RESEAU, magasin)).toContain('OUVERTURE_FLUX_RESEAU')
+    const avant = await chef.lire(p.id)
+    const lu = await chef.modifierPublic(p.id, { initiateurs: personnes(['u-sna']), motif: '  Ouverture à la SNA  ' })
+    expect([lu.id, lu.version, lu.etat]).toEqual([p.id, avant.version, 'PUBLIEE'])
+    expect(lu.initiateurs).toMatchObject({ regles: ['PERSONNES'], personnes: ['u-sna'], initiateurIntervenant: !!avant.initiateurs?.initiateurIntervenant })
+    expect(lu.historique.at(-1)).toMatchObject({
+      action: 'PUBLIC_MODIFIE', acteur: { id: 'u-resp-info' },
+      detail: `Public de la version ${avant.version} modifié : Ouverture à la SNA ; avant : MEMBRES_UNITE ; après : PERSONNES (Rachel Biyong Mengue)`,
+    })
+    expect(lu.etapes).toEqual(avant.etapes)
+    expect(await codes(SNA, magasin)).toContain('OUVERTURE_FLUX_RESEAU')
+    expect(await codes(RESEAU, magasin)).not.toContain('OUVERTURE_FLUX_RESEAU')
+    expect((await services(SNA, magasin).processus.lire(p.id)).droits).toMatchObject({ lancer: true, modifierPublic: false })
+    // Même public : rien n'est consigné.
+    const n = (await chef.modifierPublic(p.id, { initiateurs: personnes(['u-sna']), motif: 'Sans changement' })).historique.length
+    expect(n).toBe(lu.historique.length)
+    // Brouillon : sans motif, public incomplet admis (contrôlé à la publication).
+    const b = await chef.creer({ code: 'DEMANDE_D103', unite: 'POLE_RESEAU', libelle: 'Demande D-103', description: '', categorie: '', delaiCibleJours: null, etapes: [] })
+    expect(b.droits.modifierPublic).toBe(true)
+    const r = await chef.modifierPublic(b.id, { initiateurs: personnes([]) })
+    expect([r.etat, r.initiateurs?.regles, r.historique.at(-1)?.detail]).toEqual(['BROUILLON', ['PERSONNES'], 'Public de la version 1 modifié ; avant : MEMBRES_UNITE ; après : PERSONNES'])
+    expect(await code(chef.modifierPublic(b.id, { initiateurs: personnes([]), motif: 'ab' }))).toBe('400 PIL_REQUETE_INVALIDE')
+  })
+
+  it('refus : sans droit (403), saisie (400), anomalies bloquantes (422), version retirée (409)', async () => {
+    const magasin = magasinPouvoirs()
+    const chef = services(RESP, magasin).processus
+    const p = await flux(RESP, magasin)
+    const refus = (e: unknown) => [(e as ApiError).status, (e as ApiError).code, (e as ApiError).details]
+    expect(await code(services(RESEAU, magasin).processus.modifierPublic(p.id, { initiateurs: personnes(['u-sna']), motif: 'Ouverture' }))).toBe('403 PIL_PROCESSUS_INTERDIT')
+    expect(refus(await chef.modifierPublic(p.id, { initiateurs: personnes(['u-sna']) }).catch((e) => e))).toEqual([400, 'PIL_REQUETE_INVALIDE', { champ: 'motif' }])
+    expect(refus(await chef.modifierPublic(p.id, { initiateurs: personnes(['u-sna']), motif: 'x'.repeat(501) }).catch((e) => e))).toEqual([400, 'PIL_REQUETE_INVALIDE', { champ: 'motif' }])
+    expect(refus(await chef.modifierPublic(p.id, { motif: 'Ouverture' } as never).catch((e) => e))).toEqual([400, 'PIL_REQUETE_INVALIDE', { champ: 'initiateurs' }])
+    expect(refus(await chef.modifierPublic(p.id, { initiateurs: { ...personnes([]), regles: ['INCONNUE' as never] }, motif: 'Ouverture' }).catch((e) => e))[2]).toEqual({ champ: 'initiateurs.regles[0]' })
+    expect(refus(await chef.modifierPublic(p.id, { initiateurs: { ...personnes([]), regles: ['UNITES'], unites: ['pole'] }, motif: 'Ouverture' }).catch((e) => e))[2]).toEqual({ champ: 'initiateurs.unites[0]' })
+    expect(refus(await chef.modifierPublic(p.id, { initiateurs: { ...personnes([]), regles: ['PERMISSIONS'], permissions: Array.from({ length: 21 }, (_, k) => `P_${k}`) }, motif: 'Ouverture' }).catch((e) => e))[2]).toEqual({ champ: 'initiateurs.permissions' })
+    const anomalie = async (i: Initiateurs) => {
+      const e = await chef.modifierPublic(p.id, { initiateurs: i, motif: 'Ouverture' }).catch((x: ApiError) => x)
+      return [(e as ApiError).code, ...((e as ApiError).details as { anomalies: { code: string; element: string; gravite: string }[] }).anomalies.map((a) => `${a.code} ${a.element} ${a.gravite}`)]
+    }
+    expect(await anomalie(personnes([]))).toEqual(['PIL_PROCESSUS_ANOMALIES', 'INITIATEURS_INCOMPLETS initiateurs.personnes BLOQUANTE'])
+    expect(await anomalie(personnes(['inconnu']))).toEqual(['PIL_PROCESSUS_ANOMALIES', 'PERSONNE_INCONNUE initiateurs.personnes BLOQUANTE'])
+    expect(await anomalie({ ...personnes([]), regles: ['UNITES'], unites: ['UNITE_FANTOME'] })).toEqual(['PIL_PROCESSUS_ANOMALIES', 'UNITE_INCONNUE initiateurs.unites BLOQUANTE'])
+    expect(await anomalie({ ...personnes([]), regles: ['PROFILS'], profils: ['ROLE_FANTOME'] })).toEqual(['PIL_PROCESSUS_ANOMALIES', 'PROFIL_INCONNU initiateurs.profils BLOQUANTE'])
+    expect((await chef.lire(p.id)).initiateurs?.regles).toEqual(['MEMBRES_UNITE'])
+    // Nouvelle version publiée : l'ancienne, retirée, a un public figé.
+    const v2 = await chef.nouvelleVersion(p.id)
+    await chef.publier(v2.id, { leverAvertissements: true, motif: 'Version suivante' })
+    const v1 = await chef.lire(p.id)
+    expect([v1.etat, v1.droits.modifierPublic]).toEqual(['RETIREE', false])
+    expect(await code(chef.modifierPublic(p.id, { initiateurs: personnes(['u-sna']), motif: 'Ouverture' }))).toBe('409 PIL_PROCESSUS_NON_MODIFIABLE')
+  })
+})
+
+describe('D-103 : réglage du public d’une version publiée dans le modélisateur', () => {
+  it('le chef ajoute une personne avec un motif : PUT …/public, formulaire et séparation des fonctions en lecture, annonce ; la personne le voit', async () => {
+    const magasin = magasinPouvoirs()
+    const s = services(RESP, magasin)
+    const modifierPublic = vi.spyOn(s.processus, 'modifierPublic')
+    const modifier = vi.spyOn(s.processus, 'modifier')
+    const p = await flux(RESP, magasin)
+    rendrePage(<ModelisateurProcessusPage />, { chemin: `/des/processus/${p.id}`, motif: '/des/processus/:id', services: s, session: session(RESP) })
+    await screen.findByRole('heading', { level: 1, name: 'Ouverture d’un flux réseau' })
+    expect(screen.getByText(/son public reste réglable/)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Ajouter une étape' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Régler qui peut voir et lancer « Ouverture d’un flux réseau »' }))
+    const d = await screen.findByRole('dialog', { name: 'Qui peut voir et lancer ce processus' })
+    expect(within(d).getByText('Version publiée : seul le public se règle ici')).toBeTruthy()
+    expect(within(d).getByText('Le changement vaut pour les prochains lancements ; les demandes déjà lancées ne changent pas.')).toBeTruthy()
+    expect((within(d).getByLabelText('L’initiateur peut aussi exécuter, valider ou signer les étapes de sa propre demande') as HTMLInputElement).disabled).toBe(true)
+    expect((within(d).getByLabelText('Membres et responsables de l’unité') as HTMLInputElement).disabled).toBe(false)
+    expect(within(d).queryByRole('button', { name: 'Ajouter un champ' })).toBeNull()
+    const enregistrer = within(d).getByRole('button', { name: 'Enregistrer le public' }) as HTMLButtonElement
+    expect([enregistrer.disabled, enregistrer.title]).toEqual([true, 'Le public n’a pas changé.'])
+    fireEvent.click(within(d).getByLabelText('Personnes désignées'))
+    const zone = within(d).getByTestId('initiateurs-personnes')
+    fireEvent.click(await within(zone).findByRole('button', { name: /Rachel Biyong Mengue/ }))
+    // Motif obligatoire, 10 caractères au moins.
+    expect([enregistrer.disabled, enregistrer.title]).toEqual([true, 'Le motif est obligatoire (10 caractères au moins)'])
+    fireEvent.change(within(d).getByLabelText(/^Motif/), { target: { value: 'Demandes de flux de la SNA' } })
+    expect(enregistrer.disabled).toBe(false)
+    fireEvent.click(enregistrer)
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Qui peut voir et lancer ce processus' })).toBeNull())
+    expect(modifier).not.toHaveBeenCalled()
+    expect(modifierPublic.mock.calls[0]).toEqual([p.id, { initiateurs: { regles: ['MEMBRES_UNITE', 'PERSONNES'], unites: [], profils: [], permissions: [], personnes: ['u-sna'] }, motif: 'Demandes de flux de la SNA' }])
+    expect(await screen.findByText('Public enregistré : il vaut pour les prochains lancements.')).toBeTruthy()
+    expect(await within(screen.getByTestId('public-processus')).findByText(/Rachel Biyong Mengue/)).toBeTruthy()
+    expect(await codes(SNA, magasin)).toContain('OUVERTURE_FLUX_RESEAU')
+  })
+
+  it('anomalie bloquante (personne partie entre-temps) : restituée dans la modale, rien ne change', async () => {
+    const magasin = magasinPouvoirs()
+    const s = services(RESP, magasin)
+    const p = await flux(RESP, magasin)
+    rendrePage(<ModelisateurProcessusPage />, { chemin: `/des/processus/${p.id}?reglage=public`, motif: '/des/processus/:id', services: s, session: session(RESP) })
+    const d = await screen.findByRole('dialog', { name: 'Qui peut voir et lancer ce processus' })
+    fireEvent.click(within(d).getByLabelText('Personnes désignées'))
+    fireEvent.click(await within(within(d).getByTestId('initiateurs-personnes')).findByRole('button', { name: /Rachel Biyong Mengue/ }))
+    fireEvent.change(within(d).getByLabelText(/^Motif/), { target: { value: 'Demandes de flux de la SNA' } })
+    magasin.organisation.find((m) => m.id === 'u-sna')!.actif = false
+    fireEvent.click(within(d).getByRole('button', { name: 'Enregistrer le public' }))
+    expect(await within(d).findByText('Le public comporte des anomalies bloquantes : rien n’a été changé.')).toBeTruthy()
+    expect(within(within(d).getByTestId('anomalies-public')).getByText(/Personne désignée inconnue, externe ou inactive : Rachel Biyong Mengue/)).toBeTruthy()
+    expect((await s.processus.lire(p.id)).initiateurs?.regles).toEqual(['MEMBRES_UNITE'])
+  })
+
+  it('sans droit de définir : public en lecture, sans motif ; composant seul : public réglable, formulaire en lecture', async () => {
+    const magasin = magasinPouvoirs()
+    const p = await flux(RESEAU, magasin)
+    rendrePage(<ModelisateurProcessusPage />, { chemin: `/des/processus/${p.id}`, motif: '/des/processus/:id', services: services(RESEAU, magasin), session: session(RESEAU) })
+    fireEvent.click(await screen.findByRole('button', { name: 'Voir qui peut voir et lancer « Ouverture d’un flux réseau »' }))
+    const d = await screen.findByRole('dialog', { name: 'Qui peut voir et lancer ce processus' })
+    expect((within(d).getByLabelText('Membres et responsables de l’unité') as HTMLInputElement).disabled).toBe(true)
+    expect(within(d).queryByRole('button', { name: /^Enregistrer/ })).toBeNull()
+    expect(within(d).queryByLabelText(/^Motif/)).toBeNull()
+    cleanup()
+    // Composant seul : formulaire en lecture, public réglable sans motif (brouillon d'un service antérieur).
+    const enregistrer = vi.fn()
+    rendrePage(<ModaleLancement initiateurs={INITIATEURS_DEFAUT} lecture lecturePublic={false} enCours={false} onFermer={() => undefined} onEnregistrer={enregistrer} />, { chemin: '/', motif: '/' })
+    const m = await screen.findByRole('dialog', { name: 'Qui peut voir et lancer ce processus' })
+    expect(within(m).queryByLabelText(/^Motif/)).toBeNull()
+    fireEvent.click(within(m).getByLabelText('Tout le GIMAC'))
+    fireEvent.click(within(m).getByRole('button', { name: 'Enregistrer' }))
+    await waitFor(() => expect(enregistrer).toHaveBeenCalled())
+    expect(enregistrer.mock.calls[0][0].regles).toEqual(['MEMBRES_UNITE', 'TOUT_LE_GIMAC'])
+    expect(enregistrer.mock.calls[0][2]).toBe('')
   })
 })

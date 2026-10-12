@@ -378,6 +378,25 @@ final class SaisieProcessus {
         return ReglesActivite.texteFacultatif("motif", motif, 1000);
     }
 
+    /** Motif d'un changement de public (D-103) : 3 à 500 caractères. */
+    static final int MOTIF_PUBLIC_MIN = 3;
+    static final int MOTIF_PUBLIC_MAX = 500;
+
+    /**
+     * Motif d'un changement de public (D-103) : obligatoire ({@code exige}, version publiée) ou facultatif (brouillon) ;
+     * présent, de 3 à 500 caractères (400 PIL_REQUETE_INVALIDE, {@code details.champ} = motif).
+     */
+    static String motifPublic(String motif, boolean exige) {
+        String v = motif == null ? "" : motif.strip();
+        if (v.isEmpty() && !exige) {
+            return null;
+        }
+        if (v.length() < MOTIF_PUBLIC_MIN || v.length() > MOTIF_PUBLIC_MAX) {
+            throw PilotageException.champ("motif", "Motif de " + MOTIF_PUBLIC_MIN + " à " + MOTIF_PUBLIC_MAX + " caractères attendu");
+        }
+        return v;
+    }
+
     /** Valeur d'un champ saisi, normalisée selon son type (422 PIL_PROCESSUS_CHAMP_INVALIDE). */
     static String valeurChamp(Champ champ, Object valeur) {
         if (valeur == null || (valeur instanceof String t && t.isBlank())) {

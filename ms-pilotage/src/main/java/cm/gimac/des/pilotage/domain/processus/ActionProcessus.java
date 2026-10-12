@@ -8,6 +8,8 @@ public enum ActionProcessus {
     PUBLIE,
     RETIRE,
     VERSION_CREEE,
+    /** Public d'une version brouillon ou publiée réglé sans nouvelle version (D-103) : avant, après, motif. */
+    PUBLIC_MODIFIE,
     LANCEE,
     ETAPE_ACTIVEE,
     ETAPE_PRISE,

@@ -636,7 +636,8 @@ Les règles se cumulent (l'une suffit). Le chef d'une unité garde ainsi l'accè
   avec l'aide : seules ces personnes voient le processus dans « Lancer une demande » et peuvent le lancer, aucun droit
   d'administration ne s'y ajoute. La règle par défaut s'intitule « Membres et responsables de l'unité ». La règle
   « Personnes désignées » ouvre l'annuaire interne déjà employé par la messagerie et l'agenda (recherche par nom ou
-  fonction, choix multiple, puces retirables) ; en lecture (version publiée), la liste des personnes nommées.
+  fonction, choix multiple, puces retirables) ; en lecture (sans droit de définir, ou version retirée), la liste des
+  personnes nommées. D-103 (§11) : le public d'une version publiée se règle aussi, sans nouvelle version.
 - Résumé **« Visible et lançable par … »** : dans le détail du processus (avec un bouton « Régler » ou « Voir » qui ouvre
   le réglage) et sous chaque ligne du catalogue « Processus de l'unité » (bouton « Public » vers le réglage pour un
   brouillon). Unités et profils y sont nommés par leur libellé, les personnes par leur nom (trois, puis « et N autres »).
@@ -674,3 +675,105 @@ mêmes textes de refus.
   catalogue), `Demandes.test.tsx` et `services/simule/*.test.ts` adaptés ; scénario de bout en bout
   `e2e/specs/public-processus.spec.ts` (l'administrateur ne voit pas « Création d'une machine virtuelle », la personne
   désignée la voit et la lance), captures claires et sombres dans `e2e/captures/d100/`.
+
+## 11. Public modifiable sur une version publiée (D-103, 12/10/2026)
+
+Signalement de KOAGNE ISSA RYAN (12/10/2026) : dans le modélisateur de processus, la fenêtre « Qui peut voir et lancer ce
+processus » s'ouvre en lecture seule (« Est non modifiable ») pour un processus publié ; impossible de changer qui le voit
+et le lance sans dériver une nouvelle version.
+
+### 11.1 Règle
+
+- Le **public** d'un processus (règles d'initiateurs `MEMBRES_UNITE`, `TOUT_LE_GIMAC`, `UNITES`, `PROFILS`, `PERMISSIONS`,
+  `PERSONNES` et leurs paramètres, §10.2) est un **réglage d'accès**, non un élément du déroulé : il se modifie sur une
+  version `BROUILLON` comme sur une version `PUBLIEE`, **sans nouvelle version**, par qui définit les processus de l'unité
+  (`AccesProcessus.definit` : `PROCESSUS_DEFINIR` couvrant l'unité, portée `TOUTES` ou `REF_METIER_ADMIN`).
+- Restent figés sur une version publiée : les étapes, le formulaire de lancement et `initiateurIntervenant` (séparation des
+  fonctions, D-99). Une version `RETIREE` est entièrement en lecture seule, public compris.
+- Effet : immédiat pour les prochains lancements, « Lancer une demande » (`GET /processus/lancables`), la lecture d'une
+  version publiée par son public et `droits.lancer`. Les instances déjà lancées ne changent pas : elles ne relisent pas le
+  public (leur initiateur les suit toujours dans « Mes demandes », même retiré du public).
+
+### 11.2 Route (MS-PILOTAGE)
+
+`PUT /api/v1/processus/{id}/public` (passerelle `PUT /bff/des/pilotage/processus/{id}/public`, `PIL_ACTIVITY_OWN`) :
+
+```jsonc
+{
+  "initiateurs": { "regles": ["PERSONNES"], "unites": [], "profils": [], "permissions": [], "personnes": ["<compte>"] },
+  "motif": "Demandes de machines de recette pour la conformité"   // version publiée : obligatoire, 3 à 500 caractères
+}
+```
+
+- Réponse 200 : la définition relue, même vue que `GET /processus/{id}` (`initiateurs` avec `personnesDetail`, `droits`,
+  `historique`). Même public que l'actuel : 200 sans écriture ni historique.
+- `initiateurs.initiateurIntervenant` est ignoré : la séparation des fonctions de la définition est conservée telle quelle.
+- Ordre des contrôles et refus :
+
+| Cas | Statut | Code |
+|---|---|---|
+| L'appelant ne définit pas les processus de l'unité (membre du public, membre de l'unité…) | 403 | `PIL_PROCESSUS_INTERDIT` |
+| Version retirée | 409 | `PIL_PROCESSUS_NON_MODIFIABLE` (`details.etat`) |
+| `initiateurs` absent ; règle inconnue, format d'unité, de profil ou de permission, plus de 20 paramètres, personne vide ou de plus de 80 caractères, plus de 50 personnes (même validation que la saisie de la définition) | 400 | `PIL_REQUETE_INVALIDE` (`details.champ` : `initiateurs`, `initiateurs.regles[i]`, `initiateurs.personnes[i]`…) |
+| Motif absent sur une version publiée, ou de moins de 3 ou plus de 500 caractères (brouillon : facultatif, mêmes bornes s'il est donné) | 400 | `PIL_REQUETE_INVALIDE` (`details.champ` = `motif`) |
+| Version publiée : anomalie bloquante du public au contrôle de publication (`INITIATEURS_INCOMPLETS`, `UNITE_INCONNUE`, `PROFIL_INCONNU`, `PERSONNE_INCONNUE`) | 422 | `PIL_PROCESSUS_ANOMALIES` (`details.anomalies` : `[{ code, gravite, etape, element, message }]`, même forme que la publication) |
+
+- Brouillon : aucun contrôle d'anomalies à l'enregistrement (un brouillon peut être incomplet) ; le contrôle de publication
+  s'applique toujours à la publication. Le `PUT /processus/{id}` complet reste la voie de l'interface pour un brouillon.
+- Droits de la vue : nouveau booléen `droits.modifierPublic` = qui définit **et** version brouillon ou publiée ; les autres
+  booléens gardent leur sens (`modifier` reste réservé au brouillon). Faux dans `GET /processus/lancables`.
+
+### 11.3 Historique et événements
+
+- Historique de la définition (ajout seul) : action `PUBLIC_MODIFIE`, auteur, date, détail « Public de la version N
+  modifié : <motif> ; avant : <résumé> ; après : <résumé> » suivi, le cas échéant, de la mention « (au titre de …) » des
+  autres actes de définition. Résumé : règles et paramètres, personnes nommées (« PERSONNES (Clarisse Bilong) »,
+  « UNITES (POLE_RESEAU) »). `modifieLe` et `modifiePar` de la version sont mis à jour.
+- Aucun événement d'outbox : les modifications de définition n'en émettent pas (seule la publication émet
+  `pilotage.process-published.v1`, que MS-NOTIFICATION consomme) ; un changement de public n'est pas une publication.
+- Aucune migration : la colonne `processus_historique.action` (`varchar(24)`) accueille `PUBLIC_MODIFIE`.
+
+### 11.4 OPA et passerelle
+
+- `lot1_authz.rego` : la règle `PUT` des processus admet `/bff/des/pilotage/processus/{id}/public` (même permission
+  `PIL_ACTIVITY_OWN` que la modification d'une définition, comptes internes, second facteur) ; `POST`, `DELETE` et tout
+  autre sous-chemin restent refusés. Tests : route ajoutée à `routes_processus`, refus hors contrat complétés. Copie
+  Kubernetes synchronisée (`infra/kubernetes-gimac/synchroniser-partages.sh`).
+- Passerelle : la route `des-pilotage` (`/bff/des/pilotage/**` vers `/api/v1/**`) couvre déjà ce chemin.
+
+### 11.5 Interface (application interne)
+
+- Modélisateur, version publiée, pour qui a `droits.modifierPublic` : l'encart de lecture seule devient « Version
+  publiée : étapes et formulaire en lecture seule, créez une nouvelle version pour les modifier ; son public reste réglable
+  (« Qui peut voir et lancer ») » ; le résumé « Visible et lançable par » porte le bouton **« Régler »** (sinon « Voir »).
+  Catalogue « Processus de l'unité » : bouton « Public » vers le réglage pour un brouillon comme pour une version publiée.
+- Fenêtre « Qui peut voir et lancer ce processus » à deux niveaux : la section « Visible et lançable par » est modifiable ;
+  le formulaire de lancement et la case de séparation des fonctions restent en lecture. En tête, « Version publiée : seul
+  le public se règle ici » ; sous l'aide du public, la note « Le changement vaut pour les prochains lancements ; les
+  demandes déjà lancées ne changent pas. » ; champ **Motif** obligatoire (10 caractères au moins, comme les autres fenêtres
+  motivées) ; bouton « Enregistrer le public », désactivé tant que le public n'a pas changé ou que le motif manque.
+- Enregistrement : `PUT …/public` (règles et paramètres, motif) ; annonce « Public enregistré : il vaut pour les prochains
+  lancements. » ; refus restitués dans la fenêtre, avec la liste des anomalies pour un 422 (« Le public comporte des
+  anomalies bloquantes : rien n'a été changé. »). Brouillon : inchangé (public et formulaire enregistrés avec la
+  définition par `PUT /processus/{id}`).
+- Repli d'un service antérieur sans `modifierPublic` : `droits.modifier`. FR, EN, ES.
+- Services simulés alignés : mêmes droits, même route, mêmes refus (403, 409, 400 avec `details.champ`, 422 avec
+  `details.anomalies`, y compris `PROFIL_INCONNU`), même historique `PUBLIC_MODIFIE`.
+
+### 11.6 Tests
+
+- MS-PILOTAGE : `PublicProcessusTest` (domaine : brouillon et version publiée réglables, séparation des fonctions
+  conservée, version retirée 409 ; motif 3 à 500 caractères ; résumé de l'historique) ; `ProcessusPublicModifiableIT`
+  (version publiée : la personne ajoutée voit le processus dans `/processus/lancables` et le lance aussitôt, la personne
+  retirée ne le voit plus et reçoit 403, son instance déjà lancée continue ; même public sans écriture ;
+  `REF_METIER_ADMIN` ; aucun événement ; refus 403 sans droit, 400 motif absent ou hors bornes, saisie, 422
+  `PERSONNE_INCONNUE`, `INITIATEURS_INCOMPLETS`, `UNITE_INCONNUE`, `PROFIL_INCONNU`, 409 version retirée ; brouillon sans
+  motif et incomplet admis).
+- OPA : `routes_processus` et `test_processus_hors_contrat_refuse` complétés.
+- Interface : `pages/des/processus/Public.test.tsx` (services simulés D-103 ; modélisateur : ajout d'une personne avec
+  motif, `PUT …/public`, formulaire et séparation en lecture, annonce ; 422 restitué dans la fenêtre ; lecture sans droit),
+  `services/http/processus.test.ts` (chemin et corps), `Processus.test.tsx` adapté (encart de la version publiée).
+- Bout en bout : `e2e/specs/public-processus-publie.spec.ts` (l'ingénieur d'homologation, administrateur des référentiels
+  métier, ouvre la « Création d'une machine virtuelle » publiée, ajoute la responsable de la conformité au public avec un
+  motif ; elle la voit aussitôt dans « Lancer une demande »), captures claires et sombres dans `e2e/captures/d103/` ;
+  `public-processus.spec.ts` et `processus-unite.spec.ts` adaptés (bouton « Régler » et encart de la version publiée).

@@ -176,11 +176,13 @@ regles := [
 	# Candidats d'un intervenant (désignation hors de l'unité) : /processus/candidats et …/etapes/{code}/candidats.
 	# D-98 : « processus que je peux lancer » (/processus/lancables) et « mes demandes » (/processus/demandes), même règle.
 	# QUO-04 : pièce du formulaire de lancement ou livrable d'une instance (/processus/instances/{id}/documents/{doc}).
+	# D-103 : public d'un brouillon ou d'une version publiée (PUT /processus/{id}/public), même permission que la
+	# modification d'une définition ; qui définit les processus de l'unité est vérifié par MS-PILOTAGE.
 	{"m": "GET", "re": `^/bff/des/pilotage/processus(/[^/]+|/instances/[^/]+(/etapes/[^/]+/candidats|/documents/[^/]+)?)?$`, "p": "PIL_ACTIVITY_OWN"},
 	{"m": "POST", "re": `^/bff/des/pilotage/processus(/[^/]+/(controle|publication|nouvelle-version|retrait|instances))?$`, "p": "PIL_ACTIVITY_OWN"},
 	{"m": "POST", "re": `^/bff/des/pilotage/processus/instances/[^/]+/(suspension|reprise|annulation)$`, "p": "PIL_ACTIVITY_OWN"},
 	{"m": "POST", "re": `^/bff/des/pilotage/processus/instances/[^/]+/etapes/[^/]+/(livrables|signature|fin|validation|reaffectation)$`, "p": "PIL_ACTIVITY_OWN"},
-	{"m": "PUT", "re": `^/bff/des/pilotage/processus/([^/]+|instances/[^/]+/etapes/[^/]+/champs)$`, "p": "PIL_ACTIVITY_OWN"},
+	{"m": "PUT", "re": `^/bff/des/pilotage/processus/([^/]+|[^/]+/public|instances/[^/]+/etapes/[^/]+/champs)$`, "p": "PIL_ACTIVITY_OWN"},
 	{"m": "DELETE", "re": `^/bff/des/pilotage/processus/[^/]+$`, "p": "PIL_ACTIVITY_OWN"},
 	# Aperçu des documents bureautiques (D-83, docs/lot1/apercu-bureautique.md §2) : conversion en PDF par
 	# MS-DOCUMENT, tout membre interne (qui a déjà le contenu à afficher) ; jamais un compte d'institution.

@@ -42,7 +42,11 @@ export type EtapeProcessus = {
   position: { x: number; y: number } | null
 }
 
-export type DroitsProcessus = { modifier: boolean; publier: boolean; lancer: boolean; retirer: boolean }
+/**
+ * `modifierPublic` (D-103) : régler le public d'un brouillon ou d'une version publiée sans nouvelle version (qui définit
+ * les processus de l'unité) ; absent d'un service antérieur (repli : `modifier`).
+ */
+export type DroitsProcessus = { modifier: boolean; publier: boolean; lancer: boolean; retirer: boolean; modifierPublic?: boolean }
 
 // ------------------------------------------------------------------ Lancement (D-98, docs/lot1/lancement-processus.md §1, §2)
 
@@ -66,8 +70,16 @@ export type Initiateurs = {
 }
 /** Défaut (et reprise des définitions existantes) : les membres de l'unité propriétaire et ses responsables. */
 export const INITIATEURS_DEFAUT: Initiateurs = { regles: ['MEMBRES_UNITE'], unites: [], profils: [], permissions: [], personnes: [] }
-/** Bornes du public (§10) : personnes désignées nommément. */
-export const LIMITES_PUBLIC = { personnes: 50 } as const
+/**
+ * Bornes du public (§10) : personnes désignées nommément ; motif d'un changement de public d'une version publiée (D-103,
+ * §11) : 10 caractères au moins dans l'interface (comme les autres fenêtres motivées), 500 au plus (le service admet 3).
+ */
+export const LIMITES_PUBLIC = { personnes: 50, motifMin: 10, motifMax: 500 } as const
+/**
+ * PUT /processus/{id}/public (D-103) : règles et paramètres du public, sans `initiateurIntervenant` (la séparation des
+ * fonctions reste celle de la définition) ; motif obligatoire sur une version publiée, facultatif sur un brouillon.
+ */
+export type SaisiePublic = { initiateurs: Pick<Initiateurs, 'regles' | 'unites' | 'profils' | 'permissions' | 'personnes'>; motif?: string }
 
 /** Types des champs du formulaire de lancement. */
 export const TYPES_CHAMP_FORMULAIRE = ['TEXTE', 'TEXTE_LONG', 'NOMBRE', 'DATE', 'PERIODE', 'LISTE', 'CASE', 'PIECE_JOINTE'] as const
