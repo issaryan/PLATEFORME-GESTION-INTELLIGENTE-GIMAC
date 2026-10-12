@@ -251,6 +251,22 @@ recuperer_images() {
   done
 }
 
+# Espace disque : Docker vit sur / (70 Go sur la 214), dont la saturation a arrêté le serveur le
+# 10/10/2026. Refus de déployer sous le seuil GIMAC_DISQUE_MIN_GO (10 Go par défaut) ; le ménage des
+# images et du cache de construction se fait en fin de déploiement, quand chaque image utile a son
+# conteneur (au début, une plateforme dont les conteneurs ont disparu verrait tout retiré).
+verifier_espace() {
+  local libre seuil="${GIMAC_DISQUE_MIN_GO:-10}"
+  libre="$(df -P --block-size=1G "$(docker info -f '{{.DockerRootDir}}')" | awk 'NR == 2 { print $4 }')"
+  echo "  Espace libre pour Docker : ${libre} Go (seuil ${seuil} Go)"
+  if [ "$libre" -lt "$seuil" ]; then
+    echo "ERREUR : moins de ${seuil} Go libres pour Docker ; libérer de la place (docker system df) avant de déployer" >&2
+    exit 1
+  fi
+}
+
+etape "Espace disque"
+verifier_espace
 configurer_env "${1:-}"
 appliquer_publication
 
@@ -290,7 +306,12 @@ if [ -f "$RACINE/infra/keycloak/local/comptes.json" ]; then
   python3 "$RACINE/infra/keycloak/creer-comptes-personnels.py"
 fi
 
-docker image prune -f >/dev/null
+# Ménage, plateforme démarrée : images sans conteneur et cache de construction de plus de 3 jours.
+# Les volumes ne sont jamais touchés ici (bases, Keycloak, stockage).
+etape "Ménage des images et du cache de construction"
+docker image prune -af --filter until=72h >/dev/null || true
+docker builder prune -f --filter until=72h >/dev/null || true
+df -h "$(docker info -f '{{.DockerRootDir}}')" | awk 'NR == 2 { print "  Espace libre pour Docker : " $4 }'
 
 hote="$(sed -n 's/^GIMAC_HOTE_PUBLIC=//p' "$ENV")"
 etape "Plateforme déployée"

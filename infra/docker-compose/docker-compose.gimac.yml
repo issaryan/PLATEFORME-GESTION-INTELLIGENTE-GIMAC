@@ -243,11 +243,13 @@ services:
     ports: !override
       - 127.0.0.1:${GIMAC_PORT_PROMETHEUS:-9090}:9090
     # Historique des graphiques de la supervision (/api/plateforme/series, périodes de 1 h à 7 jours) :
-    # rétention explicite de 15 jours, au-delà de la plus longue période affichée.
+    # rétention explicite de 15 jours, au-delà de la plus longue période affichée, plafonnée à 3 Go
+    # (7,3 Go constatés sur le serveur 214 le 12/10/2026, disque système saturé).
     command: !override
       - "--config.file=/etc/prometheus/prometheus.yml"
       - "--storage.tsdb.path=/prometheus"
       - "--storage.tsdb.retention.time=15d"
+      - "--storage.tsdb.retention.size=3GB"
 
   # ------------------------------------------------ État des serveurs (D-61)
   # Hôte : CPU, mémoire, disques, charge, collectés par Prometheus (job node-exporter) et
