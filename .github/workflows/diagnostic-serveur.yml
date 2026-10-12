@@ -1,17 +1,22 @@
 # Diagnostic à la demande du serveur de démonstration (10.20.36.214) : état des conteneurs, ressources,
 # santé de la passerelle et dernières erreurs (infra/ci/diagnostiquer-serveur.sh). Lecture seule : rien
-# n'est reconstruit ni redémarré. Exécuté par l'exécuteur auto-hébergé du serveur.
+# n'est reconstruit ni redémarré. Exécuté par l'exécuteur auto-hébergé du serveur, à la main ou par une
+# poussée sur main modifiant infra/ci/diagnostic-demande.txt (sans accès à l'interface de GitHub). Le résultat,
+# déjà expurgé des secrets par le script, est aussi publié sur la branche diagnostic-serveur (git fetch).
 name: Diagnostic du serveur de démonstration
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [infra/ci/diagnostic-demande.txt]
 
 concurrency:
   group: deploiement-serveur
   cancel-in-progress: false
 
 permissions:
-  contents: read
+  contents: write # publication du résultat sur la branche diagnostic-serveur
 
 jobs:
   diagnostic:
@@ -23,4 +28,17 @@ jobs:
         with:
           clean: false
       - name: État de la plateforme
-        run: bash infra/ci/diagnostiquer-serveur.sh
+        run: bash infra/ci/diagnostiquer-serveur.sh 2>&1 | tee "$RUNNER_TEMP/diagnostic.txt"
+      - name: Publication du résultat (branche diagnostic-serveur)
+        if: ${{ always() }}
+        env:
+          JETON: ${{ github.token }}
+          DEPOT: ${{ github.repository }}
+        run: |
+          publication="$RUNNER_TEMP/publication"
+          rm -rf "$publication" && mkdir -p "$publication" && cd "$publication"
+          git init -q
+          { echo "Diagnostic du $(date '+%d/%m/%Y %H:%M %Z'), commit $GITHUB_SHA"; echo; cat "$RUNNER_TEMP/diagnostic.txt"; } > diagnostic.txt
+          git add diagnostic.txt
+          git -c user.name=gimac-214 -c user.email=gimac-214@localhost commit -q -m "Diagnostic du serveur de démonstration"
+          git push -q --force "https://x-access-token:$JETON@github.com/$DEPOT.git" HEAD:refs/heads/diagnostic-serveur

@@ -1,0 +1,2 @@
+# Modifier ce fichier et le pousser sur main lance .github/workflows/diagnostic-serveur.yml sur le serveur 214.
+2026-10-12 : serveur injoignable (Connection refused sur tous les ports)
