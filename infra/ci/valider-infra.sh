@@ -216,6 +216,9 @@ PY
   # comptes, profils créés, recompositions et politique de sécurité modifiée dans la console conservés.
   controler "fusionner-domaine.py : tests de la fusion à trois voies" \
     python3 -m unittest -q "$INFRA/ci/test_fusionner_domaine.py"
+  # Comptes nominatifs (annuaire du personnel) : plusieurs profils, alignement, suppression explicite.
+  controler "creer-comptes-personnels.py : création, alignement et suppression des comptes" \
+    python3 -m unittest -q "$INFRA/keycloak/test_creer_comptes_personnels.py"
   fin_section
 }
 
