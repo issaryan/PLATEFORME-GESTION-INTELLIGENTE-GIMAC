@@ -69,8 +69,13 @@ public class EtapeInstance extends EntitePilotage {
     @Column(name = "activee_le")
     private Instant activeeLe;
 
+    /** Échéance maximale (D-106) : au-delà, l'étape est en retard (dépassement). */
     @Column(name = "echeance")
     private LocalDate echeance;
+
+    /** Échéance cible (D-106) : l'atteindre annonce l'échéance proche. */
+    @Column(name = "echeance_cible")
+    private LocalDate echeanceCible;
 
     @Column(name = "soumise_le")
     private Instant soumiseLe;
@@ -95,7 +100,13 @@ public class EtapeInstance extends EntitePilotage {
 
     /** Activation (prédécesseurs terminés) : tâche créée, validateur et signataires résolus, échéance. */
     public void activer(UUID tache, Affectation validateurResolu, List<SignatureInstance> attendues, LocalDate echeanceEtape, Instant le) {
+        activer(tache, validateurResolu, attendues, echeanceEtape, echeanceEtape, le);
+    }
+
+    /** Activation avec échéances cible et maximale distinctes (D-106). */
+    public void activer(UUID tache, Affectation validateurResolu, List<SignatureInstance> attendues, LocalDate echeanceCibleEtape, LocalDate echeanceEtape, Instant le) {
         exigerEtat(EtatEtape.EN_ATTENTE);
+        this.echeanceCible = echeanceCibleEtape;
         this.etat = EtatEtape.ACTIVE;
         this.tacheId = tache;
         affecterValidateur(validateurResolu);
@@ -316,6 +327,22 @@ public class EtapeInstance extends EntitePilotage {
 
     public LocalDate getEcheance() {
         return echeance;
+    }
+
+    /** Échéance cible (D-106) ; une étape activée avant D-106 : son échéance. */
+    public LocalDate getEcheanceCible() {
+        return echeanceCible != null ? echeanceCible : echeance;
+    }
+
+    /** En retard (D-106) : en cours et échéance maximale dépassée. */
+    public boolean enRetard(LocalDate aujourdhui) {
+        return echeance != null && etat.enCours() && echeance.isBefore(aujourdhui);
+    }
+
+    /** Échéance proche (D-106) : en cours, échéance cible atteinte, échéance maximale pas encore dépassée. */
+    public boolean aLApproche(LocalDate aujourdhui) {
+        LocalDate cible = getEcheanceCible();
+        return cible != null && etat.enCours() && !cible.isAfter(aujourdhui) && !enRetard(aujourdhui);
     }
 
     public Instant getSoumiseLe() {

@@ -94,7 +94,7 @@ class ModelisateurIT extends AbstractHomologationIT {
         mvc.perform(json(post(base + "/operations").with(edition), operation("A", "CADRAGE", "AMONT", "DDRM", "CONDUCTEUR", 3, "", ""))).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("HOM_OPERATION_CODE_DUPLICATE"));
         mvc.perform(json(post(base + "/operations").with(edition), operation("b", "CADRAGE", "AMONT", "DDRM", "CONDUCTEUR", 3, "", ""))).andExpect(status().isUnprocessableEntity()).andExpect(jsonPath("$.code").value("HOM_OPERATION_CODE_INVALID"));
         mvc.perform(json(post(base + "/operations").with(edition), operation("B", "LANCEMENT", "AMONT", "SNA", "CONDUCTEUR", 5, "\"A\"", ""))).andExpect(status().isCreated());
-        mvc.perform(json(post(base + "/operations").with(edition), operation("C", "LANCEMENT", "AMONT", "SNA", "CONDUCTEUR", 1, "\"A\"", ""))).andExpect(status().isCreated());
+        mvc.perform(json(post(base + "/operations").with(edition), operation("C", "LANCEMENT", "AMONT", "SNA", "CONDUCTEUR", 1, "\"A\"", ",\"delaiMaxJours\":4"))).andExpect(status().isCreated()).andExpect(jsonPath("$.delaiMaxJours").value(4));
         // Écriture complète (PUT) : jalon, déclencheur, R égal à V (anomalie signalée au contrôle, pas à l'écriture).
         mvc
             .perform(json(put(base + "/operations/D").with(edition), operation(null, "MISE_EN_PRODUCTION", "BRANCHE", "RSSI", "RSSI", 2, "\"B\",\"C\"", ",\"jalon\":\"EN_PRODUCTION\"")))
@@ -102,6 +102,11 @@ class ModelisateurIT extends AbstractHomologationIT {
             .andExpect(jsonPath("$.segment").value("BRANCHE"))
             .andExpect(jsonPath("$.jalon").value("EN_PRODUCTION"));
         mvc.perform(json(put(base + "/operations/E").with(edition), "{\"secret\":true,\"valeurReference\":\"Code\"}")).andExpect(status().isUnprocessableEntity()).andExpect(jsonPath("$.code").value("HOM_OPERATION_SECRET_VALUE"));
+        // D-106 : délai maximal au moins égal au délai cible.
+        mvc
+            .perform(json(put(base + "/operations/E").with(edition), "{\"delaiJours\":5,\"delaiMaxJours\":2}"))
+            .andExpect(status().isUnprocessableEntity())
+            .andExpect(jsonPath("$.code").value("HOM_OPERATION_DELAI_MAX_INVALIDE"));
 
         mvc
             .perform(get(base + "/graphe").with(utilisateur(INGENIEUR, "HOM_REFERENTIEL_READ", "HOM_REFERENTIEL_READ_ALL")))
@@ -114,6 +119,9 @@ class ModelisateurIT extends AbstractHomologationIT {
             .andExpect(jsonPath("$.noeuds.length()").value(4))
             .andExpect(jsonPath("$.noeuds[?(@.code=='A')].successeurs[*]").value(contains("B", "C")))
             .andExpect(jsonPath("$.noeuds[?(@.code=='D')].finAuPlusTot").value(contains(10)))
+            .andExpect(jsonPath("$.noeuds[?(@.code=='C')].finAuPlusTot").value(contains(4)))
+            .andExpect(jsonPath("$.noeuds[?(@.code=='C')].finAuPlusTotMax").value(contains(7)))
+            .andExpect(jsonPath("$.noeuds[?(@.code=='D')].finAuPlusTotMax").value(contains(10)))
             .andExpect(jsonPath("$.noeuds[?(@.code=='D')].couche").value(contains(2)))
             .andExpect(jsonPath("$.noeuds[?(@.code=='D')].anomalies[*]").value(contains("VALIDATEUR_EGAL_RESPONSABLE")))
             .andExpect(jsonPath("$.noeuds[?(@.code=='C')].critique").value(contains(false)))

@@ -35,7 +35,10 @@ export type EtapeProcessus = {
   intervenant: Intervenant
   validateur: Intervenant | null
   predecesseurs: string[]
+  /** Délai cible (objectif), en jours. */
   delaiJours: number
+  /** D-106 : délai maximal (au-delà, dépassement) ; absent ou null : égal au délai cible. */
+  delaiMaxJours?: number | null
   livrables: LivrableProcessus[]
   signatures: SignatureProcessus[]
   champs: ChampProcessus[]
@@ -46,7 +49,11 @@ export type EtapeProcessus = {
  * `modifierPublic` (D-103) : régler le public d'un brouillon ou d'une version publiée sans nouvelle version (qui définit
  * les processus de l'unité) ; absent d'un service antérieur (repli : `modifier`).
  */
-export type DroitsProcessus = { modifier: boolean; publier: boolean; lancer: boolean; retirer: boolean; modifierPublic?: boolean }
+export type DroitsProcessus = {
+  modifier: boolean; publier: boolean; lancer: boolean; retirer: boolean; modifierPublic?: boolean
+  /** Servis par MS-PILOTAGE : tirer une nouvelle version (publiée ou retirée), supprimer un brouillon ; absents d'un service antérieur. */
+  nouvelleVersion?: boolean; supprimer?: boolean
+}
 
 // ------------------------------------------------------------------ Lancement (D-98, docs/lot1/lancement-processus.md §1, §2)
 
@@ -107,6 +114,8 @@ export type ResumeProcessus = {
   description: string
   categorie: string
   delaiCibleJours: number | null
+  /** D-106 : délai maximal de la demande ; absent ou null : égal au délai cible. */
+  delaiMaxJours?: number | null
   nombreEtapes: number
   publieeLe: string | null
   modifieLe: string | null
@@ -135,6 +144,8 @@ export type Processus = {
   description: string
   categorie: string
   delaiCibleJours: number | null
+  /** D-106 : délai maximal de la demande ; absent ou null : égal au délai cible. */
+  delaiMaxJours?: number | null
   etapes: EtapeProcessus[]
   /** D-98 : qui peut lancer, formulaire de lancement (absents d'un service antérieur : défauts). */
   initiateurs?: Initiateurs
@@ -165,6 +176,7 @@ export type SaisieProcessus = {
   description: string
   categorie: string
   delaiCibleJours: number | null
+  delaiMaxJours?: number | null
   etapes: EtapeProcessus[]
   initiateurs?: Initiateurs
   formulaire?: Formulaire
@@ -195,7 +207,12 @@ export type EtapeInstance = {
   echeance: string | null
   soumiseLe: string | null
   termineeLe: string | null
+  /** Échéance maximale dépassée (D-106). */
   enRetard: boolean
+  /** D-106 : délai maximal, échéance cible et « échéance proche » (cible atteinte, maximum non dépassé). */
+  delaiMaxJours?: number
+  echeanceCible?: string | null
+  aLApproche?: boolean
   renvois: number
   tacheId: string | null
   executant: PersonneActivite | null
@@ -236,7 +253,15 @@ export type InstanceProcessus = {
   etapes: EtapeInstance[]
   historique: HistoriqueProcessus[]
   droits: { suspendre: boolean; reprendre: boolean; annuler: boolean; reaffecter: boolean }
+  /** D-106 : délais de la demande comptés depuis son lancement ; null si le processus n'en porte aucun. */
+  delais?: DelaisInstance | null
 }
+
+/** Délais d'une demande (D-106) : cible et maximal du processus, échéances, retard et échéance proche. */
+export type DelaisInstance = { cibleJours: number; maxJours: number; echeanceCible: string; echeanceMax: string; enRetard: boolean; aLApproche: boolean }
+
+/** Délai maximal effectif (D-106) : le délai cible quand il n'est pas défini, jamais en deçà. */
+export const delaiMaxEffectif = (cible: number, max: number | null | undefined): number => (max === null || max === undefined ? cible : Math.max(max, cible))
 
 export type ResumeInstance = {
   id: string
@@ -268,6 +293,9 @@ export type EtapeDemande = {
   echeance: string | null
   termineeLe: string | null
   enRetard: boolean
+  /** D-106 : échéance cible et échéance proche (cible atteinte, maximum non dépassé). */
+  echeanceCible?: string | null
+  aLApproche?: boolean
 }
 /** « Mes demandes » (GET /processus/demandes, D-98 §3) : instances lancées par moi. */
 export type DemandeProcessus = {

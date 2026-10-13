@@ -81,7 +81,7 @@ Droits : définir et publier les processus d'une unité = `PROCESSUS_DEFINIR` co
 | POST | `/processus/{id}/nouvelle-version` | brouillon v+1 depuis une version publiée |
 | POST | `/processus/{id}/retrait` | retirer (motif) |
 | PUT | `/processus/{id}/public` | public d'un brouillon ou d'une version publiée, sans nouvelle version (D-103, `docs/lot1/lancement-processus.md` §11) |
-| GET | `/instances?vue=miennes\|unite\|lancees&etat=` | instances |
+| GET | `/processus/instances?vue=miennes\|unite\|lancees&etat=` | instances |
 | POST | `/processus/{id}/instances` | lancer (`{ intitule, champs, designations: { CODE_ETAPE: personneId } }`) |
 | GET | `/instances/{id}` | instance (étapes, états, livrables, signatures, historique) |
 | POST | `/instances/{id}/etapes/{code}/livrables` | rattacher un dépôt (`{ livrable, documentId }`) |
@@ -241,10 +241,12 @@ sont vérifiés par le cas d'utilisation (403 `PIL_PROCESSUS_INTERDIT`).
 
 ### 5.2 Droits
 
-Définir, publier, versions, retrait : `IAM_PROFILE_EDIT` (jeton) ou `PROCESSUS_DEFINIR` de portée `UNITES` sur une
-unité dirigée qui comprend l'unité. Lire : administration, membre de l'unité ou d'une sous-unité (chemin MS-IAM),
-responsable d'une unité qui la comprend, porteurs de `PROCESSUS_DEFINIR` ou `PROCESSUS_LANCER` la couvrant ; une
-instance est aussi lisible de ses intervenants. Lancer : membre de l'unité ou `PROCESSUS_LANCER` la couvrant.
+Définir, publier, versions, retrait : `REF_METIER_ADMIN`, `PROCESSUS_DEFINIR` de portée `TOUTES`, ou de portée `UNITES`
+sur une unité dirigée qui comprend l'unité (`IAM_PROFILE_EDIT` n'y suffit plus depuis D-94). Lire : administration,
+membre de l'unité ou d'une sous-unité (chemin MS-IAM), responsable d'une unité qui la comprend, porteurs de
+`PROCESSUS_DEFINIR` ou `PROCESSUS_LANCER` la couvrant ; une instance est aussi lisible de ses intervenants ; une version
+publiée l'est aussi de son public, réduite à elle seule (D-106). Lancer : le public du processus seul (règles
+d'initiateurs, D-100) ; règle de synthèse : `docs/lot1/lancement-processus.md` §12.
 Réaffecter, suspendre, reprendre, annuler : chef d'une unité qui comprend l'unité (unité dirigée) ou `TACHE_CONFIER`
 la couvrant. Agir sur une étape : l'exécutant (responsable de sa tâche) ; signer : le signataire attendu (personne, ou
 membre actif de l'unité portant le profil) ; valider : le validateur, jamais l'exécutant de l'étape. Les actions
@@ -421,3 +423,21 @@ Tests : `ResolutionIntervenantsTest` (hors de l'unité, seul porteur), `Processu
 seul porteur ailleurs, plusieurs porteurs ailleurs avec prise et choix du chef ou du lanceur, aucun porteur,
 candidats, revue d'organisation), tests du service simulé et des écrans, E2E `processus-unite` et
 `departement-passerelle-processus`.
+
+## 7. Délai cible et délai maximal (D-106, 13/10/2026)
+
+- **Processus** : `delaiCibleJours` (inchangé) et nouveau `delaiMaxJours` (`processus.delai_max_jours`, 0..365, au moins
+  le délai cible, `NULL` = égal au délai cible ; 400 `PIL_REQUETE_INVALIDE`, `details.champ = delaiMaxJours`).
+- **Étape** (JSONB `etapes`, sans migration) : `delaiJours` devient le délai cible ; nouveau `delaiMaxJours` facultatif
+  (400, `details.champ = etapes[i].delaiMaxJours`). Une étape antérieure se lit avec un maximum égal à sa cible.
+- **Échéances** : à l'activation, la tâche et l'étape portent l'échéance maximale (jour + délai maximal) ; l'étape garde
+  aussi `echeance_cible` (jour + délai cible, colonne `processus_etape_instance.echeance_cible`, reprise : l'échéance).
+  Vue de l'étape (instance et « Mes demandes ») : `enRetard` (échéance maximale dépassée), `aLApproche` (échéance cible
+  atteinte, maximum non dépassé), `echeanceCible`, `delaiMaxJours`. Vue de l'instance : `delais` `{ cibleJours, maxJours,
+  echeanceCible, echeanceMax, enRetard, aLApproche }` comptés depuis le lancement, null sans délai.
+- **Interface** : modale d'étape (Chronologie : « Délai cible de l'étape », « Délai maximal de l'étape »), propriétés du
+  processus (« Délai cible », « Délai maximal »), cartes et liste « 3 à 5 j », pastilles « en retard » et « échéance
+  proche » dans l'instance et « Mes demandes », délais de la demande dans son en-tête, « Lancer une demande » (délai
+  maximal). Changelog `20261013090000_pil_delai_maximal.xml`.
+- **Tests** : `DelaisProcessusTest`, `EtapeInstanceTest.delaiCibleEtMaximal`, `ProcessusDelaisIT`, interface
+  `Processus.test.tsx`, `services/simule/delais-d104.test.ts`.

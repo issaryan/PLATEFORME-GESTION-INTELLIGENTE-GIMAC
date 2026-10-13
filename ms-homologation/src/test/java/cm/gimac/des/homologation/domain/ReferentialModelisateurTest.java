@@ -76,6 +76,16 @@ class ReferentialModelisateurTest {
         );
     }
 
+    /** Saisie réduite aux délais cible et maximal (D-106). */
+    static ReferenceOperationData delais(Integer cible, Integer max) {
+        return new ReferenceOperationData(
+            "x", null, null, null, null, null, null, null, List.of(), null, null, null, null, null, null, null, null, null, null, null,
+            cible,
+            null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
+            max
+        );
+    }
+
     static ReferenceOperationData simple(String... preds) {
         return op(Fonction.DDRM, Fonction.CONDUCTEUR, Geste.DEPOSER_PREUVE, null, null, List.of(), preds);
     }
@@ -100,6 +110,13 @@ class ReferentialModelisateurTest {
         );
         code(() -> v.creerOperation("S", secretValeur), "HOM_OPERATION_SECRET_VALUE");
         code(() -> v.creerOperation("D", simple("D")), "HOM_OPERATION_SELF_PREDECESSOR");
+        // D-106 : délai maximal au moins égal au délai cible.
+        code(() -> v.creerOperation("M", delais(10, 5)), "HOM_OPERATION_DELAI_MAX_INVALIDE");
+        ReferenceOperation m = v.creerOperation("M", delais(10, 15));
+        assertThat(m.getDelaiJours()).isEqualTo(10);
+        assertThat(m.getDelaiMaxJours()).isEqualTo(15);
+        assertThat(m.delaiMaxEffectif()).isEqualTo(15);
+        assertThat(v.creerOperation("N", delais(4, null)).delaiMaxEffectif()).isEqualTo(4);
         assertThat(a.getPosition()).isEqualTo(new Position(10, 20));
         assertThat(a.getConsultes()).containsExactly(Fonction.SNA);
         assertThat(a.getPartie()).isEqualTo(Partie.DES);

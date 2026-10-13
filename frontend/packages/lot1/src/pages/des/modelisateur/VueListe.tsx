@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, DataTable, Dialog, Icon, Select, Tag, type Column } from '@gimac/design-system'
 import type { GrapheReferentiel, NoeudGraphe } from '../../../modele/homologation'
-import type { SourceEtapes } from '../../../adaptateurs/modelisateur'
+import { delaiOperation, type SourceEtapes } from '../../../adaptateurs/modelisateur'
 
 // Vue liste du modélisateur, équivalente au canevas pour le clavier et les lecteurs d'écran : une ligne par
 // opération (rôles, chronologie, anomalies), et les mêmes gestes (modifier, relier, délier) par des boutons.
@@ -67,7 +67,7 @@ export function VueListe(p: VueListeProps) {
     { key: 'responsable', header: 'R', render: (r) => fonction(r.responsable) },
     { key: 'validateur', header: 'V', render: (r) => fonction(r.validateur) },
     { key: 'predecesseurs', header: t('modelisateur.champ.predecesseurs'), render: (r) => <span className="gm-row" style={{ flexWrap: 'wrap', gap: 2 }}>{(r.predecesseurs ?? []).map((x) => <Tag key={x}>{x}</Tag>)}</span> },
-    { key: 'delaiJours', header: t('modelisateur.champ.delai'), render: (r) => t('modelisateur.carte.delai', { n: r.delaiJours ?? 0 }) },
+    { key: 'delaiJours', header: t('modelisateur.champ.delais'), render: (r) => delaiOperation(t, r.delaiJours, r.delaiMaxJours) },
     { key: 'debutAuPlusTot', header: t('modelisateur.champ.fin'), render: (r) => (r.finAuPlusTot === null ? '' : t('modelisateur.jourN', { n: r.finAuPlusTot })) },
     {
       key: 'anomalies', header: t('modelisateur.colonne.anomalies'),

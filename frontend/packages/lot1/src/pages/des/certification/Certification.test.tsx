@@ -73,6 +73,20 @@ describe('D-98 : lancer une certification', () => {
     expect(screen.getByText("L'ouverture suit le prononcé de l'adhésion.")).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Enregistrer une nouvelle institution' })).toBeTruthy()
   })
+
+  it('D-106 : ouvrir une liaison exige aussi la désignation du conducteur (bouton masqué, service simulé 403 comme MS-HOMOLOGATION)', async () => {
+    await expect(sous('ROLE_CHARGE_DDRM').parcours.ouvrirLiaison({ institutionId: 'INST-0042', typeProjet: 'AGREGATEUR', chefDeProjetId: 'U-COND-1', banquePartenaireId: null }))
+      .rejects.toMatchObject({ status: 403, code: 'HOM_PROJECT_DESIGNATION_FORBIDDEN' })
+    // Profil composé avec HOM_LIAISON_OPEN sans HOM_PROJECT_DESIGNATE : l'écran explique au lieu d'offrir un geste refusé.
+    const sansDesignation = PROFILS.ROLE_CHEF_DES.filter((p) => p !== 'HOM_PROJECT_DESIGNATE')
+    rendrePage(<LancerCertificationPage />, { chemin: '/des/certification/lancer', motif: '/des/certification/lancer', session: sessionTest(sansDesignation, ['ROLE_CHEF_DES']) })
+    const select = await screen.findByLabelText('Institution')
+    await waitFor(() => expect(within(select).getAllByRole('option').length).toBeGreaterThan(2))
+    const option = within(select).getAllByRole('option').find((o) => o.textContent?.startsWith('Établissement de paiement A')) as HTMLOptionElement
+    fireEvent.change(select, { target: { value: option.value } })
+    expect(await screen.findByText(/Adhésion prononcée/)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Ouvrir la liaison' })).toBeNull()
+  })
 })
 
 describe('D-98 : démonstration simulée alignée, du lancement à la mise en production', () => {

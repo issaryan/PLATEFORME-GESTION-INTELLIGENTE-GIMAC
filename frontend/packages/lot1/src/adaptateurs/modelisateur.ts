@@ -121,7 +121,7 @@ export function saisieDe(o: ReferenceOperation): SaisieOperation {
   return {
     libelle: o.libelle ?? '', description: o.description ?? null, etape: o.etape ?? null, segment: o.segment ?? null, ordre: o.ordre ?? null,
     responsable: o.responsable ?? null, validateur: o.validateur ?? null, consultes: o.consultes ?? [], informes: o.informes ?? [], externes: o.externes ?? [],
-    predecesseurs: o.predecesseurs ?? [], delaiJours: o.delaiJours ?? null, grain: o.grain ?? null, plateforme: o.plateforme ?? null,
+    predecesseurs: o.predecesseurs ?? [], delaiJours: o.delaiJours ?? null, delaiMaxJours: o.delaiMaxJours ?? null, grain: o.grain ?? null, plateforme: o.plateforme ?? null,
     cle: !!o.cle, secret: !!o.secret, oubliSansSymptome: !!o.oubliSansSymptome, pivot: !!o.pivot, valeurReference: o.secret ? null : o.valeurReference ?? null,
     livrables: (o.livrables ?? []).map((l) => ({ ...l, typesPieces: [...(l.typesPieces ?? [])] })), geste: o.geste ?? null, jalon: o.jalon ?? null,
     declencheur: o.geste === 'EVENEMENT_EXTERNE' ? o.declencheur ?? null : null, particularite: o.particularite ?? null, position: o.position ?? null,
@@ -138,7 +138,7 @@ export function saisieDe(o: ReferenceOperation): SaisieOperation {
 export function operationVierge(etape: ReferenceOperation['etape'] = null, segment: SegmentParcours = 'BRANCHE'): ReferenceOperation {
   return {
     code: '', libelle: '', description: null, etape, segment, ordre: null, responsable: null, validateur: null, consultes: [], informes: [], externes: [],
-    predecesseurs: [], delaiJours: 3, grain: 'OPERATION', plateforme: null, cle: false, secret: false, oubliSansSymptome: false, pivot: false, valeurReference: null,
+    predecesseurs: [], delaiJours: 3, delaiMaxJours: null, grain: 'OPERATION', plateforme: null, cle: false, secret: false, oubliSansSymptome: false, pivot: false, valeurReference: null,
     livrables: [], geste: 'DEPOSER_PREUVE', jalon: null, declencheur: null, particularite: null, position: null,
     phase: null, partie: null, serviceCode: null, natureCouverture: null, idScenario: null, fonctionResponsable: null, preuveAttendue: null,
     signatures: [], vue: null, consultesRecoiventTache: false,
@@ -173,6 +173,9 @@ export function erreursSaisie(o: ReferenceOperation, creation: boolean, codesExi
   if (!o.validateur) e.validateur = 'commun.champObligatoire'
   else if (o.validateur === o.responsable) e.validateur = 'modelisateur.erreur.validateurResponsable'
   if (o.delaiJours === null || o.delaiJours < 0 || o.delaiJours > 365 || !Number.isInteger(o.delaiJours)) e.delaiJours = 'modelisateur.erreur.delai'
+  // D-106 : délai maximal facultatif, entier, du délai cible à 365 jours (422 HOM_OPERATION_DELAI_MAX_INVALIDE sinon).
+  const max = o.delaiMaxJours
+  if (max !== null && max !== undefined && (!Number.isInteger(max) || max > 365 || max < (o.delaiJours ?? 3) || max < 0)) e.delaiMaxJours = 'modelisateur.erreur.delaiMax'
   if (o.geste === 'EVENEMENT_EXTERNE' && !o.declencheur) e.declencheur = 'modelisateur.erreur.declencheur'
   if (o.secret && o.valeurReference) e.valeurReference = 'erreur.HOM_OPERATION_SECRET_VALUE'
   if ((o.valeurReference ?? '').length > 120) e.valeurReference = 'modelisateur.erreur.long'
@@ -205,7 +208,7 @@ export function ongletDuChamp(champ: string): 'general' | 'roles' | 'livrables' 
   if (champ.startsWith('signatures')) return 'signatures'
   if (['responsable', 'validateur', 'consultes', 'informes', 'externes'].includes(champ)) return 'roles'
   if (['geste', 'jalon', 'declencheur', 'particularite', 'plateforme', 'grain', 'valeurReference', 'vue'].includes(champ)) return 'execution'
-  if (['predecesseurs', 'delaiJours'].includes(champ)) return 'chronologie'
+  if (['predecesseurs', 'delaiJours', 'delaiMaxJours'].includes(champ)) return 'chronologie'
   return 'general'
 }
 
@@ -217,4 +220,11 @@ export function libelleEntree(t: (cle: string, o?: Record<string, unknown>) => s
 /** Libellé d'une opération du parcours : celui que sert le référentiel publié (D-93), son code à défaut. */
 export function libelleOperation(_t: unknown, o: { rang: string; libelle?: string | null }): string {
   return o.libelle || o.rang
+}
+
+/** Délai d'une opération en clair (D-106) : « 3 j », ou « 3 à 5 j » quand le délai maximal dépasse le délai cible. */
+export function delaiOperation(t: (k: string, o?: Record<string, unknown>) => string, cible: number | null | undefined, max: number | null | undefined): string {
+  const c = cible ?? 0
+  const m = max === null || max === undefined ? c : Math.max(max, c)
+  return m === c ? t('modelisateur.carte.delai', { n: c }) : t('modelisateur.carte.delais', { cible: c, max: m })
 }

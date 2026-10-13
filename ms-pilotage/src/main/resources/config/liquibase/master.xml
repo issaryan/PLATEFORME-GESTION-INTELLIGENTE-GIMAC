@@ -59,5 +59,7 @@
     <include file="config/liquibase/changelog/20261008120000_pil_rapports_destinataire.xml" relativeToChangelogFile="false"/>
     <!-- Initiateurs et formulaire de lancement des processus d'unité (D-98), écrit à la main. -->
     <include file="config/liquibase/changelog/20261008130000_pil_lancement_processus.xml" relativeToChangelogFile="false"/>
+    <!-- Délai cible et délai maximal des processus d'unité (D-106), écrit à la main. -->
+    <include file="config/liquibase/changelog/20261013090000_pil_delai_maximal.xml" relativeToChangelogFile="false"/>
     <!-- jhipster-needle-liquibase-add-incremental-changelog - JHipster will add incremental liquibase changelogs here -->
 </databaseChangeLog>

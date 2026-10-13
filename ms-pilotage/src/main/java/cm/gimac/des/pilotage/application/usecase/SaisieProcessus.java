@@ -71,6 +71,23 @@ final class SaisieProcessus {
         return d;
     }
 
+    /**
+     * Délai maximal (D-106) : facultatif, 0 à 365 jours, au moins le délai cible quand celui-ci est défini ;
+     * 400 PIL_REQUETE_INVALIDE ({@code details.champ} = {@code champ}) sinon.
+     */
+    static Integer delaiMax(String champ, Integer max, Integer cible) {
+        if (max == null) {
+            return null;
+        }
+        if (max < 0 || max > DELAI_MAX) {
+            throw PilotageException.champ(champ, "Délai de 0 à " + DELAI_MAX + " jours");
+        }
+        if (cible != null && max < cible) {
+            throw PilotageException.champ(champ, "Le délai maximal (" + max + " j) ne peut être inférieur au délai cible (" + cible + " j)");
+        }
+        return max;
+    }
+
     static List<Etape> etapes(List<EtapeSaisie> saisies) {
         if (saisies == null) {
             return List.of();
@@ -108,6 +125,7 @@ final class SaisieProcessus {
         if (delai < 0 || delai > DELAI_MAX) {
             throw PilotageException.champ(c + ".delaiJours", "Délai de 0 à " + DELAI_MAX + " jours");
         }
+        Integer delaiMax = delaiMax(c + ".delaiMaxJours", s.delaiMaxJours(), delai);
         List<Livrable> livrables = liste(c + ".livrables", s.livrables()).stream().map(x -> livrable(x.chemin(), (LivrableSaisie) x.valeur())).toList();
         List<SignatureRequise> signatures = liste(c + ".signatures", s.signatures()).stream().map(x -> signature(x.chemin(), (SignatureSaisie) x.valeur())).toList();
         List<Champ> champs = liste(c + ".champs", s.champs()).stream().map(x -> champ(x.chemin(), (ChampSaisie) x.valeur())).toList();
@@ -123,7 +141,8 @@ final class SaisieProcessus {
             livrables,
             signatures,
             champs,
-            position
+            position,
+            delaiMax
         );
     }
 

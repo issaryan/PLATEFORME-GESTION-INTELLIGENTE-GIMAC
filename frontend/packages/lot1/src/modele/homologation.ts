@@ -88,6 +88,8 @@ export type SaisieOperation = {
   /** D-91 : signatures (absentes : conservées ; [] : retirées) ; D-93 : vue spécialisée (absente : conservée) et tâche aux consultés. */
   signatures?: SignatureReferentiel[]
   vue?: VueOperation | null
+  /** D-106 : délai maximal (au-delà, dépassement) ; absent ou null : égal au délai cible (delaiJours). */
+  delaiMaxJours?: number | null
   consultesRecoiventTache?: boolean
   // Attributs historiques de couverture (HOM-01), renvoyés tels quels pour ne pas être effacés.
   phase?: string | null; partie?: Partie | null; serviceCode?: string | null; natureCouverture?: 'CERTIFICATION' | 'MISE_EN_SERVICE' | 'AUCUNE' | null
@@ -105,7 +107,7 @@ export type ReferenceOperation = Partial<Permitted> & Omit<SaisieOperation, 'pha
 }
 
 /** Nœud du graphe étendu : l'opération à plat, sa couche de Kahn, ses dates au plus tôt (jours), le chemin critique et ses anomalies. */
-export type NoeudGraphe = ReferenceOperation & { couche: number | null; debutAuPlusTot: number | null; finAuPlusTot: number | null; critique: boolean; anomalies: TypeAnomalie[] }
+export type NoeudGraphe = ReferenceOperation & { couche: number | null; debutAuPlusTot: number | null; finAuPlusTot: number | null; finAuPlusTotMax?: number | null; critique: boolean; anomalies: TypeAnomalie[] }
 export type AnomalieGraphe = { type: TypeAnomalie; codes: string[]; motif: string }
 export type GrapheReferentiel = {
   versionId: string; typeProjet: TypeProjet; numero: number | null; etat: ReferentielVersion['etat']; piloteId: string | null

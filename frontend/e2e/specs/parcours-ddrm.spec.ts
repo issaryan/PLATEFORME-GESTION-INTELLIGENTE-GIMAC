@@ -60,10 +60,10 @@ test.describe('Fonctionnalité : phase amont conduite par la DDRM', () => {
       await expect(page.getByText(/^Compte rendu déposé : /)).toBeVisible()
       await expect(carte(page, 'Ateliers : comptes rendus').getByText('cr-atelier-interfaces.pdf')).toBeVisible()
     })
-    await test.step('Et l’étape d’adhésion, close, réunit ses six éléments', async () => {
-      await page.getByRole('link', { name: '2. Adhésion' }).click()
-      await expect(carte(page, '2. Adhésion').getByText('Réuni', { exact: true })).toHaveCount(6)
-      await expect(carte(page, '2. Adhésion').getByText('Dossier d\'adhésion')).toBeVisible()
+    await test.step('Et l’étape de procédure administrative, close, réunit ses six éléments', async () => {
+      await page.getByRole('link', { name: '2. Procédure administrative' }).click()
+      await expect(carte(page, '2. Procédure administrative').getByText('Réuni', { exact: true })).toHaveCount(6)
+      await expect(carte(page, '2. Procédure administrative').getByText('Dossier d\'adhésion')).toBeVisible()
     })
   })
 

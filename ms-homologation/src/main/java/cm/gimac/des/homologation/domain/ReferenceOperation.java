@@ -133,6 +133,10 @@ public class ReferenceOperation implements Serializable {
     @Column(name = "delai_jours")
     private Integer delaiJours;
 
+    /** Délai maximal (D-106) : au-delà, l'opération est en dépassement ; null = égal au délai cible. */
+    @Column(name = "delai_max_jours")
+    private Integer delaiMaxJours;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "grain", length = 20)
     private GrainPreuve grain;
@@ -418,6 +422,7 @@ public class ReferenceOperation implements Serializable {
         this.informes = JsonTexte.ecrire(data.informes() == null ? List.of() : data.informes().stream().distinct().toList());
         this.externes = JsonTexte.ecrire(data.externes() == null ? List.of() : data.externes().stream().distinct().toList());
         this.delaiJours = data.delaiJours();
+        this.delaiMaxJours = data.delaiMaxJours();
         this.grain = data.grain();
         this.plateforme = data.plateforme();
         this.cle = Boolean.TRUE.equals(data.cle());
@@ -511,6 +516,7 @@ public class ReferenceOperation implements Serializable {
         copie.informes = informes;
         copie.externes = externes;
         copie.delaiJours = delaiJours;
+        copie.delaiMaxJours = delaiMaxJours;
         copie.grain = grain;
         copie.plateforme = plateforme;
         copie.cle = cle;
@@ -614,6 +620,11 @@ public class ReferenceOperation implements Serializable {
 
     public Integer getDelaiJours() {
         return delaiJours;
+    }
+
+    /** Délai maximal saisi (D-106) ; null = égal au délai cible. */
+    public Integer getDelaiMaxJours() {
+        return delaiMaxJours;
     }
 
     public GrainPreuve getGrain() {
@@ -808,8 +819,14 @@ public class ReferenceOperation implements Serializable {
         return grainEffectif() == GrainPreuve.PHASE ? Geste.DEPOSER_LIVRABLE : Geste.DEPOSER_PREUVE;
     }
 
+    /** Délai cible (objectif) effectif : 3 jours par défaut. */
     public int delaiEffectif() {
         return delaiJours == null ? 3 : delaiJours;
+    }
+
+    /** Délai maximal effectif (D-106) : le délai cible quand il n'est pas saisi, jamais en deçà de la cible. */
+    public int delaiMaxEffectif() {
+        return delaiMaxJours == null ? delaiEffectif() : Math.max(delaiMaxJours, delaiEffectif());
     }
 
     public int ordreEffectif() {

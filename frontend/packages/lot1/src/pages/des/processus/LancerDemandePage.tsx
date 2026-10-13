@@ -42,6 +42,7 @@ function CarteProcessus({ p, onLancer }: { p: ResumeProcessus; onLancer: () => v
             {t('dem.lancer.etapes', { count: p.nombreEtapes })}
             {p.nombreChampsFormulaire ? ` · ${t('dem.lancer.champs', { count: p.nombreChampsFormulaire })}` : ''}
             {p.delaiCibleJours !== null ? ` · ${t('dem.lancer.delai', { n: p.delaiCibleJours })}` : ''}
+            {p.delaiMaxJours !== null && p.delaiMaxJours !== undefined && p.delaiMaxJours !== p.delaiCibleJours ? ` · ${t('dem.lancer.delaiMax', { n: p.delaiMaxJours })}` : ''}
           </span>
         </span>
       </div>

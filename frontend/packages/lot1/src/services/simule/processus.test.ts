@@ -50,7 +50,9 @@ describe('D-87 : définitions', () => {
     expect(await chef.lister({ unite: 'SNA' })).toEqual([])
     const membre = qui('u-res').processus
     expect((await membre.lister({})).map((p) => p.code)).toEqual(['CHANGEMENT_ADRESSE_IP', 'OUVERTURE_FLUX_RESEAU'])
-    expect(await code(membre.lire(l[0].id))).toBe('404 PIL_PROCESSUS_INTROUVABLE')
+    // D-106 : refus explicite (403) comme MS-PILOTAGE ; 404 pour une définition inexistante seulement.
+    expect(await code(membre.lire(l[0].id))).toBe('403 PIL_PROCESSUS_INTERDIT')
+    expect(await code(membre.lire('PRC-INCONNU'))).toBe('404 PIL_PROCESSUS_INTROUVABLE')
     expect(await qui('u-sna').processus.lister({})).toEqual([])
   })
 

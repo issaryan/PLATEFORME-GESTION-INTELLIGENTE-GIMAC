@@ -301,13 +301,17 @@ export function ModaleOperation(p: ModaleOperationProps) {
               <ChoixMultiple name="predecesseurs" label={t('modelisateur.champ.predecesseurs')} help={t('modelisateur.aide.predecesseurs')} options={options.predecesseurs} value={o.predecesseurs}
                 lectureSeule={lecture} error={err('predecesseurs')} onChange={(v) => maj({ predecesseurs: v })} />
               <NumberField name="delaiJours" label={t('modelisateur.champ.delai')} unit={t('modelisateur.jours')} value={o.delaiJours === null ? '' : String(o.delaiJours)} min={0} max={365} required
-                readOnly={lecture} error={err('delaiJours')} onChange={(v) => maj({ delaiJours: v === '' ? null : Number(v) })} />
+                readOnly={lecture} error={err('delaiJours')} help={t('modelisateur.aide.delai')} onChange={(v) => maj({ delaiJours: v === '' ? null : Number(v) })} />
+              <NumberField name="delaiMaxJours" label={t('modelisateur.champ.delaiMax')} unit={t('modelisateur.jours')} value={o.delaiMaxJours === null || o.delaiMaxJours === undefined ? '' : String(o.delaiMaxJours)} min={0} max={365}
+                readOnly={lecture} error={err('delaiMaxJours')} help={t('modelisateur.aide.delaiMax')} onChange={(v) => maj({ delaiMaxJours: v === '' ? null : Number(v) })} />
               <div className="gm-col gm-mod-large" style={{ gap: 'var(--gm-space-2)' }}>
                 <KeyValueList
                   items={[
                     { key: t('modelisateur.champ.successeurs'), value: successeurs.length ? successeurs.join(', ') : '∅', mono: true },
                     { key: t('modelisateur.champ.debut'), value: noeud?.debutAuPlusTot === null || noeud?.debutAuPlusTot === undefined ? t('modelisateur.calculAEnregistrer') : t('modelisateur.jourN', { n: noeud.debutAuPlusTot }) },
                     { key: t('modelisateur.champ.fin'), value: noeud?.finAuPlusTot === null || noeud?.finAuPlusTot === undefined ? t('modelisateur.calculAEnregistrer') : t('modelisateur.jourN', { n: noeud.finAuPlusTot }) },
+                    ...(noeud?.finAuPlusTotMax !== null && noeud?.finAuPlusTotMax !== undefined && noeud.finAuPlusTotMax !== noeud.finAuPlusTot
+                      ? [{ key: t('modelisateur.champ.finMax'), value: t('modelisateur.jourN', { n: noeud.finAuPlusTotMax }) }] : []),
                   ]}
                 />
               </div>

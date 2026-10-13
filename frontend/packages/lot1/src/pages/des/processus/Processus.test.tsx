@@ -199,12 +199,17 @@ describe('D-87 : modélisateur', () => {
     fireEvent.change(within(d).getByLabelText(/^Choix possibles/), { target: { value: 'IPsec, OpenVPN' } })
     fireEvent.click(within(d).getByLabelText('Obligatoire'))
     fireEvent.click(within(d).getByRole('tab', { name: 'Chronologie' }))
-    fireEvent.change(within(d).getByLabelText(/^Délai de l’étape/), { target: { value: '3' } })
+    fireEvent.change(within(d).getByLabelText(/^Délai cible de l’étape/), { target: { value: '3' } })
+    // D-106 : délai maximal de l'étape, au moins le délai cible.
+    fireEvent.change(within(d).getByLabelText(/^Délai maximal de l’étape/), { target: { value: '2' } })
+    fireEvent.click(within(d).getByRole('button', { name: 'Enregistrer' }))
+    expect(within(d).getByText('Le délai maximal va du délai cible à 365 jours.')).toBeTruthy()
+    fireEvent.change(within(d).getByLabelText(/^Délai maximal de l’étape/), { target: { value: '6' } })
     fireEvent.click(within(d).getByRole('button', { name: 'Enregistrer' }))
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Étape CONFIGURATION' })).toBeNull())
     const etape = modifier.mock.calls.at(-1)![1].etapes.find((e) => e.code === 'CONFIGURATION')!
     expect(etape).toMatchObject({
-      delaiJours: 3, intervenant: { mode: 'PERSONNE', personneId: 'u-res', remplacement: 'ROLE_POLE_RESEAU' }, validateur: { mode: 'PROFIL', profil: 'ROLE_RESPONSABLE_SERVICE' },
+      delaiJours: 3, delaiMaxJours: 6, intervenant: { mode: 'PERSONNE', personneId: 'u-res', remplacement: 'ROLE_POLE_RESEAU' }, validateur: { mode: 'PROFIL', profil: 'ROLE_RESPONSABLE_SERVICE' },
       livrables: [{ code: 'FICHE_VPN' }, { code: 'LIVRABLE_1', libelle: 'Journal de configuration' }], signatures: [{ code: 'SIGNATURE_1', libelle: 'Visa du chef', porte: ['FICHE_VPN'] }],
       champs: [{ code: 'CHAMP_1', type: 'CHOIX', choix: ['IPsec', 'OpenVPN'], obligatoire: true }],
     })
@@ -230,6 +235,11 @@ describe('D-87 : modélisateur', () => {
     expect(within(d).getByText('Délai de 0 à 365 jours.')).toBeTruthy()
     fireEvent.change(within(d).getByLabelText(/^Libellé/), { target: { value: 'Accès VPN d’un participant (recette)' } })
     fireEvent.change(within(d).getByLabelText(/^Délai cible/), { target: { value: '7' } })
+    // D-106 : délai maximal du processus, au moins le délai cible.
+    fireEvent.change(within(d).getByLabelText(/^Délai maximal/), { target: { value: '5' } })
+    fireEvent.click(within(d).getByRole('button', { name: 'Enregistrer' }))
+    expect(within(d).getByText('Le délai maximal va du délai cible à 365 jours.')).toBeTruthy()
+    fireEvent.change(within(d).getByLabelText(/^Délai maximal/), { target: { value: '12' } })
     fireEvent.click(within(d).getByRole('button', { name: 'Enregistrer' }))
     expect(await screen.findByRole('heading', { level: 1, name: 'Accès VPN d’un participant (recette)' })).toBeTruthy()
     // Contrôle puis publication : avertissement levable, levée motivée.

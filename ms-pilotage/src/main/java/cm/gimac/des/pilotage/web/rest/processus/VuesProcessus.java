@@ -99,6 +99,7 @@ final class VuesProcessus {
         String description,
         String categorie,
         Integer delaiCibleJours,
+        Integer delaiMaxJours,
         List<Etape> etapes,
         InitiateursVue initiateurs,
         Formulaire formulaire,
@@ -145,6 +146,7 @@ final class VuesProcessus {
                 p.getDescription(),
                 p.getCategorie(),
                 p.getDelaiCibleJours(),
+                p.getDelaiMaxJours(),
                 p.getEtapes(),
                 InitiateursVue.de(p.getInitiateurs(), noms),
                 p.getFormulaire(),
@@ -178,6 +180,7 @@ final class VuesProcessus {
         String description,
         String categorie,
         Integer delaiCibleJours,
+        Integer delaiMaxJours,
         int nombreEtapes,
         String publieeLe,
         String modifieLe,
@@ -198,6 +201,7 @@ final class VuesProcessus {
                 p.getDescription(),
                 p.getCategorie(),
                 p.getDelaiCibleJours(),
+                p.getDelaiMaxJours(),
                 p.getEtapes().size(),
                 ReglesActivite.horodatage(p.getPublieeLe()),
                 ReglesActivite.horodatage(p.getModifieLe()),
@@ -311,7 +315,10 @@ final class VuesProcessus {
         List<LivrableVue> livrables,
         List<ChampVue> champs,
         List<SignatureVue> signatures,
-        MoiEtape moi
+        MoiEtape moi,
+        int delaiMaxJours,
+        String echeanceCible,
+        boolean aLApproche
     ) {}
 
     record InstanceVue(
@@ -329,7 +336,8 @@ final class VuesProcessus {
         List<ValeurFormulaireVue> formulaire,
         List<EtapeInstanceVue> etapes,
         List<HistoriqueVue> historique,
-        DroitsInstance droits
+        DroitsInstance droits,
+        DelaisInstance delais
     ) {
         static InstanceVue de(InstanceLue l) {
             InstanceProcessus i = l.instance();
@@ -351,7 +359,8 @@ final class VuesProcessus {
                 ValeurFormulaireVue.de(l.processus(), i),
                 l.etapes().stream().map(e -> etape(l, e)).toList(),
                 l.historique().stream().map(h -> HistoriqueVue.de(h, noms)).toList(),
-                l.droits()
+                l.droits(),
+                DelaisInstance.de(l.processus(), i, l.aujourdhui())
             );
         }
 
@@ -360,7 +369,7 @@ final class VuesProcessus {
             Etape def = l.processus() == null ? null : l.processus().etape(e.getCode()).orElse(null);
             Tache t = e.getTacheId() == null ? null : l.taches().get(e.getTacheId());
             boolean aPrendre = t != null && t.getEtat() == EtatTache.A_PRENDRE;
-            boolean enRetard = e.getEcheance() != null && e.getEtat().enCours() && e.getEcheance().isBefore(l.aujourdhui());
+            boolean enRetard = e.enRetard(l.aujourdhui());
             List<LivrableVue> livrables = def == null
                 ? List.of()
                 : def.livrables().stream().map(x -> new LivrableVue(x.code(), x.libelle(), x.obligatoire(), x.typesPieces(), x.modele(), DepotVue.de(e.depot(x.code()), noms))).toList();
@@ -386,7 +395,10 @@ final class VuesProcessus {
                 livrables,
                 champs,
                 e.getSignatures().stream().map(s -> SignatureVue.de(s, noms)).toList(),
-                l.moi().get(e.getCode())
+                l.moi().get(e.getCode()),
+                def == null ? 0 : def.delaiMaxEffectif(),
+                e.getEcheanceCible() == null ? null : e.getEcheanceCible().toString(),
+                e.aLApproche(l.aujourdhui())
             );
         }
     }
@@ -430,8 +442,32 @@ final class VuesProcessus {
         String activeeLe,
         String echeance,
         String termineeLe,
-        boolean enRetard
+        boolean enRetard,
+        String echeanceCible,
+        boolean aLApproche
     ) {}
+
+    /**
+     * Délais d'une demande (D-106), comptés en jours calendaires depuis son lancement : délai cible et maximal du
+     * processus lancé, échéances correspondantes, retard (échéance maximale dépassée, demande non close) et échéance
+     * proche (échéance cible atteinte, maximum non dépassé). Null si le processus ne porte aucun délai.
+     */
+    record DelaisInstance(Integer cibleJours, Integer maxJours, String echeanceCible, String echeanceMax, boolean enRetard, boolean aLApproche) {
+        static DelaisInstance de(Processus p, InstanceProcessus i, java.time.LocalDate aujourdhui) {
+            if (p == null || p.getDelaiCibleJours() == null && p.getDelaiMaxJours() == null || i.getLanceeLe() == null) {
+                return null;
+            }
+            java.time.LocalDate lancee = i.getLanceeLe().atZone(ReglesActivite.FUSEAU).toLocalDate();
+            Integer max = p.delaiMaxEffectif();
+            Integer cible = p.getDelaiCibleJours() == null ? max : p.getDelaiCibleJours();
+            java.time.LocalDate eCible = lancee.plusDays(cible);
+            java.time.LocalDate eMax = lancee.plusDays(max);
+            boolean ouverte = !i.getEtat().estFinal();
+            boolean retard = ouverte && eMax.isBefore(aujourdhui);
+            boolean approche = ouverte && !retard && !eCible.isAfter(aujourdhui);
+            return new DelaisInstance(cible, max, eCible.toString(), eMax.toString(), retard, approche);
+        }
+    }
 
     /** Ligne de « Mes demandes » (GET /processus/demandes, D-98 §3). */
     record DemandeVue(
@@ -466,7 +502,9 @@ final class VuesProcessus {
                         horodatage(e.getActiveeLe()),
                         e.getEcheance() == null ? null : e.getEcheance().toString(),
                         horodatage(e.getTermineeLe()),
-                        e.getEcheance() != null && e.getEtat().enCours() && e.getEcheance().isBefore(l.aujourdhui())
+                        e.enRetard(l.aujourdhui()),
+                        e.getEcheanceCible() == null ? null : e.getEcheanceCible().toString(),
+                        e.aLApproche(l.aujourdhui())
                     );
                 })
                 .toList();

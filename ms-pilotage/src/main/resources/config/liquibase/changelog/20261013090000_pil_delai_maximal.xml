@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Délai cible et délai maximal (D-106, remarque de KOAGNE ISSA RYAN du 13/10/2026).
+     1. processus.delai_max_jours : délai maximal de la demande (0..365, au moins le délai cible) ; NULL = égal au délai
+        cible. delai_cible_jours existant reste le délai cible ; les étapes (JSONB etapes) gagnent delaiMaxJours sans
+        migration : une étape sans ce champ garde un délai maximal égal à son délai (delaiJours, délai cible).
+     2. processus_etape_instance.echeance_cible : échéance cible de l'étape activée ; echeance reste l'échéance
+        maximale, celle du retard et de la tâche ; reprise : l'échéance cible des étapes existantes est leur échéance. -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="d106-processus-delai-max" author="pilotage">
+        <addColumn tableName="processus">
+            <column name="delai_max_jours" type="integer" remarks="Délai maximal (D-106) ; NULL = égal au délai cible."/>
+        </addColumn>
+        <sql>ALTER TABLE processus ADD CONSTRAINT ck_processus_delai_max CHECK (delai_max_jours IS NULL OR (delai_max_jours BETWEEN 0 AND 365 AND (delai_cible_jours IS NULL OR delai_max_jours &gt;= delai_cible_jours)));</sql>
+    </changeSet>
+
+    <changeSet id="d106-etape-instance-echeance-cible" author="pilotage">
+        <addColumn tableName="processus_etape_instance">
+            <column name="echeance_cible" type="date" remarks="Échéance cible (D-106) ; echeance est l'échéance maximale."/>
+        </addColumn>
+        <sql>UPDATE processus_etape_instance SET echeance_cible = echeance WHERE echeance_cible IS NULL AND echeance IS NOT NULL;</sql>
+    </changeSet>
+</databaseChangeLog>

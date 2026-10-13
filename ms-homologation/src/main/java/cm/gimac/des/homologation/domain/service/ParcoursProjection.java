@@ -84,7 +84,10 @@ public class ParcoursProjection {
             o.getEtapeCode(),
             o.getVue(),
             livrablesAttendus(p, o, a),
-            o.getRenvois()
+            o.getRenvois(),
+            o.getEcheanceCible(),
+            o.getDelaiJours(),
+            o.getDelaiMaxJours()
         );
     }
 

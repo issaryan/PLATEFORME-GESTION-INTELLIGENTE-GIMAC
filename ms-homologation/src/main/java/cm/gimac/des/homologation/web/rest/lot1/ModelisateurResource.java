@@ -187,12 +187,15 @@ public class ModelisateurResource {
             .toList();
         ReferentialGraphValidator.Rapport rapport = validator.controler(v.noeuds(), attestations == null || attestations.exigees(v.getTypeProjet()));
         Map<String, CalendrierDag.Tache> g = new LinkedHashMap<>();
+        Map<String, CalendrierDag.Tache> gMax = new LinkedHashMap<>();
         Map<String, List<String>> preds = new LinkedHashMap<>();
         ops.forEach(o -> {
             g.put(o.getCode(), new CalendrierDag.Tache(o.predecesseursListe(), o.delaiEffectif()));
+            gMax.put(o.getCode(), new CalendrierDag.Tache(o.predecesseursListe(), o.delaiMaxEffectif()));
             preds.put(o.getCode(), o.predecesseursListe());
         });
         CalendrierDag.Resultat cal = CalendrierDag.calculer(g);
+        CalendrierDag.Resultat calMax = CalendrierDag.calculer(gMax);
         Map<String, List<String>> succ = CalendrierDag.successeurs(preds);
         List<String> chemin = cal.cheminCritique();
         Set<String> critiques = new HashSet<>(chemin);
@@ -205,12 +208,13 @@ public class ModelisateurResource {
             .filter(o -> vue.retenue(o.getCode()))
             .map(o ->
                 vue.fantome(o.getCode())
-                    ? new GrapheVue.Noeud(OperationVue.fantome(o), null, null, null, false, List.of())
+                    ? new GrapheVue.Noeud(OperationVue.fantome(o), null, null, null, null, false, List.of())
                     : new GrapheVue.Noeud(
                     OperationVue.de(o, succ.getOrDefault(o.getCode(), List.of())),
                     rapport.couches().get(o.getCode()),
                     cal.debuts().get(o.getCode()),
                     cal.fins().get(o.getCode()),
+                    calMax.fins().get(o.getCode()),
                     critiques.contains(o.getCode()),
                     rapport.anomalies().stream().filter(a -> a.codes().contains(o.getCode())).map(a -> a.type().name()).distinct().toList()
                 )

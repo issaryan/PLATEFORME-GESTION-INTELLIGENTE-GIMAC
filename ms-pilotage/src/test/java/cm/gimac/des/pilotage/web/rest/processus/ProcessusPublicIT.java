@@ -106,7 +106,16 @@ class ProcessusPublicIT extends AbstractProcessusIT {
 
         // La personne désignée, d'un autre service : le voit, lit la définition publiée et le lance.
         assertThat(lancables(agent(AGENT_BIS))).containsExactly("FLUX_RESERVE");
-        mvc.perform(get(BASE + "/" + reserve).with(agent(AGENT_BIS))).andExpect(status().isOk()).andExpect(jsonPath("$.droits.lancer").value(true));
+        // D-106 : au seul titre du public, la version publiée seulement, sans historique de la définition ni contrôle.
+        mvc
+            .perform(get(BASE + "/" + reserve).with(agent(AGENT_BIS)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.droits.lancer").value(true))
+            .andExpect(jsonPath("$.droits.modifierPublic").value(false))
+            .andExpect(jsonPath("$.versions.length()").value(1))
+            .andExpect(jsonPath("$.historique").isEmpty());
+        mvc.perform(post(BASE + "/" + reserve + "/controle").with(agent(AGENT_BIS))).andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("PIL_PROCESSUS_INTERDIT"));
+        mvc.perform(get(BASE + "/" + reserve).with(chef(CHEF_RESEAU))).andExpect(jsonPath("$.historique").isNotEmpty());
         mvc.perform(get(BASE + "/" + ouvert).with(agent(AGENT_BIS))).andExpect(status().isForbidden());
         JsonNode i = lire(mvc.perform(json(post(BASE + "/" + reserve + "/instances").with(agent(AGENT_BIS)), lancement())).andExpect(status().isCreated()).andReturn());
         assertThat(i.at("/lanceur/id").asText()).isEqualTo(AGENT_BIS);

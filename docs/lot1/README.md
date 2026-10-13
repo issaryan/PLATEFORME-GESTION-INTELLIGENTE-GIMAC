@@ -21,3 +21,4 @@
 |---|---|---|
 | 2026-09-29 | — | Plan, système de conception et tableau de correspondance versés ; Phase 0 |
 | 2026-09-29 | — | `correspondance.md` : contrat attendu par l'interface pour le parcours des étapes 3 à 10 (permissions nouvelles `HOM_STEP_MANAGE`, `CER_PV_ESTABLISH`, `CER_SECURITY_VERIFY`, `CER_PORTAL_SIGN`, champs de `LiaisonVue`, routes prévues) |
+| 2026-10-13 | - | D-106 : `lancement-processus.md` §12 (qui voit, qui lance), `processus-unite.md` §7 et `modelisateur-processus.md` §7 (délai cible et délai maximal), §5.2 et `referentiels-metier-admin.md` alignés sur D-100 |

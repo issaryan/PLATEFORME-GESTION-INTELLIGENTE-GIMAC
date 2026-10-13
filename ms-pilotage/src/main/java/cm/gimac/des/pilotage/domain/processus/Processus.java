@@ -53,6 +53,10 @@ public class Processus extends EntitePilotage {
     @Column(name = "delai_cible_jours")
     private Integer delaiCibleJours;
 
+    /** Délai maximal du processus (D-106) : au-delà, la demande est en dépassement ; null = égal au délai cible. */
+    @Column(name = "delai_max_jours")
+    private Integer delaiMaxJours;
+
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "etapes", columnDefinition = "jsonb", nullable = false)
     private List<Etape> etapes = List.of();
@@ -131,6 +135,7 @@ public class Processus extends EntitePilotage {
         p.description = description;
         p.categorie = categorie;
         p.delaiCibleJours = delaiCibleJours;
+        p.delaiMaxJours = delaiMaxJours;
         p.etapes = etapes;
         p.initiateurs = getInitiateurs();
         p.formulaire = getFormulaire();
@@ -139,11 +144,17 @@ public class Processus extends EntitePilotage {
 
     /** Description et graphe d'un brouillon ; 409 PIL_PROCESSUS_ETAT hors brouillon. */
     public void decrire(String libelle, String description, String categorie, Integer delaiCibleJours, List<Etape> etapes, String acteur, Instant le) {
+        decrire(libelle, description, categorie, delaiCibleJours, null, etapes, acteur, le);
+    }
+
+    /** Description, délais cible et maximal (D-106) et graphe d'un brouillon ; 409 PIL_PROCESSUS_ETAT hors brouillon. */
+    public void decrire(String libelle, String description, String categorie, Integer delaiCibleJours, Integer delaiMaxJours, List<Etape> etapes, String acteur, Instant le) {
         exigerBrouillon();
         this.libelle = libelle;
         this.description = description;
         this.categorie = categorie;
         this.delaiCibleJours = delaiCibleJours;
+        this.delaiMaxJours = delaiMaxJours;
         this.etapes = etapes == null ? List.of() : List.copyOf(etapes);
         this.modifieLe = le;
         this.modifiePar = acteur;
@@ -241,6 +252,19 @@ public class Processus extends EntitePilotage {
 
     public Integer getDelaiCibleJours() {
         return delaiCibleJours;
+    }
+
+    /** Délai maximal saisi (D-106) ; null = égal au délai cible. */
+    public Integer getDelaiMaxJours() {
+        return delaiMaxJours;
+    }
+
+    /** Délai maximal effectif (D-106) : le délai cible s'il n'est pas défini ; null sans délai cible ni maximal. */
+    public Integer delaiMaxEffectif() {
+        if (delaiMaxJours == null) {
+            return delaiCibleJours;
+        }
+        return delaiCibleJours == null ? delaiMaxJours : Math.max(delaiMaxJours, delaiCibleJours);
     }
 
     public List<Etape> getEtapes() {

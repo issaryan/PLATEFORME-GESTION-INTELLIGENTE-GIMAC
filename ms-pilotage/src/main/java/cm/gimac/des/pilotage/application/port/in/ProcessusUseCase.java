@@ -35,8 +35,26 @@ public interface ProcessusUseCase {
         List<LivrableSaisie> livrables,
         List<SignatureSaisie> signatures,
         List<ChampSaisie> champs,
-        PositionSaisie position
-    ) {}
+        PositionSaisie position,
+        Integer delaiMaxJours
+    ) {
+        /** Saisie antérieure à D-106 : sans délai maximal (égal au délai cible). */
+        public EtapeSaisie(
+            String code,
+            String libelle,
+            String action,
+            IntervenantSaisie intervenant,
+            IntervenantSaisie validateur,
+            List<String> predecesseurs,
+            Integer delaiJours,
+            List<LivrableSaisie> livrables,
+            List<SignatureSaisie> signatures,
+            List<ChampSaisie> champs,
+            PositionSaisie position
+        ) {
+            this(code, libelle, action, intervenant, validateur, predecesseurs, delaiJours, livrables, signatures, champs, position, null);
+        }
+    }
 
     /**
      * Public du processus, qui peut le voir et le lancer (D-98 §1, D-100) : règles cumulables MEMBRES_UNITE, TOUT_LE_GIMAC,
@@ -70,10 +88,26 @@ public interface ProcessusUseCase {
         Integer delaiCibleJours,
         List<EtapeSaisie> etapes,
         InitiateursSaisie initiateurs,
-        FormulaireSaisie formulaire
+        FormulaireSaisie formulaire,
+        Integer delaiMaxJours
     ) {
         public ProcessusSaisie(String code, String unite, String libelle, String description, String categorie, Integer delaiCibleJours, List<EtapeSaisie> etapes) {
-            this(code, unite, libelle, description, categorie, delaiCibleJours, etapes, null, null);
+            this(code, unite, libelle, description, categorie, delaiCibleJours, etapes, null, null, null);
+        }
+
+        /** Saisie antérieure à D-106 : sans délai maximal du processus. */
+        public ProcessusSaisie(
+            String code,
+            String unite,
+            String libelle,
+            String description,
+            String categorie,
+            Integer delaiCibleJours,
+            List<EtapeSaisie> etapes,
+            InitiateursSaisie initiateurs,
+            FormulaireSaisie formulaire
+        ) {
+            this(code, unite, libelle, description, categorie, delaiCibleJours, etapes, initiateurs, formulaire, null);
         }
     }
 

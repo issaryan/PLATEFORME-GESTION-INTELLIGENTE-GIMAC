@@ -392,7 +392,9 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
                 )
             )
             .toList();
-        LocalDate echeance = ReglesActivite.aujourdhui(horloge).plusDays(def.delaiJours());
+        // D-106 : la tâche porte l'échéance maximale (au-delà, retard) ; l'étape garde aussi l'échéance cible.
+        LocalDate echeanceCible = ReglesActivite.aujourdhui(horloge).plusDays(def.delaiJours());
+        LocalDate echeance = ReglesActivite.aujourdhui(horloge).plusDays(def.delaiMaxEffectif());
         Affectation a = r.affectation();
         List<String> destinataires = resolution.destinataires(a, null, exclu);
         Tache t = taches.creerPourEtape(
@@ -410,7 +412,7 @@ public class ExecutionProcessusService implements InstancesProcessusUseCase {
             ),
             le
         );
-        ei.activer(t.getId(), validateur, signatures, echeance, le);
+        ei.activer(t.getId(), validateur, signatures, echeanceCible, echeance, le);
         etapes.save(ei);
         String detail = a.personneId() != null ? "Confiée à " + nom(a.personneId()) : "À prendre par " + aPrendrePar(a);
         consigner(i, ei.getCode(), acteur, ActionProcessus.ETAPE_ACTIVEE, detail + (r.note() == null ? "" : " (" + r.note() + ")"), le);

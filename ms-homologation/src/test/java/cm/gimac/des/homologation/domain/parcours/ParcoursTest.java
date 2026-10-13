@@ -386,6 +386,31 @@ class ParcoursTest {
         }
 
         @Test
+        @DisplayName("D-106 : échéances cible et maximale planifiées sur le graphe ; proche à l'approche de la cible, dépassé après le maximum")
+        void delaiCibleEtMaximal() {
+            Parcours p = parcours(TypeProjet.CARTE_INTERBANCAIRE, "RETRAIT");
+            OperationParcours o3 = op(p, "3");
+            assertThat(o3.getEcheanceCible()).isEqualTo(o3.getEcheance());
+            assertThat(o3.getDelaiMaxJours()).isEqualTo(o3.getDelaiJours());
+            org.springframework.test.util.ReflectionTestUtils.setField(o3, "delaiMaxJours", o3.getDelaiJours() + 10);
+            LocalDate avant = o3.getEcheance();
+            p.planifier();
+            assertThat(o3.getEcheanceCible()).isEqualTo(avant);
+            assertThat(o3.getEcheance()).isEqualTo(avant.plusDays(10));
+            // Le successeur hérite du décalage sur l'échéance maximale seulement.
+            OperationParcours o4 = op(p, "4");
+            assertThat(o4.getEcheance()).isEqualTo(o4.getEcheanceCible().plusDays(10));
+            assertThat(Parcours.sla(o3, avant.minusDays(6))).isEqualTo(Sla.DANS_LES_DELAIS);
+            assertThat(Parcours.sla(o3, avant.minusDays(5))).isEqualTo(Sla.ECHEANCE_PROCHE);
+            assertThat(Parcours.sla(o3, avant.plusDays(3))).isEqualTo(Sla.ECHEANCE_PROCHE);
+            assertThat(Parcours.sla(o3, avant.plusDays(10))).isEqualTo(Sla.ECHEANCE_PROCHE);
+            assertThat(Parcours.sla(o3, avant.plusDays(11))).isEqualTo(Sla.DEPASSE);
+            // Opération antérieure à D-106 : sans échéance cible, l'échéance en tient lieu.
+            o3.setEcheanceCible(null);
+            assertThat(o3.getEcheanceCible()).isEqualTo(o3.getEcheance());
+        }
+
+        @Test
         @DisplayName("Statuts suspendu et clos sans suite conservés ; automate technique projeté")
         void statutsConserves() {
             Parcours p = parcours(TypeProjet.CARTE_INTERBANCAIRE, "RETRAIT");

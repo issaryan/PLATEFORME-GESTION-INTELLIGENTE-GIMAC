@@ -12,7 +12,7 @@ import { CanevasProcessus, type CarteEtape } from './CanevasProcessus'
 import { ModaleEtape, type OngletEtape } from './ModaleEtape'
 import { DialogueLancement } from './DialogueLancement'
 import { ModaleLancement } from './ModaleLancement'
-import { BadgeGravite, BadgeProcessus, useErreurProcessus, useResumeInitiateurs, useResumeIntervenant } from './communs'
+import { BadgeGravite, BadgeProcessus, delais, useErreurProcessus, useResumeInitiateurs, useResumeIntervenant } from './communs'
 import { useLibelleProfilEquipe } from '../activite/dialoguesEquipe'
 import { useUnites } from '../../../hooks/pilotage'
 
@@ -29,7 +29,9 @@ type Confirmation = 'publier' | 'lever' | 'retirer' | 'supprimer' | null
 const sansDetail = ({ personnesDetail: _d, ...i }: Initiateurs): Initiateurs => i
 
 export const saisieDe = (p: Processus, etapes = p.etapes): SaisieProcessus => ({
-  code: p.code, unite: p.unite, libelle: p.libelle, description: p.description, categorie: p.categorie, delaiCibleJours: p.delaiCibleJours, etapes,
+  code: p.code, unite: p.unite, libelle: p.libelle, description: p.description, categorie: p.categorie, delaiCibleJours: p.delaiCibleJours,
+  // D-106 : délai maximal du processus (absent d'un service antérieur).
+  ...(p.delaiMaxJours !== undefined ? { delaiMaxJours: p.delaiMaxJours } : {}), etapes,
   // D-98 : initiateurs et formulaire de lancement repartent avec chaque enregistrement (absents d'un service antérieur).
   // D-100 : le détail des personnes désignées (noms) est une vue du service, jamais renvoyé.
   ...(p.initiateurs ? { initiateurs: sansDetail(p.initiateurs) } : {}), ...(p.formulaire ? { formulaire: p.formulaire } : {}),
@@ -65,22 +67,34 @@ export default function ModelisateurProcessusPage() {
 
 function Proprietes({ processus, enCours, erreur, onFermer, onEnregistrer }: { processus: Processus; enCours: boolean; erreur?: { titre: string; correlationId?: string }; onFermer: () => void; onEnregistrer: (s: SaisieProcessus) => void }) {
   const { t } = useTranslation()
-  const [v, setV] = useState({ libelle: processus.libelle, description: processus.description, categorie: processus.categorie, delai: processus.delaiCibleJours === null ? '' : String(processus.delaiCibleJours) })
+  const initial = {
+    libelle: processus.libelle, description: processus.description, categorie: processus.categorie,
+    delai: processus.delaiCibleJours === null ? '' : String(processus.delaiCibleJours),
+    delaiMax: processus.delaiMaxJours === null || processus.delaiMaxJours === undefined ? '' : String(processus.delaiMaxJours),
+  }
+  const [v, setV] = useState(initial)
   const [tente, setTente] = useState(false)
   const delai = v.delai.trim() === '' ? null : Number(v.delai)
-  const erreurs = { libelle: !v.libelle.trim() ? t('proc.erreur.libelle') : undefined, delai: delai !== null && !(delai >= 0 && delai <= 365) ? t('proc.erreur.delai') : undefined }
+  const delaiMax = v.delaiMax.trim() === '' ? null : Number(v.delaiMax)
+  // D-106 : délai maximal facultatif, entre le délai cible et 365 jours.
+  const erreurs = {
+    libelle: !v.libelle.trim() ? t('proc.erreur.libelle') : undefined,
+    delai: delai !== null && !(delai >= 0 && delai <= 365) ? t('proc.erreur.delai') : undefined,
+    delaiMax: delaiMax !== null && !(Number.isInteger(delaiMax) && delaiMax >= (delai ?? 0) && delaiMax <= 365) ? t('proc.erreur.delaiMax') : undefined,
+  }
   return (
     <CrudDialog context="edit" size="md" id="gm-dlg-proprietes" title={t('proc.proprietes.titre')} subject={<span className="gm-mono">{processus.code} · v{processus.version}</span>} onClose={onFermer}
-      submitLabel={t('proc.enregistrer')} submitting={enCours} dirty={JSON.stringify(v) !== JSON.stringify({ libelle: processus.libelle, description: processus.description, categorie: processus.categorie, delai: processus.delaiCibleJours === null ? '' : String(processus.delaiCibleJours) })}
+      submitLabel={t('proc.enregistrer')} submitting={enCours} dirty={JSON.stringify(v) !== JSON.stringify(initial)}
       error={erreur ? { title: erreur.titre, correlationId: erreur.correlationId } : undefined}
       onSubmit={() => {
         setTente(true)
-        if (erreurs.libelle || erreurs.delai) return
-        onEnregistrer({ ...saisieDe(processus), libelle: v.libelle.trim(), description: v.description.trim(), categorie: v.categorie.trim(), delaiCibleJours: delai })
+        if (erreurs.libelle || erreurs.delai || erreurs.delaiMax) return
+        onEnregistrer({ ...saisieDe(processus), libelle: v.libelle.trim(), description: v.description.trim(), categorie: v.categorie.trim(), delaiCibleJours: delai, delaiMaxJours: delaiMax })
       }}>
       <TextField name="libelle" label={t('proc.champ.libelle')} required maxLength={LIMITES_PROCESSUS.libelle} value={v.libelle} onChange={(x) => setV((o) => ({ ...o, libelle: x }))} error={tente ? erreurs.libelle : undefined} />
       <TextField name="categorie" label={t('proc.champ.categorie')} maxLength={LIMITES_PROCESSUS.categorie} value={v.categorie} onChange={(x) => setV((o) => ({ ...o, categorie: x }))} />
-      <NumberField name="delaiCibleJours" label={t('proc.champ.delaiCible')} unit={t('proc.jours')} min={0} max={365} value={v.delai} onChange={(x) => setV((o) => ({ ...o, delai: x }))} error={tente ? erreurs.delai : undefined} />
+      <NumberField name="delaiCibleJours" label={t('proc.champ.delaiCible')} unit={t('proc.jours')} min={0} max={365} value={v.delai} onChange={(x) => setV((o) => ({ ...o, delai: x }))} error={tente ? erreurs.delai : undefined} help={t('proc.aide.delaiCibleProcessus')} />
+      <NumberField name="delaiMaxJours" label={t('proc.champ.delaiMaxProcessus')} unit={t('proc.jours')} min={0} max={365} value={v.delaiMax} onChange={(x) => setV((o) => ({ ...o, delaiMax: x }))} error={tente ? erreurs.delaiMax : undefined} help={t('proc.aide.delaiMaxProcessus')} />
       <TextArea name="description" label={t('proc.champ.description')} rows={4} maxLength={LIMITES_PROCESSUS.description} value={v.description} onChange={(x) => setV((o) => ({ ...o, description: x }))} />
     </CrudDialog>
   )
@@ -164,7 +178,7 @@ function Espace({ processus: p }: { processus: Processus }) {
     lignes: [
       resume(e.intervenant, p.personnes),
       t('proc.carte.elements', { livrables: e.livrables.length, signatures: e.signatures.length, champs: e.champs.length }),
-      `${t('proc.carte.delai', { n: e.delaiJours })}${e.validateur ? ` · ${t('proc.carte.valide')}` : ''}`,
+      `${delais(t, e.delaiJours, e.delaiMaxJours)}${e.validateur ? ` · ${t('proc.carte.valide')}` : ''}`,
     ],
     anomalies: (anomalies ?? []).filter((a) => a.etape === e.code && a.gravite !== 'AVERTISSEMENT').length,
   })), [p.etapes, p.personnes, anomalies, resume, t])
@@ -200,7 +214,7 @@ function Espace({ processus: p }: { processus: Processus }) {
     { key: 'validateur', header: t('proc.intervenant.validateur'), render: (e) => (e.validateur ? resume(e.validateur, p.personnes) : '') },
     { key: 'predecesseurs', header: t('proc.champ.predecesseurs'), render: (e) => e.predecesseurs.join(', ') },
     { key: 'elements', header: t('proc.champ.elements'), render: (e) => t('proc.carte.elements', { livrables: e.livrables.length, signatures: e.signatures.length, champs: e.champs.length }) },
-    { key: 'delaiJours', header: t('proc.champ.delai'), render: (e) => t('proc.carte.delai', { n: e.delaiJours }) },
+    { key: 'delaiJours', header: t('proc.champ.delais'), render: (e) => delais(t, e.delaiJours, e.delaiMaxJours) },
     {
       key: 'actions', header: '', type: 'actions', render: (e) => (
         <Button size="sm" variant="ghost" icon={lecture ? 'eye' : 'pen-line'} aria-label={t(lecture ? 'proc.etape.consulterQui' : 'proc.etape.modifierQui', { code: e.code })} onClick={() => ouvrir(e.code)}>
@@ -225,10 +239,11 @@ function Espace({ processus: p }: { processus: Processus }) {
         {!lecture ? <Button size="sm" icon="plus" onClick={() => setModale({ creation: true })}>{t('proc.etape.ajouter')}</Button> : null}
         {!lecture ? <Button size="sm" icon="pen-line" onClick={() => setProprietes(true)}>{t('proc.proprietes.titre')}</Button> : null}
         <Button size="sm" icon="users" onClick={() => setReglageLancement(true)}>{t('dem.modele.bouton')}</Button>
-        <Button size="sm" icon="shield-check" loading={controle.isPending} onClick={controler}>{t('proc.controler')}</Button>
+        {/* D-106 (§12) : le contrôle relève de la définition ; le public seul ne le voit pas. */}
+        {peutDefinir ? <Button size="sm" icon="shield-check" loading={controle.isPending} onClick={controler}>{t('proc.controler')}</Button> : null}
         {p.droits.publier ? <Button size="sm" variant="primary" icon="check" onClick={() => setConfirmation('publier')}>{t('proc.publier')}</Button> : null}
         {p.droits.lancer ? <Button size="sm" variant="primary" icon="arrow-right" onClick={() => setLancement(true)}>{t('proc.lancer')}</Button> : null}
-        {p.etat !== 'BROUILLON' && peutDefinir ? <Button size="sm" icon="copy" loading={nouvelleVersion.isPending}
+        {(p.droits.nouvelleVersion ?? (p.etat !== 'BROUILLON' && peutDefinir)) ? <Button size="sm" icon="copy" loading={nouvelleVersion.isPending}
           onClick={() => nouvelleVersion.mutate(undefined, { onSuccess: (n) => navigate(`/des/processus/${encodeURIComponent(n.id)}`), onError: setEchec })}>{t('proc.nouvelleVersion')}</Button> : null}
         {p.droits.retirer ? <Button size="sm" variant="danger" onClick={() => setConfirmation('retirer')}>{t('proc.retirer')}</Button> : null}
         {p.droits.modifier ? <Button size="sm" variant="ghost" icon="trash" onClick={() => setConfirmation('supprimer')}>{t('proc.supprimer')}</Button> : null}
@@ -251,6 +266,7 @@ function Espace({ processus: p }: { processus: Processus }) {
         { key: t('dem.modele.formulaire'), value: t('dem.lancer.champs', { count: p.formulaire?.champs.length ?? 0 }) },
         ...(p.categorie ? [{ key: t('proc.champ.categorie'), value: p.categorie }] : []),
         ...(p.delaiCibleJours !== null ? [{ key: t('proc.champ.delaiCible'), value: t('proc.carte.delai', { n: p.delaiCibleJours }) }] : []),
+        ...(p.delaiMaxJours !== null && p.delaiMaxJours !== undefined ? [{ key: t('proc.champ.delaiMaxProcessus'), value: t('proc.carte.delai', { n: p.delaiMaxJours }) }] : []),
         ...(p.publieeLe ? [{ key: t('proc.champ.publieeLe'), value: `${dates.instant(p.publieeLe)}${p.publieePar ? ` · ${p.publieePar.nomAffiche}` : ''}${p.motifPublication ? ` · ${p.motifPublication}` : ''}` }] : []),
         ...(p.retireeLe ? [{ key: t('proc.champ.retireeLe'), value: `${dates.instant(p.retireeLe)}${p.motifRetrait ? ` · ${p.motifRetrait}` : ''}` }] : []),
       ]} />

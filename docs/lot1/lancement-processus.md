@@ -273,7 +273,7 @@ et à l'institution `ACTIF`. Trous constatés et suite donnée :
   1. **Institution** : choix au registre (candidats, adhérents, institutions en homologation) ou enregistrement d'une
      nouvelle (formulaire de prise de contact, `PAR_INSTITUTION_CREATE`) ; l'institution est portée par `?institution=`
      et retrouvée dans l'onglet (stockage de session, commodité) au retour de sa fiche ;
-  2. **Adhésion** : prérequis servis par MS-PARTICIPANT, proposition en attente, liens vers la fiche pour instruire
+  2. **Procédure administrative** (D-106, ex-« Adhésion ») : prérequis servis par MS-PARTICIPANT, proposition en attente, liens vers la fiche pour instruire
      (`?onglet=pieces`), proposer et prononcer (`?onglet=transitions`), selon les permissions ;
   3. **Ouverture de la liaison** (adhérent ou en homologation, `HOM_LIAISON_OPEN`) : type de projet proposable servi par
      MS-HOMOLOGATION (D-91 : actif, référentiel publié), conducteur habilité (`GET /liaisons/conducteurs`), banque
@@ -424,7 +424,7 @@ et à l'institution `ACTIF`. Trous constatés et suite donnée :
   proposition d'adhésion est un objet de MS-PARTICIPANT, antérieur à toute liaison, que MS-HOMOLOGATION ne connaît pas
   (il ne reçoit que `participant.status-changed.v1`). L'y faire paraître demanderait une projection des propositions
   dans MS-HOMOLOGATION et un second modèle de ligne. L'approbateur la trouve dans « Mes tâches » et par sa notification ;
-  « Lancer une certification » (étape Adhésion, §8.2) montre aussi la proposition en attente et mène à la fiche.
+  « Lancer une certification » (étape « Procédure administrative », §8.2) montre aussi la proposition en attente et mène à la fiche.
 - **Démonstration simulée** : MS-PARTICIPANT simulé publie la proposition, l'approbation et le refus
   (`pont.surTransition`) ; MS-PILOTAGE simulé crée et clôt l'offre (`pont.offrir`, `pont.terminerOrigine`) ; la
   notification de démonstration (`services.decisions`) n'est adressée qu'à un porteur de la permission, autre que
@@ -777,3 +777,52 @@ et le lance sans dériver une nouvelle version.
   métier, ouvre la « Création d'une machine virtuelle » publiée, ajoute la responsable de la conformité au public avec un
   motif ; elle la voit aussitôt dans « Lancer une demande »), captures claires et sombres dans `e2e/captures/d103/` ;
   `public-processus.spec.ts` et `processus-unite.spec.ts` adaptés (bouton « Régler » et encart de la version publiée).
+
+## 12. Qui voit, qui lance : règle retenue et corrections (D-106, 13/10/2026)
+
+Remarque de KOAGNE ISSA RYAN : vérifier qui peut voir ou lancer les processus internes et de certification. Audit
+serveur (MS-PILOTAGE, MS-HOMOLOGATION), OPA et interface ; règle retenue :
+
+### 12.1 Processus internes (MS-PILOTAGE)
+
+| Geste | Qui |
+|---|---|
+| « Lancer une demande » (`GET /processus/lancables`), lancement, `droits.lancer` | le **public** seul (règles d'initiateurs du créateur, §10.2) ; aucun droit d'administration n'y ajoute |
+| Catalogue « Processus de l'unité » (`GET /processus`) | lecteurs de l'unité : membres de l'unité ou d'une sous-unité, chef qui la dirige, porteurs de `PROCESSUS_DEFINIR` ou `PROCESSUS_LANCER` la couvrant, `REF_METIER_ADMIN` ; brouillons : qui définit |
+| Détail (`GET /processus/{id}`) | lecteurs de l'unité (toutes versions, historique) ; **public seul** : la version publiée qu'il peut lancer, sans autres versions ni historique de la définition (nouveau) |
+| Contrôle (`POST /processus/{id}/controle`) | lecteurs de l'unité ; le public seul : 403 `PIL_PROCESSUS_INTERDIT` (nouveau) |
+| Définir, publier, retirer, régler le public | `PROCESSUS_DEFINIR` couvrant l'unité, portée `TOUTES` ou `REF_METIER_ADMIN` |
+| Instances | lecteurs de l'unité et intervenants ; pilotage : chef, `TACHE_CONFIER`, `PROCESSUS_LANCER` à `TOUTES`, `REF_METIER_ADMIN` |
+
+Le modélisateur définit qui lance et voit par « Qui peut voir et lancer ce processus » : membres et responsables de
+l'unité, tout le GIMAC, unités, profils, permissions, personnes désignées (§10, réglable sur une version publiée, §11).
+
+### 12.2 Processus de certification (MS-HOMOLOGATION)
+
+Aucun public par type de projet : les permissions décident. Référentiels : lecture `HOM_REFERENTIEL_READ` (vue complète
+avec `READ_ALL`, `EDIT`, `PUBLISH`, `MIGRATE` ou `REF_METIER_ADMIN`, sinon filtrée par fonctions) ; écriture `EDIT`,
+`PUBLISH`, `MIGRATE` ou `REF_METIER_ADMIN`. « Lancer une certification » : ouvrir une liaison exige `HOM_LIAISON_OPEN`
+**et** `HOM_PROJECT_DESIGNATE` (désignation du conducteur), institution adhérente ou en homologation, type actif doté
+d'un référentiel publié.
+
+### 12.3 Corrections
+
+- MS-PILOTAGE : détail réduit à la version publiée et sans historique pour le public seul ; contrôle refusé au public
+  seul (`ProcessusPublicIT`).
+- Interface : « Contrôler » et « Nouvelle version » réservés à qui définit (droit `nouvelleVersion` servi) ;
+  `REF_METIER_ADMIN` vaut dans l'interface les permissions `HOM_REFERENTIEL_*`, miroir de `permissions_equivalentes`
+  d'OPA (`permissionsEffectives` du socle) : l'ingénieur d'homologation retrouve la migration qu'OPA et le service lui
+  accordaient ; « Ouvrir la liaison » exige aussi `HOM_PROJECT_DESIGNATE`.
+- Services simulés : refus 403 (et non 404) d'une définition existante non lisible ; public seul réduit comme le
+  serveur ; lecture complète des référentiels avec `REF_METIER_ADMIN` ; ouverture de liaison simulée refusée sans
+  `HOM_LIAISON_OPEN` et `HOM_PROJECT_DESIGNATE` (403 `HOM_PROJECT_DESIGNATION_FORBIDDEN`).
+- Documentation : §5.2 de `processus-unite.md` et §2, §4.1 de `referentiels-metier-admin.md` alignés sur D-100.
+
+### 12.4 Points constatés, laissés en l'état
+
+- `GET /processus/candidats` liste les membres et profils de toute unité à tout porteur de `PIL_ACTIVITY_OWN` : même
+  périmètre que l'annuaire interne (désignation hors de l'unité, §6 de `processus-unite.md`), assumé.
+- Un membre d'une sous-unité lit les définitions et les instances des unités parentes (§5.2) : conforme à D-87 et
+  D-100 ; une restriction des instances par le public serait une décision nouvelle.
+- Prédicats du menu « Lancer une certification » (catalogue MS-IAM) inchangés : ils ne couvrent pas un profil composé
+  sans `PAR_INSTITUTION_READ` ; aucun profil livré n'est concerné.

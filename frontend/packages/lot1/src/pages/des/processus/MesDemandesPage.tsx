@@ -55,7 +55,7 @@ function Demande({ d }: { d: DemandeProcessus }) {
             <strong>{t('dem.etapeEnCours')} : </strong>{e.libelle} <BadgeEtape etat={e.etat} />
             {quiTient(e) ? <span> · {quiTient(e)}</span> : null}
             {e.echeance ? <span className="gm-field-help"> · {t('proc.suivi.echeance', { date: dates.jour(e.echeance) })}</span> : null}
-            {e.enRetard ? <> <StatusBadge status="crit" icon="clock" label={t('proc.suivi.enRetard')} /></> : null}
+            {e.enRetard ? <> <StatusBadge status="crit" icon="clock" label={t('proc.suivi.enRetard')} /></> : e.aLApproche ? <> <StatusBadge status="warn" icon="clock" label={t('proc.suivi.aLApproche')} /></> : null}
           </p>
         )) : d.etat === 'CLOSE' ? <p style={{ margin: 0 }}>{t('dem.close', { date: d.closeLe ? dates.instant(d.closeLe) : '' })}</p>
           : d.etat === 'ANNULEE' ? <p style={{ margin: 0 }}>{t('dem.annulee', { motif: d.motif ?? '' })}</p> : null}

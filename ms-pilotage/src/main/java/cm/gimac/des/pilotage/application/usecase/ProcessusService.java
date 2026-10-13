@@ -227,6 +227,10 @@ public class ProcessusService implements ProcessusUseCase {
     public Controle controler(Appelant appelant, UUID id) {
         Processus p = trouver(id);
         exigerLecture(appelant, p);
+        // D-106 (§12) : le contrôle relève de la définition ; le public seul (sans lecture de l'unité) ne le demande pas.
+        if (!acces.lit(appelant, p.getUnite())) {
+            throw AccesProcessus.interdit("Le contrôle d'un processus est réservé aux lecteurs de son unité");
+        }
         List<Anomalie> a = anomalies(p);
         return new Controle(a.stream().noneMatch(x -> x.gravite() == GraviteAnomalie.BLOQUANTE), a);
     }
@@ -513,9 +517,13 @@ public class ProcessusService implements ProcessusUseCase {
     // ------------------------------------------------------------------ lecture
 
     private ProcessusLu lu(Appelant appelant, Processus p) {
+        // D-106 (§12) : qui lit le processus au seul titre de son public (sans lire l'unité) ne voit que la version publiée
+        // qu'il peut lancer : ni autres versions, ni historique de la définition (motifs, réglages du public).
+        boolean lecteurUnite = acces.lit(appelant, p.getUnite());
         List<VersionResume> versions = processus
             .findByCodeOrderByVersionDesc(p.getCode())
             .stream()
+            .filter(v -> lecteurUnite || v.getId().equals(p.getId()))
             .filter(v -> v.getEtat() != EtatProcessus.BROUILLON || acces.definit(appelant, v.getUnite()))
             .map(v -> new VersionResume(v.getId(), v.getVersion(), v.getEtat().name()))
             .toList();
@@ -529,7 +537,7 @@ public class ProcessusService implements ProcessusUseCase {
                 avertissements = List.of();
             }
         }
-        List<HistoriqueProcessus> h = p.isNew() ? List.of() : historique.findByProcessusIdAndInstanceIdIsNullOrderByQuandAsc(p.getId());
+        List<HistoriqueProcessus> h = p.isNew() || !lecteurUnite ? List.of() : historique.findByProcessusIdAndInstanceIdIsNullOrderByQuandAsc(p.getId());
         List<String> ids = new ArrayList<>(Stream.of(p.getCreePar(), p.getModifiePar(), p.getPublieePar(), p.getRetireePar()).filter(Objects::nonNull).toList());
         h.stream().map(HistoriqueProcessus::getActeurId).forEach(ids::add);
         ids.addAll(p.getInitiateurs().personnes());
@@ -549,11 +557,12 @@ public class ProcessusService implements ProcessusUseCase {
         String description = ReglesActivite.texteFacultatif("description", s.description(), SaisieProcessus.TEXTE_MAX);
         String categorie = ReglesActivite.texteFacultatif("categorie", s.categorie(), SaisieProcessus.CATEGORIE_MAX);
         Integer delai = SaisieProcessus.delaiCible(s.delaiCibleJours());
+        Integer delaiMax = SaisieProcessus.delaiMax("delaiMaxJours", s.delaiMaxJours(), delai);
         List<Etape> etapes = SaisieProcessus.etapes(s.etapes());
         // D-98 : initiateurs et formulaire de lancement ; absents d'une modification, ceux de la définition sont gardés.
         Initiateurs initiateurs = s.initiateurs() == null ? p.getInitiateurs() : SaisieProcessus.initiateurs(s.initiateurs());
         Formulaire formulaire = s.formulaire() == null ? p.getFormulaire() : SaisieProcessus.formulaire(s.formulaire());
-        p.decrire(libelle, description, categorie, delai, etapes, appelant.id(), le);
+        p.decrire(libelle, description, categorie, delai, delaiMax, etapes, appelant.id(), le);
         p.definirLancement(initiateurs, formulaire, appelant.id(), le);
     }
 

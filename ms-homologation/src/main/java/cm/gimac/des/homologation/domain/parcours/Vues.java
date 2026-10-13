@@ -47,7 +47,10 @@ public final class Vues {
         String etapeCode,
         VueOperation vue,
         List<LivrableAttendu> livrablesAttendus,
-        List<Renvoi> renvois
+        List<Renvoi> renvois,
+        LocalDate echeanceCible,
+        int delaiJours,
+        int delaiMaxJours
     ) {}
 
     /**

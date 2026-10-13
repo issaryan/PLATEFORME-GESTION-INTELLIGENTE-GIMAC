@@ -288,6 +288,14 @@ public class ReferentialVersion implements Serializable {
         if (data.predecesseurs() != null && data.predecesseurs().contains(code)) {
             throw HomologationException.unprocessable("HOM_OPERATION_SELF_PREDECESSOR", "Une opération ne peut pas se précéder elle-même.");
         }
+        int cible = data.delaiJours() == null ? 3 : data.delaiJours();
+        if (data.delaiMaxJours() != null && data.delaiMaxJours() < cible) {
+            throw HomologationException.unprocessableDetails(
+                "HOM_OPERATION_DELAI_MAX_INVALIDE",
+                "Le délai maximal (" + data.delaiMaxJours() + " j) ne peut être inférieur au délai cible (" + cible + " j).",
+                Map.of("champ", "delaiMaxJours")
+            );
+        }
         verifierSignatures(data.signatures());
     }
 

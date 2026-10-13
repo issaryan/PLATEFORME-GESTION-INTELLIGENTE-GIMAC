@@ -28,7 +28,7 @@ export { connexionSimulee, simulationConnexion, MOT_DE_PASSE_DEMO, ETAPES_PREMIE
 export { ConnexionProvider, useConnexion } from './connexion/contexte'
 export { violationsMotDePasse, violationsDe, LONGUEUR_MIN_MOT_DE_PASSE, type Violation } from './connexion/politique'
 export { RappelPolitique, ListeViolations, useLibelleViolation } from './connexion/MotDePasse'
-export { SessionProvider, SessionActive, GardeSession, useSession, usePermissions, aPermission, chargerSession, type Session } from './session/session'
+export { SessionProvider, SessionActive, GardeSession, useSession, usePermissions, aPermission, chargerSession, permissionsEffectives, PERMISSIONS_EQUIVALENTES, type Session } from './session/session'
 export {
   deconnecter, reconnecter, surNonAutorise, adresseConnexion, retourSur, retourCourant, navigation as navigationDocument, type MotifConnexion,
 } from './session/deconnexion'

@@ -32,7 +32,7 @@ public enum EtapeCode {
     public String libelle() {
         return switch (this) {
             case PRISE_CONTACT -> "Prise de contact";
-            case ADHESION -> "Adhésion";
+            case ADHESION -> "Procédure administrative";
             case CADRAGE -> "Cadrage";
             case LANCEMENT -> "Lancement";
             case ATELIERS -> "Ateliers";

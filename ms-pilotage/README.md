@@ -82,6 +82,7 @@ Copié et adapté (paquet `cm.gimac.des.pilotage`) ; chaque bean est inactif tan
 | 2026-10-05 | - | Mon activité (D-76) : agenda, activités du jour, tâches, rapports, équipe et synthèse ; jeton de service `pilotage-service` vers MS-IAM et MS-DOCUMENT ; outbox des événements `pilotage.*` ; permissions métier (`PIL_*`, `INTERNAL_*`) conservées dans les autorités du jeton |
 | 2026-10-06 | - | Tâches confiées (D-81 §6) : à plusieurs personnes (groupe), à une unité (à prendre, prise, attribution), relance ; contrôles par la matrice des pouvoirs de MS-IAM (`TACHE_CONFIER`, `TACHE_SUIVRE`, `ACTIVITE_LIRE`, `RAPPORT_VISER`) ; événements `pilotage.task-offered.v1` et `pilotage.task-reminded.v1` |
 | 2026-10-07 | - | Processus d'unité (D-87) : définitions, contrôle, publication, versions ; moteur d'exécution, tâches liées, signatures FIDO2, départ d'un compte ; changelog `20261007090000_pil_processus_unite.xml` |
+| 2026-10-13 | - | D-106 : délai maximal du processus (`processus.delai_max_jours`) et des étapes (`delaiMaxJours` en JSONB), contrôle maximum >= cible (400), tâche et retard sur l'échéance maximale, `echeance_cible` et « échéance proche » des étapes, `delais` de l'instance (changelog `20261013090000_pil_delai_maximal.xml`) ; public seul : version publiée seule, sans historique ni contrôle (403) |
 <!-- GIMAC:FIN -->
 
 # pilotage

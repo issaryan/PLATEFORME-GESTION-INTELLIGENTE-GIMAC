@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { ApiError } from '../http/errors'
 import { initI18n } from '../i18n/i18n'
 import { navigation } from './deconnexion'
-import { GardeSession, SessionActive, SessionProvider, aPermission, chargerSession, usePermissions, useSession, type Session } from './session'
+import { GardeSession, SessionActive, SessionProvider, aPermission, chargerSession, permissionsEffectives, usePermissions, useSession, type Session } from './session'
 
 // D-61 : accès par la matrice des rôles d'un jeton issu d'une authentification à deux facteurs.
 beforeAll(() => {
@@ -26,6 +26,13 @@ function Sonde() {
 }
 
 describe('Session', () => {
+  it('D-106 : REF_METIER_ADMIN vaut les permissions du référentiel des opérations (miroir d’OPA), sans doublon', () => {
+    expect(permissionsEffectives(['PIL_ACTIVITY_OWN'])).toEqual(['PIL_ACTIVITY_OWN'])
+    expect(permissionsEffectives(['REF_METIER_ADMIN', 'HOM_REFERENTIEL_READ'])).toEqual(['REF_METIER_ADMIN', 'HOM_REFERENTIEL_READ', 'HOM_REFERENTIEL_EDIT', 'HOM_REFERENTIEL_PUBLISH', 'HOM_REFERENTIEL_MIGRATE'])
+    render(<SessionProvider session={session({ permissions: ['REF_METIER_ADMIN'] })}><Sonde /></SessionProvider>)
+    expect(screen.getByText('Chef DDRM:REF_METIER_ADMIN,HOM_REFERENTIEL_READ,HOM_REFERENTIEL_EDIT,HOM_REFERENTIEL_PUBLISH,HOM_REFERENTIEL_MIGRATE')).toBeTruthy()
+  })
+
   it('aPermission : aucune exigée, l’une des exigées, aucune session', () => {
     expect(aPermission(undefined)).toBe(true)
     expect(aPermission(['A', 'B'], 'C', 'B')).toBe(true)

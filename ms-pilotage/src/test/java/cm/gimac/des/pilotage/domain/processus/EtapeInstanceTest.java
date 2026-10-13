@@ -47,6 +47,31 @@ class EtapeInstanceTest {
     }
 
     @Test
+    @DisplayName("D-106 : délai maximal effectif, échéance proche à la cible, retard au-delà du maximum")
+    void delaiCibleEtMaximal() {
+        Etape def = definition(List.of());
+        assertThat(def.delaiMaxJours()).isNull();
+        assertThat(def.delaiMaxEffectif()).isEqualTo(2);
+        Etape avecMax = new Etape("E", "Étape", null, CHEF, null, List.of(), 2, List.of(), List.of(), List.of(), null, 6);
+        assertThat(avecMax.delaiMaxEffectif()).isEqualTo(6);
+        EtapeInstance e = new EtapeInstance(UUID.randomUUID(), "E", 0);
+        LocalDate cible = LocalDate.of(2026, 10, 8);
+        LocalDate max = LocalDate.of(2026, 10, 12);
+        e.activer(UUID.randomUUID(), null, List.of(), cible, max, LE);
+        assertThat(e.getEcheanceCible()).isEqualTo(cible);
+        assertThat(e.getEcheance()).isEqualTo(max);
+        assertThat(e.aLApproche(cible.minusDays(1))).isFalse();
+        assertThat(e.aLApproche(cible)).isTrue();
+        assertThat(e.aLApproche(max)).isTrue();
+        assertThat(e.enRetard(max)).isFalse();
+        assertThat(e.enRetard(max.plusDays(1))).isTrue();
+        assertThat(e.aLApproche(max.plusDays(1))).isFalse();
+        // Étape activée avant D-106 : une seule échéance, cible et maximum confondus.
+        EtapeInstance ancienne = active(def, null);
+        assertThat(ancienne.getEcheanceCible()).isEqualTo(ancienne.getEcheance());
+    }
+
+    @Test
     @DisplayName("Fin : livrables obligatoires et champs exigés, puis terminée sans signature ni validateur")
     void fin() {
         Etape def = definition(List.of());

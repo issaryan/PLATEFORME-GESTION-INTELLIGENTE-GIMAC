@@ -399,7 +399,7 @@ for (const theme of ['light', 'dark'] as const satisfies readonly Theme[]) {
 
         await ongletSelectionne(op, 'Chronologie')
         await choisirMultiple(op.getByRole('combobox', { name: /Prédécesseurs/ }), '16', /^16\b/)
-        await op.getByLabel(/^Délai/).fill('2')
+        await op.getByLabel(/^Délai cible/).fill('2')
         await op.getByRole('heading', { name: 'Nouvelle opération' }).click()
         await capturer(page, '42-operation-chronologie', { cibles: [op.getByRole('tabpanel', { name: 'Chronologie' })] })
         await op.getByRole('button', { name: 'Créer l\'opération' }).click()

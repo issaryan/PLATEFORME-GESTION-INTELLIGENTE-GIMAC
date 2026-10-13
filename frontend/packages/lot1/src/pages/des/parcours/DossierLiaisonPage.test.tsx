@@ -59,7 +59,7 @@ describe('Dossier numérique de la liaison (CR Fig. 7.3)', () => {
     expect(await screen.findByText('Ateliers : comptes rendus')).toBeTruthy()
     fireEvent.click(screen.getByText('Verrou : Approbation de la sécurité').closest('tr') as HTMLElement)
     expect(await screen.findByText(/n'est pas une étape/)).toBeTruthy()
-    fireEvent.click(screen.getByText('2. Adhésion').closest('tr') as HTMLElement)
+    fireEvent.click(screen.getByText('2. Procédure administrative').closest('tr') as HTMLElement)
     expect(await screen.findAllByText('Réuni')).toHaveLength(6)
   })
   it('étape 5 : dépôt du compte rendu d’un atelier, fichier exigé', async () => {

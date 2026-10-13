@@ -4,7 +4,7 @@ import { Handle, MarkerType, Position, type Edge, type Node, type NodeProps } fr
 import { CanevasGraphe } from '../../../composants/graphe/CanevasGraphe'
 import { cx } from '@gimac/design-system'
 import type { CatalogueModelisateur, GrapheReferentiel, NoeudGraphe, PositionNoeud } from '../../../modele/homologation'
-import { CARTE, couloirs, type SourceEtapes } from '../../../adaptateurs/modelisateur'
+import { CARTE, couloirs, delaiOperation, type SourceEtapes } from '../../../adaptateurs/modelisateur'
 
 // Canevas du modélisateur sur @xyflow/react (MIT) : couloirs par étape (colonnes) et par segment (bandes),
 // une carte par opération, les prédécesseurs en arcs. Tirer d'une carte à l'autre crée un arc, supprimer un arc
@@ -49,7 +49,7 @@ const Carte = memo(function Carte({ data }: NodeProps<NoeudCarte>) {
         <abbr title={t('parcours.qualite.R')}>R</abbr> {fonction(n.responsable)} · <abbr title={t('parcours.qualite.V')}>V</abbr> {fonction(n.validateur)}
       </p>
       <p className="gm-mod-carte-ligne">
-        {t('modelisateur.carte.livrables', { count: n.livrables?.length ?? 0 })} · {t('modelisateur.carte.delai', { n: n.delaiJours ?? 0 })}
+        {t('modelisateur.carte.livrables', { count: n.livrables?.length ?? 0 })} · {delaiOperation(t, n.delaiJours, n.delaiMaxJours)}
         {n.critique ? <span className="gm-mod-critique-marque"> · {t('modelisateur.carte.critique')}</span> : null}
       </p>
       {anomalies.length ? (

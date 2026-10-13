@@ -2,12 +2,12 @@ import { ApiError, type ArriveeNotification, type OptionsTeleversement, type Tel
 import { PROFILS } from '../../permissions'
 import type { PersonneActivite } from '../../modele/pilotage'
 import {
-  INITIATEURS_DEFAUT, LIMITES_FORMULAIRE, LIMITES_PROCESSUS, LIMITES_PUBLIC, MODES_REMPLACEMENT, REGLES_INITIATEUR, cleDesignation, designationsAttendues, intervenantNormalise, type AnomalieProcessus, type Attendu,
+  INITIATEURS_DEFAUT, delaiMaxEffectif, LIMITES_FORMULAIRE, LIMITES_PROCESSUS, LIMITES_PUBLIC, MODES_REMPLACEMENT, REGLES_INITIATEUR, cleDesignation, designationsAttendues, intervenantNormalise, type AnomalieProcessus, type Attendu,
   type ChampFormulaire, type ControleProcessus, type DemandeProcessus, type EtapeInstance, type EtapeProcessus, type Formulaire, type HistoriqueProcessus, type Initiateurs,
   type InstanceProcessus, type Intervenant, type CandidatsProcessus, type Lancement, type Processus, type ResumeInstance, type ResumeProcessus, type SaisieProcessus,
   type ValeurChampFormulaire, type ValeurFormulaire,
 } from '../../modele/processus'
-import { ajouterJours, aujourdhui } from '../../modele/jours'
+import { ajouterJours, aujourdhui, jourDe } from '../../modele/jours'
 import type { ServiceProcessus } from '../ports'
 import type { MagasinPouvoirs } from './pouvoirs'
 import { DUREE_ETAPE_DOCUMENT_MS, type PontTachesProcessus } from './pilotage'
@@ -74,7 +74,7 @@ export function definitionDemo(): EtapeProcessus[] {
     },
     {
       code: 'ANALYSE', libelle: 'Analyse de sécurité du flux', action: 'Vérifier la conformité du flux à la politique de filtrage et rédiger la note d’analyse.',
-      intervenant: { mode: 'PROFIL', profil: 'ROLE_POLE_RESEAU' }, validateur: { mode: 'CHEF_UNITE' }, predecesseurs: ['DEMANDE'], delaiJours: 2, position: pos(300, 80),
+      intervenant: { mode: 'PROFIL', profil: 'ROLE_POLE_RESEAU' }, validateur: { mode: 'CHEF_UNITE' }, predecesseurs: ['DEMANDE'], delaiJours: 2, delaiMaxJours: 4, position: pos(300, 80),
       livrables: [{ code: 'NOTE_ANALYSE', libelle: 'Note d’analyse', typesPieces: ['application/pdf'], obligatoire: true, modele: null }], signatures: [], champs: [],
     },
     {
@@ -262,6 +262,7 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
    * n'y ajoutent rien. MEMBRES_UNITE couvre les membres de l'unité et ses responsables (unité dirigée ou parente dirigée).
    */
   const initiateurs = (p: Processus): Initiateurs => p.initiateurs ?? INITIATEURS_DEFAUT
+  // L'organisation simulée ne recense pas tous les comptes de démonstration (administration) : un compte absent vaut actif.
   const actif = (pid: string) => membre(pid)?.actif !== false
   const dirige = (pid: string, unite: string) => magasin.unitesDirigees(pid).some((u) => magasin.sousUnites(u).includes(unite))
   const peutLancerProcessus = (p: Processus) => {
@@ -321,7 +322,7 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
   const nouvelle = (s: SaisieProcessus, auteur: string, o: Partial<Processus> = {}): Processus => {
     const p: Processus = {
       id: id('PRC'), code: s.code, version: 1, etat: 'BROUILLON', unite: s.unite, libelle: s.libelle, description: s.description, categorie: s.categorie, delaiCibleJours: s.delaiCibleJours,
-      etapes: s.etapes.map(normaliserEtape), creeLe: maintenant(), creePar: personne(auteur), modifieLe: null, modifiePar: null, publieeLe: null, publieePar: null, motifPublication: null,
+      delaiMaxJours: s.delaiMaxJours ?? null, etapes: s.etapes.map(normaliserEtape), creeLe: maintenant(), creePar: personne(auteur), modifieLe: null, modifiePar: null, publieeLe: null, publieePar: null, motifPublication: null,
       avertissementsLeves: false, retireeLe: null, retireePar: null, motifRetrait: null, droits: { modifier: false, publier: false, lancer: false, retirer: false }, versions: [],
       avertissements: [], personnes: {}, historique: [{ quand: maintenant(), acteur: personne(auteur), action: 'CREE', etape: null, detail: null }],
       initiateurs: normaliserInitiateurs(s.initiateurs), formulaire: normaliserFormulaire(s.formulaire), ...o,
@@ -348,13 +349,16 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
     const versions = definitions.filter((x) => x.code === p.code).sort((a, b) => b.version - a.version).map((x) => ({ id: x.id, version: x.version, etat: x.etat }))
     const personnes = Object.fromEntries(p.etapes.flatMap((e) => [e.intervenant, e.validateur, ...e.signatures.map((s) => s.signataire)]).filter((i): i is Intervenant => !!i?.personneId).map((i) => [i.personneId!, personne(i.personneId!).nomAffiche]))
     const definir = peutDefinir(p.unite)
+    // D-106 (§12) : au seul titre du public (sans lire l'unité), la version publiée seule, sans historique de la définition.
+    const lecteurUnite = peutLire(p.unite)
     return structuredClone({
-      ...p, versions, personnes, avertissements: p.etat === 'PUBLIEE' ? controler(p).filter((a) => a.gravite === 'AVERTISSEMENT') : [],
+      ...p, versions: lecteurUnite ? versions : versions.filter((v) => v.id === p.id), personnes, historique: lecteurUnite ? p.historique : [], avertissements: p.etat === 'PUBLIEE' ? controler(p).filter((a) => a.gravite === 'AVERTISSEMENT') : [],
       initiateurs: avecNoms(initiateurs(p)), formulaire: p.formulaire ?? { champs: [] },
       droits: {
         modifier: definir && p.etat === 'BROUILLON', publier: definir && p.etat === 'BROUILLON', lancer: p.etat === 'PUBLIEE' && peutLancerProcessus(p), retirer: definir && p.etat === 'PUBLIEE',
         // D-103 : le public se règle sur un brouillon comme sur une version publiée, sans nouvelle version.
         modifierPublic: definir && p.etat !== 'RETIREE',
+        nouvelleVersion: definir && p.etat !== 'BROUILLON', supprimer: definir && p.etat === 'BROUILLON',
       },
     })
   }
@@ -367,13 +371,15 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
     const p = definitions.find((x) => x.id === pid)
     // D-98 : une version publiée se lit aussi de qui peut la lancer (formulaire de lancement).
     if (p && p.etat === 'PUBLIEE' && peutLancerProcessus(p)) return p
-    if (!p || !peutLire(p.unite) || (p.etat === 'BROUILLON' && !peutDefinir(p.unite))) throw refus(404, 'PIL_PROCESSUS_INTROUVABLE', 'Processus introuvable.')
+    // D-106 (§12) : « introuvable » pour une définition inexistante seulement ; refus explicite sinon (comme MS-PILOTAGE).
+    if (!p) throw refus(404, 'PIL_PROCESSUS_INTROUVABLE', 'Processus introuvable.')
+    if (!peutLire(p.unite) || (p.etat === 'BROUILLON' && !peutDefinir(p.unite))) throw refus(403, 'PIL_PROCESSUS_INTERDIT', 'Ce processus n’est pas lisible depuis votre unité.')
     return p
   }
   const resume = (p: Processus): ResumeProcessus => {
     const v = vue(p)
     return {
-      id: v.id, code: v.code, version: v.version, etat: v.etat, unite: v.unite, libelle: v.libelle, description: v.description, categorie: v.categorie, delaiCibleJours: v.delaiCibleJours,
+      id: v.id, code: v.code, version: v.version, etat: v.etat, unite: v.unite, libelle: v.libelle, description: v.description, categorie: v.categorie, delaiCibleJours: v.delaiCibleJours, delaiMaxJours: v.delaiMaxJours ?? null,
       nombreEtapes: v.etapes.length, publieeLe: v.publieeLe, modifieLe: v.modifieLe, modifiePar: v.modifiePar, droits: v.droits, initiateurs: v.initiateurs, nombreChampsFormulaire: v.formulaire?.champs.length ?? 0,
     }
   }
@@ -386,10 +392,18 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
     if (!s.libelle?.trim() || s.libelle.length > LIMITES_PROCESSUS.libelle) throw champ('libelle', 'Libellé obligatoire, 200 caractères au plus.')
     if ((s.description ?? '').length > LIMITES_PROCESSUS.description) throw champ('description', 'Description de 4000 caractères au plus.')
     if (s.delaiCibleJours !== null && (s.delaiCibleJours < 0 || s.delaiCibleJours > LIMITES_PROCESSUS.delai)) throw champ('delaiCibleJours', 'Délai de 0 à 365 jours.')
+    // D-106 : délai maximal facultatif, de 0 à 365 jours, au moins le délai cible (comme MS-PILOTAGE).
+    const max = (c: string, m: number | null | undefined, cible: number | null) => {
+      if (m === null || m === undefined) return
+      if (m < 0 || m > LIMITES_PROCESSUS.delai) throw champ(c, 'Délai de 0 à 365 jours.')
+      if (cible !== null && m < cible) throw champ(c, `Le délai maximal (${m} j) ne peut être inférieur au délai cible (${cible} j)`)
+    }
+    max('delaiMaxJours', s.delaiMaxJours, s.delaiCibleJours)
     if (s.etapes.length > LIMITES_PROCESSUS.etapes) throw champ('etapes', 'Cent étapes au plus.')
     s.etapes.forEach((e, i) => {
       if (!LIMITES_PROCESSUS.codeEtape.test(e.code ?? '')) throw champ(`etapes[${i}].code`, 'Code d’étape invalide.')
       if (e.delaiJours < 0 || e.delaiJours > LIMITES_PROCESSUS.delai) throw champ(`etapes[${i}].delaiJours`, 'Délai de 0 à 365 jours.')
+      max(`etapes[${i}].delaiMaxJours`, e.delaiMaxJours, e.delaiJours)
       if (!e.intervenant?.mode) throw champ(`etapes[${i}].intervenant.mode`, 'Mode d’intervenant obligatoire.')
     })
     if (!magasin.unites.some((u) => u.code === s.unite)) throw refus(422, 'PIL_PROCESSUS_UNITE_INCONNUE', 'Unité inconnue.')
@@ -620,7 +634,9 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
   const activer = (inst: InstanceSim, e: EtapeSim, acteur: PersonneActivite) => {
     const r = resoudre(inst, e.def.intervenant, cleDesignation.executant(e.code))
     Object.assign(e, {
-      etat: 'ACTIVE', activeeLe: maintenant(), echeance: ajouterJours(aujourdhui(), e.delaiJours), executant: r.personne, aPrendre: r.personne ? null : { unite: r.unite, profil: r.profil },
+      // D-106 : la tâche porte l'échéance maximale (retard au-delà) ; l'étape garde aussi l'échéance cible.
+      etat: 'ACTIVE', activeeLe: maintenant(), echeanceCible: ajouterJours(aujourdhui(), e.def.delaiJours),
+      echeance: ajouterJours(aujourdhui(), delaiMaxEffectif(e.def.delaiJours, e.def.delaiMaxJours)), executant: r.personne, aPrendre: r.personne ? null : { unite: r.unite, profil: r.profil },
       validateur: e.def.validateur ? resoudre(inst, e.def.validateur, cleDesignation.validateur(e.code)) : null,
       signatures: e.def.signatures.map((s) => ({ code: s.code, libelle: s.libelle, ordre: s.ordre, porte: s.porte, attendu: resoudre(inst, s.signataire, cleDesignation.signature(e.code, s.code)), etat: 'ATTENDUE', signePar: null, signeLe: null, empreinte: null, documents: [] })),
     })
@@ -659,7 +675,9 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
     const encours = inst.etat === 'EN_COURS'
     return structuredClone({
       ...inst,
-      etapes: inst.etapes.map(({ def, ...e }) => {
+      delais: delaisInstance(inst),
+      etapes: inst.etapes.map(({ def, ...brute }) => {
+        const e = { ...brute, ...delaisEtape(brute) }
         const minOrdre = Math.min(...e.signatures.filter((s) => s.etat === 'ATTENDUE').map((s) => s.ordre))
         const separeExecution = separe(inst, moiId, def.intervenant)
         return {
@@ -782,7 +800,7 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
       avancement: { total: p.etapes.length, terminees: 0 }, historique: [], formulaire,
       etapes: p.etapes.map((def) => ({
         def, code: def.code, libelle: def.libelle, action: def.action, predecesseurs: def.predecesseurs, position: def.position, delaiJours: def.delaiJours, etat: 'EN_ATTENTE', activeeLe: null,
-        echeance: null, soumiseLe: null, termineeLe: null, enRetard: false, renvois: 0, tacheId: null, executant: null, aPrendre: null, validateur: null,
+        delaiMaxJours: delaiMaxEffectif(def.delaiJours, def.delaiMaxJours), echeance: null, echeanceCible: null, soumiseLe: null, termineeLe: null, enRetard: false, aLApproche: false, renvois: 0, tacheId: null, executant: null, aPrendre: null, validateur: null,
         livrables: def.livrables.map((x) => ({ ...x, depot: null })),
         champs: def.champs.map((c) => ({ ...c, valeur: def.predecesseurs.length ? null : (l.champs?.[c.code] ?? null) })),
         signatures: [], moi: { executer: false, prendre: false, signer: [], valider: false, reaffecter: false },
@@ -816,7 +834,7 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
 
   // ---------------------------------------------------------------- jeu de démonstration (une fois par état partagé)
   const demonstration = () => {
-    const flux = nouvelle({ code: 'OUVERTURE_FLUX_RESEAU', unite: 'POLE_RESEAU', libelle: 'Ouverture d’un flux réseau', description: 'Demande, analyse de sécurité, mise en œuvre et recette d’un flux entre la plateforme et un participant.', categorie: 'Réseau', delaiCibleJours: 10, etapes: definitionDemo() }, 'u-resp-info')
+    const flux = nouvelle({ code: 'OUVERTURE_FLUX_RESEAU', unite: 'POLE_RESEAU', libelle: 'Ouverture d’un flux réseau', description: 'Demande, analyse de sécurité, mise en œuvre et recette d’un flux entre la plateforme et un participant.', categorie: 'Réseau', delaiCibleJours: 10, delaiMaxJours: 15, etapes: definitionDemo() }, 'u-resp-info')
     Object.assign(flux, { etat: 'PUBLIEE', publieeLe: `${ajouterJours(aujourdhui(), -20)}T10:00:00+01:00`, publieePar: personne('u-resp-info'), motifPublication: null })
     flux.historique.push({ quand: flux.publieeLe!, acteur: personne('u-resp-info'), action: 'PUBLIE', etape: null, detail: null })
     nouvelle({
@@ -928,11 +946,32 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
       }),
     }
   }
+  /** D-106 : retard (échéance maximale dépassée) et échéance proche (cible atteinte, maximum non dépassé), comme MS-PILOTAGE. */
+  const delaisEtape = (e: EtapeInstance) => {
+    const jour = aujourdhui()
+    const enCours = ['ACTIVE', 'A_SIGNER', 'A_VALIDER'].includes(e.etat)
+    const cible = e.echeanceCible ?? e.echeance
+    const enRetard = !!e.echeance && enCours && e.echeance < jour
+    return { echeanceCible: cible ?? null, enRetard, aLApproche: !!cible && enCours && cible <= jour && !enRetard }
+  }
+  const delaisInstance = (inst: InstanceSim) => {
+    const p = definitions.find((x) => x.id === inst.processus.id)
+    if (!p || (p.delaiCibleJours === null && (p.delaiMaxJours ?? null) === null)) return null
+    const maxJours = p.delaiCibleJours === null ? p.delaiMaxJours! : delaiMaxEffectif(p.delaiCibleJours, p.delaiMaxJours)
+    const cibleJours = p.delaiCibleJours ?? maxJours
+    const lancee = jourDe(inst.lanceeLe)
+    const echeanceCible = ajouterJours(lancee, cibleJours)
+    const echeanceMax = ajouterJours(lancee, maxJours)
+    const ouverte = !['CLOSE', 'ANNULEE'].includes(inst.etat)
+    const jour = aujourdhui()
+    const enRetard = ouverte && echeanceMax < jour
+    return { cibleJours, maxJours, echeanceCible, echeanceMax, enRetard, aLApproche: ouverte && !enRetard && echeanceCible <= jour }
+  }
   const demande = (inst: InstanceSim): DemandeProcessus => ({
     id: inst.id, processus: inst.processus, unite: inst.unite, intitule: inst.intitule, etat: inst.etat, lanceeLe: inst.lanceeLe, closeLe: inst.closeLe, motif: inst.motif, avancement: inst.avancement,
     etapes: inst.etapes.map((e) => ({
       code: e.code, libelle: e.libelle, etat: e.etat, executant: e.aPrendre && !e.executant ? null : e.executant, aPrendre: e.executant ? null : e.aPrendre, activeeLe: e.activeeLe, echeance: e.echeance,
-      termineeLe: e.termineeLe, enRetard: e.enRetard,
+      termineeLe: e.termineeLe, ...delaisEtape(e),
     })),
     derniereEvolution: inst.historique.at(-1) ?? null,
   })
@@ -1012,7 +1051,7 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
       exigerDefinir(p.unite)
       if (p.etat !== 'BROUILLON') throw refus(409, 'PIL_PROCESSUS_ETAT', 'Seul un brouillon se modifie.')
       verifierSaisie({ ...s, code: p.code, unite: p.unite })
-      Object.assign(p, { libelle: s.libelle.trim(), description: s.description ?? '', categorie: s.categorie ?? '', delaiCibleJours: s.delaiCibleJours, etapes: s.etapes.map(normaliserEtape), modifieLe: maintenant(), modifiePar: moi() })
+      Object.assign(p, { libelle: s.libelle.trim(), description: s.description ?? '', categorie: s.categorie ?? '', delaiCibleJours: s.delaiCibleJours, delaiMaxJours: s.delaiMaxJours ?? null, etapes: s.etapes.map(normaliserEtape), modifieLe: maintenant(), modifiePar: moi() })
       // D-98 : absents d'une modification, initiateurs et formulaire de la définition sont gardés (comme MS-PILOTAGE).
       if (s.initiateurs) p.initiateurs = normaliserInitiateurs(s.initiateurs)
       if (s.formulaire) p.formulaire = normaliserFormulaire(s.formulaire)
@@ -1026,7 +1065,9 @@ export function processusSimule(attendre: Attendre, refus: Refus, moiId: string,
       definitions.splice(definitions.indexOf(p), 1)
     }),
     controler: (pid) => attendre((): ControleProcessus => {
-      const a = controler(trouver(pid))
+      const p = trouver(pid)
+      if (!peutLire(p.unite)) throw refus(403, 'PIL_PROCESSUS_INTERDIT', 'Le contrôle d’un processus est réservé aux lecteurs de son unité.')
+      const a = controler(p)
       return { publiable: !a.some((x) => x.gravite !== 'AVERTISSEMENT'), anomalies: a }
     }),
     publier: (pid, o) => attendre(() => {

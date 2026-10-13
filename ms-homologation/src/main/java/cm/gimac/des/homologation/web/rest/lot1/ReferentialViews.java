@@ -106,6 +106,7 @@ public final class ReferentialViews {
         List<String> predecesseurs,
         List<String> successeurs,
         Integer delaiJours,
+        Integer delaiMaxJours,
         GrainPreuve grain,
         PlateformeExecution plateforme,
         boolean cle,
@@ -137,7 +138,7 @@ public final class ReferentialViews {
          */
         public static OperationVue fantome(ReferenceOperation o) {
             return new OperationVue(
-                null, o.getCode(), o.getLibelle(), null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
+                null, o.getCode(), o.getLibelle(), null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
                 false, false, false, false, null, null, null, null, null, null, null, null, null, null, null, null, null, null, true, null, null, null
             );
         }
@@ -165,6 +166,7 @@ public final class ReferentialViews {
                 o.predecesseursListe(),
                 successeurs,
                 o.getDelaiJours(),
+                o.getDelaiMaxJours(),
                 o.getGrain(),
                 o.getPlateforme(),
                 o.isCle(),
@@ -259,6 +261,7 @@ public final class ReferentialViews {
             Integer couche,
             Integer debutAuPlusTot,
             Integer finAuPlusTot,
+            Integer finAuPlusTotMax,
             boolean critique,
             List<String> anomalies
         ) {}

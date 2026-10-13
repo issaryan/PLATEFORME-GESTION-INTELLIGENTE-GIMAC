@@ -176,6 +176,7 @@ public class ReferentialMigrationService {
             Objects.equals(a.getInformes(), b.getInformes()) &&
             Objects.equals(a.getExternes(), b.getExternes()) &&
             Objects.equals(a.getDelaiJours(), b.getDelaiJours()) &&
+            Objects.equals(a.getDelaiMaxJours(), b.getDelaiMaxJours()) &&
             a.getGrain() == b.getGrain() &&
             a.getPlateforme() == b.getPlateforme() &&
             a.isCle() == b.isCle() &&

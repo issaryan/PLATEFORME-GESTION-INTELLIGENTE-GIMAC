@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Délai cible et délai maximal (D-106, remarque de KOAGNE ISSA RYAN du 13/10/2026).
+     1. reference_operation.delai_max_jours : délai maximal de l'opération du référentiel (0..365, au moins le délai
+        cible) ; NULL = égal au délai cible. La colonne delai_jours existante devient le délai cible : les valeurs
+        existantes sont reprises comme délai cible, sans autre changement.
+     2. parcours_operation.delai_max_jours : délai maximal recopié du référentiel à l'instanciation et à la migration ;
+        parcours_operation.echeance_cible : échéance cible planifiée sur le graphe (echeance reste l'échéance maximale,
+        celle du dépassement) ; reprise : l'échéance cible des opérations existantes est leur échéance. -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="d106-reference-operation-delai-max" author="homologation">
+        <addColumn tableName="reference_operation">
+            <column name="delai_max_jours" type="integer" remarks="Délai maximal (D-106) ; NULL = égal au délai cible (delai_jours)."/>
+        </addColumn>
+        <sql>ALTER TABLE reference_operation ADD CONSTRAINT ck_reference_operation_delai_max CHECK (delai_max_jours IS NULL OR (delai_max_jours BETWEEN 0 AND 365 AND delai_max_jours &gt;= COALESCE(delai_jours, 3)));</sql>
+    </changeSet>
+
+    <changeSet id="d106-parcours-operation-delai-max" author="homologation">
+        <addColumn tableName="parcours_operation">
+            <column name="delai_max_jours" type="integer" remarks="Délai maximal recopié du référentiel (D-106) ; NULL = égal au délai cible."/>
+            <column name="echeance_cible" type="date" remarks="Échéance cible planifiée (D-106) ; echeance est l'échéance maximale."/>
+        </addColumn>
+        <sql>UPDATE parcours_operation SET echeance_cible = echeance WHERE echeance_cible IS NULL AND echeance IS NOT NULL;</sql>
+    </changeSet>
+</databaseChangeLog>

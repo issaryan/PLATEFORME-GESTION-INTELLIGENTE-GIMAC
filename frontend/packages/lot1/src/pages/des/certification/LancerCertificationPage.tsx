@@ -118,7 +118,8 @@ function EtapeOuverture({ institution }: { institution: Institution }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const permissions = usePermissions()
-  const peutOuvrir = aPermission(permissions, PERM.liaisonOuvrir)
+  // D-106 (§12) : le service exige aussi la désignation du conducteur (HOM_PROJECT_DESIGNATE, sinon 403).
+  const peutOuvrir = aPermission(permissions, PERM.liaisonOuvrir) && aPermission(permissions, PERM.projetDesigner)
   const ouvrable = OUVRABLES.includes(institution.statut)
   const types = useOptionsTypesProjet(true)
   const conducteurs = useConducteurs(peutOuvrir && ouvrable)

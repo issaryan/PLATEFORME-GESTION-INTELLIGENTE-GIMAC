@@ -42,7 +42,7 @@ const valeur = (o: ReferenceOperation, c: keyof ReferenceOperation) => {
 }
 // Égalité sur tous les champs significatifs ; affichage court pour que les deux colonnes tiennent.
 const CHAMPS: (keyof ReferenceOperation)[] = [
-  'libelle', 'description', 'etape', 'segment', 'responsable', 'validateur', 'consultes', 'informes', 'externes', 'predecesseurs', 'delaiJours', 'grain', 'plateforme',
+  'libelle', 'description', 'etape', 'segment', 'responsable', 'validateur', 'consultes', 'informes', 'externes', 'predecesseurs', 'delaiJours', 'delaiMaxJours', 'grain', 'plateforme',
   'cle', 'secret', 'valeurReference', 'livrables', 'geste', 'jalon', 'declencheur', 'particularite', 'partie', 'serviceCode', 'idScenario', 'natureCouverture',
 ]
 const signature = (o: ReferenceOperation) => CHAMPS.map((c) => valeur(o, c)).join('|')

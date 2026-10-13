@@ -114,13 +114,20 @@ public final class Parcours {
      * prédécesseurs, plus la durée de l'opération, depuis la date de démarrage ; jours calendaires.
      */
     public void planifier() {
-        Map<String, CalendrierDag.Tache> g = new LinkedHashMap<>();
-        operations.forEach(o -> g.put(o.getRang(), new CalendrierDag.Tache(o.getPredecesseurs(), o.getDelaiJours())));
-        CalendrierDag.Resultat r = CalendrierDag.calculer(g);
+        Map<String, CalendrierDag.Tache> cible = new LinkedHashMap<>();
+        Map<String, CalendrierDag.Tache> max = new LinkedHashMap<>();
+        operations.forEach(o -> {
+            cible.put(o.getRang(), new CalendrierDag.Tache(o.getPredecesseurs(), o.getDelaiJours()));
+            max.put(o.getRang(), new CalendrierDag.Tache(o.getPredecesseurs(), o.getDelaiMaxJours()));
+        });
+        CalendrierDag.Resultat rc = CalendrierDag.calculer(cible);
+        CalendrierDag.Resultat rm = CalendrierDag.calculer(max);
         for (OperationParcours o : operations) {
-            Integer fin = r.fins().get(o.getRang());
-            if (fin != null && !o.faite()) {
-                o.setEcheance(etat.getDateDemarrage().plusDays(fin));
+            Integer finCible = rc.fins().get(o.getRang());
+            Integer finMax = rm.fins().get(o.getRang());
+            if (finMax != null && !o.faite()) {
+                o.setEcheance(etat.getDateDemarrage().plusDays(finMax));
+                o.setEcheanceCible(etat.getDateDemarrage().plusDays(finCible == null ? finMax : finCible));
             }
         }
     }
@@ -345,7 +352,11 @@ public final class Parcours {
         return blocages.stream().anyMatch(BlocageParcours::actif);
     }
 
-    /** SLA d'une opération en cours : dépassé après l'échéance, proche à cinq jours ou moins. */
+    /**
+     * SLA d'une opération en cours (D-106) : dépassé après l'échéance maximale ; proche à cinq jours ou moins de
+     * l'échéance cible, ou au-delà de la cible sans dépasser le maximum ; sinon dans les délais. Sans délai maximal
+     * distinct (cible = maximum), la règle antérieure est inchangée.
+     */
     public static Sla sla(OperationParcours o, LocalDate aujourdhui) {
         if (!o.getEtat().enCours() || o.getEcheance() == null) {
             return null;
@@ -353,7 +364,7 @@ public final class Parcours {
         if (o.getEcheance().isBefore(aujourdhui)) {
             return Sla.DEPASSE;
         }
-        return ChronoUnit.DAYS.between(aujourdhui, o.getEcheance()) <= JOURS_ECHEANCE_PROCHE ? Sla.ECHEANCE_PROCHE : Sla.DANS_LES_DELAIS;
+        return ChronoUnit.DAYS.between(aujourdhui, o.getEcheanceCible()) <= JOURS_ECHEANCE_PROCHE ? Sla.ECHEANCE_PROCHE : Sla.DANS_LES_DELAIS;
     }
 
     public long tachesEnRetard(LocalDate aujourdhui) {
@@ -364,9 +375,9 @@ public final class Parcours {
         return operations.stream().filter(o -> !o.faite() && o.getEcheance() != null).map(OperationParcours::getEcheance).min(Comparator.naturalOrder()).orElse(null);
     }
 
-    /** Date cible de mise en production : échéance planifiée de l'opération qui porte le jalon EN_PRODUCTION. */
+    /** Date cible de mise en production : échéance cible planifiée (D-106) de l'opération qui porte le jalon EN_PRODUCTION. */
     public LocalDate dateCibleProduction() {
-        return parJalon(Jalon.EN_PRODUCTION).map(OperationParcours::getEcheance).orElse(null);
+        return parJalon(Jalon.EN_PRODUCTION).map(OperationParcours::getEcheanceCible).orElse(null);
     }
 
     /** Couverture de certification : services inclus certifiés (ouverts ou non). */

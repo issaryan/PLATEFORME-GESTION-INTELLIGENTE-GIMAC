@@ -15,7 +15,7 @@ pas privilégiée au sens d'IAM (elle n'ouvre ni les comptes ni la plateforme).
 
 | Référentiel | Avec `REF_METIER_ADMIN` |
 |---|---|
-| Processus d'unité (D-87), toutes les unités, actives ou non | lire tout ; créer pour n'importe quelle unité ; modifier, contrôler, publier (levée motivée), nouvelle version, retirer ; supprimer un brouillon ; lancer une instance ; suivre, suspendre, reprendre, annuler, réaffecter une instance |
+| Processus d'unité (D-87), toutes les unités, actives ou non | lire tout ; créer pour n'importe quelle unité ; modifier, contrôler, publier (levée motivée), nouvelle version, retirer ; supprimer un brouillon ; suivre, suspendre, reprendre, annuler, réaffecter une instance (lancer : seulement s'il fait partie du public du processus, D-100, D-106) |
 | Référentiel d'homologation (D-77, D-89) | lecture complète ; créer, dériver, modifier, contrôler, publier, migrer, supprimer un brouillon, étapes, export |
 | Types de projet et fonctions (D-91) | créer, modifier, activer, désactiver |
 
@@ -55,7 +55,7 @@ processus de toutes les unités depuis D-94 (docs/lot1/ecrans-par-configuration.
 | Droit | Règle de l'unité (inchangée) | Toutes les unités, actives ou non |
 |---|---|---|
 | Définir : créer, modifier, contrôler, publier (levée motivée), nouvelle version, retirer, supprimer un brouillon | `PROCESSUS_DEFINIR` à `UNITES` sur une unité dirigée | `REF_METIER_ADMIN` ou `PROCESSUS_DEFINIR` à `TOUTES` |
-| Lancer une instance | membre de l'unité, ou `PROCESSUS_LANCER` à `UNITES` sur une unité dirigée | `REF_METIER_ADMIN` ou `PROCESSUS_LANCER` à `TOUTES` |
+| Lancer une instance | le public du processus seul (règles d'initiateurs, D-100 ; `docs/lot1/lancement-processus.md` §10, §12) | aucun droit d'administration n'y ajoute (D-100, D-106) |
 | Piloter une instance : réaffecter, suspendre, reprendre, annuler | chef de l'unité, ou `TACHE_CONFIER` couvrant l'unité | `REF_METIER_ADMIN` ou `PROCESSUS_LANCER` à `TOUTES` |
 | Lire définitions et instances, catalogue | membres, chefs, porteurs des droits ci-dessus | l'un des droits « toutes les unités » ci-dessus |
 

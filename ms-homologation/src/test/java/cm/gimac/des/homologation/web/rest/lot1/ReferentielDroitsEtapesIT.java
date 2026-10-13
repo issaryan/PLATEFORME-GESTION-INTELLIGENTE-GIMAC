@@ -250,6 +250,6 @@ class ReferentielDroitsEtapesIT extends AbstractHomologationIT {
             .andExpect(jsonPath("$.noeuds[?(@.fantome == true)]").isEmpty());
         mvc.perform(get(base + "/operations").with(ingenieur())).andExpect(header().string(ReferentialResource.EN_TETE_FILTRE, "COMPLET")).andExpect(jsonPath("$.length()").value(7));
         String complet = mvc.perform(get(base + "/export").with(ingenieur())).andReturn().getResponse().getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
-        assertThat(complet.lines()).hasSize(8).first().isEqualTo("code;libelle;etape;segment;responsable;validateur;consultes;informes;externes;predecesseurs;delaiJours;fantome;signatures");
+        assertThat(complet.lines()).hasSize(8).first().isEqualTo("code;libelle;etape;segment;responsable;validateur;consultes;informes;externes;predecesseurs;delaiJours;fantome;signatures;delaiMaxJours");
     }
 }

@@ -128,3 +128,30 @@ délai, échéance au plus tôt). Barre d'outils : ajouter une opération, dispo
 Kahn), contrôler (anomalies surlignées et listées), comparer, publier (impact), pilote du brouillon.
 Mini-carte, zoom, vue liste accessible (clavier, lecteur d'écran) équivalente au canevas. Thèmes clair et
 sombre par les jetons du design system.
+
+## 7. Délai cible et délai maximal (D-106, 13/10/2026)
+
+Remarque de KOAGNE ISSA RYAN : chaque opération qui porte un délai doit avoir un délai cible (objectif) et un délai
+maximal (au-delà, dépassement).
+
+- **Modèle** : `delaiJours` (colonne `reference_operation.delai_jours`, inchangée) est le **délai cible** ; nouveau champ
+  `delaiMaxJours` (`reference_operation.delai_max_jours`, 0..365, `NULL` = égal au délai cible). Les valeurs existantes
+  sont reprises comme délai cible, sans autre changement (changelog `20261015000400_delai_maximal.xml`, contrainte
+  `ck_reference_operation_delai_max`). Les étapes configurables (`referential_etape`) ne portent pas de délai.
+- **Saisie** : `PUT` et `POST …/operations` acceptent `delaiMaxJours` ; inférieur au délai cible (3 jours par défaut) :
+  422 `HOM_OPERATION_DELAI_MAX_INVALIDE` (`details.champ = delaiMaxJours`). Recopié par la dérivation, comparé par la
+  migration d'une liaison, exporté en dernière colonne du CSV (`delaiMaxJours`).
+- **Graphe** : `finAuPlusTot` reste calculé sur les délais cibles (chemin critique inchangé) ; `finAuPlusTotMax` donne la
+  fin au plus tôt sur les délais maximaux.
+- **Échéances d'une liaison** : `parcours_operation` recopie `delai_max_jours` et gagne `echeance_cible`. `planifier()`
+  calcule deux passes sur le DAG : `echeanceCible` (délais cibles) et `echeance` (délais maximaux), qui reste la date du
+  dépassement, de la tâche relayée à MS-PILOTAGE, des événements et du taux de respect des délais. Reprise : l'échéance
+  cible des opérations existantes est leur échéance. Date cible de mise en production : échéance cible.
+- **SLA** : `DEPASSE` après l'échéance maximale ; `ECHEANCE_PROCHE` à cinq jours ou moins de l'échéance cible (ou
+  au-delà de la cible sans dépasser le maximum) ; sinon `DANS_LES_DELAIS`. Sans délai maximal distinct, la règle
+  antérieure est inchangée. Vue d'une opération : `echeanceCible`, `delaiJours`, `delaiMaxJours`.
+- **Interface** : modale de l'opération, onglet Chronologie : « Délai cible » et « Délai maximal » (vide = égal à la
+  cible, contrôle maximum >= cible), « Fin au plus tard (délais maximaux) » ; cartes du canevas et vue liste « 3 à 5 j ».
+  Services simulés alignés (refus 422, fin au plus tôt maximale). FR, EN, ES.
+- **Tests** : `ParcoursTest.delaiCibleEtMaximal`, `ReferentialModelisateurTest` (422 et délai effectif),
+  `ReferentielDroitsEtapesIT` (CSV), interface `ModaleOperation.test.tsx`, `services/simule/delais-d104.test.ts`.

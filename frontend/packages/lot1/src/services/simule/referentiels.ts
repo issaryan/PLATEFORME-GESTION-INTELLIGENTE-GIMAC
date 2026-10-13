@@ -115,7 +115,7 @@ export const CATALOGUE: CatalogueModelisateur = {
     .map(([code, libelle], i) => ({ code, libelle, rang: i + 1 })),
   declencheurs: Object.entries(DECLENCHEURS).map(([code, libelle]) => ({ code, libelle })),
   etapes: ([
-    ['PRISE_CONTACT', 'Prise de contact', 1], ['ADHESION', 'Adhésion', 2], ['CADRAGE', 'Cadrage', 3], ['LANCEMENT', 'Lancement', 4], ['ATELIERS', 'Ateliers', 5],
+    ['PRISE_CONTACT', 'Prise de contact', 1], ['ADHESION', 'Procédure administrative', 2], ['CADRAGE', 'Cadrage', 3], ['LANCEMENT', 'Lancement', 4], ['ATELIERS', 'Ateliers', 5],
     ['INTEGRATION', 'Intégration', 6], ['TESTS', 'Tests', 7], ['CERTIFICATION', 'Certification', 8], ['APPROBATION_SECURITE', 'Approbation de la sécurité', undefined],
     ['MISE_EN_PRODUCTION', 'Mise en production', 9], ['SUIVI', 'Suivi post-production', 10],
   ] as const).map(([code, libelle, rang]) => (rang ? { code, libelle, rang } : { code, libelle })),
@@ -176,8 +176,8 @@ export function vuesEtapes(etapes: Etape[], ops: ReferenceOperation[], brouillon
 
 // ---------------------------------------------------------------------------------- lecture filtrée (D-89 §1)
 
-/** Lecture complète : READ_ALL ou un droit d'édition, de publication ou de migration. */
-const LECTURE_COMPLETE = ['HOM_REFERENTIEL_READ_ALL', 'HOM_REFERENTIEL_EDIT', 'HOM_REFERENTIEL_PUBLISH', 'HOM_REFERENTIEL_MIGRATE']
+/** Lecture complète : READ_ALL, un droit d'édition, de publication ou de migration, ou REF_METIER_ADMIN (comme VisibiliteReferentiel). */
+const LECTURE_COMPLETE = ['HOM_REFERENTIEL_READ_ALL', 'HOM_REFERENTIEL_EDIT', 'HOM_REFERENTIEL_PUBLISH', 'HOM_REFERENTIEL_MIGRATE', 'REF_METIER_ADMIN']
 /** Fonctions d'un lecteur : déduites de ses profils (catalogue), plus CHEFS_DEPARTEMENT pour un chef de département. */
 export function fonctionsDesProfils(profils: string[]): Fonction[] {
   const f = CATALOGUE.fonctions.filter((x) => x.profils?.some((p) => profils.includes(p))).map((x) => x.code as Fonction)
@@ -391,11 +391,15 @@ function calculerGrapheComplet(v: ReferentielVersion, ops: ReferenceOperation[],
   const parCode = new Map(ops.map((o) => [o.code, o]))
   const debut = new Map<string, number>()
   const fin = new Map<string, number>()
+  const finMax = new Map<string, number>()
   r.ordre.forEach((c) => {
     const o = parCode.get(c)!
     const d = Math.max(0, ...o.predecesseurs.filter((p) => fin.has(p)).map((p) => fin.get(p)!))
     debut.set(c, d)
     fin.set(c, d + (o.delaiJours ?? 0))
+    // D-106 : fin au plus tôt sur les délais maximaux (comme MS-HOMOLOGATION).
+    const dm = Math.max(0, ...o.predecesseurs.filter((p) => finMax.has(p)).map((p) => finMax.get(p)!))
+    finMax.set(c, dm + Math.max(o.delaiMaxJours ?? o.delaiJours ?? 0, o.delaiJours ?? 0))
   })
   // Chemin critique : depuis la fin la plus tardive, en remontant le prédécesseur qui la fixe.
   const chemin: string[] = []
@@ -410,7 +414,7 @@ function calculerGrapheComplet(v: ReferentielVersion, ops: ReferenceOperation[],
   const noeuds: NoeudGraphe[] = avecSuccesseurs(ops)
     .sort((a, b) => (a.ordre ?? 0) - (b.ordre ?? 0) || a.code.localeCompare(b.code))
     .map((o) => ({
-      ...o, couche: r.couches.get(o.code) ?? null, debutAuPlusTot: debut.get(o.code) ?? null, finAuPlusTot: fin.get(o.code) ?? null, critique: critiques.has(o.code),
+      ...o, couche: r.couches.get(o.code) ?? null, debutAuPlusTot: debut.get(o.code) ?? null, finAuPlusTot: fin.get(o.code) ?? null, finAuPlusTotMax: finMax.get(o.code) ?? null, critique: critiques.has(o.code),
       anomalies: [...new Set(r.anomalies.filter((a) => a.codes.includes(o.code)).map((a) => a.type))],
     }))
   return {
@@ -619,6 +623,11 @@ export function referentielsSimules(attendre: Attendre, refus: Refus, o: {
   }
   const valider = (code: string, s: SaisieOperation) => {
     if (s.secret && s.valeurReference) throw refus(422, 'HOM_OPERATION_SECRET_VALUE', 'Une opération secrète ne relève aucune valeur de référence.')
+    // D-106 : délai maximal au moins égal au délai cible (3 jours par défaut), comme MS-HOMOLOGATION.
+    const cible = s.delaiJours ?? 3
+    if (s.delaiMaxJours !== null && s.delaiMaxJours !== undefined && s.delaiMaxJours < cible) {
+      throw refus(422, 'HOM_OPERATION_DELAI_MAX_INVALIDE', `Le délai maximal (${s.delaiMaxJours} j) ne peut être inférieur au délai cible (${cible} j).`, { champ: 'delaiMaxJours' })
+    }
     ;(s.signatures ?? []).forEach((x, i) => {
       const champ = !/^[A-Z][A-Z0-9_]{1,39}$/.test(x.code) ? 'code' : !x.libelle?.trim() || x.libelle.length > 200 ? 'libelle' : !x.signataire ? 'signataire' : x.ordre < 1 || x.ordre > 99 ? 'ordre' : null
       if (champ) throw refus(422, 'HOM_SIGNATURE_INVALIDE', 'Signature invalide.', { champ: `signatures[${i}].${champ}` })

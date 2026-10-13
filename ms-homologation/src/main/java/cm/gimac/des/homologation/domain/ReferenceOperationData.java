@@ -67,8 +67,91 @@ public record ReferenceOperationData(
     Particularite particularite,
     List<SignatureOperation> signatures,
     VueOperation vue,
-    Boolean consultesRecoiventTache
+    Boolean consultesRecoiventTache,
+    @Min(0) @Max(365) Integer delaiMaxJours
 ) {
+    /** Saisie antérieure à D-106 : sans délai maximal (égal au délai cible). */
+    public ReferenceOperationData(
+        String libelle,
+        String phase,
+        Segment segment,
+        Partie partie,
+        String serviceCode,
+        NatureCouverture natureCouverture,
+        Map<String, Object> preuveAttendue,
+        String idScenario,
+        List<String> predecesseurs,
+        String fonctionResponsable,
+        Map<String, Object> grille,
+        String code,
+        String description,
+        String etape,
+        Integer ordre,
+        Fonction responsable,
+        Fonction validateur,
+        List<Fonction> consultes,
+        List<Fonction> informes,
+        List<Fonction> externes,
+        Integer delaiJours,
+        GrainPreuve grain,
+        PlateformeExecution plateforme,
+        Boolean cle,
+        Boolean secret,
+        Boolean oubliSansSymptome,
+        Boolean pivot,
+        String valeurReference,
+        List<Livrable> livrables,
+        Geste geste,
+        Jalon jalon,
+        String declencheur,
+        Position position,
+        Particularite particularite,
+        List<SignatureOperation> signatures,
+        VueOperation vue,
+        Boolean consultesRecoiventTache
+    ) {
+        this(
+            libelle,
+            phase,
+            segment,
+            partie,
+            serviceCode,
+            natureCouverture,
+            preuveAttendue,
+            idScenario,
+            predecesseurs,
+            fonctionResponsable,
+            grille,
+            code,
+            description,
+            etape,
+            ordre,
+            responsable,
+            validateur,
+            consultes,
+            informes,
+            externes,
+            delaiJours,
+            grain,
+            plateforme,
+            cle,
+            secret,
+            oubliSansSymptome,
+            pivot,
+            valeurReference,
+            livrables,
+            geste,
+            jalon,
+            declencheur,
+            position,
+            particularite,
+            signatures,
+            vue,
+            consultesRecoiventTache,
+            null
+        );
+    }
+
     /** Saisie antérieure à D-93 : sans vue ni réglage des tâches des consultés (déduits, conservés). */
     public ReferenceOperationData(
         String libelle,
@@ -315,7 +398,8 @@ public record ReferenceOperationData(
             particularite,
             signatures,
             vue,
-            consultesRecoiventTache
+            consultesRecoiventTache,
+            delaiMaxJours
         );
     }
 
@@ -358,7 +442,8 @@ public record ReferenceOperationData(
             particularite,
             signatures,
             v,
-            consultesRecoiventTache
+            consultesRecoiventTache,
+            delaiMaxJours
         );
     }
 }

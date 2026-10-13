@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Banner, Button, Skeleton } from '@gimac/design-system'
 import { http } from '../http/client'
@@ -28,8 +28,25 @@ export type Session = {
 
 const Contexte = createContext<Session | null>(null)
 
+/**
+ * Permissions qui en valent d'autres, miroir de `permissions_equivalentes` de la politique OPA (D-92, D-106 §12) :
+ * REF_METIER_ADMIN vaut chacune des permissions du référentiel des opérations. Sans ce miroir, l'interface cachait à
+ * l'administration des référentiels métier des gestes que la passerelle et le service lui accordent (migration…).
+ */
+export const PERMISSIONS_EQUIVALENTES: Readonly<Record<string, readonly string[]>> = {
+  REF_METIER_ADMIN: ['HOM_REFERENTIEL_READ', 'HOM_REFERENTIEL_EDIT', 'HOM_REFERENTIEL_PUBLISH', 'HOM_REFERENTIEL_MIGRATE'],
+}
+
+/** Permissions du jeton complétées de celles qu'elles valent (sans doublon, ordre du jeton d'abord). */
+export function permissionsEffectives(permissions: readonly string[]): string[] {
+  const r = [...permissions]
+  for (const p of permissions) for (const e of PERMISSIONS_EQUIVALENTES[p] ?? []) if (!r.includes(e)) r.push(e)
+  return r
+}
+
 export function SessionProvider({ session, children }: { session: Session; children: ReactNode }) {
-  return <Contexte.Provider value={session}>{children}</Contexte.Provider>
+  const valeur = useMemo(() => ({ ...session, permissions: permissionsEffectives(session.permissions ?? []) }), [session])
+  return <Contexte.Provider value={valeur}>{children}</Contexte.Provider>
 }
 
 /** Session courante, ou null hors de SessionProvider (tests d'un composant isolé). */

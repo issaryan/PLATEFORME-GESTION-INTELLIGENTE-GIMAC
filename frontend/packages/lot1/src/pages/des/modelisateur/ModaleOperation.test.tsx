@@ -112,14 +112,19 @@ describe('Modale de l\'opération', () => {
     onglet(d, 'Chronologie')
     expect(within(d).getByText('C10, C3, C4')).toBeTruthy()
     expect(within(d).getAllByText(/^jour \d+$/).length).toBe(2)
-    fireEvent.change(within(d).getByLabelText(/^Délai/), { target: { value: '400' } })
+    fireEvent.change(within(d).getByLabelText(/^Délai cible/), { target: { value: '400' } })
     fireEvent.click(within(d).getByRole('button', { name: 'Enregistrer' }))
     expect(within(d).getByText('Délai entier de 0 à 365 jours.')).toBeTruthy()
-    fireEvent.change(within(d).getByLabelText(/^Délai/), { target: { value: '5' } })
+    fireEvent.change(within(d).getByLabelText(/^Délai cible/), { target: { value: '5' } })
+    // D-106 : délai maximal, au moins le délai cible.
+    fireEvent.change(within(d).getByLabelText(/^Délai maximal/), { target: { value: '4' } })
+    fireEvent.click(within(d).getByRole('button', { name: 'Enregistrer' }))
+    expect(within(d).getByText('Délai maximal entier, du délai cible à 365 jours.')).toBeTruthy()
+    fireEvent.change(within(d).getByLabelText(/^Délai maximal/), { target: { value: '8' } })
     fireEvent.focus(within(d).getByRole('combobox', { name: 'Prédécesseurs' }))
     fireEvent.mouseDown(within(screen.getAllByRole('listbox').at(-1)!).getByRole('option', { name: /^C1 · / }))
     fireEvent.click(within(d).getByRole('button', { name: 'Enregistrer' }))
-    expect(enregistrer).toHaveBeenCalledWith(expect.objectContaining({ delaiJours: 5, predecesseurs: ['26', 'C1'] }))
+    expect(enregistrer).toHaveBeenCalledWith(expect.objectContaining({ delaiJours: 5, delaiMaxJours: 8, predecesseurs: ['26', 'C1'] }))
   })
 
   it('refus du service lisible ; suppression confirmée ; annulation', () => {

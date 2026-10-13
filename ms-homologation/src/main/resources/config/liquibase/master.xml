@@ -56,6 +56,8 @@
     <include file="config/liquibase/changelog/20261013000100_permissions_fonctions.xml" relativeToChangelogFile="false"/>
     <include file="config/liquibase/changelog/20261014000200_chefs_departement.xml" relativeToChangelogFile="false"/>
     <include file="config/liquibase/changelog/20261015000100_liaisons_multiples.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261015000300_procedure_administrative.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261015000400_delai_maximal.xml" relativeToChangelogFile="false"/>
     <!-- jhipster-needle-liquibase-add-constraints-changelog - JHipster will add liquibase constraints changelogs here -->
     <!-- jhipster-needle-liquibase-add-incremental-changelog - JHipster will add incremental liquibase changelogs here -->
 </databaseChangeLog>

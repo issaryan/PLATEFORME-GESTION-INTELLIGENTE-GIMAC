@@ -28,7 +28,7 @@ export const ongletDe = (champ: string): OngletEtape => {
   const racine = champ.split('.')[0]
   if (['intervenant', 'validateur'].includes(racine)) return 'intervenants'
   if (['livrables', 'signatures', 'champs'].includes(racine)) return racine as OngletEtape
-  if (['predecesseurs', 'delaiJours'].includes(racine)) return 'chronologie'
+  if (['predecesseurs', 'delaiJours', 'delaiMaxJours'].includes(racine)) return 'chronologie'
   return 'general'
 }
 
@@ -48,6 +48,9 @@ export function erreursEtape(e: EtapeProcessus, autres: string[]): Record<string
   if (!e.libelle.trim() || e.libelle.length > LIMITES_PROCESSUS.libelle) r.libelle = 'proc.erreur.libelle'
   if (e.action.length > LIMITES_PROCESSUS.description) r.action = 'proc.erreur.action'
   if (!(e.delaiJours >= 0 && e.delaiJours <= LIMITES_PROCESSUS.delai)) r.delaiJours = 'proc.erreur.delai'
+  // D-106 : délai maximal facultatif, entre le délai cible et 365 jours.
+  const max = e.delaiMaxJours
+  if (max !== null && max !== undefined && !(Number.isInteger(max) && max >= Math.max(0, e.delaiJours) && max <= LIMITES_PROCESSUS.delai)) r.delaiMaxJours = 'proc.erreur.delaiMax'
   const intervenant = (i: Intervenant | null, chemin: string) => {
     if (!i) return
     if (i.mode === 'PROFIL' && !i.profil) r[`${chemin}.profil`] = 'proc.erreur.profil'
@@ -273,6 +276,8 @@ export function ModaleEtape(p: ModaleEtapeProps) {
                 options={autres.filter((x) => x.code !== e.code).map((x) => ({ value: x.code, label: `${x.code} · ${x.libelle}` }))} onChange={(v) => maj({ predecesseurs: v })} />
               <NumberField name="delaiJours" label={t('proc.champ.delai')} help={t('proc.aide.delai')} unit={t('proc.jours')} value={String(e.delaiJours)} min={0} max={LIMITES_PROCESSUS.delai} readOnly={lecture} error={err('delaiJours')}
                 onChange={(v) => maj({ delaiJours: v === '' ? -1 : Number(v) })} />
+              <NumberField name="delaiMaxJours" label={t('proc.champ.delaiMax')} help={t('proc.aide.delaiMax')} unit={t('proc.jours')} value={e.delaiMaxJours === null || e.delaiMaxJours === undefined ? '' : String(e.delaiMaxJours)}
+                min={0} max={LIMITES_PROCESSUS.delai} readOnly={lecture} error={err('delaiMaxJours')} onChange={(v) => maj({ delaiMaxJours: v === '' ? null : Number(v) })} />
               <KeyValueList items={[{ key: t('proc.champ.successeurs'), value: successeurs.length ? successeurs.join(', ') : t('proc.aucun'), mono: true }]} />
             </div>
           ) : null}

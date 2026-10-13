@@ -4,7 +4,7 @@ import { Select, StatusBadge } from '@gimac/design-system'
 import { estApiError } from '@gimac/socle'
 import { PROFILS_DOMAINE } from '../../../domaine'
 import { useLecture } from '../../../hooks/base'
-import { INITIATEURS_DEFAUT, type CandidatsProcessus, type EtatEtape, type EtatInstance, type EtatProcessus, type GraviteAnomalie, type Initiateurs, type Intervenant } from '../../../modele/processus'
+import { INITIATEURS_DEFAUT, delaiMaxEffectif, type CandidatsProcessus, type EtatEtape, type EtatInstance, type EtatProcessus, type GraviteAnomalie, type Initiateurs, type Intervenant } from '../../../modele/processus'
 import { useLibelleProfilEquipe } from '../activite/dialoguesEquipe'
 import { useLibelleUnite } from '../activite/communs'
 import './processus.css'
@@ -154,4 +154,13 @@ export function ChoixPersonne({ name, label, value, onChange, profil, candidats,
   return (
     <Select name={name} label={label} required={required} help={aide} error={error} value={value} onChange={onChange} disabled={annuaire.isPending && !candidats} options={options} />
   )
+}
+
+/**
+ * Délai d'une étape ou d'un processus en clair (D-106) : « 3 j » quand le délai maximal égale le délai cible, sinon
+ * « 3 à 5 j » (cible à maximum).
+ */
+export function delais(t: (k: string, o?: Record<string, unknown>) => string, cible: number, max?: number | null): string {
+  const m = delaiMaxEffectif(cible, max)
+  return m === cible ? t('proc.carte.delai', { n: cible }) : t('proc.carte.delais', { cible, max: m })
 }

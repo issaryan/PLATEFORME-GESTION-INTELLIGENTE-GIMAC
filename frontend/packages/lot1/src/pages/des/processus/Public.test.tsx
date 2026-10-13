@@ -89,6 +89,12 @@ describe('D-100 : public strict (services simulés, comme MS-PILOTAGE)', () => {
     const s = services(SNA, magasin).processus
     const vm = (await s.lancables({ q: 'machine' })).groupes[0].processus[0]
     expect((await s.lire(vm.id)).droits.lancer).toBe(true)
+    // D-106 (§12) : au seul titre du public, la version publiée seule, sans historique de la définition ni contrôle.
+    const lue = await s.lire(vm.id)
+    expect(lue.versions.map((v) => v.id)).toEqual([vm.id])
+    expect(lue.historique).toEqual([])
+    expect(lue.droits).toMatchObject({ modifier: false, publier: false, retirer: false, nouvelleVersion: false, modifierPublic: false })
+    expect(await code(s.controler(vm.id))).toBe('403 PIL_PROCESSUS_INTERDIT')
     const i = await s.lancer(vm.id, { intitule: 'Serveur de recette', champs: {}, designations: {}, formulaire: { SYSTEME: 'Linux', PROCESSEURS: 4, MEMOIRE: 16 } })
     expect(i.lanceur.id).toBe('u-sna')
     // Désignée mais partie : plus rien.
@@ -359,7 +365,11 @@ describe('D-103 : réglage du public d’une version publiée dans le modélisat
     const magasin = magasinPouvoirs()
     const p = await flux(RESEAU, magasin)
     rendrePage(<ModelisateurProcessusPage />, { chemin: `/des/processus/${p.id}`, motif: '/des/processus/:id', services: services(RESEAU, magasin), session: session(RESEAU) })
-    fireEvent.click(await screen.findByRole('button', { name: 'Voir qui peut voir et lancer « Ouverture d’un flux réseau »' }))
+    const voir = await screen.findByRole('button', { name: 'Voir qui peut voir et lancer « Ouverture d’un flux réseau »' })
+    // D-106 (§12) : sans droit de définir, ni contrôle ni nouvelle version.
+    expect(screen.queryByRole('button', { name: 'Contrôler' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Nouvelle version' })).toBeNull()
+    fireEvent.click(voir)
     const d = await screen.findByRole('dialog', { name: 'Qui peut voir et lancer ce processus' })
     expect((within(d).getByLabelText('Membres et responsables de l’unité') as HTMLInputElement).disabled).toBe(true)
     expect(within(d).queryByRole('button', { name: /^Enregistrer/ })).toBeNull()

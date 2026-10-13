@@ -187,7 +187,7 @@ public class ReferentialResource {
     public ResponseEntity<String> exporter(@PathVariable UUID id, Authentication auth) {
         ReferentialVersion v = charger(id);
         VisibiliteReferentiel.Vue vue = VisibiliteReferentiel.pour(ActeurCourant.de(auth).permissions(), v.getOperations());
-        StringBuilder csv = new StringBuilder("code;libelle;etape;segment;responsable;validateur;consultes;informes;externes;predecesseurs;delaiJours;fantome;signatures\n");
+        StringBuilder csv = new StringBuilder("code;libelle;etape;segment;responsable;validateur;consultes;informes;externes;predecesseurs;delaiJours;fantome;signatures;delaiMaxJours\n");
         for (OperationVue o : operationsRetenues(v, vue)) {
             csv
                 .append(String.join(
@@ -204,7 +204,8 @@ public class ReferentialResource {
                     cellule(o.predecesseurs()),
                     cellule(o.delaiJours()),
                     String.valueOf(o.fantome()),
-                    cellule(o.signatures() == null ? null : o.signatures().stream().map(x -> x.code() + ":" + x.signataire() + ":" + x.ordreEffectif() + ":" + String.join(",", x.porte())).toList())
+                    cellule(o.signatures() == null ? null : o.signatures().stream().map(x -> x.code() + ":" + x.signataire() + ":" + x.ordreEffectif() + ":" + String.join(",", x.porte())).toList()),
+                    cellule(o.delaiMaxJours())
                 ))
                 .append('\n');
         }

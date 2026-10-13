@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Remarque de KOAGNE ISSA RYAN (13/10/2026), D-106 : l'adhésion désigne l'ensemble du parcours ; l'étape de rang 2
+     (code technique ADHESION, inchangé) s'affiche « Procédure administrative ».
+     Mise à jour des libellés déjà en base, seulement quand l'étape porte encore le libellé d'origine (un libellé
+     personnalisé dans le modélisateur est conservé). Aucun code, aucun événement ne change. -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="d106-etape-procedure-administrative" author="homologation">
+        <update tableName="referential_etape">
+            <column name="libelle" value="Procédure administrative"/>
+            <where>code = 'ADHESION' AND libelle = 'Adhésion'</where>
+        </update>
+    </changeSet>
+</databaseChangeLog>

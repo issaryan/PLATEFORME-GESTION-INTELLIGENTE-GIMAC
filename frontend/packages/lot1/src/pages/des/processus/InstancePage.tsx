@@ -15,7 +15,7 @@ import { useLibelleProfilEquipe } from '../activite/dialoguesEquipe'
 import { useDates, useLibelleUnite } from '../activite/communs'
 import { CanevasProcessus, type CarteEtape } from './CanevasProcessus'
 import { ChampValeur, erreurValeur, valeurEnvoyee, valeurSaisie } from './DialogueLancement'
-import { BadgeEtape, BadgeInstance, ChoixPersonne, useErreurProcessus } from './communs'
+import { BadgeEtape, BadgeInstance, ChoixPersonne, delais, useErreurProcessus } from './communs'
 import { ValeursFormulaire } from './FormulaireLancement'
 import { DocumentProcessus, tailleLisible, useTypesLisibles } from './DocumentProcessus'
 import { useCatalogueFonctionnalites } from '../../../catalogue'
@@ -101,7 +101,7 @@ function Suivi({ instance: i }: { instance: InstanceProcessus }) {
     code: e.code, libelle: e.libelle, predecesseurs: e.predecesseurs, position: e.position, etat: e.etat,
     lignes: [
       e.executant ? e.executant.nomAffiche : e.aPrendre ? t('proc.suivi.aPrendreCourt') : '',
-      e.echeance ? t('proc.suivi.echeance', { date: dates.jour(e.echeance) }) : t('proc.carte.delai', { n: e.delaiJours }),
+      e.echeance ? t('proc.suivi.echeance', { date: dates.jour(e.echeance) }) : delais(t, e.delaiJours, e.delaiMaxJours),
       e.signatures.length ? t('proc.suivi.signatures', { n: e.signatures.filter((s) => s.etat === 'SIGNEE').length, total: e.signatures.length }) : '',
     ].filter(Boolean),
   })), [i.etapes, t, dates])
@@ -145,6 +145,10 @@ function Suivi({ instance: i }: { instance: InstanceProcessus }) {
         { key: t('proc.suivi.lanceur'), value: `${i.lanceur.nomAffiche} · ${dates.instant(i.lanceeLe)}` },
         { key: t('proc.instance.avancement'), value: t('proc.instance.avancementDe', { n: i.avancement.terminees, total: i.avancement.total }) },
         ...Object.entries(i.designations).map(([k, p]) => ({ key: libelleDesignation(k), value: p.nomAffiche })),
+        ...(i.delais ? [{ key: t('proc.suivi.delaisDemande'), value: <span className="gm-row" style={{ gap: 'var(--gm-space-1)', flexWrap: 'wrap' }}>
+          {t('proc.suivi.echeances', { cible: dates.jour(i.delais.echeanceCible), max: dates.jour(i.delais.echeanceMax) })}
+          {i.delais.enRetard ? <StatusBadge status="crit" icon="clock" label={t('proc.suivi.enRetard')} /> : i.delais.aLApproche ? <StatusBadge status="warn" icon="clock" label={t('proc.suivi.aLApproche')} /> : null}
+        </span> }] : []),
         ...(i.closeLe ? [{ key: t('proc.suivi.closeLe'), value: dates.instant(i.closeLe) }] : []),
         ...(i.motif ? [{ key: t('proc.suivi.motif'), value: i.motif }] : []),
       ]} />
@@ -227,7 +231,7 @@ function PanneauEtape({ instance: i, etape: e, onAnnonce }: { instance: Instance
         <h2 id="gm-proc-etape-titre" className="gm-type-h3" style={{ margin: 0 }}>{e.libelle} <span className="gm-mono gm-type-small">{e.code}</span></h2>
         <span className="gm-row" style={{ gap: 'var(--gm-space-1)' }}>
           <BadgeEtape etat={e.etat} />
-          {e.enRetard ? <StatusBadge status="crit" icon="clock" label={t('proc.suivi.enRetard')} /> : null}
+          {e.enRetard ? <StatusBadge status="crit" icon="clock" label={t('proc.suivi.enRetard')} /> : e.aLApproche ? <StatusBadge status="warn" icon="clock" label={t('proc.suivi.aLApproche')} /> : null}
           {e.renvois ? <StatusBadge status="warn" icon={null} label={t('proc.suivi.renvois', { count: e.renvois })} /> : null}
         </span>
       </div>
@@ -242,7 +246,8 @@ function PanneauEtape({ instance: i, etape: e, onAnnonce }: { instance: Instance
       <KeyValueList items={[
         { key: t('proc.suivi.executant'), value: e.executant ? e.executant.nomAffiche : e.aPrendre ? attendu({ personne: null, ...e.aPrendre }) : t('proc.suivi.pasEncore') },
         ...(e.validateur ? [{ key: t('proc.intervenant.validateur'), value: attendu(e.validateur) }] : []),
-        ...(e.echeance ? [{ key: t('proc.suivi.echeanceTitre'), value: dates.jour(e.echeance) }] : []),
+        ...(e.echeanceCible && e.echeanceCible !== e.echeance ? [{ key: t('proc.suivi.echeanceCibleTitre'), value: dates.jour(e.echeanceCible) }] : []),
+        ...(e.echeance ? [{ key: e.echeanceCible && e.echeanceCible !== e.echeance ? t('proc.suivi.echeanceMaxTitre') : t('proc.suivi.echeanceTitre'), value: dates.jour(e.echeance) }] : []),
         ...(e.activeeLe ? [{ key: t('proc.suivi.activeeLe'), value: dates.instant(e.activeeLe) }] : []),
         ...(e.termineeLe ? [{ key: t('proc.suivi.termineeLe'), value: dates.instant(e.termineeLe) }] : []),
       ]} />

@@ -76,8 +76,13 @@ public class OperationParcours {
     @Column(name = "predecesseurs")
     private String predecesseurs;
 
+    /** Échéance maximale (D-106) : au-delà, l'opération est en dépassement. */
     @Column(name = "echeance")
     private LocalDate echeance;
+
+    /** Échéance cible (D-106) : objectif ; l'atteindre annonce l'échéance proche. */
+    @Column(name = "echeance_cible")
+    private LocalDate echeanceCible;
 
     @Column(name = "faite_le")
     private LocalDate faiteLe;
@@ -121,6 +126,10 @@ public class OperationParcours {
 
     @Column(name = "delai_jours")
     private Integer delaiJours;
+
+    /** Délai maximal recopié du référentiel (D-106) ; null = égal au délai cible. */
+    @Column(name = "delai_max_jours")
+    private Integer delaiMaxJours;
 
     @jakarta.persistence.Convert(converter = cm.gimac.des.homologation.domain.ConvertisseursCodes.FonctionEnTexte.class)
     @Column(name = "responsable", length = 40)
@@ -191,6 +200,7 @@ public class OperationParcours {
         this.particularite = ref.getParticularite();
         this.livrables = JsonTexte.ecrire(ref.getLivrables());
         this.delaiJours = ref.delaiEffectif();
+        this.delaiMaxJours = ref.delaiMaxEffectif();
         this.responsable = ref.responsableEffectif();
         List<SignatureOperation> sig = ref.getSignatures();
         this.signatures = sig.isEmpty() ? null : JsonTexte.ecrire(sig);
@@ -236,8 +246,14 @@ public class OperationParcours {
         return JsonTexte.liste(livrables, Livrable.class);
     }
 
+    /** Délai cible (objectif) de l'opération. */
     public int getDelaiJours() {
         return delaiJours == null ? 3 : delaiJours;
+    }
+
+    /** Délai maximal (D-106) : le délai cible pour une opération antérieure, jamais en deçà de la cible. */
+    public int getDelaiMaxJours() {
+        return delaiMaxJours == null ? getDelaiJours() : Math.max(delaiMaxJours, getDelaiJours());
     }
 
     /** Fonction responsable (R) de référence, tenue par le référentiel quelle que soit la personne désignée. */
@@ -265,6 +281,7 @@ public class OperationParcours {
             particularite,
             getLivrables(),
             getDelaiJours(),
+            getDelaiMaxJours(),
             responsable,
             getSignatures(),
             getEtapeCode(),
@@ -451,6 +468,15 @@ public class OperationParcours {
 
     public void setEcheance(LocalDate echeance) {
         this.echeance = echeance;
+    }
+
+    /** Échéance cible (D-106) ; une opération planifiée avant D-106 : son échéance (cible = maximum). */
+    public LocalDate getEcheanceCible() {
+        return echeanceCible != null ? echeanceCible : echeance;
+    }
+
+    public void setEcheanceCible(LocalDate echeanceCible) {
+        this.echeanceCible = echeanceCible;
     }
 
     public LocalDate getFaiteLe() {
