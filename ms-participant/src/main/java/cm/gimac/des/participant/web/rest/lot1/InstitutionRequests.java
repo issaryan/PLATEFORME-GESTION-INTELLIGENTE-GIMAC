@@ -28,7 +28,8 @@ final class InstitutionRequests {
         @Size(max = 10) @Pattern(regexp = "^[A-Z0-9]+$") String codeBanqueBeac,
         @JourPasseOuPresent LocalDate datePriseDeContact,
         @Size(max = 255) String originePriseDeContact,
-        @Size(max = 1000) String projetEnvisage
+        @Size(max = 1000) String projetEnvisage,
+        @Size(max = 100) String groupe
     ) {
         /**
          * Saisie normalisée avant validation : codes BIC et BEAC en majuscules et sans espaces (copiés
@@ -40,6 +41,8 @@ final class InstitutionRequests {
             codeBanqueBeac = code(codeBanqueBeac);
             originePriseDeContact = vide(originePriseDeContact);
             projetEnvisage = vide(projetEnvisage);
+            // Groupe (D-104) : espaces multiples réduits, pour que « Groupe  Afriland » et « Groupe Afriland » se rejoignent.
+            groupe = groupe == null ? null : vide(groupe.replaceAll("\\s+", " "));
         }
 
         Candidature commande() {
@@ -52,7 +55,8 @@ final class InstitutionRequests {
                 vide(codeBanqueBeac),
                 datePriseDeContact,
                 originePriseDeContact,
-                projetEnvisage
+                projetEnvisage,
+                groupe
             );
         }
     }

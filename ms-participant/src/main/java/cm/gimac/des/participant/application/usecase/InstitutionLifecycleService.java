@@ -539,6 +539,7 @@ public class InstitutionLifecycleService implements ManageInstitutionUseCase {
         i.setBeacBankCode(c.codeBanqueBeac());
         i.setContactOrigin(c.originePriseDeContact());
         i.setIntendedProject(c.projetEnvisage());
+        i.setGroupName(c.groupe());
     }
 
     private static void exigerStatut(Institution i, InstitutionStatus attendu) {

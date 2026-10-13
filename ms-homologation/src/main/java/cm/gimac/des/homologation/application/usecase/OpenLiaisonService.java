@@ -116,8 +116,11 @@ public class OpenLiaisonService implements OpenLiaisonUseCase {
         InstitutionView institution = participants.getInstitution(cmd.institutionId());
         InstitutionView porteur = cmd.banquePartenaireId() == null ? null : participants.getInstitution(cmd.banquePartenaireId());
         politique.verifier(institution, porteur, collaborateurs.findCollaborator(cmd.chefDeProjetId()).orElse(null), porteConduite(cmd.chefDeProjetId()));
-        if (liaisons.existsByInstitutionIdAndTypeProjetAndEtatNotAndLiaisonOrigineIdIsNull(cmd.institutionId(), cmd.typeProjet(), EtatLiaison.CLOSE)) {
-            throw doublon(cmd);
+        // D-104 : plusieurs liaisons actives par institution, y compris du même type (lots successifs, nouveaux
+        // services, périmètres différents) ; seule la référence d'origine d'un projet repris reste unique.
+        String referenceOrigine = vide(cmd.referenceOrigine());
+        if (referenceOrigine != null && liaisons.existsByReferenceOrigine(referenceOrigine)) {
+            throw referenceEnDouble(referenceOrigine);
         }
         ReferentialVersion enVigueur = versions
             .findFirstByTypeProjetAndEtat(cmd.typeProjet(), EtatVersionReferentiel.PUBLIEE)
@@ -135,12 +138,17 @@ public class OpenLiaisonService implements OpenLiaisonUseCase {
             .dateOuverture(maintenant)
             .cycleAptitude(0)
             .version(enVigueur)
-            .definitionTypeProjet(definition);
+            .definitionTypeProjet(definition)
+            .intituleProjet(vide(cmd.intituleProjet()))
+            .referenceOrigine(referenceOrigine);
         try {
             l = liaisons.saveAndFlush(l);
         } catch (DataIntegrityViolationException e) {
-            // Ouverture concurrente : l'index partiel uk_liaison_active tranche.
-            throw doublon(cmd);
+            // Reprise concurrente de la même référence d'origine : l'index partiel uk_liaison_reference_origine tranche.
+            if (referenceOrigine != null) {
+                throw referenceEnDouble(referenceOrigine);
+            }
+            throw e;
         }
         List<String> perimetre = deriverPerimetre(l, institution, maintenant);
         // Étapes 3 à 10 : référentiel de l'annexe A instancié pour la liaison (D-59).
@@ -243,11 +251,15 @@ public class OpenLiaisonService implements OpenLiaisonUseCase {
         return codes;
     }
 
-    private static HomologationException doublon(OpenLiaisonCommand cmd) {
+    private static HomologationException referenceEnDouble(String referenceOrigine) {
         return HomologationException.conflict(
-            "HOM_LIAISON_DUPLICATE",
-            "Une liaison active existe déjà pour cette institution et ce type de projet",
-            Map.of("institutionId", cmd.institutionId().toString(), "typeProjet", cmd.typeProjet().name())
+            "HOM_LIAISON_REFERENCE_ORIGINE_DUPLICATE",
+            "Cette référence d'origine est déjà portée par une autre liaison",
+            Map.of("referenceOrigine", referenceOrigine)
         );
+    }
+
+    private static String vide(String s) {
+        return s == null || s.isBlank() ? null : s.trim();
     }
 }

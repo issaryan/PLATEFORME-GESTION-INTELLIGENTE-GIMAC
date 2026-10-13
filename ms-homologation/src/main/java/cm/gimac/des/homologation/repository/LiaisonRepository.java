@@ -1,7 +1,6 @@
 package cm.gimac.des.homologation.repository;
 
 import cm.gimac.des.homologation.domain.Liaison;
-import cm.gimac.des.homologation.domain.enumeration.EtatLiaison;
 import cm.gimac.des.homologation.domain.enumeration.TypeProjet;
 import jakarta.persistence.LockModeType;
 import java.util.Optional;
@@ -19,14 +18,14 @@ import org.springframework.stereotype.Repository;
 @SuppressWarnings("unused")
 @Repository
 public interface LiaisonRepository extends JpaRepository<Liaison, UUID>, JpaSpecificationExecutor<Liaison> {
-    /** Unicité des liaisons actives par institution et type de projet (index partiel uk_liaison_active). */
-    boolean existsByInstitutionIdAndTypeProjetAndEtatNot(UUID institutionId, TypeProjet typeProjet, EtatLiaison etat);
-
     /** Liaisons d'un type de projet (D-91). */
     long countByTypeProjet(TypeProjet typeProjet);
 
-    /** Liaison principale active (un service supplémentaire, rang 35, est sans effet sur l'unicité). */
-    boolean existsByInstitutionIdAndTypeProjetAndEtatNotAndLiaisonOrigineIdIsNull(UUID institutionId, TypeProjet typeProjet, EtatLiaison etat);
+    /**
+     * Référence d'origine déjà portée par une liaison, close ou non (D-104, index partiel uk_liaison_reference_origine).
+     * Une institution peut conduire plusieurs liaisons actives, y compris du même type : aucune autre unicité.
+     */
+    boolean existsByReferenceOrigine(String referenceOrigine);
 
     /** Liaisons d'une institution (portail, cloisonné par le jeton). */
     java.util.List<Liaison> findByInstitutionId(UUID institutionId);

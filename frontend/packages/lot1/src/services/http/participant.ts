@@ -14,6 +14,7 @@ const requete = (f: FiltreInstitutions) => ({
   q: f.recherche || undefined,
   mesDossiers: f.mesDossiers || undefined,
   statut: f.statut && f.statut.length ? f.statut.join(',') : undefined,
+  groupe: f.groupe || undefined,
 })
 
 /** Empreinte SHA-256 du fichier, en hexadécimal minuscule, calculée dans le navigateur. */
@@ -23,6 +24,7 @@ export async function empreinteSha256(fichier: Blob): Promise<string> {
 
 export const participantHttp: ServiceParticipant = {
   listerInstitutions: (f) => http.get(I, { query: requete(f) }),
+  groupes: () => http.get(`${I}/groupes`),
   indicateurs: () => http.get(`${I}/indicateurs`),
   dossier: (id) => http.get(`${I}/${id}`),
   prerequis: (id, etat) => http.get(`${I}/${id}/prerequis`, { query: { etat } }),

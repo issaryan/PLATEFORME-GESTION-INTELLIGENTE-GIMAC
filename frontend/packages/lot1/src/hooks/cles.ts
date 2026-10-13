@@ -8,6 +8,7 @@ export const cles = {
   institutions: (f?: FiltreInstitutions) => ['participant', 'institutions', ...(f ? [f] : [])] as const,
   institution: (id: string, sous?: string) => ['participant', 'institution', id, ...(sous ? [sous] : [])] as const,
   indicateursDdrm: () => ['participant', 'indicateurs'] as const,
+  groupesInstitutions: () => ['participant', 'groupes'] as const,
   homologation: ['homologation'] as const,
   certification: ['certification'] as const,
   referentiels: () => ['homologation', 'referentiels'] as const,

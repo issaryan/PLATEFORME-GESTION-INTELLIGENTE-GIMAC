@@ -250,6 +250,9 @@ export type DossierLiaison = Permitted & {
   liaisonOrigineId: string | null
   /** Projection du portail : coordonnées techniques d'essai communiquées par le participant (rang 12), relisibles. */
   coordonneesTechniques?: { adresse: string; port: string; pointsTerminaison: string | null; communiqueesLe: string } | null
+  /** D-104 : intitulé libre du projet ; référence d'origine (reprise), jamais servie au portail. */
+  intituleProjet?: string | null
+  referenceOrigine?: string | null
 }
 
 export type LiaisonResume = {
@@ -268,6 +271,10 @@ export type LiaisonResume = {
   tachesEnRetard: number
   prochaineEcheance: string | null
   dateCibleProduction: string | null
+  /** D-104 : intitulé libre du projet ; distingue les liaisons d'une même institution, y compris du même type. */
+  intituleProjet?: string | null
+  /** D-104 : référence du projet dans l'outil d'origine (reprise) ; jamais servie au portail. */
+  referenceOrigine?: string | null
 }
 
 /** Tâche à réaliser par l'utilisateur courant (tableau de bord par acteur). */
@@ -375,4 +382,8 @@ export type OuvertureLiaison = {
   typeProjet: TypeProjet
   chefDeProjetId: string
   banquePartenaireId?: string | null
+  /** D-104 : plusieurs liaisons actives par institution, y compris du même type ; l'intitulé les distingue. */
+  intituleProjet?: string | null
+  /** D-104 : référence du projet dans l'outil d'origine, unique quand elle est renseignée. */
+  referenceOrigine?: string | null
 }

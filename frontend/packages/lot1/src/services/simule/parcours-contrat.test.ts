@@ -20,9 +20,12 @@ describe('parcoursSimule : cadrage et liste', () => {
     expect(miens.contenu.every((l) => l.conducteurNom === 'Aïcha Mahamat Nour')).toBe(true)
     expect((await parcours.listerLiaisons({ page: 2, taille: 4 })).contenu).toHaveLength(4)
   })
-  it('ouverture : doublon refusé, nouvelle liaison cadrée ; désignation motivée et éligibilité', async () => {
+  it('ouverture (D-104) : seconde liaison du même type admise, référence d’origine unique ; désignation motivée et éligibilité', async () => {
     const { parcours } = svc()
-    await expect(parcours.ouvrirLiaison({ institutionId: 'INST-0042', typeProjet: 'CARTE_INTERBANCAIRE', chefDeProjetId: 'U-COND-1' })).rejects.toEqual(refus('HOM_LIAISON_DUPLICATE'))
+    const lot2 = await parcours.ouvrirLiaison({ institutionId: 'INST-0042', typeProjet: 'CARTE_INTERBANCAIRE', chefDeProjetId: 'U-COND-1', intituleProjet: ' Projet Carte EP A Lot 2 ', referenceOrigine: '202604-EPA-02' })
+    expect(lot2).toMatchObject({ statut: 'CADREE', intituleProjet: 'Projet Carte EP A Lot 2', referenceOrigine: '202604-EPA-02' })
+    await expect(parcours.ouvrirLiaison({ institutionId: 'INST-0017', typeProjet: 'PAIEMENT_MOBILE', chefDeProjetId: 'U-COND-1', referenceOrigine: '202604-EPA-02' })).rejects.toEqual(refus('HOM_LIAISON_REFERENCE_ORIGINE_DUPLICATE'))
+    expect((await parcours.listerLiaisons({ page: 1, taille: 50, recherche: 'epa-02' })).contenu.map((x) => x.id)).toEqual([lot2.id])
     const l = await parcours.ouvrirLiaison({ institutionId: 'INST-0042', typeProjet: 'PAIEMENT_MOBILE', chefDeProjetId: 'U-COND-2' })
     expect(l).toMatchObject({ statut: 'CADREE', etapeCourante: 'CADRAGE', conducteurNom: 'Brice Ondo Mba' })
     expect((await parcours.conducteurs()).map((p) => p.id)).toEqual(['U-COND-1', 'U-COND-2'])

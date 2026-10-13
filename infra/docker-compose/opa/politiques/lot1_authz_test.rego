@@ -46,6 +46,7 @@ test_lecture_des_sans_acr_refusee if not authz.allow with input as {"method": "G
 routes_participant := [
 	["GET", "/bff/des/participant/institutions", "PAR_INSTITUTION_READ"],
 	["GET", "/bff/des/participant/institutions/indicateurs", "PAR_INSTITUTION_READ"],
+	["GET", "/bff/des/participant/institutions/groupes", "PAR_INSTITUTION_READ"],
 	["GET", "/bff/des/participant/institutions/i1/prerequis", "PAR_INSTITUTION_READ"],
 	["POST", "/bff/des/participant/institutions", "PAR_INSTITUTION_CREATE"],
 	["PUT", "/bff/des/participant/institutions/i1", "PAR_INSTITUTION_EDIT"],

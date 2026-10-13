@@ -46,6 +46,7 @@ public class CadrageStepDefs {
     private UUID institution;
     private UUID conducteur = CollaboratorStubAdapter.CONDUCTEUR_1;
     private String liaisonId;
+    private String referenceOrigine;
     private ResultActions reponse;
 
     public CadrageStepDefs(MockMvc mvc, JdbcTemplate jdbc, HomologationFixtures fixtures, ParticipantStubAdapter registre) {
@@ -70,7 +71,17 @@ public class CadrageStepDefs {
     }
 
     private ResultActions ouvrir(RequestPostProcessor qui, UUID lui) throws Exception {
-        String json = "{\"institutionId\":\"%s\",\"typeProjet\":\"%s\",\"chefDeProjetId\":\"%s\"}".formatted(institution, type, lui);
+        return ouvrir(qui, lui, null);
+    }
+
+    private ResultActions ouvrir(RequestPostProcessor qui, UUID lui, String intitule) throws Exception {
+        String json = "{\"institutionId\":\"%s\",\"typeProjet\":\"%s\",\"chefDeProjetId\":\"%s\"%s%s}".formatted(
+            institution,
+            type,
+            lui,
+            intitule == null ? "" : ",\"intituleProjet\":\"" + intitule + "\"",
+            referenceOrigine == null ? "" : ",\"referenceOrigine\":\"" + referenceOrigine + "\""
+        );
         return mvc.perform(post("/api/v1/liaisons").with(qui).contentType(MediaType.APPLICATION_JSON).content(json));
     }
 
@@ -162,10 +173,32 @@ public class CadrageStepDefs {
         institution = institution("Institution de recette", statut);
     }
 
-    @Étantdonné("un adhérent qui a déjà une liaison {string} active")
-    public void dejaUneLiaison(String t) throws Exception {
-        institution = institution("Adhérent déjà cadré", "ADHERENT");
-        ouvrir(chef, CollaboratorStubAdapter.CONDUCTEUR_1);
+    @Quand("le chef de département ouvre une liaison {string} intitulée {string} en désignant le conducteur {string}")
+    public void ouvreIntitulee(String t, String intitule, String nom) throws Exception {
+        reponse = ouvrir(chef, CONDUCTEURS.get(nom), intitule);
+        liaisonId = JsonPath.read(corps(), "$.id");
+    }
+
+    @Et("son intitulé est {string}")
+    public void intitule(String intitule) throws Exception {
+        assertThat(JsonPath.<String>read(corps(), "$.intituleProjet")).isEqualTo(intitule);
+    }
+
+    @Et("l'institution compte {int} liaisons actives")
+    public void liaisonsActives(int n) throws Exception {
+        String r = mvc
+            .perform(get("/api/v1/liaisons").param("institutionId", institution.toString()).param("actives", "true").with(chef))
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+        assertThat(JsonPath.<Integer>read(r, "$.total")).isEqualTo(n);
+    }
+
+    @Étantdonné("un adhérent dont une liaison a été reprise sous la référence d'origine {string}")
+    public void dejaReprise(String reference) throws Exception {
+        institution = institution("Adhérent repris", "ADHERENT");
+        referenceOrigine = reference;
+        assertThat(ouvrir(chef, CollaboratorStubAdapter.CONDUCTEUR_1).andReturn().getResponse().getStatus()).isEqualTo(201);
     }
 
     @Étantdonné("un adhérent et un conducteur sans le rôle CONDUCTEUR_PROJET")

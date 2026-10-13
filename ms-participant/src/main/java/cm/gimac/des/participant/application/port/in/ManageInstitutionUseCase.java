@@ -29,7 +29,9 @@ public interface ManageInstitutionUseCase {
         String codeBanqueBeac,
         LocalDate datePriseDeContact,
         String originePriseDeContact,
-        String projetEnvisage
+        String projetEnvisage,
+        /** Groupe ou maison mère (D-104), facultatif : chaque filiale reste une institution à part entière. */
+        String groupe
     ) {}
 
     /** Conditions de l'adhésion, arrêtées par la DDRM avant la proposition (rang 2). */

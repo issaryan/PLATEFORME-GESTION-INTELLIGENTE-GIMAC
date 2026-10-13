@@ -62,13 +62,21 @@ public class RegistreInstitutionsResource {
         @RequestParam(name = "statut", required = false) Set<InstitutionStatus> statuts,
         @RequestParam(name = "q", required = false) String recherche,
         @RequestParam(name = "mesDossiers", defaultValue = "false") boolean mesDossiers,
+        @RequestParam(name = "groupe", required = false) String groupe,
         @RequestParam(name = "page", defaultValue = "0") int page,
         @RequestParam(name = "taille", defaultValue = "20") int taille,
         Authentication auth
     ) {
         UUID charge = mesDossiers ? ActeurCourant.de(auth).id() : null;
-        Page<Institution> p = queries.lister(new InstitutionRegistryQueries.Filtre(statuts, recherche, charge), page, taille);
+        Page<Institution> p = queries.lister(new InstitutionRegistryQueries.Filtre(statuts, recherche, charge, groupe), page, taille);
         return new PageVue<>(p.getContent().stream().map(InstitutionVue::de).toList(), p.getTotalElements());
+    }
+
+    /** Groupes ou maisons mères déclarés (D-104) : filtre de la liste, suggestions de la fiche. */
+    @GetMapping("/groupes")
+    @PreAuthorize("hasAuthority('PAR_INSTITUTION_READ')")
+    public List<String> groupes() {
+        return queries.groupes();
     }
 
     @GetMapping("/indicateurs")

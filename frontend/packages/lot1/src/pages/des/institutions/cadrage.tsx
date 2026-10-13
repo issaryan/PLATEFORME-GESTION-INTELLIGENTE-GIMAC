@@ -20,7 +20,9 @@ import { useErreurService } from '../liaisons/communs'
 /** Statuts de l'institution depuis lesquels l'ouverture est proposée (affichage ; le service revérifie). */
 export const STATUTS_OUVERTURE: Institution['statut'][] = ['ADHERENT', 'EN_HOMOLOGATION']
 
-type Valeurs = { typeProjet: string; chefDeProjetId: string; banquePartenaireId: string }
+type Valeurs = { typeProjet: string; intituleProjet: string; referenceOrigine: string; chefDeProjetId: string; banquePartenaireId: string }
+/** Référence d'origine (D-104) : format accepté par MS-HOMOLOGATION (OuvertureRequest). */
+export const REFERENCE_ORIGINE = /^[A-Za-z0-9][A-Za-z0-9._/-]*$/
 const texte = (v: unknown) => (typeof v === 'string' ? v : '')
 
 export function FormulaireCadrage({ institution, onFermer }: { institution: Institution; onFermer: () => void }) {
@@ -44,6 +46,9 @@ export function FormulaireCadrage({ institution, onFermer }: { institution: Inst
     actions: [],
     fields: [
       { name: 'typeProjet', label: t('liaison.typeProjet'), kind: 'radio', required: true, inForm: 'create', options: types.options },
+      // D-104 : une institution peut conduire plusieurs projets, y compris du même type ; l'intitulé les distingue.
+      { name: 'intituleProjet', label: t('cadrage.intitule'), kind: 'text', inForm: 'create', help: t('cadrage.intitule.aide') },
+      { name: 'referenceOrigine', label: t('cadrage.referenceOrigine'), kind: 'mono', inForm: 'create', help: t('cadrage.referenceOrigine.aide') },
       {
         name: 'chefDeProjetId', label: t('cadrage.conducteur'), kind: 'select', required: true, inForm: 'create', help: t('cadrage.conducteur.aide'),
         // Le formulaire du catalogue place lui-même l'option vide « Choisir » en tête de liste.
@@ -71,6 +76,10 @@ export function FormulaireCadrage({ institution, onFermer }: { institution: Inst
         const manquants: Record<string, string> = {}
         if (!texte(v.typeProjet)) manquants.typeProjet = t('cadrage.requis.typeProjet')
         if (!texte(v.chefDeProjetId)) manquants.chefDeProjetId = t('cadrage.requis.conducteur')
+        const intitule = texte(v.intituleProjet).trim()
+        const reference = texte(v.referenceOrigine).trim()
+        if (intitule.length > 200) manquants.intituleProjet = t('institution.erreur.longueur', { max: 200 })
+        if (reference && (reference.length > 50 || !REFERENCE_ORIGINE.test(reference))) manquants.referenceOrigine = t('cadrage.referenceOrigine.format')
         setErreurs(manquants)
         if (Object.keys(manquants).length) return
         ouvrir.mutate(
@@ -79,6 +88,8 @@ export function FormulaireCadrage({ institution, onFermer }: { institution: Inst
             typeProjet: texte(v.typeProjet) as TypeProjet,
             chefDeProjetId: texte(v.chefDeProjetId),
             banquePartenaireId: texte(v.banquePartenaireId) || null,
+            intituleProjet: intitule || null,
+            referenceOrigine: reference || null,
           },
           // D-98 : la liaison ouverte mène à son dossier (parcours), où chaque acteur suit ses opérations.
           { onSuccess: (l) => void navigate(`/des/parcours/${encodeURIComponent(l.id)}?nouvelle=1`) },
@@ -99,7 +110,8 @@ export function OngletLiaisonsInstitution({ institution }: { institution: Instit
       items={(liaisons.data?.contenu ?? []).map((l) => ({
         key: l.id,
         href: `/des/liaisons/${l.id}`,
-        label: `${t(`typeProjet.${l.typeProjet}`, { defaultValue: String(l.typeProjet) })} (${l.id})`,
+        // D-104 : plusieurs liaisons, y compris du même type ; l'intitulé du projet, s'il est donné, les distingue.
+        label: `${l.intituleProjet ? `${l.intituleProjet}, ` : ''}${t(`typeProjet.${l.typeProjet}`, { defaultValue: String(l.typeProjet) })} (${l.id})`,
         meta: t(`phase.${l.phaseCourante}`, { defaultValue: l.phaseCourante }),
         status: etatLiaison[l.etat]?.status ?? 'neutral',
         statusLabel: t(etatLiaison[l.etat]?.label ?? l.etat),

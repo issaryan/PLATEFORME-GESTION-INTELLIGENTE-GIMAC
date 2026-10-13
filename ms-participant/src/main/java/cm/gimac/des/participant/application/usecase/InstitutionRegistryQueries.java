@@ -41,8 +41,12 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class InstitutionRegistryQueries {
 
-    /** Filtre de la liste : statuts, recherche libre, dossiers portés par un chargé. */
-    public record Filtre(Set<InstitutionStatus> statuts, String recherche, UUID chargeDdrmId) {}
+    /** Filtre de la liste : statuts, recherche libre, dossiers portés par un chargé, groupe (D-104, sans égard à la casse). */
+    public record Filtre(Set<InstitutionStatus> statuts, String recherche, UUID chargeDdrmId, String groupe) {
+        public Filtre(Set<InstitutionStatus> statuts, String recherche, UUID chargeDdrmId) {
+            this(statuts, recherche, chargeDdrmId, null);
+        }
+    }
 
     /** Dossier numérique de l'institution pour les étapes 1 et 2 (CR-CERT Fig. 7.3). */
     public record Dossier(
@@ -159,10 +163,20 @@ public class InstitutionRegistryQueries {
                 cb.or(
                     cb.like(cb.lower(root.get(Institution_.name)), motif, '\\'),
                     cb.like(cb.lower(root.get(Institution_.acronym)), motif, '\\'),
-                    cb.like(cb.lower(root.get(Institution_.participantCode)), motif, '\\')
+                    cb.like(cb.lower(root.get(Institution_.participantCode)), motif, '\\'),
+                    cb.like(cb.lower(root.get(Institution_.groupName)), motif, '\\')
                 )
             );
         }
+        if (f.groupe() != null && !f.groupe().isBlank()) {
+            String groupe = f.groupe().trim().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
+            s = s.and((root, q, cb) -> cb.equal(cb.lower(root.get(Institution_.groupName)), groupe));
+        }
         return s;
+    }
+
+    /** Groupes déclarés au registre (D-104), triés : valeurs du filtre de la liste et suggestions de la saisie. */
+    public List<String> groupes() {
+        return institutions.groupes();
     }
 }

@@ -36,6 +36,9 @@ export type LiaisonVue = {
   bloquee?: boolean
   prochaineEcheance?: string | null
   dateCibleProduction?: string | null
+  /** D-104 : intitulé libre du projet et référence d'origine (reprise ; non servie au portail). */
+  intituleProjet?: string | null
+  referenceOrigine?: string | null
 }
 
 /**
@@ -70,6 +73,8 @@ export function versResume(v: LiaisonVue): LiaisonResume {
     tachesEnRetard: v.operationsEnRetard,
     prochaineEcheance: v.prochaineEcheance ?? null,
     dateCibleProduction: v.dateCibleProduction ?? null,
+    ...(v.intituleProjet ? { intituleProjet: v.intituleProjet } : {}),
+    ...(v.referenceOrigine ? { referenceOrigine: v.referenceOrigine } : {}),
   }
 }
 

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- D-104 : une institution peut conduire plusieurs liaisons actives, y compris du même type de projet (lots successifs,
+     nouveaux services, périmètres différents). L'index partiel uk_liaison_active (une liaison active par couple
+     institution et type) est retiré ; la liaison reçoit un intitulé libre et une référence d'origine facultative,
+     unique quand elle est renseignée, close ou non (reprise des projets d'un outil antérieur). -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="20261015000100-1" author="lot1">
+        <sql>DROP INDEX IF EXISTS uk_liaison_active;</sql>
+    </changeSet>
+
+    <changeSet id="20261015000100-2" author="lot1">
+        <addColumn tableName="liaison">
+            <column name="intitule_projet" type="varchar(200)"/>
+            <column name="reference_origine" type="varchar(50)"/>
+        </addColumn>
+        <sql>CREATE UNIQUE INDEX uk_liaison_reference_origine ON liaison (reference_origine) WHERE reference_origine IS NOT NULL;</sql>
+        <createIndex tableName="liaison" indexName="idx_liaison_institution">
+            <column name="institution_id"/>
+        </createIndex>
+    </changeSet>
+</databaseChangeLog>

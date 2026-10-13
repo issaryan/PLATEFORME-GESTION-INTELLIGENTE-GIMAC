@@ -27,6 +27,8 @@ export type Institution = {
   chargeDdrm: Personne | null
   conformite: string
   creeLe: string
+  /** Groupe ou maison mère (D-104) : chaque filiale reste une institution à part entière. */
+  groupe?: string | null
 }
 
 export type Adhesion = {
@@ -114,6 +116,7 @@ export type Candidature = {
   datePriseDeContact?: string | null
   originePriseDeContact?: string | null
   projetEnvisage?: string | null
+  groupe?: string | null
 }
 
 export type ConditionsAdhesion = {
@@ -125,4 +128,4 @@ export type ConditionsAdhesion = {
   compteCantonnement?: string | null
 }
 
-export type FiltreInstitutions = { statut?: StatutInstitution[]; recherche?: string; mesDossiers?: boolean; page: number; taille: number }
+export type FiltreInstitutions = { statut?: StatutInstitution[]; recherche?: string; mesDossiers?: boolean; groupe?: string; page: number; taille: number }

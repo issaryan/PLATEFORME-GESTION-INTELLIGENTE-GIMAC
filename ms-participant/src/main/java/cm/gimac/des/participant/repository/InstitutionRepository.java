@@ -69,4 +69,8 @@ public interface InstitutionRepository extends JpaRepository<Institution, UUID>,
     /** Clôtures (sans suite) depuis « depuis ». */
     @Query("select i.closedAt from Institution i where i.closedAt >= :depuis")
     List<java.time.Instant> cloturesDepuis(@Param("depuis") java.time.Instant depuis);
+
+    /** Groupes ou maisons mères déclarés (D-104), sans doublon, triés. */
+    @Query("select distinct i.groupName from Institution i where i.groupName is not null order by i.groupName")
+    List<String> groupes();
 }

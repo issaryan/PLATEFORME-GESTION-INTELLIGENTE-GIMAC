@@ -421,7 +421,7 @@ public class ParcoursCommandes {
 
     /**
      * Service supplémentaire : nouvelle liaison au cadrage sur la même institution, sans repasser
-     * par l'adhésion, hors unicité de la liaison principale ; le conducteur est à désigner.
+     * par l'adhésion, rattachée à la liaison principale ; le conducteur est à désigner.
      */
     public Liaison ouvrirServiceSupplementaire(UUID liaisonId, List<String> services, Acteur a) {
         Parcours origine = charger(liaisonId);
@@ -444,6 +444,8 @@ public class ParcoursCommandes {
             .cycleAptitude(0)
             .version(versions.findFirstByTypeProjetAndEtat(o.getTypeProjet(), EtatVersionReferentiel.PUBLIEE).orElse(o.getVersion()))
             .liaisonOrigineId(o.getId())
+            // Même projet, intitulé repris (D-104) ; la référence d'origine reste celle de la liaison principale.
+            .intituleProjet(o.getIntituleProjet())
             .definitionTypeProjet(o.getDefinitionTypeProjet());
         n = liaisons.saveAndFlush(n);
         ContractualScope scope = perimetres.save(new ContractualScope().dateDerivation(clock.instant()).sourceEventId("service-supplementaire:" + o.getId()).liaison(n));

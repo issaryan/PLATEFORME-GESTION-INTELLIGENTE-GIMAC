@@ -87,6 +87,8 @@ export function TableLiaisons({ liaisons, requete }: { liaisons: LiaisonResume[]
       render: (l) => (
         <span className="gm-col" style={{ gap: 'var(--gm-space-1)', textAlign: 'left' }}>
           <span style={{ whiteSpace: 'nowrap' }}><Link href={`/portail/liaisons/${l.id}`} mono>{l.reference}</Link></span>
+          {/* D-104 : plusieurs projets de l'institution, y compris du même type ; l'intitulé les distingue. */}
+          {l.intituleProjet ? <span className="gm-type-body-strong">{l.intituleProjet}</span> : null}
           <span className="gm-type-small">{typeProjet(l)}</span>
         </span>
       ),

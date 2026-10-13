@@ -199,7 +199,15 @@ public class LiaisonQueries {
             if (f.versionId() != null) p.add(cb.equal(racine.get(Liaison_.VERSION).get("id"), f.versionId()));
             if (f.actives()) p.add(cb.notEqual(racine.get(Liaison_.ETAT), EtatLiaison.CLOSE));
             if (f.recherche() != null && !f.recherche().isBlank()) {
-                p.add(cb.like(cb.lower(racine.get(Liaison_.INSTITUTION_NOM)), "%" + f.recherche().trim().toLowerCase(Locale.ROOT) + "%"));
+                // Institution, intitulé du projet ou référence d'origine (D-104 : plusieurs liaisons par institution).
+                String motif = "%" + f.recherche().trim().toLowerCase(Locale.ROOT) + "%";
+                p.add(
+                    cb.or(
+                        cb.like(cb.lower(racine.get(Liaison_.INSTITUTION_NOM)), motif),
+                        cb.like(cb.lower(racine.get(Liaison_.INTITULE_PROJET)), motif),
+                        cb.like(cb.lower(racine.get(Liaison_.REFERENCE_ORIGINE)), motif)
+                    )
+                );
             }
             if (f.statut() != null || (f.etapes() != null && !f.etapes().isEmpty()) || f.bloquees() || f.sansConducteur()) {
                 Subquery<UUID> sq = requete.subquery(UUID.class);

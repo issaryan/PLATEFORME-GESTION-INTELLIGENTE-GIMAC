@@ -81,9 +81,25 @@ public class Liaison implements Serializable {
     @OneToOne(fetch = FetchType.LAZY, mappedBy = "liaison")
     private ContractualScope contractualScope;
 
-    /** Liaison d'origine d'un service supplémentaire (rang 35, D-57) ; hors unicité des liaisons actives. */
+    /** Liaison d'origine d'un service supplémentaire (rang 35, D-57). */
     @Column(name = "liaison_origine_id")
     private UUID liaisonOrigineId;
+
+    /**
+     * Intitulé libre du projet (D-104), par exemple « Projet Mobile BCEG Lot 1 » : une institution peut conduire
+     * plusieurs projets actifs, y compris du même type ; l'intitulé les distingue.
+     */
+    @Size(max = 200)
+    @Column(name = "intitule_projet", length = 200)
+    private String intituleProjet;
+
+    /**
+     * Référence du projet dans l'outil d'où il est repris (D-104), par exemple « 202604-BCEG-01 » ; facultative,
+     * unique quand elle est renseignée (index partiel uk_liaison_reference_origine).
+     */
+    @Size(max = 50)
+    @Column(name = "reference_origine", length = 50)
+    private String referenceOrigine;
 
     /**
      * Définition du type de projet (D-91), lue par la même colonne : son modèle porte les comportements du type
@@ -134,6 +150,32 @@ public class Liaison implements Serializable {
 
     public Liaison liaisonOrigineId(UUID id) {
         this.liaisonOrigineId = id;
+        return this;
+    }
+
+    public String getIntituleProjet() {
+        return this.intituleProjet;
+    }
+
+    public void setIntituleProjet(String intituleProjet) {
+        this.intituleProjet = intituleProjet;
+    }
+
+    public Liaison intituleProjet(String intituleProjet) {
+        this.intituleProjet = intituleProjet;
+        return this;
+    }
+
+    public String getReferenceOrigine() {
+        return this.referenceOrigine;
+    }
+
+    public void setReferenceOrigine(String referenceOrigine) {
+        this.referenceOrigine = referenceOrigine;
+    }
+
+    public Liaison referenceOrigine(String referenceOrigine) {
+        this.referenceOrigine = referenceOrigine;
         return this;
     }
 

@@ -161,6 +161,8 @@ export interface ServicePortail {
 /** Registre des institutions et étapes 1 et 2 du parcours (MS-PARTICIPANT, D-57). */
 export interface ServiceParticipant {
   listerInstitutions(f: FiltreInstitutions): Promise<Page<Institution>>
+  /** Groupes ou maisons mères déclarés (D-104), triés : filtre de la liste. */
+  groupes(): Promise<string[]>
   indicateurs(): Promise<IndicateursDdrm>
   dossier(id: string): Promise<DossierInstitution>
   prerequis(id: string, etat: StatutInstitution): Promise<Prerequis[]>

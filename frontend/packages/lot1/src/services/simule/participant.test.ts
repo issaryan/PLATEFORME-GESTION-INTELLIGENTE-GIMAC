@@ -20,6 +20,16 @@ describe('participantSimule', () => {
     expect((await s.listerInstitutions({ page: 1, taille: 50, mesDossiers: true })).total).toBe(9)
     expect((await s.listerInstitutions({ page: 2, taille: 5 })).contenu).toHaveLength(4)
   })
+  it('D-104 : filiales d’un groupe, filtre par groupe sans égard à la casse, groupes déclarés, saisie du groupe', async () => {
+    const s = svc()
+    expect(await s.groupes()).toEqual(['Groupe Banque BD'])
+    expect((await s.listerInstitutions({ page: 1, taille: 50, groupe: ' groupe  banque bd ' })).contenu.map((i) => i.id)).toEqual(['INST-0017', 'INST-0061'])
+    expect((await s.listerInstitutions({ page: 1, taille: 50, recherche: 'banque bd' })).total).toBe(2)
+    const f = await s.enregistrer({ nom: 'Filiale Tchad', pays: 'TD', categorie: 'BANQUE', groupe: '  Groupe  Banque BD ' })
+    expect(f.groupe).toBe('Groupe Banque BD')
+    await s.modifier(f.id, { nom: 'Filiale Tchad', pays: 'TD', categorie: 'BANQUE', groupe: 'Groupe Sahel' })
+    expect(await s.groupes()).toEqual(['Groupe Banque BD', 'Groupe Sahel'])
+  })
   it('indicateurs de la DDRM', async () => {
     const { fluxParMois, ...compteurs } = await svc().indicateurs()
     expect(compteurs).toEqual({ candidats: 3, piecesAExaminer: 1, propositionsEnAttente: 0, adherents: 2, enHomologation: 2, closSansSuite: 0 })

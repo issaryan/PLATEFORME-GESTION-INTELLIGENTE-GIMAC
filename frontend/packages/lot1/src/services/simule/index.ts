@@ -148,8 +148,10 @@ export function servicesSimules(o: OptionsSimulation = {}): ServicesSimules {
     if (!inst || (inst.statut !== 'ADHERENT' && inst.statut !== 'EN_HOMOLOGATION')) {
       throw new ApiError(409, 'HOM_LIAISON_INSTITUTION_NOT_ELIGIBLE', "L'institution n'est ni adhérente ni en homologation.", correlation(), { statut: inst?.statut ?? null })
     }
-    if (liaisons.some((l) => l.institutionId === e.institutionId && l.typeProjet === e.typeProjet && l.etat !== 'CLOSE')) {
-      throw refus(409, 'HOM_LIAISON_DUPLICATE', 'Une liaison est déjà ouverte pour cette institution et ce type de projet.')
+    // D-104 : plusieurs liaisons actives par institution, y compris du même type ; seule la référence d'origine reste unique.
+    const referenceOrigine = e.referenceOrigine?.trim() || null
+    if (referenceOrigine && liaisons.some((l) => l.referenceOrigine === referenceOrigine)) {
+      throw refus(409, 'HOM_LIAISON_REFERENCE_ORIGINE_DUPLICATE', "Cette référence d'origine est déjà portée par une autre liaison.")
     }
     const chef = conducteur(e.chefDeProjetId)
     const banque = e.banquePartenaireId ? participant.pont.institution(e.banquePartenaireId) : undefined
@@ -162,6 +164,7 @@ export function servicesSimules(o: OptionsSimulation = {}): ServicesSimules {
       banquePartenaireId: banque?.id ?? null, banquePartenaireNom: banque?.nom ?? null, dateOuverture: maintenant().slice(0, 10), motifEtat: null,
       versionId: version.id, versionNumero: version.numero ?? 1, phaseCourante: 'CADRAGE', couvertureCertification: D.cov(0, 3), couvertureMiseEnService: D.cov(0, 2),
       operationsEnRetard: 0, etatsParcourus: [], transitionsPermises: ['EN_HOMOLOGATION'], actionsPermises: ['DESIGNER_CHEF_DE_PROJET'], perimetre: D.PERIMETRES[e.typeProjet] ?? ['TRANSVERSE'],
+      intituleProjet: e.intituleProjet?.trim() || null, referenceOrigine,
     }
     const l = { ...base, intervenants: D.intervenantsDe(base) }
     liaisons.push(l)

@@ -111,7 +111,9 @@ class LiaisonQueriesTest {
         jakarta.persistence.criteria.CriteriaBuilder cb = org.mockito.Mockito.mock(jakarta.persistence.criteria.CriteriaBuilder.class);
         LiaisonQueries.specification(new LiaisonQueries.Filtre(EtatLiaison.OUVERTE, TypeProjet.PAIEMENT_MOBILE, UUID.randomUUID(), " EP ", UUID.randomUUID())).toPredicate(racine, requete, cb);
         org.mockito.Mockito.verify(cb, org.mockito.Mockito.times(4)).equal(any(), any(Object.class));
-        org.mockito.Mockito.verify(cb).like(any(), eq("%ep%"));
+        // D-104 : institution, intitulé du projet ou référence d'origine.
+        org.mockito.Mockito.verify(cb, org.mockito.Mockito.times(3)).like(any(), eq("%ep%"));
+        org.mockito.Mockito.verify(cb).or(any(), any(), any());
         org.mockito.Mockito.clearInvocations(cb);
         LiaisonQueries.specification(new LiaisonQueries.Filtre(null, null, null, " ", null)).toPredicate(racine, requete, cb);
         org.mockito.Mockito.verify(cb, org.mockito.Mockito.never()).equal(any(), any(Object.class));

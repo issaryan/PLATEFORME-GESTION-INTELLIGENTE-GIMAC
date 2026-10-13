@@ -230,6 +230,8 @@ function Suivi({ d }: { d: DossierLiaison }) {
         titre={t('pp.suivi.titre', { reference: d.reference })}
         sousTitre={
           <span className="gm-row">
+            {/* D-104 : intitulé du projet, qui distingue les liaisons de l'institution. */}
+            {d.intituleProjet ? <><span>{d.intituleProjet}</span><span aria-hidden="true">·</span></> : null}
             <span>{typeProjet(d)}</span>
             <span aria-hidden="true">·</span>
             <span>{d.institutionNom}</span>

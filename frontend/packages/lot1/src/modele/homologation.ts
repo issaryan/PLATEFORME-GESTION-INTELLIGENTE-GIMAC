@@ -147,9 +147,16 @@ export type Liaison = Permitted & {
   perimetre?: string[]
   /** Institution, banque partenaire et conducteur de projet de la liaison. */
   intervenants?: Intervenant[]
+  /** D-104 : intitulé libre du projet et référence d'origine (reprise). */
+  intituleProjet?: string | null
+  referenceOrigine?: string | null
 }
 export type LiaisonPilotage = Liaison & { delaiConsomme: number; delaiStandard: number }
-export type OuvertureLiaison = { institutionId: string; typeProjet: TypeProjet; chefDeProjetId: string; banquePartenaireId?: string | null }
+export type OuvertureLiaison = {
+  institutionId: string; typeProjet: TypeProjet; chefDeProjetId: string; banquePartenaireId?: string | null
+  /** D-104 : intitulé libre et référence d'origine facultatifs. */
+  intituleProjet?: string | null; referenceOrigine?: string | null
+}
 
 /** Rôle d'un intervenant de la liaison au cadrage (étape 3 du parcours, D-57, D-58). */
 export type RoleIntervenant = 'INSTITUTION' | 'BANQUE_PARTENAIRE' | 'CHEF_DE_PROJET'

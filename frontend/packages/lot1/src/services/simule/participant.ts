@@ -49,12 +49,19 @@ const adhesionVide = (): Adhesion => ({
   dateAdhesion: null, prononceePar: null, prononceeLe: null, motifCloture: null, closLe: null,
 })
 
-function nouvelEtat(c: Candidature, statut: StatutInstitution = 'CANDIDAT', identifiant?: string, charge: ActeurParticipant = CHARGE_DEMO): Etat {
+/** Groupe (D-104) comme le service : espaces réduits, vide ramené à l'absence de valeur. */
+const groupe = (v: string | null | undefined): string | null => {
+  const s = (v ?? '').replace(/\s+/g, ' ').trim()
+  return s === '' ? null : s
+}
+
+function nouvelEtat(c: Candidature,statut: StatutInstitution = 'CANDIDAT', identifiant?: string, charge: ActeurParticipant = CHARGE_DEMO): Etat {
   const institution: Institution = {
     id: identifiant ?? id('INS'), nom: c.nom, sigle: c.sigle ?? null, pays: c.pays, categorie: c.categorie, statut, codeParticipant: null,
     codeIdentification: c.codeIdentification ?? null, codeBanqueBeac: c.codeBanqueBeac ?? null, modeAdhesion: null,
     datePriseDeContact: c.datePriseDeContact ?? maintenant().slice(0, 10), originePriseDeContact: c.originePriseDeContact ?? null,
     projetEnvisage: c.projetEnvisage ?? null, chargeDdrm: { id: charge.id, nom: charge.nom }, conformite: 'A_REGULARISER', creeLe: maintenant(),
+    groupe: groupe(c.groupe),
   }
   const pieces = PIECES.map(([code, libelle, obligatoire]) => ({
     id: id('PIE'), code, libelle, obligatoire, etat: 'ATTENDUE' as const, documentId: null, documentSha256: null, nomFichier: null,
@@ -147,6 +154,8 @@ export function participantSimule(attendreJeu: <T>(v: T | (() => T)) => Promise<
     admise('Banque B', 'INST-0017', 'BANQUE', 'CM', 'ACTIF', 'BQ-B-017', 'LIA-2025-102'),
     admise('Banque D', 'INST-0061', 'BANQUE', 'CG', 'SUSPENDU', 'BQ-D-061', 'LIA-2026-021'),
   )
+  // D-104 : deux filiales d'un même groupe, chacune avec son code membre.
+  etats.filter((e) => e.institution.id === 'INST-0017' || e.institution.id === 'INST-0061').forEach((e) => { e.institution.groupe = 'Groupe Banque BD' })
 
   // Démonstration continue (D-98) : registre gardé d'un chargement à l'autre.
   try {
@@ -262,11 +271,13 @@ export function participantSimule(attendreJeu: <T>(v: T | (() => T)) => Promise<
         const l = etats
           .map((e) => e.institution)
           .filter((i) => !f.statut?.length || f.statut.includes(i.statut))
-          .filter((i) => !r || [i.nom, i.sigle, i.codeParticipant].some((v) => (v ?? '').toLowerCase().includes(r)))
+          .filter((i) => !r || [i.nom, i.sigle, i.codeParticipant, i.groupe].some((v) => (v ?? '').toLowerCase().includes(r)))
           .filter((i) => !f.mesDossiers || i.chargeDdrm?.id === acteur.id)
+          .filter((i) => !groupe(f.groupe) || (i.groupe ?? '').toLowerCase() === groupe(f.groupe)?.toLowerCase())
         const debut = (f.page - 1) * f.taille
         return { contenu: l.slice(debut, debut + f.taille), total: l.length }
       }),
+    groupes: () => attendre(() => [...new Set(etats.map((e) => e.institution.groupe).filter((g): g is string => !!g))].sort((a, b) => a.localeCompare(b))),
     indicateurs: () =>
       attendre((): IndicateursDdrm => {
         const compte = (s: StatutInstitution) => etats.filter((e) => e.institution.statut === s).length
@@ -301,6 +312,7 @@ export function participantSimule(attendreJeu: <T>(v: T | (() => T)) => Promise<
         Object.assign(e.institution, {
           nom: c.nom, sigle: c.sigle ?? null, pays: c.pays, categorie: c.categorie, codeIdentification: c.codeIdentification ?? null,
           codeBanqueBeac: c.codeBanqueBeac ?? null, originePriseDeContact: c.originePriseDeContact ?? null, projetEnvisage: c.projetEnvisage ?? null,
+          groupe: groupe(c.groupe),
           ...(c.datePriseDeContact ? { datePriseDeContact: c.datePriseDeContact } : {}),
         })
         return e.institution

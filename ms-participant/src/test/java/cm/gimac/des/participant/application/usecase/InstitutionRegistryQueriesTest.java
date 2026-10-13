@@ -82,7 +82,24 @@ class InstitutionRegistryQueriesTest {
         );
         s.toPredicate(root, q, cb);
         verify(cb).equal(any(), org.mockito.ArgumentMatchers.eq(charge));
-        verify(cb, org.mockito.Mockito.times(3)).like(any(), org.mockito.ArgumentMatchers.eq("%50\\%\\_banque%"), org.mockito.ArgumentMatchers.eq('\\'));
+        // Nom, sigle, code participant et groupe (D-104).
+        verify(cb, org.mockito.Mockito.times(4)).like(any(), org.mockito.ArgumentMatchers.eq("%50\\%\\_banque%"), org.mockito.ArgumentMatchers.eq('\\'));
+    }
+
+    @Test
+    @DisplayName("D-104 : filtre par groupe, sans égard à la casse ni aux espaces ; groupes déclarés lus au dépôt")
+    @SuppressWarnings("unchecked")
+    void filtreGroupe() {
+        Root<Institution> root = org.mockito.Mockito.mock(Root.class, Answers.RETURNS_DEEP_STUBS);
+        CriteriaQuery<?> q = org.mockito.Mockito.mock(CriteriaQuery.class);
+        CriteriaBuilder cb = org.mockito.Mockito.mock(CriteriaBuilder.class, Answers.RETURNS_DEEP_STUBS);
+        InstitutionRegistryQueries.specification(new InstitutionRegistryQueries.Filtre(null, null, null, "  Groupe   AFRILAND ")).toPredicate(root, q, cb);
+        verify(cb).equal(any(), org.mockito.ArgumentMatchers.eq("groupe afriland"));
+        org.mockito.Mockito.clearInvocations(cb);
+        InstitutionRegistryQueries.specification(new InstitutionRegistryQueries.Filtre(null, null, null, " ")).toPredicate(root, q, cb);
+        verify(cb, org.mockito.Mockito.never()).equal(any(), any(Object.class));
+        when(institutions.groupes()).thenReturn(List.of("Groupe Afriland", "Groupe BGFI"));
+        assertThat(queries.groupes()).containsExactly("Groupe Afriland", "Groupe BGFI");
     }
 
     @Test

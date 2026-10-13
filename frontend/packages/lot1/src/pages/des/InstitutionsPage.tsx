@@ -4,7 +4,7 @@ import { useSearchParams } from 'react-router'
 import { ResourceList, Tabs, type ListQuery } from '@gimac/design-system'
 import { aPermission, usePermissions } from '@gimac/socle'
 import type { FiltreInstitutions, Institution, StatutInstitution } from '../../modele/participant'
-import { useInstitutions } from '../../hooks/participant'
+import { useGroupesInstitutions, useInstitutions } from '../../hooks/participant'
 import { useDescripteurDS } from '../../ressources/descripteur'
 import { creerInstitutionDescriptor } from '../../ressources/institution'
 import { etatListe } from './liaisons/communs'
@@ -23,7 +23,9 @@ export default function InstitutionsPage() {
   const filtre = useMemo(() => ({ ...requete, mesDossiers: onglet === 'mesDossiers' }), [requete, onglet])
 
   const ouverture = aPermission(permissions, 'HOM_LIAISON_OPEN') && aPermission(permissions, 'HOM_PROJECT_DESIGNATE')
-  const lot = useMemo(() => creerInstitutionDescriptor({ t, ouvertureLiaison: ouverture }), [t, ouverture])
+  // D-104 : filtre par groupe, offert dès qu'un groupe est déclaré au registre.
+  const groupes = useGroupesInstitutions().data
+  const lot = useMemo(() => creerInstitutionDescriptor({ t, ouvertureLiaison: ouverture, groupes }), [t, ouverture, groupes])
   const definir = useRef(setParams)
   definir.current = setParams
   const pilotes = useMemo(() => ({ openForm: (mode: 'create' | 'edit') => mode === 'create' && definir.current({ formulaire: 'nouvelle' }) }), [])
@@ -32,7 +34,10 @@ export default function InstitutionsPage() {
 
   const lignes: Institution[] = liste.data?.contenu ?? []
   const surRequete = (q: ListQuery) =>
-    setRequete({ page: q.page, taille: q.pageSize, recherche: q.q, statut: q.filters?.statut ? [q.filters.statut as StatutInstitution] : undefined })
+    setRequete({
+      page: q.page, taille: q.pageSize, recherche: q.q, statut: q.filters?.statut ? [q.filters.statut as StatutInstitution] : undefined,
+      groupe: q.filters?.groupe ? String(q.filters.groupe) : undefined,
+    })
   return (
     <div className="gm-col">
       {aPermission(permissions, 'PAR_ADHESION_INSTRUCT') ? (

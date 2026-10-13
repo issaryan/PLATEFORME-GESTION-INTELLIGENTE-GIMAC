@@ -18,6 +18,8 @@ export type OptionsInstitution = {
    * offrir ni l'approbation ni le refus ; MS-PARTICIPANT les refuse de toute façon (403 PAR_SEPARATION_OF_DUTIES).
    */
   moi?: string
+  /** Groupes déclarés au registre (D-104) : valeurs du filtre de la liste. */
+  groupes?: string[]
 }
 
 /**
@@ -47,7 +49,7 @@ export const categorieOptions: Option[] = [
 ].map((v) => ({ value: v, label: `institution.categorie.${v}` }))
 export const modeOptions: Option[] = ['DIRECT', 'INDIRECT'].map((v) => ({ value: v, label: `institution.mode.${v}` }))
 
-export function creerInstitutionDescriptor({ t, ouvertureLiaison }: OptionsInstitution): ResourceDescriptorLot1<Institution, Services> {
+export function creerInstitutionDescriptor({ t, ouvertureLiaison, groupes }: OptionsInstitution): ResourceDescriptorLot1<Institution, Services> {
   return {
     key: 'institution',
     label: { singular: 'institution.singulier', plural: 'institution.pluriel', gender: 'f' },
@@ -61,6 +63,12 @@ export function creerInstitutionDescriptor({ t, ouvertureLiaison }: OptionsInsti
         render: (_v, r) => <Link href={`/des/institutions/${r.id}`}>{r.nom}</Link>,
       },
       { name: 'sigle', label: 'institution.sigle', kind: 'text', inDetail: true, inForm: true },
+      // D-104 : filiales. Chaque filiale est une institution à part entière ; le groupe (ou la maison mère) les rassemble.
+      {
+        name: 'groupe', label: 'institution.groupe', kind: 'text', inList: true, inDetail: true, inForm: true, help: 'institution.groupe.aide',
+        filterable: !!groupes?.length, options: (groupes ?? []).map((g) => ({ value: g, label: g })),
+        render: (_v, r) => r.groupe ?? <span className="gm-field-help">{t('institution.groupe.aucun')}</span>,
+      },
       { name: 'categorie', label: 'institution.categorie', kind: 'select', required: true, options: categorieOptions, inList: true, inDetail: true, inForm: true,
         render: (_v, r) => t(`institution.categorie.${r.categorie}`) },
       { name: 'pays', label: 'institution.pays', kind: 'select', required: true, options: paysOptions, inList: true, inDetail: true, inForm: true,

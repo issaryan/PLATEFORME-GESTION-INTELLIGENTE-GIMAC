@@ -88,11 +88,35 @@ class CadrageLiaisonIT extends AbstractHomologationIT {
             });
         }
 
-        // Seconde liaison active du même type : refusée.
+        // D-104 : seconde liaison active du même type (lot suivant), avec intitulé et référence d'origine.
+        String lot2 = "{\"institutionId\":\"%s\",\"typeProjet\":\"PAIEMENT_MOBILE\",\"chefDeProjetId\":\"%s\",\"intituleProjet\":\"Projet Mobile Cadrage Lot 2\",\"referenceOrigine\":\"202604-CAD-02\"}".formatted(
+            ep,
+            CollaboratorStubAdapter.CONDUCTEUR_2
+        );
+        String corpsLot2 = mvc
+            .perform(post("/api/v1/liaisons").with(chefDes()).contentType(MediaType.APPLICATION_JSON).content(lot2))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.intituleProjet").value("Projet Mobile Cadrage Lot 2"))
+            .andExpect(jsonPath("$.referenceOrigine").value("202604-CAD-02"))
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+        String idLot2 = JsonPath.read(corpsLot2, "$.id");
+        assertThat(idLot2).isNotEqualTo(id);
         mvc
-            .perform(post("/api/v1/liaisons").with(chefDes()).contentType(MediaType.APPLICATION_JSON).content(ouverture(ep, TypeProjet.PAIEMENT_MOBILE, CollaboratorStubAdapter.CONDUCTEUR_2)))
+            .perform(get("/api/v1/liaisons").param("institutionId", ep.toString()).param("actives", "true").with(chefDes()))
+            .andExpect(jsonPath("$.total").value(2));
+        mvc
+            .perform(get("/api/v1/liaisons").param("recherche", "cad-02").with(chefDes()))
+            .andExpect(jsonPath("$.contenu[*].id").value(org.hamcrest.Matchers.contains(idLot2)));
+        // La référence d'origine reste unique ; mal formée, elle est refusée à l'entrée.
+        mvc
+            .perform(post("/api/v1/liaisons").with(chefDes()).contentType(MediaType.APPLICATION_JSON).content(lot2))
             .andExpect(status().isConflict())
-            .andExpect(jsonPath("$.code").value("HOM_LIAISON_DUPLICATE"));
+            .andExpect(jsonPath("$.code").value("HOM_LIAISON_REFERENCE_ORIGINE_DUPLICATE"));
+        mvc
+            .perform(post("/api/v1/liaisons").with(chefDes()).contentType(MediaType.APPLICATION_JSON).content(lot2.replace("202604-CAD-02", "réf ?")))
+            .andExpect(status().isBadRequest());
 
         // Redésignation par un chef de département ; l'ingénieur sans ce droit ne désigne pas.
         String designation = "{\"chefDeProjetId\":\"" + CollaboratorStubAdapter.CONDUCTEUR_2 + "\",\"motif\":\"Réaffectation\"}";

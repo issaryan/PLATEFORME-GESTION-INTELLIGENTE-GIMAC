@@ -203,6 +203,15 @@ public class Institution implements Serializable {
     @JsonIgnoreProperties(value = { "settlementBank", "sponsorBank" }, allowSetters = true)
     private Institution sponsorBank;
 
+    /**
+     * Groupe ou maison mère (D-104), facultatif, par exemple « Groupe Afriland First Bank » : chaque filiale est une
+     * institution à part entière (son propre code membre) ; le groupe les rassemble. Libellé et non référence à une
+     * institution du registre : la maison mère est souvent hors CEMAC ou non participante.
+     */
+    @Size(max = 100)
+    @Column(name = "group_name", length = 100)
+    private String groupName;
+
     // jhipster-needle-entity-add-field - JHipster will add fields here
 
     public UUID getId() {
@@ -592,6 +601,19 @@ public class Institution implements Serializable {
 
     public Institution sponsorBank(Institution institution) {
         this.setSponsorBank(institution);
+        return this;
+    }
+
+    public String getGroupName() {
+        return this.groupName;
+    }
+
+    public void setGroupName(String groupName) {
+        this.groupName = groupName;
+    }
+
+    public Institution groupName(String groupName) {
+        this.setGroupName(groupName);
         return this;
     }
 

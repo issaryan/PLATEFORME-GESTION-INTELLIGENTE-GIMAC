@@ -13,6 +13,7 @@ import cm.gimac.des.homologation.domain.parcours.StatutParcours;
 import cm.gimac.des.homologation.domain.parcours.Vues;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.net.URI;
 import java.time.LocalDate;
@@ -83,7 +84,11 @@ public class LiaisonsCadrageResource {
         Boolean bloquee,
         LocalDate prochaineEcheance,
         LocalDate dateCibleProduction,
-        UUID liaisonOrigineId
+        UUID liaisonOrigineId,
+        /** Intitulé libre du projet (D-104) : distingue les liaisons d'une même institution. */
+        String intituleProjet,
+        /** Référence du projet dans l'outil d'origine (D-104, reprise) ; non servie au portail. */
+        String referenceOrigine
     ) {
         static LiaisonVue de(LiaisonQueries.Fiche f) {
             Liaison l = f.liaison();
@@ -97,7 +102,8 @@ public class LiaisonsCadrageResource {
                 r == null ? 0 : (int) r.tachesEnRetard(),
                 List.of(l.getEtat()), f.perimetre(), f.intervenants(), List.of(), f.actionsPermises(),
                 r == null ? null : r.reference(), r == null ? null : r.statut(), r == null ? null : r.etapeCourante(), r == null ? null : r.bloquee(),
-                r == null ? null : r.prochaineEcheance(), r == null ? null : r.dateCibleProduction(), l.getLiaisonOrigineId()
+                r == null ? null : r.prochaineEcheance(), r == null ? null : r.dateCibleProduction(), l.getLiaisonOrigineId(),
+                l.getIntituleProjet(), l.getReferenceOrigine()
             );
         }
 
@@ -107,14 +113,26 @@ public class LiaisonsCadrageResource {
             return new LiaisonVue(
                 v.id(), v.typeProjet(), v.typeProjetLibelle(), v.institutionId(), v.institutionNom(), v.etat(), null, v.chefDeProjetNom(), null, null, v.dateOuverture(), v.motifEtat(),
                 v.versionId(), v.versionNumero(), v.phaseCourante(), v.couvertureCertification(), v.couvertureMiseEnService(), v.operationsEnRetard(), v.etatsParcourus(),
-                v.perimetre(), v.intervenants(), List.of(), List.of(), v.reference(), v.statut(), v.etapeCourante(), v.bloquee(), v.prochaineEcheance(), v.dateCibleProduction(), v.liaisonOrigineId()
+                v.perimetre(), v.intervenants(), List.of(), List.of(), v.reference(), v.statut(), v.etapeCourante(), v.bloquee(), v.prochaineEcheance(), v.dateCibleProduction(), v.liaisonOrigineId(),
+                v.intituleProjet(), null
             );
         }
     }
 
     public record PageVue<T>(List<T> contenu, long total) {}
 
-    public record OuvertureRequest(@NotNull UUID institutionId, @NotNull TypeProjet typeProjet, @NotNull UUID chefDeProjetId, UUID banquePartenaireId) {}
+    /**
+     * Ouverture (D-104) : intitulé libre facultatif ; référence d'origine facultative, unique, en lettres, chiffres,
+     * tirets, points, barres obliques et soulignés (par exemple « 202604-BCEG-01 »).
+     */
+    public record OuvertureRequest(
+        @NotNull UUID institutionId,
+        @NotNull TypeProjet typeProjet,
+        @NotNull UUID chefDeProjetId,
+        UUID banquePartenaireId,
+        @Size(max = 200) String intituleProjet,
+        @Size(max = 50) @Pattern(regexp = "^\\s*[A-Za-z0-9][A-Za-z0-9._/-]*\\s*$") String referenceOrigine
+    ) {}
 
     public record DesignationRequest(@NotNull UUID chefDeProjetId, @Size(max = 500) String motif) {}
 
@@ -166,7 +184,10 @@ public class LiaisonsCadrageResource {
     @PostMapping
     @PreAuthorize("hasAuthority('HOM_LIAISON_OPEN')")
     public ResponseEntity<LiaisonVue> ouvrir(@Valid @RequestBody OuvertureRequest r, Authentication auth) {
-        Liaison l = useCase.ouvrir(new OpenLiaisonCommand(r.institutionId(), r.typeProjet(), r.chefDeProjetId(), r.banquePartenaireId()), acteur(auth));
+        Liaison l = useCase.ouvrir(
+            new OpenLiaisonCommand(r.institutionId(), r.typeProjet(), r.chefDeProjetId(), r.banquePartenaireId(), r.intituleProjet(), r.referenceOrigine()),
+            acteur(auth)
+        );
         return ResponseEntity.created(URI.create("/api/v1/liaisons/" + l.getId())).body(LiaisonVue.de(queries.fiche(l.getId(), permissions(auth))));
     }
 

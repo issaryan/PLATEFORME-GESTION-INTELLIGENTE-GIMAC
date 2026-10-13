@@ -47,14 +47,19 @@ class JourPasseOuPresentTest {
     @Test
     @DisplayName("Requête de candidature : codes normalisés avant validation, champs vides ramenés à null")
     void normalisation() {
-        var r = new InstitutionRequests.CandidatureRequest("  Banque  ", "", "CM", null, " bdlg ga li ", "cm 001", null, "  ", "");
+        var r = new InstitutionRequests.CandidatureRequest("  Banque  ", "", "CM", null, " bdlg ga li ", "cm 001", null, "  ", "", "  ");
         assertThat(r.codeIdentification()).isEqualTo("BDLGGALI");
         assertThat(r.codeBanqueBeac()).isEqualTo("CM001");
         assertThat(r.sigle()).isNull();
         assertThat(r.originePriseDeContact()).isNull();
         assertThat(r.projetEnvisage()).isNull();
+        assertThat(r.groupe()).isNull();
+        // D-104 : groupe sans espaces superflus, repris dans la commande.
+        var filiale = new InstitutionRequests.CandidatureRequest("Filiale", null, "CM", null, null, null, null, null, null, "  Groupe \t Afriland  ");
+        assertThat(filiale.groupe()).isEqualTo("Groupe Afriland");
+        assertThat(filiale.commande().groupe()).isEqualTo("Groupe Afriland");
         try (ValidatorFactory f = Validation.buildDefaultValidatorFactory()) {
-            var futur = new InstitutionRequests.CandidatureRequest("B", null, "CM", null, null, null, LocalDate.now(JourPasseOuPresent.FUSEAU).plusDays(1), null, null);
+            var futur = new InstitutionRequests.CandidatureRequest("B", null, "CM", null, null, null, LocalDate.now(JourPasseOuPresent.FUSEAU).plusDays(1), null, null, null);
             assertThat(f.getValidator().validate(futur)).extracting(c -> c.getPropertyPath().toString()).contains("datePriseDeContact");
         }
     }

@@ -14,7 +14,7 @@ export type ErreurChamp = { cle: string; valeurs?: Record<string, unknown> }
 
 export const BIC = /^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$/
 export const CODE_BEAC = /^[A-Z0-9]+$/
-export const LONGUEURS: Partial<Record<ChampCandidature, number>> = { nom: 255, sigle: 50, codeBanqueBeac: 10, originePriseDeContact: 255, projetEnvisage: 1000 }
+export const LONGUEURS: Partial<Record<ChampCandidature, number>> = { nom: 255, sigle: 50, codeBanqueBeac: 10, originePriseDeContact: 255, projetEnvisage: 1000, groupe: 100 }
 
 const ISO = /^(\d{4})-(\d{2})-(\d{2})$/
 
@@ -48,6 +48,8 @@ export const candidature = (v: Record<string, unknown>): Candidature => ({
   datePriseDeContact: dateContact(v.datePriseDeContact) ?? null,
   originePriseDeContact: texte(v.originePriseDeContact),
   projetEnvisage: texte(v.projetEnvisage),
+  // D-104 : groupe ou maison mère, espaces réduits comme le service.
+  groupe: texte(typeof v.groupe === 'string' ? v.groupe.replace(/\s+/g, ' ') : v.groupe),
 })
 
 const PAYS = new Set(paysOptions.map((o) => o.value))

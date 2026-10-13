@@ -141,19 +141,36 @@ class OpenLiaisonServiceTest {
     }
 
     @Test
-    @DisplayName("Seconde liaison active pour la même institution et le même type : HOM_LIAISON_DUPLICATE, rien créé")
-    void doublon() {
-        when(liaisons.existsByInstitutionIdAndTypeProjetAndEtatNotAndLiaisonOrigineIdIsNull(EP_A, TypeProjet.PAIEMENT_MOBILE, EtatLiaison.CLOSE)).thenReturn(true);
-        refus(() -> service.ouvrir(new OpenLiaisonCommand(EP_A, TypeProjet.PAIEMENT_MOBILE, CONDUCTEUR, null), CHEF), "HOM_LIAISON_DUPLICATE");
+    @DisplayName("D-104 : deux liaisons actives du même type pour la même institution, distinguées par l'intitulé")
+    void plusieursLiaisonsDuMemeType() {
+        Liaison lot1 = service.ouvrir(new OpenLiaisonCommand(EP_A, TypeProjet.PAIEMENT_MOBILE, CONDUCTEUR, null, " Projet Mobile EP A Lot 1 ", null), CHEF);
+        Liaison lot2 = service.ouvrir(new OpenLiaisonCommand(EP_A, TypeProjet.PAIEMENT_MOBILE, CONDUCTEUR, null, "Projet Mobile EP A Lot 2", "  "), CHEF);
+        assertThat(lot1.getId()).isNotEqualTo(lot2.getId());
+        assertThat(lot1.getIntituleProjet()).isEqualTo("Projet Mobile EP A Lot 1");
+        assertThat(lot2.getIntituleProjet()).isEqualTo("Projet Mobile EP A Lot 2");
+        assertThat(lot2.getReferenceOrigine()).isNull();
+        verify(liaisons, never()).existsByReferenceOrigine(any());
+        verify(outbox, times(2)).publish(eq("liaison"), any(UUID.class), eq(LiaisonOpenedPayload.TYPE), any());
+    }
+
+    @Test
+    @DisplayName("D-104 : référence d'origine retenue sans espaces ; déjà portée par une liaison : HOM_LIAISON_REFERENCE_ORIGINE_DUPLICATE, rien créé")
+    void referenceOrigine() {
+        Liaison l = service.ouvrir(new OpenLiaisonCommand(EP_A, TypeProjet.PAIEMENT_MOBILE, CONDUCTEUR, null, "Projet Mobile", " 202604-BCEG-01 "), CHEF);
+        assertThat(l.getReferenceOrigine()).isEqualTo("202604-BCEG-01");
+        org.mockito.Mockito.clearInvocations(liaisons, outbox);
+        when(liaisons.existsByReferenceOrigine("202604-BCEG-01")).thenReturn(true);
+        refus(() -> service.ouvrir(new OpenLiaisonCommand(EP_A, TypeProjet.CARTE_INTERBANCAIRE, CONDUCTEUR, null, null, "202604-BCEG-01"), CHEF), "HOM_LIAISON_REFERENCE_ORIGINE_DUPLICATE");
         verify(liaisons, never()).saveAndFlush(any());
         verifyNoInteractions(outbox);
     }
 
     @Test
-    @DisplayName("Ouverture concurrente : l'index unique donne le même motif")
+    @DisplayName("Reprise concurrente de la même référence d'origine : l'index unique donne le même motif ; sans référence, l'erreur remonte")
     void concurrence() {
-        org.mockito.Mockito.doThrow(new DataIntegrityViolationException("uk_liaison_active")).when(liaisons).saveAndFlush(any());
-        refus(() -> service.ouvrir(new OpenLiaisonCommand(EP_A, TypeProjet.PAIEMENT_MOBILE, CONDUCTEUR, null), CHEF), "HOM_LIAISON_DUPLICATE");
+        org.mockito.Mockito.doThrow(new DataIntegrityViolationException("uk_liaison_reference_origine")).when(liaisons).saveAndFlush(any());
+        refus(() -> service.ouvrir(new OpenLiaisonCommand(EP_A, TypeProjet.PAIEMENT_MOBILE, CONDUCTEUR, null, null, "202604-BCEG-01"), CHEF), "HOM_LIAISON_REFERENCE_ORIGINE_DUPLICATE");
+        assertThatThrownBy(() -> service.ouvrir(new OpenLiaisonCommand(EP_A, TypeProjet.PAIEMENT_MOBILE, CONDUCTEUR, null), CHEF)).isInstanceOf(DataIntegrityViolationException.class);
         verifyNoInteractions(outbox);
     }
 

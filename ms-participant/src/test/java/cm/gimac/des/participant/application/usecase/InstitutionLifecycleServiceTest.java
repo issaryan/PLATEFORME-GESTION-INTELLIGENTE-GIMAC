@@ -148,7 +148,7 @@ class InstitutionLifecycleServiceTest {
     }
 
     private static Candidature candidature(String bic) {
-        return new Candidature("Banque B", "BB", "CM", InstitutionCategory.BANQUE, bic, "B001", null, "Courrier", "Carte interbancaire");
+        return new Candidature("Banque B", "BB", "CM", InstitutionCategory.BANQUE, bic, "B001", null, "Courrier", "Carte interbancaire", "Groupe B");
     }
 
     private void rendreAdmissible() {
@@ -195,6 +195,8 @@ class InstitutionLifecycleServiceTest {
             assertThat(i.getDdrmOfficerName()).isEqualTo("Chargé DDRM");
             assertThat(i.getContactedOn()).isEqualTo(LocalDate.of(2026, 10, 5));
             assertThat(i.getCreatedAt()).isEqualTo(MAINTENANT);
+            // D-104 : la filiale porte son groupe.
+            assertThat(i.getGroupName()).isEqualTo("Groupe B");
             ArgumentCaptor<AdhesionPiece> p = ArgumentCaptor.forClass(AdhesionPiece.class);
             verify(pieces, org.mockito.Mockito.times(2)).save(p.capture());
             assertThat(p.getAllValues()).extracting(AdhesionPiece::getCode, AdhesionPiece::getState, AdhesionPiece::getMandatory).containsExactly(
@@ -209,7 +211,7 @@ class InstitutionLifecycleServiceTest {
         @DisplayName("La date de prise de contact fournie est conservée")
         void dateFournie() {
             when(institutions.save(any(Institution.class))).thenAnswer(inv -> avecIdInstitution(inv.getArgument(0)));
-            Candidature c = new Candidature("A", null, "GA", InstitutionCategory.FINTECH, null, null, LocalDate.of(2026, 9, 1), null, null);
+            Candidature c = new Candidature("A", null, "GA", InstitutionCategory.FINTECH, null, null, LocalDate.of(2026, 9, 1), null, null, null);
             assertThat(service.enregistrerCandidat(c, CHARGE).getContactedOn()).isEqualTo(LocalDate.of(2026, 9, 1));
         }
 
@@ -244,7 +246,7 @@ class InstitutionLifecycleServiceTest {
 
         @Test
         void modificationAvecDate() {
-            Candidature c = new Candidature("A", null, "GA", InstitutionCategory.FINTECH, null, null, LocalDate.of(2026, 9, 1), null, null);
+            Candidature c = new Candidature("A", null, "GA", InstitutionCategory.FINTECH, null, null, LocalDate.of(2026, 9, 1), null, null, null);
             assertThat(service.modifierFiche(banque.getId(), c, CHEF).getContactedOn()).isEqualTo(LocalDate.of(2026, 9, 1));
         }
 

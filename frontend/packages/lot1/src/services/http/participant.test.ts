@@ -23,6 +23,13 @@ describe('participantHttp', () => {
     expect(u.pathname).toBe('/bff/des/participant/institutions')
     expect(Object.fromEntries(u.searchParams)).toEqual({ page: '1', taille: '25', q: 'banque', mesDossiers: 'true', statut: 'CANDIDAT,ADHERENT' })
   })
+  it('D-104 : filtre par groupe et liste des groupes déclarés', async () => {
+    brancher({ contenu: [], total: 0 }, ['Groupe A'])
+    await participantHttp.listerInstitutions({ page: 1, taille: 20, groupe: 'Groupe A' })
+    expect(await participantHttp.groupes()).toEqual(['Groupe A'])
+    expect(Object.fromEntries(url(0).searchParams)).toEqual({ page: '0', taille: '20', groupe: 'Groupe A' })
+    expect(url(1).pathname).toBe('/bff/des/participant/institutions/groupes')
+  })
   it('lectures : indicateurs, dossier, prérequis', async () => {
     brancher({}, {}, [])
     await participantHttp.indicateurs()

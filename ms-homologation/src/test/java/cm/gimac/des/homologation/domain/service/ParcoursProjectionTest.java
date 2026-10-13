@@ -181,7 +181,14 @@ class ParcoursProjectionTest {
         avancer(p, "11", J);
         p.communiquerCoordonnees("essai.exemple", "9443", "https://essai.exemple/tx", PIECE, J);
         p.declarerBlocage("Élément à renouveler", "Obtenir l'élément", new Personne("u-res", "Ingénieur pôle réseau", Fonction.POLE_RESEAU), J.plusDays(3), null, J);
+        // D-104 : intitulé servi au DES et au portail ; référence d'origine (reprise) au DES seulement.
+        p.liaison().intituleProjet("Projet Mobile Lot 2").referenceOrigine("202604-EPA-02");
+        assertThat(projection.dossier(p, CTX, new cm.gimac.des.homologation.domain.parcours.Acteur(null, null, java.util.Set.of(), null), J))
+            .extracting(Vues.Dossier::intituleProjet, Vues.Dossier::referenceOrigine)
+            .containsExactly("Projet Mobile Lot 2", "202604-EPA-02");
         Vues.Dossier d = projection.dossierPortail(p, CTX, J);
+        assertThat(d.intituleProjet()).isEqualTo("Projet Mobile Lot 2");
+        assertThat(d.referenceOrigine()).isNull();
         assertThat(d.conducteur().nom()).isEqualTo("Conducteur de projet GIMAC");
         assertThat(d.blocages().get(0).responsable().nom()).isEqualTo("POLE_RESEAU");
         assertThat(d.blocages().get(0).actionsPermises()).isEmpty();

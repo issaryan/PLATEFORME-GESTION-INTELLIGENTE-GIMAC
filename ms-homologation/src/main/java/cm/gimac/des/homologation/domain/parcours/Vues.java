@@ -206,7 +206,11 @@ public final class Vues {
         List<String> transitionsPermises,
         List<String> actionsPermises,
         List<EtapeVersion> etapesVersion,
-        List<IntervenantDossier> intervenants
+        List<IntervenantDossier> intervenants,
+        /** Intitulé libre du projet (D-104). */
+        String intituleProjet,
+        /** Référence du projet dans l'outil d'origine (D-104, reprise) ; null au portail. */
+        String referenceOrigine
     ) {}
 
     public record LiaisonResume(

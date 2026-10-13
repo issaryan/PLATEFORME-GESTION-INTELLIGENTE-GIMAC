@@ -79,6 +79,22 @@ describe('Cadrage : ouverture d’une liaison depuis la fiche de l’institution
     expect(screen.getAllByText(/Désignez le conducteur de projet\./).length).toBeGreaterThan(0)
     expect(appels).toEqual([])
   })
+  it('D-104 : intitulé et référence d’origine transmis ; référence mal formée signalée avant tout appel', async () => {
+    const recus: unknown[] = []
+    const services = avec({ ouvrirLiaison: async (o) => { recus.push(o); throw new ApiError(409, 'HOM_LIAISON_REFERENCE_ORIGINE_DUPLICATE', '', 'cid') } })
+    const { container } = fiche('INST-0042', { suffixe: '?formulaire=liaison', services, permissions: CHEF_DES })
+    const f = await formulaire(container)
+    await choisir(container, { type: 'PAIEMENT_MOBILE', conducteur: 'U-COND-2' })
+    fireEvent.change(container.querySelector('input[name="intituleProjet"]')!, { target: { value: ' Projet Mobile EP A Lot 2 ' } })
+    fireEvent.change(container.querySelector('input[name="referenceOrigine"]')!, { target: { value: 'réf 01' } })
+    fireEvent.submit(f)
+    expect((await screen.findAllByText(/lettres, chiffres, tirets, points/)).length).toBeGreaterThan(0)
+    expect(recus).toEqual([])
+    fireEvent.change(container.querySelector('input[name="referenceOrigine"]')!, { target: { value: '202604-EPA-02' } })
+    fireEvent.submit(f)
+    expect(await screen.findByText(/référence d'origine est déjà portée par une autre liaison/)).toBeTruthy()
+    expect(recus).toEqual([expect.objectContaining({ institutionId: 'INST-0042', typeProjet: 'PAIEMENT_MOBILE', intituleProjet: 'Projet Mobile EP A Lot 2', referenceOrigine: '202604-EPA-02' })])
+  })
   it('institution déjà en homologation : ouverture d’un autre projet, statut inchangé annoncé', async () => {
     fiche('INST-0042', { suffixe: '?formulaire=liaison', permissions: CHEF_DES })
     expect(await screen.findByText(/est déjà en homologation : la nouvelle liaison s'ajoute/)).toBeTruthy()
@@ -87,6 +103,7 @@ describe('Cadrage : ouverture d’une liaison depuis la fiche de l’institution
     ['HOM_LIAISON_INSTITUTION_NOT_ELIGIBLE', { statut: 'SUSPENDU' }, /son statut est « Suspendu »/],
     ['HOM_LIAISON_INSTITUTION_NOT_ELIGIBLE', { statut: null }, /son statut est « inconnu »/],
     ['HOM_LIAISON_DUPLICATE', {}, /déjà ouverte pour cette institution membre et ce type de projet/],
+    ['HOM_LIAISON_REFERENCE_ORIGINE_DUPLICATE', {}, /référence d'origine est déjà portée par une autre liaison/],
     ['HOM_LIAISON_PROJECT_LEAD_NOT_HABILITATED', {}, /ne détient pas le profil de conducteur de projet/],
     ['HOM_LIAISON_CARRIER_NOT_BANK', {}, /n'est pas une banque/],
     ['HOM_REFERENTIAL_NONE_PUBLISHED', {}, /Aucun référentiel d'opérations n'est publié/],
@@ -172,7 +189,7 @@ describe('Cadrage : ouverture d’une liaison depuis la fiche de l’institution
     expect(container.textContent).not.toMatch(cleBrute)
   })
   it('chaque refus du service a son message en français, anglais et espagnol', () => {
-    const codes = ['HOM_LIAISON_INSTITUTION_NOT_ELIGIBLE', 'HOM_LIAISON_DUPLICATE', 'HOM_LIAISON_PROJECT_LEAD_NOT_HABILITATED', 'HOM_LIAISON_CARRIER_NOT_BANK',
+    const codes = ['HOM_LIAISON_INSTITUTION_NOT_ELIGIBLE', 'HOM_LIAISON_DUPLICATE', 'HOM_LIAISON_REFERENCE_ORIGINE_DUPLICATE', 'HOM_LIAISON_PROJECT_LEAD_NOT_HABILITATED', 'HOM_LIAISON_CARRIER_NOT_BANK',
       'HOM_REFERENTIAL_NONE_PUBLISHED', 'HOM_PROJECT_DESIGNATION_FORBIDDEN', 'HOM_PARTICIPANT_UNAVAILABLE', 'HOM_IAM_UNAVAILABLE']
     for (const l of ['fr', 'en', 'es']) for (const c of codes) expect(i18next.exists(`erreur.${c}`, { lng: l }), `${l} ${c}`).toBe(true)
   })

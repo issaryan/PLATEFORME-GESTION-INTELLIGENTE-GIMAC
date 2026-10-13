@@ -66,6 +66,9 @@ function Dossier({ dossier }: { dossier: DossierLiaison }) {
 
   const identification = [
     { key: t('parcoursDossier.reference'), value: dossier.reference, mono: true },
+    // D-104 : intitulé du projet et référence d'origine (reprise), s'ils sont renseignés.
+    ...(dossier.intituleProjet ? [{ key: t('cadrage.intitule'), value: dossier.intituleProjet }] : []),
+    ...(dossier.referenceOrigine ? [{ key: t('cadrage.referenceOrigine'), value: dossier.referenceOrigine, mono: true }] : []),
     { key: t('parcoursDossier.institution'), value: dossier.institutionNom },
     // CER-05 : libellé servi avec le dossier quand le catalogue des types ne le connaît pas.
     { key: t('parcoursDossier.type'), value: types.libelle(dossier.typeProjet) === dossier.typeProjet && dossier.typeProjetLibelle ? dossier.typeProjetLibelle : types.libelle(dossier.typeProjet) },

@@ -1,7 +1,10 @@
 package cm.gimac.des.participant.web.rest.lot1;
 
+import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.nullValue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -132,6 +135,44 @@ class PriseDeContactIT extends AbstractParticipantIT {
         refuse(m("sigle", "S".repeat(51)), "sigle");
         refuse(m("originePriseDeContact", "o".repeat(256)), "originePriseDeContact");
         refuse(m("projetEnvisage", "p".repeat(1001)), "projetEnvisage");
+    }
+
+    @Test
+    @DisplayName("D-104 : filiales d'un même groupe, chacune institution à part entière ; filtre par groupe et liste des groupes")
+    void groupe() throws Exception {
+        try {
+            // Nom, pays, groupe saisi, groupe retenu (espaces réduits).
+            String[][] filiales = {
+                { "Afriland First Bank Cameroun", "CM", " Groupe  Afriland ", "Groupe Afriland" },
+                { "Afriland First Bank Guinée équatoriale", "GQ", "Groupe Afriland", "Groupe Afriland" },
+                { "BGFIBank Gabon", "GA", "Groupe BGFI", "Groupe BGFI" },
+                { "Banque isolée", "TD", "  ", null },
+            };
+            for (String[] f : filiales) {
+                Map<String, Object> s = new LinkedHashMap<>();
+                s.put("nom", f[0]);
+                s.put("pays", f[1]);
+                s.put("groupe", f[2]);
+                mvc
+                    .perform(post("/api/v1/institutions").with(utilisateur(UUID.randomUUID(), "PAR_INSTITUTION_CREATE")).contentType(MediaType.APPLICATION_JSON).content(corps(s)))
+                    .andExpect(status().isCreated())
+                    .andExpect(f[3] == null ? jsonPath("$.groupe").value(nullValue()) : jsonPath("$.groupe").value(f[3]));
+            }
+            var lecteur = utilisateur(UUID.randomUUID(), "PAR_INSTITUTION_READ");
+            mvc
+                .perform(get("/api/v1/institutions").param("groupe", "groupe afriland").with(lecteur))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").value(2))
+                .andExpect(jsonPath("$.contenu[*].groupe", everyItem(org.hamcrest.Matchers.is("Groupe Afriland"))));
+            mvc.perform(get("/api/v1/institutions").param("q", "bgfi").with(lecteur)).andExpect(jsonPath("$.total").value(1));
+            mvc
+                .perform(get("/api/v1/institutions/groupes").with(lecteur))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", contains("Groupe Afriland", "Groupe BGFI")));
+        } finally {
+            effacer(jdbc);
+        }
+        refuse(m("groupe", "g".repeat(101)), "groupe");
     }
 
     @Test

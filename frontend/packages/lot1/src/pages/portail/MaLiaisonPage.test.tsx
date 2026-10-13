@@ -19,6 +19,25 @@ describe('POR-03 Mes liaisons et suivi de mon projet', () => {
     await auditer(container)
   })
 
+  it('D-104 : plusieurs projets du même type, distingués par leur intitulé, chacun mène à son suivi', async () => {
+    const s = services((base) => ({
+      mesLiaisons: async () => (await base.portailParcours.mesLiaisons()).slice(0, 2).map((l, i) => ({ ...l, typeProjet: 'PAIEMENT_MOBILE' as const, intituleProjet: `Projet Mobile EP A Lot ${i + 1}` })),
+    }))
+    monter('/portail/liaisons', { services: s })
+    expect(await screen.findByText('Projet Mobile EP A Lot 1')).toBeTruthy()
+    expect(screen.getByText('Projet Mobile EP A Lot 2')).toBeTruthy()
+    const liens = screen.getAllByRole('link').map((a) => a.getAttribute('href')).filter((h) => h?.startsWith('/portail/liaisons/'))
+    expect(new Set(liens).size).toBe(2)
+  })
+
+  it('D-104 : le suivi rappelle l’intitulé du projet ; la référence d’origine n’est jamais montrée', async () => {
+    const s = services((base) => ({
+      dossier: async (id: string) => ({ ...(await base.portailParcours.dossier(id)), intituleProjet: 'Projet Mobile EP A Lot 2', referenceOrigine: null }),
+    }))
+    monter('/portail/liaisons/LIA-2026-030', { services: s })
+    expect(await screen.findByText('Projet Mobile EP A Lot 2')).toBeTruthy()
+  })
+
   it('liste vide : état explicite', async () => {
     monter('/portail/liaisons', { services: services(() => ({ mesLiaisons: () => Promise.resolve([]) })) })
     expect(await screen.findByText('Aucune liaison ouverte pour votre institution')).toBeTruthy()

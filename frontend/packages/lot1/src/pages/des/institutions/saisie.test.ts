@@ -30,8 +30,15 @@ describe('Prise de contact : normalisation', () => {
     expect(candidature({ ...base, nom: '  Banque des Lagunes ', sigle: ' ', codeIdentification: 'bdlg ga li xxx', codeBanqueBeac: 'cm 001', datePriseDeContact: '06/10/2026', originePriseDeContact: 'Salon', projetEnvisage: '' }))
       .toEqual({
         nom: 'Banque des Lagunes', sigle: null, pays: 'GA', categorie: 'BANQUE', codeIdentification: 'BDLGGALIXXX', codeBanqueBeac: 'CM001',
-        datePriseDeContact: '2026-10-06', originePriseDeContact: 'Salon', projetEnvisage: null,
+        datePriseDeContact: '2026-10-06', originePriseDeContact: 'Salon', projetEnvisage: null, groupe: null,
       })
+  })
+
+  it('D-104 : groupe ou maison mère, espaces réduits comme le service ; plus de 100 caractères refusé', () => {
+    expect(candidature({ ...base, groupe: '  Groupe \t Afriland  ' }).groupe).toBe('Groupe Afriland')
+    expect(candidature({ ...base, groupe: '   ' }).groupe).toBeNull()
+    expect(cles({ ...base, groupe: 'g'.repeat(100) })).toEqual({})
+    expect(cles({ ...base, groupe: 'g'.repeat(101) })).toEqual({ groupe: 'institution.erreur.longueur' })
   })
 })
 

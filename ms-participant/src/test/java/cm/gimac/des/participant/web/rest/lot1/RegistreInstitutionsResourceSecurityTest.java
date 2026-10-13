@@ -138,6 +138,7 @@ class RegistreInstitutionsResourceSecurityTest {
         return Stream.of(
             Arguments.of(HttpMethod.GET, "/api/v1/institutions", null, "PAR_INSTITUTION_READ", 200),
             Arguments.of(HttpMethod.GET, "/api/v1/institutions/indicateurs", null, "PAR_INSTITUTION_READ", 200),
+            Arguments.of(HttpMethod.GET, "/api/v1/institutions/groupes", null, "PAR_INSTITUTION_READ", 200),
             Arguments.of(HttpMethod.GET, "/api/v1/institutions/" + ID, null, "PAR_INSTITUTION_READ", 200),
             Arguments.of(HttpMethod.GET, "/api/v1/institutions/" + ID + "/prerequis?etat=ADHERENT", null, "PAR_INSTITUTION_READ", 200),
             Arguments.of(HttpMethod.POST, "/api/v1/institutions", CANDIDATURE, "PAR_INSTITUTION_CREATE", 201),

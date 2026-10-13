@@ -35,7 +35,9 @@ final class InstitutionViews {
         String projetEnvisage,
         Personne chargeDdrm,
         String conformite,
-        Instant creeLe
+        Instant creeLe,
+        /** Groupe ou maison mère (D-104). */
+        String groupe
     ) {
         static InstitutionVue de(Institution i) {
             return new InstitutionVue(
@@ -54,7 +56,8 @@ final class InstitutionViews {
                 i.getIntendedProject(),
                 i.getDdrmOfficerId() == null ? null : new Personne(i.getDdrmOfficerId(), i.getDdrmOfficerName()),
                 i.getComplianceState().name(),
-                i.getCreatedAt()
+                i.getCreatedAt(),
+                i.getGroupName()
             );
         }
     }

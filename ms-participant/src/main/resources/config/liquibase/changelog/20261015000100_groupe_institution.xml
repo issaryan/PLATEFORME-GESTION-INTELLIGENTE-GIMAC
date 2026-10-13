@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- D-104 : filiales. Chaque filiale est une institution à part entière (son propre code membre) ; un libellé facultatif
+     de groupe ou de maison mère les rassemble (filtre de la liste du registre). Index sur la valeur en minuscules :
+     le filtre est insensible à la casse. -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="20261015000100-1" author="lot1">
+        <addColumn tableName="institution">
+            <column name="group_name" type="varchar(100)"/>
+        </addColumn>
+        <sql>CREATE INDEX idx_institution_group_name ON institution (lower(group_name)) WHERE group_name IS NOT NULL;</sql>
+    </changeSet>
+</databaseChangeLog>

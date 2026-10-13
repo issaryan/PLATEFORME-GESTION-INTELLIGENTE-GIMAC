@@ -26,13 +26,15 @@ describe('homologation simulée : cadrage', () => {
     expect(l2.banquePartenaireId).toBeNull()
     expect(l2.intervenants?.map((i) => i.role)).toEqual(['INSTITUTION', 'CHEF_DE_PROJET'])
   })
-  it('refus : institution non éligible (statut en détail), inconnue, doublon', async () => {
+  it('refus : institution non éligible (statut en détail), inconnue ; D-104 : même type admis, référence d’origine unique', async () => {
     const s = servicesSimules({ latenceMs: 0 })
     const candidat = (await s.participant.listerInstitutions({ page: 1, taille: 1, statut: ['CANDIDAT'] })).contenu[0].id
     await expect(s.homologation.ouvrirLiaison({ ...ouverture, institutionId: candidat })).rejects.toEqual(refus('HOM_LIAISON_INSTITUTION_NOT_ELIGIBLE', { statut: 'CANDIDAT' }))
     await expect(s.homologation.ouvrirLiaison({ ...ouverture, institutionId: 'INST-0061' })).rejects.toEqual(refus('HOM_LIAISON_INSTITUTION_NOT_ELIGIBLE', { statut: 'SUSPENDU' }))
     await expect(s.homologation.ouvrirLiaison({ ...ouverture, institutionId: 'inconnue' })).rejects.toEqual(refus('HOM_LIAISON_INSTITUTION_NOT_ELIGIBLE', { statut: null }))
-    await expect(s.homologation.ouvrirLiaison({ ...ouverture, institutionId: 'INST-0088' })).rejects.toEqual(refus('HOM_LIAISON_DUPLICATE'))
+    const lot2 = await s.homologation.ouvrirLiaison({ ...ouverture, institutionId: 'INST-0088', intituleProjet: 'Projet Mobile MF C Lot 2', referenceOrigine: '202604-MFC-02' })
+    expect(lot2).toMatchObject({ etat: 'OUVERTE', intituleProjet: 'Projet Mobile MF C Lot 2', referenceOrigine: '202604-MFC-02' })
+    await expect(s.homologation.ouvrirLiaison({ ...ouverture, referenceOrigine: ' 202604-MFC-02 ' })).rejects.toEqual(refus('HOM_LIAISON_REFERENCE_ORIGINE_DUPLICATE'))
   })
   it('refus : conducteur non habilité, porteur qui n’est pas une banque, aucun référentiel publié', async () => {
     const s = servicesSimules({ latenceMs: 0 })

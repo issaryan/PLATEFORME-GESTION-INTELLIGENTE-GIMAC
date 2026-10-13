@@ -6,7 +6,8 @@ import { cles } from './cles'
 // DES-07) : seuls points d'appel du port ServiceParticipant.
 
 export const useInstitutions = (f: FiltreInstitutions, actif = true) => useLecture(cles.institutions(f), (s) => s.participant.listerInstitutions(f), { enabled: actif })
-export const useIndicateursDdrm = (actif = true) => useLecture(cles.indicateursDdrm(), (s) => s.participant.indicateurs(), { enabled: actif })
+export const useGroupesInstitutions = () => useLecture(cles.groupesInstitutions(), (s) => s.participant.groupes())
+export const useIndicateursDdrm =(actif = true) => useLecture(cles.indicateursDdrm(), (s) => s.participant.indicateurs(), { enabled: actif })
 export const useDossierInstitution = (id: string) => useLecture(cles.institution(id), (s) => s.participant.dossier(id))
 
 export const useEnregistrerInstitution = () => useEffet((s, c: Candidature) => s.participant.enregistrer(c), [cles.participant])
