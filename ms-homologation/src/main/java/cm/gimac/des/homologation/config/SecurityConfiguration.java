@@ -55,6 +55,8 @@ public class SecurityConfiguration {
                     // Lot 1 (PI-GIMAC-01 §0.6) : routes internes réservées au jeton de service.
                     .requestMatchers("/api/v1/liaisons/*/socle-evaluation", "/api/v1/liaisons/*/intervenants", "/api/v1/liaisons/*/dossier-de-preuves/interne/**").hasAuthority("INTERNAL_HOMOLOGATION_READ")
                     // Interface interne (docs/lot1/parcours-backend.md §2) : jeton de service de MS-CERTIFICATION.
+                    // Reprise de l'existant (D-107) : compte de service reprise-service (jeton client_credentials).
+                    .requestMatchers("/api/v1/interne/reprise/**").hasAuthority("REF_REPRISE_IMPORT")
                     .requestMatchers("/api/v1/interne/**").hasAuthority("INTERNAL_HOMOLOGATION_READ")
                     // Portail des participants : institution obligatoire dans le jeton (RG-59) et second facteur (D-61).
                     .requestMatchers("/api/v1/portail/**").access(

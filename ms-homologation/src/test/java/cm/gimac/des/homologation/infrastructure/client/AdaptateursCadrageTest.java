@@ -64,6 +64,26 @@ class AdaptateursCadrageTest {
     }
 
     @Test
+    @DisplayName("Registre réel par code membre (reprise D-107) : trouvée, absente (404), indisponible (5xx) ; substitut")
+    void participantParCode() {
+        RestClient.Builder b = RestClient.builder();
+        MockRestServiceServer serveur = MockRestServiceServer.bindTo(b).build();
+        ParticipantRestAdapter a = new ParticipantRestAdapter(b, jeton(), "http://participant");
+        String url = "http://participant/api/v1/interne/institutions?codeParticipant=BQ-1";
+        serveur.expect(requestTo(url)).andRespond(withSuccess("{\"id\":\"" + ID + "\",\"nom\":\"Banque B\",\"statut\":\"ACTIF\",\"categorie\":\"BANQUE\"}", MediaType.APPLICATION_JSON));
+        serveur.expect(requestTo(url)).andRespond(withStatus(HttpStatus.NOT_FOUND));
+        serveur.expect(requestTo(url)).andRespond(withServerError());
+        assertThat(a.parCodeMembre("BQ-1")).map(InstitutionView::statut).contains("ACTIF");
+        assertThat(a.parCodeMembre("BQ-1")).isEmpty();
+        assertThatThrownBy(() -> a.parCodeMembre("BQ-1")).isInstanceOfSatisfying(HomologationException.class, e -> assertThat(e.status()).isEqualTo(503));
+        serveur.verify();
+        ParticipantStubAdapter stub = new ParticipantStubAdapter();
+        stub.enregistrer(new InstitutionView(ID, "Banque B", "ACTIF", "BANQUE", java.util.List.of()), "BQ-1");
+        assertThat(stub.parCodeMembre("BQ-1")).map(InstitutionView::id).contains(ID);
+        assertThat(stub.parCodeMembre("BQ-2")).isEmpty();
+    }
+
+    @Test
     @DisplayName("Annuaire réel : collaborateur, absent, par profil ; panne : indisponible")
     void collaborateursReels() {
         RestClient.Builder b = RestClient.builder();

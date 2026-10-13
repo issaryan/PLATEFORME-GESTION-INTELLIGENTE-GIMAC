@@ -48,6 +48,23 @@ public final class LiaisonOpeningPolicy {
         verifierConducteur(conducteur, porteConduite);
     }
 
+    /** Statuts exclus de la reprise d'un projet existant (D-107) : jamais adhérent, aucun projet n'a pu être conduit. */
+    private static final Set<String> STATUTS_SANS_PROJET = Set.of("CANDIDAT", "CLOS_SANS_SUITE");
+
+    /**
+     * Reprise d'un projet existant (D-107) : l'institution a été admise (adhérente, en homologation, active, à
+     * régulariser, suspendue ou retirée) ; son statut, repris par ailleurs, n'est pas réévalué ici.
+     */
+    public void verifierReprise(InstitutionView institution) {
+        if (STATUTS_SANS_PROJET.contains(institution.statut())) {
+            throw HomologationException.conflict(
+                "HOM_LIAISON_INSTITUTION_NOT_ELIGIBLE",
+                "Un projet repris appartient à une institution admise (jamais candidate ni close sans suite)",
+                Map.of("institutionId", institution.id().toString(), "statut", institution.statut())
+            );
+        }
+    }
+
     /** {@code porteConduite} : le compte porte HOM_PROJECT_CONDUCT (annuaire par permission). */
     public void verifierConducteur(CollaboratorView c, boolean porteConduite) {
         if (c == null || !c.actif() || (c.institutionId() != null && !c.institutionId().isBlank()) || !porteConduite) {

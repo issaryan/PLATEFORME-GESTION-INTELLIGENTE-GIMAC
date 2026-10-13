@@ -827,6 +827,9 @@
                                     <include>cm/gimac/des/homologation/web/rest/lot1/PortailParcours*</include>
                                     <include>cm/gimac/des/homologation/web/rest/lot1/ContexteCertification*</include>
                                     <include>cm/gimac/des/homologation/web/rest/lot1/ActeurCourant*</include>
+                                    <!-- Reprise de l'existant (D-107). -->
+                                    <include>cm/gimac/des/homologation/application/usecase/Reprise*</include>
+                                    <include>cm/gimac/des/homologation/web/rest/lot1/Reprise*</include>
                                 </includes>
                                 <rules>
                                     <rule>

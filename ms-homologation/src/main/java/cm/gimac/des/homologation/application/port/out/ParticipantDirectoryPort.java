@@ -10,4 +10,9 @@ import java.util.UUID;
 public interface ParticipantDirectoryPort {
     /** Institution lue ; 409 HOM_LIAISON_INSTITUTION_UNKNOWN si absente, 503 si le registre est injoignable. */
     InstitutionView getInstitution(UUID institutionId);
+
+    /**
+     * Institution d'un code membre (reprise de l'existant, D-107) ; vide si aucune, 503 si le registre est injoignable.
+     */
+    java.util.Optional<InstitutionView> parCodeMembre(String codeMembre);
 }

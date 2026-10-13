@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- D-107 : reprise des projets de certification existants. La liaison reprise garde l'origine de son état
+     d'avancement (portail sandbox, suivi Excel, Payway production, à qualifier…) et la date de sa reprise, pour la
+     traçabilité ; l'avancement lui-même reste porté par l'état des opérations (parcours_operation), dont la preuve
+     reprise est marquée « reprise » (colonne jsonb preuve, sans changement de schéma). -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="20261016000100-1" author="lot1">
+        <addColumn tableName="liaison">
+            <column name="origine_etat" type="varchar(100)"/>
+            <column name="reprise_le" type="timestamp"/>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>

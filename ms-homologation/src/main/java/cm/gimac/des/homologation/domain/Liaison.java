@@ -102,6 +102,34 @@ public class Liaison implements Serializable {
     private String referenceOrigine;
 
     /**
+     * Origine de l'état d'avancement d'une liaison reprise de l'existant (D-107), texte libre : « Portail sandbox »,
+     * « Suivi Excel », « Payway production », « À qualifier »… ; nulle pour une liaison ouverte sur la plateforme.
+     */
+    @Size(max = 100)
+    @Column(name = "origine_etat", length = 100)
+    private String origineEtat;
+
+    /** Instant de la reprise de l'existant (D-107), dernière mise à jour par l'outil de reprise comprise. */
+    @Column(name = "reprise_le")
+    private java.time.Instant repriseLe;
+
+    public String getOrigineEtat() {
+        return this.origineEtat;
+    }
+
+    public void setOrigineEtat(String origineEtat) {
+        this.origineEtat = origineEtat;
+    }
+
+    public java.time.Instant getRepriseLe() {
+        return this.repriseLe;
+    }
+
+    public void setRepriseLe(java.time.Instant repriseLe) {
+        this.repriseLe = repriseLe;
+    }
+
+    /**
      * Définition du type de projet (D-91), lue par la même colonne : son modèle porte les comportements du type
      * (attestations, catalogue des services, avancement du simulateur).
      */

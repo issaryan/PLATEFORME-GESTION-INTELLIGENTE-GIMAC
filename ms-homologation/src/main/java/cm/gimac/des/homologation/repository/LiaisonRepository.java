@@ -27,6 +27,9 @@ public interface LiaisonRepository extends JpaRepository<Liaison, UUID>, JpaSpec
      */
     boolean existsByReferenceOrigine(String referenceOrigine);
 
+    /** Liaison d'une référence d'origine (reprise de l'existant, D-107). */
+    Optional<Liaison> findByReferenceOrigine(String referenceOrigine);
+
     /** Liaisons d'une institution (portail, cloisonné par le jeton). */
     java.util.List<Liaison> findByInstitutionId(UUID institutionId);
 

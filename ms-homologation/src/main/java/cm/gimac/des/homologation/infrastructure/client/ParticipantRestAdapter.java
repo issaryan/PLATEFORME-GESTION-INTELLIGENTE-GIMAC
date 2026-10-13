@@ -33,4 +33,17 @@ public class ParticipantRestAdapter implements ParticipantDirectoryPort {
             throw HomologationException.unavailable("HOM_PARTICIPANT_UNAVAILABLE", "Registre des institutions indisponible ; aucun statut n'est supposé");
         }
     }
+
+    @Override
+    public java.util.Optional<InstitutionView> parCodeMembre(String codeMembre) {
+        try {
+            return java.util.Optional.ofNullable(
+                client.get().uri(u -> u.path("/api/v1/interne/institutions").queryParam("codeParticipant", codeMembre).build()).retrieve().body(InstitutionView.class)
+            );
+        } catch (HttpClientErrorException.NotFound e) {
+            return java.util.Optional.empty();
+        } catch (RestClientException | IllegalStateException e) {
+            throw HomologationException.unavailable("HOM_PARTICIPANT_UNAVAILABLE", "Registre des institutions indisponible ; aucun statut n'est supposé");
+        }
+    }
 }

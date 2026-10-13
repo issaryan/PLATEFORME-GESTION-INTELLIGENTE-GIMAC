@@ -21,6 +21,8 @@ public class ParticipantStubAdapter implements ParticipantDirectoryPort {
     public static final UUID BANQUE_ADHERENTE = UUID.fromString("00000000-0000-4000-8000-00000000b001");
 
     private final Map<UUID, InstitutionView> institutions = new ConcurrentHashMap<>();
+    /** Codes membres des institutions enregistrées (reprise de l'existant, D-107). */
+    private final Map<String, UUID> codes = new ConcurrentHashMap<>();
 
     public ParticipantStubAdapter() {
         enregistrer(new InstitutionView(EP_ADHERENT, "Établissement de paiement A", "ADHERENT", "ETABLISSEMENT_PAIEMENT",
@@ -31,6 +33,17 @@ public class ParticipantStubAdapter implements ParticipantDirectoryPort {
 
     public void enregistrer(InstitutionView institution) {
         institutions.put(institution.id(), institution);
+    }
+
+    /** Enregistre une institution et son code membre (jeux d'essai de la reprise, D-107). */
+    public void enregistrer(InstitutionView institution, String codeMembre) {
+        enregistrer(institution);
+        codes.put(codeMembre, institution.id());
+    }
+
+    @Override
+    public Optional<InstitutionView> parCodeMembre(String codeMembre) {
+        return Optional.ofNullable(codes.get(codeMembre)).map(institutions::get);
     }
 
     @Override
