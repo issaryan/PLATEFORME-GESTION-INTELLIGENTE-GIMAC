@@ -46,11 +46,11 @@ public class HomologationFixtures {
             .orElseGet(() -> referentiels.publier(brouillonAnnexeA(type)).getId());
     }
 
-    /** Brouillon fidèle à l'annexe A du CR (version 1, D-77). */
+    /** Brouillon fidèle à l'annexe A du CR en vigueur (v1.7). */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public UUID brouillonAnnexeA(TypeProjet type) {
-        ReferentialVersion v = referentiels.creerBrouillon(type, "Annexe A du CR-CERT-GIMAC-01 v1.4 (jeu d'essai)", null);
-        cm.gimac.des.homologation.domain.service.ConversionAnnexeA.version1(type).forEach(o -> referentiels.enregistrerOperation(v.getId(), o.code(), o.data()));
+        ReferentialVersion v = referentiels.creerBrouillon(type, "Annexe A du CR-CERT-GIMAC-01 v1.7 (jeu d'essai)", null);
+        cm.gimac.des.homologation.domain.service.ConversionAnnexeA.enVigueur(type).forEach(o -> referentiels.enregistrerOperation(v.getId(), o.code(), o.data()));
         return v.getId();
     }
 

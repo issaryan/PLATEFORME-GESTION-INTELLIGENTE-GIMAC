@@ -46,7 +46,7 @@ class EffetReelParcoursTest {
     static OperationParcours deuxLivrables(Parcours p) throws Exception {
         OperationParcours o = p.operation("10").orElseThrow();
         ReferenceOperation ref = p.liaison().getVersion().operation("10").orElseThrow();
-        ReferenceOperationData d = cm.gimac.des.homologation.domain.service.ConversionAnnexeA.version1(TypeProjet.CARTE_INTERBANCAIRE)
+        ReferenceOperationData d = cm.gimac.des.homologation.domain.service.ConversionAnnexeA.enVigueur(TypeProjet.CARTE_INTERBANCAIRE)
             .stream()
             .filter(x -> x.code().equals("10"))
             .findFirst()

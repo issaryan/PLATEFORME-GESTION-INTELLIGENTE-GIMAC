@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Agent de la sécurité des SI (ROLE_AGENT_SSI, CR-CERT-GIMAC-01 v1.7 §3.3, infra/keycloak/generer-realm-gimac.py) :
+     profil d'exécution non privilégié, rattaché à l'unité SSI sous le RSSI. Profils demandables : le RSSI, qui dirige
+     l'unité, et la direction générale, comme pour les autres profils d'exécution de leur domaine. Aucun pouvoir
+     hiérarchique (profil qui n'est pas responsable : AUCUNE partout). Idempotent. -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="iam-agent-ssi-demandable" author="lot1">
+        <sql>
+            INSERT INTO profil_demandable (profil, profil_demandable)
+            SELECT p.profil, 'ROLE_AGENT_SSI' FROM (VALUES ('ROLE_RSSI'), ('ROLE_DG')) AS p (profil)
+            WHERE NOT EXISTS (SELECT 1 FROM profil_demandable d WHERE d.profil = p.profil AND d.profil_demandable = 'ROLE_AGENT_SSI');
+        </sql>
+    </changeSet>
+</databaseChangeLog>

@@ -1,7 +1,7 @@
 import type { EtapeCode, Fonction, GrainPreuve, PlateformeExecution, SegmentParcours } from './parcours'
 import type { TypeProjet } from './commun'
 
-// Référentiel des étapes et des preuves du compte rendu de cadrage (CR-CERT-GIMAC-01 v1.4, annexe A),
+// Référentiel des étapes et des preuves du compte rendu de cadrage (CR-CERT-GIMAC-01 v1.7, annexe A),
 // jeu d'initialisation des référentiels (D-59). Tronc commun amont (rangs 1 à 26), branche du type de
 // projet (C1 à C10, M1 à M17, D1 à D34), tronc commun aval (rangs 27 à 35). Aucune valeur secrète :
 // les opérations sur des clés ne portent que la trace et le code de contrôle.
@@ -97,18 +97,18 @@ export const BRANCHE_MOBILE: OperationReferentiel[] = [
   M('M3', 'PRODUCTION_MONETIQUE', ['M2'], { secret: true }),
   M('M4', 'PRODUCTION_MONETIQUE', ['M2']),
   M('M5', 'PRODUCTION_MONETIQUE', ['M4']),
-  M('M6', 'POLE_RESEAU', ['M2']),
+  M('M6', 'PRODUCTION_MONETIQUE', ['M2']),
   M('M7', 'PRODUCTION_MONETIQUE', ['M3', 'M5'], { secret: true }),
   M('M8', 'PRODUCTION_MONETIQUE', ['M5'], { valeurReference: true }),
   M('M9', 'PRODUCTION_MONETIQUE', ['M8'], { secret: true }),
   M('M10', 'PRODUCTION_MONETIQUE', ['M8']),
-  M('M11', 'POLE_RESEAU', ['M6', 'M10']),
-  M('M12', 'POLE_RESEAU', ['M11']),
-  M('M13', 'POLE_RESEAU', ['M12']),
-  M('M14', 'POLE_RESEAU', ['M13']),
+  M('M11', 'PRODUCTION_MONETIQUE', ['M6', 'M10']),
+  M('M12', 'PRODUCTION_MONETIQUE', ['M11']),
+  M('M13', 'PRODUCTION_MONETIQUE', ['M12']),
+  M('M14', 'PRODUCTION_MONETIQUE', ['M13']),
   M('M15', 'PRODUCTION_MONETIQUE', ['M13', 'M14'], { valeurReference: true }),
-  M('M16', 'POLE_RESEAU', ['M15']),
-  M('M17', 'POLE_RESEAU', ['M16']),
+  M('M16', 'PRODUCTION_MONETIQUE', ['M15']),
+  M('M17', 'PRODUCTION_MONETIQUE', ['M16']),
 ]
 
 /** A.7 : branche délégataire, trente-quatre opérations sur le switch délégataire puis interbancaire. */

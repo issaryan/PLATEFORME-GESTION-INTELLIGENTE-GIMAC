@@ -40,9 +40,9 @@ describe('D-98 : mes actions de certification', () => {
 })
 
 describe('D-98 : lancer une certification', () => {
-  it('chef du DES : institution en homologation, type créé dans la plateforme, conducteur, puis dossier de la liaison', async () => {
+  it('chef de la DDRM (CR v1.7 §4.2.1) : institution en homologation, type créé dans la plateforme, conducteur, puis dossier de la liaison', async () => {
     rendrePage(<LancerCertificationPage />, {
-      chemin: '/des/certification/lancer', motif: '/des/certification/lancer', session: sessionTest(PROFILS.ROLE_CHEF_DES, ['ROLE_CHEF_DES']),
+      chemin: '/des/certification/lancer', motif: '/des/certification/lancer', session: sessionTest(PROFILS.ROLE_CHEF_DDRM, ['ROLE_CHEF_DDRM']),
       autres: [{ motif: '/des/parcours/:id', element: <p>Dossier ouvert</p> }],
     })
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Lancer une certification')
@@ -95,7 +95,7 @@ describe('D-98 : démonstration simulée alignée, du lancement à la mise en pr
   it('démonstration continue : chaque acteur trouve son opération dans « Mes actions », agit, et la liaison atteint EN_PRODUCTION', async () => {
     // Démonstration continue : chaque acteur ouvre sa session (nouvelle instance) sur l'état laissé par le précédent.
     localStorage.setItem('gm.demoContinue', '1')
-    const ouverte = await sous('ROLE_CHEF_DES').parcours.ouvrirLiaison({ institutionId: 'INST-0042', typeProjet: 'AGREGATEUR', chefDeProjetId: 'U-COND-1', banquePartenaireId: null })
+    const ouverte = await sous('ROLE_CHEF_DDRM').parcours.ouvrirLiaison({ institutionId: 'INST-0042', typeProjet: 'AGREGATEUR', chefDeProjetId: 'U-COND-1', banquePartenaireId: null })
     const action = async (role: string, code: string) => {
       const a = (await sous(role).parcours.mesOperations()).aAgir.find((o) => o.liaisonId === ouverte.id && o.code === code)
       expect(a, `${role} ${code}`).toBeTruthy()

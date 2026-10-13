@@ -23,6 +23,7 @@ export const ANNUAIRE: Correspondant[] = [
   { id: 'u-res', nom: 'Idriss Mahamat Saleh', fonction: 'Pôle réseau', profils: ['ROLE_POLE_RESEAU'] },
   { id: 'u-sys', nom: 'Chantal Ngo Bassong', fonction: 'Pôle système', profils: ['ROLE_POLE_SYSTEME'] },
   { id: 'u-rssi', nom: 'Hervé Kamga Tchoupo', fonction: 'Responsable de la sécurité des systèmes d’information', profils: ['ROLE_RSSI'] },
+  { id: 'u-ssi', nom: 'Linda Owona Ateba', fonction: 'Agente de la sécurité des systèmes d’information', profils: ['ROLE_AGENT_SSI'] },
   { id: 'u-conf', nom: 'Mireille Obame Nze', fonction: 'Conformité', profils: ['ROLE_CONFORMITE'] },
   { id: 'u-dg', nom: 'Jean-Baptiste Ella Mintsa', fonction: 'Direction générale', profils: ['ROLE_DG'] },
   // Mon activité (D-76) : responsable d'un service et collaborateur sans fonction métier dans la plateforme.

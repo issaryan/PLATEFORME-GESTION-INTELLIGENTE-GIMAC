@@ -128,7 +128,7 @@ public class RepriseReferentielCr implements CustomTaskChange {
         return id;
     }
 
-    private static void inserer(Connection c, UUID versionId, ReferenceOperation o) throws SQLException {
+    static void inserer(Connection c, UUID versionId, ReferenceOperation o) throws SQLException {
         try (
             PreparedStatement ps = c.prepareStatement(
                 "insert into reference_operation (id, code, libelle, phase, segment, partie, service_code, nature_couverture, preuve_attendue, id_scenario, " +
@@ -190,7 +190,7 @@ public class RepriseReferentielCr implements CustomTaskChange {
         return f == null ? null : f.name();
     }
 
-    private static int entier(Connection c, String sql, Object... parametres) throws SQLException {
+    static int entier(Connection c, String sql, Object... parametres) throws SQLException {
         try (PreparedStatement ps = c.prepareStatement(sql)) {
             for (int i = 0; i < parametres.length; i++) {
                 ps.setObject(i + 1, parametres[i]);
@@ -202,7 +202,7 @@ public class RepriseReferentielCr implements CustomTaskChange {
         }
     }
 
-    private static void executerMaj(Connection c, String sql, Object... parametres) throws SQLException {
+    static void executerMaj(Connection c, String sql, Object... parametres) throws SQLException {
         try (PreparedStatement ps = c.prepareStatement(sql)) {
             for (int i = 0; i < parametres.length; i++) {
                 ps.setObject(i + 1, parametres[i]);

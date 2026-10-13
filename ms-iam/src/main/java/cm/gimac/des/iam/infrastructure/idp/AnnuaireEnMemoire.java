@@ -469,6 +469,7 @@ public class AnnuaireEnMemoire implements Annuaire {
     static final Map<String, Set<String>> PERMISSIONS_PAR_PROFIL = Map.ofEntries(
         Map.entry("ROLE_SUPER_ADMIN", union(COMMUNES, IAM, Set.of("IAM_ROLE_PRIVILEGED_GRANT", "PLATFORM_CONFIG_READ", "PLATFORM_CONFIG_EDIT", REF_METIER_ADMIN))),
         Map.entry("ROLE_RSSI", union(COMMUNES, IAM, CHEF)),
+        Map.entry("ROLE_AGENT_SSI", union(COMMUNES, Set.of("HOM_DASHBOARD_READ"))),
         Map.entry("ROLE_CHEF_DES", union(COMMUNES, CHEF, Set.of("HOM_DASHBOARD_READ"))),
         Map.entry("ROLE_CHEF_DDRM", union(COMMUNES, CHEF, Set.of("PAR_INSTITUTION_READ"))),
         Map.entry("ROLE_DG", union(COMMUNES, CHEF, Set.of("CER_QUITUS_DG_SIGN"))),
@@ -490,6 +491,7 @@ public class AnnuaireEnMemoire implements Annuaire {
     static final Map<String, String> LIBELLES_PAR_PROFIL = Map.ofEntries(
         Map.entry("ROLE_SUPER_ADMIN", "Super administrateur"),
         Map.entry("ROLE_RSSI", "Sécurité des SI"),
+        Map.entry("ROLE_AGENT_SSI", "Agent de la sécurité des SI"),
         Map.entry("ROLE_CHEF_DES", "Chef du DES"),
         Map.entry("ROLE_CHEF_DDRM", "Chef de la DDRM"),
         Map.entry("ROLE_DG", "Direction générale"),

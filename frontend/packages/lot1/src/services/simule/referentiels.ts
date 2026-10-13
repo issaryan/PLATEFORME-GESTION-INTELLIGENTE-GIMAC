@@ -44,7 +44,7 @@ export function gesteDe(o: Pick<OperationReferentiel, 'rang' | 'grain'>): Geste 
 export const estDedie = (g: Geste | null) => !!g && GESTES_DEDIES.includes(g)
 /** Action proposée sur une opération ouverte : constat, livrable, sinon preuve (Geste.action). */
 export const actionDuGeste = (g: Geste | null) => (g === 'CONSTATER_COUVERTURE' ? 'CONSTATER_COUVERTURE' : g === 'DEPOSER_LIVRABLE' ? 'DEPOSER_LIVRABLE' : 'DEPOSER_PREUVE')
-const jalonDe = (rang: string): Jalon | null => ({ 17: 'APTE_CERTIFICATION', 19: 'CERTIFIEE', 25: 'APPROUVEE_SECURITE', 31: 'EN_PRODUCTION' } as Record<string, Jalon>)[rang] ?? null
+const jalonDe = (rang: string): Jalon | null => ({ 17: 'APTE_CERTIFICATION', 19: 'CERTIFIEE', 24: 'APPROUVEE_SECURITE', 31: 'EN_PRODUCTION' } as Record<string, Jalon>)[rang] ?? null
 const declencheurDe = (rang: string): string | null =>
   ({ 18: 'certification.pv-established.v1', 19: 'certification.pv-signed.v1', 20: 'certification.change-record-constituted.v1', 21: 'certification.attestations-archived.v1',
     22: 'certification.attestations-archived.v1', 23: 'certification.security-approved.v1', 24: 'certification.security-approved.v1', 25: 'certification.security-approved.v1',
@@ -102,7 +102,7 @@ export const CATALOGUE: CatalogueModelisateur = {
     ['CHEF_DES', 'Chef du département DES', ['ROLE_CHEF_DES']], ['CHEFS_DEPARTEMENT', 'Chefs des deux départements', ['ROLE_CHEF_DES', 'ROLE_CHEF_DDRM']],
     ['CONDUCTEUR', 'Conducteur de projet', ['ROLE_CONDUCTEUR_PROJET']], ['SNA', 'Normes et Agréments', ['ROLE_SNA', 'ROLE_INGENIEUR_HOMOLOGATION']],
     ['PRODUCTION_MONETIQUE', 'Production monétique', ['ROLE_PRODUCTION_MONETIQUE']], ['POLE_RESEAU', 'Pôle réseau', ['ROLE_POLE_RESEAU']],
-    ['POLE_SYSTEME', 'Pôle système', ['ROLE_POLE_SYSTEME']], ['RSSI', 'Sécurité des systèmes d\'information', ['ROLE_RSSI']], ['CONFORMITE', 'Conformité', ['ROLE_CONFORMITE']],
+    ['POLE_SYSTEME', 'Pôle système', ['ROLE_POLE_SYSTEME']], ['RSSI', 'Sécurité des systèmes d\'information', ['ROLE_RSSI', 'ROLE_AGENT_SSI']], ['CONFORMITE', 'Conformité', ['ROLE_CONFORMITE']],
     ['DG', 'Direction générale', ['ROLE_DG']], ['EXPLOITATION', 'Exploitation et Supervision', ['ROLE_PRODUCTION_MONETIQUE']], ['PARTICIPANT', 'Participant', ['ROLE_CORRESPONDANT']],
     ['BANQUE_PARTENAIRE', 'Banque partenaire', []], ['PERSONNALISATEUR', 'Personnalisateur', []],
   ] as const).map(([code, libelle, profils]) => ({ code, libelle, profils: [...profils], externe: EXTERNES.includes(code) })),
@@ -115,7 +115,7 @@ export const CATALOGUE: CatalogueModelisateur = {
     .map(([code, libelle], i) => ({ code, libelle, rang: i + 1 })),
   declencheurs: Object.entries(DECLENCHEURS).map(([code, libelle]) => ({ code, libelle })),
   etapes: ([
-    ['PRISE_CONTACT', 'Prise de contact', 1], ['ADHESION', 'Procédure administrative', 2], ['CADRAGE', 'Cadrage', 3], ['LANCEMENT', 'Lancement', 4], ['ATELIERS', 'Ateliers', 5],
+    ['PRISE_CONTACT', 'Prise de contact', 1], ['ADHESION', 'Procédure administrative', 2], ['CADRAGE', 'Cadrage et périmètre', 3], ['LANCEMENT', 'Réunion de lancement', 4], ['ATELIERS', 'Ateliers', 5],
     ['INTEGRATION', 'Intégration', 6], ['TESTS', 'Tests', 7], ['CERTIFICATION', 'Certification', 8], ['APPROBATION_SECURITE', 'Approbation de la sécurité', undefined],
     ['MISE_EN_PRODUCTION', 'Mise en production', 9], ['SUIVI', 'Suivi post-production', 10],
   ] as const).map(([code, libelle, rang]) => (rang ? { code, libelle, rang } : { code, libelle })),

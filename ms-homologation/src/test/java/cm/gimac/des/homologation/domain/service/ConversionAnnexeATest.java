@@ -60,7 +60,7 @@ class ConversionAnnexeATest {
 
     /** Ancien chemin (Parcours.instancier avant D-77) : rangs 3 et suivants, branche du type, raccord implicite du rang 27. */
     static List<Ancienne> ancienChemin(TypeProjet type, Parcours.Designation d) {
-        List<ReferentielOperation> suite = ConversionAnnexeA.lireCsv()
+        List<ReferentielOperation> suite = ConversionAnnexeA.lireCsv(ConversionAnnexeA.EN_VIGUEUR)
             .stream()
             .filter(o -> o.getTypes().contains(type))
             .filter(o -> o.rangNumerique() < 0 || o.rangNumerique() >= 3)
@@ -175,7 +175,10 @@ class ConversionAnnexeATest {
         assertThat(c.get("20").getDeclencheur()).isEqualTo(Declencheurs.DOSSIER_CHANGEMENT);
         assertThat(List.of(c.get("21").getDeclencheur(), c.get("22").getDeclencheur())).containsOnly(Declencheurs.ATTESTATIONS_ARCHIVEES);
         assertThat(List.of(c.get("23").getDeclencheur(), c.get("24").getDeclencheur(), c.get("25").getDeclencheur())).containsOnly(Declencheurs.SECURITE_APPROUVEE);
-        assertThat(c.get("25").getJalon()).isEqualTo(Jalon.APPROUVEE_SECURITE);
+        // CR v1.7, A.4 : l'approbation du changement est le rang 24 (qui déclenche aussi C1) ; le rang 25 n'est pas un acte de la sécurité.
+        assertThat(c.get("24").getJalon()).isEqualTo(Jalon.APPROUVEE_SECURITE);
+        assertThat(c.get("25").getJalon()).isNull();
+        assertThat(c.values().stream().filter(o -> o.getJalon() == Jalon.APPROUVEE_SECURITE)).hasSize(1);
         assertThat(c.get("26").getDeclencheur()).isEqualTo(Declencheurs.FICHE_CHANGEMENT);
         assertThat(c.get("26").getGeste()).isEqualTo(Geste.DEPOSER_PREUVE);
         assertThat(c.get("31").getJalon()).isEqualTo(Jalon.EN_PRODUCTION);
@@ -216,6 +219,30 @@ class ConversionAnnexeATest {
         assertThat(csv).hasSize(96);
         assertThat(csv.stream().mapToInt(ReferentielOperation::getDelaiJours).distinct()).containsExactly(3);
         assertThat(new ParcoursLiaison(java.util.UUID.randomUUID(), "LIA", ParcoursSamples.DEBUT).getVersionCr()).isNull();
+    }
+
+    @Test
+    @DisplayName("Annexe A v1.7 : branche mobile conduite par la Production monétique, intitulés complets, v1.4 figée")
+    void editionV17() {
+        Map<String, ReferenceOperation> m = parCode(TypeProjet.PAIEMENT_MOBILE);
+        assertThat(m.values().stream().filter(o -> o.getCode().startsWith("M")).map(ReferenceOperation::getResponsable)).hasSize(17).containsOnly(Fonction.PRODUCTION_MONETIQUE);
+        // Le pôle réseau garde ses rangs du tronc commun (13, 14) et, en délégataire, D4 et D20.
+        assertThat(List.of(m.get("13").getResponsable(), m.get("14").getResponsable())).containsOnly(Fonction.POLE_RESEAU);
+        Map<String, ReferenceOperation> d = parCode(TypeProjet.DELEGATAIRE);
+        assertThat(List.of(d.get("D4").getResponsable(), d.get("D20").getResponsable())).containsOnly(Fonction.POLE_RESEAU);
+        assertThat(m.get("M1").getLibelle()).isEqualTo("Communication des points de terminaison de production du GIMAC au participant");
+        assertThat(m.get("M8").getLibelle()).isEqualTo("Déclaration des points de terminaison du participant et de leur mode d'authentification");
+        assertThat(d.get("D34").getLibelle()).isEqualTo("Déclaration du chemin du répertoire de dépôt des fichiers sur le switch délégataire");
+        assertThat(parCode(TypeProjet.CARTE_INTERBANCAIRE).get("C1").getLibelle())
+            .isEqualTo("Cérémonie de clés : génération de la clé maîtresse de zone en trois composantes et remise au participant");
+        // La version 1 (v1.4, reprise D-77) reste ce qu'elle était : la reprise d'une base vide la reproduit à l'identique.
+        Map<String, ConversionAnnexeA.Operation> v14 = ConversionAnnexeA.version1(TypeProjet.PAIEMENT_MOBILE)
+            .stream()
+            .collect(Collectors.toMap(ConversionAnnexeA.Operation::code, o -> o));
+        assertThat(v14.get("M6").data().responsable()).isEqualTo(Fonction.POLE_RESEAU);
+        assertThat(v14.get("25").data().jalon()).isEqualTo(Jalon.APPROUVEE_SECURITE);
+        assertThat(v14.get("M1").data().libelle()).isEqualTo("Communication des points de terminaison de production du GIMAC");
+        assertThat(ConversionAnnexeA.lireCsv(ConversionAnnexeA.Edition.V1_7)).hasSize(96);
     }
 
     private static Map<String, ReferenceOperation> parCode(TypeProjet t) {

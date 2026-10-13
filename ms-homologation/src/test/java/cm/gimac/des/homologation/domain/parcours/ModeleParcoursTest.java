@@ -147,7 +147,7 @@ class ModeleParcoursTest {
             assertThat(p.premiereDeLEtape(EtapeCode.ATELIERS).orElseThrow().getRang()).isEqualTo("8");
             assertThat(p.premiereDuResponsable(Fonction.SNA).orElseThrow().getRang()).isEqualTo("10");
             OperationParcours o15 = p.operation("15").orElseThrow();
-            assertThat(o15.getLibelle()).isEqualTo("Paramétrage d'essai");
+            assertThat(o15.getLibelle()).isEqualTo("Paramétrage d'essai, sur les mêmes objets que la branche du type de projet");
             assertThat(o15.getParticularite()).isEqualTo(Particularite.ENTREE_ESSAIS);
             assertThat(o15.getLivrables()).hasSize(1);
             assertThat(o15.getDelaiJours()).isEqualTo(3);

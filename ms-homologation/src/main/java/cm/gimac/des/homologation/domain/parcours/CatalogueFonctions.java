@@ -46,7 +46,8 @@ public final class CatalogueFonctions {
         new Definition("PRODUCTION_MONETIQUE", "Production monétique", List.of("ROLE_PRODUCTION_MONETIQUE"), false, true, List.of("HOM_FUNCTION_PRODUCTION")),
         new Definition("POLE_RESEAU", "Pôle réseau", List.of("ROLE_POLE_RESEAU"), false, true, List.of("HOM_FUNCTION_NETWORK")),
         new Definition("POLE_SYSTEME", "Pôle système", List.of("ROLE_POLE_SYSTEME"), false, true, List.of("HOM_FUNCTION_SYSTEM")),
-        new Definition("RSSI", "Sécurité des systèmes d'information", List.of("ROLE_RSSI"), false, true, List.of("CER_SECURITY_VERIFY")),
+        // Agent de la sécurité des SI (CR v1.7 §3.3, séparation des tâches) : tient la fonction avec le RSSI, sans administrer les comptes.
+        new Definition("RSSI", "Sécurité des systèmes d'information", List.of("ROLE_RSSI", "ROLE_AGENT_SSI"), false, true, List.of("CER_SECURITY_VERIFY")),
         new Definition("CONFORMITE", "Conformité", List.of("ROLE_CONFORMITE"), false, true, List.of("CER_QUITUS_CONFORMITE_SIGN")),
         new Definition("DG", "Direction générale", List.of("ROLE_DG"), false, true, List.of("CER_QUITUS_DG_SIGN")),
         // Exploitation et supervision (CR §3) : tenue par la production monétique, aucun profil propre (D-58) ; sa

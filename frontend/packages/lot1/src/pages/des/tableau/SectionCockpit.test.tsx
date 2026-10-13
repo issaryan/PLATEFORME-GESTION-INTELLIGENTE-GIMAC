@@ -35,7 +35,7 @@ describe('Cockpit de pilotage', () => {
     expect(screen.getByText('46')).toBeTruthy()
     expect(screen.getByText('78')).toBeTruthy()
     expect(screen.getByText('Répartition des projets par étape')).toBeTruthy()
-    expect(screen.getByRole('link', { name: /^Cadrage \(\d+\)$/ }).getAttribute('href')).toBe('/des/parcours?etape=CADRAGE')
+    expect(screen.getByRole('link', { name: /^Cadrage et périmètre \(\d+\)$/ }).getAttribute('href')).toBe('/des/parcours?etape=CADRAGE')
   })
 
   it('les six questions de l\'annexe B, avec leurs réponses', async () => {

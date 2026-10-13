@@ -53,7 +53,7 @@ describe('Étape 3 : liste des liaisons du parcours', () => {
     const services = avec({ listerLiaisons: (f) => { filtres.push(f); return s.parcours.listerLiaisons(f) } })
     page({ services, chemin: '/des/parcours?etape=CADRAGE,LANCEMENT,ATELIERS&sansConducteur=1&statut=CADREE&type=CARTE_INTERBANCAIRE&q=banque&page=1' })
     await waitFor(() => expect(filtres.at(-1)).toMatchObject({ etape: 'CADRAGE,LANCEMENT,ATELIERS', sansConducteur: true, statut: 'CADREE', typeProjet: 'CARTE_INTERBANCAIRE', recherche: 'banque' }))
-    expect(screen.getByText('Étape courante : Cadrage, Lancement, Ateliers')).toBeTruthy()
+    expect(screen.getByText('Étape courante : Cadrage et périmètre, Réunion de lancement, Ateliers')).toBeTruthy()
     expect(screen.getAllByText('Sans conducteur désigné').length).toBeGreaterThan(0)
     fireEvent.click(within(screen.getByText('Statut : Cadrée').closest('.gm-tag') as HTMLElement).getByRole('button'))
     await waitFor(() => expect(filtres.at(-1)?.statut).toBeUndefined())

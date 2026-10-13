@@ -255,7 +255,7 @@ describe('Onglet Opérations : lecture', () => {
     expect(screen.getByText('Arrêt du périmètre des services')).toBeTruthy()
     fireEvent.click(screen.getAllByRole('button', { name: 'Replier' })[0])
     expect(screen.queryByText('Arrêt du périmètre des services')).toBeNull()
-    fireEvent.click(screen.getByText('Cérémonie de clés : clé maîtresse de zone en trois composantes'))
+    fireEvent.click(screen.getByText('Cérémonie de clés : génération de la clé maîtresse de zone en trois composantes et remise au participant'))
     const d = await tiroir()
     fireEvent.click(within(d).getByRole('tab', { name: 'Preuve' }))
     expect(within(d).getByText('Cérémonie de clés')).toBeTruthy()

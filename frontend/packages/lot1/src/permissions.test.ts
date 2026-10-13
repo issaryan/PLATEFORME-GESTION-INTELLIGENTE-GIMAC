@@ -9,8 +9,8 @@ const SANS_FONCTION = ['ROLE_COLLABORATEUR', 'ROLE_RESPONSABLE_SERVICE', 'ROLE_A
 const LECTURE_DES = ['HOM_REFERENTIEL_READ', 'HOM_LIAISON_READ', 'HOM_LIAISON_LIST', 'HOM_DASHBOARD_READ', 'CER_CIRCUIT_READ', 'CER_DOSSIER_READ', 'CER_REGISTER_READ', 'PAR_INSTITUTION_READ']
 
 describe('matrice des rôles (PROFILS)', () => {
-  it('seuls les chefs de département ouvrent la liaison et désignent le conducteur (D-58)', () => {
-    expect(detenteurs(PERM.liaisonOuvrir)).toEqual(['ROLE_CHEF_DDRM', 'ROLE_CHEF_DES'])
+  it('la DDRM seule ouvre la liaison (CR v1.7 §4.2.1) ; les deux chefs de département désignent le conducteur (D-58)', () => {
+    expect(detenteurs(PERM.liaisonOuvrir)).toEqual(['ROLE_CHEF_DDRM'])
     expect(detenteurs(PERM.projetDesigner)).toEqual(['ROLE_CHEF_DDRM', 'ROLE_CHEF_DES'])
     expect(PROFILS.ROLE_INGENIEUR_HOMOLOGATION).not.toContain(PERM.liaisonOuvrir)
     expect(PROFILS.ROLE_CONDUCTEUR_PROJET).not.toContain(PERM.projetDesigner)
@@ -25,7 +25,9 @@ describe('matrice des rôles (PROFILS)', () => {
     expect(detenteurs(PERM.portailSigner)).toEqual(['ROLE_CORRESPONDANT'])
   })
   it('verrou 2 et visas : RSSI, conformité et direction générale séparés', () => {
-    expect(detenteurs(PERM.securiteVerifier)).toEqual(['ROLE_RSSI'])
+    // CR v1.7 §3.3 : l'agent de la sécurité des SI vérifie avec le RSSI, sans administration des comptes ni quitus.
+    expect(detenteurs(PERM.securiteVerifier)).toEqual(['ROLE_AGENT_SSI', 'ROLE_RSSI'])
+    expect(PROFILS.ROLE_AGENT_SSI.filter((p) => /^(IAM_|PLATFORM_|CER_QUITUS_)/.test(p))).toEqual([])
     expect(detenteurs(PERM.visaConformite)).toEqual(['ROLE_CONFORMITE'])
     expect(detenteurs(PERM.visaDg)).toEqual(['ROLE_DG'])
     // Personne ne cumule deux signatures de décision.

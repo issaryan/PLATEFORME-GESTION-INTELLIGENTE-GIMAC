@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Le CR-CERT-GIMAC-01 v1.7 fait foi (décision du 13/10/2026, REC-GIMAC-01). Aucun changeset appliqué ni fichier qu'il
+     charge n'est modifié : l'annexe A v1.7 a ses propres fichiers (parcours_referentiel_cr_v17.csv,
+     libelles_operations_cr_v17.csv), lus par ConversionAnnexeA (édition V1_7).
+     1. Libellés des étapes 3 et 4 (CR §4.1) : « Cadrage » devient « Cadrage et périmètre », « Lancement » devient
+        « Réunion de lancement », dans toute version dont l'étape porte encore le libellé d'origine (un libellé déjà
+        modifié dans le modélisateur est gardé).
+     2. Fonction RSSI : tenue aussi par l'agent de la sécurité des SI (ROLE_AGENT_SSI) ; valeur de départ seulement, une
+        liste de profils déjà modifiée dans la plateforme (PUT /referentiels/fonctions) n'est pas remplacée.
+     3. Reprise : par type de projet, version fidèle à l'annexe A v1.7 publiée sous le numéro suivant (la version publiée
+        en cours est retirée), liaisons non closes rattachées sans changement d'état d'exécution
+        (RepriseReferentielCrV17). Idempotente. -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="cr17-etapes-libelles" author="homologation">
+        <sql>
+            UPDATE referential_etape SET libelle = 'Cadrage et périmètre' WHERE canonique = 'CADRAGE' AND code = 'CADRAGE' AND libelle = 'Cadrage';
+            UPDATE referential_etape SET libelle = 'Réunion de lancement' WHERE canonique = 'LANCEMENT' AND code = 'LANCEMENT' AND libelle = 'Lancement';
+        </sql>
+    </changeSet>
+
+    <changeSet id="cr17-fonction-rssi-agent" author="homologation">
+        <sql>
+            UPDATE referentiel_fonction SET profils = '["ROLE_RSSI","ROLE_AGENT_SSI"]'::jsonb WHERE code = 'RSSI' AND profils = '["ROLE_RSSI"]'::jsonb;
+        </sql>
+    </changeSet>
+
+    <changeSet id="cr17-reprise-annexe-a" author="homologation" context="!test">
+        <customChange class="cm.gimac.des.homologation.config.liquibase.RepriseReferentielCrV17"/>
+    </changeSet>
+</databaseChangeLog>

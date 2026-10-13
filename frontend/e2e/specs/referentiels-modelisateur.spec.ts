@@ -121,7 +121,7 @@ test.describe('Fonctionnalité : modélisateur des référentiels (services simu
       await carte(page, 'C12').getByRole('button', { name: 'Modifier l\'opération C12' }).click()
       const d = page.getByRole('dialog', { name: 'Opération C12' })
       await d.getByRole('tab', { name: 'Rôles' }).click()
-      await choisir(d.getByRole('combobox', { name: 'Consultés (C)' }), 'Pôle réseau')
+      await choisir(d.getByRole('combobox', { name: 'Contributeurs (C)' }), 'Pôle réseau')
       // Le premier clic hors de la liste de choix la referme ; on réessaie jusqu'à la sélection de l'onglet.
       const onglet = d.getByRole('tab', { name: 'Livrables et preuves' })
       await expect(async () => {

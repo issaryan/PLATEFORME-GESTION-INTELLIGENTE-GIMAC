@@ -16,8 +16,8 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Jeux d'essai du parcours : référentiel de l'annexe A lu dans le fichier chargé par Liquibase
- * (config/liquibase/data/parcours_referentiel_cr.csv), sa version 1 (D-77) à laquelle les liaisons sont
+ * Jeux d'essai du parcours : référentiel de l'annexe A du CR en vigueur, v1.7
+ * (config/liquibase/data/parcours_referentiel_cr_v17.csv), sa version fidèle à laquelle les liaisons sont
  * rattachées, liaisons et parcours instanciés depuis cette version.
  */
 public final class ParcoursSamples {
@@ -28,9 +28,9 @@ public final class ParcoursSamples {
 
     private ParcoursSamples() {}
 
-    /** Référentiel de l'annexe A tel que Liquibase le charge. */
+    /** Référentiel de l'annexe A du CR en vigueur (v1.7). */
     public static List<ReferentielOperation> referentiel() {
-        try (var in = ParcoursSamples.class.getResourceAsStream("/config/liquibase/data/parcours_referentiel_cr.csv")) {
+        try (var in = ParcoursSamples.class.getResourceAsStream("/config/liquibase/data/parcours_referentiel_cr_v17.csv")) {
             String[] lignes = new String(in.readAllBytes(), StandardCharsets.UTF_8).split("\n");
             List<ReferentielOperation> l = new ArrayList<>();
             for (int i = 1; i < lignes.length; i++) {
@@ -63,11 +63,11 @@ public final class ParcoursSamples {
         }
     }
 
-    /** Version 1 du référentiel d'un type (conversion fidèle de l'annexe A), numérotée 2 dans les jeux d'essai. */
+    /** Version du référentiel d'un type fidèle à l'annexe A du CR en vigueur (v1.7), numérotée 2 dans les jeux d'essai. */
     public static ReferentialVersion version1(TypeProjet type) {
-        ReferentialVersion v = ReferentialVersion.nouveauBrouillon(type, ConversionAnnexeA.LIBELLE_VERSION, Instant.parse("2026-09-01T00:00:00Z"));
+        ReferentialVersion v = ReferentialVersion.nouveauBrouillon(type, ConversionAnnexeA.EN_VIGUEUR.libelle(), Instant.parse("2026-09-01T00:00:00Z"));
         v.setId(UUID.randomUUID());
-        ConversionAnnexeA.version1(type).forEach(o -> v.upsertOperation(o.code(), o.data()));
+        ConversionAnnexeA.enVigueur(type).forEach(o -> v.upsertOperation(o.code(), o.data()));
         v.setNumero(2);
         return v;
     }

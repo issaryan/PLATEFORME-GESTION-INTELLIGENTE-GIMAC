@@ -33,8 +33,8 @@ public enum EtapeCode {
         return switch (this) {
             case PRISE_CONTACT -> "Prise de contact";
             case ADHESION -> "Procédure administrative";
-            case CADRAGE -> "Cadrage";
-            case LANCEMENT -> "Lancement";
+            case CADRAGE -> "Cadrage et périmètre";
+            case LANCEMENT -> "Réunion de lancement";
             case ATELIERS -> "Ateliers";
             case INTEGRATION -> "Intégration";
             case TESTS -> "Tests";

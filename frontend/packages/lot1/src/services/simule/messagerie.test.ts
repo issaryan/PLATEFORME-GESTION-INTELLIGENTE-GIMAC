@@ -22,7 +22,7 @@ describe('messagerieSimulee', () => {
     const tout = await m.annuaire('')
     expect(tout.contenu.some((p) => p.id === 'U-001')).toBe(false)
     expect(tout.total).toBe(ANNUAIRE.length - 1)
-    expect((await m.annuaire('sécurité')).contenu.map((p) => p.id)).toEqual(['u-rssi'])
+    expect((await m.annuaire('sécurité')).contenu.map((p) => p.id)).toEqual(['u-rssi', 'u-ssi'])
     expect((await m.annuaire('', 1, 5)).contenu).toHaveLength(5)
   })
   it('conversations de l’utilisateur, la plus récente en tête ; non-lus ; recherche et liaison', async () => {

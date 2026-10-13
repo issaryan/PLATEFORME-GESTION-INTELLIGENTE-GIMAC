@@ -378,7 +378,7 @@ for (const theme of ['light', 'dark'] as const satisfies readonly Theme[]) {
         await ongletSelectionne(op, 'Rôles')
         await op.getByLabel(/Responsable \(R\)/).selectOption('SNA')
         await op.getByLabel(/Validateur \(V\)/).selectOption('CONDUCTEUR')
-        await choisirMultiple(op.getByRole('combobox', { name: 'Consultés (C)' }), 'Pôle réseau')
+        await choisirMultiple(op.getByRole('combobox', { name: 'Contributeurs (C)' }), 'Pôle réseau')
         await choisirMultiple(op.getByRole('combobox', { name: 'Informés (I)' }), 'Production monétique')
         await choisirMultiple(op.getByRole('combobox', { name: 'Externes (E)' }), 'Participant')
         await op.getByRole('heading', { name: 'Nouvelle opération' }).click()

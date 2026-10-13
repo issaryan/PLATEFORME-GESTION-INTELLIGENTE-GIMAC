@@ -22,7 +22,7 @@ describe('POR-03 Dépôt d’un livrable du participant', () => {
   it('pièce attendue, échéance, alerte d’oubli ; fichier exigé, confirmation, dépôt par le hook du portail', async () => {
     const deposer = vi.fn(() => Promise.resolve())
     const { container } = monter({ services: avecTache(deposer) })
-    expect(await screen.findByText('Paramétrage d\'essai')).toBeTruthy()
+    expect(await screen.findByText('Paramétrage d\'essai, sur les mêmes objets que la branche du type de projet')).toBeTruthy()
     expect(screen.getByText('Document de paramétrage, livrable unique et imposé de la phase')).toBeTruthy()
     expect(screen.getByText('Échéance proche')).toBeTruthy()
     expect(screen.getByText(/Opération facile à omettre/)).toBeTruthy()

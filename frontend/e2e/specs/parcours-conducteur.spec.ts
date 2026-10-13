@@ -103,7 +103,7 @@ test.describe('Fonctionnalité : conduite de projet de certification', () => {
     await acteur(page, 'ROLE_RSSI', c1)
     const t = tiroir(page, 'C1')
     await test.step('Étant donné la cérémonie de clés de la liaison LIA-2026-012', async () => {
-      await expect(t.getByText('Cérémonie de clés : clé maîtresse de zone en trois composantes')).toBeVisible()
+      await expect(t.getByText('Cérémonie de clés : génération de la clé maîtresse de zone en trois composantes et remise au participant')).toBeVisible()
       await expect(t.getByText(/jamais la valeur d'une clé ou d'une composante/)).toBeVisible()
     })
     await test.step('Quand il soumet sans la tenue ni les porteurs, puis saisit une valeur trop longue', async () => {

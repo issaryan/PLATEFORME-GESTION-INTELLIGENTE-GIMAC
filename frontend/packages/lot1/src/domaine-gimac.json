@@ -128,7 +128,7 @@
     {
       "code": "ROLE_CHEF_DES",
       "libelle": "Chef du DES",
-      "description": "Dirige le Département Exploitation et Supervision : ouvre les liaisons, désigne les conducteurs de projet et signe le quitus technique.",
+      "description": "Coordonnateur technique : dirige le Département Exploitation et Supervision, affecte les ressources techniques des projets, désigne les conducteurs de projet et coordonne la certification.",
       "externe": false,
       "permissions": [
         "CER_ATTESTATION_ISSUE",
@@ -144,7 +144,6 @@
         "HOM_DEADLINE_CONFIG",
         "HOM_EVIDENCE_FILE_EXPORT",
         "HOM_LIAISON_LIST",
-        "HOM_LIAISON_OPEN",
         "HOM_LIAISON_READ",
         "HOM_LIAISON_UNFREEZE",
         "HOM_OPERATION_VALIDATE",
@@ -209,7 +208,7 @@
     {
       "code": "ROLE_RSSI",
       "libelle": "Sécurité des SI",
-      "description": "Responsable de la sécurité des systèmes d'information : vérifie la sécurité des liaisons, signe le quitus sécurité et administre les comptes.",
+      "description": "Responsable de la sécurité des systèmes d'information : saisie par la demande de changement, vérifie les attestations et archive le dossier, approuve le changement, conduit la cérémonie de clés et saisit les clés carte ; administre les comptes.",
       "externe": false,
       "permissions": [
         "CER_CIRCUIT_READ",
@@ -245,6 +244,28 @@
         "PLATFORM_SECURITY_POLICY_EDIT",
         "PLATFORM_SECURITY_POLICY_READ",
         "PLATFORM_SUPERVISION_READ"
+      ]
+    },
+    {
+      "code": "ROLE_AGENT_SSI",
+      "libelle": "Agent de la sécurité des SI",
+      "description": "Agent de la sécurité des systèmes d'information, sous le RSSI : vérifie les attestations de conformité et archive le dossier, dépose les preuves de la cérémonie de clés et de la saisie des clés carte.",
+      "externe": false,
+      "permissions": [
+        "CER_CIRCUIT_READ",
+        "CER_DOSSIER_READ",
+        "CER_REGISTER_READ",
+        "CER_SECURITY_VERIFY",
+        "COL_MESSAGE_READ",
+        "COL_MESSAGE_SEND",
+        "HOM_DASHBOARD_READ",
+        "HOM_EVIDENCE_SUBMIT",
+        "HOM_LIAISON_LIST",
+        "HOM_LIAISON_READ",
+        "HOM_REFERENTIEL_READ",
+        "NOT_INBOX_READ",
+        "PAR_INSTITUTION_READ",
+        "PIL_ACTIVITY_OWN"
       ]
     },
     {
@@ -339,7 +360,7 @@
     {
       "code": "ROLE_CHEF_DDRM",
       "libelle": "Chef de la DDRM",
-      "description": "Dirige la DDRM : prononce les décisions sur les institutions membres, ouvre les liaisons et désigne les conducteurs de projet.",
+      "description": "Coordonnateur fonctionnel : dirige la DDRM, porte d'entrée des projets ; prononce les décisions sur les institutions membres, ouvre les liaisons, pilote le cadrage, le périmètre et la coordination fonctionnelle, et désigne les conducteurs de projet.",
       "externe": false,
       "permissions": [
         "CER_CIRCUIT_READ",
@@ -372,7 +393,7 @@
     {
       "code": "ROLE_SNA",
       "libelle": "Normes et Agréments",
-      "description": "Service Normes et Agréments : vérifie le respect des normes, dépose et valide les preuves d'homologation.",
+      "description": "Service Normes et Agréments : conduit les essais service par service, constate leur aboutissement et porte la certification (intégration, tests et certification).",
       "externe": false,
       "permissions": [
         "CER_CIRCUIT_READ",
@@ -395,7 +416,7 @@
     {
       "code": "ROLE_PRODUCTION_MONETIQUE",
       "libelle": "Production monétique",
-      "description": "Met en production les liaisons homologuées : preuves, rattachement des changements et rapport de mise en production.",
+      "description": "Après la certification, paramètre le participant en production, émet la demande de changement et exécute la configuration ; conduit toute la branche mobile, adresses et certificats compris.",
       "externe": false,
       "permissions": [
         "CER_CHANGE_RECORD_LINK",
@@ -420,7 +441,7 @@
     {
       "code": "ROLE_POLE_RESEAU",
       "libelle": "Pôle réseau",
-      "description": "Réalise les opérations réseau des liaisons et en dépose les preuves d'homologation.",
+      "description": "Production informatique, pôle réseau : établit la matrice des flux, contrôle l'atteignabilité des ports et établit le lien d'essai, où s'achève son intervention ; ouvre le port des guichets automatiques des projets délégataires.",
       "externe": false,
       "permissions": [
         "CER_CIRCUIT_READ",
@@ -442,7 +463,7 @@
     {
       "code": "ROLE_POLE_SYSTEME",
       "libelle": "Pôle système",
-      "description": "Réalise les opérations système des liaisons et en dépose les preuves d'homologation.",
+      "description": "Production informatique, pôle système : au changement de production, crée les répertoires de dépôt et met à jour les scripts qui y déposent les fichiers.",
       "externe": false,
       "permissions": [
         "CER_CIRCUIT_READ",
@@ -508,7 +529,7 @@
     {
       "code": "ROLE_CONDUCTEUR_PROJET",
       "libelle": "Conducteur de projet",
-      "description": "Conduit le projet de liaison qui lui est confié : affecte les opérations, valide les preuves et établit le procès-verbal.",
+      "description": "Désigné par projet, assure la coordination opérationnelle au jour le jour du projet de liaison qui lui est confié : affecte les opérations, valide les preuves et établit le procès-verbal de certification.",
       "externe": false,
       "permissions": [
         "CER_CIRCUIT_READ",

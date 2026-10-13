@@ -86,8 +86,10 @@ PROFILS = {
         "HOM_OPERATION_ASSIGN", "HOM_EVIDENCE_SUBMIT", "HOM_OPERATION_VALIDATE", "HOM_OPERATION_REOPEN", "HOM_GRID_EDIT",
         "HOM_REPLAY_ADMIN", "HOM_SCENARIO_QUALIFY", "HOM_EVIDENCE_FILE_EXPORT", "CER_DOSSIER_VERIFY", "CER_GOLIVE_REPORT_SUBMIT",
         "CER_ATTESTATION_ISSUE"],
-    # Chefs de département : ouvrent la liaison au cadrage et désignent le conducteur de projet (D-58, rang 6).
-    "ROLE_CHEF_DES": LECTURE_DES + ["HOM_LIAISON_OPEN", "HOM_PROJECT_DESIGNATE", "HOM_REFERENTIEL_MIGRATE", "HOM_LIAISON_UNFREEZE", "HOM_OPERATION_VALIDATE",
+    # Chefs de département (CR v1.7 §3.6) : tous deux désignent le conducteur de projet (rang 6) ; seul le chef de la DDRM,
+    # coordonnateur fonctionnel et porte d'entrée, ouvre la liaison (§4.2.1) ; le chef du DES, coordonnateur technique,
+    # affecte les ressources techniques et pilote la certification.
+    "ROLE_CHEF_DES": LECTURE_DES + ["HOM_PROJECT_DESIGNATE", "HOM_REFERENTIEL_MIGRATE", "HOM_LIAISON_UNFREEZE", "HOM_OPERATION_VALIDATE",
         "HOM_DEADLINE_CONFIG", "HOM_EVIDENCE_FILE_EXPORT", "CER_QUITUS_TECHNIQUE_SIGN", "CER_ATTESTATION_ISSUE",
         "CER_REGISTER_EXPORT", "CER_ATTESTATION_STATUS_REQUEST", "HOM_STEP_MANAGE"],
     # Super administrateur et RSSI administrent la plateforme depuis la console (D-62) ; seul le
@@ -100,6 +102,10 @@ PROFILS = {
     "ROLE_RSSI": LECTURE_DES + ["CER_QUITUS_SECURITE_SIGN", "CER_SECURITY_VERIFY", "HOM_EVIDENCE_SUBMIT"] + [f"IAM_{p}" for p in PERMISSIONS["IAM"] if p != "ROLE_PRIVILEGED_GRANT"]
         + ["PLATFORM_SUPERVISION_READ", "PLATFORM_CONFIG_READ", "PLATFORM_SECURITY_POLICY_READ", "PLATFORM_SECURITY_POLICY_EDIT",
            "PLATFORM_MESSAGING_EDIT", "PLATFORM_OPS_READ"],
+    # Agent de la sécurité des SI, sous le RSSI (CR v1.7 §3.3, §4.5) : vérifie les attestations et archive le dossier,
+    # dépose les preuves de la cérémonie de clés et de la saisie des clés carte ; ni administration des comptes ni de la
+    # plateforme, ni quitus (séparation des tâches avec le RSSI).
+    "ROLE_AGENT_SSI": LECTURE_DES + ["CER_SECURITY_VERIFY", "HOM_EVIDENCE_SUBMIT"],
     "ROLE_CONFORMITE": LECTURE_DES + ["CER_QUITUS_CONFORMITE_SIGN", "CER_CHANGE_RECORD_LINK"],
     "ROLE_DG": LECTURE_DES + ["CER_QUITUS_DG_SIGN", "CER_ATTESTATION_STATUS_APPROVE"],
     # Notifications du portail (D-93 §11.4) : boîte et préférences du correspondant.
@@ -133,11 +139,13 @@ PRESENTATIONS = {
     "ROLE_INGENIEUR_HOMOLOGATION": ("Ingénieur d'homologation",
         "Conduit les opérations d'homologation des liaisons (référentiel, preuves, validation) et prépare la certification."),
     "ROLE_CHEF_DES": ("Chef du DES",
-        "Dirige le Département Exploitation et Supervision : ouvre les liaisons, désigne les conducteurs de projet et signe le quitus technique."),
+        "Coordonnateur technique : dirige le Département Exploitation et Supervision, affecte les ressources techniques des projets, désigne les conducteurs de projet et coordonne la certification."),
     "ROLE_SUPER_ADMIN": ("Super administrateur",
         "Administre la plateforme, les comptes et les profils ; seul habilité à attribuer un profil privilégié."),
     "ROLE_RSSI": ("Sécurité des SI",
-        "Responsable de la sécurité des systèmes d'information : vérifie la sécurité des liaisons, signe le quitus sécurité et administre les comptes."),
+        "Responsable de la sécurité des systèmes d'information : saisie par la demande de changement, vérifie les attestations et archive le dossier, approuve le changement, conduit la cérémonie de clés et saisit les clés carte ; administre les comptes."),
+    "ROLE_AGENT_SSI": ("Agent de la sécurité des SI",
+        "Agent de la sécurité des systèmes d'information, sous le RSSI : vérifie les attestations de conformité et archive le dossier, dépose les preuves de la cérémonie de clés et de la saisie des clés carte."),
     "ROLE_CONFORMITE": ("Conformité",
         "Contrôle la conformité des dossiers de certification, rattache les changements et signe le quitus conformité."),
     "ROLE_DG": ("Direction générale",
@@ -147,15 +155,15 @@ PRESENTATIONS = {
     "ROLE_CHARGE_DDRM": ("Chargé de la DDRM",
         "Instruit les dossiers des institutions membres (adhésion, transitions) et propose les décisions au chef de la DDRM."),
     "ROLE_CHEF_DDRM": ("Chef de la DDRM",
-        "Dirige la DDRM : prononce les décisions sur les institutions membres, ouvre les liaisons et désigne les conducteurs de projet."),
+        "Coordonnateur fonctionnel : dirige la DDRM, porte d'entrée des projets ; prononce les décisions sur les institutions membres, ouvre les liaisons, pilote le cadrage, le périmètre et la coordination fonctionnelle, et désigne les conducteurs de projet."),
     "ROLE_SNA": ("Normes et Agréments",
-        "Service Normes et Agréments : vérifie le respect des normes, dépose et valide les preuves d'homologation."),
+        "Service Normes et Agréments : conduit les essais service par service, constate leur aboutissement et porte la certification (intégration, tests et certification)."),
     "ROLE_PRODUCTION_MONETIQUE": ("Production monétique",
-        "Met en production les liaisons homologuées : preuves, rattachement des changements et rapport de mise en production."),
+        "Après la certification, paramètre le participant en production, émet la demande de changement et exécute la configuration ; conduit toute la branche mobile, adresses et certificats compris."),
     "ROLE_POLE_RESEAU": ("Pôle réseau",
-        "Réalise les opérations réseau des liaisons et en dépose les preuves d'homologation."),
+        "Production informatique, pôle réseau : établit la matrice des flux, contrôle l'atteignabilité des ports et établit le lien d'essai, où s'achève son intervention ; ouvre le port des guichets automatiques des projets délégataires."),
     "ROLE_POLE_SYSTEME": ("Pôle système",
-        "Réalise les opérations système des liaisons et en dépose les preuves d'homologation."),
+        "Production informatique, pôle système : au changement de production, crée les répertoires de dépôt et met à jour les scripts qui y déposent les fichiers."),
     "ROLE_COLLABORATEUR": ("Collaborateur",
         "Employé du GIMAC sans fonction métier dans la plateforme : messagerie, Mon activité et notifications."),
     "ROLE_ADMIN_SYSTEME": ("Administrateur système",
@@ -163,7 +171,7 @@ PRESENTATIONS = {
     "ROLE_RESPONSABLE_SERVICE": ("Responsable de service",
         "Dirige un service, un pôle ou une cellule : confie et suit les tâches de son équipe, lit ses activités et vise ses rapports."),
     "ROLE_CONDUCTEUR_PROJET": ("Conducteur de projet",
-        "Conduit le projet de liaison qui lui est confié : affecte les opérations, valide les preuves et établit le procès-verbal."),
+        "Désigné par projet, assure la coordination opérationnelle au jour le jour du projet de liaison qui lui est confié : affecte les opérations, valide les preuves et établit le procès-verbal de certification."),
 }
 assert set(PRESENTATIONS) == set(PROFILS), "libellé et mission de chaque profil livré"
 assert all(1 <= len(l) <= 80 and len(d) <= 500 and "\u2014" not in l + d for l, d in PRESENTATIONS.values())
@@ -180,6 +188,10 @@ RESPONSABLES = {"ROLE_CHEF_DES", "ROLE_CHEF_DDRM", "ROLE_DG", "ROLE_RSSI", "ROLE
 REFERENTIEL_EDITEURS = {"ROLE_INGENIEUR_HOMOLOGATION", "ROLE_CHEF_DES", "ROLE_CHEF_DDRM", "ROLE_RESPONSABLE_SERVICE", "ROLE_SUPER_ADMIN"}
 REFERENTIEL_PUBLIEURS = {"ROLE_INGENIEUR_HOMOLOGATION", "ROLE_CHEF_DES", "ROLE_CHEF_DDRM", "ROLE_SUPER_ADMIN"}
 REFERENTIEL_LECTURE_COMPLETE = {"ROLE_DG", "ROLE_CONFORMITE", "ROLE_RSSI", "ROLE_CHEF_DES", "ROLE_CHEF_DDRM"}
+# Ouverture d'une liaison (CR v1.7 §4.2.1 : « Celui-ci ouvre le projet ») : la DDRM seule, par son chef.
+assert [n for n, ps in PROFILS.items() if "HOM_LIAISON_OPEN" in ps] == ["ROLE_CHEF_DDRM"]
+# Agent de la sécurité des SI : ni administration des comptes ou de la plateforme, ni quitus.
+assert not [p for p in PROFILS["ROLE_AGENT_SSI"] if p.startswith(("IAM_", "PLATFORM_", "CER_QUITUS_"))]
 # Administration des référentiels métier (D-92) : super administrateur et ingénieur d'homologation seulement ; le
 # super administrateur porte aussi tous les droits du référentiel des opérations (lecture complète, migration).
 REFERENTIELS_METIER_ADMIN = {"ROLE_SUPER_ADMIN", "ROLE_INGENIEUR_HOMOLOGATION"}
@@ -227,6 +239,7 @@ UTILISATEURS = [
     ("test-chef-des", "Chef", "DES", "ROLE_CHEF_DES", None),
     ("test-super-admin", "Super", "Administrateur", "ROLE_SUPER_ADMIN", None),
     ("test-rssi", "Responsable", "Sécurité", "ROLE_RSSI", None),
+    ("test-agent-ssi", "Agent", "Sécurité des SI", "ROLE_AGENT_SSI", None),
     ("test-conformite", "Responsable", "Conformité", "ROLE_CONFORMITE", None),
     ("test-dg", "Direction", "Générale", "ROLE_DG", None),
     ("test-correspondant-a", "Correspondant", "Établissement de paiement A", "ROLE_CORRESPONDANT", "INST-0042"),

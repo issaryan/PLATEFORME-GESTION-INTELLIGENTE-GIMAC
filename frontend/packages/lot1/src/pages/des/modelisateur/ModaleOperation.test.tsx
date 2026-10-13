@@ -49,7 +49,7 @@ describe('Modale de l\'opération', () => {
     expect(within(d).getByText('Le validateur doit être distinct du responsable.')).toBeTruthy()
     fireEvent.change(within(d).getByLabelText(/Validateur \(V\)/), { target: { value: 'CONDUCTEUR' } })
     // Qualités C, I, E par jetons (suggestions filtrées par la saisie).
-    const consultes = within(d).getByRole('combobox', { name: 'Consultés (C)' })
+    const consultes = within(d).getByRole('combobox', { name: 'Contributeurs (C)' })
     fireEvent.change(consultes, { target: { value: 'réseau' } })
     fireEvent.mouseDown(within(screen.getAllByRole('listbox').at(-1)!).getByRole('option', { name: 'Pôle réseau' }))
     fireEvent.change(within(d).getByRole('combobox', { name: 'Externes (E)' }), { target: { value: '' } })

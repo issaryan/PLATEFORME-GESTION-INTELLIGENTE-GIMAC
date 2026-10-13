@@ -258,7 +258,7 @@ class EffetReelApplicationTest {
         ev2.emettre(p, av2, EvenementsParcours.jalons(p));
         verify(outbox2).publish(eq("liaison"), eq(p.id()), eq(OperationParcoursPayload.TYPE_VALIDATION), any(), anyString());
         assertThat(EvenementsParcours.destinataire("E", Personne.correspondant("i", "n")).institutionId()).isEqualTo("i");
-        assertThat(EvenementsParcours.destinataire("C", Personne.aAffecter(Fonction.RSSI)).profils()).containsExactly("ROLE_RSSI");
+        assertThat(EvenementsParcours.destinataire("C", Personne.aAffecter(Fonction.RSSI)).profils()).containsExactly("ROLE_RSSI", "ROLE_AGENT_SSI");
     }
 
     @Test

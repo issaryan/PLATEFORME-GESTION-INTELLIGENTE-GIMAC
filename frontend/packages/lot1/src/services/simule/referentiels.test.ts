@@ -23,7 +23,9 @@ describe('Référentiel simulé : version 1 de l\'annexe A', () => {
     expect(o('17')).toMatchObject({ geste: 'CONSTATER_COUVERTURE', jalon: 'APTE_CERTIFICATION' })
     expect(o('18')).toMatchObject({ geste: 'EVENEMENT_EXTERNE', declencheur: 'certification.pv-established.v1', validateur: 'CHEF_DES' })
     expect(o('19')).toMatchObject({ jalon: 'CERTIFIEE', pivot: true, livrables: [{ code: 'L1', deposant: 'CHEF_DES', typesPieces: ['application/pdf'] }] })
-    expect(o('25').jalon).toBe('APPROUVEE_SECURITE')
+    // CR v1.7, A.4 : le jalon d'approbation de la sécurité est sur le rang 24 (approbation du changement).
+    expect(o('24').jalon).toBe('APPROUVEE_SECURITE')
+    expect(o('25').jalon).toBeNull()
     expect(o('26')).toMatchObject({ geste: 'DEPOSER_PREUVE', declencheur: 'certification.change-record-referenced.v1' })
     expect(o('31').jalon).toBe('EN_PRODUCTION')
     expect(o('32').geste).toBe('FICHE_SUIVI')
@@ -32,6 +34,8 @@ describe('Référentiel simulé : version 1 de l\'annexe A', () => {
     expect(o('C1').particularite).toBe('CEREMONIE_CLES')
     expect(o('27').predecesseurs).toEqual(['C10'])
     expect(versionCR('PAIEMENT_MOBILE').find((x) => x.code === '15')!.plateforme).toBe('SIMULATEUR')
+    // CR v1.7, A.6 : toute la branche mobile est conduite par la Production monétique.
+    expect(versionCR('PAIEMENT_MOBILE').filter((x) => x.code.startsWith('M')).map((x) => x.responsable)).toEqual(Array(17).fill('PRODUCTION_MONETIQUE'))
     expect(versionCR('DELEGATAIRE').length).toBeGreaterThan(60)
     // Le simulateur du parcours lit ses gestes dédiés sur le référentiel : mêmes rangs qu'avant (D-77, §3).
     expect(GESTES_DEDIES).toEqual(['6', '18', '19', '20', '21', '22', '23', '24', '25', '32', '33'])

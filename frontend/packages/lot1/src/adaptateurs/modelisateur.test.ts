@@ -33,7 +33,7 @@ describe('Modélisateur : disposition automatique et couloirs', () => {
     expect(p.get(noeuds[0].code)).toEqual(auto.get(noeuds[0].code))
     expect(p.get(noeuds[1].code)).toEqual(noeuds[1].position)
     const c = couloirs(noeuds, p, CATALOGUE, t)
-    expect(c.etapes.map((e) => e.libelle)[0]).toBe('parcours.etape.CADRAGE|Cadrage')
+    expect(c.etapes.map((e) => e.libelle)[0]).toBe('parcours.etape.CADRAGE|Cadrage et périmètre')
     expect(c.segments.map((s) => s.cle)).toEqual(['segment-AMONT', 'segment-BRANCHE', 'segment-AVAL'])
     expect(couloirs([], p, CATALOGUE, t)).toEqual({ etapes: [], segments: [] })
     const sans = couloirs([{ ...noeuds[0], etape: null, segment: null }], new Map(), CATALOGUE, t)

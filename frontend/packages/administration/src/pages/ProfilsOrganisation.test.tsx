@@ -34,7 +34,7 @@ describe('D-86 : présentation des profils', () => {
     profils({ services: s })
     const ligne = (await screen.findByText('ROLE_POLE_RESEAU')).closest('tr')!
     expect(within(ligne).getByText('Pôle réseau')).toBeTruthy()
-    expect(within(ligne).getByText(/Réalise les opérations réseau/)).toBeTruthy()
+    expect(within(ligne).getByText(/établit le lien d'essai, où s'achève son intervention/)).toBeTruthy()
     expect(within(ligne).getByText('non modifié')).toBeTruthy()
     // Un profil livré n'a jamais de bouton « Supprimer ».
     expect(within(ligne).queryByRole('button', { name: /Supprimer/ })).toBeNull()

@@ -84,8 +84,8 @@ describe('Étape 10 : mise en service constatée', () => {
 })
 
 describe('Service supplémentaire (rang 35)', () => {
-  it('chef du DES : ouvre une nouvelle liaison au cadrage et y est conduit', async () => {
-    ouvrir('LIA-2025-088', 'ROLE_CHEF_DES')
+  it('chef de la DDRM : ouvre une nouvelle liaison au cadrage et y est conduit', async () => {
+    ouvrir('LIA-2025-088', 'ROLE_CHEF_DDRM')
     // Choix des services dans une fenêtre modale, puis confirmation de l'ouverture.
     fireEvent.click(await screen.findByRole('button', { name: 'Ouvrir une nouvelle liaison' }))
     const f = await screen.findByRole('dialog', { name: 'Service supplémentaire' })
@@ -111,7 +111,7 @@ describe('Service supplémentaire (rang 35)', () => {
   it('tous les services déjà au périmètre : explication', async () => {
     const s = servicesSimules({ latenceMs: 0 })
     const services: Services = { ...s, parcours: { ...s.parcours, dossier: (id) => s.parcours.dossier(id).then((d) => ({ ...d, perimetre: d.perimetre.map((x) => ({ ...x, inclus: true })) })) } }
-    ouvrir('LIA-2025-088', 'ROLE_CHEF_DES', { services })
+    ouvrir('LIA-2025-088', 'ROLE_CHEF_DDRM', { services })
     expect(await screen.findByText(/déjà au périmètre de cette liaison/)).toBeTruthy()
   })
 })
@@ -124,7 +124,7 @@ describe('Langues, thème et accessibilité', () => {
   })
 
   it.each(['light', 'dark'] as const)('axe sans violation (thème %s)', async (theme) => {
-    const { container } = ouvrir('LIA-2025-088', 'ROLE_CHEF_DES', { theme })
+    const { container } = ouvrir('LIA-2025-088', 'ROLE_CHEF_DDRM', { theme })
     await screen.findByRole('button', { name: 'Ouvrir une nouvelle liaison' })
     await screen.findByText('Constat des services effectivement ouverts')
     const res = await axe.run(container, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'] }, rules: { 'color-contrast': { enabled: false }, region: { enabled: false } } })

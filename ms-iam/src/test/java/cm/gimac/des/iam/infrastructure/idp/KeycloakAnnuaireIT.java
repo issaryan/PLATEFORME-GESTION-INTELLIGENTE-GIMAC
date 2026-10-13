@@ -483,6 +483,13 @@ class KeycloakAnnuaireIT {
         Profil rssi = profils.stream().filter(p -> p.code().equals("ROLE_RSSI")).findFirst().orElseThrow();
         assertThat(rssi.permissions()).contains("IAM_ACCOUNT_CREATE", "PLATFORM_SECURITY_POLICY_EDIT").doesNotContain("IAM_ROLE_PRIVILEGED_GRANT");
         assertThat(annuaire.permissions()).contains("PAR_INSTITUTION_READ", "IAM_ACCOUNT_READ").noneMatch(p -> p.startsWith("ROLE_"));
+        // CR v1.7 §3.3 : agent de la sécurité des SI, sous le RSSI, sans administration ni quitus (profil non privilégié).
+        Profil agentSsi = profils.stream().filter(p -> p.code().equals("ROLE_AGENT_SSI")).findFirst().orElseThrow();
+        assertThat(agentSsi.privilegie()).isFalse();
+        assertThat(agentSsi.permissions()).contains("CER_SECURITY_VERIFY", "HOM_EVIDENCE_SUBMIT").noneMatch(p -> p.startsWith("IAM_") || p.startsWith("PLATFORM_") || p.startsWith("CER_QUITUS_"));
+        // CR v1.7 §4.2.1 : la DDRM ouvre le projet ; le chef du DES n'ouvre plus de liaison.
+        assertThat(profils).filteredOn(p -> p.code().equals("ROLE_CHEF_DES")).singleElement().satisfies(p -> assertThat(p.permissions()).contains("HOM_PROJECT_DESIGNATE").doesNotContain("HOM_LIAISON_OPEN"));
+        assertThat(profils).filteredOn(p -> p.code().equals("ROLE_CHEF_DDRM")).singleElement().satisfies(p -> assertThat(p.permissions()).contains("HOM_LIAISON_OPEN"));
 
         Profil sna = profils.stream().filter(p -> p.code().equals("ROLE_SNA")).findFirst().orElseThrow();
         Set<String> avant = new TreeSet<>(sna.permissions());
