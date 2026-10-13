@@ -186,3 +186,7 @@ infra/docker-compose/.journaux-echec/
 
 # Comptes nominatifs et mots de passe provisoires de l'environnement local (aucune donnée personnelle versionnée)
 infra/keycloak/local/
+
+# Caches de Python (outils de infra/)
+__pycache__/
+*.pyc
