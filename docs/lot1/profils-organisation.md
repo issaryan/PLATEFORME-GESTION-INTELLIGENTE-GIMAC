@@ -34,6 +34,24 @@ affiché (listes, fiches, matrice, sélecteurs), au lieu des libellés figés de
 reprend les libellés actuels (« Direction générale », « Pôle réseau »…) et remplace la description « Profil
 du lot 1 » par la mission du profil.
 
+### 2.1 Missions des profils selon le CR-CERT-GIMAC-01 v1.7 (D-105)
+
+Missions livrées (description du rôle, `infra/keycloak/generer-realm-gimac.py`), reprises du CR §3.2 et §3.6 :
+
+| Profil | Mission (résumé) |
+|---|---|
+| `ROLE_CHEF_DDRM` | Coordonnateur fonctionnel : porte d'entrée, ouvre les liaisons (seul `HOM_LIAISON_OPEN`), cadrage, périmètre, coordination fonctionnelle, désigne les conducteurs |
+| `ROLE_CHEF_DES` | Coordonnateur technique : affecte les ressources techniques, désigne les conducteurs, coordonne la certification ; n'ouvre plus de liaison |
+| `ROLE_CONDUCTEUR_PROJET` | Coordination opérationnelle au jour le jour du projet confié ; établit le procès-verbal |
+| `ROLE_SNA` | Conduit les essais service par service, constate leur aboutissement, porte la certification |
+| `ROLE_PRODUCTION_MONETIQUE` | Après la certification : paramètre en production, émet la demande de changement, exécute la configuration ; toute la branche mobile |
+| `ROLE_POLE_RESEAU` | Matrice des flux, atteignabilité des ports, lien d'essai (fin de son intervention) ; port des guichets en délégataire |
+| `ROLE_POLE_SYSTEME` | Au changement de production : répertoires de dépôt et scripts de dépôt |
+| `ROLE_RSSI` | Vérifie les attestations, approuve le changement, cérémonie de clés, saisie des clés carte ; administre les comptes |
+| `ROLE_AGENT_SSI` | Nouveau : agent de la sécurité des SI sous le RSSI (unité SSI) ; `CER_SECURITY_VERIFY`, `HOM_EVIDENCE_SUBMIT`, sans `IAM_*`, `PLATFORM_*` ni quitus ; tient la fonction RSSI avec le RSSI ; demandable par le RSSI et la direction générale |
+
+Une mission déjà modifiée depuis la console (table `profil_presentation`) est conservée.
+
 ## 3. Organigramme (interface, sur les routes existantes)
 
 Nouvel écran **Organisation › Organigramme** (administration ; lecture pour tout porteur de

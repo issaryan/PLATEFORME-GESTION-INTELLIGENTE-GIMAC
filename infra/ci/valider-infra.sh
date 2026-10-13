@@ -219,6 +219,9 @@ PY
   # Comptes nominatifs (annuaire du personnel) : plusieurs profils, alignement, suppression explicite.
   controler "creer-comptes-personnels.py : création, alignement et suppression des comptes" \
     python3 -m unittest -q "$INFRA/keycloak/test_creer_comptes_personnels.py"
+  # Domaine Keycloak : profils du CR v1.7 et fichiers générés conformes au générateur.
+  controler "generer-realm-gimac.py : profils, missions et fichiers générés" \
+    python3 -m unittest -q "$INFRA/keycloak/test_generer_realm_gimac.py"
   fin_section
 }
 

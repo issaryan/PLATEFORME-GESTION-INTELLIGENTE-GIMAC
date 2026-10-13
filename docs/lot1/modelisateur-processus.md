@@ -77,6 +77,14 @@ Anomalies nouvelles : `RESPONSABLE_ABSENT`, `VALIDATEUR_EGAL_RESPONSABLE`, `DECL
   CSV CR-1.4, publiée (numéro suivant, les versions publiées antérieures sont retirées) ; toutes les liaisons
   du type y sont rattachées et leurs `parcours_operation` reçoivent `version_id` (les codes sont les rangs :
   aucun état d'exécution ne change). Le CSV reste dans le dépôt comme source de cette reprise seulement.
+- **Reprise de l'annexe A v1.7** (D-105, changeset `cr17-reprise-annexe-a`, `RepriseReferentielCrV17`) : le CR v1.7
+  fait foi. Par type, version « Annexe A du CR-CERT-GIMAC-01 v1.7 (version publiée par reprise) » publiée sous le
+  numéro suivant avec ses onze étapes, sa vue et ses signatures (la version publiée en cours est retirée) ; liaisons
+  non closes rattachées ; opérations faites, sans objet ou en signature : version seule ; opérations à faire :
+  modèle de la version, et qualité R passée à la personne affectée à la nouvelle fonction (sinon « à affecter »)
+  quand le responsable change (M6, M11 à M14, M16, M17). Idempotente. Les tâches déjà offertes dans MS-PILOTAGE à
+  l'ancienne fonction ne sont pas reprises. Sources : `parcours_referentiel_cr_v17.csv`,
+  `libelles_operations_cr_v17.csv` ; les fichiers v1.4 restent figés (somme de contrôle des changesets appliqués).
 - **Migration** d'une liaison vers une nouvelle version (`HOM_REFERENTIEL_MIGRATE`) : applique le
   différentiel à `parcours_operation` (opérations ajoutées : VERROUILLEE puis éligibilité recalculée ;
   retirées : supprimées si non commencées, sinon conservées en SANS_OBJET ; modifiées : RACI, livrables,

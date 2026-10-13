@@ -44,7 +44,7 @@ class ProfilsCrV17(unittest.TestCase):
         self.assertIn("coordination opérationnelle", m["ROLE_CONDUCTEUR_PROJET"])
         for libelle, mission in G.PRESENTATIONS.values():
             self.assertTrue(1 <= len(libelle) <= 80 and len(mission) <= 500)
-            self.assertNotIn("—", libelle + mission)
+            self.assertNotIn("\u2014", libelle + mission)
 
 
 class FichiersGeneres(unittest.TestCase):
