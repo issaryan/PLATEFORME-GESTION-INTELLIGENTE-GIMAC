@@ -109,7 +109,7 @@ export function OngletLiaisonsInstitution({ institution }: { institution: Instit
       empty={liaisons.isPending ? undefined : t('institution.liaisons.aucune')}
       items={(liaisons.data?.contenu ?? []).map((l) => ({
         key: l.id,
-        href: `/des/liaisons/${l.id}`,
+        href: `/des/parcours/${l.id}`,
         // D-104 : plusieurs liaisons, y compris du même type ; l'intitulé du projet, s'il est donné, les distingue.
         label: `${l.intituleProjet ? `${l.intituleProjet}, ` : ''}${t(`typeProjet.${l.typeProjet}`, { defaultValue: String(l.typeProjet) })} (${l.id})`,
         meta: t(`phase.${l.phaseCourante}`, { defaultValue: l.phaseCourante }),

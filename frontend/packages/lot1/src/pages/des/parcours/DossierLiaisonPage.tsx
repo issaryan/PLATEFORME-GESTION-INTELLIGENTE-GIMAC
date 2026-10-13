@@ -118,7 +118,6 @@ function Dossier({ dossier }: { dossier: DossierLiaison }) {
           {blocagesEnCours > 0 ? <StatusBadge status="crit" label={t('parcoursListe.bloquee')} /> : null}
         </>}
         actions={<>
-          <Link href={`/des/liaisons/${dossier.id}?onglet=graphe`}>{t('parcoursDossier.graphe')}</Link>
           {/* Messagerie (D-64) : un nouveau message rattaché à cette liaison, qui y est citée d'emblée. */}
           {aPermission(permissions, PERM.messageEnvoyer) ? (
             <Link href={`/des/messagerie?nouveau=1&liaison=${encodeURIComponent(dossier.id)}`}>{t('msg.discuter')}</Link>

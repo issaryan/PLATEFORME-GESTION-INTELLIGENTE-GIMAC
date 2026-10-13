@@ -47,7 +47,7 @@ export function creerLiaisonDescriptor({ t, conducteurs, ouverture }: OptionsLia
     fields: [
       {
         name: 'institutionNom', label: 'liaison.institution', kind: 'text', inList: true, inDetail: true, sortable: true,
-        render: (_v, r) => <Link href={`/des/liaisons/${r.id}`}>{r.institutionNom}</Link>,
+        render: (_v, r) => <Link href={`/des/parcours/${r.id}`}>{r.institutionNom}</Link>,
       },
       { name: 'id', label: 'liaison.reference', kind: 'mono', inDetail: true },
       { name: 'typeProjet', label: 'liaison.typeProjet', kind: 'select', options: typeProjetOptions, inList: true, inDetail: true, filterable: true,

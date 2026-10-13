@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { Navigate, Route, Routes, useLocation } from 'react-router'
+import { Navigate, Route, Routes, useLocation, useParams } from 'react-router'
 import { Skeleton } from '@gimac/design-system'
 import {
   Aiguillage, ConnexionProvider, Enveloppe, aPermission, GardeSession, NotificationsPage, NotificationsProvider, PageConnexion, PageDeconnexion, SessionActive, adresseConnexion, configureHttp,
@@ -30,9 +30,13 @@ const TableauDeBordPage = lazy(() => import('@gimac/lot1/pages/des/TableauDeBord
 const InstitutionsPage = lazy(() => import('@gimac/lot1/pages/des/InstitutionsPage'))
 const InstitutionPage = lazy(() => import('@gimac/lot1/pages/des/InstitutionPage'))
 const LiaisonsPage = lazy(() => import('@gimac/lot1/pages/des/LiaisonsPage'))
-const LiaisonPage = lazy(() => import('@gimac/lot1/pages/des/LiaisonPage'))
 const ClotureOperationPage = lazy(() => import('@gimac/lot1/pages/des/ClotureOperationPage'))
 const DossierMiseEnServicePage = lazy(() => import('@gimac/lot1/pages/des/DossierMiseEnServicePage'))
+/** Ancienne adresse d'une liaison : renvoi vers son dossier de parcours. */
+function VersDossier() {
+  const { id = '' } = useParams()
+  return <Navigate to={`/des/parcours/${id}`} replace />
+}
 const ParcoursPage = lazy(() => import('@gimac/lot1/pages/des/parcours/ParcoursPage'))
 const DossierLiaisonPage = lazy(() => import('@gimac/lot1/pages/des/parcours/DossierLiaisonPage'))
 // Parcours de certification (D-98, docs/lot1/lancement-processus.md §8) : lancement guidé et « Mes actions de certification ».
@@ -147,7 +151,8 @@ function Pages({ session, etatCanal, correlationId, notifications }: { session: 
                   <Route path="institutions" element={G('institutions', <InstitutionsPage />)} />
                   <Route path="institutions/:id" element={G('institutions', <InstitutionPage />)} />
                   <Route path="liaisons" element={G('liaisons', <LiaisonsPage />)} />
-                  <Route path="liaisons/:id" element={G('liaisons', <LiaisonPage />)} />
+                  {/* Fiche d'une liaison : le dossier du parcours (routes réelles du service), l'ancienne fiche à onglets n'ayant pas de service. */}
+                  <Route path="liaisons/:id" element={G('liaisons', <VersDossier />)} />
                   <Route path="liaisons/:id/operations/:op/cloture" element={G('liaisons', <ClotureOperationPage />)} />
                   <Route path="liaisons/:id/mise-en-service" element={G('liaisons', <DossierMiseEnServicePage />)} />
                   <Route path="parcours" element={G('liaisons', <ParcoursPage />)} />

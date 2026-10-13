@@ -39,7 +39,10 @@ const navigation = () => screen.getByRole('navigation', { name: 'Navigation prin
 
 describe('profils de démonstration', () => {
   it('chefs du DES et de la DDRM : ouverture et désignation ; ingénieur : ni l’une ni l’autre ; conducteur : lecture', () => {
-    for (const r of ['ROLE_CHEF_DES', 'ROLE_CHEF_DDRM']) expect(PROFILS_DEMO[r].permissions).toEqual(expect.arrayContaining(['HOM_LIAISON_OPEN', 'HOM_PROJECT_DESIGNATE']))
+    // CR v1.7 (D-105) : l'ouverture d'un projet revient à la DDRM ; le chef du DES désigne les ressources.
+    expect(PROFILS_DEMO.ROLE_CHEF_DDRM.permissions).toEqual(expect.arrayContaining(['HOM_LIAISON_OPEN', 'HOM_PROJECT_DESIGNATE']))
+    expect(PROFILS_DEMO.ROLE_CHEF_DES.permissions).toContain('HOM_PROJECT_DESIGNATE')
+    expect(PROFILS_DEMO.ROLE_CHEF_DES.permissions).not.toContain('HOM_LIAISON_OPEN')
     expect(PROFILS_DEMO.ROLE_INGENIEUR_HOMOLOGATION.permissions).not.toContain('HOM_LIAISON_OPEN')
     expect(PROFILS_DEMO.ROLE_CONDUCTEUR_PROJET.permissions).not.toContain('HOM_PROJECT_DESIGNATE')
     expect(PROFILS_DEMO.ROLE_CONDUCTEUR_PROJET.permissions).toContain('HOM_LIAISON_READ')
@@ -113,7 +116,8 @@ describe('Application du département', () => {
   it.each([
     ['/des/institutions', 'Institutions membres'],
     ['/des/institutions/INST-0105', 'Mobile Money Sanaga'],
-    ['/des/liaisons/LIA-2026-030', 'Établissement de microfinance C'],
+    // Ancienne adresse d'une liaison : renvoyée vers son dossier de parcours.
+    ['/des/liaisons/LIA-2026-030', 'Établissement de paiement A'],
     ['/des/liaisons/LIA-2025-102/mise-en-service', 'Banque B'],
     ['/des/liaisons/LIA-2026-017/operations/OPI-017-3/cloture', /OP-E04/],
     ['/des/referentiels/operations', 'Référentiels d\'opérations'],

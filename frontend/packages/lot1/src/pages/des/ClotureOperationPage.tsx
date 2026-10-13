@@ -39,14 +39,14 @@ function Assistant({ cloture: c, liaisonId }: { cloture: ClotureOperation; liais
   const deposer = action('deposer')
   const valider = action('valider')
   const statut = etatOperation[c.etat]
-  const retour = `/des/liaisons/${liaisonId}?onglet=operations`
+  const retour = `/des/parcours/${liaisonId}`
 
   return (
     <div className="gm-col" style={{ gap: 'var(--gm-space-5)', maxWidth: 960 }}>
       <Breadcrumb
         items={[
           { label: t('nav.liaisons'), href: '/des/liaisons' },
-          { label: liaisonId, href: `/des/liaisons/${liaisonId}` },
+          { label: liaisonId, href: `/des/parcours/${liaisonId}` },
           { label: c.code },
         ]}
       />
