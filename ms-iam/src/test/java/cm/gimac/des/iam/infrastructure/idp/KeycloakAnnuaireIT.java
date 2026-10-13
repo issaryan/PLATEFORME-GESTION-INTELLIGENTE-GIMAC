@@ -372,7 +372,7 @@ class KeycloakAnnuaireIT {
         assertThat(presentations.values()).allSatisfy(p -> assertThat(p.description()).isNotEqualTo("Profil du lot 1"));
         assertThat(annuaire.profils()).filteredOn(p -> p.code().equals("ROLE_CHEF_DES")).singleElement().satisfies(p -> {
             assertThat(p.libelle()).isEqualTo("Chef du DES");
-            assertThat(p.description()).startsWith("Dirige le Département Exploitation et Supervision");
+            assertThat(p.description()).startsWith("Coordonnateur technique : dirige le Département Exploitation et Supervision");
             assertThat(p.permissions()).contains("PIL_ACTIVITY_OWN");
         });
 
