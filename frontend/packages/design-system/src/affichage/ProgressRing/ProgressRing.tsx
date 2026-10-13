@@ -33,7 +33,7 @@ export function ProgressRing(p: ProgressRingProps) {
     )
   }
   return (
-    <div className="gm-ring" style={{ width: size }}>
+    <div className="gm-ring" style={{ minWidth: size }}>
       <svg width={size} height={size} viewBox={'0 0 ' + size + ' ' + size} role="img" aria-label={nc ? t('anneau.nonCalculable', { libelle: p.label }) : p.label + ' : ' + v + ' %'}>
         <circle cx={size / 2} cy={size / 2} r={r} className="gm-ring-track" />
         <circle cx={size / 2} cy={size / 2} r={r} className="gm-ring-value" strokeDasharray={c} strokeDashoffset={c * (1 - v / 100)} transform={'rotate(-90 ' + size / 2 + ' ' + size / 2 + ')'} />

@@ -92,14 +92,17 @@ export function SectionSupervision({ periode = 'UNE_HEURE' }: { periode?: Period
     <Section titre={t('console.supervision.titre')} id="gm-supervision">
       {flux.etat === 'perdu' ? <InlineAlert level="warn" title={t('console.flux.perdu.texte')} /> : null}
       {instantane ? (
-        <div className="gm-row" style={{ alignItems: 'center', flexWrap: 'wrap', gap: 'var(--gm-space-6)' }}>
-        <ProgressRing
-          label={t('graphiques.disponibilite')}
-          value={instantane.global.total ? Math.round((instantane.global.up * 100) / instantane.global.total) : null}
-          size={96}
-          status={STATUT_PLATEFORME[instantane.global.etat]}
-          statusLabel={t('graphiques.disponibilite.libelle', { up: instantane.global.up, total: instantane.global.total })}
-        />
+        <div className="gm-row" style={{ alignItems: 'stretch', flexWrap: 'wrap', gap: 'var(--gm-space-4)' }}>
+        {/* Disponibilité des services : carte du même gabarit que les indicateurs, alignée sur leur rangée. */}
+        <div className="gm-card gm-card-body gm-supervision-disponibilite" style={{ flex: '0 0 auto', minWidth: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <ProgressRing
+            label={t('graphiques.disponibilite')}
+            value={instantane.global.total ? Math.round((instantane.global.up * 100) / instantane.global.total) : null}
+            size={104}
+            status={STATUT_PLATEFORME[instantane.global.etat]}
+            statusLabel={t('graphiques.disponibilite.libelle', { up: instantane.global.up, total: instantane.global.total })}
+          />
+        </div>
         <div style={{ flex: '1 1 480px', minWidth: 0 }}>
         <LiveStatGroup
           title={t('console.plateforme.etatTitre')}
