@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { QueryClient } from '@tanstack/react-query'
-import { openLiveChannel, type EtatCanal } from './live'
+import { REGROUPEMENT_MS, openLiveChannel, type EtatCanal } from './live'
 import { SIGNAL, viderSignaux } from './signaux'
 
 // Canal poussé : connexion par couche et par sujets, invalidation des requêtes du sujet (et du parcours pour
@@ -49,10 +49,29 @@ describe('openLiveChannel', () => {
     openLiveChannel('des', ['homologation', 'certification', 'collaboration'], qc, () => undefined, { baseMs: 1000, maxMs: 8000 })
     const f = FauxFlux.ouverts[0]
     f.onmessage?.({ data: JSON.stringify({ id: 'e1', type: 'homologation.liaison-updated.v1', subject: 'L1', topic: 'homologation' }) })
+    expect(invalider).not.toHaveBeenCalled()
+    vi.advanceTimersByTime(REGROUPEMENT_MS)
     expect(invalider.mock.calls.map((c) => c[0])).toEqual([{ queryKey: ['homologation'] }, { queryKey: ['parcours'] }])
     invalider.mockClear()
     f.onmessage?.({ data: JSON.stringify({ id: 'e2', type: 'collaboration.message-sent.v1', subject: 'C1', topic: 'collaboration' }) })
+    vi.advanceTimersByTime(REGROUPEMENT_MS)
     expect(invalider.mock.calls.map((c) => c[0])).toEqual([{ queryKey: ['collaboration'] }])
+  })
+  it('une rafale d’événements (reprise de données) ne relance chaque clé qu’une fois par regroupement', () => {
+    const qc = new QueryClient()
+    const invalider = vi.spyOn(qc, 'invalidateQueries').mockResolvedValue()
+    const fermer = openLiveChannel('des', ['homologation', 'collaboration'], qc, () => undefined, { baseMs: 1000, maxMs: 8000 })
+    const f = FauxFlux.ouverts[0]
+    for (let i = 0; i < 500; i++) {
+      f.onmessage?.({ data: JSON.stringify({ id: `e${i}`, type: 'homologation.liaison-opened.v1', subject: `L${i}`, topic: i % 2 ? 'homologation' : 'collaboration' }) })
+    }
+    vi.advanceTimersByTime(REGROUPEMENT_MS)
+    expect(invalider.mock.calls.map((c) => c[0])).toEqual([{ queryKey: ['collaboration'] }, { queryKey: ['homologation'] }, { queryKey: ['parcours'] }])
+    invalider.mockClear()
+    f.onmessage?.({ data: JSON.stringify({ id: 'x', type: 'homologation.liaison-updated.v1', subject: 'L1', topic: 'homologation' }) })
+    fermer()
+    vi.advanceTimersByTime(REGROUPEMENT_MS)
+    expect(invalider).not.toHaveBeenCalled()
   })
   it('perte du flux : état perdu, reconnexion à délai croissant plafonné, reprise depuis le dernier identifiant', () => {
     const etats: EtatCanal[] = []
@@ -103,6 +122,7 @@ describe('openLiveChannel', () => {
     f.onmessage?.({ data: JSON.stringify({ id: 'e1', type: 'collaboration.message-sent.v1', subject: 'C1', topic: 'collaboration' }) })
     f.onmessage?.({ data: JSON.stringify({ id: 's1', type: SIGNAL.saisie, subject: 'C1', topic: 'collaboration', acteur: 'u2' }) })
     f.onmessage?.({ data: JSON.stringify({ id: 'p1', type: SIGNAL.enLigne, subject: 'u2', topic: 'presence', acteur: 'u2' }) })
+    vi.advanceTimersByTime(REGROUPEMENT_MS)
     expect(invalider.mock.calls.map((c) => c[0])).toEqual([{ queryKey: ['collaboration'] }])
     f.onerror?.()
     vi.advanceTimersByTime(1000)

@@ -17,6 +17,9 @@ export type LiveEvent = {
 }
 export type EtatCanal = 'connected' | 'lost'
 const ALIAS: Partial<Record<LiveTopic, string[]>> = { homologation: ['parcours'], certification: ['parcours'] }
+/** Invalidations regroupées par clé : au plus une toutes les REGROUPEMENT_MS (une rafale d'événements, par exemple
+ * une reprise de données, ne relance pas les lectures à chaque événement). */
+export const REGROUPEMENT_MS = 2000
 
 export function openLiveChannel(
   layer: Couche,
@@ -30,6 +33,18 @@ export function openLiveChannel(
   let lastId = ''
   let closed = false
   let minuterie: number | undefined
+  const enAttente = new Set<string>()
+  let regroupement: number | undefined
+  const invalider = (cle: string) => {
+    enAttente.add(cle)
+    if (regroupement !== undefined) return
+    regroupement = window.setTimeout(() => {
+      regroupement = undefined
+      const cles = [...enAttente]
+      enAttente.clear()
+      cles.forEach((c) => void qc.invalidateQueries({ queryKey: [c] }))
+    }, REGROUPEMENT_MS)
+  }
   const connect = () => {
     const q = new URLSearchParams({ sujets: topics.join(',') })
     if (lastId) q.set('depuis', lastId)
@@ -49,10 +64,10 @@ export function openLiveChannel(
         if (a) diffuserAccuseLecture(a)
         return
       }
-      void qc.invalidateQueries({ queryKey: [ev.topic] })
+      invalider(ev.topic)
       // Le parcours de la liaison (étapes 3 à 10) se lit sous le sujet « parcours » : un événement
       // d'homologation ou de certification le rafraîchit aussi.
-      ;(ALIAS[ev.topic] ?? []).forEach((cle) => void qc.invalidateQueries({ queryKey: [cle] }))
+      ;(ALIAS[ev.topic] ?? []).forEach(invalider)
     }
     source.onerror = () => {
       source?.close()
@@ -65,6 +80,7 @@ export function openLiveChannel(
   return () => {
     closed = true
     window.clearTimeout(minuterie)
+    window.clearTimeout(regroupement)
     source?.close()
   }
 }

@@ -1,4 +1,4 @@
-import { http, P } from '@gimac/socle'
+import { estApiError, http, P } from '@gimac/socle'
 import type { EvenementChronologie, ListQuery, Option, Page } from '../../modele/commun'
 import type { ServiceHomologation } from '../ports'
 import type { ReferenceOperation } from '../../modele/homologation'
@@ -9,6 +9,12 @@ const H = P.desHomologation
 const R = `${H}/referentiels`
 const L = `${H}/liaisons`
 const O = `${H}/operations`
+/** Lecture secondaire d'une fiche : une route absente du service (404) donne la valeur neutre au lieu d'une erreur. */
+export const siAbsente = <T,>(lecture: Promise<T>, neutre: T): Promise<T> =>
+  lecture.catch((e: unknown) => {
+    if (estApiError(e) && e.status === 404) return neutre
+    throw e
+  })
 /** Types de projet (D-91) et catalogue des fonctions du référentiel. */
 const TP = `${H}/types-projet`
 const FN = `${R}/fonctions`
@@ -86,13 +92,13 @@ export const homologationHttp: ServiceHomologation = {
   listerLiaisons: (q) => http.get(L, { query: requeteLiaisons(q) }),
   tableauDeBordLiaisons: (q) => http.get(`${H}/tableau-de-bord/liaisons`, { query: requete(q) }),
   lireLiaison: (id) => http.get(`${L}/${id}`),
-  historiqueLiaison: (id) => http.get(`${L}/${id}/historique`),
+  historiqueLiaison: (id) => siAbsente(http.get<EvenementChronologie[]>(`${L}/${id}/historique`), []),
   ouvrirLiaison: (entree) => http.post(L, { body: entree }),
   designerChefDeProjet: (id, chefDeProjetId, motif) => http.put(`${L}/${id}/chef-de-projet`, { body: motif ? { chefDeProjetId, motif } : { chefDeProjetId } }),
   conducteurs: () => http.get(`${L}/conducteurs`),
   degelerLiaison: (id, motif) => http.post(`${L}/${id}/degel`, { body: { motif } }),
   exporterDossierDePreuves: (id) => http.post(`${L}/${id}/dossier-de-preuves`),
-  dernierExportPreuves: (id) => http.get(`${L}/${id}/dossier-de-preuves`),
+  dernierExportPreuves: (id) => siAbsente(http.get(`${L}/${id}/dossier-de-preuves`), null),
   grapheLiaison: (id) => http.get(`${L}/${id}/graphe`),
   couverturesLiaison: (id) => http.get(`${L}/${id}/couvertures`),
 
@@ -111,7 +117,7 @@ export const homologationHttp: ServiceHomologation = {
   campagnesLiaison: (liaisonId) => http.get(`${L}/${liaisonId}/campagnes`),
   scenariosInconnus: (liaisonId) => http.get(`${L}/${liaisonId}/scenarios-inconnus`),
   qualifierScenario: (id, qualification, motif) => http.post(`${H}/scenarios-inconnus/${id}/qualification`, { body: { qualification, motif } }),
-  etatReprise: () => http.get(`${H}/reprise/etat`),
+  etatReprise: () => siAbsente(http.get(`${H}/reprise/etat`), { etatDisjoncteur: 'FERME' as const, depuis: null }),
 
   // Annuaire de la plateforme (comptes internes actifs, D-64) : seuls les profils qui peuvent porter une
   // opération sont proposés ; le service refait le contrôle à l'attribution.
