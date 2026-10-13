@@ -108,3 +108,4 @@ git checkout -- ../../ms-*/.yo-rc.json   # annule la réécriture de version par
 | 2026-10-12 | - | `docker-compose.serveur.yml` : volumes nommés `<service>_donnees` pour les 14 bases (chemin du VOLUME de l'image : `/var/lib/postgresql` en 18, `/var/lib/postgresql/data` en 17) ; une base ne repart plus à vide quand son conteneur est supprimé |
 | 2026-10-12 | - | Prometheus : rétention plafonnée à 3 Go en plus des 15 jours (`--storage.tsdb.retention.size`) |
 | 2026-10-13 | D-104 | test OPA de la route `GET /bff/des/participant/institutions/groupes` |
+| 2026-10-13 | D-107 | D-107 : `GIMAC_SECRET_REPRISE_SERVICE` (client `reprise-service`) créé par `gimac-dev.sh` et transmis à Keycloak ; tests OPA des routes de reprise |

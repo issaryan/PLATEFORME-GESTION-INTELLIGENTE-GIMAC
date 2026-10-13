@@ -253,6 +253,7 @@ Tests : `AppareilsDomaineTest`, `SuiviEtServiceAppareilsTest`, `FermetureAutresS
 | 2026-10-06 | — | Exploitation Kubernetes, lecture : pods et événements d'une charge, nœuds du cluster, jobs et cronjobs (`/api/plateforme/infrastructure/charges/{nom}/pods`, `…/evenements`, `/noeuds`, `/taches`), PLATFORM_OPS_READ ; Docker : 422 « Kubernetes seulement » ; tests de l'adaptateur face à un faux cluster, du service et de sécurité |
 | 2026-10-06 | — | Geste RETABLIR (Kubernetes) : `POST /api/plateforme/infrastructure/charges/{nom}/retablissement`, PLATFORM_OPS_EXECUTE + FIDO2 ; cible = révision précédente d'image différente (révisions de simple redémarrage sautées), correctif JSON qui remplace le gabarit ; `imagePrecedente` sur la charge ; changeset Liquibase qui élargit la contrainte du journal ; tests |
 | 2026-10-06 | - | Contournement d'OPA fermé : routes JHipster `/services/{service}/**` et `/services/gateway/**` retirées (aucun client), `/services/**` en `denyAll`, CORS `/services/*/api/**` retiré ; tests `CheminsServicesSecuriteTest` (401 sans session, 403 avec jeton ou session portant `ROLE_ADMIN` et les permissions d'administration) et `RoutesPresentationTest` (aucune route hors `/bff`, `OpaAuthorize` en premier partout) |
+| 2026-10-13 | D-107 | D-107 : routes `console-reprise-participant` et `console-reprise-homologation` (`/bff/console/{participant,homologation}/reprise/**` vers `/api/v1/reprise/**`, 10 Mo, OPA `REF_REPRISE_IMPORT`) |
 <!-- GIMAC:FIN -->
 
 # gateway

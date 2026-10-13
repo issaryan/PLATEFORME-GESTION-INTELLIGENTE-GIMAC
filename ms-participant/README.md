@@ -109,6 +109,7 @@ JaCoCo bloque la construction sous 80 % : à `test`, chaque classe du lot en lig
 | 2026-09-29 | — | Ports sortants `application/port/out` versionnés : la règle `out/` du `.gitignore` généré par JHipster les ignorait, le dépôt distant ne compilait pas ; exception `!src/**/out/` ajoutée et ports `DocumentRegistry`, `StrongReauthVerifier` reconstitués d'après leurs adaptateurs |
 | 2026-10-06 | — | Tableaux de bord en graphiques (lot 5) : les indicateurs de la DDRM rendent aussi `fluxParMois` (prises de contact, adhésions, clôtures sans suite), 12 mois denses au fuseau de Douala |
 | 2026-10-13 | D-104 | groupe ou maison mère facultatif (`group_name`, champ `groupe`), filtre `groupe` de la liste, route `GET /institutions/groupes` |
+| 2026-10-13 | D-107 | D-107 : `POST /api/v1/interne/reprise/institutions` et `/api/v1/reprise/institutions` (`REF_REPRISE_IMPORT`) : import idempotent par code membre, UUID fourni conservé (identifiant attribuable), transition de reprise, simulation par défaut ; `GET /api/v1/interne/institutions?codeParticipant=` ; catégories `FACTURIER` et `PARTENAIRE_REMITTANCE` ; ouverture d'un projet sur une institution active consignée au journal, sans transition |
 <!-- GIMAC:FIN -->
 
 

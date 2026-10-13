@@ -222,6 +222,9 @@ PY
   # Domaine Keycloak : profils du CR v1.7 et fichiers générés conformes au générateur.
   controler "generer-realm-gimac.py : profils, missions et fichiers générés" \
     python3 -m unittest -q "$INFRA/keycloak/test_generer_realm_gimac.py"
+  # Reprise de l'existant (D-107) : lecture des fichiers, jeton du compte de service, lots, simulation par défaut.
+  controler "importer-reprise.py : lots, jeton, simulation et rapport ligne à ligne" \
+    python3 -m unittest -q "$INFRA/reprise/test_importer_reprise.py"
   fin_section
 }
 

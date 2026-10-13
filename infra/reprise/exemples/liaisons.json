@@ -1,0 +1,51 @@
+{
+  "liaisons": [
+    {
+      "referenceOrigine": "202104-BFS-01",
+      "codeMembre": "BQ-FICT-01",
+      "typeProjet": "CARTE_INTERBANCAIRE",
+      "intitule": "Projet Carte BFS Lot 1",
+      "origineEtat": "Payway production",
+      "dateOuverture": "2021-04-01",
+      "avancement": "EN_PRODUCTION",
+      "dateMiseEnProduction": "2021-11-30"
+    },
+    {
+      "referenceOrigine": "202604-BFS-02",
+      "codeMembre": "BQ-FICT-01",
+      "typeProjet": "PAIEMENT_MOBILE",
+      "intitule": "Projet Mobile BFS Lot 2",
+      "origineEtat": "Portail sandbox",
+      "dateOuverture": "2026-04-01",
+      "dateCibleProduction": "2026-12-15",
+      "conducteurId": "00000000-0000-4000-8000-0000000c0001",
+      "services": [
+        { "code": "INC_ACCOUNT_INQUIRY", "commentaire": "12 cas réussis, 1 en échec, 2 en attente" },
+        { "code": "PAIEMENT_MOBILE", "commentaire": "8 cas réussis" }
+      ],
+      "operations": [
+        { "rang": "3", "etat": "FAITE", "faiteLe": "2026-04-20", "commentaire": "Cadrage validé" },
+        { "rang": "4", "etat": "FAITE", "faiteLe": "2026-05-12" },
+        { "rang": "6", "etat": "EN_COURS", "commentaire": "Ateliers techniques en cours" }
+      ]
+    },
+    {
+      "referenceOrigine": "202605-EPF-01",
+      "codeMembre": "EP-FICT-02",
+      "typeProjet": "PAIEMENT_MOBILE",
+      "intitule": "Projet Mobile Portefeuille du Fleuve",
+      "origineEtat": "Suivi Excel",
+      "dateOuverture": "2026-05-04",
+      "operations": [
+        { "rang": "3", "etat": "BLOQUEE", "debut": "2026-07-01", "commentaire": "En attente du certificat de la BEAC", "echeanceLevee": "2026-11-30" }
+      ]
+    },
+    {
+      "referenceOrigine": "202609-FACT-01",
+      "codeMembre": "FACT-FICT-03",
+      "typeProjet": "PAIEMENT_MOBILE",
+      "origineEtat": "À qualifier",
+      "dateOuverture": "2026-09-15"
+    }
+  ]
+}

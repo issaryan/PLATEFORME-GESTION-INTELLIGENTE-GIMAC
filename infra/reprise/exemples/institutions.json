@@ -1,0 +1,54 @@
+{
+  "motif": "Reprise de l'existant : registre des membres (exemple fictif)",
+  "institutions": [
+    {
+      "codeMembre": "BQ-FICT-01",
+      "id": "0f0e0d0c-0b0a-4908-8706-050403020100",
+      "nom": "Banque Fictive des Savanes",
+      "sigle": "BFS",
+      "pays": "CM",
+      "categorie": "BANQUE",
+      "codeIdentification": "BFSACMCX",
+      "codeBanqueBeac": "10001",
+      "groupe": "Groupe Fictif Atlantique",
+      "statut": "ACTIF",
+      "dateAdhesion": "2021-03-15",
+      "dateDecision": "2022-01-10",
+      "referenceDecision": "PV-DDRM-2021-007",
+      "modeAdhesion": "DIRECT",
+      "compteReglement": "CR-FICT-0001",
+      "servicesSouscrits": [
+        { "code": "INC_ACCOUNT_INQUIRY", "depuis": "2021-04-01" },
+        { "code": "PAIEMENT_MOBILE" }
+      ]
+    },
+    {
+      "codeMembre": "EP-FICT-02",
+      "nom": "Portefeuille Fictif du Fleuve",
+      "pays": "GA",
+      "categorie": "EMETTEUR_MONNAIE_ELECTRONIQUE",
+      "statut": "EN_HOMOLOGATION",
+      "dateAdhesion": "2025-06-02",
+      "modeAdhesion": "INDIRECT",
+      "banqueMarraine": "BQ-FICT-01",
+      "compteCantonnement": "CC-FICT-0002"
+    },
+    {
+      "codeMembre": "FACT-FICT-03",
+      "nom": "Facturier Fictif de l'Eau",
+      "pays": "CG",
+      "categorie": "FACTURIER",
+      "statut": "ADHERENT",
+      "dateDecision": "2026-02-20"
+    },
+    {
+      "codeMembre": "REM-FICT-04",
+      "nom": "Partenaire Fictif de Remittance",
+      "pays": "FR",
+      "categorie": "PARTENAIRE_REMITTANCE",
+      "groupe": "MFSA",
+      "statut": "ACTIF",
+      "dateAdhesion": "2024-09-01"
+    }
+  ]
+}
