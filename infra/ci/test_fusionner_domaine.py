@@ -75,6 +75,18 @@ class FusionDomaine(unittest.TestCase):
         self.assertNotIn("id", r["ROLE_CREE"])
         self.assertNotIn("ROLE_ANCIEN", r)
 
+    def test_comptes_de_test_ecartes_sur_le_serveur(self):
+        depot = domaine(PERMS, [{"username": "test-dg"}, {"username": "nouveau"},
+                                {"username": "service-account-x", "serviceAccountClientId": "x"}])
+        service = domaine(PERMS, [{"username": "test-sna"}, {"username": "ryan"}])
+        noms = lambda d: sorted(u["username"] for u in d["users"])
+        self.assertEqual(noms(self.fusion(depot, service)), ["nouveau", "ryan", "service-account-x", "test-dg", "test-sna"])
+        os.environ["GIMAC_SANS_COMPTES_TEST"] = "1"
+        try:
+            self.assertEqual(noms(self.fusion(depot, service)), ["nouveau", "ryan", "service-account-x"])
+        finally:
+            del os.environ["GIMAC_SANS_COMPTES_TEST"]
+
     def test_sans_base_union_des_compositions(self):
         service = domaine(PERMS + [role("ROLE_X", ["B"])])
         depot = domaine(PERMS + [role("ROLE_X", ["A"])])

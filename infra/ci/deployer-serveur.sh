@@ -177,7 +177,8 @@ actualiser_domaine() {
     export --dir /echange --realm gimac --users realm_file
   local base=()
   [ -s "$DOMAINE_PRECEDENT" ] && base=("$DOMAINE_PRECEDENT")
-  python3 "$RACINE/infra/ci/fusionner-domaine.py" "$DOMAINE" "$ECHANGE/gimac-realm.json" "${base[@]}" > "$ECHANGE/import/gimac-realm.json"
+  # Comptes de test du générateur écartés : supprimés du serveur, ils n'y reviennent pas (13/10/2026).
+  GIMAC_SANS_COMPTES_TEST=1 python3 "$RACINE/infra/ci/fusionner-domaine.py" "$DOMAINE" "$ECHANGE/gimac-realm.json" "${base[@]}" > "$ECHANGE/import/gimac-realm.json"
   compose run --rm --no-deps --user "$(id -u):0" -v "$ECHANGE/import:/echange" keycloak \
     import --dir /echange --override true
 }

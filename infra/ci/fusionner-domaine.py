@@ -6,6 +6,9 @@
 Le résultat est le domaine du dépôt dont les utilisateurs sont ceux de l'export (identifiants,
 mots de passe hachés, codes TOTP, attributs), plus les utilisateurs du dépôt absents de l'export.
 Les comptes de service viennent toujours du dépôt (leurs rôles suivent les clients).
+Avec GIMAC_SANS_COMPTES_TEST=1 (serveur de démonstration, deployer-serveur.sh), les comptes de test
+du générateur (identifiant « test-… », generer-realm-gimac.py) sont écartés, du dépôt comme de l'export :
+ils ne reviennent pas après leur suppression sur le serveur.
 
 Rôles du domaine (profils et permissions, D-62, D-81, D-86) : fusion à trois voies entre le domaine du dépôt
 déployé la fois précédente (base), le domaine en service (administration faite dans la plateforme) et le
@@ -28,8 +31,12 @@ celle du dépôt. Sans base, la valeur en service est conservée (rien n'est per
 domaine en service prend la valeur du dépôt.
 """
 import json
+import os
 import sys
 
+
+# Comptes de test du générateur (generer-realm-gimac.py, UTILISATEURS), écartés sur le serveur.
+PREFIXE_TEST = "test-"
 
 # Paramètres du domaine administrés depuis la console (écran Politique de sécurité de MS-IAM).
 PARAMETRES_POLITIQUE = (
@@ -142,9 +149,15 @@ def main(depot, export, precedent=None):
     roles_clients = {c: {r["name"] for r in liste} for c, liste in domaine.get("roles", {}).get("client", {}).items()}
     groupes = set(chemins(domaine.get("groups", [])))
 
+    sans_test = os.environ.get("GIMAC_SANS_COMPTES_TEST") == "1"
+
+    def compte_test(u):
+        return sans_test and not u.get("serviceAccountClientId") and u.get("username", "").startswith(PREFIXE_TEST)
+
+    domaine["users"] = [u for u in domaine.get("users", []) if not compte_test(u)]
     utilisateurs = {}
     for u in en_service.get("users", []):
-        if u.get("serviceAccountClientId"):
+        if u.get("serviceAccountClientId") or compte_test(u):
             continue
         u["realmRoles"] = [r for r in u.get("realmRoles", []) if r in roles]
         u["clientRoles"] = {c: [r for r in rs if r in roles_clients.get(c, set())]
