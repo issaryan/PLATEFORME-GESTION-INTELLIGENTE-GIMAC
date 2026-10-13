@@ -69,7 +69,8 @@ public interface ManageInstitutionUseCase {
 
     /**
      * Ouverture d'une liaison par MS-HOMOLOGATION (étape 3, D-57) : un adhérent passe
-     * automatiquement à EN_HOMOLOGATION ; une institution déjà en homologation reste en l'état.
+     * automatiquement à EN_HOMOLOGATION ; une institution déjà en homologation reste en l'état, une institution
+     * active aussi (nouveau projet, D-107 : ouverture consignée au journal, sans transition).
      *
      * @return la transition automatique enregistrée, vide si aucun changement n'est dû
      */

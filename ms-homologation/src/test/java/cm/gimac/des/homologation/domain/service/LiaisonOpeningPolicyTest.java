@@ -29,14 +29,14 @@ class LiaisonOpeningPolicyTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = { "ADHERENT", "EN_HOMOLOGATION" })
-    @DisplayName("Ouverture possible sur un adhérent ou une institution déjà en homologation")
+    @ValueSource(strings = { "ADHERENT", "EN_HOMOLOGATION", "ACTIF" })
+    @DisplayName("Ouverture possible sur un adhérent, une institution en homologation ou active (D-107)")
     void eligible(String statut) {
         assertThatCode(() -> politique.verifier(institution(statut, "BANQUE"), null, CONDUCTEUR, true)).doesNotThrowAnyException();
     }
 
     @ParameterizedTest
-    @ValueSource(strings = { "CANDIDAT", "CLOS_SANS_SUITE", "SUSPENDU", "RETIRE", "ACTIF" })
+    @ValueSource(strings = { "CANDIDAT", "CLOS_SANS_SUITE", "SUSPENDU", "RETIRE", "A_REGULARISER" })
     @DisplayName("Institution non adhérente : HOM_LIAISON_INSTITUTION_NOT_ELIGIBLE")
     void nonEligible(String statut) {
         refus(() -> politique.verifier(institution(statut, "BANQUE"), null, CONDUCTEUR, true), "HOM_LIAISON_INSTITUTION_NOT_ELIGIBLE");

@@ -36,6 +36,12 @@ Fonctionnalité: Étape 3, cadrage : ouverture d'une liaison sur un adhérent (H
     Et son intitulé est "Projet Mobile Lots Lot 2"
     Et l'institution compte 2 liaisons actives
 
+  Scénario: Nouveau projet d'une institution déjà en production (D-107)
+    Étant donné l'institution "Banque Active Recette" à l'état "ACTIF" qui a souscrit "PAIEMENT_MOBILE"
+    Quand le chef de département ouvre une liaison "PAIEMENT_MOBILE" en désignant le conducteur "Aminata Ngono"
+    Alors la liaison est créée à l'état "OUVERTE" en phase "CADRAGE"
+    Et l'événement "homologation.liaison-opened.v1" est prêt pour MS-PARTICIPANT
+
   Plan du scénario: Refus : institution non éligible, référence d'origine en double ou conducteur non habilité
     Étant donné <situation>
     Quand l'ouverture de la liaison est demandée
@@ -44,6 +50,7 @@ Fonctionnalité: Étape 3, cadrage : ouverture d'une liaison sur un adhérent (H
     Exemples:
       | situation                                                                           | code                                     |
       | une institution à l'état "CANDIDAT"                                                 | HOM_LIAISON_INSTITUTION_NOT_ELIGIBLE     |
+      | une institution à l'état "SUSPENDU"                                                 | HOM_LIAISON_INSTITUTION_NOT_ELIGIBLE     |
       | un adhérent dont une liaison a été reprise sous la référence d'origine "202604-REC-01" | HOM_LIAISON_REFERENCE_ORIGINE_DUPLICATE  |
       | un adhérent et un conducteur sans le rôle CONDUCTEUR_PROJET                         | HOM_LIAISON_PROJECT_LEAD_NOT_HABILITATED |
 

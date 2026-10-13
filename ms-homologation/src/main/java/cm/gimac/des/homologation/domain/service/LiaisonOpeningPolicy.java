@@ -10,8 +10,9 @@ import java.util.Set;
  * Règles d'ouverture d'une liaison au cadrage (étape 3, rang 3 du CR ; D-57, D-58). Service de
  * domaine pur.
  * <ul>
- *   <li>L'institution est un adhérent (première liaison, qui la fait passer à EN_HOMOLOGATION) ou
- *       déjà en homologation (nouvelle liaison sans repasser par l'adhésion, rang 35).</li>
+ *   <li>L'institution est un adhérent (première liaison, qui la fait passer à EN_HOMOLOGATION), déjà en
+ *       homologation (nouvelle liaison sans repasser par l'adhésion, rang 35) ou déjà active (nouveau projet d'une
+ *       institution en production, D-107 : son statut ne change pas, elle ne repasse pas en homologation).</li>
  *   <li>Le porteur éventuel est une banque ; le portage n'est jamais un type de projet.</li>
  *   <li>Le conducteur de projet est un collaborateur actif du GIMAC portant la permission dédiée
  *       HOM_PROJECT_CONDUCT (D-94 §3, quel que soit le profil qui la lui donne) ; il est désigné par un chef de
@@ -22,13 +23,13 @@ public final class LiaisonOpeningPolicy {
 
     /** Permission qui rend un collaborateur désignable comme conducteur de projet (D-94 §3). */
     public static final String PERMISSION_CONDUITE = "HOM_PROJECT_CONDUCT";
-    private static final Set<String> STATUTS_ELIGIBLES = Set.of("ADHERENT", "EN_HOMOLOGATION");
+    private static final Set<String> STATUTS_ELIGIBLES = Set.of("ADHERENT", "EN_HOMOLOGATION", "ACTIF");
 
     public void verifier(InstitutionView institution, InstitutionView porteur, CollaboratorView conducteur, boolean porteConduite) {
         if (!STATUTS_ELIGIBLES.contains(institution.statut())) {
             throw HomologationException.conflict(
                 "HOM_LIAISON_INSTITUTION_NOT_ELIGIBLE",
-                "Une liaison ne s'ouvre que sur un adhérent (étape 2 prononcée) ou une institution déjà en homologation",
+                "Une liaison ne s'ouvre que sur un adhérent (étape 2 prononcée), une institution en homologation ou une institution active",
                 Map.of("institutionId", institution.id().toString(), "statut", institution.statut())
             );
         }

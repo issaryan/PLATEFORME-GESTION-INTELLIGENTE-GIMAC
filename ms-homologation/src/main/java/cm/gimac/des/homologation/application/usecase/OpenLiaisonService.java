@@ -33,11 +33,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Ouverture d'une liaison au cadrage (HOM-04 adapté par D-57 et D-58) : sur un adhérent ou une
- * institution déjà en homologation, liée à la version publiée en vigueur du référentiel, avec son
+ * Ouverture d'une liaison au cadrage (HOM-04 adapté par D-57 et D-58) : sur un adhérent, une institution
+ * déjà en homologation ou une institution active (nouveau projet, D-107), liée à la version publiée en vigueur du référentiel, avec son
  * périmètre contractualisé dérivé des services souscrits (HOM-05, service TRANSVERSE toujours
  * inclus) et le conducteur de projet désigné par un chef de département.
- * L'événement homologation.liaison-opened.v1 fait passer l'adhérent à EN_HOMOLOGATION dans MS-PARTICIPANT.
+ * L'événement homologation.liaison-opened.v1 fait passer l'adhérent à EN_HOMOLOGATION dans MS-PARTICIPANT ; une
+ * institution déjà en homologation ou active garde son statut.
  */
 @Service
 @Transactional

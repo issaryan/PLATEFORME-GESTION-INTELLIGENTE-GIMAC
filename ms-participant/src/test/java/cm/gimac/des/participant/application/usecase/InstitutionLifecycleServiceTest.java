@@ -792,6 +792,20 @@ class InstitutionLifecycleServiceTest {
         }
 
         @Test
+        @DisplayName("Nouveau projet d'une institution active (D-107) : statut inchangé, ouverture consignée au journal")
+        void activeResteActive() {
+            banque.setStatus(InstitutionStatus.ACTIF);
+            assertThat(service.debuterHomologation(banque.getId(), liaison, "CARTE_INTERBANCAIRE")).isEmpty();
+            assertThat(banque.getStatus()).isEqualTo(InstitutionStatus.ACTIF);
+            verify(transitions, never()).save(any());
+            ArgumentCaptor<Interaction> journal = ArgumentCaptor.forClass(Interaction.class);
+            verify(interactions).save(journal.capture());
+            assertThat(journal.getValue().getNature()).isEqualTo(InteractionNature.LIAISON);
+            assertThat(journal.getValue().getReference()).isEqualTo(liaison.toString());
+            verifyNoInteractions(outbox);
+        }
+
+        @Test
         @DisplayName("Institution non adhérente : signalé, jamais appliqué")
         void nonAdherente() {
             assertThat(service.debuterHomologation(banque.getId(), liaison, "PAIEMENT_MOBILE")).isEmpty();

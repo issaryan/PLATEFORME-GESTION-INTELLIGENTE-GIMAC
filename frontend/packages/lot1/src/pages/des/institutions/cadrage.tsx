@@ -13,12 +13,12 @@ import { useOptionsTypesProjet } from '../../../hooks/referentiels'
 import { useErreurService } from '../liaisons/communs'
 
 // Étape 3 du parcours (D-57, D-58) : ouverture d'une liaison en phase de cadrage depuis la fiche d'une
-// institution adhérente ou en homologation, par un chef de département qui détient HOM_LIAISON_OPEN et
+// institution adhérente, en homologation ou active (D-107), par un chef de département qui détient HOM_LIAISON_OPEN et
 // HOM_PROJECT_DESIGNATE. MS-HOMOLOGATION décide (éligibilité, unicité, habilitation du conducteur,
 // référentiel publié) ; MS-PARTICIPANT fait ensuite passer l'institution en homologation.
 
 /** Statuts de l'institution depuis lesquels l'ouverture est proposée (affichage ; le service revérifie). */
-export const STATUTS_OUVERTURE: Institution['statut'][] = ['ADHERENT', 'EN_HOMOLOGATION']
+export const STATUTS_OUVERTURE: Institution['statut'][] = ['ADHERENT', 'EN_HOMOLOGATION', 'ACTIF']
 
 type Valeurs = { typeProjet: string; intituleProjet: string; referenceOrigine: string; chefDeProjetId: string; banquePartenaireId: string }
 /** Référence d'origine (D-104) : format accepté par MS-HOMOLOGATION (OuvertureRequest). */
@@ -66,7 +66,7 @@ export function FormulaireCadrage({ institution, onFermer }: { institution: Inst
       mode="create"
       title={t('cadrage.form.titre', { nom: institution.nom })}
       submitLabel={t('cadrage.action.ouvrir')}
-      intro={<InlineAlert level="info">{t(`cadrage.form.intro.${institution.statut === 'EN_HOMOLOGATION' ? 'EN_HOMOLOGATION' : 'ADHERENT'}`, { nom: institution.nom })}</InlineAlert>}
+      intro={<InlineAlert level="info">{t(`cadrage.form.intro.${institution.statut === 'EN_HOMOLOGATION' || institution.statut === 'ACTIF' ? institution.statut : 'ADHERENT'}`, { nom: institution.nom })}</InlineAlert>}
       errors={erreurs}
       presentation="dialog"
       submitting={ouvrir.isPending}

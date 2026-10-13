@@ -31,7 +31,7 @@ export function empreinteProposition(r: TransitionStatut): string {
   return Array.from(sha256Js(new TextEncoder().encode(contenu)), (o) => o.toString(16).padStart(2, '0')).join('')
 }
 /** Statuts depuis lesquels une liaison s'ouvre (étape 3, D-57) ; MS-HOMOLOGATION revérifie. */
-const OUVRABLES: StatutInstitution[] = ['ADHERENT', 'EN_HOMOLOGATION']
+const OUVRABLES: StatutInstitution[] = ['ADHERENT', 'EN_HOMOLOGATION', 'ACTIF']
 
 const I = '/bff/des/participant/institutions'
 /**

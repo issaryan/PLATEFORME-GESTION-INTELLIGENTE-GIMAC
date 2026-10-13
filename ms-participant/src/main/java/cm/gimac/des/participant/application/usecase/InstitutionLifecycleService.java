@@ -395,8 +395,16 @@ public class InstitutionLifecycleService implements ManageInstitutionUseCase {
         if (i.getStatus() == InstitutionStatus.EN_HOMOLOGATION) {
             return java.util.Optional.empty();
         }
+        if (i.getStatus() == InstitutionStatus.ACTIF) {
+            // Nouveau projet d'une institution déjà en production (D-107) : elle reste active, ne repasse pas en
+            // homologation ; l'ouverture est seulement consignée au journal.
+            LOG.info("Liaison {} ouverte sur l'institution active {} : statut inchangé", liaisonId, institutionId);
+            journaliser(i, InteractionNature.LIAISON, "Ouverture de la liaison " + liaisonId + " (" + typeProjet + ") : institution active, statut inchangé", SYSTEME, liaisonId.toString());
+            return java.util.Optional.empty();
+        }
         if (i.getStatus() != InstitutionStatus.ADHERENT) {
-            // MS-HOMOLOGATION n'ouvre une liaison que sur un adhérent ; un écart est signalé, jamais appliqué.
+            // MS-HOMOLOGATION n'ouvre une liaison que sur un adhérent, une institution en homologation ou active ;
+            // un écart est signalé, jamais appliqué.
             LOG.warn("Liaison {} ouverte sur l'institution {} à l'état {} : aucune transition automatique", liaisonId, institutionId, i.getStatus());
             return java.util.Optional.empty();
         }

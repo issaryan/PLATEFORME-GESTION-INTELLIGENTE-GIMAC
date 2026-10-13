@@ -22,9 +22,9 @@ import { useFormatDate } from '../parcours/communs'
 // portée par l'adresse (?institution=) ; MS-PARTICIPANT et MS-HOMOLOGATION décident, l'écran affiche leurs refus.
 
 /** Statuts conduits vers une certification : candidature et adhésion à mener, ou liaison à ouvrir. */
-const STATUTS_LANCEMENT: StatutInstitution[] = ['CANDIDAT', 'ADHERENT', 'EN_HOMOLOGATION']
+const STATUTS_LANCEMENT: StatutInstitution[] = ['CANDIDAT', 'ADHERENT', 'EN_HOMOLOGATION', 'ACTIF']
 /** Statuts depuis lesquels une liaison s'ouvre (affichage ; MS-HOMOLOGATION revérifie). */
-const OUVRABLES: StatutInstitution[] = ['ADHERENT', 'EN_HOMOLOGATION']
+const OUVRABLES: StatutInstitution[] = ['ADHERENT', 'EN_HOMOLOGATION', 'ACTIF']
 /** Mémoire de l'onglet : l'institution choisie, retrouvée au retour de sa fiche (commodité, jamais une donnée métier). */
 const MEMOIRE = 'gm.lancementCertification.institution'
 

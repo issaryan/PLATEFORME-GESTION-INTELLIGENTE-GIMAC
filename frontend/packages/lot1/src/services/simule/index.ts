@@ -145,8 +145,9 @@ export function servicesSimules(o: OptionsSimulation = {}): ServicesSimules {
   /** Ouverture au cadrage (OpenLiaisonService) : éligibilité, unicité, habilitations, référentiel publié. */
   const ouvrir = (e: OuvertureLiaison): Liaison => {
     const inst = participant.pont.institution(e.institutionId)
-    if (!inst || (inst.statut !== 'ADHERENT' && inst.statut !== 'EN_HOMOLOGATION')) {
-      throw new ApiError(409, 'HOM_LIAISON_INSTITUTION_NOT_ELIGIBLE', "L'institution n'est ni adhérente ni en homologation.", correlation(), { statut: inst?.statut ?? null })
+    // D-107 : une institution active ouvre un nouveau projet sans changer de statut.
+    if (!inst || (inst.statut !== 'ADHERENT' && inst.statut !== 'EN_HOMOLOGATION' && inst.statut !== 'ACTIF')) {
+      throw new ApiError(409, 'HOM_LIAISON_INSTITUTION_NOT_ELIGIBLE', "L'institution n'est ni adhérente, ni en homologation, ni active.", correlation(), { statut: inst?.statut ?? null })
     }
     // D-104 : plusieurs liaisons actives par institution, y compris du même type ; seule la référence d'origine reste unique.
     const referenceOrigine = e.referenceOrigine?.trim() || null
