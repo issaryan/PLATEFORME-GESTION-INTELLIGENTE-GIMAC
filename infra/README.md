@@ -30,3 +30,4 @@ Principe (D-48) : ce que JHipster sait générer est régénéré, jamais édit�
 | 2026-10-12 | - | `docker-compose/docker-compose.serveur.yml` : volumes nommés `<service>_donnees` pour les 14 bases des microservices du serveur 214 (au lieu de volumes anonymes perdus à la suppression des conteneurs) |
 | 2026-10-12 | - | `ci/deployer-serveur.sh` : seuil d'espace libre (`GIMAC_DISQUE_MIN_GO`, 10 Go) et ménage des images et du cache de plus de 3 jours après démarrage ; Prometheus plafonné à 3 Go (`docker-compose.gimac.yml`) |
 | 2026-10-13 | - | `ci/fusionner-domaine.py` : option `GIMAC_SANS_COMPTES_TEST=1` (comptes `test-…` écartés), activée par `ci/deployer-serveur.sh` |
+| 2026-10-13 | - | `keycloak/creer-comptes-personnels.py` : `profils`, `telephone`, `aligner`, `--supprimer` |
