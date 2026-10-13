@@ -120,7 +120,7 @@ describe('données de démonstration cohérentes', () => {
   })
 
   it('CER-05 : type créé dans la plateforme servi avec son libellé au DES et au portail (Vues.Dossier, LiaisonVue)', async () => {
-    const s = svc(['ROLE_CHEF_DES'], 'U-CDES')
+    const s = svc(['ROLE_CHEF_DDRM'], 'U-020')
     const ouverte = await s.parcours.ouvrirLiaison({ institutionId: 'INST-0042', typeProjet: 'AGREGATEUR', chefDeProjetId: 'U-COND-1', banquePartenaireId: null })
     expect(ouverte).toMatchObject({ typeProjet: 'AGREGATEUR', typeProjetLibelle: 'Agrégateur de paiement' })
     expect(await s.parcours.dossier(ouverte.id)).toMatchObject({ typeProjet: 'AGREGATEUR', typeProjetLibelle: 'Agrégateur de paiement' })
