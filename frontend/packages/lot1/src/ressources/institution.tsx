@@ -45,7 +45,7 @@ const TERMINAUX: StatutInstitution[] = ['RETIRE', 'CLOS_SANS_SUITE']
 
 export const paysOptions: Option[] = ['CM', 'CF', 'CG', 'GA', 'GQ', 'TD'].map((v) => ({ value: v, label: `pays.${v}` }))
 export const categorieOptions: Option[] = [
-  'BANQUE', 'MICROFINANCE', 'ETABLISSEMENT_PAIEMENT', 'EMETTEUR_MONNAIE_ELECTRONIQUE', 'TRESOR_PUBLIC', 'AGREGATEUR', 'FINTECH', 'EDITEUR_LOGICIEL',
+  'BANQUE', 'MICROFINANCE', 'ETABLISSEMENT_PAIEMENT', 'EMETTEUR_MONNAIE_ELECTRONIQUE', 'TRESOR_PUBLIC', 'AGREGATEUR', 'FINTECH', 'EDITEUR_LOGICIEL', 'FACTURIER', 'PARTENAIRE_REMITTANCE',
 ].map((v) => ({ value: v, label: `institution.categorie.${v}` }))
 export const modeOptions: Option[] = ['DIRECT', 'INDIRECT'].map((v) => ({ value: v, label: `institution.mode.${v}` }))
 

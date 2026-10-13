@@ -74,6 +74,23 @@ public final class InstitutionLifecycle {
         }
     }
 
+    /**
+     * Reprise de l'existant (D-107) : l'état {@code vers} est atteignable depuis {@code depuis} par une suite de
+     * transitions de δ (ou lui est égal). La reprise saute les étapes intermédiaires, jamais le sens de l'automate.
+     */
+    public static boolean atteignable(InstitutionStatus depuis, InstitutionStatus vers) {
+        Set<InstitutionStatus> vus = EnumSet.of(depuis);
+        java.util.Deque<InstitutionStatus> file = new java.util.ArrayDeque<>(List.of(depuis));
+        while (!file.isEmpty()) {
+            for (InstitutionStatus suivant : transitionsPermises(file.poll())) {
+                if (vus.add(suivant)) {
+                    file.add(suivant);
+                }
+            }
+        }
+        return vus.contains(vers);
+    }
+
     /** Levée de suspension : deux approbations distinctes (RG-14) ; une seule sinon. */
     public static int approbationsRequises(InstitutionStatus depuis, InstitutionStatus vers) {
         return depuis == SUSPENDU && vers == ACTIF ? 2 : 1;

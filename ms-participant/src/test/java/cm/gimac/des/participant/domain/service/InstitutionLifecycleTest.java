@@ -100,4 +100,13 @@ class InstitutionLifecycleTest {
         assertThatThrownBy(() -> permises.add(ACTIF)).isInstanceOf(UnsupportedOperationException.class);
         assertThat(EnumSet.copyOf(permises)).containsExactlyInAnyOrder(ADHERENT, CLOS_SANS_SUITE);
     }
+
+    @org.junit.jupiter.api.Test
+    @org.junit.jupiter.api.DisplayName("Reprise (D-107) : statut atteignable dans le sens de l'automate, jamais en arrière")
+    void atteignable() {
+        org.assertj.core.api.Assertions.assertThat(InstitutionLifecycle.atteignable(InstitutionStatus.CANDIDAT, InstitutionStatus.RETIRE)).isTrue();
+        org.assertj.core.api.Assertions.assertThat(InstitutionLifecycle.atteignable(InstitutionStatus.ACTIF, InstitutionStatus.ACTIF)).isTrue();
+        org.assertj.core.api.Assertions.assertThat(InstitutionLifecycle.atteignable(InstitutionStatus.ACTIF, InstitutionStatus.ADHERENT)).isFalse();
+        org.assertj.core.api.Assertions.assertThat(InstitutionLifecycle.atteignable(InstitutionStatus.CLOS_SANS_SUITE, InstitutionStatus.ACTIF)).isFalse();
+    }
 }

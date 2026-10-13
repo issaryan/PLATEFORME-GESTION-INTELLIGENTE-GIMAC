@@ -69,6 +69,19 @@ class InstitutionInterneResourceSecurityTest {
     }
 
     @Test
+    @DisplayName("Lecture par code membre (reprise des liaisons, D-107) : jeton de service")
+    void parCode() throws Exception {
+        Institution i = new Institution().name("Banque B").status(InstitutionStatus.ACTIF).category(InstitutionCategory.BANQUE).country("CM").participantCode("BQ-B-001");
+        i.setId(ID);
+        when(queries.parCode("BQ-B-001")).thenReturn(new InstitutionInterneQueries.Vue(i, List.of()));
+        mvc
+            .perform(get("/api/v1/interne/institutions").param("codeParticipant", "BQ-B-001").with(jwt().authorities(new SimpleGrantedAuthority("INTERNAL_PARTICIPANT_READ"))))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(ID.toString()))
+            .andExpect(jsonPath("$.codeParticipant").value("BQ-B-001"));
+    }
+
+    @Test
     @DisplayName("Institution inconnue : 404 en ProblemDetail")
     void inconnue() throws Exception {
         UUID autre = UUID.randomUUID();

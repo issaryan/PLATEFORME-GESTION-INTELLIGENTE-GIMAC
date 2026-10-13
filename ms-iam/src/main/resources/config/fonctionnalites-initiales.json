@@ -970,6 +970,31 @@
       ]
     },
     {
+      "cle": "repriseExistant",
+      "application": "des",
+      "module": "administration",
+      "libelle": "Reprise de l'existant",
+      "groupe": null,
+      "ordre": 215,
+      "icone": "database",
+      "visible": false,
+      "permissions": {
+        "tous": [],
+        "unDe": [
+          "REF_REPRISE_IMPORT"
+        ]
+      },
+      "widgets": [],
+      "droits": [
+        {
+          "cle": "REF_REPRISE_IMPORT",
+          "nature": "ADMINISTRER",
+          "permission": "REF_REPRISE_IMPORT",
+          "libelle": "Reprise de l'existant : import des institutions et des liaisons (D-107)"
+        }
+      ]
+    },
+    {
       "cle": "supervision",
       "application": "des",
       "module": "exploitation",

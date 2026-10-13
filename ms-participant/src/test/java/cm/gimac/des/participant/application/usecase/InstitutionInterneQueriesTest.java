@@ -43,4 +43,18 @@ class InstitutionInterneQueriesTest {
         UUID autre = UUID.randomUUID();
         assertThatThrownBy(() -> q.lire(autre)).isInstanceOfSatisfying(ParticipantException.class, e -> assertThat(e.code()).isEqualTo("PAR_INSTITUTION_NOT_FOUND"));
     }
+
+    @Test
+    @DisplayName("Lecture par code membre (D-107) : institution du code, sinon PAR_INSTITUTION_NOT_FOUND")
+    void parCode() {
+        UUID id = UUID.randomUUID();
+        Institution i = new Institution().name("Banque B");
+        i.setId(id);
+        when(institutions.findByParticipantCode("BQ-1")).thenReturn(Optional.of(i));
+        when(institutions.findById(id)).thenReturn(Optional.of(i));
+        var q = new InstitutionInterneQueries(institutions, services);
+        assertThat(q.parCode(" BQ-1 ").institution()).isSameAs(i);
+        when(institutions.findByParticipantCode("")).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> q.parCode(null)).isInstanceOfSatisfying(ParticipantException.class, e -> assertThat(e.code()).isEqualTo("PAR_INSTITUTION_NOT_FOUND"));
+    }
 }

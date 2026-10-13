@@ -52,6 +52,9 @@ public interface InstitutionRepository extends JpaRepository<Institution, UUID>,
 
     boolean existsByParticipantCodeAndIdNot(String participantCode, UUID id);
 
+    /** Institution d'un code membre (reprise de l'existant, D-107 ; lecture interne par MS-HOMOLOGATION). */
+    Optional<Institution> findByParticipantCode(String participantCode);
+
     boolean existsByIdentificationCodeAndIdNot(String identificationCode, UUID id);
 
     boolean existsByBeacBankCodeAndIdNot(String beacBankCode, UUID id);

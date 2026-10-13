@@ -54,6 +54,8 @@ public class SecurityConfiguration {
                     .requestMatchers("/api/auth-info").permitAll()
                     .requestMatchers("/api/admin/**").hasAuthority(AuthoritiesConstants.ADMIN)
                     // Interfaces internes : jeton de service uniquement (PI §0.7).
+                    // Reprise de l'existant (D-107) : compte de service reprise-service (jeton client_credentials).
+                    .requestMatchers("/api/v1/interne/reprise/**").hasAuthority("REF_REPRISE_IMPORT")
                     .requestMatchers("/api/v1/interne/**").hasAuthority("INTERNAL_PARTICIPANT_READ")
                     // Portail des participants : institution obligatoire dans le jeton (RG-59).
                     .requestMatchers("/api/v1/portail/**").access(new InstitutionClaimPresentAuthorizationManager())

@@ -25,8 +25,9 @@ public class Institution implements Serializable {
     @Serial
     private static final long serialVersionUID = 1L;
 
+    /** Généré à la création, ou attribué par la reprise de l'existant (D-107, UUID déjà porté par des comptes). */
     @Id
-    @GeneratedValue
+    @IdentifiantAttribuable
     @Column(name = "id")
     private UUID id;
 
@@ -64,11 +65,12 @@ public class Institution implements Serializable {
     private String beacBankCode;
 
     /**
-     * Pays CEMAC, code ISO 3166-1 alpha-2.
+     * Pays, code ISO 3166-1 alpha-2 : CEMAC à la saisie (formulaire du registre) ; la reprise de l'existant admet un
+     * partenaire hors CEMAC (remittance par un agrégateur, D-107).
      */
     @NotNull
     @Size(max = 2)
-    @Pattern(regexp = "^(CM|CF|CG|GA|GQ|TD)$")
+    @Pattern(regexp = "^[A-Z]{2}$")
     @Column(name = "country", length = 2, nullable = false)
     private String country;
 

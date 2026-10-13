@@ -30,6 +30,14 @@ public class InstitutionInterneQueries {
         this.services = services;
     }
 
+    /** Institution d'un code membre (reprise des liaisons par MS-HOMOLOGATION, D-107) ; 404 si aucune. */
+    public Vue parCode(String codeParticipant) {
+        Institution i = institutions
+            .findByParticipantCode(codeParticipant == null ? "" : codeParticipant.trim())
+            .orElseThrow(() -> ParticipantException.notFound("PAR_INSTITUTION_NOT_FOUND", codeParticipant));
+        return lire(i.getId());
+    }
+
     public Vue lire(UUID id) {
         Institution i = institutions.findById(id).orElseThrow(() -> ParticipantException.notFound("PAR_INSTITUTION_NOT_FOUND", id));
         return new Vue(i, services.findByInstitution_IdAndStateOrderByServiceCode(id, SubscriptionState.ACTIF));

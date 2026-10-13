@@ -12,4 +12,8 @@ public enum InstitutionCategory {
     AGREGATEUR,
     FINTECH,
     EDITEUR_LOGICIEL,
+    /** Facturier : émetteur de factures payées par les réseaux du GIMAC (D-107). */
+    FACTURIER,
+    /** Partenaire de remittance (transfert international), souvent raccordé par un agrégateur (D-107). */
+    PARTENAIRE_REMITTANCE,
 }
