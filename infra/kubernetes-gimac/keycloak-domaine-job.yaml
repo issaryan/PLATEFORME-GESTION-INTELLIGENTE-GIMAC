@@ -155,6 +155,8 @@ spec:
               valueFrom: { secretKeyRef: { name: gimac-clients-keycloak, key: pilotage-service } }
             - name: GIMAC_SECRET_NOTIFICATION_SERVICE
               valueFrom: { secretKeyRef: { name: gimac-clients-keycloak, key: notification-service } }
+            - name: GIMAC_SECRET_REPRISE_SERVICE
+              valueFrom: { secretKeyRef: { name: gimac-clients-keycloak, key: reprise-service } }
             - name: GIMAC_SECRET_INTERNAL
               valueFrom: { secretKeyRef: { name: gimac-clients-keycloak, key: internal } }
             - name: GIMAC_SECRET_CONNEXION

@@ -63,7 +63,10 @@ PERMISSIONS = {
     "NOT": ["INBOX_READ"],
     # Administration des référentiels métier de tous les domaines (D-92, docs/lot1/referentiels-metier-admin.md) :
     # non privilégiée au sens d'IAM (ni IAM_ ni PLATFORM_).
-    "REF": ["METIER_ADMIN"],
+    "REF": ["METIER_ADMIN",
+            # Reprise de l'existant (D-107, docs/exploitation/reprise-des-donnees.md) : import des institutions et des
+            # liaisons par les routes /api/v1/interne/reprise/** ; super administrateur et compte de service reprise-service.
+            "REPRISE_IMPORT"],
     "INTERNAL": ["HOMOLOGATION_READ", "CERTIFICATION_READ", "PARTICIPANT_READ", "DOCUMENT_READ", "DOCUMENT_DEPOSIT", "IAM_READ",
                  # Tâches créées par un autre service dans MS-PILOTAGE (D-76 §2.3, D-77).
                  "PILOTAGE_TASK_CREATE",
@@ -183,7 +186,7 @@ REFERENTIELS_METIER_ADMIN = {"ROLE_SUPER_ADMIN", "ROLE_INGENIEUR_HOMOLOGATION"}
 for _profil, _ajouts in (
     *((p, ["HOM_REFERENTIEL_READ", "HOM_REFERENTIEL_EDIT"]) for p in sorted(REFERENTIEL_EDITEURS)),
     *((p, ["REF_METIER_ADMIN"]) for p in sorted(REFERENTIELS_METIER_ADMIN)),
-    ("ROLE_SUPER_ADMIN", ["HOM_REFERENTIEL_READ_ALL", "HOM_REFERENTIEL_MIGRATE"]),
+    ("ROLE_SUPER_ADMIN", ["HOM_REFERENTIEL_READ_ALL", "HOM_REFERENTIEL_MIGRATE", "REF_REPRISE_IMPORT"]),
     *((p, ["HOM_REFERENTIEL_PUBLISH"]) for p in sorted(REFERENTIEL_PUBLIEURS)),
     *((p, ["HOM_REFERENTIEL_READ_ALL"]) for p in sorted(REFERENTIEL_LECTURE_COMPLETE)),
 ):
@@ -195,6 +198,7 @@ for _profil in PROFILS:
             PROFILS[_profil] = PROFILS[_profil] + ["PIL_TEAM_READ", "PIL_TASK_ASSIGN"]
 # Libellés propres de certaines permissions (description du rôle Keycloak), à défaut « Permission du lot 1 ».
 LIBELLES_PERMISSIONS = {"REF_METIER_ADMIN": "Administration des référentiels métier, tous domaines",
+                        "REF_REPRISE_IMPORT": "Reprise de l'existant : import des institutions et des liaisons (simulation ou réel)",
                         "HOM_PROJECT_CONDUCT": "Conduite des projets d'homologation (désignable comme conducteur de liaison)",
                         "HOM_FUNCTION_DDRM": "Tenir la fonction DDRM dans un projet d'homologation",
                         "HOM_FUNCTION_PRODUCTION": "Tenir la fonction Production monétique dans un projet d'homologation",
@@ -212,6 +216,8 @@ for _permission, _profils in FONCTIONS_OPERATIONNELLES.items():
     assert [n for n, ps in PROFILS.items() if _permission in ps] == _profils, _permission
 assert all(p in TOUTES for p in LIBELLES_PERMISSIONS)
 assert all("REF_METIER_ADMIN" in ps for n, ps in PROFILS.items() if n in REFERENTIELS_METIER_ADMIN)
+# D-107 : la reprise de l'existant n'est ouverte qu'au super administrateur (et au compte de service reprise-service).
+assert [n for n, ps in PROFILS.items() if "REF_REPRISE_IMPORT" in ps] == ["ROLE_SUPER_ADMIN"]
 assert [n for n, ps in PROFILS.items() if "REF_METIER_ADMIN" in ps] == [n for n in PROFILS if n in REFERENTIELS_METIER_ADMIN]
 assert {"HOM_REFERENTIEL_READ", "HOM_REFERENTIEL_READ_ALL", "HOM_REFERENTIEL_EDIT", "HOM_REFERENTIEL_PUBLISH",
         "HOM_REFERENTIEL_MIGRATE"} <= set(PROFILS["ROLE_SUPER_ADMIN"])
@@ -256,6 +262,9 @@ SERVICES = {
     "iam-service": ["INTERNAL_DOCUMENT_RENDER"],
     # Connexion sur la plateforme (D-65) : la passerelle lit l'état de connexion du compte sur MS-IAM.
     "gateway-service": ["INTERNAL_IAM_READ"],
+    # Reprise de l'existant (D-107) : outil infra/reprise/importer-reprise.py, jeton client_credentials, routes
+    # /api/v1/interne/reprise/** de MS-PARTICIPANT et MS-HOMOLOGATION ; aucune autre permission.
+    "reprise-service": ["REF_REPRISE_IMPORT"],
     # Supervision de la passerelle : lecture des points /management des services (ROLE_ADMIN).
     "gateway-supervision": ["ROLE_ADMIN"],
 }

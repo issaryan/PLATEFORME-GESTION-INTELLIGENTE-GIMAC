@@ -563,6 +563,12 @@
         "clientRole": false
       },
       {
+        "name": "REF_REPRISE_IMPORT",
+        "description": "Reprise de l'existant : import des institutions et des liaisons (simulation ou réel)",
+        "composite": false,
+        "clientRole": false
+      },
+      {
         "name": "INTERNAL_HOMOLOGATION_READ",
         "description": "Permission du lot 1",
         "composite": false,
@@ -741,6 +747,7 @@
             "REF_METIER_ADMIN",
             "HOM_REFERENTIEL_READ_ALL",
             "HOM_REFERENTIEL_MIGRATE",
+            "REF_REPRISE_IMPORT",
             "HOM_REFERENTIEL_PUBLISH",
             "COL_MESSAGE_READ",
             "COL_MESSAGE_SEND",
@@ -1629,6 +1636,15 @@
       ]
     },
     {
+      "username": "service-account-reprise-service",
+      "enabled": true,
+      "serviceAccountClientId": "reprise-service",
+      "realmRoles": [
+        "default-roles-gimac",
+        "REF_REPRISE_IMPORT"
+      ]
+    },
+    {
       "username": "service-account-gateway-supervision",
       "enabled": true,
       "serviceAccountClientId": "gateway-supervision",
@@ -2411,6 +2427,29 @@
       "publicClient": false,
       "clientAuthenticatorType": "client-secret",
       "secret": "${GIMAC_SECRET_GATEWAY_SERVICE}",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "protocol": "openid-connect",
+      "fullScopeAllowed": true,
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "jhipster",
+        "roles",
+        "profile",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "offline_access"
+      ]
+    },
+    {
+      "clientId": "reprise-service",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${GIMAC_SECRET_REPRISE_SERVICE}",
       "standardFlowEnabled": false,
       "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": true,

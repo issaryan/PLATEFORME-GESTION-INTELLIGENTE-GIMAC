@@ -187,6 +187,10 @@ regles := [
 	# Aperçu des documents bureautiques (D-83, docs/lot1/apercu-bureautique.md §2) : conversion en PDF par
 	# MS-DOCUMENT, tout membre interne (qui a déjà le contenu à afficher) ; jamais un compte d'institution.
 	{"m": "POST", "re": `^/bff/(des|console)/document/apercus$`, "p": "PIL_ACTIVITY_OWN"},
+	# Reprise de l'existant (D-107, docs/exploitation/reprise-des-donnees.md) : super administrateur, depuis la console
+	# (route dédiée) ou le département (route générale du service) ; les services revérifient REF_REPRISE_IMPORT.
+	{"m": "POST", "re": `^/bff/(des|console)/participant/reprise/institutions$`, "p": "REF_REPRISE_IMPORT"},
+	{"m": "POST", "re": `^/bff/(des|console)/homologation/reprise/liaisons$`, "p": "REF_REPRISE_IMPORT"},
 ]
 
 # Routes internes des services (jeton de service) : jamais relayées depuis une couche de présentation.

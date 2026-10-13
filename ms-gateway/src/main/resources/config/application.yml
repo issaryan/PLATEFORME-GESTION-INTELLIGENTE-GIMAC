@@ -200,6 +200,29 @@ spring:
               filters:
                 - OpaAuthorize
                 - RewritePath=/bff/(?<couche>des|console)/iam/avatars/(?<p>.*), /api/v1/avatars/${p}
+            # Reprise de l'existant (D-107, docs/exploitation/reprise-des-donnees.md) depuis la console : super
+            # administrateur (REF_REPRISE_IMPORT, OPA), corps JSON de 10 Mo au plus. L'outil infra/reprise appelle les
+            # routes internes équivalentes (/api/v1/interne/reprise/**) avec le jeton du compte de service reprise-service.
+            - id: console-reprise-participant
+              uri: ${gimac.services.participant}
+              predicates:
+                - Path=/bff/console/participant/reprise/institutions
+              filters:
+                - OpaAuthorize
+                - name: RequestSize
+                  args:
+                    maxSize: 10MB
+                - RewritePath=/bff/console/participant/reprise/(?<p>.*), /api/v1/reprise/${p}
+            - id: console-reprise-homologation
+              uri: ${gimac.services.homologation}
+              predicates:
+                - Path=/bff/console/homologation/reprise/liaisons
+              filters:
+                - OpaAuthorize
+                - name: RequestSize
+                  args:
+                    maxSize: 10MB
+                - RewritePath=/bff/console/homologation/reprise/(?<p>.*), /api/v1/reprise/${p}
             - id: console-iam
               uri: ${gimac.services.iam}
               predicates:

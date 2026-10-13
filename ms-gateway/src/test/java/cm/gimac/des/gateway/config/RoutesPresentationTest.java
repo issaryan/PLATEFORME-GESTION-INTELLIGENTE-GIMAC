@@ -88,6 +88,9 @@ class RoutesPresentationTest {
             Arguments.of("/bff/console/iam/moi/cles-securite/defi", "${gimac.services.iam}", "/api/v1/moi/cles-securite/defi"),
             Arguments.of("/bff/des/iam/reauthentification/defi", "${gimac.services.iam}", "/api/v1/reauthentification/defi"),
             Arguments.of("/bff/console/iam/comptes", "${gimac.services.iam}", "/api/v1/comptes"),
+            // Reprise de l'existant (D-107) : console du super administrateur, routes /api/v1/reprise des services.
+            Arguments.of("/bff/console/participant/reprise/institutions", "${gimac.services.participant}", "/api/v1/reprise/institutions"),
+            Arguments.of("/bff/console/homologation/reprise/liaisons", "${gimac.services.homologation}", "/api/v1/reprise/liaisons"),
             Arguments.of("/bff/console/iam/comptes/c1/profils", "${gimac.services.iam}", "/api/v1/comptes/c1/profils"),
             Arguments.of("/bff/console/iam/configuration/politique-securite", "${gimac.services.iam}", "/api/v1/configuration/politique-securite"),
             // Administration dans le département (D-69) : comptes, journal, politique et profils.
@@ -274,7 +277,10 @@ class RoutesPresentationTest {
             "/bff/des/live",
             "/bff/portail/live",
             "/bff/portail/iam/avatars/u-123",
-            "/bff/des/iam/interne/collaborateurs/avatars"
+            "/bff/des/iam/interne/collaborateurs/avatars",
+            // Reprise (D-107) : console seulement, jamais les routes internes de reprise.
+            "/bff/console/participant/interne/reprise/institutions",
+            "/bff/console/homologation/interne/reprise/liaisons"
         );
     }
 

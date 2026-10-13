@@ -1360,3 +1360,24 @@ test_organigramme_pdf_lecteurs_du_catalogue if {
 	not authz.allow with input as {"method": "GET", "path": "/bff/des/iam/organisation/organigrammexpdf", "permissions": ["PIL_ACTIVITY_OWN"], "authentifie": true, "acr": "2"}
 	not authz.allow with input as {"method": "GET", "path": "/bff/portail/iam/organisation/organigramme.pdf", "permissions": ["PIL_ACTIVITY_OWN"], "institution_id": "INST-0042", "authentifie": true, "acr": "2"}
 }
+
+# Reprise de l'existant (D-107) : console du super administrateur seulement, second facteur exigé ; les routes
+# internes de reprise ne sont jamais relayées.
+test_reprise_console_super_administrateur if {
+	authz.allow with input as {"method": "POST", "path": "/bff/console/participant/reprise/institutions", "permissions": ["REF_REPRISE_IMPORT"], "authentifie": true, "acr": "2"}
+	authz.allow with input as {"method": "POST", "path": "/bff/console/homologation/reprise/liaisons", "permissions": ["REF_REPRISE_IMPORT"], "authentifie": true, "acr": "2"}
+}
+
+test_reprise_departement_exige_la_permission if {
+	not authz.allow with input as {"method": "POST", "path": "/bff/des/participant/reprise/institutions", "permissions": ["PAR_INSTITUTION_CREATE"], "authentifie": true, "acr": "2"}
+	authz.allow with input as {"method": "POST", "path": "/bff/des/homologation/reprise/liaisons", "permissions": ["REF_REPRISE_IMPORT"], "authentifie": true, "acr": "2"}
+}
+
+test_reprise_sans_permission_refusee if not authz.allow with input as {"method": "POST", "path": "/bff/console/participant/reprise/institutions", "permissions": ["IAM_ACCOUNT_CREATE"], "authentifie": true, "acr": "2"}
+
+test_reprise_sans_second_facteur_refusee if not authz.allow with input as {"method": "POST", "path": "/bff/console/homologation/reprise/liaisons", "permissions": ["REF_REPRISE_IMPORT"], "authentifie": true, "acr": "1"}
+
+test_reprise_interne_jamais_relayee if {
+	not authz.allow with input as {"method": "POST", "path": "/bff/console/participant/interne/reprise/institutions", "permissions": ["REF_REPRISE_IMPORT"], "authentifie": true, "acr": "2"}
+	not authz.allow with input as {"method": "POST", "path": "/bff/des/homologation/interne/reprise/liaisons", "permissions": ["REF_REPRISE_IMPORT"], "authentifie": true, "acr": "2"}
+}
