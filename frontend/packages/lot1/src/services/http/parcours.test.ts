@@ -56,6 +56,11 @@ describe('versResume : vue de MS-HOMOLOGATION vers le résumé du parcours', () 
     })
     expect(versResume(vue())).toMatchObject({ prochaineEcheance: null, dateCibleProduction: null })
   })
+  it('D-110 : avancement global transmis quand le service le sert, omis sinon', () => {
+    const avancement = { taux: 47, numerateur: 47, denominateur: 100, calculable: true }
+    expect(versResume(vue({ avancement })).avancement).toEqual(avancement)
+    expect('avancement' in versResume(vue())).toBe(false)
+  })
   it('référence LIA-AAAA-NNN servie par MS-HOMOLOGATION : affichée telle quelle (défaut de la pile réelle : un extrait d’UUID)', () => {
     expect(versResume(vue({ id: '3f2a9c1e-0000-4000-8000-000000000001', reference: 'LIA-2026-004' })).reference).toBe('LIA-2026-004')
   })

@@ -88,13 +88,17 @@ public class LiaisonsCadrageResource {
         /** Intitulé libre du projet (D-104) : distingue les liaisons d'une même institution. */
         String intituleProjet,
         /** Référence du projet dans l'outil d'origine (D-104, reprise) ; non servie au portail. */
-        String referenceOrigine
+        String referenceOrigine,
+        /** Avancement global du projet, pondéré par étape (D-110). */
+        Couverture avancement
     ) {
         static LiaisonVue de(LiaisonQueries.Fiche f) {
             Liaison l = f.liaison();
             Vues.LiaisonResume r = f.parcours();
+            // Conducteur à désigner (reprise sans conducteur, départ) : aucun nom, jamais celui du compte de reprise.
+            String conducteur = r != null && r.conducteurNom() == null ? null : f.chefDeProjetNom();
             return new LiaisonVue(
-                l.getId(), l.getTypeProjet(), l.libelleTypeProjet(), l.getInstitutionId(), l.getInstitutionNom(), l.getEtat(), l.getChefDeProjetId(), f.chefDeProjetNom(),
+                l.getId(), l.getTypeProjet(), l.libelleTypeProjet(), l.getInstitutionId(), l.getInstitutionNom(), l.getEtat(), l.getChefDeProjetId(), conducteur,
                 l.getBanquePartenaireId(), f.banquePartenaireNom(), l.getDateOuverture().toString(), l.getMotifEtat(), l.getVersion().getId(),
                 l.getVersion().getNumero(), l.getEtat() == EtatLiaison.OUVERTE ? "CADRAGE" : l.getEtat().name(),
                 r == null ? Couverture.AUCUNE : Couverture.de(r.couvertureCertification()),
@@ -103,7 +107,8 @@ public class LiaisonsCadrageResource {
                 List.of(l.getEtat()), f.perimetre(), f.intervenants(), List.of(), f.actionsPermises(),
                 r == null ? null : r.reference(), r == null ? null : r.statut(), r == null ? null : r.etapeCourante(), r == null ? null : r.bloquee(),
                 r == null ? null : r.prochaineEcheance(), r == null ? null : r.dateCibleProduction(), l.getLiaisonOrigineId(),
-                l.getIntituleProjet(), l.getReferenceOrigine()
+                l.getIntituleProjet(), l.getReferenceOrigine(),
+                r == null || r.avancement() == null ? Couverture.AUCUNE : Couverture.de(r.avancement())
             );
         }
 
@@ -114,7 +119,7 @@ public class LiaisonsCadrageResource {
                 v.id(), v.typeProjet(), v.typeProjetLibelle(), v.institutionId(), v.institutionNom(), v.etat(), null, v.chefDeProjetNom(), null, null, v.dateOuverture(), v.motifEtat(),
                 v.versionId(), v.versionNumero(), v.phaseCourante(), v.couvertureCertification(), v.couvertureMiseEnService(), v.operationsEnRetard(), v.etatsParcourus(),
                 v.perimetre(), v.intervenants(), List.of(), List.of(), v.reference(), v.statut(), v.etapeCourante(), v.bloquee(), v.prochaineEcheance(), v.dateCibleProduction(), v.liaisonOrigineId(),
-                v.intituleProjet(), null
+                v.intituleProjet(), null, v.avancement()
             );
         }
     }

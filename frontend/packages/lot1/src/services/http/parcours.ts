@@ -39,6 +39,8 @@ export type LiaisonVue = {
   /** D-104 : intitulé libre du projet et référence d'origine (reprise ; non servie au portail). */
   intituleProjet?: string | null
   referenceOrigine?: string | null
+  /** D-110 : avancement global du projet, pondéré par étape. */
+  avancement?: CoverageValue
 }
 
 /**
@@ -75,6 +77,7 @@ export function versResume(v: LiaisonVue): LiaisonResume {
     dateCibleProduction: v.dateCibleProduction ?? null,
     ...(v.intituleProjet ? { intituleProjet: v.intituleProjet } : {}),
     ...(v.referenceOrigine ? { referenceOrigine: v.referenceOrigine } : {}),
+    ...(v.avancement ? { avancement: v.avancement } : {}),
   }
 }
 
