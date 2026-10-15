@@ -50,8 +50,30 @@ public final class Vues {
         List<Renvoi> renvois,
         LocalDate echeanceCible,
         int delaiJours,
-        int delaiMaxJours
+        int delaiMaxJours,
+        /** Opération reprise de l'existant (D-107) : affichée « reprise, pièce non numérisée », rien ne lui est exigé (D-109). */
+        boolean reprise
     ) {}
+
+    /**
+     * État d'un livrable attendu (D-109) : ATTENDUE (rien déposé), DEPOSEE (pièce déposée, opération pas encore
+     * validée), VALIDEE (opération validée ou close), REFUSEE (renvoyée par le validateur après le dépôt), SANS_OBJET
+     * (déclaré sans objet, motivé), REPRISE_SANS_PIECE (opération reprise de l'existant, pièce non numérisée),
+     * NON_EXIGEE (opération close avant que le livrable ne soit exigé).
+     */
+    public enum EtatLivrable {
+        ATTENDUE,
+        DEPOSEE,
+        VALIDEE,
+        REFUSEE,
+        SANS_OBJET,
+        REPRISE_SANS_PIECE,
+        NON_EXIGEE,
+    }
+
+    /** Pièce d'un livrable au grain du service, pour un service inclus au périmètre (D-109). */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record ServiceLivrable(String serviceCode, EtatLivrable etat, DepotLivrable depot) {}
 
     /**
      * Livrable attendu d'une opération (D-93 §3, §5) : modèle du référentiel (libellé, nature, déposant, types admis,
@@ -67,7 +89,15 @@ public final class Vues {
         List<String> typesPieces,
         boolean obligatoire,
         DepotLivrable depot,
-        boolean peutDeposer
+        boolean peutDeposer,
+        /** Grain du livrable (D-109) : OPERATION ou SERVICE. */
+        GrainLivrable grain,
+        /** Nature précise et format de la pièce attendue (D-109). */
+        String consigne,
+        /** État du livrable (D-109). */
+        EtatLivrable etat,
+        /** Grain du service : une ligne par service inclus (D-109). */
+        List<ServiceLivrable> services
     ) {}
 
     /**
@@ -127,11 +157,33 @@ public final class Vues {
      * son libellé, l'opération (code) et le code du livrable du référentiel (D-93 §5 : plus de clé parcours.op.&lt;rang&gt;).
      */
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    public record Livrable(String libelleKey, boolean fourni, String libelle, String operation, String code, Boolean obligatoire) {
+    public record Livrable(String libelleKey, boolean fourni, String libelle, String operation, String code, Boolean obligatoire, EtatLivrable etat) {
         public Livrable(String libelleKey, boolean fourni) {
-            this(libelleKey, fourni, null, null, null, null);
+            this(libelleKey, fourni, null, null, null, null, null);
         }
     }
+
+    /**
+     * Événement de la chronologie réelle d'une liaison (D-109), lu dans l'état persistant du parcours : dépôt d'une
+     * pièce, livrable sans objet, renvoi, signature, clôture (faite ou reprise), blocage déclaré ou levé. {@code date} :
+     * jour ; {@code instant} : horodatage quand il est connu (signature).
+     */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record EvenementChronologie(
+        LocalDate date,
+        java.time.Instant instant,
+        String type,
+        String operationId,
+        String rang,
+        String operation,
+        String etapeCode,
+        String livrable,
+        String service,
+        String acteur,
+        String detail,
+        String documentRef,
+        String empreinte
+    ) {}
 
     public record Etape(
         EtapeCode code,

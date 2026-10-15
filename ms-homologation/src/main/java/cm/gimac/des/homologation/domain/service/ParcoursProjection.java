@@ -87,7 +87,8 @@ public class ParcoursProjection {
             o.getRenvois(),
             o.getEcheanceCible(),
             o.getDelaiJours(),
-            o.getDelaiMaxJours()
+            o.getDelaiMaxJours(),
+            o.reprise()
         );
     }
 
@@ -95,6 +96,7 @@ public class ParcoursProjection {
     public List<Vues.LivrableAttendu> livrablesAttendus(Parcours p, OperationParcours o, Acteur a) {
         Set<Fonction> f = VisibiliteReferentiel.fonctions(a.permissions());
         boolean ouverte = o.getEtat().ouverte() && !Parcours.gesteDedie(o);
+        List<String> services = p.codesServices();
         return o
             .getLivrables()
             .stream()
@@ -108,7 +110,11 @@ public class ParcoursProjection {
                     l.typesPieces(),
                     l.obligatoire(),
                     o.depot(l.code()).orElse(null),
-                    ouverte && offert(p.droitDepot(o, l, a, f))
+                    ouverte && offert(p.droitDepot(o, l, a, f)),
+                    l.grainEffectif(),
+                    l.consigne(),
+                    EtatsPreuves.etat(o, l, services),
+                    l.parService() ? EtatsPreuves.services(o, l, services) : null
                 )
             )
             .toList();
@@ -130,7 +136,7 @@ public class ParcoursProjection {
                     s.signataire(),
                     s.signataire().libelle(),
                     s.porte(),
-                    r.isPresent() ? "SIGNEE" : "ATTENDUE",
+                    EtatsPreuves.etatSignature(o, r.isPresent()),
                     enSignature && r.isEmpty() && suivantes.contains(s.code()),
                     r.isPresent() ? null : p.titulaire(o, s.signataire()).orElse(null),
                     r.map(SignatureRecueillie::signataireId).orElse(null),
@@ -302,7 +308,7 @@ public class ParcoursProjection {
                     el,
                     (int) faites,
                     ops.size(),
-                    livrablesEtape(ops),
+                    livrablesEtape(ops, p.codesServices()),
                     premier == null ? null : premier.getRaci().v(),
                     closeLe,
                     debut,
@@ -316,11 +322,13 @@ public class ParcoursProjection {
     }
 
     /** Livrables des opérations d'une étape (D-93 §5) : libellé, opération, code, obligatoire, fourni. */
-    static List<Vues.Livrable> livrablesEtape(List<OperationParcours> ops) {
+    static List<Vues.Livrable> livrablesEtape(List<OperationParcours> ops, List<String> services) {
         List<Vues.Livrable> l = new ArrayList<>();
         for (OperationParcours o : ops) {
             for (cm.gimac.des.homologation.domain.parcours.Livrable x : o.getLivrables()) {
-                l.add(new Vues.Livrable(null, o.faite() || o.depot(x.code()).isPresent(), x.libelle(), o.getRang(), x.code(), x.obligatoire()));
+                Vues.EtatLivrable e = EtatsPreuves.etat(o, x, services);
+                boolean fourni = o.faite() || e == Vues.EtatLivrable.DEPOSEE || e == Vues.EtatLivrable.VALIDEE || e == Vues.EtatLivrable.SANS_OBJET;
+                l.add(new Vues.Livrable(null, fourni, x.libelle(), o.getRang(), x.code(), x.obligatoire(), e));
             }
         }
         return l;
@@ -380,7 +388,7 @@ public class ParcoursProjection {
             close ? dernier.getFaiteLe() : null,
             dernier == null ? null : dernier.getEcheance(),
             sla,
-            livrablesEtape(ops)
+            livrablesEtape(ops, p.codesServices())
         );
     }
 

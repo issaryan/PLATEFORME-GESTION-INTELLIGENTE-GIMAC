@@ -446,4 +446,61 @@ public record ReferenceOperationData(
             delaiMaxJours
         );
     }
+    /**
+     * Saisie complétée des preuves, livrables, signatures, RACI et délais d'une opération (D-109,
+     * docs/lot1/referentiel-preuves-signatures.md) ; un attribut null garde la valeur de la saisie.
+     */
+    public ReferenceOperationData avecPreuves(
+        Map<String, Object> preuve,
+        String desc,
+        Fonction v,
+        List<Fonction> c,
+        List<Fonction> i,
+        List<Fonction> e,
+        Integer delai,
+        Integer delaiMax,
+        List<Livrable> l,
+        List<SignatureOperation> s
+    ) {
+        return new ReferenceOperationData(
+            libelle,
+            phase,
+            segment,
+            partie,
+            serviceCode,
+            natureCouverture,
+            preuve == null ? preuveAttendue : preuve,
+            idScenario,
+            predecesseurs,
+            fonctionResponsable,
+            grille,
+            code,
+            desc == null ? description : desc,
+            etape,
+            ordre,
+            responsable,
+            v == null ? validateur : v,
+            c == null ? consultes : c,
+            i == null ? informes : i,
+            e == null ? externes : e,
+            delai == null ? delaiJours : delai,
+            grain,
+            plateforme,
+            cle,
+            secret,
+            oubliSansSymptome,
+            pivot,
+            valeurReference,
+            l == null ? livrables : l,
+            geste,
+            jalon,
+            declencheur,
+            position,
+            particularite,
+            s == null ? signatures : s,
+            vue,
+            consultesRecoiventTache,
+            delaiMax == null ? delaiMaxJours : delaiMax
+        );
+    }
 }

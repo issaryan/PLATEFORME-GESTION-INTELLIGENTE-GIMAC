@@ -455,6 +455,7 @@ public final class Parcours {
 
     /** Clôture effective : opération faite, particularité appliquée, suivantes ouvertes. */
     private void clore(OperationParcours o, Preuve preuve, LocalDate aujourdhui) {
+        inscrireAutomatiques(o, preuve);
         o.setEtat(EtatOperationParcours.FAITE);
         o.setFaiteLe(aujourdhui);
         o.setPreuve(preuve);
@@ -598,6 +599,28 @@ public final class Parcours {
         return s;
     }
 
+    /**
+     * Opération close par un geste dédié ou un événement d'un autre service (D-109) : sa pièce (fiche d'affectation,
+     * constat, procès-verbal, dossier de changement…) est inscrite comme dépôt des livrables obligatoires encore
+     * manquants, avec son origine ; jamais pour une opération reprise ni sans pièce.
+     */
+    void inscrireAutomatiques(OperationParcours o, Preuve preuve) {
+        if (preuve == null || preuve.documentRef() == null || preuve.documentRef().isBlank() || o.reprise()) {
+            return;
+        }
+        String origine = o.getDeclencheur() != null ? o.getDeclencheur() : o.getGeste().name();
+        for (Livrable l : o.livrablesManquants(codesServices())) {
+            o.deposer(
+                new DepotLivrable(l.code(), preuve.documentRef(), preuve.nom(), preuve.empreinte(), null, preuve.deposeLe(), preuve.deposePar(), null, null, null).avecOrigine(origine)
+            );
+        }
+    }
+
+    /** Codes des services inclus au périmètre (grain du service des livrables, D-109). */
+    public List<String> codesServices() {
+        return servicesInclus().stream().map(ServiceParcours::getServiceCode).toList();
+    }
+
     /** Clôture imposée par un événement ou un constat : sans effet si l'opération est faite. */
     public void forcerCloture(OperationParcours o, Preuve preuve, LocalDate aujourdhui) {
         if (!o.faite()) {
@@ -702,6 +725,20 @@ public final class Parcours {
      * quand plus aucun livrable obligatoire ne manque, sinon elle passe EN_COURS.
      */
     public void deposerLivrable(OperationParcours o, Livrable livrable, Preuve preuve, String typeMime, String deposantId, boolean supervision, LocalDate aujourdhui) {
+        deposerLivrable(o, livrable, null, preuve, typeMime, deposantId, supervision, aujourdhui);
+    }
+
+    /** Dépôt d'un livrable attendu, pour un service du périmètre quand le livrable est au grain du service (D-109). */
+    public void deposerLivrable(
+        OperationParcours o,
+        Livrable livrable,
+        String service,
+        Preuve preuve,
+        String typeMime,
+        String deposantId,
+        boolean supervision,
+        LocalDate aujourdhui
+    ) {
         refuserGesteLibre(o);
         if (!o.getEtat().ouverte() || o.porte(Geste.CONSTATER_COUVERTURE) || o.isCle() || o.isValeurReference()) {
             throw HomologationException.conflict("HOM_OPERATION_NOT_OPEN", "Cette opération n'attend pas de livrable.", Map.of("etat", o.getEtat().name(), "rang", o.getRang()));
@@ -710,8 +747,9 @@ public final class Parcours {
             terminer(o, preuve, aujourdhui);
             return;
         }
-        inscrire(o, livrable, preuve, typeMime, deposantId, supervision);
-        if (o.livrablesManquants().isEmpty()) {
+        service = serviceVise(livrable, service);
+        inscrire(o, livrable, preuve, typeMime, deposantId, supervision, service);
+        if (o.livrablesManquants(codesServices()).isEmpty()) {
             terminer(o, preuve, aujourdhui);
         } else {
             o.setPreuve(preuve);
@@ -719,8 +757,55 @@ public final class Parcours {
         }
     }
 
-    private static void inscrire(OperationParcours o, Livrable l, Preuve p, String typeMime, String deposantId, boolean supervision) {
-        o.deposer(new DepotLivrable(l.code(), p.documentRef(), p.nom(), p.empreinte(), typeMime, p.deposeLe(), p.deposePar(), deposantId, supervision ? Boolean.TRUE : null, null));
+    private static void inscrire(OperationParcours o, Livrable l, Preuve p, String typeMime, String deposantId, boolean supervision, String service) {
+        DepotLivrable d = new DepotLivrable(l.code(), p.documentRef(), p.nom(), p.empreinte(), typeMime, p.deposeLe(), p.deposePar(), deposantId, supervision ? Boolean.TRUE : null, null);
+        o.deposer(service == null ? d : d.pourService(service));
+    }
+
+    /**
+     * Service visé par un dépôt (D-109) : exigé pour un livrable au grain du service et inclus au périmètre (422
+     * HOM_LIVRABLE_SERVICE_REQUIS, HOM_LIVRABLE_SERVICE_INCONNU) ; ignoré pour un livrable de l'opération.
+     */
+    public String serviceVise(Livrable l, String service) {
+        if (l == null || !l.parService()) {
+            return null;
+        }
+        String s = service == null ? "" : service.trim();
+        if (s.isEmpty()) {
+            throw HomologationException.unprocessableDetails(
+                "HOM_LIVRABLE_SERVICE_REQUIS",
+                "Ce livrable attend une pièce par service : préciser le service.",
+                Map.of("livrable", l.code(), "services", codesServices())
+            );
+        }
+        if (!codesServices().contains(s)) {
+            throw HomologationException.unprocessableDetails(
+                "HOM_LIVRABLE_SERVICE_INCONNU",
+                "Ce service n'est pas inclus au périmètre de la liaison.",
+                Map.of("livrable", l.code(), "service", s, "services", codesServices())
+            );
+        }
+        return s;
+    }
+
+    /**
+     * Livrable déclaré sans objet, avec son motif (D-109) : opération ouverte ou en validation, motif de 3 à 500
+     * caractères (422 HOM_MOTIF_REQUIS) ; pour un livrable au grain du service, un service précis ou tous (service
+     * absent). Une opération ouverte passe en validation quand plus rien ne manque (le validateur tranche).
+     */
+    public void declarerSansObjet(OperationParcours o, Livrable l, String service, String motif, String par, String parId, LocalDate aujourdhui) {
+        if (!o.getEtat().ouverte() && o.getEtat() != EtatOperationParcours.EN_VALIDATION) {
+            throw HomologationException.conflict("HOM_OPERATION_NOT_OPEN", "Cette opération n'est pas ouverte.", Map.of("etat", o.getEtat().name(), "rang", o.getRang()));
+        }
+        String m = motif == null ? "" : motif.trim();
+        if (m.length() < 3 || m.length() > 500) {
+            throw HomologationException.unprocessable("HOM_MOTIF_REQUIS", "Le motif est exigé (3 à 500 caractères).");
+        }
+        String s = l.parService() && service != null && !service.isBlank() ? serviceVise(l, service) : null;
+        o.deposer(DepotLivrable.sansObjet(l.code(), s, m, aujourdhui, par, parId));
+        if (o.getEtat().ouverte() && o.livrablesManquants(codesServices()).isEmpty()) {
+            o.setEtat(EtatOperationParcours.EN_VALIDATION);
+        }
     }
 
     /**
@@ -769,13 +854,24 @@ public final class Parcours {
 
     /** Clôture refusée tant qu'un livrable obligatoire manque (D-93 §3), 409 HOM_LIVRABLE_MANQUANT. */
     public static void exigerLivrables(OperationParcours o) {
-        List<Livrable> manquants = o.livrablesManquants();
+        exigerLivrables(o, List.of());
+    }
+
+    /**
+     * Clôture refusée tant qu'un livrable obligatoire manque, une pièce par service inclus pour un livrable au grain du
+     * service (D-109), 409 HOM_LIVRABLE_MANQUANT ; une opération reprise (D-107) n'est jamais bloquée.
+     */
+    public static void exigerLivrables(OperationParcours o, List<String> services) {
+        List<Livrable> manquants = o.livrablesManquants(services);
         if (!manquants.isEmpty()) {
-            throw HomologationException.conflict(
-                "HOM_LIVRABLE_MANQUANT",
-                "Un livrable obligatoire manque : l'opération ne peut pas être close.",
-                Map.of("manquants", manquants.stream().map(Livrable::code).toList())
-            );
+            Map<String, Object> details = new java.util.LinkedHashMap<>();
+            details.put("manquants", manquants.stream().map(Livrable::code).toList());
+            Map<String, List<String>> parService = new java.util.LinkedHashMap<>();
+            manquants.stream().filter(Livrable::parService).forEach(l -> parService.put(l.code(), o.servicesManquants(l, services)));
+            if (!parService.isEmpty()) {
+                details.put("services", parService);
+            }
+            throw HomologationException.conflict("HOM_LIVRABLE_MANQUANT", "Un livrable obligatoire manque : l'opération ne peut pas être close.", details);
         }
     }
 
@@ -795,6 +891,19 @@ public final class Parcours {
      * tous ses livrables obligatoires déposés (sinon EN_COURS). {@code livrable} null : preuve unique (antérieur).
      */
     public void deposerPreuve(OperationParcours o, Livrable livrable, Preuve piece, String valeurReference, String codeControle, Ceremonie ceremonie) {
+        deposerPreuve(o, livrable, null, piece, valeurReference, codeControle, ceremonie);
+    }
+
+    /** Preuve d'un livrable attendu, pour un service du périmètre quand le livrable est au grain du service (D-109). */
+    public void deposerPreuve(
+        OperationParcours o,
+        Livrable livrable,
+        String service,
+        Preuve piece,
+        String valeurReference,
+        String codeControle,
+        Ceremonie ceremonie
+    ) {
         refuserGesteLibre(o);
         if (!o.getEtat().ouverte() || o.porte(Geste.CONSTATER_COUVERTURE)) {
             throw HomologationException.conflict("HOM_OPERATION_NOT_OPEN", "Cette opération n'est pas ouverte.", Map.of("etat", o.getEtat().name(), "rang", o.getRang()));
@@ -819,18 +928,24 @@ public final class Parcours {
         if (o.isCle()) {
             p = p.avecCle(code, c);
         }
+        String s = serviceVise(livrable, service);
         o.setPreuve(p);
         if (livrable != null) {
-            inscrire(o, livrable, p, null, null, false);
+            inscrire(o, livrable, p, null, null, false, s);
         }
-        o.setEtat(o.livrablesManquants().isEmpty() ? EtatOperationParcours.EN_VALIDATION : EtatOperationParcours.EN_COURS);
+        o.setEtat(o.livrablesManquants(codesServices()).isEmpty() ? EtatOperationParcours.EN_VALIDATION : EtatOperationParcours.EN_COURS);
     }
 
     /** Réinscrit le dépôt de la preuve d'un livrable attendu avec la pièce revérifiée et son déposant (D-93 §3). */
     public void inscrirePreuve(OperationParcours o, Livrable livrable, String typeMime, String deposantId, boolean supervision) {
+        inscrirePreuve(o, livrable, null, typeMime, deposantId, supervision);
+    }
+
+    /** Même réinscription, pour le service visé d'un livrable au grain du service (D-109). */
+    public void inscrirePreuve(OperationParcours o, Livrable livrable, String service, String typeMime, String deposantId, boolean supervision) {
         Preuve p = o.getPreuve();
         if (livrable != null && p != null) {
-            inscrire(o, livrable, p, typeMime, deposantId, supervision);
+            inscrire(o, livrable, p, typeMime, deposantId, supervision, serviceVise(livrable, service));
         }
     }
 
@@ -870,7 +985,7 @@ public final class Parcours {
         if (acteur.est(o.getRaci().r())) {
             throw validateurResponsable();
         }
-        exigerLivrables(o);
+        exigerLivrables(o, codesServices());
         terminer(o, o.getPreuve(), aujourdhui);
     }
 

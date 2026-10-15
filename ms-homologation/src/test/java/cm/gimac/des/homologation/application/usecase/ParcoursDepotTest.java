@@ -108,6 +108,10 @@ class ParcoursDepotTest {
         when(operations.liaisonDe(o.getId())).thenReturn(Optional.of(p.id()));
         when(liaisons.findByIdForUpdate(p.id())).thenReturn(Optional.empty());
         assertThatThrownBy(() -> depot.deLOperation(o.getId())).isInstanceOfSatisfying(HomologationException.class, e -> assertThat(e.code()).isEqualTo("HOM_LIAISON_NOT_FOUND"));
+        // D-109 : même lecture sans verrou (pièces, chronologie).
+        when(liaisons.findById(p.id())).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> depot.deLOperationLecture(o.getId())).isInstanceOfSatisfying(HomologationException.class, e -> assertThat(e.code()).isEqualTo("HOM_LIAISON_NOT_FOUND"));
+        assertThatThrownBy(() -> depot.deLOperationLecture(inconnu)).isInstanceOfSatisfying(HomologationException.class, e -> assertThat(e.code()).isEqualTo("HOM_OPERATION_NOT_FOUND"));
         BlocageParcours b = new BlocageParcours(p.id(), "m", LocalDate.EPOCH, "a", new Personne("u", "n", Fonction.DDRM), LocalDate.EPOCH, EtapeCode.CADRAGE, null);
         when(blocages.liaisonDe(b.getId())).thenReturn(Optional.of(p.id()));
         assertThatThrownBy(() -> depot.duBlocage(b.getId())).isInstanceOfSatisfying(HomologationException.class, e -> assertThat(e.status()).isEqualTo(404));

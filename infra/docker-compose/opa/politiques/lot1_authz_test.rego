@@ -343,6 +343,22 @@ test_parcours_sans_permission if {
 	}
 }
 
+# D-109 : chronologie et pièce d'une opération en lecture (HOM_LIAISON_READ) ; refusées sans elle ou sans second facteur.
+routes_preuves := ["/bff/des/homologation/liaisons/l1/chronologie", "/bff/des/homologation/parcours/operations/o1/pieces/d1"]
+
+test_preuves_lecture if {
+	every chemin in routes_preuves {
+		authz.allow with input as {"method": "GET", "path": chemin, "permissions": ["HOM_LIAISON_READ"], "authentifie": true, "acr": "2"}
+		not authz.allow with input as {"method": "GET", "path": chemin, "permissions": ["HOM_DASHBOARD_READ"], "authentifie": true, "acr": "2"}
+		not authz.allow with input as {"method": "GET", "path": chemin, "permissions": ["HOM_LIAISON_READ"], "authentifie": true, "acr": "1"}
+	}
+}
+
+test_preuves_sans_objet_laisse_au_service if authz.allow with input as {
+	"method": "POST", "path": "/bff/des/homologation/parcours/operations/o1/livrables/L1/sans-objet", "permissions": ["HOM_EVIDENCE_SUBMIT"],
+	"authentifie": true, "acr": "2",
+}
+
 test_parcours_livrable_laisse_au_service if authz.allow with input as {
 	"method": "POST", "path": "/bff/des/homologation/parcours/operations/o1/livrable", "permissions": ["HOM_STEP_MANAGE"],
 	"authentifie": true, "acr": "2",

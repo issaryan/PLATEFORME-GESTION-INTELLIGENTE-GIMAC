@@ -28,4 +28,15 @@ public interface DocumentRegistryPort {
     }
 
     Depot deposer(byte[] contenu, String nomFichier, String typeMime, String finalite, String reference, UUID deposantId);
+
+    /** Contenu d'une pièce (D-109 : téléchargement depuis le dossier de la liaison, empreinte revérifiée par l'appelant). */
+    record Contenu(byte[] octets, String nomFichier, String typeMime) {}
+
+    /**
+     * Contenu d'une pièce, lu par {@code GET /api/v1/interne/documents/{id}/contenu} (INTERNAL_DOCUMENT_READ) ; vide si
+     * le registre ne la connaît pas.
+     */
+    default java.util.Optional<Contenu> lire(UUID documentId) {
+        return java.util.Optional.empty();
+    }
 }

@@ -310,7 +310,7 @@ public class OperationParcours {
         return depots == null ? List.of() : JsonTexte.liste(depots, DepotLivrable.class);
     }
 
-    /** Dépôt d'un livrable attendu, le plus récent. */
+    /** Dépôt d'un livrable attendu, le plus récent (tous services confondus). */
     public java.util.Optional<DepotLivrable> depot(String livrable) {
         List<DepotLivrable> l = getDepots();
         for (int i = l.size() - 1; i >= 0; i--) {
@@ -321,16 +321,67 @@ public class OperationParcours {
         return java.util.Optional.empty();
     }
 
-    /** Ajoute un dépôt ; un nouveau dépôt du même livrable remplace le précédent. */
+    /** Dépôt d'un livrable pour un service du périmètre (D-109) ; null : le dépôt de l'opération. */
+    public java.util.Optional<DepotLivrable> depot(String livrable, String service) {
+        List<DepotLivrable> l = getDepots();
+        for (int i = l.size() - 1; i >= 0; i--) {
+            DepotLivrable d = l.get(i);
+            if (livrable.equals(d.livrable()) && java.util.Objects.equals(service, d.service())) {
+                return java.util.Optional.of(d);
+            }
+        }
+        return java.util.Optional.empty();
+    }
+
+    /** Ajoute un dépôt ; un nouveau dépôt du même livrable (et du même service) remplace le précédent. */
     void deposer(DepotLivrable d) {
-        List<DepotLivrable> l = new java.util.ArrayList<>(getDepots().stream().filter(x -> !x.livrable().equals(d.livrable())).toList());
+        List<DepotLivrable> l = new java.util.ArrayList<>(getDepots().stream().filter(x -> !x.memeCible(d)).toList());
         l.add(d);
         this.depots = JsonTexte.ecrire(l);
     }
 
-    /** Livrables obligatoires du référentiel pas encore déposés. */
+    /** Opération reprise de l'existant (D-107) : sa preuve porte la marque de reprise ; rien ne lui est exigé (D-109). */
+    public boolean reprise() {
+        Preuve p = getPreuve();
+        return p != null && p.estReprise();
+    }
+
+    /**
+     * Livrables obligatoires du référentiel pas encore déposés ni déclarés sans objet ; un livrable au grain du service
+     * attend une pièce par service sans services connus (au moins une pièce). Une opération reprise n'en attend aucun.
+     */
     public List<Livrable> livrablesManquants() {
-        return getLivrables().stream().filter(Livrable::obligatoire).filter(l -> depot(l.code()).isEmpty()).toList();
+        return livrablesManquants(List.of());
+    }
+
+    /**
+     * Livrables obligatoires manquants (D-93 §3, D-109) : au grain du service, un dépôt (ou un « sans objet ») par service
+     * inclus de {@code services}, un dépôt repris de l'opération valant pour tous ; une opération reprise (D-107) n'en
+     * attend aucun.
+     */
+    public List<Livrable> livrablesManquants(List<String> services) {
+        if (reprise()) {
+            return List.of();
+        }
+        return getLivrables().stream().filter(Livrable::obligatoire).filter(l -> !satisfait(l, services)).toList();
+    }
+
+    /** Services du périmètre sans pièce pour un livrable au grain du service (D-109). */
+    public List<String> servicesManquants(Livrable l, List<String> services) {
+        if (!l.parService() || reprise() || depot(l.code(), null).isPresent()) {
+            return List.of();
+        }
+        return services.stream().filter(s -> depot(l.code(), s).isEmpty()).toList();
+    }
+
+    private boolean satisfait(Livrable l, List<String> services) {
+        if (depot(l.code(), null).isPresent()) {
+            return true;
+        }
+        if (!l.parService()) {
+            return false;
+        }
+        return services.isEmpty() ? depot(l.code()).isPresent() : servicesManquants(l, services).isEmpty();
     }
 
     public List<Renvoi> getRenvois() {

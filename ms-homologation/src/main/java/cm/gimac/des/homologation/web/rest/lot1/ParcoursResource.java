@@ -5,6 +5,7 @@ import cm.gimac.des.homologation.application.usecase.ParcoursCommandes;
 import cm.gimac.des.homologation.application.usecase.ParcoursCommandes.Affectation;
 import cm.gimac.des.homologation.application.usecase.ParcoursCommandes.Piece;
 import cm.gimac.des.homologation.application.usecase.ParcoursLectures;
+import cm.gimac.des.homologation.application.usecase.PiecesParcours;
 import cm.gimac.des.homologation.domain.Liaison;
 import cm.gimac.des.homologation.domain.parcours.Acteur;
 import cm.gimac.des.homologation.domain.parcours.BlocageParcours;
@@ -21,10 +22,14 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -60,7 +65,8 @@ public class ParcoursResource {
         @NotBlank String empreinte,
         @NotBlank @Size(max = 255) String nom,
         @Size(max = 2000) String commentaire,
-        @Size(max = 40) String livrable
+        @Size(max = 40) String livrable,
+        @Size(max = 40) String service
     ) {}
 
     /** Preuve : toute propriété hors contrat est refusée, pour qu'aucune valeur de clé ni de secret ne soit jamais reçue (D-59). */
@@ -72,8 +78,12 @@ public class ParcoursResource {
         @Size(max = 16) String codeControle,
         Ceremonie ceremonie,
         @Size(max = 40) String livrable,
+        @Size(max = 40) String service,
         @JsonAnySetter Map<String, Object> autres
     ) {}
+
+    /** Livrable sans objet (D-109) : motif exigé ; {@code service} pour un livrable au grain du service (absent : tous). */
+    public record SansObjetRequest(@NotBlank @Size(min = 3, max = 500) String motif, @Size(max = 40) String service) {}
 
     /** Renvoi par le validateur (D-93 §2) : motif exigé. */
     public record RenvoiRequest(@NotBlank @Size(max = 500) String motif) {}
@@ -96,12 +106,56 @@ public class ParcoursResource {
     private final ParcoursCommandes commandes;
     private final LiaisonQueries liaisons;
     private final ParcoursProjection projection;
+    private final PiecesParcours pieces;
 
-    public ParcoursResource(ParcoursLectures lectures, ParcoursCommandes commandes, LiaisonQueries liaisons, ParcoursProjection projection) {
+    public ParcoursResource(ParcoursLectures lectures, ParcoursCommandes commandes, LiaisonQueries liaisons, ParcoursProjection projection, PiecesParcours pieces) {
         this.lectures = lectures;
         this.commandes = commandes;
         this.liaisons = liaisons;
         this.projection = projection;
+        this.pieces = pieces;
+    }
+
+    /** Chronologie réelle de la liaison (D-109) : dépôts, sans objet, renvois, signatures, clôtures, reprises, blocages. */
+    @GetMapping("/liaisons/{id}/chronologie")
+    @PreAuthorize("hasAuthority('HOM_LIAISON_READ')")
+    public List<Vues.EvenementChronologie> chronologie(@PathVariable UUID id) {
+        return pieces.chronologie(id);
+    }
+
+    /**
+     * Pièce d'une opération (D-109) : preuve ou dépôt d'un livrable, relue chez MS-DOCUMENT, empreinte recalculée et
+     * comparée à celle inscrite (422 HOM_DOCUMENT_HASH_MISMATCH) ; l'empreinte est rendue dans {@code X-Empreinte-Sha256}
+     * pour une seconde vérification par le navigateur.
+     */
+    @GetMapping("/parcours/operations/{id}/pieces/{documentId}")
+    @PreAuthorize("hasAuthority('HOM_LIAISON_READ')")
+    public ResponseEntity<byte[]> piece(@PathVariable UUID id, @PathVariable String documentId) {
+        PiecesParcours.PieceServie p = pieces.piece(id, documentId);
+        MediaType type;
+        try {
+            type = p.typeMime() == null ? MediaType.APPLICATION_OCTET_STREAM : MediaType.parseMediaType(p.typeMime());
+        } catch (IllegalArgumentException e) {
+            type = MediaType.APPLICATION_OCTET_STREAM;
+        }
+        String nom = p.nomFichier() == null || p.nomFichier().isBlank() ? "piece" : p.nomFichier();
+        return ResponseEntity.ok()
+            .contentType(type)
+            .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(nom, StandardCharsets.UTF_8).build().toString())
+            .header("X-Empreinte-Sha256", p.empreinte())
+            // Empreinte au format de MS-DOCUMENT (RFC 9530), relue par le client HTTP de l'interface.
+            .header("Repr-Digest", "sha-256=:" + java.util.Base64.getEncoder().encodeToString(java.util.HexFormat.of().parseHex(p.empreinte())) + ":")
+            .header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "X-Empreinte-Sha256, Content-Disposition")
+            .header("X-Content-Type-Options", "nosniff")
+            .body(p.octets());
+    }
+
+    /** Livrable déclaré sans objet, motivé (D-109) : même droit que le dépôt ; motif, auteur et date inscrits. */
+    @PostMapping("/parcours/operations/{id}/livrables/{code}/sans-objet")
+    @PreAuthorize("hasAnyAuthority('HOM_STEP_MANAGE', 'HOM_EVIDENCE_SUBMIT')")
+    public ResponseEntity<Void> sansObjet(@PathVariable UUID id, @PathVariable String code, @Valid @RequestBody SansObjetRequest r, Authentication auth) {
+        commandes.declarerSansObjet(id, code, r.service(), r.motif(), ActeurCourant.de(auth));
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/liaisons/{id}/dossier")
@@ -131,7 +185,7 @@ public class ParcoursResource {
     @PostMapping("/parcours/operations/{id}/livrable")
     @PreAuthorize("hasAnyAuthority('HOM_STEP_MANAGE', 'HOM_EVIDENCE_SUBMIT')")
     public ResponseEntity<Void> livrable(@PathVariable UUID id, @Valid @RequestBody LivrableRequest r, Authentication auth) {
-        commandes.deposerLivrable(id, r.livrable(), new Piece(r.documentId(), r.empreinte(), r.nom(), r.commentaire()), ActeurCourant.de(auth));
+        commandes.deposerLivrable(id, r.livrable(), r.service(), new Piece(r.documentId(), r.empreinte(), r.nom(), r.commentaire()), ActeurCourant.de(auth));
         return ResponseEntity.noContent().build();
     }
 
@@ -149,7 +203,16 @@ public class ParcoursResource {
                 "Une preuve ne porte que sa pièce, sa valeur de référence, un code de contrôle ou la cérémonie : aucune valeur de clé ni de secret."
             );
         }
-        commandes.deposerPreuve(id, r.livrable(), new Piece(r.documentId(), r.empreinte(), r.nom(), null), r.valeurReference(), r.codeControle(), r.ceremonie(), ActeurCourant.de(auth));
+        commandes.deposerPreuve(
+            id,
+            r.livrable(),
+            r.service(),
+            new Piece(r.documentId(), r.empreinte(), r.nom(), null),
+            r.valeurReference(),
+            r.codeControle(),
+            r.ceremonie(),
+            ActeurCourant.de(auth)
+        );
         return ResponseEntity.noContent().build();
     }
 

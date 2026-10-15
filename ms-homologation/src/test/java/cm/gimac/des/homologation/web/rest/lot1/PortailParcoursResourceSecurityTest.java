@@ -174,11 +174,11 @@ class PortailParcoursResourceSecurityTest {
         mvc
             .perform(req(HttpMethod.POST, "/api/v1/portail/operations/" + ID + "/livrable", "multipart").with(correspondant(INSTITUTION, "2", "HOM_PORTAL_SUBMIT")))
             .andExpect(status().isNoContent());
-        verify(commandes).deposerLivrablePortail(eq(ID), isNull(), eq("contenu".getBytes()), eq("cr.pdf"), eq("application/pdf"), eq("cr"), any());
+        verify(commandes).deposerLivrablePortail(eq(ID), isNull(), isNull(), eq("contenu".getBytes()), eq("cr.pdf"), eq("application/pdf"), eq("cr"), any());
         mvc
             .perform(multipart("/api/v1/portail/operations/" + ID + "/livrable").with(correspondant(INSTITUTION, "2", "HOM_PORTAL_SUBMIT")))
             .andExpect(status().isNoContent());
-        verify(commandes).deposerLivrablePortail(eq(ID), isNull(), isNull(), isNull(), isNull(), isNull(), any());
+        verify(commandes).deposerLivrablePortail(eq(ID), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any());
         doThrow(HomologationException.unprocessable("HOM_TECHNICAL_DATA_INVALID", "Adresse ou port invalide.")).when(commandes).communiquerCoordonnees(eq(ID), eq("hôte invalide!"), any(), any(), any());
         mvc
             .perform(req(HttpMethod.PUT, "/api/v1/portail/liaisons/" + ID + "/coordonnees-techniques", "{\"adresse\":\"hôte invalide!\",\"port\":\"8443\"}").with(correspondant(INSTITUTION, "2", "HOM_PORTAL_SUBMIT")))

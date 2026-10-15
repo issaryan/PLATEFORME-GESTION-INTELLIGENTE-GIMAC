@@ -15,6 +15,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import cm.gimac.des.homologation.application.usecase.LiaisonQueries;
 import cm.gimac.des.homologation.application.usecase.ParcoursCommandes;
 import cm.gimac.des.homologation.application.usecase.ParcoursLectures;
+import cm.gimac.des.homologation.application.usecase.PiecesParcours;
 import cm.gimac.des.homologation.config.SecurityConfiguration;
 import cm.gimac.des.homologation.config.TestSecurityConfiguration;
 import cm.gimac.des.homologation.domain.HomologationException;
@@ -92,6 +93,9 @@ class ParcoursResourceSecurityTest {
     @MockitoBean
     ParcoursProjection projection;
 
+    @MockitoBean
+    PiecesParcours pieces;
+
     Parcours p;
 
     @BeforeEach
@@ -107,6 +111,8 @@ class ParcoursResourceSecurityTest {
         when(commandes.declarerBlocage(eq(ID), any(), any(), any(), any(), any())).thenReturn(b);
         when(projection.blocage(any(), any())).thenReturn(vraie.blocage(b, new cm.gimac.des.homologation.domain.parcours.Acteur(null, null, Set.of("HOM_STEP_MANAGE"), null)));
         when(commandes.ouvrirServiceSupplementaire(eq(ID), any(), any())).thenReturn(p.liaison());
+        when(pieces.piece(eq(ID), eq("DOC-1"))).thenReturn(new PiecesParcours.PieceServie("capture".getBytes(), "ping é.png", "image/png", SHA));
+        when(pieces.chronologie(ID)).thenReturn(List.of());
         when(liaisons.fiche(eq(p.id()), anySet())).thenReturn(new LiaisonQueries.Fiche(p.liaison(), "Conducteur", null, List.of("RETRAIT"), List.of(), List.of(), vraie.resume(p, "Conducteur", LocalDate.now())));
     }
 
@@ -130,7 +136,11 @@ class ParcoursResourceSecurityTest {
             Arguments.of(HttpMethod.POST, l + "/services-supplementaires", "{\"services\":[\"CASH_IN\"]}", List.of("HOM_LIAISON_OPEN", "HOM_STEP_MANAGE"), 201),
             Arguments.of(HttpMethod.GET, l + "/fiche-suivi", null, List.of("HOM_LIAISON_READ"), 200),
             Arguments.of(HttpMethod.POST, l + "/fiche-suivi/remise", "{}", List.of("HOM_STEP_MANAGE", "CER_DOSSIER_VERIFY"), 204),
-            Arguments.of(HttpMethod.POST, l + "/fiche-suivi/constat", "{}", List.of("CER_DOSSIER_VERIFY"), 204)
+            Arguments.of(HttpMethod.POST, l + "/fiche-suivi/constat", "{}", List.of("CER_DOSSIER_VERIFY"), 204),
+            // D-109 : chronologie, pièce téléchargée (empreinte revérifiée), livrable sans objet motivé.
+            Arguments.of(HttpMethod.GET, l + "/chronologie", null, List.of("HOM_LIAISON_READ"), 200),
+            Arguments.of(HttpMethod.GET, o + "/pieces/DOC-1", null, List.of("HOM_LIAISON_READ"), 200),
+            Arguments.of(HttpMethod.POST, o + "/livrables/L1/sans-objet", "{\"motif\":\"Participant non porté\"}", List.of("HOM_STEP_MANAGE", "HOM_EVIDENCE_SUBMIT"), 204)
         );
     }
 
@@ -196,6 +206,40 @@ class ParcoursResourceSecurityTest {
         verify(commandes).valider(eq(ID), eq("YXNzZXJ0"), any());
         mvc.perform(req(HttpMethod.POST, "/api/v1/blocages/" + ID + "/levee", null).with(jeton("2", "HOM_STEP_MANAGE"))).andExpect(status().isNoContent());
         verify(commandes).leverBlocage(eq(ID), isNull(), any());
+    }
+
+    @Test
+    @DisplayName("D-109 : pièce servie avec son nom, son type et son empreinte ; service d'un dépôt et motif d'un sans objet transmis")
+    void preuvesD109() throws Exception {
+        mvc
+            .perform(req(HttpMethod.GET, "/api/v1/parcours/operations/" + ID + "/pieces/DOC-1", null).with(jeton("2", "HOM_LIAISON_READ")))
+            .andExpect(status().isOk())
+            .andExpect(header().string("X-Empreinte-Sha256", SHA))
+            .andExpect(header().string("Repr-Digest", org.hamcrest.Matchers.startsWith("sha-256=:")))
+            .andExpect(header().string("Content-Type", "image/png"))
+            .andExpect(header().string("Content-Disposition", org.hamcrest.Matchers.containsString("filename*=UTF-8''ping%20%C3%A9.png")));
+        when(pieces.piece(eq(ID), eq("DOC-2"))).thenReturn(new PiecesParcours.PieceServie("x".getBytes(), " ", "pas un type", SHA));
+        mvc
+            .perform(req(HttpMethod.GET, "/api/v1/parcours/operations/" + ID + "/pieces/DOC-2", null).with(jeton("2", "HOM_LIAISON_READ")))
+            .andExpect(header().string("Content-Type", "application/octet-stream"))
+            .andExpect(header().string("Content-Disposition", org.hamcrest.Matchers.containsString("piece")));
+        when(pieces.piece(eq(ID), eq("DOC-3"))).thenThrow(HomologationException.notFound("HOM_PIECE_INCONNUE", "x", "DOC-3"));
+        mvc.perform(req(HttpMethod.GET, "/api/v1/parcours/operations/" + ID + "/pieces/DOC-3", null).with(jeton("2", "HOM_LIAISON_READ"))).andExpect(status().isNotFound());
+        mvc
+            .perform(req(HttpMethod.POST, "/api/v1/parcours/operations/" + ID + "/preuves", "{\"documentId\":\"" + ID + "\",\"empreinte\":\"" + SHA + "\",\"nom\":\"r.csv\",\"livrable\":\"L1\",\"service\":\"RETRAIT\"}").with(jeton("2", "HOM_EVIDENCE_SUBMIT")))
+            .andExpect(status().isNoContent());
+        verify(commandes).deposerPreuve(eq(ID), eq("L1"), eq("RETRAIT"), any(), isNull(), isNull(), isNull(), any());
+        mvc
+            .perform(req(HttpMethod.POST, "/api/v1/parcours/operations/" + ID + "/livrable", "{\"documentId\":\"" + ID + "\",\"empreinte\":\"" + SHA + "\",\"nom\":\"r.csv\",\"livrable\":\"L1\",\"service\":\"RETRAIT\"}").with(jeton("2", "HOM_STEP_MANAGE")))
+            .andExpect(status().isNoContent());
+        verify(commandes).deposerLivrable(eq(ID), eq("L1"), eq("RETRAIT"), any(), any());
+        mvc
+            .perform(req(HttpMethod.POST, "/api/v1/parcours/operations/" + ID + "/livrables/L1/sans-objet", "{\"motif\":\"Service non ouvert\",\"service\":\"RETRAIT\"}").with(jeton("2", "HOM_STEP_MANAGE")))
+            .andExpect(status().isNoContent());
+        verify(commandes).declarerSansObjet(eq(ID), eq("L1"), eq("RETRAIT"), eq("Service non ouvert"), any());
+        mvc
+            .perform(req(HttpMethod.POST, "/api/v1/parcours/operations/" + ID + "/livrables/L1/sans-objet", "{\"motif\":\"x\"}").with(jeton("2", "HOM_STEP_MANAGE")))
+            .andExpect(status().isBadRequest());
     }
 
     @Test

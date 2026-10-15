@@ -96,6 +96,12 @@ public class ParcoursDepot {
         return trouver(liaison, true).orElseThrow(() -> introuvable(liaison));
     }
 
+    /** Parcours de l'opération désignée, en lecture seule (D-109 : pièces et chronologie), sans verrou. */
+    public Parcours deLOperationLecture(UUID operationId) {
+        UUID liaison = operations.liaisonDe(operationId).orElseThrow(() -> HomologationException.notFound("HOM_OPERATION_NOT_FOUND", operationId));
+        return trouver(liaison, false).orElseThrow(() -> introuvable(liaison));
+    }
+
     /** Parcours du blocage désigné, verrouillé (même précaution). */
     public Parcours duBlocage(UUID blocageId) {
         UUID liaison = blocages.liaisonDe(blocageId).orElseThrow(() -> HomologationException.notFound("HOM_BLOCKAGE_NOT_FOUND", "Blocage introuvable.", blocageId));

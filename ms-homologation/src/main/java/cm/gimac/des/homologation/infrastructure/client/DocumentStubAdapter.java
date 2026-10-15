@@ -24,6 +24,18 @@ public class DocumentStubAdapter implements DocumentRegistryPort {
     private static final Pattern SHA256 = Pattern.compile("^[0-9a-fA-F]{64}$");
     private final Map<UUID, Optional<String>> pieces = new ConcurrentHashMap<>();
     private final Map<UUID, String> types = new ConcurrentHashMap<>();
+    private final Map<UUID, Contenu> contenus = new ConcurrentHashMap<>();
+
+    /** Contenu retenu d'une pièce déposée ici (D-109). */
+    @Override
+    public Optional<Contenu> lire(UUID documentId) {
+        return Optional.ofNullable(contenus.get(documentId));
+    }
+
+    /** Retient le contenu d'une pièce (jeux d'essai). */
+    public void retenir(UUID id, byte[] contenu, String nomFichier, String typeMime) {
+        contenus.put(id, new Contenu(contenu, nomFichier, typeMime));
+    }
 
     /** Type d'une pièce (par défaut application/pdf, comme les livrables de l'annexe A). */
     public void typer(UUID id, String typeMime) {
@@ -59,6 +71,7 @@ public class DocumentStubAdapter implements DocumentRegistryPort {
         UUID id = UUID.randomUUID();
         String empreinte = sha256(contenu);
         enregistrer(id, empreinte);
+        retenir(id, contenu, nomFichier, typeMime);
         if (typeMime != null) {
             typer(id, typeMime);
         }

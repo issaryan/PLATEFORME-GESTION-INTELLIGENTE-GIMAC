@@ -66,6 +66,26 @@ public class DocumentRestAdapter implements DocumentRegistryPort {
         }
     }
 
+    /** Contenu de la pièce et son nom, lus chez MS-DOCUMENT (D-109) ; pièce inconnue : vide. */
+    @Override
+    public java.util.Optional<Contenu> lire(UUID documentId) {
+        try {
+            Metadonnees m = client.get().uri("/api/v1/interne/documents/{id}", documentId).retrieve().body(Metadonnees.class);
+            byte[] octets = client.get().uri("/api/v1/interne/documents/{id}/contenu", documentId).retrieve().body(byte[].class);
+            if (m == null || octets == null) {
+                return java.util.Optional.empty();
+            }
+            return java.util.Optional.of(new Contenu(octets, m.nomFichier(), m.typeMime()));
+        } catch (HttpClientErrorException ex) {
+            if (ex.getStatusCode() == HttpStatus.NOT_FOUND) {
+                return java.util.Optional.empty();
+            }
+            throw indisponible();
+        } catch (RestClientException ex) {
+            throw indisponible();
+        }
+    }
+
     @Override
     public Depot deposer(byte[] contenu, String nomFichier, String typeMime, String finalite, String reference, UUID deposantId) {
         var corps = new LinkedMultiValueMap<String, Object>();

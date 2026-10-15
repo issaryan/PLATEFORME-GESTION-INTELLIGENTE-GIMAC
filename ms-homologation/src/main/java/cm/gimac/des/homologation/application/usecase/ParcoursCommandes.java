@@ -199,6 +199,11 @@ public class ParcoursCommandes {
      * ne manque.
      */
     public void deposerLivrable(UUID operationId, String livrable, Piece d, Acteur a) {
+        deposerLivrable(operationId, livrable, null, d, a);
+    }
+
+    /** Dépôt d'un livrable attendu, pour un service du périmètre quand le livrable est au grain du service (D-109). */
+    public void deposerLivrable(UUID operationId, String livrable, String service, Piece d, Acteur a) {
         Parcours p = depot.deLOperation(operationId);
         OperationParcours o = p.operation(operationId);
         if (!o.getEtat().ouverte()) {
@@ -208,7 +213,7 @@ public class ParcoursCommandes {
         Parcours.DroitDepot droit = p.exigerDroitDepot(o, l, a, VisibiliteReferentiel.fonctions(a.permissions()));
         Preuve piece = piece(d, a, o);
         String type = typeControle(l, d.documentId());
-        p.deposerLivrable(o, l, piece, type, a.id() == null ? null : a.id().toString(), droit == Parcours.DroitDepot.SUPERVISION, aujourdhui());
+        p.deposerLivrable(o, l, service, piece, type, a.id() == null ? null : a.id().toString(), droit == Parcours.DroitDepot.SUPERVISION, aujourdhui());
         journaliser(droit, o, p, a, l);
     }
 
@@ -240,18 +245,49 @@ public class ParcoursCommandes {
 
     /** Preuve d'un livrable attendu (D-93 §3), même contrôle du déposant et du type que le livrable. */
     public void deposerPreuve(UUID operationId, String livrable, Piece d, String valeurReference, String codeControle, Ceremonie ceremonie, Acteur a) {
+        deposerPreuve(operationId, livrable, null, d, valeurReference, codeControle, ceremonie, a);
+    }
+
+    /** Preuve d'un livrable attendu, pour un service du périmètre quand le livrable est au grain du service (D-109). */
+    public void deposerPreuve(
+        UUID operationId,
+        String livrable,
+        String service,
+        Piece d,
+        String valeurReference,
+        String codeControle,
+        Ceremonie ceremonie,
+        Acteur a
+    ) {
         Parcours p = depot.deLOperation(operationId);
         OperationParcours o = p.operation(operationId);
         Livrable l = o.getEtat().ouverte() ? Parcours.livrableVise(o, livrable) : null;
         Parcours.DroitDepot droit = o.getEtat().ouverte() ? p.exigerDroitDepot(o, l, a, VisibiliteReferentiel.fonctions(a.permissions())) : null;
         // Contrôles métier avant la revérification de la pièce : une preuve irrecevable n'appelle pas MS-DOCUMENT.
         Preuve provisoire = Preuve.piece("", "", "", aujourdhui(), "");
-        p.deposerPreuve(o, l, provisoire, valeurReference, codeControle, ceremonie);
+        p.deposerPreuve(o, l, service, provisoire, valeurReference, codeControle, ceremonie);
         Preuve controlee = o.getPreuve();
         Preuve reelle = piece(d, a, o);
         String type = typeControle(l, d.documentId());
         o.setPreuve(new Preuve(reelle.documentRef(), reelle.nom(), reelle.empreinte(), reelle.deposeLe(), reelle.deposePar(), controlee.valeurReference(), controlee.codeControle(), controlee.ceremonie()));
-        p.inscrirePreuve(o, l, type, a.id() == null ? null : a.id().toString(), droit == Parcours.DroitDepot.SUPERVISION);
+        p.inscrirePreuve(o, l, service, type, a.id() == null ? null : a.id().toString(), droit == Parcours.DroitDepot.SUPERVISION);
+        journaliser(droit, o, p, a, l);
+    }
+
+    /**
+     * Livrable déclaré sans objet, motivé (D-109) : même droit que le dépôt (R désigné, déposant, conducteur, sinon
+     * supervision journalisée) ; le motif, l'auteur et la date sont inscrits sur l'opération.
+     */
+    public void declarerSansObjet(UUID operationId, String livrable, String service, String motif, Acteur a) {
+        Parcours p = depot.deLOperation(operationId);
+        OperationParcours o = p.operation(operationId);
+        Livrable l = Parcours.livrableVise(o, livrable);
+        if (l == null) {
+            throw HomologationException.unprocessable("HOM_LIVRABLE_REQUIS", "Cette opération n'attend aucun livrable.");
+        }
+        Parcours.DroitDepot droit = p.exigerDroitDepot(o, l, a, VisibiliteReferentiel.fonctions(a.permissions()));
+        p.declarerSansObjet(o, l, service, motif, deposant(a, o), a.id() == null ? null : a.id().toString(), aujourdhui());
+        LOG.info("Livrable {} de l'opération {} (liaison {}) déclaré sans objet par {} : {}", l.code(), o.getRang(), p.id(), a.id(), motif);
         journaliser(droit, o, p, a, l);
     }
 
@@ -497,6 +533,20 @@ public class ParcoursCommandes {
 
     /** Livrable du participant désigné par son code (D-93 §3), type contrôlé avant le dépôt dans MS-DOCUMENT. */
     public void deposerLivrablePortail(UUID operationId, String livrable, byte[] contenu, String nomFichier, String typeMime, String commentaire, Acteur a) {
+        deposerLivrablePortail(operationId, livrable, null, contenu, nomFichier, typeMime, commentaire, a);
+    }
+
+    /** Livrable du participant, pour un service du périmètre quand le livrable est au grain du service (D-109). */
+    public void deposerLivrablePortail(
+        UUID operationId,
+        String livrable,
+        String service,
+        byte[] contenu,
+        String nomFichier,
+        String typeMime,
+        String commentaire,
+        Acteur a
+    ) {
         Parcours p = sienne(depot.deLOperation(operationId), a);
         OperationParcours o = p.operation(operationId);
         if (!ParcoursProjection.livrableParticipant(o) || !o.getEtat().ouverte()) {
@@ -507,9 +557,10 @@ public class ParcoursCommandes {
         }
         Livrable l = Parcours.livrableVise(o, livrable);
         Parcours.verifierType(l, typeMime);
+        String s = p.serviceVise(l, service);
         DocumentRegistryPort.Depot d = documents.deposer(contenu, nomFichier, typeMime, "LIVRABLE", operationId.toString(), a.id());
         String par = a.nom() == null || a.nom().isBlank() ? Personne.correspondant(p.liaison().getInstitutionId().toString(), p.liaison().getInstitutionNom()).nom() : a.nom();
-        p.deposerLivrable(o, l, Preuve.piece(d.id().toString(), d.nomFichier(), d.sha256(), aujourdhui(), par), typeMime, a.id() == null ? null : a.id().toString(), false, aujourdhui());
+        p.deposerLivrable(o, l, s, Preuve.piece(d.id().toString(), d.nomFichier(), d.sha256(), aujourdhui(), par), typeMime, a.id() == null ? null : a.id().toString(), false, aujourdhui());
         LOG.info("Livrable du participant déposé sur l'opération {} de la liaison {} ({})", o.getRang(), p.id(), commentaire == null ? "" : commentaire.length() + " caractères de commentaire");
     }
 

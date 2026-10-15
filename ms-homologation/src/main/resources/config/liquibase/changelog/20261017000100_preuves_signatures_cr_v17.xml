@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- D-109 (docs/lot1/referentiel-preuves-signatures.md) : preuves, livrables, signatures, RACI et délais de chaque
+     opération de l'annexe A du CR-CERT-GIMAC-01 v1.7, lus dans preuves_signatures_cr_v17.json (fichier nouveau, jamais
+     modifié une fois repris ; aucun changeset appliqué ni fichier qu'il charge n'est modifié). Par type de projet, la
+     version complétée est publiée sous le numéro suivant (la version publiée en cours est retirée) et les liaisons non
+     closes y sont rattachées sans changement d'état d'exécution (RepriseReferentielPreuvesCrV17). Idempotente
+     (clé : libellé de la version). -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="d109-reprise-preuves-signatures" author="homologation" context="!test">
+        <customChange class="cm.gimac.des.homologation.config.liquibase.RepriseReferentielPreuvesCrV17"/>
+    </changeSet>
+</databaseChangeLog>

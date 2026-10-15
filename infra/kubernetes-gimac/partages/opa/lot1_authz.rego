@@ -49,6 +49,11 @@ regles := [
 	# fonction (PUT liaisons/{id}/fonctions/{fonction}, HOM_STEP_MANAGE ou HOM_OPERATION_ASSIGN) et GET moi/fonctions
 	# (tout compte) restent au @PreAuthorize.
 	{"m": "POST", "re": `^/bff/des/homologation/parcours/operations/[^/]+/renvoi$`, "p": "HOM_OPERATION_VALIDATE"},
+	# D-109 (docs/lot1/referentiel-preuves-signatures.md) : chronologie réelle de la liaison et pièce d'une opération
+	# (empreinte revérifiée par MS-HOMOLOGATION) en lecture ; un livrable « sans objet » motivé (HOM_STEP_MANAGE ou
+	# HOM_EVIDENCE_SUBMIT, comme le dépôt) reste au @PreAuthorize, le droit de dépôt étant décidé par le parcours.
+	{"m": "GET", "re": `^/bff/des/homologation/liaisons/[^/]+/chronologie$`, "p": "HOM_LIAISON_READ"},
+	{"m": "GET", "re": `^/bff/des/homologation/parcours/operations/[^/]+/pieces/[^/]+$`, "p": "HOM_LIAISON_READ"},
 	# D-98 : la preuve, comme le livrable, est ouverte à HOM_STEP_MANAGE ou HOM_EVIDENCE_SUBMIT (@PreAuthorize du service).
 	{"m": "PUT", "re": `^/bff/des/homologation/liaisons/[^/]+/ressources$`, "p": "HOM_STEP_MANAGE"},
 	{"m": "POST", "re": `^/bff/des/homologation/(liaisons/[^/]+/blocages|blocages/[^/]+/levee)$`, "p": "HOM_STEP_MANAGE"},

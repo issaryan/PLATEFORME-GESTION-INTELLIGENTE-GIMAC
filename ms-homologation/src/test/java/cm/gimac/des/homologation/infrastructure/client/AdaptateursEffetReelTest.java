@@ -63,6 +63,35 @@ class AdaptateursEffetReelTest {
     }
 
     @Test
+    @DisplayName("D-109 : contenu d'une pièce et son nom ; inconnue (404, réponse vide) : absente ; 4xx ou 5xx : indisponible")
+    void lire() {
+        RestClient.Builder b = RestClient.builder();
+        MockRestServiceServer serveur = MockRestServiceServer.bindTo(b).build();
+        DocumentRestAdapter a = new DocumentRestAdapter(b, AdaptateursCadrageTest.jeton(), "http://document");
+        String meta = "http://document/api/v1/interne/documents/" + ID;
+        String contenu = meta + "/contenu";
+        String json = "{\"id\":\"" + ID + "\",\"nomFichier\":\"ping.png\",\"typeMime\":\"image/png\",\"sha256\":\"a\"}";
+        serveur.expect(requestTo(meta)).andRespond(withSuccess(json, MediaType.APPLICATION_JSON));
+        serveur.expect(requestTo(contenu)).andRespond(withSuccess("png".getBytes(), MediaType.IMAGE_PNG));
+        serveur.expect(requestTo(meta)).andRespond(withSuccess("null", MediaType.APPLICATION_JSON));
+        serveur.expect(requestTo(contenu)).andRespond(withSuccess("x".getBytes(), MediaType.IMAGE_PNG));
+        serveur.expect(requestTo(meta)).andRespond(withStatus(HttpStatus.NOT_FOUND));
+        serveur.expect(requestTo(meta)).andRespond(withStatus(HttpStatus.FORBIDDEN));
+        serveur.expect(requestTo(meta)).andRespond(withServerError());
+        assertThat(a.lire(ID)).hasValueSatisfying(c -> {
+            assertThat(c.nomFichier()).isEqualTo("ping.png");
+            assertThat(c.typeMime()).isEqualTo("image/png");
+            assertThat(new String(c.octets())).isEqualTo("png");
+        });
+        assertThat(a.lire(ID)).isEmpty();
+        assertThat(a.lire(ID)).isEmpty();
+        for (int i = 0; i < 2; i++) {
+            assertThatThrownBy(() -> a.lire(ID)).isInstanceOfSatisfying(HomologationException.class, e -> assertThat(e.code()).isEqualTo("HOM_DOCUMENT_UNAVAILABLE"));
+        }
+        serveur.verify();
+    }
+
+    @Test
     @DisplayName("Substituts : composition des profils en permissions modifiable ; type d'une pièce déposée ou PDF par défaut")
     void substituts() {
         CollaboratorStubAdapter c = new CollaboratorStubAdapter();

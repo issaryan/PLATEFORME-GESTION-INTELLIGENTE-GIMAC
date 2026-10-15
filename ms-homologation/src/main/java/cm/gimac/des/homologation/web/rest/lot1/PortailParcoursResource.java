@@ -91,6 +91,7 @@ public class PortailParcoursResource {
         @RequestPart(name = "fichier", required = false) MultipartFile fichier,
         @RequestParam(name = "commentaire", required = false) String commentaire,
         @RequestParam(name = "livrable", required = false) String livrable,
+        @RequestParam(name = "service", required = false) String service,
         Authentication auth
     ) {
         byte[] contenu;
@@ -102,6 +103,7 @@ public class PortailParcoursResource {
         commandes.deposerLivrablePortail(
             id,
             livrable,
+            service,
             contenu,
             fichier == null ? null : fichier.getOriginalFilename(),
             fichier == null ? null : fichier.getContentType(),
