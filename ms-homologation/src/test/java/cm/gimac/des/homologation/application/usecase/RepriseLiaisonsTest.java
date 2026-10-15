@@ -13,6 +13,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import cm.gimac.des.homologation.application.port.in.RepriseLiaisonsUseCase.Acteur;
+import cm.gimac.des.homologation.application.port.in.RepriseLiaisonsUseCase.EssaisRepris;
 import cm.gimac.des.homologation.application.port.in.RepriseLiaisonsUseCase.LiaisonReprise;
 import cm.gimac.des.homologation.application.port.in.RepriseLiaisonsUseCase.Ligne;
 import cm.gimac.des.homologation.application.port.in.RepriseLiaisonsUseCase.OperationReprise;
@@ -22,6 +23,7 @@ import cm.gimac.des.homologation.application.port.in.RepriseLiaisonsUseCase.Resu
 import cm.gimac.des.homologation.application.port.in.RepriseLiaisonsUseCase.ServiceRepris;
 import cm.gimac.des.homologation.application.port.out.CollaboratorDirectoryPort;
 import cm.gimac.des.homologation.application.port.out.ParticipantDirectoryPort;
+import cm.gimac.des.homologation.domain.Coverage;
 import cm.gimac.des.homologation.domain.DefinitionTypeProjet;
 import cm.gimac.des.homologation.domain.HomologationException;
 import cm.gimac.des.homologation.domain.Liaison;
@@ -29,6 +31,8 @@ import cm.gimac.des.homologation.domain.ReferentialVersion;
 import cm.gimac.des.homologation.domain.cadrage.CollaboratorView;
 import cm.gimac.des.homologation.domain.cadrage.InstitutionView;
 import cm.gimac.des.homologation.domain.enumeration.EtatVersionReferentiel;
+import cm.gimac.des.homologation.domain.enumeration.NatureCouverture;
+import cm.gimac.des.homologation.domain.parcours.AvancementParcours;
 import cm.gimac.des.homologation.domain.enumeration.TypeProjet;
 import cm.gimac.des.homologation.domain.event.LiaisonOpenedPayload;
 import cm.gimac.des.homologation.domain.parcours.Fonction;
@@ -41,6 +45,7 @@ import cm.gimac.des.homologation.domain.parcours.ModeleTypeProjet;
 import cm.gimac.des.homologation.domain.service.LiaisonOpeningPolicy;
 import cm.gimac.des.homologation.infrastructure.messaging.outbox.OutboxPublisher;
 import cm.gimac.des.homologation.repository.ContractualScopeRepository;
+import cm.gimac.des.homologation.repository.CoverageRepository;
 import cm.gimac.des.homologation.repository.DefinitionTypeProjetRepository;
 import cm.gimac.des.homologation.repository.LiaisonRepository;
 import cm.gimac.des.homologation.repository.ReferentialVersionRepository;
@@ -119,6 +124,9 @@ class RepriseLiaisonsTest {
     @Mock
     PorteursPermission porteurs;
 
+    @Mock
+    CoverageRepository couvertures;
+
     RepriseLiaisons reprise;
     final List<SimpleTransactionStatus> statuts = new ArrayList<>();
     final List<Parcours> crees = new ArrayList<>();
@@ -159,7 +167,7 @@ class RepriseLiaisonsTest {
     }
 
     static LiaisonReprise liaison(String ref, String code, String avancement, UUID conducteur, List<OperationReprise> ops) {
-        return new LiaisonReprise(ref, code, "PAIEMENT_MOBILE", "Projet fictif", "Suivi Excel", LocalDate.of(2026, 4, 1), LocalDate.of(2027, 1, 1), LocalDate.of(2025, 11, 30), conducteur, List.of(), null, List.of(), avancement, ops);
+        return new LiaisonReprise(ref, code, "PAIEMENT_MOBILE", "Projet fictif", "Suivi Excel", LocalDate.of(2026, 4, 1), LocalDate.of(2027, 1, 1), LocalDate.of(2025, 11, 30), conducteur, List.of(), null, List.of(), avancement, ops, null);
     }
 
     Ligne une(LiaisonReprise l, boolean simulation) {
@@ -193,7 +201,7 @@ class RepriseLiaisonsTest {
             List.of(new RessourceReprise("SNA", SNA)), "BQ-P",
             List.of(new ServiceRepris("PAIEMENT_MOBILE", LocalDate.of(2025, 10, 1), true, "Ouvert"), new ServiceRepris("AUTRE_SERVICE", null, null, null)),
             "EN_PRODUCTION", List.of()
-        );
+        , null);
         Ligne r = une(l, true);
         assertThat(r.resultat()).isEqualTo(Resultat.CREEE);
         assertThat(r.statut()).isEqualTo("EN_PRODUCTION");
@@ -221,7 +229,7 @@ class RepriseLiaisonsTest {
             "REF-3", "BQ-1", "PAIEMENT_MOBILE", "Nouvel intitulé", "Portail sandbox", null, null, null, ParcoursSamples.CONDUCTEUR,
             List.of(new RessourceReprise("SNA", SNA)), null, List.of(new ServiceRepris("HORS_PERIMETRE", null, null, null)), "DETAILLE",
             List.of(new OperationReprise(r0, "BLOQUEE", null, null, "Attente", null, null, null, null))
-        );
+        , null);
         Ligne r = une(maj, false);
         assertThat(r.resultat()).isEqualTo(Resultat.MISE_A_JOUR);
         assertThat(r.avertissements()).anyMatch(a -> a.contains("HORS_PERIMETRE"));
@@ -230,7 +238,7 @@ class RepriseLiaisonsTest {
         assertThat(p.etat().isConducteurADesigner()).isFalse();
         verify(depot).ajouter(any(cm.gimac.des.homologation.domain.parcours.BlocageParcours.class));
         assertThat(une(maj, false).resultat()).isEqualTo(Resultat.INCHANGEE);
-        LiaisonReprise autre = new LiaisonReprise("REF-3", "BQ-P", "PAIEMENT_MOBILE", null, null, null, null, null, null, null, null, null, null, null);
+        LiaisonReprise autre = new LiaisonReprise("REF-3", "BQ-P", "PAIEMENT_MOBILE", null, null, null, null, null, null, null, null, null, null, null, null);
         assertThat(une(autre, false).code()).isEqualTo("HOM_REPRISE_LIAISON_DIVERGENTE");
     }
 
@@ -239,7 +247,7 @@ class RepriseLiaisonsTest {
     void refus() {
         assertThat(une(liaison("R-1", "BQ-X", null, null, null), false).code()).isEqualTo("HOM_LIAISON_INSTITUTION_UNKNOWN");
         assertThat(une(liaison("R-2", "BQ-C", null, null, null), false).code()).isEqualTo("HOM_LIAISON_INSTITUTION_NOT_ELIGIBLE");
-        LiaisonReprise carte = new LiaisonReprise("R-3", "BQ-1", "CARTE_INTERBANCAIRE", null, null, null, null, null, null, null, null, null, null, null);
+        LiaisonReprise carte = new LiaisonReprise("R-3", "BQ-1", "CARTE_INTERBANCAIRE", null, null, null, null, null, null, null, null, null, null, null, null);
         assertThat(une(carte, false).code()).isEqualTo("HOM_TYPE_PROJET_INTROUVABLE");
         when(typesProjet.findById("CARTE_INTERBANCAIRE")).thenReturn(Optional.of(DefinitionTypeProjet.creer("CARTE_INTERBANCAIRE", "Carte", null, ModeleTypeProjet.CARTE_INTERBANCAIRE, null, Instant.now())));
         assertThat(une(carte, false).code()).isEqualTo("HOM_REFERENTIAL_NONE_PUBLISHED");
@@ -252,7 +260,7 @@ class RepriseLiaisonsTest {
     }
 
     static LiaisonReprise avecBanque(String ref, String banque) {
-        return new LiaisonReprise(ref, "BQ-1", "PAIEMENT_MOBILE", null, null, null, null, null, null, null, banque, null, null, null);
+        return new LiaisonReprise(ref, "BQ-1", "PAIEMENT_MOBILE", null, null, null, null, null, null, null, banque, null, null, null, null);
     }
 
     @Test
@@ -270,5 +278,40 @@ class RepriseLiaisonsTest {
         Rapport r = reprise.importer(lignes, true, REPRISE);
         assertThat(r.lignes()).extracting(Ligne::code).containsExactly("HOM_REPRISE_LIGNE_INVALIDE", null, "HOM_REPRISE_DOUBLON_FICHIER");
         verify(liaisons, never()).findByReferenceOrigine("D-2");
+    }
+
+    @Test
+    @DisplayName("Essais repris (D-110) : mesure globale créée, mise à jour, inchangée ; sans dépôt de mesures, ignorée")
+    void mesureDesEssais() {
+        Liaison l = new Liaison();
+        l.setId(UUID.randomUUID());
+        Instant t = HORLOGE.instant();
+        assertThat(reprise.mesurerEssais(l, new EssaisRepris(37, 109, null), t)).isFalse();
+        reprise.setCouvertures(couvertures);
+        assertThat(reprise.mesurerEssais(l, null, t)).isFalse();
+        when(couvertures.findFirstByLiaison_IdAndNatureAndServiceCode(l.getId(), NatureCouverture.CERTIFICATION, AvancementParcours.ESSAIS_GLOBAL)).thenReturn(Optional.empty());
+        assertThat(reprise.mesurerEssais(l, new EssaisRepris(37, 109, LocalDate.of(2026, 10, 9)), t)).isTrue();
+        var capture = org.mockito.ArgumentCaptor.forClass(Coverage.class);
+        verify(couvertures).save(capture.capture());
+        Coverage c = capture.getValue();
+        assertThat(c.getServiceCode()).isEqualTo(AvancementParcours.ESSAIS_GLOBAL);
+        assertThat(c.getTaux().intValue()).isEqualTo(34);
+        assertThat(c.getDateCalcul()).isEqualTo(Instant.parse("2026-10-09T00:00:00Z"));
+        assertThat(c.getLiaison()).isSameAs(l);
+        when(couvertures.findFirstByLiaison_IdAndNatureAndServiceCode(l.getId(), NatureCouverture.CERTIFICATION, AvancementParcours.ESSAIS_GLOBAL)).thenReturn(Optional.of(c));
+        assertThat(reprise.mesurerEssais(l, new EssaisRepris(37, 109, null), t)).isFalse();
+        assertThat(reprise.mesurerEssais(l, new EssaisRepris(50, 109, null), t)).isTrue();
+        assertThat(c.getNumerateur()).isEqualTo(50);
+        assertThat(c.getDateCalcul()).isEqualTo(t);
+    }
+
+    @Test
+    @DisplayName("Essais repris à la création et à la mise à jour d'une liaison")
+    void essaisALaReprise() {
+        reprise.setCouvertures(couvertures);
+        when(couvertures.findFirstByLiaison_IdAndNatureAndServiceCode(any(), eq(NatureCouverture.CERTIFICATION), eq(AvancementParcours.ESSAIS_GLOBAL))).thenReturn(Optional.empty());
+        LiaisonReprise l = new LiaisonReprise("REF-E", "BQ-1", "PAIEMENT_MOBILE", null, null, null, null, null, ParcoursSamples.CONDUCTEUR, null, null, null, null, null, new EssaisRepris(8, 186, null));
+        assertThat(une(l, false).resultat()).isEqualTo(Resultat.CREEE);
+        verify(couvertures).save(any());
     }
 }

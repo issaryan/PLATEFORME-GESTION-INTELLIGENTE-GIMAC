@@ -5,6 +5,7 @@ import cm.gimac.des.homologation.application.port.out.CollaboratorDirectoryPort;
 import cm.gimac.des.homologation.application.port.out.ParticipantDirectoryPort;
 import cm.gimac.des.homologation.application.usecase.RepriseLiaisonsValidation.LiaisonControlee;
 import cm.gimac.des.homologation.domain.ContractualScope;
+import cm.gimac.des.homologation.domain.Coverage;
 import cm.gimac.des.homologation.domain.DefinitionTypeProjet;
 import cm.gimac.des.homologation.domain.HomologationException;
 import cm.gimac.des.homologation.domain.Liaison;
@@ -13,8 +14,10 @@ import cm.gimac.des.homologation.domain.ScopeItem;
 import cm.gimac.des.homologation.domain.cadrage.InstitutionView;
 import cm.gimac.des.homologation.domain.enumeration.EtatLiaison;
 import cm.gimac.des.homologation.domain.enumeration.EtatScopeItem;
+import cm.gimac.des.homologation.domain.enumeration.NatureCouverture;
 import cm.gimac.des.homologation.domain.enumeration.EtatVersionReferentiel;
 import cm.gimac.des.homologation.domain.event.LiaisonOpenedPayload;
+import cm.gimac.des.homologation.domain.parcours.AvancementParcours;
 import cm.gimac.des.homologation.domain.parcours.BlocageParcours;
 import cm.gimac.des.homologation.domain.parcours.CatalogueServices;
 import cm.gimac.des.homologation.domain.parcours.Fonction;
@@ -25,12 +28,14 @@ import cm.gimac.des.homologation.domain.parcours.ServiceParcours;
 import cm.gimac.des.homologation.domain.service.LiaisonOpeningPolicy;
 import cm.gimac.des.homologation.infrastructure.messaging.outbox.OutboxPublisher;
 import cm.gimac.des.homologation.repository.ContractualScopeRepository;
+import cm.gimac.des.homologation.repository.CoverageRepository;
 import cm.gimac.des.homologation.repository.DefinitionTypeProjetRepository;
 import cm.gimac.des.homologation.repository.LiaisonRepository;
 import cm.gimac.des.homologation.repository.ReferentialVersionRepository;
 import cm.gimac.des.homologation.repository.ScopeItemRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceException;
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -85,6 +90,7 @@ public class RepriseLiaisons implements RepriseLiaisonsUseCase {
     private final TransactionTemplate transaction;
     private final Clock clock;
     private PorteursPermission porteurs;
+    private CoverageRepository couvertures;
 
     public RepriseLiaisons(
         LiaisonRepository liaisons,
@@ -119,6 +125,12 @@ public class RepriseLiaisons implements RepriseLiaisonsUseCase {
         this.transaction = new TransactionTemplate(transactions);
         this.transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         this.clock = clock;
+    }
+
+    /** Mesures des essais (table coverage, D-110) ; absent : les essais repris ne sont pas enregistrés. */
+    @Autowired(required = false)
+    public void setCouvertures(CoverageRepository couvertures) {
+        this.couvertures = couvertures;
     }
 
     /** Lecteur des porteurs d'une permission (HOM_PROJECT_CONDUCT du conducteur, D-94 §3) ; absent : admis. */
@@ -225,6 +237,7 @@ public class RepriseLiaisons implements RepriseLiaisonsUseCase {
         }
         l.ressources().forEach((f, compte) -> p.affecterFonction(f, intervenants.pourFonction(compte.toString(), f)));
         appliquerServices(p, l, new ArrayList<>());
+        mesurerEssais(liaison, l.essais(), maintenant);
         RepriseParcours.Bilan bilan = avancer(p, l, acteur);
         outbox.publish(
             AGREGAT,
@@ -264,6 +277,9 @@ public class RepriseLiaisons implements RepriseLiaisonsUseCase {
                 changements.add("ressources");
             }
         });
+        if (mesurerEssais(liaison, l.essais(), clock.instant())) {
+            changements.add("essais");
+        }
         List<String> avertissements = new ArrayList<>();
         appliquerServices(p, l, avertissements);
         int avant = blocages(p).size();
@@ -274,6 +290,26 @@ public class RepriseLiaisons implements RepriseLiaisonsUseCase {
         }
         liaison.setRepriseLe(clock.instant());
         return ligne(rang, Resultat.MISE_A_JOUR, p, bilan.modifiees(), avertissements);
+    }
+
+    /**
+     * Essais mesurés sur la sandbox (D-110) : mesure globale de la liaison (nature CERTIFICATION, code
+     * {@link AvancementParcours#ESSAIS_GLOBAL}), créée ou mise à jour ; rend vrai si elle a changé.
+     */
+    boolean mesurerEssais(Liaison liaison, RepriseLiaisonsUseCase.EssaisRepris essais, Instant maintenant) {
+        if (essais == null || couvertures == null) {
+            return false;
+        }
+        Coverage c = couvertures
+            .findFirstByLiaison_IdAndNatureAndServiceCode(liaison.getId(), NatureCouverture.CERTIFICATION, AvancementParcours.ESSAIS_GLOBAL)
+            .orElseGet(() -> new Coverage().serviceCode(AvancementParcours.ESSAIS_GLOBAL).nature(NatureCouverture.CERTIFICATION).liaison(liaison));
+        BigDecimal taux = BigDecimal.valueOf(Math.round(essais.reussis() * 100.0 / essais.attribues()));
+        if (essais.reussis().equals(c.getNumerateur()) && essais.attribues().equals(c.getDenominateur()) && Boolean.TRUE.equals(c.getCalculable())) {
+            return false;
+        }
+        Instant le = essais.mesureLe() == null ? maintenant : essais.mesureLe().atStartOfDay(ZoneOffset.UTC).toInstant();
+        couvertures.save(c.numerateur(essais.reussis()).denominateur(essais.attribues()).taux(taux).calculable(true).dateCalcul(le));
+        return true;
     }
 
     /** Avancement repris, puis enregistrement des blocages déclarés par la reprise. */

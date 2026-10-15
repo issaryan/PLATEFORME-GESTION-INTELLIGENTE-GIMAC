@@ -61,6 +61,7 @@ export function OngletPerimetre({ dossier }: { dossier: DossierLiaison }) {
     <div className="gm-col">
       <Card title={t('parcoursPerimetre.couvertures')}>
         <div className="gm-row" style={{ gap: 'var(--gm-space-6)', alignItems: 'flex-start' }}>
+          {dossier.avancement ? <Anneau libelle={t('parcoursListe.avancement')} valeur={dossier.avancement} detail={t('parcoursPerimetre.detailAvancement')} /> : null}
           <Anneau libelle={t('parcoursListe.couvertureCertification')} valeur={c} detail={t('parcoursPerimetre.detailCertification', { n: c.numerateur, d: c.denominateur })} />
           <Anneau libelle={t('parcoursListe.couvertureMiseEnService')} valeur={m} detail={t('parcoursPerimetre.detailMiseEnService', { n: m.numerateur, d: m.denominateur })} />
           <div className="gm-col" style={{ gap: 'var(--gm-space-2)', flex: '2 1 280px', minWidth: 0 }}>

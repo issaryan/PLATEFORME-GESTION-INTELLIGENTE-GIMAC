@@ -22,6 +22,13 @@ const page = (chemin: string, o: { services?: Services; langue?: 'fr' | 'en' | '
 const dialogue = () => screen.getByRole('dialog')
 
 describe('Dossier numérique de la liaison (CR Fig. 7.3)', () => {
+  it('D-110 : anneau d’avancement global du projet dans le périmètre', async () => {
+    const s = servicesSimules({ latenceMs: 0 })
+    page('/des/parcours/LIA-2026-030', { services: avec({ dossier: async (id) => ({ ...(await s.parcours.dossier(id)), avancement: { taux: 49, numerateur: 49, denominateur: 100, calculable: true } }) }) })
+    expect(await screen.findByRole('img', { name: 'Avancement du projet : 49 %' })).toBeTruthy()
+    expect(screen.getByText(/Étapes du CR franchies, pondérées/)).toBeTruthy()
+  })
+
   it('en-tête, identification, pilotage et écran principal du périmètre avec ses deux couvertures', async () => {
     page('/des/parcours/LIA-2026-030')
     expect((await screen.findByRole('heading', { level: 1 })).textContent).toBe('Établissement de paiement A')

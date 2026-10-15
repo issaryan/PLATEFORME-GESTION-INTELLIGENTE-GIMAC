@@ -522,7 +522,8 @@ public class ParcoursProjection {
             etapesVersion(p, ctx.etapesVersion(), aujourdhui),
             intervenants(p),
             l.getIntituleProjet(),
-            l.getReferenceOrigine()
+            l.getReferenceOrigine(),
+            p.avancement()
         );
     }
 
@@ -597,7 +598,8 @@ public class ParcoursProjection {
             d.intervenants().stream().map(i -> new Vues.IntervenantDossier(i.fonction(), i.libelle(), i.qualites(), parFonction(i.personne()), i.aAffecter())).toList(),
             // D-104 : l'intitulé distingue les projets du participant ; la référence d'origine (reprise) reste interne.
             d.intituleProjet(),
-            null
+            null,
+            d.avancement()
         );
     }
 
@@ -621,7 +623,8 @@ public class ParcoursProjection {
             p.bloquee(),
             p.tachesEnRetard(aujourdhui),
             p.prochaineEcheance(),
-            p.dateCibleProduction()
+            p.dateCibleProduction(),
+            p.avancement()
         );
     }
 

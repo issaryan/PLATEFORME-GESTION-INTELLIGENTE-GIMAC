@@ -33,6 +33,14 @@ describe('Étape 3 : liste des liaisons du parcours', () => {
     expect(screen.getByRole('link', { name: 'LIA-2026-030' }).getAttribute('href')).toBe('/des/parcours/LIA-2026-030')
     expect(screen.getByText(/\d+ liaisons/)).toBeTruthy()
   })
+  it('D-110 : avancement global du projet servi par le service, absent sans valeur', async () => {
+    const s = servicesSimules({ latenceMs: 0 })
+    const avancement = { taux: 57, numerateur: 57, denominateur: 100, calculable: true }
+    page({ services: avec({ listerLiaisons: async (f) => { const p = await s.parcours.listerLiaisons(f); return { ...p, contenu: p.contenu.map((l, i) => (i === 0 ? { ...l, avancement } : l)) } } }) })
+    expect(await screen.findByRole('img', { name: 'Avancement du projet : 57 %' })).toBeTruthy()
+    expect(screen.getByRole('columnheader', { name: /Avancement/ })).toBeTruthy()
+    expect(screen.getAllByRole('img', { name: /^Avancement du projet/ })).toHaveLength(1)
+  })
   it('chargement, vide et erreur avec identifiant de corrélation et réessai', async () => {
     const { container } = page({ services: avec({ listerLiaisons: () => new Promise(() => undefined) }) })
     expect(container.querySelectorAll('.gm-skeleton').length).toBeGreaterThan(0)

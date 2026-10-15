@@ -392,6 +392,11 @@ public final class Parcours {
         return Couverture.de((int) inclus.stream().filter(s -> Boolean.TRUE.equals(s.getOuvert())).count(), inclus.size());
     }
 
+    /** Avancement global du projet (D-110), pondéré par étape, essais au moins au taux mesuré sur la sandbox. */
+    public Couverture avancement() {
+        return AvancementParcours.de(etat.getStatut(), operations, mesures);
+    }
+
     public List<String> servicesCouverts() {
         return servicesInclus().stream().filter(s -> s.certifie() || s.getOuvert() != null).map(ServiceParcours::getServiceCode).toList();
     }

@@ -57,8 +57,13 @@ public interface RepriseLiaisonsUseCase {
         String banquePartenaire,
         List<ServiceRepris> services,
         String avancement,
-        List<OperationReprise> operations
+        List<OperationReprise> operations,
+        /** Essais mesurés sur la sandbox (D-110) : cas réussis sur cas attribués ; facultatif. */
+        EssaisRepris essais
     ) {}
+
+    /** Mesure des essais repris (D-110) : cas réussis, cas attribués, date de la mesure. */
+    record EssaisRepris(Integer reussis, Integer attribues, LocalDate mesureLe) {}
 
     enum Resultat {
         CREEE,

@@ -213,7 +213,9 @@ public final class Vues {
         /** Intitulé libre du projet (D-104). */
         String intituleProjet,
         /** Référence du projet dans l'outil d'origine (D-104, reprise) ; null au portail. */
-        String referenceOrigine
+        String referenceOrigine,
+        /** Avancement global pondéré par étape (D-110). */
+        Couverture avancement
     ) {}
 
     public record LiaisonResume(
@@ -231,7 +233,9 @@ public final class Vues {
         boolean bloquee,
         long tachesEnRetard,
         LocalDate prochaineEcheance,
-        LocalDate dateCibleProduction
+        LocalDate dateCibleProduction,
+        /** Avancement global pondéré par étape (D-110). */
+        Couverture avancement
     ) {}
 
     @JsonInclude(JsonInclude.Include.NON_NULL)

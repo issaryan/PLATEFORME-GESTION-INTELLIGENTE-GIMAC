@@ -140,6 +140,7 @@ export function colonnesLiaisons(t: Traduire, date: (iso: string) => string, o: 
       ),
     },
     { key: 'conducteurNom', header: t('parcoursListe.conducteur'), render: (l) => l.conducteurNom ?? <StatusBadge status="warn" label={t('parcoursListe.aDesigner')} /> },
+    { key: 'avancement', header: t('parcoursListe.colAvancement'), render: (l) => (l.avancement ? <Couverture valeur={l.avancement} libelle={t('parcoursListe.avancement')} avecRatio={false} /> : null) },
     { key: 'couvertureCertification', header: t('parcoursListe.colCertification'), render: (l) => <Couverture valeur={l.couvertureCertification} libelle={t('parcoursListe.couvertureCertification')} avecRatio={false} /> },
     { key: 'couvertureMiseEnService', header: t('parcoursListe.colMiseEnService'), render: (l) => <Couverture valeur={l.couvertureMiseEnService} libelle={t('parcoursListe.couvertureMiseEnService')} avecRatio={false} /> },
     ...(echeances

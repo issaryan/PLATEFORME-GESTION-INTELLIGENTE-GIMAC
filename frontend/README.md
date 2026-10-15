@@ -182,3 +182,4 @@ Enveloppe commune IHM-01, bibliothèque de composants IHM-02, navigation élagu�
 | 2026-10-13 | - | `socle/live` : invalidations regroupées (`REGROUPEMENT_MS`) ; `lot1/services/http/homologation` : `siAbsente` pour les lectures secondaires (404 rendu en valeur neutre) |
 | 2026-10-13 | - | `departement` : `/des/liaisons/:id` renvoyée vers `/des/parcours/:id` ; liens des listes, du cadrage et de la clôture d'opération vers le dossier ; tests alignés sur D-105 (ouverture réservée à la DDRM) |
 | 2026-10-13 | - | `design-system` : `ProgressRing` en `minWidth` (test `anneau.test.tsx`) ; `administration` : carte « Disponibilité des services » de la supervision |
+| 2026-10-15 | D-110 | `lot1` : colonne « Avancement » de la liste des liaisons, anneau « Avancement du projet » du périmètre du dossier (fr, en, es) ; test du cadrage aligné sur le lien vers le dossier |

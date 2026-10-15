@@ -145,7 +145,7 @@ describe('Cadrage : ouverture d’une liaison depuis la fiche de l’institution
   it('onglet Liaisons : liaisons de l’institution, ou aucune', async () => {
     fiche('INST-0042', { suffixe: '?onglet=liaisons' })
     const l = await screen.findByRole('list', { name: "Liaisons de l'institution" })
-    expect(within(l).getByRole('link', { name: 'Carte interbancaire (LIA-2026-017)' }).getAttribute('href')).toBe('/des/liaisons/LIA-2026-017')
+    expect(within(l).getByRole('link', { name: 'Carte interbancaire (LIA-2026-017)' }).getAttribute('href')).toBe('/des/parcours/LIA-2026-017')
     cleanup()
     fiche('INST-0105', { suffixe: '?onglet=liaisons' })
     expect(await screen.findByText("Aucune liaison n'est ouverte pour cette institution.")).toBeTruthy()

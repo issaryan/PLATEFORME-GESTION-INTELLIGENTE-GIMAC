@@ -2,6 +2,7 @@ package cm.gimac.des.homologation.application.usecase;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import cm.gimac.des.homologation.application.port.in.RepriseLiaisonsUseCase.EssaisRepris;
 import cm.gimac.des.homologation.application.port.in.RepriseLiaisonsUseCase.LiaisonReprise;
 import cm.gimac.des.homologation.application.port.in.RepriseLiaisonsUseCase.OperationReprise;
 import cm.gimac.des.homologation.application.port.in.RepriseLiaisonsUseCase.RessourceReprise;
@@ -26,7 +27,7 @@ class RepriseLiaisonsValidationTest {
     static final LocalDate FUTUR = AUJOURDHUI.plusDays(1);
 
     static LiaisonReprise ligne(String avancement, List<RessourceReprise> ressources, List<ServiceRepris> services, List<OperationReprise> ops) {
-        return new LiaisonReprise("202604-BQ-01", "bq-1", "paiement_mobile", " Projet ", " Suivi Excel ", null, null, LocalDate.of(2025, 1, 1), null, ressources, "bq-p", services, avancement, ops);
+        return new LiaisonReprise("202604-BQ-01", "bq-1", "paiement_mobile", " Projet ", " Suivi Excel ", null, null, LocalDate.of(2025, 1, 1), null, ressources, "bq-p", services, avancement, ops, null);
     }
 
     static OperationReprise op(String rang, String etat) {
@@ -71,11 +72,11 @@ class RepriseLiaisonsValidationTest {
     @Test
     @DisplayName("Champs obligatoires et formats : un message par champ")
     void formats() {
-        assertThat(champs(new LiaisonReprise(null, null, null, null, null, null, null, null, null, null, null, null, null, null)))
+        assertThat(champs(new LiaisonReprise(null, null, null, null, null, null, null, null, null, null, null, null, null, null, null)))
             .containsOnlyKeys("referenceOrigine", "codeMembre", "typeProjet");
-        assertThat(champs(new LiaisonReprise("réf ?", "a b", "x", "i".repeat(201), "o".repeat(101), FUTUR, null, FUTUR, null, null, "a b", null, "PLUS_TARD", null)))
+        assertThat(champs(new LiaisonReprise("réf ?", "a b", "x", "i".repeat(201), "o".repeat(101), FUTUR, null, FUTUR, null, null, "a b", null, "PLUS_TARD", null, null)))
             .containsKeys("referenceOrigine", "codeMembre", "typeProjet", "intitule", "origineEtat", "dateOuverture", "dateMiseEnProduction", "banquePartenaire", "avancement");
-        assertThat(champs(new LiaisonReprise("R", "BQ", "PAIEMENT_MOBILE", null, null, null, null, null, null, null, null, null, "EN_PRODUCTION", null)))
+        assertThat(champs(new LiaisonReprise("R", "BQ", "PAIEMENT_MOBILE", null, null, null, null, null, null, null, null, null, "EN_PRODUCTION", null, null)))
             .containsKey("dateMiseEnProduction");
         assertThat(champs(ligne("A_QUALIFIER", null, null, List.of(op("M5", "FAITE"))))).containsKey("avancement");
     }
@@ -104,5 +105,23 @@ class RepriseLiaisonsValidationTest {
             op("M8", null)
         )));
         assertThat(ops).containsKeys("operations", "operations.M1", "operations.M2", "operations.M3", "operations.M4", "operations.M5", "operations.M6", "operations.M7", "operations.M8");
+    }
+
+    static LiaisonReprise avecEssais(EssaisRepris e) {
+        return new LiaisonReprise("R-1", "BQ-1", "PAIEMENT_MOBILE", null, null, null, null, null, null, null, null, null, null, null, e);
+    }
+
+    @Test
+    @DisplayName("Essais repris (D-110) : bornes des cas attribués et réussis, mesure non future")
+    void essais() {
+        assertThat(RepriseLiaisonsValidation.valider(avecEssais(new EssaisRepris(37, 109, AUJOURDHUI)), AUJOURDHUI).essais().reussis()).isEqualTo(37);
+        assertThat(RepriseLiaisonsValidation.valider(avecEssais(null), AUJOURDHUI).essais()).isNull();
+        assertThat(champs(avecEssais(new EssaisRepris(1, 0, null)))).containsKey("essais.attribues");
+        assertThat(champs(avecEssais(new EssaisRepris(1, null, null)))).containsKey("essais.attribues");
+        assertThat(champs(avecEssais(new EssaisRepris(1, 100_001, null)))).containsKey("essais.attribues");
+        assertThat(champs(avecEssais(new EssaisRepris(10, 9, null)))).containsKey("essais.reussis");
+        assertThat(champs(avecEssais(new EssaisRepris(null, 9, null)))).containsKey("essais.reussis");
+        assertThat(champs(avecEssais(new EssaisRepris(-1, 9, null)))).containsKey("essais.reussis");
+        assertThat(champs(avecEssais(new EssaisRepris(1, 9, FUTUR)))).containsKey("essais.mesureLe");
     }
 }

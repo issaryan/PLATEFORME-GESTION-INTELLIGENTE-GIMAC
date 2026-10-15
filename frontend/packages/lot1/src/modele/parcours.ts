@@ -243,6 +243,8 @@ export type DossierLiaison = Permitted & {
   perimetre: ServicePerimetre[]
   couvertureCertification: CoverageValue
   couvertureMiseEnService: CoverageValue
+  /** D-110 : avancement global du projet, pondéré par étape (essais au taux mesuré sur la sandbox). */
+  avancement?: CoverageValue
   etapes: EtapeParcours[]
   blocages: Blocage[]
   interlocuteursParticipant: { nom: string; fonction: string }[]
@@ -267,6 +269,8 @@ export type LiaisonResume = {
   conducteurNom: string | null
   couvertureCertification: CoverageValue
   couvertureMiseEnService: CoverageValue
+  /** D-110 : avancement global du projet, pondéré par étape. */
+  avancement?: CoverageValue
   bloquee: boolean
   tachesEnRetard: number
   prochaineEcheance: string | null

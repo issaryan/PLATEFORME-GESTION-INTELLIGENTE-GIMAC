@@ -1,5 +1,6 @@
 package cm.gimac.des.homologation.application.usecase;
 
+import cm.gimac.des.homologation.application.port.in.RepriseLiaisonsUseCase;
 import cm.gimac.des.homologation.application.port.in.RepriseLiaisonsUseCase.LiaisonReprise;
 import cm.gimac.des.homologation.application.port.in.RepriseLiaisonsUseCase.OperationReprise;
 import cm.gimac.des.homologation.application.port.in.RepriseLiaisonsUseCase.RessourceReprise;
@@ -47,8 +48,11 @@ final class RepriseLiaisonsValidation {
         String banquePartenaire,
         List<ServiceRepris> services,
         Avancement avancement,
-        List<RepriseParcours.OperationReprise> operations
+        List<RepriseParcours.OperationReprise> operations,
+        RepriseLiaisonsUseCase.EssaisRepris essais
     ) {}
+
+    static final int ESSAIS_MAX = 100_000;
 
     private RepriseLiaisonsValidation() {}
 
@@ -90,6 +94,7 @@ final class RepriseLiaisonsValidation {
         Map<Fonction, java.util.UUID> ressources = ressources(champs, l.ressources());
         List<ServiceRepris> services = services(champs, l.services(), aujourdhui);
         List<RepriseParcours.OperationReprise> operations = operations(champs, l.operations(), aujourdhui);
+        RepriseLiaisonsUseCase.EssaisRepris essais = essais(champs, l.essais(), aujourdhui);
         if (avancement == Avancement.A_QUALIFIER && !operations.isEmpty()) {
             champs.put("avancement", "Un projet à qualifier ne porte aucun état d'opération");
         }
@@ -110,8 +115,23 @@ final class RepriseLiaisonsValidation {
             banque,
             services,
             avancement,
-            operations
+            operations,
+            essais
         );
+    }
+
+    /** Essais repris (D-110) : cas attribués de 1 à 100 000, cas réussis de 0 au nombre attribué, mesure non future. */
+    static RepriseLiaisonsUseCase.EssaisRepris essais(Map<String, String> champs, RepriseLiaisonsUseCase.EssaisRepris e, LocalDate aujourdhui) {
+        if (e == null) {
+            return null;
+        }
+        if (e.attribues() == null || e.attribues() < 1 || e.attribues() > ESSAIS_MAX) {
+            champs.put("essais.attribues", "Nombre de cas attribués de 1 à " + ESSAIS_MAX);
+        } else if (e.reussis() == null || e.reussis() < 0 || e.reussis() > e.attribues()) {
+            champs.put("essais.reussis", "Nombre de cas réussis de 0 au nombre de cas attribués");
+        }
+        passee(champs, "essais.mesureLe", e.mesureLe(), aujourdhui);
+        return e;
     }
 
     private static Avancement avancement(Map<String, String> champs, LiaisonReprise l) {
