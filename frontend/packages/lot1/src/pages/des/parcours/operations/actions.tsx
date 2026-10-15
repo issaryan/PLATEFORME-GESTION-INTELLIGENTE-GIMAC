@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { KeyValueList } from '@gimac/design-system'
 import type { ResourceActionLot1 } from '@gimac/socle'
 import {
-  useAttribuer, useConstaterCouverture, useDeposerLivrable, useDeposerPreuveParcours, useRenvoyerOperation, useSignerOperation, useValiderOperationParcours,
+  useAttribuer, useConstaterCouverture, useDeclarerSansObjet, useDeposerLivrable, useDeposerPreuveParcours, useRenvoyerOperation, useSignerOperation, useValiderOperationParcours,
 } from '../../../../hooks/parcours'
 import type { Ceremonie, OperationParcours, Qualite, SignatureOperation } from '../../../../modele/parcours'
 import type { Services } from '../../../../services/ports'
@@ -14,8 +14,10 @@ import { PERM } from '../../../../permissions'
 // confirme est récapitulé dans le dialogue avant l'envoi.
 
 /** `livrable` (D-93) : code du livrable attendu visé ; absent, l'unique livrable de l'opération. */
-export type DepotPreuve = { fichier: File; valeurReference?: string; codeControle?: string; ceremonie?: Ceremonie; livrable?: string }
-export type DepotLivrable = { fichier: File; commentaire: string; livrable?: string }
+export type DepotPreuve = { fichier: File; valeurReference?: string; codeControle?: string; ceremonie?: Ceremonie; livrable?: string; service?: string }
+export type DepotLivrable = { fichier: File; commentaire: string; livrable?: string; service?: string }
+/** D-109 : livrable déclaré sans objet, motivé ; `service` pour un livrable au grain du service. */
+export type SansObjet = { livrable: string; libelle: string; service?: string }
 export type Attribution = { qualite: Qualite; personneId: string; personneNom: string }
 type Action<T> = ResourceActionLot1<T, Services>
 type Ligne<T> = OperationParcours & { saisie: T }
@@ -29,6 +31,8 @@ export function useActionsOperation() {
   const constater = useConstaterCouverture()
   const renvoyer = useRenvoyerOperation()
   const signer = useSignerOperation()
+  const sansObjetMut = useDeclarerSansObjet()
+  const { mutateAsync: envoyerSansObjet } = sansObjetMut
   const { mutateAsync: envoyerRenvoi } = renvoyer
   const { mutateAsync: envoyerSignature } = signer
   const { mutateAsync: envoyerPreuve } = deposerPreuve
@@ -45,6 +49,7 @@ export function useActionsOperation() {
           items={[
             { key: t('parcoursOps.preuve.fichier'), value: s.fichier.name },
             ...(s.livrable ? [{ key: t('parcoursOps.livrable.vise'), value: s.livrable, mono: true }] : []),
+            ...(s.service ? [{ key: t('preuves.service'), value: s.service, mono: true }] : []),
             ...(s.valeurReference ? [{ key: t(`parcours.valeur.${rang}`, { defaultValue: t('parcoursOps.valeur.libelle') }), value: s.valeurReference, mono: true }] : []),
             ...(s.codeControle ? [{ key: t('parcoursOps.preuve.codeControle'), value: s.codeControle, mono: true }] : []),
             ...(s.ceremonie
@@ -64,7 +69,15 @@ export function useActionsOperation() {
       consequences: ({ saisie: s }) => (
         <KeyValueList items={[{ key: t('parcoursOps.preuve.fichier'), value: s.fichier.name }, ...(s.commentaire.trim() ? [{ key: t('parcoursOps.livrable.commentaire'), value: s.commentaire }] : [])]} />
       ),
-      run: ({ row }) => envoyerLivrable({ operationId: row.id, fichier: row.saisie.fichier, commentaire: row.saisie.commentaire.trim(), livrable: row.saisie.livrable }),
+      run: ({ row }) => envoyerLivrable({ operationId: row.id, fichier: row.saisie.fichier, commentaire: row.saisie.commentaire.trim(), livrable: row.saisie.livrable, service: row.saisie.service }),
+    }
+    // D-109 : exception tracée, motif exigé (3 à 500 caractères, contrôlé par le service).
+    const sansObjet: Action<Ligne<SansObjet>> = {
+      key: 'sansObjet', label: 'preuves.sansObjet', icon: 'circle-x', variant: 'secondary', scope: 'row', permission: PERM.preuveDeposer, confirm: 'confirm', reason: true,
+      consequences: ({ saisie: s }) => (
+        <KeyValueList items={[{ key: t('parcoursOps.livrable.vise'), value: `${s.livrable} · ${s.libelle}` }, ...(s.service ? [{ key: t('preuves.service'), value: s.service, mono: true }] : [])]} />
+      ),
+      run: ({ row, motif }) => envoyerSansObjet({ operationId: row.id, livrable: row.saisie.livrable, motif: (motif ?? '').trim(), service: row.saisie.service }),
     }
     // D-93 §8.3 : renvoi motivé par le validateur, sans réauthentification (motif exigé).
     const renvoi: Action<OperationParcours> = {
@@ -99,6 +112,6 @@ export function useActionsOperation() {
       consequences: () => <p className="gm-field-help" style={{ margin: 0 }}>{t('parcoursOps.couverture.consequence')}</p>,
       run: ({ row }) => envoyerConstat(row.liaisonId),
     }
-    return { preuve, livrable, validation, attribution, constat, renvoi, signature }
-  }, [t, envoyerPreuve, envoyerLivrable, envoyerValidation, envoyerAttribution, envoyerConstat, envoyerRenvoi, envoyerSignature])
+    return { preuve, livrable, validation, attribution, constat, renvoi, signature, sansObjet }
+  }, [t, envoyerPreuve, envoyerLivrable, envoyerValidation, envoyerAttribution, envoyerConstat, envoyerRenvoi, envoyerSignature, envoyerSansObjet])
 }

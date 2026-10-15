@@ -2,13 +2,14 @@ import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { Banner, Button, DataTable, Drawer, InlineAlert, Select, StatCard, StatusBadge, Switch, TextField, type Column } from '@gimac/design-system'
-import { useMesFonctions, useOperationsParcours } from '../../../../hooks/parcours'
+import { useChronologieParcours, useMesFonctions, useOperationsParcours } from '../../../../hooks/parcours'
 import { useFonctionsCatalogue } from '../../../../hooks/referentiels'
 import { ETAPES, type DossierLiaison, type OperationParcours } from '../../../../modele/parcours'
 import { Donnees } from '../../liaisons/communs'
 import { Alertes, Couverture, Essais, Essentiel, GesteAilleurs, InfosOperation, PreuveDeposee, Raci } from '../operations/Detail'
 import { BlocValidation, FormulaireAttribution, FormulaireLivrable, FormulairePreuve, LivrablesAttendus, Renvois, Signatures, usePermis } from '../operations/Execution'
 import { useActionsOperation } from '../operations/actions'
+import { Chronologie, LivrablesEtPreuves, SignaturesOperation } from '../operations/Preuves'
 import { useExecuteurActions } from '../../../../ressources/actions'
 import { compter, etapeDe, externe, filtrer, grouper, ongletDuGeste, plateformes, TON_ETAT, VUES, type Filtres, type Vue } from '../operations/regles'
 import { tonEtape, tonSla, useFormatDate } from '../communs'
@@ -228,11 +229,14 @@ function TableOperations({ operations, selection, onOuvrir }: { operations: Oper
 
 function Tiroir({ op, dossier, onFermer, onOuvrirRang, libelleDe }: { op: OperationParcours; dossier: DossierLiaison; onFermer: () => void; onOuvrirRang: (rang: string) => void; libelleDe: (rang: string) => string }) {
   const { t } = useTranslation()
+  // D-109 : livrables et preuves (état, pièce vérifiable), signatures (fonction, ordre, date), chronologie réelle.
   const onglets = [
     { key: 'execution', label: t('parcoursOps.tiroir.execution') },
+    { key: 'livrables', label: t('preuves.onglet.livrables') },
+    { key: 'signatures', label: t('preuves.onglet.signatures') },
+    { key: 'chronologie', label: t('preuves.onglet.chronologie') },
     { key: 'detail', label: t('parcoursOps.tiroir.detail') },
     { key: 'raci', label: t('parcoursOps.tiroir.raci') },
-    { key: 'preuve', label: t('parcoursOps.tiroir.preuve') },
   ]
   return (
     <Drawer
@@ -256,10 +260,28 @@ function Tiroir({ op, dossier, onFermer, onOuvrirRang, libelleDe }: { op: Operat
             </>
           ) : null}
           {onglet === 'raci' ? <Raci op={op} /> : null}
-          {onglet === 'preuve' ? <PreuveDeposee op={op} /> : null}
+          {onglet === 'livrables' ? (
+            <>
+              <LivrablesEtPreuves op={op} />
+              {op.preuve && !op.reprise ? <PreuveDeposee op={op} /> : null}
+            </>
+          ) : null}
+          {onglet === 'signatures' ? <SignaturesOperation op={op} /> : null}
+          {onglet === 'chronologie' ? <ChronologieOperation op={op} /> : null}
         </div>
       )}
     />
+  )
+}
+
+/** Chronologie réelle d'une opération (D-109) : événements de la liaison qui la concernent. */
+function ChronologieOperation({ op }: { op: OperationParcours }) {
+  const { t } = useTranslation()
+  const q = useChronologieParcours(op.liaisonId)
+  return (
+    <Donnees requete={q} vide={t('preuves.chrono.vide')}>
+      {(l) => <Chronologie evenements={l.filter((e) => e.operationId === op.id)} avecOperation={false} />}
+    </Donnees>
   )
 }
 

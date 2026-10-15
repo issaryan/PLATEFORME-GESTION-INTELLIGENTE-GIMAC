@@ -25,7 +25,7 @@ import type {
   StatutInstitution, TransitionStatut,
 } from '../modele/participant'
 import type {
-  ApprobationSecurite, Blocage, DossierLiaison, Fonction, FonctionUtilisateur, FicheSuiviServices, IndicateursPilotage, LiaisonResume, MesOperations, OperationParcours,
+  ApprobationSecurite, Blocage, DossierLiaison, EvenementPreuve, Fonction, FonctionUtilisateur, FicheSuiviServices, IndicateursPilotage, LiaisonResume, MesOperations, OperationParcours,
   Ceremonie, OuvertureLiaison as OuvertureCadrage, Personne, ProcesVerbalCertification, TableauActeur, TypeAttestation,
 } from '../modele/parcours'
 
@@ -198,10 +198,16 @@ export interface ServiceParcours {
   // Étapes 4 et 5 : lancement et ateliers
   affecterRessources(liaisonId: string, affectations: { fonction: Fonction; personneId: string }[]): Promise<void>
   /** Clôt une opération à livrable ; `livrable` (D-93) : code du livrable attendu visé (absent : l'unique livrable). */
-  deposerLivrable(operationId: string, fichier: File, commentaire: string, livrable?: string): Promise<void>
+  deposerLivrable(operationId: string, fichier: File, commentaire: string, livrable?: string, service?: string): Promise<void>
   attribuer(operationId: string, qualite: 'R' | 'C' | 'V' | 'I' | 'E', personneId: string, motif: string): Promise<void>
   // Exécution des opérations (preuve au grain de l'opération en production)
-  deposerPreuve(operationId: string, fichier: File, complement: { valeurReference?: string; codeControle?: string; ceremonie?: Ceremonie; livrable?: string }): Promise<void>
+  deposerPreuve(operationId: string, fichier: File, complement: { valeurReference?: string; codeControle?: string; ceremonie?: Ceremonie; livrable?: string; service?: string }): Promise<void>
+  /** D-109 : livrable déclaré sans objet, motivé (tous les services, ou un service pour un livrable au grain du service). */
+  declarerSansObjet(operationId: string, livrable: string, motif: string, service?: string): Promise<void>
+  /** D-109 : pièce d'une opération (preuve ou dépôt), servie avec l'empreinte inscrite au dépôt, revérifiée par le service. */
+  telechargerPiece(operationId: string, documentId: string): Promise<{ blob: Blob; empreinte: string | null }>
+  /** D-109 : chronologie réelle de la liaison (dépôts, sans objet, renvois, signatures, clôtures, reprises, blocages). */
+  chronologie(liaisonId: string): Promise<EvenementPreuve[]>
   validerOperation(operationId: string, assertion?: Assertion): Promise<void>
   /** D-93 : renvoi motivé par le validateur (l'opération revient à faire, tâche rouverte à R). */
   renvoyer(operationId: string, motif: string): Promise<void>
@@ -249,7 +255,8 @@ export interface ServicePortailParcours {
   dossier(liaisonId: string): Promise<DossierLiaison>
   mesTaches(): Promise<TableauActeur>
   communiquerCoordonnees(liaisonId: string, c: { adresse: string; port: string; pointsTerminaison?: string }): Promise<void>
-  deposerLivrable(operationId: string, fichier: File, commentaire: string): Promise<void>
+  /** `livrable` et `service` (D-109) : livrable attendu visé et service du périmètre pour un livrable au grain du service. */
+  deposerLivrable(operationId: string, fichier: File, commentaire: string, livrable?: string, service?: string): Promise<void>
   procesVerbal(liaisonId: string): Promise<ProcesVerbalCertification>
   signerProcesVerbal(liaisonId: string, assertion: Assertion): Promise<void>
   approbation(liaisonId: string): Promise<ApprobationSecurite>

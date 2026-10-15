@@ -184,3 +184,4 @@ Enveloppe commune IHM-01, bibliothèque de composants IHM-02, navigation élagu�
 | 2026-10-13 | - | `design-system` : `ProgressRing` en `minWidth` (test `anneau.test.tsx`) ; `administration` : carte « Disponibilité des services » de la supervision |
 | 2026-10-15 | D-110 | `lot1` : colonne « Avancement » de la liste des liaisons, anneau « Avancement du projet » du périmètre du dossier (fr, en, es) ; test du cadrage aligné sur le lien vers le dossier |
 | 2026-10-15 | D-110 | `lot1` : l'adaptateur HTTP des liaisons transmet `avancement` (colonne de la liste) |
+| 2026-10-15 | D-109 | `lot1` : onglets « Livrables et preuves », « Signatures » et « Chronologie » du dossier, preuves et signatures de l'opération, pièce téléchargée à empreinte vérifiée, dépôt par service au portail, données de démonstration (fr, en, es) ; tests `OngletPreuves.test.tsx` et suivants |

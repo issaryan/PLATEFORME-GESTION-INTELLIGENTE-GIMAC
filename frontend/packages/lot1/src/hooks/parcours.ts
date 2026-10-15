@@ -26,6 +26,10 @@ export const useApprobation = (id: string) => useLecture(cles.parcoursDossier(id
 /** D-94 §6.5 : fonctions de l'utilisateur, servies par MS-HOMOLOGATION (plus aucune table rôle → fonction). */
 export const useMesFonctions = (actif = true) => useLecture(['parcours', 'moi-fonctions'], (s) => s.parcours.mesFonctions(), { enabled: actif, staleTime: 300_000 })
 export const useFicheSuivi = (id: string) => useLecture(cles.parcoursDossier(id, 'fiche-suivi'), (s) => s.decision.ficheSuivi(id), { enabled: Boolean(id) })
+/** D-109 : chronologie réelle de la liaison, relue à chaque geste (sujet « parcours »). */
+export const useChronologieParcours = (id: string, actif = true) => useLecture(cles.parcoursDossier(id, 'chronologie'), (s) => s.parcours.chronologie(id), { enabled: Boolean(id) && actif })
+/** D-109 : pièce d'une opération (empreinte inscrite, revérifiée par le service puis par le navigateur). */
+export const useTelechargerPieceParcours = () => useEffet((s, v: { operationId: string; documentId: string }) => s.parcours.telechargerPiece(v.operationId, v.documentId), [])
 
 // Étape 3 : cadrage
 // L'ouverture fait passer l'institution adhérente en homologation (MS-PARTICIPANT) : le registre est relu aussi.
@@ -37,7 +41,10 @@ export const useDesignerConducteur = () =>
 export const useAffecterRessources = () =>
   useEffet((s, v: { liaisonId: string; affectations: { fonction: Fonction; personneId: string }[] }) => s.parcours.affecterRessources(v.liaisonId, v.affectations), P)
 export const useDeposerLivrable = () =>
-  useEffet((s, v: { operationId: string; fichier: File; commentaire: string; livrable?: string }) => s.parcours.deposerLivrable(v.operationId, v.fichier, v.commentaire, v.livrable), P)
+  useEffet((s, v: { operationId: string; fichier: File; commentaire: string; livrable?: string; service?: string }) => s.parcours.deposerLivrable(v.operationId, v.fichier, v.commentaire, v.livrable, v.service), P)
+/** D-109 : livrable sans objet, motivé (un service ou tous pour un livrable au grain du service). */
+export const useDeclarerSansObjet = () =>
+  useEffet((s, v: { operationId: string; livrable: string; motif: string; service?: string }) => s.parcours.declarerSansObjet(v.operationId, v.livrable, v.motif, v.service), P)
 /** D-93 : renvoi motivé, signature (D-91) et affectation d'une fonction à affecter. */
 export const useRenvoyerOperation = () => useEffet((s, v: { operationId: string; motif: string }) => s.parcours.renvoyer(v.operationId, v.motif), P)
 export const useSignerOperation = () =>
@@ -48,8 +55,8 @@ export const useAffecterFonction = () =>
 export const useAttribuer = () =>
   useEffet((s, v: { operationId: string; qualite: 'R' | 'C' | 'V' | 'I' | 'E'; personneId: string; motif: string }) => s.parcours.attribuer(v.operationId, v.qualite, v.personneId, v.motif), P)
 export const useDeposerPreuveParcours = () =>
-  useEffet((s, v: { operationId: string; fichier: File; valeurReference?: string; codeControle?: string; ceremonie?: Ceremonie; livrable?: string }) =>
-    s.parcours.deposerPreuve(v.operationId, v.fichier, { valeurReference: v.valeurReference, codeControle: v.codeControle, ceremonie: v.ceremonie, ...(v.livrable ? { livrable: v.livrable } : {}) }), P)
+  useEffet((s, v: { operationId: string; fichier: File; valeurReference?: string; codeControle?: string; ceremonie?: Ceremonie; livrable?: string; service?: string }) =>
+    s.parcours.deposerPreuve(v.operationId, v.fichier, { valeurReference: v.valeurReference, codeControle: v.codeControle, ceremonie: v.ceremonie, ...(v.livrable ? { livrable: v.livrable } : {}), ...(v.service ? { service: v.service } : {}) }), P)
 export const useValiderOperationParcours = () => useEffet((s, v: { operationId: string; assertion?: Assertion }) => s.parcours.validerOperation(v.operationId, v.assertion), P)
 export const useDeclarerBlocage = () =>
   useEffet((s, v: { liaisonId: string; motif: string; prochaineAction: string; responsableId: string; echeanceLevee: string }) =>
@@ -89,7 +96,7 @@ export const useCommuniquerCoordonnees = () =>
   useEffet((s, v: { liaisonId: string; adresse: string; port: string; pointsTerminaison?: string }) =>
     s.portailParcours.communiquerCoordonnees(v.liaisonId, { adresse: v.adresse, port: v.port, pointsTerminaison: v.pointsTerminaison }), P)
 export const useDeposerLivrablePortail = () =>
-  useEffet((s, v: { operationId: string; fichier: File; commentaire: string }) => s.portailParcours.deposerLivrable(v.operationId, v.fichier, v.commentaire), P)
+  useEffet((s, v: { operationId: string; fichier: File; commentaire: string; livrable?: string; service?: string }) => s.portailParcours.deposerLivrable(v.operationId, v.fichier, v.commentaire, v.livrable, v.service), P)
 export const useSignerProcesVerbalPortail = () => useEffet((s, v: { liaisonId: string; assertion: Assertion }) => s.portailParcours.signerProcesVerbal(v.liaisonId, v.assertion), P)
 export const useDeposerAttestation = () =>
   useEffet((s, v: { liaisonId: string; type: TypeAttestation; fichier: File }) => s.portailParcours.deposerAttestation(v.liaisonId, v.type, v.fichier), P)

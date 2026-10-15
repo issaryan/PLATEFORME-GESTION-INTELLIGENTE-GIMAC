@@ -11,6 +11,8 @@ import { referentielDe, type OperationReferentiel } from '../../modele/referenti
 import { CATALOGUE, ETAPES_CANONIQUES, actionDuGeste, codesDeclenches, estDedie, gesteDe, jetonEtape, versionCR, vueDe } from './referentiels'
 import { LIBELLES_CR } from './libellesCR'
 import { empreinte } from './donnees'
+import { chronologieDemo, livrablesAttendusDemo, type DepotsDemo } from './preuves'
+import { preuvesDe } from '../../modele/preuvesCR'
 import { aujourdhui as aujourdhuiDouala } from '../../modele/jours'
 import type { ServiceDecision, ServiceParcours, ServicePortailParcours } from '../ports'
 
@@ -599,6 +601,19 @@ export function parcoursSimule(attendreJeu: Attendre, institutionPortail: string
     return libelle ? { ...resumeBrut(e), typeProjetLibelle: libelle } : resumeBrut(e)
   }
   const etats = new Map(SCENARIOS.map((s) => [s.id, construire(structuredClone(s))]))
+  // D-109 : dépôts de la démonstration par opération (livrable, service, sans objet motivé).
+  const depotsDemo: DepotsDemo = new Map()
+  const servicesInclus = (e: Etat | undefined) => (e?.s.services ?? []).filter((x) => x.inclus).map((x) => x.code)
+  /** D-109 : livrables obligatoires encore attendus (un dépôt par service inclus au grain du service). */
+  const manquants = (e: Etat, o: OperationParcours) =>
+    livrablesAttendusDemo(o, e.s.typeProjet, servicesInclus(e), depotsDemo.get(o.id) ?? [], false).filter((l) => l.obligatoire && (l.etat === 'ATTENDUE' || l.etat === 'REFUSEE'))
+  /** D-109 : dépôt inscrit pour un livrable visé (et un service), remplaçant le précédent. */
+  const inscrire = (o: OperationParcours, d: OperationParcours['preuve'], livrable: string | undefined, service: string | undefined, auteur: string) => {
+    if (!d) return
+    const code = livrable ?? preuvesDe(trouver(o.liaisonId).s.typeProjet, o.rang)?.livrables[0]?.code ?? 'L1'
+    const l = (depotsDemo.get(o.id) ?? []).filter((x) => !(x.livrable === code && (x.service ?? null) === (service ?? null)))
+    depotsDemo.set(o.id, [...l, { livrable: code, documentRef: d.documentRef, nom: d.nom, empreinte: d.empreinte, deposeLe: d.deposeLe, deposePar: auteur, service: service ?? null }])
+  }
   // Démonstration continue : l'état gardé remplace le jeu initial (liaisons ouvertes et gestes accomplis compris).
   try {
     const garde = u.persistance?.lire()
@@ -711,12 +726,13 @@ export function parcoursSimule(attendreJeu: Attendre, institutionPortail: string
     const ouverte = o.etat === 'A_FAIRE' || o.etat === 'EN_COURS'
     const droit = droitDepot(o)
     const deposer = o.actionsPermises.some((a) => a === 'DEPOSER_LIVRABLE' || a === 'DEPOSER_PREUVE') && droit !== null && droit !== 'SUPERVISION'
-    const livrablesAttendus: LivrableAttendu[] = estDedie(o.geste ?? null) || o.geste === 'AUCUN' ? [] : [{
-      code: 'L1', libelle: o.description || o.libelle || o.rang, nature: o.geste === 'DEPOSER_LIVRABLE' ? 'LIVRABLE' : 'PREUVE', deposant: o.raci.R?.fonction ?? null,
-      libelleDeposant: o.raci.R ? libelleFonction(o.raci.R.fonction) : null, typesPieces: [], obligatoire: true,
-      depot: o.preuve ? { documentRef: o.preuve.documentRef, nom: o.preuve.nom, empreinte: o.preuve.empreinte, deposeLe: o.preuve.deposeLe, deposePar: o.preuve.deposePar } : null,
-      peutDeposer: ouverte && deposer,
-    }]
+    // D-109 : livrables attendus lus dans les données du référentiel (preuvesCR), avec leur état ; geste dédié : affichage seul.
+    const e0 = etats.get(o.liaisonId)
+    const dedie = estDedie(o.geste ?? null) || o.geste === 'AUCUN'
+    const livrablesAttendus: LivrableAttendu[] = !e0 || (dedie && !preuvesDe(e0.s.typeProjet, o.rang))
+      ? []
+      : livrablesAttendusDemo(o, e0.s.typeProjet, servicesInclus(e0), depotsDemo.get(o.id) ?? [], !dedie && ouverte && deposer)
+          .map((l) => ({ ...l, libelleDeposant: l.deposant ? libelleFonction(l.deposant) : null }))
     const suivante = o.etat === 'EN_SIGNATURE' ? suivantes(o) : []
     const signatures = (o.signatures ?? []).map((x) => ({ ...x, suivante: suivante.includes(x), attendu: x.etat === 'ATTENDUE' ? { id: titulaire(etats.get(o.liaisonId), x.signataire).id, nom: titulaire(etats.get(o.liaisonId), x.signataire).nom, fonction: x.signataire } : null }))
     // DDR-05 : dépôt offert au seul RACI (R par sa fonction, conducteur), comme ParcoursProjection.actions ; HOM-03 : validation
@@ -972,12 +988,20 @@ export function parcoursSimule(attendreJeu: Attendre, institutionPortail: string
       const contenu = personnes.map((p) => `${p.fonction}=${p.id}`).join(';')
       terminer(e, o, { documentRef: `AFF-${id.slice(-3)}`, nom: 'designation-ressources', empreinte: hex(`aff-${id}-${contenu}`), deposeLe: jour(0), deposePar: u.utilisateur?.nom ?? personne('CHEF_DES').nom })
     }),
-    deposerLivrable: (opId, fichier, commentaire) => attendre(() => {
+    deposerLivrable: (opId, fichier, commentaire, livrable, service) => attendre(() => {
       const { e, o } = operation(opId)
       refuserGesteLibre(o)
       if (!o.actionsPermises.includes('DEPOSER_LIVRABLE') && !o.actionsPermises.includes('DEPOSER_PREUVE')) throw refus(409, 'HOM_OPERATION_NOT_OPEN', 'Cette opération n\'attend pas de livrable.')
       const auteur = exigerDroitDepot(o)
-      terminer(e, o, { documentRef: `DOC-${opId.replace(':', '-')}`, nom: fichier.name, empreinte: hex(`${opId}|${fichier.name}|${fichier.size}|${fichier.lastModified}|${commentaire}`), deposeLe: jour(0), deposePar: auteur })
+      const piece = { documentRef: `DOC-${opId.replace(':', '-')}${livrable ? `-${livrable}` : ''}${service ? `-${service}` : ''}`, nom: fichier.name, empreinte: hex(`${opId}|${fichier.name}|${fichier.size}|${fichier.lastModified}|${commentaire}`), deposeLe: jour(0), deposePar: auteur }
+      inscrire(o, piece, livrable, service, auteur)
+      // D-109 : un livrable visé parmi plusieurs ; l'opération reste en cours tant qu'un livrable obligatoire manque.
+      if (livrable && manquants(e, o).length) {
+        o.etat = 'EN_COURS'
+        o.preuve = piece
+        return
+      }
+      terminer(e, o, piece)
     }),
     attribuer: (opId, qualite, personneId) => attendre(() => {
       const { o } = operation(opId)
@@ -1002,11 +1026,44 @@ export function parcoursSimule(attendreJeu: Attendre, institutionPortail: string
       if (o.cle && c.codeControle && !/^[0-9A-F]{4,8}$/.test(c.codeControle)) throw refus(422, 'HOM_KEY_CHECK_VALUE_INVALID', 'Un code de contrôle compte de 4 à 8 caractères hexadécimaux.')
       if (o.valeurReference && !c.valeurReference) throw refus(422, 'HOM_REFERENCE_VALUE_REQUIRED', 'Cette preuve doit porter la valeur de référence relevée.')
       const auteur = exigerDroitDepot(o)
-      o.etat = 'EN_VALIDATION'
       o.preuve = { documentRef: `DOC-${opId.replace(':', '-')}`, nom: fichier.name, empreinte: hex(`${opId}|${fichier.name}|${fichier.size}|${fichier.lastModified}`), deposeLe: jour(0), deposePar: auteur, valeurReference: c.valeurReference ? { libelle: `parcours.valeur.${o.rang}`, valeur: c.valeurReference } : undefined, codeControle: o.cle ? c.codeControle : undefined, ceremonie: o.rang === 'C1' ? c.ceremonie : undefined }
+      inscrire(o, o.preuve, c.livrable, c.service, auteur)
+      // D-109 : un livrable visé parmi plusieurs ; l'opération reste en cours tant qu'un livrable obligatoire manque.
+      if (c.livrable && manquants(e, o).length) {
+        o.etat = 'EN_COURS'
+        return
+      }
+      o.etat = 'EN_VALIDATION'
       o.actionsPermises = ['VALIDER', 'RENVOYER', 'ATTRIBUER']
       // HOM-16 : validation demandée, notifiée au validateur (homologation.operation-validation-requested.v1).
       consigner(e, o, 'VALIDATION')
+    }),
+    // D-109 : livrable sans objet, motivé, tracé ; l'opération passe en validation quand plus rien ne manque.
+    declarerSansObjet: (opId, livrable, motif, service) => attendre(() => {
+      const { e, o } = operation(opId)
+      if (o.etat !== 'A_FAIRE' && o.etat !== 'EN_COURS' && o.etat !== 'EN_VALIDATION') throw refus(409, 'HOM_OPERATION_NOT_OPEN', 'Cette opération n\'est pas ouverte.')
+      const m = motif.trim()
+      if (m.length < 3 || m.length > 500) throw refus(422, 'HOM_MOTIF_REQUIS', 'Le motif est exigé (3 à 500 caractères).')
+      const attendus = livrablesAttendusDemo(o, e.s.typeProjet, servicesInclus(e), depotsDemo.get(o.id) ?? [], false)
+      if (!attendus.some((l) => l.code === livrable)) throw refus(422, 'HOM_LIVRABLE_INCONNU', 'Ce livrable n\'est pas attendu sur cette opération.')
+      const auteur = exigerDroitDepot(o)
+      const l = (depotsDemo.get(o.id) ?? []).filter((x) => !(x.livrable === livrable && (x.service ?? null) === (service ?? null)))
+      depotsDemo.set(o.id, [...l, { livrable, deposeLe: jour(0), deposePar: auteur, service: service ?? null, sansObjet: true, motif: m }])
+      if ((o.etat === 'A_FAIRE' || o.etat === 'EN_COURS') && !manquants(e, o).length) {
+        o.etat = 'EN_VALIDATION'
+        o.actionsPermises = ['VALIDER', 'RENVOYER', 'ATTRIBUER']
+      }
+    }),
+    // D-109 : pièce de démonstration, empreinte inscrite au dépôt.
+    telechargerPiece: (opId, documentId) => attendre(() => {
+      const { o } = operation(opId)
+      const d = [...(depotsDemo.get(opId) ?? []), ...(o.preuve ? [o.preuve] : [])].find((x) => x.documentRef === documentId)
+      if (!d) throw refus(404, 'HOM_PIECE_INCONNUE', 'Cette pièce n\'est pas rattachée à l\'opération.')
+      return { blob: new Blob([`Pièce de démonstration ${d.nom ?? documentId}`], { type: 'application/pdf' }), empreinte: d.empreinte ?? null }
+    }),
+    chronologie: (id) => attendre(() => {
+      const e = trouver(id)
+      return chronologieDemo(e.ops, e.blocages, depotsDemo)
     }),
     validerOperation: (opId) => attendre(() => {
       const { e, o } = operation(opId)
@@ -1366,9 +1423,9 @@ export function parcoursSimule(attendreJeu: Attendre, institutionPortail: string
       coordonneesCommuniquees.set(id, c.pointsTerminaison?.trim() || null)
       terminer(e, o, { documentRef: `COORD-${id.slice(-3)}`, nom: 'fiche-coordonnees-techniques', empreinte: hex(c.adresse + c.port), deposeLe: jour(0), deposePar: `Correspondant ${e.s.institutionNom}`, valeurReference: { libelle: 'parcours.valeur.12', valeur: `${c.adresse}:${c.port}` } })
     }),
-    deposerLivrable: async (opId, fichier, commentaire) => {
+    deposerLivrable: async (opId, fichier, commentaire, livrable, service) => {
       sienne(opId.split(':')[0])
-      return parcours.deposerLivrable(opId, fichier, commentaire)
+      return parcours.deposerLivrable(opId, fichier, commentaire, livrable, service)
     },
     procesVerbal: (id) => attendre(() => {
       const e = sienne(id)

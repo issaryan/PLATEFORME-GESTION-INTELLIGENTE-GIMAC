@@ -180,3 +180,7 @@ export function referentielDe(type: TypeProjet): OperationReferentiel[] {
   const aval = TRONC_AVAL.map((o) => (o.rang === '27' && avantAval ? { ...o, predecesseurs: [avantAval] } : o))
   return [...amont, ...branche, ...aval]
 }
+
+// D-109 : preuves, livrables, signatures, RACI et délais de chaque opération (copie des données de MS-HOMOLOGATION,
+// preuves_signatures_cr_v17.json, engendrée de la même source ; docs/lot1/referentiel-preuves-signatures.md).
+export { PREUVES_CR, preuvesDe } from './preuvesCR'

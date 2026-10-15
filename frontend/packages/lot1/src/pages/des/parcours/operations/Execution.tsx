@@ -13,6 +13,7 @@ import { lireCodeControle } from './regles'
 import { preuveAttendue } from './Detail'
 import { libelleOperation } from '../../../../adaptateurs/modelisateur'
 import { useFormatDate } from '../communs'
+import { BadgeLivrable } from './Preuves'
 
 // Formulaires d'exécution d'une opération, dans le tiroir : dépôt de preuve (valeur de référence, code
 // de contrôle, cérémonie de clés), dépôt de livrable de phase, validation par le validateur, attribution
@@ -53,6 +54,25 @@ function ChoixLivrable({ op, valeur, onChange }: { op: OperationParcours; valeur
     options={l.map((x) => ({ value: x.code, label: `${x.code} · ${x.libelle}${x.obligatoire ? '' : ` (${t('parcoursOps.livrable.facultatif')})`}` }))} />
 }
 
+/** D-109 : livrable visé par le formulaire (code choisi, sinon le premier livrable déposable). */
+const cible = (op: OperationParcours, code: string) => deposables(op).find((x) => x.code === code) ?? deposables(op)[0]
+/** D-109 : services encore attendus d'un livrable au grain du service. */
+export const servicesAttendus = (l?: LivrableAttendu) =>
+  l?.grain === 'SERVICE' ? (l.services ?? []).filter((s) => s.etat === 'ATTENDUE' || s.etat === 'REFUSEE').map((s) => s.serviceCode) : []
+/** D-109 : choix du service pour un livrable au grain du service ; consigne de la pièce attendue. */
+function ChoixService({ livrable, valeur, onChange, tente }: { livrable?: LivrableAttendu; valeur: string; onChange: (v: string) => void; tente: boolean }) {
+  const { t } = useTranslation()
+  if (livrable?.grain !== 'SERVICE') return null
+  const l = servicesAttendus(livrable)
+  return <Select name="service" label={t('preuves.service')} required value={valeur} onChange={onChange} help={t('preuves.service.aide')}
+    error={tente && !valeur ? t('preuves.service.requis') : undefined}
+    options={[{ value: '', label: t('preuves.service.choisir') }, ...l.map((s) => ({ value: s, label: s }))]} />
+}
+function Consigne({ livrable }: { livrable?: LivrableAttendu }) {
+  const { t } = useTranslation()
+  return livrable?.consigne ? <Note>{t('preuves.consigne', { consigne: livrable.consigne })}</Note> : null
+}
+
 /** Date saisie (JJ/MM/AAAA, format du champ) envoyée au service en ISO (AAAA-MM-JJ) ; une date déjà ISO passe telle quelle. */
 export const dateIso = (saisie: string) => {
   const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(saisie.trim())
@@ -65,6 +85,8 @@ export function FormulairePreuve({ op }: { op: OperationParcours }) {
   // Cérémonie de clés : vue de l'opération (D-93), jamais son rang.
   const ceremonie = op.vue === 'CEREMONIE'
   const [livrable, setLivrable] = useState(deposables(op)[0]?.code ?? '')
+  const [service, setService] = useState('')
+  const vise = cible(op, livrable)
   const [fichier, setFichier] = useState<File | null>(null)
   const [valeur, setValeur] = useState('')
   const [kcv, setKcv] = useState('')
@@ -75,6 +97,7 @@ export function FormulairePreuve({ op }: { op: OperationParcours }) {
   const kcvErr = (v: string) => (tente && lireCodeControle(v).erreur ? t(`parcoursOps.kcv.${lireCodeControle(v).erreur}`) : undefined)
   const complet =
     fichier !== null &&
+    (vise?.grain !== 'SERVICE' || Boolean(service)) &&
     (!op.valeurReference || !vide(valeur)) &&
     (!op.cle || ceremonie || !lireCodeControle(kcv).erreur) &&
     (!ceremonie || (!vide(tenueLe) && porteurs.every((p) => !vide(p)) && kcvs.every((k) => !lireCodeControle(k).erreur)))
@@ -86,14 +109,17 @@ export function FormulairePreuve({ op }: { op: OperationParcours }) {
       valeurReference: op.valeurReference ? valeur.trim() : undefined,
       codeControle: op.cle && !ceremonie ? kcv : undefined,
       ceremonie: ceremonie ? { tenueLe: dateIso(tenueLe), porteurs: porteurs.map((p) => p.trim()), codesControle: kcvs } : undefined,
-      livrable: deposables(op).length > 1 ? livrable : undefined,
+      livrable: deposables(op).length > 1 || vise?.grain === 'SERVICE' ? vise?.code : undefined,
+      service: vise?.grain === 'SERVICE' ? service : undefined,
     }
     executeur.lancer(preuve, { ...op, saisie }, `${op.rang} · ${libelleOperation(t, op)}`, SUJET)
   }
   return (
     <div className="gm-col">
       <KeyValueList items={[{ key: t('parcoursOps.preuveAttendue'), value: preuveAttendue(op, t) }]} />
-      <ChoixLivrable op={op} valeur={livrable} onChange={setLivrable} />
+      <ChoixLivrable op={op} valeur={livrable} onChange={(v) => { setLivrable(v); setService('') }} />
+      <Consigne livrable={vise} />
+      <ChoixService livrable={vise} valeur={service} onChange={setService} tente={tente} />
       {op.cle || ceremonie ? <InlineAlert level="warn" title={t('parcoursOps.secret.titre')}>{t('parcours.alerte.cle')}</InlineAlert> : null}
       {op.secret ? <InlineAlert level="warn" title={t('parcoursOps.secret.titre')}>{t('parcoursOps.secret.texte')}</InlineAlert> : null}
       <ChampFichier label={t('parcoursOps.preuve.fichier')} required fichier={fichier} onFichier={setFichier} error={tente && !fichier ? t('parcoursOps.fichier.requis') : undefined} />
@@ -149,11 +175,15 @@ export function FormulaireLivrable({ op }: { op: OperationParcours }) {
   const [fichier, setFichier] = useState<File | null>(null)
   const [commentaire, setCommentaire] = useState('')
   const [livrableVise, setLivrableVise] = useState(deposables(op)[0]?.code ?? '')
+  const [service, setService] = useState('')
+  const vise = cible(op, livrableVise)
   const [tente, setTente] = useState(false)
   return (
     <div className="gm-col">
       <KeyValueList items={[{ key: t('parcoursOps.preuveAttendue'), value: preuveAttendue(op, t) }]} />
-      <ChoixLivrable op={op} valeur={livrableVise} onChange={setLivrableVise} />
+      <ChoixLivrable op={op} valeur={livrableVise} onChange={(v) => { setLivrableVise(v); setService('') }} />
+      <Consigne livrable={vise} />
+      <ChoixService livrable={vise} valeur={service} onChange={setService} tente={tente} />
       {op.grain === 'PHASE' ? <InlineAlert level="info" title={t('parcours.grain.PHASE')}>{t('parcoursOps.livrable.unique')}</InlineAlert> : null}
       <ChampFichier label={t('parcoursOps.livrable.fichier')} required fichier={fichier} onFichier={setFichier} error={tente && !fichier ? t('parcoursOps.fichier.requis') : undefined} />
       <TextArea label={t('parcoursOps.livrable.commentaire')} value={commentaire} onChange={setCommentaire} rows={3} />
@@ -163,7 +193,9 @@ export function FormulaireLivrable({ op }: { op: OperationParcours }) {
           icon="upload"
           onClick={() => {
             setTente(true)
-            if (fichier) executeur.lancer(livrable, { ...op, saisie: { fichier, commentaire, livrable: deposables(op).length > 1 ? livrableVise : undefined } }, `${op.rang} · ${libelleOperation(t, op)}`, SUJET)
+            if (fichier && (vise?.grain !== 'SERVICE' || service)) {
+              executeur.lancer(livrable, { ...op, saisie: { fichier, commentaire, livrable: deposables(op).length > 1 || vise?.grain === 'SERVICE' ? vise?.code : undefined, service: vise?.grain === 'SERVICE' ? service : undefined } }, `${op.rang} · ${libelleOperation(t, op)}`, SUJET)
+            }
           }}
         >
           {t(livrable.label)}
@@ -208,12 +240,14 @@ export function LivrablesAttendus({ op }: { op: OperationParcours }) {
   const { t } = useTranslation()
   const date = useFormatDate()
   const l = op.livrablesAttendus ?? []
-  if (l.length < 2 && !l.some((x) => !x.obligatoire)) return null
+  // D-109 : chaque opération affiche ses preuves attendues et leur état, même un livrable unique.
+  if (!l.length) return null
   const colonnes: Column<LivrableAttendu>[] = [
     { key: 'code', header: t('parcoursOps.livrable.code'), type: 'mono', width: 80 },
     { key: 'libelle', header: t('parcoursOps.livrable.libelle') },
+    { key: 'etat', header: t('parcoursOps.col.etat'), width: 150, render: (x) => <BadgeLivrable etat={x.etat} /> },
     { key: 'deposant', header: t('parcoursOps.livrable.deposant'), render: (x) => x.libelleDeposant ?? x.deposant ?? '' },
-    { key: 'depot', header: t('parcoursOps.livrable.depot'), render: (x) => (x.depot ? `${x.depot.nom} · ${date(x.depot.deposeLe)}` : <StatusBadge status={x.obligatoire ? 'warn' : 'neutral'} label={t(x.obligatoire ? 'parcoursOps.livrable.manquant' : 'parcoursOps.livrable.facultatif')} />) },
+    { key: 'depot', header: t('parcoursOps.livrable.depot'), render: (x) => (x.depot ? (x.depot.sansObjet ? t('preuves.etat.SANS_OBJET') : `${x.depot.nom ?? ''} · ${date(x.depot.deposeLe)}`) : <StatusBadge status={x.obligatoire ? 'warn' : 'neutral'} label={t(x.obligatoire ? 'parcoursOps.livrable.manquant' : 'parcoursOps.livrable.facultatif')} />) },
   ]
   return (
     <section className="gm-col" aria-labelledby={`liv-${op.id}`} style={{ gap: 'var(--gm-space-2)' }}>

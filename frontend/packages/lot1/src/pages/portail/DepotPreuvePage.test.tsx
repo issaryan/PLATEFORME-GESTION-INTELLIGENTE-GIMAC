@@ -35,7 +35,7 @@ describe('POR-03 Dépôt d’un livrable du participant', () => {
     const dialogue = await screen.findByRole('alertdialog')
     expect(within(dialogue).getByText('parametrage-essai.pdf')).toBeTruthy()
     fireEvent.click(within(dialogue).getByRole('button', { name: 'Déposer le livrable' }))
-    await vi.waitFor(() => expect(deposer).toHaveBeenCalledWith(OP, expect.any(File), 'Version validée en atelier'))
+    await vi.waitFor(() => expect(deposer).toHaveBeenCalledWith(OP, expect.any(File), 'Version validée en atelier', undefined, undefined))
   })
 
   it('tâche close ou étrangère : état explicite et retour au suivi', async () => {

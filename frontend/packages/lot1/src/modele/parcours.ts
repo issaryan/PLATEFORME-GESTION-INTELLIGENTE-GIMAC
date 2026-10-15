@@ -57,15 +57,42 @@ export type VueOperation = 'AUCUNE' | 'AFFECTATION' | 'COORDONNEES' | 'ESSAIS' |
 /** Livrable attendu d'une opération à l'exécution (D-93 §8.5) et son dépôt. */
 export type LivrableAttendu = {
   code: string; libelle: string; nature: 'LIVRABLE' | 'PREUVE'; deposant: Fonction | null; libelleDeposant?: string | null; typesPieces: string[]; obligatoire: boolean
-  depot?: { documentRef: string; nom: string; empreinte?: string; deposeLe: string; deposePar: string; supervision?: boolean } | null
+  depot?: DepotLivrable | null
   peutDeposer: boolean
+  /** D-109 : une pièce pour l'opération, ou une par service inclus au périmètre. */
+  grain?: 'OPERATION' | 'SERVICE'
+  /** D-109 : nature précise et format de la pièce attendue. */
+  consigne?: string | null
+  /** D-109 : état calculé par le service. */
+  etat?: EtatLivrable
+  /** D-109 : grain du service, une ligne par service inclus. */
+  services?: { serviceCode: string; etat: EtatLivrable; depot?: DepotLivrable | null }[] | null
+}
+/**
+ * État d'un livrable attendu (D-109) : attendu, déposé, validé, refusé (renvoyé après dépôt), sans objet (motivé), reprise
+ * sans pièce (opération reprise de l'existant, pièce non numérisée), non exigé (opération close avant l'exigence).
+ */
+export type EtatLivrable = 'ATTENDUE' | 'DEPOSEE' | 'VALIDEE' | 'REFUSEE' | 'SANS_OBJET' | 'REPRISE_SANS_PIECE' | 'NON_EXIGEE'
+/** Dépôt d'un livrable (D-93, D-109) : pièce et empreinte, ou « sans objet » motivé ; service visé ; origine automatique. */
+export type DepotLivrable = {
+  livrable?: string
+  documentRef?: string | null; nom?: string | null; empreinte?: string | null; deposeLe: string; deposePar: string; supervision?: boolean | null; repris?: boolean | null
+  service?: string | null; sansObjet?: boolean | null; motif?: string | null; origine?: string | null
+}
+/** Événement de la chronologie réelle d'une liaison (D-109), lu dans l'état du parcours. */
+export type EvenementPreuve = {
+  date: string | null; instant?: string | null
+  type: 'DEPOT' | 'DEPOT_REPRIS' | 'PIECE_AUTOMATIQUE' | 'SANS_OBJET' | 'RENVOI' | 'SIGNATURE' | 'FAITE' | 'REPRISE' | 'BLOCAGE' | 'LEVEE'
+  operationId?: string | null; rang?: string | null; operation?: string | null; etapeCode?: string | null; livrable?: string | null; service?: string | null
+  acteur?: string | null; detail?: string | null; documentRef?: string | null; empreinte?: string | null
 }
 /** Renvoi d'une opération par son validateur (D-93 §8.3). */
 export type Renvoi = { motif: string; parId: string; parNom: string; le: string }
 /** Signature attendue ou donnée d'une opération (D-91 §5.4). */
 export type SignatureOperation = {
   code: string; libelle: string; ordre: number; signataire: Fonction; libelleSignataire?: string | null; porte: string[]
-  etat: 'ATTENDUE' | 'SIGNEE'; suivante: boolean; attendu?: { id: string; nom: string; fonction: Fonction } | null
+  /** D-109 : NON_RECUEILLIE (opération close avant l'exigence), REPRISE (opération reprise de l'existant). */
+  etat: 'ATTENDUE' | 'SIGNEE' | 'NON_RECUEILLIE' | 'REPRISE'; suivante: boolean; attendu?: { id: string; nom: string; fonction: Fonction } | null
   signePar?: string | null; signeParNom?: string | null; signeLe?: string | null; empreinte?: string | null
 }
 export type OperationParcours = Permitted & {
@@ -103,6 +130,11 @@ export type OperationParcours = Permitted & {
   livrablesAttendus?: LivrableAttendu[]
   renvois?: Renvoi[]
   signatures?: SignatureOperation[]
+  /** D-109 : opération reprise de l'existant (D-107), « reprise, pièce non numérisée » ; rien ne lui est exigé. */
+  reprise?: boolean
+  /** D-106 : délais cible et maximal (jours). */
+  delaiJours?: number
+  delaiMaxJours?: number
 }
 
 /** Workflow d'une étape : six éléments, l'étape n'est close que s'ils sont tous réunis (CR §7.1). */
@@ -118,7 +150,7 @@ export type EtapeParcours = {
   actionsFaites: number
   actionsTotal: number
   /** Livrables de l'étape : libellé servi (D-93), `libelleKey` seulement pour les étapes 1 et 2. */
-  livrables: { libelleKey?: string; libelle?: string; operation?: string; code?: string; obligatoire?: boolean; fourni: boolean }[]
+  livrables: { libelleKey?: string; libelle?: string; operation?: string; code?: string; obligatoire?: boolean; fourni: boolean; etat?: EtatLivrable | null }[]
   validateur: Personne | null
   valideeLe: string | null
   debut: string | null

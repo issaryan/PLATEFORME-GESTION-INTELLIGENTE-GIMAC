@@ -82,7 +82,7 @@ describe('hooks du parcours : actions', () => {
   const actions: [string, () => { mutateAsync: (v: never) => Promise<unknown> }, unknown, 'parcours' | 'decision' | 'portailParcours', string, unknown[]][] = [
     ['useDesignerConducteur', H.useDesignerConducteur, { liaisonId: 'L1', conducteurId: 'U2', motif: 'm' }, 'parcours', 'designerConducteur', ['L1', 'U2', 'm']],
     ['useAffecterRessources', H.useAffecterRessources, { liaisonId: 'L1', affectations: [{ fonction: 'SNA', personneId: 'U' }] }, 'parcours', 'affecterRessources', ['L1', [{ fonction: 'SNA', personneId: 'U' }]]],
-    ['useDeposerLivrable', H.useDeposerLivrable, { operationId: 'L1:7', fichier, commentaire: 'c' }, 'parcours', 'deposerLivrable', ['L1:7', fichier, 'c', undefined]],
+    ['useDeposerLivrable', H.useDeposerLivrable, { operationId: 'L1:7', fichier, commentaire: 'c' }, 'parcours', 'deposerLivrable', ['L1:7', fichier, 'c', undefined, undefined]],
     ['useAttribuer', H.useAttribuer, { operationId: 'L1:7', qualite: 'C', personneId: 'U', motif: 'm' }, 'parcours', 'attribuer', ['L1:7', 'C', 'U', 'm']],
     ['useDeposerPreuveParcours', H.useDeposerPreuveParcours, { operationId: 'L1:C1', fichier, codeControle: 'ABCD' }, 'parcours', 'deposerPreuve', ['L1:C1', fichier, { valeurReference: undefined, codeControle: 'ABCD' }]],
     ['useValiderOperationParcours', H.useValiderOperationParcours, { operationId: 'L1:C1', assertion: 'a' }, 'parcours', 'validerOperation', ['L1:C1', 'a']],
@@ -101,7 +101,7 @@ describe('hooks du parcours : actions', () => {
     ['useRemettreFicheSuivi', H.useRemettreFicheSuivi, 'L1', 'decision', 'remettreFicheSuivi', ['L1']],
     ['useConstaterMiseEnService', H.useConstaterMiseEnService, 'L1', 'decision', 'constaterMiseEnService', ['L1']],
     ['useCommuniquerCoordonnees', H.useCommuniquerCoordonnees, { liaisonId: 'L1', adresse: 'h', port: '8443' }, 'portailParcours', 'communiquerCoordonnees', ['L1', { adresse: 'h', port: '8443', pointsTerminaison: undefined }]],
-    ['useDeposerLivrablePortail', H.useDeposerLivrablePortail, { operationId: 'L1:21', fichier, commentaire: 'c' }, 'portailParcours', 'deposerLivrable', ['L1:21', fichier, 'c']],
+    ['useDeposerLivrablePortail', H.useDeposerLivrablePortail, { operationId: 'L1:21', fichier, commentaire: 'c' }, 'portailParcours', 'deposerLivrable', ['L1:21', fichier, 'c', undefined, undefined]],
     ['useSignerProcesVerbalPortail', H.useSignerProcesVerbalPortail, { liaisonId: 'L1', assertion: 'a' }, 'portailParcours', 'signerProcesVerbal', ['L1', 'a']],
     ['useDeposerAttestation', H.useDeposerAttestation, { liaisonId: 'L1', type: 'COBAC', fichier }, 'portailParcours', 'deposerAttestation', ['L1', 'COBAC', fichier]],
     ['useRenseignerFicheSuivi', H.useRenseignerFicheSuivi, { liaisonId: 'L1', lignes: [{ serviceCode: 'RETRAIT', ouvert: true, commentaire: null }] }, 'portailParcours', 'renseignerFicheSuivi', ['L1', [{ serviceCode: 'RETRAIT', ouvert: true, commentaire: null }]]],

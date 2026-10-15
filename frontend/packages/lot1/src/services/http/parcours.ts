@@ -117,15 +117,20 @@ export const parcoursHttp: ServiceParcours = {
   operations: (id, f) => http.get(`${L}/${id}/parcours/operations`, { query: { etape: f?.etape, fonction: f?.fonction } }),
   affecterRessources: (id, affectations) => http.put(`${L}/${id}/ressources`, { body: { affectations } }),
   // Dépôt par code de livrable (D-93 §8.4) : `livrable` absent, l'unique livrable de l'opération.
-  deposerLivrable: async (opId, fichier, commentaire, livrable) => {
+  deposerLivrable: async (opId, fichier, commentaire, livrable, service) => {
     const d = await deposer(fichier, 'LIVRABLE', opId)
-    await http.post(`${H}/parcours/operations/${opId}/livrable`, { body: { ...d, commentaire, ...(livrable ? { livrable } : {}) } })
+    await http.post(`${H}/parcours/operations/${opId}/livrable`, { body: { ...d, commentaire, ...(livrable ? { livrable } : {}), ...(service ? { service } : {}) } })
   },
   attribuer: (opId, qualite, personneId, motif) => http.put(`${H}/parcours/operations/${opId}/intervenants`, { body: { qualite, personneId, motif } }),
   deposerPreuve: async (opId, fichier, complement) => {
     const d = await deposer(fichier, 'PREUVE', opId)
     await http.post(`${H}/parcours/operations/${opId}/preuves`, { body: { ...d, ...complement } })
   },
+  // D-109 : sans objet motivé, pièce téléchargée (empreinte en Repr-Digest), chronologie réelle.
+  declarerSansObjet: (opId, livrable, motif, service) =>
+    http.post(`${H}/parcours/operations/${opId}/livrables/${encodeURIComponent(livrable)}/sans-objet`, { body: { motif, ...(service ? { service } : {}) } }),
+  telechargerPiece: (opId, documentId) => http.blob(`${H}/parcours/operations/${opId}/pieces/${encodeURIComponent(documentId)}`, '*/*'),
+  chronologie: (id) => http.get(`${L}/${id}/chronologie`),
   validerOperation: (opId, assertion) => http.post(`${H}/parcours/operations/${opId}/validation`, { body: {}, reauthAssertion: assertion }),
   // D-93 : renvoi motivé par le validateur, sans réauthentification.
   renvoyer: (opId, motif) => http.post(`${H}/parcours/operations/${opId}/renvoi`, { body: { motif } }),
@@ -170,10 +175,12 @@ export const portailParcoursHttp: ServicePortailParcours = {
   dossier: (id) => http.get(`${PH}/${id}/dossier`),
   mesTaches: () => http.get(`${P.portailHomologation}/taches`),
   communiquerCoordonnees: (id, c) => http.put(`${PH}/${id}/coordonnees-techniques`, { body: c }),
-  deposerLivrable: async (opId, fichier, commentaire) => {
+  deposerLivrable: async (opId, fichier, commentaire, livrable, service) => {
     const corps = new FormData()
     corps.set('fichier', fichier)
     corps.set('commentaire', commentaire)
+    if (livrable) corps.set('livrable', livrable)
+    if (service) corps.set('service', service)
     await http.post(`${P.portailHomologation}/operations/${opId}/livrable`, { body: corps })
   },
   procesVerbal: (id) => http.get(`${PC}/${id}/proces-verbal`),

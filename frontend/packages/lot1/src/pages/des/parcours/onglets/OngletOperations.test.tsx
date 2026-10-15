@@ -97,7 +97,8 @@ describe('Onglet Opérations : exécution', () => {
     const conf = await screen.findByRole('alertdialog', { name: 'Déposer la preuve' })
     expect(conf.textContent).toContain('trace-script.png')
     fireEvent.click(within(conf).getByRole('button', { name: 'Déposer la preuve' }))
-    await waitFor(() => expect(depot).toHaveBeenCalledWith('LIA-2026-005:28', expect.any(File), { valeurReference: undefined, codeControle: undefined, ceremonie: undefined }))
+    // D-109 : le rang 28 attend deux pièces (script mis à jour, premier fichier facultatif) : le livrable visé est transmis.
+    await waitFor(() => expect(depot).toHaveBeenCalledWith('LIA-2026-005:28', expect.any(File), { valeurReference: undefined, codeControle: undefined, ceremonie: undefined, livrable: 'L1' }))
     expect(await screen.findByText(/Preuve déposée, en attente de la validation de Brice Ondo Mba/)).toBeTruthy()
   })
 
@@ -165,7 +166,7 @@ describe('Onglet Opérations : exécution', () => {
     fireEvent.click(within(sign).getByRole('button', { name: 'Utiliser ma clé de sécurité' }))
     await waitFor(() => expect(valider).toHaveBeenCalledWith(o.id, 'YXNzZXJ0aW9u'))
     await waitFor(() => expect(within(screen.getByRole('dialog', { name: /^Opération / })).getByText(/Opération close le/)).toBeTruthy())
-    fireEvent.click(within(screen.getByRole('dialog', { name: /^Opération / })).getByRole('tab', { name: 'Preuve' }))
+    fireEvent.click(within(screen.getByRole('dialog', { name: /^Opération / })).getByRole('tab', { name: 'Livrables et preuves' }))
     const p = screen.getByRole('dialog', { name: /^Opération / })
     expect(within(p).getByText('Code du membre')).toBeTruthy()
     expect(within(p).getByText('Empreinte SHA-256')).toBeTruthy()
@@ -208,7 +209,8 @@ describe('Onglet Opérations : exécution', () => {
     fireEvent.click(within(d).getByRole('button', { name: 'Déposer le livrable' }))
     const conf = await screen.findByRole('alertdialog', { name: 'Déposer le livrable' })
     fireEvent.click(within(conf).getByRole('button', { name: 'Déposer le livrable' }))
-    await waitFor(() => expect(livrable).toHaveBeenCalledWith('LIA-2026-041:7', expect.any(File), 'relu', undefined))
+    // D-109 : compte rendu (L1) et feuille de présence facultative (L2) : le livrable visé est transmis.
+    await waitFor(() => expect(livrable).toHaveBeenCalledWith('LIA-2026-041:7', expect.any(File), 'relu', 'L1', undefined))
   })
 
   it('attribution d\'une qualité, motivée', async () => {
@@ -257,7 +259,7 @@ describe('Onglet Opérations : lecture', () => {
     expect(screen.queryByText('Arrêt du périmètre des services')).toBeNull()
     fireEvent.click(screen.getByText('Cérémonie de clés : génération de la clé maîtresse de zone en trois composantes et remise au participant'))
     const d = await tiroir()
-    fireEvent.click(within(d).getByRole('tab', { name: 'Preuve' }))
+    fireEvent.click(within(d).getByRole('tab', { name: 'Livrables et preuves' }))
     expect(within(d).getByText('Cérémonie de clés')).toBeTruthy()
     expect(within(d).getByText('Composante 3')).toBeTruthy()
     expect(within(d).getByText(/elle ne porte aucune composante/)).toBeTruthy()

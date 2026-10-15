@@ -18,13 +18,16 @@ import { OngletGouvernance } from './onglets/OngletGouvernance'
 import { OngletMiseEnService } from './onglets/OngletMiseEnService'
 import { OngletOperations } from './onglets/OngletOperations'
 import { OngletPerimetre } from './onglets/OngletPerimetre'
+import { OngletChronologie, OngletPreuves, OngletSignatures } from './onglets/OngletPreuves'
 
 // Dossier numérique de la liaison (/des/parcours/:id, gabarit G3 ; CR Fig. 7.3, D-57) : identification,
-// pilotage, puis sept onglets portés par l'adresse (?onglet=). L'écran principal est l'état du périmètre
+// pilotage, puis dix onglets portés par l'adresse (?onglet=). L'écran principal est l'état du périmètre
 // contractualisé et ses deux couvertures (CR §7.2.2). Les gestes du dossier (désigner le conducteur,
 // affecter les ressources, déclarer un blocage) sont portés par ?action= : les tableaux de bord y mènent.
 
-const ONGLETS = ['perimetre', 'etapes', 'operations', 'decision', 'mise-en-service', 'blocages', 'gouvernance'] as const
+// D-109 : « Livrables et preuves », « Signatures » et « Chronologie » du dossier (preuves attendues de chaque étape et opération,
+// signatures attendues et recueillies, événements réels) ; l'exécution reste dans « Opérations ».
+const ONGLETS = ['perimetre', 'etapes', 'operations', 'preuves', 'signatures', 'chronologie', 'decision', 'mise-en-service', 'blocages', 'gouvernance'] as const
 type Onglet = (typeof ONGLETS)[number]
 
 /** Gestes du dossier : proposés si le service les permet ET si le jeton porte la permission. */
@@ -94,6 +97,9 @@ function Dossier({ dossier }: { dossier: DossierLiaison }) {
     perimetre: <OngletPerimetre dossier={dossier} />,
     etapes: <OngletEtapes dossier={dossier} onAffecter={gestes.affecter ? () => maj({ action: 'affecter' }) : undefined} />,
     operations: <OngletOperations dossier={dossier} />,
+    preuves: <OngletPreuves dossier={dossier} />,
+    signatures: <OngletSignatures dossier={dossier} />,
+    chronologie: <OngletChronologie dossier={dossier} />,
     decision: <OngletDecision dossier={dossier} />,
     'mise-en-service': <OngletMiseEnService dossier={dossier} />,
     blocages: <OngletBlocages dossier={dossier} onDeclarer={gestes.bloquer ? () => maj({ action: 'bloquer' }) : undefined} />,
