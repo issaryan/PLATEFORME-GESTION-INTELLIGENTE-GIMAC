@@ -61,3 +61,4 @@ npm run lint -w @gimac/lot1
 | 2026-10-19 | D-113 | Agenda sur AgendaGrid (vues jour, semaine, mois, filtre des catégories, création depuis une case) ; affichage « Tableau » (Kanban) de la page Tâches, déplacements par transitions permises |
 | 2026-10-19 | D-112 | « Mes actions de certification » : onglet « Liaisons suivies » en tableau paginé (25 par page ; liaison, statut, étape en cours, avancement, jalons), comme les deux autres onglets ; catalogues FR, EN, ES |
 | 2026-10-19 | D-114 | Écrans de la supervision et des astreintes (`ECRANS_DES` : `/des/exploitation/supervision`, `/astreintes`, `/releve`), trois fonctionnalités au catalogue simulé (groupe `monitoring`, module `exploitation`), libellés de navigation et des droits `MON_*` (`i18n/ecrans/monitoring.ts`, fr, en, es) |
+| 2026-10-19 | D-112 | `Etapes.test.tsx` : délai propre de 60 s pour le scénario complet de la modale Étapes, qui dépassait par intermittence les 20 s sous mesure de couverture |

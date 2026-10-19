@@ -71,7 +71,8 @@ describe('DES-12 : étapes configurables (D-89)', () => {
     const etape = within(op).getByLabelText(/^Étape/) as HTMLSelectElement
     expect([...etape.options].map((o) => o.text)).toContain('Recette')
     expect([...etape.options].map((o) => o.text)).not.toContain('Prise de contact')
-  })
+    // Scénario complet (une vingtaine d'interactions) : plus de 20 s sous mesure de couverture, comme ParcoursPage.
+  }, 60_000)
 
   it('version publiée : Étapes en consultation seulement ; export CSV', async () => {
     const { services } = ouvrir('?version=REF-CI-3')
