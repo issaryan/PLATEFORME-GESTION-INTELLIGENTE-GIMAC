@@ -1,0 +1,46 @@
+import type { Catalogue } from '@gimac/socle'
+
+// Supervision des liaisons, astreintes et relève de quart (D-114, docs/lot1/astreintes-monitoring.md) : groupe et
+// entrées de la barre latérale (module « exploitation » du catalogue), libellé des permissions MON_* (D-90). Les écrans ont leurs libellés dans
+// @gimac/exploitation. FR, EN, ES.
+export const catalogue: Catalogue = {
+  fr: {
+    'nav.groupe.monitoring': 'Supervision et astreintes',
+    'nav.monitoringSupervision': 'Liaisons et alertes',
+    'nav.monitoringAstreintes': 'Grille d’astreinte',
+    'nav.monitoringReleve': 'Vacation et relève',
+    'droits.permission.MON_SUPERVISION_READ': 'Consulter la supervision, les vacations et la grille',
+    'droits.permission.MON_ALERT_ACK': 'Acquitter une alerte (vacation en cours)',
+    'droits.permission.MON_SHIFT_OPERATOR': 'Tenir la salle : main courante et signature de la relève',
+    'droits.permission.MON_ONCALL_L2': 'Assurer l’astreinte joignable (niveau 2)',
+    'droits.permission.MON_SHIFT_LEAD': 'Être chef de quart : visa de la relève',
+    'droits.permission.MON_ROSTER_MANAGE': 'Générer la grille et approuver les échanges',
+    'droits.permission.MON_ROSTER_PUBLISH': 'Publier la grille d’astreinte (signature)',
+  },
+  en: {
+    'nav.groupe.monitoring': 'Supervision and on-call',
+    'nav.monitoringSupervision': 'Links and alerts',
+    'nav.monitoringAstreintes': 'On-call roster',
+    'nav.monitoringReleve': 'Shift and handover',
+    'droits.permission.MON_SUPERVISION_READ': 'View supervision, shifts and the roster',
+    'droits.permission.MON_ALERT_ACK': 'Acknowledge an alert (current shift)',
+    'droits.permission.MON_SHIFT_OPERATOR': 'Staff the room: shift log and handover signature',
+    'droits.permission.MON_ONCALL_L2': 'Be reachable on call (level 2)',
+    'droits.permission.MON_SHIFT_LEAD': 'Act as shift lead: handover endorsement',
+    'droits.permission.MON_ROSTER_MANAGE': 'Generate the roster and approve swaps',
+    'droits.permission.MON_ROSTER_PUBLISH': 'Publish the on-call roster (signature)',
+  },
+  es: {
+    'nav.groupe.monitoring': 'Supervisión y guardias',
+    'nav.monitoringSupervision': 'Enlaces y alertas',
+    'nav.monitoringAstreintes': 'Cuadrícula de guardias',
+    'nav.monitoringReleve': 'Turno y relevo',
+    'droits.permission.MON_SUPERVISION_READ': 'Consultar la supervisión, los turnos y la cuadrícula',
+    'droits.permission.MON_ALERT_ACK': 'Reconocer una alerta (turno en curso)',
+    'droits.permission.MON_SHIFT_OPERATOR': 'Atender la sala: libro de turno y firma del relevo',
+    'droits.permission.MON_ONCALL_L2': 'Estar de guardia localizable (nivel 2)',
+    'droits.permission.MON_SHIFT_LEAD': 'Ser jefe de turno: visado del relevo',
+    'droits.permission.MON_ROSTER_MANAGE': 'Generar la cuadrícula y aprobar los intercambios',
+    'droits.permission.MON_ROSTER_PUBLISH': 'Publicar la cuadrícula de guardias (firma)',
+  },
+}

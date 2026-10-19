@@ -6,13 +6,14 @@ import { MOT_DE_PASSE_DEMO, initI18n } from '@gimac/socle'
 import { FONCTIONNALITES_DEMO, catalogues } from '@gimac/lot1'
 import { catalogueCompte } from '@gimac/compte'
 import { cataloguesAdministration } from '@gimac/administration'
+import { cataloguesExploitation } from '@gimac/exploitation'
 import App from './App'
 import { CLE_PROFIL_DEMO, PROFILS_DEMO, roleDemo, sessionDemo } from './profils'
 
 // Application du département : session de démonstration par profil (D-57, D-58), navigation élaguée
 // selon les permissions, premier accès, session réelle par la passerelle, déconnexion.
 beforeAll(() => {
-  if (!i18next.isInitialized) initI18n([...catalogues, catalogueCompte, ...cataloguesAdministration], 'fr')
+  if (!i18next.isInitialized) initI18n([...catalogues, catalogueCompte, ...cataloguesAdministration, ...cataloguesExploitation], 'fr')
   Object.defineProperty(window, 'innerWidth', { value: 1400, configurable: true })
 })
 // Session de démonstration ouverte (connexion simulée, D-65) ; retirée par les scénarios de connexion.
@@ -88,6 +89,19 @@ describe('Mon activité (D-76)', () => {
   it('écran réservé : « Mon équipe » refusé au collaborateur', async () => {
     localStorage.setItem(CLE_PROFIL_DEMO, 'ROLE_COLLABORATEUR')
     monter('/des/equipe')
+    expect(await screen.findByText('Accès refusé', {}, { timeout: 8000 })).toBeTruthy()
+  })
+})
+
+describe('Supervision et astreintes (D-114)', () => {
+  it('production monétique : groupe « Supervision et astreintes » et écran des liaisons ; chef de la DDRM : refusé', async () => {
+    localStorage.setItem(CLE_PROFIL_DEMO, 'ROLE_PRODUCTION_MONETIQUE')
+    monter('/des/exploitation/supervision')
+    expect(await screen.findByRole('heading', { level: 1, name: 'Supervision des liaisons' }, { timeout: 8000 })).toBeTruthy()
+    for (const n of ['Liaisons et alertes', 'Grille d’astreinte', 'Vacation et relève']) expect(within(navigation()).getByRole('link', { name: n })).toBeTruthy()
+    cleanup()
+    localStorage.setItem(CLE_PROFIL_DEMO, 'ROLE_CHEF_DDRM')
+    monter('/des/exploitation/astreintes')
     expect(await screen.findByText('Accès refusé', {}, { timeout: 8000 })).toBeTruthy()
   })
 })

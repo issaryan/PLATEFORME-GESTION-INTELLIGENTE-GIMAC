@@ -8,7 +8,8 @@ import { prefixeIam, type Couche } from '../http/prefixes'
 // ACCOUNT_SENSITIVE : reconfiguration du code TOTP hors premier accès (D-65).
 /** SIGNATURE_PROCESSUS (D-87) : signature d'une étape d'un processus d'unité, vérifiée par MS-PILOTAGE auprès de MS-IAM. */
 /** SIGNATURE_OPERATION (D-91) : signature attendue d'une opération du parcours, vérifiée par MS-HOMOLOGATION auprès de MS-IAM. */
-export type SignPurpose = 'OPERATION_VALIDATE' | 'QUITUS_SIGN' | 'STATUS_APPROVE' | 'ADMIN_SENSITIVE' | 'ACCOUNT_SENSITIVE' | 'SIGNATURE_PROCESSUS' | 'SIGNATURE_OPERATION'
+/** PUBLICATION_GRILLE et SIGNATURE_RELEVE (D-114) : publication de la grille d'astreinte, signatures de la relève de quart, vérifiées par MS-MONITORING auprès de MS-IAM. */
+export type SignPurpose = 'OPERATION_VALIDATE' | 'QUITUS_SIGN' | 'STATUS_APPROVE' | 'ADMIN_SENSITIVE' | 'ACCOUNT_SENSITIVE' | 'SIGNATURE_PROCESSUS' | 'SIGNATURE_OPERATION' | 'PUBLICATION_GRILLE' | 'SIGNATURE_RELEVE'
 type Challenge = { challengeId: string; challenge: string; rpId: string; allowCredentials: string[]; timeoutMs: number }
 
 /** Encodage base64url sans remplissage (WebAuthn). */

@@ -1397,3 +1397,91 @@ test_reprise_interne_jamais_relayee if {
 	not authz.allow with input as {"method": "POST", "path": "/bff/console/participant/interne/reprise/institutions", "permissions": ["REF_REPRISE_IMPORT"], "authentifie": true, "acr": "2"}
 	not authz.allow with input as {"method": "POST", "path": "/bff/des/homologation/interne/reprise/liaisons", "permissions": ["REF_REPRISE_IMPORT"], "authentifie": true, "acr": "2"}
 }
+
+# D-114 : supervision des liaisons, astreintes et relève de quart (docs/lot1/astreintes-monitoring.md §8).
+routes_monitoring := [
+	["GET", "/bff/des/monitoring/liaisons", "MON_SUPERVISION_READ"],
+	["GET", "/bff/des/monitoring/liaisons/l1", "MON_SUPERVISION_READ"],
+	["GET", "/bff/des/monitoring/alertes", "MON_SUPERVISION_READ"],
+	["GET", "/bff/des/monitoring/alertes/a1", "MON_SUPERVISION_READ"],
+	["GET", "/bff/des/monitoring/politiques-alerte", "MON_SUPERVISION_READ"],
+	["GET", "/bff/des/monitoring/vacations/en-cours", "MON_SUPERVISION_READ"],
+	["GET", "/bff/des/monitoring/vacations/v1", "MON_SUPERVISION_READ"],
+	["GET", "/bff/des/monitoring/vacations/v1/main-courante", "MON_SUPERVISION_READ"],
+	["GET", "/bff/des/monitoring/vacations/v1/main-courante/verification", "MON_SUPERVISION_READ"],
+	["GET", "/bff/des/monitoring/vacations/v1/rapport", "MON_SUPERVISION_READ"],
+	["GET", "/bff/des/monitoring/rapports/r1", "MON_SUPERVISION_READ"],
+	["GET", "/bff/des/monitoring/grilles", "MON_SUPERVISION_READ"],
+	["GET", "/bff/des/monitoring/grilles/publiee", "MON_SUPERVISION_READ"],
+	["GET", "/bff/des/monitoring/grilles/g1", "MON_SUPERVISION_READ"],
+	["GET", "/bff/des/monitoring/grilles/g1/echanges", "MON_SUPERVISION_READ"],
+	["POST", "/bff/des/monitoring/alertes/a1/acquittement", "MON_ALERT_ACK"],
+	["POST", "/bff/des/monitoring/vacations/v1/main-courante", "MON_SHIFT_OPERATOR"],
+	["POST", "/bff/des/monitoring/vacations/v1/rapport", "MON_SHIFT_OPERATOR"],
+	["POST", "/bff/des/monitoring/rapports/r1/signature", "MON_SHIFT_OPERATOR"],
+	["POST", "/bff/des/monitoring/rapports/r1/contresignature", "MON_SUPERVISION_READ"],
+	["POST", "/bff/des/monitoring/rapports/r1/visa", "MON_SHIFT_LEAD"],
+	["POST", "/bff/des/monitoring/grilles/generation", "MON_ROSTER_MANAGE"],
+	["POST", "/bff/des/monitoring/grilles/g1/publication", "MON_ROSTER_PUBLISH"],
+	["POST", "/bff/des/monitoring/grilles/g1/echanges", "MON_SUPERVISION_READ"],
+	["POST", "/bff/des/monitoring/echanges/e1/accord", "MON_SUPERVISION_READ"],
+	["POST", "/bff/des/monitoring/echanges/e1/refus", "MON_SUPERVISION_READ"],
+	["POST", "/bff/des/monitoring/echanges/e1/approbation", "MON_ROSTER_MANAGE"],
+	["POST", "/bff/des/monitoring/echanges/e1/rejet", "MON_ROSTER_MANAGE"],
+]
+
+test_monitoring_avec_permission if {
+	every r in routes_monitoring {
+		authz.allow with input as {"method": r[0], "path": r[1], "permissions": [r[2]], "authentifie": true, "acr": "2"}
+	}
+}
+
+test_monitoring_sans_permission if {
+	every r in routes_monitoring {
+		not authz.allow with input as {"method": r[0], "path": r[1], "permissions": ["PIL_ACTIVITY_OWN"], "authentifie": true, "acr": "2"}
+	}
+}
+
+test_monitoring_compte_externe_refuse if {
+	every r in routes_monitoring {
+		not authz.allow with input as {
+			"method": r[0], "path": r[1], "permissions": [r[2]], "institution_id": "INST-0042",
+			"authentifie": true, "acr": "2",
+		}
+	}
+}
+
+test_monitoring_sans_second_facteur_refuse if {
+	every r in routes_monitoring {
+		not authz.allow with input as {"method": r[0], "path": r[1], "permissions": [r[2]], "authentifie": true, "acr": "1"}
+	}
+}
+
+# Les permissions sont distinctes : la lecture n'ouvre ni l'acquittement, ni la grille, ni le visa.
+actes_monitoring := [r | some r in routes_monitoring; r[2] != "MON_SUPERVISION_READ"]
+
+test_monitoring_lecture_n_ouvre_pas_les_actes if {
+	count(actes_monitoring) == 9
+	every r in actes_monitoring {
+		not authz.allow with input as {"method": r[0], "path": r[1], "permissions": ["MON_SUPERVISION_READ"], "authentifie": true, "acr": "2"}
+	}
+}
+
+test_monitoring_publication_exige_le_chef_du_des if not authz.allow with input as {
+	"method": "POST", "path": "/bff/des/monitoring/grilles/g1/publication", "permissions": ["MON_ROSTER_MANAGE", "MON_SHIFT_LEAD"],
+	"authentifie": true, "acr": "2",
+}
+
+# Chemin ou méthode hors contrat : refusé, sans repli sur @PreAuthorize ; l'interne n'est jamais relayé.
+test_monitoring_chemin_non_liste_refuse if not authz.allow with input as {
+	"method": "GET", "path": "/bff/des/monitoring/supervised-links", "permissions": ["MON_SUPERVISION_READ"], "authentifie": true, "acr": "2",
+}
+
+test_monitoring_suppression_refusee if not authz.allow with input as {
+	"method": "DELETE", "path": "/bff/des/monitoring/alertes/a1", "permissions": ["MON_SUPERVISION_READ", "MON_ALERT_ACK"], "authentifie": true, "acr": "2",
+}
+
+test_monitoring_interne_refuse if not authz.allow with input as {
+	"method": "POST", "path": "/bff/des/monitoring/interne/alertes", "permissions": ["INTERNAL_MONITORING_ALERT_INGEST", "MON_SUPERVISION_READ"],
+	"authentifie": true, "acr": "2",
+}

@@ -557,6 +557,48 @@
         "clientRole": false
       },
       {
+        "name": "MON_SUPERVISION_READ",
+        "description": "Supervision : liaisons, alertes, vacations, grille d'astreinte",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "MON_ALERT_ACK",
+        "description": "Acquitter une alerte (membre de la vacation en cours)",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "MON_SHIFT_OPERATOR",
+        "description": "Opérateur de supervision en salle (niveau 1) : main courante et relève",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "MON_ONCALL_L2",
+        "description": "Astreinte joignable (niveau 2)",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "MON_SHIFT_LEAD",
+        "description": "Habilitation de chef de quart : visa de la relève",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "MON_ROSTER_MANAGE",
+        "description": "Générer la grille d'astreinte et approuver les échanges",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "MON_ROSTER_PUBLISH",
+        "description": "Publier la grille d'astreinte (signature du chef du DES)",
+        "composite": false,
+        "clientRole": false
+      },
+      {
         "name": "REF_METIER_ADMIN",
         "description": "Administration des référentiels métier, tous domaines",
         "composite": false,
@@ -619,6 +661,12 @@
       {
         "name": "INTERNAL_DOCUMENT_RENDER",
         "description": "Permission du lot 1",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "INTERNAL_MONITORING_ALERT_INGEST",
+        "description": "Réception des alertes des sondes par MS-MONITORING",
         "composite": false,
         "clientRole": false
       },
@@ -699,7 +747,13 @@
             "PIL_ACTIVITY_OWN",
             "NOT_INBOX_READ",
             "PIL_TEAM_READ",
-            "PIL_TASK_ASSIGN"
+            "PIL_TASK_ASSIGN",
+            "MON_SUPERVISION_READ",
+            "MON_ALERT_ACK",
+            "MON_ONCALL_L2",
+            "MON_SHIFT_LEAD",
+            "MON_ROSTER_MANAGE",
+            "MON_ROSTER_PUBLISH"
           ]
         },
         "attributes": {
@@ -751,7 +805,8 @@
             "COL_MESSAGE_READ",
             "COL_MESSAGE_SEND",
             "PIL_ACTIVITY_OWN",
-            "NOT_INBOX_READ"
+            "NOT_INBOX_READ",
+            "MON_SUPERVISION_READ"
           ]
         },
         "attributes": {
@@ -800,7 +855,8 @@
             "PIL_ACTIVITY_OWN",
             "NOT_INBOX_READ",
             "PIL_TEAM_READ",
-            "PIL_TASK_ASSIGN"
+            "PIL_TASK_ASSIGN",
+            "MON_SUPERVISION_READ"
           ]
         },
         "attributes": {
@@ -1059,7 +1115,12 @@
             "COL_MESSAGE_READ",
             "COL_MESSAGE_SEND",
             "PIL_ACTIVITY_OWN",
-            "NOT_INBOX_READ"
+            "NOT_INBOX_READ",
+            "MON_SUPERVISION_READ",
+            "MON_ALERT_ACK",
+            "MON_SHIFT_OPERATOR",
+            "MON_ONCALL_L2",
+            "MON_SHIFT_LEAD"
           ]
         },
         "attributes": {
@@ -1089,7 +1150,11 @@
             "COL_MESSAGE_READ",
             "COL_MESSAGE_SEND",
             "PIL_ACTIVITY_OWN",
-            "NOT_INBOX_READ"
+            "NOT_INBOX_READ",
+            "MON_SUPERVISION_READ",
+            "MON_ALERT_ACK",
+            "MON_SHIFT_OPERATOR",
+            "MON_ONCALL_L2"
           ]
         },
         "attributes": {
@@ -1119,7 +1184,11 @@
             "COL_MESSAGE_READ",
             "COL_MESSAGE_SEND",
             "PIL_ACTIVITY_OWN",
-            "NOT_INBOX_READ"
+            "NOT_INBOX_READ",
+            "MON_SUPERVISION_READ",
+            "MON_ALERT_ACK",
+            "MON_SHIFT_OPERATOR",
+            "MON_ONCALL_L2"
           ]
         },
         "attributes": {
@@ -1163,7 +1232,10 @@
             "COL_MESSAGE_READ",
             "COL_MESSAGE_SEND",
             "PIL_ACTIVITY_OWN",
-            "NOT_INBOX_READ"
+            "NOT_INBOX_READ",
+            "MON_SUPERVISION_READ",
+            "MON_ALERT_ACK",
+            "MON_SHIFT_OPERATOR"
           ]
         },
         "attributes": {
@@ -2325,6 +2397,17 @@
       ]
     },
     {
+      "username": "service-account-monitoring-service",
+      "enabled": true,
+      "serviceAccountClientId": "monitoring-service",
+      "realmRoles": [
+        "default-roles-gimac",
+        "INTERNAL_IAM_READ",
+        "INTERNAL_DOCUMENT_READ",
+        "INTERNAL_DOCUMENT_DEPOSIT"
+      ]
+    },
+    {
       "username": "service-account-notification-service",
       "enabled": true,
       "serviceAccountClientId": "notification-service",
@@ -3085,6 +3168,29 @@
       "publicClient": false,
       "clientAuthenticatorType": "client-secret",
       "secret": "${GIMAC_SECRET_PILOTAGE_SERVICE}",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "protocol": "openid-connect",
+      "fullScopeAllowed": true,
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "jhipster",
+        "roles",
+        "profile",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "offline_access"
+      ]
+    },
+    {
+      "clientId": "monitoring-service",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${GIMAC_SECRET_MONITORING_SERVICE}",
       "standardFlowEnabled": false,
       "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": true,

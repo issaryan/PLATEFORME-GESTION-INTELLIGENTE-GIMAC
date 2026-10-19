@@ -1,6 +1,6 @@
 /* Tabs, Stepper, Pagination, Breadcrumb */
-.gm-tabs { display: flex; gap: var(--gm-space-5); border-bottom: var(--gm-border-1) solid var(--gm-color-border); }
-.gm-tab { all: unset; cursor: pointer; padding: var(--gm-space-2) 0 calc(var(--gm-space-2) - 2px); border-bottom: var(--gm-border-2) solid transparent; color: var(--gm-color-text-secondary); font-weight: 600; margin-bottom: -1px; }
+.gm-tabs { display: flex; gap: var(--gm-space-5); border-bottom: var(--gm-border-1) solid var(--gm-color-border); overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; }
+.gm-tab { all: unset; white-space: nowrap; flex: none; cursor: pointer; padding: var(--gm-space-2) 0 calc(var(--gm-space-2) - 2px); border-bottom: var(--gm-border-2) solid transparent; color: var(--gm-color-text-secondary); font-weight: 600; margin-bottom: -1px; }
 /* QUO-20 : le survol souligne l'onglet sans le confondre avec l'onglet actif (texte clair et gras en sombre). */
 .gm-tab:hover:not([aria-selected="true"]) { border-bottom-color: var(--gm-color-border-strong); }
 .gm-tab[aria-selected="true"] { color: var(--gm-color-action); border-bottom-color: var(--gm-color-action); }

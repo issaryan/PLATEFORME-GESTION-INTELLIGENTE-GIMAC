@@ -90,6 +90,10 @@ export const ECRANS_DES: Record<string, Ecran> = {
   adminOrganigramme: { chemin: `${ADMINISTRATION}/organigramme` },
   adminJournal: { chemin: `${ADMINISTRATION}/journal` },
   adminPolitique: { chemin: `${ADMINISTRATION}/politique-securite` },
+  // Supervision des liaisons, astreintes et relève de quart (D-114, paquet @gimac/exploitation).
+  monitoringSupervision: { chemin: '/des/exploitation/supervision' },
+  monitoringAstreintes: { chemin: '/des/exploitation/astreintes' },
+  monitoringReleve: { chemin: '/des/exploitation/releve' },
   supervision: { chemin: `${PLATEFORME}/supervision` },
   infrastructure: { chemin: `${PLATEFORME}/infrastructure` },
   configuration: { chemin: `${PLATEFORME}/configuration` },

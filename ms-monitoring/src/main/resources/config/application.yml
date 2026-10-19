@@ -265,3 +265,83 @@ jhipster:
 # ===================================================================
 
 # application:
+
+---
+# ---------------------------------------------------------------------------
+# Supervision, astreintes et relève de quart (D-114, docs/lot1/astreintes-monitoring.md) : jeton de service du
+# client monitoring-service, adaptateurs MS-IAM et MS-DOCUMENT, outbox des événements monitoring.*, réglages.
+# ---------------------------------------------------------------------------
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          # Jeton de service (PI §0.7) : client Keycloak monitoring-service (INTERNAL_IAM_READ, INTERNAL_DOCUMENT_READ,
+          # INTERNAL_DOCUMENT_DEPOSIT), secret fourni par l'environnement, jamais dans le dépôt.
+          service-token:
+            provider: oidc
+            client-id: ${GIMAC_SERVICE_CLIENT_ID:monitoring-service}
+            client-secret: ${GIMAC_SERVICE_CLIENT_SECRET:}
+            authorization-grant-type: client_credentials
+            scope: openid
+  kafka:
+    # Producteur de l'outbox : même courtier que le binder Spring Cloud Stream.
+    bootstrap-servers: ${spring.cloud.stream.kafka.binder.brokers:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      properties:
+        enable.idempotence: true
+gimac:
+  outbox:
+    delay: 500
+  # Sélection des adaptateurs, un port à la fois (PI §0.8) : real | stub.
+  adaptateurs:
+    # Opérateurs qualifiés et noms affichés (MS-IAM).
+    annuaire: stub
+    # Congés et absences validés (MS-IAM, BF-ADMIN).
+    disponibilites: stub
+    # Dépôt des rapports de quart scellés (MS-DOCUMENT).
+    documents: stub
+    # Réauthentification FIDO2 des signatures de la relève et de la publication de la grille (MS-IAM).
+    reauthentification: stub
+  services:
+    iam:
+      url: http://localhost:8081
+    document:
+      url: http://localhost:8083
+  monitoring:
+    # Heure de la plateforme : plages de 06 h, 14 h et 22 h.
+    fuseau: Africa/Douala
+    # Algorithme 6.44 : fenêtres de déduplication et de corrélation.
+    deduplication: 30m
+    correlation: 10m
+    # Algorithme 6.46 : contresignature attendue dans les 30 min suivant la fin de la vacation.
+    contresignature: 30m
+    escalade:
+      actif: true
+      intervalle: 30000
+    # Algorithme 6.45 (D-15) : limite de 300 s, arrêt anticipé à 2 % d'écart ou après 15 s sans amélioration.
+    grille:
+      limite-secondes: 300
+      ecart-relatif: 0.02
+      stagnation-secondes: 15
+      fils: 8
+      besoin-salle: 2
+      besoin-astreinte: 1
+      repos-heures: 11
+      nuits-max: 3
+      plafond-heures: 48
+
+---
+# Le binder Spring Cloud Stream (canal SSE de JHipster) garde ses sérialiseurs d'octets : les sérialiseurs de chaînes
+# de spring.kafka.producer ne valent que pour l'outbox (D-114).
+spring:
+  cloud:
+    stream:
+      kafka:
+        binder:
+          producer-properties:
+            key.serializer: org.apache.kafka.common.serialization.ByteArraySerializer
+            value.serializer: org.apache.kafka.common.serialization.ByteArraySerializer

@@ -10,6 +10,8 @@ export interface WallTile {
   state: 'ok' | 'warn' | 'crit' | 'maint'
   value: string
   unit?: string
+  /** Libellé de l'état affiché par la pastille ; à défaut, celui de `state`. */
+  label?: string
   metric: string
   alerts?: number
 }
@@ -46,9 +48,9 @@ export function WallBoard(p: WallBoardProps) {
             <div key={tuile.id} className={cx('gm-wall-tile', 'gm-wall-' + tuile.state)}>
               <div className="gm-row" style={{ justifyContent: 'space-between' }}>
                 <span className="gm-mono">{tuile.id}</span>
-                <StatusBadge status={m[0]} label={t(m[1])} />
+                <StatusBadge status={m[0]} label={tuile.label ?? t(m[1])} />
               </div>
-              <div className="gm-wall-name">{tuile.name}</div>
+              <div className="gm-wall-name" title={tuile.name}>{tuile.name}</div>
               <div className="gm-wall-stat gm-num">
                 {tuile.value}
                 <span className="gm-wall-unit">{tuile.unit}</span>

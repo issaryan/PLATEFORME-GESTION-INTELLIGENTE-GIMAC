@@ -153,6 +153,8 @@ spec:
               valueFrom: { secretKeyRef: { name: gimac-clients-keycloak, key: collaboration-service } }
             - name: GIMAC_SECRET_PILOTAGE_SERVICE
               valueFrom: { secretKeyRef: { name: gimac-clients-keycloak, key: pilotage-service } }
+            - name: GIMAC_SECRET_MONITORING_SERVICE
+              valueFrom: { secretKeyRef: { name: gimac-clients-keycloak, key: monitoring-service } }
             - name: GIMAC_SECRET_NOTIFICATION_SERVICE
               valueFrom: { secretKeyRef: { name: gimac-clients-keycloak, key: notification-service } }
             - name: GIMAC_SECRET_REPRISE_SERVICE

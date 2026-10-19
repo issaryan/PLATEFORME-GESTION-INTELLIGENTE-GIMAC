@@ -32,3 +32,4 @@ Principe (D-48) : ce que JHipster sait générer est régénéré, jamais édit�
 | 2026-10-13 | - | `ci/fusionner-domaine.py` : option `GIMAC_SANS_COMPTES_TEST=1` (comptes `test-…` écartés), activée par `ci/deployer-serveur.sh` |
 | 2026-10-13 | - | `keycloak/creer-comptes-personnels.py` : `profils`, `telephone`, `aligner`, `--supprimer` |
 | 2026-10-13 | D-107 | D-107 : `reprise/importer-reprise.py` (reprise des institutions et des liaisons, simulation par défaut, `--reel`), exemples fictifs et tests joués par `ci/valider-infra.sh` ; OPA : règles de reprise |
+| 2026-10-19 | D-114 | OPA : règles de `/bff/des/monitoring` par chemin et permission `MON_*`, jamais pour un compte d'institution ; Keycloak : permissions `MON_*` des profils ; Compose et Kubernetes : MS-MONITORING relié à MS-IAM et MS-DOCUMENT |

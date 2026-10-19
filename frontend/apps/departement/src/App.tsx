@@ -14,6 +14,7 @@ import {
 import {
   ServicesConsoleProvider, TableauAdministrationComptes, WidgetChargesEnErreur, WidgetSupervision, servicesConsoleHttp, servicesConsoleSimules, useFonctionnalites, useSourceComptes,
 } from '@gimac/administration'
+import { ServicesExploitationProvider, servicesExploitationHttp, servicesExploitationSimules } from '@gimac/exploitation'
 import { PROFILS_DEMO, roleDemo, sessionDemo } from './profils'
 import { connexionDemo } from './connexionDemo'
 
@@ -80,6 +81,10 @@ const InfrastructurePage = lazy(() => import('@gimac/administration/pages/Infras
 const ConfigurationPlateformePage = lazy(() => import('@gimac/administration/pages/ConfigurationPlateformePage'))
 const JournalisationPage = lazy(() => import('@gimac/administration/pages/JournalisationPage'))
 const CourrielsPage = lazy(() => import('@gimac/administration/pages/MessageriePage'))
+// Supervision des liaisons, astreintes et relève de quart (D-114, docs/lot1/astreintes-monitoring.md) : MS-MONITORING.
+const SupervisionLiaisonsPage = lazy(() => import('@gimac/exploitation/pages/SupervisionPage'))
+const AstreintesPage = lazy(() => import('@gimac/exploitation/pages/AstreintesPage'))
+const RelevePage = lazy(() => import('@gimac/exploitation/pages/RelevePage'))
 const CHEMINS_ADMINISTRATION = { base: '/des/administration', espace: '/des', plateforme: '/des/plateforme' }
 // Widgets du tableau de bord fournis par l'administration : indicateurs, actions et derniers actes d'administration
 // des comptes (D-69), résumé de la supervision et charges de travail en erreur (D-78, D-79).
@@ -186,6 +191,9 @@ function Pages({ session, etatCanal, correlationId, notifications }: { session: 
                   <Route path="administration/organisation" element={G('adminOrganisation', <OrganisationPage />)} />
                   <Route path="administration/organigramme" element={G('adminOrganigramme', <OrganigrammePage />)} />
                   <Route path="administration/politique-securite" element={G('adminPolitique', <PolitiqueSecuritePage />)} />
+                  <Route path="exploitation/supervision" element={G('monitoringSupervision', <SupervisionLiaisonsPage />)} />
+                  <Route path="exploitation/astreintes" element={G('monitoringAstreintes', <AstreintesPage />)} />
+                  <Route path="exploitation/releve" element={G('monitoringReleve', <RelevePage />)} />
                   <Route path="plateforme/supervision" element={G('supervision', <SupervisionPage />)} />
                   <Route path="plateforme/infrastructure" element={G('infrastructure', <InfrastructurePage />)} />
                   <Route path="plateforme/configuration" element={G('configuration', <ConfigurationPlateformePage />)} />
@@ -258,6 +266,12 @@ export default function App() {
     const s = sessionDemo()
     return servicesConsoleSimules({ acteur: { id: s.sujet, nom: s.nom, permissions: s.permissions }, pouvoirs })
   }, [reels, pouvoirs])
+  // Supervision et astreintes (D-114) : /bff/des/monitoring, ou MS-MONITORING simulé au nom du profil de démonstration.
+  const exploitation = useMemo(() => {
+    if (reels) return servicesExploitationHttp()
+    const s = sessionDemo()
+    return servicesExploitationSimules({ utilisateur: { id: s.sujet, nom: s.nom } })
+  }, [reels])
   const connexion = useMemo(() => (reels ? connexionHttp() : connexionDemo()), [reels])
   const [correlationId, setCorrelationId] = useState<string | undefined>()
   useEffect(() => {
@@ -273,6 +287,7 @@ export default function App() {
         <ConnexionProvider service={connexion} couche="des">
         <CompteProvider service={compte}>
         <ServicesConsoleProvider services={administration} chemins={CHEMINS_ADMINISTRATION}>
+        <ServicesExploitationProvider services={exploitation}>
         <ExtensionsTableauDeBordProvider valeur={EXTENSIONS_TABLEAU}>
           <Routes>
             <Route path="/connexion/*" element={<PageConnexion couche="des" />} />
@@ -280,6 +295,7 @@ export default function App() {
             <Route path="*" element={<Navigate to="/des/tableau-de-bord" replace />} />
           </Routes>
         </ExtensionsTableauDeBordProvider>
+        </ServicesExploitationProvider>
         </ServicesConsoleProvider>
         </CompteProvider>
         </ConnexionProvider>

@@ -275,6 +275,21 @@ spring:
                   args:
                     maxSize: 1MB
                 - RewritePath=/bff/des/pilotage/(?<p>.*), /api/v1/${p}
+            # MS-MONITORING, supervision des liaisons, astreintes et relève de quart (D-114,
+            # docs/lot1/astreintes-monitoring.md §8) : liaisons, alertes et acquittement, vacations et main courante,
+            # rapport de relève (signature, contresignature, visa), grille d'astreinte et échanges ; seuls les chemins
+            # listés par OPA passent, jamais pour un compte d'institution ; /interne/** n'est jamais relayé ;
+            # X-Reauth-Assertion des signatures relayé tel quel.
+            - id: des-monitoring
+              uri: ${gimac.services.monitoring}
+              predicates:
+                - Path=/bff/des/monitoring/**
+              filters:
+                - OpaAuthorize
+                - name: RequestSize
+                  args:
+                    maxSize: 64KB
+                - RewritePath=/bff/des/monitoring/(?<p>.*), /api/v1/${p}
             # MS-NOTIFICATION, notifications de la plateforme (D-80, docs/lot1/notifications.md §3) : cloche et
             # préférences de chacun, depuis le département et la console (comptes internes) et le portail (comptes
             # d'institution, D-93 §11.4) ; routes et comptes filtrés par OPA.

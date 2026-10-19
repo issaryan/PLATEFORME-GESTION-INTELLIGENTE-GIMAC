@@ -108,3 +108,39 @@ management:
   health:
     mail:
       enabled: false
+
+---
+# Supervision et astreintes (D-114) : adaptateurs de substitution, outbox vers le Kafka de Testcontainers, escalade
+# déclenchée explicitement par les tests, solveur borné.
+spring:
+  kafka:
+    bootstrap-servers: ${spring.cloud.stream.kafka.binder.brokers:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+gimac:
+  adaptateurs:
+    annuaire: stub
+    disponibilites: stub
+    documents: stub
+    reauthentification: stub
+  monitoring:
+    escalade:
+      actif: false
+    grille:
+      limite-secondes: 8
+      stagnation-secondes: 1.5
+      fils: 4
+
+---
+# Le binder Spring Cloud Stream (canal SSE de JHipster) garde ses sérialiseurs d'octets : les sérialiseurs de chaînes
+# de spring.kafka.producer ne valent que pour l'outbox (D-114).
+spring:
+  cloud:
+    stream:
+      kafka:
+        binder:
+          producer-properties:
+            key.serializer: org.apache.kafka.common.serialization.ByteArraySerializer
+            value.serializer: org.apache.kafka.common.serialization.ByteArraySerializer

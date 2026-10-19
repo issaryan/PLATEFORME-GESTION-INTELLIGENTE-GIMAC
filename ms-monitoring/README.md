@@ -48,6 +48,7 @@ Copié et adapté (paquet `cm.gimac.des.monitoring`) ; chaque bean est inactif t
 | 2026-09-28 | — | Écarts comblés (liaison au certificat, masquage Luhn 6+4) et 2 classes reprises d'afriland : ServiceTokenProvider, TransitionInterditeException (D-53). |
 | 2026-09-29 | — | Masquage des journaux activé (logback, `%maskedMsg`) ; 118 tests unitaires et 413 tests d'intégration réussis, image Jib construite ; tests générés `AlertResourceIT`, `ShiftLogEntryResourceIT`, `ShiftReportResourceIT`, `SupervisedLinkResourceIT` corrigés (champs uniques, quart un-pour-un) (D-54). |
 | 2026-09-29 | — | `.gitignore` : exception `!src/**/out/`, pour que les ports sortants `application/port/out` soient versionnés |
+| 2026-10-19 | D-114 | Supervision (liaisons, alertes, acquittement, escalade), grille d'astreinte (FormulationGrille, IntegerProgramSolver, OrToolsCpSatSolver, VerificateurGrille, échanges), vacations, main courante chaînée, relève signée et scellée ; changeset `20261019090000_mon_exploitation` ; messages `MON_*` en fr, en, es ; tests d'intégration SupervisionIT, GrilleIT, ReleveIT (contrat docs/lot1/astreintes-monitoring.md) |
 <!-- GIMAC:FIN -->
 
 # monitoring

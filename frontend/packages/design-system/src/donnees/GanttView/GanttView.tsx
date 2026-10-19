@@ -27,6 +27,8 @@ export interface GanttViewProps {
 export function GanttView(p: GanttViewProps) {
   const t = useLibelle()
   const days = p.days || 60
+  // Colonne « Tenue » seulement si au moins un jalon porte une probabilité : jamais de colonne vide.
+  const avecTenue = (p.milestones || []).some((m) => m.probability !== undefined)
   const start = p.start || '01/09'
   // Échelle : 14 px par jour au plus (valeur publiée) ; réduite, jusqu'à 6 px, pour que la
   // frise tienne dans la largeur disponible au lieu de déborder de la carte.
@@ -67,7 +69,7 @@ export function GanttView(p: GanttViewProps) {
           <thead>
             <tr>
               <th scope="col" className="gm-gantt-name" ref={noms}>{t('gantt.jalon')}</th>
-              <th scope="col" className="gm-gantt-name gm-num" ref={tenue}>{t('gantt.tenue')}</th>
+              {avecTenue ? <th scope="col" className="gm-gantt-name gm-num" ref={tenue}>{t('gantt.tenue')}</th> : null}
               <th scope="col" style={{ padding: 0 }}>
                 <div className="gm-gantt-axis" style={{ ...semaine, width: W }}>
                   {(p.weeks || []).map((w, i) => (
@@ -85,9 +87,11 @@ export function GanttView(p: GanttViewProps) {
                   <div>{m.label}</div>
                   <div className="gm-field-help">{m.owner}</div>
                 </th>
-                <td className="gm-gantt-name gm-num">
-                  {m.probability !== undefined ? <span className={cx(m.probability < 50 && 'gm-late')}>{m.probability + ' %'}</span> : ''}
-                </td>
+                {avecTenue ? (
+                  <td className="gm-gantt-name gm-num">
+                    {m.probability !== undefined ? <span className={cx(m.probability < 50 && 'gm-late')}>{m.probability + ' %'}</span> : ''}
+                  </td>
+                ) : null}
                 <td style={{ padding: 0, position: 'relative' }}>
                   <div className="gm-gantt-lane" style={{ ...semaine, width: W }}>
                     {m.slack ? <span className="gm-gantt-slack" style={{ left: (m.start + m.duration) * colW, width: m.slack * colW }} /> : null}

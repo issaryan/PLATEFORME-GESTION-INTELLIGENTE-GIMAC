@@ -196,6 +196,18 @@ regles := [
 	# (route dédiée) ou le département (route générale du service) ; les services revérifient REF_REPRISE_IMPORT.
 	{"m": "POST", "re": `^/bff/(des|console)/participant/reprise/institutions$`, "p": "REF_REPRISE_IMPORT"},
 	{"m": "POST", "re": `^/bff/(des|console)/homologation/reprise/liaisons$`, "p": "REF_REPRISE_IMPORT"},
+	# Supervision des liaisons, astreintes et relève de quart (D-114, docs/lot1/astreintes-monitoring.md §8) : lecture par
+	# MON_SUPERVISION_READ ; acquittement, main courante, signatures, visa, grille et échanges par leur permission ; la
+	# contresignature (opérateur ou chef de la vacation entrante) et les réponses aux échanges sont revérifiées par
+	# MS-MONITORING (@PreAuthorize, membre de la vacation, titulaire de la plage).
+	{"m": "GET", "re": `^/bff/des/monitoring/(liaisons(/[^/]+)?|alertes(/[^/]+)?|politiques-alerte|vacations/en-cours|vacations/[^/]+(/main-courante(/verification)?|/rapport)?|rapports/[^/]+|grilles(/publiee|/[^/]+(/echanges)?)?)$`, "p": "MON_SUPERVISION_READ"},
+	{"m": "POST", "re": `^/bff/des/monitoring/alertes/[^/]+/acquittement$`, "p": "MON_ALERT_ACK"},
+	{"m": "POST", "re": `^/bff/des/monitoring/(vacations/[^/]+/(main-courante|rapport)|rapports/[^/]+/signature)$`, "p": "MON_SHIFT_OPERATOR"},
+	{"m": "POST", "re": `^/bff/des/monitoring/rapports/[^/]+/contresignature$`, "p": "MON_SUPERVISION_READ"},
+	{"m": "POST", "re": `^/bff/des/monitoring/rapports/[^/]+/visa$`, "p": "MON_SHIFT_LEAD"},
+	{"m": "POST", "re": `^/bff/des/monitoring/(grilles/generation|echanges/[^/]+/(approbation|rejet))$`, "p": "MON_ROSTER_MANAGE"},
+	{"m": "POST", "re": `^/bff/des/monitoring/grilles/[^/]+/publication$`, "p": "MON_ROSTER_PUBLISH"},
+	{"m": "POST", "re": `^/bff/des/monitoring/(grilles/[^/]+/echanges|echanges/[^/]+/(accord|refus))$`, "p": "MON_SUPERVISION_READ"},
 ]
 
 # Routes internes des services (jeton de service) : jamais relayées depuis une couche de présentation.
@@ -218,6 +230,10 @@ messagerie_externe if {
 pilotage if regex.match(`^/bff/des/pilotage(/|$)`, input.path)
 
 organisation if regex.match(`^/bff/(des|console)/iam/(organisation|pouvoirs|demandes)(/|$)`, input.path)
+
+# Supervision et astreintes (D-114) : comme Mon activité, seuls les chemins listés dans « regles » sont relayés, et
+# jamais pour un compte d'institution.
+monitoring if regex.match(`^/bff/des/monitoring(/|$)`, input.path)
 
 # « Mes actions de certification » (D-98, docs/lot1/lancement-processus.md §8) : GET des opérations de l'appelant,
 # ouvert à toute permission d'un acteur du parcours de certification (même liste que le @PreAuthorize du service et
@@ -248,6 +264,11 @@ reserve_interne_externe if {
 
 reserve_interne_externe if {
 	organisation
+	compte_externe
+}
+
+reserve_interne_externe if {
+	monitoring
 	compte_externe
 }
 
@@ -414,6 +435,7 @@ allow if {
 	not portail
 	not messagerie
 	not pilotage
+	not monitoring
 	not organisation
 	not boite_notifications
 	not avatars

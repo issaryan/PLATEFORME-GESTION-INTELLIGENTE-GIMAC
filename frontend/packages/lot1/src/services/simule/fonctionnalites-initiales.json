@@ -970,6 +970,117 @@
    ]
   },
   {
+   "cle": "monitoringSupervision",
+   "application": "des",
+   "module": "exploitation",
+   "libelle": "nav.monitoringSupervision",
+   "groupe": "monitoring",
+   "ordre": 212,
+   "icone": "eye",
+   "visible": true,
+   "permissions": {
+    "tous": [],
+    "unDe": [
+     "MON_SUPERVISION_READ"
+    ]
+   },
+   "widgets": [],
+   "droits": [
+    {
+     "cle": "MON_SUPERVISION_READ",
+     "nature": "CONSULTER",
+     "permission": "MON_SUPERVISION_READ",
+     "libelle": "droits.permission.MON_SUPERVISION_READ"
+    },
+    {
+     "cle": "MON_ALERT_ACK",
+     "nature": "VALIDER",
+     "permission": "MON_ALERT_ACK",
+     "libelle": "droits.permission.MON_ALERT_ACK"
+    }
+   ]
+  },
+  {
+   "cle": "monitoringAstreintes",
+   "application": "des",
+   "module": "exploitation",
+   "libelle": "nav.monitoringAstreintes",
+   "groupe": "monitoring",
+   "ordre": 214,
+   "icone": "calendar",
+   "visible": true,
+   "permissions": {
+    "tous": [],
+    "unDe": [
+     "MON_SUPERVISION_READ"
+    ]
+   },
+   "widgets": [],
+   "droits": [
+    {
+     "cle": "MON_SUPERVISION_READ",
+     "nature": "CONSULTER",
+     "permission": "MON_SUPERVISION_READ",
+     "libelle": "droits.permission.MON_SUPERVISION_READ"
+    },
+    {
+     "cle": "MON_ONCALL_L2",
+     "nature": "CONSULTER",
+     "permission": "MON_ONCALL_L2",
+     "libelle": "droits.permission.MON_ONCALL_L2"
+    },
+    {
+     "cle": "MON_ROSTER_MANAGE",
+     "nature": "CREER",
+     "permission": "MON_ROSTER_MANAGE",
+     "libelle": "droits.permission.MON_ROSTER_MANAGE"
+    },
+    {
+     "cle": "MON_ROSTER_PUBLISH",
+     "nature": "PUBLIER",
+     "permission": "MON_ROSTER_PUBLISH",
+     "libelle": "droits.permission.MON_ROSTER_PUBLISH"
+    }
+   ]
+  },
+  {
+   "cle": "monitoringReleve",
+   "application": "des",
+   "module": "exploitation",
+   "libelle": "nav.monitoringReleve",
+   "groupe": "monitoring",
+   "ordre": 216,
+   "icone": "clock",
+   "visible": true,
+   "permissions": {
+    "tous": [],
+    "unDe": [
+     "MON_SUPERVISION_READ"
+    ]
+   },
+   "widgets": [],
+   "droits": [
+    {
+     "cle": "MON_SUPERVISION_READ",
+     "nature": "CONSULTER",
+     "permission": "MON_SUPERVISION_READ",
+     "libelle": "droits.permission.MON_SUPERVISION_READ"
+    },
+    {
+     "cle": "MON_SHIFT_OPERATOR",
+     "nature": "SIGNER",
+     "permission": "MON_SHIFT_OPERATOR",
+     "libelle": "droits.permission.MON_SHIFT_OPERATOR"
+    },
+    {
+     "cle": "MON_SHIFT_LEAD",
+     "nature": "VALIDER",
+     "permission": "MON_SHIFT_LEAD",
+     "libelle": "droits.permission.MON_SHIFT_LEAD"
+    }
+   ]
+  },
+  {
    "cle": "repriseExistant",
    "application": "des",
    "module": "administration",

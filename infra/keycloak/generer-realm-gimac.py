@@ -61,6 +61,10 @@ PERMISSIONS = {
     "PIL": ["ACTIVITY_OWN", "TEAM_READ", "TASK_ASSIGN"],
     # Notifications de la plateforme (D-80, docs/lot1/notifications.md) : cloche et préférences de chacun.
     "NOT": ["INBOX_READ"],
+    # Supervision des liaisons, astreintes et relève de quart (D-114, docs/lot1/astreintes-monitoring.md §2) : lecture,
+    # acquittement, qualifications (opérateur en salle, astreinte de niveau 2, chef de quart), grille (génération,
+    # publication signée du chef du DES).
+    "MON": ["SUPERVISION_READ", "ALERT_ACK", "SHIFT_OPERATOR", "ONCALL_L2", "SHIFT_LEAD", "ROSTER_MANAGE", "ROSTER_PUBLISH"],
     # Administration des référentiels métier de tous les domaines (D-92, docs/lot1/referentiels-metier-admin.md) :
     # non privilégiée au sens d'IAM (ni IAM_ ni PLATFORM_).
     "REF": ["METIER_ADMIN",
@@ -73,7 +77,9 @@ PERMISSIONS = {
                  # Titre d'une conversation pour une notification (D-80 §2).
                  "COLLABORATION_READ",
                  # Mise en page PDF d'un document composé par un service (D-102, organigramme de MS-IAM).
-                 "DOCUMENT_RENDER"],
+                 "DOCUMENT_RENDER",
+                 # Réception des alertes des sondes par MS-MONITORING (D-114 §4.2), jeton de service de la source.
+                 "MONITORING_ALERT_INGEST"],
 }
 TOUTES = [f"{d}_{p}" for d, ps in PERMISSIONS.items() for p in ps]
 
@@ -208,6 +214,21 @@ for _profil in PROFILS:
         PROFILS[_profil] = PROFILS[_profil] + MESSAGERIE + MON_ACTIVITE
         if _profil in RESPONSABLES:
             PROFILS[_profil] = PROFILS[_profil] + ["PIL_TEAM_READ", "PIL_TASK_ASSIGN"]
+# Supervision et astreintes (D-114, docs/lot1/astreintes-monitoring.md §2) : valeurs de départ, configurables ensuite
+# (D-86). La production monétique tient l'exploitation et la supervision (catalogue D-91) ; les pôles et l'administrateur
+# système tiennent les vacations ; le chef du DES génère, publie la grille et reçoit le dernier palier d'escalade.
+SUPERVISION = {
+    "ROLE_CHEF_DES": ["MON_SUPERVISION_READ", "MON_ALERT_ACK", "MON_ONCALL_L2", "MON_SHIFT_LEAD", "MON_ROSTER_MANAGE", "MON_ROSTER_PUBLISH"],
+    "ROLE_PRODUCTION_MONETIQUE": ["MON_SUPERVISION_READ", "MON_ALERT_ACK", "MON_SHIFT_OPERATOR", "MON_ONCALL_L2", "MON_SHIFT_LEAD"],
+    "ROLE_POLE_RESEAU": ["MON_SUPERVISION_READ", "MON_ALERT_ACK", "MON_SHIFT_OPERATOR", "MON_ONCALL_L2"],
+    "ROLE_POLE_SYSTEME": ["MON_SUPERVISION_READ", "MON_ALERT_ACK", "MON_SHIFT_OPERATOR", "MON_ONCALL_L2"],
+    "ROLE_ADMIN_SYSTEME": ["MON_SUPERVISION_READ", "MON_ALERT_ACK", "MON_SHIFT_OPERATOR"],
+    "ROLE_SUPER_ADMIN": ["MON_SUPERVISION_READ"],
+    "ROLE_RSSI": ["MON_SUPERVISION_READ"],
+}
+for _profil, _ajouts in SUPERVISION.items():
+    PROFILS[_profil] = PROFILS[_profil] + [x for x in _ajouts if x not in PROFILS[_profil]]
+assert [n for n, ps in PROFILS.items() if "MON_ROSTER_PUBLISH" in ps] == ["ROLE_CHEF_DES"]
 # Libellés propres de certaines permissions (description du rôle Keycloak), à défaut « Permission du lot 1 ».
 LIBELLES_PERMISSIONS = {"REF_METIER_ADMIN": "Administration des référentiels métier, tous domaines",
                         "REF_REPRISE_IMPORT": "Reprise de l'existant : import des institutions et des liaisons (simulation ou réel)",
@@ -216,7 +237,15 @@ LIBELLES_PERMISSIONS = {"REF_METIER_ADMIN": "Administration des référentiels m
                         "HOM_FUNCTION_PRODUCTION": "Tenir la fonction Production monétique dans un projet d'homologation",
                         "HOM_FUNCTION_NETWORK": "Tenir la fonction Pôle réseau dans un projet d'homologation",
                         "HOM_FUNCTION_SYSTEM": "Tenir la fonction Pôle système dans un projet d'homologation",
-                        "HOM_FUNCTION_OPERATIONS": "Tenir la fonction Exploitation et Supervision dans un projet d'homologation"}
+                        "HOM_FUNCTION_OPERATIONS": "Tenir la fonction Exploitation et Supervision dans un projet d'homologation",
+                        "MON_SUPERVISION_READ": "Supervision : liaisons, alertes, vacations, grille d'astreinte",
+                        "MON_ALERT_ACK": "Acquitter une alerte (membre de la vacation en cours)",
+                        "MON_SHIFT_OPERATOR": "Opérateur de supervision en salle (niveau 1) : main courante et relève",
+                        "MON_ONCALL_L2": "Astreinte joignable (niveau 2)",
+                        "MON_SHIFT_LEAD": "Habilitation de chef de quart : visa de la relève",
+                        "MON_ROSTER_MANAGE": "Générer la grille d'astreinte et approuver les échanges",
+                        "MON_ROSTER_PUBLISH": "Publier la grille d'astreinte (signature du chef du DES)",
+                        "INTERNAL_MONITORING_ALERT_INGEST": "Réception des alertes des sondes par MS-MONITORING"}
 # D-94 §3 : le conducteur de projet est le porteur de HOM_PROJECT_CONDUCT, donnée par défaut au profil conducteur seul.
 assert [n for n, ps in PROFILS.items() if "HOM_PROJECT_CONDUCT" in ps] == ["ROLE_CONDUCTEUR_PROJET"]
 # D-97 : permission de chaque fonction opérationnelle, donnée aux profils que le catalogue des fonctions (D-91,
@@ -268,6 +297,9 @@ SERVICES = {
     # (D-87) : unités et membres, pouvoirs, vérification des assertions FIDO2 SIGNATURE_PROCESSUS (MS-IAM, routes
     # /api/v1/interne/** sous INTERNAL_IAM_READ), livrables PROCESSUS_UNITE (GET /api/v1/interne/documents/{id}).
     "pilotage-service": ["INTERNAL_IAM_READ", "INTERNAL_DOCUMENT_READ"],
+    # Supervision et astreintes (D-114) : opérateurs qualifiés, absences validées et vérification des assertions FIDO2
+    # (MS-IAM), dépôt des rapports de quart scellés (MS-DOCUMENT).
+    "monitoring-service": ["INTERNAL_IAM_READ", "INTERNAL_DOCUMENT_READ", "INTERNAL_DOCUMENT_DEPOSIT"],
     # Notifications (D-80) : noms des comptes (MS-IAM) et titre des conversations (MS-COLLABORATION).
     "notification-service": ["INTERNAL_IAM_READ", "INTERNAL_COLLABORATION_READ"],
     # MS-IAM administre le realm par l'API d'administration (D-62) : rôles de realm-management ci-dessous. Organigramme en

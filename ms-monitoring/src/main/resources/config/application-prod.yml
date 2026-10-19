@@ -112,3 +112,16 @@ jhipster:
 # ===================================================================
 
 # application:
+
+# Supervision et astreintes (D-114) : adaptateurs réels, jamais de substitut en production.
+gimac:
+  adaptateurs:
+    annuaire: real
+    disponibilites: real
+    documents: real
+    reauthentification: real
+  services:
+    iam:
+      url: http://iam:8081
+    document:
+      url: http://document:8083

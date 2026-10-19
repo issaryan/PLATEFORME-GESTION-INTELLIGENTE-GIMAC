@@ -154,8 +154,28 @@ class RoutesPresentationTest {
                 "${gimac.services.pilotage}",
                 "/api/v1/processus/instances/i1/etapes/RECETTE/signature"
             ),
-            Arguments.of("/bff/des/pilotage/processus/instances/i1/annulation", "${gimac.services.pilotage}", "/api/v1/processus/instances/i1/annulation")
+            Arguments.of("/bff/des/pilotage/processus/instances/i1/annulation", "${gimac.services.pilotage}", "/api/v1/processus/instances/i1/annulation"),
+            // Supervision, astreintes et relève de quart (D-114, docs/lot1/astreintes-monitoring.md §8).
+            Arguments.of("/bff/des/monitoring/alertes", "${gimac.services.monitoring}", "/api/v1/alertes"),
+            Arguments.of("/bff/des/monitoring/alertes/a1/acquittement", "${gimac.services.monitoring}", "/api/v1/alertes/a1/acquittement"),
+            Arguments.of("/bff/des/monitoring/grilles/generation", "${gimac.services.monitoring}", "/api/v1/grilles/generation"),
+            Arguments.of("/bff/des/monitoring/rapports/r1/visa", "${gimac.services.monitoring}", "/api/v1/rapports/r1/visa"),
+            Arguments.of("/bff/des/monitoring/vacations/v1/main-courante", "${gimac.services.monitoring}", "/api/v1/vacations/v1/main-courante")
         );
+    }
+
+    @Test
+    @DisplayName("D-114 : supervision et astreintes par une seule route MS-MONITORING, OPA d'abord, sans couche console ni portail")
+    void supervisionAstreintes() {
+        for (String chemin : new String[] { "/bff/des/monitoring/liaisons", "/bff/des/monitoring/rapports/r1/signature", "/bff/des/monitoring/interne/alertes" }) {
+            List<Route> r = correspondantes(chemin);
+            assertThat(r).hasSize(1);
+            assertThat(r.get(0).id()).isEqualTo("des-monitoring");
+            assertThat(r.get(0).filtres()).startsWith("OpaAuthorize");
+            assertThat(r.get(0).filtres()).noneMatch(f -> f.contains("RemoveRequestHeader") || f.contains("Reauth"));
+        }
+        assertThat(correspondantes("/bff/console/monitoring/liaisons")).isEmpty();
+        assertThat(correspondantes("/bff/portail/monitoring/liaisons")).isEmpty();
     }
 
     @Test

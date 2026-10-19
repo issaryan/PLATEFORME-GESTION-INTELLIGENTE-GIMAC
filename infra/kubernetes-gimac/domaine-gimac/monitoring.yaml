@@ -1,4 +1,6 @@
-# Domaine Keycloak « gimac » du lot 1 (D-61, D-62) : émetteur des jetons.
+# Domaine Keycloak « gimac » du lot 1 (D-61, D-62) : émetteur des jetons. Supervision et astreintes (D-114) : client de
+# service monitoring-service (opérateurs, absences et vérification FIDO2 de MS-IAM, dépôt des rapports de quart dans
+# MS-DOCUMENT) ; profil prod, adaptateurs « real » (application-prod.yml).
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -12,3 +14,14 @@ spec:
           env:
             - name: SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_OIDC_ISSUER_URI
               value: http://keycloak.gimac-des.des.gimac.local/realms/gimac
+            - name: GIMAC_SERVICE_CLIENT_ID
+              value: monitoring-service
+            - name: GIMAC_SERVICE_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: gimac-clients-keycloak
+                  key: monitoring-service
+            - name: GIMAC_SERVICES_IAM_URL
+              value: http://iam:8081
+            - name: GIMAC_SERVICES_DOCUMENT_URL
+              value: http://document:8083
