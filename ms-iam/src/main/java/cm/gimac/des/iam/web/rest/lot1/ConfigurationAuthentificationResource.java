@@ -159,8 +159,8 @@ public class ConfigurationAuthentificationResource {
 
     @GetMapping("/permissions")
     @PreAuthorize("hasAuthority('IAM_ACCOUNT_READ')")
-    public List<String> permissions() {
-        return service.permissions();
+    public List<String> permissions(@RequestParam(name = "prefixe", required = false) String prefixe) {
+        return service.permissions(prefixe);
     }
 
     @PutMapping("/profils/{code}/permissions")

@@ -671,6 +671,366 @@
         "clientRole": false
       },
       {
+        "name": "SBX_HAB_ADMINISTRATION",
+        "description": "Sandbox, habilitations : administration",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_HAB_SIMULATION",
+        "description": "Sandbox, habilitations : simulation",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_HAB_EXECUTION",
+        "description": "Sandbox, habilitations : exécution de campagne",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_HAB_VALIDATION",
+        "description": "Sandbox, habilitations : validation de verdict",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_HAB_CONSULTATION",
+        "description": "Sandbox, habilitations : consultation",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_RAC_ADMINISTRATION",
+        "description": "Sandbox, raccordements : administration",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_RAC_SIMULATION",
+        "description": "Sandbox, raccordements : simulation",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_RAC_EXECUTION",
+        "description": "Sandbox, raccordements : exécution de campagne",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_RAC_VALIDATION",
+        "description": "Sandbox, raccordements : validation de verdict",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_RAC_CONSULTATION",
+        "description": "Sandbox, raccordements : consultation",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_REF_ADMINISTRATION",
+        "description": "Sandbox, référentiels : administration",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_REF_SIMULATION",
+        "description": "Sandbox, référentiels : simulation",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_REF_EXECUTION",
+        "description": "Sandbox, référentiels : exécution de campagne",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_REF_VALIDATION",
+        "description": "Sandbox, référentiels : validation de verdict",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_REF_CONSULTATION",
+        "description": "Sandbox, référentiels : consultation",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_SCN_ADMINISTRATION",
+        "description": "Sandbox, scénarios : administration",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_SCN_SIMULATION",
+        "description": "Sandbox, scénarios : simulation",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_SCN_EXECUTION",
+        "description": "Sandbox, scénarios : exécution de campagne",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_SCN_VALIDATION",
+        "description": "Sandbox, scénarios : validation de verdict",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_SCN_CONSULTATION",
+        "description": "Sandbox, scénarios : consultation",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_DON_ADMINISTRATION",
+        "description": "Sandbox, données de test : administration",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_DON_SIMULATION",
+        "description": "Sandbox, données de test : simulation",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_DON_EXECUTION",
+        "description": "Sandbox, données de test : exécution de campagne",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_DON_VALIDATION",
+        "description": "Sandbox, données de test : validation de verdict",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_DON_CONSULTATION",
+        "description": "Sandbox, données de test : consultation",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_SIM_ADMINISTRATION",
+        "description": "Sandbox, simulation : administration",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_SIM_SIMULATION",
+        "description": "Sandbox, simulation : simulation",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_SIM_EXECUTION",
+        "description": "Sandbox, simulation : exécution de campagne",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_SIM_VALIDATION",
+        "description": "Sandbox, simulation : validation de verdict",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_SIM_CONSULTATION",
+        "description": "Sandbox, simulation : consultation",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_MOB_ADMINISTRATION",
+        "description": "Sandbox, interface mobile : administration",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_MOB_SIMULATION",
+        "description": "Sandbox, interface mobile : simulation",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_MOB_EXECUTION",
+        "description": "Sandbox, interface mobile : exécution de campagne",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_MOB_VALIDATION",
+        "description": "Sandbox, interface mobile : validation de verdict",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_MOB_CONSULTATION",
+        "description": "Sandbox, interface mobile : consultation",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_ISO_ADMINISTRATION",
+        "description": "Sandbox, interface ISO 20022 : administration",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_ISO_SIMULATION",
+        "description": "Sandbox, interface ISO 20022 : simulation",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_ISO_EXECUTION",
+        "description": "Sandbox, interface ISO 20022 : exécution de campagne",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_ISO_VALIDATION",
+        "description": "Sandbox, interface ISO 20022 : validation de verdict",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_ISO_CONSULTATION",
+        "description": "Sandbox, interface ISO 20022 : consultation",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_CAR_ADMINISTRATION",
+        "description": "Sandbox, interface carte : administration",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_CAR_SIMULATION",
+        "description": "Sandbox, interface carte : simulation",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_CAR_EXECUTION",
+        "description": "Sandbox, interface carte : exécution de campagne",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_CAR_VALIDATION",
+        "description": "Sandbox, interface carte : validation de verdict",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_CAR_CONSULTATION",
+        "description": "Sandbox, interface carte : consultation",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_CER_ADMINISTRATION",
+        "description": "Sandbox, campagnes : administration",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_CER_SIMULATION",
+        "description": "Sandbox, campagnes : simulation",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_CER_EXECUTION",
+        "description": "Sandbox, campagnes : exécution de campagne",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_CER_VALIDATION",
+        "description": "Sandbox, campagnes : validation de verdict",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_CER_CONSULTATION",
+        "description": "Sandbox, campagnes : consultation",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_TRA_ADMINISTRATION",
+        "description": "Sandbox, traces : administration",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_TRA_SIMULATION",
+        "description": "Sandbox, traces : simulation",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_TRA_EXECUTION",
+        "description": "Sandbox, traces : exécution de campagne",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_TRA_VALIDATION",
+        "description": "Sandbox, traces : validation de verdict",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_TRA_CONSULTATION",
+        "description": "Sandbox, traces : consultation",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_LEC_ADMINISTRATION",
+        "description": "Sandbox, contrat de lecture : administration",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_LEC_SIMULATION",
+        "description": "Sandbox, contrat de lecture : simulation",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_LEC_EXECUTION",
+        "description": "Sandbox, contrat de lecture : exécution de campagne",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_LEC_VALIDATION",
+        "description": "Sandbox, contrat de lecture : validation de verdict",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "SBX_LEC_CONSULTATION",
+        "description": "Sandbox, contrat de lecture : consultation",
+        "composite": false,
+        "clientRole": false
+      },
+      {
         "name": "ROLE_INGENIEUR_HOMOLOGATION",
         "description": "Conduit les opérations d'homologation des liaisons (référentiel, preuves, validation) et prépare la certification.",
         "composite": true,
@@ -739,6 +1099,18 @@
             "CER_REGISTER_EXPORT",
             "CER_ATTESTATION_STATUS_REQUEST",
             "HOM_STEP_MANAGE",
+            "SBX_HAB_CONSULTATION",
+            "SBX_RAC_CONSULTATION",
+            "SBX_REF_CONSULTATION",
+            "SBX_SCN_CONSULTATION",
+            "SBX_DON_CONSULTATION",
+            "SBX_SIM_CONSULTATION",
+            "SBX_MOB_CONSULTATION",
+            "SBX_ISO_CONSULTATION",
+            "SBX_CAR_CONSULTATION",
+            "SBX_CER_CONSULTATION",
+            "SBX_TRA_CONSULTATION",
+            "SBX_LEC_CONSULTATION",
             "HOM_REFERENTIEL_EDIT",
             "HOM_REFERENTIEL_PUBLISH",
             "HOM_REFERENTIEL_READ_ALL",
@@ -796,6 +1168,30 @@
             "PLATFORM_MESSAGING_EDIT",
             "PLATFORM_OPS_READ",
             "PLATFORM_OPS_EXECUTE",
+            "SBX_HAB_ADMINISTRATION",
+            "SBX_HAB_CONSULTATION",
+            "SBX_RAC_ADMINISTRATION",
+            "SBX_RAC_CONSULTATION",
+            "SBX_REF_ADMINISTRATION",
+            "SBX_REF_CONSULTATION",
+            "SBX_SCN_ADMINISTRATION",
+            "SBX_SCN_CONSULTATION",
+            "SBX_DON_ADMINISTRATION",
+            "SBX_DON_CONSULTATION",
+            "SBX_SIM_ADMINISTRATION",
+            "SBX_SIM_CONSULTATION",
+            "SBX_MOB_ADMINISTRATION",
+            "SBX_MOB_CONSULTATION",
+            "SBX_ISO_ADMINISTRATION",
+            "SBX_ISO_CONSULTATION",
+            "SBX_CAR_ADMINISTRATION",
+            "SBX_CAR_CONSULTATION",
+            "SBX_CER_ADMINISTRATION",
+            "SBX_CER_CONSULTATION",
+            "SBX_TRA_ADMINISTRATION",
+            "SBX_TRA_CONSULTATION",
+            "SBX_LEC_ADMINISTRATION",
+            "SBX_LEC_CONSULTATION",
             "HOM_REFERENTIEL_EDIT",
             "REF_METIER_ADMIN",
             "HOM_REFERENTIEL_READ_ALL",
@@ -849,6 +1245,22 @@
             "PLATFORM_SECURITY_POLICY_EDIT",
             "PLATFORM_MESSAGING_EDIT",
             "PLATFORM_OPS_READ",
+            "SBX_RAC_ADMINISTRATION",
+            "SBX_DON_ADMINISTRATION",
+            "SBX_TRA_ADMINISTRATION",
+            "SBX_LEC_ADMINISTRATION",
+            "SBX_HAB_CONSULTATION",
+            "SBX_RAC_CONSULTATION",
+            "SBX_REF_CONSULTATION",
+            "SBX_SCN_CONSULTATION",
+            "SBX_DON_CONSULTATION",
+            "SBX_SIM_CONSULTATION",
+            "SBX_MOB_CONSULTATION",
+            "SBX_ISO_CONSULTATION",
+            "SBX_CAR_CONSULTATION",
+            "SBX_CER_CONSULTATION",
+            "SBX_TRA_CONSULTATION",
+            "SBX_LEC_CONSULTATION",
             "HOM_REFERENTIEL_READ_ALL",
             "COL_MESSAGE_READ",
             "COL_MESSAGE_SEND",
@@ -1079,6 +1491,23 @@
             "HOM_EVIDENCE_SUBMIT",
             "HOM_OPERATION_VALIDATE",
             "CER_DOSSIER_VERIFY",
+            "SBX_CER_EXECUTION",
+            "SBX_CER_VALIDATION",
+            "SBX_CER_CONSULTATION",
+            "SBX_SIM_SIMULATION",
+            "SBX_SIM_CONSULTATION",
+            "SBX_MOB_SIMULATION",
+            "SBX_MOB_CONSULTATION",
+            "SBX_ISO_SIMULATION",
+            "SBX_ISO_CONSULTATION",
+            "SBX_CAR_SIMULATION",
+            "SBX_CAR_CONSULTATION",
+            "SBX_RAC_CONSULTATION",
+            "SBX_REF_CONSULTATION",
+            "SBX_SCN_CONSULTATION",
+            "SBX_DON_CONSULTATION",
+            "SBX_TRA_CONSULTATION",
+            "SBX_LEC_CONSULTATION",
             "COL_MESSAGE_READ",
             "COL_MESSAGE_SEND",
             "PIL_ACTIVITY_OWN",
@@ -1112,6 +1541,19 @@
             "CER_GOLIVE_REPORT_SUBMIT",
             "HOM_FUNCTION_PRODUCTION",
             "HOM_FUNCTION_OPERATIONS",
+            "SBX_CAR_ADMINISTRATION",
+            "SBX_DON_ADMINISTRATION",
+            "SBX_TRA_ADMINISTRATION",
+            "SBX_CAR_SIMULATION",
+            "SBX_DON_SIMULATION",
+            "SBX_RAC_CONSULTATION",
+            "SBX_REF_CONSULTATION",
+            "SBX_TRA_CONSULTATION",
+            "SBX_CAR_CONSULTATION",
+            "SBX_DON_CONSULTATION",
+            "SBX_SIM_CONSULTATION",
+            "SBX_CER_CONSULTATION",
+            "SBX_LEC_CONSULTATION",
             "COL_MESSAGE_READ",
             "COL_MESSAGE_SEND",
             "PIL_ACTIVITY_OWN",
@@ -1229,6 +1671,12 @@
             "PLATFORM_CONFIG_READ",
             "PLATFORM_OPS_READ",
             "PLATFORM_OPS_EXECUTE",
+            "SBX_TRA_ADMINISTRATION",
+            "SBX_TRA_CONSULTATION",
+            "SBX_RAC_CONSULTATION",
+            "SBX_SIM_CONSULTATION",
+            "SBX_CER_CONSULTATION",
+            "SBX_LEC_CONSULTATION",
             "COL_MESSAGE_READ",
             "COL_MESSAGE_SEND",
             "PIL_ACTIVITY_OWN",
@@ -1300,6 +1748,192 @@
         "attributes": {
           "gimac_libelle": [
             "Conducteur de projet"
+          ]
+        }
+      },
+      {
+        "name": "ROLE_SBX_ADMIN_INSTITUTION",
+        "description": "Crée, suspend et rétablit les comptes de ses collaborateurs dans la sandbox, accorde les mandats des partenaires techniques et désigne le chef de projet.",
+        "composite": true,
+        "clientRole": false,
+        "composites": {
+          "realm": [
+            "ROLE_USER",
+            "SBX_HAB_ADMINISTRATION",
+            "SBX_HAB_CONSULTATION",
+            "SBX_RAC_CONSULTATION",
+            "SBX_CER_CONSULTATION",
+            "SBX_TRA_CONSULTATION",
+            "NOT_INBOX_READ"
+          ]
+        },
+        "attributes": {
+          "gimac_libelle": [
+            "Sandbox : administrateur de l'institution"
+          ],
+          "gimac_externe": [
+            "true"
+          ]
+        }
+      },
+      {
+        "name": "ROLE_SBX_CHEF_PROJET",
+        "description": "Pilote la certification de son institution dans la sandbox : demande les campagnes, affecte les cas, suit l'avancement et les bilans.",
+        "composite": true,
+        "clientRole": false,
+        "composites": {
+          "realm": [
+            "ROLE_USER",
+            "SBX_CER_EXECUTION",
+            "SBX_CER_CONSULTATION",
+            "SBX_SIM_SIMULATION",
+            "SBX_SIM_CONSULTATION",
+            "SBX_MOB_SIMULATION",
+            "SBX_MOB_CONSULTATION",
+            "SBX_ISO_SIMULATION",
+            "SBX_ISO_CONSULTATION",
+            "SBX_CAR_SIMULATION",
+            "SBX_CAR_CONSULTATION",
+            "SBX_RAC_CONSULTATION",
+            "SBX_DON_CONSULTATION",
+            "SBX_SCN_CONSULTATION",
+            "SBX_TRA_CONSULTATION",
+            "NOT_INBOX_READ"
+          ]
+        },
+        "attributes": {
+          "gimac_libelle": [
+            "Sandbox : chef de projet participant"
+          ],
+          "gimac_externe": [
+            "true"
+          ]
+        }
+      },
+      {
+        "name": "ROLE_SBX_DEVELOPPEUR",
+        "description": "Raccorde le système de son institution à la sandbox, conduit ses essais libres et consulte ses chemins d'exécution et ses traces.",
+        "composite": true,
+        "clientRole": false,
+        "composites": {
+          "realm": [
+            "ROLE_USER",
+            "SBX_RAC_ADMINISTRATION",
+            "SBX_RAC_CONSULTATION",
+            "SBX_DON_SIMULATION",
+            "SBX_DON_CONSULTATION",
+            "SBX_SIM_SIMULATION",
+            "SBX_SIM_CONSULTATION",
+            "SBX_MOB_SIMULATION",
+            "SBX_MOB_CONSULTATION",
+            "SBX_ISO_SIMULATION",
+            "SBX_ISO_CONSULTATION",
+            "SBX_CAR_SIMULATION",
+            "SBX_CAR_CONSULTATION",
+            "SBX_SCN_CONSULTATION",
+            "SBX_TRA_CONSULTATION",
+            "NOT_INBOX_READ"
+          ]
+        },
+        "attributes": {
+          "gimac_libelle": [
+            "Sandbox : développeur du participant"
+          ],
+          "gimac_externe": [
+            "true"
+          ]
+        }
+      },
+      {
+        "name": "ROLE_SBX_TESTEUR",
+        "description": "Exécute dans la sandbox les cas qui lui sont affectés dans une campagne et consigne ses observations.",
+        "composite": true,
+        "clientRole": false,
+        "composites": {
+          "realm": [
+            "ROLE_USER",
+            "SBX_CER_EXECUTION",
+            "SBX_CER_CONSULTATION",
+            "SBX_SIM_EXECUTION",
+            "SBX_SIM_CONSULTATION",
+            "SBX_MOB_EXECUTION",
+            "SBX_MOB_CONSULTATION",
+            "SBX_ISO_EXECUTION",
+            "SBX_ISO_CONSULTATION",
+            "SBX_CAR_EXECUTION",
+            "SBX_CAR_CONSULTATION",
+            "SBX_TRA_CONSULTATION",
+            "NOT_INBOX_READ"
+          ]
+        },
+        "attributes": {
+          "gimac_libelle": [
+            "Sandbox : testeur du participant"
+          ],
+          "gimac_externe": [
+            "true"
+          ]
+        }
+      },
+      {
+        "name": "ROLE_SBX_LECTEUR",
+        "description": "Consulte dans la sandbox, sans rien modifier, les campagnes, les résultats et les bilans de son institution.",
+        "composite": true,
+        "clientRole": false,
+        "composites": {
+          "realm": [
+            "ROLE_USER",
+            "SBX_CER_CONSULTATION",
+            "SBX_RAC_CONSULTATION",
+            "SBX_SIM_CONSULTATION",
+            "SBX_MOB_CONSULTATION",
+            "SBX_ISO_CONSULTATION",
+            "SBX_CAR_CONSULTATION",
+            "NOT_INBOX_READ"
+          ]
+        },
+        "attributes": {
+          "gimac_libelle": [
+            "Sandbox : lecteur du participant"
+          ],
+          "gimac_externe": [
+            "true"
+          ]
+        }
+      },
+      {
+        "name": "ROLE_SBX_PARTENAIRE",
+        "description": "Intégrateur ou éditeur mandaté par une institution, pour une durée définie et révocable, dans la limite de son mandat.",
+        "composite": true,
+        "clientRole": false,
+        "composites": {
+          "realm": [
+            "ROLE_USER",
+            "SBX_RAC_ADMINISTRATION",
+            "SBX_RAC_CONSULTATION",
+            "SBX_DON_SIMULATION",
+            "SBX_DON_CONSULTATION",
+            "SBX_SIM_SIMULATION",
+            "SBX_SIM_CONSULTATION",
+            "SBX_MOB_SIMULATION",
+            "SBX_MOB_CONSULTATION",
+            "SBX_ISO_SIMULATION",
+            "SBX_ISO_CONSULTATION",
+            "SBX_CAR_SIMULATION",
+            "SBX_CAR_CONSULTATION",
+            "SBX_CER_EXECUTION",
+            "SBX_CER_CONSULTATION",
+            "SBX_SCN_CONSULTATION",
+            "SBX_TRA_CONSULTATION",
+            "NOT_INBOX_READ"
+          ]
+        },
+        "attributes": {
+          "gimac_libelle": [
+            "Sandbox : partenaire technique mandaté"
+          ],
+          "gimac_externe": [
+            "true"
           ]
         }
       }

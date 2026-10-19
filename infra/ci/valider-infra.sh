@@ -79,10 +79,11 @@ valider_opa() {
   controler "opa check --strict ($politiques)" opa check --strict "$politiques"
   controler "opa fmt : politiques au format canonique" opa fmt --list --fail "$politiques"
   if compgen -G "$politiques/*_test.rego" >/dev/null; then
-    controler "opa test (tests unitaires des politiques)" opa test --verbose=false "$politiques"
+    # Délai par test de 60 s : les tests qui parcourent toutes les permissions dépassent les 5 s par défaut sur un poste chargé.
+    controler "opa test (tests unitaires des politiques)" opa test --timeout 60s --verbose=false "$politiques"
     # Couverture des politiques par leurs tests : même seuil que le code (D-61, 80 %).
     local couverture
-    if couverture="$(opa test --coverage --threshold 80 --format=json "$politiques")"; then
+    if couverture="$(opa test --timeout 60s --coverage --threshold 80 --format=json "$politiques")"; then
       reussi "opa test --coverage ≥ 80 % ($(python3 -c 'import json,sys; print(round(json.load(sys.stdin)["coverage"], 1))' <<<"$couverture") %)"
     else
       echec "opa test --coverage : couverture des politiques inférieure à 80 %"

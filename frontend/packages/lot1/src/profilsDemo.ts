@@ -23,9 +23,12 @@ export function identifiantDemo(nom: string): string {
   return `${prenom[0]}.${reste[0] ?? prenom}`
 }
 
+/** Profils externes du domaine (attribut gimac_externe, D-94) : jamais repérés par leur nom. */
+const EXTERNES = new Set(PROFILS_DOMAINE.filter((p) => p.externe).map((p) => p.code))
+
 export const PROFILS_INTERNES_DEMO: Record<string, ProfilInterneDemo> = Object.fromEntries(
   Object.entries(PROFILS)
-    .filter(([role]) => role !== 'ROLE_CORRESPONDANT')
+    .filter(([role]) => !EXTERNES.has(role))
     .map(([role, permissions]) => {
       const hors = IDENTITES_HORS_ANNUAIRE[role]
       if (hors) return [role, { ...hors, permissions }]

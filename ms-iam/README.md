@@ -198,6 +198,7 @@ Copié et adapté (paquet `cm.gimac.des.iam`) ; chaque bean est inactif tant que
 | 2026-10-13 | D-105 | Profil `ROLE_AGENT_SSI` (agent de la sécurité des SI) attribuable ; changelog `20261013120000_iam_agent_ssi.xml` : demandable par le RSSI et la direction générale ; annuaire en mémoire aligné |
 | 2026-10-13 | D-107 | D-107 : fonctionnalité `repriseExistant` (droit `REF_REPRISE_IMPORT`, sans écran) dans `fonctionnalites-initiales.json` |
 | 2026-10-19 | D-114 | Catalogue des fonctionnalités : `monitoringSupervision`, `monitoringAstreintes`, `monitoringReleve` (groupe `monitoring`, prédicat `MON_SUPERVISION_READ`) |
+| 2026-10-19 | D-115 | `ReglesSandbox` : permissions `SBX_<MODULE>_<FONCTION>`, validation des verdicts refusée à tout profil externe (422 `IAM_SBX_VALIDATION_RESERVEE`) à la création, à la recomposition et au passage en externe ; `GET /configuration/permissions?prefixe=` ; six profils `ROLE_SBX_*` attribuables et externes ; module sandbox du catalogue des fonctionnalités |
 <!-- GIMAC:FIN -->
 
 # iam

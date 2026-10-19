@@ -81,6 +81,11 @@ PERMISSIONS = {
                  # Réception des alertes des sondes par MS-MONITORING (D-114 §4.2), jeton de service de la source.
                  "MONITORING_ALERT_INGEST"],
 }
+# Sandbox GIMAC (D-115, docs/lot1/sandbox-existant-adapte.md §2, US-EXI-02) : SBX_<MODULE>_<FONCTION>, douze modules et cinq
+# fonctions (CA-SBX-GIMAC-02 UC-INS-04), soit soixante permissions contrôlées côté serveur par les services de la sandbox.
+SBX_MODULES = ["HAB", "RAC", "REF", "SCN", "DON", "SIM", "MOB", "ISO", "CAR", "CER", "TRA", "LEC"]
+SBX_FONCTIONS = ["ADMINISTRATION", "SIMULATION", "EXECUTION", "VALIDATION", "CONSULTATION"]
+PERMISSIONS["SBX"] = [f"{m}_{f}" for m in SBX_MODULES for f in SBX_FONCTIONS]
 TOUTES = [f"{d}_{p}" for d, ps in PERMISSIONS.items() for p in ps]
 
 LECTURE_DES = ["HOM_REFERENTIEL_READ", "HOM_LIAISON_READ", "HOM_LIAISON_LIST", "HOM_DASHBOARD_READ", "CER_CIRCUIT_READ",
@@ -198,6 +203,74 @@ REFERENTIEL_LECTURE_COMPLETE = {"ROLE_DG", "ROLE_CONFORMITE", "ROLE_RSSI", "ROLE
 assert [n for n, ps in PROFILS.items() if "HOM_LIAISON_OPEN" in ps] == ["ROLE_CHEF_DDRM"]
 # Agent de la sécurité des SI : ni administration des comptes ou de la plateforme, ni quitus.
 assert not [p for p in PROFILS["ROLE_AGENT_SSI"] if p.startswith(("IAM_", "PLATFORM_", "CER_QUITUS_"))]
+# Sandbox GIMAC (D-115 §2, CA-SBX-GIMAC-02 UC-INS-04) : valeurs de départ, configurables ensuite depuis la console (D-86,
+# écran des profils), sans seconde administration des droits. Les fonctions du GIMAC s'ajoutent aux profils existants
+# (identité unique) ; les six rôles de portée institution sont des profils externes ROLE_SBX_* du portail. Le prestataire
+# de maintenance passe par l'accès temporaire par délégation (US-EXI-24), pas par un profil. La validation des verdicts
+# (SBX_*_VALIDATION) n'est jamais donnée à un profil externe, et MS-IAM refuse de l'y ajouter (RG-05, ReglesSandbox).
+def _sbx(*couples):
+    """Permissions SBX : couples (modules, fonctions), « * » pour tous les modules."""
+    l = []
+    for modules, fonctions in couples:
+        for m in (SBX_MODULES if modules == "*" else modules.split()):
+            for f in fonctions.split():
+                if f"SBX_{m}_{f}" not in l:
+                    l.append(f"SBX_{m}_{f}")
+    return l
+INTERFACES_SBX = "SIM MOB ISO CAR"
+SANDBOX_GIMAC = {
+    # Administrateur GIMAC de la sandbox.
+    "ROLE_SUPER_ADMIN": _sbx(("*", "ADMINISTRATION CONSULTATION")),
+    # Responsable de produit : lecture de toute la sandbox.
+    "ROLE_CHEF_DES": _sbx(("*", "CONSULTATION")),
+    # Ingénieur certificateur : seul à valider les verdicts.
+    "ROLE_SNA": _sbx(("CER", "EXECUTION VALIDATION CONSULTATION"), (INTERFACES_SBX, "SIMULATION CONSULTATION"),
+                     ("RAC REF SCN DON TRA LEC", "CONSULTATION")),
+    # Certificats, clés et plages de BIN de test, périmètre du compte de service du DES, conservation.
+    "ROLE_RSSI": _sbx(("RAC DON TRA LEC", "ADMINISTRATION"), ("*", "CONSULTATION")),
+    # Plages de BIN, profils de cartes, clés de test et paramètres ISO 8583 ; exploitation (catalogue D-91).
+    "ROLE_PRODUCTION_MONETIQUE": _sbx(("CAR DON TRA", "ADMINISTRATION"), ("CAR DON", "SIMULATION"), ("RAC REF TRA CAR DON SIM CER LEC", "CONSULTATION")),
+    # Exploitant de la plateforme.
+    "ROLE_ADMIN_SYSTEME": _sbx(("TRA", "ADMINISTRATION CONSULTATION"), ("RAC SIM CER LEC", "CONSULTATION")),
+}
+SANDBOX_INSTITUTIONS = {
+    "ROLE_SBX_ADMIN_INSTITUTION": _sbx(("HAB", "ADMINISTRATION CONSULTATION"), ("RAC CER TRA", "CONSULTATION")),
+    "ROLE_SBX_CHEF_PROJET": _sbx(("CER", "EXECUTION CONSULTATION"), (INTERFACES_SBX, "SIMULATION CONSULTATION"),
+                                 ("RAC DON SCN TRA", "CONSULTATION")),
+    "ROLE_SBX_DEVELOPPEUR": _sbx(("RAC", "ADMINISTRATION CONSULTATION"), ("DON " + INTERFACES_SBX, "SIMULATION CONSULTATION"),
+                                 ("SCN TRA", "CONSULTATION")),
+    "ROLE_SBX_TESTEUR": _sbx(("CER " + INTERFACES_SBX, "EXECUTION CONSULTATION"), ("TRA", "CONSULTATION")),
+    "ROLE_SBX_LECTEUR": _sbx(("CER RAC " + INTERFACES_SBX, "CONSULTATION")),
+    "ROLE_SBX_PARTENAIRE": _sbx(("RAC", "ADMINISTRATION CONSULTATION"), ("DON " + INTERFACES_SBX, "SIMULATION CONSULTATION"),
+                                ("CER", "EXECUTION CONSULTATION"), ("SCN TRA", "CONSULTATION")),
+}
+PRESENTATIONS_SANDBOX = {
+    "ROLE_SBX_ADMIN_INSTITUTION": ("Sandbox : administrateur de l'institution",
+        "Crée, suspend et rétablit les comptes de ses collaborateurs dans la sandbox, accorde les mandats des partenaires techniques et désigne le chef de projet."),
+    "ROLE_SBX_CHEF_PROJET": ("Sandbox : chef de projet participant",
+        "Pilote la certification de son institution dans la sandbox : demande les campagnes, affecte les cas, suit l'avancement et les bilans."),
+    "ROLE_SBX_DEVELOPPEUR": ("Sandbox : développeur du participant",
+        "Raccorde le système de son institution à la sandbox, conduit ses essais libres et consulte ses chemins d'exécution et ses traces."),
+    "ROLE_SBX_TESTEUR": ("Sandbox : testeur du participant",
+        "Exécute dans la sandbox les cas qui lui sont affectés dans une campagne et consigne ses observations."),
+    "ROLE_SBX_LECTEUR": ("Sandbox : lecteur du participant",
+        "Consulte dans la sandbox, sans rien modifier, les campagnes, les résultats et les bilans de son institution."),
+    "ROLE_SBX_PARTENAIRE": ("Sandbox : partenaire technique mandaté",
+        "Intégrateur ou éditeur mandaté par une institution, pour une durée définie et révocable, dans la limite de son mandat."),
+}
+assert set(PRESENTATIONS_SANDBOX) == set(SANDBOX_INSTITUTIONS)
+assert all(1 <= len(l) <= 80 and len(d) <= 500 and "\u2014" not in l + d for l, d in PRESENTATIONS_SANDBOX.values())
+for _profil, _ajouts in SANDBOX_GIMAC.items():
+    PROFILS[_profil] = PROFILS[_profil] + [x for x in _ajouts if x not in PROFILS[_profil]]
+PROFILS.update({n: ps + ["NOT_INBOX_READ"] for n, ps in SANDBOX_INSTITUTIONS.items()})
+PRESENTATIONS.update(PRESENTATIONS_SANDBOX)
+PROFILS_EXTERNES = PROFILS_EXTERNES | set(SANDBOX_INSTITUTIONS)
+# RG-05 : la validation des verdicts reste au GIMAC, à l'ingénieur certificateur (Normes et Agréments) seul.
+assert not [n for n in PROFILS_EXTERNES if any(p.startswith("SBX_") and p.endswith("_VALIDATION") for p in PROFILS[n])]
+assert [n for n, ps in PROFILS.items() if "SBX_CER_VALIDATION" in ps] == ["ROLE_SNA"]
+# Exemples de US-EXI-02 : un testeur exécute, n'administre pas ; le lecteur n'a pas les traces.
+assert "SBX_MOB_EXECUTION" in PROFILS["ROLE_SBX_TESTEUR"] and "SBX_MOB_ADMINISTRATION" not in PROFILS["ROLE_SBX_TESTEUR"]
+assert "SBX_TRA_CONSULTATION" not in PROFILS["ROLE_SBX_LECTEUR"]
 # Administration des référentiels métier (D-92) : super administrateur et ingénieur d'homologation seulement ; le
 # super administrateur porte aussi tous les droits du référentiel des opérations (lecture complète, migration).
 REFERENTIELS_METIER_ADMIN = {"ROLE_SUPER_ADMIN", "ROLE_INGENIEUR_HOMOLOGATION"}
@@ -246,6 +319,12 @@ LIBELLES_PERMISSIONS = {"REF_METIER_ADMIN": "Administration des référentiels m
                         "MON_ROSTER_MANAGE": "Générer la grille d'astreinte et approuver les échanges",
                         "MON_ROSTER_PUBLISH": "Publier la grille d'astreinte (signature du chef du DES)",
                         "INTERNAL_MONITORING_ALERT_INGEST": "Réception des alertes des sondes par MS-MONITORING"}
+_MODULES_SBX = {"HAB": "habilitations", "RAC": "raccordements", "REF": "référentiels", "SCN": "scénarios", "DON": "données de test",
+                "SIM": "simulation", "MOB": "interface mobile", "ISO": "interface ISO 20022", "CAR": "interface carte",
+                "CER": "campagnes", "TRA": "traces", "LEC": "contrat de lecture"}
+_FONCTIONS_SBX = {"ADMINISTRATION": "administration", "SIMULATION": "simulation", "EXECUTION": "exécution de campagne",
+                  "VALIDATION": "validation de verdict", "CONSULTATION": "consultation"}
+LIBELLES_PERMISSIONS.update({f"SBX_{m}_{f}": f"Sandbox, {_MODULES_SBX[m]} : {_FONCTIONS_SBX[f]}" for m in SBX_MODULES for f in SBX_FONCTIONS})
 # D-94 §3 : le conducteur de projet est le porteur de HOM_PROJECT_CONDUCT, donnée par défaut au profil conducteur seul.
 assert [n for n, ps in PROFILS.items() if "HOM_PROJECT_CONDUCT" in ps] == ["ROLE_CONDUCTEUR_PROJET"]
 # D-97 : permission de chaque fonction opérationnelle, donnée aux profils que le catalogue des fonctions (D-91,

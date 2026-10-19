@@ -1893,6 +1893,594 @@
      "libelle": "droits.permission.CER_PORTAL_SIGN"
     }
    ]
+  },
+  {
+   "cle": "sandboxHab",
+   "application": "console",
+   "module": "sandbox",
+   "libelle": "droits.fct.sandboxHab",
+   "groupe": null,
+   "ordre": 400,
+   "icone": "flask-conical",
+   "visible": true,
+   "permissions": {
+    "tous": [],
+    "unDe": [
+     "SBX_HAB_CONSULTATION"
+    ]
+   },
+   "widgets": [],
+   "droits": [
+    {
+     "cle": "SBX_HAB_CONSULTATION",
+     "nature": "CONSULTER",
+     "permission": "SBX_HAB_CONSULTATION",
+     "libelle": "droits.permission.SBX_HAB_CONSULTATION"
+    },
+    {
+     "cle": "SBX_HAB_SIMULATION",
+     "nature": "CREER",
+     "permission": "SBX_HAB_SIMULATION",
+     "libelle": "droits.permission.SBX_HAB_SIMULATION"
+    },
+    {
+     "cle": "SBX_HAB_EXECUTION",
+     "nature": "MODIFIER",
+     "permission": "SBX_HAB_EXECUTION",
+     "libelle": "droits.permission.SBX_HAB_EXECUTION"
+    },
+    {
+     "cle": "SBX_HAB_VALIDATION",
+     "nature": "VALIDER",
+     "permission": "SBX_HAB_VALIDATION",
+     "libelle": "droits.permission.SBX_HAB_VALIDATION"
+    },
+    {
+     "cle": "SBX_HAB_ADMINISTRATION",
+     "nature": "ADMINISTRER",
+     "permission": "SBX_HAB_ADMINISTRATION",
+     "libelle": "droits.permission.SBX_HAB_ADMINISTRATION"
+    }
+   ]
+  },
+  {
+   "cle": "sandboxRac",
+   "application": "console",
+   "module": "sandbox",
+   "libelle": "droits.fct.sandboxRac",
+   "groupe": null,
+   "ordre": 410,
+   "icone": "flask-conical",
+   "visible": true,
+   "permissions": {
+    "tous": [],
+    "unDe": [
+     "SBX_RAC_CONSULTATION"
+    ]
+   },
+   "widgets": [],
+   "droits": [
+    {
+     "cle": "SBX_RAC_CONSULTATION",
+     "nature": "CONSULTER",
+     "permission": "SBX_RAC_CONSULTATION",
+     "libelle": "droits.permission.SBX_RAC_CONSULTATION"
+    },
+    {
+     "cle": "SBX_RAC_SIMULATION",
+     "nature": "CREER",
+     "permission": "SBX_RAC_SIMULATION",
+     "libelle": "droits.permission.SBX_RAC_SIMULATION"
+    },
+    {
+     "cle": "SBX_RAC_EXECUTION",
+     "nature": "MODIFIER",
+     "permission": "SBX_RAC_EXECUTION",
+     "libelle": "droits.permission.SBX_RAC_EXECUTION"
+    },
+    {
+     "cle": "SBX_RAC_VALIDATION",
+     "nature": "VALIDER",
+     "permission": "SBX_RAC_VALIDATION",
+     "libelle": "droits.permission.SBX_RAC_VALIDATION"
+    },
+    {
+     "cle": "SBX_RAC_ADMINISTRATION",
+     "nature": "ADMINISTRER",
+     "permission": "SBX_RAC_ADMINISTRATION",
+     "libelle": "droits.permission.SBX_RAC_ADMINISTRATION"
+    }
+   ]
+  },
+  {
+   "cle": "sandboxRef",
+   "application": "console",
+   "module": "sandbox",
+   "libelle": "droits.fct.sandboxRef",
+   "groupe": null,
+   "ordre": 420,
+   "icone": "flask-conical",
+   "visible": true,
+   "permissions": {
+    "tous": [],
+    "unDe": [
+     "SBX_REF_CONSULTATION"
+    ]
+   },
+   "widgets": [],
+   "droits": [
+    {
+     "cle": "SBX_REF_CONSULTATION",
+     "nature": "CONSULTER",
+     "permission": "SBX_REF_CONSULTATION",
+     "libelle": "droits.permission.SBX_REF_CONSULTATION"
+    },
+    {
+     "cle": "SBX_REF_SIMULATION",
+     "nature": "CREER",
+     "permission": "SBX_REF_SIMULATION",
+     "libelle": "droits.permission.SBX_REF_SIMULATION"
+    },
+    {
+     "cle": "SBX_REF_EXECUTION",
+     "nature": "MODIFIER",
+     "permission": "SBX_REF_EXECUTION",
+     "libelle": "droits.permission.SBX_REF_EXECUTION"
+    },
+    {
+     "cle": "SBX_REF_VALIDATION",
+     "nature": "VALIDER",
+     "permission": "SBX_REF_VALIDATION",
+     "libelle": "droits.permission.SBX_REF_VALIDATION"
+    },
+    {
+     "cle": "SBX_REF_ADMINISTRATION",
+     "nature": "ADMINISTRER",
+     "permission": "SBX_REF_ADMINISTRATION",
+     "libelle": "droits.permission.SBX_REF_ADMINISTRATION"
+    }
+   ]
+  },
+  {
+   "cle": "sandboxScn",
+   "application": "console",
+   "module": "sandbox",
+   "libelle": "droits.fct.sandboxScn",
+   "groupe": null,
+   "ordre": 430,
+   "icone": "flask-conical",
+   "visible": true,
+   "permissions": {
+    "tous": [],
+    "unDe": [
+     "SBX_SCN_CONSULTATION"
+    ]
+   },
+   "widgets": [],
+   "droits": [
+    {
+     "cle": "SBX_SCN_CONSULTATION",
+     "nature": "CONSULTER",
+     "permission": "SBX_SCN_CONSULTATION",
+     "libelle": "droits.permission.SBX_SCN_CONSULTATION"
+    },
+    {
+     "cle": "SBX_SCN_SIMULATION",
+     "nature": "CREER",
+     "permission": "SBX_SCN_SIMULATION",
+     "libelle": "droits.permission.SBX_SCN_SIMULATION"
+    },
+    {
+     "cle": "SBX_SCN_EXECUTION",
+     "nature": "MODIFIER",
+     "permission": "SBX_SCN_EXECUTION",
+     "libelle": "droits.permission.SBX_SCN_EXECUTION"
+    },
+    {
+     "cle": "SBX_SCN_VALIDATION",
+     "nature": "VALIDER",
+     "permission": "SBX_SCN_VALIDATION",
+     "libelle": "droits.permission.SBX_SCN_VALIDATION"
+    },
+    {
+     "cle": "SBX_SCN_ADMINISTRATION",
+     "nature": "ADMINISTRER",
+     "permission": "SBX_SCN_ADMINISTRATION",
+     "libelle": "droits.permission.SBX_SCN_ADMINISTRATION"
+    }
+   ]
+  },
+  {
+   "cle": "sandboxDon",
+   "application": "console",
+   "module": "sandbox",
+   "libelle": "droits.fct.sandboxDon",
+   "groupe": null,
+   "ordre": 440,
+   "icone": "flask-conical",
+   "visible": true,
+   "permissions": {
+    "tous": [],
+    "unDe": [
+     "SBX_DON_CONSULTATION"
+    ]
+   },
+   "widgets": [],
+   "droits": [
+    {
+     "cle": "SBX_DON_CONSULTATION",
+     "nature": "CONSULTER",
+     "permission": "SBX_DON_CONSULTATION",
+     "libelle": "droits.permission.SBX_DON_CONSULTATION"
+    },
+    {
+     "cle": "SBX_DON_SIMULATION",
+     "nature": "CREER",
+     "permission": "SBX_DON_SIMULATION",
+     "libelle": "droits.permission.SBX_DON_SIMULATION"
+    },
+    {
+     "cle": "SBX_DON_EXECUTION",
+     "nature": "MODIFIER",
+     "permission": "SBX_DON_EXECUTION",
+     "libelle": "droits.permission.SBX_DON_EXECUTION"
+    },
+    {
+     "cle": "SBX_DON_VALIDATION",
+     "nature": "VALIDER",
+     "permission": "SBX_DON_VALIDATION",
+     "libelle": "droits.permission.SBX_DON_VALIDATION"
+    },
+    {
+     "cle": "SBX_DON_ADMINISTRATION",
+     "nature": "ADMINISTRER",
+     "permission": "SBX_DON_ADMINISTRATION",
+     "libelle": "droits.permission.SBX_DON_ADMINISTRATION"
+    }
+   ]
+  },
+  {
+   "cle": "sandboxSim",
+   "application": "console",
+   "module": "sandbox",
+   "libelle": "droits.fct.sandboxSim",
+   "groupe": null,
+   "ordre": 450,
+   "icone": "flask-conical",
+   "visible": true,
+   "permissions": {
+    "tous": [],
+    "unDe": [
+     "SBX_SIM_CONSULTATION"
+    ]
+   },
+   "widgets": [],
+   "droits": [
+    {
+     "cle": "SBX_SIM_CONSULTATION",
+     "nature": "CONSULTER",
+     "permission": "SBX_SIM_CONSULTATION",
+     "libelle": "droits.permission.SBX_SIM_CONSULTATION"
+    },
+    {
+     "cle": "SBX_SIM_SIMULATION",
+     "nature": "CREER",
+     "permission": "SBX_SIM_SIMULATION",
+     "libelle": "droits.permission.SBX_SIM_SIMULATION"
+    },
+    {
+     "cle": "SBX_SIM_EXECUTION",
+     "nature": "MODIFIER",
+     "permission": "SBX_SIM_EXECUTION",
+     "libelle": "droits.permission.SBX_SIM_EXECUTION"
+    },
+    {
+     "cle": "SBX_SIM_VALIDATION",
+     "nature": "VALIDER",
+     "permission": "SBX_SIM_VALIDATION",
+     "libelle": "droits.permission.SBX_SIM_VALIDATION"
+    },
+    {
+     "cle": "SBX_SIM_ADMINISTRATION",
+     "nature": "ADMINISTRER",
+     "permission": "SBX_SIM_ADMINISTRATION",
+     "libelle": "droits.permission.SBX_SIM_ADMINISTRATION"
+    }
+   ]
+  },
+  {
+   "cle": "sandboxMob",
+   "application": "console",
+   "module": "sandbox",
+   "libelle": "droits.fct.sandboxMob",
+   "groupe": null,
+   "ordre": 460,
+   "icone": "flask-conical",
+   "visible": true,
+   "permissions": {
+    "tous": [],
+    "unDe": [
+     "SBX_MOB_CONSULTATION"
+    ]
+   },
+   "widgets": [],
+   "droits": [
+    {
+     "cle": "SBX_MOB_CONSULTATION",
+     "nature": "CONSULTER",
+     "permission": "SBX_MOB_CONSULTATION",
+     "libelle": "droits.permission.SBX_MOB_CONSULTATION"
+    },
+    {
+     "cle": "SBX_MOB_SIMULATION",
+     "nature": "CREER",
+     "permission": "SBX_MOB_SIMULATION",
+     "libelle": "droits.permission.SBX_MOB_SIMULATION"
+    },
+    {
+     "cle": "SBX_MOB_EXECUTION",
+     "nature": "MODIFIER",
+     "permission": "SBX_MOB_EXECUTION",
+     "libelle": "droits.permission.SBX_MOB_EXECUTION"
+    },
+    {
+     "cle": "SBX_MOB_VALIDATION",
+     "nature": "VALIDER",
+     "permission": "SBX_MOB_VALIDATION",
+     "libelle": "droits.permission.SBX_MOB_VALIDATION"
+    },
+    {
+     "cle": "SBX_MOB_ADMINISTRATION",
+     "nature": "ADMINISTRER",
+     "permission": "SBX_MOB_ADMINISTRATION",
+     "libelle": "droits.permission.SBX_MOB_ADMINISTRATION"
+    }
+   ]
+  },
+  {
+   "cle": "sandboxIso",
+   "application": "console",
+   "module": "sandbox",
+   "libelle": "droits.fct.sandboxIso",
+   "groupe": null,
+   "ordre": 470,
+   "icone": "flask-conical",
+   "visible": true,
+   "permissions": {
+    "tous": [],
+    "unDe": [
+     "SBX_ISO_CONSULTATION"
+    ]
+   },
+   "widgets": [],
+   "droits": [
+    {
+     "cle": "SBX_ISO_CONSULTATION",
+     "nature": "CONSULTER",
+     "permission": "SBX_ISO_CONSULTATION",
+     "libelle": "droits.permission.SBX_ISO_CONSULTATION"
+    },
+    {
+     "cle": "SBX_ISO_SIMULATION",
+     "nature": "CREER",
+     "permission": "SBX_ISO_SIMULATION",
+     "libelle": "droits.permission.SBX_ISO_SIMULATION"
+    },
+    {
+     "cle": "SBX_ISO_EXECUTION",
+     "nature": "MODIFIER",
+     "permission": "SBX_ISO_EXECUTION",
+     "libelle": "droits.permission.SBX_ISO_EXECUTION"
+    },
+    {
+     "cle": "SBX_ISO_VALIDATION",
+     "nature": "VALIDER",
+     "permission": "SBX_ISO_VALIDATION",
+     "libelle": "droits.permission.SBX_ISO_VALIDATION"
+    },
+    {
+     "cle": "SBX_ISO_ADMINISTRATION",
+     "nature": "ADMINISTRER",
+     "permission": "SBX_ISO_ADMINISTRATION",
+     "libelle": "droits.permission.SBX_ISO_ADMINISTRATION"
+    }
+   ]
+  },
+  {
+   "cle": "sandboxCar",
+   "application": "console",
+   "module": "sandbox",
+   "libelle": "droits.fct.sandboxCar",
+   "groupe": null,
+   "ordre": 480,
+   "icone": "flask-conical",
+   "visible": true,
+   "permissions": {
+    "tous": [],
+    "unDe": [
+     "SBX_CAR_CONSULTATION"
+    ]
+   },
+   "widgets": [],
+   "droits": [
+    {
+     "cle": "SBX_CAR_CONSULTATION",
+     "nature": "CONSULTER",
+     "permission": "SBX_CAR_CONSULTATION",
+     "libelle": "droits.permission.SBX_CAR_CONSULTATION"
+    },
+    {
+     "cle": "SBX_CAR_SIMULATION",
+     "nature": "CREER",
+     "permission": "SBX_CAR_SIMULATION",
+     "libelle": "droits.permission.SBX_CAR_SIMULATION"
+    },
+    {
+     "cle": "SBX_CAR_EXECUTION",
+     "nature": "MODIFIER",
+     "permission": "SBX_CAR_EXECUTION",
+     "libelle": "droits.permission.SBX_CAR_EXECUTION"
+    },
+    {
+     "cle": "SBX_CAR_VALIDATION",
+     "nature": "VALIDER",
+     "permission": "SBX_CAR_VALIDATION",
+     "libelle": "droits.permission.SBX_CAR_VALIDATION"
+    },
+    {
+     "cle": "SBX_CAR_ADMINISTRATION",
+     "nature": "ADMINISTRER",
+     "permission": "SBX_CAR_ADMINISTRATION",
+     "libelle": "droits.permission.SBX_CAR_ADMINISTRATION"
+    }
+   ]
+  },
+  {
+   "cle": "sandboxCer",
+   "application": "console",
+   "module": "sandbox",
+   "libelle": "droits.fct.sandboxCer",
+   "groupe": null,
+   "ordre": 490,
+   "icone": "flask-conical",
+   "visible": true,
+   "permissions": {
+    "tous": [],
+    "unDe": [
+     "SBX_CER_CONSULTATION"
+    ]
+   },
+   "widgets": [],
+   "droits": [
+    {
+     "cle": "SBX_CER_CONSULTATION",
+     "nature": "CONSULTER",
+     "permission": "SBX_CER_CONSULTATION",
+     "libelle": "droits.permission.SBX_CER_CONSULTATION"
+    },
+    {
+     "cle": "SBX_CER_SIMULATION",
+     "nature": "CREER",
+     "permission": "SBX_CER_SIMULATION",
+     "libelle": "droits.permission.SBX_CER_SIMULATION"
+    },
+    {
+     "cle": "SBX_CER_EXECUTION",
+     "nature": "MODIFIER",
+     "permission": "SBX_CER_EXECUTION",
+     "libelle": "droits.permission.SBX_CER_EXECUTION"
+    },
+    {
+     "cle": "SBX_CER_VALIDATION",
+     "nature": "VALIDER",
+     "permission": "SBX_CER_VALIDATION",
+     "libelle": "droits.permission.SBX_CER_VALIDATION"
+    },
+    {
+     "cle": "SBX_CER_ADMINISTRATION",
+     "nature": "ADMINISTRER",
+     "permission": "SBX_CER_ADMINISTRATION",
+     "libelle": "droits.permission.SBX_CER_ADMINISTRATION"
+    }
+   ]
+  },
+  {
+   "cle": "sandboxTra",
+   "application": "console",
+   "module": "sandbox",
+   "libelle": "droits.fct.sandboxTra",
+   "groupe": null,
+   "ordre": 500,
+   "icone": "flask-conical",
+   "visible": true,
+   "permissions": {
+    "tous": [],
+    "unDe": [
+     "SBX_TRA_CONSULTATION"
+    ]
+   },
+   "widgets": [],
+   "droits": [
+    {
+     "cle": "SBX_TRA_CONSULTATION",
+     "nature": "CONSULTER",
+     "permission": "SBX_TRA_CONSULTATION",
+     "libelle": "droits.permission.SBX_TRA_CONSULTATION"
+    },
+    {
+     "cle": "SBX_TRA_SIMULATION",
+     "nature": "CREER",
+     "permission": "SBX_TRA_SIMULATION",
+     "libelle": "droits.permission.SBX_TRA_SIMULATION"
+    },
+    {
+     "cle": "SBX_TRA_EXECUTION",
+     "nature": "MODIFIER",
+     "permission": "SBX_TRA_EXECUTION",
+     "libelle": "droits.permission.SBX_TRA_EXECUTION"
+    },
+    {
+     "cle": "SBX_TRA_VALIDATION",
+     "nature": "VALIDER",
+     "permission": "SBX_TRA_VALIDATION",
+     "libelle": "droits.permission.SBX_TRA_VALIDATION"
+    },
+    {
+     "cle": "SBX_TRA_ADMINISTRATION",
+     "nature": "ADMINISTRER",
+     "permission": "SBX_TRA_ADMINISTRATION",
+     "libelle": "droits.permission.SBX_TRA_ADMINISTRATION"
+    }
+   ]
+  },
+  {
+   "cle": "sandboxLec",
+   "application": "console",
+   "module": "sandbox",
+   "libelle": "droits.fct.sandboxLec",
+   "groupe": null,
+   "ordre": 510,
+   "icone": "flask-conical",
+   "visible": true,
+   "permissions": {
+    "tous": [],
+    "unDe": [
+     "SBX_LEC_CONSULTATION"
+    ]
+   },
+   "widgets": [],
+   "droits": [
+    {
+     "cle": "SBX_LEC_CONSULTATION",
+     "nature": "CONSULTER",
+     "permission": "SBX_LEC_CONSULTATION",
+     "libelle": "droits.permission.SBX_LEC_CONSULTATION"
+    },
+    {
+     "cle": "SBX_LEC_SIMULATION",
+     "nature": "CREER",
+     "permission": "SBX_LEC_SIMULATION",
+     "libelle": "droits.permission.SBX_LEC_SIMULATION"
+    },
+    {
+     "cle": "SBX_LEC_EXECUTION",
+     "nature": "MODIFIER",
+     "permission": "SBX_LEC_EXECUTION",
+     "libelle": "droits.permission.SBX_LEC_EXECUTION"
+    },
+    {
+     "cle": "SBX_LEC_VALIDATION",
+     "nature": "VALIDER",
+     "permission": "SBX_LEC_VALIDATION",
+     "libelle": "droits.permission.SBX_LEC_VALIDATION"
+    },
+    {
+     "cle": "SBX_LEC_ADMINISTRATION",
+     "nature": "ADMINISTRER",
+     "permission": "SBX_LEC_ADMINISTRATION",
+     "libelle": "droits.permission.SBX_LEC_ADMINISTRATION"
+    }
+   ]
   }
  ]
 }

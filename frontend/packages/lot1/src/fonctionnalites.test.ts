@@ -6,12 +6,14 @@ import {
 } from './fonctionnalites'
 import { FONCTIONNALITES_INITIALES as CATALOGUE } from './services/simule/fonctionnalites'
 import { PROFILS } from './permissions'
+import { PROFILS_DOMAINE } from './domaine'
 
 // D-94 : catalogue des fonctionnalités servi par MS-IAM ; barre latérale, gardes et tableau de bord en dérivent, le code
 // ne garde que la correspondance clé → écran. Matrice attendue pour chaque profil interne du domaine « gimac ».
 
 const cles = (fs: DefinitionFonctionnalite[]) => fs.map((f) => f.cle)
-const INTERNES = Object.keys(PROFILS).filter((r) => r !== 'ROLE_CORRESPONDANT')
+const EXTERNES = new Set(PROFILS_DOMAINE.filter((p) => p.externe).map((p) => p.code))
+const INTERNES = Object.keys(PROFILS).filter((r) => !EXTERNES.has(r))
 const ouvertes = (p: string[]) => cles(fonctionnalitesOuvertes(CATALOGUE, 'des', p))
 const widgets = (p: string[]) => widgetsOuverts(CATALOGUE, p)
 const tr = { t: (k: string) => `«${k}»`, existe: (k: string) => k.startsWith('nav.') }
@@ -29,8 +31,12 @@ describe('catalogue des fonctionnalités (valeurs de départ de MS-IAM)', () => 
       expect(ouvertes(PROFILS[role]), role).toEqual(expect.arrayContaining(['tableauDeBord', 'notifications', 'maJournee', 'agenda', 'taches', 'rapports']))
       expect(widgets(PROFILS[role])[0], role).toBe('maJournee')
     }
-    expect(ouvertes(PROFILS.ROLE_CORRESPONDANT)).toEqual(['tableauDeBord', 'notifications'])
-    expect(widgets(PROFILS.ROLE_CORRESPONDANT)).toEqual([])
+    // Profils externes (correspondant, rôles d'institution de la sandbox D-115) : l'accueil et ses notifications.
+    for (const role of EXTERNES) {
+      expect(ouvertes(PROFILS[role]), role).toEqual(['tableauDeBord', 'notifications'])
+      expect(widgets(PROFILS[role]), role).toEqual([])
+    }
+    expect(EXTERNES).toContain('ROLE_CORRESPONDANT')
   })
 
   it.each([

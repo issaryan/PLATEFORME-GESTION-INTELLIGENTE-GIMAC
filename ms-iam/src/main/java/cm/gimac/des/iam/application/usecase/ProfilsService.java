@@ -11,6 +11,7 @@ import cm.gimac.des.iam.domain.compte.Profil;
 import cm.gimac.des.iam.domain.compte.ProfilCree;
 import cm.gimac.des.iam.domain.service.ReglesAdministration;
 import cm.gimac.des.iam.domain.service.ReglesProfils;
+import cm.gimac.des.iam.domain.service.ReglesSandbox;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -87,6 +88,7 @@ public class ProfilsService {
         }
         Set<String> composition = ReglesProfils.avecCommunes(permissions == null ? Set.of() : permissions);
         ReglesProfils.verifierComposition(acteur, composition, annuaire.permissions());
+        ReglesSandbox.verifierValidationReservee(ReglesProfils.externe(null, composition), composition);
         boolean privilegie = ReglesProfils.privilegie(composition);
         Instant maintenant = clock.instant();
         crees.enregistrer(new ProfilCree(code, d, privilegie, acteur.id(), maintenant));
@@ -140,6 +142,9 @@ public class ProfilsService {
                 "Retirer d'abord le profil de ses titulaires avant de changer sa qualité externe",
                 Map.of("code", code, "titulaires", actuel.titulaires())
             );
+        }
+        if (changeExterne) {
+            ReglesSandbox.verifierValidationReservee(externe, actuel.permissions());
         }
         if (catalogue.cree(code)) {
             ProfilCree cree = crees.lire(code).orElseThrow(() -> IamException.introuvable("IAM_PROFILE_NOT_FOUND", code));

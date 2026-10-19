@@ -14,6 +14,7 @@ import cm.gimac.des.iam.domain.compte.ProfilCree;
 import cm.gimac.des.iam.domain.service.PolitiqueMotDePasse;
 import cm.gimac.des.iam.domain.service.ReglesAdministration;
 import cm.gimac.des.iam.domain.service.ReglesProfils;
+import cm.gimac.des.iam.domain.service.ReglesSandbox;
 import cm.gimac.des.iam.infrastructure.persistence.ParametreChiffre;
 import cm.gimac.des.iam.infrastructure.persistence.ParametreChiffreRepository;
 import cm.gimac.des.iam.infrastructure.securite.ChiffrementSecrets;
@@ -162,6 +163,12 @@ public class ConfigurationAuthentificationService {
         return annuaire.permissions();
     }
 
+    /** Permissions du domaine dont le code commence par le préfixe (D-115 : {@code ?prefixe=SBX}) ; absent : toutes. */
+    @Transactional(readOnly = true)
+    public List<String> permissions(String prefixe) {
+        return ReglesSandbox.filtrer(annuaire.permissions(), prefixe);
+    }
+
     /**
      * Recompose un profil ; modifier un profil privilégié exige le droit d'octroi privilégié. Profil créé
      * (D-81 §5) : mêmes règles qu'à sa création (aucune permission INTERNAL_*, permissions communes
@@ -189,6 +196,8 @@ public class ConfigurationAuthentificationService {
         if (!inconnues.isEmpty()) {
             throw IamException.invalide("IAM_PERMISSION_UNKNOWN", "Permission inconnue", Map.of("permissions", List.copyOf(inconnues)));
         }
+        // D-115, RG-05 : la validation des verdicts de la sandbox n'est jamais portée par un profil externe.
+        ReglesSandbox.verifierValidationReservee(catalogue.externes().contains(profil), permissions);
         // D-94 : une composition privilégiée (IAM_* ou PLATFORM_*) l'est pour tout profil, livré ou créé.
         if (ReglesProfils.privilegie(permissions) && !acteur.peut(ReglesAdministration.OCTROI_PRIVILEGIE)) {
             throw IamException.interdit("IAM_PRIVILEGED_PROFILE", "Un profil privilégié est réservé au super administrateur");

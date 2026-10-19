@@ -510,7 +510,12 @@ public class AnnuaireEnMemoire implements Annuaire {
     );
 
     /** Permissions connues du substitut, même sans profil qui les porte (dont les permissions internes). */
+    /** Permissions de la Sandbox GIMAC (D-115) : SBX_<MODULE>_<FONCTION>, comme le domaine Keycloak livré. */
+    static final Set<String> PERMISSIONS_SANDBOX = cm.gimac.des.iam.domain.service.ReglesSandbox.MODULES.stream()
+        .flatMap(m -> cm.gimac.des.iam.domain.service.ReglesSandbox.FONCTIONS.stream().map(f -> "SBX_" + m + "_" + f))
+        .collect(java.util.stream.Collectors.toUnmodifiableSet());
+
     static final Set<String> PERMISSIONS_CONNUES = Set.copyOf(
-        union(Set.of("INTERNAL_IAM_READ", "PAR_INSTITUTION_READ", "HOM_DASHBOARD_READ", REF_METIER_ADMIN), FONCTIONS_OPERATIONNELLES)
+        union(Set.of("INTERNAL_IAM_READ", "PAR_INSTITUTION_READ", "HOM_DASHBOARD_READ", REF_METIER_ADMIN), FONCTIONS_OPERATIONNELLES, PERMISSIONS_SANDBOX)
     );
 }

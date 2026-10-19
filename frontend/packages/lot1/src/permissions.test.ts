@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { PERM, PERMISSIONS_NOUVELLES, PROFILS } from './permissions'
+import { PROFILS_DOMAINE } from './domaine'
 
 // Matrice des rôles du parcours (D-58, D-61) : invariants attendus du domaine Keycloak `gimac`
 // (infra/keycloak/generer-realm-gimac.py) et des permissions nouvelles du modèle hybride (D-56).
@@ -35,18 +36,24 @@ describe('matrice des rôles (PROFILS)', () => {
     Object.values(PROFILS).forEach((ps) => expect(signatures.filter((s) => ps.includes(s)).length).toBeLessThanOrEqual(1))
   })
   it('profils internes : lecture du DES commune (sauf collaborateur et responsable de service, D-76) ; correspondant : portail seul, sans lecture interne', () => {
-    Object.entries(PROFILS).filter(([r]) => !['ROLE_CORRESPONDANT', ...SANS_FONCTION].includes(r)).forEach(([, ps]) => expect(ps).toEqual(expect.arrayContaining(LECTURE_DES)))
+    Object.entries(PROFILS).filter(([r]) => !PROFILS_DOMAINE.find((p) => p.code === r)?.externe && !SANS_FONCTION.includes(r)).forEach(([, ps]) => expect(ps).toEqual(expect.arrayContaining(LECTURE_DES)))
     // Le responsable de service édite le référentiel (D-89 §1) : sa seule lecture du DES est HOM_REFERENTIEL_READ.
     SANS_FONCTION.forEach((r) => expect(PROFILS[r].filter((p) => LECTURE_DES.includes(p))).toEqual(r === 'ROLE_RESPONSABLE_SERVICE' ? ['HOM_REFERENTIEL_READ'] : []))
     // Notifications du portail (D-93 §11.4) : boîte et préférences du correspondant.
     expect([...PROFILS.ROLE_CORRESPONDANT].sort()).toEqual([PERM.portailCertification, PERM.portailSigner, PERM.portailLire, PERM.portailDeposer, PERM.notificationsLire])
     expect(PROFILS.ROLE_CORRESPONDANT.some((p) => LECTURE_DES.includes(p))).toBe(false)
+    // Rôles d'institution de la sandbox (D-115) : portail seul, sans aucune lecture interne ni validation de verdict.
+    for (const p of PROFILS_DOMAINE.filter((x) => x.externe && x.code.startsWith('ROLE_SBX_'))) {
+      expect(p.permissions.some((x) => LECTURE_DES.includes(x)), p.code).toBe(false)
+      expect(p.permissions.filter((x) => !x.startsWith('SBX_')), p.code).toEqual([PERM.notificationsLire])
+      expect(p.permissions.some((x) => x.endsWith('_VALIDATION')), p.code).toBe(false)
+    }
   })
   it('conduite des étapes 4 à 10 : départements et conducteur, jamais les services exécutants', () => {
     expect(detenteurs(PERM.etapeConduire)).toEqual(['ROLE_CHARGE_DDRM', 'ROLE_CHEF_DDRM', 'ROLE_CHEF_DES', 'ROLE_CONDUCTEUR_PROJET'])
   })
   it('Mon activité (D-76 §4) : tout profil interne ; équipe et tâches confiées aux seuls responsables', () => {
-    expect(detenteurs(PERM.activitePropre)).toEqual(Object.keys(PROFILS).filter((r) => r !== 'ROLE_CORRESPONDANT').sort())
+    expect(detenteurs(PERM.activitePropre)).toEqual(Object.keys(PROFILS).filter((r) => !PROFILS_DOMAINE.find((p) => p.code === r)?.externe).sort())
     const responsables = ['ROLE_CHEF_DDRM', 'ROLE_CHEF_DES', 'ROLE_CONFORMITE', 'ROLE_DG', 'ROLE_RESPONSABLE_SERVICE', 'ROLE_RSSI']
     expect(detenteurs(PERM.equipeLire)).toEqual(responsables)
     expect(detenteurs(PERM.tacheConfier)).toEqual(responsables)

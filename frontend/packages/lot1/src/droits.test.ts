@@ -7,6 +7,7 @@ import {
 import { FONCTIONNALITES_INITIALES as CATALOGUE } from './services/simule/fonctionnalites'
 import { catalogue } from './i18n/ecrans/droits'
 import { catalogue as d94 } from './i18n/ecrans/d91-d94'
+import { catalogue as sandbox } from './i18n/ecrans/sandbox'
 
 // Catalogue des droits (D-90) dérivé du catalogue des fonctionnalités servi par MS-IAM (D-94) : toute permission connue
 // du frontend appartient à au moins un droit ; cocher un droit d'écriture coche la consultation.
@@ -26,7 +27,7 @@ describe('D-90 : catalogue Module > Fonctionnalité > Droit', () => {
   })
 
   it('modules dans l’ordre de leur première fonctionnalité ; fonctionnalités sans droit absentes ; référentiels métier', () => {
-    expect(CATALOGUE_DROITS.map((m) => m.cle)).toEqual(['messagerie', 'accueil', 'monActivite', 'processus', 'participants', 'homologation', 'administration', 'exploitation', 'certification', 'referentielsMetier', 'portail'])
+    expect(CATALOGUE_DROITS.map((m) => m.cle)).toEqual(['messagerie', 'accueil', 'monActivite', 'processus', 'participants', 'homologation', 'administration', 'exploitation', 'certification', 'referentielsMetier', 'portail', 'sandbox'])
     expect(CATALOGUE_DROITS.flatMap((m) => m.fonctionnalites).some((f) => f.cle === 'tableauDeBord')).toBe(false)
     expect(fonctionnalite('referentielsMetierAdmin').droits).toEqual([{ permission: 'REF_METIER_ADMIN', nature: 'ADMINISTRER', libelle: 'Administration des référentiels métier, tous domaines' }])
     expect(catalogueDroits([])).toEqual([])
@@ -34,7 +35,7 @@ describe('D-90 : catalogue Module > Fonctionnalité > Droit', () => {
 
   it('libellés FR, EN, ES de chaque module et nature ; aucun tiret cadratin', () => {
     for (const l of ['fr', 'en', 'es'] as const) {
-      const c = { ...(catalogue[l] as Record<string, string>), ...(d94[l] as Record<string, string>) }
+      const c = { ...(catalogue[l] as Record<string, string>), ...(d94[l] as Record<string, string>), ...(sandbox[l] as Record<string, string>) }
       for (const m of CATALOGUE_DROITS) expect(c[m.libelleKey], `${l} ${m.cle}`).toBeTruthy()
       for (const n of NATURES_DROIT) expect(c[`droits.nature.${n}`]).toBeTruthy()
       expect(Object.values(c).some((v) => v.includes(String.fromCharCode(0x2014)))).toBe(false)
