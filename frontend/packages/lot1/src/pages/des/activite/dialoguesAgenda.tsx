@@ -15,7 +15,7 @@ import { TagCategorie, pourDialogue, useDates, useErreur } from './communs'
 
 const PARTICIPANTS_MAX = 50
 
-export function DialogueEvenement({ jour, evenement, onFermer, onFait }: { jour: string; evenement?: Evenement; onFermer: () => void; onFait: (message: string) => void }) {
+export function DialogueEvenement({ jour, heure, evenement, onFermer, onFait }: { jour: string; /** Heure de départ proposée (case de la grille). */ heure?: number; evenement?: Evenement; onFermer: () => void; onFait: (message: string) => void }) {
   const { t } = useTranslation()
   const session = useSession()
   const erreur = useErreur()
@@ -26,8 +26,8 @@ export function DialogueEvenement({ jour, evenement, onFermer, onFait }: { jour:
     titre: evenement?.titre ?? '', categorie: evenement?.categorie ?? 'REUNION' as CategorieEvenement, journeeEntiere: evenement?.journeeEntiere ?? false,
     debut: versSaisie(evenement ? jourDe(evenement.debut) : jour),
     fin: versSaisie(evenement ? (evenement.journeeEntiere ? ajouterJours(jourDe(evenement.fin), -1) : jourDe(evenement.fin)) : jour),
-    heureDebut: evenement && !evenement.journeeEntiere ? heureDe(evenement.debut) : '09:00',
-    heureFin: evenement && !evenement.journeeEntiere ? heureDe(evenement.fin) : '10:00',
+    heureDebut: evenement && !evenement.journeeEntiere ? heureDe(evenement.debut) : `${String(heure ?? 9).padStart(2, '0')}:00`,
+    heureFin: evenement && !evenement.journeeEntiere ? heureDe(evenement.fin) : `${String(Math.min(23, (heure ?? 9) + 1)).padStart(2, '0')}:00`,
     lieu: evenement?.lieu ?? '', description: evenement?.description ?? '',
   }))
   const [v, setV] = useState(initiale)

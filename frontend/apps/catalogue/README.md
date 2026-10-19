@@ -24,3 +24,4 @@ Navigation : liste à gauche, boutons Précédent et Suivant, Alt + flèche haut
 | 2026-09-29 | — | Sélecteur de langue FR, EN, ES des aperçus |
 | 2026-09-29 | — | Aperçus des composites `OneTimeSecret`, `PermissionPicker` et `LiveStatGroup` (D-62), audités par axe en clair et en sombre |
 | 2026-09-29 | — | Aperçus des composites de la tranche DDRM et du cadrage (D-63) : `PageHeader`, `PageSection`, `StatGrid`, `LinkList`, `ActionBar`, `ToastRegion` ; les aperçus sont aussi rendus par la suite du système de conception (`test/catalogue.test.tsx`) |
+| 2026-10-19 | D-113 | Aperçu d'AgendaGrid |

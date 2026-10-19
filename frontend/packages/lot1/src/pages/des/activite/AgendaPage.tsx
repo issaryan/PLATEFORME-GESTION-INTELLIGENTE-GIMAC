@@ -1,45 +1,47 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router'
-import { Button, Card, InlineAlert, PageHeader, Select, Skeleton } from '@gimac/design-system'
+import { AgendaGrid, Button, Card, CheckboxGroup, InlineAlert, PageHeader, Select, Skeleton, Tabs, type AgendaEvent } from '@gimac/design-system'
 import { aPermission, usePermissions, useSession } from '@gimac/socle'
-import type { Evenement } from '../../../modele/pilotage'
-import { ajouterJours, aujourdhui, jourDe, semaineDe, semaineIso } from '../../../modele/jours'
+import { CATEGORIES_EVENEMENT, type CategorieEvenement, type Evenement } from '../../../modele/pilotage'
+import { ajouterJours, aujourdhui, jourDe, lundiDe, minutesDe, semaineDe, semaineIso } from '../../../modele/jours'
 import { useAgenda, useEquipe, useRepondre } from '../../../hooks/pilotage'
 import { PERM } from '../../../permissions'
 import { useRetour } from '../parcours/communs'
-import { NavigationPeriode, TagCategorie, jourDemande, useDates, useEcranEtroit, useErreur } from './communs'
+import { NavigationPeriode, jourDemande, useDates, useEcranEtroit, useErreur } from './communs'
 import { DetailEvenement, DialogueEvenement } from './dialoguesAgenda'
 
-// Agenda (D-76, /des/agenda) : semaine du lundi au dimanche (un jour à la fois sur petit écran), invitations
-// à accepter ou décliner, création et modification d'un événement en fenêtre modale. ?jour=AAAA-MM-JJ fixe
-// la semaine (ou le jour) affichée ; ?evenement=<id> ouvre une fiche ; ?collaborateur=<id> (PIL_TEAM_READ)
-// lit l'agenda d'un membre de l'équipe (catégorie, titre et horaires).
+// Agenda (D-76, D-113, /des/agenda) : vues jour, semaine et mois sur une grille horaire (AgendaGrid du système de
+// conception) ; ligne « toute la journée », chevauchements côte à côte, heure actuelle ; une case libre crée un
+// événement à cette heure ; catégories filtrables, chacune d'une teinte de la palette de données avec sa légende ;
+// invitations à accepter ou décliner ; agenda d'un membre de l'équipe (PIL_TEAM_READ, lecture seule).
+// Adresse : ?vue=jour|semaine|mois, ?jour=AAAA-MM-JJ, ?evenement=<id>, ?collaborateur=<id>, ?categories=A,B.
 
-type Dialogue = { nouveau: string } | { modifier: Evenement } | null
+type Vue = 'jour' | 'semaine' | 'mois'
+type Dialogue = { nouveau: string; heure?: number } | { modifier: Evenement } | null
 
-/** Un événement couvre-t-il ce jour (fin exclusive) ? */
-const couvre = (e: Evenement, jour: string) => jourDe(e.debut) <= jour && jourDe(new Date(new Date(e.fin).getTime() - 1)) >= jour
+/** Teinte de la palette de données de chaque catégorie (ordre fixe, légende toujours affichée). */
+export const COULEUR_CATEGORIE: Record<CategorieEvenement, number> = { REUNION: 1, ACTIVITE: 2, DEPLACEMENT: 4, ABSENCE: 7, FORMATION: 5, AUTRE: 8 }
 
-function CaseEvenement({ e, onOuvrir }: { e: Evenement; onOuvrir: () => void }) {
-  const { t } = useTranslation()
-  const dates = useDates()
-  const horaires = e.journeeEntiere ? t('act.evenement.toutLeJour') : t('act.evenement.deA', { debut: dates.heure(e.debut), fin: dates.heure(e.fin) })
-  return (
-    <button type="button" onClick={onOuvrir} aria-label={`${horaires} · ${e.titre}`}
-      style={{
-        display: 'flex', flexDirection: 'column', gap: 'var(--gm-space-1)', alignItems: 'flex-start', width: '100%', textAlign: 'left', cursor: 'pointer', font: 'inherit',
-        color: 'var(--gm-color-text-primary)', background: 'var(--gm-color-surface-sunken)', border: 'var(--gm-border-1) solid var(--gm-color-border)', padding: 'var(--gm-space-2)',
-      }}>
-      <span className="gm-type-small">{horaires}</span>
-      <strong className="gm-type-small-strong">{e.titre}</strong>
-      <TagCategorie categorie={e.categorie} />
-    </button>
-  )
+/** Jours affichés : le jour, sa semaine, ou les six semaines qui couvrent son mois (lundi en tête). */
+export function joursDeVue(vue: Vue, jour: string): string[] {
+  if (vue === 'jour') return [jour]
+  if (vue === 'semaine') return semaineDe(jour)
+  const premier = lundiDe(`${jour.slice(0, 7)}-01`)
+  return Array.from({ length: 42 }, (_, i) => ajouterJours(premier, i))
+}
+
+/** Pas de navigation : un jour, une semaine, ou le même jour du mois voisin. */
+export function voisin(vue: Vue, jour: string, sens: 1 | -1): string {
+  if (vue === 'jour') return ajouterJours(jour, sens)
+  if (vue === 'semaine') return ajouterJours(jour, 7 * sens)
+  const [a, m] = jour.slice(0, 7).split('-').map(Number)
+  const d = new Date(Date.UTC(a, m - 1 + sens, 1))
+  return d.toISOString().slice(0, 10)
 }
 
 export default function AgendaPage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const dates = useDates()
   const erreur = useErreur()
   const session = useSession()
@@ -48,8 +50,12 @@ export default function AgendaPage() {
   const equipeLisible = aPermission(permissions, PERM.equipeLire)
   const [params, setParams] = useSearchParams()
   const jour = jourDemande(params.get('jour'))
+  const demandee = params.get('vue')
+  const vue: Vue = etroit ? 'jour' : demandee === 'jour' || demandee === 'mois' ? demandee : 'semaine'
   const collaborateur = equipeLisible ? params.get('collaborateur') ?? undefined : undefined
-  const jours = etroit ? [jour] : semaineDe(jour)
+  const filtre = params.get('categories')
+  const categories = filtre ? (filtre.split(',').filter((c) => (CATEGORIES_EVENEMENT as readonly string[]).includes(c)) as CategorieEvenement[]) : [...CATEGORIES_EVENEMENT]
+  const jours = joursDeVue(vue, jour)
   const agenda = useAgenda(jours[0], jours[jours.length - 1], collaborateur)
   const equipe = useEquipe(aujourdhui(), equipeLisible)
   const repondre = useRepondre()
@@ -67,32 +73,52 @@ export default function AgendaPage() {
   }
   const evenements = agenda.data ?? []
   const ouvert = evenements.find((e) => e.id === params.get('evenement'))
-  const invitations = collaborateur ? [] : evenements.filter((e) => e.participants.some((p) => p.id === session?.sujet && p.reponse === 'EN_ATTENTE'))
-  const pas = etroit ? 1 : 7
-  const libelle = etroit ? dates.jourLong(jour) : t('act.agenda.semaine', { semaine: semaineIso(jour).slice(6), du: dates.jourCourt(jours[0]), au: dates.jourCourt(jours[6]) })
+  const enAttente = (e: Evenement) => e.participants.some((p) => p.id === session?.sujet && p.reponse === 'EN_ATTENTE')
+  const invitations = collaborateur ? [] : evenements.filter(enAttente)
+  const affiches = useMemo<AgendaEvent[]>(
+    () => evenements
+      .filter((e) => categories.includes(e.categorie))
+      .map((e) => ({ id: e.id, titre: e.titre, debut: e.debut, fin: e.fin, journeeEntiere: e.journeeEntiere, categorie: t(`act.categorie.${e.categorie}`), couleur: COULEUR_CATEGORIE[e.categorie] ?? 8, lieu: e.lieu, enAttente: !collaborateur && enAttente(e) })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [evenements, filtre, collaborateur, t],
+  )
+  const moisLibelle = new Intl.DateTimeFormat(i18n.language, { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${jour.slice(0, 7)}-15T12:00:00Z`))
+  const libelle = vue === 'jour' ? dates.jourLong(jour)
+    : vue === 'semaine' ? t('act.agenda.semaine', { semaine: semaineIso(jour).slice(6), du: dates.jourCourt(jours[0]), au: dates.jourCourt(jours[6]) })
+    : moisLibelle
+  const lecture = !!collaborateur
   return (
     <div className="gm-col">
       <PageHeader
         title={t('act.agenda.titre')}
         subtitle={t('act.agenda.sousTitre')}
-        actions={collaborateur ? undefined : <Button variant="primary" icon="plus" onClick={() => setDialogue({ nouveau: jour })}>{t('act.evenement.nouveau')}</Button>}
+        actions={lecture ? undefined : <Button variant="primary" icon="plus" onClick={() => setDialogue({ nouveau: jour })}>{t('act.evenement.nouveau')}</Button>}
       />
       <div className="gm-row" style={{ justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 'var(--gm-space-3)' }}>
         <NavigationPeriode
           libelle={libelle}
-          precedent={t(etroit ? 'act.jourPrecedent' : 'act.semainePrecedente')}
-          suivant={t(etroit ? 'act.jourSuivant' : 'act.semaineSuivante')}
+          precedent={t(`act.agenda.precedent.${vue}`)}
+          suivant={t(`act.agenda.suivant.${vue}`)}
           aujourdhuiLibelle={t('act.aujourdhui')}
-          onPrecedent={() => aller({ jour: ajouterJours(jour, -pas) })}
-          onSuivant={() => aller({ jour: ajouterJours(jour, pas) })}
+          onPrecedent={() => aller({ jour: voisin(vue, jour, -1) })}
+          onSuivant={() => aller({ jour: voisin(vue, jour, 1) })}
           onAujourdhui={() => aller({ jour: undefined })}
         />
-        {equipeLisible ? (
-          <div style={{ minWidth: 240 }}>
-            <Select name="collaborateur" label={t('act.agenda.collaborateur')} value={collaborateur ?? ''} onChange={(v) => aller({ collaborateur: v || undefined, evenement: undefined })}
-              options={[{ value: '', label: t('act.agenda.monAgenda') }, ...(equipe.data ?? []).map((m) => ({ value: m.collaborateur.id, label: m.collaborateur.nomAffiche }))]} />
-          </div>
-        ) : null}
+        <div className="gm-row" style={{ gap: 'var(--gm-space-3)', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+          {etroit ? null : (
+            <Tabs
+              value={vue}
+              onChange={(v) => aller({ vue: v === 'semaine' ? undefined : v })}
+              items={(['jour', 'semaine', 'mois'] as const).map((v) => ({ key: v, label: t(`act.agenda.vue.${v}`) }))}
+            />
+          )}
+          {equipeLisible ? (
+            <div style={{ minWidth: 240 }}>
+              <Select name="collaborateur" label={t('act.agenda.collaborateur')} value={collaborateur ?? ''} onChange={(v) => aller({ collaborateur: v || undefined, evenement: undefined })}
+                options={[{ value: '', label: t('act.agenda.monAgenda') }, ...(equipe.data ?? []).map((m) => ({ value: m.collaborateur.id, label: m.collaborateur.nomAffiche }))]} />
+            </div>
+          ) : null}
+        </div>
       </div>
       {retour}
       {invitations.length ? (
@@ -112,23 +138,44 @@ export default function AgendaPage() {
           </ul>
         </Card>
       ) : null}
-      {agenda.isError ? <InlineAlert level="crit" correlationId={agenda.error.correlationId || undefined}>{erreur(agenda.error)?.titre}</InlineAlert> : agenda.isPending ? <Skeleton height={320} /> : (
-        <div role="list" aria-label={libelle} style={{ display: 'grid', gridTemplateColumns: `repeat(${jours.length}, minmax(0, 1fr))`, gap: 'var(--gm-space-2)' }}>
-          {jours.map((j) => {
-            const du = evenements.filter((e) => couvre(e, j))
-            return (
-              <section role="listitem" key={j} aria-label={dates.jourLong(j)} className="gm-col"
-                style={{ gap: 'var(--gm-space-2)', padding: 'var(--gm-space-2)', minHeight: 160, background: 'var(--gm-color-surface)',
-                  border: `var(--gm-border-1) solid ${j === aujourdhui() ? 'var(--gm-color-border-strong)' : 'var(--gm-color-border)'}` }}>
-                <h2 className="gm-type-small-strong" style={{ margin: 0 }}>{dates.jourCourt(j)}{j === aujourdhui() ? ` · ${t('act.aujourdhui')}` : ''}</h2>
-                {du.length ? du.map((e) => <CaseEvenement key={e.id} e={e} onOuvrir={() => aller({ evenement: e.id })} />) : <span className="gm-field-help">{t('act.agenda.libre')}</span>}
-              </section>
-            )
-          })}
+      <div className="gm-row" style={{ alignItems: 'flex-start', gap: 'var(--gm-space-4)', flexWrap: 'wrap' }}>
+        <div style={{ flex: '1 1 640px', minWidth: 0 }}>
+          {agenda.isError ? <InlineAlert level="crit" correlationId={agenda.error.correlationId || undefined}>{erreur(agenda.error)?.titre}</InlineAlert> : agenda.isPending ? <Skeleton height={480} /> : (
+            <AgendaGrid
+              vue={vue}
+              jours={jours}
+              mois={vue === 'mois' ? jour.slice(0, 7) : undefined}
+              evenements={affiches}
+              aujourdhui={aujourdhui()}
+              maintenant={new Date().toISOString()}
+              label={libelle}
+              libelleJour={vue === 'mois' ? dates.jourLong : dates.jourCourt}
+              heure={dates.heure}
+              jourDe={jourDe}
+              minutesDe={minutesDe}
+              onOuvrir={(id) => aller({ evenement: id })}
+              onCreer={lecture ? undefined : (j, h) => setDialogue({ nouveau: j, heure: h })}
+              onVoirJour={(j) => aller({ vue: 'jour', jour: j })}
+            />
+          )}
         </div>
-      )}
+        <aside style={{ flex: '0 0 220px' }} aria-label={t('act.agenda.categories')}>
+          <CheckboxGroup
+            label={t('act.agenda.categories')}
+            value={categories}
+            onChange={(l) => aller({ categories: l.length === CATEGORIES_EVENEMENT.length ? undefined : l.join(',') || 'AUCUNE' })}
+            options={CATEGORIES_EVENEMENT.map((c) => ({ value: c, label: t(`act.categorie.${c}`) }))}
+          />
+          <ul className="gm-agenda-legende" aria-label={t('act.agenda.legende')}>
+            {CATEGORIES_EVENEMENT.map((c) => (
+              <li key={c}><span className="gm-agenda-pastille" style={{ ['--gm-agenda-couleur' as string]: `var(--gm-data-${COULEUR_CATEGORIE[c]})` }} aria-hidden="true" />{t(`act.categorie.${c}`)}</li>
+            ))}
+            <li><span className="gm-agenda-pastille gm-agenda-legende-attente" aria-hidden="true" />{t('act.agenda.enAttente')}</li>
+          </ul>
+        </aside>
+      </div>
       {ouvert && !dialogue ? <DetailEvenement evenement={ouvert} onFermer={() => aller({ evenement: undefined })} onModifier={() => setDialogue({ modifier: ouvert })} onFait={fait} /> : null}
-      {dialogue && 'nouveau' in dialogue ? <DialogueEvenement jour={dialogue.nouveau} onFermer={() => setDialogue(null)} onFait={fait} /> : null}
+      {dialogue && 'nouveau' in dialogue ? <DialogueEvenement jour={dialogue.nouveau} heure={dialogue.heure} onFermer={() => setDialogue(null)} onFait={fait} /> : null}
       {dialogue && 'modifier' in dialogue ? <DialogueEvenement jour={jour} evenement={dialogue.modifier} onFermer={() => setDialogue(null)} onFait={fait} /> : null}
     </div>
   )

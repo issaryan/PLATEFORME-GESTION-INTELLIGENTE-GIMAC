@@ -12,7 +12,7 @@ import { useUnites } from '../../../hooks/pilotage'
 type Statut = 'ok' | 'warn' | 'crit' | 'info' | 'neutral'
 
 const STATUT_ACTIVITE: Record<StatutActivite, Statut> = { A_FAIRE: 'neutral', EN_COURS: 'info', FAITE: 'ok', REPORTEE: 'warn', ANNULEE: 'neutral' }
-const ETAT_TACHE: Record<EtatTache, Statut> = { A_PRENDRE: 'warn', OUVERTE: 'neutral', EN_COURS: 'info', BLOQUEE: 'crit', TERMINEE: 'ok', ANNULEE: 'neutral' }
+export const ETAT_TACHE: Record<EtatTache, Statut> = { A_PRENDRE: 'warn', OUVERTE: 'neutral', EN_COURS: 'info', BLOQUEE: 'crit', TERMINEE: 'ok', ANNULEE: 'neutral' }
 const PRIORITE: Record<Priorite, Statut> = { BASSE: 'neutral', NORMALE: 'info', HAUTE: 'warn', URGENTE: 'crit' }
 const ETAT_RAPPORT: Record<EtatRapportDuJour, Statut> = { ABSENT: 'warn', BROUILLON: 'info', SOUMIS: 'ok', VISE: 'ok', DEPOSE: 'neutral' }
 

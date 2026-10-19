@@ -26,7 +26,7 @@ describe('Tâches', () => {
     page()
     expect(await screen.findByRole('heading', { level: 1, name: 'Tâches' })).toBeTruthy()
     // Onglets : ses tâches et les tâches à prendre de ses unités (D-81), rien de confié ni d'équipe.
-    expect(screen.getAllByRole('tab').map((x) => x.textContent)).toEqual(['Mes tâches', 'À prendre'])
+    expect(screen.getAllByRole('tab').map((x) => x.textContent)).toEqual(['Mes tâches', 'À prendre', 'Liste', 'Tableau'])
     fireEvent.click(await screen.findByRole('button', { name: 'Mettre à jour la fiche de procédure du service' }))
     const fiche = await screen.findByRole('dialog', { name: 'Mettre à jour la fiche de procédure du service' })
     expect(await within(fiche).findByText('Historique')).toBeTruthy()
@@ -194,5 +194,18 @@ describe('Tâches', () => {
     vi.spyOn(s.pilotage, 'taches').mockRejectedValue(new ApiError(503, 'PIL_ORGANISATION_INDISPONIBLE', 'x', 'cid-5'))
     page('/des/taches', { s })
     expect(await screen.findByText('cid-5', { exact: false })).toBeTruthy()
+  })
+
+  it('tableau Kanban : colonnes par état, déplacement au clavier vers la transition, ouverture (D-113)', async () => {
+    page('/des/taches?affichage=tableau')
+    const tableau = await screen.findByRole('group', { name: 'Tableau' })
+    expect(within(tableau).getByRole('region', { name: 'En cours' })).toBeTruthy()
+    const carte = await within(tableau).findByRole('article', { name: /Mettre à jour la fiche de procédure du service/ })
+    fireEvent.keyDown(carte, { key: 'ArrowRight', altKey: true })
+    const confirmation = await screen.findByRole('alertdialog')
+    expect(within(confirmation).getByText(/Ouverte/)).toBeTruthy()
+    fireEvent.keyDown(confirmation, { key: 'Escape' })
+    fireEvent.click(screen.getByRole('tab', { name: 'Liste' }))
+    expect(await screen.findByRole('columnheader', { name: 'Priorité' })).toBeTruthy()
   })
 })

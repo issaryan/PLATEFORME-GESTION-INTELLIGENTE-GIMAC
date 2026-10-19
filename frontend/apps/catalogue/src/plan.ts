@@ -363,6 +363,13 @@ export const PLAN: EntreePlan[] = [
     "description": "Visualisation d'une preuve d'inclusion du registre d'audit (CON-04, gabarit G9) : feuille (événement), chemin d'audit niveau par niveau (côté gauche ou droit), racine de période, jeton d'horodatage, verdict de vérification avec identifiant de corrélation, téléchargement de la preuve au format ouvert. La vérification est recalculée par le service ; l'interface affiche les empreintes (Hash tronqué, copie) et le verdict."
   },
   {
+    "nom": "AgendaGrid",
+    "groupe": "Données",
+    "hauteur": 640,
+    "largeur": 1100,
+    "description": "Grille d'agenda (D-113) : vues jour, semaine et mois. Colonne des heures, ligne « toute la journée », événements placés à leur heure, chevauchements côte à côte, ligne de l'heure actuelle ; une case libre crée un événement à cette heure. Mois : trois événements par jour puis « + n autres », jours hors du mois atténués. Chaque catégorie prend une teinte de la palette de données portée par une pastille, toujours doublée de son libellé ; une invitation en attente est en contour pointillé.\n\n**Le consommateur fournit** `vue`, `jours`, `evenements` (`{ id, titre, debut, fin, journeeEntiere?, categorie, couleur, lieu?, enAttente? }`), `aujourdhui`, `maintenant?`, `heureDebut?`, `heureFin?`, les fonctions de fuseau `jourDe`, `minutesDe`, `heure`, `libelleJour`, et `onOuvrir`, `onCreer?`, `onVoirJour?`."
+  },
+  {
     "nom": "CalendarGrid",
     "groupe": "Données",
     "hauteur": 420,

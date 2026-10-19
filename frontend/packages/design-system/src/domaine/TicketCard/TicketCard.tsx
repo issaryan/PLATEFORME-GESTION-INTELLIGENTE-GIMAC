@@ -8,6 +8,8 @@ import { useLibelle } from '../../i18n/LangueProvider'
 
 export interface TicketCardProps {
   id: string
+  /** Référence affichée à la place de l'identifiant (identifiant technique trop long, D-113). */
+  reference?: string
   title: string
   institution: string
   severity?: Severity
@@ -23,9 +25,9 @@ export interface TicketCardProps {
 export function TicketCard(p: TicketCardProps) {
   const t = useLibelle()
   return (
-    <article className={cx('gm-tcard', p.selected && 'gm-tcard-sel')} tabIndex={0} aria-label={p.id + ' ' + p.title}>
+    <article className={cx('gm-tcard', p.selected && 'gm-tcard-sel')} tabIndex={0} aria-label={(p.reference ?? p.id) + ' ' + p.title}>
       <div className="gm-row" style={{ justifyContent: 'space-between' }}>
-        <span className="gm-mono">{p.id}</span>
+        <span className="gm-mono">{p.reference ?? p.id}</span>
         {p.severity ? <SeverityBadge level={p.severity} /> : <Tag>{p.type || t('ticket.demande')}</Tag>}
       </div>
       <div className="gm-tcard-title">{p.title}</div>

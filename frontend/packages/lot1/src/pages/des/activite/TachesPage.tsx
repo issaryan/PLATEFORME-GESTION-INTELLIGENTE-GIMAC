@@ -1,15 +1,15 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router'
-import { Button, DataTable, PageHeader, Select, Tabs, type Column } from '@gimac/design-system'
+import { Button, DataTable, KanbanBoard, PageHeader, Select, Tabs, type Column, type KanbanColumn } from '@gimac/design-system'
 import { aPermission, usePermissions } from '@gimac/socle'
-import { ETATS_TACHE, type EtatTache, type Tache, type VueTaches } from '../../../modele/pilotage'
+import { ETATS_TACHE, TRANSITIONS_TACHE, type EtatTache, type Tache, type VueTaches } from '../../../modele/pilotage'
 import { useTaches } from '../../../hooks/pilotage'
 import { usePouvoirs } from '../../../hooks/pouvoirs'
 import { PERM } from '../../../permissions'
 import { useRetour } from '../parcours/communs'
 import { etatListe } from '../liaisons/communs'
-import { BadgePriorite, BadgeTache, useDates, useLibelleUnite } from './communs'
+import { BadgePriorite, BadgeTache, ETAT_TACHE, useDates, useLibelleUnite } from './communs'
 import { DetailTache, DialogueAttribution, DialogueGroupe, DialogueTache, DialogueTransition, type Destination } from './dialoguesTache'
 
 // Tâches (D-76, /des/taches ; CP PIL-04, PIL-08 ; D-81 §6) : mes tâches, les tâches à prendre de mes unités,
@@ -20,6 +20,9 @@ import { DetailTache, DialogueAttribution, DialogueGroupe, DialogueTache, Dialog
 // TACHE_CONFIER de la matrice des pouvoirs (GET pouvoirs/moi).
 
 const PAR_PAGE = 20
+/** Tableau Kanban (D-113) : toutes les tâches de la vue, sans les annulées, une colonne par état. */
+const PAR_TABLEAU = 200
+const COLONNES_TABLEAU: EtatTache[] = ['A_PRENDRE', 'OUVERTE', 'EN_COURS', 'BLOQUEE', 'TERMINEE']
 
 type Dialogue = { nouvelle: true } | { modifier: Tache } | { transition: Tache; vers: EtatTache } | { attribuer: Tache } | null
 
@@ -34,7 +37,9 @@ export default function TachesPage() {
   const vue = vues.find((v) => v === params.get('vue')) ?? 'moi'
   const [etat, setEtat] = useState<EtatTache | ''>('')
   const [page, setPage] = useState(1)
-  const taches = useTaches({ vue, etat: etat || undefined, page: page - 1, taille: PAR_PAGE })
+  // Affichage en liste (paginée par le service) ou en tableau Kanban pour organiser son travail (D-113, ?affichage=tableau).
+  const tableau = params.get('affichage') === 'tableau'
+  const taches = useTaches(tableau ? { vue, page: 0, taille: PAR_TABLEAU } : { vue, etat: etat || undefined, page: page - 1, taille: PAR_PAGE })
   const pouvoirs = usePouvoirs(peutConfier || equipeLisible)
   const libelleUnite = useLibelleUnite()
   const confier = params.get('confier')
@@ -101,7 +106,42 @@ export default function TachesPage() {
         <Tabs items={vues.map((v) => ({ key: v, label: t(`act.taches.vue.${v}`) }))} value={vue} onChange={(k) => { setPage(1); aller({ vue: k === 'moi' ? undefined : k }) }} />
       ) : null}
       {retour}
+      <div className="gm-row" style={{ justifyContent: 'flex-end' }}>
+        <Tabs items={[{ key: 'liste', label: t('act.taches.affichage.liste') }, { key: 'tableau', label: t('act.taches.affichage.tableau') }]} value={tableau ? 'tableau' : 'liste'}
+          onChange={(k) => aller({ affichage: k === 'tableau' ? 'tableau' : undefined })} />
+      </div>
       <div role="tabpanel" aria-label={t(`act.taches.vue.${vue}`)}>
+        {tableau ? (
+          <KanbanBoard
+            label={t('act.taches.affichage.tableau')}
+            masquerAjout
+            columns={COLONNES_TABLEAU.filter((e) => e !== 'A_PRENDRE' || vue === 'unite' || lignes.some((x) => x.etat === 'A_PRENDRE')).map((e): KanbanColumn => ({
+              key: e,
+              label: t(`act.tache.etat.${e}`),
+              onAdd: e === 'OUVERTE' ? () => setDialogue({ nouvelle: true }) : undefined,
+              cards: lignes.filter((x) => x.etat === e).map((x) => ({
+                id: x.id,
+                reference: x.origine.reference ?? t(`act.tache.origine.${x.origine.type}`),
+                title: x.titre,
+                institution: vue === 'moi' || vue === 'unite' ? x.createur.nomAffiche : x.responsable?.nomAffiche ?? (x.uniteCible ? libelleUnite(x.uniteCible) : ''),
+                type: t(`act.priorite.${x.priorite}`),
+                status: x.enRetard ? 'crit' : ETAT_TACHE[x.etat],
+                statusLabel: x.enRetard ? t('act.tache.enRetard') : t(`act.tache.etat.${x.etat}`),
+                due: x.echeance ? dates.jour(x.echeance) : t('act.tache.sansEcheance'),
+                late: x.enRetard,
+              })),
+            }))}
+            canMove={(id, vers) => {
+              const x = lignes.find((l) => l.id === id)
+              return !!x && TRANSITIONS_TACHE[x.etat].includes(vers as EtatTache)
+            }}
+            onMove={(id, vers) => {
+              const x = lignes.find((l) => l.id === id)
+              if (x) setDialogue({ transition: x, vers: vers as EtatTache })
+            }}
+            onOpen={(id) => aller({ tache: id })}
+          />
+        ) : (
         <DataTable
           columns={colonnes}
           rows={lignes}
@@ -120,6 +160,7 @@ export default function TachesPage() {
           {...etatListe(taches, lignes)}
           onRetry={() => void taches.refetch()}
         />
+        )}
       </div>
       {ouverte && !dialogue && !groupe ? (
         <DetailTache id={ouverte} pouvoirs={pouvoirs.data} onFermer={() => aller({ tache: undefined })} onModifier={(x) => setDialogue({ modifier: x })}

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { ApiError } from '@gimac/socle'
-import AgendaPage from './AgendaPage'
+import AgendaPage, { COULEUR_CATEGORIE, joursDeVue, voisin } from './AgendaPage'
 import { rendrePage, sessionTest } from '../../../test/rendu'
 import { servicesSimules } from '../../../services/simule'
 import type { Services } from '../../../services/ports'
@@ -28,8 +28,9 @@ describe('Agenda', () => {
   it('semaine, invitation acceptée, fiche d’un événement reçu', async () => {
     page()
     expect(await screen.findByRole('heading', { level: 1, name: 'Agenda' })).toBeTruthy()
-    const semaine = await screen.findByRole('list', { name: /^Semaine \d+ : du / })
-    expect(within(semaine).getAllByRole('listitem')).toHaveLength(7)
+    // Grille horaire de la semaine (D-113) : sept colonnes de jours.
+    const semaine = await waitFor(() => { const g = document.querySelector<HTMLElement>('.gm-agenda'); expect(g?.getAttribute('aria-label')).toMatch(/^Semaine \d+ : du /); return g! })
+    expect(semaine.querySelectorAll('.gm-agenda-colonne')).toHaveLength(7)
     const invitations = await screen.findByRole('heading', { name: 'Invitation en attente (1)' })
     expect(invitations).toBeTruthy()
     fireEvent.click(screen.getAllByRole('button', { name: 'Accepter' })[0])
@@ -91,8 +92,8 @@ describe('Agenda', () => {
   it('petit écran : un jour à la fois ; navigation d’un jour à l’autre', async () => {
     Object.defineProperty(window, 'innerWidth', { value: 480, configurable: true })
     page()
-    const jour = await screen.findByRole('list', { name: /\d{4}$/ })
-    expect(within(jour).getAllByRole('listitem')).toHaveLength(1)
+    const jour = await waitFor(() => { const g = document.querySelector<HTMLElement>('.gm-agenda'); expect(g?.getAttribute('aria-label')).toMatch(/\d{4}$/); return g! })
+    expect(jour.querySelectorAll('.gm-agenda-colonne')).toHaveLength(1)
     fireEvent.click(screen.getByRole('button', { name: 'Jour suivant' }))
     fireEvent.click(screen.getByRole('button', { name: 'Jour précédent' }))
     fireEvent.click(screen.getByRole('button', { name: 'Aujourd’hui' }))
@@ -124,5 +125,36 @@ describe('Agenda', () => {
     vi.spyOn(ko.pilotage, 'agenda').mockRejectedValue(new ApiError(503, 'HTTP_503', '', 'cid-3'))
     page('/des/agenda', { s: ko })
     expect(await screen.findByText('Le service n’a pas pu traiter la demande.')).toBeTruthy()
+  })
+
+  it('vues jour et mois, filtre des catégories, création depuis une case de la grille (D-113)', async () => {
+    page()
+    expect(await screen.findAllByRole('button', { name: /Comité de pilotage des liaisons/ })).toBeTruthy()
+    fireEvent.click(screen.getByLabelText('Réunion'))
+    await waitFor(() => expect(screen.queryByRole('button', { name: /Comité de pilotage des liaisons/ })).toBeNull())
+    fireEvent.click(screen.getByLabelText('Réunion'))
+    expect(await screen.findAllByRole('button', { name: /Comité de pilotage des liaisons/ })).toBeTruthy()
+    fireEvent.click(screen.getByRole('tab', { name: 'Jour' }))
+    await waitFor(() => expect(document.querySelectorAll('.gm-agenda-colonne')).toHaveLength(1))
+    fireEvent.click(screen.getByRole('button', { name: /Créer un événement le .* à 10:00/ }))
+    const d = await screen.findByRole('dialog', { name: 'Nouvel événement' })
+    expect((within(d).getByLabelText(/Début \(HH:MM\)/) as HTMLInputElement).value).toBe('10:00')
+    fireEvent.keyDown(d, { key: 'Escape' })
+    fireEvent.click(screen.getByRole('tab', { name: 'Mois' }))
+    const mois = await waitFor(() => { const g = document.querySelector<HTMLElement>('.gm-agenda-mois'); expect(g).toBeTruthy(); return g! })
+    expect(mois.querySelectorAll('.gm-agenda-mois-case')).toHaveLength(42)
+    fireEvent.click(screen.getByRole('button', { name: 'Mois suivant' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Mois précédent' }))
+  })
+
+  it('calcule les jours affichés et la période voisine', () => {
+    expect(joursDeVue('jour', '2026-10-19')).toEqual(['2026-10-19'])
+    expect(joursDeVue('semaine', '2026-10-21')[0]).toBe('2026-10-19')
+    const m = joursDeVue('mois', '2026-10-19')
+    expect([m.length, m[0], m[41]]).toEqual([42, '2026-09-28', '2026-11-08'])
+    expect(voisin('jour', '2026-10-19', 1)).toBe('2026-10-20')
+    expect(voisin('semaine', '2026-10-19', -1)).toBe('2026-10-12')
+    expect(voisin('mois', '2026-12-19', 1)).toBe('2027-01-01')
+    expect(new Set(Object.values(COULEUR_CATEGORIE)).size).toBe(6)
   })
 })
