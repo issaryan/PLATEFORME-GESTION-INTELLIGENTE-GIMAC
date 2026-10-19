@@ -102,6 +102,18 @@ function Espace({ version, graphe, catalogue }: { version: ReferentielVersion; g
     setErreur(null)
     arc.mutate({ de, vers, present: false }, { onError: echec, onSuccess: () => setAnnonce(t('modelisateur.annonce.delie', { de, vers })) })
   }, [arc, echec, t])
+  // Carte déposée dans un autre couloir : l'opération change d'étape (saisie complète, comme la modale).
+  const changerEtape = useCallback((code: string, etape: string | null) => {
+    const o = graphe.noeuds.find((n) => n.code === code)
+    if (!o) return
+    setErreur(null)
+    enregistrer.mutate({ code, operation: { ...saisieDe(o), etape: etape as ReferenceOperation['etape'] } }, {
+      onError: echec,
+      onSuccess: () => setAnnonce(t('modelisateur.annonce.etapeChangee', {
+        code, etape: etape ? graphe.etapes?.find((e) => e.code === etape)?.libelle ?? etape : t('modelisateur.sansEtape'),
+      })),
+    })
+  }, [graphe.noeuds, graphe.etapes, enregistrer, echec, t])
   const placerPositions = useCallback((l: { code: string; x: number; y: number }[]) => placer.mutate(l, { onError: echec }), [placer, echec])
   const disposer = () => {
     setErreur(null)
@@ -203,7 +215,7 @@ function Espace({ version, graphe, catalogue }: { version: ReferentielVersion; g
         </section>
       ) : null}
       {vue === 'canevas' ? (
-        <Canevas graphe={graphe} catalogue={catalogue} etapes={source} positions={positions} lecture={lecture} surlignes={surlignes} onOuvrir={ouvrir} onRelier={relier} onDelier={delier} onPlacer={placerPositions} />
+        <Canevas graphe={graphe} catalogue={catalogue} etapes={source} positions={positions} lecture={lecture} surlignes={surlignes} onOuvrir={ouvrir} onRelier={relier} onDelier={delier} onPlacer={placerPositions} onChangerEtape={changerEtape} />
       ) : (
         <VueListe graphe={graphe} etapes={source} lecture={lecture} surlignes={surlignes} onOuvrir={ouvrir} onRelier={relier} onDelier={delier} />
       )}

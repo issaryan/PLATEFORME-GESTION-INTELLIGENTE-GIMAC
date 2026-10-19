@@ -88,7 +88,8 @@ public class ParcoursProjection {
             o.getEcheanceCible(),
             o.getDelaiJours(),
             o.getDelaiMaxJours(),
-            o.reprise()
+            o.reprise(),
+            o.getPredecesseurs().stream().filter(r -> p.operation(r).isPresent()).toList()
         );
     }
 

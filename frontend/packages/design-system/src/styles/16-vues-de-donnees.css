@@ -25,6 +25,11 @@
 .gm-dag-link { fill: none; stroke: var(--gm-color-border-strong); stroke-width: 1.5; }
 .gm-dag-link-critical { stroke: var(--gm-color-action); stroke-width: 2.5; }
 .gm-dag-node { position: absolute; }
+/* Nœud du graphe à hauteur fixe (NODE_H) : titre limité à deux lignes, responsable à une, rien ne déborde. */
+.gm-dag-node .gm-node { height: 150px; box-sizing: border-box; overflow: hidden; }
+.gm-dag-node .gm-node-title { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.gm-dag-node .gm-node > .gm-field-help { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gm-dag-node .gm-node-el { margin-top: auto; }
 .gm-kanban { display: flex; gap: var(--gm-space-3); align-items: flex-start; overflow-x: auto; padding-bottom: var(--gm-space-2); }
 .gm-kanban-col { width: 296px; flex: none; display: flex; flex-direction: column; background: var(--gm-color-surface-sunken); border: var(--gm-border-1) solid var(--gm-color-border); }
 .gm-kanban-over { border-color: var(--gm-color-status-crit-fg); }
@@ -49,7 +54,7 @@ td.gm-gantt-name.gm-num { width: 72px; min-width: 72px; text-align: right; font-
 .gm-gantt-bar { position: absolute; top: 12px; height: 20px; background: var(--gm-color-action); display: flex; align-items: center; }
 .gm-gantt-bar-crit { outline: var(--gm-border-2) solid var(--gm-color-status-crit-fg); outline-offset: 1px; }
 .gm-gantt-done { position: absolute; left: 0; top: 0; height: 100%; background: var(--gm-color-status-ok-fg); }
-.gm-gantt-bar-label { position: relative; font-size: 11px; color: var(--gm-color-text-inverse); padding-left: 6px; font-weight: 600; }
+.gm-gantt-bar-label { position: relative; white-space: nowrap; font-size: 11px; color: var(--gm-color-text-inverse); padding-left: 6px; font-weight: 600; }
 .gm-gantt-slack { position: absolute; top: 18px; height: 8px; background: repeating-linear-gradient(45deg, var(--gm-color-border-strong) 0 3px, transparent 3px 6px); }
 .gm-gantt-today { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--gm-color-status-crit-fg); }
 .gm-gantt-key { display: inline-flex; align-items: center; gap: 6px; }

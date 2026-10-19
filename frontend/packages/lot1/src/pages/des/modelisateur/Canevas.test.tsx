@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 import { rendrePage, sessionTest } from '../../../test/rendu'
 import { servicesSimules } from '../../../services/simule'
 import ReferentielsOperationsPage from '../ReferentielsOperationsPage'
-import { DELAI_POSITIONS } from './Canevas'
+import { DELAI_POSITIONS, couloirSous } from './Canevas'
 
 // Gestes du canevas (D-77, §6) : la bibliothèque est remplacée par un relais qui expose les rappels que
 // @xyflow/react déclenche au glisser (onConnect, onEdgesDelete, onNodeDragStop, onBeforeDelete), pour vérifier
@@ -96,5 +96,21 @@ describe('DES-12 : gestes du canevas', () => {
     expect(screen.queryByRole('dialog')).toBeNull()
     act(() => rappels().onNodeDoubleClick(null, { id: 'C2', type: 'operation' }))
     expect(await screen.findByRole('dialog', { name: 'Opération C2' })).toBeTruthy()
+  })
+})
+
+describe('couloirSous (dépôt d’une carte dans un couloir, demande du 19/10/2026)', () => {
+  const couloirs = [
+    { cle: 'etape-PRISE_CONTACT', x: 0, largeur: 300 },
+    { cle: 'etape-CADRAGE', x: 310, largeur: 300 },
+    { cle: 'etape-aucune', x: 620, largeur: 300 },
+  ]
+  it('rend l’étape du couloir sous le centre de la carte', () => {
+    expect(couloirSous(couloirs, 320)).toBe('CADRAGE')
+    expect(couloirSous(couloirs, 10)).toBe('PRISE_CONTACT')
+  })
+  it('rend null pour le couloir « sans étape » et undefined hors de tout couloir', () => {
+    expect(couloirSous(couloirs, 640)).toBeNull()
+    expect(couloirSous(couloirs, 5000)).toBeUndefined()
   })
 })

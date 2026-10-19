@@ -36,8 +36,8 @@ export function OperationNode(p: OperationNodeProps) {
         <span className="gm-mono">{p.code}</span>
         <StatusBadge status={st[0]} label={t(st[1])} />
       </div>
-      <div className="gm-node-title">{p.label}</div>
-      <div className="gm-field-help">{t('operation.incombe', { qui: p.owner })}</div>
+      <div className="gm-node-title" title={p.label}>{p.label}</div>
+      <div className="gm-field-help" title={t('operation.incombe', { qui: p.owner })}>{t('operation.incombe', { qui: p.owner })}</div>
       <div className="gm-node-el">
         {ELEMENTS.map((e) => {
           const ok = reuni(el[e[0]])

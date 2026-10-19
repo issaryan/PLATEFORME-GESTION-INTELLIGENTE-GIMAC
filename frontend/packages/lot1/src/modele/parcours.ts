@@ -116,6 +116,8 @@ export type OperationParcours = Permitted & {
   oubliSansSymptome: boolean
   pivot: boolean
   predecesseursNonFaits: string[]
+  /** D-112 : tous les prédécesseurs (rangs), faits ou non ; absents d'un service antérieur. */
+  predecesseurs?: string[]
   /** Modélisateur (D-77, §3) : libellé, geste, jalon, déclencheur et livrables lus sur l'opération du référentiel publié. */
   libelle?: string | null
   geste?: Geste | null

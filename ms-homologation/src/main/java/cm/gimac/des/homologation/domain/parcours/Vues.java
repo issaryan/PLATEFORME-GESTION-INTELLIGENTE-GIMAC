@@ -52,7 +52,9 @@ public final class Vues {
         int delaiJours,
         int delaiMaxJours,
         /** Opération reprise de l'existant (D-107) : affichée « reprise, pièce non numérisée », rien ne lui est exigé (D-109). */
-        boolean reprise
+        boolean reprise,
+        /** Tous les prédécesseurs instanciés (rangs), faits ou non : arcs du graphe et du planning de la liaison (D-112). */
+        List<String> predecesseurs
     ) {}
 
     /**

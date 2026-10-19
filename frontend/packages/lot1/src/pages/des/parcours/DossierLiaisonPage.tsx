@@ -15,6 +15,7 @@ import { DialogueBlocage, OngletBlocages } from './onglets/OngletBlocages'
 import { OngletDecision } from './onglets/OngletDecision'
 import { OngletEtapes } from './onglets/OngletEtapes'
 import { OngletGouvernance } from './onglets/OngletGouvernance'
+import { OngletGraphe, OngletPlanning } from './onglets/OngletGraphePlanning'
 import { OngletMiseEnService } from './onglets/OngletMiseEnService'
 import { OngletOperations } from './onglets/OngletOperations'
 import { OngletPerimetre } from './onglets/OngletPerimetre'
@@ -27,7 +28,7 @@ import { OngletChronologie, OngletPreuves, OngletSignatures } from './onglets/On
 
 // D-109 : « Livrables et preuves », « Signatures » et « Chronologie » du dossier (preuves attendues de chaque étape et opération,
 // signatures attendues et recueillies, événements réels) ; l'exécution reste dans « Opérations ».
-const ONGLETS = ['perimetre', 'etapes', 'operations', 'preuves', 'signatures', 'chronologie', 'decision', 'mise-en-service', 'blocages', 'gouvernance'] as const
+const ONGLETS = ['perimetre', 'etapes', 'operations', 'graphe', 'planning', 'preuves', 'signatures', 'chronologie', 'decision', 'mise-en-service', 'blocages', 'gouvernance'] as const
 type Onglet = (typeof ONGLETS)[number]
 
 /** Gestes du dossier : proposés si le service les permet ET si le jeton porte la permission. */
@@ -97,6 +98,8 @@ function Dossier({ dossier }: { dossier: DossierLiaison }) {
     perimetre: <OngletPerimetre dossier={dossier} />,
     etapes: <OngletEtapes dossier={dossier} onAffecter={gestes.affecter ? () => maj({ action: 'affecter' }) : undefined} />,
     operations: <OngletOperations dossier={dossier} />,
+    graphe: <OngletGraphe dossier={dossier} />,
+    planning: <OngletPlanning dossier={dossier} />,
     preuves: <OngletPreuves dossier={dossier} />,
     signatures: <OngletSignatures dossier={dossier} />,
     chronologie: <OngletChronologie dossier={dossier} />,

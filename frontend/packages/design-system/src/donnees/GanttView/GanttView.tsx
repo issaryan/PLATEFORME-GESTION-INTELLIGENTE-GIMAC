@@ -98,7 +98,8 @@ export function GanttView(p: GanttViewProps) {
                       aria-label={t(m.critical ? 'gantt.barreCritique' : 'gantt.barre', { libelle: m.label, debut: m.start, duree: m.duration })}
                     >
                       {m.done ? <span className="gm-gantt-done" style={{ width: m.done + '%' }} /> : null}
-                      <span className="gm-gantt-bar-label">{m.done ? m.done + ' %' : ''}</span>
+                      {/* Le pourcentage n'est écrit que si la barre peut le contenir ; il reste lu dans la vue tableau et l'étiquette. */}
+                      <span className="gm-gantt-bar-label">{m.done && m.duration * colW >= 44 ? m.done + ' %' : ''}</span>
                     </span>
                     {p.today !== undefined ? <span className="gm-gantt-today" style={{ left: p.today * colW }} /> : null}
                   </div>

@@ -105,11 +105,22 @@ export type CanevasProps = {
   onRelier: (de: string, vers: string) => void
   onDelier: (de: string, vers: string) => void
   onPlacer: (positions: { code: string; x: number; y: number }[]) => void
+  /** Carte déposée dans le couloir d'une autre étape : rattachement de l'opération à cette étape (null : sans étape). */
+  onChangerEtape?: (code: string, etape: string | null) => void
+}
+
+/** Couloir d'étape sous le centre d'une carte déposée en (x, y) ; undefined hors de tout couloir. */
+export function couloirSous(couloirs: { cle: string; x: number; largeur: number }[], x: number): string | null | undefined {
+  const centre = x + CARTE.largeur / 2
+  const c = couloirs.find((k) => centre >= k.x && centre <= k.x + k.largeur)
+  if (!c) return undefined
+  const code = c.cle.replace(/^etape-/, '')
+  return code === 'aucune' ? null : code
 }
 
 export function Canevas(p: CanevasProps) {
   const { t } = useTranslation()
-  const { onPlacer, onOuvrir, onRelier, onDelier } = p
+  const { onOuvrir, onRelier, onDelier, onChangerEtape } = p
   const calcules = useMemo<NoeudFlux[]>(() => {
     const { etapes, segments } = couloirs(p.graphe.noeuds, p.positions, p.etapes, t)
     const fond = (c: (typeof etapes)[number], sens: 'etape' | 'segment', z: number): NoeudCouloir => ({
@@ -140,6 +151,22 @@ export function Canevas(p: CanevasProps) {
       })),
     [p.graphe.arcs, p.lecture, t],
   )
+
+  // Déposer une carte dans le couloir d'une autre étape la rattache à cette étape ; les couloirs sont ceux d'avant
+  // le déplacement (positions encore non enregistrées), la position est enregistrée comme toute autre.
+  const { onPlacer: placer } = p
+  const onPlacer = useMemo(() => (l: { code: string; x: number; y: number }[]) => {
+    placer(l)
+    if (!onChangerEtape || p.lecture) return
+    const lignes = calcules
+      .filter((n): n is NoeudCouloir => n.type === 'couloir' && n.data.sens === 'etape')
+      .map((n) => ({ cle: n.id, x: n.position.x, largeur: n.data.largeur }))
+    for (const { code, x } of l) {
+      const noeud = p.graphe.noeuds.find((n) => n.code === code)
+      const cible = couloirSous(lignes, x)
+      if (noeud && !noeud.fantome && cible !== undefined && cible !== (noeud.etape ?? null)) onChangerEtape(code, cible)
+    }
+  }, [placer, onChangerEtape, p.lecture, p.graphe.noeuds, calcules])
 
   // Canevas générique partagé avec les processus d'unité (D-87) : positions regroupées (PUT /positions), arcs.
   return (

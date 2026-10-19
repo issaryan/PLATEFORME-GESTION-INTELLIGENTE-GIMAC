@@ -25,7 +25,9 @@ export interface DagViewProps {
 }
 
 const NODE_W = 240
-const NODE_H = 118
+// Hauteur fixe d'un nœud : titre sur deux lignes au plus, responsable sur une ligne, quatre éléments (demande du
+// 19/10/2026 : à 118 px, un titre long repoussait les pictogrammes hors du nœud).
+const NODE_H = 150
 const COL_GAP = 64
 const ROW_GAP = 16
 const ETATS: Record<string, [Status, CleLibelle]> = {

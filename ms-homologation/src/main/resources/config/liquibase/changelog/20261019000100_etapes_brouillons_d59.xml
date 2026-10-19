@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!--
+        D-112 (19/10/2026) : les brouillons du jeu d'initialisation D-59 (« Annexe A du CR-CERT-GIMAC-01 v1.4 »)
+        précèdent les étapes configurables (D-89) : leurs opérations n'avaient aucune étape et tombaient toutes dans
+        le couloir « Sans étape » du modélisateur. Chaque opération d'un BROUILLON sans étape reçoit l'étape portée
+        par sa colonne phase, si la version possède cette étape. Les versions publiées ou retirées restent figées.
+    -->
+    <changeSet id="d112-etapes-brouillons-d59" author="gimac">
+        <sql>
+            UPDATE reference_operation o
+               SET etape = o.phase
+              FROM referential_version v
+             WHERE v.id = o.version_id
+               AND v.etat = 'BROUILLON'
+               AND o.etape IS NULL
+               AND o.phase IS NOT NULL
+               AND EXISTS (SELECT 1 FROM referential_etape e WHERE e.version_id = v.id AND e.code = o.phase)
+        </sql>
+    </changeSet>
+</databaseChangeLog>

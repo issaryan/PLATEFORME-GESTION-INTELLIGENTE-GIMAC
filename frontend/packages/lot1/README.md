@@ -56,3 +56,4 @@ npm run lint -w @gimac/lot1
 | 2026-09-29 | — | Tests du contrat HTTP et du service simulé du parcours (24 tests, service simulé couvert à 98 % en lignes) ; nouvelles liaisons ouvertes avant le rang 3 |
 | 2026-10-13 | D-104 | cadrage avec intitulé et référence d'origine, refus `HOM_LIAISON_REFERENCE_ORIGINE_DUPLICATE` traduit, services simulés alignés ; groupe des institutions et filtre par groupe |
 | 2026-10-13 | D-107 | D-107 : ouverture d'un projet proposée aux institutions actives (fiche, dialogue, lancement) et services simulés alignés ; catégories facturier et partenaire de remittance ; droit `REF_REPRISE_IMPORT` au catalogue des fonctionnalités (`repriseExistant`) |
+| 2026-10-19 | D-112 | Onglets « Graphe » et « Planning » du dossier de liaison (`adaptateurs/parcoursVues.ts`, `onglets/OngletGraphePlanning.tsx`) ; dépôt d'une carte dans le couloir d'une autre étape du modélisateur (`couloirSous`) ; catalogues FR, EN, ES |
