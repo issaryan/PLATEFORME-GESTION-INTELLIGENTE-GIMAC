@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router'
-import { Card, DataTable, Link, PageHeader, StatCard, StatusBadge, Tabs, Tag, type Column } from '@gimac/design-system'
+import { DataTable, Link, PageHeader, StatCard, StatusBadge, Tabs, Tag, type Column } from '@gimac/design-system'
 import { usePermissions } from '@gimac/socle'
 import { useCatalogueFonctionnalites } from '../../../catalogue'
 import { accesFonctionnalite } from '../../../fonctionnalites'
@@ -94,31 +94,41 @@ function useColonnes(suivi: boolean): Column<MonOperation>[] {
   ]
 }
 
-/** Liaison suivie : statut, étape en cours, avancement et jalons atteints ou attendus. */
-function CarteLiaison({ l }: { l: LiaisonSuivie }) {
+/** Jalons d'une liaison suivie, atteints ou attendus. */
+function Jalons({ l }: { l: LiaisonSuivie }) {
   const { t } = useTranslation()
   const date = useFormatDate()
   return (
-    <Card title={`${l.reference} · ${l.institutionNom}`}>
-      <div className="gm-col" style={{ gap: 'var(--gm-space-2)' }}>
-        <span className="gm-row" style={{ gap: 'var(--gm-space-2)', flexWrap: 'wrap' }}>
-          <BadgeStatut statut={l.statut} />
-          {l.conducteur ? <Tag>{t('certif.liaison.conducteur')}</Tag> : null}
-          <span className="gm-field-help">{t('certif.liaison.etape', { etape: t(`parcours.etape.${l.etapeCourante}`, { defaultValue: l.etapeCourante }) })}</span>
+    <div role="list" aria-label={t('certif.liaison.jalons')} className="gm-row" style={{ gap: 'var(--gm-space-2)', flexWrap: 'wrap' }}>
+      {l.jalons.map((j) => (
+        <span role="listitem" key={`${j.jalon}-${j.operationId ?? ''}`}>
+          <StatusBadge status={j.atteint ? 'ok' : 'neutral'} icon={j.atteint ? 'check' : 'hourglass'}
+            label={`${t(`certif.jalon.${j.jalon}`)} : ${j.atteint ? t('certif.jalon.atteint', { date: date(j.atteintLe ?? '') }) : t('certif.jalon.attendu')}`} />
         </span>
-        <span>{t('certif.liaison.avancement', { faites: l.operationsFaites, total: l.operationsTotal })}</span>
-        <div role="list" aria-label={t('certif.liaison.jalons')} className="gm-row" style={{ gap: 'var(--gm-space-2)', flexWrap: 'wrap' }}>
-          {l.jalons.map((j) => (
-            <span role="listitem" key={`${j.jalon}-${j.operationId ?? ''}`}>
-              <StatusBadge status={j.atteint ? 'ok' : 'neutral'} icon={j.atteint ? 'check' : 'hourglass'}
-                label={`${t(`certif.jalon.${j.jalon}`)} : ${j.atteint ? t('certif.jalon.atteint', { date: date(j.atteintLe ?? '') }) : t('certif.jalon.attendu')}`} />
-            </span>
-          ))}
-        </div>
-        <Link href={l.lien}>{t('certif.liaison.ouvrir', { reference: l.reference })}</Link>
-      </div>
-    </Card>
+      ))}
+    </div>
   )
+}
+
+/** Liaisons suivies en tableau paginé (D-112) : statut, étape en cours, avancement et jalons atteints ou attendus. */
+function useColonnesLiaisons(): Column<LiaisonSuivie>[] {
+  const { t } = useTranslation()
+  return [
+    {
+      key: 'liaison', header: t('certif.actions.col.liaison'),
+      render: (l) => (
+        <span className="gm-col" style={{ gap: 0 }}>
+          <Link href={l.lien} mono>{l.reference}</Link>
+          <span className="gm-field-help">{l.institutionNom}</span>
+          {l.conducteur ? <Tag>{t('certif.liaison.conducteur')}</Tag> : null}
+        </span>
+      ),
+    },
+    { key: 'statut', header: t('certif.actions.col.statut'), width: 170, render: (l) => <BadgeStatut statut={l.statut} /> },
+    { key: 'etape', header: t('certif.actions.col.etape'), render: (l) => t(`parcours.etape.${l.etapeCourante}`, { defaultValue: l.etapeCourante }) },
+    { key: 'avancement', header: t('certif.actions.col.avancement'), width: 200, render: (l) => t('certif.liaison.avancement', { faites: l.operationsFaites, total: l.operationsTotal }) },
+    { key: 'jalons', header: t('certif.liaison.jalons'), render: (l) => <Jalons l={l} /> },
+  ]
 }
 
 function Vue({ m }: { m: MesOperations }) {
@@ -127,6 +137,7 @@ function Vue({ m }: { m: MesOperations }) {
   const onglet: Onglet = (ONGLETS as readonly string[]).includes(params.get('onglet') ?? '') ? (params.get('onglet') as Onglet) : 'a-faire'
   const colonnesAgir = useColonnes(false)
   const colonnesSuivre = useColonnes(true)
+  const colonnesLiaisons = useColonnesLiaisons()
   const n = {
     aFaire: m.aAgir.filter((o) => o.qualite === 'R' && !o.aPrendre).length,
     aPrendre: m.aAgir.filter((o) => o.aPrendre).length,
@@ -158,9 +169,8 @@ function Vue({ m }: { m: MesOperations }) {
         <DataTable columns={colonnesSuivre} rows={m.aSuivre} rowKey={(o) => o.operationId} pageSize={25} density="compact" state={m.aSuivre.length ? 'ok' : 'empty'} emptyText={t('certif.actions.aucuneSuivie')} />
       ) : null}
       {onglet === 'liaisons' ? (
-        m.liaisons.length ? (
-          <div className="gm-col" style={{ gap: 'var(--gm-space-4)' }}>{m.liaisons.map((l) => <CarteLiaison key={l.liaisonId} l={l} />)}</div>
-        ) : <p className="gm-field-help">{t('certif.actions.aucuneLiaison')}</p>
+        <DataTable columns={colonnesLiaisons} rows={m.liaisons} rowKey={(l) => l.liaisonId} pageSize={25} density="compact"
+          state={m.liaisons.length ? 'ok' : 'empty'} emptyText={t('certif.actions.aucuneLiaison')} />
       ) : null}
     </div>
   )

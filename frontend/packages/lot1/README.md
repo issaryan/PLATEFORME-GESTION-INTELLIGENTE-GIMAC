@@ -59,3 +59,4 @@ npm run lint -w @gimac/lot1
 | 2026-10-19 | D-112 | Onglets « Graphe » et « Planning » du dossier de liaison (`adaptateurs/parcoursVues.ts`, `onglets/OngletGraphePlanning.tsx`) ; dépôt d'une carte dans le couloir d'une autre étape du modélisateur (`couloirSous`) ; catalogues FR, EN, ES |
 | 2026-10-19 | D-112 | Détail d'une preuve en modale (`operations/DetailPreuve.tsx`) avec visionneuse de la pièce ; toutes les listes en tableau paginées |
 | 2026-10-19 | D-113 | Agenda sur AgendaGrid (vues jour, semaine, mois, filtre des catégories, création depuis une case) ; affichage « Tableau » (Kanban) de la page Tâches, déplacements par transitions permises |
+| 2026-10-19 | D-112 | « Mes actions de certification » : onglet « Liaisons suivies » en tableau paginé (25 par page ; liaison, statut, étape en cours, avancement, jalons), comme les deux autres onglets ; catalogues FR, EN, ES |

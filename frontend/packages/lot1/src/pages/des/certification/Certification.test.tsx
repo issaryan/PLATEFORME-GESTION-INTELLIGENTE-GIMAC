@@ -32,6 +32,13 @@ describe('D-98 : mes actions de certification', () => {
   it('conducteur : liaisons suivies avec statut, avancement et jalons ; opérations à suivre', async () => {
     rendrePage(<MesActionsCertificationPage />, { chemin: '/des/certification/mes-actions?onglet=liaisons', motif: '/des/certification/mes-actions', session: sessionTest(PROFILS.ROLE_CONDUCTEUR_PROJET, ['ROLE_CONDUCTEUR_PROJET']) })
     expect((await screen.findAllByText('Vous conduisez cette liaison')).length).toBeGreaterThan(0)
+    // Liaisons suivies en tableau paginé (D-112), comme les deux autres onglets.
+    const tableau = screen.getByRole('table')
+    for (const entete of ['Liaison', 'Statut', 'Étape en cours', 'Avancement', 'Jalons']) expect(within(tableau).getByRole('columnheader', { name: entete })).toBeTruthy()
+    expect(within(tableau).getAllByRole('link').every((a) => /^\/des\/parcours\//.test(a.getAttribute('href') ?? ''))).toBe(true)
+    expect(screen.getByText(/^Page 1 sur \d+ · /)).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Suivante' })).toBeTruthy()
+    expect(document.body.textContent).not.toMatch(cleBrute)
     expect(screen.getAllByRole('list', { name: 'Jalons' }).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/En production : (Attendu|Atteint le)/).length).toBeGreaterThan(0)
     fireEvent.click(screen.getByRole('tab', { name: /À suivre/ }))
