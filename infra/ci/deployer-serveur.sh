@@ -30,6 +30,9 @@ JDK_URL="https://api.adoptium.net/v3/binary/latest/21/ga/linux/x64/jdk/hotspot/n
 MAVEN_VERSION="3.9.11"
 MAVEN_URL="https://archive.apache.org/dist/maven/maven-3/$MAVEN_VERSION/binaries/apache-maven-$MAVEN_VERSION-bin.tar.gz"
 export GIMAC_COMPOSE_SUPPLEMENT="$COMPOSE_DIR/docker-compose.serveur.yml"
+# Exploitation du serveur (D-111) : redémarrage automatique de chaque service après un redémarrage de
+# l'hôte et journaux de conteneur bornés, par la surcouche que génère gimac-dev.sh.
+export GIMAC_EXPLOITATION=1
 
 etape() { echo; echo "== $*"; }
 
@@ -141,8 +144,9 @@ appliquer_publication() {
 }
 
 compose() {
-  docker compose --project-name gimac-des -f "$COMPOSE_DIR/docker-compose.yml" \
-    -f "$COMPOSE_DIR/docker-compose.gimac.yml" -f "$GIMAC_COMPOSE_SUPPLEMENT" --env-file "$ENV" "$@"
+  local fichiers=(-f "$COMPOSE_DIR/docker-compose.yml" -f "$COMPOSE_DIR/docker-compose.gimac.yml" -f "$GIMAC_COMPOSE_SUPPLEMENT")
+  [ -f "$COMPOSE_DIR/docker-compose.exploitation.yml" ] && fichiers+=(-f "$COMPOSE_DIR/docker-compose.exploitation.yml")
+  docker compose --project-name gimac-des "${fichiers[@]}" --env-file "$ENV" "$@"
 }
 
 # Keycloak est persistant (docker-compose.serveur.yml) : --import-realm ignore un domaine existant.
@@ -267,6 +271,8 @@ verifier_espace() {
 }
 
 etape "Espace disque"
+# Journaux de déploiement de plus d'un jour (D-111) ; le journal en cours, récent, est conservé.
+find "$HOME" -maxdepth 1 -type f -name '*.log' -mtime +0 -delete 2>/dev/null || true
 verifier_espace
 configurer_env "${1:-}"
 appliquer_publication

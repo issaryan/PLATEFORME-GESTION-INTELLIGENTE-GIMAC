@@ -14,3 +14,7 @@ storage:
       path: /var/tempo/traces
     wal:
       path: /var/tempo/wal
+# Conservation des traces limitée à un jour (D-111), comme celle des journaux dans Loki.
+compactor:
+  compaction:
+    block_retention: 24h

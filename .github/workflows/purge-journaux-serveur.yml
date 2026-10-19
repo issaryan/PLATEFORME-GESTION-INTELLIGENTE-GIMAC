@@ -1,0 +1,33 @@
+# Purge quotidienne des journaux du serveur de démonstration (10.20.36.214), D-111 : journaux de
+# déploiement de plus d'un jour dans le dossier personnel, images sans étiquette et cache de construction
+# de plus d'un jour. Exécutée par l'exécuteur auto-hébergé du serveur, sans droits d'administration.
+# Les journaux de conteneur sont bornés par la surcouche d'exploitation (gimac-dev.sh), ceux de Loki et
+# les traces de Tempo par leur conservation d'un jour. Les volumes ne sont jamais touchés.
+name: Purge des journaux du serveur
+
+on:
+  schedule:
+    - cron: '0 2 * * *'   # 03:00 à Douala
+  workflow_dispatch:
+
+concurrency:
+  group: purge-journaux-serveur
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  purge:
+    name: Purge sur gimac-214
+    runs-on: [self-hosted, gimac-214]
+    timeout-minutes: 15
+    steps:
+      - name: Journaux de déploiement de plus d'un jour
+        run: find "$HOME" -maxdepth 1 -type f -name '*.log' -mtime +0 -print -delete
+      - name: Images sans étiquette et cache de construction de plus d'un jour
+        run: |
+          docker image prune -f
+          docker builder prune -f --filter until=24h
+      - name: Espace restant
+        run: df -h / /home

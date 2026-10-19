@@ -21,8 +21,30 @@ if [ -z "${GIMAC_COMPOSE_SUPPLEMENT:-}" ] && [ -f "$ICI/.env" ]; then
   GIMAC_COMPOSE_SUPPLEMENT="$(sed -n 's/^GIMAC_COMPOSE_SUPPLEMENT=//p' "$ICI/.env" | tail -1)"
 fi
 case "${GIMAC_COMPOSE_SUPPLEMENT:-}" in ""|/*) ;; *) GIMAC_COMPOSE_SUPPLEMENT="$ICI/$GIMAC_COMPOSE_SUPPLEMENT" ;; esac
-compose() { docker compose --project-name gimac-des -f "$ICI/docker-compose.yml" -f "$ICI/docker-compose.gimac.yml" \
+compose_base() { docker compose --project-name gimac-des -f "$ICI/docker-compose.yml" -f "$ICI/docker-compose.gimac.yml" \
   ${GIMAC_COMPOSE_SUPPLEMENT:+-f "$GIMAC_COMPOSE_SUPPLEMENT"} "$@"; }
+# GIMAC_EXPLOITATION=1 (serveur, D-111) : surcouche générée docker-compose.exploitation.yml qui donne à chaque
+# service un redémarrage automatique après un redémarrage de l'hôte et des journaux de conteneur bornés
+# (GIMAC_JOURNAUX_TAILLE par fichier, GIMAC_JOURNAUX_FICHIERS fichiers). Les tâches d'amorçage « *-init »,
+# qui doivent s'arrêter, gardent restart: 'no' et ne reçoivent que la borne des journaux.
+EXPLOITATION="$ICI/docker-compose.exploitation.yml"
+generer_exploitation() {
+  if [ "${GIMAC_EXPLOITATION:-0}" != 1 ]; then rm -f "$EXPLOITATION"; return 0; fi
+  local s taille="${GIMAC_JOURNAUX_TAILLE:-10m}" fichiers="${GIMAC_JOURNAUX_FICHIERS:-2}"
+  {
+    echo "# Généré par gimac-dev.sh (D-111) ; ne pas modifier, ne pas versionner."
+    echo "services:"
+    compose_base config --services | sort | while read -r s; do
+      echo "  $s:"
+      case "$s" in *-init) ;; *) echo "    restart: unless-stopped" ;; esac
+      printf '    logging:\n      driver: json-file\n      options:\n        max-size: "%s"\n        max-file: "%s"\n' "$taille" "$fichiers"
+    done
+  } > "$EXPLOITATION.tmp"
+  mv "$EXPLOITATION.tmp" "$EXPLOITATION"
+}
+compose() {
+  if [ "${GIMAC_EXPLOITATION:-0}" = 1 ] && [ -f "$EXPLOITATION" ]; then compose_base -f "$EXPLOITATION" "$@"; else compose_base "$@"; fi
+}
 echec() { echo "ERREUR : $*" >&2; exit 1; }
 
 verifier() {
@@ -137,6 +159,7 @@ images() {
   # Le Compose n'interpole qu'avec les secrets du .env : générés ici sur un poste neuf.
   echo "== Construction des images des couches de présentation"
   preparer_env
+  generer_exploitation
   compose build frontend-departement frontend-portail frontend-console
 }
 

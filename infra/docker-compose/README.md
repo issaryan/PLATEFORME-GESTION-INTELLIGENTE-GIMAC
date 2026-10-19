@@ -109,3 +109,4 @@ git checkout -- ../../ms-*/.yo-rc.json   # annule la réécriture de version par
 | 2026-10-12 | - | Prometheus : rétention plafonnée à 3 Go en plus des 15 jours (`--storage.tsdb.retention.size`) |
 | 2026-10-13 | D-104 | test OPA de la route `GET /bff/des/participant/institutions/groupes` |
 | 2026-10-13 | D-107 | D-107 : `GIMAC_SECRET_REPRISE_SERVICE` (client `reprise-service`) créé par `gimac-dev.sh` et transmis à Keycloak ; tests OPA des routes de reprise |
+| 2026-10-19 | D-111 | `observabilite/loki.yaml` (conservation d'un jour) et `block_retention: 24h` de Tempo ; `GIMAC_EXPLOITATION=1` : `gimac-dev.sh` génère `docker-compose.exploitation.yml` (redémarrage `unless-stopped` sauf `*-init`, journaux de conteneur bornés par `GIMAC_JOURNAUX_TAILLE` et `GIMAC_JOURNAUX_FICHIERS`, 10 Mo et 2 par défaut), fichier non versionné |
