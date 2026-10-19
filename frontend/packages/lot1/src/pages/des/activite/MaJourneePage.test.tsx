@@ -111,7 +111,8 @@ describe('Ma journée', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Journée de Idriss Mahamat Saleh' })).toBeTruthy()
     expect(await screen.findByText('Configurer le VPN du participant')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Ajouter une activité' })).toBeNull()
-    expect(screen.queryByRole('combobox')).toBeNull()
+    // Lecture seule : aucun sélecteur d'état d'activité ; seul reste celui de la taille de page de la liste paginée (D-66, D-112).
+    expect(screen.queryAllByRole('combobox').filter((c) => c.getAttribute('aria-label') !== 'Taille de page')).toEqual([])
     expect(screen.queryByText('Rapport du jour')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Jour précédent' }))
     expect(await screen.findByRole('button', { name: 'Aujourd’hui' })).toBeTruthy()

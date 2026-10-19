@@ -10,6 +10,7 @@ import { useExecuteurActions } from '../../../../ressources/actions'
 import { useFormatDate } from '../communs'
 import { useActionsOperation } from './actions'
 import { libelleOperation } from '../../../../adaptateurs/modelisateur'
+import { DetailPreuve, type PreuveDetaillee } from './DetailPreuve'
 
 // Preuves d'une opération (D-109, docs/lot1/referentiel-preuves-signatures.md) : livrables attendus et leur état
 // (attendu, déposé, validé, refusé, sans objet, reprise sans pièce, non exigé), consigne de la pièce, une ligne par service
@@ -90,6 +91,7 @@ export function LivrablesEtPreuves({ op }: { op: OperationParcours }) {
   const f = useFonctionsCatalogue()
   const executeur = useExecuteurActions()
   const { sansObjet } = useActionsOperation()
+  const [detail, setDetail] = useState<PreuveDetaillee | null>(null)
   const l = op.livrablesAttendus ?? []
   if (!l.length) return <InlineAlert level="info">{t('preuves.aucunLivrable')}</InlineAlert>
   const lignes: Ligne[] = l.flatMap((x) =>
@@ -116,6 +118,15 @@ export function LivrablesEtPreuves({ op }: { op: OperationParcours }) {
     { key: 'etat', header: t('parcoursOps.col.etat'), width: 150, render: (x) => <BadgeLivrable etat={x.etat} /> },
     { key: 'depot', header: t('preuves.piece'), render: (x) => <Depot op={op} depot={x.depot} /> },
     {
+      key: 'detail', header: '', type: 'actions', width: 120,
+      render: (x) => (
+        <Button size="sm" variant="ghost" icon="eye" aria-label={t('preuves.detail.voirPour', { code: x.cle, operation: op.rang })}
+          onClick={() => setDetail({ op, livrable: x.livrable, service: x.service, etat: x.etat, depot: x.depot })}>
+          {t('preuves.detail.voir')}
+        </Button>
+      ),
+    },
+    {
       key: 'action', header: '', type: 'actions',
       render: (x) => (ouverte && x.livrable.peutDeposer && (x.etat === 'ATTENDUE' || x.etat === 'REFUSEE')
         ? <Button size="sm" variant="ghost" icon="circle-x" aria-label={t('preuves.sansObjet.pour', { code: x.cle })}
@@ -129,8 +140,9 @@ export function LivrablesEtPreuves({ op }: { op: OperationParcours }) {
     <section className="gm-col" aria-labelledby={`preuves-${op.id}`} style={{ gap: 'var(--gm-space-2)' }}>
       <h3 id={`preuves-${op.id}`} className="gm-type-h3" style={{ margin: 0 }}>{t('preuves.titre')}</h3>
       {op.reprise ? <InlineAlert level="info" title={t('preuves.reprise.titre')}>{t('preuves.reprise.texte')}</InlineAlert> : null}
-      <DataTable columns={colonnes} rows={lignes} rowKey={(x) => x.cle} density="compact" pagination={false} state="ok" />
+      <DataTable columns={colonnes} rows={lignes} rowKey={(x) => x.cle} density="compact" state="ok" />
       <Note>{t('preuves.regle')}</Note>
+      {detail ? <DetailPreuve preuve={detail} onFermer={() => setDetail(null)} /> : null}
     </section>
   )
 }
@@ -158,7 +170,7 @@ export function SignaturesOperation({ op }: { op: OperationParcours }) {
         : null),
     },
   ]
-  return <DataTable columns={colonnes} rows={l} rowKey={(x) => x.code} density="compact" pagination={false} state="ok" />
+  return <DataTable columns={colonnes} rows={l} rowKey={(x) => x.code} density="compact" state="ok" />
 }
 
 /** Chronologie réelle : date, événement, opération, acteur et détail, du plus récent au plus ancien. */

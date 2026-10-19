@@ -29,7 +29,7 @@ export function CircuitSignature({ pv }: { pv: ProcesVerbalCertification }) {
   return (
     <>
       <SousTitre>{t('decision.circuit.titre')}</SousTitre>
-      <DataTable columns={colonnes} rows={l} rowKey={(e) => e.code} density="compact" pagination={false} state="ok" />
+      <DataTable columns={colonnes} rows={l} rowKey={(e) => e.code} density="compact" state="ok" />
     </>
   )
 }

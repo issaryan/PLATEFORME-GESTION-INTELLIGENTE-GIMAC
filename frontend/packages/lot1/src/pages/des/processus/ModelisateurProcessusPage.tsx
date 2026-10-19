@@ -310,7 +310,7 @@ function Espace({ processus: p }: { processus: Processus }) {
           onOuvrir={ouvrir} onRelier={relier} onDelier={delier} onPlacer={placer} />
       ) : (
         <div data-testid="processus-liste" className="gm-proc-liste">
-          <DataTable columns={colonnes} rows={p.etapes as (EtapeProcessus & Record<string, unknown>)[]} rowKey={(e) => e.code} state={p.etapes.length ? 'ok' : 'empty'} density="compact" pagination={false}
+          <DataTable columns={colonnes} rows={p.etapes as (EtapeProcessus & Record<string, unknown>)[]} rowKey={(e) => e.code} state={p.etapes.length ? 'ok' : 'empty'} density="compact"
             selected={[...surlignes]} emptyText={t('proc.etape.aucune')} />
         </div>
       )}

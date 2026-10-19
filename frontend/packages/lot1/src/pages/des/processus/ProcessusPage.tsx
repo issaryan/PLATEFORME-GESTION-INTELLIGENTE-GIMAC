@@ -156,7 +156,7 @@ function Catalogue({ onLancer }: { onLancer: (id: string) => void }) {
       {groupes.map((u) => (
         <section key={u} className="gm-col" aria-labelledby={`gm-proc-unite-${u}`} style={{ gap: 'var(--gm-space-2)' }}>
           <h2 id={`gm-proc-unite-${u}`} className="gm-type-h3" style={{ margin: 0 }}>{libelleUnite(u)}{miennes.has(u) ? <span className="gm-field-help"> · {t('proc.monUnite')}</span> : null}</h2>
-          <DataTable columns={colonnes} rows={lignes.filter((l) => l.unite === u)} rowKey={(p) => p.id} pagination={false} state="ok" />
+          <DataTable columns={colonnes} rows={lignes.filter((l) => l.unite === u)} rowKey={(p) => p.id} state="ok" />
         </section>
       ))}
     </div>

@@ -114,7 +114,7 @@ function Intervenants({ dossier, fonction }: { dossier: DossierLiaison; fonction
           ) : <InlineAlert level="info">{t('certif.fonction.demandee.affectee', { fonction: demandee.libelle, nom: demandee.personne?.nom ?? '' })}</InlineAlert>
         ) : null}
         {l.some((i) => i.aAffecter) ? <InlineAlert level="warn" title={t('parcoursGouvernance.aAffecter.titre')}>{t('parcoursGouvernance.aAffecter.texte')}</InlineAlert> : null}
-        <DataTable columns={colonnes} rows={l} rowKey={(i) => i.fonction} density="compact" pagination={false} state={l.length ? 'ok' : 'empty'} emptyText={t('parcoursGouvernance.aucun')} />
+        <DataTable columns={colonnes} rows={l} rowKey={(i) => i.fonction} density="compact" state={l.length ? 'ok' : 'empty'} emptyText={t('parcoursGouvernance.aucun')} />
         {retour}
       </div>
       {choisi ? (

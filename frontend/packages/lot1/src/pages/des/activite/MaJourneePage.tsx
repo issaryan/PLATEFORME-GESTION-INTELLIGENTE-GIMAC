@@ -124,7 +124,7 @@ export default function MaJourneePage() {
       {retour}
       <Card title={t('act.journee.activites', { count: lignes.length })}>
         {refus ? <InlineAlert level="crit" correlationId={refus.correlationId}>{refus.titre}</InlineAlert> : null}
-        <DataTable columns={colonnes} rows={lignes} rowKey={(a) => a.id} pagination={false} emptyText={t('act.journee.aucuneActivite')} emptyHelp={lecture ? undefined : t('act.journee.aucuneActiviteAide')}
+        <DataTable columns={colonnes} rows={lignes} rowKey={(a) => a.id} emptyText={t('act.journee.aucuneActivite')} emptyHelp={lecture ? undefined : t('act.journee.aucuneActiviteAide')}
           {...etatListe(activites, lignes)} onRetry={() => void activites.refetch()} />
       </Card>
       <div className="gm-form-grid">

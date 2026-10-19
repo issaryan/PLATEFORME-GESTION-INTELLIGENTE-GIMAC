@@ -186,7 +186,7 @@ function Types({ editeur, annoncer }: { editeur: boolean; annoncer: (m: string) 
         <p className="gm-field-help" style={{ margin: 0 }}>{t('typesProjet.aide')}</p>
         {editeur ? <Button variant="primary" icon="plus" onClick={() => setNouveau(true)}>{t('typesProjet.nouveau.titre')}</Button> : null}
       </div>
-      <DataTable columns={colonnes} rows={types} rowKey={(x) => x.code} pagination={false} state={q.isPending ? 'loading' : q.isError ? 'error' : types.length ? 'ok' : 'empty'}
+      <DataTable columns={colonnes} rows={types} rowKey={(x) => x.code} state={q.isPending ? 'loading' : q.isError ? 'error' : types.length ? 'ok' : 'empty'}
         error={q.error ?? undefined} onRetry={() => void q.refetch()} emptyText={t('typesProjet.vide')} />
       {nouveau ? <DialogueNouveauType types={types} onFermer={() => setNouveau(false)} onCree={(x) => { setNouveau(false); annoncer(t('typesProjet.nouveau.fait', { libelle: x.libelle })); if (x.brouillonId) navigate(`/des/referentiels/operations?version=${encodeURIComponent(x.brouillonId)}`) }} /> : null}
       {modifie ? <DialogueModifierType type={modifie} onFermer={() => setModifie(null)} onFait={() => { setModifie(null); annoncer(t('typesProjet.modifier.fait', { libelle: modifie.libelle })) }} /> : null}
@@ -220,7 +220,7 @@ function Fonctions({ editeur, annoncer }: { editeur: boolean; annoncer: (m: stri
         <p className="gm-field-help" style={{ margin: 0 }}>{t('typesProjet.fonction.aide')}</p>
         {editeur ? <Button variant="primary" icon="plus" onClick={() => setEdition('nouvelle')}>{t('typesProjet.fonction.nouvelle')}</Button> : null}
       </div>
-      <DataTable columns={colonnes} rows={l} rowKey={(x) => x.code} pagination={false} state={q.isPending ? 'loading' : q.isError ? 'error' : l.length ? 'ok' : 'empty'}
+      <DataTable columns={colonnes} rows={l} rowKey={(x) => x.code} state={q.isPending ? 'loading' : q.isError ? 'error' : l.length ? 'ok' : 'empty'}
         error={q.error ?? undefined} onRetry={() => void q.refetch()} emptyText={t('typesProjet.fonction.vide')} />
       {edition ? (
         <DialogueFonction fonction={edition === 'nouvelle' ? undefined : edition} onFermer={() => setEdition(null)}

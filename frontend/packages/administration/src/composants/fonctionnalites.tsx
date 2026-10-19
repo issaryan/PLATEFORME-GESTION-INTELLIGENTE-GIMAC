@@ -134,7 +134,7 @@ export function CatalogueFonctionnalites() {
           options={APPLICATIONS.map((a) => ({ value: a, label: t(`console.fct.application.${a}`) }))} />
       </div>
       <Annonce retour={actes.retour} />
-      <DataTable columns={colonnes} rows={lignes} rowKey={(f) => f.cle} pagination={false} state={q.isPending ? 'loading' : q.isError ? 'error' : lignes.length ? 'ok' : 'empty'}
+      <DataTable columns={colonnes} rows={lignes} rowKey={(f) => f.cle} state={q.isPending ? 'loading' : q.isError ? 'error' : lignes.length ? 'ok' : 'empty'}
         error={q.error ?? undefined} onRetry={() => void q.refetch()} emptyText={t('console.fct.vide')} />
       {ouverte ? (
         <DialogueFonctionnalite f={ouverte} groupes={groupes} onFermer={() => setOuverte(null)} onContinuer={(s) => {

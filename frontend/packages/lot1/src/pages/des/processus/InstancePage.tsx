@@ -177,7 +177,7 @@ function Suivi({ instance: i }: { instance: InstanceProcessus }) {
         {vue === 'canevas' ? (
           <CanevasProcessus cartes={cartes} lecture choisie={choisie?.code} libelleOuvrir={t('proc.ouvrir')} libelleEtat={(e) => t(`proc.etape.etat.${e}`)} testId="instance-canevas" onOuvrir={choisir} miniCarte={false} />
         ) : (
-          <DataTable columns={colonnes} rows={i.etapes as (EtapeInstance & Record<string, unknown>)[]} rowKey={(e) => e.code} state="ok" density="compact" pagination={false} selected={choisie ? [choisie.code] : []} />
+          <DataTable columns={colonnes} rows={i.etapes as (EtapeInstance & Record<string, unknown>)[]} rowKey={(e) => e.code} state="ok" density="compact" selected={choisie ? [choisie.code] : []} />
         )}
       </div>
       <div className="gm-proc-suivi">

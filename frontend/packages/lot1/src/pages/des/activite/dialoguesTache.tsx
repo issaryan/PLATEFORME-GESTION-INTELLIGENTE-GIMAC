@@ -189,7 +189,7 @@ export function DialogueGroupe({ groupeId, onFermer }: { groupeId: string; onFer
               { key: t('pvr.groupe.enRetard'), value: String(g.avancement.enRetard) },
             ]} />
           </div>
-          <DataTable columns={colonnes} rows={g.taches} rowKey={(x) => x.id} density="compact" pagination={false} />
+          <DataTable columns={colonnes} rows={g.taches} rowKey={(x) => x.id} density="compact" />
         </>
       )}
     </CrudDialog>

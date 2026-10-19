@@ -1,12 +1,13 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { Button, DataTable, InlineAlert, Note, StatCard, StatusBadge, type Column } from '@gimac/design-system'
 import { useChronologieParcours, useOperationsParcours } from '../../../../hooks/parcours'
 import { useFonctionsCatalogue } from '../../../../hooks/referentiels'
-import { ETAPES, type DepotLivrable, type DossierLiaison, type EtatLivrable, type OperationParcours, type SignatureOperation } from '../../../../modele/parcours'
+import { ETAPES, type DepotLivrable, type DossierLiaison, type EtatLivrable, type LivrableAttendu, type OperationParcours, type SignatureOperation } from '../../../../modele/parcours'
 import { Donnees } from '../../liaisons/communs'
 import { BadgeLivrable, Chronologie, Piece } from '../operations/Preuves'
+import { DetailPreuve, type PreuveDetaillee } from '../operations/DetailPreuve'
 import { libelleOperation } from '../../../../adaptateurs/modelisateur'
 import { useFormatDate } from '../communs'
 
@@ -32,14 +33,14 @@ function useEtapes(dossier: DossierLiaison) {
 
 const etapeDe = (o: OperationParcours) => o.etapeCode ?? o.etape
 
-type LignePreuve = { cle: string; op: OperationParcours; code: string; libelle: string; consigne?: string | null; service?: string; etat: EtatLivrable; obligatoire: boolean; depot?: DepotLivrable | null }
+type LignePreuve = { cle: string; op: OperationParcours; livrable: LivrableAttendu; code: string; libelle: string; consigne?: string | null; service?: string; etat: EtatLivrable; obligatoire: boolean; depot?: DepotLivrable | null }
 
 /** Lignes de preuves d'une opération : une par livrable, une par service au grain du service. */
 export function lignesPreuves(o: OperationParcours): LignePreuve[] {
   return (o.livrablesAttendus ?? []).flatMap((l) =>
     l.grain === 'SERVICE' && l.services?.length
-      ? l.services.map((s) => ({ cle: `${o.id}/${l.code}/${s.serviceCode}`, op: o, code: l.code, libelle: l.libelle, consigne: l.consigne, service: s.serviceCode, etat: s.etat, obligatoire: l.obligatoire, depot: s.depot }))
-      : [{ cle: `${o.id}/${l.code}`, op: o, code: l.code, libelle: l.libelle, consigne: l.consigne, etat: l.etat ?? 'ATTENDUE', obligatoire: l.obligatoire, depot: l.depot }],
+      ? l.services.map((s) => ({ cle: `${o.id}/${l.code}/${s.serviceCode}`, op: o, livrable: l, code: l.code, libelle: l.libelle, consigne: l.consigne, service: s.serviceCode, etat: s.etat, obligatoire: l.obligatoire, depot: s.depot }))
+      : [{ cle: `${o.id}/${l.code}`, op: o, livrable: l, code: l.code, libelle: l.libelle, consigne: l.consigne, etat: l.etat ?? 'ATTENDUE', obligatoire: l.obligatoire, depot: l.depot }],
   )
 }
 
@@ -56,6 +57,7 @@ export function OngletPreuves({ dossier }: { dossier: DossierLiaison }) {
 function Preuves({ dossier, ops }: { dossier: DossierLiaison; ops: OperationParcours[] }) {
   const { t } = useTranslation()
   const ouvrir = useOuvrir()
+  const [detail, setDetail] = useState<PreuveDetaillee | null>(null)
   const { ordre, libelle } = useEtapes(dossier)
   const toutes = ops.flatMap(lignesPreuves)
   const compte = (e: EtatLivrable[]) => toutes.filter((x) => e.includes(x.etat) && x.obligatoire).length
@@ -78,6 +80,15 @@ function Preuves({ dossier, ops }: { dossier: DossierLiaison; ops: OperationParc
       key: 'piece', header: t('preuves.piece'), width: 240,
       render: (x) => (x.depot?.sansObjet ? <span className="gm-field-help">{x.depot.motif}</span> : x.depot?.documentRef ? <Piece operationId={x.op.id} depot={x.depot} /> : ''),
     },
+    {
+      key: 'detail', header: '', type: 'actions', width: 120,
+      render: (x) => (
+        <Button size="sm" variant="ghost" icon="eye" aria-label={t('preuves.detail.voirPour', { code: x.service ? `${x.code} · ${x.service}` : x.code, operation: x.op.rang })}
+          onClick={() => setDetail({ op: x.op, livrable: x.livrable, service: x.service, etat: x.etat, depot: x.depot })}>
+          {t('preuves.detail.voir')}
+        </Button>
+      ),
+    },
   ]
   const etapes = [...ordre, ...ops.map(etapeDe).filter((e) => !ordre.includes(e))].filter((e, i, l) => l.indexOf(e) === i && ops.some((o) => etapeDe(o) === e))
   return (
@@ -98,10 +109,11 @@ function Preuves({ dossier, ops }: { dossier: DossierLiaison; ops: OperationParc
               <h3 id={`preuves-etape-${e}`} className="gm-type-h3" style={{ margin: 0 }}>{libelle(e)}</h3>
               <StatusBadge status={manquantes ? 'warn' : 'ok'} label={manquantes ? t('preuves.etape.manquantes', { count: manquantes }) : t('preuves.etape.complete')} />
             </div>
-            <DataTable columns={colonnes} rows={lignes} rowKey={(x) => x.cle} density="compact" pagination={false} state={lignes.length ? 'ok' : 'empty'} emptyText={t('preuves.aucunLivrable')} />
+            <DataTable columns={colonnes} rows={lignes} rowKey={(x) => x.cle} density="compact" state={lignes.length ? 'ok' : 'empty'} emptyText={t('preuves.aucunLivrable')} />
           </section>
         )
       })}
+      {detail ? <DetailPreuve preuve={detail} onFermer={() => setDetail(null)} /> : null}
     </div>
   )
 }

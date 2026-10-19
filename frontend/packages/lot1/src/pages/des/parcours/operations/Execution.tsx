@@ -252,7 +252,7 @@ export function LivrablesAttendus({ op }: { op: OperationParcours }) {
   return (
     <section className="gm-col" aria-labelledby={`liv-${op.id}`} style={{ gap: 'var(--gm-space-2)' }}>
       <h3 id={`liv-${op.id}`} className="gm-type-h3" style={{ margin: 0 }}>{t('parcoursOps.livrable.attendus')}</h3>
-      <DataTable columns={colonnes} rows={l} rowKey={(x) => x.code} density="compact" pagination={false} state="ok" />
+      <DataTable columns={colonnes} rows={l} rowKey={(x) => x.code} density="compact" state="ok" />
     </section>
   )
 }
@@ -287,7 +287,7 @@ export function Signatures({ op }: { op: OperationParcours }) {
     <section className="gm-col" aria-labelledby={`sig-${op.id}`} style={{ gap: 'var(--gm-space-2)' }}>
       <h3 id={`sig-${op.id}`} className="gm-type-h3" style={{ margin: 0 }}>{t('parcoursOps.signature.titre')}</h3>
       {op.etat === 'EN_SIGNATURE' ? <InlineAlert level="info">{t('parcoursOps.signature.regle')}</InlineAlert> : null}
-      <DataTable columns={colonnes} rows={l} rowKey={(x) => x.code} density="compact" pagination={false} state="ok" />
+      <DataTable columns={colonnes} rows={l} rowKey={(x) => x.code} density="compact" state="ok" />
     </section>
   )
 }
