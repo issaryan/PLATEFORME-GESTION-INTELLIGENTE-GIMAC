@@ -64,3 +64,4 @@ npm run lint -w @gimac/lot1
 | 2026-10-19 | D-112 | `Etapes.test.tsx` : délai propre de 60 s pour le scénario complet de la modale Étapes, qui dépassait par intermittence les 20 s sous mesure de couverture |
 | 2026-10-19 | D-115 | Catalogue des droits : module « Sandbox GIMAC » (douze fonctionnalités, un droit par fonction, `i18n/ecrans/sandbox.ts` FR, EN, ES) ; profils externes repérés par leur attribut `externe` dans les comptes de démonstration et les tests |
 | 2026-10-20 | - | D-116 : registre des écrans du module d’astreintes et de monitoring, libellés de navigation, pdfDemo exporté pour les simulations |
+| 2026-10-20 | - | D-117 : pdfDemo exporté pour la simulation du programme téléchargeable |

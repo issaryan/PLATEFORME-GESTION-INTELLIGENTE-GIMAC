@@ -432,6 +432,17 @@ Chaque personne programmée reçoit `GRILLE_PUBLIEE` (`GRILLE_REVISEE` pour une 
 `le`, l'acteur et le lien `/des/exploitation/astreintes?semaine=AAAA-Www&vue=moi` : son programme de la semaine, puis
 le programme complet et son jour.
 
+### 11.7 Écrans
+
+`/des/exploitation/astreintes` (« Programme d'astreinte et de monitoring ») : calendrier jour, semaine et mois sur la
+grille d'agenda (D-113), 24 heures, chaque occurrence placée à ses heures réelles, supports de la semaine sur la ligne
+« toute la journée », légende des créneaux ; onglet « Tableau » sur le modèle de la feuille (un créneau par ligne, un jour
+par colonne, supports de la semaine à part, charges) ; « Programme de » tout le monde ou moi ; « Mon jour » ; révisions ;
+téléchargement PDF ou Excel dans la langue de l'interface ; « Créneaux du programme » (MON_ROSTER_MANAGE) : éditeur du
+modèle, erreurs du service par champ. Adresse : `?jour=`, `?vue=jour|mois`, `?qui=moi`, `?affichage=tableau` ; lien de
+notification `?semaine=&vue=moi`. « Aujourd'hui » affiche qui est de service à l'instant selon les créneaux (aucune
+permanence aux heures ouvrables).
+
 ## Journal des mises à jour
 
 | Date | Commit | Modification |
@@ -440,4 +451,5 @@ le programme complet et son jour.
 | 2026-10-19 | - | Empreinte de la main courante : vacation incluse, instant à la microseconde (défauts trouvés par les tests d'intégration de la relève et de la grille). |
 | 2026-10-20 | 5ebf7d0a | Recentrage D-116 : programmes et rapports, rapport quotidien de 8 h, contraintes paramétrables, activité de l'équipe (§10) |
 | 2026-10-20 | 3f8b1db7 | §10.5 : écrans livrés, envoi après dépôt, consultation des pièces en modale (PDF, docx converti) |
-| 2026-10-20 | - | §11 (D-117) : modèle de créneaux configurable, contraintes générales, génération sur intervalles, rapport de 8 h porté par un créneau, téléchargement PDF et Excel, publication notifiée |
+| 2026-10-20 | a94e2cb1 | §11 (D-117) : modèle de créneaux configurable, contraintes générales, génération sur intervalles, rapport de 8 h porté par un créneau, téléchargement PDF et Excel, publication notifiée |
+| 2026-10-20 | a94e2cb1 | §11.7 : écrans du programme configurable (calendrier, tableau, mon jour, éditeur des créneaux, téléchargement) |
