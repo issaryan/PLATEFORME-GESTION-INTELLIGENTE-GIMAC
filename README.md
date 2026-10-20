@@ -154,3 +154,4 @@ infra/ci/valider-securite.sh                       # secrets (gitleaks) et vuln�
 | 2026-10-20 | - | D-117, serveur : programme d’astreinte et de monitoring entièrement configurable (modèle de créneaux versionné, solveur et vérificateur sur intervalles, rapport de 8 h porté par un créneau), téléchargement PDF et Excel, publication notifiée à chaque personne programmée |
 | 2026-10-20 | - | D-117, écrans : programme en calendrier (jour, semaine, mois) ou en tableau comme la feuille du DES, « Mon programme » et « Mon jour », éditeur des créneaux, téléchargement PDF et Excel, contraintes du rapport de 8 h |
 | 2026-10-20 | - | D-118 : administration de la Sandbox GIMAC depuis la plateforme, résultats lus par MS-HOMOLOGATION (REC) |
+| 2026-10-20 | - | Programme d’astreinte : calendrier refait en planning lisible (semaine, jour, mois) |

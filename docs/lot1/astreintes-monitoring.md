@@ -434,9 +434,11 @@ le programme complet et son jour.
 
 ### 11.7 Écrans
 
-`/des/exploitation/astreintes` (« Programme d'astreinte et de monitoring ») : calendrier jour, semaine et mois sur la
-grille d'agenda (D-113), 24 heures, chaque occurrence placée à ses heures réelles, supports de la semaine sur la ligne
-« toute la journée », légende des créneaux ; onglet « Tableau » sur le modèle de la feuille (un créneau par ligne, un jour
+`/des/exploitation/astreintes` (« Programme d'astreinte et de monitoring ») : planning plutôt que grille horaire. Semaine :
+un créneau par ligne (teinte, libellé, heures), un jour par colonne, personnes en pastilles (la mienne marquée, chef de
+quart signalé, « à pourvoir » pour un manque), jours sans le créneau hachurés, créneau en cours encadré, supports de
+niveau 2 de la semaine en bandeau. Jour : cartes horaires dans l'ordre (terminé, en cours, à venir ; nuit commencée la
+veille ou finissant le lendemain). Mois : calendrier compact, un clic ouvre le jour. Légende des créneaux ; onglet « Tableau » sur le modèle de la feuille (un créneau par ligne, un jour
 par colonne, supports de la semaine à part, charges) ; « Programme de » tout le monde ou moi ; « Mon jour » ; révisions ;
 téléchargement PDF ou Excel dans la langue de l'interface ; « Créneaux du programme » (MON_ROSTER_MANAGE) : éditeur du
 modèle, erreurs du service par champ. Adresse : `?jour=`, `?vue=jour|mois`, `?qui=moi`, `?affichage=tableau` ; lien de
@@ -453,3 +455,4 @@ permanence aux heures ouvrables).
 | 2026-10-20 | 3f8b1db7 | §10.5 : écrans livrés, envoi après dépôt, consultation des pièces en modale (PDF, docx converti) |
 | 2026-10-20 | a94e2cb1 | §11 (D-117) : modèle de créneaux configurable, contraintes générales, génération sur intervalles, rapport de 8 h porté par un créneau, téléchargement PDF et Excel, publication notifiée |
 | 2026-10-20 | a94e2cb1 | §11.7 : écrans du programme configurable (calendrier, tableau, mon jour, éditeur des créneaux, téléchargement) |
+| 2026-10-20 | - | §11.7 : le calendrier du programme devient un planning (semaine par créneau et par jour, jour en cartes, mois compact) |
