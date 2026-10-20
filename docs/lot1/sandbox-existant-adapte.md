@@ -95,7 +95,7 @@ Ordre de réalisation, composant par composant, serveur et écrans ensemble.
 
 | Ordre | Composant | Récits |
 |---|---|---|
-| 1 | MS-IAM et Keycloak | EXI-01, 02 (faits), 03, 04, 05, 06, 23, 24 |
+| 1 | MS-IAM et Keycloak | EXI-01, 02, 03 (faits), 04, 05, 06, 23, 24 |
 | 2 | Passerelle et OPA | EXI-07 |
 | 3 | MS-PARTICIPANT | EXI-20, 21 |
 | 4 | MS-DOCUMENT, MS-NOTIFICATION, MS-AUDIT | EXI-08, 09, 10 |
@@ -103,15 +103,47 @@ Ordre de réalisation, composant par composant, serveur et écrans ensemble.
 | 6 | MS-HOMOLOGATION et MS-CERTIFICATION | EXI-14, 15, 16, 25 |
 | 7 | Écrans du DES | EXI-17, 18, 19 |
 
-## 4. État des récits
+## 4. Administration déléguée (US-EXI-03)
+
+L'administrateur de l'institution (`SBX_HAB_ADMINISTRATION`, profil `ROLE_SBX_ADMIN_INSTITUTION`) gère les comptes de
+ses collaborateurs par les écritures existantes de MS-IAM, dans les seules bornes de son institution (`institution_id`
+du jeton).
+
+| Méthode | Route MS-IAM (`/api/v1/administration-deleguee`) | Portail (`/bff/portail/sbx-habilitations`) | Objet |
+|---|---|---|---|
+| GET | `/roles` | `/roles` | Rôles délégables |
+| GET | `/comptes?page=&taille=` | `/comptes` | Comptes de l'institution, suspendus compris, 100 par page au plus |
+| GET | `/comptes/{id}` | `/comptes/{id}` | Un compte |
+| POST | `/comptes` | `/comptes` | Création `{ identifiant, prenom, nom, email, telephone?, fonction?, roles }`, invitation par courriel ; 201, ou 200 pour une étape rejouée |
+| PUT | `/comptes/{id}/roles` | `/comptes/{id}/roles` | `{ roles, motif }` : rôles de la sandbox remplacés, autres profils gardés |
+| PUT | `/comptes/{id}/etat` | `/comptes/{id}/etat` | `{ actif, motif }` : suspension ou rétablissement, sans suppression |
+
+Règles :
+
+- **Rôles délégables** : les profils externes dont la composition porte une permission de la sandbox (aucun nom de
+  profil, D-94). Autre profil : 403 `IAM_SBX_ROLE_HORS_PORTEE` ; création sans rôle : 400 `IAM_SBX_ROLE_REQUIS`.
+- **Périmètre** : un compte d'une autre institution reçoit la même réponse qu'un compte inexistant (404
+  `IAM_ACCOUNT_NOT_FOUND`) ; jeton sans institution : 403 `IAM_SBX_SANS_INSTITUTION`.
+- **Jamais sur soi-même** : 403 `IAM_SELF_ADMINISTRATION`, tentative journalisée (`TENTATIVE_AUTO_ATTRIBUTION`,
+  `TENTATIVE_AUTO_SUSPENSION`, `TENTATIVE_AUTO_RETABLISSEMENT`).
+- **RG-15, dernier administrateur** : retirer le rôle d'administration ou suspendre le dernier administrateur actif de
+  l'institution : 409 `IAM_SBX_DERNIER_ADMINISTRATEUR`.
+- **Étapes de saga** : en-tête `Idempotency-Key` ; une étape déjà appliquée rend son résultat d'origine sans rien refaire
+  (table `etape_idempotente`).
+- **Journal et événements** : chaque acte passe par l'administration des comptes de MS-IAM (journal d'administration,
+  `iam.account-administered.v1`, équivalent sur la plateforme de `iam.user-changed.v1` du carnet).
+
+## 5. État des récits
 
 | Récit | État | Démonstration de bout en bout à refaire |
 |---|---|---|
 | US-EXI-01 | Fait (D-115) | Connexion à la console et au portail de la sandbox, quand leurs écrans seront servis |
 | US-EXI-02 | Fait (D-115) | Saga MATRICE de SBX-ESPACE, à son arrivée |
+| US-EXI-03 | Fait (D-115) | Sagas de SBX-ESPACE et écran des collaborateurs du portail de la sandbox |
 
 ## Journal des mises à jour
 
 | Date | Commit | Modification |
 |---|---|---|
 | 2026-10-19 | - | Création : principes, identité et matrice des permissions (US-EXI-01, US-EXI-02), ordre de la suite |
+| 2026-10-20 | - | §4 : administration déléguée (US-EXI-03), route du portail et règles |

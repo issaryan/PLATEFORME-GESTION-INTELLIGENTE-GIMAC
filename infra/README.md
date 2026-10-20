@@ -34,3 +34,4 @@ Principe (D-48) : ce que JHipster sait générer est régénéré, jamais édit�
 | 2026-10-13 | D-107 | D-107 : `reprise/importer-reprise.py` (reprise des institutions et des liaisons, simulation par défaut, `--reel`), exemples fictifs et tests joués par `ci/valider-infra.sh` ; OPA : règles de reprise |
 | 2026-10-19 | D-114 | OPA : règles de `/bff/des/monitoring` par chemin et permission `MON_*`, jamais pour un compte d'institution ; Keycloak : permissions `MON_*` des profils ; Compose et Kubernetes : MS-MONITORING relié à MS-IAM et MS-DOCUMENT |
 | 2026-10-19 | D-115 | Keycloak : soixante permissions `SBX_*`, six profils externes `ROLE_SBX_*`, fonctions SBX du GIMAC ajoutées aux profils existants ; `ci/valider-infra.sh` : 60 s par test OPA |
+| 2026-10-20 | D-115 | OPA : routes `/bff/portail/sbx-habilitations` sous `SBX_HAB_ADMINISTRATION`, institution exigée, et leurs tests |

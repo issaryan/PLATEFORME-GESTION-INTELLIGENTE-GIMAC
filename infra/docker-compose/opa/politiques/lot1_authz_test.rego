@@ -1485,3 +1485,30 @@ test_monitoring_interne_refuse if not authz.allow with input as {
 	"method": "POST", "path": "/bff/des/monitoring/interne/alertes", "permissions": ["INTERNAL_MONITORING_ALERT_INGEST", "MON_SUPERVISION_READ"],
 	"authentifie": true, "acr": "2",
 }
+
+# Sandbox GIMAC, administration déléguée (D-115, US-EXI-03) : administrateur de l'institution, institution et second
+# facteur exigés ; aucune autre route ni aucune autre méthode.
+routes_sbx_habilitations := [
+	["GET", "/bff/portail/sbx-habilitations/roles"],
+	["GET", "/bff/portail/sbx-habilitations/comptes"],
+	["GET", "/bff/portail/sbx-habilitations/comptes/c1"],
+	["POST", "/bff/portail/sbx-habilitations/comptes"],
+	["PUT", "/bff/portail/sbx-habilitations/comptes/c1/roles"],
+	["PUT", "/bff/portail/sbx-habilitations/comptes/c1/etat"],
+]
+
+test_sbx_habilitations_administrateur_institution if {
+	every r in routes_sbx_habilitations {
+		authz.allow with input as {"method": r[0], "path": r[1], "permissions": ["SBX_HAB_ADMINISTRATION"], "institution_id": "99001", "authentifie": true, "acr": "2"}
+	}
+}
+
+test_sbx_habilitations_refus if {
+	every r in routes_sbx_habilitations {
+		not authz.allow with input as {"method": r[0], "path": r[1], "permissions": ["SBX_HAB_ADMINISTRATION"], "institution_id": "", "authentifie": true, "acr": "2"}
+		not authz.allow with input as {"method": r[0], "path": r[1], "permissions": ["SBX_HAB_CONSULTATION"], "institution_id": "99001", "authentifie": true, "acr": "2"}
+		not authz.allow with input as {"method": r[0], "path": r[1], "permissions": ["SBX_HAB_ADMINISTRATION"], "institution_id": "99001", "authentifie": true, "acr": "1"}
+	}
+	not authz.allow with input as {"method": "DELETE", "path": "/bff/portail/sbx-habilitations/comptes/c1", "permissions": ["SBX_HAB_ADMINISTRATION"], "institution_id": "99001", "authentifie": true, "acr": "2"}
+	not authz.allow with input as {"method": "PUT", "path": "/bff/portail/sbx-habilitations/comptes/c1/mot-de-passe", "permissions": ["SBX_HAB_ADMINISTRATION"], "institution_id": "99001", "authentifie": true, "acr": "2"}
+}

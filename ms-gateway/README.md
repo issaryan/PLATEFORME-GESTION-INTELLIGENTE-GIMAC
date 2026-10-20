@@ -255,6 +255,7 @@ Tests : `AppareilsDomaineTest`, `SuiviEtServiceAppareilsTest`, `FermetureAutresS
 | 2026-10-06 | - | Contournement d'OPA fermé : routes JHipster `/services/{service}/**` et `/services/gateway/**` retirées (aucun client), `/services/**` en `denyAll`, CORS `/services/*/api/**` retiré ; tests `CheminsServicesSecuriteTest` (401 sans session, 403 avec jeton ou session portant `ROLE_ADMIN` et les permissions d'administration) et `RoutesPresentationTest` (aucune route hors `/bff`, `OpaAuthorize` en premier partout) |
 | 2026-10-13 | D-107 | D-107 : routes `console-reprise-participant` et `console-reprise-homologation` (`/bff/console/{participant,homologation}/reprise/**` vers `/api/v1/reprise/**`, 10 Mo, OPA `REF_REPRISE_IMPORT`) |
 | 2026-10-19 | D-114 | Route `des-monitoring` (`/bff/des/monitoring/**` vers MS-MONITORING, OPA d'abord, corps de 64 Ko, `X-Reauth-Assertion` relayé) et son test |
+| 2026-10-20 | D-115 | Route `portail-sbx-habilitations` (`/bff/portail/sbx-habilitations/**` vers l'administration déléguée de MS-IAM) |
 <!-- GIMAC:FIN -->
 
 # gateway

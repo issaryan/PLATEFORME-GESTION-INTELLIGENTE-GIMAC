@@ -223,6 +223,19 @@ spring:
                   args:
                     maxSize: 10MB
                 - RewritePath=/bff/console/homologation/reprise/(?<p>.*), /api/v1/reprise/${p}
+            # Sandbox GIMAC, administration déléguée des comptes d'une institution (D-115, docs/lot1/sandbox-existant-adapte.md §4
+            # US-EXI-03) : portail seulement, administrateur de l'institution (OPA) ; MS-IAM borne chaque acte à
+            # l'institution du jeton ; en-tête Idempotency-Key des étapes de saga relayé tel quel.
+            - id: portail-sbx-habilitations
+              uri: ${gimac.services.iam}
+              predicates:
+                - Path=/bff/portail/sbx-habilitations/**
+              filters:
+                - OpaAuthorize
+                - name: RequestSize
+                  args:
+                    maxSize: 64KB
+                - RewritePath=/bff/portail/sbx-habilitations/(?<p>.*), /api/v1/administration-deleguee/${p}
             - id: console-iam
               uri: ${gimac.services.iam}
               predicates:

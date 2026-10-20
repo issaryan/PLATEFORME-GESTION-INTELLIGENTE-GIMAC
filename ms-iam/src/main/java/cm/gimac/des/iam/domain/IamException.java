@@ -42,6 +42,11 @@ public class IamException extends RuntimeException {
         return new IamException(code, 403, message, Map.of());
     }
 
+    /** 403 avec le détail de ce qui est refusé (D-115 : rôles hors de la portée de l'institution). */
+    public static IamException interdit(String code, String message, Map<String, Object> details) {
+        return new IamException(code, 403, message, details);
+    }
+
     /** 428 : réauthentification forte exigée et absente (IAM-07). */
     public static IamException reauthRequise() {
         return new IamException("IAM_REAUTH_REQUIRED", 428, "Réauthentification forte exigée", Map.of());

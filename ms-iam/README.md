@@ -199,6 +199,7 @@ Copié et adapté (paquet `cm.gimac.des.iam`) ; chaque bean est inactif tant que
 | 2026-10-13 | D-107 | D-107 : fonctionnalité `repriseExistant` (droit `REF_REPRISE_IMPORT`, sans écran) dans `fonctionnalites-initiales.json` |
 | 2026-10-19 | D-114 | Catalogue des fonctionnalités : `monitoringSupervision`, `monitoringAstreintes`, `monitoringReleve` (groupe `monitoring`, prédicat `MON_SUPERVISION_READ`) |
 | 2026-10-19 | D-115 | `ReglesSandbox` : permissions `SBX_<MODULE>_<FONCTION>`, validation des verdicts refusée à tout profil externe (422 `IAM_SBX_VALIDATION_RESERVEE`) à la création, à la recomposition et au passage en externe ; `GET /configuration/permissions?prefixe=` ; six profils `ROLE_SBX_*` attribuables et externes ; module sandbox du catalogue des fonctionnalités |
+| 2026-10-20 | D-115 | Administration déléguée de la sandbox (`AdministrationDelegueeService`, `ReglesAdministrationDeleguee`) : comptes bornés à l'institution du jeton, rôles délégables, jamais sur soi-même, RG-15 ; clé d'idempotence des étapes de saga (table `etape_idempotente`, changeset `20261019180000_iam_sandbox_delegation`) |
 <!-- GIMAC:FIN -->
 
 # iam

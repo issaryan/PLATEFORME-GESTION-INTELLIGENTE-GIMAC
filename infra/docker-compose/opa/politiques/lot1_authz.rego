@@ -89,6 +89,12 @@ regles := [
 	{"m": "POST", "re": `^/bff/des/participant/institutions/[^/]+/transitions/[^/]+/(approbation|rejet)$`, "p": "PAR_TRANSITION_APPROVE"},
 	# Pièces déposées par le correspondant depuis le portail (MS-DOCUMENT).
 	{"m": "POST", "re": `^/bff/portail/document/documents$`, "p": "HOM_PORTAL_SUBMIT"},
+	# Sandbox GIMAC, administration déléguée des comptes d'une institution (D-115, docs/lot1/sandbox-existant-adapte.md §4
+	# US-EXI-03) : administrateur de l'institution, institution exigée comme pour toute route du portail ; MS-IAM borne
+	# chaque acte à l'institution du jeton.
+	{"m": "GET", "re": `^/bff/portail/sbx-habilitations/(roles|comptes(/[^/]+)?)$`, "p": "SBX_HAB_ADMINISTRATION"},
+	{"m": "POST", "re": `^/bff/portail/sbx-habilitations/comptes$`, "p": "SBX_HAB_ADMINISTRATION"},
+	{"m": "PUT", "re": `^/bff/portail/sbx-habilitations/comptes/[^/]+/(roles|etat)$`, "p": "SBX_HAB_ADMINISTRATION"},
 	# Dépôts fragmentés depuis le portail (D-74, docs/lot1/depots-fragmentes.md §3) : ouverture, parties,
 	# état, fin et abandon ; institution exigée comme pour toute route du portail.
 	{"m": "POST", "re": `^/bff/portail/document/depots$`, "p": "HOM_PORTAL_SUBMIT"},

@@ -484,7 +484,14 @@ public class AnnuaireEnMemoire implements Annuaire {
         Map.entry("ROLE_POLE_SYSTEME", union(COMMUNES, Set.of("HOM_DASHBOARD_READ", "HOM_FUNCTION_SYSTEM"))),
         Map.entry("ROLE_CHARGE_DDRM", union(COMMUNES, Set.of("PAR_INSTITUTION_READ", "HOM_FUNCTION_DDRM"))),
         Map.entry("ROLE_CONDUCTEUR_PROJET", union(COMMUNES, Set.of("HOM_DASHBOARD_READ"))),
-        Map.entry("ROLE_CORRESPONDANT", Set.of("HOM_PORTAL_READ", "HOM_PORTAL_SUBMIT", "NOT_INBOX_READ"))
+        Map.entry("ROLE_CORRESPONDANT", Set.of("HOM_PORTAL_READ", "HOM_PORTAL_SUBMIT", "NOT_INBOX_READ")),
+        // Rôles d'institution de la sandbox (D-115) : extrait des valeurs de départ du domaine livré.
+        Map.entry("ROLE_SBX_ADMIN_INSTITUTION", Set.of("SBX_HAB_ADMINISTRATION", "SBX_HAB_CONSULTATION", "SBX_RAC_CONSULTATION", "SBX_CER_CONSULTATION", "NOT_INBOX_READ")),
+        Map.entry("ROLE_SBX_CHEF_PROJET", Set.of("SBX_CER_EXECUTION", "SBX_CER_CONSULTATION", "SBX_MOB_SIMULATION", "SBX_MOB_CONSULTATION", "NOT_INBOX_READ")),
+        Map.entry("ROLE_SBX_DEVELOPPEUR", Set.of("SBX_RAC_ADMINISTRATION", "SBX_RAC_CONSULTATION", "SBX_MOB_SIMULATION", "SBX_MOB_CONSULTATION", "NOT_INBOX_READ")),
+        Map.entry("ROLE_SBX_TESTEUR", Set.of("SBX_CER_EXECUTION", "SBX_CER_CONSULTATION", "SBX_MOB_EXECUTION", "SBX_MOB_CONSULTATION", "NOT_INBOX_READ")),
+        Map.entry("ROLE_SBX_LECTEUR", Set.of("SBX_CER_CONSULTATION", "SBX_MOB_CONSULTATION", "NOT_INBOX_READ")),
+        Map.entry("ROLE_SBX_PARTENAIRE", Set.of("SBX_RAC_ADMINISTRATION", "SBX_RAC_CONSULTATION", "SBX_CER_EXECUTION", "SBX_CER_CONSULTATION", "NOT_INBOX_READ"))
     );
 
     /** Libellés des profils livrés (infra/keycloak/generer-realm-gimac.py, attribut gimac_libelle). */
