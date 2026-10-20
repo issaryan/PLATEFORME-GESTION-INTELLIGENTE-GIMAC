@@ -150,7 +150,8 @@ class ReglesNotificationsTest {
             Map.entry(TypeNotification.MENTION, true),
             Map.entry(TypeNotification.REPONSE, true),
             Map.entry(TypeNotification.PROCESSUS, true),
-            Map.entry(TypeNotification.HOMOLOGATION, true)
+            Map.entry(TypeNotification.HOMOLOGATION, true),
+            Map.entry(TypeNotification.MONITORING, true)
         );
         p.modifier(null, true, Map.of(TypeNotification.TACHE, false), T.plusSeconds(1));
         assertThat(p.isSysteme()).isTrue();

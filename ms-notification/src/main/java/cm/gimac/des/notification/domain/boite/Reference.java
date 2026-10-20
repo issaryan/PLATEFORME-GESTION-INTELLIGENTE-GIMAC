@@ -17,6 +17,7 @@ public class Reference {
     public static final String PARTICIPANT = "participant";
     public static final String TRANSITION = "TRANSITION";
     public static final String HOMOLOGATION = "homologation";
+    public static final String MONITORING = "monitoring";
     public static final String CONVERSATION = "CONVERSATION";
     public static final String MESSAGE = "MESSAGE";
     public static final String TACHE = "TACHE";
@@ -63,6 +64,11 @@ public class Reference {
 
     public static Reference rapport(String id) {
         return new Reference(PILOTAGE, RAPPORT, id);
+    }
+
+    /** Objet du monitoring et des astreintes (D-116) : rapport, rapport quotidien d'une journée. */
+    public static Reference monitoring(String type, String id) {
+        return new Reference(MONITORING, type, id);
     }
 
     /** Demande à l'administration (MS-IAM, docs/lot1/pouvoirs-hierarchiques.md §4). */

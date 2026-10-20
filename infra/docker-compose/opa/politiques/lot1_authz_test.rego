@@ -1512,3 +1512,27 @@ test_sbx_habilitations_refus if {
 	not authz.allow with input as {"method": "DELETE", "path": "/bff/portail/sbx-habilitations/comptes/c1", "permissions": ["SBX_HAB_ADMINISTRATION"], "institution_id": "99001", "authentifie": true, "acr": "2"}
 	not authz.allow with input as {"method": "PUT", "path": "/bff/portail/sbx-habilitations/comptes/c1/mot-de-passe", "permissions": ["SBX_HAB_ADMINISTRATION"], "institution_id": "99001", "authentifie": true, "acr": "2"}
 }
+
+# Rapports de monitoring et contraintes (D-116) : lecture et dépôt par MON_SUPERVISION_READ, contraintes par le
+# responsable de la grille ; jamais pour un compte d'institution.
+routes_mon_rapports := [
+	["GET", "/bff/des/monitoring/rapports-monitoring", "MON_SUPERVISION_READ"],
+	["GET", "/bff/des/monitoring/rapports-monitoring/quotidiens", "MON_SUPERVISION_READ"],
+	["GET", "/bff/des/monitoring/rapports-monitoring/r1", "MON_SUPERVISION_READ"],
+	["GET", "/bff/des/monitoring/rapports-monitoring/r1/fichier", "MON_SUPERVISION_READ"],
+	["POST", "/bff/des/monitoring/rapports-monitoring", "MON_SUPERVISION_READ"],
+	["POST", "/bff/des/monitoring/rapports-monitoring/r1/envoi", "MON_SUPERVISION_READ"],
+	["GET", "/bff/des/monitoring/activite", "MON_SUPERVISION_READ"],
+	["GET", "/bff/des/monitoring/grilles/contraintes", "MON_SUPERVISION_READ"],
+	["PUT", "/bff/des/monitoring/grilles/contraintes", "MON_ROSTER_MANAGE"],
+]
+
+test_mon_rapports_permission if {
+	every r in routes_mon_rapports {
+		authz.allow with input as {"method": r[0], "path": r[1], "permissions": [r[2]], "authentifie": true, "acr": "2"}
+		not authz.allow with input as {"method": r[0], "path": r[1], "permissions": ["PIL_ACTIVITY_OWN"], "authentifie": true, "acr": "2"}
+		not authz.allow with input as {"method": r[0], "path": r[1], "permissions": [r[2]], "institution_id": "INST-0042", "authentifie": true, "acr": "2"}
+	}
+	not authz.allow with input as {"method": "PUT", "path": "/bff/des/monitoring/grilles/contraintes", "permissions": ["MON_SUPERVISION_READ"], "authentifie": true, "acr": "2"}
+	not authz.allow with input as {"method": "DELETE", "path": "/bff/des/monitoring/rapports-monitoring/r1", "permissions": ["MON_SUPERVISION_READ"], "authentifie": true, "acr": "2"}
+}

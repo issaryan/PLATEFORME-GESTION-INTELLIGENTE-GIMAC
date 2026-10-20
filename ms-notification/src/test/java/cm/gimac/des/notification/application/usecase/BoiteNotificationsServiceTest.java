@@ -19,6 +19,7 @@ import cm.gimac.des.notification.application.port.in.RecevoirEvenementsUseCase.M
 import cm.gimac.des.notification.application.port.in.RecevoirEvenementsUseCase.RapportSoumis;
 import cm.gimac.des.notification.application.port.in.RecevoirEvenementsUseCase.TacheAffectee;
 import cm.gimac.des.notification.application.port.in.RecevoirEvenementsUseCase.TacheOfferte;
+import cm.gimac.des.notification.application.port.in.RecevoirEvenementsUseCase.DemandeMonitoring;
 import cm.gimac.des.notification.application.port.in.RecevoirEvenementsUseCase.TacheRelancee;
 import cm.gimac.des.notification.application.port.in.RecevoirEvenementsUseCase.TransitionTranchee;
 import cm.gimac.des.notification.application.port.out.AnnuairePort;
@@ -249,6 +250,29 @@ class BoiteNotificationsServiceTest {
         assertThat(l.getSousTitre()).isEqualTo("À prendre");
         assertThat(l.getLien()).isEqualTo("/des/institutions/i-1?onglet=transitions");
         assertThat(l.getReference()).isEqualTo(Reference.tache("t-9"));
+    }
+
+    @Test
+    @DisplayName("D-116 : rapport reçu, rapport de 8 h attendu ou en retard : notification MONITORING par destinataire, sauf l'acteur ; lien du module")
+    void monitoring() {
+        int n = service.demandeMonitoring(
+            new DemandeMonitoring(List.of("serge", "paul"), "INFORMATION", "RAPPORT_RECU", "r-1", "Bilan de nuit", "Pour visa", "/des/exploitation/rapports?rapport=r-1", "paul", T)
+        );
+        assertThat(n).isEqualTo(1);
+        NotificationUtilisateur r = enregistrees(1).get(0);
+        assertThat(r.getDestinataireId()).isEqualTo("serge");
+        assertThat(r.getType()).isEqualTo(TypeNotification.MONITORING);
+        assertThat(r.getTitre()).isEqualTo("Rapport reçu : Bilan de nuit");
+        assertThat(r.getSousTitre()).isEqualTo("Paul Mbarga Atangana : Pour visa");
+        assertThat(r.getLien()).isEqualTo("/des/exploitation/rapports?rapport=r-1");
+        assertThat(r.getReference()).isEqualTo(Reference.monitoring("RAPPORT_RECU", "r-1"));
+        assertThat(service.demandeMonitoring(new DemandeMonitoring(List.of("aminata"), "URGENT", "RAPPORT_QUOTIDIEN_ATTENDU", "2026-10-19", "2026-10-19", null, "https://ailleurs", null, T))).isEqualTo(1);
+        NotificationUtilisateur q = enregistrees(2).get(1);
+        assertThat(q.getTitre()).isEqualTo("Rapport de monitoring attendu avant 8 h : 2026-10-19");
+        assertThat(q.getSousTitre()).isEqualTo("Monitoring et astreintes");
+        assertThat(q.getLien()).isEqualTo("/des/exploitation/rapports");
+        assertThat(service.demandeMonitoring(new DemandeMonitoring(List.of("aminata"), "INFORMATION", "", null, null, null, null, null, T))).isZero();
+        assertThat(service.demandeMonitoring(new DemandeMonitoring(null, "INFORMATION", "RAPPORT_RECU", null, null, null, null, null, T))).isZero();
     }
 
     @Test

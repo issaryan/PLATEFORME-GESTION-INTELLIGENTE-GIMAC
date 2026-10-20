@@ -214,6 +214,11 @@ regles := [
 	{"m": "POST", "re": `^/bff/des/monitoring/(grilles/generation|echanges/[^/]+/(approbation|rejet))$`, "p": "MON_ROSTER_MANAGE"},
 	{"m": "POST", "re": `^/bff/des/monitoring/grilles/[^/]+/publication$`, "p": "MON_ROSTER_PUBLISH"},
 	{"m": "POST", "re": `^/bff/des/monitoring/(grilles/[^/]+/echanges|echanges/[^/]+/(accord|refus))$`, "p": "MON_SUPERVISION_READ"},
+	# Recentrage D-116 (docs/lot1/astreintes-monitoring.md §10) : rapports rattachés au programme, rapport quotidien de 8 h,
+	# activité de l'équipe et contraintes de génération ; MS-MONITORING borne la lecture (auteur, destinataires, chefs).
+	{"m": "GET", "re": `^/bff/des/monitoring/(rapports-monitoring(/quotidiens|/[^/]+(/fichier)?)?|activite|grilles/contraintes)$`, "p": "MON_SUPERVISION_READ"},
+	{"m": "POST", "re": `^/bff/des/monitoring/rapports-monitoring(/[^/]+/envoi)?$`, "p": "MON_SUPERVISION_READ"},
+	{"m": "PUT", "re": `^/bff/des/monitoring/grilles/contraintes$`, "p": "MON_ROSTER_MANAGE"},
 ]
 
 # Routes internes des services (jeton de service) : jamais relayées depuis une couche de présentation.

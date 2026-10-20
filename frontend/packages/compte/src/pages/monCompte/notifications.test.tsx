@@ -43,7 +43,7 @@ describe('Mon compte : notifications', () => {
     const tache = await screen.findByRole('switch', { name: 'Tâches qui me sont confiées' })
     expect((tache as HTMLInputElement).checked).toBe(true)
     fireEvent.click(tache)
-    await waitFor(() => expect(put).toHaveBeenCalledWith({ types: { MESSAGE: true, TACHE: false, RAPPORT: true, MENTION: true, REPONSE: true, DEMANDE: true, PROCESSUS: true, HOMOLOGATION: true } }))
+    await waitFor(() => expect(put).toHaveBeenCalledWith({ types: { MESSAGE: true, TACHE: false, RAPPORT: true, MENTION: true, REPONSE: true, DEMANDE: true, PROCESSUS: true, HOMOLOGATION: true, MONITORING: true } }))
     expect(await screen.findByText('Préférences de notification enregistrées.')).toBeTruthy()
     await waitFor(() => expect((screen.getByRole('switch', { name: 'Tâches qui me sont confiées' }) as HTMLInputElement).checked).toBe(false))
     // Mentions et réponses (D-82) : interrupteurs propres.

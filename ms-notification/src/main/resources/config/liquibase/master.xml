@@ -34,5 +34,6 @@
     <include file="config/liquibase/changelog/20261006150000_not_mentions_reponses.xml" relativeToChangelogFile="false"/>
     <include file="config/liquibase/changelog/20261007090000_not_processus.xml" relativeToChangelogFile="false"/>
     <include file="config/liquibase/changelog/20261007150000_not_homologation.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261020100000_not_monitoring.xml" relativeToChangelogFile="false"/>
     <!-- jhipster-needle-liquibase-add-incremental-changelog - JHipster will add incremental liquibase changelogs here -->
 </databaseChangeLog>

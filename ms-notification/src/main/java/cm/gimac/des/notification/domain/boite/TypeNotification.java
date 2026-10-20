@@ -34,7 +34,13 @@ public enum TypeNotification {
      * homologation.liaison) : opération ouverte ou en validation (action attendue, avis demandé, information, escalade
      * selon la qualité RACI), jalon atteint ; une notification par événement et par destinataire, jamais regroupée.
      */
-    HOMOLOGATION;
+    HOMOLOGATION,
+    /**
+     * Programmes et rapports de monitoring et d'astreinte (D-116, docs/lot1/astreintes-monitoring.md §10, sujet
+     * monitoring.notification) : rapport reçu, rapport quotidien de 8 h attendu ou en retard, grille publiée, relève ;
+     * une notification par événement et par destinataire, jamais regroupée.
+     */
+    MONITORING;
 
     /**
      * Types qu'un compte d'institution (portail) peut recevoir : le parcours d'homologation de sa liaison seulement ;

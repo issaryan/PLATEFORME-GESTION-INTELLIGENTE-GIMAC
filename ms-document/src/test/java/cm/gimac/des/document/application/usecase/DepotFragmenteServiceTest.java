@@ -187,6 +187,17 @@ class DepotFragmenteServiceTest {
     }
 
     @Test
+    @DisplayName("D-116 : RAPPORT_MONITORING exige MON_SUPERVISION_READ, ni PIL_ACTIVITY_OWN ni une permission du dépôt direct")
+    void permissionRapportMonitoring() {
+        Ouverture rapport = new Ouverture("rapport-nuit.pdf", "application/pdf", 10L, "rapport_monitoring", "2026-10-20");
+        erreur(() -> service.ouvrir(rapport, new Demandeur(AGENT, null, Set.of("DOC_DEPOSIT"))), 403, "DOC_PURPOSE_FORBIDDEN");
+        erreur(() -> service.ouvrir(rapport, new Demandeur(AGENT, null, Set.of("PIL_ACTIVITY_OWN"))), 403, "DOC_PURPOSE_FORBIDDEN");
+        var ouvert = service.ouvrir(rapport, new Demandeur(AGENT, null, Set.of("MON_SUPERVISION_READ")));
+        assertThat(ouvert.etat()).isEqualTo(EtatDepotFragmente.OUVERT);
+        assertThat(base.depot(ouvert.id()).getFinalite()).isEqualTo("RAPPORT_MONITORING");
+    }
+
+    @Test
     @DisplayName("Admission : taille absente, négative ou nulle (400), au-delà du maximum (413), finalité et référence (400) ; rien n'est ouvert")
     void admission() {
         erreur(() -> service.ouvrir(ouverture("ADHESION", null), DEMANDEUR), 400, "DOC_SIZE_INVALID");

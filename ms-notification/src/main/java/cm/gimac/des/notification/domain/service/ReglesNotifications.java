@@ -254,6 +254,42 @@ public final class ReglesNotifications {
         return vide(uniteCible) ? "À prendre" : "À prendre : " + uniteCible;
     }
 
+    /**
+     * Titre d'une notification du monitoring (D-116) : rapport reçu, rapport quotidien attendu, en retard ou sans
+     * vacation de nuit, selon l'objet ; autre objet : « Monitoring et astreintes ».
+     */
+    public String titreMonitoring(String objet, String reference) {
+        String r = vide(reference) ? "" : " : " + reference;
+        return switch (objet == null ? "" : objet) {
+            case "RAPPORT_RECU" -> "Rapport reçu" + r;
+            case "RAPPORT_QUOTIDIEN_ATTENDU" -> "Rapport de monitoring attendu avant 8 h" + r;
+            case "RAPPORT_QUOTIDIEN_EN_RETARD" -> "Rapport de monitoring en retard" + r;
+            case "RAPPORT_QUOTIDIEN_SANS_VACATION" -> "Rapport de monitoring sans équipe de nuit" + r;
+            case "GRILLE_PUBLIEE" -> "Programme publié" + r;
+            default -> "Monitoring et astreintes" + r;
+        };
+    }
+
+    /** Sous-titre d'une notification du monitoring : expéditeur et message éventuel. */
+    public String sousTitreMonitoring(String objet, String acteur, String message) {
+        String m = vide(message) ? null : message.strip();
+        if (!vide(acteur) && m != null) {
+            return acteur + " : " + m;
+        }
+        if (!vide(acteur)) {
+            return "De " + acteur;
+        }
+        return m == null ? "Monitoring et astreintes" : m;
+    }
+
+    /** Lien d'une notification du monitoring : un écran du module (/des/exploitation/…), sinon les rapports. */
+    public String lienMonitoring(String lien) {
+        if (lien != null && lien.startsWith("/des/exploitation/") && lienTacheOfferte(lien).equals(lien)) {
+            return lien;
+        }
+        return "/des/exploitation/rapports";
+    }
+
     /** Titre d'une relance : « Relance : <titre> ». */
     public String titreRelance(String titreTache) {
         return vide(titreTache) ? "Relance d'une tâche" : "Relance : " + titreTache;

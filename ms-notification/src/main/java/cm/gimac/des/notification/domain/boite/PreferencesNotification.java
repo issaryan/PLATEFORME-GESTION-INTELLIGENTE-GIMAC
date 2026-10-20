@@ -51,6 +51,9 @@ public class PreferencesNotification {
     @Column(name = "type_homologation", nullable = false)
     private boolean homologation = true;
 
+    @Column(name = "type_monitoring", nullable = false)
+    private boolean monitoring = true;
+
     @Column(name = "modifie_le", nullable = false)
     private Instant modifieLe;
 
@@ -92,6 +95,7 @@ public class PreferencesNotification {
             case REPONSE -> reponse;
             case PROCESSUS -> processus;
             case HOMOLOGATION -> homologation;
+            case MONITORING -> monitoring;
         };
     }
 
@@ -105,6 +109,7 @@ public class PreferencesNotification {
             case REPONSE -> reponse = actif;
             case PROCESSUS -> processus = actif;
             case HOMOLOGATION -> homologation = actif;
+            case MONITORING -> monitoring = actif;
         }
     }
 

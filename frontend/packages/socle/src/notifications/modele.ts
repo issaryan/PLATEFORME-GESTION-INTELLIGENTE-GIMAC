@@ -8,8 +8,9 @@
  * d'unité activée, à signer ou à valider, instance close. Leur lien est rendu tel quel (préfixe console comme les autres).
  */
 /** HOMOLOGATION (MS-NOTIFICATION §11) : action attendue, avis, validation ou jalon d'une opération du parcours d'homologation. */
-export type TypeNotification = 'MESSAGE' | 'TACHE' | 'RAPPORT' | 'MENTION' | 'REPONSE' | 'DEMANDE' | 'PROCESSUS' | 'HOMOLOGATION'
-export const TYPES_NOTIFICATION: readonly TypeNotification[] = ['MESSAGE', 'TACHE', 'RAPPORT', 'MENTION', 'REPONSE', 'DEMANDE', 'PROCESSUS', 'HOMOLOGATION']
+/** MONITORING (D-116) : rapport de monitoring reçu, rapport quotidien de 8 h attendu ou en retard. */
+export type TypeNotification = 'MESSAGE' | 'TACHE' | 'RAPPORT' | 'MENTION' | 'REPONSE' | 'DEMANDE' | 'PROCESSUS' | 'HOMOLOGATION' | 'MONITORING'
+export const TYPES_NOTIFICATION: readonly TypeNotification[] = ['MESSAGE', 'TACHE', 'RAPPORT', 'MENTION', 'REPONSE', 'DEMANDE', 'PROCESSUS', 'HOMOLOGATION', 'MONITORING']
 /** Types qu'un compte d'institution reçoit au portail (TypeNotification.PORTAIL de MS-NOTIFICATION) : le parcours de ses liaisons. */
 export const TYPES_NOTIFICATION_PORTAIL: readonly TypeNotification[] = ['HOMOLOGATION']
 /** Types proposés dans une couche : ceux du portail pour un compte d'institution, tous dans les couches internes. */
@@ -21,6 +22,7 @@ export const typesNotificationDe = (couche: string | null | undefined): readonly
  */
 export const PERMISSIONS_TYPE_NOTIFICATION: Partial<Record<TypeNotification, readonly string[]>> = {
   RAPPORT: ['PIL_TEAM_READ'], DEMANDE: ['PIL_TEAM_READ', 'IAM_ACCOUNT_READ', 'PAR_TRANSITION_REQUEST'], HOMOLOGATION: ['HOM_LIAISON_READ'],
+  MONITORING: ['MON_SUPERVISION_READ'],
 }
 export const typeNotificationPermis = (type: TypeNotification, permissions: readonly string[]): boolean =>
   !PERMISSIONS_TYPE_NOTIFICATION[type] || PERMISSIONS_TYPE_NOTIFICATION[type]!.some((p) => permissions.includes(p))

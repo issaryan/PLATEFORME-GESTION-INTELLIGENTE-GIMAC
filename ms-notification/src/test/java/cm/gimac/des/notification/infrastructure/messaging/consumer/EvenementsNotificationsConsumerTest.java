@@ -19,6 +19,7 @@ import cm.gimac.des.notification.application.port.in.RecevoirEvenementsUseCase.M
 import cm.gimac.des.notification.application.port.in.RecevoirEvenementsUseCase.RapportSoumis;
 import cm.gimac.des.notification.application.port.in.RecevoirEvenementsUseCase.TacheAffectee;
 import cm.gimac.des.notification.application.port.in.RecevoirEvenementsUseCase.TacheOfferte;
+import cm.gimac.des.notification.application.port.in.RecevoirEvenementsUseCase.DemandeMonitoring;
 import cm.gimac.des.notification.application.port.in.RecevoirEvenementsUseCase.TacheRelancee;
 import cm.gimac.des.notification.application.port.in.RecevoirEvenementsUseCase.TransitionTranchee;
 import cm.gimac.des.notification.domain.service.ReglesNotifications.FaitsProcessus;
@@ -175,6 +176,13 @@ class EvenementsNotificationsConsumerTest {
         );
         verify(evenements).tacheRelancee(new TacheRelancee("t-7", "Sauvegardes", "serge", "paul", Instant.parse("2026-10-06T09:00:00Z")));
         consommateur.recevoir(
+            "{\"id\":\"e-mon\",\"type\":\"monitoring.notification-requested.v1\",\"data\":{\"destinataires\":[\"serge\"],\"niveau\":\"INFORMATION\"," +
+            "\"objet\":\"RAPPORT_RECU\",\"objetId\":\"r-1\",\"reference\":\"Bilan\",\"message\":\"Pour visa\",\"lien\":\"/des/exploitation/rapports\",\"acteurId\":\"paul\",\"le\":\"2026-10-20T07:00:00Z\"}}"
+        );
+        verify(evenements).demandeMonitoring(
+            new DemandeMonitoring(List.of("serge"), "INFORMATION", "RAPPORT_RECU", "r-1", "Bilan", "Pour visa", "/des/exploitation/rapports", "paul", Instant.parse("2026-10-20T07:00:00Z"))
+        );
+        consommateur.recevoir(
             "{\"id\":\"e-9\",\"type\":\"iam.request-submitted.v1\",\"data\":{\"demandeId\":\"d-1\",\"type\":\"CREATION_COMPTE\",\"etat\":\"EN_ATTENTE\"," +
             "\"demandeurId\":\"paul\",\"cibleId\":null,\"destinataires\":[\"admin\",\"rssi\"],\"le\":\"2026-10-06T10:00:00Z\"}}"
         );
@@ -184,7 +192,7 @@ class EvenementsNotificationsConsumerTest {
             "\"demandeurId\":\"paul\",\"acteurId\":\"admin\",\"destinataires\":[\"paul\"],\"le\":\"2026-10-06T11:00:00Z\"}}"
         );
         verify(evenements).demandeDecidee(new DemandeDecidee("d-1", "CREATION_COMPTE", "REFUSEE", "admin", List.of("paul"), Instant.parse("2026-10-06T11:00:00Z")));
-        verify(traites, times(5)).save(any());
+        verify(traites, times(6)).save(any());
     }
 
     // ------------------------------------------------------------------ processus d'unité (D-87)

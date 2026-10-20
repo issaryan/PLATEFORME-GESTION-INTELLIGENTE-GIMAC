@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Recentrage D-116 (docs/lot1/astreintes-monitoring.md §10) : rapports de monitoring et d'astreinte rattachés au
+    programme, envois, contraintes de génération paramétrables, avis du rapport quotidien de 8 h.
+-->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="mon-rapports-monitoring" author="lot1">
+        <createTable tableName="monitoring_report" remarks="Rapport de monitoring ou d'astreinte déposé et rattaché au programme (D-116).">
+            <column name="id" type="uuid"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="nature" type="varchar(20)"><constraints nullable="false"/></column>
+            <column name="title" type="varchar(160)"><constraints nullable="false"/></column>
+            <column name="summary" type="varchar(2000)"/>
+            <column name="report_date" type="date"/>
+            <column name="shift_id" type="uuid"/>
+            <column name="assignment_id" type="uuid"/>
+            <column name="author_id" type="uuid"><constraints nullable="false"/></column>
+            <column name="deposited_at" type="timestamptz"><constraints nullable="false"/></column>
+            <column name="due_at" type="timestamptz"/>
+            <column name="late" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+            <column name="document_id" type="varchar(100)"><constraints nullable="false"/></column>
+            <column name="document_name" type="varchar(255)"><constraints nullable="false"/></column>
+            <column name="document_size" type="bigint"><constraints nullable="false"/></column>
+            <column name="document_type" type="varchar(120)"><constraints nullable="false"/></column>
+        </createTable>
+        <sql>ALTER TABLE monitoring_report ADD CONSTRAINT ck_monitoring_report_nature CHECK (nature IN ('QUOTIDIEN', 'VACATION', 'ASTREINTE', 'FIN', 'AUTRE'));</sql>
+        <sql>CREATE UNIQUE INDEX ux_monitoring_report_quotidien ON monitoring_report (report_date) WHERE nature = 'QUOTIDIEN';</sql>
+        <createIndex tableName="monitoring_report" indexName="idx_monitoring_report_auteur"><column name="author_id"/><column name="deposited_at"/></createIndex>
+        <createIndex tableName="monitoring_report" indexName="idx_monitoring_report_depot"><column name="deposited_at"/></createIndex>
+
+        <createTable tableName="monitoring_report_send" remarks="Envoi d'un rapport à un destinataire choisi par son auteur (D-116).">
+            <column name="id" type="uuid"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="report_id" type="uuid"><constraints nullable="false"/></column>
+            <column name="recipient_id" type="uuid"><constraints nullable="false"/></column>
+            <column name="sent_at" type="timestamptz"><constraints nullable="false"/></column>
+            <column name="message" type="varchar(500)"/>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="monitoring_report_send" baseColumnNames="report_id" constraintName="fk_monitoring_report_send_report"
+                                 referencedTableName="monitoring_report" referencedColumnNames="id" onDelete="CASCADE"/>
+        <createIndex tableName="monitoring_report_send" indexName="idx_monitoring_report_send_destinataire"><column name="recipient_id"/></createIndex>
+    </changeSet>
+
+    <changeSet id="mon-contraintes-grille" author="lot1">
+        <createTable tableName="roster_constraints" remarks="Contraintes de génération fixées par le responsable (D-116 §10.3), une seule ligne.">
+            <column name="id" type="integer"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="room_staff" type="integer"><constraints nullable="false"/></column>
+            <column name="on_call_staff" type="integer"><constraints nullable="false"/></column>
+            <column name="shift_lead" type="boolean"><constraints nullable="false"/></column>
+            <column name="rest_hours" type="integer"><constraints nullable="false"/></column>
+            <column name="max_nights" type="integer"><constraints nullable="false"/></column>
+            <column name="weekly_hours" type="integer"><constraints nullable="false"/></column>
+            <column name="time_limit_seconds" type="integer"><constraints nullable="false"/></column>
+            <column name="updated_at" type="timestamptz"><constraints nullable="false"/></column>
+            <column name="updated_by" type="uuid"><constraints nullable="false"/></column>
+        </createTable>
+        <sql>ALTER TABLE roster_constraints ADD CONSTRAINT ck_roster_constraints_unique CHECK (id = 1);</sql>
+    </changeSet>
+
+    <changeSet id="mon-avis-quotidien" author="lot1">
+        <createTable tableName="daily_report_notice" remarks="Rappel de 7 h 30 et signalement du retard du rapport quotidien, une fois par jour (D-116 §10.2).">
+            <column name="report_date" type="date"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="reminder_sent_at" type="timestamptz"/>
+            <column name="late_notified_at" type="timestamptz"/>
+        </createTable>
+    </changeSet>
+</databaseChangeLog>

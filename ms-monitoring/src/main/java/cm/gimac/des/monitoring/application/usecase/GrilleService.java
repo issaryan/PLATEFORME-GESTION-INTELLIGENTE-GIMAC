@@ -78,6 +78,7 @@ public class GrilleService implements GrilleUseCase {
     private final MainCourante mainCourante;
     private final Quarts quarts;
     private final OutboxPublisher outbox;
+    private final ContraintesGrille contraintes;
 
     public GrilleService(
         GrillesRepository grilles,
@@ -91,7 +92,8 @@ public class GrilleService implements GrilleUseCase {
         ReauthentificationPort reauth,
         MainCourante mainCourante,
         Quarts quarts,
-        OutboxPublisher outbox
+        OutboxPublisher outbox,
+        ContraintesGrille contraintes
     ) {
         this.grilles = grilles;
         this.affectations = affectations;
@@ -105,6 +107,7 @@ public class GrilleService implements GrilleUseCase {
         this.mainCourante = mainCourante;
         this.quarts = quarts;
         this.outbox = outbox;
+        this.contraintes = contraintes;
     }
 
     private ZoneId zone() {
@@ -137,7 +140,7 @@ public class GrilleService implements GrilleUseCase {
             throw MonitoringException.regle("MON_AUCUN_OPERATEUR", "Aucun opérateur qualifié (MON_SHIFT_OPERATOR)");
         }
         FormulationGrille f = FormulationGrille.construire(p);
-        IntegerProgramSolver.Resultat r = solveur.resoudre(f.modele(), quarts.reglages().grille().limite());
+        IntegerProgramSolver.Resultat r = solveur.resoudre(f.modele(), contraintes.lire().limite());
         if (!r.avecSolution()) {
             throw MonitoringException.regle("MON_GRILLE_SANS_SOLUTION", "Aucune grille trouvée dans le délai", Map.of("statut", r.statut().name()));
         }
@@ -225,7 +228,7 @@ public class GrilleService implements GrilleUseCase {
             }
             affectations(publiee).stream().filter(a -> figes.contains(new Plages.Creneau(a.jour(), a.plage()))).forEach(imposees::add);
         }
-        return new ProblemeGrille(lundi, ops, indispo, veille, quarts.reglages().grille().parametres(), figes, imposees);
+        return new ProblemeGrille(lundi, ops, indispo, veille, contraintes.lire().parametres(), figes, imposees);
     }
 
     private List<Affectation> affectations(OnCallRoster g) {

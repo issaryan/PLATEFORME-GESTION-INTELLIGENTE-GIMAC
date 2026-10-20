@@ -1,5 +1,13 @@
 # Supervision des liaisons, astreintes et relève de quart (D-114)
 
+> **Recentrage D-116 (20/10/2026), à lire d'abord.** Le module ne surveille rien par lui-même : il **génère les
+> programmes** de monitoring (vacations en salle) et d'astreinte (niveau 2) selon les contraintes que fixe le
+> responsable, **conserve les rapports** que chacun dépose en les rattachant à son créneau, permet d'**envoyer le rapport
+> de fin** au supérieur ou à la personne choisie, et permet aux **chefs de consulter** l'activité des personnes
+> programmées et leurs rapports. Chaque matin, l'équipe de nuit dépose avant 8 h 00 le **rapport de monitoring**
+> (bilan des 24 h). Le module n'a aucun lien avec l'homologation ni la certification des liaisons. Les §3 et §4
+> (liaisons supervisées, alertes) restent dans le service mais sortent de la navigation ; le §10 décrit l'ajout.
+
 Périmètre : BF-17 et BF-ADMIN du REC, UC-EXP-02 et UC-EXP-05, récits MON-01 à MON-15 du carnet v2.0,
 algorithmes 6.44 (alertes), 6.45 (grille) et 6.46 (relève) du CC, décisions D-12 (relève signée), D-14 (délais
 5, 15 et 60 min) et D-15 (port `IntegerProgramSolver`, adaptateur OR-Tools CP-SAT, 300 s). Service : MS-MONITORING
@@ -278,9 +286,71 @@ Groupe de la barre latérale `monitoring` (« Supervision et astreintes »), pr�
 Services simulés (`VITE_SERVICES=simule`) : même contrat, jeu fictif (opérateurs USR-0042 et suivants, liaisons
 LIA-2026-0xx), refus normalisés.
 
+## 10. Rapports de monitoring, contraintes et activité de l'équipe (D-116)
+
+### 10.1 Rapports
+
+Un rapport est un fichier déposé dans MS-DOCUMENT (dépôt fragmenté D-74, finalité `RAPPORT_MONITORING`, permission
+MON_SUPERVISION_READ), puis rattaché par MS-MONITORING, qui vérifie la pièce (`GET /api/v1/interne/documents/{id}` :
+finalité, déposant = auteur).
+
+`POST /rapports-monitoring` (MON_SUPERVISION_READ) `{ nature: QUOTIDIEN | VACATION | ASTREINTE | FIN | AUTRE,
+vacationId?, affectationId?, date?, titre (3 à 160), resume (0 à 2000), documentRef }` → 201 Rapport. Rattachement :
+`vacationId` (membre ou chef de la vacation), `affectationId` (titulaire de l'affectation d'une grille publiée), ou
+aucun pour AUTRE. QUOTIDIEN porte sur la journée `date` (par défaut la veille) et exige d'être de la vacation de nuit
+qui se termine ce jour-là, ou chef. Refus : 403 `MON_RAPPORT_HORS_PROGRAMME`, 422 `MON_PIECE_INVALIDE`, 409
+`MON_RAPPORT_QUOTIDIEN_EXISTANT` (un seul rapport quotidien par jour), 400 `MON_REQUETE_INVALIDE`.
+
+```jsonc
+{ "id", "nature", "titre", "resume", "date": "AAAA-MM-JJ" | null,
+  "vacation": { "id", "reference", "plage", "date" } | null, "affectation": { "id", "date", "plage", "niveau" } | null,
+  "auteur": { "id", "nom" }, "deposeLe": "ISO", "echeance": "ISO" | null, "enRetard": false,
+  "document": { "id", "nom", "taille", "type" },
+  "envois": [ { "destinataire": { "id", "nom" }, "le": "ISO", "message": "…" | null } ] }
+```
+
+`GET /rapports-monitoring?nature=&auteur=&du=&au=&page=&taille=` → Page, plus récents d'abord. Chacun voit ses rapports
+et ceux qui lui ont été envoyés ; un chef (MON_SHIFT_LEAD ou MON_ROSTER_MANAGE) voit tous les rapports.
+`GET /rapports-monitoring/{id}` (mêmes droits ; sinon 404) ; `GET /rapports-monitoring/{id}/fichier` (le fichier).
+
+`POST /rapports-monitoring/{id}/envoi` (auteur) `{ destinataires: [compteId] (1 à 20), message? (500) }` → le rapport :
+chaque destinataire est notifié (`monitoring.notification-requested.v1`, objet `RAPPORT_RECU`) et peut le lire.
+
+### 10.2 Rapport quotidien de 8 h
+
+Pour chaque jour J, le rapport QUOTIDIEN porte sur les 24 h de J-1 et revient à la vacation de NUIT de J-1 (22 h à
+6 h). Échéance : J à 08 h 00 (`gimac.monitoring.rapport-quotidien.echeance`, heure de la plateforme). Un dépôt après
+l'échéance est accepté et marqué en retard.
+
+`GET /rapports-monitoring/quotidiens?du=&au=` (chefs ; un opérateur voit les siens) → `[ { date, vacation, attendus:
+[Personne], rapport: { id, deposeLe, enRetard } | null, statut: DEPOSE | EN_RETARD | ATTENDU | SANS_VACATION } ]`.
+
+Ordonnanceur : à 07 h 30, rappel aux membres de la vacation de nuit si rien n'est déposé ; dès l'échéance passée,
+signalement aux porteurs de MON_ROSTER_MANAGE (une fois par jour).
+
+### 10.3 Contraintes de génération
+
+`GET /grilles/contraintes` (MON_SUPERVISION_READ) et `PUT /grilles/contraintes` (MON_ROSTER_MANAGE, motif)
+`{ effectifSalle (1 à 10), effectifAstreinte (0 à 5), chefDeQuart (bool), reposHeures (8 à 24), nuitsMax (1 à 7),
+plafondHeures (24 à 72), limiteSecondes (10 à 600) }` : valeurs utilisées par la génération suivante, journalisées
+(`monitoring.constraints-changed.v1`) ; à défaut, celles de la configuration.
+
+### 10.4 Activité de l'équipe
+
+`GET /activite?du=&au=&personne=` (MON_SHIFT_LEAD ou MON_ROSTER_MANAGE ; 92 jours au plus) → `[ { personne,
+creneaux: [ { date, plage, niveau, chefDeQuart, vacationId } ], rapports: n, quotidiensDeposes: n, quotidiensEnRetard: n,
+quotidiensManquants: n } ]`, à partir des grilles publiées.
+
+### 10.5 Écrans
+
+Navigation du module : « Aujourd'hui » (qui est de service, rapport de 8 h, mes prochains créneaux, déposer un
+rapport), « Programme » (grille, génération, contraintes, échanges), « Rapports » (déposer, filtrer, envoyer),
+« Activité de l'équipe » (chefs). « Liaisons et alertes » et « Vacation et relève » quittent la navigation.
+
 ## Journal des mises à jour
 
 | Date | Commit | Modification |
 |---|---|---|
 | 2026-10-19 | - | Contrat initial (D-114), tranches 1 à 3. |
 | 2026-10-19 | - | Empreinte de la main courante : vacation incluse, instant à la microseconde (défauts trouvés par les tests d'intégration de la relève et de la grille). |
+| 2026-10-20 | - | Recentrage D-116 : programmes et rapports, rapport quotidien de 8 h, contraintes paramétrables, activité de l'équipe (§10) |

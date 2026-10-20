@@ -2,6 +2,7 @@ package cm.gimac.des.notification.infrastructure.messaging.consumer;
 
 import cm.gimac.des.notification.application.port.in.RecevoirEvenementsUseCase;
 import cm.gimac.des.notification.application.port.in.RecevoirEvenementsUseCase.DemandeDecidee;
+import cm.gimac.des.notification.application.port.in.RecevoirEvenementsUseCase.DemandeMonitoring;
 import cm.gimac.des.notification.application.port.in.RecevoirEvenementsUseCase.DemandeSoumise;
 import cm.gimac.des.notification.application.port.in.RecevoirEvenementsUseCase.EvenementProcessus;
 import cm.gimac.des.notification.application.port.in.RecevoirEvenementsUseCase.MessageEnvoye;
@@ -46,6 +47,8 @@ public class EvenementsNotificationsConsumer {
     public static final String RAPPORT_SOUMIS = "pilotage.report-submitted.v1";
     public static final String TACHE_OFFERTE = "pilotage.task-offered.v1";
     public static final String TACHE_RELANCEE = "pilotage.task-reminded.v1";
+    /** Demande de notification du monitoring et des astreintes (D-116, sujet monitoring.notification). */
+    public static final String MONITORING = "monitoring.notification-requested.v1";
     public static final String DEMANDE_SOUMISE = "iam.request-submitted.v1";
     public static final String DEMANDE_DECIDEE = "iam.request-decided.v1";
     public static final String INSTANCE_LANCEE = "pilotage.process-instance-started.v1";
@@ -72,7 +75,7 @@ public class EvenementsNotificationsConsumer {
 
     @KafkaListener(
         id = GROUPE,
-        topics = "#{'${gimac.consommateurs.notification.sujets:collaboration.message,pilotage.task,pilotage.report,iam.request,pilotage.process,participant.transition}'.split(',')}",
+        topics = "#{'${gimac.consommateurs.notification.sujets:collaboration.message,pilotage.task,pilotage.report,iam.request,pilotage.process,participant.transition,monitoring.notification}'.split(',')}",
         groupId = GROUPE,
         autoStartup = "${gimac.consommateurs.demarrage-automatique:true}"
     )
@@ -139,6 +142,20 @@ public class EvenementsNotificationsConsumer {
                         texte(d, "acteurId"),
                         instant(d, "le"),
                         texte(d, "lien")
+                    )
+                );
+            case MONITORING -> () ->
+                evenements.demandeMonitoring(
+                    new DemandeMonitoring(
+                        textes(d.path("destinataires")),
+                        texte(d, "niveau"),
+                        texte(d, "objet"),
+                        texte(d, "objetId"),
+                        texte(d, "reference"),
+                        texte(d, "message"),
+                        texte(d, "lien"),
+                        texte(d, "acteurId"),
+                        instant(d, "le")
                     )
                 );
             case TACHE_RELANCEE -> () ->

@@ -219,6 +219,31 @@ public class BoiteNotificationsService implements BoiteNotificationsUseCase, Rec
     }
 
     @Override
+    public int demandeMonitoring(DemandeMonitoring e) {
+        if (vide(e.objet()) || e.destinataires() == null) {
+            return 0;
+        }
+        List<String> destinataires = acceptants(regles.destinataires(e.destinataires(), e.acteurId()), TypeNotification.MONITORING);
+        String acteur = vide(e.acteurId()) ? null : new Noms().de(e.acteurId());
+        Instant le = instant(e.le());
+        for (String d : destinataires) {
+            NotificationUtilisateur n = new NotificationUtilisateur(
+                d,
+                TypeNotification.MONITORING,
+                regles.titreMonitoring(e.objet(), e.reference()),
+                regles.sousTitreMonitoring(e.objet(), acteur, e.message()),
+                regles.lienMonitoring(e.lien()),
+                Reference.monitoring(e.objet(), vide(e.objetId()) ? e.objet() : e.objetId()),
+                e.acteurId(),
+                acteur,
+                le
+            );
+            publier(notifications.save(n));
+        }
+        return destinataires.size();
+    }
+
+    @Override
     public int tacheRelancee(TacheRelancee e) {
         String responsable = e.responsableId();
         if (vide(responsable) || vide(e.tacheId()) || responsable.equals(e.acteurId()) || !accepte(responsable, TypeNotification.TACHE)) {

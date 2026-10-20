@@ -62,6 +62,12 @@ public class DepotFragmenteService implements DepotFragmenteUseCase {
     static final String FINALITE_PROCESSUS_UNITE = "PROCESSUS_UNITE";
     /** Finalités réservées à l'activité interne (MS-PILOTAGE) : PIL_ACTIVITY_OWN seulement. */
     static final Set<String> FINALITES_ACTIVITE = Set.of(FINALITE_RAPPORT_ACTIVITE, FINALITE_PROCESSUS_UNITE);
+    /**
+     * Rapport de monitoring ou d'astreinte (D-116, docs/lot1/astreintes-monitoring.md §10), déposé par la personne
+     * programmée puis rattaché par MS-MONITORING, qui le vérifie par GET /api/v1/interne/documents/{id}.
+     */
+    static final String FINALITE_RAPPORT_MONITORING = "RAPPORT_MONITORING";
+    static final String PERMISSION_RAPPORT_MONITORING = "MON_SUPERVISION_READ";
     private static final int LOT = 100;
 
     private final StockageObjet stockage;
@@ -249,7 +255,7 @@ public class DepotFragmenteService implements DepotFragmenteUseCase {
 
     /**
      * MESSAGERIE exige COL_MESSAGE_SEND ; RAPPORT_ACTIVITE (D-76) et PROCESSUS_UNITE (D-87) exigent
-     * PIL_ACTIVITY_OWN ; toute autre finalité, l'une des permissions du dépôt direct.
+     * PIL_ACTIVITY_OWN ; RAPPORT_MONITORING (D-116) exige MON_SUPERVISION_READ ; toute autre finalité, l'une des permissions du dépôt direct.
      */
     static void autoriser(String finalite, Set<String> permissions) {
         boolean autorise;
@@ -257,6 +263,8 @@ public class DepotFragmenteService implements DepotFragmenteUseCase {
             autorise = permissions.contains(PERMISSION_MESSAGERIE);
         } else if (FINALITES_ACTIVITE.contains(finalite)) {
             autorise = permissions.contains(PERMISSION_RAPPORT_ACTIVITE);
+        } else if (FINALITE_RAPPORT_MONITORING.equals(finalite)) {
+            autorise = permissions.contains(PERMISSION_RAPPORT_MONITORING);
         } else {
             autorise = permissions.stream().anyMatch(PERMISSIONS_DEPOT::contains);
         }

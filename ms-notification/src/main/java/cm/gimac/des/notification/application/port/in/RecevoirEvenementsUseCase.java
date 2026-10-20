@@ -54,6 +54,12 @@ public interface RecevoirEvenementsUseCase {
         }
     }
 
+    /**
+     * monitoring.notification-requested.v1 (sujet monitoring.notification, D-116) : rapport reçu, rapport quotidien de 8 h
+     * attendu ou en retard ; {@code objetId} désigne le rapport ou la journée, {@code reference} est lisible.
+     */
+    record DemandeMonitoring(List<String> destinataires, String niveau, String objet, String objetId, String reference, String message, String lien, String acteurId, Instant le) {}
+
     /** pilotage.task-reminded.v1 (sujet pilotage.task) : relance d'une tâche à son responsable. */
     record TacheRelancee(String tacheId, String titre, String responsableId, String acteurId, Instant le) {}
 
@@ -109,6 +115,8 @@ public interface RecevoirEvenementsUseCase {
     int tacheOfferte(TacheOfferte e);
 
     int tacheRelancee(TacheRelancee e);
+
+    int demandeMonitoring(DemandeMonitoring e);
 
     int demandeSoumise(DemandeSoumise e);
 
