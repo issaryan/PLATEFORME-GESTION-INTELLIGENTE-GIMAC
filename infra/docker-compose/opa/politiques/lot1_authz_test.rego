@@ -1525,6 +1525,9 @@ routes_mon_rapports := [
 	["GET", "/bff/des/monitoring/activite", "MON_SUPERVISION_READ"],
 	["GET", "/bff/des/monitoring/grilles/contraintes", "MON_SUPERVISION_READ"],
 	["PUT", "/bff/des/monitoring/grilles/contraintes", "MON_ROSTER_MANAGE"],
+	["GET", "/bff/des/monitoring/grilles/creneaux", "MON_SUPERVISION_READ"],
+	["PUT", "/bff/des/monitoring/grilles/creneaux", "MON_ROSTER_MANAGE"],
+	["GET", "/bff/des/monitoring/grilles/g1/export", "MON_SUPERVISION_READ"],
 ]
 
 test_mon_rapports_permission if {
@@ -1534,5 +1537,7 @@ test_mon_rapports_permission if {
 		not authz.allow with input as {"method": r[0], "path": r[1], "permissions": [r[2]], "institution_id": "INST-0042", "authentifie": true, "acr": "2"}
 	}
 	not authz.allow with input as {"method": "PUT", "path": "/bff/des/monitoring/grilles/contraintes", "permissions": ["MON_SUPERVISION_READ"], "authentifie": true, "acr": "2"}
+	not authz.allow with input as {"method": "PUT", "path": "/bff/des/monitoring/grilles/creneaux", "permissions": ["MON_SUPERVISION_READ"], "authentifie": true, "acr": "2"}
+	not authz.allow with input as {"method": "GET", "path": "/bff/des/monitoring/grilles/g1/export", "permissions": ["PIL_ACTIVITY_OWN"], "authentifie": true, "acr": "2"}
 	not authz.allow with input as {"method": "DELETE", "path": "/bff/des/monitoring/rapports-monitoring/r1", "permissions": ["MON_SUPERVISION_READ"], "authentifie": true, "acr": "2"}
 }

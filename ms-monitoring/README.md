@@ -52,6 +52,7 @@ Copié et adapté (paquet `cm.gimac.des.monitoring`) ; chaque bean est inactif t
 | 2026-10-19 | D-114 | Tests des adaptateurs réels vers MS-IAM et MS-DOCUMENT (chemins, jeton de service, refus en codes `MON_*`) et de l'ordonnanceur d'escalade ; l'annuaire ignore un identifiant vide au lieu d'échouer |
 | 2026-10-20 | D-116 | Rapports de monitoring (`RapportsMonitoringService`, tables `monitoring_report` et `monitoring_report_send`), rapport quotidien de 8 h (`AvisRapportQuotidien`, ordonnanceur, table `daily_report_notice`), contraintes de génération (`ContraintesGrille`, table `roster_constraints`, chef de quart désactivable), activité de l'équipe ; tests d'intégration `RapportsMonitoringIT` |
 <!-- GIMAC:FIN -->
+| 2026-10-20 | - | D-117 : ModeleCreneaux (modèle par défaut de la feuille du DES, modèle historique de D-114), CreneauxProgramme, ProgrammeGrilles, PublicationProgramme, ExportProgramme (PDF par MS-DOCUMENT, xlsx sans dépendance), routes GET et PUT /grilles/creneaux et GET /grilles/{id}/export, changeset 20261021090000 ; formulation en cliques ; 132 tests unitaires et 438 d’intégration |
 
 # monitoring
 

@@ -30,11 +30,10 @@ public record Reglages(ZoneId fuseau, Duration deduplication, Duration correlati
             return Duration.ofSeconds(limiteSecondes == null ? 300 : limiteSecondes);
         }
 
+        /** Contraintes générales de D-117 ; effectifs et chef de quart relèvent désormais de chaque créneau. */
         public ProblemeGrille.Parametres parametres() {
             ProblemeGrille.Parametres d = ProblemeGrille.Parametres.DEFAUT;
             return new ProblemeGrille.Parametres(
-                besoinSalle == null ? d.besoinSalle() : besoinSalle,
-                besoinAstreinte == null ? d.besoinAstreinte() : besoinAstreinte,
                 reposHeures == null ? d.reposHeures() : reposHeures,
                 nuitsMax == null ? d.nuitsMax() : nuitsMax,
                 plafondHeures == null ? d.plafondHeures() : plafondHeures

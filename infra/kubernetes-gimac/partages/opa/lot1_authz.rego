@@ -219,6 +219,10 @@ regles := [
 	{"m": "GET", "re": `^/bff/des/monitoring/(rapports-monitoring(/quotidiens|/[^/]+(/fichier)?)?|activite|grilles/contraintes)$`, "p": "MON_SUPERVISION_READ"},
 	{"m": "POST", "re": `^/bff/des/monitoring/rapports-monitoring(/[^/]+/envoi)?$`, "p": "MON_SUPERVISION_READ"},
 	{"m": "PUT", "re": `^/bff/des/monitoring/grilles/contraintes$`, "p": "MON_ROSTER_MANAGE"},
+	# Programme configurable (D-117, docs/lot1/astreintes-monitoring.md §11) : modèle des créneaux lu par tous les
+	# lecteurs du module (route GET /grilles/{id} ci-dessus), modifié par la gestion du programme ; téléchargement.
+	{"m": "PUT", "re": `^/bff/des/monitoring/grilles/creneaux$`, "p": "MON_ROSTER_MANAGE"},
+	{"m": "GET", "re": `^/bff/des/monitoring/grilles/[^/]+/export$`, "p": "MON_SUPERVISION_READ"},
 ]
 
 # Routes internes des services (jeton de service) : jamais relayées depuis une couche de présentation.

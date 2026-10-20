@@ -120,6 +120,7 @@ gimac:
     disponibilites: real
     documents: real
     reauthentification: real
+    rendu-pdf: real
   services:
     iam:
       url: http://iam:8081

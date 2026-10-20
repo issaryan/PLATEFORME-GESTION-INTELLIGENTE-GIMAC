@@ -5,7 +5,6 @@ import cm.gimac.des.monitoring.application.port.out.AnnuairePort;
 import cm.gimac.des.monitoring.domain.AlertSeverityPolicy;
 import cm.gimac.des.monitoring.domain.Shift;
 import cm.gimac.des.monitoring.domain.enumeration.AlertSeverity;
-import cm.gimac.des.monitoring.domain.exploitation.Plages;
 import cm.gimac.des.monitoring.domain.exploitation.PolitiqueAlerte;
 import cm.gimac.des.monitoring.infrastructure.persistance.PolitiquesRepository;
 import cm.gimac.des.monitoring.infrastructure.persistance.VacationsRepository;
@@ -55,14 +54,14 @@ public class Quarts {
         return vacations.findFirstByStartsAtLessThanEqualAndEndsAtGreaterThanOrderByStartsAtDesc(t, t);
     }
 
+    /** Vacation précédente : la dernière terminée avant le début de celle-ci (créneaux configurables, D-117). */
     public Optional<Shift> precedente(Shift v) {
-        Plages.Creneau c = Plages.precedent(new Plages.Creneau(v.getShiftDate(), v.getSlot()));
-        return vacations.findFirstByShiftDateAndSlot(c.jour(), c.plage());
+        return vacations.findFirstByEndsAtLessThanEqualOrderByEndsAtDesc(v.getStartsAt()).filter(x -> !x.getId().equals(v.getId()));
     }
 
+    /** Vacation suivante : la première commencée après la fin de celle-ci. */
     public Optional<Shift> suivante(Shift v) {
-        Plages.Creneau c = Plages.suivant(new Plages.Creneau(v.getShiftDate(), v.getSlot()));
-        return vacations.findFirstByShiftDateAndSlot(c.jour(), c.plage());
+        return vacations.findFirstByStartsAtGreaterThanEqualOrderByStartsAtAsc(v.getEndsAt()).filter(x -> !x.getId().equals(v.getId()));
     }
 
     /** Opérateurs d'une vacation (identifiants séparés par des virgules). */

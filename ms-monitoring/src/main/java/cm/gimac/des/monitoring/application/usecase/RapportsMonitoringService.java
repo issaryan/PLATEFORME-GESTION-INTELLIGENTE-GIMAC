@@ -19,7 +19,6 @@ import cm.gimac.des.monitoring.infrastructure.persistance.RapportsMonitoringRepo
 import cm.gimac.des.monitoring.infrastructure.persistance.VacationsRepository;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -32,7 +31,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -63,9 +61,10 @@ public class RapportsMonitoringService {
         List<EnvoiVue> envois
     ) {}
 
-    public record VacationCourte(UUID id, String reference, String plage, LocalDate date) {}
+    /** Vacation : créneau du programme (D-117), ou plage historique de D-114. */
+    public record VacationCourte(UUID id, String reference, String creneau, LocalDate date) {}
 
-    public record AffectationCourte(UUID id, LocalDate date, String plage, int niveau) {}
+    public record AffectationCourte(UUID id, LocalDate date, String creneau, Instant debut, Instant fin, int niveau) {}
 
     public record Document(String id, String nom, long taille, String type) {}
 
@@ -88,7 +87,9 @@ public class RapportsMonitoringService {
     private final PiecesPort pieces;
     private final Quarts quarts;
     private final OutboxPublisher outbox;
-    private final LocalTime echeanceQuotidien;
+    private final ContraintesGrille contraintes;
+    private final ProgrammeGrilles programme;
+    private final CreneauxProgramme creneaux;
 
     public RapportsMonitoringService(
         RapportsMonitoringRepository rapports,
@@ -98,7 +99,9 @@ public class RapportsMonitoringService {
         PiecesPort pieces,
         Quarts quarts,
         OutboxPublisher outbox,
-        @Value("${gimac.monitoring.rapport-quotidien.echeance:08:00}") LocalTime echeanceQuotidien
+        ContraintesGrille contraintes,
+        ProgrammeGrilles programme,
+        CreneauxProgramme creneaux
     ) {
         this.rapports = rapports;
         this.envois = envois;
@@ -107,7 +110,9 @@ public class RapportsMonitoringService {
         this.pieces = pieces;
         this.quarts = quarts;
         this.outbox = outbox;
-        this.echeanceQuotidien = echeanceQuotidien;
+        this.contraintes = contraintes;
+        this.programme = programme;
+        this.creneaux = creneaux;
     }
 
     private ZoneId zone() {
@@ -123,9 +128,31 @@ public class RapportsMonitoringService {
         return a.uuid().orElseThrow(() -> MonitoringException.interdit("MON_JETON_UTILISATEUR_EXIGE", "Jeton utilisateur exigé"));
     }
 
-    /** Échéance du rapport quotidien qui porte sur la journée {@code jour} : le lendemain à l'heure paramétrée. */
+    /** Échéance du rapport quotidien qui porte sur la journée {@code jour} : le lendemain à l'heure des contraintes. */
     public Instant echeance(LocalDate jour) {
-        return jour.plusDays(1).atTime(echeanceQuotidien).atZone(zone()).toInstant();
+        return jour.plusDays(1).atTime(contraintes.lire().echeanceRapport()).atZone(zone()).toInstant();
+    }
+
+    /** Personnes à qui revient le rapport de 8 h de la journée (programme publié, D-117 §11.4). */
+    public List<String> equipe(LocalDate jour) {
+        return programme.equipesRapport(jour, jour).getOrDefault(jour, List.of());
+    }
+
+    /** Vacation tenue sur le créneau qui porte le rapport de 8 h de la journée, s'il a été instancié. */
+    private Optional<Shift> vacationRapport(LocalDate jour) {
+        return vacations
+            .findByShiftDateBetweenOrderByStartsAtAsc(jour, jour)
+            .stream()
+            .filter(v -> {
+                String code = creneaux.creneauVacation(v.getId());
+                return code == null ? v.getSlot() == ShiftSlot.NUIT : creneaux.modeleDe(v.getRoster() == null ? null : v.getRoster().getId()).creneaux().stream().anyMatch(c -> c.code().equals(code) && c.rapportQuotidien());
+            })
+            .findFirst();
+    }
+
+    private VacationCourte courte(Shift s) {
+        String code = creneaux.creneauVacation(s.getId());
+        return new VacationCourte(s.getId(), s.getReference(), code == null ? s.getSlot().name() : code, s.getShiftDate());
     }
 
     private static String texte(String v, String champ, int min, int max) {
@@ -166,15 +193,14 @@ public class RapportsMonitoringService {
             case QUOTIDIEN -> {
                 jour = date == null ? LocalDate.ofInstant(maintenant, zone()).minusDays(1) : date;
                 LocalDate j = jour;
-                Optional<Shift> nuit = vacations.findFirstByShiftDateAndSlot(j, ShiftSlot.NUIT);
-                if (!chef && nuit.filter(v -> Quarts.membre(v, a.id())).isEmpty()) {
-                    throw MonitoringException.interdit("MON_RAPPORT_HORS_PROGRAMME", "Le rapport quotidien revient à l'équipe de nuit de cette journée");
+                if (!chef && !equipe(j).contains(a.id())) {
+                    throw MonitoringException.interdit("MON_RAPPORT_HORS_PROGRAMME", "Le rapport de 8 h revient aux personnes programmées sur le créneau qui le porte");
                 }
                 if (rapports.findFirstByNatureAndDate(Nature.QUOTIDIEN, j).isPresent()) {
                     throw MonitoringException.conflit("MON_RAPPORT_QUOTIDIEN_EXISTANT", "Le rapport quotidien de cette journée est déjà déposé");
                 }
                 echeance = echeance(j);
-                vac = nuit.map(Shift::getId).orElse(null);
+                vac = vacationRapport(j).map(Shift::getId).orElse(null);
             }
             case VACATION -> vac = vacation(a, chef, vacationId, true).getId();
             case ASTREINTE -> aff = affectation(a, chef, affectationId, true).getId();
@@ -333,16 +359,16 @@ public class RapportsMonitoringService {
         boolean chef = chef(a);
         Map<LocalDate, RapportMonitoring> parJour = new LinkedHashMap<>();
         rapports.findByNatureAndDateBetween(Nature.QUOTIDIEN, debut, fin).forEach(r -> parJour.put(r.getDate(), r));
-        List<Shift> nuits = vacations.findByShiftDateBetweenOrderByStartsAtAsc(debut, fin).stream().filter(v -> v.getSlot() == ShiftSlot.NUIT).toList();
+        Map<LocalDate, List<String>> equipes = programme.equipesRapport(debut, fin);
         Set<String> ids = new HashSet<>();
-        nuits.forEach(v -> ids.addAll(Quarts.membres(v)));
+        equipes.values().forEach(ids::addAll);
         Map<String, String> noms = quarts.noms(ids);
         Instant maintenant = quarts.maintenant();
         List<Quotidien> l = new ArrayList<>();
         for (LocalDate j = fin; !j.isBefore(debut); j = j.minusDays(1)) {
             LocalDate jour = j;
-            Shift nuit = nuits.stream().filter(v -> v.getShiftDate().equals(jour)).findFirst().orElse(null);
-            if (!chef && (nuit == null || !Quarts.membre(nuit, a.id()))) {
+            List<String> attendus = equipes.getOrDefault(jour, List.of());
+            if (!chef && !attendus.contains(a.id())) {
                 continue;
             }
             RapportMonitoring r = parJour.get(jour);
@@ -350,7 +376,7 @@ public class RapportsMonitoringService {
             String statut;
             if (r != null) {
                 statut = r.isEnRetard() ? "EN_RETARD" : "DEPOSE";
-            } else if (nuit == null) {
+            } else if (attendus.isEmpty()) {
                 statut = "SANS_VACATION";
             } else {
                 statut = maintenant.isAfter(ech) ? "EN_RETARD" : "ATTENDU";
@@ -358,8 +384,8 @@ public class RapportsMonitoringService {
             l.add(
                 new Quotidien(
                     jour,
-                    nuit == null ? null : new VacationCourte(nuit.getId(), nuit.getReference(), nuit.getSlot().name(), nuit.getShiftDate()),
-                    nuit == null ? List.of() : Quarts.membres(nuit).stream().map(i -> Quarts.personne(i, noms)).toList(),
+                    attendus.isEmpty() ? null : vacationRapport(jour).map(this::courte).orElse(null),
+                    attendus.stream().map(i -> Quarts.personne(i, noms)).toList(),
                     r == null ? null : new RapportCourt(r.getId(), r.getDeposeLe(), r.isEnRetard()),
                     ech,
                     statut
@@ -371,6 +397,11 @@ public class RapportsMonitoringService {
 
     // ------------------------------------------------------------------ vue
 
+    private AffectationCourte courte(cm.gimac.des.monitoring.domain.OnCallAssignment x) {
+        var p = creneaux.placer(creneaux.modeleDe(x.getRoster().getId()), List.of(x)).get(0).affectation();
+        return new AffectationCourte(x.getId(), x.getDutyDate(), p.code(), p.debut(), p.fin(), x.getLevel());
+    }
+
     RapportVue vue(RapportMonitoring r) {
         List<EnvoiRapport> e = envois.findByRapportIdOrderByLeAsc(r.getId());
         Set<String> ids = new HashSet<>();
@@ -379,10 +410,10 @@ public class RapportsMonitoringService {
         Map<String, String> noms = quarts.noms(ids);
         VacationCourte v = r.getVacationId() == null
             ? null
-            : vacations.findById(r.getVacationId()).map(s -> new VacationCourte(s.getId(), s.getReference(), s.getSlot().name(), s.getShiftDate())).orElse(null);
+            : vacations.findById(r.getVacationId()).map(this::courte).orElse(null);
         AffectationCourte af = r.getAffectationId() == null
             ? null
-            : affectations.findById(r.getAffectationId()).map(x -> new AffectationCourte(x.getId(), x.getDutyDate(), x.getSlot().name(), x.getLevel())).orElse(null);
+            : affectations.findById(r.getAffectationId()).map(this::courte).orElse(null);
         RapportMonitoring.Piece p = r.getPiece();
         return new RapportVue(
             r.getId(),

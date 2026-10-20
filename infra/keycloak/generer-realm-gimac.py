@@ -377,8 +377,8 @@ SERVICES = {
     # /api/v1/interne/** sous INTERNAL_IAM_READ), livrables PROCESSUS_UNITE (GET /api/v1/interne/documents/{id}).
     "pilotage-service": ["INTERNAL_IAM_READ", "INTERNAL_DOCUMENT_READ"],
     # Supervision et astreintes (D-114) : opérateurs qualifiés, absences validées et vérification des assertions FIDO2
-    # (MS-IAM), dépôt des rapports de quart scellés (MS-DOCUMENT).
-    "monitoring-service": ["INTERNAL_IAM_READ", "INTERNAL_DOCUMENT_READ", "INTERNAL_DOCUMENT_DEPOSIT"],
+    # (MS-IAM), dépôt des rapports de quart scellés (MS-DOCUMENT) ; programme en PDF (D-117) : mise en page par MS-DOCUMENT.
+    "monitoring-service": ["INTERNAL_IAM_READ", "INTERNAL_DOCUMENT_READ", "INTERNAL_DOCUMENT_DEPOSIT", "INTERNAL_DOCUMENT_RENDER"],
     # Notifications (D-80) : noms des comptes (MS-IAM) et titre des conversations (MS-COLLABORATION).
     "notification-service": ["INTERNAL_IAM_READ", "INTERNAL_COLLABORATION_READ"],
     # MS-IAM administre le realm par l'API d'administration (D-62) : rôles de realm-management ci-dessous. Organigramme en

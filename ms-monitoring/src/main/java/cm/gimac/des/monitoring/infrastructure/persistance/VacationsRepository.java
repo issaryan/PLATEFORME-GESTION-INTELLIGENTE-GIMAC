@@ -19,4 +19,10 @@ public interface VacationsRepository extends JpaRepository<Shift, UUID> {
     Optional<Shift> findByReference(String reference);
 
     List<Shift> findByShiftDateBetweenOrderByStartsAtAsc(LocalDate du, LocalDate au);
+
+    /** Vacation précédente : la dernière terminée au plus tard à l'instant (D-117, créneaux configurables). */
+    Optional<Shift> findFirstByEndsAtLessThanEqualOrderByEndsAtDesc(Instant instant);
+
+    /** Vacation suivante : la première commencée au plus tôt à l'instant. */
+    Optional<Shift> findFirstByStartsAtGreaterThanEqualOrderByStartsAtAsc(Instant instant);
 }

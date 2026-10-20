@@ -306,6 +306,8 @@ gimac:
     documents: stub
     # Réauthentification FIDO2 des signatures de la relève et de la publication de la grille (MS-IAM).
     reauthentification: stub
+    # Mise en page PDF du programme téléchargeable (MS-DOCUMENT, moteur Gotenberg, D-117).
+    rendu-pdf: stub
   services:
     iam:
       url: http://localhost:8081

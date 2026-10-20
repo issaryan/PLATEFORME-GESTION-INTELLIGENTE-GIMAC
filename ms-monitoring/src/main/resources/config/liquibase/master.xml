@@ -41,4 +41,5 @@
     <!-- Supervision, astreintes et relève de quart (D-114). -->
     <include file="config/liquibase/changelog/20261019090000_mon_exploitation.xml" relativeToChangelogFile="false"/>
     <include file="config/liquibase/changelog/20261020090000_mon_rapports.xml" relativeToChangelogFile="false"/>
+    <include file="config/liquibase/changelog/20261021090000_mon_creneaux.xml" relativeToChangelogFile="false"/>
 </databaseChangeLog>

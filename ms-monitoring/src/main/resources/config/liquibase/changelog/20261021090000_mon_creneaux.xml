@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Programme entièrement configurable (D-117, docs/lot1/astreintes-monitoring.md §11) : modèle des créneaux versionné,
+    version figée par grille, créneau et instants de chaque affectation et de chaque vacation (compléments des entités
+    JHipster OnCallAssignment et Shift, inchangées), échéance et rappel du rapport de 8 h éditables.
+-->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="mon-modele-creneaux" author="lot1">
+        <createTable tableName="roster_slot_model" remarks="Version du modèle des créneaux du programme (D-117) ; la plus récente s'applique à la génération suivante.">
+            <column name="version" type="integer"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="model" type="text"><constraints nullable="false"/></column>
+            <column name="created_at" type="timestamptz"><constraints nullable="false"/></column>
+            <column name="created_by" type="uuid"/>
+            <column name="reason" type="varchar(500)"/>
+        </createTable>
+
+        <createTable tableName="roster_slot_snapshot" remarks="Version du modèle qui a produit une grille (D-117) ; absente : modèle historique de D-114.">
+            <column name="roster_id" type="uuid"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="model_version" type="integer"><constraints nullable="false"/></column>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="roster_slot_snapshot" baseColumnNames="roster_id" constraintName="fk_roster_slot_snapshot_roster"
+                                 referencedTableName="on_call_roster" referencedColumnNames="id" onDelete="CASCADE"/>
+        <addForeignKeyConstraint baseTableName="roster_slot_snapshot" baseColumnNames="model_version" constraintName="fk_roster_slot_snapshot_model"
+                                 referencedTableName="roster_slot_model" referencedColumnNames="version"/>
+
+        <createTable tableName="roster_slot_assignment" remarks="Créneau, début et fin d'une affectation (D-117) ; absente : plage historique de D-114.">
+            <column name="assignment_id" type="uuid"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="slot_code" type="varchar(40)"><constraints nullable="false"/></column>
+            <column name="starts_at" type="timestamptz"><constraints nullable="false"/></column>
+            <column name="ends_at" type="timestamptz"><constraints nullable="false"/></column>
+            <column name="whole_week" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="roster_slot_assignment" baseColumnNames="assignment_id" constraintName="fk_roster_slot_assignment_assignment"
+                                 referencedTableName="on_call_assignment" referencedColumnNames="id" onDelete="CASCADE"/>
+        <createIndex tableName="roster_slot_assignment" indexName="idx_roster_slot_assignment_periode"><column name="starts_at"/><column name="ends_at"/></createIndex>
+
+        <createTable tableName="shift_slot" remarks="Créneau d'une vacation instanciée depuis le programme (D-117).">
+            <column name="shift_id" type="uuid"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="slot_code" type="varchar(40)"><constraints nullable="false"/></column>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="shift_slot" baseColumnNames="shift_id" constraintName="fk_shift_slot_shift"
+                                 referencedTableName="shift" referencedColumnNames="id" onDelete="CASCADE"/>
+    </changeSet>
+
+    <changeSet id="mon-contraintes-rapport-quotidien" author="lot1">
+        <addColumn tableName="roster_constraints">
+            <column name="daily_report_deadline" type="time" defaultValue="08:00:00"><constraints nullable="false"/></column>
+            <column name="daily_report_reminder" type="time" defaultValue="07:30:00"><constraints nullable="false"/></column>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>

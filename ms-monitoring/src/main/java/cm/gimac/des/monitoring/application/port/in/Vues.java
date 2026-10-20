@@ -126,11 +126,32 @@ public final class Vues {
         Attendus attendus
     ) {}
 
-    public record AffectationVue(UUID id, LocalDate date, String plage, int niveau, Personne operateur, boolean chefDeQuart) {}
+    /** Affectation placée dans le temps (D-117) : créneau du modèle de la grille, jour de son occurrence, début et fin. */
+    public record AffectationVue(UUID id, LocalDate date, String creneau, Instant debut, Instant fin, boolean semaine, int niveau, Personne operateur, boolean chefDeQuart) {}
 
-    public record NonCouverteVue(LocalDate date, String plage, String besoin, int manque, List<String> causes) {}
+    /** Créneau du modèle d'une grille (D-117 §11.1) : libellés fr, en, es, jours ISO (1 = lundi), heures « HH:mm ». */
+    public record CreneauVue(
+        String code,
+        Map<String, String> libelles,
+        List<Integer> jours,
+        String debut,
+        String fin,
+        String portee,
+        int niveau,
+        int effectifMin,
+        int effectifMax,
+        List<String> permissions,
+        List<String> eligibles,
+        boolean chefDeQuart,
+        boolean rapportQuotidien,
+        Double heuresComptees,
+        int ordre,
+        boolean actif
+    ) {}
 
-    public record ViolationVue(String code, String operateurId, LocalDate date, String plage) {}
+    public record NonCouverteVue(LocalDate date, String creneau, Instant debut, Instant fin, String besoin, int manque, List<String> causes) {}
+
+    public record ViolationVue(String code, String operateurId, LocalDate date, String creneau) {}
 
     public record ChargeVue(Personne operateur, double heures, int nuits, int finsDeSemaine) {}
 
@@ -148,6 +169,7 @@ public final class Vues {
         Instant publieeLe,
         Personne publieePar,
         List<LocalDate> jours,
+        List<CreneauVue> creneaux,
         List<AffectationVue> affectations,
         List<NonCouverteVue> nonCouvertes,
         List<ViolationVue> violations,
@@ -165,7 +187,7 @@ public final class Vues {
         Instant publieeLe
     ) {}
 
-    public record AffectationCourte(UUID id, LocalDate date, String plage, int niveau) {}
+    public record AffectationCourte(UUID id, LocalDate date, String creneau, Instant debut, Instant fin, int niveau) {}
 
     public record EchangeVue(
         UUID id,

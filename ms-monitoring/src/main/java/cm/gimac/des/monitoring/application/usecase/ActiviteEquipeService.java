@@ -2,17 +2,12 @@ package cm.gimac.des.monitoring.application.usecase;
 
 import cm.gimac.des.monitoring.application.port.in.Appelant;
 import cm.gimac.des.monitoring.application.port.in.Vues.Personne;
-import cm.gimac.des.monitoring.domain.OnCallAssignment;
-import cm.gimac.des.monitoring.domain.OnCallRoster;
 import cm.gimac.des.monitoring.domain.Shift;
-import cm.gimac.des.monitoring.domain.enumeration.RosterState;
 import cm.gimac.des.monitoring.domain.exception.MonitoringException;
-import cm.gimac.des.monitoring.domain.exploitation.Plages;
-import cm.gimac.des.monitoring.infrastructure.persistance.AffectationsRepository;
-import cm.gimac.des.monitoring.infrastructure.persistance.GrillesRepository;
 import cm.gimac.des.monitoring.infrastructure.persistance.RapportMonitoring;
 import cm.gimac.des.monitoring.infrastructure.persistance.RapportsMonitoringRepository;
 import cm.gimac.des.monitoring.infrastructure.persistance.VacationsRepository;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
@@ -36,7 +31,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class ActiviteEquipeService {
 
-    public record Creneau(LocalDate date, String plage, int niveau, boolean chefDeQuart, UUID vacationId) {}
+    /** Créneau tenu ou prévu : créneau du programme (D-117), jour, début et fin, niveau, chef de quart, vacation. */
+    public record Creneau(LocalDate date, String creneau, Instant debut, Instant fin, int niveau, boolean chefDeQuart, UUID vacationId) {}
 
     public record Activite(
         Personne personne,
@@ -47,23 +43,20 @@ public class ActiviteEquipeService {
         int quotidiensManquants
     ) {}
 
-    private final GrillesRepository grilles;
-    private final AffectationsRepository affectations;
+    private final ProgrammeGrilles programme;
     private final VacationsRepository vacations;
     private final RapportsMonitoringRepository rapports;
     private final RapportsMonitoringService suivi;
     private final Quarts quarts;
 
     public ActiviteEquipeService(
-        GrillesRepository grilles,
-        AffectationsRepository affectations,
+        ProgrammeGrilles programme,
         VacationsRepository vacations,
         RapportsMonitoringRepository rapports,
         RapportsMonitoringService suivi,
         Quarts quarts
     ) {
-        this.grilles = grilles;
-        this.affectations = affectations;
+        this.programme = programme;
         this.vacations = vacations;
         this.rapports = rapports;
         this.suivi = suivi;
@@ -86,35 +79,16 @@ public class ActiviteEquipeService {
         }
         // Créneaux des grilles publiées (en vigueur) de chaque semaine touchée.
         Map<String, List<Creneau>> parPersonne = new TreeMap<>();
-        Set<String> semaines = new LinkedHashSet<>();
-        for (LocalDate j = debut; !j.isAfter(fin); j = j.plusDays(1)) {
-            semaines.add(Plages.semaineStockee(j));
-        }
-        Map<String, UUID> vacationParCreneau = new HashMap<>();
+        Map<String, UUID> vacationParReference = new HashMap<>();
         for (Shift v : vacations.findByShiftDateBetweenOrderByStartsAtAsc(debut, fin)) {
-            vacationParCreneau.put(v.getShiftDate() + "/" + v.getSlot(), v.getId());
+            vacationParReference.put(v.getReference(), v.getId());
         }
-        for (String s : semaines) {
-            OnCallRoster g = grilles.findFirstByIsoWeekAndStateOrderByRevisionDesc(s, RosterState.PUBLIEE).orElse(null);
-            if (g == null) {
-                continue;
-            }
-            for (OnCallAssignment x : affectations.findByRosterIdOrderByDutyDateAscSlotAscLevelAsc(g.getId())) {
-                if (x.getDutyDate().isBefore(debut) || x.getDutyDate().isAfter(fin)) {
-                    continue;
-                }
-                parPersonne
-                    .computeIfAbsent(x.getOperatorId().toString(), k -> new ArrayList<>())
-                    .add(
-                        new Creneau(
-                            x.getDutyDate(),
-                            x.getSlot().name(),
-                            x.getLevel(),
-                            Boolean.TRUE.equals(x.getShiftLead()),
-                            x.getLevel() == 1 ? vacationParCreneau.get(x.getDutyDate() + "/" + x.getSlot()) : null
-                        )
-                    );
-            }
+        for (CreneauxProgramme.Placee p : programme.publiees(debut, fin)) {
+            var x = p.affectation();
+            String ref = p.creneau() == null ? null : PublicationProgramme.reference(new cm.gimac.des.monitoring.domain.exploitation.ModeleCreneaux.Occurrence(p.creneau(), x.jour(), x.debut(), x.fin()));
+            parPersonne
+                .computeIfAbsent(x.operateur().toString(), k -> new ArrayList<>())
+                .add(new Creneau(x.jour(), x.code(), x.debut(), x.fin(), x.niveau(), x.chef(), x.niveau() == 1 ? vacationParReference.get(ref) : null));
         }
         // Rapports déposés sur la période, par auteur.
         Map<String, Integer> deposes = new HashMap<>();
@@ -146,7 +120,7 @@ public class ActiviteEquipeService {
         List<Activite> l = new ArrayList<>();
         for (String id : ids) {
             int[] q = quotidiens.getOrDefault(id, new int[3]);
-            List<Creneau> c = parPersonne.getOrDefault(id, List.of()).stream().sorted(Comparator.comparing(Creneau::date).thenComparing(Creneau::plage)).toList();
+            List<Creneau> c = parPersonne.getOrDefault(id, List.of()).stream().sorted(Comparator.comparing(Creneau::debut).thenComparing(Creneau::creneau)).toList();
             l.add(new Activite(Quarts.personne(id, noms), c, deposes.getOrDefault(id, 0), q[0], q[1], q[2]));
         }
         l.sort(Comparator.comparing((Activite x) -> x.personne().nom().toLowerCase(java.util.Locale.ROOT)));

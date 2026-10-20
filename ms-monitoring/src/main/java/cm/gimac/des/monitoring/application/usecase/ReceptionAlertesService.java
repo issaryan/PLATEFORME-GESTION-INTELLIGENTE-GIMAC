@@ -5,23 +5,18 @@ import cm.gimac.des.monitoring.application.port.in.ReceptionAlertesUseCase;
 import cm.gimac.des.monitoring.application.port.in.Vues.Reception;
 import cm.gimac.des.monitoring.application.port.out.AnnuairePort;
 import cm.gimac.des.monitoring.domain.Alert;
-import cm.gimac.des.monitoring.domain.OnCallAssignment;
 import cm.gimac.des.monitoring.domain.Shift;
 import cm.gimac.des.monitoring.domain.SupervisedLink;
 import cm.gimac.des.monitoring.domain.enumeration.AlertSeverity;
 import cm.gimac.des.monitoring.domain.enumeration.AlertState;
-import cm.gimac.des.monitoring.domain.enumeration.RosterState;
 import cm.gimac.des.monitoring.domain.enumeration.ShiftLogNature;
 import cm.gimac.des.monitoring.domain.exception.MonitoringException;
 import cm.gimac.des.monitoring.domain.exploitation.Empreintes;
-import cm.gimac.des.monitoring.domain.exploitation.Plages;
 import cm.gimac.des.monitoring.domain.exploitation.PolitiqueAlerte;
 import cm.gimac.des.monitoring.infrastructure.messaging.outbox.OutboxPublisher;
-import cm.gimac.des.monitoring.infrastructure.persistance.AffectationsRepository;
 import cm.gimac.des.monitoring.infrastructure.persistance.AlertesRepository;
 import cm.gimac.des.monitoring.infrastructure.persistance.EscaladeAlerte;
 import cm.gimac.des.monitoring.infrastructure.persistance.EscaladesRepository;
-import cm.gimac.des.monitoring.infrastructure.persistance.GrillesRepository;
 import cm.gimac.des.monitoring.infrastructure.persistance.LiaisonsRepository;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -31,7 +26,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,8 +41,7 @@ public class ReceptionAlertesService implements ReceptionAlertesUseCase {
     private final AlertesRepository alertes;
     private final LiaisonsRepository liaisons;
     private final EscaladesRepository escalades;
-    private final GrillesRepository grilles;
-    private final AffectationsRepository affectations;
+    private final ProgrammeGrilles programme;
     private final AnnuairePort annuaire;
     private final Quarts quarts;
     private final MainCourante mainCourante;
@@ -58,8 +51,7 @@ public class ReceptionAlertesService implements ReceptionAlertesUseCase {
         AlertesRepository alertes,
         LiaisonsRepository liaisons,
         EscaladesRepository escalades,
-        GrillesRepository grilles,
-        AffectationsRepository affectations,
+        ProgrammeGrilles programme,
         AnnuairePort annuaire,
         Quarts quarts,
         MainCourante mainCourante,
@@ -68,8 +60,7 @@ public class ReceptionAlertesService implements ReceptionAlertesUseCase {
         this.alertes = alertes;
         this.liaisons = liaisons;
         this.escalades = escalades;
-        this.grilles = grilles;
-        this.affectations = affectations;
+        this.programme = programme;
         this.annuaire = annuaire;
         this.quarts = quarts;
         this.mainCourante = mainCourante;
@@ -264,20 +255,8 @@ public class ReceptionAlertesService implements ReceptionAlertesUseCase {
         return new Destinataires(3, chefs, nonCouverte);
     }
 
-    /** Opérateurs de niveau 2 de la grille publiée pour la plage courante. */
+    /** Personnes de niveau 2 de service à l'instant, selon le programme publié (créneaux configurables, D-117). */
     private List<String> responsablesAstreinte() {
-        Plages.Creneau c = Plages.creneau(quarts.maintenant(), quarts.reglages().fuseau());
-        return grilles
-            .findFirstByIsoWeekAndStateOrderByRevisionDesc(Plages.semaineStockee(c.jour()), RosterState.PUBLIEE)
-            .map(g ->
-                affectations
-                    .findByRosterIdOrderByDutyDateAscSlotAscLevelAsc(g.getId())
-                    .stream()
-                    .filter(x -> x.getLevel() == 2 && x.getDutyDate().equals(c.jour()) && x.getSlot() == c.plage())
-                    .map(OnCallAssignment::getOperatorId)
-                    .map(UUID::toString)
-                    .toList()
-            )
-            .orElse(List.of());
+        return programme.astreinteA(quarts.maintenant());
     }
 }

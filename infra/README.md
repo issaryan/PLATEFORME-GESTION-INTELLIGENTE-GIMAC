@@ -36,3 +36,4 @@ Principe (D-48) : ce que JHipster sait générer est régénéré, jamais édit�
 | 2026-10-19 | D-115 | Keycloak : soixante permissions `SBX_*`, six profils externes `ROLE_SBX_*`, fonctions SBX du GIMAC ajoutées aux profils existants ; `ci/valider-infra.sh` : 60 s par test OPA |
 | 2026-10-20 | D-115 | OPA : routes `/bff/portail/sbx-habilitations` sous `SBX_HAB_ADMINISTRATION`, institution exigée, et leurs tests |
 | 2026-10-20 | D-116 | OPA : rapports de monitoring, rapports quotidiens, activité de l'équipe et contraintes de génération sous `/bff/des/monitoring` |
+| 2026-10-20 | - | D-117 : règles OPA de /grilles/creneaux (PUT, MON_ROSTER_MANAGE) et /grilles/{id}/export (MON_SUPERVISION_READ) ; INTERNAL_DOCUMENT_RENDER donné à monitoring-service ; domaine Keycloak régénéré |

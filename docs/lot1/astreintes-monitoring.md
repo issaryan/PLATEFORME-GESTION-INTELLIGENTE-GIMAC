@@ -355,6 +355,83 @@ d'office, toute personne de l'annuaire de la messagerie ensuite. La pièce se co
 de la messagerie : PDF, images et texte lus directement, documents bureautiques (docx, xlsx, odt…) convertis en PDF
 par l'aperçu de MS-DOCUMENT (D-83, `POST /bff/des/document/apercus`).
 
+## 11. Programme entièrement configurable, calendrier, téléchargement (D-117)
+
+Le découpage n'est plus codé : un **modèle de créneaux** versionné, édité par la gestion du programme, décrit la
+permanence. Les trois plages de D-114 (MATIN, APRES_MIDI, NUIT) ne sont plus que le modèle « historique », lu pour les
+grilles enregistrées avant D-117 ; le modèle par défaut reprend la feuille du DES.
+
+### 11.1 Modèle des créneaux
+
+`GET /grilles/creneaux` (MON_SUPERVISION_READ) → `{ version, modifieLe, modifiePar, creneaux: [Creneau] }` ; version 0 :
+modèle par défaut, jamais enregistré. `PUT /grilles/creneaux` (MON_ROSTER_MANAGE) `{ creneaux, motif (3 à 500) }` →
+nouvelle version, événement `monitoring.roster-slots-changed.v1` ; 422 `MON_CRENEAUX_INVALIDES` avec
+`details.erreurs` par champ (`creneaux[i].code`…), 400 `MON_REQUETE_INVALIDE` sur un champ illisible (heure, jour).
+
+```jsonc
+{ "code": "NUIT",                       // 2 à 40 : majuscules, chiffres, souligné ; unique
+  "libelles": { "fr": "Nuit", "en": "Night", "es": "Noche" },   // fr obligatoire (80), en et es facultatifs (repli fr)
+  "jours": [1, 2, 3, 4, 5, 6, 7],      // ISO, 1 = lundi
+  "debut": "22:00", "fin": "08:00",    // la fin peut passer minuit (fin <= début : lendemain)
+  "portee": "JOUR",                    // JOUR : une occurrence par jour ; SEMAINE : une seule pour la semaine
+  "niveau": 1,                         // 1 de service, 2 joignable
+  "effectifMin": 1, "effectifMax": 1,  // 0 à 10 ; maximum strict
+  "permissions": [],                   // l'une est requise ; vide : MON_SHIFT_OPERATOR (1) ou MON_ONCALL_L2 (2)
+  "eligibles": [],                     // personnes désignées (domaine) ; vide : toute personne qui a la permission
+  "chefDeQuart": false,                // un chef de quart (MON_SHIFT_LEAD) exigé, niveau 1 seulement
+  "rapportQuotidien": true,            // porte le rapport de 8 h (créneau quotidien)
+  "heuresComptees": null,              // heures comptées au plafond ; null : durée (niveau 1) ou quart de la durée (2)
+  "ordre": 20, "actif": true }
+```
+
+Modèle par défaut : `SOIREE` (lundi à vendredi, 16 h à 22 h, une ou deux personnes), `NUIT` (tous les jours, 22 h à
+8 h, rapport de 8 h), `WE_MATINEE` et `WE_APRES_MIDI` (samedi et dimanche, 8 h à 12 h, 12 h à 16 h), quatre supports de
+niveau 2 de la semaine `N2_RESEAU`, `N2_SYSTEME`, `N2_APPLICATION`, `N2_BASE_DONNEES` (lundi 8 h au lundi suivant 8 h, 10 h
+comptées).
+
+### 11.2 Contraintes générales
+
+`GET /grilles/contraintes` et `PUT /grilles/contraintes` (MON_ROSTER_MANAGE, motif) `{ reposHeures (0 à 24), nuitsMax (1 à 7),
+plafondHeures (8 à 84), limiteSecondes (10 à 600), echeanceRapport, rappelRapport ("HH:mm", rappel avant l'échéance) }`.
+Effectifs et chef de quart relèvent de chaque créneau ; les colonnes de D-116 restent en base, sans effet.
+
+### 11.3 Génération et vérification
+
+Chaque grille fige la version du modèle qui l'a produite (`roster_slot_snapshot`) ; chaque affectation porte son
+créneau, son début et sa fin (`roster_slot_assignment`), les entités JHipster restant inchangées. Le solveur et le
+vérificateur raisonnent sur les intervalles réels : couverture (défaut pénalisé) et effectif maximal par occurrence,
+chevauchement interdit sauf avec un support de la semaine, repos minimal entre deux créneaux quotidiens de tout niveau
+(une affectation par jour du CC, généralisée), nuits consécutives (créneau quotidien qui passe minuit), plafond et
+équité sur les heures comptées, pénibilité des nuits et des fins de semaine. Repos et chevauchement sont formulés en
+cliques (à chaque début d'occurrence, les occurrences qui s'excluent : au plus une). Refus : 422 `MON_CRENEAUX_VIDES`
+(aucun créneau actif), `MON_AUCUN_OPERATEUR` (personne d'éligible).
+
+Vues : `GrilleVue.creneaux` (modèle de la grille), `AffectationVue { id, date, creneau, debut, fin, semaine, niveau,
+operateur, chefDeQuart }`, `NonCouverteVue { date, creneau, debut, fin, besoin: EFFECTIF | CHEF_DE_QUART, manque,
+causes }`, `ViolationVue { code (… CHEVAUCHEMENT, EFFECTIF_MAX), operateurId, date, creneau }`. À la publication, les
+vacations des créneaux quotidiens de niveau 1 sont instanciées (`VAC-AAAA-MMJJ-CODE`, format de D-114 pour une plage
+historique) ; sans chef de quart désigné sur un créneau qui l'exige, la personne qui publie tient la vacation (MON-13).
+
+### 11.4 Rapport de 8 h
+
+Le rapport d'une journée revient aux personnes affectées, dans le programme publié, aux créneaux de ce jour marqués
+`rapportQuotidien` (la nuit, par défaut) ; échéance et rappel viennent des contraintes.
+
+### 11.5 Téléchargement
+
+`GET /grilles/{id}/export?format=pdf|xlsx&langue=fr|en|es` (MON_SUPERVISION_READ) → le fichier
+(`programme-AAAA-Www-rN.pdf`), fidèle à la feuille : titre « Liste des agents en permanence du … au … », un bloc par
+créneau quotidien (jour, personnes, chef de quart signalé), support de niveau 2 de la semaine, créneaux non couverts,
+« Publié par X le Y » ou mention de projet, pied de page paginé. PDF imprimé par le moteur de MS-DOCUMENT
+(`POST /api/v1/interne/rendus/pdf`, INTERNAL_DOCUMENT_RENDER donné à monitoring-service), 503 `MON_PDF_INDISPONIBLE` ;
+classeur Excel écrit sans dépendance ; 400 sur un autre format.
+
+### 11.6 Publication notifiée
+
+Chaque personne programmée reçoit `GRILLE_PUBLIEE` (`GRILLE_REVISEE` pour une révision) avec `objetId` (la grille),
+`le`, l'acteur et le lien `/des/exploitation/astreintes?semaine=AAAA-Www&vue=moi` : son programme de la semaine, puis
+le programme complet et son jour.
+
 ## Journal des mises à jour
 
 | Date | Commit | Modification |
@@ -362,4 +439,5 @@ par l'aperçu de MS-DOCUMENT (D-83, `POST /bff/des/document/apercus`).
 | 2026-10-19 | - | Contrat initial (D-114), tranches 1 à 3. |
 | 2026-10-19 | - | Empreinte de la main courante : vacation incluse, instant à la microseconde (défauts trouvés par les tests d'intégration de la relève et de la grille). |
 | 2026-10-20 | 5ebf7d0a | Recentrage D-116 : programmes et rapports, rapport quotidien de 8 h, contraintes paramétrables, activité de l'équipe (§10) |
-| 2026-10-20 | - | §10.5 : écrans livrés, envoi après dépôt, consultation des pièces en modale (PDF, docx converti) |
+| 2026-10-20 | 3f8b1db7 | §10.5 : écrans livrés, envoi après dépôt, consultation des pièces en modale (PDF, docx converti) |
+| 2026-10-20 | - | §11 (D-117) : modèle de créneaux configurable, contraintes générales, génération sur intervalles, rapport de 8 h porté par un créneau, téléchargement PDF et Excel, publication notifiée |
