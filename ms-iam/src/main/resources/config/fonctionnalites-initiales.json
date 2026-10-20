@@ -970,6 +970,31 @@
       ]
     },
     {
+      "cle": "monitoringAujourdhui",
+      "application": "des",
+      "module": "exploitation",
+      "libelle": "nav.monitoringAujourdhui",
+      "groupe": "monitoring",
+      "ordre": 211,
+      "icone": "sun",
+      "visible": true,
+      "permissions": {
+        "tous": [],
+        "unDe": [
+          "MON_SUPERVISION_READ"
+        ]
+      },
+      "widgets": [],
+      "droits": [
+        {
+          "cle": "MON_SUPERVISION_READ",
+          "nature": "CONSULTER",
+          "permission": "MON_SUPERVISION_READ",
+          "libelle": "droits.permission.MON_SUPERVISION_READ"
+        }
+      ]
+    },
+    {
       "cle": "monitoringSupervision",
       "application": "des",
       "module": "exploitation",
@@ -977,7 +1002,7 @@
       "groupe": "monitoring",
       "ordre": 212,
       "icone": "eye",
-      "visible": true,
+      "visible": false,
       "permissions": {
         "tous": [],
         "unDe": [
@@ -1044,6 +1069,37 @@
       ]
     },
     {
+      "cle": "monitoringRapports",
+      "application": "des",
+      "module": "exploitation",
+      "libelle": "nav.monitoringRapports",
+      "groupe": "monitoring",
+      "ordre": 215,
+      "icone": "file-text",
+      "visible": true,
+      "permissions": {
+        "tous": [],
+        "unDe": [
+          "MON_SUPERVISION_READ"
+        ]
+      },
+      "widgets": [],
+      "droits": [
+        {
+          "cle": "MON_SUPERVISION_READ",
+          "nature": "CONSULTER",
+          "permission": "MON_SUPERVISION_READ",
+          "libelle": "droits.permission.MON_SUPERVISION_READ"
+        },
+        {
+          "cle": "MON_SHIFT_LEAD",
+          "nature": "CONSULTER",
+          "permission": "MON_SHIFT_LEAD",
+          "libelle": "droits.permission.MON_SHIFT_LEAD"
+        }
+      ]
+    },
+    {
       "cle": "monitoringReleve",
       "application": "des",
       "module": "exploitation",
@@ -1051,7 +1107,7 @@
       "groupe": "monitoring",
       "ordre": 216,
       "icone": "clock",
-      "visible": true,
+      "visible": false,
       "permissions": {
         "tous": [],
         "unDe": [
@@ -1077,6 +1133,38 @@
           "nature": "VALIDER",
           "permission": "MON_SHIFT_LEAD",
           "libelle": "droits.permission.MON_SHIFT_LEAD"
+        }
+      ]
+    },
+    {
+      "cle": "monitoringActivite",
+      "application": "des",
+      "module": "exploitation",
+      "libelle": "nav.monitoringActivite",
+      "groupe": "monitoring",
+      "ordre": 217,
+      "icone": "users",
+      "visible": true,
+      "permissions": {
+        "tous": [],
+        "unDe": [
+          "MON_SHIFT_LEAD",
+          "MON_ROSTER_MANAGE"
+        ]
+      },
+      "widgets": [],
+      "droits": [
+        {
+          "cle": "MON_SHIFT_LEAD",
+          "nature": "CONSULTER",
+          "permission": "MON_SHIFT_LEAD",
+          "libelle": "droits.permission.MON_SHIFT_LEAD"
+        },
+        {
+          "cle": "MON_ROSTER_MANAGE",
+          "nature": "CONSULTER",
+          "permission": "MON_ROSTER_MANAGE",
+          "libelle": "droits.permission.MON_ROSTER_MANAGE"
         }
       ]
     },

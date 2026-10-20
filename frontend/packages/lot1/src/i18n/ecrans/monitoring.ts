@@ -1,13 +1,16 @@
 import type { Catalogue } from '@gimac/socle'
 
-// Supervision des liaisons, astreintes et relève de quart (D-114, docs/lot1/astreintes-monitoring.md) : groupe et
+// Astreintes et monitoring (D-114, recentré par D-116 : programmes et rapports, docs/lot1/astreintes-monitoring.md) : groupe et
 // entrées de la barre latérale (module « exploitation » du catalogue), libellé des permissions MON_* (D-90). Les écrans ont leurs libellés dans
 // @gimac/exploitation. FR, EN, ES.
 export const catalogue: Catalogue = {
   fr: {
-    'nav.groupe.monitoring': 'Supervision et astreintes',
+    'nav.groupe.monitoring': 'Astreintes et monitoring',
+    'nav.monitoringAujourdhui': 'Aujourd’hui',
+    'nav.monitoringRapports': 'Rapports de monitoring',
+    'nav.monitoringActivite': 'Activité de l’équipe',
     'nav.monitoringSupervision': 'Liaisons et alertes',
-    'nav.monitoringAstreintes': 'Grille d’astreinte',
+    'nav.monitoringAstreintes': 'Programme d’astreinte',
     'nav.monitoringReleve': 'Vacation et relève',
     'droits.permission.MON_SUPERVISION_READ': 'Consulter la supervision, les vacations et la grille',
     'droits.permission.MON_ALERT_ACK': 'Acquitter une alerte (vacation en cours)',
@@ -18,7 +21,10 @@ export const catalogue: Catalogue = {
     'droits.permission.MON_ROSTER_PUBLISH': 'Publier la grille d’astreinte (signature)',
   },
   en: {
-    'nav.groupe.monitoring': 'Supervision and on-call',
+    'nav.groupe.monitoring': 'On-call and monitoring',
+    'nav.monitoringAujourdhui': 'Today',
+    'nav.monitoringRapports': 'Monitoring reports',
+    'nav.monitoringActivite': 'Team activity',
     'nav.monitoringSupervision': 'Links and alerts',
     'nav.monitoringAstreintes': 'On-call roster',
     'nav.monitoringReleve': 'Shift and handover',
@@ -31,9 +37,12 @@ export const catalogue: Catalogue = {
     'droits.permission.MON_ROSTER_PUBLISH': 'Publish the on-call roster (signature)',
   },
   es: {
-    'nav.groupe.monitoring': 'Supervisión y guardias',
+    'nav.groupe.monitoring': 'Guardias y monitoreo',
+    'nav.monitoringAujourdhui': 'Hoy',
+    'nav.monitoringRapports': 'Informes de monitoreo',
+    'nav.monitoringActivite': 'Actividad del equipo',
     'nav.monitoringSupervision': 'Enlaces y alertas',
-    'nav.monitoringAstreintes': 'Cuadrícula de guardias',
+    'nav.monitoringAstreintes': 'Programa de guardias',
     'nav.monitoringReleve': 'Turno y relevo',
     'droits.permission.MON_SUPERVISION_READ': 'Consultar la supervisión, los turnos y la cuadrícula',
     'droits.permission.MON_ALERT_ACK': 'Reconocer una alerta (turno en curso)',

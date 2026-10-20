@@ -90,10 +90,14 @@ export const ECRANS_DES: Record<string, Ecran> = {
   adminOrganigramme: { chemin: `${ADMINISTRATION}/organigramme` },
   adminJournal: { chemin: `${ADMINISTRATION}/journal` },
   adminPolitique: { chemin: `${ADMINISTRATION}/politique-securite` },
-  // Supervision des liaisons, astreintes et relève de quart (D-114, paquet @gimac/exploitation).
+  // Astreintes et monitoring (D-114, recentré par D-116 : programmes et rapports ; paquet @gimac/exploitation).
+  // Supervision et relève restent au registre, hors navigation (visible: false au catalogue).
+  monitoringAujourdhui: { chemin: '/des/exploitation/aujourdhui' },
   monitoringSupervision: { chemin: '/des/exploitation/supervision' },
   monitoringAstreintes: { chemin: '/des/exploitation/astreintes' },
+  monitoringRapports: { chemin: '/des/exploitation/rapports' },
   monitoringReleve: { chemin: '/des/exploitation/releve' },
+  monitoringActivite: { chemin: '/des/exploitation/activite' },
   supervision: { chemin: `${PLATEFORME}/supervision` },
   infrastructure: { chemin: `${PLATEFORME}/infrastructure` },
   configuration: { chemin: `${PLATEFORME}/configuration` },

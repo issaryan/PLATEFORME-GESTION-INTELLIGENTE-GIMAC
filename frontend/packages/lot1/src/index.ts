@@ -28,7 +28,7 @@ export { cles } from './hooks/cles'
 export { useNonLus } from './hooks/messagerie'
 export { useSourcesRecherche } from './recherche'
 export { ExtensionsTableauDeBordProvider, type ExtensionsTableauDeBord } from './pages/des/tableau/extensions'
-export { ANNUAIRE } from './services/simule/messagerie'
+export { ANNUAIRE, pdfDemo } from './services/simule/messagerie'
 export { PROFILS_INTERNES_DEMO, IDENTITES_HORS_ANNUAIRE, INSTITUTION_DEMO, identifiantDemo, sessionDemoDuRole, type ProfilInterneDemo } from './profilsDemo'
 // QUO-01 : comptes de démonstration du service des ressources humaines (organisation simulée).
 export { COMPTES_ORGANISATION_DEMO, roleDeCleDemo } from './profilsDemo'

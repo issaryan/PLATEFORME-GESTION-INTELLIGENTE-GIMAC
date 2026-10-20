@@ -85,6 +85,9 @@ const CourrielsPage = lazy(() => import('@gimac/administration/pages/MessagerieP
 const SupervisionLiaisonsPage = lazy(() => import('@gimac/exploitation/pages/SupervisionPage'))
 const AstreintesPage = lazy(() => import('@gimac/exploitation/pages/AstreintesPage'))
 const RelevePage = lazy(() => import('@gimac/exploitation/pages/RelevePage'))
+const AujourdhuiPage = lazy(() => import('@gimac/exploitation/pages/AujourdhuiPage'))
+const RapportsMonitoringPage = lazy(() => import('@gimac/exploitation/pages/RapportsPage'))
+const ActiviteEquipePage = lazy(() => import('@gimac/exploitation/pages/ActivitePage'))
 const CHEMINS_ADMINISTRATION = { base: '/des/administration', espace: '/des', plateforme: '/des/plateforme' }
 // Widgets du tableau de bord fournis par l'administration : indicateurs, actions et derniers actes d'administration
 // des comptes (D-69), résumé de la supervision et charges de travail en erreur (D-78, D-79).
@@ -194,6 +197,9 @@ function Pages({ session, etatCanal, correlationId, notifications }: { session: 
                   <Route path="exploitation/supervision" element={G('monitoringSupervision', <SupervisionLiaisonsPage />)} />
                   <Route path="exploitation/astreintes" element={G('monitoringAstreintes', <AstreintesPage />)} />
                   <Route path="exploitation/releve" element={G('monitoringReleve', <RelevePage />)} />
+                  <Route path="exploitation/aujourdhui" element={G('monitoringAujourdhui', <AujourdhuiPage />)} />
+                  <Route path="exploitation/rapports" element={G('monitoringRapports', <RapportsMonitoringPage />)} />
+                  <Route path="exploitation/activite" element={G('monitoringActivite', <ActiviteEquipePage />)} />
                   <Route path="plateforme/supervision" element={G('supervision', <SupervisionPage />)} />
                   <Route path="plateforme/infrastructure" element={G('infrastructure', <InfrastructurePage />)} />
                   <Route path="plateforme/configuration" element={G('configuration', <ConfigurationPlateformePage />)} />
@@ -266,12 +272,13 @@ export default function App() {
     const s = sessionDemo()
     return servicesConsoleSimules({ acteur: { id: s.sujet, nom: s.nom, permissions: s.permissions }, pouvoirs })
   }, [reels, pouvoirs])
-  // Supervision et astreintes (D-114) : /bff/des/monitoring, ou MS-MONITORING simulé au nom du profil de démonstration.
+  // Astreintes et monitoring (D-114, D-116) : /bff/des/monitoring, ou MS-MONITORING simulé au nom du profil de démonstration.
+  // Lecture des pièces de rapport : aperçu bureautique de MS-DOCUMENT (D-83), le même que celui de la messagerie.
   const exploitation = useMemo(() => {
-    if (reels) return servicesExploitationHttp()
+    if (reels) return { ...servicesExploitationHttp(), apercu: services.apercu }
     const s = sessionDemo()
-    return servicesExploitationSimules({ utilisateur: { id: s.sujet, nom: s.nom } })
-  }, [reels])
+    return { ...servicesExploitationSimules({ utilisateur: { id: s.sujet, nom: s.nom }, permissions: s.permissions }), apercu: services.apercu }
+  }, [reels, services])
   const connexion = useMemo(() => (reels ? connexionHttp() : connexionDemo()), [reels])
   const [correlationId, setCorrelationId] = useState<string | undefined>()
   useEffect(() => {

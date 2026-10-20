@@ -347,10 +347,19 @@ Navigation du module : « Aujourd'hui » (qui est de service, rapport de 8 h, me
 rapport), « Programme » (grille, génération, contraintes, échanges), « Rapports » (déposer, filtrer, envoyer),
 « Activité de l'équipe » (chefs). « Liaisons et alertes » et « Vacation et relève » quittent la navigation.
 
+Écrans livrés (`@gimac/exploitation`) : `/des/exploitation/aujourdhui`, `/des/exploitation/astreintes` (« Programme
+d'astreinte », panneau des contraintes en tête pour MON_ROSTER_MANAGE), `/des/exploitation/rapports` (onglets
+« Rapports » et « Rapports de 8 h » ; liens des notifications `?rapport=<id>` et `?quotidien=<jour>`),
+`/des/exploitation/activite`. Le dépôt enchaîne sur l'envoi, le supérieur (`/bff/des/iam/organisation/moi`) proposé
+d'office, toute personne de l'annuaire de la messagerie ensuite. La pièce se consulte dans une modale avec le lecteur
+de la messagerie : PDF, images et texte lus directement, documents bureautiques (docx, xlsx, odt…) convertis en PDF
+par l'aperçu de MS-DOCUMENT (D-83, `POST /bff/des/document/apercus`).
+
 ## Journal des mises à jour
 
 | Date | Commit | Modification |
 |---|---|---|
 | 2026-10-19 | - | Contrat initial (D-114), tranches 1 à 3. |
 | 2026-10-19 | - | Empreinte de la main courante : vacation incluse, instant à la microseconde (défauts trouvés par les tests d'intégration de la relève et de la grille). |
-| 2026-10-20 | - | Recentrage D-116 : programmes et rapports, rapport quotidien de 8 h, contraintes paramétrables, activité de l'équipe (§10) |
+| 2026-10-20 | 5ebf7d0a | Recentrage D-116 : programmes et rapports, rapport quotidien de 8 h, contraintes paramétrables, activité de l'équipe (§10) |
+| 2026-10-20 | - | §10.5 : écrans livrés, envoi après dépôt, consultation des pièces en modale (PDF, docx converti) |

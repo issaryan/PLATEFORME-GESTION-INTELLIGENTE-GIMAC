@@ -93,12 +93,17 @@ describe('Mon activité (D-76)', () => {
   })
 })
 
-describe('Supervision et astreintes (D-114)', () => {
-  it('production monétique : groupe « Supervision et astreintes » et écran des liaisons ; chef de la DDRM : refusé', async () => {
+describe('Astreintes et monitoring (D-114, D-116)', () => {
+  it('production monétique : « Aujourd’hui », programme, rapports et activité ; supervision et relève hors navigation ; chef de la DDRM : refusé', async () => {
+    localStorage.setItem(CLE_PROFIL_DEMO, 'ROLE_PRODUCTION_MONETIQUE')
+    monter('/des/exploitation/aujourdhui')
+    expect(await screen.findByRole('heading', { level: 1, name: 'Aujourd’hui' }, { timeout: 8000 })).toBeTruthy()
+    for (const n of ['Aujourd’hui', 'Programme d’astreinte', 'Rapports de monitoring', 'Activité de l’équipe']) expect(within(navigation()).getByRole('link', { name: n })).toBeTruthy()
+    for (const n of ['Liaisons et alertes', 'Vacation et relève']) expect(within(navigation()).queryByRole('link', { name: n })).toBeNull()
+    cleanup()
     localStorage.setItem(CLE_PROFIL_DEMO, 'ROLE_PRODUCTION_MONETIQUE')
     monter('/des/exploitation/supervision')
-    expect(await screen.findByRole('heading', { level: 1, name: 'Supervision des liaisons' }, { timeout: 8000 })).toBeTruthy()
-    for (const n of ['Liaisons et alertes', 'Grille d’astreinte', 'Vacation et relève']) expect(within(navigation()).getByRole('link', { name: n })).toBeTruthy()
+    expect(await screen.findByText('Accès refusé', {}, { timeout: 8000 })).toBeTruthy()
     cleanup()
     localStorage.setItem(CLE_PROFIL_DEMO, 'ROLE_CHEF_DDRM')
     monter('/des/exploitation/astreintes')
