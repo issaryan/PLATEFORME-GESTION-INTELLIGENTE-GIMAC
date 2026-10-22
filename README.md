@@ -156,4 +156,5 @@ infra/ci/valider-securite.sh                       # secrets (gitleaks) et vuln�
 | 2026-10-20 | - | D-118 : administration de la Sandbox GIMAC depuis la plateforme, résultats lus par MS-HOMOLOGATION (REC) |
 | 2026-10-20 | - | Programme d’astreinte : calendrier refait en planning lisible (semaine, jour, mois) |
 | 2026-10-22 | - | Exploitation : tests des rapports indépendants de la date du jour |
+| 2026-10-22 | - | D-121 : la supervision de la sandbox ne passe pas par MS-MONITORING ; écran dans l'espace sandbox du DES (REC) |
 | 2026-10-20 | - | D-118 : habillage facultatif d'un produit hébergé sur le socle, pour la Sandbox GIMAC. Connexion : fond, marque, logo, nom de l'onglet, mention du pied. Enveloppe : logo, bandeau, pied. Le pied (`Footer`) accepte une désignation et une classification facultatives. Aiguillage : règle facultative sur `PageConnexion` et `Aiguillage`. Sans ces propriétés, le comportement de la plateforme est inchangé. |

@@ -99,9 +99,9 @@ Ordre de réalisation, composant par composant, serveur et écrans ensemble.
 | 2 | Passerelle et OPA | EXI-07 |
 | 3 | MS-PARTICIPANT | EXI-20, 21 |
 | 4 | MS-DOCUMENT, MS-NOTIFICATION, MS-AUDIT | EXI-08, 09, 10 |
-| 5 | MS-MONITORING, MS-INCIDENT, MS-REPORTING | EXI-11, 12, 13, 22 |
+| 5 | Supervision de la sandbox (D-121) | EXI-11, 12, 13, 18, 19, 22 écartés : aucune adaptation de MS-MONITORING, MS-INCIDENT ni MS-REPORTING ; écran « Supervision de la sandbox » de l'espace sandbox du DES, sur SBX-TRACE, permission dédiée |
 | 6 | MS-HOMOLOGATION et MS-CERTIFICATION | EXI-14, 15, 16, 25 |
-| 7 | Écrans du DES | EXI-17, 18, 19 |
+| 7 | Écrans du DES | EXI-17 |
 
 ## 4. Administration déléguée (US-EXI-03)
 
@@ -147,3 +147,4 @@ Règles :
 |---|---|---|
 | 2026-10-19 | - | Création : principes, identité et matrice des permissions (US-EXI-01, US-EXI-02), ordre de la suite |
 | 2026-10-20 | - | §4 : administration déléguée (US-EXI-03), route du portail et règles |
+| 2026-10-22 | - | D-121 : supervision de la sandbox hors de MS-MONITORING ; EXI-11, 12, 13, 18, 19 et 22 écartés ; écran dans l'espace sandbox du DES sur SBX-TRACE |
