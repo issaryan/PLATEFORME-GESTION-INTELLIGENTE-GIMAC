@@ -32,5 +32,7 @@
     <include file="config/liquibase/changelog/20260930120000_added_column_depot_document_service_deposant.xml" relativeToChangelogFile="false"/>
     <!-- Écrit à la main : dépôts fragmentés et déduplication (D-74). -->
     <include file="config/liquibase/changelog/20261002120000_added_table_depot_fragmente.xml" relativeToChangelogFile="false"/>
+    <!-- Écrit à la main : pièces de la Sandbox GIMAC (D-120). -->
+    <include file="config/liquibase/changelog/20261022120000_sbx_pieces.xml" relativeToChangelogFile="false"/>
     <!-- jhipster-needle-liquibase-add-incremental-changelog - JHipster will add incremental liquibase changelogs here -->
 </databaseChangeLog>

@@ -286,6 +286,53 @@ Interface interne de MS-PARTICIPANT (jamais relayée par la passerelle), jeton d
 | 3. Tentative d'écriture | `RegistreSandboxIT.tentativeEcriture`, `JournalRefusSandboxTest.tentativeEcriture` |
 | 4. Registre indisponible | côté SBX-ESPACE (`OuvertureEspace`) |
 
+### 6.7 Types de pièces et rétention de la sandbox dans MS-DOCUMENT (US-EXI-08)
+
+**Catalogue** (table `sbx_type_piece`, DOC-03 ; le code du type est aussi la finalité du dépôt dans la chaîne existante) :
+
+| Type | Rétention | Probant | Déposants | Numéro de carte en clair |
+|---|---|---|---|---|
+| `SBX_BILAN_CERTIFICATION` | P10Y | oui | sbx-campagne | quarantaine |
+| `SBX_RAPPORT_ECARTS_ISO20022` | P10Y | oui | sbx-iso20022 | quarantaine |
+| `SBX_TRACE_EXPORTEE` | P10Y | oui | sbx-trace | quarantaine |
+| `SBX_FICHIER_REMIS_PARTICIPANT` | P5Y | non | sbx-trace, sbx-campagne | refus |
+
+- **Rétention** : période ISO 8601, modifiable depuis la console avec motif et version lue ; dix ans au moins pour un
+  type probant (422 `DOC_SBX_RETENTION_INSUFFISANTE`). Elle est inscrite sur la pièce (`conserveeJusquAu`). Le
+  verrouillage du dépôt inaltérable reste celui du compartiment : **réglage de déploiement** (rétention par défaut du
+  compartiment WORM d'au moins dix ans, la plus longue des rétentions de type), pas un changement du code.
+- **Dépôt** : `POST /api/v1/interne/pieces-sandbox` (jeton de service `INTERNAL_DOCUMENT_DEPOSIT`, comptes sbx-campagne,
+  sbx-trace, sbx-iso20022), multipart `fichier`, `type`, `empreinte` (SHA-256 hexadécimal), `codeParticipant`,
+  `reference`. Ordre des contrôles :
+  1. type actif (400 `DOC_SBX_TYPE_INCONNU`) et déposant admis pour ce type (403 `DOC_SBX_DEPOSANT_NON_AUTORISE`) ;
+  2. numéro de carte en clair : quarantaine (202, `etat: QUARANTAINE`, ligne inscrite sans contenu, jamais dans le
+     dépôt inaltérable) ou refus (422 `DOC_PAN_DETECTED`) selon la règle du type ; alerte `ALERTE_EXPLOITATION` ;
+  3. empreinte calculée contre empreinte annoncée : divergence 400 `DOC_SBX_EMPREINTE_DIVERGENTE` (`details.annoncee`,
+     `details.calculee`), rien n'est conservé, le service déposant réessaie ; alerte `ALERTE_EXPLOITATION` ;
+  4. déduplication par (institution, type, empreinte) : 200, identifiant de la pièce existante, `dejaConservee: true`,
+     aucun second dépôt ni nouvel événement ;
+  5. dépôt par la chaîne existante (`depot_document`, WORM), pièce `SCELLEE`, `document.document-sealed.v1` dans
+     l'outbox, dans la même transaction ; 201 `{ id, etat, sha256, conserveeJusquAu, dejaConservee }`.
+- **Événement** `document.document-sealed.v1` (sujet `document.document`, CloudEvents, clé = identifiant du
+  document) : `documentId`, `typePiece`, `codeParticipant`, `reference`, `sha256`, `taille`, `nomFichier`,
+  `serviceDeposant`, `scelleeLe`, `conserveeJusquAu`. Outbox `sbx_evenement_sortant`, relais toutes les secondes
+  (`gimac.document.sandbox.relais.*`), rebut après dix échecs.
+- **Pièce déjà conservée** (pour MS-HOMOLOGATION) : `GET /api/v1/interne/documents/empreintes/{sha256}`
+  (`INTERNAL_DOCUMENT_READ`) rend `{ id, nomFichier, typeMime, sha256 }` du plus ancien document de cette empreinte ;
+  404 si aucun ; 422 `DOC_SHA256_INVALIDE` si l'empreinte n'est pas en hexadécimal minuscule de 64 caractères (index
+  `ix_depot_document_sha256_taille`).
+- **Console** (route `console-document-sandbox`, `/bff/console/document/sandbox/**` vers `/api/v1/sandbox/**`, comptes
+  du GIMAC) : `GET types-pieces` et `GET quarantaines?page=&taille=` (`SBX_TRA_CONSULTATION`),
+  `PUT types-pieces/{code}/retention` `{ retention, motif, version }` (`SBX_TRA_ADMINISTRATION`, 409
+  `DOC_SBX_VERSION_PERIMEE`).
+
+| Critère | Test |
+|---|---|
+| 1. Dépôt du bilan figé | `DepotPieceSandboxServiceTest.depotDuBilanFige`, `PiecesSandboxIT.depotDuBilanFige` (réception de l'événement sur Kafka) |
+| 2. Pièce déjà conservée | `DepotPieceSandboxServiceTest.pieceDejaConservee`, `PiecesSandboxIT.dedoublonnageDivergenceQuarantaine` |
+| 3. Empreinte divergente | `DepotPieceSandboxServiceTest.empreinteDivergente`, `PiecesSandboxIT.dedoublonnageDivergenceQuarantaine` |
+| 4. Numéro de carte en clair | `DepotPieceSandboxServiceTest.numeroDeCarteEnClair`, `PiecesSandboxIT.dedoublonnageDivergenceQuarantaine` |
+
 ## 7. MS-HOMOLOGATION et MS-CERTIFICATION (lot homologation, D-122)
 
 ### 7.1 États des liaisons publiés pour la sandbox (US-EXI-16)
@@ -345,3 +392,4 @@ Interface interne de MS-PARTICIPANT (jamais relayée par la passerelle), jeton d
 | 2026-10-22 | - | §6.5 : version de statut dans participant.status-changed.v1, contrat lisible par machine (US-EXI-20, D-120) ; §6.3 : activation du jeton réduit |
 | 2026-10-22 | - | §7.2 : espace sandbox du DES, « Espaces des institutions » sur SBX-ESPACE (D-118 points 2 et 3, D-122) |
 | 2026-10-22 | - | §6.6 : fiche et nomenclature des services de MS-PARTICIPANT pour la sandbox, refus journalisé des écritures (US-EXI-21, D-120) |
+| 2026-10-22 | - | §6.7 : types de pièces, rétention, dépôt contrôlé et document.document-sealed.v1 de la sandbox dans MS-DOCUMENT, pièce par empreinte (US-EXI-08, D-120) |
