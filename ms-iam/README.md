@@ -202,6 +202,7 @@ Copié et adapté (paquet `cm.gimac.des.iam`) ; chaque bean est inactif tant que
 | 2026-10-20 | D-115 | Administration déléguée de la sandbox (`AdministrationDelegueeService`, `ReglesAdministrationDeleguee`) : comptes bornés à l'institution du jeton, rôles délégables, jamais sur soi-même, RG-15 ; clé d'idempotence des étapes de saga (table `etape_idempotente`, changeset `20261019180000_iam_sandbox_delegation`) |
 <!-- GIMAC:FIN -->
 | 2026-10-20 | - | D-116 : catalogue des fonctionnalités, entrées monitoringAujourdhui, monitoringRapports, monitoringActivite ; supervision et relève passent en visible: false |
+| 2026-10-22 | D-119 | US-EXI-06 : `PerimetresSandboxService`, `IntrospectionSandboxService`, `DesactivationInactifsService`, `EtatEffectifSandbox` ; routes `/api/v1/interne/sandbox/**` (`INTERNAL_IAM_SBX_SAGA`, `INTERNAL_IAM_SBX_INTROSPECT`) et `/api/v1/sandbox/**` ; tables `perimetre_suspendu`, `protection_administrateur`, `activite_compte` ; réservation atomique des clés d'idempotence ; règle JaCoCo à 98 % `seuil-sandbox-exi-iam` |
 
 # iam
 
