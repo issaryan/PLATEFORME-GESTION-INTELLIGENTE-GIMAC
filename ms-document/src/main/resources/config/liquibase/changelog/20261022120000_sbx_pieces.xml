@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- D-120 (US-EXI-08, docs/lot1/sandbox-existant-adapte.md §6.7) : types de pièces de la Sandbox GIMAC et leurs
+     politiques de rétention (catalogue DOC-03), pièces scellées ou en quarantaine, outbox des événements
+     (document.document-sealed.v1). La rétention du type est une métadonnée de la pièce ; le verrouillage du dépôt
+     inaltérable reste celui du compartiment, au moins égal à dix ans. Aucune table générée n'est modifiée. -->
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="20261022120000-1" author="lot1">
+        <createTable tableName="sbx_type_piece">
+            <column name="code" type="varchar(50)"><constraints primaryKey="true" nullable="false" primaryKeyName="pk_sbx_type_piece"/></column>
+            <column name="libelle_fr" type="varchar(120)"><constraints nullable="false"/></column>
+            <column name="libelle_en" type="varchar(120)"><constraints nullable="false"/></column>
+            <column name="libelle_es" type="varchar(120)"><constraints nullable="false"/></column>
+            <column name="retention" type="varchar(20)"><constraints nullable="false"/></column>
+            <column name="probante" type="boolean"><constraints nullable="false"/></column>
+            <column name="services_autorises" type="varchar(200)"><constraints nullable="false"/></column>
+            <column name="regle_pan" type="varchar(20)"><constraints nullable="false"/></column>
+            <column name="taille_max" type="bigint"><constraints nullable="false"/></column>
+            <column name="actif" type="boolean"><constraints nullable="false"/></column>
+            <column name="version" type="int"><constraints nullable="false"/></column>
+            <column name="modifie_le" type="timestamptz"/>
+            <column name="modifie_par" type="varchar(100)"/>
+            <column name="motif" type="varchar(500)"/>
+        </createTable>
+        <sql>ALTER TABLE sbx_type_piece ADD CONSTRAINT ck_sbx_type_piece_regle CHECK (regle_pan IN ('QUARANTAINE', 'REFUS'));</sql>
+        <insert tableName="sbx_type_piece">
+            <column name="code" value="SBX_BILAN_CERTIFICATION"/>
+            <column name="libelle_fr" value="Bilan de certification"/>
+            <column name="libelle_en" value="Certification report"/>
+            <column name="libelle_es" value="Balance de certificación"/>
+            <column name="retention" value="P10Y"/>
+            <column name="probante" valueBoolean="true"/>
+            <column name="services_autorises" value="sbx-campagne"/>
+            <column name="regle_pan" value="QUARANTAINE"/>
+            <column name="taille_max" valueNumeric="20971520"/>
+            <column name="actif" valueBoolean="true"/>
+            <column name="version" valueNumeric="1"/>
+        </insert>
+        <insert tableName="sbx_type_piece">
+            <column name="code" value="SBX_RAPPORT_ECARTS_ISO20022"/>
+            <column name="libelle_fr" value="Rapport d'écarts ISO 20022"/>
+            <column name="libelle_en" value="ISO 20022 gap report"/>
+            <column name="libelle_es" value="Informe de desviaciones ISO 20022"/>
+            <column name="retention" value="P10Y"/>
+            <column name="probante" valueBoolean="true"/>
+            <column name="services_autorises" value="sbx-iso20022"/>
+            <column name="regle_pan" value="QUARANTAINE"/>
+            <column name="taille_max" valueNumeric="20971520"/>
+            <column name="actif" valueBoolean="true"/>
+            <column name="version" valueNumeric="1"/>
+        </insert>
+        <insert tableName="sbx_type_piece">
+            <column name="code" value="SBX_TRACE_EXPORTEE"/>
+            <column name="libelle_fr" value="Trace exportée"/>
+            <column name="libelle_en" value="Exported trace"/>
+            <column name="libelle_es" value="Traza exportada"/>
+            <column name="retention" value="P10Y"/>
+            <column name="probante" valueBoolean="true"/>
+            <column name="services_autorises" value="sbx-trace"/>
+            <column name="regle_pan" value="QUARANTAINE"/>
+            <column name="taille_max" valueNumeric="20971520"/>
+            <column name="actif" valueBoolean="true"/>
+            <column name="version" valueNumeric="1"/>
+        </insert>
+        <insert tableName="sbx_type_piece">
+            <column name="code" value="SBX_FICHIER_REMIS_PARTICIPANT"/>
+            <column name="libelle_fr" value="Fichier remis au participant"/>
+            <column name="libelle_en" value="File delivered to the participant"/>
+            <column name="libelle_es" value="Archivo entregado al participante"/>
+            <column name="retention" value="P5Y"/>
+            <column name="probante" valueBoolean="false"/>
+            <column name="services_autorises" value="sbx-trace,sbx-campagne"/>
+            <column name="regle_pan" value="REFUS"/>
+            <column name="taille_max" valueNumeric="20971520"/>
+            <column name="actif" valueBoolean="true"/>
+            <column name="version" valueNumeric="1"/>
+        </insert>
+
+        <createTable tableName="sbx_piece">
+            <column name="id" type="uuid"><constraints primaryKey="true" nullable="false" primaryKeyName="pk_sbx_piece"/></column>
+            <column name="type_piece" type="varchar(50)"><constraints nullable="false" foreignKeyName="fk_sbx_piece_type" references="sbx_type_piece(code)"/></column>
+            <column name="code_participant" type="varchar(20)"><constraints nullable="false"/></column>
+            <column name="reference" type="varchar(200)"><constraints nullable="false"/></column>
+            <column name="sha256" type="varchar(64)"><constraints nullable="false"/></column>
+            <column name="taille" type="bigint"><constraints nullable="false"/></column>
+            <column name="etat" type="varchar(20)"><constraints nullable="false"/></column>
+            <column name="deposee_le" type="timestamptz"><constraints nullable="false"/></column>
+            <column name="conservee_jusqu_au" type="timestamptz"/>
+            <column name="service_deposant" type="varchar(100)"><constraints nullable="false"/></column>
+            <column name="occurrences_pan" type="int"><constraints nullable="false"/></column>
+        </createTable>
+        <sql>ALTER TABLE sbx_piece ADD CONSTRAINT ck_sbx_piece_etat CHECK (etat IN ('SCELLEE', 'QUARANTAINE'));</sql>
+        <sql>CREATE UNIQUE INDEX ux_sbx_piece_scellee ON sbx_piece (code_participant, type_piece, sha256) WHERE etat = 'SCELLEE';</sql>
+        <createIndex tableName="sbx_piece" indexName="idx_sbx_piece_etat"><column name="etat"/><column name="deposee_le" descending="true"/></createIndex>
+
+        <createTable tableName="sbx_evenement_sortant">
+            <column name="id" type="uuid"><constraints primaryKey="true" nullable="false" primaryKeyName="pk_sbx_evenement_sortant"/></column>
+            <column name="type" type="varchar(100)"><constraints nullable="false"/></column>
+            <column name="cle" type="varchar(100)"><constraints nullable="false"/></column>
+            <column name="donnees" type="text"><constraints nullable="false"/></column>
+            <column name="statut" type="varchar(20)"><constraints nullable="false"/></column>
+            <column name="tentatives" type="int"><constraints nullable="false"/></column>
+            <column name="cree_le" type="timestamptz"><constraints nullable="false"/></column>
+            <column name="envoye_le" type="timestamptz"/>
+        </createTable>
+        <createIndex tableName="sbx_evenement_sortant" indexName="idx_sbx_evenement_sortant_statut"><column name="statut"/><column name="cree_le"/></createIndex>
+    </changeSet>
+</databaseChangeLog>

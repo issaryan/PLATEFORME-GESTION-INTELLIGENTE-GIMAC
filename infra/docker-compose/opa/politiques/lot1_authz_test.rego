@@ -1647,3 +1647,14 @@ test_sbx_console_iam_refus if {
 	}
 	not authz.allow with input as {"method": "PUT", "path": "/bff/console/iam/sandbox/perimetres/99001/suspension", "permissions": ["IAM_ACCOUNT_READ", "IAM_ACCOUNT_STATUS"], "authentifie": true, "acr": "2"}
 }
+
+# D-120 (US-EXI-08) : catalogue des types de pièces de la sandbox depuis la console.
+test_sbx_document_console if {
+	authz.allow with input as {"method": "GET", "path": "/bff/console/document/sandbox/types-pieces", "permissions": ["SBX_TRA_CONSULTATION"], "authentifie": true, "acr": "2"}
+	authz.allow with input as {"method": "GET", "path": "/bff/console/document/sandbox/quarantaines", "permissions": ["SBX_TRA_CONSULTATION"], "authentifie": true, "acr": "2"}
+	authz.allow with input as {"method": "PUT", "path": "/bff/console/document/sandbox/types-pieces/SBX_TRACE_EXPORTEE/retention", "permissions": ["SBX_TRA_ADMINISTRATION"], "authentifie": true, "acr": "2"}
+	not authz.allow with input as {"method": "PUT", "path": "/bff/console/document/sandbox/types-pieces/SBX_TRACE_EXPORTEE/retention", "permissions": ["SBX_TRA_CONSULTATION"], "authentifie": true, "acr": "2"}
+	not authz.allow with input as {"method": "GET", "path": "/bff/console/document/sandbox/types-pieces", "permissions": ["SBX_TRA_CONSULTATION"], "institution_id": "99001", "authentifie": true, "acr": "2"}
+	not authz.allow with input as {"method": "GET", "path": "/bff/console/document/sandbox/types-pieces", "permissions": ["SBX_TRA_CONSULTATION"], "authentifie": true, "acr": "1"}
+	not authz.allow with input as {"method": "DELETE", "path": "/bff/console/document/sandbox/types-pieces/SBX_TRACE_EXPORTEE/retention", "permissions": ["SBX_TRA_ADMINISTRATION"], "authentifie": true, "acr": "2"}
+}

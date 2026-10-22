@@ -879,6 +879,55 @@
                                 </rules>
                             </configuration>
                         </execution>
+                        <!--
+                            Sandbox GIMAC (D-120, US-EXI-08) : 98 % en lignes, méthodes et branches pour chaque classe ajoutée,
+                            unitaires et intégration fusionnés (adaptateur JDBC et relais couverts par leurs tests
+                            Testcontainers). Le seuil global du service reste inchangé.
+                        -->
+                        <execution>
+                            <id>seuil-sandbox-pieces</id>
+                            <phase>verify</phase>
+                            <goals>
+                                <goal>check</goal>
+                            </goals>
+                            <configuration>
+                                <dataFile>${project.build.directory}/jacoco-fusion.exec</dataFile>
+                                <includes>
+                                    <include>cm/gimac/des/document/domain/sandbox/**</include>
+                                    <include>cm/gimac/des/document/application/usecase/DepotPieceSandboxService*</include>
+                                    <include>cm/gimac/des/document/application/usecase/TypesPiecesSandboxService*</include>
+                                    <include>cm/gimac/des/document/application/usecase/RechercheParEmpreinteService*</include>
+                                    <include>cm/gimac/des/document/infrastructure/sandbox/**</include>
+                                    <include>cm/gimac/des/document/web/rest/v1/PiecesSandboxResource*</include>
+                                    <include>cm/gimac/des/document/config/SandboxDocumentConfiguration*</include>
+                                </includes>
+                                <rules>
+                                    <rule>
+                                        <element>CLASS</element>
+                                        <excludes>
+                                            <exclude>*.package-info</exclude>
+                                        </excludes>
+                                        <limits>
+                                            <limit>
+                                                <counter>LINE</counter>
+                                                <value>COVEREDRATIO</value>
+                                                <minimum>0.98</minimum>
+                                            </limit>
+                                            <limit>
+                                                <counter>METHOD</counter>
+                                                <value>COVEREDRATIO</value>
+                                                <minimum>0.98</minimum>
+                                            </limit>
+                                            <limit>
+                                                <counter>BRANCH</counter>
+                                                <value>COVEREDRATIO</value>
+                                                <minimum>0.98</minimum>
+                                            </limit>
+                                        </limits>
+                                    </rule>
+                                </rules>
+                            </configuration>
+                        </execution>
                         <execution>
                             <id>fusion-unitaires-integration</id>
                             <phase>post-integration-test</phase>

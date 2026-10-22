@@ -123,6 +123,16 @@ spring:
         kafkaProducer-out-0:
           content-type: text/plain
           group: document
+  kafka:
+    # Relais de l'outbox de la sandbox (D-120, document.document-sealed.v1) : même courtier que le binder ;
+    # sérialiseurs String explicites (le liant Spring Cloud Stream impose sinon ByteArraySerializer).
+    bootstrap-servers: ${spring.cloud.stream.kafka.binder.brokers:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      properties:
+        enable.idempotence: true
   docker:
     compose:
       enabled: true

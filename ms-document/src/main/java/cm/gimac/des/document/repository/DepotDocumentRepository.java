@@ -20,4 +20,7 @@ public interface DepotDocumentRepository extends JpaRepository<DepotDocument, UU
      * fragmentés, D-74) : le nouveau document pointe vers le même objet du dépôt WORM.
      */
     Optional<DepotDocument> findFirstBySha256AndTailleOrderByDeposeLeAsc(String sha256, long taille);
+
+    /** Document le plus ancien de cette empreinte (D-120, pièce déjà conservée) ; index ix_depot_document_sha256_taille. */
+    Optional<DepotDocument> findFirstBySha256OrderByDeposeLeAsc(String sha256);
 }

@@ -35,6 +35,11 @@ spring:
         kafkaProducer-out-0:
           content-type: text/plain
           group: document
+  kafka:
+    bootstrap-servers: ${spring.cloud.stream.kafka.binder.brokers:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
   # Replace by 'prod, faker' to add the faker context and have sample data loaded in production
   liquibase:
     contexts: test
@@ -111,6 +116,10 @@ gimac:
   document:
     depot:
       taille-max: 20MB
+    # D-120 : le relais de l'outbox de la sandbox est déclenché par les tests eux-mêmes.
+    sandbox:
+      relais:
+        actif: false
   stockage:
     s3:
       point-acces: http://localhost:7480
